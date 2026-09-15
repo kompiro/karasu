@@ -20,6 +20,7 @@ import type {
   LegendBlock,
   LegendEntry,
   LegendRefTarget,
+  DiagnosticCode,
 } from "../types/ast.js";
 import { edgeArrow } from "../types/ast.js";
 
@@ -31,11 +32,27 @@ export class FormatError extends Error {
 }
 
 /**
+ * Diagnostics that stop `format` although they are warnings everywhere else.
+ *
+ * `fmt`'s contract is "reformat, change nothing", and the formatter prints
+ * what the AST holds. When the parser could not record what the author wrote,
+ * printing the AST deletes it: an unreadable parameter value comes back as a
+ * bare annotation, and a conflicting parameter comes back with the surviving
+ * value printed over the other. Rendering is unaffected by either, so they
+ * stay warnings and the refusal lives here instead (#2707).
+ */
+export const FORMAT_BLOCKING_CODES: ReadonlySet<DiagnosticCode> = new Set<DiagnosticCode>([
+  "annotation-param-value-unreadable",
+  "annotation-param-conflict",
+]);
+
+/**
  * Format a .krs source string.
  *
  * - Normalises indentation (2 spaces), blank lines, and spacing.
  * - Preserves line comments (// ...) and block comments (/* ... *\/).
- * - Throws FormatError when the source has parse errors.
+ * - Throws FormatError when the source has parse errors, or a value the
+ *   formatter cannot preserve (`FORMAT_BLOCKING_CODES`).
  * - Idempotent: format(format(src)) === format(src).
  *
  * Known limitation (v1): comments that appear between properties inside a
@@ -46,6 +63,16 @@ export function format(src: string): string {
   const parseResult = Parser.parse(src);
   if (parseResult.diagnostics.some((d) => d.severity === "error")) {
     throw new FormatError("Cannot format: source contains parse errors");
+  }
+  const unpreservable = [
+    ...new Set(
+      parseResult.diagnostics.filter((d) => FORMAT_BLOCKING_CODES.has(d.code)).map((d) => d.code),
+    ),
+  ];
+  if (unpreservable.length > 0) {
+    throw new FormatError(
+      `Cannot format: the source holds a value this command cannot preserve (${unpreservable.join(", ")})`,
+    );
   }
   const commentTokens = new Lexer(src)
     .tokenizeWithComments()

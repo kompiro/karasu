@@ -189,19 +189,20 @@ service NewSvc @migration_target(from: LegacyMonolith)
 - **精度による graceful degradation**: `until` の値が日付（`YYYY-MM-DD`）/ 年月（`YYYY-MM`）/ 四半期（`YYYY-Qn`）としてパースできれば machine-usable（ソート / filter 可能）。それ以外の文字列（例: `"来年あたり"`）はそのまま opaque な表示専用値として保持する。opaque 値にバリデーションエラーは出さない。
 - **実行時評価はしない**: `until` は記録された **intent** であって期限ではない — karasu は現在日付と比較しない（「期限超過」診断は出さない）。`job.schedule`（保持するが simulate しない）や warn-don't-error の立場と整合。
 - **未対応パラメータは黙殺せず warn**: それ以外のアノテーションへのパラメータ、または未認識キーは `annotation-param-unsupported` 警告とともに破棄する（TPL-1503 — 受理する語彙は効果を持つか警告される）。独自アノテーションは当面パラメータ非対応。
-- **値は文字列リテラル 1 つか裸の語 1 つ**: それ以外はエラー（`annotation-param-value-unreadable`）で、何も記録しない。数字で始まる語（`until: 2026`）、キーワード（`from: system`）、ハイフンやドットでつながった並び（`until: 2026-12-31`、`from: Legacy-Monolith`、`from: Shop.Legacy`）がこれに当たる。こうした値は引用符で囲む: `until: "2026-12-31"`、`from: "Shop.Legacy"`。警告でなくエラーなのは、`karasu fmt` がエラーのあるファイルを書き換えないためである。警告だと `fmt --write` が裸のアノテーションを出力し、著者が書いた値を消してしまう。図の描画は止まらない。
-- **1 つの要素でパラメータの値は 1 つ**: 同じアノテーションを 1 つの要素に 2 回書くと警告（`duplicate-annotation`）。同じパラメータに異なる 2 つの値を与えると、アノテーションを繰り返した場合も 1 つの中で繰り返した場合もエラー（`annotation-param-conflict`）で、最初の値を保つ。要素はアノテーションとキーの組ごとに値を 1 つしか持てないので、そうしないと `fmt` は片方の値をもう片方に上書きして出力するしかない。
+- **値は文字列リテラル 1 つか裸の語 1 つ**: それ以外は警告（`annotation-param-value-unreadable`）で、何も記録しない。数字で始まる語（`until: 2026`）、キーワード（`from: system`）、ハイフンやドットでつながった並び（`until: 2026-12-31`、`from: Legacy-Monolith`、`from: Shop.Legacy`）がこれに当たる。こうした値は引用符で囲む: `until: "2026-12-31"`、`from: "Shop.Legacy"`。
+- **1 つの要素でパラメータの値は 1 つ**: 同じアノテーションを 1 つの要素に 2 回書くと警告（`duplicate-annotation`）。同じパラメータに異なる 2 つの値を与えた場合も、アノテーションを繰り返したか 1 つの中で繰り返したかによらず警告（`annotation-param-conflict`）で、最初の値を保つ。要素はアノテーションとキーの組ごとに値を 1 つしか持てないためである。
+- **どちらの場合も `karasu fmt` はファイルを書き換えない**: 他のライフサイクルアノテーションと同じく図の描画は止まらない。ただし formatter は AST の中身を出力するので、AST が著者の書いたものを保持していないここでは、書き換えると読めない値は裸のアノテーションになり、保った値がもう一方に上書きされる。そのため `fmt` はメッセージを出して止まる。
 - パラメータはアノテーションの**名前リストを変えない**ため、`.krs.style` のアノテーションセレクタ（`@deprecated`）や継承には影響しない。
 - **値の種類ごとに正準形が 1 つ**: 引用符の有無は記録されないので、`karasu fmt` は値の種類に応じた形を選ぶ。`until` / `confidence` は opaque な表示値なので引用符つきで出力し、`from` はノード参照なので他の参照と同じく id が許すかぎり裸で出力する（`from: "legacy"` は `from: legacy` に整形される。`service "A"` と同じ正規化）。
 
-```krs invalid
+```krs
 system Shop {
   service Legacy @deprecated(until: 2026-12-31)
   service Billing @deprecated(until: "2026-Q3") @deprecated(until: "2027-Q3")
 }
 ```
 
-`Legacy` の値はトークン 1 つではなく（`until: "2026-12-31"` と書く）、`Billing` は `until` に異なる 2 つの値を与えている。
+`Legacy` の値はトークン 1 つではなく（`until: "2026-12-31"` と書く）、`Billing` は `until` に異なる 2 つの値を与えている。どちらも図の描画は止めないが、`karasu fmt` は止める。
 
 > Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 未認識キー/アノテーションへの `@name(key: …)` は warn され、黙って受理されない。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `fmt` はパラメータを落とさず round-trip させ（#2571 は全件落としていた）、著者が書いていない値を出力してはならない。[TPL-2707](../test-perspectives/TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md)（引用符なしの値は拒否できるよう丸ごと parser に届かなければならない。#2707 では lexer が数字を捨て、`until: 2026-12-31` が `-` として記録された）。
 

@@ -1931,12 +1931,14 @@ export class Parser {
           } else if (read.kind === "unreadable") {
             // Record nothing: the formatter emits what this map holds, so
             // storing a fallback would make `fmt` write a value the author
-            // never typed (#2571 review). An error rather than a warning,
-            // because `format()` refuses only errors: with a warning, `fmt
-            // --write` would print the bare annotation and delete what the
-            // author wrote (#2707).
+            // never typed (#2571 review). A warning, so the model still
+            // renders (`karasu render` refuses a file with errors, and the
+            // spec promises a lifecycle annotation never gates rendering).
+            // `format()` refuses this code by name instead, so `fmt --write`
+            // cannot print the bare annotation over what the author wrote
+            // (`FORMAT_BLOCKING_CODES`, #2707).
             this.diagnostics.push({
-              severity: "error",
+              severity: "warning",
               code: "annotation-param-value-unreadable",
               params: { annotation: name, key },
               loc: read.loc,
@@ -1948,10 +1950,12 @@ export class Parser {
             } else if (slot[key] !== read.value) {
               // The AST keeps one value per annotation and key, so a second,
               // different value cannot be represented. Keep the first and
-              // reject the second; as an error it also stops `fmt` from
-              // printing the first value over the second (#2707).
+              // reject the second. Like the unreadable value above, it is a
+              // warning that `format()` refuses by name, so rendering works
+              // and `fmt` does not print the first value over the second
+              // (#2707).
               this.diagnostics.push({
-                severity: "error",
+                severity: "warning",
                 code: "annotation-param-conflict",
                 params: { annotation: name, key, existing: slot[key], value: read.value },
                 loc: this.range(keyToken.loc, read.token.end ?? read.token.loc),

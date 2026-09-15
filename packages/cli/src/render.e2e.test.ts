@@ -148,6 +148,31 @@ system EC {
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
+  // #2707: an unquoted annotation parameter value is warned, not refused. The
+  // spec promises a lifecycle annotation never gates rendering, so the diagram
+  // must still be written; only `karasu fmt` stops on these.
+  it("still renders a file whose annotation parameter value cannot be read — Issue #2707", async () => {
+    const { writeFileSync } = await import("node:fs");
+    const krsPath = join(tmpDir, "index.krs");
+    const outPath = join(tmpDir, "out.svg");
+    writeFileSync(
+      krsPath,
+      `system Shop {
+  service Legacy @deprecated(until: 2026-12-31) {}
+  service Billing @deprecated(until: "2026-Q3") @deprecated(until: "2027-Q3") {}
+}
+`,
+      "utf-8",
+    );
+
+    await render(krsPath, { output: outPath });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(existsSync(outPath)).toBe(true);
+    expect(readFileSync(outPath, "utf-8")).toContain("<svg");
+    expect(streams.stderr()).toContain("until");
+  });
+
   // #1819: the cross-domain-store-access info diagnostic is a model-level fact
   // and must surface on the CLI render path (end-to-end AT for the diagnostic).
   it("surfaces the cross-domain-store-access info diagnostic — Issue #1819", async () => {

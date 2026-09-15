@@ -104,7 +104,9 @@ describe("annotation parameter values that are not one token (#2707)", () => {
       const key = annotation.slice(annotation.indexOf("(") + 1, annotation.indexOf(":"));
 
       expect(errors).toHaveLength(1);
-      expect(errors[0].severity).toBe("error");
+      // A warning, so the model still renders; `format()` refuses this code by
+      // name so `fmt` cannot write the value away (#2707).
+      expect(errors[0].severity).toBe("warning");
       expect(errors[0].params).toEqual({ annotation: name, key });
       expect(paramsOf(src)).toEqual([]);
       // `2026-12-31` used to report `-` as an unsupported key; `Shop.Legacy`, `.`.
@@ -211,7 +213,10 @@ describe("repeated annotations and parameters (#2707)", () => {
     const conflicts = diagnosticsOf(src, "annotation-param-conflict");
 
     expect(conflicts.map((d) => [d.severity, d.params])).toEqual([
-      ["error", { annotation: "deprecated", key: "until", existing: "2026-Q3", value: "2027-Q3" }],
+      [
+        "warning",
+        { annotation: "deprecated", key: "until", existing: "2026-Q3", value: "2027-Q3" },
+      ],
     ]);
     expect(paramsOf(src)).toEqual([{ deprecated: { until: "2026-Q3" } }]);
     // The repeated name is reported on its own: the two name different edits.

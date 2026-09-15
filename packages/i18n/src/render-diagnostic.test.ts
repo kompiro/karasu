@@ -118,12 +118,12 @@ const SAMPLES: SamplesByCode = {
     params: { annotation: "deprecated", key: "reason" },
   },
   "annotation-param-value-unreadable": {
-    severity: "error",
+    severity: "warning",
     code: "annotation-param-value-unreadable",
     params: { annotation: "deprecated", key: "until" },
   },
   "annotation-param-conflict": {
-    severity: "error",
+    severity: "warning",
     code: "annotation-param-conflict",
     params: { annotation: "deprecated", key: "until", existing: "2026-Q3", value: "2027-Q3" },
   },

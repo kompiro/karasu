@@ -19,7 +19,7 @@ type: product
 
 ### AC-1: 引用符なしの値が別の値として記録されない
 
-- [x] AT-A: `until: 2026-12-31` は `annotation-param-value-unreadable`（error）を 1 件だけ出し、何も記録しない。`-` を未対応キーとして名指しする警告は出ない
+- [x] AT-A: `until: 2026-12-31` は `annotation-param-value-unreadable`（warning）を 1 件だけ出し、何も記録しない。`-` を未対応キーとして名指しする警告は出ない
 
   > ✅ Automated — `packages/core/src/parser/annotation-params.test.ts` › `annotation parameter values that are not one token (#2707)` › `reports @deprecated(until: 2026-12-31) as one unreadable-value error and records nothing`
 
@@ -43,7 +43,7 @@ type: product
 
   > ✅ Automated — `packages/core/src/parser/annotation-params.test.ts` › `annotation parameter values that are not one token (#2707)` › `still reads the pair after a hyphenated value`
 
-### AC-2: `fmt --write` が著者のファイルを書き換えない
+### AC-2: `fmt --write` が著者のファイルを書き換えない（描画は止めない）
 
 - [x] AT-F: 読めない値を含むファイルに `karasu fmt` をかけると、ファイルが 1 バイトも変わらず、終了コード 2 で終わる
 
@@ -57,13 +57,17 @@ type: product
 
   > ✅ Automated — `packages/core/src/formatter/annotation-params-round-trip.test.ts` › `annotation parameter values keep their meaning` › `reads back every reference it prints bare (#2707)`
 
+- [x] AT-R: 同じファイルを `karasu render` は描画でき、SVG が書き出される（ライフサイクルアノテーションは描画を止めないという規定どおり）。2 つの診断はどちらも warning で、`format()` だけが名指しで拒否する
+
+  > ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `still renders a file whose annotation parameter value cannot be read — Issue #2707`、および `packages/core/src/formatter/annotation-params-round-trip.test.ts` › `annotation parameter values keep their meaning` › `refuses every code it cannot preserve, and only as a warning elsewhere`
+
 ### AC-3: 同名アノテーションと値の衝突が報告される
 
 - [x] AT-I: 同じアノテーションを 1 つの要素に 2 回書くと `duplicate-annotation`（warning）が出て、名前は両方残る
 
   > ✅ Automated — `packages/core/src/parser/annotation-params.test.ts` › `repeated annotations and parameters (#2707)` › `warns on an annotation written twice and keeps both names`
 
-- [x] AT-J: 同じパラメータに異なる 2 つの値を与えると `annotation-param-conflict`（error）が出て、最初の値が残る。1 つのアノテーションの中で繰り返しても同じ
+- [x] AT-J: 同じパラメータに異なる 2 つの値を与えると `annotation-param-conflict`（warning）が出て、最初の値が残る。1 つのアノテーションの中で繰り返しても同じ
 
   > ✅ Automated — 同上 › `rejects a second, different value for the same parameter and keeps the first`、`treats a repeated key inside one annotation the same way`
 

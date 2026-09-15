@@ -20,7 +20,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { format, FormatError } from "./formatter.js";
+import { format, FormatError, FORMAT_BLOCKING_CODES } from "./formatter.js";
 import { Parser, ANNOTATION_PARAM_KEYS } from "../parser/parser.js";
 import { KRS_KEYWORD_NAMES } from "../lexer/lexer.js";
 
@@ -306,6 +306,23 @@ describe("annotation parameter values keep their meaning", () => {
     const src = `@deprecated @deprecated(until: "x")`;
     expect(fmtNode(src)).toContain(`service A @deprecated(until: "x") @deprecated(until: "x") {`);
     expectRoundTrip(HOSTS.node(src));
+  });
+
+  it("refuses every code it cannot preserve, and only as a warning elsewhere", () => {
+    // The set is the contract: these are warnings, so the model still renders
+    // (`karasu render` refuses only errors), and `fmt` alone stops (#2707).
+    const cases: Record<string, string> = {
+      "annotation-param-value-unreadable": `@deprecated(until: 2026-12-31)`,
+      "annotation-param-conflict": `@deprecated(until: "2026-Q3") @deprecated(until: "2027-Q3")`,
+    };
+    expect(Object.keys(cases).sort()).toEqual([...FORMAT_BLOCKING_CODES].sort());
+
+    for (const [code, annotation] of Object.entries(cases)) {
+      const src = HOSTS.node(annotation);
+      const raised = Parser.parse(src).diagnostics.filter((d) => d.code === code);
+      expect([code, raised.map((d) => d.severity)]).toEqual([code, ["warning"]]);
+      expect(() => format(src)).toThrow(FormatError);
+    }
   });
 
   it("refuses a repeated annotation whose parameter values differ", () => {
