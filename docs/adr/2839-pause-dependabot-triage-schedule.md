@@ -4,8 +4,9 @@ title: dependabot-triage workflow の週次 cron を止め、dispatch で運用�
 status: accepted
 date: 2026-09-15
 topic: build
-related_to:
+refines:
   - ADR-2658
+related_to:
   - ADR-903
   - ADR-2687
 scope:
@@ -72,3 +73,5 @@ cron の行は削除せず、W2（`security-alert-sweep.md`）と同じ形でコ
   `/hane:dependabot` で従来どおり行う。
 - ADR-2658 の本文は書き換えない（[ADR-2687](2687-adr-body-is-immutable.md)）。W1 の起動方法に限って本 ADR が上書きし、
   判定は人が行う・workflow は書き込み範囲を宣言で縛る、という残りの決定は変わらない。
+  そのため frontmatter は `supersedes` ではなく `refines: [ADR-2658]` で結ぶ。`supersedes` にすると ADR-2658 が
+  `superseded` になり、W2 や safe outputs の宣言といった有効な決定まで `effective.md` から外れる。
