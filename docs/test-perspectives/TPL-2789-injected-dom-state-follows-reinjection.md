@@ -13,7 +13,7 @@ known_consumers:
 discovered_from:
   - issue: "#2789"
   - issue: "#1171"
-  - root_cause_file: "packages/app/src/components/PreviewPane.tsx:503"
+  - root_cause_file: "packages/app/src/components/PreviewPane.tsx:506"
 related_to:
   - TPL-1171
   - TPL-2800
@@ -56,6 +56,10 @@ effect が走らなかっただけである。runner が重く、再レンダリ
   待機不足（TPL-1171）と誤診されやすい。timeout を伸ばしても直らない
 - テストヘルパーが症状に合わせて回避する（「再レンダリングで作り直されるので要素を取り直す」）。
   回避がコメントで正当化されると、欠陥が仕様として読まれる
+- 逆向きの隠れ依存: 状態を「消す」操作のテストが、実はその操作に伴う再レンダリングの消去で
+  通っている。#2789 では背景クリックでハイライトが消えることを E2E が確かめていたが、背景クリックの
+  経路は解除を呼んでおらず、mouseDown の再レンダリングが class を消していただけだった
+  （URL hash には `:Web` が残っていた）。流し込みを直すとそのテストが落ちる
 - 状態を当てていない描画面でも、大きな SVG を毎レンダリング parse し直す無駄として残る
 
 ## チェックリスト
@@ -68,8 +72,9 @@ effect が走らなかっただけである。runner が重く、再レンダリ
 - [ ] 「同じ値・新しいオブジェクトの props で再レンダリングする」テストを 1 回挟み、
       状態が残ることと、DOM ノードが同一であることの両方を assert したか
 - [ ] 修正前のコードでそのテストが落ちることを確認したか
-- [ ] E2E flake を調べるとき、trace の URL（state を反映する hash など）と DOM スナップショットを
-      突き合わせたか。state が正しく DOM だけ違うなら、疑うのは待機ではなく DOM への適用側
+- [ ] 状態の付与・解除を E2E で確かめるとき、DOM だけでなく state を反映するもの（URL hash など）も
+      assert したか。DOM だけの assert は、再レンダリングによる消去と本物の解除を区別できない
+      （flake の調査では trace の URL と DOM スナップショットを突き合わせる）
 
 ## 既知の対処パターン
 
@@ -86,5 +91,9 @@ effect が走らなかっただけである。runner が重く、再レンダリ
 
 - `packages/app/src/components/PreviewPane.test.tsx` ›
   `keeps .karasu-highlighted across a re-render that leaves the diagram unchanged (#2789)`
+- `packages/app/src/components/PreviewPane.test.tsx` ›
+  `calls onClearHighlight when the diagram background is clicked` /
+  `keeps the highlight when the diagram background is dragged`
 - `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` ›
   `Clicking a deploy container switches to System with the realizes target highlighted (AC-2.1, AC-2.2, AC-2.3)`
+  （付与と解除の両方で URL hash も assert する）
