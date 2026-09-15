@@ -9,6 +9,8 @@ import {
 
 const HEAD = "bd54f5b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6";
 const OLD = "88c0551aa1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6";
+/** Body of a COMMENTED review that carries only findings outside the diff. */
+const OUTSIDE_DIFF = "> [!CAUTION]\n> Some comments are outside the diff";
 
 function snapshot(over: Partial<Snapshot>): Snapshot {
   return {
@@ -56,7 +58,9 @@ describe("classify", () => {
   it("is approved when the latest review approves the head and nothing is open", () => {
     const state = classify(
       snapshot({
-        reviews: [{ state: "APPROVED", commitId: HEAD, submittedAt: "2026-09-15T14:13:33Z" }],
+        reviews: [
+          { state: "APPROVED", commitId: HEAD, submittedAt: "2026-09-15T14:13:33Z", body: "" },
+        ],
         threads: [
           {
             isResolved: true,
@@ -72,19 +76,31 @@ describe("classify", () => {
   it("does not call an approval of an older commit approved", () => {
     const state = classify(
       snapshot({
-        reviews: [{ state: "APPROVED", commitId: OLD, submittedAt: "2026-09-15T13:00:00Z" }],
+        reviews: [
+          { state: "APPROVED", commitId: OLD, submittedAt: "2026-09-15T13:00:00Z", body: "" },
+        ],
       }),
     );
     expect(state).toEqual({ kind: "waiting" });
   });
 
   it("waits for the burst to go quiet before reading a round (#2840)", () => {
-    // Thread reply, then COMMENTED reviews seconds before the approval lands.
+    // A review with outside-diff findings, then a thread answer seconds later.
     const burst = snapshot({
       reviews: [
-        { state: "CHANGES_REQUESTED", commitId: OLD, submittedAt: "2026-09-15T12:59:52Z" },
-        { state: "COMMENTED", commitId: HEAD, submittedAt: "2026-09-15T14:11:24Z" },
-        { state: "COMMENTED", commitId: HEAD, submittedAt: "2026-09-15T14:13:28Z" },
+        {
+          state: "CHANGES_REQUESTED",
+          commitId: OLD,
+          submittedAt: "2026-09-15T12:59:52Z",
+          body: "",
+        },
+        {
+          state: "COMMENTED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T14:11:24Z",
+          body: OUTSIDE_DIFF,
+        },
+        { state: "COMMENTED", commitId: HEAD, submittedAt: "2026-09-15T14:13:28Z", body: "" },
       ],
       threads: [
         { isResolved: false, lastCommentAt: "2026-09-15T14:13:28Z", lastCommentByCodeRabbit: true },
@@ -102,7 +118,12 @@ describe("classify", () => {
     const state = classify(
       snapshot({
         reviews: [
-          { state: "CHANGES_REQUESTED", commitId: HEAD, submittedAt: "2026-09-15T14:05:00Z" },
+          {
+            state: "CHANGES_REQUESTED",
+            commitId: HEAD,
+            submittedAt: "2026-09-15T14:05:00Z",
+            body: "",
+          },
         ],
         threads: [
           {
@@ -130,7 +151,12 @@ describe("classify", () => {
     const state = classify(
       snapshot({
         reviews: [
-          { state: "CHANGES_REQUESTED", commitId: HEAD, submittedAt: "2026-09-15T13:00:00Z" },
+          {
+            state: "CHANGES_REQUESTED",
+            commitId: HEAD,
+            submittedAt: "2026-09-15T13:00:00Z",
+            body: "",
+          },
         ],
         threads: [
           {
@@ -148,7 +174,12 @@ describe("classify", () => {
     const state = classify(
       snapshot({
         reviews: [
-          { state: "CHANGES_REQUESTED", commitId: HEAD, submittedAt: "2026-09-15T13:00:00Z" },
+          {
+            state: "CHANGES_REQUESTED",
+            commitId: HEAD,
+            submittedAt: "2026-09-15T13:00:00Z",
+            body: "",
+          },
         ],
         threads: [
           {
@@ -166,7 +197,12 @@ describe("classify", () => {
     const state = classify(
       snapshot({
         reviews: [
-          { state: "CHANGES_REQUESTED", commitId: HEAD, submittedAt: "2026-09-15T14:05:00Z" },
+          {
+            state: "CHANGES_REQUESTED",
+            commitId: HEAD,
+            submittedAt: "2026-09-15T14:05:00Z",
+            body: "",
+          },
         ],
         threads: [
           {
@@ -180,13 +216,54 @@ describe("classify", () => {
     expect(state).toEqual({ kind: "stalled" });
   });
 
+  it("stays approved when CodeRabbit answers a thread after approving", () => {
+    const state = classify(
+      snapshot({
+        reviews: [
+          { state: "APPROVED", commitId: HEAD, submittedAt: "2026-09-15T14:13:33Z", body: "" },
+          { state: "COMMENTED", commitId: HEAD, submittedAt: "2026-09-15T14:20:00Z", body: "" },
+        ],
+      }),
+    );
+    expect(state).toEqual({ kind: "approved" });
+  });
+
+  it("does not read a thread answer as the review of a push that has none yet", () => {
+    const state = classify(
+      snapshot({
+        reviews: [
+          {
+            state: "CHANGES_REQUESTED",
+            commitId: OLD,
+            submittedAt: "2026-09-15T13:50:00Z",
+            body: "x",
+          },
+          { state: "COMMENTED", commitId: HEAD, submittedAt: "2026-09-15T14:00:16Z", body: "" },
+        ],
+        threads: [
+          {
+            isResolved: true,
+            lastCommentAt: "2026-09-15T14:00:16Z",
+            lastCommentByCodeRabbit: true,
+          },
+        ],
+      }),
+    );
+    expect(state).toEqual({ kind: "waiting" });
+  });
+
   describe("rate limit", () => {
     // #2841: the last review covers an older commit, the push after it hit the limit.
     const limited = snapshot({
       since: "2026-09-15T14:26:00Z",
       reviews: [
-        { state: "CHANGES_REQUESTED", commitId: "058da51", submittedAt: "2026-09-15T14:15:46Z" },
-        { state: "COMMENTED", commitId: OLD, submittedAt: "2026-09-15T14:20:00Z" },
+        {
+          state: "CHANGES_REQUESTED",
+          commitId: "058da51",
+          submittedAt: "2026-09-15T14:15:46Z",
+          body: "",
+        },
+        { state: "COMMENTED", commitId: OLD, submittedAt: "2026-09-15T14:20:00Z", body: "" },
       ],
       comments: [limitNotice("2026-09-15T14:27:57Z", 39)],
       now: "2026-09-15T14:30:00Z",
@@ -240,10 +317,41 @@ describe("classify", () => {
       expect(state).toEqual({ kind: "in_progress" });
     });
 
+    it("is not hidden by a thread answer filed next to the notice (#2847)", () => {
+      // The push at 15:31:13 hit the limit; CodeRabbit had just answered a thread
+      // about the previous round, which GitHub records as a review of the head.
+      const base = snapshot({
+        since: "2026-09-15T15:31:13Z",
+        reviews: [
+          {
+            state: "CHANGES_REQUESTED",
+            commitId: OLD,
+            submittedAt: "2026-09-15T15:25:40Z",
+            body: "x",
+          },
+          { state: "COMMENTED", commitId: HEAD, submittedAt: "2026-09-15T15:31:29Z", body: "" },
+        ],
+        threads: [
+          {
+            isResolved: true,
+            lastCommentAt: "2026-09-15T15:31:29Z",
+            lastCommentByCodeRabbit: true,
+          },
+        ],
+        now: "2026-09-15T15:33:37Z",
+      });
+      for (const noticeAt of ["2026-09-15T15:31:31Z", "2026-09-15T15:31:20Z"]) {
+        const state = classify({ ...base, comments: [limitNotice(noticeAt, 20)] });
+        expect(state.kind).toBe("rate_limited");
+      }
+    });
+
     it("lets a review of the head supersede the notice", () => {
       const state = classify({
         ...limited,
-        reviews: [{ state: "APPROVED", commitId: HEAD, submittedAt: "2026-09-15T15:10:00Z" }],
+        reviews: [
+          { state: "APPROVED", commitId: HEAD, submittedAt: "2026-09-15T15:10:00Z", body: "" },
+        ],
         comments: [
           limitNotice("2026-09-15T14:27:57Z", 39),
           commandReply("2026-09-15T15:07:36Z", "finished"),

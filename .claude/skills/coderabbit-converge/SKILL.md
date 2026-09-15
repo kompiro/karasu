@@ -72,6 +72,10 @@ stdout の JSON の `outcome` で分岐する。
 `@coderabbitai review` を投げてよいのは `limit_elapsed` のときだけ。review 枠は org 全体で
 共有されており、弾かれた試行も利用量に数えられうる。
 
+rate limit 中に push したいコミットができたら、push は `limit_elapsed` まで保留する。
+制限中の push は弾かれる試行を 1 回増やすだけになる。明けたら `@coderabbitai review` の
+代わりにその push を行う（push が自動レビューを起こす）。
+
 ### 3. 指摘に対応する（`changes`）
 
 1. 未解決 thread の索引を取り、thread ごとに本文を全件読む（コマンドは `docs/process.md` の手順 1・2）。

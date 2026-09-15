@@ -42,6 +42,7 @@ function ghPages<T>(args: string[]): T[] {
 interface RestReview {
   user: { login: string } | null;
   state: string;
+  body: string | null;
   commit_id: string;
   submitted_at: string | null;
 }
@@ -111,7 +112,12 @@ function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
   const reviews: CodeRabbitReview[] = ghPages<RestReview[]>([`repos/${REPO}/pulls/${pr}/reviews`])
     .flat()
     .filter((r) => byCodeRabbit(r.user?.login) && r.submitted_at !== null)
-    .map((r) => ({ state: r.state, commitId: r.commit_id, submittedAt: r.submitted_at as string }));
+    .map((r) => ({
+      state: r.state,
+      commitId: r.commit_id,
+      submittedAt: r.submitted_at as string,
+      body: r.body ?? "",
+    }));
 
   const comments: CodeRabbitComment[] = ghPages<RestComment[]>([
     `repos/${REPO}/issues/${pr}/comments`,

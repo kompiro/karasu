@@ -38,6 +38,20 @@ export interface CodeRabbitReview {
   state: string;
   commitId: string;
   submittedAt: string;
+  body: string;
+}
+
+/**
+ * CodeRabbit files an answer inside a review thread as a review of its own: state
+ * `COMMENTED`, empty body. It says nothing about the commit, so it must not stand
+ * in for the review of a push (#2847: one landed two seconds before the
+ * rate-limit notice for that push). A real review is `CHANGES_REQUESTED`,
+ * `APPROVED`, or `COMMENTED` with a body (findings outside the diff only).
+ * `DISMISSED` is an approval GitHub withdrew when a later push arrived.
+ */
+export function isCommitReview(r: CodeRabbitReview): boolean {
+  if (r.state === "DISMISSED") return false;
+  return !(r.state === "COMMENTED" && r.body.trim() === "");
 }
 
 /** A top-level PR comment by CodeRabbit (summary, command reply). */
@@ -130,14 +144,17 @@ export function parseNoticeHeadSha(body: string): string | null {
   return m ? m[1] : null;
 }
 
-function rateLimitReadyAt(s: Snapshot, opts: ClassifyOptions): number | null {
+/**
+ * `notAfter`: the latest commit review of the head. A notice older than that was
+ * followed by the review it announced, and a notice older than `since` was
+ * answered by the author's re-request; neither describes the PR any more.
+ */
+function rateLimitReadyAt(s: Snapshot, opts: ClassifyOptions, notAfter: number): number | null {
   const since = ms(s.since);
   let readyAt: number | null = null;
 
   for (const c of s.comments) {
-    // A notice written before the last action was already answered by it (the
-    // author re-requested the review), so it no longer describes the PR.
-    if (ms(c.updatedAt) < since) continue;
+    if (ms(c.updatedAt) < since || ms(c.updatedAt) <= notAfter) continue;
 
     if (c.body.includes(RATE_LIMIT_MARKER)) {
       const noticeHead = parseNoticeHeadSha(c.body);
@@ -177,31 +194,33 @@ export function classify(
   const now = ms(s.now);
   const unresolved = s.threads.filter((t) => !t.isResolved).length;
   const reviews = [...s.reviews].sort((a, b) => ms(a.submittedAt) - ms(b.submittedAt));
-  const latest = reviews.at(-1);
   const onHead = (r: CodeRabbitReview) => r.commitId === s.headSha;
+  const commitReviews = reviews.filter(isCommitReview);
+  const latest = commitReviews.at(-1);
 
   if (latest && onHead(latest) && latest.state === "APPROVED" && unresolved === 0) {
     return { kind: "approved" };
   }
 
-  // A review of the head commit after the last action supersedes any limit
-  // notice left over from an earlier attempt.
-  const answeredByReview = reviews.some((r) => onHead(r) && ms(r.submittedAt) >= since);
-  const answeredInThread = s.threads.some(
-    (t) => t.lastCommentByCodeRabbit && ms(t.lastCommentAt) >= since,
-  );
+  const headReviews = commitReviews.filter(onHead);
+  const answeredByReview = headReviews.some((r) => ms(r.submittedAt) >= since);
+  // An answer in a thread settles a reply-only round. After a push it may be
+  // CodeRabbit replying to what was posted before the push, so it counts only
+  // once the head itself has been reviewed.
+  const answeredInThread =
+    headReviews.length > 0 &&
+    s.threads.some((t) => t.lastCommentByCodeRabbit && ms(t.lastCommentAt) >= since);
 
   // Checked before the limit: an accepted re-request can leave the old notice in
   // the summary until the review it started has finished.
   if (reviewRunning(s)) return { kind: "in_progress" };
 
-  if (!answeredByReview) {
-    const readyAt = rateLimitReadyAt(s, opts);
-    if (readyAt !== null) {
-      return now >= readyAt
-        ? { kind: "limit_elapsed", readyAt: iso(readyAt) }
-        : { kind: "rate_limited", readyAt: iso(readyAt) };
-    }
+  const lastHeadReview = Math.max(-Infinity, ...headReviews.map((r) => ms(r.submittedAt)));
+  const readyAt = rateLimitReadyAt(s, opts, lastHeadReview);
+  if (readyAt !== null) {
+    return now >= readyAt
+      ? { kind: "limit_elapsed", readyAt: iso(readyAt) }
+      : { kind: "rate_limited", readyAt: iso(readyAt) };
   }
 
   if (!answeredByReview && !answeredInThread) return { kind: "waiting" };
