@@ -173,8 +173,14 @@ function parseArgs(argv: string[]): Args {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--once") args.once = true;
-    else if (a === "--since") args.since = argv[++i];
-    else if (a === "--timeout-min") args.timeoutMin = minutes(a, argv[++i]);
+    else if (a === "--since") {
+      // Without an operand the head commit time would silently stand in, and an
+      // earlier round's answer could read as the answer to this one.
+      const value = argv[++i];
+      if (value === undefined || value.startsWith("--"))
+        throw new Error("--since needs a timestamp");
+      args.since = value;
+    } else if (a === "--timeout-min") args.timeoutMin = minutes(a, argv[++i]);
     else if (a === "--limit-budget-min") args.limitBudgetMin = minutes(a, argv[++i]);
     else if (/^\d+$/.test(a)) args.pr = Number(a);
     else throw new Error(`unknown argument: ${a}`);
@@ -228,10 +234,12 @@ async function main(): Promise<void> {
       continue;
     }
 
-    if (waitedMs >= args.timeoutMin * 60_000) return report(snap, state, "timeout");
-    console.error(`#${args.pr} ${state.kind}; polling again in ${POLL_MS / 1000}s`);
-    await sleep(POLL_MS);
-    waitedMs += POLL_MS;
+    const timeoutLeft = args.timeoutMin * 60_000 - waitedMs;
+    if (timeoutLeft <= 0) return report(snap, state, "timeout");
+    const step = Math.min(POLL_MS, timeoutLeft);
+    console.error(`#${args.pr} ${state.kind}; polling again in ${Math.round(step / 1000)}s`);
+    await sleep(step);
+    waitedMs += step;
   }
 }
 
