@@ -1,7 +1,6 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 import { execFileSync } from "node:child_process";
 import { lstatSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 
 // Fails when a tracked text file contains a raw NUL byte (Issue #2804).
 //
@@ -44,22 +43,58 @@ const SYMLINK_MODE = "120000";
 
 export interface TrackedEntry {
   mode: string;
+  /** The path for display and reporting; see {@link displayPath}. */
   path: string;
+  /** The path exactly as git stores it, used for every filesystem call. */
+  pathBytes: Uint8Array;
+}
+
+const TAB = 0x09;
+
+/**
+ * The path as a readable string. Git stores a path as bytes, not text, so a
+ * name need not be valid UTF-8. Decoding such a name lossily would print a
+ * replacement character that names no file, so an invalid name is spelled
+ * with each non-ASCII byte as `\xNN` instead. This string is for messages
+ * only; the bytes are what reach the filesystem.
+ */
+export function displayPath(bytes: Uint8Array): string {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    let out = "";
+    for (const byte of bytes) {
+      out +=
+        byte >= 0x20 && byte < 0x7f && byte !== 0x5c
+          ? String.fromCharCode(byte)
+          : `\\x${byte.toString(16).padStart(2, "0")}`;
+    }
+    return out;
+  }
 }
 
 /**
  * Parses `git ls-files -s -z`. Each record is `<mode> <sha> <stage>\t<path>`
  * followed by a NUL. `-z` turns quoting off, so a tab inside a path arrives as
  * a literal byte: only the first tab separates the header from the path.
+ *
+ * The output is read as bytes rather than a UTF-8 string. Decoding it first
+ * would rewrite a path that is not valid UTF-8, the rewritten name would match
+ * no file, and the file would be skipped without a finding.
  */
-export function parseLsFiles(stdout: string): TrackedEntry[] {
+export function parseLsFiles(stdout: Uint8Array): TrackedEntry[] {
   const entries: TrackedEntry[] = [];
-  for (const record of stdout.split("\0")) {
-    if (record === "") continue;
-    const tab = record.indexOf("\t");
+  let start = 0;
+  while (start < stdout.length) {
+    let end = stdout.indexOf(0, start);
+    if (end === -1) end = stdout.length;
+    const record = stdout.subarray(start, end);
+    start = end + 1;
+    const tab = record.indexOf(TAB);
     if (tab === -1) continue;
-    const [mode] = record.slice(0, tab).split(" ");
-    entries.push({ mode, path: record.slice(tab + 1) });
+    const [mode] = new TextDecoder("latin1").decode(record.subarray(0, tab)).split(" ");
+    const pathBytes = record.slice(tab + 1);
+    entries.push({ mode, path: displayPath(pathBytes), pathBytes });
   }
   return entries;
 }
@@ -70,10 +105,12 @@ export function parseLsFiles(stdout: string): TrackedEntry[] {
  * the working tree holds only one file for all of them.
  */
 export function readableEntries(entries: readonly TrackedEntry[]): TrackedEntry[] {
+  // Keyed on the bytes, not the display string, which is not injective.
   const seen = new Set<string>();
   return entries.filter((entry) => {
-    if (entry.mode === SYMLINK_MODE || seen.has(entry.path)) return false;
-    seen.add(entry.path);
+    const key = Buffer.from(entry.pathBytes).toString("hex");
+    if (entry.mode === SYMLINK_MODE || seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
 }
@@ -186,9 +223,9 @@ export const HOW_TO_FIX = [
 
 /** Tracked entries of the repository at `repoRoot`, from git's index. */
 function trackedEntries(repoRoot: string): TrackedEntry[] {
+  // No `encoding`: the output stays a Buffer so path bytes survive (see parseLsFiles).
   const stdout = execFileSync("git", ["ls-files", "-s", "-z"], {
     cwd: repoRoot,
-    encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
   });
   return parseLsFiles(stdout);
@@ -211,8 +248,11 @@ export function readRegularFiles(
   entries: readonly TrackedEntry[],
 ): ScannedFile[] {
   const files: ScannedFile[] = [];
-  for (const { path } of entries) {
-    const abs = join(repoRoot, path);
+  const root = Buffer.from(repoRoot.endsWith("/") ? repoRoot : `${repoRoot}/`);
+  for (const { path, pathBytes } of entries) {
+    // A Buffer path reaches the filesystem byte for byte; a string would be
+    // re-encoded as UTF-8 and miss a name that is not valid UTF-8.
+    const abs = Buffer.concat([root, pathBytes]);
     try {
       if (!lstatSync(abs).isFile()) continue;
       files.push({ path, bytes: readFileSync(abs) });

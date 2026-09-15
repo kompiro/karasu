@@ -7,6 +7,7 @@ import {
   BINARY_EXTENSIONS,
   check,
   describeFinding,
+  displayPath,
   extensionOf,
   HOW_TO_FIX,
   parseLsFiles,
@@ -14,6 +15,7 @@ import {
   readRegularFiles,
   scanRepository,
   type ScannedFile,
+  type TrackedEntry,
 } from "./no-nul-bytes.ts";
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
@@ -104,15 +106,32 @@ describe("extensionOf", () => {
   });
 });
 
+/** A path that is not valid UTF-8: `bad-`, the lone byte 0xff, `.ts`. */
+const INVALID_UTF8_NAME = Buffer.concat([
+  Buffer.from("bad-"),
+  Buffer.from([0xff]),
+  Buffer.from(".ts"),
+]);
+
 describe("parseLsFiles and readableEntries", () => {
-  // Synthetic `git ls-files -s -z` output. The real checkout has no tracked
-  // symlink, so a test that read it could not exercise the exclusion at all.
-  const record = (mode: string, path: string, stage = "0") =>
-    `${mode} ce013625030ba8dba906f756967f9e9ca394464a ${stage}${TAB}${path}${NUL}`;
+  // Synthetic `git ls-files -s -z` output, as bytes. The real checkout has no
+  // tracked symlink and no non-UTF-8 name, so a test that read it could not
+  // exercise either case at all.
+  const record = (mode: string, path: string | Uint8Array, stage = "0") =>
+    Buffer.concat([
+      Buffer.from(`${mode} ce013625030ba8dba906f756967f9e9ca394464a ${stage}${TAB}`),
+      typeof path === "string" ? Buffer.from(path) : path,
+      Buffer.from(NUL),
+    ]);
+  const modeAndPath = (entries: readonly TrackedEntry[]) =>
+    entries.map(({ mode, path }) => ({ mode, path }));
 
   it("reads mode and path from each NUL-terminated record", () => {
-    const stdout = record("100644", "README.md") + record("100755", "scripts/run.sh");
-    expect(parseLsFiles(stdout)).toEqual([
+    const stdout = Buffer.concat([
+      record("100644", "README.md"),
+      record("100755", "scripts/run.sh"),
+    ]);
+    expect(modeAndPath(parseLsFiles(stdout))).toEqual([
       { mode: "100644", path: "README.md" },
       { mode: "100755", path: "scripts/run.sh" },
     ]);
@@ -121,23 +140,62 @@ describe("parseLsFiles and readableEntries", () => {
   it("keeps a tab inside a path, splitting the record at the first tab only", () => {
     // `-z` disables quoting, so the tab arrives as a literal byte.
     const stdout = record("100644", `has${TAB}tab.txt`);
-    expect(parseLsFiles(stdout)).toEqual([{ mode: "100644", path: `has${TAB}tab.txt` }]);
+    expect(modeAndPath(parseLsFiles(stdout))).toEqual([
+      { mode: "100644", path: `has${TAB}tab.txt` },
+    ]);
+  });
+
+  it("keeps a path that is not valid UTF-8 byte for byte, escaping it only for display", () => {
+    // Decoding the output as UTF-8 first would turn 0xff into U+FFFD, a name
+    // that matches no file, and the file would be skipped without a finding.
+    const [entry] = parseLsFiles(record("100644", INVALID_UTF8_NAME));
+    expect(Buffer.from(entry.pathBytes).equals(INVALID_UTF8_NAME)).toBe(true);
+    expect(entry.path).toBe("bad-\\xff.ts");
   });
 
   it("does not read the trailing terminator as an empty path", () => {
     expect(parseLsFiles(record("100644", "a.ts"))).toHaveLength(1);
-    expect(parseLsFiles("")).toEqual([]);
+    expect(parseLsFiles(new Uint8Array())).toEqual([]);
   });
 
   it("drops a symlink, whose content would be read from the link's target", () => {
-    const stdout = record("100644", "a.ts") + record("120000", "link-to-outside");
-    expect(readableEntries(parseLsFiles(stdout))).toEqual([{ mode: "100644", path: "a.ts" }]);
+    const stdout = Buffer.concat([record("100644", "a.ts"), record("120000", "link-to-outside")]);
+    expect(modeAndPath(readableEntries(parseLsFiles(stdout)))).toEqual([
+      { mode: "100644", path: "a.ts" },
+    ]);
   });
 
   it("reads an unmerged path once, not once per conflict stage", () => {
-    const stdout =
-      record("100644", "c.ts", "1") + record("100644", "c.ts", "2") + record("100644", "c.ts", "3");
-    expect(readableEntries(parseLsFiles(stdout))).toEqual([{ mode: "100644", path: "c.ts" }]);
+    const stdout = Buffer.concat([
+      record("100644", "c.ts", "1"),
+      record("100644", "c.ts", "2"),
+      record("100644", "c.ts", "3"),
+    ]);
+    expect(modeAndPath(readableEntries(parseLsFiles(stdout)))).toEqual([
+      { mode: "100644", path: "c.ts" },
+    ]);
+  });
+
+  it("keeps two different paths that happen to display alike", () => {
+    // A valid ASCII name spelled `bad-\xff.ts` displays exactly like the
+    // invalid one, so de-duplicating on the display string would drop a file.
+    const lookalike = "bad-\\xff.ts";
+    const stdout = Buffer.concat([
+      record("100644", lookalike),
+      record("100644", INVALID_UTF8_NAME),
+    ]);
+    const entries = readableEntries(parseLsFiles(stdout));
+    expect(entries.map((e) => e.path)).toEqual([lookalike, lookalike]);
+  });
+});
+
+describe("displayPath", () => {
+  it("returns a valid UTF-8 name as it is, including non-ASCII text", () => {
+    expect(displayPath(Buffer.from("docs/設計.md"))).toBe("docs/設計.md");
+  });
+
+  it("spells each non-ASCII byte of an invalid name as \\xNN", () => {
+    expect(displayPath(INVALID_UTF8_NAME)).toBe("bad-\\xff.ts");
   });
 });
 
@@ -157,7 +215,8 @@ describe("readRegularFiles", () => {
   symlinkSync(join(outside, "secret.bin"), join(root, "was-a-file.ts"));
   mkdirSync(join(root, "now-a-dir.ts"));
 
-  const asIndexed = (...paths: string[]) => paths.map((path) => ({ mode: "100644", path }));
+  const asIndexed = (...paths: string[]): TrackedEntry[] =>
+    paths.map((path) => ({ mode: "100644", path, pathBytes: Buffer.from(path) }));
 
   it("does not follow a symlink that replaced a tracked regular file", () => {
     // Following it would report the outside file's NUL against `was-a-file.ts`,
@@ -170,6 +229,34 @@ describe("readRegularFiles", () => {
   it("skips a directory standing where a file was, and a path gone from disk", () => {
     const files = readRegularFiles(root, asIndexed("plain.ts", "now-a-dir.ts", "deleted.ts"));
     expect(files.map((f) => f.path)).toEqual(["plain.ts"]);
+  });
+});
+
+describe("scanRepository", () => {
+  it("scans a tracked file whose name is not valid UTF-8", (ctx) => {
+    // End to end through git: the name leaves `git ls-files` as bytes and must
+    // reach `lstat` and `readFile` unchanged, or the file is skipped silently.
+    const repo = mkdtempSync(join(tmpdir(), "no-nul-bytes-repo-"));
+    try {
+      try {
+        writeFileSync(Buffer.concat([Buffer.from(`${repo}/`), INVALID_UTF8_NAME]), `a${NUL}b\n`);
+      } catch {
+        // A filesystem that only stores UTF-8 names cannot hold the case at
+        // all. Report it as skipped rather than let it pass unexercised.
+        ctx.skip();
+      }
+      writeFileSync(join(repo, "plain.ts"), "export const ok = 1;\n");
+      spawnSync("git", ["init", "-q"], { cwd: repo });
+      spawnSync("git", ["add", "-A"], { cwd: repo });
+
+      const { findings, scanned } = scanRepository(repo);
+      expect(scanned).toBe(2);
+      expect(findings.filter((f) => f.kind === "nul-byte-in-text-file")).toMatchObject([
+        { subject: "bad-\\xff.ts", line: 1 },
+      ]);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
   });
 });
 
