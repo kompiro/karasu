@@ -120,7 +120,8 @@ addressable かどうかにかかわらず、エッジの hover affordance が**
   静的出力は addressable なエッジについてはすでに hit-line を載せているので、
   新しいコストではなく既存コストの拡大。
 - **out of scope**: multi-system root でエッジを *addressable* にすること（別 Issue）。
-  VS Code webview に affordance を載せること（別 Issue）。deploy エッジを ghost group から
+  VS Code webview と app の all-layers iframe に hover 表現を載せること（どちらも
+  `preview.css` が届かない。別 Issue）。deploy エッジを ghost group から
   出すこと（[AT-2609](../acceptance/2609-deploy-routing-chain.md) AT-D の決定）。
 
 ## 検討した選択肢
@@ -228,6 +229,17 @@ hover affordance と addressability は違う能力である、という #2543 �
 4. **deploy エッジは addressable にしない。** canonical id を合成せず、context menu も
    出さない。#2632 受け入れ条件の「意図的で、テストされている」はこちら側で満たす
    （出さないことをテストする）。
+   hit-line が全エッジに付くと、addressable でないエッジも `PreviewPane` の
+   `.preview-container` 委譲ハンドラの対象になる。イベント契約は現状の分岐をそのまま使い、
+   新しい分岐も `pointer-events: none` も足さない:
+   - 左 mouse-down はキャンバスのドラッグ開始として扱う。
+   - 移動なしの mouse-up は、`data-domain-edges` / `data-edge-description` /
+     `data-edge-links` を持たないエッジならどの action も起動せず、既存の detail panel を
+     閉じる（ノード外クリックと同じ）。
+   - `handleContextMenu` は `data-edge-canonical-id` が無ければ `preventDefault` を呼ばずに
+     戻る。ブラウザ既定のメニューが出る。
+   - エッジはノードより先に描かれる（`svg-renderer.ts` の `edges` グループ）ので、
+     hit-line がノードのクリックを奪うことはない。
 5. **`packages/core/src/renderer/drill-down-svg.test.ts:1293`** — 可視 stroke を
    `<g data-edge-…><(?:line|path)[^>]*>` で拾っており、グループ内の最初の shape が
    hit-line になったため落ちる。`(?![^>]*krs-edge__hitline)` を足す。挙動の変更ではなく
@@ -235,10 +247,18 @@ hover affordance と addressability は違う能力である、という #2543 �
 6. **テスト**
    <!-- absent-path-next-line: 本 Design Doc が作る予定のテスト (#2632) -->
    - `packages/core/src/renderer/edge-affordance-parity.test.ts`（新規）: 組み込みコーパスの
-     system / deploy / drill-down 各 surface で、`krs-edge` グループが必ず hit-line を
+     system / deploy / drill-down / all-layers 各 surface で、`krs-edge` グループが必ず hit-line を
      1 本持ち、`krs-edge--interactive` と `data-edge-canonical-id` が双方向に一致すること。
-     surface ごとに assert する（#2632 受け入れ条件 4、TPL-1983 / TPL-219）。
+     surface ごとに assert する（#2632 受け入れ条件 4、TPL-1983 / TPL-219）。all-layers は
+     `buildAllLayersSvg` が各レベルの出力を `extractSvgParts` で切り出して 1 枚の `<svg>` に
+     組み直す独自の境界を持つので、既存の `all-layers-svg.test.ts` にはこのアサーションが無い
+     ことを踏まえ、parity テスト側で all-layers の出力も走査する。なお app の all-layers は
+     `srcDoc` の iframe で表示され `preview.css` が届かないため、hover 表現は VS Code preview と
+     同じく本 Design Doc の対象外（SVG 構造の parity だけを固定する）。
    - `packages/core/src/renderer/svg-renderer.test.ts`: 旧結合を固定している 2 件を更新。
+   - `packages/app/src/components/PreviewPane.test.tsx`: `data-edge-canonical-id` を持たない
+     エッジで、右クリックがメニューを開かず `defaultPrevented` にならないこと、移動なしの
+     クリックが detail panel を閉じる以外の action を起動しないことを追加する（上の 4 の契約）。
    <!-- absent-path-next-line: 本 Design Doc が作る予定のテスト (#2632) -->
    - `packages/e2e/tests/at-2632-deploy-edge-hover.spec.ts`（新規）: Deploy タブでエッジに
      hover し、peer が 0.25 に、焦点が **実効 opacity 1** に（祖先グループの合成込みで
