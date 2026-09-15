@@ -72,6 +72,14 @@ pre-push:
       # `docs/adr/**` is out of scope (ADR-706) — see the script's header.
       # The vitest mirror in scripts/lint runs it in CI.
       run: pnpm run lint:record-source-paths
+    no-nul-bytes:
+      # A tracked text file with a raw NUL byte is binary to grep and rg, which
+      # skip it without a word (Issue #2804; #2216 and #2793 both slipped in).
+      # No `glob` on purpose: any file can acquire the byte, so gating on paths
+      # would skip exactly the push that introduces one. The whole-tree scan
+      # takes about 20ms. CI runs it from both jobs that report `Check`:
+      # `ci.yml` and the docs-only stub `ci-skip.yml`.
+      run: pnpm run lint:no-nul-bytes
     at-check-coverage:
       # Also globs packages/e2e/tests/** so the exact e2e linkage guards
       # (orphan-spec / stale-spec-ref, Issue #1680) fire when a spec is added

@@ -542,5 +542,6 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2662](TPL-2662-themed-surface-fallback-comes-from-palette.md) | テーマ付き surface の「誰も色を指定しなかったとき」の色は palette の role から取る。指定した色は両テーマで正しいので、既定のまま使う利用者だけが壊れ、レビューもテストも素通りする | renderer | #2662, ADR-1479, ADR-2269 |
 | [TPL-2805](TPL-2805-budget-bounds-the-work-it-names.md) | 予算はその名前が指す仕事だけを覆う位置に置く — 境界のない準備と同じ timeout に入れると、準備の遅さが本命の失敗として報告され、本物の失敗と区別できない | build | #2805, #2807, ADR-2805, ADR-2807 |
 | [TPL-2715](TPL-2715-source-position-carries-its-document.md) | 位置情報は、それが指す文書の識別と対でしか運べない。行・列だけを渡して受け手に「たぶんエントリファイル」と補完させると、マージ後に判定した診断がどのファイルにも無い位置を指す。単一ファイルのテストでは常に正しく見えるので破れが映らない | resolver | #2715, ADR-2596 |
+| [TPL-2804](TPL-2804-guard-scan-set-fails-loud-on-the-unknown.md) | 走査対象を持つガードは、未知の要素が黙って対象外になる側ではなく大声で落ちる側に集合を定義する。除外は全走査の上の deny-list で表し、裏付けのないエントリを finding にする。検出する症状が沈黙のとき、allow-list の取りこぼしは見逃しと区別できない | build | #2804 |
 | [TPL-2800](TPL-2800-diagram-pane-shared-viewer-affordances.md) | 図を描くペインは共有ビューアコンポーネントを通す — サブモードを素の div に流し込むと、その面だけフィット・ズーム・パン・診断を失う。図は描かれているので機能テストは緑のまま通り、面の選択が別の状態に gate されていると「時々おかしい」という形でしか現れない | app-ui | #2800, #2799, TPL-1537 |
 | [TPL-2707](TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md) | lexer は parser が拒否すべき入力を黙って捨ててはならない。捨てる文字の集合を 1 文字ずつの入力で完全一致に固定し、値を読むポジションは複数トークンの並びを先頭だけで読まず区切りまで消費して拒否する | parser | #2707, docs/spec/tags-annotations.md |
