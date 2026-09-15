@@ -21,54 +21,32 @@ import { expectDragPans, expectFitsPane, expectWheelZooms } from "../fixtures/pr
  *  - the team dependencies form a four-team chain — Storefront -> Billing ->
  *    Accounting -> Compliance — which the graph lays out as four columns
  *    (`NODE_W + H_GAP` = 256px each)
+ *
+ * The model is kept compact (one-line services and leaf teams) so it fits the
+ * editor without scrolling. `replaceEditorContent` confirms the paste by finding
+ * the first line in Monaco's rendered lines, and Monaco renders only what is in
+ * view. A buffer taller than the editor depends on the fixture's `Ctrl+Home`
+ * landing first (#990), which flaked on CI for a 49-line version of this model.
  */
 const ORG_KRS = `system Shop {
-  service Checkout {
-    domain Cart {
-      Cart -> Authorization "Authorize card"
-    }
-  }
-
-  service Payments {
-    domain Authorization {
-      Authorization -> Posting "Post entry"
-    }
-  }
-
-  service Ledger {
-    domain Posting {
-      Posting -> Trail "Record posting"
-    }
-  }
-
-  service Audit {
-    domain Trail {}
-  }
+  service Checkout { domain Cart { Cart -> Authorization "Authorize card" } }
+  service Payments { domain Authorization { Authorization -> Posting "Post entry" } }
+  service Ledger { domain Posting { Posting -> Trail "Record posting" } }
+  service Audit { domain Trail {} }
 }
-
 organization ShopOrg {
   team Engineering {
     team Platform {
       team Core {
-        team Storefront {
-          owns Checkout
-          member alice { label "Alice" }
-        }
+        team Storefront { owns Checkout }
       }
     }
-
     team Billing {
       owns Payments
       member bob { label "Bob" }
     }
-
-    team Accounting {
-      owns Ledger
-    }
-
-    team Compliance {
-      owns Audit
-    }
+    team Accounting { owns Ledger }
+    team Compliance { owns Audit }
   }
 }
 `;
