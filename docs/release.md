@@ -30,7 +30,7 @@ Dependabot security update は alert 検知時に即時起票され、`schedule`
 
 | workflow | 起動 | 出力 |
 | --- | --- | --- |
-| `.github/workflows/dependabot-triage.md` | 週次（月曜バッチの翌朝）+ dispatch | 各 PR への upstream 追跡コメント（1 実行あたり 10 件まで）と、バッチのサマリ Issue |
+| `.github/workflows/dependabot-triage.md` | dispatch のみ（週次の cron は停止中、[ADR-2839](adr/2839-pause-dependabot-triage-schedule.md)） | 各 PR への upstream 追跡コメント（1 実行あたり 10 件まで）と、バッチのサマリ Issue |
 | `.github/workflows/security-alert-sweep.md` | dispatch のみ（cron はコメントアウト） | `[security-alert]` のトラッキング Issue |
 
 判定（採用 / 保留 / 却下）とマージは人が行う（[ADR-2658](adr/2658-gh-aw-dependency-automation.md)）。security alert sweep に cron が無いのは、gh-aw の MCP gateway が Dependabot alert を private 扱いにし、public リポジトリの safe output へ流さないためである。frontmatter を編集したら `gh aw compile` で `.lock.yml` を再生成する（本文だけの編集なら再生成は要らない。実行時に読み込まれる）。
