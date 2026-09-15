@@ -401,8 +401,11 @@ export function PreviewPane({
       // Check for node click
       const nodeGroup = target.closest("[data-node-id]");
       if (!nodeGroup) {
-        // Click outside any node — close detail panel
+        // Click outside any node: dismiss what the last interaction left open,
+        // the detail panel and the cross-navigation highlight alike. A drag
+        // never gets here (the threshold check above), so panning keeps both.
         setDetailPanel(null);
+        onClearHighlight?.();
         return;
       }
 

@@ -134,6 +134,46 @@ describe("PreviewPane", () => {
         expect(onContainerClick).not.toHaveBeenCalled();
       },
     );
+
+    it("calls onClearHighlight when the diagram background is clicked", () => {
+      const onClearHighlight = vi.fn<() => void>();
+      const svg = `<div data-node-id="svc"></div>`;
+
+      const { container } = render(
+        <PreviewPane
+          {...baseProps()}
+          svg={svg}
+          highlightedNodeId="svc"
+          onClearHighlight={onClearHighlight}
+        />,
+      );
+
+      const previewContainer = container.querySelector(".preview-container")!;
+      click(previewContainer as HTMLElement, () => previewContainer);
+
+      expect(onClearHighlight).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps the highlight when the diagram background is dragged", () => {
+      const onClearHighlight = vi.fn<() => void>();
+      const svg = `<div data-node-id="svc"></div>`;
+
+      const { container } = render(
+        <PreviewPane
+          {...baseProps()}
+          svg={svg}
+          highlightedNodeId="svc"
+          onClearHighlight={onClearHighlight}
+        />,
+      );
+
+      // A pan: the pointer moves past CLICK_THRESHOLD between down and up.
+      const previewContainer = container.querySelector(".preview-container")!;
+      fireEvent.mouseDown(previewContainer, { button: 0, clientX: 10, clientY: 10 });
+      fireEvent.mouseUp(previewContainer, { button: 0, clientX: 60, clientY: 60 });
+
+      expect(onClearHighlight).not.toHaveBeenCalled();
+    });
   });
 
   describe("highlightedNodeId", () => {
