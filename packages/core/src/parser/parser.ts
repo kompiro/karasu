@@ -177,6 +177,11 @@ export function annotationParamKind(
   return Object.hasOwn(keys, key) ? keys[key] : undefined;
 }
 
+/** Where the parameter list stops being read: its `)`, EOF, or a brace that shows the `)` is missing. */
+function isAnnotationParamListEnd(token: Token): boolean {
+  return token.type !== TokenType.Comma && isAnnotationParamBoundary(token);
+}
+
 /**
  * A token that can be a whole annotation parameter value: a string literal, or
  * an identifier that is an actual word. The lexer also emits `-`, `--` and
@@ -187,12 +192,19 @@ function isAnnotationParamValueToken(token: Token): boolean {
   return token.type === TokenType.Identifier && isBareWord(token.value);
 }
 
-/** Where one annotation parameter value ends: the next pair, the list's end, or EOF. */
+/**
+ * Where one annotation parameter value ends: the next pair, the list's end, or
+ * EOF. A brace ends it too. No key or value contains one, so a brace means the
+ * `)` is missing and the declaration's block has begun (or ended); reading on
+ * would swallow the declarations that follow.
+ */
 function isAnnotationParamBoundary(token: Token): boolean {
   return (
     token.type === TokenType.Comma ||
     token.type === TokenType.RightParen ||
-    token.type === TokenType.EOF
+    token.type === TokenType.EOF ||
+    token.type === TokenType.LeftBrace ||
+    token.type === TokenType.RightBrace
   );
 }
 
@@ -1892,7 +1904,7 @@ export class Parser {
       // Optional parameters: `@name(key: "value"[, key: "value"]*)`.
       if (this.peek().type === TokenType.LeftParen) {
         this.advance(); // (
-        while (this.peek().type !== TokenType.RightParen && this.peek().type !== TokenType.EOF) {
+        while (!isAnnotationParamListEnd(this.peek())) {
           // Skip separators between pairs.
           if (this.peek().type === TokenType.Comma || this.peek().type === TokenType.Colon) {
             this.advance();
@@ -1942,13 +1954,16 @@ export class Parser {
                 severity: "error",
                 code: "annotation-param-conflict",
                 params: { annotation: name, key, existing: slot[key], value: read.value },
-                loc: this.range(keyToken.loc, read.token.loc),
+                loc: this.range(keyToken.loc, read.token.end ?? read.token.loc),
               });
             }
           }
           if (this.peek().type === TokenType.Comma) this.advance();
         }
-        if (this.peek().type === TokenType.RightParen) this.advance();
+        // A missing `)` stops at the block's brace (see
+        // `isAnnotationParamBoundary`) and is reported there, so the block and
+        // the declarations after it still parse.
+        if (this.peek().type !== TokenType.EOF) this.expect(TokenType.RightParen);
       }
     }
     return { names, params };
@@ -1984,7 +1999,10 @@ export class Parser {
     }
     return {
       kind: "unreadable",
-      loc: last === keyToken ? this.range(keyToken.loc) : this.range(first.loc, last.loc),
+      loc:
+        last === keyToken
+          ? this.range(keyToken.loc, keyToken.end ?? keyToken.loc)
+          : this.range(first.loc, last.end ?? last.loc),
     };
   }
 

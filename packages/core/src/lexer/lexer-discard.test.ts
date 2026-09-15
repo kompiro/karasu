@@ -5,9 +5,13 @@
 // `@deprecated(until: 2026-12-31)` reached the parser as `-` `-` and was
 // recorded as `until: "-"`, which `fmt` then wrote back into the file.
 //
-// The first test pins the dropped set exactly, so a character that starts (or
-// stops) being dropped is a visible change to this list, not a silent one. The
-// second pins which of them committed `.krs` actually relies on.
+// The first test pins the dropped set among printable ASCII and a sample of
+// non-ASCII digits and letters exactly, so a character that starts (or stops)
+// being dropped is a visible change to this list, not a silent one. It does not
+// cover characters outside the BMP: the lexer tests one UTF-16 unit at a time
+// and still drops each half of a surrogate pair. The last test checks that the
+// `.krs` in `examples/` and in the doc fences `lint:krs-fences` parses relies
+// on no dropped character other than `=` and `;`.
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -73,9 +77,11 @@ describe("characters the lexer drops (#2707)", () => {
     expect([...droppedCharacters("until: 2026-12-31")]).toEqual([]);
   });
 
-  it(`is relied on by committed .krs only for "=" and ";"`, () => {
+  it(`is relied on only for "=" and ";" by examples and linted doc fences`, () => {
     // `label = "x"` and `runtime "n"; realizes X` parse only because these two
     // are dropped. Anything else appearing here is a new silent dependency.
+    // ADR fences are left out on purpose: they hold pseudo-syntax templates
+    // such as `resource <Resource>Resource`.
     const sources = [
       ...krsFiles(join(repoRoot, "examples")),
       ...["docs/acceptance", "docs/spec", "docs/guide"].flatMap((dir) =>
@@ -91,7 +97,8 @@ describe("characters the lexer drops (#2707)", () => {
 
     const relied = new Set<string>();
     for (const source of sources) for (const ch of droppedCharacters(source)) relied.add(ch);
-    expect([...relied].sort()).toEqual([";", "="]);
+    // A subset check: losing the last `=` spelling from the docs is harmless.
+    expect([...relied].filter((ch) => ch !== "=" && ch !== ";")).toEqual([]);
   });
 });
 
@@ -114,12 +121,15 @@ function markdownFiles(dir: string): string[] {
 
 /**
  * The body of every ```krs fence in the files, including `krs fragment` and
- * `krs invalid`. A `krs.style` fence is a style sheet, read by another lexer.
+ * `krs invalid`, and fences indented up to three spaces inside a list item (as
+ * `lint:krs-fences` reads them). A `krs.style` fence is a style sheet, read by
+ * another lexer.
  */
 function krsFences(files: string[]): string[] {
+  const fence = /^( {0,3})```krs(?:[ \t][^\n]*)?\n([\s\S]*?)^ {0,3}```/gm;
   return files.flatMap((file) =>
-    [...readFileSync(file, "utf8").matchAll(/^```krs(?:[ \t][^\n]*)?\n([\s\S]*?)^```/gm)].map(
-      (m) => m[1],
+    [...readFileSync(file, "utf8").matchAll(fence)].map(([, indent, body]) =>
+      body.replace(new RegExp(`^ {0,${indent.length}}`, "gm"), ""),
     ),
   );
 }

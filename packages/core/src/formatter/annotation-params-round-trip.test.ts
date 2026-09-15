@@ -22,6 +22,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { format, FormatError } from "./formatter.js";
 import { Parser, ANNOTATION_PARAM_KEYS } from "../parser/parser.js";
+import { KRS_KEYWORD_NAMES } from "../lexer/lexer.js";
 
 function stripLocations<T>(node: T): T {
   if (Array.isArray(node)) return node.map((item) => stripLocations(item)) as unknown as T;
@@ -320,18 +321,14 @@ describe("annotation parameter values keep their meaning", () => {
     // The parameter reader takes one bare word; `quoteId` decides what is
     // printed bare. Anything `quoteId` leaves bare must read back as itself,
     // and anything else must come back quoted and still read back.
-    for (const id of [
-      "legacy",
-      "Legacy_2",
-      "_x",
-      "日本語",
-      "store",
-      "2legacy",
-      "a-b",
-      "a.b",
-      "system",
-      "my legacy",
-    ]) {
+    const ids = [
+      ...["legacy", "Legacy_2", "_x", "日本語", "store", "2legacy", "a-b", "a.b", "my legacy"],
+      // Every lexer keyword: a hand-copied keyword list printed `boundary` bare.
+      ...KRS_KEYWORD_NAMES,
+      // A character outside the BMP, which the lexer reads one UTF-16 unit at a time.
+      "𠮷野家",
+    ];
+    for (const id of ids) {
       const src = HOSTS.node(`@migration_target(from: "${id}")`);
       const formatted = expectRoundTrip(src);
       // Paired with the input, so a failure names the id that broke.

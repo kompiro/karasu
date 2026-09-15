@@ -55,10 +55,10 @@ lexer / tokenizer を追加・変更するとき、または値や名前を読�
 
 ## 既知の対処パターン
 
-- **捨てる集合の完全一致テスト**: `packages/core/src/lexer/lexer-discard.test.ts` は、印字可能な ASCII と非 ASCII の数字・文字を 1 文字ずつトークン化し、どのトークンにも覆われない文字の集合を定数と完全一致で比べる。あわせて、コミット済みの `.krs`（examples と docs の `krs` fence）が実際に頼っている捨てる文字が `=` と `;` だけであることを固定する。
+- **捨てる集合の完全一致テスト**: `packages/core/src/lexer/lexer-discard.test.ts` は、印字可能な ASCII と非 ASCII の数字・文字を 1 文字ずつトークン化し、どのトークンにも覆われない文字の集合を定数と完全一致で比べる。あわせて、examples と `lint:krs-fences` が parse する docs の `krs` fence が頼っている捨てる文字が `=` と `;` 以外に無いことを確かめる。1 文字ずつの入力は UTF-16 の単位で見るので、BMP 外の文字（サロゲートペアの片割れ）はこの固定の外にあり、今も捨てられる。
 - **捨てずに、どこも受理しないトークンにする**: #2707 は数字始まりの語を `TokenType.Number` として出した。どのポジションも黙っては受理しないので、受理される言語は広がらず、見えなかった入力が診断に変わる。全ての未分類文字を一度にトークン化する案は、黙認に頼っている `=` / `;` を壊すので採らなかった（範囲はコーパスで実測して決めた）。
 - **値は 1 トークンで読み切る**: `parseAnnotations` の `readAnnotationParamValue` は、文字列リテラルか裸の語が単独で区切りの前にあるときだけ値として読み、それ以外は区切りまで消費して `annotation-param-value-unreadable` を出す。
-- **裸の語の判定を lexer から導く**: `isBareWord`（`packages/core/src/lexer/lexer.ts`）は `readToken` と同じ文字判定を使う。
+- **裸の語の判定を lexer から導く**: `isBareWord`（`packages/core/src/lexer/lexer.ts`）は `readToken` と同じ文字判定を使い、formatter の `needsQuotes`（`packages/core/src/formatter/quote-id.ts`）もキーワード集合ともども lexer から導く。手写しの一覧は `boundary` など 5 語を欠き、`from: "boundary"` が裸で出力されてキーワードとして読み戻されていた。
 
 ## 関連テスト
 

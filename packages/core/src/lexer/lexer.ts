@@ -302,11 +302,13 @@ export class Lexer {
           return this.readNumber(loc);
         }
         // Skip any other character. The parser never learns it was there, so
-        // it cannot refuse it. Committed `.krs` relies on this only for `=`
-        // and `;` (`label = "x"`, `runtime "n"; realizes X`), and
-        // `lexer-discard.test.ts` pins the whole dropped set, so a character
-        // that starts landing here is a visible change. Digits used to land
-        // here too, which turned `until: 2026-12-31` into `until: "-"` (#2707).
+        // it cannot refuse it. The `.krs` in `examples/` and in linted doc
+        // fences relies on this only for `=` and `;` (`label = "x"`,
+        // `runtime "n"; realizes X`), and `lexer-discard.test.ts` pins the
+        // dropped set among ASCII and sampled non-ASCII characters, so one that
+        // starts landing here is a visible change. Each half of a surrogate
+        // pair still lands here. Digits used to as well, which turned
+        // `until: 2026-12-31` into `until: "-"` (#2707).
         this.advance();
         return null;
     }

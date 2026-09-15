@@ -118,10 +118,31 @@ describe("annotation parameter values that are not one token (#2707)", () => {
   });
 
   it("ranges the error over the whole value the author wrote", () => {
-    const src = onService(`@deprecated(until: 2026-12-31)`);
-    const [error] = diagnosticsOf(src, "annotation-param-value-unreadable");
-    expect(error.loc?.start.offset).toBe(src.indexOf("2026"));
-    expect(error.loc?.end.offset).toBe(src.indexOf("31"));
+    for (const value of ["2026-12-31", "2026abc"]) {
+      const src = onService(`@deprecated(until: ${value})`);
+      const [error] = diagnosticsOf(src, "annotation-param-value-unreadable");
+      const start = src.indexOf(value);
+      expect([value, error.loc?.start.offset, error.loc?.end.offset]).toEqual([
+        value,
+        start,
+        start + value.length,
+      ]);
+    }
+  });
+
+  it("stops at the block when the closing parenthesis is missing", () => {
+    // Recovery used to run to the next `,` / `)`, swallowing the following
+    // declarations and reporting `b` from `[a, b]` as an unsupported key.
+    const src = `system S {\n  service C @deprecated(until: "y" {}\n  service D [a, b] {}\n  service E {}\n}`;
+    const { value, diagnostics } = Parser.parse(src);
+
+    expect(value.systems[0].children.map((c) => c.id)).toEqual(["C", "D", "E"]);
+    expect(diagnostics.filter((d) => d.code === "annotation-param-unsupported")).toEqual([]);
+    expect(
+      diagnostics
+        .filter((d) => d.code === "token-type-mismatch")
+        .map((d) => (d.params as { expected: string }).expected),
+    ).toEqual(["RightParen"]);
   });
 
   it("reads the quoted spelling the error points to", () => {

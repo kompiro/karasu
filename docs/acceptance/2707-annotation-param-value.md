@@ -31,6 +31,10 @@ type: product
 
   > ✅ Automated — 同上 › `ranges the error over the whole value the author wrote`
 
+- [x] AT-C2: `)` が欠けていても、読み取りは宣言のブロックで止まり、後続の宣言が巻き込まれず、後続のトークンを未対応キーとして名指ししない
+
+  > ✅ Automated — 同上 › `stops at the block when the closing parenthesis is missing`
+
 - [x] AT-D: エラーが示す引用符つきの綴り（`until: "2026-12-31"` / `from: "Shop.Legacy"`）は診断なしで読まれ、`fmt` を通しても round-trip する
 
   > ✅ Automated — 同上 › `reads the quoted spelling the error points to`、および `packages/core/src/formatter/annotation-params-round-trip.test.ts` › `annotation parameter values keep their meaning` › `round-trips the quoted spelling of a value that cannot be written bare`
@@ -49,7 +53,7 @@ type: product
 
   > ✅ Automated — 同上
 
-- [x] AT-H: formatter が裸で出力する参照値は、すべて同じ値として読み戻せる（裸で出せない値は引用符つきで出力され、やはり読み戻せる）
+- [x] AT-H: formatter が裸で出力する参照値は、すべて同じ値として読み戻せる（裸で出せない値は引用符つきで出力され、やはり読み戻せる）。lexer のすべてのキーワードと BMP 外の文字を含む id を含む
 
   > ✅ Automated — `packages/core/src/formatter/annotation-params-round-trip.test.ts` › `annotation parameter values keep their meaning` › `reads back every reference it prints bare (#2707)`
 
@@ -87,13 +91,13 @@ type: product
 
 ### AC-5: lexer が捨てる文字の集合が固定されている
 
-- [x] AT-P: lexer が捨てる文字の集合が完全一致で固定され、数字はそこに含まれない
+- [x] AT-P: lexer が捨てる文字の集合（印字可能な ASCII と、非 ASCII の数字・文字の標本について）が完全一致で固定され、数字はそこに含まれない
 
   > ✅ Automated — `packages/core/src/lexer/lexer-discard.test.ts` › `characters the lexer drops (#2707)` › `drops exactly the documented set`。負のテスト実施済み（lexer の数字の分岐を外すと、このテストと `keeps every digit of a hyphenated date` が fail し、復帰で pass）
 
-- [x] AT-Q: コミット済みの `.krs`（examples と docs の `krs` fence）が頼っている捨てる文字は `=` と `;` だけである
+- [x] AT-Q: examples と、`lint:krs-fences` が parse する docs の `krs` fence が頼っている捨てる文字は `=` と `;` だけである
 
-  > ✅ Automated — 同上 › `is relied on by committed .krs only for "=" and ";"`
+  > ✅ Automated — 同上 › `is relied on only for "=" and ";" by examples and linted doc fences`
 
 ## 手動確認
 
