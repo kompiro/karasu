@@ -5,6 +5,7 @@ import {
   ACTIONABLE_KINDS,
   CODERABBIT_LOGINS,
   DEFAULT_CLASSIFY_OPTIONS,
+  bodyFindingCount,
   classify,
   type CodeRabbitComment,
   type CodeRabbitReview,
@@ -23,12 +24,15 @@ import {
 // Invoke it through `pnpm exec tsx`, not a `pnpm run` alias: flags after `--`
 // do not reliably reach the script that way (TPL-2046).
 //
-// stdout is one JSON line: { pr, headSha, since, state, waitedMin, limitWaitedMin, outcome }.
+// stdout is one JSON line: { pr, headSha, since, state, bodyFindings, waitedMin, limitWaitedMin, outcome }.
+// `bodyFindings` counts findings that live only in a review body (outside the
+// diff, nitpicks): no thread tracks them, so `approved` does not mean they were read.
 // `outcome` is the state kind, or `timeout` / `limit_budget_exceeded` when a
 // budget ran out first (the last observed `state` is still reported).
 
 const REPO = "kompiro/karasu";
 const POLL_MS = 60_000;
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
 
 function gh(args: string[]): string {
   return execFileSync("gh", args, { encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
@@ -193,8 +197,15 @@ function parseArgs(argv: string[]): Args {
   }
   if (!Number.isInteger(args.pr))
     throw new Error("usage: await-review.ts <pr> [--once] [--since <iso>] ...");
-  if (args.since !== undefined && Number.isNaN(Date.parse(args.since))) {
-    throw new Error(`--since is not a timestamp: ${args.since}`);
+  // ISO 8601 with a time and a zone only: `Date.parse` also takes "September 15,
+  // 2026", which silently means local midnight and moves the round boundary.
+  if (
+    args.since !== undefined &&
+    (!ISO_INSTANT.test(args.since) || Number.isNaN(Date.parse(args.since)))
+  ) {
+    throw new Error(
+      `--since needs an ISO 8601 timestamp such as 2026-09-15T15:31:13Z: ${args.since}`,
+    );
   }
   return args;
 }
@@ -211,6 +222,7 @@ async function main(): Promise<void> {
         headSha: snap.headSha,
         since: snap.since,
         state,
+        bodyFindings: bodyFindingCount(snap),
         waitedMin: Math.round(waitedMs / 60_000),
         limitWaitedMin: Math.round(limitWaitedMs / 60_000),
         outcome,

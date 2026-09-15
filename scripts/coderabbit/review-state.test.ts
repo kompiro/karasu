@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  bodyFindingCount,
   classify,
   parseAnnouncedWaitMs,
   parseNoticeHeadSha,
@@ -382,5 +383,36 @@ describe("parseNoticeHeadSha", () => {
         "between 0462d16891a04c63042b47f8494146d75e91d404 and 76760ff79a099fcf2ef091187a4dfaa5c19c6f73.",
       ),
     ).toBe("76760ff79a099fcf2ef091187a4dfaa5c19c6f73");
+  });
+});
+
+describe("bodyFindingCount", () => {
+  it("counts outside-diff and nitpick sections in head reviews since the last action (#2847)", () => {
+    const s = snapshot({
+      since: "2026-09-15T16:07:16Z",
+      reviews: [
+        {
+          state: "COMMENTED",
+          commitId: OLD,
+          submittedAt: "2026-09-15T16:08:00Z",
+          body: "**⚠️ Outside diff range comments (5)**",
+        },
+        {
+          state: "CHANGES_REQUESTED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T15:00:00Z",
+          body: "**⚠️ Outside diff range comments (1)**",
+        },
+        {
+          state: "COMMENTED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T16:12:50Z",
+          body: "**⚠️ Outside diff range comments (2)**\n<summary>🧹 Nitpick comments (1)</summary>",
+        },
+        { state: "APPROVED", commitId: HEAD, submittedAt: "2026-09-15T16:12:55Z", body: "" },
+      ],
+    });
+    expect(bodyFindingCount(s)).toBe(3);
+    expect(classify({ ...s, now: "2026-09-15T16:20:00Z" })).toEqual({ kind: "approved" });
   });
 });

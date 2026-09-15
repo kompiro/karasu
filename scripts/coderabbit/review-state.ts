@@ -186,6 +186,29 @@ function reviewRunning(s: Snapshot): boolean {
   });
 }
 
+/**
+ * Findings CodeRabbit can only put in a review body: those outside the diff, and
+ * nitpicks. No review thread tracks them, and CodeRabbit approves regardless
+ * (#2847: "Outside diff range comments (2)" five seconds before APPROVED), so the
+ * thread count alone would end a round with them unread.
+ */
+const BODY_FINDING_SECTIONS = [
+  /Outside diff range comments \((\d+)\)/,
+  /Nitpick comments \((\d+)\)/,
+];
+
+/** Body-only findings in the reviews of the head filed since the last action. */
+export function bodyFindingCount(s: Snapshot): number {
+  const since = ms(s.since);
+  return s.reviews
+    .filter((r) => r.commitId === s.headSha && ms(r.submittedAt) >= since)
+    .reduce(
+      (n, r) =>
+        n + BODY_FINDING_SECTIONS.reduce((m, re) => m + Number(re.exec(r.body)?.[1] ?? 0), 0),
+      0,
+    );
+}
+
 export function classify(
   s: Snapshot,
   opts: ClassifyOptions = DEFAULT_CLASSIFY_OPTIONS,

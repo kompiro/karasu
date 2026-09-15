@@ -18,7 +18,7 @@ description: >
 終わったとき、次のどちらかが成り立っている。
 
 - **人間に渡せる:** CodeRabbit の最新レビューが HEAD commit に対する `APPROVED` で、未解決の review thread が 0。
-  人間の判断が要る論点は PR 上で質問済み
+  review 本文にしかない指摘（`bodyFindings`）にも対応か却下の理由を返してある。人間の判断が要る論点は PR 上で質問済み
 - **人間の判断待ちで止まっている:** 止まった理由（質問・ラウンド上限・待ち時間の上限・CodeRabbit の無反応）が通知済み
 
 どちらも次のコマンドで確かめられる。`outcome` が `approved` なら前者。
@@ -56,16 +56,18 @@ pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --since <since>
 rate limit 中は CodeRabbit が告知した時刻まで眠る。`pnpm run` 経由の alias にしないこと
 （flag が届かない: TPL-2046）。
 
-stdout の JSON の `outcome` で分岐する。
+stdout の JSON の `outcome` で分岐する。**`outcome` が何であっても、`bodyFindings` が 1 以上なら
+先に 3 の「review 本文にしかない指摘」を処理する。** 差分の範囲外の指摘と nitpick は thread を持たず、
+CodeRabbit はそれを出したラウンドでも approve するので、`approved` だけを見て終えると読まれずに残る。
 
 ### 2. `outcome` ごとの行動
 
 | `outcome` | すること |
 | --- | --- |
-| `approved` | 終了して通知する（下の「終わり方」） |
+| `approved` | `bodyFindings` が 0 なら終了して通知する（下の「終わり方」） |
 | `changes` | 3 へ |
 | `limit_elapsed` | `gh pr comment <pr> --body "@coderabbitai review"` を **1 回だけ**投げ、その直前の時刻を `since` にして 1 へ |
-| `stalled` | そのラウンドで未実施なら top-level に `@coderabbitai resolve` を 1 回投げて 1 へ（未解決 0 件なので未読の thread を閉じる心配はない）。実施済みなら終了して通知 |
+| `stalled` | `bodyFindings` が 0 で、そのラウンドで未実施なら top-level に `@coderabbitai resolve` を 1 回投げて 1 へ（未解決 0 件なので未読の thread を閉じる心配はない）。実施済みなら終了して通知 |
 | `timeout` | CodeRabbit が反応していない（path filter で対象外の push など）。状態を添えて通知して終了 |
 | `limit_budget_exceeded` | 状態を添えて通知して終了 |
 
@@ -89,8 +91,11 @@ rate limit 中に push したいコミットができたら、push は `limit_el
    （pre-push hook は回避しない）。push のたびに review 枠を 1 回使う
 4. その最後の行動の直前の時刻を次の `since` にして 1 へ戻る（1 の `since` の説明）
 
-差分の範囲外の指摘（review 本文の「Outside diff range comments」）は thread を持たない。
-対応を決めたら、PR の top-level コメントに対応内容か却下の理由を書く。
+**review 本文にしかない指摘（`bodyFindings`）:** HEAD に対して `since` 以降に出た review の本文にある
+「Outside diff range comments」「Nitpick comments」の各項目を読み、thread と同じ判定で分ける。
+対応内容・却下の理由・質問は PR の top-level コメントにまとめて書く。直すものがあれば上の 3・4 と同じく
+最後に push し、なければそのコメント投稿の直前を `since` にする。どちらでも次の待機ではその review が
+`since` より前になり、`bodyFindings` は 0 に戻る。
 
 次のどれかに当たったら、ループを続けずに通知して終了する。
 
