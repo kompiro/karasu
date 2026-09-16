@@ -256,9 +256,12 @@ hover affordance と addressability は違う能力である、という #2543 �
      `srcDoc` の iframe で表示され `preview.css` が届かないため、hover 表現は VS Code preview と
      同じく本 Design Doc の対象外（SVG 構造の parity だけを固定する）。
    - `packages/core/src/renderer/svg-renderer.test.ts`: 旧結合を固定している 2 件を更新。
-   - `packages/app/src/components/PreviewPane.test.tsx`: `data-edge-canonical-id` を持たない
-     エッジで、右クリックがメニューを開かず `defaultPrevented` にならないこと、移動なしの
-     クリックが detail panel を閉じる以外の action を起動しないことを追加する（上の 4 の契約）。
+   - `packages/app/src/components/PreviewPane.test.tsx`: 上の 4 の契約を 3 件で固定する。
+     `data-edge-canonical-id` を持たないエッジで右クリックがメニューを開かず
+     `defaultPrevented` にならないこと。detail payload（`data-domain-edges` /
+     `data-edge-description` / `data-edge-links`）を持たないエッジで、移動なしのクリックが
+     detail panel を閉じる以外の action を起動しないこと。canonical id は無いが detail payload は
+     持つエッジ（base 衝突で id を失った #2543 のケース）では、従来どおり detail panel が開くこと。
    <!-- absent-path-next-line: 本 Design Doc が作る予定のテスト (#2632) -->
    - `packages/e2e/tests/at-2632-deploy-edge-hover.spec.ts`（新規）: Deploy タブでエッジに
      hover し、peer が 0.25 に、焦点が **実効 opacity 1** に（祖先グループの合成込みで
