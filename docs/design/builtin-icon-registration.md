@@ -3,7 +3,7 @@
 - **日付**: 2026-09-17
 - **ステータス**: 検討中
 - **Issue**: #2802
-- **PR**: #TBD
+- **PR**: #2855
 - **関連**:
   - 引き金 Issue: [#2802](https://github.com/kompiro/karasu/issues/2802)（残スコープは item 2 と 3。item 1 は [#2816](https://github.com/kompiro/karasu/issues/2816) へ移管済み）
   - 関連 Issue: [#2816](https://github.com/kompiro/karasu/issues/2816)（`url()` を `icon()` に改名する）、[#2696](https://github.com/kompiro/karasu/issues/2696)、[#2797](https://github.com/kompiro/karasu/pull/2797)
