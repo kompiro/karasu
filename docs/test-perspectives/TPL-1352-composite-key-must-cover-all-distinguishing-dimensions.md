@@ -14,6 +14,7 @@ known_consumers:
 discovered_from:
   - issue: "#1352"
   - issue: "#2714"
+  - issue: "#2817"
   - root_cause_file: "packages/core/src/resolver/style-resolver.ts"
 related_to:
   - TPL-2167
@@ -85,12 +86,30 @@ resolver（書き込み）と renderer（参照）の両方から import する�
    identity 専用なら JSON（`nodePathIdentityKey` / `boundaryScopeKey`）、**読み手が
    id として読み戻すテキスト**なら区切りを保つ引用符付きの形（`nodePathRefId`）
 
+## 既知の consumer: deploy の ghost edge 端点（#2817）
+
+キーを持っていても、**引く側に次元が届いていなければ**同じことが起きる。`extractDeployView`
+は `(system, id)` のパスでコンテナを引けたが、service→infra エッジは全 system の children を
+1 つのリストにまとめて導出しており、導出結果には bare id しか残らなかった。system を持たない
+端点は bare id の先勝ちマップにフォールバックし、2 つ目の system の同名 `Api -> Db` は 1 つ目の
+system のコンテナに着いて dedup で消えた。
+
+直し方は 2 点:
+
+1. **次元を運ぶ**: 導出を system ごとに回し、エッジと一緒に system id を端点の解決まで渡す
+   （infra 側は top-level 共有 infra を解決できるよう全 system から集める）
+2. **フォールバックを決める**: パスで引けなかったとき、その system が同じ id を**自分で宣言
+   している**なら端点はそのノードそのものなので、bare id で別 system の同名コンテナを拾わない
+   （拾ってよいのはパスを持たない broadcast コンテナだけ）。宣言していない id だけが bare id に
+   フォールバックする。上のチェックリスト「フォールバックの挙動を意図的に決める」の具体例
+
 ## 関連テスト
 
 - `packages/core/src/renderer/svg-renderer.test.ts` — "keeps the sync edge solid when a parallel async edge exists between the same pair"
 - `packages/core/src/renderer/scoped-boundary-render.test.ts` — "collapses a same-named boundary independently per scope"
 - `packages/core/src/parser/node-path.test.ts` — "nodePathRefId (#2714) › tells apart the paths a plain join collapses"
 - `packages/core/src/view/deploy-view-extract.test.ts` — "a dotted id cannot claim a qualified container's id (#2714)"
+- `packages/core/src/view/deploy-view-extract.test.ts` — "same-named service and infra in two systems (#2817)"
 
 ## 派生元 spec
 
