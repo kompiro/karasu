@@ -468,6 +468,42 @@ deploy prod {
         ]);
       });
 
+      it("reaches a store only another system declares when it is the only one by that id", () => {
+        const krs = `
+system A {
+  service Api { domain D { usecase U { resource Db.T } } }
+}
+system B {
+  database Db { table T {} }
+}
+deploy prod {
+  oci a { realizes Api }
+  store d { realizes Db }
+}
+`;
+        expect(pairs(krs)).toEqual([["Api", "Db"]]);
+      });
+
+      it("does not guess between several systems' stores a service does not declare", () => {
+        const krs = `
+system A {
+  service Api { domain D { usecase U { resource Db.T } } }
+}
+system B {
+  database Db { table T {} }
+}
+system C {
+  database Db { table T {} }
+}
+deploy prod {
+  oci a { realizes Api }
+  store d1 { realizes B.Db }
+  store d2 { realizes C.Db }
+}
+`;
+        expect(pairs(krs)).toEqual([]);
+      });
+
       it("does not route a system edge to another system's same-named container", () => {
         const krs = `
 system A {

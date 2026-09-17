@@ -246,16 +246,18 @@ export function extractDeployView(
   // container realizing it without a path (a broadcast) is a match; another
   // system's same-named container is not, and would draw `B.Api` depending on
   // `A.Db` when only `A.Db` is deployed. If it does not, the endpoint lives
-  // outside the system (shared infra declared at the top level and referenced
-  // from inside it), and the id is the only handle left.
+  // outside the system (shared infra declared at the top level, or a store
+  // another system declares), and the id is the only handle left. That handle
+  // answers only while one container holds the id: with `B.Db` and `C.Db` both
+  // deployed, a service in A that declares no `Db` names neither, and picking
+  // the first would draw a dependency the model never states.
   const declaredPaths = new Set(candidates.map((c) => nodePathIdentityKey(c.path)));
   const containerIdFor = (endpointId: string, systemId: string): string | undefined => {
     const pathKey = nodePathIdentityKey([systemId, endpointId]);
     const byPath = containerIdByPath.get(pathKey);
     if (byPath !== undefined) return byPath;
-    return declaredPaths.has(pathKey)
-      ? unpathedContainerIdByBareId.get(endpointId)
-      : containerIdByBareId.get(endpointId);
+    if (declaredPaths.has(pathKey)) return unpathedContainerIdByBareId.get(endpointId);
+    return groupsByBareId.get(endpointId) === 1 ? containerIdByBareId.get(endpointId) : undefined;
   };
 
   const pushGhost = (
