@@ -12,6 +12,7 @@ discovered_from:
   - root_cause_file: "docs/spec/syntax.md#multi-file-import-semantics"
   - issue: "#1385"
   - issue: "#2754"
+  - issue: "#2780"
   - root_cause_adr: "ADR-1381"
 related_to:
   - TPL-1383
