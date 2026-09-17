@@ -386,6 +386,109 @@ deploy Prod {
       expect(edge).toBeDefined();
     });
 
+    describe("same-named service and infra in two systems (#2817)", () => {
+      const TWO_SYSTEMS = `
+system A {
+  service Api { domain D { usecase U { resource Db.T } } }
+  database Db { table T {} }
+}
+system B {
+  service Api { domain D2 { usecase U2 { resource Db.T } } }
+  database Db { table T {} }
+}
+`;
+      const pairs = (krs: string): string[][] => {
+        const file = Parser.parse(krs).value;
+        return extractDeployView(file.deploys, withUnassignedSystem(file)).ghostEdges.map((e) => [
+          e.from,
+          e.to,
+        ]);
+      };
+
+      it("draws each system's service→infra edge between its own containers", () => {
+        const krs = `${TWO_SYSTEMS}
+deploy prod {
+  oci a1 { realizes A.Api }
+  oci a2 { realizes B.Api }
+  store d1 { realizes A.Db }
+  store d2 { realizes B.Db }
+}
+`;
+        expect(pairs(krs)).toEqual([
+          ["A.Api", "A.Db"],
+          ["B.Api", "B.Db"],
+        ]);
+      });
+
+      it("does not attach a service to another system's store when its own is not deployed", () => {
+        // B declares its own Db, so `B.Api` depends on `B.Db`, not on whichever
+        // same-named store happens to be deployed.
+        const krs = `${TWO_SYSTEMS}
+deploy prod {
+  oci a1 { realizes A.Api }
+  oci a2 { realizes B.Api }
+  store d1 { realizes A.Db }
+}
+`;
+        expect(pairs(krs)).toEqual([["A.Api", "Db"]]);
+      });
+
+      it("connects a broadcast container to every system's store it depends on", () => {
+        const krs = `${TWO_SYSTEMS}
+deploy prod {
+  oci api { realizes Api }
+  store d1 { realizes A.Db }
+  store d2 { realizes B.Db }
+}
+`;
+        expect(pairs(krs)).toEqual([
+          ["Api", "A.Db"],
+          ["Api", "B.Db"],
+        ]);
+      });
+
+      it("still reaches top-level shared infra from both systems", () => {
+        const krs = `
+database Db { table T {} }
+system A {
+  service Api { domain D { usecase U { resource Db.T } } }
+}
+system B {
+  service Api { domain D2 { usecase U2 { resource Db.T } } }
+}
+deploy prod {
+  oci a1 { realizes A.Api }
+  oci a2 { realizes B.Api }
+  store d { realizes Db }
+}
+`;
+        expect(pairs(krs)).toEqual([
+          ["A.Api", "Db"],
+          ["B.Api", "Db"],
+        ]);
+      });
+
+      it("does not route a system edge to another system's same-named container", () => {
+        const krs = `
+system A {
+  service Api { domain D { usecase U {} } }
+  service Web { domain W { usecase V {} } }
+  Api -> Web
+}
+system B {
+  service Api { domain D2 { usecase U2 {} } }
+  service Web { domain W2 { usecase V2 {} } }
+}
+deploy prod {
+  oci a1 { realizes A.Api }
+  oci a2 { realizes B.Api }
+  oci w2 { realizes B.Web }
+}
+`;
+        expect(pairs(krs)).toEqual([]);
+      });
+    });
+
     it("does not emit the service→infra edge when the depending service is not realized", () => {
       const krs = `
 system EC {
