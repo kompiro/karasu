@@ -46,7 +46,7 @@ infra block (`database` / `queue` / `storage`) が複数ファイルで宣言さ
 
 - [ ] **同一性の判定**: 同一インスタンス（DAG 再到達）は黙って dedup、別インスタンス・同 id だけが union merge + `infra-redeclared-across-files` (info)、別 id はそれぞれ別ノードとして並ぶ
 - [ ] **body の構成要素が漏れなく union される**: リーフ（table / queue-item / bucket）と**エッジ**（`sessions -> users`）の両方。merge 関数は写す field を数え上げる形なので、後から増えた field が黙って漏れる — リーフだけ結合してエッジを落とすと、テーブルは揃っているのに関係だけ消えた block ができる（#2754）
-- [ ] **エッジの重複判定は spec と同じ identity** で行う: `docs/spec/syntax.md` § multi-file import semantics の「same `from`, `to`, kind, label」。`kind` を落とすと重複が消えるのではなく sync/async の区別が消える（#2755 レビュー）
+- [ ] **エッジの重複判定は spec と同じ identity** で行う: `docs/spec/syntax.md` § multi-file import semantics の「same `from`, `to`, kind, label」。`kind` を落とすと重複が消えるのではなく sync/async の区別が消える（#2755 レビュー）。判定は `import-resolver.ts` の `isSameEdge` 1 か所に集約されており、system reopen・infra body・named import の 3 経路すべてがこれを使う。経路ごとに比較式を書き直すと field の数え上げがずれる（#2780 で 2 経路が spec と食い違っていた）
 - [ ] **情報が消える場所の扱い**: リーフの `(id, kind)` 衝突は先勝ち + `infra-leaf-redeclared-silently` (info) で surface し、本体プロパティ（label / description）の衝突は silent root-entry-wins（S3 と非対称、warning は出さない）
 - [ ] **診断の register と文言**: 事実先行（「複数ファイルで宣言されている」「merged」。「smell」「anti-pattern」等の流派用語を外す）で、LSP / App / CLI の表示パイプラインに `info` が通り `warning` より控えめに描画される
 
@@ -59,6 +59,7 @@ infra block (`database` / `queue` / `storage`) が複数ファイルで宣言さ
 ## 関連テスト
 
 - `packages/core/src/fs/import-resolver.test.ts` の "S4.5: same-id infra reopen ..." 系ケース
+- 同ファイルの "keeps ... differ in kind or label (#2780)" 2 件（system reopen / named import 経路のエッジ identity）
 
 ## 派生元 spec
 
