@@ -764,6 +764,60 @@ system EC {
         expect.objectContaining({ from: "ECommerce", to: "Payment" }),
       );
     });
+
+    it("keeps edges over the same pair that differ in kind or label (#2780)", async () => {
+      // The spec's dedup identity is (from, to, kind, label). This path once
+      // compared only (from, to): the importer's `->` decided the arrow for
+      // the imported `-->`, and the labelled edge vanished altogether.
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { Payment } from "payment.krs"
+system EC {
+  service ECommerce
+  ECommerce -> Payment
+}`,
+      );
+      await fs.writeFile(
+        "/project/payment.krs",
+        `system EC {
+  service Payment
+  ECommerce --> Payment
+  ECommerce -> Payment "refund"
+}`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      const ecSystem = result.krsFile.systems.find((s) => s.id === "EC")!;
+      expect(
+        ecSystem.edges.map((e) => `${e.from}-${e.kind}->${e.to} ${e.label ?? ""}`).sort(),
+      ).toEqual([
+        "ECommerce-async->Payment ",
+        "ECommerce-sync->Payment ",
+        "ECommerce-sync->Payment refund",
+      ]);
+    });
+
+    it("does not duplicate the same edge declared on both sides of a named import", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { Payment } from "payment.krs"
+system EC {
+  service ECommerce
+  ECommerce -> Payment "pay"
+}`,
+      );
+      await fs.writeFile(
+        "/project/payment.krs",
+        `system EC {
+  service Payment
+  ECommerce -> Payment "pay"
+}`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      const ecSystem = result.krsFile.systems.find((s) => s.id === "EC")!;
+      expect(ecSystem.edges).toHaveLength(1);
+    });
   });
 
   describe("wildcard import", () => {
@@ -824,6 +878,41 @@ import "team-payment.krs"`,
       expect(ecSystem!.edges).toContainEqual(
         expect.objectContaining({ from: "OrderService", to: "PaymentService" }),
       );
+    });
+
+    it("keeps same-pair edges that differ in kind or label, dedups the exact duplicate (#2780)", async () => {
+      // The spec's dedup identity is (from, to, kind, label). The system
+      // reopen once left `kind` out, so whichever file merged first decided
+      // whether the call was sync or async.
+      await fs.writeFile(
+        "/project/platform.krs",
+        `import "team-ec.krs"
+import "team-payment.krs"`,
+      );
+      await fs.writeFile(
+        "/project/team-ec.krs",
+        `system ECPlatform {
+  service OrderService
+  OrderService -> PaymentService "pay"
+}`,
+      );
+      await fs.writeFile(
+        "/project/team-payment.krs",
+        `system ECPlatform {
+  service PaymentService
+  OrderService -> PaymentService "pay"
+  OrderService --> PaymentService "pay"
+  OrderService -> PaymentService "refund"
+}`,
+      );
+
+      const result = await resolver.resolve("/project/platform.krs");
+      const ecSystem = result.krsFile.systems.find((s) => s.id === "ECPlatform")!;
+      expect(ecSystem.edges.map((e) => `${e.from}-${e.kind}->${e.to} ${e.label}`).sort()).toEqual([
+        "OrderService-async->PaymentService pay",
+        "OrderService-sync->PaymentService pay",
+        "OrderService-sync->PaymentService refund",
+      ]);
     });
 
     it("merges different systems from the imported file", async () => {
