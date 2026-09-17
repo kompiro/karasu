@@ -97,8 +97,12 @@ flowchart TD
     ADR_2716["ADR-2716<br/>CodeRabbit のレビューを request changes workflow に移す"]
     ADR_2753["ADR-2753<br/>Dependabot トリアージ 2026-09-07 — 生成物への部分編集は却下し、再生成に畳む"]
     ADR_2773["ADR-2773<br/>Dependabot トリアージ 2026-09-08 — repo 側の宣言が bot の届..."]
+    ADR_2804["ADR-2804<br/>raw NUL byte を含む tracked file を除外リスト方式の全走査で検出し、..."]
     ADR_2805["ADR-2805<br/>テスト suite の timeout はテストステップに置き、job 予算は setup を..."]
+    ADR_2807["ADR-2807<br/>suite の job 予算は、共有の setup 観測最大を step 境界の上に載せて確保する"]
     ADR_2813["ADR-2813<br/>Dependabot security alert 2026-09-12（`js-yaml` ..."]
+    ADR_2836["ADR-2836<br/>Dependabot トリアージ 2026-09-14：vitest 5 の major は ..."]
+    ADR_2839["ADR-2839<br/>dependabot-triage workflow の週次 cron を止め、dispatc..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -124,6 +128,7 @@ flowchart TD
   ADR_2184 --> ADR_1314
   ADR_2209 --> ADR_1314
   ADR_2716 -.supersedes.-> ADR_2640
+  ADR_2807 -.supersedes.-> ADR_2805
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -222,8 +227,12 @@ flowchart TD
   class ADR_2716 accepted
   class ADR_2753 accepted
   class ADR_2773 accepted
-  class ADR_2805 accepted
+  class ADR_2804 accepted
+  class ADR_2805 superseded
+  class ADR_2807 accepted
   class ADR_2813 accepted
+  class ADR_2836 accepted
+  class ADR_2839 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost

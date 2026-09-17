@@ -12,6 +12,7 @@ known_consumers:
   - vscode-e2e-workflow
 discovered_from:
   - issue: "#2805"
+  - issue: "#2807"
   - root_cause_adr: "ADR-2805"
 related_to:
   - TPL-2374
@@ -59,7 +60,8 @@ timeout は「これを超えたら異常」という**主張**であって、�
 timeout / 予算を置く・変えるときに確認する:
 
 - [ ] 「異常」を意味する境界が、本命の仕事**だけ**を覆う位置にあるか（step 単位 / 呼び出し単位）
-- [ ] 外側の予算は、内側の境界 + 準備の観測最大を収容できるか。両者の差はゼロでないか
+- [ ] 外側の予算は、内側の境界 + 準備の観測最大を収容できるか。観測最大はどの run から採ったか
+      言えるか（速い日ばかり引いた実行単位は、安全なのではなく標本が無いだけである）
 - [ ] 内側の値は観測から決めたか（直近 run の分布を見たか）。準備の遅さを吸収するために
       内側を膨らませていないか
 - [ ] その打ち切りが誰にどう報告されるか（required check / 自動起票）を確認し、報告の文言が
@@ -68,9 +70,12 @@ timeout / 予算を置く・変えるときに確認する:
 
 ## 既知の対処パターン
 
-- **step 側に本命の境界、job 側に上位予算**（[ADR-2805](../adr/2805-suite-timeout-bounds-the-test-step.md)）。
-  `.github/workflows/e2e.yml` では `Run E2E tests` に 15 分、job に 30 分を置き、境界のない
-  `apt-get` は job 予算に吸収させる。両者の差の下限も機械で固定する
+- **step 側に本命の境界、job 側に上位予算**（[ADR-2807](../adr/2807-suite-budget-clears-its-setup.md)、
+  [ADR-2805](../adr/2805-suite-timeout-bounds-the-test-step.md) を supersede）。
+  `.github/workflows/e2e.yml` では `Run E2E tests` に 15 分、job に 35 分を置き、境界のない
+  `apt-get` は job 予算に吸収させる。**外側の予算は「内側の境界 + 準備の観測最大」以上**という
+  関係そのものを機械で固定する — 差の下限を適当な定数（当初は 5 分）にすると、観測より薄い
+  予算がそのまま通る（#2807）
 - **総所要時間ではなく無通信で打ち切る**（[TPL-2374](TPL-2374-long-call-bounded-by-silence-not-duration.md)）。
   外部 API 呼び出しでは、本命だけを覆う境界が「沈黙の長さ」になる。同じ観点の別形
 

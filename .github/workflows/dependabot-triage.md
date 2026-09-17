@@ -5,12 +5,17 @@
 # triggered by `dependabot[bot]` gets a read-only token and no secrets, and
 # ADR-903 rules out the `pull_request_target` workaround. A scheduled run
 # happens in `main` context, so it never checks out a bot branch.
+#
+# The schedule is paused (ADR-2839): the evidence still misses what decides a
+# verdict (#2838), and threat detection has not concluded on any run (#2786).
+# Dispatch it by hand until #2839 brings the cron back; a dispatched run is in
+# `main` context too, so the reasoning above still holds.
 on:
-  schedule:
-    # Monday 22:00 UTC = Tuesday 07:00 JST, after the Monday Dependabot batch
-    # has settled. Fixed rather than fuzzy (which `gh aw compile` suggests):
-    # the run is only useful once the batch it reads has been opened.
-    - cron: "0 22 * * 1"
+  # schedule:
+  #   # Monday 22:00 UTC = Tuesday 07:00 JST, after the Monday Dependabot batch
+  #   # has settled. Fixed rather than fuzzy (which `gh aw compile` suggests):
+  #   # the run is only useful once the batch it reads has been opened.
+  #   - cron: "0 22 * * 1"
   workflow_dispatch:
 
 permissions:

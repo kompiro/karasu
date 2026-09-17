@@ -1246,6 +1246,177 @@ describe("PreviewColumn — org tab team-dependency mode (#2636)", () => {
   });
 });
 
+// #2799: the org tab's two sub-modes were the last diagram surfaces outside
+// `PreviewPane` — bare `overflow: auto` divs, so neither could be fitted,
+// zoomed or panned, and neither showed the view's diagnostics. The fences here
+// are structural (the SVG is inside `.preview-container`, which is what the
+// wheel listener binds to and what the fit rules are scoped to) rather than
+// "the diagram is drawn", which stayed true throughout the defect (TPL-2800).
+describe("PreviewColumn — org tab panes go through the shared preview pane (#2799)", () => {
+  const ORG_TREE_SVG =
+    '<svg xmlns="http://www.w3.org/2000/svg" data-view="org-tree">' +
+    '<g data-team-id="Backend" data-node-id="Backend"><rect width="10" height="10" /></g>' +
+    "</svg>";
+  const TEAM_DEP_SVG = '<svg xmlns="http://www.w3.org/2000/svg"><g data-team-node="ec" /></svg>';
+  // The org view's own report, which every org sub-mode is drawn from.
+  const ORG_DIAGNOSTICS: Diagnostic[] = [
+    { severity: "error", code: "app-org-parse-error", params: {} },
+  ];
+
+  function orgProps(overrides: Partial<PreviewContextValue> = {}): PreviewContextValue {
+    return makeProps({
+      activeView: "org",
+      orgTreeSvg: ORG_TREE_SVG,
+      teamDependencySvg: TEAM_DEP_SVG,
+      hasTeamDependencyView: true,
+      ...overrides,
+    });
+  }
+
+  it("renders the org tree SVG inside the shared preview container, keeping the pane marker", () => {
+    const { container } = renderPreview(orgProps({ isOrgTreeViewOpen: true }));
+    const pane = container.querySelector(".preview-pane--org-tree");
+    expect(pane).toBeTruthy();
+    expect(pane?.classList.contains("preview-pane")).toBe(true);
+    expect(pane?.querySelector('.preview-container [data-view="org-tree"]')).toBeTruthy();
+  });
+
+  it("renders the team-dependency SVG inside the shared preview container", () => {
+    const { container } = renderPreview(orgProps({ isTeamDependenciesOpen: true }));
+    const pane = container.querySelector(".preview-pane--team-dependencies");
+    expect(pane).toBeTruthy();
+    expect(pane?.classList.contains("preview-pane")).toBe(true);
+    expect(pane?.querySelector('.preview-container [data-team-node="ec"]')).toBeTruthy();
+  });
+
+  it("still toggles a team's members when its card is clicked (AT-0044)", () => {
+    // The click moved from the pane div's own onClick to PreviewPane's
+    // mouseup dispatch, so this is the regression fence for the re-parent.
+    //
+    // Markup and event sequence follow PreviewPane.test.tsx: mouse events on
+    // SVG elements do not bubble to HTML parents in jsdom, so the card is a
+    // `<div>` carrying the same attributes the renderer puts on the team `<g>`;
+    // and mouseDown lands on the container (that is what arms the click) while
+    // mouseUp lands on the card, re-queried because the mouseDown re-render
+    // replaces the injected children.
+    const onTeamToggle = vi.fn<(teamId: string) => void>();
+    const { container } = renderPreview(
+      orgProps({
+        isOrgTreeViewOpen: true,
+        onTeamToggle,
+        orgTreeSvg:
+          '<div data-view="org-tree">' +
+          '<div data-team-id="Backend" data-node-id="Backend">Backend</div>' +
+          "</div>",
+      }),
+    );
+    const pane = container.querySelector(".preview-pane--org-tree .preview-container");
+    expect(pane).toBeTruthy();
+    fireEvent.mouseDown(pane as Element, { button: 0, clientX: 10, clientY: 10 });
+    fireEvent.mouseUp(container.querySelector('[data-team-id="Backend"]') as Element, {
+      button: 0,
+      clientX: 10,
+      clientY: 10,
+    });
+    expect(onTeamToggle).toHaveBeenCalledWith("Backend");
+  });
+
+  it("does not carry zoom between Tree View and Dependencies", () => {
+    // The two panes share one child slot and `useOrgDisplayMode` switches
+    // "tree" -> "dependencies" in a single update, so without distinct keys
+    // React keeps one PreviewPane and its transform. Every other test here
+    // renders one mode at a time, or switches from the keyed grid pane, so
+    // only a direct switch between the two sub-modes exposes a missing key.
+    const tree = (mode: "tree" | "dependencies") => (
+      <LocaleProvider initialLocale="en">
+        <PreviewProvider
+          value={orgProps({
+            isOrgTreeViewOpen: mode === "tree",
+            isTeamDependenciesOpen: mode === "dependencies",
+          })}
+        >
+          <PreviewColumn />
+        </PreviewProvider>
+      </LocaleProvider>
+    );
+    const zoomLayer = (container: HTMLElement) =>
+      container.querySelector<HTMLElement>(".preview-container > div");
+
+    const { container, rerender } = rtlRender(tree("tree"));
+    fireEvent.wheel(container.querySelector(".preview-container")!, { deltaY: -100 });
+    expect(zoomLayer(container)?.style.transform).toContain("scale(1.1)");
+
+    rerender(tree("dependencies"));
+    expect(container.querySelector(".preview-pane--team-dependencies")).toBeTruthy();
+    expect(zoomLayer(container)?.style.transform).toContain("scale(1)");
+
+    fireEvent.wheel(container.querySelector(".preview-container")!, { deltaY: -100 });
+    rerender(tree("tree"));
+    expect(container.querySelector(".preview-pane--org-tree")).toBeTruthy();
+    expect(zoomLayer(container)?.style.transform).toContain("scale(1)");
+  });
+
+  it("shows the org view's diagnostics in each sub-mode's banner", () => {
+    const withOrgDiagnostics = (overrides: Partial<PreviewContextValue>) =>
+      orgProps({
+        orgView: { ...makeProps().orgView, diagnostics: ORG_DIAGNOSTICS },
+        ...overrides,
+      });
+
+    const tree = renderPreview(withOrgDiagnostics({ isOrgTreeViewOpen: true }));
+    expect(
+      tree.container.querySelector(".preview-pane--org-tree .diagnostic-banner")?.textContent,
+    ).toBeTruthy();
+    cleanup();
+
+    const deps = renderPreview(withOrgDiagnostics({ isTeamDependenciesOpen: true }));
+    expect(
+      deps.container.querySelector(".preview-pane--team-dependencies .diagnostic-banner")
+        ?.textContent,
+    ).toBeTruthy();
+  });
+
+  // #2715: a pane that gets diagnostics but not the document context reads
+  // every position as a line of the open document. The props are required for
+  // that reason, so each sub-mode is pinned to naming the other file.
+  it("names the file on a sub-mode banner position from an imported document", () => {
+    const located: Diagnostic[] = [
+      {
+        severity: "error",
+        code: "app-org-parse-error",
+        params: {},
+        loc: {
+          start: { line: 12, column: 3, offset: 0 },
+          end: { line: 12, column: 3, offset: 0 },
+          file: "/projects/shop/org/teams.krs",
+        },
+      },
+    ];
+    const withLocated = (overrides: Partial<PreviewContextValue>) =>
+      orgProps({
+        orgView: { ...makeProps().orgView, diagnostics: located },
+        currentFilePath: "/projects/shop/index.krs",
+        displayRoot: "/projects/shop",
+        ...overrides,
+      });
+
+    // The path is the project-relative one, which is also what tells the
+    // context apart from a pane handed nulls: that one would print the full
+    // `/projects/shop/...` path instead.
+    const tree = renderPreview(withLocated({ isOrgTreeViewOpen: true }));
+    expect(
+      tree.container.querySelector(".preview-pane--org-tree .diagnostic-banner__item")?.textContent,
+    ).toMatch(/^org\/teams\.krs:12: /);
+    cleanup();
+
+    const deps = renderPreview(withLocated({ isTeamDependenciesOpen: true }));
+    expect(
+      deps.container.querySelector(".preview-pane--team-dependencies .diagnostic-banner__item")
+        ?.textContent,
+    ).toMatch(/^org\/teams\.krs:12: /);
+  });
+});
+
 // Fence for #2317: the toolbar mixed t()-driven and hardcoded-English labels,
 // so the `ja` locale rendered a half-translated row. Rather than asserting each
 // Japanese string (which would break on any wording change), assert the

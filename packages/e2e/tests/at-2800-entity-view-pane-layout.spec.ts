@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
+import { expectFitsPane, expectWheelZooms } from "../fixtures/preview-pane.js";
 
 /**
  * AT-2800: the entity sub-mode reads through the shared preview pane.
@@ -50,28 +51,10 @@ test.describe("AT-2800 Entity view pane layout", () => {
     await drillIntoOrderingDomain(page);
     await entityToggle(page).click();
 
-    const pane = page.locator(".preview-pane--entity");
-    await expect(pane).toBeVisible();
-
-    // The structural fence: the SVG is inside the shared container, which is
-    // both what carries the fit rules and what the zoom listener is bound to.
-    const container = pane.locator(".preview-container");
-    await expect(container).toHaveCount(1);
-    await expect(container.locator("svg")).toBeVisible();
-
-    // The intrinsic diagram is wider than the pane, and it is drawn narrower
-    // than the pane rather than overflowing it.
-    const { intrinsic, drawn, paneWidth } = await pane.evaluate((el) => {
-      const svg = el.querySelector("svg") as SVGSVGElement;
-      const vb = svg.getAttribute("viewBox")?.split(/\s+/) ?? [];
-      return {
-        intrinsic: Number(vb[2] ?? 0),
-        drawn: svg.getBoundingClientRect().width,
-        paneWidth: el.getBoundingClientRect().width,
-      };
-    });
-    expect(intrinsic).toBeGreaterThan(paneWidth);
-    expect(drawn).toBeLessThanOrEqual(paneWidth + 1);
+    // The SVG is inside the shared container (which carries both the fit rules
+    // and the zoom listener), and the intrinsically wider ER diagram is drawn
+    // no wider than the pane.
+    await expectFitsPane(page, ".preview-pane--entity");
   });
 
   test("wheel over the entity view zooms it (#2799)", async ({ page, opfs }) => {
@@ -79,16 +62,7 @@ test.describe("AT-2800 Entity view pane layout", () => {
     await drillIntoOrderingDomain(page);
     await entityToggle(page).click();
 
-    const zoomLayer = page.locator(".preview-pane--entity .preview-container > div").first();
-    await expect(zoomLayer).toBeVisible();
-    const before = await zoomLayer.evaluate((el) => (el as HTMLElement).style.transform);
-
-    await page.locator(".preview-pane--entity .preview-container").hover();
-    await page.mouse.wheel(0, -200);
-
-    await expect
-      .poll(() => zoomLayer.evaluate((el) => (el as HTMLElement).style.transform))
-      .not.toEqual(before);
+    await expectWheelZooms(page, ".preview-pane--entity");
   });
 
   // CodeRabbit on #2801: the two panes share one child slot, so without

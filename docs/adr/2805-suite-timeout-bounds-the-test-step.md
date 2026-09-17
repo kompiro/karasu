@@ -1,7 +1,8 @@
 ---
 id: ADR-2805
 title: テスト suite の timeout はテストステップに置き、job 予算は setup を吸収する側に回す
-status: accepted
+status: superseded
+superseded_by: ADR-2807
 date: 2026-09-12
 topic: build
 related_to:
@@ -27,7 +28,7 @@ assumptions:
 # ADR-2805: テスト suite の timeout はテストステップに置き、job 予算は setup を吸収する側に回す
 
 - **日付**: 2026-09-12
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by [ADR-2807](2807-suite-budget-clears-its-setup.md)（step に境界を置く決定はそのまま引き継がれ、予算の値と guard の不変条件だけが差し替わった）
 - **きっかけ**: [#2805](https://github.com/kompiro/karasu/issues/2805)。[#2793](https://github.com/kompiro/karasu/pull/2793) の run [34606378392](https://github.com/kompiro/karasu/actions/runs/34606378392)（attempt 1）が、1 件もテストを落とさないまま 20m34s で cancel された
 - **関連**:
   - [ADR-1008](1008-flaky-e2e-fixme-and-issue.md): flake の判定基準 1 は「同一テストが retry 込みの全 attempt を fail」。setup timeout はそれに当たらない
