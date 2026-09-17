@@ -95,6 +95,7 @@ app の 30 行の `?raw` import と `resolveIconManifest` 呼び出しを、CLI�
 
 #### 案B: core が組み込みアイコンを生成モジュールとして持ち、import 時に自動登録する（推奨）
 
+<!-- absent-path-next-line: file this design proposes to generate (#2802) -->
 `packages/core/icons/icons.json` と `*.svg` から、`name → SVG 文字列` の TS モジュール
 （例: `packages/core/src/shapes/builtin-icons.generated.ts`）を生成して commit する。
 組み込みシェイプの `registerBuiltinShapes()`（`shapes.ts` で import 時に自動実行）と同じく、
