@@ -76,3 +76,22 @@ describe("AT-1020 karasu diff — stdin handling", () => {
     expect(stdout).toMatch(/<g[^>]*data-diff-state="removed"/);
   });
 });
+
+// #2715: core positions are 1-based, and `karasu diff` used to add 1 to both
+// axes before printing them, the same slip `karasu render` had.
+describe("karasu diff: printed positions are not shifted (#2715)", () => {
+  it("prints a warning at the declaration's own line and column", async () => {
+    const before = join(tmpDir, "before.krs");
+    const after = join(tmpDir, "after.krs");
+    await writeFile(before, "system Legacy {\n  service Search\n}\n");
+    // The second `Search` loses the id, so the warning anchors on line 5, column 3.
+    await writeFile(
+      after,
+      "system Legacy {\n  service Search\n}\nsystem Next {\n  service Search\n}\n",
+    );
+
+    await diff(before, after, {});
+
+    expect(stderr).toMatch(/^Warning: 5:3 Node id "Search" appears in multiple locations/m);
+  });
+});

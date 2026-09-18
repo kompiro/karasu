@@ -115,6 +115,8 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
     orgTreeSvg: undefined,
     onTeamToggle: vi.fn<() => void>(),
     orgTreeExportSvg: undefined,
+    currentFilePath: null,
+    displayRoot: null,
     ...overrides,
   };
 }
@@ -1372,6 +1374,46 @@ describe("PreviewColumn — org tab panes go through the shared preview pane (#2
       deps.container.querySelector(".preview-pane--team-dependencies .diagnostic-banner")
         ?.textContent,
     ).toBeTruthy();
+  });
+
+  // #2715: a pane that gets diagnostics but not the document context reads
+  // every position as a line of the open document. The props are required for
+  // that reason, so each sub-mode is pinned to naming the other file.
+  it("names the file on a sub-mode banner position from an imported document", () => {
+    const located: Diagnostic[] = [
+      {
+        severity: "error",
+        code: "app-org-parse-error",
+        params: {},
+        loc: {
+          start: { line: 12, column: 3, offset: 0 },
+          end: { line: 12, column: 3, offset: 0 },
+          file: "/projects/shop/org/teams.krs",
+        },
+      },
+    ];
+    const withLocated = (overrides: Partial<PreviewContextValue>) =>
+      orgProps({
+        orgView: { ...makeProps().orgView, diagnostics: located },
+        currentFilePath: "/projects/shop/index.krs",
+        displayRoot: "/projects/shop",
+        ...overrides,
+      });
+
+    // The path is the project-relative one, which is also what tells the
+    // context apart from a pane handed nulls: that one would print the full
+    // `/projects/shop/...` path instead.
+    const tree = renderPreview(withLocated({ isOrgTreeViewOpen: true }));
+    expect(
+      tree.container.querySelector(".preview-pane--org-tree .diagnostic-banner__item")?.textContent,
+    ).toMatch(/^org\/teams\.krs:12: /);
+    cleanup();
+
+    const deps = renderPreview(withLocated({ isTeamDependenciesOpen: true }));
+    expect(
+      deps.container.querySelector(".preview-pane--team-dependencies .diagnostic-banner__item")
+        ?.textContent,
+    ).toMatch(/^org\/teams\.krs:12: /);
   });
 });
 

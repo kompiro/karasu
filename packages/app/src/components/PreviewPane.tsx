@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect, type MouseEvent } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo, type MouseEvent } from "react";
 import type {
   Diagnostic,
   EdgeDirection,
@@ -11,6 +11,8 @@ import { NodeDetailPanel } from "./NodeDetailPanel.js";
 import { EdgeDetailPanel, type SingleEdgeDetail } from "./EdgeDetailPanel.js";
 import { EdgeContextMenu } from "./EdgeContextMenu.js";
 import { useFormattedDiagnostic } from "../i18n/format-diagnostic.js";
+import { useTranslation } from "../i18n/index.js";
+import { diagnosticLocationLabel, findingKeys } from "../utils/diagnostic-location.js";
 
 interface PreviewPaneProps {
   svg: string;
@@ -33,7 +35,7 @@ interface PreviewPaneProps {
   onOwnedServiceClick?: (serviceId: string) => void;
   /** Node or container id to highlight after cross-navigation */
   highlightedNodeId?: string | null;
-  /** Called when a node interaction clears the cross-navigation highlight */
+  /** Called when a node interaction or a click on the diagram background clears the cross-navigation highlight */
   onClearHighlight?: () => void;
   /** Called when user clicks "Jump to editor" in the detail panel */
   onJumpToEditor?: (nodeId: string) => void;
@@ -56,6 +58,14 @@ interface PreviewPaneProps {
    * forwards intent.
    */
   onPickEdgeDirection?: (canonicalId: string, direction: EdgeDirection) => void;
+  /**
+   * The open document and the directory other files are shown relative to, so
+   * the diagnostic banner can tell a position in the open document from one in
+   * an imported file (#2715). Required: a second pane added without them (the
+   * entity view's, #2800) would otherwise compile and quietly show full paths.
+   */
+  currentFilePath: string | null;
+  displayRoot: string | null;
   /**
    * Called when the user clicks a team card in the org Tree View, to expand or
    * collapse its members (#2799). Its own prop rather than a reuse of
@@ -110,10 +120,13 @@ export function PreviewPane({
   nodeDiff,
   styleTargetPath,
   onPickEdgeDirection,
+  currentFilePath,
+  displayRoot,
   onTeamToggle,
   className,
 }: PreviewPaneProps) {
   const formatDiagnostic = useFormattedDiagnostic();
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<HTMLDivElement>(null);
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
@@ -160,6 +173,16 @@ export function PreviewPane({
     (d) => d.severity === "error" || d.severity === "warning" || d.severity === "info",
   );
   const hasErrors = diagnostics.some((d) => d.severity === "error");
+  const diagnosticMessages = visibleDiagnostics.map((d) => formatDiagnostic(d));
+  const diagnosticKeys = findingKeys(visibleDiagnostics, diagnosticMessages);
+  const diagnosticBannerItems = visibleDiagnostics.map((d, i) => ({
+    d,
+    message: diagnosticMessages[i],
+    location: diagnosticLocationLabel(d.loc, { currentFilePath, displayRoot }, (line) =>
+      t("preview.location.line", { line }),
+    ),
+    key: diagnosticKeys[i],
+  }));
 
   // Attach the zoom handler as a native, non-passive wheel listener. React's
   // synthetic onWheel is registered passively (React 17+), so a preventDefault
@@ -423,8 +446,11 @@ export function PreviewPane({
       // Check for node click
       const nodeGroup = target.closest("[data-node-id]");
       if (!nodeGroup) {
-        // Click outside any node — close detail panel
+        // Click outside any node: dismiss what the last interaction left open,
+        // the detail panel and the cross-navigation highlight alike. A drag
+        // never gets here (the threshold check above), so panning keeps both.
         setDetailPanel(null);
+        onClearHighlight?.();
         return;
       }
 
@@ -467,6 +493,15 @@ export function PreviewPane({
     isDraggingRef.current = false;
     setIsDragging(false);
   }, []);
+
+  // One `{ __html }` object per distinct `svg`, not one per render. React 19
+  // compares `dangerouslySetInnerHTML` by object identity and, when it differs,
+  // re-assigns `innerHTML` without comparing the string, so an inline literal
+  // re-parses the diagram on every render. That would throw away the highlight
+  // applied below while leaving its effect's dependencies unchanged, and the
+  // class would not come back until the diagram itself changed (#2789).
+  // Keeping this identity tied to `svg` is what makes the two move together.
+  const svgHtml = useMemo(() => ({ __html: svg }), [svg]);
 
   // Apply highlight to the target node or container after SVG injection
   useEffect(() => {
@@ -514,7 +549,7 @@ export function PreviewPane({
             transformOrigin: "center center",
           }}
           ref={svgRef}
-          dangerouslySetInnerHTML={{ __html: svg }}
+          dangerouslySetInnerHTML={svgHtml}
         />
         {edgeMenu && (
           <EdgeContextMenu
@@ -565,17 +600,14 @@ export function PreviewPane({
       )}
       {visibleDiagnostics.length > 0 && (
         <div className="diagnostic-banner">
-          {visibleDiagnostics.map((d) => {
-            const message = formatDiagnostic(d);
-            return (
-              <div
-                key={d.loc ? `${d.loc.start.line}:${message}` : message}
-                className={`diagnostic-banner__item diagnostic-banner__item--${d.severity}`}
-              >
-                {d.loc ? `Line ${d.loc.start.line}: ${message}` : message}
-              </div>
-            );
-          })}
+          {diagnosticBannerItems.map(({ d, message, location, key }) => (
+            <div
+              key={key}
+              className={`diagnostic-banner__item diagnostic-banner__item--${d.severity}`}
+            >
+              {location ? `${location}: ${message}` : message}
+            </div>
+          ))}
         </div>
       )}
     </div>

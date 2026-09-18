@@ -260,4 +260,15 @@ describe("computeDiagnostics — style documents (.krs.style)", () => {
     const diagnostics = computeDiagnostics("node { color: red; }", true);
     expect(diagnostics).toEqual([]);
   });
+
+  // #2715: the style parser's own diagnostics carried no position, so the
+  // editor pinned every sheet syntax error to the top of the document.
+  it("places a style parse error on the offending token's line", () => {
+    // The stray `}` is on line 7 (0-based 6), column 1.
+    const src = "/* 1 */\n/* 2 */\n/* 3 */\nservice {\n  fill: #ffffff;\n}\n}\n";
+    const diagnostics = computeDiagnostics(src, true);
+    const error = diagnostics.find((d) => d.severity === DiagnosticSeverity.Error);
+
+    expect(error?.range.start).toEqual({ line: 6, character: 0 });
+  });
 });

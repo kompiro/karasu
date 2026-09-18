@@ -12,6 +12,7 @@ known_consumers:
   - playwright-tests
 related_to:
   - TPL-1032
+  - TPL-2789
   - TPL-976
 discovered_from:
   - issue: "#1171"
@@ -65,6 +66,7 @@ E2E で UI 状態の assertion / 連鎖操作を書くとき、以下を確認�
 - Monaco に対しては `replaceEditorContent(page, content)` のような **fixture helper** を導入し、内部で「editor が ready」「値が反映された」を待つ。各 spec が個別に Ctrl+A → Delete → insertText を書かない
 - transient state を直接 assert したい場合は、**それが stable に維持される条件を作ってから** 観測する（例: 連続した nav の途中ではなく、最終的に止まった位置で highlight を見る）
 - flake が出たテストは `test.fixme()` でロックし、**根本原因 issue を立てて hypothesis を 2-3 個書く**（#1171 のスタイル）。`fixme` を雑に外さない
+- trace の URL（state を反映する hash）と DOM スナップショットを時系列で突き合わせる。DOM が一度 state を反映した後、hash が変わらないまま DOM だけがそれを失っていたなら、待機の問題ではない（1 枚のスナップショットで食い違っているだけなら、反映前の瞬間を見ている可能性がある）。#1171 と同じアサーションの再発（#2789）は、無関係な再レンダリングが SVG を流し込み直してハイライトを消していた（TPL-2789）
 - 比較の**基準値**（操作前に 1 回読んで後で突き合わせる値）も `expect.poll` で「読める値」になるまで待ってから取る。preview が SVG subtree を差し替えた瞬間に detach した要素へ `getComputedStyle` すると `""` が返り、空文字を基準として捕まえると以降の比較が決して一致しない（#2850: `at-1479-svg-theming.spec.ts` のテーマ往復）。読めない値はどの判定帯も満たさない表現（例: 輝度を `NaN`）にして、poll が偽の成功で抜けないようにする
 - `retries` を絞ったときに落ちるテストは、retry の数だけ「stable 待ちを忘れている」サインなので、retry を増やして治すのではなく fixture / helper を直す
 

@@ -62,6 +62,8 @@ export function PreviewColumn() {
     onExportDrawio,
     hasKrsSource,
     getShareBundle,
+    currentFilePath,
+    displayRoot,
   } = usePreview();
   // Normalized active-view slice — collapses the per-view ternary chains (#1542).
   const view = useActiveViewData();
@@ -334,6 +336,8 @@ export function PreviewColumn() {
           svg={entityViewSvg ?? ""}
           diagnostics={entityViewDiagnostics}
           nodeMetadata={NO_NODE_METADATA}
+          currentFilePath={currentFilePath}
+          displayRoot={displayRoot}
         />
       ) : showOrgTreeView ? (
         /* The org tab's two sub-modes follow the entity view onto `PreviewPane`
@@ -369,6 +373,8 @@ export function PreviewColumn() {
           svg={orgTreeSvg ?? ""}
           diagnostics={diagnostics}
           nodeMetadata={NO_NODE_METADATA}
+          currentFilePath={currentFilePath}
+          displayRoot={displayRoot}
           onTeamToggle={onTeamToggle}
         />
       ) : showTeamDependencies ? (
@@ -378,6 +384,8 @@ export function PreviewColumn() {
           svg={teamDependencySvg ?? ""}
           diagnostics={diagnostics}
           nodeMetadata={NO_NODE_METADATA}
+          currentFilePath={currentFilePath}
+          displayRoot={displayRoot}
         />
       ) : showAllLayersIframe ? (
         <iframe
@@ -407,9 +415,15 @@ export function PreviewColumn() {
           nodeDiff={view.nodeDiff}
           styleTargetPath={view.styleTargetPath}
           onPickEdgeDirection={view.onPickEdgeDirection}
+          currentFilePath={currentFilePath}
+          displayRoot={displayRoot}
         />
       )}
-      <WarningPanel warnings={view.warnings} />
+      <WarningPanel
+        warnings={view.warnings}
+        currentFilePath={currentFilePath}
+        displayRoot={displayRoot}
+      />
       <ShareDialog {...shareDialogProps} />
     </div>
   );

@@ -79,6 +79,8 @@ function makeCtx(activeView: ActiveView): PreviewContextValue {
     entityViewDiagnostics: empty,
     styleTargetPath: "/theme.krs.style",
     onPickEdgeDirection: noop,
+    currentFilePath: null,
+    displayRoot: null,
   };
 }
 
