@@ -11,6 +11,8 @@ import { NodeDetailPanel } from "./NodeDetailPanel.js";
 import { EdgeDetailPanel, type SingleEdgeDetail } from "./EdgeDetailPanel.js";
 import { EdgeContextMenu } from "./EdgeContextMenu.js";
 import { useFormattedDiagnostic } from "../i18n/format-diagnostic.js";
+import { useTranslation } from "../i18n/index.js";
+import { diagnosticLocationLabel, findingKeys } from "../utils/diagnostic-location.js";
 
 interface PreviewPaneProps {
   svg: string;
@@ -56,6 +58,14 @@ interface PreviewPaneProps {
    * forwards intent.
    */
   onPickEdgeDirection?: (canonicalId: string, direction: EdgeDirection) => void;
+  /**
+   * The open document and the directory other files are shown relative to, so
+   * the diagnostic banner can tell a position in the open document from one in
+   * an imported file (#2715). Required: a second pane added without them (the
+   * entity view's, #2800) would otherwise compile and quietly show full paths.
+   */
+  currentFilePath: string | null;
+  displayRoot: string | null;
   /**
    * Called when the user clicks a team card in the org Tree View, to expand or
    * collapse its members (#2799). Its own prop rather than a reuse of
@@ -110,10 +120,13 @@ export function PreviewPane({
   nodeDiff,
   styleTargetPath,
   onPickEdgeDirection,
+  currentFilePath,
+  displayRoot,
   onTeamToggle,
   className,
 }: PreviewPaneProps) {
   const formatDiagnostic = useFormattedDiagnostic();
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<HTMLDivElement>(null);
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
@@ -160,6 +173,16 @@ export function PreviewPane({
     (d) => d.severity === "error" || d.severity === "warning" || d.severity === "info",
   );
   const hasErrors = diagnostics.some((d) => d.severity === "error");
+  const diagnosticMessages = visibleDiagnostics.map((d) => formatDiagnostic(d));
+  const diagnosticKeys = findingKeys(visibleDiagnostics, diagnosticMessages);
+  const diagnosticBannerItems = visibleDiagnostics.map((d, i) => ({
+    d,
+    message: diagnosticMessages[i],
+    location: diagnosticLocationLabel(d.loc, { currentFilePath, displayRoot }, (line) =>
+      t("preview.location.line", { line }),
+    ),
+    key: diagnosticKeys[i],
+  }));
 
   // Attach the zoom handler as a native, non-passive wheel listener. React's
   // synthetic onWheel is registered passively (React 17+), so a preventDefault
@@ -565,17 +588,14 @@ export function PreviewPane({
       )}
       {visibleDiagnostics.length > 0 && (
         <div className="diagnostic-banner">
-          {visibleDiagnostics.map((d) => {
-            const message = formatDiagnostic(d);
-            return (
-              <div
-                key={d.loc ? `${d.loc.start.line}:${message}` : message}
-                className={`diagnostic-banner__item diagnostic-banner__item--${d.severity}`}
-              >
-                {d.loc ? `Line ${d.loc.start.line}: ${message}` : message}
-              </div>
-            );
-          })}
+          {diagnosticBannerItems.map(({ d, message, location, key }) => (
+            <div
+              key={key}
+              className={`diagnostic-banner__item diagnostic-banner__item--${d.severity}`}
+            >
+              {location ? `${location}: ${message}` : message}
+            </div>
+          ))}
         </div>
       )}
     </div>

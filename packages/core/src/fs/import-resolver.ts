@@ -310,7 +310,11 @@ export class ImportResolver {
       return;
     }
 
-    const parseResult = Parser.parse(source);
+    // The path makes every `loc` this file produces name it, so a diagnostic
+    // from an imported file (or one re-derived below on the merged model and
+    // anchored on this file's declaration) is not read against the entry
+    // (#2715, TPL-2715).
+    const parseResult = Parser.parse(source, filePath);
     // Reference-existence diagnostics (`contains-target-not-found` /
     // `owns-target-not-found`) are re-derived against the merged id-space
     // after Pass 2, so drop the per-file verdict here — a member/owned id
@@ -1349,7 +1353,9 @@ export class ImportResolver {
       return null;
     }
 
-    const parseResult = StyleParser.parse(source, filePath);
+    // Passed twice on purpose: the first is the sheet id the cascade orders
+    // by, the second the document its diagnostics' `loc` index into (#2715).
+    const parseResult = StyleParser.parse(source, filePath, filePath);
     this.diagnostics.push(...parseResult.diagnostics);
 
     return parseResult.value;

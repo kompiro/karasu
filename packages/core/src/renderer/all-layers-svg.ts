@@ -14,7 +14,7 @@ import { resolveStyles, styleDerivedEdges } from "../resolver/style-resolver.js"
 import { collectLegendUsage } from "../legend/usage.js";
 import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "../builtins/default-style.js";
 import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
-import { StyleParser } from "../parser/style-parser.js";
+import { StyleParser, unplacedStyleDiagnostics } from "../parser/style-parser.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 import { type DiagramTheme, resolvePalette } from "./palette.js";
 import "../renderer/shapes.js"; // ensure built-in shapes are registered
@@ -98,7 +98,7 @@ export function buildStyles(
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
     sheets.push(styleResult.value);
-    diagnostics.push(...styleResult.diagnostics);
+    diagnostics.push(...unplacedStyleDiagnostics(styleResult.diagnostics));
   }
   const resolveSheets = displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
   return { sheets: resolveSheets, diagnostics };

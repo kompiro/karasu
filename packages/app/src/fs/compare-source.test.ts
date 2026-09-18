@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { InMemoryFileSystemProvider } from "@karasu-tools/core";
 import { SnapshotManager } from "./snapshot-manager";
-import { resolveCompareSource, compareSourceKey } from "./compare-source";
+import { resolveCompareSource, compareSourceKey, snapshotViewRelativePath } from "./compare-source";
 
 describe("compareSourceKey", () => {
   it("returns distinct keys for file vs snapshot sources", () => {
@@ -79,5 +79,29 @@ describe("resolveCompareSource", () => {
     );
 
     expect(await overlay.readFile(`${projectRoot}/index.krs`)).toBe("system Live {}");
+  });
+});
+
+// #2715: the banner names a compared snapshot's files by the path the mount
+// stands for, so the mount format and its inverse must agree.
+describe("snapshotViewRelativePath", () => {
+  it("inverts the entry path resolveCompareSource builds", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    const sm = new SnapshotManager(fs, "/projects/p");
+    const rec = await sm.capture("slices/api.krs", "system Before {}", { trigger: "manual" });
+
+    const { entryPath } = await resolveCompareSource(
+      { kind: "snapshot", filePath: "slices/api.krs", snapshotId: rec!.id },
+      fs,
+      sm,
+      "/projects/p",
+    );
+
+    expect(snapshotViewRelativePath(entryPath)).toBe("slices/api.krs");
+  });
+
+  it("leaves paths outside the mount alone", () => {
+    expect(snapshotViewRelativePath("/projects/p/index.krs")).toBeNull();
+    expect(snapshotViewRelativePath("/.snapshot-view/only-an-id")).toBeNull();
   });
 });

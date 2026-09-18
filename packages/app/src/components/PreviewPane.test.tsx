@@ -27,6 +27,8 @@ function baseProps() {
     svg: "",
     diagnostics: [],
     nodeMetadata: new Map(),
+    currentFilePath: null,
+    displayRoot: null,
   };
 }
 
@@ -430,6 +432,82 @@ describe("PreviewPane", () => {
       );
       const banner = container.querySelector(".diagnostic-banner");
       expect(banner?.textContent).toContain("boom");
+    });
+  });
+
+  // #2715: a project compile's diagnostics carry the file their position is
+  // in, and it is not always the open document.
+  describe("diagnostic banner location", () => {
+    const located = (line: number, file?: string) => ({
+      severity: "error" as const,
+      code: "top-level-declaration" as const,
+      params: { construct: "user" as const },
+      loc: {
+        start: { line, column: 1, offset: 0 },
+        end: { line, column: 1, offset: 0 },
+        ...(file !== undefined ? { file } : {}),
+      },
+    });
+
+    it("shows the open document's positions as a line of it", () => {
+      const { container } = render(
+        <PreviewPane
+          {...baseProps()}
+          diagnostics={[located(4, "/projects/shop/index.krs")]}
+          currentFilePath="/projects/shop/index.krs"
+          displayRoot="/projects/shop"
+        />,
+      );
+
+      expect(container.querySelector(".diagnostic-banner__item")?.textContent).toMatch(/^Line 4: /);
+    });
+
+    it("spells the line label in the UI locale", () => {
+      const { container } = render(
+        <PreviewPane
+          {...baseProps()}
+          diagnostics={[located(4, "/projects/shop/index.krs")]}
+          currentFilePath="/projects/shop/index.krs"
+          displayRoot="/projects/shop"
+        />,
+        "ja",
+      );
+
+      expect(container.querySelector(".diagnostic-banner__item")?.textContent).toMatch(/^4 行目: /);
+    });
+
+    it("names the file when the position is in another one", () => {
+      const { container } = render(
+        <PreviewPane
+          {...baseProps()}
+          diagnostics={[located(12, "/projects/shop/slices/legacy.krs")]}
+          currentFilePath="/projects/shop/index.krs"
+          displayRoot="/projects/shop"
+        />,
+      );
+
+      const text = container.querySelector(".diagnostic-banner__item")?.textContent ?? "";
+      expect(text).toMatch(/^slices\/legacy\.krs:12: /);
+      expect(text).not.toContain("Line 12");
+    });
+
+    // Two files with a problem on the same line and the same message read the
+    // same under `Line N`; naming the file is what tells them apart (and keeps
+    // their React keys distinct).
+    it("keeps same-line diagnostics from different files apart", () => {
+      const { container } = render(
+        <PreviewPane
+          {...baseProps()}
+          diagnostics={[located(3, "/projects/shop/a.krs"), located(3, "/projects/shop/b.krs")]}
+          currentFilePath="/projects/shop/index.krs"
+          displayRoot="/projects/shop"
+        />,
+      );
+
+      const items = [...container.querySelectorAll(".diagnostic-banner__item")].map(
+        (el) => el.textContent?.split(": ")[0],
+      );
+      expect(items).toEqual(["a.krs:3", "b.krs:3"]);
     });
   });
 

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { InMemoryFileSystemProvider } from "./in-memory-provider";
 import { ImportResolver } from "./import-resolver";
 import { analyze } from "../resolver/warnings";
-import { compile } from "../compile/compile";
+import { buildAllViewsSvg, compile, compileProject } from "../compile/compile";
 import { boundaryScopeKey } from "../types/ast";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -2706,6 +2706,177 @@ system Shop {
         { diagramType: "system" },
       );
       expect(duplicateId(result.diagnostics)).toHaveLength(1);
+    });
+  });
+
+  // #2715 / TPL-2715: a `loc` is only an address together with the document it
+  // indexes. Every declaration these verdicts anchor on sits in an imported
+  // file, below a padding block the entry's line count never reaches, so a
+  // position read against the entry cannot land on a real line by accident.
+  describe("diagnostic file identity (#2715)", () => {
+    const ENTRY = "/project/index.krs";
+    const LEGACY = "/project/legacy.krs";
+    const FACETS = "/project/facets.krs";
+    const THEME = "/project/theme.krs.style";
+    const padding = Array.from({ length: 12 }, (_, i) => `// padding ${i + 1}`).join("\n");
+
+    /** The 1-based line / column `offset` falls on in `text`. */
+    const positionAt = (text: string, offset: number) => {
+      const before = text.slice(0, offset).split("\n");
+      return { line: before.length, column: before[before.length - 1].length + 1 };
+    };
+
+    beforeEach(async () => {
+      await fs.writeFile(
+        ENTRY,
+        `import "./legacy.krs"
+import "./facets.krs"
+
+system Next {
+  service Search
+}
+facet pii {
+  label "PII"
+}
+`,
+      );
+      // `user Stray` is a per-file parse diagnostic; the second `Search` loses
+      // the id to the entry's, so `node-id-multiple-locations` anchors here.
+      await fs.writeFile(LEGACY, `${padding}\nsystem Legacy {\n  service Search\n}\nuser Stray\n`);
+      // The entry declares `pii` first, so the duplicate is this one.
+      await fs.writeFile(FACETS, `${padding}\nfacet pii {\n  label "Personal data"\n}\n`);
+    });
+
+    it("names the imported file on a per-file parse diagnostic", async () => {
+      const result = await resolver.resolve(ENTRY);
+      const stray = result.diagnostics.find((d) => d.code === "top-level-declaration");
+
+      expect(stray?.loc?.file).toBe(LEGACY);
+      const lines = (await fs.readFile(LEGACY)).split("\n");
+      expect(lines[stray!.loc!.start.line - 1]).toContain("user Stray");
+    });
+
+    it("names the declaring file on verdicts decided on the merged model", async () => {
+      const result = await resolver.resolve(ENTRY);
+      const multiple = result.diagnostics.filter((d) => d.code === "node-id-multiple-locations");
+      const duplicateFacet = result.diagnostics.filter((d) => d.code === "duplicate-facet-id");
+
+      expect(multiple.map((d) => d.loc?.file)).toEqual([LEGACY]);
+      expect(duplicateFacet.map((d) => d.loc?.file)).toEqual([FACETS]);
+    });
+
+    // The resolver-wide form of the two above: no code is special. A new
+    // verdict that anchors on some other declaration kind is covered the day
+    // it lands, which a per-code assertion would not do.
+    it("gives every located diagnostic a file whose text resolves its position", async () => {
+      const result = await resolver.resolve(ENTRY);
+      const located = result.diagnostics.filter((d) => d.loc !== undefined);
+
+      // Not vacuous: all three kinds of producer are represented.
+      expect(new Set(located.map((d) => d.code))).toEqual(
+        new Set(["top-level-declaration", "node-id-multiple-locations", "duplicate-facet-id"]),
+      );
+      // Each row keeps its code, so a failure names the diagnostic that broke.
+      const claimed = located.map((d) => ({
+        code: d.code,
+        line: d.loc!.start.line,
+        column: d.loc!.start.column,
+      }));
+      const resolved = await Promise.all(
+        located.map(async (d) => ({
+          code: d.code,
+          ...(d.loc!.file === undefined
+            ? { line: undefined, column: undefined }
+            : positionAt(await fs.readFile(d.loc!.file), d.loc!.start.offset)),
+        })),
+      );
+      expect(resolved).toEqual(claimed);
+    });
+
+    // Decided in compile, after the resolver has returned, so a hook inside the
+    // resolver would not reach it. The file travels on the declaration's `loc`.
+    it("names each file on a compile-stage verdict that spans files", async () => {
+      await fs.writeFile(
+        ENTRY,
+        `import "./legacy.krs"\nsystem Next {\n  service A\n  service B\n  A -> B #shared\n}\n`,
+      );
+      await fs.writeFile(
+        LEGACY,
+        `${padding}\nsystem Legacy {\n  service C\n  service D\n  C -> D #shared\n}\n`,
+      );
+
+      const result = await compileProject(ENTRY, fs);
+      const duplicate = result.diagnostics.filter((d) => d.code === "duplicate-edge-id");
+
+      expect(duplicate.map((d) => d.loc?.file).sort()).toEqual([ENTRY, LEGACY].sort());
+    });
+
+    // Warnings carry the same `SourceRange`, and the app's warning panel reads
+    // it the way the banner reads a diagnostic's. Same whole-set contract.
+    it("gives every located warning of a project compile a file whose text resolves its position", async () => {
+      await fs.writeFile(ENTRY, `import "./legacy.krs"\nsystem Next {\n  service Api\n}\n`);
+      // Two services in one system sharing a domain id: `domain-dispersal`,
+      // anchored on declarations that live only in the imported file.
+      await fs.writeFile(
+        LEGACY,
+        `${padding}\nsystem Legacy {\n  service Orders { domain Order {} }\n  service Billing { domain Order {} }\n}\n`,
+      );
+
+      const result = await compileProject(ENTRY, fs);
+      const located = result.warnings.filter((w) => w.loc !== undefined);
+
+      expect(located.map((w) => w.kind)).toContain("domain-dispersal");
+      const claimed = located.map((w) => ({
+        kind: w.kind,
+        file: w.loc!.file,
+        line: w.loc!.start.line,
+        column: w.loc!.start.column,
+      }));
+      const resolved = await Promise.all(
+        located.map(async (w) => ({
+          kind: w.kind,
+          file: w.loc!.file,
+          ...(w.loc!.file === undefined
+            ? { line: undefined, column: undefined }
+            : positionAt(await fs.readFile(w.loc!.file), w.loc!.start.offset)),
+        })),
+      );
+      expect(resolved).toEqual(claimed);
+      expect(located.every((w) => w.loc!.file === LEGACY)).toBe(true);
+    });
+
+    // A compile handed both documents as strings has a path for neither, so a
+    // sheet position could only be read against the `.krs`. It reports what is
+    // wrong without claiming where, as it did before sheets had positions.
+    it("gives a string-compiled style sheet's parse errors no position to misread", () => {
+      const krs = `system Shop {\n  service Api\n}\n`;
+      const style = `/* 1 */\n/* 2 */\n/* 3 */\nservice {\n  fill: #ffffff;\n}\n}\n`;
+
+      for (const diagnostics of [
+        compile(krs, { styleSource: style }).diagnostics,
+        buildAllViewsSvg(krs, style).diagnostics,
+      ]) {
+        const mismatch = diagnostics.find((d) => d.code === "style-token-type-mismatch");
+        expect(mismatch).toBeDefined();
+        expect(mismatch!.loc).toBeUndefined();
+      }
+    });
+
+    it("names the style sheet, with a position, on its parse diagnostics", async () => {
+      await fs.writeFile(ENTRY, `@import "./theme.krs.style"\nsystem Shop {\n  service Api\n}\n`);
+      await fs.writeFile(THEME, `/* 1 */\n/* 2 */\n/* 3 */\nservice {\n  fill: #ffffff;\n}\n}\n`);
+
+      const result = await resolver.resolve(ENTRY);
+      const mismatch = result.diagnostics.find((d) => d.code === "style-token-type-mismatch");
+
+      expect(mismatch?.loc?.file).toBe(THEME);
+      const text = await fs.readFile(THEME);
+      expect(positionAt(text, mismatch!.loc!.start.offset)).toEqual({
+        line: mismatch!.loc!.start.line,
+        column: mismatch!.loc!.start.column,
+      });
+      // The stray brace is the last line; the entry has only four.
+      expect(mismatch!.loc!.start.line).toBe(7);
     });
   });
 });

@@ -4279,3 +4279,28 @@ system Test {
     expect(service.tags).toEqual(["my", "-"]);
   });
 });
+
+// #2715 / TPL-2715: a range names the document it indexes when the parse was
+// handed a path, so a diagnostic re-derived on a merged model still can.
+describe("Parser source file identity", () => {
+  const SOURCE = `system Shop {\n  service Api\n}\nuser Stray\n`;
+
+  it("stamps the path onto node ranges and diagnostic ranges alike", () => {
+    const result = Parser.parse(SOURCE, "/project/shop.krs");
+
+    expect(result.value.systems[0].loc.file).toBe("/project/shop.krs");
+    expect(result.value.systems[0].children[0].loc.file).toBe("/project/shop.krs");
+    const stray = result.diagnostics.find((d) => d.code === "top-level-declaration");
+    expect(stray?.loc?.file).toBe("/project/shop.krs");
+  });
+
+  // Omitted rather than `undefined`, so every single-document caller (the LSP,
+  // the formatter, 800-odd tests) sees the range shape it saw before.
+  it("leaves the key off entirely when no path is given", () => {
+    const result = Parser.parse(SOURCE);
+
+    expect(Object.keys(result.value.systems[0].loc)).toEqual(["start", "end"]);
+    const stray = result.diagnostics.find((d) => d.code === "top-level-declaration");
+    expect(stray?.loc && Object.keys(stray.loc)).toEqual(["start", "end"]);
+  });
+});
