@@ -211,6 +211,18 @@ export interface PreviewContextValue {
    * GUI style writes.
    */
   onPickEdgeDirection?: (canonicalId: string, direction: EdgeDirection) => void;
+
+  /**
+   * The document open in the editor, and the directory other files are shown
+   * relative to (the project root, or the entry's directory without a
+   * project). The diagnostic banner and the warning panel compare a finding's
+   * `loc.file` against the first to tell the open document's positions from an
+   * imported file's, and shorten the latter against the second (#2715). Required
+   * so a provider that stops passing them fails to compile instead of silently
+   * showing every position as a full path. `null` when there is none.
+   */
+  currentFilePath: string | null;
+  displayRoot: string | null;
 }
 
 const PreviewContext = createContext<PreviewContextValue | null>(null);

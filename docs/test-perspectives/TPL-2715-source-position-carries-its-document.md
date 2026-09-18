@@ -86,11 +86,23 @@ scope:
 
 ## 関連テスト
 
-- `packages/core/src/fs/import-resolver.test.ts`: resolver が返す診断のファイル識別
-- `packages/cli/src/render.test.ts`: cross-file 診断の印字（ファイル・行・列）
-- `packages/lsp/src/server.test.ts` › `range start is 0-based`: 1-based の core range を
-  0-based の LSP range に畳む変換
+- `packages/core/src/fs/import-resolver.test.ts` › `diagnostic file identity (#2715)`: resolver が返す
+  `loc` 付き診断が全件ファイルを持ち、そのファイルの本文で位置が解決できること（コード単位ではなく全件）。
+  compile 段階の判定と `.krs.style` の診断を含む
+- `packages/cli/src/render.e2e.test.ts` › `karasu render: diagnostic locations name their file (#2715)`:
+  stderr から印字された位置を読み戻し、そのファイルの該当行に宣言があることを確かめる（1 ずれの回帰ガード）
+- `packages/cli/src/compile-system-view.test.ts` › `diagLocFormatter`: エントリの綴りの保持、正規化した比較、
+  ほかのファイルの相対表示
+- `packages/cli/src/diff.e2e.test.ts` › `karasu diff: printed positions are not shifted (#2715)`: `karasu diff` の
+  1 ずれの回帰ガード
+- `packages/app/src/utils/diagnostic-location.test.ts`: プレビューバナーと warning パネルの位置表記
+  （スナップショットの mount やプロジェクトの無いモードのパスを含む）
+- `packages/app/src/components/WarningPanel.test.tsx` › `WarningPanel location`: warning も診断と同じ規則で
+  ファイルを名指す（片方の消費者だけ直す形の回帰ガード）
+- `packages/lsp/src/server.test.ts` › `range start is 0-based`: 1 始まりの core range を 0 始まりの
+  LSP range に畳む変換
 
-> 位置の base と `file` の意味を規定する `docs/spec/diagnostics.md` の「Source locations」節は
-> 実装 PR で新設する。その PR で節末の `> Related TPLs:` 注釈と本 TPL の「## 派生元 spec」節を
-> 同時に置き、相互リンクを揃える（`.claude/rules/spec-audit.md`）。
+## 派生元 spec
+
+- [`docs/spec/diagnostics.md`](../spec/diagnostics.md) の「Source locations」節: 位置が 1 始まりであること、
+  `file` の意味、無いときの解釈、各表示面の表記を規定する（#2715 で追加）

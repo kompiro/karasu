@@ -15,7 +15,7 @@ import type {
   Warning,
 } from "@karasu-tools/core";
 import { formatDiagnostic, formatWarning } from "./i18n.js";
-import { formatDiagLoc, resolveKrsFileOrExit } from "./compile-system-view.js";
+import { diagLocFormatter, resolveKrsFileOrExit } from "./compile-system-view.js";
 import { writeOutput } from "./output.js";
 
 type RenderFormat = "svg" | "drawio";
@@ -78,9 +78,10 @@ export async function render(filePath: string, options: RenderOptions): Promise<
   const diagWarnings = diagnostics.filter((d) => d.severity === "warning");
   const diagInfos = diagnostics.filter((d) => d.severity === "info");
 
+  const locOf = diagLocFormatter(filePath);
   function printDiagnostics(prefix: string, list: Diagnostic[]): void {
     for (const d of list) {
-      process.stderr.write(`${prefix}: ${formatDiagLoc(filePath, d)}: ${formatDiagnostic(d)}\n`);
+      process.stderr.write(`${prefix}: ${locOf(d)}: ${formatDiagnostic(d)}\n`);
     }
   }
 

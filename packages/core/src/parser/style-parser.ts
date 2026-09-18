@@ -23,15 +23,32 @@ export class StyleParser {
   private diagnostics: Diagnostic[] = [];
   private ruleIndex = 0;
   private sheetId: string;
+  /**
+   * Stamped onto every range the parser builds; see {@link SourceRange.file}.
+   * Trivia ranges come from the lexer and carry none: nothing anchors a
+   * diagnostic on a comment.
+   */
+  private readonly filePath: string | undefined;
 
-  constructor(tokens: Token[], sheetId: string = ANONYMOUS_SHEET_ID) {
+  constructor(tokens: Token[], sheetId: string = ANONYMOUS_SHEET_ID, filePath?: string) {
     this.tokens = tokens;
     this.sheetId = sheetId;
+    this.filePath = filePath;
   }
 
-  static parse(source: string, sheetId: string = ANONYMOUS_SHEET_ID): ParseResult<StyleSheet> {
+  /**
+   * @param filePath The sheet's absolute path, when it has one. Kept apart from
+   *   `sheetId` because a sheet id is not always a path: the built-in sheets
+   *   pass a synthetic id, and stamping that as a file would name a document
+   *   that does not exist (#2715).
+   */
+  static parse(
+    source: string,
+    sheetId: string = ANONYMOUS_SHEET_ID,
+    filePath?: string,
+  ): ParseResult<StyleSheet> {
     const tokens = new StyleLexer(source).tokenize();
-    const parser = new StyleParser(tokens, sheetId);
+    const parser = new StyleParser(tokens, sheetId, filePath);
     return parser.parseStyleSheet();
   }
 
@@ -70,6 +87,7 @@ export class StyleParser {
         severity: "error",
         code: "style-token-type-mismatch",
         params: { expected: String(type), got: String(token.type), value: token.value },
+        loc: this.rangeBetween(token, token),
       });
       return token;
     }
@@ -85,7 +103,7 @@ export class StyleParser {
   }
 
   private rangeBetween(start: Token, end: Token): SourceRange {
-    return { start: { ...start.loc }, end: this.endOfToken(end) };
+    return inFile({ start: { ...start.loc }, end: this.endOfToken(end) }, this.filePath);
   }
 
   private endOfToken(token: Token): SourceLocation {
@@ -291,6 +309,7 @@ export class StyleParser {
             severity: "error",
             code: "unknown-edge-selector-attribute",
             params: { attribute: inner.value },
+            loc: this.rangeBetween(inner, inner),
           });
         }
         lastToken = this.expect(TokenType.RightBracket);
@@ -323,6 +342,7 @@ export class StyleParser {
         severity: "error",
         code: "expected-style-property-name",
         params: { got: String(this.peek().type) },
+        loc: this.rangeBetween(this.peek(), this.peek()),
       });
       this.advance();
       return null;
@@ -388,7 +408,7 @@ export class StyleParser {
         atoms.push({
           kind: "string",
           value: t.value,
-          loc: tokenLoc(t),
+          loc: tokenLoc(t, this.filePath),
         });
       } else if (token.type === TokenType.Identifier) {
         const t = this.advance();
@@ -411,11 +431,11 @@ export class StyleParser {
             kind: "function",
             name: ident,
             argRaw: arg,
-            loc: rangeBetweenTokens(t, close ?? t),
+            loc: rangeBetweenTokens(t, close ?? t, this.filePath),
           });
         } else {
           parts.push(ident);
-          atoms.push(classifyIdentAtom(ident, t));
+          atoms.push(classifyIdentAtom(ident, t, this.filePath));
         }
       } else if (token.type === TokenType.Comma) {
         // Recovery for "comma instead of semicolon" (#1168): if the
@@ -430,6 +450,7 @@ export class StyleParser {
             severity: "error",
             code: "expected-semicolon-between-properties",
             params: { property: propertyName },
+            loc: this.rangeBetween(token, token),
           });
           this.advance(); // consume the comma — treat as `;`
           break;
@@ -456,9 +477,9 @@ export class StyleParser {
  * `readHexColor`). Numeric values (`12`, `12px`, `0.5`) similarly come
  * through as `Identifier`.
  */
-function classifyIdentAtom(value: string, token: Token): ValueNode {
+function classifyIdentAtom(value: string, token: Token, file: string | undefined): ValueNode {
   if (value.startsWith("#")) {
-    return { kind: "hex", value, loc: tokenLoc(token) };
+    return { kind: "hex", value, loc: tokenLoc(token, file) };
   }
   const numericMatch = /^(-?\d+(?:\.\d+)?)([a-zA-Z%]+)?$/.exec(value);
   if (numericMatch) {
@@ -470,17 +491,17 @@ function classifyIdentAtom(value: string, token: Token): ValueNode {
         value: numeric,
         unit,
         raw: numericMatch[1],
-        loc: tokenLoc(token),
+        loc: tokenLoc(token, file),
       };
     }
     return {
       kind: "number",
       value: numeric,
       raw: numericMatch[1],
-      loc: tokenLoc(token),
+      loc: tokenLoc(token, file),
     };
   }
-  return { kind: "ident", value, loc: tokenLoc(token) };
+  return { kind: "ident", value, loc: tokenLoc(token, file) };
 }
 
 function buildValueNode(atoms: ValueNode[], segmentStarts: number[]): ValueNode | undefined {
@@ -510,35 +531,74 @@ function buildValueNode(atoms: ValueNode[], segmentStarts: number[]): ValueNode 
   return {
     kind: "list",
     items,
-    loc: {
-      start: items[0].loc.start,
-      end: items[items.length - 1].loc.end,
-    },
+    // The items are atoms of one declaration, so they share its file.
+    loc: inFile(
+      { start: items[0].loc.start, end: items[items.length - 1].loc.end },
+      items[0].loc.file,
+    ),
   };
 }
 
-function tokenLoc(token: Token): SourceRange {
+/**
+ * Attach the sheet's file to a range when the parse was given one, omitting
+ * the key otherwise, so a sheet parsed without a path compares equal to the
+ * shape it had before (#2715, TPL-2715). Every caller hands in a range it has
+ * just built, so assigning in place is safe and spares a copy per range.
+ *
+ * The free range helpers below take `file` as a required parameter rather than
+ * an optional one: a range built without it would silently lose the sheet's
+ * identity, and this way a new call site cannot forget to pass it.
+ */
+function inFile(range: SourceRange, file: string | undefined): SourceRange {
+  if (file !== undefined) range.file = file;
+  return range;
+}
+
+/**
+ * The parse diagnostics of a sheet handed in as a string next to a `.krs`
+ * string, with their positions removed. Such a compile has two documents and a
+ * path for neither, so a position could only be read against the `.krs`,
+ * which is exactly the misreading #2715 removed; the rule that an absent
+ * `file` means the consumer's own document holds only for one document. The
+ * message still says what is wrong. Callers with paths go through the
+ * ImportResolver, where the sheet is named.
+ */
+export function unplacedStyleDiagnostics(diagnostics: readonly Diagnostic[]): Diagnostic[] {
+  return diagnostics.map((d) => {
+    if (d.loc === undefined) return d;
+    const { loc: _loc, ...rest } = d;
+    return rest as Diagnostic;
+  });
+}
+
+function tokenLoc(token: Token, file: string | undefined): SourceRange {
   const len = token.value.length;
-  return {
-    start: { ...token.loc },
-    end: {
-      line: token.loc.line,
-      column: token.loc.column + len,
-      offset: token.loc.offset + len,
+  return inFile(
+    {
+      start: { ...token.loc },
+      end: {
+        line: token.loc.line,
+        column: token.loc.column + len,
+        offset: token.loc.offset + len,
+      },
     },
-  };
+    file,
+  );
 }
 
-function rangeBetweenTokens(start: Token, end: Token): SourceRange {
+function rangeBetweenTokens(start: Token, end: Token, file: string | undefined): SourceRange {
   const len = end.value.length;
-  return {
-    start: { ...start.loc },
-    end: {
-      line: end.loc.line,
-      column: end.loc.column + len,
-      offset: end.loc.offset + len,
+  return inFile(
+    {
+      start: { ...start.loc },
+      end: {
+        line: end.loc.line,
+        column: end.loc.column + len,
+        offset: end.loc.offset + len,
+      },
     },
-  };
+    file,
+  );
 }
 
 /**
