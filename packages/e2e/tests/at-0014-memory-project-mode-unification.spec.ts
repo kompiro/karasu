@@ -190,14 +190,19 @@ for (const mode of MODES) {
       );
       const highlighted = page.locator('svg [data-node-id="Web"].karasu-highlighted');
       await expect(highlighted).toHaveCount(1);
+      // The hash carries the highlight (ADR-425), so it tells state apart from
+      // DOM: a class that vanished while the hash kept `:Web` was a re-render
+      // wiping the DOM, not a clear (#2789).
+      await expect(page).toHaveURL(/#krs-system-root:Web/);
 
-      // Highlight clears when the user drills/clicks elsewhere — confirm by
-      // clicking outside any node (the SVG background) and re-checking.
+      // Clicking the diagram background clears the highlight, in state as
+      // well as in the DOM.
       await page
         .locator(".preview-column svg")
         .first()
         .click({ position: { x: 5, y: 5 } });
       await expect(page.locator("svg .karasu-highlighted")).toHaveCount(0);
+      await expect(page).not.toHaveURL(/:Web/);
     });
 
     test("Removing the organization block keeps the Org tab clickable with an empty placeholder (AC-3.3)", async ({
