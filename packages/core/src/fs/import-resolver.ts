@@ -5,6 +5,7 @@ import type {
   KrsFile,
   SystemNode,
   KrsNode,
+  KrsEdge,
   ServiceNode,
   DeployBlock,
   OrganizationBlock,
@@ -115,6 +116,25 @@ export interface ResolvedProject {
   styleSheets: StyleSheet[];
   /** 解決中に発生した diagnostic */
   diagnostics: Diagnostic[];
+}
+
+/**
+ * Whether two edges are the same edge for the cross-file union.
+ *
+ * The identity is the one `docs/spec/syntax.md` § multi-file import semantics
+ * states — "Exact duplicates (same `from`, `to`, kind, label) are
+ * deduplicated; otherwise both are kept". `kind` is load-bearing: dropping it
+ * fuses `a -> b` and `a --> b` into whichever entry merged first, which is the
+ * sync/async distinction disappearing rather than a duplicate being removed.
+ *
+ * Every edge merge goes through here (#2780). The system reopen, the infra
+ * body union and the named-import merge each once spelled the comparison
+ * inline, and they had drifted to three different identities — the shape
+ * TPL-1385 warns about, where a merge enumerating fields disagrees with the
+ * spec once a field is left out.
+ */
+function isSameEdge(a: KrsEdge, b: KrsEdge): boolean {
+  return a.from === b.from && a.to === b.to && a.kind === b.kind && a.label === b.label;
 }
 
 /**
@@ -649,24 +669,12 @@ export class ImportResolver {
     // the tables but dropping the relations between them leaves a block that
     // looks complete and has quietly lost information (#2754).
     //
-    // The identity is the one `docs/spec/syntax.md` § multi-file import
-    // semantics states — "Exact duplicates (same `from`, `to`, kind, label) are
-    // deduplicated; otherwise both are kept". `kind` is load-bearing: dropping
-    // it fuses `a -> b` and `a --> b` into whichever entry merged first, which
-    // is the sync/async distinction disappearing rather than a duplicate being
-    // removed. A true duplicate keeps the first entry's body properties, the
-    // same root-entry-wins reconcile the block's own `label` / `description`
-    // already use.
+    // A true duplicate ({@link isSameEdge}) keeps the first entry's body
+    // properties, the same root-entry-wins reconcile the block's own `label` /
+    // `description` already use.
     for (const edge of source.edges) {
       if (target.edges.includes(edge)) continue;
-      const exists = target.edges.some(
-        (e) =>
-          e.from === edge.from &&
-          e.to === edge.to &&
-          e.kind === edge.kind &&
-          e.label === edge.label,
-      );
-      if (!exists) target.edges.push(edge);
+      if (!target.edges.some((e) => isSameEdge(e, edge))) target.edges.push(edge);
     }
   }
 
@@ -761,10 +769,7 @@ export class ImportResolver {
     }
     for (const edge of source.edges) {
       if (target.edges.includes(edge)) continue;
-      const edgeExists = target.edges.some(
-        (e) => e.from === edge.from && e.to === edge.to && e.label === edge.label,
-      );
-      if (!edgeExists) {
+      if (!target.edges.some((e) => isSameEdge(e, edge))) {
         target.edges.push(edge);
       }
     }
@@ -1303,10 +1308,7 @@ export class ImportResolver {
       }
       for (const edge of sourceSystem.edges) {
         if (edge.from === node.id || edge.to === node.id) {
-          const edgeExists = targetSystem.edges.some(
-            (e) => e.from === edge.from && e.to === edge.to,
-          );
-          if (!edgeExists) {
+          if (!targetSystem.edges.some((e) => isSameEdge(e, edge))) {
             targetSystem.edges.push(edge);
           }
         }
