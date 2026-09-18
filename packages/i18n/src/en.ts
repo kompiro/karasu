@@ -285,6 +285,7 @@ export const en: Translations = {
   "preview.docs.reference.label": "↗ Reference",
   "preview.docs.site.label": "↗ Documentation site",
   "preview.docs.site.ariaLabel": "Open the documentation site in a new tab",
+  "preview.location.line": ({ line }) => `Line ${line}`,
 
   // Warnings (rendered in the WarningPanel)
   "warning.domainDispersal.message": ({ domainId }) =>

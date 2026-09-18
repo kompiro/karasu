@@ -165,8 +165,9 @@ PR を close → 人間 PR で再提出 など）を行った場合は、その�
 
 ## 下ごしらえは workflow が済ませていることがある
 
-`.github/workflows/dependabot-triage.md`（週次）と `security-alert-sweep.md`
-（dispatch）が、upstream 追跡と alert の突き合わせを先に走らせている。トリアージを
+`.github/workflows/dependabot-triage.md` と `security-alert-sweep.md` が、upstream 追跡と
+alert の突き合わせを先に走らせていることがある。どちらも現在は dispatch のみで、自動では
+走らない（dependabot-triage の週次 cron は `ADR-2839` で停止中）。トリアージを
 始めたら、まず対象 PR のコメントと `[dep-triage]` / `[security-alert]` の Issue を
 読む。所見が既にあるなら追跡をやり直さず、**その所見を検証する側に時間を使う**。
 

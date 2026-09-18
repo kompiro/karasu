@@ -82,12 +82,13 @@ export async function diff(
     const errors = result.diagnostics.filter((d) => d.severity === "error");
     const diagWarnings = result.diagnostics.filter((d) => d.severity === "warning");
 
+    // Core positions are 1-based already; print them as they are (#2715).
     for (const d of errors) {
-      const loc = d.loc ? `${d.loc.start.line + 1}:${d.loc.start.column + 1}` : "";
+      const loc = d.loc ? `${d.loc.start.line}:${d.loc.start.column}` : "";
       process.stderr.write(`Error: ${loc} ${formatDiagnostic(d)}\n`);
     }
     for (const d of diagWarnings) {
-      const loc = d.loc ? `${d.loc.start.line + 1}:${d.loc.start.column + 1}` : "";
+      const loc = d.loc ? `${d.loc.start.line}:${d.loc.start.column}` : "";
       process.stderr.write(`Warning: ${loc} ${formatDiagnostic(d)}\n`);
     }
     for (const w of result.warnings ?? []) {

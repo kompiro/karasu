@@ -6,6 +6,7 @@ type: tool
 
 - **日付**: 2026-09-14
 - **関連 Issue**: [#2804](https://github.com/kompiro/karasu/issues/2804)
+- **設計 (ADR)**: [ADR-2804](../adr/2804-no-nul-bytes-guard.md)
 - **関連 ADR**: [ADR-953](../adr/953-ci-docs-only-paired-stub-workflow.md)（docs-only PR の paired stub。stub が `pnpm install` を伴わない検査を 1 本だけ持つ条件の根拠）
 - **Related TPLs**: [TPL-2804](../test-perspectives/TPL-2804-guard-scan-set-fails-loud-on-the-unknown.md)（走査集合は未知の要素で大声で落ちる側に定義する。本 Issue で起こした観点）、[TPL-2446](../test-perspectives/TPL-2446-gate-side-check-runs-over-the-whole-set.md)（gate 側の検証は全体を覆う）、[TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md)（列挙は最後に足したものを取りこぼす）、[TPL-2185](../test-perspectives/TPL-2185-drift-guard-distinguishes-declaration-from-mention.md)（宣言と言及を区別する）
 - **対象ファイル**:

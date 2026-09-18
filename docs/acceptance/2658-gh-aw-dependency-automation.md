@@ -4,7 +4,7 @@
 - **関連 Issue**: [#2658](https://github.com/kompiro/karasu/issues/2658)（automate Dependabot triage and security-alert sweeps with gh-aw）
 - **関連 TPL**: [TPL-2658](../test-perspectives/TPL-2658-agent-write-scope-is-declared-not-prompted.md)（書き込み範囲は宣言で検証する）
 - **対象ファイル**:
-  - `.github/workflows/dependabot-triage.md`（週次。open な Dependabot PR を upstream まで遡って所見コメントを書く）
+  - `.github/workflows/dependabot-triage.md`（週次。ただし cron は ADR-2839 で停止中で、現在は dispatch のみ。再開の条件は [#2839](https://github.com/kompiro/karasu/issues/2839) で追う。open な Dependabot PR を upstream まで遡って所見コメントを書く）
   - `.github/workflows/security-alert-sweep.md`（dispatch のみ。alert を掃いてトラッキング Issue を起票する）
   - `.github/workflows/*.lock.yml`（`gh aw compile` の生成物。実行されるのはこちら）
   - `scripts/ci/agentic-workflow-safety.test.ts`（書き込み範囲とコンパイル済みかのガード）

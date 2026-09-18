@@ -282,6 +282,7 @@ export const ja: Partial<Translations> = {
   "preview.docs.reference.label": "↗ Reference",
   "preview.docs.site.label": "↗ ドキュメントサイト",
   "preview.docs.site.ariaLabel": "ドキュメントサイトを新しいタブで開く",
+  "preview.location.line": ({ line }) => `${line} 行目`,
 
   // Warnings (rendered in the WarningPanel)
   "warning.domainDispersal.message": ({ domainId }) =>

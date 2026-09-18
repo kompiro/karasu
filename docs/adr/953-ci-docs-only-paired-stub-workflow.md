@@ -6,6 +6,7 @@ date: 2026-04-28
 topic: build
 related_to:
   - ADR-579
+  - ADR-2804
 scope:
   packages: []
   concerns:

@@ -272,6 +272,10 @@ export type Translations = {
   "preview.docs.site.label": string;
   "preview.docs.site.ariaLabel": string;
 
+  // The location prefix on a diagnostic / warning in the open document (#2715).
+  // A finding in another file is shown as `<path>:N` and needs no label.
+  "preview.location.line": (params: { line: number }) => string;
+
   // Warning messages (Phase D.1) — rendered in the WarningPanel.
   // One `message` key per WarningKind, plus optional `details` keys for
   // kinds that carry multi-line or repeated detail rows.
