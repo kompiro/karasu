@@ -148,6 +148,31 @@ system EC {
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
+  // #2707: an unquoted annotation parameter value is warned, not refused. The
+  // spec promises a lifecycle annotation never gates rendering, so the diagram
+  // must still be written; only `karasu fmt` stops on these.
+  it("still renders a file whose annotation parameter value cannot be read — Issue #2707", async () => {
+    const { writeFileSync } = await import("node:fs");
+    const krsPath = join(tmpDir, "index.krs");
+    const outPath = join(tmpDir, "out.svg");
+    writeFileSync(
+      krsPath,
+      `system Shop {
+  service Legacy @deprecated(until: 2026-12-31) {}
+  service Billing @deprecated(until: "2026-Q3") @deprecated(until: "2027-Q3") {}
+}
+`,
+      "utf-8",
+    );
+
+    await render(krsPath, { output: outPath });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(existsSync(outPath)).toBe(true);
+    expect(readFileSync(outPath, "utf-8")).toContain("<svg");
+    expect(streams.stderr()).toContain("until");
+  });
+
   // #1819: the cross-domain-store-access info diagnostic is a model-level fact
   // and must surface on the CLI render path (end-to-end AT for the diagnostic).
   it("surfaces the cross-domain-store-access info diagnostic — Issue #1819", async () => {
@@ -230,5 +255,105 @@ system EC {
     );
     expect(existsSync(join(tmpDir, "arch.matrix.svg"))).toBe(false);
     expect(exitSpy).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * #2715: a printed `<file>:<line>:<column>` must be an address a reader can
+ * follow. Each case parses the location back out of stderr, opens the file it
+ * names, and checks that line holds the construct the diagnostic is about. The
+ * imported files are padded past the entry's length, so a position read
+ * against the entry could not land on a real line by accident.
+ */
+describe("karasu render: diagnostic locations name their file (#2715)", () => {
+  let tmpDir: string;
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+  let streams: ReturnType<typeof captureStreams>;
+  const padding = Array.from({ length: 12 }, (_, i) => `// padding ${i + 1}`).join("\n");
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "karasu-render-loc-"));
+    exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as never);
+    streams = captureStreams();
+  });
+
+  afterEach(() => {
+    streams.restore();
+    exitSpy.mockRestore();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  /** The `file`, `line`, `column` a stderr line claims for the first match of `message`. */
+  function printedLocation(prefix: string, message: RegExp) {
+    const line = streams
+      .stderr()
+      .split("\n")
+      .find((l) => l.startsWith(`${prefix}: `) && message.test(l));
+    expect(line).toBeDefined();
+    const match = /^\w+: (.+):(\d+):(\d+): /.exec(line!);
+    expect(match).not.toBeNull();
+    return { file: match![1], line: Number(match![2]), column: Number(match![3]) };
+  }
+
+  /** The source line a printed location points at, read from the file it names. */
+  function lineAt(location: { file: string; line: number }): string {
+    return readFileSync(resolve(location.file), "utf-8").split("\n")[location.line - 1] ?? "";
+  }
+
+  it("prints a merged-model verdict at the imported file's line", async () => {
+    const { writeFileSync } = await import("node:fs");
+    const entry = join(tmpDir, "index.krs");
+    const legacy = join(tmpDir, "legacy.krs");
+    writeFileSync(entry, `import "./legacy.krs"\n\nsystem Next {\n  service Search\n}\n`);
+    writeFileSync(legacy, `${padding}\nsystem Legacy {\n  service Search\n}\n`);
+
+    await render(entry, { output: join(tmpDir, "out.svg") });
+
+    const location = printedLocation("Warning", /"Search" appears in multiple locations/);
+    expect(resolve(location.file)).toBe(legacy);
+    expect(lineAt(location)).toContain("service Search");
+    expect(location.column).toBe(3);
+  });
+
+  it("prints an imported file's parse error at that file's line", async () => {
+    const { writeFileSync } = await import("node:fs");
+    const entry = join(tmpDir, "index.krs");
+    const slice = join(tmpDir, "slice.krs");
+    writeFileSync(entry, `import "./slice.krs"\nsystem Shop {\n  service Api\n}\n`);
+    writeFileSync(slice, `${padding}\nsystem Slice {\n  service Worker\n}\nuser Stray\n`);
+
+    await render(entry, { output: join(tmpDir, "out.svg") });
+
+    const location = printedLocation("Error", /top-level user/);
+    expect(resolve(location.file)).toBe(slice);
+    expect(lineAt(location)).toBe("user Stray");
+    expect(location.column).toBe(1);
+  });
+
+  // The off-by-one on its own: one file, no imports. `user Bob` is line 4,
+  // column 1 of a 4-line file, and used to print as `5:2`.
+  it("prints a single-file position without shifting it", async () => {
+    const { writeFileSync } = await import("node:fs");
+    const entry = join(tmpDir, "single.krs");
+    writeFileSync(entry, `system Shop {\n  service Api\n}\nuser Bob\n`);
+
+    await render(entry, { output: join(tmpDir, "out.svg") });
+
+    expect(streams.stderr()).toContain(`Error: ${entry}:4:1: `);
+  });
+
+  it("prints a style sheet's parse error at the sheet's line", async () => {
+    const { writeFileSync } = await import("node:fs");
+    const entry = join(tmpDir, "styled.krs");
+    const theme = join(tmpDir, "theme.krs.style");
+    writeFileSync(entry, `@import "./theme.krs.style"\n\nsystem Shop {\n  service Api\n}\n`);
+    writeFileSync(theme, `/* 1 */\n/* 2 */\n/* 3 */\nservice {\n  fill: #ffffff;\n}\n}\n`);
+
+    await render(entry, { output: join(tmpDir, "out.svg") });
+
+    const location = printedLocation("Error", /Expected LeftBrace/);
+    expect(resolve(location.file)).toBe(theme);
+    expect(lineAt(location)).toBe("}");
+    expect(location.line).toBe(7);
   });
 });

@@ -37,6 +37,7 @@ import { useOrgDisplayMode } from "../hooks/useOrgDisplayMode.js";
 import { DiffModeBanner } from "./DiffModeBanner.js";
 import { DiagramViewShortcuts } from "./DiagramViewShortcuts.js";
 import { PreviewFocusShortcut } from "./PreviewFocusShortcut.js";
+import { displayRootFor } from "../utils/diagnostic-location.js";
 
 interface AppShellProps {
   entryPath: string | null;
@@ -318,6 +319,8 @@ export function AppShell({
   }, [entryPath, fs, fileContentRef]);
   const hasKrsSource = fileContent.trim() !== "";
 
+  const displayRoot = displayRootFor(projectRoot, entryPath);
+
   const previewContextValue = usePreviewContextValue({
     activeView,
     viewPath,
@@ -364,6 +367,8 @@ export function AppShell({
     onExportDrawio,
     hasKrsSource,
     getShareBundle,
+    currentFilePath,
+    displayRoot,
   });
 
   return (

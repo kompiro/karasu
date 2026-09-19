@@ -272,6 +272,10 @@ export type Translations = {
   "preview.docs.site.label": string;
   "preview.docs.site.ariaLabel": string;
 
+  // The location prefix on a diagnostic / warning in the open document (#2715).
+  // A finding in another file is shown as `<path>:N` and needs no label.
+  "preview.location.line": (params: { line: number }) => string;
+
   // Warning messages (Phase D.1) — rendered in the WarningPanel.
   // One `message` key per WarningKind, plus optional `details` keys for
   // kinds that carry multi-line or repeated detail rows.
@@ -502,6 +506,17 @@ export type Translations = {
     annotation: string;
     key: string;
   }) => string;
+  "diagnostic.annotationParamValueUnreadable.message": (params: {
+    annotation: string;
+    key: string;
+  }) => string;
+  "diagnostic.annotationParamConflict.message": (params: {
+    annotation: string;
+    key: string;
+    existing: string;
+    value: string;
+  }) => string;
+  "diagnostic.duplicateAnnotation.message": (params: { annotation: string }) => string;
   "diagnostic.linkUrlSchemeNotAllowed.message": (params: { url: string; scheme: string }) => string;
   "diagnostic.edgeSourceMismatch.message": (params: { from: string; parentId: string }) => string;
   "diagnostic.clientResourceInvalidKind.message": (params: {

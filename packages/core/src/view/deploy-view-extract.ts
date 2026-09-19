@@ -1,5 +1,7 @@
 import type { DeployBlock, DeployNode, NodeIdPath, SystemNode } from "../types/ast.js";
 import type { EdgeKind } from "../types/ast.js";
+import { INFRA_KIND_SET } from "../types/ast.js";
+import { buildEntityResolver } from "../resolver/resource-entity.js";
 import { deriveInfraEdges } from "./view-extract.js";
 import {
   nodePathIdentityKey,
@@ -202,9 +204,14 @@ export function extractDeployView(
   const containers: DeployContainer[] = [];
   const containerIdByPath = new Map<string, string>();
   const containerIdByBareId = new Map<string, string>();
+  // Containers whose ref named no single node (a broadcast over same-named
+  // nodes), by bare id. The only containers that realize a node the path
+  // lookup cannot reach.
+  const unpathedContainerIdByBareId = new Map<string, string>();
   for (const group of groupedByRealizes.values()) {
     const serviceId = containerIdOf(group);
     if (group.path) containerIdByPath.set(nodePathIdentityKey(group.path), serviceId);
+    else unpathedContainerIdByBareId.set(group.bareId, serviceId);
     if (!containerIdByBareId.has(group.bareId)) containerIdByBareId.set(group.bareId, serviceId);
     // A container is a job band member only when *every* unit is a `job`. A
     // mixed container (job + other kinds) stays on the dependency DAG so its
@@ -231,17 +238,31 @@ export function extractDeployView(
   const seenGhost = new Set<string>();
 
   // An endpoint is a bare id in its system's scope, so it addresses a
-  // container by path first (the id alone cannot tell two systems' same-named
-  // services apart) and falls back to the id for endpoints with no system
-  // context — the top-level infra `deriveInfraEdges` reaches.
-  const containerIdFor = (endpointId: string, systemId?: string): string | undefined =>
-    (systemId !== undefined
-      ? containerIdByPath.get(nodePathIdentityKey([systemId, endpointId]))
-      : undefined) ?? containerIdByBareId.get(endpointId);
+  // container by path first: the id alone cannot tell two systems' same-named
+  // services apart.
+  //
+  // When the path misses, what may answer depends on whether the system
+  // declares the id itself. If it does, the endpoint IS that node, so only a
+  // container realizing it without a path (a broadcast) is a match; another
+  // system's same-named container is not, and would draw `B.Api` depending on
+  // `A.Db` when only `A.Db` is deployed. If it does not, the endpoint lives
+  // outside the system (shared infra declared at the top level, or a store
+  // another system declares), and the id is the only handle left. That handle
+  // answers only while one container holds the id: with `B.Db` and `C.Db` both
+  // deployed, a service in A that declares no `Db` names neither, and picking
+  // the first would draw a dependency the model never states.
+  const declaredPaths = new Set(candidates.map((c) => nodePathIdentityKey(c.path)));
+  const containerIdFor = (endpointId: string, systemId: string): string | undefined => {
+    const pathKey = nodePathIdentityKey([systemId, endpointId]);
+    const byPath = containerIdByPath.get(pathKey);
+    if (byPath !== undefined) return byPath;
+    if (declaredPaths.has(pathKey)) return unpathedContainerIdByBareId.get(endpointId);
+    return groupsByBareId.get(endpointId) === 1 ? containerIdByBareId.get(endpointId) : undefined;
+  };
 
   const pushGhost = (
     edge: { from: string; to: string; label?: string; kind: EdgeKind },
-    systemId?: string,
+    systemId: string,
   ): void => {
     const from = containerIdFor(edge.from, systemId);
     const to = containerIdFor(edge.to, systemId);
@@ -259,15 +280,24 @@ export function extractDeployView(
       pushGhost({ from: edge.from, to: edge.to, label: edge.label, kind: edge.kind }, system.id);
     }
   }
-  // Derive service→infra dependencies over ALL systems' children at once, not
-  // per-system: shared infra is commonly declared at the top level (a dedicated
-  // infra file) and referenced by services inside a `system`, so the service and
-  // the infra node live in different `children` lists. A merged list lets that
-  // canonical pattern resolve. The deploy view is flat (not per-system), so
-  // merging is appropriate here.
+  // Derive service→infra dependencies one system's services at a time, against
+  // the infra of EVERY system: shared infra is commonly declared at the top
+  // level (a dedicated infra file) and referenced by services inside a
+  // `system`, so the service and the infra node live in different `children`
+  // lists, and a merged infra list lets that canonical pattern resolve. The
+  // services stay per system so each edge keeps the system it came from:
+  // derived over one merged list, the edges carried bare ids only, and a second
+  // system's same-named `Api -> Db` resolved to the first system's containers
+  // and was deduped away (#2817). Entity ids are one model-wide namespace
+  // (ADR-1870), so a single resolver serves every system.
   const allChildren = systems.flatMap((s) => s.children);
-  for (const edge of deriveInfraEdges(allChildren)) {
-    pushGhost({ from: edge.from, to: edge.to, kind: edge.kind });
+  const allInfra = allChildren.filter((n) => INFRA_KIND_SET.has(n.kind));
+  const entityResolver = buildEntityResolver(allChildren);
+  for (const system of systems) {
+    const services = system.children.filter((n) => n.kind === "service");
+    for (const edge of deriveInfraEdges([...services, ...allInfra], entityResolver)) {
+      pushGhost({ from: edge.from, to: edge.to, kind: edge.kind }, system.id);
+    }
   }
 
   return {

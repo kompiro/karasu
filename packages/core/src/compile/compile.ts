@@ -27,7 +27,7 @@ import type { StyleSheet, ResolvedStyles } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import type { FileSystemProvider } from "../fs/types.js";
 import { Parser } from "../parser/parser.js";
-import { StyleParser } from "../parser/style-parser.js";
+import { StyleParser, unplacedStyleDiagnostics } from "../parser/style-parser.js";
 import { type DraftState, getDraftState } from "../annotations/draft-confidence.js";
 import { getMigrationIntent, type MigrationIntent } from "../annotations/migration-intent.js";
 import { validateStyleValues } from "../style/value-validator.js";
@@ -594,7 +594,7 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
   const sheets: StyleSheet[] = [getBuiltinStyleSheet(opts.theme, opts.annotationBadgeLabels)];
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
-    diagnostics.push(...styleResult.diagnostics);
+    diagnostics.push(...unplacedStyleDiagnostics(styleResult.diagnostics));
     sheets.push(styleResult.value);
   }
   // Value-level validation runs inside `_compileFromPreparedInput` so

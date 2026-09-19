@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Lexer } from "./lexer.js";
+import { Lexer, isBareWord } from "./lexer.js";
 import { TokenType } from "../types/tokens.js";
 
 function tokenTypes(source: string): TokenType[] {
@@ -213,5 +213,57 @@ system "ECプラットフォーム" {
     const source = `description """\n    first\n      indented\n    """`;
     const tokens = new Lexer(source).tokenize();
     expect(tokens[1].value).toBe("first\n  indented");
+  });
+});
+
+describe("words that start with a digit (#2707)", () => {
+  it("reads a digit run as one Number token instead of dropping it", () => {
+    expect(new Lexer("2026").tokenize().map((t) => [t.type, t.value])).toEqual([
+      [TokenType.Number, "2026"],
+      [TokenType.EOF, ""],
+    ]);
+  });
+
+  it("keeps every part of a hyphenated date", () => {
+    // Before #2707 this was `Identifier("-")` twice: the digits were gone.
+    expect(tokenTypes("2026-12-31")).toEqual([
+      TokenType.Number,
+      TokenType.Identifier,
+      TokenType.Number,
+      TokenType.Identifier,
+      TokenType.Number,
+      TokenType.EOF,
+    ]);
+    expect(tokenValues("2026-12-31")).toEqual(["2026", "-", "12", "-", "31"]);
+  });
+
+  it("reads trailing letters into the same token", () => {
+    // One token, so a diagnostic covers the whole word, and `abc` is not left
+    // behind to be read as a plausible value.
+    expect(tokenValues("2026abc")).toEqual(["2026abc"]);
+    expect(tokenTypes("2026abc")[0]).toBe(TokenType.Number);
+  });
+
+  it("treats a non-ASCII digit as a digit", () => {
+    expect(tokenTypes("２０２６")[0]).toBe(TokenType.Number);
+  });
+
+  it("still reads a digit inside a word as part of an identifier", () => {
+    expect(new Lexer("Foo2").tokenize()[0]).toMatchObject({
+      type: TokenType.Identifier,
+      value: "Foo2",
+    });
+  });
+});
+
+describe("isBareWord", () => {
+  it("accepts what the lexer reads as one identifier word", () => {
+    const values = ["legacy", "Legacy_2", "_x", "日本語", "system"];
+    expect(values.filter((value) => !isBareWord(value))).toEqual([]);
+  });
+
+  it("rejects anything the lexer would split, drop or read as another token", () => {
+    const values = ["", "2legacy", "a-b", "a.b", "my legacy", "-", "#abc", "é!"];
+    expect(values.filter((value) => isBareWord(value))).toEqual([]);
   });
 });
