@@ -3653,6 +3653,33 @@ system S {
     const result = resolveStyles(file.systems, [sheet]);
     expect(result.nodes.get("Pay")!.borderStyle).toBe("dashed");
   });
+
+  it("matches a .krs.style selector when a fragment starts with a digit (#2707)", () => {
+    // The .krs.style lexer reads `team-1` as one identifier. The .krs lexer
+    // dropped the `1`, so the tag was `team` and the selector never matched.
+    const file = Parser.parse(`
+system S {
+  service Pay [team-1] {}
+}
+    `).value;
+    const sheet = StyleParser.parse(`
+[team-1] { border-style: dashed; }
+    `).value;
+    const result = resolveStyles(file.systems, [sheet]);
+    expect(result.nodes.get("Pay")!.borderStyle).toBe("dashed");
+  });
+
+  it("warns on a tag that starts with a digit instead of losing it (#2707)", () => {
+    const file = Parser.parse(`
+system S {
+  service A [2026] {}
+}
+    `).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]).filter(
+      (w) => w.kind === "tag-not-builtin",
+    );
+    expect(warnings.map((w) => w.params)).toEqual([{ nodeId: "A", tag: "2026" }]);
+  });
 });
 
 describe("table edge crossing two database blocks (#2722)", () => {

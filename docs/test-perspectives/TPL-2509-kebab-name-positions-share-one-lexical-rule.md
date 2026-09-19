@@ -9,6 +9,7 @@ applicable_to:
   - "同じ名前が `.krs` と `.krs.style` の両面から書かれる語彙を扱うとき"
 discovered_from:
   - issue: "#2509"
+  - issue: "#2707"
   - root_cause_file: "packages/core/src/parser/parser.ts"
 related_to:
   - TPL-1415
