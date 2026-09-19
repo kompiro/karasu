@@ -83,7 +83,7 @@ const onTeam = (annotations: string) =>
 
 // #2707: the lexer dropped digits, so `until: 2026-12-31` arrived as `-` `-`
 // and was recorded as `until: "-"`. A value is now one string literal or bare
-// word standing alone; anything else is an error and records nothing.
+// word standing alone; anything else is a warning and records nothing.
 describe("annotation parameter values that are not one token (#2707)", () => {
   const UNREADABLE = [
     `@deprecated(until: 2026)`,
@@ -97,17 +97,17 @@ describe("annotation parameter values that are not one token (#2707)", () => {
   ];
 
   for (const annotation of UNREADABLE) {
-    it(`reports ${annotation} as one unreadable-value error and records nothing`, () => {
+    it(`reports ${annotation} as one unreadable-value warning and records nothing`, () => {
       const src = onService(annotation);
-      const errors = diagnosticsOf(src, "annotation-param-value-unreadable");
+      const warnings = diagnosticsOf(src, "annotation-param-value-unreadable");
       const name = annotation.slice(1, annotation.indexOf("("));
       const key = annotation.slice(annotation.indexOf("(") + 1, annotation.indexOf(":"));
 
-      expect(errors).toHaveLength(1);
+      expect(warnings).toHaveLength(1);
       // A warning, so the model still renders; `format()` refuses this code by
       // name so `fmt` cannot write the value away (#2707).
-      expect(errors[0].severity).toBe("warning");
-      expect(errors[0].params).toEqual({ annotation: name, key });
+      expect(warnings[0].severity).toBe("warning");
+      expect(warnings[0].params).toEqual({ annotation: name, key });
       expect(paramsOf(src)).toEqual([]);
       // `2026-12-31` used to report `-` as an unsupported key; `Shop.Legacy`, `.`.
       expect(diagnosticsOf(src, "annotation-param-unsupported")).toEqual([]);
@@ -119,12 +119,12 @@ describe("annotation parameter values that are not one token (#2707)", () => {
     expect(paramsOf(onService(`@migration_target(from: Legacy-Monolith)`))).toEqual([]);
   });
 
-  it("ranges the error over the whole value the author wrote", () => {
+  it("ranges the warning over the whole value the author wrote", () => {
     for (const value of ["2026-12-31", "2026abc"]) {
       const src = onService(`@deprecated(until: ${value})`);
-      const [error] = diagnosticsOf(src, "annotation-param-value-unreadable");
+      const [warning] = diagnosticsOf(src, "annotation-param-value-unreadable");
       const start = src.indexOf(value);
-      expect([value, error.loc?.start.offset, error.loc?.end.offset]).toEqual([
+      expect([value, warning.loc?.start.offset, warning.loc?.end.offset]).toEqual([
         value,
         start,
         start + value.length,
@@ -147,7 +147,7 @@ describe("annotation parameter values that are not one token (#2707)", () => {
     ).toEqual(["RightParen"]);
   });
 
-  it("reads the quoted spelling the error points to", () => {
+  it("reads the quoted spelling the warning points to", () => {
     for (const [annotation, expected] of [
       [`@deprecated(until: "2026-12-31")`, { deprecated: { until: "2026-12-31" } }],
       [`@migration_target(from: "Shop.Legacy")`, { migration_target: { from: "Shop.Legacy" } }],
@@ -173,12 +173,12 @@ describe("annotation parameter values that are not one token (#2707)", () => {
     expect(diagnosticsOf(src, "annotation-param-value-unreadable")).toEqual([]);
   });
 
-  it("reports the same error on a team", () => {
-    const errors = diagnosticsOf(
+  it("reports the same warning on a team", () => {
+    const warnings = diagnosticsOf(
       onTeam(`@deprecated(until: 2026-12-31)`),
       "annotation-param-value-unreadable",
     );
-    expect(errors.map((d) => d.params)).toEqual([{ annotation: "deprecated", key: "until" }]);
+    expect(warnings.map((d) => d.params)).toEqual([{ annotation: "deprecated", key: "until" }]);
   });
 });
 
@@ -196,6 +196,22 @@ describe("repeated annotations and parameters (#2707)", () => {
       "deprecated",
       "deprecated",
     ]);
+  });
+
+  it("ranges the repeat over the whole name, kebab fragments included", () => {
+    // The range used to end where the last *token* of the name starts, so
+    // `@deprecated` collapsed to a point and `@phase-2` stopped before `2`
+    // (#2707 review).
+    for (const name of ["deprecated", "phase-2"]) {
+      const src = onService(`@${name} @${name}`);
+      const [repeat] = diagnosticsOf(src, "duplicate-annotation");
+      const start = src.lastIndexOf(`@${name}`) + 1;
+      expect([name, repeat.loc?.start.offset, repeat.loc?.end.offset]).toEqual([
+        name,
+        start,
+        start + name.length,
+      ]);
+    }
   });
 
   it("warns once per repeat", () => {

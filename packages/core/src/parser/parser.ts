@@ -1922,7 +1922,11 @@ export class Parser {
           severity: "warning",
           code: "duplicate-annotation",
           params: { annotation: name },
-          loc: this.range(nameToken.loc, nameEnd.loc),
+          // `nameEnd` is the last *token* of the (possibly kebab) name, so its
+          // `loc` is where that fragment starts. End the range past it, or the
+          // range over `@deprecated` collapses to a point and a kebab name
+          // loses its final fragment (#2707 review).
+          loc: this.range(nameToken.loc, nameEnd.end ?? nameEnd.loc),
         });
       }
       names.push(name);

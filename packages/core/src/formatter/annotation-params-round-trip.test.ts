@@ -292,7 +292,7 @@ describe("annotation parameter values keep their meaning", () => {
   });
 
   it("round-trips the quoted spelling of a value that cannot be written bare", () => {
-    // The fix the unreadable-value error points the author to.
+    // The fix the unreadable-value warning points the author to.
     for (const params of [`until: "2026-12-31"`, `from: "Shop.Legacy"`]) {
       const name = params.startsWith("from") ? "migration_target" : "deprecated";
       expect(expectRoundTrip(HOSTS.node(`@${name}(${params})`))).toContain(`@${name}(${params})`);

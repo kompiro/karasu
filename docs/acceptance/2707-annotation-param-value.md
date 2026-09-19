@@ -21,23 +21,23 @@ type: product
 
 - [x] AT-A: `until: 2026-12-31` は `annotation-param-value-unreadable`（warning）を 1 件だけ出し、何も記録しない。`-` を未対応キーとして名指しする警告は出ない
 
-  > ✅ Automated — `packages/core/src/parser/annotation-params.test.ts` › `annotation parameter values that are not one token (#2707)` › `reports @deprecated(until: 2026-12-31) as one unreadable-value error and records nothing`
+  > ✅ Automated — `packages/core/src/parser/annotation-params.test.ts` › `annotation parameter values that are not one token (#2707)` › `reports @deprecated(until: 2026-12-31) as one unreadable-value warning and records nothing`
 
-- [x] AT-B: 数字始まりの語・キーワード・ハイフンやドットでつながった並び・値の欠落が、すべて同じエラーになり何も記録しない（`2026` / `2026-Q3` / `2026abc` / `system` / `Legacy-Monolith` / `Shop.Legacy` / 空）
+- [x] AT-B: 数字始まりの語・キーワード・ハイフンやドットでつながった並び・値の欠落が、すべて同じ warning になり何も記録しない（`2026` / `2026-Q3` / `2026abc` / `system` / `Legacy-Monolith` / `Shop.Legacy` / 空）
 
-  > ✅ Automated — 同上 › `reports @deprecated(until: 2026abc) as one unreadable-value error and records nothing` ほか、同じ describe の各入力のケース
+  > ✅ Automated — 同上 › `reports @deprecated(until: 2026abc) as one unreadable-value warning and records nothing` ほか、同じ describe の各入力のケース
 
-- [x] AT-C: エラーの範囲が、著者が書いた値全体を覆う
+- [x] AT-C: warning の範囲が、著者が書いた値全体を覆う
 
-  > ✅ Automated — 同上 › `ranges the error over the whole value the author wrote`
+  > ✅ Automated — 同上 › `ranges the warning over the whole value the author wrote`
 
 - [x] AT-C2: `)` が欠けていても、読み取りは宣言のブロックで止まり、後続の宣言が巻き込まれず、後続のトークンを未対応キーとして名指ししない
 
   > ✅ Automated — 同上 › `stops at the block when the closing parenthesis is missing`
 
-- [x] AT-D: エラーが示す引用符つきの綴り（`until: "2026-12-31"` / `from: "Shop.Legacy"`）は診断なしで読まれ、`fmt` を通しても round-trip する
+- [x] AT-D: warning が示す引用符つきの綴り（`until: "2026-12-31"` / `from: "Shop.Legacy"`）は診断なしで読まれ、`fmt` を通しても round-trip する
 
-  > ✅ Automated — 同上 › `reads the quoted spelling the error points to`、および `packages/core/src/formatter/annotation-params-round-trip.test.ts` › `annotation parameter values keep their meaning` › `round-trips the quoted spelling of a value that cannot be written bare`
+  > ✅ Automated — 同上 › `reads the quoted spelling the warning points to`、および `packages/core/src/formatter/annotation-params-round-trip.test.ts` › `annotation parameter values keep their meaning` › `round-trips the quoted spelling of a value that cannot be written bare`
 
 - [x] AT-E: 読めない値の後ろのペアは通常どおり読まれる
 
@@ -66,6 +66,10 @@ type: product
 - [x] AT-I: 同じアノテーションを 1 つの要素に 2 回書くと `duplicate-annotation`（warning）が出て、名前は両方残る
 
   > ✅ Automated — `packages/core/src/parser/annotation-params.test.ts` › `repeated annotations and parameters (#2707)` › `warns on an annotation written twice and keeps both names`
+
+- [x] AT-I2: `duplicate-annotation` の範囲が、繰り返した名前全体を覆う（kebab 名の最後の断片まで含む）
+
+  > ✅ Automated — 同上 › `ranges the repeat over the whole name, kebab fragments included`
 
 - [x] AT-J: 同じパラメータに異なる 2 つの値を与えると `annotation-param-conflict`（warning）が出て、最初の値が残る。1 つのアノテーションの中で繰り返しても同じ
 
