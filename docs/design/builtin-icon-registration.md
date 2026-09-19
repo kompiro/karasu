@@ -8,7 +8,7 @@
   - 引き金 Issue: [#2802](https://github.com/kompiro/karasu/issues/2802)（残スコープは item 2 と 3。item 1 は [#2816](https://github.com/kompiro/karasu/issues/2816) へ移管済み）
   - 関連 Issue: [#2816](https://github.com/kompiro/karasu/issues/2816)（`url()` を `icon()` に改名する）、[#2696](https://github.com/kompiro/karasu/issues/2696)、[#2797](https://github.com/kompiro/karasu/pull/2797)
   - 関連 ADR: [ADR-9005](../adr/9005-svg-icon-file-import.md)（SVG ファイル + マニフェスト、ファイル I/O は利用側）、[ADR-1178](../adr/1178-style-value-diagnostics.md)（値レベル診断）、[ADR-2376](../adr/2376-icon-display-mode-de-emphasis-and-removal-path.md)（icon mode の removal path、移行先は `shape: url()`）、[ADR-299](../adr/299-vscode-icon-mode-toggle.md)（VS Code の icon mode トグル）
-  - 関連 TPL: [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)、[TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md)、[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)、[TPL-1024](../test-perspectives/TPL-1024-dev-vs-packaged-mode-parity.md)、[TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)（本 PR で起こす proactive TPL）
+  - 関連 TPL: [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)、[TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md)、[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)、[TPL-1024](../test-perspectives/TPL-1024-dev-vs-packaged-mode-parity.md)、[TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)（本 PR で起こす retrospective TPL）
   - コード: `packages/core/src/renderer/icon-manifest.ts`、`packages/core/src/shapes/shape-registry.ts`、`packages/core/src/style/value-validator.ts`、`packages/app/src/hooks/useSystemView.ts`
 
 ## 背景・課題
@@ -186,7 +186,7 @@ param は `{ property, name }`。
 - [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md): `.svg`/manifest と生成モジュールは二重表現になる。drift テストで正本から生成物を検証する。icon theme が使う名前が全部登録済みであることも同じ観点で固定する
 - [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md): `url()` の引数は「受理するが効果も警告もない」ghost vocabulary だった。案X はこれを「警告される」に移す
 - [TPL-1024](../test-perspectives/TPL-1024-dev-vs-packaged-mode-parity.md): CLI（`dist/index.js` だけを配布）と `.vsix` はバンドル済みで、`icons/` ディレクトリを持たない。生成モジュールはバンドルに入るので配置に依存しない。検証はバンドル後の成果物で行う
-- **[TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)（本 PR で新規、proactive）**: core の描画・診断が読むレジストリの中身は、ホストが何を呼んだかで変わってはならない。組み込みの中身は core が埋め、ホストの登録は追加だけに限る
+- **[TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)（本 PR で新規、retrospective — bug #2802 起源）**: core の描画・診断が読むレジストリの中身は、ホストが何を呼んだかで変わってはならない。組み込みの中身は core が埋め、ホストの登録は追加だけに限る
 
 ## 現時点の方針
 

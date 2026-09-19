@@ -13,7 +13,7 @@ known_consumers:
   - icon-manifest
   - icon-theme
   - value-validator
-  - useSystemView
+  - use-system-view
 discovered_from:
   - issue: "#2802"
   - root_cause_file: "packages/app/src/hooks/useSystemView.ts"
@@ -66,8 +66,7 @@ core の関数が「名前 → 実装」のレジストリを引くとき、**�
 
 レジストリを引くコード、組み込みの登録、描画面を追加・変更するときに確認する:
 
-- [ ] 組み込みの中身は core の import だけで登録されるか（ホストの呼び出しに依存していないか）
-- [ ] ホスト側の登録呼び出しは、利用者独自の追加だけになっているか。組み込みを登録しているホストコードが残っていないか
+- [ ] 組み込みの中身は core の import だけで登録されるか。core 外に残る登録呼び出しは利用者独自の追加だけか
       （`resolveIconManifest` / `registerIcon` / `registerShape` を core 外で grep する）
 - [ ] 「ホストが何もしない状態で core を import し、組み込み名を引くと実装が返る」ことをテストしているか
 - [ ] 組み込み登録を前提にした機能（icon theme が生成する名前など）が、すべて登録済みの名前だけを使っていることを parity テストで固定しているか
@@ -82,5 +81,14 @@ core の関数が「名前 → 実装」のレジストリを引くとき、**�
 
 ## 関連テスト
 
-- （#2802 の実装で追加予定）core を import しただけで `url("database")` と `displayMode: "icon"` がアイコンを描くことのテスト、
-  生成モジュールの drift テスト、`karasu render` のバンドル経由の e2e テスト
+- `packages/core/src/builtins/icon-theme.test.ts` — `ICON_RULES` から生成される各規則が `url()` 形式であることと、
+  そこで使う名前の取り合わせを固定する。ここに載る名前が「登録済みであること」までは見ておらず、本観点の穴はその差分にある
+- `packages/core/src/renderer/icon-manifest.test.ts` — マニフェストと SVG 文字列を渡したとき登録されることを見る。
+  渡す側（どのホストが呼ぶか）は対象外で、テストは自分で登録してから引く
+- `packages/core/src/renderer/svg-icon-loader.test.ts` — SVG 文字列 1 個の解析と登録
+- `packages/core/src/displaymode-meta.test.ts` — `displayMode` を通す公開エントリポイントの網羅。library 層の保証であって、
+  ホストがレジストリを埋めたかは見ない（TPL-1001 と同じ library / consumer の境目）
+
+> 上記はいずれも「登録済みである」ことを前提に置いており、**ホストが登録を忘れた状態そのものを落とすテストは現在の corpus に無い**。
+> #2802 の実装でそこを埋める: core を import しただけで `url("database")` と `displayMode: "icon"` がアイコンを描くこと、
+> 生成モジュールの drift、`karasu render` のバンドル経由の e2e。追加したらこの節へパスを書き足す
