@@ -175,6 +175,31 @@ describe("fmt() with explicit files", () => {
     expect(result).toContain(`@deprecated(until: "2026-12-31")`);
     expect(result).toContain(`team Platform @migration_target(from: Legacy) {`);
   });
+
+  // #2707: the lexer dropped the digits of an unquoted date, so this line was
+  // written back as `@deprecated(until: "-")`; a repeated annotation was
+  // written back with the second value over the first. Both are errors now, so
+  // `fmt` must leave the file exactly as the author wrote it.
+  it("leaves the file untouched when a parameter value cannot be kept (#2707)", async () => {
+    for (const [name, line] of [
+      ["unquoted.krs", `  service B @deprecated(until: 2026-12-31) { label "B" }`],
+      [
+        "conflict.krs",
+        `  service B @deprecated(until: "2026-Q3") @deprecated(until: "2027-Q3") {}`,
+      ],
+    ]) {
+      const src = [`system S {`, line, `}`, ``].join("\n");
+      const file = await writeKrs(name, src);
+      const stderr = captureStderr();
+      const exitSpy = mockExit();
+
+      await expect(fmt([file], {})).rejects.toThrow("process.exit(2)");
+      expect(exitSpy).toHaveBeenCalledWith(2);
+      expect(stderr.some((s) => s.includes(name))).toBe(true);
+      expect(readFileSync(file, "utf8")).toBe(src);
+      vi.restoreAllMocks();
+    }
+  });
 });
 
 // ── fmt() — no files, default discovery ──────────────────────────────────────

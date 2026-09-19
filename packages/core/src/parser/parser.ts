@@ -43,7 +43,7 @@ import type {
 } from "../types/ast.js";
 import { INFRA_KIND_SET, createEmptyKrsFile } from "../types/ast.js";
 import { LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
-import { Lexer } from "../lexer/lexer.js";
+import { Lexer, isBareWord } from "../lexer/lexer.js";
 import { isRecognizedResourceOperation, type CrudVerb } from "../spec/operations.js";
 import type { ResourceOperation } from "../spec/operations.js";
 import {
@@ -175,6 +175,37 @@ export function annotationParamKind(
   if (!Object.hasOwn(table, annotation)) return undefined;
   const keys = table[annotation];
   return Object.hasOwn(keys, key) ? keys[key] : undefined;
+}
+
+/** Where the parameter list stops being read: its `)`, EOF, or a brace that shows the `)` is missing. */
+function isAnnotationParamListEnd(token: Token): boolean {
+  return token.type !== TokenType.Comma && isAnnotationParamBoundary(token);
+}
+
+/**
+ * A token that can be a whole annotation parameter value: a string literal, or
+ * an identifier that is an actual word. The lexer also emits `-`, `--` and
+ * `#…` as identifiers; none of those is a value (#2707).
+ */
+function isAnnotationParamValueToken(token: Token): boolean {
+  if (token.type === TokenType.StringLiteral) return true;
+  return token.type === TokenType.Identifier && isBareWord(token.value);
+}
+
+/**
+ * Where one annotation parameter value ends: the next pair, the list's end, or
+ * EOF. A brace ends it too. No key or value contains one, so a brace means the
+ * `)` is missing and the declaration's block has begun (or ended); reading on
+ * would swallow the declarations that follow.
+ */
+function isAnnotationParamBoundary(token: Token): boolean {
+  return (
+    token.type === TokenType.Comma ||
+    token.type === TokenType.RightParen ||
+    token.type === TokenType.EOF ||
+    token.type === TokenType.LeftBrace ||
+    token.type === TokenType.RightBrace
+  );
 }
 
 /**
@@ -1881,12 +1912,28 @@ export class Parser {
       if (this.peek().type !== TokenType.Identifier) continue;
       // Kebab-case annotation names (`@my-team-mark`) arrive as a
       // `<word> - <word>` token run — stitch, same as tags (#2509).
-      const { name } = stitchKebabTail(this.advance(), this.cursor);
+      const nameToken = this.advance();
+      const { name, end: nameEnd } = stitchKebabTail(nameToken, this.cursor);
+      if (names.includes(name)) {
+        // A repeat says nothing the first occurrence did not, and
+        // `annotationParams` holds one slot per name, so it cannot carry a
+        // parameter of its own either (#2707).
+        this.diagnostics.push({
+          severity: "warning",
+          code: "duplicate-annotation",
+          params: { annotation: name },
+          // `nameEnd` is the last *token* of the (possibly kebab) name, so its
+          // `loc` is where that fragment starts. End the range past it, or the
+          // range over `@deprecated` collapses to a point and a kebab name
+          // loses its final fragment (#2707 review).
+          loc: this.range(nameToken.loc, nameEnd.end ?? nameEnd.loc),
+        });
+      }
       names.push(name);
       // Optional parameters: `@name(key: "value"[, key: "value"]*)`.
       if (this.peek().type === TokenType.LeftParen) {
         this.advance(); // (
-        while (this.peek().type !== TokenType.RightParen && this.peek().type !== TokenType.EOF) {
+        while (!isAnnotationParamListEnd(this.peek())) {
           // Skip separators between pairs.
           if (this.peek().type === TokenType.Comma || this.peek().type === TokenType.Colon) {
             this.advance();
@@ -1898,50 +1945,98 @@ export class Parser {
           const keyToken = this.advance();
           const key = keyToken.value;
           if (this.peek().type === TokenType.Colon) this.advance();
-          // Value may be a quoted string (`until: "2026-Q3"`) or a bare
-          // identifier referencing a node (`from: LegacyMonolith`).
-          const valueType = this.peek().type;
-          // A value the lexer produced as anything else (`until: 2026`, where
-          // `2026` is a Number) is unreadable here. Record nothing for it: the
-          // formatter emits what this map holds, so storing the `""` fallback
-          // would make `fmt` write a value the author never typed into their
-          // own file (#2571 review). Leaving the key out reproduces the bare
-          // `@deprecated` that a reader already gets today.
-          const readable =
-            valueType === TokenType.StringLiteral || valueType === TokenType.Identifier;
-          const value = readable ? this.advance().value : "";
-          if (!readable) {
-            // Consume the malformed value up to the next pair. Leaving it at
-            // the cursor made the loop read its tokens as the next key, so
-            // `from: system` reported `system` as an unsupported *key* — a
-            // diagnostic naming something the author never wrote as one.
-            while (
-              this.peek().type !== TokenType.Comma &&
-              this.peek().type !== TokenType.RightParen &&
-              this.peek().type !== TokenType.EOF
-            ) {
-              this.advance();
-            }
-          }
-          if (annotationParamKind(name, key) !== undefined) {
-            if (readable) (params[name] ??= {})[key] = value;
-          } else {
+          const read = this.readAnnotationParamValue(keyToken);
+          if (annotationParamKind(name, key) === undefined) {
             // Accepted-vocabulary rule (TPL-1503): a param with no
             // effect is warned, not silently kept. Only builtin keys have an
             // effect; custom annotations stay param-less for now (#1568).
+            // Its value is not judged: whatever it says, it has no effect.
             this.diagnostics.push({
               severity: "warning",
               code: "annotation-param-unsupported",
               params: { annotation: name, key },
               loc: this.range(keyToken.loc),
             });
+          } else if (read.kind === "unreadable") {
+            // Record nothing: the formatter emits what this map holds, so
+            // storing a fallback would make `fmt` write a value the author
+            // never typed (#2571 review). A warning, so the model still
+            // renders (`karasu render` refuses a file with errors, and the
+            // spec promises a lifecycle annotation never gates rendering).
+            // `format()` refuses this code by name instead, so `fmt --write`
+            // cannot print the bare annotation over what the author wrote
+            // (`FORMAT_BLOCKING_CODES`, #2707).
+            this.diagnostics.push({
+              severity: "warning",
+              code: "annotation-param-value-unreadable",
+              params: { annotation: name, key },
+              loc: read.loc,
+            });
+          } else {
+            const slot = (params[name] ??= {});
+            if (!Object.hasOwn(slot, key)) {
+              slot[key] = read.value;
+            } else if (slot[key] !== read.value) {
+              // The AST keeps one value per annotation and key, so a second,
+              // different value cannot be represented. Keep the first and
+              // reject the second. Like the unreadable value above, it is a
+              // warning that `format()` refuses by name, so rendering works
+              // and `fmt` does not print the first value over the second
+              // (#2707).
+              this.diagnostics.push({
+                severity: "warning",
+                code: "annotation-param-conflict",
+                params: { annotation: name, key, existing: slot[key], value: read.value },
+                loc: this.range(keyToken.loc, read.token.end ?? read.token.loc),
+              });
+            }
           }
           if (this.peek().type === TokenType.Comma) this.advance();
         }
-        if (this.peek().type === TokenType.RightParen) this.advance();
+        // A missing `)` stops at the block's brace (see
+        // `isAnnotationParamBoundary`) and is reported there, so the block and
+        // the declarations after it still parse.
+        if (this.peek().type !== TokenType.EOF) this.expect(TokenType.RightParen);
       }
     }
     return { names, params };
+  }
+
+  /**
+   * Read one annotation parameter value: a single string literal or bare word
+   * standing alone before `,` / `)` / EOF.
+   *
+   * Everything else is consumed up to the next pair and reported unreadable: a
+   * word starting with a digit (`2026`), a keyword (`system`), a run of tokens
+   * (`2026-12-31`, `Legacy-Monolith`, `Shop.Legacy`), or no value at all. A run
+   * must not be read by its first token. That recorded `until: "-"` for
+   * `2026-12-31` and `from: "Legacy"` for `Legacy-Monolith`, then read the rest
+   * as the next key. Consuming it also keeps a diagnostic from naming a value
+   * token as a key the author never wrote (#2571 review, #2707).
+   *
+   * Every value the formatter prints bare (`quoteId`) is a bare word, so it
+   * reads back as itself here.
+   */
+  private readAnnotationParamValue(
+    keyToken: Token,
+  ): { kind: "value"; value: string; token: Token } | { kind: "unreadable"; loc: SourceRange } {
+    const first = this.peek();
+    const standsAlone = isAnnotationParamBoundary(this.peekAt(1));
+    if (isAnnotationParamValueToken(first) && standsAlone) {
+      this.advance();
+      return { kind: "value", value: first.value, token: first };
+    }
+    let last = keyToken;
+    while (!isAnnotationParamBoundary(this.peek())) {
+      last = this.advance();
+    }
+    return {
+      kind: "unreadable",
+      loc:
+        last === keyToken
+          ? this.range(keyToken.loc, keyToken.end ?? keyToken.loc)
+          : this.range(first.loc, last.end ?? last.loc),
+    };
   }
 
   private parseEdge(implicitFrom?: string): KrsEdge {

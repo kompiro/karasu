@@ -188,10 +188,22 @@ Recognized keys (built-ins only):
 - **Graceful degradation by precision**: a `until` value that parses as a date (`YYYY-MM-DD`), year-month (`YYYY-MM`), or quarter (`YYYY-Qn`) is machine-usable (sortable / filterable); any other string (e.g. `"sometime next year"`) is kept verbatim as an opaque, display-only value. No validation error is raised for opaque values.
 - **No runtime evaluation**: `until` is recorded **intent**, not a deadline — karasu never compares it to the current date (no "overdue" diagnostic). Consistent with `job.schedule` (stored, not simulated) and the warn-don't-error stance.
 - **Unsupported parameters warn, not silently ignored**: a parameter on any other annotation, or with an unrecognized key, is dropped with an `annotation-param-unsupported` warning (TPL-1503 — accepted vocabulary must have an effect or be warned). Custom annotations are param-less for now.
+- **A value is one string literal or one bare word**: anything else is warned (`annotation-param-value-unreadable`) and nothing is recorded. That covers a word starting with a digit (`until: 2026`), a keyword (`from: system`), and a hyphenated or dotted run (`until: 2026-12-31`, `from: Legacy-Monolith`, `from: Shop.Legacy`). Quote such a value: `until: "2026-12-31"`, `from: "Shop.Legacy"`.
+- **One value per parameter on an element**: writing the same annotation twice on one element warns (`duplicate-annotation`). Giving the same parameter two different values, across repeated annotations or inside one, warns too (`annotation-param-conflict`) and the first value is kept, since an element holds one value per annotation and key.
+- **`karasu fmt` refuses a file holding either**: the diagram still renders, as it does for every lifecycle annotation, but the formatter prints what the AST holds, and here the AST no longer holds what the author wrote. Rewriting the file would turn an unreadable value into a bare annotation and print the kept value over the rejected one, so `fmt` stops with a message instead.
 - The annotation **name list** is unchanged by parameters, so `.krs.style` annotation selectors (`@deprecated`) and annotation inheritance are unaffected.
 - **One canonical spelling per value kind**: quoting is not recorded, so `karasu fmt` picks the form the value kind calls for. `until` / `confidence` are opaque display values and print quoted; `from` is a node reference and prints like any other reference, bare when the id allows it (`from: "legacy"` reformats to `from: legacy`, the same normalization `service "A"` gets).
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — an `@name(key: …)` with an unrecognized key/annotation is warned, never silently accepted. [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `fmt` must round-trip a parameter rather than drop it (#2571 dropped every one) and must not print a value the author never wrote.
+```krs
+system Shop {
+  service Legacy @deprecated(until: 2026-12-31)
+  service Billing @deprecated(until: "2026-Q3") @deprecated(until: "2027-Q3")
+}
+```
+
+`Legacy`'s value is not one token (write `until: "2026-12-31"`), and `Billing` gives `until` two different values. Neither stops the diagram; both stop `karasu fmt`.
+
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — an `@name(key: …)` with an unrecognized key/annotation is warned, never silently accepted. [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `fmt` must round-trip a parameter rather than drop it (#2571 dropped every one) and must not print a value the author never wrote. [TPL-2707](../test-perspectives/TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md) (an unquoted value must reach the parser whole so it can be refused; in #2707 the lexer dropped digits and `until: 2026-12-31` was recorded as `-`).
 
 ### `@draft` — asserted, not confirmed
 

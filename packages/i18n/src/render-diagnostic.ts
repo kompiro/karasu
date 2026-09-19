@@ -79,6 +79,12 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.teamPropertyRemoved.message");
     case "annotation-param-unsupported":
       return t("diagnostic.annotationParamUnsupported.message", d.params);
+    case "annotation-param-value-unreadable":
+      return t("diagnostic.annotationParamValueUnreadable.message", d.params);
+    case "annotation-param-conflict":
+      return t("diagnostic.annotationParamConflict.message", d.params);
+    case "duplicate-annotation":
+      return t("diagnostic.duplicateAnnotation.message", d.params);
     case "link-url-scheme-not-allowed":
       return t("diagnostic.linkUrlSchemeNotAllowed.message", d.params);
     case "edge-source-mismatch":

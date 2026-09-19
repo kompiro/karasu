@@ -1009,6 +1009,15 @@ export interface DiagnosticParamsByCode {
   // ── Parser semantic diagnostics ─────────────────────────────────────────
   "team-property-removed": Record<string, never>;
   "annotation-param-unsupported": { annotation: string; key: string };
+  // A recognized parameter's value is not one string literal or bare word
+  // (`until: 2026-12-31`, `from: system`), so nothing is recorded. An error so
+  // `fmt` refuses instead of printing the bare annotation (#2707).
+  "annotation-param-value-unreadable": { annotation: string; key: string };
+  // One element gives the same annotation parameter two different values. The
+  // AST holds one; the first is kept (#2707).
+  "annotation-param-conflict": { annotation: string; key: string; existing: string; value: string };
+  // The same annotation is written more than once on one element (#2707).
+  "duplicate-annotation": { annotation: string };
   "link-url-scheme-not-allowed": { url: string; scheme: string };
   "edge-source-mismatch": { from: string; parentId: string };
   "client-resource-invalid-kind": { kind: string; name: string };
