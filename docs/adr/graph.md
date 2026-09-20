@@ -307,6 +307,7 @@ flowchart TD
     ADR_2578["ADR-2578<br/>karasu-nest は server-side reverse をやめ、投稿を預かるギャラ..."]
     ADR_2592["ADR-2592<br/>ギャラリーの構築 — 投稿は repo に紐づかず、投稿者が自分で管理する"]
     ADR_2655["ADR-2655<br/>nest のセッション期限を idle 窓と絶対上限に分ける"]
+    ADR_2859["ADR-2859<br/>spike ブランチは答える Issue 番号で名付け、その Issue が open なあいだ残す"]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   end
   subgraph renderer["renderer"]
@@ -934,6 +935,7 @@ flowchart TD
   class ADR_2813 accepted
   class ADR_2836 accepted
   class ADR_2839 accepted
+  class ADR_2859 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

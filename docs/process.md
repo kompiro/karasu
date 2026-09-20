@@ -45,6 +45,7 @@
 - worktree の作成先は必ず `.claude/worktrees/<branch-name>` とする（例: `git worktree add .claude/worktrees/feat/my-feature feat/my-feature`）
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `spike/` + kebab-case
 - `spike/` はマージを前提としない PoC 用。この prefix だけは CI 上の意味を持ち、push で preview がデプロイされる（「spike を PR なしで preview で動かす」節）
+- spike は `spike/<issue>-<何を測ったか>` と名付け、その Issue が open なあいだは push して残す（「spike の名前と寿命」節）
 - **PR を出す前に main を取り込む — `rebase` は使わない。** `git fetch origin main` してから `git merge --no-edit origin/main`。rebase は他 PR のマージ済み成果を巻き添えで revert しうる。
 - **例外: stack 内のブランチは `gh stack sync` の rebase で `main` を取り込む。** スタックは各 PR の base を積み替える構造で、merge では表現できない。この 1 行は直上の rebase 禁止に優先する（「Stacked PR の進め方」）
 
@@ -313,6 +314,38 @@ bare host はそこへリダイレクトされる。
 - 発火条件はサイトが公開する doc（`PUBLISHED_EN_FILES`）と `packages/docs-site/**`。
   公開集合と `paths:` の drift は `pnpm run lint:docs-site-ci-paths-sync` が落とす。
 
+### spike の名前と寿命
+
+**到達状態**: `git ls-remote --heads origin 'spike/*'` に並ぶ各ブランチについて、
+先頭の番号が open な Issue を指している。番号の Issue が閉じた spike はそこに無い。
+
+```
+git switch -c spike/<issue>-<何を測ったか> origin/main
+```
+
+判断基準は 1 つ、**その spike が答える問いの Issue がまだ open か**。
+
+- **open な Issue の spike は push して残す。** 証拠（`reports/` 配下の計測結果・
+  スクリーンショット）がブランチにしか無い状態を作らない。preview が触れるまま
+  なのは副作用ではなく目的で、Issue を読む人が実物を触れる。
+- **Issue が閉じたら削除する。** `git push origin --delete spike/<name>` が preview の
+  後始末も兼ねる（「spike を PR なしで preview で動かす」節）。
+- **スラッグは「何を変えたか」ではなく「何を測ったか」を名乗る。** 同じ Issue に
+  2 本目を立てるのは別の問いを測るときなので、スラッグは自然に違う。同じ問いの
+  再測定なら同じブランチを使い回す。
+
+```
+spike/2632-deploy-edge-hover        # #2632: hover affordance の 3 つの関門を測る
+spike/2761-width-budget-ladder      # #2761: ladder を短くすると読み手が何を失うか
+```
+
+日付・通し番号・セッション名は名前に入れない。**記録は記録より長生きするアドレスを
+指す**（[TPL-2254](test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)）
+— セッションは数時間で消えるので半年後の読み手には意味を持たず、日付は git が既に
+持っている。Issue 番号と問いの名前だけが、ブランチと同じ寿命を持つ。
+
+決定の経緯は [ADR-2859](adr/2859-spike-branch-naming.md)。
+
 ### spike を PR なしで preview で動かす
 
 **到達状態**: `spike/` ブランチを push すると、PR を作らずに
@@ -334,10 +367,13 @@ gh run view <run-id>                                             # Summary に P
 - **URL は Summary に出たものを読む。** Cloudflare のブランチ alias は slug 化 +
   長さ切り詰めが入るため、ブランチ名から組み立てると外れる。
 - **後始末はブランチ削除。** `git push origin --delete spike/<name>` で `delete`
-  イベントが走り、そのブランチの preview デプロイが消える。spike を残したまま放置
-  すると preview も残る。
-- **この URL を記録に残さない。** ブランチを消した時点で 404 になるので、AT や
-  ドキュメントの到達先には書かない（「手動確認の到達先は本番 URL で書く」節）。
+  イベントが走り、そのブランチの preview デプロイが消える。消す契機は
+  **その spike が答える Issue が閉じたとき**で、open な間は preview が残るのが
+  正しい（「spike の名前と寿命」節）。
+- **この URL を記録に残さない。** Issue が閉じてブランチを消した時点で 404 になるので、
+  AT やドキュメントの到達先には書かない（「手動確認の到達先は本番 URL で書く」節）。
+  open な Issue のコメントに貼るのはよい — そのコメントは Issue が閉じるまでしか
+  参照されない。
 
 > `push` イベントで使われるワークフロー定義は push されたブランチ自身のものなので、
 > `spike-preview.yml` が main に入るより前に切ったブランチでは発火しない（エラーも
@@ -365,6 +401,8 @@ design doc / ADR / Issue に書く（ブランチより長生きする）。証�
   書き直さない（`reports/` 配下はライブラリを置けない — gitignore されるため）。
 - **`spike/` ブランチでは `git add -f reports/<topic>` してよい。** spike はマージ
   されないので main には届かず、レポートが spike ブランチと一緒に生き死にする。
+  だからこそ **open な Issue の spike は push する** — 証拠がローカルの 1 本にしか
+  無い状態を作らない（「spike の名前と寿命」節）。
 - **読むときは `artifact.html` を private な Claude Artifact として publish する**
   （[Issue #2436](https://github.com/kompiro/karasu/issues/2436)）。生成器は
   `index.html`（file:// で開く用）と `artifact.html`（publish 用、document の骨格を
