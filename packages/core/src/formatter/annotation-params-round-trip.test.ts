@@ -20,8 +20,9 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { format } from "./formatter.js";
+import { format, FormatError, FORMAT_BLOCKING_CODES } from "./formatter.js";
 import { Parser, ANNOTATION_PARAM_KEYS } from "../parser/parser.js";
+import { KRS_KEYWORD_NAMES } from "../lexer/lexer.js";
 
 function stripLocations<T>(node: T): T {
   if (Array.isArray(node)) return node.map((item) => stripLocations(item)) as unknown as T;
@@ -260,16 +261,41 @@ describe("annotation parameter values keep their meaning", () => {
   });
 
   it("writes no value for a parameter the parser could not read", () => {
-    // `2026` lexes as a Number and `system` as a keyword; neither is a value
-    // the parameter reader takes. Such a key must not reach the AST holding
-    // the empty-string fallback, because the formatter prints what the AST
-    // holds and `fmt --write` would bake `until: ""` into a file that never
-    // said it. Nothing recorded means the annotation prints bare, which is
-    // what a reader of this file already gets.
-    for (const src of [`@deprecated(until: 2026)`, `@migration_target(from: system)`]) {
-      const name = src.slice(1, src.indexOf("("));
-      expect(fmtNode(src)).toContain(`service A @${name} {`);
-      expectRoundTrip(HOSTS.node(src));
+    // None of these is a value the parameter reader takes: `2026` lexes as a
+    // Number, `system` as a keyword, and the rest are runs of several tokens.
+    // The key must not reach the AST holding a fallback (#2571 review), and
+    // since #2707 the value is an error, so `format` refuses the whole file
+    // rather than printing the bare annotation. Printing it bare would delete
+    // what the author wrote; `until: 2026-12-31` used to be written back as
+    // `until: "-"`.
+    for (const params of [
+      `until: 2026`,
+      `until: 2026-12-31`,
+      `until: 2026abc`,
+      `from: system`,
+      `from: Legacy-Monolith`,
+      `from: Shop.Legacy`,
+    ]) {
+      const name = params.startsWith("from") ? "migration_target" : "deprecated";
+      const src = HOSTS.node(`@${name}(${params})`);
+      const refused = (() => {
+        try {
+          format(src);
+          return false;
+        } catch (error) {
+          return error instanceof FormatError;
+        }
+      })();
+      // Paired with the input, so a failure names the spelling that broke.
+      expect([params, collectParams(Parser.parse(src).value), refused]).toEqual([params, [], true]);
+    }
+  });
+
+  it("round-trips the quoted spelling of a value that cannot be written bare", () => {
+    // The fix the unreadable-value warning points the author to.
+    for (const params of [`until: "2026-12-31"`, `from: "Shop.Legacy"`]) {
+      const name = params.startsWith("from") ? "migration_target" : "deprecated";
+      expect(expectRoundTrip(HOSTS.node(`@${name}(${params})`))).toContain(`@${name}(${params})`);
     }
   });
 
@@ -280,6 +306,54 @@ describe("annotation parameter values keep their meaning", () => {
     const src = `@deprecated @deprecated(until: "x")`;
     expect(fmtNode(src)).toContain(`service A @deprecated(until: "x") @deprecated(until: "x") {`);
     expectRoundTrip(HOSTS.node(src));
+  });
+
+  it("refuses every code it cannot preserve, and only as a warning elsewhere", () => {
+    // The set is the contract: these are warnings, so the model still renders
+    // (`karasu render` refuses only errors), and `fmt` alone stops (#2707).
+    const cases: Record<string, string> = {
+      "annotation-param-value-unreadable": `@deprecated(until: 2026-12-31)`,
+      "annotation-param-conflict": `@deprecated(until: "2026-Q3") @deprecated(until: "2027-Q3")`,
+    };
+    expect(Object.keys(cases).sort()).toEqual([...FORMAT_BLOCKING_CODES].sort());
+
+    for (const [code, annotation] of Object.entries(cases)) {
+      const src = HOSTS.node(annotation);
+      const raised = Parser.parse(src).diagnostics.filter((d) => d.code === code);
+      expect([code, raised.map((d) => d.severity)]).toEqual([code, ["warning"]]);
+      expect(() => format(src)).toThrow(FormatError);
+    }
+  });
+
+  it("refuses a repeated annotation whose parameter values differ", () => {
+    // The AST keeps one value per annotation and key. Before #2707 the second
+    // replaced the first, and `fmt` printed `2027-Q3` over the author's
+    // `2026-Q3` on both occurrences. The conflict is an error now, so `format`
+    // leaves the file alone.
+    const src = HOSTS.node(`@deprecated(until: "2026-Q3") @deprecated(until: "2027-Q3")`);
+    expect(() => format(src)).toThrow(FormatError);
+  });
+
+  it("reads back every reference it prints bare (#2707)", () => {
+    // The parameter reader takes one bare word; `quoteId` decides what is
+    // printed bare. Anything `quoteId` leaves bare must read back as itself,
+    // and anything else must come back quoted and still read back.
+    const ids = [
+      ...["legacy", "Legacy_2", "_x", "日本語", "store", "2legacy", "a-b", "a.b", "my legacy"],
+      // Every lexer keyword: a hand-copied keyword list printed `boundary` bare.
+      ...KRS_KEYWORD_NAMES,
+      // A character outside the BMP, which the lexer reads one UTF-16 unit at a time.
+      "𠮷野家",
+    ];
+    for (const id of ids) {
+      const src = HOSTS.node(`@migration_target(from: "${id}")`);
+      const formatted = expectRoundTrip(src);
+      // Paired with the input, so a failure names the id that broke.
+      expect([id, collectParams(Parser.parse(formatted).value)]).toEqual([
+        id,
+        [{ migration_target: { from: id } }],
+      ]);
+    }
   });
 
   it("emits no empty parentheses for a bare annotation", () => {

@@ -16,6 +16,7 @@ discovered_from:
   - issue: "#2087"
   - issue: "#2571"
   - issue: "#2650"
+  - issue: "#2707"
   - root_cause_file: "packages/core/src/formatter/formatter.ts:203"
   - root_cause_file: "packages/core/src/types/ast.ts :: KrsEdge.to"
   - root_cause_file: "packages/core/src/formatter/quote-id.ts:14"

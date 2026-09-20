@@ -403,7 +403,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | ID | タイトル | topic | 起源 |
 |---|---|---|---|
 | [TPL-1160](TPL-1160-top-level-orphans.md) | top-level orphans の扱い | core-concepts | #1160, #412 |
-| [TPL-1101](TPL-1101-round-trip-guarantee.md) | コード変換における round-trip 保証 | parser | #1101, #1058 |
+| [TPL-1101](TPL-1101-round-trip-guarantee.md) | コード変換における round-trip 保証 | parser | #1101, #1058, #2076, #2087, #2571, #2650, #2707 |
 | [TPL-1094](TPL-1094-enum-member-addition.md) | 列挙型メンバー追加時の更新漏れ | navigation | #1094 |
 | [TPL-1053](TPL-1053-continuous-input-dom-interference.md) | 連続操作中の DOM 介入 | app-ui | #1053 |
 | [TPL-999](TPL-999-implicit-data-filtering.md) | データ表示の暗黙フィルタ | renderer | #999, #132 |
@@ -491,7 +491,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2133](TPL-2133-parser-acceptance-documented-in-spec.md) | parser が受理する形は spec に文書化されている（受理 ⊆ 文書化）— undocumented leniency は実測（最小 `.krs` の parse）で棚卸しし、ADR で廃止した記法は全 construct を横断確認する | parser | #2133 |
 | [TPL-2158](TPL-2158-catalog-fenced-against-parser-not-generated-doc.md) | 手書き catalog（`REFERENCE_DATA` 等）は parser 実測で双方向に縛る。その catalog から生成した doc を正典に見立てた同期テストは循環しており恒真 | build | #2158 |
 | [TPL-2165](TPL-2165-containment-rule-has-single-definition.md) | containment 規則は `canContain` 1 箇所だけに定義し、parser がそれを読んで強制する。spec の表と実装に二重に書かない | parser | #2165 |
-| [TPL-2509](TPL-2509-kebab-name-positions-share-one-lexical-rule.md) | kebab-case 名を受けるポジションは 1 つの字句ヘルパーを共有する — 新しい名前ポジションはハイフン入り名を `.krs` / `.krs.style` 両面で検証し、keyword 断片も 1 ケース含める | parser | #2509, docs/spec/tags-annotations.md |
+| [TPL-2509](TPL-2509-kebab-name-positions-share-one-lexical-rule.md) | kebab-case 名を受けるポジションは 1 つの字句ヘルパーを共有する — 新しい名前ポジションはハイフン入り名を `.krs` / `.krs.style` 両面で検証し、keyword 断片も 1 ケース含める | parser | #2509, #2707, docs/spec/tags-annotations.md |
 | [TPL-2157](TPL-2157-resolved-relation-rendered-for-every-kind.md) | 解決済みの関係（`owns` / `realizes`）を提示する側の kind gate も spec が許す全 kind を列挙する — 描画・measure・metadata・各サーフェスを共有定数で通し、除外 kind は理由と assert を置く | renderer | ADR-1720, #2157 |
 | [TPL-2161](TPL-2161-declared-membership-not-discarded-in-derived-index.md) | 宣言された多重所属を派生 index で捨てない — 単一値しか扱えないビューの都合は view 側の解決（primary 選択）で吸収し、merge 経路も同じ多値の意味論に従わせる | core-concepts | ADR-1974, #2161 |
 | [TPL-2185](TPL-2185-drift-guard-distinguishes-declaration-from-mention.md) | drift guard は「宣言」と「言及」を区別する — 「正典の値以外が現れたら fail」は次期版への前方参照を stale と誤検出し、freeze 中の設計作業をブロックする | build | #2185 |
@@ -545,4 +545,5 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2804](TPL-2804-guard-scan-set-fails-loud-on-the-unknown.md) | 走査対象を持つガードは、未知の要素が黙って対象外になる側ではなく大声で落ちる側に集合を定義する。除外は全走査の上の deny-list で表し、裏付けのないエントリを finding にする。検出する症状が沈黙のとき、allow-list の取りこぼしは見逃しと区別できない | build | #2804 |
 | [TPL-2800](TPL-2800-diagram-pane-shared-viewer-affordances.md) | 図を描くペインは共有ビューアコンポーネントを通す — サブモードを素の div に流し込むと、その面だけフィット・ズーム・パン・診断を失う。図は描かれているので機能テストは緑のまま通り、面の選択が別の状態に gate されていると「時々おかしい」という形でしか現れない | app-ui | #2800, #2799, TPL-1537 |
 | [TPL-2789](TPL-2789-injected-dom-state-follows-reinjection.md) | 流し込んだ DOM に後から当てた状態は、流し込み直しと同じ契機で当て直す。React 19 は `{ __html }` のオブジェクトが別物なら文字列を比べずに流し込み直すので、インラインのリテラルは無関係な再レンダリングのたびに状態を消す。state は正しいまま DOM だけが食い違い、CI が重いときだけ落ちる flake として待機不足に見える | app-ui | #2789, #1171 |
+| [TPL-2707](TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md) | lexer は parser が拒否すべき入力を黙って捨ててはならない。捨てる文字の集合を 1 文字ずつの入力で完全一致に固定し、値を読むポジションは複数トークンの並びを先頭だけで読まず区切りまで消費して拒否する | parser | #2707, docs/spec/tags-annotations.md |
 | [TPL-2803](TPL-2803-measured-lines-are-drawn-lines.md) | カードの寸法を測るテキストレイアウトと描くテキストレイアウトは同じもの — 測った行はすべて描き、描く行はすべて測る。描画経路を 1 つ足すと、測定がその分岐を知らないままカードは正しい大きさで描かれ、中身だけが黙って欠ける | renderer | #2803 |

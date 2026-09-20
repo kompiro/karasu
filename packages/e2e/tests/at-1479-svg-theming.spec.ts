@@ -21,7 +21,11 @@ import { openViewTab } from "../fixtures/tabs.js";
  *
  * Waits are `expect.poll`: the preview recompiles asynchronously after a theme
  * change (~300ms observed), so a bare read races the old SVG
- * (TPL-20260510-14).
+ * (TPL-1171). That includes the *baseline* reads: the preview swaps the SVG
+ * subtree when it re-renders, and `getComputedStyle` on a node detached
+ * mid-swap returns "", so an unpolled baseline once captured "" as the dark node
+ * fill and failed the round-trip (#2850). An unreadable fill is therefore NaN
+ * luminance, so it satisfies no band and the poll keeps waiting.
  */
 
 const KRS = `system Demo {
@@ -66,7 +70,7 @@ const USER_COLOR = "rgb(255, 0, 170)";
 
 function luminance(rgb: string): number {
   const m = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-  if (!m) return -1;
+  if (!m) return Number.NaN;
   const [r, g, b] = [Number(m[1]), Number(m[2]), Number(m[3])].map((v) => {
     const c = v / 255;
     return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
@@ -96,6 +100,13 @@ const nodeFill = (page: Page, id: string) => () =>
     .evaluate((el) => getComputedStyle(el).fill)
     .catch(() => "");
 
+/** Waits until the node's fill is readable, then returns that reading. */
+async function readNodeFill(page: Page, id: string): Promise<string> {
+  let fill = "";
+  await expect.poll(async () => (fill = await nodeFill(page, id)())).not.toBe("");
+  return fill;
+}
+
 async function selectTheme(page: Page, theme: "light" | "dark"): Promise<void> {
   await page.getByRole("tab", { name: /Settings/ }).click();
   await page.locator("#settings-theme").selectOption(theme);
@@ -117,14 +128,14 @@ test.describe("AT-1479 SVG diagram theming (app)", () => {
     await expect(page.locator('.preview-container svg [data-node-id="Api"]')).toBeVisible();
 
     // Config default is dark (playwright.config.ts pins colorScheme).
-    expect(await canvasLuminance(page)()).toBeLessThan(0.2);
-    const darkNode = await nodeFill(page, "Api")();
+    await expect.poll(canvasLuminance(page)).toBeLessThan(0.2);
+    const darkNode = await readNodeFill(page, "Api");
 
     await selectTheme(page, "light");
     await page.getByRole("tab", { name: /System$/ }).click();
     await expect.poll(canvasLuminance(page)).toBeGreaterThan(0.5);
     // The node palette follows too, not just the backdrop.
-    expect(await nodeFill(page, "Api")()).not.toBe(darkNode);
+    expect(await readNodeFill(page, "Api")).not.toBe(darkNode);
 
     await selectTheme(page, "dark");
     await page.getByRole("tab", { name: /System$/ }).click();
