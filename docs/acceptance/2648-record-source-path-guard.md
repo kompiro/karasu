@@ -1,7 +1,8 @@
 # AT: 記録が名指すソースパスの存在ガード
 
 - **日付**: 2026-08-30
-- **関連 Issue**: [#2648](https://github.com/kompiro/karasu/issues/2648)
+- **関連 Issue**: [#2648](https://github.com/kompiro/karasu/issues/2648),
+  [#2810](https://github.com/kompiro/karasu/issues/2810)（`docs/test-perspectives` を `@kompiro/tpl-tools` に明け渡し、走査対象を 2 ディレクトリへ絞った）
 - **関連 ADR**: [ADR-706](../adr/706-rename-preview-column.md)（ADR 本文は当時の記録であり書き換えない — `docs/adr/**` を走査対象から外す根拠）
 - **対象ファイル**: `scripts/lint/record-source-paths.ts`,
   `docs/test-perspectives/TPL-2254-durable-record-points-at-durable-address.md`
@@ -10,7 +11,7 @@
 
 該当する観点は [TPL-2254](../test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)（記録は記録より長生きするアドレスを指す）。
 
-- [x] `docs/{acceptance,test-perspectives,design}` の記録が、実在しない `packages/**` / `scripts/**` のパスをコードスパンで名指ししていたら、ファイル・行・パスを挙げて落ちる
+- [x] `docs/{acceptance,design}` の記録が、実在しない `packages/**` / `scripts/**` のパスをコードスパンで名指ししていたら、ファイル・行・パスを挙げて落ちる
 
   > ✅ Automated — `scripts/lint/record-source-paths.test.ts` › `checkMarkdown` › `reports the file, line and path of a path that is not`
 
@@ -37,6 +38,18 @@
 - [x] `docs/adr/**` は走査対象に含まれない（本文は当時の記録 — ADR-706）
 
   > ✅ Automated — `scripts/lint/record-source-paths.test.ts` › `does not scan docs/adr, whose bodies are records of their time (ADR-706)`
+
+- [x] `docs/test-perspectives/**` も走査対象に含まれない。同じ検査を `@kompiro/tpl-tools` が持つので二重にしない（#2810）
+
+  > ✅ Automated — `scripts/lint/record-source-paths.test.ts` › `leaves docs/test-perspectives to tpl-tools, which owns it` / `scans exactly the record directories no upstream tool owns`
+
+- [x] TPL 本文が実在しないソースパスを名指ししていたら `pnpm run tpl:validate` が落ち、現行 corpus では通る。marker の綴りは両実装で同一
+
+  > ✅ Automated — `scripts/lint/tpl-validate-owns-tpl-dir.test.ts` › `fails when a TPL body names a path that is not in the tree` / `passes on the current corpus`
+
+- [x] `tpl:validate` は Required な `Check` の両ジョブ（`ci.yml` のコード PR 側、`at-check-coverage.yml` の docs PR 側）から走る。どちらかに寄せると、その側の PR で検査が消える
+
+  > ✅ Automated — `scripts/lint/tpl-validate-owns-tpl-dir.test.ts` › `runs tpl:validate from both Required Check jobs`
 
 - [x] 実リポジトリの記録が finding ゼロである
 

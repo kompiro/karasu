@@ -85,6 +85,18 @@ jobs:
       - name: Check ADR assumptions against the working tree
         run: pnpm exec adr check-assumptions --quiet
 
+      # `tpl validate --source-prefix` checks that the `packages/…` / `scripts/…`
+      # code spans in a TPL body still resolve, the way
+      # `scripts/lint/record-source-paths.ts` does for the other record
+      # directories. Same reasoning as the ADR step above: the companion
+      # `tpl-validate.yml` was path-filtered to `docs/test-perspectives/**`, so it
+      # never ran on the code PRs most likely to rot a reference — a rename or a
+      # deletion need not touch a single TPL. Running it in the already-Required
+      # `Check` job closes that gap, which is why that workflow is gone. Issue
+      # #2810 / ADR-2648.
+      - name: Validate TPL records against the working tree
+        run: pnpm run tpl:validate
+
       # The reference-docs drift guard lives in its own workflow
       # (`reference-docs-check.yml`), mirroring the ADR setup, so it also runs
       # on docs-only PRs that `ci.yml`'s `paths-ignore` filters out. Issue #1342.
