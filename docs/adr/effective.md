@@ -310,6 +310,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2578](2578-nest-retires-server-side-reverse.md) — karasu-nest は server-side reverse をやめ、投稿を預かるギャラリーになる
 - [ADR-2592](2592-nest-as-a-gallery.md) — ギャラリーの構築 — 投稿は repo に紐づかず、投稿者が自分で管理する
 - [ADR-2655](2655-nest-sliding-session.md) — nest のセッション期限を idle 窓と絶対上限に分ける
+- [ADR-2859](2859-spike-branch-naming.md) — spike ブランチは答える Issue 番号で名付け、その Issue が open なあいだ残す
 - [ADR-9006](9006-project-and-filesystem.md) — プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS
 
 ## renderer
