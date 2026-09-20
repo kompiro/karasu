@@ -3,7 +3,7 @@
 - **日付**: 2026-08-30
 - **関連 Issue**: [#2648](https://github.com/kompiro/karasu/issues/2648),
   [#2810](https://github.com/kompiro/karasu/issues/2810)（`docs/test-perspectives` を `@kompiro/tpl-tools` に明け渡し、走査対象を 2 ディレクトリへ絞った）
-- **関連 ADR**: [ADR-706](../adr/706-rename-preview-column.md)（ADR 本文は当時の記録であり書き換えない — `docs/adr/**` を走査対象から外す根拠）
+- **関連 ADR**: [ADR-2648](../adr/2648-record-source-path-guard.md)（本ガードの決定）, [ADR-706](../adr/706-rename-preview-column.md)（ADR 本文は当時の記録であり書き換えない — `docs/adr/**` を走査対象から外す根拠）
 - **対象ファイル**: `scripts/lint/record-source-paths.ts`,
   `docs/test-perspectives/TPL-2254-durable-record-points-at-durable-address.md`
 
