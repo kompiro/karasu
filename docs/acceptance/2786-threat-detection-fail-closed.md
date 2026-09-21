@@ -16,9 +16,16 @@
 
 ## 受け入れ条件
 
-- [x] AT-A: 両 workflow が `safe-outputs.threat-detection.continue-on-error: false` を宣言し、生成された lock が `GH_AW_DETECTION_CONTINUE_ON_ERROR: "false"` を持ち（欠落も finding）、`Conclude threat detection` ステップに `continue-on-error` が付いておらず、`safe_outputs` job が `needs.detection.result == 'success'` で gate されている
+- [x] AT-A: detection が結論を出せない回に宣言済み safe outputs が公開されない。両 workflow が `safe-outputs.threat-detection.continue-on-error: false` を宣言し、生成された lock が `GH_AW_DETECTION_CONTINUE_ON_ERROR: "false"` を持ち（欠落も finding）、`Conclude threat detection` ステップに `continue-on-error` が付いておらず、`safe_outputs` job の条件が承認済みの式と完全一致する（部分一致にすると `|| true` を含む式を通すため）
 
   > ✅ Automated — `scripts/ci/agentic-workflow-safety.test.ts` › `agentic workflow write scope` › `fails the run when threat detection cannot conclude`
+  >
+  > 「公開されない」を成立させているのは detection job の失敗そのものではなく、`continue-on-error` の不在と
+  > `safe_outputs` の gate の組である。実行を観測せずこの 2 つを検査するのは、宣言だけが実行系の境界だという
+  > [TPL-2658](../test-perspectives/TPL-2658-agent-write-scope-is-declared-not-prompted.md) と同じ理由による。
+  > なお gate されるのは `safe_outputs` だけで、gh-aw の `conclusion` job は `always()` で走り detection に
+  > 依存しないため、missing-tool / incomplete / failure レポート由来の Issue は失敗した run でも起こりうる。
+  > これは [ADR-2786](../adr/2786-threat-detection-fail-closed.md)「影響」に記録した残る露出である
 
 - [x] AT-B: frontmatter で pin した detection のモデルが lock に焼かれている（`gh aw compile` 忘れの検出）
 
@@ -36,27 +43,16 @@
   > 結論が出ない場合は [ADR-2786](../adr/2786-threat-detection-fail-closed.md)「却下した案」の
   > `threat-detection: false` との比較をやり直す
 
-- [ ] AT-E（manual）: detection が結論を出せない回は run が failure で終わり、宣言した safe outputs（PR コメントと `[dep-triage]` Issue）が 1 件も公開されない
+- [ ] AT-E（manual）: `Dependabot security alert sweep` でも pin が効き、detection が結論を出す
 
-  > 🧑 Manual — **判定を待つ項目であって、こちらから起こす項目ではない。** release configuration に
-  > 失敗を注入する手段は無く、pin を外して試すのは別の設定を試すことになる。detection が結論を出せない run が
-  > 実際に起きたとき（#2786 のとおり、これまでは全 run がそうだった）に、`safe_outputs` job が skipped で
-  > あること、run のサマリが success ではないこと、`gh pr list --author "app/dependabot" --state open` の
-  > 各 PR に当該 run 由来のコメントが付いていないことを見る。
-  > 成立の機構そのもの（`continue-on-error` の不在と `safe_outputs` の gate）は AT-A が自動で押さえているので、
-  > ここで確かめるのは実機での挙動だけである。
-  > なお gh-aw の `conclusion` job は `always()` で走り detection に依存しないため、
-  > missing-tool / incomplete / failure レポート由来の Issue は失敗した run でも起こりうる。
-  > これは [ADR-2786](../adr/2786-threat-detection-fail-closed.md)「影響」に記録した残る露出であって、
-  > 本項目の不成立ではない
-
-- [ ] AT-F（manual）: `Dependabot security alert sweep` でも同じ posture が効いている
-
-  > 🧑 Manual — W2 を dispatch し、detection job の結論と safe outputs の有無が AT-D / AT-E と同じ関係に
-  > なっていることを見る。W2 は [ADR-2658](../adr/2658-gh-aw-dependency-automation.md) のとおり alert 自体を読めないため、
-  > ここで見るのは detection の posture だけで、sweep の成否は別問題
+  > 🧑 Manual — W2 を dispatch し、AT-D と同じものを detection job のログで見る。W2 は
+  > [ADR-2658](../adr/2658-gh-aw-dependency-automation.md) のとおり alert 自体を読めないため、ここで見るのは
+  > detection が起動して結論を出すことだけで、sweep の成否は別問題
 
 ## 手動確認
 
-AT-D / AT-E / AT-F。いずれも GitHub Actions 上での実行が判定そのものに要り、自動テストでは代替できない。
-実機確認は再実行される前提なのでチェックは常に未チェックのまま置く。
+AT-D / AT-E。どちらも「pin した model が catalog で解決して detection engine が起動するか」を問うもので、
+判定に Actions 上の実行そのものが要る。実機確認は再実行される前提なのでチェックは常に未チェックのまま置く。
+
+fail-closed の機構（detection が結論を出せない回に宣言済み safe outputs が公開されないこと）は AT-A が
+自動で判定しているので、同じ条件を手動項目に写していない。

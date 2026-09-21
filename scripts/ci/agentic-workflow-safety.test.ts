@@ -53,6 +53,19 @@ const INFERENCE_PERMISSION = "copilot-requests";
  */
 const THREAT_DETECTION = "threat-detection";
 
+/**
+ * The `safe_outputs` job condition gh-aw compiles today, matched whole. A
+ * substring test for the detection term would accept a disjunction that
+ * bypasses it (`needs.detection.result == 'success' || true` contains the
+ * term and is always true), so the whole expression is pinned instead.
+ *
+ * gh-aw changing this condition should be read and re-approved here rather
+ * than pattern-matched around: it decides whether a failed detection job
+ * stops the publish.
+ */
+const APPROVED_SAFE_OUTPUTS_CONDITION =
+  "(!cancelled()) && needs.agent.result != 'skipped' && needs.detection.result == 'success'";
+
 type Entry = { readonly key: string; readonly value: string };
 
 type Workflow = {
@@ -294,8 +307,10 @@ describe("agentic workflow write scope", () => {
       // missing-tool / incomplete reports, which ADR-2786 records as the
       // residual exposure rather than claiming it away.
       const condition = safeOutputsCondition(workflow.lock);
-      if (condition === null || !condition.includes("needs.detection.result == 'success'")) {
-        findings.push(`${workflow.name} → safe_outputs is not gated on the detection result`);
+      if (condition !== APPROVED_SAFE_OUTPUTS_CONDITION) {
+        findings.push(
+          `${workflow.name} → safe_outputs condition is not the approved one: ${condition ?? "(absent)"}`,
+        );
       }
       return findings;
     });

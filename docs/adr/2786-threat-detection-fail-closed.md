@@ -90,7 +90,8 @@ W2（`security-alert-sweep.md`）の双方に入れ、`gh aw compile` で lock �
   この案と fail-closed の比較はやり直す価値がある。
 - **posture だけ決めて pin は別 PR にする**: 決定としては独立しているが、pin の無い fail-closed は
   「次の dispatch で何も出ない」ことしか確かめられず、fail-closed が正しく働いた（検査を通って出力が公開された）ことを
-  観測できない。AT-D と AT-E を同じ 1 回の dispatch で判定するために同じ PR に入れる。
+  観測できない。posture の機構自体は実行を待たずに検査できる（AT-A）ので、残る未知は pin が効くかどうかだけであり、
+  それを 1 回の dispatch で見るために同じ PR に入れる。
 - **detection のモデルを alias ではなく `gh aw` の repository variable で指定する**: 指定先は同じ catalog なので、
   alias 解決が失敗する経路は変わらない。
 
