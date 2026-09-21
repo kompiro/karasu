@@ -211,6 +211,7 @@ VS Code 拡張と LSP の段階的実装。
 - [ADR-40](40-testing-library-react.md) — コンポーネントテストに `@testing-library/react` を採用する
 - [ADR-9012](9012-app-testing-strategy.md) — `packages/app` のテスト戦略 — `@testing-library/react` + renderHook + ARIA
 - [ADR-165](165-vitest-placement-in-monorepo.md) — vitest Placement in Monorepo — Workspace Delegation over Root Install
+- [ADR-2810](2810-tpl-source-path-check-ownership.md) — TPL 本文のソースパス照合を `@kompiro/tpl-tools` へ移し、Required な `Check` から走らせる
 
 ### ビルド / CI / インフラ / 依存関係
 
