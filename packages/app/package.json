@@ -24,7 +24,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "dompurify": "^3.4.13",
+    "dompurify": "^3.4.15",
     "fflate": "^0.8.3",
     "lucide-react": "^1.42.0",
     "marked": "^18.0.9",
