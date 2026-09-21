@@ -549,3 +549,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2789](TPL-2789-injected-dom-state-follows-reinjection.md) | 流し込んだ DOM に後から当てた状態は、流し込み直しと同じ契機で当て直す。React 19 は `{ __html }` のオブジェクトが別物なら文字列を比べずに流し込み直すので、インラインのリテラルは無関係な再レンダリングのたびに状態を消す。state は正しいまま DOM だけが食い違い、CI が重いときだけ落ちる flake として待機不足に見える | app-ui | #2789, #1171 |
 | [TPL-2707](TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md) | lexer は parser が拒否すべき入力を黙って捨ててはならない。捨てる文字の集合を 1 文字ずつの入力で完全一致に固定し、値を読むポジションは複数トークンの並びを先頭だけで読まず区切りまで消費して拒否する | parser | #2707, docs/spec/tags-annotations.md |
 | [TPL-2810](TPL-2810-two-implementations-agree-only-when-measured.md) | 同じ検査の実装が 2 つになったら、緑同士は一致の証明ではない — 差分 fixture で規則差を測り、移す先が merge を止められるかを確かめてから片方を退役させる | testing | #2810 |
+| [TPL-2803](TPL-2803-measured-lines-are-drawn-lines.md) | カードの寸法を測るテキストレイアウトと描くテキストレイアウトは同じもの — 測った行はすべて描き、描く行はすべて測る。描画経路を 1 つ足すと、測定がその分岐を知らないままカードは正しい大きさで描かれ、中身だけが黙って欠ける | renderer | #2803 |
