@@ -306,4 +306,16 @@ describe("the real records name paths that exist", () => {
   it("does not scan docs/adr, whose bodies are records of their time (ADR-706)", () => {
     expect(SCANNED_DIRS).not.toContain("docs/adr");
   });
+
+  // Not a gap: `tpl validate --source-prefix` owns that directory and runs from
+  // both Required `Check` jobs, and it reads Markdown better than this guard
+  // does (block-quoted fences, markers through a block quote). Scanning it here
+  // too would report those as findings. Issue #2810.
+  it("leaves docs/test-perspectives to tpl-tools, which owns it", () => {
+    expect(SCANNED_DIRS).not.toContain("docs/test-perspectives");
+  });
+
+  it("scans exactly the record directories no upstream tool owns", () => {
+    expect(SCANNED_DIRS).toEqual(["docs/acceptance", "docs/design"]);
+  });
 });

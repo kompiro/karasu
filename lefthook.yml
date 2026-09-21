@@ -43,7 +43,12 @@ pre-push:
       # Check job. Issue #1480.
       run: pnpm exec adr check-assumptions --quiet
     tpl-validate:
-      glob: "{docs/test-perspectives/**,tpl.config.json}"
+      # No `glob` on purpose, for the same reason as `record-source-paths` below:
+      # since #2810 this also checks that the `packages/…` / `scripts/…` code
+      # spans in a TPL body resolve, and what rots those is a code change — a
+      # rename or a deletion — that need not touch a single TPL path. Gating it
+      # on `docs/test-perspectives/**` would skip exactly those pushes. It reads
+      # ~140 small files, so it stays cheap enough to run on every push.
       run: pnpm run tpl:validate
     config-topics-sync:
       # adr.config.json and tpl.config.json duplicate the `topics` vocabulary.
