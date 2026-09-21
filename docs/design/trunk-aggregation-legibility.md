@@ -52,6 +52,7 @@
 - **既定（Group by: none）を変えない。** トランクは grouped 専用（#2364 で ungrouped は却下済み）。
 - **交差は表現で無害化する（ADR-1859）。** 交差が「接続に見えない」ことは装飾より優先する。装飾が交差マークを覆うのは許容しない。
 - **edge identity を保つ（ADR-1185）。** 束ねるのは描画であって統合ではない。各 `LayoutEdge` は自分の線・自分のラベル・自分の detail panel を持ち続ける。
+- **`packages/core` から環境を読まない。** core のソースは browser 向けパッケージ（i18n / nest / app / vscode）からも typecheck されるので、`process.env` を直接参照すると `TS2591` でそれらのビルドが落ちる（spike で実際に踏んだ）。本設計の 5 項目はいずれも切り替えスイッチを持たず、定数または既存の `LayoutOptions` として実装する。
 - out of scope: ungrouped ビューの混雑（dify `ApiBackend` の 8 本扇）、ポート扇の間隔に下限を設けること、`LANE_PITCH` の変更。
 
 ## 検討した選択肢
