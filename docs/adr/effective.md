@@ -310,6 +310,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2578](2578-nest-retires-server-side-reverse.md) — karasu-nest は server-side reverse をやめ、投稿を預かるギャラリーになる
 - [ADR-2592](2592-nest-as-a-gallery.md) — ギャラリーの構築 — 投稿は repo に紐づかず、投稿者が自分で管理する
 - [ADR-2655](2655-nest-sliding-session.md) — nest のセッション期限を idle 窓と絶対上限に分ける
+- [ADR-2859](2859-spike-branch-naming.md) — spike ブランチは答える Issue 番号で名付け、その Issue が open なあいだ残す
 - [ADR-9006](9006-project-and-filesystem.md) — プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS
 
 ## renderer
@@ -408,6 +409,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2045](2045-qa-checklist-triage-generator.md) — QA 手動チェックリスト生成のマーカー対応と 3-way triage
 - [ADR-2348](2348-at-records-point-at-issues.md) — AT レコードは Design Doc ではなく Issue を指す — 削除が規約で確定しているアドレスを記録に埋めない
 - [ADR-2648](2648-record-source-path-guard.md) — 記録が名指すソースパスを機械で照合し、不在が正しい場合は宣言させる
+- [ADR-2810](2810-tpl-source-path-check-ownership.md) — TPL 本文のソースパス照合を `@kompiro/tpl-tools` へ移し、Required な `Check` から走らせる
 - [ADR-9012](9012-app-testing-strategy.md) — `packages/app` のテスト戦略 — `@testing-library/react` + renderHook + ARIA
 
 ## vscode

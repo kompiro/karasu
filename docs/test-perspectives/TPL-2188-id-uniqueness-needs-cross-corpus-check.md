@@ -49,4 +49,4 @@ id 体系を導入・変更するときは、次のどちらか（両方が理�
 ## 関連テスト
 
 - [kompiro/tpl-tools `test/validate.test.ts`](https://github.com/kompiro/tpl-tools/blob/main/test/validate.test.ts) — `duplicate id check` suite（並行ブランチ衝突シナリオを `validateAll` で再現）
-- `.github/workflows/tpl-validate.yml` — 本 repo 側で `pnpm tpl:validate` を PR gate として実行
+- `.github/workflows/ci.yml` / `.github/workflows/at-check-coverage.yml` — 本 repo 側で `pnpm tpl:validate` を Required な `Check` の両ジョブから実行（#2810 以前は informative-only の `tpl-validate.yml` だった）
