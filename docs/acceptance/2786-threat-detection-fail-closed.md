@@ -16,7 +16,7 @@
 
 ## 受け入れ条件
 
-- [x] AT-A: 両 workflow が `safe-outputs.threat-detection.continue-on-error: false` を宣言し、生成された lock が `GH_AW_DETECTION_CONTINUE_ON_ERROR: "false"` を持ち、`Conclude threat detection` ステップに `continue-on-error` が付いていない
+- [x] AT-A: 両 workflow が `safe-outputs.threat-detection.continue-on-error: false` を宣言し、生成された lock が `GH_AW_DETECTION_CONTINUE_ON_ERROR: "false"` を持ち（欠落も finding）、`Conclude threat detection` ステップに `continue-on-error` が付いておらず、`safe_outputs` job が `needs.detection.result == 'success'` で gate されている
 
   > ✅ Automated — `scripts/ci/agentic-workflow-safety.test.ts` › `agentic workflow write scope` › `fails the run when threat detection cannot conclude`
 
@@ -38,9 +38,13 @@
 
 - [ ] AT-E（manual）: detection が結論を出せない回は run が failure で終わり、PR コメントも `[dep-triage]` Issue も 1 件も作られない
 
-  > 🧑 Manual — 判定には実際に detection が失敗する run が要る。`safe_outputs` job が skipped であること、
-  > run のサマリが success ではないこと、`gh pr list --author "app/dependabot" --state open` の各 PR に
-  > 当該 run 由来のコメントが付いていないことを見る
+  > 🧑 Manual — **判定を待つ項目であって、こちらから起こす項目ではない。** release configuration に
+  > 失敗を注入する手段は無く、pin を外して試すのは別の設定を試すことになる。detection が結論を出せない run が
+  > 実際に起きたとき（#2786 のとおり、これまでは全 run がそうだった）に、`safe_outputs` job が skipped で
+  > あること、run のサマリが success ではないこと、`gh pr list --author "app/dependabot" --state open` の
+  > 各 PR に当該 run 由来のコメントが付いていないことを見る。
+  > 成立の機構そのもの（`continue-on-error` の不在と `safe_outputs` の gate）は AT-A が自動で押さえているので、
+  > ここで確かめるのは実機での挙動だけである
 
 - [ ] AT-F（manual）: `Dependabot security alert sweep` でも同じ posture が効いている
 

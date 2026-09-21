@@ -135,6 +135,17 @@ function concludeStep(lock: string): string {
 }
 
 /**
+ * The `if:` condition of the `safe_outputs` job — the expression that decides
+ * whether anything is published. Fail-closed only means something because this
+ * reads the detection job's result: without it, failing the detection job would
+ * stop nothing.
+ */
+function safeOutputsCondition(lock: string): string | null {
+  const match = /^ {2}safe_outputs:$[\s\S]*?^ {4}if: (.*)$/m.exec(lock);
+  return match === null ? null : match[1];
+}
+
+/**
  * The model gh-aw baked into the detection job. The agent job's `COPILOT_MODEL`
  * is an expression over repository variables; a literal one is the detection
  * job's.
@@ -245,7 +256,14 @@ describe("agentic workflow write scope", () => {
       // The declaration only matters once compiled: gh-aw writes it into the
       // detection job as an environment variable and, separately, decides
       // whether to put `continue-on-error: true` on the steps that conclude.
-      for (const value of detectionContinueOnError(workflow.lock)) {
+      const compiled = detectionContinueOnError(workflow.lock);
+      if (compiled.length === 0) {
+        // An absent variable is not a passing check. If gh-aw renames it the
+        // loop below would iterate over nothing and the guard would go quiet
+        // on exactly the property it exists to hold (TPL-2804).
+        findings.push(`${workflow.name} → lock omits GH_AW_DETECTION_CONTINUE_ON_ERROR`);
+      }
+      for (const value of compiled) {
         if (value !== "false") {
           findings.push(
             `${workflow.name} → lock carries GH_AW_DETECTION_CONTINUE_ON_ERROR: ${value}`,
@@ -257,6 +275,12 @@ describe("agentic workflow write scope", () => {
         findings.push(`${workflow.name} → lock has no Conclude threat detection step`);
       } else if (/continue-on-error: true/.test(conclude)) {
         findings.push(`${workflow.name} → Conclude threat detection swallows its own failure`);
+      }
+      // The other half of the posture: a detection job that fails only stops
+      // the publish while `safe_outputs` is gated on its result.
+      const condition = safeOutputsCondition(workflow.lock);
+      if (condition === null || !condition.includes("needs.detection.result == 'success'")) {
+        findings.push(`${workflow.name} → safe_outputs is not gated on the detection result`);
       }
       return findings;
     });
