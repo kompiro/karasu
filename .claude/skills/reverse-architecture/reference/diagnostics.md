@@ -245,6 +245,7 @@ Validating `.krs.style` property names and values.
 | Code | Severity | Fires when |
 | --- | --- | --- |
 | `style-unknown-property` | warning | A style property name is not recognised. |
+| `style-unknown-icon` | warning | A `shape: url("<name>")` names no registered icon, so the node is drawn as `box`. Fires on every surface, because the built-in icon set is registered by core itself ([TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)). |
 | `style-invalid-enum-value` | error | A style value is not in the allowed enum. |
 | `style-invalid-hex-color` | error | A style hex color is malformed. |
 | `style-invalid-length-unit` | error | A style length uses a disallowed unit. |

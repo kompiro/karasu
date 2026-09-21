@@ -111,14 +111,53 @@ describe("validateStyleValues — shape union", () => {
     expect(validate(`service { shape: user; }`)).toEqual([]);
   });
 
-  it("accepts a url(...) value", () => {
-    expect(validate(`service { shape: url("shapes/cloud.svg"); }`)).toEqual([]);
+  it("accepts a url(...) value that names a built-in icon", () => {
+    expect(validate(`service { shape: url("cloud-node"); }`)).toEqual([]);
   });
 
   it("rejects an unknown shape", () => {
     const diags = validate(`service { shape: usre; }`);
     expect(diags).toHaveLength(1);
     expect(diags[0].code).toBe("style-invalid-enum-value");
+  });
+});
+
+// #2802: a `url()` whose name no icon answers to used to be accepted silently
+// and drawn as a `box` on every surface (TPL-1503 ghost vocabulary).
+describe("validateStyleValues — url() names a registered icon", () => {
+  it("warns with style-unknown-icon when the name is not registered, at the value's location", () => {
+    const diags = validate(`service {\n  shape: url("databse");\n}`);
+    expect(diags).toHaveLength(1);
+    expect(diags[0]).toMatchObject({
+      severity: "warning",
+      code: "style-unknown-icon",
+      params: { property: "shape", name: "databse" },
+    });
+    expect(diags[0].loc?.start.line).toBe(2);
+  });
+
+  it("stays silent for every built-in icon name, with no host registration", () => {
+    for (const name of ["database", "service", "client-web", "user-card", "queue-node", "oci"]) {
+      expect(validate(`service { shape: url("${name}"); }`)).toEqual([]);
+    }
+  });
+
+  it("reports the argument as written, so an unquoted or empty argument is still visible", () => {
+    expect(validate(`service { shape: url(databse); }`)[0].params).toMatchObject({
+      name: "databse",
+    });
+    expect(validate(`service { shape: url(); }`)[0].params).toMatchObject({ name: "" });
+  });
+
+  it("consults the injected registry instead of the process-wide one", () => {
+    const sheet = StyleParser.parse(`service { shape: url("my-icon"); }`).value;
+    expect(validateStyleValues(sheet, { isRegisteredShape: () => true })).toEqual([]);
+    expect(validateStyleValues(sheet, { isRegisteredShape: () => false })).toHaveLength(1);
+  });
+
+  it("does not stack on a structural error (an ident is never a url())", () => {
+    const diags = validate(`service { shape: usre; }`);
+    expect(diags.map((d) => d.code)).toEqual(["style-invalid-enum-value"]);
   });
 });
 

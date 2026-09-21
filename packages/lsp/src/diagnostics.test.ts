@@ -272,3 +272,20 @@ describe("computeDiagnostics — style documents (.krs.style)", () => {
     expect(error?.range.start).toEqual({ line: 6, character: 0 });
   });
 });
+
+// #2802: the LSP never draws, so before core registered its own icon set an
+// unknown-icon warning here would have been a false positive for every
+// correct name. Now the registry is the same on every surface (TPL-2802).
+describe("computeDiagnostics — url() icon names (.krs.style)", () => {
+  it("warns on a url() that names no registered icon, at the value's range", () => {
+    const diagnostics = computeDiagnostics(`service {\n  shape: url("databse");\n}`, true);
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0].severity).toBe(DiagnosticSeverity.Warning);
+    expect(messageOf(diagnostics[0])).toContain('url("databse")');
+    expect(diagnostics[0].range.start.line).toBe(1);
+  });
+
+  it("is silent for a built-in icon name without any host registration", () => {
+    expect(computeDiagnostics(`service { shape: url("database"); }`, true)).toEqual([]);
+  });
+});

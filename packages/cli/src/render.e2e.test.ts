@@ -356,4 +356,41 @@ describe("karasu render: diagnostic locations name their file (#2715)", () => {
     expect(lineAt(location)).toBe("}");
     expect(location.line).toBe(7);
   });
+
+  // #2802: the built-in icon set used to be registered by the browser app
+  // only, so `karasu render` drew every `url()` icon and icon display mode
+  // as a plain box, silently (TPL-1001, TPL-2802).
+  describe("built-in icons resolve in karasu render (#2802)", () => {
+    /** A path only `icons/database.svg` draws — the cylinder's side wall. */
+    const DATABASE_PICTOGRAM = "M2 4v12c0 1.7 3.6 3 8 3s8-1.3 8-3V4";
+
+    function writeStyledProject(shapeValue: string): { entry: string; theme: string } {
+      const { writeFileSync } = require("node:fs") as typeof import("node:fs");
+      const entry = join(tmpDir, "index.krs");
+      const theme = join(tmpDir, "theme.krs.style");
+      writeFileSync(entry, `@import "./theme.krs.style"\n\nsystem Shop {\n  service Api\n}\n`);
+      writeFileSync(theme, `service {\n  shape: ${shapeValue};\n}\n`);
+      return { entry, theme };
+    }
+
+    it('draws `shape: url("database")` as the built-in database icon', async () => {
+      const { entry } = writeStyledProject(`url("database")`);
+
+      await render(entry, { view: "system" });
+
+      expect(streams.stdout()).toContain(DATABASE_PICTOGRAM);
+      expect(streams.stderr()).not.toMatch(/style-unknown-icon|names no registered icon/);
+    });
+
+    it("warns when a url() names no icon, and still renders the node as a box", async () => {
+      const { entry } = writeStyledProject(`url("databse")`);
+
+      await render(entry, { view: "system" });
+
+      expect(streams.stdout()).toContain("<svg");
+      expect(streams.stdout()).not.toContain(DATABASE_PICTOGRAM);
+      expect(streams.stderr()).toMatch(/^Warning: .*url\("databse"\) names no registered icon/m);
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -1150,19 +1150,25 @@ export async function buildAllViewsSvgProject(
  * emits the codes handled below).
  */
 function diagnosticToWarning(d: Diagnostic): Warning | null {
+  // The validator anchors every diagnostic on the value it read; keep that
+  // position so the warning panel and `karasu render` point at the sheet's
+  // line the way the LSP and `karasu lint-style` already do (#2802).
+  const loc = d.loc ? { loc: d.loc } : {};
   switch (d.code) {
     case "style-invalid-enum-value":
-      return { kind: "style-invalid-enum-value", params: d.params };
+      return { kind: "style-invalid-enum-value", params: d.params, ...loc };
     case "style-invalid-hex-color":
-      return { kind: "style-invalid-hex-color", params: d.params };
+      return { kind: "style-invalid-hex-color", params: d.params, ...loc };
     case "style-missing-length-unit":
-      return { kind: "style-missing-length-unit", params: d.params };
+      return { kind: "style-missing-length-unit", params: d.params, ...loc };
     case "style-invalid-length-unit":
-      return { kind: "style-invalid-length-unit", params: d.params };
+      return { kind: "style-invalid-length-unit", params: d.params, ...loc };
     case "style-out-of-range":
-      return { kind: "style-out-of-range", params: d.params };
+      return { kind: "style-out-of-range", params: d.params, ...loc };
     case "style-unknown-property":
-      return { kind: "style-unknown-property", params: d.params };
+      return { kind: "style-unknown-property", params: d.params, ...loc };
+    case "style-unknown-icon":
+      return { kind: "style-unknown-icon", params: d.params, ...loc };
     default:
       return null;
   }

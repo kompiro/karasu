@@ -9,6 +9,9 @@ import {
   type ShapeContentInsetFn,
   type ShapePortFrameFn,
 } from "../shapes/shape-registry.js";
+// Side-effect import: the built-in icon set registers itself, so any surface
+// that can draw a shape can also draw `url("<built-in>")` (#2802, TPL-2802).
+import "../shapes/builtin-icons.js";
 
 // ---------------------------------------------------------------------------
 // Built-in shape definitions

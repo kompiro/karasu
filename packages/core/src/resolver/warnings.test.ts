@@ -3442,6 +3442,7 @@ describe("warningSeverity — exhaustive register map", () => {
     "style-invalid-length-unit": "warning",
     "style-out-of-range": "warning",
     "style-unknown-property": "warning",
+    "style-unknown-icon": "warning",
   };
 
   for (const [kind, expected] of Object.entries(EXPECTED_SEVERITY) as [

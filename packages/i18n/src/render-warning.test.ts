@@ -187,6 +187,10 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "style-unknown-property",
     params: { property: "color2" },
   },
+  "style-unknown-icon": {
+    kind: "style-unknown-icon",
+    params: { property: "shape", name: "databse" },
+  },
 };
 
 // Identifying fields that should appear verbatim in the rendered message,
@@ -236,6 +240,7 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "style-invalid-length-unit": ["stroke-width", "em"],
   "style-out-of-range": ["opacity", "1.5"],
   "style-unknown-property": ["color2"],
+  "style-unknown-icon": ["shape", "databse"],
 };
 
 const PLACEHOLDER = /\{\{[^}]+\}\}/;
