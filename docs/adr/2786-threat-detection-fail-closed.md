@@ -77,7 +77,8 @@ W2（`security-alert-sweep.md`）の双方に入れ、`gh aw compile` で lock �
 - **宣言は機械で検査できる。** `scripts/ci/agentic-workflow-safety.test.ts` が、frontmatter の
   `continue-on-error: false`、lock の `GH_AW_DETECTION_CONTINUE_ON_ERROR: "false"`、
   `Conclude threat detection` ステップに `continue-on-error` が付いていないこと、
-  frontmatter で pin したモデルが lock に焼かれていることを検査する。posture を黙って戻すと CI が落ちる
+  frontmatter でモデルが pin され、それが detection job の lock に焼かれていることを検査する。
+  いずれも detection job の中だけを読む（agent job は同名のキーを持つため）。posture を黙って戻すと CI が落ちる
   （[TPL-2786](../test-perspectives/TPL-2786-guard-failure-must-fail-the-run.md)、[TPL-2658](../test-perspectives/TPL-2658-agent-write-scope-is-declared-not-prompted.md) と同じ立て付け）。
 
 ## 却下した案
@@ -95,8 +96,16 @@ W2（`security-alert-sweep.md`）の双方に入れ、`gh aw compile` で lock �
 
 ## 影響
 
-- W1 / W2 の dispatch で detection が結論を出せない場合、run は failure で終わり、PR コメントも Issue も 1 件も作られない。
-  これまでのように「出力は出たが検査されていない」回は起きない。
+- W1 / W2 の dispatch で detection が結論を出せない場合、run は failure で終わり、`safe_outputs` job が skip される。
+  宣言した safe outputs（PR コメントと `[dep-triage]` / `[security-alert]` Issue）は 1 件も公開されない。
+- **残る露出**: gh-aw が生成する `conclusion` job は `always()` で走り、`if:` に detection の項を持たない。
+  この job は `issues: write` を持ち、エージェント自身の missing-tool / incomplete / failure レポートから
+  Issue を起こしうる。つまり「detection が検査していないエージェント由来のテキスト」が Issue になる経路は
+  完全には閉じていない。閉じない理由は 2 つある — この経路が運ぶのはエージェントの所見ではなく
+  「何ができなかったか」の報告に限られること、そして fail-closed で失敗した run を人が知る手段が
+  まさにこの job であることである。塞ぐと失敗がまた見えなくなる。
+  `scripts/ci/agentic-workflow-safety.test.ts` はこの区別をコメントとして持ち、gate しているのが
+  `safe_outputs` だけであることを明示する。
 - detection job の `COPILOT_MODEL` が `detection` から `copilot/claude-haiku-4.5` になる。pin が効くかどうかは
   Actions 上の dispatch でしか判定できないため、AT の手動項目として残す。
 - ADR-2658 の本文は書き換えない（[ADR-2687](2687-adr-body-is-immutable.md)）。本 ADR が上書きするのは安全網の failure posture だけで、

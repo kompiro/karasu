@@ -36,7 +36,7 @@
   > 結論が出ない場合は [ADR-2786](../adr/2786-threat-detection-fail-closed.md)「却下した案」の
   > `threat-detection: false` との比較をやり直す
 
-- [ ] AT-E（manual）: detection が結論を出せない回は run が failure で終わり、PR コメントも `[dep-triage]` Issue も 1 件も作られない
+- [ ] AT-E（manual）: detection が結論を出せない回は run が failure で終わり、宣言した safe outputs（PR コメントと `[dep-triage]` Issue）が 1 件も公開されない
 
   > 🧑 Manual — **判定を待つ項目であって、こちらから起こす項目ではない。** release configuration に
   > 失敗を注入する手段は無く、pin を外して試すのは別の設定を試すことになる。detection が結論を出せない run が
@@ -44,7 +44,11 @@
   > あること、run のサマリが success ではないこと、`gh pr list --author "app/dependabot" --state open` の
   > 各 PR に当該 run 由来のコメントが付いていないことを見る。
   > 成立の機構そのもの（`continue-on-error` の不在と `safe_outputs` の gate）は AT-A が自動で押さえているので、
-  > ここで確かめるのは実機での挙動だけである
+  > ここで確かめるのは実機での挙動だけである。
+  > なお gh-aw の `conclusion` job は `always()` で走り detection に依存しないため、
+  > missing-tool / incomplete / failure レポート由来の Issue は失敗した run でも起こりうる。
+  > これは [ADR-2786](../adr/2786-threat-detection-fail-closed.md)「影響」に記録した残る露出であって、
+  > 本項目の不成立ではない
 
 - [ ] AT-F（manual）: `Dependabot security alert sweep` でも同じ posture が効いている
 

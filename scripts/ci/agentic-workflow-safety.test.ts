@@ -118,19 +118,29 @@ function scalarAt(front: string, path: readonly string[]): string | null {
   return null;
 }
 
+/**
+ * The `detection:` job of the lock file. Everything below reads inside it
+ * rather than across the whole file: the agent job carries keys of the same
+ * name (`COPILOT_MODEL` above all), so a whole-file scan would compare the
+ * wrong job's value the day someone pins the agent model too.
+ */
+function detectionJob(lock: string): string {
+  const match = /^ {2}detection:$([\s\S]*?)(?=^ {2}\w)/m.exec(lock);
+  return match === null ? "" : match[1];
+}
+
 /** Every value gh-aw baked in for the detection job's fail-open switch. */
-function detectionContinueOnError(lock: string): string[] {
-  return [...lock.matchAll(/GH_AW_DETECTION_CONTINUE_ON_ERROR: "(\w+)"/g)].map((match) => match[1]);
+function detectionContinueOnError(job: string): string[] {
+  return [...job.matchAll(/GH_AW_DETECTION_CONTINUE_ON_ERROR: "(\w+)"/g)].map((match) => match[1]);
 }
 
 /**
  * The body of the `Conclude threat detection` step, which is the last step of
- * the detection job and therefore runs up to the next job at two spaces.
+ * the detection job and therefore runs to the end of it.
  */
-function concludeStep(lock: string): string {
-  const match = /^ {6}- name: Conclude threat detection$([\s\S]*?)(?=^ {6}- name: |^ {2}\w)/m.exec(
-    lock,
-  );
+function concludeStep(job: string): string {
+  const match =
+    /^ {6}- name: Conclude threat detection$([\s\S]*?)(?=^ {6}- name: |$(?![\s\S]))/m.exec(job);
   return match === null ? "" : match[1];
 }
 
@@ -145,13 +155,9 @@ function safeOutputsCondition(lock: string): string | null {
   return match === null ? null : match[1];
 }
 
-/**
- * The model gh-aw baked into the detection job. The agent job's `COPILOT_MODEL`
- * is an expression over repository variables; a literal one is the detection
- * job's.
- */
-function detectionModel(lock: string): string | null {
-  const match = /COPILOT_MODEL: (?!\$\{\{)(\S+)/.exec(lock);
+/** The model gh-aw baked into the detection job's engine invocation. */
+function detectionModel(job: string): string | null {
+  const match = /COPILOT_MODEL: (\S+)/.exec(job);
   return match === null ? null : match[1];
 }
 
@@ -256,7 +262,9 @@ describe("agentic workflow write scope", () => {
       // The declaration only matters once compiled: gh-aw writes it into the
       // detection job as an environment variable and, separately, decides
       // whether to put `continue-on-error: true` on the steps that conclude.
-      const compiled = detectionContinueOnError(workflow.lock);
+      const job = detectionJob(workflow.lock);
+      if (job === "") findings.push(`${workflow.name} → lock has no detection job`);
+      const compiled = detectionContinueOnError(job);
       if (compiled.length === 0) {
         // An absent variable is not a passing check. If gh-aw renames it the
         // loop below would iterate over nothing and the guard would go quiet
@@ -270,14 +278,21 @@ describe("agentic workflow write scope", () => {
           );
         }
       }
-      const conclude = concludeStep(workflow.lock);
+      const conclude = concludeStep(job);
       if (conclude === "") {
         findings.push(`${workflow.name} → lock has no Conclude threat detection step`);
-      } else if (/continue-on-error: true/.test(conclude)) {
-        findings.push(`${workflow.name} → Conclude threat detection swallows its own failure`);
+      } else if (/continue-on-error:/.test(conclude)) {
+        // Any `continue-on-error` at all, not just the literal `true`: the
+        // claim being held is that the step carries none, and `"true"` or an
+        // expression would otherwise read as compliant.
+        findings.push(`${workflow.name} → Conclude threat detection carries continue-on-error`);
       }
       // The other half of the posture: a detection job that fails only stops
-      // the publish while `safe_outputs` is gated on its result.
+      // the publish while `safe_outputs` is gated on its result. Note this
+      // gates `safe_outputs` alone — gh-aw's `conclusion` job runs on
+      // `always()` and can still open an issue from the agent's own
+      // missing-tool / incomplete reports, which ADR-2786 records as the
+      // residual exposure rather than claiming it away.
       const condition = safeOutputsCondition(workflow.lock);
       if (condition === null || !condition.includes("needs.detection.result == 'success'")) {
         findings.push(`${workflow.name} → safe_outputs is not gated on the detection result`);
@@ -288,12 +303,12 @@ describe("agentic workflow write scope", () => {
   });
 
   it("compiles the declared detection model into its lock file", () => {
-    // Same recompile-drift risk as the safe outputs above, on the key that
-    // decides whether the detection engine starts at all. The workflows pin a
-    // concrete model because the copilot harness refuses to start when it
-    // cannot resolve the `detection` alias against the model catalog; a pin
-    // edited in the frontmatter but never compiled would leave the lock still
-    // running the alias.
+    // The workflows pin a concrete model because the copilot harness refuses
+    // to start when it cannot resolve the `detection` alias against the model
+    // catalog (ADR-2786). The pin is required rather than optional: treating
+    // an absent one as nothing to check would let "pin deleted, lock never
+    // recompiled" pass, which is the very edit the workflow comment invites.
+    // Going back to the alias is a deliberate change to this guard too.
     const drifted = workflows.flatMap((workflow) => {
       const pinned = scalarAt(workflow.front, [
         "safe-outputs",
@@ -301,8 +316,8 @@ describe("agentic workflow write scope", () => {
         "engine",
         "model",
       ]);
-      if (pinned === null) return [];
-      const compiled = detectionModel(workflow.lock);
+      if (pinned === null) return [`${workflow.name} → declares no detection engine model`];
+      const compiled = detectionModel(detectionJob(workflow.lock));
       return compiled === pinned
         ? []
         : [`${workflow.name} → pins ${pinned}, lock runs ${compiled}`];
