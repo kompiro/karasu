@@ -89,6 +89,24 @@ core の関数が「名前 → 実装」のレジストリを引くとき、**�
 - `packages/core/src/displaymode-meta.test.ts` — `displayMode` を通す公開エントリポイントの網羅。library 層の保証であって、
   ホストがレジストリを埋めたかは見ない（TPL-1001 と同じ library / consumer の境目）
 
-> 上記はいずれも「登録済みである」ことを前提に置いており、**ホストが登録を忘れた状態そのものを落とすテストは現在の corpus に無い**。
-> #2802 の実装でそこを埋める: core を import しただけで `url("database")` と `displayMode: "icon"` がアイコンを描くこと、
-> 生成モジュールの drift、`karasu render` のバンドル経由の e2e。追加したらこの節へパスを書き足す
+上記はいずれも「登録済みである」ことを前提に置いている。#2802 の実装で、ホストが何も呼ばない状態そのものを
+落とすテストを足した:
+
+- `packages/core/src/shapes/builtin-icons.test.ts` — core の package entry を import しただけで、マニフェストの全名が
+  `builtIn: true` で登録済みであること、`url("database")` と `displayMode: "icon"` がアイコンを描くこと、
+  `ICON_RULES` と `client-<subtype>` が使う名前がすべて登録済みであること（parity）
+- `packages/core/src/shapes/builtin-icons.generated.test.ts` — 生成モジュールが `packages/core/icons/` の
+  manifest と `.svg` の内容に一致すること（key 集合と本文、TPL-1415）
+- `scripts/icons/gen-builtin-icons.test.ts` — commit 済みの生成モジュールが生成スクリプトの出力とバイト一致すること
+- `packages/core/src/style/value-validator.test.ts` — 未登録の名前が `style-unknown-icon` になり、組み込みの名前は
+  ホストの登録なしに通ること
+- `packages/cli/src/render.e2e.test.ts` — `karasu render` が `url("database")` をアイコンで描き、typo を warning にすること
+- `packages/cli/src/lint-style.test.ts` — `karasu lint-style` が typo を宣言位置つきの warning にすること
+- `packages/lsp/src/diagnostics.test.ts` — 描画しない LSP でも同じ判定になり、組み込みの名前を誤検知しないこと
+- `packages/vscode/src/builtin-icons-extension-host.test.ts` — 拡張ホストの `compileProject` 経路で同じこと
+
+## 派生元 spec
+
+- [`docs/spec/style.md`](../spec/style.md) — 「shape property」節（`url()` の引数は登録済みアイコンの名前で、
+  組み込みのセットは core 自身が登録する。未登録の名前は `style-unknown-icon` warning、描画は `box`）
+- [`docs/spec/diagnostics.md`](../spec/diagnostics.md) — 「Style validation」の `style-unknown-icon` 行
