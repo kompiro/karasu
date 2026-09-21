@@ -5,7 +5,7 @@
 - **関連**:
   - 引き金 Issue: [#2631](https://github.com/kompiro/karasu/issues/2631)（親 [#2598](https://github.com/kompiro/karasu/issues/2598) の slice E）
   - 関連 ADR: [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)（P2c: ガター / 集約トランク / 交差マーク）、[ADR-2598](../adr/2598-edge-routing-channel-capacity.md)（本判断を slice E に残した ADR）、[ADR-1185](../adr/1185-parallel-edge-bundling.md)（束ねても edge identity は保つ）、[ADR-2048](../adr/2048-edge-label-collision-avoidance.md)（ラベル衝突回避）、[ADR-2330](../adr/2330-ungrouped-routing-parity.md)（計測柵で ungrouped を保証）
-  - 関連 TPL: [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)、[TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md)、[TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)、[TPL-2385](../test-perspectives/TPL-2385-attachment-follows-drawn-outline.md)、[TPL-2631](../test-perspectives/TPL-2631-decoration-must-not-hide-a-crossing-mark.md)（本 PR で起こす proactive TPL）
+  - 関連 TPL: [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)、[TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md)、[TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)、[TPL-2385](../test-perspectives/TPL-2385-attachment-follows-drawn-outline.md)、[TPL-2631](../test-perspectives/TPL-2631-decoration-must-not-hide-a-crossing-mark.md)（本 PR で起こす proactive TPL。ADR-1859 の「交差は表現で無害化する」という原則に対して、本設計が足す装飾が違反しうると分かったため設計時に起こしたもので、出荷済みの bug からの抽出ではない）
   - コード: `packages/core/src/renderer/edge-routing-groups.ts`、`crossing-marks.ts`、`edge-routing.ts`、`label-placement.ts`、`svg-renderer.ts`、`routing-parity.test.ts`
 
 ## 背景・課題
@@ -35,7 +35,7 @@
 
 | 観点 | 現状 |
 | --- | --- |
-| 集約トランク | `aggregateGroupTrunks` が **target で** グループ化。2 本以上かつ全員が右 spine へ清掃可能なら、1 つの spine x と 1 つの entry port を共有し `trunkId` を付ける |
+| 集約トランク | `aggregateGroupTrunks` が **target で** グループ化。右 spine へ清掃可能な部分集合を取り、それが 2 本以上あればその部分集合だけが 1 つの spine x と 1 つの entry port を共有し `trunkId` を付ける。stub が塞がれた兄弟は `routeGroupedEdges` の結果を保つ（AC-1 を維持し、以前より悪くならない） |
 | 合流マーク | `computeCrossingMarks` が `trunkId` と spine x で elbow を束ね、spine が上へ伸びる elbow にだけ `JunctionMark`（半径 3 の dot）を出す |
 | 交差マーク | 同関数が `HopMark`（半径 `HOP_RADIUS = 4` のアーチ）を「より水平な側」のセグメントに出す。host 側の線は `gappedStrokePath` でギャップを空ける |
 | ラベル位置 | `labelAnchorWithSegment` が既定で最長セグメントの中点。`label-placement.ts` の衝突回避（#2048）が同じアンカーを再計算して押しのける |
@@ -64,7 +64,7 @@ spine と entry の共有は ADR-1859 AC-2 のとおり正とし、#2631 の AC-
 
 **メリット**
 
-- 幾何が 1px も動かない。面積・貫通・重なりのどれも現状維持
+- fan-in 側は幾何が 1px も動かない。面積・貫通・重なりのどれも現状維持
 - 「集約である」という情報が図に残る（むしろ強まる）
 
 **デメリット**
@@ -110,7 +110,7 @@ fan-in の鏡像として、同じ source から出るガター経路を 1 本�
 
 すべて reverse-engineered dify（10,093 行、root view）。非兄弟の共線ペアと貫通は全案で 0。
 
-**装飾は幾何を動かさない。**
+**装飾は幾何を動かさない（fan-in 側の 4 案）。**
 
 | 案 | 共線 v / h（兄弟除く） | 貫通 | 合流マーク | キャンバス | 再描画 |
 | --- | --- | --- | --- | --- | --- |
@@ -151,7 +151,9 @@ examples の 4 モデル（hato / hr-tool / getting-started / ec-platform 04）�
 
 **案1 + 案A + アーチ 6px + fan-out trunk を採用する。**
 
-集約は ADR-1859 のとおり正とし、#2631 の AC-1 は却下として新 ADR に記録する。その上で以下を足す。幾何を動かさずに読めるようにする変更なので、面積・貫通・重なりのどの指標とも引き換えにならない。
+集約は ADR-1859 のとおり正とし、#2631 の AC-1 は却下として新 ADR に記録する。その上で以下を足す。
+
+幾何との関係は 2 つに分かれる。**1 から 4（fan-in 側の可読性とアーチ）は幾何を 1px も動かさない**ので、面積・貫通・重なりのどの指標とも引き換えにならない。**5（fan-out trunk）は経路を変える**: ガター回廊が 1 本にまとまるぶんキャンバスが縮み（team 7.34 → 7.10Mpx、boundary 5.35 → 5.14Mpx）、交差も減る（147 → 122 / 156 → 123）。非兄弟の共線ペアと貫通は 0 のまま、という形で引き換えが無いことを確認している。
 
 1. **trunk エッジのラベルを自分の stub に置く。** trunk 経路の最初のセグメントはそのエッジだけのもので、以降は兄弟と共有する。`labelAnchorWithSegment` に「このセグメントに置く」という指定を足し、`renderEdge` と `label-placement.ts` の両方から同じ指定を渡す（両者がずれるとラベルと衝突回避が別の場所を指す）。
 2. **合流マークを本数 tip にする。** dot を、そこから先が何本ぶんかの数字に置き換える。N 本の fan-in なら N-1 個の tip が 2, 3, ..., N と並ぶ。
