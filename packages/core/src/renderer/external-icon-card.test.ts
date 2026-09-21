@@ -37,7 +37,8 @@ const PICTOGRAM_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 
 </svg>`;
 
 const LONG_LABEL = "Replace order snapshot service";
-const DESCRIPTION = "Placement and tracking";
+const DESCRIPTION = "Placement, tracking and cancellation of customer orders across every channel";
+const CLIENT_DESCRIPTION = "Short one";
 
 function renderFromSource(krs: string, style: string, displayMode?: DisplayMode): string {
   const parseResult = Parser.parse(krs);
@@ -57,6 +58,14 @@ function renderDescribedService(style: string, displayMode?: DisplayMode): strin
     `system S { service Svc { label "${LONG_LABEL}" description "${DESCRIPTION}" } }`,
     style,
     displayMode,
+  );
+}
+
+/** A client carrying every extra line the default stack can draw. */
+function renderChipRichClient(style: string): string {
+  return renderFromSource(
+    `system S { client Svc { label "App" description "${CLIENT_DESCRIPTION}" capability "read" link "docs" "https://example.com" } }`,
+    style,
   );
 }
 
@@ -107,6 +116,41 @@ function bodyBox(group: string, viewBox: { w: number; h: number }): Box {
   return { x: p.x, y: p.y, width: viewBox.w * p.scaleX, height: viewBox.h * p.scaleY };
 }
 
+/** `bodyPlacement` for assertions that expect no fitted body at all. */
+function bodyPlacementOrNull(group: string): { x: number; y: number } | null {
+  const m = /transform="translate\(([-\d.]+), ([-\d.]+)\) scale\(/.exec(group);
+  return m === null ? null : { x: Number(m[1]), y: Number(m[2]) };
+}
+
+/** Where the pictogram group landed: a translate with no scale beside it. */
+function pictogramPlacement(group: string): { x: number; y: number } {
+  const m = /transform="translate\(([-\d.]+), ([-\d.]+)\)"/.exec(group);
+  expect(m, "a pictogram group").not.toBeNull();
+  return { x: Number(m![1]), y: Number(m![2]) };
+}
+
+/**
+ * Every `<text>` the node drew, in document order. The content is taken whole
+ * rather than up to the first child element, because icon mode wraps a
+ * description into `<tspan>` lines inside one `<text>`.
+ */
+function textLines(group: string): Array<{ x: number; y: number; text: string }> {
+  return [
+    ...group.matchAll(/<text[^>]*\bx="([\d.]+)"[^>]*\by="([\d.]+)"[^>]*>([\s\S]*?)<\/text>/g),
+  ].map((m) => ({ x: Number(m[1]), y: Number(m[2]), text: m[3] }));
+}
+
+/** How many meta glyphs (link / team chips) the node drew. */
+function metaGlyphCount(group: string): number {
+  return (group.match(/data-meta-glyph/g) ?? []).length;
+}
+
+/** Drawn lines of the description, found by the words they carry. */
+function descLineCount(group: string): number {
+  return textLines(group).filter((t) => DESCRIPTION.split(" ").some((w) => t.text.includes(w)))
+    .length;
+}
+
 beforeEach(() => {
   clearRegistry();
   registerBuiltinShapes();
@@ -123,6 +167,9 @@ describe("external icon card (#2696)", () => {
     border-radius: 12;
   }`;
 
+  /** The same declared frame on the slot-less icon, whose body is fitted. */
+  const FRAMED_DOT = FRAMED.replace('url("card-icon")', 'url("dot-icon")');
+
   describe("shape mode", () => {
     it("paints the declared card frame the icon body has nowhere to put", () => {
       const group = nodeGroup(renderService(FRAMED));
@@ -133,10 +180,10 @@ describe("external icon card (#2696)", () => {
       expect(group).toContain('rx="12"');
     });
 
-    it("draws that frame on the whole node box, so edges meet what is drawn", () => {
-      const group = nodeGroup(renderService(FRAMED));
+    it("draws a fitted body inside the frame, so edges meet what is drawn", () => {
+      const group = nodeGroup(renderService(FRAMED_DOT));
       const card = cardRect(group);
-      const body = bodyBox(group, { w: 160, h: 100 });
+      const body = bodyBox(group, { w: 24, h: 24 });
       // Both the fitted size and the emitted scale are rounded for legibility,
       // so containment is asserted to the precision they are written at rather
       // than exactly. A tenth of a pixel is far below anything visible.
@@ -152,7 +199,7 @@ describe("external icon card (#2696)", () => {
     });
 
     it("keeps the icon body's viewBox ratio instead of stretching it to the card", () => {
-      const group = nodeGroup(renderService(FRAMED));
+      const group = nodeGroup(renderService(FRAMED_DOT));
       const { scaleX, scaleY } = bodyPlacement(group);
       const card = cardRect(group);
 
@@ -161,34 +208,7 @@ describe("external icon card (#2696)", () => {
       expect(scaleX).toBe(scaleY);
       // The card really is off-aspect — without the fit this would have been
       // the 2.13× stretch #2696 measured.
-      expect(card.width / card.height).not.toBeCloseTo(160 / 100, 2);
-    });
-
-    it("puts both of the icon's text slots on the body they belong to", () => {
-      const group = nodeGroup(renderDescribedService(FRAMED));
-      const body = bodyBox(group, { w: 160, h: 100 });
-      const { scaleX, scaleY } = bodyPlacement(group);
-      // Both slots, because they move independently of each other: the label
-      // sits at (30, 19) and the description at (8, 44) of the icon's own
-      // 160×100 coordinate system, and either can be left behind on its own.
-      // Each is found by the text it carries rather than by its position in
-      // the document, so the two swapping slots would fail rather than pass.
-      const texts = [
-        ...group.matchAll(/<text[^>]*\bx="([\d.]+)"[^>]*\by="([\d.]+)"[^>]*>([^<]*)<\/text>/g),
-      ].map((m) => ({ x: Number(m[1]), y: Number(m[2]), text: m[3] }));
-      const slotFor = (content: string): { x: number; y: number } => {
-        const hit = texts.filter((t) => t.text.includes(content));
-        expect(hit, `exactly one <text> carrying "${content}"`).toHaveLength(1);
-        return hit[0];
-      };
-
-      const label = slotFor(LONG_LABEL);
-      expect(label.x).toBeCloseTo(body.x + 30 * scaleX, 1);
-      expect(label.y).toBeCloseTo(body.y + 19 * scaleY, 1);
-
-      const description = slotFor(DESCRIPTION);
-      expect(description.x).toBeCloseTo(body.x + 8 * scaleX, 1);
-      expect(description.y).toBeCloseTo(body.y + 44 * scaleY, 1);
+      expect(card.width / card.height).not.toBeCloseTo(24 / 24, 2);
     });
 
     it("centres a slot-less icon, which has no layout of its own to line up", () => {
@@ -198,6 +218,80 @@ describe("external icon card (#2696)", () => {
 
       expect(body.x - card.x).toBeCloseTo(card.x + card.width - (body.x + body.width), 1);
       expect(body.y - card.y).toBeCloseTo(card.y + card.height - (body.y + body.height), 1);
+    });
+
+    describe("a card-design icon draws the card's own text (#2803)", () => {
+      it("draws every line the card was measured for", () => {
+        // The card is measured for the default stack — label, description,
+        // capability chip, meta row — so every one of those has to be drawn.
+        // Compared against the same node without the icon, which is the
+        // measurement the card's size came from either way.
+        const plain = nodeGroup(renderChipRichClient(""));
+        const icon = nodeGroup(renderChipRichClient(`client { shape: url("card-icon"); }`));
+
+        expect(metaGlyphCount(icon)).toBe(metaGlyphCount(plain));
+        expect(metaGlyphCount(icon)).toBeGreaterThan(0);
+        expect(icon).toContain('data-client-capability-count="1"');
+        expect(icon).toContain(`>${CLIENT_DESCRIPTION}<`);
+        // Same card, so the lines have the same room as the plain node had.
+        expect(cardRect(icon)).toMatchObject({
+          width: cardRect(plain).width,
+          height: cardRect(plain).height,
+        });
+      });
+
+      it("puts the text where the card measured it, not at the icon's slots", () => {
+        const plain = nodeGroup(renderDescribedService(""));
+        const icon = nodeGroup(renderDescribedService(FRAMED));
+
+        // Identical y positions: the icon changes what is drawn in the card's
+        // corner, never where the measured stack sits (#2803 symptom 2).
+        expect(textLines(icon)).toEqual(textLines(plain));
+      });
+
+      it("wraps the description the way measurement wrapped it", () => {
+        const icon = nodeGroup(renderDescribedService(FRAMED));
+
+        // measureNode reserved DESC_MAX_LINES-bounded wrap lines; the slotted
+        // branch used to draw the whole summary on one line (#2803 symptom 4).
+        expect(descLineCount(icon)).toBe(descLineCount(nodeGroup(renderDescribedService(""))));
+        expect(descLineCount(icon)).toBeGreaterThan(1);
+      });
+
+      it("draws the pictogram at native size in the card's corner on every card", () => {
+        // Two cards of very different height: the pictogram used to scale with
+        // the card, so the same icon was 13.2px on one node and 20px+ on
+        // another in the same diagram (#2803 symptom 3).
+        const short = nodeGroup(renderService(FRAMED, undefined, "Orders"));
+        const tall = nodeGroup(renderDescribedService(FRAMED));
+
+        expect(cardRect(short).height).not.toBe(cardRect(tall).height);
+        for (const group of [short, tall]) {
+          const card = cardRect(group);
+          const placed = pictogramPlacement(group);
+          expect(placed).toEqual({ x: card.x + 6, y: card.y + 4 });
+        }
+      });
+
+      it("keeps the pictogram clear of the text it sits beside", () => {
+        const group = nodeGroup(renderDescribedService(FRAMED));
+        const placed = pictogramPlacement(group);
+        const card = cardRect(group);
+        const label = textLines(group)[0];
+
+        // The pictogram lives in the card's padding band (20px tall from y+4),
+        // and the stack's first line starts below it.
+        expect(placed.y + 20).toBeLessThanOrEqual(label.y);
+        expect(placed.x + 20).toBeLessThanOrEqual(card.x + card.width);
+      });
+
+      it("draws no second copy of the icon body behind the card", () => {
+        const group = nodeGroup(renderService(FRAMED));
+
+        // Only the card frame is a rect, and the icon contributes one group —
+        // the fitted 160×100 body must not also be emitted.
+        expect(bodyPlacementOrNull(group)).toBeNull();
+      });
     });
 
     it("leaves a url() with no registered icon on the box fallback, with no second rect", () => {
@@ -226,6 +320,33 @@ describe("external icon card (#2696)", () => {
       const group = nodeGroup(renderService(`service { shape: url("dot-icon"); }`, "icon"));
 
       expect(group).toContain("scale(6.666666666666667, 2.3333333333333335)");
+    });
+
+    it("puts both of the icon's text slots on the body they belong to", () => {
+      // Icon mode draws the node on the icon's own card, so the slots are its
+      // text layout. Shape mode measures a card from the text instead and does
+      // not read them at all (#2803).
+      const group = nodeGroup(renderDescribedService(FRAMED, "icon"));
+      const body = bodyBox(group, { w: 160, h: 100 });
+      const { scaleX, scaleY } = bodyPlacement(group);
+      // Both slots, because they move independently of each other: the label
+      // sits at (30, 19) and the description at (8, 44) of the icon's own
+      // 160×100 coordinate system, and either can be left behind on its own.
+      // Each is found by the text it carries rather than by its position in
+      // the document, so the two swapping slots would fail rather than pass.
+      const slotFor = (content: string): { x: number; y: number } => {
+        const hit = textLines(group).filter((t) => t.text.includes(content));
+        expect(hit, `exactly one <text> carrying "${content}"`).toHaveLength(1);
+        return hit[0];
+      };
+
+      const label = slotFor("Replace order");
+      expect(label.x).toBeCloseTo(body.x + 30 * scaleX, 1);
+      expect(label.y).toBeCloseTo(body.y + 19 * scaleY, 1);
+
+      const description = slotFor("Placement");
+      expect(description.x).toBeCloseTo(body.x + 8 * scaleX, 1);
+      expect(description.y).toBeCloseTo(body.y + 44 * scaleY, 1);
     });
 
     it("paints the same declared frame as shape mode", () => {

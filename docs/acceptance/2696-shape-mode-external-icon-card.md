@@ -33,7 +33,8 @@ type: product
 
 - [x] AT-B: その枠はノードの箱そのもの（エッジ・クロームが付く輪郭）であり、アイコン本体はその内側に収まる
 
-  > ✅ Automated — 同 describe › draws that frame on the whole node box, so edges meet what is drawn
+  > ✅ Automated — 同 describe › draws a fitted body inside the frame, so edges meet what is drawn
+  > （本体を内接させる対象は #2803 以降スロットを持たないアイコンだけなので、計測もそのアイコンで行う）
 
 - [x] AT-C: icon mode と shape mode が同じ宣言色の枠を描く（モード間で違うのはカードの寸法だけ）
 
@@ -45,9 +46,9 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/external-icon-card.test.ts` › external icon card (#2696) > shape mode > keeps the icon body's viewBox ratio instead of stretching it to the card
 
-- [x] AT-E: テキストスロット（`krs-label` / `krs-description`）が本体と同じ座標系に載る（絵だけ動いて文字が置き去りにならない）
+- [x] AT-E: テキストスロット（`krs-label` / `krs-description`）が本体と同じ座標系に載る（絵だけ動いて文字が置き去りにならない）。[#2803](https://github.com/kompiro/karasu/issues/2803) 以降、スロットを読むのは icon mode だけなので、計測もそのモードで行う
 
-  > ✅ Automated — 同 describe › puts the icon's text slots on the body they belong to
+  > ✅ Automated — 同ファイル › external icon card (#2696) > icon mode is unchanged > puts both of the icon's text slots on the body they belong to
 
 - [x] AT-F: スロットを持たないアイコンはカードの中央に置かれる
 

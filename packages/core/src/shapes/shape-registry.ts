@@ -164,6 +164,39 @@ export function getIconDef(name: string): SvgIconDef | undefined {
 }
 
 /**
+ * Where an icon card design puts its pictogram, in the icon's own coordinate
+ * system: a {@link PICTOGRAM_SIZE}-wide group at this offset from the card's
+ * top-left. Every built-in icon declares exactly this
+ * (`<g class="krs-pictogram" transform="translate(6, 4)">`), and the card
+ * renderers place their own copy of it at the same spot rather than each
+ * deriving a corner of their own (TPL-2234).
+ */
+export const PICTOGRAM_OFFSET = { x: 6, y: 4 } as const;
+
+/** The coordinate space a `krs-pictogram` group's contents are drawn in. */
+export const PICTOGRAM_SIZE = 20;
+
+/**
+ * The pictogram of a registered icon as an SVG `<g>` placed at `x` / `y`,
+ * drawn at its native {@link PICTOGRAM_SIZE}. Returns undefined when the icon
+ * declares no `krs-pictogram` group.
+ *
+ * This is the whole of a card-design icon that a shape-mode card draws: the
+ * rest of the icon's 160×100 body is its own label / description layout, which
+ * a card measured from text does not use (#2803).
+ */
+export function pictogramGroup(
+  def: SvgIconDef,
+  color: string,
+  x: number,
+  y: number,
+): string | undefined {
+  if (!def.pictogramBody) return undefined;
+  const body = def.builtIn ? def.pictogramBody.replace(/\{\{color\}\}/g, color) : def.pictogramBody;
+  return `<g transform="translate(${x}, ${y})">${body}</g>`;
+}
+
+/**
  * Render the pictogram for a registered icon as an inline SVG string.
  * The returned SVG has a fixed viewBox of "0 0 20 20" and the given pixel size.
  * Returns undefined if the icon or its pictogramBody is not found.

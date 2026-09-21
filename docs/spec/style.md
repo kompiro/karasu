@@ -360,12 +360,22 @@ service[external] {
 }
 ```
 
-The body is then fitted inside that card and keeps its `viewBox` ratio — it is
-never stretched to a card measured from the node's text. Where it sits in the
-leftover space depends on what the icon declares: an icon carrying text slots
-(`krs-label` / `krs-description`) is a card design, so it is anchored at the
-card's top-left and its slot text moves with it; an icon with no slots has no
-layout of its own to line up and is centred.
+What is drawn on that card depends on what the icon declares.
+
+An icon carrying text slots (`krs-label` / `krs-description`) is a **card
+design**: its body is a card of its own, with its own place for a label and a
+description. In **icon mode** the node is drawn on exactly that card, so the
+body is used whole and its slots carry the node's text. In **shape mode** the
+card is measured from the node's own text instead, so only the icon's
+pictogram (`<g class="krs-pictogram">`) is taken: it is drawn at its native
+size in the card's top-left padding corner, and the text is the same stack
+every other shape gets — label, description, `role`, the client resource and
+capability chips, and the link / team meta row.
+
+An icon with **no text slots** is a standalone drawing in either mode. It is
+fitted inside the card, keeps its `viewBox` ratio (never stretched to a card
+measured from the text), and is centred in the leftover space, with the node's
+text drawn over it in the usual stack.
 
 > Related TPLs:
 > [TPL-2385](../test-perspectives/TPL-2385-attachment-follows-drawn-outline.md)
@@ -373,7 +383,11 @@ layout of its own to line up and is centred.
 > is drawn while the body is fitted inside it.
 > [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)
 > — both display modes are checked on every drawing surface; the frame is
-> painted in both, and only the card's size differs between them.
+> painted in both, and the modes differ in the card's size and in whether the
+> icon's slots are read.
+> [TPL-2803](../test-perspectives/TPL-2803-measured-lines-are-drawn-lines.md)
+> — the card's text is drawn by the layout its size was measured for, so a
+> shape-mode card keeps every line measurement reserved for it.
 
 ---
 
