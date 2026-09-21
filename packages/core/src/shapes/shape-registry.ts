@@ -174,7 +174,7 @@ export function getIconDef(name: string): SvgIconDef | undefined {
 export const PICTOGRAM_OFFSET = { x: 6, y: 4 } as const;
 
 /** The coordinate space a `krs-pictogram` group's contents are drawn in. */
-export const PICTOGRAM_SIZE = 20;
+const PICTOGRAM_SIZE = 20;
 
 /**
  * The pictogram of a registered icon as an SVG `<g>` placed at `x` / `y`,
@@ -205,7 +205,11 @@ export function pictogramGroup(
  * @param color    - Fill color for {{color}} placeholder (built-in icons only)
  * @param size     - Width and height in pixels (default: 20)
  */
-export function renderPictogram(iconName: string, color: string, size = 20): string | undefined {
+export function renderPictogram(
+  iconName: string,
+  color: string,
+  size = PICTOGRAM_SIZE,
+): string | undefined {
   const def = iconDefRegistry.get(iconName);
   if (!def?.pictogramBody) return undefined;
 
@@ -214,7 +218,7 @@ export function renderPictogram(iconName: string, color: string, size = 20): str
     body = body.replace(/\{\{color\}\}/g, color);
   }
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="${size}" height="${size}">${body}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PICTOGRAM_SIZE} ${PICTOGRAM_SIZE}" width="${size}" height="${size}">${body}</svg>`;
 }
 
 /**
