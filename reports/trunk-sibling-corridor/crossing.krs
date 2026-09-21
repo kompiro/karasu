@@ -1,0 +1,35 @@
+system Shop {
+  service S0 { label "Checkout" }
+  service S1 { label "Billing" }
+  service S2 { label "Catalog" }
+  service S3 { label "Search" }
+  service S4 { label "Shipping" }
+  service S5 { label "Support" }
+  service S6 { label "Pricing" }
+  service S7 { label "Loyalty" }
+  service EXT1 [external] { label "Partner 1" }
+  service EXT2 [external] { label "Partner 2" }
+  service EXT3 [external] { label "Partner 3" }
+  database DB { label "ShopDB" }
+  S0 -> DB "write"
+  S1 -> DB "write"
+  S2 -> DB "write"
+  S3 -> DB "write"
+  S4 -> DB "write"
+  S5 -> DB "write"
+  S6 -> DB "write"
+  S7 -> DB "write"
+  S1 -> EXT1 "call"
+  S2 -> EXT2 "call"
+  S3 -> EXT3 "call"
+}
+organization Org {
+  team "t0" { label "Team Checkout" owns S0 }
+  team "t1" { label "Team Billing" owns S1 }
+  team "t2" { label "Team Catalog" owns S2 }
+  team "t3" { label "Team Search" owns S3 }
+  team "t4" { label "Team Shipping" owns S4 }
+  team "t5" { label "Team Support" owns S5 }
+  team "t6" { label "Team Pricing" owns S6 }
+  team "t7" { label "Team Loyalty" owns S7 }
+}

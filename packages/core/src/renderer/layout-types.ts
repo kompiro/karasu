@@ -150,6 +150,13 @@ export interface LayoutEdge {
    * is preserved (the line is still its own `LayoutEdge`).
    */
   trunkId?: string;
+  /**
+   * SPIKE ONLY (#2631 slice E follow-up). The mirror of `trunkId`: set when this
+   * edge leaves a **shared source** on one spine with its siblings and branches
+   * off at its own target's row. The band thins and the count tip counts down as
+   * each sibling leaves.
+   */
+  outTrunkId?: string;
 }
 
 /** Axis-aligned box. The unit `ContainerRect.coverage` is built from. */
@@ -326,6 +333,13 @@ export interface HopMark {
   halfWidth: number;
   angle: number;
   edge: number;
+  /**
+   * SPIKE ONLY (#2631 slice E). Arc height, when the default `HOP_RADIUS` would
+   * leave the arc inside a trunk band it is supposed to hop over. A crossing
+   * that cannot be seen reads as a connection, which is the one thing the mark
+   * exists to prevent (ADR-1859).
+   */
+  ry?: number;
 }
 
 /**
@@ -338,10 +352,40 @@ export interface JunctionMark {
   edge: number;
 }
 
+/**
+ * SPIKE ONLY (#2631 slice E). One stretch of a trunk spine and how many sibling
+ * edges it carries there — the input for drawing the spine as a bus whose width
+ * says how many lines are inside it.
+ */
+export interface TrunkSpineMark {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  count: number;
+  edge: number;
+}
+
+/**
+ * SPIKE ONLY (#2631 slice E). A "how many lines are in here" chip. Drawn at each
+ * merge elbow in place of the junction dot (the number is the count the spine
+ * carries onward from there), and optionally once more at the target entry.
+ */
+export interface TrunkCountMark {
+  x: number;
+  y: number;
+  count: number;
+  edge: number;
+}
+
 /** Crossing marks for the Group-by view: hops (crossing = not connected) + junctions (merge = connected). */
 export interface CrossingMarks {
   hops: HopMark[];
   junctions: JunctionMark[];
+  /** SPIKE ONLY (#2631 slice E). */
+  trunkSpines?: TrunkSpineMark[];
+  /** SPIKE ONLY (#2631 slice E). */
+  trunkCounts?: TrunkCountMark[];
 }
 
 export type DisplayMode = "shape" | "icon";

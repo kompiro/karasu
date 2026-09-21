@@ -22,7 +22,7 @@ import { renderShape } from "./shapes.js";
 import { getShapeContentInset, type ShapeInsets } from "../shapes/shape-registry.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
 import { resolveLabelPlacements, buildLabelInputs } from "./label-placement.js";
-import { HOP_RADIUS, JUNCTION_RADIUS } from "./crossing-marks.js";
+import { HOP_RADIUS, JUNCTION_RADIUS, trunkLegibility } from "./crossing-marks.js";
 import { layoutDegradedTabs } from "./degraded-tabs.js";
 import {
   CHIP_HEIGHT,
@@ -631,6 +631,40 @@ export function renderFromLayout(
   if (ghostEdgeParts.length > 0) {
     parts.push(el("g", { class: "ghost-edges", opacity: GHOST_OPACITY }, ...ghostEdgeParts));
   }
+  // SPIKE ONLY (#2631 slice E): the trunk spine as a bus drawn *under* the
+  // edges, its width saying how many siblings that stretch carries.
+  const legibility = trunkLegibility();
+  if (
+    layoutResult.crossingMarks?.trunkSpines &&
+    (legibility === "bus" ||
+      legibility === "tip" ||
+      legibility === "tipentry" ||
+      legibility === "tipside")
+  ) {
+    const bands: string[] = [];
+    for (const sp of layoutResult.crossingMarks.trunkSpines) {
+      const stroke = edgeStroke[sp.edge] ?? styles.defaultEdgeStyle;
+      // The horizontal run ends on the target's port, where the arrowhead is;
+      // pull the band back so it does not swallow the arrow.
+      const horizontal = Math.abs(sp.y1 - sp.y0) < 0.01;
+      const trim = horizontal ? Math.sign(sp.x0 - sp.x1) * 12 : 0;
+      bands.push(
+        el("line", {
+          x1: round2(sp.x0),
+          y1: round2(sp.y0),
+          x2: round2(sp.x1 + trim),
+          y2: round2(sp.y1),
+          stroke: stroke.color,
+          // Linear so equal steps read as equal counts, capped so a very wide
+          // fan-in becomes a band rather than a slab.
+          "stroke-width": round2(stroke.strokeWidth + Math.min(sp.count - 1, 8) * 3),
+          "stroke-linecap": "butt",
+          opacity: 0.4,
+        }),
+      );
+    }
+    if (bands.length > 0) parts.push(el("g", { class: "trunk-bus" }, ...bands));
+  }
   parts.push(el("g", { class: "edges" }, ...normalEdgeParts));
 
   // Crossing marks on top of the edges (#1859 P2c-C): hop arcs neutralise
@@ -643,6 +677,62 @@ export function renderFromLayout(
         renderCrossingMarks(layoutResult.crossingMarks, edgeStroke, styles.defaultEdgeStyle),
       );
     }
+  }
+
+  // SPIKE ONLY (#2631 slice E): "× N" where the trunk enters its target, so the
+  // count is readable at the end the reader is looking at.
+  if (
+    layoutResult.crossingMarks?.trunkCounts &&
+    (legibility === "count" ||
+      legibility === "tip" ||
+      legibility === "tiponly" ||
+      legibility === "tipentry" ||
+      legibility === "tipside")
+  ) {
+    const chips: string[] = [];
+    for (const c of layoutResult.crossingMarks.trunkCounts) {
+      const stroke = edgeStroke[c.edge] ?? styles.defaultEdgeStyle;
+      if (legibility === "tipside") {
+        chips.push(
+          el(
+            "text",
+            {
+              x: round2(c.x),
+              y: round2(c.y) + 4,
+              "text-anchor": "middle",
+              fill: stroke.color,
+              "font-size": "11px",
+              "font-family": "sans-serif",
+            },
+            String(c.count),
+          ),
+        );
+        continue;
+      }
+      chips.push(
+        el("circle", {
+          cx: round2(c.x),
+          cy: round2(c.y),
+          r: 9,
+          fill: palette.canvasBg,
+          stroke: stroke.color,
+          "stroke-width": 1,
+        }),
+        el(
+          "text",
+          {
+            x: round2(c.x),
+            y: round2(c.y) + 4,
+            "text-anchor": "middle",
+            fill: stroke.color,
+            "font-size": "10px",
+            "font-family": "sans-serif",
+          },
+          String(c.count),
+        ),
+      );
+    }
+    if (chips.length > 0) parts.push(el("g", { class: "trunk-counts" }, ...chips));
   }
 
   // Nodes (ghost users first, then normal children). As with edges, a ghost
@@ -854,7 +944,7 @@ function renderCrossingMarks(
     const stroke = strokeOf(hop.edge);
     parts.push(
       el("path", {
-        d: `M ${x0} ${y0} A ${r(hop.halfWidth)} ${HOP_RADIUS} ${r(hop.angle)} 0 1 ${x1} ${y1}`,
+        d: `M ${x0} ${y0} A ${r(hop.halfWidth)} ${r(hop.ry ?? HOP_RADIUS)} ${r(hop.angle)} 0 1 ${x1} ${y1}`,
         fill: "none",
         stroke: stroke.color,
         "stroke-width": stroke.strokeWidth,

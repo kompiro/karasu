@@ -1098,6 +1098,37 @@ function planGutterRoute(
 }
 
 /**
+ * SPIKE ONLY (#2631 slice E). See the same helper in `crossing-marks.ts`:
+ * `packages/core` is typechecked by browser-targeted packages where `process`
+ * has no type, so the spike's switches read the environment off `globalThis`.
+ */
+function spikeEnv(name: string): string | undefined {
+  return (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.[
+    name
+  ];
+}
+
+/**
+ * SPIKE ONLY (#2631 slice E). Which of the three readings of a fan-in trunk to
+ * draw, so the three can be compared as pictures rather than as prose:
+ *
+ * - `shared` (default) — today's P2c-B: one spine x, one target entry.
+ * - `bundle` — aggregation kept, multiplicity shown: each sibling gets its own
+ *   spine x `TRUNK_BUNDLE_PITCH` apart and its own entry on the target side.
+ * - `none` — no trunk at all; `distributeGutterLanes` / `fanOutGutterPorts`
+ *   separate the fan-in like any other gutter traffic.
+ *
+ * Never merged: this file's mainline behaviour is `shared`.
+ */
+export type TrunkVariant = "shared" | "bundle" | "none";
+export function trunkVariant(): TrunkVariant {
+  const v = spikeEnv("KARASU_TRUNK_VARIANT");
+  return v === "bundle" || v === "none" ? v : "shared";
+}
+/** SPIKE ONLY: gap between the spines of one trunk's siblings in `bundle`. */
+const TRUNK_BUNDLE_PITCH = 10;
+
+/**
  * Aggregation trunks (Issue #1859, P2c slice B). After `routeGroupedEdges` sends
  * every cross-band edge out to a side gutter, edges that share an infra/external
  * **target** still land on the one default gutter x, so two targets' spines
@@ -1172,14 +1203,23 @@ export function aggregateGroupTrunks(
     // spine never co-renders on top of a single-incoming edge's spine.
     const trunkX = maxRight + GUTTER_GAP + (lane + 1) * TRUNK_LANE_GAP;
     const targetPort = rightPort(target);
-    for (const edge of edges) {
+    // SPIKE ONLY (#2631): in `bundle`, siblings run on their own spine and enter
+    // the target on their own port, ordered by where each source sits.
+    const bundled = trunkVariant() === "bundle";
+    const order = bundled ? [...edges].sort((a, b) => boxOf(a.from)!.y - boxOf(b.from)!.y) : edges;
+    const span = Math.max(0, target.height - 24);
+    const step = Math.min(TRUNK_BUNDLE_PITCH, order.length > 1 ? span / (order.length - 1) : 0);
+    order.forEach((edge, i) => {
       const from = boxOf(edge.from)!;
       const sourcePort = rightPort(from);
+      const offset = bundled ? (i - (order.length - 1) / 2) * step : 0;
+      const spineX = bundled ? trunkX + i * TRUNK_BUNDLE_PITCH : trunkX;
+      const entry = bundled ? { x: targetPort.x, y: targetPort.y + offset } : targetPort;
       edge.fromPoint = sourcePort;
-      edge.toPoint = targetPort;
+      edge.toPoint = entry;
       edge.waypoints = [
-        { x: trunkX, y: sourcePort.y },
-        { x: trunkX, y: targetPort.y },
+        { x: spineX, y: sourcePort.y },
+        { x: spineX, y: entry.y },
       ];
       edge.trunkId = target.id;
       // A trunked edge runs down the shared spine, so an against-flow dash would
@@ -1188,8 +1228,89 @@ export function aggregateGroupTrunks(
       // backward signal, so clear it (the merge geometry, not the dash, conveys
       // fan-in). P2c-C's junction dot marks the merge.
       edge.groupBackward = false;
+    });
+  });
+}
+
+/**
+ * SPIKE ONLY (#2631 slice E follow-up). The mirror of `aggregateGroupTrunks`:
+ * edges that leave **one source** for far targets each take their own corridor
+ * today, so a card with eight outgoing edges pays eight fanned ports and eight
+ * stubs crossing each other right at its side. This bundles them onto one spine
+ * that leaves the source once and sheds a branch at each target's row — the
+ * count tip counts *down* and the band thins as siblings leave.
+ *
+ * Runs after the fan-in pass and never touches an edge that pass already
+ * trunked: a shared target is the stronger statement of the two.
+ */
+export function aggregateGroupSourceTrunks(
+  layoutNodes: Map<string, LayoutNode>,
+  layoutEdges: LayoutEdge[],
+  frames: ContainerRect[],
+  obstacleIndex: ObstacleIndex,
+  expandedFrames?: Map<string, ContainerRect>,
+): void {
+  const nodes = [...layoutNodes.values()];
+  if (nodes.length === 0) return;
+
+  const { maxRight } = contentBounds(nodes, frames);
+  const boxOf = resolveGroupBoxes(layoutNodes, expandedFrames);
+
+  // Lanes start beyond every fan-in trunk so the two kinds never share an x.
+  let maxTrunkX = maxRight + GUTTER_GAP;
+  for (const e of layoutEdges) {
+    if (e.trunkId && e.waypoints && e.waypoints.length === 2) {
+      maxTrunkX = Math.max(maxTrunkX, e.waypoints[0].x);
+    }
+  }
+
+  const bySource = new Map<string, LayoutEdge[]>();
+  for (const edge of layoutEdges) {
+    if (edge.ghost || edge.cyclic || edge.trunkId) continue;
+    if (!isVerticalGutterRoute(edge)) continue;
+    const list = bySource.get(edge.from);
+    if (list) list.push(edge);
+    else bySource.set(edge.from, [edge]);
+  }
+
+  const nominalX = maxTrunkX + TRUNK_LANE_GAP;
+  const eligible: { source: EdgeBox; edges: LayoutEdge[] }[] = [];
+  for (const [sourceId, edges] of bySource) {
+    if (edges.length < 2) continue;
+    const source = boxOf(sourceId);
+    if (!source) continue;
+    const clear = edges.filter((e) => {
+      const target = boxOf(e.to);
+      if (!target) return false;
+      return obstaclesFor(e, obstacleIndex).polylineClear(trunkPath(source, target, nominalX));
+    });
+    if (clear.length >= 2) eligible.push({ source, edges: clear });
+  }
+
+  eligible.sort((a, b) => a.source.y - b.source.y || (a.source.id < b.source.id ? -1 : 1));
+  eligible.forEach(({ source, edges }, lane) => {
+    const spineX = maxTrunkX + (lane + 1) * TRUNK_LANE_GAP;
+    const sourcePort = rightPort(source);
+    for (const edge of edges) {
+      const target = boxOf(edge.to)!;
+      const targetPort = rightPort(target);
+      edge.fromPoint = sourcePort;
+      edge.toPoint = targetPort;
+      edge.waypoints = [
+        { x: spineX, y: sourcePort.y },
+        { x: spineX, y: targetPort.y },
+      ];
+      edge.outTrunkId = source.id;
+      // Same reasoning as the fan-in trunk: siblings co-render on one spine, so
+      // an against-flow dash would stripe only half of a shared line.
+      edge.groupBackward = false;
     }
   });
+}
+
+/** SPIKE ONLY (#2631): whether the fan-out trunk pass runs. */
+export function outTrunksEnabled(): boolean {
+  return spikeEnv("KARASU_OUT_TRUNK") === "1";
 }
 
 /**
@@ -1240,7 +1361,7 @@ export function distributeGutterLanes(
   // x, which no trunk uses (trunks sit at rightBase + (lane+1)·TRUNK_LANE_GAP).
   let maxTrunkX = rightBase;
   for (const e of layoutEdges) {
-    if (e.trunkId && e.waypoints && e.waypoints.length === 2) {
+    if ((e.trunkId || e.outTrunkId) && e.waypoints && e.waypoints.length === 2) {
       maxTrunkX = Math.max(maxTrunkX, e.waypoints[0].x);
     }
   }
@@ -1252,7 +1373,7 @@ export function distributeGutterLanes(
   const left: { e: LayoutEdge; corridor: GutterCorridor }[] = [];
   for (const e of layoutEdges) {
     if (e.ghost || e.cyclic) continue;
-    if (e.trunkId) continue;
+    if (e.trunkId || e.outTrunkId) continue;
     const corridor = gutterCorridor(e);
     if (!corridor) continue;
     if (corridor.x > maxRight) right.push({ e, corridor });
@@ -1386,6 +1507,7 @@ export function fanOutGutterPorts(
   });
   const bySide = new Map<EdgeBox, Record<NodeSide, GutterAttach[]>>();
   const trunkSlot = new Map<string, GutterAttach>(); // by `trunkId` (unique per target)
+  const outTrunkSlot = new Map<string, GutterAttach>(); // SPIKE: by `outTrunkId`
   const push = (node: EdgeBox, side: NodeSide, a: GutterAttach) => {
     let rec = bySide.get(node);
     if (!rec) bySide.set(node, (rec = emptySides()));
@@ -1402,12 +1524,28 @@ export function fanOutGutterPorts(
     const tgtSide = sideOf(to, e.toPoint);
     const pts = [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
     if (srcSide) {
-      push(from, srcSide, { edges: [e], end: "source", sortKey: bendKey(pts, srcSide) });
+      // SPIKE (#2631): an out-trunk's siblings leave through one exit, so they
+      // share a slot the way a fan-in trunk's siblings share their entry.
+      if (e.outTrunkId) {
+        const slot = outTrunkSlot.get(e.outTrunkId);
+        if (slot) slot.edges.push(e);
+        else {
+          const a: GutterAttach = {
+            edges: [e],
+            end: "source",
+            sortKey: bendKey(pts, srcSide),
+          };
+          outTrunkSlot.set(e.outTrunkId, a);
+          push(from, srcSide, a);
+        }
+      } else {
+        push(from, srcSide, { edges: [e], end: "source", sortKey: bendKey(pts, srcSide) });
+      }
     }
     if (!tgtSide) continue;
     const tgtKey = bendKey([...pts].reverse(), tgtSide);
     // Target end: a trunk's siblings share one entry (unique per `trunkId`), so merge them.
-    if (e.trunkId) {
+    if (e.trunkId && trunkVariant() !== "bundle") {
       const slot = trunkSlot.get(e.trunkId);
       if (slot) slot.edges.push(e);
       else {

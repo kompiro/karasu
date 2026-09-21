@@ -1,0 +1,30 @@
+system Shop {
+  service Hub { label "Gateway" }
+  service S0 { label "Checkout" }
+  service S1 { label "Billing" }
+  service S2 { label "Catalog" }
+  service S3 { label "Search" }
+  service S4 { label "Shipping" }
+  service S5 { label "Support" }
+  service S6 { label "Pricing" }
+  service S7 { label "Loyalty" }
+  Hub -> S0 "call"
+  Hub -> S1 "call"
+  Hub -> S2 "call"
+  Hub -> S3 "call"
+  Hub -> S4 "call"
+  Hub -> S5 "call"
+  Hub -> S6 "call"
+  Hub -> S7 "call"
+}
+organization Org {
+  team "hub" { label "Team Hub" owns Hub }
+  team "t0" { label "Team Checkout" owns S0 }
+  team "t1" { label "Team Billing" owns S1 }
+  team "t2" { label "Team Catalog" owns S2 }
+  team "t3" { label "Team Search" owns S3 }
+  team "t4" { label "Team Shipping" owns S4 }
+  team "t5" { label "Team Support" owns S5 }
+  team "t6" { label "Team Pricing" owns S6 }
+  team "t7" { label "Team Loyalty" owns S7 }
+}

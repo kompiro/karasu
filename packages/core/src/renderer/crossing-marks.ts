@@ -26,18 +26,51 @@
  * See docs/design/system-view-grouping.md § "P2c-C 詳細設計" / "P2c カバレッジ拡張（#1939）".
  */
 
-import type { CrossingMarks, HopMark, JunctionMark, LayoutEdge } from "./layout-types.js";
+import type {
+  TrunkSpineMark,
+  TrunkCountMark,
+  CrossingMarks,
+  HopMark,
+  JunctionMark,
+  LayoutEdge,
+} from "./layout-types.js";
 import type { Point } from "./edge-geometry.js";
 import { BoxGrid, chooseCellSize } from "./spatial-grid.js";
 
+/**
+ * SPIKE ONLY (#2631 slice E). `packages/core` is typechecked by browser-targeted
+ * packages too (i18n, nest), where `process` has no type, so the spike's
+ * switches read it off `globalThis`. The real implementation must not read the
+ * environment from core at all.
+ */
+function spikeEnv(name: string): string | undefined {
+  return (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.[
+    name
+  ];
+}
+
 /** Radius of a single hop arc's bump (px). */
 export const HOP_RADIUS = 4;
+/**
+ * SPIKE ONLY (#2631 slice E). The arc radius to draw with. `KARASU_HOP_RADIUS`
+ * raises it so a crossing reads at the same size as a trunk count tip (r = 9)
+ * instead of the 4px bump it has been since #1859. It feeds the clustering gap
+ * too, so widening the arc also widens what counts as one cluster.
+ */
+function hopRadius(): number {
+  const v = Number(spikeEnv("KARASU_HOP_RADIUS"));
+  return Number.isFinite(v) && v > 0 ? v : HOP_RADIUS;
+}
 /**
  * Crossings on the same host segment closer than this (in px along the segment)
  * merge into one wide hop (design doc: `HOP_CLUSTER_GAP`, hop-radius-derived).
  * Coordinate-derived so the mark set stays deterministic.
  */
 export const HOP_CLUSTER_GAP = HOP_RADIUS * 2;
+/** SPIKE ONLY (#2631): the clustering gap for the spiked radius. */
+function hopClusterGap(): number {
+  return hopRadius() * 2;
+}
 /** Radius of a junction connection dot (px). */
 export const JUNCTION_RADIUS = 2.5;
 
@@ -130,7 +163,10 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
   // Trunk stub-join elbows grouped by spine (`trunkId` @ spine x). Each edge's
   // `waypoints[0]` is where its stub joins the shared vertical spine; `edge` is
   // that stub's index so its junction dot can be coloured like the edge.
-  const trunkElbows = new Map<string, { x: number; entries: { y: number; edge: number }[] }>();
+  const trunkElbows = new Map<
+    string,
+    { x: number; entries: { y: number; edge: number }[]; endY: number; entryX: number }
+  >();
 
   edges.forEach((edge, edgeIdx) => {
     // Ghost/cyclic edges are peripheral (dimmed / nudged perpendicular) and are
@@ -165,13 +201,42 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
       });
     }
 
+    // SPIKE (#2631): the mirror shape. An out-trunk's siblings share the *first*
+    // corner (they leave the source together) and branch at the last one, so the
+    // roles of the two elbows are swapped.
+    if (edge.outTrunkId !== undefined && edge.waypoints && edge.waypoints.length > 1) {
+      const branch = edge.waypoints[edge.waypoints.length - 1];
+      const key = `out:${edge.outTrunkId}@${branch.x}`;
+      const endY = edge.waypoints[0].y;
+      const entryX = edge.fromPoint.x;
+      const group = trunkElbows.get(key);
+      if (group) group.entries.push({ y: branch.y, edge: edgeIdx });
+      else
+        trunkElbows.set(key, {
+          x: branch.x,
+          entries: [{ y: branch.y, edge: edgeIdx }],
+          endY,
+          entryX,
+        });
+    }
+
     // Junction candidate: the elbow where a trunked edge's stub joins the spine.
     if (edge.trunkId !== undefined && edge.waypoints && edge.waypoints.length > 0) {
       const elbow = edge.waypoints[0];
       const key = `${edge.trunkId}@${elbow.x}`;
+      // SPIKE (#2631): the spine's far end — the elbow just before the target
+      // entry — is the same point for every sibling of one trunk.
+      const endY = edge.waypoints[edge.waypoints.length - 1].y;
+      const entryX = edge.toPoint.x;
       const group = trunkElbows.get(key);
       if (group) group.entries.push({ y: elbow.y, edge: edgeIdx });
-      else trunkElbows.set(key, { x: elbow.x, entries: [{ y: elbow.y, edge: edgeIdx }] });
+      else
+        trunkElbows.set(key, {
+          x: elbow.x,
+          entries: [{ y: elbow.y, edge: edgeIdx }],
+          endY,
+          entryX,
+        });
     }
   });
 
@@ -250,13 +315,13 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
       addHop({
         x: round((pMin.x + pMax.x) / 2),
         y: round((pMin.y + pMax.y) / 2),
-        halfWidth: round(Math.hypot(pMax.x - pMin.x, pMax.y - pMin.y) / 2 + HOP_RADIUS),
+        halfWidth: round(Math.hypot(pMax.x - pMin.x, pMax.y - pMin.y) / 2 + hopRadius()),
         angle,
         edge: host.edge,
       });
     };
     for (let k = 1; k < crossings.length; k++) {
-      if (crossings[k].coord - crossings[k - 1].coord > HOP_CLUSTER_GAP) {
+      if (crossings[k].coord - crossings[k - 1].coord > hopClusterGap()) {
         flush(k - 1);
         lo = k;
       }
@@ -287,13 +352,172 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
       const key = `${x},${y}`;
       if (junctionSeen.has(key)) continue;
       junctionSeen.add(key);
+      // SPIKE (#2631): in the tip modes the count chip stands where the dot
+      // would — one mark per merge, not two.
+      const lg = trunkLegibility();
+      if (lg === "tip" || lg === "tiponly" || lg === "tipentry") continue;
       junctions.push({ x, y, edge });
+    }
+  }
+
+  // SPIKE ONLY (#2631 slice E): how many siblings the spine carries at each
+  // height, so the renderer can widen it where it is a bundle and say "× N"
+  // where it enters the target. A dot says a merge happened; neither of these
+  // is derivable from the dot alone, which is what the slice is about.
+  const trunkSpines: TrunkSpineMark[] = [];
+  const trunkCounts: TrunkCountMark[] = [];
+  const mode = trunkLegibility();
+  if (mode !== "off") {
+    for (const { x, entries, endY, entryX } of trunkElbows.values()) {
+      if (entries.length < 2) continue;
+      // Each sibling occupies the spine between its own elbow and the shared
+      // end, whichever way the spine runs.
+      const spans = entries.map((e) => ({
+        lo: Math.min(e.y, endY),
+        hi: Math.max(e.y, endY),
+        edge: e.edge,
+      }));
+      const carriedAt = (y: number): { edge: number }[] =>
+        spans.filter((sp) => sp.lo < y && y < sp.hi);
+      const cuts = [...new Set(spans.flatMap((sp) => [sp.lo, sp.hi]))].sort((a, b) => a - b);
+      for (let i = 0; i < cuts.length - 1; i++) {
+        const y0 = cuts[i];
+        const y1 = cuts[i + 1];
+        if (y1 - y0 < EPS) continue;
+        const carried = carriedAt((y0 + y1) / 2);
+        if (carried.length < 2) continue;
+        trunkSpines.push({ x0: x, y0, x1: x, y1, count: carried.length, edge: carried[0].edge });
+      }
+      // The run into the target carries every sibling, so it is the widest part
+      // of the bundle — not the thin line it is drawn as today.
+      if (Math.abs(entryX - x) > EPS) {
+        trunkSpines.push({
+          x0: x,
+          y0: endY,
+          x1: entryX,
+          y1: endY,
+          count: entries.length,
+          edge: entries[0].edge,
+        });
+      }
+      if (mode === "tip" || mode === "tiponly" || mode === "tipentry" || mode === "tipside") {
+        // One chip per merge, standing where the junction dot would: the number
+        // is how many the spine carries onward from that elbow.
+        const seen = new Set<number>();
+        for (const { y, edge } of entries) {
+          if (seen.has(y)) continue;
+          seen.add(y);
+          const onward = carriedAt(y + (endY > y ? EPS * 10 : -EPS * 10)).length;
+          if (onward < 2) continue;
+          // `tipside` keeps the junction dot on the spine and sets the number
+          // beside it, so neither mark can ever cover a hop arc.
+          const bandHalfHere = (1 + Math.min(onward - 1, 8) * 3) / 2;
+          const dx = mode === "tipside" ? bandHalfHere + 12 : 0;
+          trunkCounts.push({ x: x + dx, y, count: onward, edge });
+        }
+        if (mode === "tipentry") {
+          trunkCounts.push({
+            x: (x + entryX) / 2,
+            y: endY,
+            count: entries.length,
+            edge: entries[0].edge,
+          });
+        }
+      } else if (mode === "count") {
+        trunkCounts.push({ x, y: endY, count: entries.length, edge: entries[0].edge });
+      }
+    }
+  }
+
+  // SPIKE ONLY (#2631 slice E). A hop has to arch *clear of what it crosses*.
+  // The band is up to 25px wide, while the default arc rises 4px, so without
+  // this a crossing over a busy trunk is drawn inside the band and reads as a
+  // connection — the exact misreading hops exist to prevent (ADR-1859).
+  // Only where the band is actually drawn: `label` / `count` leave the spine at
+  // its normal width, so their hops must stay the default size.
+  const bandDrawn = mode === "bus" || mode === "tip" || mode === "tipentry" || mode === "tipside";
+  // `KARASU_TRUNK_HOPFIX=0` leaves the arcs at their default size, so the report
+  // can show what the band does to an unadjusted hop.
+  if (trunkSpines.length > 0 && bandDrawn && spikeEnv("KARASU_TRUNK_HOPFIX") !== "0") {
+    const bandHalf = (count: number): number => (1 + Math.min(count - 1, 8) * 3) / 2;
+    for (const hop of hops) {
+      let clearance = 0;
+      for (const sp of trunkSpines) {
+        const vertical = Math.abs(sp.x1 - sp.x0) < EPS;
+        const half = bandHalf(sp.count);
+        const on = vertical
+          ? Math.abs(hop.x - sp.x0) <= half + 2 &&
+            hop.y > Math.min(sp.y0, sp.y1) - EPS &&
+            hop.y < Math.max(sp.y0, sp.y1) + EPS
+          : Math.abs(hop.y - sp.y0) <= half + 2 &&
+            hop.x > Math.min(sp.x0, sp.x1) - EPS &&
+            hop.x < Math.max(sp.x0, sp.x1) + EPS;
+        if (on && half > clearance) clearance = half;
+      }
+      if (clearance === 0) continue;
+      // Wide enough that the arc's feet land outside the band, tall enough that
+      // its crown rises out of it.
+      hop.halfWidth = Math.max(hop.halfWidth, clearance + 3);
+      hop.ry = Math.max(hopRadius(), clearance + 3);
+    }
+  }
+
+  // SPIKE ONLY (#2631 slice E). A count tip must not sit on a crossing: it
+  // would hide the hop arc under a "merge = connected" mark. Slide it along the
+  // spine to the first clear spot.
+  if (trunkCounts.length > 0 && hops.length > 0 && mode !== "tipside") {
+    const TIP_R = 11;
+    const clashes = (tip: TrunkCountMark, mark: HopMark): boolean =>
+      Math.abs(mark.x - tip.x) < TIP_R + mark.halfWidth &&
+      Math.abs(mark.y - tip.y) < TIP_R + (mark.ry ?? hopRadius()) + 2;
+    for (const tip of trunkCounts) {
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const clash = hops.find((mark) => clashes(tip, mark));
+        if (!clash) break;
+        tip.y += clash.y >= tip.y ? -(TIP_R + 10) : TIP_R + 10;
+      }
     }
   }
 
   // Stable order → deterministic SVG output.
   hops.sort((a, b) => a.y - b.y || a.x - b.x);
   junctions.sort((a, b) => a.y - b.y || a.x - b.x);
+  trunkSpines.sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0);
+  trunkCounts.sort((a, b) => a.y - b.y || a.x - b.x);
 
-  return { hops, junctions };
+  // Omit the spike's fields when empty, so the default path returns exactly the
+  // object shape it always did (two reference tests compare the whole object).
+  // SPIKE (#2631): carry the spiked radius to the renderer, which otherwise
+  // falls back to the HOP_RADIUS constant.
+  if (hopRadius() !== HOP_RADIUS) for (const hop of hops) hop.ry ??= hopRadius();
+  if (trunkSpines.length === 0 && trunkCounts.length === 0) return { hops, junctions };
+  return { hops, junctions, trunkSpines, trunkCounts };
+}
+
+/**
+ * SPIKE ONLY (#2631 slice E). Which legibility affordances to draw on top of
+ * today's trunk: `off` (today), `label` (each trunked edge's label moves onto
+ * its own stub), `bus` (label + a spine whose width says how many it carries),
+ * `count` (label + a "× N" chip at the target entry).
+ */
+export type TrunkLegibility =
+  | "off"
+  | "label"
+  | "bus"
+  | "count"
+  | "tip"
+  | "tiponly"
+  | "tipentry"
+  | "tipside";
+export function trunkLegibility(): TrunkLegibility {
+  const v = spikeEnv("KARASU_TRUNK_LEGIBILITY");
+  return v === "label" ||
+    v === "bus" ||
+    v === "count" ||
+    v === "tip" ||
+    v === "tiponly" ||
+    v === "tipentry" ||
+    v === "tipside"
+    ? v
+    : "off";
 }

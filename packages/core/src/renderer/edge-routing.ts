@@ -1,6 +1,7 @@
 import type { ResolvedEdgeStyle } from "../types/style.js";
 import type { HopMark, LayoutEdge } from "./layout-types.js";
 import { el, escapeXml } from "./svg-builder.js";
+import { trunkLegibility } from "./crossing-marks.js";
 
 interface Point {
   x: number;
@@ -263,6 +264,7 @@ export function renderEdge(
         resolveLabelPosition(edge, style),
         style.labelOffsetX,
         style.labelOffsetY,
+        preferredLabelSegment(edge),
       );
     const labelText = el(
       "text",
@@ -363,8 +365,14 @@ export function resolveLabelPosition(edge: LayoutEdge, style: ResolvedEdgeStyle)
  * like `edge { label-offset: 0 8px; }` produces a uniform downward
  * shift across the diagram regardless of each edge's slope.
  */
-function labelAnchor(points: Point[], position: number, offsetX: number, offsetY: number): Point {
-  return labelAnchorWithSegment(points, position, offsetX, offsetY).anchor;
+function labelAnchor(
+  points: Point[],
+  position: number,
+  offsetX: number,
+  offsetY: number,
+  preferSegment?: number,
+): Point {
+  return labelAnchorWithSegment(points, position, offsetX, offsetY, preferSegment).anchor;
 }
 
 /**
@@ -380,11 +388,36 @@ export function labelAnchorWithSegment(
   position: number,
   offsetX: number,
   offsetY: number,
+  /**
+   * SPIKE ONLY (#2631 slice E). Index of a segment the label must sit on,
+   * overriding the longest-segment heuristic. Used to keep a trunked edge's
+   * label on its own stub instead of on the spine it shares with its siblings.
+   */
+  preferSegment?: number,
 ): { anchor: Point; segDir: Point } {
   if (position === 0.5 && offsetX === 0 && offsetY === 0) {
+    if (preferSegment !== undefined && preferSegment >= 0 && preferSegment < points.length - 1) {
+      const a = points[preferSegment];
+      const b = points[preferSegment + 1];
+      return {
+        anchor: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+        segDir: { x: b.x - a.x, y: b.y - a.y },
+      };
+    }
     return defaultLabelAnchor(points);
   }
   return fractionalLabelAnchor(points, position, offsetX, offsetY);
+}
+
+/**
+ * SPIKE ONLY (#2631 slice E). A trunked edge's first segment is the stub that
+ * leaves its own source; everything after it is shared with its siblings. The
+ * longest-segment default puts the label on that shared spine, where it names a
+ * line the reader cannot trace back to one source.
+ */
+export function preferredLabelSegment(edge: LayoutEdge): number | undefined {
+  if (trunkLegibility() === "off") return undefined;
+  return edge.trunkId !== undefined ? 0 : undefined;
 }
 
 function segDirAt(points: Point[], i: number): Point {

@@ -10,6 +10,9 @@ import { routeOrthogonalEdges } from "./edge-routing-channels.js";
 import {
   routeGroupedEdges,
   aggregateGroupTrunks,
+  aggregateGroupSourceTrunks,
+  outTrunksEnabled,
+  trunkVariant,
   distributeGutterLanes,
   fanOutGutterPorts,
 } from "./edge-routing-groups.js";
@@ -435,8 +438,13 @@ export function runRoutingChain(
   // canvas they pull fan-in edges back out to the canvas edge and undo the
   // interior corridors (#2365) those edges would otherwise take. Measured and
   // rejected in #2364.
-  if (grouped) {
+  if (grouped && trunkVariant() !== "none") {
     aggregateGroupTrunks(nodes, edges, groupFrames, obstacleIndex, expandedFrames);
+  }
+  // SPIKE (#2631 slice E follow-up): the mirror pass — bundle the edges leaving
+  // one source onto one spine that sheds a branch per target row.
+  if (grouped && outTrunksEnabled()) {
+    aggregateGroupSourceTrunks(nodes, edges, groupFrames, obstacleIndex, expandedFrames);
   }
   // Give the remaining non-trunked gutter corridors distinct lanes so two
   // single-incoming edges no longer share a collinear vertical segment

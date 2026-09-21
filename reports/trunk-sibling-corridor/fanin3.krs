@@ -1,0 +1,14 @@
+system Shop {
+  service A { label "Checkout" }
+  service B { label "Billing" }
+  service C { label "Catalog" }
+  database DB { label "ShopDB" }
+  A -> DB "write"
+  B -> DB "write"
+  C -> DB "read"
+}
+organization Org {
+  team "alpha" { label "Alpha" owns A }
+  team "beta" { label "Beta" owns B }
+  team "gamma" { label "Gamma" owns C }
+}
