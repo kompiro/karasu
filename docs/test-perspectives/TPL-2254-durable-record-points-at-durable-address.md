@@ -45,7 +45,7 @@ scope:
 手動確認の手順を書く / 直すときに確認する:
 
 - [ ] 到達先はデプロイ済みの本番 URL か（app なら `karasu.kompiro.dev`、docs なら公開ドキュメントサイト）
-- [ ] 指しているファイルは、この記録より長生きするか — `docs/design/` は昇格時に削除されるので代わりに Issue と ADR を指す。`packages/…` / `scripts/…` は `pnpm run lint:record-source-paths` が実在を照合する（不在が正しいならその行の上に理由付きで宣言する）
+- [ ] 指しているファイルは、この記録より長生きするか — `docs/design/` は昇格時に削除されるので代わりに Issue と ADR を指す。`packages/…` / `scripts/…` は機械で照合される（AT と設計ドキュメントは `pnpm run lint:record-source-paths`、TPL は `pnpm run tpl:validate`。不在が正しいならどちらでも、その行の上に理由付きで宣言する）
 - [ ] ブランチ名・PR 番号・セッション固有のパスが URL に含まれていないか
 - [ ] ローカル起動コマンドを書いていないか。書くなら「本番では確認できない理由」を併記したか
 - [ ] その機能が**まだ本番に出ていない**場合、記録に preview URL を焼き付けるのではなく、PR 本文の Preview URL 欄に置いたか
@@ -56,8 +56,11 @@ scope:
 - **本番 URL を単一の到達先にする** — `.claude/rules/acceptance.md`「手動項目の到達先は本番 URL」に app / docs-site の正典 URL を表で置く。AT を編集すると自動で読み込まれる
 - **preview は PR の欄に置き、記録には残さない** — PR テンプレートの `## Preview URL` 欄が preview の正しい住所。AT に写すと寿命が合わない
 - **AT からは Issue を指す** — Issue は削除されず design PR と実装 PR の両方へ辿れる。ADR があれば併記する。強制は `pnpm at:check-coverage`（`scripts/acceptance/design-refs.ts`）で、`docs/acceptance/**` から `docs/design/` への参照を finding として落とす
-- **ソースパスは機械で照合する** — `pnpm run lint:record-source-paths` が
-  `docs/{acceptance,test-perspectives,design}` のコードスパンを working tree と突き合わせる。
+- **ソースパスは機械で照合する** — ディレクトリごとに担当が 1 つずつ決まっている。
+  `pnpm run lint:record-source-paths` が `docs/{acceptance,design}` を、
+  `pnpm run tpl:validate`（`@kompiro/tpl-tools` の `--source-prefix`）が
+  `docs/test-perspectives` を、それぞれコードスパン単位で working tree と突き合わせる。
+  marker の綴りは両者で同一なので、記録が repo 間を移動しても意味が保たれる。
   不在が正しい場合（履歴・例示・設計がこれから作るファイル）は、その行の上に
   `<!-- absent-path-next-line: <理由> -->` で宣言する。宣言は逆向きにも検査され、パスが
   実在するようになると落ちる — 実装済みの設計ドキュメントが ADR 昇格の時期を自ら告げる。

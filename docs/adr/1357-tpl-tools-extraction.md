@@ -16,7 +16,7 @@ assumptions:
   - "file: docs/test-perspectives/README.md"
   - "grep: package.json :: \"@kompiro/tpl-tools\""
   - "grep: package.json :: tpl validate --config tpl.config.json --packages-root packages"
-  - "grep: .github/workflows/tpl-validate.yml :: pnpm run tpl:validate"
+  - "grep: .github/workflows/ci.yml :: pnpm run tpl:validate"
   - "grep: lefthook.yml :: tpl-validate"
 ---
 

@@ -308,6 +308,7 @@ flowchart TD
     ADR_2578["ADR-2578<br/>karasu-nest は server-side reverse をやめ、投稿を預かるギャラ..."]
     ADR_2592["ADR-2592<br/>ギャラリーの構築 — 投稿は repo に紐づかず、投稿者が自分で管理する"]
     ADR_2655["ADR-2655<br/>nest のセッション期限を idle 窓と絶対上限に分ける"]
+    ADR_2859["ADR-2859<br/>spike ブランチは答える Issue 番号で名付け、その Issue が open なあいだ残す"]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   end
   subgraph renderer["renderer"]
@@ -406,6 +407,7 @@ flowchart TD
     ADR_2045["ADR-2045<br/>QA 手動チェックリスト生成のマーカー対応と 3-way triage"]
     ADR_2348["ADR-2348<br/>AT レコードは Design Doc ではなく Issue を指す — 削除が規約で確定して..."]
     ADR_2648["ADR-2648<br/>記録が名指すソースパスを機械で照合し、不在が正しい場合は宣言させる"]
+    ADR_2810["ADR-2810<br/>TPL 本文のソースパス照合を `@kompiro/tpl-tools` へ移し、Requir..."]
     ADR_9012["ADR-9012<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
   end
   subgraph vscode["vscode"]
@@ -933,9 +935,11 @@ flowchart TD
   class ADR_2804 accepted
   class ADR_2805 superseded
   class ADR_2807 accepted
+  class ADR_2810 accepted
   class ADR_2813 accepted
   class ADR_2836 accepted
   class ADR_2839 accepted
+  class ADR_2859 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
