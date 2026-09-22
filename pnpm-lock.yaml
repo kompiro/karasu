@@ -125,8 +125,8 @@ importers:
         specifier: ^1.42.0
         version: 1.42.0(react@19.2.8)
       marked:
-        specifier: ^18.0.9
-        version: 18.0.9
+        specifier: ^18.0.13
+        version: 18.0.13
       monaco-editor:
         specifier: ^0.56.0
         version: 0.56.0
@@ -350,8 +350,8 @@ importers:
         specifier: workspace:*
         version: link:../lsp
       marked:
-        specifier: ^18.0.9
-        version: 18.0.9
+        specifier: ^18.0.13
+        version: 18.0.13
       vscode-languageclient:
         specifier: ^10.1.1
         version: 10.1.1
@@ -4641,8 +4641,8 @@ packages:
     engines: {node: '>= 18'}
     hasBin: true
 
-  marked@18.0.9:
-    resolution: {integrity: sha512-/Sa4qiiHZxf0/FQdBBowr9q4r10krCwMvpK48FUBdXdUXScDxiQGR9zCPrFgRVR5LU3iySOiIjy09ZQvADir1w==}
+  marked@18.0.13:
+    resolution: {integrity: sha512-xTxVzZsBFwunP6HDmtBkabUQEYArnP7/rMDGmPj9SlrKlQ4i8MdYVow+nJL0eOqwpUqhzBoTBRADGN6uYwPyOw==}
     engines: {node: '>= 20'}
     hasBin: true
 
@@ -10926,7 +10926,7 @@ snapshots:
 
   marked@14.0.0: {}
 
-  marked@18.0.9: {}
+  marked@18.0.13: {}
 
   math-intrinsics@1.1.0: {}
 
