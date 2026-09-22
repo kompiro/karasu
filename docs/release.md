@@ -43,7 +43,7 @@ npm への公開は **changesets** で管理し、認証は **npm Trusted Publis
 
 npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`（ライブラリ）。CLI は esbuild で `@karasu-tools/core` を内包した単一 ESM バンドルとしてビルドする（`packages/cli` の `build` スクリプト。公開 core への依存には切り替えない）。`@karasu-tools/app` / `@karasu-tools/lsp` / `@karasu-tools/e2e` / `@karasu-tools/vscode-e2e` は `.changeset/config.json` の `ignore` に入っており版管理・公開とも対象外。
 
-`karasu-vscode`（VS Code 拡張）も changesets の**版管理対象**（`ignore` から除外）。ただし `private: true` のため `changeset publish` は npm へ publish せず（自動スキップ）、配布は Marketplace 経由で手動（後述「VS Code 拡張のリリース」）。changesets は version bump と `packages/vscode/CHANGELOG.md` 生成のみを担う。 `@changesets/cli` 3 は private パッケージを既定で版管理しない（`privatePackages` の既定が `{ version: false }`）ため、`.changeset/config.json` に `privatePackages: { "version": true, "tag": false }` を明示してこの扱いを保っている（[Dependabot トリアージ 2026-09-22](design/dependabot-triage-2026-09-22.md)）。
+`karasu-vscode`（VS Code 拡張）も changesets の**版管理対象**（`ignore` から除外）。ただし `private: true` のため `changeset publish` は npm へ publish せず（自動スキップ）、配布は Marketplace 経由で手動（後述「VS Code 拡張のリリース」）。changesets は version bump と `packages/vscode/CHANGELOG.md` 生成のみを担う。 `@changesets/cli` 3 は private パッケージを既定で版管理しない（`privatePackages` の既定が `{ version: false }`）ため、`.changeset/config.json` に `privatePackages: { "version": true, "tag": false }` を明示してこの扱いを保っている（[ADR-2877](adr/2877-dependabot-triage-2026-09-22.md)）。
 
 > **`@karasu-tools/core` は v0.x（TS API、無保証）**。`.krs` / `.krs.style` 言語は v1.0 だが、TS API は minor で破壊的変更を許す（[ADR-1314](adr/1314-krs-spec-v1-freeze.md)）。`exports` は公開先に `dist` を指し、`development` 条件で repo 内は TS ソースを解決するため `pnpm typecheck` は build 非依存。
 
