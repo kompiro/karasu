@@ -43,12 +43,21 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # `pnpm version-packages` = `changeset version && pnpm install
-      # --lockfile-only`. If no changesets are pending the tree stays clean
-      # and we stop without pushing an empty release branch.
+      # --lockfile-only`. Since @changesets/cli 3, `changeset version` exits 1
+      # when no changeset is pending, so "nothing to release" is decided from
+      # the changeset files before it runs rather than by swallowing that exit
+      # code (TPL-2786: a real failure of `changeset version`, such as a mixed
+      # changeset, must still fail this job). A changeset that names only
+      # `ignore`d packages is not filtered out here; it also fails `changeset
+      # version`, which is the right outcome because it can never be released.
       - name: Version and push release branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -z "$(find .changeset -maxdepth 1 -name '*.md' ! -name README.md -print -quit)" ]; then
+            echo "::notice::No pending changesets: nothing to release."
+            exit 0
+          fi
           pnpm version-packages
           if git diff --quiet && git diff --cached --quiet; then
             echo "::notice::No pending changesets — nothing to release."
