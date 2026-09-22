@@ -59,7 +59,7 @@
     "bench:render": "tsx scripts/bench/render.ts"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.31.0",
+    "@changesets/cli": "^3.0.3",
     "@karasu-tools/core": "workspace:*",
     "@kompiro/adr-tools": "^0.0.13",
     "@kompiro/tpl-tools": "^0.0.10",
