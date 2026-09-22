@@ -37,8 +37,13 @@ import { NodeFileSystemProvider } from "./node-fs.js";
  * file's once, rather than twice per diagnostic. Create one per printed list;
  * the cache lives only as long as that report, so a later run never reads a
  * stale answer.
+ *
+ * The parameter is structural rather than a `Diagnostic`, because a `Warning`
+ * carries the same optional `loc` and the CLI prints both through one rule
+ * (#2802): the spec's per-surface location table names the surface, not the
+ * channel the position arrived on.
  */
-export function diagLocFormatter(filePath: string): (d: Diagnostic) => string {
+export function diagLocFormatter(filePath: string): (d: { loc?: Diagnostic["loc"] }) => string {
   const canonical = new Map<string, string>();
   const canonicalOf = (path: string): string => {
     let hit = canonical.get(path);

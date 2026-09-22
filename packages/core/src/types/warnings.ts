@@ -44,7 +44,8 @@ export type WarningKind =
   | "style-missing-length-unit"
   | "style-invalid-length-unit"
   | "style-out-of-range"
-  | "style-unknown-property";
+  | "style-unknown-property"
+  | "style-unknown-icon";
 
 /**
  * Per-kind params shape. Each entry carries only the structured data needed
@@ -457,6 +458,7 @@ export interface WarningParamsByKind {
   };
   "style-out-of-range": { property: string; value: number; min?: number; max?: number };
   "style-unknown-property": { property: string };
+  "style-unknown-icon": { property: string; name: string };
 }
 
 /**

@@ -245,6 +245,7 @@ Validating `.krs.style` property names and values.
 | Code | Severity | Fires when |
 | --- | --- | --- |
 | `style-unknown-property` | warning | A style property name is not recognised. |
+| `style-unknown-icon` | warning | A `shape: url("<name>")` names no registered icon, so the node is drawn as `box`. Fires on every surface, because the built-in icon set is registered by core itself ([TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)). |
 | `style-invalid-enum-value` | error | A style value is not in the allowed enum. |
 | `style-invalid-hex-color` | error | A style hex color is malformed. |
 | `style-invalid-length-unit` | error | A style length uses a disallowed unit. |
@@ -258,6 +259,8 @@ Validating `.krs.style` property names and values.
 | `style-column-invalid-value` | warning | A style `column` value is not `left` / `center` / `right`. |
 | `style-column-ignored-non-system-view` | warning | A `column` hint is applied to a deploy / org view (ignored). |
 | `style-grid-columns-invalid-value` | warning | A style `grid-columns` value is not a positive integer (the hint is dropped; layout auto-balances). |
+
+> Related TPLs: [TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md) (`style-unknown-icon` reads the shape registry, whose built-in contents core fills itself, so the verdict is the same on every surface), [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) (a value the parser accepts has an effect or a diagnostic, never silence).
 
 ### Client & capability
 

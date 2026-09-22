@@ -446,6 +446,7 @@ export type Translations = {
     max?: number;
   }) => string;
   "warning.styleUnknownProperty.message": (params: { property: string }) => string;
+  "warning.styleUnknownIcon.message": (params: { property: string; name: string }) => string;
 
   // Diagnostic messages (Phase D.2) — rendered in PreviewPane's diagnostic
   // banner. One entry per DiagnosticCode; codes with branching messages
@@ -647,6 +648,7 @@ export type Translations = {
     max?: number;
   }) => string;
   "diagnostic.styleUnknownProperty.message": (params: { property: string }) => string;
+  "diagnostic.styleUnknownIcon.message": (params: { property: string; name: string }) => string;
   "diagnostic.circularImport.message": (params: { filePath: string }) => string;
   "diagnostic.fileNotFound.message": (params: { filePath: string }) => string;
   "diagnostic.directoryNotFound.message": (params: { dirPath: string }) => string;

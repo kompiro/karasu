@@ -43,6 +43,28 @@ tools:
 # No merge, no close, no push. The verdict vocabulary (採用 / 保留 / 却下) is the
 # maintainer's, so the agent supplies evidence and stops there.
 safe-outputs:
+  # The safety net fails the run rather than being waved through. gh-aw defaults
+  # `continue-on-error` to true, so a detection job that cannot conclude still
+  # reports success, `safe_outputs` (gated on `needs.detection.result ==
+  # 'success'`) publishes output nothing inspected, and the run summary stays
+  # green. Every run so far took that path (#2786). With this false, a detection
+  # that cannot conclude fails the run and the safe outputs below are skipped.
+  # It does not silence gh-aw's `conclusion` job, which runs on `always()` and
+  # can still open an issue from the agent's own missing-tool / incomplete /
+  # failure reports; that is also how the failure gets reported, so it stays.
+  # ADR-2786 records it as the residual exposure.
+  threat-detection:
+    continue-on-error: false
+    # Pin the detection model instead of leaving the `detection` alias to be
+    # resolved at run time. The copilot harness refuses to start when it cannot
+    # resolve an alias against the model catalog, which is what turned the
+    # earlier `parse_error` into `engine_error`. The agent job of the same run
+    # resolves `auto` fine, so the catalog is reachable and only the alias is
+    # not; going back to the alias means dropping these three lines and
+    # updating `scripts/ci/agentic-workflow-safety.test.ts`, which requires it.
+    engine:
+      id: copilot
+      model: copilot/claude-haiku-4.5
   add-comment:
     target: "*"
     # Dependabot labels every PR it opens `dependencies`, so the comments land on

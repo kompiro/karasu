@@ -355,6 +355,11 @@ const SAMPLES: SamplesByCode = {
     code: "style-unknown-property",
     params: { property: "colr" },
   },
+  "style-unknown-icon": {
+    severity: "warning",
+    code: "style-unknown-icon",
+    params: { property: "shape", name: "databse" },
+  },
 
   // ── Import resolver ─────────────────────────────────────────────────────
   "circular-import": {
@@ -529,6 +534,7 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "style-invalid-length-unit": ["stroke-width", "2em", '"em"', "px"],
   "style-out-of-range": ["opacity", "1.5", "[0, 1]"],
   "style-unknown-property": ["colr"],
+  "style-unknown-icon": ["shape", "databse"],
   "circular-import": ["services/orders.krs"],
   "file-not-found": ["services/missing.krs"],
   "directory-not-found": ["services"],

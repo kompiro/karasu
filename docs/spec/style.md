@@ -339,11 +339,22 @@ service[external] {
 }
 ```
 
-The argument is the **name of a registered icon**, not a path to a file. Names
-come from the icon set the host registers; the built-in set is the manifest at
-`packages/core/icons/icons.json` (`service`, `database`, `cloud-node`,
-`client-web`, `table`, `oci`, … — the same icons icon mode draws). A `url()`
-that names no registered icon falls back to `box`.
+The argument is the **name of a registered icon**, not a path to a file. The
+built-in set — the manifest at `packages/core/icons/icons.json` (`service`,
+`database`, `cloud-node`, `client-web`, `table`, `oci`, … — the same icons
+icon mode draws) — is registered by core itself, so it resolves the same on
+every surface: the browser app, `karasu render`, the VS Code preview, the LSP.
+A host may add its own icons on top (`resolveIconManifest` /
+`loadAndRegisterIcon`). A `url()` that names no registered icon is reported as
+a `style-unknown-icon` warning at the declaration and the node falls back to
+`box`.
+
+That warning is decided against the registry of the process that reads the
+sheet, so it answers for the built-in set everywhere. A host's **own** icons
+live in that host's process only: the language server and `karasu lint-style`
+run elsewhere and report a name they registered as unknown, while the host
+draws it correctly. An embedder that adds icons registers them before it
+compiles or validates.
 
 ### How a `url()` icon is drawn
 
@@ -385,6 +396,9 @@ text drawn over it in the usual stack.
 > — both display modes are checked on every drawing surface; the frame is
 > painted in both, and the modes differ in the card's size and in whether the
 > icon's slots are read.
+> [TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)
+> — the registry `url()` reads is filled by core itself, so neither the drawing
+> nor the `style-unknown-icon` verdict depends on what a host registered.
 > [TPL-2803](../test-perspectives/TPL-2803-measured-lines-are-drawn-lines.md)
 > — the card's text is drawn by the layout its size was measured for, so a
 > shape-mode card keeps every line measurement reserved for it.
