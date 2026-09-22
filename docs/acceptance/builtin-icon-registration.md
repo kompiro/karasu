@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-09-21
 - **関連 Issue**: [#2802](https://github.com/kompiro/karasu/issues/2802)
+- **関連 ADR**: [ADR-9005](../adr/9005-svg-icon-file-import.md)（SVG ファイル + マニフェスト方式。本 AT の生成モジュールはその正本を残したままのビルド成果物）
 - **Related TPLs**: [TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)（core が読むレジストリの中身はホストに依存しない）, [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)（表示モードは全描画面で点検する）, [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md)（二重表現は drift テストで固定する）, [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（受理する語彙は効果か警告を持つ）, [TPL-1024](../test-perspectives/TPL-1024-dev-vs-packaged-mode-parity.md)（バンドル済み配布物でも同じに動く）
 - **対象ファイル**:
   - `packages/core/src/shapes/builtin-icons.ts`（import 時の自動登録）、`packages/core/src/shapes/builtin-icons.generated.ts`（`packages/core/icons/` からの生成物）

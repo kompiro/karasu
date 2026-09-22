@@ -92,10 +92,7 @@ export async function diff(
       process.stderr.write(`Warning: ${loc} ${formatDiagnostic(d)}\n`);
     }
     for (const w of result.warnings ?? []) {
-      // Same rule as the diagnostic loops above: print the position when the
-      // warning carries one (#2802), in diff's file-less spelling.
-      const loc = w.loc ? `${w.loc.start.line}:${w.loc.start.column} ` : "";
-      process.stderr.write(`Warning: ${loc}${formatWarning(w).message}\n`);
+      process.stderr.write(`Warning: ${formatWarning(w).message}\n`);
     }
 
     if (errors.length > 0) {
