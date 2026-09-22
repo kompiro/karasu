@@ -38,13 +38,13 @@ type: product
 
 ### AC-2: 生成モジュールは正本（`packages/core/icons/`）から drift しない
 
-- [x] TC-5: 生成モジュールの名前集合と本文が manifest と `.svg` に一致する
+- [x] TC-5: 生成モジュールの名前集合が manifest と一致し、順序も manifest に従う
 
-  > ✅ Automated — `packages/core/src/shapes/builtin-icons.generated.test.ts` › builtin-icons.generated.ts matches packages/core/icons (run `pnpm gen:icons` if this fails) › has exactly the manifest's names, in manifest order
+  > ✅ Automated — `scripts/icons/gen-builtin-icons.test.ts` › built-in icon codegen (#2802) › names exactly the icons the manifest names, in manifest order
 
-- [x] TC-6: commit 済みの生成モジュールが `pnpm gen:icons` の出力とバイト一致する
+- [x] TC-6: commit 済みの生成モジュールが `pnpm gen:icons --check` を通る（lefthook と同じ呼び出し）
 
-  > ✅ Automated — `scripts/icons/gen-builtin-icons.test.ts` › built-in icon codegen (#2802) › the committed module is byte-identical to a fresh render (run `pnpm gen:icons` if this fails)
+  > ✅ Automated — `scripts/icons/gen-builtin-icons.test.ts` › built-in icon codegen (#2802) › the committed module is up to date (run `pnpm gen:icons` if this fails)
 
 ### AC-3: 各描画面で同じ結果になる
 

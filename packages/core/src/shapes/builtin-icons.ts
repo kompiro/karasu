@@ -17,9 +17,6 @@
 import { loadAndRegisterIcon } from "../renderer/svg-icon-loader.js";
 import { BUILTIN_ICON_SOURCES } from "./builtin-icons.generated.js";
 
-/** Names of the built-in icons, in manifest order. */
-export const BUILTIN_ICON_NAMES: readonly string[] = BUILTIN_ICON_SOURCES.map((s) => s.name);
-
 /**
  * (Re)register every built-in icon with `builtIn: true`, so the
  * `{{color}}` / `{{fill}}` / `{{stroke}}` placeholders in their bodies are

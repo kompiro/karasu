@@ -8,10 +8,11 @@ import {
   type ShapeRenderFn,
   type ShapeContentInsetFn,
   type ShapePortFrameFn,
+  clearRegistry,
 } from "../shapes/shape-registry.js";
-// Side-effect import: the built-in icon set registers itself, so any surface
-// that can draw a shape can also draw `url("<built-in>")` (#2802, TPL-2802).
-import "../shapes/builtin-icons.js";
+// The built-in icon set registers itself on import, so any surface that can
+// draw a shape can also draw `url("<built-in>")` (#2802, TPL-2802).
+import { registerBuiltinIcons } from "../shapes/builtin-icons.js";
 
 // ---------------------------------------------------------------------------
 // Built-in shape definitions
@@ -461,6 +462,24 @@ export function registerBuiltinShapes(): void {
 
 // Auto-register on import
 registerBuiltinShapes();
+
+/**
+ * The registry as core ships it: cleared, then filled with everything core
+ * registers on import.
+ *
+ * Tests that need a known registry call this rather than `clearRegistry()`
+ * plus a subset. Core fills the registry from two places — the geometric
+ * shapes here and the built-in icons in `shapes/builtin-icons.ts` — and a
+ * reset that restored only one of them would leave the test looking at a
+ * registry no host ever has, which is the very dependency TPL-2802 forbids
+ * (#2802). Use bare `clearRegistry()` only when the point of the test is an
+ * *empty* registry.
+ */
+export function resetRegistryToBuiltins(): void {
+  clearRegistry();
+  registerBuiltinShapes();
+  registerBuiltinIcons();
+}
 
 // ---------------------------------------------------------------------------
 // Public render entry point (used by svg-renderer)

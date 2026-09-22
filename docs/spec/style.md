@@ -349,6 +349,13 @@ A host may add its own icons on top (`resolveIconManifest` /
 a `style-unknown-icon` warning at the declaration and the node falls back to
 `box`.
 
+That warning is decided against the registry of the process that reads the
+sheet, so it answers for the built-in set everywhere. A host's **own** icons
+live in that host's process only: the language server and `karasu lint-style`
+run elsewhere and report a name they registered as unknown, while the host
+draws it correctly. An embedder that adds icons registers them before it
+compiles or validates.
+
 ### How a `url()` icon is drawn
 
 An icon body is a drawing, not a card: it has nowhere to spend the node's

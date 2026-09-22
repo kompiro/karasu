@@ -2,16 +2,18 @@ import { describe, it, expect, afterAll } from "vitest";
 // Import through the package entry, exactly as a host does — the point of
 // these tests is that importing core is all a host has to do (TPL-2802).
 import {
-  BUILTIN_ICON_NAMES,
   CLIENT_SUBTYPE_TAGS,
   clearRegistry,
   compile,
   getIconDef,
   hasShape,
-  registerBuiltinIcons,
-  registerBuiltinShapes,
+  resetRegistryToBuiltins,
 } from "../index.js";
 import { ICON_RULES } from "../builtins/icon-theme.js";
+import { BUILTIN_ICON_SOURCES } from "./builtin-icons.generated.js";
+
+/** Every name core ships, read from the generated set rather than a copy. */
+const BUILTIN_ICON_NAMES = BUILTIN_ICON_SOURCES.map((s) => s.name);
 
 /** A path only `icons/database.svg` draws — the cylinder's side wall. */
 const DATABASE_PICTOGRAM = "M2 4v12c0 1.7 3.6 3 8 3s8-1.3 8-3V4";
@@ -26,9 +28,7 @@ const MODEL = `system Shop {
 
 afterAll(() => {
   // Leave the registry as core ships it for anything that runs after.
-  clearRegistry();
-  registerBuiltinShapes();
-  registerBuiltinIcons();
+  resetRegistryToBuiltins();
 });
 
 describe("built-in icons register on import (#2802, TPL-2802)", () => {
@@ -67,6 +67,20 @@ describe("built-in icons register on import (#2802, TPL-2802)", () => {
       }),
     );
   });
+
+  // #2715 / TPL-2715: a sheet passed as a string is a second document with no
+  // path, so a position on it would be read against the `.krs`. The named
+  // sheet keeps its position — `builtin-icons-extension-host.test.ts` in
+  // packages/vscode asserts that half through `compileProject`.
+  it("reports the warning without a position when the sheet was handed in as a string", () => {
+    const { warnings } = compile(MODEL, {
+      diagramType: "system",
+      styleSource: `service {\n  shape: url("databse");\n}`,
+    });
+    const warning = warnings.find((w) => w.kind === "style-unknown-icon");
+    expect(warning).toBeDefined();
+    expect(warning).not.toHaveProperty("loc");
+  });
 });
 
 describe("icon theme parity — every name the theme generates is registered (TPL-1415)", () => {
@@ -81,12 +95,17 @@ describe("icon theme parity — every name the theme generates is registered (TP
   });
 });
 
-describe("registerBuiltinIcons()", () => {
-  it("restores the built-in set after clearRegistry(), like registerBuiltinShapes()", () => {
+describe("resetRegistryToBuiltins()", () => {
+  it("restores every shape and icon core ships, so a reset cannot restore half", () => {
     clearRegistry();
+    expect(hasShape("box")).toBe(false);
     expect(hasShape("database")).toBe(false);
-    registerBuiltinShapes();
-    registerBuiltinIcons();
+
+    resetRegistryToBuiltins();
+
+    // A geometric shape and an icon: the two places core fills the registry
+    // from. Restoring one and not the other is the trap this helper closes.
+    expect(hasShape("box")).toBe(true);
     expect(hasShape("database")).toBe(true);
     expect(getIconDef("database")?.builtIn).toBe(true);
   });

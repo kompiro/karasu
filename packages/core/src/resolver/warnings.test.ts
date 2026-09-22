@@ -11,18 +11,7 @@ import { StyleParser } from "../parser/style-parser.js";
 import { Parser } from "../parser/parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import { resolveStyles } from "./style-resolver.js";
-import { loadAndRegisterIcons } from "../renderer/svg-icon-loader.js";
-import { clearRegistry } from "../shapes/shape-registry.js";
-import { registerBuiltinShapes } from "../renderer/shapes.js";
-
-// Minimal icon SVG for test registration
-const MINIMAL_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
-  <g class="krs-pictogram" transform="translate(6, 4)">
-    <rect width="20" height="20" fill="{{color}}"/>
-  </g>
-  <text class="krs-label" x="30" y="19" text-anchor="start"/>
-  <text class="krs-description" x="8" y="44" text-anchor="start"/>
-</svg>`;
+import { resetRegistryToBuiltins } from "../renderer/shapes.js";
 
 describe("invalid-owns warning", () => {
   // #2410: this diagnostic reports a *kind*, so it says nothing about an id that
@@ -229,34 +218,12 @@ organization Corp {
 });
 
 describe("icon mode style-conflict suppression", () => {
-  // Register minimal icons so compile() can resolve the icon shapes used in ICON_THEME_STYLE_SOURCE.
-  // Keys are the icon names as referenced in style rules (e.g. shape: url("service")).
+  // The icon names in ICON_THEME_STYLE_SOURCE resolve because core registers
+  // its built-in set on import (#2802). This used to hand-register 18 of the
+  // 30 names under a placeholder SVG, which was a third copy of icons.json
+  // and lagged it by construction (TPL-1415).
   beforeEach(() => {
-    clearRegistry();
-    registerBuiltinShapes();
-    loadAndRegisterIcons(
-      {
-        service: MINIMAL_ICON_SVG,
-        "user-card": MINIMAL_ICON_SVG,
-        domain: MINIMAL_ICON_SVG,
-        resource: MINIMAL_ICON_SVG,
-        team: MINIMAL_ICON_SVG,
-        member: MINIMAL_ICON_SVG,
-        database: MINIMAL_ICON_SVG,
-        "queue-card": MINIMAL_ICON_SVG,
-        api: MINIMAL_ICON_SVG,
-        "cloud-card": MINIMAL_ICON_SVG,
-        oci: MINIMAL_ICON_SVG,
-        lambda: MINIMAL_ICON_SVG,
-        jar: MINIMAL_ICON_SVG,
-        war: MINIMAL_ICON_SVG,
-        function: MINIMAL_ICON_SVG,
-        assets: MINIMAL_ICON_SVG,
-        job: MINIMAL_ICON_SVG,
-        artifact: MINIMAL_ICON_SVG,
-      },
-      true,
-    );
+    resetRegistryToBuiltins();
   });
 
   it("does not produce style-conflict warning when icon mode overrides builtin shapes", () => {

@@ -260,6 +260,8 @@ Validating `.krs.style` property names and values.
 | `style-column-ignored-non-system-view` | warning | A `column` hint is applied to a deploy / org view (ignored). |
 | `style-grid-columns-invalid-value` | warning | A style `grid-columns` value is not a positive integer (the hint is dropped; layout auto-balances). |
 
+> Related TPLs: [TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md) (`style-unknown-icon` reads the shape registry, whose built-in contents core fills itself, so the verdict is the same on every surface), [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) (a value the parser accepts has an effect or a diagnostic, never silence).
+
 ### Client & capability
 
 The `client` sub-language: storage kinds and capabilities.

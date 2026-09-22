@@ -95,9 +95,9 @@ core の関数が「名前 → 実装」のレジストリを引くとき、**�
 - `packages/core/src/shapes/builtin-icons.test.ts` — core の package entry を import しただけで、マニフェストの全名が
   `builtIn: true` で登録済みであること、`url("database")` と `displayMode: "icon"` がアイコンを描くこと、
   `ICON_RULES` と `client-<subtype>` が使う名前がすべて登録済みであること（parity）
-- `packages/core/src/shapes/builtin-icons.generated.test.ts` — 生成モジュールが `packages/core/icons/` の
-  manifest と `.svg` の内容に一致すること（key 集合と本文、TPL-1415）
-- `scripts/icons/gen-builtin-icons.test.ts` — commit 済みの生成モジュールが生成スクリプトの出力とバイト一致すること
+- `scripts/icons/gen-builtin-icons.test.ts` — commit 済みの生成モジュールが正本（manifest と `.svg`）から
+  再生成したものと一致し、名前集合と順序も manifest どおりであること（TPL-1415）。判定は lefthook の
+  `pnpm gen:icons --check` と同じ `regenerate()` を呼ぶので、フックとテストが食い違わない
 - `packages/core/src/style/value-validator.test.ts` — 未登録の名前が `style-unknown-icon` になり、組み込みの名前は
   ホストの登録なしに通ること
 - `packages/cli/src/render.e2e.test.ts` — `karasu render` が `url("database")` をアイコンで描き、typo を warning にすること
@@ -109,4 +109,4 @@ core の関数が「名前 → 実装」のレジストリを引くとき、**�
 
 - [`docs/spec/style.md`](../spec/style.md) — 「shape property」節（`url()` の引数は登録済みアイコンの名前で、
   組み込みのセットは core 自身が登録する。未登録の名前は `style-unknown-icon` warning、描画は `box`）
-- [`docs/spec/diagnostics.md`](../spec/diagnostics.md) — 「Style validation」の `style-unknown-icon` 行
+- [`docs/spec/diagnostics.md`](../spec/diagnostics.md) — 「Style validation」節の `style-unknown-icon` 行（章末の `> Related TPLs:` が本 TPL を指す）

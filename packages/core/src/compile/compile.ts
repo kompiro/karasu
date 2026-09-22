@@ -1153,7 +1153,13 @@ function diagnosticToWarning(d: Diagnostic): Warning | null {
   // The validator anchors every diagnostic on the value it read; keep that
   // position so the warning panel and `karasu render` point at the sheet's
   // line the way the LSP and `karasu lint-style` already do (#2802).
-  const loc = d.loc ? { loc: d.loc } : {};
+  //
+  // Only when the sheet was named, though. A sheet handed to `compile()` as a
+  // string has a path for neither document, so a position on it would be read
+  // against the `.krs` — the misreading #2715 removed, and the same reason
+  // `unplacedStyleDiagnostics` strips that sheet's parse positions. Sheets
+  // that come through the ImportResolver carry their file and keep it.
+  const loc = d.loc?.file !== undefined ? { loc: d.loc } : {};
   switch (d.code) {
     case "style-invalid-enum-value":
       return { kind: "style-invalid-enum-value", params: d.params, ...loc };
