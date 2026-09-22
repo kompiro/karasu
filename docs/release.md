@@ -43,7 +43,7 @@ npm への公開は **changesets** で管理し、認証は **npm Trusted Publis
 
 npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`（ライブラリ）。CLI は esbuild で `@karasu-tools/core` を内包した単一 ESM バンドルとしてビルドする（`packages/cli` の `build` スクリプト。公開 core への依存には切り替えない）。`@karasu-tools/app` / `@karasu-tools/lsp` / `@karasu-tools/e2e` / `@karasu-tools/vscode-e2e` は `.changeset/config.json` の `ignore` に入っており版管理・公開とも対象外。
 
-`karasu-vscode`（VS Code 拡張）も changesets の**版管理対象**（`ignore` から除外）。ただし `private: true` のため `changeset publish` は npm へ publish せず（自動スキップ）、配布は Marketplace 経由で手動（後述「VS Code 拡張のリリース」）。changesets は version bump と `packages/vscode/CHANGELOG.md` 生成のみを担う。
+`karasu-vscode`（VS Code 拡張）も changesets の**版管理対象**（`ignore` から除外）。ただし `private: true` のため `changeset publish` は npm へ publish せず（自動スキップ）、配布は Marketplace 経由で手動（後述「VS Code 拡張のリリース」）。changesets は version bump と `packages/vscode/CHANGELOG.md` 生成のみを担う。 `@changesets/cli` 3 は private パッケージを既定で版管理しない（`privatePackages` の既定が `{ version: false }`）ため、`.changeset/config.json` に `privatePackages: { "version": true, "tag": false }` を明示してこの扱いを保っている（[Dependabot トリアージ 2026-09-22](design/dependabot-triage-2026-09-22.md)）。
 
 > **`@karasu-tools/core` は v0.x（TS API、無保証）**。`.krs` / `.krs.style` 言語は v1.0 だが、TS API は minor で破壊的変更を許す（[ADR-1314](adr/1314-krs-spec-v1-freeze.md)）。`exports` は公開先に `dist` を指し、`development` 条件で repo 内は TS ソースを解決するため `pnpm typecheck` は build 非依存。
 
@@ -70,7 +70,7 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 
 リリース手順は以下のとおり:
 
-1. **"Release — Prepare"**（`release-prepare.yml`）を Actions タブから `workflow_dispatch` で起動する。`changeset version`（版 bump + `CHANGELOG.md` 生成 + lockfile 更新）を実行し、`chore/release-<version>` ブランチを push する。pending changeset が無ければ何もせず終了する。
+1. **"Release — Prepare"**（`release-prepare.yml`）を Actions タブから `workflow_dispatch` で起動する。`changeset version`（版 bump + `CHANGELOG.md` 生成 + lockfile 更新）を実行し、`chore/release-<version>` ブランチを push する。pending changeset が無ければ何もせず終了する（`@changesets/cli` 3 の `changeset version` は pending なしで exit 1 になるので、workflow は `.changeset/*.md` の有無を先に見て分岐する）。
 2. その push されたブランチから **PR を開く**（Actions は PR を作れないので「Compare & pull request」を 1 クリック。人が開くことで必須チェックも走る）。
 3. **マージ前に版番号と `CHANGELOG.md` を必ず読む**（main ruleset の必須承認数は 0 = self-merge 可。目視確認はこの運用ルールで担保する）。このとき、**experimental notation の stable 昇格や破壊的変更が CHANGELOG に含まれるなら、promotion gate（[ADR-1820](adr/1820-notation-promotion-gate.md)）が通っているか・言語版に触れる変更が changeset / CHANGELOG に言語版遷移として明記されているか（[ADR-2124](adr/2124-version-vocabulary.md)、表記は `.krs language vX.Y`）を確認**する。問題なければ **squash マージ**する。
 4. マージで `main` の `packages/**/CHANGELOG.md` が変わり、`release.yml`（`paths` filter）が発火 → `changeset publish` が bump 済みパッケージを npm に公開する（`workflow_dispatch` での手動再実行も可）。
