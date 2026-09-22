@@ -383,10 +383,12 @@ size in the card's top-left padding corner, and the text is the same stack
 every other shape gets — label, description, `role`, the client resource and
 capability chips, and the link / team meta row.
 
-An icon with **no text slots** is a standalone drawing in either mode. It is
-fitted inside the card, keeps its `viewBox` ratio (never stretched to a card
-measured from the text), and is centred in the leftover space, with the node's
-text drawn over it in the usual stack.
+An icon with **no text slots** is a standalone drawing, and the node's text is
+drawn over it in the usual stack in either mode. Where the drawing sits differs:
+in **shape mode** it is fitted inside the card, keeps its `viewBox` ratio (never
+stretched to a card measured from the text) and is centred in the leftover
+space; in **icon mode** it fills the fixed card it is drawn on, which is the
+card the mode sizes every node to.
 
 > Related TPLs:
 > [TPL-2385](../test-perspectives/TPL-2385-attachment-follows-drawn-outline.md)
