@@ -104,6 +104,7 @@ flowchart TD
     ADR_2813["ADR-2813<br/>Dependabot security alert 2026-09-12（`js-yaml` ..."]
     ADR_2836["ADR-2836<br/>Dependabot トリアージ 2026-09-14：vitest 5 の major は ..."]
     ADR_2839["ADR-2839<br/>dependabot-triage workflow の週次 cron を止め、dispatc..."]
+    ADR_2877["ADR-2877<br/>Dependabot トリアージ 2026-09-22：changesets 3 は CI が..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -235,6 +236,7 @@ flowchart TD
   class ADR_2813 accepted
   class ADR_2836 accepted
   class ADR_2839 accepted
+  class ADR_2877 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost
