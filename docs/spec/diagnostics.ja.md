@@ -234,6 +234,7 @@ tag / annotation 語彙の v1.x deprecation（構文 v2.0 はツール語彙の�
 | Code | Severity | 発火条件 |
 | --- | --- | --- |
 | `style-unknown-property` | warning | スタイルのプロパティ名が認識されない。 |
+| `style-unknown-icon` | warning | `shape: url("<name>")` がどの登録済みアイコンにも一致せず、ノードが `box` で描かれる。組み込みアイコンは core 自身が登録するので、どの描画面でも同じ結果になる（[TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)）。 |
 | `style-invalid-enum-value` | error | スタイル値が許可された enum に無い。 |
 | `style-invalid-hex-color` | error | スタイルの hex color が不正。 |
 | `style-invalid-length-unit` | error | スタイルの length が許可されない単位を使う。 |
@@ -247,6 +248,8 @@ tag / annotation 語彙の v1.x deprecation（構文 v2.0 はツール語彙の�
 | `style-column-invalid-value` | warning | スタイル `column` 値が `left` / `center` / `right` でない。 |
 | `style-column-ignored-non-system-view` | warning | `column` ヒントが deploy / org ビューに適用される（無視）。 |
 | `style-grid-columns-invalid-value` | warning | スタイル `grid-columns` 値が正の整数でない（ヒントは破棄され、レイアウトは自動バランスにフォールバック）。 |
+
+> Related TPLs: [TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)（`style-unknown-icon` が引くシェイプレジストリの組み込みの中身は core 自身が埋めるので、判定はどの描画面でも同じになる）, [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（パーサが受理する値は効果か診断を持ち、黙って無視されることはない）。
 
 ### client・capability
 

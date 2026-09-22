@@ -18,9 +18,8 @@ import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import { loadAndRegisterIcon } from "./svg-icon-loader.js";
-import { clearRegistry } from "../shapes/shape-registry.js";
-import { registerBuiltinShapes } from "./shapes.js";
 import type { DisplayMode } from "./layout.js";
+import { resetRegistryToBuiltins } from "./shapes.js";
 
 /** A card-shaped icon: pictogram in the corner, text slots beside and below it. */
 const CARD_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
@@ -108,8 +107,7 @@ function bodyBox(group: string, viewBox: { w: number; h: number }): Box {
 }
 
 beforeEach(() => {
-  clearRegistry();
-  registerBuiltinShapes();
+  resetRegistryToBuiltins();
   loadAndRegisterIcon("card-icon", CARD_ICON, true);
   loadAndRegisterIcon("dot-icon", PICTOGRAM_ICON);
 });

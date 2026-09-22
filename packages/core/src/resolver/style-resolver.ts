@@ -8,6 +8,8 @@ import type {
 } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
 import { hasShape } from "../shapes/shape-registry.js";
+// `hasShape` answers for the built-in icons only once they are registered (#2802).
+import "../shapes/builtin-icons.js";
 import {
   CLIENT_SUBTYPE_TAGS,
   ICON_THEME_SHEET_ID,

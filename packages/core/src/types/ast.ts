@@ -1093,6 +1093,12 @@ export interface DiagnosticParamsByCode {
   };
   "style-out-of-range": { property: string; value: number; min?: number; max?: number };
   "style-unknown-property": { property: string };
+  /**
+   * `shape: url("<name>")` names no registered icon (#2802). A warning, not
+   * an error: the renderer still draws the node, on a `box`. `name` is the
+   * `url()` argument as written, so a typo is visible in the message.
+   */
+  "style-unknown-icon": { property: string; name: string };
 
   // ── Import resolver ─────────────────────────────────────────────────────
   "circular-import": { filePath: string };

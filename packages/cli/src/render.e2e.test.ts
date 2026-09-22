@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { render } from "./render.js";
@@ -126,7 +126,6 @@ describe("AT-0042 karasu render — integration with real examples", () => {
   // are a model-level fact and must surface on the all-views path (no
   // `--view`) just as they do per-view.
   it("default (no --view) surfaces resolver warnings, matching the per-view path — Issue #1438", async () => {
-    const { writeFileSync } = await import("node:fs");
     const krsPath = join(tmpDir, "index.krs");
     writeFileSync(
       krsPath,
@@ -152,7 +151,6 @@ system EC {
   // spec promises a lifecycle annotation never gates rendering, so the diagram
   // must still be written; only `karasu fmt` stops on these.
   it("still renders a file whose annotation parameter value cannot be read — Issue #2707", async () => {
-    const { writeFileSync } = await import("node:fs");
     const krsPath = join(tmpDir, "index.krs");
     const outPath = join(tmpDir, "out.svg");
     writeFileSync(
@@ -176,7 +174,6 @@ system EC {
   // #1819: the cross-domain-store-access info diagnostic is a model-level fact
   // and must surface on the CLI render path (end-to-end AT for the diagnostic).
   it("surfaces the cross-domain-store-access info diagnostic — Issue #1819", async () => {
-    const { writeFileSync } = await import("node:fs");
     const krsPath = join(tmpDir, "index.krs");
     writeFileSync(
       krsPath,
@@ -301,7 +298,6 @@ describe("karasu render: diagnostic locations name their file (#2715)", () => {
   }
 
   it("prints a merged-model verdict at the imported file's line", async () => {
-    const { writeFileSync } = await import("node:fs");
     const entry = join(tmpDir, "index.krs");
     const legacy = join(tmpDir, "legacy.krs");
     writeFileSync(entry, `import "./legacy.krs"\n\nsystem Next {\n  service Search\n}\n`);
@@ -316,7 +312,6 @@ describe("karasu render: diagnostic locations name their file (#2715)", () => {
   });
 
   it("prints an imported file's parse error at that file's line", async () => {
-    const { writeFileSync } = await import("node:fs");
     const entry = join(tmpDir, "index.krs");
     const slice = join(tmpDir, "slice.krs");
     writeFileSync(entry, `import "./slice.krs"\nsystem Shop {\n  service Api\n}\n`);
@@ -333,7 +328,6 @@ describe("karasu render: diagnostic locations name their file (#2715)", () => {
   // The off-by-one on its own: one file, no imports. `user Bob` is line 4,
   // column 1 of a 4-line file, and used to print as `5:2`.
   it("prints a single-file position without shifting it", async () => {
-    const { writeFileSync } = await import("node:fs");
     const entry = join(tmpDir, "single.krs");
     writeFileSync(entry, `system Shop {\n  service Api\n}\nuser Bob\n`);
 
@@ -343,7 +337,6 @@ describe("karasu render: diagnostic locations name their file (#2715)", () => {
   });
 
   it("prints a style sheet's parse error at the sheet's line", async () => {
-    const { writeFileSync } = await import("node:fs");
     const entry = join(tmpDir, "styled.krs");
     const theme = join(tmpDir, "theme.krs.style");
     writeFileSync(entry, `@import "./theme.krs.style"\n\nsystem Shop {\n  service Api\n}\n`);
@@ -355,5 +348,43 @@ describe("karasu render: diagnostic locations name their file (#2715)", () => {
     expect(resolve(location.file)).toBe(theme);
     expect(lineAt(location)).toBe("}");
     expect(location.line).toBe(7);
+  });
+
+  // #2802: the built-in icon set used to be registered by the browser app
+  // only, so `karasu render` drew every `url()` icon and icon display mode
+  // as a plain box, silently (TPL-1001, TPL-2802).
+  describe("built-in icons resolve in karasu render (#2802)", () => {
+    /** A path only `icons/database.svg` draws — the cylinder's side wall. */
+    const DATABASE_PICTOGRAM = "M2 4v12c0 1.7 3.6 3 8 3s8-1.3 8-3V4";
+
+    function writeStyledProject(shapeValue: string): { entry: string; theme: string } {
+      const entry = join(tmpDir, "index.krs");
+      const theme = join(tmpDir, "theme.krs.style");
+      writeFileSync(entry, `@import "./theme.krs.style"\n\nsystem Shop {\n  service Api\n}\n`);
+      writeFileSync(theme, `service {\n  shape: ${shapeValue};\n}\n`);
+      return { entry, theme };
+    }
+
+    it('draws `shape: url("database")` as the built-in database icon', async () => {
+      const { entry } = writeStyledProject(`url("database")`);
+
+      await render(entry, { view: "system" });
+
+      expect(streams.stdout()).toContain(DATABASE_PICTOGRAM);
+      expect(streams.stderr()).not.toMatch(/style-unknown-icon|names no registered icon/);
+    });
+
+    it("warns at the sheet's line when a url() names no icon, and still renders a box", async () => {
+      const { entry, theme } = writeStyledProject(`url("databse")`);
+
+      await render(entry, { view: "system" });
+
+      expect(streams.stdout()).toContain("<svg");
+      expect(streams.stdout()).not.toContain(DATABASE_PICTOGRAM);
+      const location = printedLocation("Warning", /url\("databse"\) names no registered icon/);
+      expect(resolve(location.file)).toBe(theme);
+      expect(location.line).toBe(2);
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
   });
 });

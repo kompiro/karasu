@@ -323,11 +323,20 @@ service[external] {
 }
 ```
 
-引数はファイルへのパスではなく、**登録済みアイコンの名前**です。名前はホストが
-登録したアイコンセットに由来し、組み込みのセットはマニフェスト
-`packages/core/icons/icons.json` にあります（`service`、`database`、`cloud-node`、
-`client-web`、`table`、`oci` など。アイコンモードが描くものと同じアイコンです）。
-どの登録済みアイコンにも一致しない `url()` は `box` にフォールバックします。
+引数はファイルへのパスではなく、**登録済みアイコンの名前**です。組み込みのセット
+（マニフェスト `packages/core/icons/icons.json` にある `service`、`database`、
+`cloud-node`、`client-web`、`table`、`oci` など。アイコンモードが描くものと同じ
+アイコンです）は core 自身が登録するので、ブラウザ app、`karasu render`、VS Code
+プレビュー、LSP のどの描画面でも同じ名前が同じアイコンに解決されます。ホストは
+独自のアイコンを追加できます（`resolveIconManifest` / `loadAndRegisterIcon`）。
+どの登録済みアイコンにも一致しない `url()` は宣言位置に `style-unknown-icon`
+warning を出し、ノードは `box` にフォールバックします。
+
+この warning はシートを読むプロセスのレジストリで判定するので、組み込みのセットに
+ついてはどこでも同じ答えになります。一方、ホストが**独自に**登録したアイコンは
+そのホストのプロセスにしかありません。言語サーバと `karasu lint-style` は別プロセス
+で動くため、ホストが登録済みの名前を未登録として報告します（ホスト側の描画は正しい
+ままです）。アイコンを足す埋め込み利用者は、compile / validate より前に登録します。
 
 ### `url()` アイコンの描かれ方
 
@@ -359,6 +368,9 @@ service[external] {
 > [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)
 > — 表示モードは全描画面で点検する。枠はどちらのモードでも描かれ、モード間で
 > 違うのはカードの寸法だけ。
+> [TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)
+> — `url()` が引くレジストリの中身は core 自身が埋める。ホストが何を呼んだかで
+> 描画結果も `style-unknown-icon` の判定も変わらない。
 
 ---
 

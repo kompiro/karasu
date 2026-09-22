@@ -422,6 +422,8 @@ export const ja: Partial<Translations> = {
     `${property}: ${value} は範囲外 ${formatRange(min, max)} のため無視されました`,
   "warning.styleUnknownProperty.message": ({ property }) =>
     `未知のスタイルプロパティ "${property}" — 無視されました`,
+  "warning.styleUnknownIcon.message": ({ property, name }) =>
+    `${property}: url("${name}") はどの登録済みアイコンにも一致しません — box で描画されます`,
 
   // Diagnostics (rendered in PreviewPane's diagnostic banner)
   "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>
@@ -565,6 +567,8 @@ export const ja: Partial<Translations> = {
     `"${property}" の値 ${value} は範囲外です ${formatRange(min, max)}`,
   "diagnostic.styleUnknownProperty.message": ({ property }) =>
     `未知のスタイルプロパティ "${property}"`,
+  "diagnostic.styleUnknownIcon.message": ({ property, name }) =>
+    `"${property}" のアイコン url("${name}") はどの登録済みアイコンにも一致しません（box で描画されます）`,
   "diagnostic.circularImport.message": ({ filePath }) =>
     `循環インポートを検出しました: ${filePath}`,
   "diagnostic.fileNotFound.message": ({ filePath }) => `ファイルが見つかりません: ${filePath}`,

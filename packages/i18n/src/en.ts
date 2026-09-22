@@ -425,6 +425,8 @@ export const en: Translations = {
     `${property}: ${value} is out of range ${formatRange(min, max)} — ignored`,
   "warning.styleUnknownProperty.message": ({ property }) =>
     `unknown style property "${property}" — ignored`,
+  "warning.styleUnknownIcon.message": ({ property, name }) =>
+    `${property}: url("${name}") names no registered icon — drawn as box`,
 
   // Diagnostics (rendered in PreviewPane's diagnostic banner)
   "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>
@@ -568,6 +570,8 @@ export const en: Translations = {
     `Value ${value} for "${property}" is out of range ${formatRange(min, max)}`,
   "diagnostic.styleUnknownProperty.message": ({ property }) =>
     `Unknown style property "${property}"`,
+  "diagnostic.styleUnknownIcon.message": ({ property, name }) =>
+    `Unknown icon for "${property}": url("${name}") names no registered icon (drawn as box)`,
   "diagnostic.circularImport.message": ({ filePath }) => `Circular import detected: ${filePath}`,
   "diagnostic.fileNotFound.message": ({ filePath }) => `File not found: ${filePath}`,
   "diagnostic.directoryNotFound.message": ({ dirPath }) => `Directory not found: ${dirPath}`,

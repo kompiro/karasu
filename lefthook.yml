@@ -126,6 +126,13 @@ pre-push:
       # Fix with `pnpm run lint:skill-reference-bundle-sync --write`.
       glob: "{docs/spec/**,docs/guide/notation-cookbook.md,.claude/skills/reverse-architecture/**,scripts/lint/skill-reference-bundle-sync.ts}"
       run: pnpm run lint:skill-reference-bundle-sync
+    builtin-icons-check:
+      # packages/core/src/shapes/builtin-icons.generated.ts is generated from
+      # packages/core/icons/ (Issue #2802) so core registers its own icon set
+      # on import. Fail if an icon or the manifest changed without
+      # `pnpm gen:icons`. The vitest mirror in scripts/icons runs it in CI.
+      glob: "{packages/core/icons/**,packages/core/src/shapes/builtin-icons.generated.ts,scripts/icons/**}"
+      run: pnpm gen:icons --check
     reference-docs-check:
       # The machine-derived tables in docs/spec/*.md (and the .ja.md
       # counterparts) are generated from reference-data.ts — fail if a hand

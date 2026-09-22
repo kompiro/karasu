@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { parseSvgIcon, loadAndRegisterIcon, loadAndRegisterIcons } from "./svg-icon-loader.js";
-import { getShape, getIconDef, clearRegistry, renderPictogram } from "../shapes/shape-registry.js";
-import { registerBuiltinShapes } from "./shapes.js";
+import { getShape, getIconDef, renderPictogram } from "../shapes/shape-registry.js";
+import { resetRegistryToBuiltins } from "./shapes.js";
 
 const SAMPLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80" width="160" height="80">
   <ellipse cx="80" cy="20" rx="60" ry="12" fill="#1E3A5F" stroke="#60A5FA" stroke-width="1.5"/>
@@ -101,8 +101,7 @@ describe("parseSvgIcon", () => {
 
 describe("loadAndRegisterIcon", () => {
   beforeEach(() => {
-    clearRegistry();
-    registerBuiltinShapes();
+    resetRegistryToBuiltins();
   });
 
   it("registers the icon in the shape registry", () => {
@@ -131,8 +130,7 @@ describe("builtIn placeholder injection", () => {
   </svg>`;
 
   beforeEach(() => {
-    clearRegistry();
-    registerBuiltinShapes();
+    resetRegistryToBuiltins();
   });
 
   it("replaces placeholders for builtIn icons", () => {
@@ -189,8 +187,7 @@ describe("renderPictogram", () => {
   </svg>`;
 
   beforeEach(() => {
-    clearRegistry();
-    registerBuiltinShapes();
+    resetRegistryToBuiltins();
   });
 
   it("returns an SVG string with viewBox 0 0 20 20", () => {
@@ -237,8 +234,7 @@ describe("renderPictogram", () => {
 
 describe("loadAndRegisterIcons", () => {
   beforeEach(() => {
-    clearRegistry();
-    registerBuiltinShapes();
+    resetRegistryToBuiltins();
   });
 
   it("registers multiple icons at once", () => {

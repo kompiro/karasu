@@ -161,6 +161,8 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { property: "opacity", value: 1.5, min: 0, max: 1 } };
     case "style-unknown-property":
       return { kind, params: { property: "color2" } };
+    case "style-unknown-icon":
+      return { kind, params: { property: "shape", name: "databse" } };
     case "client-capability-duplicate":
       return { kind, params: { clientId: "test-client", name: "camera" } };
     case "annotation-possible-typo":

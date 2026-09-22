@@ -84,6 +84,27 @@ describe("lintStyle() with explicit files", () => {
     expect(out).toContain("color2");
   });
 
+  // #2802: a url() naming no registered icon used to lint clean everywhere.
+  it("reports a style-unknown-icon warning at the value's line, without exiting 1", async () => {
+    const file = await writeStyle("icon.krs.style", `service {\n  shape: url("databse");\n}\n`);
+    const stdout = captureStdout();
+
+    await lintStyle([file], {});
+
+    const out = stdout.join("");
+    expect(out).toContain(`${file}:2:10 warning:`);
+    expect(out).toContain('url("databse")');
+  });
+
+  it("lints a url() naming a built-in icon clean, with no host registration", async () => {
+    const file = await writeStyle("icon-ok.krs.style", `service { shape: url("database"); }\n`);
+    const stdout = captureStdout();
+
+    await lintStyle([file], {});
+
+    expect(stdout.join("")).toBe("");
+  });
+
   it("emits nothing for a clean file", async () => {
     const file = await writeStyle("ok.krs.style", `service { color: red; }\n`);
     const stdout = captureStdout();

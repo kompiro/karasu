@@ -290,7 +290,8 @@ export {
   type SvgIconDef,
   type SvgIconTextSlot,
 } from "./shapes/shape-registry.js";
-export { registerBuiltinShapes } from "./renderer/shapes.js";
+export { registerBuiltinShapes, resetRegistryToBuiltins } from "./renderer/shapes.js";
+export { registerBuiltinIcons } from "./shapes/builtin-icons.js";
 export {
   parseSvgIcon,
   loadAndRegisterIcon,
