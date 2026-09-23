@@ -74,5 +74,12 @@ scope:
 ## 関連テスト
 
 - `packages/core/src/renderer/external-icon-card.test.ts` — 外部アイコン（`shape: url()`）のカード。
-  #2803 の実装で、シートの有無で描かれるチップ数が一致する assert を足す
+  `a card-design icon draws the card's own text (#2803)` の describe が、シートの有無で
+  メタグリフ数・チップ・description の行数・テキストの y が一致することを描画出力から測る
 - `packages/core/src/renderer/shape-content-inset.test.ts` — 測定と描画が同じ inset を読むこと
+
+## 派生元 spec
+
+- [`docs/spec/style.md`](../spec/style.md) — 「How a `url()` icon is drawn」節
+  （カードのテキストは、その寸法を測ったレイアウトが描く。シェイプモードでは
+  アイコンのスロットを読まず、ピクトグラムだけを角に置いて共通のスタックで描く）

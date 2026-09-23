@@ -44,7 +44,13 @@ import {
   truncateToWidth,
   wrapToWidth,
 } from "./svg-builder.js";
-import { getIconDef, iconViewBox, type SvgIconDef } from "../shapes/shape-registry.js";
+import {
+  getIconDef,
+  iconViewBox,
+  pictogramGroup,
+  PICTOGRAM_OFFSET,
+  type SvgIconDef,
+} from "../shapes/shape-registry.js";
 import {
   CHAR_WIDTH,
   NODE_PADDING_X,
@@ -1615,6 +1621,21 @@ function renderNode(
   const shapeName = shapeNameOf(style.shape);
   const iconDef = getIconDef(shapeName);
   const isIconShape = typeof style.shape !== "string" && iconDef !== undefined;
+  // An icon that declares text slots is a card design: its 160×100 body is a
+  // card of its own, with its own label / description layout. Icon mode draws
+  // the node on exactly that card, so the body and its slots are used whole.
+  // Shape mode measures the card from the node's text instead, so only the
+  // pictogram is taken — it is placed in the card's padding corner at native
+  // size and the text is drawn by the stack every other shape uses (#2803).
+  const cornerPictogram =
+    isIconShape && displayMode !== "icon" && iconDef.labelSlot !== undefined
+      ? pictogramGroup(
+          iconDef,
+          style.color,
+          node.x + PICTOGRAM_OFFSET.x,
+          node.y + PICTOGRAM_OFFSET.y,
+        )
+      : undefined;
   const bodyBox = isIconShape ? iconBodyBox(node, iconDef, displayMode) : node;
 
   // An icon body paints no background of its own, so the card frame draws the
@@ -1623,14 +1644,20 @@ function renderNode(
   if (isIconShape) children.push(renderIconFrame(node, style));
 
   // Shape
-  children.push(renderShape(bodyBox.x, bodyBox.y, bodyBox.width, bodyBox.height, style));
+  if (cornerPictogram) children.push(cornerPictogram);
+  else children.push(renderShape(bodyBox.x, bodyBox.y, bodyBox.width, bodyBox.height, style));
 
   const textColor = style.color;
   const fontSize = style.fontSize;
   const displayDesc = node.descriptionSummary ?? node.properties.description;
   const hasMetaRow = node.linkCount > 0 || !!node.properties.team;
 
-  if (iconDef?.labelSlot) {
+  // Slots are the icon card's own text layout, so they are read only where the
+  // node is drawn on that card: icon mode. Everywhere else the card was
+  // measured for the default stack, and drawing anything else leaves the lines
+  // measurement reserved — the meta row, role and client chips — undrawn
+  // (#2803, TPL-2803).
+  if (displayMode === "icon" && iconDef?.labelSlot) {
     children.push(
       ...renderSlottedText(
         node,
@@ -1848,15 +1875,12 @@ function iconBodyBox(
   const scale = floor4(Math.min(node.width / vw, node.height / vh));
   const width = vw * scale;
   const height = vh * scale;
-  // An icon that declares text slots is a card design, laid out from its own
-  // top-left: anchoring it there keeps the pictogram in the card's corner and
-  // the label beside it, the way icon mode draws it, with the leftover width
-  // showing card. An icon with no slots is a standalone drawing with nothing
-  // to line up against, so it is centred.
-  const anchored = iconDef.labelSlot !== undefined;
+  // The body reaching here is a standalone drawing with no layout of its own to
+  // line up against — a card design's body is not fitted at all in shape mode,
+  // only its pictogram is drawn (see `renderNode`) — so it is centred.
   return {
-    x: anchored ? node.x : round2(node.x + (node.width - width) / 2),
-    y: anchored ? node.y : round2(node.y + (node.height - height) / 2),
+    x: round2(node.x + (node.width - width) / 2),
+    y: round2(node.y + (node.height - height) / 2),
     width,
     height,
   };

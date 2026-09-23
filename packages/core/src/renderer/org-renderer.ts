@@ -11,7 +11,7 @@ import {
   diffStateAttr,
 } from "./svg-builder.js";
 import { badgeChildren } from "./badge.js";
-import { getIconDef } from "../shapes/shape-registry.js";
+import { getIconDef, pictogramGroup, PICTOGRAM_OFFSET } from "../shapes/shape-registry.js";
 import { ownsEdgeKey } from "../diff/org-view-diff.js";
 import { nodePathKey } from "../parser/node-path.js";
 import {
@@ -90,12 +90,11 @@ function subLabelStyle(style: ResolvedNodeStyle): Record<string, unknown> {
 
 function renderPictogramGroup(iconName: string, color: string): string {
   const def = getIconDef(iconName);
-  if (!def?.pictogramBody) return "";
-  let body = def.pictogramBody;
-  if (def.builtIn) {
-    body = body.replace(/\{\{color\}\}/g, color);
-  }
-  return el("g", { transform: "translate(6, 4)" }, body);
+  if (!def) return "";
+  // Same corner the icon itself declares, and the same one a shape-mode card
+  // draws its pictogram in (#2803) — one definition, so the two surfaces
+  // cannot drift apart (TPL-2234).
+  return pictogramGroup(def, color, PICTOGRAM_OFFSET.x, PICTOGRAM_OFFSET.y) ?? "";
 }
 
 function iconCardHeight(hasDesc: boolean): number {
