@@ -361,6 +361,7 @@ flowchart TD
     ADR_2593["ADR-2593<br/>キャンバスの空き空間を目的関数にして行幅予算を選ぶ"]
     ADR_2598["ADR-2598<br/>層間チャネルに容量を持たせ、配線の需要を配置へ返す"]
     ADR_2714["ADR-2714<br/>deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
+    ADR_2802["ADR-2802<br/>組み込みアイコンは core が import 時に登録し、解決しない url() は値 va..."]
     ADR_2803["ADR-2803<br/>shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通ス..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
@@ -934,6 +935,7 @@ flowchart TD
   class ADR_2753 accepted
   class ADR_2773 accepted
   class ADR_2786 accepted
+  class ADR_2802 accepted
   class ADR_2803 accepted
   class ADR_2804 accepted
   class ADR_2805 superseded

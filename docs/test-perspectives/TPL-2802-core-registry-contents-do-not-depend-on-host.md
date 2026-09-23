@@ -77,7 +77,7 @@ core の関数が「名前 → 実装」のレジストリを引くとき、**�
 
 - 組み込みシェイプは `renderer/shapes.ts` の `registerBuiltinShapes()` が import 時に自動実行される。これが「core が埋める」形の前例
 - ファイル I/O を core に持ち込まずに正本ファイル（`.svg` など）を core に入れるには、正本から TS モジュールを生成して commit し、
-  drift テストで最新であることを確かめる（[#2802](https://github.com/kompiro/karasu/issues/2802) の Design Doc `docs/design/builtin-icon-registration.md`）
+  drift テストで最新であることを確かめる（[ADR-2802](../adr/2802-builtin-icon-registration.md)）
 
 ## 関連テスト
 
