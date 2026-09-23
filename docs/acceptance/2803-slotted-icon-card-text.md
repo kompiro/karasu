@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-09-21
 - **関連 Issue**: [#2803](https://github.com/kompiro/karasu/issues/2803)
+- **設計 (ADR)**: [ADR-2803](../adr/2803-slotted-icon-card-text.md)
 - **Related TPLs**:
   [TPL-2803](../test-perspectives/TPL-2803-measured-lines-are-drawn-lines.md)（測った行は描かれた行）、
   [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)（表示モードは全描画面で点検する）、
