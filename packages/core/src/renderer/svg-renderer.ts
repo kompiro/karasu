@@ -17,12 +17,13 @@ import type {
   LayoutNode,
   LayoutResult,
   Rect,
+  TrunkBand,
 } from "./layout-types.js";
 import { renderShape } from "./shapes.js";
 import { getShapeContentInset, type ShapeInsets } from "../shapes/shape-registry.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
 import { resolveLabelPlacements, buildLabelInputs } from "./label-placement.js";
-import { HOP_RADIUS, JUNCTION_RADIUS } from "./crossing-marks.js";
+import { HOP_RADIUS, JUNCTION_CHIP_RADIUS, trunkBandHalfWidth } from "./crossing-marks.js";
 import { layoutDegradedTabs } from "./degraded-tabs.js";
 import {
   CHIP_HEIGHT,
@@ -637,16 +638,30 @@ export function renderFromLayout(
   if (ghostEdgeParts.length > 0) {
     parts.push(el("g", { class: "ghost-edges", opacity: GHOST_OPACITY }, ...ghostEdgeParts));
   }
+  // Trunk bands under the edges (#2883): the stretches several edges share,
+  // drawn as wide as the count they carry. Behind the lines, so a band reads as
+  // the backdrop it is and the lines stay what you follow.
+  if (layoutResult.crossingMarks && layoutResult.crossingMarks.bands.length > 0) {
+    parts.push(
+      renderTrunkBands(layoutResult.crossingMarks.bands, edgeStroke, styles.defaultEdgeStyle),
+    );
+  }
   parts.push(el("g", { class: "edges" }, ...normalEdgeParts));
 
   // Crossing marks on top of the edges (#1859 P2c-C): hop arcs neutralise
-  // right-angle crossings and junction dots mark trunk merges. Present only in
-  // the Group-by view (ungrouped leaves `crossingMarks` undefined — AC-5).
+  // right-angle crossings and the merge mark carries the count a trunk goes on
+  // to hold. Present only in the Group-by view (ungrouped leaves
+  // `crossingMarks` undefined — AC-5).
   if (layoutResult.crossingMarks) {
     const { hops, junctions } = layoutResult.crossingMarks;
     if (hops.length > 0 || junctions.length > 0) {
       parts.push(
-        renderCrossingMarks(layoutResult.crossingMarks, edgeStroke, styles.defaultEdgeStyle),
+        renderCrossingMarks(
+          layoutResult.crossingMarks,
+          edgeStroke,
+          styles.defaultEdgeStyle,
+          palette,
+        ),
       );
     }
   }
@@ -829,7 +844,13 @@ function collapseGlyph(
  *   `angle` (degrees). Elliptical (`rx = halfWidth`, `ry = HOP_RADIUS`) so a
  *   clustered wide hop stays a shallow bump; `sweep = 1` bumps to one side. An
  *   axis-aligned hop (`angle = 0`) renders exactly as the pre-#1939 flat bump.
- * - **junction**: a `<circle>` dot at each trunk merge (merge = connected).
+ * - **junction**: the merge mark at a trunk elbow (merge = connected), drawn as
+ *   a chip carrying the number of edges the spine holds onward from there
+ *   (#2883). A bare dot said only that a merge happened, which left the line
+ *   below it reading the same whether it carried two edges or seven.
+ * - **band**: the stretch of spine (and the shared run into the target) that
+ *   several edges draw on the same pixels, as wide as the count it carries.
+ *   Drawn under the edges by {@link renderTrunkBands}, not here.
  *
  * Each mark is drawn in its owning edge's resolved colour (and the hop in that
  * edge's stroke width) via `edgeStroke[mark.edge]`, so marks stay visually part
@@ -845,6 +866,7 @@ function renderCrossingMarks(
   marks: CrossingMarks,
   edgeStroke: { color: string; strokeWidth: number }[],
   fallback: { color: string; strokeWidth: number },
+  palette: DiagramPalette,
 ): string {
   const r = round2;
   const strokeOf = (edge: number) => edgeStroke[edge] ?? fallback;
@@ -868,12 +890,90 @@ function renderCrossingMarks(
     );
   }
   for (const j of marks.junctions) {
+    const stroke = strokeOf(j.edge);
+    // Punched out of the canvas so the chip reads as a marker on the line rather
+    // than a node sitting behind it, which is why it needs the palette.
     parts.push(
-      el("circle", { cx: r(j.x), cy: r(j.y), r: JUNCTION_RADIUS, fill: strokeOf(j.edge).color }),
+      el("circle", {
+        cx: r(j.x),
+        cy: r(j.y),
+        r: JUNCTION_CHIP_RADIUS,
+        fill: palette.canvasBg,
+        stroke: stroke.color,
+        "stroke-width": stroke.strokeWidth,
+      }),
+      el(
+        "text",
+        {
+          x: r(j.x),
+          y: r(j.y + JUNCTION_COUNT_BASELINE),
+          "text-anchor": "middle",
+          fill: stroke.color,
+          "font-size": `${JUNCTION_COUNT_FONT_SIZE}px`,
+          "font-family": "sans-serif",
+        },
+        String(j.count),
+      ),
     );
   }
   return el("g", { class: "crossing-marks" }, ...parts);
 }
+
+/** Type size of the numeral in a merge mark, and its baseline offset. */
+const JUNCTION_COUNT_FONT_SIZE = 10;
+const JUNCTION_COUNT_BASELINE = 3.5;
+/**
+ * How far short of the target the band stops, so it does not swallow the
+ * arrowhead the edges draw there.
+ */
+const BAND_ARROW_CLEARANCE = 12;
+
+/**
+ * The trunk bands: each stretch that several edges draw on the same pixels,
+ * as wide as the count it carries (#2883).
+ *
+ * Drawn *under* the edges, so the lines stay the thing you follow and the band
+ * is the thing you read a count off. One `<polyline>` per stretch, which is what
+ * makes the corner into the target a join rather than two butted ends.
+ */
+function renderTrunkBands(
+  bands: readonly TrunkBand[],
+  edgeStroke: { color: string; strokeWidth: number }[],
+  fallback: { color: string; strokeWidth: number },
+): string {
+  const r = round2;
+  const parts: string[] = [];
+  for (const band of bands) {
+    const stroke = edgeStroke[band.edge] ?? fallback;
+    const points = [...band.points];
+    // Pull the last point back along its own segment: that end is the port the
+    // edges' arrowheads land on.
+    const last = points[points.length - 1];
+    const prev = points[points.length - 2];
+    const len = Math.hypot(last.x - prev.x, last.y - prev.y);
+    if (len > BAND_ARROW_CLEARANCE) {
+      const t = (len - BAND_ARROW_CLEARANCE) / len;
+      points[points.length - 1] = {
+        x: prev.x + (last.x - prev.x) * t,
+        y: prev.y + (last.y - prev.y) * t,
+      };
+    }
+    parts.push(
+      el("polyline", {
+        points: points.map((p) => `${r(p.x)},${r(p.y)}`).join(" "),
+        fill: "none",
+        stroke: stroke.color,
+        "stroke-width": r(trunkBandHalfWidth(band.count) * 2),
+        "stroke-linejoin": "miter",
+        opacity: TRUNK_BAND_OPACITY,
+      }),
+    );
+  }
+  return el("g", { class: "trunk-bands" }, ...parts);
+}
+
+/** Bands sit behind the lines, so they read as a backdrop and not as an edge. */
+const TRUNK_BAND_OPACITY = 0.4;
 
 /**
  * The ⊕ placeholder a collapsed category folds to (Issue #1821). Drawn at the
