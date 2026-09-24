@@ -66,3 +66,22 @@ function fromEnv(): void {
   }
 }
 fromEnv();
+
+/**
+ * SPIKE (#2761 option 4): one entry per candidate placement the search ran,
+ * `[searchId, budget, width, height, exhausted]`. A harness uses it to count
+ * how many candidates produced a canvas identical to the one before them —
+ * the ceiling on what a "skip candidates that cannot change the placement"
+ * rule could save.
+ */
+export const candidateTrace: number[][] = [];
+export const traceState = { on: false, searchId: 0 };
+
+/**
+ * SPIKE (#2761 option 5): the bounding box of the placed cards and containers
+ * of the most recent `layoutInner` run, taken **before** the routing chain.
+ * Edges only ever push the canvas outward, so this is a lower bound on the
+ * canvas that run will end up with — the quantity a "this candidate cannot
+ * win, skip its routing" prune would test.
+ */
+export const preRouting = { width: 0, height: 0 };

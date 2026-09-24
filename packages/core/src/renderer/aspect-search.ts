@@ -41,7 +41,7 @@
 // SPIKE (#2761 option 3): the ladder's shape and an alternative stopping rule
 // come from `spike-instrument.ts` so a harness can vary them. NOT FOR MERGE.
 import { performance } from "node:perf_hooks";
-import { counters, ladder } from "./spike-instrument.js";
+import { candidateTrace, counters, ladder, preRouting, traceState } from "./spike-instrument.js";
 
 /**
  * Aspect band the canvas must land inside: from portrait 16:9 to landscape
@@ -144,6 +144,7 @@ export function searchWidthBudget<T>(
 ): BudgetSearchResult<T> {
   const candidates = candidateWidthBudgets(opts.floor, opts.maxMultiple, opts.steps);
   counters.searches++;
+  const traceId = ++traceState.searchId;
   // SPIKE: consecutive candidates that failed to improve the incumbent.
   let misses = 0;
 
@@ -166,6 +167,17 @@ export function searchWidthBudget<T>(
     index++;
     counters.candidates++;
     const { width, height, exhausted } = size(result);
+    if (traceState.on)
+      candidateTrace.push([
+        traceId,
+        budget,
+        width,
+        height,
+        exhausted ? 1 : 0,
+        preRouting.width,
+        preRouting.height,
+        bestArea === Infinity ? -1 : bestArea,
+      ]);
     const found: BudgetSearchResult<T> = { result, budget };
     const shape = squareness(width, height);
 

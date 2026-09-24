@@ -10,7 +10,7 @@ import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js"
 import { placeNodesInLayers } from "./layer-layout-logics.js";
 import { searchWidthBudget } from "./aspect-search.js";
 // SPIKE (#2761 option 3) — NOT FOR MERGE.
-import { counters, lastLayout } from "./spike-instrument.js";
+import { counters, lastLayout, preRouting } from "./spike-instrument.js";
 import { collectChannels, LANE_PITCH } from "./edge-routing-lanes.js";
 import { TRUNK_LANE_GAP } from "./edge-routing-groups.js";
 import { framePieces } from "./frame-geometry.js";
@@ -885,6 +885,24 @@ function layoutInner(
     remapGhostEndpoint,
     expandedFrameRects,
   );
+
+  // SPIKE (#2761 option 5): lower bound on this run's canvas, before routing.
+  {
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    const eat = (x: number, y: number, w: number, h: number): void => {
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + w);
+      maxY = Math.max(maxY, y + h);
+    };
+    for (const n of layoutNodes.values()) eat(n.x, n.y, n.width, n.height);
+    for (const c of containers) eat(c.x, c.y, c.width, c.height);
+    preRouting.width = maxX > minX ? maxX - minX : 0;
+    preRouting.height = maxY > minY ? maxY - minY : 0;
+  }
 
   // Shared routing candidate chain (#2362): ports → straight/channel-L →
   // gutter/mixed → trunks → lane separation → outline seating; see
