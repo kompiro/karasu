@@ -2,7 +2,7 @@
 
 - **日付**: 2026-09-08（改訂: 2026-09-24）
 - **ステータス**: 検討中（方針は確定。案1 を spike で実測し、詳細マップの持ち方だけ初版から変更した）
-- **PR**: [#2783](https://github.com/kompiro/karasu/pull/2783)（初版）
+- **PR**: [#2783](https://github.com/kompiro/karasu/pull/2783)（初版） / [#2888](https://github.com/kompiro/karasu/pull/2888)（改訂）
 - **関連**:
   - 引き金 Issue: [#2756](https://github.com/kompiro/karasu/issues/2756)
   - 発見の経緯: [#2646](https://github.com/kompiro/karasu/issues/2646) / PR [#2741](https://github.com/kompiro/karasu/pull/2741) のレビュー
