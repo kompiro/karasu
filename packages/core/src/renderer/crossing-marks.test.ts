@@ -111,6 +111,40 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
     expect(junctions).toEqual([{ x: 50, y: 50, edge: 0, count: 2 }]);
   });
 
+  it("keeps a count mark on its own spine when there is nowhere to slide", () => {
+    // Two stubs into a spine only 30px long, with a foreign line crossing it
+    // right where the merge is. The mark has to get off the crossing, and the
+    // only direction it can take is along this spine: a chip that slid past the
+    // ends would be numbering a line that is not there.
+    const a = poly(
+      [
+        [0, 100],
+        [50, 100],
+        [50, 130],
+      ],
+      { from: "A", to: "DB", trunkId: "DB" },
+    );
+    const b = poly(
+      [
+        [0, 115],
+        [50, 115],
+        [50, 130],
+      ],
+      { from: "B", to: "DB", trunkId: "DB" },
+    );
+    const crosser = poly([
+      [20, 115],
+      [90, 115],
+    ]);
+    const { junctions, hops } = computeCrossingMarks([a, b, crosser]);
+    expect(hops.length).toBeGreaterThanOrEqual(1);
+    expect(junctions).toHaveLength(1);
+    const [mark] = junctions;
+    expect(mark.x).toBe(50);
+    expect(mark.y).toBeGreaterThanOrEqual(100);
+    expect(mark.y).toBeLessThanOrEqual(130);
+  });
+
   it("clusters nearby crossings on one horizontal into a single wide hop", () => {
     const h = poly([
       [0, 30],

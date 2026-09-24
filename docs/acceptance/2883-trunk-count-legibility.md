@@ -72,6 +72,10 @@ examples のどのモデルもトランクを作らない（全モード `0 trun
 
   > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `fan-in trunk — count fence (#2883, TPL-2598 / TPL-2631 / TPL-2385)` › `no count mark covers a crossing`
 
+- [x] AT-N: 退避は自分の spine の範囲内に留まる（spine が短く逃げ場が無い場合は、線の外へ出るより重なりを選ぶ。チップが spine を離れると存在しない線の本数を示すことになる）
+
+  > ✅ Automated — `packages/core/src/renderer/crossing-marks.test.ts` › `computeCrossingMarks (#1859 P2c-C)` › `keeps a count mark on its own spine when there is nowhere to slide`
+
 ### AC-5: 幾何と決定性
 
 - [x] AT-L: 同じ入力が同じバイト列を描く

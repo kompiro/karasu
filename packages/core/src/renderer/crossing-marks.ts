@@ -155,7 +155,7 @@ function segmentGrid(segs: Seg[]): BoxGrid {
 export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
   const { hops, junctions, trunks } = detectMarks(edges);
   const bands = bandsOf(trunks);
-  clearMarksOfBands(hops, junctions, bands);
+  clearMarksOfBands(hops, junctions, bands, trunks);
 
   // Stable order → deterministic SVG output. `detectMarks` already ordered the
   // hops and the counts; the band pass can move a count, so sort them again.
@@ -442,6 +442,7 @@ function clearMarksOfBands(
   hops: HopMark[],
   junctions: JunctionMark[],
   bands: readonly TrunkBand[],
+  trunks: readonly TrunkGroup[],
 ): void {
   if (bands.length > 0) {
     for (const hop of hops) {
@@ -459,12 +460,33 @@ function clearMarksOfBands(
     }
   }
   for (const mark of junctions) {
+    // Sliding is only ever along the spine the mark belongs to: a chip that left
+    // it would be numbering a line that is not there. On a spine too short to
+    // get clear, the mark stays on it and overlaps rather than wandering off.
+    const spine = spineOf(mark, trunks);
     for (let attempt = 0; attempt < 8; attempt++) {
       const clash = hops.find((hop) => covers(mark, hop));
       if (!clash) break;
-      mark.y += clash.y >= mark.y ? -JUNCTION_SLIDE : JUNCTION_SLIDE;
+      const next = mark.y + (clash.y >= mark.y ? -JUNCTION_SLIDE : JUNCTION_SLIDE);
+      const clamped = spine ? Math.min(Math.max(next, spine.lo), spine.hi) : next;
+      if (Math.abs(clamped - mark.y) < EPS) break;
+      mark.y = clamped;
     }
   }
+}
+
+/** The stretch of spine a count mark may slide along: its trunk's own extent. */
+function spineOf(
+  mark: JunctionMark,
+  trunks: readonly TrunkGroup[],
+): { lo: number; hi: number } | undefined {
+  for (const trunk of trunks) {
+    if (Math.abs(trunk.x - mark.x) > EPS) continue;
+    const lo = Math.min(...trunk.entries.map((e) => e.y), trunk.endY);
+    const hi = Math.max(...trunk.entries.map((e) => e.y), trunk.endY);
+    if (mark.y >= lo - EPS && mark.y <= hi + EPS) return { lo, hi };
+  }
+  return undefined;
 }
 
 /** Whether `hop` lies on `band`, which is `half` px wide either side. */
