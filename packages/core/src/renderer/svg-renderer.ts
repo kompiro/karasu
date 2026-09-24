@@ -603,7 +603,11 @@ export function renderFromLayout(
     const edgeStyle = edgeStyleFor(edgeLayout);
     edgeStroke.push({ color: edgeStyle.color, strokeWidth: edgeStyle.strokeWidth });
     const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
-    const diffState = effectiveEdgeDiffState?.get(edgeKey);
+    // An edge that resolved its own state while being laid out wins over the
+    // keyed map (#2756): on the multi-system root `edgeKey` is shared by every
+    // frame that draws the same pair, so the map cannot tell them apart. Layout
+    // leaves it unset everywhere else, where the keyed lookup is the answer.
+    const diffState = edgeLayout.diffState ?? effectiveEdgeDiffState?.get(edgeKey);
     // An edge belongs to the selection two ways, and either one is enough to
     // keep it at full strength: it carries the facet itself (#2544), or it
     // touches a member node. The second is why the rule is "dim when *both*

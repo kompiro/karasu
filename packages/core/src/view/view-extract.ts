@@ -1191,6 +1191,14 @@ export interface SystemFrameEdges {
    * constituents are these" by construction instead of by key discipline.
    */
   implicitEdgeDetails: Map<string, DomainEdgeDetail[]>;
+  /**
+   * Compare mode only: this frame's edge diff states, keyed by the bare
+   * `` `${from}->${to}` `` (#2756). Set by `diffSystemViewSlices`, never by
+   * extraction, and scoped to the frame for the same reason the details are:
+   * the key does not carry a system, so one shared map would let a change in
+   * one system decide the state of an identically named edge in another.
+   */
+  edgeDiffState?: ReadonlyMap<string, string>;
 }
 
 /**

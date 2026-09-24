@@ -1323,6 +1323,12 @@ function layoutMultipleSystems(
             `${edge.from}->${edge.to}#${edge.kind}`,
           );
           if (domainEdges) le.domainEdges = domainEdges;
+          // Stamp the frame's own compare-mode state onto the edge, for the same
+          // reason as the details above: `${from}->${to}` is not unique across
+          // frames here, so the renderer cannot ask a shared keyed map which
+          // system a line belongs to (#2756).
+          const frameDiffState = systemFrame?.edgeDiffState?.get(`${edge.from}->${edge.to}`);
+          if (frameDiffState !== undefined) le.diffState = frameDiffState;
           systemEdges.push(le);
           allEdges.push(le);
         }

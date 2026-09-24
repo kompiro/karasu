@@ -2776,3 +2776,55 @@ system Beta {
     expect(merged.edges.get("Svc->BStore")?.state).toBe("unchanged");
   });
 });
+
+describe("compare-mode diff state stays with its own system frame (#2756)", () => {
+  const sliceOf = (krs: string) => extractView(Parser.parse(krs).value.systems, []);
+
+  // Both systems hold an `Api` and a `Store` and both derive `Api->Store`, so the
+  // `${from}->${to}` key the renderer looks diff state up by is shared. Only
+  // Alpha loses the dependency between the two revisions.
+  const BEFORE = `
+system Alpha {
+  service Api { usecase U { resource Store.T } }
+  database Store { table T }
+}
+system Beta {
+  service Api { usecase V { resource Store.T } }
+  database Store { table T }
+}
+`;
+  const AFTER = `
+system Alpha {
+  service Api
+  database Store { table T }
+}
+system Beta {
+  service Api { usecase V { resource Store.T } }
+  database Store { table T }
+}
+`;
+
+  it("marks the removal in one system without restating it in the other", () => {
+    const merged = diffSystemViewSlices(sliceOf(BEFORE), sliceOf(AFTER));
+    const result = layout(merged.slice);
+
+    // Two lines are drawn — Alpha's kept for the removal, Beta's unchanged — and
+    // each carries its own state. Read off the shared map instead, both would
+    // answer with whichever frame was diffed last, and Alpha's deletion would
+    // silently render as unchanged.
+    expect(result.edges.map((e) => `${e.from}->${e.to}`)).toEqual(["Api->Store", "Api->Store"]);
+    expect(result.edges.map((e) => e.diffState)).toEqual(["removed", "unchanged"]);
+  });
+
+  it("leaves the single-system path reading the keyed map", () => {
+    // One frame means the key is unambiguous, so layout stamps nothing and the
+    // renderer's existing `edgeDiffState` lookup stays the answer there.
+    const merged = diffSystemViewSlices(
+      sliceOf("system Alpha {\n  service Api\n  database Store\n  Api -> Store\n}"),
+      sliceOf("system Alpha {\n  service Api\n  database Store\n}"),
+    );
+    const result = layout(merged.slice);
+    expect(result.edges.map((e) => e.diffState)).toEqual([undefined]);
+    expect(merged.edges.get("Api->Store")?.state).toBe("removed");
+  });
+});

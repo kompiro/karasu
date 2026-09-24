@@ -228,13 +228,24 @@ function diffSystemFrames(
       merged.set(systemId, af ?? bf!);
       continue;
     }
+    // Diff this frame into a map of its own, then fold it into the shared one.
+    // The frame-scoped copy is what the layout reads: the shared map is keyed by
+    // `${from}->${to}` with no system in it, so when two frames both hold an
+    // `Api->Store` the second frame diffed overwrites the first and a removal in
+    // one system reads back as `unchanged` (#2756). The shared map is still
+    // filled, for the single-system path and the consumers keyed off it.
+    const frameDiff = new Map<string, EdgeDiffMeta>();
+    const edges = diffEdgeArray(bf.edges, af.edges, frameDiff);
+    const implicitEdgeDetails = diffImplicitEdgeDetails(
+      bf.implicitEdgeDetails,
+      af.implicitEdgeDetails,
+      frameDiff,
+    );
+    for (const [key, meta] of frameDiff) edgeDiff.set(key, meta);
     merged.set(systemId, {
-      edges: diffEdgeArray(bf.edges, af.edges, edgeDiff),
-      implicitEdgeDetails: diffImplicitEdgeDetails(
-        bf.implicitEdgeDetails,
-        af.implicitEdgeDetails,
-        edgeDiff,
-      ),
+      edges,
+      implicitEdgeDetails,
+      edgeDiffState: new Map([...frameDiff].map(([key, meta]) => [key, meta.state])),
     });
   }
   return merged;
