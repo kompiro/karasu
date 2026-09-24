@@ -8,7 +8,7 @@
   - 発見の経緯: [#2646](https://github.com/kompiro/karasu/issues/2646) / PR [#2741](https://github.com/kompiro/karasu/pull/2741) のレビュー
   - 関連 ADR: [ADR-2521](../adr/2521-multi-system-pipeline-convergence.md)（multi は single の計算に合わせる）, [ADR-2223](../adr/2223-service-anchored-edge-renders-on-parent-canvas.md)（同じ罠を「実装上の落とし穴」として記録済み）, [ADR-681](../adr/681-top-level-service-rendering.md)（`__unassigned__` 擬似 system）, [ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)（per-system フレーム）
   - 関連 TPL: [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md), [TPL-999](../test-perspectives/TPL-999-implicit-data-filtering.md), [TPL-1666](../test-perspectives/TPL-1666-style-lookup-matches-layout-id-form.md)。本 Issue の実装 PR で TPL-2756 を新規に起こす（「proactive TPL」節。ファイルが無いうちは前方参照を張らない）
-  - コード: `packages/core/src/view/view-extract.ts`（`extractRootSystemView`）, `packages/core/src/renderer/layout.ts`（`layoutMultipleSystems`）, `packages/core/src/diff/view-diff.ts`（`diffSystemViewSlices`）
+  - コード: `packages/core/src/view/view-extract.ts`（`extractRootSystemView`）, `packages/core/src/renderer/layout.ts`（`layoutMultipleSystems`）, `packages/core/src/diff/view-diff.ts`（`diffSystemViewSlices`）, `packages/core/src/renderer/layout-types.ts`（`LayoutEdge`）, `packages/core/src/renderer/svg-renderer.ts`（diff state の解決順）
 
 ## 背景・課題
 
@@ -185,6 +185,7 @@ for (const sys of systems) {
 - 混線が**キーの規律ではなく構造**で起こらなくなる。「この構成要素は誰のものか」をマップの所在が答える
 - キー形を 1 文字も変えないので、`layout-edges.ts`・single 経路・`extractOrphanView`・`diffImplicitEdgeDetails` のキー解析がすべて無変更。変種 a が要求する「2 箇所の恒久同期」が発生しない
 - `diffSystemViewSlices` のマージが edges だけでなく details にも及ぶ。`diffImplicitEdgeDetails` の引数を `ViewSlice` 2 つから `ReadonlyMap` 2 つへ広げて使い回す（シグネチャのみ、ロジック無変更）
+- **フレームに閉じる対象が 3 つになる**。エッジ集合・詳細マップに加えて compare モードの diff state も同じ理由でフレームスコープが要る（「影響範囲」節）。1 つ目を閉じた理由がそのまま 3 つ目にも効くので、変種 b はこの 3 つを同じ形で扱える
 - primary system の details が slice 側（`implicitEdgeDetails`）とフレーム側の 2 箇所に存在する。multi root では slice 側を読む consumer が無いので害は出ないが、**非 primary の details が slice 側に載らない非対称**が残る
 
 ### 案2: `childEdges` を root canvas 全体の union にするだけ（新フィールドなし）
@@ -268,6 +269,7 @@ root view のレイアウトが、各 system について drill-down 相当の s
 | `extractOrphanView` の書き込み | 同じ形に移す | 無変更 |
 | compare モードのマージ | edges のみ | edges + details（引数をマップ 2 つへ一般化） |
 | 真実の重複 | なし | primary の details が 2 箇所から読める |
+| compare モードの diff state | 共有マップのまま（同名エッジで誤る） | フレームに閉じる（3 つ目の同型対象） |
 
 ## Related TPLs
 
@@ -312,6 +314,7 @@ spike で確認した結果（ブランチ `spike/2756-per-system-edge-details`�
 - 派生 3 族（infra / implicit service / delivers）が single・primary・2 番目以降・`__unassigned__` 単独のすべてで描かれる
 - 同名 id を持つ 2 system で、片方だけに宣言した依存が他方のフレームに漏れない
 - 同名 id を持つ 2 system がそれぞれ implicit service エッジを持つとき、各線の `domainEdges` が自分の system の構成要素だけを持つ
+- 同名エッジを持つ 2 system で片方だけが依存を失う compare モードで、その system の線だけが `removed` になり他方は `unchanged` のままになる
 - 9 パッケージ 399 テストファイル・8138 テストが通り、lint / typecheck / knip / check:cycles / format:check も通る（回帰ゼロ）
 
 ### 実装の指針
@@ -324,7 +327,8 @@ spike で確認した結果（ブランチ `spike/2756-per-system-edge-details`�
 6. `layout.ts` の `systemRawEdges` を `viewSlice.systemEdges?.get(sys.id)?.edges ?? withChildAnchoredEdges(sys)` にする。**cross-system の provenance（`crossSystemSource`）は従来どおり `withChildAnchoredEdges(sys)` から登録する**。新しい集合は限定子付き target を除外するので、そこから取ると #2646 の再アンカーが壊れる。なお `layoutMultipleSystems` には既に `systemEdges: LayoutEdge[]` というローカル変数があるので、slice 側のフレームは別名（`systemFrame`）で受けて取り違えを避ける
 7. multi 経路の `computeEdgePoints` 呼び出しで、**そのフレームの** `implicitEdgeDetails` を引いて `domainEdges` を付ける。single 経路の `computeLayoutEdges` と同じ扱いにしないと、描かれた implicit エッジの詳細パネルが空になる
 8. `diff/view-diff.ts` で `systemEdges` を system ごとにマージする。`edges` は `diffEdgeArray`、`implicitEdgeDetails` は `diffImplicitEdgeDetails`。後者は引数を `ViewSlice` 2 つから `ReadonlyMap` 2 つへ広げて、slice 側とフレーム側の両方から使い回す（ロジックは変えない）。片側にしか無いフレームはそのまま通し、revision 間で追加・削除された system がエッジを失わないようにする
-9. テスト:
+9. **compare モードの diff state をフレームに閉じる**。`LayoutEdge` に `diffState` を足し、`SystemFrameEdges` に `edgeDiffState` を足す。`diffSystemViewSlices` は各フレームを自分のマップへ差分してから共有 `edgeDiff` へ畳み、multi 経路は `computeEdgePoints` の直後に自フレームの state をエッジへ刻み、`svg-renderer` は `edgeLayout.diffState ?? effectiveEdgeDiffState?.get(edgeKey)` の順で解決する。**single 経路は刻印しない**ので、キー引きが答えのままで出力は不変。`group-collapse` の `foldedEdgeDiffState`・`org-renderer`・`org-tree-renderer`・`deploy-renderer` の既存キー形には触らない
+10. テスト:
    - `layout.test.ts`: 3 族（infra 派生 / implicit service / delivers）× 3 位置（single / `si === 0` / `si >= 1`）で single と root が同じエッジ集合を出す parity 表
    - `layout.test.ts`: **`system` を書かないモデル（`__unassigned__` 単独）でも派生エッジが描かれること**（改訂で追加。「対象は『system が 2 つ以上』より広い」節の柵）
    - `layout.test.ts`: 同名 id を持つ 2 system で、片方だけに宣言したエッジが他方のフレームに漏れないこと（案2 の失敗モードを柵にする）
@@ -332,11 +336,13 @@ spike で確認した結果（ブランチ `spike/2756-per-system-edge-details`�
    - `layout.test.ts`: 派生エッジ + cross-system エッジ + カテゴリ折り畳みの同居（#2646 の再アンカーが生きていることの柵）
    - `view-extract.test.ts`: `systemEdges` が全 system 分そろい、`childEdges` がその union であること。drill-down では付かないこと
    - compare モードで削除された派生エッジが残ること
+   - **同名エッジを持つ 2 system で、片方だけの削除がその system の線にだけ `removed` として付き、他方が `unchanged` のままであること**（改訂で追加。共有キーから読むと Alpha の削除が `unchanged` になって消える）
+   - **single 経路ではエッジに state が刻印されず、従来のキー引きで解決されること**（single 側の出力不変を縛る）
    - **新たに描かれる派生エッジがスタイル解決を受けること（`[implicit]` の色 / `[async]` の破線）。spike ではここだけ未測定**。`childEdges` が union なので配線上は届くはずだが、「この制約が案の良し悪しを分ける主要因」と本 Doc が書いた点なので、実装 PR では必ず柵にする
-10. AT: 自動テストで閉じるため新規 AT は起こさない（手動でしか確認できない項目が無い）
-11. changeset: `@karasu-tools/core` + `karasu`, patch（描画が変わる）
-12. TPL: [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) の `discovered_from` に #2756 を追記し、あわせて **TPL-2756 を新規に起こす**（「proactive TPL」節で決定済み）
-13. ADR 昇格: 実装完了後に `docs/adr/2756-root-view-system-edge-ownership.md` として昇格し、本 Design Doc は同じ PR で削除する。**spike ブランチは #2756 の close で消えるので ADR からは参照しない**（[TPL-2254](../test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)）。必要な実測値は ADR 本文に書き写す
+11. AT: 自動テストで閉じるため新規 AT は起こさない（手動でしか確認できない項目が無い）
+12. changeset: `@karasu-tools/core` + `karasu`, patch（描画が変わる）
+13. TPL: [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) の `discovered_from` に #2756 を追記し、あわせて **TPL-2756 を新規に起こす**（「proactive TPL」節で決定済み）
+14. ADR 昇格: 実装完了後に `docs/adr/2756-root-view-system-edge-ownership.md` として昇格し、本 Design Doc は同じ PR で削除する。**spike ブランチは #2756 の close で消えるので ADR からは参照しない**（[TPL-2254](../test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)）。必要な実測値は ADR 本文に書き写す
 
 ### 影響範囲・マイグレーション
 
@@ -348,4 +354,10 @@ spike で確認した結果（ブランチ `spike/2756-per-system-edge-details`�
 - **`ViewSlice` の直接利用者**: `systemEdges` は optional + layout 側 fallback 付きなので、slice を手組みする呼び出しは無変更で動く
 - **`implicitEdgeDetails` のキー形は変えない**（改訂）: 変種 b はフレームごとのマップで混線を防ぐので、このマップを引く利用者はどちらも追随不要。`layout-edges.ts`（キーを組み立てて get）と `diff/view-diff.ts`（`#` の前を切り出して `edgeDiff` を引く）はそのまま動く。初版は接尾修飾を指示していたため、この 2 箇所の同時変更を要求していた
 - **非 primary の details は `ViewSlice.implicitEdgeDetails` に載らない**（変種 b の代償）: multi root でこのマップを読む consumer は無く（`computeLayoutEdges` は single 経路専用）、compare モードはフレーム側のマージで覆われるので、観測可能な欠落は無い。ただし「slice の `implicitEdgeDetails` は root view 全体ではなく primary フレームのもの」という非対称は残るので、ADR に書き残す
-- **`edgeDiff` は bare pair キーのまま残る**: `diffEdgeArray` は `` `${from}->${to}` `` で before/after を突き合わせる。`childEdges` を全 system の union にすると、`Alpha` と `Beta` がどちらも `Api->Store`（宣言でも派生でも）を持つケースで 2 本が 1 エントリに畳まれ、片方だけの追加・削除が正しく分類されない。キー形が bare なのは今回始まったことではない（`crossSystemEdges` も同じ map に入る）が、**union にする分だけ露出面は広がる**。`edgeDiff` を per-system キーに移すのは案3 と同じ「bare id キーの正規化」に属する残件なので、ここでは直さず ADR 昇格時に既知の限界として書き残す
+- **compare モードの diff state もフレームに閉じる**（改訂で方針変更）: `diffEdgeArray` は `` `${from}->${to}` `` で before/after を突き合わせ、`compileSystemDiff` がその結果を 1 枚の `edgeDiffState` へ平坦化してレンダラへ渡す。`Alpha` と `Beta` がどちらも `Api->Store` を持つと、このキーは両者で同一になる。
+
+  初版はこれを「案3 と同じ bare id キーの正規化に属する残件」として先送りしていた。実測するとその判断は支えられない。両 system が `Api->Store` を導出し **Alpha だけが失う** revision 間で、共有マップは `Api->Store => unchanged` を返す。つまり **Alpha の削除が unchanged として描かれ、差分から消える**。`main` で同じ形（宣言エッジ）を測ると `removed` が返る。衝突自体は既存だが、**向きが過剰報告から過小報告へ反転する**。見える誤りが見えない誤りに変わるのは差分ツールとして許容できない。
+
+  そこで diff state を、エッジと詳細に続く **3 つ目のフレームスコープ対象**にする。`diffSystemViewSlices` は各フレームを自分のマップへ差分してから共有マップへ畳み、multi 経路は各エッジに自フレームの state を刻み、レンダラはキー引きよりその刻印を優先する。single 経路は刻印せず従来のキー引きのまま。実測で Alpha の線が `removed`、Beta の線が `unchanged` になる。
+
+  共有 `edgeDiff` のキー形自体は bare のまま残る（`crossSystemEdges` も同じマップに入る）。ただし multi 経路のレンダリングはもうそれを読まないので、**この経路に観測可能な誤りは残らない**。キー形そのものの正規化は案3 の領分として引き続き範囲外
