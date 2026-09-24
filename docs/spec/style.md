@@ -331,13 +331,79 @@ On nodes, `border-style` is the only line-style property —
 | `cloud` | Cloud | external cloud services |
 <!-- /gen:reference:shapes -->
 
-Custom shapes (SVG file reference):
+Custom shapes — an SVG icon, named by `url(...)`:
 
 ```css
 service[external] {
-  shape: url("shapes/cloud.svg");
+  shape: url("cloud-node");
 }
 ```
+
+The argument is the **name of a registered icon**, not a path to a file. The
+built-in set — the manifest at `packages/core/icons/icons.json` (`service`,
+`database`, `cloud-node`, `client-web`, `table`, `oci`, … — the same icons
+icon mode draws) — is registered by core itself, so it resolves the same on
+every surface: the browser app, `karasu render`, the VS Code preview, the LSP.
+A host may add its own icons on top (`resolveIconManifest` /
+`loadAndRegisterIcon`). A `url()` that names no registered icon is reported as
+a `style-unknown-icon` warning at the declaration and the node falls back to
+`box`.
+
+That warning is decided against the registry of the process that reads the
+sheet, so it answers for the built-in set everywhere. A host's **own** icons
+live in that host's process only: the language server and `karasu lint-style`
+run elsewhere and report a name they registered as unknown, while the host
+draws it correctly. An embedder that adds icons registers them before it
+compiles or validates.
+
+### How a `url()` icon is drawn
+
+An icon body is a drawing, not a card: it has nowhere to spend the node's
+`background-color` / `border-color` / `border-width` / `border-radius`. Those
+are painted behind it as the node's card instead, in **both display modes**.
+For an icon that should stand on the canvas alone, declare the card away:
+
+```css
+service[external] {
+  shape: url("cloud-node");
+  background-color: transparent;
+  border-width: 0;
+}
+```
+
+What is drawn on that card depends on what the icon declares.
+
+An icon carrying text slots (`krs-label` / `krs-description`) is a **card
+design**: its body is a card of its own, with its own place for a label and a
+description. In **icon mode** the node is drawn on exactly that card, so the
+body is used whole and its slots carry the node's text. In **shape mode** the
+card is measured from the node's own text instead, so only the icon's
+pictogram (`<g class="krs-pictogram">`) is taken: it is drawn at its native
+size in the card's top-left padding corner, and the text is the same stack
+every other shape gets — label, description, `role`, the client resource and
+capability chips, and the link / team meta row.
+
+An icon with **no text slots** is a standalone drawing, and the node's text is
+drawn over it in the usual stack in either mode. Where the drawing sits differs:
+in **shape mode** it is fitted inside the card, keeps its `viewBox` ratio (never
+stretched to a card measured from the text) and is centred in the leftover
+space; in **icon mode** it fills the fixed card it is drawn on, which is the
+card the mode sizes every node to.
+
+> Related TPLs:
+> [TPL-2385](../test-perspectives/TPL-2385-attachment-follows-drawn-outline.md)
+> — the card frame stays on the node's box, so edges and chrome attach to what
+> is drawn while the body is fitted inside it.
+> [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)
+> — both display modes are checked on every drawing surface; the frame is
+> painted in both, and the modes differ in the card's size and in whether the
+> icon's slots are read.
+> [TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)
+> — the registry `url()` reads is filled by core itself, so neither the drawing
+> nor the `style-unknown-icon` verdict depends on what a host registered.
+> [TPL-2803](../test-perspectives/TPL-2803-measured-lines-are-drawn-lines.md)
+> — the card's text is drawn by the layout its size was measured for, so a
+> shape-mode card keeps every line measurement reserved for it.
 
 ---
 

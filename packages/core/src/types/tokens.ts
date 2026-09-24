@@ -90,6 +90,12 @@ export enum TokenType {
   // Literals
   StringLiteral = "StringLiteral",
   Identifier = "Identifier",
+  // A word that starts with a digit (`2026`, `2026abc`). No position accepts it
+  // silently: most report it and record nothing, a tag keeps it and is warned
+  // as non-builtin, and kebab-name stitching takes it as a non-leading fragment
+  // (`team-1`). The lexer used to discard the digits outright, which left the
+  // parser nothing to refuse (#2707).
+  Number = "Number",
 
   // Annotations
   At = "At", // @
@@ -120,6 +126,15 @@ export interface SourceLocation {
 export interface SourceRange {
   start: SourceLocation;
   end: SourceLocation;
+  /**
+   * Absolute path of the document `start` / `end` index into, set when the
+   * parse was handed one (the ImportResolver always does). Absent means the
+   * document the consumer parsed itself: a single-document context such as
+   * the LSP. A line number without it is not an address once a model spans
+   * files: a verdict decided on the merged model anchors on whichever file
+   * declared the construct, not on the entry (#2715, TPL-2715).
+   */
+  file?: string;
 }
 
 /**

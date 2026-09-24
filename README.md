@@ -191,7 +191,7 @@ The `Chat` tab enables interactive modeling against the Claude API. It uses **BY
 - **SVG / draw.io export** — Bulk export all diagrams as SVG (the exported SVG supports drill-down navigation in the browser on its own), or export to draw.io (mxGraph XML) as a layout escape hatch for pixel-perfect polishing
 - **Top-level infra blocks** — `service`, `database`, `queue`, `storage` can be written at the file root without an enclosing `system`, so a deployment-centric file renders on its own
 - **Deploy-only file auto-switch** — Opening a file whose only meaningful content is a `deploy` block automatically focuses the Deploy tab so you don't land on an empty System view
-- **Icon mode** — Toggle System / Deploy / Org diagrams into icon display
+- **Icon mode (deprecated)** — Toggle System / Deploy / Org diagrams into icon display. Deprecated in favour of shape mode with an external SVG icon (`shape: url()`), which now draws the card frame you declare and keeps the icon's aspect ratio; it will be removed in the next major version
 - **Panel focus** — Collapse the sidebar and expand the preview to fill the screen
 - **Domain drift detection** — Warns automatically when the same domain name is dispersed across multiple services
 - **Deprecated-domain coexistence during migrations** — Render old and new domains side by side with `@deprecated` / `@migration_target`

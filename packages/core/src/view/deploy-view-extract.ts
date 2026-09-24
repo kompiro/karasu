@@ -1,11 +1,39 @@
 import type { DeployBlock, DeployNode, NodeIdPath, SystemNode } from "../types/ast.js";
 import type { EdgeKind } from "../types/ast.js";
+import { INFRA_KIND_SET } from "../types/ast.js";
+import { buildEntityResolver } from "../resolver/resource-entity.js";
 import { deriveInfraEdges } from "./view-extract.js";
-import { nodePathIdentityKey, nodePathKey, resolveNodePathBySuffix } from "../parser/node-path.js";
+import {
+  nodePathIdentityKey,
+  nodePathRefId,
+  resolveNodePathBySuffix,
+} from "../parser/node-path.js";
 
 export interface DeployContainer {
   /** The service id that these units realize */
   serviceId: string;
+  /**
+   * The realized node's own id, set only when that id names this container's
+   * nodes and nothing else.
+   *
+   * A consumer that matches a container against the node it realizes — the
+   * system view's deploy-jump button, the draw.io metadata lookup — keys on
+   * this, not on {@link serviceId}. `serviceId` is the container's identity,
+   * and identity can need spelling a node's own id space has no word for: a
+   * qualified path when two containers share the bare id (#2549), quotes when
+   * a segment carries the separator (#2714).
+   *
+   * Unset in the two cases where a bare id would over-answer:
+   *
+   * - another container answers to the same bare id (the case #2549 qualified),
+   * - the ref **narrowed** to one of several same-named nodes
+   *   (`realizes Shop.Api` while an `Admin.Api` also exists), whether or not
+   *   that other node is deployed. Matching on the bare id would light both.
+   *
+   * A bare ref that resolves to several same-named nodes keeps its id: that is
+   * broadcast (ADR-927 / ADR-1566), and the container does realize them all.
+   */
+  nodeId?: string;
   /** Human-readable label resolved from the system hierarchy */
   serviceLabel: string;
   units: DeployNode[];
@@ -68,10 +96,14 @@ export function extractDeployView(
   // nodes here, which is what lets a qualified ref pick one of them.
   const candidates: { path: NodeIdPath; label: string }[] = [];
   const labelByBareId = new Map<string, string>();
+  // How many of them answer to each bare id — what decides whether a bare id
+  // can be handed to a consumer that matches nodes by it (see `nodeId`).
+  const candidatesByBareId = new Map<string, number>();
   for (const system of systems) {
     for (const child of system.children) {
       candidates.push({ path: [system.id, child.id], label: child.label ?? child.id });
       labelByBareId.set(child.id, child.label ?? child.id);
+      candidatesByBareId.set(child.id, (candidatesByBareId.get(child.id) ?? 0) + 1);
     }
   }
 
@@ -136,22 +168,50 @@ export function extractDeployView(
   // always drawn and what its anchors are built from. Only when two containers
   // would answer to the same bare id does the qualified path take over, and
   // only for those two: an unqualified model keeps every id it had.
+  //
+  // Both forms are emitted through `nodePathRefId`, not a plain join: the id
+  // is what tells two containers apart (`containerCenterX`, the SVG's
+  // `data-container-id`, the diff's per-container key), so the way a path is
+  // flattened into it has to be injective. A plain join is not — a quoted id
+  // that itself contains a dot spells the same string as a qualified path, and
+  // `realizes "Shop.Api"` then landed on the container `realizes Shop.Api`
+  // built (#2714). Quoting only the segments that would make the join
+  // ambiguous costs nothing anywhere else: a non-empty id with no `.`, `"` or
+  // `\` in it is emitted exactly as before.
   const groupsByBareId = new Map<string, number>();
   for (const group of groupedByRealizes.values()) {
     groupsByBareId.set(group.bareId, (groupsByBareId.get(group.bareId) ?? 0) + 1);
   }
+  const qualifyingPathOf = (group: RealizesGroup): NodeIdPath | undefined =>
+    group.path !== undefined && (groupsByBareId.get(group.bareId) ?? 0) > 1
+      ? group.path
+      : undefined;
   const containerIdOf = (group: RealizesGroup): string =>
-    group.path && (groupsByBareId.get(group.bareId) ?? 0) > 1
-      ? nodePathKey(group.path)
-      : group.bareId;
+    nodePathRefId(qualifyingPathOf(group) ?? [group.bareId]);
+  // The bare id a consumer may match a *node* by, or undefined when it would
+  // answer for more nodes than this container realizes. A narrowing ref is the
+  // case counting containers misses: `realizes Shop.Api` with no `Admin.Api`
+  // container still must not light `Admin.Api`'s deploy button, because the id
+  // `Api` reaches both nodes and only one of them is deployed.
+  const matchableNodeIdOf = (group: RealizesGroup): string | undefined => {
+    if (qualifyingPathOf(group) !== undefined) return undefined;
+    const narrowsToOneOfSeveral =
+      group.path !== undefined && (candidatesByBareId.get(group.bareId) ?? 0) > 1;
+    return narrowsToOneOfSeveral ? undefined : group.bareId;
+  };
 
   // Build containers
   const containers: DeployContainer[] = [];
   const containerIdByPath = new Map<string, string>();
   const containerIdByBareId = new Map<string, string>();
+  // Containers whose ref named no single node (a broadcast over same-named
+  // nodes), by bare id. The only containers that realize a node the path
+  // lookup cannot reach.
+  const unpathedContainerIdByBareId = new Map<string, string>();
   for (const group of groupedByRealizes.values()) {
     const serviceId = containerIdOf(group);
     if (group.path) containerIdByPath.set(nodePathIdentityKey(group.path), serviceId);
+    else unpathedContainerIdByBareId.set(group.bareId, serviceId);
     if (!containerIdByBareId.has(group.bareId)) containerIdByBareId.set(group.bareId, serviceId);
     // A container is a job band member only when *every* unit is a `job`. A
     // mixed container (job + other kinds) stays on the dependency DAG so its
@@ -159,6 +219,7 @@ export function extractDeployView(
     const isJobOnly = group.units.length > 0 && group.units.every((u) => u.kind === "job");
     containers.push({
       serviceId,
+      ...(matchableNodeIdOf(group) === undefined ? {} : { nodeId: group.bareId }),
       serviceLabel: group.label ?? labelByBareId.get(group.bareId) ?? group.bareId,
       units: group.units,
       ...(isJobOnly ? { kindBand: "job" as const } : {}),
@@ -177,22 +238,38 @@ export function extractDeployView(
   const seenGhost = new Set<string>();
 
   // An endpoint is a bare id in its system's scope, so it addresses a
-  // container by path first (the id alone cannot tell two systems' same-named
-  // services apart) and falls back to the id for endpoints with no system
-  // context — the top-level infra `deriveInfraEdges` reaches.
-  const containerIdFor = (endpointId: string, systemId?: string): string | undefined =>
-    (systemId !== undefined
-      ? containerIdByPath.get(nodePathIdentityKey([systemId, endpointId]))
-      : undefined) ?? containerIdByBareId.get(endpointId);
+  // container by path first: the id alone cannot tell two systems' same-named
+  // services apart.
+  //
+  // When the path misses, what may answer depends on whether the system
+  // declares the id itself. If it does, the endpoint IS that node, so only a
+  // container realizing it without a path (a broadcast) is a match; another
+  // system's same-named container is not, and would draw `B.Api` depending on
+  // `A.Db` when only `A.Db` is deployed. If it does not, the endpoint lives
+  // outside the system (shared infra declared at the top level, or a store
+  // another system declares), and the id is the only handle left. That handle
+  // answers only while one container holds the id: with `B.Db` and `C.Db` both
+  // deployed, a service in A that declares no `Db` names neither, and picking
+  // the first would draw a dependency the model never states.
+  const declaredPaths = new Set(candidates.map((c) => nodePathIdentityKey(c.path)));
+  const containerIdFor = (endpointId: string, systemId: string): string | undefined => {
+    const pathKey = nodePathIdentityKey([systemId, endpointId]);
+    const byPath = containerIdByPath.get(pathKey);
+    if (byPath !== undefined) return byPath;
+    if (declaredPaths.has(pathKey)) return unpathedContainerIdByBareId.get(endpointId);
+    return groupsByBareId.get(endpointId) === 1 ? containerIdByBareId.get(endpointId) : undefined;
+  };
 
   const pushGhost = (
     edge: { from: string; to: string; label?: string; kind: EdgeKind },
-    systemId?: string,
+    systemId: string,
   ): void => {
     const from = containerIdFor(edge.from, systemId);
     const to = containerIdFor(edge.to, systemId);
     if (from === undefined || to === undefined) return;
-    const key = `${from}->${to}`;
+    // `\u0000` and not `->`: both halves are author-chosen ids, and an id may
+    // contain the arrow (`service "b->c"` needs no quoting, holding no `.`).
+    const key = `${from}\u0000${to}`;
     if (seenGhost.has(key)) return;
     seenGhost.add(key);
     ghostEdges.push({ from, to, label: edge.label, kind: edge.kind });
@@ -203,15 +280,24 @@ export function extractDeployView(
       pushGhost({ from: edge.from, to: edge.to, label: edge.label, kind: edge.kind }, system.id);
     }
   }
-  // Derive service→infra dependencies over ALL systems' children at once, not
-  // per-system: shared infra is commonly declared at the top level (a dedicated
-  // infra file) and referenced by services inside a `system`, so the service and
-  // the infra node live in different `children` lists. A merged list lets that
-  // canonical pattern resolve. The deploy view is flat (not per-system), so
-  // merging is appropriate here.
+  // Derive service→infra dependencies one system's services at a time, against
+  // the infra of EVERY system: shared infra is commonly declared at the top
+  // level (a dedicated infra file) and referenced by services inside a
+  // `system`, so the service and the infra node live in different `children`
+  // lists, and a merged infra list lets that canonical pattern resolve. The
+  // services stay per system so each edge keeps the system it came from:
+  // derived over one merged list, the edges carried bare ids only, and a second
+  // system's same-named `Api -> Db` resolved to the first system's containers
+  // and was deduped away (#2817). Entity ids are one model-wide namespace
+  // (ADR-1870), so a single resolver serves every system.
   const allChildren = systems.flatMap((s) => s.children);
-  for (const edge of deriveInfraEdges(allChildren)) {
-    pushGhost({ from: edge.from, to: edge.to, kind: edge.kind });
+  const allInfra = allChildren.filter((n) => INFRA_KIND_SET.has(n.kind));
+  const entityResolver = buildEntityResolver(allChildren);
+  for (const system of systems) {
+    const services = system.children.filter((n) => n.kind === "service");
+    for (const edge of deriveInfraEdges([...services, ...allInfra], entityResolver)) {
+      pushGhost({ from: edge.from, to: edge.to, kind: edge.kind }, system.id);
+    }
   }
 
   return {

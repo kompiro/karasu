@@ -41,4 +41,17 @@ Verify that `PreviewPane` component callbacks and highlight behavior work correc
 - [x] `highlightedNodeId={null}` で再描画すると、すべての要素から `.karasu-highlighted` が外れる
 > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › `it("removes .karasu-highlighted when highlightedNodeId becomes null")`
 
+### AC-6: 図の背景クリックでハイライト解除、ドラッグでは解除しない
+
+- [x] ノード・コンテナ・コントロールのない背景をクリックすると `onClearHighlight` がトリガーされる
+> ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › `it("calls onClearHighlight when the diagram background is clicked")`
+
+- [x] 背景をドラッグ（クリック閾値を超えて移動）しても `onClearHighlight` は呼ばれない
+> ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › `it("keeps the highlight when the diagram background is dragged")`
+
+### AC-7: 図が変わらない再レンダリングでは `.karasu-highlighted` が残る
+
+- [x] `svg` と `highlightedNodeId` が同じまま再描画しても、ノードの DOM は作り直されず `.karasu-highlighted` が残る（#2789）
+> ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › `it("keeps .karasu-highlighted across a re-render that leaves the diagram unchanged (#2789)")`
+
 > 全項目が自動テストで検証されており、手動確認は不要。

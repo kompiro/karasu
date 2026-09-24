@@ -10,8 +10,11 @@ known_consumers:
   - style-resolver
   - parser
   - renderer
+  - deploy-view
 discovered_from:
   - issue: "#1352"
+  - issue: "#2714"
+  - issue: "#2817"
   - root_cause_file: "packages/core/src/resolver/style-resolver.ts"
 related_to:
   - TPL-2167
@@ -45,7 +48,7 @@ scope:
 
 - [ ] その要素を一意に識別する属性を列挙し、解決結果がどの属性に依存するか確認する（依存するものは全てキーに入れる）
 - [ ] 同じ部分キーを共有する複数要素（parallel edge、同 ID の annotation 違いノード等）が存在しうるか考える
-- [ ] 衝突しうるなら、合成キーのヘルパー関数を 1 つ用意し、書き込み側と参照側の両方で同じ関数を使う
+- [ ] 衝突しうるなら、合成キーのヘルパー関数を 1 つ用意し、書き込み側と参照側の両方で同じ関数を使う。そのキーを**外へ出す**（id・属性・アンカーとして書き出す）なら、エンコード自体が injective かも確認する。次元が揃っていても、セパレータ join は区切りを失うので `["a.b"]` と `["a", "b"]` が同じ文字列になる（#2714）
 - [ ] 合成キーで引けなかった場合のフォールバック（synthetic 要素用の bare key 等）の挙動を意図的に決める
 - [ ] parallel / 共存ケースを 1 件、レンダリング結果の差（実線 vs 破線等）まで含めてテストする
 
@@ -66,10 +69,47 @@ resolver（書き込み）と renderer（参照）の両方から import する�
   キーする group identity。bare id のままだと別スコープの同名 boundary が 1 つの collapse 状態に
   融合する（slice C でスコープ修飾に修正）。
 
+## 既知の consumer — deploy コンテナの id（#2714）
+
+`extractDeployView` のコンテナは、グルーピングを injective な `nodePathIdentityKey` で
+行いながら、**出す id** は `nodePathKey`（素の `join(".")`）で作っていた。次元は足りて
+いたので上の「キーに含める」観点は満たしている。落ちたのはその先の**畳み方**である。
+`service "Shop.Api"` の bare id と修飾パス `Shop.Api` が同じ文字列になり、2 つの
+コンテナが 1 つの id を名乗った。id はコンテナの identity そのもの
+（`containerCenterX` / `containerById` / SVG の `data-container-id` / diff のコンテナ
+キー）なので、後勝ちで前が消え、ghost edge は別の矩形に着いた。
+
+読み替えると、この観点は 2 段で効く:
+
+1. **次元**: 区別に要る属性をキーに入れる（本 TPL の元の形）
+2. **エンコード**: その属性の並びを 1 本の文字列に畳むなら、畳み方が可逆であること。
+   identity 専用なら JSON（`nodePathIdentityKey` / `boundaryScopeKey`）、**読み手が
+   id として読み戻すテキスト**なら区切りを保つ引用符付きの形（`nodePathRefId`）
+
+## 既知の consumer: deploy の ghost edge 端点（#2817）
+
+キーを持っていても、**引く側に次元が届いていなければ**同じことが起きる。`extractDeployView`
+は `(system, id)` のパスでコンテナを引けたが、service→infra エッジは全 system の children を
+1 つのリストにまとめて導出しており、導出結果には bare id しか残らなかった。system を持たない
+端点は bare id の先勝ちマップにフォールバックし、2 つ目の system の同名 `Api -> Db` は 1 つ目の
+system のコンテナに着いて dedup で消えた。
+
+直し方は 2 点:
+
+1. **次元を運ぶ**: 導出を system ごとに回し、エッジと一緒に system id を端点の解決まで渡す
+   （infra 側は top-level 共有 infra を解決できるよう全 system から集める）
+2. **フォールバックを決める**: パスで引けなかったとき、その system が同じ id を**自分で宣言
+   している**なら端点はそのノードそのものなので、bare id で別 system の同名コンテナを拾わない
+   （拾ってよいのはパスを持たない broadcast コンテナだけ）。宣言していない id だけが bare id に
+   フォールバックし、それもその id を持つコンテナが 1 つのときに限る（複数あれば推測しない）。上のチェックリスト「フォールバックの挙動を意図的に決める」の具体例
+
 ## 関連テスト
 
 - `packages/core/src/renderer/svg-renderer.test.ts` — "keeps the sync edge solid when a parallel async edge exists between the same pair"
 - `packages/core/src/renderer/scoped-boundary-render.test.ts` — "collapses a same-named boundary independently per scope"
+- `packages/core/src/parser/node-path.test.ts` — "nodePathRefId (#2714) › tells apart the paths a plain join collapses"
+- `packages/core/src/view/deploy-view-extract.test.ts` — "a dotted id cannot claim a qualified container's id (#2714)"
+- `packages/core/src/view/deploy-view-extract.test.ts` — "same-named service and infra in two systems (#2817)"
 
 ## 派生元 spec
 

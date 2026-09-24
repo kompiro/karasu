@@ -9,6 +9,7 @@ import {
   type Span,
 } from "./port-frame.js";
 import { seatPortsOnOutline } from "./port-frame.js";
+import { ObstacleIndex } from "./obstacle-index.js";
 import type { ShapePortFrame } from "../shapes/shape-registry.js";
 import type { LayoutEdge, LayoutNode, Rect } from "./layout-types.js";
 
@@ -202,6 +203,19 @@ describe("seatPortsOnOutline", () => {
   };
   const resolve = (): { frame: ShapePortFrame; keepOuts: Rect[] } => ({ frame, keepOuts: [] });
 
+  /**
+   * The chain's obstacle query over an arbitrary set of blocking rects (#2790).
+   * Each becomes a card of its own so that neither of this edge's endpoints
+   * exempts it.
+   */
+  const obstacles = (...rects: Rect[]) => {
+    const index = ObstacleIndex.build(
+      rects.map((r, i) => ({ id: `wall${i}`, ...r }) as unknown as LayoutNode),
+      [],
+    );
+    return (edge: LayoutEdge) => index.forEdge(edge.from, edge.to);
+  };
+
   it("seats an endpoint that can reach the span", () => {
     const edge = {
       from: "S",
@@ -209,7 +223,7 @@ describe("seatPortsOnOutline", () => {
       fromPoint: { x: 110, y: 0 },
       toPoint: { x: 110, y: 50 },
     } as unknown as LayoutEdge;
-    seatPortsOnOutline(nodes, [edge], resolve, () => []);
+    seatPortsOnOutline(nodes, [edge], resolve, obstacles());
     // Moved into the span, and pushed in by the depth that applies there.
     expect(edge.toPoint.x).toBeGreaterThanOrEqual(100 + 200 * 0.4);
     expect(edge.toPoint.y).toBe(60);
@@ -228,7 +242,7 @@ describe("seatPortsOnOutline", () => {
     } as unknown as LayoutEdge;
     // An obstacle across the top blocks every sideways move.
     const wall: Rect = { x: 105, y: 30, width: 190, height: 15 };
-    seatPortsOnOutline(nodes, [edge], resolve, () => [wall]);
+    seatPortsOnOutline(nodes, [edge], resolve, obstacles(wall));
     expect(edge.toPoint.x).toBe(110);
     expect(edge.toPoint.y).toBe(50);
   });

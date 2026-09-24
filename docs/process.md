@@ -45,6 +45,7 @@
 - worktree の作成先は必ず `.claude/worktrees/<branch-name>` とする（例: `git worktree add .claude/worktrees/feat/my-feature feat/my-feature`）
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `spike/` + kebab-case
 - `spike/` はマージを前提としない PoC 用。この prefix だけは CI 上の意味を持ち、push で preview がデプロイされる（「spike を PR なしで preview で動かす」節）
+- spike は `spike/<issue>-<何を測ったか>` と名付け、その Issue が open なあいだは push して残す（「spike の名前と寿命」節）
 - **PR を出す前に main を取り込む — `rebase` は使わない。** `git fetch origin main` してから `git merge --no-edit origin/main`。rebase は他 PR のマージ済み成果を巻き添えで revert しうる。
 - **例外: stack 内のブランチは `gh stack sync` の rebase で `main` を取り込む。** スタックは各 PR の base を積み替える構造で、merge では表現できない。この 1 行は直上の rebase 禁止に優先する（「Stacked PR の進め方」）
 
@@ -108,7 +109,7 @@ ready → implementing → in-review → (close)
 9. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 10. Issue ラベルを status: in-review に更新する
 11. 手動検証チェックリストを実施する
-12. CodeRabbit のレビューを収束させる（approve が付くまで指摘に対応する。記録済みの決定を変える指摘だけ人間に確認する）
+12. CodeRabbit のレビューを収束させる（`/coderabbit-converge` で approve まで回す。記録済みの決定を変える指摘だけ人間に確認する）
 13. 人間のレビュー → マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
 ```
 
@@ -153,6 +154,9 @@ required check ではなく、default branch の ruleset は approving review �
 **PR を出した側が approve までのラウンドを回しきってから人間に渡す。** 人間の
 レビューを CodeRabbit のラウンドと並走させない。並走させると収束途中の差分を人間が
 読むことになり、次のラウンドで消える指摘に人間の時間を使う。
+ラウンドは `/coderabbit-converge` で回す。CodeRabbit の応答を待つ・rate limit 明けに
+再依頼する・指摘に対応して push する、を人間の取り次ぎなしで繰り返し、人間に渡せる
+状態か人間の判断が要る状態になったら通知して止まる。
 
 #### 人間に確認する指摘の判定
 
@@ -235,6 +239,12 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 - 同じ**誤検知**を繰り返されるなら、`path_instructions` が規約の実態とずれている合図
   として扱う。返信で毎回閉じるのではなく、glob を実際の適用範囲まで絞るか、例外を
   instruction に書く
+- **review 枠は org 全体で共有され、上限は直近の利用量で変わる。** 上限に当たると
+  サマリーコメントに「Next included review available in N minutes」が出るが、
+  **CodeRabbit は明けても自分では再レビューしない。** 告知時刻を過ぎてから
+  `@coderabbitai review` を 1 回投げる。それより前に投げても「Review rate limited.」で
+  弾かれ、枠の試行回数を増やすだけになる。1 ラウンドの修正はまとめて 1 回の push にする。
+  状態の判定は `pnpm exec tsx scripts/coderabbit/await-review.ts <n> --once`
 - 設定は `.coderabbit.yaml`（レビュー言語・除外パス・path ごとの規約）
 
 ### Stacked PR の進め方
@@ -252,9 +262,9 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 | 0 | 最下層以外を draft にする（`gh pr ready <n> --undo`） |
 | 1 | 最下層の draft を外す（`gh pr ready <n>`）。CodeRabbit と分単位の CI はここで動き出す |
 | 2 | 先に `/code-review <n>` を当てる |
-| 3 | code-review と CodeRabbit の指摘の対応可否を決める（記録済みの決定を変えるものだけ人に確認する） |
-| 4 | 対応すると決めた指摘を直す |
-| 5 | push すると CodeRabbit が再レビューする。3 に戻り、CodeRabbit が approve するまで繰り返す |
+| 3 | code-review の指摘の対応可否を決め、対応すると決めたものを直す（記録済みの決定を変えるものだけ人に確認する） |
+| 4 | `/coderabbit-converge` で CodeRabbit のラウンドを回す（判定基準は 3 と同じ） |
+| 5 | CodeRabbit が approve するか、人の判断待ちで止まるまで 4 が繰り返す |
 | 6 | CodeRabbit の approve が付いたら、そのスライスで観測できることを人が確認し、マージ可否を決める |
 | 7 | `gh stack merge <n> --yes --squash` → `gh stack sync --prune` → 新しい最下層の draft を外して 1 に戻る |
 
@@ -304,6 +314,38 @@ bare host はそこへリダイレクトされる。
 - 発火条件はサイトが公開する doc（`PUBLISHED_EN_FILES`）と `packages/docs-site/**`。
   公開集合と `paths:` の drift は `pnpm run lint:docs-site-ci-paths-sync` が落とす。
 
+### spike の名前と寿命
+
+**到達状態**: `git ls-remote --heads origin 'spike/*'` に並ぶ各ブランチについて、
+先頭の番号が open な Issue を指している。番号の Issue が閉じた spike はそこに無い。
+
+```
+git switch -c spike/<issue>-<何を測ったか> origin/main
+```
+
+判断基準は 1 つ、**その spike が答える問いの Issue がまだ open か**。
+
+- **open な Issue の spike は push して残す。** 証拠（`reports/` 配下の計測結果・
+  スクリーンショット）がブランチにしか無い状態を作らない。preview が触れるまま
+  なのは副作用ではなく目的で、Issue を読む人が実物を触れる。
+- **Issue が閉じたら削除する。** `git push origin --delete spike/<name>` が preview の
+  後始末も兼ねる（「spike を PR なしで preview で動かす」節）。
+- **スラッグは「何を変えたか」ではなく「何を測ったか」を名乗る。** 同じ Issue に
+  2 本目を立てるのは別の問いを測るときなので、スラッグは自然に違う。同じ問いの
+  再測定なら同じブランチを使い回す。
+
+```
+spike/2632-deploy-edge-hover        # #2632: hover affordance の 3 つの関門を測る
+spike/2761-width-budget-ladder      # #2761: ladder を短くすると読み手が何を失うか
+```
+
+日付・通し番号・セッション名は名前に入れない。**記録は記録より長生きするアドレスを
+指す**（[TPL-2254](test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)）
+— セッションは数時間で消えるので半年後の読み手には意味を持たず、日付は git が既に
+持っている。Issue 番号と問いの名前だけが、ブランチと同じ寿命を持つ。
+
+決定の経緯は [ADR-2859](adr/2859-spike-branch-naming.md)。
+
 ### spike を PR なしで preview で動かす
 
 **到達状態**: `spike/` ブランチを push すると、PR を作らずに
@@ -325,10 +367,13 @@ gh run view <run-id>                                             # Summary に P
 - **URL は Summary に出たものを読む。** Cloudflare のブランチ alias は slug 化 +
   長さ切り詰めが入るため、ブランチ名から組み立てると外れる。
 - **後始末はブランチ削除。** `git push origin --delete spike/<name>` で `delete`
-  イベントが走り、そのブランチの preview デプロイが消える。spike を残したまま放置
-  すると preview も残る。
-- **この URL を記録に残さない。** ブランチを消した時点で 404 になるので、AT や
-  ドキュメントの到達先には書かない（「手動確認の到達先は本番 URL で書く」節）。
+  イベントが走り、そのブランチの preview デプロイが消える。消す契機は
+  **その spike が答える Issue が閉じたとき**で、open な間は preview が残るのが
+  正しい（「spike の名前と寿命」節）。
+- **この URL を記録に残さない。** Issue が閉じてブランチを消した時点で 404 になるので、
+  AT やドキュメントの到達先には書かない（「手動確認の到達先は本番 URL で書く」節）。
+  open な Issue のコメントに貼るのはよい — そのコメントは Issue が閉じるまでしか
+  参照されない。
 
 > `push` イベントで使われるワークフロー定義は push されたブランチ自身のものなので、
 > `spike-preview.yml` が main に入るより前に切ったブランチでは発火しない（エラーも
@@ -356,6 +401,8 @@ design doc / ADR / Issue に書く（ブランチより長生きする）。証�
   書き直さない（`reports/` 配下はライブラリを置けない — gitignore されるため）。
 - **`spike/` ブランチでは `git add -f reports/<topic>` してよい。** spike はマージ
   されないので main には届かず、レポートが spike ブランチと一緒に生き死にする。
+  だからこそ **open な Issue の spike は push する** — 証拠がローカルの 1 本にしか
+  無い状態を作らない（「spike の名前と寿命」節）。
 - **読むときは `artifact.html` を private な Claude Artifact として publish する**
   （[Issue #2436](https://github.com/kompiro/karasu/issues/2436)）。生成器は
   `index.html`（file:// で開く用）と `artifact.html`（publish 用、document の骨格を
@@ -386,7 +433,7 @@ plugin にバンドルされる skill とその karasu 内での主な用途:
 | `/hane:review-docs` | リンク切れ・ドキュメント整合性レビュー |
 | `/hane:sync-docs` | コード現状に合わせてリファレンス系ドキュメントを更新 |
 
-karasu 専用の skill（`/svg-icon`, `/update-examples`）は `.claude/skills/` 配下にローカル定義されている（plugin 化対象外）。
+karasu 専用の skill（`/svg-icon`, `/update-examples`, `/coderabbit-converge`）は `.claude/skills/` 配下にローカル定義されている（plugin 化対象外）。
 
 ### Sibling repo の clone（`adr-tools`, `tpl-tools`, `hane` 等）
 

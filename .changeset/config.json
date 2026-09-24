@@ -1,5 +1,5 @@
 {
-  "$schema": "https://unpkg.com/@changesets/config@3.1.4/schema.json",
+  "$schema": "https://unpkg.com/@changesets/config@4.0.1/schema.json",
   "changelog": "./changelog.cjs",
   "commit": false,
   "fixed": [],
@@ -14,5 +14,9 @@
     "@karasu-tools/nest",
     "@karasu-tools/e2e",
     "@karasu-tools/vscode-e2e"
-  ]
+  ],
+  "privatePackages": {
+    "version": true,
+    "tag": false
+  }
 }

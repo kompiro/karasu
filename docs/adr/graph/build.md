@@ -91,11 +91,20 @@ flowchart TD
     ADR_2623["ADR-2623<br/>Dependabot トリアージ 2026-08-25 — ADR の assumptions..."]
     ADR_2640["ADR-2640<br/>PR の一次レビューに CodeRabbit を入れる（advisory 固定）"]
     ADR_2643["ADR-2643<br/>stacked PR は最下層 1 本だけをレビュー対象にし、draft では分単位の CI ..."]
+    ADR_2658["ADR-2658<br/>依存更新トリアージの下ごしらえを gh-aw の scheduled workflow に任せる"]
     ADR_2671["ADR-2671<br/>Dependabot トリアージ 2026-08-31 — exact peer は枠ではなく..."]
     ADR_2693["ADR-2693<br/>Dependabot security alert 2026-09-03（`fast-uri`..."]
     ADR_2716["ADR-2716<br/>CodeRabbit のレビューを request changes workflow に移す"]
     ADR_2753["ADR-2753<br/>Dependabot トリアージ 2026-09-07 — 生成物への部分編集は却下し、再生成に畳む"]
     ADR_2773["ADR-2773<br/>Dependabot トリアージ 2026-09-08 — repo 側の宣言が bot の届..."]
+    ADR_2786["ADR-2786<br/>安全網が結論を出せない回は run ごと失敗させ、detection のモデルを pin する"]
+    ADR_2804["ADR-2804<br/>raw NUL byte を含む tracked file を除外リスト方式の全走査で検出し、..."]
+    ADR_2805["ADR-2805<br/>テスト suite の timeout はテストステップに置き、job 予算は setup を..."]
+    ADR_2807["ADR-2807<br/>suite の job 予算は、共有の setup 観測最大を step 境界の上に載せて確保する"]
+    ADR_2813["ADR-2813<br/>Dependabot security alert 2026-09-12（`js-yaml` ..."]
+    ADR_2836["ADR-2836<br/>Dependabot トリアージ 2026-09-14：vitest 5 の major は ..."]
+    ADR_2839["ADR-2839<br/>dependabot-triage workflow の週次 cron を止め、dispatc..."]
+    ADR_2877["ADR-2877<br/>Dependabot トリアージ 2026-09-22：changesets 3 は CI が..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -121,6 +130,7 @@ flowchart TD
   ADR_2184 --> ADR_1314
   ADR_2209 --> ADR_1314
   ADR_2716 -.supersedes.-> ADR_2640
+  ADR_2807 -.supersedes.-> ADR_2805
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -213,11 +223,20 @@ flowchart TD
   class ADR_2623 accepted
   class ADR_2640 superseded
   class ADR_2643 accepted
+  class ADR_2658 accepted
   class ADR_2671 accepted
   class ADR_2693 accepted
   class ADR_2716 accepted
   class ADR_2753 accepted
   class ADR_2773 accepted
+  class ADR_2786 accepted
+  class ADR_2804 accepted
+  class ADR_2805 superseded
+  class ADR_2807 accepted
+  class ADR_2813 accepted
+  class ADR_2836 accepted
+  class ADR_2839 accepted
+  class ADR_2877 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost

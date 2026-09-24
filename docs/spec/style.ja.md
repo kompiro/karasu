@@ -315,13 +315,75 @@ edge { border-style: dotted; stroke-style: dashed; }  /* → dashed */
 | `cloud` | 雲形 | 外部クラウド |
 <!-- /gen:reference:shapes -->
 
-カスタム形状（SVGファイル参照）：
+カスタム形状 — `url(...)` で名前を指定する SVG アイコン：
 
 ```css
 service[external] {
-  shape: url("shapes/cloud.svg");
+  shape: url("cloud-node");
 }
 ```
+
+引数はファイルへのパスではなく、**登録済みアイコンの名前**です。組み込みのセット
+（マニフェスト `packages/core/icons/icons.json` にある `service`、`database`、
+`cloud-node`、`client-web`、`table`、`oci` など。アイコンモードが描くものと同じ
+アイコンです）は core 自身が登録するので、ブラウザ app、`karasu render`、VS Code
+プレビュー、LSP のどの描画面でも同じ名前が同じアイコンに解決されます。ホストは
+独自のアイコンを追加できます（`resolveIconManifest` / `loadAndRegisterIcon`）。
+どの登録済みアイコンにも一致しない `url()` は宣言位置に `style-unknown-icon`
+warning を出し、ノードは `box` にフォールバックします。
+
+この warning はシートを読むプロセスのレジストリで判定するので、組み込みのセットに
+ついてはどこでも同じ答えになります。一方、ホストが**独自に**登録したアイコンは
+そのホストのプロセスにしかありません。言語サーバと `karasu lint-style` は別プロセス
+で動くため、ホストが登録済みの名前を未登録として報告します（ホスト側の描画は正しい
+ままです）。アイコンを足す埋め込み利用者は、compile / validate より前に登録します。
+
+### `url()` アイコンの描かれ方
+
+アイコン本体は絵であってカードではないため、ノードが宣言した
+`background-color` / `border-color` / `border-width` / `border-radius` を
+使う先を持ちません。これらはノードのカードとして本体の背後に描かれます
+（**どちらの表示モードでも**）。キャンバス上に絵だけを置きたい場合は、
+カードを宣言で消します。
+
+```css
+service[external] {
+  shape: url("cloud-node");
+  background-color: transparent;
+  border-width: 0;
+}
+```
+
+そのカードに何が描かれるかは、アイコンの宣言で決まります。
+
+テキストスロット（`krs-label` / `krs-description`）を持つアイコンは**カードの
+デザイン**です。本体自体がカードで、ラベルと説明の置き場所を自分で持っています。
+**アイコンモード**ではノードをそのカードの上に描くので、本体はまるごと使われ、
+スロットがノードのテキストを受け取ります。**シェイプモード**ではカードをノード
+自身のテキストから測るので、アイコンからはピクトグラム（`<g class="krs-pictogram">`）
+だけを取り、カード左上の padding 帯に原寸で描きます。テキストは他のシェイプと
+同じスタック — ラベル、説明、`role`、client のリソース / ケーパビリティチップ、
+リンク / チームのメタ行 — です。
+
+テキストスロットを**持たない**アイコンは単体の絵で、ノードのテキストはどちらのモード
+でも通常のスタックとしてその上に描かれます。絵の置かれ方はモードで違います。
+**シェイプモード**ではカードに内接して `viewBox` の縦横比を保ち（テキストから測った
+カードに合わせて引き伸ばされることはありません）、余った領域の中央に置かれます。
+**アイコンモード**では、そのモードが全ノードに与える固定カードを満たします。
+
+> Related TPLs:
+> [TPL-2385](../test-perspectives/TPL-2385-attachment-follows-drawn-outline.md)
+> — カード枠はノードの箱に置かれたままなので、本体を内接させてもエッジや
+> クロームは描かれた輪郭に付く。
+> [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)
+> — 表示モードは全描画面で点検する。枠はどちらのモードでも描かれ、モード間で
+> 違うのはカードの寸法と、アイコンのスロットを読むかどうか。
+> [TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)
+> — `url()` が引くレジストリの中身は core 自身が埋める。ホストが何を呼んだかで
+> 描画結果も `style-unknown-icon` の判定も変わらない。
+> [TPL-2803](../test-perspectives/TPL-2803-measured-lines-are-drawn-lines.md)
+> — カードのテキストは、その寸法を測ったレイアウトが描く。シェイプモードの
+> カードは測定が確保した行をすべて保つ。
 
 ---
 

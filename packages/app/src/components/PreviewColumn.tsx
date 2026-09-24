@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { NodeMetadata } from "@karasu-tools/core";
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { BreadcrumbBar } from "./BreadcrumbBar.js";
 import { PreviewPane } from "./PreviewPane.js";
@@ -16,6 +17,11 @@ import { Button } from "@/components/ui/button";
 import { FacetOverviewPanel } from "./FacetOverviewPanel.js";
 import { PreviewToolbar } from "./PreviewToolbar.js";
 import { PreviewViewControls } from "./PreviewViewControls.js";
+
+// Stable identity for "this pane has no node metadata" — an inline `new Map()`
+// would be a fresh object on every render and break PreviewPane's memoized
+// click handler.
+const NO_NODE_METADATA: Map<string, NodeMetadata> = new Map();
 
 const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
 // Unlike anchor downloads (which revoke at 0), the "Open All Views" blob must
@@ -51,10 +57,13 @@ export function PreviewColumn() {
     hasTeamDependencyView,
     isEntityViewOpen,
     entityViewSvg,
+    entityViewDiagnostics,
     hasEntityView,
     onExportDrawio,
     hasKrsSource,
     getShareBundle,
+    currentFilePath,
+    displayRoot,
   } = usePreview();
   // Normalized active-view slice — collapses the per-view ternary chains (#1542).
   const view = useActiveViewData();
@@ -297,27 +306,86 @@ export function PreviewColumn() {
         <PreviewViewControls onOpenFacetOverview={() => setFacetOverviewOpen(true)} />
       </div>
       {showEntityView ? (
-        <div
-          className="preview-pane preview-pane--entity"
-          style={{ overflow: "auto", flex: 1 }}
-          dangerouslySetInnerHTML={{ __html: entityViewSvg ?? "" }}
+        /* The entity sub-mode goes through `PreviewPane` like every other
+           diagram (#2800). It used to inject its SVG into a bare
+           `overflow: auto` div, which left it the one view with no
+           `.preview-container` — so no fit-to-pane, and no zoom or pan
+           (#2799). A domain's ER diagram is the surface where "show me the
+           whole shape" matters most, and on a real model it is far wider than
+           any pane (36,053px for Dify's IdentityAccess).
+
+           `nodeMetadata` is deliberately empty rather than the system view's
+           map: entities are filtered out of the system slice
+           (`view-extract.ts`), so the map holds no entity — but a bare
+           `resource X` promoted into the usecase view carries the *entity's*
+           id, so passing it would answer a click on entity `X` with the
+           resource's detail panel.
+
+           The two `PreviewPane`s share this child slot, so without distinct
+           keys React keeps one instance across the toggle and the entity
+           view's zoom, pan and any open detail panel or edge menu carry into
+           the usecase view (and back), anchored to a diagram that is no longer
+           drawn. A scale fitted to a 36k-px ER diagram means nothing on a
+           usecase canvas, so each mode starts fresh — which is also what the
+           usecase view did before #2800, when the entity pane was a `<div>`
+           and toggling unmounted it. #2799 weighed keeping a zoom per mode
+           and kept the reset. */
+        <PreviewPane
+          key="entity-view"
+          className="preview-pane--entity"
+          svg={entityViewSvg ?? ""}
+          diagnostics={entityViewDiagnostics}
+          nodeMetadata={NO_NODE_METADATA}
+          currentFilePath={currentFilePath}
+          displayRoot={displayRoot}
         />
       ) : showOrgTreeView ? (
-        <div
-          className="preview-pane preview-pane--org-tree"
-          style={{ overflow: "auto", flex: 1 }}
-          onClick={(e) => {
-            const target = (e.target as Element).closest("[data-team-id]");
-            const teamId = target?.getAttribute("data-team-id");
-            if (teamId && onTeamToggle) onTeamToggle(teamId);
-          }}
-          dangerouslySetInnerHTML={{ __html: orgTreeSvg ?? "" }}
+        /* The org tab's two sub-modes follow the entity view onto `PreviewPane`
+           (#2799). Both were bare `overflow: auto` divs, so neither could be
+           fitted, zoomed or panned — the failure ADR-309 left open as "大規模
+           組織での SVG サイズ上限": a wide org tree could only ever be read
+           through a scrollbar.
+
+           `diagnostics` is the org view's own: all three org modes are drawn
+           from the same compiled report, so a parse error that dims the grid
+           has to reach these panes too rather than leaving them silently
+           stale.
+
+           `nodeMetadata` is empty for the reason the entity pane's is: the map
+           is keyed by another view's ids. A team card never reaches it — its
+           click is taken by `onTeamToggle` first — but a member card carries
+           only `data-node-id`, so it falls through to the node lookup, and a
+           member id that collides with a system node id would open that
+           node's detail panel. With the map empty, a member click opens
+           nothing, as it did before.
+
+           Each sub-mode gets its own `key`, like the entity and diagram panes:
+           these branches share one child slot, so without distinct keys React
+           would keep a single instance when Dependencies is pressed straight
+           from Tree View (or back) and carry its zoom, pan and open panel
+           across. Starting each mode at scale 1 is deliberate (#2799 point 2):
+           the diagrams have different coordinate systems and extents, and a
+           scale and offset carried over from one lands the reader off-canvas
+           in the next. */
+        <PreviewPane
+          key="org-tree"
+          className="preview-pane--org-tree"
+          svg={orgTreeSvg ?? ""}
+          diagnostics={diagnostics}
+          nodeMetadata={NO_NODE_METADATA}
+          currentFilePath={currentFilePath}
+          displayRoot={displayRoot}
+          onTeamToggle={onTeamToggle}
         />
       ) : showTeamDependencies ? (
-        <div
-          className="preview-pane preview-pane--team-dependencies"
-          style={{ overflow: "auto", flex: 1 }}
-          dangerouslySetInnerHTML={{ __html: teamDependencySvg ?? "" }}
+        <PreviewPane
+          key="team-dependencies"
+          className="preview-pane--team-dependencies"
+          svg={teamDependencySvg ?? ""}
+          diagnostics={diagnostics}
+          nodeMetadata={NO_NODE_METADATA}
+          currentFilePath={currentFilePath}
+          displayRoot={displayRoot}
         />
       ) : showAllLayersIframe ? (
         <iframe
@@ -328,6 +396,7 @@ export function PreviewColumn() {
         />
       ) : (
         <PreviewPane
+          key="diagram"
           svg={svg}
           diagnostics={diagnostics}
           viewPath={viewPath}
@@ -346,9 +415,15 @@ export function PreviewColumn() {
           nodeDiff={view.nodeDiff}
           styleTargetPath={view.styleTargetPath}
           onPickEdgeDirection={view.onPickEdgeDirection}
+          currentFilePath={currentFilePath}
+          displayRoot={displayRoot}
         />
       )}
-      <WarningPanel warnings={view.warnings} />
+      <WarningPanel
+        warnings={view.warnings}
+        currentFilePath={currentFilePath}
+        displayRoot={displayRoot}
+      />
       <ShareDialog {...shareDialogProps} />
     </div>
   );

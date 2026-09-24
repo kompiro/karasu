@@ -341,6 +341,110 @@ describe("placeNodesInLayers > channel reservation (#2608)", () => {
   });
 });
 
+describe("placeNodesInLayers > column reservation (#2611, TPL-2611)", () => {
+  const GAPS = { layerGap: 120, nodeGap: 60, maxLayerWidth: 1200, groupTitleGap: 60 };
+
+  function place(extraGapBeforeCard?: ReadonlyMap<number, ReadonlyMap<string, number>>) {
+    // Same shape as the channel-reservation fixture: layer 0 balances into two
+    // sub-rows, so a reservation has to name the row it means among them.
+    const nodesByLayer = new Map([
+      [0, ["a", "b", "c", "d", "e", "f"]],
+      [1, ["g", "h"]],
+    ]);
+    return placeNodesInLayers({
+      sortedLayers: [0, 1],
+      nodesByLayer,
+      edges: [],
+      edgeDirections: undefined,
+      layers: new Map(),
+      forcedLayers: new Map(),
+      layoutHints: undefined,
+      gridHint: undefined,
+      groupStartLayer: new Map(),
+      gaps: GAPS,
+      extraGapBeforeCard,
+      measure: () => ({ width: 100, height: 80 }),
+    });
+  }
+
+  it("opens the reserved width before the named card and moves nothing else", () => {
+    const plain = place();
+    const reserved = place(new Map([[1, new Map([["e", 24]])]]));
+    for (const [id, box] of plain.placements) {
+      const moved = reserved.placements.get(id)!;
+      expect(moved.y).toBe(box.y);
+      // Only `e` and what follows it in its own row shift right; the other
+      // rows are untouched, which is what makes a reservation local.
+      const shifted = id === "e" || id === "f";
+      expect(moved.x - box.x).toBe(shifted ? 24 : 0);
+    }
+  });
+
+  it("keeps the rows a reservation was measured on (the key stays valid)", () => {
+    // The heart of TPL-2611: the reservation names row 1's card `e`, and the
+    // second pass must lay down the same rows in the same order, or the key
+    // would point at another card. Wrapping therefore reads the widths
+    // *before* the reservation is added.
+    const plain = place();
+    const reserved = place(new Map([[1, new Map([["e", 240]])]]));
+    expect(reserved.rows).toEqual(plain.rows);
+  });
+
+  it("drops a reservation whose card is not in that row — never worse", () => {
+    const plain = place();
+    // `g` is in row 2, not row 1; a stale key like this is exactly what
+    // TPL-2611 asks to fall back from rather than apply somewhere else.
+    const stale = place(new Map([[1, new Map([["g", 24]])]]));
+    for (const [id, box] of plain.placements) {
+      expect(stale.placements.get(id)!.x).toBe(box.x);
+      expect(stale.placements.get(id)!.y).toBe(box.y);
+    }
+  });
+
+  it("keeps the rows when the order comes from the barycenter, not from a tier", () => {
+    // The dangerous shape (TPL-2611): with `forcedLayers === null` the layers
+    // below are ordered by `sortByBarycenter`, which reads the centres this
+    // very function writes. `u` follows `b` and `v` follows `f`, and those two
+    // predecessors sit at the same centre — so a reservation that pushed `b`
+    // right would reorder the last layer, and the rows the reservation was
+    // keyed on would no longer be the rows it lands in.
+    const placeChain = (extraGapBeforeCard?: ReadonlyMap<number, ReadonlyMap<string, number>>) =>
+      placeNodesInLayers({
+        sortedLayers: [0, 1, 2],
+        nodesByLayer: new Map([
+          [0, ["a", "b"]],
+          [1, ["e", "f"]],
+          [2, ["u", "v"]],
+        ]),
+        edges: [edge("a", "e"), edge("b", "f"), edge("b", "u"), edge("f", "v")],
+        edgeDirections: undefined,
+        layers: new Map(),
+        forcedLayers: null,
+        layoutHints: undefined,
+        gridHint: undefined,
+        groupStartLayer: new Map(),
+        gaps: GAPS,
+        extraGapBeforeCard,
+        measure: () => ({ width: 100, height: 80 }),
+      });
+    const plain = placeChain();
+    const reserved = placeChain(new Map([[0, new Map([["b", 600]])]]));
+    expect(plain.rows).toEqual([
+      ["a", "b"],
+      ["e", "f"],
+      ["u", "v"],
+    ]);
+    expect(reserved.rows).toEqual(plain.rows);
+    // The reservation still moved the card it names — the ordering input is
+    // what is held back, not the placement.
+    expect(reserved.placements.get("b")!.x - plain.placements.get("b")!.x).toBe(600);
+  });
+
+  it("leaves the placement byte-identical without a reservation", () => {
+    expect(place(new Map()).placements).toEqual(place().placements);
+  });
+});
+
 describe("placeNodesInLayers > width budget (#2593)", () => {
   const GAPS = { layerGap: 120, nodeGap: 60, maxLayerWidth: 1200, groupTitleGap: 60 };
 

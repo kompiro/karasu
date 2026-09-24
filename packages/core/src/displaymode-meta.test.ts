@@ -8,14 +8,20 @@
  *    forwarding `displayMode` to the renderer. If the parameter were
  *    silently dropped (Issue #183), both invocations would return
  *    identical bytes.
- * 2. For renderers that use the `svg-renderer` card-frame path (system
- *    drill-down, all-layers, all-views, project bundles), icon-mode
- *    SVG carries strictly more `<rect ` occurrences than shape-mode —
- *    the card-frame `<rect>` prepended only in icon mode for icon
- *    shapes. Renderers without this path (`buildAllLayersSvgOrg`,
- *    `buildDrillDownSvgOrg`) are flagged `expectsCardFrame: false` and
- *    rely on the bytes-differ assertion alone, since they exercise the
- *    org renderer which uses a different icon-mode footprint.
+ * 2. For renderers that draw system cards through `svg-renderer`
+ *    (system drill-down, all-layers, all-views, project bundles),
+ *    icon-mode SVG draws the node at the *fixed* icon-card size, which
+ *    is what `measureNode` does only in icon mode — shape mode measures
+ *    the card from its text. Renderers without this path
+ *    (`buildAllLayersSvgOrg`, `buildDrillDownSvgOrg`) are flagged
+ *    `expectsIconCard: false` and rely on the bytes-differ assertion
+ *    alone, since they exercise the org renderer which uses a different
+ *    icon-mode footprint.
+ *
+ *    This marker used to be "icon mode emits more `<rect>`s", i.e. the
+ *    card frame. #2696 made the frame mode-independent (a `url()` icon
+ *    paints its declared frame in shape mode too), so the frame no
+ *    longer tells the modes apart — the card *size* does.
  *
  * The point of this test is **structural**: when a new SVG-producing
  * entry point is added (PNG export, draw.io export per #649, future
@@ -71,13 +77,12 @@ interface Consumer {
   name: string;
   invoke: (mode: DisplayMode) => Promise<string> | string;
   /**
-   * Whether icon mode is expected to prepend extra `<rect>` card-frame
-   * elements. True for renderers that go through `svg-renderer`'s
-   * icon-shape branch (the system family). False for org-tree
-   * renderers, which adjust icon-mode geometry without adding a
-   * card-frame rect.
+   * Whether icon mode is expected to draw the system card at the fixed
+   * icon-card size. True for renderers that go through `svg-renderer`'s
+   * system-card path. False for org-tree renderers, which give icon
+   * mode a different footprint of their own.
    */
-  expectsCardFrame: boolean;
+  expectsIconCard: boolean;
 }
 
 /**
@@ -92,7 +97,7 @@ interface Consumer {
 const DISPLAY_MODE_CONSUMERS: Consumer[] = [
   {
     name: "compile (system)",
-    expectsCardFrame: true,
+    expectsIconCard: true,
     invoke: (mode) => {
       const result = compile(FIXTURE, { displayMode: mode, diagramType: "system" });
       return result.svg;
@@ -100,7 +105,7 @@ const DISPLAY_MODE_CONSUMERS: Consumer[] = [
   },
   {
     name: "compileProject (system)",
-    expectsCardFrame: true,
+    expectsIconCard: true,
     invoke: async (mode) => {
       const fs = new InMemoryFileSystemProvider();
       await fs.writeFile(ENTRY_PATH, FIXTURE);
@@ -113,32 +118,32 @@ const DISPLAY_MODE_CONSUMERS: Consumer[] = [
   },
   {
     name: "buildDrillDownSvg",
-    expectsCardFrame: true,
+    expectsIconCard: true,
     invoke: (mode) => svgOrThrow(buildDrillDownSvg(FIXTURE, undefined, mode)),
   },
   {
     name: "buildAllLayersSvg",
-    expectsCardFrame: true,
+    expectsIconCard: true,
     invoke: (mode) => svgOrThrow(buildAllLayersSvg(FIXTURE, undefined, mode)),
   },
   {
     name: "buildAllLayersSvgOrg",
-    expectsCardFrame: false,
+    expectsIconCard: false,
     invoke: (mode) => svgOrThrow(buildAllLayersSvgOrg(FIXTURE, undefined, mode)),
   },
   {
     name: "buildDrillDownSvgOrg",
-    expectsCardFrame: false,
+    expectsIconCard: false,
     invoke: (mode) => svgOrThrow(buildDrillDownSvgOrg(FIXTURE, undefined, mode)),
   },
   {
     name: "buildAllViewsSvg",
-    expectsCardFrame: true,
+    expectsIconCard: true,
     invoke: (mode) => svgOrThrow(buildAllViewsSvg(FIXTURE, undefined, mode)),
   },
   {
     name: "buildAllViewsSvgProject",
-    expectsCardFrame: true,
+    expectsIconCard: true,
     invoke: async (mode) => {
       const fs = new InMemoryFileSystemProvider();
       await fs.writeFile(ENTRY_PATH, FIXTURE);
@@ -157,11 +162,27 @@ function svgOrThrow(result: SvgResult): string {
   return result.svg;
 }
 
-function countRects(svg: string): number {
-  return (svg.match(/<rect /g) ?? []).length;
+/** The fixed icon card `measureNode` gives a description-less node in icon mode. */
+const ICON_CARD = { width: 160, height: 56 };
+
+/**
+ * Geometry of the card drawn for the fixture's `Frontend` service, read back
+ * from the emitted SVG — the first `<rect>` inside that node's own group.
+ * Scoped to the group so the marker cannot silently drift onto a badge or the
+ * next node's card if `service` ever stops being drawn as a rect.
+ */
+function frontendCard(svg: string): { width: number; height: number } {
+  const start = svg.indexOf('data-node-id="Frontend"');
+  expect(start).toBeGreaterThan(-1);
+  const rest = svg.slice(start);
+  const next = rest.indexOf("data-node-id=", 1);
+  const group = next === -1 ? rest : rest.slice(0, next);
+  const rect = /<rect\s[^>]*\bwidth="([\d.]+)"[^>]*\bheight="([\d.]+)"/.exec(group);
+  expect(rect).not.toBeNull();
+  return { width: Number(rect![1]), height: Number(rect![2]) };
 }
 
-const CARD_FRAME_CONSUMERS = DISPLAY_MODE_CONSUMERS.filter((c) => c.expectsCardFrame);
+const ICON_CARD_CONSUMERS = DISPLAY_MODE_CONSUMERS.filter((c) => c.expectsIconCard);
 
 describe("meta: every displayMode-consuming SVG entry point threads displayMode", () => {
   // Bytes-differ is the structural assertion that applies to every
@@ -179,23 +200,22 @@ describe("meta: every displayMode-consuming SVG entry point threads displayMode"
     },
   );
 
-  // Stronger assertion for renderers that go through svg-renderer's
-  // icon-card path. The card-frame `<rect>` is prepended only in icon
-  // mode for icon shapes (see svg-renderer.test.ts › "renders a border
-  // rect before icon body in icon mode"). The fixture contains an
-  // icon-themed service, so icon mode emits strictly more `<rect>`
-  // elements than shape mode.
+  // Stronger assertion for renderers that draw system cards through
+  // svg-renderer: icon mode sizes every card to the fixed icon card,
+  // shape mode measures it from its text. Reading the card back from
+  // the emitted SVG keeps the marker on what is drawn (TPL-2385).
   //
   // Org renderers (buildAllLayersSvgOrg / buildDrillDownSvgOrg) follow
   // a different icon-mode footprint and are intentionally excluded —
   // they're still covered by the bytes-differ test above.
-  it.each(CARD_FRAME_CONSUMERS)(
-    "$name icon-mode SVG carries the icon card-frame rect marker",
+  it.each(ICON_CARD_CONSUMERS)(
+    "$name draws the fixed icon card in icon mode and a measured card in shape mode",
     async (consumer) => {
-      const iconSvg = await consumer.invoke("icon");
-      const shapeSvg = await consumer.invoke("shape");
+      const iconCard = frontendCard(await consumer.invoke("icon"));
+      const shapeCard = frontendCard(await consumer.invoke("shape"));
 
-      expect(countRects(iconSvg)).toBeGreaterThan(countRects(shapeSvg));
+      expect(iconCard).toEqual(ICON_CARD);
+      expect(shapeCard).not.toEqual(ICON_CARD);
     },
   );
 });

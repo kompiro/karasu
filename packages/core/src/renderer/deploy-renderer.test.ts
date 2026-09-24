@@ -8,6 +8,9 @@ import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
 import { loadAndRegisterIcon } from "./svg-icon-loader.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import "../renderer/shapes.js";
+import { extractDeployView } from "../view/deploy-view-extract.js";
+import { withUnassignedSystem } from "../view/unassigned-system.js";
+import { Parser } from "../parser/parser.js";
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
 
 const LOC = { start: { line: 1, column: 0, offset: 0 }, end: { line: 1, column: 0, offset: 0 } };
@@ -238,5 +241,37 @@ describe("renderDeploy", () => {
       expect(svg).toContain("定期実行ジョブ");
       expect(svg).not.toContain("Scheduled jobs");
     });
+  });
+});
+
+describe("container ids in the SVG (#2714)", () => {
+  it("emits one element per container when a dotted id meets a qualified path", () => {
+    // Built from source, not hand-assembled: the claim is that the id the
+    // extractor decides reaches the DOM the app clicks through, so the fence
+    // has to run parse → extract → render.
+    const file = Parser.parse(`
+system Shop {
+  service Api {}
+}
+system Admin {
+  service Api {}
+}
+system Weird {
+  service "Shop.Api" {}
+}
+deploy prod {
+  oci a { realizes Shop.Api }
+  oci b { realizes Admin.Api }
+  oci c { realizes "Shop.Api" }
+}
+`).value;
+    const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+    const svg = renderDeploy(slice, makeStyles());
+
+    expect(svg).toContain('data-container-id="Shop.Api"');
+    expect(svg).toContain('data-container-id="Admin.Api"');
+    // XML-escaped in the attribute, and read back as `"Shop.Api"` by the DOM.
+    expect(svg).toContain('data-container-id="&quot;Shop.Api&quot;"');
+    expect(svg.match(/data-container-id="/g)).toHaveLength(3);
   });
 });

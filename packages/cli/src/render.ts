@@ -15,7 +15,7 @@ import type {
   Warning,
 } from "@karasu-tools/core";
 import { formatDiagnostic, formatWarning } from "./i18n.js";
-import { formatDiagLoc, resolveKrsFileOrExit } from "./compile-system-view.js";
+import { diagLocFormatter, resolveKrsFileOrExit } from "./compile-system-view.js";
 import { writeOutput } from "./output.js";
 
 type RenderFormat = "svg" | "drawio";
@@ -78,9 +78,10 @@ export async function render(filePath: string, options: RenderOptions): Promise<
   const diagWarnings = diagnostics.filter((d) => d.severity === "warning");
   const diagInfos = diagnostics.filter((d) => d.severity === "info");
 
+  const locOf = diagLocFormatter(filePath);
   function printDiagnostics(prefix: string, list: Diagnostic[]): void {
     for (const d of list) {
-      process.stderr.write(`${prefix}: ${formatDiagLoc(filePath, d)}: ${formatDiagnostic(d)}\n`);
+      process.stderr.write(`${prefix}: ${locOf(d)}: ${formatDiagnostic(d)}\n`);
     }
   }
 
@@ -100,7 +101,13 @@ export async function render(filePath: string, options: RenderOptions): Promise<
     // domain-dispersal) print as `Info:`, not `Warning:` — see
     // ADR-1386.
     const prefix = warningSeverity(w.kind) === "info" ? "Info" : "Warning";
-    process.stderr.write(`${prefix}: ${formatWarning(w).message}\n`);
+    // A warning that carries a position prints it the way the diagnostics
+    // above do (#2802). The spec's location table names the surface, not the
+    // channel, so dropping a `loc` here reported a style sheet's line number
+    // to nobody. A warning without one keeps the bare message rather than
+    // borrowing the entry's path, which would name a file it did not mean.
+    const where = w.loc ? `${locOf(w)}: ` : "";
+    process.stderr.write(`${prefix}: ${where}${formatWarning(w).message}\n`);
   }
 
   if (errors.length > 0) {

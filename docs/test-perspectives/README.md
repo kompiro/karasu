@@ -117,7 +117,7 @@ deprecation の **トリガー** は月次の定期レビューで起こす。`a
 
 ### Validator
 
-frontmatter とこの README の一覧表は **`pnpm tpl:validate`** で機械的にチェックされる。pre-push の lefthook と PR-gated の `.github/workflows/tpl-validate.yml` で自動実行されるが、ローカルで先に確認したいときも同じコマンドで走る。
+frontmatter とこの README の一覧表、および本文が名指しするソースパスは **`pnpm tpl:validate`** で機械的にチェックされる。pre-push の lefthook（glob なし）と、Required な `Check` の両ジョブ（`.github/workflows/ci.yml` と `.github/workflows/at-check-coverage.yml`）で自動実行されるが、ローカルで先に確認したいときも同じコマンドで走る。
 
 検査内容:
 
@@ -131,8 +131,9 @@ frontmatter とこの README の一覧表は **`pnpm tpl:validate`** で機械�
 - `scope.packages` が `packages/` 配下の実在ディレクトリを指すこと
 - `status: deprecated` のエントリ本文に deprecation rationale が含まれること
 - README の一覧表が全 TPL ファイルと双方向に整合していること（行欠落 / dead リンク無し）
+- 本文のインラインコードスパンが名指しする `packages/…` / `scripts/…` のパスが working tree に実在すること。不在が正しい場合（履歴・例示）は直上の行で `<!-- absent-path-next-line: <理由> -->` と宣言する。宣言は逆向きにも検査され、理由が空、または次行のパスが全部実在するようになると落ちる（[#2810](https://github.com/kompiro/karasu/issues/2810)）
 
-実装は外部パッケージ [`@kompiro/tpl-tools`](https://github.com/kompiro/tpl-tools)（`tpl validate` サブコマンド）。`pnpm tpl:validate` は `--config tpl.config.json` を渡し、`--packages-root packages` で `scope.packages` を検証している（karasu#1357 で切り出し）。
+実装は外部パッケージ [`@kompiro/tpl-tools`](https://github.com/kompiro/tpl-tools)（`tpl validate` サブコマンド）。`pnpm tpl:validate` は `--config tpl.config.json` を渡し、`--packages-root packages` で `scope.packages` を、`--source-prefix packages --source-prefix scripts` で本文のソースパスを検証している（karasu#1357 で切り出し、#2810 で本文の照合を移管）。`docs/{acceptance,design}` 側の同じ検査は `pnpm run lint:record-source-paths` が持つ — 1 ディレクトリ 1 オーナーで、二重には走らせない。
 
 > **なぜ ADR と config を分けているか**（karasu#2083 → #2188）
 > `tpl-tools` と `adr-tools` は同じ config キー `idFormat` を読む。分離当時
@@ -403,7 +404,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | ID | タイトル | topic | 起源 |
 |---|---|---|---|
 | [TPL-1160](TPL-1160-top-level-orphans.md) | top-level orphans の扱い | core-concepts | #1160, #412 |
-| [TPL-1101](TPL-1101-round-trip-guarantee.md) | コード変換における round-trip 保証 | parser | #1101, #1058 |
+| [TPL-1101](TPL-1101-round-trip-guarantee.md) | コード変換における round-trip 保証 | parser | #1101, #1058, #2076, #2087, #2571, #2650, #2707 |
 | [TPL-1094](TPL-1094-enum-member-addition.md) | 列挙型メンバー追加時の更新漏れ | navigation | #1094 |
 | [TPL-1053](TPL-1053-continuous-input-dom-interference.md) | 連続操作中の DOM 介入 | app-ui | #1053 |
 | [TPL-999](TPL-999-implicit-data-filtering.md) | データ表示の暗黙フィルタ | renderer | #999, #132 |
@@ -491,7 +492,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2133](TPL-2133-parser-acceptance-documented-in-spec.md) | parser が受理する形は spec に文書化されている（受理 ⊆ 文書化）— undocumented leniency は実測（最小 `.krs` の parse）で棚卸しし、ADR で廃止した記法は全 construct を横断確認する | parser | #2133 |
 | [TPL-2158](TPL-2158-catalog-fenced-against-parser-not-generated-doc.md) | 手書き catalog（`REFERENCE_DATA` 等）は parser 実測で双方向に縛る。その catalog から生成した doc を正典に見立てた同期テストは循環しており恒真 | build | #2158 |
 | [TPL-2165](TPL-2165-containment-rule-has-single-definition.md) | containment 規則は `canContain` 1 箇所だけに定義し、parser がそれを読んで強制する。spec の表と実装に二重に書かない | parser | #2165 |
-| [TPL-2509](TPL-2509-kebab-name-positions-share-one-lexical-rule.md) | kebab-case 名を受けるポジションは 1 つの字句ヘルパーを共有する — 新しい名前ポジションはハイフン入り名を `.krs` / `.krs.style` 両面で検証し、keyword 断片も 1 ケース含める | parser | #2509, docs/spec/tags-annotations.md |
+| [TPL-2509](TPL-2509-kebab-name-positions-share-one-lexical-rule.md) | kebab-case 名を受けるポジションは 1 つの字句ヘルパーを共有する — 新しい名前ポジションはハイフン入り名を `.krs` / `.krs.style` 両面で検証し、keyword 断片も 1 ケース含める | parser | #2509, #2707, docs/spec/tags-annotations.md |
 | [TPL-2157](TPL-2157-resolved-relation-rendered-for-every-kind.md) | 解決済みの関係（`owns` / `realizes`）を提示する側の kind gate も spec が許す全 kind を列挙する — 描画・measure・metadata・各サーフェスを共有定数で通し、除外 kind は理由と assert を置く | renderer | ADR-1720, #2157 |
 | [TPL-2161](TPL-2161-declared-membership-not-discarded-in-derived-index.md) | 宣言された多重所属を派生 index で捨てない — 単一値しか扱えないビューの都合は view 側の解決（primary 選択）で吸収し、merge 経路も同じ多値の意味論に従わせる | core-concepts | ADR-1974, #2161 |
 | [TPL-2185](TPL-2185-drift-guard-distinguishes-declaration-from-mention.md) | drift guard は「宣言」と「言及」を区別する — 「正典の値以外が現れたら fail」は次期版への前方参照を stale と誤検出し、freeze 中の設計作業をブロックする | build | #2185 |
@@ -540,3 +541,14 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2635](TPL-2635-ownership-resolution-declares-its-walk.md) | 所有を読む側は「宣言だけか、直近の owned 祖先まで遡るか」を宣言し、その選択をテストで固定する — どちらも正しいので、宣言していない実装は混ざっても誰も気づかない | resolver | #2635, ADR-1566 |
 | [TPL-2611](TPL-2611-feedback-key-survives-the-next-pass.md) | 後段の測定値を前段に返すとき、適用先は 2 パス目が動かさない構造キー（順序・添字・所属）で指し、座標は 2 パス目の出力として読み直す — 1 回目の座標で場所を指すと、まさにその座標を動かす 2 回目に鍵が古くなり、予約は適用に成功したまま効かない | renderer | #2611, ADR-2598 |
 | [TPL-2662](TPL-2662-themed-surface-fallback-comes-from-palette.md) | テーマ付き surface の「誰も色を指定しなかったとき」の色は palette の role から取る。指定した色は両テーマで正しいので、既定のまま使う利用者だけが壊れ、レビューもテストも素通りする | renderer | #2662, ADR-1479, ADR-2269 |
+| [TPL-2805](TPL-2805-budget-bounds-the-work-it-names.md) | 予算はその名前が指す仕事だけを覆う位置に置く — 境界のない準備と同じ timeout に入れると、準備の遅さが本命の失敗として報告され、本物の失敗と区別できない | build | #2805, #2807, ADR-2805, ADR-2807 |
+| [TPL-2631](TPL-2631-decoration-must-not-hide-a-crossing-mark.md) | 図に装飾を足したら、既存のマークがその上でまだ読めることを寸法で測る — 交差マークが覆われると情報が減るのではなく「接続している」という反対の意味に読まれる。装飾の寸法が入力の量で変わる場合、小さいモデルでは再現しない | renderer | #2631, ADR-1859 |
+| [TPL-2715](TPL-2715-source-position-carries-its-document.md) | 位置情報は、それが指す文書の識別と対でしか運べない。行・列だけを渡して受け手に「たぶんエントリファイル」と補完させると、マージ後に判定した診断がどのファイルにも無い位置を指す。単一ファイルのテストでは常に正しく見えるので破れが映らない | resolver | #2715, ADR-2596 |
+| [TPL-2804](TPL-2804-guard-scan-set-fails-loud-on-the-unknown.md) | 走査対象を持つガードは、未知の要素が黙って対象外になる側ではなく大声で落ちる側に集合を定義する。除外は全走査の上の deny-list で表し、裏付けのないエントリを finding にする。検出する症状が沈黙のとき、allow-list の取りこぼしは見逃しと区別できない | build | #2804 |
+| [TPL-2800](TPL-2800-diagram-pane-shared-viewer-affordances.md) | 図を描くペインは共有ビューアコンポーネントを通す — サブモードを素の div に流し込むと、その面だけフィット・ズーム・パン・診断を失う。図は描かれているので機能テストは緑のまま通り、面の選択が別の状態に gate されていると「時々おかしい」という形でしか現れない | app-ui | #2800, #2799, TPL-1537 |
+| [TPL-2802](TPL-2802-core-registry-contents-do-not-depend-on-host.md) | core が描画・診断で読むレジストリの中身はホストが何を呼んだかで変わらない。組み込みは core が埋め、ホストの登録は追加だけにする。登録を忘れた面は例外にならずフォールバック出力を黙って返すので、その面で描画して見比べるまで気づかない | renderer | #2802, ADR-9005 |
+| [TPL-2789](TPL-2789-injected-dom-state-follows-reinjection.md) | 流し込んだ DOM に後から当てた状態は、流し込み直しと同じ契機で当て直す。React 19 は `{ __html }` のオブジェクトが別物なら文字列を比べずに流し込み直すので、インラインのリテラルは無関係な再レンダリングのたびに状態を消す。state は正しいまま DOM だけが食い違い、CI が重いときだけ落ちる flake として待機不足に見える | app-ui | #2789, #1171 |
+| [TPL-2707](TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md) | lexer は parser が拒否すべき入力を黙って捨ててはならない。捨てる文字の集合を 1 文字ずつの入力で完全一致に固定し、値を読むポジションは複数トークンの並びを先頭だけで読まず区切りまで消費して拒否する | parser | #2707, docs/spec/tags-annotations.md |
+| [TPL-2810](TPL-2810-two-implementations-agree-only-when-measured.md) | 同じ検査の実装が 2 つになったら、緑同士は一致の証明ではない — 差分 fixture で規則差を測り、移す先が merge を止められるかを確かめてから片方を退役させる | testing | #2810 |
+| [TPL-2803](TPL-2803-measured-lines-are-drawn-lines.md) | カードの寸法を測るテキストレイアウトと描くテキストレイアウトは同じもの — 測った行はすべて描き、描く行はすべて測る。描画経路を 1 つ足すと、測定がその分岐を知らないままカードは正しい大きさで描かれ、中身だけが黙って欠ける | renderer | #2803 |
+| [TPL-2786](TPL-2786-guard-failure-must-fail-the-run.md) | 安全網の結果は通過・不通過・判定不能の 3 値で、判定不能を既定に任せると通過側に落ちる。判定不能を通過に寄せた状態はゲートを外した状態より悪い — 成功として報告されるため、検査を通った実行と区別がつかない | build | #2786, ADR-2786 |

@@ -10,7 +10,8 @@ scope:
   concerns: []
 assumptions:
   - "file: packages/core/src/renderer/routing-parity.test.ts"
-  - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: frameObstaclesFor"
+  - "symbol: packages/core/src/renderer/obstacle-index.ts :: ObstacleIndex"
+  - "grep: packages/core/src/renderer/edge-routing-channels.ts :: ObstacleQuery"
   - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: tryCorridorRoute"
   - "grep: packages/core/src/renderer/layout-edges.ts :: routeGroupedEdges"
 ---

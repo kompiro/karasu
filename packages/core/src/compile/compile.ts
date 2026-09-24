@@ -27,7 +27,7 @@ import type { StyleSheet, ResolvedStyles } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import type { FileSystemProvider } from "../fs/types.js";
 import { Parser } from "../parser/parser.js";
-import { StyleParser } from "../parser/style-parser.js";
+import { StyleParser, unplacedStyleDiagnostics } from "../parser/style-parser.js";
 import { type DraftState, getDraftState } from "../annotations/draft-confidence.js";
 import { getMigrationIntent, type MigrationIntent } from "../annotations/migration-intent.js";
 import { validateStyleValues } from "../style/value-validator.js";
@@ -468,12 +468,17 @@ function _compileFromPreparedInput(
   // for a model whose only boundaries are scoped.
   const hasBoundaries = krsFile.boundaries.length > 0 || krsFile.scopedBoundaryMembership.size > 0;
   const deployBlocks = krsFile.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
-  // Container ids, which the system view matches against its own node ids —
-  // a bare id in the common case. When two systems' same-named services each
-  // have a container the ids are qualified (#2549), so neither bare-id node
-  // lights the deploy-jump button; the button's own id space cannot tell the
-  // two apart, and lighting both was the previous, wrong answer.
-  const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
+  // The node ids the system view matches its own nodes against. A container
+  // contributes its realized node's id, which is not always the container's
+  // id: identity can need spelling this id space has no word for — a
+  // qualified path (#2549) or quotes around a dot-carrying segment (#2714).
+  // A container whose bare id is shared contributes nothing, so neither
+  // bare-id node lights the deploy-jump button; the button's own id space
+  // cannot tell the two apart, and lighting both was the previous, wrong
+  // answer.
+  const serviceIdsWithDeploy = new Set(
+    deploySliceForStyle.containers.flatMap((c) => (c.nodeId === undefined ? [] : [c.nodeId])),
+  );
   const ownerIndex = krsFile.ownerIndex;
   const teamLabels = buildTeamLabelIndex(krsFile);
 
@@ -589,7 +594,7 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
   const sheets: StyleSheet[] = [getBuiltinStyleSheet(opts.theme, opts.annotationBadgeLabels)];
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
-    diagnostics.push(...styleResult.diagnostics);
+    diagnostics.push(...unplacedStyleDiagnostics(styleResult.diagnostics));
     sheets.push(styleResult.value);
   }
   // Value-level validation runs inside `_compileFromPreparedInput` so
@@ -1145,19 +1150,31 @@ export async function buildAllViewsSvgProject(
  * emits the codes handled below).
  */
 function diagnosticToWarning(d: Diagnostic): Warning | null {
+  // The validator anchors every diagnostic on the value it read; keep that
+  // position so the warning panel and `karasu render` point at the sheet's
+  // line the way the LSP and `karasu lint-style` already do (#2802).
+  //
+  // Only when the sheet was named, though. A sheet handed to `compile()` as a
+  // string has a path for neither document, so a position on it would be read
+  // against the `.krs` — the misreading #2715 removed, and the same reason
+  // `unplacedStyleDiagnostics` strips that sheet's parse positions. Sheets
+  // that come through the ImportResolver carry their file and keep it.
+  const loc = d.loc?.file !== undefined ? { loc: d.loc } : {};
   switch (d.code) {
     case "style-invalid-enum-value":
-      return { kind: "style-invalid-enum-value", params: d.params };
+      return { kind: "style-invalid-enum-value", params: d.params, ...loc };
     case "style-invalid-hex-color":
-      return { kind: "style-invalid-hex-color", params: d.params };
+      return { kind: "style-invalid-hex-color", params: d.params, ...loc };
     case "style-missing-length-unit":
-      return { kind: "style-missing-length-unit", params: d.params };
+      return { kind: "style-missing-length-unit", params: d.params, ...loc };
     case "style-invalid-length-unit":
-      return { kind: "style-invalid-length-unit", params: d.params };
+      return { kind: "style-invalid-length-unit", params: d.params, ...loc };
     case "style-out-of-range":
-      return { kind: "style-out-of-range", params: d.params };
+      return { kind: "style-out-of-range", params: d.params, ...loc };
     case "style-unknown-property":
-      return { kind: "style-unknown-property", params: d.params };
+      return { kind: "style-unknown-property", params: d.params, ...loc };
+    case "style-unknown-icon":
+      return { kind: "style-unknown-icon", params: d.params, ...loc };
     default:
       return null;
   }

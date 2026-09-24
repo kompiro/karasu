@@ -9,9 +9,8 @@ import { StyleParser } from "../parser/style-parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import { analyze } from "../resolver/warnings.js";
 import { loadAndRegisterIcon } from "./svg-icon-loader.js";
-import { clearRegistry } from "../shapes/shape-registry.js";
-import { registerBuiltinShapes } from "./shapes.js";
 import type { DisplayMode } from "./layout.js";
+import { resetRegistryToBuiltins } from "./shapes.js";
 
 function renderFromSource(
   krs: string,
@@ -611,8 +610,7 @@ describe("Icon mode rendering", () => {
   </svg>`;
 
   beforeEach(() => {
-    clearRegistry();
-    registerBuiltinShapes();
+    resetRegistryToBuiltins();
     loadAndRegisterIcon("service-icon", CARD_ICON_SVG, true);
   });
 
@@ -837,36 +835,31 @@ system Test {
     expect(svg).toContain('ry="12"');
   });
 
-  it("does not add extra border rect in shape mode", () => {
-    // In shape mode (no displayMode), the box shape renders its own rect.
-    // No additional card frame rect should be prepended.
-    // We verify by comparing rect count: icon mode should have more rects than shape mode
-    // for the same node (icon mode adds a card frame on top of the icon body).
-    const svgShape = renderFromSource(
-      `
+  it("gives a built-in shape one rect and an icon shape a card frame, in either mode", () => {
+    // A built-in shape paints its own fill/stroke, so it gets no card frame
+    // on top. An icon body paints none, so it gets one — in shape mode too
+    // since #2696, which is why the counts below are equal rather than the
+    // frame being an icon-mode-only marker. See external-icon-card.test.ts.
+    const MODEL = `
 system Test {
   service ECommerce {
     label "ECサイト"
   }
 }
-      `,
-    );
-    const svgIcon = renderFromSource(
-      `
-system Test {
-  service ECommerce {
-    label "ECサイト"
-  }
-}
-      `,
+      `;
+    const rects = (svg: string): number => (svg.match(/<rect\s/g) ?? []).length;
+    const builtinShape = renderFromSource(MODEL);
+    const iconInShapeMode = renderFromSource(MODEL, `service { shape: url("service-icon"); }`);
+    const iconInIconMode = renderFromSource(
+      MODEL,
       `service { shape: url("service-icon"); }`,
       undefined,
       "icon",
     );
-    const shapeRectCount = (svgShape.match(/<rect\s/g) ?? []).length;
-    const iconRectCount = (svgIcon.match(/<rect\s/g) ?? []).length;
-    // Icon mode adds one extra card frame rect per icon node
-    expect(iconRectCount).toBeGreaterThan(shapeRectCount);
+
+    // The icon SVG's own pictogram rect is the second one in both modes.
+    expect(rects(iconInShapeMode)).toBe(rects(builtinShape) + 1);
+    expect(rects(iconInIconMode)).toBe(rects(iconInShapeMode));
   });
 
   it("renders description as single-line text when icon template is used in shape mode (lines 343-359)", () => {

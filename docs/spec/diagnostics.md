@@ -44,6 +44,45 @@ karasu also follows **warn-don't-error** for unresolved references (spec §S6):
 an unresolved relation is dropped while the node it points from is preserved,
 and the drop is reported as a warning rather than failing the whole render.
 
+## Source locations
+
+A diagnostic may carry a source location (`loc`): a start and an end position,
+and the document they index into.
+
+- **Positions are 1-based.** `line` and `column` count from 1, as an author sees
+  them in an editor. A surface that needs another base converts once, at its own
+  boundary (the LSP's 0-based ranges); a tool that prints a location prints the
+  numbers as they are.
+- **`file` names the document a position indexes into.** A project spans files.
+  A diagnostic from an imported file, or a verdict decided on the merged model
+  (the cross-file multiplicity checks under *Identifier uniqueness*, the
+  reference checks under *Cross-reference resolution*), anchors on whichever
+  file declared the construct, which is not necessarily the entry. Every
+  diagnostic produced while resolving a project sets `file`, as an absolute
+  path, whenever it sets `loc`. A `.krs.style` diagnostic names the sheet.
+- **An absent `file` means the consumer's own document.** Only a
+  single-document context produces one: the LSP parses each open document by
+  itself, `karasu lint-style` reads one sheet, and `compile` takes its model as
+  source text. When such a compile is also handed a style sheet as text, it has
+  a path for neither document, so the sheet's parse diagnostics carry no `loc`
+  there rather than a position that would read as the model's.
+- **A diagnostic without `loc` names no position.** One that concerns a missing
+  file carries the path in its message instead (`file-not-found`,
+  `style-file-not-found`). Merge-time facts that name ids rather than
+  declarations (`infra-redeclared-across-files`, `system-property-conflict`, and
+  the like) carry neither.
+
+Each surface prints a location as follows.
+
+| Surface | Location shown |
+| --- | --- |
+| CLI (`karasu render`, and the commands that share its error report) | `<file>:<line>:<column>`. `<file>` is the entry, in the spelling the user typed, when the position has no `file` or its `file` is the entry (compared as canonical paths); otherwise the file, relative to the working directory. |
+| CLI (`karasu diff`) | `<line>:<column>`, with no file: the command compiles two inputs. |
+| App preview banner and warning panel | The UI locale's line label (`Line <line>` in English, `<line> 行目` in Japanese) for a position in the open document or with no `file`; `<path>:<line>` for any other file. The path is relative to the project root, or to the entry's directory in a mode without a project; a snapshot being compared is named by the project path it was taken of. |
+| LSP | The document's own range, 0-based. The LSP is single-document, so no `file` arises. |
+
+> Related TPLs: [TPL-2715](../test-perspectives/TPL-2715-source-position-carries-its-document.md) (a position is an address only together with the document it indexes, so the parse attaches the file where ranges are built and every surface reads it from there).
+
 ## Rule families
 
 ### Declaration, edge placement & structure
@@ -176,6 +215,9 @@ tool vocabulary only — see [tags-annotations.md](./tags-annotations.md)).
 | Code | Severity | Fires when |
 | --- | --- | --- |
 | `annotation-param-unsupported` | warning | An annotation parameter key is not recognised for that annotation. |
+| `annotation-param-value-unreadable` | warning | A recognised annotation parameter's value is not one string literal or bare word (`until: 2026-12-31`, `from: system`, `from: Shop.Legacy`). Nothing is recorded. Rendering is unaffected; `karasu fmt` refuses to rewrite the file, because printing the AST would drop the value. |
+| `annotation-param-conflict` | warning | One element gives the same annotation parameter two different values, across repeated annotations or inside one. The first value is kept, and `karasu fmt` refuses to rewrite the file rather than print the first over the second. |
+| `duplicate-annotation` | warning | The same annotation is written more than once on one element. The repeat has no effect. |
 | `annotation-possible-typo` | info | An annotation name is a near-match to a builtin (typo hint). |
 | `tag-not-builtin` | warning | A tag name is outside the tool vocabulary (builtin + system-assigned tags). Deprecated in v1.x; no suppression condition. |
 | `tag-not-applicable` | warning | A builtin tag is written on a node kind outside its applicability (e.g. `service Api [index]` — `[index]` applies to `database`). The tag has no effect there. Never fires together with `tag-not-builtin`: a non-builtin name has no applicability to violate. |
@@ -203,6 +245,7 @@ Validating `.krs.style` property names and values.
 | Code | Severity | Fires when |
 | --- | --- | --- |
 | `style-unknown-property` | warning | A style property name is not recognised. |
+| `style-unknown-icon` | warning | A `shape: url("<name>")` names no registered icon, so the node is drawn as `box`. Fires on every surface, because the built-in icon set is registered by core itself ([TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)). |
 | `style-invalid-enum-value` | error | A style value is not in the allowed enum. |
 | `style-invalid-hex-color` | error | A style hex color is malformed. |
 | `style-invalid-length-unit` | error | A style length uses a disallowed unit. |
@@ -216,6 +259,8 @@ Validating `.krs.style` property names and values.
 | `style-column-invalid-value` | warning | A style `column` value is not `left` / `center` / `right`. |
 | `style-column-ignored-non-system-view` | warning | A `column` hint is applied to a deploy / org view (ignored). |
 | `style-grid-columns-invalid-value` | warning | A style `grid-columns` value is not a positive integer (the hint is dropped; layout auto-balances). |
+
+> Related TPLs: [TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md) (`style-unknown-icon` reads the shape registry, whose built-in contents core fills itself, so the verdict is the same on every surface), [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) (a value the parser accepts has an effect or a diagnostic, never silence).
 
 ### Client & capability
 

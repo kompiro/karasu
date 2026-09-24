@@ -44,6 +44,9 @@ import { Parser } from "../parser/parser.js";
 import { declaredGroupOrderOf, buildGroupLabelIndex } from "./group-labels.js";
 import { countPolylinePenetrations, type Rect, type Point } from "./edge-geometry.js";
 import { collectChannels } from "./edge-routing-lanes.js";
+import { HOP_RADIUS, trunkBandHalfWidth } from "./crossing-marks.js";
+import { labelAnchorWithSegment, ownLabelSegment } from "./edge-routing.js";
+import { ObstacleIndex } from "./obstacle-index.js";
 import type { LayoutEdge, LayoutNode, LayoutResult } from "./layout-types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -155,7 +158,15 @@ function straightCentrePenetrations(res: LayoutResult): number {
   return total;
 }
 
-/** Collinear, overlapping segment pairs from distinct edges on one axis (#1927). */
+/**
+ * Collinear, overlapping segment pairs from distinct edges on one axis (#1927),
+ * **excluding a trunk's siblings**, which share one spine and one target entry
+ * because that is what the aggregation is (ADR-1859 AC-2, #2631). The unit-level
+ * helper of the same name has excluded them since P2c-B; this one did not, and
+ * the corpus happened to contain no trunk at all, so its zero said nothing about
+ * the case (TPL-2598). `trunkSiblingsShareOneSpine` below asserts the exemption
+ * positively, so the pairs this skips are pinned rather than merely ignored.
+ */
 function collinearOverlaps(res: LayoutResult, axis: "v" | "h"): number {
   const segs: { edge: number; fixed: number; a0: number; a1: number }[] = [];
   res.edges.forEach((e, idx) => {
@@ -181,6 +192,8 @@ function collinearOverlaps(res: LayoutResult, axis: "v" | "h"): number {
       const a = segs[i];
       const b = segs[j];
       if (a.edge === b.edge) continue;
+      const ta = res.edges[a.edge].trunkId;
+      if (ta !== undefined && ta === res.edges[b.edge].trunkId) continue;
       if (Math.abs(a.fixed - b.fixed) > 1e-6) continue;
       if (Math.min(a.a1, b.a1) - Math.max(a.a0, b.a0) > 1e-6) n++;
     }
@@ -550,6 +563,186 @@ describe("interior corridors shorten detours (#2365)", () => {
   );
 });
 
+describe("fan-in trunk — count fence (#2883, TPL-2598 / TPL-2631 / TPL-2385)", () => {
+  // Six services in six teams writing to one shared target, so the trunk's spine
+  // carries two, three, four, five and finally six edges on its way down. Three
+  // of those services also call an `[external]`, which sits on the far side and
+  // is reached by a corridor numbered *beyond* every trunk spine — so those
+  // stubs cross the band on their way out, which is the case a band can hide
+  // (TPL-2631).
+  //
+  // No bundled example forms a trunk at all (`0 trunked in 0 trunks` in every
+  // mode), so without a fixture like this the trunk's whole design sits outside
+  // the fence and every assertion about it is green by accident of corpus
+  // (TPL-2598). The target is a plain service, not a `database`, so "on the
+  // outline" is exactly "on the rect" and the endpoint check below is sharp.
+  const N = 6;
+  const CROSSERS = 3;
+  const TRUNK = `system Fan {
+${Array.from({ length: N }, (_s, i) => `  service S${i} { label "S${i}" }`).join("\n")}
+${Array.from({ length: CROSSERS }, (_x, i) => `  service X${i} [external] { label "X${i}" }`).join("\n")}
+  service Shared { label "Shared" }
+${Array.from({ length: N }, (_s, i) => `  S${i} -> Shared "write"`).join("\n")}
+${Array.from({ length: CROSSERS }, (_x, i) => `  S${i + 1} -> X${i} "call"`).join("\n")}
+}
+organization Org {
+${Array.from({ length: N }, (_s, i) => `  team "t${i}" { label "T${i}" owns S${i} }`).join("\n")}
+}`;
+
+  const laid = () => layoutOfSource(TRUNK, "team");
+
+  /** A trunk's siblings, keyed by `trunkId`. */
+  const trunksOf = (res: LayoutResult) => {
+    const byId = new Map<string, LayoutEdge[]>();
+    for (const e of res.edges) {
+      if (e.trunkId === undefined) continue;
+      const list = byId.get(e.trunkId);
+      if (list) list.push(e);
+      else byId.set(e.trunkId, [e]);
+    }
+    return [...byId.values()];
+  };
+
+  it("the fixture actually builds a trunk deep enough to need counting", () => {
+    const res = laid();
+    const trunks = trunksOf(res);
+    expect(trunks).toHaveLength(1);
+    expect(trunks[0].length).toBeGreaterThanOrEqual(4);
+    // And the spine carries different amounts along its length, which is the
+    // thing a single number at the entry could not tell you.
+    const counts = new Set(res.crossingMarks!.bands.map((b) => b.count));
+    expect(counts.size).toBeGreaterThanOrEqual(3);
+    expect(Math.max(...counts)).toBe(trunks[0].length);
+  });
+
+  it("trunk siblings share one spine and one entry, and no other pair is collinear", () => {
+    const res = laid();
+    for (const siblings of trunksOf(res)) {
+      const spineX = new Set(siblings.map((e) => e.waypoints![0].x));
+      const entries = new Set(siblings.map((e) => `${e.toPoint.x},${e.toPoint.y}`));
+      expect(spineX.size).toBe(1);
+      expect(entries.size).toBe(1);
+    }
+    // Everything the exemption does not cover stays at zero, so the pairs it
+    // skips are the ones named above and nothing else.
+    expect(collinearOverlaps(res, "v")).toBe(0);
+    expect(collinearOverlaps(res, "h")).toBe(0);
+  });
+
+  it("each merge mark carries what the spine holds below it", () => {
+    const res = laid();
+    const { junctions, bands } = res.crossingMarks!;
+    expect(junctions.length).toBeGreaterThanOrEqual(3);
+    // The shared entry every sibling ends on, which is the direction "onward"
+    // means: a mark stands at a cut between two bands, and the one it speaks for
+    // is the one on the target side.
+    const entryY = res.edges.find((e) => e.trunkId !== undefined)!.toPoint.y;
+    for (const mark of junctions) {
+      const probe = mark.y + Math.sign(entryY - mark.y) * 0.5;
+      const onward = bands.find((b) =>
+        b.points.some((p, i) => {
+          if (i === 0) return false;
+          const a = b.points[i - 1];
+          return (
+            Math.abs(a.x - mark.x) < 1e-6 &&
+            Math.abs(p.x - mark.x) < 1e-6 &&
+            Math.min(a.y, p.y) < probe &&
+            probe < Math.max(a.y, p.y)
+          );
+        }),
+      );
+      expect(onward, `no band past the mark (${mark.x}, ${mark.y})`).toBeDefined();
+      expect(onward!.count).toBe(mark.count);
+    }
+  });
+
+  it("a trunk edge's label sits on the stub only that edge owns", () => {
+    const res = laid();
+    for (const e of res.edges) {
+      if (e.trunkId === undefined || !e.label) continue;
+      const points = pointsOf(e);
+      const { anchor } = labelAnchorWithSegment(points, 0.5, 0, 0, ownLabelSegment(e));
+      // The stub runs from the source's port to the elbow on the spine. The
+      // longest segment is the spine every sibling draws on, so the default
+      // heuristic would put every label on a line that names none of them.
+      const stubY = points[0].y;
+      expect(anchor.y).toBeCloseTo(stubY, 6);
+      expect(anchor.x).toBeGreaterThan(Math.min(points[0].x, points[1].x) - 1e-6);
+      expect(anchor.x).toBeLessThan(Math.max(points[0].x, points[1].x) + 1e-6);
+    }
+  });
+
+  it("an arc that rides a band arches clear of it (TPL-2631)", () => {
+    const res = laid();
+    const { hops, bands } = res.crossingMarks!;
+    const onBand = hops.filter((hop) =>
+      bands.some((band) =>
+        band.points.some((p, i) => {
+          if (i === 0) return false;
+          const a = band.points[i - 1];
+          const half = trunkBandHalfWidth(band.count);
+          const vertical = Math.abs(a.x - p.x) < 1e-6;
+          return vertical
+            ? Math.abs(hop.x - a.x) <= half + 2 &&
+                hop.y > Math.min(a.y, p.y) &&
+                hop.y < Math.max(a.y, p.y)
+            : Math.abs(hop.y - a.y) <= half + 2 &&
+                hop.x > Math.min(a.x, p.x) &&
+                hop.x < Math.max(a.x, p.x);
+        }),
+      ),
+    );
+    // The fixture exists to produce these: a crossing nobody can see reads as a
+    // connection, which is the one thing the mark is for.
+    expect(onBand.length).toBeGreaterThanOrEqual(1);
+    for (const hop of onBand) {
+      const half = Math.max(...bands.map((b) => trunkBandHalfWidth(b.count)));
+      expect(hop.ry ?? HOP_RADIUS).toBeGreaterThan(half);
+      expect(hop.halfWidth).toBeGreaterThan(half);
+    }
+  });
+
+  it("no count mark covers a crossing", () => {
+    const { junctions, hops } = laid().crossingMarks!;
+    for (const mark of junctions) {
+      for (const hop of hops) {
+        const overlaps =
+          Math.abs(hop.x - mark.x) < 9 + hop.halfWidth &&
+          Math.abs(hop.y - mark.y) < 9 + (hop.ry ?? HOP_RADIUS) + 2;
+        expect(overlaps, `count at (${mark.x}, ${mark.y}) sits on a hop`).toBe(false);
+      }
+    }
+  });
+
+  it("every endpoint stays on its node's outline (TPL-2385)", () => {
+    // Moving a label must not move a port. Every node here is a rect, so the
+    // drawn outline is the rect and this is exact.
+    const res = laid();
+    for (const e of res.edges) {
+      for (const [id, p] of [
+        [e.from, e.fromPoint],
+        [e.to, e.toPoint],
+      ] as const) {
+        const n = res.nodes.get(id);
+        if (!n) continue;
+        const onVertical =
+          (Math.abs(p.x - n.x) < 0.5 || Math.abs(p.x - (n.x + n.width)) < 0.5) &&
+          p.y >= n.y - 0.5 &&
+          p.y <= n.y + n.height + 0.5;
+        const onHorizontal =
+          (Math.abs(p.y - n.y) < 0.5 || Math.abs(p.y - (n.y + n.height)) < 0.5) &&
+          p.x >= n.x - 0.5 &&
+          p.x <= n.x + n.width + 0.5;
+        expect(onVertical || onHorizontal, `${e.from}->${e.to} leaves ${id}`).toBe(true);
+      }
+    }
+  });
+
+  it("no lane spills into a card (TPL-1927 measures both axes together)", () => {
+    expect(totalPenetrations(laid())).toBe(0);
+  });
+});
+
 describe("crowded inter-row channel — capacity fence (#2608, TPL-2598)", () => {
   // Ten services fanning into three shared targets. Every one of the thirty
   // edges is a skip-layer edge that has to traverse the *same* inter-row
@@ -689,5 +882,155 @@ describe("deploy view routes through the shared chain (#2609, TPL-219)", () => {
     const ends = res.edges.map((e) => key(e.toPoint));
     expect(new Set(starts).size).toBe(starts.length);
     expect(new Set(ends).size).toBe(ends.length);
+  });
+});
+
+describe("exhausted interior corridors — column fence (#2611, TPL-2598)", () => {
+  // The channel fence above saturates a *horizontal* resource; this one
+  // saturates the vertical resource next to it. Eight sources fan into three
+  // shared targets across a mid layer whose cards cover the columns beside
+  // the sources, so every S→T edge needs a column between cards that a
+  // sibling is not standing in. The bundled models never run out of columns —
+  // which is why their overlap fence stayed green while a 10k-line model
+  // showed thousands of collinear pairs (TPL-2598: a fence on a finite
+  // resource needs an input that saturates it).
+  const services = Array.from({ length: 8 }, (_s, i) => `  service S${i} { label "Service ${i}" }`);
+  const mid = Array.from({ length: 5 }, (_m, i) => `  service M${i} { label "Mid ${i}" }`);
+  const targets = Array.from({ length: 3 }, (_t, i) => `  service T${i} { label "Target ${i}" }`);
+  const edges = [
+    ...services.flatMap((_s, i) => targets.map((_t, j) => `  S${i} -> T${j}`)),
+    ...mid.map((_m, i) => `  S${i} -> M${i}`),
+    ...mid.map((_m, i) => `  M${i} -> T${i % 3}`),
+  ];
+  const CROWDED = `system Crowded {\n${[...services, ...mid, ...targets, ...edges].join("\n")}\n}`;
+
+  it("the fixture actually runs the columns out", () => {
+    // More long edges than the rows between them have gaps: with 34 edges over
+    // three rows, the interior cannot hold them all on the gaps the cards
+    // happen to leave, which is the state the reservation answers.
+    const res = layoutOfSource(CROWDED);
+    expect(res.edges).toHaveLength(34);
+    const routed = res.edges.filter((e) => (e.waypoints?.length ?? 0) > 0);
+    expect(routed.length).toBeGreaterThanOrEqual(25);
+    expect(res.placementPasses).toBe(2);
+  });
+
+  it("no two edges share a collinear corridor on either axis", () => {
+    const res = layoutOfSource(CROWDED);
+    expect(collinearOverlaps(res, "v")).toBe(0);
+    expect(collinearOverlaps(res, "h")).toBe(0);
+  });
+
+  it("no column spills into a card (TPL-1927 measures both axes together)", () => {
+    expect(totalPenetrations(layoutOfSource(CROWDED))).toBe(0);
+  });
+
+  it("re-places at most once (ADR-2598's bound holds on the other axis)", () => {
+    expect(layoutOfSource(CROWDED).placementPasses).toBeLessThanOrEqual(2);
+  });
+
+  it("gives the same canvas twice — the reservation is deterministic", () => {
+    const once = layoutOfSource(CROWDED);
+    const twice = layoutOfSource(CROWDED);
+    expect([twice.width, twice.height]).toEqual([once.width, once.height]);
+    expect(twice.edges.map((e) => pointsOf(e))).toEqual(once.edges.map((e) => pointsOf(e)));
+    expect([...twice.nodes.values()].map((n) => [n.id, n.x, n.y])).toEqual(
+      [...once.nodes.values()].map((n) => [n.id, n.x, n.y]),
+    );
+  });
+});
+
+/**
+ * The measures above are taken with a flat scan over the whole obstacle set,
+ * while the router now decides with the spatial index (#2790). The two have to
+ * be the same measure, or a penetration could be zero on the fence's reckoning
+ * and non-zero on the router's — TPL-1927's dual metric would then be measuring
+ * a diagram the chain never saw.
+ *
+ * So, edge for edge on the real models: the boolean the router decides with
+ * (`ObstacleQuery.polylineClear`) equals `countPolylinePenetrations(...) === 0`,
+ * the counter these fences assert on. Probed both on each edge's actual route
+ * (where the answer must be "clear", which is what penetration == 0 means) and
+ * on the straight centre-to-centre line for the same edge, which pierces on
+ * these models and so supplies the "not clear" half.
+ */
+describe("the obstacle index measures what the fences measure (#2790, TPL-1927)", () => {
+  /** The grouped models the fences above pin, so frames take part in the exemption too. */
+  const GROUPED_MODELS: [string, GroupBy][] = [
+    ["en/getting-started/index.krs", "team"],
+    ["en/feature-samples/team-ownership.krs", "team"],
+    ["en/feature-samples/boundary-clusters.krs", "boundary"],
+    ["en/feature-samples/boundary-multi-membership.krs", "boundary"],
+  ];
+
+  /**
+   * Probes one layout: how many edges were checked, and how many of those the
+   * counter called blocked. A disagreement fails inline rather than being
+   * counted, so a returned pair always describes agreeing probes.
+   */
+  function indexVsCounter(res: LayoutResult): { checked: number; blocked: number } {
+    const frames = framesOf(res);
+    const nodes = [...res.nodes.values()];
+    const index = ObstacleIndex.build(
+      nodes,
+      res.containers.filter((c) => c.group),
+    );
+    const centre = (n: LayoutNode): Point => ({ x: n.x + n.width / 2, y: n.y + n.height / 2 });
+    let checked = 0;
+    let blocked = 0;
+    for (const e of res.edges) {
+      if (e.ghost || e.cyclic) continue;
+      const from = res.nodes.get(e.from);
+      const to = res.nodes.get(e.to);
+      if (!from || !to) continue;
+      const obstacles = obstaclesForEdge(
+        e,
+        nodes,
+        frames,
+        framesOfNode(from, frames),
+        framesOfNode(to, frames),
+      );
+      const query = index.forEdge(e.from, e.to);
+      for (const path of [pointsOf(e), [centre(from), centre(to)]]) {
+        const counted = countPolylinePenetrations(path, obstacles) === 0;
+        expect(query.polylineClear(path), `${e.from} -> ${e.to}`).toBe(counted);
+        checked++;
+        if (!counted) blocked++;
+      }
+    }
+    return { checked, blocked };
+  }
+
+  it.each(UNGROUPED_MODELS)("%s: the router's decision equals the counter", (file) => {
+    expect(indexVsCounter(layoutOf(file)).checked).toBeGreaterThan(0);
+  });
+
+  it.each(GROUPED_MODELS)(
+    "%s (group by %s): the router's decision equals the counter",
+    (file, groupBy) => {
+      expect(indexVsCounter(layoutOf(file, groupBy)).checked).toBeGreaterThan(0);
+    },
+  );
+
+  it("the probes include blocked ones, so the agreement is not vacuous", () => {
+    // A suite in which every probe is clear would agree trivially. The straight
+    // centre-to-centre lines pierce on these models, which is the whole reason
+    // the router exists.
+    const blocked = [...UNGROUPED_MODELS].reduce(
+      (sum, file) => sum + indexVsCounter(layoutOf(file)).blocked,
+      0,
+    );
+    expect(blocked).toBeGreaterThan(0);
+  });
+
+  it("the grouped probes include blocked ones too, so the frames are load-bearing", () => {
+    // The grouped models are here because frames take part in the exemption.
+    // Counting them separately means an empty frame set cannot leave these
+    // cases agreeing on nothing while the ungrouped total carries the guard.
+    const blocked = GROUPED_MODELS.reduce(
+      (sum, [file, groupBy]) => sum + indexVsCounter(layoutOf(file, groupBy)).blocked,
+      0,
+    );
+    expect(blocked).toBeGreaterThan(0);
   });
 });

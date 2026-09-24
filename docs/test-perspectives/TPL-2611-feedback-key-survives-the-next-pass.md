@@ -96,5 +96,8 @@ y ではない。`placeNodesInLayers` は sub-row を含めた行を数え上げ
 
 - `packages/core/src/renderer/layout.test.ts` — `placementPasses` と行予約の適用
 - `packages/core/src/renderer/layer-layout-logics.test.ts` — `extraGapBeforeRow` を渡さない
-  ときの配置がバイト単位で不変であること
-- `packages/core/src/renderer/routing-parity.test.ts` — 実モデルでの貫通 / 共線ペアの柵
+  ときの配置がバイト単位で不変であること。`placeNodesInLayers > column reservation (#2611, TPL-2611)`
+  が列予約の 4 条件（鍵の安定性 / 予約なしで不変 / 行末の列 / 鍵がずれた予約の破棄）を固定する
+- `packages/core/src/renderer/routing-parity.test.ts` — 実モデルでの貫通 / 共線ペアの柵。
+  `exhausted interior corridors — column fence (#2611, TPL-2598)` が列を使い切る入力で
+  決定性とパス数上限を固定する

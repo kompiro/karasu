@@ -285,6 +285,7 @@ export const en: Translations = {
   "preview.docs.reference.label": "↗ Reference",
   "preview.docs.site.label": "↗ Documentation site",
   "preview.docs.site.ariaLabel": "Open the documentation site in a new tab",
+  "preview.location.line": ({ line }) => `Line ${line}`,
 
   // Warnings (rendered in the WarningPanel)
   "warning.domainDispersal.message": ({ domainId }) =>
@@ -424,6 +425,8 @@ export const en: Translations = {
     `${property}: ${value} is out of range ${formatRange(min, max)} — ignored`,
   "warning.styleUnknownProperty.message": ({ property }) =>
     `unknown style property "${property}" — ignored`,
+  "warning.styleUnknownIcon.message": ({ property, name }) =>
+    `${property}: url("${name}") names no registered icon — drawn as box`,
 
   // Diagnostics (rendered in PreviewPane's diagnostic banner)
   "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>
@@ -470,6 +473,12 @@ export const en: Translations = {
   "diagnostic.teamPropertyRemoved.message": `"team" property has been removed; declare ownership with an organization block and "owns"`,
   "diagnostic.annotationParamUnsupported.message": ({ annotation, key }) =>
     `"@${annotation}" does not support the "${key}" parameter; it is ignored`,
+  "diagnostic.annotationParamValueUnreadable.message": ({ annotation, key }) =>
+    `The value of "${key}" on "@${annotation}" cannot be read; write it as a quoted string, e.g. ${key}: "..."`,
+  "diagnostic.annotationParamConflict.message": ({ annotation, key, existing, value }) =>
+    `"@${annotation}" gives "${key}" two different values ("${existing}" and "${value}"); an element holds one, so "${value}" is ignored`,
+  "diagnostic.duplicateAnnotation.message": ({ annotation }) =>
+    `"@${annotation}" is written more than once on the same element; the repeat has no effect`,
   "diagnostic.linkUrlSchemeNotAllowed.message": ({ url, scheme }) =>
     scheme
       ? `link URL "${url}" uses a disallowed scheme "${scheme}" (allowed: http, https, mailto); the link is ignored`
@@ -561,6 +570,8 @@ export const en: Translations = {
     `Value ${value} for "${property}" is out of range ${formatRange(min, max)}`,
   "diagnostic.styleUnknownProperty.message": ({ property }) =>
     `Unknown style property "${property}"`,
+  "diagnostic.styleUnknownIcon.message": ({ property, name }) =>
+    `Unknown icon for "${property}": url("${name}") names no registered icon (drawn as box)`,
   "diagnostic.circularImport.message": ({ filePath }) => `Circular import detected: ${filePath}`,
   "diagnostic.fileNotFound.message": ({ filePath }) => `File not found: ${filePath}`,
   "diagnostic.directoryNotFound.message": ({ dirPath }) => `Directory not found: ${dirPath}`,

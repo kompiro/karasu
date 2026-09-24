@@ -17,12 +17,13 @@ import type {
   LayoutNode,
   LayoutResult,
   Rect,
+  TrunkBand,
 } from "./layout-types.js";
 import { renderShape } from "./shapes.js";
 import { getShapeContentInset, type ShapeInsets } from "../shapes/shape-registry.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
 import { resolveLabelPlacements, buildLabelInputs } from "./label-placement.js";
-import { HOP_RADIUS, JUNCTION_RADIUS } from "./crossing-marks.js";
+import { HOP_RADIUS, JUNCTION_CHIP_RADIUS, trunkBandHalfWidth } from "./crossing-marks.js";
 import { layoutDegradedTabs } from "./degraded-tabs.js";
 import {
   CHIP_HEIGHT,
@@ -44,7 +45,13 @@ import {
   truncateToWidth,
   wrapToWidth,
 } from "./svg-builder.js";
-import { getIconDef, type SvgIconDef } from "../shapes/shape-registry.js";
+import {
+  getIconDef,
+  iconViewBox,
+  pictogramGroup,
+  PICTOGRAM_OFFSET,
+  type SvgIconDef,
+} from "../shapes/shape-registry.js";
 import {
   CHAR_WIDTH,
   NODE_PADDING_X,
@@ -98,6 +105,11 @@ const ICON_CARD_TEXT_INSET = 8;
 /** Type sizes the ICON_*_CHAR_WIDTH estimates are calibrated for. */
 const ICON_LABEL_FONT_SIZE = 13;
 const ICON_DESC_FONT_SIZE = 11;
+
+/** Two decimals — enough for SVG geometry, and it keeps float noise out of the output. */
+const round2 = (n: number): number => Number(n.toFixed(2));
+/** Four decimals, never upwards — for a scale that has to stay within a bound. */
+const floor4 = (n: number): number => Math.floor(n * 1e4) / 1e4;
 
 /**
  * Sanitizes a node ID for use in a CSS fragment identifier (e.g. href="#krs-view-X").
@@ -626,16 +638,30 @@ export function renderFromLayout(
   if (ghostEdgeParts.length > 0) {
     parts.push(el("g", { class: "ghost-edges", opacity: GHOST_OPACITY }, ...ghostEdgeParts));
   }
+  // Trunk bands under the edges (#2883): the stretches several edges share,
+  // drawn as wide as the count they carry. Behind the lines, so a band reads as
+  // the backdrop it is and the lines stay what you follow.
+  if (layoutResult.crossingMarks && layoutResult.crossingMarks.bands.length > 0) {
+    parts.push(
+      renderTrunkBands(layoutResult.crossingMarks.bands, edgeStroke, styles.defaultEdgeStyle),
+    );
+  }
   parts.push(el("g", { class: "edges" }, ...normalEdgeParts));
 
   // Crossing marks on top of the edges (#1859 P2c-C): hop arcs neutralise
-  // right-angle crossings and junction dots mark trunk merges. Present only in
-  // the Group-by view (ungrouped leaves `crossingMarks` undefined — AC-5).
+  // right-angle crossings and the merge mark carries the count a trunk goes on
+  // to hold. Present only in the Group-by view (ungrouped leaves
+  // `crossingMarks` undefined — AC-5).
   if (layoutResult.crossingMarks) {
     const { hops, junctions } = layoutResult.crossingMarks;
     if (hops.length > 0 || junctions.length > 0) {
       parts.push(
-        renderCrossingMarks(layoutResult.crossingMarks, edgeStroke, styles.defaultEdgeStyle),
+        renderCrossingMarks(
+          layoutResult.crossingMarks,
+          edgeStroke,
+          styles.defaultEdgeStyle,
+          palette,
+        ),
       );
     }
   }
@@ -818,7 +844,13 @@ function collapseGlyph(
  *   `angle` (degrees). Elliptical (`rx = halfWidth`, `ry = HOP_RADIUS`) so a
  *   clustered wide hop stays a shallow bump; `sweep = 1` bumps to one side. An
  *   axis-aligned hop (`angle = 0`) renders exactly as the pre-#1939 flat bump.
- * - **junction**: a `<circle>` dot at each trunk merge (merge = connected).
+ * - **junction**: the merge mark at a trunk elbow (merge = connected), drawn as
+ *   a chip carrying the number of edges the spine holds onward from there
+ *   (#2883). A bare dot said only that a merge happened, which left the line
+ *   below it reading the same whether it carried two edges or seven.
+ * - **band**: the stretch of spine (and the shared run into the target) that
+ *   several edges draw on the same pixels, as wide as the count it carries.
+ *   Drawn under the edges by {@link renderTrunkBands}, not here.
  *
  * Each mark is drawn in its owning edge's resolved colour (and the hop in that
  * edge's stroke width) via `edgeStroke[mark.edge]`, so marks stay visually part
@@ -834,8 +866,9 @@ function renderCrossingMarks(
   marks: CrossingMarks,
   edgeStroke: { color: string; strokeWidth: number }[],
   fallback: { color: string; strokeWidth: number },
+  palette: DiagramPalette,
 ): string {
-  const r = (n: number): number => Number(n.toFixed(2));
+  const r = round2;
   const strokeOf = (edge: number) => edgeStroke[edge] ?? fallback;
   const parts: string[] = [];
   for (const hop of marks.hops) {
@@ -857,12 +890,90 @@ function renderCrossingMarks(
     );
   }
   for (const j of marks.junctions) {
+    const stroke = strokeOf(j.edge);
+    // Punched out of the canvas so the chip reads as a marker on the line rather
+    // than a node sitting behind it, which is why it needs the palette.
     parts.push(
-      el("circle", { cx: r(j.x), cy: r(j.y), r: JUNCTION_RADIUS, fill: strokeOf(j.edge).color }),
+      el("circle", {
+        cx: r(j.x),
+        cy: r(j.y),
+        r: JUNCTION_CHIP_RADIUS,
+        fill: palette.canvasBg,
+        stroke: stroke.color,
+        "stroke-width": stroke.strokeWidth,
+      }),
+      el(
+        "text",
+        {
+          x: r(j.x),
+          y: r(j.y + JUNCTION_COUNT_BASELINE),
+          "text-anchor": "middle",
+          fill: stroke.color,
+          "font-size": `${JUNCTION_COUNT_FONT_SIZE}px`,
+          "font-family": "sans-serif",
+        },
+        String(j.count),
+      ),
     );
   }
   return el("g", { class: "crossing-marks" }, ...parts);
 }
+
+/** Type size of the numeral in a merge mark, and its baseline offset. */
+const JUNCTION_COUNT_FONT_SIZE = 10;
+const JUNCTION_COUNT_BASELINE = 3.5;
+/**
+ * How far short of the target the band stops, so it does not swallow the
+ * arrowhead the edges draw there.
+ */
+const BAND_ARROW_CLEARANCE = 12;
+
+/**
+ * The trunk bands: each stretch that several edges draw on the same pixels,
+ * as wide as the count it carries (#2883).
+ *
+ * Drawn *under* the edges, so the lines stay the thing you follow and the band
+ * is the thing you read a count off. One `<polyline>` per stretch, which is what
+ * makes the corner into the target a join rather than two butted ends.
+ */
+function renderTrunkBands(
+  bands: readonly TrunkBand[],
+  edgeStroke: { color: string; strokeWidth: number }[],
+  fallback: { color: string; strokeWidth: number },
+): string {
+  const r = round2;
+  const parts: string[] = [];
+  for (const band of bands) {
+    const stroke = edgeStroke[band.edge] ?? fallback;
+    const points = [...band.points];
+    // Pull the last point back along its own segment: that end is the port the
+    // edges' arrowheads land on.
+    const last = points[points.length - 1];
+    const prev = points[points.length - 2];
+    const len = Math.hypot(last.x - prev.x, last.y - prev.y);
+    if (len > BAND_ARROW_CLEARANCE) {
+      const t = (len - BAND_ARROW_CLEARANCE) / len;
+      points[points.length - 1] = {
+        x: prev.x + (last.x - prev.x) * t,
+        y: prev.y + (last.y - prev.y) * t,
+      };
+    }
+    parts.push(
+      el("polyline", {
+        points: points.map((p) => `${r(p.x)},${r(p.y)}`).join(" "),
+        fill: "none",
+        stroke: stroke.color,
+        "stroke-width": r(trunkBandHalfWidth(band.count) * 2),
+        "stroke-linejoin": "miter",
+        opacity: TRUNK_BAND_OPACITY,
+      }),
+    );
+  }
+  return el("g", { class: "trunk-bands" }, ...parts);
+}
+
+/** Bands sit behind the lines, so they read as a backdrop and not as an edge. */
+const TRUNK_BAND_OPACITY = 0.4;
 
 /**
  * The ⊕ placeholder a collapsed category folds to (Issue #1821). Drawn at the
@@ -1604,26 +1715,60 @@ function renderNode(
 ): string {
   const children: string[] = [];
 
-  // For icon-mode nodes, render card frame (background + border) before the icon body.
-  // Built-in shapes already include fill/stroke in their own rendering.
-  const iconFrame = renderIconFrame(node, style, displayMode);
-  if (iconFrame) children.push(iconFrame);
+  // Resolve the icon body (an external `shape: url(...)`) before anything is
+  // drawn: the card frame, the body itself and the body's text slots all sit
+  // in the same placement (see `iconBodyBox`).
+  const shapeName = shapeNameOf(style.shape);
+  const iconDef = getIconDef(shapeName);
+  const isIconShape = typeof style.shape !== "string" && iconDef !== undefined;
+  // An icon that declares text slots is a card design: its 160×100 body is a
+  // card of its own, with its own label / description layout. Icon mode draws
+  // the node on exactly that card, so the body and its slots are used whole.
+  // Shape mode measures the card from the node's text instead, so only the
+  // pictogram is taken — it is placed in the card's padding corner at native
+  // size and the text is drawn by the stack every other shape uses (#2803).
+  const cornerPictogram =
+    isIconShape && displayMode !== "icon" && iconDef.labelSlot !== undefined
+      ? pictogramGroup(
+          iconDef,
+          style.color,
+          node.x + PICTOGRAM_OFFSET.x,
+          node.y + PICTOGRAM_OFFSET.y,
+        )
+      : undefined;
+  const bodyBox = isIconShape ? iconBodyBox(node, iconDef, displayMode) : node;
+
+  // An icon body paints no background of its own, so the card frame draws the
+  // declared fill/border behind it. Built-in shapes already include fill/stroke
+  // in their own rendering.
+  if (isIconShape) children.push(renderIconFrame(node, style));
 
   // Shape
-  children.push(renderShape(node.x, node.y, node.width, node.height, style));
-
-  // Resolve text positions
-  const shapeName = typeof style.shape === "string" ? style.shape : style.shape.url;
-  const iconDef = getIconDef(shapeName);
+  if (cornerPictogram) children.push(cornerPictogram);
+  else children.push(renderShape(bodyBox.x, bodyBox.y, bodyBox.width, bodyBox.height, style));
 
   const textColor = style.color;
   const fontSize = style.fontSize;
   const displayDesc = node.descriptionSummary ?? node.properties.description;
   const hasMetaRow = node.linkCount > 0 || !!node.properties.team;
 
-  if (iconDef?.labelSlot) {
+  // Slots are the icon card's own text layout, so they are read only where the
+  // node is drawn on that card: icon mode. Everywhere else the card was
+  // measured for the default stack, and drawing anything else leaves the lines
+  // measurement reserved — the meta row, role and client chips — undrawn
+  // (#2803, TPL-2803).
+  if (displayMode === "icon" && iconDef?.labelSlot) {
     children.push(
-      ...renderSlottedText(node, style, iconDef, displayMode, textColor, fontSize, displayDesc),
+      ...renderSlottedText(
+        node,
+        bodyBox,
+        style,
+        iconDef,
+        displayMode,
+        textColor,
+        fontSize,
+        displayDesc,
+      ),
     );
   } else {
     children.push(
@@ -1801,31 +1946,59 @@ function renderFacetRings(
 }
 
 /**
- * Icon-mode card frame — the background + border rect drawn before the icon
- * body. Built-in shapes already paint their own fill/stroke, so this only
- * applies when the resolved shape is an external icon (`style.shape` is an
- * object, not a built-in shape name) and the view is in icon display mode.
+ * The box an external icon's body is drawn into.
+ *
+ * In icon mode the node box *is* the icon card the icon was drawn for (the
+ * fixed 160×100 / 160×56 of `measureNode`), so the body fills it. In shape
+ * mode the box is measured from the text, so filling it stretches the drawing
+ * off-aspect — a 160×100 viewBox landed in a 286×84 card at `scale(1.79, 0.84)`
+ * (#2696). There the body is fitted inside the box instead, keeping its
+ * viewBox ratio, and the leftover space goes where the icon has least to say
+ * about it (see below).
+ *
+ * The card frame stays on the full node box either way, so the outline edges
+ * and chrome attach to is the one that is drawn (TPL-2385).
  */
-function renderIconFrame(
+function iconBodyBox(
   node: LayoutNode,
-  style: ResolvedNodeStyle,
+  iconDef: SvgIconDef,
   displayMode: DisplayMode | undefined,
-): string | undefined {
-  const isIconShape = typeof style.shape !== "string";
-  if (displayMode !== "icon" || !isIconShape) return undefined;
-  return el("rect", {
-    x: node.x,
-    y: node.y,
-    width: node.width,
-    height: node.height,
-    rx: style.borderRadius,
-    ry: style.borderRadius,
-    fill: style.backgroundColor,
-    stroke: style.borderColor,
-    "stroke-width": style.borderWidth,
-    "stroke-dasharray":
-      style.borderStyle === "dashed" ? "8 4" : style.borderStyle === "dotted" ? "2 2" : undefined,
-  });
+): Rect {
+  const { width: vw, height: vh } = iconViewBox(iconDef);
+  // A malformed viewBox (non-finite or degenerate) has no ratio to preserve.
+  if (displayMode === "icon" || !(vw > 0) || !(vh > 0)) return node;
+
+  // One scale, floored to the precision the transform is emitted at, and both
+  // sides derived from it: rounding each side on its own would put the two
+  // axes on subtly different scales, which is the distortion being fixed here,
+  // and rounding up would put the drawing outside the box it was fitted into.
+  const scale = floor4(Math.min(node.width / vw, node.height / vh));
+  const width = vw * scale;
+  const height = vh * scale;
+  // The body reaching here is a standalone drawing with no layout of its own to
+  // line up against — a card design's body is not fitted at all in shape mode,
+  // only its pictogram is drawn (see `renderNode`) — so it is centred.
+  return {
+    x: round2(node.x + (node.width - width) / 2),
+    y: round2(node.y + (node.height - height) / 2),
+    width,
+    height,
+  };
+}
+
+/**
+ * Card frame for an external icon — the background + border rect drawn before
+ * the icon body. An icon body is a pictogram: it has nothing to spend the
+ * declared `background-color` / `border-color` / `border-width` on, so without
+ * this rect those declarations are silently dropped (#2696). Built-in shapes
+ * paint their own fill/stroke and never reach here, and neither does a `url()`
+ * whose icon is not registered — that one falls back to `box`, which draws the
+ * same rect itself.
+ */
+function renderIconFrame(node: LayoutNode, style: ResolvedNodeStyle): string {
+  // The frame *is* a `box`, so it is drawn by the box shape rather than by a
+  // second copy of its rect — the two would otherwise have to be kept in step.
+  return renderShape(node.x, node.y, node.width, node.height, { ...style, shape: "box" });
 }
 
 /**
@@ -1837,6 +2010,8 @@ function renderIconFrame(
  */
 function renderSlottedText(
   node: LayoutNode,
+  /** Where the icon body was drawn — the slots are positions on that body. */
+  bodyBox: Rect,
   style: ResolvedNodeStyle,
   iconDef: SvgIconDef,
   displayMode: DisplayMode | undefined,
@@ -1848,13 +2023,12 @@ function renderSlottedText(
   if (!labelSlot) return [];
 
   const children: string[] = [];
-  const vw = iconDef.viewBoxWidth ?? 24;
-  const vh = iconDef.viewBoxHeight ?? 24;
-  const scaleX = node.width / vw;
-  const scaleY = node.height / vh;
+  const { width: vw, height: vh } = iconViewBox(iconDef);
+  const scaleX = bodyBox.width / vw;
+  const scaleY = bodyBox.height / vh;
 
-  const labelX = node.x + labelSlot.x * scaleX;
-  const labelY = node.y + labelSlot.y * scaleY;
+  const labelX = bodyBox.x + labelSlot.x * scaleX;
+  const labelY = bodyBox.y + labelSlot.y * scaleY;
   const labelAnchor = labelSlot.textAnchor ?? "middle";
 
   // Icon-mode label truncation
@@ -1882,8 +2056,8 @@ function renderSlottedText(
   );
 
   if (displayDesc && iconDef.descriptionSlot) {
-    const descX = node.x + iconDef.descriptionSlot.x * scaleX;
-    const descY = node.y + iconDef.descriptionSlot.y * scaleY;
+    const descX = bodyBox.x + iconDef.descriptionSlot.x * scaleX;
+    const descY = bodyBox.y + iconDef.descriptionSlot.y * scaleY;
     const descAnchor = iconDef.descriptionSlot.textAnchor ?? "middle";
     const descFontSize = iconMode ? 11 : Math.round(fontSize * RENDERED_DESC_FONT_RATIO);
 

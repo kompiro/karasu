@@ -282,6 +282,7 @@ export const ja: Partial<Translations> = {
   "preview.docs.reference.label": "↗ Reference",
   "preview.docs.site.label": "↗ ドキュメントサイト",
   "preview.docs.site.ariaLabel": "ドキュメントサイトを新しいタブで開く",
+  "preview.location.line": ({ line }) => `${line} 行目`,
 
   // Warnings (rendered in the WarningPanel)
   "warning.domainDispersal.message": ({ domainId }) =>
@@ -421,6 +422,8 @@ export const ja: Partial<Translations> = {
     `${property}: ${value} は範囲外 ${formatRange(min, max)} のため無視されました`,
   "warning.styleUnknownProperty.message": ({ property }) =>
     `未知のスタイルプロパティ "${property}" — 無視されました`,
+  "warning.styleUnknownIcon.message": ({ property, name }) =>
+    `${property}: url("${name}") はどの登録済みアイコンにも一致しません — box で描画されます`,
 
   // Diagnostics (rendered in PreviewPane's diagnostic banner)
   "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>
@@ -467,6 +470,12 @@ export const ja: Partial<Translations> = {
   "diagnostic.teamPropertyRemoved.message": `"team" プロパティは削除されました。organization ブロックと "owns" で所有を宣言してください`,
   "diagnostic.annotationParamUnsupported.message": ({ annotation, key }) =>
     `"@${annotation}" は "${key}" パラメータをサポートしていません。無視されます`,
+  "diagnostic.annotationParamValueUnreadable.message": ({ annotation, key }) =>
+    `"@${annotation}" の "${key}" の値を読み取れません。引用符で囲んだ文字列で書いてください（例: ${key}: "..."）`,
+  "diagnostic.annotationParamConflict.message": ({ annotation, key, existing, value }) =>
+    `"@${annotation}" の "${key}" に異なる 2 つの値（"${existing}" と "${value}"）が指定されています。1 つの要素が持てる値は 1 つなので、"${value}" は無視されます`,
+  "diagnostic.duplicateAnnotation.message": ({ annotation }) =>
+    `"@${annotation}" が同じ要素に複数回書かれています。2 回目以降は効果を持ちません`,
   "diagnostic.linkUrlSchemeNotAllowed.message": ({ url, scheme }) =>
     scheme
       ? `link URL "${url}" は許可されていないスキーム "${scheme}" を使用しています（許可: http, https, mailto）。このリンクは無視されます`
@@ -558,6 +567,8 @@ export const ja: Partial<Translations> = {
     `"${property}" の値 ${value} は範囲外です ${formatRange(min, max)}`,
   "diagnostic.styleUnknownProperty.message": ({ property }) =>
     `未知のスタイルプロパティ "${property}"`,
+  "diagnostic.styleUnknownIcon.message": ({ property, name }) =>
+    `"${property}" のアイコン url("${name}") はどの登録済みアイコンにも一致しません（box で描画されます）`,
   "diagnostic.circularImport.message": ({ filePath }) =>
     `循環インポートを検出しました: ${filePath}`,
   "diagnostic.fileNotFound.message": ({ filePath }) => `ファイルが見つかりません: ${filePath}`,

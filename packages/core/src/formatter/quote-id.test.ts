@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { needsQuotes, quoteId } from "./quote-id.js";
+import { KRS_KEYWORD_NAMES } from "../lexer/lexer.js";
 
 describe("needsQuotes", () => {
   it.each(["Foo", "foo", "_underscore", "id123", "snake_case", "日本語", "_"])(
@@ -28,6 +29,22 @@ describe("needsQuotes", () => {
       expect(needsQuotes(id)).toBe(true);
     },
   );
+
+  it("returns true for every keyword the lexer reserves (#2707)", () => {
+    // Derived from the lexer, not copied: a hand-copied list missed
+    // `boundary`, `contains`, `facet`, `facets` and `operations`.
+    expect(KRS_KEYWORD_NAMES.filter((keyword) => !needsQuotes(keyword))).toEqual([]);
+  });
+
+  it("returns true for a value-matched deploy keyword", () => {
+    expect(needsQuotes("store")).toBe(true);
+  });
+
+  it("returns true for an id with a character outside the BMP (#2707)", () => {
+    // The lexer tests UTF-16 units and drops each half of a surrogate pair,
+    // so this id would lose its first character if printed bare.
+    expect(needsQuotes("𠮷野家")).toBe(true);
+  });
 });
 
 describe("quoteId", () => {

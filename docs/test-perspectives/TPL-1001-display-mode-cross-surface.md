@@ -102,3 +102,4 @@ scope:
 
 - [`docs/spec/i18n.md`](../spec/i18n.md) — core 節「組み込みアノテーションバッジのラベル」（locale は theme と同様の全描画面横断スイッチで、注入オプションが全エントリポイントに通っていることを本 TPL の meta-test パターンで検証する）
 - [`docs/spec/i18n.md`](../spec/i18n.md) — 「CLI / lsp / vscode」節（VS Code WebView の detail panel が locale を honor する consumer 呼び出し口である旨。#2074 で追加）
+- [`docs/spec/style.md`](../spec/style.md) — 「shape property」節「How a `url()` icon is drawn」（`shape: url()` の枠と比率はモードごとに描画出力で点検する。#2696 で追加）

@@ -26,9 +26,32 @@
  * See docs/design/system-view-grouping.md § "P2c-C 詳細設計" / "P2c カバレッジ拡張（#1939）".
  */
 
-import type { CrossingMarks, HopMark, JunctionMark, LayoutEdge } from "./layout-types.js";
+import type {
+  CrossingMarks,
+  HopMark,
+  JunctionMark,
+  LayoutEdge,
+  TrunkBand,
+} from "./layout-types.js";
 import type { Point } from "./edge-geometry.js";
 import { BoxGrid, chooseCellSize } from "./spatial-grid.js";
+
+/**
+ * The band that shows how many edges a trunk stretch carries: this wide for one
+ * edge, plus {@link TRUNK_BAND_PITCH} for each further edge, up to a cap so a
+ * very wide fan-in stays a band rather than a slab. Derived from the count
+ * alone: the edges' own stroke width already means read versus write
+ * (ADR-1061), so the band borrows their colour and not their weight.
+ */
+const TRUNK_BAND_BASE = 2;
+const TRUNK_BAND_PITCH = 3;
+const TRUNK_BAND_MAX_STEPS = 8;
+/** Half the width of the band that carries `count` edges. */
+export function trunkBandHalfWidth(count: number): number {
+  return (TRUNK_BAND_BASE + Math.min(count - 1, TRUNK_BAND_MAX_STEPS) * TRUNK_BAND_PITCH) / 2;
+}
+/** Clearance a mark needs to stay outside a band of `count` edges. */
+const BAND_CLEARANCE = 3;
 
 /** Radius of a single hop arc's bump (px). */
 export const HOP_RADIUS = 4;
@@ -38,8 +61,12 @@ export const HOP_RADIUS = 4;
  * Coordinate-derived so the mark set stays deterministic.
  */
 export const HOP_CLUSTER_GAP = HOP_RADIUS * 2;
-/** Radius of a junction connection dot (px). */
-export const JUNCTION_RADIUS = 2.5;
+/**
+ * Radius of the merge mark. It used to be a bare 2.5px dot; it now carries the
+ * count the spine goes on to hold (#2883), so it is the size of a chip with a
+ * numeral in it.
+ */
+export const JUNCTION_CHIP_RADIUS = 9;
 
 const EPS = 1e-6;
 
@@ -126,11 +153,54 @@ function segmentGrid(segs: Seg[]): BoxGrid {
  * ungrouped view has no aggregation trunks, so it gets hops only (no junctions).
  */
 export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
+  const { hops, junctions, trunks } = detectMarks(edges);
+  const bands = bandsOf(trunks);
+  clearMarksOfBands(hops, junctions, bands, trunks);
+
+  // Stable order → deterministic SVG output. `detectMarks` already ordered the
+  // hops and the counts; the band pass can move a count, so sort them again.
+  junctions.sort((a, b) => a.y - b.y || a.x - b.x);
+  bands.sort(
+    (a, b) => a.points[0].y - b.points[0].y || a.points[0].x - b.points[0].x || a.count - b.count,
+  );
+  return { hops, junctions, bands };
+}
+
+/** One trunk's spine: where each sibling joins, and where the spine ends. */
+interface TrunkGroup {
+  x: number;
+  entries: { y: number; edge: number }[];
+  endY: number;
+  entryX: number;
+}
+
+/**
+ * Which crossings and merges exist, before anything a band forces on them.
+ *
+ * Split out because this is the claim the spatial prefilter makes (#2760): the
+ * grid must find exactly the crossings the all-pairs loop finds. The band pass
+ * that follows moves and resizes marks by geometry the prefilter has no say in.
+ */
+export function detectMarks(edges: LayoutEdge[]): {
+  hops: HopMark[];
+  junctions: JunctionMark[];
+  trunks: TrunkGroup[];
+} {
   const segs: Seg[] = [];
   // Trunk stub-join elbows grouped by spine (`trunkId` @ spine x). Each edge's
   // `waypoints[0]` is where its stub joins the shared vertical spine; `edge` is
   // that stub's index so its junction dot can be coloured like the edge.
-  const trunkElbows = new Map<string, { x: number; entries: { y: number; edge: number }[] }>();
+  const trunkElbows = new Map<
+    string,
+    {
+      x: number;
+      entries: { y: number; edge: number }[];
+      /** y where the spine ends, the same point for every sibling. */
+      endY: number;
+      /** x of the shared entry on the target, so the band can turn into it. */
+      entryX: number;
+    }
+  >();
 
   edges.forEach((edge, edgeIdx) => {
     // Ghost/cyclic edges are peripheral (dimmed / nudged perpendicular) and are
@@ -171,7 +241,20 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
       const key = `${edge.trunkId}@${elbow.x}`;
       const group = trunkElbows.get(key);
       if (group) group.entries.push({ y: elbow.y, edge: edgeIdx });
-      else trunkElbows.set(key, { x: elbow.x, entries: [{ y: elbow.y, edge: edgeIdx }] });
+      else {
+        // Walk the spine from the elbow: every point that keeps the spine's x is
+        // still on it, and the first one that leaves is where it turns into the
+        // target. Counting waypoints instead would assume a four-point route,
+        // which is one shape this can take and not the only one.
+        let k = 1;
+        while (k + 1 < pts.length && Math.abs(pts[k + 1].x - elbow.x) < EPS) k++;
+        trunkElbows.set(key, {
+          x: elbow.x,
+          entries: [{ y: elbow.y, edge: edgeIdx }],
+          endY: pts[k].y,
+          entryX: k + 1 < pts.length ? pts[k + 1].x : pts[k].x,
+        });
+      }
     }
   });
 
@@ -276,9 +359,13 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
   // dotting them all would put ● on plain corners.)
   const junctionSeen = new Set<string>();
   const junctions: JunctionMark[] = [];
-  for (const { x, entries } of trunkElbows.values()) {
+  const trunks: TrunkGroup[] = [];
+  for (const group of trunkElbows.values()) {
+    const { x, entries, endY } = group;
+    trunks.push(group);
     const minY = Math.min(...entries.map((e) => e.y));
     const headCount = entries.filter((e) => Math.abs(e.y - minY) < EPS).length;
+    const towardEnd = endY > minY ? EPS * 10 : -EPS * 10;
     for (const { y, edge } of entries) {
       // A merge if the spine extends above this elbow (some stub joins higher),
       // or two stubs meet at the head itself (still a T, not a lone corner).
@@ -287,13 +374,197 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
       const key = `${x},${y}`;
       if (junctionSeen.has(key)) continue;
       junctionSeen.add(key);
-      junctions.push({ x, y, edge });
+      // What the spine carries *onward* from here, which is what a reader wants
+      // at a merge and what the band below is drawn as.
+      junctions.push({ x, y, edge, count: carriedAt(group, y + towardEnd).length });
     }
   }
 
-  // Stable order → deterministic SVG output.
+  // Ordered here so detection is deterministic on its own, which is what the
+  // prefilter parity test compares.
   hops.sort((a, b) => a.y - b.y || a.x - b.x);
   junctions.sort((a, b) => a.y - b.y || a.x - b.x);
+  return { hops, junctions, trunks };
+}
 
-  return { hops, junctions };
+/**
+ * The siblings a trunk's spine carries at height `y`. Each sibling occupies the
+ * spine between its own elbow and the shared end, whichever way round the spine
+ * runs, so the count is just how many of those stretches contain `y`.
+ */
+function carriedAt(trunk: TrunkGroup, y: number): { edge: number }[] {
+  return trunk.entries
+    .map((e) => ({ lo: Math.min(e.y, trunk.endY), hi: Math.max(e.y, trunk.endY), edge: e.edge }))
+    .filter((sp) => sp.lo < y && y < sp.hi);
+}
+
+/**
+ * The bands: one per stretch the count is constant over. The stretch against the
+ * shared end always carries every sibling, so it and the run into the target
+ * come out as one polyline, which makes their corner a join.
+ */
+function bandsOf(trunks: readonly TrunkGroup[]): TrunkBand[] {
+  const bands: TrunkBand[] = [];
+  for (const trunk of trunks) {
+    const { x, entries, endY, entryX } = trunk;
+    const minY = Math.min(...entries.map((e) => e.y));
+    const cuts = [
+      ...new Set(entries.flatMap((e) => [Math.min(e.y, endY), Math.max(e.y, endY)])),
+    ].sort((a, b) => a - b);
+    for (let i = 0; i < cuts.length - 1; i++) {
+      const y0 = cuts[i];
+      const y1 = cuts[i + 1];
+      if (y1 - y0 < EPS) continue;
+      const carried = carriedAt(trunk, (y0 + y1) / 2);
+      if (carried.length < 2) continue;
+      // Run the band the way the edges travel, so the stretch that ends at the
+      // spine's far end can carry on into the target.
+      const from = endY > minY ? { x, y: y0 } : { x, y: y1 };
+      const to = endY > minY ? { x, y: y1 } : { x, y: y0 };
+      const atEnd = Math.abs(to.y - endY) < EPS;
+      const points =
+        atEnd && Math.abs(entryX - x) > EPS ? [from, to, { x: entryX, y: endY }] : [from, to];
+      bands.push({ points, count: carried.length, edge: carried[0].edge });
+    }
+  }
+  return bands;
+}
+
+/**
+ * Keep both marks readable over a band. A hop has to arch clear of what it
+ * crosses, and the band is as wide as the count it carries while the arc rises
+ * 4px, so an unadjusted arc is drawn inside the thing it marks a crossing over.
+ * A count mark must not sit on a crossing either: it would hide the arc under a
+ * mark that asserts the opposite. The count moves, never the crossing
+ * (TPL-2631).
+ */
+function clearMarksOfBands(
+  hops: HopMark[],
+  junctions: JunctionMark[],
+  bands: readonly TrunkBand[],
+  trunks: readonly TrunkGroup[],
+): void {
+  if (bands.length > 0) {
+    for (const hop of hops) {
+      let clearance = 0;
+      for (const band of bands) {
+        const half = trunkBandHalfWidth(band.count);
+        if (half <= clearance) continue;
+        if (onBand(hop, band, half)) clearance = half;
+      }
+      if (clearance === 0) continue;
+      // Wide enough that the arc's feet land outside the band, tall enough that
+      // its crown rises out of it.
+      hop.halfWidth = Math.max(hop.halfWidth, clearance + BAND_CLEARANCE);
+      hop.ry = Math.max(HOP_RADIUS, clearance + BAND_CLEARANCE);
+    }
+  }
+  for (const mark of junctions) {
+    slideOffCrossings(mark, hops, junctions, spineOf(mark, trunks));
+  }
+}
+
+/**
+ * Move a count mark off any crossing it covers, along the spine it belongs to.
+ *
+ * A search rather than a walk: stepping one offset at a time and re-deciding
+ * from there oscillates, because the direction "away from the crossing" flips
+ * once the mark passes it. Here every reachable spot is proposed at once,
+ * nearest first and away from the crossing before towards it, and the first
+ * good one is taken.
+ *
+ * Good means clear of the crossing *and* of every other count mark. Where no
+ * spot is clear of both, being off the crossing wins: a chip on a crossing says
+ * the crossing is a connection, while two chips on each other only hide a
+ * number. Where nothing is clear at all, the mark stays where the merge is.
+ */
+function slideOffCrossings(
+  mark: JunctionMark,
+  hops: readonly HopMark[],
+  junctions: readonly JunctionMark[],
+  spine: { lo: number; hi: number } | undefined,
+): void {
+  const covered = (y: number) => hops.some((hop) => covers({ ...mark, y }, hop));
+  if (!covered(mark.y)) return;
+  const base = mark.y;
+  const onSpine = (y: number) => (spine ? Math.min(Math.max(y, spine.lo), spine.hi) : y);
+  // Away from the nearest crossing first, so the mark moves the way a reader
+  // would expect, and nearest first so it stays as close to the merge as it can.
+  const clash = hops.find((hop) => covers(mark, hop))!;
+  const dirs = clash.y >= base ? [-1, 1] : [1, -1];
+  const candidates: number[] = [];
+  for (let step = 1; step <= JUNCTION_SLIDE_STEPS; step++) {
+    for (const dir of dirs) {
+      const y = onSpine(base + dir * step * JUNCTION_SLIDE);
+      if (Math.abs(y - base) > EPS && !candidates.some((c) => Math.abs(c - y) < EPS)) {
+        candidates.push(y);
+      }
+    }
+  }
+  const free = candidates.filter((y) => !covered(y));
+  const best = free.find((y) => clearOfChips(mark, y, junctions)) ?? free[0];
+  if (best !== undefined) mark.y = best;
+}
+
+/** Whether `y` keeps `mark` a chip's width clear of every other count mark. */
+function clearOfChips(mark: JunctionMark, y: number, junctions: readonly JunctionMark[]): boolean {
+  return junctions.every(
+    (other) =>
+      other === mark ||
+      Math.abs(other.x - mark.x) >= JUNCTION_CHIP_RADIUS * 2 ||
+      Math.abs(other.y - y) >= JUNCTION_CHIP_RADIUS * 2,
+  );
+}
+
+/** The stretch of spine a count mark may slide along: its trunk's own extent. */
+function spineOf(
+  mark: JunctionMark,
+  trunks: readonly TrunkGroup[],
+): { lo: number; hi: number } | undefined {
+  for (const trunk of trunks) {
+    if (Math.abs(trunk.x - mark.x) > EPS) continue;
+    // The mark was made from one of this trunk's entries, so ownership is exact.
+    // Matching on the spine's x and a containing y instead would hand a mark the
+    // extent of a *different* trunk wherever two share a lane and overlap, and
+    // clamp it to a stretch it does not belong to.
+    // The mark was made from one of this trunk's entries, so ownership is exact.
+    // Matching on the spine's x and a containing y instead would hand a mark the
+    // extent of a *different* trunk wherever two share a lane and overlap, and
+    // clamp it to a stretch it does not belong to.
+    if (!trunk.entries.some((e) => e.edge === mark.edge)) continue;
+    const lo = Math.min(...trunk.entries.map((e) => e.y), trunk.endY);
+    const hi = Math.max(...trunk.entries.map((e) => e.y), trunk.endY);
+    return { lo, hi };
+  }
+  return undefined;
+}
+
+/** Whether `hop` lies on `band`, which is `half` px wide either side. */
+function onBand(hop: HopMark, band: TrunkBand, half: number): boolean {
+  for (let i = 0; i < band.points.length - 1; i++) {
+    const a = band.points[i];
+    const b = band.points[i + 1];
+    const vertical = Math.abs(a.x - b.x) < EPS;
+    const on = vertical
+      ? Math.abs(hop.x - a.x) <= half + 2 &&
+        hop.y > Math.min(a.y, b.y) - EPS &&
+        hop.y < Math.max(a.y, b.y) + EPS
+      : Math.abs(hop.y - a.y) <= half + 2 &&
+        hop.x > Math.min(a.x, b.x) - EPS &&
+        hop.x < Math.max(a.x, b.x) + EPS;
+    if (on) return true;
+  }
+  return false;
+}
+
+/** How far a count mark slides along the spine to get off a crossing, and how far it may go. */
+const JUNCTION_SLIDE = JUNCTION_CHIP_RADIUS + 10;
+const JUNCTION_SLIDE_STEPS = 8;
+
+/** Whether the count mark drawn at `mark` would cover `hop`'s arc. */
+function covers(mark: JunctionMark, hop: HopMark): boolean {
+  return (
+    Math.abs(hop.x - mark.x) < JUNCTION_CHIP_RADIUS + hop.halfWidth &&
+    Math.abs(hop.y - mark.y) < JUNCTION_CHIP_RADIUS + (hop.ry ?? HOP_RADIUS) + 2
+  );
 }

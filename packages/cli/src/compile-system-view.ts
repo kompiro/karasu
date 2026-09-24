@@ -1,4 +1,5 @@
-import { resolve } from "node:path";
+import { realpathSync } from "node:fs";
+import { relative, resolve } from "node:path";
 import {
   compileProject,
   ImportResolver,
@@ -10,14 +11,71 @@ import { formatDiagnostic } from "./i18n.js";
 import { NodeFileSystemProvider } from "./node-fs.js";
 
 /**
- * Format a diagnostic's source location for CLI stderr output:
- * `<filePath>:<line>:<column>` (1-based) when the diagnostic carries a
- * `loc`, otherwise just `filePath`. Shared by every command that prints
- * `Diagnostic[]` to stderr (matrix / coverage / subtree via
+ * A formatter for diagnostic source locations in CLI stderr output, for one
+ * report against the entry `filePath`: `<file>:<line>:<column>` when the
+ * diagnostic carries a `loc`, otherwise just `filePath`. Shared by every command
+ * that prints `Diagnostic[]` to stderr (matrix / coverage / subtree via
  * {@link compileSystemViewOrExit}, and render directly).
+ *
+ * `<file>` is the document the position indexes into (#2715). A project spans
+ * files, and a diagnostic from an imported file, or one decided on the merged
+ * model, anchors on whichever file declared the construct. So:
+ *
+ * - no `loc.file`, or a `loc.file` that is the entry: the entry, spelled the
+ *   way the user typed it (`./index.krs` stays `./index.krs`)
+ * - any other file: its path relative to the working directory
+ *
+ * "Is the entry" is decided on canonical paths, not on the strings: `loc.file`
+ * is absolute while the user's spelling may be relative or reach the file
+ * through a symlink, and a raw comparison would prefix the entry's own
+ * diagnostics with a second spelling of the same file.
+ *
+ * Core positions are already 1-based (`packages/lsp/src/lsp-position.ts`), so
+ * they print as they are. Adding 1 here once made a 4-line file report line 5.
+ *
+ * The entry's canonical path is resolved once per formatter, and each other
+ * file's once, rather than twice per diagnostic. Create one per printed list;
+ * the cache lives only as long as that report, so a later run never reads a
+ * stale answer.
+ *
+ * The parameter is structural rather than a `Diagnostic`, because a `Warning`
+ * carries the same optional `loc` and the CLI prints both through one rule
+ * (#2802): the spec's per-surface location table names the surface, not the
+ * channel the position arrived on.
  */
-export function formatDiagLoc(filePath: string, d: Diagnostic): string {
-  return d.loc ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}` : filePath;
+export function diagLocFormatter(filePath: string): (d: { loc?: Diagnostic["loc"] }) => string {
+  const canonical = new Map<string, string>();
+  const canonicalOf = (path: string): string => {
+    let hit = canonical.get(path);
+    if (hit === undefined) {
+      hit = canonicalPath(path);
+      canonical.set(path, hit);
+    }
+    return hit;
+  };
+  return (d) => {
+    if (!d.loc) return filePath;
+    const file =
+      d.loc.file === undefined || canonicalOf(d.loc.file) === canonicalOf(filePath)
+        ? filePath
+        : relative(process.cwd(), d.loc.file);
+    return `${file}:${d.loc.start.line}:${d.loc.start.column}`;
+  };
+}
+
+/**
+ * One spelling per file, so `./index.krs`, its absolute form and a symlink to it
+ * compare equal. Synchronous because {@link diagLocFormatter} returns strings its
+ * callers hand straight to `process.stderr.write`. Falls back to lexical
+ * resolution when the path cannot be stat'ed (it was deleted mid-run, say),
+ * which still folds the relative and absolute spellings together.
+ */
+function canonicalPath(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return resolve(path);
+  }
 }
 
 /**
@@ -88,8 +146,9 @@ export async function compileSystemViewOrExit(
  */
 function reportErrorsOrExit(diagnostics: readonly Diagnostic[], filePath: string): boolean {
   const errors = diagnostics.filter((d) => d.severity === "error");
+  const locOf = diagLocFormatter(filePath);
   for (const d of errors) {
-    process.stderr.write(`Error: ${formatDiagLoc(filePath, d)}: ${formatDiagnostic(d)}\n`);
+    process.stderr.write(`Error: ${locOf(d)}: ${formatDiagnostic(d)}\n`);
   }
   if (errors.length > 0) {
     process.exit(1);

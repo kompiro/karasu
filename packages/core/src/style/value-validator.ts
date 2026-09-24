@@ -1,6 +1,21 @@
 import type { Diagnostic } from "../types/ast.js";
 import type { StyleSheet, ValueNode } from "../types/style.js";
+import { hasShape } from "../shapes/shape-registry.js";
+// The built-in icon set registers itself on import, so `hasShape` answers the
+// same on every surface — including the LSP, which never draws (#2802).
+import "../shapes/builtin-icons.js";
 import { isKnownProperty, PROPERTY_SCHEMAS, type ValueSpec } from "./property-schema.js";
+
+export interface ValidateStyleValuesOptions {
+  /**
+   * Whether a `url("<name>")` argument names a registered shape. Defaults to
+   * the process-wide shape registry (`hasShape`), which core fills with its
+   * built-in icons on import; injectable so tests need not touch that
+   * registry, and so an embedder that registers its own icons *after*
+   * validating can still answer for them.
+   */
+  isRegisteredShape?: (name: string) => boolean;
+}
 
 /**
  * Walk every rule in `sheet`, look up the schema for each declared
@@ -12,8 +27,17 @@ import { isKnownProperty, PROPERTY_SCHEMAS, type ValueSpec } from "./property-sc
  * Properties absent from `PROPERTY_SCHEMAS` produce a single
  * `style-unknown-property` warning per occurrence; the validator then
  * skips the value (no enum / hex check is attempted).
+ *
+ * A structurally valid `url("<name>")` whose name no registered icon
+ * answers to produces a `style-unknown-icon` warning (#2802): the renderer
+ * draws such a node as a `box`, and before this warning a typo in the name
+ * was accepted silently on every surface (TPL-1503).
  */
-export function validateStyleValues(sheet: StyleSheet): Diagnostic[] {
+export function validateStyleValues(
+  sheet: StyleSheet,
+  options: ValidateStyleValuesOptions = {},
+): Diagnostic[] {
+  const isRegisteredShape = options.isRegisteredShape ?? hasShape;
   const out: Diagnostic[] = [];
   for (const rule of sheet.rules) {
     const valueNodes = rule.valueNodes;
@@ -34,6 +58,17 @@ export function validateStyleValues(sheet: StyleSheet): Diagnostic[] {
       const schema = PROPERTY_SCHEMAS[property];
       const diags: Diagnostic[] = [];
       validateAgainstSpec(node, schema, property, diags);
+      if (diags.length === 0) {
+        // Structure passed; now the one check that reads outside the sheet.
+        const unknownIcon = unregisteredUrlName(node, schema, isRegisteredShape);
+        if (unknownIcon !== undefined) {
+          diags.push({
+            severity: "warning",
+            code: "style-unknown-icon",
+            params: { property, name: unknownIcon },
+          });
+        }
+      }
       // Use the value node's loc when available (more precise than the
       // whole declaration); fall back to the declaration loc.
       for (const d of diags) {
@@ -215,6 +250,36 @@ function collectMismatch(node: ValueNode, spec: ValueSpec, property: string): Di
       const _exhaustive: never = spec;
       throw new Error(`Unhandled ValueSpec kind: ${JSON.stringify(_exhaustive)}`);
     }
+  }
+}
+
+/**
+ * The `url()` argument of `node` when the schema accepts a `url` and no
+ * registered shape answers to that name; `undefined` otherwise. The name is
+ * `argRaw` — what the author wrote inside the parens, quotes stripped by the
+ * parser — which is also exactly what the style resolver looks up, so this
+ * warning fires precisely when the renderer would fall back to `box`.
+ */
+function unregisteredUrlName(
+  node: ValueNode,
+  spec: ValueSpec,
+  isRegisteredShape: (name: string) => boolean,
+): string | undefined {
+  if (node.kind !== "function" || node.name !== "url") return undefined;
+  if (!specAcceptsUrl(spec)) return undefined;
+  return isRegisteredShape(node.argRaw) ? undefined : node.argRaw;
+}
+
+function specAcceptsUrl(spec: ValueSpec): boolean {
+  switch (spec.kind) {
+    case "url":
+      return true;
+    case "union":
+      return spec.specs.some(specAcceptsUrl);
+    case "list-of":
+      return specAcceptsUrl(spec.item);
+    default:
+      return false;
   }
 }
 

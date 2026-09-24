@@ -10,6 +10,7 @@ import type { DomainEdgeDetail } from "../view/view-extract.js";
 import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import type { CategoryId } from "./category-collapse.js";
 import type { GroupLabelIndex } from "./group-labels.js";
+import type { Point } from "./edge-geometry.js";
 
 export type LayoutNodeProperties = CommonProperties & {
   role?: string;
@@ -326,22 +327,62 @@ export interface HopMark {
   halfWidth: number;
   angle: number;
   edge: number;
+  /**
+   * Arc height, when the default `HOP_RADIUS` would leave the arc inside
+   * something it is supposed to hop over. Set where the hop rides a trunk band,
+   * whose width grows with the count it carries: an arc drawn inside the band is
+   * not a smaller mark, it is a crossing that reads as a connection (TPL-2631).
+   */
+  ry?: number;
 }
 
 /**
- * A connection dot at a trunk merge point (#1859 P2c-C). `edge` is the index of
- * the joining stub edge, so the dot is coloured like the edge that merges there.
+ * The merge mark at a trunk elbow (#1859 P2c-C, numbered in #2883). `edge` is
+ * the index of the joining stub edge, so the mark is coloured like the edge that
+ * merges there.
+ *
+ * `count` is how many edges the spine carries onward from this point, which the
+ * renderer draws as the mark itself: a dot says a merge happened, and nothing
+ * more, so the line below it reads the same whether it carries two edges or
+ * seven. The number and the band's width (see {@link TrunkBand}) always agree.
+ *
+ * `x` is normally the elbow's own x. It slides along the spine only where the
+ * mark would otherwise cover a hop arc, because a covered crossing reads as a
+ * connection and this mark asserts exactly that (TPL-2631).
  */
 export interface JunctionMark {
   x: number;
   y: number;
   edge: number;
+  count: number;
 }
 
-/** Crossing marks for the Group-by view: hops (crossing = not connected) + junctions (merge = connected). */
+/**
+ * One stretch of a trunk that several edges draw on the same pixels, and how
+ * many of them it carries there (#2883).
+ *
+ * `points` is a polyline, so the spine's last stretch and the shared run into
+ * the target come as one band: they carry the same count, and joining them means
+ * the corner is a join rather than two butted ends. Drawn under the edges, in
+ * the colour of one of them, at a width derived from `count` alone — the stroke
+ * width of the edges themselves already means read versus write (ADR-1061), so
+ * the band borrows the colour and not the weight.
+ */
+export interface TrunkBand {
+  points: Point[];
+  count: number;
+  edge: number;
+}
+
+/**
+ * Marks for the Group-by view: hops (crossing = not connected), junctions
+ * (merge = connected, carrying the count), and the bands that give the count a
+ * width. `bands` is empty in the ungrouped view, which has no trunks.
+ */
 export interface CrossingMarks {
   hops: HopMark[];
   junctions: JunctionMark[];
+  bands: TrunkBand[];
 }
 
 export type DisplayMode = "shape" | "icon";

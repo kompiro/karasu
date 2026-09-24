@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
+import { ObstacleIndex, type ObstacleQuery } from "./obstacle-index.js";
 import type { LayoutEdge, LayoutNode } from "./layout.js";
 
 function node(id: string, x: number, y: number, w = 100, h = 60): LayoutNode {
@@ -27,6 +28,17 @@ function edge(
   return { from, to, fromPoint: fp, toPoint: tp };
 }
 
+/**
+ * The obstacle set the shared chain hands this pass (#2790): the canvas
+ * indexed once, asked per edge. On an ungrouped canvas there are no frames, so
+ * this is the node cards alone, which is the set the pass collected itself
+ * before the index existed.
+ */
+function obstaclesOf(nodes: Map<string, LayoutNode>): (e: LayoutEdge) => ObstacleQuery {
+  const index = ObstacleIndex.build([...nodes.values()], []);
+  return (e) => index.forEdge(e.from, e.to);
+}
+
 describe("routeOrthogonalEdges", () => {
   it("leaves an unobstructed straight edge alone", () => {
     const nodes = new Map<string, LayoutNode>([
@@ -34,7 +46,7 @@ describe("routeOrthogonalEdges", () => {
       ["b", node("b", 0, 200)],
     ]);
     const edges: LayoutEdge[] = [edge("a", "b", { x: 50, y: 60 }, { x: 50, y: 200 })];
-    routeOrthogonalEdges(nodes, edges);
+    routeOrthogonalEdges(nodes, edges, obstaclesOf(nodes));
     expect(edges[0].waypoints).toBeUndefined();
   });
 
@@ -50,7 +62,7 @@ describe("routeOrthogonalEdges", () => {
       // a's bottom-center → c's top-center
       edge("a", "c", { x: 250, y: 60 }, { x: 50, y: 200 }),
     ];
-    routeOrthogonalEdges(nodes, edges);
+    routeOrthogonalEdges(nodes, edges, obstaclesOf(nodes));
     expect(edges[0].waypoints).toBeDefined();
     expect(edges[0].waypoints).toHaveLength(2);
     // Both waypoints share the channel y, between the obstacle's bottom (160)
@@ -72,7 +84,7 @@ describe("routeOrthogonalEdges", () => {
     const edges: LayoutEdge[] = [
       { ...edge("a", "c", { x: 250, y: 60 }, { x: 50, y: 200 }), ghost: true },
     ];
-    routeOrthogonalEdges(nodes, edges);
+    routeOrthogonalEdges(nodes, edges, obstaclesOf(nodes));
     expect(edges[0].waypoints).toBeUndefined();
   });
 
@@ -85,7 +97,7 @@ describe("routeOrthogonalEdges", () => {
     const edges: LayoutEdge[] = [
       { ...edge("a", "c", { x: 250, y: 60 }, { x: 50, y: 200 }), cyclic: true },
     ];
-    routeOrthogonalEdges(nodes, edges);
+    routeOrthogonalEdges(nodes, edges, obstaclesOf(nodes));
     expect(edges[0].waypoints).toBeUndefined();
   });
 
@@ -100,7 +112,7 @@ describe("routeOrthogonalEdges", () => {
       ["c", node("c", 210, 200, 60, 40)],
     ]);
     const edges: LayoutEdge[] = [edge("a", "c", { x: 230, y: 40 }, { x: 240, y: 200 })];
-    routeOrthogonalEdges(nodes, edges);
+    routeOrthogonalEdges(nodes, edges, obstaclesOf(nodes));
     expect(edges[0].waypoints).toBeUndefined();
   });
 
@@ -114,7 +126,7 @@ describe("routeOrthogonalEdges", () => {
     const edges: LayoutEdge[] = [
       { ...edge("a", "c", { x: 250, y: 60 }, { x: 50, y: 200 }), waypoints: preset },
     ];
-    routeOrthogonalEdges(nodes, edges);
+    routeOrthogonalEdges(nodes, edges, obstaclesOf(nodes));
     expect(edges[0].waypoints).toBe(preset);
   });
 });

@@ -386,6 +386,145 @@ deploy Prod {
       expect(edge).toBeDefined();
     });
 
+    describe("same-named service and infra in two systems (#2817)", () => {
+      const TWO_SYSTEMS = `
+system A {
+  service Api { domain D { usecase U { resource Db.T } } }
+  database Db { table T {} }
+}
+system B {
+  service Api { domain D2 { usecase U2 { resource Db.T } } }
+  database Db { table T {} }
+}
+`;
+      const pairs = (krs: string): string[][] => {
+        const file = Parser.parse(krs).value;
+        return extractDeployView(file.deploys, withUnassignedSystem(file)).ghostEdges.map((e) => [
+          e.from,
+          e.to,
+        ]);
+      };
+
+      it("draws each system's service→infra edge between its own containers", () => {
+        const krs = `${TWO_SYSTEMS}
+deploy prod {
+  oci a1 { realizes A.Api }
+  oci a2 { realizes B.Api }
+  store d1 { realizes A.Db }
+  store d2 { realizes B.Db }
+}
+`;
+        expect(pairs(krs)).toEqual([
+          ["A.Api", "A.Db"],
+          ["B.Api", "B.Db"],
+        ]);
+      });
+
+      it("does not attach a service to another system's store when its own is not deployed", () => {
+        // B declares its own Db, so `B.Api` depends on `B.Db`, not on whichever
+        // same-named store happens to be deployed.
+        const krs = `${TWO_SYSTEMS}
+deploy prod {
+  oci a1 { realizes A.Api }
+  oci a2 { realizes B.Api }
+  store d1 { realizes A.Db }
+}
+`;
+        expect(pairs(krs)).toEqual([["A.Api", "Db"]]);
+      });
+
+      it("connects a broadcast container to every system's store it depends on", () => {
+        const krs = `${TWO_SYSTEMS}
+deploy prod {
+  oci api { realizes Api }
+  store d1 { realizes A.Db }
+  store d2 { realizes B.Db }
+}
+`;
+        expect(pairs(krs)).toEqual([
+          ["Api", "A.Db"],
+          ["Api", "B.Db"],
+        ]);
+      });
+
+      it("still reaches top-level shared infra from both systems", () => {
+        const krs = `
+database Db { table T {} }
+system A {
+  service Api { domain D { usecase U { resource Db.T } } }
+}
+system B {
+  service Api { domain D2 { usecase U2 { resource Db.T } } }
+}
+deploy prod {
+  oci a1 { realizes A.Api }
+  oci a2 { realizes B.Api }
+  store d { realizes Db }
+}
+`;
+        expect(pairs(krs)).toEqual([
+          ["A.Api", "Db"],
+          ["B.Api", "Db"],
+        ]);
+      });
+
+      it("reaches a store only another system declares when it is the only one by that id", () => {
+        const krs = `
+system A {
+  service Api { domain D { usecase U { resource Db.T } } }
+}
+system B {
+  database Db { table T {} }
+}
+deploy prod {
+  oci a { realizes Api }
+  store d { realizes Db }
+}
+`;
+        expect(pairs(krs)).toEqual([["Api", "Db"]]);
+      });
+
+      it("does not guess between several systems' stores a service does not declare", () => {
+        const krs = `
+system A {
+  service Api { domain D { usecase U { resource Db.T } } }
+}
+system B {
+  database Db { table T {} }
+}
+system C {
+  database Db { table T {} }
+}
+deploy prod {
+  oci a { realizes Api }
+  store d1 { realizes B.Db }
+  store d2 { realizes C.Db }
+}
+`;
+        expect(pairs(krs)).toEqual([]);
+      });
+
+      it("does not route a system edge to another system's same-named container", () => {
+        const krs = `
+system A {
+  service Api { domain D { usecase U {} } }
+  service Web { domain W { usecase V {} } }
+  Api -> Web
+}
+system B {
+  service Api { domain D2 { usecase U2 {} } }
+  service Web { domain W2 { usecase V2 {} } }
+}
+deploy prod {
+  oci a1 { realizes A.Api }
+  oci a2 { realizes B.Api }
+  oci w2 { realizes B.Web }
+}
+`;
+        expect(pairs(krs)).toEqual([]);
+      });
+    });
+
     it("does not emit the service→infra edge when the depending service is not realized", () => {
       const krs = `
 system EC {
@@ -564,6 +703,76 @@ deploy prod {
 
     expect(slice.ghostEdges).toEqual([
       { from: "TenantA.Api", to: "Worker", label: "queues", kind: "sync" },
+    ]);
+  });
+});
+
+describe("a dotted id cannot claim a qualified container's id (#2714)", () => {
+  const DOTTED_AND_QUALIFIED = `
+system Shop {
+  service Api {}
+  service Worker {}
+  Api -> Worker "queues"
+}
+system Admin {
+  service Api {}
+}
+system Weird {
+  service "Shop.Api" {}
+}
+deploy prod {
+  oci a { realizes Shop.Api }
+  oci b { realizes Admin.Api }
+  oci c { realizes "Shop.Api" }
+  oci w { realizes Worker }
+}
+`;
+
+  it("gives the qualified path and the dotted id two different container ids", () => {
+    const file = Parser.parse(DOTTED_AND_QUALIFIED).value;
+    const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+
+    // Before #2714 the first and third answered to one id, `Shop.Api`: the
+    // grouping key was injective but the id emitted for them was a plain join.
+    expect(slice.containers.map((c) => [c.serviceId, c.units.map((u) => u.id)])).toEqual([
+      ["Shop.Api", ["a"]],
+      ["Admin.Api", ["b"]],
+      ['"Shop.Api"', ["c"]],
+      ["Worker", ["w"]],
+    ]);
+    expect(new Set(slice.containers.map((c) => c.serviceId)).size).toBe(slice.containers.length);
+  });
+
+  it("routes the ghost edge to the container the qualified path built", () => {
+    const file = Parser.parse(DOTTED_AND_QUALIFIED).value;
+    const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+
+    expect(slice.ghostEdges).toEqual([
+      { from: "Shop.Api", to: "Worker", label: "queues", kind: "sync" },
+    ]);
+    // The endpoint names Shop's service, so it has to reach the unit that
+    // realizes it — and exactly one container may answer to that id, or which
+    // rect the edge lands on is decided by placement order downstream.
+    const addressed = slice.containers.filter((c) => c.serviceId === "Shop.Api");
+    expect(addressed.map((c) => c.units.map((u) => u.id))).toEqual([["a"]]);
+  });
+
+  it("quotes a dotted id even when no other container claims it", () => {
+    // The rule is unconditional: a dot inside a segment is always quoted, so
+    // the id does not depend on which other containers happen to exist. The
+    // cost is this model — the container id is no longer the bare node id.
+    const file = Parser.parse(`
+system Weird {
+  service "Shop.Api" { label "Odd one" }
+}
+deploy prod {
+  oci c { realizes "Shop.Api" }
+}
+`).value;
+    const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+
+    expect(slice.containers.map((c) => [c.serviceId, c.serviceLabel])).toEqual([
+      ['"Shop.Api"', "Odd one"],
     ]);
   });
 });

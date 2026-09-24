@@ -152,11 +152,20 @@ flowchart TD
     ADR_2623["ADR-2623<br/>Dependabot トリアージ 2026-08-25 — ADR の assumptions..."]
     ADR_2640["ADR-2640<br/>PR の一次レビューに CodeRabbit を入れる（advisory 固定）"]
     ADR_2643["ADR-2643<br/>stacked PR は最下層 1 本だけをレビュー対象にし、draft では分単位の CI ..."]
+    ADR_2658["ADR-2658<br/>依存更新トリアージの下ごしらえを gh-aw の scheduled workflow に任せる"]
     ADR_2671["ADR-2671<br/>Dependabot トリアージ 2026-08-31 — exact peer は枠ではなく..."]
     ADR_2693["ADR-2693<br/>Dependabot security alert 2026-09-03（`fast-uri`..."]
     ADR_2716["ADR-2716<br/>CodeRabbit のレビューを request changes workflow に移す"]
     ADR_2753["ADR-2753<br/>Dependabot トリアージ 2026-09-07 — 生成物への部分編集は却下し、再生成に畳む"]
     ADR_2773["ADR-2773<br/>Dependabot トリアージ 2026-09-08 — repo 側の宣言が bot の届..."]
+    ADR_2786["ADR-2786<br/>安全網が結論を出せない回は run ごと失敗させ、detection のモデルを pin する"]
+    ADR_2804["ADR-2804<br/>raw NUL byte を含む tracked file を除外リスト方式の全走査で検出し、..."]
+    ADR_2805["ADR-2805<br/>テスト suite の timeout はテストステップに置き、job 予算は setup を..."]
+    ADR_2807["ADR-2807<br/>suite の job 予算は、共有の setup 観測最大を step 境界の上に載せて確保する"]
+    ADR_2813["ADR-2813<br/>Dependabot security alert 2026-09-12（`js-yaml` ..."]
+    ADR_2836["ADR-2836<br/>Dependabot トリアージ 2026-09-14：vitest 5 の major は ..."]
+    ADR_2839["ADR-2839<br/>dependabot-triage workflow の週次 cron を止め、dispatc..."]
+    ADR_2877["ADR-2877<br/>Dependabot トリアージ 2026-09-22：changesets 3 は CI が..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -300,6 +309,7 @@ flowchart TD
     ADR_2578["ADR-2578<br/>karasu-nest は server-side reverse をやめ、投稿を預かるギャラ..."]
     ADR_2592["ADR-2592<br/>ギャラリーの構築 — 投稿は repo に紐づかず、投稿者が自分で管理する"]
     ADR_2655["ADR-2655<br/>nest のセッション期限を idle 窓と絶対上限に分ける"]
+    ADR_2859["ADR-2859<br/>spike ブランチは答える Issue 番号で名付け、その Issue が open なあいだ残す"]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   end
   subgraph renderer["renderer"]
@@ -350,6 +360,9 @@ flowchart TD
     ADR_2521["ADR-2521<br/>multi-system ルートビューは single-system パイプラインの計算に合わせる"]
     ADR_2593["ADR-2593<br/>キャンバスの空き空間を目的関数にして行幅予算を選ぶ"]
     ADR_2598["ADR-2598<br/>層間チャネルに容量を持たせ、配線の需要を配置へ返す"]
+    ADR_2714["ADR-2714<br/>deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
+    ADR_2802["ADR-2802<br/>組み込みアイコンは core が import 時に登録し、解決しない url() は値 va..."]
+    ADR_2803["ADR-2803<br/>shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通ス..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -397,6 +410,7 @@ flowchart TD
     ADR_2045["ADR-2045<br/>QA 手動チェックリスト生成のマーカー対応と 3-way triage"]
     ADR_2348["ADR-2348<br/>AT レコードは Design Doc ではなく Issue を指す — 削除が規約で確定して..."]
     ADR_2648["ADR-2648<br/>記録が名指すソースパスを機械で照合し、不在が正しい場合は宣言させる"]
+    ADR_2810["ADR-2810<br/>TPL 本文のソースパス照合を `@kompiro/tpl-tools` へ移し、Requir..."]
     ADR_9012["ADR-9012<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
   end
   subgraph vscode["vscode"]
@@ -554,6 +568,7 @@ flowchart TD
   ADR_2578 -.supersedes.-> ADR_1990
   ADR_2578 -.supersedes.-> ADR_1994
   ADR_2716 -.supersedes.-> ADR_2640
+  ADR_2807 -.supersedes.-> ADR_2805
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -911,12 +926,26 @@ flowchart TD
   class ADR_2643 accepted
   class ADR_2648 accepted
   class ADR_2655 accepted
+  class ADR_2658 accepted
   class ADR_2671 accepted
   class ADR_2687 accepted
   class ADR_2693 accepted
+  class ADR_2714 accepted
   class ADR_2716 accepted
   class ADR_2753 accepted
   class ADR_2773 accepted
+  class ADR_2786 accepted
+  class ADR_2802 accepted
+  class ADR_2803 accepted
+  class ADR_2804 accepted
+  class ADR_2805 superseded
+  class ADR_2807 accepted
+  class ADR_2810 accepted
+  class ADR_2813 accepted
+  class ADR_2836 accepted
+  class ADR_2839 accepted
+  class ADR_2859 accepted
+  class ADR_2877 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

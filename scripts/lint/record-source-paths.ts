@@ -3,8 +3,8 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
 // Guards the `packages/…` / `scripts/…` source paths named in the records that
-// are meant to stay true — acceptance tests, test perspectives, design docs —
-// against the working tree (Issue #2648).
+// are meant to stay true — acceptance tests and design docs — against the
+// working tree (Issue #2648).
 //
 // A record can name a file that no longer exists and nothing fails. #2604
 // deleted about half of `packages/nest`; eight records kept pointing at the
@@ -15,6 +15,16 @@ import { join, relative, resolve } from "node:path";
 // The existing guards do not reach it: `at:check-coverage` never resolves the
 // unit-test paths inside a `> ✅ Automated —` marker, `adr:check-assumptions`
 // reads ADR *frontmatter* only, and `knip` sees code rather than prose.
+//
+// WHY `docs/test-perspectives/**` IS NOT SCANNED — do not "fix" this by adding
+// it back. Re-adding it would double-check the directory rather than cover a
+// gap. `@kompiro/tpl-tools` v0.0.10 ships the same check as
+// `tpl validate --source-prefix`, down to the marker spelling, and `tpl:validate`
+// runs it over that directory from both Required `Check` jobs. It is the better
+// reader of the two: measured side by side on the same corpus, this guard
+// reports a code span inside a block-quoted fence, and a marker written through
+// a block quote, that tpl-tools correctly ignores (Issue #2810). ADR-2648
+// decision 5 planned this handover and tracked it as tpl-tools#17.
 //
 // WHY `docs/adr/**` IS NOT SCANNED — do not "fix" this by adding it. An ADR
 // body is a record of a decision at its date and is deliberately not rewritten
@@ -36,8 +46,12 @@ import { join, relative, resolve } from "node:path";
 // ADR-2125 retired. A green result means no dangling paths, not that the
 // records describe the code accurately.
 
-/** Directories whose records are expected to stay true. `docs/adr` is excluded — see the header. */
-export const SCANNED_DIRS = ["docs/acceptance", "docs/test-perspectives", "docs/design"];
+/**
+ * Directories whose records are expected to stay true and that no upstream tool
+ * owns. `docs/adr` and `docs/test-perspectives` are both excluded, for different
+ * reasons — see the header.
+ */
+export const SCANNED_DIRS = ["docs/acceptance", "docs/design"];
 
 /**
  * Path segments naming build output. A clean checkout does not have them, so
@@ -293,7 +307,7 @@ export function describeFinding(f: Finding): string {
  */
 export const HOW_TO_FIX = [
   "",
-  "A record under docs/{acceptance,test-perspectives,design} names a source path",
+  "A record under docs/{acceptance,design} names a source path",
   "that is not in the working tree. Repoint it at the successor file, or drop the",
   "reference when the feature is gone.",
   "",

@@ -4278,4 +4278,95 @@ system Test {
     const service = result.value.systems[0].children[0];
     expect(service.tags).toEqual(["my", "-"]);
   });
+
+  // #2707: the lexer used to drop digits, so `team-1` arrived as `team` `-`
+  // and split into two tags. A digit-led fragment now stitches, in every
+  // position that stitches.
+  it("stitches a fragment that starts with a digit", () => {
+    const result = Parser.parse(`
+system S {
+  service A [team-1] @phase-2 {}
+  client App [mobile] {
+    capability p2p-2
+  }
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const [service, client] = result.value.systems[0].children;
+    expect(service.tags).toEqual(["team-1"]);
+    expect(service.annotations).toEqual(["phase-2"]);
+    expect((client as ClientNode).properties.capabilities.map((c) => c.name)).toEqual(["p2p-2"]);
+  });
+
+  it("keeps a tag that starts with a digit as one tag rather than dropping it", () => {
+    // Before #2707 `[2026]` lexed as `[` `]` and the tag vanished. It is a tag
+    // like any other now, and non-builtin, so the resolver warns on it.
+    const result = Parser.parse(`
+system S {
+  service A [2026] {}
+}
+    `);
+    expect(result.value.systems[0].children[0].tags).toEqual(["2026"]);
+  });
+
+  it("does not read an annotation name that starts with a digit", () => {
+    const result = Parser.parse(`
+system S {
+  service A @2026 {}
+}
+    `);
+    expect(result.diagnostics.some((d) => d.severity === "error")).toBe(true);
+    expect(result.value.systems[0].children[0]?.annotations ?? []).toEqual([]);
+  });
+});
+
+describe("digit-led words outside vocabulary positions (#2707)", () => {
+  it("does not retarget an edge to the node its digits were dropped from", () => {
+    // `A -> 2B` used to parse as `A -> B` with no diagnostic: a real node,
+    // a plausible diagram, and the wrong edge.
+    const result = Parser.parse(`
+system S {
+  service A {}
+  service B {}
+  A -> 2B
+}
+    `);
+    expect(result.diagnostics.some((d) => d.severity === "error")).toBe(true);
+    expect(result.value.systems[0].edges.map((e) => `${e.from}->${e.to}`)).not.toContain("A->B");
+  });
+
+  it("does not read a node id that starts with a digit as the rest of the word", () => {
+    const result = Parser.parse(`
+system S {
+  service 2Foo {}
+}
+    `);
+    expect(result.diagnostics.map((d) => d.code)).toContain("expected-node-id");
+    expect(result.value.systems[0].children.map((c) => c.id)).not.toContain("Foo");
+  });
+});
+
+// #2715 / TPL-2715: a range names the document it indexes when the parse was
+// handed a path, so a diagnostic re-derived on a merged model still can.
+describe("Parser source file identity", () => {
+  const SOURCE = `system Shop {\n  service Api\n}\nuser Stray\n`;
+
+  it("stamps the path onto node ranges and diagnostic ranges alike", () => {
+    const result = Parser.parse(SOURCE, "/project/shop.krs");
+
+    expect(result.value.systems[0].loc.file).toBe("/project/shop.krs");
+    expect(result.value.systems[0].children[0].loc.file).toBe("/project/shop.krs");
+    const stray = result.diagnostics.find((d) => d.code === "top-level-declaration");
+    expect(stray?.loc?.file).toBe("/project/shop.krs");
+  });
+
+  // Omitted rather than `undefined`, so every single-document caller (the LSP,
+  // the formatter, 800-odd tests) sees the range shape it saw before.
+  it("leaves the key off entirely when no path is given", () => {
+    const result = Parser.parse(SOURCE);
+
+    expect(Object.keys(result.value.systems[0].loc)).toEqual(["start", "end"]);
+    const stray = result.diagnostics.find((d) => d.code === "top-level-declaration");
+    expect(stray?.loc && Object.keys(stray.loc)).toEqual(["start", "end"]);
+  });
 });

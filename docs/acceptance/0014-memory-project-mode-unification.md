@@ -32,7 +32,7 @@ type: product
 - [x] System ビューに切り替わった後、`realizes` で参照しているサービス（`ECommerce` 等）がハイライト表示されること
 > ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `Clicking a deploy container switches to System with the realizes target highlighted (AC-2.1, AC-2.2, AC-2.3)`
 
-- [x] ハイライトは別のノードをクリックまたはドリルダウンすることで解除されること
+- [x] ハイライトは別のノードのクリック、ドリルダウン、または図の背景のクリックで解除されること（URL hash からも外れる。背景をドラッグしてパンしただけでは解除されない）
 > ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `Clicking a deploy container switches to System with the realizes target highlighted (AC-2.1, AC-2.2, AC-2.3)`
 
 ### AC-3: MemoryModeApp のエディタ連携

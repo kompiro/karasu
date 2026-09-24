@@ -3,7 +3,7 @@
   "treatConfigHintsAsErrors": true,
   "workspaces": {
     ".": {
-      "entry": ["scripts/report/index.ts"],
+      "entry": ["scripts/report/index.ts", "scripts/coderabbit/await-review.ts"],
       "project": ["scripts/**/*.ts"]
     },
     "packages/core": {

@@ -74,6 +74,7 @@ karasu/
 - worktree の作成先は必ず `.claude/worktrees/<branch-name>` とする（例: `git worktree add .claude/worktrees/feat/my-feature feat/my-feature`）
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `spike/` + kebab-case
 - `spike/` はマージを前提としない PoC 用。push すると PR なしで Cloudflare preview にデプロイされる（`docs/process.md`「spike を PR なしで preview で動かす」）
+- spike は `spike/<issue>-<何を測ったか>` と名付け、**その Issue が open なあいだは push して残す**（閉じたら削除）。日付・通し番号・セッション名は入れない（`docs/process.md`「spike の名前と寿命」、[ADR-2859](docs/adr/2859-spike-branch-naming.md)）
 
 ### Issue・PR 記述ルール
 

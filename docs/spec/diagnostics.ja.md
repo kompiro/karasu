@@ -39,6 +39,41 @@ karasu は未解決参照に対し **warn-don't-error**（spec §S6）に従う�
 落とすが、参照元の node は保存し、レンダー全体を失敗させずに warning として報告
 する。
 
+## ソース位置
+
+診断はソース位置（`loc`）を持つことがある。開始位置と終了位置、およびそれらが
+指す文書からなる。
+
+- **位置は 1 始まり。** `line` と `column` は、著者がエディタで見るとおり 1 から
+  数える。別の基準が要る表示面は、自分の境界で 1 度だけ変換する（LSP の 0 始まりの
+  range）。位置を印字するツールは数値をそのまま印字する。
+- **`file` は位置が指す文書を名指す。** プロジェクトは複数ファイルにまたがる。
+  import 先ファイルの診断や、マージ後のモデルで判定される診断（*id の一意性* の
+  cross-file 多重判定、*cross-reference 解決* の参照判定）は、その構文を宣言した
+  ファイルに anchor する。それはエントリとは限らない。プロジェクトを解決する
+  過程で生じる診断は、`loc` を持つかぎり必ず `file` を絶対パスで持つ。
+  `.krs.style` の診断はシートを名指す。
+- **`file` が無いときは、消費者自身の文書として読む。** これが生じるのは単一文書の
+  文脈だけである。LSP は開いている文書を 1 つずつ parse し、`karasu lint-style` は
+  シートを 1 つ読み、`compile` はモデルをソーステキストで受け取る。そうした compile が
+  スタイルシートもテキストで受け取ると、どちらの文書にもパスが無いので、シートの
+  parse 診断はそこでは `loc` を持たない（モデルの位置として読まれる位置を持たせない）。
+- **`loc` を持たない診断は位置を名指さない。** 見つからないファイルに関する診断は、
+  代わりにそのパスをメッセージに含む（`file-not-found`、`style-file-not-found`）。
+  宣言ではなく id を名指すマージ時の事実（`infra-redeclared-across-files`、
+  `system-property-conflict` など）はどちらも持たない。
+
+各表示面は位置を次のように印字する。
+
+| 表示面 | 表示する位置 |
+| --- | --- |
+| CLI（`karasu render` と、そのエラー報告を共有するコマンド） | `<file>:<line>:<column>`。位置に `file` が無いか、`file` がエントリである（正規化したパスで比べる）ときは、ユーザーが打った綴りのエントリ。それ以外はそのファイルを作業ディレクトリからの相対パスで示す。 |
+| CLI（`karasu diff`） | `<line>:<column>`。2 つの入力をコンパイルするコマンドなのでファイルは付けない。 |
+| app のプレビューバナーと warning パネル | 開いている文書の位置、または `file` の無い位置は UI ロケールの行ラベル（英語 `Line <line>`、日本語 `<line> 行目`）。それ以外のファイルは `<path>:<line>`。パスはプロジェクトルートからの相対パスで、プロジェクトの無いモードではエントリのディレクトリからの相対パスになる。比較中のスナップショットは、撮影元のプロジェクト上のパスで示す。 |
+| LSP | 文書自身の range（0 始まり）。LSP は単一文書なので `file` は生じない。 |
+
+> Related TPLs: [TPL-2715](../test-perspectives/TPL-2715-source-position-carries-its-document.md)（位置はそれが指す文書と対で初めてアドレスになる。parse が range を作る場所でファイルを載せ、各表示面はそこから読む）。
+
 ## 規則ファミリー
 
 ### 宣言・edge の配置・構造
@@ -169,6 +204,9 @@ tag / annotation 語彙の v1.x deprecation（構文 v2.0 はツール語彙の�
 | Code | Severity | 発火条件 |
 | --- | --- | --- |
 | `annotation-param-unsupported` | warning | annotation のパラメータ key がその annotation で認識されない。 |
+| `annotation-param-value-unreadable` | warning | 認識される annotation パラメータの値が、文字列リテラル 1 つでも裸の語 1 つでもない（`until: 2026-12-31`、`from: system`、`from: Shop.Legacy`）。何も記録しない。描画は止まらない。AST を出力すると値が消えるため、`karasu fmt` はファイルを書き換えない。 |
+| `annotation-param-conflict` | warning | 1 つの要素が同じ annotation パラメータに異なる 2 つの値を与えている（アノテーションを繰り返した場合も、1 つの中で繰り返した場合も）。最初の値を保ち、`karasu fmt` は最初の値を後の値に上書きして出力せず、ファイルを書き換えない。 |
+| `duplicate-annotation` | warning | 同じ annotation が 1 つの要素に複数回書かれている。2 回目以降は効果を持たない。 |
 | `annotation-possible-typo` | info | annotation 名が builtin の near-match（typo の示唆）。 |
 | `tag-not-builtin` | warning | tag 名がツール語彙（builtin + system-assigned tag）の外にある。v1.x で非推奨。抑制条件なし。 |
 | `tag-not-applicable` | warning | 組み込み tag が適用範囲外の kind に書かれている（例: `service Api [index]` — `[index]` は `database` に適用）。その場所では効果を持たない。`tag-not-builtin` と同時には発火しない（builtin 外の名前には違反する適用範囲が無いため）。 |
@@ -196,6 +234,7 @@ tag / annotation 語彙の v1.x deprecation（構文 v2.0 はツール語彙の�
 | Code | Severity | 発火条件 |
 | --- | --- | --- |
 | `style-unknown-property` | warning | スタイルのプロパティ名が認識されない。 |
+| `style-unknown-icon` | warning | `shape: url("<name>")` がどの登録済みアイコンにも一致せず、ノードが `box` で描かれる。組み込みアイコンは core 自身が登録するので、どの描画面でも同じ結果になる（[TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)）。 |
 | `style-invalid-enum-value` | error | スタイル値が許可された enum に無い。 |
 | `style-invalid-hex-color` | error | スタイルの hex color が不正。 |
 | `style-invalid-length-unit` | error | スタイルの length が許可されない単位を使う。 |
@@ -209,6 +248,8 @@ tag / annotation 語彙の v1.x deprecation（構文 v2.0 はツール語彙の�
 | `style-column-invalid-value` | warning | スタイル `column` 値が `left` / `center` / `right` でない。 |
 | `style-column-ignored-non-system-view` | warning | `column` ヒントが deploy / org ビューに適用される（無視）。 |
 | `style-grid-columns-invalid-value` | warning | スタイル `grid-columns` 値が正の整数でない（ヒントは破棄され、レイアウトは自動バランスにフォールバック）。 |
+
+> Related TPLs: [TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)（`style-unknown-icon` が引くシェイプレジストリの組み込みの中身は core 自身が埋めるので、判定はどの描画面でも同じになる）, [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（パーサが受理する値は効果か診断を持ち、黙って無視されることはない）。
 
 ### client・capability
 

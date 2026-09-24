@@ -8,13 +8,11 @@ import {
 } from "./drill-down-svg.js";
 import { buildAllLayersSvg, buildAllLayersSvgOrg } from "./all-layers-svg.js";
 import { anchorId } from "./svg-renderer.js";
-import { registerBuiltinShapes } from "./shapes.js";
-import { clearRegistry } from "../shapes/shape-registry.js";
 import { Parser } from "../parser/parser.js";
+import { resetRegistryToBuiltins } from "./shapes.js";
 
 beforeEach(() => {
-  clearRegistry();
-  registerBuiltinShapes();
+  resetRegistryToBuiltins();
 });
 
 const ONE_LEVEL = `

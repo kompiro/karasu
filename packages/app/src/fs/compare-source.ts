@@ -49,9 +49,26 @@ export async function resolveCompareSource(
   }
 
   const content = await snapshots.read(source.filePath, source.snapshotId);
-  const viewRoot = `/.snapshot-view/${source.snapshotId}`;
+  const viewRoot = `${SNAPSHOT_VIEW_ROOT}/${source.snapshotId}`;
   const entryPath = `${viewRoot}/${source.filePath}`;
   return { entryPath, fs: new SnapshotOverlayFs(fs, viewRoot, projectRoot, entryPath, content) };
+}
+
+/** Where snapshot content is mounted: `/.snapshot-view/<snapshotId>/<project-relative path>`. */
+const SNAPSHOT_VIEW_ROOT = "/.snapshot-view";
+
+/**
+ * The project-relative path a snapshot-view path stands for, or `null` when
+ * `path` is not under the snapshot mount. Everything below `<snapshotId>/` is
+ * the project-relative path the overlay maps onto the live workspace, so this
+ * is the name a reader knows the file by (#2715).
+ */
+export function snapshotViewRelativePath(path: string): string | null {
+  const prefix = `${SNAPSHOT_VIEW_ROOT}/`;
+  if (!path.startsWith(prefix)) return null;
+  const afterRoot = path.slice(prefix.length);
+  const slash = afterRoot.indexOf("/");
+  return slash === -1 ? null : afterRoot.slice(slash + 1);
 }
 
 /**

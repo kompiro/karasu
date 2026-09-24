@@ -7,7 +7,7 @@ topic: build
 scope:
   packages: [app, cli, docs-site, e2e, lsp, vscode]
   concerns: [dependencies, ci, security]
-related_to: [ADR-2671, ADR-2623, ADR-2474, ADR-2447, ADR-2333, ADR-2152, ADR-784, ADR-128]
+related_to: [ADR-2671, ADR-2658, ADR-2623, ADR-2474, ADR-2447, ADR-2333, ADR-2152, ADR-784, ADR-128]
 assumptions:
   - "file: .github/aw/actions-lock.json"
   - "file: .github/workflows/dependabot-triage.lock.yml"

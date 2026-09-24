@@ -164,6 +164,39 @@ export function getIconDef(name: string): SvgIconDef | undefined {
 }
 
 /**
+ * Where an icon card design puts its pictogram, in the icon's own coordinate
+ * system: a {@link PICTOGRAM_SIZE}-wide group at this offset from the card's
+ * top-left. Every built-in icon declares exactly this
+ * (`<g class="krs-pictogram" transform="translate(6, 4)">`), and the card
+ * renderers place their own copy of it at the same spot rather than each
+ * deriving a corner of their own (TPL-2234).
+ */
+export const PICTOGRAM_OFFSET = { x: 6, y: 4 } as const;
+
+/** The coordinate space a `krs-pictogram` group's contents are drawn in. */
+const PICTOGRAM_SIZE = 20;
+
+/**
+ * The pictogram of a registered icon as an SVG `<g>` placed at `x` / `y`,
+ * drawn at its native {@link PICTOGRAM_SIZE}. Returns undefined when the icon
+ * declares no `krs-pictogram` group.
+ *
+ * This is the whole of a card-design icon that a shape-mode card draws: the
+ * rest of the icon's 160×100 body is its own label / description layout, which
+ * a card measured from text does not use (#2803).
+ */
+export function pictogramGroup(
+  def: SvgIconDef,
+  color: string,
+  x: number,
+  y: number,
+): string | undefined {
+  if (!def.pictogramBody) return undefined;
+  const body = def.builtIn ? def.pictogramBody.replace(/\{\{color\}\}/g, color) : def.pictogramBody;
+  return `<g transform="translate(${x}, ${y})">${body}</g>`;
+}
+
+/**
  * Render the pictogram for a registered icon as an inline SVG string.
  * The returned SVG has a fixed viewBox of "0 0 20 20" and the given pixel size.
  * Returns undefined if the icon or its pictogramBody is not found.
@@ -172,7 +205,11 @@ export function getIconDef(name: string): SvgIconDef | undefined {
  * @param color    - Fill color for {{color}} placeholder (built-in icons only)
  * @param size     - Width and height in pixels (default: 20)
  */
-export function renderPictogram(iconName: string, color: string, size = 20): string | undefined {
+export function renderPictogram(
+  iconName: string,
+  color: string,
+  size = PICTOGRAM_SIZE,
+): string | undefined {
   const def = iconDefRegistry.get(iconName);
   if (!def?.pictogramBody) return undefined;
 
@@ -181,7 +218,32 @@ export function renderPictogram(iconName: string, color: string, size = 20): str
     body = body.replace(/\{\{color\}\}/g, color);
   }
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="${size}" height="${size}">${body}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PICTOGRAM_SIZE} ${PICTOGRAM_SIZE}" width="${size}" height="${size}">${body}</svg>`;
+}
+
+/**
+ * Snap a scale to four decimals *only* when it already is one, to within
+ * floating-point slop — an exact fit computed as `(vw * 0.66) / vw` comes back
+ * as `0.6599999999999999` and would be written out that way.
+ *
+ * A quotient that genuinely repeats (a 24×24 icon in a 160×100 card scales by
+ * `6.666…`) is left exactly as it was, so no transform this registry has ever
+ * emitted changes value — only the noise introduced by re-deriving a scale
+ * from a box does (#2696).
+ */
+function snapScale(n: number): number {
+  const snapped = Number(n.toFixed(4));
+  return Math.abs(n - snapped) < 1e-9 ? snapped : n;
+}
+
+/**
+ * The icon's coordinate system, with the default applied. Every placement of an
+ * icon — its body here, the box the renderer fits that body into, the text
+ * slots positioned on it — has to read the same viewBox, or the drawing and its
+ * text come apart. That is why the default lives in one place.
+ */
+export function iconViewBox(def: SvgIconDef): { width: number; height: number } {
+  return { width: def.viewBoxWidth ?? 24, height: def.viewBoxHeight ?? 24 };
 }
 
 /**
@@ -189,14 +251,13 @@ export function renderPictogram(iconName: string, color: string, size = 20): str
  * The icon body is scaled/translated to fit the node's bounding box.
  */
 export function registerIcon(def: SvgIconDef): void {
-  const vw = def.viewBoxWidth ?? 24;
-  const vh = def.viewBoxHeight ?? 24;
+  const { width: vw, height: vh } = iconViewBox(def);
 
   iconDefRegistry.set(def.name, def);
 
   registerShape(def.name, (ctx) => {
-    const scaleX = ctx.width / vw;
-    const scaleY = ctx.height / vh;
+    const scaleX = snapScale(ctx.width / vw);
+    const scaleY = snapScale(ctx.height / vh);
     let body = def.body;
     if (def.builtIn) {
       body = body

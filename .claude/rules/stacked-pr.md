@@ -57,6 +57,8 @@ workflow の `types:` に `ready_for_review` を足す。** job-level の `if:` 
 job は Required check に success を報告するので、片方だけだと「draft を外した瞬間に、
 一度も走っていない green」になる（[TPL-2643](../../docs/test-perspectives/TPL-2643-skip-reports-success-without-running.md)）。
 
+timeout の置き方は [.claude/rules/workflow-timeouts.md](workflow-timeouts.md) に分けてある。
+
 検証:
 
 ```

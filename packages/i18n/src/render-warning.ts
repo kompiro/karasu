@@ -350,6 +350,11 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         message: t("warning.styleUnknownProperty.message", w.params),
         details: [],
       };
+    case "style-unknown-icon":
+      return {
+        message: t("warning.styleUnknownIcon.message", w.params),
+        details: [],
+      };
     case "cyclic-dependency": {
       const { cyclePath } = w.params;
       const path =

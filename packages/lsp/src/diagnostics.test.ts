@@ -260,4 +260,32 @@ describe("computeDiagnostics — style documents (.krs.style)", () => {
     const diagnostics = computeDiagnostics("node { color: red; }", true);
     expect(diagnostics).toEqual([]);
   });
+
+  // #2715: the style parser's own diagnostics carried no position, so the
+  // editor pinned every sheet syntax error to the top of the document.
+  it("places a style parse error on the offending token's line", () => {
+    // The stray `}` is on line 7 (0-based 6), column 1.
+    const src = "/* 1 */\n/* 2 */\n/* 3 */\nservice {\n  fill: #ffffff;\n}\n}\n";
+    const diagnostics = computeDiagnostics(src, true);
+    const error = diagnostics.find((d) => d.severity === DiagnosticSeverity.Error);
+
+    expect(error?.range.start).toEqual({ line: 6, character: 0 });
+  });
+});
+
+// #2802: the LSP never draws, so before core registered its own icon set an
+// unknown-icon warning here would have been a false positive for every
+// correct name. Now the registry is the same on every surface (TPL-2802).
+describe("computeDiagnostics — url() icon names (.krs.style)", () => {
+  it("warns on a url() that names no registered icon, at the value's range", () => {
+    const diagnostics = computeDiagnostics(`service {\n  shape: url("databse");\n}`, true);
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0].severity).toBe(DiagnosticSeverity.Warning);
+    expect(messageOf(diagnostics[0])).toContain('url("databse")');
+    expect(diagnostics[0].range.start.line).toBe(1);
+  });
+
+  it("is silent for a built-in icon name without any host registration", () => {
+    expect(computeDiagnostics(`service { shape: url("database"); }`, true)).toEqual([]);
+  });
 });

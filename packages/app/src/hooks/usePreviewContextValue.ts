@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { EdgeDirection, NodeMetadata } from "@karasu-tools/core";
+import type { Diagnostic, EdgeDirection, NodeMetadata } from "@karasu-tools/core";
 import type { ActiveView } from "../state/app-reducer.js";
 import type { PreviewContextValue } from "../state/preview-context.js";
 import type { SharePayload } from "../utils/inline-share.js";
@@ -84,6 +84,7 @@ interface UsePreviewContextValueArgs {
   isEntityViewOpen: boolean;
   toggleEntityView: () => void;
   entityViewSvg?: string;
+  entityViewDiagnostics: Diagnostic[];
   hasEntityView: boolean;
 
   styleTargetPath?: string;
@@ -96,6 +97,9 @@ interface UsePreviewContextValueArgs {
   hasKrsSource?: boolean;
   /** Flattens the project into a share payload (PreviewColumn's Share button). */
   getShareBundle?: () => Promise<SharePayload>;
+  /** Names the document a finding's position is in (banner and warning panel, #2715). */
+  currentFilePath: string | null;
+  displayRoot: string | null;
 }
 
 /**
@@ -136,6 +140,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
     isEntityViewOpen,
     toggleEntityView,
     entityViewSvg,
+    entityViewDiagnostics,
     hasEntityView,
     styleTargetPath,
     onPickEdgeDirection,
@@ -143,6 +148,8 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
     onExportDrawio,
     hasKrsSource,
     getShareBundle,
+    currentFilePath,
+    displayRoot,
   } = args;
 
   return useMemo<PreviewContextValue>(
@@ -227,11 +234,14 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       isEntityViewOpen,
       onEntityViewToggle: toggleEntityView,
       entityViewSvg,
+      entityViewDiagnostics,
       hasEntityView,
       styleTargetPath,
       onPickEdgeDirection,
       hasKrsSource,
       getShareBundle,
+      currentFilePath,
+      displayRoot,
     }),
     [
       activeView,
@@ -295,6 +305,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       isEntityViewOpen,
       toggleEntityView,
       entityViewSvg,
+      entityViewDiagnostics,
       hasEntityView,
       styleTargetPath,
       onPickEdgeDirection,
@@ -302,6 +313,8 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       onExportDrawio,
       hasKrsSource,
       getShareBundle,
+      currentFilePath,
+      displayRoot,
     ],
   );
 }
