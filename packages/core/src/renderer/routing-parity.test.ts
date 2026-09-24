@@ -33,6 +33,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { compile } from "../index.js";
 import { layout } from "./layout.js";
 import { layoutDeploy } from "./deploy-layout.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
@@ -740,6 +741,29 @@ ${Array.from({ length: N }, (_s, i) => `  team "t${i}" { label "T${i}" owns S${i
 
   it("no lane spills into a card (TPL-1927 measures both axes together)", () => {
     expect(totalPenetrations(laid())).toBe(0);
+  });
+
+  it("an arc widened for a band is *drawn* as tall as it was widened (#2884)", () => {
+    // The sibling of "an arc that rides a band arches clear of it" above, read
+    // off the SVG instead of the mark. That one passed while the renderer wrote
+    // the constant `HOP_RADIUS` as every arc's `ry` and dropped the height the
+    // layout had computed, so a widened arc was drawn flat inside the band it
+    // hops — the exact reading TPL-2631 exists to prevent, with a green fence
+    // over it. A value the layout computes is only real once the drawing uses
+    // it, so this one measures the drawing (TPL-2803).
+    const result = compile(TRUNK, { diagramType: "system", groupBy: "team" });
+    if (result.diagramType !== "system") throw new Error("expected a system view");
+    const arcs = [...result.svg.matchAll(/A ([\d.]+) ([\d.]+) /g)].map((m) => ({
+      rx: Number(m[1]),
+      ry: Number(m[2]),
+    }));
+    const widened = arcs.filter((a) => a.rx > HOP_RADIUS + 1);
+    // The fixture exists to produce these; without one the loop below is
+    // vacuous (TPL-2598).
+    expect(widened.length).toBeGreaterThan(0);
+    for (const a of widened) {
+      expect(a.ry, `an arc ${a.rx} wide is drawn only ${a.ry} tall`).toBeGreaterThan(HOP_RADIUS);
+    }
   });
 });
 

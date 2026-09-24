@@ -841,9 +841,12 @@ function collapseGlyph(
  *
  * - **hop**: a `<path>` arc that bumps *over* the crossing (crossing = NOT
  *   connected), centred at `(x, y)` and oriented along the host segment via
- *   `angle` (degrees). Elliptical (`rx = halfWidth`, `ry = HOP_RADIUS`) so a
- *   clustered wide hop stays a shallow bump; `sweep = 1` bumps to one side. An
- *   axis-aligned hop (`angle = 0`) renders exactly as the pre-#1939 flat bump.
+ *   `angle` (degrees). Elliptical (`rx = halfWidth`, `ry = HopMark.ry` or
+ *   {@link HOP_RADIUS}) so a clustered wide hop stays a shallow bump;
+ *   `sweep = 1` bumps to one side. An axis-aligned hop (`angle = 0`) renders
+ *   exactly as the pre-#1939 flat bump. The arc's own `ry` is what makes it
+ *   rise out of a trunk band: drawing the constant here instead left a widened
+ *   arc flat inside the band it hops, which reads as a connection (#2884).
  * - **junction**: the merge mark at a trunk elbow (merge = connected), drawn as
  *   a chip carrying the number of edges the spine holds onward from there
  *   (#2883). A bare dot said only that a merge happened, which left the line
@@ -882,7 +885,7 @@ function renderCrossingMarks(
     const stroke = strokeOf(hop.edge);
     parts.push(
       el("path", {
-        d: `M ${x0} ${y0} A ${r(hop.halfWidth)} ${HOP_RADIUS} ${r(hop.angle)} 0 1 ${x1} ${y1}`,
+        d: `M ${x0} ${y0} A ${r(hop.halfWidth)} ${r(hop.ry ?? HOP_RADIUS)} ${r(hop.angle)} 0 1 ${x1} ${y1}`,
         fill: "none",
         stroke: stroke.color,
         "stroke-width": stroke.strokeWidth,
