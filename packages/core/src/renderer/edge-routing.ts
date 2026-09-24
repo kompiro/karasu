@@ -263,6 +263,7 @@ export function renderEdge(
         resolveLabelPosition(edge, style),
         style.labelOffsetX,
         style.labelOffsetY,
+        ownLabelSegment(edge),
       );
     const labelText = el(
       "text",
@@ -362,9 +363,18 @@ export function resolveLabelPosition(edge: LayoutEdge, style: ResolvedEdgeStyle)
  * Offsets are screen-axis (not edge-perpendicular) so a global rule
  * like `edge { label-offset: 0 8px; }` produces a uniform downward
  * shift across the diagram regardless of each edge's slope.
+ *
+ * `ownSegment` narrows the default for a route whose longest segment is shared
+ * with other edges — see {@link ownLabelSegment}.
  */
-function labelAnchor(points: Point[], position: number, offsetX: number, offsetY: number): Point {
-  return labelAnchorWithSegment(points, position, offsetX, offsetY).anchor;
+function labelAnchor(
+  points: Point[],
+  position: number,
+  offsetX: number,
+  offsetY: number,
+  ownSegment?: number,
+): Point {
+  return labelAnchorWithSegment(points, position, offsetX, offsetY, ownSegment).anchor;
 }
 
 /**
@@ -380,11 +390,44 @@ export function labelAnchorWithSegment(
   position: number,
   offsetX: number,
   offsetY: number,
+  /**
+   * Index of a segment the label must sit on, overriding the longest-segment
+   * heuristic. Only consulted on the default path, so an author who sets
+   * `label-position` / `label-offset` still wins (ADR-1184).
+   */
+  ownSegment?: number,
 ): { anchor: Point; segDir: Point } {
   if (position === 0.5 && offsetX === 0 && offsetY === 0) {
+    if (ownSegment !== undefined && ownSegment >= 0 && ownSegment < points.length - 1) {
+      const a = points[ownSegment];
+      const b = points[ownSegment + 1];
+      return {
+        anchor: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+        segDir: segDirAt(points, ownSegment),
+      };
+    }
     return defaultLabelAnchor(points);
   }
   return fractionalLabelAnchor(points, position, offsetX, offsetY);
+}
+
+/**
+ * The segment of an edge's route that belongs to that edge alone, when the rest
+ * of the route is shared with its siblings.
+ *
+ * A trunked edge (#1859 P2c-B) runs: its own stub, then the spine and the
+ * target entry, both of which every sibling draws on the same pixels. The
+ * longest segment is the spine, so the default heuristic puts N siblings' labels
+ * along a line that names none of them: the reader cannot tell which label
+ * belongs to which source. The stub is the one part that does, so the label goes
+ * there (#2883).
+ *
+ * `undefined` for every other edge, which keeps ADR-1184's default anchor and
+ * the byte-stability it was chosen for. The fan-out mirror (#2885) extends this
+ * to the last segment, which is the own part of that shape.
+ */
+export function ownLabelSegment(edge: LayoutEdge): number | undefined {
+  return edge.trunkId !== undefined ? 0 : undefined;
 }
 
 function segDirAt(points: Point[], i: number): Point {

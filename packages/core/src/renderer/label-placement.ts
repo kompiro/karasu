@@ -33,7 +33,7 @@ import type { Point, Rect } from "./edge-geometry.js";
 import type { LayoutEdge, LayoutNode } from "./layout-types.js";
 import type { ResolvedEdgeStyle } from "../types/style.js";
 import { estimateTextWidth } from "./rendering-constants.js";
-import { labelAnchorWithSegment, resolveLabelPosition } from "./edge-routing.js";
+import { labelAnchorWithSegment, ownLabelSegment, resolveLabelPosition } from "./edge-routing.js";
 import { segmentCrossesRect } from "./edge-geometry.js";
 import { BoxGrid, chooseCellSize } from "./spatial-grid.js";
 
@@ -158,11 +158,14 @@ export function buildLabelInputs(
     const style = styleFor(edge, index);
     edgeLines.push(edgeLine(index, points, style.strokeWidth));
     if (!edge.label) return;
+    // The same anchor `renderEdge` will draw, override included: if the two
+    // disagreed, the pass would push the label off a collision it is not at.
     const { anchor, segDir } = labelAnchorWithSegment(
       points,
       resolveLabelPosition(edge, style),
       style.labelOffsetX,
       style.labelOffsetY,
+      ownLabelSegment(edge),
     );
     inputs.push({
       index,

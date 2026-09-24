@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { computeCrossingMarks, HOP_RADIUS, HOP_CLUSTER_GAP } from "./crossing-marks.js";
-import type { CrossingMarks, HopMark, JunctionMark, LayoutEdge } from "./layout-types.js";
+import {
+  computeCrossingMarks,
+  detectMarks,
+  HOP_RADIUS,
+  HOP_CLUSTER_GAP,
+} from "./crossing-marks.js";
+import type { HopMark, JunctionMark, LayoutEdge } from "./layout-types.js";
 
 /** Build a LayoutEdge from a polyline of `[x, y]` points. */
 function poly(points: [number, number][], extra: Partial<LayoutEdge> = {}): LayoutEdge {
@@ -59,7 +64,8 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
     // above it (A joins at y=50 and runs down). The topmost stub (y=50) is the
     // trunk head — a plain L-corner — so it gets NO junction dot. `edge` is the
     // joining stub's index (b = 1) so the dot is coloured like that edge.
-    expect(junctions).toEqual([{ x: 50, y: 80, edge: 1 }]);
+    // The count is what the spine carries on from here: both stubs, in this case.
+    expect(junctions).toEqual([{ x: 50, y: 80, edge: 1, count: 2 }]);
   });
 
   it("does not dot the trunk head (topmost stub is an L-corner, not a merge)", () => {
@@ -75,9 +81,11 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
         { from, to: "DB", trunkId: "DB" },
       );
     const { junctions } = computeCrossingMarks([mk(20, "A"), mk(70, "B"), mk(120, "C")]);
+    // Counting down the spine: below y=70 it carries A and B, below y=120 all
+    // three. The number and the band's width always say the same thing.
     expect(junctions).toEqual([
-      { x: 60, y: 70, edge: 1 },
-      { x: 60, y: 120, edge: 2 },
+      { x: 60, y: 70, edge: 1, count: 2 },
+      { x: 60, y: 120, edge: 2, count: 3 },
     ]);
   });
 
@@ -99,7 +107,127 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
       { from: "B", to: "DB", trunkId: "DB" },
     );
     const { junctions } = computeCrossingMarks([a, b]);
-    expect(junctions).toEqual([{ x: 50, y: 50, edge: 0 }]);
+    // Both stubs share the elbow, so one mark stands for the pair.
+    expect(junctions).toEqual([{ x: 50, y: 50, edge: 0, count: 2 }]);
+  });
+
+  it("keeps a count mark on its own spine when there is nowhere to slide", () => {
+    // Two stubs into a spine only 30px long, with a foreign line crossing it
+    // right where the merge is. The mark has to get off the crossing, and the
+    // only direction it can take is along this spine: a chip that slid past the
+    // ends would be numbering a line that is not there.
+    const a = poly(
+      [
+        [0, 100],
+        [50, 100],
+        [50, 130],
+      ],
+      { from: "A", to: "DB", trunkId: "DB" },
+    );
+    const b = poly(
+      [
+        [0, 115],
+        [50, 115],
+        [50, 130],
+      ],
+      { from: "B", to: "DB", trunkId: "DB" },
+    );
+    const crosser = poly([
+      [20, 115],
+      [90, 115],
+    ]);
+    const { junctions, hops } = computeCrossingMarks([a, b, crosser]);
+    expect(hops.length).toBeGreaterThanOrEqual(1);
+    expect(junctions).toHaveLength(1);
+    const [mark] = junctions;
+    expect(mark.x).toBe(50);
+    expect(mark.y).toBeGreaterThanOrEqual(100);
+    expect(mark.y).toBeLessThanOrEqual(130);
+  });
+
+  it("slides a count mark along its own spine when two trunks share a lane", () => {
+    // Two trunks on one x, with overlapping extents: A runs y=60..100, B runs
+    // y=95..200. A crossing sits exactly on B's merge, so that mark has to move,
+    // and the room is below it — B's own spine reaches y=200 while A's stops at
+    // 100. Matching a mark to a trunk by "same x, y inside" would hand it A's
+    // extent and clamp it to 100, two pixels from the crossing it was moving off.
+    const stub = (fromY: number, endY: number, id: string, from: string) =>
+      poly(
+        [
+          [0, fromY],
+          [50, fromY],
+          [50, endY],
+        ],
+        { from, to: id, trunkId: id },
+      );
+    const crosser = poly([
+      [20, 98],
+      [90, 98],
+    ]);
+    const edges = [
+      stub(60, 100, "A", "A1"),
+      stub(75, 100, "A", "A2"),
+      stub(95, 200, "B", "B1"),
+      stub(98, 200, "B", "B2"),
+      crosser,
+    ];
+    const { junctions, hops } = computeCrossingMarks(edges);
+    expect(hops.length).toBeGreaterThanOrEqual(1);
+    // Each mark's own trunk, read back from the input: `edge` indexes the stub
+    // that merges there, and that stub's `trunkId` names the spine it is on.
+    const extents = new Map<string, { lo: number; hi: number }>([
+      ["A", { lo: 60, hi: 100 }],
+      ["B", { lo: 95, hi: 200 }],
+    ]);
+    expect(junctions.length).toBeGreaterThanOrEqual(2);
+    for (const mark of junctions) {
+      for (const hop of hops) {
+        const covered =
+          Math.abs(hop.x - mark.x) < 9 + hop.halfWidth &&
+          Math.abs(hop.y - mark.y) < 9 + (hop.ry ?? HOP_RADIUS) + 2;
+        expect(covered, `mark at (${mark.x}, ${mark.y}) sits on a hop`).toBe(false);
+      }
+      const own = extents.get(edges[mark.edge].trunkId!)!;
+      expect(
+        mark.y,
+        `mark for ${edges[mark.edge].trunkId} left its own spine`,
+      ).toBeGreaterThanOrEqual(own.lo);
+      expect(mark.y).toBeLessThanOrEqual(own.hi);
+    }
+  });
+
+  it("does not park a count mark on another trunk's chip", () => {
+    // Two trunks on one lane whose merges sit a slide apart: A's mark is at
+    // y=117, B's at y=98 with a crossing on it. Sliding B by the step lands
+    // exactly on A, where two numerals would sit on each other and neither
+    // could be read.
+    const stub = (fromY: number, endY: number, id: string, from: string) =>
+      poly(
+        [
+          [0, fromY],
+          [50, fromY],
+          [50, endY],
+        ],
+        { from, to: id, trunkId: id },
+      );
+    const { junctions } = computeCrossingMarks([
+      stub(100, 200, "A", "A1"),
+      stub(117, 200, "A", "A2"),
+      stub(95, 200, "B", "B1"),
+      stub(98, 200, "B", "B2"),
+      poly([
+        [20, 98],
+        [90, 98],
+      ]),
+    ]);
+    expect(junctions.length).toBeGreaterThanOrEqual(2);
+    for (const a of junctions) {
+      for (const b of junctions) {
+        if (a === b) continue;
+        const overlap = Math.abs(a.x - b.x) < 18 && Math.abs(a.y - b.y) < 18;
+        expect(overlap, `chips at (${a.x}, ${a.y}) and (${b.x}, ${b.y}) overlap`).toBe(false);
+      }
+    }
   });
 
   it("clusters nearby crossings on one horizontal into a single wide hop", () => {
@@ -292,7 +420,10 @@ function mulberry32(seed: number): () => number {
 type Pt = { x: number; y: number };
 type RefSeg = { a: Pt; b: Pt; edge: number; ux: number; uy: number };
 
-function referenceCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
+function referenceCrossingMarks(edges: LayoutEdge[]): {
+  hops: HopMark[];
+  junctions: JunctionMark[];
+} {
   const EPS = 1e-6;
   const segIntersection = (s1: RefSeg, s2: RefSeg): Pt | null => {
     const rx = s1.b.x - s1.a.x;
@@ -314,7 +445,10 @@ function referenceCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
   };
 
   const segs: RefSeg[] = [];
-  const trunkElbows = new Map<string, { x: number; entries: { y: number; edge: number }[] }>();
+  const trunkElbows = new Map<
+    string,
+    { x: number; entries: { y: number; edge: number }[]; endY: number }
+  >();
   edges.forEach((edge, edgeIdx) => {
     if (edge.ghost || edge.cyclic) return;
     const pts: Pt[] = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
@@ -336,7 +470,17 @@ function referenceCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
       const key = `${edge.trunkId}@${elbow.x}`;
       const group = trunkElbows.get(key);
       if (group) group.entries.push({ y: elbow.y, edge: edgeIdx });
-      else trunkElbows.set(key, { x: elbow.x, entries: [{ y: elbow.y, edge: edgeIdx }] });
+      else {
+        // The spine is the vertical run that starts at the elbow, so its far end
+        // is the last point that keeps the elbow's x.
+        let k = 1;
+        while (k + 1 < pts.length && Math.abs(pts[k + 1].x - elbow.x) < EPS) k++;
+        trunkElbows.set(key, {
+          x: elbow.x,
+          entries: [{ y: elbow.y, edge: edgeIdx }],
+          endY: pts[k].y,
+        });
+      }
     }
   });
 
@@ -399,7 +543,7 @@ function referenceCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
 
   const junctionSeen = new Set<string>();
   const junctions: JunctionMark[] = [];
-  for (const { x, entries } of trunkElbows.values()) {
+  for (const { x, entries, endY } of trunkElbows.values()) {
     const minY = Math.min(...entries.map((e) => e.y));
     const headCount = entries.filter((e) => Math.abs(e.y - minY) < EPS).length;
     for (const { y, edge } of entries) {
@@ -408,7 +552,13 @@ function referenceCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
       const key = `${x},${y}`;
       if (junctionSeen.has(key)) continue;
       junctionSeen.add(key);
-      junctions.push({ x, y, edge });
+      // Independently: the spine carries every sibling whose own stretch
+      // (elbow to shared end) contains a point just past this elbow.
+      const probe = y + (endY > minY ? EPS * 10 : -EPS * 10);
+      const count = entries.filter(
+        (e) => Math.min(e.y, endY) < probe && probe < Math.max(e.y, endY),
+      ).length;
+      junctions.push({ x, y, edge, count });
     }
   }
 
@@ -471,9 +621,13 @@ describe("computeCrossingMarks spatial prefilter parity (#2760)", () => {
     const CASES = 500;
     for (let seed = 1; seed <= CASES; seed++) {
       const edges = randomEdges(mulberry32(seed));
-      const actual = computeCrossingMarks(edges);
+      // The prefilter's claim is *which* crossings and merges are found, so that
+      // is what the oracle checks. What a band then forces on those marks (a
+      // wider arc, a count slid off a crossing) is geometry the prefilter has no
+      // say in, and is fenced by `trunk bands and counts` below.
+      const { hops, junctions } = detectMarks(edges);
       const expected = referenceCrossingMarks(edges);
-      expect(actual, `seed ${seed}`).toStrictEqual(expected);
+      expect({ hops, junctions }, `seed ${seed}`).toStrictEqual(expected);
     }
   });
 
@@ -571,7 +725,8 @@ describe("computeCrossingMarks spatial prefilter parity (#2760)", () => {
       ],
     ];
     for (const edges of cases) {
-      expect(computeCrossingMarks(edges)).toStrictEqual(referenceCrossingMarks(edges));
+      const { hops, junctions } = detectMarks(edges);
+      expect({ hops, junctions }).toStrictEqual(referenceCrossingMarks(edges));
     }
   });
 });

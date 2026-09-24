@@ -338,11 +338,37 @@ describe("crossing marks layer (#1859 P2c-C)", () => {
     return r.svg;
   };
 
-  it("emits a crossing-marks layer with junction dots when grouped", () => {
+  it("emits a crossing-marks layer whose merge mark carries the count (#2883)", () => {
     const svg = trunksSvg("team");
     expect(svg).toContain('class="crossing-marks"');
-    // Trunk merges render as connection dots.
-    expect(svg).toContain("<circle");
+    const layer = svg.match(/<g class="crossing-marks">.*?<\/g>/s)?.[0] ?? "";
+    // A merge is a chip with a numeral in it: both trunks here take two edges,
+    // so the spine below each merge carries two. A bare dot said only that a
+    // merge happened, leaving the line below it to read the same at any count.
+    expect(layer).toContain("<circle");
+    expect(layer).toMatch(/<text[^>]*>2<\/text>/);
+  });
+
+  it("draws a band as wide as the count, under the edges (#2883)", () => {
+    const svg = trunksSvg("team");
+    expect(svg).toContain('class="trunk-bands"');
+    // Behind the lines: a band is the backdrop you read a count off, and the
+    // lines stay the thing you follow.
+    expect(svg.indexOf('class="trunk-bands"')).toBeLessThan(svg.indexOf('class="edges"'));
+    const layer = svg.match(/<g class="trunk-bands">.*?<\/g>/s)?.[0] ?? "";
+    // Two edges per trunk, so `TRUNK_BAND_BASE + 1 x TRUNK_BAND_PITCH` wide.
+    expect(layer).toContain('stroke-width="5"');
+    // The stretch into the target is one polyline with the spine it turns from,
+    // which is what makes their corner a join rather than two butted ends.
+    expect(layer).toMatch(/<polyline points="[^"]*,[^"]* [^"]*,[^"]* [^"]*,[^"]*"/);
+  });
+
+  it("has no bands in the ungrouped view, which has no trunks", () => {
+    expect(trunksSvg(undefined)).not.toContain('class="trunk-bands"');
+  });
+
+  it("renders the same bytes for the same input", () => {
+    expect(trunksSvg("team")).toBe(trunksSvg("team"));
   });
 
   it("emits crossing marks in the ungrouped view too, but no junction dots (#1956)", () => {
@@ -369,8 +395,11 @@ describe("crossing marks layer (#1859 P2c-C)", () => {
     });
     if (r.diagramType !== "system") throw new Error("expected system view");
     const layer = r.svg.match(/<g class="crossing-marks">.*?<\/g>/s)?.[0] ?? "";
-    expect(layer).toContain("<circle"); // trunk merge dots present
-    expect(layer).toContain('fill="#dc143c"'); // dot in the edge colour
+    expect(layer).toContain("<circle"); // trunk merge marks present
+    // The chip is punched out of the canvas so it reads as a marker on the line,
+    // so the edge's colour is its outline and its numeral.
+    expect(layer).toContain('stroke="#dc143c"');
+    expect(layer).toContain('fill="#dc143c"');
     expect(layer).not.toContain("#94A3B8"); // not the default slate
   });
 
