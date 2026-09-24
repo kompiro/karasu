@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { layout } from "./layout.js";
 import { computeCrossingMarks } from "./crossing-marks.js";
 import { extractView } from "../view/view-extract.js";
+import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { Parser } from "../parser/parser.js";
 import { diffSystemViewSlices } from "../diff/view-diff.js";
 import type { ResolvedLayoutHints } from "../types/style.js";
@@ -2591,5 +2592,187 @@ system Gateway {
     expect(result.edges.map((e) => `${e.from}->${e.to}`)).toEqual([
       "__collapsed_Shop_external__->Gateway.PaymentService",
     ]);
+  });
+});
+
+describe("the root view draws every derived edge family, not just the declared ones (#2756)", () => {
+  const drawn = (r: { edges: { from: string; to: string }[] }) =>
+    r.edges.map((e) => `${e.from}->${e.to}`).sort();
+
+  // One family per row, spelled the way `docs/spec/` recommends rather than with
+  // an explicit arrow. Each `body` is dropped into a system verbatim, so the same
+  // text can be laid out alone, as the primary system of a root view, and as the
+  // second one.
+  const FAMILIES = [
+    {
+      family: "infra derived from a usecase resource ref",
+      body: `
+  service Api { usecase U { resource Store.T } }
+  database Store { table T }`,
+      expected: ["Api->Store"],
+    },
+    {
+      family: "implicit service edge aggregated from cross-service domain edges",
+      body: `
+  service Api { domain D1 { D1 -> D2 } }
+  service Other { domain D2 }`,
+      expected: ["Api->Other"],
+    },
+    {
+      family: "delivers",
+      body: `
+  service Api { delivers Web }
+  client Web`,
+      expected: ["Api->Web"],
+    },
+  ];
+
+  for (const { family, body, expected } of FAMILIES) {
+    it(`draws ${family} wherever the system sits`, () => {
+      const single = layout(parseAndExtract(`system Alpha {${body}\n}`));
+      // `Beta` is a bare second system: its only job is to push the canvas onto
+      // `layoutMultipleSystems`, which is where the families used to disappear.
+      const asPrimary = layout(
+        parseAndExtract(`system Alpha {${body}\n}\nsystem Beta {\n  service Filler\n}`),
+      );
+      const asSecond = layout(
+        parseAndExtract(`system Beta {\n  service Filler\n}\nsystem Alpha {${body}\n}`),
+      );
+
+      expect(drawn(single)).toEqual(expected);
+      // Both used to come back empty — the primary system's derived edges reached
+      // `ViewSlice.childEdges` and were dropped at layout, and a non-primary
+      // system's were never derived at all.
+      expect(drawn(asPrimary)).toEqual(expected);
+      expect(drawn(asSecond)).toEqual(expected);
+    });
+  }
+
+  it("draws them on the __unassigned__ root a system-less model gets", () => {
+    // `compile.ts` wraps top-level nodes in the `__unassigned__` pseudo-system,
+    // and a lone pseudo-system still takes the multi-system path (it needs its own
+    // labeled frame). So a model that declares no `system` at all was losing every
+    // derived edge too — the same defect, reached without a second system.
+    const systems = withUnassignedSystem(
+      Parser.parse(`
+service Api { usecase U { resource Store.T } }
+database Store { table T }
+`).value,
+    );
+    expect(systems.map((s) => s.id)).toEqual(["__unassigned__"]);
+    expect(drawn(layout(extractView(systems, [])))).toEqual(["Api->Store"]);
+  });
+
+  it("keeps one system's derived edge out of another system's frame", () => {
+    // Ids are only unique per system, and the root view's node map is keyed by
+    // bare id. A single flat edge list filtered by "both endpoints are this
+    // frame's children" would let Alpha's derived `Api->Store` pass Beta's filter
+    // and draw a dependency Beta never expressed. Per-frame edge sets answer it
+    // structurally: Beta declares no resource ref, so Beta gets no edge.
+    const root = layout(
+      parseAndExtract(`
+system Alpha {
+  service Api { usecase U { resource Store.T } }
+  database Store { table T }
+}
+system Beta {
+  service Api
+  database Store { table T }
+}
+`),
+    );
+    expect(drawn(root)).toEqual(["Api->Store"]);
+  });
+
+  it("attaches each frame's own constituents to its aggregated implicit edge", () => {
+    // The detail panel's rows (ADR-463). Two systems aggregate an identical
+    // `Api`→`Other` pair, so a slice-wide map keyed by `from->to#kind` would hold
+    // one entry and both lines would show whichever system was extracted last.
+    const root = layout(
+      parseAndExtract(`
+system Alpha {
+  service Api {
+    domain A1 { A1 -> A2 }
+    domain A3 { A3 -> A2 }
+  }
+  service Other { domain A2 }
+}
+system Beta {
+  service Api {
+    domain B1 { B1 -> B2 }
+    domain B3 { B3 -> B2 }
+  }
+  service Other { domain B2 }
+}
+`),
+    );
+    const implicit = root.edges.filter((e) => e.from === "Api" && e.to === "Other");
+    expect(implicit).toHaveLength(2);
+    const constituents = implicit.map((e) =>
+      (e.domainEdges ?? []).map((d) => `${d.fromDomainId}->${d.toDomainId}`).sort(),
+    );
+    // Each line carries its own system's domain edges and none of the other's.
+    expect(constituents).toEqual([
+      ["A1->A2", "A3->A2"],
+      ["B1->B2", "B3->B2"],
+    ]);
+  });
+
+  it("still re-anchors a cross-system edge onto a category stub", () => {
+    // The derived set keeps only edges whose endpoints are both this frame's
+    // children, so it holds no qualified target at all. #2646's re-anchor reads
+    // the *declared* set for that provenance; taking it from the derived one
+    // would leave the folded endpoint with no source system.
+    const root = layout(
+      parseAndExtract(`
+system Alpha {
+  service Api { usecase U { resource Store.T } }
+  database Store { table T }
+}
+system Beta {
+  service Web
+  Web -> Alpha.Store
+}
+`),
+      { collapsedCategories: new Set<"external" | "infra">(["infra"]) },
+    );
+    // The cross-system endpoint keeps its qualified spelling, exactly as the
+    // #2646 fences above record it; what matters here is that the derived
+    // `Api->Store` now folds onto the same stub beside it.
+    expect(drawn(root)).toEqual([
+      "Api->__collapsed_Alpha_infra__",
+      "Web->Alpha.__collapsed_Alpha_infra__",
+    ]);
+  });
+
+  it("keeps a removed derived edge visible in compare mode", () => {
+    // The multi-system path reads `systemEdges`, so compare mode has to merge
+    // those frames too. Without it the layout would see only the `after` frames
+    // and the deletion would be invisible instead of marked removed.
+    const sliceOf = (krs: string) => extractView(Parser.parse(krs).value.systems, []);
+    const before = sliceOf(`
+system Alpha {
+  service Api { usecase U { resource Store.T } }
+  database Store { table T }
+}
+system Beta {
+  service Svc { usecase V { resource BStore.T } }
+  database BStore { table T }
+}
+`);
+    const after = sliceOf(`
+system Alpha {
+  service Api
+  database Store { table T }
+}
+system Beta {
+  service Svc { usecase V { resource BStore.T } }
+  database BStore { table T }
+}
+`);
+    const merged = diffSystemViewSlices(before, after);
+    expect(drawn(layout(merged.slice))).toEqual(["Api->Store", "Svc->BStore"]);
+    expect(merged.edges.get("Api->Store")?.state).toBe("removed");
+    expect(merged.edges.get("Svc->BStore")?.state).toBe("unchanged");
   });
 });

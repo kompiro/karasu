@@ -1042,11 +1042,16 @@ function layoutMultipleSystems(
     // unassigned top-level domains merged in by extractView (legacy back-compat
     // for direct callers that pre-date the "Unassigned" pseudo-system).
     const systemNodes = si === 0 ? viewSlice.childNodes : sys.children;
-    // This path lays each system out from its own edges rather than from
-    // `viewSlice.childEdges`, so it lifts the child-anchored ones itself —
-    // otherwise `service S1 { S1 -> S2 }` survives extraction and is dropped
-    // here, on the multi-system and `__unassigned__` roots (#2223).
-    const systemRawEdges = withChildAnchoredEdges(sys);
+    // The frame's edge set, as extraction derived it for *this* system (#2756).
+    // Every family reaches the frame this way — infra edges from `resource`,
+    // implicit service edges, `delivers` — where re-deriving here from
+    // `sys.edges` saw only what the model declared with an arrow, so a root view
+    // with more than one system (and the `__unassigned__` root a system-less
+    // model gets) drew disconnected boxes. ADR-2223 patched the child-anchored
+    // family the same way, one stage too low; the fallback keeps that patch as
+    // the answer for a hand-built slice that carries no `systemEdges`.
+    const systemFrame = viewSlice.systemEdges?.get(sys.id);
+    const systemRawEdges = systemFrame?.edges ?? withChildAnchoredEdges(sys);
     // Category collapse (#1821), with the same edge re-targeting the
     // single-system path applies (#1872, #2646): fold this system's
     // external/infra tier to a `⊕ N` stub and re-anchor the edges that crossed
@@ -1142,7 +1147,11 @@ function layoutMultipleSystems(
       const prior = crossSystemRemapUnscoped.get(n.id);
       crossSystemRemapUnscoped.set(n.id, prior === undefined || prior === mapped ? mapped : null);
     }
-    for (const e of systemRawEdges) {
+    // Read from the declared set, not `systemRawEdges`: a frame's derived set
+    // keeps only edges whose endpoints are both this frame's children, so every
+    // qualified target is filtered out of it. Taking the provenance from there
+    // would leave #2646's collapsed-endpoint re-anchor with no source system.
+    for (const e of withChildAnchoredEdges(sys)) {
       if (e.to.includes(".")) crossSystemSource.set(e, sys.id);
     }
 
@@ -1304,6 +1313,16 @@ function layoutMultipleSystems(
       if (idSet.has(edge.from) && idSet.has(edge.to)) {
         const le = computeEdgePoints(edge, allLayoutNodes, layers, sideExternals);
         if (le) {
+          // The constituents behind an aggregated implicit service edge, from
+          // *this* frame's map (#2756). `computeLayoutEdges` does the same for
+          // the single-system path; without it here the detail panel opens empty
+          // on every line the root view newly draws. Reading a per-frame map
+          // rather than the slice-wide one is what keeps two systems that both
+          // aggregate an `Api`→`Store` pair from showing each other's rows.
+          const domainEdges = systemFrame?.implicitEdgeDetails.get(
+            `${edge.from}->${edge.to}#${edge.kind}`,
+          );
+          if (domainEdges) le.domainEdges = domainEdges;
           systemEdges.push(le);
           allEdges.push(le);
         }

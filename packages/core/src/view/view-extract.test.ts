@@ -2390,3 +2390,76 @@ system EC {
     });
   });
 });
+
+describe("per-system-frame edge sets on the root view (#2756)", () => {
+  const TWO_SYSTEMS = `
+system Alpha {
+  service Api { usecase U { resource Store.T } }
+  database Store { table T }
+}
+system Beta {
+  service Svc { usecase V { resource BStore.T } }
+  database BStore { table T }
+}
+`;
+
+  const pairs = (edges: readonly KrsEdge[]) => edges.map((e) => `${e.from}->${e.to}`);
+
+  it("derives a frame for every system, not only the primary one", () => {
+    const slice = extractView(parseSystem(TWO_SYSTEMS), []);
+    expect([...slice.systemEdges!.keys()]).toEqual(["Alpha", "Beta"]);
+    expect(pairs(slice.systemEdges!.get("Alpha")!.edges)).toEqual(["Api->Store"]);
+    // This one used to be empty: the derivation helpers only ever ran on
+    // `systems[0]`, so a second system's `resource` ref produced nothing at all.
+    expect(pairs(slice.systemEdges!.get("Beta")!.edges)).toEqual(["Svc->BStore"]);
+  });
+
+  it("makes childEdges the union over the frames", () => {
+    // `childEdges` is what `assignEdgeCanonicalIds` and `resolveStyles`'
+    // `extraEdges` read, so the union is how a newly drawn derived edge gets a
+    // canonical id and a resolved style. It is never a layout input on this path.
+    const slice = extractView(parseSystem(TWO_SYSTEMS), []);
+    expect(pairs(slice.childEdges)).toEqual(["Api->Store", "Svc->BStore"]);
+    expect(pairs(slice.childEdges)).toEqual([
+      ...pairs(slice.systemEdges!.get("Alpha")!.edges),
+      ...pairs(slice.systemEdges!.get("Beta")!.edges),
+    ]);
+  });
+
+  it("keeps each frame's implicit-edge constituents separate", () => {
+    const slice = extractView(
+      parseSystem(`
+system Alpha {
+  service Api {
+    domain A1 { A1 -> A2 }
+    domain A3 { A3 -> A2 }
+  }
+  service Other { domain A2 }
+}
+system Beta {
+  service Api {
+    domain B1 { B1 -> B2 }
+    domain B3 { B3 -> B2 }
+  }
+  service Other { domain B2 }
+}
+`),
+      [],
+    );
+    // Both frames aggregate an `Api`→`Other` pair, so the key is identical in
+    // each. Held per frame, the two sets stay distinct; merged into one map they
+    // would overwrite and the last system extracted would supply both.
+    const key = "Api->Other#sync";
+    const of = (sys: string) =>
+      (slice.systemEdges!.get(sys)!.implicitEdgeDetails.get(key) ?? []).map(
+        (d) => `${d.fromDomainId}->${d.toDomainId}`,
+      );
+    expect(of("Alpha")).toEqual(["A1->A2", "A3->A2"]);
+    expect(of("Beta")).toEqual(["B1->B2", "B3->B2"]);
+  });
+
+  it("leaves frames off a drill-down view", () => {
+    const slice = extractView(parseSystem(TWO_SYSTEMS), ["Alpha", "Api"]);
+    expect(slice.systemEdges).toBeUndefined();
+  });
+});

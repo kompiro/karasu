@@ -1,5 +1,5 @@
 import type { KrsEdge, KrsNode } from "../types/ast.js";
-import type { DomainEdgeDetail, ViewSlice } from "../view/view-extract.js";
+import type { DomainEdgeDetail, SystemFrameEdges, ViewSlice } from "../view/view-extract.js";
 
 export type DiffState = "unchanged" | "added" | "removed" | "changed";
 
@@ -134,19 +134,16 @@ function detailKey(d: DomainEdgeDetail): string {
  * diff meta to `changed` with a `changes.domainEdges` payload.
  */
 function diffImplicitEdgeDetails(
-  before: ViewSlice,
-  after: ViewSlice,
+  before: ReadonlyMap<string, DomainEdgeDetail[]>,
+  after: ReadonlyMap<string, DomainEdgeDetail[]>,
   edgeDiff: Map<string, EdgeDiffMeta>,
 ): Map<string, DomainEdgeDetail[]> {
   const merged = new Map<string, DomainEdgeDetail[]>();
-  const keys = new Set<string>([
-    ...before.implicitEdgeDetails.keys(),
-    ...after.implicitEdgeDetails.keys(),
-  ]);
+  const keys = new Set<string>([...before.keys(), ...after.keys()]);
 
   for (const key of keys) {
-    const b = before.implicitEdgeDetails.get(key);
-    const a = after.implicitEdgeDetails.get(key);
+    const b = before.get(key);
+    const a = after.get(key);
     // Derive the view-diff edge key (strip `#kind`) for looking up EdgeDiffMeta.
     const hashIdx = key.indexOf("#");
     const edgeDiffKey = hashIdx === -1 ? key : key.slice(0, hashIdx);
@@ -204,6 +201,46 @@ function diffImplicitEdgeDetails(
 }
 
 /**
+ * Merge the per-system-frame edge sets of the two slices (#2756), frame by frame.
+ *
+ * Needed because the multi-system layout reads `systemEdges`, not `childEdges`:
+ * without the merge, compare mode on a multi-system root would hand the layout
+ * only the `after` frames, and every *removed* derived edge would vanish from the
+ * drawing — the same silent drop this fix is closing, re-opened one mode over.
+ *
+ * A frame present on one side only is carried through as-is, so a system added or
+ * deleted between the two revisions keeps its edges. `undefined` when neither
+ * slice has frames, which is every view but the root one.
+ */
+function diffSystemFrames(
+  before: ViewSlice,
+  after: ViewSlice,
+  edgeDiff: Map<string, EdgeDiffMeta>,
+): ReadonlyMap<string, SystemFrameEdges> | undefined {
+  const b = before.systemEdges;
+  const a = after.systemEdges;
+  if (!b && !a) return undefined;
+  const merged = new Map<string, SystemFrameEdges>();
+  for (const systemId of new Set([...(b?.keys() ?? []), ...(a?.keys() ?? [])])) {
+    const bf = b?.get(systemId);
+    const af = a?.get(systemId);
+    if (!bf || !af) {
+      merged.set(systemId, af ?? bf!);
+      continue;
+    }
+    merged.set(systemId, {
+      edges: diffEdgeArray(bf.edges, af.edges, edgeDiff),
+      implicitEdgeDetails: diffImplicitEdgeDetails(
+        bf.implicitEdgeDetails,
+        af.implicitEdgeDetails,
+        edgeDiff,
+      ),
+    });
+  }
+  return merged;
+}
+
+/**
  * Produce a union ViewSlice of two system view slices plus per-element diff state.
  *
  * The merged slice contains every node and edge from either side, ordered with
@@ -248,7 +285,12 @@ export function diffSystemViewSlices(before: ViewSlice, after: ViewSlice): Diffe
     ghostEntityEdges: after.ghostEntityEdges,
     resourceLabelMap: after.resourceLabelMap,
     resourceInferredTagsMap: after.resourceInferredTagsMap,
-    implicitEdgeDetails: diffImplicitEdgeDetails(before, after, edgeDiff),
+    implicitEdgeDetails: diffImplicitEdgeDetails(
+      before.implicitEdgeDetails,
+      after.implicitEdgeDetails,
+      edgeDiff,
+    ),
+    systemEdges: diffSystemFrames(before, after, edgeDiff),
     expandedFrames: after.expandedFrames,
   };
 
