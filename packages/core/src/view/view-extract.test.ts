@@ -3,6 +3,8 @@ import { extractView, extractEntityView } from "./view-extract.js";
 import { layout } from "../renderer/layout.js";
 import { withUnassignedSystem } from "./unassigned-system.js";
 import { Parser } from "../parser/parser.js";
+import { resolveStyles } from "../resolver/style-resolver.js";
+import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import type { KrsEdge, KrsNode } from "../types/ast.js";
 
 function parseSystem(krs: string): KrsNode[] {
@@ -2461,5 +2463,48 @@ system Beta {
   it("leaves frames off a drill-down view", () => {
     const slice = extractView(parseSystem(TWO_SYSTEMS), ["Alpha", "Api"]);
     expect(slice.systemEdges).toBeUndefined();
+  });
+});
+
+describe("derived edges on every frame reach style resolution (#2756)", () => {
+  // `compile.ts` hands `viewSlice.childEdges` to `resolveStyles` as `extraEdges`,
+  // and that is the only way a derived edge gets a style at all: it has no
+  // declaration in the model for the cascade to walk to. So making `childEdges`
+  // the union over the frames is what keeps a newly drawn derived edge from
+  // rendering with the default stroke instead of the `[implicit]` amber or the
+  // `[async]` dash. The design doc calls this constraint the factor that decided
+  // between the options, so it gets its own fence (TPL-1666's neighbour).
+  const TWO_SYSTEMS_WITH_IMPLICIT = `
+system Alpha {
+  service Api { domain A1 { A1 -> A2 } }
+  service Other { domain A2 }
+}
+system Beta {
+  service Svc { domain B1 { B1 --> B2 } }
+  service Peer { domain B2 }
+}
+`;
+
+  it("resolves the implicit style for a non-primary system's derived edge", () => {
+    const slice = extractView(parseSystem(TWO_SYSTEMS_WITH_IMPLICIT), []);
+    const styles = resolveStyles(
+      parseSystem(TWO_SYSTEMS_WITH_IMPLICIT),
+      [getBuiltinStyleSheet()],
+      undefined,
+      undefined,
+      undefined,
+      slice.childEdges,
+    );
+
+    // Alpha's derived edge is sync, Beta's is async: both are `[implicit]`, so
+    // both take the derivation colour, and only the async one is dashed. Before
+    // the union, Beta's edge was not in `childEdges` at all and missed entirely.
+    const alpha = styles.edges.get("Api->Other#sync");
+    const beta = styles.edges.get("Svc->Peer#async");
+    expect(alpha).toBeDefined();
+    expect(beta).toBeDefined();
+    expect(beta!.color).toBe(alpha!.color);
+    expect(beta!.strokeStyle).toBe("dashed");
+    expect(alpha!.strokeStyle).not.toBe("dashed");
   });
 });
