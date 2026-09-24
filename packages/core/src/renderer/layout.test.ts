@@ -2372,7 +2372,7 @@ describe("layout > crossing marks are computed once, on the final placement (#27
     const result = layout(parseAndExtract("system A {}\nsystem B {}"));
     expect(result.nodes.size).toBe(0);
     expect(result.edges).toEqual([]);
-    expect(result.crossingMarks).toEqual({ hops: [], junctions: [] });
+    expect(result.crossingMarks).toEqual({ hops: [], junctions: [], bands: [] });
     expect(marksSpy).toHaveBeenCalledTimes(1);
   });
 });
