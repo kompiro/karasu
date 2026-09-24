@@ -80,6 +80,10 @@ examples のどのモデルもトランクを作らない（全モード `0 trun
 
   > ✅ Automated — `packages/core/src/renderer/crossing-marks.test.ts` › `computeCrossingMarks (#1859 P2c-C)` › `slides a count mark along its own spine when two trunks share a lane`
 
+- [x] AT-P: 退避先は他のトランクのチップの上を避ける（両方を避けられない場合は交差から外れる方を採る。交差の上に乗るチップは「交差は接続だ」と嘘をつくが、チップ同士の重なりは数字が読めなくなるだけ）
+
+  > ✅ Automated — `packages/core/src/renderer/crossing-marks.test.ts` › `computeCrossingMarks (#1859 P2c-C)` › `does not park a count mark on another trunk's chip`
+
 ### AC-5: 幾何と決定性
 
 - [x] AT-L: 同じ入力が同じバイト列を描く

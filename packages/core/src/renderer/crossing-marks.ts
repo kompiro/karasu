@@ -460,25 +460,60 @@ function clearMarksOfBands(
     }
   }
   for (const mark of junctions) {
-    // Sliding is only ever along the spine the mark belongs to: a chip that left
-    // it would be numbering a line that is not there. On a spine too short to
-    // get clear, the mark stays on it and overlaps rather than wandering off.
-    const spine = spineOf(mark, trunks);
-    const onSpine = (y: number) => (spine ? Math.min(Math.max(y, spine.lo), spine.hi) : y);
-    for (let attempt = 0; attempt < 8; attempt++) {
-      const clash = hops.find((hop) => covers(mark, hop));
-      if (!clash) break;
-      // Away from the crossing first; if that end of the spine is already
-      // reached, the other way round. One direction alone would give up at a
-      // bound while the room was on the other side.
-      const away = clash.y >= mark.y ? -JUNCTION_SLIDE : JUNCTION_SLIDE;
-      const next = [mark.y + away, mark.y - away]
-        .map(onSpine)
-        .find((y) => Math.abs(y - mark.y) > EPS);
-      if (next === undefined) break;
-      mark.y = next;
+    slideOffCrossings(mark, hops, junctions, spineOf(mark, trunks));
+  }
+}
+
+/**
+ * Move a count mark off any crossing it covers, along the spine it belongs to.
+ *
+ * A search rather than a walk: stepping one offset at a time and re-deciding
+ * from there oscillates, because the direction "away from the crossing" flips
+ * once the mark passes it. Here every reachable spot is proposed at once,
+ * nearest first and away from the crossing before towards it, and the first
+ * good one is taken.
+ *
+ * Good means clear of the crossing *and* of every other count mark. Where no
+ * spot is clear of both, being off the crossing wins: a chip on a crossing says
+ * the crossing is a connection, while two chips on each other only hide a
+ * number. Where nothing is clear at all, the mark stays where the merge is.
+ */
+function slideOffCrossings(
+  mark: JunctionMark,
+  hops: readonly HopMark[],
+  junctions: readonly JunctionMark[],
+  spine: { lo: number; hi: number } | undefined,
+): void {
+  const covered = (y: number) => hops.some((hop) => covers({ ...mark, y }, hop));
+  if (!covered(mark.y)) return;
+  const base = mark.y;
+  const onSpine = (y: number) => (spine ? Math.min(Math.max(y, spine.lo), spine.hi) : y);
+  // Away from the nearest crossing first, so the mark moves the way a reader
+  // would expect, and nearest first so it stays as close to the merge as it can.
+  const clash = hops.find((hop) => covers(mark, hop))!;
+  const dirs = clash.y >= base ? [-1, 1] : [1, -1];
+  const candidates: number[] = [];
+  for (let step = 1; step <= JUNCTION_SLIDE_STEPS; step++) {
+    for (const dir of dirs) {
+      const y = onSpine(base + dir * step * JUNCTION_SLIDE);
+      if (Math.abs(y - base) > EPS && !candidates.some((c) => Math.abs(c - y) < EPS)) {
+        candidates.push(y);
+      }
     }
   }
+  const free = candidates.filter((y) => !covered(y));
+  const best = free.find((y) => clearOfChips(mark, y, junctions)) ?? free[0];
+  if (best !== undefined) mark.y = best;
+}
+
+/** Whether `y` keeps `mark` a chip's width clear of every other count mark. */
+function clearOfChips(mark: JunctionMark, y: number, junctions: readonly JunctionMark[]): boolean {
+  return junctions.every(
+    (other) =>
+      other === mark ||
+      Math.abs(other.x - mark.x) >= JUNCTION_CHIP_RADIUS * 2 ||
+      Math.abs(other.y - y) >= JUNCTION_CHIP_RADIUS * 2,
+  );
 }
 
 /** The stretch of spine a count mark may slide along: its trunk's own extent. */
@@ -522,8 +557,9 @@ function onBand(hop: HopMark, band: TrunkBand, half: number): boolean {
   return false;
 }
 
-/** How far a count mark slides along the spine to get off a crossing. */
+/** How far a count mark slides along the spine to get off a crossing, and how far it may go. */
 const JUNCTION_SLIDE = JUNCTION_CHIP_RADIUS + 10;
+const JUNCTION_SLIDE_STEPS = 8;
 
 /** Whether the count mark drawn at `mark` would cover `hop`'s arc. */
 function covers(mark: JunctionMark, hop: HopMark): boolean {

@@ -196,6 +196,40 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
     }
   });
 
+  it("does not park a count mark on another trunk's chip", () => {
+    // Two trunks on one lane whose merges sit a slide apart: A's mark is at
+    // y=117, B's at y=98 with a crossing on it. Sliding B by the step lands
+    // exactly on A, where two numerals would sit on each other and neither
+    // could be read.
+    const stub = (fromY: number, endY: number, id: string, from: string) =>
+      poly(
+        [
+          [0, fromY],
+          [50, fromY],
+          [50, endY],
+        ],
+        { from, to: id, trunkId: id },
+      );
+    const { junctions } = computeCrossingMarks([
+      stub(100, 200, "A", "A1"),
+      stub(117, 200, "A", "A2"),
+      stub(95, 200, "B", "B1"),
+      stub(98, 200, "B", "B2"),
+      poly([
+        [20, 98],
+        [90, 98],
+      ]),
+    ]);
+    expect(junctions.length).toBeGreaterThanOrEqual(2);
+    for (const a of junctions) {
+      for (const b of junctions) {
+        if (a === b) continue;
+        const overlap = Math.abs(a.x - b.x) < 18 && Math.abs(a.y - b.y) < 18;
+        expect(overlap, `chips at (${a.x}, ${a.y}) and (${b.x}, ${b.y}) overlap`).toBe(false);
+      }
+    }
+  });
+
   it("clusters nearby crossings on one horizontal into a single wide hop", () => {
     const h = poly([
       [0, 30],
