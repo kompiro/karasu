@@ -464,13 +464,19 @@ function clearMarksOfBands(
     // it would be numbering a line that is not there. On a spine too short to
     // get clear, the mark stays on it and overlaps rather than wandering off.
     const spine = spineOf(mark, trunks);
+    const onSpine = (y: number) => (spine ? Math.min(Math.max(y, spine.lo), spine.hi) : y);
     for (let attempt = 0; attempt < 8; attempt++) {
       const clash = hops.find((hop) => covers(mark, hop));
       if (!clash) break;
-      const next = mark.y + (clash.y >= mark.y ? -JUNCTION_SLIDE : JUNCTION_SLIDE);
-      const clamped = spine ? Math.min(Math.max(next, spine.lo), spine.hi) : next;
-      if (Math.abs(clamped - mark.y) < EPS) break;
-      mark.y = clamped;
+      // Away from the crossing first; if that end of the spine is already
+      // reached, the other way round. One direction alone would give up at a
+      // bound while the room was on the other side.
+      const away = clash.y >= mark.y ? -JUNCTION_SLIDE : JUNCTION_SLIDE;
+      const next = [mark.y + away, mark.y - away]
+        .map(onSpine)
+        .find((y) => Math.abs(y - mark.y) > EPS);
+      if (next === undefined) break;
+      mark.y = next;
     }
   }
 }
@@ -482,9 +488,18 @@ function spineOf(
 ): { lo: number; hi: number } | undefined {
   for (const trunk of trunks) {
     if (Math.abs(trunk.x - mark.x) > EPS) continue;
+    // The mark was made from one of this trunk's entries, so ownership is exact.
+    // Matching on the spine's x and a containing y instead would hand a mark the
+    // extent of a *different* trunk wherever two share a lane and overlap, and
+    // clamp it to a stretch it does not belong to.
+    // The mark was made from one of this trunk's entries, so ownership is exact.
+    // Matching on the spine's x and a containing y instead would hand a mark the
+    // extent of a *different* trunk wherever two share a lane and overlap, and
+    // clamp it to a stretch it does not belong to.
+    if (!trunk.entries.some((e) => e.edge === mark.edge)) continue;
     const lo = Math.min(...trunk.entries.map((e) => e.y), trunk.endY);
     const hi = Math.max(...trunk.entries.map((e) => e.y), trunk.endY);
-    if (mark.y >= lo - EPS && mark.y <= hi + EPS) return { lo, hi };
+    return { lo, hi };
   }
   return undefined;
 }

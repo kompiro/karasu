@@ -145,6 +145,57 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
     expect(mark.y).toBeLessThanOrEqual(130);
   });
 
+  it("slides a count mark along its own spine when two trunks share a lane", () => {
+    // Two trunks on one x, with overlapping extents: A runs y=60..100, B runs
+    // y=95..200. A crossing sits exactly on B's merge, so that mark has to move,
+    // and the room is below it — B's own spine reaches y=200 while A's stops at
+    // 100. Matching a mark to a trunk by "same x, y inside" would hand it A's
+    // extent and clamp it to 100, two pixels from the crossing it was moving off.
+    const stub = (fromY: number, endY: number, id: string, from: string) =>
+      poly(
+        [
+          [0, fromY],
+          [50, fromY],
+          [50, endY],
+        ],
+        { from, to: id, trunkId: id },
+      );
+    const crosser = poly([
+      [20, 98],
+      [90, 98],
+    ]);
+    const edges = [
+      stub(60, 100, "A", "A1"),
+      stub(75, 100, "A", "A2"),
+      stub(95, 200, "B", "B1"),
+      stub(98, 200, "B", "B2"),
+      crosser,
+    ];
+    const { junctions, hops } = computeCrossingMarks(edges);
+    expect(hops.length).toBeGreaterThanOrEqual(1);
+    // Each mark's own trunk, read back from the input: `edge` indexes the stub
+    // that merges there, and that stub's `trunkId` names the spine it is on.
+    const extents = new Map<string, { lo: number; hi: number }>([
+      ["A", { lo: 60, hi: 100 }],
+      ["B", { lo: 95, hi: 200 }],
+    ]);
+    expect(junctions.length).toBeGreaterThanOrEqual(2);
+    for (const mark of junctions) {
+      for (const hop of hops) {
+        const covered =
+          Math.abs(hop.x - mark.x) < 9 + hop.halfWidth &&
+          Math.abs(hop.y - mark.y) < 9 + (hop.ry ?? HOP_RADIUS) + 2;
+        expect(covered, `mark at (${mark.x}, ${mark.y}) sits on a hop`).toBe(false);
+      }
+      const own = extents.get(edges[mark.edge].trunkId!)!;
+      expect(
+        mark.y,
+        `mark for ${edges[mark.edge].trunkId} left its own spine`,
+      ).toBeGreaterThanOrEqual(own.lo);
+      expect(mark.y).toBeLessThanOrEqual(own.hi);
+    }
+  });
+
   it("clusters nearby crossings on one horizontal into a single wide hop", () => {
     const h = poly([
       [0, 30],

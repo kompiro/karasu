@@ -76,6 +76,10 @@ examples のどのモデルもトランクを作らない（全モード `0 trun
 
   > ✅ Automated — `packages/core/src/renderer/crossing-marks.test.ts` › `computeCrossingMarks (#1859 P2c-C)` › `keeps a count mark on its own spine when there is nowhere to slide`
 
+- [x] AT-O: 退避先は「そのマークのトランク」の範囲で決まる（同じ lane に 2 つのトランクが重なって載っている場合でも、別のトランクの範囲へは寄らない）。逃げる向きは交差から離れる側を先に試し、そこが端なら反対側を試す
+
+  > ✅ Automated — `packages/core/src/renderer/crossing-marks.test.ts` › `computeCrossingMarks (#1859 P2c-C)` › `slides a count mark along its own spine when two trunks share a lane`
+
 ### AC-5: 幾何と決定性
 
 - [x] AT-L: 同じ入力が同じバイト列を描く
