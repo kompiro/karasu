@@ -564,6 +564,51 @@ describe("interior corridors shorten detours (#2365)", () => {
   );
 });
 
+/**
+ * For each hop, how far its arc's crown can rise before it lands on a line that
+ * is *not* the one being hopped — the corridor the arc has to fit in.
+ *
+ * A ray cast from the hop centre along the crown normal, so it is monotone in
+ * the radius: an arc of radius r reaches a neighbour exactly when r >= the
+ * clearance. Counting "arcs that touch a neighbour at radius r" instead is not
+ * monotone, because past a certain r the crown passes through the neighbour and
+ * out the other side, and the count drops again.
+ *
+ * Band-widened arcs (`ry` set) are left out: they are deliberately taller than
+ * the corridor so they escape the band they ride, which TPL-2631 ranks above
+ * staying clear of a neighbour.
+ */
+function crownClearances(res: LayoutResult): number[] {
+  const segs: { a: Point; b: Point; edge: number }[] = [];
+  res.edges.forEach((e, i) => {
+    const pts = pointsOf(e);
+    for (let k = 1; k < pts.length; k++) segs.push({ a: pts[k - 1]!, b: pts[k]!, edge: i });
+  });
+  const out: number[] = [];
+  for (const hop of res.crossingMarks?.hops ?? []) {
+    if (hop.ry !== undefined) continue;
+    const rad = (hop.angle * Math.PI) / 180;
+    const nx = -Math.sin(rad);
+    const ny = Math.cos(rad);
+    let best = Infinity;
+    for (const seg of segs) {
+      if (seg.edge === hop.edge) continue;
+      const dx = seg.b.x - seg.a.x;
+      const dy = seg.b.y - seg.a.y;
+      // Ray (hop + t*n) against segment (a + u*d): t >= 0 and 0 <= u <= 1.
+      const den = nx * dy - ny * dx;
+      if (Math.abs(den) < 1e-9) continue;
+      const t = ((seg.a.x - hop.x) * dy - (seg.a.y - hop.y) * dx) / den;
+      const u = ((seg.a.x - hop.x) * ny - (seg.a.y - hop.y) * nx) / den;
+      // t <= 1 is the line being hopped, which runs through the hop centre.
+      if (t <= 1 || u < 0 || u > 1) continue;
+      if (t < best) best = t;
+    }
+    if (Number.isFinite(best)) out.push(best);
+  }
+  return out;
+}
+
 describe("fan-in trunk — count fence (#2883, TPL-2598 / TPL-2631 / TPL-2385)", () => {
   // Six services in six teams writing to one shared target, so the trunk's spine
   // carries two, three, four, five and finally six edges on its way down. Three
@@ -764,6 +809,47 @@ ${Array.from({ length: N }, (_s, i) => `  team "t${i}" { label "T${i}" owns S${i
     for (const a of widened) {
       expect(a.ry, `an arc ${a.rx} wide is drawn only ${a.ry} tall`).toBeGreaterThan(HOP_RADIUS);
     }
+  });
+});
+
+describe("hop arc radius — corridor fence (#2884, TPL-2598)", () => {
+  // One hub calling twelve targets, each target also read by its own service,
+  // grouped by team. That crowds one card side with the widest port fan a
+  // grouped view builds: `fanOutGutterPorts` spaces ports by side length over
+  // count, so the corridor an arc has to fit in closes as the fan grows. This
+  // is what bounds the radius — not `LANE_PITCH`, which the design measured at
+  // 22px without moving the number.
+  //
+  // Only the grouped view is fenced. The design measured that raising the
+  // radius costs the *ungrouped* view arcs that reach a neighbour on the most
+  // crowded side of a 10k-line model, and took that cost knowingly; asserting a
+  // clearance there would assert something the project decided against.
+  const N = 12;
+  const WIDE = `system Wide {
+  service Hub { label "Hub" }
+${Array.from({ length: N }, (_v, i) => `  service T${i} { label "T${i}" }`).join("\n")}
+${Array.from({ length: N }, (_v, i) => `  service U${i} { label "U${i}" }`).join("\n")}
+${Array.from({ length: N }, (_v, i) => `  Hub -> T${i} "call"`).join("\n")}
+${Array.from({ length: N }, (_v, i) => `  U${i} -> T${(i + 2) % N} "read"`).join("\n")}
+}
+organization Org {
+${Array.from({ length: N }, (_v, i) => `  team "t${i}" { label "T${i}" owns T${i} owns U${i} }`).join("\n")}
+  team "hub" { label "Hub" owns Hub }
+}`;
+
+  it("the default radius fits the tightest corridor, and the corpus reaches that limit", () => {
+    const clearances = crownClearances(layoutOfSource(WIDE, "team"));
+    expect(clearances.length).toBeGreaterThan(20);
+    const tightest = Math.min(...clearances);
+    // Arcs fit today.
+    expect(tightest, `tightest corridor ${tightest.toFixed(1)}px`).toBeGreaterThan(HOP_RADIUS);
+    // And the corridor is tighter than 9px — the tip-sized radius the design
+    // measured and rejected — so this fixture is genuinely at the limit and any
+    // raise towards 9 fails here rather than degrading quietly on a model
+    // nobody measures (TPL-2598). Pinned against 9 rather than against
+    // `HOP_RADIUS` so that *lowering* the radius does not trip it: the claim is
+    // about what the fixture reaches, not about the current radius.
+    expect(tightest).toBeLessThanOrEqual(9);
   });
 });
 
