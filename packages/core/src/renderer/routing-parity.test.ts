@@ -33,8 +33,8 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { compile } from "../index.js";
 import { layout } from "./layout.js";
+import { renderFromLayout } from "./svg-renderer.js";
 import { layoutDeploy } from "./deploy-layout.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
 import "./shapes.js";
@@ -256,6 +256,12 @@ function layoutOfSource(src: string, groupBy?: GroupBy): LayoutResult {
       height: CHIP_LANE_HEIGHT,
     }),
   });
+}
+
+/** The resolved styles for a source, as `renderFromLayout` needs them. */
+function stylesOfSource(src: string) {
+  const krsFile = Parser.parse(src).value;
+  return resolveStyles(krsFile.systems, [getBuiltinStyleSheet()]);
 }
 
 /** A typical corner lane: two buttons and a short chip (#2420). */
@@ -809,18 +815,36 @@ ${Array.from({ length: N }, (_s, i) => `  team "t${i}" { label "T${i}" owns S${i
     // hops — the exact reading TPL-2631 exists to prevent, with a green fence
     // over it. A value the layout computes is only real once the drawing uses
     // it, so this one measures the drawing (TPL-2803).
-    const result = compile(TRUNK, { diagramType: "system", groupBy: "team" });
-    if (result.diagramType !== "system") throw new Error("expected a system view");
-    const arcs = [...result.svg.matchAll(/A ([\d.]+) ([\d.]+) /g)].map((m) => ({
-      rx: Number(m[1]),
-      ry: Number(m[2]),
-    }));
-    const widened = arcs.filter((a) => a.rx > HOP_RADIUS + 1);
+    // Render the very layout the marks come from, so an arc can be matched to
+    // its mark by coordinate. Going through `compile` would re-lay the model and
+    // put the hops at slightly different points, leaving nothing to match on.
+    const res = laid();
+    const svg = renderFromLayout(res, stylesOfSource(TRUNK));
+    // Match each arc to the mark it was drawn from and compare heights, rather
+    // than asking only that the height exceed the default radius: a renderer
+    // that clamped every band-riding arc to `HOP_RADIUS + 1` would satisfy the
+    // looser form while still drawing the arc inside a band 8.5px wide.
+    const drawn = new Map<string, number>();
+    for (const m of svg.matchAll(
+      /M (-?[\d.]+) (-?[\d.]+) A ([\d.]+) ([\d.]+) (-?[\d.]+) 0 1 (-?[\d.]+) (-?[\d.]+)/g,
+    )) {
+      drawn.set(`${m[1]},${m[2]}`, Number(m[4]));
+    }
+    const round2 = (n: number) => Number(n.toFixed(2));
+    const widened = res.crossingMarks!.hops.filter((hop) => hop.ry !== undefined);
     // The fixture exists to produce these; without one the loop below is
     // vacuous (TPL-2598).
     expect(widened.length).toBeGreaterThan(0);
-    for (const a of widened) {
-      expect(a.ry, `an arc ${a.rx} wide is drawn only ${a.ry} tall`).toBeGreaterThan(HOP_RADIUS);
+    for (const hop of widened) {
+      const rad = (hop.angle * Math.PI) / 180;
+      const key = `${round2(hop.x - hop.halfWidth * Math.cos(rad))},${round2(
+        hop.y - hop.halfWidth * Math.sin(rad),
+      )}`;
+      const ry = drawn.get(key);
+      expect(ry, `no arc drawn at ${key} for the mark widened to ${hop.ry}`).toBeDefined();
+      expect(ry, `mark asks for ry ${hop.ry}, drawing says ${ry}`).toBeCloseTo(hop.ry!, 2);
+      // And the height it asks for is the one that clears the band.
+      expect(hop.ry!).toBeGreaterThan(HOP_RADIUS);
     }
   });
 });
@@ -857,10 +881,9 @@ ${Array.from({ length: N }, (_v, i) => `  team "t${i}" { label "T${i}" owns T${i
     // Re-derive the direction from the emitted path instead of restating the
     // formula: centre at the midpoint of the endpoints, then 90 degrees on from
     // the start in the direction the sweep flag advances (TPL-2803).
-    const result = compile(WIDE, { diagramType: "system", groupBy: "team" });
-    if (result.diagramType !== "system") throw new Error("expected a system view");
+    const svg = renderFromLayout(layoutOfSource(WIDE, "team"), stylesOfSource(WIDE));
     const arcs = [
-      ...result.svg.matchAll(
+      ...svg.matchAll(
         /M (-?[\d.]+) (-?[\d.]+) A ([\d.]+) ([\d.]+) (-?[\d.]+) 0 1 (-?[\d.]+) (-?[\d.]+)/g,
       ),
     ].map(
@@ -887,13 +910,15 @@ ${Array.from({ length: N }, (_v, i) => `  team "t${i}" { label "T${i}" owns T${i
     const tightest = Math.min(...clearances);
     // Arcs fit today.
     expect(tightest, `tightest corridor ${tightest.toFixed(1)}px`).toBeGreaterThan(HOP_RADIUS);
-    // And the corridor is tighter than 9px — the tip-sized radius the design
-    // measured and rejected — so this fixture is genuinely at the limit and any
-    // raise towards 9 fails here rather than degrading quietly on a model
-    // nobody measures (TPL-2598). Pinned against 9 rather than against
-    // `HOP_RADIUS` so that *lowering* the radius does not trip it: the claim is
-    // about what the fixture reaches, not about the current radius.
-    expect(tightest).toBeLessThanOrEqual(9);
+    // And the corridor is no wider than 7px, so a raise to 7 cannot fit it.
+    // That is the boundary `docs/acceptance/2884-hop-arc-radius.md` claims, and
+    // the looser bound this started with (9px, the tip-sized radius the design
+    // rejected) did not hold it: a fixture that drifted to an 8px corridor would
+    // have satisfied both assertions while radius 7 passed, making the record
+    // false (TPL-2598). Pinned against 7 rather than against `HOP_RADIUS` so
+    // that *lowering* the radius does not trip it: the claim is about what the
+    // fixture reaches, not about the current radius.
+    expect(tightest).toBeLessThanOrEqual(7);
   });
 });
 
