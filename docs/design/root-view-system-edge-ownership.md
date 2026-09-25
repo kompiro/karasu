@@ -289,7 +289,7 @@ ADR-2223 と本 Issue は同じ形で 2 回続いている（抽出が用意し�
 2. 構造的に再発しうるか: **Yes**。抽出に新しいエッジ族を足すたびに再発する
 3. 既存 TPL に未掲載か: **Yes**（レビューでの決定）。TPL-219 は parameter parity という別の切り口なので、この形をその題名の下に埋めない
 
-**TPL-2756 として新規に起こす。** 実装 PR で `test-perspective` スキルを使って起こし、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) の `discovered_from` にも #2756 を追記する（`known_consumers` に `layout-single-vs-multi-system` を既に持つため、傘の側も更新する）。
+**TPL-2756 として新規に起こす。** 実装 PR で `test-perspective` スキルを使って起こす。[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) 側は `related_to` と「本観点の範囲外」節から TPL-2756 を指すところまでとし、**`discovered_from` には #2756 を載せない**（理由は「実装の指針」13）。
 
 ## 現時点の方針
 
