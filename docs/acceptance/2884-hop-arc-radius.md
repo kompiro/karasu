@@ -24,13 +24,17 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `hop arc radius — corridor fence (#2884, TPL-2598)` › `the default radius fits the tightest corridor, and the corpus reaches that limit`
 
-- [x] AT-B: 同 fixture の回廊が 9px より狭い（設計が却下した半径に達している）ので、半径を上げると AT-A が落ちる。半径 7 で実際に落ちることを確認した
+- [x] AT-B: 同 fixture の回廊が 9px より狭い（設計が却下した半径に達している）ので、半径を上げると AT-A が落ちる。半径 7 で実際に落ちることを確認した。なお回廊を拘束しているのは実測 7.0px で、dify の team ビューの最狭部 9.6px より狭い（fixture の方が実モデルより厳しい）
 
   > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `hop arc radius — corridor fence (#2884, TPL-2598)` › `the default radius fits the tightest corridor, and the corpus reaches that limit`
 
 - [x] AT-C: マークの幅が半径から導かれる（定数を書き写した場所が無い）
 
   > ✅ Automated — `packages/core/src/renderer/crossing-marks.test.ts` › `computeCrossingMarks (#1859 P2c-C)` › `marks a hop where a horizontal segment crosses a vertical of another edge`
+
+- [x] AT-I: 回廊を測る向きが、実際に描かれたアーチの膨らむ向きと一致する。符号を反転すると落ちる
+
+  > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `hop arc radius — corridor fence (#2884, TPL-2598)` › `the crown direction matches the drawn arc`
 
 ### AC-2: 帯に載るアーチが、描画でも帯の外に出る（TPL-2631 / TPL-2803）
 

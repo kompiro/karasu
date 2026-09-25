@@ -565,6 +565,21 @@ describe("interior corridors shorten detours (#2365)", () => {
 });
 
 /**
+ * The direction a hop's arc bumps toward, read off how the renderer draws it:
+ * the path is `M hop-halfWidth*(cos,sin) A r r angle 0 1 hop+halfWidth*(cos,sin)`,
+ * and sweep-flag 1 advances the angle, so the crown lands 90 degrees on from the
+ * start point — at `(sin, -cos)`. Named and fenced by `the crown direction
+ * matches the drawn arc` below, because the sign is not something the corridor
+ * fence can check for itself: the corridors that bound the radius are parallel
+ * port fans, which are equally wide on both sides, so a flipped sign measures a
+ * different side and gets the same number.
+ */
+function crownNormal(angleDeg: number): Point {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: Math.sin(rad), y: -Math.cos(rad) };
+}
+
+/**
  * For each hop, how far its arc's crown can rise before it lands on a line that
  * is *not* the one being hopped — the corridor the arc has to fit in.
  *
@@ -587,9 +602,7 @@ function crownClearances(res: LayoutResult): number[] {
   const out: number[] = [];
   for (const hop of res.crossingMarks?.hops ?? []) {
     if (hop.ry !== undefined) continue;
-    const rad = (hop.angle * Math.PI) / 180;
-    const nx = -Math.sin(rad);
-    const ny = Math.cos(rad);
+    const { x: nx, y: ny } = crownNormal(hop.angle);
     let best = Infinity;
     for (const seg of segs) {
       if (seg.edge === hop.edge) continue;
@@ -836,6 +849,37 @@ organization Org {
 ${Array.from({ length: N }, (_v, i) => `  team "t${i}" { label "T${i}" owns T${i} owns U${i} }`).join("\n")}
   team "hub" { label "Hub" owns Hub }
 }`;
+
+  it("the crown direction matches the drawn arc", () => {
+    // `crownClearances` measures along `crownNormal`, so if that points the wrong
+    // way the corridor fence certifies the side the arc does not occupy — and it
+    // does so silently, because a port fan is as wide on one side as the other.
+    // Re-derive the direction from the emitted path instead of restating the
+    // formula: centre at the midpoint of the endpoints, then 90 degrees on from
+    // the start in the direction the sweep flag advances (TPL-2803).
+    const result = compile(WIDE, { diagramType: "system", groupBy: "team" });
+    if (result.diagramType !== "system") throw new Error("expected a system view");
+    const arcs = [
+      ...result.svg.matchAll(
+        /M (-?[\d.]+) (-?[\d.]+) A ([\d.]+) ([\d.]+) (-?[\d.]+) 0 1 (-?[\d.]+) (-?[\d.]+)/g,
+      ),
+    ].map(
+      (m) => m.slice(1).map(Number) as [number, number, number, number, number, number, number],
+    );
+    const circular = arcs.filter(([, , rx, ry]) => Math.abs(rx - ry) < 1e-6);
+    expect(circular.length).toBeGreaterThan(10);
+    for (const [x0, y0, rx, , rot, x1, y1] of circular) {
+      const cx = (x0 + x1) / 2;
+      const cy = (y0 + y1) / 2;
+      const start = Math.atan2(y0 - cy, x0 - cx);
+      const drawn = { x: Math.cos(start + Math.PI / 2), y: Math.sin(start + Math.PI / 2) };
+      const ours = crownNormal(rot);
+      expect(drawn.x, `arc at ${rot} deg bumps x`).toBeCloseTo(ours.x, 2);
+      expect(drawn.y, `arc at ${rot} deg bumps y`).toBeCloseTo(ours.y, 2);
+      // And the radius really is the thing that carries the arc off the line.
+      expect(rx).toBeGreaterThan(0);
+    }
+  });
 
   it("the default radius fits the tightest corridor, and the corpus reaches that limit", () => {
     const clearances = crownClearances(layoutOfSource(WIDE, "team"));

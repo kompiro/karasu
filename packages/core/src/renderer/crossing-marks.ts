@@ -449,7 +449,8 @@ function bandsOf(trunks: readonly TrunkGroup[]): TrunkBand[] {
 /**
  * Keep both marks readable over a band. A hop has to arch clear of what it
  * crosses, and the band is as wide as the count it carries while the arc rises
- * 4px, so an unadjusted arc is drawn inside the thing it marks a crossing over.
+ * {@link HOP_RADIUS}, so an unadjusted arc is drawn inside the thing it marks a
+ * crossing over once the count is high enough.
  * A count mark must not sit on a crossing either: it would hide the arc under a
  * mark that asserts the opposite. The count moves, never the crossing
  * (TPL-2631).
