@@ -268,6 +268,21 @@ subagent:
     relation you found disappears silently. Write
     `Order -> Customers.Customer "placed by"`. The target may be a domain no
     fragment has written yet (Phase 3 step 7 is what makes those ids agree).
+  - **the domains this slice calls are `domain` edges, not comments.** When
+    your source imports, calls, or fires a hook into code that belongs to
+    another domain in the work-list, declare it directly inside your `domain`
+    block as `<Self> -> <Other> "why"` (`-->` for an async hand-off — a queue,
+    a deferred hook). This is the **only** construct the service drill-down
+    draws between domains: entity relations are never rolled up into it, so a
+    fragment that records every foreign key and no domain edge drills into a
+    service of disconnected islands. Direction is "depends on" — the caller
+    points at the callee. A bare `<Other>` resolves anywhere in the system,
+    including a domain in another service (that edge is derived up to an
+    implicit service edge on the system view). A call to an *external*
+    `service` does **not** go here: an edge from a domain to a service warns
+    `edge-endpoint-not-at-scope` and renders on no view — report it in your
+    return value and let synthesis write it at `service` scope
+    (`Shop -> PaymentGateway "charge"`, Phase 3 step 8).
   - resources **reference the physical declaration** (the logical side is a
     reference; the physical declaration is canonical);
   - **records a cross-cutting fact as `facets <id>`** on the element that has it
@@ -365,9 +380,10 @@ footprint and makes the `coverage` numbers incomparable across domains.
    its `label` / `description` (they carry the seam rationale), taking everything
    below from the fragment.
 
-2. **Cross-domain edges** may be observed from both sides — dedup by the
-   `(src-id, dst-id, kind)` composite key. Direction follows the referencing
-   side (the FK holder).
+2. **Cross-domain entity relations** may be observed from both sides — dedup
+   by the `(src-id, dst-id, kind)` composite key. Direction follows the
+   referencing side (the FK holder). Domain edges are built in step 8, once
+   the roster pass has made the entity targets agree.
 3. Match identity by `id`, never by `label`.
 4. Resolve resource-location conflicts structurally: the physical declaration
    lives in one place; every domain references it.
@@ -457,7 +473,47 @@ footprint and makes the `coverage` numbers incomparable across domains.
    Then run the relation checker (below). The roster pass reduces mismatches; it
    does not prove there are none.
 
-8. **Organizational overlay — model ownership as its own axis, bind with
+8. **Domain edges — merge what the agents observed with what the relations
+   imply.** The service drill-down draws exactly one thing between domains: an
+   edge declared directly inside a `domain` block. Nothing derives it — not the
+   `resource` lines two domains share, not the entity relations of step 7 — so
+   a synthesis that stops at step 7 ships a model whose every service drills
+   into disconnected islands, however complete its entity layer is. A real run
+   (WordPress core, 47 domains) produced 1,289 entity relations and **zero**
+   domain edges; several agents had even left "no way to write this" comments
+   where the construct they wanted was this one. Build the set from two
+   sources and write it once:
+
+   - **Observed** — the `<Self> -> <Other>` edges each fragment declared in
+     Phase 2, plus the external-service calls the agents *reported*, which
+     land at `service` scope (`Svc -> ExternalSvc "why"`), never inside a
+     domain.
+   - **Implied** — after step 7, every cross-domain entity relation
+     `entity E { E -> D.F "…" }` says the holder's domain depends on `D`.
+     Group by (holder domain, `D`, kind) and emit one `Holder -> D` edge per
+     pair, labelled with the single relation's label or, for several, the
+     count (`"4 entity relations"`). The direction agrees with the observed
+     set — an FK holder depends on what it references — so the two merge
+     without a conflict rule.
+
+   Dedup the union by `(from, to, kind)`, keep the observed label where both
+   sources produce a pair, and inject each edge into the **`from` domain's
+   block** — the edge origin scope rule; declared anywhere else it is
+   `edge-endpoint-not-at-scope`. Make it part of the merge script, because
+   both inputs move every time Phase 4 repairs a relation. A cross-service
+   pair is derived up to an `[implicit]` service edge on the system view by
+   itself; write an explicit service edge only where the source shows a call
+   path the domain edges do not, since an explicit one suppresses the derived
+   one for that pair.
+
+   **Reached state**: `karasu render` prints no `unresolved-edge-endpoint`
+   for a domain edge, and every `service` holding two or more domains has at
+   least one domain edge in its drill-down — or the notes say why those
+   domains genuinely do not depend on each other. A service that fails the
+   second test above a rich entity layer is the signature of this step having
+   been skipped, not of an independent design.
+
+9. **Organizational overlay — model ownership as its own axis, bind with
    `owns`.** If the repo carries ownership signals (`CODEOWNERS`, `OWNERS`),
    model them on karasu's **organizational axis**, which is independent of the
    logical and physical models and renders as a separate Org view. The shape is
@@ -494,7 +550,7 @@ footprint and makes the `coverage` numbers incomparable across domains.
      diagnostic surface the overlap (the first team is kept as primary owner;
      render still exits 0) rather than forcing a domain merge.
 
-9. **Observed grouping — put it on the `boundary` axis, never back into the
+10. **Observed grouping — put it on the `boundary` axis, never back into the
    seams.** Phase 1 uses the directory / package / deployment structure as a
    *hint* and then throws it away, because it is not a bounded-context seam.
    It is still real information about the repo, and `boundary` is where it lives
@@ -554,7 +610,7 @@ footprint and makes the `coverage` numbers incomparable across domains.
      If you generate the memberships, **assert that every leaf lands in exactly
      one group** so the grouping cannot silently drift from the leaf list.
 
-10. **Normalize with `karasu fmt`.** Merged / injected `.krs` almost always has
+11. **Normalize with `karasu fmt`.** Merged / injected `.krs` almost always has
     uneven indentation (a closing `}` can land under-indented and *look* like a
     missing brace even though it parses). Always finish synthesis — and any
     mechanical node injection — with `karasu fmt <file>`.
@@ -575,7 +631,9 @@ footprint and makes the `coverage` numbers incomparable across domains.
    | --- | --- | --- |
    | `unresolved-resource-ref` / `unresolved-table-ref` | warning, exit 0 | an infra block or leaf the merge dropped (Phase 3 step 5) |
    | `facet-not-declared` | warning, exit 0 | a `facets` id no `facet` block declares — a fan-out proposal that never got decided (Phase 3 step 5) |
-   | `contains-target-not-found` | warning, exit 0 | a `boundary` member id that does not exist; the membership is inert (Phase 3 step 9) |
+   | `contains-target-not-found` | warning, exit 0 | a `boundary` member id that does not exist; the membership is inert (Phase 3 step 10) |
+   | `unresolved-edge-endpoint` | warning, exit 0 | a domain edge naming a domain nothing declares — usually a Phase 1 id an agent respelled; the edge is dropped (Phase 3 step 8) |
+   | `edge-endpoint-not-at-scope` | warning, exit 0 | an edge from a `domain` to a `service` — it renders on no view; move it to `service` scope (Phase 3 step 8) |
    | `edge-source-mismatch` | error, non-zero | a relation inside `entity X` that does not start at `X` — the usual cause is a rename that missed one of its three sites |
    | `duplicate-facet-id`, `duplicate-boundary-id`, `boundary-not-in-context` | error, non-zero | the overlay is structurally wrong, not merely dangling |
    | `entity-anchor-collision` | warning, exit 0 | an entity id equal to its domain id, or duplicated across domains |
@@ -593,10 +651,12 @@ footprint and makes the `coverage` numbers incomparable across domains.
    - merge the additions and re-run `coverage`.
 5. **Stop condition**: every domain is `thin: false` **or recorded as genuinely
    thin with the reason**, the system-of-record `database` reports an empty
-   `unmappedButReferenced`, the relation checker is clean, and the warning greps
-   of step 2 come back empty. `coverage` scores the logical and physical layers
-   only — no metric measures the `facet` / `boundary` / `organization` overlays,
-   so those are held by the render greps alone.
+   `unmappedButReferenced`, the relation checker is clean, the warning greps
+   of step 2 come back empty, and every multi-domain `service` has a domain
+   edge in its drill-down or a recorded reason for having none (Phase 3 step
+   8). `coverage` scores the logical and physical layers only — no metric
+   measures the `facet` / `boundary` / `organization` overlays or counts domain
+   edges, so those are held by the render greps and the step 8 check alone.
 6. **Distinguish structural thinness from under-modelling before re-diving.**
    `coverage` counts *distinct* resource leaves, so a domain that owns exactly
    one table scores near zero no matter how well it is modelled — fifteen
@@ -704,6 +764,12 @@ measured run.
 3. **An infra leaf id equal to a domain id.** No diagnostic; it surfaces only
    when `karasu subtree <that id>` refuses to resolve an ambiguous id.
 
+A dangling **domain** edge is not on this list — it warns
+`unresolved-edge-endpoint`. What is silent about domain edges is their
+**absence**: no diagnostic and no `coverage` field notices a service whose
+domains carry no edge at all, which is why Phase 3 step 8 has its own reached
+state.
+
 Write a small script that parses the merged `.krs` for `domain` / `entity`
 declarations and every `A -> B` / `A --> B` inside an entity block, then reports:
 
@@ -738,7 +804,8 @@ Two authoring notes for that script, both learned the hard way:
   `boundary` placements were used — a run that used only the top-level form has
   produced no evidence at all about the scoped one.
 - A record of what the run could **not** establish: reports lost, slices never
-  cross-checked, relations an agent declined to write for lack of a target id.
+  cross-checked, relations an agent declined to write for lack of a target id,
+  and each multi-domain service left with no domain edge and why.
 
 ## Notes
 
@@ -757,13 +824,13 @@ Two authoring notes for that script, both learned the hard way:
   product's ubiquitous language. Domain decomposition ≠ team decomposition
   (ADR-2077). **This forbids using ownership to *split domains*, not modelling
   ownership at all**: ownership is a first-class axis of its own — capture it as
-  `organization` / `team` / `owns` (Phase 3 step 8) and bind it to the finished
+  `organization` / `team` / `owns` (Phase 3 step 9) and bind it to the finished
   logical layer, never fold it into the seams.
 - **Three overlays, three axes, none of them a seam.** Everything the repo says
   that is *not* the logical decomposition has its own construct, and each is
   bound to the finished logical layer rather than allowed to shape it:
-  ownership → `organization` / `team` / `owns` (Phase 3 step 8), observed
-  grouping → `boundary` / `contains` (Phase 3 step 9), set membership →
+  ownership → `organization` / `team` / `owns` (Phase 3 step 9), observed
+  grouping → `boundary` / `contains` (Phase 3 step 10), set membership →
   `facet` / `facets` (Phase 1 step 6, Phase 2). The single test for all three:
   **the domain seams must be unchanged by adding one.** If a candidate overlay
   would move a seam, it is telling you something about Phase 1 — go re-argue the
@@ -793,6 +860,12 @@ Two authoring notes for that script, both learned the hard way:
   id is intra-domain only and is dropped from the entity view with no
   diagnostic — see "Silent losses", which also covers the qualified-but-wrong
   case that the roster pass alone will not catch.
+- **Entity relations do not become domain edges.** The service drill-down reads
+  only the edges declared inside `domain` blocks, and nothing rolls a
+  cross-domain entity relation up into one. Agents record the domains they call
+  (Phase 2) and synthesis derives the rest from the relations (Phase 3 step 8);
+  a model that skips both renders each service as unconnected islands and
+  reports nothing.
 - The merge is where *physical* fidelity is lost: infra declaration blocks and
   `table` mappings do not survive on their own (Phase 3 steps 5-6). Both losses
   are now measurable rather than eyeballed — `render` warns on a reference to
