@@ -2804,6 +2804,19 @@ system Beta {
 }
 `;
 
+  const BEFORE_ALPHA_ONLY = `
+system Alpha {
+  service Api { usecase U { resource Store.T } }
+  database Store { table T }
+}
+`;
+  const BETA_WITH_SAME_IDS = `
+system Beta {
+  service Api { usecase V { resource Store.T } }
+  database Store { table T }
+}
+`;
+
   it("marks the removal in one system without restating it in the other", () => {
     const merged = diffSystemViewSlices(sliceOf(BEFORE), sliceOf(AFTER));
     const result = layout(merged.slice);
@@ -2814,6 +2827,30 @@ system Beta {
     // silently render as unchanged.
     expect(result.edges.map((e) => `${e.from}->${e.to}`)).toEqual(["Api->Store", "Api->Store"]);
     expect(result.edges.map((e) => e.diffState)).toEqual(["removed", "unchanged"]);
+  });
+
+  it("marks a whole system added without borrowing another frame's state", () => {
+    // Beta is a system that did not exist before, and it happens to hold the same
+    // node names as Alpha, which kept its dependency. Its frame exists on one side
+    // only. Passed through without a state of its own, its edge fell back to the
+    // shared map — which Alpha's unchanged edge had already filled — and a brand
+    // new system rendered as unchanged.
+    const merged = diffSystemViewSlices(
+      sliceOf(BEFORE_ALPHA_ONLY),
+      sliceOf(BEFORE_ALPHA_ONLY + BETA_WITH_SAME_IDS),
+    );
+    const result = layout(merged.slice);
+    expect(result.edges.map((e) => `${e.from}->${e.to}`)).toEqual(["Api->Store", "Api->Store"]);
+    expect(result.edges.map((e) => e.diffState)).toEqual(["unchanged", "added"]);
+  });
+
+  it("marks a whole system removed the same way", () => {
+    const merged = diffSystemViewSlices(
+      sliceOf(BEFORE_ALPHA_ONLY + BETA_WITH_SAME_IDS),
+      sliceOf(BEFORE_ALPHA_ONLY),
+    );
+    const result = layout(merged.slice);
+    expect(result.edges.map((e) => e.diffState)).toEqual(["unchanged", "removed"]);
   });
 
   it("leaves the single-system path reading the keyed map", () => {

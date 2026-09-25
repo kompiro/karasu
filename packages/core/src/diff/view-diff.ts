@@ -212,6 +212,9 @@ function diffImplicitEdgeDetails(
  * deleted between the two revisions keeps its edges. `undefined` when neither
  * slice has frames, which is every view but the root one.
  */
+/** Stand-in for the missing side of a frame that exists in only one revision. */
+const EMPTY_DETAILS: ReadonlyMap<string, DomainEdgeDetail[]> = new Map();
+
 function diffSystemFrames(
   before: ViewSlice,
   after: ViewSlice,
@@ -222,23 +225,26 @@ function diffSystemFrames(
   if (!b && !a) return undefined;
   const merged = new Map<string, SystemFrameEdges>();
   for (const systemId of new Set([...(b?.keys() ?? []), ...(a?.keys() ?? [])])) {
-    const bf = b?.get(systemId);
-    const af = a?.get(systemId);
-    if (!bf || !af) {
-      merged.set(systemId, af ?? bf!);
-      continue;
-    }
     // Diff this frame into a map of its own, then fold it into the shared one.
     // The frame-scoped copy is what the layout reads: the shared map is keyed by
     // `${from}->${to}` with no system in it, so when two frames both hold an
     // `Api->Store` the second frame diffed overwrites the first and a removal in
     // one system reads back as `unchanged` (#2756). The shared map is still
     // filled, for the single-system path and the consumers keyed off it.
+    //
+    // A frame on one side only — a system added or deleted between the revisions
+    // — diffs against an empty stand-in rather than being passed through. Passing
+    // it through left its edges with no state of their own, so they fell back to
+    // the shared map, and a system added beside one that already held the same
+    // edge id rendered `unchanged` instead of `added`. Going through the same
+    // helper answers it without a second way to build the same keys.
+    const bf = b?.get(systemId);
+    const af = a?.get(systemId);
     const frameDiff = new Map<string, EdgeDiffMeta>();
-    const edges = diffEdgeArray(bf.edges, af.edges, frameDiff);
+    const edges = diffEdgeArray(bf?.edges ?? [], af?.edges ?? [], frameDiff);
     const implicitEdgeDetails = diffImplicitEdgeDetails(
-      bf.implicitEdgeDetails,
-      af.implicitEdgeDetails,
+      bf?.implicitEdgeDetails ?? EMPTY_DETAILS,
+      af?.implicitEdgeDetails ?? EMPTY_DETAILS,
       frameDiff,
     );
     for (const [key, meta] of frameDiff) edgeDiff.set(key, meta);
