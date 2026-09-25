@@ -99,6 +99,18 @@ export interface LayoutEdge {
   cyclic?: boolean;
   /** Constituent domain edges for aggregated "N domain edges" implicit service edges. */
   domainEdges?: DomainEdgeDetail[];
+  /**
+   * This edge's compare-mode state, resolved while the edge was laid out rather
+   * than looked up later by `${from}->${to}` (#2756).
+   *
+   * Only the multi-system root sets it, and it exists because that key is not
+   * unique there: two system frames may each draw an `Api->Store`, so one shared
+   * keyed map has to answer for both and the last writer decides. A removal in
+   * one system then reads back as `unchanged` and disappears from the diff.
+   * Carrying the state on the edge is the same move `domainEdges` makes for the
+   * same reason. Unset elsewhere, where the keyed lookup stays the answer.
+   */
+  diffState?: string;
   /** Mirrors `KrsEdge.description`: prose from the edge property block (#2543). */
   description?: string;
   /** Mirrors `KrsEdge.links`: `link` rows from the edge property block (#2543). */

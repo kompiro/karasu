@@ -470,6 +470,18 @@ export interface ViewSlice {
    */
   implicitEdgeDetails: Map<string, DomainEdgeDetail[]>;
   /**
+   * Root view only: per-system-frame edge sets, keyed by system id (#2756).
+   *
+   * The multi-system / `__unassigned__` root lays each system out in its own
+   * frame and reads its entry here; {@link childEdges} is the union over all of
+   * them, for the consumers that want the whole canvas (style resolution,
+   * canonical edge ids, the compare-mode merge) rather than one frame.
+   *
+   * Absent on every other view, and a missing entry makes the layout fall back to
+   * {@link withChildAnchoredEdges} — so a hand-built slice keeps working.
+   */
+  systemEdges?: ReadonlyMap<string, SystemFrameEdges>;
+  /**
    * Containers expanded in place (#1921): each entry names a service whose
    * domain children were spliced into `childNodes` as a boundary-frame band.
    * The layout bands the members contiguously and draws a titled frame; empty
@@ -634,6 +646,7 @@ function emptySlice(
     resourceLabelMap,
     resourceInferredTagsMap,
     implicitEdgeDetails: new Map(),
+    systemEdges: new Map(),
     expandedFrames: [],
   };
 }
@@ -1151,6 +1164,104 @@ function extractOrphanView(orphans: KrsNode[], path: ViewPath, ctx: ViewExtractC
 }
 
 /**
+ * One root-view system frame's edge set, derived by {@link deriveCanvasEdges}.
+ *
+ * The root view is N frames, each drawing one system's direct children, and each
+ * frame owns the edges derived from *its own* node set. Keeping the sets apart is
+ * not tidiness: the root view's node map is keyed by bare id, so two systems may
+ * each hold an `Api` and a `Store`, and a single flat edge list would let
+ * Alpha's `Api->Store` pass Beta's id filter and draw a dependency Beta never
+ * declared (#2756).
+ */
+export interface SystemFrameEdges {
+  /**
+   * The frame's edges in `childEdges` order: system-scope explicit, child-anchored
+   * (#2223), infra-derived, implicit service, expanded-internal, `delivers`.
+   */
+  edges: KrsEdge[];
+  /**
+   * The constituent domain edges behind this frame's aggregated implicit service
+   * edges (ADR-463's detail panel), keyed by the bare
+   * `` `${from}->${to}#${kind}` `` the layout builds from the edge it is drawing.
+   *
+   * Scoped to the frame rather than merged into {@link ViewSlice.implicitEdgeDetails}:
+   * the key carries no system, so merging would make two systems that each
+   * aggregate an `Api`→`Store` pair collide, and the last one extracted would
+   * supply the details for both frames' lines. A per-frame map answers "whose
+   * constituents are these" by construction instead of by key discipline.
+   */
+  implicitEdgeDetails: Map<string, DomainEdgeDetail[]>;
+  /**
+   * Compare mode only: this frame's edge diff states, keyed by the bare
+   * `` `${from}->${to}` `` (#2756). Set by `diffSystemViewSlices`, never by
+   * extraction, and scoped to the frame for the same reason the details are:
+   * the key does not carry a system, so one shared map would let a change in
+   * one system decide the state of an identically named edge in another.
+   */
+  edgeDiffState?: ReadonlyMap<string, string>;
+}
+
+/**
+ * Derive every edge family one root-view frame draws, from the nodes that frame
+ * places. The single source of truth for "what edges does this canvas have":
+ * called once per system by {@link extractRootSystemView}, so a family added
+ * here reaches every frame instead of only the primary one.
+ *
+ * `canvasChildren` is the node set the frame places and `anchorChildren` the
+ * subset whose blocks may contribute child-anchored edges — they differ only for
+ * the primary frame, which splices top-level orphans in beside the system's own
+ * children (an orphan is not a declared peer, ADR-2223).
+ */
+function deriveCanvasEdges(opts: {
+  /** The frame's own scope edges (`system X { A -> B }`). */
+  scopeEdges: KrsEdge[];
+  /** Every node the frame places, before in-place expansion splices domains in. */
+  canvasChildren: KrsNode[];
+  /** The children whose blocks may hold liftable anchored edges (#2223). */
+  anchorChildren: KrsNode[];
+  /** Model-wide entity resolver, so `resource` refs resolve in one namespace. */
+  entityResolver: EntityResolver;
+  /** Services expanded in place (#1921); unset on every frame but the primary. */
+  expandedSet: ReadonlySet<string> | undefined;
+}): SystemFrameEdges {
+  const { scopeEdges, canvasChildren, anchorChildren, entityResolver, expandedSet } = opts;
+  const childIds = new Set(canvasChildren.map(nodeId));
+  const systemScopeEdges = scopeEdges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
+  const derivedEdges = deriveInfraEdges(canvasChildren, entityResolver);
+  const anchoredEdges = collectAnchoredPeerEdges(
+    anchorChildren,
+    new Set(systemScopeEdges.map(drawnEdgeKey)),
+  );
+  const explicitEdges = [...systemScopeEdges, ...anchoredEdges];
+  // Merge derived edges, skipping any already covered by an explicit one. Keyed
+  // on the bare pair (not the arrow kind) because suppression asks "is this
+  // dependency already authored", which an anchored edge answers too.
+  const explicitKeys = new Set(explicitEdges.map((e) => `${e.from}->${e.to}`));
+
+  const {
+    edges: implicitServiceEdges,
+    details: implicitEdgeDetails,
+    internalEdges,
+  } = deriveImplicitServiceEdges(
+    canvasChildren.filter((c) => c.kind === "service"),
+    explicitKeys,
+    expandedSet,
+  );
+  const deliversEdges = deriveDeliversEdges(canvasChildren);
+
+  return {
+    edges: [
+      ...explicitEdges,
+      ...derivedEdges.filter((e) => !explicitKeys.has(`${e.from}->${e.to}`)),
+      ...implicitServiceEdges,
+      ...internalEdges,
+      ...deliversEdges,
+    ],
+    implicitEdgeDetails,
+  };
+}
+
+/**
  * Root system view phase (`path.length === 0`, at least one system present):
  * shows `systems[0]`'s direct children plus unassigned orphans, with derived
  * infra/implicit-service/delivers edges, in-place service expansion (#1921),
@@ -1166,40 +1277,47 @@ function extractRootSystemView(
   const { resourceLabelMap, resourceInferredTagsMap, entityResolver } = ctx;
   const system = systems[0];
   const allChildren = [...system.children, ...unassignedServices, ...unassignedDomains];
-  const childIds = new Set(allChildren.map(nodeId));
-  const systemScopeEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
-  const derivedEdges = deriveInfraEdges(allChildren, entityResolver);
-  // Service-anchored edges (#2223) are explicit edges of this canvas too: the
-  // peer set is the system's own children, so a spliced-in orphan is not a
-  // peer of a service the way a declared sibling is.
-  const anchoredEdges = collectAnchoredPeerEdges(
-    system.children,
-    new Set(systemScopeEdges.map(drawnEdgeKey)),
-  );
-  const explicitEdges = [...systemScopeEdges, ...anchoredEdges];
-  // Merge derived edges, skipping any already covered by an explicit one. Keyed
-  // on the bare pair (not the arrow kind) because suppression asks "is this
-  // dependency already authored", which an anchored edge answers too.
-  const explicitKeys = new Set(explicitEdges.map((e) => `${e.from}->${e.to}`));
 
   // In-place expansion (#1921): a service named in `expandedContainers` that
   // actually has domain children is replaced by those domains as a boundary
   // frame band; cross-boundary edges re-anchor to the exact internal domain.
+  // Primary-system only, so every other frame derives with an empty set.
   const { expandedServices, expandedSet } = resolveExpandedServices(
     allChildren,
     expandedContainers,
   );
 
-  const {
-    edges: implicitServiceEdges,
-    details: implicitEdgeDetails,
-    internalEdges,
-  } = deriveImplicitServiceEdges(
-    allChildren.filter((c) => c.kind === "service"),
-    explicitKeys,
+  // Every system frame owns the edge set derived from the nodes *it* places, and
+  // the derivation is one function for all of them (#2756). Before this, only
+  // `systems[0]` was ever handed to the derivation helpers, and the multi-system
+  // layout path re-derived its own edges from `sys.edges` — so a dependency
+  // spelled as `usecase` / `resource` / `delivers` rather than an arrow was
+  // dropped on every root view with more than one system, and on the
+  // `__unassigned__` root a system-less model gets (TPL-219).
+  const systemEdges = new Map<string, SystemFrameEdges>();
+  const primaryFrame = deriveCanvasEdges({
+    scopeEdges: system.edges,
+    canvasChildren: allChildren,
+    // Service-anchored edges (#2223) are explicit edges of this canvas too: the
+    // peer set is the system's own children, so a spliced-in orphan is not a
+    // peer of a service the way a declared sibling is.
+    anchorChildren: system.children,
+    entityResolver,
     expandedSet,
-  );
-  const deliversEdges = deriveDeliversEdges(allChildren);
+  });
+  systemEdges.set(nodeId(system), primaryFrame);
+  for (const sys of systems.slice(1)) {
+    systemEdges.set(
+      nodeId(sys),
+      deriveCanvasEdges({
+        scopeEdges: sys.edges,
+        canvasChildren: sys.children,
+        anchorChildren: sys.children,
+        entityResolver,
+        expandedSet: undefined,
+      }),
+    );
+  }
 
   // Splice each expanded service's domains into the sibling grid, and record
   // the frame band the layout draws around them.
@@ -1209,13 +1327,12 @@ function extractRootSystemView(
     resourceInferredTagsMap,
   );
 
-  const childEdges = [
-    ...explicitEdges,
-    ...derivedEdges.filter((e) => !explicitKeys.has(`${e.from}->${e.to}`)),
-    ...implicitServiceEdges,
-    ...internalEdges,
-    ...deliversEdges,
-  ];
+  // The union over every frame, so the consumers keyed off `childEdges` —
+  // `assignEdgeCanonicalIds`, `resolveStyles`' `extraEdges`, the compare-mode
+  // merge — reach all systems through their existing wiring. The multi-system
+  // layout path reads `systemEdges` instead, so the union is never a layout
+  // input and cannot leak one system's edge into another's frame.
+  const childEdges = [...systemEdges.values()].flatMap((frame) => frame.edges);
 
   // Cross-system edges: collect from all systems where the target is qualified
   // and lands somewhere in the model. The membership test used to be "the
@@ -1252,7 +1369,8 @@ function extractRootSystemView(
     ghostEntityEdges: [],
     resourceLabelMap,
     resourceInferredTagsMap,
-    implicitEdgeDetails,
+    implicitEdgeDetails: primaryFrame.implicitEdgeDetails,
+    systemEdges,
     expandedFrames,
   };
 }
