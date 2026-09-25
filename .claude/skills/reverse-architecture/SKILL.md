@@ -241,7 +241,11 @@ subagent:
 - reads **only the source slice for its domain** (not other domains — isolation
   is what buys uniform depth), plus `reference/syntax.md` and
   `reference/notation-cookbook.md` — pass those two paths in the subagent's
-  prompt. Isolation cuts it off from this file as well as from the other
+  prompt — and the Phase 1 **work-list** (every canonical domain id with its
+  one-line scope), because two bullets below need it: a domain edge and a
+  `DomainId.EntityId` target both name a foreign domain by its canonical id,
+  and an agent without the list either invents one or writes a comment
+  instead. Isolation cuts it off from this file as well as from the other
   domains, so an agent given no grammar writes what it remembers of one;
 - writes that domain's `usecase` / `entity` / `resource` into a `.krs` fragment:
   - a `usecase` holds the `resource`s it touches (`resource InfraId.SubId
@@ -282,7 +286,7 @@ subagent:
     `service` does **not** go here: an edge from a domain to a service warns
     `edge-endpoint-not-at-scope` and renders on no view — report it in your
     return value and let synthesis write it at `service` scope
-    (`Shop -> PaymentGateway "charge"`, Phase 3 step 8).
+    (`Checkout -> PaymentGateway "charge"`, Phase 3 step 8).
   - resources **reference the physical declaration** (the logical side is a
     reference; the physical declaration is canonical);
   - **records a cross-cutting fact as `facets <id>`** on the element that has it
@@ -499,7 +503,8 @@ footprint and makes the `coverage` numbers incomparable across domains.
    Dedup the union by `(from, to, kind)`, keep the observed label where both
    sources produce a pair, and inject each edge into the **`from` domain's
    block** — the edge origin scope rule; declared anywhere else it is
-   `edge-endpoint-not-at-scope`. Make it part of the merge script, because
+   `edge-source-mismatch`, an error that fails `render`. Make it part of the
+   merge script, because
    both inputs move every time Phase 4 repairs a relation. A cross-service
    pair is derived up to an `[implicit]` service edge on the system view by
    itself; write an explicit service edge only where the source shows a call
