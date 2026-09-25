@@ -501,11 +501,14 @@ footprint and makes the `coverage` numbers incomparable across domains.
      without a conflict rule.
 
    Dedup the union by `(from, to, kind)`, keep the observed label where both
-   sources produce a pair, and inject each edge into the **`from` domain's
-   block** — the edge origin scope rule; declared anywhere else it is
-   `edge-source-mismatch`, an error that fails `render`. Make it part of the
-   merge script, because
-   both inputs move every time Phase 4 repairs a relation. A cross-service
+   sources produce a pair, and inject each edge into the block of its
+   **`from` node** — a domain edge into that domain's block, a reported
+   external-service call into the calling `service`'s block. That is the edge
+   origin scope rule; declared under any other id it is `edge-source-mismatch`,
+   an error that fails `render`, and a service edge written inside a domain is
+   `edge-endpoint-not-at-scope` and renders on no view. Make it part of the
+   merge script, because both inputs move every time Phase 4 repairs a
+   relation. A cross-service
    pair is derived up to an `[implicit]` service edge on the system view by
    itself; write an explicit service edge only where the source shows a call
    path the domain edges do not, since an explicit one suppresses the derived
