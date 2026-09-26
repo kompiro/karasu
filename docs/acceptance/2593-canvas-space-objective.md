@@ -109,6 +109,34 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `layout > canvas space objective (#2593)` › `cannot help a chain of single-node layers (out of scope, needs layer folding)`
 
+### AC-6: 候補列の長さは測って選ぶ（#2761）
+
+> 候補列の長さ（`BUDGET_STEPS`）と到達範囲（`MAX_BUDGET_MULTIPLE`）は本 ADR では計測されていなかった。
+> #2761 で dify corpus（405 drill-down level）に対して測り、12 段 → 8 段へ縮めた。面積の代償は
+> 全体 +0.05%、描き直しは 4 レベル（うち 2 レベルは小さくなる、最悪 +8.3%）で、帯から外れるレベルは増えない。
+
+- [x] AT-M: 候補列は 8 段で、先頭が表示モード自身の下限、末尾がその 6 倍
+
+  > ✅ Automated — `packages/core/src/renderer/aspect-search.test.ts` › `candidateWidthBudgets` › `starts at the floor and ascends` ／ `stops at the configured multiple of the floor`。表示モードごとの下限は AT-H5 が固定する
+
+- [x] AT-M2: 段数を変えても floor-first は壊れない（すでに収まっている図は下限予算のまま）
+
+  > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `layout > canvas space objective (#2593)` › `leaves an already-landscape canvas on the floor budget`; `packages/core/src/renderer/aspect-search.test.ts` › `searchWidthBudget` › `keeps the floor when widening only trades one axis for the other`
+
+- [x] AT-M3: examples corpus のスナップショットが書き換えなしで通る（探索はこの corpus で何も勝ち取っていないので、段数を変えても 1 バイトも動かない）
+
+  > ✅ Automated — `pnpm vitest run --project @karasu-tools/core`（159 ファイル / 4,631 件 green、スナップショット更新なし）
+
+- [x] AT-M4: 予算に依存するテストは候補列から値を導出し、ラダーを変えると必ずテストへ届く
+
+  > ✅ Automated — `packages/core/src/renderer/layer-layout-logics.test.ts` の `BUDGETS` と `placeNodesInLayers > width budget (#2593)` 各件、`packages/core/src/renderer/aspect-search.test.ts` › `searchWidthBudget` › `keeps the floor when widening only trades one axis for the other` ／ `keeps evaluating past a candidate that leaves the band` が `candidateWidthBudgets` から導出する。12 → 8 の変更で実際に 1 件が落ち、fixture が名乗っている場面を記述しなくなっていたことを検出した
+
+- [x] AT-M5: 全ビュー bundle が約 600 ms を下回り、差がプロセス間のばらつきより大きい
+
+  > ✅ Automated — `npx tsx scripts/bench/render.ts <dify>/index.krs --runs 5` を 12 段 / 8 段で交互に 3 回。12 段 629.8 / 631.0 / 634.1 ms、8 段 557.4 / 563.4 / 565.0 ms（差 65〜77 ms、ばらつき 4〜8 ms）
+
+- [ ] 🧑 Manual: dify のような大きなモデルで、帯から外れるビューが増えていない（reverse した大きなモデルは repo に無いため実機確認）
+
 ## 手動確認
 
 自動テストは座標と比率を判定できるが、「空白が減って読みやすくなったか」と「表示モードを切り替えても同じ図に見えるか」は実機でしか判定できない。到達先は公開アプリ（`https://karasu.kompiro.dev/`）。

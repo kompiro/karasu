@@ -33,9 +33,10 @@
  * budget usually trades height for width, but a row's height is the tallest
  * card in it, so re-wrapping cards of differing heights can raise the total —
  * measured: seven non-uniform cards go from 1430 to 1492 tall between budgets
- * 1200 and 1412. An earlier revision stopped the search at the first canvas
- * past the top of the aspect band on the strength of that assumption; it now
- * evaluates every candidate unless `exhausted` says the result cannot move.
+ * 1200 and 1550, which are the first two candidates. An earlier revision
+ * stopped the search at the first canvas past the top of the aspect band on
+ * the strength of that assumption; it now evaluates every candidate unless
+ * `exhausted` says the result cannot move.
  */
 
 /**
@@ -53,8 +54,22 @@ export const MIN_CANVAS_ASPECT = 9 / 16;
 /** How far above the floor the search is allowed to look. */
 const MAX_BUDGET_MULTIPLE = 6;
 
-/** Number of candidate budgets, floor included. */
-const BUDGET_STEPS = 12;
+/**
+ * Number of candidate budgets, floor included.
+ *
+ * Measured, not assumed (#2761). The candidates after the first are 202-214 ms
+ * of a 632-645 ms all-views build on the dify corpus (405 drill-down levels),
+ * so the ladder's length decides how much of that a reader's drawing is worth.
+ * At 8 steps 60 ms comes back for +0.05% total canvas area: 4 of the 405 levels
+ * redraw, two of them *smaller*, the worst +8.3%, and no level newly falls
+ * outside the aspect band. 6 steps costs +3.0% on the levels it moves and
+ * reaches the heaviest one, so it is off the frontier; 12 was never measured.
+ *
+ * Shortening the *reach* instead does not pay: a ladder that stops at 2x or 3x
+ * the floor rarely gets to the budget where `exhausted` fires, so it evaluates
+ * every step and runs more placements than this one.
+ */
+const BUDGET_STEPS = 8;
 
 /**
  * Candidate width budgets in ascending order, `floor` first.
