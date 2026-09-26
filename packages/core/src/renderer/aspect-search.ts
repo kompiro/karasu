@@ -63,7 +63,9 @@ const MAX_BUDGET_MULTIPLE = 6;
  * At 8 steps 60 ms comes back for +0.05% total canvas area: 4 of the 405 levels
  * redraw, two of them *smaller*, the worst +8.3%, and no level newly falls
  * outside the aspect band. 6 steps costs +3.0% on the levels it moves and
- * reaches the heaviest one, so it is off the frontier; 12 was never measured.
+ * reaches the heaviest one, so it is off the frontier. What ADR-2593 never
+ * measured was the ladder length itself: its table compares objective
+ * functions, not how finely the budgets are sampled.
  *
  * Shortening the *reach* instead does not pay: a ladder that stops at 2x or 3x
  * the floor rarely gets to the budget where `exhausted` fires, so it evaluates

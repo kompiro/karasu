@@ -135,7 +135,9 @@ type: product
 
   > ✅ Automated — `npx tsx scripts/bench/render.ts <dify>/index.krs --runs 5` を 12 段 / 8 段で交互に 3 回。12 段 629.8 / 631.0 / 634.1 ms、8 段 557.4 / 563.4 / 565.0 ms（差 65〜77 ms、ばらつき 4〜8 ms）
 
-- [ ] 🧑 Manual: dify のような大きなモデルで、帯から外れるビューが増えていない（reverse した大きなモデルは repo に無いため実機確認）
+- [x] AT-M6: 大きなモデルで、帯から外れるレベルが段数変更で増えていない
+
+  > 🟡 Partially automated — ヘッドレスに測れる数値なので実機確認ではないが、reverse した大きなモデルは repo に無いため CI では回せない。dify モデル（405 drill-down level）を両設定で歩いて `withinAspectBand` を数えた実測値: **8 段 224 / 12 段 224**（同一）、SVG キャンバス面積合計 413.2 / 412.9 Mpx（+0.07%）。帯は目的ではなく退化を止める制約なので（ADR-2593「理由」節）、段数を縮めて払うのは面積だけであることの確認にあたる
 
 ## 手動確認
 
