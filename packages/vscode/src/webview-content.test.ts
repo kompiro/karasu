@@ -79,7 +79,11 @@ describe("buildPreviewHtml", () => {
     expect(html).toContain(
       "var attr = msg.attribute === 'data-realized-node-id' ? 'data-realized-node-id' : 'data-node-id';",
     );
-    expect(html).toContain(`document.querySelector('[' + attr + '="' + msg.nodeId + '"]')`);
+    // Escaped like the app's `PreviewPane`: the ids this path exists for are
+    // the unusually spelled ones, and a `"` in one must not throw.
+    expect(html).toContain(
+      `document.querySelector('[' + attr + '="' + CSS.escape(msg.nodeId) + '"]')`,
+    );
     expect(html).toContain("document.querySelectorAll('.karasu-highlighted')");
     expect(html).toContain("[data-realized-node-id].karasu-highlighted > rect {");
   });

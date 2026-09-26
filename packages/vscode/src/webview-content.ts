@@ -810,7 +810,7 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
           // One attribute per message, named by the sender (#2818): a jump into
           // the deploy view marks the node on the container that realizes it.
           var attr = msg.attribute === 'data-realized-node-id' ? 'data-realized-node-id' : 'data-node-id';
-          var target = document.querySelector('[' + attr + '="' + msg.nodeId + '"]');
+          var target = document.querySelector('[' + attr + '="' + CSS.escape(msg.nodeId) + '"]');
           if (target) {
             target.classList.add('karasu-highlighted');
             target.scrollIntoView({ block: 'nearest' });
