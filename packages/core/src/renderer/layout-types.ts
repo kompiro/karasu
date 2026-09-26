@@ -252,6 +252,18 @@ export interface ContainerRect {
    * the value the `data-expand-node` control carries.
    */
   nodeId?: string;
+  /**
+   * The bare id of the node a deploy container realizes (#2818), carried from
+   * `DeployContainer.nodeId` and so set only when that id names this
+   * container's nodes and nothing else. The renderer emits it as
+   * `data-realized-node-id`, which is what a viewer matches a node id against:
+   * the container's own `id` is its identity and can be spelled in a way the
+   * node id space has no word for (a qualified path, a quoted segment), so a
+   * consumer must not decode it back into a node id. Deploy-only — the system
+   * view's expanded frame keeps its own node in `nodeId` above, and the two
+   * never share a field because the container renderer is shared.
+   */
+  realizedNodeId?: string;
 }
 
 export interface LayoutResult {
