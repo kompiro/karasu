@@ -10,8 +10,12 @@ interface UseCrossNavigationArgs {
 }
 
 export interface UseCrossNavigationResult {
-  /** Click a container (group) in the system view → highlight it as a system node. */
-  handleContainerClick: (containerId: string) => void;
+  /**
+   * Click a container in the deploy view → switch to the system view and
+   * highlight the node it realizes. `null` when the container realizes no
+   * single node (qualified or narrowed, #2818): switch, highlight nothing.
+   */
+  handleContainerClick: (realizedNodeId: string | null) => void;
   /** Click the deploy-badge button on a service → switch to deploy view with it highlighted. */
   handleDeployButtonClick: (serviceId: string) => void;
   /** Click the team-badge button on a service → switch to org view, navigate to the parent. */
@@ -35,8 +39,8 @@ export function useCrossNavigation({
   navigateViewPath,
 }: UseCrossNavigationArgs): UseCrossNavigationResult {
   const handleContainerClick = useCallback(
-    (containerId: string) => {
-      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: containerId });
+    (realizedNodeId: string | null) => {
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: realizedNodeId });
     },
     [dispatch],
   );

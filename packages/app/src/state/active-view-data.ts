@@ -65,8 +65,8 @@ export interface ActiveViewData {
   expansionOverload?: boolean;
   /** system: collapse everything (frames + categories) if anything is open, else expand all (#1872). */
   onCollapseAllToggle?: () => void;
-  /** deploy: click a container group → highlight it as a system node. */
-  onContainerClick?: (containerId: string) => void;
+  /** deploy: click a container group → highlight the node it realizes as a system node (null: switch only, #2818). */
+  onContainerClick?: (realizedNodeId: string | null) => void;
   /** org: click an owned service → switch to system. */
   onOwnedServiceClick?: (serviceId: string) => void;
   /** system diff mode: per-node diff metadata. */

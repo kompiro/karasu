@@ -94,7 +94,8 @@ interface DeployViewData {
   warnings: Warning[];
   highlightedNodeId?: string | null;
   onClearHighlight?: () => void;
-  onContainerClick?: (containerId: string) => void;
+  /** The realized node's id from `data-realized-node-id`, or null when the container has none (#2818). */
+  onContainerClick?: (realizedNodeId: string | null) => void;
 }
 
 interface OrgViewData {
