@@ -26,6 +26,7 @@ reverse-architecture との役割分担は PRD の通り: reverse は「知ら�
 | 観点 | 現状 |
 | --- | --- |
 | 編集コマンド | `append`（stdin → ファイル末尾に top-level block）/ `insert <parent-id>`（stdin → 指定ノードの最後の子）/ `apply`（同 ID があれば置換、無ければ追記）/ `remove <node-id>` / `fmt` |
+| 編集コマンドの入力検査 | しない。`echo 'service X { label: "x" }' \| karasu append` のような不正スニペットも 0 終了で書き込まれ、`render` まで誰も気づかない |
 | 検証 | 専用コマンドなし。`render` が error-severity の診断で非ゼロ終了するので、reverse-architecture は `render` を validator として使っている。出力（SVG）は捨てる前提 |
 | 表示 | `render -o <file>.svg`、`serve`（ブラウザで live preview） |
 | 既存 skill | `.claude/skills/reverse-architecture/`（SKILL.md 892 行 + `reference/` に `syntax.md` / `notation-cookbook.md` / `tags-annotations.md` / `diagnostics.md` の byte-identical コピー） |
@@ -96,7 +97,7 @@ karasu skill path                     # 同梱 skill の絶対パスを表示（
 | `skill-cli-refs` | 走査対象に `packages/cli/skills/**` を追加 |
 | `skill-reference-bundle-sync` | bundle を「reverse 固定」から「(bundle dir, 収録 docs) の表」に一般化し、`karasu-author/reference/` を登録 |
 | `krs-fences` | 走査 root に `.claude/skills/` と skill の正本ディレクトリ（案 1-C）を追加（skill 本文の ```krs 例がパースできること） |
-| **新設: skill pipeline e2e**（`packages/cli` の vitest） | skill が規定する編集ループ（`append` → `insert` → `fmt` → `check`）を fixture で実行し、正常系で `check` が 0、壊した入力で非ゼロになることを assert。#2084 は「名前は正しいが用途違い」だったので、名前の照合では原理的に捕まらない。実行して初めて捕まる |
+| **新設: skill pipeline e2e**（`packages/cli` の vitest） | skill が規定する編集ループ（`append` → `insert` → `fmt` → `check`）を fixture で実行し、正常系で `check` が 0、壊した入力で非ゼロになることを assert。編集コマンドは不正入力も 0 終了で書き込むので、壊した入力は `check` の段で落ちることを確かめる。#2084 は「名前は正しいが用途違い」だったので、名前の照合では原理的に捕まらない。実行して初めて捕まる |
 | CLI `--help` の Examples | `krs-fences` と同じパーサ検査を help text 内のスニペットにも掛ける（上記の `label:` バグの再発防止）。help 文字列はコード内なので、CLI 側の vitest で各コマンドの help 出力（`addHelpText` の Examples を含む）から `echo '…'` / heredoc の本体を抜いてパースする |
 
 ### 論点 4: skill の中身（interview protocol）
