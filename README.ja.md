@@ -241,6 +241,19 @@ karasu render index.krs --format drawio --output arch.drawio
 built-in のノード / エッジ色スタイルシートの両方を切り替える。`svg`
 フォーマットのみ対応。
 
+### 検証
+
+```bash
+# プロジェクト（import 先を含む）を検証する。何も書き出さず、
+# error の診断が 1 つでもあれば exit 1
+karasu check index.krs
+```
+
+`check` は `render` と同じコンパイルを通すので、`check` が通るファイルは
+`render` も通る。編集のあとは `karasu fmt` より先に実行する。`fmt` はパース
+エラーのあるファイルを、位置を示さずに拒否するため。（`karasu lint-style` は
+`.krs.style` 用で、`.krs` には使わない。）
+
 ### フォーマット
 
 ```bash

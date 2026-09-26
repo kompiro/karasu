@@ -234,6 +234,19 @@ karasu render index.krs --format drawio --output arch.drawio
 It drives both the renderer chrome (canvas background, legend, breadcrumb,
 tab bars) and the built-in node/edge color stylesheet. `svg` format only.
 
+### Validation
+
+```bash
+# Validate a project (imports included) without writing anything;
+# exits 1 when any diagnostic is an error
+karasu check index.krs
+```
+
+`check` runs the same compile as `render`, so a file that passes `check`
+renders. After an edit, run it before `karasu fmt`: `fmt` refuses a file with
+parse errors without saying where they are. (`karasu lint-style` is for
+`.krs.style` files, not `.krs`.)
+
 ### Formatting
 
 ```bash
