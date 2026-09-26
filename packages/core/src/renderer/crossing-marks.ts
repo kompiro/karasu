@@ -67,7 +67,7 @@ const BAND_CLEARANCE = 3;
  * neighbouring parallel line instead of the one it hops. Measured on the
  * reverse-engineered dify model, arcs reaching a neighbour go 0 -> 36 in the
  * grouped view between 8 and 9. Raising this past 6 means flooring the port fan
- * first, which is a placement change. `hopArcFitsBetweenPorts` in
+ * first, which is a placement change. `hop arc radius — corridor fence` in
  * `routing-parity.test.ts` fails on a raise so the reason has to be restated.
  */
 export const HOP_RADIUS = 6;
