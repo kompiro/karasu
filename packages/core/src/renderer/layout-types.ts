@@ -163,6 +163,15 @@ export interface LayoutEdge {
    * is preserved (the line is still its own `LayoutEdge`).
    */
   trunkId?: string;
+  /**
+   * The mirror of `trunkId` (#2885): set by `aggregateGroupSourceTrunks` to the
+   * shared source's id when this edge leaves that source on one spine with ≥ 1
+   * other edge and branches off at its own target's row. Siblings share the
+   * source exit and the spine down to where each leaves; the branch
+   * (`waypoints[last]` onward) is the edge's own. Never set together with
+   * `trunkId`: a shared target is claimed first.
+   */
+  outTrunkId?: string;
 }
 
 /** Axis-aligned box. The unit `ContainerRect.coverage` is built from. */

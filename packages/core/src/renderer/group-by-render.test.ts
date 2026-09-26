@@ -363,6 +363,41 @@ describe("crossing marks layer (#1859 P2c-C)", () => {
     expect(layer).toMatch(/<polyline points="[^"]*,[^"]* [^"]*,[^"]* [^"]*,[^"]*"/);
   });
 
+  it("draws a fan-out as one band from the source, counting down at each split (#2885)", () => {
+    // One source calling three targets across bands: the edges leave together
+    // and part at each target's row, the mirror of a fan-in.
+    const FAN_OUT = `
+system Shop {
+  service Billing { label "Billing" }
+  service Wallet { label "Wallet" }
+  service Search { label "Search" }
+  service Catalog { label "Catalog" }
+  database ShopDB { label "Shop DB" }
+  service Stripe [external] { label "Stripe" }
+  Billing -> Wallet "debit"
+  Search -> Catalog "read"
+  Billing -> Catalog "reserve"
+  Billing -> ShopDB "persist"
+  Billing -> Stripe "authorize"
+}
+organization Org {
+  team "payments" { label "Payments" owns Billing owns Wallet }
+  team "catalog" { label "Catalog" owns Search owns Catalog }
+}`;
+    const r = compile(FAN_OUT, { diagramType: "system", groupBy: "team" });
+    if (r.diagramType !== "system") throw new Error("expected system view");
+    const bands = r.svg.match(/<g class="trunk-bands">.*?<\/g>/s)?.[0] ?? "";
+    // Three edges leave through the exit: `TRUNK_BAND_BASE + 2 x TRUNK_BAND_PITCH`.
+    expect(bands).toContain('stroke-width="8"');
+    expect(bands).toContain('stroke-width="5"');
+    // Split marks read three, then two, on the way down; the last branch is the
+    // spine's end and carries no number.
+    const marks = r.svg.match(/<g class="crossing-marks">.*?<\/g>/s)?.[0] ?? "";
+    expect(marks).toMatch(/<text[^>]*>3<\/text>/);
+    expect(marks).toMatch(/<text[^>]*>2<\/text>/);
+    expect(marks).not.toMatch(/<text[^>]*>1<\/text>/);
+  });
+
   it("has no bands in the ungrouped view, which has no trunks", () => {
     expect(trunksSvg(undefined)).not.toContain('class="trunk-bands"');
   });
