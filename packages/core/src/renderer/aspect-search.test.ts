@@ -68,13 +68,23 @@ describe("searchWidthBudget", () => {
 
   it("keeps the floor when widening only trades one axis for the other", () => {
     // Area is exactly conserved, and the floor is inside the band but NOT
-    // square (1200x1440, aspect 0.83) — so a later candidate is squarer and
-    // ties on area. That is precisely the case the floor-first rule is about:
-    // rearranging the same canvas must not take the floor's placement away.
-    // With a square floor the assertion would hold for the wrong reason.
-    const inBand = (budget: number) => ({ width: budget, height: 1_728_000 / budget });
-    expect(withinAspectBand(1200, 1_728_000 / 1200)).toBe(true);
-    expect(squareness(1412, 1_728_000 / 1412)).toBeLessThan(squareness(1200, 1_728_000 / 1200));
+    // square — so a later candidate is squarer and ties on area. That is
+    // precisely the case the floor-first rule is about: rearranging the same
+    // canvas must not take the floor's placement away. With a square floor the
+    // assertion would hold for the wrong reason.
+    //
+    // Both the rival and the conserved area come off the ladder, so "the rival
+    // is squarer" holds by construction: the area is that candidate's square.
+    // The previous revision fixed the area at 1_728_000, chosen so that the old
+    // 12-step ladder's second candidate (1412) sat near the square point; when
+    // #2761 shortened the ladder to 8 steps the floor became the squarer of the
+    // two and the fixture stopped describing the case it names.
+    const widened = candidateWidthBudgets(1200)[1];
+    const area = widened * widened;
+    const inBand = (budget: number) => ({ width: budget, height: area / budget });
+
+    expect(withinAspectBand(1200, area / 1200)).toBe(true);
+    expect(squareness(widened, area / widened)).toBeLessThan(squareness(1200, area / 1200));
 
     const found = searchWidthBudget(inBand, (r) => r, { floor: 1200 });
 
@@ -125,6 +135,10 @@ describe("searchWidthBudget", () => {
     // so re-wrapping can raise the total — and a search that stops early on a
     // false invariant can miss the smallest canvas. Only `exhausted` ends it.
     const calls: number[] = [];
+    // The second candidate has to come off the ladder: writing its value down
+    // meant that when #2761 shortened the ladder the branch stopped firing and
+    // this test passed while no longer leaving the band twice.
+    const secondCandidate = candidateWidthBudgets(1200)[1];
     searchWidthBudget(
       (budget) => {
         calls.push(budget);
@@ -132,7 +146,7 @@ describe("searchWidthBudget", () => {
         // stop-at-the-band search would never see the winner.
         return budget === 1200
           ? { width: 4000, height: 500 }
-          : budget === 1412
+          : budget === secondCandidate
             ? { width: 4200, height: 480 }
             : { width: 900, height: 800 };
       },

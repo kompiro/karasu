@@ -109,6 +109,38 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `layout > canvas space objective (#2593)` › `cannot help a chain of single-node layers (out of scope, needs layer folding)`
 
+### AC-6: 候補列の長さは測って選ぶ（#2761）
+
+> 候補列の長さ（`BUDGET_STEPS`）と到達範囲（`MAX_BUDGET_MULTIPLE`）は本 ADR では計測されていなかった。
+> #2761 で dify corpus（405 drill-down level）に対して測り、12 段 → 8 段へ縮めた。面積の代償は
+> 全体 +0.05%、描き直しは 4 レベル（うち 2 レベルは小さくなる、最悪 +8.3%）で、帯から外れるレベルは増えない。
+
+- [x] AT-M: 候補列は表示モード自身の下限から始まり、昇順で、指定された倍率で止まる
+
+  > ✅ Automated — `packages/core/src/renderer/aspect-search.test.ts` › `candidateWidthBudgets` › `starts at the floor and ascends` ／ `stops at the configured multiple of the floor`。表示モードごとの下限は AT-H5 が固定する
+  >
+  > 段数 8 と到達範囲 6 倍という**具体値はここでは固定しない**。cited test が実際に検証するのは生成規則（先頭が下限 / 昇順 / 指定倍率で停止）だけで、既定値そのものは検証していない（`stops at the configured multiple of the floor` は明示引数 `(1000, 6)` で呼ぶ）。これは設計判断で、`BUDGET_STEPS` は計測して選び直す定数なので、テストで固定すると再計測のたびにテストと戦うことになる（#2761 の設計ドキュメント「実装の指針」手順 2）。具体値の根拠は定数の docstring（計測結果つき）と AT-M5 の実測が持ち、段数を変えるときは AC-6 の前文と AT-M5 を同じ PR で更新する
+
+- [x] AT-M2: 段数を変えても floor-first は壊れない（すでに収まっている図は下限予算のまま）
+
+  > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `layout > canvas space objective (#2593)` › `leaves an already-landscape canvas on the floor budget`; `packages/core/src/renderer/aspect-search.test.ts` › `searchWidthBudget` › `keeps the floor when widening only trades one axis for the other`
+
+- [x] AT-M3: examples corpus のスナップショットが書き換えなしで通る（探索はこの corpus で何も勝ち取っていないので、段数を変えても 1 バイトも動かない）
+
+  > ✅ Automated — `pnpm vitest run --project @karasu-tools/core`（159 ファイル / 4,631 件 green、スナップショット更新なし）
+
+- [x] AT-M4: 予算に依存するテストは候補列から値を導出し、ラダーを変えると必ずテストへ届く
+
+  > ✅ Automated — `packages/core/src/renderer/layer-layout-logics.test.ts` の `BUDGETS` と `placeNodesInLayers > width budget (#2593)` 各件、`packages/core/src/renderer/aspect-search.test.ts` › `searchWidthBudget` › `keeps the floor when widening only trades one axis for the other` ／ `keeps evaluating past a candidate that leaves the band` が `candidateWidthBudgets` から導出する。12 → 8 の変更で実際に 1 件が落ち、fixture が名乗っている場面を記述しなくなっていたことを検出した
+
+- [x] AT-M5: 全ビュー bundle が約 600 ms を下回り、差がプロセス間のばらつきより大きい
+
+  > ✅ Automated — `npx tsx scripts/bench/render.ts <dify>/index.krs --runs 5` を 12 段 / 8 段で交互に 3 回。12 段 629.8 / 631.0 / 634.1 ms、8 段 557.4 / 563.4 / 565.0 ms（差 65〜77 ms、ばらつき 4〜8 ms）
+
+- [x] AT-M6: 大きなモデルで、帯から外れるレベルが段数変更で増えていない
+
+  > 🟡 Partially automated — ヘッドレスに測れる数値なので実機確認ではないが、reverse した大きなモデルは repo に無いため CI では回せない。dify モデル（405 drill-down level）を両設定で歩いて `withinAspectBand` を数えた実測値: **8 段 224 / 12 段 224**（同一）、SVG キャンバス面積合計 413.2 / 412.9 Mpx（+0.07%）。帯は目的ではなく退化を止める制約なので（ADR-2593「理由」節）、段数を縮めて払うのは面積だけであることの確認にあたる
+
 ## 手動確認
 
 自動テストは座標と比率を判定できるが、「空白が減って読みやすくなったか」と「表示モードを切り替えても同じ図に見えるか」は実機でしか判定できない。到達先は公開アプリ（`https://karasu.kompiro.dev/`）。
