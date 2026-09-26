@@ -18,10 +18,11 @@ description: >
 終わったとき、次のどちらかが成り立っている。
 
 - **人間に渡せる:** CodeRabbit の最新レビューが HEAD commit に対する `APPROVED` で、未解決の review thread が 0。
-  review 本文にしかない指摘（`bodyFindings`）にも対応か却下の理由を返してある。人間の判断が要る論点は PR 上で質問済み
-- **人間の判断待ちで止まっている:** 止まった理由（質問・ラウンド上限・待ち時間の上限・CodeRabbit の無反応）が通知済み
+  review 本文にしかない指摘にも対応か却下の理由を返し、その id を PR のコメントに書いたので `bodyFindings` が 0。
+  人間の判断が要る論点は PR 上で質問済み
+- **人間の判断待ちで止まっている:** 止まった理由（質問・ラウンド上限・待ち時間の上限・CodeRabbit の無反応・id を持たない指摘）が通知済み
 
-どちらも次のコマンドで確かめられる。`outcome` が `approved` なら前者。
+どちらも次のコマンドで確かめられる。`outcome` が `approved` かつ `bodyFindings` が 0 なら前者。
 
 ```
 pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --once
@@ -65,6 +66,12 @@ stdout の JSON の `outcome` で分岐する。**`outcome` が何であって�
 先に 3 の「review 本文にしかない指摘」を処理する。** 差分の範囲外の指摘と nitpick は thread を持たず、
 CodeRabbit はそれを出したラウンドでも approve するので、`approved` だけを見て終えると読まれずに残る。
 
+`bodyFindings` は「まだ答えていない件数」で、`bodyFindingIds` がその id を並べる。id は push でも
+`since` の更新でも消えない。答えるまで毎ラウンド出続けるので、`approved` で終える前に必ず 0 にする。
+
+一度答えた id がまた現れたら、CodeRabbit が同じ指摘を出し直したということで、下の「同じ指摘が、
+対応した後にまた出てきた」に当たる。答え直さず、通知して終了する。
+
 ### 2. `outcome` ごとの行動
 
 | `outcome` | すること |
@@ -97,11 +104,21 @@ rate limit 中に push したいコミットができたら、push は `limit_el
    単独では push せず、このラウンドの修正と一緒にこの 1 回に含める
 4. その最後の行動の直前の時刻を次の `since` にして 1 へ戻る（1 の `since` の説明）
 
-**review 本文にしかない指摘（`bodyFindings`）:** HEAD に対して `since` 以降に出た review の本文にある
-「Outside diff range comments」「Nitpick comments」の各項目を読み、thread と同じ判定で分ける。
-対応内容・却下の理由・質問は PR の top-level コメントにまとめて書く。直すものがあれば上の 3・4 と同じく
-最後に push し、なければそのコメント投稿の直前を `since` にする。どちらでも次の待機ではその review が
-`since` より前になり、`bodyFindings` は 0 に戻る。
+**review 本文にしかない指摘（`bodyFindings`）:** `bodyFindingIds` の id ごとに、それを出した review の
+本文を引いて読む。
+
+```
+gh api repos/kompiro/karasu/pulls/<pr>/reviews --paginate \
+  --jq '.[] | select((.body // "") | contains("<id>")) | .body'
+```
+
+thread と同じ判定で 3 つに分け、対応内容・却下の理由・質問を PR の top-level コメントにまとめて書く。
+**そのコメントには扱った id を 1 件ずつ `<!-- cr-comment:v1:<id> -->` の形で書く。** id を書くことが
+その指摘を閉じる唯一の手段で、thread の `resolveReviewThread` に当たる（#2909）。直すものがあれば
+上の 3・4 と同じく最後に push し、なければそのコメント投稿の直前を `since` にする。
+
+`bodyFindings` が `bodyFindingIds` の件数より多いときは、review が id を持たない指摘を宣言している。
+閉じる手段がないので、その review の本文を添えて通知して終了する。
 
 次のどれかに当たったら、ループを続けずに通知して終了する。
 
