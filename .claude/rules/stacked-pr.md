@@ -39,8 +39,10 @@ gh stack view --json | jq -r '.branches[] | select(.pr.state == "OPEN") | .pr.nu
 タイミングで sync しない。
 
 マージ後の順序は `gh stack merge <PR番号> --yes --squash` → `gh stack sync --prune`
-→ `gh pr ready <新しい最下層>`。ready を先に打つと、直後の force-push が走り出した
-CI を cancel する。sync を先に置けば CodeRabbit も main 取り込み後の diff を読む。
+→ 新しい最下層に `/code-review` を当てて修正を push → `gh pr ready <新しい最下層>`。
+`/code-review` を ready の後に回すと、CodeRabbit の review 枠を直す前と直した後で 2 回使う
+（[ADR-2898](../../docs/adr/2898-draft-first-code-review.md)）。sync より先に ready を打つと、
+直後の force-push が走り出した CI を cancel する。sync を先に置けば CodeRabbit も main 取り込み後の diff を読む。
 
 マージは `gh pr merge` では通らない。PR 番号を渡した `gh stack merge` は、その PR
 まで（スタック全体ではなく）をマージする。
