@@ -3,7 +3,7 @@
 - **日付**: 2026-09-26
 - **ステータス**: 検討中
 - **Issue**: [#2818](https://github.com/kompiro/karasu/issues/2818)
-- **PR**: （作成後に記入）
+- **PR**: [#2903](https://github.com/kompiro/karasu/pull/2903)
 - **関連**:
   - 引き金 Issue: [#2818](https://github.com/kompiro/karasu/issues/2818)（[#2714](https://github.com/kompiro/karasu/issues/2714) の PR #2796 から意図的に切り出した残課題。同じ穴は [#2549](https://github.com/kompiro/karasu/issues/2549) の修飾 id 以来ある）
   - 関連 ADR: [ADR-2714](../adr/2714-deploy-container-id-injective.md)（コンテナの identity とノードとの突き合わせを別の id で持つ。本 doc はその決定を SVG と app まで延長する）、[ADR-422](../adr/422-atomic-highlight-on-cross-navigation.md)（ビュー切替とハイライトを 1 dispatch で行う）、[ADR-425](../adr/425-hash-highlight-restoration.md)（ハイライトを hash の `:<highlight>` に載せる）、[ADR-2088](../adr/2088-node-reference-path-notation.md)（slice C = #2549 で修飾コンテナ id が入った）
