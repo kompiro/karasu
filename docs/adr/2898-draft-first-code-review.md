@@ -46,8 +46,8 @@ Advanced は 4 回/時になる。止められた分を usage-based（1 reviewed
 すべて続けると、月 $250 前後かかる見込みになる。効くのは review event の回数そのもので
 ある。
 
-回数を押し上げていた原因は手順の順序にあった。ready の PR への push は 1 回ごとに
-review event を 1 回使う。これまでの手順は PR を ready で開いてから（stack なら
+回数を押し上げていた原因は手順の順序にあった。ready の PR への push は、自動レビューが
+走るたびに review event を 1 回使う（rate limit で弾かれた push は使わない）。これまでの手順は PR を ready で開いてから（stack なら
 最下層の draft を外してから）`/code-review` を当てていたので、
 
 1. PR を開いた時点で、`/code-review` がこれから直すコードに 1 回使う
