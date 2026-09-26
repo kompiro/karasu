@@ -70,6 +70,20 @@ describe("buildPreviewHtml", () => {
     expect(shapeHtml).toContain('<button id="icon-mode-btn" style="">');
   });
 
+  // #2818: a highlight message names the attribute it matches on. The deploy
+  // view marks the realized node on the container, so the handler must be
+  // able to query `data-realized-node-id`, and the CSS must paint a container
+  // lit that way; the default stays `data-node-id` for cursor tracking.
+  it("lets a highlight message pick data-realized-node-id, defaulting to data-node-id", () => {
+    const html = buildPreviewHtml(baseParams());
+    expect(html).toContain(
+      "var attr = msg.attribute === 'data-realized-node-id' ? 'data-realized-node-id' : 'data-node-id';",
+    );
+    expect(html).toContain(`document.querySelector('[' + attr + '="' + msg.nodeId + '"]')`);
+    expect(html).toContain("document.querySelectorAll('.karasu-highlighted')");
+    expect(html).toContain("[data-realized-node-id].karasu-highlighted > rect {");
+  });
+
   it("interpolates DETAIL_PANEL_MAX_WIDTH/GAP consistently into the CSS and script", () => {
     const html = buildPreviewHtml(baseParams());
     expect(html).toContain(`max-width: ${DETAIL_PANEL_MAX_WIDTH}px;`);
