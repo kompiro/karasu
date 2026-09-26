@@ -273,7 +273,7 @@ root view のレイアウトが、各 system について drill-down 相当の s
 
 ## Related TPLs
 
-- [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) — 並列に存在する関数ファミリは parameter parity を保つ。`known_consumers` に `layout-single-vs-multi-system` を既に持つ。本 Issue は `discovered_from` に追記する（#2646 と同じ扱い）
+- [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) — 並列に存在する関数ファミリは parameter parity を保つ。`known_consumers` に `layout-single-vs-multi-system` を既に持つ。本 Issue は**その傘に入れず** TPL-2756 として独立させ、TPL-219 からは `related_to` と範囲外節で指す（実装の指針 13）
 - [TPL-999](../test-perspectives/TPL-999-implicit-data-filtering.md) — 暗黙フィルタ（宣言漏れ / resolver / null 戻り）を全経路で確認する。今回の `idSet` フィルタと「導出対象が `systems[0]` だけ」がまさにその暗黙フィルタ
 - [TPL-1666](../test-perspectives/TPL-1666-style-lookup-matches-layout-id-form.md) — style の lookup は layout が使う id 形をすべて試す。新たに描かれる派生エッジがスタイルを失わないことを縛る観点として隣接
 
@@ -289,7 +289,7 @@ ADR-2223 と本 Issue は同じ形で 2 回続いている（抽出が用意し�
 2. 構造的に再発しうるか: **Yes**。抽出に新しいエッジ族を足すたびに再発する
 3. 既存 TPL に未掲載か: **Yes**（レビューでの決定）。TPL-219 は parameter parity という別の切り口なので、この形をその題名の下に埋めない
 
-**TPL-2756 として新規に起こす。** 実装 PR で `test-perspective` スキルを使って起こし、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) の `discovered_from` にも #2756 を追記する（`known_consumers` に `layout-single-vs-multi-system` を既に持つため、傘の側も更新する）。
+**TPL-2756 として新規に起こす。** 実装 PR で `test-perspective` スキルを使って起こす。[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) 側は `related_to` と「本観点の範囲外」節から TPL-2756 を指すところまでとし、**`discovered_from` には #2756 を載せない**（理由は「実装の指針」13）。
 
 ## 現時点の方針
 
@@ -341,7 +341,7 @@ spike で確認した結果（ブランチ `spike/2756-per-system-edge-details`�
    - **新たに描かれる派生エッジがスタイル解決を受けること（`[implicit]` の色 / `[async]` の破線）。spike ではここだけ未測定**。`childEdges` が union なので配線上は届くはずだが、「この制約が案の良し悪しを分ける主要因」と本 Doc が書いた点なので、実装 PR では必ず柵にする
 11. AT: 自動テストで閉じるため新規 AT は起こさない（手動でしか確認できない項目が無い）
 12. changeset: `@karasu-tools/core` + `karasu`, patch（描画が変わる）
-13. TPL: [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) の `discovered_from` に #2756 を追記し、あわせて **TPL-2756 を新規に起こす**（「proactive TPL」節で決定済み）
+13. TPL: **TPL-2756 を新規に起こす**（「proactive TPL」節で決定済み）。[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) 側は `related_to` と「本観点の範囲外」節から TPL-2756 を指すところまでとし、**`discovered_from` には #2756 を載せない**。TPL は 1 ファイル 1 失敗モードなので、「#2756 は別の切り口だ」と範囲外節で宣言したファイルが同時に #2756 を自分の発見元として持つと矛盾する（実装 PR のレビューで判明。初版の本項は範囲外節が無い前提で「追記する」と書いていた）
 14. ADR 昇格: 実装完了後に `docs/adr/2756-root-view-system-edge-ownership.md` として昇格し、本 Design Doc は同じ PR で削除する。**spike ブランチは #2756 の close で消えるので ADR からは参照しない**（[TPL-2254](../test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)）。必要な実測値は ADR 本文に書き写す
 
 ### 影響範囲・マイグレーション
