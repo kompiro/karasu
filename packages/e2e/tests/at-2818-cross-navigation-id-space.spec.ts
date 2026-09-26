@@ -119,7 +119,7 @@ test.describe("AT-2818 cross-navigation highlight id space", () => {
     await bootMemoryApp(page, opfs, KRS_QUALIFIED);
 
     await page.getByRole("tab", { name: /Deploy$/ }).click();
-    await expect(page.locator(".preview-column svg").first()).toContainText("a");
+    await expect(page.locator(".preview-column svg").first()).toContainText("Node.js");
 
     const container = page.locator('svg [data-container-id="Shop.Api"]').first();
     await expect(container).toBeAttached();
@@ -139,7 +139,7 @@ test.describe("AT-2818 cross-navigation highlight id space", () => {
     await bootMemoryApp(page, opfs, KRS_NARROWED);
 
     await page.getByRole("tab", { name: /Deploy$/ }).click();
-    await expect(page.locator(".preview-column svg").first()).toContainText("a");
+    await expect(page.locator(".preview-column svg").first()).toContainText("Node.js");
 
     // One container, so its id is the bare `Api` — the spelling that used to
     // light Shop's node by coincidence while `Api` also reaches Admin's.
