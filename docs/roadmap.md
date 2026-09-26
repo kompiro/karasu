@@ -176,7 +176,6 @@ gate で評価する。
 | candidate | 状態 | 依存 |
 | --- | --- | --- |
 | **interop**（mermaid / C4・Structurizr への入出力） | **demand-gated で見送り**（壁打ち [#1832](https://github.com/kompiro/karasu/issues/1832) を 2026-07-15 に not_planned で close）。draw.io export は出荷済み（[ADR-649](adr/649-drawio-export.md)）、structured-source import は `karasu translate` が担う。**flat-diagram import は ill-posed** と結論済み（typed でない mermaid `flowchart` から karasu の意味論は復元できない）。残る tractable な面は export（mermaid = 低摩擦 / C4・Structurizr DSL = 高忠実）と typed-source import のみ | 実ユーザー需要が観測されたら新規 Issue を起こす |
-| **AI authoring 深度 / Chat 去就** | **決定（2026-09-26）**。primary は利用者自身のエージェントセッション（Claude Code 等）+ karasu CLI skill。app 内 Chat は**凍結**（残すが投資しない）。#638 の user testing は実施せず not_planned で close し、作者以外による検証は skill 側の AT に引き継ぐ（[keystone PRD 追記](prd/keystone-primary-path.md#追記-2026-09-26-ai-authoring-の経路)） | [#2901](https://github.com/kompiro/karasu/issues/2901) |
 
 ### 既存に集約（新規スレッド不要）
 
