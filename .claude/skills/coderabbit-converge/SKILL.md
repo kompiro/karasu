@@ -37,6 +37,8 @@ pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --once
 - `/code-review` とその修正の push は draft のうちに済んでいる。PR がまだ draft で `/code-review` が
   済んでいなければ、先に `/code-review` を当てて修正を push し、`gh pr ready` してから始める。ready の
   後に `/code-review` の修正を push すると review 枠を 1 回余分に使う（`docs/process.md` の PR ワークフロー、ADR-2898）
+  すでに ready で `/code-review` がまだなら、`/code-review` の修正は単独で push せず、最初のラウンドの
+  修正と一緒に下の「3. 指摘に対応する」の 1 回の push に含める
 - PR のブランチの worktree にいる。`gh pr view --json number --jq .number` で PR 番号を得る
 
 ## ループ
