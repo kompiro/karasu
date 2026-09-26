@@ -1,7 +1,8 @@
 ---
 id: ADR-2376
 title: icon display mode は主導線から外し、移行先が出荷されるまで告知しない removal path に載せる
-status: accepted
+status: superseded
+superseded_by: ADR-2906
 date: 2026-09-04
 topic: renderer
 authors: [kompiro]
@@ -30,7 +31,7 @@ assumptions:
 # ADR-2376: icon display mode は主導線から外し、移行先が出荷されるまで告知しない removal path に載せる
 
 - **日付**: 2026-09-04
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by [ADR-2906](2906-icon-mode-removal-release-undecided.md)
 - **関連**:
   - 起点 Issue: [#2376](https://github.com/kompiro/karasu/issues/2376)（Phase 1 = de-emphasize、Phase 2 = deprecation の可否）
   - Phase 1 実装 PR: [#2682](https://github.com/kompiro/karasu/pull/2682)。本 ADR が Phase 1 の決定も引き取る（同 PR は「昇格 ADR が決定を carry する」と書いて閉じた）

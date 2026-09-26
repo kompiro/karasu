@@ -16,4 +16,4 @@ which until now was silently dropped. Add `background-color: transparent;` and
 
 With that migration target shipped, **icon display mode is deprecated** and
 will be removed in a future major version (which release is not decided yet) —
-use shape mode with `shape: url(...)` instead (ADR-2376).
+use shape mode with `shape: url(...)` instead (ADR-2376, ADR-2906).
