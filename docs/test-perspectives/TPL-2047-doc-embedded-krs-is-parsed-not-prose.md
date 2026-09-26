@@ -22,10 +22,13 @@ discovered_from:
   - root_cause_file: "docs/acceptance/0006-builtin-style-and-reference.md"
   - issue: "#2415"
   - root_cause_file: "docs/spec/tags-annotations.md"
+  - issue: "#2910"
+  - root_cause_file: "packages/cli/src/index.ts"
 topic: testing
 scope:
   packages:
     - core
+    - cli
 ---
 
 # TPL-2047: ドキュメントに埋めた .krs は散文ではなく入力として parse する
@@ -129,6 +132,13 @@ pnpm run lint:krs-fences   # docs/{acceptance,spec,guide}/** と docs/concepts*.
 - **corpus 全体で一度に棚卸しする**: 導入時に全 fence を parse し、drift（直す）と
   抜粋 / 意図的に不正（宣言する）に仕分ける。既存分を放置して新規だけ守ると、
   「一部は検証されている」という最も誤解を招く状態になる。
+- **CLI の `--help` も doc である**: `karasu append` / `apply` / `insert` の Examples が
+  パーサの受け付けない `label: "…"` を教えていた（#2910）。CLI を動かすエージェントは
+  `--help` から構文を学び、編集コマンドは渡された断片を検査せず 0 終了で書き込むので、
+  help の誤りはそのまま利用者のモデルに入る。`packages/cli/src/help-text.test.ts` が
+  全コマンドの help から `echo '…' |` と heredoc の本体を抜き、error と warning が
+  ゼロであることを検査する。drift を実際に生んだ形で壊したときに落ちることもテストで
+  固定する。
 - **同じ観点の先行例**: `scripts/guide/gen-guide-diagrams.ts --check`（`docs/guide/**`
   の hero スニペットは実際にレンダリングされる）。ドキュメント中の `.krs` を実行可能な
   資産として扱う系譜。
