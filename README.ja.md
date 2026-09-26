@@ -9,415 +9,136 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/kompiro/karasu)
 <a href="https://cloudflare.com"><img src="https://workers.cloudflare.com/built-with-cloudflare.svg" alt="Built with Cloudflare" height="20" /></a>
 
-**システムの論理・物理・組織を一つの言語で描き、
-チームとアーキテクチャを一緒に設計するためのテキストベース DSL。**
+**実在するシステムを理解し、進化させるための Architecture as Code。**
 
-## 何が違うのか
+karasu は、テキストベースのアーキテクチャモデリング言語とツールチェインです。
+システムの **論理構造**、**物理デプロイ**、**チームのオーナーシップ**を、
+人間・コード・AI agent が共に読み、進化させられる一つのモデルに保ちます。
 
-- **論理・物理・組織の三面構造** —
-  サービスとドメインの論理関係、デプロイされる物理アーティファクト、
-  チームが所有する範囲を一つの `.krs` 言語で記述できる。
-  Conway の法則と逆コンウェイ戦略を同じテーブルで議論するための設計
-- **scoped glance + drill-down（プログレッシブ・ディスクロージャー）** —
-  一度に見せる情報量を限定し、必要な詳細があればその場所へ降りる。
-  全体を 1 枚に押し込む "at a glance" な鳥瞰図ではなく、
-  認知負荷を抑えるための意図的な設計選択
-- **人間と AI が共同編集できる DSL** —
-  `.krs` は AI のために設計されたのではなく、人間が読み書きする独立した道具。
-  その独立性が双方向性を生む — AI が生成した `.krs` を人間が手で編集でき、
-  逆に手書きしたモデルを AI に洗練させられる
+[**ブラウザで試す →**](https://karasu.kompiro.dev/)
 
-C4 Model / Structurizr / Mermaid からインスピレーションを受けつつも、
-drill-down の連続性・組織の第三軸・AI との協働という点で異なる立ち位置を取っています。
-設計思想の詳細は [`docs/concepts.md`](docs/concepts.md) を参照。
+[ドキュメント](https://kompiro.github.io/karasu/ja/) ·
+[ガイド](https://kompiro.github.io/karasu/ja/guide/) ·
+[構文リファレンス](https://kompiro.github.io/karasu/ja/spec/syntax/) ·
+[サンプル](https://kompiro.github.io/karasu/ja/examples/) ·
+[VS Code](https://marketplace.visualstudio.com/items?itemName=karasu-tools.karasu-vscode)
 
-## プロジェクトの位置づけ
+## 一つのモデル、三つの視点
 
-karasu は **個人の学習プロジェクト** であり、商用プロダクトではありません。[Claude Code](https://claude.com/claude-code) の学習を兼ねてオープンに開発しており、メンテナンスは **ベストエフォート（SLA なし）** で行います — Issue や Pull Request は歓迎しますが、応答時間は保証されません。
+アーキテクチャは単なる図ではありません。システムが何をするか、どう動くか、
+誰が所有するか、そしてその境界がどう変わるかを一緒に理解する必要があります。
 
-そのうえで、いま採用を始めても安全なように設計されています。
+| 視点 | 記述するもの |
+| --- | --- |
+| **論理** | システム、サービス、ドメイン、ユースケース、エンティティ、依存関係 |
+| **物理** | デプロイ、ランタイム、データベース、キュー、ストレージ |
+| **組織** | チームとオーナーシップ |
 
-- **`.krs` / `.krs.style` 言語仕様 — v1.0（安定版）。** 後方互換性はコミットメントです。言語に破壊的変更を加えるなら v2 になります。
-- **`packages/core` TypeScript API — v0.x（安定性の保証なし）。** プログラマブル API はマイナーリリース間で変更されることがあります。
-- **メンテナの応答 — ベストエフォート、SLA なし。**
+`.krs` テキストが信頼できる唯一の情報源です。人間が編集でき、CLI が既存の
+artifact から抽出でき、AI agent がソースコードから作成・改善できます。
+karasu は同じモデルを、システムの全階層を一枚に詰め込むのではなく、
+必要な場所へ連続的にドリルダウンできる図として描画します。
 
 ## 試す
 
-ブラウザですぐに試せます: **<https://karasu.kompiro.dev/>**
+### 1. Web app で体験する
 
-Getting Started を含む `ec-platform` の段階別チュートリアルが初回起動時に自動ロードされます。ブラウザのロケールに合わせて日本語版と英語版のシードが自動選択されるため、違和感なく読み進められます。`.krs` の編集・プレビュー・ドリルダウン・SVG エクスポートをその場で体験できます。AI チャット機能を使う場合は Settings タブから Claude API キー (BYOK) を入力してください — キーはブラウザの `sessionStorage` に保存され、外部サーバーには送信されません。
+[Web app](https://karasu.kompiro.dev/) でモデルの編集、図の移動、組み込み
+チュートリアルを体験できます。インストールは不要です。
+
+### 2. 自分のシステムから始める
+
+Docker Compose、Kubernetes manifest、OpenAPI schema、SQL DDL がすでにあれば、
+`karasu translate` で編集可能な `.krs` の出発点に変換できます。
+
+```bash
+npx --yes karasu@latest translate --from compose docker-compose.yml > architecture.krs
+npx --yes karasu@latest serve .
+```
+
+ほかの入力には `--from k8s`、`--from openapi`、`--from db` を使います。
+全コマンドは [CLI の使い方](https://kompiro.github.io/karasu/ja/tools/cli/)
+を参照してください。
+
+### 3. AI agent でリポジトリをリバースエンジニアリングする
+
+[`reverse-architecture` skill](.claude/skills/reverse-architecture/SKILL.md) を使うと、
+リポジトリを読める AI agent が既存のコードベースを調査し、karasu model を構築します。
+ドメイン構造には agent の判断を使い、CLI による決定的な抽出と検証を組み合わせる
+ワークフローです。
+
+生成物はレビューして進化させるための地図であり、完全な正解を主張するものではありません。
+karasu は AI がなくても使えます。モデルは plain text で、人間が編集でき、
+生成した agent に依存しません。
+
+## 小さなモデル
+
+```krs
+system Shop {
+  user Customer [human]
+  service Storefront {
+    domain Ordering
+  }
+  service Payment [external]
+
+  Customer -> Storefront "Place an order"
+  Storefront -> Payment "Charge"
+}
+
+deploy Production {
+  oci WebApp {
+    runtime "Node.js"
+    realizes Storefront
+  }
+}
+
+organization Product {
+  team Commerce {
+    owns Storefront
+  }
+}
+```
+
+Web app で開くか `npx --yes karasu@latest serve .` を実行すると、System、Deploy、
+Org view を移動し、詳細へドリルダウンできます。
 
 ## なぜ karasu か
 
-複数のリポジトリに分散して開発が進むと、システム全体を俯瞰した図を誰も持たなくなります。Confluence や Notion に書かれたアーキテクチャ図は更新されず、新入社員のオンボーディングで誰かが口頭で説明するか、古い情報をもとに混乱するか、どちらかです。
-
-karasu はアーキテクチャの記述を **アーキテクチャ専用リポジトリに集約し、チームの境界に沿ってファイルを分割・結合できる** ようにすることで、この問題に取り組みます。
-
-| 用途                     | 使う人       | 求めていること                         |
-| ------------------------ | ------------ | -------------------------------------- |
-| システム設計・進化の議論 | アーキテクト | 全体構造の設計と選択肢の比較           |
-| オーナーシップの明示     | チームリード | どのチームが何を担当するかの公式な記述 |
-| オンボーディング         | 新入社員     | 自チームのドメインと周辺サービスの把握 |
-
-## 設計上の前提
-
-> **karasu はアーキテクチャ専用リポジトリで使うことを前提としています。**
->
-> 各サービスの実装リポジトリに .krs ファイルを分散させ、URL で結合する設計は採用していません。import は **相対パスのみ** をサポートします。
->
-> 各チームはアーキテクチャリポジトリ内の自チームディレクトリを CODEOWNERS で管理し、そこに .krs ファイルを置いて更新していきます。
-
-## 基本的な使い方
-
-```
-system ECPlatform {
-  label "ECプラットフォーム"
-
-  user Customer [human]              { role "購入者" }
-  service ECommerce                  { label "ECサイト" }
-  service Payment [external]         { label "決済サービス" }
-  service Inventory [external] @deprecated { label "在庫管理（旧）" }
-
-  Customer  ->  ECommerce "商品を購入する"
-  ECommerce ->  Payment   "決済を処理する"
-  ECommerce --> Inventory "在庫を同期する"
-}
-```
-
-## リポジトリ構成パターン
-
-```
-karasu-architecture/
-  ├── index.krs                 ← アーキテクトが所有。全体構造を定義
-  ├── teams/
-  │   ├── payment/
-  │   │   └── service.krs       ← paymentチームが所有・更新
-  │   ├── ec/
-  │   │   └── service.krs       ← ecチームが所有・更新
-  │   └── inventory/
-  │       └── service.krs
-  └── deploy/
-      └── production.krs
-```
-
-各チームのディレクトリには CODEOWNERS を設定することで、レビュー権限を分散させながら全体の整合性を保てます。
-
-```
-# .github/CODEOWNERS
-/teams/payment/   @payment-team
-/teams/ec/        @ec-team
-/index.krs        @architect
-```
-
-## ファイルの結合（import）
-
-import は相対パスのみをサポートします。
-
-```
-// index.krs — 名前付き import（特定ブロックのみ取り込む）
-import { Payment } from "./teams/payment/service.krs"
-import { ECommerce } from "./teams/ec/service.krs"
-
-// ワイルドカード import（ファイル内の全ブロックをマージ）
-import "./teams/inventory/service.krs"
-
-system ECPlatform {
-  ECommerce -> Payment "決済を処理する"
-}
-```
-
-同じ id の `system` ブロックを複数ファイルで再オープンすれば、1 つの大きな system を分割して書けます（`deploy` / `organization` も同様）。本体プロパティ（`label` / `description`）は **import グラフの root に近いファイル**（= App / CLI で開いているファイル）の宣言が勝ちます。詳細は [docs/spec/syntax.ja.md「マルチファイル import の意味論」](docs/spec/syntax.ja.md#マルチファイル-import-の意味論) と [`examples/ja/multi-file-system/`](examples/ja/multi-file-system/) を参照してください。
-
-## 論理構造と物理構造
-
-`realizes` によって「このデプロイ単位がこのサービスを実現している」を明示します。
-
-```
-// teams/ec/service.krs — 論理構造（チームが定義）
-service ECommerce {
-  domain Order {
-    usecase PlaceOrder  { label "注文を受け付ける" }
-    usecase CancelOrder { label "注文をキャンセルする" }
-  }
-}
-
-// deploy/production.krs — 物理構造
-deploy "本番環境" {
-  oci "api-server" {
-    runtime  "Node.js 20"
-    realizes ECommerce     // 論理サービスとの対応を明示
-  }
-  job "monthly-billing" {
-    schedule "0 0 1 * *"
-    realizes Billing
-  }
-}
-```
-
-## 組織とオーナーシップ
-
-```
-organization DevOrg {
-  team Platform {
-    label "プラットフォームチーム"
-    owns ECommerce
-    member Alice { slack "@alice" }
-  }
-}
-```
-
-## 図の種類
-
-| タブ     | 内容                                                                        |
-| -------- | --------------------------------------------------------------------------- |
-| `System` | 論理図。ダブルクリックで system → service → domain → usecase へドリルダウン |
-| `Deploy` | 物理図。デプロイ単位と realizes による論理との対応                          |
-| `Org`    | 組織図。チームと所有サービスの関係。Tree View モードで全体俯瞰も可能        |
-
-## Chat UI と AI アシスタント
-
-`Chat` タブで Claude API を使った対話型モデリングが行えます。API キーはユーザーが用意する **BYOK 方式**（Bring Your Own Key）で、ブラウザ内で完結しサーバーには送信されません。
-
-```
-1. Settings タブで Claude API キーを入力
-2. Chat タブを開くと、現在の ViewPath に合わせた構造化インタビューが開始
-3. AI が提案する .krs パッチは Apply / Reject を選んでから適用
-```
-
-- **スコープ連動**: ドリルダウン位置が変わると AI の質問スコープも追随する
-- **tool_use**: AI は自然言語ではなく `navigate_view` / `apply_krs_patch` で意図を返す
-- **競合検知**: パッチ提案後にユーザーが編集すると Apply ボタンが自動無効化される
-- **セキュリティ**: キーはデフォルトで `sessionStorage` に保存。オプトインで `localStorage` に永続化できる
-
-## 主な機能
-
-- **論理／物理の分離** — ビジネス構造とデプロイ構造を別図で管理。`realizes` で対応付け
-- **ドリルダウン** — ダブルクリックで階層を深掘り。パンくずナビで上位に戻れる。Show All Layers で全階層を一度に表示、Open All Views で全ビューを新ウィンドウで開ける
-- **グラフィカル diff ビューア** — 2 つの `.krs` ファイル（または現在のファイルと貼り付けた `.krs` ブロブ／OPFS 履歴スナップショット）を比較し、System・Deploy・Org 図の上に追加・削除・変更されたノード／エッジ／アノテーションを直接ハイライト表示。比較方向はワンクリックで反転できる
-- **SVG / draw.io エクスポート** — 全図を一括 SVG エクスポート（エクスポート SVG はブラウザ単体でドリルダウン可能）、または draw.io (mxGraph XML) 形式に書き出してレイアウトを細部まで調整できる
-- **トップレベル インフラブロック** — `service` / `database` / `queue` / `storage` を `system` で囲わずファイル直下に書ける。デプロイ中心のファイルが単体で描画可能
-- **deploy 単体ファイルの自動タブ切り替え** — `deploy` ブロックだけを含むファイルを開くと自動的に Deploy タブにフォーカス。空の System 図に着地しない
-- **アイコンモード** — System・Deploy・Org 図をアイコン表示に切り替え
-- **パネルフォーカス** — サイドバーの折りたたみとプレビューの全画面表示
-- **ドメイン分散の検出** — 同じドメイン名が複数サービスに分散していると自動警告
-- **移行期のドメイン共存** — `@deprecated` / `@migration_target` で旧新ドメインを同時に描画
-- **タグ・アノテーション** — `[external]` `[human]` `[async]` などに加え、クライアントの形態タグ（`[web]` `[mobile]` `[desktop]` `[cli]` `[device]` `[extension]` `[embed]`）と、アノテーション `@deprecated` `@new` `@experimental` `@migration_target` をサポート。合成タグ（`[implicit]` `[cyclic]` `[read]` `[write]`）を含む全リストは `docs/spec/tags-annotations.md` を参照
-- **スタイル分離** — CSS ライクな `.krs.style` ファイルで見た目を制御
-- **マルチファイルプロジェクト** — `import` と `import "dir/"` による相対パス結合、クロスファイル navigation/ジャンプ対応
-- **クロスシステム参照** — `PaymentGateway.PaymentService` のドット記法で別システムのサービスを参照
-- **ドメイン間依存** — `domain` ブロック内で `-> TargetDomain` を宣言し、サービス間エッジとして自動派生
-- **ProjectMode の ZIP 入出力** — ブラウザ内で保持するプロジェクトを ZIP として書き出し／取り込み可能
-- **Chat UI + BYOK AI アシスタント** — Claude API キー (BYOK) を入力し、`.krs` を対話的に育てる構造化インタビュー
-- **`.krs` フォーマッター** — `karasu fmt` / LSP / エディタの Format ボタン (Shift+Alt+F) でコメントを保持しつつ整形
-- **VS Code 拡張** — シンタックスハイライト・LSP 診断・SVG プレビュー・双方向ジャンプ・アイコンモードトグル
-- **多言語対応（日本語 / 英語）** — UI 文言・診断メッセージ・警告・Chat のツール説明・Chat システムプロンプトは Settings のロケール選択に追随する
-
-## CLI
-
-### プレビュー・レンダリング
-
-```bash
-# ローカルサーバーを起動してブラウザでプレビュー
-karasu serve ./architecture
-
-# SVG を標準出力へ（stdout → ファイルリダイレクト）
-karasu render index.krs > docs/arch.svg
-
-# 特定のビューのみ出力
-karasu render index.krs --view deploy --output deploy.svg
-
-# ライトテーマで出力（デフォルトは dark）
-karasu render index.krs --theme light --output arch-light.svg
-
-# svgo でパイプ最適化
-karasu render index.krs | svgo - -o docs/arch.svg
-
-# draw.io (mxGraph XML) に書き出して細部までレイアウト調整する
-karasu render index.krs --format drawio --output arch.drawio
-```
-
-`--theme <dark|light>` は図のカラーテーマを選ぶ（デフォルト `dark`）。
-レンダラの chrome（キャンバス背景・凡例・パンくず・タブバー）と
-built-in のノード / エッジ色スタイルシートの両方を切り替える。`svg`
-フォーマットのみ対応。
-
-### フォーマット
-
-```bash
-# in-place で整形
-karasu fmt **/*.krs
-
-# CI 用（差分があれば exit 1）
-karasu fmt --check **/*.krs
-
-# パイプで受け取って stdout に出力
-cat service.krs | karasu fmt --stdin
-```
-
-### 既存システムの再アーキテクチャリング
-
-`karasu translate` は、**既存システムの構造を karasu の語彙に引き上げて俯瞰する** ためのコマンドです。対象の 4 つのフォーマットはそれぞれ、既存システムを別の角度から捉える入力として選んでいます:
-
-| 入力                    | 何を得られるか                                                                                  |
-| ----------------------- | ----------------------------------------------------------------------------------------------- |
-| Docker Compose          | サービスの実行トポロジとリソース境界                                                            |
-| Kubernetes マニフェスト | コンテナ化された実行単位と間の依存関係                                                          |
-| OpenAPI スキーマ        | サービスが公開する API の境界と責務（RESTful な操作は 1 つのリソース `usecase` にまとめられる） |
-| SQL DDL                 | データ所有関係とドメインの候補（関連するテーブルは集約ルートの下にグルーピングされる）          |
-
-これらを `.krs` スキャフォールドに変換することで、現行システムを karasu の三面構造で描き、ドメイン境界の再整理やサービス分割の候補を検討しやすくなります。Unix パイプで `karasu apply` と組み合わせれば、インフラ側の更新を既存 `.krs` に差分反映できます。
-
-```bash
-# docker-compose から deploy.krs を生成
-karasu translate --from compose docker-compose.yml > deploy.krs
-
-# translate 結果を既存ファイルにマージ（存在するノードは replace、なければ append）
-karasu translate --from k8s manifests/deployment.yaml | karasu apply deploy.krs
-```
-
-### `.krs` の構造編集
-
-Chat UI / CI から `.krs` ファイルをプログラム的に編集するためのコマンド群です。
-
-```bash
-# ノード削除
-karasu remove PaymentService arch.krs
-
-# トップレベルブロックを末尾追記
-echo 'service NewService {}' | karasu append arch.krs
-
-# 指定親ノードの子として挿入（インデント自動）
-echo 'service NewService {}' | karasu insert ECommerce arch.krs
-
-# パイプ入力をパッチとして適用（ID 一致で replace、なければ append）
-cat patch.krs | karasu apply arch.krs
-```
-
-### Diff と CRUD マトリクス
-
-```bash
-# 2 つの .krs バージョン間の視覚的な差分を描画
-karasu diff before.krs after.krs --output diff.svg
-
-# 片側を stdin から渡す例（HEAD と作業ツリーを比較）
-git show HEAD:arch.krs | karasu diff - arch.krs --output diff.svg
-
-# usecase × resource の CRUD マトリクスを抽出
-karasu matrix arch.krs --format md > docs/crud.md
-karasu matrix arch.krs --format svg --output docs/crud.svg
-karasu matrix arch.krs --format csv --writes-only > writes.csv
-```
-
-### カバレッジとサブツリー
-
-```bash
-# ドメインごとの密度を計測し、薄くしかモデリングされていないドメインを検出
-karasu coverage arch.krs
-karasu coverage arch.krs --format json          # 機械可読（ツール連携向け）
-karasu coverage arch.krs --threshold 0.3        # thin 判定のしきい値を上書き
-
-# 1 ノードのサブツリーを独立した .krs として抽出（例: ドメイン単体をツールへ渡す）
-karasu subtree Order arch.krs                    # 最小ラップ（ドメインのみ）
-karasu subtree Order arch.krs --with-ancestors   # system / service のコンテキストを保持
-```
-
-`coverage` と `subtree` は、アーキテクチャリバースワークフローを支える構造プリミティブです。生成された `.krs` モデルを静的に解析し、`coverage` はドメインごとの深さ（usecase / entity / resource / edge）を計測して薄いドメインを定量的に検出し、宣言された各ストアに論理モデルがどこまで届いているかを報告し、`database` に記録された table 間関連と entity 関連の投影との差分（entity 層に欠けている記録済みの table 関連は、宣言 FK でも `[inferred]` でも `recorded-without-projection` のペアとして出ます）を示します。`subtree` はモデルを 1 ノードに切り出して、focused な refinement のために再投入できるようにします。
-
-## VS Code 拡張
-
-> **ステータス: experimental（実験的）**
->
-> コア機能（パーサー・レンダラー・Web プレビュー）に比べて優先度は低く、VS Code ユーザーが `.krs` を手元で編集するための補助ツールとして提供しています。補完は基本的なもののみ、コードアクション・リネームは未提供です。基本的な記述体験に集中したい場合は Web プレビュー（`karasu serve` またはブラウザ版）の利用を推奨します。
-
-`packages/vscode/` に含まれています。現時点で動作する機能:
-
-- `.krs` ファイルのシンタックスハイライト
-- LSP による診断（エラー・警告をエディタ内表示）
-- SVG プレビュー Webview（ドリルダウンナビゲーション対応）
-- エディタ ↔ プレビューの双方向ジャンプ（Cmd/Ctrl+Click）
-- ホバー・定義ジャンプなど標準 LSP 機能
-- ノード詳細パネル（クロスダイアグラムナビゲーション対応）
-
-### インストール
-
-VS Code Marketplace
-（[`karasu-tools.karasu-vscode`](https://marketplace.visualstudio.com/items?itemName=karasu-tools.karasu-vscode)）からインストールできます:
-
-```sh
-code --install-extension karasu-tools.karasu-vscode
-```
-
-## GitHub Actions
-
-CI で `.krs` ファイルから SVG を自動生成するワークフローテンプレートを用意しています。
-
-```yaml
-- name: Render architecture diagrams
-  run: npx --yes karasu@latest render docs/architecture.krs --output docs/architecture.svg
-```
-
-詳細は [`examples/github-actions/`](examples/github-actions/) および [`docs/github-actions.md`](docs/github-actions.md) を参照してください。
-
-## 命名の由来
-
-北欧神話のオーディンの使い魔、ヒギン・ムニン（思考と記憶の鴉）に由来します。世界を俯瞰して情報を集め、必要な場所へ降りていく鴉の姿が、ドリルダウン型アーキテクチャ把握のコンセプトと重なります。
+- **システムと共に進化できるアーキテクチャ** — Git でテキストの変更をレビューし、
+  図の差分を比較し、アーキテクチャを開発作業の近くに保てます。
+- **論理・物理・組織の境界を一緒に扱う** — サービス設計、デプロイ、
+  オーナーシップを同じ語彙で議論できます。
+- **プログレッシブ・ディスクロージャー** — 範囲を絞った概要から始め、
+  詳細が必要な場所だけに降りられます。
+- **人間とツールの共通モデル** — `.krs` を手で編集し、構造化された入力から
+  scaffold を生成し、AI agent に変更を提案させても、モデル自体は AI に依存しません。
+
+karasu は C4 Model、Structurizr、Mermaid から着想を得ています。
+設計思想は [コアコンセプト](https://kompiro.github.io/karasu/ja/concepts/)、
+サービス境界・チーム境界・オンボーディング・アーキテクチャの進化は
+[ガイド](https://kompiro.github.io/karasu/ja/guide/) を参照してください。
 
 ## ドキュメント
 
-| 内容                                      | 場所                                                                 |
-| ----------------------------------------- | -------------------------------------------------------------------- |
-| .krs 構文リファレンス                     | `docs/spec/syntax.md`                                                |
-| .krs.style 構文リファレンス               | `docs/spec/style.md`                                                 |
-| タグ・アノテーション一覧                  | `docs/spec/tags-annotations.md`                                      |
-| コアコンセプト（論理／物理分離など）      | `docs/concepts.md`                                                   |
-| 設計判断の経緯（ADR）                     | `docs/adr/` — `<issue-number>-*.md` 形式（起点の GitHub Issue 番号） |
-| 詳細技術設計（検討中のもの）              | `docs/design/`                                                       |
-| 受け入れテスト基準                        | `docs/acceptance/`                                                   |
-| 開発プロセス（ライフサイクル・PR フロー） | `docs/process.md`                                                    |
-| GitHub Actions 連携ガイド                 | `docs/github-actions.md`                                             |
-| サンプル `.krs` ファイル                  | `examples/`                                                          |
-| AI が生成したコードベース wiki            | [DeepWiki](https://deepwiki.com/kompiro/karasu)                      |
+- [Web app の使い方](https://kompiro.github.io/karasu/ja/tools/app/)
+- [CLI の使い方](https://kompiro.github.io/karasu/ja/tools/cli/)
+- [ガイド](https://kompiro.github.io/karasu/ja/guide/)
+- [構文リファレンス](https://kompiro.github.io/karasu/ja/spec/syntax/)
+- [スタイルリファレンス](https://kompiro.github.io/karasu/ja/spec/style/)
+- [サンプル](https://kompiro.github.io/karasu/ja/examples/)
 
-## リポジトリ構成
+## プロジェクトの位置づけ
 
-```
-karasu/
-├── docs/                  ← 仕様・設計ドキュメント
-├── examples/              ← サンプル .krs ファイル（チュートリアル・テーマ別シナリオ）
-├── packages/
-│   ├── core/              ← パーサー・スタイル解決・SVGレンダラー（Pure TS）
-│   ├── app/               ← Vite + React のプレビューUI
-│   ├── cli/               ← karasu serve / render コマンド
-│   ├── lsp/               ← Language Server Protocol 実装
-│   └── vscode/            ← VS Code 拡張
-├── package.json           ← npm workspaces 設定
-└── tsconfig.json
-```
+karasu は個人の学習プロジェクトで、SLA なしのベストエフォートでメンテナンスしています。
+`.krs` / `.krs.style` 言語仕様は v1.0 で後方互換性を維持します。
+TypeScript API は v0.x で、マイナーリリース間に変更される可能性があります。
+言語の互換性については [ADR-1314](docs/adr/1314-krs-spec-v1-freeze.md) を参照してください。
 
-## 技術スタック
+## コントリビュート、セキュリティ、ライセンス
 
-| 用途                   | 技術                         |
-| ---------------------- | ---------------------------- |
-| 言語                   | TypeScript                   |
-| ビルド（app）          | Vite                         |
-| UIフレームワーク       | React                        |
-| エディタコンポーネント | Monaco Editor                |
-| テスト                 | Vitest                       |
-| CLI                    | commander                    |
-| 言語サーバー           | LSP（vscode-languageserver） |
+Issue と Pull Request を歓迎します。[CONTRIBUTING.md](CONTRIBUTING.md) と
+[Code of Conduct](CODE_OF_CONDUCT.md) を参照してください。脆弱性は公開 Issue ではなく、
+[private vulnerability reporting](https://github.com/kompiro/karasu/security/advisories/new)
+から報告してください。詳細は [SECURITY.md](SECURITY.md) にあります。
 
-## インスピレーション
-
-C4 Model に触発されつつも、独自の語彙と論理／物理分離のコンセプトを採用しています。
-
-## コントリビュート
-
-Issue の起票方法、メンテナの「Best-effort, no SLA」スタンス、ローカルセットアップ、PR フローは [`CONTRIBUTING.md`](CONTRIBUTING.md) を参照してください（英語）。本プロジェクトの参加は [Contributor Covenant 2.1](CODE_OF_CONDUCT.md) に従います。
-
-## セキュリティ
-
-脆弱性を見つけた場合は **公開 Issue を立てず**、GitHub の [Private vulnerability reporting](https://github.com/kompiro/karasu/security/advisories/new) を利用してください。サポート対象バージョン・協調的開示（coordinated disclosure）の方針・ベストエフォートの応答目標を含む詳細は [`SECURITY.md`](SECURITY.md) を参照してください（英語）。
-
-## ライセンス
-
-[Apache License, Version 2.0](./LICENSE) の下で公開されています。
+[Apache License, Version 2.0](LICENSE) でライセンスされています。
