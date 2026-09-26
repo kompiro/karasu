@@ -43,10 +43,13 @@ describe("useCrossNavigation", () => {
   it("handleDeployButtonClick dispatches SET_ACTIVE_VIEW(deploy) with highlight", () => {
     const { result, dispatch } = setup();
     act(() => result.current.handleDeployButtonClick("api"));
+    // The button hands over a node id; the deploy view marks that node on the
+    // container realizing it, so the jump names that attribute (#2818).
     expect(dispatch).toHaveBeenCalledWith({
       type: "SET_ACTIVE_VIEW",
       activeView: "deploy",
       highlightNodeId: "api",
+      highlightAttribute: "data-realized-node-id",
     });
   });
 

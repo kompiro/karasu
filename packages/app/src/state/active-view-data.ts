@@ -7,6 +7,7 @@ import type {
   FacetOverviewEntry,
 } from "@karasu-tools/core";
 import { usePreview, type GroupByMode, type PreviewContextValue } from "./preview-context.js";
+import type { HighlightAttribute } from "./app-reducer.js";
 
 type BreadcrumbItem = { id: string; label: string };
 
@@ -27,6 +28,8 @@ export interface ActiveViewData {
   /** Breadcrumb / drill navigation — undefined for deploy (no view path). */
   onBreadcrumbNavigate?: (path: string[]) => void;
   highlightedNodeId?: string | null;
+  /** The attribute `highlightedNodeId` is matched against, set by its producer (#2818). */
+  highlightAttribute?: HighlightAttribute;
   onClearHighlight?: () => void;
   /** "Show All Layers" SVG for the active view — system / org only. */
   allLayersSvg?: string;
@@ -94,6 +97,7 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         viewPath: [],
         breadcrumbItems: [],
         highlightedNodeId: deployView.highlightedNodeId,
+        highlightAttribute: deployView.highlightAttribute,
         onClearHighlight: deployView.onClearHighlight,
         onContainerClick: deployView.onContainerClick,
       };
@@ -106,6 +110,7 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         breadcrumbItems: orgView.breadcrumbItems,
         onBreadcrumbNavigate: orgView.onBreadcrumbNavigate,
         highlightedNodeId: orgView.highlightedNodeId,
+        highlightAttribute: orgView.highlightAttribute,
         onClearHighlight: orgView.onClearHighlight,
         allLayersSvg: ctx.orgAllLayersSvg,
         getDrillDownSvg: ctx.getOrgDrillDownSvg,
@@ -123,6 +128,7 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         breadcrumbItems: systemView.breadcrumbItems,
         onBreadcrumbNavigate: systemView.onBreadcrumbNavigate,
         highlightedNodeId: systemView.highlightedNodeId,
+        highlightAttribute: systemView.highlightAttribute,
         onClearHighlight: systemView.onClearHighlight,
         allLayersSvg: ctx.allLayersSvg,
         getDrillDownSvg: ctx.getDrillDownSvg,

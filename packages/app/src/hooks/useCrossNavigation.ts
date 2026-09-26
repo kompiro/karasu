@@ -47,7 +47,14 @@ export function useCrossNavigation({
 
   const handleDeployButtonClick = useCallback(
     (serviceId: string) => {
-      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "deploy", highlightNodeId: serviceId });
+      // A node id crosses into the deploy view, which marks that node on the
+      // container realizing it (#2818).
+      dispatch({
+        type: "SET_ACTIVE_VIEW",
+        activeView: "deploy",
+        highlightNodeId: serviceId,
+        highlightAttribute: "data-realized-node-id",
+      });
     },
     [dispatch],
   );

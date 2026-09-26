@@ -2,8 +2,19 @@ import { useCallback, useEffect, useRef } from "react";
 import { anchorId } from "@karasu-tools/core";
 import type { Dispatch } from "react";
 import type { ShareTarget } from "@karasu-tools/core";
-import type { AppAction, ActiveView } from "../state/app-reducer.js";
+import type { AppAction, ActiveView, HighlightAttribute } from "../state/app-reducer.js";
 import { useLatestRef } from "./useLatestRef.js";
+
+/**
+ * The attribute a `:<highlight>` restored from the hash is matched against
+ * (#2818). The hash carries no id space of its own; on the deploy view the
+ * suffix is what the deploy-jump button and a share link write, a node id,
+ * which the deploy view marks on the container realizing it. Every other view
+ * marks nodes directly.
+ */
+function hashHighlightAttribute(view: ActiveView): HighlightAttribute {
+  return view === "deploy" ? "data-realized-node-id" : "data-node-id";
+}
 
 // ─── Utilities (exported for testing) ────────────────────────────────────────
 
@@ -318,9 +329,14 @@ export function useHistoryNavigation({
         type: "SET_ACTIVE_VIEW",
         activeView: parsed.activeView,
         highlightNodeId: parsed.highlightNodeId,
+        highlightAttribute: hashHighlightAttribute(parsed.activeView),
       });
     } else if (parsed.highlightNodeId !== null) {
-      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: parsed.highlightNodeId });
+      dispatch({
+        type: "SET_HIGHLIGHTED_NODE",
+        nodeId: parsed.highlightNodeId,
+        highlightAttribute: hashHighlightAttribute(parsed.activeView),
+      });
     }
     // Restore org tree view mode
     if (parsed.isOrgTreeView) {
@@ -366,9 +382,13 @@ export function useHistoryNavigation({
       if (!indexReady) return;
       const highlight = pendingHighlightRef.current;
       pendingHighlightRef.current = null;
-      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: highlight });
+      dispatch({
+        type: "SET_HIGHLIGHTED_NODE",
+        nodeId: highlight,
+        highlightAttribute: hashHighlightAttribute(activeViewRef.current),
+      });
     }
-  }, [nodePathIndex, orgPathIndex, dispatch]);
+  }, [nodePathIndex, orgPathIndex, dispatch, activeViewRef]);
 
   // ③ Sync state changes → hash (Issue #811)
   // Includes `currentFilePath` so file switches participate in browser
@@ -437,9 +457,14 @@ export function useHistoryNavigation({
           type: "SET_ACTIVE_VIEW",
           activeView: parsed.activeView,
           highlightNodeId: parsed.highlightNodeId,
+          highlightAttribute: hashHighlightAttribute(parsed.activeView),
         });
       } else {
-        dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: parsed.highlightNodeId });
+        dispatch({
+          type: "SET_HIGHLIGHTED_NODE",
+          nodeId: parsed.highlightNodeId,
+          highlightAttribute: hashHighlightAttribute(parsed.activeView),
+        });
       }
       setIsOrgTreeViewRef.current(parsed.isOrgTreeView);
       setIsEntityViewRef.current(parsed.isEntityView);

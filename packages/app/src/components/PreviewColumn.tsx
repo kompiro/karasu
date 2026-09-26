@@ -410,9 +410,7 @@ export function PreviewColumn() {
           onExpandToggle={view.onExpandToggle}
           onOwnedServiceClick={view.onOwnedServiceClick}
           highlightedNodeId={view.highlightedNodeId}
-          /* The deploy view marks the node a container realizes on the
-             container itself; every other view marks nodes directly (#2818). */
-          highlightAttribute={activeView === "deploy" ? "data-realized-node-id" : "data-node-id"}
+          highlightAttribute={view.highlightAttribute}
           onClearHighlight={view.onClearHighlight}
           onJumpToEditor={onJumpToEditor}
           nodeDiff={view.nodeDiff}

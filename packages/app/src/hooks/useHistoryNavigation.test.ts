@@ -432,6 +432,23 @@ describe("useHistoryNavigation", () => {
         type: "SET_ACTIVE_VIEW",
         activeView: "org",
         highlightNodeId: null,
+        highlightAttribute: "data-node-id",
+      });
+    });
+
+    // #2818: the hash carries no id space, so restoration names the attribute
+    // by view. A deploy `:<highlight>` is what the deploy-jump button and a
+    // share link write, a node id, which the deploy view marks on the
+    // realizing container.
+    it("restores a deploy hash highlight on data-realized-node-id", () => {
+      history.replaceState(null, "", "#krs-deploy:ECommerce");
+      const dispatch = makeDispatch();
+      renderHook(() => useHistoryNavigation(makeOptions({ dispatch, activeView: "system" })));
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_ACTIVE_VIEW",
+        activeView: "deploy",
+        highlightNodeId: "ECommerce",
+        highlightAttribute: "data-realized-node-id",
       });
     });
   });
@@ -530,7 +547,11 @@ describe("useHistoryNavigation", () => {
       });
 
       expect(dispatch).toHaveBeenCalledWith({ type: "SET_VIEW_PATH", path: ["Payment"] });
-      expect(dispatch).toHaveBeenCalledWith({ type: "SET_HIGHLIGHTED_NODE", nodeId: "Api" });
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_HIGHLIGHTED_NODE",
+        nodeId: "Api",
+        highlightAttribute: "data-node-id",
+      });
     });
 
     it("re-applies a highlight-only-at-root hash once the index populates", async () => {
@@ -551,7 +572,11 @@ describe("useHistoryNavigation", () => {
         rerender();
       });
 
-      expect(dispatch).toHaveBeenCalledWith({ type: "SET_HIGHLIGHTED_NODE", nodeId: "Api" });
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_HIGHLIGHTED_NODE",
+        nodeId: "Api",
+        highlightAttribute: "data-node-id",
+      });
     });
 
     it("re-applies the highlight only once across further index changes", async () => {
@@ -578,7 +603,11 @@ describe("useHistoryNavigation", () => {
         rerender();
       });
 
-      expect(dispatch).not.toHaveBeenCalledWith({ type: "SET_HIGHLIGHTED_NODE", nodeId: "Api" });
+      expect(dispatch).not.toHaveBeenCalledWith({
+        type: "SET_HIGHLIGHTED_NODE",
+        nodeId: "Api",
+        highlightAttribute: "data-node-id",
+      });
     });
   });
 
@@ -662,6 +691,7 @@ describe("useHistoryNavigation", () => {
         type: "SET_ACTIVE_VIEW",
         activeView: "deploy",
         highlightNodeId: null,
+        highlightAttribute: "data-realized-node-id",
       });
     });
 
@@ -679,6 +709,7 @@ describe("useHistoryNavigation", () => {
         type: "SET_ACTIVE_VIEW",
         activeView: "deploy",
         highlightNodeId: "ECommerce",
+        highlightAttribute: "data-realized-node-id",
       });
     });
 
@@ -692,7 +723,11 @@ describe("useHistoryNavigation", () => {
         window.dispatchEvent(new PopStateEvent("popstate"));
       });
 
-      expect(dispatch).toHaveBeenCalledWith({ type: "SET_HIGHLIGHTED_NODE", nodeId: "ECommerce" });
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_HIGHLIGHTED_NODE",
+        nodeId: "ECommerce",
+        highlightAttribute: "data-realized-node-id",
+      });
     });
 
     it("dispatches SET_HIGHLIGHTED_NODE with null when popstate stays on same view without highlight", async () => {
@@ -709,7 +744,11 @@ describe("useHistoryNavigation", () => {
         window.dispatchEvent(new PopStateEvent("popstate"));
       });
 
-      expect(dispatch).toHaveBeenCalledWith({ type: "SET_HIGHLIGHTED_NODE", nodeId: null });
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_HIGHLIGHTED_NODE",
+        nodeId: null,
+        highlightAttribute: "data-realized-node-id",
+      });
     });
 
     it("resolves nodeId via nodePathIndex in popstate", async () => {
@@ -768,6 +807,7 @@ describe("useHistoryNavigation", () => {
       expect(dispatch).toHaveBeenCalledWith({
         type: "SET_HIGHLIGHTED_NODE",
         nodeId: "oncall",
+        highlightAttribute: "data-node-id",
       });
     });
 

@@ -10,7 +10,7 @@ import type {
   SystemNode,
   FacetOverviewEntry,
 } from "@karasu-tools/core";
-import type { ActiveView } from "./app-reducer.js";
+import type { ActiveView, HighlightAttribute } from "./app-reducer.js";
 import type { SharePayload } from "../utils/inline-share.js";
 
 /**
@@ -77,6 +77,7 @@ interface SystemViewData {
   /** Collapse everything (frames + categories) if anything is open, else expand all (#1872). */
   onCollapseAllToggle?: () => void;
   highlightedNodeId?: string | null;
+  highlightAttribute?: HighlightAttribute;
   onClearHighlight?: () => void;
   /**
    * Per-node diff metadata when diff mode is active. Undefined outside
@@ -93,6 +94,7 @@ interface DeployViewData {
   diagnostics: Diagnostic[];
   warnings: Warning[];
   highlightedNodeId?: string | null;
+  highlightAttribute?: HighlightAttribute;
   onClearHighlight?: () => void;
   /** The realized node's id from `data-realized-node-id`, or null when the container has none (#2818). */
   onContainerClick?: (realizedNodeId: string | null) => void;
@@ -106,6 +108,7 @@ interface OrgViewData {
   warnings: Warning[];
   onBreadcrumbNavigate: (path: string[]) => void;
   highlightedNodeId?: string | null;
+  highlightAttribute?: HighlightAttribute;
   onClearHighlight?: () => void;
   /** Called when user clicks an owned service link on a team node to cross-navigate to system view */
   onOwnedServiceClick?: (serviceId: string) => void;

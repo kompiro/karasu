@@ -122,3 +122,7 @@ container switches to System with the realizes target highlighted`
 - `packages/vscode/src/webview-content.test.ts` › `lets a highlight message pick
 data-realized-node-id` と `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` ›
   `AT-0042-2` — 同じ導線を持つもう 1 つの表示面（チェックリスト 5）
+- `packages/app/src/state/app-reducer.test.ts` › `carries highlightAttribute with the highlight`、
+  `packages/app/src/hooks/useHistoryNavigation.test.ts` › `restores a deploy hash highlight on
+data-realized-node-id` — 属性は手渡す側が id と一緒に state に載せる（受け手のペインの
+  種類で決めると、同じペインに複数の producer がいるときどちらかが外れる）

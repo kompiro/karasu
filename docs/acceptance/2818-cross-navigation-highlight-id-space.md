@@ -84,6 +84,10 @@ type: product
 
   > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › highlightedNodeId › does not fall back to the container when matching data-node-id (#2818)
 
+- [x] AT-P: どの属性で引くかは手渡す側が決めて state に載せる（ペインの種類では決めない）。D ボタンは `data-realized-node-id`、hash 復元は deploy ビューなら `data-realized-node-id`、それ以外と属性を言わない producer（Outline 等）は `data-node-id`。属性を言わない action は既定に戻す
+
+  > ✅ Automated — `packages/app/src/state/app-reducer.test.ts` › appReducer — activeView / highlightedNodeId › SET_ACTIVE_VIEW › carries highlightAttribute with the highlight and resets it when omitted ／ `packages/app/src/hooks/useCrossNavigation.test.ts` › handleDeployButtonClick dispatches SET_ACTIVE_VIEW(deploy) with highlight ／ `packages/app/src/hooks/useHistoryNavigation.test.ts` › restores a deploy hash highlight on data-realized-node-id ／ `packages/app/src/state/active-view-data.test.ts`
+
 ### AC-6: VS Code webview
 
 - [x] AT-N: highlight message は属性名を運び、webview はその 1 属性で引く。既定は `data-node-id`（カーソル追従）、deploy への `switchViewAndHighlight` は `data-realized-node-id`

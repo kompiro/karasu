@@ -43,6 +43,7 @@ function makeCtx(activeView: ActiveView): PreviewContextValue {
       diagnostics: empty,
       warnings: [depWarn],
       highlightedNodeId: "depNode",
+      highlightAttribute: "data-realized-node-id",
       onClearHighlight: noop,
       onContainerClick: noop,
     },
@@ -113,6 +114,7 @@ describe("selectActiveViewData", () => {
     expect(v.allLayersSvg).toBeUndefined();
     expect(v.getDrillDownSvg).toBeUndefined();
     expect(v.highlightedNodeId).toBe("depNode");
+    expect(v.highlightAttribute).toBe("data-realized-node-id");
     expect(v.onContainerClick).toBe(noop);
     // not applicable to deploy:
     expect(v.onDeployButtonClick).toBeUndefined();

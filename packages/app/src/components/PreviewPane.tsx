@@ -13,13 +13,7 @@ import { EdgeContextMenu } from "./EdgeContextMenu.js";
 import { useFormattedDiagnostic } from "../i18n/format-diagnostic.js";
 import { useTranslation } from "../i18n/index.js";
 import { diagnosticLocationLabel, findingKeys } from "../utils/diagnostic-location.js";
-
-/**
- * The SVG attribute a pane matches a cross-navigation highlight against
- * (#2818). `data-node-id` marks a node in the system and org views;
- * `data-realized-node-id` marks, on a deploy container, the node it realizes.
- */
-type HighlightAttribute = "data-node-id" | "data-realized-node-id";
+import type { HighlightAttribute } from "../state/app-reducer.js";
 
 interface PreviewPaneProps {
   svg: string;
@@ -54,12 +48,13 @@ interface PreviewPaneProps {
    */
   highlightedNodeId?: string | null;
   /**
-   * The one attribute this pane matches `highlightedNodeId` against (#2818).
-   * System and org panes read `data-node-id`; the deploy pane reads
-   * `data-realized-node-id`, the node a container realizes. One attribute per
-   * pane, not a fallback chain: the deploy view's `data-node-id` is the unit
-   * id space, and an unclassified unit spelled like a node would otherwise
-   * take a highlight meant for the container (TPL-2818).
+   * The one attribute this pane matches `highlightedNodeId` against (#2818),
+   * chosen by whoever handed the id over: a deploy jump names
+   * `data-realized-node-id` (the node a container realizes), the outline and
+   * the node views name `data-node-id`. One attribute per highlight, not a
+   * fallback chain: the deploy view's `data-node-id` is the unit id space,
+   * and an unclassified unit spelled like a node would otherwise take a
+   * highlight meant for the container (TPL-2818).
    */
   highlightAttribute?: HighlightAttribute;
   /** Called when a node interaction or a click on the diagram background clears the cross-navigation highlight */
