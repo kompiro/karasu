@@ -80,6 +80,12 @@ export interface Snapshot {
   reviews: CodeRabbitReview[];
   /** CodeRabbit's top-level comments only. */
   comments: CodeRabbitComment[];
+  /**
+   * Bodies of the PR's top-level comments that are not CodeRabbit's. A body
+   * finding has no thread to answer in, so this is where the round answers one,
+   * and naming its id there is what retires it ({@link bodyFindingIds}).
+   */
+  authorComments: string[];
   /** Every review thread on the PR, whoever opened it. */
   threads: ReviewThread[];
 }
@@ -188,28 +194,64 @@ function reviewRunning(s: Snapshot): boolean {
 
 /**
  * Findings CodeRabbit can only put in a review body: those outside the diff, and
- * nitpicks. No review thread tracks them, and CodeRabbit approves regardless
+ * nitpicks. No review thread carries them, and CodeRabbit approves regardless
  * (#2847: "Outside diff range comments (2)" five seconds before APPROVED), so the
  * thread count alone would end a round with them unread.
+ *
+ * The section header says how many a review filed; it is the marker below that
+ * makes each one trackable. Counting the header against the head commit tied a
+ * finding to whatever was head when it was filed, so the next push dropped it
+ * from the count for good — #2909, where a Major finding on #2887 was lost that
+ * way and shipped.
  */
 const BODY_FINDING_SECTIONS = [
   /Outside diff range comments \((\d+)\)/,
   /Nitpick comments \((\d+)\)/,
 ];
 
-/** Body-only findings in the reviews of the head filed since the last action. */
-export function bodyFindingCount(s: Snapshot): number {
-  const since = ms(s.since);
-  return (
-    s.reviews
-      // A dismissed review's findings were set aside by whoever dismissed it.
-      .filter((r) => isCommitReview(r) && r.commitId === s.headSha && ms(r.submittedAt) >= since)
-      .reduce(
-        (n, r) =>
-          n + BODY_FINDING_SECTIONS.reduce((m, re) => m + Number(re.exec(r.body)?.[1] ?? 0), 0),
-        0,
-      )
+/** The marker CodeRabbit closes each body finding with; stable across rounds. */
+const BODY_FINDING_ID = /<!--\s*cr-comment:v1:([0-9a-f]+)\s*-->/g;
+
+const findingIdsIn = (body: string): string[] =>
+  [...body.matchAll(BODY_FINDING_ID)].map((m) => m[1]);
+
+const declaredFindingsIn = (body: string): number =>
+  BODY_FINDING_SECTIONS.reduce((n, re) => n + Number(re.exec(body)?.[1] ?? 0), 0);
+
+/**
+ * Body findings still waiting to be answered, by id.
+ *
+ * Every review counts, whatever commit it reviewed and whenever it was filed: a
+ * finding outlives the head it arrived on, exactly as an unresolved thread does.
+ * A review whose approval GitHub dismissed counts too, because a dismissal
+ * follows a push and says nothing about whether the findings were read.
+ *
+ * Answered means the id appears in a PR comment that is not CodeRabbit's. These
+ * findings have no thread to reply in, so the round answers them in a top-level
+ * comment; writing the id there is what retires one. CodeRabbit echoing its own
+ * id does not, or the finding would retire itself.
+ */
+export function bodyFindingIds(s: Snapshot): string[] {
+  const answered = s.authorComments.join("\n");
+  const filed = new Set(s.reviews.flatMap((r) => findingIdsIn(r.body)));
+  return [...filed].filter((id) => !answered.includes(id));
+}
+
+/**
+ * Findings a review declared in its header but filed without a marker. Nothing
+ * can retire one, so the round stops for a human rather than approving over a
+ * finding it cannot name — the loud half of the failure #2909 fixes.
+ */
+export function unmarkedBodyFindings(s: Snapshot): number {
+  return s.reviews.reduce(
+    (n, r) => n + Math.max(0, declaredFindingsIn(r.body) - findingIdsIn(r.body).length),
+    0,
   );
+}
+
+/** Body-only findings the author has not answered yet. */
+export function bodyFindingCount(s: Snapshot): number {
+  return bodyFindingIds(s).length + unmarkedBodyFindings(s);
 }
 
 export function classify(
