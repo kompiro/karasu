@@ -115,9 +115,11 @@ type: product
 > #2761 で dify corpus（405 drill-down level）に対して測り、12 段 → 8 段へ縮めた。面積の代償は
 > 全体 +0.05%、描き直しは 4 レベル（うち 2 レベルは小さくなる、最悪 +8.3%）で、帯から外れるレベルは増えない。
 
-- [x] AT-M: 候補列は 8 段で、先頭が表示モード自身の下限、末尾がその 6 倍
+- [x] AT-M: 候補列は表示モード自身の下限から始まり、昇順で、指定された倍率で止まる
 
   > ✅ Automated — `packages/core/src/renderer/aspect-search.test.ts` › `candidateWidthBudgets` › `starts at the floor and ascends` ／ `stops at the configured multiple of the floor`。表示モードごとの下限は AT-H5 が固定する
+  >
+  > 段数 8 と到達範囲 6 倍という**具体値はここでは固定しない**。cited test が実際に検証するのは生成規則（先頭が下限 / 昇順 / 指定倍率で停止）だけで、既定値そのものは検証していない（`stops at the configured multiple of the floor` は明示引数 `(1000, 6)` で呼ぶ）。これは設計判断で、`BUDGET_STEPS` は計測して選び直す定数なので、テストで固定すると再計測のたびにテストと戦うことになる（#2761 の設計ドキュメント「実装の指針」手順 2）。具体値の根拠は定数の docstring（計測結果つき）と AT-M5 の実測が持ち、段数を変えるときは AC-6 の前文と AT-M5 を同じ PR で更新する
 
 - [x] AT-M2: 段数を変えても floor-first は壊れない（すでに収まっている図は下限予算のまま）
 
