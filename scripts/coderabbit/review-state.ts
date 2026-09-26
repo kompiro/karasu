@@ -211,9 +211,17 @@ const BODY_FINDING_SECTIONS = [
 
 /** The marker CodeRabbit closes each body finding with; stable across rounds. */
 const BODY_FINDING_ID = /<!--\s*cr-comment:v1:([0-9a-f]+)\s*-->/g;
+/**
+ * The same id in an answer, which may quote the marker as plain text rather than
+ * as a comment. Anchored on the `cr-comment:v1:` prefix and read as a whole id:
+ * a bare substring search would retire a finding whose 24 hex digits happen to
+ * sit inside a commit sha the answer mentions.
+ */
+const ANSWERED_FINDING_ID = /cr-comment:v1:([0-9a-f]+)/g;
 
-const findingIdsIn = (body: string): string[] =>
-  [...body.matchAll(BODY_FINDING_ID)].map((m) => m[1]);
+const idsMatching = (re: RegExp, text: string): string[] => [...text.matchAll(re)].map((m) => m[1]);
+
+const findingIdsIn = (body: string): string[] => idsMatching(BODY_FINDING_ID, body);
 
 const declaredFindingsIn = (body: string): number =>
   BODY_FINDING_SECTIONS.reduce((n, re) => n + Number(re.exec(body)?.[1] ?? 0), 0);
@@ -223,8 +231,11 @@ const declaredFindingsIn = (body: string): number =>
  *
  * Every review counts, whatever commit it reviewed and whenever it was filed: a
  * finding outlives the head it arrived on, exactly as an unresolved thread does.
- * A review whose approval GitHub dismissed counts too, because a dismissal
- * follows a push and says nothing about whether the findings were read.
+ * A review whose approval GitHub dismissed counts too. #2847 excluded those on
+ * the grounds that a dismissal set the findings aside; that is reversed here,
+ * because a dismissal follows a push and says nothing about whether anyone read
+ * them. Retiring one now takes the same answer as any other finding, rather than
+ * a review state doing it silently.
  *
  * Answered means the id appears in a PR comment that is not CodeRabbit's. These
  * findings have no thread to reply in, so the round answers them in a top-level
@@ -232,9 +243,11 @@ const declaredFindingsIn = (body: string): number =>
  * id does not, or the finding would retire itself.
  */
 export function bodyFindingIds(s: Snapshot): string[] {
-  const answered = s.authorComments.join("\n");
+  const answered = new Set(
+    s.authorComments.flatMap((body) => idsMatching(ANSWERED_FINDING_ID, body)),
+  );
   const filed = new Set(s.reviews.flatMap((r) => findingIdsIn(r.body)));
-  return [...filed].filter((id) => !answered.includes(id));
+  return [...filed].filter((id) => !answered.has(id));
 }
 
 /**

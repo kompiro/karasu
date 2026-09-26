@@ -475,6 +475,55 @@ describe("bodyFindingCount", () => {
     expect(bodyFindingIds(s)).toEqual(["aaa1"]);
   });
 
+  it("does not retire a finding whose id merely sits inside a sha the answer mentions", () => {
+    const id = "61e81b7ddb6c2c25720f2d81";
+    const s = snapshot({
+      reviews: [
+        {
+          state: "COMMENTED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T15:00:00Z",
+          body: `**⚠️ Outside diff range comments (1)**\n${finding(id)}`,
+        },
+      ],
+      // A 40-digit sha that happens to contain the id. A substring search would
+      // read this as an answer.
+      authorComments: [`Bisected to ${id}9b66575f834db200e603a6a8, unrelated.`],
+    });
+    expect(bodyFindingIds(s)).toEqual([id]);
+  });
+
+  it("takes an answer that quotes the marker as plain text", () => {
+    const s = snapshot({
+      reviews: [
+        {
+          state: "COMMENTED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T15:00:00Z",
+          body: `**⚠️ Outside diff range comments (1)**\n${finding("aaa1")}`,
+        },
+      ],
+      authorComments: ["Declined, ADR-1184 switches on the value (cr-comment:v1:aaa1)."],
+    });
+    expect(bodyFindingIds(s)).toEqual([]);
+  });
+
+  it("keeps the findings of a review whose approval GitHub dismissed (reverses #2847)", () => {
+    const s = snapshot({
+      reviews: [
+        {
+          state: "DISMISSED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T15:00:00Z",
+          body: `**⚠️ Outside diff range comments (1)**\n${finding("aaa1")}`,
+        },
+      ],
+    });
+    // A dismissal follows a push, so it says nothing about whether the finding
+    // was read; only an answer naming the id retires it.
+    expect(bodyFindingIds(s)).toEqual(["aaa1"]);
+  });
+
   it("does not let CodeRabbit's own echo of an id stand in for an answer", () => {
     const s = snapshot({
       reviews: [
