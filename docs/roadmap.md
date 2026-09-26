@@ -176,11 +176,11 @@ gate で評価する。
 | candidate | 状態 | 依存 |
 | --- | --- | --- |
 | **interop**（mermaid / C4・Structurizr への入出力） | **demand-gated で見送り**（壁打ち [#1832](https://github.com/kompiro/karasu/issues/1832) を 2026-07-15 に not_planned で close）。draw.io export は出荷済み（[ADR-649](adr/649-drawio-export.md)）、structured-source import は `karasu translate` が担う。**flat-diagram import は ill-posed** と結論済み（typed でない mermaid `flowchart` から karasu の意味論は復元できない）。残る tractable な面は export（mermaid = 低摩擦 / C4・Structurizr DSL = 高忠実）と typed-source import のみ | 実ユーザー需要が観測されたら新規 Issue を起こす |
-| **AI authoring 深度 / Chat 去就** | **評価待ち**。Chat が出荷面か実験かは [#638](https://github.com/kompiro/karasu/issues/638) の user testing データで決める | [#638](https://github.com/kompiro/karasu/issues/638) |
+| **AI authoring 深度 / Chat 去就** | **決定（2026-09-26）**。primary は利用者自身のエージェントセッション（Claude Code 等）+ karasu CLI skill。app 内 Chat は**凍結**（残すが投資しない）。#638 の user testing は実施せず not_planned で close し、作者以外による検証は skill 側の AT に引き継ぐ（[keystone PRD 追記](prd/keystone-primary-path.md#追記-2026-09-26-ai-authoring-の経路)） | [#2901](https://github.com/kompiro/karasu/issues/2901) |
 
 ### 既存に集約（新規スレッド不要）
 
-- **feedback loop 設計**（OSS 後に何を作るかをどう学ぶか）は新規に立てない。nest corpus を証拠源にする件は [§promotion gate](#promotion-gatenotation-評価の規律)、定量検証は [#638](https://github.com/kompiro/karasu/issues/638) に既にある。
+- **feedback loop 設計**（OSS 後に何を作るかをどう学ぶか）は新規に立てない。nest corpus を証拠源にする件は [§promotion gate](#promotion-gatenotation-評価の規律)、定量検証は AI authoring skill の AT（[#2901](https://github.com/kompiro/karasu/issues/2901)、#638 から引き継ぎ）に置く。
 
 ### 非ゴール圧力 log
 
@@ -194,7 +194,7 @@ gate で評価する。
 
 1. **karasu-nest pivot**（[#1990](https://github.com/kompiro/karasu/issues/1990)）が現在の主線。宣言していた実装スライスは全消化し、主線は**運用の問い**へ移った — quota の適用範囲（[#2382](https://github.com/kompiro/karasu/issues/2382)）とラチェットの検証（[#2228](https://github.com/kompiro/karasu/issues/2228)）。permalink layer（retained の背骨）は完成形に到達しており、律速ではない。
 2. **syntax 2.0 の二本柱**（facets / boundary）は**どちらも v1.x 分が着地**して Epic を close した。`boundary` / `facet` とも experimental として [§watch 登録](#watch-対象の-experimental-notation登録) に載っており、残るのは閉鎖・core 昇格そのもの — [#2677](https://github.com/kompiro/karasu/issues/2677)（閉鎖 + `facet` 昇格）と [#2678](https://github.com/kompiro/karasu/issues/2678)（`boundary` 昇格）が追跡する（[§Syntax 2.0 プログラム](#syntax-20-プログラム) で時期未定）。
-3. **AI authoring** は [#638](https://github.com/kompiro/karasu/issues/638) のデータ待ち、**interop** は評価可能。
+3. **AI authoring** は経路を決定済み（エージェントセッション + karasu CLI skill、Chat は凍結）で、実装は [#2901](https://github.com/kompiro/karasu/issues/2901)。**interop** は評価可能。
 4. **非ゴール圧力 log** は随時追記（安価）。
 
 ---
