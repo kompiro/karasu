@@ -15,5 +15,5 @@ which until now was silently dropped. Add `background-color: transparent;` and
 `border-width: 0;` to that rule to keep the icon on the bare canvas.
 
 With that migration target shipped, **icon display mode is deprecated** and
-will be removed in the next major version — use shape mode with
-`shape: url(...)` instead (ADR-2376).
+will be removed in a future major version (which release is not decided yet) —
+use shape mode with `shape: url(...)` instead (ADR-2376, ADR-2906).

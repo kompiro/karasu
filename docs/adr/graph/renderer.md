@@ -57,6 +57,7 @@ flowchart TD
     ADR_2756["ADR-2756<br/>root view の各 system フレームは自分の子から導出したエッジ集合を持つ"]
     ADR_2802["ADR-2802<br/>組み込みアイコンは core が import 時に登録し、解決しない url() は値 va..."]
     ADR_2803["ADR-2803<br/>shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通ス..."]
+    ADR_2906["ADR-2906<br/>icon display mode は非推奨のまま据え置き、削除する major はまだ決めない"]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -113,6 +114,7 @@ flowchart TD
   ADR_2173 --> ADR_2065
   ADR_2269 --> ADR_1858
   ADR_9011 --> ADR_9007
+  ADR_2906 -.supersedes.-> ADR_2376
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -161,7 +163,7 @@ flowchart TD
   class ADR_2330 accepted
   class ADR_2360 accepted
   class ADR_2366 accepted
-  class ADR_2376 accepted
+  class ADR_2376 superseded
   class ADR_2394 accepted
   class ADR_2473 accepted
   class ADR_2521 accepted
@@ -171,6 +173,7 @@ flowchart TD
   class ADR_2756 accepted
   class ADR_2802 accepted
   class ADR_2803 accepted
+  class ADR_2906 accepted
   class ADR_9005 accepted
   class ADR_9007 accepted
   class ADR_9015 accepted
