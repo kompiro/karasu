@@ -15,6 +15,7 @@ known_consumers:
   - layout-single-vs-multi-system
 related_to:
   - TPL-1001
+  - TPL-2756
 discovered_from:
   - issue: "#219"
   - issue: "#160"
@@ -65,6 +66,13 @@ karasu には「ビューごとに分かれた似た形の関数群」が複数�
 - [ ] 共通 helper（`buildStyles`, `analyze`, `buildExportSvg` など）に同じ引数を同じ意図で渡しているか（一方だけ default 値で呼んでいないか）
 - [ ] family 共通の振る舞いを **共通ヘルパに抽出** できないか（重複させ続ける限り drift は再発する）
 - [ ] family 横断の test（同じ入力を全 view 種別で compile し、振る舞いの一致を assert）が 1 件でもあるか
+
+### 本観点の範囲外
+
+**options を全分岐へ通しても直らないなら、渡し忘れではない。** 下流のステージが上流の成果物を
+読まず同じ集合を元モデルから作り直している形は切り口が違うので、
+[TPL-2756](TPL-2756-downstream-consumes-what-upstream-assembled.md) を見る（#2756 は
+`layoutMultipleSystems` が抽出の成果物ではなく `sys.edges` から組み直していた例）。
 
 ## 既知の対処パターン
 
