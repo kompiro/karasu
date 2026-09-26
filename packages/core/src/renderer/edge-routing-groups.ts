@@ -1193,6 +1193,122 @@ export function aggregateGroupTrunks(
 }
 
 /**
+ * Fan-out trunks (#2885), the mirror of `aggregateGroupTrunks`. Edges leaving
+ * **one source** for gutter-routed targets each take their own corridor and
+ * their own fanned port, so a card with eight outgoing edges pays eight stubs
+ * crossing each other at its own side. This bundles them onto one spine that
+ * leaves the source once and sheds a branch at each target's row. It is a
+ * split rather than a merge, so the count the spine carries goes *down* as the
+ * siblings leave.
+ *
+ * Sharing an exit is its own claim ("these leave this node together"), not an
+ * extension of ADR-1859 AC-2, which is about the target side only.
+ *
+ * Runs after the fan-in pass and never touches an edge that pass trunked: a
+ * shared target is the stronger statement of the two. Each bundled edge is
+ * tagged `outTrunkId = <source id>`; the elbow where it leaves the spine
+ * (`waypoints[last]`) is its branch point. Eligibility has the fan-in shape:
+ * the subset of a source's gutter edges whose rerouted path is clear, if that
+ * subset has ≥ 2 edges; the others keep the route they had (never worse).
+ *
+ * Lanes are numbered beyond every fan-in spine, so the two kinds never share
+ * an x; `distributeGutterLanes` then numbers single corridors beyond both.
+ */
+export function aggregateGroupSourceTrunks(
+  layoutNodes: Map<string, LayoutNode>,
+  layoutEdges: LayoutEdge[],
+  frames: ContainerRect[],
+  /** The chain's shared obstacle index (#2790). */
+  obstacleIndex: ObstacleIndex,
+  expandedFrames?: Map<string, ContainerRect>,
+): void {
+  const nodes = [...layoutNodes.values()];
+  if (nodes.length === 0) return;
+
+  const { maxRight } = contentBounds(nodes, frames);
+  const boxOf = resolveGroupBoxes(layoutNodes, expandedFrames);
+
+  const bySource = new Map<string, LayoutEdge[]>();
+  for (const edge of layoutEdges) {
+    if (edge.ghost || edge.cyclic || edge.trunkId !== undefined) continue;
+    if (!isVerticalGutterRoute(edge)) continue;
+    const list = bySource.get(edge.from);
+    if (list) list.push(edge);
+    else bySource.set(edge.from, [edge]);
+  }
+
+  // Probe with the same nominal x the fan-in pass uses: any x beyond `maxRight`
+  // has a clear vertical, so clearance does not depend on the lane.
+  const nominalX = maxRight + GUTTER_GAP;
+  const eligible: { source: EdgeBox; edges: LayoutEdge[] }[] = [];
+  for (const [sourceId, edges] of bySource) {
+    if (edges.length < 2) continue;
+    const source = boxOf(sourceId);
+    if (!source) continue;
+    const clear = edges.filter((e) => {
+      const target = boxOf(e.to);
+      if (!target) return false;
+      return obstaclesFor(e, obstacleIndex).polylineClear(trunkPath(source, target, nominalX));
+    });
+    if (clear.length >= 2) eligible.push({ source, edges: clear });
+  }
+  if (eligible.length === 0) return;
+
+  const spineBase = Math.max(maxRight + GUTTER_GAP, maxTrunkXOf(layoutEdges));
+  // Nest the spines: the shortest nearest the cards. Every branch runs from its
+  // spine towards the cards, so it crosses each inner spine whose extent spans
+  // its row. A spine inside another's extent, placed outside it, would cross it
+  // with every branch it has; placed inside, it is crossed only by the outer
+  // one's branches that fall within it. Then topmost source, then id, so the
+  // order is total and deterministic.
+  const extent = ({ source, edges }: { source: EdgeBox; edges: LayoutEdge[] }) => {
+    const ys = [rightPort(source).y, ...edges.map((e) => rightPort(boxOf(e.to)!).y)];
+    return Math.max(...ys) - Math.min(...ys);
+  };
+  eligible.sort(
+    (a, b) =>
+      extent(a) - extent(b) || a.source.y - b.source.y || (a.source.id < b.source.id ? -1 : 1),
+  );
+  eligible.forEach(({ source, edges }, lane) => {
+    const spineX = spineBase + (lane + 1) * TRUNK_LANE_GAP;
+    const sourcePort = rightPort(source);
+    for (const edge of edges) {
+      const targetPort = rightPort(boxOf(edge.to)!);
+      edge.fromPoint = sourcePort;
+      edge.toPoint = targetPort;
+      edge.waypoints = [
+        { x: spineX, y: sourcePort.y },
+        { x: spineX, y: targetPort.y },
+      ];
+      edge.outTrunkId = source.id;
+      // Siblings co-render on one spine, so an against-flow dash would stripe
+      // only its half of a line it shares with forward siblings. Same reasoning
+      // as the fan-in trunk: the bundle, not the dash, carries the shape.
+      edge.groupBackward = false;
+    }
+  });
+}
+
+/**
+ * The rightmost spine x any trunk pass has allocated, or `-Infinity` when none
+ * has. Read from the real geometry rather than a lane count, so each later pass
+ * numbers its lanes beyond whatever the earlier ones actually used.
+ */
+function maxTrunkXOf(layoutEdges: readonly LayoutEdge[]): number {
+  let x = -Infinity;
+  for (const e of layoutEdges) {
+    if (
+      (e.trunkId !== undefined || e.outTrunkId !== undefined) &&
+      e.waypoints &&
+      e.waypoints.length === 2
+    ) {
+      x = Math.max(x, e.waypoints[0].x);
+    }
+  }
+  return x;
+}
+
+/**
  * Lane-separate non-trunked gutter corridors (Issue #1927, follow-up to #1859
  * P2c-B). `routeGroupedEdges` sends every non-trunked cross-band edge to *one*
  * shared gutter x (`maxRight + GUTTER_GAP`), so two edges with overlapping
@@ -1238,12 +1354,8 @@ export function distributeGutterLanes(
   // from the real trunk geometry (not a lane count), so it stays correct even if
   // trunk lanes were ever allocated non-contiguously. Lane 0 keeps the base gutter
   // x, which no trunk uses (trunks sit at rightBase + (lane+1)·TRUNK_LANE_GAP).
-  let maxTrunkX = rightBase;
-  for (const e of layoutEdges) {
-    if (e.trunkId && e.waypoints && e.waypoints.length === 2) {
-      maxTrunkX = Math.max(maxTrunkX, e.waypoints[0].x);
-    }
-  }
+  // Fan-out spines (#2885) sit beyond the fan-in ones, so this is beyond both.
+  const maxTrunkX = Math.max(rightBase, maxTrunkXOf(layoutEdges));
 
   // Collect non-trunked gutter corridors set by `routeGroupedEdges` /
   // `tryMixedRoute`, split by side. A mixed route has extra channel elbows, so
@@ -1252,7 +1364,7 @@ export function distributeGutterLanes(
   const left: { e: LayoutEdge; corridor: GutterCorridor }[] = [];
   for (const e of layoutEdges) {
     if (e.ghost || e.cyclic) continue;
-    if (e.trunkId) continue;
+    if (e.trunkId !== undefined || e.outTrunkId !== undefined) continue;
     const corridor = gutterCorridor(e);
     if (!corridor) continue;
     if (corridor.x > maxRight) right.push({ e, corridor });
@@ -1334,6 +1446,8 @@ interface GutterAttach {
  *
  * Trunk siblings (same `trunkId`) share ONE target entry by design (the P2c-B
  * merge) — they count as a single attachment and move together, staying merged.
+ * Fan-out siblings (same `outTrunkId`, #2885) share their source exit the same
+ * way.
  *
  * Left/right attachments fan out across the node *height* (vary y);
  * top/bottom attachments fan across the node *width* (vary x). Attachments
@@ -1386,6 +1500,7 @@ export function fanOutGutterPorts(
   });
   const bySide = new Map<EdgeBox, Record<NodeSide, GutterAttach[]>>();
   const trunkSlot = new Map<string, GutterAttach>(); // by `trunkId` (unique per target)
+  const outTrunkSlot = new Map<string, GutterAttach>(); // by `outTrunkId` (unique per source)
   const push = (node: EdgeBox, side: NodeSide, a: GutterAttach) => {
     let rec = bySide.get(node);
     if (!rec) bySide.set(node, (rec = emptySides()));
@@ -1401,8 +1516,21 @@ export function fanOutGutterPorts(
     const srcSide = sideOf(from, e.fromPoint);
     const tgtSide = sideOf(to, e.toPoint);
     const pts = [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
+    // Source end: a fan-out trunk's siblings share one exit (#2885), the mirror
+    // of the shared target entry below, so they move together as one slot.
     if (srcSide) {
-      push(from, srcSide, { edges: [e], end: "source", sortKey: bendKey(pts, srcSide) });
+      const srcKey = bendKey(pts, srcSide);
+      if (e.outTrunkId !== undefined) {
+        const slot = outTrunkSlot.get(e.outTrunkId);
+        if (slot) slot.edges.push(e);
+        else {
+          const a: GutterAttach = { edges: [e], end: "source", sortKey: srcKey };
+          outTrunkSlot.set(e.outTrunkId, a);
+          push(from, srcSide, a);
+        }
+      } else {
+        push(from, srcSide, { edges: [e], end: "source", sortKey: srcKey });
+      }
     }
     if (!tgtSide) continue;
     const tgtKey = bendKey([...pts].reverse(), tgtSide);

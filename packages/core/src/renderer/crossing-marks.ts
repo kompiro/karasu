@@ -166,12 +166,22 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
   return { hops, junctions, bands };
 }
 
-/** One trunk's spine: where each sibling joins, and where the spine ends. */
+/**
+ * One trunk's spine: where each sibling joins or leaves it, and the shared end.
+ *
+ * A fan-in trunk's siblings join at their own elbows and share the end where the
+ * spine turns into the target. A fan-out trunk (#2885) is the mirror: the
+ * shared end is where the spine leaves the source, and each sibling leaves at
+ * its own branch. The count and the band read the same in both, as what the
+ * spine carries between a point and the shared end; `out` only says which way
+ * the edges travel along it.
+ */
 interface TrunkGroup {
   x: number;
   entries: { y: number; edge: number }[];
   endY: number;
   entryX: number;
+  out: boolean;
 }
 
 /**
@@ -187,20 +197,38 @@ export function detectMarks(edges: LayoutEdge[]): {
   trunks: TrunkGroup[];
 } {
   const segs: Seg[] = [];
-  // Trunk stub-join elbows grouped by spine (`trunkId` @ spine x). Each edge's
-  // `waypoints[0]` is where its stub joins the shared vertical spine; `edge` is
-  // that stub's index so its junction dot can be coloured like the edge.
-  const trunkElbows = new Map<
-    string,
-    {
-      x: number;
-      entries: { y: number; edge: number }[];
-      /** y where the spine ends, the same point for every sibling. */
-      endY: number;
-      /** x of the shared entry on the target, so the band can turn into it. */
-      entryX: number;
+  // Trunk elbows grouped by spine (trunk id @ spine x). For a fan-in trunk each
+  // edge's `waypoints[0]` is where its stub joins the shared vertical spine; for
+  // a fan-out trunk its last waypoint is where its branch leaves it. `edge` is
+  // that edge's index so its mark can be coloured like the edge.
+  const trunkElbows = new Map<string, TrunkGroup>();
+  /**
+   * Record `edge`'s elbow at `pts[at]` on its trunk. The spine is walked from
+   * the elbow, a step at a time in `dir`, while the points keep the spine's x:
+   * the first one that leaves is where the spine turns towards the shared end's
+   * node. Counting waypoints instead would assume a four-point route, which is
+   * one shape this can take and not the only one.
+   */
+  const addElbow = (key: string, pts: Point[], at: number, dir: 1 | -1, edgeIdx: number) => {
+    const elbow = pts[at];
+    const group = trunkElbows.get(key);
+    if (group) {
+      group.entries.push({ y: elbow.y, edge: edgeIdx });
+      return;
     }
-  >();
+    let k = at;
+    while (k + dir >= 0 && k + dir < pts.length && Math.abs(pts[k + dir].x - elbow.x) < EPS) {
+      k += dir;
+    }
+    const beyond = k + dir >= 0 && k + dir < pts.length ? pts[k + dir] : pts[k];
+    trunkElbows.set(key, {
+      x: elbow.x,
+      entries: [{ y: elbow.y, edge: edgeIdx }],
+      endY: pts[k].y,
+      entryX: beyond.x,
+      out: dir === -1,
+    });
+  };
 
   edges.forEach((edge, edgeIdx) => {
     // Ghost/cyclic edges are peripheral (dimmed / nudged perpendicular) and are
@@ -235,26 +263,13 @@ export function detectMarks(edges: LayoutEdge[]): {
       });
     }
 
-    // Junction candidate: the elbow where a trunked edge's stub joins the spine.
-    if (edge.trunkId !== undefined && edge.waypoints && edge.waypoints.length > 0) {
-      const elbow = edge.waypoints[0];
-      const key = `${edge.trunkId}@${elbow.x}`;
-      const group = trunkElbows.get(key);
-      if (group) group.entries.push({ y: elbow.y, edge: edgeIdx });
-      else {
-        // Walk the spine from the elbow: every point that keeps the spine's x is
-        // still on it, and the first one that leaves is where it turns into the
-        // target. Counting waypoints instead would assume a four-point route,
-        // which is one shape this can take and not the only one.
-        let k = 1;
-        while (k + 1 < pts.length && Math.abs(pts[k + 1].x - elbow.x) < EPS) k++;
-        trunkElbows.set(key, {
-          x: elbow.x,
-          entries: [{ y: elbow.y, edge: edgeIdx }],
-          endY: pts[k].y,
-          entryX: k + 1 < pts.length ? pts[k + 1].x : pts[k].x,
-        });
-      }
+    // Junction candidates: the elbow where a trunked edge's stub joins the
+    // spine, and the one where a fan-out edge's branch leaves it (#2885).
+    const wps = edge.waypoints;
+    if (edge.trunkId !== undefined && wps && wps.length > 0) {
+      addElbow(`in:${edge.trunkId}@${wps[0].x}`, pts, 1, 1, edgeIdx);
+    } else if (edge.outTrunkId !== undefined && wps && wps.length > 0) {
+      addElbow(`out:${edge.outTrunkId}@${wps[wps.length - 1].x}`, pts, wps.length, -1, edgeIdx);
     }
   });
 
@@ -352,31 +367,45 @@ export function detectMarks(edges: LayoutEdge[]): {
   let h = 0;
   for (const byY of hopByX.values()) for (const mark of byY.values()) hops[h++] = mark;
 
-  // Junction dots: a dot belongs only where the shared spine actually *continues
-  // past* the elbow — a T/＋ where another stub joins above (circuit convention).
-  // The topmost stub of each trunk is just the spine head, an L-corner, and gets
-  // no dot. (`waypoints[0]` for every trunked edge is a right-angle elbow, so
-  // dotting them all would put ● on plain corners.)
+  // Junction marks: a mark belongs only where the shared spine actually
+  // *continues past* the elbow — a T/＋ where another sibling joins or leaves
+  // farther out (circuit convention). The elbow farthest from the shared end is
+  // just the spine's head, an L-corner, and gets no mark. (Every trunk elbow is
+  // a right-angle corner, so marking them all would put one on plain corners.)
+  // The head is taken per arm: a spine whose shared end sits between its
+  // siblings runs both ways from it, and each way has its own head.
   const junctionSeen = new Set<string>();
   const junctions: JunctionMark[] = [];
   const trunks: TrunkGroup[] = [];
   for (const group of trunkElbows.values()) {
     const { x, entries, endY } = group;
     trunks.push(group);
-    const minY = Math.min(...entries.map((e) => e.y));
-    const headCount = entries.filter((e) => Math.abs(e.y - minY) < EPS).length;
-    const towardEnd = endY > minY ? EPS * 10 : -EPS * 10;
+    const armOf = (y: number) => (y > endY + EPS ? 1 : y < endY - EPS ? -1 : 0);
+    const headReach = new Map<number, number>();
+    for (const e of entries) {
+      const arm = armOf(e.y);
+      headReach.set(arm, Math.max(headReach.get(arm) ?? 0, Math.abs(e.y - endY)));
+    }
     for (const { y, edge } of entries) {
-      // A merge if the spine extends above this elbow (some stub joins higher),
-      // or two stubs meet at the head itself (still a T, not a lone corner).
-      const isMerge = y > minY + EPS || (Math.abs(y - minY) < EPS && headCount >= 2);
-      if (!isMerge) continue;
+      const arm = armOf(y);
+      // An elbow on the shared end itself is where the spine turns, not a join.
+      if (arm === 0) continue;
+      const reach = Math.abs(y - endY);
+      const head = headReach.get(arm)!;
+      const headCount = entries.filter(
+        (e) => armOf(e.y) === arm && Math.abs(Math.abs(e.y - endY) - head) < EPS,
+      ).length;
+      // A merge (or split) if the spine extends beyond this elbow, or two
+      // siblings meet at the head itself (still a T, not a lone corner).
+      const isJoin = reach < head - EPS || headCount >= 2;
+      if (!isJoin) continue;
       const key = `${x},${y}`;
       if (junctionSeen.has(key)) continue;
       junctionSeen.add(key);
-      // What the spine carries *onward* from here, which is what a reader wants
-      // at a merge and what the band below is drawn as.
-      junctions.push({ x, y, edge, count: carriedAt(group, y + towardEnd).length });
+      // What the spine carries between here and the shared end, which is what
+      // the band on that side is drawn as. At a fan-in merge that is the count
+      // it carries onward; at a fan-out branch, the count that reached it.
+      junctions.push({ x, y, edge, count: carriedAt(group, y - arm * EPS * 10).length });
     }
   }
 
@@ -400,31 +429,46 @@ function carriedAt(trunk: TrunkGroup, y: number): { edge: number }[] {
 
 /**
  * The bands: one per stretch the count is constant over. The stretch against the
- * shared end always carries every sibling, so it and the run into the target
- * come out as one polyline, which makes their corner a join.
+ * shared end always carries every sibling, so it and the run to the shared
+ * end's node (the target of a fan-in, the source of a fan-out) come out as one
+ * polyline, which makes their corner a join. Where the spine runs both ways
+ * from the shared end, two stretches meet it, and the run gets a band of its
+ * own carrying every sibling.
  */
 function bandsOf(trunks: readonly TrunkGroup[]): TrunkBand[] {
   const bands: TrunkBand[] = [];
   for (const trunk of trunks) {
-    const { x, entries, endY, entryX } = trunk;
-    const minY = Math.min(...entries.map((e) => e.y));
+    const { x, entries, endY, entryX, out } = trunk;
     const cuts = [
       ...new Set(entries.flatMap((e) => [Math.min(e.y, endY), Math.max(e.y, endY)])),
     ].sort((a, b) => a - b);
+    const arms = new Set(entries.map((e) => Math.sign(e.y - endY)).filter((s) => s !== 0));
+    const hasRun = Math.abs(entryX - x) > EPS;
     for (let i = 0; i < cuts.length - 1; i++) {
       const y0 = cuts[i];
       const y1 = cuts[i + 1];
       if (y1 - y0 < EPS) continue;
       const carried = carriedAt(trunk, (y0 + y1) / 2);
       if (carried.length < 2) continue;
-      // Run the band the way the edges travel, so the stretch that ends at the
-      // spine's far end can carry on into the target.
-      const from = endY > minY ? { x, y: y0 } : { x, y: y1 };
-      const to = endY > minY ? { x, y: y1 } : { x, y: y0 };
+      // Oriented towards the shared end, so the stretch that reaches it can
+      // carry on into the run; a fan-out's is then reversed, to run the way its
+      // edges travel.
+      const farFirst = Math.abs(y0 - endY) > Math.abs(y1 - endY);
+      const from = { x, y: farFirst ? y0 : y1 };
+      const to = { x, y: farFirst ? y1 : y0 };
       const atEnd = Math.abs(to.y - endY) < EPS;
       const points =
-        atEnd && Math.abs(entryX - x) > EPS ? [from, to, { x: entryX, y: endY }] : [from, to];
+        atEnd && hasRun && arms.size === 1 ? [from, to, { x: entryX, y: endY }] : [from, to];
+      if (out) points.reverse();
       bands.push({ points, count: carried.length, edge: carried[0].edge });
+    }
+    if (hasRun && arms.size > 1 && entries.length >= 2) {
+      const run = [
+        { x, y: endY },
+        { x: entryX, y: endY },
+      ];
+      if (out) run.reverse();
+      bands.push({ points: run, count: entries.length, edge: entries[0].edge });
     }
   }
   return bands;

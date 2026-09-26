@@ -161,7 +161,8 @@ function straightCentrePenetrations(res: LayoutResult): number {
 /**
  * Collinear, overlapping segment pairs from distinct edges on one axis (#1927),
  * **excluding a trunk's siblings**, which share one spine and one target entry
- * because that is what the aggregation is (ADR-1859 AC-2, #2631). The unit-level
+ * because that is what the aggregation is (ADR-1859 AC-2, #2631), or one spine
+ * and one source exit for a fan-out trunk (#2885). The unit-level
  * helper of the same name has excluded them since P2c-B; this one did not, and
  * the corpus happened to contain no trunk at all, so its zero said nothing about
  * the case (TPL-2598). `trunkSiblingsShareOneSpine` below asserts the exemption
@@ -192,8 +193,10 @@ function collinearOverlaps(res: LayoutResult, axis: "v" | "h"): number {
       const a = segs[i];
       const b = segs[j];
       if (a.edge === b.edge) continue;
-      const ta = res.edges[a.edge].trunkId;
-      if (ta !== undefined && ta === res.edges[b.edge].trunkId) continue;
+      const ea = res.edges[a.edge];
+      const eb = res.edges[b.edge];
+      if (ea.trunkId !== undefined && ea.trunkId === eb.trunkId) continue;
+      if (ea.outTrunkId !== undefined && ea.outTrunkId === eb.outTrunkId) continue;
       if (Math.abs(a.fixed - b.fixed) > 1e-6) continue;
       if (Math.min(a.a1, b.a1) - Math.max(a.a0, b.a0) > 1e-6) n++;
     }
@@ -351,11 +354,14 @@ describe("shared routing chain — grouped output is unchanged (#2362, AC-5 repl
     // getting-started re-pinned 3 -> 5 with #2366 C: narrower (0.8x Latin
     // width) and taller (2-line description) cards shift the grouped layout;
     // penetration/overlap invariants above are what must not regress.
-    ["en/getting-started/index.krs", "team", 5],
+    // Re-pinned 5 -> 4 and (team-ownership) 2 -> 0 with #2885: edges leaving
+    // one source share one fan-out spine, so the corridors that each held one
+    // edge, and the crossings between them, collapse into one.
+    ["en/getting-started/index.krs", "team", 4],
     // Re-pinned 3 -> 2 and 7 -> 2 with #2610: the gutter side is chosen by
     // occupancy and length instead of right-first, so a detour whose
     // endpoints sit nearer the left takes the left gutter and crosses less.
-    ["en/feature-samples/team-ownership.krs", "team", 2],
+    ["en/feature-samples/team-ownership.krs", "team", 0],
     ["en/feature-samples/boundary-clusters.krs", "boundary", 2],
     ["en/feature-samples/boundary-multi-membership.krs", "boundary", 0],
   ];
@@ -563,33 +569,51 @@ describe("interior corridors shorten detours (#2365)", () => {
   );
 });
 
-describe("fan-in trunk — count fence (#2883, TPL-2598 / TPL-2631 / TPL-2385)", () => {
-  // Six services in six teams writing to one shared target, so the trunk's spine
-  // carries two, three, four, five and finally six edges on its way down. Three
-  // of those services also call an `[external]`, which sits on the far side and
-  // is reached by a corridor numbered *beyond* every trunk spine — so those
-  // stubs cross the band on their way out, which is the case a band can hide
-  // (TPL-2631).
-  //
-  // No bundled example forms a trunk at all (`0 trunked in 0 trunks` in every
-  // mode), so without a fixture like this the trunk's whole design sits outside
-  // the fence and every assertion about it is green by accident of corpus
-  // (TPL-2598). The target is a plain service, not a `database`, so "on the
-  // outline" is exactly "on the rect" and the endpoint check below is sharp.
-  const N = 6;
-  const CROSSERS = 3;
-  const TRUNK = `system Fan {
-${Array.from({ length: N }, (_s, i) => `  service S${i} { label "S${i}" }`).join("\n")}
+/**
+ * A model that saturates both kinds of trunk (#2883, #2885).
+ *
+ * Fan-in: six services in six teams writing to one shared target, so the
+ * trunk's spine carries two, three, four, five and finally six edges on its way
+ * down. Three of those services also call an `[external]`, which sits on the
+ * far side and is reached by a corridor numbered *beyond* every trunk spine — so
+ * those stubs cross the band on their way out, which is the case a band can
+ * hide (TPL-2631).
+ *
+ * Fan-out: one more service calls five targets, each in a team of its own and
+ * each called by nobody else, so no fan-in trunk claims them. The target
+ * placed in the band right below the source is reached directly; the other
+ * four cross bands and take the gutter, where they leave the source on one
+ * spine that sheds a branch per target row, so its count goes four, three,
+ * two on the way down.
+ *
+ * No bundled example forms a fan-in trunk at all (`0 trunked in 0 trunks` in
+ * every mode), and only small fan-outs, so without a fixture like this the
+ * trunks' design sits outside the fence and every assertion about it is green
+ * by accident of corpus (TPL-2598). Every node is a plain service, not a
+ * `database`, so "on the outline" is exactly "on the rect" and the endpoint
+ * check below is sharp.
+ */
+const FAN_IN = 6;
+const CROSSERS = 3;
+const FAN_OUT = 5;
+const TRUNK_FIXTURE = `system Fan {
+${Array.from({ length: FAN_IN }, (_s, i) => `  service S${i} { label "S${i}" }`).join("\n")}
 ${Array.from({ length: CROSSERS }, (_x, i) => `  service X${i} [external] { label "X${i}" }`).join("\n")}
   service Shared { label "Shared" }
-${Array.from({ length: N }, (_s, i) => `  S${i} -> Shared "write"`).join("\n")}
+  service F { label "F" }
+${Array.from({ length: FAN_OUT }, (_g, i) => `  service G${i} { label "G${i}" }`).join("\n")}
+${Array.from({ length: FAN_IN }, (_s, i) => `  S${i} -> Shared "write"`).join("\n")}
 ${Array.from({ length: CROSSERS }, (_x, i) => `  S${i + 1} -> X${i} "call"`).join("\n")}
+${Array.from({ length: FAN_OUT }, (_g, i) => `  F -> G${i} "notify"`).join("\n")}
 }
 organization Org {
-${Array.from({ length: N }, (_s, i) => `  team "t${i}" { label "T${i}" owns S${i} }`).join("\n")}
+${Array.from({ length: FAN_IN }, (_s, i) => `  team "t${i}" { label "T${i}" owns S${i} }`).join("\n")}
+  team "f" { label "F" owns F }
+${Array.from({ length: FAN_OUT }, (_g, i) => `  team "g${i}" { label "G${i}" owns G${i} }`).join("\n")}
 }`;
 
-  const laid = () => layoutOfSource(TRUNK, "team");
+describe("fan-in trunk — count fence (#2883, TPL-2598 / TPL-2631 / TPL-2385)", () => {
+  const laid = () => layoutOfSource(TRUNK_FIXTURE, "team");
 
   /** A trunk's siblings, keyed by `trunkId`. */
   const trunksOf = (res: LayoutResult) => {
@@ -610,7 +634,9 @@ ${Array.from({ length: N }, (_s, i) => `  team "t${i}" { label "T${i}" owns S${i
     expect(trunks[0].length).toBeGreaterThanOrEqual(4);
     // And the spine carries different amounts along its length, which is the
     // thing a single number at the entry could not tell you.
-    const counts = new Set(res.crossingMarks!.bands.map((b) => b.count));
+    const counts = new Set(
+      res.crossingMarks!.bands.filter((b) => res.edges[b.edge].trunkId).map((b) => b.count),
+    );
     expect(counts.size).toBeGreaterThanOrEqual(3);
     expect(Math.max(...counts)).toBe(trunks[0].length);
   });
@@ -631,7 +657,11 @@ ${Array.from({ length: N }, (_s, i) => `  team "t${i}" { label "T${i}" owns S${i
 
   it("each merge mark carries what the spine holds below it", () => {
     const res = laid();
-    const { junctions, bands } = res.crossingMarks!;
+    const { bands } = res.crossingMarks!;
+    // The fan-out's marks count the other way; they have their own fence below.
+    const junctions = res.crossingMarks!.junctions.filter(
+      (j) => res.edges[j.edge].trunkId !== undefined,
+    );
     expect(junctions.length).toBeGreaterThanOrEqual(3);
     // The shared entry every sibling ends on, which is the direction "onward"
     // means: a mark stands at a cut between two bands, and the one it speaks for
@@ -740,6 +770,159 @@ ${Array.from({ length: N }, (_s, i) => `  team "t${i}" { label "T${i}" owns S${i
 
   it("no lane spills into a card (TPL-1927 measures both axes together)", () => {
     expect(totalPenetrations(laid())).toBe(0);
+  });
+});
+
+describe("fan-out trunk — count fence (#2885, TPL-2598 / TPL-2631 / TPL-2385)", () => {
+  const laid = () => layoutOfSource(TRUNK_FIXTURE, "team");
+  const siblingsOf = (res: LayoutResult) => res.edges.filter((e) => e.outTrunkId === "F");
+  /** Where the spine leaves the source: the row every sibling shares. */
+  const exitY = (res: LayoutResult) => siblingsOf(res)[0].waypoints![0].y;
+
+  it("the fixture actually builds a fan-out trunk deep enough to need counting", () => {
+    const res = laid();
+    const siblings = siblingsOf(res);
+    // One target sits in the next band down and is reached directly; the rest
+    // cross bands, which is what reaches the gutter.
+    expect(siblings.length).toBeGreaterThanOrEqual(4);
+    // No fan-in trunk claimed them: each target is called by F alone.
+    for (const e of siblings) expect(e.trunkId).toBeUndefined();
+    const counts = new Set(
+      res.crossingMarks!.bands.filter((b) => res.edges[b.edge].outTrunkId).map((b) => b.count),
+    );
+    expect(counts.size).toBeGreaterThanOrEqual(3);
+    expect(Math.max(...counts)).toBe(siblings.length);
+  });
+
+  it("siblings share one exit and one spine, and no other pair is collinear", () => {
+    const res = laid();
+    const siblings = siblingsOf(res);
+    expect(new Set(siblings.map((e) => `${e.fromPoint.x},${e.fromPoint.y}`)).size).toBe(1);
+    expect(new Set(siblings.map((e) => e.waypoints![0].x)).size).toBe(1);
+    // Each leaves at its own target's row.
+    expect(new Set(siblings.map((e) => e.toPoint.y)).size).toBe(siblings.length);
+    expect(collinearOverlaps(res, "v")).toBe(0);
+    expect(collinearOverlaps(res, "h")).toBe(0);
+  });
+
+  it("its spine sits beyond every fan-in spine, so the two kinds never share an x", () => {
+    const res = laid();
+    const inXs = res.edges.filter((e) => e.trunkId).map((e) => e.waypoints![0].x);
+    const outX = siblingsOf(res)[0].waypoints![0].x;
+    expect(inXs.length).toBeGreaterThanOrEqual(2);
+    expect(outX).toBeGreaterThan(Math.max(...inXs));
+  });
+
+  it("the count descends along the spine, and each matches the band it stands beside", () => {
+    const res = laid();
+    const { bands } = res.crossingMarks!;
+    const from = exitY(res);
+    const marks = res
+      .crossingMarks!.junctions.filter((j) => res.edges[j.edge].outTrunkId === "F")
+      .sort((a, b) => Math.abs(a.y - from) - Math.abs(b.y - from));
+    // A split at every branch but the farthest, which is just the spine's end.
+    const n = siblingsOf(res).length;
+    expect(marks.map((m) => m.count)).toEqual(Array.from({ length: n - 1 }, (_m, i) => n - i));
+    for (const mark of marks) {
+      // The number is what the spine carries between the mark and the source,
+      // which is the band on the source side of it.
+      const probe = mark.y + Math.sign(from - mark.y) * 0.5;
+      const band = bands.find((b) =>
+        b.points.some((p, i) => {
+          if (i === 0) return false;
+          const a = b.points[i - 1];
+          return (
+            Math.abs(a.x - p.x) < 1e-6 &&
+            Math.abs(a.x - mark.x) < 1e-6 &&
+            Math.min(a.y, p.y) < probe &&
+            probe < Math.max(a.y, p.y)
+          );
+        }),
+      );
+      expect(band, `no band before the mark (${mark.x}, ${mark.y})`).toBeDefined();
+      expect(band!.count).toBe(mark.count);
+    }
+  });
+
+  it("the band starts at the source's exit and runs the way the edges travel", () => {
+    const res = laid();
+    const exit = siblingsOf(res)[0].fromPoint;
+    const widest = res.crossingMarks!.bands.find(
+      (b) => res.edges[b.edge].outTrunkId === "F" && b.count === siblingsOf(res).length,
+    )!;
+    expect(widest.points[0]).toEqual(exit);
+  });
+
+  it("a fan-out edge's label sits on the branch only that edge owns", () => {
+    const res = laid();
+    for (const e of siblingsOf(res)) {
+      const points = pointsOf(e);
+      const { anchor } = labelAnchorWithSegment(points, 0.5, 0, 0, ownLabelSegment(e));
+      // The branch runs from the elbow on the spine into the edge's target; the
+      // exit and the spine are drawn by every sibling.
+      const last = points.length - 1;
+      expect(anchor.y).toBeCloseTo(points[last].y, 6);
+      expect(anchor.x).toBeGreaterThan(Math.min(points[last - 1].x, points[last].x) - 1e-6);
+      expect(anchor.x).toBeLessThan(Math.max(points[last - 1].x, points[last].x) + 1e-6);
+    }
+  });
+
+  it("no count mark covers a crossing, and an arc on a band clears it (TPL-2631)", () => {
+    const { junctions, hops, bands } = laid().crossingMarks!;
+    for (const mark of junctions) {
+      for (const hop of hops) {
+        const overlaps =
+          Math.abs(hop.x - mark.x) < 9 + hop.halfWidth &&
+          Math.abs(hop.y - mark.y) < 9 + (hop.ry ?? HOP_RADIUS) + 2;
+        expect(overlaps, `count at (${mark.x}, ${mark.y}) sits on a hop`).toBe(false);
+      }
+    }
+    const widest = Math.max(...bands.map((b) => trunkBandHalfWidth(b.count)));
+    for (const hop of hops) {
+      if (hop.ry === undefined) continue;
+      expect(hop.ry).toBeGreaterThan(trunkBandHalfWidth(2));
+      expect(hop.ry).toBeLessThanOrEqual(widest + 3);
+    }
+  });
+
+  it("every endpoint stays on its node's outline, and no lane spills into a card (TPL-2385 / TPL-1927)", () => {
+    const res = laid();
+    for (const e of siblingsOf(res)) {
+      for (const [id, p] of [
+        [e.from, e.fromPoint],
+        [e.to, e.toPoint],
+      ] as const) {
+        const n = res.nodes.get(id)!;
+        const onVertical =
+          (Math.abs(p.x - n.x) < 0.5 || Math.abs(p.x - (n.x + n.width)) < 0.5) &&
+          p.y >= n.y - 0.5 &&
+          p.y <= n.y + n.height + 0.5;
+        expect(onVertical, `${e.from}->${e.to} leaves ${id}`).toBe(true);
+      }
+    }
+    expect(totalPenetrations(res)).toBe(0);
+  });
+
+  it("does not form where the out-edges have different sources, and leaves that model untouched", () => {
+    // The same targets, each called by a source of its own: nothing shares an
+    // exit, so the pass must not move a pixel.
+    const split = `system Fan {
+${Array.from({ length: FAN_OUT }, (_g, i) => `  service F${i} { label "F${i}" }\n  service G${i} { label "G${i}" }`).join("\n")}
+${Array.from({ length: FAN_OUT }, (_g, i) => `  F${i} -> G${(i + 1) % FAN_OUT} "notify"`).join("\n")}
+}
+organization Org {
+${Array.from({ length: FAN_OUT }, (_g, i) => `  team "g${i}" { label "G${i}" owns F${i} owns G${i} }`).join("\n")}
+}`;
+    const res = layoutOfSource(split, "team");
+    expect(res.edges.some((e) => e.outTrunkId !== undefined)).toBe(false);
+    expect(res.crossingMarks!.bands).toHaveLength(0);
+  });
+
+  it("gives the same geometry twice", () => {
+    const a = laid();
+    const b = laid();
+    expect(JSON.stringify(a.edges)).toBe(JSON.stringify(b.edges));
+    expect(JSON.stringify(a.crossingMarks)).toBe(JSON.stringify(b.crossingMarks));
   });
 });
 

@@ -148,7 +148,10 @@ function totalPenetrations(res: LayoutResult): number {
 function straightCenterPenetrations(res: LayoutResult): number {
   const frames = framesOf(res);
   const nodes = [...res.nodes.values()];
-  const center = (n: LayoutNode): Point => ({ x: n.x + n.width / 2, y: n.y + n.height / 2 });
+  const center = (n: LayoutNode): Point => ({
+    x: n.x + n.width / 2,
+    y: n.y + n.height / 2,
+  });
   let total = 0;
   for (const e of res.edges) {
     if (e.ghost || e.cyclic) continue;
@@ -183,13 +186,25 @@ function totalCrossings(res: LayoutResult): number {
 }
 
 /**
+ * Whether two edges are siblings of one trunk: the same fan-in trunk (shared
+ * spine and target entry) or the same fan-out trunk (#2885: shared source exit
+ * and spine). Either way the shared pixels are the aggregation, not a defect.
+ */
+function sameTrunk(a: LayoutEdge, b: LayoutEdge): boolean {
+  return (
+    (a.trunkId !== undefined && a.trunkId === b.trunkId) ||
+    (a.outTrunkId !== undefined && a.outTrunkId === b.outTrunkId)
+  );
+}
+
+/**
  * #1927 metric: count pairs of *distinct* edges whose vertical segments are
  * collinear (share an x) and whose y-ranges overlap on a sub-segment of positive
  * length — i.e. two corridors drawn as one indistinguishable line. Must be 0.
  *
- * Trunk siblings (same `trunkId`) intentionally share one spine — that is the
- * aggregation merge (marked by a junction dot in P2c-C), a *connection* not a
- * false overlap — so they are excluded.
+ * Trunk siblings (`sameTrunk`) intentionally share one spine — that is the
+ * aggregation (marked by a count in P2c-C / #2883), a *connection* not a false
+ * overlap — so they are excluded.
  */
 function collinearVerticalOverlaps(res: LayoutResult): number {
   interface VSeg {
@@ -206,7 +221,12 @@ function collinearVerticalOverlaps(res: LayoutResult): number {
       const p = pts[i];
       const q = pts[i + 1];
       if (p.x === q.x && p.y !== q.y) {
-        verticals.push({ edge: e, x: p.x, lo: Math.min(p.y, q.y), hi: Math.max(p.y, q.y) });
+        verticals.push({
+          edge: e,
+          x: p.x,
+          lo: Math.min(p.y, q.y),
+          hi: Math.max(p.y, q.y),
+        });
       }
     }
   }
@@ -217,7 +237,7 @@ function collinearVerticalOverlaps(res: LayoutResult): number {
       const b = verticals[j];
       if (a.edge === b.edge) continue;
       // Trunk siblings share one spine by design (aggregation merge, not a defect).
-      if (a.edge.trunkId && a.edge.trunkId === b.edge.trunkId) continue;
+      if (sameTrunk(a.edge, b.edge)) continue;
       if (a.x !== b.x) continue;
       // Positive-length overlap (touching endpoints do not count as overlap).
       if (Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo) > 0) n++;
@@ -248,7 +268,12 @@ function collinearHorizontalOverlaps(res: LayoutResult): number {
       const p = pts[i];
       const q = pts[i + 1];
       if (p.y === q.y && p.x !== q.x) {
-        horizontals.push({ edge: e, y: p.y, lo: Math.min(p.x, q.x), hi: Math.max(p.x, q.x) });
+        horizontals.push({
+          edge: e,
+          y: p.y,
+          lo: Math.min(p.x, q.x),
+          hi: Math.max(p.x, q.x),
+        });
       }
     }
   }
@@ -258,7 +283,7 @@ function collinearHorizontalOverlaps(res: LayoutResult): number {
       const a = horizontals[i];
       const b = horizontals[j];
       if (a.edge === b.edge) continue;
-      if (a.edge.trunkId && a.edge.trunkId === b.edge.trunkId) continue;
+      if (sameTrunk(a.edge, b.edge)) continue;
       if (a.y !== b.y) continue;
       if (Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo) > 0) n++;
     }
@@ -428,59 +453,52 @@ describe("aggregateGroupTrunks (#1859, P2c-B)", () => {
     }
   });
 
-  it("gives single-incoming gutter edges distinct lanes so no two share a collinear corridor (#1927, AC-1)", () => {
-    // Billing → {Catalog, ShopDB, Stripe} are three non-trunked gutter edges from
-    // one source (each target has only one incoming), so their corridors all start
-    // at Billing's center y and overlap in y-range — collinear if laid on one x.
+  it("bundles the gutter edges leaving one source onto one fan-out spine (#2885)", () => {
+    // Billing → {Catalog, ShopDB, Stripe} are three gutter edges from one source
+    // (each target has only one incoming, so no fan-in trunk claims them). They
+    // used to take a lane each (#1927); they now share one spine that sheds a
+    // branch at each target's row, so the corridors that each held one edge
+    // collapse into one.
     const res = layoutOf(SYS, OWNER, "team");
-    const eCat = edge(res, "Billing", "Catalog");
-    const eDb = edge(res, "Billing", "ShopDB");
-    const eStr = edge(res, "Billing", "Stripe");
-    // None is trunked (each target is single-incoming among gutter routes).
-    for (const e of [eCat, eDb, eStr]) {
+    const out = [
+      edge(res, "Billing", "Catalog"),
+      edge(res, "Billing", "ShopDB"),
+      edge(res, "Billing", "Stripe"),
+    ];
+    for (const e of out) {
       expect(e.trunkId).toBeUndefined();
+      expect(e.outTrunkId).toBe("Billing");
       expect(e.waypoints).toHaveLength(2);
     }
-    // Each colliding corridor gets its own lane x → three distinct columns.
-    const xs = new Set([eCat.waypoints![0].x, eDb.waypoints![0].x, eStr.waypoints![0].x]);
-    expect(xs.size).toBe(3);
-    // No two distinct edges render a collinear (overlapping) vertical corridor.
+    expect(new Set(out.map((e) => e.waypoints![0].x)).size).toBe(1);
+    // The spine is shared by design; everything else stays apart.
     expect(collinearVerticalOverlaps(res)).toBe(0);
-    // AC-1 preserved: still zero node/frame penetrations after laning.
+    expect(collinearHorizontalOverlaps(res)).toBe(0);
     expect(totalPenetrations(res)).toBe(0);
   });
 
-  it("fans out the source anchors of edges leaving one node, so their stubs don't overlap (#1927 source-exit)", () => {
-    // Billing → {Catalog, ShopDB, Stripe} all leave Billing on the right gutter.
-    // Without fan-out they share Billing's mid-right port and their horizontal
-    // stubs are collinear (render as one line until they branch).
+  it("leaves a fan-out trunk's source through one exit, and branches at each target's row (#2885)", () => {
+    // The mirror of the fan-in trunk's shared entry: the siblings share the
+    // source's port and the stub to the spine, and part at their own target.
     const res = layoutOf(SYS, OWNER, "team");
-    const eCat = edge(res, "Billing", "Catalog");
-    const eDb = edge(res, "Billing", "ShopDB");
-    const eStr = edge(res, "Billing", "Stripe");
-    // Fanned: no two anchors on one side of Billing share a y (own stub each).
-    // The side is chosen per edge since #2610, so key the check by side.
+    const out = [
+      edge(res, "Billing", "Catalog"),
+      edge(res, "Billing", "ShopDB"),
+      edge(res, "Billing", "Stripe"),
+    ];
     const from = res.nodes.get("Billing")!;
-    const bySide = new Map<number, number[]>();
-    for (const e of [eCat, eDb, eStr]) {
-      const list = bySide.get(e.fromPoint.x) ?? [];
-      list.push(e.fromPoint.y);
-      bySide.set(e.fromPoint.x, list);
-    }
-    for (const ys of bySide.values()) expect(new Set(ys).size).toBe(ys.length);
-    // The corridor top elbow follows the anchor y (the stub is truly horizontal).
-    for (const e of [eCat, eDb, eStr]) expect(e.waypoints![0].y).toBe(e.fromPoint.y);
-    // Anchors stay on Billing's left or right edge, inside its height.
-    for (const e of [eCat, eDb, eStr]) {
+    const exits = new Set(out.map((e) => `${e.fromPoint.x},${e.fromPoint.y}`));
+    expect(exits.size).toBe(1);
+    for (const e of out) {
+      // The stub to the spine is horizontal, and the exit sits on Billing's side.
+      expect(e.waypoints![0].y).toBe(e.fromPoint.y);
       expect([from.x, from.x + from.width]).toContain(e.fromPoint.x);
       expect(e.fromPoint.y).toBeGreaterThan(from.y);
       expect(e.fromPoint.y).toBeLessThan(from.y + from.height);
+      // The branch is horizontal too, into the edge's own target.
+      expect(e.waypoints![1].y).toBe(e.toPoint.y);
     }
-    // No two distinct edges share a collinear horizontal (source-stub) segment,
-    // and the vertical corridors and penetration guard still hold.
-    expect(collinearHorizontalOverlaps(res)).toBe(0);
-    expect(collinearVerticalOverlaps(res)).toBe(0);
-    expect(totalPenetrations(res)).toBe(0);
+    expect(new Set(out.map((e) => e.toPoint.y)).size).toBe(3);
   });
 
   it("leaves a lone gutter edge on its mid-edge port (no needless fan-out)", () => {
@@ -565,13 +583,20 @@ organization Org {
       ]);
       let hasIn = false;
       let hasOut = false;
+      // Every fan-out sibling but the first, whose exit the first already counts.
+      const sharedExit = new Set(
+        res.edges.filter(
+          (e, i, all) => e.outTrunkId && all.findIndex((o) => o.outTrunkId === e.outTrunkId) !== i,
+        ),
+      );
       for (const e of res.edges) {
         if (e.ghost || e.cyclic || !e.waypoints || e.waypoints.length !== 2) continue;
         if (e.waypoints[0].x !== e.waypoints[1].x) continue;
         const cx = e.waypoints[0].x;
         if (!(cx >= n.x + n.width || cx <= n.x)) continue; // gutter side of n
         const side = cx >= n.x + n.width ? "right" : "left";
-        if (e.from === n.id) {
+        // A fan-out trunk's siblings share one exit (#2885), so it counts once.
+        if (e.from === n.id && !(e.outTrunkId && e.outTrunkId === n.id && sharedExit.has(e))) {
           attachYs.get(side)!.push(e.fromPoint.y);
           hasOut = true;
         }
@@ -628,25 +653,31 @@ organization Org {
     expect(totalPenetrations(res)).toBe(0);
   });
 
-  it("keeps single-edge lanes distinct from trunk lanes — no lane-x collision (#1927, AC-3)", () => {
+  it("claims a shared target for the fan-in trunk first, and puts the fan-out spine beyond it (#1927 AC-3, #2885)", () => {
     // Adding Wallet → ShopDB makes ShopDB fan-in (Billing + Wallet) → a trunk,
-    // while Billing → {Catalog, Stripe} stay single-incoming gutter edges — so a
-    // non-trunked corridor coexists with a trunk lane.
+    // while Billing → {Catalog, Stripe} stay single-incoming gutter edges from
+    // one source — so they form a fan-out trunk beside the fan-in one.
     const mixed = SYS.replace(
       'Billing -> ShopDB "persist"',
       'Billing -> ShopDB "persist"\n  Wallet -> ShopDB "persist"',
     );
     const res = layoutOf(mixed, OWNER, "team");
-    expect(edge(res, "Billing", "ShopDB").trunkId).toBe("ShopDB"); // trunked
-    const bStripe = edge(res, "Billing", "Stripe");
-    // Billing → Stripe is a single-incoming gutter edge (not trunked).
-    expect(bStripe.trunkId).toBeUndefined();
-    expect(bStripe.waypoints).toHaveLength(2);
-    const singleLaneX = bStripe.waypoints![0].x;
-    // Collect every trunk lane x; the single-edge lane must not collide with any.
-    const trunkXs = new Set(res.edges.filter((e) => e.trunkId).map((e) => e.waypoints![0].x));
-    expect(trunkXs.size).toBeGreaterThanOrEqual(1);
-    expect(trunkXs.has(singleLaneX)).toBe(false);
+    // A shared target is the stronger claim: Billing → ShopDB joins the fan-in
+    // trunk and is not also bundled at its source.
+    const bDb = edge(res, "Billing", "ShopDB");
+    expect(bDb.trunkId).toBe("ShopDB");
+    expect(bDb.outTrunkId).toBeUndefined();
+    const out = [edge(res, "Billing", "Catalog"), edge(res, "Billing", "Stripe")];
+    for (const e of out) {
+      expect(e.trunkId).toBeUndefined();
+      expect(e.outTrunkId).toBe("Billing");
+    }
+    // The two kinds never share an x: every fan-out spine lies beyond every
+    // fan-in spine.
+    const inXs = res.edges.filter((e) => e.trunkId).map((e) => e.waypoints![0].x);
+    const outXs = res.edges.filter((e) => e.outTrunkId).map((e) => e.waypoints![0].x);
+    expect(inXs.length).toBeGreaterThanOrEqual(1);
+    expect(Math.min(...outXs)).toBeGreaterThan(Math.max(...inXs));
     expect(collinearVerticalOverlaps(res)).toBe(0);
     expect(totalPenetrations(res)).toBe(0);
   });
@@ -1114,7 +1145,11 @@ describe("layer-spanning edges reach the interior (#2611)", () => {
   })();
 
   /** Routes split by where their first vertical run sits: inside the content, or beyond it. */
-  function corridors(res: LayoutResult): { interior: number; gutter: number; straight: number } {
+  function corridors(res: LayoutResult): {
+    interior: number;
+    gutter: number;
+    straight: number;
+  } {
     const nodes = [...res.nodes.values()].filter((n) => !n.ghost);
     const minLeft = Math.min(...nodes.map((n) => n.x));
     const maxRight = Math.max(...nodes.map((n) => n.x + n.width));

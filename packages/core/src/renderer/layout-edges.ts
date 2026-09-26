@@ -10,6 +10,7 @@ import { routeOrthogonalEdges } from "./edge-routing-channels.js";
 import {
   routeGroupedEdges,
   aggregateGroupTrunks,
+  aggregateGroupSourceTrunks,
   distributeGutterLanes,
   fanOutGutterPorts,
 } from "./edge-routing-groups.js";
@@ -437,6 +438,10 @@ export function runRoutingChain(
   // rejected in #2364.
   if (grouped) {
     aggregateGroupTrunks(nodes, edges, groupFrames, obstacleIndex, expandedFrames);
+    // The mirror (#2885): edges leaving one source share one spine that sheds a
+    // branch at each target's row. After the fan-in pass, which claims a shared
+    // target first; grouped only, for the same reason.
+    aggregateGroupSourceTrunks(nodes, edges, groupFrames, obstacleIndex, expandedFrames);
   }
   // Give the remaining non-trunked gutter corridors distinct lanes so two
   // single-incoming edges no longer share a collinear vertical segment
