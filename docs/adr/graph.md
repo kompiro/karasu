@@ -166,6 +166,7 @@ flowchart TD
     ADR_2836["ADR-2836<br/>Dependabot トリアージ 2026-09-14：vitest 5 の major は ..."]
     ADR_2839["ADR-2839<br/>dependabot-triage workflow の週次 cron を止め、dispatc..."]
     ADR_2877["ADR-2877<br/>Dependabot トリアージ 2026-09-22：changesets 3 は CI が..."]
+    ADR_2898["ADR-2898<br/>/code-review は draft PR に当て、CodeRabbit の初回レビューは..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -361,6 +362,7 @@ flowchart TD
     ADR_2593["ADR-2593<br/>キャンバスの空き空間を目的関数にして行幅予算を選ぶ"]
     ADR_2598["ADR-2598<br/>層間チャネルに容量を持たせ、配線の需要を配置へ返す"]
     ADR_2714["ADR-2714<br/>deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
+    ADR_2756["ADR-2756<br/>root view の各 system フレームは自分の子から導出したエッジ集合を持つ"]
     ADR_2802["ADR-2802<br/>組み込みアイコンは core が import 時に登録し、解決しない url() は値 va..."]
     ADR_2803["ADR-2803<br/>shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通ス..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
@@ -933,6 +935,7 @@ flowchart TD
   class ADR_2714 accepted
   class ADR_2716 accepted
   class ADR_2753 accepted
+  class ADR_2756 accepted
   class ADR_2773 accepted
   class ADR_2786 accepted
   class ADR_2802 accepted
@@ -946,6 +949,7 @@ flowchart TD
   class ADR_2839 accepted
   class ADR_2859 accepted
   class ADR_2877 accepted
+  class ADR_2898 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

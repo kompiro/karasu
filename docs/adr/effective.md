@@ -166,6 +166,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2836](2836-dependabot-triage-2026-09-14.md) — Dependabot トリアージ 2026-09-14：vitest 5 の major は ADR の assumption が捕まえ、差し替え PR で入れる
 - [ADR-2839](2839-pause-dependabot-triage-schedule.md) — dependabot-triage workflow の週次 cron を止め、dispatch で運用する
 - [ADR-2877](2877-dependabot-triage-2026-09-22.md) — Dependabot トリアージ 2026-09-22：changesets 3 は CI が回さない release flow を壊すので差し替え PR で入れ、gh-aw は再生成で上げる
+- [ADR-2898](2898-draft-first-code-review.md) — /code-review は draft PR に当て、CodeRabbit の初回レビューは ready にした時点の 1 回にする
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -364,6 +365,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2593](2593-canvas-space-objective.md) — キャンバスの空き空間を目的関数にして行幅予算を選ぶ
 - [ADR-2598](2598-edge-routing-channel-capacity.md) — 層間チャネルに容量を持たせ、配線の需要を配置へ返す
 - [ADR-2714](2714-deploy-container-id-injective.md) — deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の id で行う
+- [ADR-2756](2756-root-view-system-edge-ownership.md) — root view の各 system フレームは自分の子から導出したエッジ集合を持つ
 - [ADR-2802](2802-builtin-icon-registration.md) — 組み込みアイコンは core が import 時に登録し、解決しない url() は値 validator が診断する
 - [ADR-2803](2803-slotted-icon-card-text.md) — shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通スタックで描く
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式

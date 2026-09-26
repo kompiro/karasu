@@ -105,13 +105,22 @@ ready → implementing → in-review → (close)
 5. 実装する
 6. /hane:commit でコミットする（Conventional Commits 形式）
 7. PR 前に main を取り込む — git fetch origin main && git merge --no-edit origin/main（rebase は使わない。「ブランチ戦略」参照）。コンフリクトを解消し、lint / test を再確認する
-8. PR を作成する（Closes #N で Issue と紐付ける）
-9. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
-10. Issue ラベルを status: in-review に更新する
-11. 手動検証チェックリストを実施する
-12. CodeRabbit のレビューを収束させる（`/coderabbit-converge` で approve まで回す。記録済みの決定を変える指摘だけ人間に確認する）
-13. 人間のレビュー → マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
+8. PR を draft で作成する（gh pr create --draft、Closes #N で Issue と紐付ける）。draft には CodeRabbit も分単位の CI も走らない
+9. /code-review <PR番号> を当て、対応すると決めた修正をコミットして push する（draft への push は CodeRabbit の review 枠を使わない）
+10. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の PR）では初回レビューもここで走る
+11. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
+12. Issue ラベルを status: in-review に更新する
+13. 手動検証チェックリストを実施する
+14. CodeRabbit のレビューを収束させる（`/coderabbit-converge` で approve まで回す。記録済みの決定を変える指摘だけ人間に確認する）
+15. 人間のレビュー → マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
 ```
+
+**CodeRabbit の初回レビューは `/code-review` の修正を反映したコードに当てる。** ready の
+PR への push は、自動レビューが走るたびに CodeRabbit の review 枠を 1 回使い（rate limit で
+弾かれた push は使わない）、枠の補充レートは直近 7 日の
+利用量が増えるほど下がる。PR を ready で開いてから `/code-review` を当てると、直す前の
+コードと直した後のコードで 2 回使う。順序の決定と計測値は
+[ADR-2898](adr/2898-draft-first-code-review.md)。
 
 詳細な手順は `/hane:start-dev` スキル（[`kompiro/hane`](https://github.com/kompiro/hane) plugin）を参照。
 
@@ -239,7 +248,11 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 - 同じ**誤検知**を繰り返されるなら、`path_instructions` が規約の実態とずれている合図
   として扱う。返信で毎回閉じるのではなく、glob を実際の適用範囲まで絞るか、例外を
   instruction に書く
-- **review 枠は org 全体で共有され、上限は直近の利用量で変わる。** 上限に当たると
+- **review 枠は開発者単位で他のリポジトリとも共有され、補充レートは直近 7 日の利用量が
+  増えるほど下がる**（Essentials は直近 7 日で 60 回以上になると 1 回/時）。ready の PR への push は
+  自動レビューが走るたびに枠を 1 回使う（rate limit で弾かれた push は使わない）ので、
+  main の取り込みを単独で push しない。取り込みが要るときは
+  そのラウンドの修正と一緒に 1 回の push にする。上限に当たると
   サマリーコメントに「Next included review available in N minutes」が出るが、
   **CodeRabbit は明けても自分では再レビューしない。** 告知時刻を過ぎてから
   `@coderabbitai review` を 1 回投げる。それより前に投げても「Review rate limited.」で
@@ -260,20 +273,20 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 | # | すること |
 | --- | --- |
 | 0 | 最下層以外を draft にする（`gh pr ready <n> --undo`） |
-| 1 | 最下層の draft を外す（`gh pr ready <n>`）。CodeRabbit と分単位の CI はここで動き出す |
-| 2 | 先に `/code-review <n>` を当てる |
-| 3 | code-review の指摘の対応可否を決め、対応すると決めたものを直す（記録済みの決定を変えるものだけ人に確認する） |
-| 4 | `/coderabbit-converge` で CodeRabbit のラウンドを回す（判定基準は 3 と同じ） |
+| 1 | 最下層が draft のうちに `/code-review <n>` を当てる |
+| 2 | code-review の指摘の対応可否を決め、対応すると決めたものを直して push する（記録済みの決定を変えるものだけ人に確認する）。draft への push は CodeRabbit の review 枠を使わない |
+| 3 | 最下層の draft を外す（`gh pr ready <n>`）。CodeRabbit と分単位の CI はここで動き出す |
+| 4 | `/coderabbit-converge` で CodeRabbit のラウンドを回す（判定基準は 2 と同じ） |
 | 5 | CodeRabbit が approve するか、人の判断待ちで止まるまで 4 が繰り返す |
 | 6 | CodeRabbit の approve が付いたら、そのスライスで観測できることを人が確認し、マージ可否を決める |
-| 7 | `gh stack merge <n> --yes --squash` → `gh stack sync --prune` → 新しい最下層の draft を外して 1 に戻る |
+| 7 | `gh stack merge <n> --yes --squash` → `gh stack sync --prune` → 新しい最下層で 1 に戻る |
 
 - **`gh stack submit --auto --open` は使わない。** `--open` は新規 PR だけでなく
   既存 PR も ready にするので、スタック全体が一度にレビュー対象になりステップ 0 が
   壊れる。draft を外すのは常に `gh pr ready <番号>` で 1 本ずつ
 - `gh stack sync` はマージ直後にだけ実行する。sync は上位ブランチを force-push し、
   走っている required E2E を cancel する。レビュー対応の push と混ぜない
-- ステップ 7 の順序は sync が先、ready が後。逆にすると ready で走り出した CI を
+- ステップ 7 → 1 → 3 の順序は sync が先、ready が後。逆にすると ready で走り出した CI を
   直後の force-push が cancel する。sync を先に置けば CodeRabbit も main 取り込み後の
   diff を読む
 - マージは `gh stack merge <PR番号>`。`gh pr merge` はスタックでは通らない。PR 番号を
