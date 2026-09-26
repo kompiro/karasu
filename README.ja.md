@@ -46,6 +46,14 @@ karasu は同じモデルを、システムの全階層を一枚に詰め込む�
 [Web app](https://karasu.kompiro.dev/) でモデルの編集、図の移動、組み込み
 チュートリアルを体験できます。インストールは不要です。
 
+エディタで作業したい場合は
+[VS Code 拡張](https://marketplace.visualstudio.com/items?itemName=karasu-tools.karasu-vscode)
+をインストールします。
+
+```sh
+code --install-extension karasu-tools.karasu-vscode
+```
+
 ### 2. 自分のシステムから始める
 
 Docker Compose、Kubernetes manifest、OpenAPI schema、SQL DDL がすでにあれば、

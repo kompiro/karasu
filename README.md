@@ -46,6 +46,13 @@ instead of forcing every level of a system into one overloaded picture.
 Open the [web app](https://karasu.kompiro.dev/) to edit a model, navigate its
 diagrams, and follow the built-in tutorial. Nothing needs to be installed.
 
+To work in your editor instead, install the
+[VS Code extension](https://marketplace.visualstudio.com/items?itemName=karasu-tools.karasu-vscode):
+
+```sh
+code --install-extension karasu-tools.karasu-vscode
+```
+
 ### 2. Bootstrap from your own system
 
 Already have Docker Compose, Kubernetes manifests, an OpenAPI schema, or SQL
