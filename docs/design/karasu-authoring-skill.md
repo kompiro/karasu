@@ -70,6 +70,8 @@ karasu skill path                     # 同梱 skill の絶対パスを表示（
 
 **メリット**: skill のバージョン = CLI のバージョン。`npx karasu@<ver> skill install` すれば、その CLI で確実に動く skill が入る。エージェント非依存（ファイルを置くだけ。`--dir` で任意の場所へ）。repo 内では正本が CLI と同じ package にあるので、CLI を変える PR と skill を変える PR が同じ `packages/cli/**` の変更として見える。
 
+**更新の契約**: 一致が保証されるのは install した時点だけ。後から CLI だけを上げると、配置済みの古い skill が残る。これを放置しないため、`skill install` は書き出す SKILL.md に CLI のバージョン（`karasu-version: <ver>`）を刻み、skill はセッション開始時に `karasu --version` と照合する。食い違っていれば、エージェントは作業に入る前に `karasu skill install` の再実行を利用者に促す（自動上書きはしない。利用者が skill を手で直している可能性があるため）。
+
 **デメリット**: CLI にコマンドが 1 つ増える。skill の文言修正だけでも CLI の release が要る（release は changesets で既に日常化しているので許容）。
 
 案 1-C を採っても、Claude Code 向け plugin（1-B）は後から「同じ正本を指す marketplace entry」として足せる。逆向き（1-B を正本にして npm に載せる）は version lock を失う。
@@ -97,17 +99,17 @@ karasu skill path                     # 同梱 skill の絶対パスを表示（
 | `skill-cli-refs` | 走査対象に `packages/cli/skills/**` を追加 |
 | `skill-reference-bundle-sync` | bundle を「reverse 固定」から「(bundle dir, 収録 docs) の表」に一般化し、`karasu-author/reference/` を登録 |
 | `krs-fences` | 走査 root に `.claude/skills/` と skill の正本ディレクトリ（案 1-C）を追加（skill 本文の ```krs 例がパースできること） |
-| **新設: skill pipeline e2e**（`packages/cli` の vitest） | skill が規定する編集ループ（`append` → `insert` → `fmt` → `check`）を fixture で実行し、正常系で `check` が 0、壊した入力で非ゼロになることを assert。編集コマンドは不正入力も 0 終了で書き込むので、壊した入力は `check` の段で落ちることを確かめる。#2084 は「名前は正しいが用途違い」だったので、名前の照合では原理的に捕まらない。実行して初めて捕まる |
+| **新設: skill pipeline e2e**（`packages/cli` の vitest） | skill が規定する編集ループ（`append` → `insert` → `check` → `fmt`）を fixture で実行し、正常系で `check` が 0、壊した入力で非ゼロになることを assert。編集コマンドは不正入力も 0 終了で書き込み、`fmt` はパースエラーのあるファイルを exit 2 で拒否する。だから `check` を `fmt` より先に置き、壊した入力が `check` の段で（診断付きで）落ちることを確かめる。#2084 は「名前は正しいが用途違い」だったので、名前の照合では原理的に捕まらない。実行して初めて捕まる |
 | CLI `--help` の Examples | `krs-fences` と同じパーサ検査を help text 内のスニペットにも掛ける（上記の `label:` バグの再発防止）。help 文字列はコード内なので、CLI 側の vitest で各コマンドの help 出力（`addHelpText` の Examples を含む）から `echo '…'` / heredoc の本体を抜いてパースする |
 
 ### 論点 4: skill の中身（interview protocol）
 
 reverse の 4 phase pipeline とは形が違う。こちらは会話駆動で、1 往復ごとに `.krs` が少しずつ育つ:
 
-1. **Orient**: 既存 `.krs` があれば読む（`karasu check` で現状の診断も取る）。無ければ `system` 1 つから始める。
+1. **Orient**: skill の `karasu-version` と `karasu --version` を照合する（上の更新の契約）。既存 `.krs` があれば読む（`karasu check` で現状の診断も取る）。無ければ `system` 1 つから始める。
 2. **Interview（層ごと、上から）**: system → user / client / 外部 service → service → domain → usecase → resource / entity → 物理（database / queue / storage、`deploy` と `realizes`）。各層で聞く内容は Chat の `interviewGuideForLevel*` を出発点に書き直す。1 回に聞くのは 1 層だけ。利用者が知らない層は飛ばしてよい（空の domain を捏造しない）。
 3. **Write**: 1 回答 = 1 編集。`insert <parent-id>` / `append` / `apply` / `remove` を使い、ファイルを丸ごと書き直さない。
-4. **Verify**: 毎編集後に `karasu fmt` → `karasu check`。error が出たら次の質問に進む前に直す。
+4. **Verify**: 毎編集後に `karasu check` → `karasu fmt`。`fmt` はパースエラーのあるファイルを診断なしで拒否する（exit 2）ので、先に `check` で位置付きの診断を得る。error が出たら次の質問に進む前に直す。
 5. **Show**: 節目で `karasu render -o` または `karasu serve` を案内する。
 
 reverse と同じく reference（`syntax.md` / `notation-cookbook.md` / `tags-annotations.md` / `diagnostics.md`）を同梱する。利用者の repo に `docs/` は無いので。コードベースが手元にある場合は「聞く前に読む」（エージェントが自分で確かめられることは利用者に聞かない）を明記する。これが Chat との能力差の本体。
