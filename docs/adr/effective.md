@@ -166,6 +166,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2836](2836-dependabot-triage-2026-09-14.md) — Dependabot トリアージ 2026-09-14：vitest 5 の major は ADR の assumption が捕まえ、差し替え PR で入れる
 - [ADR-2839](2839-pause-dependabot-triage-schedule.md) — dependabot-triage workflow の週次 cron を止め、dispatch で運用する
 - [ADR-2877](2877-dependabot-triage-2026-09-22.md) — Dependabot トリアージ 2026-09-22：changesets 3 は CI が回さない release flow を壊すので差し替え PR で入れ、gh-aw は再生成で上げる
+- [ADR-2898](2898-draft-first-code-review.md) — /code-review は draft PR に当て、CodeRabbit の初回レビューは ready にした時点の 1 回にする
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 

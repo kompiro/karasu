@@ -4,8 +4,8 @@ description: >
   Drive an open PR's CodeRabbit rounds to approval without a human relaying them: wait for
   CodeRabbit (including its rate limit), read and act on the review threads, push once per
   round, and notify the maintainer only when the PR is ready for them or needs their judgment.
-  Run it after the PR is opened and CI is under way (end of /hane:ship), or when resuming a PR
-  that is still in CodeRabbit rounds.
+  Run it after /code-review has been applied on the draft PR and the PR was taken out of draft
+  (gh pr ready), or when resuming a PR that is still in CodeRabbit rounds.
   Trigger when the user says: "CodeRabbit を収束させて", "CodeRabbit のラウンドを回して",
   "CodeRabbit の approve まで", "coderabbit converge", "drive coderabbit to approval",
   or similar phrases.
@@ -34,6 +34,9 @@ pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --once
 ## 前提
 
 - PR が open で draft でない（CodeRabbit は draft をレビューしない）。stack なら最下層の 1 本
+- `/code-review` とその修正の push は draft のうちに済んでいる。PR がまだ draft で `/code-review` が
+  済んでいなければ、先に `/code-review` を当てて修正を push し、`gh pr ready` してから始める。ready の
+  後に `/code-review` の修正を push すると review 枠を 1 回余分に使う（`docs/process.md` の PR ワークフロー、ADR-2898）
 - PR のブランチの worktree にいる。`gh pr view --json number --jq .number` で PR 番号を得る
 
 ## ループ
@@ -71,8 +74,8 @@ CodeRabbit はそれを出したラウンドでも approve するので、`appro
 | `timeout` | CodeRabbit が反応していない（path filter で対象外の push など）。状態を添えて通知して終了 |
 | `limit_budget_exceeded` | 状態を添えて通知して終了 |
 
-`@coderabbitai review` を投げてよいのは `limit_elapsed` のときだけ。review 枠は org 全体で
-共有されており、弾かれた試行も利用量に数えられうる。
+`@coderabbitai review` を投げてよいのは `limit_elapsed` のときだけ。review 枠は開発者単位で
+他のリポジトリとも共有されており、補充レートは直近 7 日の利用量が増えるほど下がる。
 
 rate limit 中に push したいコミットができたら、push は `limit_elapsed` まで保留する。
 制限中の push は弾かれる試行を 1 回増やすだけになる。明けたら `@coderabbitai review` の
@@ -88,7 +91,8 @@ rate limit 中に push したいコミットができたら、push は `limit_el
    - **記録済みの決定が変わる:** 直さない。thread に、指摘・該当する記録・取りうる選択肢を並べた
      質問を maintainer 宛てに返信し、未解決のまま「質問済み」として覚えておく
 3. 返信を先に済ませ、コミットがあれば最後に**このラウンドの修正をまとめて 1 回だけ push する**
-   （pre-push hook は回避しない）。push のたびに review 枠を 1 回使う
+   （pre-push hook は回避しない）。push のたびに review 枠を 1 回使う。main の取り込みが要るときも
+   単独では push せず、このラウンドの修正と一緒にこの 1 回に含める
 4. その最後の行動の直前の時刻を次の `since` にして 1 へ戻る（1 の `since` の説明）
 
 **review 本文にしかない指摘（`bodyFindings`）:** HEAD に対して `since` 以降に出た review の本文にある
