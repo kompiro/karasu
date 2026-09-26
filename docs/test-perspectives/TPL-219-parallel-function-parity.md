@@ -23,6 +23,7 @@ discovered_from:
   - issue: "#1884"
   - issue: "#2033"
   - issue: "#2646"
+  - issue: "#2911"
   - root_cause_file: "packages/core/src/renderer/drill-down-svg.ts"
   - root_cause_file: "packages/core/src/index.ts:480"
   - root_cause_file: "packages/core/src/renderer/org-tree-renderer.ts:544"
@@ -66,6 +67,7 @@ karasu には「ビューごとに分かれた似た形の関数群」が複数�
 - [ ] 共通 helper（`buildStyles`, `analyze`, `buildExportSvg` など）に同じ引数を同じ意図で渡しているか（一方だけ default 値で呼んでいないか）
 - [ ] family 共通の振る舞いを **共通ヘルパに抽出** できないか（重複させ続ける限り drift は再発する）
 - [ ] family 横断の test（同じ入力を全 view 種別で compile し、振る舞いの一致を assert）が 1 件でもあるか
+- [ ] **検証ステップも parameter と同じく parity の対象か**: per-view の `_compileFromPreparedInput` が走らせる model-level の検証（`validateProjectEdgeIdUniqueness` など）を、all-views の `buildAllViewsSvg` も走らせているか。#2911 では all-views 側だけ `duplicate-edge-id` を出さず、既定の `karasu render` が `render --view system` の拒否するモデルを通していた（#1438 は同じ経路で `analyze()` の warning が落ちていた先例）
 
 ### 本観点の範囲外
 

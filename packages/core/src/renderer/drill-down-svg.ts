@@ -18,6 +18,7 @@ import { renderDeploy } from "./deploy-renderer.js";
 import { escapeXml } from "./svg-builder.js";
 import { resolveStyles, styleDerivedEdges } from "../resolver/style-resolver.js";
 import { analyze } from "../resolver/warnings.js";
+import { validateProjectEdgeIdUniqueness } from "../resolver/canonical-id.js";
 import {
   extractSvgParts,
   buildStyles,
@@ -584,6 +585,11 @@ export function buildAllViewsSvg(
   // Resolver warnings are a model-level fact, independent of which view is
   // rendered — surface them on the all-views path too (Issue #1438).
   const warnings = analyze(krsFile, sheets);
+  // Project-wide edge id uniqueness is a model-level error, like the resolver
+  // warnings above: the per-view compile pipeline raises it, and without it here
+  // a default `karasu render` / `karasu check` (both this path) accepted a model
+  // that `render --view system` rejects (#2911).
+  diagnostics.push(...validateProjectEdgeIdUniqueness(krsFile));
   const effectiveSystems = withUnassignedSystem(krsFile);
 
   // Collect system levels
