@@ -339,7 +339,6 @@ unclassified の unit との偶然の一致に頼らない。`nodeId` を持た�
    属性が無ければ `null` を渡す / `highlightAttribute` に従って 1 属性だけを引く
    （unclassified の unit が同じ綴りでも横取りしない）、`useCrossNavigation.test.ts` に
    `null` で highlight 無しの切替、を足す
-   <!-- absent-path-next-line: the E2E spec the implementation PR is told to create (#2818) -->
 7. **E2E**: `packages/e2e/tests/at-2818-cross-navigation-id-space.spec.ts` を新設。
    引用符付き id（`service "www.example.com"`）で deploy → system と system → deploy の
    両方向がハイライトされ hash が `:www.example.com` を持つこと、修飾コンテナ
