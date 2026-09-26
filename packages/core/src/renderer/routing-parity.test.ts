@@ -34,6 +34,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { layout } from "./layout.js";
+import { renderFromLayout } from "./svg-renderer.js";
 import { layoutDeploy } from "./deploy-layout.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
 import "./shapes.js";
@@ -255,6 +256,12 @@ function layoutOfSource(src: string, groupBy?: GroupBy): LayoutResult {
       height: CHIP_LANE_HEIGHT,
     }),
   });
+}
+
+/** The resolved styles for a source, as `renderFromLayout` needs them. */
+function stylesOfSource(src: string) {
+  const krsFile = Parser.parse(src).value;
+  return resolveStyles(krsFile.systems, [getBuiltinStyleSheet()]);
 }
 
 /** A typical corner lane: two buttons and a short chip (#2420). */
@@ -563,6 +570,64 @@ describe("interior corridors shorten detours (#2365)", () => {
   );
 });
 
+/**
+ * The direction a hop's arc bumps toward, read off how the renderer draws it:
+ * the path is `M hop-halfWidth*(cos,sin) A r r angle 0 1 hop+halfWidth*(cos,sin)`,
+ * and sweep-flag 1 advances the angle, so the crown lands 90 degrees on from the
+ * start point — at `(sin, -cos)`. Named and fenced by `the crown direction
+ * matches the drawn arc` below, because the sign is not something the corridor
+ * fence can check for itself: the corridors that bound the radius are parallel
+ * port fans, which are equally wide on both sides, so a flipped sign measures a
+ * different side and gets the same number.
+ */
+function crownNormal(angleDeg: number): Point {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: Math.sin(rad), y: -Math.cos(rad) };
+}
+
+/**
+ * For each hop, how far its arc's crown can rise before it lands on a line that
+ * is *not* the one being hopped — the corridor the arc has to fit in.
+ *
+ * A ray cast from the hop centre along the crown normal, so it is monotone in
+ * the radius: an arc of radius r reaches a neighbour exactly when r >= the
+ * clearance. Counting "arcs that touch a neighbour at radius r" instead is not
+ * monotone, because past a certain r the crown passes through the neighbour and
+ * out the other side, and the count drops again.
+ *
+ * Band-widened arcs (`ry` set) are left out: they are deliberately taller than
+ * the corridor so they escape the band they ride, which TPL-2631 ranks above
+ * staying clear of a neighbour.
+ */
+function crownClearances(res: LayoutResult): number[] {
+  const segs: { a: Point; b: Point; edge: number }[] = [];
+  res.edges.forEach((e, i) => {
+    const pts = pointsOf(e);
+    for (let k = 1; k < pts.length; k++) segs.push({ a: pts[k - 1]!, b: pts[k]!, edge: i });
+  });
+  const out: number[] = [];
+  for (const hop of res.crossingMarks?.hops ?? []) {
+    if (hop.ry !== undefined) continue;
+    const { x: nx, y: ny } = crownNormal(hop.angle);
+    let best = Infinity;
+    for (const seg of segs) {
+      if (seg.edge === hop.edge) continue;
+      const dx = seg.b.x - seg.a.x;
+      const dy = seg.b.y - seg.a.y;
+      // Ray (hop + t*n) against segment (a + u*d): t >= 0 and 0 <= u <= 1.
+      const den = nx * dy - ny * dx;
+      if (Math.abs(den) < 1e-9) continue;
+      const t = ((seg.a.x - hop.x) * dy - (seg.a.y - hop.y) * dx) / den;
+      const u = ((seg.a.x - hop.x) * ny - (seg.a.y - hop.y) * nx) / den;
+      // t <= 1 is the line being hopped, which runs through the hop centre.
+      if (t <= 1 || u < 0 || u > 1) continue;
+      if (t < best) best = t;
+    }
+    if (Number.isFinite(best)) out.push(best);
+  }
+  return out;
+}
+
 describe("fan-in trunk — count fence (#2883, TPL-2598 / TPL-2631 / TPL-2385)", () => {
   // Six services in six teams writing to one shared target, so the trunk's spine
   // carries two, three, four, five and finally six edges on its way down. Three
@@ -740,6 +805,120 @@ ${Array.from({ length: N }, (_s, i) => `  team "t${i}" { label "T${i}" owns S${i
 
   it("no lane spills into a card (TPL-1927 measures both axes together)", () => {
     expect(totalPenetrations(laid())).toBe(0);
+  });
+
+  it("an arc widened for a band is *drawn* as tall as it was widened (#2884)", () => {
+    // The sibling of "an arc that rides a band arches clear of it" above, read
+    // off the SVG instead of the mark. That one passed while the renderer wrote
+    // the constant `HOP_RADIUS` as every arc's `ry` and dropped the height the
+    // layout had computed, so a widened arc was drawn flat inside the band it
+    // hops — the exact reading TPL-2631 exists to prevent, with a green fence
+    // over it. A value the layout computes is only real once the drawing uses
+    // it, so this one measures the drawing (TPL-2803).
+    // Render the very layout the marks come from, so an arc can be matched to
+    // its mark by coordinate. Going through `compile` would re-lay the model and
+    // put the hops at slightly different points, leaving nothing to match on.
+    const res = laid();
+    const svg = renderFromLayout(res, stylesOfSource(TRUNK));
+    // Match each arc to the mark it was drawn from and compare heights, rather
+    // than asking only that the height exceed the default radius: a renderer
+    // that clamped every band-riding arc to `HOP_RADIUS + 1` would satisfy the
+    // looser form while still drawing the arc inside a band 8.5px wide.
+    const drawn = new Map<string, number>();
+    for (const m of svg.matchAll(
+      /M (-?[\d.]+) (-?[\d.]+) A ([\d.]+) ([\d.]+) (-?[\d.]+) 0 1 (-?[\d.]+) (-?[\d.]+)/g,
+    )) {
+      drawn.set(`${m[1]},${m[2]}`, Number(m[4]));
+    }
+    const round2 = (n: number) => Number(n.toFixed(2));
+    const widened = res.crossingMarks!.hops.filter((hop) => hop.ry !== undefined);
+    // The fixture exists to produce these; without one the loop below is
+    // vacuous (TPL-2598).
+    expect(widened.length).toBeGreaterThan(0);
+    for (const hop of widened) {
+      const rad = (hop.angle * Math.PI) / 180;
+      const key = `${round2(hop.x - hop.halfWidth * Math.cos(rad))},${round2(
+        hop.y - hop.halfWidth * Math.sin(rad),
+      )}`;
+      const ry = drawn.get(key);
+      expect(ry, `no arc drawn at ${key} for the mark widened to ${hop.ry}`).toBeDefined();
+      expect(ry, `mark asks for ry ${hop.ry}, drawing says ${ry}`).toBeCloseTo(hop.ry!, 2);
+      // And the height it asks for is the one that clears the band.
+      expect(hop.ry!).toBeGreaterThan(HOP_RADIUS);
+    }
+  });
+});
+
+describe("hop arc radius — corridor fence (#2884, TPL-2598)", () => {
+  // One hub calling twelve targets, each target also read by its own service,
+  // grouped by team. That crowds one card side with the widest port fan a
+  // grouped view builds: `fanOutGutterPorts` spaces ports by side length over
+  // count, so the corridor an arc has to fit in closes as the fan grows. This
+  // is what bounds the radius — not `LANE_PITCH`, which the design measured at
+  // 22px without moving the number.
+  //
+  // Only the grouped view is fenced. The design measured that raising the
+  // radius costs the *ungrouped* view arcs that reach a neighbour on the most
+  // crowded side of a 10k-line model, and took that cost knowingly; asserting a
+  // clearance there would assert something the project decided against.
+  const N = 12;
+  const WIDE = `system Wide {
+  service Hub { label "Hub" }
+${Array.from({ length: N }, (_v, i) => `  service T${i} { label "T${i}" }`).join("\n")}
+${Array.from({ length: N }, (_v, i) => `  service U${i} { label "U${i}" }`).join("\n")}
+${Array.from({ length: N }, (_v, i) => `  Hub -> T${i} "call"`).join("\n")}
+${Array.from({ length: N }, (_v, i) => `  U${i} -> T${(i + 2) % N} "read"`).join("\n")}
+}
+organization Org {
+${Array.from({ length: N }, (_v, i) => `  team "t${i}" { label "T${i}" owns T${i} owns U${i} }`).join("\n")}
+  team "hub" { label "Hub" owns Hub }
+}`;
+
+  it("the crown direction matches the drawn arc", () => {
+    // `crownClearances` measures along `crownNormal`, so if that points the wrong
+    // way the corridor fence certifies the side the arc does not occupy — and it
+    // does so silently, because a port fan is as wide on one side as the other.
+    // Re-derive the direction from the emitted path instead of restating the
+    // formula: centre at the midpoint of the endpoints, then 90 degrees on from
+    // the start in the direction the sweep flag advances (TPL-2803).
+    const svg = renderFromLayout(layoutOfSource(WIDE, "team"), stylesOfSource(WIDE));
+    const arcs = [
+      ...svg.matchAll(
+        /M (-?[\d.]+) (-?[\d.]+) A ([\d.]+) ([\d.]+) (-?[\d.]+) 0 1 (-?[\d.]+) (-?[\d.]+)/g,
+      ),
+    ].map(
+      (m) => m.slice(1).map(Number) as [number, number, number, number, number, number, number],
+    );
+    const circular = arcs.filter(([, , rx, ry]) => Math.abs(rx - ry) < 1e-6);
+    expect(circular.length).toBeGreaterThan(10);
+    for (const [x0, y0, rx, , rot, x1, y1] of circular) {
+      const cx = (x0 + x1) / 2;
+      const cy = (y0 + y1) / 2;
+      const start = Math.atan2(y0 - cy, x0 - cx);
+      const drawn = { x: Math.cos(start + Math.PI / 2), y: Math.sin(start + Math.PI / 2) };
+      const ours = crownNormal(rot);
+      expect(drawn.x, `arc at ${rot} deg bumps x`).toBeCloseTo(ours.x, 2);
+      expect(drawn.y, `arc at ${rot} deg bumps y`).toBeCloseTo(ours.y, 2);
+      // And the radius really is the thing that carries the arc off the line.
+      expect(rx).toBeGreaterThan(0);
+    }
+  });
+
+  it("the default radius fits the tightest corridor, and the corpus reaches that limit", () => {
+    const clearances = crownClearances(layoutOfSource(WIDE, "team"));
+    expect(clearances.length).toBeGreaterThan(20);
+    const tightest = Math.min(...clearances);
+    // Arcs fit today.
+    expect(tightest, `tightest corridor ${tightest.toFixed(1)}px`).toBeGreaterThan(HOP_RADIUS);
+    // And the corridor is no wider than 7px, so a raise to 7 cannot fit it.
+    // That is the boundary `docs/acceptance/2884-hop-arc-radius.md` claims, and
+    // the looser bound this started with (9px, the tip-sized radius the design
+    // rejected) did not hold it: a fixture that drifted to an 8px corridor would
+    // have satisfied both assertions while radius 7 passed, making the record
+    // false (TPL-2598). Pinned against 7 rather than against `HOP_RADIUS` so
+    // that *lowering* the radius does not trip it: the claim is about what the
+    // fixture reaches, not about the current radius.
+    expect(tightest).toBeLessThanOrEqual(7);
   });
 });
 
