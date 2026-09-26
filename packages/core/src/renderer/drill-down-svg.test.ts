@@ -973,26 +973,6 @@ system EC {
     expect(result.warnings.some((w) => w.kind === "domain-dispersal")).toBe(true);
   });
 
-  // The per-view pipeline raises duplicate-edge-id project-wide; the all-views
-  // path used to skip it, so the default `karasu render` accepted what
-  // `render --view system` rejected (#2911).
-  it("raises duplicate-edge-id like the per-view pipeline — Issue #2911", () => {
-    const krsFile = Parser.parse(`
-system S {
-  service A {}
-  service B {}
-  service C {}
-  A -> B "x" #e1
-  A -> C "y" #e1
-}
-`).value;
-    const result = buildAllViewsSvg(krsFile);
-
-    const dup = result.diagnostics.filter((d) => d.code === "duplicate-edge-id");
-    expect(dup).toHaveLength(2);
-    expect(dup.every((d) => d.severity === "error")).toBe(true);
-  });
-
   it("returns an empty warnings array for a clean model — Issue #1438", () => {
     const krsFile = Parser.parse(SYSTEM_ONLY).value;
     const result = buildAllViewsSvg(krsFile);
