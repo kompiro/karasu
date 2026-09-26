@@ -53,8 +53,24 @@ export function trunkBandHalfWidth(count: number): number {
 /** Clearance a mark needs to stay outside a band of `count` edges. */
 const BAND_CLEARANCE = 3;
 
-/** Radius of a single hop arc's bump (px). */
-export const HOP_RADIUS = 4;
+/**
+ * Radius of a single hop arc's bump (px).
+ *
+ * 4px was chosen when nothing competed with the arc. At 6x zoom on a 10k-line
+ * model it reads as a nick in the line rather than a mark, and the mark exists
+ * so a crossing is not mistaken for a connection (ADR-1859), so it was raised
+ * to 6 (#2884).
+ *
+ * 6 is the ceiling, not a preference. What binds is the spacing of the ports
+ * {@link fanOutGutterPorts} lays along one card side — side length over count,
+ * which falls to ~9.6px on a crowded side — so a taller arc reaches the
+ * neighbouring parallel line instead of the one it hops. Measured on the
+ * reverse-engineered dify model, arcs reaching a neighbour go 0 -> 36 in the
+ * grouped view between 8 and 9. Raising this past 6 means flooring the port fan
+ * first, which is a placement change. `hop arc radius — corridor fence` in
+ * `routing-parity.test.ts` fails on a raise so the reason has to be restated.
+ */
+export const HOP_RADIUS = 6;
 /**
  * Crossings on the same host segment closer than this (in px along the segment)
  * merge into one wide hop (design doc: `HOP_CLUSTER_GAP`, hop-radius-derived).
@@ -477,7 +493,8 @@ function bandsOf(trunks: readonly TrunkGroup[]): TrunkBand[] {
 /**
  * Keep both marks readable over a band. A hop has to arch clear of what it
  * crosses, and the band is as wide as the count it carries while the arc rises
- * 4px, so an unadjusted arc is drawn inside the thing it marks a crossing over.
+ * {@link HOP_RADIUS}, so an unadjusted arc is drawn inside the thing it marks a
+ * crossing over once the count is high enough.
  * A count mark must not sit on a crossing either: it would hide the arc under a
  * mark that asserts the opposite. The count moves, never the crossing
  * (TPL-2631).
