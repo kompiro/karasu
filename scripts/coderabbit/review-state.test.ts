@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  type AuthorComment,
   bodyFindingCount,
   bodyFindingIds,
   classify,
@@ -30,6 +31,9 @@ function snapshot(over: Partial<Snapshot>): Snapshot {
 
 /** The marker CodeRabbit closes one body finding with, as it appears in a review. */
 const finding = (id: string): string => `> <!-- cr-comment:v1:${id} -->`;
+
+/** A top-level answer of the author's, which only covers filings before it. */
+const answer = (createdAt: string, body: string): AuthorComment => ({ body, createdAt });
 
 /** Shape of the summary comment once an automatic review hits the allowance (#2843). */
 function limitNotice(updatedAt: string, minutes: number, head = HEAD): CodeRabbitComment {
@@ -447,7 +451,10 @@ describe("bodyFindingCount", () => {
         },
       ],
       authorComments: [
-        "Fixed the first one in 9b66575f: the renderer now reads `hop.ry`. <!-- cr-comment:v1:aaa1 -->",
+        answer(
+          "2026-09-15T14:10:00Z",
+          "Fixed the first one in 9b66575f: the renderer now reads `hop.ry`. <!-- cr-comment:v1:aaa1 -->",
+        ),
       ],
     });
     expect(bodyFindingIds(s)).toEqual(["aaa2"]);
@@ -475,6 +482,38 @@ describe("bodyFindingCount", () => {
     expect(bodyFindingIds(s)).toEqual(["aaa1"]);
   });
 
+  it("makes a finding pending again when CodeRabbit files it after the answer", () => {
+    const repeated = `**⚠️ Outside diff range comments (1)**\n${finding("aaa1")}`;
+    const answered = snapshot({
+      reviews: [
+        {
+          state: "CHANGES_REQUESTED",
+          commitId: OLD,
+          submittedAt: "2026-09-15T15:00:00Z",
+          body: repeated,
+        },
+      ],
+      authorComments: [answer("2026-09-15T15:30:00Z", `Fixed. ${finding("aaa1")}`)],
+    });
+    expect(bodyFindingIds(answered)).toEqual([]);
+
+    // Raising it again is the round's loudest signal: the fix or the judgment
+    // did not land. An answer that never expires would hide it.
+    const repeatedAfter = snapshot({
+      reviews: [
+        ...answered.reviews,
+        {
+          state: "CHANGES_REQUESTED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T16:00:00Z",
+          body: repeated,
+        },
+      ],
+      authorComments: answered.authorComments,
+    });
+    expect(bodyFindingIds(repeatedAfter)).toEqual(["aaa1"]);
+  });
+
   it("does not retire a finding whose id merely sits inside a sha the answer mentions", () => {
     const id = "61e81b7ddb6c2c25720f2d81";
     const s = snapshot({
@@ -488,7 +527,9 @@ describe("bodyFindingCount", () => {
       ],
       // A 40-digit sha that happens to contain the id. A substring search would
       // read this as an answer.
-      authorComments: [`Bisected to ${id}9b66575f834db200e603a6a8, unrelated.`],
+      authorComments: [
+        answer("2026-09-15T15:10:00Z", `Bisected to ${id}9b66575f834db200e603a6a8, unrelated.`),
+      ],
     });
     expect(bodyFindingIds(s)).toEqual([id]);
   });
@@ -503,7 +544,12 @@ describe("bodyFindingCount", () => {
           body: `**⚠️ Outside diff range comments (1)**\n${finding("aaa1")}`,
         },
       ],
-      authorComments: ["Declined, ADR-1184 switches on the value (cr-comment:v1:aaa1)."],
+      authorComments: [
+        answer(
+          "2026-09-15T15:10:00Z",
+          "Declined, ADR-1184 switches on the value (cr-comment:v1:aaa1).",
+        ),
+      ],
     });
     expect(bodyFindingIds(s)).toEqual([]);
   });
@@ -556,7 +602,9 @@ describe("bodyFindingCount", () => {
           body: `**⚠️ Outside diff range comments (2)**\n${finding("aaa1")}`,
         },
       ],
-      authorComments: [`Declined: pre-existing. ${finding("aaa1")}`],
+      authorComments: [
+        answer("2026-09-15T15:10:00Z", `Declined: pre-existing. ${finding("aaa1")}`),
+      ],
     });
     expect(bodyFindingIds(s)).toEqual([]);
     expect(unmarkedBodyFindings(s)).toBe(1);

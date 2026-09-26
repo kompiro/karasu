@@ -5,6 +5,7 @@ import {
   ACTIONABLE_KINDS,
   CODERABBIT_LOGINS,
   DEFAULT_CLASSIFY_OPTIONS,
+  type AuthorComment,
   bodyFindingCount,
   bodyFindingIds,
   classify,
@@ -145,9 +146,9 @@ function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
   const comments: CodeRabbitComment[] = allComments
     .filter((c) => byCodeRabbit(c.user?.login))
     .map((c) => ({ body: c.body, createdAt: c.created_at, updatedAt: c.updated_at }));
-  const authorComments: string[] = allComments
+  const authorComments: AuthorComment[] = allComments
     .filter((c) => !byCodeRabbit(c.user?.login))
-    .map((c) => c.body);
+    .map((c) => ({ body: c.body, createdAt: c.created_at }));
 
   const threads: ReviewThread[] = ghPages<ThreadPage>([
     "graphql",

@@ -61,6 +61,12 @@ export interface CodeRabbitComment {
   updatedAt: string;
 }
 
+/** A top-level PR comment by anyone other than CodeRabbit: an answer, or prose. */
+export interface AuthorComment {
+  body: string;
+  createdAt: string;
+}
+
 export interface ReviewThread {
   isResolved: boolean;
   /** Newest comment in the thread, used to see CodeRabbit answering in it. */
@@ -81,11 +87,12 @@ export interface Snapshot {
   /** CodeRabbit's top-level comments only. */
   comments: CodeRabbitComment[];
   /**
-   * Bodies of the PR's top-level comments that are not CodeRabbit's. A body
-   * finding has no thread to answer in, so this is where the round answers one,
-   * and naming its id there is what retires it ({@link bodyFindingIds}).
+   * The PR's top-level comments that are not CodeRabbit's. A body finding has no
+   * thread to answer in, so this is where the round answers one, and naming its
+   * id there is what retires it ({@link bodyFindingIds}). The time is needed
+   * because an answer only covers the filings that came before it.
    */
-  authorComments: string[];
+  authorComments: AuthorComment[];
   /** Every review thread on the PR, whoever opened it. */
   threads: ReviewThread[];
 }
@@ -237,17 +244,35 @@ const declaredFindingsIn = (body: string): number =>
  * them. Retiring one now takes the same answer as any other finding, rather than
  * a review state doing it silently.
  *
- * Answered means the id appears in a PR comment that is not CodeRabbit's. These
- * findings have no thread to reply in, so the round answers them in a top-level
- * comment; writing the id there is what retires one. CodeRabbit echoing its own
- * id does not, or the finding would retire itself.
+ * Answered means the id appears in a PR comment that is not CodeRabbit's, posted
+ * after the last review that filed it. These findings have no thread to reply
+ * in, so the round answers them in a top-level comment; writing the id there is
+ * what retires one. CodeRabbit echoing its own id does not, or the finding would
+ * retire itself.
+ *
+ * The answer is compared against the filing because a finding CodeRabbit raises
+ * again after it was answered is pending again. Subtracting without the
+ * comparison would make an answer permanent and hide the skill's loudest signal,
+ * that the same finding came back.
  */
 export function bodyFindingIds(s: Snapshot): string[] {
-  const answered = new Set(
-    s.authorComments.flatMap((body) => idsMatching(ANSWERED_FINDING_ID, body)),
-  );
-  const filed = new Set(s.reviews.flatMap((r) => findingIdsIn(r.body)));
-  return [...filed].filter((id) => !answered.has(id));
+  const answeredAt = new Map<string, number>();
+  for (const c of s.authorComments) {
+    for (const id of idsMatching(ANSWERED_FINDING_ID, c.body)) {
+      answeredAt.set(id, Math.max(answeredAt.get(id) ?? -Infinity, ms(c.createdAt)));
+    }
+  }
+
+  const filedAt = new Map<string, number>();
+  for (const r of s.reviews) {
+    for (const id of findingIdsIn(r.body)) {
+      filedAt.set(id, Math.max(filedAt.get(id) ?? -Infinity, ms(r.submittedAt)));
+    }
+  }
+
+  return [...filedAt]
+    .filter(([id, at]) => (answeredAt.get(id) ?? -Infinity) < at)
+    .map(([id]) => id);
 }
 
 /**

@@ -69,6 +69,9 @@ CodeRabbit はそれを出したラウンドでも approve するので、`appro
 `bodyFindings` は「まだ答えていない件数」で、`bodyFindingIds` がその id を並べる。id は push でも
 `since` の更新でも消えない。答えるまで毎ラウンド出続けるので、`approved` で終える前に必ず 0 にする。
 
+一度答えた id がまた現れたら、CodeRabbit が同じ指摘を出し直したということで、下の「同じ指摘が、
+対応した後にまた出てきた」に当たる。答え直さず、通知して終了する。
+
 ### 2. `outcome` ごとの行動
 
 | `outcome` | すること |
