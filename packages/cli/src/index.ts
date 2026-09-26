@@ -2,6 +2,7 @@
 import { program } from "commander";
 import { serve } from "./serve.js";
 import { render } from "./render.js";
+import { check } from "./check.js";
 import { translate } from "./translate/index.js";
 import {
   resolveTranslateCliOptions,
@@ -111,6 +112,31 @@ Examples:
       });
     },
   );
+
+program
+  .command("check <file>")
+  .description(
+    "Validate a .krs project (imports included) and write nothing. " +
+      "Prints every diagnostic; exits 1 when any is an error.",
+  )
+  .addHelpText(
+    "after",
+    `
+Runs the same compile as \`karasu render\`, so a file that passes \`check\`
+renders. Use it after every edit, before \`karasu fmt\`: \`fmt\` refuses a file
+with parse errors without saying where they are.
+
+\`lint-style\` checks .krs.style files, not .krs.
+
+Examples:
+  # Validate a project entry file
+  $ karasu check index.krs
+
+  # Edit, then validate before formatting
+  $ echo 'service NewService { label "New" }' | karasu insert ECommerce arch.krs
+  $ karasu check arch.krs && karasu fmt arch.krs`,
+  )
+  .action((file: string) => check(file));
 
 program
   .command("translate <file>")
