@@ -59,6 +59,7 @@ reverse-architecture との役割分担は PRD の通り: reverse は「知ら�
 
 #### 案 1-C: npm package に同梱し、CLI から取り出す（推奨）
 
+<!-- absent-path-next-line: the directory this design proposes to create (#2901 slice C) -->
 skill の正本を `packages/cli/skills/karasu-author/` に置き、`files` に含めて npm tarball に同梱する。CLI に取り出しコマンドを 1 つ足す:
 
 ```
@@ -94,7 +95,7 @@ karasu skill path                     # 同梱 skill の絶対パスを表示（
 | --- | --- |
 | `skill-cli-refs` | 走査対象に `packages/cli/skills/**` を追加 |
 | `skill-reference-bundle-sync` | bundle を「reverse 固定」から「(bundle dir, 収録 docs) の表」に一般化し、`karasu-author/reference/` を登録 |
-| `krs-fences` | 走査 root に `.claude/skills/` と `packages/cli/skills/` を追加（skill 本文の ```krs 例がパースできること） |
+| `krs-fences` | 走査 root に `.claude/skills/` と skill の正本ディレクトリ（案 1-C）を追加（skill 本文の ```krs 例がパースできること） |
 | **新設: skill pipeline e2e**（`packages/cli` の vitest） | skill が規定する編集ループ（`append` → `insert` → `fmt` → `check`）を fixture で実行し、正常系で `check` が 0、壊した入力で非ゼロになることを assert。#2084 は「名前は正しいが用途違い」だったので、名前の照合では原理的に捕まらない。実行して初めて捕まる |
 | CLI `--help` の Examples | `krs-fences` と同じパーサ検査を help text 内のスニペットにも掛ける（上記の `label:` バグの再発防止）。help 文字列はコード内なので、CLI 側の vitest で各コマンドの help 出力（`addHelpText` の Examples を含む）から `echo '…'` / heredoc の本体を抜いてパースする |
 
