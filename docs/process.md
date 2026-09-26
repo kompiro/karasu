@@ -107,7 +107,7 @@ ready → implementing → in-review → (close)
 7. PR 前に main を取り込む — git fetch origin main && git merge --no-edit origin/main（rebase は使わない。「ブランチ戦略」参照）。コンフリクトを解消し、lint / test を再確認する
 8. PR を draft で作成する（gh pr create --draft、Closes #N で Issue と紐付ける）。draft には CodeRabbit も分単位の CI も走らない
 9. /code-review <PR番号> を当て、対応すると決めた修正をコミットして push する（draft への push は CodeRabbit の review 枠を使わない）
-10. gh pr ready <PR番号> で draft を外す。CodeRabbit の初回レビューと CI はここで走る
+10. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の PR）では初回レビューもここで走る
 11. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 12. Issue ラベルを status: in-review に更新する
 13. 手動検証チェックリストを実施する

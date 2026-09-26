@@ -15,7 +15,6 @@ scope:
 assumptions:
   - "grep: .coderabbit.yaml :: drafts: false"
   - "grep: docs/process.md :: gh pr create --draft"
-  - "file: .claude/skills/coderabbit-converge/SKILL.md"
 ---
 
 # ADR-2898: /code-review は draft PR に当て、CodeRabbit の初回レビューは ready にした時点の 1 回にする
@@ -59,13 +58,14 @@ Advanced は 4 回/時になる。止められた分を usage-based（1 reviewed
 ## 決定
 
 **PR は draft で作り、`/code-review` とその修正の push を draft のうちに済ませてから
-`gh pr ready` で 1 回だけ ready にする。** CodeRabbit の初回レビューは `/code-review`
-の修正を反映したコードに当たる。
+`gh pr ready` で 1 回だけ ready にする。**
 
-stacked PR でも同じで、最下層に `/code-review` を当ててから draft を外す。
+## 手順への反映
 
-CodeRabbit のラウンド中は、main の取り込みを単独で push しない。取り込みが要るときは
-そのラウンドの修正と一緒に 1 回の push にまとめる。
+- CodeRabbit の初回レビューは `/code-review` の修正を反映したコードに当たる
+- stacked PR でも同じで、最下層に `/code-review` を当ててから draft を外す
+- CodeRabbit のラウンド中は、main の取り込みを単独で push しない。取り込みが要るときは
+  そのラウンドの修正と一緒に 1 回の push にまとめる
 
 ## 理由
 
