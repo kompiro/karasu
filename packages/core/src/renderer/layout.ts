@@ -661,8 +661,16 @@ function layoutInner(
   });
   childMaxWidth = placed.childMaxWidth;
   childMaxHeight = placed.childMaxHeight;
+  // A domain spliced onto this canvas by in-place expansion (#1921) sits under
+  // its expanded service, not directly under the canvas scope, so its path
+  // carries that service (#2917: `Shop.Api.Orders`, not `Shop.Orders`).
+  const expandedParentOf = new Map<string, string>();
+  for (const frame of viewSlice.expandedFrames) {
+    for (const memberId of frame.memberIds) expandedParentOf.set(memberId, frame.containerId);
+  }
   for (const [nid, box] of placed.placements) {
     const krsNode = nodeMap.get(nid)!;
+    const expandedParent = expandedParentOf.get(nid);
     layoutNodes.set(
       nid,
       makeLayoutNode(krsNode, nid, {
@@ -673,9 +681,11 @@ function layoutInner(
         y: box.y,
         width: box.width,
         height: box.height,
-        // Same shape as the owner lookup above: the canvas scope plus the id
-        // is the node's full path, which `data-node-path` carries (#2917).
-        path: [...scopePath, nid],
+        // The node's full path, which `data-node-path` carries (#2917): the
+        // canvas scope plus the id, with the expanded service in between for
+        // a spliced domain.
+        path:
+          expandedParent !== undefined ? [...scopePath, expandedParent, nid] : [...scopePath, nid],
       }),
     );
   }
@@ -1480,7 +1490,10 @@ function layoutMultipleSystems(
     const toNode = nodeIn(targetPath.length > 1 ? targetPath[0] : undefined, toServiceRemapped);
     if (!fromNode || !toNode) continue;
     if (retargeted) {
-      const key = `${fromId}->${toField}`;
+      // Two systems may now each keep an `Api` card that reaches the same
+      // stub (#2917), so the de-dupe identity carries the source system: only
+      // edges folded within one source system merge.
+      const key = `${sourceSystem ?? ""}\u0000${fromId}->${toField}`;
       if (seenCrossStub.has(key)) continue;
       seenCrossStub.add(key);
     }

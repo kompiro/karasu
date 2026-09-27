@@ -293,6 +293,7 @@ export function useSystemView(
         warnings: sysBase.warnings,
         diagnostics,
         nodeMetadata: sysBase.nodeMetadata,
+        nodeMetadataByPath: sysBase.nodeMetadataByPath,
       }),
       errorState: (svgToShow) => toState(svgToShow),
       okState: () => toState(svg),

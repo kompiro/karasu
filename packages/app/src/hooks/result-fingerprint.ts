@@ -41,6 +41,13 @@ export function computeViewResultFingerprint(args: {
    * Issue #1032.
    */
   nodeMetadata?: ReadonlyMap<string, NodeMetadata>;
+  /**
+   * Optional. The path-keyed twin of `nodeMetadata` (#2917). Two same-named
+   * nodes share one bare-id entry, so an edit to the other node's description
+   * or link changes only this map; folding it in keeps the path-resolved
+   * detail panel publishing.
+   */
+  nodeMetadataByPath?: ReadonlyMap<string, NodeMetadata>;
 }): string {
   // U+001F (Unit Separator) cannot appear in JSON-encoded strings —
   // JSON.stringify escapes control characters — and karasu's SVG output
@@ -49,5 +56,8 @@ export function computeViewResultFingerprint(args: {
   const metadataSegment = args.nodeMetadata
     ? JSON.stringify(Array.from(args.nodeMetadata.entries()))
     : "";
-  return `${args.svg}${SEP}${JSON.stringify(args.warnings)}${SEP}${JSON.stringify(args.diagnostics)}${SEP}${metadataSegment}`;
+  const byPathSegment = args.nodeMetadataByPath
+    ? JSON.stringify(Array.from(args.nodeMetadataByPath.entries()))
+    : "";
+  return `${args.svg}${SEP}${JSON.stringify(args.warnings)}${SEP}${JSON.stringify(args.diagnostics)}${SEP}${metadataSegment}${SEP}${byPathSegment}`;
 }

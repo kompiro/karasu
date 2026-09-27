@@ -850,8 +850,16 @@ function buildNodeMetadata(
     byPath.set(nodePathRefId(fullPath), { ...meta, viewPath: fullPath });
   }
 
+  // A domain spliced onto the canvas by in-place expansion (#1921) belongs to
+  // its expanded service: key it (and resolve its owner) under that path, the
+  // same path the layout stamps on its card (#2917).
+  const expandedParentOf = new Map<string, string>();
+  for (const frame of viewSlice.expandedFrames) {
+    for (const memberId of frame.memberIds) expandedParentOf.set(memberId, frame.containerId);
+  }
   for (const node of viewSlice.childNodes) {
-    addNode(node, canvasScope);
+    const expandedParent = expandedParentOf.get(node.id);
+    addNode(node, expandedParent !== undefined ? [...canvasScope, expandedParent] : canvasScope);
   }
   for (const node of viewSlice.ghostUsers) {
     addNode(node, []);

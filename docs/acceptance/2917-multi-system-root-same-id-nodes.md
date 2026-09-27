@@ -69,7 +69,7 @@ type: product
 
 ### AC-6: `data-node-path`
 
-- [x] AT-J: 論理ビューの全ノードカードは `data-node-path` を `nodePathRefId` 形で持つ。引用符付き id（`service "www.example.com"`）は `Weird."www.example.com"` になり、`parseNodePathRefId` で round-trip する。単一 system のビューと drilled level でも canvas の scope 付きで出る
+- [x] AT-J: 論理ビューの実ノードカード（ghost と collapse / category stub は持たない）は `data-node-path` を `nodePathRefId` 形で持つ。引用符付き id（`service "www.example.com"`）は `Weird."www.example.com"` になり、`parseNodePathRefId` で round-trip する。単一 system のビューと drilled level でも canvas の scope 付きで出る。in-place 展開で canvas に置かれた domain は展開元 service を含む path（`Shop.Api.Orders`）を持つ
 
   > ✅ Automated — `packages/core/src/renderer/multi-system-same-id.test.ts` › data-node-path carries the nodePathRefId form on every logical canvas (#2917) › quotes a segment that would make the join ambiguous, and round-trips ／ … › is present on a single-system view and on a drilled level, scoped by the canvas ／ `packages/core/src/parser/node-path.test.ts` › parseNodePathRefId (#2917) › round-trips every path nodePathRefId can produce
 

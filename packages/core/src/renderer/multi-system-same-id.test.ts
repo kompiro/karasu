@@ -256,3 +256,79 @@ system Admin {
     expect(r.edges.map((e) => `${e.from}->${e.to}`)).toContain("Worker->Admin.Api");
   });
 });
+
+describe("review follow-ups (#2917)", () => {
+  it("keeps both systems' retargeted edges to one collapsed stub", () => {
+    const r = layout(
+      rootSlice(`
+system Shop {
+  service Api {}
+  Api -> Third.Db
+}
+system Admin {
+  service Api {}
+  Api -> Third.Db
+}
+system Third {
+  database Db {}
+}
+`),
+      { collapsedCategories: new Set<"external" | "infra">(["infra"]) },
+    );
+    const toStub = r.edges.filter((e) => e.to === "Third.__collapsed_Third_infra__");
+    expect(toStub).toHaveLength(2);
+    const shop = frameOf(r, "Shop");
+    const admin = frameOf(r, "Admin");
+    expect(toStub.filter((e) => e.fromPoint.x <= shop.x + shop.width + 1)).toHaveLength(1);
+    expect(toStub.filter((e) => e.fromPoint.x >= admin.x - 1)).toHaveLength(1);
+  });
+
+  it("paths an in-place expanded domain under its service, in the card and in the metadata", () => {
+    const krs = `
+system Shop {
+  service Api {
+    domain Orders {}
+  }
+  service Worker {}
+}
+`;
+    const result = compile(krs, {
+      diagramType: "system",
+      viewPath: [],
+      expandedContainers: new Set(["Api"]),
+    });
+    if (result.diagramType !== "system") throw new Error();
+    expect(result.svg).toContain('data-node-path="Shop.Api.Orders"');
+    expect(result.svg).not.toContain('data-node-path="Shop.Orders"');
+    expect(result.nodeMetadataByPath.get("Shop.Api.Orders")?.viewPath).toEqual([
+      "Shop",
+      "Api",
+      "Orders",
+    ]);
+    expect(result.nodeMetadataByPath.has("Shop.Orders")).toBe(false);
+  });
+
+  it("omits data-node-path on ghost cards", () => {
+    const result = compile(
+      `
+system Shop {
+  service Api {
+    domain Orders {}
+  }
+  Api -> Admin.Api
+}
+system Admin {
+  service Api {}
+}
+`,
+      { diagramType: "system", viewPath: ["Shop", "Api"] },
+    );
+    if (result.diagramType !== "system") throw new Error();
+    // Admin.Api is drawn as a ghost on Shop.Api's view: qualified id, no path.
+    const ghost = result.svg.match(/<g[^>]*data-node-id="Admin\.Api"[^>]*>/)?.[0] ?? "";
+    expect(ghost).not.toBe("");
+    expect(ghost).not.toContain("data-node-path");
+    // The real domain card on the same canvas carries its full path.
+    expect(result.svg).toContain('data-node-path="Shop.Api.Orders"');
+  });
+});
