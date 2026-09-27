@@ -80,7 +80,10 @@ key と同じ値。
 | ループ後                       | `normalizeCoordinates` / `computeTotalDimensions` / 交差マーク | Map を走査するだけ                                                                                                                                                                                                                                      |
 | ループ後                       | `channelReservations` などの行ヘルパ                           | `rows` を使うが、multi-system は `rows: []`                                                                                                                                                                                                             |
 
-edge の `from` / `to` は SVG 属性には出ない（edge は `canonicalId` で識別される）。
+edge の `from` / `to` は `edge-routing.ts` が `data-edge-from` / `data-edge-to` として SVG に
+出し、app の `PreviewPane` が edge の詳細パネルとラベルにそれを読む（識別は `canonicalId`）。
+**scoped key はノードの内部 lookup にだけ使い、`LayoutEdge.from` / `to` は bare id のまま**
+出す。
 
 ### 同名 id のナビゲーションには、既に 2 つの「着地点」がある
 
@@ -110,6 +113,8 @@ edge の `from` / `to` は SVG 属性には出ない（edge は `canonicalId` �
 - **key の scope は無条件にする。** 衝突したときだけ key を変える案は、ADR-2714 が
   「衝突の有無で id が変わる」として却下した形と同じで、Map の中身がモデルの他の部分に
   依存する
+- **`LayoutEdge.from` / `to` は bare id のまま。** `data-edge-from` / `data-edge-to` として SVG に
+  出て app が読むので、scope はノードの Map の key にとどめ、edge の端点フィールドには及ぼさない
 - **勝者規則（TPL-1583）は変えない。** `nodePathIndex` が 1:1 であることに依存する消費側
   （permalink・app の drill・`nodeMetadata`）はそのまま
 - **同じ値を 2 つのフィールドに持たない。** `LayoutNode.id` は既に bare id を持つので、
