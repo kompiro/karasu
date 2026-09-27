@@ -11,7 +11,9 @@ name: Release
 # `chore/release-*` branch for review. See ADR-1370.
 #
 # `changeset publish` publishes any public package whose `package.json`
-# version is not yet on npm, so this is a no-op between releases.
+# version is not yet on npm, so this is a no-op between releases. The `record`
+# job then pushes the tags of what was published and creates the release's
+# GitHub Release `release-YYYY-MM-DD` (#2939).
 #
 # Authentication is **npm Trusted Publishing via GitHub OIDC** — no
 # `NPM_TOKEN`. npm exchanges the workflow's OIDC token (`id-token: write`)
@@ -47,6 +49,8 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    outputs:
+      tags: ${{ steps.published.outputs.tags }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -83,3 +87,58 @@ jobs:
       # only versions not already on npm, so this is a no-op between releases.
       - name: Publish to npm
         run: pnpm run release
+
+      # `changeset publish` tags each package it actually published
+      # (`karasu@0.7.0`, `@karasu-tools/core@0.3.0`) on the runner and nothing
+      # pushes them. Hand that list to the `record` job instead of pushing from
+      # here, so this job — the one holding npm publish rights — keeps a
+      # read-only token (#2939).
+      - name: Collect the tags of what was published
+        id: published
+        run: |
+          tags=$( (git tag --points-at HEAD | grep '@' || true) | tr '\n' ' ' | sed 's/ *$//')
+          echo "tags=${tags}" >> "$GITHUB_OUTPUT"
+          echo "::notice::Published tags: ${tags:-none}"
+
+  # Records the release in the repo: pushes the package tags and creates the
+  # GitHub Release `release-YYYY-MM-DD` for this commit (#2939). The VS Code
+  # extension's tag is added by vscode-release.yml only after the Marketplace
+  # publish succeeds, and it re-runs the same script to extend this Release.
+  record:
+    name: Record release
+    needs: release
+    if: needs.release.outputs.tags != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push tags and create the GitHub Release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the script reads existing release-* tags
+
+      # Node 24 runs the .mts script through type stripping; no install needed.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: Push package tags
+        env:
+          TAGS: ${{ needs.release.outputs.tags }}
+        run: |
+          for tag in $TAGS; do
+            if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+              if [ "$(git rev-list -n1 "refs/tags/${tag}")" != "$GITHUB_SHA" ]; then
+                echo "::error::${tag} already exists on another commit."
+                exit 1
+              fi
+              echo "${tag} already points at ${GITHUB_SHA}."
+              continue
+            fi
+            git tag "$tag" "$GITHUB_SHA"
+            git push origin "refs/tags/${tag}"
+          done
+
+      - name: Create or update the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/release/github-release.mts --commit "$GITHUB_SHA"
