@@ -1,12 +1,14 @@
 # karasu CLI authoring skill（AI authoring の primary path）
 
 - **日付**: 2026-09-26
-- **ステータス**: 検討中
+- **ステータス**: 検討中（2026-09-27 論点 1 を改訂）
 - **関連**:
   - 引き金 Issue: [#2901](https://github.com/kompiro/karasu/issues/2901)（#638 を置き換え）
+  - 改訂: 2026-09-27 配布方針を案 1-C から案 1-D（skills パッケージ + plugin marketplace + `karasu skill install` の組み合わせ）に改めた。[#2901 のコメント](https://github.com/kompiro/karasu/issues/2901#issuecomment-5853291677)と後続の議論による
   - 方針の出典: [keystone PRD 追記 2026-09-26](../prd/keystone-primary-path.md#追記-2026-09-26-ai-authoring-の経路)
   - 関連 ADR: [ADR-1895](../adr/1895-reverse-architecture-harness.md)（reverse-architecture harness）/ [ADR-1084](../adr/1084-skills-plugin-portability.md)（portable skill は hane plugin へ）/ [ADR-420](../adr/420-chat-ui-phase3-structured-interview.md)（Chat のレベル別インタビュー）
   - 関連 TPL: [TPL-2084](../test-perspectives/TPL-2084-skill-cli-command-refs-drift.md)（skill ↔ CLI コマンド名 drift）
+  - 関連 TPL（案 1-D で追加）: [TPL-1681](../test-perspectives/TPL-1681-publishable-tarball-completeness.md)（publish する tarball に `skills/` / `.claude-plugin/` / `reference/` が揃っているか）/ [TPL-1024](../test-perspectives/TPL-1024-dev-vs-packaged-mode-parity.md)（repo 内の symlink 経由の開発と、npm から入れた plugin で挙動が揃うか）
   - 先行 Issue: [#2574](https://github.com/kompiro/karasu/issues/2574)（reference bundle）/ [#2093](https://github.com/kompiro/karasu/issues/2093)（skill-cli-refs guard）/ [#2084](https://github.com/kompiro/karasu/issues/2084)（`lint-style` を検証に使った事故）
   - コード: `packages/cli/src/index.ts`, `.claude/skills/reverse-architecture/`, `scripts/lint/skill-cli-refs.ts`, `scripts/lint/skill-reference-bundle-sync.ts`, `scripts/lint/krs-fences.ts`
 
@@ -40,7 +42,9 @@ reverse-architecture との役割分担は PRD の通り: reverse は「知ら�
 - **skill は利用者が手元に持っている CLI のバージョンと一致しているべき**。skill が新しい CLI 機能を前提にし、利用者の CLI が古い（またはその逆）と、エージェントは存在しないコマンドや構文を試す。drift は「repo 内の skill ↔ repo 内の CLI」だけでなく「利用者の skill ↔ 利用者の CLI」でも起きる。
 - **`.krs` が唯一の状態**。reverse と同じく、エージェントは会話履歴ではなく毎回 `.krs` を読み直す。
 - Chat panel には手を入れない（凍結）。
-- out of scope: reverse-architecture の配布方法の変更（同じ仕組みに乗せられるが別 Issue）、Chat の削除。
+- **skill の正本は karasu repo に置く**（2026-09-27 決定）。別 repo（例: `kompiro/karasu-skills`）に切り出すと、`skill-cli-refs` / `skill-reference-bundle-sync` / `krs-fences` といった drift guard が karasu の CI から外れる。正本が CLI と同じ repo にあれば、CLI を変える PR と skill を直す PR を同じ CI が見る。
+- **Claude Code 利用者は plugin として入れられる**（2026-09-27 決定）。利用者が任意に `/plugin` から入れ、更新も plugin 機構で受け取れること。
+- out of scope: Chat の削除。
 
 ## 検討した選択肢
 
@@ -58,7 +62,7 @@ reverse-architecture との役割分担は PRD の通り: reverse は「知ら�
 
 **デメリット**: Claude Code 専用。plugin のバージョンは CLI のバージョンと独立に進むので、「利用者の skill ↔ 利用者の CLI」の drift を構造的に防げない。hane に入れる案は ADR-1084 の線引き（hane は karasu 非依存の汎用ワークフロー）に反する。
 
-#### 案 1-C: npm package に同梱し、CLI から取り出す（推奨）
+#### 案 1-C: npm package に同梱し、CLI から取り出す
 
 <!-- absent-path-next-line: the directory this design proposes to create (#2901 slice C) -->
 skill の正本を `packages/cli/skills/karasu-author/` に置き、`files` に含めて npm tarball に同梱する。CLI に取り出しコマンドを 1 つ足す:
@@ -75,6 +79,45 @@ karasu skill path                     # 同梱 skill の絶対パスを表示（
 **デメリット**: CLI にコマンドが 1 つ増える。skill の文言修正だけでも CLI の release が要る（release は changesets で既に日常化しているので許容）。
 
 案 1-C を採っても、Claude Code 向け plugin（1-B）は後から「同じ正本を指す marketplace entry」として足せる。逆向き（1-B を正本にして npm に載せる）は version lock を失う。
+
+> 2026-09-27 改訂: 当初は 1-C を推奨していた。その後、Claude Code 利用者には plugin として任意に入れられる形が望ましい、という要件が加わり、1-C の正本を独立した npm package に切り出して 1-B と 1-C の両方の経路から配る案 1-D に改めた。1-C の `skill install` と更新の契約は 1-D にそのまま残る。
+
+#### 案 1-D: skills パッケージを正本にし、plugin marketplace と `karasu skill install` の両方から配る（推奨）
+
+<!-- absent-path-next-line: the package this design proposes to create (#2901 distribution slice) -->
+skill の正本を karasu repo の新しい workspace package `packages/skills/` に置き、npm に `karasu-skills` として公開する。package の中身は Claude Code plugin の形をそのまま取る:
+
+```
+packages/skills/
+├── package.json                 # name: karasu-skills
+├── .claude-plugin/plugin.json   # name: karasu
+└── skills/
+    ├── karasu-author/           # SKILL.md + reference/
+    └── reverse-architecture/    # .claude/skills/ から移す
+```
+
+配る経路は 2 つで、どちらも同じ tarball を読む:
+
+| 利用者 | 経路 | 入れ方 |
+| --- | --- | --- |
+| Claude Code | karasu repo ルートの `.claude-plugin/marketplace.json` の entry（`"source": "npm", "package": "karasu-skills"`） | `/plugin marketplace add kompiro/karasu` の後に `/plugin install karasu@karasu` |
+| その他のエージェント | CLI が `karasu-skills` を dependency に持ち、`karasu skill install [name] [--dir <path>]` が同梱の skill をファイルとして配置する | `npx karasu skill install karasu-author` |
+
+**バージョンの揃え方**:
+
+- 公開側: changesets の `fixed` に `karasu` と `karasu-skills` を入れ、常に同じバージョンで同時に publish する。CLI は `karasu-skills` を `workspace:*` で依存し、publish 時に正確なバージョンへ書き換わるので、`npx karasu@<ver>` は必ず同じ `<ver>` の skill を持つ。
+- 利用者側: plugin と CLI は別々に入るので、手元で一致する保証はない。1-C の「更新の契約」を両経路に共通で適用する。pack 時（`prepack`）に各 SKILL.md の front matter へ `karasu-version: <ver>` を刻み、skill はセッション開始時に `karasu --version` と照合する。食い違えば作業に入る前に利用者へ知らせる（plugin 経路なら plugin の更新か CLI の更新、`skill install` 経路なら再実行を促す）。repo 内の正本には値が入っておらず、照合は「karasu repo 内で開発中」として飛ばす。
+- marketplace entry には `version` を書かず、最新の `karasu-skills` を追う。release のたびに `marketplace.json` を書き換えずに済み、利用者の CLI が古い場合は上の照合が拾う。
+
+**karasu repo 内での開発**: reverse-architecture は今も karasu 開発者自身が使うので、`.claude/skills/reverse-architecture` は skills パッケージ内の実体を指す symlink として残す。drift guard（`skill-cli-refs` / `skill-reference-bundle-sync` / `krs-fences`、`reverse-skill-adr-sync.test.ts`）と `reference-docs-check.yml` / lefthook の path filter は、実体のある skills パッケージ側を見るように付け替える（symlink 越しの走査に頼らない）。
+
+**メリット**: 1-B（Claude Code 利用者は `/plugin` で入れて更新を受け取れる）と 1-C（エージェント非依存、公開時の version lock）の両方が取れる。正本は 1 か所で、drift guard は karasu の CI に残る。reverse-architecture も同じ経路に乗り、手コピー問題が消える。
+
+**デメリット**:
+
+- publish する package が 1 つ増える。npm の Trusted Publishing は package が存在してからでないと登録できないので、`karasu-skills` の初回だけは token による手動 publish で bootstrap し、その後 npmjs.com で Trusted Publisher（repo `kompiro/karasu` / `release.yml`）を登録する必要がある（人手の作業）。
+- marketplace の npm source は Claude Code の docs に記載があるが、karasu ではまだ試していない。実際に `/plugin install` できるか、更新がどう届くかは配布スライスの最初に確かめる。
+- plugin 経路では、利用者の CLI とのバージョン一致を公開の仕組みで保証できない（照合で検出するだけ）。
 
 ### 論点 2: 検証コマンド
 
@@ -96,9 +139,10 @@ karasu skill path                     # 同梱 skill の絶対パスを表示（
 
 | guard | 変更 |
 | --- | --- |
-| `skill-cli-refs` | 走査対象に `packages/cli/skills/**` を追加 |
-| `skill-reference-bundle-sync` | bundle を「reverse 固定」から「(bundle dir, 収録 docs) の表」に一般化し、`karasu-author/reference/` を登録 |
-| `krs-fences` | 走査 root に `.claude/skills/` と skill の正本ディレクトリ（案 1-C）を追加（skill 本文の ```krs 例がパースできること） |
+| `skill-cli-refs` | 走査対象を skills パッケージ（案 1-D）に付け替える（`.claude/skills/reverse-architecture` は symlink になるので、実体側を見る） |
+| `skill-reference-bundle-sync` | bundle を「reverse 固定」から「(bundle dir, 収録 docs) の表」に一般化し、skills パッケージ内の reverse-architecture と karasu-author の `reference/` を登録 |
+| `krs-fences` | 走査 root に skills パッケージ（案 1-D）を追加（skill 本文の ```krs 例がパースできること） |
+| バージョン刻印 | skills パッケージの `prepack` が全 SKILL.md に `karasu-version` を刻むこと、`plugin.json` と `package.json` の名前・バージョンが食い違わないことを vitest で確かめる |
 | **新設: skill pipeline e2e**（`packages/cli` の vitest） | skill が規定する編集ループ（`append` → `insert` → `check` → `fmt`）を fixture で実行し、正常系で `check` が 0、壊した入力で非ゼロになることを assert。編集コマンドは不正入力も 0 終了で書き込み、`fmt` はパースエラーのあるファイルを exit 2 で拒否する。だから `check` を `fmt` より先に置き、壊した入力が `check` の段で（診断付きで）落ちることを確かめる。#2084 は「名前は正しいが用途違い」だったので、名前の照合では原理的に捕まらない。実行して初めて捕まる |
 | CLI `--help` の Examples | `krs-fences` と同じパーサ検査を help text 内のスニペットにも掛ける（上記の `label:` バグの再発防止）。help 文字列はコード内なので、CLI 側の vitest で各コマンドの help 出力（`addHelpText` の Examples を含む）から `echo '…'` / heredoc の本体を抜いてパースする |
 
@@ -116,16 +160,18 @@ reverse と同じく reference（`syntax.md` / `notation-cookbook.md` / `tags-an
 
 ## 比較（配布）
 
-| 観点 | 1-A repo のみ | 1-B plugin | 1-C npm 同梱 |
-| --- | --- | --- | --- |
-| karasu 以外の repo に届くか | 手コピー | Claude Code のみ | どのエージェントでも |
-| 利用者の skill ↔ CLI のバージョン一致 | 保証なし | 保証なし | 構造的に一致 |
-| 追加実装 | なし | marketplace 定義 | `skill install` / `skill path` |
-| 後から他の方式を足せるか | — | 1-C を足すと正本が 2 つ | 1-B を「同じ正本を指す entry」として足せる |
+| 観点 | 1-A repo のみ | 1-B plugin | 1-C npm 同梱 | 1-D 組み合わせ |
+| --- | --- | --- | --- | --- |
+| karasu 以外の repo に届くか | 手コピー | Claude Code のみ | どのエージェントでも | どのエージェントでも |
+| Claude Code で `/plugin` から入れて更新できるか | できない | できる | できない | できる |
+| 利用者の skill ↔ CLI のバージョン一致 | 保証なし | 保証なし | install 時点で一致 + 照合 | `skill install` 経路は 1-C と同じ、plugin 経路は照合のみ |
+| drift guard が karasu CI に残るか | 残る | 正本の置き場次第 | 残る | 残る |
+| 追加実装 | なし | marketplace 定義 | `skill install` / `skill path` | skills パッケージ + marketplace 定義 + `skill install` / `skill path` |
+| 人手の作業 | なし | なし | なし | `karasu-skills` の初回 publish と Trusted Publisher 登録 |
 
 ## 現時点の方針
 
-**案 1-C（npm 同梱 + `karasu skill install`）、案 2-B（`karasu check`）、論点 3 の guard 拡張 + 実行型 e2e を採用する** — 「利用者の skill と利用者の CLI が同じバージョンである」ことを配布の仕組みで保証できるのは 1-C だけで、drift の既往（#2084 / #2090）を踏まえるとこれが最重要の性質。`check` は skill の検証指示を 1 語にし、#2084 型の取り違えを起こりにくくする。
+**案 1-D（skills パッケージ + plugin marketplace + `karasu skill install`）、案 2-B（`karasu check`）、論点 3 の guard 拡張 + 実行型 e2e を採用する** — Claude Code 利用者が plugin として任意に入れられることと、どのエージェントにも届き公開時にバージョンが揃うこと（1-C の性質）を両立できるのは 1-D だけ。正本が karasu repo にあるので drift の既往（#2084 / #2090）に対する guard も CI に残る。plugin 経路で残る「利用者の手元の CLI とのずれ」は、両経路共通のバージョン照合で検出する。`check` は skill の検証指示を 1 語にし、#2084 型の取り違えを起こりにくくする。
 
 skill 名は `karasu-author`（reverse-architecture と対になる動詞名）。
 
@@ -135,11 +181,11 @@ skill 名は `karasu-author`（reverse-architecture と対になる動詞名）�
 | --- | --- | --- |
 | **A** CLI help の不正スニペット修正 + help スニペットのパース検査 | — | 現行 CLI の bug fix。skill が無くても `--help` を読む人とエージェントに効く |
 | **B** `karasu check <file>` | — | 単独で有用な validate-only コマンド。reverse-architecture も乗り換え可能 |
-| **C** `karasu-author` skill 本体 + `skill install` / `skill path` + guard 拡張 + pipeline e2e | A, B | skill が `check` と正しい help を前提にするため A・B の後。guard は skill と同じ PR で入れないと、入った瞬間から無防備になる |
-| **D** AT 記録（作者以外のセッションを含む） | C（npm release 後） | 受け入れ条件。外部の人に `npx karasu skill install` してもらう必要があるので release 後 |
+| **C1** skills パッケージ新設 + reverse-architecture の移設（symlink）+ guard の付け替え + `marketplace.json` + バージョン刻印 + changesets `fixed` | — | reverse-architecture だけで配布経路を先に通せる。初回 publish の bootstrap と Trusted Publisher 登録（人手）、`/plugin install` が npm source で実際に動くことの確認までを含む |
+| **C2** `karasu-author` skill 本体 + `karasu skill install` / `skill path` + guard 拡張 + pipeline e2e | A, B, C1 | skill が `check` と正しい help を前提にし、置き場が C1 の skills パッケージのため。guard は skill と同じ PR で入れないと、入った瞬間から無防備になる |
+| **D** AT 記録（作者以外のセッションを含む） | C2（npm release 後） | 受け入れ条件。外部の人に plugin か `npx karasu skill install` で入れてもらう必要があるので release 後 |
 
 ## 未解決の問い
 
 - `skill install` の既定ディレクトリを `.claude/skills/` にするか、エージェント非依存の名前（例: `.agents/skills/`）にするか。現時点では利用者の大半が Claude Code なので `.claude/skills/` を既定にし、`--dir` で逃がす。
-- reverse-architecture も同じ仕組み（`karasu skill install reverse-architecture`）に載せるか。載せれば reverse の手コピー問題も消えるが、本 Issue の範囲外として別 Issue にする。
 - AT の「作者以外の被験者」をどう募るか（karasu-nest 利用者、知人、など）。D の着手時に決める。
