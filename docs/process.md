@@ -249,7 +249,8 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
   として扱う。返信で毎回閉じるのではなく、glob を実際の適用範囲まで絞るか、例外を
   instruction に書く
 - **review 枠は開発者単位で他のリポジトリとも共有され、補充レートは直近 7 日の利用量が
-  増えるほど下がる**（Essentials は直近 7 日で 60 回以上になると 1 回/時）。ready の PR への push は
+  増えるほど下がる**（適応型の制限が掛かるプランでは最後は 1 回/時まで落ちる。段階はプランや契約ごとに違い、
+  [rate limits](https://docs.coderabbit.ai/management/rate-limits) にある）。ready の PR への push は
   自動レビューが走るたびに枠を 1 回使う（rate limit で弾かれた push は使わない）ので、
   main の取り込みを単独で push しない。取り込みが要るときは
   そのラウンドの修正と一緒に 1 回の push にする。上限に当たると

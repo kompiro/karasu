@@ -209,8 +209,8 @@ Settings holds the preferences that outlive a single diagram: **Language**,
 - **Shape cards (default)** — variable-width cards sized to their content.
 - **Icon cards (deprecated)** — every node drawn at a fixed size with its
   kind's icon, so the layout stays dense and stable however long the labels
-  are. **This mode is deprecated and will be removed in the next major
-  version.** Move to shape cards with an external SVG icon
+  are. **This mode is deprecated and will be removed in a future major
+  version; which release removes it is not decided yet.** Move to shape cards with an external SVG icon
   (`shape: url()`): in shape mode such an icon now paints the card frame you
   declare and keeps its aspect ratio, so switching costs you neither the
   frame nor the drawing (see `docs/spec/style.md` § shape property).
