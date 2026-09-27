@@ -169,6 +169,7 @@ flowchart TD
     ADR_2898["ADR-2898<br/>/code-review は draft PR に当て、CodeRabbit の初回レビューは..."]
     ADR_2939["ADR-2939<br/>リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の Gi..."]
     ADR_2949["ADR-2949<br/>auto-merge する ADR-only PR は CodeRabbit の自動レビュー対..."]
+    ADR_2957["ADR-2957<br/>マージ後にしか確認できない項目は PR のチェックリストから分け、元の Issue に追記して..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -971,6 +972,7 @@ flowchart TD
   class ADR_2917 accepted
   class ADR_2939 accepted
   class ADR_2949 accepted
+  class ADR_2957 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

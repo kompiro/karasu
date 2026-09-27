@@ -1,0 +1,71 @@
+name: Post-merge follow-ups
+
+# Carries a PR's `## Post-merge follow-ups` onto the Issue it came from (#2957).
+#
+# - check: while the PR is open, fails when the section has items but the PR
+#   has nowhere to put them (no `Refs #N` in `## Purpose`, or a closing keyword
+#   that would close the Issue on merge). `edited` is in `types:` because the
+#   only input is the PR body.
+# - append: on merge, appends the items to each Issue named by `Refs #N` in
+#   `## Purpose`. The maintainer checks them off there and closes the Issue.
+#
+# Both jobs only read the PR body from the event payload and talk to the
+# GitHub API, so they skip `pnpm install` and run the script through Node's
+# type stripping. A fork PR's token cannot write Issues under `pull_request`,
+# so `append` is limited to same-repository PRs; a fork PR's follow-ups are
+# copied by hand (docs/process.md).
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened, ready_for_review, closed]
+
+concurrency:
+  group: post-merge-followups-${{ github.event.pull_request.number }}-${{ github.event.action == 'closed' }}
+  cancel-in-progress: ${{ github.event.action != 'closed' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Node 24 runs the .mts script through type stripping; no install needed.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: Follow-ups have an open Issue to go to
+        run: node scripts/pr/post-merge-followups.mts check --event "$GITHUB_EVENT_PATH"
+
+  append:
+    name: Append to Issue
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+
+      # Node 24 runs the .mts script through type stripping; no install needed.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: Append the follow-ups to the Issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/pr/post-merge-followups.mts append --event "$GITHUB_EVENT_PATH"

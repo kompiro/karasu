@@ -2,6 +2,9 @@
 
 <!-- Link to related issue(s) -->
 <!-- e.g. Closes #12 -->
+<!-- If "Post-merge follow-ups" below has items, use "Refs #12" instead: the
+     Issue must stay open, because the follow-ups are appended to it on merge
+     and it is closed once they are done. -->
 
 ## Summary
 
@@ -61,10 +64,28 @@ NOTICE item below is a manual check CI cannot do. Mark "N/A" otherwise.
 
 ## Manual Verification Checklist
 
-<!-- List items that cannot be verified by CI -->
-<!-- If none, write "N/A — all covered by automated tests" -->
+<!--
+Items a reviewer checks before merging that CI cannot: on this PR's preview
+or a local checkout. Anything that needs the merge to happen first goes in
+"Post-merge follow-ups" instead.
+If none, write "N/A — all covered by automated tests".
+-->
 
 - [ ]
+
+## Post-merge follow-ups
+
+<!--
+Items that can only be observed or done after this PR merges: the next
+release, the next CodeRabbit round, a backfill to run once the code is on
+main. They are not checked during review.
+On merge, the "Post-merge follow-ups" workflow appends them to the Issue named
+by "Refs #N" in Purpose. Check them off there and close the Issue when they
+are done. The PR check fails if the items have no open Issue to go to.
+If none, write "N/A".
+-->
+
+N/A
 
 ## TPL impact
 
