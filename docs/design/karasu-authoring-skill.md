@@ -110,6 +110,10 @@ packages/skills/
 - changeset の名指し: skill が前提にする CLI の挙動（コマンド、フラグ、出力、診断）を変える PR は、skill 本文も同じ PR で直し、changeset で `karasu-skills` も名指す。skill の食い違いチェック（論点 3）が repo 内の一致を保証し、名指しが公開物の一致を保証する。このルールが編集時に読み込まれるよう、C1 で `.claude/rules/changesets.md` の版管理対象パッケージの一覧に `karasu-skills` を足し、`paths:` に skills パッケージ（Markdown / JSON を含む）を加える。
 - CLI からの読み方: 今の CLI は `@karasu-tools/core` などを esbuild で `dist/index.js` に内包し、tarball には `dist/index.js` と `THIRD_PARTY_NOTICES.md` しか載せない（`packaging.test.ts` が固定）。`karasu-skills` は Markdown と JSON なのでバンドルできない。そこで CLI の `package.json` の `dependencies`（devDependencies ではない）に `karasu-skills` を置き、esbuild では external にし、`skill install` は実行時に `import.meta.resolve("karasu-skills/package.json")` などで `node_modules` 内のパッケージの場所を解決してファイルを複写する。これは [ADR-1363](../adr/1363-publish-core-package.md) の「CLI は公開 core に依存せずバンドルを維持する（可動部を減らす）」に対する例外になる。バンドルできないコンテンツを運ぶ依存は `karasu-skills` だけに限り、コードの依存は引き続きバンドルする。実装時（C2）に `packaging.test.ts` の期待値を `dependencies` を含む形へ更新し、ADR-1363 との関係を ADR 昇格時に記録する。
 - 利用者側: plugin と CLI は別々に入るので、手元で一致する保証はない。1-C の「更新の契約」を両経路に共通で適用する。pack 時（`prepack`）に、その時点の CLI の版（`packages/cli/package.json` の version）を各 SKILL.md の front matter へ `karasu-version: <ver>` として刻む。版は独立しているので、これは「この skill はこの版以降の CLI を前提に書かれた」という下限の意味になる。skill はセッション開始時に `karasu --version` と比べ、CLI がこれより古ければ作業に入る前に利用者へ知らせる（CLI の更新を促す）。CLI の方が新しい場合は、CLI だけが上がって skill が再公開されなかったリリースでも起きる正常な状態なので止めない（skill が前提にする挙動を変えるリリースでは、上の名指しで skill も再公開される）。repo 内の正本には値が入っておらず、照合は「karasu repo 内で開発中」として飛ばす。
+- 照合の実行経路: skill はエージェントが読む文章で、実行される処理を持たない。そこで照合は **各 SKILL.md 本文の最初の手順（Step 0）** としてエージェントに行わせ、両経路で同じ本文を使う（plugin 経路も `skill install` 経路も配置されるのは同じ SKILL.md）。
+  - 値の置き場: front matter はエージェントの文脈に渡されないことがあるので、`prepack` は front matter の `karasu-version` に加えて、本文の Step 0 に置いたプレースホルダ（例 `{{KARASU_MIN_VERSION}}`）も同じ版に置き換える。エージェントは本文に書かれた版を読むだけでよい。repo 内の正本ではプレースホルダが残っており、Step 0 は「置き換わっていなければ開発中なので飛ばす」と書く。
+  - 手順: エージェントは `karasu --version` を実行し、1 行目のパッケージ版を Step 0 の版と semver で比べる。コマンドが見つからない、または古い場合は、`.krs` に触れる前に利用者へ「この skill は karasu <版> 以降向け。`npm i -g karasu@latest` か `npx karasu@latest` で更新してから続けてほしい」と伝えて止まる。新しい場合は何も言わず進む。
+  - 検査: 論点 3 の「バージョン刻印」テストで、pack 後の tarball の全 SKILL.md にプレースホルダが残っていないことと、Step 0 が本文の先頭の手順であることを確かめる。
 - marketplace entry には `version` を書かず、最新の `karasu-skills` を追う。release のたびに `marketplace.json` を書き換えずに済み、利用者の CLI が古い場合は上の照合が拾う。
 
 **karasu repo 内での開発**: reverse-architecture は今も karasu 開発者自身が使うので、`.claude/skills/reverse-architecture` は skills パッケージ内の実体を指す symlink として残す。drift guard（`skill-cli-refs` / `skill-reference-bundle-sync` / `krs-fences`、`reverse-skill-adr-sync.test.ts`）と `reference-docs-check.yml` / 対になる `reference-docs-check-skip.yml`（`paths-ignore:` を `paths:` と一致させる約束がある）/ lefthook の path filter は、実体のある skills パッケージ側を見るように付け替える。スクリプト自体は symlink をたどれるので読み取りは壊れないが、CI と lefthook の path filter（`.claude/skills/reverse-architecture/**`）は実体側のファイルの変更では起動しない。検査対象と起動条件を実体に揃えないと、skill を直した PR でガードが走らない。
@@ -145,7 +149,7 @@ packages/skills/
 | `skill-cli-refs` | 走査対象を skills パッケージ（案 1-D）に付け替える（`.claude/skills/reverse-architecture` は symlink になるので、実体側を見る） |
 | `skill-reference-bundle-sync` | bundle を「reverse 固定」から「(bundle dir, 収録 docs) の表」に一般化し、skills パッケージ内の reverse-architecture と karasu-author の `reference/` を登録 |
 | `krs-fences` | 走査 root に skills パッケージ（案 1-D）を追加（skill 本文の ```krs 例がパースできること） |
-| バージョン刻印 | skills パッケージの `prepack` が全 SKILL.md に `karasu-version` を刻むこと、`plugin.json` と `package.json` の名前・バージョンが食い違わないことを vitest で確かめる |
+| バージョン刻印 | skills パッケージの `prepack` が全 SKILL.md の front matter に `karasu-version` を刻み、本文 Step 0 のプレースホルダを置き換えること（pack 後の tarball にプレースホルダが残らない）、`plugin.json` と `package.json` の名前・バージョンが食い違わないことを vitest で確かめる |
 | **新設: skill pipeline e2e**（`packages/cli` の vitest） | skill が規定する編集ループ（`append` → `insert` → `check` → `fmt`）を fixture で実行し、正常系で `check` が 0、壊した入力で非ゼロになることを assert。編集コマンドは不正入力も 0 終了で書き込み、`fmt` はパースエラーのあるファイルを exit 2 で拒否する。だから `check` を `fmt` より先に置き、壊した入力が `check` の段で（診断付きで）落ちることを確かめる。#2084 は「名前は正しいが用途違い」だったので、名前の照合では原理的に捕まらない。実行して初めて捕まる |
 | CLI `--help` の Examples | `krs-fences` と同じパーサ検査を help text 内のスニペットにも掛ける（上記の `label:` バグの再発防止）。help 文字列はコード内なので、CLI 側の vitest で各コマンドの help 出力（`addHelpText` の Examples を含む）から `echo '…'` / heredoc の本体を抜いてパースする |
 
@@ -153,7 +157,7 @@ packages/skills/
 
 reverse の 4 phase pipeline とは形が違う。こちらは会話駆動で、1 往復ごとに `.krs` が少しずつ育つ:
 
-1. **Orient**: skill の `karasu-version` と `karasu --version` を照合する（上の更新の契約）。既存 `.krs` があれば読む（`karasu check` で現状の診断も取る）。無ければ `system` 1 つから始める。
+1. **Orient**: Step 0 として、本文に刻まれた版と `karasu --version` を照合する（案 1-D「照合の実行経路」）。既存 `.krs` があれば読む（`karasu check` で現状の診断も取る）。無ければ `system` 1 つから始める。
 2. **Interview（層ごと、上から）**: system → user / client / 外部 service → service → domain → usecase → resource / entity → 物理（database / queue / storage、`deploy` と `realizes`）。各層で聞く内容は Chat の `interviewGuideForLevel*` を出発点に書き直す。1 回に聞くのは 1 層だけ。利用者が知らない層は飛ばしてよい（空の domain を捏造しない）。
 3. **Write**: 1 回答 = 1 編集。`insert <parent-id>` / `append` / `apply` / `remove` を使い、ファイルを丸ごと書き直さない。
 4. **Verify**: 毎編集後に `karasu check` → `karasu fmt`。`fmt` はパースエラーのあるファイルを診断なしで拒否する（exit 2）ので、先に `check` で位置付きの診断を得る。error が出たら次の質問に進む前に直す。
@@ -184,7 +188,7 @@ skill 名は `karasu-author`（reverse-architecture と対になる動詞名）�
 | --- | --- | --- |
 | **A** CLI help の不正スニペット修正 + help スニペットのパース検査 | — | 現行 CLI の bug fix。skill が無くても `--help` を読む人とエージェントに効く |
 | **B** `karasu check <file>` | — | 単独で有用な validate-only コマンド。reverse-architecture も乗り換え可能 |
-| **C1** skills パッケージ新設 + reverse-architecture の移設（symlink）+ guard の付け替え + `marketplace.json` + バージョン刻印 + changesets の名指しルール（CLI の挙動変更で `karasu-skills` も名指す）| — | reverse-architecture だけで配布経路を先に通せる。初回 publish の bootstrap と Trusted Publisher 登録（人手）、`/plugin install` が npm source で実際に動くことの確認までを含む |
+| **C1** skills パッケージ新設 + reverse-architecture の移設（symlink）+ guard の付け替え + `marketplace.json` + バージョン刻印（front matter と本文 Step 0）+ reverse-architecture の SKILL.md への Step 0 追加 + changesets の名指しルール（CLI の挙動変更で `karasu-skills` も名指す）| — | reverse-architecture だけで配布経路を先に通せる。初回 publish の bootstrap と Trusted Publisher 登録（人手）、`/plugin install` が npm source で実際に動くことの確認までを含む |
 | **C2** `karasu-author` skill 本体 + `karasu skill install` / `skill path` + guard 拡張 + pipeline e2e | A, B, C1 | skill が `check` と正しい help を前提にし、置き場が C1 の skills パッケージのため。guard は skill と同じ PR で入れないと、入った瞬間から無防備になる |
 | **D** AT 記録（作者以外のセッションを含む） | C2（npm release 後） | 受け入れ条件。外部の人に plugin か `npx karasu skill install` で入れてもらう必要があるので release 後 |
 
