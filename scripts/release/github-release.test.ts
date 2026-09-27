@@ -6,6 +6,7 @@ import {
   isReleaseTag,
   parsePackageTag,
   pickReleaseTagName,
+  truncateSection,
 } from "./github-release.mts";
 
 // Fences the release record decided in #2939: one GitHub Release per release,
@@ -90,9 +91,19 @@ describe("extractChangelogSection", () => {
 
 describe("composeRelease", () => {
   const entries = [
-    { name: "karasu-vscode", version: "0.2.0", changelogSection: "- ext" },
-    { name: "karasu", version: "0.7.0", changelogSection: "- cli" },
-    { name: "@karasu-tools/core", version: "0.3.0", changelogSection: null },
+    {
+      name: "karasu-vscode",
+      version: "0.2.0",
+      changelogSection: "- ext",
+      changelogUrl: "u/vscode",
+    },
+    { name: "karasu", version: "0.7.0", changelogSection: "- cli", changelogUrl: "u/cli" },
+    {
+      name: "@karasu-tools/core",
+      version: "0.3.0",
+      changelogSection: null,
+      changelogUrl: "u/core",
+    },
   ];
 
   it("lists packages in a fixed order regardless of tag order", () => {
@@ -111,5 +122,91 @@ describe("composeRelease", () => {
     );
     expect(body).toContain("## karasu@0.7.0\n\n- cli");
     expect(body).toMatch(/## @karasu-tools\/core@0\.3\.0\n\n_No CHANGELOG entry/);
+  });
+});
+
+describe("release body budget", () => {
+  // 40 changes of ~100 characters each, under one `### Minor Changes` heading.
+  const change = (n: number) => `- change ${n}: ${"x".repeat(88)}\n  continued line`;
+  const section = [
+    "### Minor Changes",
+    "",
+    ...Array.from({ length: 40 }, (_, i) => change(i)),
+  ].join("\n");
+
+  it("refuses a budget too small for the truncation note", () => {
+    expect(() => truncateSection(section, 20, "https://example/CHANGELOG.md")).toThrow(/budget/);
+  });
+
+  it("leaves a section that fits untouched", () => {
+    expect(truncateSection(section, section.length, "url")).toBe(section);
+  });
+
+  it("cuts between changes, never inside one, and links the full CHANGELOG", () => {
+    const cut = truncateSection(section, 1500, "https://example/CHANGELOG.md");
+    expect(cut.length).toBeLessThanOrEqual(1500);
+    expect(cut.startsWith("### Minor Changes")).toBe(true);
+    // Every kept change still carries its continuation line.
+    const kept = cut.split("\n").filter((line) => line.startsWith("- ")).length;
+    expect(cut.split("\n").filter((line) => line === "  continued line").length).toBe(kept);
+    expect(cut).toMatch(
+      new RegExp(
+        `_…and ${40 - kept} more changes\\. The full list is in \\[CHANGELOG\\.md\\]\\(https://example/CHANGELOG\\.md\\)\\._$`,
+      ),
+    );
+  });
+
+  it("keeps the whole body under the budget and gives every package a share", () => {
+    const entries = ["karasu", "@karasu-tools/core", "karasu-vscode"].map((name) => ({
+      name,
+      version: "1.0.0",
+      changelogSection: section,
+      changelogUrl: `u/${name}`,
+    }));
+    const body = composeReleaseBody(entries, 3000);
+    expect(body.length).toBeLessThanOrEqual(3000);
+    for (const name of ["karasu", "@karasu-tools/core", "karasu-vscode"]) {
+      expect(body).toContain(`## ${name}@1.0.0`);
+      expect(body).toContain(`[CHANGELOG.md](u/${name})`);
+    }
+  });
+
+  it("hands a short package's unused share to the long ones", () => {
+    const entries = [
+      { name: "karasu", version: "1.0.0", changelogSection: section, changelogUrl: "u/cli" },
+      {
+        name: "karasu-vscode",
+        version: "1.0.0",
+        changelogSection: "- tiny",
+        changelogUrl: "u/ext",
+      },
+    ];
+    const body = composeReleaseBody(entries, 3000);
+    expect(body.length).toBeLessThanOrEqual(3000);
+    expect(body).toContain("## karasu-vscode@1.0.0\n\n- tiny");
+    // More than an equal half of the budget went to the long section.
+    expect(body.indexOf("## karasu-vscode@1.0.0")).toBeGreaterThan(1500);
+  });
+
+  it("counts the missing-CHANGELOG placeholder against the budget", () => {
+    const entries = [
+      { name: "karasu", version: "1.0.0", changelogSection: section, changelogUrl: "u/cli" },
+      {
+        name: "@karasu-tools/core",
+        version: "1.0.0",
+        changelogSection: null,
+        changelogUrl: "u/core",
+      },
+    ];
+    const body = composeReleaseBody(entries, 1500);
+    expect(body.length).toBeLessThanOrEqual(1500);
+    expect(body).toContain("_No CHANGELOG entry");
+  });
+
+  it("does not truncate a body that fits", () => {
+    const entries = [
+      { name: "karasu", version: "1.0.0", changelogSection: section, changelogUrl: "u" },
+    ];
+    expect(composeReleaseBody(entries)).not.toContain("more change");
   });
 });
