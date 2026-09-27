@@ -18,6 +18,6 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["**/*.ts"],
+  "include": ["**/*.ts", "**/*.mts"],
   "exclude": ["node_modules"]
 }

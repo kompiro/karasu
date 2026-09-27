@@ -10,7 +10,10 @@ name: VS Code Extension Release
 # `packages/vscode/package.json` + writes its CHANGELOG. But `karasu-vscode` is
 # `private: true`, so `changeset publish` (release.yml) never publishes it to
 # npm — Marketplace publish stays here, run manually after the version is
-# bumped. The version published is whatever is in `packages/vscode/package.json`.
+# bumped. The version published is whatever is in `packages/vscode/package.json`,
+# built from the commit that set that version (not the tip of main), and the
+# `record` job then tags it `karasu-vscode@<version>` and adds it to that
+# commit's GitHub Release `release-YYYY-MM-DD` (#2939).
 # See docs/design/vscode-changeset-versioning.md (refines ADR-1315),
 # Issue #1316, and docs/process.md "VS Code 拡張のリリース".
 #
@@ -47,8 +50,33 @@ jobs:
   release:
     name: Publish VS Code extension
     runs-on: ubuntu-latest
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+      version: ${{ steps.source.outputs.version }}
+      published: ${{ steps.publish.outcome == 'success' && inputs.pre_release != true }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Build from the commit that set the extension's current version — the
+      # release commit whose CHANGELOG was reviewed — not from the tip of main,
+      # which may already carry changes that belong to the next release. The
+      # tag below is put on the same commit, so the tag names exactly the source
+      # that was published (#2939).
+      - name: Check out the release commit
+        id: source
+        run: |
+          commit=$(git log -1 --format=%H -G'"version":' -- packages/vscode/package.json)
+          if [ -z "$commit" ]; then
+            echo "::error::No commit sets the version of packages/vscode/package.json."
+            exit 1
+          fi
+          version=$(git show "${commit}:packages/vscode/package.json" | jq -r .version)
+          git checkout --quiet "$commit"
+          echo "commit=${commit}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "::notice::Building karasu-vscode ${version} from ${commit}."
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
@@ -102,6 +130,7 @@ jobs:
       # step (no PAT). The extension is already bundled into out/, so publish
       # with --no-dependencies; the package step above already built it.
       - name: Publish to Marketplace
+        id: publish
         if: steps.prereqs.outputs.can_publish == 'true'
         working-directory: packages/vscode
         run: |
@@ -110,3 +139,54 @@ jobs:
           else
             pnpm exec vsce publish --azure-credential --no-dependencies
           fi
+
+  # Tags the published version on its release commit and extends that commit's
+  # GitHub Release (created by release.yml for the npm packages, or created
+  # here when only the extension shipped). Runs only after a successful stable
+  # Marketplace publish, so a version that failed to publish never gets a tag
+  # (#2939). Pre-release builds are not tagged (#2940).
+  record:
+    name: Record release
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    # Shared with the other workflow's `record` job so the two never pick the
+    # same release-YYYY-MM-DD at once: the later one starts after the earlier
+    # one pushed its tags, sees the Release, and regenerates it from every tag.
+    concurrency:
+      group: release-record
+      cancel-in-progress: false
+      queue: max # keep a waiting record job instead of replacing it
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the tag and create or edit the GitHub Release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the script reads existing release-* tags
+
+      # Node 24 runs the .mts script through type stripping; no install needed.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: Push the extension tag
+        env:
+          COMMIT: ${{ needs.release.outputs.commit }}
+          TAG: karasu-vscode@${{ needs.release.outputs.version }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            if [ "$(git rev-list -n1 "refs/tags/${TAG}")" != "$COMMIT" ]; then
+              echo "::error::${TAG} already exists on another commit."
+              exit 1
+            fi
+            echo "${TAG} already points at ${COMMIT}."
+          else
+            git tag "$TAG" "$COMMIT"
+            git push origin "refs/tags/${TAG}"
+          fi
+
+      - name: Create or update the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT: ${{ needs.release.outputs.commit }}
+        run: node scripts/release/github-release.mts --commit "$COMMIT"
