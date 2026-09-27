@@ -46,7 +46,7 @@ type: product
 
 - [x] AT-F: click delegation はコンテナの identity ではなく `data-realized-node-id` の値を手渡す
 
-  > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › onContainerClick › hands over the realized node id, not the container id (#2818)
+  > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › onClearHighlight › hands over the realized node id, not the container id (#2818)
 
 ### AC-3: 素の id の非退行
 
@@ -72,7 +72,7 @@ type: product
 
 - [x] AT-K: 属性が無いコンテナのクリックは `null` を手渡し、`SET_ACTIVE_VIEW` は highlight 無しで dispatch される（ADR-422 の 1 dispatch は保つ）
 
-  > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › onContainerClick › hands over null when the container realizes no single node (#2818) ／ `packages/app/src/hooks/useCrossNavigation.test.ts` › handleContainerClick(null) switches to system with no highlight (#2818)
+  > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › onClearHighlight › hands over null when the container realizes no single node (#2818) ／ `packages/app/src/hooks/useCrossNavigation.test.ts` › handleContainerClick(null) switches to system with no highlight (#2818)
 
 ### AC-5: 受け手はビューごとに 1 属性を引く
 

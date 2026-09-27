@@ -109,7 +109,7 @@ id をビューをまたいで手渡す導線を足す / 触るとき:
   `container ids in the SVG (#2714)`
 - `packages/core/src/compile/deploy-affordance-node-id.test.ts` — D ボタンがコンテナ id
   ではなく `nodeId` で点く（#2714 の AT-K / AT-L）
-- `packages/app/src/components/PreviewPane.test.tsx` › `onContainerClick` — 手渡す側:
+- `packages/app/src/components/PreviewPane.test.tsx` › `onClearHighlight` — 手渡す側:
   realized id を渡す / 属性が無ければ `null`。› `highlightedNodeId` — 受け手: ペインに
   渡された 1 属性だけを引き、同じ綴りの unclassified unit に横取りさせない、
   `data-container-id` に fall back しない

@@ -527,6 +527,33 @@ describe("useHistoryNavigation", () => {
   // model-derived index populates (which is guaranteed to be after that reset).
   // The growing index simulates the seed having loaded the file content.
   describe("pending highlight restoration (#1842)", () => {
+    // #2818: with the index already populated on mount (Memory / Serve mode),
+    // effect ② re-applies in the same flush as effect ①'s SET_ACTIVE_VIEW.
+    // The attribute must come from the hash's view, not from the activeView
+    // ref, which still holds the view being left; otherwise the deferred
+    // dispatch overwrites `data-realized-node-id` with `data-node-id` and the
+    // deploy container the hash names never lights.
+    it("re-applies a deploy hash highlight on data-realized-node-id when the index is ready at mount", () => {
+      history.replaceState(null, "", "#krs-deploy:ECommerce");
+      const dispatch = makeDispatch();
+      const nodePathIndex = new Map([["ECommerce", ["ECommerce"]]]);
+      renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, activeView: "system", nodePathIndex })),
+      );
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_HIGHLIGHTED_NODE",
+        nodeId: "ECommerce",
+        highlightAttribute: "data-realized-node-id",
+      });
+      expect(dispatch).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "SET_HIGHLIGHTED_NODE",
+          highlightAttribute: "data-node-id",
+        }),
+      );
+    });
+
     it("re-applies the highlight when nodePathIndex becomes available (node + highlight)", async () => {
       history.replaceState(null, "", "#krs-system-Payment:Api");
       const dispatch = makeDispatch();

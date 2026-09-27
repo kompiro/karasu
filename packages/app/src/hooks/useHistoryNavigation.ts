@@ -282,6 +282,13 @@ export function useHistoryNavigation({
   // dispatched on mount. This deferral mirrors the node re-resolution so the
   // selected node stays focus-highlighted.
   const pendingHighlightRef = useRef<string | null>(null);
+  // The attribute that highlight is matched against (#2818), decided from the
+  // hash's own view at parse time. Effect ② must not derive it from
+  // `activeViewRef`: that ref lags a commit, and when the index is already
+  // populated on mount effect ② runs in the same flush as effect ①'s
+  // SET_ACTIVE_VIEW, so it would read the view being left, not the one the
+  // hash names, and overwrite the attribute effect ① set.
+  const pendingHighlightAttributeRef = useRef<HighlightAttribute>("data-node-id");
 
   // Stable ref for onFileChange — referenced inside long-lived effects without re-running them.
   const onFileChangeRef = useLatestRef(onFileChange);
@@ -322,6 +329,7 @@ export function useHistoryNavigation({
     // pending ref restores it once the index is ready (Issue #1842).
     if (parsed.highlightNodeId !== null) {
       pendingHighlightRef.current = parsed.highlightNodeId;
+      pendingHighlightAttributeRef.current = hashHighlightAttribute(parsed.activeView);
     }
     // Restore activeView from hash if different (include highlightNodeId in the transition)
     if (parsed.activeView !== activeViewRef.current) {
@@ -385,10 +393,10 @@ export function useHistoryNavigation({
       dispatch({
         type: "SET_HIGHLIGHTED_NODE",
         nodeId: highlight,
-        highlightAttribute: hashHighlightAttribute(activeViewRef.current),
+        highlightAttribute: pendingHighlightAttributeRef.current,
       });
     }
-  }, [nodePathIndex, orgPathIndex, dispatch, activeViewRef]);
+  }, [nodePathIndex, orgPathIndex, dispatch]);
 
   // ③ Sync state changes → hash (Issue #811)
   // Includes `currentFilePath` so file switches participate in browser
