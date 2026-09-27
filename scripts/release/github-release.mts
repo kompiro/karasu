@@ -48,6 +48,9 @@ export type ReleaseEntry = PackageTag & {
  */
 export const RELEASE_BODY_BUDGET = 120_000;
 
+const NO_CHANGELOG_ENTRY =
+  "_No CHANGELOG entry for this version (published before changesets managed this package)._";
+
 const RELEASE_TAG = /^release-\d{4}-\d{2}-\d{2}(?:-\d+)?$/;
 
 /** `@karasu-tools/core@0.3.0` → name + version; anything else → null. */
@@ -140,9 +143,7 @@ export function composeReleaseBody(
   const blocks = (sectionOf: (entry: ReleaseEntry, section: string) => string) =>
     sorted
       .map((entry) => {
-        const section =
-          entry.changelogSection ??
-          "_No CHANGELOG entry for this version (published before changesets managed this package)._";
+        const section = entry.changelogSection ?? NO_CHANGELOG_ENTRY;
         return `## ${entry.name}@${entry.version}\n\n${sectionOf(entry, section)}`;
       })
       .join("\n\n");
@@ -151,7 +152,7 @@ export function composeReleaseBody(
   if (full.length <= budget) return full;
   // Share what is left after the headings, shortest section first, so a
   // package whose notes fit hands its unused share on to the longer ones.
-  const sectionOf = (entry: ReleaseEntry) => entry.changelogSection ?? "";
+  const sectionOf = (entry: ReleaseEntry) => entry.changelogSection ?? NO_CHANGELOG_ENTRY;
   let remaining = budget - blocks(() => "").length;
   const allowance = new Map<ReleaseEntry, number>();
   const byLength = [...sorted].sort((a, b) => sectionOf(a).length - sectionOf(b).length);

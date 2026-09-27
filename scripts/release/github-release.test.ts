@@ -184,6 +184,21 @@ describe("release body budget", () => {
     expect(body.indexOf("## karasu-vscode@1.0.0")).toBeGreaterThan(1500);
   });
 
+  it("counts the missing-CHANGELOG placeholder against the budget", () => {
+    const entries = [
+      { name: "karasu", version: "1.0.0", changelogSection: section, changelogUrl: "u/cli" },
+      {
+        name: "@karasu-tools/core",
+        version: "1.0.0",
+        changelogSection: null,
+        changelogUrl: "u/core",
+      },
+    ];
+    const body = composeReleaseBody(entries, 1500);
+    expect(body.length).toBeLessThanOrEqual(1500);
+    expect(body).toContain("_No CHANGELOG entry");
+  });
+
   it("does not truncate a body that fits", () => {
     const entries = [
       { name: "karasu", version: "1.0.0", changelogSection: section, changelogUrl: "u" },
