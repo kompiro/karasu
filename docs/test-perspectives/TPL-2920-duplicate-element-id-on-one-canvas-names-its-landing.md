@@ -60,8 +60,8 @@ bare id の key で片方が上書きされ、1 つしか描かれない）、�
 - Playwright の strict locator（`page.locator('[data-node-id="X"]').click()`）が
   「resolved to 2 elements」で落ちる。同名 id のモデルを fixture にした spec だけが落ちる
   ので、CI では見えず、そのモデルで初めて出る
-- permalink の anchor（`#krs-system-<id>`）は 1 つのレベルしか指せない — 静的 SVG は CSS
-  `:target` で 1 要素を選び、SPA は hash を parse して `nodePathIndex` の勝者に着地する — のに、
+- permalink の anchor（`#krs-system-<id>`）は 1 つのレベルしか指せない（静的 SVG は CSS
+  `:target` で 1 要素を選び、SPA は hash を parse して `nodePathIndex` の勝者に着地する）のに、
   描画側が同名ノードごとの anchor を期待する。permalink のテストを DOM 順の着地点で検証しない
 
 ## チェックリスト
