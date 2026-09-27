@@ -34,7 +34,19 @@ export const RELEASED_PACKAGES: ReadonlyArray<{ name: string; dir: string }> = [
 
 export type PackageTag = { name: string; version: string };
 
-export type ReleaseEntry = PackageTag & { changelogSection: string | null };
+export type ReleaseEntry = PackageTag & {
+  changelogSection: string | null;
+  /** Where the full CHANGELOG of this version can be read. */
+  changelogUrl: string;
+};
+
+/**
+ * GitHub rejects a Release body over 125,000 characters (HTTP 422). The
+ * budget leaves room for the per-package headings and the truncation notes.
+ * The first backfilled release that hit it carried three months of
+ * changesets (release-2026-09-27, 182k characters).
+ */
+export const RELEASE_BODY_BUDGET = 120_000;
 
 const RELEASE_TAG = /^release-\d{4}-\d{2}-\d{2}(?:-\d+)?$/;
 
@@ -91,18 +103,72 @@ export function composeReleaseTitle(date: string, entries: PackageTag[]): string
   return `${date}: ${list}`;
 }
 
-export function composeReleaseBody(entries: ReleaseEntry[]): string {
-  return sortEntries(entries)
-    .map((entry) => {
-      const section =
-        entry.changelogSection ??
-        "_No CHANGELOG entry for this version (published before changesets managed this package)._";
-      return `## ${entry.name}@${entry.version}\n\n${section}`;
-    })
-    .join("\n\n");
+/**
+ * Cuts a CHANGELOG section to at most `budget` characters at a change
+ * boundary (a top-level `- ` bullet or a `### ` heading), never inside one
+ * change, and says how many changes were left out and where to read them.
+ */
+export function truncateSection(section: string, budget: number, url: string): string {
+  if (section.length <= budget) return section;
+  const lines = section.split("\n");
+  const isBoundary = (line: string) => line.startsWith("- ") || line.startsWith("### ");
+  const noteFor = (omitted: number) =>
+    `_…and ${omitted} more change${omitted === 1 ? "" : "s"}. The full list is in [CHANGELOG.md](${url})._`;
+  const totalChanges = lines.filter((line) => line.startsWith("- ")).length;
+
+  let cut = 0;
+  let kept = 0;
+  for (let i = 0; i <= lines.length; i++) {
+    if (i === lines.length || isBoundary(lines[i])) {
+      const head = lines.slice(0, i).join("\n").trimEnd();
+      const keptChanges = lines.slice(0, i).filter((line) => line.startsWith("- ")).length;
+      if (head.length + 2 + noteFor(totalChanges - keptChanges).length > budget) break;
+      cut = i;
+      kept = keptChanges;
+    }
+  }
+  const head = lines.slice(0, cut).join("\n").trimEnd();
+  const note = noteFor(totalChanges - kept);
+  return head === "" ? note : `${head}\n\n${note}`;
+}
+
+export function composeReleaseBody(
+  entries: ReleaseEntry[],
+  budget: number = RELEASE_BODY_BUDGET,
+): string {
+  const sorted = sortEntries(entries);
+  const blocks = (sectionOf: (entry: ReleaseEntry, section: string) => string) =>
+    sorted
+      .map((entry) => {
+        const section =
+          entry.changelogSection ??
+          "_No CHANGELOG entry for this version (published before changesets managed this package)._";
+        return `## ${entry.name}@${entry.version}\n\n${sectionOf(entry, section)}`;
+      })
+      .join("\n\n");
+
+  const full = blocks((_, section) => section);
+  if (full.length <= budget) return full;
+  // Share what is left after the headings, shortest section first, so a
+  // package whose notes fit hands its unused share on to the longer ones.
+  const sectionOf = (entry: ReleaseEntry) => entry.changelogSection ?? "";
+  let remaining = budget - blocks(() => "").length;
+  const allowance = new Map<ReleaseEntry, number>();
+  const byLength = [...sorted].sort((a, b) => sectionOf(a).length - sectionOf(b).length);
+  byLength.forEach((entry, i) => {
+    const share = Math.floor(remaining / (byLength.length - i));
+    const used = Math.min(sectionOf(entry).length, share);
+    allowance.set(entry, share);
+    remaining -= used;
+  });
+  return blocks((entry, section) =>
+    truncateSection(section, allowance.get(entry) ?? 0, entry.changelogUrl),
+  );
 }
 
 // ------------------------------------------------------------------ IO
+
+const REPOSITORY = process.env.GITHUB_REPOSITORY ?? "kompiro/karasu";
 
 function run(cmd: string, args: string[]): string {
   return execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
@@ -154,6 +220,7 @@ export function main(argv: string[]): void {
     return {
       ...tag,
       changelogSection: changelog ? extractChangelogSection(changelog, tag.version) : null,
+      changelogUrl: `https://github.com/${REPOSITORY}/blob/${sha}/${dir}/CHANGELOG.md`,
     };
   });
 
