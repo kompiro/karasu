@@ -3,7 +3,7 @@
 - **日付**: 2026-09-27
 - **ステータス**: 検討中
 - **Issue**: [#2917](https://github.com/kompiro/karasu/issues/2917)
-- **PR**: （作成後に記入）
+- **PR**: [#2920](https://github.com/kompiro/karasu/pull/2920)
 - **関連**:
   - 引き金 Issue: [#2917](https://github.com/kompiro/karasu/issues/2917)（#2818 の SVG を測っているときに見つけた。[ADR-2818](../adr/2818-cross-navigation-highlight-id-space.md) の「残課題」）
   - 関連 ADR: [ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)（同じ関数で collapse stub の id を system で namespace した前例）、[ADR-2521](../adr/2521-multi-system-pipeline-convergence.md)（multi-system ルートは single-system の計算に合わせる）、[ADR-2088](../adr/2088-node-reference-path-notation.md)（参照は path 記法。要素の identity を path にする案の受け皿）、[ADR-2714](../adr/2714-deploy-container-id-injective.md)（identity と突き合わせ用 id を分ける前例）、[ADR-2818](../adr/2818-cross-navigation-highlight-id-space.md)（ハイライトは 1 属性でノード id を引く）
