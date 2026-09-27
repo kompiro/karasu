@@ -352,19 +352,31 @@ deploy prod {
   });
 
   it("never marks the synthetic containers", () => {
+    // The job realizes its own service so it forms a job-only container and
+    // pulls the `__job_band__` wrapper into the drawing; a job sharing `Api`
+    // with the `oci` would join that mixed container instead (#1738).
     const svg = renderSource(`
 system EC {
   service Api {}
+  service Cron {}
 }
 deploy prod {
   oci a { realizes Api }
   oci stray {}
-  job nightly { realizes Api }
+  job nightly { realizes Cron }
 }
 `);
-    // `__unclassified__` and `__job_band__` are drawn; only the real container
-    // carries a realized node.
+    // `__unclassified__` and `__job_band__` are drawn; only the two real
+    // containers carry a realized node. `el()` writes attributes in insertion
+    // order, so a marked wrapper would read `data-container-id="__job_band__"
+    // data-realized-node-id=…`.
     expect(svg).toContain('data-container-id="__unclassified__"');
-    expect(svg.match(/data-realized-node-id="/g)).toHaveLength(1);
+    expect(svg).toContain('data-container-id="__job_band__"');
+    expect(svg).not.toMatch(
+      /data-container-id="__(unclassified|job_band)__" data-realized-node-id/,
+    );
+    expect(svg).toContain('data-realized-node-id="Api"');
+    expect(svg).toContain('data-realized-node-id="Cron"');
+    expect(svg.match(/data-realized-node-id="/g)).toHaveLength(2);
   });
 });
