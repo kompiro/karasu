@@ -13,6 +13,7 @@ import { EdgeContextMenu } from "./EdgeContextMenu.js";
 import { useFormattedDiagnostic } from "../i18n/format-diagnostic.js";
 import { useTranslation } from "../i18n/index.js";
 import { diagnosticLocationLabel, findingKeys } from "../utils/diagnostic-location.js";
+import type { HighlightAttribute } from "../state/app-reducer.js";
 
 interface PreviewPaneProps {
   svg: string;
@@ -20,8 +21,14 @@ interface PreviewPaneProps {
   viewPath?: string[];
   nodeMetadata: Map<string, NodeMetadata>;
   onDrillDown?: (newPath: string[]) => void;
-  /** Called when user clicks a deploy container to cross-navigate to system view */
-  onContainerClick?: (containerId: string) => void;
+  /**
+   * Called when user clicks a deploy container to cross-navigate to system
+   * view. Hands over the node the container realizes (`data-realized-node-id`,
+   * a bare node id the system view can match), or `null` when the container
+   * carries none — a qualified or narrowed container (#2818, ADR-2714) still
+   * switches views, but nothing there answers to it, so nothing is highlighted.
+   */
+  onContainerClick?: (realizedNodeId: string | null) => void;
   /** Called when user clicks the deploy button on a system node to cross-navigate to deploy view */
   onDeployButtonClick?: (serviceId: string) => void;
   /** Called when user clicks the team label on a system node to cross-navigate to org view */
@@ -33,8 +40,23 @@ interface PreviewPaneProps {
   onExpandToggle?: (serviceId: string) => void;
   /** Called when user clicks an owned service link on an org team node to cross-navigate to system view */
   onOwnedServiceClick?: (serviceId: string) => void;
-  /** Node or container id to highlight after cross-navigation */
+  /**
+   * Node id to highlight after cross-navigation. Always a node id: every
+   * producer (deploy button, detail panel, container click, outline, hash)
+   * hands one over, and `highlightAttribute` says which element of this pane
+   * stands for a node.
+   */
   highlightedNodeId?: string | null;
+  /**
+   * The one attribute this pane matches `highlightedNodeId` against (#2818),
+   * chosen by whoever handed the id over: a deploy jump names
+   * `data-realized-node-id` (the node a container realizes), the outline and
+   * the node views name `data-node-id`. One attribute per highlight, not a
+   * fallback chain: the deploy view's `data-node-id` is the unit id space,
+   * and an unclassified unit spelled like a node would otherwise take a
+   * highlight meant for the container (TPL-2818).
+   */
+  highlightAttribute?: HighlightAttribute;
   /** Called when a node interaction or a click on the diagram background clears the cross-navigation highlight */
   onClearHighlight?: () => void;
   /** Called when user clicks "Jump to editor" in the detail panel */
@@ -115,6 +137,7 @@ export function PreviewPane({
   onExpandToggle,
   onOwnedServiceClick,
   highlightedNodeId,
+  highlightAttribute = "data-node-id",
   onClearHighlight,
   onJumpToEditor,
   nodeDiff,
@@ -438,7 +461,10 @@ export function PreviewPane({
         // not real services — clicking them must not cross-navigate to a
         // non-existent system node.
         if (containerId && containerId !== "__unclassified__" && containerId !== "__job_band__") {
-          onContainerClick(containerId);
+          // Hand over the realized node's id, not the container's: the
+          // container id is its identity and may be qualified or quoted
+          // (#2818), which the system view's `data-node-id` never is.
+          onContainerClick(containerGroup.getAttribute("data-realized-node-id"));
           return;
         }
       }
@@ -503,7 +529,7 @@ export function PreviewPane({
   // Keeping this identity tied to `svg` is what makes the two move together.
   const svgHtml = useMemo(() => ({ __html: svg }), [svg]);
 
-  // Apply highlight to the target node or container after SVG injection
+  // Apply highlight to the element that stands for the node after SVG injection
   useEffect(() => {
     if (!svgRef.current) return;
 
@@ -513,16 +539,17 @@ export function PreviewPane({
 
     if (!highlightedNodeId) return;
 
-    // Try node first, then container
-    const target =
-      svgRef.current.querySelector(`[data-node-id="${CSS.escape(highlightedNodeId)}"]`) ??
-      svgRef.current.querySelector(`[data-container-id="${CSS.escape(highlightedNodeId)}"]`);
+    // One attribute, chosen by the pane's view (#2818). No fallback to another
+    // attribute: the id spaces differ, and a miss must stay a miss.
+    const target = svgRef.current.querySelector(
+      `[${highlightAttribute}="${CSS.escape(highlightedNodeId)}"]`,
+    );
     if (target) target.classList.add("karasu-highlighted");
     // `svg` is a trigger, not a value this body reads: re-rendering the
     // diagram replaces the DOM nodes, so the highlight has to be re-applied
     // to the new ones. Dropping it would leave the class on a detached node.
     // eslint-disable-next-line react/exhaustive-effect-dependencies
-  }, [highlightedNodeId, svg]);
+  }, [highlightedNodeId, highlightAttribute, svg]);
 
   const nodePanelMetadata =
     detailPanel?.kind === "node" ? nodeMetadata.get(detailPanel.nodeId) : undefined;

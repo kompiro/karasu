@@ -48,6 +48,23 @@ describe("appReducer — activeView / highlightedNodeId", () => {
       expect(next.highlightedNodeId).toBe("ECommerce");
     });
 
+    // #2818: the attribute a highlight is matched against travels with the id,
+    // set by whoever hands it over; an action that says nothing gets the node
+    // attribute back, so a stale realized-node attribute cannot outlive the
+    // jump that set it.
+    it("carries highlightAttribute with the highlight and resets it when omitted", () => {
+      const jumped = appReducer(initialState, {
+        type: "SET_ACTIVE_VIEW",
+        activeView: "deploy",
+        highlightNodeId: "ECommerce",
+        highlightAttribute: "data-realized-node-id",
+      });
+      expect(jumped.highlightAttribute).toBe("data-realized-node-id");
+
+      const back = appReducer(jumped, { type: "SET_ACTIVE_VIEW", activeView: "system" });
+      expect(back.highlightAttribute).toBe("data-node-id");
+    });
+
     it("clears highlightedNodeId when highlightNodeId is explicitly null", () => {
       const state = stateWith({ highlightedNodeId: "Payment" });
       const next = appReducer(state, {

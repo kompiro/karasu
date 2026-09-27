@@ -20,10 +20,12 @@ flowchart TD
     ADR_1961["ADR-1961<br/>permalink を bare `/<owner>/<repo>` で配信し、`/r/` p..."]
     ADR_2249["ADR-2249<br/>permalink 面と karasu-nest の境界 — 解決は本体、生成は nest、合..."]
     ADR_2259["ADR-2259<br/>repo-backed permalink の payload 上限 — degrade せず..."]
+    ADR_2818["ADR-2818<br/>クロスナビゲーションのハイライトは、手渡す側が名指した 1 つの属性でノード id を突き合わせる"]
   end
   ADR_211["ADR-211<br/>[parser] `compile()` API 統一 — Discriminated Union による戻り値型"]
   ADR_218["ADR-218<br/>[vscode] VSCode Phase 3.5 — Webview ドリルダウンナビゲーション"]
   ADR_412["ADR-412<br/>[parser] トップレベル service の Named Import — スタブ補完 + エッジ参照によ..."]
+  ADR_2714["ADR-2714<br/>[renderer] deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
   ADR_9007["ADR-9007<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
   ADR_177 --> ADR_9007
   ADR_177 --> ADR_218
@@ -36,6 +38,7 @@ flowchart TD
   ADR_429 --> ADR_412
   ADR_429 --> ADR_211
   ADR_1828 --> ADR_1827
+  ADR_2818 --> ADR_2714
   ADR_218 --> ADR_9007
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
@@ -58,8 +61,10 @@ flowchart TD
   class ADR_1961 accepted
   class ADR_2249 accepted
   class ADR_2259 accepted
+  class ADR_2818 accepted
   class ADR_211 ghost
   class ADR_218 ghost
   class ADR_412 ghost
+  class ADR_2714 ghost
   class ADR_9007 ghost
 ```

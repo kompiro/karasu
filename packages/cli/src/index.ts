@@ -201,12 +201,14 @@ program
     `
 Examples:
   # Append a new service block
-  $ echo 'service NewService { label: "New Service" }' | karasu append arch.krs
+  $ echo 'service NewService { label "New Service" }' | karasu append arch.krs
 
   # Append a multi-line block via HEREDOC
   $ cat <<'EOF' | karasu append arch.krs
   service NewService {
-    usecase Foo {}
+    domain Orders {
+      usecase PlaceOrder {}
+    }
   }
   EOF
 
@@ -231,7 +233,7 @@ Examples:
   $ karasu translate --from compose docker-compose.yml | karasu apply deploy.krs
 
   # Apply a hand-written snippet
-  $ echo 'service NewService { label: "New" }' | karasu apply arch.krs
+  $ echo 'service NewService { label "New" }' | karasu apply arch.krs
 
   # Create a new file from translate output
   $ karasu translate --from k8s manifests/deployment.yaml | karasu apply deploy.krs`,
@@ -268,12 +270,14 @@ program
     `
 Examples:
   # Add a service as a child of system ECommerce
-  $ echo 'service NewService { label: "New" }' | karasu insert ECommerce arch.krs
+  $ echo 'service NewService { label "New" }' | karasu insert ECommerce arch.krs
 
   # Insert a multi-line block via HEREDOC
   $ cat <<'EOF' | karasu insert ECommerce arch.krs
   service NewService {
-    usecase Foo {}
+    domain Orders {
+      usecase PlaceOrder {}
+    }
   }
   EOF`,
   )

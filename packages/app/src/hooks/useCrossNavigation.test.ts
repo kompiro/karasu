@@ -28,13 +28,28 @@ describe("useCrossNavigation", () => {
     });
   });
 
+  it("handleContainerClick(null) switches to system with no highlight (#2818)", () => {
+    // A container that realizes no single node (qualified or narrowed) still
+    // switches views; the reducer reads `null` as "nothing to light".
+    const { result, dispatch } = setup();
+    act(() => result.current.handleContainerClick(null));
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "SET_ACTIVE_VIEW",
+      activeView: "system",
+      highlightNodeId: null,
+    });
+  });
+
   it("handleDeployButtonClick dispatches SET_ACTIVE_VIEW(deploy) with highlight", () => {
     const { result, dispatch } = setup();
     act(() => result.current.handleDeployButtonClick("api"));
+    // The button hands over a node id; the deploy view marks that node on the
+    // container realizing it, so the jump names that attribute (#2818).
     expect(dispatch).toHaveBeenCalledWith({
       type: "SET_ACTIVE_VIEW",
       activeView: "deploy",
       highlightNodeId: "api",
+      highlightAttribute: "data-realized-node-id",
     });
   });
 

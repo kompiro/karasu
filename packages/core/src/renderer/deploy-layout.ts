@@ -41,7 +41,14 @@ const MAX_SINGLE_COLUMN_UNITS = 3; // wrap containers to a new sub-row when a la
 const UNCLASSIFIED_LABEL = "Unclassified";
 const JOB_BAND_LABEL = "Scheduled jobs";
 
-type Group = { id: string; label: string; units: DeployNode[]; kindBand?: "job" };
+type Group = {
+  id: string;
+  label: string;
+  units: DeployNode[];
+  kindBand?: "job";
+  /** `DeployContainer.nodeId`, handed through to `ContainerRect.realizedNodeId` (#2818). */
+  realizedNodeId?: string;
+};
 
 /**
  * The single description line shown under a deploy unit. `runtime` is the
@@ -328,6 +335,7 @@ function placeGroupBlock(
       height: containerH,
       ghost: false,
       kindBand: group.kindBand,
+      realizedNodeId: group.realizedNodeId,
     });
 
     let unitY = subRowY + CONTAINER_PADDING_TOP;
@@ -409,6 +417,7 @@ function layoutDeployForBudget(
     label: c.serviceLabel,
     units: c.units,
     kindBand: c.kindBand,
+    realizedNodeId: c.nodeId,
   }));
 
   // Job-only containers leave the dependency DAG and cluster into a dedicated

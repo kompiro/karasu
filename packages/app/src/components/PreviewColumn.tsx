@@ -410,6 +410,7 @@ export function PreviewColumn() {
           onExpandToggle={view.onExpandToggle}
           onOwnedServiceClick={view.onOwnedServiceClick}
           highlightedNodeId={view.highlightedNodeId}
+          highlightAttribute={view.highlightAttribute}
           onClearHighlight={view.onClearHighlight}
           onJumpToEditor={onJumpToEditor}
           nodeDiff={view.nodeDiff}

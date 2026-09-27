@@ -83,6 +83,7 @@ function renderContext(system: Record<string, unknown>) {
     selectedDeployBlockId: null,
     displayMode: "shape" as const,
     highlightedNodeId: null,
+    highlightAttribute: "data-node-id" as const,
     nodeMetadata: new Map(),
     system,
     deploy: { svg: "", diagnostics: [], warnings: [], deployBlocks: [] },

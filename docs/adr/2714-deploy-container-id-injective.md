@@ -11,6 +11,7 @@ related_to:
   - ADR-2088
   - ADR-927
   - ADR-1566
+  - ADR-2818
 scope:
   packages: [core]
 assumptions:
