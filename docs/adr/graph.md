@@ -222,6 +222,7 @@ flowchart TD
     ADR_2522["ADR-2522<br/>語彙センサスが見つけた drift の閉鎖 — kebab-case 字句規則・読解確度の r..."]
     ADR_2585["ADR-2585<br/>ストアスコープの ER ビュー — FK は記録し、entity 関連は投影し、確認済みかどう..."]
     ADR_2597["ADR-2597<br/>チーム間の依存を `owns` × 論理エッジから導出する"]
+    ADR_2678["ADR-2678<br/>boundary を言語 v2.0 で core に昇格し、言語版の切り替えは全 act の着..."]
     ADR_9002["ADR-9002<br/>ツール名「karasu」の採用"]
     ADR_9003["ADR-9003<br/>論理構造と物理構造の分離"]
   end
@@ -555,6 +556,9 @@ flowchart TD
   ADR_2585 --> ADR_644
   ADR_2592 --> ADR_2578
   ADR_2655 --> ADR_2578
+  ADR_2678 --> ADR_1820
+  ADR_2678 --> ADR_2065
+  ADR_2678 --> ADR_2124
   ADR_2818 --> ADR_2714
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
@@ -932,6 +936,7 @@ flowchart TD
   class ADR_2655 accepted
   class ADR_2658 accepted
   class ADR_2671 accepted
+  class ADR_2678 accepted
   class ADR_2687 accepted
   class ADR_2693 accepted
   class ADR_2714 accepted

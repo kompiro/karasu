@@ -805,8 +805,9 @@ Two authoring notes for that script, both learned the hard way:
 - The list of seams left `@draft`, **and the seams that started `@draft` and were
   resolved**, with the evidence — the resolutions are what a reviewer most needs
   and they are invisible in the `.krs` once the mark is gone.
-- Notes on any notation gaps encountered, and on how the experimental `boundary`
-  / `facet` constructs were used (evidence for the promotion gate, ADR-1820):
+- Notes on any notation gaps encountered, and on how the `boundary` / `facet`
+  constructs were used (`facet` is still experimental, so this is evidence for
+  its promotion gate, ADR-1820; `boundary` is core from language v2.0, ADR-2678):
   which facets were declared and how many memberships each carries, which were
   proposed and declined and why, which proposals were **convergent**, and which
   `boundary` placements were used — a run that used only the top-level form has
@@ -845,8 +846,9 @@ Two authoring notes for that script, both learned the hard way:
   seam there, on ubiquitous-language evidence, and leave the overlay out.
 - **Match identity by `id`**, not `label`. **Never silently drop thin domains**
   (surface them via `coverage`). **Invent no vocabulary of your own**: v1 is
-  frozen, and `boundary` / `facet` are shipped-but-experimental (backward
-  compatibility is not yet promised, ADR-1820) — use them as spec'd, and route
+  frozen, `boundary` is core from language v2.0 (ADR-2678), and `facet` is
+  shipped-but-experimental (backward compatibility is not yet promised,
+  ADR-1820) — use them as spec'd, and route
   anything they do not cover to the gap notes rather than to a new keyword or a
   non-builtin tag. `facet` is the *only* user extension point in the vocabulary;
   tags and annotations are tool-owned.

@@ -870,7 +870,7 @@ export const REFERENCE_DATA = {
         en: "By reference, from the declaration: `contains <id>`, one member per line (1:N)",
         ja: "宣言側から参照で記述: `contains <id>` を 1 行 1 メンバー（1:N）",
       },
-      experimental: true,
+      experimental: false,
     },
     {
       construct: "facet",
@@ -1078,6 +1078,7 @@ import { Foo, Bar.Baz } from "p.krs"  // named import — pull specific ids
 import "p.krs"                        // whole-file import — merge everything
 import "dir/"                         // directory import — every .krs directly under dir/`,
     },
+    // Both sections still render `facet`, which stays experimental until #2677.
     { heading: "Grouping & Membership", groupingTable: true, experimental: true },
     {
       heading: "Grouping & Membership — Declaration",

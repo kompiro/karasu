@@ -228,7 +228,7 @@ describe("Reference data ↔ docs/spec agreement (TPL-1296)", () => {
   it("syntax.md: every grouping construct has its own section, and the section agrees on experimental", () => {
     const syntaxMd = readSpec("syntax.md");
     for (const g of ref.groupingConstructs) {
-      // e.g. "## Grouping the system view (`boundary`) — experimental"
+      // e.g. "## Cross-cutting membership (`facet`) — experimental"
       const heading = syntaxMd
         .split("\n")
         .find((l) => /^##\s/.test(l) && l.includes(`\`${g.construct}\``));

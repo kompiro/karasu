@@ -105,12 +105,16 @@ describe("experimental notation is listed AND flagged (ADR-2316)", () => {
   // The decision is not "list everything" — it is "list it, and say it is
   // experimental". A row that lost its flag would advertise a stability
   // promise the promotion gate has not made.
-  it("marks boundary and facet experimental", () => {
+  it("lists boundary and facet, and flags only facet experimental", () => {
+    // boundary passed the gate into language v2.0 core (ADR-2678); facet stays
+    // experimental until #2677.
+    const listed = ref.groupingConstructs.map((g) => g.construct).sort();
+    expect(listed).toEqual(["boundary", "facet"]);
     const experimental = ref.groupingConstructs
       .filter((g) => g.experimental)
       .map((g) => g.construct)
       .sort();
-    expect(experimental).toEqual(["boundary", "facet"]);
+    expect(experimental).toEqual(["facet"]);
   });
 
   it("marks the Syntax-tab sections that render experimental notation", () => {

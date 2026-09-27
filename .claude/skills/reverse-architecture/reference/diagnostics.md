@@ -128,7 +128,7 @@ primary owner.
 | `duplicate-resource-operation` | warning | A CRUD verb is listed more than once on one resource. |
 | `duplicate-crud-decoration-target` | warning | A CRUD decoration targets the same operation more than once. |
 | `duplicate-owner-assignment` | info | A node is assigned as owned by more than one team (a fact; see [ADR-1566](../adr/1566-ownership-during-migration.md)). |
-| `duplicate-boundary-assignment` | info | A node belongs to more than one `boundary` (a fact; membership is 1:N — see [syntax.md](syntax.md#grouping-the-system-view-boundary--experimental) for how a view resolves it). |
+| `duplicate-boundary-assignment` | info | A node belongs to more than one `boundary` (a fact; membership is 1:N — see [syntax.md](syntax.md#grouping-the-system-view-boundary) for how a view resolves it). |
 | `boundary-membership-not-drawn` | info | Under *Group by: boundary*, a boundary's frame could not be widened to enclose one of its members without covering a non-member, so the membership is marked on the card as a `◇` tab instead. States what **this drawing** did, unlike `duplicate-boundary-assignment`, which states a fact about the model; it therefore carries no source location and appears only on that axis. |
 | `duplicate-boundary-id` | error | Two `boundary` blocks in the same enclosing node declare the same id, so the second cannot be addressed. Top-level blocks are unaffected. |
 | `duplicate-facet-id` | error | Two `facet` blocks declare the same id, so a `facets` reference cannot say whose metadata it means. Decided on the merged model, so a duplicate split across two files is caught; the first declaration is the one references resolve to. |

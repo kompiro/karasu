@@ -106,7 +106,7 @@ scope:
   証跡だが v2.0 の閉鎖結果を変えない）。annotation 側の open set 明文化はこの deprecation
   告知に置換された。検証: `packages/core/src/resolver/warnings.test.ts` の
   `tag-not-builtin` / `annotation-not-builtin` describe 2 件
-- `docs/spec/syntax.md` — Grouping the system view (`boundary`)（#1822 P2b、experimental。
+- `docs/spec/syntax.md` — Grouping the system view (`boundary`)（#1822 P2b、言語 v2.0 で core — ADR-2678。
   受理される `boundary` 宣言は効果を持つ必要があるという本 TPL を新構文に適用したもの。宣言された
   `boundary` は parse-and-vanish せず、`groupBy: "boundary"` で必ず境界フレームを生む — その
   end-to-end 効果を `packages/core/src/renderer/group-by-boundary-render.test.ts` が柵にする）
