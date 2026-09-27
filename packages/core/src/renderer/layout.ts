@@ -1042,6 +1042,11 @@ function layoutMultipleSystems(
   // text and belong to different systems. A miss (compare mode's removed edges)
   // falls through to the unscoped map above.
   const crossSystemSource = new Map<KrsEdge, string>();
+  // Expanded service of each spliced domain (#1921), for the per-frame paths.
+  const expandedParentOf = new Map<string, string>();
+  for (const frame of viewSlice.expandedFrames) {
+    for (const memberId of frame.memberIds) expandedParentOf.set(memberId, frame.containerId);
+  }
   /** 縮退 fallbacks across every system frame (#2179), in system order. */
   const allDegradedMemberships: { nodeId: string; boundaryId: string }[] = [];
 
@@ -1106,10 +1111,18 @@ function layoutMultipleSystems(
     // The synthesized "Unassigned" pseudo-system holds top-level orphans
     // whose full paths carry no system prefix, so its frame scope is empty.
     const frameScope = sys.id === "__unassigned__" ? [] : [sys.id];
+    // A domain spliced into this frame by in-place expansion (#1921) sits
+    // under its expanded service (#2917: `Shop.Api.Orders`, not `Shop.Orders`);
+    // a member is only spliced into the frame of the system that owns it.
+    const framePathOf = (nid: string): string[] => {
+      const expandedParent = expandedParentOf.get(nid);
+      return expandedParent !== undefined
+        ? [...frameScope, expandedParent, nid]
+        : [...frameScope, nid];
+    };
     // Path-keyed owner lookups for this frame's real nodes (#2548), same
     // shape as `canvasOwnerOf` on the single-system path.
-    const frameOwnerOf: OwnerResolver = (kind, nid) =>
-      ownerOf(kind, nodePathKey([...frameScope, nid]));
+    const frameOwnerOf: OwnerResolver = (kind, nid) => ownerOf(kind, nodePathKey(framePathOf(nid)));
     const systemMembership = canvasMembershipFor(frameScope, options);
     // Same per-canvas resolution as `layout()`: a boundary with no band of its
     // own claims one of the shared members present in *this* system (#2176).
@@ -1234,8 +1247,9 @@ function layoutMultipleSystems(
           width: box.width,
           height: box.height,
           // The frame scope plus the id (#2917): `[Shop, Api]` and `[Admin, Api]`
-          // for two same-named services, which `data-node-id` alone cannot say.
-          path: [...frameScope, nid],
+          // for two same-named services, which `data-node-id` alone cannot say;
+          // the same path the owner lookup above resolves.
+          path: framePathOf(nid),
         }),
       );
     }

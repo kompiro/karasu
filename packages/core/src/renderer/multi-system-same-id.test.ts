@@ -347,4 +347,40 @@ system Shop {
     expect(orders.path).toEqual(["Shop", "Api", "Orders"]);
     expect(orders.properties.team).toBe("orders-team");
   });
+
+  it("paths a domain expanded on the multi-system root under its system and service", () => {
+    const krs = `
+system Shop {
+  service Api {
+    domain Orders {}
+  }
+  service Worker {}
+}
+system Admin {
+  service Api {
+    domain Users {}
+  }
+}
+`;
+    const result = compile(krs, {
+      diagramType: "system",
+      viewPath: [],
+      expandedContainers: new Set(["Api"]),
+    });
+    if (result.diagramType !== "system") throw new Error();
+    expect(result.svg).toContain('data-node-path="Shop.Api.Orders"');
+    expect(result.svg).not.toContain('data-node-path="Shop.Orders"');
+    expect(result.nodeMetadataByPath.get("Shop.Api.Orders")?.viewPath).toEqual([
+      "Shop",
+      "Api",
+      "Orders",
+    ]);
+    // The owner badge resolves by the same path.
+    const parsed = Parser.parse(krs);
+    const slice = extractView(parsed.value.systems, [], [], [], new Set(["Api"]));
+    const r = layout(slice, { ownerIndex: new Map([["Shop.Api.Orders", "orders-team"]]) });
+    const orders = [...r.nodes.values()].find((n) => n.id === "Orders")!;
+    expect(orders.path).toEqual(["Shop", "Api", "Orders"]);
+    expect(orders.properties.team).toBe("orders-team");
+  });
 });

@@ -852,14 +852,26 @@ function buildNodeMetadata(
 
   // A domain spliced onto the canvas by in-place expansion (#1921) belongs to
   // its expanded service: key it (and resolve its owner) under that path, the
-  // same path the layout stamps on its card (#2917).
-  const expandedParentOf = new Map<string, string>();
+  // same path the layout stamps on its card (#2917). On the multi-system root
+  // the canvas scope is empty, so the owning system is found from the frame's
+  // service (a member is spliced only from the system that declares it).
+  const expandedPrefixOf = new Map<string, readonly string[]>();
   for (const frame of viewSlice.expandedFrames) {
-    for (const memberId of frame.memberIds) expandedParentOf.set(memberId, frame.containerId);
+    for (const memberId of frame.memberIds) {
+      const owningSystem = viewSlice.systems.find((s) =>
+        s.children.some(
+          (c) => c.id === frame.containerId && c.children.some((d) => d.id === memberId),
+        ),
+      );
+      const systemPrefix =
+        owningSystem === undefined || owningSystem.id === "__unassigned__"
+          ? canvasScope
+          : [owningSystem.id];
+      expandedPrefixOf.set(memberId, [...systemPrefix, frame.containerId]);
+    }
   }
   for (const node of viewSlice.childNodes) {
-    const expandedParent = expandedParentOf.get(node.id);
-    addNode(node, expandedParent !== undefined ? [...canvasScope, expandedParent] : canvasScope);
+    addNode(node, expandedPrefixOf.get(node.id) ?? canvasScope);
   }
   for (const node of viewSlice.ghostUsers) {
     addNode(node, []);
