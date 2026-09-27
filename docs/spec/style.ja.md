@@ -956,8 +956,8 @@ id を名指すがスコープは名指さないので、**すべてのスコー
 team フレーム（*Group by: team*）の指定方法は本節と異なる。team は**ノードであり**
 `#<id>` が既に届いているためで、下の [team フレーム](#team-フレームgroup-by-team) を参照。
 
-`boundary` は experimental notation なので、本セレクタもスタイルを当てる構文と同じく
-後方互換を約束しない（[syntax.ja.md](syntax.ja.md#システムビューのグルーピングboundary-experimental)）。
+本セレクタは、スタイルを当てる構文と同じ互換性 tier に属する。`boundary` は言語 v2.0 から core
+（[syntax.ja.md](syntax.ja.md#システムビューのグルーピングboundary)）。
 
 > Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — boundary の色はフレームと `◇` タブに届き、両者は別のコードが描く。1 つの resolver を読むことで、style の上書きが片方だけを塗り替える事故を防ぐ。[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 裸の `boundary` ルールは本セレクタ以前は parse されて無効果だった。今は効果を持つ。[TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — 上の specificity 行は `reference-data.ts` からの生成物で、ここに手書きしない。
 

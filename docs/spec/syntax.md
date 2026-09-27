@@ -270,9 +270,9 @@ An independent axis from logical/physical, describing the **ownership** of servi
 | `team` | A team with responsibility. May be nested | `team`, `member`, `owns` |
 | `member` | An individual belonging to a team | — |
 
-A related grouping overlay — **`boundary`** (experimental) — lets an author
+A related grouping overlay — **`boundary`** — lets an author
 declare semantic clusters *within* the system view, drawn as a second "Group by"
-axis alongside team ownership. See [§ Grouping the system view (`boundary`)](#grouping-the-system-view-boundary--experimental).
+axis alongside team ownership. See [§ Grouping the system view (`boundary`)](#grouping-the-system-view-boundary).
 
 ### Physical structure (how) — rendered as a separate diagram
 
@@ -1449,7 +1449,7 @@ organization TechCorp {
 ### team node
 
 - `owns <ref>` declares a node the team owns, where `<ref>` is a node reference path (see [§ Node reference path notation](#node-reference-path-notation)): a bare id claims every node with that id (broadcast), a longer suffix path narrows to the node it names, and a mixed-kind/depth multi-match draws `owns-target-ambiguous`. When the same node is `owns`-ed by more than one team, it is a tolerated fact (transient co-ownership during an inverse-Conway migration): the first-declared team is kept as the node's primary owner and the overlap surfaces as the `duplicate-owner-assignment` **info** diagnostic — not an error (ADR-1566). A `@migration_target` team takes primary over unmarked, and `@deprecated` last.
-- Under *Group by: team*, grouping resolves **per view, against the nodes rendered at the level being drawn**. `owns` has no level restriction, so a team owning a `domain` nested under a `service` gets a team frame in that service's drill-down view — the same per-view semantics as the `boundary` axis (see [§ Grouping the system view](#grouping-the-system-view-boundary--experimental)).
+- Under *Group by: team*, grouping resolves **per view, against the nodes rendered at the level being drawn**. `owns` has no level restriction, so a team owning a `domain` nested under a `service` gets a team frame in that service's drill-down view — the same per-view semantics as the `boundary` axis (see [§ Grouping the system view](#grouping-the-system-view-boundary)).
 - Teams can be nested — placing child teams under a parent team expresses organizational hierarchy.
 - Team IDs must be unique within the same organization. Duplicates produce an error.
 - During parsing, an `ownerIndex` (`node full path → team id`, #2548) is built so that a logical-diagram node can look up its owner team; each `owns` reference is expanded through the suffix rule at build time.
@@ -1516,13 +1516,13 @@ The legacy positional argument (`team backend "Backend Team"`) is **rejected** w
 
 ---
 
-## Grouping the system view (`boundary`) — experimental
+## Grouping the system view (`boundary`)
 
-> **Experimental notation (post-v1.0 watch).** `boundary` is retained as
-> experimental, not frozen — backward compatibility is **not yet promised**, and
-> promotion to a v1.0-stable construct is gated on real-usage evidence (the
-> notation promotion gate, [ADR-1820](../adr/1820-notation-promotion-gate.md)).
-> See `docs/roadmap.md` § post-v1.0 horizon.
+> **Core notation from `.krs language v2.0`.** `boundary` (the declaration,
+> `contains` and the scoped declaration) passed the notation promotion gate
+> ([ADR-1820](../adr/1820-notation-promotion-gate.md)) and is promoted to core in
+> language v2.0 ([#2678](https://github.com/kompiro/karasu/issues/2678)): its shape is
+> backward-compatible from then on, and a breaking change needs a language major.
 
 A `boundary` block declares a **semantic cluster** of system-view nodes — a
 grouping the author draws on top of the logical structure, independent of the

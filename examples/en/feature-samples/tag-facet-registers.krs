@@ -1,5 +1,5 @@
-// The four vocabulary registers, side by side (Issue #2177; `facet` is core
-// from `.krs language v2.0`, `boundary` is experimental).
+// The four vocabulary registers, side by side (Issue #2177; `facet` and
+// `boundary` are core from `.krs language v2.0`).
 //
 // karasu has four ways to say something extra about an element, and they are
 // not interchangeable. Picking the wrong one is the most common modelling

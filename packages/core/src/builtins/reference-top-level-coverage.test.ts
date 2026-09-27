@@ -103,26 +103,29 @@ describe("every top-level construct is reachable from getReference() (TPL-2316)"
 
 describe("experimental notation is listed AND flagged (ADR-2316)", () => {
   // The decision is not "list everything" — it is "list it, and say it is
-  // experimental". A row that lost its flag would advertise a stability
-  // promise the promotion gate has not made.
-  it("flags boundary experimental and facet no longer (facet is core from language v2.0, #2677)", () => {
+  // experimental". A row that kept its flag after promotion would hide a
+  // stability promise the language now makes; one that lost it early would
+  // advertise a promise the promotion gate had not made.
+  it("lists boundary and facet, and flags neither: both are core from language v2.0 (#2677, #2678)", () => {
+    const listed = ref.groupingConstructs.map((g) => g.construct).sort();
+    expect(listed).toEqual(["boundary", "facet"]);
     const experimental = ref.groupingConstructs
       .filter((g) => g.experimental)
       .map((g) => g.construct)
       .sort();
-    expect(experimental).toEqual(["boundary"]);
+    expect(experimental).toEqual([]);
   });
 
-  it("marks the Syntax-tab sections that render experimental notation", () => {
+  it("flags no Syntax-tab section once the notation it renders is core", () => {
     const flagged = SYNTAX_SECTIONS.system.filter((s) => s.experimental).map((s) => s.heading);
-    expect(flagged).toContain("Grouping & Membership");
-    expect(flagged.length).toBeGreaterThan(0);
+    expect(flagged).toEqual([]);
   });
 
-  it("does not flag sections whose notation is v1.0-stable", () => {
+  it("does not flag sections whose notation is stable", () => {
     const stable = SYNTAX_SECTIONS.system.filter((s) => !s.experimental).map((s) => s.heading);
     expect(stable).toContain("Node Kinds");
     expect(stable).toContain("Edge Syntax");
+    expect(stable).toContain("Grouping & Membership");
   });
 });
 

@@ -72,7 +72,7 @@
 | 言語版の表記 | **`.krs language v1.0`**（ユーザー向け出力・英語 prose）/ **「言語 v1.0」**（日本語 prose） | 「.krs v1.0」「krs-lang 1.0」「spec v1.0」等は使わない。パッケージ版と並記するときは軸を明示（`karasu 0.6.0` + `.krs language v1.0`） |
 
 表記規約: karasu 自身の notation を語るときは tier を明示するか notation を主語にする
-（「boundary 構文は experimental」）。ユーザーモデルの標識は常に `@` + backtick
+（「facet 構文は experimental」）。ユーザーモデルの標識は常に `@` + backtick
 （`@experimental`）。この規約だけで二義性は機械的に判別できる。
 
 ---
@@ -113,8 +113,8 @@ funnel→retained の背骨。notation / cookbook はこの retained record を�
 
 `epic: comprehension` / `epic: boundary` / `epic: facets` は宣言していた子がすべて着地した
 ため柱から降ろした（Epic close は本節を prune した PR — [ADR-2218](adr/2218-roadmap-pruning-policy.md)）。
-comprehension の残余は下の [§comprehension の残余](#comprehension-の残余)、syntax 2.0 の
-残余は [§追跡（Issues）](#追跡issues) に持つ。
+comprehension の残余は下の [§comprehension の残余](#comprehension-の残余)に持つ。syntax 2.0 は
+言語 v2.0 として実施した（[§Syntax 2.0 プログラム](#syntax-20-プログラム)）。
 
 #### comprehension の残余
 
@@ -146,7 +146,7 @@ gate の生きた適用状態。ここに載る構文は **後方互換を約束
 
 | notation | 追加 | 現状 | promotion trigger（判断材料） |
 | --- | --- | --- | --- |
-| **`boundary`**（system view の意味的クラスタ宣言 / `contains` / スコープ宣言） | [#1974](https://github.com/kompiro/karasu/issues/1974)（[ADR-1974](adr/1974-boundary-declaration-syntax.md)）+ [#2036](https://github.com/kompiro/karasu/issues/2036)（[ADR-2036](adr/2036-scoped-boundary-declaration.md)・[syntax](spec/syntax.md#grouping-the-system-view-boundary--experimental)） | experimental。**昇格先は確定 — v2.0 core**（[ADR-2065](adr/2065-tags-and-facets.md) 決定 3、[§Syntax 2.0 プログラム](#syntax-20-プログラム)）。所属 1:N 一般化 + 多重包含 banded 描画（[ADR-2161](adr/2161-boundary-membership-1n.md)）と frame colour の style-sheet override + legend（[ADR-2234](adr/2234-boundary-style-selector.md)）が着地し、v1.x で出せる宿題は残っていない。**昇格そのものの追跡 = [#2678](https://github.com/kompiro/karasu/issues/2678)** | 昇格先が確定しているので corpus 観測の役目は「昇格するか」でなく「v2.0 core の形の妥当性」の検証（初回エビデンス = [#2079](https://github.com/kompiro/karasu/issues/2079)）。ただし第三者の corpus は現時点で実在しない（[ADR-2522](adr/2522-vocabulary-census-drift.md) 決定 3 の実測）ため、当面の実質的な観測面はトリガー (iii)（混乱 / bug Issue の再発）と自前モデル・`examples/**` への適用 |
+| （現在登録なし） | — | `boundary` / `facet` は言語 v2.0 で core に昇格した（[#2677](https://github.com/kompiro/karasu/issues/2677) / [#2678](https://github.com/kompiro/karasu/issues/2678)） | — |
 
 #### watch 対象の notation gap（構文未満の欠落）
 
@@ -193,7 +193,7 @@ gate で評価する。
 ### sequencing
 
 1. **karasu-nest pivot**（[#1990](https://github.com/kompiro/karasu/issues/1990)）が現在の主線。宣言していた実装スライスは全消化し、主線は**運用の問い**へ移った — quota の適用範囲（[#2382](https://github.com/kompiro/karasu/issues/2382)）とラチェットの検証（[#2228](https://github.com/kompiro/karasu/issues/2228)）。permalink layer（retained の背骨）は完成形に到達しており、律速ではない。
-2. **言語 v2.0** は語彙の閉鎖・`facet` の core 昇格・2 つの error 化を実施した。残るのは `boundary` の core 昇格（[#2678](https://github.com/kompiro/karasu/issues/2678)）。
+2. **言語 v2.0** は語彙の閉鎖・`facet` と `boundary` の core 昇格・2 つの error 化を実施した。
 3. **AI authoring** は経路を決定済み（エージェントセッション + karasu CLI skill、Chat は凍結）で、実装は [#2901](https://github.com/kompiro/karasu/issues/2901)。**interop** は評価可能。
 4. **非ゴール圧力 log** は随時追記（安価）。
 
@@ -204,18 +204,10 @@ gate で評価する。
 - **ステータス**: 言語 v2.0 として実施済み。決定は [設計](design/language-v2-act.md)（ADR-2677 へ昇格予定）、
   版の運用は [ADR-2124](adr/2124-version-vocabulary.md)（言語版とパッケージ版は独立）。
 - **到達点**: tag / annotation はツール語彙に閉じ（非 builtin 名は受理・効果なし・warning、
-  任意名の style セレクタは何にも一致しない）、`facet` が唯一のユーザー拡張点として core に
-  なった。`node-not-in-context` と `annotation-possible-typo` は error になった。閉鎖の原則は
+  任意名の style セレクタは何にも一致しない）、`facet` が唯一のユーザー拡張点として、`boundary` が view 内の
+  グルーピングとして core になった。`node-not-in-context` と `annotation-possible-typo` は error になった。閉鎖の原則は
   [`docs/concepts.md`](concepts.md) と [ADR-2065](adr/2065-tags-and-facets.md) が持つ。
 - 本節は以後の破壊的変更（次の言語 major）の受け皿として見出しだけ残す。
-
-### 追跡（Issues）
-
-<!-- roadmap-issue-state: open-only -->
-
-| Issue | 内容 | 時期 |
-| --- | --- | --- |
-| [#2678](https://github.com/kompiro/karasu/issues/2678) | `boundary` の core 昇格（tier flip・spec 見出しの experimental 解除・昇格 ADR） | 言語 v2.0 |
 
 ---
 
