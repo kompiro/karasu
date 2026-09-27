@@ -112,6 +112,12 @@ jobs:
     name: Record release
     needs: release
     if: ${{ !cancelled() && needs.release.outputs.tags != '' }}
+    # Shared with the other workflow's `record` job so the two never pick the
+    # same release-YYYY-MM-DD at once: the later one starts after the earlier
+    # one pushed its tags, sees the Release, and regenerates it from every tag.
+    concurrency:
+      group: release-record
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
       contents: write # push tags and create the GitHub Release
