@@ -365,6 +365,7 @@ flowchart TD
     ADR_2631["ADR-2631<br/>トランクの合流と分岐を本数で読ませ、交差マークを装飾で潰さない"]
     ADR_2714["ADR-2714<br/>deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
     ADR_2756["ADR-2756<br/>root view の各 system フレームは自分の子から導出したエッジ集合を持つ"]
+    ADR_2761["ADR-2761<br/>行幅予算の候補ラダーの長さを計測して 8 段にする"]
     ADR_2802["ADR-2802<br/>組み込みアイコンは core が import 時に登録し、解決しない url() は値 va..."]
     ADR_2803["ADR-2803<br/>shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通ス..."]
     ADR_2906["ADR-2906<br/>icon display mode は非推奨のまま据え置き、削除する major はまだ決めない"]
@@ -942,6 +943,7 @@ flowchart TD
   class ADR_2716 accepted
   class ADR_2753 accepted
   class ADR_2756 accepted
+  class ADR_2761 accepted
   class ADR_2773 accepted
   class ADR_2786 accepted
   class ADR_2802 accepted

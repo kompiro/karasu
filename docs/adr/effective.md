@@ -367,6 +367,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2631](2631-trunk-legibility-by-count.md) — トランクの合流と分岐を本数で読ませ、交差マークを装飾で潰さない
 - [ADR-2714](2714-deploy-container-id-injective.md) — deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の id で行う
 - [ADR-2756](2756-root-view-system-edge-ownership.md) — root view の各 system フレームは自分の子から導出したエッジ集合を持つ
+- [ADR-2761](2761-width-budget-ladder-length.md) — 行幅予算の候補ラダーの長さを計測して 8 段にする
 - [ADR-2802](2802-builtin-icon-registration.md) — 組み込みアイコンは core が import 時に登録し、解決しない url() は値 validator が診断する
 - [ADR-2803](2803-slotted-icon-card-text.md) — shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通スタックで描く
 - [ADR-2906](2906-icon-mode-removal-release-undecided.md) — icon display mode は非推奨のまま据え置き、削除する major はまだ決めない
