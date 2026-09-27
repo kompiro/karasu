@@ -40,7 +40,7 @@
 
 - **語彙の閉鎖では既存ファイルを壊さない**: 非 builtin の tag / annotation は warning（ADR-2065 却下案「parse error にする」、TPL-1503 状態 (2)）。v2.0 で error にするのは、v1.x の間に warning として予告済みの規則違反（`node-not-in-context`）と、builtin 名の綴り誤り（`annotation-possible-typo`）の 2 つに限る
 - **半分だけの v2.0 をリリースしない**: 言語版は 1 つの定数で表明する。昇格・閉鎖・版表記のどれかだけが main に載った状態でリリースが切られると、CHANGELOG と挙動が食い違う
-- **パッケージ版は言語版と独立**（ADR-2124）。本 Design Doc は言語軸だけを扱う。パッケージ側は `karasu` / `@karasu-tools/core` / `karasu-vscode` を同じ版で上げる運用（changesets の `fixed` グループ、ADR-2936 = [#2938](https://github.com/kompiro/karasu/pull/2938)）に移行中で、v2.0 のリリースで付けるパッケージ版もそちらで決める
+- **パッケージ版は言語版と独立**（ADR-2124）。本 Design Doc は言語軸だけを扱う。パッケージどうしも独立に版を上げる（ADR-1315 / ADR-1758。同じ版で揃える案は [#2936](https://github.com/kompiro/karasu/issues/2936) で検討して取り下げ）。v2.0 のリリースで各パッケージに付ける版（1.0.0 にするか等）は本件の外で決める
 - **範囲外**: 新しい builtin 語彙の追加（ADR-2172 の経路で個別に扱う）、excludes tri-state（ADR-2065「決めないこと」を維持）、boundary / facet の構文変更（昇格は現行の形をそのまま約束する）
 
 ## 言語 v2.0 に取り込む項目（登録簿）
@@ -66,7 +66,7 @@ repo 内で「言語 v2.0 で行う」と登録・予告されている項目を
 
 | 項目 | 言及元 | 取り込まない理由 |
 | --- | --- | --- |
-| パッケージ版（1.0.0 にするか等） | ADR-2124（「言語 v2.0 実施時の判断に委ねる」） | 3 パッケージの版の同期は [#2938](https://github.com/kompiro/karasu/pull/2938)（ADR-2936）で扱う。言語版とパッケージ版は独立（ADR-2124）なので、本件の成否に影響しない |
+| パッケージ版（CLI 1.0.0 にするか等） | ADR-2124（「言語 v2.0 実施時の判断に委ねる」） | 言語版とパッケージ版は独立（ADR-2124）で、本件の成否に影響しない。パッケージごとの 1.0.0 は各表面（CLI のコマンド・フラグ・出力、core の TS API、vscode のコマンド・設定）の棚卸しを前提に別途判断する |
 | `system` 直下の `domain` の error 化 | ADR-2184 備考（「決めない」） | `canContain` に載る正当な配置（ADR-2165）。v2.0 の規則違反ではない |
 | エッジの位置引数ラベル `A -> B "calls"` の撤去 | ADR-2209 却下案 | ADR-2209 が shorthand を正式形として残すと決定済み |
 | エッジ配置規則の狭め（service-anchored の診断化、`client` 等への起点スコープ規則の拡張） | ADR-2223 / ADR-2501 却下案 | どちらも「v2.0 を要するので採らない」として却下された案で、登録ではない |
@@ -170,7 +170,7 @@ gate はオーナー判断でトリガー (i) により通す。ADR-1820 の既�
 6. **`docs/concepts.md` / `.ja.md` を同じ PR で改訂する**（決定 11 の warn-don't-error の範囲も含む）。「the tag system itself stays open」を、閉鎖原則（ツールが所有する語彙は閉じ、世界が所有する語彙 = client `capability` は open）に置き換える。
 7. **ADR-1314 との関係**: ADR-1314 は supersede しない。ADR-1314 が定義した言語版セマンティクス（追加は v1.x、破壊は v2.0）を**そのまま行使する**最初の major であり、v1.0 の凍結スコープのうち v2.0 で終了・変更するのは「open tag set / open annotation set」「任意名セレクタの照合」と、診断 register の 2 点の格上げ（`node-not-in-context` warning → error、`annotation-possible-typo` info → error）である、と ADR-2677 に列挙する（ADR-1314 本文は immutable なので、関係は新 ADR 側に書く）。
 8. **`node-not-in-context` を error にする**（ADR-2165 の予約を実施）。そのノードと subtree を model から除く。除いたノードを指す参照は従来どおり §S6 の warning（`unresolved-edge-endpoint` 等）になる。`karasu translate --from openapi` の出力を domain を挟む形に直す。
-9. **パッケージ版は本 ADR で決めない**。ADR-2124 が言語 v2.0 に委ねたパッケージ版の判断は、3 パッケージを同じ版で上げる ADR-2936（[#2938](https://github.com/kompiro/karasu/pull/2938)）の側で行う。
+9. **パッケージ版は本 ADR で決めない**。ADR-2124 が言語 v2.0 に委ねたパッケージ版（CLI 1.0.0 など）の判断は、パッケージごとに表面の棚卸しを前提として別途行う。パッケージどうしは独立に版を上げる（ADR-1315 / ADR-1758）。
 10. **error の定義**（案 4A）: error = karasu が受理しない構文。error の construct は model に入らず、error が 1 件でも立っている間はどの surface も新しい図を出さない。`docs/spec/diagnostics.md` の severity 定義節に書き、VS Code preview を揃える。
 11. **warn-don't-error の範囲の明確化**: roadmap §syntax v1.0 の定義 補足と `docs/concepts.md` の該当記述を、§S6（未解決参照）の方針として書き直す（ADR-2208 / ADR-2501 の読みを keystone 文書に反映）。
 
@@ -211,7 +211,7 @@ gate はオーナー判断でトリガー (i) により通す。ADR-1820 の既�
    - Reference パネルで boundary / facet の experimental badge が消えていること
    - `karasu --version` が `.krs language v2.0` を出すこと
    - app と VS Code preview で、`service { usecase }` や `@depracated` を書くと error が出て図が更新されず、直すと描画が戻ること
-9. **changeset**: 利用者に変更が見える core / cli / vscode の 3 つを全て名指しし、`.krs language v1.0 → v2.0` を明記する（名指ししたパッケージの CHANGELOG にしか本文が載らないため）。3 つは `fixed` グループで同じ版になる（ADR-2936）。bump レベルは ADR-2936 側の方針に従う（1.0.0 に上げるなら `major`）
+9. **changeset**: core / cli / vscode の 3 つを名指しし（ADR-1758 のとおり core の変更は core と CLI の両方を名指しする）、`.krs language v1.0 → v2.0` を明記する。bump レベルはパッケージごとに semver 規約で決める（パッケージ版の判断が別途出ればそれに従う）
 10. **ADR 昇格**: 実装 PR と下記 docs-site PR のマージ後、本 Design Doc を ADR-2677 に昇格して削除する
 
 ### docs-site への反映（別 PR、追跡 = [#2937](https://github.com/kompiro/karasu/issues/2937)）
@@ -251,4 +251,4 @@ v2.0 で boundary と facet が「唯一のユーザー拡張点 + view 内グ�
 - 既存 error の波及（`infra-not-in-context` 等が construct ちょうどを除かない）の修正は別 Issue
 - excludes tri-state、lifecycle 系 facet の不許可、ルール言語の不導入は ADR-2065 のまま動かさない
 - 閉鎖後に届く builtin 追加要望は ADR-2172 / TPL-2172 の経路で個別に扱う
-- パッケージ版（[#2938](https://github.com/kompiro/karasu/pull/2938) / ADR-2936 で扱う）
+- パッケージ版（CLI 1.0.0 など。パッケージごとに別途判断）
