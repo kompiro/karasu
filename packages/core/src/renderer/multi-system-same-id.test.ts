@@ -331,4 +331,20 @@ system Admin {
     // The real domain card on the same canvas carries its full path.
     expect(result.svg).toContain('data-node-path="Shop.Api.Orders"');
   });
+
+  it("resolves an expanded domain's owner badge by its full path, like its metadata", () => {
+    const parsed = Parser.parse(`
+system Shop {
+  service Api {
+    domain Orders {}
+  }
+  service Worker {}
+}
+`);
+    const slice = extractView(parsed.value.systems, [], [], [], new Set(["Api"]));
+    const r = layout(slice, { ownerIndex: new Map([["Shop.Api.Orders", "orders-team"]]) });
+    const orders = [...r.nodes.values()].find((n) => n.id === "Orders")!;
+    expect(orders.path).toEqual(["Shop", "Api", "Orders"]);
+    expect(orders.properties.team).toBe("orders-team");
+  });
 });

@@ -437,12 +437,23 @@ function layoutInner(
       ? [...viewSlice.ancestorChain.map((n) => n.id), viewSlice.containerNode.id]
       : [];
   const canvasMembership = canvasMembershipFor(scopePath, options);
+  // A domain spliced onto this canvas by in-place expansion (#1921) sits under
+  // its expanded service, not directly under the canvas scope, so its full
+  // path carries that service (#2917: `Shop.Api.Orders`, not `Shop.Orders`).
+  const expandedParentOf = new Map<string, string>();
+  for (const frame of viewSlice.expandedFrames) {
+    for (const memberId of frame.memberIds) expandedParentOf.set(memberId, frame.containerId);
+  }
+  const canvasPathOf = (nid: string): string[] => {
+    const expandedParent = expandedParentOf.get(nid);
+    return expandedParent !== undefined ? [...scopePath, expandedParent, nid] : [...scopePath, nid];
+  };
   // ownerIndex is keyed by full path (#2548): a real canvas node's path is
-  // the canvas scope plus its id. The ghost placers below keep the raw
-  // `ownerOf` — their qualified ids are already full paths. Synthetic ids
-  // (collapse / category stubs) simply miss the index, exactly as before.
-  const canvasOwnerOf: OwnerResolver = (kind, nid) =>
-    ownerOf(kind, nodePathKey([...scopePath, nid]));
+  // the canvas scope plus its id (plus the expanded service for a spliced
+  // domain). The ghost placers below keep the raw `ownerOf` — their qualified
+  // ids are already full paths. Synthetic ids (collapse / category stubs)
+  // simply miss the index, exactly as before.
+  const canvasOwnerOf: OwnerResolver = (kind, nid) => ownerOf(kind, nodePathKey(canvasPathOf(nid)));
 
   // Category collapse (#1821): fold external/infra tiers to a `⊕ N` stub and
   // **re-target** their boundary-crossing edges onto the stub (so "who depends
@@ -661,16 +672,8 @@ function layoutInner(
   });
   childMaxWidth = placed.childMaxWidth;
   childMaxHeight = placed.childMaxHeight;
-  // A domain spliced onto this canvas by in-place expansion (#1921) sits under
-  // its expanded service, not directly under the canvas scope, so its path
-  // carries that service (#2917: `Shop.Api.Orders`, not `Shop.Orders`).
-  const expandedParentOf = new Map<string, string>();
-  for (const frame of viewSlice.expandedFrames) {
-    for (const memberId of frame.memberIds) expandedParentOf.set(memberId, frame.containerId);
-  }
   for (const [nid, box] of placed.placements) {
     const krsNode = nodeMap.get(nid)!;
-    const expandedParent = expandedParentOf.get(nid);
     layoutNodes.set(
       nid,
       makeLayoutNode(krsNode, nid, {
@@ -681,11 +684,9 @@ function layoutInner(
         y: box.y,
         width: box.width,
         height: box.height,
-        // The node's full path, which `data-node-path` carries (#2917): the
-        // canvas scope plus the id, with the expanded service in between for
-        // a spliced domain.
-        path:
-          expandedParent !== undefined ? [...scopePath, expandedParent, nid] : [...scopePath, nid],
+        // The node's full path, which `data-node-path` carries (#2917); the
+        // same path the owner lookup above resolves.
+        path: canvasPathOf(nid),
       }),
     );
   }
