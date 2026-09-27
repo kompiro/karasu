@@ -29,7 +29,7 @@ permissions:
 
 jobs:
   check:
-    name: Check
+    name: Follow-ups have an Issue
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 5
