@@ -1,14 +1,14 @@
 # 月次リリーストレイン
 
-- **日付**: 2026-09-27
+- **日付**: 2026-09-27（2026-09-28 改訂: #2939 の完了と independent versioning の維持を反映）
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#2922](https://github.com/kompiro/karasu/issues/2922)
-  - 先行 Issue: [#2939](https://github.com/kompiro/karasu/issues/2939)（git tag / GitHub Release。本件より先に着地させる）
+  - 先行 Issue: [#2939](https://github.com/kompiro/karasu/issues/2939)（git tag / GitHub Release。完了、[ADR-2939](../adr/2939-release-record-tags-and-github-release.md)）
   - 分離した Issue: [#2940](https://github.com/kompiro/karasu/issues/2940)（拡張の週次 pre-release）
   - PR: [#2923](https://github.com/kompiro/karasu/pull/2923)
   - 直前のリリース: [#2921](https://github.com/kompiro/karasu/pull/2921)（karasu 0.7.0 / @karasu-tools/core 0.3.0 / karasu-vscode 0.2.0）
-  - 関連 ADR: [ADR-1370](../adr/1370-release-flow-actions-driven.md)（Prepare → release PR → マージで publish）、[ADR-1316](../adr/1316-vscode-marketplace-publish.md)（Marketplace publish は手動 `workflow_dispatch`）、[ADR-1758](../adr/1758-vscode-changeset-versioning.md)（拡張を changesets の版管理に載せ、Marketplace publish の自動発火を却下）
+  - 関連 ADR: [ADR-1370](../adr/1370-release-flow-actions-driven.md)（Prepare → release PR → マージで publish）、[ADR-1316](../adr/1316-vscode-marketplace-publish.md)（Marketplace publish は手動 `workflow_dispatch`）、[ADR-1758](../adr/1758-vscode-changeset-versioning.md)（拡張を changesets の版管理に載せ、Marketplace publish の自動発火を却下）、[ADR-2939](../adr/2939-release-record-tags-and-github-release.md)（パッケージのタグと `release-YYYY-MM-DD` の GitHub Release）
   - 関連 TPL: [TPL-2786](../test-perspectives/TPL-2786-guard-failure-must-fail-the-run.md)（判定不能は通過ではなく失敗として扱う）
   - コード: `.github/workflows/release-prepare.yml`, `.github/workflows/release.yml`, `.github/workflows/vscode-release.yml`
 
@@ -30,10 +30,11 @@
 | --- | --- |
 | `release-prepare.yml` | `workflow_dispatch` のみ。`changeset version` → `chore/release-<karasu version>` を push。pending changeset が無ければ no-op。`permissions: contents: write` |
 | release PR | Actions は PR を作れない（#1370）。人が「Compare & pull request」で開く。人が開くことで必須チェックが走る |
-| `release.yml` | `push: main` + `paths: packages/**/CHANGELOG.md` で発火し、`changeset publish` で npm に公開（OIDC） |
-| `vscode-release.yml` | `workflow_dispatch` のみ（`pre_release` input）。`packages/vscode/package.json` の version を Marketplace へ publish。Entra ID + GitHub OIDC |
+| `release.yml` | `push: main` + `paths: packages/**/CHANGELOG.md` で発火し、`changeset publish` で npm に公開（OIDC）。続く `record` ジョブが公開できたパッケージのタグを push し、`release-YYYY-MM-DD` の GitHub Release を作る（ADR-2939） |
+| `vscode-release.yml` | `workflow_dispatch` のみ（`pre_release` input）。拡張の現在の版を設定したコミット（リリースコミット）からビルドし、Marketplace へ publish（Entra ID + GitHub OIDC）。成功したら `record` ジョブが `karasu-vscode@X.Y.Z` を打ち、同じコミットの Release に拡張の節を加える（ADR-2939） |
 | 月次 Issue の先例 | `tpl-review.yml` が `schedule` + `issues: write` + `gh issue create` で毎月 Issue を立てている |
-| git tag | `changeset publish` は runner 上でタグを作るが push していない。リリースのタグは repo に残っていない |
+| リリースの記録 | パッケージのタグ `<name>@<version>` と GitHub Release `release-YYYY-MM-DD` が公開の成功後に自動でできる。2 つの workflow の `record` ジョブは concurrency グループ `release-record` で直列。過去 6 回分も後付け済み（ADR-2939） |
+| 版の管理 | パッケージごとに独立（ADR-1315 / ADR-1758 を維持。lockstep 化の [#2936](https://github.com/kompiro/karasu/issues/2936) は採らなかった）。リリースで CLI が上がるとは限らない |
 
 ## 制約・前提
 
@@ -42,7 +43,8 @@
 - **マージは人が行う**。CHANGELOG を読んでからマージする関門を残す（promotion gate の確認もここで行う — ADR-1820）。
 - **GitHub の cron は「最終日曜」を直接書けない**。さらに day-of-month と day-of-week を両方指定すると **OR** で評価される（`0 0 22-31 * 0` は「22〜31 日」**または**「日曜」になる）。
 - **Marketplace の認証は federated credential の subject `repo:kompiro/karasu:ref:refs/heads/main` に依存する**（ADR-1316）。呼び出し方を変えても、この subject で OIDC トークンが出ることを確かめる必要がある。
-- out of scope: リリースの**マージ**の自動化。git tag / GitHub Release の作成は [#2939](https://github.com/kompiro/karasu/issues/2939)、拡張の pre-release チャネルは [#2940](https://github.com/kompiro/karasu/issues/2940) で扱う（「別 Issue で扱うこと」参照）。
+- **リリースブランチ名に CLI の版を使えない**。今の Prepare は `chore/release-<karasu の版>` を作るが、版は独立しているので、CLI が上がらない月は前回と同じ名前になる（前回のブランチが残っていれば push が衝突する）。
+- out of scope: リリースの**マージ**の自動化。拡張の pre-release チャネルは [#2940](https://github.com/kompiro/karasu/issues/2940) で扱う（「別 Issue で扱うこと」参照）。
 
 ## 検討した選択肢
 
@@ -75,11 +77,15 @@ fi
 
 Prepare がブランチを push したあと、同じジョブで Issue を立てる（`permissions` に `issues: write` を足す）。Issue には次を載せる:
 
-- PR を開くための compare リンク（`https://github.com/kompiro/karasu/compare/main...chore/release-<version>?expand=1`）
-- 各パッケージの版（前 → 後）
+- PR を開くための compare リンク（`https://github.com/kompiro/karasu/compare/main...chore/release-<date>?expand=1`）
+- 各パッケージの版（前 → 後）。上がらないパッケージは載せない
 - チェックリスト: PR を開く / 版と `CHANGELOG.md` を読む / promotion gate の確認 / squash マージ / npm と Marketplace に出たことを確認する
 
 ラベルは新設の `release` を付ける。pending changeset が無い月は、ブランチも Issue も作らない（ノイズを増やさない）。
+
+リリースブランチ名は `chore/release-YYYY-MM-DD`（Prepare を実行した日の UTC 日付）にする。Release のタグ `release-YYYY-MM-DD`（ADR-2939）と同じく日付で名付けるので、どのパッケージが上がっても同じ規則で付き、CLI が上がらない月に前回のブランチと衝突しない。同じ日に 2 回目の Prepare が走っても、前のトレインが open なら C1 で止まり、マージ済みならブランチは自動削除（`delete_branch_on_merge`）で消えている。マージせずに Issue だけ閉じてブランチが残っていた場合は push が衝突してジョブが失敗し、黙って上書きはしない。
+
+トラッキング Issue は、そのトレインの公開と記録が済んだ時点で自動で閉じる。`release.yml` の最後のジョブ（拡張の `record` の後）が、open な `release` ラベルの Issue に Release へのリンクをコメントして閉じる。「open な `release` Issue がある = トレインが終わっていない」という C1 の判定と対になる。
 
 #### B2: Actions に PR を作らせる
 
@@ -104,9 +110,10 @@ Prepare の最初に、open な `release` ラベルの Issue を探す。見つ�
 
 #### D1: `vscode-release.yml` を reusable workflow にして `release.yml` から呼ぶ（採用）
 
-- `vscode-release.yml` に `on: workflow_call`（`pre_release` input）を足す。`workflow_dispatch` は手動の再実行用に残す。
+- `vscode-release.yml` に `on: workflow_call`（`pre_release` input）を足す。`workflow_dispatch` は手動の再実行用に残す。呼ばれた側の 2 ジョブ（公開と `record`）がそのまま動く。リリースコミットからビルドする仕組み（ADR-2939）は、トレインでは HEAD がリリースコミットなので同じコミットを指す。
 - `vscode-release.yml` の先頭に「**Marketplace の最新版と `package.json` の version が同じなら公開しない**」ガードを入れる（`vsce show karasu-tools.karasu-vscode --json`）。`changeset publish` が「npm に無い版だけ出す」のと同じ冪等性を持たせる。**`vsce show` が失敗したら公開を飛ばすのではなくジョブを失敗させる**（TPL-2786）。
-- `release.yml` に npm 公開ジョブのあとで走る `vscode` ジョブを足し、`uses: ./.github/workflows/vscode-release.yml` で呼ぶ。呼び出し側のジョブに `id-token: write` を与える。
+- `release.yml` に npm 公開ジョブのあとで走る `vscode` ジョブを足し、`uses: ./.github/workflows/vscode-release.yml` で呼ぶ。呼ばれた側の各ジョブが必要とする権限の上限（`contents: write`、`id-token: write`）を、呼び出し側のジョブに与える。
+- npm の公開が一部失敗しても、拡張の公開は止めない（拡張は npm に依存しない）。npm の `record` と拡張の `record` は `release-record` で直列になり、同じ Release に集まる。
 
 リリース PR のマージから npm → Marketplace が 1 回の run で順に走る。拡張の版が上がっていない月は、ガードで no-op になる。
 
@@ -141,20 +148,23 @@ ADR-1758 は Marketplace 公開の自動発火を「リリース PR マージの
    - `on.schedule: - cron: "0 0 * * 0"` を足す（`workflow_dispatch` は残す）。
    - `github.event_name == 'schedule'` のときだけ最終日曜判定（A1）を行う。
    - open な `release` Issue があれば、コメントしてジョブを失敗させる（C1）。
-   - 既存の version → push の後、トラッキング Issue を作る（B1）。`permissions` に `issues: write`。
-   - 版の一覧は `changeset status --output` を version 前に取るか、version 後の各 `package.json` と main の差分から作る。
+   - ブランチ名を `chore/release-YYYY-MM-DD` にし、commit subject も版ではなく上がったパッケージの一覧にする。
+   - version → push の後、トラッキング Issue を作る（B1）。`permissions` に `issues: write`。
+   - 版の一覧は、version 前後の各 `package.json` を比べて作る（上がったパッケージだけ）。
 2. `vscode-release.yml`
    - `on.workflow_call`（`pre_release` input）を足す。
    - 「Marketplace 最新版 = `package.json` の version なら skip、`vsce show` 失敗なら fail」のガードを publish の前に入れる。
 3. `release.yml`
-   - npm 公開ジョブの後に `vscode` ジョブ（`needs: release`、`uses: ./.github/workflows/vscode-release.yml`、`permissions: contents: read, id-token: write`）を足す。
+   - npm 公開ジョブの後に `vscode` ジョブ（`uses: ./.github/workflows/vscode-release.yml`、`permissions: contents: write, id-token: write`）を足す。
+   - 最後に、open な `release` Issue に Release へのリンクをコメントして閉じるジョブを足す（`issues: write`）。
 4. `release` ラベルを作る（`gh label create release`）。
 5. `docs/release.md` の「リリースの流れ」「VS Code 拡張のリリース」を月次トレインの手順に書き換える。「拡張は CLI とは独立した cadence で出す」の注記を消す。各 workflow の header コメントも合わせる。
 6. AT（人が確認するもの）:
    - 最初の最終日曜（2026-10-25）に、スケジュール起動でブランチとトラッキング Issue ができる。
    - その Issue のリンクから PR を開いてマージすると、npm 公開に続いて Marketplace 公開が同じ run で成功する（OIDC が reusable workflow 経由でも通る）。
+   - 同じ run の最後に、`release-YYYY-MM-DD` の Release に全パッケージが載り、トラッキング Issue がそのリンク付きで閉じる。
    - 最終日曜でない日曜の実行が「skipping」で終わる。
-7. ADR 昇格: 実装完了後に `docs/adr/2922-monthly-release-train.md` として昇格し、本 Design Doc は同 PR で削除する。ADR-1370 / ADR-1316 / ADR-1758 への更新関係を frontmatter と本文に書く。
+7. ADR 昇格: 実装完了後に `docs/adr/2922-monthly-release-train.md` として昇格し、本 Design Doc は同 PR で削除する。ADR-1370 / ADR-1316 / ADR-1758 / ADR-2939 への関係を frontmatter と本文に書く。
 
 ### 影響範囲・マイグレーション
 
@@ -164,5 +174,4 @@ ADR-1758 は Marketplace 公開の自動発火を「リリース PR マージの
 
 ## 別 Issue で扱うこと
 
-- **git tag / GitHub Release（[#2939](https://github.com/kompiro/karasu/issues/2939)）**: `changeset publish` が作るタグは push されておらず、これまでのリリースは 1 つも repo に記録が残っていない。本トレインより**先に**着地させ、最初のトレインから記録が残るようにする。過去の版のタグの後付けもこの Issue で行う。本トレインの実装は、#2939 が決めたタグと Release の作り方の上に載せる。
 - **拡張の pre-release チャネル（[#2940](https://github.com/kompiro/karasu/issues/2940)）**: 月次トレインとは別に、週次で pre-release を出す。Marketplace は semver の pre-release 接尾辞を受け付けず、changesets が持つ stable の版との共存を別途設計する必要があるため、本件には含めない。`vscode-release.yml` の `pre_release` input は残す。
