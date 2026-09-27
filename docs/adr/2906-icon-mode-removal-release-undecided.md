@@ -33,6 +33,7 @@ assumptions:
   - 覆す ADR: [ADR-2376](2376-icon-display-mode-de-emphasis-and-removal-path.md)（icon mode の removal path。本 ADR はその「告知と削除の順序」のステップ 2 と告知先を差し替え、残りを引き継ぐ）
   - 移行先: [#2696](https://github.com/kompiro/karasu/issues/2696) / PR [#2797](https://github.com/kompiro/karasu/pull/2797)（shape mode の `shape: url()` にカード枠と比率保持を入れた。2026-09-13 にマージ済み）、[AT-2696](../acceptance/2696-shape-mode-external-icon-card.md)
   - 告知の文面を持つ README の再構成: PR [#2905](https://github.com/kompiro/karasu/pull/2905)
+  - 旧文面を載せた release: PR [#2921](https://github.com/kompiro/karasu/pull/2921)（karasu 0.7.0 / `@karasu-tools/core` 0.3.0）
   - [ADR-30](30-icon-mode.md)（icon mode の導入）、[ADR-299](299-vscode-icon-mode-toggle.md)（VS Code のトグル）、[ADR-1000](1000-icon-mode-layout-gap-tuning.md)（icon mode 専用の gap 定数）
   - [ADR-2802](2802-builtin-icon-registration.md) / [ADR-2803](2803-slotted-icon-card-text.md)（移行先 `shape: url()` の後続整備。どちらも ADR-2376 の投資凍結を前提にしている）
   - TPL: [TPL-2175](../test-perspectives/TPL-2175-deprecation-announced-only-with-a-migration-target.md)（告知は移行先と同じ release に置く）
@@ -49,7 +50,9 @@ removal path に載せ、次の順序を決めた。
 
 ステップ 1 は #2696（PR #2797）で実施された。`docs/tools/app.md` / `app.ja.md` と
 changeset `shape-mode-external-icon-card` は「非推奨であり、次の major で削除する」と書いた。
-ただし changeset はまだ release されておらず、この文面は release notes には出ていない。
+この changeset は PR #2921 の release（karasu 0.7.0 / `@karasu-tools/core` 0.3.0）で
+消費され、「次の major で削除する」という文面は両パッケージの `CHANGELOG.md` と
+release notes に載った。
 
 再評価に至った変化は 1 つである。**次の major（v2）に何を入れるかが決まっていない。**
 ADR-2376 を書いた時点では「次の major」を削除の置き場所として扱ったが、中身の決まって
@@ -73,6 +76,8 @@ ADR-2376 から変えるもの:
 - **ステップ 2**: 「次の major で削除する」を取り下げる。告知の文面は「将来の major で
   削除する。どの release かは未定」とする。
 - **告知先**: `docs/tools/app.md` / `docs/tools/app.ja.md` と changeset に置く。
+  0.7.0 / 0.3.0 の release notes に出た旧文面は書き換えず、訂正の changeset
+  （`icon-mode-removal-release-undecided`）を足して次の release notes で取り消す。
   `README.md` は告知先から外す。PR #2905 で README は初回利用者の入口に絞られ、
   機能の一覧を持たなくなったため、機能ごとの状態を書く場所ではなくなった。
 
@@ -86,18 +91,22 @@ ADR-2376 から変えるもの:
   告知とは別の約束であり、決まってから書けばよい。
 - **投資凍結の実利は削除日に依存しない。** icon mode 固有の不具合を毎回判断し直さなくて
   よいという ADR-2376 の利点は、ステップ 3 を引き継ぐことで保たれる。
-- **文面を直すコストが今は小さい。** 「次の major」の文面は changeset としてまだ release
-  されていないので、release notes に出る前に直せる。
+- **約束は早く取り消すほど影響が小さい。** 「次の major」の文面はすでに 0.7.0 / 0.3.0 の
+  release notes に出ているが、次の major はまだ始まっていない。この段階で取り消せば、
+  削除を前提に計画を立てる利用者が増える前に訂正が届く。
 
 ### この決定の代償
 
+- **公開済みの release notes に取り消す文面が残る。** `CHANGELOG.md` は過去の release の
+  記録なので 0.7.0 / 0.3.0 の項は書き換えない。訂正は次の release notes に載るまで
+  利用者に届かず、それまでは docs と release notes が食い違う。
 - **非推奨の期間が延び、期限が見えない。** 削除日が無いと移行を急ぐ理由が弱く、
   利用者が移行を先送りしやすい。
 - **`displayMode` 分岐の保守が続く。** ADR-2376 が数えた core / app / vscode / nest の
   分岐と、icon mode 専用の gap 定数系統（[ADR-1000](1000-icon-mode-layout-gap-tuning.md)）を、
   削除 release が決まるまで維持する。新しいレンダラー機能も icon mode の経路を考慮し続ける。
 
-この 2 つを受け入れるのは、中身の決まっていない release に破壊的変更を約束するほうが、
+これらを受け入れるのは、中身の決まっていない release に破壊的変更を約束するほうが、
 後で約束を破る形になりやすく、非推奨の告知そのものの信頼を下げるからである。
 
 ## 却下した案
