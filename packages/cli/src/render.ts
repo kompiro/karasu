@@ -5,7 +5,6 @@ import {
   compileProject,
   extractCrudMatrix,
   renderMatrixAsSvg,
-  warningSeverity,
 } from "@karasu-tools/core";
 import type {
   DiagramType,
@@ -14,8 +13,8 @@ import type {
   DrawioViewSelection,
   Warning,
 } from "@karasu-tools/core";
-import { formatDiagnostic, formatWarning } from "./i18n.js";
-import { diagLocFormatter, resolveKrsFileOrExit } from "./compile-system-view.js";
+import { resolveKrsFileOrExit } from "./compile-system-view.js";
+import { reportDiagnostics } from "./report-diagnostics.js";
 import { writeOutput } from "./output.js";
 
 type RenderFormat = "svg" | "drawio";
@@ -74,43 +73,7 @@ export async function render(filePath: string, options: RenderOptions): Promise<
     warnings = result.warnings;
   }
 
-  const errors = diagnostics.filter((d) => d.severity === "error");
-  const diagWarnings = diagnostics.filter((d) => d.severity === "warning");
-  const diagInfos = diagnostics.filter((d) => d.severity === "info");
-
-  const locOf = diagLocFormatter(filePath);
-  function printDiagnostics(prefix: string, list: Diagnostic[]): void {
-    for (const d of list) {
-      process.stderr.write(`${prefix}: ${locOf(d)}: ${formatDiagnostic(d)}\n`);
-    }
-  }
-
-  const severityGroups: [string, Diagnostic[]][] = [
-    ["Error", errors],
-    ["Warning", diagWarnings],
-    // Info-severity parser diagnostics (e.g. duplicate-owner-assignment) honour
-    // their register with an `Info:` prefix — mirroring the info-warning loop
-    // below — instead of being dropped (ADR-1566 / ADR-1386).
-    ["Info", diagInfos],
-  ];
-  for (const [prefix, list] of severityGroups) {
-    printDiagnostics(prefix, list);
-  }
-  for (const w of warnings) {
-    // Honour the warning's register: info-severity kinds (e.g.
-    // domain-dispersal) print as `Info:`, not `Warning:` — see
-    // ADR-1386.
-    const prefix = warningSeverity(w.kind) === "info" ? "Info" : "Warning";
-    // A warning that carries a position prints it the way the diagnostics
-    // above do (#2802). The spec's location table names the surface, not the
-    // channel, so dropping a `loc` here reported a style sheet's line number
-    // to nobody. A warning without one keeps the bare message rather than
-    // borrowing the entry's path, which would name a file it did not mean.
-    const where = w.loc ? `${locOf(w)}: ` : "";
-    process.stderr.write(`${prefix}: ${where}${formatWarning(w).message}\n`);
-  }
-
-  if (errors.length > 0) {
+  if (reportDiagnostics(filePath, diagnostics, warnings) > 0) {
     process.exit(1);
   }
 

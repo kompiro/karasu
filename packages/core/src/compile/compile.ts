@@ -1137,7 +1137,19 @@ export async function buildAllViewsSvgProject(
   );
   return {
     svg: result.svg,
-    diagnostics: [...resolved.diagnostics, ...result.diagnostics],
+    // Project-wide edge id uniqueness, as the per-view pipeline
+    // (`_compileFromPreparedInput`) raises it. Without it a default
+    // `karasu render` / `karasu check` accepted a model that
+    // `karasu render --view system` rejects (#2911). Added here, on the
+    // project entry point the CLI uses, and deliberately not inside
+    // `buildAllViewsSvg`: karasu-nest's gallery and the app's share render call
+    // that one and treat `duplicate-edge-id` as the author's quality call, not a
+    // reason to refuse a document (packages/nest/src/gallery/validate.ts).
+    diagnostics: [
+      ...resolved.diagnostics,
+      ...validateProjectEdgeIdUniqueness(resolved.krsFile),
+      ...result.diagnostics,
+    ],
     warnings: result.warnings,
   };
 }

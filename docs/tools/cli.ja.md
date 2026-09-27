@@ -117,6 +117,7 @@ CI ステップの成否判定に使えます。すぐ使える GitHub Actions �
 | --- | --- |
 | `serve [dir]` | ディレクトリの `.krs` をライブプレビュー付きで配信 |
 | `render <file>` | `.krs` を SVG または draw.io にレンダリング |
+| `check <file>` | 何も書き出さずに `.krs` プロジェクトを検証し、error が 1 つでもあれば終了コード `1`。`render` と同じコンパイルを通すので、通ったファイルは描画できる。`fmt` より先に実行する（`fmt` はパースできないファイルを位置を示さずに拒否する） |
 | `matrix <file>` | ユースケース × リソースの CRUD マトリクスを出力（`md` / `csv` / `svg`） |
 | `team-dependencies <file>` | `owns` × 論理エッジからチーム間の依存と、囲みを跨ぐ所有を導出して出力（`md` / `csv`） |
 | `fmt [files...]` | `.krs` を in-place でフォーマット（CI 用 `--check`、パイプ用 `--stdin`） |

@@ -26,6 +26,9 @@ karasu translate k8s-deployment.yaml
 # Apply / append / insert / remove nodes in a .krs file (stdin-driven editing)
 cat fragment.krs | karasu apply system.krs
 
+# Validate a .krs project without writing anything (exit 1 on errors)
+karasu check system.krs
+
 # Format, lint styles, diff, or build a coverage matrix
 karasu fmt system.krs
 karasu lint-style system.krs.style
