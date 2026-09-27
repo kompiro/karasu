@@ -4,9 +4,9 @@
 - **ステータス**: 検討中（2026-09-27 論点 1 を改訂）
 - **関連**:
   - 引き金 Issue: [#2901](https://github.com/kompiro/karasu/issues/2901)（#638 を置き換え）
-  - 改訂: 2026-09-27 配布方針を案 1-C から案 1-D（skills パッケージ + plugin marketplace + `karasu skill install` の組み合わせ）に改めた。[#2901 のコメント](https://github.com/kompiro/karasu/issues/2901#issuecomment-5853291677)と後続の議論による
+  - 改訂: 2026-09-27 配布方針を案 1-C から案 1-D（skills パッケージ + plugin marketplace + `karasu skill install` の組み合わせ）に改めた。[#2901 のコメント](https://github.com/kompiro/karasu/issues/2901#issuecomment-5853291677)（別 repo 案。後続のコメントで karasu repo 内に改めた）と後続の議論による
   - 方針の出典: [keystone PRD 追記 2026-09-26](../prd/keystone-primary-path.md#追記-2026-09-26-ai-authoring-の経路)
-  - 関連 ADR: [ADR-1895](../adr/1895-reverse-architecture-harness.md)（reverse-architecture harness）/ [ADR-1084](../adr/1084-skills-plugin-portability.md)（portable skill は hane plugin へ）/ [ADR-420](../adr/420-chat-ui-phase3-structured-interview.md)（Chat のレベル別インタビュー）
+  - 関連 ADR: [ADR-2936](../adr/2936-lockstep-package-versioning.md)（全パッケージを同じ版に揃える。案 1-D の前提）/ [ADR-1363](../adr/1363-publish-core-package.md)（CLI はバンドルを維持。案 1-D はコンテンツの依存だけ例外にする）/ [ADR-1895](../adr/1895-reverse-architecture-harness.md)（reverse-architecture harness）/ [ADR-1084](../adr/1084-skills-plugin-portability.md)（portable skill は hane plugin へ）/ [ADR-420](../adr/420-chat-ui-phase3-structured-interview.md)（Chat のレベル別インタビュー）
   - 関連 TPL: [TPL-2084](../test-perspectives/TPL-2084-skill-cli-command-refs-drift.md)（skill ↔ CLI コマンド名 drift）
   - 関連 TPL（案 1-D で追加）: [TPL-1681](../test-perspectives/TPL-1681-publishable-tarball-completeness.md)（publish する tarball に `skills/` / `.claude-plugin/` / `reference/` が揃っているか）/ [TPL-1024](../test-perspectives/TPL-1024-dev-vs-packaged-mode-parity.md)（repo 内の symlink 経由の開発と、npm から入れた plugin で挙動が揃うか）
   - 先行 Issue: [#2574](https://github.com/kompiro/karasu/issues/2574)（reference bundle）/ [#2093](https://github.com/kompiro/karasu/issues/2093)（skill-cli-refs guard）/ [#2084](https://github.com/kompiro/karasu/issues/2084)（`lint-style` を検証に使った事故）
@@ -21,7 +21,7 @@ AI authoring の primary path は「利用者自身のエージェントセッ�
 
 加えて、この設計の調査中に **CLI 自身の `--help` が不正な構文を教えている** ことが分かった。`append` / `apply` / `insert` の Examples は `service NewService { label: "New Service" }` と書くが、パーサは `label: "…"` を受け付けない（`Expected string literal after "label"`）。authoring skill は CLI を駆動するエージェントに `--help` を読ませる経路そのものなので、これは skill の前提を壊す。
 
-reverse-architecture との役割分担は PRD の通り: reverse は「知らないシステムを**読む**」、本 skill は「自分のシステムを**残す**」。reverse の再配布ではない。
+reverse-architecture との役割分担は PRD の通り: reverse は「知らないシステムを**読む**」、本 skill は「自分のシステムを**残す**」。本 skill は reverse の焼き直しではなく、別の役割を持つ新しい skill である（配布の仕組みは 2026-09-27 の改訂で reverse と共通にした。案 1-D 参照）。
 
 ## 現状（インベントリ）
 
@@ -105,11 +105,12 @@ packages/skills/
 
 **バージョンの揃え方**:
 
-- 公開側: changesets の `fixed` に `karasu` と `karasu-skills` を入れ、常に同じバージョンで同時に publish する。CLI は `karasu-skills` を `workspace:*` で依存し、publish 時に正確なバージョンへ書き換わるので、`npx karasu@<ver>` は必ず同じ `<ver>` の skill を持つ。
+- 公開側: `karasu-skills` を changesets の `fixed` グループに加え、`karasu` / `@karasu-tools/core` / `karasu-vscode` と常に同じバージョンで同時に publish する。全パッケージを同じ版に揃える方針は [ADR-2936](../adr/2936-lockstep-package-versioning.md)（ADR-1758 を supersede し、ADR-1315 の independent versioning を覆した）で決めた。CLI は `karasu-skills` を `workspace:*` で依存し、publish 時に正確なバージョンへ書き換わるので、`npx karasu@<ver>` は必ず同じ `<ver>` の skill を持つ。
+- CLI からの読み方: 今の CLI は `@karasu-tools/core` などを esbuild で `dist/index.js` に内包し、tarball には `dist/index.js` と `THIRD_PARTY_NOTICES.md` しか載せない（`packaging.test.ts` が固定）。`karasu-skills` は Markdown と JSON なのでバンドルできない。そこで CLI の `package.json` の `dependencies`（devDependencies ではない）に `karasu-skills` を置き、esbuild では external にし、`skill install` は実行時に `import.meta.resolve("karasu-skills/package.json")` などで `node_modules` 内のパッケージの場所を解決してファイルを複写する。これは [ADR-1363](../adr/1363-publish-core-package.md) の「CLI は公開 core に依存せずバンドルを維持する（可動部を減らす）」に対する例外になる。バンドルできないコンテンツを運ぶ依存は `karasu-skills` だけに限り、コードの依存は引き続きバンドルする。実装時（C2）に `packaging.test.ts` の期待値を `dependencies` を含む形へ更新し、ADR-1363 との関係を ADR 昇格時に記録する。
 - 利用者側: plugin と CLI は別々に入るので、手元で一致する保証はない。1-C の「更新の契約」を両経路に共通で適用する。pack 時（`prepack`）に各 SKILL.md の front matter へ `karasu-version: <ver>` を刻み、skill はセッション開始時に `karasu --version` と照合する。食い違えば作業に入る前に利用者へ知らせる（plugin 経路なら plugin の更新か CLI の更新、`skill install` 経路なら再実行を促す）。repo 内の正本には値が入っておらず、照合は「karasu repo 内で開発中」として飛ばす。
 - marketplace entry には `version` を書かず、最新の `karasu-skills` を追う。release のたびに `marketplace.json` を書き換えずに済み、利用者の CLI が古い場合は上の照合が拾う。
 
-**karasu repo 内での開発**: reverse-architecture は今も karasu 開発者自身が使うので、`.claude/skills/reverse-architecture` は skills パッケージ内の実体を指す symlink として残す。drift guard（`skill-cli-refs` / `skill-reference-bundle-sync` / `krs-fences`、`reverse-skill-adr-sync.test.ts`）と `reference-docs-check.yml` / lefthook の path filter は、実体のある skills パッケージ側を見るように付け替える（symlink 越しの走査に頼らない）。
+**karasu repo 内での開発**: reverse-architecture は今も karasu 開発者自身が使うので、`.claude/skills/reverse-architecture` は skills パッケージ内の実体を指す symlink として残す。drift guard（`skill-cli-refs` / `skill-reference-bundle-sync` / `krs-fences`、`reverse-skill-adr-sync.test.ts`）と `reference-docs-check.yml` / lefthook の path filter は、実体のある skills パッケージ側を見るように付け替える。スクリプト自体は symlink をたどれるので読み取りは壊れないが、CI と lefthook の path filter（`.claude/skills/reverse-architecture/**`）は実体側のファイルの変更では起動しない。検査対象と起動条件を実体に揃えないと、skill を直した PR でガードが走らない。
 
 **メリット**: 1-B（Claude Code 利用者は `/plugin` で入れて更新を受け取れる）と 1-C（エージェント非依存、公開時の version lock）の両方が取れる。正本は 1 か所で、drift guard は karasu の CI に残る。reverse-architecture も同じ経路に乗り、手コピー問題が消える。
 
