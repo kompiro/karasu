@@ -94,7 +94,7 @@ id をビューをまたいで手渡す導線を足す / 触るとき:
 - **突き合わせ用の id を要素に載せる**: `DeployContainer.nodeId`（ADR-2714 で core に
   導入）を deploy コンテナの `<g>` に `data-realized-node-id` として出し、両方向とも
   ノードの bare id で手渡す（#2818 の設計、
-  `docs/design/cross-navigation-highlight-id-space.md` → ADR 昇格予定）
+  [ADR-2818](../adr/2818-cross-navigation-highlight-id-space.md)）
 - **受け手はビューごとに 1 属性を引く**: system / org は `data-node-id`、deploy は
   `data-realized-node-id`。fallback chain を持たない
 - **突き合わせできない要素は、光らせない**: `nodeId` を持たないコンテナ（bare id が
@@ -103,12 +103,26 @@ id をビューをまたいで手渡す導線を足す / 触るとき:
 
 ## 関連テスト
 
+- `packages/core/src/renderer/deploy-renderer.test.ts` › `realized node ids in the SVG (#2818)`
+  — 突き合わせ用の属性 `data-realized-node-id` の fence（引用符付き / 素の id / 修飾と
+  絞り込み参照では無い / synthetic container には付かない）。identity 側の fence は隣の
+  `container ids in the SVG (#2714)`
 - `packages/core/src/compile/deploy-affordance-node-id.test.ts` — D ボタンがコンテナ id
   ではなく `nodeId` で点く（#2714 の AT-K / AT-L）
-- `packages/core/src/renderer/deploy-renderer.test.ts` › `container ids in the SVG (#2714)`
-  — identity 側の属性の fence。突き合わせ側の属性の fence は #2818 の実装 PR で隣に置く
-- `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `Clicking a deploy
-container switches to System with the realizes target highlighted` — 素の id の導線。
-  修飾・引用符付きの id の導線は #2818 の実装 PR で足す
-- `packages/app/src/components/PreviewPane.test.tsx` › `highlightedNodeId` — 受け手の
-  lookup。ビューごとの属性に分ける変更も同じ describe に置く
+- `packages/app/src/components/PreviewPane.test.tsx` › `onClearHighlight` — 手渡す側:
+  realized id を渡す / 属性が無ければ `null`。› `highlightedNodeId` — 受け手: ペインに
+  渡された 1 属性だけを引き、同じ綴りの unclassified unit に横取りさせない、
+  `data-container-id` に fall back しない
+- `packages/app/src/hooks/useCrossNavigation.test.ts` › `handleContainerClick(null)` —
+  突き合わせできないときは切替のみ
+- `packages/e2e/tests/at-2818-cross-navigation-id-space.spec.ts` — 引用符付き id の両方向、
+  修飾コンテナと絞り込み参照は切替のみ。素の id の導線は
+  `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `Clicking a deploy
+container switches to System with the realizes target highlighted`
+- `packages/vscode/src/webview-content.test.ts` › `lets a highlight message pick
+data-realized-node-id` と `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` ›
+  `AT-0042-2` — 同じ導線を持つもう 1 つの表示面（チェックリスト 5）
+- `packages/app/src/state/app-reducer.test.ts` › `carries highlightAttribute with the highlight`、
+  `packages/app/src/hooks/useHistoryNavigation.test.ts` › `restores a deploy hash highlight on
+data-realized-node-id` — 属性は手渡す側が id と一緒に state に載せる（受け手のペインの
+  種類で決めると、同じペインに複数の producer がいるときどちらかが外れる）

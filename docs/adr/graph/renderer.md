@@ -53,6 +53,7 @@ flowchart TD
     ADR_2521["ADR-2521<br/>multi-system ルートビューは single-system パイプラインの計算に合わせる"]
     ADR_2593["ADR-2593<br/>キャンバスの空き空間を目的関数にして行幅予算を選ぶ"]
     ADR_2598["ADR-2598<br/>層間チャネルに容量を持たせ、配線の需要を配置へ返す"]
+    ADR_2631["ADR-2631<br/>トランクの合流と分岐を本数で読ませ、交差マークを装飾で潰さない"]
     ADR_2714["ADR-2714<br/>deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
     ADR_2756["ADR-2756<br/>root view の各 system フレームは自分の子から導出したエッジ集合を持つ"]
     ADR_2802["ADR-2802<br/>組み込みアイコンは core が import 時に登録し、解決しない url() は値 va..."]
@@ -77,6 +78,7 @@ flowchart TD
   ADR_2120["ADR-2120<br/>[app-ui] bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改..."]
   ADR_2173["ADR-2173<br/>[parser] facet の文法と model 層 — 診断は resolver 側、カタログには載せる、m..."]
   ADR_2269["ADR-2269<br/>[styling] team フレームの色は team カードと同じセレクタで指定する — `team` / `#..."]
+  ADR_2818["ADR-2818<br/>[navigation] クロスナビゲーションのハイライトは、手渡す側が名指した 1 つの属性でノード id を突き合わせる"]
   ADR_9008["ADR-9008<br/>[parser] AST 再構成 — Discriminated Union とプロパティブロック"]
   ADR_9009["ADR-9009<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
   ADR_9011["ADR-9011<br/>[app-ui] Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
@@ -113,6 +115,7 @@ flowchart TD
   ADR_2120 --> ADR_1821
   ADR_2173 --> ADR_2065
   ADR_2269 --> ADR_1858
+  ADR_2818 --> ADR_2714
   ADR_9011 --> ADR_9007
   ADR_2906 -.supersedes.-> ADR_2376
 
@@ -169,6 +172,7 @@ flowchart TD
   class ADR_2521 accepted
   class ADR_2593 accepted
   class ADR_2598 accepted
+  class ADR_2631 accepted
   class ADR_2714 accepted
   class ADR_2756 accepted
   class ADR_2802 accepted
@@ -192,6 +196,7 @@ flowchart TD
   class ADR_2120 ghost
   class ADR_2173 ghost
   class ADR_2269 ghost
+  class ADR_2818 ghost
   class ADR_9008 ghost
   class ADR_9009 ghost
   class ADR_9011 ghost

@@ -275,3 +275,108 @@ deploy prod {
     expect(svg.match(/data-container-id="/g)).toHaveLength(3);
   });
 });
+
+// #2818: the container's identity (`data-container-id`, ADR-2714) is not the
+// id a viewer can match a node against, so the node a container realizes rides
+// along as `data-realized-node-id`. Built from source like the fence above:
+// the claim is that `DeployContainer.nodeId` reaches the DOM.
+describe("realized node ids in the SVG (#2818)", () => {
+  const renderSource = (source: string) => {
+    const file = Parser.parse(source).value;
+    const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+    return renderDeploy(slice, makeStyles());
+  };
+
+  it("carries a quoted id's bare node id, which the container id cannot spell", () => {
+    const svg = renderSource(`
+system Weird {
+  service "www.example.com" {}
+}
+deploy prod {
+  oci w { realizes "www.example.com" }
+}
+`);
+    expect(svg).toContain('data-container-id="&quot;www.example.com&quot;"');
+    expect(svg).toContain('data-realized-node-id="www.example.com"');
+  });
+
+  it("spells both attributes the same for a plain id", () => {
+    const svg = renderSource(`
+system EC {
+  service Api {}
+}
+deploy prod {
+  oci a { realizes Api }
+}
+`);
+    expect(svg).toContain('data-container-id="Api"');
+    expect(svg).toContain('data-realized-node-id="Api"');
+  });
+
+  it("omits it on qualified containers and on a narrowed ref", () => {
+    // Two containers share the bare id `Api`, so neither realizes a node the
+    // bare id names alone; `Worker` does. A narrowed ref (`Shop.Api` while an
+    // undeployed `Admin.Api` exists) is the same verdict with one container.
+    const qualified = renderSource(`
+system Shop {
+  service Api {}
+  service Worker {}
+}
+system Admin {
+  service Api {}
+}
+deploy prod {
+  oci a { realizes Shop.Api }
+  oci b { realizes Admin.Api }
+  oci w { realizes Worker }
+}
+`);
+    expect(qualified).toContain('data-container-id="Shop.Api"');
+    expect(qualified).toContain('data-container-id="Admin.Api"');
+    expect(qualified.match(/data-realized-node-id="/g)).toHaveLength(1);
+    expect(qualified).toContain('data-realized-node-id="Worker"');
+
+    const narrowed = renderSource(`
+system Shop {
+  service Api {}
+}
+system Admin {
+  service Api {}
+}
+deploy prod {
+  oci a { realizes Shop.Api }
+}
+`);
+    expect(narrowed).toContain('data-container-id="Api"');
+    expect(narrowed).not.toContain("data-realized-node-id");
+  });
+
+  it("never marks the synthetic containers", () => {
+    // The job realizes its own service so it forms a job-only container and
+    // pulls the `__job_band__` wrapper into the drawing; a job sharing `Api`
+    // with the `oci` would join that mixed container instead (#1738).
+    const svg = renderSource(`
+system EC {
+  service Api {}
+  service Cron {}
+}
+deploy prod {
+  oci a { realizes Api }
+  oci stray {}
+  job nightly { realizes Cron }
+}
+`);
+    // `__unclassified__` and `__job_band__` are drawn; only the two real
+    // containers carry a realized node. `el()` writes attributes in insertion
+    // order, so a marked wrapper would read `data-container-id="__job_band__"
+    // data-realized-node-id=…`.
+    expect(svg).toContain('data-container-id="__unclassified__"');
+    expect(svg).toContain('data-container-id="__job_band__"');
+    expect(svg).not.toMatch(
+      /data-container-id="__(unclassified|job_band)__" data-realized-node-id/,
+    );
+    expect(svg).toContain('data-realized-node-id="Api"');
+    expect(svg).toContain('data-realized-node-id="Cron"');
+    expect(svg.match(/data-realized-node-id="/g)).toHaveLength(2);
+  });
+});

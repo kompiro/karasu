@@ -123,8 +123,12 @@ export class PreviewPanel {
           this._viewType = message.viewType;
           this._drilldown = emptyDrilldownState();
           const highlightId = message.nodeId;
+          // A cross-view hand-over carries a node id; the deploy view marks
+          // that node on the container realizing it (#2818).
+          const attribute =
+            message.viewType === "deploy" ? "data-realized-node-id" : "data-node-id";
           void this._rerender()?.then(() => {
-            this.highlight(highlightId);
+            this.highlight(highlightId, attribute);
           });
         } else if (message.type === "toggleIconMode") {
           this._displayMode = this._displayMode === "icon" ? "shape" : "icon";
@@ -169,8 +173,18 @@ export class PreviewPanel {
     void this._render(document);
   }
 
-  highlight(nodeId: string | null): void {
-    void this._panel.webview.postMessage({ type: "highlight", nodeId });
+  /**
+   * Light the element that stands for `nodeId`. `attribute` names the id
+   * space the caller hands over (#2818): cursor tracking follows the source
+   * file's own ids on `data-node-id`; a jump into the deploy view hands over a
+   * node id, which the deploy view marks on the realizing container as
+   * `data-realized-node-id`.
+   */
+  highlight(
+    nodeId: string | null,
+    attribute: "data-node-id" | "data-realized-node-id" = "data-node-id",
+  ): void {
+    void this._panel.webview.postMessage({ type: "highlight", nodeId, attribute });
   }
 
   reveal(): void {

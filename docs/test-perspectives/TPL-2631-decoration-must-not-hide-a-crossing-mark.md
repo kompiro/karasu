@@ -13,7 +13,7 @@ known_consumers:
 discovered_from:
   - issue: "#2631"
   - issue: "#2884"
-  - root_cause_file: "docs/design/trunk-aggregation-legibility.md"
+  - root_cause_adr: "ADR-2631"
   - root_cause_file: "packages/core/src/renderer/svg-renderer.ts"
   - root_cause_adr: "ADR-1859"
 related_to:

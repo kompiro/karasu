@@ -289,7 +289,8 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
     [data-node-id].karasu-highlighted > rect,
     [data-node-id].karasu-highlighted > path,
     [data-node-id].karasu-highlighted > circle,
-    [data-node-id].karasu-highlighted > ellipse {
+    [data-node-id].karasu-highlighted > ellipse,
+    [data-realized-node-id].karasu-highlighted > rect {
       stroke: var(--vscode-focusBorder, #007fd4);
       stroke-width: 3;
     }
@@ -802,11 +803,14 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
     window.addEventListener('message', function(event) {
       var msg = event.data;
       if (msg.type === 'highlight') {
-        document.querySelectorAll('[data-node-id].karasu-highlighted').forEach(function(el) {
+        document.querySelectorAll('.karasu-highlighted').forEach(function(el) {
           el.classList.remove('karasu-highlighted');
         });
         if (msg.nodeId) {
-          var target = document.querySelector('[data-node-id="' + msg.nodeId + '"]');
+          // One attribute per message, named by the sender (#2818): a jump into
+          // the deploy view marks the node on the container that realizes it.
+          var attr = msg.attribute === 'data-realized-node-id' ? 'data-realized-node-id' : 'data-node-id';
+          var target = document.querySelector('[' + attr + '="' + CSS.escape(msg.nodeId) + '"]');
           if (target) {
             target.classList.add('karasu-highlighted');
             target.scrollIntoView({ block: 'nearest' });

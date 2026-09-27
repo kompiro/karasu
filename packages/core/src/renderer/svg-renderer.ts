@@ -1621,6 +1621,11 @@ function renderContainer(
     "g",
     {
       "data-container-id": container.id,
+      // The node this container stands for, in the node id space (#2818). A
+      // viewer matches a cross-navigation highlight against this, never
+      // against `data-container-id`, whose spelling is the container's
+      // identity (ADR-2714). Absent when no single node answers to the bare id.
+      "data-realized-node-id": container.realizedNodeId,
       "data-kind-band": container.kindBand,
       "data-group": container.group ? "true" : undefined,
       "data-expanded": expanded ? "true" : undefined,

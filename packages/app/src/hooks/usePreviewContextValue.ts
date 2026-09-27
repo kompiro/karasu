@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { Diagnostic, EdgeDirection, NodeMetadata } from "@karasu-tools/core";
-import type { ActiveView } from "../state/app-reducer.js";
+import type { ActiveView, HighlightAttribute } from "../state/app-reducer.js";
 import type { PreviewContextValue } from "../state/preview-context.js";
 import type { SharePayload } from "../utils/inline-share.js";
 import type { UseCrossNavigationResult } from "./useCrossNavigation.js";
@@ -13,6 +13,8 @@ interface UsePreviewContextValueArgs {
   viewPath: string[];
   selectedDeployBlockId: string | null;
   highlightedNodeId: string | null;
+  /** The attribute `highlightedNodeId` is matched against, set by its producer (#2818). */
+  highlightAttribute: HighlightAttribute;
   nodeMetadata: Map<string, NodeMetadata>;
 
   // Sliced from the `useAppViews` bundle types (#2015 point 8) instead of
@@ -113,6 +115,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
     viewPath,
     selectedDeployBlockId,
     highlightedNodeId,
+    highlightAttribute,
     nodeMetadata,
     system,
     deploy,
@@ -182,6 +185,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         expansionOverload: system.expansionOverload,
         onCollapseAllToggle: system.onCollapseAllToggle,
         highlightedNodeId,
+        highlightAttribute,
         onClearHighlight: nav.clearHighlight,
         nodeDiff: system.nodeDiff,
         systems: system.resolvedSystems,
@@ -191,6 +195,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         diagnostics: deploy.diagnostics,
         warnings: deploy.warnings,
         highlightedNodeId,
+        highlightAttribute,
         onClearHighlight: nav.clearHighlight,
         onContainerClick: nav.handleContainerClick,
       },
@@ -202,6 +207,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         warnings: org.warnings,
         onBreadcrumbNavigate: navigateViewPath,
         highlightedNodeId,
+        highlightAttribute,
         onClearHighlight: nav.clearHighlight,
         onOwnedServiceClick: nav.handleOwnedServiceClick,
       },
@@ -286,6 +292,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       breadcrumbItems,
       orgBreadcrumbItems,
       highlightedNodeId,
+      highlightAttribute,
       nodeMetadata,
       selectedDeployBlockId,
       nav,

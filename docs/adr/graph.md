@@ -261,6 +261,7 @@ flowchart TD
     ADR_1961["ADR-1961<br/>permalink を bare `/<owner>/<repo>` で配信し、`/r/` p..."]
     ADR_2249["ADR-2249<br/>permalink 面と karasu-nest の境界 — 解決は本体、生成は nest、合..."]
     ADR_2259["ADR-2259<br/>repo-backed permalink の payload 上限 — degrade せず..."]
+    ADR_2818["ADR-2818<br/>クロスナビゲーションのハイライトは、手渡す側が名指した 1 つの属性でノード id を突き合わせる"]
   end
   subgraph parser["parser"]
     ADR_7["ADR-7<br/>YAML スタイル構文移行の見送り"]
@@ -361,6 +362,7 @@ flowchart TD
     ADR_2521["ADR-2521<br/>multi-system ルートビューは single-system パイプラインの計算に合わせる"]
     ADR_2593["ADR-2593<br/>キャンバスの空き空間を目的関数にして行幅予算を選ぶ"]
     ADR_2598["ADR-2598<br/>層間チャネルに容量を持たせ、配線の需要を配置へ返す"]
+    ADR_2631["ADR-2631<br/>トランクの合流と分岐を本数で読ませ、交差マークを装飾で潰さない"]
     ADR_2714["ADR-2714<br/>deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
     ADR_2756["ADR-2756<br/>root view の各 system フレームは自分の子から導出したエッジ集合を持つ"]
     ADR_2802["ADR-2802<br/>組み込みアイコンは core が import 時に登録し、解決しない url() は値 va..."]
@@ -555,6 +557,7 @@ flowchart TD
   ADR_2585 --> ADR_644
   ADR_2592 --> ADR_2578
   ADR_2655 --> ADR_2578
+  ADR_2818 --> ADR_2714
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -926,6 +929,7 @@ flowchart TD
   class ADR_2598 accepted
   class ADR_2623 accepted
   class ADR_2628 accepted
+  class ADR_2631 accepted
   class ADR_2640 superseded
   class ADR_2643 accepted
   class ADR_2648 accepted
@@ -947,6 +951,7 @@ flowchart TD
   class ADR_2807 accepted
   class ADR_2810 accepted
   class ADR_2813 accepted
+  class ADR_2818 accepted
   class ADR_2836 accepted
   class ADR_2839 accepted
   class ADR_2859 accepted

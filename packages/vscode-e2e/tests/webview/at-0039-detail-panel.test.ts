@@ -523,6 +523,19 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       true,
       "Deploy toolbar button should carry the active style after deploy nav click",
     );
+
+    // #2818: the jump hands over the node id, and the deploy view marks that
+    // node on the container realizing it (`data-realized-node-id`), so the
+    // highlight lands on the container — never on `data-container-id`, whose
+    // spelling is the container's identity.
+    await driver.wait(
+      async () =>
+        (await driver.executeScript(
+          "return document.querySelector('[data-realized-node-id=\"OrderService\"].karasu-highlighted') !== null;",
+        )) === true,
+      ELEMENT_TIMEOUT_MS,
+      "the container realizing OrderService was not highlighted after the deploy nav click",
+    );
   });
 
   // Issue #2068: `store` had no `KIND_ICONS` entry before this fix, so its
