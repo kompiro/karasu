@@ -14,6 +14,7 @@ import {
   type ReviewState,
   type ReviewThread,
   type Snapshot,
+  threadsAwaitingReply,
 } from "./review-state.ts";
 
 // Reads a PR's CodeRabbit state and, unless `--once`, polls until the author has
@@ -27,7 +28,10 @@ import {
 // do not reliably reach the script that way (TPL-2046).
 //
 // stdout is one JSON line: { pr, headSha, since, state, bodyFindings, bodyFindingIds,
-// waitedMin, limitWaitedMin, outcome }.
+// threadReplies, threadReplyUrls, waitedMin, limitWaitedMin, outcome }.
+// `threadReplies` counts the open threads where CodeRabbit answered a reply and now
+// waits on the author, whatever the outcome (#2954); `threadReplyUrls` links each
+// answer.
 // `bodyFindings` counts the findings that live only in a review body (outside the
 // diff, nitpicks) and have not been answered: no thread tracks them, so `approved`
 // does not mean they were read. `bodyFindingIds` names them, and a comment on the
@@ -84,7 +88,10 @@ interface ThreadPage {
         reviewThreads: {
           nodes: {
             isResolved: boolean;
-            comments: { nodes: { author: { login: string } | null; createdAt: string }[] };
+            comments: {
+              totalCount: number;
+              nodes: { author: { login: string } | null; createdAt: string; url: string }[];
+            };
           }[];
         };
       };
@@ -98,7 +105,7 @@ const THREADS_QUERY = `query($owner: String!, $name: String!, $pr: Int!, $endCur
       reviewThreads(first: 100, after: $endCursor) {
         nodes {
           isResolved
-          comments(last: 1) { nodes { author { login } createdAt } }
+          comments(last: 1) { totalCount nodes { author { login } createdAt url } }
         }
         pageInfo { hasNextPage endCursor }
       }
@@ -167,6 +174,8 @@ function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
         isResolved: t.isResolved,
         lastCommentAt: last?.createdAt ?? new Date(0).toISOString(),
         lastCommentByCodeRabbit: byCodeRabbit(last?.author?.login),
+        commentCount: t.comments.totalCount,
+        lastCommentUrl: last?.url,
       };
     }),
   );
@@ -240,6 +249,8 @@ async function main(): Promise<void> {
         state,
         bodyFindings: bodyFindingCount(snap),
         bodyFindingIds: bodyFindingIds(snap),
+        threadReplies: threadsAwaitingReply(snap).length,
+        threadReplyUrls: threadsAwaitingReply(snap).map((t) => t.lastCommentUrl ?? ""),
         waitedMin: Math.round(waitedMs / 60_000),
         limitWaitedMin: Math.round(limitWaitedMs / 60_000),
         outcome,
