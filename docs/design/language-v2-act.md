@@ -110,7 +110,8 @@ gate はオーナー判断でトリガー (i) により通す。ADR-1820 の既�
 5. **任意名の tag / annotation style セレクタを無効化する**。
    - 意味論: セレクタが**非 builtin の tag / annotation 項を 1 つでも含めば、そのルール全体が何にも一致しない**。項だけを無視するとルールが広く当たりすぎる（`service[pci]` が全 service に当たる）ので採らない。
    - 対象の照合点: `nodeSelectorMatches` / `edgeSelectorMatches` / `orgNodeSelectorMatches`（team の annotation badge を含む）/ legend `ref [tag]` / `ref @annotation` の swatch 照合 / `legend-ref-unresolved` の索引。builtin 集合は `REFERENCE_DATA` + `SYSTEM_ASSIGNED_TAGS`（`detect*NotBuiltin` と同じ集合を共有する）。
-   - system sheet（builtin theme・注入 sheet）は対象外のまま。
+   - system sheet（builtin theme・注入 sheet）は対象外のまま。ただし style resolver はルールの出自（どの sheet か）を知らず、system sheet の境界を知っているのは `analyze()` だけなので、照合点での判定は**全 sheet に一律に掛かる**。したがって system sheet が狙うタグは全て builtin 集合に入っていなければならない。現状 1 つ漏れている: **`delivers`**（`view-extract.ts:332` が `delivers` プロパティから導出した client 向け edge に自動付与し、`default-style.ts:351,633` の `edge[delivers]` が紫の破線で描く）は `REFERENCE_DATA.tags` にも `SYSTEM_ASSIGNED_TAGS` にも無い。放置すると v2.0 で全ての `delivers` edge が黙ってスタイルを失い、legend `ref [delivers]` も unresolved になる。対処として `delivers` を `SYSTEM_ASSIGNED_TAGS` に加える（resolver に sheet 境界を渡す案は、境界の情報を照合経路全体に通す改修になり、判定が sheet ごとに割れるので採らない）。これは v1.x の潜在バグでもある: 今日ユーザー sheet に `edge[delivers]` を書くと `style-tag-selector-not-builtin` が誤発火する。
+   - 再発防止として drift テストを置く: **コードが自動付与するタグ（`view-extract.ts` 等の `tags: [...]` リテラル、`edgeSelectorMatches` が足す `async` / `sync` / `cyclic`）と、builtin theme（`default-style.ts`）のセレクタが参照する tag / annotation が、全て builtin 集合に含まれる**こと。
    - `style-tag-selector-not-builtin` / `style-annotation-selector-not-builtin`: severity は warning のまま、文言を「deprecated, still applies」から「**このルールは適用されない**」に変える（TPL-1503: 受理して効果ゼロのものは警告されねばならない）。migration note（facet 3 ステップ）は維持。
 6. **`docs/concepts.md` / `.ja.md` を同じ PR で改訂する**。「the tag system itself stays open」を、閉鎖原則（ツールが所有する語彙は閉じ、世界が所有する語彙 = client `capability` は open）に置き換える。
 7. **ADR-1314 との関係**: ADR-1314 は supersede しない。ADR-1314 が定義した言語版セマンティクス（追加は v1.x、破壊は v2.0）を**そのまま行使する**最初の major であり、v1.0 の凍結スコープのうち「open tag set / open annotation set」と「任意名セレクタの照合」の 2 点だけを v2.0 で終了する、と ADR-2677 に列挙する（ADR-1314 本文は immutable なので、関係は新 ADR 側に書く）。
@@ -138,7 +139,7 @@ gate はオーナー判断でトリガー (i) により通す。ADR-1820 の既�
 5. **examples**: `builtins/examples.ts` の「still works in v1.x, but it now warns」系と experimental 言及（l.2141 他）を `update-examples` スキルで examples/ と同時に更新
 6. **テスト**
    - `facet-style-selector.test.ts:323`「still applies the deprecated rule」を「applies no longer」に反転。l.199 の cascade 同点テストは builtin tag で書き直す
-   - 新規: 非 builtin 項を含む複合セレクタ（`service[pci]`）がどのノードにも当たらない / legend ref が unresolved になる / team annotation badge が付かない / system sheet の builtin セレクタは影響なし
+   - 新規: 非 builtin 項を含む複合セレクタ（`service[pci]`）がどのノードにも当たらない / legend ref が unresolved になる / team annotation badge が付かない / system sheet の builtin セレクタは影響なし（とくに `delivers` edge が builtin theme のスタイルを保つこと）/ 上記の自動付与タグ・builtin theme セレクタの drift テスト
    - `reference-top-level-coverage.test.ts:108` の期待値を `[]` に
    - `warnings.test.ts` の typo hint 系を統合後の形へ
 7. **AT**: `docs/acceptance/` に新規 1 件。人間確認が要るのは次のみ:
@@ -174,7 +175,7 @@ v2.0 で boundary と facet が「唯一のユーザー拡張点 + view 内グ�
 ### 影響範囲・マイグレーション
 
 - **既存ユーザー**: 非 builtin の tag / annotation を書いたモデルは従来どおり parse・描画され、警告の文言が変わるだけ。**見た目が変わるのは任意名セレクタでスタイルを当てていたモデルだけ**で、v1.x から出ている `style-*-selector-not-builtin` 警告がそのまま移行対象を指す。移行は facet 宣言 + `facets` 付与 + `[facets=<id>]` への書き換え（specificity 同点なので 1 ルールずつ置き換えられる）
-- **版スキュー**: v2.0 のツールで書いたモデルを v1.x のツールで開いても差は出ない（v2.0 は構文を足していない）。逆方向は任意名セレクタの効き方だけが異なる
+- **版スキュー**: v2.0 は構文を足していないので、どちらの版でも parse 結果と診断以外の model は同じになる。描画が割れるのは**任意名 tag / annotation セレクタを含む stylesheet** だけで、v1.x のツールはそのルールを適用し、v2.0 のツールは適用せず警告する（例: `service[pci] { color: red }` は v1.x で赤、v2.0 で既定色）。facet セレクタへ移行済みの stylesheet は両版で同じ見た目になるので、混在期間の推奨は「移行してから v2.0 に上げる」
 - **生成パイプライン**（reverse / translate / LLM）: 自由語彙を出すと警告される。ADR-2065 リスク台帳どおり hallucinated 語彙の検出器として運用
 - **shipped examples**: census で非 builtin 0 件なので挙動変化なし（文言の更新のみ）
 
