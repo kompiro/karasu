@@ -266,6 +266,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1961](1961-bare-permalink-route.md) — permalink を bare `/<owner>/<repo>` で配信し、`/r/` prefix を廃止する
 - [ADR-2249](2249-permalink-generation-seam.md) — permalink 面と karasu-nest の境界 — 解決は本体、生成は nest、合流点は repo
 - [ADR-2259](2259-permalink-payload-cap.md) — repo-backed permalink の payload 上限 — degrade せず診断を返す
+- [ADR-2818](2818-cross-navigation-highlight-id-space.md) — クロスナビゲーションのハイライトは、手渡す側が名指した 1 つの属性でノード id を突き合わせる
 
 ## parser
 
