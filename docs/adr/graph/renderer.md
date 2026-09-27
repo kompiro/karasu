@@ -53,6 +53,7 @@ flowchart TD
     ADR_2521["ADR-2521<br/>multi-system ルートビューは single-system パイプラインの計算に合わせる"]
     ADR_2593["ADR-2593<br/>キャンバスの空き空間を目的関数にして行幅予算を選ぶ"]
     ADR_2598["ADR-2598<br/>層間チャネルに容量を持たせ、配線の需要を配置へ返す"]
+    ADR_2611["ADR-2611<br/>層をまたぐエッジは内部の列へ入り、列の無い行にだけ列を 1 本予約する"]
     ADR_2631["ADR-2631<br/>トランクの合流と分岐を本数で読ませ、交差マークを装飾で潰さない"]
     ADR_2714["ADR-2714<br/>deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
     ADR_2756["ADR-2756<br/>root view の各 system フレームは自分の子から導出したエッジ集合を持つ"]
@@ -99,6 +100,7 @@ flowchart TD
   ADR_1061 --> ADR_1046
   ADR_2174 --> ADR_2065
   ADR_2174 --> ADR_2173
+  ADR_2611 --> ADR_2598
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9015 --> ADR_22
@@ -173,6 +175,7 @@ flowchart TD
   class ADR_2521 accepted
   class ADR_2593 accepted
   class ADR_2598 accepted
+  class ADR_2611 accepted
   class ADR_2631 accepted
   class ADR_2714 accepted
   class ADR_2756 accepted
