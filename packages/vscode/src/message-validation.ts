@@ -12,7 +12,7 @@
  * the extension host.
  */
 
-import { isSafeLinkUrl } from "@karasu-tools/core";
+import { isSafeLinkUrl, nodePathRefId, parseNodePathRefId } from "@karasu-tools/core";
 
 /** The view types the preview panel understands. preview-panel.ts imports `ViewType` from here. */
 export const VIEW_TYPES = ["system", "deploy", "org"] as const;
@@ -55,4 +55,17 @@ export function isAllowedExternalUrl(url: unknown): url is string {
  */
 export function isNodeId(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
+}
+
+/**
+ * A card's `data-node-path` as the webview read it (#2917): a non-empty string
+ * in the canonical `nodePathRefId` form, checked by round-tripping through the
+ * core decoder so a malformed value (`"."`, an unterminated literal) is
+ * rejected instead of becoming an invalid drill path. Optional on a `drillDown`
+ * message, so `undefined` is accepted and means "no path on this card".
+ */
+export function isOptionalNodePath(value: unknown): value is string | undefined {
+  if (value === undefined) return true;
+  if (typeof value !== "string" || value.length === 0) return false;
+  return nodePathRefId(parseNodePathRefId(value)) === value;
 }

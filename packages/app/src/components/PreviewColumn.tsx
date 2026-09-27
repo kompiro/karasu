@@ -40,6 +40,7 @@ export function PreviewColumn() {
     systemView,
     orgView,
     nodeMetadata,
+    nodeMetadataByPath,
     deployBlocks,
     selectedDeployBlockId,
     onDeployBlockChange,
@@ -401,6 +402,7 @@ export function PreviewColumn() {
           diagnostics={diagnostics}
           viewPath={viewPath}
           nodeMetadata={nodeMetadata}
+          nodeMetadataByPath={nodeMetadataByPath}
           onDrillDown={onDrillDown}
           onContainerClick={view.onContainerClick}
           onDeployButtonClick={view.onDeployButtonClick}

@@ -38,6 +38,9 @@ import { DiffModeBanner } from "./DiffModeBanner.js";
 import { DiagramViewShortcuts } from "./DiagramViewShortcuts.js";
 import { PreviewFocusShortcut } from "./PreviewFocusShortcut.js";
 import { displayRootFor } from "../utils/diagnostic-location.js";
+import type { NodeMetadata } from "@karasu-tools/core";
+
+const NO_NODE_METADATA_BY_PATH: Map<string, NodeMetadata> = new Map();
 
 interface AppShellProps {
   entryPath: string | null;
@@ -200,6 +203,10 @@ export function AppShell({
 
   const nodeMetadata =
     activeView === "deploy" ? views.deploy.nodeMetadata : views.system.nodeMetadata;
+  // Only logical canvases carry `data-node-path` (#2917); the deploy view's
+  // cards are addressed by their container key instead.
+  const nodeMetadataByPath =
+    activeView === "deploy" ? NO_NODE_METADATA_BY_PATH : views.system.nodeMetadataByPath;
 
   const outline = useOutline({
     activeView,
@@ -329,6 +336,7 @@ export function AppShell({
     highlightedNodeId,
     highlightAttribute,
     nodeMetadata,
+    nodeMetadataByPath,
     // Passed straight through (#2015 point 8) — `usePreviewContextValue`'s arg
     // types are `Pick<...ViewBundle, ...>` slices of these same bundles, so
     // the extra fields each bundle carries (e.g. `nodeMetadata`) are simply

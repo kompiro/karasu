@@ -30,6 +30,8 @@ interface SystemViewState {
   warnings: Warning[];
   diagnostics: Diagnostic[];
   nodeMetadata: Map<string, NodeMetadata>;
+  /** The same metadata keyed by `data-node-path` (#2917). */
+  nodeMetadataByPath: Map<string, NodeMetadata>;
   hasDeployDiagram: boolean;
   hasOrgDiagram: boolean;
   hasBoundaries: boolean;
@@ -275,6 +277,7 @@ export function useSystemView(
       warnings: sysBase.warnings,
       diagnostics,
       nodeMetadata: sysBase.nodeMetadata,
+      nodeMetadataByPath: sysBase.nodeMetadataByPath,
       hasDeployDiagram: sysBase.hasDeployDiagram,
       hasOrgDiagram: sysBase.hasOrgDiagram,
       hasBoundaries: sysBase.hasBoundaries,
@@ -290,6 +293,7 @@ export function useSystemView(
         warnings: sysBase.warnings,
         diagnostics,
         nodeMetadata: sysBase.nodeMetadata,
+        nodeMetadataByPath: sysBase.nodeMetadataByPath,
       }),
       errorState: (svgToShow) => toState(svgToShow),
       okState: () => toState(svg),
@@ -306,6 +310,7 @@ export function useSystemView(
       warnings: [],
       diagnostics: [],
       nodeMetadata: new Map(),
+      nodeMetadataByPath: new Map(),
       hasDeployDiagram: false,
       hasOrgDiagram: false,
       hasBoundaries: false,

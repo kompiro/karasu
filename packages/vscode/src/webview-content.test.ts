@@ -224,3 +224,34 @@ describe("buildPreviewHtml", () => {
     expect(html).toContain('"openDeployView":"🚀 Deploy 図で確認 →"');
   });
 });
+
+describe("data-node-path in the webview (#2917)", () => {
+  it("embeds the path-keyed metadata map beside the bare-id map", () => {
+    const html = buildPreviewHtml(
+      baseParams({
+        metadataJson: '{"Api":{"kind":"service","label":"Admin API"}}',
+        metadataByPathJson:
+          '{"Shop.Api":{"kind":"service","label":"Shop API"},"Admin.Api":{"kind":"service","label":"Admin API"}}',
+      }),
+    );
+    expect(html).toContain('var nodeMetadataMap = {"Api":{"kind":"service","label":"Admin API"}};');
+    expect(html).toContain(
+      'var nodeMetadataByPathMap = {"Shop.Api":{"kind":"service","label":"Shop API"},"Admin.Api":{"kind":"service","label":"Admin API"}};',
+    );
+  });
+
+  it("defaults the path map to an empty object when the view carries none", () => {
+    const html = buildPreviewHtml(baseParams({}));
+    expect(html).toContain("var nodeMetadataByPathMap = {};");
+  });
+
+  it("posts the card's data-node-path with the drillDown message and reads the panel by it", () => {
+    const html = buildPreviewHtml(baseParams({}));
+    // The client script carries the path on drill-down when the card has one …
+    expect(html).toContain("var nodePath = group.getAttribute('data-node-path');");
+    expect(html).toContain("{ type: 'drillDown', nodeId: nodeId, nodePath: nodePath }");
+    // … and resolves the detail panel / tooltip through the path map first.
+    expect(html).toContain("function metaFor(nodeId, groupEl)");
+    expect(html).toContain("(path && nodeMetadataByPathMap[path]) || nodeMetadataMap[nodeId]");
+  });
+});

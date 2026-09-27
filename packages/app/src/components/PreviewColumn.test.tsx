@@ -90,6 +90,7 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
       onBreadcrumbNavigate: noop,
     },
     nodeMetadata: new Map(),
+    nodeMetadataByPath: new Map(),
     onExportSvg: vi.fn<() => void>(),
     isAllLayersOpen: false,
     onAllLayersToggle: vi.fn<() => void>(),

@@ -7,6 +7,7 @@ import type {
   NodeDiffMeta,
   CategoryId,
 } from "@karasu-tools/core";
+import { parseNodePathRefId } from "@karasu-tools/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
 import { EdgeDetailPanel, type SingleEdgeDetail } from "./EdgeDetailPanel.js";
 import { EdgeContextMenu } from "./EdgeContextMenu.js";
@@ -20,6 +21,14 @@ interface PreviewPaneProps {
   diagnostics: Diagnostic[];
   viewPath?: string[];
   nodeMetadata: Map<string, NodeMetadata>;
+  /**
+   * Metadata keyed by a card's `data-node-path` (#2917). A click reads the
+   * card's path first, so two cards sharing a bare `data-node-id` (`Shop.Api`
+   * and `Admin.Api` on the multi-system root) each open their own metadata and
+   * drill into their own system; `nodeMetadata` (bare id) is the fallback for
+   * cards that carry no path.
+   */
+  nodeMetadataByPath?: Map<string, NodeMetadata>;
   onDrillDown?: (newPath: string[]) => void;
   /**
    * Called when user clicks a deploy container to cross-navigate to system
@@ -113,7 +122,7 @@ interface EdgeContextMenuState {
 }
 
 type DetailPanelState =
-  | { kind: "node"; nodeId: string; anchorX: number; anchorY: number }
+  | { kind: "node"; nodeId: string; nodePath: string | null; anchorX: number; anchorY: number }
   | { kind: "edge"; domainEdges: DomainEdgeDetail[]; anchorX: number; anchorY: number }
   | { kind: "single-edge"; edge: SingleEdgeDetail; anchorX: number; anchorY: number };
 
@@ -122,12 +131,14 @@ const CLICK_THRESHOLD = 3;
 // Stable identity for the default: an inline `[]` is a fresh array on every
 // render, which breaks referential equality for memoized consumers.
 const EMPTY_VIEW_PATH: string[] = [];
+const EMPTY_METADATA_BY_PATH: Map<string, NodeMetadata> = new Map();
 
 export function PreviewPane({
   svg,
   diagnostics,
   viewPath = EMPTY_VIEW_PATH,
   nodeMetadata,
+  nodeMetadataByPath = EMPTY_METADATA_BY_PATH,
   onDrillDown,
   onContainerClick,
   onDeployButtonClick,
@@ -278,7 +289,9 @@ export function PreviewPane({
     (nodeId: string, target: Element) => {
       const anchor = calcAnchor(target);
       if (!anchor) return;
-      setDetailPanel({ kind: "node", nodeId, ...anchor });
+      // The card's own path, when the canvas emits one (#2917).
+      const nodePath = target.getAttribute("data-node-path");
+      setDetailPanel({ kind: "node", nodeId, nodePath, ...anchor });
     },
     [calcAnchor],
   );
@@ -482,12 +495,16 @@ export function PreviewPane({
 
       const hasChildren = nodeGroup.getAttribute("data-has-children") === "true";
       const nodeId = nodeGroup.getAttribute("data-node-id");
+      const nodePath = nodeGroup.getAttribute("data-node-path");
 
       if (hasChildren && nodeId && onDrillDown) {
-        // Drill down into child level.
-        // Use viewPath from nodeMetadata when available (includes system ID prefix for Phase 2).
-        // Fall back to appending nodeId to the current viewPath for nodes not in the index.
-        const drillPath = nodeMetadata.get(nodeId)?.viewPath ?? [...viewPath, nodeId];
+        // Drill down into child level. The card's `data-node-path` names the
+        // one node it stands for (#2917); without it, use the viewPath the
+        // bare-id index resolved, and last append the id to the current path.
+        const drillPath =
+          nodePath !== null
+            ? parseNodePathRefId(nodePath)
+            : (nodeMetadata.get(nodeId)?.viewPath ?? [...viewPath, nodeId]);
         setDetailPanel(null);
         onClearHighlight?.();
         onDrillDown(drillPath);
@@ -552,7 +569,11 @@ export function PreviewPane({
   }, [highlightedNodeId, highlightAttribute, svg]);
 
   const nodePanelMetadata =
-    detailPanel?.kind === "node" ? nodeMetadata.get(detailPanel.nodeId) : undefined;
+    detailPanel?.kind === "node"
+      ? ((detailPanel.nodePath !== null
+          ? nodeMetadataByPath.get(detailPanel.nodePath)
+          : undefined) ?? nodeMetadata.get(detailPanel.nodeId))
+      : undefined;
 
   return (
     <div

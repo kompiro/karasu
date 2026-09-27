@@ -77,7 +77,7 @@ import {
 import { ImportResolver } from "../fs/import-resolver.js";
 import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "../builtins/default-style.js";
 import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
-import { nodePathKey } from "../parser/node-path.js";
+import { nodePathKey, nodePathRefId } from "../parser/node-path.js";
 import "../renderer/shapes.js"; // ensure built-in shapes are registered
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
 import { summarizeDescription } from "../renderer/description-summary.js";
@@ -228,6 +228,14 @@ export interface SystemCompileResult {
   warnings: Warning[];
   diagnostics: Diagnostic[];
   nodeMetadata: Map<string, NodeMetadata>;
+  /**
+   * The same metadata keyed by the node's full path in the `nodePathRefId`
+   * text form (`Shop.Api`), the value a card carries as `data-node-path`
+   * (#2917). Where two nodes share a bare id, `nodeMetadata` holds one of
+   * them (the last written); this map holds both, each with the `viewPath`
+   * that drills to exactly that node.
+   */
+  nodeMetadataByPath: Map<string, NodeMetadata>;
   hasDeployDiagram: boolean;
   /**
    * Whether the project has at least one `organization` block. Mirrors
@@ -556,7 +564,7 @@ function _compileFromPreparedInput(
     diagnosticSink: diagnostics,
     facetOverlay: resolveFacetOverlay(krsFile, selectedFacets),
   });
-  const nodeMetadata = buildNodeMetadata(
+  const { byId: nodeMetadata, byPath: nodeMetadataByPath } = buildNodeMetadata(
     viewSlice,
     serviceIdsWithDeploy,
     ownerIndex,
@@ -569,6 +577,7 @@ function _compileFromPreparedInput(
     warnings,
     diagnostics,
     nodeMetadata,
+    nodeMetadataByPath,
     hasDeployDiagram,
     hasOrgDiagram,
     hasBoundaries,
@@ -786,8 +795,9 @@ function buildNodeMetadata(
   ownerIndex?: Map<string, string>,
   teamLabels?: ReadonlyMap<string, string>,
   nodePathIndex?: Map<string, string[]>,
-): Map<string, NodeMetadata> {
+): { byId: Map<string, NodeMetadata>; byPath: Map<string, NodeMetadata> } {
   const map = new Map<string, NodeMetadata>();
+  const byPath = new Map<string, NodeMetadata>();
 
   // ownerIndex is keyed by full path (#2548); each add-site below passes the
   // node's path prefix (canvas scope, owning system, or ghost system).
@@ -805,7 +815,8 @@ function buildNodeMetadata(
     const team = OWNABLE_KIND_SET.has(node.kind)
       ? ownerIndex?.get(nodePathKey([...pathPrefix, id]))
       : undefined;
-    map.set(id, {
+    const fullPath = [...pathPrefix, id];
+    const meta: NodeMetadata = {
       kind: node.kind,
       label: node.label ?? node.id,
       description,
@@ -831,11 +842,36 @@ function buildNodeMetadata(
         ? (serviceIdsWithDeploy?.has(id) ?? false)
         : undefined,
       viewPath: nodePathIndex?.get(id),
-    });
+    };
+    map.set(id, meta);
+    // Keyed by the path this very node sits at, so a click that carries
+    // `data-node-path` lands on this node's metadata and drills to it, not to
+    // the `nodePathIndex` winner of a shared bare id (#2917).
+    byPath.set(nodePathRefId(fullPath), { ...meta, viewPath: fullPath });
   }
 
+  // A domain spliced onto the canvas by in-place expansion (#1921) belongs to
+  // its expanded service: key it (and resolve its owner) under that path, the
+  // same path the layout stamps on its card (#2917). On the multi-system root
+  // the canvas scope is empty, so the owning system is found from the frame's
+  // service (a member is spliced only from the system that declares it).
+  const expandedPrefixOf = new Map<string, readonly string[]>();
+  for (const frame of viewSlice.expandedFrames) {
+    for (const memberId of frame.memberIds) {
+      const owningSystem = viewSlice.systems.find((s) =>
+        s.children.some(
+          (c) => c.id === frame.containerId && c.children.some((d) => d.id === memberId),
+        ),
+      );
+      const systemPrefix =
+        owningSystem === undefined || owningSystem.id === "__unassigned__"
+          ? canvasScope
+          : [owningSystem.id];
+      expandedPrefixOf.set(memberId, [...systemPrefix, frame.containerId]);
+    }
+  }
   for (const node of viewSlice.childNodes) {
-    addNode(node, canvasScope);
+    addNode(node, expandedPrefixOf.get(node.id) ?? canvasScope);
   }
   for (const node of viewSlice.ghostUsers) {
     addNode(node, []);
@@ -865,7 +901,7 @@ function buildNodeMetadata(
     }
   }
 
-  return map;
+  return { byId: map, byPath };
 }
 
 function buildDeployNodeMetadata(deploySlice: DeployViewSlice): Map<string, NodeMetadata> {

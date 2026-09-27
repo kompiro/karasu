@@ -104,6 +104,22 @@ bare id の key で片方が上書きされ、1 つしか描かれない）、�
 
 ## 関連テスト
 
+- `packages/core/src/renderer/multi-system-same-id.test.ts` › multi-system root draws both same-id
+  nodes (#2917) › keeps one card per system for a shared bare id, each inside its own frame ／
+  … › emits data-node-id twice and a distinct data-node-path per card（同じ id が 2 つ並ぶ面で、
+  各カードが自分の path を持つ）
+- `packages/core/src/renderer/multi-system-same-id.test.ts` › per-system lookups on the root
+  (#2917) › does not bundle two systems' same-named parallel edges together ／ … › places each
+  system's same-named external on its own frame's side ／ … › anchors a cross-system edge on the
+  right two cards（bare id で引く内部 lookup を system の次元で分けた fence）
+- `packages/app/src/components/PreviewPane.test.tsx` › data-node-path resolves the clicked card
+  (#2917)（ドリルと詳細パネルが DOM 順や index の勝者ではなく、クリックしたカードの path に着く）
+- `packages/vscode/src/drilldown-state.test.ts` › drillDown with the card's own path (#2917) ／
+  `packages/vscode/src/webview-content.test.ts` › data-node-path in the webview (#2917)
+- `packages/e2e/tests/at-2917-multi-system-root-same-id.spec.ts`（ルートに同じ `data-node-id` が
+  2 つ描かれ、2 枚目のクリックが自分の system に潜る。strict locator は `data-node-path` で着地点を
+  明示する）
+
 - `packages/core/src/parser/node-path-index.test.ts`: `node-id-multiple-locations` と
   `nodePathIndex` の勝者規則（TPL-1583）
 - `packages/app/src/components/PreviewPane.test.tsx` › `highlightedNodeId`: 1 属性で引く
