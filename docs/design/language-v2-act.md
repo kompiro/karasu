@@ -149,9 +149,9 @@ gate はオーナー判断でトリガー (i) により通す。ADR-1820 の既�
 8. **changeset**: core / cli / vscode に `.krs language v1.0 → v2.0` を明記。bump レベルは semver 規約で決める（0.x なので minor）
 9. **ADR 昇格**: 実装 PR と下記 docs-site PR のマージ後、本 Design Doc を ADR-2677 に昇格して削除する
 
-### docs-site への反映（別 PR、`Refs #2677`）
+### docs-site への反映（別 PR、追跡 = [#2937](https://github.com/kompiro/karasu/issues/2937)）
 
-v2.0 で boundary と facet が「唯一のユーザー拡張点 + view 内グルーピング」という語彙体系の主軸になるので、docs-site でも spec の奥ではなく入口から見えるようにする。到達状態は次の 3 点:
+v2.0 で boundary と facet が「唯一のユーザー拡張点 + view 内グルーピング」という語彙体系の主軸になるので、docs-site でも spec の奥ではなく入口から見えるようにする。変更は次の 3 つで構成する（追跡は実装 PR が #2677 を閉じた後も残るよう独立 Issue [#2937](https://github.com/kompiro/karasu/issues/2937) に持つ）:
 
 1. **gallery で boundary 枠と facet overlay が実際に描かれている**
    - `GalleryDiagram` に描画オプション `render?: { groupBy?: "team" | "boundary"; selectedFacets?: readonly string[] }` を足し、`render-examples.ts` が `compileProject` に渡す（system view のみ。deploy / org には渡さない）
