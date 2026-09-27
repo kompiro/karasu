@@ -116,6 +116,7 @@ flowchart TD
   ADR_2165["ADR-2165<br/>[parser] 論理ノードの containment 規則は `canContain` を唯一の定義とし、違反..."]
   ADR_2184["ADR-2184<br/>[resolver] 同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
   ADR_2209["ADR-2209<br/>[edges] エッジのプロパティブロックを additive に足し、位置引数 label は正式な sho..."]
+  ADR_2678["ADR-2678<br/>[core-concepts] boundary を言語 v2.0 で core に昇格し、言語版の切り替えは全 act の着..."]
   ADR_1296 --> ADR_8
   ADR_1628 --> ADR_1575
   ADR_1820 --> ADR_1314
@@ -130,6 +131,9 @@ flowchart TD
   ADR_2184 --> ADR_2165
   ADR_2184 --> ADR_1314
   ADR_2209 --> ADR_1314
+  ADR_2678 --> ADR_1820
+  ADR_2678 --> ADR_2065
+  ADR_2678 --> ADR_2124
   ADR_2716 -.supersedes.-> ADR_2640
   ADR_2807 -.supersedes.-> ADR_2805
 
@@ -248,4 +252,5 @@ flowchart TD
   class ADR_2165 ghost
   class ADR_2184 ghost
   class ADR_2209 ghost
+  class ADR_2678 ghost
 ```

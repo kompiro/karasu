@@ -30,6 +30,7 @@ flowchart TD
     ADR_2522["ADR-2522<br/>語彙センサスが見つけた drift の閉鎖 — kebab-case 字句規則・読解確度の r..."]
     ADR_2585["ADR-2585<br/>ストアスコープの ER ビュー — FK は記録し、entity 関連は投影し、確認済みかどう..."]
     ADR_2597["ADR-2597<br/>チーム間の依存を `owns` × 論理エッジから導出する"]
+    ADR_2678["ADR-2678<br/>boundary を言語 v2.0 で core に昇格し、言語版の切り替えは全 act の着..."]
     ADR_9002["ADR-9002<br/>ツール名「karasu」の採用"]
     ADR_9003["ADR-9003<br/>論理構造と物理構造の分離"]
   end
@@ -40,6 +41,7 @@ flowchart TD
   ADR_1819["ADR-1819<br/>[resolver] infra leaf のドメイン所有を entity から導出し cross-domain ス..."]
   ADR_1820["ADR-1820<br/>[build] notation promotion gate — experimental notation..."]
   ADR_2075["ADR-2075<br/>[resolver] 宣言スコープで描画できない edge endpoint を診断する — peer はノードイン..."]
+  ADR_2124["ADR-2124<br/>[build] version vocabulary — 言語版とパッケージ semver は独立の軸とし、言..."]
   ADR_2173["ADR-2173<br/>[parser] facet の文法と model 層 — 診断は resolver 側、カタログには載せる、m..."]
   ADR_2174["ADR-2174<br/>[renderer] facet overlay — renderer に焼き、多重所属は同心リング、色は既知 fa..."]
   ADR_9009["ADR-9009<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
@@ -52,12 +54,16 @@ flowchart TD
   ADR_2065 --> ADR_1820
   ADR_2585 --> ADR_1870
   ADR_2585 --> ADR_644
+  ADR_2678 --> ADR_1820
+  ADR_2678 --> ADR_2065
+  ADR_2678 --> ADR_2124
   ADR_237 --> ADR_9003
   ADR_1580 --> ADR_1583
   ADR_1819 --> ADR_1870
   ADR_1820 --> ADR_1314
   ADR_2075 --> ADR_1386
   ADR_2075 --> ADR_1314
+  ADR_2124 --> ADR_1314
   ADR_2173 --> ADR_2065
   ADR_2174 --> ADR_2065
   ADR_2174 --> ADR_2173
@@ -92,6 +98,7 @@ flowchart TD
   class ADR_2522 accepted
   class ADR_2585 accepted
   class ADR_2597 accepted
+  class ADR_2678 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
   class ADR_237 ghost
@@ -101,6 +108,7 @@ flowchart TD
   class ADR_1819 ghost
   class ADR_1820 ghost
   class ADR_2075 ghost
+  class ADR_2124 ghost
   class ADR_2173 ghost
   class ADR_2174 ghost
   class ADR_9009 ghost
