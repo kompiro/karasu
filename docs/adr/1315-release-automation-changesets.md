@@ -6,6 +6,7 @@ date: 2026-05-12
 topic: build
 related_to:
   - ADR-9014
+  - ADR-2936
 scope:
   packages:
     - cli

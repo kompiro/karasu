@@ -3,8 +3,9 @@ name: VS Code Extension Release
 # Publishes the `packages/vscode` extension to the VS Code Marketplace under
 # publisher `karasu-tools` (extension id `karasu-tools.karasu-vscode`).
 #
-# Manual-only (`workflow_dispatch`) — the extension is released on its own
-# cadence, separate from the changesets-driven npm release of the `karasu` CLI.
+# Manual-only (`workflow_dispatch`). Run it after every npm release: the
+# extension shares one version with `karasu` and `@karasu-tools/core` through
+# the changesets `fixed` group (ADR-2936), so each release bumps it too.
 # Versioning IS managed by changesets (`karasu-vscode` was removed from
 # `.changeset/config.json` `ignore`): `changeset version` bumps
 # `packages/vscode/package.json` + writes its CHANGELOG. But `karasu-vscode` is

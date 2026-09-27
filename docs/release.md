@@ -47,15 +47,15 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 
 > **`@karasu-tools/core` は v0.x（TS API、無保証）**。`.krs` / `.krs.style` 言語は v1.0 だが、TS API は minor で破壊的変更を許す（[ADR-1314](adr/1314-krs-spec-v1-freeze.md)）。`exports` は公開先に `dist` を指し、`development` 条件で repo 内は TS ソースを解決するため `pnpm typecheck` は build 非依存。
 
-> **`karasu`（CLI）の version floor は 0.6.0**。npm の `karasu` 名は旧 incarnation が `〜0.5.2` まで公開済みで、それ以下は `E400 Cannot publish over previously published version` になる。`@karasu-tools/core` は履歴がクリーンなため独立して 0.x（independent versioning）。
+> **`karasu`（CLI）の version floor は 0.6.0**。npm の `karasu` 名は旧 incarnation が `〜0.5.2` まで公開済みで、それ以下は `E400 Cannot publish over previously published version` になる。版管理対象の 3 パッケージ（`karasu` / `@karasu-tools/core` / `karasu-vscode`）は `.changeset/config.json` の `fixed` グループで常に同じ版に揃える（[ADR-2936](adr/2936-lockstep-package-versioning.md)）。グループ内の最大版が基準になるので、揃えた版もこの floor を下回らない。
 
 ### 変更を加えるとき
 
 公開・配布対象パッケージ（`karasu` / `@karasu-tools/core` / `karasu-vscode`）に利用者から見える変更を入れる PR では、`pnpm changeset` を実行して `.changeset/<name>.md` を追加し、PR に含める。
 
 - bump レベルは semver に従う（破壊的変更 = major、機能追加 = minor、修正 = patch）。各パッケージとも 0.x なので、当面は破壊的変更も minor で扱ってよい。
-- **どのパッケージを名指すか**:
-  - `packages/core` の利用者向け変更 → **`@karasu-tools/core` と `karasu` の両方**を名指す。core の bump は `karasu-vscode` へは自動 cascade するが、`karasu`（core を devDependency でバンドル）へはしないため。
+- **どのパッケージを名指すか**: 版は `fixed` グループで揃うので、どれを名指しても 3 パッケージとも bump される。名指しは changeset の本文をどの `CHANGELOG.md` に載せるかを決めるので、変更が利用者に見えるパッケージをすべて名指す。
+  - `packages/core` の利用者向け変更 → `@karasu-tools/core` / `karasu` / `karasu-vscode`（CLI と拡張は core を同梱している）
   - `packages/cli` 固有の変更 → `karasu`
   - `packages/vscode` 固有の変更 → `karasu-vscode`
 - 内部リファクタ・テスト・ドキュメントのみ・公開対象外パッケージのみの変更では changeset 不要。
@@ -88,7 +88,7 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 
 > **`packages/vscode/README.md` の画像は絶対 URL で書く**（`https://raw.githubusercontent.com/kompiro/karasu/main/packages/vscode/images/...`）。`vsce` は相対画像パスを repository-**root** の raw URL に書き換えるが `repository.directory` を考慮しないため、monorepo では Marketplace 上で 404 になる。
 
-> 拡張は CLI とは独立した cadence で出す（マージのたびに自動公開はしない）。
+> 拡張は CLI と同じ版で毎回 bump される（ADR-2936）。npm を公開したリリースでは、毎回この手順で Marketplace にも公開する。npm 公開の後に自動で続ける仕組みは月次リリーストレイン（[#2922](https://github.com/kompiro/karasu/issues/2922)）で入れる予定。
 
 ### 未対応のフォローアップ
 

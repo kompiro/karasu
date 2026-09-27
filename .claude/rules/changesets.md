@@ -39,7 +39,7 @@ bump されず公開されない（実例: #1754 で 7 PR 分を遡って backfi
 
 > `@karasu-tools/i18n` も `ignore` だが、**judgement は「利用者から見えるか」で行う**。
 > ignore されたパッケージは bump もカスケードもしないので、そこでの挙動変更は
-> `karasu` / `karasu-vscode` を**手で名指し**しないと永久に公開されない。i18n の
+> 版管理対象のどれか（例: `karasu`）を**手で名指し**しないと永久に公開されない。i18n の
 > 変更で changeset が要るのはこのため（#2535 で取りこぼしかけた）。
 - ADR / Design Doc のみ（`docs/**`）
 
@@ -49,20 +49,20 @@ bump されず公開されない（実例: #1754 で 7 PR 分を遡って backfi
 pnpm changeset
 ```
 
-依存の **cascade 非対称性**に注意（実測・詳細は
-[ADR-1758](../../docs/adr/1758-vscode-changeset-versioning.md)）。changesets は `dependencies` の
-dependent は版 bump するが、`devDependencies` は範囲更新のみで bump しない:
+**版を揃えるのは `fixed` グループ、名指しは CHANGELOG のため。** 版管理対象の 3 パッケージ
+（`karasu` / `@karasu-tools/core` / `karasu-vscode`）は `.changeset/config.json` の `fixed`
+グループに入っており、どれを名指した changeset でも 3 つとも同じ版に bump される
+（[ADR-2936](../../docs/adr/2936-lockstep-package-versioning.md)）。以前の「名指し忘れると
+bump されない」取りこぼしは起きない。ただし changeset の本文が載るのは名指したパッケージの
+`CHANGELOG.md` だけなので、**その変更が利用者に見えるパッケージをすべて名指す**:
 
-| 変更箇所 | 名指すパッケージ | 自動 cascade |
-| --- | --- | --- |
-| `packages/core`（利用者向け） | **`@karasu-tools/core` と `karasu` の両方** | core → `karasu-vscode` に patch |
-| `packages/cli` 固有 | `karasu` | なし |
-| `packages/vscode` 固有 | `karasu-vscode` | なし |
+| 変更箇所 | 名指すパッケージ |
+| --- | --- |
+| `packages/core`（利用者向け） | `@karasu-tools/core` / `karasu` / `karasu-vscode`（CLI と拡張は core を同梱している） |
+| `packages/cli` 固有 | `karasu` |
+| `packages/vscode` 固有 | `karasu-vscode` |
 
-> core の変更を `"karasu"` だけに付けると、core を実 dependency に持つ
-> `karasu-vscode` が bump されず、拡張に core 変更が乗っても版が上がらない取り
-> こぼしになる。CLI は core を `devDependency`（esbuild バンドル）にしているため
-> `@karasu-tools/core` の bump が CLI に cascade せず、`karasu` の明示が別途要る。
+> bump レベルはグループ全体で最上位のものが採用される。
 
 `.changeset/*.md` の frontmatter 例（core 変更）:
 
@@ -70,6 +70,7 @@ dependent は版 bump するが、`devDependencies` は範囲更新のみで bum
 ---
 "@karasu-tools/core": minor
 "karasu": minor
+"karasu-vscode": minor
 ---
 
 <利用者目線で何が変わったかを1〜2文。関連 Issue/PR/ADR を参照>
@@ -83,7 +84,7 @@ bump レベルの目安:
 | バグ修正・表示微修正（`fix`） | `patch` |
 | 破壊的変更（v1.0 前は原則避ける） | `major` |
 
-同じパッケージに複数 changeset がある場合は**最上位**の bump が採用される。
+複数の changeset がある場合は、グループ全体で**最上位**の bump が採用される。
 
 ## 確認
 

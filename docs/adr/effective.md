@@ -116,7 +116,6 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1722](1722-dependabot-batch-2026-06-23.md) — Dependabot Batch Triage (2026-06-23) — `pnpm/action-setup` 6.0.9
 - [ADR-1729](1729-e2e-path-filter-trigger.md) — app E2E（Playwright）はラベル駆動をやめ path filter で起動する
 - [ADR-1742](1742-vscode-e2e-path-filter-trigger.md) — VS Code E2E（extension host / WebView）もラベル駆動をやめ path filter で起動する
-- [ADR-1758](1758-vscode-changeset-versioning.md) — VS Code 拡張を changesets の版管理対象に含める
 - [ADR-1820](1820-notation-promotion-gate.md) — notation promotion gate — experimental notation を stable 層へ昇格させる規律
 - [ADR-1848](1848-dependabot-triage-2026-06-30.md) — Dependabot Triage (2026-06-30) — `actions/checkout` 7.0.0
 - [ADR-1855](1855-dependabot-triage-2026-07-08.md) — Dependabot Triage (2026-07-08) — `actions/cache` 6.1.0
@@ -167,6 +166,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2839](2839-pause-dependabot-triage-schedule.md) — dependabot-triage workflow の週次 cron を止め、dispatch で運用する
 - [ADR-2877](2877-dependabot-triage-2026-09-22.md) — Dependabot トリアージ 2026-09-22：changesets 3 は CI が回さない release flow を壊すので差し替え PR で入れ、gh-aw は再生成で上げる
 - [ADR-2898](2898-draft-first-code-review.md) — /code-review は draft PR に当て、CodeRabbit の初回レビューは ready にした時点の 1 回にする
+- [ADR-2936](2936-lockstep-package-versioning.md) — 版管理対象の全パッケージを changesets の fixed グループで同じ版に揃える
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 

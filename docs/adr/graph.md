@@ -167,6 +167,7 @@ flowchart TD
     ADR_2839["ADR-2839<br/>dependabot-triage workflow の週次 cron を止め、dispatc..."]
     ADR_2877["ADR-2877<br/>Dependabot トリアージ 2026-09-22：changesets 3 は CI が..."]
     ADR_2898["ADR-2898<br/>/code-review は draft PR に当て、CodeRabbit の初回レビューは..."]
+    ADR_2936["ADR-2936<br/>版管理対象の全パッケージを changesets の fixed グループで同じ版に揃える"]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -577,6 +578,7 @@ flowchart TD
   ADR_2716 -.supersedes.-> ADR_2640
   ADR_2807 -.supersedes.-> ADR_2805
   ADR_2906 -.supersedes.-> ADR_2376
+  ADR_2936 -.supersedes.-> ADR_1758
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -801,7 +803,7 @@ flowchart TD
   class ADR_1738 accepted
   class ADR_1742 accepted
   class ADR_1755 accepted
-  class ADR_1758 accepted
+  class ADR_1758 superseded
   class ADR_1783 superseded
   class ADR_1801 accepted
   class ADR_1805 accepted
@@ -960,6 +962,7 @@ flowchart TD
   class ADR_2877 accepted
   class ADR_2898 accepted
   class ADR_2906 accepted
+  class ADR_2936 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

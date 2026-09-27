@@ -1,7 +1,8 @@
 ---
 id: ADR-1758
 title: "VS Code 拡張を changesets の版管理対象に含める"
-status: accepted
+status: superseded
+superseded_by: ADR-2936
 date: 2026-06-24
 topic: build
 related_to:
@@ -24,7 +25,7 @@ assumptions:
 # ADR-1758: VS Code 拡張を changesets の版管理対象に含める
 
 - **日付**: 2026-06-24
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by ADR-2936
 - **関連**:
   - [ADR-1315](1315-release-automation-changesets.md): changesets 採用時に `karasu-vscode` を `ignore` に入れ、版管理を #1316 に委ねた決定（本 ADR がこの一部を見直す）
   - [ADR-9020](9020-npm-trusted-publishing-oidc.md): npm OIDC publish

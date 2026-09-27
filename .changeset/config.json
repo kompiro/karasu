@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/@changesets/config@4.0.1/schema.json",
   "changelog": "./changelog.cjs",
   "commit": false,
-  "fixed": [],
+  "fixed": [["karasu", "@karasu-tools/core", "karasu-vscode"]],
   "linked": [],
   "access": "public",
   "baseBranch": "main",
