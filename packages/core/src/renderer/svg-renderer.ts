@@ -888,6 +888,8 @@ function renderCrossingMarks(
   const r = round2;
   const strokeOf = (edge: number) => edgeStroke[edge] ?? fallback;
   const parts: string[] = [];
+  // SPIKE #2757: one <path> per stroke, each hop a subpath of it.
+  const byStroke = new Map<string, { color: string; width: string | number; d: string[] }>();
   for (const hop of marks.hops) {
     const rad = (hop.angle * Math.PI) / 180;
     const c = Math.cos(rad);
@@ -897,13 +899,19 @@ function renderCrossingMarks(
     const x1 = r(hop.x + hop.halfWidth * c);
     const y1 = r(hop.y + hop.halfWidth * s);
     const stroke = strokeOf(hop.edge);
+    const key = `${stroke.color}|${stroke.strokeWidth}`;
+    let g = byStroke.get(key);
+    if (!g) {
+      g = { color: stroke.color, width: stroke.strokeWidth, d: [] };
+      byStroke.set(key, g);
+    }
+    g.d.push(
+      `M ${x0} ${y0} A ${r(hop.halfWidth)} ${r(hop.ry ?? HOP_RADIUS)} ${r(hop.angle)} 0 1 ${x1} ${y1}`,
+    );
+  }
+  for (const g of byStroke.values()) {
     parts.push(
-      el("path", {
-        d: `M ${x0} ${y0} A ${r(hop.halfWidth)} ${r(hop.ry ?? HOP_RADIUS)} ${r(hop.angle)} 0 1 ${x1} ${y1}`,
-        fill: "none",
-        stroke: stroke.color,
-        "stroke-width": stroke.strokeWidth,
-      }),
+      el("path", { d: g.d.join(" "), fill: "none", stroke: g.color, "stroke-width": g.width }),
     );
   }
   for (const j of marks.junctions) {
