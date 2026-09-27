@@ -52,12 +52,22 @@
 
 #### A1: 毎週日曜の cron + 「最終日曜か」を判定するステップ（採用）
 
-`cron: "0 0 * * 0"`（日曜 00:00 UTC = 09:00 JST）で毎週起動し、最初のステップで「7 日後が翌月か」を判定する。翌月でなければ notice を出して終了する。`workflow_dispatch` のときは判定を飛ばす（手動の臨時リリースは今までどおり出せる）。
+`cron: "0 0 * * 0"`（日曜 00:00 UTC = 09:00 JST）で毎週起動し、最初のステップで「7 日後が翌月か」を判定する。`workflow_dispatch` のときは判定を飛ばす（手動の臨時リリースは今までどおり出せる）。
 
-```bash
-if [ "$(date -u -d '+7 days' +%m)" = "$(date -u +%m)" ]; then
-  echo "::notice::Not the last Sunday of the month — skipping."; exit 0
-fi
+判定のステップで `exit 0` しても止まるのはそのステップだけで、後続のステップは走る。そこで判定を出力にし、後続のすべてのステップ（C1 の確認、version と push、Issue の作成）をその出力で条件付ける。
+
+```yaml
+- name: Decide whether this run departs
+  id: train
+  run: |
+    if [ "${{ github.event_name }}" = "schedule" ] &&
+       [ "$(date -u -d '+7 days' +%m)" = "$(date -u +%m)" ]; then
+      echo "::notice::Not the last Sunday of the month: skipping."
+      echo "depart=false" >> "$GITHUB_OUTPUT"
+    else
+      echo "depart=true" >> "$GITHUB_OUTPUT"
+    fi
+# 以降の各ステップ: if: steps.train.outputs.depart == 'true'
 ```
 
 - メリット: 暦のずれを考えずに済む。判定が 1 行で読める。月の最終日曜を取りこぼさない。
@@ -85,7 +95,12 @@ Prepare がブランチを push したあと、同じジョブで Issue を立�
 
 リリースブランチ名は `chore/release-YYYY-MM-DD`（Prepare を実行した日の UTC 日付）にする。Release のタグ `release-YYYY-MM-DD`（ADR-2939）と同じく日付で名付けるので、どのパッケージが上がっても同じ規則で付き、CLI が上がらない月に前回のブランチと衝突しない。同じ日に 2 回目の Prepare が走っても、前のトレインが open なら C1 で止まり、マージ済みならブランチは自動削除（`delete_branch_on_merge`）で消えている。マージせずに Issue だけ閉じてブランチが残っていた場合は push が衝突してジョブが失敗し、黙って上書きはしない。
 
-トラッキング Issue は、そのトレインの公開と記録が済んだ時点で自動で閉じる。`release.yml` の最後のジョブ（拡張の `record` の後）が、open な `release` ラベルの Issue に Release へのリンクをコメントして閉じる。「open な `release` Issue がある = トレインが終わっていない」という C1 の判定と対になる。
+トラッキング Issue は、そのトレインの公開と記録が済んだ時点で自動で閉じる。「open な `release` Issue がある = トレインが終わっていない」という C1 の判定と対になる。閉じる条件は次の 2 つ。
+
+- **このトレインの PR がマージされた run であること。** `release.yml` は手動の再実行や、CHANGELOG に触れる別の push でも走る。そこで、HEAD コミットを生んだ PR（`gh api repos/<repo>/commits/<sha>/pulls`）の head ブランチ名を取り、Issue に書いたブランチ名（`chore/release-YYYY-MM-DD`）と一致する Issue だけを対象にする。一致する Issue が無ければ何もしない。
+- **公開と記録がすべて成功したこと。** npm の公開・npm の `record`・拡張の公開・拡張の `record` のどれかが失敗したら、閉じずに Issue へ失敗した run へのリンクをコメントする。トレインは終わっていないので、次のトレインは C1 で止まる。
+
+成功したときは Release（`release-YYYY-MM-DD`）へのリンクをコメントして閉じる。
 
 #### B2: Actions に PR を作らせる
 
@@ -113,7 +128,7 @@ Prepare の最初に、open な `release` ラベルの Issue を探す。見つ�
 - `vscode-release.yml` に `on: workflow_call`（`pre_release` input）を足す。`workflow_dispatch` は手動の再実行用に残す。呼ばれた側の 2 ジョブ（公開と `record`）がそのまま動く。リリースコミットからビルドする仕組み（ADR-2939）は、トレインでは HEAD がリリースコミットなので同じコミットを指す。
 - `vscode-release.yml` の先頭に「**Marketplace の最新版と `package.json` の version が同じなら公開しない**」ガードを入れる（`vsce show karasu-tools.karasu-vscode --json`）。`changeset publish` が「npm に無い版だけ出す」のと同じ冪等性を持たせる。**`vsce show` が失敗したら公開を飛ばすのではなくジョブを失敗させる**（TPL-2786）。
 - `release.yml` に npm 公開ジョブのあとで走る `vscode` ジョブを足し、`uses: ./.github/workflows/vscode-release.yml` で呼ぶ。呼ばれた側の各ジョブが必要とする権限の上限（`contents: write`、`id-token: write`）を、呼び出し側のジョブに与える。
-- npm の公開が一部失敗しても、拡張の公開は止めない（拡張は npm に依存しない）。npm の `record` と拡張の `record` は `release-record` で直列になり、同じ Release に集まる。
+- npm の公開が一部失敗しても、拡張の公開は止めない（拡張は npm に依存しない）。失敗したジョブに `needs` で続くジョブは既定でスキップされるので、`vscode` ジョブには `if: ${{ !cancelled() }}` を付ける。npm の `record` と拡張の `record` は `release-record` で直列になり、同じ Release に集まる。
 
 リリース PR のマージから npm → Marketplace が 1 回の run で順に走る。拡張の版が上がっていない月は、ガードで no-op になる。
 
@@ -155,15 +170,16 @@ ADR-1758 は Marketplace 公開の自動発火を「リリース PR マージの
    - `on.workflow_call`（`pre_release` input）を足す。
    - 「Marketplace 最新版 = `package.json` の version なら skip、`vsce show` 失敗なら fail」のガードを publish の前に入れる。
 3. `release.yml`
-   - npm 公開ジョブの後に `vscode` ジョブ（`uses: ./.github/workflows/vscode-release.yml`、`permissions: contents: write, id-token: write`）を足す。
-   - 最後に、open な `release` Issue に Release へのリンクをコメントして閉じるジョブを足す（`issues: write`）。
+   - npm 公開ジョブの後に `vscode` ジョブ（`uses: ./.github/workflows/vscode-release.yml`、`if: ${{ !cancelled() }}`、`permissions: contents: write, id-token: write`）を足す。
+   - 最後に、トラッキング Issue を閉じるジョブを足す（`needs` に npm の公開・`record`・`vscode`、`if: ${{ !cancelled() }}`、`issues: write`）。HEAD コミットの PR の head ブランチ名で Issue を特定し、全ジョブが成功（`record` はスキップも可）なら Release のリンクを付けて閉じ、失敗があれば run のリンクをコメントして開いたままにする。
 4. `release` ラベルを作る（`gh label create release`）。
 5. `docs/release.md` の「リリースの流れ」「VS Code 拡張のリリース」を月次トレインの手順に書き換える。「拡張は CLI とは独立した cadence で出す」の注記を消す。各 workflow の header コメントも合わせる。
 6. AT（人が確認するもの）:
    - 最初の最終日曜（2026-10-25）に、スケジュール起動でブランチとトラッキング Issue ができる。
    - その Issue のリンクから PR を開いてマージすると、npm 公開に続いて Marketplace 公開が同じ run で成功する（OIDC が reusable workflow 経由でも通る）。
    - 同じ run の最後に、`release-YYYY-MM-DD` の Release に全パッケージが載り、トラッキング Issue がそのリンク付きで閉じる。
-   - 最終日曜でない日曜の実行が「skipping」で終わる。
+   - 最終日曜でない日曜の実行が「skipping」で終わり、ブランチも Issue も作らない。
+   - `release.yml` の手動の再実行では、開いているトラッキング Issue が閉じない。
 7. ADR 昇格: 実装完了後に `docs/adr/2922-monthly-release-train.md` として昇格し、本 Design Doc は同 PR で削除する。ADR-1370 / ADR-1316 / ADR-1758 / ADR-2939 への関係を frontmatter と本文に書く。
 
 ### 影響範囲・マイグレーション
