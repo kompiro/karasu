@@ -35,8 +35,10 @@ scope:
 要素 id（`data-node-id`）は author-given な id で、permalink の `<id>` も同じ値を使う
 （`docs/spec/permalink.md`）。single-system の各レベルでは同一親内の重複が parser エラーなので
 id は 1 要素に決まるが、**複数 system のルートビュー**は 2 つの system が同じ bare id の
-service を持てる（`node-id-multiple-locations` は warning）。そこでは 1 つのキャンバスに
-同じ `data-node-id` の要素が 2 つ描かれる。
+service を持てる（`node-id-multiple-locations` は warning）。モデルの上では同じ id の
+ノードが 1 つのキャンバスに 2 つ属する。描画側がそれを両方描くと（#2917 の修正後。修正前は
+bare id の key で片方が上書きされ、1 つしか描かれない）、同じ `data-node-id` の要素が 2 つ
+並ぶ。
 
 このとき「id → 要素」を引く API は 2 系統あり、着地点が別に決まる:
 
