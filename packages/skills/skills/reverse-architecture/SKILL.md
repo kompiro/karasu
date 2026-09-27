@@ -838,7 +838,8 @@ Two authoring notes for that script, both learned the hard way:
   resolved**, with the evidence — the resolutions are what a reviewer most needs
   and they are invisible in the `.krs` once the mark is gone.
 - Notes on any notation gaps encountered, and on how the `boundary` / `facet`
-  constructs were used (evidence for the promotion gate, ADR-1820):
+  constructs were used (both are core from `.krs language v2.0`; the usage is
+  still evidence for how their shape holds up, ADR-1820):
   which facets were declared and how many memberships each carries, which were
   proposed and declined and why, which proposals were **convergent**, and which
   `boundary` placements were used — a run that used only the top-level form has
@@ -878,8 +879,7 @@ Two authoring notes for that script, both learned the hard way:
 - **Match identity by `id`**, not `label`. **Never silently drop thin domains**
   (surface them via `coverage`). **Invent no vocabulary of your own**: `.krs
   language v2.0` closes the tag and annotation vocabularies to the tool's own, a
-  non-builtin name has no effect, and `facet` is core notation (`boundary` is
-  shipped-but-experimental, backward compatibility not yet promised, ADR-1820).
+  non-builtin name has no effect, and `facet` and `boundary` are core notation.
   Use them as spec'd, and route
   anything they do not cover to the gap notes rather than to a new keyword or a
   non-builtin tag. `facet` is the *only* user extension point in the vocabulary;
