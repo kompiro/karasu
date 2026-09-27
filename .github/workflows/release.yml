@@ -118,6 +118,7 @@ jobs:
     concurrency:
       group: release-record
       cancel-in-progress: false
+      queue: max # keep a waiting record job instead of replacing it
     runs-on: ubuntu-latest
     permissions:
       contents: write # push tags and create the GitHub Release
