@@ -85,10 +85,15 @@ bare id の key で片方が上書きされ、1 つしか描かれない）、�
 - **重複を許す面では Map の key を scope し、要素 id は bare のまま出す**（#2917 の設計、
   `docs/design/multi-system-root-same-id-nodes.md` → ADR 昇格予定）。ADR-1884 が同じ
   関数の collapse stub に引いた線
-- **着地点を仕様として AT に書く**: ドリルは `nodePathIndex` の勝者、ハイライトとアウトラインは
-  DOM 順で最初。`node-id-multiple-locations` が作者にその状態を伝える
-- **着地点を揃えたいときは id ではなく path を手渡す**（`data-node-path`、ADR-2088 の
-  path 記法）。同じ Issue で ADR-2818 の A-2 も扱える
+- **1 ノードを指したい消費側には id ではなく path を手渡す**（`data-node-path`、
+  `nodePathRefId` 形。#2917 の設計はドリルと詳細パネルをこれで引く）。bare id は集合を指す
+  （ADR-2088）と読めば、同一 canvas の `data-node-id` の重複は矛盾ではなく、1 ノードを指す
+  属性が別に要るという意味になる。残りの hand-over（ハイライト・アウトライン・エディタへ
+  ジャンプ・ADR-2818 A-2）は #2935
+- **path を持てない消費側の着地点は仕様として AT に書く**: permalink と hash は
+  `nodePathIndex` の勝者、ハイライトとアウトラインは DOM 順で最初。`node-id-multiple-locations`
+  が作者にその状態を伝える。静的 SVG のドリルが最初の所有 system に解決する既存の食い違いは
+  #2933
 
 ## 関連テスト
 
