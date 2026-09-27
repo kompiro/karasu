@@ -16,6 +16,8 @@ interface UsePreviewContextValueArgs {
   /** The attribute `highlightedNodeId` is matched against, set by its producer (#2818). */
   highlightAttribute: HighlightAttribute;
   nodeMetadata: Map<string, NodeMetadata>;
+  /** Metadata keyed by a card's `data-node-path` (#2917); empty on the deploy view. */
+  nodeMetadataByPath: Map<string, NodeMetadata>;
 
   // Sliced from the `useAppViews` bundle types (#2015 point 8) instead of
   // re-listing each field's type by hand — the field names/types stay the
@@ -117,6 +119,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
     highlightedNodeId,
     highlightAttribute,
     nodeMetadata,
+    nodeMetadataByPath,
     system,
     deploy,
     org,
@@ -212,6 +215,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         onOwnedServiceClick: nav.handleOwnedServiceClick,
       },
       nodeMetadata,
+      nodeMetadataByPath,
       deployBlocks: deploy.deployBlocks,
       selectedDeployBlockId,
       onDeployBlockChange: nav.handleDeployBlockChange,
@@ -294,6 +298,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       highlightedNodeId,
       highlightAttribute,
       nodeMetadata,
+      nodeMetadataByPath,
       selectedDeployBlockId,
       nav,
       isAllLayersOpen,

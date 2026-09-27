@@ -59,6 +59,7 @@ function makeCtx(activeView: ActiveView): PreviewContextValue {
       onOwnedServiceClick: noop,
     },
     nodeMetadata: new Map(),
+    nodeMetadataByPath: new Map(),
     onExportSvg: noop,
     isAllLayersOpen: false,
     onAllLayersToggle: noop,
