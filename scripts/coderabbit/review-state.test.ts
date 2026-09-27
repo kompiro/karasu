@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  type AuthorComment,
   bodyFindingCount,
+  bodyFindingIds,
   classify,
   parseAnnouncedWaitMs,
   parseNoticeHeadSha,
+  unmarkedBodyFindings,
   type CodeRabbitComment,
   type Snapshot,
 } from "./review-state.ts";
@@ -20,10 +23,17 @@ function snapshot(over: Partial<Snapshot>): Snapshot {
     now: "2026-09-15T14:30:00Z",
     reviews: [],
     comments: [],
+    authorComments: [],
     threads: [],
     ...over,
   };
 }
+
+/** The marker CodeRabbit closes one body finding with, as it appears in a review. */
+const finding = (id: string): string => `> <!-- cr-comment:v1:${id} -->`;
+
+/** A top-level answer of the author's, which only covers filings before it. */
+const answer = (createdAt: string, body: string): AuthorComment => ({ body, createdAt });
 
 /** Shape of the summary comment once an automatic review hits the allowance (#2843). */
 function limitNotice(updatedAt: string, minutes: number, head = HEAD): CodeRabbitComment {
@@ -387,38 +397,218 @@ describe("parseNoticeHeadSha", () => {
 });
 
 describe("bodyFindingCount", () => {
-  it("counts outside-diff and nitpick sections in head reviews since the last action (#2847)", () => {
+  it("counts an outside-diff and a nitpick finding, by the id each one carries (#2847)", () => {
     const s = snapshot({
       since: "2026-09-15T16:07:16Z",
       reviews: [
         {
           state: "COMMENTED",
-          commitId: OLD,
-          submittedAt: "2026-09-15T16:08:00Z",
-          body: "**⚠️ Outside diff range comments (5)**",
-        },
-        {
-          state: "CHANGES_REQUESTED",
-          commitId: HEAD,
-          submittedAt: "2026-09-15T15:00:00Z",
-          body: "**⚠️ Outside diff range comments (1)**",
-        },
-        {
-          state: "COMMENTED",
           commitId: HEAD,
           submittedAt: "2026-09-15T16:12:50Z",
-          body: "**⚠️ Outside diff range comments (2)**\n<summary>🧹 Nitpick comments (1)</summary>",
-        },
-        {
-          state: "DISMISSED",
-          commitId: HEAD,
-          submittedAt: "2026-09-15T16:11:00Z",
-          body: "**⚠️ Outside diff range comments (4)**",
+          body: [
+            "**⚠️ Outside diff range comments (2)**",
+            finding("aaa1"),
+            finding("aaa2"),
+            "<summary>🧹 Nitpick comments (1)</summary>",
+            finding("bbb1"),
+          ].join("\n"),
         },
         { state: "APPROVED", commitId: HEAD, submittedAt: "2026-09-15T16:12:55Z", body: "" },
       ],
     });
+    expect(bodyFindingIds(s).sort()).toEqual(["aaa1", "aaa2", "bbb1"]);
     expect(bodyFindingCount(s)).toBe(3);
+    // The findings ride along an approval, which is why the count is reported
+    // beside the outcome rather than gating it.
     expect(classify({ ...s, now: "2026-09-15T16:20:00Z" })).toEqual({ kind: "approved" });
+  });
+
+  it("keeps a finding once the push it was filed against stops being the head (#2909)", () => {
+    const s = snapshot({
+      // Both the commit and the round have moved on since the finding was filed.
+      since: "2026-09-24T11:23:49Z",
+      reviews: [
+        {
+          state: "CHANGES_REQUESTED",
+          commitId: OLD,
+          submittedAt: "2026-09-24T09:58:30Z",
+          body: `**⚠️ Outside diff range comments (1)**\n${finding("61e81b7d")}`,
+        },
+        { state: "APPROVED", commitId: HEAD, submittedAt: "2026-09-24T12:16:53Z", body: "" },
+      ],
+    });
+    expect(bodyFindingIds(s)).toEqual(["61e81b7d"]);
+  });
+
+  it("retires a finding the author answered by id, and only that one", () => {
+    const s = snapshot({
+      reviews: [
+        {
+          state: "COMMENTED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T14:05:00Z",
+          body: `**⚠️ Outside diff range comments (2)**\n${finding("aaa1")}\n${finding("aaa2")}`,
+        },
+      ],
+      authorComments: [
+        answer(
+          "2026-09-15T14:10:00Z",
+          "Fixed the first one in 9b66575f: the renderer now reads `hop.ry`. <!-- cr-comment:v1:aaa1 -->",
+        ),
+      ],
+    });
+    expect(bodyFindingIds(s)).toEqual(["aaa2"]);
+    expect(bodyFindingCount(s)).toBe(1);
+  });
+
+  it("counts a finding repeated across rounds once", () => {
+    const repeated = `**⚠️ Outside diff range comments (1)**\n${finding("aaa1")}`;
+    const s = snapshot({
+      reviews: [
+        {
+          state: "CHANGES_REQUESTED",
+          commitId: OLD,
+          submittedAt: "2026-09-15T15:00:00Z",
+          body: repeated,
+        },
+        {
+          state: "CHANGES_REQUESTED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T16:00:00Z",
+          body: repeated,
+        },
+      ],
+    });
+    expect(bodyFindingIds(s)).toEqual(["aaa1"]);
+  });
+
+  it("makes a finding pending again when CodeRabbit files it after the answer", () => {
+    const repeated = `**⚠️ Outside diff range comments (1)**\n${finding("aaa1")}`;
+    const answered = snapshot({
+      reviews: [
+        {
+          state: "CHANGES_REQUESTED",
+          commitId: OLD,
+          submittedAt: "2026-09-15T15:00:00Z",
+          body: repeated,
+        },
+      ],
+      authorComments: [answer("2026-09-15T15:30:00Z", `Fixed. ${finding("aaa1")}`)],
+    });
+    expect(bodyFindingIds(answered)).toEqual([]);
+
+    // Raising it again is the round's loudest signal: the fix or the judgment
+    // did not land. An answer that never expires would hide it.
+    const repeatedAfter = snapshot({
+      reviews: [
+        ...answered.reviews,
+        {
+          state: "CHANGES_REQUESTED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T16:00:00Z",
+          body: repeated,
+        },
+      ],
+      authorComments: answered.authorComments,
+    });
+    expect(bodyFindingIds(repeatedAfter)).toEqual(["aaa1"]);
+  });
+
+  it("does not retire a finding whose id merely sits inside a sha the answer mentions", () => {
+    const id = "61e81b7ddb6c2c25720f2d81";
+    const s = snapshot({
+      reviews: [
+        {
+          state: "COMMENTED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T15:00:00Z",
+          body: `**⚠️ Outside diff range comments (1)**\n${finding(id)}`,
+        },
+      ],
+      // A 40-digit sha that happens to contain the id. A substring search would
+      // read this as an answer.
+      authorComments: [
+        answer("2026-09-15T15:10:00Z", `Bisected to ${id}9b66575f834db200e603a6a8, unrelated.`),
+      ],
+    });
+    expect(bodyFindingIds(s)).toEqual([id]);
+  });
+
+  it("takes an answer that quotes the marker as plain text", () => {
+    const s = snapshot({
+      reviews: [
+        {
+          state: "COMMENTED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T15:00:00Z",
+          body: `**⚠️ Outside diff range comments (1)**\n${finding("aaa1")}`,
+        },
+      ],
+      authorComments: [
+        answer(
+          "2026-09-15T15:10:00Z",
+          "Declined, ADR-1184 switches on the value (cr-comment:v1:aaa1).",
+        ),
+      ],
+    });
+    expect(bodyFindingIds(s)).toEqual([]);
+  });
+
+  it("keeps the findings of a review whose approval GitHub dismissed (reverses #2847)", () => {
+    const s = snapshot({
+      reviews: [
+        {
+          state: "DISMISSED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T15:00:00Z",
+          body: `**⚠️ Outside diff range comments (1)**\n${finding("aaa1")}`,
+        },
+      ],
+    });
+    // A dismissal follows a push, so it says nothing about whether the finding
+    // was read; only an answer naming the id retires it.
+    expect(bodyFindingIds(s)).toEqual(["aaa1"]);
+  });
+
+  it("does not let CodeRabbit's own echo of an id stand in for an answer", () => {
+    const s = snapshot({
+      reviews: [
+        {
+          state: "COMMENTED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T15:00:00Z",
+          body: `**⚠️ Outside diff range comments (1)**\n${finding("aaa1")}`,
+        },
+      ],
+      // The summary comment repeats the marker of everything it filed.
+      comments: [
+        {
+          createdAt: "2026-09-15T15:00:01Z",
+          updatedAt: "2026-09-15T15:00:01Z",
+          body: `<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n${finding("aaa1")}`,
+        },
+      ],
+    });
+    expect(bodyFindingIds(s)).toEqual(["aaa1"]);
+  });
+
+  it("still counts a declared finding that carries no id, which no comment can retire", () => {
+    const s = snapshot({
+      reviews: [
+        {
+          state: "COMMENTED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T15:00:00Z",
+          body: `**⚠️ Outside diff range comments (2)**\n${finding("aaa1")}`,
+        },
+      ],
+      authorComments: [
+        answer("2026-09-15T15:10:00Z", `Declined: pre-existing. ${finding("aaa1")}`),
+      ],
+    });
+    expect(bodyFindingIds(s)).toEqual([]);
+    expect(unmarkedBodyFindings(s)).toBe(1);
+    // Above the id list: the round has to be read by hand.
+    expect(bodyFindingCount(s)).toBe(1);
   });
 });
