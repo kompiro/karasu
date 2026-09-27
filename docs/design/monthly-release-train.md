@@ -4,6 +4,8 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#2922](https://github.com/kompiro/karasu/issues/2922)
+  - 先行 Issue: [#2939](https://github.com/kompiro/karasu/issues/2939)（git tag / GitHub Release。本件より先に着地させる）
+  - 分離した Issue: [#2940](https://github.com/kompiro/karasu/issues/2940)（拡張の週次 pre-release）
   - PR: [#2923](https://github.com/kompiro/karasu/pull/2923)
   - 直前のリリース: [#2921](https://github.com/kompiro/karasu/pull/2921)（karasu 0.7.0 / @karasu-tools/core 0.3.0 / karasu-vscode 0.2.0）
   - 関連 ADR: [ADR-1370](../adr/1370-release-flow-actions-driven.md)（Prepare → release PR → マージで publish）、[ADR-1316](../adr/1316-vscode-marketplace-publish.md)（Marketplace publish は手動 `workflow_dispatch`）、[ADR-1758](../adr/1758-vscode-changeset-versioning.md)（拡張を changesets の版管理に載せ、Marketplace publish の自動発火を却下）
@@ -40,7 +42,7 @@
 - **マージは人が行う**。CHANGELOG を読んでからマージする関門を残す（promotion gate の確認もここで行う — ADR-1820）。
 - **GitHub の cron は「最終日曜」を直接書けない**。さらに day-of-month と day-of-week を両方指定すると **OR** で評価される（`0 0 22-31 * 0` は「22〜31 日」**または**「日曜」になる）。
 - **Marketplace の認証は federated credential の subject `repo:kompiro/karasu:ref:refs/heads/main` に依存する**（ADR-1316）。呼び出し方を変えても、この subject で OIDC トークンが出ることを確かめる必要がある。
-- out of scope: リリースの**マージ**の自動化、pre-release チャネルの運用、git tag / GitHub Release の作成（「未解決の問い」参照）。
+- out of scope: リリースの**マージ**の自動化。git tag / GitHub Release の作成は [#2939](https://github.com/kompiro/karasu/issues/2939)、拡張の pre-release チャネルは [#2940](https://github.com/kompiro/karasu/issues/2940) で扱う（「別 Issue で扱うこと」参照）。
 
 ## 検討した選択肢
 
@@ -160,7 +162,7 @@ ADR-1758 は Marketplace 公開の自動発火を「リリース PR マージの
 - メンテナの作業: 最終日曜に Issue が立つので、リンクから PR を開き、CHANGELOG を読んでマージする。臨時リリースは従来どおり `workflow_dispatch` で出せる。
 - ドキュメント更新: `docs/release.md`、各 workflow の header コメント、`.claude/rules/changesets.md` に拡張の cadence の記述があれば合わせる。
 
-## 未解決の問い / 決めないこと
+## 別 Issue で扱うこと
 
-- **git tag / GitHub Release**: `changeset publish` が作るタグは push されておらず、リリースの記録が npm と CHANGELOG にしか残らない。トレインごとに GitHub Release を作ると利用者に届きやすいが、本件のスコープ外として別 Issue に切り出す。
-- **pre-release チャネル**: 拡張の pre-release を月次トレインに組み込むかは決めない（`pre_release` input は残す）。
+- **git tag / GitHub Release（[#2939](https://github.com/kompiro/karasu/issues/2939)）**: `changeset publish` が作るタグは push されておらず、これまでのリリースは 1 つも repo に記録が残っていない。本トレインより**先に**着地させ、最初のトレインから記録が残るようにする。過去の版のタグの後付けもこの Issue で行う。本トレインの実装は、#2939 が決めたタグと Release の作り方の上に載せる。
+- **拡張の pre-release チャネル（[#2940](https://github.com/kompiro/karasu/issues/2940)）**: 月次トレインとは別に、週次で pre-release を出す。Marketplace は semver の pre-release 接尾辞を受け付けず、changesets が持つ stable の版との共存を別途設計する必要があるため、本件には含めない。`vscode-release.yml` の `pre_release` input は残す。
