@@ -126,6 +126,42 @@ describe("karasu check", () => {
     expect(out.stderr).toContain("File not found");
   });
 
+  // An import that cannot be resolved is an error diagnostic from the import
+  // resolver, not the entry-file guard: the entry exists, so check must still
+  // compile and fail on what it could not load.
+  it.each([
+    ["a wildcard .krs import", 'import "./nope.krs"\nsystem S { service A {} }\n', "nope.krs"],
+    [
+      "a named .krs import",
+      'import { Pay } from "./nope.krs"\nsystem S { service A {} }\n',
+      "nope.krs",
+    ],
+    [
+      "a .krs.style import",
+      'import "./nope.krs.style"\nsystem S { service A {} }\n',
+      "nope.krs.style",
+    ],
+  ])("exits 1 when %s points at a missing file", async (_name, source, missing) => {
+    const file = await krsFile("index.krs", source);
+    const out = await run(() => check(file));
+    expect(out.exitCode).toBe(1);
+    expect(out.stderr).toMatch(
+      new RegExp(`^Error: .*File not found: .*${missing.replace(/\./g, "\\.")}$`, "m"),
+    );
+    expect(out.stdout).toBe("");
+  });
+
+  it("exits 1 when a named import's id is not in the imported file", async () => {
+    await krsFile("other.krs", "system T { service Other {} }\n");
+    const file = await krsFile(
+      "index.krs",
+      'import { Pay } from "./other.krs"\nsystem S { service A {} }\n',
+    );
+    const out = await run(() => check(file));
+    expect(out.exitCode).toBe(1);
+    expect(out.stderr).toMatch(/^Error: .*index\.krs:1:\d+: .*"Pay"/m);
+  });
+
   // The point of `check`: "check passes" must mean "render succeeds", and the
   // two must print the same findings.
   it.each([
@@ -133,6 +169,7 @@ describe("karasu check", () => {
     ["parse error", PARSE_ERROR],
     ["duplicate edge id", DUPLICATE_EDGE_ID],
     ["warning only", WARNING_ONLY],
+    ["missing import", 'import "./nope.krs"\nsystem S { service A {} }\n'],
   ])("agrees with karasu render on a %s file", async (_name, source) => {
     const file = await krsFile("index.krs", source);
     const checked = await run(() => check(file));
