@@ -56,3 +56,12 @@ export function isAllowedExternalUrl(url: unknown): url is string {
 export function isNodeId(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
+
+/**
+ * A card's `data-node-path` as the webview read it (#2917): a non-empty string
+ * in the `nodePathRefId` form. Optional on a `drillDown` message, so `undefined`
+ * is accepted and means "no path on this card".
+ */
+export function isOptionalNodePath(value: unknown): value is string | undefined {
+  return value === undefined || (typeof value === "string" && value.length > 0);
+}

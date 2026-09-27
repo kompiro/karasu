@@ -5,6 +5,7 @@ import {
   isNodeId,
   isValidNavIndex,
   isViewType,
+  isOptionalNodePath,
 } from "./message-validation.js";
 
 describe("isViewType", () => {
@@ -134,5 +135,16 @@ describe("isNodeId", () => {
     expect(isNodeId(null)).toBe(false);
     expect(isNodeId(undefined)).toBe(false);
     expect(isNodeId({ id: "payment-service" })).toBe(false);
+  });
+});
+
+describe("isOptionalNodePath (#2917)", () => {
+  it("accepts undefined and a non-empty string, rejects everything else", () => {
+    expect(isOptionalNodePath(undefined)).toBe(true);
+    expect(isOptionalNodePath("Shop.Api")).toBe(true);
+    expect(isOptionalNodePath("")).toBe(false);
+    expect(isOptionalNodePath(null)).toBe(false);
+    expect(isOptionalNodePath(42)).toBe(false);
+    expect(isOptionalNodePath(["Shop", "Api"])).toBe(false);
   });
 });

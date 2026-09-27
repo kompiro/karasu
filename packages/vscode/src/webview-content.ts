@@ -172,6 +172,12 @@ export interface BuildPreviewHtmlParams {
   svg: string;
   /** JSON-stringified `Record<string, SerializedNodeMeta>` for the webview script. */
   metadataJson: string;
+  /**
+   * The same records keyed by a card's `data-node-path` (#2917), so a click on
+   * one of two same-named cards opens its own panel. Optional: `{}` when the
+   * view carries no paths (deploy / org).
+   */
+  metadataByPathJson?: string;
   /** Pre-rendered breadcrumb `<button>`/`<span>` markup (see `buildBreadcrumbHtml`). */
   breadcrumbHtml: string;
   /** Currently active toolbar view, used to highlight its button. */
@@ -194,7 +200,16 @@ export interface BuildPreviewHtmlParams {
  * the same params always produce byte-identical output.
  */
 export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
-  const { svg, metadataJson, breadcrumbHtml, viewType, displayMode, nonce, labels } = params;
+  const {
+    svg,
+    metadataJson,
+    metadataByPathJson = "{}",
+    breadcrumbHtml,
+    viewType,
+    displayMode,
+    nonce,
+    labels,
+  } = params;
   const labelsJson = embedJsonInScript(JSON.stringify(labels));
   // Same treatment for the caller-supplied metadata JSON: it carries node
   // labels/ids straight from the user's .krs, so a `</script>` in a label
@@ -202,6 +217,7 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
   // any injected script from executing, but the legit panel/tooltip script
   // would break). See {@link embedJsonInScript}.
   const safeMetadataJson = embedJsonInScript(metadataJson);
+  const safeMetadataByPathJson = embedJsonInScript(metadataByPathJson);
   const activeStyle =
     "background:var(--vscode-button-background);color:var(--vscode-button-foreground);border-color:var(--vscode-button-background);";
   const btnStyle = (view: ViewType) => (view === viewType ? activeStyle : "");
@@ -486,6 +502,7 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
   <script nonce="${nonce}">
     var vscode = acquireVsCodeApi();
     var nodeMetadataMap = ${safeMetadataJson};
+    var nodeMetadataByPathMap = ${safeMetadataByPathJson};
     var PANEL_LABELS = ${labelsJson};
     var tooltip = document.getElementById('karasu-tooltip');
     var detailPanel = document.getElementById('detail-panel');
@@ -513,8 +530,15 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
     });
 
     // ── Detail panel functions ──
+    // A card's own metadata: by its data-node-path when the canvas emits one
+    // (#2917), else by the bare id.
+    function metaFor(nodeId, groupEl) {
+      var path = groupEl && groupEl.getAttribute ? groupEl.getAttribute('data-node-path') : null;
+      return (path && nodeMetadataByPathMap[path]) || nodeMetadataMap[nodeId];
+    }
+
     function showDetailPanel(nodeId, targetEl) {
-      var meta = nodeMetadataMap[nodeId];
+      var meta = metaFor(nodeId, targetEl);
       if (!meta) return;
 
       currentDetailNodeId = nodeId;
@@ -758,10 +782,14 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
         return;
       }
 
-      // 5. Parent node → drill-down
+      // 5. Parent node → drill-down. The card's path names the one node it
+      // stands for (#2917); the host decodes it into the drill path.
       if (group.getAttribute('data-has-children') === 'true') {
         hideDetailPanel();
-        vscode.postMessage({ type: 'drillDown', nodeId: nodeId });
+        var nodePath = group.getAttribute('data-node-path');
+        vscode.postMessage(nodePath
+          ? { type: 'drillDown', nodeId: nodeId, nodePath: nodePath }
+          : { type: 'drillDown', nodeId: nodeId });
         return;
       }
 
@@ -776,7 +804,7 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
       var group = e.target.closest('[data-node-id]');
       if (!group) { tooltip.style.display = 'none'; return; }
       var nodeId = group.getAttribute('data-node-id');
-      var meta = nodeId && nodeMetadataMap[nodeId];
+      var meta = nodeId && metaFor(nodeId, group);
       if (!meta || !meta.descriptionHtml) { tooltip.style.display = 'none'; return; }
       // Show plain description summary in tooltip (strip HTML)
       var tmp = document.createElement('div');

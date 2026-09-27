@@ -142,3 +142,26 @@ describe("escapeHtml", () => {
     expect(escapeHtml(`a & b < c > d " e' f`)).toBe("a &amp; b &lt; c &gt; d &quot; e' f");
   });
 });
+
+describe("drillDown with the card's own path (#2917)", () => {
+  it("drills to the decoded data-node-path over the metadata's index-resolved viewPath", () => {
+    const s = drillDown(
+      emptyDrilldownState(),
+      "Api",
+      { label: "Admin API", viewPath: ["Shop", "Api"] },
+      ["Admin", "Api"],
+    );
+    expect(s.viewPath).toEqual(["Admin", "Api"]);
+    expect(s.viewLabels).toEqual(["Admin", "Admin API"]);
+  });
+
+  it("falls back to the metadata viewPath when no path was carried", () => {
+    const s = drillDown(emptyDrilldownState(), "Api", { label: "API", viewPath: ["Shop", "Api"] });
+    expect(s.viewPath).toEqual(["Shop", "Api"]);
+  });
+
+  it("treats an empty path like an absent one", () => {
+    const s = drillDown(emptyDrilldownState(), "Api", undefined, []);
+    expect(s.viewPath).toEqual(["Api"]);
+  });
+});

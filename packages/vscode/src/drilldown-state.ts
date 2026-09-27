@@ -54,9 +54,18 @@ export function drillDown(
   state: DrilldownState,
   nodeId: string,
   meta: DrilldownNodeMeta | undefined,
+  /**
+   * The path the clicked card itself carries (`data-node-path`, decoded), which
+   * names exactly one node where `nodeId` may name two (#2917). Wins over the
+   * metadata's index-resolved `viewPath` when present.
+   */
+  nodePath?: readonly string[],
 ): DrilldownState {
   const lastLabel = meta?.label ?? nodeId;
-  const viewPath = meta?.viewPath ?? [...state.viewPath, nodeId];
+  const viewPath =
+    nodePath !== undefined && nodePath.length > 0
+      ? [...nodePath]
+      : (meta?.viewPath ?? [...state.viewPath, nodeId]);
   const viewLabels = viewPath.map((id, i) => (i === viewPath.length - 1 ? lastLabel : id));
   return { viewPath, viewLabels };
 }
