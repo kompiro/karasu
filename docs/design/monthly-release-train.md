@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#2922](https://github.com/kompiro/karasu/issues/2922)
+  - PR: [#2923](https://github.com/kompiro/karasu/pull/2923)
   - 直前のリリース: [#2921](https://github.com/kompiro/karasu/pull/2921)（karasu 0.7.0 / @karasu-tools/core 0.3.0 / karasu-vscode 0.2.0）
   - 関連 ADR: [ADR-1370](../adr/1370-release-flow-actions-driven.md)（Prepare → release PR → マージで publish）、[ADR-1316](../adr/1316-vscode-marketplace-publish.md)（Marketplace publish は手動 `workflow_dispatch`）、[ADR-1758](../adr/1758-vscode-changeset-versioning.md)（拡張を changesets の版管理に載せ、Marketplace publish の自動発火を却下）
   - 関連 TPL: [TPL-2786](../test-perspectives/TPL-2786-guard-failure-must-fail-the-run.md)（判定不能は通過ではなく失敗として扱う）
