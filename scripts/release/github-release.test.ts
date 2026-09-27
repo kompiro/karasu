@@ -134,6 +134,10 @@ describe("release body budget", () => {
     ...Array.from({ length: 40 }, (_, i) => change(i)),
   ].join("\n");
 
+  it("refuses a budget too small for the truncation note", () => {
+    expect(() => truncateSection(section, 20, "https://example/CHANGELOG.md")).toThrow(/budget/);
+  });
+
   it("leaves a section that fits untouched", () => {
     expect(truncateSection(section, section.length, "url")).toBe(section);
   });

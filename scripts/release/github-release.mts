@@ -132,6 +132,11 @@ export function truncateSection(section: string, budget: number, url: string): s
   }
   const head = lines.slice(0, cut).join("\n").trimEnd();
   const note = noteFor(totalChanges - kept);
+  // Not even the note fits: fail rather than return more than the budget, which
+  // would push the whole body past GitHub's limit without saying so.
+  if (note.length > budget) {
+    throw new Error(`A ${budget}-character budget cannot hold the truncation note for ${url}.`);
+  }
   return head === "" ? note : `${head}\n\n${note}`;
 }
 
@@ -158,7 +163,7 @@ export function composeReleaseBody(
   const byLength = [...sorted].sort((a, b) => sectionOf(a).length - sectionOf(b).length);
   byLength.forEach((entry, i) => {
     const share = Math.floor(remaining / (byLength.length - i));
-    const used = Math.min(sectionOf(entry).length, share);
+    const used = truncateSection(sectionOf(entry), share, entry.changelogUrl).length;
     allowance.set(entry, share);
     remaining -= used;
   });
