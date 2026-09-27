@@ -561,7 +561,7 @@ export interface OrganizationBlock {
 // 意味的まとまりを宣言する top-level 構文。`organization`/`owns` と同じく
 // containment ではなく参照（id 参照でファイル横断可）で、`boundaryMembership`
 // （node id → 宣言されたすべての boundary id、1:N）を成す。team（`ownerIndex`）
-// と直交する第二の Group-by 軸になる。experimental notation（ADR-1820）。
+// と直交する第二の Group-by 軸になる。言語 v2.0 で core に昇格（ADR-2678）。
 // 設計: docs/design/system-view-grouping.md「P2b 詳細設計」、
 // docs/adr/2161-boundary-membership-1n.md（1:N 化、#2178）。
 export interface BoundaryBlock {
@@ -1036,7 +1036,7 @@ export interface DiagnosticParamsByCode {
   "duplicate-facet-id": { facetId: string };
   // ADR-19 conformance: the positional `<kw> <id> "<label>"` form, removed on
   // every construct that once accepted it — `boundary` / `facet` outright
-  // (experimental, no compat promise; #2133) and organization / team / member
+  // (while both were experimental, no compat promise; #2133) and organization / team / member
   // after a deprecation window that no release ever shipped (#2208). The two
   // differ in recovery only: boundary / facet discard the string, the org
   // constructs keep it as the label.

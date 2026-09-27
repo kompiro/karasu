@@ -2138,11 +2138,11 @@ export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
 //   deploy-all.krs            every deploy artifact type (war / jar / oci / lambda / ...)
 //   team-ownership.krs        organization / team / owns — the Group by: team axis
 //   team-dependencies.krs     derived team dependencies — cross-team / nested / unowned / structural overlap
-//   boundary-clusters.krs     boundary / contains — the Group by: boundary axis (experimental)
-//   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas (experimental)
-//   boundary-multi-membership.krs  a node listed in two boundaries — both frames enclose it (experimental)
+//   boundary-clusters.krs     boundary / contains — the Group by: boundary axis
+//   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas
+//   boundary-multi-membership.krs  a node listed in two boundaries — both frames enclose it
 //   facets.krs                facet / facets — the viewer-side highlight overlay (experimental)
-//   tag-facet-registers.krs   tag vs annotation vs facet vs boundary — which register says what (experimental)
+//   tag-facet-registers.krs   tag vs annotation vs facet vs boundary — which register says what
 //   multi-system-root.krs     two \`system\` blocks in one file — the side-by-side root view
 
 system FeatureSamples {
@@ -2926,7 +2926,7 @@ organization ShopOrg {
     },
     {
       path: "boundary-clusters.krs",
-      content: `// Semantic clusters via \`boundary\` / \`contains\` (Issue #1822, P2b — experimental).
+      content: `// Semantic clusters via \`boundary\` / \`contains\` (Issue #1822, P2b).
 //
 // A \`boundary\` block declares a named cluster of system-view nodes, drawn as the
 // second "Group by" axis of the system view (the first is team ownership —
@@ -2947,8 +2947,8 @@ organization ShopOrg {
 // disjoint frames on several levels. Keep "Group by: Boundary" on while you
 // drill to see each level's frame.
 //
-// \`boundary\` is experimental notation — backward compatibility is not yet
-// promised (docs/spec/syntax.md § Grouping the system view).
+// \`boundary\` is core notation from \`.krs language v2.0\` (docs/spec/syntax.md
+// § Grouping the system view).
 
 system Marketplace {
   label "Marketplace"
@@ -2996,7 +2996,7 @@ boundary catalog {
     },
     {
       path: "scoped-boundary.krs",
-      content: `// Scoped boundary — a \`boundary\` declared INSIDE a node block (#2036, experimental).
+      content: `// Scoped boundary — a \`boundary\` declared INSIDE a node block (#2036).
 //
 // Written inside a node block, a boundary is that layer's own concern: its
 // members are the declaring node's DIRECT CHILDREN (bare ids — siblings are
@@ -3013,8 +3013,8 @@ boundary catalog {
 // A same-named boundary in another scope is a DIFFERENT boundary (identity =
 // declaring scope + id): its frame, label, and collapse state are independent.
 //
-// \`boundary\` is experimental notation — backward compatibility is not yet
-// promised (docs/spec/syntax.md § Grouping the system view).
+// \`boundary\` is core notation from \`.krs language v2.0\` (docs/spec/syntax.md
+// § Grouping the system view).
 
 system Shop {
   label "Shop"
@@ -3254,8 +3254,8 @@ system Billing {
     },
     {
       path: "tag-facet-registers.krs",
-      content: `// The four vocabulary registers, side by side (Issue #2177 — \`facet\` and
-// \`boundary\` are experimental).
+      content: `// The four vocabulary registers, side by side (Issue #2177 — \`facet\` is
+// experimental).
 //
 // karasu has four ways to say something extra about an element, and they are
 // not interchangeable. Picking the wrong one is the most common modelling
@@ -3457,7 +3457,7 @@ service[external] {
     },
     {
       path: "boundary-multi-membership.krs",
-      content: `// A node in more than one \`boundary\` (Issue #2161 — experimental).
+      content: `// A node in more than one \`boundary\` (Issue #2161).
 //
 // Ledger is listed in BOTH \`payments\` and \`pci\` below. Both memberships are
 // kept in the model, and with "Group by: Boundary" on you can see both: the
@@ -3512,8 +3512,8 @@ service[external] {
 // \`boundary\` in an imported file and one here both count, rather than the
 // first one winning.
 //
-// \`boundary\` is experimental notation — backward compatibility is not yet
-// promised (docs/spec/syntax.md § Grouping the system view).
+// \`boundary\` is core notation from \`.krs language v2.0\` (docs/spec/syntax.md
+// § Grouping the system view).
 
 system Payments {
   label "Payments platform"

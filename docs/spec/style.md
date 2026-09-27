@@ -948,9 +948,9 @@ Team frames (*Group by: team*) are addressed differently, because a team **is** 
 node and `#<id>` already reaches it — see
 [Team frames](#team-frames-group-by-team) below.
 
-`boundary` is experimental notation, so this selector carries the same
-no-compatibility-promise as the construct it styles
-([syntax.md](syntax.md#grouping-the-system-view-boundary--experimental)).
+The selector shares the compatibility tier of the construct it styles: `boundary`
+is core from `.krs language v2.0`
+([syntax.md](syntax.md#grouping-the-system-view-boundary)).
 
 > Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — a boundary's colour reaches the frame and the `◇` tab, which are drawn by different code; both read one resolver so a style override cannot repaint only half of it. [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — a bare `boundary` rule parsed and did nothing before this selector existed; it now has an effect. [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — the specificity rows above are generated from `reference-data.ts`, not written here.
 

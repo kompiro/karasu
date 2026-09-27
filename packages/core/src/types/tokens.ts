@@ -54,7 +54,7 @@ export enum TokenType {
   Slack = "Slack",
   Github = "Github",
 
-  // Keywords (boundary — P2b semantic-cluster declaration, experimental)
+  // Keywords (boundary — P2b semantic-cluster declaration; core from language v2.0, ADR-2678)
   Boundary = "Boundary",
   Contains = "Contains",
 

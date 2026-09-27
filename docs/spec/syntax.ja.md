@@ -248,7 +248,7 @@ system Shop {
 | `team` | 責任を持つチーム。ネスト可 | `team`, `member`, `owns` |
 | `member` | チームに所属する個人 | — |
 
-関連するグルーピングのオーバーレイ **`boundary`**（experimental）は、system view 内に意味的クラスタを
+関連するグルーピングのオーバーレイ **`boundary`** は、system view 内に意味的クラスタを
 宣言し、team 所有と並ぶ第二の「Group by」軸として描画する。後述の「システムビューのグルーピング（`boundary`）」節を参照。
 
 ### 物理構造（どのように）— 別図で表現
@@ -1417,11 +1417,11 @@ label として読み取るが、プロパティ形式にするまでファイ�
 
 ---
 
-## システムビューのグルーピング（`boundary`）— experimental
+## システムビューのグルーピング（`boundary`）
 
-> **experimental notation（post-v1.0 watch）。** `boundary` は freeze せず experimental として保持する。
-> 後方互換は**まだ約束しない**。v1.0-stable への昇格は実利用証拠に基づく notation promotion gate
-> （[ADR-1820](../adr/1820-notation-promotion-gate.md)）で判断する。`docs/roadmap.md` § post-v1.0 horizon を参照。
+> **言語 v2.0 から core notation。** `boundary`（宣言・`contains`・スコープ宣言）は notation promotion gate
+> （[ADR-1820](../adr/1820-notation-promotion-gate.md)）を通過し、言語 v2.0 で core に昇格する
+> （[ADR-2678](../adr/2678-boundary-core-promotion.md)）。以降この形は後方互換を約束し、破壊的変更は言語の major でのみ入る。
 
 `boundary` ブロックは system view のノードの**意味的クラスタ**を宣言する。論理構造の上に著者が引く
 グルーピングで、kind ティアとも team 所有とも独立している。system view の第二の**「Group by」軸**
