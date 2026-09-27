@@ -673,6 +673,9 @@ function layoutInner(
         y: box.y,
         width: box.width,
         height: box.height,
+        // Same shape as the owner lookup above: the canvas scope plus the id
+        // is the node's full path, which `data-node-path` carries (#2917).
+        path: [...scopePath, nid],
       }),
     );
   }
@@ -1219,6 +1222,9 @@ function layoutMultipleSystems(
           y: box.y,
           width: box.width,
           height: box.height,
+          // The frame scope plus the id (#2917): `[Shop, Api]` and `[Admin, Api]`
+          // for two same-named services, which `data-node-id` alone cannot say.
+          path: [...frameScope, nid],
         }),
       );
     }
@@ -1243,11 +1249,16 @@ function layoutMultipleSystems(
     };
     allContainers.push(containerRect);
 
-    // Offset local nodes into global coordinate space
+    // Offset local nodes into global coordinate space. The merged Map is keyed
+    // by (system, id), not by the bare id: two systems may both declare `Api`,
+    // and a bare key made the later system overwrite the earlier one's card
+    // (#2917) — the same overwrite ADR-1884 stopped for collapse stubs. The
+    // renderer keeps emitting the bare `LayoutNode.id` (no `nodeIdentity`), so
+    // the scoped key is internal to this function's lookups.
     for (const [id, node] of localNodes) {
       node.x += offsetX + CONTAINER_PADDING / 2;
       node.y += offsetY + CONTAINER_LABEL_HEIGHT;
-      allLayoutNodes.set(id, node);
+      allLayoutNodes.set(nodePathIdentityKey([sys.id, id]), node);
     }
 
     // Group boundary frames (#1884): one dashed titled frame per team, enclosing
@@ -1301,7 +1312,10 @@ function layoutMultipleSystems(
       : placeExternalServicesOnSides(
           workNodes,
           new Set([sys.id]),
-          allLayoutNodes,
+          // This system's nodes only: the helper narrows by bare `n.id`, so the
+          // accumulated Map would let a previous system's same-named node
+          // through (#2917).
+          localNodes,
           allContainers,
           sysEdges,
           layoutHints,
@@ -1311,7 +1325,9 @@ function layoutMultipleSystems(
     const systemEdges: LayoutEdge[] = [];
     for (const edge of workEdges) {
       if (idSet.has(edge.from) && idSet.has(edge.to)) {
-        const le = computeEdgePoints(edge, allLayoutNodes, layers, sideExternals);
+        // Endpoints resolve within this frame (#2917): `from` / `to` are bare
+        // ids, and the merged Map is keyed by (system, id).
+        const le = computeEdgePoints(edge, localNodes, layers, sideExternals);
         if (le) {
           // The constituents behind an aggregated implicit service edge, from
           // *this* frame's map (#2756). `computeLayoutEdges` does the same for
@@ -1401,6 +1417,13 @@ function layoutMultipleSystems(
       }
     }
     offsetX = routedRight + GHOST_MARGIN * 3;
+
+    // Bundle this system's parallel edges by (from, to) within the system
+    // (#2917). Bundling ran once over every system's edges before, so two
+    // systems that both draw `Api -> Worker` were folded into one bundle.
+    // Placed after the slide above so the nudge sees final coordinates, exactly
+    // where the single run saw them.
+    markParallelBundles(systemEdges, (nodeId) => localNodes.get(nodeId));
   }
 
   // Cross-system edges. When a team is collapsed (#1884), an endpoint here may
@@ -1420,8 +1443,26 @@ function layoutMultipleSystems(
     (systemId !== undefined
       ? crossSystemRemap.get(nodePathIdentityKey([systemId, id]))
       : crossSystemRemapUnscoped.get(id)) ?? id;
+  // Bare-id fallback for an endpoint whose system is unknown (a compare-mode
+  // edge present only in the before slice has no source system): answer only
+  // when exactly one node on the root carries that id, never guess between
+  // two (#2917, TPL-1352 "decide the fallback").
+  const byBareId = new Map<string, LayoutNode | null>();
+  for (const node of allLayoutNodes.values()) {
+    byBareId.set(node.id, byBareId.has(node.id) ? null : node);
+  }
+  const uniqueByBareId = (id: string): LayoutNode | undefined => byBareId.get(id) ?? undefined;
+  const nodeIn = (systemId: string | undefined, id: string): LayoutNode | undefined =>
+    systemId !== undefined
+      ? allLayoutNodes.get(nodePathIdentityKey([systemId, id]))
+      : uniqueByBareId(id);
+  // Cross-system edges are bundled per source system below; `from` is a bare
+  // id, so one bundle over every system would fold two systems' same-named
+  // `Api -> Other.Svc` together.
+  const crossEdgesBySource = new Map<string | undefined, LayoutEdge[]>();
   for (const edge of viewSlice.crossSystemEdges) {
-    const fromId = remapCrossEndpoint(crossSystemSource.get(edge), edge.from);
+    const sourceSystem = crossSystemSource.get(edge);
+    const fromId = remapCrossEndpoint(sourceSystem, edge.from);
     // The root canvas draws a system's direct children only, so the target is
     // anchored on `path[1]` of the path view extraction resolved (#2577). For
     // the two-segment `Sys.Svc` that is the same id the first-dot split gave;
@@ -1433,15 +1474,17 @@ function layoutMultipleSystems(
     const retargeted = fromId !== edge.from || toServiceRemapped !== toService;
     const toField =
       toServiceRemapped !== toService ? `${targetPath[0]}.${toServiceRemapped}` : edge.to;
-    const fromNode = allLayoutNodes.get(fromId);
-    const toNode = allLayoutNodes.get(toServiceRemapped);
+    const fromNode = nodeIn(sourceSystem, fromId);
+    // A two-segment target names its system in `targetPath[0]`; a one-segment
+    // target (no system prefix) falls back to the unique bare id.
+    const toNode = nodeIn(targetPath.length > 1 ? targetPath[0] : undefined, toServiceRemapped);
     if (!fromNode || !toNode) continue;
     if (retargeted) {
       const key = `${fromId}->${toField}`;
       if (seenCrossStub.has(key)) continue;
       seenCrossStub.add(key);
     }
-    allEdges.push({
+    const le: LayoutEdge = {
       from: fromId,
       to: toField,
       // A re-targeted edge stands for one-or-more real edges, so drop its label.
@@ -1454,10 +1497,19 @@ function layoutMultipleSystems(
         x: toNode.x,
         y: toNode.y + toNode.height / 2,
       },
-    });
+    };
+    allEdges.push(le);
+    const group = crossEdgesBySource.get(sourceSystem);
+    if (group) group.push(le);
+    else crossEdgesBySource.set(sourceSystem, [le]);
   }
 
-  markParallelBundles(allEdges, (nodeId) => allLayoutNodes.get(nodeId));
+  // The anchor resolver answers `from` (a bare id in the source system); the
+  // qualified `to` (`Sys.Svc`) never resolved before either, so the nudge keeps
+  // falling back to the chord perpendicular for it.
+  for (const [sourceSystem, edges] of crossEdgesBySource) {
+    markParallelBundles(edges, (nodeId) => nodeIn(sourceSystem, nodeId));
+  }
 
   // The first system's left side column (#1728) can extend to negative x;
   // shift everything back into the positive quadrant so it isn't clipped.

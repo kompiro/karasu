@@ -595,6 +595,10 @@ function layoutDeployForBudget(
     containers,
     width,
     height,
+    // The Map key (`<container>::<unit>`) is the card's identity here: one unit
+    // realized by two containers is two cards, and `data-node-id` must tell
+    // them apart (#735 / #1666). Logical views leave this unset (#2917).
+    nodeIdentity: "key",
   };
 }
 

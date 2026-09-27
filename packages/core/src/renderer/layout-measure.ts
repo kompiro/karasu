@@ -121,12 +121,15 @@ export function makeLayoutNode(
     height: number;
     subLabel?: string;
     ghost?: boolean;
+    /** Full path of the node (see `LayoutNode.path`); omitted for ghosts and stubs. */
+    path?: readonly string[];
   },
 ): LayoutNode {
   return {
     kind: node.kind,
     tags: node.tags,
     id: key,
+    path: opts.path,
     label: opts.label,
     annotations: opts.annotations,
     subLabel: opts.subLabel,

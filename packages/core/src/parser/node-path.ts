@@ -183,6 +183,72 @@ export function nodePathRefId(segments: readonly string[]): string {
 }
 
 /**
+ * Inverse of {@link nodePathRefId}: split the injective text form back into
+ * its segments. A quoted segment is the `.krs` string-literal form
+ * `quotedIdLiteral` produced (`\\` and `\"` escapes); a bare segment runs to
+ * the next `.`. The empty string decodes to no segments, and `nodePathRefId`
+ * round-trips through here for every path (#2917: the app and VS Code read a
+ * card's `data-node-path` back into the `viewPath` it drills to).
+ */
+export function parseNodePathRefId(text: string): string[] {
+  const segments: string[] = [];
+  let i = 0;
+  const n = text.length;
+  if (n === 0) return segments;
+  for (;;) {
+    if (text[i] === '"') {
+      let value = "";
+      i++;
+      for (;;) {
+        if (i >= n) {
+          // Unterminated literal: keep what was read rather than throwing; the
+          // attribute is produced by `nodePathRefId`, so this is defensive only.
+          break;
+        }
+        const ch = text[i];
+        if (ch === "\\" && i + 1 < n) {
+          value += text[i + 1];
+          i += 2;
+          continue;
+        }
+        if (ch === '"') {
+          i++;
+          break;
+        }
+        value += ch;
+        i++;
+      }
+      segments.push(value);
+    } else {
+      const end = text.indexOf(".", i);
+      const stop = end === -1 ? n : end;
+      segments.push(text.slice(i, stop));
+      i = stop;
+    }
+    if (i >= n) return segments;
+    // Only a separator may follow a segment.
+    if (text[i] === ".") {
+      i++;
+      if (i >= n) {
+        // Trailing separator: an empty bare segment, which `nodePathRefId`
+        // would have quoted; keep the decode total anyway.
+        segments.push("");
+        return segments;
+      }
+      continue;
+    }
+    // A quoted segment followed by something other than `.` cannot come from
+    // `nodePathRefId`; treat the rest as part of a bare segment to stay total.
+    const end = text.indexOf(".", i);
+    const stop = end === -1 ? n : end;
+    segments[segments.length - 1] += text.slice(i, stop);
+    i = stop;
+    if (i >= n) return segments;
+    i++;
+  }
+}
+
+/**
  * A segment is quoted exactly when leaving it bare would make the join
  * ambiguous: it carries the `.` separator, or one of the characters the quoted
  * form is built from (`"` / `\`), which a decoder would otherwise read as the

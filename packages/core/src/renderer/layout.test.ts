@@ -6,6 +6,14 @@ import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { Parser } from "../parser/parser.js";
 import { diffSystemViewSlices } from "../diff/view-diff.js";
 import type { ResolvedLayoutHints } from "../types/style.js";
+import type { LayoutResult } from "./layout-types.js";
+
+/**
+ * The multi-system root keys its node Map by (system, id) so two same-named
+ * services both survive the merge (#2917); tests read its cards by the bare
+ * `LayoutNode.id`, which is what the renderer emits.
+ */
+const byId = (r: LayoutResult) => new Map([...r.nodes.values()].map((n) => [n.id, n]));
 
 // Wrap, do not replace: every test below still gets the real marks, and the
 // deferral suite (#2761) counts how often the pass ran per `layout()` call.
@@ -478,8 +486,8 @@ system PaymentGateway {
 }
 `);
     const result = layout(slice);
-    expect(result.nodes.has("OrderService")).toBe(true);
-    expect(result.nodes.has("PaymentService")).toBe(true);
+    expect(byId(result).has("OrderService")).toBe(true);
+    expect(byId(result).has("PaymentService")).toBe(true);
     expect(result.containers).toHaveLength(2);
     const ec = result.containers.find((c) => c.id === "ECPlatform")!;
     const pg = result.containers.find((c) => c.id === "PaymentGateway")!;
@@ -488,8 +496,8 @@ system PaymentGateway {
     // Systems are placed side by side: PaymentGateway starts to the right of ECPlatform
     expect(pg.x).toBeGreaterThan(ec.x + ec.width);
     // All systems in root view should be rendered as non-ghost (regression: was ghost for si > 0)
-    expect(result.nodes.get("OrderService")!.ghost).toBe(false);
-    expect(result.nodes.get("PaymentService")!.ghost).toBe(false);
+    expect(byId(result).get("OrderService")!.ghost).toBe(false);
+    expect(byId(result).get("PaymentService")!.ghost).toBe(false);
   });
 
   it("includes unassigned domains in the primary system container", () => {
@@ -505,7 +513,7 @@ system PaymentGateway {
 `);
     const result = layout(slice);
     // Unassigned domain should be laid out (not silently dropped)
-    expect(result.nodes.has("Logistics")).toBe(true);
+    expect(byId(result).has("Logistics")).toBe(true);
   });
 
   it("sizes the canvas around routed edges, not just the container rects (#2513)", () => {
@@ -747,9 +755,9 @@ system SysB {
     const slice = extractView(result.value.systems, []);
     const layoutResult = layout(slice);
 
-    const zA = layoutResult.nodes.get("Z");
-    const yA = layoutResult.nodes.get("Y");
-    const xA = layoutResult.nodes.get("X");
+    const zA = byId(layoutResult).get("Z");
+    const yA = byId(layoutResult).get("Y");
+    const xA = byId(layoutResult).get("X");
     expect(zA).toBeDefined();
     expect(yA).toBeDefined();
     expect(xA).toBeDefined();
@@ -788,7 +796,7 @@ system SysB {
         "ServiceEEEEE",
         "ServiceFFFFF",
       ]
-        .map((id) => layoutResult.nodes.get(id)?.y)
+        .map((id) => byId(layoutResult).get(id)?.y)
         .filter((y): y is number => y !== undefined),
     );
     // At least two distinct Y values means wrapping occurred
@@ -948,8 +956,8 @@ system Other {
     const parsed = Parser.parse(krs);
     const slice = extractView(parsed.value.systems, [], parsed.value.domains);
     const result = layout(slice);
-    const c1 = result.nodes.get("C1")!;
-    const c2 = result.nodes.get("C2")!;
+    const c1 = byId(result).get("C1")!;
+    const c2 = byId(result).get("C2")!;
     expect(c1.x).toBeLessThan(c2.x);
   });
 
@@ -1646,17 +1654,17 @@ system B {
     const result = layout(slice);
 
     // System A: four ordered rows
-    const u = result.nodes.get("U")!;
-    const c = result.nodes.get("C")!;
-    const aInt = result.nodes.get("AInternal")!;
-    const aExt = result.nodes.get("AExt")!;
+    const u = byId(result).get("U")!;
+    const c = byId(result).get("C")!;
+    const aInt = byId(result).get("AInternal")!;
+    const aExt = byId(result).get("AExt")!;
     expect(u.y).toBeLessThan(c.y);
     expect(c.y).toBeLessThan(aInt.y);
     expect(aInt.y).toBeLessThan(aExt.y);
 
     // System B: two compacted rows (internal at row 0, external at row 1)
-    const bInt = result.nodes.get("BInternal")!;
-    const bExt = result.nodes.get("BExt")!;
+    const bInt = byId(result).get("BInternal")!;
+    const bExt = byId(result).get("BExt")!;
     expect(bInt.y).toBeLessThan(bExt.y);
 
     // Containers are placed side by side (B to the right of A)
@@ -1914,7 +1922,7 @@ system B {
     // the global figure (regression guard: `others` must be scoped per-system,
     // else B's external lands at the global left edge over system A).
     for (const id of ["ExtC", "ExtD"]) {
-      const e = result.nodes.get(id)!;
+      const e = byId(result).get(id)!;
       expect(e.x).toBeGreaterThanOrEqual(sysB.x - 0.5);
       expect(e.x + e.width).toBeLessThanOrEqual(sysB.x + sysB.width + 0.5);
     }
@@ -1944,8 +1952,8 @@ system B {
 `);
     const hints = new Map([["Y", { column: "left" as const }]]);
     const result = layout(slice, { layoutHints: hints });
-    const x = result.nodes.get("X")!;
-    const y = result.nodes.get("Y")!;
+    const x = byId(result).get("X")!;
+    const y = byId(result).get("Y")!;
     expect(y.x).toBeLessThan(x.x);
   });
 
@@ -2411,15 +2419,15 @@ system Beta {
     // The same trunk on the root view — it used to come back empty. The stub id
     // carries the system scope here (#2646, mirroring `groupStubId`).
     expect(trunk(root)).toEqual(["Api->__collapsed_Alpha_infra__"]);
-    expect(root.nodes.get("__collapsed_Alpha_infra__")).toBeDefined();
-    expect(root.nodes.get("Store")).toBeUndefined();
-    expect(root.nodes.get("Web")).toBeDefined();
+    expect(byId(root).get("__collapsed_Alpha_infra__")).toBeDefined();
+    expect(byId(root).get("Store")).toBeUndefined();
+    expect(byId(root).get("Web")).toBeDefined();
   });
 
   it("leaves the root view untouched when no category is collapsed", () => {
     const root = layout(parseAndExtract(INFRA_IN_TWO_SYSTEMS));
     expect(root.edges.map((e) => `${e.from}->${e.to}`)).toEqual(["Api->Store"]);
-    expect(root.nodes.get("Store")).toBeDefined();
+    expect(byId(root).get("Store")).toBeDefined();
   });
 
   it("re-anchors a cross-system edge whose target was folded into a category stub", () => {
@@ -2485,23 +2493,23 @@ system Beta {
     const result = layout(parseAndExtract(TWO_INFRA_SYSTEMS), {
       collapsedCategories: new Set<"external" | "infra">(["infra"]),
     });
-    expect(result.nodes.get("__collapsed_Alpha_infra__")).toBeDefined();
-    expect(result.nodes.get("__collapsed_Beta_infra__")).toBeDefined();
+    expect(byId(result).get("__collapsed_Alpha_infra__")).toBeDefined();
+    expect(byId(result).get("__collapsed_Beta_infra__")).toBeDefined();
     expect(result.edges.map((e) => `${e.from}->${e.to}`).sort()).toEqual([
       "Api->__collapsed_Alpha_infra__",
       "Web->__collapsed_Beta_infra__",
     ]);
     // Every trunk endpoint resolves to a card the render actually draws.
     for (const edge of result.edges) {
-      expect(result.nodes.get(edge.from)).toBeDefined();
-      expect(result.nodes.get(edge.to)).toBeDefined();
+      expect(byId(result).get(edge.from)).toBeDefined();
+      expect(byId(result).get(edge.to)).toBeDefined();
     }
     // Each stub sits inside its own system's frame.
     const frameOf = (id: string) => result.containers.find((c) => c.id === id)!;
     const inside = (n: { x: number }, c: { x: number; width: number }) =>
       n.x >= c.x && n.x <= c.x + c.width;
-    expect(inside(result.nodes.get("__collapsed_Alpha_infra__")!, frameOf("Alpha"))).toBe(true);
-    expect(inside(result.nodes.get("__collapsed_Beta_infra__")!, frameOf("Beta"))).toBe(true);
+    expect(inside(byId(result).get("__collapsed_Alpha_infra__")!, frameOf("Alpha"))).toBe(true);
+    expect(inside(byId(result).get("__collapsed_Beta_infra__")!, frameOf("Beta"))).toBe(true);
   });
 });
 
