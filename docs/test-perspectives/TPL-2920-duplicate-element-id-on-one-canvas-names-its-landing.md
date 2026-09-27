@@ -40,11 +40,18 @@ service を持てる（`node-id-multiple-locations` は warning）。モデル�
 bare id の key で片方が上書きされ、1 つしか描かれない）、同じ `data-node-id` の要素が 2 つ
 並ぶ。
 
-このとき「id → 要素」を引く API は 2 系統あり、着地点が別に決まる:
+このとき「id → 要素」を引く消費側は複数の系統に分かれ、着地点がそれぞれ別に決まる:
 
 - **最初の要素を返す API**（`querySelector`、Playwright の non-strict locator）: DOM 順で最初、つまり**先に配置された system** の要素
-- **1:1 の index**（`nodePathIndex` → `nodeMetadata.viewPath`、静的 SVG の
-  `childLevelLinks`）: `@migration_target` 優先・同点は宣言順の**勝者**（TPL-1583）
+- **1:1 の index**（SPA の `nodePathIndex` → `nodeMetadata.viewPath`、hash の解決）:
+  `@migration_target` 優先・同点は宣言順の**勝者**（TPL-1583）
+- **静的 SVG のドリル**（`childLevelLinks` は `nodePathIndex` を参照しない）: 同名のカードは
+  すべて同じ anchor `#krs-system-<id>` にリンクし、CSS `:target` は同じ id を持つレベルのうち
+  DOM 順で最初のものを表示する。そのレベルの内容も `resolveContainerChain` が**最初の所有
+  system** に解決する（#2933）。後の system が `@migration_target` を持つと SPA とは別の
+  ノードに着く
+- **path を持つ消費側**（`data-node-path` を読む click delegation。#2917 の設計）: 曖昧さなく
+  自分のノードに着く
 
 観点は 1 つ: **同じ id が複数要素に付く面を作るなら、その面で id から要素を引く消費側を
 列挙し、それぞれがどちらの着地点を取るかを決めて記録する。** 「どれかに当たる」ままにすると、
@@ -90,7 +97,7 @@ bare id の key で片方が上書きされ、1 つしか描かれない）、�
   （ADR-2088）と読めば、同一 canvas の `data-node-id` の重複は矛盾ではなく、1 ノードを指す
   属性が別に要るという意味になる。残りの hand-over（ハイライト・アウトライン・エディタへ
   ジャンプ・ADR-2818 A-2）は #2935
-- **path を持てない消費側の着地点は仕様として AT に書く**: permalink と hash は
+- **path を持てない消費側の着地点は仕様として AT に書く**: SPA の permalink と hash は
   `nodePathIndex` の勝者、ハイライトとアウトラインは DOM 順で最初。`node-id-multiple-locations`
   が作者にその状態を伝える。静的 SVG のドリルが最初の所有 system に解決する既存の食い違いは
   #2933
