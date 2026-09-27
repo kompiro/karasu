@@ -139,12 +139,20 @@ describe("isNodeId", () => {
 });
 
 describe("isOptionalNodePath (#2917)", () => {
-  it("accepts undefined and a non-empty string, rejects everything else", () => {
+  it("accepts undefined and a canonical nodePathRefId string, rejects everything else", () => {
     expect(isOptionalNodePath(undefined)).toBe(true);
     expect(isOptionalNodePath("Shop.Api")).toBe(true);
+    expect(isOptionalNodePath('Weird."www.example.com"')).toBe(true);
     expect(isOptionalNodePath("")).toBe(false);
     expect(isOptionalNodePath(null)).toBe(false);
     expect(isOptionalNodePath(42)).toBe(false);
     expect(isOptionalNodePath(["Shop", "Api"])).toBe(false);
+  });
+
+  it("rejects a string that is not the canonical form (would decode to empty or odd segments)", () => {
+    expect(isOptionalNodePath(".")).toBe(false);
+    expect(isOptionalNodePath("Shop.")).toBe(false);
+    expect(isOptionalNodePath('"unterminated')).toBe(false);
+    expect(isOptionalNodePath('"Shop.Api"x')).toBe(false);
   });
 });
