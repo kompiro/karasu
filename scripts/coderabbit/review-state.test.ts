@@ -6,6 +6,7 @@ import {
   classify,
   parseAnnouncedWaitMs,
   parseNoticeHeadSha,
+  threadsAwaitingReply,
   unmarkedBodyFindings,
   type CodeRabbitComment,
   type Snapshot,
@@ -610,5 +611,52 @@ describe("bodyFindingCount", () => {
     expect(unmarkedBodyFindings(s)).toBe(1);
     // Above the id list: the round has to be read by hand.
     expect(bodyFindingCount(s)).toBe(1);
+  });
+});
+
+describe("threadsAwaitingReply (#2954)", () => {
+  const thread = (over: Partial<Snapshot["threads"][number]>): Snapshot["threads"][number] => ({
+    isResolved: false,
+    lastCommentAt: "2026-09-15T14:20:00Z",
+    lastCommentByCodeRabbit: true,
+    commentCount: 2,
+    lastCommentUrl: "https://example/r1",
+    ...over,
+  });
+
+  it("lists a thread where CodeRabbit answered the author's reply", () => {
+    const s = snapshot({ threads: [thread({})] });
+    expect(threadsAwaitingReply(s).map((t) => t.lastCommentUrl)).toEqual(["https://example/r1"]);
+  });
+
+  it("leaves out a finding nobody has replied to yet", () => {
+    expect(threadsAwaitingReply(snapshot({ threads: [thread({ commentCount: 1 })] }))).toEqual([]);
+  });
+
+  it("leaves out a resolved thread and one where the author spoke last", () => {
+    const s = snapshot({
+      threads: [thread({ isResolved: true }), thread({ lastCommentByCodeRabbit: false })],
+    });
+    expect(threadsAwaitingReply(s)).toEqual([]);
+  });
+
+  it("drops an answer the author has acted on since (a later push or reply)", () => {
+    const s = snapshot({
+      since: "2026-09-15T14:25:00Z",
+      threads: [thread({ lastCommentAt: "2026-09-15T14:20:00Z" })],
+    });
+    expect(threadsAwaitingReply(s)).toEqual([]);
+  });
+
+  it("reports the answer even when the round classifies as rate limited (#2943)", () => {
+    // The head's review is blocked by the limit, so classify() does not read the
+    // thread answer as the end of the round; the answer must still be visible.
+    const s = snapshot({
+      since: "2026-09-15T14:10:00Z",
+      comments: [limitNotice("2026-09-15T14:11:00Z", 5)],
+      threads: [thread({ lastCommentAt: "2026-09-15T14:12:00Z" })],
+    });
+    expect(classify(s).kind).toBe("limit_elapsed");
+    expect(threadsAwaitingReply(s)).toHaveLength(1);
   });
 });

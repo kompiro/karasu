@@ -72,6 +72,10 @@ export interface ReviewThread {
   /** Newest comment in the thread, used to see CodeRabbit answering in it. */
   lastCommentAt: string;
   lastCommentByCodeRabbit: boolean;
+  /** Comments in the thread; more than one means someone replied to the finding. */
+  commentCount?: number;
+  /** Link to the newest comment, reported so the author can open it. */
+  lastCommentUrl?: string;
 }
 
 export interface Snapshot {
@@ -339,4 +343,34 @@ export function classify(
   if (now - lastActivity < opts.quietMs) return { kind: "in_progress" };
 
   return unresolved > 0 ? { kind: "changes", unresolved } : { kind: "stalled" };
+}
+
+/**
+ * Open threads where CodeRabbit answered a reply and now waits on the author:
+ * more than one comment, the newest one CodeRabbit's (#2954).
+ *
+ * {@link classify} reads a thread answer only once the head commit has been
+ * reviewed, so a reply to something posted before a push cannot end a round.
+ * The cost was that an answer arriving while the head's review was blocked (the
+ * rate limit, on #2943) showed up in no outcome at all — CodeRabbit said a fix
+ * was missing and nobody read it. This list is reported with every outcome, the
+ * way body findings are, so such an answer is always in front of the author.
+ *
+ * Only answers at or after `since` count: `since` is the author's last action
+ * (a push, a reply, a command), so an answer before it has been acted on. Without
+ * that bound a thread would stay listed after the fix was pushed, until
+ * CodeRabbit resolved it, and every round would handle the same answer again.
+ *
+ * A thread with a single comment is a finding nobody has answered yet; the
+ * `changes` outcome already covers it.
+ */
+export function threadsAwaitingReply(s: Snapshot): ReviewThread[] {
+  const since = ms(s.since);
+  return s.threads.filter(
+    (t) =>
+      !t.isResolved &&
+      t.lastCommentByCodeRabbit &&
+      (t.commentCount ?? 1) > 1 &&
+      ms(t.lastCommentAt) >= since,
+  );
 }
