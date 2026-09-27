@@ -89,8 +89,8 @@ bare id の key で片方が上書きされ、1 つしか描かれない）、�
 
 ## 既知の対処パターン
 
-- **重複を許す面では Map の key を scope し、要素 id は bare のまま出す**（#2917 の設計、
-  `docs/design/multi-system-root-same-id-nodes.md` → ADR 昇格予定）。ADR-1884 が同じ
+- **重複を許す面では Map の key を scope し、要素 id は bare のまま出す**（#2917、
+  [ADR-2917](../adr/2917-multi-system-root-same-id-nodes.md)）。ADR-1884 が同じ
   関数の collapse stub に引いた線
 - **1 ノードを指したい消費側には id ではなく path を手渡す**（`data-node-path`、
   `nodePathRefId` 形。#2917 の設計はドリルと詳細パネルをこれで引く）。bare id は集合を指す
