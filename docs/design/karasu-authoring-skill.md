@@ -39,7 +39,8 @@ reverse-architecture との役割分担は PRD の通り: reverse は「知ら�
 ## 制約・前提
 
 - **エージェント非依存に寄せる**。Issue の言い方は「Claude Code or similar」。SKILL.md 形式（front matter + 本文）は Claude Code 以外のエージェントも読めるが、配布機構まで Claude Code 専用にすると「similar」を切り捨てる。
-- **skill は利用者が手元に持っている CLI のバージョンと一致しているべき**。skill が新しい CLI 機能を前提にし、利用者の CLI が古い（またはその逆）と、エージェントは存在しないコマンドや構文を試す。drift は「repo 内の skill ↔ repo 内の CLI」だけでなく「利用者の skill ↔ 利用者の CLI」でも起きる。
+- **skill は利用者が手元に持っている CLI のバージョンと食い違ってはいけない**。skill が新しい CLI 機能を前提にし、利用者の CLI が古い（またはその逆）と、エージェントは存在しないコマンドや構文を試す。drift は「repo 内の skill ↔ repo 内の CLI」だけでなく「利用者の skill ↔ 利用者の CLI」でも起きる。
+  > 2026-09-27 改訂: 案 1-D は独立した版で出すので、完全一致ではなく「CLI が skill の刻んだ版以上」で判定する。逆向き（CLI の方が新しい）は、skill が前提にする CLI の挙動を変えるリリースでは changeset の名指しで skill も再公開されるので、実際に食い違うのは CLI が挙動を後方非互換に変えたのに名指しを忘れた場合に限られる。これは repo 内の drift guard（論点 3）と名指しルールで防ぎ、利用者側では照合しない（案 1-D「バージョンの揃え方」）。
 - **`.krs` が唯一の状態**。reverse と同じく、エージェントは会話履歴ではなく毎回 `.krs` を読み直す。
 - Chat panel には手を入れない（凍結）。
 - **skill の正本は karasu repo に置く**（2026-09-27 決定）。別 repo（例: `kompiro/karasu-skills`）に切り出すと、`skill-cli-refs` / `skill-reference-bundle-sync` / `krs-fences` といった drift guard が karasu の CI から外れる。正本が CLI と同じ repo にあれば、CLI を変える PR と skill を直す PR を同じ CI が見る。
@@ -105,19 +106,19 @@ packages/skills/
 
 **バージョンの揃え方**:
 
-- 公開側: `karasu-skills` は他のパッケージと同じく独立した版で管理する（ADR-1315 / ADR-1758 の independent versioning。全パッケージを同じ版に揃える案は検討したうえで採らなかった。#2936）。出すタイミングは月次リリーストレイン（#2922）で CLI と揃う。CLI は `karasu-skills` を `workspace:*` で依存し、publish 時にその時点の正確な版へ書き換わるので、`npx karasu@<ver>` は必ず、その CLI と同じリリースで repo にあった skill を持つ。
-- changeset の名指し: skill が前提にする CLI の挙動（コマンド、フラグ、出力、診断）を変える PR は、skill 本文も同じ PR で直し、changeset で `karasu-skills` も名指す。skill の食い違いチェック（論点 3）が repo 内の一致を保証し、名指しが公開物の一致を保証する。
+- 公開側: `karasu-skills` は他のパッケージと同じく独立した版で管理する（ADR-1315 / ADR-1758 の independent versioning。全パッケージを同じ版に揃える案は検討したうえで採らなかった。#2936）。CLI と同じリリースで出ることは changesets の cascade（CLI が `karasu-skills` を実 dependency に持つので、`karasu-skills` の bump が CLI の patch bump を起こす）で保証される。定期的なリリースの cadence は月次リリーストレイン（#2922、設計中）で決める予定で、本設計はそれに依存しない。CLI は `karasu-skills` を `workspace:*` で依存し、publish 時にその時点の正確な版へ書き換わるので、`npx karasu@<ver>` は必ず、その CLI と同じリリースで repo にあった skill を持つ。
+- changeset の名指し: skill が前提にする CLI の挙動（コマンド、フラグ、出力、診断）を変える PR は、skill 本文も同じ PR で直し、changeset で `karasu-skills` も名指す。skill の食い違いチェック（論点 3）が repo 内の一致を保証し、名指しが公開物の一致を保証する。このルールが編集時に読み込まれるよう、C1 で `.claude/rules/changesets.md` の版管理対象パッケージの一覧に `karasu-skills` を足し、`paths:` に skills パッケージ（Markdown / JSON を含む）を加える。
 - CLI からの読み方: 今の CLI は `@karasu-tools/core` などを esbuild で `dist/index.js` に内包し、tarball には `dist/index.js` と `THIRD_PARTY_NOTICES.md` しか載せない（`packaging.test.ts` が固定）。`karasu-skills` は Markdown と JSON なのでバンドルできない。そこで CLI の `package.json` の `dependencies`（devDependencies ではない）に `karasu-skills` を置き、esbuild では external にし、`skill install` は実行時に `import.meta.resolve("karasu-skills/package.json")` などで `node_modules` 内のパッケージの場所を解決してファイルを複写する。これは [ADR-1363](../adr/1363-publish-core-package.md) の「CLI は公開 core に依存せずバンドルを維持する（可動部を減らす）」に対する例外になる。バンドルできないコンテンツを運ぶ依存は `karasu-skills` だけに限り、コードの依存は引き続きバンドルする。実装時（C2）に `packaging.test.ts` の期待値を `dependencies` を含む形へ更新し、ADR-1363 との関係を ADR 昇格時に記録する。
 - 利用者側: plugin と CLI は別々に入るので、手元で一致する保証はない。1-C の「更新の契約」を両経路に共通で適用する。pack 時（`prepack`）に、その時点の CLI の版（`packages/cli/package.json` の version）を各 SKILL.md の front matter へ `karasu-version: <ver>` として刻む。版は独立しているので、これは「この skill はこの版以降の CLI を前提に書かれた」という下限の意味になる。skill はセッション開始時に `karasu --version` と比べ、CLI がこれより古ければ作業に入る前に利用者へ知らせる（CLI の更新を促す）。CLI の方が新しい場合は、CLI だけが上がって skill が再公開されなかったリリースでも起きる正常な状態なので止めない（skill が前提にする挙動を変えるリリースでは、上の名指しで skill も再公開される）。repo 内の正本には値が入っておらず、照合は「karasu repo 内で開発中」として飛ばす。
 - marketplace entry には `version` を書かず、最新の `karasu-skills` を追う。release のたびに `marketplace.json` を書き換えずに済み、利用者の CLI が古い場合は上の照合が拾う。
 
-**karasu repo 内での開発**: reverse-architecture は今も karasu 開発者自身が使うので、`.claude/skills/reverse-architecture` は skills パッケージ内の実体を指す symlink として残す。drift guard（`skill-cli-refs` / `skill-reference-bundle-sync` / `krs-fences`、`reverse-skill-adr-sync.test.ts`）と `reference-docs-check.yml` / lefthook の path filter は、実体のある skills パッケージ側を見るように付け替える。スクリプト自体は symlink をたどれるので読み取りは壊れないが、CI と lefthook の path filter（`.claude/skills/reverse-architecture/**`）は実体側のファイルの変更では起動しない。検査対象と起動条件を実体に揃えないと、skill を直した PR でガードが走らない。
+**karasu repo 内での開発**: reverse-architecture は今も karasu 開発者自身が使うので、`.claude/skills/reverse-architecture` は skills パッケージ内の実体を指す symlink として残す。drift guard（`skill-cli-refs` / `skill-reference-bundle-sync` / `krs-fences`、`reverse-skill-adr-sync.test.ts`）と `reference-docs-check.yml` / 対になる `reference-docs-check-skip.yml`（`paths-ignore:` を `paths:` と一致させる約束がある）/ lefthook の path filter は、実体のある skills パッケージ側を見るように付け替える。スクリプト自体は symlink をたどれるので読み取りは壊れないが、CI と lefthook の path filter（`.claude/skills/reverse-architecture/**`）は実体側のファイルの変更では起動しない。検査対象と起動条件を実体に揃えないと、skill を直した PR でガードが走らない。
 
 **メリット**: 1-B（Claude Code 利用者は `/plugin` で入れて更新を受け取れる）と 1-C（エージェント非依存、公開時の version lock）の両方が取れる。正本は 1 か所で、drift guard は karasu の CI に残る。reverse-architecture も同じ経路に乗り、手コピー問題が消える。
 
 **デメリット**:
 
-- publish する package が 1 つ増える。npm の Trusted Publishing は package が存在してからでないと登録できないので、`karasu-skills` の初回だけは token による手動 publish で bootstrap し、その後 npmjs.com で Trusted Publisher（repo `kompiro/karasu` / `release.yml`）を登録する必要がある（人手の作業）。
+- publish する package が 1 つ増える。`release.yml` の header が公開対象を `karasu` と `@karasu-tools/core` だけと書いているので、C1 でそこにも `karasu-skills` を足す。npm の Trusted Publishing は package が存在してからでないと登録できないので、`karasu-skills` の初回だけは token による手動 publish で bootstrap し、その後 npmjs.com で Trusted Publisher（repo `kompiro/karasu` / `release.yml`）を登録する必要がある（人手の作業）。
 - marketplace の npm source は Claude Code の docs に記載があるが、karasu ではまだ試していない。実際に `/plugin install` できるか、更新がどう届くかは配布スライスの最初に確かめる。
 - plugin 経路では、利用者の CLI とのバージョン一致を公開の仕組みで保証できない（照合で検出するだけ）。
 
