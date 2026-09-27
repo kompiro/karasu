@@ -640,6 +640,14 @@ describe("threadsAwaitingReply (#2954)", () => {
     expect(threadsAwaitingReply(s)).toEqual([]);
   });
 
+  it("drops an answer the author has acted on since (a later push or reply)", () => {
+    const s = snapshot({
+      since: "2026-09-15T14:25:00Z",
+      threads: [thread({ lastCommentAt: "2026-09-15T14:20:00Z" })],
+    });
+    expect(threadsAwaitingReply(s)).toEqual([]);
+  });
+
   it("reports the answer even when the round classifies as rate limited (#2943)", () => {
     // The head's review is blocked by the limit, so classify() does not read the
     // thread answer as the end of the round; the answer must still be visible.

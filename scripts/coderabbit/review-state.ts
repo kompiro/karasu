@@ -356,11 +356,21 @@ export function classify(
  * was missing and nobody read it. This list is reported with every outcome, the
  * way body findings are, so such an answer is always in front of the author.
  *
+ * Only answers at or after `since` count: `since` is the author's last action
+ * (a push, a reply, a command), so an answer before it has been acted on. Without
+ * that bound a thread would stay listed after the fix was pushed, until
+ * CodeRabbit resolved it, and every round would handle the same answer again.
+ *
  * A thread with a single comment is a finding nobody has answered yet; the
  * `changes` outcome already covers it.
  */
 export function threadsAwaitingReply(s: Snapshot): ReviewThread[] {
+  const since = ms(s.since);
   return s.threads.filter(
-    (t) => !t.isResolved && t.lastCommentByCodeRabbit && (t.commentCount ?? 1) > 1,
+    (t) =>
+      !t.isResolved &&
+      t.lastCommentByCodeRabbit &&
+      (t.commentCount ?? 1) > 1 &&
+      ms(t.lastCommentAt) >= since,
   );
 }

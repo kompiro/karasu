@@ -74,7 +74,8 @@ CodeRabbit はそれを出したラウンドでも approve するので、`appro
 対応した後にまた出てきた」に当たる。答え直さず、通知して終了する。
 
 **同じく `outcome` が何であっても、`threadReplies` が 1 以上なら先に `threadReplyUrls` の thread を読む。**
-これは、こちらの返信に CodeRabbit が thread 内で答え、いまこちらの番になっている未解決 thread の数である。
+これは、こちらの返信に CodeRabbit が thread 内で答え、いまこちらの番になっている未解決 thread の数である
+（`since` 以降に届いた答えだけを数える。応じて push や返信をすれば、次のラウンドの `since` より前になって消える）。
 `outcome` は HEAD のレビューが来るまで thread 内の答えを数えないので、レビューが rate limit で止まって
 いるあいだの答え（「修正がまだ見えない」など）は `outcome` に現れない（#2954。#2943 で読まれずに残った）。
 読んだら 3 と同じ判定で応じる。修正が既に push 済みなのに CodeRabbit が古い状態を見ていたなら、
