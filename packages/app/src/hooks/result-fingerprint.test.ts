@@ -130,3 +130,50 @@ describe("computeViewResultFingerprint", () => {
     expect(a).not.toBe(b);
   });
 });
+
+describe("computeViewResultFingerprint › nodeMetadataByPath (#2917)", () => {
+  const base = {
+    svg: "<svg/>",
+    warnings: [] as Warning[],
+    diagnostics: [] as Diagnostic[],
+  };
+  const meta = (description: string): NodeMetadata => ({
+    kind: "service",
+    label: "Api",
+    description,
+    links: [],
+    tags: [],
+    annotations: [],
+    hasChildren: false,
+  });
+
+  it("changes when only the path-keyed map changes (the bare-id entry is the other node's)", () => {
+    const nodeMetadata = new Map([["Api", meta("Admin's")]]);
+    const before = computeViewResultFingerprint({
+      ...base,
+      nodeMetadata,
+      nodeMetadataByPath: new Map([
+        ["Shop.Api", meta("Shop's")],
+        ["Admin.Api", meta("Admin's")],
+      ]),
+    });
+    const after = computeViewResultFingerprint({
+      ...base,
+      nodeMetadata,
+      nodeMetadataByPath: new Map([
+        ["Shop.Api", meta("Shop's, edited")],
+        ["Admin.Api", meta("Admin's")],
+      ]),
+    });
+    expect(after).not.toBe(before);
+  });
+
+  it("is stable when neither map changes", () => {
+    const args = {
+      ...base,
+      nodeMetadata: new Map([["Api", meta("x")]]),
+      nodeMetadataByPath: new Map([["Shop.Api", meta("x")]]),
+    };
+    expect(computeViewResultFingerprint(args)).toBe(computeViewResultFingerprint(args));
+  });
+});

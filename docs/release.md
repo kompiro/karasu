@@ -75,6 +75,7 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 3. **マージ前に版番号と `CHANGELOG.md` を必ず読む**（main ruleset の必須承認数は 0 = self-merge 可。目視確認はこの運用ルールで担保する）。このとき、**experimental notation の stable 昇格や破壊的変更が CHANGELOG に含まれるなら、promotion gate（[ADR-1820](adr/1820-notation-promotion-gate.md)）が通っているか・言語版に触れる変更が changeset / CHANGELOG に言語版遷移として明記されているか（[ADR-2124](adr/2124-version-vocabulary.md)、表記は `.krs language vX.Y`）を確認**する。問題なければ **squash マージ**する。
 4. マージで `main` の `packages/**/CHANGELOG.md` が変わり、`release.yml`（`paths` filter）が発火 → `changeset publish` が bump 済みパッケージを npm に公開する（`workflow_dispatch` での手動再実行も可）。
 5. 認証は **GitHub OIDC（Trusted Publishing）** — `release.yml` の `id-token: write` を npm が短命クレデンシャルに交換する。`NPM_TOKEN` は不要（保持しない）。provenance は trusted publishing で**自動付与**される（`--provenance` 不要）。要件は npm >= 11.5.1 / Node >= 22.14.0 で、`release.yml` が pin する Node 24（npm 11.17+ を同梱）が満たすため、npm を別途アップグレードするステップは持たない（[ADR-2397](adr/2397-node-24-baseline.md)）。publish の経路は `changeset publish` → `pnpm publish` → npm CLI（pnpm 10 が委譲する）。
+6. 同じ run の `record` ジョブが、公開できたパッケージのタグ（`karasu@X.Y.Z` / `@karasu-tools/core@X.Y.Z`）をリリース PR のマージコミットに push し、GitHub Release **`release-YYYY-MM-DD`**（マージコミットの UTC 日付。同じ日の 2 回目以降は `-2`, `-3`）を作る。本文は各パッケージの `CHANGELOG.md` の該当版の節（`scripts/release/github-release.mts`）。公開に失敗したパッケージにはタグを打たない。npm の公開権限を持つジョブは `contents: read` のまま、書き込みはこのジョブだけが持つ（[#2939](https://github.com/kompiro/karasu/issues/2939)）。
 
 > 前提: 公開対象パッケージごとに npmjs.com で **Trusted Publisher**（org `kompiro` / repo `karasu` / workflow `release.yml`）を登録しておくこと。未登録のパッケージは OIDC publish が失敗する。新規パッケージは登録前に一度存在している必要があるため、**初回だけローカルから手動 publish**（`pnpm publish`、provenance off + OTP）してから登録する。
 
@@ -85,6 +86,8 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 1. リリース PR（`changeset version` 済み）をマージし、`packages/vscode/package.json` の version が確定した状態にする。
 2. **"VS Code Extension Release"**（`vscode-release.yml`）を Actions タブから `workflow_dispatch` で起動する。`package.json` の version をそのまま Marketplace（publisher `karasu-tools`）へ publish する（pre-release チャネルは `pre_release` input で選択）。
 3. 認証は **Microsoft Entra ID via GitHub OIDC**（`AZURE_CLIENT_ID` / `AZURE_TENANT_ID` 変数。未設定時は build + package のみで publish はスキップ）。
+4. ビルドは main の先頭ではなく、**拡張の現在の版を設定したコミット（リリース PR のマージコミット）** から行う。リリース後に main へ入った次回分の変更を拡張に混ぜないため。
+5. Marketplace への公開が成功したら、`record` ジョブがそのコミットに `karasu-vscode@X.Y.Z` を打ち、同じコミットの GitHub Release に拡張の節を加える（Release が無ければ作る）。公開に失敗した版と pre-release にはタグを打たない（[#2939](https://github.com/kompiro/karasu/issues/2939)）。
 
 > **`packages/vscode/README.md` の画像は絶対 URL で書く**（`https://raw.githubusercontent.com/kompiro/karasu/main/packages/vscode/images/...`）。`vsce` は相対画像パスを repository-**root** の raw URL に書き換えるが `repository.directory` を考慮しないため、monorepo では Marketplace 上で 404 になる。
 

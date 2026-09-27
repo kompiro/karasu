@@ -110,14 +110,23 @@ function pointsOf(e: LayoutEdge): Point[] {
   return [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
 }
 
+/**
+ * A card by the id an edge endpoint names. Deploy keys its Map by that id
+ * (`<container>::<unit>`); the multi-system root keys it by (system, id) and
+ * keeps the bare id on the card (#2917), so fall back to a search by `id`.
+ */
+function nodeOf(res: LayoutResult, id: string): LayoutNode | undefined {
+  return res.nodes.get(id) ?? [...res.nodes.values()].find((n) => n.id === id);
+}
+
 function totalPenetrations(res: LayoutResult): number {
   const frames = framesOf(res);
   const nodes = [...res.nodes.values()];
   let total = 0;
   for (const e of res.edges) {
     if (e.ghost || e.cyclic) continue;
-    const from = res.nodes.get(e.from);
-    const to = res.nodes.get(e.to);
+    const from = nodeOf(res, e.from);
+    const to = nodeOf(res, e.to);
     if (!from || !to) continue;
     const obstacles = obstaclesForEdge(
       e,
@@ -144,8 +153,8 @@ function straightCentrePenetrations(res: LayoutResult): number {
   let total = 0;
   for (const e of res.edges) {
     if (e.ghost || e.cyclic) continue;
-    const from = res.nodes.get(e.from);
-    const to = res.nodes.get(e.to);
+    const from = nodeOf(res, e.from);
+    const to = nodeOf(res, e.to);
     if (!from || !to) continue;
     const obstacles = obstaclesForEdge(
       e,
@@ -474,7 +483,7 @@ describe("multi-system root view routes its edges (#2363)", () => {
     // overlap, or one system's lanes would be drawn across the other's.
     const strips = systems.map((c) => {
       const inside = (id: string) => {
-        const n = res.nodes.get(id)!;
+        const n = nodeOf(res, id)!;
         return n.x >= c.x && n.x + n.width <= c.x + c.width;
       };
       let min = c.x;
@@ -818,7 +827,7 @@ describe("fan-in trunk — count fence (#2883, TPL-2598 / TPL-2631 / TPL-2385)",
         [e.from, e.fromPoint],
         [e.to, e.toPoint],
       ] as const) {
-        const n = res.nodes.get(id);
+        const n = nodeOf(res, id);
         if (!n) continue;
         const onVertical =
           (Math.abs(p.x - n.x) < 0.5 || Math.abs(p.x - (n.x + n.width)) < 0.5) &&
@@ -1071,7 +1080,7 @@ describe("fan-out trunk — count fence (#2885, TPL-2598 / TPL-2631 / TPL-2385)"
         [e.from, e.fromPoint],
         [e.to, e.toPoint],
       ] as const) {
-        const n = res.nodes.get(id)!;
+        const n = nodeOf(res, id)!;
         const onVertical =
           (Math.abs(p.x - n.x) < 0.5 || Math.abs(p.x - (n.x + n.width)) < 0.5) &&
           p.y >= n.y - 0.5 &&
@@ -1174,7 +1183,7 @@ describe("crowded inter-row channel — capacity fence (#2608, TPL-2598)", () =>
     const left = Math.min(...inner.map((n) => n.x));
     const right = Math.max(...inner.map((n) => n.x + n.width));
     for (const id of ["E1", "E2"]) {
-      const e = res.nodes.get(id)!;
+      const e = nodeOf(res, id)!;
       expect(e.x + e.width <= left || e.x >= right).toBe(true);
     }
     expect(res.placementPasses).toBe(2);
@@ -1342,8 +1351,8 @@ describe("the obstacle index measures what the fences measure (#2790, TPL-1927)"
     let blocked = 0;
     for (const e of res.edges) {
       if (e.ghost || e.cyclic) continue;
-      const from = res.nodes.get(e.from);
-      const to = res.nodes.get(e.to);
+      const from = nodeOf(res, e.from);
+      const to = nodeOf(res, e.to);
       if (!from || !to) continue;
       const obstacles = obstaclesForEdge(
         e,

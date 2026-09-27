@@ -40,6 +40,15 @@ type OrgLayoutNodeKind = "member" | "team";
 export interface LayoutNode {
   kind: LogicalNodeKind | DeployNodeKind | OrgLayoutNodeKind;
   id: string;
+  /**
+   * Full path of the node this card stands for (canvas scope plus the node's
+   * own id), set by the layout for the real nodes of a logical-view canvas.
+   * Ghosts and synthetic stubs (collapse / category) carry none. The renderer
+   * emits it as `data-node-path` in the `nodePathRefId` text form so a click
+   * can name exactly one node where `data-node-id` names a set (#2917): two
+   * systems may both declare `Api`, and the multi-system root draws both.
+   */
+  path?: readonly string[];
   label: string;
   /** Source-node tags (e.g. `external`, the collapse-stub marker). Used by the
    * renderer to detect collapsible categories and stubs (Issue #1821). */
@@ -272,6 +281,15 @@ export interface LayoutResult {
   containers: ContainerRect[];
   width: number;
   height: number;
+  /**
+   * Where the renderer takes a card's element id (`data-node-id` and every
+   * per-node lookup keyed by it) from. Unset: `LayoutNode.id`, the node's own
+   * bare id. `"key"`: the `nodes` Map key, which the deploy layout uses as the
+   * identity (`<container>::<unit>`, one card per placement). The multi-system
+   * root scopes its Map key by system so two same-named nodes both survive the
+   * merge (#2917), but keeps emitting the bare id, so it leaves this unset.
+   */
+  nodeIdentity?: "key";
   /**
    * Row-width budget the canvas search settled on (#2593), reported so a test
    * or a debugging session can see *which* candidate produced this canvas.

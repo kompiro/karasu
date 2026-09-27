@@ -5,13 +5,16 @@ import {
   ACTIONABLE_KINDS,
   CODERABBIT_LOGINS,
   DEFAULT_CLASSIFY_OPTIONS,
+  type AuthorComment,
   bodyFindingCount,
+  bodyFindingIds,
   classify,
   type CodeRabbitComment,
   type CodeRabbitReview,
   type ReviewState,
   type ReviewThread,
   type Snapshot,
+  threadsAwaitingReply,
 } from "./review-state.ts";
 
 // Reads a PR's CodeRabbit state and, unless `--once`, polls until the author has
@@ -24,9 +27,16 @@ import {
 // Invoke it through `pnpm exec tsx`, not a `pnpm run` alias: flags after `--`
 // do not reliably reach the script that way (TPL-2046).
 //
-// stdout is one JSON line: { pr, headSha, since, state, bodyFindings, waitedMin, limitWaitedMin, outcome }.
-// `bodyFindings` counts findings that live only in a review body (outside the
-// diff, nitpicks): no thread tracks them, so `approved` does not mean they were read.
+// stdout is one JSON line: { pr, headSha, since, state, bodyFindings, bodyFindingIds,
+// threadReplies, threadReplyUrls, waitedMin, limitWaitedMin, outcome }.
+// `threadReplies` counts the open threads where CodeRabbit answered a reply and now
+// waits on the author, whatever the outcome (#2954); `threadReplyUrls` links each
+// answer.
+// `bodyFindings` counts the findings that live only in a review body (outside the
+// diff, nitpicks) and have not been answered: no thread tracks them, so `approved`
+// does not mean they were read. `bodyFindingIds` names them, and a comment on the
+// PR quoting an id retires it. A count above `bodyFindingIds.length` means a review
+// declared a finding it filed no id for, which only a human can clear.
 // `outcome` is the state kind, or `timeout` / `limit_budget_exceeded` when a
 // budget ran out first (the last observed `state` is still reported).
 
@@ -78,7 +88,10 @@ interface ThreadPage {
         reviewThreads: {
           nodes: {
             isResolved: boolean;
-            comments: { nodes: { author: { login: string } | null; createdAt: string }[] };
+            comments: {
+              totalCount: number;
+              nodes: { author: { login: string } | null; createdAt: string; url: string }[];
+            };
           }[];
         };
       };
@@ -92,7 +105,7 @@ const THREADS_QUERY = `query($owner: String!, $name: String!, $pr: Int!, $endCur
       reviewThreads(first: 100, after: $endCursor) {
         nodes {
           isResolved
-          comments(last: 1) { nodes { author { login } createdAt } }
+          comments(last: 1) { totalCount nodes { author { login } createdAt url } }
         }
         pageInfo { hasNextPage endCursor }
       }
@@ -136,12 +149,13 @@ function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
       body: r.body ?? "",
     }));
 
-  const comments: CodeRabbitComment[] = ghPages<RestComment[]>([
-    `repos/${REPO}/issues/${pr}/comments`,
-  ])
-    .flat()
+  const allComments = ghPages<RestComment[]>([`repos/${REPO}/issues/${pr}/comments`]).flat();
+  const comments: CodeRabbitComment[] = allComments
     .filter((c) => byCodeRabbit(c.user?.login))
     .map((c) => ({ body: c.body, createdAt: c.created_at, updatedAt: c.updated_at }));
+  const authorComments: AuthorComment[] = allComments
+    .filter((c) => !byCodeRabbit(c.user?.login))
+    .map((c) => ({ body: c.body, createdAt: c.created_at }));
 
   const threads: ReviewThread[] = ghPages<ThreadPage>([
     "graphql",
@@ -160,6 +174,8 @@ function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
         isResolved: t.isResolved,
         lastCommentAt: last?.createdAt ?? new Date(0).toISOString(),
         lastCommentByCodeRabbit: byCodeRabbit(last?.author?.login),
+        commentCount: t.comments.totalCount,
+        lastCommentUrl: last?.url,
       };
     }),
   );
@@ -170,6 +186,7 @@ function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
     now: new Date().toISOString(),
     reviews,
     comments,
+    authorComments,
     threads,
   };
 }
@@ -231,6 +248,9 @@ async function main(): Promise<void> {
         since: snap.since,
         state,
         bodyFindings: bodyFindingCount(snap),
+        bodyFindingIds: bodyFindingIds(snap),
+        threadReplies: threadsAwaitingReply(snap).length,
+        threadReplyUrls: threadsAwaitingReply(snap).map((t) => t.lastCommentUrl ?? ""),
         waitedMin: Math.round(waitedMs / 60_000),
         limitWaitedMin: Math.round(limitWaitedMs / 60_000),
         outcome,

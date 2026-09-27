@@ -167,6 +167,8 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2839](2839-pause-dependabot-triage-schedule.md) — dependabot-triage workflow の週次 cron を止め、dispatch で運用する
 - [ADR-2877](2877-dependabot-triage-2026-09-22.md) — Dependabot トリアージ 2026-09-22：changesets 3 は CI が回さない release flow を壊すので差し替え PR で入れ、gh-aw は再生成で上げる
 - [ADR-2898](2898-draft-first-code-review.md) — /code-review は draft PR に当て、CodeRabbit の初回レビューは ready にした時点の 1 回にする
+- [ADR-2939](2939-release-record-tags-and-github-release.md) — リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の GitHub Release を 1 つ作る
+- [ADR-2949](2949-coderabbit-skips-adr-auto-merge.md) — auto-merge する ADR-only PR は CodeRabbit の自動レビュー対象から外す
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -359,16 +361,20 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2330](2330-ungrouped-routing-parity.md) — グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける
 - [ADR-2360](2360-label-placement-line-obstacles.md) — label placement の障害物にエッジ polyline を加える — 自分の線だけ除外する
 - [ADR-2366](2366-node-chrome-and-ports.md) — node chrome は 1 本のコーナーレーンに畳み、色は色相表から導き、ポートは描画輪郭に置く
-- [ADR-2376](2376-icon-display-mode-de-emphasis-and-removal-path.md) — icon display mode は主導線から外し、移行先が出荷されるまで告知しない removal path に載せる
 - [ADR-2394](2394-external-side-straddle-rule.md) — external のサイド振り分けは「跨いでいるか」で 2 つの regime に分ける
 - [ADR-2473](2473-dy-instead-of-dominant-baseline.md) — テキストの縦位置は `dominant-baseline` ではなく em 単位の `dy` で指定する
 - [ADR-2521](2521-multi-system-pipeline-convergence.md) — multi-system ルートビューは single-system パイプラインの計算に合わせる
 - [ADR-2593](2593-canvas-space-objective.md) — キャンバスの空き空間を目的関数にして行幅予算を選ぶ
 - [ADR-2598](2598-edge-routing-channel-capacity.md) — 層間チャネルに容量を持たせ、配線の需要を配置へ返す
+- [ADR-2611](2611-layer-spanning-edge-columns.md) — 層をまたぐエッジは内部の列へ入り、列の無い行にだけ列を 1 本予約する
+- [ADR-2631](2631-trunk-legibility-by-count.md) — トランクの合流と分岐を本数で読ませ、交差マークを装飾で潰さない
 - [ADR-2714](2714-deploy-container-id-injective.md) — deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の id で行う
 - [ADR-2756](2756-root-view-system-edge-ownership.md) — root view の各 system フレームは自分の子から導出したエッジ集合を持つ
+- [ADR-2761](2761-width-budget-ladder-length.md) — 行幅予算の候補ラダーの長さを計測して 8 段にする
 - [ADR-2802](2802-builtin-icon-registration.md) — 組み込みアイコンは core が import 時に登録し、解決しない url() は値 validator が診断する
 - [ADR-2803](2803-slotted-icon-card-text.md) — shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通スタックで描く
+- [ADR-2906](2906-icon-mode-removal-release-undecided.md) — icon display mode は非推奨のまま据え置き、削除する major はまだ決めない
+- [ADR-2917](2917-multi-system-root-same-id-nodes.md) — 複数 system のルートビューは同名ノードを両方描き、要素の id は bare id のまま、着地は path で決める
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
 - [ADR-9015](9015-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG（buildAllViewsSvg）

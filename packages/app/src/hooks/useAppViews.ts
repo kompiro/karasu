@@ -82,6 +82,8 @@ export interface SystemViewBundle {
   warnings: Warning[];
   diagnostics: Diagnostic[];
   nodeMetadata: Map<string, NodeMetadata>;
+  /** The same metadata keyed by a card's `data-node-path` (#2917). */
+  nodeMetadataByPath: Map<string, NodeMetadata>;
   hasDeployDiagram: boolean;
   resolvedSystems: SystemNode[];
   nodeFileIndex: Map<string, string>;
@@ -227,6 +229,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     warnings: systemWarnings,
     diagnostics: systemDiagnostics,
     nodeMetadata: systemNodeMetadata,
+    nodeMetadataByPath: systemNodeMetadataByPath,
     hasDeployDiagram,
     hasOrgDiagram,
     hasBoundaries,
@@ -378,6 +381,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       warnings: systemWarnings,
       diagnostics: systemDiagnostics,
       nodeMetadata: systemNodeMetadata,
+      nodeMetadataByPath: systemNodeMetadataByPath,
       hasDeployDiagram,
       resolvedSystems,
       nodeFileIndex,

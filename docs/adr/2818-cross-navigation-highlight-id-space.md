@@ -11,6 +11,7 @@ related_to:
   - ADR-422
   - ADR-425
   - ADR-2088
+  - ADR-2917
 scope:
   packages: [core, app, vscode]
 assumptions:

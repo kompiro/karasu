@@ -107,7 +107,7 @@ ready → implementing → in-review → (close)
 7. PR 前に main を取り込む — git fetch origin main && git merge --no-edit origin/main（rebase は使わない。「ブランチ戦略」参照）。コンフリクトを解消し、lint / test を再確認する
 8. PR を draft で作成する（gh pr create --draft、Closes #N で Issue と紐付ける）。draft には CodeRabbit も分単位の CI も走らない
 9. /code-review <PR番号> を当て、対応すると決めた修正をコミットして push する（draft への push は CodeRabbit の review 枠を使わない）
-10. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の PR）では初回レビューもここで走る
+10. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の、`adr-auto-merge` ラベルの無い PR）では初回レビューもここで走る
 11. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 12. Issue ラベルを status: in-review に更新する
 13. 手動検証チェックリストを実施する
@@ -186,6 +186,9 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 - 対象外は draft PR と `dependabot[bot]` / `renovate[bot]` の PR（依存更新は
   `/hane:dependabot` が別途トリアージ）。`ignore_usernames` は完全一致なので、
   他の bot を除外するには login を `.coderabbit.yaml` に足す
+- `adr-auto-merge` ラベルの付いた ADR-only PR も対象外。auto-merge の適用条件を
+  満たすと diff で確認した PR にだけ、draft のうちに付ける（`.claude/rules/adr.md`
+  「ADR PR の auto-merge」、ADR-2949）
 - 採用しない指摘は**返信で理由を書いてから閉じる**。approve は指摘に従わなくても
   到達できる。**approve を取ることを目的に指摘へ従わない**。従うべきか迷うものは、
   上の表に従って人間へ回す
@@ -249,7 +252,8 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
   として扱う。返信で毎回閉じるのではなく、glob を実際の適用範囲まで絞るか、例外を
   instruction に書く
 - **review 枠は開発者単位で他のリポジトリとも共有され、補充レートは直近 7 日の利用量が
-  増えるほど下がる**（Essentials は直近 7 日で 60 回以上になると 1 回/時）。ready の PR への push は
+  増えるほど下がる**（適応型の制限が掛かるプランでは最後は 1 回/時まで落ちる。段階はプランや契約ごとに違い、
+  [rate limits](https://docs.coderabbit.ai/management/rate-limits) にある）。ready の PR への push は
   自動レビューが走るたびに枠を 1 回使う（rate limit で弾かれた push は使わない）ので、
   main の取り込みを単独で push しない。取り込みが要るときは
   そのラウンドの修正と一緒に 1 回の push にする。上限に当たると

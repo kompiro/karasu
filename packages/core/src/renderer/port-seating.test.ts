@@ -45,12 +45,20 @@ function layoutOf(source: string, withStyles = true): LayoutResult {
 }
 
 /** Every endpoint, with the node it lands on. */
+/**
+ * A card by the id an edge endpoint names; the multi-system root keys its Map
+ * by (system, id) and keeps the bare id on the card (#2917).
+ */
+function nodeOf(res: LayoutResult, id: string): LayoutNode | undefined {
+  return res.nodes.get(id) ?? [...res.nodes.values()].find((n) => n.id === id);
+}
+
 function endpoints(res: LayoutResult): { node: LayoutNode; point: { x: number; y: number } }[] {
   const out: { node: LayoutNode; point: { x: number; y: number } }[] = [];
   for (const edge of res.edges) {
     if (edge.ghost || edge.cyclic) continue;
-    const from = res.nodes.get(edge.from);
-    const to = res.nodes.get(edge.to);
+    const from = nodeOf(res, edge.from);
+    const to = nodeOf(res, edge.to);
     if (from) out.push({ node: from, point: edge.fromPoint });
     if (to) out.push({ node: to, point: edge.toPoint });
   }
@@ -64,7 +72,7 @@ function inside(rect: Rect, p: { x: number; y: number }): boolean {
 describe("ports land on the drawn outline", () => {
   it("pulls a cloud endpoint off the bounding box and into the blob", () => {
     const res = layoutOf(MODEL);
-    const media = res.nodes.get("Media")!;
+    const media = nodeOf(res, "Media")!;
     const arrivals = endpoints(res).filter((e) => e.node.id === "Media");
     expect(arrivals.length).toBeGreaterThan(0);
     for (const { point } of arrivals) {
@@ -76,7 +84,7 @@ describe("ports land on the drawn outline", () => {
 
   it("puts a cylinder endpoint on the rim rather than above it", () => {
     const res = layoutOf(MODEL);
-    const db = res.nodes.get("Db")!;
+    const db = nodeOf(res, "Db")!;
     const ry = Math.min(db.height * 0.12, 15);
     const offBody = endpoints(res)
       .filter((e) => e.node.id === "Db")
@@ -98,7 +106,7 @@ describe("ports land on the drawn outline", () => {
 
   it("keeps a user card's endpoints off the medallion strip", () => {
     const res = layoutOf(MODEL);
-    const user = res.nodes.get("Customer")!;
+    const user = nodeOf(res, "Customer")!;
     const medR = Math.min(13, user.height * 0.18);
     const underMedallion = endpoints(res)
       .filter((e) => e.node.id === "Customer")
@@ -356,7 +364,8 @@ system Billing {
     expect(res.containers.filter((c) => !c.ghost).length).toBe(2);
 
     for (const dbId of ["ShopDb", "BillingDb"]) {
-      const db = res.nodes.get(dbId)!;
+      // The root Map is keyed by (system, id) (#2917); read the card by its bare id.
+      const db = [...res.nodes.values()].find((n) => n.id === dbId)!;
       const arrivals = endpoints(res).filter((e) => e.node.id === dbId);
       expect(arrivals.length, `${dbId} arrivals`).toBe(2);
       const ry = Math.min(db.height * 0.12, 15);

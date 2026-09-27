@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-09-24
 - **関連 Issue**: [#2884](https://github.com/kompiro/karasu/issues/2884)（親: [#2631](https://github.com/kompiro/karasu/issues/2631) スライス B / [#2598](https://github.com/kompiro/karasu/issues/2598)）
+- **設計 (ADR)**: [ADR-2631](../adr/2631-trunk-legibility-by-count.md)
 - **Related TPLs**: [TPL-2631](../test-perspectives/TPL-2631-decoration-must-not-hide-a-crossing-mark.md)（装飾がマークを覆わないことを寸法で測る。assert は描画から読む）, [TPL-2803](../test-perspectives/TPL-2803-measured-lines-are-drawn-lines.md)（測った値と描いた値は同じもの）, [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)（計測柵は資源の限界に達する入力を持って初めて柵になる）, [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（貫通と重なりを同じテストで測る）
 - **対象ファイル**:
   - `packages/core/src/renderer/crossing-marks.ts`（`HOP_RADIUS` 4 → 6、上限とその根拠）

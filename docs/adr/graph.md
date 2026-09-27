@@ -167,6 +167,8 @@ flowchart TD
     ADR_2839["ADR-2839<br/>dependabot-triage workflow の週次 cron を止め、dispatc..."]
     ADR_2877["ADR-2877<br/>Dependabot トリアージ 2026-09-22：changesets 3 は CI が..."]
     ADR_2898["ADR-2898<br/>/code-review は draft PR に当て、CodeRabbit の初回レビューは..."]
+    ADR_2939["ADR-2939<br/>リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の Gi..."]
+    ADR_2949["ADR-2949<br/>auto-merge する ADR-only PR は CodeRabbit の自動レビュー対..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -362,10 +364,15 @@ flowchart TD
     ADR_2521["ADR-2521<br/>multi-system ルートビューは single-system パイプラインの計算に合わせる"]
     ADR_2593["ADR-2593<br/>キャンバスの空き空間を目的関数にして行幅予算を選ぶ"]
     ADR_2598["ADR-2598<br/>層間チャネルに容量を持たせ、配線の需要を配置へ返す"]
+    ADR_2611["ADR-2611<br/>層をまたぐエッジは内部の列へ入り、列の無い行にだけ列を 1 本予約する"]
+    ADR_2631["ADR-2631<br/>トランクの合流と分岐を本数で読ませ、交差マークを装飾で潰さない"]
     ADR_2714["ADR-2714<br/>deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
     ADR_2756["ADR-2756<br/>root view の各 system フレームは自分の子から導出したエッジ集合を持つ"]
+    ADR_2761["ADR-2761<br/>行幅予算の候補ラダーの長さを計測して 8 段にする"]
     ADR_2802["ADR-2802<br/>組み込みアイコンは core が import 時に登録し、解決しない url() は値 va..."]
     ADR_2803["ADR-2803<br/>shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通ス..."]
+    ADR_2906["ADR-2906<br/>icon display mode は非推奨のまま据え置き、削除する major はまだ決めない"]
+    ADR_2917["ADR-2917<br/>複数 system のルートビューは同名ノードを両方描き、要素の id は bare id の..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -554,8 +561,11 @@ flowchart TD
   ADR_2585 --> ADR_1870
   ADR_2585 --> ADR_644
   ADR_2592 --> ADR_2578
+  ADR_2611 --> ADR_2598
   ADR_2655 --> ADR_2578
   ADR_2818 --> ADR_2714
+  ADR_2917 --> ADR_1884
+  ADR_2917 --> ADR_2714
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -573,6 +583,7 @@ flowchart TD
   ADR_2578 -.supersedes.-> ADR_1994
   ADR_2716 -.supersedes.-> ADR_2640
   ADR_2807 -.supersedes.-> ADR_2805
+  ADR_2906 -.supersedes.-> ADR_2376
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -886,7 +897,7 @@ flowchart TD
   class ADR_2356 accepted
   class ADR_2360 accepted
   class ADR_2366 accepted
-  class ADR_2376 accepted
+  class ADR_2376 superseded
   class ADR_2390 accepted
   class ADR_2394 accepted
   class ADR_2397 accepted
@@ -924,8 +935,10 @@ flowchart TD
   class ADR_2596 accepted
   class ADR_2597 accepted
   class ADR_2598 accepted
+  class ADR_2611 accepted
   class ADR_2623 accepted
   class ADR_2628 accepted
+  class ADR_2631 accepted
   class ADR_2640 superseded
   class ADR_2643 accepted
   class ADR_2648 accepted
@@ -938,6 +951,7 @@ flowchart TD
   class ADR_2716 accepted
   class ADR_2753 accepted
   class ADR_2756 accepted
+  class ADR_2761 accepted
   class ADR_2773 accepted
   class ADR_2786 accepted
   class ADR_2802 accepted
@@ -953,6 +967,10 @@ flowchart TD
   class ADR_2859 accepted
   class ADR_2877 accepted
   class ADR_2898 accepted
+  class ADR_2906 accepted
+  class ADR_2917 accepted
+  class ADR_2939 accepted
+  class ADR_2949 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

@@ -1586,7 +1586,10 @@ export function extractView(
    * service is replaced by its domain children (spliced as a boundary-frame
    * band) while siblings stay collapsed; cross-boundary edges re-anchor to the
    * exact internal domain. Only honoured on the root system view; ignored on
-   * drill-down levels and multi-system roots (Phase 1 scope).
+   * drill-down levels. On a multi-system root only the primary system
+   * (`systems[0]`) expands, and its spliced domains keep the full path
+   * `<system>.<service>.<domain>` on their cards and metadata (#2917); the
+   * other system frames stay collapsed (Phase 1 scope).
    */
   expandedContainers?: ReadonlySet<string>,
 ): ViewSlice {

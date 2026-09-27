@@ -280,6 +280,7 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
   <script nonce="test-nonce-123">
     var vscode = acquireVsCodeApi();
     var nodeMetadataMap = {};
+    var nodeMetadataByPathMap = {};
     var PANEL_LABELS = {"close":"Close","linksTitle":"🔗 Links","resourcesTitle":"📦 Storage resources","capabilitiesTitle":"🔐 Capabilities","migrationTitle":"🕒 Migration intent","migrationUntil":"until","migrationFrom":"from","openDeployView":"🚀 View in Deploy diagram →","jumpToEditor":"↗ Jump to editor"};
     var tooltip = document.getElementById('karasu-tooltip');
     var detailPanel = document.getElementById('detail-panel');
@@ -307,8 +308,15 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
     });
 
     // ── Detail panel functions ──
+    // A card's own metadata: by its data-node-path when the canvas emits one
+    // (#2917), else by the bare id.
+    function metaFor(nodeId, groupEl) {
+      var path = groupEl && groupEl.getAttribute ? groupEl.getAttribute('data-node-path') : null;
+      return (path && nodeMetadataByPathMap[path]) || nodeMetadataMap[nodeId];
+    }
+
     function showDetailPanel(nodeId, targetEl) {
-      var meta = nodeMetadataMap[nodeId];
+      var meta = metaFor(nodeId, targetEl);
       if (!meta) return;
 
       currentDetailNodeId = nodeId;
@@ -552,10 +560,14 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
         return;
       }
 
-      // 5. Parent node → drill-down
+      // 5. Parent node → drill-down. The card's path names the one node it
+      // stands for (#2917); the host decodes it into the drill path.
       if (group.getAttribute('data-has-children') === 'true') {
         hideDetailPanel();
-        vscode.postMessage({ type: 'drillDown', nodeId: nodeId });
+        var nodePath = group.getAttribute('data-node-path');
+        vscode.postMessage(nodePath
+          ? { type: 'drillDown', nodeId: nodeId, nodePath: nodePath }
+          : { type: 'drillDown', nodeId: nodeId });
         return;
       }
 
@@ -570,7 +582,7 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
       var group = e.target.closest('[data-node-id]');
       if (!group) { tooltip.style.display = 'none'; return; }
       var nodeId = group.getAttribute('data-node-id');
-      var meta = nodeId && nodeMetadataMap[nodeId];
+      var meta = nodeId && metaFor(nodeId, group);
       if (!meta || !meta.descriptionHtml) { tooltip.style.display = 'none'; return; }
       // Show plain description summary in tooltip (strip HTML)
       var tmp = document.createElement('div');
@@ -897,6 +909,7 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
   <script nonce="test-nonce-123">
     var vscode = acquireVsCodeApi();
     var nodeMetadataMap = {};
+    var nodeMetadataByPathMap = {};
     var PANEL_LABELS = {"close":"Close","linksTitle":"🔗 Links","resourcesTitle":"📦 Storage resources","capabilitiesTitle":"🔐 Capabilities","migrationTitle":"🕒 Migration intent","migrationUntil":"until","migrationFrom":"from","openDeployView":"🚀 View in Deploy diagram →","jumpToEditor":"↗ Jump to editor"};
     var tooltip = document.getElementById('karasu-tooltip');
     var detailPanel = document.getElementById('detail-panel');
@@ -924,8 +937,15 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
     });
 
     // ── Detail panel functions ──
+    // A card's own metadata: by its data-node-path when the canvas emits one
+    // (#2917), else by the bare id.
+    function metaFor(nodeId, groupEl) {
+      var path = groupEl && groupEl.getAttribute ? groupEl.getAttribute('data-node-path') : null;
+      return (path && nodeMetadataByPathMap[path]) || nodeMetadataMap[nodeId];
+    }
+
     function showDetailPanel(nodeId, targetEl) {
-      var meta = nodeMetadataMap[nodeId];
+      var meta = metaFor(nodeId, targetEl);
       if (!meta) return;
 
       currentDetailNodeId = nodeId;
@@ -1169,10 +1189,14 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
         return;
       }
 
-      // 5. Parent node → drill-down
+      // 5. Parent node → drill-down. The card's path names the one node it
+      // stands for (#2917); the host decodes it into the drill path.
       if (group.getAttribute('data-has-children') === 'true') {
         hideDetailPanel();
-        vscode.postMessage({ type: 'drillDown', nodeId: nodeId });
+        var nodePath = group.getAttribute('data-node-path');
+        vscode.postMessage(nodePath
+          ? { type: 'drillDown', nodeId: nodeId, nodePath: nodePath }
+          : { type: 'drillDown', nodeId: nodeId });
         return;
       }
 
@@ -1187,7 +1211,7 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
       var group = e.target.closest('[data-node-id]');
       if (!group) { tooltip.style.display = 'none'; return; }
       var nodeId = group.getAttribute('data-node-id');
-      var meta = nodeId && nodeMetadataMap[nodeId];
+      var meta = nodeId && metaFor(nodeId, group);
       if (!meta || !meta.descriptionHtml) { tooltip.style.display = 'none'; return; }
       // Show plain description summary in tooltip (strip HTML)
       var tmp = document.createElement('div');
