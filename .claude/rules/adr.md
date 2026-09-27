@@ -152,15 +152,31 @@ Issue が無ければ **その ADR を書いた PR の番号**を使う（[#2083
 ## ADR PR の auto-merge
 
 実装と切り離して ADR のみを記録する PR（昇格 PR・新規 ADR 追記 PR の
-どちらも含む）は、`gh pr create` 直後に auto-merge を有効化する。
+どちらも含む）は、下の適用条件を満たせば auto-merge を有効化する。
+
+**到達状態**: 適用条件を満たす PR は `adr-auto-merge` ラベルを持ち、
+CodeRabbit の自動レビューを 1 度も受けずに auto-merge 待ちになっている。
+満たさない `docs(adr):` PR はラベルを持たず、通常どおりレビューされる。
 
 > この節は「PR のマージはユーザー確認を経る」という本リポジトリの既定運用に
 > **優先する明示的な例外**。例外が成立するのは下の適用条件をすべて満たす
 > 場合のみで、判定はすべて PR タイトルと diff という観測可能な事実で行う。
 
+手順は次の順で行う。CodeRabbit は draft をレビューせず、`adr-auto-merge`
+ラベルの付いた PR もレビューしない（`.coderabbit.yaml`、ADR-2949）。
+**ラベルは draft のうちに付ける。** ready で作ってから付けると、ラベルが
+届く前に CodeRabbit のレビューが走る。
+
 ```
-gh pr merge <pr-number> --auto --squash --delete-branch
+gh pr create --draft ...                        # 1. draft で作る
+gh pr view <N> --json files,title; gh pr diff <N>   # 2. 適用条件を確認
+gh pr edit <N> --add-label adr-auto-merge       # 3. 満たすときだけ付ける
+gh pr ready <N>
+gh pr merge <N> --auto --squash --delete-branch
 ```
+
+適用条件を満たさなければ 3 以降を行わず、`gh pr ready <N>` だけ実行して
+通常の PR として扱う（CodeRabbit のレビューとユーザー確認を経る）。
 
 ### 適用条件（すべて満たすこと）
 
@@ -186,7 +202,7 @@ gh pr merge <pr-number> --auto --squash --delete-branch
    張り替える、で全部である。外れるのは**既存 ADR の本文を触ったとき**だけで、
    それは「既存 ADR を覆すとき」が禁じているので、そもそも書かれない差分である。
 3. `gh pr view <N> --json files,title` と `gh pr diff <N>` で 1〜2 を確認した
-   直後にコマンドを実行する
+   直後に、ラベル付与から auto-merge までを実行する
 
 ### 補足
 
@@ -206,6 +222,9 @@ gh pr merge <pr-number> --auto --squash --delete-branch
   「何を検証したか」の記録なので、レビューなしに書き換わってよい対象ではない
 - 適用条件のいずれかが満たされない場合（例: `packages/**` のファイルが 1 つでも
   差分に含まれる場合）も同様に例外を適用せず、通常通りユーザー確認を経る
+- 確認後に差分を足した（push した）なら、ラベルを付けたままにせず 2 から
+  確認し直す。ラベルは「この差分で条件を満たした」という判定の記録で、
+  CodeRabbit のレビューを外すのはその判定だけが根拠になる
 - `--auto` を使うので CI 完走前にコマンド発行して構わない（GitHub 側が
   required check 通過を待つ）
 - リポジトリ設定で `allow_auto_merge=true` 済み
