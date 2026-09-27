@@ -292,9 +292,9 @@ export function routeGroupedEdges(
     // crossing its own siblings for no gain (#2611). The target's column
     // settles it: of two equally near corridors, the one nearer the target is
     // the one the route was heading for anyway. `x` last, so the order never
-    // depends on map iteration. That tiebreak also makes the order strict
-    // (the candidates are de-duplicated), which is what lets `firstInOrder`
-    // pick the nearest few without sorting all of them (#2944).
+    // depends on map iteration. `firstInOrder` picks the nearest few without
+    // sorting all of them, and returns exactly what sort-then-slice would
+    // (#2944).
     const mid = midX(from, to);
     const toCentre = to.x + to.width / 2;
     // The stretch every candidate has to cross: between the facing edges of

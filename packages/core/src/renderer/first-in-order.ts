@@ -6,11 +6,10 @@
  * routed edge; a full sort there cost O(N log N) per edge to use 8 values.
  * This keeps a bounded, ordered list and inserts into it, O(N·k).
  *
- * The result equals sort-then-slice only when `cmp` is a **strict total
- * order** over `values`, i.e. no two distinct values compare equal. Under ties
- * the relative order of equals is not specified here, whereas
- * `Array.prototype.sort` is stable. Callers keep the equality by ending the
- * comparator in a final tiebreak over de-duplicated values.
+ * Ties keep their input order, exactly as the stable `Array.prototype.sort`
+ * does: a value equal to the current last is not admitted, and an admitted
+ * value moves only past values it is strictly less than. So the result equals
+ * sort-then-slice for any consistent comparator, not only for a strict order.
  */
 export function firstInOrder<T>(values: readonly T[], k: number, cmp: (a: T, b: T) => number): T[] {
   const best: T[] = [];
