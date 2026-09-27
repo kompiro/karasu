@@ -33,6 +33,7 @@
 | アンカー参照 | 6 種のアンカー（en 3 / ja 3）が docs/spec・docs/guide・ADR・TPL・roadmap・`.claude` bundle に計 40 箇所強 | 全箇所を新アンカーへ。docs-site の `check-links`（CI）が spec / guide の未解決を落とす。ADR・TPL・roadmap は CI 非検証なので grep で潰す |
 | concepts | concepts.md:292-295「the tag system itself stays open」/ concepts.ja.md:311-314 | 閉鎖 ADR と同じ PR で改訂（ADR-2065 リスク台帳） |
 | client `capability` | parser / AST が「open by design」、診断は duplicate のみ | 触らない（閉鎖原則の帰結） |
+| docs-site | spec / guide / concepts は `packages/docs-site/scripts/lib/site-map.ts` の一覧から build 時に同期されるので、spec の改訂はそのまま載る。一方、手書き部分に boundary / facet の居場所が無い: examples gallery（`examples-manifest.ts`）は `facet-styling`（style 経由）と `tag-facet-registers` だけで、**boundary の feature-sample 3 本（`boundary-clusters` / `boundary-multi-membership` / `scoped-boundary`）は未掲載**。gallery の描画（`render-examples.ts`）は `compileProject` を view 種別と theme だけで呼ぶため、boundary 枠（`groupBy: "boundary"` 時のみ描画）も facet overlay（`selectedFacets`）も出ない。`compileProject` 自体は両オプションを受け付ける（`compile/compile.ts:202,208`）。home（`home/{en,ja}.md`）は 3 次元の説明のみ | 下記「docs-site への反映」 |
 | census（2026-09-27 実測） | examples: 非 builtin tag 0 / annotation 0 / 非 builtin セレクタ 0、facet セレクタ 15。`--docs` 込み: 非 builtin tag 8・annotation 4、いずれも意図的な例示（style.md の移行 Before 例、AT 0064 / 0068、tags-annotations の警告例） | 閉鎖で新たに警告される shipped モデルは 0 件（前提条件 1 を満たす） |
 
 ## 制約・前提
@@ -91,11 +92,13 @@ CLI 1.0.0 は、言語版とパッケージ版の独立（ADR-2124）を保つ�
 **メリット**: レビュー単位を小さくできる
 **デメリット**: 運用コストに見合うほどコード差分が大きくない
 
+なお「途中状態を出さない」制約が掛かるのは npm リリースに載るパッケージ（core / cli / lsp / vscode と、それらが同梱する spec 参照）だけである。docs-site の手書き部分（gallery・home）はリリースと無関係に main から配備されるので、別 PR に切り出しても食い違いは公開されない。
+
 ## 現時点の方針
 
 **案 1A・案 2B・案 3A を採用する。**
 
-gate はオーナー判断でトリガー (i) により通す。ADR-1820 の既定は「昇格先も形も観察中のもの」に向けた規律で、昇格先が ADR-2065 で決まり、証拠源が存在しないことが ADR-2522 で実測された notation には、据え置きが守るものが残っていない。containment の error 化は warn-don't-error と衝突し、閉鎖が warning に留まる理由と同じ理由で今回は乗せない。実装は途中状態をリリースに露出させないため 1 PR にまとめる。
+gate はオーナー判断でトリガー (i) により通す。ADR-1820 の既定は「昇格先も形も観察中のもの」に向けた規律で、昇格先が ADR-2065 で決まり、証拠源が存在しないことが ADR-2522 で実測された notation には、据え置きが守るものが残っていない。containment の error 化は warn-don't-error と衝突し、閉鎖が warning に留まる理由と同じ理由で今回は乗せない。実装は途中状態をリリースに露出させないため 1 PR にまとめ、リリースと無関係に配備される docs-site の手書き部分（gallery・home）だけを後続の別 PR にする。
 
 ### 決定事項（ADR-2677 に昇格させる内容）
 
@@ -143,7 +146,30 @@ gate はオーナー判断でトリガー (i) により通す。ADR-1820 の既�
    - Reference パネルで boundary / facet の experimental badge が消えていること
    - `karasu --version` が `.krs language v2.0` を出すこと
 8. **changeset**: core / cli / vscode に `.krs language v1.0 → v2.0` を明記。bump レベルは semver 規約で決める（0.x なので minor）
-9. **ADR 昇格**: 実装 PR のマージ後、本 Design Doc を ADR-2677 に昇格して削除する
+9. **ADR 昇格**: 実装 PR と下記 docs-site PR のマージ後、本 Design Doc を ADR-2677 に昇格して削除する
+
+### docs-site への反映（別 PR、`Refs #2677`）
+
+v2.0 で boundary と facet が「唯一のユーザー拡張点 + view 内グルーピング」という語彙体系の主軸になるので、docs-site でも spec の奥ではなく入口から見えるようにする。到達状態は次の 3 点:
+
+1. **gallery で boundary 枠と facet overlay が実際に描かれている**
+   - `GalleryDiagram` に描画オプション `render?: { groupBy?: "team" | "boundary"; selectedFacets?: readonly string[] }` を足し、`render-examples.ts` が `compileProject` に渡す（system view のみ。deploy / org には渡さない）
+   - 新しい gallery ページ **Grouping & membership**（`slug: "grouping-and-membership"`、group は `feature-samples`）を立て、次を載せる:
+     - `boundary-clusters`（`groupBy: "boundary"`）: 意味的クラスタの枠
+     - `boundary-multi-membership`（`groupBy: "boundary"`）: 多重所属の banded 描画
+     - `scoped-boundary`（`groupBy: "boundary"`）: スコープ宣言
+     - `tag-facet-registers`（`selectedFacets` に宣言済み facet を 1 つ）: facet overlay のハイライト。既存の feature-samples ページからはこちらへ移す
+   - caption / blurb に experimental の語を入れない。各ダイアグラムの下に「app で Group by: Boundary / facet overlay を切り替えると同じ図になる」旨と spec 節へのリンクを置く
+   - 既存 `facet-styling`（テーマ別シナリオ）はそのまま（style 経由の facet 活用例として役割が別）
+2. **home（`home/en.md` / `ja.md`）の「What is karasu?」に語彙の 4 register を 1 行で示す**: 「tag = 何であるか / annotation = いまどの段階か（どちらもツールの語彙）/ facet = どの集合に属するか（ユーザーが宣言）/ boundary = どう束ねて見るか」。リンク先は tags-annotations の *Vocabulary registers* 節と新 gallery ページ
+3. **同期される spec / guide のアンカーが全て解決する**: 実装 PR 側の見出し変更で担保し、`pnpm --filter @karasu-tools/docs-site run check-links` が通ることを確認する
+
+順序と独立性:
+
+- gallery の描画オプション追加自体は言語版に依存しないが、caption と home の文言は「core」前提なので **実装 PR のマージ後に出す**。docs-site は main への push で即配備される（`.github/workflows/pages.yml`）ため、先に出すと v1.x の spec と「core」の文言が並ぶ
+- 実装 PR も spec の改訂を通じて docs-site に即配備される。npm リリースより先に spec が「言語 v2.0」を名乗る期間が生じるので、実装 PR は **リリース直前にマージする**（リリースの流れ上、マージ → release PR が最短）
+- `examples-coverage.test.ts` の不変条件（`examples/` ↔ manifest）に新ページの `githubDir` が合うこと、`gallery-pages.test.ts` / `render-examples.test.ts` に描画オプションのケース（boundary 枠の `<g>` / overlay の class が SVG に出る）を足すことを PR の完了条件にする
+- AT（人間確認）: docs-site preview の Grouping & membership ページで boundary 枠と facet ハイライトが見えること、home の 4 register の行からリンクが辿れること
 
 ### 影響範囲・マイグレーション
 
