@@ -2,8 +2,19 @@ import { useCallback, useEffect, useRef } from "react";
 import { anchorId } from "@karasu-tools/core";
 import type { Dispatch } from "react";
 import type { ShareTarget } from "@karasu-tools/core";
-import type { AppAction, ActiveView } from "../state/app-reducer.js";
+import type { AppAction, ActiveView, HighlightAttribute } from "../state/app-reducer.js";
 import { useLatestRef } from "./useLatestRef.js";
+
+/**
+ * The attribute a `:<highlight>` restored from the hash is matched against
+ * (#2818). The hash carries no id space of its own; on the deploy view the
+ * suffix is what the deploy-jump button and a share link write, a node id,
+ * which the deploy view marks on the container realizing it. Every other view
+ * marks nodes directly.
+ */
+function hashHighlightAttribute(view: ActiveView): HighlightAttribute {
+  return view === "deploy" ? "data-realized-node-id" : "data-node-id";
+}
 
 // ─── Utilities (exported for testing) ────────────────────────────────────────
 
@@ -271,6 +282,13 @@ export function useHistoryNavigation({
   // dispatched on mount. This deferral mirrors the node re-resolution so the
   // selected node stays focus-highlighted.
   const pendingHighlightRef = useRef<string | null>(null);
+  // The attribute that highlight is matched against (#2818), decided from the
+  // hash's own view at parse time. Effect ② must not derive it from
+  // `activeViewRef`: that ref lags a commit, and when the index is already
+  // populated on mount effect ② runs in the same flush as effect ①'s
+  // SET_ACTIVE_VIEW, so it would read the view being left, not the one the
+  // hash names, and overwrite the attribute effect ① set.
+  const pendingHighlightAttributeRef = useRef<HighlightAttribute>("data-node-id");
 
   // Stable ref for onFileChange — referenced inside long-lived effects without re-running them.
   const onFileChangeRef = useLatestRef(onFileChange);
@@ -311,6 +329,7 @@ export function useHistoryNavigation({
     // pending ref restores it once the index is ready (Issue #1842).
     if (parsed.highlightNodeId !== null) {
       pendingHighlightRef.current = parsed.highlightNodeId;
+      pendingHighlightAttributeRef.current = hashHighlightAttribute(parsed.activeView);
     }
     // Restore activeView from hash if different (include highlightNodeId in the transition)
     if (parsed.activeView !== activeViewRef.current) {
@@ -318,9 +337,14 @@ export function useHistoryNavigation({
         type: "SET_ACTIVE_VIEW",
         activeView: parsed.activeView,
         highlightNodeId: parsed.highlightNodeId,
+        highlightAttribute: hashHighlightAttribute(parsed.activeView),
       });
     } else if (parsed.highlightNodeId !== null) {
-      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: parsed.highlightNodeId });
+      dispatch({
+        type: "SET_HIGHLIGHTED_NODE",
+        nodeId: parsed.highlightNodeId,
+        highlightAttribute: hashHighlightAttribute(parsed.activeView),
+      });
     }
     // Restore org tree view mode
     if (parsed.isOrgTreeView) {
@@ -366,7 +390,11 @@ export function useHistoryNavigation({
       if (!indexReady) return;
       const highlight = pendingHighlightRef.current;
       pendingHighlightRef.current = null;
-      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: highlight });
+      dispatch({
+        type: "SET_HIGHLIGHTED_NODE",
+        nodeId: highlight,
+        highlightAttribute: pendingHighlightAttributeRef.current,
+      });
     }
   }, [nodePathIndex, orgPathIndex, dispatch]);
 
@@ -437,9 +465,14 @@ export function useHistoryNavigation({
           type: "SET_ACTIVE_VIEW",
           activeView: parsed.activeView,
           highlightNodeId: parsed.highlightNodeId,
+          highlightAttribute: hashHighlightAttribute(parsed.activeView),
         });
       } else {
-        dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: parsed.highlightNodeId });
+        dispatch({
+          type: "SET_HIGHLIGHTED_NODE",
+          nodeId: parsed.highlightNodeId,
+          highlightAttribute: hashHighlightAttribute(parsed.activeView),
+        });
       }
       setIsOrgTreeViewRef.current(parsed.isOrgTreeView);
       setIsEntityViewRef.current(parsed.isEntityView);

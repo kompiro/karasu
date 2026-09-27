@@ -94,6 +94,7 @@ export function AppShell({
     activeView,
     selectedDeployBlockId,
     highlightedNodeId,
+    highlightAttribute,
     displayMode,
     currentFilePath,
     currentProject,
@@ -326,6 +327,7 @@ export function AppShell({
     viewPath,
     selectedDeployBlockId,
     highlightedNodeId,
+    highlightAttribute,
     nodeMetadata,
     // Passed straight through (#2015 point 8) — `usePreviewContextValue`'s arg
     // types are `Pick<...ViewBundle, ...>` slices of these same bundles, so

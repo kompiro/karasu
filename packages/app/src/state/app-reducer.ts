@@ -23,6 +23,15 @@ export interface AppState {
   selectedDeployBlockId: string | null;
   // クロスナビゲーション
   highlightedNodeId: string | null;
+  /**
+   * The SVG attribute `highlightedNodeId` is matched against (#2818). The id
+   * space is a property of whoever hands the id over, not of the pane that
+   * receives it: a deploy-jump button hands over a node id, which the deploy
+   * view marks on the realizing container as `data-realized-node-id`, while
+   * the outline hands over that view's own element ids on `data-node-id`.
+   * Every producer that omits it gets `data-node-id`.
+   */
+  highlightAttribute: HighlightAttribute;
   // UI
   displayMode: DisplayMode;
   loading: boolean;
@@ -58,6 +67,7 @@ export const initialState: AppState = {
   activeView: "system",
   selectedDeployBlockId: null,
   highlightedNodeId: null,
+  highlightAttribute: "data-node-id",
   displayMode: "shape",
   loading: true,
   initError: null,
@@ -81,13 +91,21 @@ function isKrsFile(path: string): boolean {
  */
 const VIEW_RESET: Pick<
   AppState,
-  "viewPath" | "activeView" | "selectedDeployBlockId" | "highlightedNodeId"
+  "viewPath" | "activeView" | "selectedDeployBlockId" | "highlightedNodeId" | "highlightAttribute"
 > = {
   viewPath: [],
   activeView: "system",
   selectedDeployBlockId: null,
   highlightedNodeId: null,
+  highlightAttribute: "data-node-id",
 };
+
+/**
+ * The SVG attribute a highlight is matched against (#2818). `data-node-id`
+ * marks a node in the system and org views and a unit in the deploy view;
+ * `data-realized-node-id` marks, on a deploy container, the node it realizes.
+ */
+export type HighlightAttribute = "data-node-id" | "data-realized-node-id";
 
 export type AppAction =
   | { type: "SET_PROJECTS"; projects: Project[] }
@@ -96,8 +114,13 @@ export type AppAction =
   | { type: "UPDATE_FILE_CONTENT"; content: string }
   | { type: "SET_FILE_TREE"; tree: DirEntry[] }
   | { type: "SET_VIEW_PATH"; path: string[] }
-  | { type: "SET_ACTIVE_VIEW"; activeView: ActiveView; highlightNodeId?: string | null }
-  | { type: "SET_HIGHLIGHTED_NODE"; nodeId: string | null }
+  | {
+      type: "SET_ACTIVE_VIEW";
+      activeView: ActiveView;
+      highlightNodeId?: string | null;
+      highlightAttribute?: HighlightAttribute;
+    }
+  | { type: "SET_HIGHLIGHTED_NODE"; nodeId: string | null; highlightAttribute?: HighlightAttribute }
   | { type: "SET_LOADING"; loading: boolean }
   | { type: "SET_INIT_ERROR"; error: string | null }
   | { type: "SET_SELECTED_DEPLOY_BLOCK"; id: string | null }
@@ -151,10 +174,15 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         activeView: action.activeView,
         viewPath: [],
         highlightedNodeId: action.highlightNodeId ?? null,
+        highlightAttribute: action.highlightAttribute ?? "data-node-id",
       };
 
     case "SET_HIGHLIGHTED_NODE":
-      return { ...state, highlightedNodeId: action.nodeId };
+      return {
+        ...state,
+        highlightedNodeId: action.nodeId,
+        highlightAttribute: action.highlightAttribute ?? "data-node-id",
+      };
 
     case "SET_LOADING":
       return { ...state, loading: action.loading };

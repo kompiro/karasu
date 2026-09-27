@@ -97,7 +97,7 @@ describe("PreviewPane", () => {
     it("does not call onClearHighlight when a deploy container is clicked", () => {
       const onClearHighlight = vi.fn<() => void>();
       const onContainerClick = vi.fn<() => void>();
-      const svg = `<div data-container-id="zone-a"></div>`;
+      const svg = `<div data-container-id="zone-a" data-realized-node-id="zone-a"></div>`;
 
       const { container } = render(
         <PreviewPane
@@ -115,6 +115,42 @@ describe("PreviewPane", () => {
 
       expect(onContainerClick).toHaveBeenCalledWith("zone-a");
       expect(onClearHighlight).not.toHaveBeenCalled();
+    });
+
+    it("hands over the realized node id, not the container id (#2818)", () => {
+      const onContainerClick = vi.fn<() => void>();
+      // A quoted id: the container's identity keeps the quotes (ADR-2714), the
+      // node the system view draws does not.
+      const svg = `<div data-container-id='"www.example.com"' data-realized-node-id="www.example.com"></div>`;
+
+      const { container } = render(
+        <PreviewPane {...baseProps()} svg={svg} onContainerClick={onContainerClick} />,
+      );
+
+      const previewContainer = container.querySelector(".preview-container")!;
+      click(previewContainer as HTMLElement, () =>
+        container.querySelector("[data-realized-node-id='www.example.com']")!,
+      );
+
+      expect(onContainerClick).toHaveBeenCalledWith("www.example.com");
+    });
+
+    it("hands over null when the container realizes no single node (#2818)", () => {
+      const onContainerClick = vi.fn<() => void>();
+      // A qualified container (two systems share the bare id): the view still
+      // switches, but there is no node id the system view could light.
+      const svg = `<div data-container-id="Shop.Api"></div>`;
+
+      const { container } = render(
+        <PreviewPane {...baseProps()} svg={svg} onContainerClick={onContainerClick} />,
+      );
+
+      const previewContainer = container.querySelector(".preview-container")!;
+      click(previewContainer as HTMLElement, () =>
+        container.querySelector("[data-container-id='Shop.Api']")!,
+      );
+
+      expect(onContainerClick).toHaveBeenCalledWith(null);
     });
 
     it.each(["__unclassified__", "__job_band__"])(
@@ -221,6 +257,42 @@ describe("PreviewPane", () => {
 
       const node = container.querySelector("[data-node-id='svc']");
       expect(node?.classList.contains("karasu-highlighted")).toBe(false);
+    });
+
+    // #2818: the deploy pane matches on the node a container realizes, and on
+    // nothing else. The deploy view's `data-node-id` is the unit id space — an
+    // unclassified unit `oci Api {}` carries the bare `Api` — so a fallback
+    // chain would let it take a highlight meant for the container (TPL-2818).
+    it("matches only data-realized-node-id when the pane is told to (#2818)", () => {
+      const svg = `<div data-node-id="Api" data-unit></div><div data-container-id="Api" data-realized-node-id="Api" data-container></div>`;
+
+      const { container } = render(
+        <PreviewPane
+          {...baseProps()}
+          svg={svg}
+          highlightedNodeId="Api"
+          highlightAttribute="data-realized-node-id"
+        />,
+      );
+
+      expect(
+        container.querySelector("[data-container]")?.classList.contains("karasu-highlighted"),
+      ).toBe(true);
+      expect(container.querySelector("[data-unit]")?.classList.contains("karasu-highlighted")).toBe(
+        false,
+      );
+    });
+
+    it("does not fall back to the container when matching data-node-id (#2818)", () => {
+      // A quoted id spelled as the container's identity: the default attribute
+      // must not find it, because `"www.example.com"` is not a node id.
+      const svg = `<div data-container-id='"www.example.com"' data-realized-node-id="www.example.com"></div>`;
+
+      const { container } = render(
+        <PreviewPane {...baseProps()} svg={svg} highlightedNodeId='"www.example.com"' />,
+      );
+
+      expect(container.querySelector(".karasu-highlighted")).toBeNull();
     });
   });
 
