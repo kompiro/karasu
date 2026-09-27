@@ -42,8 +42,7 @@ bare id の key で片方が上書きされ、1 つしか描かれない）、�
 
 このとき「id → 要素」を引く API は 2 系統あり、着地点が別に決まる:
 
-- **最初の要素を返す API**（`querySelector`、Playwright の non-strict locator、
-  `getElementById`）: DOM 順で最初、つまり**先に配置された system** の要素
+- **最初の要素を返す API**（`querySelector`、Playwright の non-strict locator）: DOM 順で最初、つまり**先に配置された system** の要素
 - **1:1 の index**（`nodePathIndex` → `nodeMetadata.viewPath`、静的 SVG の
   `childLevelLinks`）: `@migration_target` 優先・同点は宣言順の**勝者**（TPL-1583）
 
@@ -61,8 +60,9 @@ bare id の key で片方が上書きされ、1 つしか描かれない）、�
 - Playwright の strict locator（`page.locator('[data-node-id="X"]').click()`）が
   「resolved to 2 elements」で落ちる。同名 id のモデルを fixture にした spec だけが落ちる
   ので、CI では見えず、そのモデルで初めて出る
-- `getElementById` に乗る permalink の anchor（`#krs-system-<id>`）が 1 つのレベルしか
-  指せないことを、描画側が知らずに同名ノードごとの anchor を期待する
+- permalink の anchor（`#krs-system-<id>`）は 1 つのレベルしか指せない — 静的 SVG は CSS
+  `:target` で 1 要素を選び、SPA は hash を parse して `nodePathIndex` の勝者に着地する — のに、
+  描画側が同名ノードごとの anchor を期待する。permalink のテストを DOM 順の着地点で検証しない
 
 ## チェックリスト
 
