@@ -136,11 +136,6 @@ describe("karasu check", () => {
       'import { Pay } from "./nope.krs"\nsystem S { service A {} }\n',
       "nope.krs",
     ],
-    [
-      "a .krs.style import",
-      'import "./nope.krs.style"\nsystem S { service A {} }\n',
-      "nope.krs.style",
-    ],
   ])("exits 1 when %s points at a missing file", async (_name, source, missing) => {
     const file = await krsFile("index.krs", source);
     const out = await run(() => check(file));
@@ -148,6 +143,21 @@ describe("karasu check", () => {
     expect(out.stderr).toMatch(
       new RegExp(`^Error: .*File not found: .*${missing.replace(/\./g, "\\.")}$`, "m"),
     );
+    expect(out.stdout).toBe("");
+  });
+
+  // A style sheet is imported with `@import`, and a missing one is a warning
+  // (`style-file-not-found`, docs/spec/diagnostics.md): the model still
+  // renders with the sheets that did load, so check must not fail on it.
+  it("warns but exits 0 when an @import style sheet is missing", async () => {
+    const file = await krsFile(
+      "index.krs",
+      '@import "./nope.krs.style"\nsystem S { service A {} }\n',
+    );
+    const out = await run(() => check(file));
+    expect(out.exitCode).toBeUndefined();
+    expect(out.stderr).toMatch(/^Warning: .*Style file not found: .*nope\.krs\.style$/m);
+    expect(out.stderr).not.toMatch(/^Error: /m);
     expect(out.stdout).toBe("");
   });
 
@@ -170,6 +180,7 @@ describe("karasu check", () => {
     ["duplicate edge id", DUPLICATE_EDGE_ID],
     ["warning only", WARNING_ONLY],
     ["missing import", 'import "./nope.krs"\nsystem S { service A {} }\n'],
+    ["missing style sheet", '@import "./nope.krs.style"\nsystem S { service A {} }\n'],
   ])("agrees with karasu render on a %s file", async (_name, source) => {
     const file = await krsFile("index.krs", source);
     const checked = await run(() => check(file));
