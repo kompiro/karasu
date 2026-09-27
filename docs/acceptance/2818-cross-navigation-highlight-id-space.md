@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-09-26
 - **関連 Issue**: [#2818](https://github.com/kompiro/karasu/issues/2818)
+- **設計 (ADR)**: [ADR-2818](../adr/2818-cross-navigation-highlight-id-space.md)
 - **Related TPLs**: [TPL-2818](../test-perspectives/TPL-2818-cross-view-handover-carries-receiver-id-space.md)（ビューをまたぐ id の手渡しは受け手の id 空間で。チェックリスト 2・3・5 を AC-1 / AC-2・AC-5 / AC-2・AC-4 に落とした）、[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md)（injective にした identity を別の空間の lookup key に流用していた consumer）
 - **対象ファイル**:
   - `packages/core/src/renderer/layout-types.ts`（`ContainerRect.realizedNodeId`）

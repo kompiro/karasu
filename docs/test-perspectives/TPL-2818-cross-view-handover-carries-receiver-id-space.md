@@ -94,7 +94,7 @@ id をビューをまたいで手渡す導線を足す / 触るとき:
 - **突き合わせ用の id を要素に載せる**: `DeployContainer.nodeId`（ADR-2714 で core に
   導入）を deploy コンテナの `<g>` に `data-realized-node-id` として出し、両方向とも
   ノードの bare id で手渡す（#2818 の設計、
-  `docs/design/cross-navigation-highlight-id-space.md` → ADR 昇格予定）
+  [ADR-2818](../adr/2818-cross-navigation-highlight-id-space.md)）
 - **受け手はビューごとに 1 属性を引く**: system / org は `data-node-id`、deploy は
   `data-realized-node-id`。fallback chain を持たない
 - **突き合わせできない要素は、光らせない**: `nodeId` を持たないコンテナ（bare id が
