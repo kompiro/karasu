@@ -45,9 +45,10 @@ export function emptyDrilldownState(): DrilldownState {
 /**
  * Transition for a `drillDown` message: descend into `nodeId`.
  *
- * Uses `viewPath` from metadata (includes the system ID prefix) when
- * available, falling back to appending `nodeId` for nodes not in the index.
- * Labels use the raw id for intermediate path segments and the resolved
+ * Resolution order (#2917): the card's own decoded `data-node-path` when the
+ * message carried one, else `viewPath` from metadata (includes the system ID
+ * prefix), else appending `nodeId` to the current path for nodes not in the
+ * index. Labels use the raw id for intermediate path segments and the resolved
  * label for the last (only the clicked node's label is known here).
  */
 export function drillDown(
