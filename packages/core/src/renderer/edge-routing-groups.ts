@@ -46,6 +46,7 @@
  * Determinism: every coordinate is derived from node/frame geometry; no random
  * or DOM input, so snapshots stay stable.
  */
+import { firstInOrder } from "./first-in-order.js";
 import type { LayoutEdge, LayoutNode, ContainerRect } from "./layout-types.js";
 import type { Point } from "./edge-geometry.js";
 import { framePieces } from "./frame-geometry.js";
@@ -291,7 +292,9 @@ export function routeGroupedEdges(
     // crossing its own siblings for no gain (#2611). The target's column
     // settles it: of two equally near corridors, the one nearer the target is
     // the one the route was heading for anyway. `x` last, so the order never
-    // depends on map iteration.
+    // depends on map iteration. That tiebreak also makes the order strict
+    // (the candidates are de-duplicated), which is what lets `firstInOrder`
+    // pick the nearest few without sorting all of them (#2944).
     const mid = midX(from, to);
     const toCentre = to.x + to.width / 2;
     // The stretch every candidate has to cross: between the facing edges of
@@ -299,15 +302,14 @@ export function routeGroupedEdges(
     // dismissed early.
     const innerTop = Math.min(from.y + from.height, to.y + to.height);
     const innerBottom = Math.max(from.y, to.y);
-    const routedInner = innerCorridors
-      .slice()
-      .sort(
-        (a, b) =>
-          Math.abs(a - mid) - Math.abs(b - mid) ||
-          Math.abs(a - toCentre) - Math.abs(b - toCentre) ||
-          a - b,
-      )
-      .slice(0, MAX_CORRIDOR_TRIES)
+    const routedInner = firstInOrder(
+      innerCorridors,
+      MAX_CORRIDOR_TRIES,
+      (a, b) =>
+        Math.abs(a - mid) - Math.abs(b - mid) ||
+        Math.abs(a - toCentre) - Math.abs(b - toCentre) ||
+        a - b,
+    )
       // Filtered after the cap, not before it: the cap counts candidates
       // tried, and dismissing the hopeless ones earlier would let further
       // ones in and change which corridor an edge takes.
