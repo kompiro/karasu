@@ -70,6 +70,6 @@ ADR-1315 は changesets を採用したとき、パッケージごとに独立�
 
 ## 影響
 
-- 変更の無いパッケージも毎回同じ版で公開される。`@karasu-tools/core` と `karasu-vscode` は、中身が変わっていない版が npm / Marketplace に出ることがある（CHANGELOG には「版を揃えるための bump」と出る）。
+- 変更の無いパッケージも毎回同じ版で公開される。中身が変わっていないパッケージも同じ版で npm / Marketplace に出る。名指されなかったパッケージの `CHANGELOG.md` には、実 dependency の更新があれば `Updated dependencies` の行が、それも無ければ changesets が固定で書く `No changes in this release.` が載る（`@changesets/apply-release-plan` の既定文言で、`.changeset/changelog.cjs` では変えられない）。リリース PR で CHANGELOG を読むときは、この 1 行を「版を揃えるための bump」と読む。
 - 次のリリースで `@karasu-tools/core` は 0.3.x から、`karasu-vscode` は 0.2.x から、CLI と同じ 0.7.x 以上へ跳ぶ。
 - `.claude/rules/changesets.md` と `docs/release.md` の名指しルール・cascade の説明、`vscode-release.yml` の「独立した cadence」の header コメントを書き換える。

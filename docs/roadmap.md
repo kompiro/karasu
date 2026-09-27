@@ -49,7 +49,9 @@
 | **言語**（`.krs` / `.krs.style`） | 構文・診断 register | 言語 v1.0（frozen） | 後方互換。追加は言語 v1.x、破壊は言語 v2.0 でのみ | [ADR-1314](adr/1314-krs-spec-v1-freeze.md) |
 | **CLI**（`karasu`） | コマンド UX・配布物 | 0.x（npm） | npm semver（0.x = 安定約束なし。floor 0.6.0 — #1774） | `docs/release.md` |
 | **TS API**（`@karasu-tools/core`） | ライブラリ API | 0.x（npm） | **明示的に約束なし**（minor で変わりうる） | [ADR-1314](adr/1314-krs-spec-v1-freeze.md) 非スコープ節 |
-| **VS Code 拡張**（`karasu-vscode`） | Marketplace 配布 | 0.x | 別ケイデンス（changesets bump、公開は手動） | [ADR-1758](adr/1758-vscode-changeset-versioning.md) |
+| **VS Code 拡張**（`karasu-vscode`） | Marketplace 配布 | 0.x | CLI・core と同じ版で毎回 bump（公開は手動） | [ADR-2936](adr/2936-lockstep-package-versioning.md) |
+
+> パッケージの 3 軸（CLI / TS API / VS Code 拡張）は、版**番号**を changesets の `fixed` グループで共有する（[ADR-2936](adr/2936-lockstep-package-versioning.md)）。番号が同じでも、各行の「約束」は軸ごとに別のまま。言語版はパッケージ版に追従しない（ADR-2124）。
 
 - **言語版の公開機構**: core の `KRS_LANGUAGE_VERSION` 定数 + `karasu --version` の 2 行表示
   （パッケージ版 + 言語版）+ spec docs 冒頭の明記 + drift ガード —
