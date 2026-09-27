@@ -422,12 +422,18 @@ export function labelAnchorWithSegment(
  * belongs to which source. The stub is the one part that does, so the label goes
  * there (#2883).
  *
+ * A fan-out edge (#2885) is the mirror: it shares the exit and the spine with
+ * its siblings and owns only the branch into its own target, the last segment.
+ *
  * `undefined` for every other edge, which keeps ADR-1184's default anchor and
- * the byte-stability it was chosen for. The fan-out mirror (#2885) extends this
- * to the last segment, which is the own part of that shape.
+ * the byte-stability it was chosen for.
  */
 export function ownLabelSegment(edge: LayoutEdge): number | undefined {
-  return edge.trunkId !== undefined ? 0 : undefined;
+  if (edge.trunkId !== undefined) return 0;
+  // The route is `fromPoint, ...waypoints, toPoint`, so its last segment starts
+  // at the last waypoint, whose index in the points is `waypoints.length`.
+  if (edge.outTrunkId !== undefined) return edge.waypoints?.length ?? 0;
+  return undefined;
 }
 
 function segDirAt(points: Point[], i: number): Point {

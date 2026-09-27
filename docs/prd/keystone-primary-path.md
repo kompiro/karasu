@@ -6,7 +6,7 @@
 - **関連**:
   - 引き金: post-v1.0 horizon（`docs/roadmap.md`）の keystone 節 / planning [#1814](https://github.com/kompiro/karasu/issues/1814)
   - 関連 ADR: [ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)（karasu-nest）
-  - 関連 Issue: [#1783](https://github.com/kompiro/karasu/issues/1783)（nest brainstorm）/ [#638](https://github.com/kompiro/karasu/issues/638)（Chat user testing）
+  - 関連 Issue: [#1783](https://github.com/kompiro/karasu/issues/1783)（nest brainstorm）/ [#638](https://github.com/kompiro/karasu/issues/638)（Chat user testing、not_planned で close）/ [#2901](https://github.com/kompiro/karasu/issues/2901)（karasu CLI authoring skill）
   - 派生する柱: comprehension [#1817](https://github.com/kompiro/karasu/issues/1817) / notation watch r2 [#1816](https://github.com/kompiro/karasu/issues/1816)
 
 ## 用語集（この doc / 後続の特殊用語）
@@ -44,7 +44,7 @@ A/B/C の「primary path」という枠は **adoption（採用を増やす）を
 | path | karasu の正体 | 既存の足場 | 主 surface |
 | --- | --- | --- | --- |
 | **A. authoring tool** | architect が書く道具 | editor app / VS Code / LSP / notation / cookbook | VS Code / app |
-| **B. AI-readable lens** | AI が生成し人が読むレンズ | nest reverse / translate / Chat（#638） | karasu-nest |
+| **B. AI-readable lens** | AI が生成し人が読むレンズ | nest reverse / translate / Chat（#638、凍結） | karasu-nest |
 | **C. shareable medium** | 図を URL で配るメディア | nest share / taka / OGP / `/render` | karasu-nest + taka |
 
 ### 評価軸と所見
@@ -107,6 +107,19 @@ ADR が*決定*に対してするものを、karasu は*構造*に対してす�
 5. ~~surface portfolio~~ → **決定（2026-06-28）: 1点集中でなく pipeline**（in-repo で書く → nest で描画/permalink → ADR が指す）。
    permalink 先は **app/nest URL**（repo 相対参照ではない）。leverage 点 = nest の **deep/repo-backed/ref-pinned permalink**（near-term は inline `?s=` + taka）。
    派生: 用語集の permalink 系は恒久化先が要る。nest Phase 2（#1786）が retained の背骨に格上げ。
+
+## 追記 (2026-09-26): AI authoring の経路
+
+**決定**: AI authoring の primary path は、利用者自身のエージェントセッション（Claude Code 等）が karasu CLI skill を使って `.krs` を書く形とする。app 内 Chat panel は**凍結**する（削除はせず残すが、patch 提案の堅牢化や onboarding などの投資はしない）。
+
+**根拠**:
+
+- **エージェントセッションはコードを読める**: reverse-architecture skill の実利用で、手元のエージェントがリポジトリを直接読み、karasu CLI で出力を検証しながら書く経路が強いと分かった。app 内 Chat（BYOK）はコードベースを見られず CLI も回せないため、同じ体験は原理的に出せない。好みではなく能力の差。
+- **本書の評価軸と整合する**: solo-maintainer の経済性（surface を減らす）と「A は『LLM に聞けばいい』と競合する」の所見に対し、LLM 側に karasu を持ち込む（skill を渡す）ことで競合を協調に変えられる。
+
+**#638 の扱い**: Chat 経由の user testing は実施せず not_planned で close した。ただし「構文を知らない人が使える `.krs` に到達できるか」という仮説自体は経路を変えても未検証（作者1人の観測のみ）のまま残るため、作者以外による検証は skill の AT に引き継ぐ（[#2901](https://github.com/kompiro/karasu/issues/2901)）。
+
+**read / record との対応**: reverse-architecture は「知らないシステムを**読む**」側（funnel）を担う。#2901 の authoring skill は「自分のシステムを**残す**」側（retained core = A）を担うもので、reverse の再配布ではない。
 
 ## 関連・前提
 

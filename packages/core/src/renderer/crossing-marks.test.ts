@@ -465,22 +465,29 @@ function referenceCrossingMarks(edges: LayoutEdge[]): {
       }
       segs.push({ a, b, edge: edgeIdx, ux, uy });
     }
-    if (edge.trunkId !== undefined && edge.waypoints && edge.waypoints.length > 0) {
-      const elbow = edge.waypoints[0];
-      const key = `${edge.trunkId}@${elbow.x}`;
-      const group = trunkElbows.get(key);
-      if (group) group.entries.push({ y: elbow.y, edge: edgeIdx });
-      else {
-        // The spine is the vertical run that starts at the elbow, so its far end
-        // is the last point that keeps the elbow's x.
-        let k = 1;
-        while (k + 1 < pts.length && Math.abs(pts[k + 1].x - elbow.x) < EPS) k++;
-        trunkElbows.set(key, {
-          x: elbow.x,
-          entries: [{ y: elbow.y, edge: edgeIdx }],
-          endY: pts[k].y,
-        });
-      }
+    // A fan-in edge joins its spine at `waypoints[0]` and the spine runs on
+    // towards the target; a fan-out edge (#2885) leaves its spine at its last
+    // waypoint and the spine runs back towards the source.
+    const wps = edge.waypoints;
+    if (!wps || wps.length === 0) return;
+    const fanIn = edge.trunkId !== undefined;
+    if (!fanIn && edge.outTrunkId === undefined) return;
+    const at = fanIn ? 1 : wps.length;
+    const elbow = pts[at];
+    const key = fanIn ? `in:${edge.trunkId}@${elbow.x}` : `out:${edge.outTrunkId}@${elbow.x}`;
+    const group = trunkElbows.get(key);
+    if (group) group.entries.push({ y: elbow.y, edge: edgeIdx });
+    else {
+      // The spine is the vertical run through the elbow, so the shared end is
+      // the last point that keeps the elbow's x, walking away from the elbow.
+      const dir = fanIn ? 1 : -1;
+      let k = at;
+      while (pts[k + dir] && Math.abs(pts[k + dir].x - elbow.x) < EPS) k += dir;
+      trunkElbows.set(key, {
+        x: elbow.x,
+        entries: [{ y: elbow.y, edge: edgeIdx }],
+        endY: pts[k].y,
+      });
     }
   });
 
@@ -544,21 +551,29 @@ function referenceCrossingMarks(edges: LayoutEdge[]): {
   const junctionSeen = new Set<string>();
   const junctions: JunctionMark[] = [];
   for (const { x, entries, endY } of trunkElbows.values()) {
-    const minY = Math.min(...entries.map((e) => e.y));
-    const headCount = entries.filter((e) => Math.abs(e.y - minY) < EPS).length;
-    for (const { y, edge } of entries) {
-      const isMerge = y > minY + EPS || (Math.abs(y - minY) < EPS && headCount >= 2);
-      if (!isMerge) continue;
-      const key = `${x},${y}`;
-      if (junctionSeen.has(key)) continue;
-      junctionSeen.add(key);
-      // Independently: the spine carries every sibling whose own stretch
-      // (elbow to shared end) contains a point just past this elbow.
-      const probe = y + (endY > minY ? EPS * 10 : -EPS * 10);
-      const count = entries.filter(
-        (e) => Math.min(e.y, endY) < probe && probe < Math.max(e.y, endY),
-      ).length;
-      junctions.push({ x, y, edge, count });
+    // Split the elbows by which side of the shared end they sit on; each side is
+    // an arm of the spine with its own head (the elbow farthest out).
+    const above = entries.filter((e) => e.y < endY - EPS);
+    const below = entries.filter((e) => e.y > endY + EPS);
+    for (const arm of [above, below]) {
+      if (arm.length === 0) continue;
+      const far = Math.max(...arm.map((e) => Math.abs(e.y - endY)));
+      const atHead = arm.filter((e) => Math.abs(Math.abs(e.y - endY) - far) < EPS).length;
+      for (const { y, edge } of arm) {
+        const isHead = Math.abs(Math.abs(y - endY) - far) < EPS;
+        if (isHead && atHead < 2) continue;
+        const key = `${x},${y}`;
+        if (junctionSeen.has(key)) continue;
+        junctionSeen.add(key);
+        // Independently: the spine carries every sibling whose own stretch
+        // (elbow to shared end) contains a point just past this elbow, on the
+        // shared end's side.
+        const probe = y + (endY > y ? EPS * 10 : -EPS * 10);
+        const count = entries.filter(
+          (e) => Math.min(e.y, endY) < probe && probe < Math.max(e.y, endY),
+        ).length;
+        junctions.push({ x, y, edge, count });
+      }
     }
   }
 
@@ -610,11 +625,125 @@ function randomEdges(rnd: () => number): LayoutEdge[] {
     const flag = rnd();
     if (flag < 0.08) extra.ghost = true;
     else if (flag < 0.14) extra.cyclic = true;
-    else if (flag < 0.4) extra.trunkId = `T${Math.floor(rnd() * 3)}`;
+    else if (flag < 0.3) extra.trunkId = `T${Math.floor(rnd() * 3)}`;
+    else if (flag < 0.4) extra.outTrunkId = `O${Math.floor(rnd() * 3)}`;
     edges.push(poly(pts, extra));
   }
   return edges;
 }
+
+describe("computeCrossingMarks — fan-out trunks and arms (#2885)", () => {
+  /** A fan-out sibling: leaves the source at (0, 20), down the spine at x=60, off at `y`. */
+  const branch = (y: number, to: string) =>
+    poly(
+      [
+        [0, 20],
+        [60, 20],
+        [60, y],
+        [100, y],
+      ],
+      { from: "S", to, outTrunkId: "S" },
+    );
+
+  it("counts down a fan-out spine, and marks no split at the farthest branch", () => {
+    const { junctions } = computeCrossingMarks([
+      branch(70, "A"),
+      branch(120, "B"),
+      branch(200, "C"),
+    ]);
+    // Each number is what the spine carries between the split and the source:
+    // three reach y=70, two reach y=120. The branch at y=200 is where the spine
+    // ends, a plain corner.
+    expect(junctions).toEqual([
+      { x: 60, y: 70, edge: 0, count: 3 },
+      { x: 60, y: 120, edge: 1, count: 2 },
+    ]);
+  });
+
+  it("draws the fan-out band from the source's exit, thinning as siblings leave", () => {
+    const { bands } = computeCrossingMarks([branch(70, "A"), branch(120, "B"), branch(200, "C")]);
+    // The widest stretch starts at the exit and runs the way the edges travel;
+    // the stretch past the last split carries one edge and is no band at all.
+    expect(bands).toEqual([
+      {
+        points: [
+          { x: 0, y: 20 },
+          { x: 60, y: 20 },
+          { x: 60, y: 70 },
+        ],
+        count: 3,
+        edge: 0,
+      },
+      {
+        points: [
+          { x: 60, y: 70 },
+          { x: 60, y: 120 },
+        ],
+        count: 2,
+        edge: 1,
+      },
+    ]);
+  });
+
+  it("takes the head of a fan-in spine that runs up to its target as the lowest stub", () => {
+    // The target sits above its sources, so the spine runs upward from the
+    // farthest stub (y=200) to the entry at y=20. The farthest stub is the
+    // corner; the others are merges, carrying more the nearer they are to the end.
+    const up = (y: number, from: string) =>
+      poly(
+        [
+          [0, y],
+          [60, y],
+          [60, 20],
+          [100, 20],
+        ],
+        { from, to: "T", trunkId: "T" },
+      );
+    const { junctions } = computeCrossingMarks([up(100, "A"), up(150, "B"), up(200, "C")]);
+    expect(junctions).toEqual([
+      { x: 60, y: 100, edge: 0, count: 3 },
+      { x: 60, y: 150, edge: 1, count: 2 },
+    ]);
+  });
+
+  it("gives each arm its own head when the shared end sits between the siblings", () => {
+    // A source in the middle of its targets: the spine runs both up and down
+    // from its exit at y=100. Each way has a head of its own, and the run from
+    // the source to the spine carries all three.
+    const mid = (y: number, to: string) =>
+      poly(
+        [
+          [0, 100],
+          [60, 100],
+          [60, y],
+          [100, y],
+        ],
+        { from: "S", to, outTrunkId: "S" },
+      );
+    const { junctions, bands } = computeCrossingMarks([mid(20, "A"), mid(60, "B"), mid(180, "C")]);
+    // Up: y=60 splits off with y=20 still beyond it. Down: y=180 is alone, so
+    // it is that arm's head and no split.
+    expect(junctions).toEqual([{ x: 60, y: 60, edge: 1, count: 2 }]);
+    expect(bands).toEqual([
+      {
+        points: [
+          { x: 0, y: 100 },
+          { x: 60, y: 100 },
+        ],
+        count: 3,
+        edge: 0,
+      },
+      {
+        points: [
+          { x: 60, y: 100 },
+          { x: 60, y: 60 },
+        ],
+        count: 2,
+        edge: 0,
+      },
+    ]);
+  });
+});
 
 describe("computeCrossingMarks spatial prefilter parity (#2760)", () => {
   it("returns exactly the all-pairs result on random edge sets", () => {

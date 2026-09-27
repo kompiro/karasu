@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { KrsEdge } from "../types/ast.js";
 import type { SourceRange } from "../types/tokens.js";
+import { candidateWidthBudgets } from "./aspect-search.js";
 import {
   applyEdgeDirectionWithinLayer,
   gridColumnCount,
@@ -466,7 +467,11 @@ describe("placeNodesInLayers > width budget (#2593)", () => {
   }
 
   const layerOf = (n: number) => new Map([[0, Array.from({ length: n }, (_n, i) => `n${i}`)]]);
-  const BUDGETS = [1200, 1412, 1662, 1956, 2302, 2709, 3189, 3753, 4417, 5198, 6118, 7200];
+  // Derived, never transcribed: these tests are about what the *search* does
+  // with the budgets it actually evaluates, so a ladder change (#2761 moved it
+  // from 12 steps to 8) has to reach them. A hard-coded copy kept passing while
+  // exercising budgets production no longer visits, which is drift CI cannot see.
+  const BUDGETS = candidateWidthBudgets(1200);
 
   it("is NOT monotone in the budget once card heights differ", () => {
     // Pinned as a counterexample, not as a property. A row is as tall as its
@@ -497,7 +502,10 @@ describe("placeNodesInLayers > width budget (#2593)", () => {
         },
       });
 
-    expect(placeUneven(1412).childMaxHeight).toBeGreaterThan(placeUneven(1200).childMaxHeight);
+    // The floor and the candidate right after it: the pair the search compares
+    // first, so the counterexample lands on budgets it really evaluates.
+    const [floor, widened] = BUDGETS;
+    expect(placeUneven(widened).childMaxHeight).toBeGreaterThan(placeUneven(floor).childMaxHeight);
   });
 
   it("is monotone in the budget when every card is the same height", () => {
@@ -532,6 +540,10 @@ describe("placeNodesInLayers > width budget (#2593)", () => {
     // ...but at 4 columns (16 nodes) a row of 4 needs 1540 > 1200, so the width
     // bound cuts the rows short and widening can still change the placement.
     expect(place(layerOf(16), 1200).widthBound).toBe(true);
-    expect(place(layerOf(16), 2302).widthBound).toBe(false);
+    // The first candidate that fits a row of 4, taken from the ladder rather
+    // than written down, so this keeps testing "the search can stop here".
+    const roomForFour = BUDGETS.find((budget) => budget >= 340 * 4 + 60 * 3)!;
+    expect(roomForFour).toBeLessThan(BUDGETS[BUDGETS.length - 1]);
+    expect(place(layerOf(16), roomForFour).widthBound).toBe(false);
   });
 });
