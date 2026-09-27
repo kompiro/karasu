@@ -93,8 +93,12 @@ jobs:
       # pushes them. Hand that list to the `record` job instead of pushing from
       # here, so this job — the one holding npm publish rights — keeps a
       # read-only token (#2939).
+      # Runs even when `pnpm run release` failed part-way: a package that did
+      # publish before another one failed is skipped by `changeset publish` on
+      # a re-run and would never be tagged otherwise.
       - name: Collect the tags of what was published
         id: published
+        if: ${{ !cancelled() }}
         run: |
           tags=$( (git tag --points-at HEAD | grep '@' || true) | tr '\n' ' ' | sed 's/ *$//')
           echo "tags=${tags}" >> "$GITHUB_OUTPUT"
@@ -107,7 +111,7 @@ jobs:
   record:
     name: Record release
     needs: release
-    if: needs.release.outputs.tags != ''
+    if: ${{ !cancelled() && needs.release.outputs.tags != '' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write # push tags and create the GitHub Release

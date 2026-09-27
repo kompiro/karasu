@@ -191,7 +191,9 @@ export function main(argv: string[]): void {
       title,
       "--notes-file",
       notesFile,
-      `--latest=${options.latest}`,
+      // Left out by default so GitHub picks "Latest" by date: a Release
+      // created late for an older commit must not take it from a newer one.
+      ...(options.latest ? [] : ["--latest=false"]),
     ]);
     console.log(`Created ${name}: ${title}`);
   }
