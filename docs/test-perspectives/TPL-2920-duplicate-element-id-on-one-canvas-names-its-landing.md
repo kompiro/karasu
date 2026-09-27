@@ -92,9 +92,9 @@ bare id の key で片方が上書きされ、1 つしか描かれない）、�
 
 ## 関連テスト
 
-- `packages/core/src/parser/node-path-index.test.ts` — `node-id-multiple-locations` と
+- `packages/core/src/parser/node-path-index.test.ts`: `node-id-multiple-locations` と
   `nodePathIndex` の勝者規則（TPL-1583）
-- `packages/app/src/components/PreviewPane.test.tsx` › `highlightedNodeId` — 1 属性で引く
+- `packages/app/src/components/PreviewPane.test.tsx` › `highlightedNodeId`: 1 属性で引く
   ハイライト（ADR-2818）。同名 id が 2 要素あるときの着地点の fence は #2917 の実装 PR で
   隣に置く
 - #2917 の実装 PR で足す core の fence（両方描かれる / 枠の中 / edge の始点 / 束ねと側面配置）
