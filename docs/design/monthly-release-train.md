@@ -1,0 +1,165 @@
+# 月次リリーストレイン
+
+- **日付**: 2026-09-27
+- **ステータス**: 検討中
+- **関連**:
+  - 引き金 Issue: [#2922](https://github.com/kompiro/karasu/issues/2922)
+  - 直前のリリース: [#2921](https://github.com/kompiro/karasu/pull/2921)（karasu 0.7.0 / @karasu-tools/core 0.3.0 / karasu-vscode 0.2.0）
+  - 関連 ADR: [ADR-1370](../adr/1370-release-flow-actions-driven.md)（Prepare → release PR → マージで publish）、[ADR-1316](../adr/1316-vscode-marketplace-publish.md)（Marketplace publish は手動 `workflow_dispatch`）、[ADR-1758](../adr/1758-vscode-changeset-versioning.md)（拡張を changesets の版管理に載せ、Marketplace publish の自動発火を却下）
+  - 関連 TPL: [TPL-2786](../test-perspectives/TPL-2786-undecided-safety-net-fails.md)（判定不能は通過ではなく失敗として扱う）
+  - コード: `.github/workflows/release-prepare.yml`, `.github/workflows/release.yml`, `.github/workflows/vscode-release.yml`
+
+## 背景・課題
+
+リリースは、メンテナが **Release — Prepare** を思い出して起動したときにだけ出る。2026-06-25 の次のリリースは 2026-09-27 で、その間に changeset が約 150 件たまり、1 回のリリースに 3 か月分の変更が載った（#2921）。CHANGELOG を読んでからマージするというレビュー関門（ADR-1370）も、この分量では形だけになる。
+
+加えて VS Code 拡張は別の手動起動（`vscode-release.yml`）が要り、npm を出したあとに拡張の公開を忘れる余地がある。
+
+小さく、予測できる間隔でリリースしたい。メンテナの決定は次の 3 点（#2922）:
+
+1. **毎月の最終日曜**に発車する。個人プロジェクトなので、週末に出して問題対応が遅れても構わない。
+2. **準備まで自動化**する。スケジュールで Prepare を走らせ、トラッキング Issue を立てる。PR を開く・CHANGELOG を読む・マージするのは人。
+3. **VS Code 拡張も同じトレインに載せる**。npm 公開のあと、拡張の版が上がっていれば Marketplace 公開も自動で続ける。
+
+## 現状（インベントリ）
+
+| 観点 | 現状 |
+| --- | --- |
+| `release-prepare.yml` | `workflow_dispatch` のみ。`changeset version` → `chore/release-<karasu version>` を push。pending changeset が無ければ no-op。`permissions: contents: write` |
+| release PR | Actions は PR を作れない（#1370）。人が「Compare & pull request」で開く。人が開くことで必須チェックが走る |
+| `release.yml` | `push: main` + `paths: packages/**/CHANGELOG.md` で発火し、`changeset publish` で npm に公開（OIDC） |
+| `vscode-release.yml` | `workflow_dispatch` のみ（`pre_release` input）。`packages/vscode/package.json` の version を Marketplace へ publish。Entra ID + GitHub OIDC |
+| 月次 Issue の先例 | `tpl-review.yml` が `schedule` + `issues: write` + `gh issue create` で毎月 Issue を立てている |
+| git tag | `changeset publish` は runner 上でタグを作るが push していない。リリースのタグは repo に残っていない |
+
+## 制約・前提
+
+- **main ruleset**: PR 必須・squash のみ・直 push 不可・bypass なし。自動化は main へ直接書けない。
+- **Actions の PR 作成は OFF のまま**（#1370 / ADR-1370）。今回もこの設定は変えない。
+- **マージは人が行う**。CHANGELOG を読んでからマージする関門を残す（promotion gate の確認もここで行う — ADR-1820）。
+- **GitHub の cron は「最終日曜」を直接書けない**。さらに day-of-month と day-of-week を両方指定すると **OR** で評価される（`0 0 22-31 * 0` は「22〜31 日」**または**「日曜」になる）。
+- **Marketplace の認証は federated credential の subject `repo:kompiro/karasu:ref:refs/heads/main` に依存する**（ADR-1316）。呼び出し方を変えても、この subject で OIDC トークンが出ることを確かめる必要がある。
+- out of scope: リリースの**マージ**の自動化、pre-release チャネルの運用、git tag / GitHub Release の作成（「未解決の問い」参照）。
+
+## 検討した選択肢
+
+### A. 発車のトリガ
+
+#### A1: 毎週日曜の cron + 「最終日曜か」を判定するステップ（採用）
+
+`cron: "0 0 * * 0"`（日曜 00:00 UTC = 09:00 JST）で毎週起動し、最初のステップで「7 日後が翌月か」を判定する。翌月でなければ notice を出して終了する。`workflow_dispatch` のときは判定を飛ばす（手動の臨時リリースは今までどおり出せる）。
+
+```bash
+if [ "$(date -u -d '+7 days' +%m)" = "$(date -u +%m)" ]; then
+  echo "::notice::Not the last Sunday of the month — skipping."; exit 0
+fi
+```
+
+- メリット: 暦のずれを考えずに済む。判定が 1 行で読める。月の最終日曜を取りこぼさない。
+- デメリット: 月に 3〜4 回は空振りの実行が出る（数秒で終わる）。
+
+#### A2: 日付範囲と曜日を併記した cron
+
+`0 0 22-31 * 0` のように書く案。上記のとおり GitHub の cron は OR で評価するため、**毎週日曜と 22〜31 日の毎日**に発火してしまう。成立しない。
+
+#### A3: 毎月 1 日など固定日に起動
+
+実装は最も簡単だが、決定（最終日曜）と違う。却下。
+
+### B. 準備後の人への引き渡し
+
+#### B1: トラッキング Issue を立てる（採用）
+
+Prepare がブランチを push したあと、同じジョブで Issue を立てる（`permissions` に `issues: write` を足す）。Issue には次を載せる:
+
+- PR を開くための compare リンク（`https://github.com/kompiro/karasu/compare/main...chore/release-<version>?expand=1`）
+- 各パッケージの版（前 → 後）
+- チェックリスト: PR を開く / 版と `CHANGELOG.md` を読む / promotion gate の確認 / squash マージ / npm と Marketplace に出たことを確認する
+
+ラベルは新設の `release` を付ける。pending changeset が無い月は、ブランチも Issue も作らない（ノイズを増やさない）。
+
+#### B2: Actions に PR を作らせる
+
+Issue を介さず PR まで自動で作る案。ADR-1370 が却下した `changesets/action` と同じく、#1370 で OFF にした設定を戻す必要がある。加えて GITHUB_TOKEN で作った PR には必須チェックが走らない。メンテナが B1 を選んだので不採用。
+
+### C. 前月のトレインが残っているとき
+
+前月のリリース PR がまだマージされていない状態で次のトレインが来た場合の扱い。
+
+#### C1: 発車を止めて、残っている Issue にコメントする（採用）
+
+Prepare の最初に、open な `release` ラベルの Issue を探す。見つかったら新しいブランチを作らず、その Issue に「今月の発車を見送った。先にこのトレインをマージするか close してほしい」とコメントしてジョブを **失敗**で終える。
+
+- 残っているトレインを黙って上書きしない。放置が続けば毎月失敗の通知が来るので、気づける（TPL-2786 — 前提が崩れた状態を通過扱いにしない）。
+- 前月のトレインを close すれば、翌月のトレインにその分の changeset も乗る（changeset は main に残ったままなので失われない）。
+
+#### C2: 前月のブランチを force-push で作り直す
+
+最新の changeset を含めて作り直す案。すでに開いている PR の中身が知らないうちに変わり、読んだ CHANGELOG とマージする中身がずれうる。レビュー関門を弱めるので不採用。
+
+### D. VS Code 拡張の公開
+
+#### D1: `vscode-release.yml` を reusable workflow にして `release.yml` から呼ぶ（採用）
+
+- `vscode-release.yml` に `on: workflow_call`（`pre_release` input）を足す。`workflow_dispatch` は手動の再実行用に残す。
+- `vscode-release.yml` の先頭に「**Marketplace の最新版と `package.json` の version が同じなら公開しない**」ガードを入れる（`vsce show karasu-tools.karasu-vscode --json`）。`changeset publish` が「npm に無い版だけ出す」のと同じ冪等性を持たせる。**`vsce show` が失敗したら公開を飛ばすのではなくジョブを失敗させる**（TPL-2786）。
+- `release.yml` に npm 公開ジョブのあとで走る `vscode` ジョブを足し、`uses: ./.github/workflows/vscode-release.yml` で呼ぶ。呼び出し側のジョブに `id-token: write` を与える。
+
+リリース PR のマージから npm → Marketplace が 1 回の run で順に走る。拡張の版が上がっていない月は、ガードで no-op になる。
+
+- メリット: 手動の起動が 1 つ消える。npm と拡張の公開が同じ run のログに並ぶ。
+- デメリット: OIDC の subject が呼び出し経由でも `ref:refs/heads/main` になることを実機で確かめる必要がある（実装の最初のリリースで確認）。
+
+#### D2: `workflow_run` で Release 完了後に起動する
+
+独立した run になり、成否が別画面に分かれる。`workflow_run` は default branch の定義で走るので subject は同じだが、D1 より追いにくい。不採用。
+
+#### D3: `packages/vscode/CHANGELOG.md` の paths filter で `vscode-release.yml` を直接起動する
+
+ADR-1758 が却下した案そのもの。npm 公開と順序付けできず、npm 失敗時にも拡張だけ出てしまう。不採用。
+
+### ADR-1758 の却下理由との関係
+
+ADR-1758 は Marketplace 公開の自動発火を「リリース PR マージのたびに走るのは過剰」「拡張は独自 cadence」という理由で却下した。月次トレインでは:
+
+- リリース PR のマージは月 1 回になり、「マージのたびに重い公開が走る」前提が消える。
+- 拡張を独自 cadence で出す方針は、メンテナが今回やめると決めた（#2922）。
+- D3 の順序付けの問題は、D1 が npm 公開の後段ジョブとして呼ぶことで解消する。
+
+よって ADR-1758 の却下理由は月次トレインでは成立しない。ADR 昇格時に、ADR-1758 の「CHANGELOG 変更で Marketplace publish を自動発火」の却下と、ADR-1316 決定 2（手動トリガ）を本件で更新したことを明記する。
+
+## 現時点の方針
+
+**A1 + B1 + C1 + D1 を採用する** — cron の制約の中で最終日曜を確実に拾い、Actions の PR 作成 OFF とマージ前のレビュー関門（ADR-1370）を保ったまま、人の作業を「Issue のリンクから PR を開き、CHANGELOG を読んでマージする」だけにする。拡張は npm の後段で冪等に公開し、手動起動をなくす。
+
+### 実装の指針
+
+1. `release-prepare.yml`
+   - `on.schedule: - cron: "0 0 * * 0"` を足す（`workflow_dispatch` は残す）。
+   - `github.event_name == 'schedule'` のときだけ最終日曜判定（A1）を行う。
+   - open な `release` Issue があれば、コメントしてジョブを失敗させる（C1）。
+   - 既存の version → push の後、トラッキング Issue を作る（B1）。`permissions` に `issues: write`。
+   - 版の一覧は `changeset status --output` を version 前に取るか、version 後の各 `package.json` と main の差分から作る。
+2. `vscode-release.yml`
+   - `on.workflow_call`（`pre_release` input）を足す。
+   - 「Marketplace 最新版 = `package.json` の version なら skip、`vsce show` 失敗なら fail」のガードを publish の前に入れる。
+3. `release.yml`
+   - npm 公開ジョブの後に `vscode` ジョブ（`needs: release`、`uses: ./.github/workflows/vscode-release.yml`、`permissions: contents: read, id-token: write`）を足す。
+4. `release` ラベルを作る（`gh label create release`）。
+5. `docs/release.md` の「リリースの流れ」「VS Code 拡張のリリース」を月次トレインの手順に書き換える。「拡張は CLI とは独立した cadence で出す」の注記を消す。各 workflow の header コメントも合わせる。
+6. AT（人が確認するもの）:
+   - 最初の最終日曜（2026-10-25）に、スケジュール起動でブランチとトラッキング Issue ができる。
+   - その Issue のリンクから PR を開いてマージすると、npm 公開に続いて Marketplace 公開が同じ run で成功する（OIDC が reusable workflow 経由でも通る）。
+   - 最終日曜でない日曜の実行が「skipping」で終わる。
+7. ADR 昇格: 実装完了後に `docs/adr/2922-monthly-release-train.md` として昇格し、本 Design Doc は同 PR で削除する。ADR-1370 / ADR-1316 / ADR-1758 への更新関係を frontmatter と本文に書く。
+
+### 影響範囲・マイグレーション
+
+- 利用者への影響: リリースが月 1 回の予測できる間隔になる。拡張の更新が npm と同じ日に届く。
+- メンテナの作業: 最終日曜に Issue が立つので、リンクから PR を開き、CHANGELOG を読んでマージする。臨時リリースは従来どおり `workflow_dispatch` で出せる。
+- ドキュメント更新: `docs/release.md`、各 workflow の header コメント、`.claude/rules/changesets.md` に拡張の cadence の記述があれば合わせる。
+
+## 未解決の問い / 決めないこと
+
+- **git tag / GitHub Release**: `changeset publish` が作るタグは push されておらず、リリースの記録が npm と CHANGELOG にしか残らない。トレインごとに GitHub Release を作ると利用者に届きやすいが、本件のスコープ外として別 Issue に切り出す。
+- **pre-release チャネル**: 拡張の pre-release を月次トレインに組み込むかは決めない（`pre_release` input は残す）。
