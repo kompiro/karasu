@@ -362,6 +362,7 @@ flowchart TD
     ADR_2521["ADR-2521<br/>multi-system ルートビューは single-system パイプラインの計算に合わせる"]
     ADR_2593["ADR-2593<br/>キャンバスの空き空間を目的関数にして行幅予算を選ぶ"]
     ADR_2598["ADR-2598<br/>層間チャネルに容量を持たせ、配線の需要を配置へ返す"]
+    ADR_2631["ADR-2631<br/>トランクの合流と分岐を本数で読ませ、交差マークを装飾で潰さない"]
     ADR_2714["ADR-2714<br/>deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
     ADR_2756["ADR-2756<br/>root view の各 system フレームは自分の子から導出したエッジ集合を持つ"]
     ADR_2802["ADR-2802<br/>組み込みアイコンは core が import 時に登録し、解決しない url() は値 va..."]
@@ -926,6 +927,7 @@ flowchart TD
   class ADR_2598 accepted
   class ADR_2623 accepted
   class ADR_2628 accepted
+  class ADR_2631 accepted
   class ADR_2640 superseded
   class ADR_2643 accepted
   class ADR_2648 accepted
