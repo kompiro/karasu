@@ -87,7 +87,11 @@ type: product
 
   > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › data-node-path resolves the clicked card (#2917) › drills into the clicked card's own path, not the bare-id index winner ／ … › decodes a quoted path segment before drilling ／ … › opens the detail panel with the clicked card's own metadata ／ … › falls back to the bare-id metadata for a card without a path
 
-- [x] AT-N: VS Code webview は `drillDown` message に `nodePath` を載せ、host は decode した path で潜る。詳細パネルと hover は path map を先に引く
+- [x] AT-N: VS Code webview で、ルートに `Api` のカードが 2 枚（`data-node-path` は `Shop.Api` / `Admin.Api`）描かれ、`Admin.Api` のクリックは `Admin` に潜り（breadcrumb は `Admin` を通り、`Users` が描かれ `Orders` は描かれない）、`Admin` の同名 leaf のクリックは `Admin` の description を詳細パネルに出す
+
+  > ✅ Automated — `packages/vscode-e2e/tests/webview/at-2917-same-id-drill.test.ts` › AT-2917 (WebView) — same-id cards drill and describe their own node › AT-N-1: the root draws two Api cards, each with its own data-node-path ／ … › AT-N-2: clicking the Admin.Api card drills into Admin, not into Shop ／ … › AT-N-3: clicking Admin's leaf opens the panel with Admin's description
+
+- [x] AT-Q: host 側の純関数と webview の生成物。`drillDown(state, id, meta, nodePath)` は decode した path を優先し、`isOptionalNodePath` は空文字と非文字列を弾き、生成される webview script は `drillDown` message に `nodePath` を載せ、詳細パネルと hover を path map から先に引く
 
   > ✅ Automated — `packages/vscode/src/drilldown-state.test.ts` › drillDown with the card's own path (#2917) › drills to the decoded data-node-path over the metadata's index-resolved viewPath ／ `packages/vscode/src/webview-content.test.ts` › data-node-path in the webview (#2917) › posts the card's data-node-path with the drillDown message and reads the panel by it ／ `packages/vscode/src/message-validation.test.ts` › isOptionalNodePath (#2917) › accepts undefined and a non-empty string, rejects everything else
 
@@ -102,6 +106,14 @@ type: product
 - [x] AT-P: 同名 id の hash（`#krs-system-Api`）は `nodePathIndex` の勝者に解決する
 
   > ✅ Automated — `packages/e2e/tests/at-2917-multi-system-root-same-id.spec.ts` › clicking the Admin card drills into Admin, not into the Shop winner
+
+## Coverage policy
+
+**Automated (AT-N)** は
+[`packages/vscode-e2e/tests/webview/at-2917-same-id-drill.test.ts`](../../packages/vscode-e2e/tests/webview/at-2917-same-id-drill.test.ts)
+の WebView E2E ハーネス（ExTester）で自動化している。このジョブは PR が draft でないときに
+path filter で走り、required check ではない（AT-2818 と同じ扱い）。arm64 の devcontainer では
+ローカル実行できないので、結果は CI の `vscode-webview-e2e` ジョブで確認する。
 
 ## 手動確認
 
