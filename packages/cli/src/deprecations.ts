@@ -33,7 +33,7 @@ export interface Deprecation {
 export const DEPRECATIONS: readonly Deprecation[] = [];
 
 /** How the entry reads in a notice: `old-cmd`, or `render --old-flag`. */
-export function displayName(entry: Deprecation, spelling: string): string {
+function displayName(entry: Deprecation, spelling: string): string {
   return entry.kind === "flag" ? `${entry.command} ${spelling}` : spelling;
 }
 

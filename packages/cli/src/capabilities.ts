@@ -9,7 +9,7 @@ import type { Deprecation } from "./deprecations.js";
  */
 export const CAPABILITIES_SCHEMA_VERSION = 1;
 
-export interface CapabilityOption {
+interface CapabilityOption {
   /** The option as declared, e.g. `-o, --output <path>`. */
   flags: string;
   long?: string;
@@ -18,14 +18,14 @@ export interface CapabilityOption {
   takesValue: boolean;
 }
 
-export interface CapabilityCommand {
+interface CapabilityCommand {
   name: string;
   /** Positional arguments as written in usage, e.g. `<file>`, `[files...]`. */
   arguments: string[];
   options: CapabilityOption[];
 }
 
-export interface CapabilityDeprecation {
+interface CapabilityDeprecation {
   kind: Deprecation["kind"];
   name: string;
   command?: string;
