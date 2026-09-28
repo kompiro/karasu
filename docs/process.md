@@ -91,6 +91,8 @@ ready → implementing → in-review → (close)
 ```
 
 > `close` は PR に `Closes #N` を記載することで GitHub が自動で行う。
+> 例外: PR に「Post-merge follow-ups」があるときは `Refs #N` で紐付け、Issue は
+> follow-ups を消化してから人間が close する（「マージ後にしか確認できない項目」節）。
 
 ### PR ワークフロー
 
@@ -105,12 +107,12 @@ ready → implementing → in-review → (close)
 5. 実装する
 6. /hane:commit でコミットする（Conventional Commits 形式）
 7. PR 前に main を取り込む — git fetch origin main && git merge --no-edit origin/main（rebase は使わない。「ブランチ戦略」参照）。コンフリクトを解消し、lint / test を再確認する
-8. PR を draft で作成する（gh pr create --draft、Closes #N で Issue と紐付ける）。draft には CodeRabbit も分単位の CI も走らない
+8. PR を draft で作成する（gh pr create --draft、Closes #N で Issue と紐付ける。Post-merge follow-ups があるときは Refs #N）。draft には CodeRabbit も分単位の CI も走らない
 9. /code-review <PR番号> を当て、対応すると決めた修正をコミットして push する（draft への push は CodeRabbit の review 枠を使わない）
 10. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の、`adr-auto-merge` ラベルの無い PR）では初回レビューもここで走る
 11. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 12. Issue ラベルを status: in-review に更新する
-13. 手動検証チェックリストを実施する
+13. 手動検証チェックリスト（マージ前に確認できる項目だけ）を実施する
 14. CodeRabbit のレビューを収束させる（`/coderabbit-converge` で approve まで回す。記録済みの決定を変える指摘だけ人間に確認する）
 15. 人間のレビュー → マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
 ```
@@ -123,6 +125,26 @@ PR への push は、自動レビューが走るたびに CodeRabbit の review 
 [ADR-2898](adr/2898-draft-first-code-review.md)。
 
 詳細な手順は `/hane:start-dev` スキル（[`kompiro/hane`](https://github.com/kompiro/hane) plugin）を参照。
+
+### マージ後にしか確認できない項目
+
+**到達状態**: マージ後にしか観察・実行できない項目は、マージ時点で元の Issue の本文に
+チェックリストとして載っていて、その Issue は項目を消化し終えるまで open のままになっている。
+
+判断基準は 1 つ、**その項目をこの PR の preview かローカルの checkout で確認できるか**。
+
+| 確認できる | 確認できない（次のリリース・次の CodeRabbit ラウンド・マージ後のバックフィルなど） |
+| --- | --- |
+| PR テンプレートの「Manual Verification Checklist」に書く | 「Post-merge follow-ups」に書き、Purpose で Issue を `Refs #N` で紐付ける |
+
+- マージすると `post-merge-followups.yml` が項目を Issue 本文に追記する。Issue は
+  `status: in-review` のまま残るので、`/hane:pick-issue` の候補には入らない。消化したら
+  Issue 上でチェックし、全部済んだら close する
+- 項目があるのに `Refs #N` が無い、参照先が open な Issue でない（閉じている・PR・存在しない）、
+  または closing keyword（`#N` / `owner/repo#N` / Issue URL のどの形でも）で Issue を閉じる本文だと、
+  同 workflow の Check が失敗する。Issue の無い変更なら Issue を起こしてから紐付ける
+- fork からの PR では追記が動かない（token が Issue に書けない）。マージした人が手で
+  Issue に写す
 
 ### 人間のレビューは CodeRabbit が approve してから始める
 
