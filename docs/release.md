@@ -99,6 +99,20 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 
 > 拡張は npm と同じトレインで出す（[#2922](https://github.com/kompiro/karasu/issues/2922)）。版はパッケージごとに独立なので、拡張の版が上がらないリリースもある。
 
+### CLI の後方互換
+
+`karasu` CLI のうち、skill やスクリプトが呼ぶ面（コマンド名、フラグ、stdout / stderr の形式、終了コード）は後方互換を保つ（[#2961](https://github.com/kompiro/karasu/issues/2961)、設計は `docs/design/karasu-authoring-skill.md` の論点 5）。Claude Code はサードパーティ marketplace の plugin を自動更新しないので、新しい CLI と古い skill の組み合わせは利用者の手元で普通に起きる。その互換の責任を CLI が持つ。
+
+- **名前を変える・廃止する**: 古い名前を消さず、`packages/cli/src/deprecations.ts` の `DEPRECATIONS` に 1 行足す（種別、古い名前、代わり、廃止した版、削除する版）。古い名前は `--help` に出ない別名として動き続け、呼ばれると stderr に 1 行出す: `karasu: deprecated: 'old' -> 'new' (since 0.8.0, removal 1.0.0)`。
+- **別名を削除してよいのは major のリリースだけ**（0.x の間は 1.0.0 まで削除しない）。削除は CHANGELOG で予告する。削除した項目には `removed: true` を付け、**表から消さずに墓標として残す**。墓標の名前は「未知のコマンド」ではなく、同じ形式の `karasu: removed: ...` 行を出して終了コード 1 で失敗する。
+- **問い合わせ**: `karasu capabilities --json` が CLI の版、登録済みのコマンドとフラグ、表の全項目を返す。形式は [docs/tools/cli.md](tools/cli.md#karasu-capabilities-what-this-cli-accepts) に書いた。
+
+守られているかは CLI の vitest（`packages/cli/src/compat.test.ts`）が確かめる。
+
+- `agent-surface.json` に記録したコマンドやフラグが、表に項目のないまま消えると失敗する。新しいコマンドやフラグを足したときも、`agent-surface.json` への追記を求めて失敗する（追記した名前が互換の約束に入る）。
+- 表の各項目について、別名の代わりが今も登録された名前であること、削除する版が 1.0.0 以上の major であること、CLI の版が削除する版に達した項目に `removed: true` が付いていることを確かめる。
+- repo 内の skill は常に最新の名前を使う。`pnpm lint:skill-cli-refs` は、`.claude/skills/**` が表にある名前を使っていたら失敗する。古い名前は、利用者の手元に残る古い skill のためだけにある。
+
 ### 未対応のフォローアップ
 
 - **changeset-bot**（GitHub App）— PR に changeset の有無をコメントしてくれる。リポジトリを public 化したので有効化を検討する。
