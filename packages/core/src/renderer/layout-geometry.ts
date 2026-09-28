@@ -57,16 +57,14 @@ export function normalizeCoordinates(
       node.x += shiftX;
       node.y += shiftY;
     }
+    // SPIKE #2958: trunk siblings share point objects; shift each once.
+    const shifted = new Set<object>();
     for (const edge of layoutEdges) {
-      edge.fromPoint.x += shiftX;
-      edge.fromPoint.y += shiftY;
-      edge.toPoint.x += shiftX;
-      edge.toPoint.y += shiftY;
-      if (edge.waypoints) {
-        for (const wp of edge.waypoints) {
-          wp.x += shiftX;
-          wp.y += shiftY;
-        }
+      for (const p of [edge.fromPoint, edge.toPoint, ...(edge.waypoints ?? [])]) {
+        if (shifted.has(p)) continue;
+        shifted.add(p);
+        p.x += shiftX;
+        p.y += shiftY;
       }
     }
   }

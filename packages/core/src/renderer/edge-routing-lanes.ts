@@ -137,7 +137,12 @@ export function collectChannels(
     // Stable sort keeps edge order for ties, so no explicit tiebreak is needed.
     runs.sort((a, b) => a.leftX - b.leftX || a.rightX - b.rightX);
     const laneEnds: number[] = [];
+    // SPIKE #2958: identical runs of one bundle stay on one lane.
+    const shared = new Map<string, number>();
     const laned = runs.map((run) => {
+      const tag = run.edge.trunkId ?? run.edge.outTrunkId;
+      const skey = tag !== undefined ? `${tag}|${run.y}|${run.leftX}|${run.rightX}` : undefined;
+      if (skey !== undefined && shared.has(skey)) return { ...run, lane: shared.get(skey)! };
       let lane = laneEnds.findIndex((end) => end + LANE_SHARE_GAP <= run.leftX);
       if (lane === -1) {
         lane = laneEnds.length;
@@ -145,6 +150,7 @@ export function collectChannels(
       } else {
         laneEnds[lane] = run.rightX;
       }
+      if (skey !== undefined) shared.set(skey, lane);
       return { ...run, lane };
     });
     channels.push({ upper, lower, runs: laned, lanes: laneEnds.length });

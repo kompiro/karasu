@@ -436,7 +436,7 @@ export function runRoutingChain(
   // canvas they pull fan-in edges back out to the canvas edge and undo the
   // interior corridors (#2365) those edges would otherwise take. Measured and
   // rejected in #2364.
-  if (grouped) {
+  if (grouped || process.env.KRS_UNGROUPED_TRUNKS === "1") {
     aggregateGroupTrunks(nodes, edges, groupFrames, obstacleIndex, expandedFrames);
     // The mirror (#2885): edges leaving one source share one spine that sheds a
     // branch at each target's row. After the fan-in pass, which claims a shared

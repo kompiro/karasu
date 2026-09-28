@@ -1373,8 +1373,85 @@ export function distributeGutterLanes(
     else if (corridor.x < minLeft) left.push({ e, corridor });
   }
 
+  if (process.env.KRS_LANE_BUNDLES === "1") {
+    assignBundledLanes(right, (lane) => (lane === 0 ? rightBase : maxTrunkX + lane * TRUNK_LANE_GAP));
+    assignBundledLanes(left, (lane) => leftBase - lane * TRUNK_LANE_GAP);
+    return;
+  }
   assignGutterLanes(right, (lane) => (lane === 0 ? rightBase : maxTrunkX + lane * TRUNK_LANE_GAP));
   assignGutterLanes(left, (lane) => leftBase - lane * TRUNK_LANE_GAP);
+}
+
+// SPIKE #2958: corridors whose routes agree on everything after the corridor
+// (same target, same tail) share one lane and are tagged as a fan-in trunk;
+// of the rest, those that agree on everything before it (same source, same
+// head) share one lane as a fan-out trunk.
+function assignBundledLanes(
+  items: { e: LayoutEdge; corridor: GutterCorridor }[],
+  laneX: (lane: number) => number,
+): void {
+  if (items.length === 0) return;
+  const r = (v: number) => Math.round(v * 1000) / 1000;
+  const sig = (pts: Point[]) => pts.map((p) => `${r(p.x)},${r(p.y)}`).join(";");
+  const tailSig = ({ e, corridor }: { e: LayoutEdge; corridor: GutterCorridor }) => {
+    const w = e.waypoints!;
+    return `${e.to}|${r(w[corridor.i + 1].y)}|${sig([...w.slice(corridor.i + 2), e.toPoint])}`;
+  };
+  const headSig = ({ e, corridor }: { e: LayoutEdge; corridor: GutterCorridor }) => {
+    const w = e.waypoints!;
+    return `${e.from}|${r(w[corridor.i].y)}|${sig([e.fromPoint, ...w.slice(0, corridor.i)])}`;
+  };
+  type Bundle = { members: { e: LayoutEdge; corridor: GutterCorridor }[]; lo: number; hi: number };
+  const bundles: Bundle[] = [];
+  const byTail = new Map<string, { e: LayoutEdge; corridor: GutterCorridor }[]>();
+  for (const it of items) {
+    const k = tailSig(it);
+    const l = byTail.get(k);
+    if (l) l.push(it);
+    else byTail.set(k, [it]);
+  }
+  const rest: { e: LayoutEdge; corridor: GutterCorridor }[] = [];
+  let n = 0;
+  for (const [, l] of byTail) {
+    if (l.length < 2) {
+      rest.push(...l);
+      continue;
+    }
+    const id = `${l[0].e.to}#in${n++}`;
+    for (const m of l) m.e.trunkId = id;
+    bundles.push({ members: l, lo: Math.min(...l.map((m) => m.corridor.lo)), hi: Math.max(...l.map((m) => m.corridor.hi)) });
+  }
+  const byHead = new Map<string, { e: LayoutEdge; corridor: GutterCorridor }[]>();
+  for (const it of rest) {
+    const k = headSig(it);
+    const l = byHead.get(k);
+    if (l) l.push(it);
+    else byHead.set(k, [it]);
+  }
+  for (const [, l] of byHead) {
+    if (l.length >= 2) {
+      const id = `${l[0].e.from}#out${n++}`;
+      for (const m of l) m.e.outTrunkId = id;
+    }
+    bundles.push({ members: l.length >= 2 ? l : l.slice(0, 1), lo: Math.min(...l.map((m) => m.corridor.lo)), hi: Math.max(...l.map((m) => m.corridor.hi)) });
+    if (l.length < 2) continue;
+  }
+  // singles that were pushed as 1-member bundles above are already covered
+  bundles.sort((a, b) => a.lo - b.lo || a.hi - b.hi || cmpEdgeId(a.members[0].e, b.members[0].e));
+  const laneEnds: number[] = [];
+  for (const b of bundles) {
+    let lane = laneEnds.findIndex((end) => end <= b.lo);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(b.hi);
+    } else laneEnds[lane] = b.hi;
+    const x = laneX(lane);
+    for (const { e, corridor } of b.members) {
+      const wps = e.waypoints!;
+      wps[corridor.i] = { x, y: wps[corridor.i].y };
+      wps[corridor.i + 1] = { x, y: wps[corridor.i + 1].y };
+    }
+  }
 }
 
 /**
