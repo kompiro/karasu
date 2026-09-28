@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- CLI entry point run by prepack / postpack; the usage error is its only output */
 // Stamps the karasu CLI version into every SKILL.md while the package is being
 // packed, and restores the sources afterwards (Issue #2932).
 //
