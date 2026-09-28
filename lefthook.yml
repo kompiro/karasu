@@ -113,9 +113,11 @@ pre-push:
       # command. Globbed on the CLI's command surface too — index.ts and the
       # translate adapters — so it re-runs (and prints its residual advisory)
       # when that surface changes, i.e. on exactly the PR that can make a skill's
-      # CLI claims stale (#2084 lint-style, #2090 wrangler). The vitest mirror in
-      # scripts/lint runs it in CI.
-      glob: "{.claude/skills/**,packages/cli/src/index.ts,packages/core/src/translate/**,scripts/lint/skill-cli-refs.ts}"
+      # CLI claims stale (#2084 lint-style, #2090 wrangler). It also fails a
+      # skill that uses a name listed in the CLI's deprecation table (#2961), so
+      # deprecations.ts is in the glob. The vitest mirror in scripts/lint runs
+      # it in CI.
+      glob: "{.claude/skills/**,packages/cli/src/index.ts,packages/cli/src/deprecations.ts,packages/core/src/translate/**,scripts/lint/skill-cli-refs.ts}"
       run: pnpm run lint:skill-cli-refs
     skill-reference-bundle-sync:
       # The reverse-architecture skill ships byte-identical copies of the specs

@@ -1,20 +1,31 @@
 name: Release — Prepare
 
-# Prepare stage of the release pipeline. Manually triggered from the Actions
-# tab. Runs `changeset version` (consumes pending changesets → bumps
-# versions, writes CHANGELOG, updates the lockfile) and pushes a
-# `chore/release-<version>` branch. Open a PR from that branch, review the
-# version bumps + CHANGELOG, and squash-merge it — the merge touches
-# packages/**/CHANGELOG.md and triggers Release (release.yml) to publish via
-# OIDC.
+# Prepare stage of the release pipeline, run as the monthly release train
+# (#2922): a schedule fires every Sunday and the train departs on the last
+# Sunday of the month; `workflow_dispatch` departs at once for an ad-hoc
+# release. It runs `changeset version` (consumes pending changesets → bumps
+# versions, writes CHANGELOG, updates the lockfile), pushes a
+# `chore/release-YYYY-MM-DD` branch and opens a tracking Issue (label
+# `release`) with the link that opens the release PR. Review the versions +
+# CHANGELOG in that PR and squash-merge it: the merge touches
+# packages/**/CHANGELOG.md and triggers Release (release.yml), which publishes
+# npm and the VS Code extension, records the Release and closes the Issue.
 #
 # We push a branch rather than open the PR because GitHub Actions PR creation
-# is disabled (Issue #1370); click "Compare & pull request" on the pushed
-# branch. Opening the PR as a human is also what makes the required checks
-# run (a GITHUB_TOKEN push does not trigger other workflows). See
-# ADR-1370 and docs/process.md "リリースの流れ".
+# is disabled (Issue #1370); the Issue carries the "Compare & pull request"
+# link. Opening the PR as a human is also what makes the required checks run
+# (a GITHUB_TOKEN push does not trigger other workflows). See ADR-1370 and
+# docs/release.md "リリースの流れ".
+#
+# The branch is named by date, not by a package version: versions are
+# independent per package, so the CLI version does not move in every release.
 
 on:
+  schedule:
+    # 00:00 UTC every Sunday (09:00 JST); the `depart` step lets only the last
+    # Sunday of the month through. GitHub cron ORs day-of-month with
+    # day-of-week, so "the last Sunday" cannot be written as a cron.
+    - cron: "0 0 * * 0"
   workflow_dispatch:
 
 concurrency:
@@ -23,6 +34,8 @@ concurrency:
 
 permissions:
   contents: write # push the chore/release-* branch
+  issues: write # open the tracking Issue, comment on a leftover one
+  pull-requests: read # find a leftover release PR
 
 jobs:
   prepare:
@@ -40,7 +53,41 @@ jobs:
           node-version: "24"
           cache: "pnpm"
 
+      # An `exit 0` here would end only this step, so the decision is an output
+      # that every later step is conditioned on.
+      - name: Decide whether the train departs
+        id: train
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          depart=$(node scripts/release/train.mts depart --event "$EVENT")
+          echo "depart=${depart}" >> "$GITHUB_OUTPUT"
+          if [ "$depart" != "true" ]; then
+            echo "::notice::Not the last Sunday of the month: the train does not depart."
+          fi
+
+      # A train still open (its tracking Issue, or its release PR if the Issue
+      # was closed by hand) blocks the next one instead of being overwritten:
+      # a second release PR would carry the same unmerged changesets (TPL-2786).
+      - name: Stop while the previous train is open
+        if: steps.train.outputs.depart == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          issue=$(gh issue list --label release --state open --json number --jq '.[0].number // empty')
+          # Searched on the server: `gh pr list` alone returns only the newest 30.
+          pr=$(gh pr list --state open --search 'head:chore/release-' --limit 100 --json number,headRefName --jq '[.[] | select(.headRefName | startswith("chore/release-"))][0].number // empty')
+          target=${issue:-$pr}
+          if [ -n "$target" ]; then
+            gh api "repos/${GITHUB_REPOSITORY}/issues/${target}/comments" \
+              -f body="This month's release train did not depart (${RUN_URL}): merge or close this train first." >/dev/null
+            echo "::error::The previous release train (#${target}) is still open."
+            exit 1
+          fi
+
       - run: pnpm install --frozen-lockfile
+        if: steps.train.outputs.depart == 'true'
 
       # `pnpm version-packages` = `changeset version && pnpm install
       # --lockfile-only`. Since @changesets/cli 3, `changeset version` exits 1
@@ -55,6 +102,8 @@ jobs:
       # `"mode": "exit"` must also get past this guard, because `changeset
       # version` applies the exit plan with no changeset files present.
       - name: Version and push release branch
+        id: version
+        if: steps.train.outputs.depart == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -62,15 +111,35 @@ jobs:
             echo "::notice::No pending changesets: nothing to release."
             exit 0
           fi
+          node scripts/release/train.mts versions > "$RUNNER_TEMP/before.json"
           pnpm version-packages
           if git diff --quiet && git diff --cached --quiet; then
-            echo "::notice::No pending changesets — nothing to release."
+            echo "::notice::No pending changesets: nothing to release."
             exit 0
           fi
-          VERSION=$(node -p "require('./packages/cli/package.json').version")
-          BRANCH="chore/release-$VERSION"
+          # Changesets that name only packages this repo does not release move
+          # no released version; there is nothing to publish, so no train.
+          if [ "$(node scripts/release/train.mts bumped-count --before "$RUNNER_TEMP/before.json")" = "0" ]; then
+            echo "::warning::Pending changesets move no released package (karasu, @karasu-tools/core, karasu-vscode): nothing to release."
+            exit 0
+          fi
+          DATE=$(date -u +%Y-%m-%d)
+          BRANCH="chore/release-${DATE}"
+          SUBJECT=$(node scripts/release/train.mts commit-subject --before "$RUNNER_TEMP/before.json")
+          node scripts/release/train.mts issue-body --before "$RUNNER_TEMP/before.json" --branch "$BRANCH" > "$RUNNER_TEMP/issue.md"
           git switch -c "$BRANCH"
           git add -A
-          git commit -m "chore: release karasu $VERSION"
+          git commit -m "$SUBJECT"
           git push -u origin "$BRANCH"
-          echo "::notice::Pushed $BRANCH — open a PR and squash-merge it to publish."
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "date=${DATE}" >> "$GITHUB_OUTPUT"
+          echo "::notice::Pushed ${BRANCH}."
+
+      - name: Open the tracking Issue
+        if: steps.version.outputs.branch != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DATE: ${{ steps.version.outputs.date }}
+        run: |
+          url=$(gh issue create --title "Release train ${DATE}" --label release --body-file "$RUNNER_TEMP/issue.md")
+          echo "::notice::Tracking Issue: ${url}"

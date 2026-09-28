@@ -20,7 +20,9 @@ import { matrix } from "./matrix.js";
 import { coverage } from "./coverage.js";
 import { teamDependencies } from "./team-dependencies.js";
 import { subtree } from "./subtree.js";
-import { versionText } from "./version.js";
+import { cliPackageVersion, versionText } from "./version.js";
+import { buildCapabilities, capabilitiesText } from "./capabilities.js";
+import { applyDeprecations, DEPRECATIONS } from "./deprecations.js";
 
 program.name("karasu").description("karasu — architecture diagram tool").version(versionText());
 
@@ -590,11 +592,39 @@ Examples:
     });
   });
 
+program
+  .command("capabilities")
+  .description("List this CLI's commands, flags and deprecated names (for skills and scripts)")
+  .option("--json", "Print machine-readable JSON")
+  .addHelpText(
+    "after",
+    `
+Deprecated names still work and print one stderr line:
+  karasu: deprecated: 'old' -> 'new' (since X, removal Y)
+Removed names exit 1 with the same line, starting \`karasu: removed:\`.
+
+Examples:
+  # Check what the installed CLI accepts before calling it
+  $ karasu capabilities --json`,
+  )
+  .action((options: { json?: boolean }) => {
+    const caps = buildCapabilities(program, cliPackageVersion(), DEPRECATIONS);
+    process.stdout.write(
+      options.json ? JSON.stringify(caps, null, 2) + "\n" : capabilitiesText(caps),
+    );
+  });
+
 export { program };
 
-/* v8 ignore next 5 */
+/* v8 ignore next 12 */
 if (!process.env.VITEST) {
-  program.parseAsync().catch((err: unknown) => {
+  const resolved = applyDeprecations(process.argv, DEPRECATIONS);
+  if (resolved.error) {
+    process.stderr.write(resolved.error);
+    process.exit(1);
+  }
+  for (const line of resolved.notices) process.stderr.write(line);
+  program.parseAsync(resolved.argv).catch((err: unknown) => {
     process.stderr.write(`Error: ${err instanceof Error ? err.message : String(err)}\n`);
     process.exit(1);
   });
