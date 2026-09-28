@@ -154,6 +154,7 @@ describe("check (synthetic fixture)", () => {
         command: "render",
         flag: "--out",
         replacement: "--output",
+        removed: true,
       },
     ]);
   });

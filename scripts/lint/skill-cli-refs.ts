@@ -160,6 +160,8 @@ export interface Problem {
   flag?: string;
   /** Set when the name is in the deprecation table: what to use instead. */
   replacement?: string;
+  /** Set when that table entry is a tombstone rather than a live alias. */
+  removed?: true;
 }
 
 /**
@@ -183,7 +185,12 @@ export function check(
     for (const command of [...referencedCommands(markdown)].sort()) {
       const entry = deprecations.find((e) => e.kind === "command" && e.name === command);
       if (entry) {
-        problems.push({ file: rel, command, replacement: entry.replacement });
+        problems.push({
+          file: rel,
+          command,
+          replacement: entry.replacement,
+          ...(entry.removed ? { removed: true as const } : {}),
+        });
       } else if (!registered.has(command)) {
         problems.push({ file: rel, command });
       }
@@ -193,7 +200,13 @@ export function check(
         (e) => e.kind === "flag" && e.command === command && e.name === flag,
       );
       if (entry) {
-        problems.push({ file: rel, command, flag, replacement: entry.replacement });
+        problems.push({
+          file: rel,
+          command,
+          flag,
+          replacement: entry.replacement,
+          ...(entry.removed ? { removed: true as const } : {}),
+        });
       }
     }
   }
@@ -227,7 +240,7 @@ function main(): void {
       const used = p.flag ? `karasu ${p.command} ${p.flag}` : `karasu ${p.command}`;
       console.error(
         p.replacement
-          ? `✗ ${p.file}: \`${used}\` is deprecated; use \`${p.replacement}\``
+          ? `✗ ${p.file}: \`${used}\` is ${p.removed ? "removed" : "deprecated"}; use \`${p.replacement}\``
           : `✗ ${p.file}: \`${used}\` is not a registered command`,
       );
     }
