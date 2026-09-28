@@ -40,7 +40,7 @@ reverse-architecture との役割分担は PRD の通り: reverse は「知ら�
 
 - **エージェント非依存に寄せる**。Issue の言い方は「Claude Code or similar」。SKILL.md 形式（front matter + 本文）は Claude Code 以外のエージェントも読めるが、配布機構まで Claude Code 専用にすると「similar」を切り捨てる。
 - **skill は利用者が手元に持っている CLI のバージョンと食い違ってはいけない**。skill が新しい CLI 機能を前提にし、利用者の CLI が古い（またはその逆）と、エージェントは存在しないコマンドや構文を試す。drift は「repo 内の skill ↔ repo 内の CLI」だけでなく「利用者の skill ↔ 利用者の CLI」でも起きる。
-  > 2026-09-27 改訂: 案 1-D は独立した版で出すので、完全一致ではなく「CLI が skill の刻んだ版以上」で判定する。逆向き（CLI の方が新しい）は、skill が前提にする CLI の挙動を変えるリリースでは changeset の名指しで skill も再公開されるので、実際に食い違うのは CLI が挙動を後方非互換に変えたのに名指しを忘れた場合に限られる。これは repo 内の drift guard（論点 3）と名指しルールで防ぎ、利用者側では照合しない（案 1-D「バージョンの揃え方」）。
+  > 2026-09-27 改訂: 案 1-D は独立した版で出すので、完全一致ではなく「CLI が skill の刻んだ版以上」で判定する。逆向き（CLI の方が新しい）は、skill が前提にする CLI の挙動を変えるリリースでは changeset の名指しで skill も再公開されるので、実際に食い違うのは CLI が挙動を後方非互換に変えたのに名指しを忘れた場合に限られる。これは repo 内の drift guard（論点 3）と名指しルールで防ぐ。ただし plugin は既定で自動更新されないので、再公開した skill が利用者に届く保証はない。そこで新しい CLI と古い skill の組み合わせは、CLI 側の後方互換と、CLI が廃止情報を skill に返す仕組みで扱う（論点 5）。
 - **`.krs` が唯一の状態**。reverse と同じく、エージェントは会話履歴ではなく毎回 `.krs` を読み直す。
 - Chat panel には手を入れない（凍結）。
 - **skill の正本は karasu repo に置く**（2026-09-27 決定）。別 repo（例: `kompiro/karasu-skills`）に切り出すと、`skill-cli-refs` / `skill-reference-bundle-sync` / `krs-fences` といった drift guard が karasu の CI から外れる。正本が CLI と同じ repo にあれば、CLI を変える PR と skill を直す PR を同じ CI が見る。
@@ -166,6 +166,36 @@ reverse の 4 phase pipeline とは形が違う。こちらは会話駆動で、
 
 reverse と同じく reference（`syntax.md` / `notation-cookbook.md` / `tags-annotations.md` / `diagnostics.md`）を同梱する。利用者の repo に `docs/` は無いので。コードベースが手元にある場合は「聞く前に読む」（エージェントが自分で確かめられることは利用者に聞かない）を明記する。これが Chat との能力差の本体。
 
+### 論点 5: 新しい CLI と古い skill（CLI の後方互換と capability）
+
+> 2026-09-28 追加（PR #2931 の CodeRabbit 指摘と maintainer の判断による）。
+
+**問題**: skill に刻むのは CLI の版の下限だけで、CLI の方が新しい組み合わせは照合しない。skill が前提にする CLI の挙動を変えたリリースでは changeset の名指しで skill も再公開するが、Claude Code はサードパーティ marketplace の plugin を既定で自動更新しない。再公開しても利用者の手元の skill が古いまま残りうる。
+
+**参考にした先行例（CodeRabbit）**: CodeRabbit の plugin（`coderabbit` 1.1.1、[coderabbitai/skills](https://github.com/coderabbitai/skills)）は skill に CLI の版を刻まない。skill は `coderabbit --version` で CLI の有無だけを見て、個々の機能は `--help` や CLI の `--agent` 出力に含まれる `protocolVersion` で確かめる。新しい CLI と古い skill の組み合わせは skill 側では検査せず、CLI 側が古い呼び方を隠した別名として残す（`-t/--type` を「hidden compatibility syntax」として保持）ことで吸収している。
+
+**方針**: 互換の責任を CLI に持たせる。CLI は次の 2 つを約束する。
+
+1. **後方互換**: skill が使うエージェント向けの面（コマンド名、フラグ、stdout / stderr の形式、終了コード）を壊さない。名前を変える・廃止するものは、隠した別名として一定期間（少なくとも次の minor まで）動かし続ける。
+2. **廃止情報を skill に返す**: 廃止した呼び方について、代わりに何を使うかを CLI が機械で読める形で返す。返し方は 2 つ:
+   - **実行時の通知**: 廃止した別名が呼ばれたら、処理は行ったうえで stderr に固定形式の 1 行を出す（例 `karasu: deprecated: 'lint-style' -> 'check' (since 0.8.0, removal 1.0.0)`）。削除まで済んだ呼び方は、未知のコマンドとして失敗させる代わりに、同じ形式で代わりを示して失敗する（削除した項目も表に残す）。
+   - **問い合わせ**: `karasu capabilities --json` が、CLI の版、登録済みのコマンドとフラグ、廃止・削除した項目（代わり、廃止した版、削除する版）を返す。
+
+廃止の表は CLI のコード内に 1 か所だけ置き（例 `packages/cli` の deprecation 表）、commander の隠した別名、実行時の通知、`capabilities` の出力をすべてそこから作る。
+
+**skill 側（Step 0 の続き）**: 下限の照合（案 1-D）の後、`karasu capabilities --json` を 1 回呼ぶ。skill は自分が使うコマンドを知っているので、その中に廃止・削除された項目があれば、表の代わりを使って進め、利用者には「この skill は古い。更新を勧める」と伝える。`capabilities` が無い CLI は、下限の照合で既に止まっている。実行中に廃止通知の行を見た場合も同じ扱いにする。
+
+**repo 内の guard（論点 3 に追加）**:
+
+- deprecation 表の各項目について、別名がまだ動き、通知の行を出すこと（削除済みなら代わりを示して失敗すること）を CLI の vitest で確かめる。
+- `skill-cli-refs` を拡張し、repo 内の skill が廃止済みの呼び方を使っていたら落とす（repo 内の skill は常に最新の呼び方を使う。古い呼び方は利用者の手元の古い skill のためだけにある）。
+
+**却下した案**:
+
+- **下限だけのまま穴を受け入れる**: plugin が自動更新されない以上、CLI の後方非互換な変更がそのまま古い skill を壊す。
+- **CLI に「動作を保証する最も古い skill の版」の定数を持たせる**: 判定は正確だが、何が変わったかを skill に伝えられない。廃止情報を返せば、古い skill でも代わりの呼び方で作業を続けられる。
+- **skill に CLI の版の上限を刻む**: 0.x では CLI の minor ごとに警告が出る。
+
 ## 比較（配布）
 
 | 観点 | 1-A repo のみ | 1-B plugin | 1-C npm 同梱 | 1-D 組み合わせ |
@@ -179,7 +209,7 @@ reverse と同じく reference（`syntax.md` / `notation-cookbook.md` / `tags-an
 
 ## 現時点の方針
 
-**案 1-D（skills パッケージ + plugin marketplace + `karasu skill install`）、案 2-B（`karasu check`）、論点 3 の guard 拡張 + 実行型 e2e を採用する** — Claude Code 利用者が plugin として任意に入れられることと、どのエージェントにも届き公開時にバージョンが揃うこと（1-C の性質）を両立できるのは 1-D だけ。正本が karasu repo にあるので drift の既往（#2084 / #2090）に対する guard も CI に残る。plugin 経路で残る「利用者の手元の CLI とのずれ」は、両経路共通のバージョン照合で検出する。`check` は skill の検証指示を 1 語にし、#2084 型の取り違えを起こりにくくする。
+**案 1-D（skills パッケージ + plugin marketplace + `karasu skill install`）、案 2-B（`karasu check`）、論点 3 の guard 拡張 + 実行型 e2e、論点 5 の CLI 後方互換 + 廃止情報の返却を採用する** — Claude Code 利用者が plugin として任意に入れられることと、どのエージェントにも届き公開時にバージョンが揃うこと（1-C の性質）を両立できるのは 1-D だけ。正本が karasu repo にあるので drift の既往（#2084 / #2090）に対する guard も CI に残る。利用者の手元で起きるずれのうち、CLI が古い方は両経路共通の下限の照合で、CLI が新しい方は CLI の後方互換と `karasu capabilities` が返す廃止情報で扱う。`check` は skill の検証指示を 1 語にし、#2084 型の取り違えを起こりにくくする。
 
 skill 名は `karasu-author`（reverse-architecture と対になる動詞名）。
 
@@ -190,7 +220,8 @@ skill 名は `karasu-author`（reverse-architecture と対になる動詞名）�
 | **A** CLI help の不正スニペット修正 + help スニペットのパース検査 | — | 現行 CLI の bug fix。skill が無くても `--help` を読む人とエージェントに効く |
 | **B** `karasu check <file>` | — | 単独で有用な validate-only コマンド。reverse-architecture も乗り換え可能 |
 | **C1** skills パッケージ新設 + reverse-architecture の移設（symlink）+ guard の付け替え + `marketplace.json` + バージョン刻印（front matter と本文 Step 0）+ reverse-architecture の SKILL.md への Step 0 追加 + changesets の名指しルール（CLI の挙動変更で `karasu-skills` も名指す）| — | reverse-architecture だけで配布経路を先に通せる。初回 publish の bootstrap と Trusted Publisher 登録（人手）、`/plugin install` が npm source で実際に動くことの確認までを含む |
-| **C2** `karasu-author` skill 本体 + `karasu skill install` / `skill path` + guard 拡張 + pipeline e2e | A, B, C1 | skill が `check` と正しい help を前提にし、置き場が C1 の skills パッケージのため。guard は skill と同じ PR で入れないと、入った瞬間から無防備になる |
+| **E** CLI の後方互換方針 + deprecation 表 + 廃止通知 + `karasu capabilities --json` + guard（論点 5） | — | skill が無くても、CLI をスクリプトやエージェントから使う人に効く。以後の CLI 変更がこの方針に乗る |
+| **C2** `karasu-author` skill 本体 + `karasu skill install` / `skill path` + guard 拡張 + pipeline e2e + Step 0 の capability 確認（reverse-architecture にも追加） | A, B, C1, E | skill が `check` と正しい help を前提にし、置き場が C1 の skills パッケージのため。guard は skill と同じ PR で入れないと、入った瞬間から無防備になる |
 | **D** AT 記録（作者以外のセッションを含む） | C2（npm release 後） | 受け入れ条件。外部の人に plugin か `npx karasu skill install` で入れてもらう必要があるので release 後 |
 
 ## 未解決の問い
