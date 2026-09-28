@@ -3,8 +3,10 @@ name: VS Code Extension Release
 # Publishes the `packages/vscode` extension to the VS Code Marketplace under
 # publisher `karasu-tools` (extension id `karasu-tools.karasu-vscode`).
 #
-# Manual-only (`workflow_dispatch`) — the extension is released on its own
-# cadence, separate from the changesets-driven npm release of the `karasu` CLI.
+# Runs as part of the monthly release train: release.yml calls it
+# (`workflow_call`) after the npm publish, and it publishes only when the
+# Marketplace does not have the version yet (#2922). `workflow_dispatch` stays
+# for a manual publish or a re-run.
 # Versioning IS managed by changesets (`karasu-vscode` was removed from
 # `.changeset/config.json` `ignore`): `changeset version` bumps
 # `packages/vscode/package.json` + writes its CHANGELOG. But `karasu-vscode` is
@@ -32,6 +34,14 @@ name: VS Code Extension Release
 
 on:
   workflow_dispatch:
+    inputs:
+      pre_release:
+        description: "Publish to the VS Code pre-release channel"
+        type: boolean
+        default: false
+  # The monthly release train (#2922): release.yml calls this after the npm
+  # publish, so the extension ships with every release its version moved in.
+  workflow_call:
     inputs:
       pre_release:
         description: "Publish to the VS Code pre-release channel"
@@ -73,6 +83,10 @@ jobs:
             exit 1
           fi
           version=$(git show "${commit}:packages/vscode/package.json" | jq -r .version)
+          # The release scripts are read from the ref this workflow runs on;
+          # an older release commit may predate them.
+          mkdir -p "$RUNNER_TEMP/release-scripts"
+          cp scripts/release/*.mts "$RUNNER_TEMP/release-scripts/"
           git checkout --quiet "$commit"
           echo "commit=${commit}" >> "$GITHUB_OUTPUT"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
@@ -86,6 +100,40 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
+
+      # Idempotent like `changeset publish`: a version the Marketplace already
+      # has as a stable release is not published again, so the release train,
+      # which calls this workflow after every npm release, is a no-op for the
+      # extension when its version did not move (#2922). A version that exists
+      # only as a pre-release cannot be published as stable (the Marketplace
+      # takes a version number once across channels) and fails, as does a
+      # `vsce show` that cannot answer (TPL-2786).
+      - name: Check the Marketplace
+        id: marketplace
+        working-directory: packages/vscode
+        env:
+          VERSION: ${{ steps.source.outputs.version }}
+          PRE_RELEASE: ${{ inputs.pre_release }}
+        run: |
+          if [ "$PRE_RELEASE" = "true" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pnpm exec vsce show karasu-tools.karasu-vscode --json > "$RUNNER_TEMP/vsce-show.json"
+          status=$(node "$RUNNER_TEMP/release-scripts/train.mts" marketplace-status --version "$VERSION" < "$RUNNER_TEMP/vsce-show.json")
+          case "$status" in
+            absent)
+              echo "publish=true" >> "$GITHUB_OUTPUT"
+              ;;
+            stable)
+              echo "::notice::karasu-vscode ${VERSION} is already on the Marketplace: nothing to publish."
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::karasu-vscode ${VERSION} exists on the Marketplace only as a pre-release, which blocks publishing it as stable (#2940)."
+              exit 1
+              ;;
+          esac
 
       # Build the workspace first so the extension's own build can resolve the
       # `@karasu-tools/*` dist outputs. `pnpm run build` builds core → i18n →
@@ -104,6 +152,7 @@ jobs:
 
       - name: Check publish prerequisites
         id: prereqs
+        if: steps.marketplace.outputs.publish == 'true'
         env:
           AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
         run: |

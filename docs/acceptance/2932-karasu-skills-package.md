@@ -9,7 +9,7 @@ type: product
 - **設計**: [#2901](https://github.com/kompiro/karasu/issues/2901) の Design Doc（案 1-D、PR #2931）
 - **Related TPLs**: [TPL-1681](../test-perspectives/TPL-1681-publishable-tarball-completeness.md)（公開 tarball に必要なものが揃い、余計なものが入らない。AC-1）、[TPL-1024](../test-perspectives/TPL-1024-dev-vs-packaged-mode-parity.md)（repo 内の skill と公開物が刻印以外で同じ。AC-2・AC-5）、[TPL-2084](../test-perspectives/TPL-2084-skill-cli-command-refs-drift.md)（skill の CLI コマンド参照が登録済み。AC-4）
 - **対象ファイル**:
-  - `packages/skills/`（`package.json`・`.claude-plugin/plugin.json`・`scripts/stamp-version.mjs`・`skills/reverse-architecture/`）
+  - `packages/skills/package.json` / `packages/skills/.claude-plugin/plugin.json` / `packages/skills/scripts/stamp-version.mjs` / `packages/skills/skills/reverse-architecture/`
   - `.claude-plugin/marketplace.json`
   - `.claude/skills/reverse-architecture`（`packages/skills/skills/reverse-architecture` への symlink）
   - `scripts/lint/skill-cli-refs.ts` / `scripts/lint/skill-reference-bundle-sync.ts` / `scripts/lint/krs-fences.ts`
