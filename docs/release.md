@@ -41,13 +41,17 @@ npm への公開は **changesets** で管理し、認証は **npm Trusted Publis
 
 ### 対象パッケージ
 
-npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`（ライブラリ）。CLI は esbuild で `@karasu-tools/core` を内包した単一 ESM バンドルとしてビルドする（`packages/cli` の `build` スクリプト。公開 core への依存には切り替えない）。`@karasu-tools/app` / `@karasu-tools/lsp` / `@karasu-tools/e2e` / `@karasu-tools/vscode-e2e` は `.changeset/config.json` の `ignore` に入っており版管理・公開とも対象外。
+npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`（ライブラリ）と `karasu-skills`（agent 向け skill を収めた Claude Code plugin、`packages/skills`）。CLI は esbuild で `@karasu-tools/core` を内包した単一 ESM バンドルとしてビルドする（`packages/cli` の `build` スクリプト。公開 core への依存には切り替えない）。`@karasu-tools/app` / `@karasu-tools/lsp` / `@karasu-tools/e2e` / `@karasu-tools/vscode-e2e` は `.changeset/config.json` の `ignore` に入っており版管理・公開とも対象外。
 
 `karasu-vscode`（VS Code 拡張）も changesets の**版管理対象**（`ignore` から除外）。ただし `private: true` のため `changeset publish` は npm へ publish せず（自動スキップ）、配布は Marketplace 経由で手動（後述「VS Code 拡張のリリース」）。changesets は version bump と `packages/vscode/CHANGELOG.md` 生成のみを担う。 `@changesets/cli` 3 は private パッケージを既定で版管理しない（`privatePackages` の既定が `{ version: false }`）ため、`.changeset/config.json` に `privatePackages: { "version": true, "tag": false }` を明示してこの扱いを保っている（[ADR-2877](adr/2877-dependabot-triage-2026-09-22.md)）。
 
 > **`@karasu-tools/core` は v0.x（TS API、無保証）**。`.krs` / `.krs.style` 言語は v1.0 だが、TS API は minor で破壊的変更を許す（[ADR-1314](adr/1314-krs-spec-v1-freeze.md)）。`exports` は公開先に `dist` を指し、`development` 条件で repo 内は TS ソースを解決するため `pnpm typecheck` は build 非依存。
 
 > **`karasu`（CLI）の version floor は 0.6.0**。npm の `karasu` 名は旧 incarnation が `〜0.5.2` まで公開済みで、それ以下は `E400 Cannot publish over previously published version` になる。`@karasu-tools/core` は履歴がクリーンなため独立して 0.x（independent versioning）。
+
+`karasu-skills` は `prepack` で、その時点の CLI の版（`packages/cli/package.json`）を各 SKILL.md の `metadata.karasu-version` と本文 Step 0 に刻み、`postpack` で元に戻す（刻むのは「この版以降の CLI 向け」という下限）。利用者はルートの `.claude-plugin/marketplace.json` を marketplace として追加し、npm の `karasu-skills` を plugin として入れる（`/plugin marketplace add kompiro/karasu` → `/plugin install karasu@karasu`）。設計は `docs/design/karasu-authoring-skill.md` 案 1-D（#2932）。
+
+> **`karasu-skills` の初回 publish は手動**。npm の Trusted Publisher はパッケージが存在してからでないと登録できない（下の「前提」）。最初のリリース PR で版が確定したら、ローカルの `packages/skills` から `pnpm publish`（provenance off + OTP）で一度だけ公開し、npmjs.com で Trusted Publisher（org `kompiro` / repo `karasu` / workflow `release.yml`）を登録する。以降は `release.yml` が OIDC で公開する。
 
 ### 変更を加えるとき
 

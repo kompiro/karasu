@@ -26,7 +26,8 @@ name: Release
 # needed. See ADR-9020 (OIDC migration; follows up the token-based
 # auth of ADR-1315) and docs/process.md "リリース運用".
 #
-# Public packages: `karasu` (CLI) and `@karasu-tools/core`. `@karasu-tools/*`
+# Public packages: `karasu` (CLI), `@karasu-tools/core` and `karasu-skills` (the
+# Claude Code plugin with the agent skills, #2932). `@karasu-tools/*`
 # others, `@karasu-tools/i18n` (private), and `karasu-vscode` are not
 # published here (the VS Code extension ships via its own workflow — #1316).
 

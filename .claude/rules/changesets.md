@@ -6,12 +6,13 @@ paths:
   - "packages/vscode/**/*.ts"
   - "packages/vscode/**/*.tsx"
   - "packages/i18n/**/*.ts"
+  - "packages/skills/**"
 ---
 
 # Changeset Rules
 
 **到達状態**: 版管理対象パッケージ（`karasu` CLI / `@karasu-tools/core` /
-`karasu-vscode`）の利用者から見える変更を含む PR には `.changeset/<name>.md` が
+`karasu-vscode` / `karasu-skills`）の利用者から見える変更を含む PR には `.changeset/<name>.md` が
 含まれ、`pnpm changeset status --since=main` が意図したパッケージと bump レベルを
 表示する。PR を出す前にこのコマンドで確認する。
 
@@ -58,11 +59,18 @@ dependent は版 bump するが、`devDependencies` は範囲更新のみで bum
 | `packages/core`（利用者向け） | **`@karasu-tools/core` と `karasu` の両方** | core → `karasu-vscode` に patch |
 | `packages/cli` 固有 | `karasu` | なし |
 | `packages/vscode` 固有 | `karasu-vscode` | なし |
+| `packages/skills`（skill 本文・reference） | `karasu-skills` | なし |
+| skill が前提にする CLI の挙動（コマンド・フラグ・出力・診断） | `karasu` **と** `karasu-skills`（skill 本文も同じ PR で直す） | なし |
 
 > core の変更を `"karasu"` だけに付けると、core を実 dependency に持つ
 > `karasu-vscode` が bump されず、拡張に core 変更が乗っても版が上がらない取り
 > こぼしになる。CLI は core を `devDependency`（esbuild バンドル）にしているため
 > `@karasu-tools/core` の bump が CLI に cascade せず、`karasu` の明示が別途要る。
+
+> skill が前提にする CLI の挙動を変えたのに `karasu-skills` を名指さないと、CLI だけが
+> 公開され、利用者の手元の skill は古い手順のまま残る。skill は SKILL.md の Step 0 で
+> CLI の版の**下限**しか照合しないので、この食い違いは利用者側では検出されない
+> （[設計](../../docs/design/karasu-authoring-skill.md) 案 1-D、#2932）。
 
 `.changeset/*.md` の frontmatter 例（core 変更）:
 
