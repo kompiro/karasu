@@ -112,7 +112,9 @@ Issue を介さず PR まで自動で作る案。ADR-1370 が却下した `chang
 
 #### C1: 発車を止めて、残っている Issue にコメントする（採用）
 
-Prepare の最初に、open な `release` ラベルの Issue を探す。見つかったら新しいブランチを作らず、その Issue に「今月の発車を見送った。先にこのトレインをマージするか close してほしい」とコメントしてジョブを **失敗**で終える。
+Prepare の最初に、open な `release` ラベルの Issue と、head が `chore/release-*` の open な PR を探す。どちらかが見つかったら新しいブランチを作らず、その Issue（PR だけが残っているなら PR）に「今月の発車を見送った。先にこのトレインをマージするか close してほしい」とコメントしてジョブを **失敗**で終える。
+
+PR も見るのは、Issue を閉じても対になるリリース PR は閉じないため。Issue だけを見ていると、PR が開いたまま次の Prepare が同じ未マージの changeset を 2 本目のリリース PR に載せてしまう。
 
 - 残っているトレインを黙って上書きしない。放置が続けば毎月失敗の通知が来るので、気づける（TPL-2786 — 前提が崩れた状態を通過扱いにしない）。
 - 前月のトレインを close すれば、翌月のトレインにその分の changeset も乗る（changeset は main に残ったままなので失われない）。
@@ -126,7 +128,10 @@ Prepare の最初に、open な `release` ラベルの Issue を探す。見つ�
 #### D1: `vscode-release.yml` を reusable workflow にして `release.yml` から呼ぶ（採用）
 
 - `vscode-release.yml` に `on: workflow_call`（`pre_release` input）を足す。`workflow_dispatch` は手動の再実行用に残す。呼ばれた側の 2 ジョブ（公開と `record`）がそのまま動く。リリースコミットからビルドする仕組み（ADR-2939）は、トレインでは HEAD がリリースコミットなので同じコミットを指す。
-- `vscode-release.yml` の先頭に「**Marketplace の最新版と `package.json` の version が同じなら公開しない**」ガードを入れる（`vsce show karasu-tools.karasu-vscode --json`）。`changeset publish` が「npm に無い版だけ出す」のと同じ冪等性を持たせる。**`vsce show` が失敗したら公開を飛ばすのではなくジョブを失敗させる**（TPL-2786）。
+- `vscode-release.yml` の先頭に「**`package.json` の version が Marketplace に stable として既にあれば公開しない**」ガードを入れる（`vsce show karasu-tools.karasu-vscode --json`）。`changeset publish` が「npm に無い版だけ出す」のと同じ冪等性を持たせる。
+  - 版の一致だけで判定しない。`vsce show` の各版の `properties` に `Microsoft.VisualStudio.Code.PreRelease` があれば pre-release の版である。
+  - 同じ版が **pre-release にしかない**ときは、飛ばさずに失敗させる。Marketplace は同じ版番号をチャネルをまたいで再公開できないので、この状態では stable を出せない。pre-release の版の付け方（#2940）が stable と重ならないようにする前提の違反として知らせる。
+  - **`vsce show` が失敗したら公開を飛ばすのではなくジョブを失敗させる**（TPL-2786）。
 - `release.yml` に npm 公開ジョブのあとで走る `vscode` ジョブを足し、`uses: ./.github/workflows/vscode-release.yml` で呼ぶ。呼ばれた側の各ジョブが必要とする権限の上限（`contents: write`、`id-token: write`）を、呼び出し側のジョブに与える。
 - npm の公開が一部失敗しても、拡張の公開は止めない（拡張は npm に依存しない）。失敗したジョブに `needs` で続くジョブは既定でスキップされるので、`vscode` ジョブには `if: ${{ !cancelled() }}` を付ける。npm の `record` と拡張の `record` は `release-record` で直列になり、同じ Release に集まる。
 
@@ -162,16 +167,16 @@ ADR-1758 は Marketplace 公開の自動発火を「リリース PR マージの
 1. `release-prepare.yml`
    - `on.schedule: - cron: "0 0 * * 0"` を足す（`workflow_dispatch` は残す）。
    - `github.event_name == 'schedule'` のときだけ最終日曜判定（A1）を行う。
-   - open な `release` Issue があれば、コメントしてジョブを失敗させる（C1）。
+   - open な `release` Issue か、head が `chore/release-*` の open な PR があれば、コメントしてジョブを失敗させる（C1）。`permissions` に `pull-requests: read`。
    - ブランチ名を `chore/release-YYYY-MM-DD` にし、commit subject も版ではなく上がったパッケージの一覧にする。
    - version → push の後、トラッキング Issue を作る（B1）。`permissions` に `issues: write`。
    - 版の一覧は、version 前後の各 `package.json` を比べて作る（上がったパッケージだけ）。
 2. `vscode-release.yml`
    - `on.workflow_call`（`pre_release` input）を足す。
-   - 「Marketplace 最新版 = `package.json` の version なら skip、`vsce show` 失敗なら fail」のガードを publish の前に入れる。
+   - 「同じ版が stable にあれば skip、pre-release にしかなければ fail、`vsce show` 失敗なら fail」のガードを publish の前に入れる。
 3. `release.yml`
    - npm 公開ジョブの後に `vscode` ジョブ（`uses: ./.github/workflows/vscode-release.yml`、`if: ${{ !cancelled() }}`、`permissions: contents: write, id-token: write`）を足す。
-   - 最後に、トラッキング Issue を閉じるジョブを足す（`needs` に npm の公開・`record`・`vscode`、`if: ${{ !cancelled() }}`、`issues: write`）。HEAD コミットの PR の head ブランチ名で Issue を特定し、全ジョブが成功（`record` はスキップも可）なら Release のリンクを付けて閉じ、失敗があれば run のリンクをコメントして開いたままにする。
+   - 最後に、トラッキング Issue を閉じるジョブを足す（`needs` に npm の公開・`record`・`vscode`、`if: ${{ !cancelled() }}`、`permissions: issues: write, pull-requests: read`。ジョブ単位の `permissions` は書かなかった権限を `none` にするので、コミットから PR を引く API のために `pull-requests: read` が要る）。HEAD コミットの PR の head ブランチ名で Issue を特定し、全ジョブが成功（`record` はスキップも可）なら Release のリンクを付けて閉じ、失敗があれば run のリンクをコメントして開いたままにする。
 4. `release` ラベルを作る（`gh label create release`）。
 5. `docs/release.md` の「リリースの流れ」「VS Code 拡張のリリース」を月次トレインの手順に書き換える。「拡張は CLI とは独立した cadence で出す」の注記を消す。各 workflow の header コメントも合わせる。
 6. AT（人が確認するもの）:
