@@ -1,8 +1,9 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
-// Guards the `karasu <cmd>` command names hardcoded in .claude/skills/** against
+// Guards the `karasu <cmd>` command names hardcoded in skills (.claude/skills/**
+// and the published packages/skills/skills/**) against
 // the CLI's actual command registry in packages/cli/src/index.ts (Issue #2093).
 //
 // Skills prescribe CLI commands as prose; the CLI evolves; CI sees nothing. Two
@@ -37,6 +38,14 @@ import { join, relative, resolve } from "node:path";
 // that the skills' CLI claims are accurate.
 
 export const SKILLS_DIR = ".claude/skills";
+/** Skills published in the `karasu-skills` package (Issue #2932). */
+export const PACKAGED_SKILLS_DIR = "packages/skills/skills";
+/**
+ * Every root scanned. `.claude/skills/reverse-architecture` is a symlink into
+ * PACKAGED_SKILLS_DIR, so the walker skips symlinks and reads each file once,
+ * at its real path.
+ */
+export const SKILL_ROOTS = [SKILLS_DIR, PACKAGED_SKILLS_DIR];
 export const CLI_INDEX = "packages/cli/src/index.ts";
 
 /** `.command("serve [dir]")` / `.command("render <file>")` → the command name. */
@@ -110,13 +119,15 @@ export function referencedCommands(markdown: string): Set<string> {
   return refs;
 }
 
-/** Recursively collect every Markdown file under `dir`. */
+/** Recursively collect every Markdown file under `dir`, not following symlinks. */
 function markdownFiles(dir: string): string[] {
   if (!existsSync(dir)) return [];
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
-    if (statSync(full).isDirectory()) {
+    const stat = lstatSync(full);
+    if (stat.isSymbolicLink()) continue;
+    if (stat.isDirectory()) {
       out.push(...markdownFiles(full));
     } else if (entry.endsWith(".md")) {
       out.push(full);
@@ -141,7 +152,7 @@ export function check(repoRoot: string): Problem[] {
     : new Set<string>();
 
   const problems: Problem[] = [];
-  for (const file of markdownFiles(resolve(repoRoot, SKILLS_DIR))) {
+  for (const file of SKILL_ROOTS.flatMap((root) => markdownFiles(resolve(repoRoot, root)))) {
     const rel = relative(repoRoot, file);
     const markdown = readFileSync(file, "utf8");
     for (const command of [...referencedCommands(markdown)].sort()) {
@@ -166,7 +177,7 @@ export function check(repoRoot: string): Problem[] {
 const ADVISORY =
   "note: name check only — it cannot see a wrong-command-for-the-job (#2084) " +
   "or a stale capability claim (#2090). If the CLI's command or adapter surface " +
-  "changed, re-read .claude/skills/** for claims about what the CLI can/can't do.";
+  "changed, re-read the skills (.claude/skills/**, packages/skills/skills/**) for claims about what the CLI can/can't do.";
 
 function main(): void {
   const problems = check(process.cwd());
@@ -182,9 +193,7 @@ function main(): void {
     );
     process.exit(1);
   }
-  console.log(
-    "skill-cli-refs: ok (every `karasu <cmd>` in .claude/skills/** is a registered command)",
-  );
+  console.log("skill-cli-refs: ok (every `karasu <cmd>` in the skills is a registered command)");
 }
 
 const invokedDirectly =

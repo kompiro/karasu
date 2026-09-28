@@ -22,7 +22,7 @@ import { dirname, resolve } from "node:path";
 // comparison that makes this guard strong; the notice lives in the bundle's
 // README instead, which this guard also requires.
 
-export const BUNDLE_DIR = ".claude/skills/reverse-architecture/reference";
+export const BUNDLE_DIR = "packages/skills/skills/reverse-architecture/reference";
 
 /**
  * source (repo-relative) → bundled copy (repo-relative).
