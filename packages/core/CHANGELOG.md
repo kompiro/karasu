@@ -1,5 +1,27 @@
 # @karasu-tools/core
 
+## 0.3.1
+
+### Patch Changes
+
+- c168d22: `buildAllViewsSvgProject` (behind the default `karasu render`) now raises `duplicate-edge-id`. It previously skipped the project-wide edge id check, so `karasu render index.krs` accepted a model that `karasu render --view system` rejected. The source-level `buildAllViewsSvg` is unchanged, so the karasu-nest gallery and the app's share render still treat duplicate edge ids as the author's call.
+- 5dbdb3d: Rendering dense diagrams is faster: when an edge detours through the gaps between cards, the router now picks the nearest few candidate gaps directly instead of sorting all of them for every edge. Output is unchanged (#2944).
+- 8a5bf97: Correction to the 0.3.0 (core) / 0.7.0 (CLI) release notes: **icon display
+  mode is still deprecated, but it will not necessarily be removed in the next
+  major version.** It will be removed in a future major; which release is not
+  decided yet. Moving to shape mode with `shape: url(...)` remains the
+  recommended path (ADR-2906, superseding ADR-2376).
+- 612aa45: The multi-system root view now draws every same-named node: two systems that
+  both declare `service Api` used to merge onto one card (the later system's), so
+  the other frame went empty and its edges started from nowhere (#2917). Both
+  cards keep `data-node-id="Api"`, and every real node card on a logical-view
+  canvas now also carries `data-node-path` (`Shop.Api`, the same injective text
+  form a deploy container's id uses), naming the one node the card stands for;
+  ghost cards and collapse stubs carry none. The
+  compile result exposes the same metadata keyed by that path as
+  `nodeMetadataByPath`, and `nodePathRefId` / `parseNodePathRefId` are exported
+  for readers of the attribute.
+
 ## 0.3.0
 
 ### Minor Changes
