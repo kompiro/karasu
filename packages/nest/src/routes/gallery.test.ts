@@ -138,6 +138,23 @@ describe("GET /g/<id>", () => {
     expect((await get(kv, `/g/${id}`, other.cookie)).status).toBe(404);
   });
 
+  it("serves a public page to a cookie-carrying visitor even when the allowlist is missing (#2969)", async () => {
+    // A misconfigured list must not turn public pages into 503s. The session
+    // is read as signed out, so an unlisted submission stays hidden.
+    const kv = new MemoryKV();
+    const { NEST_SIGN_IN_ALLOWLIST: _, ...withoutList } = env(kv);
+    const open = await seed(kv);
+    const hidden = await seed(kv, "unlisted");
+    const request = (id: string): Promise<Response> =>
+      handleRequest(
+        new Request(`${ORIGIN}/g/${id}`, { headers: { Cookie: open.cookie } }),
+        withoutList,
+        ctx,
+      );
+    expect((await request(open.id)).status).toBe(200);
+    expect((await request(hidden.id)).status).toBe(404);
+  });
+
   it("answers 404 for a malformed id rather than an error", async () => {
     const kv = new MemoryKV();
     for (const id of ["nonsense", "42-short", "kompiro-abcdefghjkmn"]) {

@@ -228,6 +228,7 @@ describe("the sign-in allowlist (#2969)", () => {
     ["only separators", " , "],
     ["a login instead of an id", "kompiro"],
     ["an id with a typo", "42,4x"],
+    ["an id too large to hold exactly", "42,9007199254740993"],
   ])("fails closed when the list is %s", async (_, allowlist) => {
     // Neither "let everyone in" nor "quietly drop the bad entry": a typo that
     // dropped the operator would lock them out without saying why.

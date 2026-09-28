@@ -8,7 +8,7 @@
  * forged one in a response — which would tell a stranger whether an account
  * exists.
  */
-import { requireBinding, type NestEnv } from "../env.js";
+import { MissingBindingError, requireBinding, type NestEnv } from "../env.js";
 import { signInAllowlist } from "./allowlist.js";
 import { GalleryStore } from "../store/gallery-store.js";
 import type { Account } from "../store/accounts.js";
@@ -43,6 +43,21 @@ export async function currentViewer(
   if (cookie === undefined) return undefined;
   const viewer = await store.authenticate(cookie.accountId, cookie.sessionId);
   if (viewer === undefined) return undefined;
-  if (!signInAllowlist(env).has(Number(viewer.account.accountId))) return undefined;
-  return viewer;
+  return isAllowed(env, viewer.account.accountId) ? viewer : undefined;
+}
+
+/**
+ * A list that is missing or unreadable admits nobody here, rather than
+ * throwing. Throwing would turn every page a cookie-carrying visitor opens,
+ * public submissions included, into a 503; sign-in still answers 503 naming
+ * the binding, and `/healthz` reports it, so the misconfiguration stays loud
+ * where it can be fixed.
+ */
+function isAllowed(env: NestEnv, accountId: string): boolean {
+  try {
+    return signInAllowlist(env).has(Number(accountId));
+  } catch (cause) {
+    if (cause instanceof MissingBindingError) return false;
+    throw cause;
+  }
 }

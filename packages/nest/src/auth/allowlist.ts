@@ -29,8 +29,12 @@ export function signInAllowlist(env: NestEnv): ReadonlySet<number> {
   const ids = new Set<number>();
   for (const entry of raw.split(/[\s,]+/)) {
     if (entry === "") continue;
-    if (!/^[1-9]\d*$/.test(entry)) throw new MissingBindingError(BINDING);
-    ids.add(Number(entry));
+    // Digits only, and small enough to survive `Number` exactly: a longer run
+    // would round to a neighbouring id (or to `Infinity`) and admit nobody the
+    // operator meant.
+    const id = /^[1-9]\d*$/.test(entry) ? Number(entry) : Number.NaN;
+    if (!Number.isSafeInteger(id)) throw new MissingBindingError(BINDING);
+    ids.add(id);
   }
   if (ids.size === 0) throw new MissingBindingError(BINDING);
   return ids;
