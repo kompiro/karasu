@@ -84,6 +84,11 @@ To wire it up on a deploy:
    derived from the request: it decides the `redirect_uri` and the `Origin`
    every state-changing request is checked against, and both stop meaning
    anything if a `Host` header can pick them.
+5. `NEST_SIGN_IN_ALLOWLIST` in `wrangler.toml` lists the GitHub numeric user
+   ids that may sign in. Anyone else is refused before an account record is
+   written. It holds only the operator until the legal review in
+   [#2691](https://github.com/kompiro/karasu/issues/2691) is done; widening it
+   is opening the gallery (#2969). Find an id with `gh api users/<login> --jq .id`.
 
 ## Development
 

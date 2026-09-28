@@ -65,6 +65,18 @@ ENVIRONMENT = "production"
 # than sending anyone to a broken consent screen.
 # NEST_PUBLIC_ORIGIN = "https://karasu-nest.example.workers.dev"
 
+# GitHub numeric user ids allowed to sign in (#2969). Only the operator
+# (kompiro, 42963) until the legal review in #2691 is done: signing in is what
+# writes someone's GitHub id and login, and what lets them show a submission to
+# third parties.
+#
+# Kept here rather than in the dashboard on purpose. Adding an id is the act of
+# opening the gallery to that person, so it should arrive as a reviewed change
+# with #2691's state in view, not as a setting nobody can see. The ids are
+# public on GitHub; this is not a secret. Numeric ids, not logins: a login can
+# be renamed and claimed by someone else.
+NEST_SIGN_IN_ALLOWLIST = "42963"
+
 # Accounts, sessions and submissions share one namespace, separated by key
 # prefix (`acct/`, `sess/`, `sub/`) rather than by binding, because deleting an
 # account has to see all three.
