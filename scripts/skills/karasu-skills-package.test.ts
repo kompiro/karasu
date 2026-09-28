@@ -115,7 +115,7 @@ describe("stamp-version.mjs on a skill without the placeholder", () => {
 
     expect(() =>
       execFileSync("node", ["scripts/stamp-version.mjs", "stamp"], { cwd: pkgDir, stdio: "pipe" }),
-    ).toThrow();
+    ).toThrow(/has no \{\{KARASU_MIN_VERSION\}\}/);
     expect(readFileSync(join(pkgDir, "skills/a/SKILL.md"), "utf8")).toBe(good);
     expect(existsSync(join(pkgDir, ".stamp-backup"))).toBe(false);
   });
