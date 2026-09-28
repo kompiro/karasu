@@ -66,9 +66,8 @@ marketplace の解決、npm からの取得、Step 0 をエージェントが実
 
 ## 手動確認
 
-判定に Claude Code 本体と、公開済みの `karasu-skills`（初回 publish は maintainer の手作業、`docs/release.md`）が要る 4 項目。
+判定に Claude Code 本体と、公開済みの `karasu-skills`（初回 publish は maintainer の手作業、`docs/release.md`）が要る 3 項目。新しい版を公開した後に更新がどう届くかは、こちらから任意に起こせる事象ではないので AT に置かず、`docs/release.md` のリリース手順で確かめる。
 
 - [ ] AT-H: karasu repo で Claude Code を開くと `reverse-architecture` skill が一覧に出て起動でき、Step 0 が「repo 内の未公開版」として照合を飛ばす
 - [ ] AT-I: karasu 以外の repo で `/plugin marketplace add kompiro/karasu` → `/plugin install karasu@karasu` を実行すると、npm の `karasu-skills` から `reverse-architecture` が入り、起動できる
 - [ ] AT-J: 手元の karasu CLI が刻まれた版より古い（または入っていない）状態で skill を起動すると、Step 0 が `.krs` に触れる前に更新を案内して止まる。同じ版以上なら何も言わずに進む
-- [ ] AT-K: `karasu-skills` の新しい版を公開した後、インストール済みの plugin に更新がどう届くか（自動か、`/plugin` から手動か）を確かめ、結果をこの記録と `packages/skills/README.md` に書く

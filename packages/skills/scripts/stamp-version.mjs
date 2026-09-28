@@ -20,11 +20,11 @@
 // Design: option 1-D of the #2901 design doc (PR #2931).
 
 import {
-  cpSync,
   existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -45,9 +45,32 @@ function skillFiles() {
     .filter((file) => existsSync(file));
 }
 
+/**
+ * Write through a temporary file and rename it into place, so an interrupted
+ * write never leaves a truncated file at `path`. A truncated backup would be
+ * copied over the source by the next `restore()`.
+ */
+function writeAtomic(path, data) {
+  const tmp = `${path}.tmp`;
+  writeFileSync(tmp, data);
+  renameSync(tmp, path);
+}
+
+/** Every complete backup under BACKUP_DIR (the `.tmp` of an interrupted write is not one). */
+function backupFiles(dir = BACKUP_DIR) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return backupFiles(full);
+    return entry.name === "SKILL.md" ? [full] : [];
+  });
+}
+
 function restore() {
   if (!existsSync(BACKUP_DIR)) return;
-  cpSync(BACKUP_DIR, PACKAGE_DIR, { recursive: true });
+  for (const backup of backupFiles()) {
+    const source = join(PACKAGE_DIR, relative(BACKUP_DIR, backup));
+    writeAtomic(source, readFileSync(backup, "utf8"));
+  }
   rmSync(BACKUP_DIR, { recursive: true, force: true });
 }
 
@@ -71,8 +94,8 @@ function stamp() {
   for (const { file, text } of sources) {
     const backup = join(BACKUP_DIR, relative(PACKAGE_DIR, file));
     mkdirSync(dirname(backup), { recursive: true });
-    writeFileSync(backup, text);
-    writeFileSync(file, text.replaceAll(PLACEHOLDER, version));
+    writeAtomic(backup, text);
+    writeAtomic(file, text.replaceAll(PLACEHOLDER, version));
   }
 }
 

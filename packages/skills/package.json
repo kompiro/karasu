@@ -21,8 +21,7 @@
     "skills"
   ],
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "scripts": {
     "prepack": "node scripts/stamp-version.mjs stamp",

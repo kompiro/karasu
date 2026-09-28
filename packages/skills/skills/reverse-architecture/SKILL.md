@@ -40,8 +40,10 @@ Do this before anything else, and before touching any `.krs`.
    above (semver).
    - **Command not found, or older:** stop and tell the user: "This skill needs
      karasu {{KARASU_MIN_VERSION}} or later. Please update karasu, then ask
-     again." Match the advice to how the CLI is called: `npm i -g karasu@latest`
-     for a global `karasu`, `npm i -D karasu@latest` for a project-local one.
+     again." Match the advice to how the CLI is installed, so the update does not
+     move it: `npm i -g karasu@latest` for a global `karasu`;
+     `npm i karasu@latest` when the project lists it in `dependencies`;
+     `npm i -D karasu@latest` when it is in `devDependencies`.
      Do not suggest `npx karasu@latest`: it runs once and does not change what
      `karasu` resolves to afterwards.
    - **Same or newer:** continue without comment.
