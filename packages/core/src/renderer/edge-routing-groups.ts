@@ -1373,8 +1373,13 @@ export function distributeGutterLanes(
     else if (corridor.x < minLeft) left.push({ e, corridor });
   }
 
-  if (process.env.KRS_LANE_BUNDLES === "1") {
-    assignBundledLanes(right, (lane) => (lane === 0 ? rightBase : maxTrunkX + lane * TRUNK_LANE_GAP));
+  if (
+    (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env
+      ?.KRS_LANE_BUNDLES === "1"
+  ) {
+    assignBundledLanes(right, (lane) =>
+      lane === 0 ? rightBase : maxTrunkX + lane * TRUNK_LANE_GAP,
+    );
     assignBundledLanes(left, (lane) => leftBase - lane * TRUNK_LANE_GAP);
     return;
   }
@@ -1419,7 +1424,11 @@ function assignBundledLanes(
     }
     const id = `${l[0].e.to}#in${n++}`;
     for (const m of l) m.e.trunkId = id;
-    bundles.push({ members: l, lo: Math.min(...l.map((m) => m.corridor.lo)), hi: Math.max(...l.map((m) => m.corridor.hi)) });
+    bundles.push({
+      members: l,
+      lo: Math.min(...l.map((m) => m.corridor.lo)),
+      hi: Math.max(...l.map((m) => m.corridor.hi)),
+    });
   }
   const byHead = new Map<string, { e: LayoutEdge; corridor: GutterCorridor }[]>();
   for (const it of rest) {
@@ -1433,7 +1442,11 @@ function assignBundledLanes(
       const id = `${l[0].e.from}#out${n++}`;
       for (const m of l) m.e.outTrunkId = id;
     }
-    bundles.push({ members: l.length >= 2 ? l : l.slice(0, 1), lo: Math.min(...l.map((m) => m.corridor.lo)), hi: Math.max(...l.map((m) => m.corridor.hi)) });
+    bundles.push({
+      members: l.length >= 2 ? l : l.slice(0, 1),
+      lo: Math.min(...l.map((m) => m.corridor.lo)),
+      hi: Math.max(...l.map((m) => m.corridor.hi)),
+    });
     if (l.length < 2) continue;
   }
   // singles that were pushed as 1-member bundles above are already covered
