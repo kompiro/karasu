@@ -69,10 +69,18 @@ full command reference.
 
 ### 3. Reverse-engineer a repository with an AI agent
 
-Use the [`reverse-architecture` skill](.claude/skills/reverse-architecture/SKILL.md)
+Use the [`reverse-architecture` skill](packages/skills/skills/reverse-architecture/SKILL.md)
 to have a repository-aware AI agent inspect an existing codebase and build a
 karasu model. The workflow combines agent judgment for domain structure with
 deterministic CLI extraction and validation.
+
+In Claude Code, install it as a plugin (it drives the karasu CLI, so install
+that too with `npm i -g karasu`):
+
+```text
+/plugin marketplace add kompiro/karasu
+/plugin install karasu@karasu
+```
 
 The result is a map to review and evolve, not a claim of perfect ground truth.
 karasu remains useful without AI: the model is plain text, editable by hand,

@@ -8,6 +8,8 @@ description: >
   "システム構造を .krs で起こして", "reverse architecture", "reverse-engineer
   this repo into karasu", "turn this repo into a karasu model", or similar
   phrases asking to reconstruct a system's architecture as .krs.
+metadata:
+  karasu-version: "{{KARASU_MIN_VERSION}}"
 ---
 
 # Reverse Architecture Skill
@@ -20,6 +22,31 @@ each domain its own attention budget, and the **karasu CLI as a deterministic
 spine** (physical extraction, slicing, measurement, validation, rendering).
 
 Design rationale: ADR-1895 (`docs/adr/1895-reverse-architecture-harness.md`).
+
+## Step 0: Check the karasu CLI
+
+Do this before anything else, and before touching any `.krs`.
+
+1. **Pick one way to call the CLI** and use it for every command in this skill.
+   If the target repository's `package.json` lists `karasu` in `dependencies` or
+   `devDependencies`, use `npx --no-install karasu` (a bare `karasu` does not
+   see a project-local install). Otherwise use `karasu`. Below, `karasu` means
+   the command you picked.
+2. **Compare versions.** This skill was written for karasu
+   `{{KARASU_MIN_VERSION}}` or later. If that is not a version number but a
+   template marker in double braces, you are running the unreleased copy inside
+   the karasu repository: skip the rest of this step.
+3. Run `karasu --version` and compare the first line's version with the one
+   above (semver).
+   - **Command not found, or older:** stop and tell the user: "This skill needs
+     karasu {{KARASU_MIN_VERSION}} or later. Please update karasu, then ask
+     again." Match the advice to how the CLI is installed, so the update does not
+     move it: `npm i -g karasu@latest` for a global `karasu`;
+     `npm i karasu@latest` when the project lists it in `dependencies`;
+     `npm i -D karasu@latest` when it is in `devDependencies`.
+     Do not suggest `npx karasu@latest`: it runs once and does not change what
+     `karasu` resolves to afterwards.
+   - **Same or newer:** continue without comment.
 
 ## Prerequisites
 

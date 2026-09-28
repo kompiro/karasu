@@ -97,6 +97,9 @@ export const DEFAULT_DOC_ROOTS = [
   "docs/guide",
   "docs/concepts.md",
   "docs/concepts.ja.md",
+  // Published skills (karasu-skills, Issue #2932): their ```krs examples teach
+  // agents the syntax, so they must parse like the docs they copy from.
+  "packages/skills/skills",
 ];
 
 /**
