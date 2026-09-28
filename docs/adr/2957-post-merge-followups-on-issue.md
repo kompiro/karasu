@@ -9,6 +9,7 @@ assumptions:
   - "file: .github/workflows/post-merge-followups.yml"
   - "symbol: scripts/pr/post-merge-followups.mts :: checkBody"
   - "symbol: scripts/pr/post-merge-followups.mts :: appendFollowups"
+  - "symbol: scripts/pr/post-merge-followups.mts :: checkIssueStates"
   - "grep: .github/PULL_REQUEST_TEMPLATE.md :: ## Post-merge follow-ups"
 ---
 
@@ -34,7 +35,7 @@ PR テンプレートの「Manual Verification Checklist」には、レビュー
 PR テンプレートに「Post-merge follow-ups」節を新設してマージ後の項目をそこへ分け、その PR は元の Issue を `Refs #N` で紐付ける。マージ時に workflow が項目を Issue 本文へ追記し、Issue は項目を消化してから人間が close する。
 
 - 振り分けの判断基準は 1 つで、「その PR の preview かローカルの checkout で確認できるか」とする
-- PR が open のあいだは、項目があるのに `## Purpose` に `Refs #N` が無い、または closing keyword で Issue を閉じる本文なら、workflow の Check を失敗させる
+- PR が open のあいだは、項目があるのに `## Purpose` に `Refs #N` が無い、参照先が API 上で open な Issue でない（閉じている・PR・存在しない）、または closing keyword で Issue を閉じる本文なら、workflow の Check を失敗させる。closing keyword は GitHub が読む 3 つの参照形式（`#N`、`owner/repo#N`、Issue の URL）をすべて検出する
 - 追記は PR ごとの marker comment で冪等にする。fork からの PR は token が Issue に書けないので、マージした人が手で写す
 
 ## 理由

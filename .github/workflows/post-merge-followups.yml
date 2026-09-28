@@ -3,15 +3,15 @@ name: Post-merge follow-ups
 # Carries a PR's `## Post-merge follow-ups` onto the Issue it came from (#2957).
 #
 # - check: while the PR is open, fails when the section has items but the PR
-#   has nowhere to put them (no `Refs #N` in `## Purpose`, or a closing keyword
-#   that would close the Issue on merge). `edited` is in `types:` because the
-#   only input is the PR body.
+#   has nowhere to put them (no `Refs #N` in `## Purpose`, a `Refs #N` that the
+#   API does not report as an open Issue, or a closing keyword that would close
+#   the Issue on merge). `edited` is in `types:` because the PR body is the input.
 # - append: on merge, appends the items to each Issue named by `Refs #N` in
 #   `## Purpose`. The maintainer checks them off there and closes the Issue.
 #
-# Both jobs only read the PR body from the event payload and talk to the
-# GitHub API, so they skip `pnpm install` and run the script through Node's
-# type stripping. A fork PR's token cannot write Issues under `pull_request`,
+# Both jobs read the PR body from the event payload and use nothing but `gh`
+# (check reads the referenced Issues, append writes them), so they skip
+# `pnpm install` and run the script through Node's type stripping. A fork PR's token cannot write Issues under `pull_request`,
 # so `append` is limited to same-repository PRs; a fork PR's follow-ups are
 # copied by hand (docs/process.md).
 
@@ -33,6 +33,9 @@ jobs:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -42,6 +45,8 @@ jobs:
           node-version: "24"
 
       - name: Follow-ups have an open Issue to go to
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/pr/post-merge-followups.mts check --event "$GITHUB_EVENT_PATH"
 
   append:

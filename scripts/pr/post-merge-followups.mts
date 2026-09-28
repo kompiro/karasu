@@ -2,7 +2,7 @@
 /**
  * Carries a PR's `## Post-merge follow-ups` onto the Issue it came from (#2957).
  *
- *   node scripts/pr/post-merge-followups.mts check  (--event <path> | --body-file <path>)
+ *   node scripts/pr/post-merge-followups.mts check  (--event <path> | --body-file <path>) [--repo <owner/name>]
  *   node scripts/pr/post-merge-followups.mts append --event <path> [--dry-run]
  *
  * Some things a PR changes can only be observed after it merges: the next
@@ -14,8 +14,9 @@
  * The maintainer checks them off there and closes the Issue when they are done.
  *
  * - `check` fails when the section has items but the PR has nowhere to put
- *   them: no `Refs #N` in `## Purpose`, or a closing keyword that would close
- *   the Issue on merge.
+ *   them: no `Refs #N` in `## Purpose`, a `Refs #N` that is not an open Issue
+ *   (looked up through the API), or a closing keyword that would close the
+ *   Issue on merge.
  * - `append` writes the items into each Issue named by `Refs #N` in
  *   `## Purpose`. A marker comment per PR makes a re-run a no-op.
  *
@@ -31,8 +32,13 @@ const PURPOSE_HEADING = "Purpose";
 
 export type FollowupItem = { checked: boolean; text: string };
 
-/** GitHub's closing keywords: https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue */
-const CLOSING_KEYWORD = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b:?\s+#(\d+)\b/gi;
+/**
+ * GitHub's closing keywords, followed by any of the three reference forms it
+ * honours: `#12`, `owner/repo#12` and the Issue URL.
+ * https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue
+ */
+const CLOSING_KEYWORD =
+  /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b:?\s+(#\d+|[\w.-]+\/[\w.-]+#\d+|https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/issues\/\d+)\b/gi;
 const REFS_KEYWORD = /\brefs?\b:?\s+#(\d+)\b/gi;
 
 /**
@@ -85,9 +91,11 @@ function issueNumbers(text: string, pattern: RegExp): number[] {
   return [...found];
 }
 
-/** Issues the whole body would close on merge, as GitHub reads it. */
-export function closingIssues(body: string): number[] {
-  return issueNumbers(body, CLOSING_KEYWORD);
+/** References the whole body would close on merge, as GitHub reads it. */
+export function closingReferences(body: string): string[] {
+  const found = new Set<string>();
+  for (const match of stripNonProse(body).matchAll(CLOSING_KEYWORD)) found.add(match[1]);
+  return [...found];
 }
 
 /** Issues `## Purpose` links with `Refs #N`: where the follow-ups go. */
@@ -107,12 +115,28 @@ export function checkBody(body: string): string[] {
         "The items are appended to that Issue on merge; open one if the change has none.",
     );
   }
-  const closing = closingIssues(body);
+  const closing = closingReferences(body);
   if (closing.length > 0) {
     errors.push(
-      `"## ${FOLLOWUPS_HEADING}" has items, but the body closes ${closing.map((n) => `#${n}`).join(", ")} on merge. ` +
+      `"## ${FOLLOWUPS_HEADING}" has items, but the body closes ${closing.join(", ")} on merge. ` +
         'Use "Refs #N" instead so the Issue stays open until the follow-ups are done.',
     );
+  }
+  return errors;
+}
+
+/** What the API says about a `Refs #N`: null when the number does not exist. */
+export type IssueState = { state: string; isPullRequest: boolean } | null;
+
+/** Why the referenced Issues cannot take the follow-ups; empty when they can. */
+export function checkIssueStates(states: ReadonlyMap<number, IssueState>): string[] {
+  const errors: string[] = [];
+  for (const [issue, state] of states) {
+    if (state === null) errors.push(`"Refs #${issue}" names no Issue in this repository.`);
+    else if (state.isPullRequest)
+      errors.push(`"Refs #${issue}" is a pull request; the follow-ups need an Issue.`);
+    else if (state.state !== "open")
+      errors.push(`"Refs #${issue}" is ${state.state}; reopen it or link an open Issue.`);
   }
   return errors;
 }
@@ -175,11 +199,38 @@ function readPullRequest(flags: Map<string, string | true>): {
 }
 
 function gh(args: string[], input?: string): string {
-  return execFileSync("gh", args, { encoding: "utf8", input });
+  return execFileSync("gh", args, { encoding: "utf8", input, stdio: ["pipe", "pipe", "pipe"] });
 }
 
-function runCheck(body: string): number {
+function lookUpIssue(repo: string, issue: number): IssueState {
+  let raw: string;
+  try {
+    raw = gh(["api", `repos/${repo}/issues/${issue}`]);
+  } catch (error) {
+    // Only a missing number is an answer; an auth or network failure is not.
+    const stderr = String((error as { stderr?: unknown }).stderr ?? "");
+    if (stderr.includes("HTTP 404")) return null;
+    throw error;
+  }
+  const data = JSON.parse(raw) as { state: string; pull_request?: unknown };
+  return { state: data.state, isPullRequest: data.pull_request !== undefined };
+}
+
+function resolveRepo(flags: Map<string, string | true>): string {
+  const flag = flags.get("repo");
+  if (typeof flag === "string") return flag;
+  if (process.env.GITHUB_REPOSITORY) return process.env.GITHUB_REPOSITORY;
+  return gh(["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]).trim();
+}
+
+function runCheck(body: string, flags: Map<string, string | true>): number {
   const errors = checkBody(body);
+  if (parseFollowups(body).length > 0) {
+    const repo = resolveRepo(flags);
+    const states = new Map<number, IssueState>();
+    for (const issue of referencedIssues(body)) states.set(issue, lookUpIssue(repo, issue));
+    errors.push(...checkIssueStates(states));
+  }
   for (const error of errors) console.log(`::error::${error}`);
   if (errors.length === 0)
     console.log(`${parseFollowups(body).length} post-merge follow-up(s); nothing to fix.`);
@@ -231,7 +282,7 @@ function runAppend(pr: number, body: string, dryRun: boolean): number {
 function main(argv: string[]): number {
   const { command, flags } = readArgs(argv);
   const pr = readPullRequest(flags);
-  if (command === "check") return runCheck(pr.body);
+  if (command === "check") return runCheck(pr.body, flags);
   if (command === "append") {
     if (pr.number === null) throw new Error("append needs --event <path>.");
     return runAppend(pr.number, pr.body, flags.get("dry-run") === true);

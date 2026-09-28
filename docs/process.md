@@ -140,7 +140,8 @@ PR への push は、自動レビューが走るたびに CodeRabbit の review 
 - マージすると `post-merge-followups.yml` が項目を Issue 本文に追記する。Issue は
   `status: in-review` のまま残るので、`/hane:pick-issue` の候補には入らない。消化したら
   Issue 上でチェックし、全部済んだら close する
-- 項目があるのに `Refs #N` が無い、または closing keyword で Issue を閉じる本文だと、
+- 項目があるのに `Refs #N` が無い、参照先が open な Issue でない（閉じている・PR・存在しない）、
+  または closing keyword（`#N` / `owner/repo#N` / Issue URL のどの形でも）で Issue を閉じる本文だと、
   同 workflow の Check が失敗する。Issue の無い変更なら Issue を起こしてから紐付ける
 - fork からの PR では追記が動かない（token が Issue に書けない）。マージした人が手で
   Issue に写す

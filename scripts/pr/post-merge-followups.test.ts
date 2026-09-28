@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   appendFollowups,
   checkBody,
-  closingIssues,
+  checkIssueStates,
+  closingReferences,
   extractSection,
   parseFollowups,
   referencedIssues,
@@ -83,8 +84,16 @@ describe("parseFollowups", () => {
 describe("issue references", () => {
   it("reads every closing keyword GitHub honours, outside comments and code", () => {
     expect(
-      closingIssues("Fixes #3, resolves: #4\ncloses #5 `Closes #6`\n<!-- Closes #7 -->"),
-    ).toEqual([3, 4, 5]);
+      closingReferences("Fixes #3, resolves: #4\ncloses #5 `Closes #6`\n<!-- Closes #7 -->"),
+    ).toEqual(["#3", "#4", "#5"]);
+  });
+
+  it("reads the owner/repo and URL forms GitHub also closes", () => {
+    expect(
+      closingReferences(
+        "Closes kompiro/karasu#12\nFixes https://github.com/kompiro/karasu/issues/13",
+      ),
+    ).toEqual(["kompiro/karasu#12", "https://github.com/kompiro/karasu/issues/13"]);
   });
 
   it("takes the follow-up destination from Purpose only", () => {
@@ -109,10 +118,37 @@ describe("checkBody", () => {
     expect(errors[0]).toContain("Refs #N");
   });
 
+  it("rejects follow-ups on a PR that closes an Issue by URL", () => {
+    const errors = checkBody(
+      body("Refs #1", "- [ ] Next release") + "\nFixes https://github.com/kompiro/karasu/issues/1",
+    );
+    expect(errors).toHaveLength(1);
+  });
+
   it("rejects follow-ups on a PR that closes an Issue on merge", () => {
     const errors = checkBody(body("Refs #1\nCloses #2", "- [ ] Next release"));
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain("#2");
+  });
+});
+
+describe("checkIssueStates", () => {
+  it("accepts an open Issue", () => {
+    expect(checkIssueStates(new Map([[1, { state: "open", isPullRequest: false }]]))).toEqual([]);
+  });
+
+  it("rejects a closed Issue, a pull request and a missing number", () => {
+    const errors = checkIssueStates(
+      new Map([
+        [1, { state: "closed", isPullRequest: false }],
+        [2, { state: "open", isPullRequest: true }],
+        [3, null],
+      ]),
+    );
+    expect(errors).toHaveLength(3);
+    expect(errors[0]).toContain('"Refs #1" is closed');
+    expect(errors[1]).toContain('"Refs #2" is a pull request');
+    expect(errors[2]).toContain('"Refs #3" names no Issue');
   });
 });
 
