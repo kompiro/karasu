@@ -21,7 +21,10 @@ AI authoring の primary path は「利用者自身のエージェントセッ�
 
 加えて、この設計の調査中に **CLI 自身の `--help` が不正な構文を教えている** ことが分かった。`append` / `apply` / `insert` の Examples は `service NewService { label: "New Service" }` と書くが、パーサは `label: "…"` を受け付けない（`Expected string literal after "label"`）。authoring skill は CLI を駆動するエージェントに `--help` を読ませる経路そのものなので、これは skill の前提を壊す。
 
-reverse-architecture との役割分担は PRD の通り: reverse は「知らないシステムを**読む**」、本 skill は「自分のシステムを**残す**」。本 skill は reverse の焼き直しではなく、別の役割を持つ新しい skill である（配布の仕組みは 2026-09-27 の改訂で reverse と共通にした。案 1-D 参照）。
+reverse-architecture との役割分担は PRD の通り: reverse は「知らないシステムを**読む**」、本 skill は「自分のシステムを**残す**」。本設計は次の 2 つを行う:
+
+1. **`karasu-author` を新しく追加する。** reverse とは役割が別の skill で、reverse を置き換えるものではない。
+2. **既存の reverse-architecture も配布する。** これまで手コピーでしか karasu 以外の repo に持ち出せなかったので、`karasu-author` と同じ `karasu-skills` パッケージに入れ、plugin と `karasu skill install` の両方で配る（案 1-D、スライス C1）。reverse-architecture は廃止しない。
 
 ## 現状（インベントリ）
 
