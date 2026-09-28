@@ -43,6 +43,11 @@ describe("bumpedPackages", () => {
     ]);
   });
 
+  it("finds nothing to release when only unreleased packages moved", () => {
+    expect(bumpedPackages(before, { ...before, "@karasu-tools/docs-site": "1.0.0" })).toEqual([]);
+    expect(() => composeCommitSubject([])).toThrow(/nothing to release/);
+  });
+
   it("names the release by its packages, not by the CLI version", () => {
     const after = { ...before, "karasu-vscode": "0.2.1" };
     expect(composeCommitSubject(bumpedPackages(before, after))).toBe(

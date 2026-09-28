@@ -6,6 +6,7 @@
  *   node scripts/release/train.mts depart --event <github.event_name>
  *   node scripts/release/train.mts versions                       > before.json
  *   node scripts/release/train.mts issue-body --before before.json --branch <b> --date <d>
+ *   node scripts/release/train.mts bumped-count --before before.json
  *   node scripts/release/train.mts commit-subject --before before.json
  *   node scripts/release/train.mts marketplace-status --version <v> < vsce-show.json
  *
@@ -44,6 +45,7 @@ export function bumpedPackages(before: Versions, after: Versions): Bump[] {
 }
 
 export function composeCommitSubject(bumps: Bump[]): string {
+  if (bumps.length === 0) throw new Error("no released package moved: nothing to release");
   return `chore: release ${bumps.map((b) => `${b.name} ${b.to}`).join(", ")}`;
 }
 
@@ -142,6 +144,9 @@ export function main(argv: string[]): void {
       return;
     case "versions":
       console.log(JSON.stringify(readVersions()));
+      return;
+    case "bumped-count":
+      console.log(bumpedPackages(readJson(flag(rest, "before")), readVersions()).length);
       return;
     case "commit-subject":
       console.log(

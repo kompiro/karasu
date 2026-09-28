@@ -76,7 +76,8 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           issue=$(gh issue list --label release --state open --json number --jq '.[0].number // empty')
-          pr=$(gh pr list --state open --json number,headRefName --jq '[.[] | select(.headRefName | startswith("chore/release-"))][0].number // empty')
+          # Searched on the server: `gh pr list` alone returns only the newest 30.
+          pr=$(gh pr list --state open --search 'head:chore/release-' --limit 100 --json number,headRefName --jq '[.[] | select(.headRefName | startswith("chore/release-"))][0].number // empty')
           target=${issue:-$pr}
           if [ -n "$target" ]; then
             gh api "repos/${GITHUB_REPOSITORY}/issues/${target}/comments" \
@@ -114,6 +115,12 @@ jobs:
           pnpm version-packages
           if git diff --quiet && git diff --cached --quiet; then
             echo "::notice::No pending changesets: nothing to release."
+            exit 0
+          fi
+          # Changesets that name only packages this repo does not release move
+          # no released version; there is nothing to publish, so no train.
+          if [ "$(node scripts/release/train.mts bumped-count --before "$RUNNER_TEMP/before.json")" = "0" ]; then
+            echo "::warning::Pending changesets move no released package (karasu, @karasu-tools/core, karasu-vscode): nothing to release."
             exit 0
           fi
           DATE=$(date -u +%Y-%m-%d)
