@@ -153,3 +153,86 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/release/github-release.mts --commit "$GITHUB_SHA"
+
+  # The monthly release train (#2922): the VS Code extension ships in the same
+  # run. It does not depend on npm, so it runs even when the npm publish failed
+  # part-way; a job after a failed `needs` is otherwise skipped. The called
+  # workflow publishes only a version the Marketplace does not have yet, and
+  # its own `record` job adds the extension to this commit's Release.
+  vscode:
+    name: VS Code extension
+    needs: release
+    if: ${{ !cancelled() }}
+    permissions:
+      contents: write # the called `record` job pushes the tag and edits the Release
+      id-token: write # azure/login exchanges the GitHub OIDC token
+    uses: ./.github/workflows/vscode-release.yml
+    with:
+      pre_release: false
+
+  # Closes the train's tracking Issue once everything shipped, or reports the
+  # failed run on it and leaves it open, which keeps the next train from
+  # departing (#2922). Only the Issue of the release branch this commit was
+  # merged from is touched, so a manual run after main moved on, or a push that
+  # merely edits a CHANGELOG, closes nothing.
+  close-train:
+    name: Close the release train Issue
+    needs: [release, record, vscode]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write # comment on and close the tracking Issue
+      pull-requests: read # find the PR this commit was merged from
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # find the release-* tag on this commit
+
+      # Node 24 runs the .mts script through type stripping; no install needed.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: Close or report on the tracking Issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_RESULT: ${{ needs.release.result }}
+          RECORD_RESULT: ${{ needs.record.result }}
+          VSCODE_RESULT: ${{ needs.vscode.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          branch=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" --jq '.[0].head.ref // empty')
+          case "$branch" in
+            chore/release-*) ;;
+            *)
+              echo "::notice::${GITHUB_SHA} was not merged from a release branch: no train to close."
+              exit 0
+              ;;
+          esac
+
+          issue=""
+          for n in $(gh issue list --label release --state open --json number --jq '.[].number'); do
+            if [ "$(gh issue view "$n" --json body --jq .body | node scripts/release/train.mts issue-branch)" = "$branch" ]; then
+              issue=$n
+            fi
+          done
+          if [ -z "$issue" ]; then
+            echo "::notice::No open tracking Issue names ${branch}."
+            exit 0
+          fi
+
+          if [ "$RELEASE_RESULT" = "success" ] && [ "$VSCODE_RESULT" = "success" ] &&
+             { [ "$RECORD_RESULT" = "success" ] || [ "$RECORD_RESULT" = "skipped" ]; }; then
+            git fetch --quiet --tags
+            tag=$(git tag --points-at "$GITHUB_SHA" | grep '^release-' | head -n1 || true)
+            if [ -n "$tag" ]; then
+              note="Released: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${tag}"
+            else
+              note="Nothing was published by ${RUN_URL} (every version was already released)."
+            fi
+            gh issue close "$issue" --comment "$note"
+          else
+            gh issue comment "$issue" --body "The release run did not finish: ${RUN_URL} (npm publish: ${RELEASE_RESULT}, npm record: ${RECORD_RESULT}, VS Code: ${VSCODE_RESULT}). Fix it and re-run the failed jobs; this Issue stays open and the next train waits for it."
+            exit 1
+          fi
