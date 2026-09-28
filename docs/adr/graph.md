@@ -431,6 +431,7 @@ flowchart TD
     ADR_1316["ADR-1316<br/>VS Code 拡張を Entra ID + GitHub OIDC（managed iden..."]
     ADR_1417["ADR-1417<br/>LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
     ADR_2456["ADR-2456<br/>LSP の position drift は position encoding ではなく v..."]
+    ADR_2782["ADR-2782<br/>VS Code の floor を 1.137 に上げ、ExTester の vscode-m..."]
     ADR_9014["ADR-9014<br/>VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画"]
   end
   ADR_14 --> ADR_9003
@@ -563,6 +564,7 @@ flowchart TD
   ADR_2592 --> ADR_2578
   ADR_2611 --> ADR_2598
   ADR_2655 --> ADR_2578
+  ADR_2782 --> ADR_2562
   ADR_2818 --> ADR_2714
   ADR_2917 --> ADR_1884
   ADR_2917 --> ADR_2714
@@ -953,6 +955,7 @@ flowchart TD
   class ADR_2756 accepted
   class ADR_2761 accepted
   class ADR_2773 accepted
+  class ADR_2782 accepted
   class ADR_2786 accepted
   class ADR_2802 accepted
   class ADR_2803 accepted

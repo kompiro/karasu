@@ -13,12 +13,14 @@ flowchart TD
     ADR_1316["ADR-1316<br/>VS Code 拡張を Entra ID + GitHub OIDC（managed iden..."]
     ADR_1417["ADR-1417<br/>LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
     ADR_2456["ADR-2456<br/>LSP の position drift は position encoding ではなく v..."]
+    ADR_2782["ADR-2782<br/>VS Code の floor を 1.137 に上げ、ExTester の vscode-m..."]
     ADR_9014["ADR-9014<br/>VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画"]
   end
   ADR_30["ADR-30<br/>[renderer] アイコンモード — SVG アイコンによるノード表示切り替え"]
   ADR_34["ADR-34<br/>[chat-ai] i18n ロールアウト — 英語 / 日本語の UI・診断・Chat"]
   ADR_177["ADR-177<br/>[navigation] ノードクリック UX — ドリルダウンと Cmd/Ctrl+Click エディタジャンプ"]
   ADR_2535["ADR-2535<br/>[app-ui] 日本語判定は主要サブタグの完全一致で行い、Windows の言語名だけを明示的に許す"]
+  ADR_2562["ADR-2562<br/>[build] Dependabot トリアージ 2026-08-17（@types/vscode と eng..."]
   ADR_9007["ADR-9007<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
   ADR_176 --> ADR_9014
   ADR_218 --> ADR_176
@@ -26,6 +28,7 @@ flowchart TD
   ADR_299 --> ADR_30
   ADR_299 --> ADR_9014
   ADR_1417 --> ADR_34
+  ADR_2782 --> ADR_2562
   ADR_177 --> ADR_9007
   ADR_177 --> ADR_218
   ADR_2535 --> ADR_1417
@@ -43,10 +46,12 @@ flowchart TD
   class ADR_1316 accepted
   class ADR_1417 accepted
   class ADR_2456 accepted
+  class ADR_2782 accepted
   class ADR_9014 accepted
   class ADR_30 ghost
   class ADR_34 ghost
   class ADR_177 ghost
   class ADR_2535 ghost
+  class ADR_2562 ghost
   class ADR_9007 ghost
 ```

@@ -7,7 +7,7 @@ topic: build
 scope:
   packages: [app, docs-site, vscode]
   concerns: [dependencies, ci]
-related_to: [ADR-2753, ADR-2562, ADR-2474, ADR-2401, ADR-2397, ADR-2333, ADR-2152, ADR-784, ADR-128, ADR-2687]
+related_to: [ADR-2753, ADR-2562, ADR-2474, ADR-2401, ADR-2397, ADR-2333, ADR-2152, ADR-784, ADR-128, ADR-2687, ADR-2782]
 assumptions:
   - "file: scripts/ci/vscode-version-policy.test.ts"
   - "grep: package.json :: oxlint --deny-warnings"
