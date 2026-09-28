@@ -9,6 +9,7 @@
  * exists.
  */
 import { requireBinding, type NestEnv } from "../env.js";
+import { signInAllowlist } from "./allowlist.js";
 import { GalleryStore } from "../store/gallery-store.js";
 import type { Account } from "../store/accounts.js";
 import type { Session } from "../store/sessions.js";
@@ -26,6 +27,12 @@ export interface Viewer {
  * awaited inside `authenticate` rather than parked on `ctx.waitUntil`, so this
  * signature does not need the execution context: see the comment there for why
  * a deferred refresh and a handler that deletes sessions cannot coexist.
+ *
+ * An account that is no longer on the sign-in allowlist resolves as signed
+ * out (#2969). The callback refuses new sign-ins, but a session issued before
+ * an id was taken off the list, or before the list existed, would otherwise
+ * keep submitting until it expired. The allowlist is only read once a cookie
+ * is present, so a cookie-less visitor to a public page never depends on it.
  */
 export async function currentViewer(
   request: Request,
@@ -34,5 +41,8 @@ export async function currentViewer(
 ): Promise<Viewer | undefined> {
   const cookie = parseSessionCookie(readCookie(request, SESSION_COOKIE));
   if (cookie === undefined) return undefined;
-  return await store.authenticate(cookie.accountId, cookie.sessionId);
+  const viewer = await store.authenticate(cookie.accountId, cookie.sessionId);
+  if (viewer === undefined) return undefined;
+  if (!signInAllowlist(env).has(Number(viewer.account.accountId))) return undefined;
+  return viewer;
 }
