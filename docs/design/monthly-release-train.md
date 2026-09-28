@@ -97,12 +97,17 @@ Prepare がブランチを push したあと、同じジョブで Issue を立�
 
 トラッキング Issue は、そのトレインの公開と記録が済んだ時点で自動で閉じる。「open な `release` Issue がある = トレインが終わっていない」という C1 の判定と対になる。閉じる条件は次の 2 つ。
 
-- **このトレインの PR がマージされた run であること。** `release.yml` は手動の再実行や、CHANGELOG に触れる別の push でも走る。そこで、HEAD コミットを生んだ PR（`gh api repos/<repo>/commits/<sha>/pulls`）の head ブランチ名を取り、Issue に書いたブランチ名（`chore/release-YYYY-MM-DD`）と一致する Issue だけを対象にする。一致する Issue が無ければ何もしない。
+- **このトレインの PR がマージされた run であること。** `release.yml` は `workflow_dispatch` での手動実行や、CHANGELOG に触れる別の push でも走る。そこで、HEAD コミットを生んだ PR（`gh api repos/<repo>/commits/<sha>/pulls`）の head ブランチ名を取り、Issue に書いたブランチ名（`chore/release-YYYY-MM-DD`）と一致する Issue だけを対象にする。一致する Issue が無ければ何もしない。
 - **公開と記録がすべて成功したこと。** npm の公開・npm の `record`・拡張の公開・拡張の `record` のどれかが失敗したら、閉じずに Issue へ失敗した run へのリンクをコメントする。トレインは終わっていないので、次のトレインは C1 で止まる。
 
 成功したときは Release（`release-YYYY-MM-DD`）へのリンクをコメントして閉じる。
 
-手動の `workflow_dispatch` でも同じ条件で閉じる。main の先頭がそのトレインのマージコミットのまま全ジョブが成功したなら、トレインは終わっているからである。途中で失敗したマージの run を手動で再実行して直したとき、ここで閉じないと次のトレインが C1 で止まったままになる。
+イベントの種類では区別しない。失敗したマージの run を直す手段は 2 つあり、どちらでも上の 2 条件を満たせば閉じる。
+
+- **Re-run jobs**（Actions 画面の再実行）: 元の run をやり直すので、イベントは `push`、HEAD はマージコミットのまま。
+- **`workflow_dispatch`**: main の先頭で新しい run を起こす。main の先頭がまだそのトレインのマージコミットなら PR の照合が一致して閉じる。main が先に進んでいれば照合が一致せず、何も閉じない。
+
+どちらかで全ジョブが成功したならトレインは終わっている。ここで閉じないと、直したあとも次のトレインが C1 で止まったままになる。
 
 #### B2: Actions に PR を作らせる
 
@@ -186,7 +191,8 @@ ADR-1758 は Marketplace 公開の自動発火を「リリース PR マージの
    - その Issue のリンクから PR を開いてマージすると、npm 公開に続いて Marketplace 公開が同じ run で成功する（OIDC が reusable workflow 経由でも通る）。
    - 同じ run の最後に、`release-YYYY-MM-DD` の Release に全パッケージが載り、トラッキング Issue がそのリンク付きで閉じる。
    - 最終日曜でない日曜の実行が「skipping」で終わり、ブランチも Issue も作らない。
-   - `release.yml` の手動の再実行では、開いているトラッキング Issue が閉じない。
+   - main が先に進んだあとで `release.yml` を `workflow_dispatch` しても、開いているトラッキング Issue は閉じない。
+   - マージの run が途中で失敗すると Issue は失敗のコメント付きで開いたまま残り、Re-run jobs か `workflow_dispatch`（main の先頭がマージコミットのとき）で成功すると閉じる。
 7. ADR 昇格: 実装完了後に `docs/adr/2922-monthly-release-train.md` として昇格し、本 Design Doc は同 PR で削除する。ADR-1370 / ADR-1316 / ADR-1758 / ADR-2939 への関係を frontmatter と本文に書く。
 
 ### 影響範囲・マイグレーション
