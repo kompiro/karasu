@@ -7,6 +7,7 @@ import {
   CLI_INDEX,
   codeText,
   referencedCommands,
+  referencedFlags,
   registeredCommands,
   SKILLS_DIR,
 } from "./skill-cli-refs.ts";
@@ -71,6 +72,22 @@ describe("referencedCommands", () => {
   });
 });
 
+describe("referencedFlags", () => {
+  it("pairs each long flag with the command on its invocation line", () => {
+    const md = [
+      "`karasu render a.krs --output a.svg --theme=light`",
+      "```",
+      "karasu coverage index.krs --format json | jq . --raw-output",
+      "```",
+    ].join("\n");
+    expect(referencedFlags(md)).toEqual([
+      { command: "render", flag: "--output" },
+      { command: "render", flag: "--theme" },
+      { command: "coverage", flag: "--format" },
+    ]);
+  });
+});
+
 describe("the real skills are in sync with the CLI registry", () => {
   it("references no unknown command", () => {
     expect(check(REPO_ROOT)).toEqual([]);
@@ -98,6 +115,47 @@ describe("check (synthetic fixture)", () => {
   it("passes when every referenced command is registered", () => {
     writeFixture("Validate with `karasu render frag.krs -o /dev/null`.");
     expect(check(root)).toEqual([]);
+  });
+
+  const table = [
+    {
+      kind: "command" as const,
+      name: "draw",
+      replacement: "render",
+      since: "0.7.0",
+      removal: "1.0.0",
+    },
+    {
+      kind: "flag" as const,
+      command: "render",
+      name: "--out",
+      replacement: "--output",
+      since: "0.7.0",
+      removal: "1.0.0",
+      removed: true,
+    },
+  ];
+
+  it("flags a deprecated command with its replacement (in-repo skills use current names)", () => {
+    writeFixture("Render with `karasu draw frag.krs`.");
+    expect(check(root, table)).toEqual([
+      { file: ".claude/skills/demo/SKILL.md", command: "draw", replacement: "render" },
+    ]);
+  });
+
+  it("flags a deprecated or removed flag of a registered command", () => {
+    writeFixture(
+      "Render with `karasu render frag.krs --out a.svg`, not `karasu diff a b --out x`.",
+      '.command("render <file>")\n.command("diff <before> <after>")',
+    );
+    expect(check(root, table)).toEqual([
+      {
+        file: ".claude/skills/demo/SKILL.md",
+        command: "render",
+        flag: "--out",
+        replacement: "--output",
+      },
+    ]);
   });
 
   it("ignores a prose mention of a non-command word", () => {

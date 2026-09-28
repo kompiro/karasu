@@ -1,6 +1,7 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
+import { DEPRECATIONS, type Deprecation } from "../../packages/cli/src/deprecations.ts";
 
 // Guards the `karasu <cmd>` command names hardcoded in .claude/skills/** against
 // the CLI's actual command registry in packages/cli/src/index.ts (Issue #2093).
@@ -35,6 +36,13 @@ import { join, relative, resolve } from "node:path";
 //
 // Do not over-trust a green result here: it means no dangling command names, not
 // that the skills' CLI claims are accurate.
+//
+// DEPRECATED NAMES (Issue #2961): a name in the CLI's deprecation table still
+// runs as a hidden alias, but only for users' outdated skill copies. In-repo
+// skills always use the current name, so a command or flag found in the table
+// fails here with its replacement. The table is imported rather than read by
+// regex: `deprecations.ts` has no imports, so loading it needs no built
+// workspace graph.
 
 export const SKILLS_DIR = ".claude/skills";
 export const CLI_INDEX = "packages/cli/src/index.ts";
@@ -101,6 +109,26 @@ export function codeText(markdown: string): string {
   return parts.join("\n");
 }
 
+/**
+ * The rest of an invocation's command line: from `karasu <cmd>` to the end of
+ * the line or the next `|`, `;` or `&&`, which starts another command.
+ */
+const INVOCATION_LINE_RE = /\bkarasu[ \t]+([a-z][a-z-]+)([^\n|;&]*)/g;
+
+/** A long flag token, with or without an attached `=value`. */
+const FLAG_RE = /(?:^|[ \t])(--[a-z][a-z-]*)(?==|[ \t]|$)/g;
+
+/** Every distinct `karasu <cmd> ... --flag` pair in a document's code. */
+export function referencedFlags(markdown: string): Array<{ command: string; flag: string }> {
+  const seen = new Map<string, { command: string; flag: string }>();
+  for (const m of codeText(markdown).matchAll(INVOCATION_LINE_RE)) {
+    for (const f of m[2].matchAll(FLAG_RE)) {
+      seen.set(`${m[1]} ${f[1]}`, { command: m[1], flag: f[1] });
+    }
+  }
+  return [...seen.values()];
+}
+
 /** Every distinct command referenced as `karasu <cmd>` in a document's code. */
 export function referencedCommands(markdown: string): Set<string> {
   const refs = new Set<string>();
@@ -128,13 +156,21 @@ function markdownFiles(dir: string): string[] {
 export interface Problem {
   file: string;
   command: string;
+  /** Set when the problem is a deprecated or removed flag of `command`. */
+  flag?: string;
+  /** Set when the name is in the deprecation table: what to use instead. */
+  replacement?: string;
 }
 
 /**
  * Every `karasu <cmd>` reference in a skill Markdown file whose `<cmd>` is not a
- * registered CLI command, sorted by file then command for stable output.
+ * registered CLI command, and every command or flag that the deprecation table
+ * lists, sorted by file then command for stable output.
  */
-export function check(repoRoot: string): Problem[] {
+export function check(
+  repoRoot: string,
+  deprecations: readonly Deprecation[] = DEPRECATIONS,
+): Problem[] {
   const cliIndexAbs = resolve(repoRoot, CLI_INDEX);
   const registered = existsSync(cliIndexAbs)
     ? registeredCommands(readFileSync(cliIndexAbs, "utf8"))
@@ -145,13 +181,27 @@ export function check(repoRoot: string): Problem[] {
     const rel = relative(repoRoot, file);
     const markdown = readFileSync(file, "utf8");
     for (const command of [...referencedCommands(markdown)].sort()) {
-      if (!registered.has(command)) {
+      const entry = deprecations.find((e) => e.kind === "command" && e.name === command);
+      if (entry) {
+        problems.push({ file: rel, command, replacement: entry.replacement });
+      } else if (!registered.has(command)) {
         problems.push({ file: rel, command });
+      }
+    }
+    for (const { command, flag } of referencedFlags(markdown)) {
+      const entry = deprecations.find(
+        (e) => e.kind === "flag" && e.command === command && e.name === flag,
+      );
+      if (entry) {
+        problems.push({ file: rel, command, flag, replacement: entry.replacement });
       }
     }
   }
   return problems.sort(
-    (a, b) => a.file.localeCompare(b.file) || a.command.localeCompare(b.command),
+    (a, b) =>
+      a.file.localeCompare(b.file) ||
+      a.command.localeCompare(b.command) ||
+      (a.flag ?? "").localeCompare(b.flag ?? ""),
   );
 }
 
@@ -172,18 +222,24 @@ function main(): void {
   const problems = check(process.cwd());
   console.error(ADVISORY);
   if (problems.length > 0) {
-    console.error(`\nskill-cli-refs: ${problems.length} unknown command reference(s):`);
+    console.error(`\nskill-cli-refs: ${problems.length} stale command reference(s):`);
     for (const p of problems) {
-      console.error(`✗ ${p.file}: \`karasu ${p.command}\` is not a registered command`);
+      const used = p.flag ? `karasu ${p.command} ${p.flag}` : `karasu ${p.command}`;
+      console.error(
+        p.replacement
+          ? `✗ ${p.file}: \`${used}\` is deprecated; use \`${p.replacement}\``
+          : `✗ ${p.file}: \`${used}\` is not a registered command`,
+      );
     }
     console.error(
-      "\nA skill references a `karasu <cmd>` that no longer exists. Fix the skill " +
-        "to use a current command (see `packages/cli/src/index.ts`), or correct the typo.",
+      "\nA skill references a `karasu <cmd>` that no longer exists or is deprecated. " +
+        "Fix the skill to use the current name (see `packages/cli/src/index.ts` and " +
+        "`packages/cli/src/deprecations.ts`), or correct the typo.",
     );
     process.exit(1);
   }
   console.log(
-    "skill-cli-refs: ok (every `karasu <cmd>` in .claude/skills/** is a registered command)",
+    "skill-cli-refs: ok (every `karasu <cmd>` in .claude/skills/** is a current, registered command)",
   );
 }
 
