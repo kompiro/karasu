@@ -129,6 +129,7 @@ CI ステップの成否判定に使えます。すぐ使える GitHub Actions �
 | `insert <parent-id> <file>` | stdin の `.krs` を指定ノードの最後の子として挿入 |
 | `remove <node-id> <file>` | 指定 id のノードを `.krs` から in-place で削除 |
 | `diff <before> <after>` | 2 つの `.krs` リビジョン間の差分 SVG を描画（どちらの側も `-` で stdin 可） |
+| `capabilities` | この CLI が受け付けるコマンド・フラグと、廃止した名前を一覧（skill やスクリプトからは `--json`。[下記](#karasu-capabilities-この-cli-が受け付けるもの)） |
 
 `translate` と Unix パイプの `apply` を組み合わせると、インフラ側の変更を既存の
 モデルに取り込めます。
@@ -137,6 +138,60 @@ CI ステップの成否判定に使えます。すぐ使える GitHub Actions �
 # compose ファイルを変換して既存の deploy.krs にマージする
 karasu translate --from compose docker-compose.yml | karasu apply deploy.krs
 ```
+
+## `karasu capabilities`: この CLI が受け付けるもの
+
+CLI を呼ぶ skill やスクリプトは、版を決め打ちせずに、受け付けるものを CLI に
+問い合わせられます。`karasu capabilities --json` の出力:
+
+```json
+{
+  "schemaVersion": 1,
+  "name": "karasu",
+  "version": "0.8.0",
+  "languageVersion": "1.0",
+  "commands": [
+    {
+      "name": "render",
+      "arguments": ["<file>"],
+      "options": [
+        { "flags": "-o, --output <path>", "long": "--output", "short": "-o", "takesValue": true }
+      ]
+    }
+  ],
+  "deprecations": [
+    {
+      "kind": "flag",
+      "name": "--out",
+      "command": "render",
+      "replacement": "--output",
+      "since": "0.8.0",
+      "removal": "1.0.0",
+      "status": "deprecated"
+    }
+  ]
+}
+```
+
+（値は例です。）`schemaVersion` が変わるのは、フィールドの意味が変わるか無くなる
+ときだけです。フィールドは版を上げずに増えることがあります。`--json` を付けない
+と、同じ内容をプレーンテキストで出力します。
+
+### 名前の変更と削除
+
+CLI が名前を変えた・廃止したコマンドやフラグは、次の major リリースまで古い名前
+でも動きます（CLI は 1.0.0 まで `0.x` で、それまでは古い名前を削除しません）。
+古い名前で呼ぶと代わりが実行され、stderr に 1 行出ます:
+
+```text
+karasu: deprecated: 'render --out' -> 'render --output' (since 0.8.0, removal 1.0.0)
+```
+
+古い名前を削除する major リリース以降は、同じ形式で `karasu: removed:` から
+始まる行を出して終了コード `1` で失敗します。呼び出し側は何を使えばよいかを
+引き続き知ることができます。この行の形式は固定で翻訳しないので、エージェントは
+`^karasu: (deprecated|removed): '(.+)' -> '(.+)' \(since (\S+), removal (\S+)\)$`
+で照合できます。
 
 ## 関連項目
 
