@@ -70,10 +70,18 @@ npx --yes karasu@latest serve .
 
 ### 3. AI agent でリポジトリをリバースエンジニアリングする
 
-[`reverse-architecture` skill](.claude/skills/reverse-architecture/SKILL.md) を使うと、
+[`reverse-architecture` skill](packages/skills/skills/reverse-architecture/SKILL.md) を使うと、
 リポジトリを読める AI agent が既存のコードベースを調査し、karasu model を構築します。
 ドメイン構造には agent の判断を使い、CLI による決定的な抽出と検証を組み合わせる
 ワークフローです。
+
+Claude Code では plugin として入れられます（skill は karasu CLI を使うので、
+`npm i -g karasu` で CLI も入れてください）:
+
+```text
+/plugin marketplace add kompiro/karasu
+/plugin install karasu@karasu
+```
 
 生成物はレビューして進化させるための地図であり、完全な正解を主張するものではありません。
 karasu は AI がなくても使えます。モデルは plain text で、人間が編集でき、

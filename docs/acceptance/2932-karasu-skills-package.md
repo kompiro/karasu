@@ -34,6 +34,10 @@ type: product
 
   > ✅ Automated — `scripts/skills/karasu-skills-package.test.ts` › karasu-skills packed tarball › leaves the working tree as it found it
 
+- [x] AT-C2: 刻印の途中で失敗しても何も書き換えない（placeholder の無い skill が 1 つでもあれば、どの SKILL.md にも触れずに失敗する。npm は prepack の失敗後に postpack を走らせないため）
+
+  > ✅ Automated — `scripts/skills/karasu-skills-package.test.ts` › stamp-version.mjs on a skill without the placeholder › fails without touching any skill
+
 ### AC-3: marketplace の定義が npm のパッケージを指す
 
 - [x] AT-D: marketplace の entry が `{"source": "npm", "package": "karasu-skills"}` で、plugin 名と合わせて `karasu@karasu` で入れられ、どちらの manifest も版を固定しない
@@ -56,10 +60,15 @@ type: product
 
   > ✅ Automated — `scripts/skills/karasu-skills-package.test.ts` › karasu-skills sources › keeps the dev symlink pointing at the packaged reverse-architecture
 
-- [ ] AT-H: karasu repo で Claude Code を開くと `reverse-architecture` skill が一覧に出て起動でき、Step 0 が「repo 内の未公開版」として照合を飛ばす
-
 ### AC-6: karasu 以外の repo に plugin として入る（初回 publish 後）
 
+marketplace の解決、npm からの取得、Step 0 をエージェントが実際にどう扱うかは Claude Code 本体の挙動で、テストからは届かない。下の「手動確認」で見る。
+
+## 手動確認
+
+判定に Claude Code 本体と、公開済みの `karasu-skills`（初回 publish は maintainer の手作業、`docs/release.md`）が要る 4 項目。
+
+- [ ] AT-H: karasu repo で Claude Code を開くと `reverse-architecture` skill が一覧に出て起動でき、Step 0 が「repo 内の未公開版」として照合を飛ばす
 - [ ] AT-I: karasu 以外の repo で `/plugin marketplace add kompiro/karasu` → `/plugin install karasu@karasu` を実行すると、npm の `karasu-skills` から `reverse-architecture` が入り、起動できる
 - [ ] AT-J: 手元の karasu CLI が刻まれた版より古い（または入っていない）状態で skill を起動すると、Step 0 が `.krs` に触れる前に更新を案内して止まる。同じ版以上なら何も言わずに進む
 - [ ] AT-K: `karasu-skills` の新しい版を公開した後、インストール済みの plugin に更新がどう届くか（自動か、`/plugin` から手動か）を確かめ、結果をこの記録と `packages/skills/README.md` に書く

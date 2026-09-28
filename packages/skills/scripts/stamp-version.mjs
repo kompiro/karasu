@@ -57,13 +57,18 @@ function stamp() {
   if (typeof version !== "string" || !/^\d+\.\d+\.\d+/.test(version)) {
     throw new Error(`stamp-version: unexpected CLI version ${JSON.stringify(version)}`);
   }
-  for (const file of skillFiles()) {
-    const text = readFileSync(file, "utf8");
-    if (!text.includes(PLACEHOLDER)) {
-      throw new Error(
-        `stamp-version: ${relative(PACKAGE_DIR, file)} has no ${PLACEHOLDER}; every skill needs the Step 0 version check`,
-      );
-    }
+  // Validate every skill before writing any of them. A failure here aborts the
+  // pack, and npm does not run postpack after a failed prepack, so a partial
+  // stamp would stay in the working tree.
+  const sources = skillFiles().map((file) => ({ file, text: readFileSync(file, "utf8") }));
+  const unstamped = sources.filter(({ text }) => !text.includes(PLACEHOLDER));
+  if (unstamped.length > 0) {
+    const names = unstamped.map(({ file }) => relative(PACKAGE_DIR, file)).join(", ");
+    throw new Error(
+      `stamp-version: ${names} has no ${PLACEHOLDER}; every skill needs the Step 0 version check`,
+    );
+  }
+  for (const { file, text } of sources) {
     const backup = join(BACKUP_DIR, relative(PACKAGE_DIR, file));
     mkdirSync(dirname(backup), { recursive: true });
     writeFileSync(backup, text);

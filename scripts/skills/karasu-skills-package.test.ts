@@ -1,6 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 
@@ -80,6 +89,35 @@ describe("karasu-skills packed tarball", () => {
     });
     expect(after).toBe(before);
     expect(existsSync(join(PACKAGE_DIR, ".stamp-backup"))).toBe(false);
+  });
+});
+
+describe("stamp-version.mjs on a skill without the placeholder", () => {
+  // npm does not run postpack after a failed prepack, so a stamp that fails
+  // part-way must not have written anything (TPL-1024).
+  const work = mkdtempSync(join(tmpdir(), "karasu-skills-stamp-"));
+  afterAll(() => rmSync(work, { recursive: true, force: true }));
+
+  it("fails without touching any skill", () => {
+    const pkgDir = join(work, "skills-pkg");
+    mkdirSync(join(pkgDir, "scripts"), { recursive: true });
+    copyFileSync(
+      join(PACKAGE_DIR, "scripts/stamp-version.mjs"),
+      join(pkgDir, "scripts/stamp-version.mjs"),
+    );
+    mkdirSync(join(work, "cli"), { recursive: true });
+    writeFileSync(join(work, "cli/package.json"), JSON.stringify({ version: "9.9.9" }));
+    const good = `Step 0: karasu ${PLACEHOLDER} or later`;
+    mkdirSync(join(pkgDir, "skills/a"), { recursive: true });
+    writeFileSync(join(pkgDir, "skills/a/SKILL.md"), good);
+    mkdirSync(join(pkgDir, "skills/b"), { recursive: true });
+    writeFileSync(join(pkgDir, "skills/b/SKILL.md"), "no version check here");
+
+    expect(() =>
+      execFileSync("node", ["scripts/stamp-version.mjs", "stamp"], { cwd: pkgDir, stdio: "pipe" }),
+    ).toThrow();
+    expect(readFileSync(join(pkgDir, "skills/a/SKILL.md"), "utf8")).toBe(good);
+    expect(existsSync(join(pkgDir, ".stamp-backup"))).toBe(false);
   });
 });
 
