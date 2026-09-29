@@ -55,7 +55,8 @@ cookie を `HttpOnly` にしても防げない。script は cookie を読めな�
 
 ## 関連テスト
 
-（未確立。#2993 の実装で、閲覧ルートの CSP と iframe の `sandbox` 属性を検査するテストとして置く予定）
+- `packages/nest/src/routes/gallery.test.ts` の "answers 404 for an unlisted submission, exactly as for one that is not there": 描画経路を変えても保つべき公開範囲の契約（unlisted は存在しない投稿と同じ応答）を検査している
+- 本観点の中心（閲覧ルートの CSP に `sandbox` があり `allow-same-origin` が無いこと、iframe の `sandbox` 属性）を検査するテストは未確立で、#2993 の実装で同じファイルに足す
 
 ## 派生元 spec
 

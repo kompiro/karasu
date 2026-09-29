@@ -131,6 +131,7 @@ ADR-2592 §6 との関係: §6 が守っているのは「セッションを持�
    - `/g/<id>/view`: `visibleSubmission` で可視判定し、本文を JSON として埋めた HTML を返す。応答ヘッダに `Content-Security-Policy: sandbox allow-scripts; ...` を付ける。埋め込みは `</script>` を含む本文でも壊れないようにエスケープする
    - `/g/<id>`: 既定の表示を `<iframe sandbox="allow-scripts" src="/g/<id>/view">` に置き換え、サーバー側の SVG 描画をやめる。`?format=svg` と `?format=krs` は残す
    - キャッシュは既存の投稿ページと同じ扱い（公開投稿を所有者以外が見るときだけ `public, max-age=600`、`Vary: Cookie`）
+   - **非公開化・削除の反映には最大 10 分の遅れを許容する。** 共有キャッシュに載った公開時の応答は、投稿を unlisted にしたり削除したりした後も `max-age` の間は配られうる。これは既存の投稿ページと同じ性質で、本設計で新しく生まれる遅れではない。即時の取り下げが必要になったら、非公開化・削除の操作で `/g/<id>` と `/g/<id>/view` のキャッシュを purge する（本設計ではやらない）
 4. **テスト**
    - `/g/<id>/view` の応答が `sandbox` を含み `allow-same-origin` を含まない CSP を持つ
    - `/g/<id>` の iframe が `sandbox="allow-scripts"` だけを持つ
