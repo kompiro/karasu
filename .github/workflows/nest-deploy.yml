@@ -53,8 +53,17 @@ jobs:
       - name: Test (nest)
         run: pnpm --filter @karasu-tools/nest run test
 
+      # wrangler bundles `@karasu-tools/core` through its package.json
+      # `exports`, which point at `dist/`. Typecheck and the tests resolve the
+      # `development` condition to `src/` and pass without it, so only the
+      # bundle notices a missing build.
+      - name: Build (core)
+        run: pnpm --filter @karasu-tools/core run build
+
+      # A dry run still bundles (`--dry-run`) rather than skipping the step.
+      # Skipping it is how a deploy that could not bundle passed as a green dry
+      # run until the first real deploy.
       - name: Deploy
-        if: ${{ !inputs.dry_run }}
         uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -66,4 +75,4 @@ jobs:
           # a package.json carrying `workspace:*` (`EUNSUPPORTEDPROTOCOL`). The
           # same fix as `docs-preview.yml`.
           packageManager: pnpm
-          command: deploy
+          command: deploy${{ inputs.dry_run && ' --dry-run' || '' }}
