@@ -82,12 +82,26 @@ jobs:
       # registry — no token needed. Publishing uses OIDC (see header).
       - run: pnpm install --frozen-lockfile
 
+      # `changeset publish` tags what it published with annotated tags
+      # (`git tag <name>@<version> -m ...`), which need a committer identity.
+      # The runner has none, and changesets ignores a failing `git tag`, so
+      # without this every tag silently failed and `record` never ran (#2982).
+      # The tags stay local to this job; `record` pushes them.
+      - name: Set a git identity for the release tags
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       # `pnpm run release` runs `pnpm build && changeset publish`. With a
       # Trusted Publisher configured and `id-token: write` set, npm publishes
       # tokenless via OIDC and attaches provenance automatically. Publishes
       # only versions not already on npm, so this is a no-op between releases.
+      # The output is kept so the next step can check that every package it
+      # reports as published got its tag.
       - name: Publish to npm
-        run: pnpm run release
+        run: |
+          set -o pipefail
+          pnpm run release 2>&1 | tee "$RUNNER_TEMP/publish.log"
 
       # `changeset publish` tags each package it actually published
       # (`karasu@0.7.0`, `@karasu-tools/core@0.3.0`) on the runner and nothing
@@ -104,6 +118,20 @@ jobs:
           tags=$( (git tag --points-at HEAD | grep '@' || true) | tr '\n' ' ' | sed 's/ *$//')
           echo "tags=${tags}" >> "$GITHUB_OUTPUT"
           echo "::notice::Published tags: ${tags:-none}"
+          # A package published without its tag would drop out of the release
+          # record while the run stays green (#2982). Check every package
+          # `changeset publish` reports as published, and fail after the output
+          # is written so `record` still records the tags that do exist.
+          missing=""
+          if [ -f "$RUNNER_TEMP/publish.log" ]; then
+            for pkg in $(node scripts/release/published-packages.mts < "$RUNNER_TEMP/publish.log"); do
+              git rev-parse -q --verify "refs/tags/${pkg}" >/dev/null || missing="${missing} ${pkg}"
+            done
+          fi
+          if [ -n "$missing" ]; then
+            echo "::error::Published without a tag on HEAD:${missing}. Tag them on ${GITHUB_SHA} by hand and re-run the record step (#2982)."
+            exit 1
+          fi
 
   # Records the release in the repo: pushes the package tags and creates the
   # GitHub Release `release-YYYY-MM-DD` for this commit (#2939). The VS Code
