@@ -37,8 +37,12 @@ describe("release.yml release job", () => {
     expect(publish).toContain("set -o pipefail");
     const collect = releaseJob.slice(indexOfStep("Collect the tags of what was published"));
     expect(collect).toContain(
-      'node scripts/release/published-packages.mts < "$RUNNER_TEMP/publish.log"',
+      'expected=$(node scripts/release/published-packages.mts --log "$RUNNER_TEMP/publish.log") ||',
     );
+    // The loop must read the captured list: `for pkg in $(node ...)` would
+    // swallow a failing script under `set -e` and pass with nothing checked.
+    expect(collect).toContain("for pkg in $expected; do");
+    expect(collect).not.toMatch(/for pkg in \$\(/);
     expect(collect).toContain("exit 1");
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publishedPackages } from "./published-packages.mts";
+import { expectedTags, publishedPackages } from "./published-packages.mts";
 
 // Fences the tag check added for #2982. The fixture is the `changeset publish`
 // output of release run 36555712361 (release train 2026-09-28), escape
@@ -49,5 +49,33 @@ describe("publishedPackages", () => {
     expect(publishedPackages("🦋 changeset v3.0.3\nNo unpublished projects to publish\n")).toEqual(
       [],
     );
+  });
+});
+
+describe("expectedTags", () => {
+  const current = [
+    { name: "karasu", version: "0.8.0" },
+    { name: "@karasu-tools/core", version: "0.3.1" },
+    { name: "karasu-skills", version: "0.2.0" },
+  ];
+
+  it("adds the current versions already on npm to what this run published", () => {
+    const onNpm = new Set(["karasu@0.8.0", "@karasu-tools/core@0.3.1"]);
+    expect(
+      expectedTags(["karasu@0.8.0"], current, ({ name, version }) =>
+        onNpm.has(`${name}@${version}`),
+      ),
+    ).toEqual(["@karasu-tools/core@0.3.1", "karasu@0.8.0"]);
+  });
+
+  it("still expects a tag on a re-run, where changeset publish reports nothing", () => {
+    // An earlier attempt published core without its tag; the re-run skips it.
+    expect(expectedTags([], current, ({ name }) => name === "@karasu-tools/core")).toEqual([
+      "@karasu-tools/core@0.3.1",
+    ]);
+  });
+
+  it("expects nothing for versions not on npm (an unreleased bump, a failed publish)", () => {
+    expect(expectedTags([], current, () => false)).toEqual([]);
   });
 });

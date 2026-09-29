@@ -1,21 +1,33 @@
 /* eslint-disable no-console -- CLI entry point; stdout is the list release.yml reads */
 /**
- * Reads the output of `changeset publish` (`pnpm run release`) on stdin and
- * prints one `name@version` per line for every package it reports under
- * "Successfully published:" (#2982).
+ * Prints one `name@version` per line: every package tag the release commit
+ * must carry (#2982).
  *
  *   pnpm run release 2>&1 | tee publish.log
- *   node scripts/release/published-packages.mts < publish.log
+ *   node scripts/release/published-packages.mts --log publish.log
  *
- * release.yml uses it to check that every package the run published has its
- * tag on HEAD. `changeset publish` creates annotated tags and ignores a failing
- * `git tag`, and its closing "Created git tags." message never lists npm
- * packages, so its own output cannot tell a tagged run from an untagged one.
+ * Two sources, merged:
+ *
+ * 1. The packages `changeset publish` lists under "Successfully published:" in
+ *    this run's output.
+ * 2. The current version of every released npm package (RELEASED_PACKAGES,
+ *    not `private`) that is already on npm. This is what keeps the check alive
+ *    on a re-run: `changeset publish` skips a version already on npm, so a
+ *    package published without its tag in an earlier attempt never shows up
+ *    in (1) again.
+ *
+ * release.yml fails the job when one of these has no tag. `changeset publish`
+ * creates annotated tags and ignores a failing `git tag`, and its closing
+ * "Created git tags." message never lists npm packages, so its own output
+ * cannot tell a tagged run from an untagged one.
  *
  * Erasable TypeScript only, node builtins only: runs with plain `node`.
  */
-import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { RELEASED_PACKAGES } from "./github-release.mts";
 
 // CSI sequences (colours, cursor moves) that the spinner writes between lines.
 const ESC = String.fromCharCode(27);
@@ -41,6 +53,52 @@ export function publishedPackages(log: string): string[] {
   return [...new Set(published)];
 }
 
+export type PackageVersion = { name: string; version: string };
+
+/**
+ * The tags the commit must carry: what this run published, plus every current
+ * version that is on npm.
+ */
+export function expectedTags(
+  published: string[],
+  current: PackageVersion[],
+  isOnNpm: (pkg: PackageVersion) => boolean,
+): string[] {
+  const onNpm = current.filter(isOnNpm).map(({ name, version }) => `${name}@${version}`);
+  return [...new Set([...published, ...onNpm])].sort();
+}
+
+/** The released packages that go to npm (the VS Code extension is `private`). */
+function currentNpmVersions(): PackageVersion[] {
+  return RELEASED_PACKAGES.flatMap(({ dir }) => {
+    const manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as {
+      name: string;
+      version: string;
+      private?: boolean;
+    };
+    return manifest.private ? [] : [{ name: manifest.name, version: manifest.version }];
+  });
+}
+
+/** Whether `name@version` is on npm. Anything but a clean yes / 404 is an error. */
+function isVersionOnNpm({ name, version }: PackageVersion): boolean {
+  const result = spawnSync("npm", ["view", `${name}@${version}`, "version"], {
+    encoding: "utf8",
+  });
+  if (result.status === 0) return result.stdout.trim() === version;
+  if (/E404|is not in this registry/.test(result.stderr)) return false;
+  throw new Error(`npm view ${name}@${version} failed: ${result.stderr.trim()}`);
+}
+
+function main(argv: string[]): void {
+  const logIndex = argv.indexOf("--log");
+  const logPath = logIndex >= 0 ? argv[logIndex + 1] : undefined;
+  const log = logPath && existsSync(logPath) ? readFileSync(logPath, "utf8") : "";
+  for (const tag of expectedTags(publishedPackages(log), currentNpmVersions(), isVersionOnNpm)) {
+    console.log(tag);
+  }
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  for (const entry of publishedPackages(readFileSync(0, "utf8"))) console.log(entry);
+  main(process.argv.slice(2));
 }
