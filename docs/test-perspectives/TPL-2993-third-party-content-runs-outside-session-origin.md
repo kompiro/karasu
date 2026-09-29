@@ -43,7 +43,7 @@ cookie を `HttpOnly` にしても防げない。script は cookie を読めな�
 第三者の内容を script で描画する面を足すとき:
 
 - [ ] その script が走る document の origin に、セッション cookie が届かないか（別ホスト、または opaque origin）
-- [ ] 同じホストで分離するなら、応答の CSP に `sandbox` があり `allow-same-origin` が無いか。iframe 側の `sandbox` 属性も同様か（テストでヘッダと属性の両方を検査する）
+- [ ] 同じホストで分離するなら、応答の CSP に `sandbox` があり `allow-same-origin` が無いか（テストでヘッダを検査する）。iframe で埋め込む場合は iframe の `sandbox` 属性も同様か
 - [ ] 描画に要る本文は document に埋め込まれていて、viewer がセッションを持つ origin の API を叩かずに動くか
 - [ ] セッションを持つ document（一覧・コンソール）は、引き続きクライアント JS を持たないか
 - [ ] 本文を HTML に埋め込むとき、`</script>` などを含む内容でも埋め込みが壊れないか
@@ -56,7 +56,7 @@ cookie を `HttpOnly` にしても防げない。script は cookie を読めな�
 ## 関連テスト
 
 - `packages/nest/src/routes/gallery.test.ts` の "answers 404 for an unlisted submission, exactly as for one that is not there": 描画経路を変えても保つべき公開範囲の契約（unlisted は存在しない投稿と同じ応答）を検査している
-- 本観点の中心（閲覧ルートの CSP に `sandbox` があり `allow-same-origin` が無いこと、iframe の `sandbox` 属性）を検査するテストは未確立で、#2993 の実装で同じファイルに足す
+- 本観点の中心（投稿ページの CSP に `sandbox` があり `allow-same-origin` が無いこと）を検査するテストは未確立で、#2993 の実装で同じファイルに足す
 
 ## 派生元 spec
 
