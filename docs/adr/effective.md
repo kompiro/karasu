@@ -169,6 +169,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2898](2898-draft-first-code-review.md) — /code-review は draft PR に当て、CodeRabbit の初回レビューは ready にした時点の 1 回にする
 - [ADR-2939](2939-release-record-tags-and-github-release.md) — リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の GitHub Release を 1 つ作る
 - [ADR-2949](2949-coderabbit-skips-adr-auto-merge.md) — auto-merge する ADR-only PR は CodeRabbit の自動レビュー対象から外す
+- [ADR-2985](2985-dependabot-security-2026-09-29.md) — Dependabot security alert 2026-09-29（`undici` の override floor が脆弱範囲の内側だったので `^7.29.1` に上げた）
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
