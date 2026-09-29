@@ -16,6 +16,7 @@ function env(kv: MemoryKV): NestEnv {
     GITHUB_OAUTH_CLIENT_ID: "Iv1.client",
     GITHUB_OAUTH_CLIENT_SECRET: "shhh",
     NEST_PUBLIC_ORIGIN: ORIGIN,
+    NEST_SIGN_IN_ALLOWLIST: "42",
   };
 }
 
@@ -88,6 +89,16 @@ describe("POST /api/submissions", () => {
       { title: "Shop", krs: KRS },
       { cookie: `${SESSION_COOKIE}=42:${"x".repeat(32)}` },
     );
+    expect(response.status).toBe(401);
+    expect((await kv.list({ prefix: "sub/" })).keys).toEqual([]);
+  });
+
+  it("refuses a live session whose account is not on the sign-in allowlist (#2969)", async () => {
+    // Sign-in refuses such an account, but a session issued before its id was
+    // taken off the list (or before the list existed) must not keep working.
+    const kv = new MemoryKV();
+    const cookie = await signedIn(kv, 7);
+    const response = await post(kv, { title: "Shop", krs: KRS }, { cookie });
     expect(response.status).toBe(401);
     expect((await kv.list({ prefix: "sub/" })).keys).toEqual([]);
   });
