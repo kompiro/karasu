@@ -66,7 +66,12 @@ jobs:
       - name: Deploy
         uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # A token of its own, not the Pages token every other deploy uses
+          # (#2969). This service holds sessions and submitters' data, which is
+          # why ADR-2578 gave it a separate deploy; one credential for both
+          # would put them back in the same blast radius. Fenced by
+          # scripts/ci/nest-deploy-token.test.ts.
+          apiToken: ${{ secrets.CLOUDFLARE_NEST_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: packages/nest
           # Must be stated, not inferred. The action picks a package manager by

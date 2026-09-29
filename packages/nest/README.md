@@ -105,3 +105,11 @@ pnpm --filter @karasu-tools/nest typecheck
 up. The workflow is `workflow_dispatch` only: a public submission surface needs
 a ToS and a privacy policy before it is opened past its operator
 ([#2591](https://github.com/kompiro/karasu/issues/2591)).
+
+The workflow authenticates with the repository secret
+`CLOUDFLARE_NEST_API_TOKEN`, a Cloudflare API token used by this deploy only
+(#2969). It needs Workers Scripts: Edit and Workers KV Storage: Edit on the
+account; `CLOUDFLARE_ACCOUNT_ID` is shared with the Pages deploys. Keep it
+separate from `CLOUDFLARE_API_TOKEN` so the service that holds sessions and
+submitters' data does not share a credential with the static app
+(`scripts/ci/nest-deploy-token.test.ts`).
