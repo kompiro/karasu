@@ -59,11 +59,14 @@ ENVIRONMENT = "production"
 # Deliberately NOT derived from the incoming request. Both uses stop meaning
 # anything if an attacker-supplied `Host` header can decide them.
 #
-# Left unset here because this repository does not record the hostname. Set it
-# on the deploy (uncomment with the real value, or set the var in the
-# dashboard). Until it is set, sign-in answers 503 naming the binding rather
-# than sending anyone to a broken consent screen.
-# NEST_PUBLIC_ORIGIN = "https://karasu-nest.example.workers.dev"
+# Recorded here rather than in the dashboard: `wrangler deploy` replaces the
+# Worker's plain-text vars with the ones in this file, so a dashboard value
+# would be dropped by the next deploy. It is not a secret.
+#
+# Exactly the origin, with no path and no trailing slash. It is compared to the
+# browser's `Origin` header as a string, and GitHub requires the OAuth App's
+# callback URL to equal `<origin>/auth/callback`.
+NEST_PUBLIC_ORIGIN = "https://karasu-nest.kompiro.workers.dev"
 
 # GitHub numeric user ids allowed to sign in (#2969). Only the operator
 # (kompiro, 42963) until the legal review in #2691 is done: signing in is what

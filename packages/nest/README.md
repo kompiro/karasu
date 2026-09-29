@@ -80,7 +80,7 @@ To wire it up on a deploy:
 2. Set its callback to `<origin>/auth/callback`.
 3. `wrangler secret put GITHUB_OAUTH_CLIENT_ID` and
    `wrangler secret put GITHUB_OAUTH_CLIENT_SECRET`.
-4. Set `NEST_PUBLIC_ORIGIN` to the origin this deploy answers on. It is not
+4. Set `NEST_PUBLIC_ORIGIN` in `wrangler.toml` to the origin this deploy answers on. It is not
    derived from the request: it decides the `redirect_uri` and the `Origin`
    every state-changing request is checked against, and both stop meaning
    anything if a `Host` header can pick them.
