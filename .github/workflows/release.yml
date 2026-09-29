@@ -126,16 +126,31 @@ jobs:
           # the output is written so `record` still records the tags that exist.
           # The list is captured first: a failing command substitution in a
           # `for ... in` word list would not stop the step under `set -e`.
+          # A tag for a package this run published must also point at this
+          # commit: `record` only records the tags on it. Tags for versions
+          # released earlier may point at their own release commit.
           expected=$(node scripts/release/published-packages.mts --log "$RUNNER_TEMP/publish.log") || {
             echo "::error::Could not work out which package tags this release needs (#2982)."
+            exit 1
+          }
+          this_run=$(node scripts/release/published-packages.mts --log "$RUNNER_TEMP/publish.log" --this-run) || {
+            echo "::error::Could not read what this run published (#2982)."
             exit 1
           }
           missing=""
           for pkg in $expected; do
             git rev-parse -q --verify "refs/tags/${pkg}" >/dev/null || missing="${missing} ${pkg}"
           done
-          if [ -n "$missing" ]; then
-            echo "::error::On npm without a tag:${missing}. Tag them on the commit that released them (${GITHUB_SHA} for this release), push the tags, then re-run this workflow (#2982)."
+          elsewhere=""
+          for pkg in $this_run; do
+            target=$(git rev-parse -q --verify "refs/tags/${pkg}^{commit}" || true)
+            if [ -n "$target" ] && [ "$target" != "$GITHUB_SHA" ]; then
+              elsewhere="${elsewhere} ${pkg}"
+            fi
+          done
+          if [ -n "$missing" ] || [ -n "$elsewhere" ]; then
+            [ -n "$missing" ] && echo "::error::On npm without a tag:${missing}. Tag them on the commit that released them (${GITHUB_SHA} for this release), push the tags, then re-run this workflow (#2982)."
+            [ -n "$elsewhere" ] && echo "::error::Published by this run but tagged on another commit:${elsewhere}. Move the tags to ${GITHUB_SHA}, push them, then re-run this workflow (#2982)."
             exit 1
           fi
 

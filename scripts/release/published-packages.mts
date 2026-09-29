@@ -4,7 +4,8 @@
  * must carry (#2982).
  *
  *   pnpm run release 2>&1 | tee publish.log
- *   node scripts/release/published-packages.mts --log publish.log
+ *   node scripts/release/published-packages.mts --log publish.log              # every tag the commit needs
+ *   node scripts/release/published-packages.mts --log publish.log --this-run   # only (1) below
  *
  * Two sources, merged:
  *
@@ -16,7 +17,11 @@
  *    package published without its tag in an earlier attempt never shows up
  *    in (1) again.
  *
- * release.yml fails the job when one of these has no tag. `changeset publish`
+ * release.yml fails the job when one of these has no tag, and when a tag for
+ * (1) does not point at the release commit: `record` only records the tags on
+ * that commit, so a tag left on another commit would drop the package from
+ * the Release. A tag for (2) may point at the earlier release that shipped
+ * that version. `changeset publish`
  * creates annotated tags and ignores a failing `git tag`, and its closing
  * "Created git tags." message never lists npm packages, so its own output
  * cannot tell a tagged run from an untagged one.
@@ -94,9 +99,11 @@ function main(argv: string[]): void {
   const logIndex = argv.indexOf("--log");
   const logPath = logIndex >= 0 ? argv[logIndex + 1] : undefined;
   const log = logPath && existsSync(logPath) ? readFileSync(logPath, "utf8") : "";
-  for (const tag of expectedTags(publishedPackages(log), currentNpmVersions(), isVersionOnNpm)) {
-    console.log(tag);
-  }
+  const published = publishedPackages(log);
+  const tags = argv.includes("--this-run")
+    ? published
+    : expectedTags(published, currentNpmVersions(), isVersionOnNpm);
+  for (const tag of tags) console.log(tag);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

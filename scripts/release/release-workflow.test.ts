@@ -43,6 +43,9 @@ describe("release.yml release job", () => {
     // swallow a failing script under `set -e` and pass with nothing checked.
     expect(collect).toContain("for pkg in $expected; do");
     expect(collect).not.toMatch(/for pkg in \$\(/);
+    // Tags for what this run published must point at the release commit.
+    expect(collect).toContain("--this-run) ||");
+    expect(collect).toContain('"$target" != "$GITHUB_SHA"');
     expect(collect).toContain("exit 1");
   });
 });
