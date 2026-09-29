@@ -97,6 +97,7 @@ ADR-2592 §6 との関係は次のとおり整理する。§6 が却下したの
    - 閲覧 URL: `/g/<id>`。nest の投稿 URL とパスを揃え、ホスト名だけ差し替えれば app で開ける形にする（bare permalink が GitHub の URL に対してしている事と同じ発想）
    - 本文 URL: `/g/<id>.krs`。Pages Function が中継する
    - `g` を `RESERVED_TOP_SEGMENTS` の `FUNCTION_ROUTE_SEGMENTS` に足す。`api` の下には置かない（`detectAppMode` が `/api/files` の応答で serve mode に切り替わるため、`/api/` の下に Function を増やすと判定を誤らせる余地が生まれる）
+<!-- absent-path-next-line: file this design intends to create (#2993) -->
 2. **中継 Function（`functions/g/[[path]].ts` + 単体テスト可能な `packages/app/src/render/nest-relay.ts`）**
    - 取得先は定数 `NEST_ORIGIN`。id は nest の submission id の文法（`<accountId>-<slug>`）で検証し、合わなければ nest に問い合わせず 404
    - 上流へは `GET <NEST_ORIGIN>/g/<id>?format=krs` を cookie・Authorization なしで投げる。`redirect: "error"`
