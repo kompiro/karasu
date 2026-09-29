@@ -29,7 +29,9 @@ scope:
 
 cookie を `HttpOnly` にしても防げない。script は cookie を読めなくても、同じ origin へ cookie 付きのリクエストを送れ、`Origin` の一致検査も同じ origin なので通る。
 
-守るべき状態は 1 つ: **第三者の内容を描画する script は、セッション cookie が届かない origin で走っている。** 手段は、cookie の届かない別ホストに置くか、`sandbox` から `allow-same-origin` を外して opaque origin で動かすかである。
+守るべき状態は 2 つ: **第三者の内容を描画する script は、セッションの資格情報に触れられず、セッションの権限で状態を変える操作を送れない。** 手段は、cookie の届かない別ホストに置くか、`sandbox` から `allow-same-origin` を外して opaque origin で動かすかである。
+
+opaque origin で動かす場合、script が出す fetch には `SameSite=Lax` の cookie が付かないが、script が起こすトップレベルの遷移（`GET`）には付く。なので「cookie が一切付かない」ではなく、上の 2 つを性質として置き、状態を変える操作はすべて `POST` + `Origin` 検査にしておく。`GET` で状態を変えるルートがあるなら、それが script から起動されても害が無いこと（例: OAuth の state の二重送信検査）を個別に確かめる。どのリクエストにも cookie を付けたくないなら別ホストを選ぶ
 
 ## 想定される失敗モード
 
@@ -42,11 +44,11 @@ cookie を `HttpOnly` にしても防げない。script は cookie を読めな�
 
 第三者の内容を script で描画する面を足すとき:
 
-- [ ] その script が走る document の origin に、セッション cookie が届かないか（別ホスト、または opaque origin）
+- [ ] その script が走る document の origin から、セッション cookie を読めないか（別ホスト、または opaque origin）
+- [ ] 状態を変える操作がすべて `POST` + `Origin` 検査で守られていて、`GET` で状態を変えるルートは script から起動されても害が無いか
 - [ ] 同じホストで分離するなら、応答の CSP に `sandbox` があり `allow-same-origin` が無いか（テストでヘッダを検査する）。iframe で埋め込む場合は iframe の `sandbox` 属性も同様か
 - [ ] 描画に要る本文は document に埋め込まれていて、viewer がセッションを持つ origin の API を叩かずに動くか
 - [ ] セッションを持つ document（一覧・コンソール）は、引き続きクライアント JS を持たないか
-- [ ] 本文を HTML に埋め込むとき、`</script>` などを含む内容でも埋め込みが壊れないか
 
 ## 既知の対処パターン
 

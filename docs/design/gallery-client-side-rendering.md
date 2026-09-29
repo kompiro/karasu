@@ -81,7 +81,9 @@ iframe で埋め込む形（投稿ページは JS を持たず、閲覧用の別
 - **ページを開くリクエストには cookie が付く。** 所有者判定（自分の unlisted を見られるか）はサーバー側でこれまでどおり行える。隔離されるのは、描画された後のページで走る script である
 - **ページには form を置かない。** opaque origin のページから送る form は `Origin: null` になり、nest の `sameOrigin` 検査で弾かれる。コンソールやサインアウトへの導線は普通のリンク（ページ遷移）にする
 
-- **セッションから構造的に切り離される。** opaque origin の document は cookie を読めず、そこから出るリクエストはサイトをまたぐ扱いになるので `SameSite=Lax` のセッション cookie が付かない。`Origin: null` になるので、nest の `sameOrigin` 検査でも弾かれる。描画経路に XSS があっても、セッションの権限には届かない
+- **セッションの権限から切り離される。** 守る性質は 2 つである。(1) script がセッションの資格情報に触れられない: opaque origin の document は cookie を読めない。(2) viewer からセッションの権限で状態を変えられない: script が出す fetch はサイトをまたぐ扱いになり `SameSite=Lax` のセッション cookie が付かず、`Origin: null` になるので nest の `sameOrigin` 検査でも弾かれる。nest で状態を変える操作（投稿・非公開化・差し替え・削除・アカウント削除・サインアウト）はすべて `POST` + `sameOrigin` なので、viewer からは通らない
+  - **cookie が一切付かないわけではない。** viewer の script がページ遷移やポップアップ（`allow-popups`）で nest の URL を開くと、トップレベルの `GET` には `SameSite=Lax` の cookie が付く。これは許容する。遷移先は viewer の script の手を離れた別の document で、opaque origin からは中身を読めない。`GET` のルートは表示と読み出しだけで、状態を変えるのは `GET /auth/callback`（サインインの完了）と `GET /auth/login`（OAuth の開始）だけである。callback は `__Host-` の state cookie との二重送信検査（`routes/auth.ts`）を通らないと何もせず、viewer の script はその state を知り得ない。login は閲覧者自身のアカウントでサインインを始めるだけである
+  - viewer から出るどのリクエストにも cookie が付かないことまで要件にするなら、同じホストでは満たせないので D2（別ホスト）を採る
 - **本文は応答に埋め込む。** `/g/<id>` はサーバーで `.krs` を JSON として HTML に埋め込んで返し、viewer は起動時にそれを読む。viewer 自身は nest にリクエストを送らない。unlisted の判定は `visibleSubmission` をそのまま使う
 - **app の配信物は変わらない。** viewer は app のコンポーネントを再利用した別ビルドとして作り、nest だけが配る
 - **描画はブラウザで行う。** Worker は SVG を描かない。Worker の仕事は KV から本文を読んで HTML に埋めるだけになる
