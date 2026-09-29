@@ -82,12 +82,26 @@ jobs:
       # registry — no token needed. Publishing uses OIDC (see header).
       - run: pnpm install --frozen-lockfile
 
+      # `changeset publish` tags what it published with annotated tags
+      # (`git tag <name>@<version> -m ...`), which need a committer identity.
+      # The runner has none, and changesets ignores a failing `git tag`, so
+      # without this every tag silently failed and `record` never ran (#2982).
+      # The tags stay local to this job; `record` pushes them.
+      - name: Set a git identity for the release tags
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       # `pnpm run release` runs `pnpm build && changeset publish`. With a
       # Trusted Publisher configured and `id-token: write` set, npm publishes
       # tokenless via OIDC and attaches provenance automatically. Publishes
       # only versions not already on npm, so this is a no-op between releases.
+      # The output is kept so the next step can check that every package it
+      # reports as published got its tag.
       - name: Publish to npm
-        run: pnpm run release
+        run: |
+          set -o pipefail
+          pnpm run release 2>&1 | tee "$RUNNER_TEMP/publish.log"
 
       # `changeset publish` tags each package it actually published
       # (`karasu@0.7.0`, `@karasu-tools/core@0.3.0`) on the runner and nothing
@@ -104,6 +118,41 @@ jobs:
           tags=$( (git tag --points-at HEAD | grep '@' || true) | tr '\n' ' ' | sed 's/ *$//')
           echo "tags=${tags}" >> "$GITHUB_OUTPUT"
           echo "::notice::Published tags: ${tags:-none}"
+          # A package published without its tag would drop out of the release
+          # record while the run stays green (#2982). Check every tag the commit
+          # must carry: what this run published, plus the current version of
+          # each released npm package that is already on npm, so a re-run still
+          # catches a package an earlier attempt published untagged. Fail after
+          # the output is written so `record` still records the tags that exist.
+          # The list is captured first: a failing command substitution in a
+          # `for ... in` word list would not stop the step under `set -e`.
+          # A tag for a package this run published must also point at this
+          # commit: `record` only records the tags on it. Tags for versions
+          # released earlier may point at their own release commit.
+          expected=$(node scripts/release/published-packages.mts --log "$RUNNER_TEMP/publish.log") || {
+            echo "::error::Could not work out which package tags this release needs (#2982)."
+            exit 1
+          }
+          this_run=$(node scripts/release/published-packages.mts --log "$RUNNER_TEMP/publish.log" --this-run) || {
+            echo "::error::Could not read what this run published (#2982)."
+            exit 1
+          }
+          missing=""
+          for pkg in $expected; do
+            git rev-parse -q --verify "refs/tags/${pkg}" >/dev/null || missing="${missing} ${pkg}"
+          done
+          elsewhere=""
+          for pkg in $this_run; do
+            target=$(git rev-parse -q --verify "refs/tags/${pkg}^{commit}" || true)
+            if [ -n "$target" ] && [ "$target" != "$GITHUB_SHA" ]; then
+              elsewhere="${elsewhere} ${pkg}"
+            fi
+          done
+          if [ -n "$missing" ] || [ -n "$elsewhere" ]; then
+            [ -n "$missing" ] && echo "::error::On npm without a tag:${missing}. Tag them on the commit that released them (${GITHUB_SHA} for this release), push the tags, then re-run this workflow (#2982)."
+            [ -n "$elsewhere" ] && echo "::error::Published by this run but tagged on another commit:${elsewhere}. Move the tags to ${GITHUB_SHA}, push them, then re-run this workflow (#2982)."
+            exit 1
+          fi
 
   # Records the release in the repo: pushes the package tags and creates the
   # GitHub Release `release-YYYY-MM-DD` for this commit (#2939). The VS Code
