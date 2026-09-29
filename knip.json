@@ -3,39 +3,79 @@
   "treatConfigHintsAsErrors": true,
   "workspaces": {
     ".": {
-      "entry": ["scripts/report/index.ts", "scripts/coderabbit/await-review.ts"],
-      "project": ["scripts/**/*.ts"]
+      "entry": [
+        "scripts/report/index.ts",
+        "scripts/coderabbit/await-review.ts"
+      ],
+      "project": [
+        "scripts/**/*.ts"
+      ]
     },
     "packages/core": {
-      "project": ["src/**/*.ts", "!src/**/*.test.ts"]
+      "project": [
+        "src/**/*.ts",
+        "!src/**/*.test.ts"
+      ]
     },
     "packages/i18n": {
-      "project": ["src/**/*.ts", "!src/**/*.test.ts"]
+      "project": [
+        "src/**/*.ts",
+        "!src/**/*.test.ts"
+      ]
     },
     "packages/app": {
-      "project": ["src/**/*.{ts,tsx,css}", "!src/**/*.test.{ts,tsx}"]
+      "project": [
+        "src/**/*.{ts,tsx,css}",
+        "!src/**/*.test.{ts,tsx}"
+      ],
+      "entry": [
+        "src/viewer-main.tsx"
+      ]
     },
     "packages/cli": {
-      "project": ["src/**/*.ts"],
-      "ignoreDependencies": ["yaml"]
+      "project": [
+        "src/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "yaml"
+      ]
     },
     "packages/lsp": {
-      "project": ["src/**/*.ts"]
+      "project": [
+        "src/**/*.ts"
+      ]
     },
     "packages/nest": {
-      "project": ["src/**/*.ts", "!src/**/*.test.ts", "!src/testing/**"]
+      "project": [
+        "src/**/*.ts",
+        "!src/**/*.test.ts",
+        "!src/testing/**"
+      ]
     },
     "packages/docs-site": {
-      "entry": ["scripts/{sync,check-links}.ts"],
-      "project": ["scripts/**/*.ts", "src/**/*.{ts,astro,mdx}"],
-      "ignoreDependencies": ["@karasu-tools/core"]
+      "entry": [
+        "scripts/{sync,check-links}.ts"
+      ],
+      "project": [
+        "scripts/**/*.ts",
+        "src/**/*.{ts,astro,mdx}"
+      ],
+      "ignoreDependencies": [
+        "@karasu-tools/core"
+      ]
     },
     "packages/vscode": {
-      "project": ["src/**/*.ts"]
+      "project": [
+        "src/**/*.ts"
+      ]
     },
     "packages/e2e": {
-      "entry": ["tests/**/*.spec.ts"],
-      "project": ["tests/**/*.ts"]
+      "entry": [
+        "tests/**/*.spec.ts"
+      ],
+      "project": [
+        "tests/**/*.ts"
+      ]
     },
     "packages/vscode-e2e": {
       "entry": [
@@ -44,8 +84,13 @@
         "tests/suite/**/*.test.ts",
         "tests/capture/**/*.capture.ts"
       ],
-      "project": ["tests/**/*.ts"],
-      "ignoreDependencies": ["@vscode/test-electron", "vscode"]
+      "project": [
+        "tests/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@vscode/test-electron",
+        "vscode"
+      ]
     }
   }
 }
