@@ -75,19 +75,54 @@ nest の `/g/<id>?format=krs` に `Access-Control-Allow-Origin: <app origin>` �
 
 - 8000 文字上限（ADR-2259）に掛かり、そもそも今回の対象（大きなモデル）が入らない。上限を外すのは ADR-2259 の撤回になる
 
+### 案 D: nest に app の preview コンポーネントを組み込む
+
+app を経由せず、nest のギャラリーページそのものに app の preview（`PreviewColumn` 以下）を載せる案。どこから配るかで性質が大きく変わるので 3 通りに分けて評価した。
+
+#### D1: nest の origin で preview の bundle を配る
+
+nest の `/g/<id>` が React の bundle を読み込み、同じ origin の `?format=krs` を fetch して描画する。
+
+- **セッションの権限で第三者の内容を描画することになる。** セッション cookie は `HttpOnly` なので script から読まれはしないが、同一 origin の script は cookie 付きで nest にリクエストを送れ、`Origin` 検査も同一 origin なので通る。preview が描画するのは他人が書いた `.krs`（label・description・link）であり、その描画経路に XSS が 1 つあれば、閲覧した投稿者のアカウントで投稿の削除やアカウント削除が実行できる。ADR-2592 §6 がコンソールに「クライアント JS を置かない」とした理由（ここで配る script はそのセッションの権限で走る）が、そのまま当てはまる
+- 所有者が自分の unlisted を preview で見られる、という利点はこの危険と表裏である
+- **却下する。**
+
+#### D2: nest が cookie の無い別ホストで preview を配る
+
+nest に閲覧専用のホスト名（例: `view.` のサブドメインや別の Worker）を足し、そこから preview の bundle を配る。セッション cookie は nest の元のホストに `__Host-` で閉じているので、別ホストには届かない。
+
+- 安全性は案 A と同等になる
+- **preview を app から切り出す必要がある。** `PreviewColumn` は `PreviewProvider` の context を前提にし、その値は `AppShell` が `useAppViews` / `useEditorDocument` などエディタ側の hook から組み立てている。nest から使うには、エディタに依存しない viewer をパッケージとして切り出すリファクタが先に要る
+- **同じ UI を 2 か所から配ることになる。** app の preview と nest の viewer で版がずれ、片方でだけ直った不具合・片方にだけある機能が生まれる（`render.ts` の冒頭コメントが「`packages/app` を nest の依存にしない」としているのも、この結合を避けるためである）
+- nest（Worker）にフロントエンドのビルドと静的アセット配信を持ち込み、ADR-2578 決定 5 で分けたデプロイ単位の責務が増える
+- 案 A と比べて得るものが「nest のホスト名で見える」ことだけで、上の費用に見合わない。**現時点では採らない。**
+
+#### D3: nest のページに app の閲覧 URL を iframe で埋め込む
+
+案 A の `/g/<id>`（app の origin）を、nest のギャラリーページに `<iframe>` で埋め込む。見た目は「nest のページの中で preview が動く」になる。
+
+- script は app の origin で走るので、nest のセッションとは無関係（D1 の問題が起きない）
+- preview の実装は app の 1 か所のまま（D2 の問題が起きない）
+- iframe には `sandbox="allow-scripts allow-same-origin"` を付け、nest 側の DOM・cookie には触れさせない。`allow-same-origin` は app 自身の origin での fetch（`/g/<id>.krs`）に必要で、nest の origin を与えるものではない
+- 追加の費用は、iframe の高さの扱いと、app 側で `frame-ancestors` を nest の origin に絞るヘッダ（現状 app は framing を制限していないので、埋め込み元を明示する機会にもなる）
+- **案 A の上に足せる。** A が前提で、A 単体でも「Open in app」リンクとして成立する
+
 ## 比較
 
-| 観点 | 案 A（中継） | 案 B（CORS） | 案 C（URL 埋め込み） |
-| --- | --- | --- | --- |
-| 大きなモデルを開けるか | 開ける | 開ける | 開けない |
-| nest の origin の露出 | 増えない | 別サイトからの直接アクセスが増える | 増えない |
-| unlisted の扱い | 構造的に見えない | 見えない（credential を付けない限り） | 見えない |
-| 変更量 | app に Function と入口、nest はリンクのみ | nest に CORS、app に入口 | 上限の撤回が要る |
-| 記録済みの決定との関係 | ADR-2592 §6 と両立 | ADR-2592 §6 の懸念に近づく | ADR-2259 と衝突 |
+| 観点 | 案 A（中継） | 案 B（CORS） | 案 C（URL 埋め込み） | 案 D1（nest 同一 origin） | 案 D2（nest 別ホスト） | 案 D3（A + iframe） |
+| --- | --- | --- | --- | --- | --- | --- |
+| 大きなモデルを開けるか | 開ける | 開ける | 開けない | 開ける | 開ける | 開ける |
+| nest のページ内で動くか | 動かない（リンク） | 動かない | 動かない | 動く | 動く（別ホスト） | 動く（iframe） |
+| セッションとの分離 | 分離 | 分離（credential なし） | 分離 | **分離されない** | 分離 | 分離 |
+| preview の実装の置き場 | app のみ | app のみ | app のみ | app と nest | app と nest | app のみ |
+| 変更量 | app に Function と入口 | nest に CORS、app に入口 | 上限の撤回 | viewer の切り出し + nest にフロント | viewer の切り出し + nest にフロントと別ホスト | A + iframe とヘッダ |
+| 記録済みの決定との関係 | ADR-2592 §6 と両立 | §6 の懸念に近づく | ADR-2259 と衝突 | §6（クライアント JS を置かない）と衝突 | ADR-2578 決定 5 の分離に負荷 | §6 と両立 |
 
 ## 現時点の方針
 
 **案 A を採用する。** 大きなモデルを開けて、nest の origin を別サイトから直接叩く形を増やさず、unlisted が中継の構造上見えない、の 3 つを同時に満たすのは案 A だけである。予約語が 1 つ増えるコストは、TPL-1961 が既に機械検査の仕組みを持っているので小さい。
+
+nest のページの中で preview を動かしたい場合は、**案 D3（iframe）を A の上に足す**。D1 はセッションの権限で第三者の内容を描画するので採らず、D2 は D3 と同じ見た目を viewer の切り出しと二重配信の費用で得る形なので採らない。D3 を A と同じ PR で入れるか後に回すかは、実装時に iframe の高さの扱いを試してから決める（下の「未解決の問い」）。
 
 ADR-2592 §6 との関係は次のとおり整理する。§6 が却下したのは「セッションを持つ面を別 origin に置き、その面から nest の API を叩く」形である。本設計の中継はセッションを持たず、公開投稿の本文を読むだけで、nest から見れば匿名の閲覧者が 1 人増えるのと同じである。§6 の決定は変えない。
 
@@ -126,6 +161,8 @@ ADR-2592 §6 との関係は次のとおり整理する。§6 が却下したの
 - テスト・examples への影響: なし
 
 ## 未解決の問い / 決めないこと
+
+- **案 D3（iframe 埋め込み）を A と同時に入れるか**は実装時に決める。入れる場合は、app の `/g/<id>` 応答に `Content-Security-Policy: frame-ancestors <nest origin>` を付け、nest のページは `sandbox` 付きの iframe で埋め込む。高さは preview が画面全体を使う前提の UI なので、固定高さ + 「全画面で開く」リンクで足りるかを試す
 
 - **nest のページ自体をやめて app に寄せるか**は決めない。nest のページは OGP・コンソールへの導線・JS なしでの閲覧を担っている。本設計は「重い描画を app に移す」ところまでで、ページの役割分担の見直しは利用が増えてから判断する
 - **所有者が unlisted を app で見る手段**は作らない。作るなら cookie を跨ぐ設計が要り、ADR-2592 §6 の論点に入る
