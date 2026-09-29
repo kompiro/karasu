@@ -85,6 +85,7 @@ nest の `/g/<id>` が React の bundle を読み込み、同じ origin の `?fo
 
 - **セッションの権限で第三者の内容を描画することになる。** セッション cookie は `HttpOnly` なので script から読まれはしないが、同一 origin の script は cookie 付きで nest にリクエストを送れ、`Origin` 検査も同一 origin なので通る。preview が描画するのは他人が書いた `.krs`（label・description・link）であり、その描画経路に XSS が 1 つあれば、閲覧した投稿者のアカウントで投稿の削除やアカウント削除が実行できる。ADR-2592 §6 がコンソールに「クライアント JS を置かない」とした理由（ここで配る script はそのセッションの権限で走る）が、そのまま当てはまる
 - 所有者が自分の unlisted を preview で見られる、という利点はこの危険と表裏である
+- **bundle を app の origin から配っても（`<script src="https://<app origin>/viewer.js">`）同じである。** script がどの origin の権限で走るかは、読み込んだ document の origin で決まり、script ファイルの置き場所では決まらない。加えて nest が app のデプロイを信頼することになり、ADR-2578 決定 5 で分けた 2 つのデプロイの被害範囲が、app の侵害から nest のセッションへとつながる
 - **却下する。**
 
 #### D2: nest が cookie の無い別ホストで preview を配る
