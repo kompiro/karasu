@@ -71,7 +71,7 @@ karasu-nest は、**投稿者が自分の環境で作ったアーキテクチャ
 削除経路から外れるので、[TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)
 がその失敗を見る。
 
-投稿のサイズ上限は **1 投稿あたり 256KB**（バイト数。マルチバイトのラベルでも同じ上限）。
+投稿のサイズ上限は **1 投稿あたり 1MiB**（バイト数。マルチバイトのラベルでも同じ上限）。
 
 > **保持期間とサイズ上限は実装の定数と機械的に突き合わせている**
 > （`scripts/lint/nest-retention-policy-sync.test.ts`）。定数を変えてこの文書を直し忘れると
