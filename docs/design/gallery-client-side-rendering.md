@@ -132,6 +132,7 @@ ADR-2592 §6 との関係: §6 が守っているのは「セッションを持�
    - エディタを持たない（`hideEditor`）
    - ネットワークに出ない
    - bundle より前に走る inline script で `localStorage` / `sessionStorage` をメモリ上の代替に差し替える
+   - テーマ（ライト / ダーク）の切り替えボタンをツールバーに置く。設定は保存できないので、初期値は OS の設定（`prefers-color-scheme`）に従い、切り替えはそのページを開いているあいだだけ効く（spike で sandbox の中でも切り替えられることを確かめた）
    - 共有（クリップボード）の操作を出さない。単一ファイルの投稿でスタイルファイルを探しに行かない（spike で「Style file not found」の警告が出た）
 3. **nest（スライス B）**
    - `wrangler.toml` に静的アセット（viewer の bundle）を足し、そのアセットに `Access-Control-Allow-Origin: *` を付ける（公開ファイルで credential を伴わない）
