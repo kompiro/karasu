@@ -1,0 +1,140 @@
+[
+  {
+    "name": "sandbox-no-asset-cors",
+    "model": "small",
+    "booted": false,
+    "wallMsToFirstSvg": null,
+    "consoleErrors": [
+      "[error] Access to CSS stylesheet at 'http://localhost:4610/assets/viewer-BTTOXeff.css' from origin 'null' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+      "[error] Failed to load resource: net::ERR_FAILED",
+      "[error] Access to script at 'http://localhost:4610/assets/viewer-BPxKJzyH.js' from origin 'null' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+    ],
+    "pageErrors": []
+  },
+  {
+    "name": "sandbox",
+    "model": "small",
+    "booted": true,
+    "wallMsToFirstSvg": 971,
+    "origin": "null",
+    "cookie": "throws SecurityError",
+    "localStorage": "ok",
+    "clipboard": "throws NotAllowedError",
+    "echoFetch": "throws TypeError: Failed to fetch",
+    "marks": {
+      "viewer:boot": 141,
+      "viewer:source-read": 161.40000009536743,
+      "viewer:first-svg": 529
+    },
+    "svgCount": 1,
+    "nodes": 11,
+    "echoSeenByServer": [
+      {
+        "method": "POST",
+        "origin": "null",
+        "cookie": null
+      }
+    ],
+    "drillable": 1,
+    "drillDownNodeCountChange": "11 -> 5",
+    "afterTabsSvg": 1,
+    "consoleErrors": [
+      "[error] Access to fetch at 'http://localhost:4611/echo' from origin 'null' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+      "[error] Failed to load resource: net::ERR_FAILED"
+    ],
+    "pageErrors": []
+  },
+  {
+    "name": "baseline-no-sandbox",
+    "model": "small",
+    "booted": true,
+    "wallMsToFirstSvg": 982,
+    "origin": "http://localhost:4612",
+    "cookie": "\"\"",
+    "localStorage": "ok",
+    "clipboard": "throws NotAllowedError",
+    "echoFetch": 200,
+    "marks": {
+      "viewer:boot": 147.80000019073486,
+      "viewer:source-read": 166.90000009536743,
+      "viewer:first-svg": 531.3000001907349
+    },
+    "svgCount": 1,
+    "nodes": 11,
+    "echoSeenByServer": [
+      {
+        "method": "POST",
+        "origin": "http://localhost:4612",
+        "cookie": "__Host-nest_session=42:secret"
+      }
+    ],
+    "drillable": 1,
+    "drillDownNodeCountChange": "11 -> 5",
+    "afterTabsSvg": 1,
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "sandbox",
+    "model": "dify",
+    "booted": true,
+    "wallMsToFirstSvg": 1012,
+    "origin": "null",
+    "cookie": "throws SecurityError",
+    "localStorage": "ok",
+    "clipboard": "throws NotAllowedError",
+    "echoFetch": "throws TypeError: Failed to fetch",
+    "marks": {
+      "viewer:boot": 148.7000002861023,
+      "viewer:source-read": 169.2000002861023,
+      "viewer:first-svg": 658.9000000953674
+    },
+    "svgCount": 1,
+    "nodes": 29,
+    "echoSeenByServer": [
+      {
+        "method": "POST",
+        "origin": "null",
+        "cookie": null
+      }
+    ],
+    "drillable": 1,
+    "drillDownNodeCountChange": "29 -> 1",
+    "afterTabsSvg": 1,
+    "consoleErrors": [
+      "[error] Access to fetch at 'http://localhost:4613/echo' from origin 'null' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+      "[error] Failed to load resource: net::ERR_FAILED"
+    ],
+    "pageErrors": []
+  },
+  {
+    "name": "baseline-no-sandbox",
+    "model": "dify",
+    "booted": true,
+    "wallMsToFirstSvg": 1007,
+    "origin": "http://localhost:4614",
+    "cookie": "\"\"",
+    "localStorage": "ok",
+    "clipboard": "throws NotAllowedError",
+    "echoFetch": 200,
+    "marks": {
+      "viewer:boot": 145.90000009536743,
+      "viewer:source-read": 167,
+      "viewer:first-svg": 653.7000002861023
+    },
+    "svgCount": 1,
+    "nodes": 29,
+    "echoSeenByServer": [
+      {
+        "method": "POST",
+        "origin": "http://localhost:4614",
+        "cookie": "__Host-nest_session=42:secret"
+      }
+    ],
+    "drillable": 1,
+    "drillDownNodeCountChange": "29 -> 1",
+    "afterTabsSvg": 1,
+    "consoleErrors": [],
+    "pageErrors": []
+  }
+]
