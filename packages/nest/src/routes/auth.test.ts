@@ -15,6 +15,7 @@ function env(kv = new MemoryKV()): NestEnv & { NEST_STORE: MemoryKV } {
     GITHUB_OAUTH_CLIENT_ID: "Iv1.client",
     GITHUB_OAUTH_CLIENT_SECRET: "shhh",
     NEST_PUBLIC_ORIGIN: ORIGIN,
+    NEST_SIGN_IN_ALLOWLIST: "42",
   };
 }
 
@@ -35,6 +36,7 @@ const cookieNamed = (response: Response, name: string): string | undefined =>
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("GET /auth/login", () => {
@@ -56,6 +58,16 @@ describe("GET /auth/login", () => {
     // A service that quietly degrades here would send people to a broken
     // consent screen rather than saying which binding is missing.
     expect(response.status).toBe(503);
+  });
+
+  it("refuses to start when the deploy has no sign-in allowlist", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { NEST_SIGN_IN_ALLOWLIST: _, ...withoutList } = env();
+    const response = await handleRequest(new Request(`${ORIGIN}/auth/login`), withoutList, ctx);
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({
+      error: { message: "This deploy is missing the NEST_SIGN_IN_ALLOWLIST binding." },
+    });
   });
 });
 
@@ -170,5 +182,61 @@ describe("POST /auth/logout", () => {
     const response = await logout(new MemoryKV(), `${SESSION_COOKIE}=42:nonsense`);
     expect(response.status).toBe(303);
     expect(cookieNamed(response, SESSION_COOKIE)).toContain("Max-Age=0");
+  });
+});
+
+describe("the sign-in allowlist (#2969)", () => {
+  const callbackWith = (allowlist: string | undefined, kv: MemoryKV): Promise<Response> =>
+    handleRequest(
+      new Request(`${ORIGIN}/auth/callback?code=c&state=abc`, {
+        headers: { Cookie: `${OAUTH_STATE_COOKIE}=abc` },
+      }),
+      { ...env(kv), NEST_SIGN_IN_ALLOWLIST: allowlist },
+      ctx,
+    );
+
+  it("refuses an account that is not on the list, and writes nothing about it", async () => {
+    // The account record is the first personal data the gallery holds about
+    // someone; #2691 has to be done before it holds any about non-operators.
+    stubGitHub({ id: 7, login: "stranger" });
+    const kv = new MemoryKV();
+    const response = await callbackWith("42", kv);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ error: { code: "not_invited" } });
+    expect(cookieNamed(response, SESSION_COOKIE)).toBeUndefined();
+    expect(cookieNamed(response, OAUTH_STATE_COOKIE)).toContain("Max-Age=0");
+    expect(await new AccountStore(kv).get(7)).toBeUndefined();
+    expect((await kv.list()).keys).toEqual([]);
+  });
+
+  it("matches on the numeric id, not the login", async () => {
+    // A login can be renamed and claimed by someone else; the id cannot.
+    stubGitHub({ id: 7, login: "kompiro" });
+    const response = await callbackWith("42", new MemoryKV());
+    expect(response.status).toBe(403);
+  });
+
+  it("accepts any id on a list separated by commas or whitespace", async () => {
+    stubGitHub({ id: 42, login: "kompiro" });
+    const response = await callbackWith(" 1001,\n42  7 ", new MemoryKV());
+    expect(response.status).toBe(303);
+  });
+
+  it.each([
+    ["unset", undefined],
+    ["empty", ""],
+    ["only separators", " , "],
+    ["a login instead of an id", "kompiro"],
+    ["an id with a typo", "42,4x"],
+    ["an id too large to hold exactly", "42,9007199254740993"],
+  ])("fails closed when the list is %s", async (_, allowlist) => {
+    // Neither "let everyone in" nor "quietly drop the bad entry": a typo that
+    // dropped the operator would lock them out without saying why.
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    stubGitHub({ id: 42, login: "kompiro" });
+    const kv = new MemoryKV();
+    const response = await callbackWith(allowlist, kv);
+    expect(response.status).toBe(503);
+    expect((await kv.list()).keys).toEqual([]);
   });
 });

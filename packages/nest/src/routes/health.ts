@@ -17,6 +17,7 @@ const REPORTED_BINDINGS = [
   "GITHUB_OAUTH_CLIENT_ID",
   "GITHUB_OAUTH_CLIENT_SECRET",
   "NEST_PUBLIC_ORIGIN",
+  "NEST_SIGN_IN_ALLOWLIST",
 ] as const satisfies readonly (keyof NestEnv)[];
 
 function configuredBindings(env: NestEnv): Record<string, boolean> {

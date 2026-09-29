@@ -78,6 +78,12 @@ export interface NestEnv {
    * can decide them.
    */
   NEST_PUBLIC_ORIGIN?: string;
+  /**
+   * GitHub numeric user ids allowed to sign in, separated by commas or
+   * whitespace (#2969). Keeps the gallery to its operator until #2691; see
+   * `auth/allowlist.ts`.
+   */
+  NEST_SIGN_IN_ALLOWLIST?: string;
   /** Deploy environment name, surfaced by `/healthz` for smoke checks. */
   ENVIRONMENT?: string;
 }

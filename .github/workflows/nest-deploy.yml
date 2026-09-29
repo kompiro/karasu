@@ -9,7 +9,8 @@ name: Deploy karasu-nest
 # `workflow_dispatch` only, for now. The service no longer reads anyone's
 # repository (#2590), so the data-processor obligations that used to hold this
 # shut are gone -- but a public submission surface still needs a ToS and a
-# privacy policy before it is opened past its operator (#2591). Automatic
+# privacy policy before it is opened past its operator (#2691). Until then
+# `NEST_SIGN_IN_ALLOWLIST` keeps sign-in to the operator (#2969). Automatic
 # deploys on `main` are the last wire to connect, not the first.
 
 on:
@@ -59,4 +60,10 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: packages/nest
+          # Must be stated, not inferred. The action picks a package manager by
+          # looking for a lockfile *in the working directory*; there is none in
+          # `packages/nest`, so it falls back to npm, and npm cannot install into
+          # a package.json carrying `workspace:*` (`EUNSUPPORTEDPROTOCOL`). The
+          # same fix as `docs-preview.yml`.
+          packageManager: pnpm
           command: deploy
