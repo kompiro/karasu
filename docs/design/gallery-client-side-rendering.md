@@ -1,0 +1,154 @@
+# ギャラリーの投稿をブラウザで描画する
+
+- **日付**: 2026-09-29
+- **ステータス**: 検討中
+- **関連**:
+  - 引き金 Issue: [#2993](https://github.com/kompiro/karasu/issues/2993)（経緯は [#2969](https://github.com/kompiro/karasu/issues/2969)、[#2992](https://github.com/kompiro/karasu/pull/2992)）
+  - 関連 ADR: [ADR-2592](../adr/2592-nest-as-a-gallery.md)（ギャラリーの構築、§6）、[ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)（決定 5: nest を app と別デプロイにする）、[ADR-2259](../adr/2259-permalink-payload-cap.md)（permalink の 8000 文字上限）、[ADR-9013](../adr/9013-cli-serve-mode.md)（serve mode の `hideEditor`）
+  - 関連 TPL: [TPL-2993](../test-perspectives/TPL-2993-third-party-content-runs-outside-session-origin.md)（本 PR で起こす proactive TPL）
+  - コード: `packages/nest/src/routes/gallery.ts`、`packages/nest/src/auth/session.ts`、`packages/app/src/components/AppShell.tsx`、`packages/app/src/ServeModeApp.tsx`
+
+## 背景・課題
+
+ギャラリーの投稿ページ（nest の `/g/<id>`）は、投稿された `.krs` を Worker 上で SVG に描画して返している。大きなモデルでは、この形が両端で合わない。
+
+- **コストが Worker に載る。** 既定のページは全ビュー（ドリルダウン先を含む）を 1 枚の SVG にまとめる。運用者が投稿した Dify の reverse（355KB、21 ドメイン）は、1 回の描画に Worker の CPU を約 600ms（初回 740ms）使い、8.4MB の SVG を返す。#2992 は `cpu_ms` を 5 秒に上げてこれを収めたが、描画コストはドメイン数に比例して増えるので、上限を上げ続ける形になる。
+- **読み手が受け取るのは絵であってモデルではない。** app（`packages/app`）はブラウザ側で描画し、ドリルダウン・ビュー切り替え・検索ができる。静的な SVG ではそれが失われる。
+
+描画をサーバーからブラウザへ移せば、両方が同時に解ける。
+
+## 現状（インベントリ）
+
+| 観点 | 現状 |
+| --- | --- |
+| nest の投稿ページ | サーバーで HTML と SVG を組み立てる。クライアント JS は無い（ADR-2592 §6） |
+| nest の本文取得 | `/g/<id>?format=krs` がテキストで返す。unlisted は所有者以外に「存在しない」と同じ 404（`routes/gallery.ts` の `visibleSubmission`） |
+| nest のセッション cookie | `__Host-` / `HttpOnly` / `Secure` / `SameSite=Lax` / `Path=/`（`auth/session.ts`）。状態を変えるリクエストは `Origin` の一致を検査する（`sameOrigin`） |
+| app の描画 | ブラウザの main thread で `compileProject` を呼ぶ。Web Worker を使うのは Monaco エディタだけ（`monaco-setup.ts`） |
+| app の読み取り専用表示 | serve mode が `<AppShell hideEditor />` を使う（`ServeModeApp.tsx:106`） |
+| app の preview の依存 | `PreviewColumn` は `PreviewProvider` の context を前提にし、その値は `AppShell` がエディタ側の hook（`useAppViews` / `useEditorDocument` など）から組み立てる |
+| app のブラウザ保存 | テーマ・言語・パネル幅などを `localStorage` に、プロジェクトを OPFS に保存する |
+
+## 制約・前提
+
+- **app に nest への接続口を追加しない。** app（`packages/app` の配信物）はクライアントサイドで完結させ、nest の本文を取りに行く経路・中継ルート・nest からの埋め込みを受ける設定を持たせない。app のコンポーネントをコードとして再利用するのは構わない
+- **第三者が書いた内容を、セッションを持つ origin の権限で描画しない。** viewer が描画する `.krs`（label・description・link）は他人が書いたものである。nest のセッション cookie は `HttpOnly` なので script からは読めないが、同じ origin の script は cookie 付きで nest にリクエストを送れ、`Origin` 検査も通る。描画経路に XSS が 1 つあれば、閲覧した投稿者のアカウントで削除などが実行できる。ADR-2592 §6 がコンソールに「クライアント JS を置かない」とした理由と同じである（TPL-2993）
+- **公開範囲を広げない。** unlisted の投稿は、描画の経路を変えても「存在しない」と区別できないままにする
+- **8000 文字上限（ADR-2259）の適用範囲を変えない。** URL 埋め込みの面に対して有効なまま残す
+- **out of scope**: 閲覧した投稿を app に取り込んで編集する導線、投稿ページの OGP
+
+## 検討した選択肢
+
+### 案 A: app の Pages Function が nest をサーバー側で中継し、app で開く
+
+app の origin に中継ルート（`/g/<id>.krs`）を置き、app が同一 origin で本文を取得して読み取り専用で開く。
+
+- nest に CORS を足さずに済み、unlisted も構造的に見えない
+- **採らない。** app に nest への接続口を追加することになり、制約に反する
+
+### 案 B: nest に CORS を足し、app がブラウザから直接 fetch する
+
+- **採らない。** 案 A と同じく app に nest への接続口を足すことになる。加えて、nest の origin を別サイトから直接叩く形を公式に作ることになり、ADR-2592 §6 が避けた cross-site cookie の論点に近づく
+
+### 案 C: 本文を `/s?s=` に詰めて app に渡す
+
+- **採らない。** 8000 文字上限（ADR-2259）に掛かり、今回の対象（大きなモデル）が入らない
+
+### 案 D1: nest の投稿ページに viewer の script を直接載せる
+
+nest の `/g/<id>` が viewer の bundle を読み込み、同じ origin で描画する。
+
+- **採らない。** セッションを持つ origin で第三者の内容を描画することになる（制約 2）
+- bundle を app の origin から配っても（`<script src="https://<app origin>/viewer.js">`）同じである。script がどの origin の権限で走るかは、読み込んだ document の origin で決まり、script ファイルの置き場所では決まらない。加えて nest が app のデプロイを信頼することになり、ADR-2578 決定 5 で分けた 2 つのデプロイの被害範囲がつながる
+
+### 案 D2: nest が cookie の届かない別ホストで viewer を配る
+
+nest に閲覧専用のホスト名（別のサブドメインや別の Worker）を足し、そこから viewer を配る。セッション cookie は `__Host-` で元のホストに閉じているので届かない。
+
+- 安全性は D4 と同等
+- ホスト名・ルーティング・証明書を 1 組増やし、その運用が続く。D4 は同じ分離を 1 つのホストで得られるので、**D4 を優先する**
+
+### 案 D3: nest のページに app の閲覧 URL を iframe で埋め込む
+
+- **採らない。** 案 A の app 側の中継が前提であり、app に nest からの埋め込みを受ける設定も要る（制約 1）
+
+### 案 D4: nest が origin を持たない sandbox の中で viewer を配る
+
+nest に閲覧用のルート（`/g/<id>/view`）を足し、その応答に `Content-Security-Policy: sandbox allow-scripts` を付ける。`allow-same-origin` を付けないので、この document は **origin を持たない（opaque origin）** 状態で動く。投稿ページ（`/g/<id>`）は、このルートを `sandbox="allow-scripts"` 付きの `<iframe>` で埋め込むだけで、自身は引き続きクライアント JS を持たない。
+
+- **セッションから構造的に切り離される。** opaque origin の document は cookie を読めず、そこから出るリクエストはサイトをまたぐ扱いになるので `SameSite=Lax` のセッション cookie が付かない。`Origin: null` になるので、nest の `sameOrigin` 検査でも弾かれる。描画経路に XSS があっても、セッションの権限には届かない
+- **本文は応答に埋め込む。** `/g/<id>/view` はサーバーで `.krs` を JSON として HTML に埋め込んで返し、viewer は起動時にそれを読む。viewer 自身は nest にリクエストを送らない。unlisted の判定は `visibleSubmission` をそのまま使う
+- **app の配信物は変わらない。** viewer は app のコンポーネントを再利用した別ビルドとして作り、nest だけが配る
+- **描画はブラウザで行う。** 投稿ページ・閲覧ルートのどちらも Worker は SVG を描かない。Worker の仕事は KV から本文を読んで HTML に埋めるだけになる
+- 費用: viewer をエディタから切り離すリファクタと、nest に静的アセット（viewer の bundle）の配信を足すこと。Workers の静的アセット配信は Worker のスクリプトを起動しないので、CPU の費用は増えない
+
+### 案 E: nest を API 専用の Worker と Pages のフロントに分ける
+
+nest の Worker は JSON の API だけを返し、ギャラリー・コンソール・viewer は別の Pages プロジェクト（例: `karasu-nest.pages.dev`）が静的な JS として配る。
+
+- **費用の問題を解くのは「描画をブラウザに移すこと」で、それは D4 で得られる。** Worker の CPU を使っていたのは SVG の描画で、HTML の組み立てや KV の読み出しは数 ms で終わる。フロントを Pages に移すことで上乗せで減る分は小さい
+- **origin を分けると、セッションの扱いが問題になる。** `*.pages.dev` と `*.workers.dev` はどちらも Public Suffix List に載っており、別のサイトになる
+  - Pages の JS から Worker の API を直接呼ぶと、CORS とサイトをまたぐ cookie が要る。`SameSite=Lax` の cookie はサイトをまたぐ fetch では送られず、サードパーティ cookie のブロックにも当たる。ADR-2592 §6 がコンソールについて避けた形そのものである
+  - Pages Functions から service binding で Worker に中継して同じ origin にまとめると CORS は要らないが、セッションと JS が同じ origin に同居する。viewer を D4 と同じく opaque origin に隔離する設計が別途要る
+- **コンソールをクライアント JS で作り直すことになる。** ADR-2592 §6 の「コンソールにクライアント JS を置かない」を覆す判断で、規模も D4 より大きい
+- **現時点では採らない。** 利用者が増えてコンソールの UI を作り込む段階になったら別の Issue として設計する
+
+## 比較
+
+| 観点 | A（app 中継） | B（CORS） | C（URL 埋め込み） | D1（同一 origin） | D2（別ホスト） | D3（app を iframe） | D4（opaque sandbox） | E（API + Pages） |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| app に接続口を足さない | ✗ | ✗ | ✓ | ✓ | ✓ | ✗ | ✓ | ✓ |
+| 大きなモデルを開ける | ✓ | ✓ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| セッションと分離 | ✓ | ✓ | ✓ | ✗ | ✓ | ✓ | ✓ | 設計次第 |
+| 追加の運用 | 予約語 1 つ | CORS 設定 | なし | なし | ホスト 1 組 | ヘッダ | 静的アセット | Pages 1 つ + コンソール作り直し |
+
+## 現時点の方針
+
+**案 D4 を採用する。** app に手を入れずに描画をブラウザへ移し、第三者の内容をセッションの権限から切り離したまま、1 つのホストで完結するのは D4 だけである。D2 は同じ分離をホスト名 1 組の運用と引き換えに得る形なので、D4 が成り立たないと分かったときの退避先として残す。
+
+ADR-2592 §6 との関係: §6 が守っているのは「セッションを持つ document にクライアント JS を置かない」ことである。D4 でも投稿ページ・コンソールの document は JS を持たず、JS は opaque origin の別 document（iframe）でだけ走る。§6 の決定は変えない。
+
+### スライス（実装ステップ）
+
+| スライス | 前提 | 独立に出荷できる理由 |
+| --- | --- | --- |
+| **0** spike: opaque sandbox で viewer が動くかを測る | なし | マージしない。結論は Issue に残す |
+| **A** viewer のビルドを作る（app のコンポーネントを再利用） | 0 | app の配信物は変わらない。viewer は単体でテストできる |
+| **B** nest の閲覧ルートと投稿ページの iframe 化 | A | 既定の投稿ページから SVG 描画が消える。`?format=svg` は残るので、ダウンロード経路は壊れない |
+
+### 実装の指針
+
+1. **spike（スライス 0）**: `spike/2993-opaque-sandbox-viewer` で、`AppShell hideEditor` 相当を opaque origin の document で起動し、次を確かめる
+   - `localStorage` / OPFS へのアクセスが例外を投げる箇所を洗い出し、保存を諦めても表示が成立するか
+   - Dify のモデル（355KB）の初回描画時間と bundle サイズ
+   - CSP で読み込める script を viewer のアセットに限る書き方（opaque origin での `'self'` の扱いを含む）
+2. **viewer（スライス A）**: app のコンポーネントを再利用した別エントリとしてビルドする。置き場所（`packages/app` の別エントリか、新しいパッケージか）は spike の結果で決める。viewer は
+   - 起動時に document に埋め込まれた本文を読み、メモリ上のプロジェクトとして開く
+   - エディタを持たない（`hideEditor`）
+   - ネットワークに出ない。ブラウザ保存が使えないときは既定値で動く
+3. **nest（スライス B）**
+   - `wrangler.toml` に静的アセット（viewer の bundle）を足す
+   - `/g/<id>/view`: `visibleSubmission` で可視判定し、本文を JSON として埋めた HTML を返す。応答ヘッダに `Content-Security-Policy: sandbox allow-scripts; ...` を付ける。埋め込みは `</script>` を含む本文でも壊れないようにエスケープする
+   - `/g/<id>`: 既定の表示を `<iframe sandbox="allow-scripts" src="/g/<id>/view">` に置き換え、サーバー側の SVG 描画をやめる。`?format=svg` と `?format=krs` は残す
+   - キャッシュは既存の投稿ページと同じ扱い（公開投稿を所有者以外が見るときだけ `public, max-age=600`、`Vary: Cookie`）
+4. **テスト**
+   - `/g/<id>/view` の応答が `sandbox` を含み `allow-same-origin` を含まない CSP を持つ
+   - `/g/<id>` の iframe が `sandbox="allow-scripts"` だけを持つ
+   - unlisted は所有者以外に 404 で、存在しない投稿と同じ応答
+   - 本文に `</script>` を含む投稿でも HTML が壊れない
+   - 既定の投稿ページが SVG を描画しない（描画関数を呼ばない）
+   - e2e: 投稿ページで viewer が起動し、ドリルダウンできる
+5. **AT**: `docs/acceptance/2993-gallery-client-side-rendering.md`。手動項目は、Dify の投稿がブラウザで描画されドリルダウンできること、viewer の iframe から nest の削除操作が通らないこと
+6. **ADR 昇格**: 実装完了後に `docs/adr/2993-gallery-client-side-rendering.md` として昇格し、本 Design Doc は同じ PR で削除する
+
+### 影響範囲・マイグレーション
+
+- 既存ユーザーへの影響: 投稿ページの見た目が静的な SVG から操作できる viewer に変わる。`?format=svg` / `?format=krs` のリンクは変わらない
+- ドキュメント更新: `packages/nest/README.md`
+- テスト・examples への影響: nest の投稿ページのテストが SVG の存在を検査している箇所は書き換える
+
+## 未解決の問い / 決めないこと
+
+- **viewer の置き場所**（`packages/app` の別エントリか、新しいパッケージか）は spike の結果で決める
+- **D4 が成り立たなかった場合**（opaque origin で viewer が起動しない、など）は D2（別ホスト）に退避する
+- **Worker を無料プラン（CPU 上限 10ms）へ戻せるか**は、実装後に測って決める。重い描画は無くなるが、投稿時の構文検査で大きな `.krs` を parse する時間が 10ms に収まるかは未計測である
