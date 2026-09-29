@@ -1,15 +1,39 @@
-# Dependabot トリアージ 2026-09-29
+---
+id: ADR-2983
+title: Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upstream の regression なので差し替えず 30.1.1 の bot 提案を待ち、@types/vscode 1.138 は ExTester の上限まで保留する
+status: accepted
+date: 2026-09-29
+topic: build
+related_to:
+  - ADR-2782
+  - ADR-2562
+  - ADR-2671
+  - ADR-2474
+  - ADR-2152
+  - ADR-784
+  - ADR-2839
+  - ADR-2877
+scope:
+  packages: [app, docs-site, vscode, vscode-e2e]
+  concerns: [ci, dependencies]
+assumptions:
+  - "file: scripts/ci/vscode-version-policy.test.ts"
+  - "grep: .github/workflows/docs-preview.yml :: Bot"
+---
+
+# ADR-2983: Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upstream の regression なので差し替えず 30.1.1 の bot 提案を待ち、@types/vscode 1.138 は ExTester の上限まで保留する
 
 - **日付**: 2026-09-29
-- **ステータス**: 検討中
+- **ステータス**: 決定済み
 - **関連**:
+  - Design Doc PR: [#2983](https://github.com/kompiro/karasu/pull/2983)（本 ADR に昇格し削除）
   - 対象 Dependabot PR: [#2971](https://github.com/kompiro/karasu/pull/2971) / [#2972](https://github.com/kompiro/karasu/pull/2972) / [#2973](https://github.com/kompiro/karasu/pull/2973) / [#2974](https://github.com/kompiro/karasu/pull/2974) / [#2975](https://github.com/kompiro/karasu/pull/2975) / [#2976](https://github.com/kompiro/karasu/pull/2976) / [#2977](https://github.com/kompiro/karasu/pull/2977) / [#2978](https://github.com/kompiro/karasu/pull/2978)
-  - VS Code floor と ExTester の `vscode-max`: [ADR-2782](../adr/2782-vscode-floor-capped-by-extester.md)
-  - `types == engines` の追随規則: [ADR-2562](../adr/2562-dependabot-triage-2026-08-17.md)
-  - vitest group（exact peer を同一 PR に束ねる）: [ADR-2671](../adr/2671-dependabot-triage-2026-08-31.md)
-  - 差し替え PR の語彙と「rebase だけでは差し替えない」: [ADR-2474](../adr/2474-dependabot-replacement-pr-vocabulary.md)、[ADR-2152](../adr/2152-dependabot-triage-2026-07-27.md)
-  - cooldown 7 日: [ADR-784](../adr/784-update-dependencies-20260421.md)
-  - 週次 workflow の schedule 停止: [ADR-2839](../adr/2839-pause-dependabot-triage-schedule.md)
+  - VS Code floor と ExTester の `vscode-max`: [ADR-2782](2782-vscode-floor-capped-by-extester.md)
+  - `types == engines` の追随規則: [ADR-2562](2562-dependabot-triage-2026-08-17.md)
+  - vitest group（exact peer を同一 PR に束ねる）: [ADR-2671](2671-dependabot-triage-2026-08-31.md)
+  - 差し替え PR の語彙と「rebase だけでは差し替えない」: [ADR-2474](2474-dependabot-replacement-pr-vocabulary.md)、[ADR-2152](2152-dependabot-triage-2026-07-27.md)
+  - cooldown 7 日: [ADR-784](784-update-dependencies-20260421.md)
+  - 週次 workflow の schedule 停止: [ADR-2839](2839-pause-dependabot-triage-schedule.md)
   - 運用ルール: `.claude/rules/dependabot.md`, `docs/release.md`「Dependabot 運用ルール」
 
 ## 背景
@@ -179,14 +203,45 @@ provenance なし（従来から）。
   （`.claude/rules/dependabot.md`「advisory の脆弱範囲を override / 宣言レンジと突き合わせる」に該当）
 
 #2976 の再解決は偶然これを解消するが、#2976 は保留なので当てにしない。override の floor を `^7.29.1` に上げる
-security PR を `security-alert` skill の手順で別に出す。
+security PR を `security-alert` skill の手順で別に出した（Issue [#2985](https://github.com/kompiro/karasu/issues/2985)、
+修正 PR [#2986](https://github.com/kompiro/karasu/pull/2986)。判断は同 Issue 番号の ADR に記録する）。
 
-## 現時点の方針
+## 決定
 
-1. 採用 6 件を 1 件ずつマージする（lock が衝突するため、マージごとに次の PR へ `@dependabot rebase`）。
-   順序は影響の小さい順に #2978 → #2971 → #2974 → #2972 → #2975 → #2977
-2. #2976 は open のまま保留し、次回 weekly run で 30.1.1 の PR に supersede されるのを待つ
-3. #2973 は open のまま保留し、ExTester が `vscode-max >= 1.138` を出して cooldown を満たしたら、
-   ExTester の bump と floor 引き上げを ADR-2782 の手順で入れる
-4. alert #75 は別の security PR で処理する
-5. 本 Doc は採否の確定後に ADR へ昇格する（保留 2 件と、docs build が CI に無い点の記録が主目的）
+**採用 6 件は bot PR をそのままマージし、jsdom と `@types/vscode` の 2 件は保留として open のまま残す。**
+`@dependabot ignore` はどこにも設定しない。
+
+| PR | 判定 | 反映 |
+| --- | --- | --- |
+| #2978 / #2971 / #2974 / #2972 / #2975 / #2977 | 採用 | bot PR をマージ。lock が衝突するため #2978 → #2971 → #2974 → #2972 → #2975 → #2977 の順に 1 件ずつ入れ、各マージの後に次の PR へ `@dependabot rebase` を掛けて CI を通し直した |
+| #2976 `jsdom` | 保留 | open のまま。次回 weekly run が 30.1.1 の PR で supersede するのを待つ |
+| #2973 `@types/vscode` | 保留 | open のまま。ExTester が `vscode-max >= 1.138` を出し cooldown を満たしたら、ExTester の bump と floor の引き上げを ADR-2782 の手順でまとめて入れる |
+
+## 理由
+
+- 採用 6 件は、publisher・provenance・lifecycle script・依存エッジ・advisory・cooldown のいずれにも懸念が無かった（「PR ごとの分析」）
+- #2976 を差し替え PR にしなかったのは、bot の diff の形ではなく版の問題だからである。差し替え PR は「bot が作れる diff の形では
+  正しい変更にならないとき」に限る（`.claude/rules/dependabot.md`、ADR-2474）。30.1.1 は bot 起票時点で cooldown 未達で、
+  bot は規則どおりに動いている
+- #2973 はパッケージ自体に問題は無く、ADR-2782 の上限（ExTester の `vscode-max`）が外れるまで入れられない。機械チェック
+  （`vscode-version-policy.test.ts`）がそのとおり止めた
+- #2977 は CI が docs site をビルドしないため、PR ブランチでのローカルビルドを採用の条件にした
+
+## 却下した案
+
+### #2976 を 30.1.1 の差し替え PR で今すぐ入れる
+
+`packages/app/package.json` を `"jsdom": "^30.1.1"` にすれば、コード・テストの変更なしで CI は通る（ローカルで確認済み）。
+1 週間早く入るが、devDependency のテスト環境で急ぐ理由が無く、規則の例外を作るほどの利得が無い。
+
+### #2976 の regression に合わせて repo 側のテストを直す
+
+原因は jsdom の regression（spec 上正しくない `blur`）で、upstream が既に直している。repo 側で回避を入れると、
+30.1.1 を入れた後に不要なコードが残る。
+
+## 残した観察
+
+- 全 PR の再解決で vitest の `vite` peer が既存の 8.3.0 に寄る。lock が同じ hunk で衝突するので、weekly バッチは
+  1 件ずつのマージと rebase が前提になる
+- docs site のビルドは bot PR の CI に無い（`docs-preview.yml` は bot をスキップし、`reference-docs-check.yml` は
+  `astro build` を回さない）。docs-site の依存を上げる bot PR は、今回のように手でビルドを確かめる必要がある
