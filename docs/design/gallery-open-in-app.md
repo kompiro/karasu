@@ -108,6 +108,17 @@ nest に閲覧専用のホスト名（例: `view.` のサブドメインや別�
 - 追加の費用は、iframe の高さの扱いと、app 側で `frame-ancestors` を nest の origin に絞るヘッダ（現状 app は framing を制限していないので、埋め込み元を明示する機会にもなる）
 - **案 A の上に足せる。** A が前提で、A 単体でも「Open in app」リンクとして成立する
 
+### 案 E: nest を API 専用の Worker と Pages のフロントに分ける
+
+nest の Worker は JSON の API だけを返し、ギャラリー・コンソール・viewer は別の Pages プロジェクト（例: `karasu-nest.pages.dev`）が静的な JS として配る。描画はブラウザで行う。
+
+- **費用の問題を解くのは「描画をブラウザに移すこと」で、それは案 A で得られる。** Worker の CPU を使っていたのは SVG の描画で、HTML の組み立てや KV の読み出しは数 ms で終わる。フロントを Pages に移すことで上乗せで減る分は小さい
+- **origin を分けると、セッションの扱いが問題になる。** `*.pages.dev` と `*.workers.dev` はどちらも Public Suffix List に載っており、別のサイトになる
+  - Pages の JS から Worker の API を直接呼ぶと、CORS とサイトをまたぐ cookie が要る。`SameSite=Lax` の cookie はサイトをまたぐ fetch では送られず、サードパーティ cookie のブロックにも当たる。ADR-2592 §6 がコンソールについて避けた形そのものである
+  - Pages Functions から service binding で Worker に中継して同じ origin にまとめると CORS は要らないが、セッションと JS が同じ origin に同居する。viewer が第三者の `.krs` を描画するので、D1 と同じ問題が起きる。防ぐには viewer を `sandbox="allow-scripts"`（`allow-same-origin` なし）の iframe に入れ、origin を持たない状態で描画させる設計が要る
+- **コンソールをクライアント JS で作り直すことになる。** ADR-2592 §6 の「コンソールにクライアント JS を置かない」を覆す判断で、規模も案 A より大きい
+- **現時点では採らない。** 利用者が増えてコンソールの UI を作り込む段階になったら別の Issue として設計する。その場合の前提は、service binding による同一 origin 化と、origin を持たない iframe による viewer の隔離の 2 点である
+
 ## 比較
 
 | 観点 | 案 A（中継） | 案 B（CORS） | 案 C（URL 埋め込み） | 案 D1（nest 同一 origin） | 案 D2（nest 別ホスト） | 案 D3（A + iframe） |
@@ -162,6 +173,8 @@ ADR-2592 §6 との関係は次のとおり整理する。§6 が却下したの
 - テスト・examples への影響: なし
 
 ## 未解決の問い / 決めないこと
+
+- **案 A の実装後に nest の Worker を無料プラン（CPU 上限 10ms）へ戻せるか**は、実装後に測って決める。重い描画は無くなるが、投稿時の構文検査で大きな `.krs` を parse する時間が 10ms に収まるかは未計測である
 
 - **案 D3（iframe 埋め込み）を A と同時に入れるか**は実装時に決める。入れる場合は、app の `/g/<id>` 応答に `Content-Security-Policy: frame-ancestors <nest origin>` を付け、nest のページは `sandbox` 付きの iframe で埋め込む。高さは preview が画面全体を使う前提の UI なので、固定高さ + 「全画面で開く」リンクで足りるかを試す
 
