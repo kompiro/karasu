@@ -98,7 +98,13 @@ function isVersionOnNpm({ name, version }: PackageVersion): boolean {
 function main(argv: string[]): void {
   const logIndex = argv.indexOf("--log");
   const logPath = logIndex >= 0 ? argv[logIndex + 1] : undefined;
-  const log = logPath && existsSync(logPath) ? readFileSync(logPath, "utf8") : "";
+  if (logIndex >= 0 && (!logPath || !existsSync(logPath))) {
+    // An absent log would read as "published nothing" and skip the
+    // release-commit check for this run's tags. It only happens when the
+    // publish step did not run, which is already a failure.
+    throw new Error(`--log ${logPath ?? "(missing path)"}: no publish output to read`);
+  }
+  const log = logPath ? readFileSync(logPath, "utf8") : "";
   const published = publishedPackages(log);
   const tags = argv.includes("--this-run")
     ? published
