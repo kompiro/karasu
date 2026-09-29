@@ -1,0 +1,16 @@
+import { chromium } from "/workspaces/karasu/.claude/worktrees/spike/2993-opaque-sandbox-viewer/node_modules/.pnpm/playwright@1.63.0/node_modules/playwright/index.mjs";
+const b = await chromium.launch();
+const p = await (await b.newContext({ viewport: { width: 1600, height: 1000 } })).newPage();
+const errs = []; p.on("pageerror", (e) => errs.push(String(e)));
+await p.goto("http://localhost:4700/g/small/view");
+await p.waitForSelector(".preview-container svg");
+const theme = () => p.evaluate(() => document.documentElement.dataset.theme);
+const a = await theme();
+await p.getByRole("button", { name: /Switch to/ }).click();
+await p.waitForTimeout(300);
+const b1 = await theme();
+await p.screenshot({ path: "theme-switched.png" });
+await p.getByRole("button", { name: /Switch to/ }).click();
+await p.waitForTimeout(300);
+console.log(JSON.stringify({ initial: a, afterClick: b1, afterSecondClick: await theme(), errs }));
+await b.close();
