@@ -79,7 +79,7 @@ nest に閲覧専用のホスト名（別のサブドメインや別の Worker�
 iframe で埋め込む形（投稿ページは JS を持たず、閲覧用の別ルートを `sandbox` 付きの iframe で入れる）も同じ隔離を得られるが、viewer が iframe の枠の大きさに縛られ、キーボード操作も iframe にフォーカスがあるときに限られる。app の preview（タブ・ツールバー・パンくず・キャンバス）をそのまま提供するには画面全体が要るので、ページそのものを sandbox にする。
 
 - **ページを開くリクエストには cookie が付く。** 所有者判定（自分の unlisted を見られるか）はサーバー側でこれまでどおり行える。隔離されるのは、描画された後のページで走る script である
-- **ページには form を置かない。** opaque origin のページから送る form は `Origin: null` になり、nest の `sameOrigin` 検査で弾かれる。コンソールやサインアウトへの導線は普通のリンク（ページ遷移）にする
+- **ページには form を置かない。** opaque origin のページから送る form は `Origin: null` になり、nest の `sameOrigin` 検査で弾かれる。コンソールへの導線は普通のリンク（ページ遷移）にし、サインアウトは遷移先のコンソールにある既存の form（`POST /auth/logout`）で行う
 
 - **セッションの権限から切り離される。** 守る性質は 2 つである。(1) script がセッションの資格情報に触れられない: opaque origin の document は cookie を読めない。(2) viewer からセッションの権限で状態を変えられない: script が出す fetch はサイトをまたぐ扱いになり `SameSite=Lax` のセッション cookie が付かず、`Origin: null` になるので nest の `sameOrigin` 検査でも弾かれる。nest で状態を変える操作（投稿・非公開化・差し替え・削除・アカウント削除・サインアウト）はすべて `POST` + `sameOrigin` なので、viewer からは通らない
   - **cookie が一切付かないわけではない。** viewer の script がページ遷移やポップアップ（`allow-popups`）で nest の URL を開くと、トップレベルの `GET` には `SameSite=Lax` の cookie が付く。これは許容する。遷移先は viewer の script の手を離れた別の document で、opaque origin からは中身を読めない。`GET` のルートは表示と読み出しだけで、状態を変えるのは `GET /auth/callback`（サインインの完了）と `GET /auth/login`（OAuth の開始）だけである。callback は `__Host-` の state cookie との二重送信検査（`routes/auth.ts`）を通らないと何もせず、viewer の script はその state を知り得ない。login は閲覧者自身のアカウントでサインインを始めるだけである

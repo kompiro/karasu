@@ -45,7 +45,7 @@ opaque origin で動かす場合、script が出す fetch には `SameSite=Lax` 
 第三者の内容を script で描画する面を足すとき:
 
 - [ ] その script が走る document の origin から、セッション cookie を読めないか（別ホスト、または opaque origin）
-- [ ] 状態を変える操作がすべて `POST` + `Origin` 検査で守られていて、`GET` で状態を変えるルートは script から起動されても害が無いか
+- [ ] 状態を変える `POST` のルートがすべて `Origin` 検査を持つか。状態を変える `GET` のルートは、それぞれに script から起動されても効かない固有の検査（例: OAuth の state の二重送信）があるか
 - [ ] 同じホストで分離するなら、応答の CSP に `sandbox` があり `allow-same-origin` が無いか（テストでヘッダを検査する）。iframe で埋め込む場合は iframe の `sandbox` 属性も同様か
 - [ ] 描画に要る本文は document に埋め込まれていて、viewer がセッションを持つ origin の API を叩かずに動くか
 - [ ] セッションを持つ document（一覧・コンソール）は、引き続きクライアント JS を持たないか
