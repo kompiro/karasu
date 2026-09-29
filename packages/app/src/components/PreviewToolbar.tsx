@@ -13,6 +13,8 @@ import { openReferenceWindow } from "../utils/open-reference-window.js";
 // and from the Reference signpost, so the base URL and the `/ja/` locale prefix
 // live in one module.
 import { docsSiteUrl } from "../utils/docs-site-links.js";
+import { useContext } from "react";
+import { PreviewToolbarExtrasContext } from "./preview-toolbar-extras.js";
 
 export interface PreviewToolbarProps {
   exportAvailable: boolean;
@@ -54,6 +56,7 @@ export function PreviewToolbar({
 }: PreviewToolbarProps) {
   const { activeView, previewFocused, onPreviewFocusToggle, onExportDrawio: drawio } = usePreview();
   const { t, locale } = useTranslation();
+  const extras = useContext(PreviewToolbarExtrasContext);
 
   return (
     <>
@@ -152,6 +155,7 @@ export function PreviewToolbar({
       >
         {previewFocused ? `↙ ${t("preview.focus.exit.label")}` : `↗ ${t("preview.focus.label")}`}
       </Button>
+      {extras}
     </>
   );
 }

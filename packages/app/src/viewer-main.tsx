@@ -11,7 +11,9 @@ import { KeyboardShortcutDispatcher } from "./keyboard/KeyboardShortcutDispatche
 import { TranslateProvider } from "./components/TranslateProvider.js";
 import { ObservableFileSystemProvider } from "./fs/observable-provider.js";
 import { useFileSelection } from "./hooks/useFileSelection.js";
-import { LocaleProvider } from "./i18n/index.js";
+import { LocaleProvider, useTranslation } from "./i18n/index.js";
+import { PreviewToolbarExtrasContext } from "./components/preview-toolbar-extras.js";
+import { Button } from "@/components/ui/button";
 import { ThemeProvider, useTheme } from "./theme/index.js";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./styles/index.css";
@@ -50,37 +52,35 @@ function ViewerApp() {
 }
 
 // Spike #2993: preferences cannot persist in an opaque origin (storage is an
-// in-memory shim), so offer an explicit switch that lasts for this page view.
-function ThemeSwitch() {
+// in-memory shim), so the viewer offers explicit switches on the toolbar that
+// last for this page view.
+function ViewerToolbarSwitches() {
   const { effectiveTheme, setTheme } = useTheme();
-  const next = effectiveTheme === "dark" ? "light" : "dark";
+  const { locale, setLocale } = useTranslation();
+  const nextTheme = effectiveTheme === "dark" ? "light" : "dark";
+  const nextLocale = locale === "ja" ? "en" : "ja";
   return (
-    <button
-      type="button"
-      onClick={() => setTheme(next)}
-      aria-label={`Switch to ${next} theme`}
-      style={{
-        position: "fixed",
-        right: 16,
-        bottom: 16,
-        zIndex: 1000,
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "6px 12px",
-        borderRadius: 6,
-        border: "1px solid var(--border-default, #444)",
-        background: "var(--bg-raised, #1e1e1e)",
-        color: "var(--text-primary, #eee)",
-        font: "12px system-ui, sans-serif",
-        cursor: "pointer",
-      }}
-    >
-      <span aria-hidden="true">{next === "light" ? "☀" : "☾"}</span>
-      {next === "light" ? "Light" : "Dark"}
-    </button>
+    <>
+      <Button
+        variant="actionable"
+        onClick={() => setTheme(nextTheme)}
+        aria-label={nextTheme === "light" ? "Switch to light theme" : "Switch to dark theme"}
+      >
+        {nextTheme === "light" ? "☀ Light" : "☾ Dark"}
+      </Button>
+      <Button
+        variant="actionable"
+        onClick={() => setLocale(nextLocale)}
+        aria-label={nextLocale === "en" ? "Switch to English" : "日本語に切り替える"}
+      >
+        {nextLocale === "en" ? "🌐 English" : "🌐 日本語"}
+      </Button>
+    </>
   );
 }
+
+// Built once: the switches read their state from context, not from props.
+const TOOLBAR_SWITCHES = <ViewerToolbarSwitches />;
 
 function Viewer() {
   const fs = useMemo(() => new ObservableFileSystemProvider(new InMemoryFileSystemProvider()), []);
@@ -89,8 +89,9 @@ function Viewer() {
       <CommandProvider>
         <KeyboardShortcutDispatcher />
         <TranslateProvider>
-          <ViewerApp />
-          <ThemeSwitch />
+          <PreviewToolbarExtrasContext.Provider value={TOOLBAR_SWITCHES}>
+            <ViewerApp />
+          </PreviewToolbarExtrasContext.Provider>
         </TranslateProvider>
       </CommandProvider>
     </AppProvider>
