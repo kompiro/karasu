@@ -130,6 +130,6 @@ describe("SubmissionStore", () => {
   });
 
   it("declares a cap far inside what KV holds", async () => {
-    expect(MAX_SUBMISSION_BYTES).toBe(256 * 1024);
+    expect(MAX_SUBMISSION_BYTES).toBe(1024 * 1024);
   });
 });

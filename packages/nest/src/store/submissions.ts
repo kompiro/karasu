@@ -30,13 +30,20 @@ import {
 import { purgeByPrefix } from "./sweep.js";
 
 /**
- * 256KB.
+ * 1MiB.
  *
- * A `.krs` is structure, not source: the largest model in `examples/` is a
- * few kilobytes, and a reverse of a substantial system lands in the tens. This
- * is a bound on abuse rather than a bound anyone modelling honestly will meet.
+ * A `.krs` is structure, not source, but a reverse of a large system at uniform
+ * domain depth is not small: the operator's model of Dify (21 domains, every
+ * table and use case) is 355KB and was refused by the 256KB this replaced
+ * (#2969). This is a bound on abuse, sized so an honest reverse of a large
+ * product fits with room to grow.
+ *
+ * Bytes are not what the Worker pays for, though. Rendering cost follows the
+ * number of domains and drill-down views more than the byte count, and the
+ * CPU budget in `wrangler.toml` is sized against that measurement, not this
+ * number. Raising this again means re-measuring there.
  */
-export const MAX_SUBMISSION_BYTES = 256 * 1024;
+export const MAX_SUBMISSION_BYTES = 1024 * 1024;
 
 /** How long a title may be. Long enough for a sentence, short enough for a list. */
 export const MAX_TITLE_LENGTH = 120;
