@@ -5,6 +5,8 @@
 import { defineConfig, mergeConfig } from "vite";
 import base from "./vite.config";
 
+const VIEWER_ASSET_DIR = "assets";
+
 export default mergeConfig(
   base,
   defineConfig({
@@ -16,7 +18,23 @@ export default mergeConfig(
       emptyOutDir: true,
       minify: true,
       sourcemap: false,
-      rollupOptions: { input: "viewer.html" },
+      rollupOptions: {
+        input: "viewer.html",
+        // The page nest serves is cached for up to ten minutes, and a
+        // redeploy replaces the whole asset set. With hashed names a cached
+        // page would ask for an entry the new deploy no longer has and show
+        // nothing (#2998). Stable names make it load the current bundle;
+        // the static assets are revalidated on every load, so they are never
+        // stale. The chunks the entry imports keep their hashes: only the
+        // entry that ships with them names them.
+        output: {
+          entryFileNames: `${VIEWER_ASSET_DIR}/viewer.js`,
+          assetFileNames: (asset) =>
+            asset.names.some((name) => name.endsWith(".css"))
+              ? `${VIEWER_ASSET_DIR}/viewer.css`
+              : `${VIEWER_ASSET_DIR}/[name]-[hash][extname]`,
+        },
+      },
     },
   }),
 );

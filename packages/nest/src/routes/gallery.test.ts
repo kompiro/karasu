@@ -23,7 +23,7 @@ vi.mock("../gallery/render.js", async (importOriginal) => {
 const TEMPLATE = [
   "<!doctype html><html><head><title>karasu</title></head><body>",
   '<!--GALLERY_HEADER--><div id="root"></div><!--KRS_SOURCE-->',
-  '<script type="module" crossorigin src="/assets/viewer-abc.js"></script>',
+  '<script type="module" crossorigin src="/assets/viewer.js"></script>',
   "</body></html>",
 ].join("");
 
@@ -99,7 +99,7 @@ describe("GET /g/<id>", () => {
     expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8");
     const body = await response.text();
     expect(embeddedSource(body)).toBe(KRS);
-    expect(body).toContain('src="/assets/viewer-abc.js"');
+    expect(body).toContain('src="/assets/viewer.js"');
     expect(body).toContain("kompiro");
     expect(body).not.toContain("<svg");
     expect(renderSubmission).not.toHaveBeenCalled();
