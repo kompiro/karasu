@@ -50,7 +50,7 @@ deploy されずに残り、しかも何も赤くならない。
 ## 決定
 
 `nest-deploy.yml` に `push: branches: [main]` を足し、`paths:` を nest 自身、nest が推移的に
-依存する workspace package、workflow ファイル自身に絞る。`paths:` と依存の一致は
+依存する workspace package、`pnpm-workspace.yaml`、workflow ファイル自身に絞る。`paths:` と依存の一致は
 `scripts/ci/nest-deploy-trigger.test.ts` で機械的に検査する。
 
 ## 理由
@@ -63,6 +63,10 @@ deploy されずに残り、しかも何も赤くならない。
   `devDependencies` の両方）を再帰的にたどり、見つかった各 package の `packages/<dir>/**` が
   `paths:` にあるかを確かめる。逆に、依存していない package が残っていても落とす。依存を
   足した PR がそのまま `paths:` の更新を求められるので、直し忘れが起きない。
+- `pnpm-workspace.yaml` を入れるのは、bundle される第三者コード（core 経由の `yaml` や
+  `smol-toml` など）の脆弱性修正が `overrides:` としてここに入り、どの `package.json` も
+  変えないためである。入れないと、修正が次の無関係な deploy まで Worker に届かない。
+  変更頻度は低い（2026-08 以降で 6 回。lockfile は 103 回）。
 - `concurrency: nest-deploy`（`cancel-in-progress: false`）がすでにあるので、merge が続いても
   deploy は順番に走り、途中で打ち切られない。
 - `workflow_dispatch` と `dry_run` は残す。push イベントには `inputs` が無いので、
@@ -78,6 +82,7 @@ deploy されずに残り、しかも何も赤くならない。
 - **`pnpm-lock.yaml` も `paths:` に入れる**: lockfile はほぼすべての Dependabot の merge で
   変わるので、nest と無関係な deploy が増える。nest や core の直接依存の更新であれば、
   `packages/nest/package.json` か `packages/core/package.json` が変わるので `paths:` に掛かる。
-  推移的な依存だけの更新は、次の deploy で取り込まれる。
+  推移的な依存だけの更新は、次の deploy で取り込まれる。ただし脆弱性修正の `overrides:` は
+  `pnpm-workspace.yaml` を変えるので、そちらで拾う。
 - **`paths:` を付けず、`main` への push ごとに deploy する**: 変更の大半は nest と無関係で、
   secret を持つ job を不要に走らせることになる。

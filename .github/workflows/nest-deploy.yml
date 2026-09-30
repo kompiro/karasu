@@ -18,9 +18,11 @@ name: Deploy karasu-nest
 # the deploy. scripts/ci/nest-deploy-trigger.test.ts walks the `workspace:`
 # dependencies of packages/nest and fails when one is missing here, so adding a
 # dependency (e.g. `@karasu-tools/app`) cannot silently stop deploys.
-# `pnpm-lock.yaml` is left out on purpose: it moves on nearly every Dependabot
-# merge, and a bump of nest's own dependencies already touches a package.json
-# listed below.
+# `pnpm-workspace.yaml` is listed because security fixes for bundled
+# third-party code (e.g. `yaml`, `smol-toml` via core) land there as
+# `overrides:` without touching any package.json. `pnpm-lock.yaml` is left out
+# on purpose: it moves on nearly every Dependabot merge, and a bump of a direct
+# dependency already touches a package.json listed below.
 #
 # `workflow_dispatch` stays for manual and `dry_run` deploys.
 
@@ -30,6 +32,7 @@ on:
     paths:
       - "packages/nest/**"
       - "packages/core/**"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/nest-deploy.yml"
   workflow_dispatch:
     inputs:

@@ -123,4 +123,11 @@ describe("karasu-nest deploy trigger", () => {
   it("redeploys when the workflow itself changes", () => {
     expect(trigger.paths).toContain(WORKFLOW_FILE);
   });
+
+  // Security fixes for bundled third-party code arrive as `overrides:` in
+  // pnpm-workspace.yaml and touch no package.json, so the package paths above
+  // would not see them.
+  it("redeploys when the workspace overrides change", () => {
+    expect(trigger.paths).toContain("pnpm-workspace.yaml");
+  });
 });

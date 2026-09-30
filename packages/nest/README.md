@@ -103,8 +103,8 @@ pnpm --filter @karasu-tools/nest typecheck
 `.github/workflows/nest-deploy.yml`, which runs wrangler with
 `workingDirectory: packages/nest` so the repo-root Pages config is not picked
 up. It runs on every push to `main` that touches this package, a workspace
-package it depends on (today `packages/core`), or the workflow itself
-(ADR-3000); `workflow_dispatch` stays for manual and `dry_run` deploys. When you
+package it depends on (today `packages/core`), `pnpm-workspace.yaml` (where
+security `overrides:` land), or the workflow itself (ADR-3000); `workflow_dispatch` stays for manual and `dry_run` deploys. When you
 add a `workspace:` dependency here, add its `packages/<dir>/**` to the
 workflow's `on.push.paths` in the same PR:
 `scripts/ci/nest-deploy-trigger.test.ts` fails until you do.
