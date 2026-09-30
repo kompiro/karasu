@@ -6,7 +6,7 @@
 
 > [English](README.md) · **日本語**（このファイル）
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/kompiro/karasu)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/kompiro/karasu)
 <a href="https://cloudflare.com"><img src="https://workers.cloudflare.com/built-with-cloudflare.svg" alt="Built with Cloudflare" height="20" /></a>
 
 **実在するシステムを理解し、進化させるための Architecture as Code。**

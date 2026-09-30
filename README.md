@@ -6,7 +6,7 @@
 
 > **English** (this file) · [日本語](README.ja.md)
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/kompiro/karasu)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/kompiro/karasu)
 <a href="https://cloudflare.com"><img src="https://workers.cloudflare.com/built-with-cloudflare.svg" alt="Built with Cloudflare" height="20" /></a>
 
 **Architecture as code for understanding and evolving real systems.**
