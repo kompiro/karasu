@@ -27,6 +27,7 @@ flowchart TD
   end
   ADR_357["ADR-357<br/>[app-ui] ProjectSelector の Rename 操作 — インライン入力欄パターン"]
   ADR_650["ADR-650<br/>[app-ui] グラフィカル diff ビューア"]
+  ADR_3000["ADR-3000<br/>[build] karasu-nest を main への push で自動 deploy し、対象 path..."]
   ADR_9013["ADR-9013<br/>[cli] CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
   ADR_9018["ADR-9018<br/>[app-ui] ProjectMode 初期コンテンツ — `examples/ec-platform` から..."]
   ADR_461 --> ADR_9006
@@ -41,6 +42,8 @@ flowchart TD
   ADR_2655 --> ADR_2578
   ADR_2969 --> ADR_2592
   ADR_357 --> ADR_9006
+  ADR_3000 --> ADR_2578
+  ADR_3000 --> ADR_2969
   ADR_9013 --> ADR_9006
   ADR_1990 -.supersedes.-> ADR_1783
   ADR_2578 -.supersedes.-> ADR_1990
@@ -72,6 +75,7 @@ flowchart TD
   class ADR_9006 accepted
   class ADR_357 ghost
   class ADR_650 ghost
+  class ADR_3000 ghost
   class ADR_9013 ghost
   class ADR_9018 ghost
 ```

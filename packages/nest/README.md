@@ -102,9 +102,17 @@ pnpm --filter @karasu-tools/nest typecheck
 `wrangler.toml` lives in this directory and is deployed by
 `.github/workflows/nest-deploy.yml`, which runs wrangler with
 `workingDirectory: packages/nest` so the repo-root Pages config is not picked
-up. The workflow is `workflow_dispatch` only: a public submission surface needs
-a ToS and a privacy policy before it is opened past its operator
-([#2591](https://github.com/kompiro/karasu/issues/2591)).
+up. It runs on every push to `main` that touches this package, a workspace
+package it depends on (today `packages/core`), or the workflow itself
+(ADR-3000); `workflow_dispatch` stays for manual and `dry_run` deploys. When you
+add a `workspace:` dependency here, add its `packages/<dir>/**` to the
+workflow's `on.push.paths` in the same PR:
+`scripts/ci/nest-deploy-trigger.test.ts` fails until you do.
+
+Deploying `main` does not open the gallery. Sign-in is limited to the operator
+by `NEST_SIGN_IN_ALLOWLIST` (ADR-2969), and widening that list waits on the
+ToS and privacy policy review
+([#2691](https://github.com/kompiro/karasu/issues/2691)).
 
 The workflow authenticates with the repository secret
 `CLOUDFLARE_NEST_API_TOKEN`, a Cloudflare API token used by this deploy only
