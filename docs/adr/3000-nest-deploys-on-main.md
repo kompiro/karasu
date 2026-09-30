@@ -13,7 +13,7 @@ scope:
 assumptions:
   - "file: scripts/ci/nest-deploy-trigger.test.ts"
   - "grep: .github/workflows/nest-deploy.yml :: branches: \\[main\\]"
-  - "grep: .github/workflows/nest-deploy.yml :: packages/core/\\*\\*"
+  - "grep: .github/workflows/nest-deploy.yml :: \"pnpm-workspace.yaml\""
   - "symbol: packages/nest/src/auth/allowlist.ts :: signInAllowlist"
 ---
 
