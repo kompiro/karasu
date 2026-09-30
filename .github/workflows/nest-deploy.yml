@@ -14,10 +14,11 @@ name: Deploy karasu-nest
 # that list.
 #
 # `paths:` is nest itself plus every workspace package it depends on,
-# transitively -- they are bundled into the Worker, so a change there changes
-# the deploy. scripts/ci/nest-deploy-trigger.test.ts walks the `workspace:`
+# transitively -- they are bundled into the Worker or, for `@karasu-tools/app`
+# (and through it `@karasu-tools/i18n`), built into the gallery viewer it
+# deploys as static assets (#2998), so a change there changes the deploy. scripts/ci/nest-deploy-trigger.test.ts walks the `workspace:`
 # dependencies of packages/nest and fails when one is missing here, so adding a
-# dependency (e.g. `@karasu-tools/app`) cannot silently stop deploys.
+# dependency cannot silently stop deploys.
 # `pnpm-workspace.yaml` is listed because security fixes for bundled
 # third-party code (e.g. `yaml`, `smol-toml` via core) land there as
 # `overrides:` without touching any package.json. `pnpm-lock.yaml` is left out
@@ -32,6 +33,8 @@ on:
     paths:
       - "packages/nest/**"
       - "packages/core/**"
+      - "packages/app/**"
+      - "packages/i18n/**"
       - "pnpm-workspace.yaml"
       - ".github/workflows/nest-deploy.yml"
   workflow_dispatch:

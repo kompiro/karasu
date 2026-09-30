@@ -121,7 +121,8 @@ cd packages/nest && npx wrangler dev
 `.github/workflows/nest-deploy.yml`, which runs wrangler with
 `workingDirectory: packages/nest` so the repo-root Pages config is not picked
 up. It runs on every push to `main` that touches this package, a workspace
-package it depends on (today `packages/core`), `pnpm-workspace.yaml` (where
+package it depends on (today `packages/core`, plus `packages/app` and
+`packages/i18n` for the gallery viewer), `pnpm-workspace.yaml` (where
 security `overrides:` land), or the workflow itself (ADR-3000); `workflow_dispatch` stays for manual and `dry_run` deploys. When you
 add a `workspace:` dependency here, add its `packages/<dir>/**` to the
 workflow's `on.push.paths` in the same PR:
