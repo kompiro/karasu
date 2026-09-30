@@ -20,9 +20,11 @@ export const ja: Partial<Translations> = {
   "theme.light": "ライト",
   "theme.dark": "ダーク",
 
-  // Gallery viewer (#2997): the theme switch on its preview toolbar.
+  // Gallery viewer (#2997): the theme and language switches on its preview toolbar.
   "viewer.theme.toLight.ariaLabel": "ライトテーマに切り替える",
   "viewer.theme.toDark.ariaLabel": "ダークテーマに切り替える",
+  "viewer.locale.toEnglish.ariaLabel": "英語に切り替える",
+  "viewer.locale.toJapanese.ariaLabel": "日本語に切り替える",
 
   // Settings pane — 表示。アイコンモードを主導線から外すため、
   // パンくず行からここへ移した（#2376）。

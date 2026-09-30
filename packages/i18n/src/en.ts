@@ -20,9 +20,11 @@ export const en: Translations = {
   "theme.light": "Light",
   "theme.dark": "Dark",
 
-  // Gallery viewer (#2997): the theme switch on its preview toolbar.
+  // Gallery viewer (#2997): the theme and language switches on its preview toolbar.
   "viewer.theme.toLight.ariaLabel": "Switch to the light theme",
   "viewer.theme.toDark.ariaLabel": "Switch to the dark theme",
+  "viewer.locale.toEnglish.ariaLabel": "Switch to English",
+  "viewer.locale.toJapanese.ariaLabel": "Switch to Japanese",
 
   // Settings pane — display. Icon mode moved here from the drill-path row to
   // take it out of the main flow (#2376).
