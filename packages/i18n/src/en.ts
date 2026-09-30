@@ -20,6 +20,10 @@ export const en: Translations = {
   "theme.light": "Light",
   "theme.dark": "Dark",
 
+  // Gallery viewer (#2997): the theme switch on its preview toolbar.
+  "viewer.theme.toLight.ariaLabel": "Switch to the light theme",
+  "viewer.theme.toDark.ariaLabel": "Switch to the dark theme",
+
   // Settings pane — display. Icon mode moved here from the drill-path row to
   // take it out of the main flow (#2376).
   "settings.display.title": "🖼 Display",

@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# The gallery viewer build (packages/app, `pnpm build:viewer`, #2997).
+dist-viewer/
 .DS_Store
 *.local
 .worktrees/

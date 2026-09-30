@@ -29,6 +29,10 @@ export type Translations = {
   "theme.light": string;
   "theme.dark": string;
 
+  // Gallery viewer (#2997): the theme switch on its preview toolbar.
+  "viewer.theme.toLight.ariaLabel": string;
+  "viewer.theme.toDark.ariaLabel": string;
+
   // Settings pane — display (#2376)
   "settings.display.title": string;
   "settings.displayMode.label": string;

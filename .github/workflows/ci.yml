@@ -142,3 +142,9 @@ jobs:
       # not only behind the `vscode-e2e` label. See Issue #1272 / TPL-1024.
       - name: Build (vscode)
         run: pnpm --filter karasu-vscode run build
+
+      # The gallery viewer (#2997) is a separate build of packages/app that the
+      # app's Pages output deliberately leaves out. Build it here so a change
+      # to a shared component that breaks it fails the PR, not nest's deploy.
+      - name: Build (gallery viewer)
+        run: pnpm --filter @karasu-tools/app run build:viewer
