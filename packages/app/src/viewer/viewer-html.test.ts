@@ -29,6 +29,17 @@ function runShim(win: Record<string, unknown>) {
   new Function("window", storageShimSource())(win);
 }
 
+// nest's src/gallery/viewer-page.ts fills these in the built page (#2998).
+describe("viewer.html placeholders the server fills", () => {
+  it.each(["<!--GALLERY_HEADER-->", "<!--KRS_SOURCE-->"])("has %s exactly once", (marker) => {
+    expect(html.split(marker)).toHaveLength(2);
+  });
+
+  it("puts the header before the app root", () => {
+    expect(html.indexOf("<!--GALLERY_HEADER-->")).toBeLessThan(html.indexOf('<div id="root">'));
+  });
+});
+
 describe("viewer.html storage shim (#2997)", () => {
   it("runs before the bundle", () => {
     expect(html.indexOf("data-storage-shim")).toBeLessThan(html.indexOf('type="module"'));
