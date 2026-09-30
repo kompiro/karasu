@@ -6,7 +6,7 @@
   - 引き金 Issue: [#2958](https://github.com/kompiro/karasu/issues/2958)
   - 前提 Issue: [#2966](https://github.com/kompiro/karasu/issues/2966)（トランク兄弟が共有する端点が兄弟の本数だけ平行移動される）
   - 関連 ADR: [ADR-2330](../adr/2330-ungrouped-routing-parity.md)（#2364 で ungrouped の集約トランクを却下）、[ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)（P2c: ガター・集約トランク・交差マーク）、[ADR-2631](../adr/2631-trunk-legibility-by-count.md)（本数チップ・帯・fan-out トランク）、[ADR-2598](../adr/2598-edge-routing-channel-capacity.md)（チャネル容量・レーン）、[ADR-1185](../adr/1185-parallel-edge-bundling.md)（束ねても edge identity は保つ）、[ADR-2521](../adr/2521-multi-system-pipeline-convergence.md)（共有ヘルパーに寸法フラグを足さない）
-  - 関連 TPL: [TPL-2958](../test-perspectives/TPL-2958-bundle-shared-geometry-survives-later-passes.md)（本設計で起こす proactive TPL）、[TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)、[TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md)、[TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)、[TPL-2631](../test-perspectives/TPL-2631-decoration-must-not-hide-a-crossing-mark.md)
+  - 関連 TPL: [TPL-2958](../test-perspectives/TPL-2958-bundle-shared-geometry-survives-later-passes.md)（本設計で起こす TPL。レーン分割の失敗は spike で観測した proactive、正規化の失敗は出荷済みの #2966 由来の retrospective）、[TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)、[TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md)、[TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)、[TPL-2631](../test-perspectives/TPL-2631-decoration-must-not-hide-a-crossing-mark.md)
   - コード: `packages/core/src/renderer/edge-routing-groups.ts`（`distributeGutterLanes` / `assignGutterLanes` / `fanOutGutterPorts`）、`edge-routing-lanes.ts`（`collectChannels`）、`crossing-marks.ts`、`edge-routing.ts`（`ownLabelSegment`）、`layout-geometry.ts`（`normalizeCoordinates`）、`layout-edges.ts`（`runRoutingChain`）
   - spike: `spike/2958-ungrouped-trunk-gate`（環境変数 `KRS_LANE_BUNDLES=1` で試作を有効化）
 
@@ -169,11 +169,12 @@ ADR-2330 の「ungrouped で集約トランクを使う」の却下は **refine 
 4. **正規化**: 点オブジェクトごとに 1 回だけ平行移動する（#2966）。
 5. **合流マーク**: 合流点を「兄弟が spine に乗る点」に一般化する。fan-in は `waypoints[corridor.i]`、fan-out は `waypoints[corridor.i + 1]` で、2 waypoint の経路では今の `waypoints[0]` / `waypoints[last]` と一致する。数字と帯の規則は ADR-2631 のまま。
 6. **ラベル区間**: 「そのエッジだけが持つ区間」を合流点の手前（fan-in）/ 分岐点の先（fan-out）の区間に一般化する。2 waypoint の経路では今の区間 0 / 最後と一致する。author の `label-position` / `label-offset` が勝つのは ADR-2631 と同じ。
+7. **流れに逆らう印（`groupBackward`）**: 束の兄弟からは外す。grouped 表示では逆向きのエッジが破線になるが、束の中の 1 本だけが破線だと、共有した線の一部だけが破線に見える。既存のトランク処理（`aggregateGroupTrunks` / `aggregateGroupSourceTrunks`）が同じ理由で外しているのと揃える（`edge-routing-groups.ts` のコメントと `edge-routing-groups.test.ts` の既存テスト）。逆向きであることは、束の合流の形と本数チップで読ませる。
 
 ### 実装の指針
 
 1. #2966 を先に直す（点オブジェクトごとに 1 回だけ平行移動）。単独でも grouped Dify の矢印がカードへ戻るので、先に出荷できる。
-2. `distributeGutterLanes` に束の判定を入れる。fan-in → fan-out → 単独の順に区間を作り、`assignGutterLanes` に渡す。兄弟には `trunkId` / `outTrunkId` を付ける。id は束ごとに一意にする（同じ target に入り方の違う束が 2 つありうる）。
+2. `distributeGutterLanes` に束の判定を入れる。fan-in → fan-out → 単独の順に区間を作り、`assignGutterLanes` に渡す。兄弟には `trunkId` / `outTrunkId` を付け、`groupBackward` を外す。id は束ごとに一意にし、既存トランクパスの id（`target.id` / `source.id`）とも衝突しない形にする（同じ target に入り方の違う束が 2 つありうるうえ、`fanOutGutterPorts` は同じ id の兄弟を 1 スロットにまとめる）。
 3. `collectChannels` で、同じ束の同一 run を 1 レーンにする。
 4. `crossing-marks.ts` の合流点と `ownLabelSegment` を、上の「確定したい細部」5・6 のとおり corridor の位置から求める形にする。
 5. 柵を更新する。
@@ -182,6 +183,7 @@ ADR-2330 の「ungrouped で集約トランクを使う」の却下は **refine 
      - ガターのレーン数が「束の数 + 単独の数」以下であること
      - 貫通 0、兄弟以外の共線ペア 0
      - 全チェーン後に、兄弟の共有区間が同一座標のまま残っていること（TPL-2958）
+     - grouped 表示で、束の兄弟に `groupBackward` が残っていないこと
 6. `pnpm bench:render` で Dify の描画時間が悪化していないことを確認する（束の判定は corridor ごとの点列比較で、O(E)）。
 7. AT: `docs/acceptance/2958-gutter-lane-bundling.md`。usecase 2 列 → resource の合成モデルを `index.krs` として app で開き、次を確認する。
    - ガターの束が本数チップと帯付きで 1 本に見える
