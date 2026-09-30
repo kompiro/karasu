@@ -52,7 +52,22 @@ export interface KVNamespaceLike {
   }>;
 }
 
+/**
+ * The Workers static-assets binding, narrowed to what this service uses:
+ * reading one staged file (`gallery/viewer-assets.ts`). Structural for the
+ * same reason as `KVNamespaceLike`.
+ */
+interface AssetsFetcherLike {
+  fetch(request: Request): Promise<Response>;
+}
+
 export interface NestEnv {
+  /**
+   * The gallery viewer's staged build (#2998, `wrangler.toml` `[assets]`).
+   * The Worker reads the page template from it; browsers load `/assets/*`
+   * from it directly.
+   */
+  ASSETS?: AssetsFetcherLike;
   /**
    * Accounts, sessions and submissions. One namespace, separated by key
    * prefix (`acct/`, `sess/`, `sub/`) rather than by binding, because account

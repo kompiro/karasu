@@ -2,6 +2,8 @@ node_modules/
 dist/
 # The gallery viewer build (packages/app, `pnpm build:viewer`, #2997).
 dist-viewer/
+# The same build staged for karasu-nest's static assets (#2998).
+viewer-assets/
 .DS_Store
 *.local
 .worktrees/

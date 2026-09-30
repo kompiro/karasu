@@ -2,7 +2,8 @@
 
 karasu-nest: the hosted gallery. A submitter reverse-engineers their own
 repository **in their own environment**, submits the resulting `.krs`, and this
-service stores it, renders it and serves it by id.
+service stores it and serves it by id. The reader's browser draws it: `/g/<id>`
+is the app's preview built as a standalone viewer (#2997, #2998).
 
 **It does not read anyone's repository.** That was the pivot
 [ADR-2578](../../docs/adr/2578-nest-retires-server-side-reverse.md) recorded:
@@ -26,29 +27,31 @@ so one address never resolves to two different things.
 
 ## Routes
 
-| Route                                    |                                                                         |
-| ---------------------------------------- | ----------------------------------------------------------------------- |
-| `GET /healthz`                           | Liveness, plus which bindings this deploy has (as booleans)             |
-| `GET /auth/login` → `GET /auth/callback` | Submitter sign-in                                                       |
-| `POST /auth/logout`                      | Revoke this session                                                     |
-| `POST /api/submissions`                  | Submit a `.krs` (JSON, authenticated)                                   |
-| `GET /g/<id>`                            | A submission, rendered. `?format=svg` / `?format=krs` for the raw forms |
-| `GET /console`                           | Manage your own submissions                                             |
+| Route                                    |                                                                              |
+| ---------------------------------------- | ---------------------------------------------------------------------------- |
+| `GET /healthz`                           | Liveness, plus which bindings this deploy has (as booleans)                  |
+| `GET /auth/login` → `GET /auth/callback` | Submitter sign-in                                                            |
+| `POST /auth/logout`                      | Revoke this session                                                          |
+| `POST /api/submissions`                  | Submit a `.krs` (JSON, authenticated)                                        |
+| `GET /g/<id>`                            | A submission, in the viewer. `?format=svg` / `?format=krs` for the raw forms |
+| `GET /assets/*`                          | The viewer's bundle, straight from the static assets (never the Worker)      |
+| `GET /console`                           | Manage your own submissions                                                  |
 
 ## Layout
 
-| Module          | Responsibility                                             |
-| --------------- | ---------------------------------------------------------- |
-| `src/index.ts`  | Package barrel                                             |
-| `src/worker.ts` | Workers entry. A default handler and nothing else          |
-| `src/app.ts`    | Route table and the single failure boundary                |
-| `src/router.ts` | Literal and `:param` path matching, 404 vs 405             |
-| `src/http.ts`   | Response helpers. Everything defaults to `no-store`        |
-| `src/env.ts`    | Bindings, plus the guard that refuses rather than degrades |
-| `src/auth/`     | The OAuth round trip and the session cookie                |
-| `src/store/`    | Accounts, sessions, submissions — keyed account-first      |
-| `src/gallery/`  | Validation, rendering, and the HTML                        |
-| `src/redact/`   | The structure-only scan, on ingress                        |
+| Module          | Responsibility                                                 |
+| --------------- | -------------------------------------------------------------- |
+| `src/index.ts`  | Package barrel                                                 |
+| `src/worker.ts` | Workers entry. A default handler and nothing else              |
+| `src/app.ts`    | Route table and the single failure boundary                    |
+| `src/router.ts` | Literal and `:param` path matching, 404 vs 405                 |
+| `src/http.ts`   | Response helpers. Everything defaults to `no-store`            |
+| `src/env.ts`    | Bindings, plus the guard that refuses rather than degrades     |
+| `src/auth/`     | The OAuth round trip and the session cookie                    |
+| `src/store/`    | Accounts, sessions, submissions — keyed account-first          |
+| `src/gallery/`  | Validation, `?format=svg` rendering, the HTML, the viewer page |
+| `src/redact/`   | The structure-only scan, on ingress                            |
+| `scripts/`      | Build time only: staging the viewer into `viewer-assets/`      |
 
 ## Conventions this package holds itself to
 
@@ -56,9 +59,15 @@ so one address never resolves to two different things.
   and the boundary in `app.ts` answers 503 naming the binding.
 - **No runtime dependencies beyond `@karasu-tools/core`.** The router exists
   instead of a framework, and the console is server-rendered HTML with plain
-  forms rather than a bundled front end.
-- **No client script.** The console is same-origin with the session cookie, so
-  any script served here would run with that session's authority.
+  forms rather than a bundled front end. `@karasu-tools/app` is a build-time
+  dependency only: its viewer build is deployed as static assets, never
+  bundled into the Worker.
+- **No script with the session's authority.** The console is same-origin with
+  the session cookie, so any script served there would run with that session's
+  authority; it has none. The one page with script, `/g/<id>`, is served under
+  `Content-Security-Policy: sandbox` without `allow-same-origin`, so its script
+  runs in an opaque origin, and `/viewer.html` is never served as a page of its
+  own (TPL-2993, `src/gallery/viewer-assets.ts`).
 - **The purge is a promise with a machine check.** Every KV prefix is
   account-first so deleting an account is one sweep, and
   `gallery-purge-coverage.test.ts` fails the build if a prefix escapes it
@@ -95,6 +104,15 @@ To wire it up on a deploy:
 ```
 pnpm --filter @karasu-tools/nest test
 pnpm --filter @karasu-tools/nest typecheck
+```
+
+To run the Worker locally, stage the viewer first; `wrangler.toml`'s `[assets]`
+directory does not exist until then (the deploy workflow runs the same step):
+
+```
+pnpm --filter @karasu-tools/core run build
+pnpm --filter @karasu-tools/nest run build:viewer
+cd packages/nest && npx wrangler dev
 ```
 
 ## Deploy

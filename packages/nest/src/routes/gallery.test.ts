@@ -1,17 +1,51 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { handleRequest } from "../app.js";
+import { renderSubmission } from "../gallery/render.js";
+import { VIEWER_TEMPLATE_PATH } from "../gallery/viewer-assets.js";
 import type { NestEnv, NestExecutionContext } from "../env.js";
 import { GalleryStore } from "../store/gallery-store.js";
 import { formatSubmissionId } from "../store/gallery-keys.js";
 import { MemoryKV } from "../testing/memory-kv.js";
 import { SESSION_COOKIE } from "../auth/session.js";
 
+// Wrapped so a test can tell whether the Worker drew SVG at all.
+vi.mock("../gallery/render.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../gallery/render.js")>();
+  return {
+    ...actual,
+    renderSubmission: vi.fn<typeof actual.renderSubmission>(actual.renderSubmission),
+  };
+});
+
+// The shape of `packages/app/viewer.html` as built: a title, the two
+// placeholders the route fills, and the bundle. `viewer-html.test.ts` in the
+// app pins the real template to the same placeholders.
+const TEMPLATE = [
+  "<!doctype html><html><head><title>karasu</title></head><body>",
+  '<!--GALLERY_HEADER--><div id="root"></div><!--KRS_SOURCE-->',
+  '<script type="module" crossorigin src="/assets/viewer-abc.js"></script>',
+  "</body></html>",
+].join("");
+
+/** A stand-in for the static-assets binding that serves the template only. */
+const assets = (template: string | null = TEMPLATE) => ({
+  requested: [] as string[],
+  async fetch(request: Request): Promise<Response> {
+    const path = new URL(request.url).pathname;
+    this.requested.push(path);
+    return path === VIEWER_TEMPLATE_PATH && template !== null
+      ? new Response(template, { headers: { "Content-Type": "text/html" } })
+      : new Response("Not found", { status: 404 });
+  },
+});
+
 const ctx: NestExecutionContext = { waitUntil: () => {} };
 const ORIGIN = "https://nest.example";
 const KRS = "system Shop {\n  service api\n}\n";
 const at = new Date("2026-08-02T00:00:00Z");
 
-const env = (kv: MemoryKV): NestEnv => ({
+const env = (kv: MemoryKV, binding = assets()): NestEnv => ({
+  ASSETS: binding,
   NEST_STORE: kv,
   NEST_PUBLIC_ORIGIN: ORIGIN,
   NEST_SIGN_IN_ALLOWLIST: "42 420",
@@ -21,6 +55,7 @@ async function seed(
   kv: MemoryKV,
   visibility: "public" | "unlisted" = "public",
   accountId = 42,
+  krs = KRS,
 ): Promise<{ id: string; cookie: string }> {
   const store = new GalleryStore(kv);
   await store.accounts.signIn(accountId, "kompiro", at);
@@ -30,7 +65,7 @@ async function seed(
   const { sessionId } = await store.sessions.issue(accountId, "kompiro", new Date());
   const submission = await store.submissions.create(
     accountId,
-    { title: "Shop <script>", krs: KRS, visibility },
+    { title: "Shop <script>", krs, visibility },
     at,
   );
   return {
@@ -39,23 +74,76 @@ async function seed(
   };
 }
 
-const get = (kv: MemoryKV, path: string, cookie?: string): Promise<Response> =>
+const get = (kv: MemoryKV, path: string, cookie?: string, binding = assets()): Promise<Response> =>
   handleRequest(
     new Request(`${ORIGIN}${path}`, { headers: cookie === undefined ? {} : { Cookie: cookie } }),
-    env(kv),
+    env(kv, binding),
     ctx,
   );
 
+/** The source the page embeds, read back the way the viewer reads it. */
+function embeddedSource(body: string): unknown {
+  const match = /<script type="application\/json" id="krs-source">([^<]*)<\/script>/.exec(body);
+  if (!match) throw new Error("no embedded source");
+  return JSON.parse(match[1]);
+}
+
 describe("GET /g/<id>", () => {
-  it("serves an HTML page with the diagram inline", async () => {
+  it("serves the viewer with the submission embedded, not a server-drawn diagram", async () => {
     const kv = new MemoryKV();
     const { id } = await seed(kv);
-    const response = await get(kv, `/g/${id}`);
+    const binding = assets();
+    vi.mocked(renderSubmission).mockClear();
+    const response = await get(kv, `/g/${id}`, undefined, binding);
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8");
     const body = await response.text();
-    expect(body).toContain("<svg");
+    expect(embeddedSource(body)).toBe(KRS);
+    expect(body).toContain('src="/assets/viewer-abc.js"');
     expect(body).toContain("kompiro");
+    expect(body).not.toContain("<svg");
+    expect(renderSubmission).not.toHaveBeenCalled();
+    expect(binding.requested).toEqual([VIEWER_TEMPLATE_PATH]);
+  });
+
+  it("serves the viewer as a sandbox without an origin (TPL-2993)", async () => {
+    const kv = new MemoryKV();
+    const { id, cookie } = await seed(kv);
+    for (const response of [await get(kv, `/g/${id}`), await get(kv, `/g/${id}`, cookie)]) {
+      const csp = response.headers.get("Content-Security-Policy") ?? "";
+      expect(csp.split(/\s+/)).toEqual(expect.arrayContaining(["sandbox", "allow-scripts"]));
+      expect(csp).not.toContain("allow-same-origin");
+    }
+  });
+
+  it("puts no form on the page, not even for the owner", async () => {
+    // A form sent from an opaque origin carries `Origin: null` and fails
+    // `sameOrigin`; the console is reached by a link instead.
+    const kv = new MemoryKV();
+    const { id, cookie } = await seed(kv);
+    const body = await (await get(kv, `/g/${id}`, cookie)).text();
+    expect(body).not.toMatch(/<form/i);
+    expect(body).not.toContain('target="_blank"');
+    expect(body).toContain(`<a href="/console/s/${id}">Manage</a>`);
+  });
+
+  it("embeds a source containing </script> without breaking out of the data block", async () => {
+    const kv = new MemoryKV();
+    const hostile =
+      'system S {\n  service a { label "</script><script>alert(1)</script> $& <!--" }\n}\n';
+    const { id } = await seed(kv, "public", 42, hostile);
+    const body = await (await get(kv, `/g/${id}`)).text();
+    expect(body).not.toContain("<script>alert(1)");
+    expect(body.match(/<\/script>/g)).toHaveLength(2); // the data block and the bundle
+    expect(embeddedSource(body)).toBe(hostile);
+  });
+
+  it("answers 503 when the viewer is not deployed, and does not cache it", async () => {
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    const response = await get(kv, `/g/${id}`, undefined, assets(null));
+    expect(response.status).toBe(503);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
   });
 
   it("escapes a title chosen by a stranger", async () => {
@@ -66,11 +154,12 @@ describe("GET /g/<id>", () => {
     expect(body).not.toContain("Shop <script>");
   });
 
-  it("serves the raw SVG and the .krs on request", async () => {
+  it("serves the raw SVG and the .krs on request, without the sandbox", async () => {
     const kv = new MemoryKV();
     const { id } = await seed(kv);
     const svg = await get(kv, `/g/${id}?format=svg`);
     expect(svg.headers.get("Content-Type")).toBe("image/svg+xml; charset=utf-8");
+    expect(await svg.text()).toContain("<svg");
     const krs = await get(kv, `/g/${id}?format=krs`);
     expect(await krs.text()).toBe(KRS);
   });

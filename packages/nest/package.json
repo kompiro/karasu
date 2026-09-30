@@ -6,14 +6,16 @@
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
+    "build:viewer": "pnpm --filter @karasu-tools/app run build:viewer && node scripts/stage-viewer.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts"
   },
   "dependencies": {
     "@karasu-tools/core": "workspace:*"
   },
   "devDependencies": {
+    "@karasu-tools/app": "workspace:*",
     "@types/node": "^26.6.2",
     "@vitest/coverage-v8": "^5.0.1",
     "typescript": "^7.0.2",

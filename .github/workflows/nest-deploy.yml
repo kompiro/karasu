@@ -60,6 +60,12 @@ jobs:
       - name: Build (core)
         run: pnpm --filter @karasu-tools/core run build
 
+      # The gallery page is packages/app's standalone viewer (#2998), staged
+      # into packages/nest/viewer-assets/ for wrangler.toml's `[assets]`.
+      # Without it wrangler stops on the missing directory, dry run included.
+      - name: Build (gallery viewer)
+        run: pnpm --filter @karasu-tools/nest run build:viewer
+
       # A dry run still bundles (`--dry-run`) rather than skipping the step.
       # Skipping it is how a deploy that could not bundle passed as a green dry
       # run until the first real deploy.
