@@ -110,6 +110,7 @@ flowchart TD
     ADR_2949["ADR-2949<br/>auto-merge する ADR-only PR は CodeRabbit の自動レビュー対..."]
     ADR_2983["ADR-2983<br/>Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upst..."]
     ADR_2985["ADR-2985<br/>Dependabot security alert 2026-09-29（`undici` の..."]
+    ADR_3000["ADR-3000<br/>karasu-nest を main への push で自動 deploy し、対象 path..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -120,12 +121,16 @@ flowchart TD
   ADR_2165["ADR-2165<br/>[parser] 論理ノードの containment 規則は `canContain` を唯一の定義とし、違反..."]
   ADR_2184["ADR-2184<br/>[resolver] 同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
   ADR_2209["ADR-2209<br/>[edges] エッジのプロパティブロックを additive に足し、位置引数 label は正式な sho..."]
+  ADR_2578["ADR-2578<br/>[project] karasu-nest は server-side reverse をやめ、投稿を預かるギャラ..."]
   ADR_2782["ADR-2782<br/>[vscode] VS Code の floor を 1.137 に上げ、ExTester の vscode-m..."]
+  ADR_2969["ADR-2969<br/>[project] 運用者だけの段階をコードで守る — サインインを数値 user id の許可リストに限る"]
   ADR_1296 --> ADR_8
   ADR_1628 --> ADR_1575
   ADR_1820 --> ADR_1314
   ADR_2124 --> ADR_1314
   ADR_2436 --> ADR_2419
+  ADR_3000 --> ADR_2578
+  ADR_3000 --> ADR_2969
   ADR_1974 --> ADR_1820
   ADR_2065 --> ADR_1314
   ADR_2065 --> ADR_1820
@@ -249,6 +254,7 @@ flowchart TD
   class ADR_2949 accepted
   class ADR_2983 accepted
   class ADR_2985 accepted
+  class ADR_3000 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost
@@ -258,5 +264,7 @@ flowchart TD
   class ADR_2165 ghost
   class ADR_2184 ghost
   class ADR_2209 ghost
+  class ADR_2578 ghost
   class ADR_2782 ghost
+  class ADR_2969 ghost
 ```
