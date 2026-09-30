@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>karasu</title>
+    <!--
+      The gallery viewer (#2997). Served under a page-level CSP sandbox without
+      allow-same-origin, so the document has an opaque origin. The server
+      replaces KRS_SOURCE below with the submission as JSON
+      (src/viewer/embedded-source.ts).
+    -->
+    <script data-storage-shim>
+      // An opaque-origin document throws on any Storage access. Replace both
+      // with in-memory stand-ins before the bundle reads them, so preferences
+      // fall back to defaults (and last for this page view) instead of
+      // crashing the viewer at startup. Tested by src/viewer/viewer-html.test.ts.
+      (function () {
+        function memoryStorage() {
+          var data = new Map();
+          return {
+            get length() {
+              return data.size;
+            },
+            key: function (i) {
+              return Array.from(data.keys())[i] ?? null;
+            },
+            getItem: function (k) {
+              k = String(k);
+              return data.has(k) ? data.get(k) : null;
+            },
+            setItem: function (k, v) {
+              data.set(String(k), String(v));
+            },
+            removeItem: function (k) {
+              data.delete(String(k));
+            },
+            clear: function () {
+              data.clear();
+            },
+          };
+        }
+        ["localStorage", "sessionStorage"].forEach(function (name) {
+          try {
+            window[name].length;
+          } catch (e) {
+            Object.defineProperty(window, name, { value: memoryStorage(), configurable: true });
+          }
+        });
+      })();
+    </script>
+    <script>
+      // Pre-paint theme, so a dark-scheme reader does not see a light flash.
+      (function () {
+        try {
+          document.documentElement.dataset.theme =
+            window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+              ? "light"
+              : "dark";
+        } catch (e) {
+          document.documentElement.dataset.theme = "dark";
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!--KRS_SOURCE-->
+    <script type="module" src="/src/viewer/main.tsx"></script>
+  </body>
+</html>

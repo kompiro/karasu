@@ -13,6 +13,8 @@ import { openReferenceWindow } from "../utils/open-reference-window.js";
 // and from the Reference signpost, so the base URL and the `/ja/` locale prefix
 // live in one module.
 import { docsSiteUrl } from "../utils/docs-site-links.js";
+import { useContext } from "react";
+import { PreviewToolbarSlotContext } from "./preview-toolbar-slot.js";
 
 export interface PreviewToolbarProps {
   exportAvailable: boolean;
@@ -54,6 +56,7 @@ export function PreviewToolbar({
 }: PreviewToolbarProps) {
   const { activeView, previewFocused, onPreviewFocusToggle, onExportDrawio: drawio } = usePreview();
   const { t, locale } = useTranslation();
+  const { extras, hideShare } = useContext(PreviewToolbarSlotContext);
 
   return (
     <>
@@ -108,14 +111,16 @@ export function PreviewToolbar({
         </DropdownMenu>
       </div>
 
-      <Button
-        variant="actionable"
-        onClick={onShare}
-        aria-label={t("preview.share.ariaLabel")}
-        disabled={!shareAvailable}
-      >
-        {t("preview.share.label")}
-      </Button>
+      {!hideShare && (
+        <Button
+          variant="actionable"
+          onClick={onShare}
+          aria-label={t("preview.share.ariaLabel")}
+          disabled={!shareAvailable}
+        >
+          {t("preview.share.label")}
+        </Button>
+      )}
 
       {/* Documentation links: the in-app Reference pop-out and the external
           docs site, grouped since both point at documentation. */}
@@ -152,6 +157,7 @@ export function PreviewToolbar({
       >
         {previewFocused ? `↙ ${t("preview.focus.exit.label")}` : `↗ ${t("preview.focus.label")}`}
       </Button>
+      {extras}
     </>
   );
 }
