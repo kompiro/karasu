@@ -44,6 +44,11 @@ describe("viewer.html storage shim (#2997)", () => {
       storage.setItem("n", 1 as unknown as string);
       expect(storage.getItem("karasu-theme")).toBe("light");
       expect(storage.getItem("n")).toBe("1");
+      // Keys are stringified on every method, as the real Storage does.
+      storage.setItem(7 as unknown as string, "seven");
+      expect(storage.getItem("7")).toBe("seven");
+      storage.removeItem(7 as unknown as string);
+      expect(storage.getItem("7")).toBeNull();
       expect(storage.length).toBe(2);
       expect(storage.key(0)).toBe("karasu-theme");
       expect(storage.key(5)).toBeNull();

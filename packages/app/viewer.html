@@ -26,13 +26,14 @@
               return Array.from(data.keys())[i] ?? null;
             },
             getItem: function (k) {
+              k = String(k);
               return data.has(k) ? data.get(k) : null;
             },
             setItem: function (k, v) {
               data.set(String(k), String(v));
             },
             removeItem: function (k) {
-              data.delete(k);
+              data.delete(String(k));
             },
             clear: function () {
               data.clear();
