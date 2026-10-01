@@ -597,10 +597,8 @@ export function renderFromLayout(
   } = buildLabelInputs(layoutResult.edges, layoutResult.nodes, edgeStyleFor);
   // Labels the pass could not seat clear under `label-display: auto` (#3022,
   // spike); `renderEdge` withholds them from the canvas for the hover tier.
-  const deferredLabels = new Set<number>();
-  const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects, edgeLines, {
-    deferred: deferredLabels,
-  });
+  const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects, edgeLines);
+  const deferredLabels = new Set(labelInputs.filter((l) => l.deferred).map((l) => l.index));
 
   const edgeStroke: { color: string; strokeWidth: number; from: string; to: string }[] = [];
   let edgeIndex = 0;

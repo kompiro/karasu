@@ -78,7 +78,10 @@ export const PROPERTY_SCHEMAS: Record<string, ValueSpec> = {
   // Progressive disclosure of edge labels (#3022, spike).
   "label-max-chars": {
     kind: "union",
-    specs: [{ kind: "ident-of", values: ["none"] }, { kind: "number", min: 1 }],
+    specs: [
+      { kind: "ident-of", values: ["none"] },
+      { kind: "number", min: 1 },
+    ],
   },
   "label-display": { kind: "ident-of", values: ["always", "auto", "hover"] },
 

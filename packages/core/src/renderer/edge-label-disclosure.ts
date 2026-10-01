@@ -12,7 +12,7 @@
  * importing each other.
  */
 
-export const ELLIPSIS = "…";
+const ELLIPSIS = "…";
 
 /** What `renderEdge` is told about one edge's label beyond its style. */
 export interface EdgeLabelDisclosure {

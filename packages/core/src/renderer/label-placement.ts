@@ -68,6 +68,13 @@ export interface LabelInput {
    * left, so it yields to them rather than the other way round.
    */
   late?: boolean;
+  /**
+   * Set by `resolveLabelPlacements` (#3022, spike): the pass could not seat this
+   * `deferrable` label clear, so the canvas withholds it. Written back onto the
+   * input rather than returned, which leaves the pass's signature as ADR-2360
+   * records it.
+   */
+  deferred?: boolean;
 }
 
 /**
@@ -99,11 +106,6 @@ export interface EdgeLine {
 interface LabelPlacementOptions {
   /** Max nudge steps to try on each side of the edge (candidates = 2·maxSteps + 1). */
   maxSteps?: number;
-  /**
-   * Out-parameter (#3022 spike): filled with the index of every `deferrable`
-   * label the pass could not seat clear. Absent = nothing is ever withheld.
-   */
-  deferred?: Set<number>;
 }
 
 // Cap on nudge steps per side. The resolver stops at the first (smallest) clear
@@ -798,8 +800,8 @@ export function resolveLabelPlacements(
     // be read. When even the best candidate still lands on a card, a label or a
     // foreign line, withhold it for the hover tier instead of drawing it into
     // the collision, and do not let it obstruct the labels that follow.
-    if (bestCost > 0 && label.deferrable && options.deferred) {
-      options.deferred.add(label.index);
+    if (bestCost > 0 && label.deferrable) {
+      label.deferred = true;
       continue;
     }
     obstacles.add(bestBox);
