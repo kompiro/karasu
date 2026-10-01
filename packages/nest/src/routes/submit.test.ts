@@ -64,6 +64,14 @@ describe("POST /api/submissions", () => {
     expect(stored.map((submission) => submission.krs)).toEqual([KRS]);
   });
 
+  it("keeps the first system's description for the page's OGP (#2995)", async () => {
+    const kv = new MemoryKV();
+    const krs = 'system Shop {\n  description "The storefront."\n  service api\n}\n';
+    await post(kv, { title: "Shop", krs }, { cookie: await signedIn(kv) });
+    const stored = await new GalleryStore(kv).submissions.list(42);
+    expect(stored[0]?.description).toBe("The storefront.");
+  });
+
   it("gives the submission its own id space rather than reusing owner/repo", async () => {
     // A submission is not repository-bound, so there is no repository for a
     // key to name -- and `owner/repo` goes on meaning "the .krs committed to

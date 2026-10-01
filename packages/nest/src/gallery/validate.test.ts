@@ -29,6 +29,18 @@ describe("validateSubmission", () => {
     expect(result).toEqual({ ok: true, title: "Shop", krs: KRS });
   });
 
+  it("reads the first system's description for the page's OGP (#2995)", () => {
+    const krs =
+      'system Shop {\n  description "  The storefront.  "\n}\nsystem Other {\n  description "no"\n}\n';
+    const result = validateSubmission("Shop", krs);
+    expect(result.ok && result.description).toBe("The storefront.");
+  });
+
+  it("leaves the description out when the first system has none", () => {
+    const result = validateSubmission("Shop", KRS);
+    expect(result.ok && "description" in result).toBe(false);
+  });
+
   it("refuses a document that cannot be opened", () => {
     // Not a quality bar: the difference between an entry and a broken link.
     expect(rejectionOf("Shop", "system Shop {\n  service\n")).toBe("does_not_parse");

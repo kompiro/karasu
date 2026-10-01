@@ -31,6 +31,7 @@ import type { Submission } from "../store/submissions.js";
 import { renderSubmission } from "../gallery/render.js";
 import { VIEWER_TEMPLATE_PATH } from "../gallery/viewer-assets.js";
 import { viewerHeader, viewerPage } from "../gallery/viewer-page.js";
+import { ogpMeta } from "../gallery/ogp.js";
 
 /**
  * Ten minutes, and only for a submission its author published.
@@ -122,12 +123,25 @@ export async function submissionPage(context: RouteContext): Promise<Response> {
     return error(503, "viewer_unavailable", "The gallery viewer is not deployed.");
   }
   const submitter = await store.accounts.get(submission.accountId);
+  const login = submitter?.login ?? "unknown";
+  const origin = context.env.NEST_PUBLIC_ORIGIN;
   const body = viewerPage(template, {
     title: submission.title,
+    // Only a public submission unfurls (#2995). The owner's own view of an
+    // unlisted one gets none, so a link they paste does not describe it.
+    head:
+      submission.visibility === "public"
+        ? ogpMeta({
+            title: submission.title,
+            description: submission.description,
+            submitter: login,
+            url: origin ? `${origin}/g/${id}` : undefined,
+          })
+        : undefined,
     header: viewerHeader({
       id,
       title: submission.title,
-      submitter: submitter?.login ?? "unknown",
+      submitter: login,
       submittedAt: submission.submittedAt,
       unlisted: submission.visibility !== "public",
       isOwner,

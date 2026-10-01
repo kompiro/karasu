@@ -120,6 +120,8 @@ const HEADER_STYLE = `
 
 export interface ViewerPage {
   title: string;
+  /** Extra `<head>` markup after the title, already escaped (the OGP, #2995). */
+  head?: string;
   header: string;
   krs: string;
 }
@@ -129,7 +131,8 @@ export function viewerPage(template: string, page: ViewerPage): string {
   let html = replaceOnce(
     template,
     TEMPLATE_TITLE,
-    `<title>${escapeHtml(page.title)} · karasu gallery</title>`,
+    `<title>${escapeHtml(page.title)} · karasu gallery</title>` +
+      (page.head ? `\n${page.head}` : ""),
   );
   html = replaceOnce(html, HEADER_MARKER, page.header);
   return replaceOnce(html, SOURCE_MARKER, embedSource(page.krs));
