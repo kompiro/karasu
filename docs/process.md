@@ -166,6 +166,11 @@ gh pr ready <N>
 - ラベルを付けた後に判定基準を満たさない差分を足すなら、push の前にラベルを外し
   （`gh pr edit <N> --remove-label skip-coderabbit`）、push 後に
   `@coderabbitai review` を投げて通常の手順に戻る
+- **PR 本文に `@coderabbitai ignore` という文字列を書かない。** CodeRabbit は文脈を
+  区別せず、引用や却下した案の説明として書いただけでもその PR をレビューから外す。
+  外れたときのステータスは理由の付かない `Review skipped` で、ラベルや draft による
+  除外と見分けられる（#3012 で起きた）。コマンドに触れるときは「the ignore command」
+  のように `@coderabbitai` を付けずに書く
 - 判定の経緯と却下した案は [ADR-3011](adr/3011-skip-coderabbit-label.md)
 
 ### 人間のレビューは CodeRabbit が approve してから始める
