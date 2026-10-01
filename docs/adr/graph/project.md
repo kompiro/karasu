@@ -23,6 +23,7 @@ flowchart TD
     ADR_2655["ADR-2655<br/>nest のセッション期限を idle 窓と絶対上限に分ける"]
     ADR_2859["ADR-2859<br/>spike ブランチは答える Issue 番号で名付け、その Issue が open なあいだ残す"]
     ADR_2969["ADR-2969<br/>運用者だけの段階をコードで守る — サインインを数値 user id の許可リストに限る"]
+    ADR_2993["ADR-2993<br/>ギャラリーの投稿ページを origin を持たない sandbox の viewer として配..."]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   end
   ADR_357["ADR-357<br/>[app-ui] ProjectSelector の Rename 操作 — インライン入力欄パターン"]
@@ -41,6 +42,8 @@ flowchart TD
   ADR_2592 --> ADR_2578
   ADR_2655 --> ADR_2578
   ADR_2969 --> ADR_2592
+  ADR_2993 --> ADR_2592
+  ADR_2993 --> ADR_2578
   ADR_357 --> ADR_9006
   ADR_3000 --> ADR_2578
   ADR_3000 --> ADR_2969
@@ -72,6 +75,7 @@ flowchart TD
   class ADR_2655 accepted
   class ADR_2859 accepted
   class ADR_2969 accepted
+  class ADR_2993 accepted
   class ADR_9006 accepted
   class ADR_357 ghost
   class ADR_650 ghost
