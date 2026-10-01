@@ -301,6 +301,17 @@ describe("POST /console/s/<id>/replace", () => {
     expect(stored?.title).toBe("Shop v2");
   });
 
+  it("re-reads the description from the replacement (#2995)", async () => {
+    const kv = new MemoryKV();
+    const cookie = await account(kv, 42);
+    const id = await submission(kv, 42);
+    const described = 'system Shop {\n  description "Now with a worker."\n  service api\n}\n';
+    await post(kv, `/console/s/${id}/replace`, { title: "Shop", krs: described }, { cookie });
+    expect((await new GalleryStore(kv).submissions.list(42))[0]?.description).toBe(
+      "Now with a worker.",
+    );
+  });
+
   it("refuses a replacement that does not parse, keeping the old one", async () => {
     const kv = new MemoryKV();
     const cookie = await account(kv, 42);

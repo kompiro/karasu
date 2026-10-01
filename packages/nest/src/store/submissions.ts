@@ -1,7 +1,7 @@
 /**
  * Submitted `.krs` documents, kept until their author deletes them.
  *
- *     sub/v1/<account>/<slug> -> { slug, title, krs, submittedAt, updatedAt, visibility }
+ *     sub/v1/<account>/<slug> -> { slug, title, krs, description?, submittedAt, updatedAt, visibility }
  *
  * **No TTL, and that is the decision rather than an omission.** Every other
  * key this service writes expires, because the generation service's whole
@@ -71,6 +71,11 @@ export interface Submission {
   accountId: string;
   title: string;
   krs: string;
+  /**
+   * The document's first system `description`, read at ingest (#2995). Absent
+   * when the system has none, and on records written before it existed.
+   */
+  description?: string;
   submittedAt: string;
   updatedAt: string;
   visibility: Visibility;
@@ -79,6 +84,7 @@ export interface Submission {
 export interface NewSubmission {
   title: string;
   krs: string;
+  description?: string;
   visibility?: Visibility;
 }
 
@@ -105,6 +111,7 @@ function parse(raw: string, accountId: string): Submission | undefined {
     accountId,
     title: record.title,
     krs: record.krs,
+    ...(typeof record.description === "string" ? { description: record.description } : {}),
     submittedAt: record.submittedAt,
     updatedAt: record.updatedAt,
     // A record written before this field existed reads as `unlisted`. Being
@@ -127,6 +134,7 @@ export class SubmissionStore {
       accountId: canonical,
       title: input.title,
       krs: input.krs,
+      ...(input.description === undefined ? {} : { description: input.description }),
       submittedAt: now,
       updatedAt: now,
       visibility: input.visibility ?? "public",
@@ -184,7 +192,7 @@ export class SubmissionStore {
   async update(
     accountId: number | string,
     slug: string,
-    changes: Partial<Pick<Submission, "title" | "krs" | "visibility">>,
+    changes: Partial<Pick<Submission, "title" | "krs" | "description" | "visibility">>,
     at: Date,
   ): Promise<Submission | undefined> {
     const current = await this.get(accountId, slug);

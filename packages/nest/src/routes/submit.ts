@@ -73,7 +73,7 @@ export async function submitKrs(context: RouteContext): Promise<Response> {
 
   const submission = await store.submissions.create(
     viewer.account.accountId,
-    { title: validated.title, krs: validated.krs, visibility },
+    { title: validated.title, krs: validated.krs, description: validated.description, visibility },
     new Date(),
   );
 

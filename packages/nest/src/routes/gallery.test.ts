@@ -138,6 +138,43 @@ describe("GET /g/<id>", () => {
     expect(embeddedSource(body)).toBe(hostile);
   });
 
+  it("gives a public submission an OGP card from its stored record (#2995)", async () => {
+    const kv = new MemoryKV();
+    const store = new GalleryStore(kv);
+    await store.accounts.signIn(42, "kompiro", at);
+    const created = await store.submissions.create(
+      42,
+      { title: "Shop", krs: KRS, description: "The storefront & checkout.", visibility: "public" },
+      at,
+    );
+    const id = formatSubmissionId(42, created.slug);
+    const body = await (await get(kv, `/g/${id}`)).text();
+    const head = body.slice(0, body.indexOf("</head>"));
+    expect(head).toContain('<meta property="og:title" content="Shop">');
+    expect(head).toContain(
+      '<meta property="og:description" content="The storefront &amp; checkout.">',
+    );
+    expect(head).toContain(`<meta property="og:url" content="${ORIGIN}/g/${id}">`);
+    expect(head).toContain('<meta name="twitter:card" content="summary">');
+  });
+
+  it("falls back to whose model it is when the record has no description", async () => {
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    const body = await (await get(kv, `/g/${id}`)).text();
+    expect(body).toContain(
+      '<meta property="og:description" content="Architecture model by kompiro on karasu gallery">',
+    );
+  });
+
+  it("gives an unlisted submission no card, even on its owner's own view", async () => {
+    const kv = new MemoryKV();
+    const { id, cookie } = await seed(kv, "unlisted");
+    const response = await get(kv, `/g/${id}`, cookie);
+    expect(response.status).toBe(200);
+    expect(await response.text()).not.toMatch(/og:|twitter:/);
+  });
+
   it("answers 503 when the viewer is not deployed, and does not cache it", async () => {
     const kv = new MemoryKV();
     const { id } = await seed(kv);
