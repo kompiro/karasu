@@ -136,7 +136,9 @@ ToS and privacy policy review
 The workflow authenticates with the repository secret
 `CLOUDFLARE_NEST_API_TOKEN`, a Cloudflare API token used by this deploy only
 (#2969). It needs Workers Scripts: Edit and Workers KV Storage: Edit on the
-account; `CLOUDFLARE_ACCOUNT_ID` is shared with the Pages deploys. Keep it
+account, and Workers Routes: Edit on the `kompiro.dev` zone: `wrangler.toml`
+declares the custom domain `karasu-nest.kompiro.dev` (ADR-3020), and every
+deploy reconciles it. `CLOUDFLARE_ACCOUNT_ID` is shared with the Pages deploys. Keep it
 separate from `CLOUDFLARE_API_TOKEN` so the service that holds sessions and
 submitters' data does not share a credential with the static app
 (`scripts/ci/nest-deploy-token.test.ts`).

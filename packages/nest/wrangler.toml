@@ -27,9 +27,10 @@ compatibility_date = "2025-01-01"
 # host is turned off rather than left up as a copy that cannot work.
 #
 # Declared here rather than in the dashboard for the same reason as `[vars]`:
-# the deploy should say where the service lives. `custom_domain = true` has
-# wrangler create the DNS record and certificate on the `kompiro.dev` zone,
-# which the deploy token needs permission for.
+# the deploy should say where the service lives. Every deploy reconciles the
+# custom domain attachment against this entry (Cloudflare provisions its DNS
+# record and certificate), so the deploy token needs Workers Routes: Edit on
+# the `kompiro.dev` zone as well as its account permissions (README).
 workers_dev = false
 routes = [{ pattern = "karasu-nest.kompiro.dev", custom_domain = true }]
 
