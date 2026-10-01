@@ -23,10 +23,13 @@ flowchart TD
     ADR_2655["ADR-2655<br/>nest のセッション期限を idle 窓と絶対上限に分ける"]
     ADR_2859["ADR-2859<br/>spike ブランチは答える Issue 番号で名付け、その Issue が open なあいだ残す"]
     ADR_2969["ADR-2969<br/>運用者だけの段階をコードで守る — サインインを数値 user id の許可リストに限る"]
+    ADR_2993["ADR-2993<br/>ギャラリーの投稿ページを origin を持たない sandbox の viewer として配..."]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   end
   ADR_357["ADR-357<br/>[app-ui] ProjectSelector の Rename 操作 — インライン入力欄パターン"]
   ADR_650["ADR-650<br/>[app-ui] グラフィカル diff ビューア"]
+  ADR_3000["ADR-3000<br/>[build] karasu-nest を main への push で自動 deploy し、対象 path..."]
+  ADR_3020["ADR-3020<br/>[build] karasu-nest を karasu-nest.kompiro.dev カスタムドメインだ..."]
   ADR_9013["ADR-9013<br/>[cli] CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
   ADR_9018["ADR-9018<br/>[app-ui] ProjectMode 初期コンテンツ — `examples/ec-platform` から..."]
   ADR_461 --> ADR_9006
@@ -40,7 +43,13 @@ flowchart TD
   ADR_2592 --> ADR_2578
   ADR_2655 --> ADR_2578
   ADR_2969 --> ADR_2592
+  ADR_2993 --> ADR_2592
+  ADR_2993 --> ADR_2578
   ADR_357 --> ADR_9006
+  ADR_3000 --> ADR_2578
+  ADR_3000 --> ADR_2969
+  ADR_3020 --> ADR_2578
+  ADR_3020 --> ADR_2969
   ADR_9013 --> ADR_9006
   ADR_1990 -.supersedes.-> ADR_1783
   ADR_2578 -.supersedes.-> ADR_1990
@@ -69,9 +78,12 @@ flowchart TD
   class ADR_2655 accepted
   class ADR_2859 accepted
   class ADR_2969 accepted
+  class ADR_2993 accepted
   class ADR_9006 accepted
   class ADR_357 ghost
   class ADR_650 ghost
+  class ADR_3000 ghost
+  class ADR_3020 ghost
   class ADR_9013 ghost
   class ADR_9018 ghost
 ```

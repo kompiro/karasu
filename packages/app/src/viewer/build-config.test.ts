@@ -23,6 +23,17 @@ describe("viewer build stays separate from the app's Pages output (#2997)", () =
     expect(path.relative(appOutDir, outDir).startsWith("..")).toBe(true);
   });
 
+  it("names the viewer's entry script and stylesheet without a hash (#2998)", () => {
+    // nest caches the page for up to ten minutes; a hashed entry would be gone
+    // after a redeploy and a cached page would load nothing.
+    const output = viewerConfig.build?.rollupOptions?.output;
+    if (!output || Array.isArray(output)) throw new Error("expected a single output");
+    expect(output.entryFileNames).toBe("assets/viewer.js");
+    const assetName = output.assetFileNames as (asset: { names: string[] }) => string;
+    expect(assetName({ names: ["viewer.css"] })).toBe("assets/viewer.css");
+    expect(assetName({ names: ["logo.svg"] })).toBe("assets/[name]-[hash][extname]");
+  });
+
   it("the viewer build does not copy the app's public/ (Pages routing files)", () => {
     expect(viewerConfig.publicDir).toBe(false);
   });

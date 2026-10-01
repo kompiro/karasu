@@ -7,9 +7,24 @@
     <!--
       The gallery viewer (#2997). Served under a page-level CSP sandbox without
       allow-same-origin, so the document has an opaque origin. The server
-      replaces KRS_SOURCE below with the submission as JSON
-      (src/viewer/embedded-source.ts).
+      fills two placeholders in <body>, each exactly once: GALLERY_HEADER with
+      its own static markup above the app (or nothing), and KRS_SOURCE with
+      the submission as JSON (src/viewer/embedded-source.ts). nest's
+      src/gallery/viewer-page.ts is that server; keep the two in step.
     -->
+    <style>
+      /* The app fills the viewport; a host's header, if any, takes its own
+         height above it and the app gets the rest. */
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+      #root {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: auto;
+      }
+    </style>
     <script data-storage-shim>
       // An opaque-origin document throws on any Storage access. Replace both
       // with in-memory stand-ins before the bundle reads them, so preferences
@@ -64,6 +79,7 @@
     </script>
   </head>
   <body>
+    <!--GALLERY_HEADER-->
     <div id="root"></div>
     <!--KRS_SOURCE-->
     <script type="module" src="/src/viewer/main.tsx"></script>
