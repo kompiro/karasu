@@ -202,6 +202,19 @@ export interface ResolvedEdgeStyle {
    * anchor — that lift stays in place so the offset adds on top.
    */
   labelOffsetY: number;
+  /**
+   * Progressive disclosure of the label on the canvas (#3022, spike). A label
+   * longer than this many characters is drawn truncated with an ellipsis; the
+   * full text stays in `data-edge-label` / a `<title>` and is revealed on
+   * hover by the app. `Infinity` (`label-max-chars: none`) draws it whole.
+   */
+  labelMaxChars?: number;
+  /**
+   * `hover` withholds the label from the canvas entirely and lets the app
+   * reveal it on hover. `auto` withholds only the labels the placement pass
+   * cannot seat clear of cards, labels and foreign lines (#3022, spike).
+   */
+  labelDisplay?: "always" | "auto" | "hover";
 }
 
 /**

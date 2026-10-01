@@ -1,0 +1,3310 @@
+// Source: the Umami 3.4.0 model reverse-engineered with the reverse-architecture skill and
+// published on karasu-nest as 42963-bg390asxhh4w. Copied here unchanged below this header so
+// the spike report regenerates offline (Issue #3022).
+// umami 3.4.0 (commit ec0ff50) — reverse-architecture skeleton (Phase 1)
+// Physical spine: phys/postgres.krs (prisma migrate diff → translate --from db),
+// phys/clickhouse.krs (db/clickhouse/schema.sql → translate --from db),
+// phys/compose.krs (docker-compose.yml → translate --from compose).
+facet pii {
+  label "Personal data"
+  description "Holds or transits data that identifies a person or a visitor: user accounts, emails, visitor IP-derived location, session identifiers, recorded session replays"
+}
+
+facet secret {
+  label "Secrets"
+  description "Holds credentials or key material that must never be logged, exported or shared: password hashes, API keys, auth tokens, TOTP secrets, backup codes"
+}
+
+system Umami {
+  label "Umami"
+  description "Privacy-focused web analytics. A single Next.js app serves the tracker endpoints, the REST API and the dashboard UI."
+
+  user Visitor [human] {
+    label "Site visitor"
+    description "A visitor of a website that embeds the Umami tracker script"
+  }
+
+  user Analyst [human] {
+    label "Analyst"
+    description "A logged-in Umami user who reads reports and manages websites, teams and boards"
+  }
+
+  user AiAssistant [ai] {
+    label "AI assistant"
+    description "An MCP client (Claude, ChatGPT, Cursor) asking questions about traffic"
+  }
+
+  client TrackerScript [embed] {
+    label "Tracker script"
+    description "tracker.js / recorder.js embedded in tracked websites (src/tracker, src/recorder)"
+  }
+
+  client Dashboard [web] {
+    label "Dashboard UI"
+    description "Next.js React UI (src/app/(main), src/components)"
+  }
+
+  service UmamiApp {
+    label "Umami app"
+    description "Next.js App Router application (src/app, src/lib, src/queries)"
+
+    domain Tracking {
+      label "Tracking"
+      description "Ingest pageviews, custom events, identify calls, pixel hits and link redirects; resolve visitor sessions"
+
+      usecase CollectEvent {
+        label "Collect pageview / custom event"
+        description """
+          POST /api/send {type:"event"} and POST /api/batch (up to 500 payloads replayed through /api/send, sequentially).
+          Sent by tracker.js (src/tracker): auto pageviews on load and SPA history changes, data-umami-event-* clicks, umami.track(). Event type = pageView | customEvent; URL is split into path/query/domain, UTM params and click ids (gclid, fbclid, msclkid, ttclid, li_fat_id, twclid) extracted, self-referrals dropped.
+          Session row is created (on conflict do nothing) only in Postgres mode when the cache token has no session or the session id drifted. Event data JSON is flattened into event_data; revenue/currency in event data also writes a revenue row (Postgres mode only; ClickHouse derives website_revenue). Returns a signed cache token {websiteId, sessionId, visitId, iat, sessionLinkId}.
+          """
+
+        resource Redis.WebsiteCache {
+          operations fetch:read
+        }
+
+        resource Postgres.WebsiteTable {
+          operations get:read
+        }
+
+        resource Postgres.SessionTable {
+          operations insert:create
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations create
+        }
+
+        resource Postgres.EventDataTable {
+          operations createMany:create
+        }
+
+        resource Postgres.RevenueTable {
+          operations create
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations insert:create
+        }
+
+        resource ClickHouse.EventDataTable {
+          operations insert:create
+        }
+
+        resource Kafka.EventTopic {
+          operations sendMessage:create
+        }
+
+        resource Kafka.EventDataTopic {
+          operations sendMessage:create
+        }
+      }
+
+      usecase CollectPerformance {
+        label "Collect web-vitals"
+        description "POST /api/send {type:\"performance\"} (also via /api/batch). Sent by tracker.js when data-performance=\"true\": LCP, INP, CLS, FCP, TTFB per page, stored as a website_event with eventType=performance."
+
+        resource Redis.WebsiteCache {
+          operations fetch:read
+        }
+
+        resource Postgres.WebsiteTable {
+          operations get:read
+        }
+
+        resource Postgres.SessionTable {
+          operations insert:create
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations create
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations insert:create
+        }
+
+        resource Kafka.EventTopic {
+          operations sendMessage:create
+        }
+      }
+
+      usecase IdentifyVisitor {
+        label "Identify visitor"
+        description "POST /api/send {type:\"identify\"} (also via /api/batch). Sent by umami.identify(id, data) or data-distinct-id. Links the anonymous session to a distinctId (session_link, best effort; skipped when the cache token already carries the same link hash), back-fills session.distinct_id when empty (Postgres only), and upserts flattened session properties into session_data (Postgres: on conflict (session_id, data_key) do update)."
+        facets pii
+
+        resource Redis.WebsiteCache {
+          operations fetch:read
+        }
+
+        resource Postgres.WebsiteTable {
+          operations get:read
+        }
+
+        resource Postgres.SessionTable {
+          operations update, insert:create
+        }
+
+        resource Postgres.SessionLinkTable {
+          operations insert:create
+        }
+
+        resource Postgres.SessionDataTable {
+          operations upsert:create,update
+        }
+
+        resource ClickHouse.SessionLinkTable {
+          operations insert:create
+        }
+
+        resource ClickHouse.SessionDataTable {
+          operations insert:create
+        }
+
+        resource Kafka.SessionLinkTopic {
+          operations sendMessage:create
+        }
+
+        resource Kafka.SessionDataTopic {
+          operations sendMessage:create
+        }
+      }
+
+      usecase RecordPixelHit {
+        label "Record pixel hit"
+        description "GET /p/[slug]. Resolves the pixel by slug (Redis pixel:<slug>, TTL 86400s, else Postgres, deleted pixels excluded), replays an {type:\"event\", payload:{pixel}} through /api/send (eventType=pixelEvent, session keyed on the pixel id) and returns a 1x1 GIF with no-cache headers."
+
+        resource Redis.PixelCache {
+          operations fetch:read
+        }
+
+        resource Postgres.PixelTable {
+          operations find:read
+        }
+
+        resource Postgres.SessionTable {
+          operations insert:create
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations create
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations insert:create
+        }
+
+        resource Kafka.EventTopic {
+          operations sendMessage:create
+        }
+      }
+
+      usecase FollowShortLink {
+        label "Follow short link"
+        description "GET /q/[slug]. Resolves the link by slug (Redis link:<slug>, TTL 86400s, else Postgres, deleted links excluded), records a linkEvent through /api/send (session keyed on the link id) and 302-redirects to link.url."
+
+        resource Redis.LinkCache {
+          operations fetch:read
+        }
+
+        resource Postgres.LinkTable {
+          operations find:read
+        }
+
+        resource Postgres.SessionTable {
+          operations insert:create
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations create
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations insert:create
+        }
+
+        resource Kafka.EventTopic {
+          operations sendMessage:create
+        }
+      }
+
+      usecase SaveHeatmapEvents {
+        label "Save heatmap events"
+        description "saveHeatmapEvents (src/queries/sql/heatmap/saveHeatmapEvents.ts). No route of its own: called by POST /api/record (SessionReplay) with click/scroll rows derived from the recorder batch. Coordinates rounded to ints, scroll pct clamped 0-100."
+
+        resource Postgres.HeatmapEventTable {
+          operations createMany:create
+        }
+
+        resource ClickHouse.HeatmapEventTable {
+          operations insert:create
+        }
+
+        resource Kafka.HeatmapEventTopic {
+          operations sendMessage:create
+        }
+      }
+
+      entity Session {
+        label "Visitor session"
+        description "Deterministic, salted visitor session. website_id holds the source id: a website, link or pixel id. Postgres only; in ClickHouse mode derived from website_event."
+        table Postgres.SessionTable
+        facets pii
+
+        Session -> TrackedEntities.Website "tracked on (website_id; may also hold a link or pixel id)"
+      }
+
+      entity WebsiteEvent {
+        label "Website event"
+        description "Pageview, custom, link, pixel or performance event"
+        table Postgres.WebsiteEventTable
+        facets pii
+
+        WebsiteEvent -> Session "belongs to"
+        WebsiteEvent -> TrackedEntities.Website "recorded for"
+      }
+
+      entity EventData {
+        label "Event data"
+        description "One row per flattened key of a custom event's JSON payload"
+        table Postgres.EventDataTable
+
+        EventData -> WebsiteEvent "describes"
+        EventData -> TrackedEntities.Website "scoped to"
+      }
+
+      entity SessionData {
+        label "Session data"
+        description "Visitor properties sent with identify; unique per (session, key)"
+        table Postgres.SessionDataTable
+        facets pii
+
+        SessionData -> Session "describes"
+        SessionData -> TrackedEntities.Website "scoped to"
+      }
+
+      entity Revenue {
+        label "Revenue"
+        description "Revenue amount + currency extracted from event data"
+        table Postgres.RevenueTable
+
+        Revenue -> Session "earned in"
+        Revenue -> WebsiteEvent "extracted from (event_id)"
+        Revenue -> TrackedEntities.Website "scoped to"
+      }
+
+      entity HeatmapEvent {
+        label "Heatmap event"
+        description "Click / scroll sample with page coordinates"
+        table Postgres.HeatmapEventTable
+
+        HeatmapEvent -> Session "captured in"
+        HeatmapEvent -> TrackedEntities.Website "scoped to"
+      }
+
+      entity SessionLink {
+        label "Session link"
+        description "Identity stitch: (website, distinct_id, session) triple"
+        table Postgres.SessionLinkTable
+        facets pii
+
+        SessionLink -> Session "links"
+        SessionLink -> TrackedEntities.Website "scoped to"
+      }
+
+      -> TrackedEntities "resolves the tracked website / link / pixel (fetchWebsite, findLink, findPixel)"
+    }
+
+    domain Analytics {
+      label "Analytics"
+      description "Query recorded events: stats, metrics, realtime, funnels, goals, journeys, retention, attribution, revenue, UTM, performance, heatmaps, saved reports, segments, annotations, export"
+
+      // ---- Overview / dashboard ------------------------------------------------
+      usecase GetWebsiteStats {
+        label "Get website summary stats"
+        description "GET /api/websites/:websiteId/stats (getWebsiteStats, current + comparison period)"
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventStatsHourlyTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase GetPageviewSeries {
+        label "Get pageview / visitor time series"
+        description "GET /api/websites/:websiteId/pageviews (getPageviewStats + getSessionStats, optional compare)"
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventStatsHourlyTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase GetMetrics {
+        label "Get ranked metrics"
+        description """
+          GET /api/websites/:websiteId/metrics, GET /api/websites/:websiteId/metrics/expanded
+          (pageview / session / event / channel metrics by type: path, referrer, browser, os, device, country, ...)
+          """
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventStatsHourlyTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase GetActiveVisitors {
+        label "Count active visitors"
+        description "GET /api/websites/:websiteId/active (getActiveVisitors, last 5 minutes)"
+
+        resource Postgres.WebsiteEventTable {
+          operations count:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations count:read
+        }
+      }
+
+      usecase GetRealtime {
+        label "Get realtime activity"
+        description "GET /api/realtime/:websiteId (getRealtimeData = getRealtimeActivity + getPageviewStats + getSessionStats)"
+        facets pii
+
+        resource Postgres.WebsiteEventTable {
+          operations list:read
+        }
+
+        resource Postgres.SessionTable {
+          operations list:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations list:read
+        }
+
+        resource ClickHouse.WebsiteEventStatsHourlyTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase GetWebsiteDateRange {
+        label "Get website data date range"
+        description "GET /api/websites/:websiteId/daterange (getWebsiteDateRange: first/last event)"
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventStatsHourlyTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase GetWebsiteListCharts {
+        label "Get sparkline charts for a website list"
+        description "GET /api/websites/charts?ids=... (getWebsiteListCharts, up to 20 websites, batch permission check)"
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventStatsHourlyTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase GetFilterValues {
+        label "List distinct filter values"
+        description "GET /api/websites/:websiteId/values (getValues for a column, or saved segments/cohorts when type=segment|cohort)"
+
+        resource Postgres.WebsiteEventTable {
+          operations distinct:read
+        }
+
+        resource Postgres.SessionTable {
+          operations distinct:read
+        }
+
+        resource Postgres.SegmentTable {
+          operations list:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations distinct:read
+        }
+      }
+
+      usecase ExportWebsiteData {
+        label "Export website metrics as CSV zip"
+        description "GET /api/websites/:websiteId/export (event/page/referrer/browser/os/device/country metrics -> CSV files zipped with JSZip, returned base64)"
+
+        resource Postgres.WebsiteEventTable {
+          operations export:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations export:read
+        }
+
+        resource ClickHouse.WebsiteEventStatsHourlyTable {
+          operations export:read
+        }
+      }
+
+      // ---- Events & event data -------------------------------------------------
+      usecase ListWebsiteEvents {
+        label "List and chart events"
+        description """
+          GET /api/websites/:websiteId/events (paged event log, getWebsiteEvents),
+          GET /api/websites/:websiteId/events/series (getEventStats),
+          GET /api/websites/:websiteId/events/stats (getWebsiteEventStats, with compare)
+          """
+
+        resource Postgres.WebsiteEventTable {
+          operations list:read, aggregate:read
+        }
+
+        resource Postgres.EventDataTable {
+          operations list:read
+        }
+
+        resource Postgres.SessionTable {
+          operations list:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations list:read, aggregate:read
+        }
+
+        resource ClickHouse.EventDataPivotTable {
+          operations list:read
+        }
+
+        resource ClickHouse.WebsiteEventStatsHourlyTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase QueryEventData {
+        label "Explore custom event data"
+        description """
+          GET /api/websites/:websiteId/event-data, /event-data/:eventId, /event-data/events,
+          /event-data/fields, /event-data/properties, /event-data/stats, /event-data/values
+          """
+
+        resource Postgres.EventDataTable {
+          operations list:read, aggregate:read
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations list:read
+        }
+
+        resource ClickHouse.EventDataTable {
+          operations list:read, aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations list:read
+        }
+      }
+
+      usecase PivotEventData {
+        label "Pivot custom event properties"
+        description """
+          GET /api/websites/:websiteId/event-data-pivot, /event-data-pivot/array-series,
+          /event-data-pivot/date-series, /event-data-pivot/numeric-series,
+          /event-data-pivot/numeric-stats, /event-data-pivot/property-series
+          """
+
+        resource Postgres.EventDataTable {
+          operations aggregate:read
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.EventDataPivotTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.EventDataTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+      }
+
+      // ---- Sessions & session data ---------------------------------------------
+      usecase ListSessions {
+        label "List sessions and session stats"
+        description """
+          GET /api/websites/:websiteId/sessions (getWebsiteSessions),
+          GET /api/websites/:websiteId/sessions/stats (getWebsiteSessionStats),
+          GET /api/websites/:websiteId/sessions/weekly (getWeeklyTraffic heatmap grid)
+          """
+        facets pii
+
+        resource Postgres.SessionTable {
+          operations list:read
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventStatsHourlyTable {
+          operations list:read, aggregate:read
+        }
+      }
+
+      usecase GetSessionDetail {
+        label "Inspect a visitor session"
+        description """
+          GET /api/websites/:websiteId/sessions/:sessionId (getWebsiteSession + identity stitching via session_link),
+          GET /api/websites/:websiteId/sessions/:sessionId/activity (getSessionActivity across linked sessions),
+          GET /api/websites/:websiteId/sessions/:sessionId/properties (getSessionData)
+          """
+        facets pii
+
+        resource Postgres.SessionTable {
+          operations get:read
+        }
+
+        resource Postgres.SessionLinkTable {
+          operations list:read
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations list:read
+        }
+
+        resource Postgres.EventDataTable {
+          operations list:read
+        }
+
+        resource Postgres.SessionDataTable {
+          operations list:read
+        }
+
+        resource ClickHouse.SessionLinkTable {
+          operations list:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations list:read
+        }
+
+        resource ClickHouse.WebsiteEventStatsHourlyTable {
+          operations get:read
+        }
+
+        resource ClickHouse.EventDataTable {
+          operations list:read
+        }
+
+        resource ClickHouse.SessionDataTable {
+          operations list:read
+        }
+      }
+
+      usecase DeleteSession {
+        label "Delete a visitor session"
+        description """
+          DELETE /api/websites/:websiteId/sessions/:sessionId. Relational storage only
+          (isRelationalOnly(), rejected on ClickHouse). Delegates to deleteSession
+          (src/queries/prisma/session.ts, Tracking) which cascades in one transaction.
+          """
+        facets pii
+
+        resource Postgres.SessionTable {
+          operations delete
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations delete
+        }
+
+        resource Postgres.EventDataTable {
+          operations delete
+        }
+
+        resource Postgres.SessionDataTable {
+          operations delete
+        }
+
+        resource Postgres.SessionLinkTable {
+          operations delete
+        }
+
+        resource Postgres.RevenueTable {
+          operations delete
+        }
+
+        resource Postgres.HeatmapEventTable {
+          operations delete
+        }
+
+        resource Postgres.SessionReplayTable {
+          operations delete
+        }
+
+        resource Postgres.SessionReplaySavedTable {
+          operations delete
+        }
+      }
+
+      usecase QuerySessionData {
+        label "Explore session properties"
+        description """
+          GET /api/websites/:websiteId/session-data/properties, /values, /stats, /array-series,
+          /date-series, /numeric-series, /numeric-stats, /property-series,
+          GET /api/websites/:websiteId/session-data-pivot
+          """
+        facets pii
+
+        resource Postgres.SessionDataTable {
+          operations list:read, aggregate:read
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.SessionDataTable {
+          operations list:read, aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+      }
+
+      // ---- Report engines (live and /compat POST variants) ---------------------
+      usecase RunFunnel {
+        label "Run a funnel analysis"
+        description """
+          GET /api/websites/:websiteId/funnels/stats (ad hoc steps),
+          GET /api/websites/:websiteId/funnels/:funnelId/stats (saved funnel report),
+          POST /compat/api/reports/funnel
+          """
+
+        resource Postgres.ReportTable {
+          operations get:read
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource Postgres.EventDataTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.EventDataTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase RunGoal {
+        label "Measure goal completion"
+        description """
+          GET /api/websites/:websiteId/goals/stats,
+          GET /api/websites/:websiteId/goals/:goalId/stats (saved goal report),
+          POST /compat/api/reports/goal
+          """
+
+        resource Postgres.ReportTable {
+          operations get:read
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase RunJourney {
+        label "Analyze user journeys"
+        description "GET /api/websites/:websiteId/journeys, POST /compat/api/reports/journey (getJourney: path sequences)"
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase RunRetention {
+        label "Analyze cohort retention"
+        description "GET /api/websites/:websiteId/retention, POST /compat/api/reports/retention (getRetention)"
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase RunAttribution {
+        label "Analyze conversion attribution"
+        description "GET /api/websites/:websiteId/attribution, POST /compat/api/reports/attribution (getAttribution: first/last click by referrer, UTM, channel)"
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource Postgres.SessionTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase RunBreakdown {
+        label "Break down traffic by dimensions"
+        description "GET /api/websites/:websiteId/breakdown, POST /compat/api/reports/breakdown (getBreakdown)"
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase GetUtmMetrics {
+        label "Get UTM campaign metrics"
+        description "GET /api/websites/:websiteId/utm/metrics, POST /compat/api/reports/utm (getUTM)"
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase GetRevenue {
+        label "Analyze revenue"
+        description """
+          GET /api/websites/:websiteId/revenue/chart, /revenue/metrics, /revenue/sessions, /revenue/stats,
+          POST /compat/api/reports/revenue
+          """
+
+        resource Postgres.RevenueTable {
+          operations aggregate:read, list:read
+        }
+
+        resource Postgres.SessionTable {
+          operations list:read
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteRevenueTable {
+          operations aggregate:read, list:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase GetPerformance {
+        label "Analyze web vitals performance"
+        description """
+          GET /api/websites/:websiteId/performance/chart, /performance/metrics, /performance/stats,
+          POST /compat/api/reports/performance
+          """
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+      }
+
+      usecase GetHeatmap {
+        label "Render click / scroll heatmap"
+        description "GET /api/websites/:websiteId/heatmaps, POST /compat/api/reports/heatmap (getHeatmap)"
+
+        resource Postgres.HeatmapEventTable {
+          operations aggregate:read
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.HeatmapEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations aggregate:read
+        }
+      }
+
+      // ---- Saved definitions (Postgres / Prisma) -------------------------------
+      usecase ManageFunnels {
+        label "Manage saved funnels"
+        description """
+          GET/POST /api/websites/:websiteId/funnels, GET/POST/DELETE /api/websites/:websiteId/funnels/:funnelId
+          (stored as report rows with type=funnel)
+          """
+
+        resource Postgres.ReportTable {
+          operations create, update, delete, list:read, get:read
+        }
+      }
+
+      usecase ManageGoals {
+        label "Manage saved goals"
+        description """
+          GET/POST /api/websites/:websiteId/goals, GET/POST/DELETE /api/websites/:websiteId/goals/:goalId
+          (stored as report rows with type=goal)
+          """
+
+        resource Postgres.ReportTable {
+          operations create, update, delete, list:read, get:read
+        }
+      }
+
+      usecase ManageSavedReports {
+        label "Manage saved reports"
+        description """
+          GET/POST /compat/api/reports, GET/POST/DELETE /compat/api/reports/:reportId,
+          GET /compat/api/websites/:websiteId/reports. Search spans report name/description/type,
+          owner username and website name/domain.
+          """
+
+        resource Postgres.ReportTable {
+          operations create, update, delete, list:read, get:read, search:read
+        }
+
+        resource Postgres.UserTable {
+          operations search:read
+        }
+
+        resource Postgres.WebsiteTable {
+          operations search:read
+        }
+      }
+
+      usecase ManageSegments {
+        label "Manage segments and cohorts"
+        description """
+          GET/POST /api/websites/:websiteId/segments, GET/POST/DELETE /api/websites/:websiteId/segments/:segmentId
+          (type segment | cohort; saved filter sets later expanded by getQueryFilters)
+          """
+
+        resource Postgres.SegmentTable {
+          operations create, update, delete, list:read, get:read
+        }
+      }
+
+      usecase ManageAnnotations {
+        label "Manage chart annotations"
+        description "GET/POST /api/websites/:websiteId/annotations, GET/POST/DELETE /api/websites/:websiteId/annotations/:annotationId"
+
+        resource Postgres.AnnotationTable {
+          operations create, update, delete, list:read, get:read
+        }
+      }
+
+      // ---- Entities ------------------------------------------------------------
+      entity Report {
+        label "Saved report"
+        description "A saved report definition (funnel, goal, journey, retention, ...); type + JSON parameters"
+        table Postgres.ReportTable
+
+        Report -> Identity.User "owned by"
+        Report -> TrackedEntities.Website "analyzes"
+      }
+
+      entity Segment {
+        label "Segment / cohort"
+        description "A named, saved filter set (type segment or cohort) applied via ?segment= / ?cohort="
+        table Postgres.SegmentTable
+
+        Segment -> TrackedEntities.Website "filters"
+      }
+
+      entity Annotation {
+        label "Annotation"
+        description "A dated note drawn on a website's charts"
+        table Postgres.AnnotationTable
+
+        Annotation -> TrackedEntities.Website "annotates"
+        Annotation -> Identity.User "written by"
+      }
+
+      // ---- Domain edges --------------------------------------------------------
+      -> Identity "authorizes every request via @/permissions (canViewWebsiteSection, canViewReport, canUpdateWebsite, ...) and parseRequest/checkAuth"
+      -> TrackedEntities "loads the website (fetchWebsite, Redis website:* cache) to resolve date ranges and filters"
+      -> Tracking "delegates session deletion to deleteSession (src/queries/prisma/session.ts)"
+    }
+
+    domain SessionReplay {
+      label "Session replay"
+      description "Record and replay visitor sessions (rrweb recordings, saved replays). Seam resolved in Phase 2: own context downstream of Tracking session identity - own vocabulary (recording, chunk, mask level), own client (src/recorder), own enable flags and tables; heatmap ingest moved to Tracking."
+
+      usecase GetRecorderConfig {
+        label "Serve recorder config to the recorder client"
+        description """
+          GET /api/websites/[websiteId]/recorder (public, CORS, Cache-Control max-age=60).
+          Returns enabled/replayEnabled/heatmapEnabled, sample rates, maskLevel, maxDuration, blockSelector
+          from website.recorderEnabled + website.replayConfig (src/lib/recorder.ts getRecorderConfig).
+          Config itself is written by the website update API (TrackedEntities).
+          """
+
+        resource Postgres.WebsiteTable {
+          operations get:read
+        }
+      }
+
+      usecase IngestRecordingChunk {
+        label "Ingest a replay recording chunk"
+        description """
+          POST /api/record with type=record (unauthenticated, CORS, max 1 MB, max 200 events).
+          Requires the x-umami-cache JWT issued by Tracking (/api/send) carrying sessionId+visitId; no session
+          resolution of its own. Gates: website.recorderEnabled, replayConfig.replayEnabled, CLOUD_MODE business plan
+          (team:* / account:* Redis cache), isbot, blocked IP. Writes one session_replay row per chunk
+          (chunk_index = client timestamp, rrweb events gzip-compressed in Postgres, JSON string in ClickHouse,
+          or produced to the Kafka session_replay topic when Kafka is enabled).
+          """
+        facets pii
+
+        resource Postgres.WebsiteTable {
+          operations get:read
+        }
+
+        resource Postgres.SessionReplayTable {
+          operations save:create
+        }
+
+        resource ClickHouse.SessionReplayTable {
+          operations insert:create
+        }
+
+        resource Kafka.SessionReplayTopic {
+          operations send:create
+        }
+
+        resource Redis.TeamCache {
+          operations fetch:read
+        }
+
+        resource Redis.AccountCache {
+          operations fetch:read
+        }
+      }
+
+      usecase ListReplays {
+        label "List session replays"
+        description """
+          GET /api/websites/[websiteId]/replays (date range, filters, segment/cohort, search, paging, minDuration)
+          and GET /api/websites/[websiteId]/sessions/[sessionId]/replays (same, scoped to one session).
+          Access: canViewAuthenticatedWebsite. Aggregates session_replay chunks per visit_id and joins visitor
+          attributes from session (Postgres) or website_event (ClickHouse); event filters / segments join website_event.
+          """
+        facets pii
+
+        resource Postgres.SessionReplayTable {
+          operations list:read
+        }
+
+        resource ClickHouse.SessionReplayTable {
+          operations list:read
+        }
+
+        resource Postgres.SessionTable {
+          operations join:read
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations join:read
+        }
+
+        resource ClickHouse.WebsiteEventTable {
+          operations join:read
+        }
+
+        resource Postgres.SegmentTable {
+          operations get:read
+        }
+      }
+
+      usecase PlayReplay {
+        label "Load a replay for playback"
+        description """
+          GET /api/websites/[websiteId]/replays/[replayId] (replayId = visit_id; optional until, chunkIndex, eventIndex
+          to load up to a point). Access: canViewAuthenticatedWebsite. Reads all chunks ordered by chunk_index,
+          gunzips (Postgres), merges/sorts events and reassembles 'umami:rrweb-event-fragment' fragments (src/lib/replay.ts).
+          """
+        facets pii
+
+        resource Postgres.SessionReplayTable {
+          operations get:read
+        }
+
+        resource ClickHouse.SessionReplayTable {
+          operations get:read
+        }
+      }
+
+      usecase SaveReplay {
+        label "Save / unsave a replay"
+        description """
+          GET /api/websites/[websiteId]/replays/saved/[replayId] -> { isSaved } (canViewAuthenticatedWebsite);
+          POST same path { isSaved, name } creates or deletes the bookmark (canUpdateWebsite).
+          Unique per (website_id, visit_id).
+          """
+
+        resource Postgres.SessionReplaySavedTable {
+          operations get:read,create,delete
+        }
+      }
+
+      usecase ListSavedReplays {
+        label "List saved replays"
+        description "GET /api/websites/[websiteId]/replays/saved (paging, search on name). Access: canViewAuthenticatedWebsite."
+
+        resource Postgres.SessionReplaySavedTable {
+          operations list:read, search:read
+        }
+      }
+
+      entity Recording {
+        label "Recording chunk"
+        description """
+          One rrweb chunk of a visit's recording; a replay is the set of chunks sharing visit_id.
+          session_id / visit_id carry no Prisma FK (only website_id does); the session link is by convention and join.
+          """
+        table Postgres.SessionReplayTable
+        facets pii
+
+        Recording -> TrackedEntities.Website "recorded on"
+        Recording -> Tracking.Session "recorded during (session_id, no FK)"
+      }
+
+      entity SavedReplay {
+        label "Saved replay"
+        description "Named bookmark of a replay, keyed by (website_id, visit_id). visit_id points at a Recording group, not a row (no FK)."
+        table Postgres.SessionReplaySavedTable
+
+        SavedReplay -> TrackedEntities.Website "saved under"
+        SavedReplay -> Recording "bookmarks (by visit_id, no FK)"
+      }
+
+      -> Tracking "relies on the x-umami-cache session token issued by /api/send; writes heatmap events via saveHeatmapEvents; joins session/website_event"
+      -> TrackedEntities "reads website.recorderEnabled / replayConfig to gate recording"
+      -> Identity "auth (parseRequest) and website permissions (canViewAuthenticatedWebsite, canUpdateWebsite)"
+      -> Analytics "reuses getQueryFilters / segment and cohort resolution for replay listing"
+      -> Teams "CLOUD_MODE plan gate reads team:* cache (fetchTeam)"
+    }
+
+    domain TrackedEntities {
+      label "Websites, links & pixels"
+      description "The things Umami tracks: websites, short links and pixels. Seam resolved in Phase 2: one context - src/lib/entity.ts treats them as one 'entity', events attribute link/pixel hits through website_id + event_type, and they share ownership, permissions and share/chart APIs."
+
+      // ---------- Websites ----------
+      usecase ListMyWebsites {
+        label "List my websites"
+        description """
+          GET /api/websites, GET /api/me/websites, GET /api/users/{userId}/websites (?includeTeams).
+          Own websites, or with includeTeams also websites of non-deleted teams where the user is team-owner/team-manager.
+          Each row is decorated with its latest share slug (shareId). Access: self or admin for /users/{userId}.
+          """
+
+        resource Postgres.WebsiteTable {
+          operations list:read
+        }
+
+        resource Postgres.ShareTable {
+          operations attachShareId:read
+        }
+
+        resource Postgres.TeamTable {
+          operations join:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations join:read
+        }
+
+        resource Postgres.UserTable {
+          operations include:read
+        }
+      }
+
+      usecase ListTeamWebsites {
+        label "List a team's websites"
+        description "GET /api/teams/{teamId}/websites. Access: team member (canViewTeam)."
+
+        resource Postgres.WebsiteTable {
+          operations list:read
+        }
+
+        resource Postgres.ShareTable {
+          operations attachShareId:read
+        }
+
+        resource Postgres.UserTable {
+          operations include:read
+        }
+      }
+
+      usecase CreateWebsite {
+        label "Create a website"
+        description """
+          POST /api/websites. Owned by the user or by a team (teamId). In CLOUD_MODE the per-account website
+          limit is enforced (count of non-deleted websites). Optional shareId creates a Share row (shareType=website).
+          """
+
+        resource Postgres.WebsiteTable {
+          operations create, count:read
+        }
+
+        resource Postgres.ShareTable {
+          operations create
+        }
+      }
+
+      usecase GetWebsite {
+        label "Get a website"
+        description "GET /api/websites/{websiteId}. Access: owner, team member, admin, or a share token covering the id (canViewSharedWebsite)."
+
+        resource Postgres.WebsiteTable {
+          operations get:read
+        }
+
+        resource Postgres.ShareTable {
+          operations attachShareId:read
+        }
+      }
+
+      usecase UpdateWebsite {
+        label "Update a website"
+        description """
+          POST /api/websites/{websiteId}. Name, domain, replayConfig (recorder/heatmap settings, which also
+          toggles recorderEnabled) and shareId: shareId=null deletes all shares of the website, a value creates a new Share.
+          """
+
+        resource Postgres.WebsiteTable {
+          operations get:read,update
+        }
+
+        resource Postgres.ShareTable {
+          operations create, delete, read
+        }
+      }
+
+      usecase TransferWebsite {
+        label "Transfer a website"
+        description "POST /api/websites/{websiteId}/transfer. Moves ownership to a user (teamId=null) or to a team (userId=null). No cache invalidation."
+
+        resource Postgres.WebsiteTable {
+          operations transfer:update
+        }
+      }
+
+      usecase ResetWebsite {
+        label "Reset a website's data"
+        description """
+          POST /api/websites/{websiteId}/reset. One 30s transaction deletes all recorded data for the website
+          (session_replay_saved, session_replay, heatmap_event, revenue, event_data incl. a raw-SQL sweep via website_event,
+          session_data, session_link, website_event, session) and stamps resetAt. Postgres only: ClickHouse rows are not
+          touched. In CLOUD_MODE the Redis website:{id} entry is overwritten with the updated row.
+          """
+
+        resource Postgres.WebsiteTable {
+          operations resetAt:update
+        }
+
+        resource Postgres.SessionReplaySavedTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.SessionReplayTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.HeatmapEventTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.RevenueTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.EventDataTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.SessionDataTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.SessionLinkTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.SessionTable {
+          operations deleteMany:delete
+        }
+
+        resource Redis.WebsiteCache {
+          operations set:update
+        }
+      }
+
+      usecase DeleteWebsite {
+        label "Delete a website"
+        description """
+          DELETE /api/websites/{websiteId}. Same dependent-data purge as reset, plus report, segment, annotation
+          and share (by entityId) rows; then hard-deletes the website, or soft-deletes (deletedAt) in CLOUD_MODE and drops
+          Redis website:{id}. ClickHouse rows are not touched.
+          """
+
+        resource Postgres.WebsiteTable {
+          operations delete, softDelete:update
+        }
+
+        resource Postgres.SessionReplaySavedTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.SessionReplayTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.HeatmapEventTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.RevenueTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.EventDataTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.SessionDataTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.SessionLinkTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.SessionTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.ReportTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.SegmentTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.AnnotationTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.ShareTable {
+          operations deleteMany:delete
+        }
+
+        resource Redis.WebsiteCache {
+          operations del:delete
+        }
+      }
+
+      // ---------- Short links ----------
+      usecase ListLinks {
+        label "List short links"
+        description "GET /api/links (own, deletedAt=null), GET /api/teams/{teamId}/links (team, no deletedAt filter). Search over name/url/slug."
+
+        resource Postgres.LinkTable {
+          operations list:read, search:read
+        }
+      }
+
+      usecase CreateLink {
+        label "Create a short link"
+        description "POST /api/links. name, target url, unique slug (>=8 chars), user- or team-owned. Access: reuses canCreateWebsite / canCreateTeamWebsite."
+
+        resource Postgres.LinkTable {
+          operations create
+        }
+      }
+
+      usecase GetLink {
+        label "Get a short link"
+        description "GET /api/links/{linkId}. Access: owner, team member, admin or share token (canViewLink)."
+
+        resource Postgres.LinkTable {
+          operations get:read
+        }
+      }
+
+      usecase UpdateLink {
+        label "Update a short link"
+        description "POST /api/links/{linkId}. name, url, slug (unique-violation mapped to 400). Does NOT invalidate Redis link:{slug}; the /q/{slug} redirect cache (TTL 86400s) keeps the old target."
+
+        resource Postgres.LinkTable {
+          operations update
+        }
+      }
+
+      usecase DeleteLink {
+        label "Delete a short link"
+        description "DELETE /api/links/{linkId}. Hard delete of the link row only: no cascade into website_event, no share cleanup, no Redis link:{slug} invalidation."
+
+        resource Postgres.LinkTable {
+          operations delete
+        }
+      }
+
+      usecase ViewLinkCharts {
+        label "Link list sparkline charts"
+        description "GET /api/links/charts?ids=... (max 20). Filters ids by canViewLink, then runs getWebsiteListCharts with event_type=linkEvent(3); the link id is the website_id of its events."
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventStatsHourlyTable {
+          operations aggregate:read
+        }
+      }
+
+      // ---------- Pixels ----------
+      usecase ListPixels {
+        label "List pixels"
+        description "GET /api/pixels (own), GET /api/teams/{teamId}/pixels (team). No deletedAt filter. Search over name/slug."
+
+        resource Postgres.PixelTable {
+          operations list:read, search:read
+        }
+      }
+
+      usecase CreatePixel {
+        label "Create a pixel"
+        description "POST /api/pixels. name, unique slug (>=8 chars), user- or team-owned. Access: reuses canCreateWebsite / canCreateTeamWebsite."
+
+        resource Postgres.PixelTable {
+          operations create
+        }
+      }
+
+      usecase GetPixel {
+        label "Get a pixel"
+        description "GET /api/pixels/{pixelId}. Access: canViewPixel."
+
+        resource Postgres.PixelTable {
+          operations get:read
+        }
+      }
+
+      usecase UpdatePixel {
+        label "Update a pixel"
+        description "POST /api/pixels/{pixelId}. name, slug. Does NOT invalidate Redis pixel:{slug}."
+
+        resource Postgres.PixelTable {
+          operations update
+        }
+      }
+
+      usecase DeletePixel {
+        label "Delete a pixel"
+        description "DELETE /api/pixels/{pixelId}. Hard delete of the pixel row only: no event/share cleanup, no Redis pixel:{slug} invalidation."
+
+        resource Postgres.PixelTable {
+          operations delete
+        }
+      }
+
+      usecase ViewPixelCharts {
+        label "Pixel list sparkline charts"
+        description "GET /api/pixels/charts?ids=... (max 20). Filters by canViewPixel, then getWebsiteListCharts with event_type=pixelEvent(4)."
+
+        resource Postgres.WebsiteEventTable {
+          operations aggregate:read
+        }
+
+        resource ClickHouse.WebsiteEventStatsHourlyTable {
+          operations aggregate:read
+        }
+      }
+
+      // ---------- Entities ----------
+      entity Website {
+        label "Website"
+        table Postgres.WebsiteTable
+
+        Website -> Identity.User "owned by (user_id)"
+        Website -> Identity.User "created by (created_by)"
+        Website -> Teams.Team "owned by team (team_id)"
+      }
+
+      entity Link {
+        label "Short link"
+        table Postgres.LinkTable
+
+        Link -> Identity.User "owned by (user_id)"
+        Link -> Teams.Team "owned by team (team_id)"
+      }
+
+      entity Pixel {
+        label "Pixel"
+        table Postgres.PixelTable
+
+        Pixel -> Identity.User "owned by (user_id)"
+        Pixel -> Teams.Team "owned by team (team_id)"
+      }
+
+      // ---------- Domain edges ----------
+      -> Sharing "creates / deletes / looks up website share links (createShare, deleteSharesByEntityId, getShareByEntityId)"
+      -> Identity "authorizes every route via @/permissions (canViewLink, canUpdateWebsite, ...); cloud account lookup (fetchAccount)"
+      -> Teams "team website limit lookup (fetchTeam) and team-membership join for includeTeams listing"
+      -> Analytics "list sparkline charts (getWebsiteListCharts)"
+      -> SessionReplay "normalizes website replayConfig (getRecorderConfig / getRecorderEnabled)"
+      -> Boards "getEntity resolves an id against Board too (lib/entity.ts)"
+      -> Administration "checks cloud plan limits (lib/subscription.ts)"
+    }
+
+    domain Boards {
+      label "Boards"
+      description "Custom dashboards composed of charts"
+
+      usecase ListBoards {
+        label "List my / team boards"
+        description """
+          GET /api/boards (own boards, userId = me) and GET /api/teams/{teamId}/boards (canViewTeam).
+          Paged, searchable on name/description, sortable on name/description/type/createdAt. type = dashboard is excluded.
+          """
+
+        resource Postgres.BoardTable {
+          operations list:read, search:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations canViewTeam:read
+        }
+      }
+
+      usecase CreateBoard {
+        label "Create a board"
+        description """
+          POST /api/boards. type mixed|website|pixel|link ("open" normalized to mixed); owned by the user, or by
+          a team when teamId is set. Access: canCreateWebsite (+ canCreateTeamWebsite for a team board). Rejected when any
+          website/pixel/link referenced in parameters is not viewable by the caller, or a Funnel/Goal component's reportId is not
+          a report of the matching type on the component's website.
+          """
+
+        resource Postgres.BoardTable {
+          operations create
+        }
+
+        resource Postgres.WebsiteTable {
+          operations canView:read
+        }
+
+        resource Postgres.PixelTable {
+          operations canView:read
+        }
+
+        resource Postgres.LinkTable {
+          operations canView:read
+        }
+
+        resource Postgres.ReportTable {
+          operations validateReference:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations permission:read
+        }
+      }
+
+      usecase ViewBoard {
+        label "View a board"
+        description """
+          GET /api/boards/{boardId}. Access: admin, share token for this board (shareToken.boardId), owner
+          user, or any member of the owning team (canViewBoard).
+          """
+
+        resource Postgres.BoardTable {
+          operations get:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations membership:read
+        }
+      }
+
+      usecase UpdateBoard {
+        label "Update a board"
+        description """
+          POST /api/boards/{boardId}. Changes type/name/description/parameters. Access: admin, owner user, or team
+          member with website:update. When type or parameters change, the same entity-visibility and saved-report checks as create
+          are re-run against the merged result.
+          """
+
+        resource Postgres.BoardTable {
+          operations get:read,update
+        }
+
+        resource Postgres.WebsiteTable {
+          operations canView:read
+        }
+
+        resource Postgres.PixelTable {
+          operations canView:read
+        }
+
+        resource Postgres.LinkTable {
+          operations canView:read
+        }
+
+        resource Postgres.ReportTable {
+          operations validateReference:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations permission:read
+        }
+      }
+
+      usecase CloneBoard {
+        label "Clone a board"
+        description """
+          POST /api/boards/{boardId}/clone. Copies a non-dashboard board (optional new name/description/parameters)
+          into the same owner (team or user). Access: canUpdateBoard on the source + canCreateWebsite (+ team). Inaccessible entities
+          reject the clone; Funnel/Goal reportIds that no longer validate are stripped (stripInvalidBoardReports) rather than rejected.
+          """
+
+        resource Postgres.BoardTable {
+          operations get:read,create
+        }
+
+        resource Postgres.WebsiteTable {
+          operations canView:read
+        }
+
+        resource Postgres.PixelTable {
+          operations canView:read
+        }
+
+        resource Postgres.LinkTable {
+          operations canView:read
+        }
+
+        resource Postgres.ReportTable {
+          operations validateReference:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations permission:read
+        }
+      }
+
+      usecase DeleteBoard {
+        label "Delete a board"
+        description """
+          DELETE /api/boards/{boardId}. Access: admin, owner user, or team member with website:delete.
+          Note: share rows pointing at the board are not removed here (only user/team deletion sweeps them).
+          """
+
+        resource Postgres.BoardTable {
+          operations get:read,delete
+        }
+
+        resource Postgres.TeamUserTable {
+          operations permission:read
+        }
+      }
+
+      usecase ManageHomeDashboard {
+        label "Read / save my home dashboard"
+        description """
+          GET /api/dashboard and POST /api/dashboard. The personal dashboard is the board whose id equals the
+          user's id (type "dashboard"); POST upserts it (update if present, else create with id = userId). Saved-report references
+          are validated; entity visibility is NOT checked here (unlike /api/boards).
+          """
+
+        resource Postgres.BoardTable {
+          operations upsert:create,update, get:read
+        }
+
+        resource Postgres.ReportTable {
+          operations validateReference:read
+        }
+      }
+
+      entity Board {
+        label "Board"
+        description "One row per custom board or per-user home dashboard (type = dashboard, board_id = user_id). Layout and all entity/report references are JSON in parameters."
+        table Postgres.BoardTable
+
+        Board -> Identity.User "owned by (user_id)"
+        Board -> Teams.Team "owned by team (team_id)"
+        Board -> TrackedEntities.Website "shows (parameters.websiteId / component entityId; JSON, no FK)"
+        Board -> TrackedEntities.Pixel "shows (parameters.pixelId / component entityId; JSON, no FK)"
+        Board -> TrackedEntities.Link "shows (parameters.linkId / component entityId; JSON, no FK)"
+        Board -> Analytics.Report "embeds saved funnel/goal (component props.reportId; JSON, no FK)"
+      }
+
+      -> Identity "authorizes via @/permissions (canViewBoard, canCreateWebsite, hasPermission on team role); share-token auth for shared boards"
+      -> TrackedEntities "checks the caller can view every referenced website/pixel/link (canViewWebsite / canViewPixel / canViewLink)"
+      -> Analytics "validates Funnel/Goal component reportIds against saved reports (getReport)"
+      -> Teams "team board listing and team-role checks (canViewTeam, getTeamUser)"
+    }
+
+    domain Sharing {
+      label "Sharing"
+      description "Public share links for websites, links, pixels and boards; white-label share pages"
+
+      // ---------- Share management (authenticated) ----------
+      usecase ListShares {
+        label "List an entity's shares"
+        description """
+          GET /api/websites/{websiteId}/shares, GET /api/links/{linkId}/shares,
+          GET /api/pixels/{pixelId}/shares, GET /api/boards/{boardId}/shares (paged, search).
+          Access: website needs a logged-in viewer (canViewAuthenticatedWebsite, share tokens rejected);
+          link/pixel/board use canViewLink/canViewPixel/canViewBoard.
+          """
+
+        resource Postgres.ShareTable {
+          operations list:read
+        }
+      }
+
+      usecase CreateShare {
+        label "Create a share link"
+        description """
+          POST /api/websites/{websiteId}/shares, POST /api/links/{linkId}/shares,
+          POST /api/pixels/{pixelId}/shares, POST /api/boards/{boardId}/shares: share_type fixed by the route, slug =
+          getRandomChars(16). POST /api/share: generic form taking entityId + shareType + optional slug, guarded by
+          canUpdateEntity (lib/entity resolves the id across website/link/pixel/board); shareType is not checked against the
+          real kind of entityId. Access: canUpdateWebsite / canUpdateLink / canUpdatePixel / canUpdateBoard.
+          """
+
+        resource Postgres.ShareTable {
+          operations create
+        }
+
+        resource Postgres.WebsiteTable {
+          operations authorize:read
+        }
+
+        resource Postgres.LinkTable {
+          operations authorize:read
+        }
+
+        resource Postgres.PixelTable {
+          operations authorize:read
+        }
+
+        resource Postgres.BoardTable {
+          operations authorize:read
+        }
+      }
+
+      usecase GetShare {
+        label "Get a share"
+        description "GET /api/share/id/{shareId}. Access: canViewEntity on the share's entity (owner, team member, admin). No null check before the permission call."
+
+        resource Postgres.ShareTable {
+          operations get:read
+        }
+      }
+
+      usecase UpdateShare {
+        label "Update a share"
+        description "POST /api/share/id/{shareId}: name, slug, parameters (sections, allowFilter, theme). Access: canUpdateEntity."
+
+        resource Postgres.ShareTable {
+          operations get:read,update
+        }
+      }
+
+      usecase DeleteShare {
+        label "Delete a share"
+        description """
+          DELETE /api/share/id/{shareId}. Access: canDeleteEntity. Already-minted share tokens stay valid
+          (stateless JWT, no expiry, no revocation list). Bulk delete by entity (deleteSharesByEntityId) is called from the
+          website update/delete route, not from here.
+          """
+
+        resource Postgres.ShareTable {
+          operations get:read,delete
+        }
+      }
+
+      // ---------- Public resolution ----------
+      usecase ResolveShareLink {
+        label "Resolve a share link"
+        description """
+          GET /api/share/{slug} (unauthenticated). Looks the share up by slug, loads the target entity by
+          share_type (website / pixel / link / board; 404 if gone), and for a board narrows the board's website/pixel/link ids
+          to those the board owner (user or team) may view. Mints a share JWT carrying shareId, shareType, parameters and the
+          allowed ids. Resolves the owning account (entity userId, else the team-owner of teamId) and attaches
+          white-label:{accountId} from Redis when Redis is enabled.
+          """
+        facets secret
+
+        resource Postgres.ShareTable {
+          operations getBySlug:read
+        }
+
+        resource Postgres.WebsiteTable {
+          operations get:read
+        }
+
+        resource Postgres.LinkTable {
+          operations get:read
+        }
+
+        resource Postgres.PixelTable {
+          operations get:read
+        }
+
+        resource Postgres.BoardTable {
+          operations get:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations findTeamOwner:read, listMembers:read
+        }
+
+        resource Postgres.UserTable {
+          operations get:read
+        }
+
+        resource Redis.WhiteLabelCache {
+          operations get:read
+        }
+      }
+
+      usecase AuthorizeShareToken {
+        label "Authorize a request by share token"
+        description """
+          Cross-cutting guard, no route of its own. lib/auth.ts parseShareToken verifies the
+          x-umami-share-token JWT (must be type=share) and, when no user session is present, requires the
+          x-umami-share-context header. permissions/share.ts: canViewSharedWebsite / canViewWebsiteSection /
+          canViewSharedWebsiteFilters match the requested id against websiteId/pixelId/linkId(s) in the token and
+          enforce per-section booleans and allowFilter from the share parameters. Purely stateless: no store is read.
+          """
+        facets secret
+      }
+
+      usecase ViewSharePage {
+        label "View a shared dashboard"
+        description """
+          Page /share/{slug}/{...path} (src/app/share). ShareProvider calls GET /api/share/{slug}, stores the
+          token in the app store and renders only once it is in place. Website shares get a section nav filtered by
+          parameters (redirect when exactly one non-overview section is enabled) and reuse the dashboard's website/report
+          pages; board, link and pixel shares render BoardViewPage / LinkPage / PixelPage without actions. Applies the share
+          theme, strips filter query params when allowFilter=false, and shows white-label logo/name/domain.
+          """
+      }
+
+      // ---------- Entity ----------
+      entity Share {
+        label "Share"
+        table Postgres.ShareTable
+
+        Share -> TrackedEntities.Website "shares (entity_id when share_type=1)"
+        Share -> TrackedEntities.Link "shares (entity_id when share_type=2)"
+        Share -> TrackedEntities.Pixel "shares (entity_id when share_type=3)"
+        Share -> Boards.Board "shares (entity_id when share_type=4)"
+      }
+
+      // ---------- Domain edges ----------
+      -> TrackedEntities "loads the shared website/link/pixel, entity permission checks (lib/entity, canUpdateWebsite/Link/Pixel)"
+      -> Boards "loads the shared board and expands its entity ids (getBoard, getBoardEntityIds, canUpdateBoard)"
+      -> Teams "finds the team owner for white-label and team members for board id filtering"
+      -> Identity "loads the board owner user and reuses canViewWebsite; share token verified in lib/auth.ts"
+      -> Analytics "share page embeds the website overview and report pages"
+    }
+
+    domain Teams {
+      label "Teams"
+      description "Teams, membership, roles and invitations"
+
+      usecase ListMyTeams {
+        label "List my teams"
+        description """
+          GET /api/teams, GET /api/me/teams, GET /api/users/{userId}/teams. Paged, sortable (name, createdAt),
+          searchable by name. Non-deleted teams where the user has a team_user row; each team includes its members (with
+          id/username) and counts of non-deleted websites and non-deleted member users. Access: any authenticated user for
+          their own teams; /users/{userId} requires self or admin.
+          """
+
+        resource Postgres.TeamTable {
+          operations list:read, search:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations include:read
+        }
+
+        resource Postgres.UserTable {
+          operations include:read
+        }
+
+        resource Postgres.WebsiteTable {
+          operations count:read
+        }
+      }
+
+      usecase CreateTeam {
+        label "Create a team"
+        description """
+          POST /api/teams {name, ownerId?}. Access: canCreateTeam (admin, or user role with teamCreate). An admin
+          may create on behalf of ownerId. One transaction creates the team (generated accessCode team_<16 random chars>) and
+          the owner's team_user row (role team-owner). In CLOUD_MODE: reads the owner's account:{userId} subscription
+          snapshot from Redis, enforces the plan's team limit (count of non-deleted teams the user owns), and after creation
+          writes team:{teamId} (teamOwnerId + plan flags, TTL 90 days) to Redis.
+          """
+
+        resource Postgres.TeamTable {
+          operations create, count:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations create
+        }
+
+        resource Redis.AccountCache {
+          operations fetchAccount:read
+        }
+
+        resource Redis.TeamCache {
+          operations set:create
+        }
+      }
+
+      usecase GetTeam {
+        label "Get a team"
+        description "GET /api/teams/{teamId}. Returns the team with its members. Access: team member or admin (canViewTeam)."
+
+        resource Postgres.TeamTable {
+          operations get:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations include:read
+        }
+      }
+
+      usecase UpdateTeam {
+        label "Update a team"
+        description "POST /api/teams/{teamId} {name?, accessCode?}. Rename or rotate the access code. Access: canUpdateTeam (team-owner / team-manager, or admin)."
+
+        resource Postgres.TeamTable {
+          operations update
+        }
+      }
+
+      usecase DeleteTeam {
+        label "Delete a team"
+        description """
+          DELETE /api/teams/{teamId}. Access: canDeleteTeam (role with teamDelete, i.e. team-owner, or admin).
+          Collects the team's links, pixels and boards; in one transaction deletes their share rows (share.entity_id),
+          then either
+          - CLOUD_MODE: soft-deletes the team (deletedAt, accessCode cleared), soft-deletes live links and pixels, hard-deletes
+            boards; team_user rows are kept;
+          - otherwise: hard-deletes team_user rows, links, pixels, boards and the team.
+          Afterwards drops Redis link:{slug} / pixel:{slug} for slugs that were still live. Websites are NOT touched
+          explicitly: with relationMode = "prisma" the optional website.team_id is left for Prisma's emulated referential
+          action (SetNull on hard delete); in CLOUD_MODE websites keep pointing at the soft-deleted team. The team:{id} Redis
+          entry is not removed.
+          """
+
+        resource Postgres.TeamTable {
+          operations delete, softDelete:update
+        }
+
+        resource Postgres.TeamUserTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.LinkTable {
+          operations findMany:read, softDelete:update, deleteMany:delete
+        }
+
+        resource Postgres.PixelTable {
+          operations findMany:read, softDelete:update, deleteMany:delete
+        }
+
+        resource Postgres.BoardTable {
+          operations findMany:read, deleteMany:delete
+        }
+
+        resource Postgres.ShareTable {
+          operations deleteMany:delete
+        }
+
+        resource Redis.LinkCache {
+          operations del:delete
+        }
+
+        resource Redis.PixelCache {
+          operations del:delete
+        }
+      }
+
+      usecase ListTeamMembers {
+        label "List team members"
+        description "GET /api/teams/{teamId}/users. Paged, searchable by username; excludes soft-deleted users; ordered by join time. Access: team member or admin (canViewTeam)."
+
+        resource Postgres.TeamUserTable {
+          operations list:read, search:read
+        }
+
+        resource Postgres.UserTable {
+          operations include:read
+        }
+      }
+
+      usecase AddTeamMember {
+        label "Add a team member"
+        description "POST /api/teams/{teamId}/users {userId, role}. Rejects an existing member. Access: canUpdateTeam (team-owner / team-manager, or admin). No rank check on the granted role."
+
+        resource Postgres.TeamUserTable {
+          operations create, get:read
+        }
+      }
+
+      usecase JoinTeam {
+        label "Join a team by access code"
+        description "POST /api/teams/join {accessCode}. Finds a non-deleted team by its unique access_code and adds the caller as team-member; rejects an existing member. Any authenticated user."
+
+        resource Postgres.TeamTable {
+          operations findByAccessCode:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations create, get:read
+        }
+      }
+
+      usecase GetTeamMember {
+        label "Get a team member"
+        description "GET /api/teams/{teamId}/users/{userId}. Access: canUpdateTeam (team-owner / team-manager, or admin)."
+
+        resource Postgres.TeamUserTable {
+          operations get:read
+        }
+      }
+
+      usecase ChangeMemberRole {
+        label "Change a member's role"
+        description "POST /api/teams/{teamId}/users/{userId} {role}. Access: canUpdateTeam, and a non-admin actor must strictly outrank the target's current role (TEAM_ROLE_RANK)."
+
+        resource Postgres.TeamUserTable {
+          operations update, get:read
+        }
+      }
+
+      usecase RemoveTeamMember {
+        label "Remove a team member / leave a team"
+        description """
+          DELETE /api/teams/{teamId}/users/{userId}. Access: canDeleteTeamUser (self-removal, teamUpdate role, or admin).
+          Non-admins can never remove a team-owner, and must outrank the target unless removing themselves.
+          """
+
+        resource Postgres.TeamUserTable {
+          operations get:read, deleteMany:delete
+        }
+      }
+
+      entity Team {
+        label "Team"
+        description "Soft-deletable in CLOUD_MODE (deleted_at). access_code is unique and is the invitation secret."
+        table Postgres.TeamTable
+      }
+
+      entity TeamMember {
+        label "Team member"
+        description "Membership with a role (team_user). Unique per (team, user) by application check only."
+        table Postgres.TeamUserTable
+
+        TeamMember -> Team "belongs to (team_id)"
+        TeamMember -> Identity.User "is (user_id)"
+      }
+
+      -> Identity "authenticates every route (parseRequest) and authorizes via @/permissions team checks; reads users for member lists"
+      -> TrackedEntities "team deletion soft/hard-deletes the team's links and pixels and drops their Redis slug caches (direct table access in deleteTeam)"
+      -> Boards "team deletion deletes the team's boards (direct table access in deleteTeam)"
+      -> Sharing "team deletion deletes share rows of the team's links, pixels and boards"
+      -> Administration "checks cloud plan limits (lib/subscription.ts)"
+    }
+
+    domain Identity {
+      label "Identity & access"
+      description "Users, login/logout, SSO, auth tokens, two-factor authentication, API keys, the /me account area, permissions"
+
+      // ---- Authentication ----
+      usecase AuthenticateRequest {
+        label "Authenticate an API request"
+        description """
+          Routes: none of its own; runs inside parseRequest for every authenticated route (src/lib/request.ts -> src/lib/auth.ts checkAuth).
+          Order: API key (umami_ prefix, not in CLOUD_MODE, path not blocked) -> secure JWT (partial-auth tokens rejected) -> Redis auth:* lookup -> share token header (only inside a share context).
+          Rejects a session whose pwd fingerprint no longer matches the stored password hash. Throttles api_key.last_used_at writes to once per 5 minutes.
+          """
+        facets secret
+
+        resource Postgres.UserTable {
+          operations get:read
+        }
+
+        resource Postgres.ApiKeyTable {
+          operations getByHash:read, touchLastUsed:update
+        }
+
+        resource Redis.AuthTokens {
+          operations get:read
+        }
+      }
+
+      usecase LoginWithPassword {
+        label "Log in with username and password"
+        description """
+          Routes: POST /api/auth/login; UI /login (LoginForm).
+          bcrypt check; if two_factor_auth.is_enabled (and not CLOUD_MODE) returns a 5-minute partial-auth token instead of a session (stored client-side in sessionStorage umami.partial-token) and the UI moves to /login/two-factor.
+          Otherwise issues a session token (Redis auth:* when REDIS_URL is set, else a stateless JWT) and returns the user with all team memberships.
+          """
+        facets pii, secret
+
+        resource Postgres.UserTable {
+          operations getByUsername:read
+        }
+
+        resource Postgres.TwoFactorAuthTable {
+          operations get:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations listUserTeams:read
+        }
+
+        resource Postgres.TeamTable {
+          operations listUserTeams:read
+        }
+
+        resource Redis.AuthTokens {
+          operations set:create
+        }
+      }
+
+      usecase CompleteTwoFactorLogin {
+        label "Complete login with a 2FA code or backup code"
+        description """
+          Routes: POST /api/2fa/verify (bearer = partial-auth token, skipAuth); UI /login/two-factor.
+          Accepts either a 6-digit TOTP (replay-checked against two_factor_otp_used, then marked used for 90 s) or a backup code (bcrypt match against unused codes, then atomically marked used).
+          Checks and updates the per-user failure counter (5 failures -> 15-minute lock). On success issues the full session token like LoginWithPassword.
+          """
+        facets secret
+
+        resource Postgres.UserTable {
+          operations get:read
+        }
+
+        resource Postgres.TwoFactorAuthTable {
+          operations get:read
+        }
+
+        resource Postgres.TwoFactorBackupCodeTable {
+          operations list:read, consume:update
+        }
+
+        resource Postgres.TwoFactorOtpUsedTable {
+          operations get:read, markUsed:create,update, purgeExpired:delete
+        }
+
+        resource Postgres.TwoFactorRateLimitTable {
+          operations check:read, recordFailure:create,update, reset:delete
+        }
+
+        resource Postgres.TeamUserTable {
+          operations listUserTeams:read
+        }
+
+        resource Redis.AuthTokens {
+          operations set:create
+        }
+      }
+
+      usecase LoginWithSso {
+        label "Exchange a session for an SSO token"
+        description """
+          Routes: POST /api/auth/sso (requires Redis; 500 when Redis is disabled); UI /sso?token=&url= stores the token in localStorage umami.auth and redirects to a same-origin path.
+          Mints a new Redis auth:* session with a 24-hour TTL for the already-authenticated user.
+          """
+        facets secret
+
+        resource Postgres.UserTable {
+          operations get:read
+        }
+
+        resource Redis.AuthTokens {
+          operations set:create
+        }
+      }
+
+      usecase Logout {
+        label "Log out"
+        description """
+          Routes: POST /api/auth/logout; UI /logout clears localStorage umami.auth.
+          Deletes the Redis auth:* key when Redis is enabled. In stateless-JWT mode logout is client-side only: the token stays valid until the password changes.
+          """
+
+        resource Redis.AuthTokens {
+          operations del:delete
+        }
+      }
+
+      usecase GetCurrentAccount {
+        label "Get the current account"
+        description "Routes: GET /api/me (returns the resolved Auth object), POST /api/auth/verify (user plus all team memberships)."
+        facets pii
+
+        resource Postgres.TeamUserTable {
+          operations listUserTeams:read
+        }
+
+        resource Postgres.TeamTable {
+          operations listUserTeams:read
+        }
+      }
+
+      usecase GetSubscription {
+        label "Get the subscription flags of the account or a team"
+        description """
+          Routes: GET /api/auth/subscription?teamId= (no-store).
+          Access: the caller must be able to view the team when teamId is given.
+          Reads cloud billing flags cached in Redis (account:<userId>, team:<teamId>) via src/lib/load.ts and normalizes them (src/lib/subscription.ts).
+          """
+
+        resource Postgres.TeamUserTable {
+          operations canViewTeam:read
+        }
+
+        resource Redis.AccountCache {
+          operations get:read
+        }
+
+        resource Redis.TeamCache {
+          operations get:read
+        }
+      }
+
+      usecase ChangeOwnPassword {
+        label "Change own password"
+        description """
+          Routes: POST /api/me/password (API keys blocked).
+          Verifies the current password, stores a new bcrypt hash. Because sessions carry a pwd fingerprint, every existing session of the user is invalidated as a side effect.
+          """
+        facets secret
+
+        resource Postgres.UserTable {
+          operations update, get:read
+        }
+      }
+
+      // ---- API keys ----
+      usecase ListApiKeys {
+        label "List own API keys"
+        description "Routes: GET /api/me/api-keys (404 in CLOUD_MODE; API keys blocked). Returns name, prefix, last-used and created timestamps only."
+
+        resource Postgres.ApiKeyTable {
+          operations list:read
+        }
+      }
+
+      usecase CreateApiKey {
+        label "Create an API key"
+        description "Routes: POST /api/me/api-keys (404 in CLOUD_MODE; API keys blocked). Generates umami_<32 random chars>, stores only its sha512 hash and a display prefix; the plaintext is returned once."
+        facets secret
+
+        resource Postgres.ApiKeyTable {
+          operations create
+        }
+      }
+
+      usecase RevokeApiKey {
+        label "Revoke an API key"
+        description "Routes: DELETE /api/me/api-keys/[keyId] (404 in CLOUD_MODE; API keys blocked). Deletes only a key owned by the caller."
+
+        resource Postgres.ApiKeyTable {
+          operations delete
+        }
+      }
+
+      // ---- Two-factor authentication ----
+      usecase GetTwoFactorStatus {
+        label "Get 2FA status and requirement"
+        description """
+          Routes: GET /api/2fa/status.
+          Reports whether 2FA is enabled, whether TWO_FACTOR_ENCRYPTION_KEY is configured, and whether it is required and why: globally (app_setting twoFactorRequiredGlobal), for the user (user.two_factor_required) or by any of the user's teams (team.two_factor_required). Always disabled in CLOUD_MODE.
+          """
+
+        resource Postgres.TwoFactorAuthTable {
+          operations get:read
+        }
+
+        resource Postgres.AppSettingTable {
+          operations get:read
+        }
+
+        resource Postgres.UserTable {
+          operations get:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations list:read
+        }
+
+        resource Postgres.TeamTable {
+          operations list:read
+        }
+      }
+
+      usecase InitiateTwoFactorSetup {
+        label "Start 2FA setup"
+        description """
+          Routes: POST /api/2fa/setup/initiate (404 in CLOUD_MODE, 503 without TWO_FACTOR_ENCRYPTION_KEY).
+          Generates a TOTP secret, stores it AES-256-GCM encrypted as a pending (is_enabled=false) record, returns an otpauth QR code and the plaintext manual key once.
+          """
+        facets secret
+
+        resource Postgres.UserTable {
+          operations get:read
+        }
+
+        resource Postgres.TwoFactorAuthTable {
+          operations get:read, upsert:create,update
+        }
+      }
+
+      usecase ConfirmTwoFactorSetup {
+        label "Confirm 2FA setup and issue backup codes"
+        description """
+          Routes: POST /api/2fa/setup/confirm.
+          Rate-limited and replay-checked TOTP verification against the pending secret; on success enables 2FA, replaces the backup codes with 10 fresh bcrypt-hashed codes (plaintext returned once) and marks the OTP used, in one transaction.
+          """
+        facets secret
+
+        resource Postgres.TwoFactorAuthTable {
+          operations get:read, enable:update
+        }
+
+        resource Postgres.TwoFactorBackupCodeTable {
+          operations replace:create,delete
+        }
+
+        resource Postgres.TwoFactorOtpUsedTable {
+          operations get:read, markUsed:create,update
+        }
+
+        resource Postgres.TwoFactorRateLimitTable {
+          operations check:read, recordFailure:create,update, reset:delete
+        }
+      }
+
+      usecase CancelTwoFactorSetup {
+        label "Cancel a pending 2FA setup"
+        description "Routes: POST /api/2fa/setup/cancel (404 in CLOUD_MODE). Deletes only a not-yet-enabled two_factor_auth record."
+
+        resource Postgres.TwoFactorAuthTable {
+          operations deletePending:delete
+        }
+      }
+
+      usecase DisableTwoFactor {
+        label "Disable 2FA"
+        description """
+          Routes: POST /api/2fa/disable (password + TOTP).
+          Refused when 2FA is required globally, for the user, or by any of the user's teams. Rate-limited and replay-checked; deletes the 2FA record and all backup codes in one transaction.
+          """
+        facets secret
+
+        resource Postgres.AppSettingTable {
+          operations get:read
+        }
+
+        resource Postgres.UserTable {
+          operations get:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations list:read
+        }
+
+        resource Postgres.TeamTable {
+          operations list:read
+        }
+
+        resource Postgres.TwoFactorAuthTable {
+          operations delete, get:read
+        }
+
+        resource Postgres.TwoFactorBackupCodeTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.TwoFactorOtpUsedTable {
+          operations get:read, markUsed:create,update
+        }
+
+        resource Postgres.TwoFactorRateLimitTable {
+          operations check:read, recordFailure:create,update, reset:delete
+        }
+      }
+
+      // ---- User administration ----
+      usecase CreateUser {
+        label "Create a user"
+        description """
+          Routes: POST /api/users (API keys blocked).
+          Access: admins only (canCreateUser). Usernames are lower-cased and unique, including soft-deleted users.
+          """
+        facets pii, secret
+
+        resource Postgres.UserTable {
+          operations create, getByUsername:read
+        }
+      }
+
+      usecase GetUser {
+        label "View a user"
+        description """
+          Routes: GET /api/users/[userId] (API keys blocked).
+          Access: admins, or the user themself (canViewUser).
+          """
+        facets pii
+
+        resource Postgres.UserTable {
+          operations get:read
+        }
+      }
+
+      usecase UpdateUser {
+        label "Update a user"
+        description """
+          Routes: POST /api/users/[userId] (API keys blocked).
+          Access: admins, or the user themself (canUpdateUser); only admins may change username or role. Setting a password re-hashes it and invalidates existing sessions.
+          """
+        facets pii, secret
+
+        resource Postgres.UserTable {
+          operations update, get:read
+        }
+      }
+
+      usecase DeleteUser {
+        label "Delete a user and everything they own"
+        description """
+          Routes: DELETE /api/users/[userId] (API keys blocked).
+          Access: admins only (canDeleteUser), never oneself.
+          Self-hosted: one transaction hard-deletes the user's websites with their Postgres analytics rows (event_data, session_data, website_event, session), the teams the user owns with all their memberships, the user's and those websites' reports, shares of the owned links/pixels/boards, links, pixels, boards, and the user (api_key and two_factor_* rows go by onDelete Cascade).
+          CLOUD_MODE: soft-deletes the user (username scrambled) and websites/links/pixels, hard-deletes boards and shares.
+          Afterwards deletes Redis link:<slug> / pixel:<slug> for still-live slugs.
+          """
+        facets pii
+
+        resource Postgres.UserTable {
+          operations delete, softDelete:update
+        }
+
+        resource Postgres.WebsiteTable {
+          operations delete, list:read, softDelete:update
+        }
+
+        resource Postgres.TeamTable {
+          operations delete, list:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations delete
+        }
+
+        resource Postgres.LinkTable {
+          operations delete, list:read, softDelete:update
+        }
+
+        resource Postgres.PixelTable {
+          operations delete, list:read, softDelete:update
+        }
+
+        resource Postgres.BoardTable {
+          operations delete, list:read
+        }
+
+        resource Postgres.ShareTable {
+          operations delete
+        }
+
+        resource Postgres.ReportTable {
+          operations delete
+        }
+
+        resource Postgres.SessionTable {
+          operations delete
+        }
+
+        resource Postgres.WebsiteEventTable {
+          operations delete
+        }
+
+        resource Postgres.EventDataTable {
+          operations delete
+        }
+
+        resource Postgres.SessionDataTable {
+          operations delete
+        }
+
+        resource Postgres.ApiKeyTable {
+          operations cascade:delete
+        }
+
+        resource Postgres.TwoFactorAuthTable {
+          operations cascade:delete
+        }
+
+        resource Postgres.TwoFactorBackupCodeTable {
+          operations cascade:delete
+        }
+
+        resource Postgres.TwoFactorOtpUsedTable {
+          operations cascade:delete
+        }
+
+        resource Postgres.TwoFactorRateLimitTable {
+          operations cascade:delete
+        }
+
+        resource Redis.LinkCache {
+          operations del:delete
+        }
+
+        resource Redis.PixelCache {
+          operations del:delete
+        }
+      }
+
+      // ---- Authorization ----
+      usecase AuthorizeAccess {
+        label "Decide whether the caller may view, update or delete a resource"
+        description """
+          Routes: none of its own; src/permissions is imported by route handlers of most domains.
+          Rule shape everywhere: admin -> allow; share token naming the id -> allow for views; personal owner (userId) -> allow; team-owned -> team membership for views, team role permission (ROLE_PERMISSIONS: websiteUpdate / websiteDelete / websiteTransfer* / teamUpdate / teamDelete / websiteCreate / teamCreate) for writes.
+          Checks living here by owning domain: TrackedEntities (website.ts, link.ts, pixel.ts, entity.ts), Boards (board.ts, incl. validating report references inside board components), Analytics (report.ts, by report type -> share section), Sharing (share.ts: share-token section/filter rules), Teams (team.ts, incl. canEnforceTwoFactorAuthForTeam), Identity (user.ts, incl. canEnforceTwoFactorAuthForEveryone / ForUser).
+          """
+
+        resource Postgres.WebsiteTable {
+          operations get:read
+        }
+
+        resource Postgres.LinkTable {
+          operations get:read
+        }
+
+        resource Postgres.PixelTable {
+          operations get:read
+        }
+
+        resource Postgres.BoardTable {
+          operations get:read
+        }
+
+        resource Postgres.ReportTable {
+          operations get:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations get:read
+        }
+      }
+
+      // ---- Entities ----
+      entity User {
+        label "User"
+        description "An Umami account: username, bcrypt password hash, role (admin/user/view-only), per-user 2FA requirement; soft-deleted in CLOUD_MODE."
+        table Postgres.UserTable
+        facets pii, secret
+      }
+
+      entity ApiKey {
+        label "API key"
+        description "A personal API key; only the sha512 hash and a display prefix are stored."
+        table Postgres.ApiKeyTable
+        facets secret
+
+        ApiKey -> User "belongs to"
+      }
+
+      entity TwoFactorAuth {
+        label "2FA enrolment"
+        description "One per user: the AES-256-GCM-encrypted TOTP secret (key TWO_FACTOR_ENCRYPTION_KEY) and whether setup is confirmed."
+        table Postgres.TwoFactorAuthTable
+        facets secret
+
+        TwoFactorAuth -> User "belongs to"
+      }
+
+      entity TwoFactorBackupCode {
+        label "2FA backup code"
+        description "Ten bcrypt-hashed single-use recovery codes per user."
+        table Postgres.TwoFactorBackupCodeTable
+        facets secret
+
+        TwoFactorBackupCode -> User "belongs to"
+      }
+
+      entity TwoFactorOtpUsed {
+        label "Used one-time password"
+        description "Replay guard: a TOTP code already accepted for a user, kept for 90 seconds (plaintext 6-digit code)."
+        table Postgres.TwoFactorOtpUsedTable
+        facets secret
+
+        TwoFactorOtpUsed -> User "used by"
+      }
+
+      entity TwoFactorRateLimit {
+        label "2FA failure counter"
+        description "One per user: failed 2FA attempts and the lock-out deadline (5 failures -> 15 minutes)."
+        table Postgres.TwoFactorRateLimitTable
+
+        TwoFactorRateLimit -> User "throttles"
+      }
+
+      // ---- Domain dependencies ----
+      -> Teams "loads a user's team memberships at login/verify and checks team membership/roles in permissions"
+      -> TrackedEntities "permissions look up website/link/pixel ownership; user deletion removes owned websites, links and pixels"
+      -> Boards "permissions look up board ownership; user deletion removes owned boards"
+      -> Analytics "permissions look up reports; user deletion removes the user's reports"
+      -> Administration "checks cloud plan limits (lib/subscription.ts)"
+    }
+
+    domain Administration {
+      label "Administration"
+      description "Instance settings, admin views over users/teams/websites, config, heartbeat, telemetry and update checks"
+
+      // ---- Admin listings ----
+      usecase ListAllUsers {
+        label "List every user (admin)"
+        description "Routes: GET /api/admin/users (paging, search, sorting; admin only via canViewUsers). Returns users newest first without the password hash, each with a count of its non-deleted websites. UI /admin/users."
+        facets pii
+
+        resource Postgres.UserTable {
+          operations list:read
+        }
+
+        resource Postgres.WebsiteTable {
+          operations count:read
+        }
+      }
+
+      usecase ListAllTeams {
+        label "List every team (admin)"
+        description "Routes: GET /api/admin/teams (paging, search, sorting; admin only via canViewAllTeams). Returns teams newest first with members (user id and username) and counts of non-deleted websites and members. UI /admin/teams."
+
+        resource Postgres.TeamTable {
+          operations list:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations list:read
+        }
+
+        resource Postgres.UserTable {
+          operations get:read
+        }
+
+        resource Postgres.WebsiteTable {
+          operations count:read
+        }
+      }
+
+      usecase ListAllWebsites {
+        label "List every website (admin)"
+        description "Routes: GET /api/admin/websites (paging, search, sorting; admin only via canViewAllWebsites). Returns websites newest first with the owning user (username) or owning team and its team-owner memberships. UI /admin/websites."
+
+        resource Postgres.WebsiteTable {
+          operations list:read
+        }
+
+        resource Postgres.UserTable {
+          operations get:read
+        }
+
+        resource Postgres.TeamTable {
+          operations get:read
+        }
+
+        resource Postgres.TeamUserTable {
+          operations list:read
+        }
+      }
+
+      // ---- Two-factor enforcement ----
+      usecase RequireTwoFactorGlobally {
+        label "Require 2FA for everyone"
+        description "Routes: POST /api/admin/2fa/global {required} (404 in CLOUD_MODE; admin only via canEnforceTwoFactorAuthForEveryone; 503 when enabling without TWO_FACTOR_ENCRYPTION_KEY). Upserts app_setting twoFactorRequiredGlobal. UI /admin/security (AdminSecurityPage)."
+
+        resource Postgres.AppSettingTable {
+          operations upsert:create,update
+        }
+      }
+
+      usecase RequireTwoFactorForTeam {
+        label "Require 2FA for a team's members"
+        description "Routes: POST /api/admin/teams/[teamId]/2fa {required} (404 in CLOUD_MODE; admin only via canEnforceTwoFactorAuthForTeam; 503 when enabling without TWO_FACTOR_ENCRYPTION_KEY). Sets team.two_factor_required."
+
+        resource Postgres.TeamTable {
+          operations update:update
+        }
+      }
+
+      usecase RequireTwoFactorForUser {
+        label "Require 2FA for a user / view a user's 2FA status"
+        description "Routes: GET /api/admin/users/[userId]/2fa (whether the user has 2FA enabled), POST /api/admin/users/[userId]/2fa {required} (sets user.two_factor_required; 503 when enabling without TWO_FACTOR_ENCRYPTION_KEY). Both 404 in CLOUD_MODE; admin only via canEnforceTwoFactorAuthForUser."
+
+        resource Postgres.TwoFactorAuthTable {
+          operations get:read
+        }
+
+        resource Postgres.UserTable {
+          operations update:update
+        }
+      }
+
+      usecase ResetUserTwoFactor {
+        label "Reset a user's 2FA (admin)"
+        description "Routes: DELETE /api/admin/users/[userId]/2fa (404 in CLOUD_MODE; admin only). One transaction deletes the user's two_factor_auth, backup codes, used-OTP records and rate-limit row; returns the counts. Recovery path for a locked-out user."
+        facets secret
+
+        resource Postgres.TwoFactorAuthTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.TwoFactorBackupCodeTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.TwoFactorOtpUsedTable {
+          operations deleteMany:delete
+        }
+
+        resource Postgres.TwoFactorRateLimitTable {
+          operations deleteMany:delete
+        }
+      }
+
+      // ---- Instance runtime ----
+      usecase GetInstanceConfig {
+        label "Read instance configuration"
+        description "Routes: GET /api/config (skipAuth, force-dynamic). Returns env-derived flags: cloudMode, faviconUrl, linksUrl, pixelsUrl, privateMode, sessionDeletionEnabled (relational-only DB, i.e. no ClickHouse), telemetryDisabled, trackerScriptName, updatesDisabled. Read by the dashboard through useConfig."
+      }
+
+      usecase CheckHeartbeat {
+        label "Health check"
+        description "Routes: GET /api/heartbeat. Always returns {ok: true}; no auth, no DB access."
+      }
+
+      usecase ServeTelemetryScript {
+        label "Serve the telemetry beacon script"
+        description "Routes: GET /api/scripts/telemetry (rewritten from /telemetry.js in next.config; loaded by src/app/(main)/App.tsx). In production, unless DISABLE_TELEMETRY or PRIVATE_MODE, returns a script that loads the pixel https://i.umami.is/a.png?v=<version> in the browser; otherwise a no-op comment."
+      }
+
+      usecase CheckForUpdates {
+        label "Notify admins of a newer release"
+        description "Routes: none (client-side). UpdateNotice (src/app/(main)/UpdateNotice.tsx) calls checkVersion (src/store/version.ts), which fetches https://api.umami.is/v1/updates?v=<version> from the browser, only for admins in production when updatesDisabled / privateMode / cloudMode are off. The dismissed version is kept in localStorage umami.version-check."
+      }
+
+      usecase EvaluateCloudPlanLimits {
+        label "Evaluate cloud plan limits"
+        description "Routes: none of its own; src/lib/subscription.ts is a pure library used by GET /api/auth/subscription (normalizeSubscription), POST /api/websites (getCloudWebsiteLimit: free 1, pro 20, business/no-billing/unlimited none) and POST /api/teams (getCloudTeamLimit: free 0, pro 10). The account object comes from the cloud account lookup, not from this domain's tables."
+      }
+
+      entity AppSetting {
+        label "App setting"
+        description "Key/value instance setting (key is the primary key). Only key in use: twoFactorRequiredGlobal."
+        table Postgres.AppSettingTable
+      }
+
+      -> Identity "authorizes admin routes via @/permissions (isAdmin checks); lists and updates users via queries/prisma/user (getUsers, updateUser)"
+      -> Teams "lists all teams via queries/prisma/team getTeams"
+      -> TrackedEntities "lists all websites via queries/prisma/website getWebsites"
+    }
+  }
+
+  service McpServer {
+    label "Umami MCP server"
+    description "@umami/mcp (packages/mcp): read-only MCP tools that call the Umami API through @umami/api-client"
+
+    domain McpTools {
+      label "MCP tools"
+      description "Read-only analytics tools exposed to MCP clients"
+
+      // ---------- Transports ----------
+      usecase ServeStdio {
+        label "Serve MCP over stdio"
+        description """
+          bin/umami-mcp.js -> src/cli.ts -> serveUmamiStdio (src/stdio.ts). For local agents (Claude Desktop, Cursor).
+          Builds one UmamiClient from env: UMAMI_API_URL (full base), or UMAMI_URL (+ '/api'); credentials UMAMI_API_TOKEN
+          (self-hosted API key or login token) or UMAMI_API_KEY (Umami Cloud). Fails fast when neither credential is set.
+          Talks to any Umami instance (self-hosted or api.umami.is/v1) over real HTTP. Logs JSON lines to stderr.
+          """
+        facets secret
+      }
+
+      usecase ServeHttp {
+        label "Serve MCP over Streamable HTTP"
+        description """
+          createUmamiMcpHttpHandler (src/http.ts): stateless Streamable HTTP (protocol 2026-07-28, legacy 'stateless').
+          The host must verify the bearer token and pass authInfo; a fresh McpServer and UmamiClient are built per request,
+          forwarding the caller's token unchanged. identity (userId, clientId, requestId) is used for log correlation only.
+          Hosted by UmamiApp at GET/POST/DELETE /mcp (src/app/mcp/route.ts, gated by MCP_ENABLED=1, else 404; OPTIONS answers CORS *).
+          There the client uses an in-process fetch (src/lib/mcp/dispatch.ts) that invokes the App Router handlers directly
+          (no loopback HTTP) and only for an allowlist of 39 GET routes (MCP_DISPATCH_ROUTES); anything else returns 404.
+          """
+      }
+
+      usecase AuthenticateMcpApiKey {
+        label "Authenticate an MCP request by API key"
+        description """
+          src/lib/mcp/auth.ts (runs in UmamiApp before dispatch to the HTTP handler). Access: self-hosted API keys only.
+          Requires 'Authorization: Bearer <key>'. Rejects with 401 + WWW-Authenticate 'Bearer realm="Umami MCP"' when the key is missing,
+          API keys are disabled (isApiKeyEnabled), the token is not API-key shaped (isApiKey), or checkApiKeyAuth finds no user.
+          On success: authInfo { token, clientId 'api-key:<apiKeyId>', scopes [], extra { userId, authType 'api-key', requestId } }.
+          No OAuth, no login-token (JWT/Redis auth:*) sessions on this endpoint.
+          """
+        facets secret
+      }
+
+      // ---------- Websites ----------
+      usecase ListWebsites {
+        label "List accessible websites"
+        description """
+          Tool list_websites. GET /api/websites?includeTeams=true (search, page, pageSize <= 100).
+          Entry point of every workflow: returns id, name, domain, teamId for the websiteId every other tool needs.
+          """
+      }
+
+      // ---------- Traffic overview ----------
+      usecase GetTrafficOverview {
+        label "Get traffic totals, trends and rankings"
+        description """
+          Tools get_website_daterange, get_website_stats, get_website_traffic, get_website_metrics.
+          GET /api/websites/{websiteId}/daterange, /stats, /pageviews (time series, unit/timezone), /metrics (type: path, referrer,
+          country, browser, os, device, event, hostname, utm..., limit <= 500). All accept the shared filter set (lib/filters.ts:
+          path, referrer, country, utm*, distinctId, segment, cohort, match all/any) and ISO date ranges (lib/dates.ts).
+          """
+      }
+
+      usecase GetRealtime {
+        label "Get current visitors"
+        description "Tool get_realtime. GET /api/websites/{websiteId}/active."
+      }
+
+      // ---------- Events ----------
+      usecase InspectEvents {
+        label "Inspect custom events"
+        description """
+          Tools get_events, get_event_stats, get_event_series, get_event_properties.
+          GET /api/websites/{websiteId}/events (paginated raw events), /events/stats, /events/series (grouped per event name),
+          /event-data/properties + /event-data/stats, or /event-data/values for one property's values.
+          """
+      }
+
+      // ---------- Sessions ----------
+      usecase InspectSessions {
+        label "Inspect visitor sessions"
+        description """
+          Tools get_sessions, get_session_stats, get_session.
+          GET /api/websites/{websiteId}/sessions, /sessions/stats, /sessions/{sessionId},
+          /sessions/{sessionId}/activity (capped at 200 rows), /sessions/{sessionId}/properties.
+          Returns per-visitor detail (location, device, distinct ID, custom session data).
+          """
+        facets pii
+      }
+
+      // ---------- Saved definitions ----------
+      usecase ReadSavedDefinitions {
+        label "Read annotations, segments and saved funnels"
+        description """
+          Tools get_annotations, list_segments, list_funnels.
+          GET /api/websites/{websiteId}/annotations, /segments (segments and cohorts, IDs reusable as filters), /funnels (saved
+          funnel reports with steps and window, IDs reusable by run_funnel).
+          """
+      }
+
+      // ---------- Reports ----------
+      usecase RunConversionReports {
+        label "Run funnel and goal reports"
+        description """
+          Tools run_funnel, get_goals.
+          run_funnel: GET /api/websites/{websiteId}/funnels/{funnelId}/stats (saved funnel) or /funnels/stats (ad-hoc steps + window).
+          get_goals: GET /api/websites/{websiteId}/goals, then with startAt one GET /goals/{goalId}/stats per goal (N+1 fan-out)
+          to compute conversions / visitors / rate.
+          """
+      }
+
+      usecase RunBehaviourReports {
+        label "Run journey, retention and attribution reports"
+        description """
+          Tools run_journey, run_retention, run_attribution.
+          GET /api/websites/{websiteId}/journeys, /retention, /attribution.
+          """
+      }
+
+      usecase GetRevenue {
+        label "Get revenue"
+        description """
+          Tool get_revenue. GET /api/websites/{websiteId}/revenue/stats, /revenue/chart, and /revenue/metrics
+          four times in parallel (type country, region, referrer, channel).
+          """
+      }
+
+      usecase GetPerformance {
+        label "Get Core Web Vitals"
+        description """
+          Tool get_performance. GET /api/websites/{websiteId}/performance/stats, optionally /performance/chart (one metric)
+          and /performance/metrics (breakdown).
+          """
+      }
+
+      -> TrackedEntities "list_websites calls GET /api/websites (includeTeams) to resolve websiteIds"
+      -> Analytics "every other tool calls the Analytics read API (stats, metrics, events, sessions, reports, segments, annotations)"
+      -> Identity "the embedded /mcp endpoint verifies the bearer API key with checkApiKeyAuth / isApiKey (src/lib/auth, src/lib/api-key)"
+    }
+  }
+
+  service UmamiCloud [external] {
+    label "umami.is"
+    description "Update check (api.umami.is/v1/updates), telemetry pixel (i.umami.is/a.png), and Umami Cloud API for the stdio MCP server"
+  }
+
+  service GeoLite [external] {
+    label "MaxMind GeoLite2"
+    description "GeoLite2-City.mmdb read from disk for IP geolocation"
+  }
+
+  database Postgres {
+    label "PostgreSQL"
+    description "System of record (Prisma). Also stores analytics events unless ClickHouse is configured."
+
+    boundary EventStore {
+      label "Event store"
+      description "Tables written on the ingest path (/api/send, /api/record) and purged on website reset/delete. ClickHouse holds the same data when CLICKHOUSE_URL is set (db/clickhouse/schema.sql)."
+      contains SessionTable
+      contains SessionLinkTable
+      contains WebsiteEventTable
+      contains EventDataTable
+      contains SessionDataTable
+      contains RevenueTable
+      contains SessionReplayTable
+      contains HeatmapEventTable
+    }
+
+    boundary AppData {
+      label "Application data"
+      description "Configuration and account tables that stay in PostgreSQL in every deployment mode"
+      contains UserTable
+      contains ApiKeyTable
+      contains WebsiteTable
+      contains TeamTable
+      contains TeamUserTable
+      contains ReportTable
+      contains AnnotationTable
+      contains SegmentTable
+      contains LinkTable
+      contains PixelTable
+      contains BoardTable
+      contains ShareTable
+      contains SessionReplaySavedTable
+      contains TwoFactorAuthTable
+      contains TwoFactorBackupCodeTable
+      contains TwoFactorOtpUsedTable
+      contains TwoFactorRateLimitTable
+      contains AppSettingTable
+    }
+
+    table UserTable {
+      label "user"
+    }
+
+    table ApiKeyTable {
+      label "api_key"
+      facets secret
+
+      ApiKeyTable -> UserTable [inferred]
+    }
+
+    table SessionTable {
+      label "session"
+
+      SessionTable -> WebsiteTable [inferred]
+    }
+
+    table SessionLinkTable {
+      label "session_link"
+
+      SessionLinkTable -> SessionTable [inferred]
+      SessionLinkTable -> WebsiteTable [inferred]
+    }
+
+    table WebsiteTable {
+      label "website"
+
+      WebsiteTable -> TeamTable [inferred]
+      WebsiteTable -> UserTable [inferred]
+    }
+
+    table WebsiteEventTable {
+      label "website_event"
+
+      WebsiteEventTable -> SessionTable [inferred]
+      WebsiteEventTable -> WebsiteTable [inferred]
+    }
+
+    table EventDataTable {
+      label "event_data"
+
+      EventDataTable -> WebsiteEventTable [inferred]
+      EventDataTable -> WebsiteTable [inferred]
+    }
+
+    table SessionDataTable {
+      label "session_data"
+
+      SessionDataTable -> SessionTable [inferred]
+      SessionDataTable -> WebsiteTable [inferred]
+    }
+
+    table TeamTable {
+      label "team"
+    }
+
+    table TeamUserTable {
+      label "team_user"
+
+      TeamUserTable -> TeamTable [inferred]
+      TeamUserTable -> UserTable [inferred]
+    }
+
+    table ReportTable {
+      label "report"
+
+      ReportTable -> UserTable [inferred]
+      ReportTable -> WebsiteTable [inferred]
+    }
+
+    table AnnotationTable {
+      label "annotation"
+
+      AnnotationTable -> UserTable [inferred]
+      AnnotationTable -> WebsiteTable [inferred]
+    }
+
+    table SegmentTable {
+      label "segment"
+
+      SegmentTable -> WebsiteTable [inferred]
+    }
+
+    table RevenueTable {
+      label "revenue"
+
+      RevenueTable -> SessionTable [inferred]
+      RevenueTable -> WebsiteTable [inferred]
+    }
+
+    table LinkTable {
+      label "link"
+
+      LinkTable -> TeamTable [inferred]
+      LinkTable -> UserTable [inferred]
+    }
+
+    table PixelTable {
+      label "pixel"
+
+      PixelTable -> TeamTable [inferred]
+      PixelTable -> UserTable [inferred]
+    }
+
+    table BoardTable {
+      label "board"
+
+      BoardTable -> TeamTable [inferred]
+      BoardTable -> UserTable [inferred]
+    }
+
+    table ShareTable {
+      label "share"
+    }
+
+    table SessionReplayTable {
+      label "session_replay"
+
+      SessionReplayTable -> SessionTable [inferred]
+      SessionReplayTable -> WebsiteTable [inferred]
+    }
+
+    table SessionReplaySavedTable {
+      label "session_replay_saved"
+
+      SessionReplaySavedTable -> WebsiteTable [inferred]
+    }
+
+    table HeatmapEventTable {
+      label "heatmap_event"
+
+      HeatmapEventTable -> SessionTable [inferred]
+      HeatmapEventTable -> WebsiteTable [inferred]
+    }
+
+    table TwoFactorAuthTable {
+      label "two_factor_auth"
+      facets secret
+
+      TwoFactorAuthTable -> UserTable [inferred]
+    }
+
+    table TwoFactorBackupCodeTable {
+      label "two_factor_backup_code"
+      facets secret
+
+      TwoFactorBackupCodeTable -> UserTable [inferred]
+    }
+
+    table TwoFactorOtpUsedTable {
+      label "two_factor_otp_used"
+      facets secret
+
+      TwoFactorOtpUsedTable -> UserTable [inferred]
+    }
+
+    table TwoFactorRateLimitTable {
+      label "two_factor_rate_limit"
+
+      TwoFactorRateLimitTable -> UserTable [inferred]
+    }
+
+    table AppSettingTable {
+      label "app_setting"
+    }
+  }
+
+  database ClickHouse {
+    label "ClickHouse (optional)"
+    description "Optional analytics store, used when CLICKHOUSE_URL is set; fed directly or via Kafka"
+
+    table WebsiteEventTable {
+      label "website_event"
+    }
+
+    table EventDataTable {
+      label "event_data"
+    }
+
+    table SessionDataTable {
+      label "session_data"
+    }
+
+    table WebsiteEventStatsHourlyTable {
+      label "website_event_stats_hourly"
+    }
+
+    table WebsiteRevenueTable {
+      label "website_revenue"
+    }
+
+    table SessionReplayTable {
+      label "session_replay"
+    }
+
+    table EventDataPivotTable {
+      label "event_data_pivot"
+    }
+
+    table SessionDataPivotTable {
+      label "session_data_pivot"
+      description "Filled by the materialized view session_data_pivot_mv; nothing in the app reads it at ec0ff50"
+    }
+
+    table HeatmapEventTable {
+      label "heatmap_event"
+    }
+
+    table SessionLinkTable {
+      label "session_link"
+    }
+  }
+
+  database Redis {
+    label "Redis (optional)"
+    description "Optional cache and auth-token store, used when REDIS_URL is set"
+
+    table AuthTokens {
+      label "auth:*"
+      facets secret
+    }
+
+    table WebsiteCache {
+      label "website:*"
+    }
+
+    table LinkCache {
+      label "link:*"
+    }
+
+    table PixelCache {
+      label "pixel:*"
+    }
+
+    table TeamCache {
+      label "team:*"
+    }
+
+    table SessionCache {
+      label "session:*"
+      description "fetchSession in lib/load.ts writes it, but nothing calls fetchSession (dead code at ec0ff50)"
+    }
+
+    table WhiteLabelCache {
+      label "white-label:*"
+      description "Read by public share pages; nothing in the repo writes it (filled externally)"
+    }
+
+    table AccountCache {
+      label "account:*"
+      description "Cloud account / subscription snapshot (lib/load.ts fetchAccount)"
+    }
+  }
+
+  queue Kafka {
+    label "Kafka (optional)"
+    description "Optional ingestion pipeline into ClickHouse, used when KAFKA_URL and KAFKA_BROKER are set"
+
+    queue EventTopic {
+      label "event"
+    }
+
+    queue EventDataTopic {
+      label "event_data"
+    }
+
+    queue SessionDataTopic {
+      label "session_data"
+    }
+
+    queue SessionLinkTopic {
+      label "session_link"
+    }
+
+    queue SessionReplayTopic {
+      label "session_replay"
+    }
+
+    queue HeatmapEventTopic {
+      label "heatmap_event"
+    }
+  }
+
+  Visitor -> TrackerScript "browses a tracked site"
+  TrackerScript -> UmamiApp "sends events"
+  Analyst -> Dashboard "reads reports"
+  Dashboard -> UmamiApp "calls the API"
+  Dashboard -> UmamiCloud "checks for updates, sends telemetry"
+  AiAssistant -> McpServer "asks questions"
+  McpServer -> UmamiApp "calls the public API"
+  UmamiApp -> GeoLite "geolocates IPs"
+}
+
+deploy "docker-compose" {
+  label "docker-compose.yml"
+
+  oci umami {
+    runtime "Node.js (Next.js)"
+    image "ghcr.io/umami-software/umami:latest"
+    realizes UmamiApp
+    realizes McpServer
+  }
+
+  store db {
+    type "postgres:15-alpine"
+    realizes Postgres
+  }
+}

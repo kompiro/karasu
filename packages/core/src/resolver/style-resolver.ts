@@ -59,6 +59,11 @@ const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
   labelPosition: 0.5,
   labelOffsetX: 0,
   labelOffsetY: 0,
+  // Spike default (#3022): truncate on the canvas past 40 chars so the
+  // preview shows the tier without a style sheet. The shipped default is a
+  // design-doc decision.
+  labelMaxChars: 40,
+  labelDisplay: "auto",
 };
 
 const EDGE_DIRECTION_VALUES = new Set<string>(["auto", "up", "down", "left", "right"]);
@@ -721,6 +726,20 @@ function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
         style.labelOffsetY = dy;
       }
     }
+  }
+  // Progressive disclosure levers (#3022, spike).
+  if (props["label-max-chars"]) {
+    const raw = props["label-max-chars"].trim();
+    if (raw === "none") {
+      style.labelMaxChars = Infinity;
+    } else {
+      const n = parseInt(raw, 10);
+      if (Number.isFinite(n) && n >= 1) style.labelMaxChars = n;
+    }
+  }
+  if (props["label-display"]) {
+    const raw = props["label-display"].trim();
+    if (raw === "always" || raw === "auto" || raw === "hover") style.labelDisplay = raw;
   }
 
   return style;

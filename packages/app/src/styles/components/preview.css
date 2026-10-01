@@ -214,6 +214,35 @@
 .preview-container svg:has(.krs-edge--interactive:hover) .krs-edge:not(:hover) {
   opacity: 0.25 !important;
 }
+
+/* Progressive disclosure of edge labels (#3022, spike). The canvas is the
+   first tier: it draws a label truncated to `label-max-chars`, and under
+   `label-display: auto` only where the label can be seated clear of cards,
+   labels and foreign lines. The next two tiers are `edge-disclosure.ts`: node
+   focus dims every edge that does not touch the hovered card, and hovering an
+   edge whose label the canvas withheld shows the authored text in this tooltip.
+
+   HTML rather than SVG text: edges paint before node cards, so a label
+   revealed inside the diagram is buried by any card it overlaps. */
+.preview-container .edge-label-tip {
+  position: absolute;
+  z-index: 90;
+  max-width: 380px;
+  padding: 6px 10px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md, 6px);
+  box-shadow: var(--shadow-dropdown);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.preview-container svg .crossing-marks > * {
+  transition: opacity 0.15s ease;
+}
 /* ── Preview Toolbar ────────────────────────────────────────────── */
 .preview-toolbar {
   display: flex;

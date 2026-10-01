@@ -1,6 +1,7 @@
 import type { ResolvedEdgeStyle } from "../types/style.js";
 import type { HopMark, LayoutEdge } from "./layout-types.js";
 import { el, escapeXml } from "./svg-builder.js";
+import { displayEdgeLabel, type EdgeLabelDisclosure } from "./edge-label-disclosure.js";
 
 interface Point {
   x: number;
@@ -154,6 +155,8 @@ export function renderEdge(
   facets: readonly string[] = [],
   /** Colour per facet id; absent when the overlay is off. */
   facetColorOf?: ReadonlyMap<string, string>,
+  /** What the canvas withholds of this edge's label (#3022, spike). */
+  labelDisclosure: EdgeLabelDisclosure = {},
 ): string {
   const { fromPoint, toPoint } = edge;
   const points: Point[] = [fromPoint, ...(edge.waypoints ?? []), toPoint];
@@ -252,6 +255,9 @@ export function renderEdge(
 
   parts.push(strokedShape(strokeAttrs));
 
+  // Set when the canvas shows less than the authored label, so a viewer knows
+  // there is more to disclose on hover (#3022, spike).
+  let labelWithheld: "truncated" | "deferred" | undefined;
   if (edge.label) {
     // Default anchor (parallel-bundle slide applied, ADR-1185). When the
     // auto label-placement pass (#2048) has nudged this label off a collision,
@@ -265,18 +271,37 @@ export function renderEdge(
         style.labelOffsetY,
         ownLabelSegment(edge),
       );
-    const labelText = el(
-      "text",
-      {
-        x: midX,
-        y: midY - 6,
-        "text-anchor": "middle",
-        fill: style.color,
-        "font-size": `${style.fontSize}px`,
-        "font-family": "sans-serif",
-      },
-      escapeXml(edge.label),
-    );
+    // Progressive disclosure (#3022, spike). The canvas is the first tier: it
+    // draws at most `label-max-chars` of the label, and under `label-display:
+    // auto` only when the placement pass could seat it clear. Nothing is lost:
+    // the authored text is already on the group as `data-edge-label`
+    // (ADR-1554), which is what the preview's hover tooltip reads. No hidden
+    // copy of the text is emitted, because anything inside this group paints
+    // under the node cards and a revealed label would be buried by them.
+    const full = edge.label;
+    const shown = displayEdgeLabel(full, style.labelMaxChars);
+    const deferred = style.labelDisplay === "hover" || labelDisclosure.deferred === true;
+    labelWithheld = deferred ? "deferred" : shown !== full ? "truncated" : undefined;
+    // A static SVG has no stylesheet or script to disclose with, so there the
+    // withheld text answers a hover through the browser's own tooltip. The
+    // interactive preview brings its own and would only show both.
+    if (labelWithheld !== undefined && labelDisclosure.nativeTitle !== false) {
+      parts.unshift(el("title", {}, escapeXml(full)));
+    }
+    const labelText = deferred
+      ? ""
+      : el(
+          "text",
+          {
+            x: midX,
+            y: midY - 6,
+            "text-anchor": "middle",
+            fill: style.color,
+            "font-size": `${style.fontSize}px`,
+            "font-family": "sans-serif",
+          },
+          escapeXml(shown),
+        );
 
     if (edge.domainEdges && edge.domainEdges.length > 0) {
       // Wrap in a clickable group so PreviewPane can open a detail panel on click.
@@ -312,6 +337,7 @@ export function renderEdge(
       "data-edge-kind": edge.kind,
       "data-edge-canonical-id": edge.canonicalId,
       "data-edge-label": edge.syntheticLabel ? undefined : edge.label || undefined,
+      "data-edge-label-withheld": labelWithheld,
       // The property block's payload, read back by the app to open
       // EdgeDetailPanel on a left click (#2543). Emitted only when authored, so
       // a file that writes no block produces byte-identical SVG.

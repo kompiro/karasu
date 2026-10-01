@@ -595,14 +595,24 @@ export function renderFromLayout(
     nodeRects,
     edgeLines,
   } = buildLabelInputs(layoutResult.edges, layoutResult.nodes, edgeStyleFor);
-  const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects, edgeLines);
+  // Labels the pass could not seat clear under `label-display: auto` (#3022,
+  // spike); `renderEdge` withholds them from the canvas for the hover tier.
+  const deferredLabels = new Set<number>();
+  const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects, edgeLines, {
+    deferred: deferredLabels,
+  });
 
-  const edgeStroke: { color: string; strokeWidth: number }[] = [];
+  const edgeStroke: { color: string; strokeWidth: number; from: string; to: string }[] = [];
   let edgeIndex = 0;
   for (const edgeLayout of layoutResult.edges) {
     const edgeKey = `${edgeLayout.from}->${edgeLayout.to}`;
     const edgeStyle = edgeStyleFor(edgeLayout);
-    edgeStroke.push({ color: edgeStyle.color, strokeWidth: edgeStyle.strokeWidth });
+    edgeStroke.push({
+      color: edgeStyle.color,
+      strokeWidth: edgeStyle.strokeWidth,
+      from: edgeLayout.from,
+      to: edgeLayout.to,
+    });
     const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
     // An edge that resolved its own state while being laid out wins over the
     // keyed map (#2756): on the multi-system root `edgeKey` is shared by every
@@ -629,6 +639,7 @@ export function renderFromLayout(
       labelPlacements.get(edgeIndex),
       edgeFacets,
       overlay?.colorOf,
+      { deferred: deferredLabels.has(edgeIndex), nativeTitle: !options?.interactive },
     );
     edgeIndex++;
     const withDim = edgeDimmed ? el("g", { opacity: FACET_DIM_OPACITY }, rendered) : rendered;
@@ -881,12 +892,19 @@ function collapseGlyph(
  */
 function renderCrossingMarks(
   marks: CrossingMarks,
-  edgeStroke: { color: string; strokeWidth: number }[],
+  edgeStroke: { color: string; strokeWidth: number; from?: string; to?: string }[],
   fallback: { color: string; strokeWidth: number },
   palette: DiagramPalette,
 ): string {
   const r = round2;
   const strokeOf = (edge: number) => edgeStroke[edge] ?? fallback;
+  // Whose mark this is (#3022, spike). The marks sit in their own group above
+  // the edges, so dimming an edge leaves its hops at full strength unless a
+  // rule can tell which edge each one belongs to.
+  const ownerOf = (edge: number) => ({
+    "data-hop-from": edgeStroke[edge]?.from,
+    "data-hop-to": edgeStroke[edge]?.to,
+  });
   const parts: string[] = [];
   for (const hop of marks.hops) {
     const rad = (hop.angle * Math.PI) / 180;
@@ -903,6 +921,7 @@ function renderCrossingMarks(
         fill: "none",
         stroke: stroke.color,
         "stroke-width": stroke.strokeWidth,
+        ...ownerOf(hop.edge),
       }),
     );
   }
@@ -918,6 +937,7 @@ function renderCrossingMarks(
         fill: palette.canvasBg,
         stroke: stroke.color,
         "stroke-width": stroke.strokeWidth,
+        ...ownerOf(j.edge),
       }),
       el(
         "text",
@@ -928,6 +948,7 @@ function renderCrossingMarks(
           fill: stroke.color,
           "font-size": `${JUNCTION_COUNT_FONT_SIZE}px`,
           "font-family": "sans-serif",
+          ...ownerOf(j.edge),
         },
         String(j.count),
       ),

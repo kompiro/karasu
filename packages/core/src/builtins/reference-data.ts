@@ -746,6 +746,25 @@ export const REFERENCE_DATA = {
       },
     },
     {
+      name: "label-max-chars",
+      appliesTo: "edge",
+      valueType: "number",
+      description: {
+        en: "Draw the label truncated past this many characters; full text on hover / <title> (none = never truncate)",
+        ja: "この文字数を超えるラベルは省略して描く。全文は hover / <title> で開示（none = 省略しない）",
+      },
+    },
+    {
+      name: "label-display",
+      appliesTo: "edge",
+      valueType: "keyword",
+      keywords: ["always", "auto", "hover"],
+      description: {
+        en: "always draws the label on the canvas; auto withholds a label that cannot be seated clear; hover withholds every label until the edge is hovered",
+        ja: "always はラベルを常時描画、auto は重ならずに置けないラベルだけ保留、hover はエッジを hover するまで描かない",
+      },
+    },
+    {
       name: "badge-color",
       appliesTo: "node",
       valueType: "color",

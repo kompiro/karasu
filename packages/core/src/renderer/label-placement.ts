@@ -36,6 +36,7 @@ import { estimateTextWidth } from "./rendering-constants.js";
 import { labelAnchorWithSegment, ownLabelSegment, resolveLabelPosition } from "./edge-routing.js";
 import { segmentCrossesRect } from "./edge-geometry.js";
 import { BoxGrid, chooseCellSize } from "./spatial-grid.js";
+import { displayEdgeLabel } from "./edge-label-disclosure.js";
 
 /**
  * One edge label offered to the placement pass. `anchor` is the label's default
@@ -55,6 +56,18 @@ export interface LabelInput {
   fontSize: number;
   /** Whether this label may move. `false` for author-positioned labels (obstacle only). */
   eligible: boolean;
+  /**
+   * Whether the pass may withhold this label when no candidate seats it clear
+   * (`label-display: auto`, #3022 spike). A withheld label is not drawn on the
+   * canvas and stops being an obstacle for the labels placed after it.
+   */
+  deferrable?: boolean;
+  /**
+   * Placed after every other label (#3022, spike). A ghost edge is dimmed
+   * context: under `auto` its label may claim only the room the real labels
+   * left, so it yields to them rather than the other way round.
+   */
+  late?: boolean;
 }
 
 /**
@@ -86,6 +99,11 @@ export interface EdgeLine {
 interface LabelPlacementOptions {
   /** Max nudge steps to try on each side of the edge (candidates = 2·maxSteps + 1). */
   maxSteps?: number;
+  /**
+   * Out-parameter (#3022 spike): filled with the index of every `deferrable`
+   * label the pass could not seat clear. Absent = nothing is ever withheld.
+   */
+  deferred?: Set<number>;
 }
 
 // Cap on nudge steps per side. The resolver stops at the first (smallest) clear
@@ -153,11 +171,17 @@ export function buildLabelInputs(
     // all skip them (ADR-968). Excluding them here keeps a barely-visible ghost
     // label from being moved or from pushing a real label off its default spot,
     // and keeps a dimmed ghost line from displacing a real label.
-    if (edge.ghost || edge.cyclic) return;
-    const points: Point[] = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
     const style = styleFor(edge, index);
-    edgeLines.push(edgeLine(index, points, style.strokeWidth));
-    if (!edge.label) return;
+    // Under `label-display: auto` (#3022, spike) ghost and back-arc edges join
+    // the pass: a label the pass never sees is a label it can never withhold,
+    // and it is drawn into whatever it lands on.
+    if ((edge.ghost || edge.cyclic) && style.labelDisplay !== "auto") return;
+    const points: Point[] = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
+    // A dimmed ghost line still never displaces a real label (#2360).
+    if (!edge.ghost) edgeLines.push(edgeLine(index, points, style.strokeWidth));
+    // `label-display: hover` (#3022, spike) withholds the label from the canvas,
+    // so there is nothing here to collide with or to move.
+    if (!edge.label || style.labelDisplay === "hover") return;
     // The same anchor `renderEdge` will draw, override included: if the two
     // disagreed, the pass would push the label off a collision it is not at.
     const { anchor, segDir } = labelAnchorWithSegment(
@@ -174,11 +198,15 @@ export function buildLabelInputs(
       // overall from→to chord — otherwise a bent / waypoint route's label would
       // be shifted at a skewed angle relative to the line it labels (#2048).
       dir: segDir,
-      width: edgeLabelWidth(edge.label, style.fontSize),
+      // Measure the text the canvas actually draws (#3022, spike): a label
+      // truncated to `label-max-chars` is the narrow box the nudge can clear.
+      width: edgeLabelWidth(displayEdgeLabel(edge.label, style.labelMaxChars), style.fontSize),
       fontSize: style.fontSize,
       // Author-positioned labels (non-default label-position/offset) are not
       // eligible to move — author intent wins (ADR-1184 precedence).
       eligible: style.labelPosition === 0.5 && style.labelOffsetX === 0 && style.labelOffsetY === 0,
+      deferrable: style.labelDisplay === "auto",
+      late: edge.ghost === true,
     });
   });
   return { inputs, nodeRects, edgeLines };
@@ -682,7 +710,9 @@ export function resolveLabelPlacements(
   // labels already committed (fixed author labels first, then earlier auto ones).
   // Indexed by bounds so a candidate box is tested only against the obstacles
   // near it (#2760); the index spans the cards and every label's default box.
-  const byIndex = [...labels].sort((a, b) => a.index - b.index);
+  const byIndex = [...labels].sort(
+    (a, b) => Number(a.late === true) - Number(b.late === true) || a.index - b.index,
+  );
   const obstacles = new ObstacleIndex(
     nodeRects,
     unionBounds([
@@ -764,6 +794,14 @@ export function resolveLabelPlacements(
       }
     }
 
+    // `label-display: auto` (#3022, spike): a label is drawn only where it can
+    // be read. When even the best candidate still lands on a card, a label or a
+    // foreign line, withhold it for the hover tier instead of drawing it into
+    // the collision, and do not let it obstruct the labels that follow.
+    if (bestCost > 0 && label.deferrable && options.deferred) {
+      options.deferred.add(label.index);
+      continue;
+    }
     obstacles.add(bestBox);
     if (bestDist !== 0) overrides.set(label.index, bestAnchor);
   }

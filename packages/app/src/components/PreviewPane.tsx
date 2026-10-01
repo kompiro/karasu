@@ -10,6 +10,7 @@ import type {
 import { parseNodePathRefId } from "@karasu-tools/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
 import { EdgeDetailPanel, type SingleEdgeDetail } from "./EdgeDetailPanel.js";
+import { attachEdgeDisclosure } from "./edge-disclosure.js";
 import { EdgeContextMenu } from "./EdgeContextMenu.js";
 import { useFormattedDiagnostic } from "../i18n/format-diagnostic.js";
 import { useTranslation } from "../i18n/index.js";
@@ -239,6 +240,14 @@ export function PreviewPane({
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  // Node focus and the edge-label tooltip (#3022, spike): the tiers of edge
+  // disclosure past the canvas. See `edge-disclosure.ts`.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    return attachEdgeDisclosure(el);
   }, []);
 
   const handleMouseDown = useCallback(
