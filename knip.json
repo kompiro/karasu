@@ -24,7 +24,8 @@
       "project": ["src/**/*.ts"]
     },
     "packages/nest": {
-      "project": ["src/**/*.ts", "!src/**/*.test.ts", "!src/testing/**"]
+      "project": ["src/**/*.ts", "!src/**/*.test.ts", "!src/testing/**"],
+      "ignoreDependencies": ["@karasu-tools/app"]
     },
     "packages/docs-site": {
       "entry": ["scripts/{sync,check-links}.ts"],

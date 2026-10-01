@@ -1,7 +1,14 @@
 /**
  * `GET /g/<id>` — a submission, as a diagram.
  *
- * This is the gallery's public face, and rendering is the point of it.
+ * This is the gallery's public face, and rendering is the point of it. Since
+ * #2998 the rendering happens in the reader's browser: the page is the app's
+ * preview built as a standalone viewer (#2997), with the submission embedded,
+ * served as a page-level CSP sandbox without `allow-same-origin`. The script
+ * therefore runs in an opaque origin and never with the session this origin
+ * holds (TPL-2993; `docs/design/gallery-client-side-rendering.md`, option D4).
+ * The Worker no longer draws SVG for the page, only for `?format=svg`.
+ *
  * [#2378](https://github.com/kompiro/karasu/pull/2378) found three problems
  * with `GET /<owner>/<repo>`; the gallery inherits exactly one of them, that a
  * face whose entries are only readable as source is not a gallery. The other
@@ -21,8 +28,9 @@ import { currentViewer } from "../auth/current.js";
 import { GalleryStore } from "../store/gallery-store.js";
 import { InvalidGalleryRefError, parseSubmissionId } from "../store/gallery-keys.js";
 import type { Submission } from "../store/submissions.js";
-import { escapeHtml, page } from "../gallery/html.js";
 import { renderSubmission } from "../gallery/render.js";
+import { VIEWER_TEMPLATE_PATH } from "../gallery/viewer-assets.js";
+import { viewerHeader, viewerPage } from "../gallery/viewer-page.js";
 
 /**
  * Ten minutes, and only for a submission its author published.
@@ -34,6 +42,15 @@ import { renderSubmission } from "../gallery/render.js";
  * because unpublishing has to take effect while someone is still waiting.
  */
 const PUBLIC_CACHE = "public, max-age=600";
+
+/**
+ * The viewer page's sandbox: scripts may run, downloads (Export SVG) and
+ * popups (the Reference window) are allowed, and nothing else. No
+ * `allow-same-origin` — that one token is what would hand the page this
+ * origin, and with it the session (TPL-2993). A CSP header rather than an
+ * iframe, so the viewer has the whole window and a link opens it directly.
+ */
+const VIEWER_CSP = "sandbox allow-scripts allow-downloads allow-popups";
 
 /** The same answer for "no such submission" and "not published". */
 const NOT_FOUND = "No submission with that id.";
@@ -88,8 +105,8 @@ export async function submissionPage(context: RouteContext): Promise<Response> {
     });
   }
 
-  const rendered = renderSubmission(submission.krs, context.url.searchParams);
   if (format === "svg") {
+    const rendered = renderSubmission(submission.krs, context.url.searchParams);
     // Through `http.ts`, like every other response here, so that "what may a
     // cache keep, and keyed by what" stays one decision in one place. A render
     // error is not the submission and does not inherit its cacheability: a
@@ -99,32 +116,36 @@ export async function submissionPage(context: RouteContext): Promise<Response> {
       ? svg(rendered.body, { cacheControl })
       : text(rendered.body, { status: rendered.status });
   }
-  if (rendered.status !== 200) {
-    return error(rendered.status, "cannot_render", rendered.body);
-  }
 
+  const template = await viewerTemplate(context);
+  if (template === undefined) {
+    return error(503, "viewer_unavailable", "The gallery viewer is not deployed.");
+  }
   const submitter = await store.accounts.get(submission.accountId);
-  return html(
-    page({
+  const body = viewerPage(template, {
+    title: submission.title,
+    header: viewerHeader({
+      id,
       title: submission.title,
-      body: [
-        `<h1>${escapeHtml(submission.title)}</h1>`,
-        `<p class="meta">${escapeHtml(submitter?.login ?? "unknown")}`,
-        ` · ${escapeHtml(submission.submittedAt.slice(0, 10))}`,
-        submission.visibility === "public" ? "" : ' · <span class="tag">unlisted</span>',
-        "</p>",
-        // The SVG is inlined rather than referenced through an <img>. An
-        // <img> would make the bundled all-views diagram's `:target` tab
-        // navigation inert, and the tabs are how a reader reaches the deploy
-        // and org views at all.
-        `<div class="figure">${rendered.body}</div>`,
-        '<p class="actions">',
-        `<a href="/g/${escapeHtml(id)}?format=krs">.krs</a>`,
-        `<a href="/g/${escapeHtml(id)}?format=svg">SVG</a>`,
-        isOwner ? `<a href="/console/s/${escapeHtml(id)}">Manage</a>` : "",
-        "</p>",
-      ].join(""),
+      submitter: submitter?.login ?? "unknown",
+      submittedAt: submission.submittedAt,
+      unlisted: submission.visibility !== "public",
+      isOwner,
     }),
-    { cacheControl },
-  );
+    krs: submission.krs,
+  });
+  return html(body, { cacheControl, headers: { "Content-Security-Policy": VIEWER_CSP } });
+}
+
+/**
+ * The staged `viewer.html`, read through the `ASSETS` binding.
+ *
+ * Browsers cannot fetch it themselves: `wrangler.toml` routes every path but
+ * `/assets/*` to this Worker first, so the template is only ever served here,
+ * filled in and sandboxed (`gallery/viewer-assets.ts`).
+ */
+async function viewerTemplate(context: RouteContext): Promise<string | undefined> {
+  const assets = requireBinding(context.env, "ASSETS");
+  const response = await assets.fetch(new Request(new URL(VIEWER_TEMPLATE_PATH, context.url)));
+  return response.ok ? response.text() : undefined;
 }

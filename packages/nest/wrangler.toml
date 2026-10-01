@@ -17,6 +17,27 @@ name = "karasu-nest"
 main = "src/worker.ts"
 compatibility_date = "2025-01-01"
 
+# The gallery viewer (#2998): `packages/app`'s preview built on its own
+# (`build:viewer`, #2997) and staged here by `pnpm run build:viewer`
+# (`scripts/stage-viewer.ts`). `.github/workflows/nest-deploy.yml` stages it
+# before deploying; a local `wrangler dev` needs the same step first.
+#
+# Only `/assets/*` is served straight from the static assets. Every other
+# path, `/viewer.html` included, reaches the Worker first. The template holds
+# the viewer's script, and this origin holds the session cookie, so it must
+# never be served here as a page of its own; the Worker reads it through
+# `ASSETS` and serves it only under the `/g/<id>` sandbox (TPL-2993,
+# `src/gallery/viewer-assets.ts`). `html_handling` and `not_found_handling`
+# are off so no other path can resolve to it either.
+#
+# Static-asset requests do not run the Worker, so the bundle adds no CPU.
+[assets]
+directory = "./viewer-assets"
+binding = "ASSETS"
+run_worker_first = ["/*", "!/assets/*"]
+html_handling = "none"
+not_found_handling = "none"
+
 # This service needs a paid Workers plan, and the reason is CPU rather than
 # anything about scale.
 #
@@ -40,6 +61,11 @@ compatibility_date = "2025-01-01"
 #                                         8.4MB of SVG for the all-views page
 #                                         (a single system/deploy/org view:
 #                                         20-36ms)
+#
+# Since #2998 the page itself is drawn in the reader's browser; the Worker
+# renders only for `?format=svg`, which still bundles every view. Whether the
+# limit (or the paid plan) can come down is measured after that lands, not
+# assumed: ingest still parses the whole submission (#2993).
 #
 # 1 second left under 2x headroom over that, on the machine it was measured
 # on. 5 seconds leaves ~8x -- room for slower hardware and for a model up to
