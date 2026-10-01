@@ -67,19 +67,31 @@ Use `--from k8s`, `--from openapi`, or `--from db` for the other supported
 inputs. See [Using the CLI](https://kompiro.github.io/karasu/tools/cli/) for the
 full command reference.
 
-### 3. Reverse-engineer a repository with an AI agent
+### 3. Model with an AI agent
 
-Use the [`reverse-architecture` skill](packages/skills/skills/reverse-architecture/SKILL.md)
-to have a repository-aware AI agent inspect an existing codebase and build a
-karasu model. The workflow combines agent judgment for domain structure with
-deterministic CLI extraction and validation.
+Two agent skills drive the karasu CLI for you:
 
-In Claude Code, install it as a plugin (it drives the karasu CLI, so install
-that too with `npm i -g karasu`):
+- [`karasu-author`](packages/skills/skills/karasu-author/SKILL.md) builds and
+  updates a model of your own system through conversation: it interviews you
+  one layer at a time, reads the code to skip questions the code answers, and
+  checks every change with `karasu check`.
+- [`reverse-architecture`](packages/skills/skills/reverse-architecture/SKILL.md)
+  has a repository-aware agent inspect an existing codebase and build a model,
+  combining agent judgment for domain structure with deterministic CLI
+  extraction and validation.
+
+The skills drive the karasu CLI, so install that too with `npm i -g karasu`.
+In Claude Code, install them as a plugin:
 
 ```text
 /plugin marketplace add kompiro/karasu
 /plugin install karasu@karasu
+```
+
+For other agents, copy them into the directory your agent reads skills from:
+
+```bash
+npx karasu skill install --dir .agents/skills
 ```
 
 The result is a map to review and evolve, not a claim of perfect ground truth.
