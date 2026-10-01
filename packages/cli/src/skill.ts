@@ -1,4 +1,4 @@
-import { cpSync, existsSync, readdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, readdirSync, renameSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 
@@ -65,9 +65,22 @@ export function skillInstall(
     }
   }
   targets.forEach((target, i) => {
-    // Remove first so files the new version dropped do not linger.
-    rmSync(target, { recursive: true, force: true });
-    cpSync(sources[i], target, { recursive: true });
+    // Copy beside the target and swap it in, so files the new version dropped
+    // do not linger and a failed copy leaves the installed skill as it was.
+    const staging = `${target}.installing`;
+    const previous = `${target}.previous`;
+    rmSync(staging, { recursive: true, force: true });
+    rmSync(previous, { recursive: true, force: true });
+    try {
+      cpSync(sources[i], staging, { recursive: true });
+    } catch (err) {
+      rmSync(staging, { recursive: true, force: true });
+      throw err;
+    }
+    const replacing = existsSync(target);
+    if (replacing) renameSync(target, previous);
+    renameSync(staging, target);
+    if (replacing) rmSync(previous, { recursive: true, force: true });
   });
   return targets;
 }

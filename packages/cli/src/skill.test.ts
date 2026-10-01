@@ -1,5 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -78,6 +87,28 @@ describe("karasu skill install", () => {
     expect(existsSync(join(dir, "karasu-author", "stale.md"))).toBe(false);
     expect(existsSync(join(dir, "karasu-author", "SKILL.md"))).toBe(true);
   });
+
+  it.skipIf(process.getuid?.() === 0)(
+    "keeps the installed skill when the --force copy fails part way",
+    () => {
+      const root = mkdtempSync(join(tmpdir(), "karasu-skill-src-"));
+      try {
+        mkdirSync(join(root, "demo"));
+        writeFileSync(join(root, "demo", "SKILL.md"), "new");
+        writeFileSync(join(root, "demo", "unreadable.md"), "x");
+        chmodSync(join(root, "demo", "unreadable.md"), 0o000);
+        mkdirSync(join(dir, "demo"));
+        writeFileSync(join(dir, "demo", "SKILL.md"), "old");
+
+        expect(() => skillInstall("demo", { dir, root, force: true })).toThrow(/EACCES/);
+        expect(readFileSync(join(dir, "demo", "SKILL.md"), "utf8")).toBe("old");
+        expect(readdirSync(dir)).toEqual(["demo"]);
+      } finally {
+        chmodSync(join(root, "demo", "unreadable.md"), 0o644);
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("rejects an unknown name before writing anything", () => {
     expect(() => skillInstall("nope", { dir })).toThrow("unknown skill 'nope'");

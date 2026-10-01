@@ -51,6 +51,8 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 
 `karasu-skills` は `prepack` で、その時点の CLI の版（`packages/cli/package.json`）を各 SKILL.md の `metadata.karasu-version` と本文 Step 0 に刻み、`postpack` で元に戻す（刻むのは「この版以降の CLI 向け」という下限）。利用者はルートの `.claude-plugin/marketplace.json` を marketplace として追加し、npm の `karasu-skills` を plugin として入れる（`/plugin marketplace add kompiro/karasu` → `/plugin install karasu@karasu`）。設計は `docs/design/karasu-authoring-skill.md` 案 1-D（#2932）。
 
+> **`karasu` は `karasu-skills` に依存する**（#2912）。`karasu skill install` が同梱の skill をコピーするため、CLI は `karasu-skills` を esbuild で内包せず実行時に解決する（ADR-1363 の「CLI は依存を内包する」の例外。中身は skill の文書だけ）。公開される `karasu` はその時点の `karasu-skills` の版を完全一致で指すので、同じトレインで `karasu-skills` の publish が失敗すると `npm i karasu` が解決できなくなる。`release.yml` の結果で両方が公開されたことを確かめる。
+
 > **`karasu-skills` の初回 publish は手動**。npm の Trusted Publisher はパッケージが存在してからでないと登録できない（下の「前提」）。最初のリリース PR で版が確定したら、ローカルの `packages/skills` で `pnpm publish --access public`（OTP を求められる）を実行して一度だけ公開し、npmjs.com で Trusted Publisher（org `kompiro` / repo `karasu` / workflow `release.yml`）を登録する。以降は `release.yml` が OIDC で公開する。`packages/skills/package.json` は `publishConfig.provenance` を持たない: provenance は Trusted Publishing で自動的に付き（`release.yml` の header）、ローカルからの初回 publish は provenance を作れないため。
 
 > **`karasu-skills` をリリースしたら、インストール済みの plugin への届き方を確かめる**（#2932 の AT から移した項目）。新しい版を公開した後、前の版を入れた Claude Code で更新が自動で届くか、`/plugin` から手動で更新するかを確かめ、結果を `packages/skills/README.md` の「Install in Claude Code」に書く。書き終えたらこの注記を消す。
@@ -64,7 +66,7 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
   - `packages/core` の利用者向け変更 → **`@karasu-tools/core` と `karasu` の両方**を名指す。core の bump は `karasu-vscode` へは自動 cascade するが、`karasu`（core を devDependency でバンドル）へはしないため。
   - `packages/cli` 固有の変更 → `karasu`
   - `packages/vscode` 固有の変更 → `karasu-vscode`
-  - `packages/skills` の skill 本文・reference の変更 → `karasu-skills`
+  - `packages/skills` の skill 本文・reference の変更 → `karasu-skills`（CLI が `karasu-skills` を dependency に持つため、`karasu` も patch で自動 cascade する）
   - skill が前提にする CLI の挙動（コマンド・フラグ・出力・診断）の変更 → `karasu` **と** `karasu-skills`（skill 本文も同じ PR で直す。名指さないと CLI だけが公開され、利用者の手元の skill は古い手順のまま残る）
 - 内部リファクタ・テスト・ドキュメントのみ・公開対象外パッケージのみの変更では changeset 不要。
 - `CHANGELOG.md` の文面は利用者向けに書く（コミット subject の流用ではなく）。

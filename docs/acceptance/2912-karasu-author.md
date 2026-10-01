@@ -37,9 +37,9 @@ type: product
 
   > ✅ Automated — `scripts/skills/karasu-skills-package.test.ts` › karasu-skills packed tarball › ships the plugin manifest and every source file of every skill / stamps %s with the CLI version in metadata and in Step 0
 
-- [x] AT-E: 2 つの skill とも、Step 0 が最初の節で、source にはプレースホルダが残っている
+- [x] AT-E: 2 つの skill とも、Step 0 が最初の節で、source にはプレースホルダが残っている。karasu repo の `.claude/skills/` から symlink 経由で同じ SKILL.md が読める
 
-  > ✅ Automated — `scripts/skills/karasu-skills-package.test.ts` › karasu-skills sources › %s keeps the placeholder and puts Step 0 before any other section
+  > ✅ Automated — `scripts/skills/karasu-skills-package.test.ts` › karasu-skills sources › %s keeps the placeholder and puts Step 0 before any other section / keeps the dev symlink pointing at the packaged %s
 
 ### AC-3: `karasu skill install` / `karasu skill path`
 
@@ -51,9 +51,9 @@ type: product
 
   > ✅ Automated — `packages/cli/src/skill.test.ts` › karasu skill install › defaults to .claude/skills under the working directory
 
-- [x] AT-H: 入っている skill は上書きせずに失敗し、何もコピーしない。`--force` なら置き換え、古いファイルを残さない
+- [x] AT-H: 入っている skill は上書きせずに失敗し、何もコピーしない。`--force` なら置き換え、古いファイルを残さない。コピーが途中で失敗したら、入っていた skill をそのまま残す
 
-  > ✅ Automated — `packages/cli/src/skill.test.ts` › karasu skill install › refuses to overwrite an installed skill, and copies nothing / replaces an installed skill with --force, dropping stale files
+  > ✅ Automated — `packages/cli/src/skill.test.ts` › karasu skill install › refuses to overwrite an installed skill, and copies nothing / replaces an installed skill with --force, dropping stale files / keeps the installed skill when the --force copy fails part way
 
 - [x] AT-I: 知らない名前は、ある skill の一覧を添えて失敗し、何も書かない
 

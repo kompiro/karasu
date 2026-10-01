@@ -132,10 +132,10 @@ describe("karasu-skills sources", () => {
     },
   );
 
-  it("keeps the dev symlink pointing at the packaged reverse-architecture", () => {
-    const link = join(REPO_ROOT, ".claude/skills/reverse-architecture/SKILL.md");
+  it.each(sourceSkills)("keeps the dev symlink pointing at the packaged %s", (skill) => {
+    const link = join(REPO_ROOT, `.claude/skills/${skill}/SKILL.md`);
     expect(readFileSync(link, "utf8")).toBe(
-      readFileSync(join(PACKAGE_DIR, "skills/reverse-architecture/SKILL.md"), "utf8"),
+      readFileSync(join(PACKAGE_DIR, `skills/${skill}/SKILL.md`), "utf8"),
     );
   });
 });
