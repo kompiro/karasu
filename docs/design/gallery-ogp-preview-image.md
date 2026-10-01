@@ -135,7 +135,7 @@ wasm の初期化は 18ms。初回の増分はフォントの解析によるも�
 3. **ルート `GET /g/<id>/og.png`**:
    - `visibleSubmission` で可視判定する。公開の投稿でなければ、所有者の要求でも 404 にする（OGP は公開投稿だけのもの、#3013 と同じ線）。
    - KV の `og/v1/<account>/<slug>` の metadata のバージョンが `updatedAt` と一致すれば返す。一致しなければ描いて保存して返す。
-   - 描画は core の `compile(krs, { diagramType: "system" })` → `wrapSvgForOgpFrame(svg, 1200, 630, 背景色)` → resvg-wasm。wasm とフォントは isolate ごとに 1 回だけ読み込む。
+   - 描画は core の `compile(krs, { diagramType: "system" })`（既定のテーマ = ダーク）→ `wrapSvgForOgpFrame(svg, 1200, 630, "#ffffff")` → resvg-wasm。テーマと余白の色は app の `/s` の画像と同じにする（ADR-1801）。ライトのテーマも試したが、コストは同じで、`/s` と見た目を揃えることを優先した。wasm とフォントは isolate ごとに 1 回だけ読み込む。
    - 応答は `image/png`、`X-Content-Type-Options: nosniff`。キャッシュは投稿ページと同じ `public, max-age=600`。
    - 描画に失敗したら 500 で返し、保存しない。
 4. **ページの OGP**:
@@ -166,6 +166,5 @@ wasm の初期化は 18ms。初回の増分はフォントの解析によるも�
 
 ## 未解決の問い / 決めないこと
 
-- **画像のテーマ**: app の `/s` は既定のテーマ（ダーク）の図を白い余白の枠に収めている（ADR-1801 と同じ見た目）。同じにするか、ライトのテーマで描いて枠と色を揃えるか。
 - 独自ドメインに移ったら、Cache API（S3）に切り替えて KV の保存をやめられるかを再評価する。
 - system 以外の view の画像や、投稿者が画像を差し替える機能は扱わない。
