@@ -74,6 +74,7 @@ to have a repository-aware AI agent inspect an existing codebase and build a
 karasu model. The workflow combines agent judgment for domain structure with
 deterministic CLI extraction and validation.
 
+The skill ships in the [`karasu-skills`](packages/skills/README.md) package.
 In Claude Code, install it as a plugin (it drives the karasu CLI, so install
 that too with `npm i -g karasu`):
 
@@ -81,6 +82,9 @@ that too with `npm i -g karasu`):
 /plugin marketplace add kompiro/karasu
 /plugin install karasu@karasu
 ```
+
+The plugin does not update automatically; pick up a new release from the
+`/plugin` menu. Claude Code is the only supported agent for now.
 
 The result is a map to review and evolve, not a claim of perfect ground truth.
 karasu remains useful without AI: the model is plain text, editable by hand,
@@ -142,6 +146,7 @@ service and team boundaries, onboarding, and architectural evolution.
 - [Syntax reference](https://kompiro.github.io/karasu/spec/syntax/)
 - [Style reference](https://kompiro.github.io/karasu/spec/style/)
 - [Examples](https://kompiro.github.io/karasu/examples/)
+- [Agent skills](packages/skills/README.md)
 
 ## Project status
 

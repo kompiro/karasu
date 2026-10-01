@@ -75,6 +75,7 @@ npx --yes karasu@latest serve .
 ドメイン構造には agent の判断を使い、CLI による決定的な抽出と検証を組み合わせる
 ワークフローです。
 
+skill は [`karasu-skills`](packages/skills/README.md) package で配布しています。
 Claude Code では plugin として入れられます（skill は karasu CLI を使うので、
 `npm i -g karasu` で CLI も入れてください）:
 
@@ -82,6 +83,9 @@ Claude Code では plugin として入れられます（skill は karasu CLI を
 /plugin marketplace add kompiro/karasu
 /plugin install karasu@karasu
 ```
+
+plugin は自動では更新されません。新しいリリースは `/plugin` メニューから更新してください。
+現時点で対応している agent は Claude Code のみです。
 
 生成物はレビューして進化させるための地図であり、完全な正解を主張するものではありません。
 karasu は AI がなくても使えます。モデルは plain text で、人間が編集でき、
@@ -142,6 +146,7 @@ karasu は C4 Model、Structurizr、Mermaid から着想を得ています。
 - [構文リファレンス](https://kompiro.github.io/karasu/ja/spec/syntax/)
 - [スタイルリファレンス](https://kompiro.github.io/karasu/ja/spec/style/)
 - [サンプル](https://kompiro.github.io/karasu/ja/examples/)
+- [Agent skills](packages/skills/README.md)
 
 ## プロジェクトの位置づけ
 
