@@ -223,9 +223,17 @@ reviews:
         the literal `TPL-<n>` id form and the topic vocabulary — do not restate
         those, and never propose changing them. Report instead:
         - an `<n>` that is not the issue named in the first `discovered_from`
-          entry. Numbering falls back to the PR number and then to local
-          numbering (ADR-2188), so a mismatch is not always wrong — but the
-          validator checks the shape, never which number was chosen.
+          entry. That entry is the Issue the TPL was raised under, for a
+          proactive TPL as much as a retrospective one: a TPL added by a design
+          doc or a feature PR names that PR's Issue (`Refs #N` / `Closes #N`
+          in the PR description), not only a bug Issue. When `<n>` is the
+          PR's Issue and `discovered_from` has no `issue:` entry, the missing
+          entry is the defect: ask for `- issue: "#<n>"` as the first entry,
+          never for a renumbering. The PR number is the fallback only when the
+          work has no Issue or another TPL already holds that Issue's number,
+          and local numbering comes after that (ADR-2188), so a mismatch is
+          not always wrong. The validator checks the shape, never which
+          number was chosen.
         - a perspective pinned to the abstraction level of the single bug that
           produced it. `applicable_to` holds reusable abstract patterns;
           concrete features belong in `known_consumers`. A perspective that can
