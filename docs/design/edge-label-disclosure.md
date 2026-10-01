@@ -3,6 +3,7 @@
 - **日付**: 2026-10-01
 - **ステータス**: 検討中
 - **Issue**: [#3022](https://github.com/kompiro/karasu/issues/3022)
+- **PR**: [#3025](https://github.com/kompiro/karasu/pull/3025)
 - **関連**:
   - 引き金 Issue: [#3022](https://github.com/kompiro/karasu/issues/3022)（reader 側）、[#3018](https://github.com/kompiro/karasu/issues/3018)（writer 側。`reverse-architecture` スキルの文言修正）
   - 関連 ADR: [ADR-2048](../adr/2048-edge-label-collision-avoidance.md)（ラベルの自動衝突回避）, [ADR-2360](../adr/2360-label-placement-line-obstacles.md)（他の edge の線を障害物に含める）, [ADR-1184](../adr/1184-edge-label-position-offset.md)（`label-position` / `label-offset`）, [ADR-968](../adr/968-orthogonal-edge-routing-skip-layer.md)（ghost / cyclic edge を幾何パスから除外）, [ADR-1554](../adr/1554-edge-label-in-context-menu.md)（`data-edge-label` と context menu）, [ADR-2209](../adr/2209-edge-property-block.md)（edge の `description`）, [ADR-463](../adr/463-implicit-edge-detail-panel.md)（edge の詳細パネル）
@@ -81,9 +82,12 @@ edge の情報を段階的に出す部品は既にあるが、互いに繋がっ
   edge に新しい属性や要素を足さない。
 - **out of scope**:
   - 線側の集約。両方向の 2 本を 1 本にまとめる、hub の線を既定で薄くする、など。
-    41 本は 27 組の domain の間に張られていて、うち 14 組が両方向である。別 Issue にする。
-  - 端点ではない card の下を通る 7 本の配線。routing chain の候補がどれも通らなかった
-    edge であり、ラベルとは独立の問題。別 Issue にする。
+    41 本は 27 組の domain の間に張られていて、うち 14 組が両方向である。
+    [#3027](https://github.com/kompiro/karasu/issues/3027) で扱う。
+  - 端点ではない card の下を通る 7 本の配線。うち 5 本は、同じ行の 2 つの card を結ぶ
+    edge が間の card を貫通している。ラベルとは独立の問題で、
+    [#3026](https://github.com/kompiro/karasu/issues/3026) で扱う。残り 2 本は ghost edge で、
+    配線の対象外（ADR-968）。
   - VS Code preview の hover 表現（edge-hover-affordance.md と同じ扱い）。
   - 複数行のラベル（ADR-1184 / ADR-2048 と同じく据え置き）。
 
@@ -329,5 +333,4 @@ spike のコードは上の 1〜4 と 6 を実装済みで、core のテスト�
 - **deploy view への適用。** deploy の edge は全部 ghost なので、指針 3 の変更で初めて
   配置パスに入る。spike は deploy view を計測していない。canvas の段の実装で dify の
   deploy view を計測し、悪化するなら deploy では `always` を既定にする。
-- **決めないこと**: 線側の集約と、card の下を通る配線。どちらも別 Issue にする
-  （「制約・前提」の out of scope）。
+- **決めないこと**: 線側の集約（#3027）と、card の下を通る配線（#3026）。
