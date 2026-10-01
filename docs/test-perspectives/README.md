@@ -15,7 +15,7 @@ TPL は **2 つの起源** から生まれる:
 - **Retrospective（事後）** — 過去の `bug` / `test-infra` Issue から、実際に起きた失敗を一般化する。バックフィルの主流（初期バックフィルの 17 件）はこの形
 - **Proactive（事前）** — `docs/concepts.ja.md` のようなアーキテクチャ原則 / 非目標 / north-star から、**原則が破られたときに起きるであろう失敗** を予測して観点化する（初期の proactive 3 件 — TPL-1207 / TPL-2166 / TPL-2167 — はこの形）
 
-どちらも 3-Yes ルール（次節）と同じ基準で評価する。バグ起源 / 原則起源は frontmatter の `discovered_from` を見れば分かる（`issue:` か `root_cause_file: docs/concepts.*` か）。両方とも同じスキーマ・同じ運用ルールに乗る。
+どちらも 3-Yes ルール（次節）と同じ基準で評価する。バグ起源 / 原則起源は frontmatter の `discovered_from` を見れば分かる（原則側のエントリ `root_cause_file: docs/concepts.*` を持つかどうか。`issue:` はどちらの起源でも書く。詳しくは [起源と運用ルールは独立](#起源と運用ルールは独立)）。両方とも同じスキーマ・同じ運用ルールに乗る。
 
 ## ADR との違い
 
@@ -29,6 +29,8 @@ ADR が **過去の判断を残す** ためのものに対し、TPL は **未来
 各 TPL は 1 ファイル = 1 観点で、`docs/test-perspectives/TPL-<n>-<slug>.md` というファイル名規約に従う（[ADR-2188](../adr/2188-tpl-issue-number-ids.md)）。
 
 `<n>` の採番は ADR と同じ優先順位: **起点の GitHub Issue 番号 → その TPL を起こす PR 番号 → local 採番（既存 TPL id の最大値 + 1）**。ゼロ埋めしない。GitHub の番号は大域的に一意なので並行ブランチ間で採番が衝突しない。複数 issue にまたがる TPL は先頭の `discovered_from` の issue を使い、番号が既に他 TPL に使われていれば次の優先順位へ進む。
+
+**起点の Issue は、その TPL を起こした作業の Issue である。** 判断基準は 1 つ、**その作業に Issue があるかどうか**。retrospective なら `bug` / `test-infra` の Issue、proactive なら Design Doc や機能の Issue（その PR の `Refs #N` / `Closes #N`）がそれにあたる。どちらの起源でも `discovered_from` の先頭に `- issue: "#<n>"` と書き、`<n>` をそれに一致させる。PR 番号へ進むのは、作業に Issue が無いときと、その Issue 番号を別の TPL が既に持っているときだけで、proactive であることは PR 番号を使う理由にならない。
 
 ### Frontmatter
 
@@ -197,8 +199,10 @@ retrospective TPL を書くたびに「**この観点を proactive TPL として
 
 proactive / retrospective の区別は **起源** の違いだけで、frontmatter スキーマも 3-Yes ルールも運用ルール（更新 / deprecated）も同じ。`discovered_from` を見れば起源は判る:
 
-- `discovered_from.issue: #N` → retrospective（`bug` または `test-infra` 起源）
-- `discovered_from.root_cause_file: docs/concepts.*` → proactive（原則起源）
+- `discovered_from.root_cause_file: docs/concepts.*` を持つ → proactive（原則起源）
+- 持たず、先頭の `issue:` が `bug` / `test-infra` の Issue → retrospective
+
+**`issue:` は起源の種別ではなく採番の起点**なので、どちらの起源でも先頭に書く（[エントリの構造](#エントリの構造)）。proactive TPL の `issue:` は、それを起こした Design Doc や機能の Issue を指す。`issue:` を持たないのは、Issue の無い作業で起こした TPL だけである（[ADR-2188](../adr/2188-tpl-issue-number-ids.md) の移行時に PR 番号 / local 採番で番号を振った TPL-1207 / TPL-2166 / TPL-2167 など）。
 
 ## 参照タイミング
 

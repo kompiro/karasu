@@ -8,9 +8,9 @@ applicable_to:
 # known_consumers:           # optional — 既知の具体的 consumer。grep 可能な kebab-case
 #   - feature-name
 discovered_from:
-  - issue: "#NNNN"
+  - issue: "#NNNN" # 採番の起点 = この TPL を起こした作業の Issue。proactive でも書き、<n> と一致させる
   # - root_cause_adr: "ADR-<n>"
-  # - root_cause_file: "path/to/file.ts:LINE"
+  # - root_cause_file: "path/to/file.ts:LINE" # proactive は docs/concepts.* など原則側のファイル
 related_to: []
 topic: core-concepts
 scope:
