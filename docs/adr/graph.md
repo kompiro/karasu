@@ -172,6 +172,7 @@ flowchart TD
     ADR_2983["ADR-2983<br/>Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upst..."]
     ADR_2985["ADR-2985<br/>Dependabot security alert 2026-09-29（`undici` の..."]
     ADR_3000["ADR-3000<br/>karasu-nest を main への push で自動 deploy し、対象 path..."]
+    ADR_3020["ADR-3020<br/>karasu-nest を karasu-nest.kompiro.dev カスタムドメインだ..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -578,6 +579,8 @@ flowchart TD
   ADR_2993 --> ADR_2578
   ADR_3000 --> ADR_2578
   ADR_3000 --> ADR_2969
+  ADR_3020 --> ADR_2578
+  ADR_3020 --> ADR_2969
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -989,6 +992,7 @@ flowchart TD
   class ADR_2985 accepted
   class ADR_2993 accepted
   class ADR_3000 accepted
+  class ADR_3020 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

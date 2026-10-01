@@ -17,6 +17,22 @@ name = "karasu-nest"
 main = "src/worker.ts"
 compatibility_date = "2025-01-01"
 
+# The service answers on one host only: the product domain (ADR-3020).
+#
+# The origin is not just an address here. `NEST_PUBLIC_ORIGIN` below is the
+# OAuth `redirect_uri` and the `Origin` every state-changing request must
+# carry, and the session cookie is `__Host-` scoped to it. On any other host
+# sign-in fails every time (the `state` cookie lands on one host, the callback
+# on the other) and every POST fails the `Origin` check. So the workers.dev
+# host is turned off rather than left up as a copy that cannot work.
+#
+# Declared here rather than in the dashboard for the same reason as `[vars]`:
+# the deploy should say where the service lives. `custom_domain = true` has
+# wrangler create the DNS record and certificate on the `kompiro.dev` zone,
+# which the deploy token needs permission for.
+workers_dev = false
+routes = [{ pattern = "karasu-nest.kompiro.dev", custom_domain = true }]
+
 # The gallery viewer (#2998): `packages/app`'s preview built on its own
 # (`build:viewer`, #2997) and staged here by `pnpm run build:viewer`
 # (`scripts/stage-viewer.ts`). `.github/workflows/nest-deploy.yml` stages it
@@ -84,8 +100,8 @@ enabled = true
 [vars]
 ENVIRONMENT = "production"
 
-# The origin this deploy answers on, e.g. "https://karasu-nest.<account>.workers.dev"
-# or a custom hostname. Submitter sign-in (#2586) needs it for two things:
+# The origin this deploy answers on: the custom domain in `routes` above.
+# Submitter sign-in (#2586) needs it for two things:
 # GitHub's `redirect_uri`, and the `Origin` every state-changing request is
 # checked against.
 #
@@ -99,7 +115,7 @@ ENVIRONMENT = "production"
 # Exactly the origin, with no path and no trailing slash. It is compared to the
 # browser's `Origin` header as a string, and GitHub requires the OAuth App's
 # callback URL to equal `<origin>/auth/callback`.
-NEST_PUBLIC_ORIGIN = "https://karasu-nest.kompiro.workers.dev"
+NEST_PUBLIC_ORIGIN = "https://karasu-nest.kompiro.dev"
 
 # GitHub numeric user ids allowed to sign in (#2969). Only the operator
 # (kompiro, 42963) until the legal review in #2691 is done: signing in is what
