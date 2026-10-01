@@ -94,5 +94,26 @@ authored な情報を省略・保留する PR で:
 
 ## 関連テスト
 
-（未確立。#3022 の実装 PR で、保留した edge の到達性を全 surface で assert するテストを
-足す。）
+全文を運ぶ配管と、到達した先が省略しないことは、既存のテストが見ている。保留そのものは
+まだ実装が無いので、対応するテストも無い。
+
+- `packages/core/src/renderer/svg-renderer.test.ts`: authored ラベルを持つ edge にだけ
+  `data-edge-label` が出ること。全文を運ぶ属性の存在を見ているが、保留した edge に
+  ついての assert ではない。
+- `packages/app/src/components/PreviewPane.test.tsx`: context menu が `data-edge-label` の
+  authored ラベルを表示すること。到達した先の 1 つを見ている。
+- `packages/core/src/renderer/description-summary.test.ts`: node の `description` の省略。
+  省略する側だけを見ており、全文への経路は見ていない。
+
+保留した edge が全 surface で全文を持つことの assert は、#3022 の実装で足す。
+
+## 派生元 spec
+
+- `docs/concepts.ja.md`「[集約 — 俯瞰時の情報量を絞る](../concepts.ja.md#集約--俯瞰時の情報量を絞る)」節 /
+  `docs/concepts.md`「[Aggregation — reducing information when seen from above](../concepts.md#aggregation--reducing-information-when-seen-from-above)」節
+  （俯瞰時は畳み、必要な詳細は drill-down と詳細パネルに委ねる）。両節の末尾に本 TPL への
+  `> Related TPLs:` 注釈がある
+- [ADR-1554](../adr/1554-edge-label-in-context-menu.md) 却下した案（回復の場所でラベルを
+  省略しない）
+- [ADR-445](../adr/445-domain-to-domain-edges-implicit-tag.md) /
+  [ADR-463](../adr/463-implicit-edge-detail-panel.md)（集約した edge の内訳を詳細パネルで出す）

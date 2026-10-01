@@ -10,7 +10,7 @@
   - 関連 Design Doc: [edge-hover-affordance.md](edge-hover-affordance.md)（#2632。hover affordance を identity から切り離す）
   - 関連 TPL: [TPL-3022](../test-perspectives/TPL-3022-withheld-content-stays-reachable.md)（本 PR で起こす proactive TPL）, [TPL-1227](../test-perspectives/TPL-1227-writer-reader-asymmetry.md), [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md), [TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md), [TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md), [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)
   - 受け入れテスト: [AT-1186](../acceptance/1186-edge-hover-highlight-dim.md)（edge hover の peer dim）
-  - spike: `spike/3022-edge-label-disclosure`（計測スクリプト・数値・レポートはブランチ上の `reports/` にある）
+  - spike: `spike/3022-edge-label-disclosure`（本文の数値はこのブランチ上の計測スクリプトで再現できる）
   - コード: `packages/core/src/renderer/edge-routing.ts`, `packages/core/src/renderer/label-placement.ts`, `packages/core/src/renderer/svg-renderer.ts`, `packages/app/src/components/PreviewPane.tsx`, `packages/app/src/styles/components/preview.css`
 
 ## 背景・課題
@@ -55,17 +55,18 @@ edge の情報を段階的に出す部品は既にあるが、互いに繋がっ
 | canvas | `renderEdge` は `edge.label` の全文を中点に描く。長さの上限は無い。node の `description` は `summarizeDescription` が 1 行目・50 文字で省略するので、node と edge で扱いが非対称 |
 | 自動配置 | `resolveLabelPlacements` が ±6 段（1 段 = font size + 4 px）の範囲で clear な位置を探す。見つからなければ衝突が最も少ない位置に**描く**。ghost / cyclic edge は対象外（ADR-968） |
 | hover | interactive な edge に hover すると他の edge が `opacity: 0.25` になる（AT-1186）。hover した edge について追加で出る情報は無い。hop（交差の弧）は別グループに描かれるので薄くならない |
-| click | `EdgeDetailPanel` は property block（`description` / `link`）を持つ edge でだけ開く（#2543）。ラベルだけの edge では何も開かない |
-| 右クリック | context menu のヘッダーが authored ラベルを折り返して全文表示する（ADR-1554） |
+| click | `EdgeDetailPanel` が開く経路は 2 つある。集約された implicit edge のラベルをクリックすると内訳が開く（ADR-463）。authored な edge は property block（`description` / `link`）を持つものだけが開く（#2543）。ラベルだけの authored edge では何も開かない |
+| 右クリック | context menu のヘッダーが authored ラベルを折り返して全文表示する（ADR-1554）。開くのは canonical id を持つ edge だけで、ghost edge など id を持たない edge では開かない |
 | 属性 | authored ラベルは `data-edge-label` として edge グループに常に載っている（ADR-1554） |
 | 静的 SVG | 全文が描かれているだけで、開示の経路は無い |
 | VS Code preview | edge 用の hover 規則を持たない（edge-hover-affordance.md のインベントリ） |
 
 ## 制約・前提
 
-- **衝突が無い図は byte-stable に保つ**（ADR-2048 / TPL-2048）。spike では `examples/` の
-  56 個の root view が 1 バイトも変わらなかった（手書きラベル 287 本、最長 30 文字、
-  今日の時点で衝突 0 件）。
+- **衝突が無い図は byte-stable に保つ**（ADR-2048 / TPL-2048）。`examples/` の全 85
+  ファイルにある手書きラベルは 287 本で、最長は 30 文字。spike では、単独でコンパイル
+  できた 56 個の root view（描かれるラベル 267 本、今日の時点で衝突 0 件）が 1 バイトも
+  変わらなかった。drill-down の各階層と deploy view は比べていない。
 - **ADR-1554 は context menu でのラベル省略を却下している。** 理由は「判読性の回復が目的の
   場所で長いラベルが読めなくなる」。本設計はこれと衝突しない。canvas は最初の段であり、
   回復の場所（tooltip・context menu・詳細パネル）は全文を折り返して出し続ける。
@@ -74,8 +75,11 @@ edge の情報を段階的に出す部品は既にあるが、互いに繋がっ
   canvas を広げる方向は取らない（TPL-1223 の密度上限とも逆行する）。
 - **hover の表現は React state と図の DOM 変更を使わない**（AT-1186 の AT-D）。SVG の
   再注入や `useSystemView` の debounce と race しないため。
-- **静的 SVG には stylesheet も script も無い。** 保留した情報が静的出力で取り出せなく
-  なってはいけない。
+- **静的 SVG には script が無く、app の stylesheet も届かない。** 保留した情報が静的出力で
+  取り出せなくなってはいけない。単一 view の出力は `<style>` を持たない。drill-down と
+  all-views のバンドルは階層切り替え用の `<style>` を埋め込むので、CSS だけで全文を出す
+  ことは原理上できるが、edge グループの中に置いた文字は node card の裏に回る
+  （「段の定義」の後半）ので採らない。
 - **writer に書き分けを要求しない**（TPL-1227）。#3018 は writer 側の改善だが、reader 側の
   読みやすさをその完了に依存させない。既に公開済みのモデルは直らないため。
 - **opt-in の視覚レイヤは無効時にマーカーを出さない**（TPL-2174）。何も保留していない
@@ -88,7 +92,9 @@ edge の情報を段階的に出す部品は既にあるが、互いに繋がっ
     edge が間の card を貫通している。ラベルとは独立の問題で、
     [#3026](https://github.com/kompiro/karasu/issues/3026) で扱う。残り 2 本は ghost edge で、
     配線の対象外（ADR-968）。
-  - VS Code preview の hover 表現（edge-hover-affordance.md と同じ扱い）。
+  - VS Code preview と、app の all-layers 表示の hover 表現（edge-hover-affordance.md と
+    同じ扱い）。all-layers は `srcDoc` の iframe で、app の stylesheet も script も届かない。
+    どちらも `<title>` を受け取る（指針 5）。
   - 複数行のラベル（ADR-1184 / ADR-2048 と同じく据え置き）。
 
 ### writer / reader / 自動変換
@@ -144,16 +150,17 @@ spike では 41 本を手で書き換えて再現した。
 **メリット**
 
 - 衝突が 0 になる。「描かれているラベルは読める」が構成上成り立つ。
-- 衝突が無い図には何も起きない。`examples/` の 56 view は不変。
+- 衝突が無く、ラベルが上限文字数以下の図には何も起きない。`examples/` の root view 56 個は不変。
 - 線の密度にも答えがある。node focus で 41 本が最大 16 本になる。
 
 **デメリット**
 
-- canvas に残るラベルは 41 本中 11 本（writer 側の修正を重ねても 13 本）。残りは
-  操作しないと読めない。
+- canvas に残るラベルは 41 本中 11 本（上限が 24 / 32 / 40 文字のどれでも同じ。writer 側の
+  修正を重ねても 13 本）。残りは操作しないと読めない。
 - 静的 SVG では保留したラベルが `<title>` の tooltip でしか読めない。画像に変換すると
   失われる。
-- ghost / cyclic edge を配置パスに入れる必要があり、ADR-2048 の決定の一部を改める。
+- ghost / cyclic edge を配置パスに入れる必要があり、ADR-2048 と ADR-2360 の決定の一部を
+  改める。
 
 ### 案4: 密な canvas ではラベルを全部隠す
 
@@ -182,12 +189,12 @@ ADR-2048 が却下済み。再検討しない。
 | ラベル面積 / canvas | 3.9 % | 5.5 % | 1.4 % | 0 % |
 | 衝突計 | 18 | 25 | **0** | 0 |
 | 既存モデルに効くか | 効かない | 効く | 効く | 効く |
-| 衝突の無い図への影響 | なし | 40 文字超のラベルだけ | なし | 閾値次第 |
+| 衝突の無い図への影響 | なし | 上限を超えるラベルだけ | 上限を超えるラベルだけ | 閾値次第 |
 | 新しい定数 | なし | 上限文字数 | 上限文字数 | 上限文字数 + 閾値 |
 | 静的 SVG での全文 | 描かれる | `<title>` | `<title>` | `<title>` |
 
-node focus 中に見えるラベル同士の衝突（10 node の合計）は、案2 が 40 件、案3 が 1 件
-（薄い ghost の線に掛かる 1 本）。
+node focus 中に見えるラベルの衝突（card・ラベル・その node の線との衝突を 10 node で
+合計）は、案2 が 40 件、案3 が 1 件（薄い ghost の線に掛かる 1 本）。
 
 ## Related TPLs
 
@@ -227,8 +234,10 @@ node focus 中に見えるラベル同士の衝突（10 node の合計）は、�
 | 4 drill-down | card をクリック | 下の階層（既存） | core |
 
 段 1 でラベルを増やさないのは計測の結果である。focus した node のラベルを短い形で全部
-出すと、32 文字に省略しても合計 40 件、最悪の node で 13 件衝突する。edge を 16 本持つ
-hub では短いラベル同士が重なるためで、ラベルの開示は 1 本ずつ出す段 2 に任せる。
+出すと、32 文字に省略しても合計 40 件、最悪の node で 13 件衝突する。内訳は card との
+衝突が 28 件、その node の他の線との衝突が 11 件、ラベル同士が 1 件である。線を絞っても
+card の位置は変わらず、edge を 16 本持つ hub では線も残るためで、ラベルの開示は 1 本ずつ
+出す段 2 に任せる。
 
 段 2 を SVG 内の隠し要素ではなく HTML の tooltip にするのも計測の結果である。edge は
 node より先に描かれるので、edge グループの中で全文を出すと card の裏に回る。spike の
@@ -264,14 +273,16 @@ canvas の段（core）が先で、app の 2 つの段はその後に続けら�
 3. **ghost / cyclic edge**: `auto` のときは配置パスに入れる。パスが見ないラベルは保留
    できず、衝突したまま描かれるため（Umami で残った衝突は、すべて ghost の 3 本に関わるものだった）。
    ghost のラベルは実線のラベルの後に置き、ghost の線は引き続き障害物にしない
-   （ADR-2360）。これは ADR-2048 の「ghost / cyclic は対象外」を `auto` について改める。
+   （ADR-2360）。これは ADR-2048 の「ghost / cyclic は対象外」と、ADR-2360 の「移動対象
+   からも引き続き外す」「best-effort の性格を維持する」を、`auto` について改める。
 4. **edge グループの出力**: 保留または省略した edge にだけ
    `data-edge-label-withheld="deferred|truncated"` を付ける。何も保留していない edge の
    出力は今日と同一にする（TPL-2174）。
 5. **tooltip の出し分け**: 保留した全文を `<title>` として出すかどうかは、
    「この surface が自前の tooltip を持つか」を表す render option で決める。spike は
    `interactive` に相乗りしたが、`nodeControls` を `interactive` に畳まなかったのと同じ
-   理由で分ける。VS Code preview は自前の tooltip を持たないので `<title>` を受け取る。
+   理由で分ける。VS Code preview は edge 用の tooltip を持たず（node 用はある）、app の
+   all-layers 表示は iframe で app の script が届かないので、どちらも `<title>` を受け取る。
    hop の持ち主を表す属性も、同じ option が立つ surface にだけ出す（spike は常に出して
    おり、この canvas の SVG が約 9 % 大きくなった）。hop の描き方は #2956 で設計中なので、
    属性の置き場所はその結果に合わせる。
@@ -298,8 +309,9 @@ canvas の段（core）が先で、app の 2 つの段はその後に続けら�
 9. **AT**: `docs/acceptance/` に新規ファイル。手動項目は、Umami 相当の密な canvas で
    段 0 → 1 → 2 の順に辿れること、pan 中に tooltip が出ないこと、の 2 件。
 10. **ADR 昇格**: 実装完了後に `docs/adr/3022-edge-label-disclosure.md` として昇格し、
-    本 Design Doc は同 PR で削除する。ADR-2048 には `related_to` を張り、ghost / cyclic の
-    扱いを改めた旨を書く。
+    本 Design Doc は同 PR で削除する。ghost / cyclic の扱いを改めた旨は新しい ADR の背景に
+    書く。ADR-2048 と ADR-2360 は本文を変えず、frontmatter の `related_to` だけを足す
+    （`.claude/rules/adr.md`「既存 ADR を覆すとき」）。
 
 spike のコードは上の 1〜4 と 6 を実装済みで、core のテストは 4,682 件中 4,680 件が通る。
 落ちる 2 件は、新しい property が spec に無いこと（指針 7）と、ghost / cyclic を配置パスに
@@ -308,7 +320,8 @@ spike のコードは上の 1〜4 と 6 を実装済みで、core のテスト�
 ### 影響範囲・マイグレーション
 
 - **既存ユーザーへの影響**: ラベルが 40 文字を超える、またはラベルが衝突している図で、
-  canvas の見た目が変わる。`examples/` には該当が無い。今日の挙動に戻すには
+  canvas の見た目が変わる。`examples/` に 40 文字を超えるラベルは無く、root view には衝突も
+  無い（drill-down の各階層と deploy view の衝突は未計測）。今日の挙動に戻すには
   `edge { label-max-chars: none; label-display: always; }` を書く。
 - **ドキュメント更新**: `docs/spec/style.md`（指針 7）。`docs/concepts.ja.md` の
   「集約」節に、ラベルも同じ原則で絞ることを 1 段落足すかは実装 PR で判断する。
@@ -322,12 +335,16 @@ spike のコードは上の 1〜4 と 6 を実装済みで、core のテスト�
   衝突したラベルは描いても読めないので、保留で失うものは小さい。ただし README に
   貼った SVG を画像化している利用者は、保留されたラベルを失う。レビューで決める。
 - **既定の上限文字数。** 40 は `examples/` の最長（30 文字）を超え、Umami の中央値
-  （76 文字）を半分にする値として置いた。32 や 48 との差は衝突数では小さい
-  （`auto` の下ではどれも 0）。canvas に残る 11 本の読みやすさで決める。
+  （76 文字）を半分にする値として置いた。計測した 24 / 32 / 40 文字は、`auto` の下では
+  どれも衝突 0 件で、canvas に残るラベルも 11 本で同じ。残る 11 本の読みやすさで決める。
 - **ラベルだけの edge をクリックしたときに詳細パネルを開くか。** hover の無い
-  タッチ端末では、保留したラベルに届く経路が右クリック相当の操作しか無い。
+  タッチ端末では、保留したラベルに届く経路が右クリック相当の操作しか無い。それも
+  canonical id を持つ edge に限られ、ghost edge には経路が無い。
   edge-hover-affordance.md は「detail payload を持たない edge のクリックは何も
   起動しない」と決めているので、そちらの実装と合わせて決める。
+- **合成ラベルを保留の対象にするか。** `N domain edges` や `W` / `R` は `data-edge-label` に
+  載らない（ADR-1554）ので、保留すると app の tooltip から届かない。推奨は対象外にして、
+  author 指定のラベルと同じく障害物としてだけ扱うこと。集約ラベルはクリックの的でもある。
 - **1 PR で出すか、core と app で Issue を割るか。** 割る場合は
   `.claude/rules/program-slices.md` に従い、#3022 を親にして sub-issue を起こす。
 - **deploy view への適用。** deploy の edge は全部 ghost なので、指針 3 の変更で初めて
