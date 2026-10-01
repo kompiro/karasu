@@ -35,7 +35,7 @@ Do this before anything else, and before touching any `.krs`.
 2. **Compare versions.** This skill was written for karasu
    `{{KARASU_MIN_VERSION}}` or later. If that is not a version number but a
    template marker in double braces, you are running the unreleased copy inside
-   the karasu repository: skip the rest of this step.
+   the karasu repository: skip to item 4.
 3. Run `karasu --version` and compare the first line's version with the one
    above (semver).
    - **Command not found, or older:** stop and tell the user: "This skill needs
@@ -47,6 +47,12 @@ Do this before anything else, and before touching any `.krs`.
      Do not suggest `npx karasu@latest`: it runs once and does not change what
      `karasu` resolves to afterwards.
    - **Same or newer:** continue without comment.
+4. **Check the commands this skill uses.** Run `karasu capabilities --json` once.
+   This skill calls `translate`, `subtree`, `coverage`, `render` and `fmt`. For
+   each one listed under `deprecations`, use its `replacement` from then on, and
+   tell the user once that this skill is older than their karasu and can be
+   updated. If the CLI prints a line starting `karasu: deprecated:` or
+   `karasu: removed:` while you work, do the same with the name it gives.
 
 ## Prerequisites
 

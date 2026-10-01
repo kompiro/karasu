@@ -2,8 +2,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-// Keeps the reference docs bundled inside the reverse-architecture skill
-// byte-identical to their sources in `docs/` (Issue #2574).
+// Keeps the reference docs bundled inside each published skill byte-identical
+// to their sources in `docs/` (Issue #2574; generalized to every skill that
+// bundles them in #2912).
 //
 // The skill runs against an ARBITRARY repository. `docs/spec/syntax.md` is not
 // there, so every reference the skill made to a `docs/…` path resolved only by
@@ -22,7 +23,15 @@ import { dirname, resolve } from "node:path";
 // comparison that makes this guard strong; the notice lives in the bundle's
 // README instead, which this guard also requires.
 
-export const BUNDLE_DIR = "packages/skills/skills/reverse-architecture/reference";
+/**
+ * The skills that bundle the reference, by directory under
+ * `packages/skills/skills/`. Each carries its own copy: `karasu skill install`
+ * and the plugin install place one skill directory, so a skill cannot reach
+ * another skill's `reference/`.
+ */
+export const BUNDLED_SKILLS = ["reverse-architecture", "karasu-author"] as const;
+
+export const bundleDir = (skill: string): string => `packages/skills/skills/${skill}/reference`;
 
 /**
  * source (repo-relative) → bundled copy (repo-relative).
@@ -43,15 +52,22 @@ export const BUNDLE_DIR = "packages/skills/skills/reverse-architecture/reference
  * says so), the `.ja.md` variants (the skill is English), and the ADRs (cited
  * for provenance, never read to produce a model).
  */
-export const BUNDLED_DOCS: ReadonlyArray<{ source: string; bundled: string }> = [
-  { source: "docs/spec/syntax.md", bundled: `${BUNDLE_DIR}/syntax.md` },
-  { source: "docs/spec/tags-annotations.md", bundled: `${BUNDLE_DIR}/tags-annotations.md` },
-  { source: "docs/spec/diagnostics.md", bundled: `${BUNDLE_DIR}/diagnostics.md` },
-  { source: "docs/guide/notation-cookbook.md", bundled: `${BUNDLE_DIR}/notation-cookbook.md` },
+const REFERENCE_DOCS: ReadonlyArray<{ source: string; name: string }> = [
+  { source: "docs/spec/syntax.md", name: "syntax.md" },
+  { source: "docs/spec/tags-annotations.md", name: "tags-annotations.md" },
+  { source: "docs/spec/diagnostics.md", name: "diagnostics.md" },
+  { source: "docs/guide/notation-cookbook.md", name: "notation-cookbook.md" },
 ];
 
-/** The bundle's own notice; a copy with no "do not edit here" invites the wrong edit. */
-export const BUNDLE_README = `${BUNDLE_DIR}/README.md`;
+export const BUNDLED_DOCS: ReadonlyArray<{ source: string; bundled: string }> =
+  BUNDLED_SKILLS.flatMap((skill) =>
+    REFERENCE_DOCS.map(({ source, name }) => ({ source, bundled: `${bundleDir(skill)}/${name}` })),
+  );
+
+/** Each bundle's own notice; a copy with no "do not edit here" invites the wrong edit. */
+export const BUNDLE_READMES: readonly string[] = BUNDLED_SKILLS.map(
+  (skill) => `${bundleDir(skill)}/README.md`,
+);
 
 export type ProblemKind = "missing-source" | "missing-copy" | "stale-copy" | "missing-readme";
 
@@ -73,7 +89,10 @@ export function check(repoRoot: string): Problem[] {
     if (!existsSync(sourceAbs)) {
       // The source moved or was renamed: the manifest is what is stale now, not
       // the copy, so say that rather than reporting a phantom drift.
-      problems.push({ kind: "missing-source", file: source });
+      // Every bundle copies the same sources; name a missing one once.
+      if (!problems.some((p) => p.kind === "missing-source" && p.file === source)) {
+        problems.push({ kind: "missing-source", file: source });
+      }
       continue;
     }
     if (!existsSync(bundledAbs)) {
@@ -85,8 +104,10 @@ export function check(repoRoot: string): Problem[] {
     }
   }
 
-  if (!existsSync(resolve(repoRoot, BUNDLE_README))) {
-    problems.push({ kind: "missing-readme", file: BUNDLE_README });
+  for (const readme of BUNDLE_READMES) {
+    if (!existsSync(resolve(repoRoot, readme))) {
+      problems.push({ kind: "missing-readme", file: readme });
+    }
   }
 
   return problems;
@@ -147,7 +168,7 @@ function main(): void {
     }
   }
   console.error(
-    "\nThe reverse-architecture skill ships its own copy of these docs so it works " +
+    "\nEach published skill ships its own copy of these docs so it works " +
       "in a repository that is not karasu. Edit the source under docs/, never the copy, " +
       "then run:\n\n  pnpm run lint:skill-reference-bundle-sync --write\n\n" +
       "and commit the source and the copy together.",
