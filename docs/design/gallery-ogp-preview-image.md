@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#2995](https://github.com/kompiro/karasu/issues/2995)（スライス 1 のタイトルと説明は PR [#3013](https://github.com/kompiro/karasu/pull/3013) で済み）
+  - Design Doc の PR: [#3014](https://github.com/kompiro/karasu/pull/3014)
   - 関連 ADR: [ADR-1805](../adr/1805-resvg-wasm-png-rasterization.md)（resvg-wasm で PNG にする）、[ADR-1801](../adr/1801-karasu-nest-ogp-share-page.md)（app の `/s` の OGP）、[ADR-105](../adr/105-png-export-not-adopted.md)（core/cli/app に PNG を入れない）、[ADR-2993](../adr/2993-gallery-client-side-rendering.md)（投稿ページは sandbox の viewer）、[ADR-2592](../adr/2592-nest-as-a-gallery.md)（ギャラリーの構築）、[ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)、[ADR-1828](../adr/1828-repo-backed-ref-pinned-permalink.md)
   - 関連 TPL: [TPL-1799](../test-perspectives/TPL-1799-raster-pipeline-glyph-coverage.md)、[TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)、[TPL-2284](../test-perspectives/TPL-2284-purge-scope-identity-is-canonical.md)、[TPL-2993](../test-perspectives/TPL-2993-third-party-content-runs-outside-session-origin.md)
   - コード: `packages/nest/src/routes/gallery.ts`、`packages/nest/src/gallery/ogp.ts`、`functions/render.ts`、`packages/app/src/render/ogp-frame.ts`
