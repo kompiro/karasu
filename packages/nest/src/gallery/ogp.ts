@@ -32,8 +32,14 @@ export interface SubmissionOgp {
   url?: string;
 }
 
+/**
+ * Cut to `max` characters by code point, so an emoji or other astral character
+ * at the boundary is kept or dropped whole rather than split into half a
+ * surrogate pair that renders as U+FFFD on the card.
+ */
 function truncate(value: string, max: number): string {
-  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+  const chars = Array.from(value);
+  return chars.length > max ? `${chars.slice(0, max - 1).join("")}…` : value;
 }
 
 /** The description a card shows: the document's own, or a line saying whose model it is. */

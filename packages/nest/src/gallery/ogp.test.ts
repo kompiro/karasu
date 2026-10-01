@@ -37,6 +37,14 @@ describe("ogpDescription", () => {
     expect(ogpDescription({ submitter: "kompiro", description: "   " })).toContain("kompiro");
   });
 
+  it("does not split an emoji at the cut", () => {
+    const emoji = String.fromCodePoint(0x1f426); // outside the BMP: two UTF-16 units
+    const description = ogpDescription({ submitter: "k", description: emoji.repeat(300) });
+    const chars = Array.from(description);
+    expect(chars).toHaveLength(OGP_DESCRIPTION_MAX);
+    expect(chars.slice(0, -1).every((char) => char === emoji)).toBe(true);
+  });
+
   it("keeps a long description within what crawlers show", () => {
     const description = ogpDescription({ submitter: "k", description: "x".repeat(500) });
     expect(description).toHaveLength(OGP_DESCRIPTION_MAX);
