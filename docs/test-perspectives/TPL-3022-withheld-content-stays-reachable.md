@@ -12,6 +12,7 @@ known_consumers:
   - description-summary
   - team-chip
 discovered_from:
+  - issue: "#3022"
   - root_cause_file: "docs/concepts.ja.md"
   - root_cause_adr: "ADR-1554"
   - root_cause_adr: "ADR-445"
