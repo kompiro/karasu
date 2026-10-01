@@ -55,10 +55,11 @@ karasu-nest の公開 origin を `https://karasu-nest.kompiro.dev` にする。�
 
 ## 移行時の運用作業
 
-マージすると ADR-3000 の自動 deploy で即座に切り替わる。次の 2 点をマージの前後で揃える。
+マージすると ADR-3000 の自動 deploy で即座に切り替わる。次の点をマージの前に揃える。
 
-- GitHub OAuth App の callback URL を `https://karasu-nest.kompiro.dev/auth/callback` に変える。OAuth App の callback は 1 つなので、deploy と同時に切り替える
-- `CLOUDFLARE_NEST_API_TOKEN` が `kompiro.dev` zone でカスタムドメインを作成できる権限を持つこと。`custom_domain = true` は wrangler が DNS レコードと証明書を作るため、Workers Scripts の権限だけでは deploy が落ちる
+- GitHub OAuth App の Redirect URIs に `https://karasu-nest.kompiro.dev/auth/callback` を加える。OAuth App は redirect URI を複数持てるので、旧 workers.dev の URI と並べて先に登録しておける。workers.dev の URI は deploy 後に削除する。閉じたホストへの redirect を許したままにしない
+- `CLOUDFLARE_NEST_API_TOKEN` が zone の Workers Routes Write 権限を持つこと。wrangler は deploy のたびに `routes` のカスタムドメインを照合するので、Workers Scripts の権限だけでは deploy が落ちる
+- カスタムドメインは本 ADR の PR より前に dashboard で付けて稼働を確認した。`routes` の宣言はそれを repo に記録するもので、同じ Worker・同じホスト名なので衝突しない
 
 ## 却下した案
 
