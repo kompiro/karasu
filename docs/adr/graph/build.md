@@ -112,6 +112,7 @@ flowchart TD
     ADR_2985["ADR-2985<br/>Dependabot security alert 2026-09-29（`undici` の..."]
     ADR_3000["ADR-3000<br/>karasu-nest を main への push で自動 deploy し、対象 path..."]
     ADR_3011["ADR-3011<br/>正否が差分だけで決まる小さな PR は、人間の承認を得て skip-coderabbit ラベ..."]
+    ADR_3020["ADR-3020<br/>karasu-nest を karasu-nest.kompiro.dev カスタムドメインだ..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -132,6 +133,8 @@ flowchart TD
   ADR_2436 --> ADR_2419
   ADR_3000 --> ADR_2578
   ADR_3000 --> ADR_2969
+  ADR_3020 --> ADR_2578
+  ADR_3020 --> ADR_2969
   ADR_1974 --> ADR_1820
   ADR_2065 --> ADR_1314
   ADR_2065 --> ADR_1820
@@ -257,6 +260,7 @@ flowchart TD
   class ADR_2985 accepted
   class ADR_3000 accepted
   class ADR_3011 accepted
+  class ADR_3020 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost
