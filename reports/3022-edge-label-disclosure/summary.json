@@ -169,6 +169,34 @@
       }
     },
     {
+      "id": "v6-48",
+      "name": "V6 auto + 省略 48 (slice A の既定)",
+      "nodes": 10,
+      "edges": 41,
+      "labelsDrawn": 9,
+      "labelsTruncated": 8,
+      "charsMedian": 42,
+      "charsMax": 48,
+      "widthMedianPx": 226,
+      "widthMaxPx": 257,
+      "canvas": "1592×1006",
+      "labelInkRatio": 0.019,
+      "labelNodePenetrations": 0,
+      "labelLabelOverlaps": 0,
+      "labelLinePenetrations": 0,
+      "labelGhostLinePenetrations": 3,
+      "edgesUnderForeignCard": 7,
+      "bytes": 54701,
+      "focus": {
+        "labelsMedian": 2,
+        "labelsMax": 3,
+        "collisionsWorstNode": 1,
+        "collisionsTotal": 1,
+        "cleanNodes": 9,
+        "nodes": 10
+      }
+    },
+    {
       "id": "v6-40",
       "name": "V6 auto + 省略 40",
       "nodes": 10,
@@ -309,6 +337,583 @@
       }
     }
   ],
+  "focusCanvas": {
+    "nodes": [
+      {
+        "id": "McpTools",
+        "in": 0,
+        "out": 3,
+        "columns": {
+          "width": 1186,
+          "height": 398,
+          "lanes": 3,
+          "cards": 4,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        },
+        "spine": {
+          "width": 1120,
+          "height": 555.1680908203125,
+          "lanes": 3,
+          "cards": 4,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        }
+      },
+      {
+        "id": "Tracking",
+        "in": 2,
+        "out": 1,
+        "columns": {
+          "width": 1951.9999694824219,
+          "height": 278,
+          "lanes": 3,
+          "cards": 4,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        },
+        "spine": {
+          "width": 1120,
+          "height": 554,
+          "lanes": 3,
+          "cards": 4,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        }
+      },
+      {
+        "id": "Analytics",
+        "in": 6,
+        "out": 3,
+        "columns": {
+          "width": 1952,
+          "height": 759.1680908203125,
+          "lanes": 9,
+          "cards": 10,
+          "linesMax": 4,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        },
+        "spine": {
+          "width": 1120,
+          "height": 1275.1680908203125,
+          "lanes": 9,
+          "cards": 10,
+          "linesMax": 4,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        }
+      },
+      {
+        "id": "SessionReplay",
+        "in": 1,
+        "out": 5,
+        "columns": {
+          "width": 1951.9999694824219,
+          "height": 620,
+          "lanes": 6,
+          "cards": 7,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        },
+        "spine": {
+          "width": 1120,
+          "height": 896,
+          "lanes": 6,
+          "cards": 7,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        }
+      },
+      {
+        "id": "TrackedEntities",
+        "in": 9,
+        "out": 7,
+        "columns": {
+          "width": 1951.9999694824219,
+          "height": 1101.1680908203125,
+          "lanes": 16,
+          "cards": 17,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        },
+        "spine": {
+          "width": 1119.9999694824219,
+          "height": 2061.1680908203125,
+          "lanes": 16,
+          "cards": 17,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        }
+      },
+      {
+        "id": "Boards",
+        "in": 4,
+        "out": 4,
+        "columns": {
+          "width": 1912.3200073242188,
+          "height": 500,
+          "lanes": 8,
+          "cards": 9,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        },
+        "spine": {
+          "width": 1080.3200073242188,
+          "height": 1100,
+          "lanes": 8,
+          "cards": 9,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        }
+      },
+      {
+        "id": "Sharing",
+        "in": 2,
+        "out": 5,
+        "columns": {
+          "width": 1951.9999084472656,
+          "height": 602,
+          "lanes": 7,
+          "cards": 8,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        },
+        "spine": {
+          "width": 1119.9999389648438,
+          "height": 980,
+          "lanes": 7,
+          "cards": 8,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        }
+      },
+      {
+        "id": "Teams",
+        "in": 6,
+        "out": 5,
+        "columns": {
+          "width": 1936.8000183105469,
+          "height": 740,
+          "lanes": 11,
+          "cards": 12,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        },
+        "spine": {
+          "width": 1104.8000183105469,
+          "height": 1460,
+          "lanes": 11,
+          "cards": 12,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        }
+      },
+      {
+        "id": "Identity",
+        "in": 8,
+        "out": 5,
+        "columns": {
+          "width": 1952,
+          "height": 981.1680908203125,
+          "lanes": 13,
+          "cards": 14,
+          "linesMax": 4,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        },
+        "spine": {
+          "width": 1120,
+          "height": 1701.1680908203125,
+          "lanes": 13,
+          "cards": 14,
+          "linesMax": 4,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        }
+      },
+      {
+        "id": "Administration",
+        "in": 3,
+        "out": 3,
+        "columns": {
+          "width": 1952,
+          "height": 380,
+          "lanes": 6,
+          "cards": 7,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        },
+        "spine": {
+          "width": 1120,
+          "height": 878,
+          "lanes": 6,
+          "cards": 7,
+          "linesMax": 3,
+          "labelCard": 0,
+          "labelLabel": 0,
+          "lineLabel": 0,
+          "lineCard": 0
+        }
+      }
+    ],
+    "pairs": [
+      {
+        "width": 1163.9999694824219,
+        "height": 177.1680908203125,
+        "lanes": 1,
+        "cards": 2,
+        "linesMax": 2,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1164,
+        "height": 177.1680908203125,
+        "lanes": 1,
+        "cards": 2,
+        "linesMax": 3,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1164,
+        "height": 177.1680908203125,
+        "lanes": 1,
+        "cards": 2,
+        "linesMax": 3,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1163.9999694824219,
+        "height": 158,
+        "lanes": 1,
+        "cards": 2,
+        "linesMax": 2,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1164,
+        "height": 192,
+        "lanes": 2,
+        "cards": 2,
+        "linesMax": 4,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1163.9999694824219,
+        "height": 158,
+        "lanes": 2,
+        "cards": 2,
+        "linesMax": 2,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1164,
+        "height": 158,
+        "lanes": 1,
+        "cards": 2,
+        "linesMax": 2,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1164,
+        "height": 158,
+        "lanes": 1,
+        "cards": 2,
+        "linesMax": 3,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1163.9999694824219,
+        "height": 160,
+        "lanes": 2,
+        "cards": 2,
+        "linesMax": 2,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1164,
+        "height": 158,
+        "lanes": 1,
+        "cards": 2,
+        "linesMax": 3,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1164,
+        "height": 158,
+        "lanes": 1,
+        "cards": 2,
+        "linesMax": 2,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1148.8000183105469,
+        "height": 158,
+        "lanes": 1,
+        "cards": 2,
+        "linesMax": 2,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1163.9999084472656,
+        "height": 192,
+        "lanes": 2,
+        "cards": 2,
+        "linesMax": 3,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1163.9999694824219,
+        "height": 192,
+        "lanes": 2,
+        "cards": 2,
+        "linesMax": 3,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1148.7999877929688,
+        "height": 176,
+        "lanes": 2,
+        "cards": 2,
+        "linesMax": 3,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1124.3199768066406,
+        "height": 176,
+        "lanes": 2,
+        "cards": 2,
+        "linesMax": 3,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1163.9999694824219,
+        "height": 158,
+        "lanes": 2,
+        "cards": 2,
+        "linesMax": 2,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1124.3200073242188,
+        "height": 176,
+        "lanes": 2,
+        "cards": 2,
+        "linesMax": 3,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1124.3200073242188,
+        "height": 158,
+        "lanes": 1,
+        "cards": 2,
+        "linesMax": 2,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1109.1200256347656,
+        "height": 160,
+        "lanes": 2,
+        "cards": 2,
+        "linesMax": 2,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1124.3199462890625,
+        "height": 158,
+        "lanes": 1,
+        "cards": 2,
+        "linesMax": 2,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1148.7999572753906,
+        "height": 160,
+        "lanes": 2,
+        "cards": 2,
+        "linesMax": 2,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1163.9999389648438,
+        "height": 158,
+        "lanes": 1,
+        "cards": 2,
+        "linesMax": 3,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1163.9999389648438,
+        "height": 158,
+        "lanes": 1,
+        "cards": 2,
+        "linesMax": 2,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1148.8000183105469,
+        "height": 192,
+        "lanes": 2,
+        "cards": 2,
+        "linesMax": 3,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1148.8000183105469,
+        "height": 158,
+        "lanes": 2,
+        "cards": 2,
+        "linesMax": 1,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      },
+      {
+        "width": 1164,
+        "height": 160,
+        "lanes": 2,
+        "cards": 2,
+        "linesMax": 3,
+        "labelCard": 0,
+        "labelLabel": 0,
+        "lineLabel": 0,
+        "lineCard": 0
+      }
+    ],
+    "collisions": 0,
+    "unclickable": [
+      "Teams → Identity"
+    ]
+  },
   "degree": [
     {
       "id": "TrackedEntities",

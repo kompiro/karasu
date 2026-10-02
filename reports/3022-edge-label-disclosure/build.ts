@@ -12,6 +12,7 @@ import { chromium } from "@playwright/test";
 import { compile } from "../../packages/core/src/index.ts";
 import { dataUri, escapeHtml, pane, reportFragment, reportPage } from "../../scripts/report/index.ts";
 import { corpusStats } from "./corpus.ts";
+import { captureFocus, type FocusMeasure } from "./focus-capture.ts";
 import { measureFocus, measureSvg, readSurface, type FocusMetrics, type Metrics } from "./measure.ts";
 import { shortenDomainEdgeLabels } from "./short-labels.ts";
 
@@ -47,6 +48,7 @@ const variants: Variant[] = (
     ["v2-32", "V2 省略のみ (32 文字)", "canvas では 32 文字で省略", umami, edgeStyle("32", "always")],
     ["v2-24", "V2 省略のみ (24 文字)", "canvas では 24 文字で省略", umami, edgeStyle("24", "always")],
     ["v6-none", "V6 auto (省略なし)", "重ならずに置けるラベルだけ描く", umami, edgeStyle("none", "auto")],
+    ["v6-48", "V6 auto + 省略 48 (slice A の既定)", "省略したうえで、置けるラベルだけ描く", umami, edgeStyle("48", "auto")],
     ["v6-40", "V6 auto + 省略 40", "省略したうえで、置けるラベルだけ描く", umami, edgeStyle("40", "auto")],
     ["v6-32", "V6 auto + 省略 32", "省略したうえで、置けるラベルだけ描く", umami, edgeStyle("32", "auto")],
     ["v6-24", "V6 auto + 省略 24", "省略したうえで、置けるラベルだけ描く", umami, edgeStyle("24", "auto")],
@@ -102,9 +104,16 @@ const disclosureJs = esbuild.transformSync(
   readFileSync(`${repo}packages/app/src/components/edge-disclosure.ts`, "utf8"),
   { loader: "ts", format: "cjs", target: "es2020" },
 ).code;
+// The focus canvas is the same: the app's module, attached to each pane.
+const focusCanvasJs = esbuild.transformSync(
+  readFileSync(`${repo}packages/app/src/components/focus-canvas.ts`, "utf8"),
+  { loader: "ts", format: "cjs", target: "es2020" },
+).code;
 const focusScript =
   `(() => { const module = { exports: {} }; const exports = module.exports; ${disclosureJs}\n` +
-  `document.querySelectorAll(".preview-container").forEach((c) => module.exports.attachEdgeDisclosure(c)); })();`;
+  `document.querySelectorAll(".preview-container").forEach((c) => module.exports.attachEdgeDisclosure(c)); })();` +
+  `(() => { const module = { exports: {} }; const exports = module.exports; ${focusCanvasJs}\n` +
+  `document.querySelectorAll(".preview-container").forEach((c) => module.exports.attachFocusCanvas(c, { layout: c.dataset.focusLayout || undefined })); })();`;
 const livePane =
 (variant: Variant, note: string) =>
   `<div class="preview-container">${pane({ label: variant.name, svg: variant.svg, note })}</div>`;
@@ -159,6 +168,12 @@ async function main(): Promise<void> {
 const hoverTarget: [string, string] = ["Analytics", "Identity"];
 const hoverShot = await shoot(v("v6-32").svg, { edge: hoverTarget });
 const focusShot = await shoot(v("v6-32").svg, { node: "Identity" });
+const focusNode = "Identity";
+const focus = await captureFocus(
+  { svg: v("v6-48").svg, css: tokens + edgeCss, script: focusScript },
+  { nodes: surface.nodes.map((n) => n.id), edges: surface.edges },
+  { edge: hoverTarget, node: focusNode },
+);
 const hoverLabel = readSurface(v("v0").svg).edges.find(
   (e) => e.from === hoverTarget[0] && e.to === hoverTarget[1],
 )!.label!;
@@ -200,6 +215,30 @@ const degreeTable =
   degree.map((d) => `<tr>${td(escapeHtml(d.id))}${td(d.in)}${td(d.out)}${td(d.in + d.out)}</tr>`).join("") +
   `</tbody></table>`;
 
+// ── The focus canvas ─────────────────────────────────────────────────────────
+const collisionsOf = (m: FocusMeasure) => m.labelCard + m.labelLabel + m.lineLabel + m.lineCard;
+const size = (m: FocusMeasure) => `${Math.round(m.width)} × ${Math.round(m.height)}`;
+const focusNodeTable =
+  `<table class="num"><thead><tr><th>domain</th><th>in / out</th><th>3 列: 大きさ (px)</th><th>3 列: 衝突</th>` +
+  `<th>縦 1 列: 大きさ (px)</th><th>縦 1 列: 衝突</th><th>最長ラベルの行数</th></tr></thead><tbody>` +
+  [...focus.nodes]
+    .sort((a, b) => b.in + b.out - (a.in + a.out))
+    .map(
+      (n) =>
+        `<tr>${td(escapeHtml(n.id))}${td(`${n.in} / ${n.out}`)}${td(size(n.columns))}` +
+        `${td(collisionsOf(n.columns), collisionsOf(n.columns) === 0 ? "ok" : "bad")}${td(size(n.spine))}` +
+        `${td(collisionsOf(n.spine), collisionsOf(n.spine) === 0 ? "ok" : "bad")}${td(n.columns.linesMax)}</tr>`,
+    )
+    .join("") +
+  `</tbody></table>`;
+const maxOf = (ms: FocusMeasure[], key: "width" | "height") => Math.round(Math.max(...ms.map((m) => m[key])));
+const columnsAll = focus.nodes.map((n) => n.columns);
+const spineAll = focus.nodes.map((n) => n.spine);
+const focusCollisions = [...columnsAll, ...spineAll, ...focus.pairs].reduce((sum, m) => sum + collisionsOf(m), 0);
+const focusLanes = columnsAll.reduce((sum, m) => sum + m.lanes, 0);
+const focusOf = focus.nodes.find((n) => n.id === focusNode)!;
+const busiestOf = focus.nodes.find((n) => n.id === focus.busiest)!;
+
 const css = `<style>
 table.num { border-collapse: collapse; font-size: 13px; margin: 12px 0; width: 100%; }
 table.num th, table.num td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: right; vertical-align: top; }
@@ -208,6 +247,9 @@ table.num td.ok { color: #0B7A3B; font-weight: 600; }
 table.num td.bad { color: #B42318; font-weight: 600; }
 .preview-container { margin: 16px 0; }
 .preview-container .edge-label-tip { font-family: system-ui, sans-serif; }
+/* In the app the focus canvas covers the preview pane. A report pane is only as
+   tall as its diagram, so here it takes the window instead. */
+.preview-container .focus-canvas { position: fixed; }
 ${tokens}
 ${edgeCss}
 </style>`;
@@ -238,6 +280,8 @@ const options = {
         `writer 側だけ直すと ${collisions(v1)} 件、canvas で 24 文字に省略すると ${collisions(v24)} 件まで減りますが、0 にはなりません。</li>` +
         `<li><strong>「重ならずに置けるラベルだけ描く」と衝突は 0 になります。</strong>canvas に残るラベルは ${a32.edges} 本中 ${a32.labelsDrawn} 本です。` +
         `writer 側の修正を重ねると ${v5.labelsDrawn} 本です。残りは hover で開示します。</li>` +
+        `<li><strong>全文は focus canvas で読みます。</strong>edge をクリックするか、node の <code>Relations</code> を押すと、canvas の上にもう 1 枚 canvas が開き、対象の card と edge だけを、ラベルを省略せずに描きます。` +
+        `全 ${focus.nodes.length} node と全 ${focus.pairs.length} 組で、衝突は ${focusCollisions} 件です。</li>` +
         `<li><strong>既存の examples は 1 バイトも変わりません。</strong>${corpus.rendered} 個の root view で、省略も保留も 1 件も発動しませんでした。</li>` +
         `</ul>`,
     },
@@ -293,6 +337,72 @@ const options = {
         ),
     },
     {
+      title: "段 3: focus canvas",
+      body:
+        p(
+          `tooltip の次の段です。<strong>canvas の上にもう 1 枚 canvas を開き</strong>、そこには対象の card だけを置きます。` +
+            `置くものが少ないので、ラベルは省略せず、自分の線のすぐ上に折り返して全文を描けます。` +
+            `card はメインの canvas の card をそのまま複製したもので、core は何も描き直しません。`,
+        ) +
+        p(
+          `<strong>edge をクリック</strong>すると、両端の card 2 枚と、その 2 つの間の edge が全部並びます。` +
+            `下は <code>${hoverTarget.join(" → ")}</code> をクリックした状態です。`,
+        ) +
+        pane({ label: `edge をクリック: ${hoverTarget.join(" → ")}`, image: dataUri(focus.shots.edge), note: "1720 × 1000 の preview。背景がメインの canvas" }) +
+        p(
+          `同じ 2 つの間に逆向きの edge もあるときは、両方を別々の行に描きます。` +
+            `この canvas で両方向の edge を持つ組は ${mutualPairs.size} 組あります。下は <code>${focus.mutual.join(" ↔ ")}</code> です。`,
+        ) +
+        pane({ label: `両方向の組: ${focus.mutual.join(" ↔ ")}`, svg: focus.canvases.mutual, note: "focus canvas そのもの (SVG)" }) +
+        p(
+          `<strong>node は、card に hover すると出る <code>⇄ Relations</code> から開きます。</strong>` +
+            `card のクリックは drill-down に使われているので、別の入口が必要です。` +
+            `hover 中は今までどおり、その node の edge だけが残ります。`,
+        ) +
+        pane({ label: `card に hover: ${focusNode}`, image: dataUri(focus.shots.pill), note: "card の右上に Relations が出る" }) +
+        p(
+          `開くと、中央に対象の node、<strong>左にそれに依存する node、右にそれが依存する node</strong> が並びます。` +
+            `1 本の edge が 1 行で、ラベルは全文です。<code>${focusNode}</code> は ${focusOf.in} 本入り ${focusOf.out} 本出ています。`,
+        ) +
+        pane({ label: `node の focus canvas (3 列): ${focusNode}`, image: dataUri(focus.shots.columns), note: "1720 × 1000 の preview" }) +
+        pane({ label: `3 列: ${focusNode}`, svg: focus.canvases.columns, note: `focus canvas そのもの。${size(focusOf.columns)} px` }) +
+        p(
+          `3 列は横に広く、<code>${focusNode}</code> で ${Math.round(focusOf.columns.width)} px あります。` +
+            `preview がそれより狭いとき (文字が 80% 未満に縮むとき) は、<strong>縦 1 列</strong>に切り替えます。` +
+            `接続先を全部左に並べ、依存する側は上から node の上辺へ、依存される側は node の下辺から下へ繋ぎます。` +
+            `幅は約半分になり、縦に伸びた分は panel の中でスクロールします。開いたときは対象の node が中央に来る位置から始まります。`,
+        ) +
+        pane({ label: `node の focus canvas (縦 1 列): ${focusNode}`, image: dataUri(focus.shots.spine), note: "1100 × 950 の preview (エディタと並べたときの幅)" }) +
+        pane({ label: `縦 1 列: ${focusNode}`, svg: focus.canvases.spine, note: `focus canvas そのもの。${size(focusOf.spine)} px` }) +
+        p(`edge が最も多い <code>${focus.busiest}</code> (${busiestOf.in} 本入り ${busiestOf.out} 本出る) の 3 列です。`) +
+        pane({ label: `3 列: ${focus.busiest}`, svg: focus.canvases.busiest, note: `${size(busiestOf.columns)} px` }) +
+        p(
+          `全 ${focus.nodes.length} 個の node を両方の並べ方で、全 ${focus.pairs.length} 組を edge の focus canvas で開き、ブラウザ上で衝突を数えました。` +
+            `数えたのは、ラベルと card、ラベル同士、線とラベル、線と card の内側です。` +
+            `<strong>合計 ${focusCollisions} 件</strong>でした (node の focus canvas だけで延べ ${focusLanes * 2} 行)。` +
+            `メインの canvas で同じラベルを全文で描くと ${collisions(v0)} 件です。`,
+        ) +
+        focusNodeTable +
+        p(
+          `大きさは、3 列で最大 ${maxOf(columnsAll, "width")} × ${maxOf(columnsAll, "height")} px、` +
+            `縦 1 列で最大 ${maxOf(spineAll, "width")} × ${maxOf(spineAll, "height")} px、` +
+            `edge の focus canvas で最大 ${maxOf(focus.pairs, "width")} × ${maxOf(focus.pairs, "height")} px です。` +
+            `幅のほとんどは card (この図では 1 枚 364 px) で、ラベルの欄は 300 px です。`,
+        ) +
+        p(
+          `edge の focus canvas には弱点があります。<strong>線をクリックできない edge には開く入口がありません。</strong>` +
+            `1720 × 1000 の preview で ${v0.edges} 本の線を 2% 刻みで調べると、${focus.unclickable.length} 本は、どの点でも card か他の edge の当たり判定の下にありました` +
+            (focus.unclickable.length > 0 ? ` (${focus.unclickable.map((e) => `<code>${escapeHtml(e)}</code>`).join("、")})。` : `。`) +
+            `node の focus canvas はこの edge にも届きます。どちらかの端の node を開けば、その edge は 1 行として並んでいます。`,
+        ) +
+        p(
+          `focus canvas の中の card をクリックすると、その node の focus canvas に移ります。` +
+            `node の focus canvas で行をクリックすると、その組の edge の focus canvas に移ります。<code>← Back</code> で戻れます。` +
+            `下の図で試せます (レポートでは window 全体に開きます)。`,
+        ) +
+        livePane(v("v6-48"), `auto + 省略 48。線をクリック、または card に hover して Relations をクリック`),
+    },
+    {
       title: "線そのものの密度",
       body:
         p(
@@ -332,7 +442,9 @@ const options = {
         `<li>ghost edge と cyclic edge を配置パスに入れる範囲。spike では auto のときだけ入れています。</li>` +
         `<li>hop の持ち主を表す属性。spike は hop ごとに属性を足しました。この canvas では SVG が約 9% 大きくなります。hop の描き方は #2956 で設計中です。</li>` +
         `<li>spike では core のテストが 4,682 件中 2 件落ちます。新しい style property が spec に無いこと、ghost と cyclic の edge を配置パスに入れたことが原因で、どちらも意図した変更の帰結です。</li>` +
-        `<li>ラベルしか持たない edge をクリックしたときの詳細パネル。今は property block を持つ edge だけが開きます。</li>` +
+        `<li>focus canvas と既存の詳細パネルの関係。spike では、詳細パネルを開く edge (property block を持つもの、集約 edge) はそちらを優先し、focus canvas は開きません。description や link を focus canvas に載せるかは決めていません。</li>` +
+        `<li>node の focus canvas の入口。spike は hover で出る <code>Relations</code> にしました。card の ⓘ から開く詳細パネルに置く案もあります。キーボードと touch からの入口はありません。</li>` +
+        `<li>focus canvas を開いたまま source を編集したときの追従。spike では開いた時点の図のままです。</li>` +
         `<li>hub の線を既定で薄くする、両方向の 2 本を 1 本にまとめる、といった線側の集約。</li>` +
         `</ul>` +
         `<script>${focusScript}</script>`,
@@ -347,6 +459,7 @@ writeFileSync(
   JSON.stringify(
     {
       variants: variants.map(({ id, name, m, focus }) => ({ id, name, ...m, focus })),
+      focusCanvas: { nodes: focus.nodes, pairs: focus.pairs, collisions: focusCollisions, unclickable: focus.unclickable },
       degree,
       unorderedPairs: unorderedPairs.size,
       mutualPairs: mutualPairs.size,
@@ -358,6 +471,10 @@ writeFileSync(
 );
 writeFileSync(`${dir}hover-edge.png`, hoverShot);
 writeFileSync(`${dir}focus-node.png`, focusShot);
+writeFileSync(`${dir}focus-canvas-edge.png`, focus.shots.edge);
+writeFileSync(`${dir}focus-canvas-columns.png`, focus.shots.columns);
+writeFileSync(`${dir}focus-canvas-spine.png`, focus.shots.spine);
+writeFileSync(`${dir}focus-canvas-pill.png`, focus.shots.pill);
 console.log(`wrote ${dir}index.html (${variants.length} variants)`);
 }
 

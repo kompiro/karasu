@@ -11,6 +11,7 @@ import { parseNodePathRefId } from "@karasu-tools/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
 import { EdgeDetailPanel, type SingleEdgeDetail } from "./EdgeDetailPanel.js";
 import { attachEdgeDisclosure } from "./edge-disclosure.js";
+import { attachFocusCanvas } from "./focus-canvas.js";
 import { EdgeContextMenu } from "./EdgeContextMenu.js";
 import { useFormattedDiagnostic } from "../i18n/format-diagnostic.js";
 import { useTranslation } from "../i18n/index.js";
@@ -248,6 +249,14 @@ export function PreviewPane({
     const el = containerRef.current;
     if (!el) return;
     return attachEdgeDisclosure(el);
+  }, []);
+
+  // The focus canvas (#3022, spike): one edge, or one node and its neighbours,
+  // drawn over the preview with every label in full. See `focus-canvas.ts`.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    return attachFocusCanvas(el);
   }, []);
 
   const handleMouseDown = useCallback(

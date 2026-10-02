@@ -243,6 +243,98 @@
 .preview-container svg .crossing-marks > * {
   transition: opacity 0.15s ease;
 }
+
+/* The focus canvas (#3022, spike): the tier past the tooltip. One edge, or one
+   node with its neighbours, drawn over the preview with every label in full.
+   See `focus-canvas.ts`. */
+.preview-container .focus-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(4, 8, 20, 0.62);
+  cursor: default;
+}
+
+.preview-container .focus-canvas[hidden],
+.preview-container .focus-canvas__pill[hidden],
+.preview-container .focus-canvas__back[hidden] {
+  display: none;
+}
+
+.preview-container .focus-canvas__panel {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  max-height: 100%;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md, 6px);
+  box-shadow: var(--shadow-dropdown);
+  overflow: hidden;
+}
+
+.preview-container .focus-canvas__bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  font:
+    13px/1.4 system-ui,
+    sans-serif;
+}
+
+.preview-container .focus-canvas__title {
+  font-weight: 600;
+}
+
+.preview-container .focus-canvas__count {
+  opacity: 0.7;
+}
+
+.preview-container .focus-canvas__close {
+  margin-left: auto;
+}
+
+.preview-container .focus-canvas__bar button,
+.preview-container .focus-canvas__pill {
+  padding: 3px 9px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md, 6px);
+  color: var(--text-primary);
+  font:
+    11px/1.4 system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+
+.preview-container .focus-canvas__body {
+  overflow: auto;
+}
+
+.preview-container .focus-canvas__svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.preview-container .focus-canvas__card,
+.preview-container .focus-canvas__panel[data-focus="node"] .focus-canvas__lane {
+  cursor: pointer;
+}
+
+.preview-container .focus-canvas__pill {
+  position: absolute;
+  z-index: 91;
+  box-shadow: var(--shadow-dropdown);
+  white-space: nowrap;
+}
 /* ── Preview Toolbar ────────────────────────────────────────────── */
 .preview-toolbar {
   display: flex;
