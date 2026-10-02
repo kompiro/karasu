@@ -42,7 +42,7 @@ const FAN = 84;
 const MIN_SCALE = 0.8;
 const CLICK_THRESHOLD = 4;
 
-export type FocusLayout = "columns" | "spine";
+type FocusLayout = "columns" | "spine";
 
 export interface FocusCanvasOptions {
   /**
