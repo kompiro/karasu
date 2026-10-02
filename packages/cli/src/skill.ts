@@ -83,8 +83,19 @@ export function skillInstall(
     try {
       renameSync(staging, target);
     } catch (err) {
-      if (replacing) renameSync(previous, target);
       rmSync(staging, { recursive: true, force: true });
+      if (replacing) {
+        try {
+          renameSync(previous, target);
+        } catch {
+          // The next install clears `previous`, so say where the old skill is now.
+          throw new Error(
+            `could not install ${target}; the previous version is at ${previous}. ` +
+              `Move it back before running this again.`,
+            { cause: err },
+          );
+        }
+      }
       throw err;
     }
     if (replacing) rmSync(previous, { recursive: true, force: true });
