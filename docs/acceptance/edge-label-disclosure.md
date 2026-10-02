@@ -20,7 +20,7 @@ type: product
 
 ### AC-1: 長いラベルは省略して描く（`label-max-chars`）
 
-- [x] 上限（既定 40 文字）を超えるラベルは単語の境界で切り、`…` を付けて描く。`…` を含めて上限を超えない
+- [x] 上限（既定 48 文字）を超えるラベルは単語の境界で切り、`…` を付けて描く。`…` を含めて上限を超えない
 
   > ✅ Automated — `packages/core/src/renderer/edge-label-disclosure.test.ts` › displayEdgeLabel › cuts at a word boundary and ends with an ellipsis
 

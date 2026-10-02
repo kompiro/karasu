@@ -1921,9 +1921,9 @@ describe("label-max-chars / label-display properties (#3022)", () => {
     return resolveStyles([], [sheet], undefined, undefined, undefined, edge()).edges.get("A->B")!;
   };
 
-  it("defaults to 40 characters and `auto`", () => {
+  it("defaults to 48 characters and `auto`", () => {
     const style = resolveStyles([], [], undefined, undefined, undefined, edge()).edges.get("A->B")!;
-    expect(style.labelMaxChars).toBe(40);
+    expect(style.labelMaxChars).toBe(48);
     expect(style.labelDisplay).toBe("auto");
   });
 
@@ -1938,7 +1938,7 @@ describe("label-max-chars / label-display properties (#3022)", () => {
 
   it("keeps the default for a value that is not a positive whole number", () => {
     for (const bad of ["0", "2.5", "12px", "banana", ""]) {
-      expect(styleWith({ "label-max-chars": bad }).labelMaxChars).toBe(40);
+      expect(styleWith({ "label-max-chars": bad }).labelMaxChars).toBe(48);
     }
   });
 

@@ -35,6 +35,9 @@ const MARKERS = ["data-edge-label-withheld", "<title>"] as const;
 /** The behaviour before the two properties existed. */
 const BEFORE = "edge { label-max-chars: none; label-display: always; }";
 
+/** The shipped `label-max-chars`. */
+const DEFAULT_MAX_CHARS = 48;
+
 const LONG_LABEL = "authorizes every request through the permissions module and the request parser";
 
 const model = (label: string) => `
@@ -79,7 +82,7 @@ const SURFACES: readonly { name: string; render: (krs: string, style?: string) =
 describe("a label longer than `label-max-chars` is drawn truncated", () => {
   it.each(SURFACES)("$name keeps the authored text on the edge and in a <title>", ({ render }) => {
     const [edge] = edgeGroups(render(model(LONG_LABEL)));
-    const shown = displayEdgeLabel(LONG_LABEL, 40);
+    const shown = displayEdgeLabel(LONG_LABEL, DEFAULT_MAX_CHARS);
     expect(shown).not.toBe(LONG_LABEL);
 
     // The canvas draws the short form…

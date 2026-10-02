@@ -275,7 +275,7 @@ border-style:     solid;         /* solid | dashed | dotted (edge alias of strok
 direction:        auto;          /* up | down | left | right | auto (hint, see below) */
 label-position:   middle;        /* start | middle | end | <0.0..1.0> */
 label-offset:     0 0;            /* <dy>px or <dx>px <dy>px (screen-axis) */
-label-max-chars:  40;             /* <n> | none (characters of the label drawn on the canvas) */
+label-max-chars:  48;             /* <n> | none (characters of the label drawn on the canvas) */
 label-display:    auto;           /* auto | always | hover */
 
 /* karasu-specific properties (not standard CSS) */
@@ -733,7 +733,7 @@ labels off the line, and the offset adds on top.
 
 ### `label-max-chars` — `<n> | none`
 
-How many characters of the label the canvas draws. Default `40`. A
+How many characters of the label the canvas draws. Default `48`. A
 longer label is cut at a word boundary and ends with `…`. The count
 includes the ellipsis, so the drawn text never exceeds the budget.
 

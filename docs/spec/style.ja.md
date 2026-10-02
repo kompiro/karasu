@@ -259,7 +259,7 @@ border-style:     solid;         /* solid | dashed | dotted（stroke-style の�
 direction:        auto;          /* up | down | left | right | auto（ヒント、後述） */
 label-position:   middle;        /* start | middle | end | <0.0..1.0> */
 label-offset:     0 0;            /* <dy>px or <dx>px <dy>px（screen-axis） */
-label-max-chars:  40;             /* <n> | none（canvas に描く label の文字数） */
+label-max-chars:  48;             /* <n> | none（canvas に描く label の文字数） */
 label-display:    auto;           /* auto | always | hover */
 
 /* karasu固有プロパティ（CSS非対応のため例外） */
@@ -680,7 +680,7 @@ typographic な lift はそのまま、その上にこの offset が加算され
 
 ### `label-max-chars` — `<n> | none`
 
-canvas に描く label の文字数。デフォルトは `40`。超えた label は単語の
+canvas に描く label の文字数。デフォルトは `48`。超えた label は単語の
 境界で切り、末尾に `…` を付ける。`…` も文字数に含めるので、描かれる
 文字列が上限を超えることはない。
 

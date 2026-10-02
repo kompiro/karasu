@@ -1144,7 +1144,7 @@ describe("resolveLabelPlacements — leaving a label off the canvas (`label-disp
  * here are the shipped defaults; `("always", Infinity)` is the behaviour before
  * either property existed.
  */
-function denseCanvasInputs(display: "always" | "auto" = "auto", maxChars = 40) {
+function denseCanvasInputs(display: "always" | "auto" = "auto", maxChars = 48) {
   const src = readFileSync(resolve(__dirname, "fixtures/dense-domain-canvas.krs"), "utf8");
   const parsed = Parser.parse(src);
   const styles = resolveStyles(parsed.value.systems, [getBuiltinStyleSheet()]);

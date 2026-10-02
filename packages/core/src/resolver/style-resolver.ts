@@ -59,10 +59,12 @@ const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
   labelPosition: 0.5,
   labelOffsetX: 0,
   labelOffsetY: 0,
-  // The canvas tier of edge-label disclosure (#3022). 40 clears every authored
+  // The canvas tier of edge-label disclosure (#3022). 48 clears every authored
   // label in `examples/` (the longest is 30), so the budget only bites on
-  // labels that carry a sentence.
-  labelMaxChars: 40,
+  // labels that carry a sentence. Measured on real models, a smaller budget
+  // truncates many labels to seat a few more, and a larger one makes a label
+  // wider than a node card (about 6.6px a character against a 364px card).
+  labelMaxChars: 48,
   labelDisplay: "auto",
 };
 
