@@ -1,7 +1,7 @@
 # Edge ラベルを段階的に開示する
 
 - **日付**: 2026-10-01
-- **ステータス**: 検討中
+- **ステータス**: 検討中（canvas の段は slice A で実装。node focus と edge hover は slice B）
 - **Issue**: [#3022](https://github.com/kompiro/karasu/issues/3022)
 - **PR**: [#3025](https://github.com/kompiro/karasu/pull/3025)
 - **関連**:
@@ -64,9 +64,11 @@ edge の情報を段階的に出す部品は既にあるが、互いに繋がっ
 ## 制約・前提
 
 - **衝突が無い図は byte-stable に保つ**（ADR-2048 / TPL-2048）。`examples/` の全 85
-  ファイルにある手書きラベルは 287 本で、最長は 30 文字。spike では、単独でコンパイル
-  できた 56 個の root view（描かれるラベル 267 本、今日の時点で衝突 0 件）が 1 バイトも
-  変わらなかった。drill-down の各階層と deploy view は比べていない。
+  ファイルにある手書きラベルは 287 本で、最長は 30 文字。全ファイルの all-views バンドル
+  （root・各 drill-down 階層・deploy・org）で、省略も保留も 1 件も起きない。バンドルが
+  今日の出力と異なるのは 15 ファイルで、差分は ghost edge のラベル 35 本の位置だけである
+  （drill-down で 34 本、deploy で 1 本）。どれも今日は ghost の card に重なっていた
+  ラベルで、配置パスに入ったことで重ならない位置へ動いた。
 - **ADR-1554 は context menu でのラベル省略を却下している。** 理由は「判読性の回復が目的の
   場所で長いラベルが読めなくなる」。本設計はこれと衝突しない。canvas は最初の段であり、
   回復の場所（tooltip・context menu・詳細パネル）は全文を折り返して出し続ける。
@@ -152,7 +154,8 @@ spike では 41 本を手で書き換えて再現した。
 - `UmamiApp` の計測で衝突が 0 になる。`auto` が配置するラベルについては「描かれている
   ラベルは読める」が構成上成り立つ。`label-position` / `label-offset` を書いたラベルは
   保留しない（author の指定が勝つ。ADR-1184）ので、指定した位置で衝突したまま描かれうる。
-- 衝突が無く、ラベルが上限文字数以下の図には何も起きない。`examples/` の root view 56 個は不変。
+- 衝突が無く、ラベルが上限文字数以下の図には何も起きない。`examples/` では省略も保留も
+  0 件で、変わるのは card に重なっていた ghost のラベル 35 本の位置だけ。
 - 線の密度にも答えがある。node focus で 41 本が最大 16 本になる。
 
 **デメリット**
@@ -255,13 +258,23 @@ node より先に描かれるので、edge グループの中で全文を出す�
 `label-position` / `label-offset` を書いたラベルは author の指定が勝ち、保留しない
 （ADR-1184 の優先順位を踏襲）。
 
-### 出荷の順序
+### スライス（実装ステップ）
 
-canvas の段（core）が先で、app の 2 つの段はその後に続けられる。canvas の段は単独でも
-情報を失わない。保留したラベルは `<title>` で読めるためである。node focus はラベルに
-触らないので、canvas の段と独立に出せる。
+spike の差分は core と app を合わせて 373 行で、テストを 1 件も含まない。実装には
+テスト・spec（英日）・AT・e2e が加わり、合計で spike の 4 倍前後になる。加えて、変更の
+性質が 2 つに分かれる。canvas の段は全 surface の既定の出力を変えるので、byte-stability と
+既存モデルへの影響を単独でレビューしたい。app の段は preview の操作だけを変える。
+この 2 つを 1 本の PR に混ぜないために、次のように切る。
 
-1 つの PR で出すか複数の Issue に割るかは、方針が固まってから決める（下の未解決の問い）。
+| スライス | 前提 | 独立に出荷できる理由 |
+| --- | --- | --- |
+| **A** canvas の段（[#3030](https://github.com/kompiro/karasu/issues/3030)） | なし | 保留・省略したラベルは `<title>` で読めるので、app の変更が無くても情報は失われない。既定の出力が変わる部分をこの 1 本に閉じ込められる |
+| **B** node focus と edge hover（[#3031](https://github.com/kompiro/karasu/issues/3031)） | A | A の `data-edge-label-withheld` を読むだけで、core の出力は hop の持ち主属性を除いて変えない。node focus と tooltip は 1 つの DOM モジュールと 1 つの e2e を共有するので、さらに分けると同じファイルを 2 度触る |
+
+> 各スライスで何ができるようになるか / その時点でまだできないことは
+> 親 Issue [#3022](https://github.com/kompiro/karasu/issues/3022) の `## Slice status` を参照。
+
+指針の 1〜4・7 と、8〜9 のうち core に関わるものが A、5・6 と e2e が B にあたる。
 
 ### 実装の指針
 
@@ -322,34 +335,50 @@ spike のコードは上の 1〜4 と 6 を実装済みで、core のテスト�
 ### 影響範囲・マイグレーション
 
 - **既存ユーザーへの影響**: ラベルが 40 文字を超える、またはラベルが衝突している図で、
-  canvas の見た目が変わる。`examples/` に 40 文字を超えるラベルは無く、root view には衝突も
-  無い（drill-down の各階層と deploy view の衝突は未計測）。今日の挙動に戻すには
+  canvas の見た目が変わる。`examples/` に 40 文字を超えるラベルは無く、保留されるラベルも
+  無い。card に重なっていた ghost のラベル 35 本だけが動く。今日の挙動に戻すには
   `edge { label-max-chars: none; label-display: always; }` を書く。
 - **ドキュメント更新**: `docs/spec/style.md`（指針 7）。`docs/concepts.ja.md` の
   「集約」節に、ラベルも同じ原則で絞ることを 1 段落足すかは実装 PR で判断する。
 - **テスト・examples への影響**: `label-placement.test.ts` の ghost / cyclic 除外の
   テストを `always` と `auto` の 2 ケースに分ける。examples の `.krs` は変更なし。
 
+## slice A で確定したこと
+
+「未解決の問い」として残していたもののうち、canvas の段の実装で決めたもの。
+
+- **静的出力も同じ既定（`auto`）にする。** surface ごとに既定を変えると、app で見た図と
+  export した図が食い違う（TPL-219 の parity）。静的出力で保留したラベルは `<title>` で
+  読める。SVG を画像に変換する利用者は保留したラベルを失うので、その用途では
+  `edge { label-display: always; }` を書く。
+- **既定の上限は 40 文字。** `examples/` の最長（30 文字）を超え、計測した 24 / 32 / 40 の
+  どれでも canvas に残るラベルは同じ 11 本だった。残るラベルが最も長く読める 40 を採る。
+- **合成ラベルと、集約 edge のクリック対象のラベルは保留も省略もしない。** `W` / `R` や
+  `N domain edges` は `data-edge-label` に載らない（ADR-1554）ので、保留すると届く経路が
+  無くなる（TPL-3022）。集約 edge のラベルは内訳パネルを開くクリックの的でもある。
+- **deploy view も同じ既定にする。** 手元の reverse モデル 4 つ（dify / twenty / wordpress /
+  hato。リポジトリ外）の deploy view は、ラベル付きの edge が合計 1 本しか無く、`auto` で
+  何も変わらなかった。`examples/` の deploy view で変わるのは、card に重なっていた ghost の
+  ラベル 1 本の位置だけである。
+- **cyclic edge の線は `auto` のとき障害物に入れる。** cyclic edge は薄くない実線なので、
+  その下のラベルは他の線の下と同じく読めない。ghost の線は引き続き入れない。
+- **Issue は 2 つに割る**（上の「スライス」）。
+
+同じ 4 つのモデルの system 側（全 drill-down 階層）で、描かれたラベルの衝突は次のように
+減った。`auto` で残るのはすべて、保留の対象外にした `W` / `R` マーカーである。
+
+| モデル | 階層 | 衝突（`always`） | 衝突（既定） | 保留 | 省略 |
+| --- | --- | --- | --- | --- | --- |
+| dify | 405 | 185 | 9 | 228 | 0 |
+| twenty | 506 | 833 | 8 | 508 | 22 |
+| wordpress | 1,031 | 169 | 6 | 197 | 8 |
+| hato | 101 | 11 | 0 | 16 | 5 |
+
 ## 未解決の問い / 決めないこと
 
-- **静的出力の既定を `auto` にしてよいか。** 推奨は「全 surface で同じ既定」。静的 SVG
-  だけ `always` にすると、app で見た図と export した図が食い違う（TPL-219 の parity）。
-  衝突したラベルは描いても読めないので、保留で失うものは小さい。ただし README に
-  貼った SVG を画像化している利用者は、保留されたラベルを失う。レビューで決める。
-- **既定の上限文字数。** 40 は `examples/` の最長（30 文字）を超え、Umami の中央値
-  （76 文字）を半分にする値として置いた。計測した 24 / 32 / 40 文字は、`auto` の下では
-  どれも衝突 0 件で、canvas に残るラベルも 11 本で同じ。残る 11 本の読みやすさで決める。
 - **ラベルだけの edge をクリックしたときに詳細パネルを開くか。** hover の無い
   タッチ端末では、保留したラベルに届く経路が右クリック相当の操作しか無い。それも
   canonical id を持つ edge に限られ、ghost edge には経路が無い。
   edge-hover-affordance.md は「detail payload を持たない edge のクリックは何も
-  起動しない」と決めているので、そちらの実装と合わせて決める。
-- **合成ラベルを保留の対象にするか。** `N domain edges` や `W` / `R` は `data-edge-label` に
-  載らない（ADR-1554）ので、保留すると app の tooltip から届かない。推奨は対象外にして、
-  author 指定のラベルと同じく障害物としてだけ扱うこと。集約ラベルはクリックの的でもある。
-- **1 PR で出すか、core と app で Issue を割るか。** 割る場合は
-  `.claude/rules/program-slices.md` に従い、#3022 を親にして sub-issue を起こす。
-- **deploy view への適用。** deploy の edge は全部 ghost なので、指針 3 の変更で初めて
-  配置パスに入る。spike は deploy view を計測していない。canvas の段の実装で dify の
-  deploy view を計測し、悪化するなら deploy では `always` を既定にする。
+  起動しない」と決めているので、slice B でそちらの実装と合わせて決める。
 - **決めないこと**: 線側の集約（#3027）と、card の下を通る配線（#3026）。
