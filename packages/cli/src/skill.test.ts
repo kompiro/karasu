@@ -88,7 +88,7 @@ describe("karasu skill install", () => {
     expect(existsSync(join(dir, "karasu-author", "SKILL.md"))).toBe(true);
   });
 
-  it.skipIf(process.getuid?.() === 0)(
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
     "keeps the installed skill when the --force copy fails part way",
     () => {
       const root = mkdtempSync(join(tmpdir(), "karasu-skill-src-"));
@@ -109,6 +109,14 @@ describe("karasu skill install", () => {
       }
     },
   );
+
+  it("clears what an interrupted install left behind, outside the agent's view", () => {
+    mkdirSync(join(dir, ".karasu-author.installing"));
+    writeFileSync(join(dir, ".karasu-author.installing", "SKILL.md"), "half");
+    mkdirSync(join(dir, ".karasu-author.previous"));
+    skillInstall("karasu-author", { dir });
+    expect(readdirSync(dir)).toEqual(["karasu-author"]);
+  });
 
   it("rejects an unknown name before writing anything", () => {
     expect(() => skillInstall("nope", { dir })).toThrow("unknown skill 'nope'");

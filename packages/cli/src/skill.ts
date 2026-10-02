@@ -67,8 +67,9 @@ export function skillInstall(
   targets.forEach((target, i) => {
     // Copy beside the target and swap it in, so files the new version dropped
     // do not linger and a failed copy leaves the installed skill as it was.
-    const staging = `${target}.installing`;
-    const previous = `${target}.previous`;
+    // The dot keeps a leftover from an interrupted run out of the agent's view.
+    const staging = join(dir, `.${names[i]}.installing`);
+    const previous = join(dir, `.${names[i]}.previous`);
     rmSync(staging, { recursive: true, force: true });
     rmSync(previous, { recursive: true, force: true });
     try {
@@ -79,7 +80,13 @@ export function skillInstall(
     }
     const replacing = existsSync(target);
     if (replacing) renameSync(target, previous);
-    renameSync(staging, target);
+    try {
+      renameSync(staging, target);
+    } catch (err) {
+      if (replacing) renameSync(previous, target);
+      rmSync(staging, { recursive: true, force: true });
+      throw err;
+    }
     if (replacing) rmSync(previous, { recursive: true, force: true });
   });
   return targets;

@@ -617,7 +617,7 @@ Examples:
 
 const skillCommand = program
   .command("skill")
-  .description("Install the karasu agent skills into a project, for agents other than Claude Code")
+  .description("Copy the karasu agent skills into a project (default: .claude/skills)")
   .addHelpText(
     "after",
     `
