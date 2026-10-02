@@ -166,6 +166,8 @@ Aggregation is done separately for sync and async, so if a pair has both kinds o
 
 References: ADR-445, ADR-510, PR #607.
 
+> Related TPLs: [TPL-3022](test-perspectives/TPL-3022-withheld-content-stays-reachable.md) — authored content the canvas truncates or withholds stays reachable in full on the same surface.
+
 ### Ghost — keep boundaries visible even as the field narrows under drill-down
 
 When you drill down into a service or domain, the outside world drops out of view.
