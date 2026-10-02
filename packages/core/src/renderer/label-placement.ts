@@ -733,6 +733,9 @@ export function resolveLabelPlacements(
   }
 
   for (const label of byIndex) {
+    // The verdict belongs to this run. Inputs placed a second time (against
+    // other obstacles) must not carry the previous run's answer.
+    label.deferred = undefined;
     if (!label.eligible) continue;
     const step = label.fontSize + 4;
     // Two search axes: `perp` lifts the label off its edge; `tang` slides it
@@ -798,10 +801,15 @@ export function resolveLabelPlacements(
 
     // `label-display: auto` (#3022): a label is drawn only where it can be
     // read. When even the best candidate still lands on a card, a label or a
-    // foreign line (or reads as another edge's), leave it off the canvas
-    // instead of drawing it there, and do not let it obstruct the labels that
-    // follow. The authored text stays on the edge for the viewer to disclose.
-    if (bestCost > 0 && label.deferrable) {
+    // foreign line, leave it off the canvas instead of drawing it there, and
+    // do not let it obstruct the labels that follow. The authored text stays
+    // on the edge for the viewer to disclose.
+    //
+    // Ambiguity alone is not a reason to leave a label off. A label that is
+    // clear but nearer another edge's line than its own is still readable, and
+    // it was drawn before this property existed; ambiguity steers where a
+    // label goes (#2360), it does not decide whether it is drawn.
+    if (bestCost >= COLLISION_COST && label.deferrable) {
       label.deferred = true;
       continue;
     }

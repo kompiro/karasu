@@ -26,7 +26,7 @@ describe("displayEdgeLabel", () => {
 
   it("never draws more characters than the budget, ellipsis included", () => {
     const label = "delegates session deletion to deleteSession (src/queries/prisma/session.ts)";
-    for (const max of [8, 16, 24, 32, 40, 60]) {
+    for (const max of [1, 2, 3, 8, 16, 24, 32, 40, 60]) {
       expect(Array.from(displayEdgeLabel(label, max)).length).toBeLessThanOrEqual(max);
     }
   });
@@ -49,6 +49,27 @@ describe("displayEdgeLabel", () => {
     const shown = displayEdgeLabel(label, 10);
     expect(Array.from(shown)).toHaveLength(10);
     expect(shown).toBe("😀".repeat(9) + "…");
+  });
+
+  it("draws only the ellipsis when the budget has room for nothing else", () => {
+    expect(displayEdgeLabel("authorizes requests", 1)).toBe("…");
+  });
+
+  it("does not cut a letter from its combining accent", () => {
+    // Decomposed: each "é" is the letter and a combining acute.
+    const label = "é".normalize("NFD").repeat(20);
+    const shown = displayEdgeLabel(label, 6);
+    // Whole pairs only: never a bare "e" whose accent went with the cut.
+    expect(shown).toBe("é".normalize("NFD").repeat(2) + "…");
+  });
+
+  it("does not leave an emoji sequence half-joined", () => {
+    // man + ZWJ + woman + ZWJ + girl: five code points, one glyph.
+    const family = "\u{1F468}\u200D\u{1F469}\u200D\u{1F467}";
+    // Room for one whole family and the ellipsis; the second one is not started.
+    expect(displayEdgeLabel(family.repeat(4), 8)).toBe(family + "…");
+    // No room for a whole one: nothing of it is drawn.
+    expect(displayEdgeLabel(family.repeat(4), 5)).toBe("…");
   });
 
   it("truncates a label written without spaces, such as Japanese", () => {

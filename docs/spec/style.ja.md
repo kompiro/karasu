@@ -713,13 +713,13 @@ canvas に label を描くかどうか。デフォルトは `auto`。
 
 ```css
 edge { label-display: always; }            /* 全 label を、重なっても描く */
-edge[implicit] { label-display: hover; }   /* hover するまで出さない */
+edge[async] { label-display: hover; }      /* hover するまで出さない */
 ```
 
 `auto` では、まず自動配置（上の `label-position` を参照）が label を
 空いた位置へ動かす。空いた位置とは、card・他の label・他の edge の線に
-重ならず、自分の線より他の edge の線に近くならない位置である。届く範囲に
-空きが無ければ、そこには描かずに canvas から外す。外した label の場所は、
+重ならない位置である。届く範囲に空きが無ければ、そこには描かずに
+canvas から外す。外した label の場所は、
 後から置く label が使える。全部の label が重ならずに置ける canvas は、
 `auto` でも `always` でも同じ出力になる。
 

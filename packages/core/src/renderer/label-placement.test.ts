@@ -1066,6 +1066,66 @@ describe("resolveLabelPlacements — leaving a label off the canvas (`label-disp
     expect(drawn.moved).toBe(true);
   });
 
+  it("draws a label that is clear but ambiguous: only a collision leaves it off", () => {
+    // The card sits on the label's own line, so the label has to leave the
+    // line to clear it. Just past the card, another edge's line runs nearer
+    // than its own: every clear spot is an ambiguous one (cost 1, never 0).
+    const own = edgeLine(
+      0,
+      [
+        { x: 0, y: 500 },
+        { x: 1000, y: 500 },
+      ],
+      HAIRLINE,
+    );
+    const card: Rect = { x: 300, y: 470, width: 400, height: 60 };
+    const above = edgeLine(
+      1,
+      [
+        { x: 0, y: 445 },
+        { x: 1000, y: 445 },
+      ],
+      HAIRLINE,
+    );
+    const below = edgeLine(
+      2,
+      [
+        { x: 0, y: 555 },
+        { x: 1000, y: 555 },
+      ],
+      HAIRLINE,
+    );
+    const ambiguous = { ...label(0, { x: 500, y: 500 }, 80), deferrable: true };
+
+    const overrides = resolveLabelPlacements([ambiguous], [card], [own, above, below]);
+
+    // Readable, so drawn: moved off the card, onto no line.
+    expect(ambiguous.deferred).toBeUndefined();
+    expect(overrides.has(0)).toBe(true);
+    const placed = ownedBoxesAfter([ambiguous], overrides);
+    expect(
+      countLabelPenetrations(
+        placed.map((b) => b.box),
+        [card],
+      ),
+    ).toBe(0);
+    expect(countLabelLinePenetrations(placed, [own, above, below])).toBe(0);
+    // And it really is the ambiguous case: a foreign line is the nearer one.
+    const anchor = overrides.get(0)!;
+    expect(Math.min(distanceToLine(anchor, above), distanceToLine(anchor, below))).toBeLessThan(
+      distanceToLine(anchor, own),
+    );
+  });
+
+  it("decides afresh when the same inputs are placed again", () => {
+    const reused = { ...label(0, { x: 500, y: 500 }, 80), deferrable: true };
+    resolveLabelPlacements([reused], [wall]);
+    expect(reused.deferred).toBe(true);
+    // Same input, nothing in the way this time: the earlier verdict must not stick.
+    resolveLabelPlacements([reused], []);
+    expect(reused.deferred).toBeUndefined();
+  });
+
   it("places a late (ghost) label after the others, so it yields to them", () => {
     // Same spot, and the ghost has the lower index. Without `late` it would be
     // placed first and the real label would be the one to move.

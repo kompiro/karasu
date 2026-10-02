@@ -767,15 +767,14 @@ Whether the canvas draws the label at all. Default `auto`.
 
 ```css
 edge { label-display: always; }            /* every label, wherever it lands */
-edge[implicit] { label-display: hover; }   /* keep these quiet until hovered */
+edge[async] { label-display: hover; }      /* keep these quiet until hovered */
 ```
 
 Under `auto`, the automatic placement (see `label-position` above) first
 tries to move the label to a clear position: one where it overlaps no
-card, no other label and no other edge's line, and does not sit nearer
-another edge's line than its own. If no position within its reach is
-clear, the label is left off the canvas instead of being drawn there,
-and the labels placed after it may use the room. A canvas whose labels all find a clear
+card, no other label and no other edge's line. If no position within
+its reach is clear, the label is left off the canvas instead of being
+drawn there, and the labels placed after it may use the room. A canvas whose labels all find a clear
 position is identical under `auto` and `always`.
 
 A label left off the canvas stays reachable on the same surface. The

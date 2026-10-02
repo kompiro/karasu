@@ -26,6 +26,12 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/edge-label-disclosure.test.ts` › displayEdgeLabel › never draws more characters than the budget, ellipsis included
 
+- [x] 結合文字や絵文字の連結の途中では切らない
+
+  > ✅ Automated — `packages/core/src/renderer/edge-label-disclosure.test.ts` › displayEdgeLabel › does not cut a letter from its combining accent
+
+  > ✅ Automated — `packages/core/src/renderer/edge-label-disclosure.test.ts` › displayEdgeLabel › does not leave an emoji sequence half-joined
+
 - [x] 上限に収まるラベルは書かれたとおりに描く
 
   > ✅ Automated — `packages/core/src/renderer/edge-label-disclosure.test.ts` › displayEdgeLabel › returns the label itself when it fits, so a short label is drawn as written
@@ -57,6 +63,10 @@ type: product
 - [x] 動かせば置けるラベルは、外さずに動かす
 
   > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › resolveLabelPlacements — leaving a label off the canvas (`label-display: auto`, #3022) › does not defer a label that can be seated clear
+
+- [x] 外すのは衝突するラベルだけ。重なっていないラベルは、他の edge の線のほうが近くても描く
+
+  > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › resolveLabelPlacements — leaving a label off the canvas (`label-display: auto`, #3022) › draws a label that is clear but ambiguous: only a collision leaves it off
 
 - [x] ghost edge と cyclic edge のラベルも `auto` の対象になる。ghost のラベルは実線のラベルの後に置き、ghost の線は障害物にしない
 
