@@ -275,6 +275,8 @@ border-style:     solid;         /* solid | dashed | dotted (edge alias of strok
 direction:        auto;          /* up | down | left | right | auto (hint, see below) */
 label-position:   middle;        /* start | middle | end | <0.0..1.0> */
 label-offset:     0 0;            /* <dy>px or <dx>px <dy>px (screen-axis) */
+label-max-chars:  40;             /* <n> | none (characters of the label drawn on the canvas) */
+label-display:    auto;           /* auto | always | hover */
 
 /* karasu-specific properties (not standard CSS) */
 shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
@@ -728,6 +730,75 @@ labels off the line, and the offset adds on top.
 > a different visual direction per edge slope, which was hard to
 > reason about. Switched to screen-axis CSS-shorthand semantics — see
 > [ADR-1184](../adr/1184-edge-label-position-offset.md).
+
+### `label-max-chars` — `<n> | none`
+
+How many characters of the label the canvas draws. Default `40`. A
+longer label is cut at a word boundary and ends with `…`. The count
+includes the ellipsis, so the drawn text never exceeds the budget.
+
+```css
+edge { label-max-chars: 24; }                   /* tighter, for a dense canvas */
+edge#criticalWrite { label-max-chars: none; }   /* always draw this one whole */
+```
+
+The authored label is not lost. A truncated edge carries it in full as
+`data-edge-label` and in a `<title>`, so a viewer can show all of it on
+hover, a static SVG opened in a browser included. The edge is marked
+`data-edge-label-withheld="truncated"`. An edge whose label fits is
+emitted exactly as it was before this property existed.
+
+Characters are counted as code points, not as rendered width. A value
+that is not a positive whole number is ignored, and the default stands.
+
+Machine-generated labels (the `W` / `R` markers on usecase → resource
+edges, the `N domain edges` count on an aggregated edge) are never
+truncated.
+
+### `label-display` — `auto | always | hover`
+
+Whether the canvas draws the label at all. Default `auto`.
+
+| Value | The canvas draws the label |
+| --- | --- |
+| `auto` | only where it can be seated clear of node cards, other labels and other edges' lines |
+| `always` | wherever it lands, even into a collision |
+| `hover` | never; the viewer shows it on hover |
+
+```css
+edge { label-display: always; }            /* every label, wherever it lands */
+edge[implicit] { label-display: hover; }   /* keep these quiet until hovered */
+```
+
+Under `auto`, the automatic placement (see `label-position` above) first
+tries to move the label to a clear position: one where it overlaps no
+card, no other label and no other edge's line, and does not sit nearer
+another edge's line than its own. If no position within its reach is
+clear, the label is left off the canvas instead of being drawn there,
+and the labels placed after it may use the room. A canvas whose labels all find a clear
+position is identical under `auto` and `always`.
+
+A label left off the canvas stays reachable on the same surface. The
+edge carries the authored text as `data-edge-label` and in a `<title>`,
+and is marked `data-edge-label-withheld="deferred"`.
+
+Some labels are always drawn, whatever the value:
+
+- Under `auto`, a label the author positioned with `label-position` or
+  `label-offset`. The author's position wins, so it is drawn there even
+  into a collision.
+- A machine-generated label (`W` / `R`, `N domain edges`). It is not
+  authored text, so nothing could show it again on hover.
+- The label of an aggregated edge. It is what a reader clicks to open
+  the edge's breakdown.
+
+To get the behaviour from before these two properties existed:
+
+```css
+edge { label-max-chars: none; label-display: always; }
+```
+
+> Related TPLs: [TPL-3022](../test-perspectives/TPL-3022-withheld-content-stays-reachable.md) — authored content the canvas truncates or withholds stays reachable in full on the same surface. [TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md) — label collisions are measured numerically, and a canvas with nothing to withhold stays byte-stable.
 
 ---
 

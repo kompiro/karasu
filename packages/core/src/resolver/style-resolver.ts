@@ -59,6 +59,11 @@ const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
   labelPosition: 0.5,
   labelOffsetX: 0,
   labelOffsetY: 0,
+  // The canvas tier of edge-label disclosure (#3022). 40 clears every authored
+  // label in `examples/` (the longest is 30), so the budget only bites on
+  // labels that carry a sentence.
+  labelMaxChars: 40,
+  labelDisplay: "auto",
 };
 
 const EDGE_DIRECTION_VALUES = new Set<string>(["auto", "up", "down", "left", "right"]);
@@ -721,6 +726,21 @@ function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
         style.labelOffsetY = dy;
       }
     }
+  }
+  // The canvas tier of edge-label disclosure (#3022). Like `label-position`,
+  // an invalid value is dropped and the default stands.
+  if (props["label-max-chars"]) {
+    const raw = props["label-max-chars"].trim();
+    if (raw === "none") {
+      style.labelMaxChars = Infinity;
+    } else {
+      const n = Number(raw);
+      if (Number.isInteger(n) && n >= 1) style.labelMaxChars = n;
+    }
+  }
+  if (props["label-display"]) {
+    const raw = props["label-display"].trim();
+    if (raw === "always" || raw === "auto" || raw === "hover") style.labelDisplay = raw;
   }
 
   return style;

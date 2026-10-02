@@ -410,32 +410,91 @@ describe("buildLabelInputs", () => {
     [getBuiltinStyleSheet()],
   );
   const styleFor = () => styles.defaultEdgeStyle;
+  /** The behaviour before `label-display` existed: every label drawn wherever it lands. */
+  const alwaysStyleFor = () => ({ ...styles.defaultEdgeStyle, labelDisplay: "always" as const });
+
+  /** One real, one ghost and one cyclic edge, all labelled. */
+  const realGhostCyclic = (): LayoutEdge[] => [
+    { from: "A", to: "B", label: "real", fromPoint: { x: 0, y: 0 }, toPoint: { x: 100, y: 0 } },
+    {
+      from: "A",
+      to: "C",
+      label: "ghost",
+      fromPoint: { x: 0, y: 0 },
+      toPoint: { x: 0, y: 100 },
+      ghost: true,
+    },
+    {
+      from: "A",
+      to: "D",
+      label: "cyclic",
+      fromPoint: { x: 0, y: 0 },
+      toPoint: { x: 50, y: 50 },
+      cyclic: true,
+    },
+  ];
 
   it("excludes ghost and cyclic edges (peripheral geometry — ADR-968), keeps real ones", () => {
-    const edges: LayoutEdge[] = [
-      { from: "A", to: "B", label: "real", fromPoint: { x: 0, y: 0 }, toPoint: { x: 100, y: 0 } },
-      {
-        from: "A",
-        to: "C",
-        label: "ghost",
-        fromPoint: { x: 0, y: 0 },
-        toPoint: { x: 0, y: 100 },
-        ghost: true,
-      },
-      {
-        from: "A",
-        to: "D",
-        label: "cyclic",
-        fromPoint: { x: 0, y: 0 },
-        toPoint: { x: 50, y: 50 },
-        cyclic: true,
-      },
-    ];
-    const { inputs, edgeLines } = buildLabelInputs(edges, new Map(), styleFor);
+    const { inputs, edgeLines } = buildLabelInputs(realGhostCyclic(), new Map(), alwaysStyleFor);
     // Only the real edge (index 0) participates — ghost/cyclic neither move nor obstruct.
     expect(inputs.map((i) => i.index)).toEqual([0]);
     // …and their dimmed strokes are not obstacles either (#2360 keeps ADR-968's exclusion).
     expect(edgeLines.map((l) => l.index)).toEqual([0]);
+  });
+
+  it("lets ghost and cyclic labels into the pass when the canvas may leave them off (auto, #3022)", () => {
+    // A label the pass never sees can never be left off: it is drawn into
+    // whatever it lands on. So `auto` has to show the pass every label.
+    const { inputs, edgeLines } = buildLabelInputs(realGhostCyclic(), new Map(), styleFor);
+    expect(inputs.map((i) => i.index)).toEqual([0, 1, 2]);
+    expect(inputs.every((i) => i.deferrable)).toBe(true);
+    // The ghost label is placed after the real ones; a cyclic edge is a real edge.
+    expect(inputs.map((i) => i.late)).toEqual([false, true, false]);
+    // A dimmed ghost line still displaces nothing (#2360). The cyclic line is a
+    // full-strength stroke, and a label under it is as unreadable as under any other.
+    expect(edgeLines.map((l) => l.index)).toEqual([0, 2]);
+  });
+
+  it("offers nothing to place for a label the canvas never draws (`label-display: hover`)", () => {
+    const hover = () => ({ ...styles.defaultEdgeStyle, labelDisplay: "hover" as const });
+    const { inputs, edgeLines } = buildLabelInputs(realGhostCyclic(), new Map(), hover);
+    expect(inputs).toEqual([]);
+    // The real line is still drawn, so it still obstructs other edges' labels.
+    expect(edgeLines.map((l) => l.index)).toEqual([0]);
+  });
+
+  it("measures the truncated text, not the authored one (`label-max-chars`)", () => {
+    const long = "authorizes every request via @/permissions and parseRequest/checkAuth";
+    const edge: LayoutEdge = {
+      from: "A",
+      to: "B",
+      label: long,
+      fromPoint: { x: 0, y: 0 },
+      toPoint: { x: 400, y: 0 },
+    };
+    const widthAt = (labelMaxChars: number) =>
+      buildLabelInputs([edge], new Map(), () => ({ ...styles.defaultEdgeStyle, labelMaxChars }))
+        .inputs[0].width;
+    // The pass moves the box of the text that is drawn; the two must agree or
+    // it would clear a collision the drawn label is not in.
+    expect(widthAt(20)).toBeLessThan(widthAt(40));
+    expect(widthAt(40)).toBeLessThan(widthAt(Infinity));
+  });
+
+  it("never offers a synthetic label for withholding (TPL-3022)", () => {
+    const marker: LayoutEdge = {
+      from: "U",
+      to: "R",
+      label: "W",
+      syntheticLabel: true,
+      fromPoint: { x: 0, y: 0 },
+      toPoint: { x: 100, y: 0 },
+    };
+    const { inputs } = buildLabelInputs([marker], new Map(), styleFor);
+    // Still placed (it can be nudged), never left off: a synthetic label is not
+    // on the edge as `data-edge-label`, so nothing could disclose it again.
+    expect(inputs).toHaveLength(1);
+    expect(inputs[0].deferrable).toBe(false);
   });
 
   it("offers every drawn edge as a line obstacle, including unlabelled ones (#2360)", () => {
@@ -931,5 +990,174 @@ describe("resolveLabelPlacements spatial prefilter parity (#2760)", () => {
         ...referenceResolveLabelPlacements(labels, rects, lines, 6).entries(),
       ]);
     }
+  });
+});
+
+describe("resolveLabelPlacements — leaving a label off the canvas (`label-display: auto`, #3022)", () => {
+  /** A card covering every position the bounded search can reach from (500, 500). */
+  const wall: Rect = { x: 300, y: 300, width: 400, height: 400 };
+
+  /**
+   * One edge's line folded back and forth over the whole search area around
+   * (500, 500), 8px apart: closer than a label is tall, so every candidate box
+   * is crossed by it. Foreign to every label but the one on edge `index`.
+   */
+  function blanket(index: number): EdgeLine {
+    const points: { x: number; y: number }[] = [];
+    for (let y = 360, leftToRight = true; y <= 640; y += 8, leftToRight = !leftToRight) {
+      points.push({ x: leftToRight ? 300 : 700, y }, { x: leftToRight ? 700 : 300, y });
+    }
+    return edgeLine(index, points, HAIRLINE);
+  }
+
+  it("defers a label that no candidate seats clear, instead of drawing it into the collision", () => {
+    const boxedIn = { ...label(0, { x: 500, y: 500 }, 80), deferrable: true };
+    const overrides = resolveLabelPlacements([boxedIn], [wall]);
+    expect(boxedIn.deferred).toBe(true);
+    // Not drawn, so there is no position to report for it.
+    expect(overrides.has(0)).toBe(false);
+  });
+
+  it("keeps drawing a label that may not be deferred, best-effort, as before", () => {
+    const boxedIn = label(0, { x: 500, y: 500 }, 80);
+    resolveLabelPlacements([boxedIn], [wall]);
+    expect(boxedIn.deferred).toBeUndefined();
+  });
+
+  it("does not defer a label that can be seated clear", () => {
+    // Collides at its default spot, clears one step up: moved, not left off.
+    const card: Rect = { x: 460, y: 485, width: 80, height: 10 };
+    const nudgeable = { ...label(0, { x: 500, y: 500 }, 80), deferrable: true };
+    const overrides = resolveLabelPlacements([nudgeable], [card]);
+    expect(nudgeable.deferred).toBeUndefined();
+    expect(overrides.has(0)).toBe(true);
+    expect(countLabelPenetrations(boxesAfter([nudgeable], overrides), [card])).toBe(0);
+  });
+
+  it("never defers an author-positioned label (ADR-1184: the author's position wins)", () => {
+    const fixed: LabelInput = {
+      ...label(0, { x: 500, y: 500 }, 80),
+      eligible: false,
+      deferrable: true,
+    };
+    const overrides = resolveLabelPlacements([fixed], [wall]);
+    expect(fixed.deferred).toBeUndefined();
+    expect(overrides.size).toBe(0);
+  });
+
+  it("a deferred label is not an obstacle for the labels placed after it", () => {
+    // Label 0 sits under edge 1's line wherever it goes. Label 1 names that
+    // line, so the line is no obstacle to it and its default spot is clear —
+    // unless label 0 was committed there first.
+    const run = (deferrable: boolean) => {
+      const crossed = { ...label(0, { x: 500, y: 500 }, 80), deferrable };
+      const own = label(1, { x: 500, y: 500 }, 80);
+      const overrides = resolveLabelPlacements([crossed, own], [], [blanket(1)]);
+      return { crossed, moved: overrides.has(1) };
+    };
+
+    const deferred = run(true);
+    expect(deferred.crossed.deferred).toBe(true);
+    expect(deferred.moved).toBe(false);
+
+    // Control: drawn best-effort, label 0 takes the spot and label 1 has to move.
+    const drawn = run(false);
+    expect(drawn.crossed.deferred).toBeUndefined();
+    expect(drawn.moved).toBe(true);
+  });
+
+  it("places a late (ghost) label after the others, so it yields to them", () => {
+    // Same spot, and the ghost has the lower index. Without `late` it would be
+    // placed first and the real label would be the one to move.
+    const ghost = { ...label(0, { x: 500, y: 500 }, 80), late: true };
+    const real = label(1, { x: 500, y: 500 }, 80);
+    const overrides = resolveLabelPlacements([ghost, real], []);
+    expect(overrides.has(1)).toBe(false);
+    expect(overrides.has(0)).toBe(true);
+    expect(countLabelOverlaps(boxesAfter([ghost, real], overrides))).toBe(0);
+  });
+});
+
+/**
+ * Lay out one view of the dense domain fixture and build the placement inputs,
+ * with every edge's `label-display` and `label-max-chars` forced. The defaults
+ * here are the shipped defaults; `("always", Infinity)` is the behaviour before
+ * either property existed.
+ */
+function denseCanvasInputs(display: "always" | "auto" = "auto", maxChars = 40) {
+  const src = readFileSync(resolve(__dirname, "fixtures/dense-domain-canvas.krs"), "utf8");
+  const parsed = Parser.parse(src);
+  const styles = resolveStyles(parsed.value.systems, [getBuiltinStyleSheet()]);
+  const viewSlice = extractView(parsed.value.systems, ["Umami", "UmamiApp"]);
+  const layoutResult = layout(viewSlice, {
+    ownerIndex: parsed.value.ownerIndex,
+    layoutHints: styles.layoutHints,
+    edgeDirections: new Map<string, EdgeDirection>(),
+  });
+  const styleFor = (edge: LayoutEdge) => ({
+    ...(styles.edges.get(edgeStyleKey(edge.from, edge.to, edge.kind)) ??
+      styles.edges.get(`${edge.from}->${edge.to}`) ??
+      styles.defaultEdgeStyle),
+    labelDisplay: display,
+    labelMaxChars: maxChars,
+  });
+  return {
+    ...buildLabelInputs(layoutResult.edges, layoutResult.nodes, styleFor),
+    edges: layoutResult.edges,
+  };
+}
+
+describe("dense canvas fence — 41 labelled domain edges over 10 domains (#3022)", () => {
+  // TPL-2048 / TPL-1927: fence a real diagram numerically. The fixture is the
+  // canvas #3022 was opened for: every edge carries a sentence, and there are
+  // more lines than there is room for labels.
+
+  /** Collisions among the labels that are drawn: cards, each other, and solid foreign lines. */
+  function collisions(
+    inputs: LabelInput[],
+    overrides: Map<number, { x: number; y: number }>,
+    nodeRects: Rect[],
+    edgeLines: EdgeLine[],
+  ) {
+    const drawn = inputs.filter((i) => !i.deferred);
+    return {
+      drawn: drawn.length,
+      card: countLabelPenetrations(boxesAfter(drawn, overrides), nodeRects),
+      label: countLabelOverlaps(boxesAfter(drawn, overrides)),
+      line: countLabelLinePenetrations(ownedBoxesAfter(drawn, overrides), edgeLines),
+    };
+  }
+
+  it("drawn in full, the labels collide with cards, each other and other edges' lines", () => {
+    // Precondition (TPL-1954): the fixture really is dense. Without this the
+    // zero below could be a canvas that never collided.
+    const { inputs, nodeRects, edgeLines } = denseCanvasInputs("always", Infinity);
+    const overrides = resolveLabelPlacements(inputs, nodeRects, edgeLines);
+    const after = collisions(inputs, overrides, nodeRects, edgeLines);
+    expect(after.drawn).toBe(inputs.length);
+    expect(after.card).toBeGreaterThan(5);
+    expect(after.label).toBeGreaterThan(5);
+    expect(after.line).toBeGreaterThan(5);
+  });
+
+  it("under `auto`, every label left on the canvas is clear of cards, labels and solid lines", () => {
+    const { inputs, nodeRects, edgeLines } = denseCanvasInputs("auto");
+    const overrides = resolveLabelPlacements(inputs, nodeRects, edgeLines);
+    const after = collisions(inputs, overrides, nodeRects, edgeLines);
+    expect(after).toMatchObject({ card: 0, label: 0, line: 0 });
+    // Zero by seating some labels, not by dropping all of them.
+    expect(after.drawn).toBeGreaterThanOrEqual(8);
+    expect(after.drawn).toBeLessThan(inputs.length);
+  });
+
+  it("offers every one of the 41 labels to the pass under `auto`, ghost edges included", () => {
+    const { inputs, edges } = denseCanvasInputs("auto");
+    const labelled = edges.filter((e) => e.label);
+    expect(labelled).toHaveLength(41);
+    expect(inputs).toHaveLength(41);
+    // The fixture has ghost edges (from the other service's domain); under
+    // `always` they would be drawn into whatever they land on.
+    expect(edges.some((e) => e.ghost)).toBe(true);
+    expect(denseCanvasInputs("always", Infinity).inputs.length).toBeLessThan(41);
   });
 });
