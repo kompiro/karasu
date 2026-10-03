@@ -6,6 +6,11 @@ on:
     paths:
       - "docs/acceptance/**"
       - "scripts/acceptance/**"
+      # The orphan-spec / stale-spec-ref guards read the e2e tree too, so a
+      # PR that only adds or renames a spec must run them here. The lefthook
+      # pre-push glob already draws this line (Issue #1680); CI draws the same
+      # one (TPL-1480, #3040).
+      - "packages/e2e/tests/**"
       # The two record guards below reach the other record directories too, so a
       # PR touching only those still runs them: `ci.yml`, which runs both, is
       # filtered out on a docs-only PR.
@@ -20,6 +25,11 @@ on:
     paths:
       - "docs/acceptance/**"
       - "scripts/acceptance/**"
+      # The orphan-spec / stale-spec-ref guards read the e2e tree too, so a
+      # PR that only adds or renames a spec must run them here. The lefthook
+      # pre-push glob already draws this line (Issue #1680); CI draws the same
+      # one (TPL-1480, #3040).
+      - "packages/e2e/tests/**"
       # The two record guards below reach the other record directories too, so a
       # PR touching only those still runs them: `ci.yml`, which runs both, is
       # filtered out on a docs-only PR.

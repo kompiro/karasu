@@ -1,6 +1,8 @@
 import type { Locator, Page } from "@playwright/test";
 import type { OpfsFixture } from "../fixtures/opfs.js";
 import { expect, test } from "../fixtures/opfs.js";
+import { contrastOf, luminance } from "../fixtures/color.js";
+import { setTheme } from "../fixtures/tabs.js";
 
 /**
  * AT-1470 (manual section): the app chrome's light theme — OS follow on first
@@ -25,22 +27,6 @@ import { expect, test } from "../fixtures/opfs.js";
 
 test.use({ colorScheme: "light" });
 
-/** WCAG relative luminance of an `rgb()` string. */
-function luminance(rgb: string): number {
-  const m = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-  if (!m) return -1;
-  const [r, g, b] = [Number(m[1]), Number(m[2]), Number(m[3])].map((v) => {
-    const c = v / 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-function contrastRatio(fg: string, bg: string): number {
-  const [l1, l2] = [luminance(fg), luminance(bg)].sort((a, b) => b - a);
-  return (l1 + 0.05) / (l2 + 0.05);
-}
-
 const dataTheme = (page: Page) =>
   page.evaluate(() => document.documentElement.getAttribute("data-theme"));
 
@@ -49,25 +35,6 @@ const monacoBackground = (page: Page) =>
     .locator(".monaco-editor")
     .first()
     .evaluate((el) => getComputedStyle(el).backgroundColor);
-
-/**
- * Foreground / effective background pair for the first match of `selector`.
- * Backgrounds are inherited visually, not computationally: a transparent
- * element shows its nearest painted ancestor, so walk up until one is opaque.
- */
-async function contrastOf(target: Locator): Promise<number> {
-  const pair = await target.first().evaluate((el) => {
-    const cs = getComputedStyle(el);
-    let node: Element | null = el;
-    let bg = cs.backgroundColor;
-    while (node && (bg === "rgba(0, 0, 0, 0)" || bg === "transparent")) {
-      node = node.parentElement;
-      if (node) bg = getComputedStyle(node).backgroundColor;
-    }
-    return { fg: cs.color, bg };
-  });
-  return contrastRatio(pair.fg, pair.bg);
-}
 
 /** Chrome text at the top of the hierarchy — `--text-primary` surfaces. */
 const primaryTargets = (page: Page): [string, Locator][] => [
@@ -163,11 +130,9 @@ test.describe("AT-1470 app light theme", () => {
     await expect(page.locator(".monaco-editor")).toBeVisible();
     expect(luminance(await monacoBackground(page))).toBeGreaterThan(0.5);
 
-    await page.getByRole("tab", { name: /Settings/ }).click();
-    await page.locator("#settings-theme").selectOption("dark");
-
-    // Immediate: no reload between the select and the repaint.
-    await expect.poll(() => dataTheme(page)).toBe("dark");
+    // Immediate: `setTheme` returns once `data-theme` flips, with no reload
+    // between the select and the repaint.
+    await setTheme(page, "dark");
 
     await page.reload();
     // Persisted: the boot script reads localStorage on the next load.
