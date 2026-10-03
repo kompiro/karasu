@@ -3,7 +3,7 @@
 - **日付**: 2026-10-01
 - **ステータス**: 検討中（canvas の段は slice A [#3033](https://github.com/kompiro/karasu/pull/3033) で実装中。focus canvas は slice B、2 回目の spike 済み）
 - **Issue**: [#3022](https://github.com/kompiro/karasu/issues/3022)
-- **PR**: [#3025](https://github.com/kompiro/karasu/pull/3025)（本文）、slice B の節は後続 PR
+- **PR**: [#3025](https://github.com/kompiro/karasu/pull/3025)（本文）、[#3037](https://github.com/kompiro/karasu/pull/3037)（slice B の節）
 - **関連**:
   - 引き金 Issue: [#3022](https://github.com/kompiro/karasu/issues/3022)（reader 側）、[#3018](https://github.com/kompiro/karasu/issues/3018)（writer 側。`reverse-architecture` スキルの文言修正）
   - 関連 ADR: [ADR-2048](../adr/2048-edge-label-collision-avoidance.md)（ラベルの自動衝突回避）, [ADR-2360](../adr/2360-label-placement-line-obstacles.md)（他の edge の線を障害物に含める）, [ADR-1184](../adr/1184-edge-label-position-offset.md)（`label-position` / `label-offset`）, [ADR-968](../adr/968-orthogonal-edge-routing-skip-layer.md)（ghost / cyclic edge を幾何パスから除外）, [ADR-1554](../adr/1554-edge-label-in-context-menu.md)（`data-edge-label` と context menu）, [ADR-2209](../adr/2209-edge-property-block.md)（edge の `description`）, [ADR-463](../adr/463-implicit-edge-detail-panel.md)（edge の詳細パネル）
