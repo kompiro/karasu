@@ -113,6 +113,7 @@ flowchart TD
     ADR_3000["ADR-3000<br/>karasu-nest を main への push で自動 deploy し、対象 path..."]
     ADR_3011["ADR-3011<br/>正否が差分だけで決まる小さな PR は、人間の承認を得て skip-coderabbit ラベ..."]
     ADR_3020["ADR-3020<br/>karasu-nest を karasu-nest.kompiro.dev カスタムドメインだ..."]
+    ADR_3052["ADR-3052<br/>/engineering:code-review は draft PR を作る前に base ..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -147,6 +148,7 @@ flowchart TD
   ADR_2782 --> ADR_2562
   ADR_2716 -.supersedes.-> ADR_2640
   ADR_2807 -.supersedes.-> ADR_2805
+  ADR_3052 -.supersedes.-> ADR_2898
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -253,7 +255,7 @@ flowchart TD
   class ADR_2836 accepted
   class ADR_2839 accepted
   class ADR_2877 accepted
-  class ADR_2898 accepted
+  class ADR_2898 superseded
   class ADR_2939 accepted
   class ADR_2949 accepted
   class ADR_2983 accepted
@@ -261,6 +263,7 @@ flowchart TD
   class ADR_3000 accepted
   class ADR_3011 accepted
   class ADR_3020 accepted
+  class ADR_3052 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost
