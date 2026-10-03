@@ -3,7 +3,7 @@
 - **日付**: 2026-10-03
 - **ステータス**: 検討中
 - **Issue**: [#3039](https://github.com/kompiro/karasu/issues/3039)
-- **PR**: (後で記入)
+- **PR**: [#3050](https://github.com/kompiro/karasu/pull/3050)
 - **関連**:
   - 引き金 Issue: [#3039](https://github.com/kompiro/karasu/issues/3039)（sub-issue [#3040](https://github.com/kompiro/karasu/issues/3040)〜[#3049](https://github.com/kompiro/karasu/issues/3049)）
   - 関連 ADR: [ADR-529](../adr/529-playwright-with-ai-visual-review.md)（Playwright 採用、漸進導入）、
