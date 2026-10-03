@@ -216,7 +216,7 @@ node focus 中に見えるラベルの衝突（card・ラベル・その node �
   衝突は数値で assert し、衝突の無い図は byte-stable に保つ。案3 の受け入れ条件の土台。
 - [TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md):
   何も保留していない edge に `data-edge-label-withheld` や `<title>` を出さない。
-  hop の持ち主属性も同じ規律で扱う（下の指針 5）。
+  hop の持ち主属性は出さない（下の指針 5）。
 - [TPL-1227](../test-perspectives/TPL-1227-writer-reader-asymmetry.md):
   writer の書き方を変えずに reader の段を増やす。上の 3 列表。
 - [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md):
