@@ -1,7 +1,7 @@
 # Edge ラベルを段階的に開示する
 
 - **日付**: 2026-10-01
-- **ステータス**: 検討中（canvas の段は slice A [#3033](https://github.com/kompiro/karasu/pull/3033) で実装中。focus canvas は slice B、2 回目の spike 済み）
+- **ステータス**: 検討中（canvas の段は slice A [#3033](https://github.com/kompiro/karasu/pull/3033) で実装済み。focus canvas は slice B、2 回目の spike 済み）
 - **Issue**: [#3022](https://github.com/kompiro/karasu/issues/3022)
 - **PR**: [#3025](https://github.com/kompiro/karasu/pull/3025)（本文）、[#3037](https://github.com/kompiro/karasu/pull/3037)（slice B の節）
 - **関連**:
@@ -394,8 +394,10 @@ focus canvas で、「slice B」の節に書く。
   hato。リポジトリ外）の deploy view は、ラベル付きの edge が合計 1 本しか無く、`auto` で
   何も変わらなかった。`examples/` の deploy view で変わるのは、card に重なっていた ghost の
   ラベル 1 本の位置だけである。
-- **cyclic edge の線は `auto` のとき障害物に入れる。** cyclic edge は薄くない実線なので、
-  その下のラベルは他の線の下と同じく読めない。ghost の線は引き続き入れない。
+- **cyclic edge の線は、canvas に `auto` のラベルが 1 本でもあれば障害物に入れる。** cyclic edge は
+  薄くない実線なので、その下のラベルは他の線の下と同じく読めない。cyclic edge 自身のラベルが
+  `auto` かどうかでは決めない（ラベルの無い cyclic edge の線も同じく文字を隠す）。ghost の線は
+  引き続き入れない。
 - **Issue は 2 つに割る**（上の「スライス」）。
 
 同じ 4 つのモデルの system 側（全 drill-down 階層）で、描かれたラベルの衝突は次のように
