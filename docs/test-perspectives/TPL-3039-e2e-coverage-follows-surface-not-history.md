@@ -100,5 +100,4 @@ e2e に入れるかどうかの判定条件は 1 つ、**その流れが jsdom �
 
 - `scripts/acceptance/coverage.ts`（AT ↔ spec の紐付け guard。spec → AT の方向だけを見る）
 - `scripts/lint/app-shortcut-docs-sync.ts`（登録点の抽出元。`e2e-command-coverage` はこれを再利用する）
-- `scripts/lint/` 配下の `e2e-command-coverage`（#3042 で追加予定。登録点 → spec の方向を見る）
 - `packages/e2e/tests/at-0046-system-id-in-viewpath.spec.ts`（「#534 待ち」の注記が残っていた実例）
