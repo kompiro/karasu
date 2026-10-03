@@ -188,6 +188,7 @@ flowchart TD
     ADR_1580["ADR-1580<br/>組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする"]
     ADR_1895["ADR-1895<br/>アーキテクチャリバースハーネス — multi-subagent fan-out + CLI ..."]
     ADR_2077["ADR-2077<br/>reverse harness の分解粒度 — bounded-context 既定と構造 g..."]
+    ADR_2901["ADR-2901<br/>AI authoring は利用者のエージェントセッションと karasu CLI skill..."]
     ADR_9017["ADR-9017<br/>Cloudflare Pages デプロイ基盤と BYOK AI 連携"]
   end
   subgraph cli["cli"]
@@ -573,6 +574,8 @@ flowchart TD
   ADR_2655 --> ADR_2578
   ADR_2782 --> ADR_2562
   ADR_2818 --> ADR_2714
+  ADR_2901 --> ADR_1315
+  ADR_2901 --> ADR_1758
   ADR_2917 --> ADR_1884
   ADR_2917 --> ADR_2714
   ADR_2969 --> ADR_2592
@@ -984,6 +987,7 @@ flowchart TD
   class ADR_2859 accepted
   class ADR_2877 accepted
   class ADR_2898 accepted
+  class ADR_2901 accepted
   class ADR_2906 accepted
   class ADR_2917 accepted
   class ADR_2939 accepted
