@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
 import { clickAndDownload, readDownloadText } from "../fixtures/download.js";
+import { drillInto } from "../fixtures/drill.js";
 
 /**
  * AT-1907: Entity view app integration (PR 2b-1).
@@ -33,10 +34,7 @@ const ENTITY_KRS = `system EC {
 }
 `;
 
-async function drillIntoOrderingDomain(page: Page) {
-  await page.locator('svg [data-node-id="OrderService"]').first().click();
-  await page.locator('svg [data-node-id="Ordering"]').first().click();
-}
+const ORDERING_DOMAIN_PATH = ["OrderService", "Ordering"] as const;
 
 const entityToggle = (page: Page) => page.getByRole("button", { name: "Toggle entity view" });
 
@@ -64,7 +62,7 @@ test.describe("AT-1907 Entity view app integration", () => {
     opfs,
   }) => {
     await bootMemoryApp(page, opfs, ENTITY_KRS);
-    await drillIntoOrderingDomain(page);
+    await drillInto(page, ORDERING_DOMAIN_PATH);
 
     // Usecase view first: PlaceOrder is shown, entities are not.
     await expect(page.locator('svg [data-node-id="PlaceOrder"]').first()).toBeVisible();
@@ -86,7 +84,7 @@ test.describe("AT-1907 Entity view app integration", () => {
 
   test("Deactivating the entity view restores the usecase view", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, ENTITY_KRS);
-    await drillIntoOrderingDomain(page);
+    await drillInto(page, ORDERING_DOMAIN_PATH);
 
     await entityToggle(page).click();
     await expect(page.locator(".preview-pane--entity")).toBeVisible();
@@ -101,7 +99,7 @@ test.describe("AT-1907 Entity view app integration", () => {
     opfs,
   }) => {
     await bootMemoryApp(page, opfs, ENTITY_KRS);
-    await drillIntoOrderingDomain(page);
+    await drillInto(page, ORDERING_DOMAIN_PATH);
     await entityToggle(page).click();
     await expect(page.locator(".preview-pane--entity")).toBeVisible();
 
@@ -132,7 +130,7 @@ boundary core_data {
 }
 `;
     await bootMemoryApp(page, opfs, ENTITY_BOUNDARY_KRS);
-    await drillIntoOrderingDomain(page);
+    await drillInto(page, ORDERING_DOMAIN_PATH);
 
     // Pick the boundary axis on the drilled (usecase) view, then flip to the
     // entity sub-mode — Group-by is view-state and must survive the toggle.

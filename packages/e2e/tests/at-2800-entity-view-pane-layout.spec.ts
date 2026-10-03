@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
 import { expectFitsPane, expectWheelZooms } from "../fixtures/preview-pane.js";
+import { drillInto } from "../fixtures/drill.js";
 
 /**
  * AT-2800: the entity sub-mode reads through the shared preview pane.
@@ -35,10 +36,7 @@ const WIDE_ENTITY_KRS = `system EC {
 }
 `;
 
-async function drillIntoOrderingDomain(page: Page) {
-  await page.locator('svg [data-node-id="OrderService"]').first().click();
-  await page.locator('svg [data-node-id="Ordering"]').first().click();
-}
+const ORDERING_DOMAIN_PATH = ["OrderService", "Ordering"] as const;
 
 const entityToggle = (page: Page) => page.getByRole("button", { name: "Toggle entity view" });
 
@@ -48,7 +46,7 @@ test.describe("AT-2800 Entity view pane layout", () => {
     opfs,
   }) => {
     await bootMemoryApp(page, opfs, WIDE_ENTITY_KRS);
-    await drillIntoOrderingDomain(page);
+    await drillInto(page, ORDERING_DOMAIN_PATH);
     await entityToggle(page).click();
 
     // The SVG is inside the shared container (which carries both the fit rules
@@ -59,7 +57,7 @@ test.describe("AT-2800 Entity view pane layout", () => {
 
   test("wheel over the entity view zooms it (#2799)", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, WIDE_ENTITY_KRS);
-    await drillIntoOrderingDomain(page);
+    await drillInto(page, ORDERING_DOMAIN_PATH);
     await entityToggle(page).click();
 
     await expectWheelZooms(page, ".preview-pane--entity");
@@ -70,7 +68,7 @@ test.describe("AT-2800 Entity view pane layout", () => {
   // mode starts at scale(1), and the usecase view still zooms afterwards.
   test("zoom does not carry from the entity view into the usecase view", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, WIDE_ENTITY_KRS);
-    await drillIntoOrderingDomain(page);
+    await drillInto(page, ORDERING_DOMAIN_PATH);
 
     await entityToggle(page).click();
     const entityLayer = page.locator(".preview-pane--entity .preview-container > div").first();

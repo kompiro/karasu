@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
 import { openViewTab } from "../fixtures/tabs.js";
+import { toggleOrgTreeView } from "../fixtures/org.js";
 import { clickAndDownload, readDownloadText } from "../fixtures/download.js";
 
 /**
@@ -54,10 +55,6 @@ async function openOrgTab(page: Page) {
   await page.getByRole("tab", { name: /Org/ }).click();
 }
 
-async function activateTreeView(page: Page) {
-  await page.getByRole("button", { name: "Toggle org tree view" }).click();
-}
-
 test.describe("AT-0044 Org Tree View", () => {
   test("Tree View toggle appears on Org tab only (Case 1)", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, ORG_KRS);
@@ -82,7 +79,7 @@ test.describe("AT-0044 Org Tree View", () => {
     const breadcrumb = page.locator(".breadcrumb");
     await expect(breadcrumb).toBeVisible();
 
-    await activateTreeView(page);
+    await toggleOrgTreeView(page);
 
     // Button becomes pressed (shadcn Button migration: aria-pressed, not a class)
     await expect(page.getByRole("button", { name: "Toggle org tree view" })).toHaveAttribute(
@@ -109,7 +106,7 @@ test.describe("AT-0044 Org Tree View", () => {
   }) => {
     await bootMemoryApp(page, opfs, ORG_KRS);
     await openOrgTab(page);
-    await activateTreeView(page);
+    await toggleOrgTreeView(page);
 
     const treePane = page.locator(".preview-pane--org-tree");
     await expect(treePane.locator('[data-team-id="Backend"]')).toBeVisible();
@@ -119,7 +116,7 @@ test.describe("AT-0044 Org Tree View", () => {
   test("Click to expand members; click again to collapse (Cases 5 & 7)", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, ORG_KRS);
     await openOrgTab(page);
-    await activateTreeView(page);
+    await toggleOrgTreeView(page);
 
     const treePane = page.locator(".preview-pane--org-tree");
 
@@ -145,7 +142,7 @@ test.describe("AT-0044 Org Tree View", () => {
   test("Multiple teams can be expanded simultaneously (Case 6)", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, ORG_KRS);
     await openOrgTab(page);
-    await activateTreeView(page);
+    await toggleOrgTreeView(page);
 
     const treePane = page.locator(".preview-pane--org-tree");
     await treePane.locator('[data-team-id="Backend"]').click();
@@ -159,12 +156,12 @@ test.describe("AT-0044 Org Tree View", () => {
   test("Deactivating Tree View restores breadcrumb bar (Case 8)", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, ORG_KRS);
     await openOrgTab(page);
-    await activateTreeView(page);
+    await toggleOrgTreeView(page);
 
     await expect(page.locator(".breadcrumb")).toHaveCount(0);
     await expect(page.locator(".preview-pane--org-tree")).toBeVisible();
 
-    await activateTreeView(page);
+    await toggleOrgTreeView(page);
 
     await expect(page.locator(".breadcrumb")).toBeVisible();
     await expect(page.locator(".preview-pane--org-tree")).toHaveCount(0);
@@ -182,7 +179,7 @@ test.describe("AT-0044 Org Tree View", () => {
     // presence proves the seed has been replaced. (Members like `dave` are
     // not visible until the team is expanded, so we cannot wait on them.)
     await expect(page.locator("svg").first()).toContainText("Engineering");
-    await activateTreeView(page);
+    await toggleOrgTreeView(page);
 
     const download = await clickAndDownload(page.getByRole("button", { name: "Export SVG" }));
 
@@ -204,7 +201,7 @@ test.describe("AT-0044 Org Tree View", () => {
   }) => {
     await bootMemoryApp(page, opfs, TWO_ORGS_KRS);
     await openOrgTab(page);
-    await activateTreeView(page);
+    await toggleOrgTreeView(page);
 
     const treePane = page.locator(".preview-pane--org-tree");
     await expect(treePane.locator('[data-team-id="Engineering"]')).toBeVisible();

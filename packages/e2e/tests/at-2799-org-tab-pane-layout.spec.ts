@@ -1,7 +1,6 @@
-import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
-import { openViewTab } from "../fixtures/tabs.js";
+import { openOrgTreeView, openTeamDependencies } from "../fixtures/org.js";
 import { expectDragPans, expectFitsPane, expectWheelZooms } from "../fixtures/preview-pane.js";
 
 /**
@@ -54,29 +53,19 @@ organization ShopOrg {
 const TREE_PANE = ".preview-pane--org-tree";
 const DEPENDENCIES_PANE = ".preview-pane--team-dependencies";
 
-async function openTreeView(page: Page) {
-  await openViewTab(page, "Org");
-  await page.getByRole("button", { name: "Toggle org tree view" }).click();
-}
-
-async function openDependencies(page: Page) {
-  await openViewTab(page, "Org");
-  await page.getByRole("button", { name: "Toggle derived team dependencies" }).click();
-}
-
 test.describe("AT-2799 Org tab sub-mode pane layout", () => {
   test("the org tree sits in .preview-container and is scaled to fit the pane", async ({
     page,
     opfs,
   }) => {
     await bootMemoryApp(page, opfs, ORG_KRS);
-    await openTreeView(page);
+    await openOrgTreeView(page);
     await expectFitsPane(page, TREE_PANE);
   });
 
   test("the org tree zooms on wheel and pans on drag", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, ORG_KRS);
-    await openTreeView(page);
+    await openOrgTreeView(page);
     await expectWheelZooms(page, TREE_PANE);
     await expectDragPans(page, TREE_PANE);
   });
@@ -91,7 +80,7 @@ test.describe("AT-2799 Org tab sub-mode pane layout", () => {
     // run on this same path and cover it in full; this asserts it once here so
     // the re-parent's own spec shows the affordance survived.
     await bootMemoryApp(page, opfs, ORG_KRS);
-    await openTreeView(page);
+    await openOrgTreeView(page);
 
     const treePane = page.locator(TREE_PANE);
     await expect(treePane.locator('[data-node-id="bob"]')).toHaveCount(0);
@@ -105,13 +94,13 @@ test.describe("AT-2799 Org tab sub-mode pane layout", () => {
     opfs,
   }) => {
     await bootMemoryApp(page, opfs, ORG_KRS);
-    await openDependencies(page);
+    await openTeamDependencies(page);
     await expectFitsPane(page, DEPENDENCIES_PANE);
   });
 
   test("the team dependency graph zooms on wheel and pans on drag", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, ORG_KRS);
-    await openDependencies(page);
+    await openTeamDependencies(page);
     await expectWheelZooms(page, DEPENDENCIES_PANE);
     await expectDragPans(page, DEPENDENCIES_PANE);
   });
@@ -122,7 +111,7 @@ test.describe("AT-2799 Org tab sub-mode pane layout", () => {
     // is the switch a missing per-mode `key` shows up on (#2811 review); the
     // grid pane is keyed separately and would hide it.
     await bootMemoryApp(page, opfs, ORG_KRS);
-    await openTreeView(page);
+    await openOrgTreeView(page);
 
     const layer = (pane: string) => page.locator(`${pane} .preview-container > div`).first();
     await page.locator(`${TREE_PANE} .preview-container`).hover();

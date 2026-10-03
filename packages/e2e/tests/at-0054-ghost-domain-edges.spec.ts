@@ -1,6 +1,6 @@
-import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
+import { drillInto } from "../fixtures/drill.js";
 
 /**
  * AT-0054: Ghost domain edges in service drill-down view.
@@ -44,10 +44,6 @@ const DOMAIN_DRIFT_KRS = `system DriftSample {
 }
 `;
 
-async function drillInto(page: Page, nodeId: string) {
-  await page.locator(`svg [data-node-id="${nodeId}"]`).first().click();
-}
-
 test.describe("AT-0054 Ghost domain edges", () => {
   test("system view has no ghost groups (Case 4)", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, DOMAIN_DRIFT_KRS);
@@ -59,7 +55,7 @@ test.describe("AT-0054 Ghost domain edges", () => {
   test("drilling into the source service renders ghost groups (Case 1)", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, DOMAIN_DRIFT_KRS);
 
-    await drillInto(page, "OrderService");
+    await drillInto(page, ["OrderService"]);
 
     await expect(page.locator("svg g.ghost-nodes").first()).toBeAttached();
     await expect(page.locator("svg g.ghost-edges").first()).toBeAttached();
@@ -71,7 +67,7 @@ test.describe("AT-0054 Ghost domain edges", () => {
   }) => {
     await bootMemoryApp(page, opfs, DOMAIN_DRIFT_KRS);
 
-    await drillInto(page, "PaymentService");
+    await drillInto(page, ["PaymentService"]);
 
     await expect(page.locator("svg g.ghost-nodes").first()).toBeAttached();
     await expect(page.locator("svg g.ghost-edges").first()).toBeAttached();
