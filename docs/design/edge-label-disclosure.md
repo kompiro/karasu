@@ -8,7 +8,7 @@
   - 引き金 Issue: [#3022](https://github.com/kompiro/karasu/issues/3022)（reader 側）、[#3018](https://github.com/kompiro/karasu/issues/3018)（writer 側。`reverse-architecture` スキルの文言修正）
   - 関連 ADR: [ADR-2048](../adr/2048-edge-label-collision-avoidance.md)（ラベルの自動衝突回避）, [ADR-2360](../adr/2360-label-placement-line-obstacles.md)（他の edge の線を障害物に含める）, [ADR-1184](../adr/1184-edge-label-position-offset.md)（`label-position` / `label-offset`）, [ADR-968](../adr/968-orthogonal-edge-routing-skip-layer.md)（ghost / cyclic edge を幾何パスから除外）, [ADR-1554](../adr/1554-edge-label-in-context-menu.md)（`data-edge-label` と context menu）, [ADR-2209](../adr/2209-edge-property-block.md)（edge の `description`）, [ADR-463](../adr/463-implicit-edge-detail-panel.md)（edge の詳細パネル）
   - 関連 Design Doc: [edge-hover-affordance.md](edge-hover-affordance.md)（#2632。hover affordance を identity から切り離す）
-  - 関連 TPL: [TPL-3022](../test-perspectives/TPL-3022-withheld-content-stays-reachable.md)（本 PR で起こす proactive TPL）, [TPL-1227](../test-perspectives/TPL-1227-writer-reader-asymmetry.md), [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md), [TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md), [TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md), [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)
+  - 関連 TPL: [TPL-3022](../test-perspectives/TPL-3022-withheld-content-stays-reachable.md)（本 PR で起こす proactive TPL）, [TPL-1227](../test-perspectives/TPL-1227-writer-reader-asymmetry.md), [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md), [TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md), [TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md), [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md), [TPL-1468](../test-perspectives/TPL-1468-overlay-z-index-scale.md)（slice B の overlay）
   - 受け入れテスト: [AT-1186](../acceptance/1186-edge-hover-highlight-dim.md)（edge hover の peer dim）, [edge-label-disclosure.md](../acceptance/edge-label-disclosure.md)（slice A）
   <!-- absent-path-next-line: spike branch 上のファイル。slice B が app に同名で作る (#3031) -->
   - spike: `spike/3022-edge-label-disclosure`（本文の数値はこのブランチ上の計測スクリプトで再現できる。focus canvas は同ブランチの `packages/app/src/components/focus-canvas.ts`）
@@ -225,6 +225,8 @@ node focus 中に見えるラベルの衝突（card・ラベル・その node �
   [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md):
   canvas の段は `renderEdge` 1 箇所に置き、system / drill-down / all-layers / deploy で
   同じ規則にする。
+- [TPL-1468](../test-perspectives/TPL-1468-overlay-z-index-scale.md):
+  focus canvas の overlay と pill の重なり順は `--z-*` スケールから選ぶ（slice B の決めたこと 4）。
 
 ## 現時点の方針
 
@@ -242,15 +244,15 @@ node focus 中に見えるラベルの衝突（card・ラベル・その node �
 | 0 canvas | なし | 上限文字数までのラベルのうち、clear に置けるもの | core（`renderEdge` と配置パス） |
 | 1 node focus | card に hover | その node に出入りする edge だけを残す。ラベルは増やさない。card の右上に `⇄ Relations N` が出る | app |
 | 2 edge hover | 線に hover | authored ラベルの全文（ブラウザ標準の tooltip。`<title>`） | core（slice A。全 surface） |
-| 3 focus canvas | 線をクリック、または `Relations` | canvas の上にもう 1 枚の canvas。edge なら両端の card とその 2 つの間の edge 全部、node ならその node と接続先の card。ラベルは全文 | app |
+| 3 focus canvas | 線をクリック（段 4 のパネルを開く edge を除く）、または `Relations` | canvas の上にもう 1 枚の canvas。edge なら両端の card とその 2 つの間の edge 全部、node ならその node と接続先の card。ラベルは全文 | app |
 | 4 詳細パネル | 集約 edge のラベル、property block を持つ edge をクリック | 内訳 / `description` / `link`（既存） | app |
 | 5 drill-down | card をクリック | 下の階層（既存） | core |
 
 段 1 でラベルを増やさないのは計測の結果である。focus した node のラベルを短い形で全部
 出すと、32 文字に省略しても合計 40 件、最悪の node で 13 件衝突する。内訳は card との
 衝突が 28 件、その node の他の線との衝突が 11 件、ラベル同士が 1 件である。線を絞っても
-card の位置は変わらず、edge を 16 本持つ hub では線も残るためで、ラベルの開示は 1 本ずつ
-出す段 2 に任せる。
+card の位置は変わらず、edge を 16 本持つ hub では線も残るためで、ラベルの開示は段 3 の
+focus canvas に任せる（1 回目の spike では段 2 の tooltip に任せていた）。
 
 段 2 を SVG 内の隠し要素にしないのも計測の結果である。edge は node より先に描かれるので、
 edge グループの中で全文を出すと card の裏に回る。spike の最初の版はこの形で、135 文字の
@@ -495,7 +497,10 @@ node の canvas は 2 通りの並べ方を持ち、preview の幅で選ぶ。
    使える。source を編集して図が変わったら、同じ focus を新しい図から組み直し、対象の
    node や edge が無くなったら閉じる。shadcn の `Dialog`（`.claude/rules/dialog.md`）は
    modal dialog のための規則で、`document.body` に portal して focus を閉じ込めるので、
-   ここには当てはまらない。
+   ここには当てはまらない。overlay と pill の `z-index` は `tokens.css` の `--z-*`
+   スケールから選び（TPL-1468。spike は 95 / 91 の生の数を置いていた）、どちらも
+   `--z-panel` の層に置く。context menu（`--z-context-menu`）より下なので、focus canvas の
+   上で右クリックしても menu は隠れない。pill は overlay が開いている間は出さない。
 5. **hop の持ち主属性は出さない。** node focus で hop（交差の弧）が薄くならないのは
    段 1 の小さな欠けで、SVG を約 9 % 大きくしてまで直さない。hop の描き方は #2956 で
    変わるので、そちらの結果に合わせる。
@@ -529,8 +534,9 @@ node の canvas は 2 通りの並べ方を持ち、preview の幅で選ぶ。
    そろえられない行だけ 12 px 以上の間隔で側面に分ける。3 列では中央の node の側面へ
    bezier で集め、縦 1 列では node の上辺 / 下辺へ、外側の行ほど外側で曲がるように
    入れ子にして交差を作らない。
-6. **複製の限界**: card の `<g>` は自己完結している（`url(#…)` も `<use>` も持たない）ので
-   `<defs>` を要しないが、念のためメインの `<defs>` を写す。multi-system root
+6. **複製の限界**: renderer は card の `<g>` の中に `url(#…)` も `<use>` も出さない（`<defs>` を
+   参照するのは edge の marker だけ）ので複製に `<defs>` は要らないが、念のためメインの
+   `<defs>` を写す。multi-system root
    （#2917）で同じ id の card が 2 枚ある canvas では、`data-edge-from` / `data-edge-to` が
    bare id なので最初の 1 枚を使う。実装時に `data-node-path` で引けるか確かめ、引けない
    なら制限として AT に書く。
@@ -558,8 +564,10 @@ focus canvas を開いたまま source を編集して追従すること。
 ## 未解決の問い / 決めないこと
 
 - **ラベルだけの edge をクリックしたときに何を開くか** は、focus canvas を開くと決めた
-  （「slice B」の決めたこと 1）。edge-hover-affordance.md の「detail payload を持たない
-  edge のクリックは何も起動しない」はこれで変わるので、そちらの実装は本設計に合わせる。
+  （「slice B」の決めたこと 1）。edge-hover-affordance.md（#2632、未着手）が
+  `PreviewPane.test.tsx` に固定する予定の契約「detail payload を持たない edge の、移動なしの
+  クリックは detail panel を閉じる以外の action を起動しない」はこれで変わる。先に実装する
+  側（B か #2632 か）が、その契約を「focus canvas を開く」に改めて書く。
 - **node の入口のキーボードと touch。** `Relations` は hover で出るので、どちらからも
   届かない。edge は tap で開くが、線をクリックできない edge には届かない。候補は、ⓘ の
   詳細パネルに同じ入口を置くこと（検討した形 B2）。B の後で決める。
