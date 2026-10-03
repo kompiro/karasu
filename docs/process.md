@@ -106,7 +106,7 @@ ready → implementing → in-review → (close)
 6. /hane:commit でコミットする（Conventional Commits 形式）
 7. PR 前に main を取り込む — git fetch origin main && git merge --no-edit origin/main（rebase は使わない。「ブランチ戦略」参照）。コンフリクトを解消し、lint / test を再確認する
 8. PR を draft で作成する（gh pr create --draft、Closes #N で Issue と紐付ける）。draft には CodeRabbit も分単位の CI も走らない
-9. /code-review <PR番号> を当て、対応すると決めた修正をコミットして push する（draft への push は CodeRabbit の review 枠を使わない）
+9. /engineering:code-review <PR URL> を当て、対応すると決めた修正をコミットして push する（draft への push は CodeRabbit の review 枠を使わない）
 10. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の、`adr-auto-merge` / `skip-coderabbit` ラベルの無い PR）では初回レビューもここで走る
 11. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 12. Issue ラベルを status: in-review に更新する
@@ -115,10 +115,10 @@ ready → implementing → in-review → (close)
 15. 人間のレビュー → マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
 ```
 
-**CodeRabbit の初回レビューは `/code-review` の修正を反映したコードに当てる。** ready の
+**CodeRabbit の初回レビューは `/engineering:code-review` の修正を反映したコードに当てる。** ready の
 PR への push は、自動レビューが走るたびに CodeRabbit の review 枠を 1 回使い（rate limit で
 弾かれた push は使わない）、枠の補充レートは直近 7 日の
-利用量が増えるほど下がる。PR を ready で開いてから `/code-review` を当てると、直す前の
+利用量が増えるほど下がる。PR を ready で開いてから `/engineering:code-review` を当てると、直す前の
 コードと直した後のコードで 2 回使う。順序の決定と計測値は
 [ADR-2898](adr/2898-draft-first-code-review.md)。
 
@@ -327,8 +327,8 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 | # | すること |
 | --- | --- |
 | 0 | 最下層以外を draft にする（`gh pr ready <n> --undo`） |
-| 1 | 最下層が draft のうちに `/code-review <n>` を当てる |
-| 2 | code-review の指摘の対応可否を決め、対応すると決めたものを直して push する（記録済みの決定を変えるものだけ人に確認する）。draft への push は CodeRabbit の review 枠を使わない |
+| 1 | 最下層が draft のうちに `/engineering:code-review <PR URL>` を当てる |
+| 2 | `/engineering:code-review` の指摘の対応可否を決め、対応すると決めたものを直して push する（記録済みの決定を変えるものだけ人に確認する）。draft への push は CodeRabbit の review 枠を使わない |
 | 3 | 最下層の draft を外す（`gh pr ready <n>`）。CodeRabbit と分単位の CI はここで動き出す |
 | 4 | `/coderabbit-converge` で CodeRabbit のラウンドを回す（判定基準は 2 と同じ） |
 | 5 | CodeRabbit が approve するか、人の判断待ちで止まるまで 4 が繰り返す |

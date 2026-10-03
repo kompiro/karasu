@@ -4,7 +4,7 @@ description: >
   Drive an open PR's CodeRabbit rounds to approval without a human relaying them: wait for
   CodeRabbit (including its rate limit), read and act on the review threads, push once per
   round, and notify the maintainer only when the PR is ready for them or needs their judgment.
-  Run it after /code-review has been applied on the draft PR and the PR was taken out of draft
+  Run it after /engineering:code-review has been applied on the draft PR and the PR was taken out of draft
   (gh pr ready), or when resuming a PR that is still in CodeRabbit rounds.
   Trigger when the user says: "CodeRabbit を収束させて", "CodeRabbit のラウンドを回して",
   "CodeRabbit の approve まで", "coderabbit converge", "drive coderabbit to approval",
@@ -36,10 +36,10 @@ pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --once
 ## 前提
 
 - PR が open で draft でない（CodeRabbit は draft をレビューしない）。stack なら最下層の 1 本
-- `/code-review` とその修正の push は draft のうちに済んでいる。PR がまだ draft で `/code-review` が
-  済んでいなければ、先に `/code-review` を当てて修正を push し、`gh pr ready` してから始める。ready の
-  後に `/code-review` の修正を push すると review 枠を 1 回余分に使う（`docs/process.md` の PR ワークフロー、ADR-2898）
-  すでに ready で `/code-review` がまだなら、`/code-review` の修正は単独で push せず、最初のラウンドの
+- `/engineering:code-review` とその修正の push は draft のうちに済んでいる。PR がまだ draft で `/engineering:code-review` が
+  済んでいなければ、先に `/engineering:code-review` を当てて修正を push し、`gh pr ready` してから始める。ready の
+  後に `/engineering:code-review` の修正を push すると review 枠を 1 回余分に使う（`docs/process.md` の PR ワークフロー、ADR-2898）
+  すでに ready で `/engineering:code-review` がまだなら、`/engineering:code-review` の修正は単独で push せず、最初のラウンドの
   修正と一緒に下の「3. 指摘に対応する」の 1 回の push に含める
 - PR のブランチの worktree にいる。`gh pr view --json number --jq .number` で PR 番号を得る
 
