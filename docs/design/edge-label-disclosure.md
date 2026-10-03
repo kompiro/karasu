@@ -390,8 +390,10 @@ spike のコードは上の 1〜4 と 6 を実装済みで、core のテスト�
   hato。リポジトリ外）の deploy view は、ラベル付きの edge が合計 1 本しか無く、`auto` で
   何も変わらなかった。`examples/` の deploy view で変わるのは、card に重なっていた ghost の
   ラベル 1 本の位置だけである。
-- **cyclic edge の線は `auto` のとき障害物に入れる。** cyclic edge は薄くない実線なので、
-  その下のラベルは他の線の下と同じく読めない。ghost の線は引き続き入れない。
+- **cyclic edge の線は、canvas に `auto` のラベルが 1 本でもあれば障害物に入れる。** cyclic edge は
+  薄くない実線なので、その下のラベルは他の線の下と同じく読めない。cyclic edge 自身のラベルが
+  `auto` かどうかでは決めない（ラベルの無い cyclic edge の線も同じく文字を隠す）。ghost の線は
+  引き続き入れない。
 - **Issue は 2 つに割る**（上の「スライス」）。
 
 同じ 4 つのモデルの system 側（全 drill-down 階層）で、描かれたラベルの衝突は次のように

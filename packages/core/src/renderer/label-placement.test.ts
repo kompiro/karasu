@@ -455,6 +455,21 @@ describe("buildLabelInputs", () => {
     expect(edgeLines.map((l) => l.index)).toEqual([0, 2]);
   });
 
+  it("makes an unlabelled cyclic line an obstacle too, once any label may be left off (#3022)", () => {
+    // Whether a cyclic line hides a label does not depend on the cyclic edge's
+    // own label. Otherwise `auto` would draw a label under an unlabelled cyclic
+    // line and call it readable.
+    const edges = realGhostCyclic();
+    edges[2] = { ...edges[2], label: undefined };
+    expect(buildLabelInputs(edges, new Map(), styleFor).edgeLines.map((l) => l.index)).toEqual([
+      0, 2,
+    ]);
+    // A canvas with nothing it may leave off places labels as before (ADR-968).
+    expect(
+      buildLabelInputs(edges, new Map(), alwaysStyleFor).edgeLines.map((l) => l.index),
+    ).toEqual([0]);
+  });
+
   it("offers nothing to place for a label the canvas never draws (`label-display: hover`)", () => {
     const hover = () => ({ ...styles.defaultEdgeStyle, labelDisplay: "hover" as const });
     const { inputs, edgeLines } = buildLabelInputs(realGhostCyclic(), new Map(), hover);

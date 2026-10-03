@@ -68,11 +68,13 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › resolveLabelPlacements — leaving a label off the canvas (`label-display: auto`, #3022) › draws a label that is clear but ambiguous: only a collision leaves it off
 
-- [x] ghost edge と cyclic edge のラベルも `auto` の対象になる。ghost のラベルは実線のラベルの後に置き、ghost の線は障害物にしない
+- [x] ghost edge と cyclic edge のラベルも `auto` の対象になる。ghost のラベルは実線のラベルの後に置き、ghost の線は障害物にしない。cyclic の線は、ラベルの有無にかかわらず障害物になる
 
   > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › buildLabelInputs › lets ghost and cyclic labels into the pass when the canvas may leave them off (auto, #3022)
 
   > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › resolveLabelPlacements — leaving a label off the canvas (`label-display: auto`, #3022) › places a late (ghost) label after the others, so it yields to them
+
+  > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › buildLabelInputs › makes an unlabelled cyclic line an obstacle too, once any label may be left off (#3022)
 
 - [x] `always` は今までどおり全部を描き、`hover` は描かない
 

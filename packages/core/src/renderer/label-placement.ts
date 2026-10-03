@@ -167,9 +167,19 @@ export function buildLabelInputs(
   }));
   const inputs: LabelInput[] = [];
   const edgeLines: EdgeLine[] = [];
+  // A cyclic edge is drawn as a full-strength line, so a label under it is as
+  // unreadable as one under any other line. Its line obstructs whenever the
+  // canvas has a label it may leave off (`label-display: auto`, #3022),
+  // whatever the cyclic edge's own label is: "may leave off" must mean "would
+  // have been unreadable", and an unlabelled cyclic line is just as opaque.
+  const cyclicLines: EdgeLine[] = [];
   edges.forEach((edge, index) => {
     const style = styleFor(edge, index);
     const drawn = canvasLabel(edge, style);
+    if (edge.cyclic === true && edge.ghost !== true) {
+      const points: Point[] = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
+      cyclicLines.push(edgeLine(index, points, style.strokeWidth));
+    }
     // Ghost/cyclic edges are peripheral (dimmed / back-arc styled) and sit
     // outside the "real" geometry every other renderer pass reasons about —
     // crossing-marks, port fan-out, channel/group routing and bundle nudging
@@ -181,7 +191,8 @@ export function buildLabelInputs(
     if (peripheral && drawn?.display !== "auto") return;
     const points: Point[] = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
     // A dimmed ghost line never displaces a real label, in any mode (#2360).
-    if (!edge.ghost) edgeLines.push(edgeLine(index, points, style.strokeWidth));
+    // A cyclic line is added below, once for the whole canvas.
+    if (!edge.ghost && !edge.cyclic) edgeLines.push(edgeLine(index, points, style.strokeWidth));
     // Nothing to place: no label, or one the canvas never draws.
     if (drawn === undefined || drawn.display === "hover") return;
     // The same anchor `renderEdge` will draw, override included: if the two
@@ -211,6 +222,10 @@ export function buildLabelInputs(
       late: edge.ghost === true,
     });
   });
+  if (inputs.some((input) => input.deferrable === true)) {
+    edgeLines.push(...cyclicLines);
+    edgeLines.sort((a, b) => a.index - b.index);
+  }
   return { inputs, nodeRects, edgeLines };
 }
 
