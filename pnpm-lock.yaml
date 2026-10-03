@@ -182,6 +182,9 @@ importers:
       commander:
         specifier: ^15.0.0
         version: 15.0.0
+      karasu-skills:
+        specifier: workspace:*
+        version: link:../skills
       yaml:
         specifier: ^2.9.0
         version: 2.9.0
