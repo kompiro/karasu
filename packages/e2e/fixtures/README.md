@@ -9,7 +9,7 @@ ProjectMode flows deterministically without depending on the app's
 first-run seeding. Also exposes a `mode` switch for running the same
 suite against `MemoryModeApp` (`?mode=memory`).
 
-Design rationale: see `docs/design/opfs-fixture-helper.md`.
+Design rationale: [ADR-862](../../../docs/adr/862-opfs-fixture-helper.md) (its design doc was folded into the ADR).
 
 ### Quick start
 
@@ -153,6 +153,51 @@ Specs that intentionally skip the selected assertion (AT-0044's
 `openOrgTab`) or assert `aria-selected` via `toHaveAttribute` keep their
 own inline choreography.
 
+`setDisplayMode(page, "shape" | "icon")` and `setTheme(page, "light" | "dark")`
+drive the two Settings-tab selects the preview re-renders from. `setTheme`
+polls `<html data-theme>` before returning, which is the signal every themed
+surface (app chrome, Monaco, the SVG canvas) repaints on. The `system` theme
+is not offered: it follows the OS and is exercised through
+`test.use({ colorScheme })` instead (AT-1470).
+
+## `drill.ts` — drilling through rendered nodes
+
+`drillInto(page, ["OrderService", "Ordering"])` clicks each node id in turn
+(`svg [data-node-id=...]`, `.first()` so a root drawn once per system, #2917,
+or a ghost copy, AT-0054, does not make the locator strict-fail). Playwright's
+auto-wait on the next locator is what sequences the clicks: the child exists
+only after the parent's drill-down has rendered.
+
+Pass `{ expectBreadcrumb: true }` when the ids are also the labels and the spec
+reads the view right after the drill; the `.breadcrumb-current` assertion
+then makes each step wait for the re-render (AT-0049). `nodeLocator(page, id)`
+is the shared locator for specs that click a single node without drilling.
+
+Replaces the `drillIntoOrderingDomain` / `drillIntoOrderDomain` / `drillInto`
+copies that AT-1907, AT-2800, AT-0049 and AT-0054 each carried (#3040).
+
+## `org.ts` — Org tab sub-modes
+
+`openOrgTreeView(page)` and `openTeamDependencies(page)` switch to the Org tab
+through `openViewTab` (race-safe) and click the Tree View / derived
+team-dependencies toggle. `toggleOrgTreeView(page)` only clicks, for specs
+that put the app on the Org tab themselves (AT-0044 keeps its own `openOrgTab`,
+the documented exception above). The two toggle locators
+(`orgTreeViewToggle`, `teamDependenciesToggle`) are exported for presence
+assertions.
+
+## `color.ts` — WCAG colour maths
+
+- `luminance(rgb)` — relative luminance of a computed `rgb()` / `rgba()`
+  string. Returns `NaN` when the string does not parse, so an element that
+  never painted fails `toBeLessThan` / `toBeGreaterThan` instead of reading as
+  "dark enough" (the per-spec copy in AT-1470 returned `-1`, which
+  `toBeLessThan(0.5)` accepted).
+- `contrastRatio(fg, bg)` — WCAG ratio, order-independent.
+- `contrastOf(locator)` — the element's text against its _effective_
+  background (first non-transparent ancestor), which is what AA is measured
+  against. Used by the AA sweeps in AT-1470.
+
 ## `download.ts` — download plumbing
 
 - `clickAndDownload(locator)` — registers `waitForEvent("download")` on
@@ -168,7 +213,7 @@ responses, so the BYOK Chat UI can be driven deterministically without a
 real API key. The fixture extends `opfs`, so a single test composes both
 filesystem seeding and API-key seeding.
 
-Design rationale: see `docs/design/chat-anthropic-mock-fixture.md`.
+Design rationale: [ADR-864](../../../docs/adr/864-chat-anthropic-mock-fixture.md) (its design doc was folded into the ADR).
 
 ### Quick start
 
