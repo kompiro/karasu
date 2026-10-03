@@ -70,9 +70,12 @@ e2e に入れるかどうかの判定条件は 1 つ、**その流れが jsdom �
 操作面（コマンド・ショートカット・ビュー・トグル・ダイアログ）を足す、または E2E の充足を
 評価するときに確認する:
 
-- [ ] 足した操作面の登録点（`useCommand` の id / `keybinding`、view tab、toolbar toggle）が、
-      どこかの `packages/e2e/tests/*.spec.ts` に文字列として現れる。現れないなら spec を
-      同じ PR で足すか、`EXEMPT` に理由を書く。
+- [ ] 機械で見る集合: 足した `keybinding` の Playwright 形（`mod+shift+p` → `ControlOrMeta+Shift+P`）か
+      command id（`id[:=]"…"`、定数や JSX prop も含む）が、どこかの `packages/e2e/tests/*.spec.ts` に
+      現れる。現れないなら spec を同じ PR で足すか、`EXEMPT` に理由を書く。
+- [ ] レビューで見る集合: 登録 API を通らない操作面（view tab、toolbar toggle、context menu の項目）は、
+      その aria-label / 表示文字列で `packages/e2e/tests` を grep し、1 件も無ければ spec を足すか
+      手動のままにする理由を AT に書く。
 - [ ] その流れが jsdom の模せない境界（永続化・URL/history・別ウィンドウ・実フォーカス・
       ネイティブダイアログ）を跨ぐなら、AT の該当項目を unit ではなく e2e の
       `✅ Automated` で埋める。

@@ -20,14 +20,20 @@
 方針どおり、AT が e2e を要求した Issue ごとに spec を足して育ってきた。その結果、カバレッジは
 **機能面ではなく履歴**に従っている。2026-10-03 に測ると次のとおり。
 
-| 指標                              | 値                                                                 |
-| --------------------------------- | ------------------------------------------------------------------ |
-| spec                              | 47 `at-*` + 2 fixture smoke、runtime 189 テスト                    |
-| 合計時間                          | 560s（平均 2.96s、CI は `workers: 1`、test step 上限 900s）        |
-| 安定性                            | nightly 直近 8 日 全 success、flake Issue は 90 日で 1 件（#2789） |
-| app 対象 AT                       | 119 ファイル / 1,415 項目                                          |
-| e2e 自動化 / unit 自動化 / 手動   | 198（14%） / 632（45%） / 520（37%）                               |
-| e2e spec を 1 本も引かない app AT | 73 / 119 ファイル                                                  |
+| 指標                              | 値                                                                                           |
+| --------------------------------- | -------------------------------------------------------------------------------------------- |
+| spec                              | 47 `at-*` + 2 fixture smoke、runtime 189 テスト                                              |
+| 合計時間                          | 560s（平均 2.96s、CI は `workers: 1`、test step 上限 900s）                                  |
+| 安定性                            | nightly 直近 8 日 全 success、flake Issue は 90 日で 1 件（#2789）                           |
+| app 対象 AT                       | 119 ファイル / 1,415 項目                                                                    |
+| 項目の内訳                        | e2e 198（14%）+ 部分 4 / unit 632（45%） / その他の自動化（scripts・CI）61 / 手動 520（37%） |
+| e2e spec を 1 本も引かない app AT | 73 / 119 ファイル                                                                            |
+
+「app 対象」は、到達先が app の preview UI（`http://localhost:5173` / `https://karasu.kompiro.dev/`）である AT を
+読んで分類したもの（CLI / LSP / VS Code / nest / docs-site 対象を除く）。項目の内訳は `scripts/acceptance/coverage.ts`
+と同じ marker 正規表現を箇条書きごとに当てた概算で、チェックボックスの無い旧形式の AT はケース見出しを 1 項目と数えた。
+再現可能な基準値は「app 対象 AT のうち `packages/e2e/tests/` の path を引かないファイル数」（73 / 119）で、
+その 73 ファイルの一覧は Issue #3039 のコメントに置く。
 
 日常的に触る面に spec が 1 本も無い: ショートカット全般とコマンドパレット、CRUD matrix タブ、Facets と
 Membership overview、Collapse / Expand all、Outline、edge detail panel と edge context menu（`.krs.style` を書く）、
@@ -88,9 +94,13 @@ ADR-529 のピクセル比較を持たない方針と衝突する。
 
 #### 案 2-A: `data-testid` を導入しない。role / aria-label が無い操作面は app 側に足す
 
-**メリット**: 既存規約（`getByRole` 優先、`.claude/rules/testing.md`）と連続。足した role / label は
+**メリット**: 既存規約（`getByRole` 優先、`packages/e2e/README.md`）と連続。足した role / label は
 a11y の改善にもなり、RTL でも同じセレクタが使える（TPL-1399）。
-**デメリット**: app 側の小変更が e2e の PR に混ざる（今回は `EdgeDetailPanel` の `role="dialog"` 1 点、任意で 3 点）。
+**デメリット**: app 側の小変更が e2e の PR に混ざる。今回は `NodeDetailPanel` と `EdgeDetailPanel` の root
+（どちらも素の `div.node-detail-panel`）に `role="region"` + `aria-labelledby` を揃えて足す 1 点、任意で 3 点
+（`WarningPanel` ヘッダ、`ProjectSelector` の `<select>`、`InlineInput`）。`role="dialog"` にしないのは、
+焦点を奪わない inline の側面パネルであり、shadcn `Dialog` が同時に開いたとき `getByRole("dialog")` が
+曖昧になるため。片方だけに role を足すと双子のパネルで読み上げが食い違う（TPL-1399）。
 
 #### 案 2-B: `data-testid` を必要箇所に足す
 
@@ -101,9 +111,12 @@ a11y の改善にもなり、RTL でも同じセレクタが使える（TPL-1399
 
 #### 案 3-A: `workers` を 1 → 2 にする
 
-`workers: 1` は foundation PR #532 の既定値で再計測されていない。cross-worker の共有状態は無い
+`workers: 1` は foundation PR #532 の既定値で再計測されていない。コードを読むかぎり cross-worker の共有状態は無い
 （OPFS は browser context ごとに隔離、`anthropic` fixture は page 単位の `page.route`、
 `test.use({ colorScheme })` はファイル単位、at-0050 は `serial` で 1 worker に固定、`vite preview` は stateless）。
+ただし反対側の記録が 1 つある。`at-0050-chat-ui-phase2-byok.spec.ts` のヘッダは「同じ origin で並列に走らせると
+OPFS handle で flake した」ので serial にしたと書いている。`workers: 2` では別ファイルが 0050 と並んで OPFS を
+seed するので、同じ条件が再現しうる。計測では 0050 の結果と `createWritable` 系のエラーを名指しで見る。
 
 **メリット**: 追加費用なし。wall time が約 6 割になる見込み。
 **デメリット**: 4 vCPU で Chromium + Monaco が 2 本並ぶと重い spec（0041 / 0058）が `timeout: 15_000` に
@@ -125,6 +138,11 @@ shard 数に合わせて job を増やす必要がある。
 
 #### 案 4-A: 第 2 の `webServer` + `serve` project を足し、nightly だけ全 project を回す
 
+Playwright は `webServer` 配列の全エントリを `--project` に関係なく起動するので、第 2 server は環境変数で
+gate する（例: `E2E_SERVE=1` のときだけ配列に push し、`serve` project も同じ条件で登録する）。nightly だけが
+その変数を立てる。gate しないと `packages/cli` の起動失敗が、cli を path filter に含まない `e2e.yml` の全 run を
+webServer の readiness で落とし、serve の build と起動が毎 PR の 900s を削る。
+
 **メリット**: CLI と app の結合がどこかで検証される。PR gate の予算と path filter に触れない。
 **デメリット**: `packages/cli` の退行は nightly まで見えない。
 **却下した代替**: PR gate にも入れる案は、`e2e.yml` の path filter に `packages/cli/**` を足し `e2e-skip.yml` と
@@ -132,15 +150,29 @@ shard 数に合わせて job を増やす必要がある。
 
 ### 論点 5: AT-0050 AC-11（stale patch の Apply が no-op）
 
+`applyPatch` は `fileContentRef.current` のハッシュを比較する（`useChatSession.ts:442`）。外部から OPFS を
+`page.evaluate` で書いても `ObservableFileSystemProvider` を経由しないので `state.fileContent` は変わらない。
+AC-11 を書かれたとおり（Editor タブで編集して Chat に戻る）に検証しようとすると、`EditPane.tsx:85` の
+unmount で patch 提案が消える。
+
+#### 案 5-C: preview 側の書き込み経路で dirty にする（app 変更なし）
+
+preview column は Chat タブが active でも mount されたままで、edge の方向を右クリックで選ぶと、`.krs` に
+`@import` が無い場合は `useEdgeDirectionWriter` が `handleEditorChange(updated)` を呼んで `.krs` 本文を書き換える
+（`useEdgeDirectionWriter.ts:56-58`、`AppShell.tsx:234` で配線）。これは `state.fileContent` を更新するので
+`fileContentRef` も変わり、Apply は hash 不一致で no-op になる。spec は「patch 提案を出す → preview で edge の
+方向を選ぶ（`@import` 無しの seed）→ Apply → 提案が残り `anthropic.requests` が増えず OPFS の `.krs` が
+`@import` 行以外変わらない」を assert する。AT-0050 AC-11 の dirty 手段を「Editor で編集」から「preview 経由の
+書き込み」に書き換える。
+
+**メリット**: app に触らない。AC の観測面（Apply が UI 上で何もしない）がそのまま検証される。
+**デメリット**: AC-11 の手順文を変える。edge 方向の書き込みが将来 `.krs` を触らなくなれば経路を選び直す。
+
 #### 案 5-A: `<ChatPane>` を一度開いたら mount したまま `hidden` で切替える（app 変更）
 
-`applyPatch` は `fileContentRef.current` のハッシュを比較する（`useChatSession.ts:442`）。外部から OPFS を
-書いても `ObservableFileSystemProvider` を経由しないので `state.fileContent` は変わらず、Chat タブを
-開いたまま file を dirty にする経路は無い。AC-11 を書かれたとおりに検証するには、Editor タブで編集して
-Chat に戻る必要があり、`EditPane.tsx:85` の unmount がそれを阻む。
-
-**メリット**: AC-11 が書かれたとおりに検証できる。タブ切替でチャットが消える現行挙動も直る。
+**メリット**: AC-11 が元の手順どおりに検証できる。タブ切替でチャットが消える現行挙動も直る。
 **デメリット**: app の挙動変更。mount したままの `ChatPane` が持つ購読の後始末を確認する必要がある。
+AC-11 のためには不要（5-C で足りる）。UX 改善として別 Issue に切る候補。
 
 #### 案 5-B: AC-11 は unit（`useChatSession` の hash 不一致）で代替と AT に明記し、`test.skip` を外す
 
@@ -151,10 +183,15 @@ Chat に戻る必要があり、`EditPane.tsx:85` の unmount がそれを阻む
 
 #### 案 6-A: `scripts/lint/` 配下の `e2e-command-coverage` を足す
 
-`scripts/lint/app-shortcut-docs-sync.ts` の `keybinding` 抽出を再利用し、`useCommand({ id })` の id も集める。
-各 keybinding 表示形または command id が `packages/e2e/tests/*.spec.ts` のいずれかに現れることを要求する。
-除外は 1 つの `EXEMPT` リストに理由付きで置く。lefthook（glob `packages/app/src/**` + `packages/e2e/tests/**`）と
-CI の `Check` で走らせる。
+`scripts/lint/app-shortcut-docs-sync.ts` の `keybinding` 抽出（`KEYBINDING_RE` は `keybinding[:=]"…"` を見る）を
+再利用し、command id も同じ形 `id[:=]\s*"…"` で集める。`useCommand({ id: "…" })` のリテラルだけを見ると、定数
+（`CommandPalette.tsx:40` の `id: PALETTE_COMMAND_ID`）と JSX prop（`EditArea.tsx:97-110` の
+`<SidebarViewCommand id="view.showFiles" />`）を取りこぼす。リテラルで解決できない id は guard を落とす。
+spec 側の照合は docs 表示形（`Ctrl/Cmd+Shift+P`）ではなく、chord から導いた Playwright 形
+（`mod+shift+p` → `ControlOrMeta+Shift+P`、および `pressChord(page, "Shift+P")` の引数形）か command id が
+`packages/e2e/tests/*.spec.ts` のいずれかに現れることとする。spec は `page.keyboard.press` で chord を打ち
+aria 状態を assert するので、表示形は自然には現れない。除外は 1 つの `EXEMPT` リストに理由付きで置く。
+lefthook（glob `packages/app/src/**` + `packages/e2e/tests/**`）と CI の `Check` で走らせる。
 
 **メリット**: 「操作面を足したのに e2e が無い」を機械で止める。既存 guard と同じ形（TPL-1480、TPL-2446）。
 **デメリット**: spec に id が文字列として現れることしか見ない（assert の質は見ない）。
@@ -165,12 +202,12 @@ CI の `Check` で走らせる。
 
 ## 比較
 
-| 観点             | 1-A 境界基準       | 1-B 手動全移行     | 2-A role を足す     | 2-B testid | 3-A workers 2   | 3-B nightly 限定   | 3-C shard          |
-| ---------------- | ------------------ | ------------------ | ------------------- | ---------- | --------------- | ------------------ | ------------------ |
-| 変更量           | 小                 | 大                 | 小（app 1〜4 点）   | 中         | 1 行 + 計測     | 小                 | 中（workflow × 2） |
-| 既存決定との整合 | ADR-529 と整合     | ADR-529 と衝突     | `testing.md` と整合 | 新規系統   | ADR-1008 を維持 | 維持               | 維持               |
-| 費用             | なし               | なし               | なし                | なし       | なし            | なし               | runner 倍          |
-| 退行の検出       | 境界の流れを PR で | 脆い spec が増える | 同左                | 同左       | PR で全件       | nightly まで遅れる | PR で全件          |
+| 観点             | 1-A 境界基準       | 1-B 手動全移行     | 2-A role を足す   | 2-B testid | 3-A workers 2   | 3-B nightly 限定   | 3-C shard          |
+| ---------------- | ------------------ | ------------------ | ----------------- | ---------- | --------------- | ------------------ | ------------------ |
+| 変更量           | 小                 | 大                 | 小（app 1〜4 点） | 中         | 1 行 + 計測     | 小                 | 中（workflow × 2） |
+| 既存決定との整合 | ADR-529 と整合     | ADR-529 と衝突     | e2e README と整合 | 新規系統   | ADR-1008 を維持 | 維持               | 維持               |
+| 費用             | なし               | なし               | なし              | なし       | なし            | なし               | runner 倍          |
+| 退行の検出       | 境界の流れを PR で | 脆い spec が増える | 同左              | 同左       | PR で全件       | nightly まで遅れる | PR で全件          |
 
 ## Related TPLs
 
@@ -183,7 +220,7 @@ CI の `Check` で走らせる。
 - [TPL-1402](../test-perspectives/TPL-1402-involutive-toggle-renders-both-states.md): トグルは両状態を end to end で検証する
 - [TPL-1480](../test-perspectives/TPL-1480-consistency-check-triggers-on-both-sides.md): 整合チェックは両側の変更で発火する
 - [TPL-1680](../test-perspectives/TPL-1680-at-e2e-spec-linkage-no-drift.md): AT ↔ spec の紐付けは機械 guard が守る
-- [TPL-1725](../test-perspectives/TPL-1725-gated-test-suite-detection-gap.md): gate された suite は検証対象を変える PR で merge 前に走る
+- [TPL-1725](../test-perspectives/TPL-1725-gated-test-suite-detection-gap.md): label-gated / 遅延実行の suite は検証対象を変える PR で merge 前に走る
 - [TPL-1842](../test-perspectives/TPL-1842-restore-state-survive-later-reset.md): 復元した URL 状態は後続の seed reset を生き残る
 - [TPL-2446](../test-perspectives/TPL-2446-gate-side-check-runs-over-the-whole-set.md): gate 側のチェックは列挙ではなく集合全体を走査する
 - [TPL-2805](../test-perspectives/TPL-2805-budget-bounds-the-work-it-names.md): 予算は名指しした作業だけを覆う
@@ -193,18 +230,20 @@ proactive（本 PR で起こす）:
 - [TPL-3039](../test-perspectives/TPL-3039-e2e-coverage-follows-surface-not-history.md): e2e は AT の要求からだけ生えると
   履歴に従い、操作面の追加が e2e 無しで通る。操作面の登録（keybinding / command id）と spec の対応を機械で見る
 
-> TPL ファイル名は `/hane:test-perspective` が決めるので、上の slug は起票時に合わせる。
-
 ## 現時点の方針
 
-**1-A、2-A、3-A（計測つき）、4-A、6-A を採用する。5 は 5-A を提案し、採否は maintainer が決める。**
+**1-A、2-A、3-A（計測つき）、4-A、5-C、6-A を採用する。** app の挙動を変えるスライスは無い。
 
 - e2e に入れるかどうかの判定条件は 1 つ、「jsdom が模せない境界を跨ぐか」
-- `data-testid` は導入しない。role / label が無い操作面は app に足す
+- `data-testid` は導入しない。role / label が無い操作面は app に足す（detail panel 2 つに `role="region"` を揃えて）
 - `workers: 2` は nightly の `workflow_dispatch` に `inputs.workers` を足して 3 回計測し、
-  全 pass・p95 ≤ 5s（`timeout: 15_000` の 1/3）・最長 spec ≤ 60s を満たしたときだけ `playwright.config.ts` に反映する。
-  満たさなければ `workers: 1` のまま進める（+57 テストでも 730s / 900s に収まる）
-- serve mode は nightly 限定の `serve` project。PR gate 昇格は 7 日 green 後に #3039 で判断する
+  全 pass・p95 ≤ 5s（`timeout: 15_000` の 1/3）・最長 spec ≤ 60s・at-0050 と OPFS handle のエラーがゼロ、を
+  満たしたときだけ `playwright.config.ts` に反映する。満たさなければ `workers: 1` のまま進める
+  （+57 テストでも 730s / 900s に収まる）
+- AC-11 は preview 経由の書き込み（5-C）で dirty にし、AT の手順文を書き換える。`<ChatPane>` を mount したままにする
+  案（5-A）は UX 改善として別 Issue の候補に留める
+- serve mode は環境変数で gate した第 2 `webServer` + `serve` project。nightly だけが変数を立てる。
+  PR gate 昇格は 7 日 green 後に #3039 で判断する
 - 番号なし AT（`karasu-nest-inline-share` 等）の spec 名は各ファイルの 関連 Issue 番号（1783 / 1801 / 1827 / 1958）
 - 削るテストは無い。重複ヘルパは fixtures に寄せる
 
@@ -220,38 +259,42 @@ proactive（本 PR で起こす）:
 | **S1** ショートカット + パレット（[#3042](https://github.com/kompiro/karasu/issues/3042)）                       | PR-A                  | app 変更ゼロで AC 密度が最も高い。`fixtures/keyboard.ts` と command-coverage guard を S7 が再利用する                 |
 | **S2** Share + permalink（[#3043](https://github.com/kompiro/karasu/issues/3043)）                               | PR-A                  | app 変更ゼロ。手動 M-* 項目を 5 件退役。番号なし AT の命名をここで確定                                                |
 | **S3** hash/history + CRUD（[#3044](https://github.com/kompiro/karasu/issues/3044)）                             | PR-A                  | 最古の放置項目（0046 AC5）を既存 fixture だけで閉じる                                                                 |
-| **S4** preview toolbar + edges（[#3045](https://github.com/kompiro/karasu/issues/3045)）                         | PR-A                  | app 変更 1 点（`EdgeDetailPanel` の role）と OPFS 本文の assertion を 1 PR にまとめる                                 |
+| **S4** preview toolbar + edges（[#3045](https://github.com/kompiro/karasu/issues/3045)）                         | PR-A                  | app 変更 1 点（detail panel 2 つの `role="region"`）と OPFS 本文の assertion を 1 PR にまとめる                       |
 | **S5** project / file lifecycle（[#3046](https://github.com/kompiro/karasu/issues/3046)）                        | PR-A                  | 既存 2 spec の拡張のみ。`download.ts` の小ヘルパで閉じる                                                              |
 | **S6** スナップショット（[#3047](https://github.com/kompiro/karasu/issues/3047)）                                | PR-A                  | `page.clock` という新技法を単独 PR に隔離してレビューする                                                             |
-| **S7** Translate / Tidy・Format / Warning / ja / AC-11（[#3048](https://github.com/kompiro/karasu/issues/3048)） | S1                    | 面が最も広く、唯一の app 挙動変更（AC-11）を含むので最後寄りに置く                                                    |
-| **S8** serve mode（[#3049](https://github.com/kompiro/karasu/issues/3049)）                                      | PR-A                  | config に第 2 `webServer` を足すので最後。nightly 限定なので PR gate に影響しない                                     |
+| **S7** Translate / Tidy・Format / Warning / ja / AC-11（[#3048](https://github.com/kompiro/karasu/issues/3048)） | S1                    | 面が最も広く、AT-0050 の手順文を書き換える（AC-11 を 5-C に）ので最後寄りに置く                                       |
+| **S8** serve mode（[#3049](https://github.com/kompiro/karasu/issues/3049)）                                      | PR-A                  | config に環境変数で gate した第 2 `webServer` を足すので最後。gate により PR gate に影響しない                        |
 
 各スライスは互いに素な `docs/acceptance/*.md` 集合を持つので、PR はどの順でも merge できる（#1997 と同じ切り方）。
 
 ### 実装の指針
 
-1. PR-A: `e2e-nightly.yml` に `workflow_dispatch.inputs.workers`（default `1`）と `notify` の
-   `github.event_name == 'schedule'` guard、`at-check-coverage.yml` の `paths` に `packages/e2e/tests/**`、
-   README の CI 節更新、`fixtures/{drill,color,org}.ts` 新設と spec 側の置換、`fixtures/README.md` 追記
-2. PR-B: `gh workflow run e2e-nightly.yml -f workers=2` × 3。`scripts/ci/` 配下の `playwright-duration-summary`
-   （per-spec wall time と p95、常に exit 0）を足して step summary に出す。判定と数値を本 doc に転記し、
-   採用なら `playwright.config.ts` の `workers` を `process.env.CI ? 2 : undefined` にして run URL をコメントに残す
+1. PR-A: `e2e-nightly.yml` に `workflow_dispatch.inputs.workers`（default `1`）。`notify` は計測 run
+   （`inputs.workers` が既定値でないとき）だけ skip し、手動 re-run が tracker Issue を閉じる経路は残す。
+   `concurrency.group` は `workflow_dispatch` のとき `github.run_id` を使う（現状の `${{ github.ref }}` +
+   `cancel-in-progress: true` では連続 dispatch が前の run を cancel し、21:00 UTC の cron も計測 run を cancel する）。
+   `at-check-coverage.yml` の `paths` に `packages/e2e/tests/**`、README の CI 節更新、
+   `fixtures/{drill,color,org}.ts` 新設と spec 側の置換、`fixtures/README.md` 追記
+2. PR-B: `gh workflow run e2e-nightly.yml -f workers=2` × 3（前の run の完了を待ってから次を dispatch する）。
+   per-spec wall time と p95 は、同じ `results.json` を既に読んでいる `scripts/ci/playwright-flaky-summary.ts` に
+   足して step summary に出す（第 2 の parser を作らない）。判定と数値を本 doc に転記し、採用なら
+   `playwright.config.ts` の `workers` を `process.env.CI ? 2 : undefined` にして run URL をコメントに残す
 3. S1〜S8: 各 Issue 本文の spec 一覧・ケース・fixture・app 変更に従う。spec 名は `at-<AT番号>-<slug>.spec.ts`。
    各 PR で `docs/acceptance/*.md` に `✅ Automated` マーカーを付け、手動に残す項目は未チェックのまま理由を書く
 4. 各 PR の検証: 対象 spec の `playwright test`、`pnpm at:check-coverage --strict`、`pnpm run lint:e2e-page-goto`、
    `pnpm -r run typecheck`、S1 以降は `pnpm run lint:e2e-command-coverage`
 5. ADR 昇格: 全 sub-issue close 後、`docs/adr/3039-app-e2e-coverage-program.md` として昇格し、本 doc は同 PR で削除する。
-   PR-B の計測値と 5 の採否を ADR に残す
+   PR-B の計測値を ADR に残す。S1 で guard が入ったら TPL-3039 の「関連テスト」をディレクトリから実ファイルの path に直す
 
 ### 影響範囲・マイグレーション
 
-- 既存ユーザーへの影響: 5-A を採用した場合のみ、Chat タブを離れてもチャットが保持される（挙動改善）。
-  `EdgeDetailPanel` の `role="dialog"` は支援技術にダイアログとして読まれるようになる
+- 既存ユーザーへの影響: app の挙動は変わらない。`NodeDetailPanel` / `EdgeDetailPanel` が `role="region"` と
+  名前を持ち、支援技術にランドマークとして読まれるようになる
 - ドキュメント更新: `packages/e2e/README.md`、`packages/e2e/fixtures/README.md`、`docs/acceptance/`（マーカー）
 - テスト・examples への影響: 既存 spec は fixture 統合で import 先が変わるだけ。examples は触らない
 
 ## 未解決の問い / 決めないこと
 
-- 論点 5（AC-11 のために `<ChatPane>` を mount したままにするか）は maintainer の判断を待つ。S7 着手までに決まればよい
+- `<ChatPane>` をタブ切替で保持する UX 改善（5-A）を別 Issue にするかは本 doc では決めない
 - S8 を PR gate に昇格させるかは 7 日 green 後に #3039 で決める。本 doc では決めない
 - `at:check-coverage` にテスト名の実在確認を足すかは別 Issue（#1997 で既知の盲点）。本 doc では決めない
