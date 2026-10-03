@@ -1,7 +1,7 @@
 # Edge ラベルを段階的に開示する
 
 - **日付**: 2026-10-01
-- **ステータス**: 検討中（canvas の段は slice A [#3033](https://github.com/kompiro/karasu/pull/3033) で実装済み。focus canvas は slice B、2 回目の spike 済み）
+- **ステータス**: 検討中（canvas の段は slice A、focus canvas は slice B。各スライスの進捗は [#3022](https://github.com/kompiro/karasu/issues/3022) の `## Slice status`）
 - **Issue**: [#3022](https://github.com/kompiro/karasu/issues/3022)
 - **PR**: [#3025](https://github.com/kompiro/karasu/pull/3025)（本文）、[#3037](https://github.com/kompiro/karasu/pull/3037)（slice B の節）
 - **関連**:
@@ -307,8 +307,8 @@ spike の差分は core と app を合わせて 373 行で、テストを 1 件�
 4. **edge グループの出力**: 保留または省略した edge にだけ
    `data-edge-label-withheld="deferred|truncated"` を付ける。何も保留していない edge の
    出力は今日と同一にする（TPL-2174）。
-5. **`<title>`**: 保留・省略した edge には全 surface で `<title>` を出す（slice A で
-   実装済み）。1 回目の spike は「この surface が自前の tooltip を持つか」を表す render
+5. **`<title>`**: 保留・省略した edge には全 surface で `<title>` を出す（slice A の
+   範囲）。1 回目の spike は「この surface が自前の tooltip を持つか」を表す render
    option で出し分ける案だったが、app もブラウザの tooltip をそのまま使うので option は
    要らない。VS Code preview と app の all-layers 表示（iframe）も同じ `<title>` を受け取る。
    hop の持ち主を表す属性は出さない（「slice B」の決めたこと 5）。
