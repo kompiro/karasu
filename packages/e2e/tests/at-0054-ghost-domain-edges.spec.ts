@@ -55,7 +55,7 @@ test.describe("AT-0054 Ghost domain edges", () => {
   test("drilling into the source service renders ghost groups (Case 1)", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, DOMAIN_DRIFT_KRS);
 
-    await drillInto(page, ["OrderService"]);
+    await drillInto(page, ["OrderService"], { firstMatch: true });
 
     await expect(page.locator("svg g.ghost-nodes").first()).toBeAttached();
     await expect(page.locator("svg g.ghost-edges").first()).toBeAttached();
@@ -67,7 +67,7 @@ test.describe("AT-0054 Ghost domain edges", () => {
   }) => {
     await bootMemoryApp(page, opfs, DOMAIN_DRIFT_KRS);
 
-    await drillInto(page, ["PaymentService"]);
+    await drillInto(page, ["PaymentService"], { firstMatch: true });
 
     await expect(page.locator("svg g.ghost-nodes").first()).toBeAttached();
     await expect(page.locator("svg g.ghost-edges").first()).toBeAttached();

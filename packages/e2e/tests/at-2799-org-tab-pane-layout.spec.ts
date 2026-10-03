@@ -1,6 +1,6 @@
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
-import { openOrgTreeView, openTeamDependencies } from "../fixtures/org.js";
+import { openOrgTreeView, openTeamDependencies, teamDependenciesToggle } from "../fixtures/org.js";
 import { expectDragPans, expectFitsPane, expectWheelZooms } from "../fixtures/preview-pane.js";
 
 /**
@@ -120,7 +120,7 @@ test.describe("AT-2799 Org tab sub-mode pane layout", () => {
       .poll(() => layer(TREE_PANE).evaluate((el) => (el as HTMLElement).style.transform))
       .toContain("scale(1.1)");
 
-    await page.getByRole("button", { name: "Toggle derived team dependencies" }).click();
+    await teamDependenciesToggle(page).click();
     await expect(page.locator(TREE_PANE)).toHaveCount(0);
     await expect
       .poll(() => layer(DEPENDENCIES_PANE).evaluate((el) => (el as HTMLElement).style.transform))

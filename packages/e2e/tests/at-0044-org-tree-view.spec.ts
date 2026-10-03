@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
 import { openViewTab } from "../fixtures/tabs.js";
-import { toggleOrgTreeView } from "../fixtures/org.js";
+import { orgTreeViewToggle, toggleOrgTreeView } from "../fixtures/org.js";
 import { clickAndDownload, readDownloadText } from "../fixtures/download.js";
 
 /**
@@ -63,10 +63,10 @@ test.describe("AT-0044 Org Tree View", () => {
     // lands the user on the Org tab automatically. Explicitly navigate back
     // to System to verify the toggle is not rendered there.
     await openViewTab(page, "System");
-    await expect(page.getByRole("button", { name: "Toggle org tree view" })).toHaveCount(0);
+    await expect(orgTreeViewToggle(page)).toHaveCount(0);
 
     await openOrgTab(page);
-    await expect(page.getByRole("button", { name: "Toggle org tree view" })).toBeVisible();
+    await expect(orgTreeViewToggle(page)).toBeVisible();
   });
 
   test("Activating Tree View renders top-level teams as roots and hides breadcrumb (Cases 2 & 3)", async ({
@@ -82,10 +82,7 @@ test.describe("AT-0044 Org Tree View", () => {
     await toggleOrgTreeView(page);
 
     // Button becomes pressed (shadcn Button migration: aria-pressed, not a class)
-    await expect(page.getByRole("button", { name: "Toggle org tree view" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    await expect(orgTreeViewToggle(page)).toHaveAttribute("aria-pressed", "true");
 
     // Breadcrumb bar is hidden
     await expect(breadcrumb).toHaveCount(0);

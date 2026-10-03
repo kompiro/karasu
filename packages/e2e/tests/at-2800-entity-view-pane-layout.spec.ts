@@ -36,8 +36,6 @@ const WIDE_ENTITY_KRS = `system EC {
 }
 `;
 
-const ORDERING_DOMAIN_PATH = ["OrderService", "Ordering"] as const;
-
 const entityToggle = (page: Page) => page.getByRole("button", { name: "Toggle entity view" });
 
 test.describe("AT-2800 Entity view pane layout", () => {
@@ -46,7 +44,7 @@ test.describe("AT-2800 Entity view pane layout", () => {
     opfs,
   }) => {
     await bootMemoryApp(page, opfs, WIDE_ENTITY_KRS);
-    await drillInto(page, ORDERING_DOMAIN_PATH);
+    await drillInto(page, ["OrderService", "Ordering"], { firstMatch: true });
     await entityToggle(page).click();
 
     // The SVG is inside the shared container (which carries both the fit rules
@@ -57,7 +55,7 @@ test.describe("AT-2800 Entity view pane layout", () => {
 
   test("wheel over the entity view zooms it (#2799)", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, WIDE_ENTITY_KRS);
-    await drillInto(page, ORDERING_DOMAIN_PATH);
+    await drillInto(page, ["OrderService", "Ordering"], { firstMatch: true });
     await entityToggle(page).click();
 
     await expectWheelZooms(page, ".preview-pane--entity");
@@ -68,7 +66,7 @@ test.describe("AT-2800 Entity view pane layout", () => {
   // mode starts at scale(1), and the usecase view still zooms afterwards.
   test("zoom does not carry from the entity view into the usecase view", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, WIDE_ENTITY_KRS);
-    await drillInto(page, ORDERING_DOMAIN_PATH);
+    await drillInto(page, ["OrderService", "Ordering"], { firstMatch: true });
 
     await entityToggle(page).click();
     const entityLayer = page.locator(".preview-pane--entity .preview-container > div").first();

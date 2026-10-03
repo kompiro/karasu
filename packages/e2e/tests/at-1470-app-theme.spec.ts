@@ -2,6 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 import type { OpfsFixture } from "../fixtures/opfs.js";
 import { expect, test } from "../fixtures/opfs.js";
 import { contrastOf, luminance } from "../fixtures/color.js";
+import { setTheme } from "../fixtures/tabs.js";
 
 /**
  * AT-1470 (manual section): the app chrome's light theme — OS follow on first
@@ -129,11 +130,9 @@ test.describe("AT-1470 app light theme", () => {
     await expect(page.locator(".monaco-editor")).toBeVisible();
     expect(luminance(await monacoBackground(page))).toBeGreaterThan(0.5);
 
-    await page.getByRole("tab", { name: /Settings/ }).click();
-    await page.locator("#settings-theme").selectOption("dark");
-
-    // Immediate: no reload between the select and the repaint.
-    await expect.poll(() => dataTheme(page)).toBe("dark");
+    // Immediate: `setTheme` returns once `data-theme` flips, with no reload
+    // between the select and the repaint.
+    await setTheme(page, "dark");
 
     await page.reload();
     // Persisted: the boot script reads localStorage on the next load.

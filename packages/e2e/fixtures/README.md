@@ -163,15 +163,18 @@ is not offered: it follows the OS and is exercised through
 ## `drill.ts` — drilling through rendered nodes
 
 `drillInto(page, ["OrderService", "Ordering"])` clicks each node id in turn
-(`svg [data-node-id=...]`, `.first()` so a root drawn once per system, #2917,
-or a ghost copy, AT-0054, does not make the locator strict-fail). Playwright's
-auto-wait on the next locator is what sequences the clicks: the child exists
-only after the parent's drill-down has rendered.
+(`svg [data-node-id=...]`). Playwright's auto-wait on the next locator is what
+sequences the clicks: the child exists only after the parent's drill-down has
+rendered. The locator is strict by default, so a renderer regression that
+draws an id twice fails the spec; pass `{ firstMatch: true }` only where a
+second copy is expected (a root drawn once per system, #2917; a ghost copy,
+AT-0054; the entity specs AT-1907 / 2800 that always used `.first()`).
 
 Pass `{ expectBreadcrumb: true }` when the ids are also the labels and the spec
 reads the view right after the drill; the `.breadcrumb-current` assertion
-then makes each step wait for the re-render (AT-0049). `nodeLocator(page, id)`
-is the shared locator for specs that click a single node without drilling.
+then makes each step wait for the re-render (AT-0049). `nodeLocator(page, id,
+options?)` is the same locator for specs that click or assert on a single node
+without drilling.
 
 Replaces the `drillIntoOrderingDomain` / `drillIntoOrderDomain` / `drillInto`
 copies that AT-1907, AT-2800, AT-0049 and AT-0054 each carried (#3040).
@@ -189,14 +192,18 @@ assertions.
 ## `color.ts` — WCAG colour maths
 
 - `luminance(rgb)` — relative luminance of a computed `rgb()` / `rgba()`
-  string. Returns `NaN` when the string does not parse, so an element that
+  string. Returns `NaN` when the string does not parse or has alpha 0
+  (`getComputedStyle` reports an unpainted background as `rgba(0, 0, 0, 0)`,
+  which a channels-only regex would read as opaque black), so an element that
   never painted fails `toBeLessThan` / `toBeGreaterThan` instead of reading as
-  "dark enough" (the per-spec copy in AT-1470 returned `-1`, which
-  `toBeLessThan(0.5)` accepted).
+  "dark enough" (the per-spec copy in AT-1470 returned `-1` on a parse miss,
+  which `toBeLessThan(0.5)` accepted). A non-zero alpha is ignored.
 - `contrastRatio(fg, bg)` — WCAG ratio, order-independent.
 - `contrastOf(locator)` — the element's text against its _effective_
   background (first non-transparent ancestor), which is what AA is measured
-  against. Used by the AA sweeps in AT-1470.
+  against. If nothing in the chain paints, the ratio is `NaN` and the AA
+  assertion fails (a selector on the wrong element, not a 21:1 contrast).
+  Used by the AA sweeps in AT-1470.
 
 ## `download.ts` — download plumbing
 

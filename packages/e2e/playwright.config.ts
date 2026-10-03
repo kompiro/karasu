@@ -1,5 +1,17 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// CI worker count. `1` has been the shipped value since the foundation PR
+// (#532). `PLAYWRIGHT_WORKERS` lets the nightly's `workflow_dispatch` measure
+// another value without editing this file or `e2e.yml` (#3040, #3041); it is
+// read here, in Node, so the input never reaches a shell line. Anything that
+// is not a positive integer falls back to the shipped value.
+const CI_WORKERS_DEFAULT = 1;
+const ciWorkers = (() => {
+  const raw = process.env.PLAYWRIGHT_WORKERS;
+  const n = raw === undefined ? Number.NaN : Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : CI_WORKERS_DEFAULT;
+})();
+
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 5173);
 const BASE_URL = `http://localhost:${PORT}`;
 
@@ -20,7 +32,7 @@ export default defineConfig({
   // 30s default was ~5x the slowest healthy test and only consumed by hangs
   // (e.g. #1152 burned 90s/test with retries=2). See #1155.
   timeout: 15_000,
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? ciWorkers : undefined,
   reporter: [
     ["list"],
     ["html", { outputFolder: "playwright-report", open: "never" }],

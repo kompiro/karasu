@@ -19,12 +19,12 @@ on:
     inputs:
       workers:
         description: >-
-          Playwright --workers for this run. Leave at 1 for a plain re-run
+          Playwright worker count for this run. Leave at 1 for a plain re-run
           (the tracker Issue follows the verdict); any other value is a
           measurement run and leaves the tracker untouched (#3041).
         required: false
-        default: "1"
-        type: string
+        default: 1
+        type: number
 
 concurrency:
   # The cron keeps one slot per ref so a late run supersedes an earlier one.
@@ -83,11 +83,13 @@ jobs:
         # this step outcome, so a job cancelled during setup is not reported as
         # a test failure.
         timeout-minutes: 15
-        # `--workers` is passed to the Playwright binary directly, not through
-        # `pnpm run test -- --workers` (the flag may not be forwarded, TPL-2046).
-        # The cron has no inputs, so it falls back to the same `1` that
-        # `playwright.config.ts` sets for CI.
-        run: pnpm --filter @karasu-tools/e2e exec playwright test --workers=${{ inputs.workers || '1' }}
+        env:
+          # Read by `playwright.config.ts` in Node, so the dispatch input never
+          # reaches a shell line and the launch command stays identical to
+          # `e2e.yml` (TPL-2046's second half: one route, no drift). The cron
+          # has no inputs and falls back to the shipped value.
+          PLAYWRIGHT_WORKERS: ${{ inputs.workers || 1 }}
+        run: pnpm --filter @karasu-tools/e2e test
 
       # Informative-only — surfaces tests that failed once then passed on
       # retry so the flake count is visible per nightly run (TPL-976
@@ -115,12 +117,19 @@ jobs:
   notify:
     name: Update tracking issue
     needs: e2e
-    # A measurement run (dispatched with a non-default `workers`) says nothing
-    # about main under the shipped configuration, so it neither opens nor
-    # closes the tracker. A plain dispatch (`workers` left at 1) still does,
-    # so a maintainer can re-run after a fix and close the tracker without
-    # waiting for the next cron.
-    if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.workers == '1') }}
+    # The tracker is about main under the shipped configuration, so only a
+    # run on main with the default worker count may touch it: a measurement
+    # run (non-default `workers`) and a dispatch on a feature branch both say
+    # nothing about that. A plain dispatch on main still does, so a maintainer
+    # can re-run after a fix and close the tracker without waiting for the
+    # next cron. The empty input of a cron run normalises to the default.
+    if: ${{ always() && github.ref == 'refs/heads/main' && (inputs.workers || 1) == 1 }}
+    # Serialise tracker updates. Dispatched runs no longer share the suite's
+    # concurrency slot (see the top of the file), so two `notify` jobs could
+    # otherwise race `listForRepo` and open the tracker twice.
+    concurrency:
+      group: e2e-nightly-notify
+      cancel-in-progress: false
     # GitHub-hosted on purpose (ADR-1890): a single Issues API call, no build.
     runs-on: ubuntu-latest
     permissions:

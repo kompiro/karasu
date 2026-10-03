@@ -1,17 +1,22 @@
 import { type Page, expect } from "@playwright/test";
 
-/**
- * Locator for a rendered node by its author id.
- *
- * The renderer stamps `data-node-id` on the node group; `.first()` picks the
- * canvas copy when the same id is drawn more than once (a root drawn per
- * system, #2917; a ghost node in a drill-down, AT-0054).
- */
-export function nodeLocator(page: Page, nodeId: string) {
-  return page.locator(`svg [data-node-id="${nodeId}"]`).first();
+export interface NodeLocatorOptions {
+  /**
+   * Pick the first match instead of requiring exactly one. Playwright's strict
+   * mode is the guard that fails a spec when the renderer draws an id twice,
+   * so opt out only where a second copy is expected: a root drawn once per
+   * system (#2917) or a ghost node in a drill-down (AT-0054).
+   */
+  readonly firstMatch?: boolean;
 }
 
-export interface DrillOptions {
+/** Locator for a rendered node by its author id (`data-node-id` on the node group). */
+export function nodeLocator(page: Page, nodeId: string, options: NodeLocatorOptions = {}) {
+  const locator = page.locator(`svg [data-node-id="${nodeId}"]`);
+  return options.firstMatch ? locator.first() : locator;
+}
+
+export interface DrillOptions extends NodeLocatorOptions {
   /**
    * Assert `.breadcrumb-current` equals each id after its click. Use when the
    * ids are also the labels (the default label) and the spec reads the view
@@ -36,7 +41,7 @@ export async function drillInto(
   options: DrillOptions = {},
 ): Promise<void> {
   for (const nodeId of path) {
-    await nodeLocator(page, nodeId).click();
+    await nodeLocator(page, nodeId, options).click();
     if (options.expectBreadcrumb) {
       await expect(page.locator(".breadcrumb-current")).toHaveText(nodeId);
     }
