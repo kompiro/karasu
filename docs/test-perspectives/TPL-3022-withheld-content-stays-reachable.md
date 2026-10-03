@@ -95,21 +95,27 @@ authored な情報を省略・保留する PR で:
 
 ## 関連テスト
 
-全文を運ぶ配管と、到達した先が省略しないことは、既存のテストが見ている。保留そのものは
-まだ実装が無いので、対応するテストも無い。
-
+- `packages/core/src/compile/edge-label-disclosure-surfaces.test.ts`: 保留・省略した edge が
+  authored な全文を `data-edge-label` と `<title>` の両方に持つことを、`compile` /
+  `buildDrillDownSvg` / `buildAllLayersSvg` / `buildAllViewsSvg` のそれぞれで assert する。
+  何も保留していない canvas にマーカーが 1 つも出ないこと（TPL-2174）と、合成ラベルが
+  保留されないことも同じファイルで見ている。
+- `packages/core/src/renderer/edge-label-disclosure.test.ts`: 合成ラベルと、集約 edge の
+  クリック対象のラベルを、style にかかわらず保留の対象から外すこと。
 - `packages/core/src/renderer/svg-renderer.test.ts`: authored ラベルを持つ edge にだけ
-  `data-edge-label` が出ること。全文を運ぶ属性の存在を見ているが、保留した edge に
-  ついての assert ではない。
+  `data-edge-label` が出ること。全文を運ぶ属性そのものを見ている。
 - `packages/app/src/components/PreviewPane.test.tsx`: context menu が `data-edge-label` の
   authored ラベルを表示すること。到達した先の 1 つを見ている。
 - `packages/core/src/renderer/description-summary.test.ts`: node の `description` の省略。
   省略する側だけを見ており、全文への経路は見ていない。
 
-保留した edge が全 surface で全文を持つことの assert は、#3022 の実装で足す。
-
 ## 派生元 spec
 
+- `docs/spec/style.md`「[`label-max-chars`](../spec/style.md#label-max-chars--n--none)」節と
+  「[`label-display`](../spec/style.md#label-display--auto--always--hover)」節（`docs/spec/style.ja.md` の同名節も同じ）。
+  canvas が省略・保留した label の全文を `data-edge-label` と `<title>` に残すこと、機械生成の
+  label は保留しないことを規定している。`label-display` 節の末尾に本 TPL への
+  `> Related TPLs:` 注釈がある
 - `docs/concepts.ja.md`「[集約 — 俯瞰時の情報量を絞る](../concepts.ja.md#集約--俯瞰時の情報量を絞る)」節 /
   `docs/concepts.md`「[Aggregation — reducing information when seen from above](../concepts.md#aggregation--reducing-information-when-seen-from-above)」節
   （俯瞰時は畳み、必要な詳細は drill-down と詳細パネルに委ねる）。両節の末尾に本 TPL への

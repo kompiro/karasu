@@ -1,6 +1,7 @@
 import type { ResolvedEdgeStyle } from "../types/style.js";
 import type { HopMark, LayoutEdge } from "./layout-types.js";
 import { el, escapeXml } from "./svg-builder.js";
+import { canvasLabel, type LabelWithheld } from "./edge-label-disclosure.js";
 
 interface Point {
   x: number;
@@ -154,6 +155,11 @@ export function renderEdge(
   facets: readonly string[] = [],
   /** Colour per facet id; absent when the overlay is off. */
   facetColorOf?: ReadonlyMap<string, string>,
+  /**
+   * The placement pass could not seat this edge's label clear under
+   * `label-display: auto` (#3022), so the canvas leaves it off.
+   */
+  labelDeferred = false,
 ): string {
   const { fromPoint, toPoint } = edge;
   const points: Point[] = [fromPoint, ...(edge.waypoints ?? []), toPoint];
@@ -252,7 +258,28 @@ export function renderEdge(
 
   parts.push(strokedShape(strokeAttrs));
 
-  if (edge.label) {
+  // The canvas tier of edge-label disclosure (#3022). `drawn` is what the
+  // canvas shows of the label; `labelWithheld` says whether that is less than
+  // the author wrote, and is set only then, so an edge with nothing withheld
+  // is emitted exactly as before (TPL-2174).
+  const drawn = canvasLabel(edge, style);
+  const labelHidden = drawn !== undefined && (drawn.display === "hover" || labelDeferred);
+  const labelWithheld: LabelWithheld | undefined =
+    drawn === undefined
+      ? undefined
+      : labelHidden
+        ? "deferred"
+        : drawn.text !== edge.label
+          ? "truncated"
+          : undefined;
+  // Withheld text must stay reachable on this very surface (TPL-3022). The
+  // authored label is already on the group as `data-edge-label` for a viewer
+  // that brings its own disclosure; the `<title>` is the route for one that
+  // brings none, a static SVG included.
+  if (labelWithheld !== undefined && edge.label) {
+    parts.unshift(el("title", {}, escapeXml(edge.label)));
+  }
+  if (drawn !== undefined && !labelHidden) {
     // Default anchor (parallel-bundle slide applied, ADR-1185). When the
     // auto label-placement pass (#2048) has nudged this label off a collision,
     // it hands the resolved anchor in via `labelAnchorOverride`, which wins.
@@ -275,7 +302,7 @@ export function renderEdge(
         "font-size": `${style.fontSize}px`,
         "font-family": "sans-serif",
       },
-      escapeXml(edge.label),
+      escapeXml(drawn.text),
     );
 
     if (edge.domainEdges && edge.domainEdges.length > 0) {
@@ -312,6 +339,7 @@ export function renderEdge(
       "data-edge-kind": edge.kind,
       "data-edge-canonical-id": edge.canonicalId,
       "data-edge-label": edge.syntheticLabel ? undefined : edge.label || undefined,
+      "data-edge-label-withheld": labelWithheld,
       // The property block's payload, read back by the app to open
       // EdgeDetailPanel on a left click (#2543). Emitted only when authored, so
       // a file that writes no block produces byte-identical SVG.

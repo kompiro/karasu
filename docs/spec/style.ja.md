@@ -259,6 +259,8 @@ border-style:     solid;         /* solid | dashed | dotted（stroke-style の�
 direction:        auto;          /* up | down | left | right | auto（ヒント、後述） */
 label-position:   middle;        /* start | middle | end | <0.0..1.0> */
 label-offset:     0 0;            /* <dy>px or <dx>px <dy>px（screen-axis） */
+label-max-chars:  48;             /* <n> | none（canvas に描く label の文字数） */
+label-display:    auto;           /* auto | always | hover */
 
 /* karasu固有プロパティ（CSS非対応のため例外） */
 shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
@@ -675,6 +677,71 @@ typographic な lift はそのまま、その上にこの offset が加算され
 > `edge { label-offset: 8px; }` の効果が edge の傾きごとに違う方向に出て
 > 予測が立てにくかった。screen-axis CSS shorthand に切り替えた。詳細は
 > [ADR-1184](../adr/1184-edge-label-position-offset.md)。
+
+### `label-max-chars` — `<n> | none`
+
+canvas に描く label の文字数。デフォルトは `48`。超えた label は単語の
+境界で切り、末尾に `…` を付ける。`…` も文字数に含めるので、描かれる
+文字列が上限を超えることはない。
+
+```css
+edge { label-max-chars: 24; }                   /* 密な canvas 向けに短くする */
+edge#criticalWrite { label-max-chars: none; }   /* この 1 本は常に全文を描く */
+```
+
+書いた label は失われない。省略した edge は全文を `data-edge-label` と
+`<title>` に持つので、viewer は hover で全文を出せる（ブラウザで開いた
+静的 SVG も含む）。その edge には `data-edge-label-withheld="truncated"`
+が付く。上限に収まる label の edge は、この property が無かったときと
+同じ出力になる。
+
+文字数は code point で数え、描画幅では数えない。正の整数でない値は
+無視され、デフォルトが使われる。
+
+機械生成の label（usecase → resource edge の `W` / `R`、集約 edge の
+`N domain edges`）は省略しない。
+
+### `label-display` — `auto | always | hover`
+
+canvas に label を描くかどうか。デフォルトは `auto`。
+
+| 値 | canvas が label を描く条件 |
+| --- | --- |
+| `auto` | node card・他の label・他の edge の線に重ならずに置けるときだけ |
+| `always` | 常に。重なる位置でも描く |
+| `hover` | 描かない。viewer が hover で出す |
+
+```css
+edge { label-display: always; }            /* 全 label を、重なっても描く */
+edge[async] { label-display: hover; }      /* hover するまで出さない */
+```
+
+`auto` では、まず自動配置（上の `label-position` を参照）が label を
+空いた位置へ動かす。空いた位置とは、card・他の label・他の edge の線に
+重ならない位置である。届く範囲に空きが無ければ、そこには描かずに
+canvas から外す。外した label の場所は、
+後から置く label が使える。全部の label が重ならずに置ける canvas は、
+`auto` でも `always` でも同じ出力になる。
+
+canvas から外した label には、同じ surface 上で必ず届く。edge は書いた
+文字列を `data-edge-label` と `<title>` に持ち、
+`data-edge-label-withheld="deferred"` が付く。
+
+次の label は値にかかわらず常に描く。
+
+- `auto` のとき、author が `label-position` / `label-offset` で位置を
+  指定した label。author の指定が勝つので、重なる位置でもそこに描く。
+- 機械生成の label（`W` / `R`、`N domain edges`）。書かれた文字列では
+  ないので、hover で出し直す元が無い。
+- 集約 edge の label。内訳を開くためにクリックする対象でもある。
+
+この 2 つの property が無かったときの挙動に戻すには次のように書く。
+
+```css
+edge { label-max-chars: none; label-display: always; }
+```
+
+> Related TPLs: [TPL-3022](../test-perspectives/TPL-3022-withheld-content-stays-reachable.md) — canvas が省略・保留した authored 情報は、その surface 上で全文に到達できる。[TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md) — label の衝突は数値で計測し、保留するものが無い canvas は byte-stable に保つ。
 
 ---
 

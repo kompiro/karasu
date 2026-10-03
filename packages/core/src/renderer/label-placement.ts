@@ -36,6 +36,7 @@ import { estimateTextWidth } from "./rendering-constants.js";
 import { labelAnchorWithSegment, ownLabelSegment, resolveLabelPosition } from "./edge-routing.js";
 import { segmentCrossesRect } from "./edge-geometry.js";
 import { BoxGrid, chooseCellSize } from "./spatial-grid.js";
+import { canvasLabel } from "./edge-label-disclosure.js";
 
 /**
  * One edge label offered to the placement pass. `anchor` is the label's default
@@ -55,6 +56,25 @@ export interface LabelInput {
   fontSize: number;
   /** Whether this label may move. `false` for author-positioned labels (obstacle only). */
   eligible: boolean;
+  /**
+   * Whether the pass may leave this label off the canvas when no candidate
+   * seats it clear (`label-display: auto`, #3022). A deferred label is not
+   * drawn and is not an obstacle for the labels placed after it.
+   */
+  deferrable?: boolean;
+  /**
+   * Placed after every other label. A ghost edge is dimmed context: under
+   * `auto` its label may take only the room the real labels left, so it yields
+   * to them instead of pushing them aside.
+   */
+  late?: boolean;
+  /**
+   * Set by `resolveLabelPlacements`: no candidate seated this `deferrable`
+   * label clear, so the canvas leaves it off. Written back onto the input
+   * rather than returned, which keeps the pass's signature as ADR-2360's
+   * assumption records it.
+   */
+  deferred?: boolean;
 }
 
 /**
@@ -131,7 +151,8 @@ function edgeLabelWidth(label: string, fontSize: number): number {
  *
  * `edgeLines` covers **every** non-ghost/cyclic edge, labelled or not: an
  * unlabelled edge's stroke obscures label text just as thoroughly as a labelled
- * one's (#2360).
+ * one's (#2360). A cyclic edge whose label may be left off the canvas
+ * (`label-display: auto`) joins both lists; a ghost edge joins `inputs` only.
  */
 export function buildLabelInputs(
   edges: LayoutEdge[],
@@ -146,18 +167,34 @@ export function buildLabelInputs(
   }));
   const inputs: LabelInput[] = [];
   const edgeLines: EdgeLine[] = [];
+  // A cyclic edge is drawn as a full-strength line, so a label under it is as
+  // unreadable as one under any other line. Its line obstructs whenever the
+  // canvas has a label it may leave off (`label-display: auto`, #3022),
+  // whatever the cyclic edge's own label is: "may leave off" must mean "would
+  // have been unreadable", and an unlabelled cyclic line is just as opaque.
+  const cyclicLines: EdgeLine[] = [];
   edges.forEach((edge, index) => {
+    const style = styleFor(edge, index);
+    const drawn = canvasLabel(edge, style);
+    if (edge.cyclic === true && edge.ghost !== true) {
+      const points: Point[] = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
+      cyclicLines.push(edgeLine(index, points, style.strokeWidth));
+    }
     // Ghost/cyclic edges are peripheral (dimmed / back-arc styled) and sit
     // outside the "real" geometry every other renderer pass reasons about —
     // crossing-marks, port fan-out, channel/group routing and bundle nudging
-    // all skip them (ADR-968). Excluding them here keeps a barely-visible ghost
-    // label from being moved or from pushing a real label off its default spot,
-    // and keeps a dimmed ghost line from displacing a real label.
-    if (edge.ghost || edge.cyclic) return;
+    // all skip them (ADR-968). They stay out of this pass too, with one
+    // exception: a label the canvas may leave off (`label-display: auto`,
+    // #3022) has to be seen by the pass, because a label the pass never looks
+    // at is drawn into whatever it lands on.
+    const peripheral = edge.ghost === true || edge.cyclic === true;
+    if (peripheral && drawn?.display !== "auto") return;
     const points: Point[] = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
-    const style = styleFor(edge, index);
-    edgeLines.push(edgeLine(index, points, style.strokeWidth));
-    if (!edge.label) return;
+    // A dimmed ghost line never displaces a real label, in any mode (#2360).
+    // A cyclic line is added below, once for the whole canvas.
+    if (!edge.ghost && !edge.cyclic) edgeLines.push(edgeLine(index, points, style.strokeWidth));
+    // Nothing to place: no label, or one the canvas never draws.
+    if (drawn === undefined || drawn.display === "hover") return;
     // The same anchor `renderEdge` will draw, override included: if the two
     // disagreed, the pass would push the label off a collision it is not at.
     const { anchor, segDir } = labelAnchorWithSegment(
@@ -174,13 +211,21 @@ export function buildLabelInputs(
       // overall from→to chord — otherwise a bent / waypoint route's label would
       // be shifted at a skewed angle relative to the line it labels (#2048).
       dir: segDir,
-      width: edgeLabelWidth(edge.label, style.fontSize),
+      // Measure the text the canvas draws, not the authored one: a label
+      // truncated to `label-max-chars` is the narrower box the nudge can clear.
+      width: edgeLabelWidth(drawn.text, style.fontSize),
       fontSize: style.fontSize,
       // Author-positioned labels (non-default label-position/offset) are not
       // eligible to move — author intent wins (ADR-1184 precedence).
       eligible: style.labelPosition === 0.5 && style.labelOffsetX === 0 && style.labelOffsetY === 0,
+      deferrable: drawn.display === "auto",
+      late: edge.ghost === true,
     });
   });
+  if (inputs.some((input) => input.deferrable === true)) {
+    edgeLines.push(...cyclicLines);
+    edgeLines.sort((a, b) => a.index - b.index);
+  }
   return { inputs, nodeRects, edgeLines };
 }
 
@@ -682,7 +727,9 @@ export function resolveLabelPlacements(
   // labels already committed (fixed author labels first, then earlier auto ones).
   // Indexed by bounds so a candidate box is tested only against the obstacles
   // near it (#2760); the index spans the cards and every label's default box.
-  const byIndex = [...labels].sort((a, b) => a.index - b.index);
+  const byIndex = [...labels].sort(
+    (a, b) => Number(a.late === true) - Number(b.late === true) || a.index - b.index,
+  );
   const obstacles = new ObstacleIndex(
     nodeRects,
     unionBounds([
@@ -701,6 +748,9 @@ export function resolveLabelPlacements(
   }
 
   for (const label of byIndex) {
+    // The verdict belongs to this run. Inputs placed a second time (against
+    // other obstacles) must not carry the previous run's answer.
+    label.deferred = undefined;
     if (!label.eligible) continue;
     const step = label.fontSize + 4;
     // Two search axes: `perp` lifts the label off its edge; `tang` slides it
@@ -764,6 +814,20 @@ export function resolveLabelPlacements(
       }
     }
 
+    // `label-display: auto` (#3022): a label is drawn only where it can be
+    // read. When even the best candidate still lands on a card, a label or a
+    // foreign line, leave it off the canvas instead of drawing it there, and
+    // do not let it obstruct the labels that follow. The authored text stays
+    // on the edge for the viewer to disclose.
+    //
+    // Ambiguity alone is not a reason to leave a label off. A label that is
+    // clear but nearer another edge's line than its own is still readable, and
+    // it was drawn before this property existed; ambiguity steers where a
+    // label goes (#2360), it does not decide whether it is drawn.
+    if (bestCost >= COLLISION_COST && label.deferrable) {
+      label.deferred = true;
+      continue;
+    }
     obstacles.add(bestBox);
     if (bestDist !== 0) overrides.set(label.index, bestAnchor);
   }

@@ -32,6 +32,8 @@ const DEFAULT_EDGE_STYLE = {
   labelPosition: 0.5,
   labelOffsetX: 0,
   labelOffsetY: 0,
+  labelMaxChars: 40,
+  labelDisplay: "auto" as const,
 };
 
 function makeStyles(nodeMap: Map<string, ResolvedNodeStyle> = new Map()): ResolvedStyles {
