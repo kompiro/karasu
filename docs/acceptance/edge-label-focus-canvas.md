@@ -53,17 +53,15 @@ type: product
 
   > ✅ Automated — `packages/app/src/components/focus-canvas/build.test.ts` › buildFocusCanvas on the dense canvas › separates dependents from dependencies
 
-- [x] preview が 3 列を 80 % 未満に縮めないと収まらない幅なら、縦 1 列で並べる
+- [x] 並べ方は preview の幅で変わらない。狭い preview では同じ絵を原寸のままスクロールし、開いたときは対象の node が見えている
 
-  > ✅ Automated — `packages/app/src/components/focus-canvas/build.test.ts` › chooseLayout › takes `columns` when it fits at the minimum scale, `spine` below it
-
-  > ✅ Automated — `packages/e2e/tests/at-3031-focus-canvas.spec.ts` › AT-3031 focus canvas › a preview narrower than the three columns lays a hub out in one column
+  > ✅ Automated — `packages/e2e/tests/at-3031-focus-canvas.spec.ts` › AT-3031 focus canvas › a narrow preview keeps the same picture and scrolls, opening on the node
 
 ### AC-3: 何も重ならない
 
-- [x] 41 本のラベル付き edge を持つ密な canvas で、全 node を両方の並べ方で、全 27 組を edge の focus canvas で開き、ラベル↔card、ラベル↔ラベル、線↔ラベル、線↔card の衝突が 0 件
+- [x] 41 本のラベル付き edge を持つ密な canvas で、全 node を、全 27 組を edge の focus canvas で開き、ラベル↔card、ラベル↔ラベル、線↔ラベル、線↔card の衝突が 0 件
 
-  > ✅ Automated — `packages/app/src/components/focus-canvas/build.test.ts` › buildFocusCanvas on the dense canvas › draws every node in `%s` with nothing colliding
+  > ✅ Automated — `packages/app/src/components/focus-canvas/build.test.ts` › buildFocusCanvas on the dense canvas › draws every node with nothing colliding
 
   > ✅ Automated — `packages/app/src/components/focus-canvas/build.test.ts` › buildFocusCanvas on the dense canvas › draws every pair with nothing colliding, both directions on lanes of their own
 

@@ -41,15 +41,6 @@ const FAN = 84;
 const PORT_GAP = 12;
 /** A port stays this far inside a card's corner. */
 const PORT_INSET = 10;
-/** Radius of a spine lane's turn into the centre card. */
-const TURN = 10;
-/**
- * `columns` is chosen only when it fits the pane at this scale or larger.
- * Below it 12px text drops under ~10px, so the narrower `spine` is used and
- * scrolls instead.
- */
-export const MIN_SCALE = 0.8;
-
 export interface Point {
   x: number;
   y: number;
@@ -92,8 +83,6 @@ export interface FocusSource {
 
 export type Focus = { kind: "edge"; from: string; to: string } | { kind: "node"; id: string };
 
-export type FocusLayout = "columns" | "spine";
-
 /** One edge as drawn on a focus canvas. */
 interface DrawnLane {
   from: string;
@@ -109,7 +98,6 @@ export interface FocusDrawing {
   svg: string;
   width: number;
   height: number;
-  layout: FocusLayout | null;
   cards: { id: string; box: Box }[];
   lanes: DrawnLane[];
   /** Edges into the focused node, and out of it. Both 0 for an edge focus. */
@@ -474,13 +462,7 @@ class Canvas {
     return id;
   }
 
-  finish(
-    width: number,
-    height: number,
-    layout: FocusLayout | null,
-    incoming: number,
-    outgoing: number,
-  ): FocusDrawing {
+  finish(width: number, height: number, incoming: number, outgoing: number): FocusDrawing {
     const defs = [...this.markers]
       .map(
         ([stroke, id]) =>
@@ -491,8 +473,8 @@ class Canvas {
     const h = Math.ceil(height);
     const background = this.source.background ?? "transparent";
     const svg =
-      // Shrinks to the panel down to MIN_SCALE, then the panel scrolls.
-      `<svg xmlns="http://www.w3.org/2000/svg" class="focus-canvas__svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="min-width:${Math.round(w * MIN_SCALE)}px">` +
+      // Drawn at its natural size whatever the pane's width: the panel scrolls.
+      `<svg xmlns="http://www.w3.org/2000/svg" class="focus-canvas__svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">` +
       `<defs>${defs}</defs><rect width="${w}" height="${h}" fill="${escapeXml(background)}"/>` +
       this.parts.join("") +
       `</svg>`;
@@ -500,7 +482,6 @@ class Canvas {
       svg,
       width: w,
       height: h,
-      layout,
       cards: this.cards,
       lanes: this.lanes,
       incoming,
@@ -554,12 +535,12 @@ function drawEdge(source: FocusSource, from: string, to: string, idPrefix: strin
   });
   canvas.card(from, PAD, ay);
   canvas.card(to, x1, by);
-  return canvas.finish(PAD * 2 + a.width + zone + b.width, height, null, 0, 0);
+  return canvas.finish(PAD * 2 + a.width + zone + b.width, height, 0, 0);
 }
 
 const ZONE = NEAR + LABEL_WIDTH + FAN;
 
-/** The width of the `columns` layout for these rows. */
+/** The width of a node focus for these rows. */
 function columnsWidth(centre: Box, ins: Row[], outs: Row[]): number {
   return (
     PAD * 2 +
@@ -626,7 +607,12 @@ function drawColumn(
   }
 }
 
-/** Dependents on the left, the node in the middle, dependencies on the right. */
+/**
+ * Dependents on the left, the node in the middle, dependencies on the right.
+ * The one layout for a node, whatever the pane's width: a reader who opens
+ * the same node twice finds it the same way, as on a map, and a narrow pane
+ * scrolls rather than rearranging the picture.
+ */
 function drawColumns(
   source: FocusSource,
   id: string,
@@ -654,91 +640,7 @@ function drawColumns(
     centre,
   );
   canvas.card(id, centre.x, centre.y);
-  return canvas.finish(
-    columnsWidth(c, ins, outs),
-    height,
-    "columns",
-    laneCount(ins),
-    laneCount(outs),
-  );
-}
-
-/**
- * Every neighbour in one column, the node beside it: dependents above, their
- * lanes turning down into the node's top; dependencies below, leaving from its
- * bottom. About half the width of `columns`; it grows downward instead.
- */
-function drawSpine(
-  source: FocusSource,
-  id: string,
-  ins: Row[],
-  outs: Row[],
-  idPrefix: string,
-): FocusDrawing {
-  const c = source.cards.get(id)!.box;
-  const width = columnWidth([...ins, ...outs]);
-  const centreX = PAD + width + NEAR + LABEL_WIDTH + NEAR;
-  const centreY = PAD + stackHeight(ins) + (ins.length > 0 ? ROW_GAP * 2 : 0);
-  const outTop = centreY + c.height + (outs.length > 0 ? ROW_GAP * 2 : 0);
-  const canvas = new Canvas(source, idPrefix);
-
-  const block = (rows: Row[], top: number, side: "in" | "out") => {
-    // Nest the turns so no two lanes cross: the row furthest from the node
-    // turns at the far side of its edge of the card.
-    const turns = spread(centreX, c.width, laneCount(rows));
-    if (side === "in") turns.reverse();
-    let port = 0;
-    let y = top;
-    for (const row of rows) {
-      const x = PAD + width - row.size.width;
-      const cardY = y + (row.height - row.size.height) / 2;
-      const placed = stackLanes(row.lanes, y + (row.height - lanesHeight(row.lanes)) / 2);
-      const own = cardPorts(
-        cardY,
-        row.size.height,
-        placed.map((p) => p.y),
-      );
-      row.lanes.forEach((lane, i) => {
-        const ly = placed[i].y;
-        const px = turns[port++];
-        const x0 = x + row.size.width;
-        const h0 = x0 + NEAR;
-        const easeIn = {
-          kind: "C" as const,
-          c1: { x: x0 + NEAR / 2, y: own[i] },
-          c2: { x: h0 - NEAR / 2, y: ly },
-          to: { x: h0, y: ly },
-        };
-        const line =
-          side === "in"
-            ? path({ x: x0, y: own[i] }, [
-                easeIn,
-                { kind: "L", to: { x: px - TURN, y: ly } },
-                { kind: "Q", c: { x: px, y: ly }, to: { x: px, y: ly + TURN } },
-                { kind: "L", to: { x: px, y: centreY } },
-              ])
-            : path({ x: px, y: centreY + c.height }, [
-                { kind: "L", to: { x: px, y: ly - TURN } },
-                { kind: "Q", c: { x: px, y: ly }, to: { x: px - TURN, y: ly } },
-                { kind: "L", to: { x: h0, y: ly } },
-                {
-                  kind: "C",
-                  c1: { x: h0 - NEAR / 2, y: ly },
-                  c2: { x: x0 + NEAR / 2, y: own[i] },
-                  to: { x: x0, y: own[i] },
-                },
-              ]);
-        canvas.lane(lane, line, h0, placed[i].top);
-      });
-      canvas.card(row.id, x, cardY);
-      y += row.height + ROW_GAP;
-    }
-  };
-  block(ins, PAD, "in");
-  block(outs, outTop, "out");
-  canvas.card(id, centreX, centreY);
-  const height = outTop + stackHeight(outs) + PAD;
-  return canvas.finish(centreX + c.width + PAD, height, "spine", laneCount(ins), laneCount(outs));
+  return canvas.finish(columnsWidth(c, ins, outs), height, laneCount(ins), laneCount(outs));
 }
 
 function nodeRows(source: FocusSource, id: string): { ins: Row[]; outs: Row[] } {
@@ -750,26 +652,15 @@ function nodeRows(source: FocusSource, id: string): { ins: Row[]; outs: Row[] } 
 }
 
 /**
- * The layout for a node focus in a pane `availableWidth` wide: `columns` when
- * it fits at {@link MIN_SCALE} or larger, otherwise `spine`.
- */
-export function chooseLayout(source: FocusSource, id: string, availableWidth: number): FocusLayout {
-  const { ins, outs } = nodeRows(source, id);
-  const width = columnsWidth(source.cards.get(id)!.box, ins, outs);
-  return availableWidth >= width * MIN_SCALE ? "columns" : "spine";
-}
-
-/**
  * Draws `focus` from `source`. The caller checks {@link canFocus} first.
  * `idPrefix` keeps the arrowhead ids of two drawings in one document apart.
  */
 export function buildFocusCanvas(
   source: FocusSource,
   focus: Focus,
-  layout: FocusLayout = "columns",
   idPrefix = "focus-canvas-",
 ): FocusDrawing {
   if (focus.kind === "edge") return drawEdge(source, focus.from, focus.to, idPrefix);
   const { ins, outs } = nodeRows(source, focus.id);
-  return (layout === "columns" ? drawColumns : drawSpine)(source, focus.id, ins, outs, idPrefix);
+  return drawColumns(source, focus.id, ins, outs, idPrefix);
 }

@@ -1,10 +1,7 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, type MouseEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "../../i18n/index.js";
-import { buildFocusCanvas, chooseLayout, type Focus, type FocusSource } from "./build.js";
-
-/** The overlay's padding on each side, which the panel cannot use. */
-const OVERLAY_PADDING = 24;
+import { buildFocusCanvas, type Focus, type FocusSource } from "./build.js";
 
 export interface FocusCanvasProps {
   source: FocusSource;
@@ -28,23 +25,12 @@ const stop = (e: MouseEvent) => e.stopPropagation();
  */
 export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: FocusCanvasProps) {
   const { t } = useTranslation();
-  const overlayRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
-  const [paneWidth, setPaneWidth] = useState(0);
   const focus = trail[trail.length - 1];
 
-  useLayoutEffect(() => {
-    const measure = () =>
-      setPaneWidth(Math.max(0, (overlayRef.current?.clientWidth ?? 0) - OVERLAY_PADDING * 2));
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, []);
-
-  const drawing = useMemo(() => {
-    const layout = focus.kind === "node" ? chooseLayout(source, focus.id, paneWidth) : undefined;
-    return buildFocusCanvas(source, focus, layout);
-  }, [source, focus, paneWidth]);
+  // One layout at its natural size, whatever the pane's width: the panel
+  // scrolls instead of the picture rearranging.
+  const drawing = useMemo(() => buildFocusCanvas(source, focus), [source, focus]);
   const html = useMemo(() => ({ __html: drawing.svg }), [drawing]);
 
   // Not a Radix Dialog (that is for modal dialogs, `.claude/rules/dialog.md`),
@@ -62,22 +48,21 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // A canvas taller than the panel opens on the node it is about, not on its
-  // first neighbour.
+  // A canvas larger than the panel opens on what it is about: the node, or the
+  // middle of the pair (where the labels are). Both axes, so a narrow pane
+  // shows the subject first and scrolls to the rest.
   useLayoutEffect(() => {
     const body = bodyRef.current;
     if (!body) return;
     const centre =
       focus.kind === "node"
         ? body.querySelector(`[data-focus-node="${CSS.escape(focus.id)}"]`)
-        : null;
-    if (!centre) {
-      body.scrollTop = 0;
-      return;
-    }
-    const card = centre.getBoundingClientRect();
+        : body.querySelector(".focus-canvas__svg");
+    if (!centre) return;
+    const target = centre.getBoundingClientRect();
     const view = body.getBoundingClientRect();
-    body.scrollTop += card.top - view.top - (view.height - card.height) / 2;
+    body.scrollLeft += target.left - view.left - (view.width - target.width) / 2;
+    body.scrollTop += target.top - view.top - (view.height - target.height) / 2;
     // `html` is a trigger, not a value this body reads: each new drawing
     // replaces the body's content, so the scroll has to be set again.
     // eslint-disable-next-line react/exhaustive-effect-dependencies
@@ -105,7 +90,6 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
 
   return (
     <div
-      ref={overlayRef}
       className="focus-canvas"
       // The pane's wheel zoom is a native listener; this is how a subtree that
       // scrolls on its own opts out of it (#1537).
@@ -124,7 +108,6 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
         role="region"
         aria-label={t("focusCanvas.region")}
         data-focus={focus.kind}
-        data-focus-layout={drawing.layout ?? undefined}
       >
         <div className="focus-canvas__bar">
           {trail.length > 1 && (

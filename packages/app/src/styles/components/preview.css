@@ -290,12 +290,15 @@
   overflow: auto;
 }
 
-/* Scale down to the panel's width, but never below the 80% the layout was
-   chosen for (`MIN_SCALE`): past that the panel scrolls instead. */
-.preview-container .focus-canvas__svg {
+/* Natural size, like a map: a pane narrower than the drawing scrolls it
+   rather than shrinking the text or rearranging the picture. Undoes the
+   main diagram's fit-to-pane rule (`.preview-container svg` in layout.css),
+   which would otherwise reach this SVG too. */
+.preview-container .focus-canvas .focus-canvas__svg {
   display: block;
-  max-width: 100%;
-  height: auto;
+  max-width: none;
+  max-height: none;
+  filter: none;
 }
 
 .preview-container .focus-canvas__card,

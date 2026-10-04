@@ -180,16 +180,41 @@ test.describe("AT-3031 focus canvas", () => {
     }
   });
 
-  test("a preview narrower than the three columns lays a hub out in one column", async ({
+  test("a narrow preview keeps the same picture and scrolls, opening on the node", async ({
     page,
     opfs,
   }) => {
-    await page.setViewportSize({ width: 1280, height: 900 });
+    // Like a map: the pane's width changes how much is in view, not where
+    // things are. The drawing is the same at any width, at its natural size.
+    const drawn = async (width: number) => {
+      await page.setViewportSize({ width, height: 900 });
+      await openRelations(page, "Identity");
+      const svg = page.locator(".focus-canvas__svg");
+      const result = {
+        markup: await svg.evaluate((el) => el.outerHTML),
+        size: await svg.evaluate((el) => {
+          const r = el.getBoundingClientRect();
+          return [Math.round(r.width), Math.round(r.height)];
+        }),
+        natural: await svg.evaluate((el) => [
+          Number(el.getAttribute("width")),
+          Number(el.getAttribute("height")),
+        ]),
+      };
+      await page.locator(".focus-canvas__close").click();
+      return result;
+    };
     await openDenseCanvas(page, opfs);
+    const wide = await drawn(2400);
+    const narrow = await drawn(1100);
+    expect(narrow.markup).toBe(wide.markup);
+    expect(narrow.size).toEqual(narrow.natural);
+
+    // The narrow pane opens scrolled to the node, which is in view.
     await openRelations(page, "Identity");
-    await expect(page.locator(".focus-canvas__panel")).toHaveAttribute(
-      "data-focus-layout",
-      "spine",
-    );
+    const body = page.locator(".focus-canvas__body");
+    expect(await body.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+    expect(await body.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+    await expect(page.locator('.focus-canvas [data-focus-node="Identity"]')).toBeInViewport();
   });
 });

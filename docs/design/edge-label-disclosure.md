@@ -439,15 +439,15 @@ spike でこの形を作り、Umami の `UmamiApp` drill-down で測った。コ
   `data-edge-to` / `data-edge-label`（ADR-1554）と線の `stroke` / `stroke-dasharray` から
   読む。core は何も描き直さず、範囲は読者が見ている階層に閉じる（TPL-1223）。
 
-node の canvas は 2 通りの並べ方を持ち、preview の幅で選ぶ。
+node の canvas の並べ方は 1 つで、依存する側 | node | 依存される側の 3 列にする
+（`Identity`、13 本で 1,952 × 981 px）。幅のほとんどは card（この図では 1 枚 364 px）で、
+label の欄は 300 px。
 
-| 並べ方 | 形 | 幅（`Identity`、13 本） | 選ぶとき |
-| --- | --- | --- | --- |
-| 3 列（columns） | 依存する側 \| node \| 依存される側 | 1,952 × 981 px | preview の幅が、3 列を 80 % に縮めた幅以上 |
-| 縦 1 列（spine） | 接続先を全部左に積み、node を右に置く。依存する側の線は上から node の上辺へ下り、依存される側は下辺から出て下へ | 1,120 × 1,701 px | それ以外。開いたときは node が panel の中央に来る位置までスクロールしておく |
-
-幅のほとんどは card（この図では 1 枚 364 px）で、label の欄は 300 px。縦 1 列は
-横幅を半分にする代わりに縦に伸び、panel の中でスクロールする。
+spike は preview の幅で 3 列と縦 1 列（接続先を 1 列に積む形）を切り替えていたが、
+実装では切り替えない（決めたこと 6）。preview が狭ければ原寸のまま panel の中で
+スクロールし、開いたときは対象の node（edge なら 2 枚の card の間）が中央に来る位置から
+始める。既定の editor / preview の分割では preview は約 600 px なので、多くの場合
+スクロールになる。
 
 ### 検討した形
 
@@ -506,8 +506,11 @@ node の canvas は 2 通りの並べ方を持ち、preview の幅で選ぶ。
 5. **hop の持ち主属性は出さない。** node focus で hop（交差の弧）が薄くならないのは
    段 1 の小さな欠けで、SVG を約 9 % 大きくしてまで直さない。hop の描き方は #2956 で
    変わるので、そちらの結果に合わせる。
-6. **並べ方の自動切替は 80 % で判定する。** 3 列を preview に収めるのに 80 % 未満へ
-   縮めなければならないなら縦 1 列。12 px の文字が 9.6 px を下回ると読めないため。
+6. **並べ方は幅で変えない。原寸のままスクロールする。** focus canvas は地図として
+   読む。同じ node を開けば、pane の幅にかかわらず同じ場所に同じものがある。幅で
+   並べ方を変えると、エディタとの境界を動かしただけで絵が組み変わる。縮小もしない
+   （文字の大きさを保つ）。spike の縦 1 列と 80 % の切替は実装しない（ユーザー判断、
+   2026-10-04）。
 7. **i18n**: `Relations` / `Back` / `Close` / `N in · M out` は `@karasu-tools/i18n` を通す
    （`docs/spec/i18n.md`）。
 
@@ -533,9 +536,8 @@ node の canvas は 2 通りの並べ方を持ち、preview の幅で選ぶ。
    終わる。`mousedown` からの移動量が閾値（`PreviewPane` の `CLICK_THRESHOLD`）を超えた
    `click` では開かない。
 5. **線の幾何**: label の欄を水平に走る区間の y にそろえて card の側面へ出入りし、
-   そろえられない行だけ 12 px 以上の間隔で側面に分ける。3 列では中央の node の側面へ
-   bezier で集め、縦 1 列では node の上辺 / 下辺へ、外側の行ほど外側で曲がるように
-   入れ子にして交差を作らない。
+   そろえられない行だけ 12 px 以上の間隔で側面に分ける。中央の node の側面へは
+   bezier で集める。
 6. **複製の限界**: renderer は card の `<g>` の中に `url(#…)` も `<use>` も出さない（`<defs>` を
    参照するのは edge の marker だけ）ので複製に `<defs>` は要らないが、念のためメインの
    `<defs>` を写す。multi-system root
@@ -545,23 +547,22 @@ node の canvas は 2 通りの並べ方を持ち、preview の幅で選ぶ。
 
 ### テスト（B）
 
-- unit（builder）: 密な fixture（`dense-domain-canvas.krs`）の全 node × 2 通りと全組で、
+- unit（builder）: 密な fixture（`dense-domain-canvas.krs`）の全 node と全組で、
   ラベル↔card、ラベル↔ラベル、線↔ラベル、線↔card の衝突が 0。両方向の組が 2 行になる。
   上限文字数に関係なく全文が出る（`label-max-chars` を 8 にしても）。
 - component（`FocusCanvas`）: edge のクリックで開く、pill で開く、Back、Esc、背景の
   クリック、図の差し替えへの追従、対象消失で閉じる、詳細パネルを開く edge では開かない。
   `afterEach(cleanup)` を明示する。
 - e2e（Playwright）: 密なモデルで、線のクリック → 全文が 1 行で見える。card に hover →
-  `Relations` → 行数が edge の本数と一致。pan の終わりでは開かない。狭い preview で
-  縦 1 列になる。
+  `Relations` → 行数が edge の本数と一致。pan の終わりでは開かない。狭い preview でも
+  同じ絵が原寸で描かれ、対象の node が見える位置までスクロールしている。
 - 到達性（TPL-3022）: 線に沿った hit-test で届かない edge を 1 本選び、node の canvas から
   その edge の全文に届くことを e2e で確かめる。
 
 ### AT（B）
 
 `docs/acceptance/edge-label-focus-canvas.md` を B の PR で起こす。手動項目は、Umami 相当の
-密な canvas で段 0 → 1 → 3 の順に辿れること、エディタと並べた幅で縦 1 列になること、
-focus canvas を開いたまま source を編集して追従すること。
+密な canvas で段 0 → 1 → 3 の順に辿れること。
 
 ## 未解決の問い / 決めないこと
 

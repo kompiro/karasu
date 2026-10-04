@@ -6,15 +6,12 @@ import { compile } from "@karasu-tools/core";
 import {
   buildFocusCanvas,
   canFocus,
-  chooseLayout,
   edgesOf,
   labelTextWidth,
-  MIN_SCALE,
   readFocusSource,
   wrapLabel,
   type Box,
   type FocusDrawing,
-  type FocusLayout,
   type Point,
 } from "./build.js";
 
@@ -108,25 +105,21 @@ describe("buildFocusCanvas on the dense canvas", () => {
     ...new Map(source.edges.map((e) => [[e.from, e.to].sort().join("|"), e] as const)).values(),
   ];
 
-  it.each(["columns", "spine"] as FocusLayout[])(
-    "draws every node in `%s` with nothing colliding",
-    (layout) => {
-      for (const id of ids) {
-        const d = buildFocusCanvas(source, { kind: "node", id }, layout);
-        expect({ id, collisions: collisions(d) }).toEqual({ id, collisions: [] });
-        const { incoming, outgoing } = edgesOf(source, id);
-        // One lane per edge, one card per neighbour plus the node itself.
-        expect(d.lanes).toHaveLength(incoming.length + outgoing.length);
-        const neighbours = new Set([...incoming.map((e) => e.from), ...outgoing.map((e) => e.to)]);
-        // A neighbour that is both a dependent and a dependency appears on both sides.
-        const sides =
-          new Set(incoming.map((e) => e.from)).size + new Set(outgoing.map((e) => e.to)).size;
-        expect(d.cards).toHaveLength(sides + 1);
-        expect(neighbours.size).toBeLessThanOrEqual(sides);
-        expect(d.layout).toBe(layout);
-      }
-    },
-  );
+  it("draws every node with nothing colliding", () => {
+    for (const id of ids) {
+      const d = buildFocusCanvas(source, { kind: "node", id });
+      expect({ id, collisions: collisions(d) }).toEqual({ id, collisions: [] });
+      const { incoming, outgoing } = edgesOf(source, id);
+      // One lane per edge, one card per neighbour plus the node itself.
+      expect(d.lanes).toHaveLength(incoming.length + outgoing.length);
+      const neighbours = new Set([...incoming.map((e) => e.from), ...outgoing.map((e) => e.to)]);
+      // A neighbour that is both a dependent and a dependency appears on both sides.
+      const sides =
+        new Set(incoming.map((e) => e.from)).size + new Set(outgoing.map((e) => e.to)).size;
+      expect(d.cards).toHaveLength(sides + 1);
+      expect(neighbours.size).toBeLessThanOrEqual(sides);
+    }
+  });
 
   it("draws every pair with nothing colliding, both directions on lanes of their own", () => {
     expect(pairs).toHaveLength(27);
@@ -171,7 +164,7 @@ describe("buildFocusCanvas on the dense canvas", () => {
   });
 
   it("separates dependents from dependencies", () => {
-    const d = buildFocusCanvas(source, { kind: "node", id: "Identity" }, "columns");
+    const d = buildFocusCanvas(source, { kind: "node", id: "Identity" });
     const centre = d.cards.find((c) => c.id === "Identity")!.box;
     // Into the node: the lane starts left of it. Out of it: on its right side.
     const into = d.lanes.filter((l) => l.to === "Identity").map((l) => l.points[0].x);
@@ -189,25 +182,9 @@ describe("buildFocusCanvas on the dense canvas", () => {
   });
 
   it("keeps arrowhead ids apart under different prefixes", () => {
-    const d = buildFocusCanvas(source, { kind: "node", id: "Identity" }, "columns", "x-");
+    const d = buildFocusCanvas(source, { kind: "node", id: "Identity" }, "x-");
     expect(d.svg).toContain('id="x-arrow-0"');
     expect(d.svg).not.toContain('id="focus-canvas-arrow-0"');
-  });
-});
-
-describe("chooseLayout", () => {
-  const source = readFocusSource(denseSvg);
-
-  it("takes `columns` when it fits at the minimum scale, `spine` below it", () => {
-    const wide = buildFocusCanvas(source, { kind: "node", id: "Identity" }, "columns").width;
-    expect(chooseLayout(source, "Identity", wide * MIN_SCALE)).toBe("columns");
-    expect(chooseLayout(source, "Identity", wide * MIN_SCALE - 1)).toBe("spine");
-  });
-
-  it("makes `spine` narrower than `columns` for a hub", () => {
-    const columns = buildFocusCanvas(source, { kind: "node", id: "Identity" }, "columns");
-    const spine = buildFocusCanvas(source, { kind: "node", id: "Identity" }, "spine");
-    expect(spine.width).toBeLessThan(columns.width * 0.7);
   });
 });
 
