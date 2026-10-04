@@ -51,7 +51,12 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
   // so Esc is ours to handle.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      // The canvas is not modal: Esc in the editor (closing its suggestions)
+      // or in any other field belongs to that field.
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.("input, textarea, select, [contenteditable], .monaco-editor")) return;
+      onClose();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);

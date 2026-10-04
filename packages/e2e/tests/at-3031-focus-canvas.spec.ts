@@ -144,7 +144,7 @@ test.describe("AT-3031 focus canvas", () => {
     await expect(page.locator(".focus-canvas__title")).toHaveText("Identity & access");
   });
 
-  test("every edge is reachable: by its own line, or from either end's Relations (TPL-3022)", async ({
+  test("every edge is reachable: by its own line, or from its source's Relations (TPL-3022)", async ({
     page,
     opfs,
   }) => {
@@ -158,14 +158,25 @@ test.describe("AT-3031 focus canvas", () => {
           label: g.getAttribute("data-edge-label")!,
         })),
       );
-    const unreachable = [];
-    for (const e of edges) if (!(await clickPoint(page, e.from, e.to))) unreachable.push(e);
-
-    // Whatever the pointer cannot reach on the main canvas is a lane of its
-    // source node's focus canvas, label in full.
-    for (const e of unreachable) {
-      await openRelations(page, e.from);
-      expect(await laneLabels(page)).toContain(e.label.split(/\s+/).join(" "));
+    const unreachable: string[] = [];
+    for (const e of edges) {
+      if (!(await clickPoint(page, e.from, e.to))) unreachable.push(`${e.from}->${e.to}`);
+    }
+    // Not asserted: which edges the pointer misses depends on the viewport.
+    // What is asserted is that none of the 41 needs the pointer: every edge
+    // is a lane of its source node's focus canvas, label in full.
+    test
+      .info()
+      .annotations.push({
+        type: "unreachable by click",
+        description: unreachable.join(", ") || "none",
+      });
+    for (const from of [...new Set(edges.map((e) => e.from))]) {
+      await openRelations(page, from);
+      const lanes = await laneLabels(page);
+      for (const e of edges.filter((x) => x.from === from)) {
+        expect(lanes).toContain(e.label.split(/\s+/).join(" "));
+      }
       await page.locator(".focus-canvas__close").click();
       await expect(page.locator(".focus-canvas")).toHaveCount(0);
     }

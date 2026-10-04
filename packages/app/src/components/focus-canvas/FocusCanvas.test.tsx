@@ -165,6 +165,26 @@ describe("the focus canvas in the preview", () => {
     expect(canvas(root)).toBeNull();
   });
 
+  it("leaves Esc in a text field to that field", () => {
+    const { container: root } = render(
+      <>
+        <textarea aria-label="editor" />
+        {pane()}
+      </>,
+    );
+    click(root, edgeGroup(root, edge.from, edge.to).querySelector("path")!);
+    fireEvent.keyDown(root.querySelector("textarea")!, { key: "Escape" });
+    expect(canvas(root)).not.toBeNull();
+  });
+
+  it("keeps the pill and the copied cards out of queries for cards", async () => {
+    const { container: root } = render(pane());
+    await openNode(root, "Identity");
+    // Only the main canvas answers to a card id; the copies and the pill do not.
+    expect(root.querySelectorAll('[data-node-id="Identity"]')).toHaveLength(1);
+    expect(root.querySelectorAll('[data-node-id="Teams"]')).toHaveLength(1);
+  });
+
   it("keeps a press on the canvas from reaching the diagram under it", async () => {
     const { container: root } = render(pane());
     click(root, edgeGroup(root, edge.from, edge.to).querySelector("path")!);

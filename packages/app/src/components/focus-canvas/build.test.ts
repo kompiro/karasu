@@ -91,7 +91,7 @@ describe("readFocusSource", () => {
     expect(card.name).toBe("Identity & access");
     // A copy that kept these would answer the pane's drill-down and highlight
     // queries as if it were the card itself.
-    expect(card.markup).not.toMatch(/data-node-id|data-node-path|data-has-children/);
+    expect(card.markup).not.toMatch(/data-[a-z-]+=/);
     expect(card.box.width).toBeGreaterThan(0);
   });
 

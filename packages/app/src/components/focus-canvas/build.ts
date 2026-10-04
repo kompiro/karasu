@@ -119,7 +119,20 @@ export interface FocusDrawing {
 
 // ── Reading the main canvas ──────────────────────────────────────────────────
 
-const STRIPPED_CARD_ATTRIBUTES = ["data-node-id", "data-node-path", "data-has-children", "class"];
+/**
+ * Strips what makes a copy answer as part of the main canvas: every `data-*`
+ * attribute (the card's id and path, and its controls such as
+ * `data-info-button`), and the classes the pane toggles on cards. Queries that
+ * find cards or controls by attribute then find only the originals.
+ */
+function stripIdentity(el: Element): void {
+  for (const node of [el, ...el.querySelectorAll("*")]) {
+    for (const name of node.getAttributeNames()) {
+      if (name.startsWith("data-")) node.removeAttribute(name);
+    }
+  }
+  el.removeAttribute("class");
+}
 
 const num = (el: Element, name: string): number => Number(el.getAttribute(name) ?? 0);
 
@@ -153,7 +166,7 @@ export function readFocusSource(svgMarkup: string): FocusSource {
       if (ty > bottom) bottom = ty + 4;
     }
     const copy = g.cloneNode(true) as Element;
-    for (const name of STRIPPED_CARD_ATTRIBUTES) copy.removeAttribute(name);
+    stripIdentity(copy);
     cards.set(id, {
       id,
       name: g.querySelector("text")?.textContent?.trim() || id,
