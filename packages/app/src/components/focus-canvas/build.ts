@@ -63,7 +63,7 @@ export interface Box {
 }
 
 /** A card of the main canvas, ready to be placed on a focus canvas. */
-export interface FocusCard {
+interface FocusCard {
   id: string;
   /** What the card says first: its label. */
   name: string;
@@ -95,7 +95,7 @@ export type Focus = { kind: "edge"; from: string; to: string } | { kind: "node";
 export type FocusLayout = "columns" | "spine";
 
 /** One edge as drawn on a focus canvas. */
-export interface DrawnLane {
+interface DrawnLane {
   from: string;
   to: string;
   /** The label block, or null for an unlabelled edge. */
