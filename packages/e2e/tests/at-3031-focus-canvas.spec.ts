@@ -144,7 +144,7 @@ test.describe("AT-3031 focus canvas", () => {
     await expect(page.locator(".focus-canvas__title")).toHaveText("Identity & access");
   });
 
-  test("every edge is reachable: by its own line, or from its source's Relations (TPL-3022)", async ({
+  test("every edge is reachable: by its own line, or from either end's Relations (TPL-3022)", async ({
     page,
     opfs,
   }) => {
@@ -164,15 +164,16 @@ test.describe("AT-3031 focus canvas", () => {
     }
     // Not asserted: which edges the pointer misses depends on the viewport.
     // What is asserted is that none of the 41 needs the pointer: every edge
-    // is a lane of its source node's focus canvas, label in full.
+    // is a lane of both of its ends' focus canvases, label in full.
     test.info().annotations.push({
       type: "unreachable by click",
       description: unreachable.join(", ") || "none",
     });
-    for (const from of [...new Set(edges.map((e) => e.from))]) {
-      await openRelations(page, from);
+    const nodes = [...new Set(edges.flatMap((e) => [e.from, e.to]))];
+    for (const id of nodes) {
+      await openRelations(page, id);
       const lanes = await laneLabels(page);
-      for (const e of edges.filter((x) => x.from === from)) {
+      for (const e of edges.filter((x) => x.from === id || x.to === id)) {
         expect(lanes).toContain(e.label.split(/\s+/).join(" "));
       }
       await page.locator(".focus-canvas__close").click();
