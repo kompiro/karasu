@@ -165,12 +165,10 @@ test.describe("AT-3031 focus canvas", () => {
     // Not asserted: which edges the pointer misses depends on the viewport.
     // What is asserted is that none of the 41 needs the pointer: every edge
     // is a lane of its source node's focus canvas, label in full.
-    test
-      .info()
-      .annotations.push({
-        type: "unreachable by click",
-        description: unreachable.join(", ") || "none",
-      });
+    test.info().annotations.push({
+      type: "unreachable by click",
+      description: unreachable.join(", ") || "none",
+    });
     for (const from of [...new Set(edges.map((e) => e.from))]) {
       await openRelations(page, from);
       const lanes = await laneLabels(page);
