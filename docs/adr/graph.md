@@ -381,6 +381,7 @@ flowchart TD
     ADR_2803["ADR-2803<br/>shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通ス..."]
     ADR_2906["ADR-2906<br/>icon display mode は非推奨のまま据え置き、削除する major はまだ決めない"]
     ADR_2917["ADR-2917<br/>複数 system のルートビューは同名ノードを両方描き、要素の id は bare id の..."]
+    ADR_3022["ADR-3022<br/>edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は foc..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -997,6 +998,7 @@ flowchart TD
   class ADR_3002 accepted
   class ADR_3011 accepted
   class ADR_3020 accepted
+  class ADR_3022 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
