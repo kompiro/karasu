@@ -217,5 +217,19 @@ test.describe("AT-3031 focus canvas", () => {
     expect(await body.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
     expect(await body.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
     await expect(page.locator('.focus-canvas [data-focus-node="Identity"]')).toBeInViewport();
+
+    // Dragging moves the view, as on the main canvas.
+    const before = await body.evaluate((el) => [el.scrollLeft, el.scrollTop]);
+    const box = (await body.boundingBox())!;
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx + 120, cy + 60, { steps: 6 });
+    await page.mouse.up();
+    const after = await body.evaluate((el) => [el.scrollLeft, el.scrollTop]);
+    expect(after[0]).toBeLessThan(before[0]);
+    // The drag ended where a press began, not on a new focus.
+    await expect(page.locator(".focus-canvas__title")).toHaveText("Identity & access");
   });
 });

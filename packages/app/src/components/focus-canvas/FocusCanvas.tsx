@@ -1,7 +1,10 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, type MouseEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "../../i18n/index.js";
 import { buildFocusCanvas, type Focus, type FocusSource } from "./build.js";
+
+/** Movement under which a press is a click, as on the main canvas (`PreviewPane`). */
+const CLICK_THRESHOLD = 3;
 
 export interface FocusCanvasProps {
   source: FocusSource;
@@ -26,6 +29,54 @@ const stop = (e: MouseEvent) => e.stopPropagation();
 export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: FocusCanvasProps) {
   const { t } = useTranslation();
   const bodyRef = useRef<HTMLDivElement>(null);
+  // Drag to move the view, as on the main canvas: a press anywhere in the
+  // canvas starts a pan, and one that moved past the threshold is not a click
+  // on whatever card or line it ended over.
+  const pan = useRef<{ x: number; y: number; left: number; top: number; moved: boolean } | null>(
+    null,
+  );
+  const suppressClick = useRef(false);
+  const [panning, setPanning] = useState(false);
+
+  useEffect(() => {
+    if (!panning) return;
+    const onMove = (e: globalThis.MouseEvent) => {
+      const body = bodyRef.current;
+      const start = pan.current;
+      if (!body || !start) return;
+      const dx = e.clientX - start.x;
+      const dy = e.clientY - start.y;
+      if (Math.abs(dx) > CLICK_THRESHOLD || Math.abs(dy) > CLICK_THRESHOLD) start.moved = true;
+      if (!start.moved) return;
+      body.scrollLeft = start.left - dx;
+      body.scrollTop = start.top - dy;
+    };
+    const onUp = () => {
+      suppressClick.current = pan.current?.moved ?? false;
+      pan.current = null;
+      setPanning(false);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [panning]);
+
+  const onBodyMouseDown = (e: MouseEvent) => {
+    if (e.button !== 0 || !bodyRef.current) return;
+    e.preventDefault(); // no text selection while dragging
+    suppressClick.current = false;
+    pan.current = {
+      x: e.clientX,
+      y: e.clientY,
+      left: bodyRef.current.scrollLeft,
+      top: bodyRef.current.scrollTop,
+      moved: false,
+    };
+    setPanning(true);
+  };
   const focus = trail[trail.length - 1];
 
   // One layout at its natural size, whatever the pane's width: the panel
@@ -72,6 +123,10 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
   const title = focus.kind === "edge" ? `${name(focus.from)} → ${name(focus.to)}` : name(focus.id);
 
   const onBodyClick = (e: MouseEvent) => {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
     const target = e.target as Element;
     const card = target.closest("[data-focus-node]")?.getAttribute("data-focus-node");
     if (card) {
@@ -128,6 +183,8 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
         <div
           ref={bodyRef}
           className="focus-canvas__body"
+          data-panning={panning ? "" : undefined}
+          onMouseDown={onBodyMouseDown}
           onClick={onBodyClick}
           dangerouslySetInnerHTML={html}
         />

@@ -165,6 +165,28 @@ describe("the focus canvas in the preview", () => {
     expect(canvas(root)).toBeNull();
   });
 
+  it("moves the view on a drag, and a drag that ends on a card does not open it", async () => {
+    const { container: root } = render(pane());
+    await openNode(root, "Identity");
+    const body = root.querySelector<HTMLElement>(".focus-canvas__body")!;
+    const teams = root.querySelector('.focus-canvas [data-focus-node="Teams"] rect')!;
+
+    // Press, move past the click threshold, release on a card: a pan.
+    fireEvent.mouseDown(teams, { button: 0, clientX: 100, clientY: 100 });
+    expect(body.hasAttribute("data-panning")).toBe(true);
+    fireEvent.mouseMove(window, { clientX: 160, clientY: 130 });
+    fireEvent.mouseUp(window, { clientX: 160, clientY: 130 });
+    fireEvent.click(teams);
+    expect(title(root)).toBe("Identity & access");
+    expect(body.hasAttribute("data-panning")).toBe(false);
+
+    // Press and release in place: a click, which moves to that node.
+    fireEvent.mouseDown(teams, { button: 0, clientX: 100, clientY: 100 });
+    fireEvent.mouseUp(window, { clientX: 101, clientY: 100 });
+    fireEvent.click(teams);
+    expect(title(root)).toBe("Teams");
+  });
+
   it("leaves Esc in a text field to that field", () => {
     const { container: root } = render(
       <>

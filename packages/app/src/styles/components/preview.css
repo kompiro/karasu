@@ -288,6 +288,12 @@
 
 .preview-container .focus-canvas__body {
   overflow: auto;
+  /* Drag to move the view, like the main canvas. */
+  cursor: grab;
+}
+
+.preview-container .focus-canvas__body[data-panning] {
+  cursor: grabbing;
 }
 
 /* Natural size, like a map: a pane narrower than the drawing scrolls it
