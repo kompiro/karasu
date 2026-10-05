@@ -6,7 +6,7 @@ import {
   type NodeMetadata,
   parseNodePathRefId,
 } from "@karasu-tools/core";
-import { resolveLocaleTag } from "@karasu-tools/i18n";
+import { bindTranslate, resolveLocaleTag } from "@karasu-tools/i18n";
 import { marked } from "marked";
 import {
   type DrilldownNodeMeta,
@@ -29,6 +29,7 @@ import { diagramThemeFromColorTheme } from "./theme-mapping.js";
 import { VsCodeFileSystemProvider } from "./vscode-fs-provider.js";
 import { buildPreviewHtml, generateNonce } from "./webview-content.js";
 import { buildPreviewPanelLabels } from "./webview-i18n.js";
+import { gateRender, type LastValidRender } from "./render-gate.js";
 
 /** Subset of NodeMetadata serialized as JSON for the webview. */
 interface SerializedNodeMeta {
@@ -78,6 +79,7 @@ export class PreviewPanel {
   /** The same metadata keyed by a card's `data-node-path` (#2917); system view only. */
   private _lastNodeMetadataByPath: Map<string, NodeMetadata> | undefined;
   private _currentDocument: vscode.TextDocument | undefined;
+  private _lastValid: LastValidRender<RenderedPreview> | undefined;
   private readonly _disposables: vscode.Disposable[] = [];
   private _disposed = false;
   private readonly _onDispose: () => void;
@@ -226,12 +228,19 @@ export class PreviewPanel {
   }
 
   private async _render(document: vscode.TextDocument): Promise<void> {
-    let svg: string;
+    const viewPathOpts =
+      this._viewType === "org" || this._viewType === "system"
+        ? { viewPath: this._drilldown.viewPath }
+        : {};
+    const key = [
+      document.uri.toString(),
+      this._viewType,
+      this._displayMode,
+      this._theme,
+      ...(viewPathOpts.viewPath ?? []),
+    ].join("\u0001");
+    let rendered: RenderedPreview;
     try {
-      const viewPathOpts =
-        this._viewType === "org" || this._viewType === "system"
-          ? { viewPath: this._drilldown.viewPath }
-          : {};
       const result = await compileProject(document.uri.fsPath, new VsCodeFileSystemProvider(), {
         diagramType: this._viewType,
         displayMode: this._displayMode,
@@ -245,21 +254,42 @@ export class PreviewPanel {
         nodeControls: true,
         ...viewPathOpts,
       });
-      svg = result.svg;
-      this._lastNodeMetadata = result.diagramType !== "org" ? result.nodeMetadata : undefined;
-      this._lastNodeMetadataByPath =
-        result.diagramType === "system" ? result.nodeMetadataByPath : undefined;
+      // Core returns an SVG of whatever it recovered even when an error stands.
+      // Drawing it would show a model karasu does not accept (#2677), so the
+      // gate keeps the last valid picture or says the drawing is blocked.
+      const decision = gateRender({
+        key,
+        value: {
+          svg: result.svg,
+          nodeMetadata: result.diagramType !== "org" ? result.nodeMetadata : undefined,
+          nodeMetadataByPath:
+            result.diagramType === "system" ? result.nodeMetadataByPath : undefined,
+        },
+        errorCount: result.diagnostics.filter((d) => d.severity === "error").length,
+        lastValid: this._lastValid,
+      });
+      if (decision.kind === "draw") this._lastValid = decision.remember;
+      rendered =
+        decision.kind === "blocked"
+          ? { svg: messageSvg(this._blockedMessage(decision.errorCount), "#d19a00") }
+          : decision.value;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="60">
-        <text x="10" y="30" fill="#f44" font-family="monospace" font-size="13">Error: ${escapeHtml(msg)}</text>
-      </svg>`;
+      rendered = { svg: messageSvg(`Error: ${msg}`, "#f44") };
     }
+    this._lastNodeMetadata = rendered.nodeMetadata;
+    this._lastNodeMetadataByPath = rendered.nodeMetadataByPath;
     this._panel.webview.html = this._buildHtml(
-      svg,
+      rendered.svg,
       this._lastNodeMetadata,
       this._lastNodeMetadataByPath,
     );
+  }
+
+  private _blockedMessage(count: number): string {
+    return bindTranslate(resolveLocaleTag(vscode.env.language))("vscodePreview.blockedByErrors", {
+      count,
+    });
   }
 
   private _buildHtml(
@@ -344,4 +374,16 @@ export class PreviewPanel {
     for (const d of this._disposables) d.dispose();
     this._disposables.length = 0;
   }
+}
+
+interface RenderedPreview {
+  svg: string;
+  nodeMetadata?: Map<string, NodeMetadata>;
+  nodeMetadataByPath?: Map<string, NodeMetadata>;
+}
+
+function messageSvg(text: string, color: string): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="60">
+        <text x="10" y="30" fill="${color}" font-family="monospace" font-size="13">${escapeHtml(text)}</text>
+      </svg>`;
 }
