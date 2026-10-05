@@ -1,5 +1,5 @@
 // facet-styling/index.krs
-// 対象: `[facets=<id>]` による facet 所属でのスタイリング（#2175 — experimental）。
+// 対象: `[facets=<id>]` による facet 所属でのスタイリング（#2175。`.krs language v2.0` から core）。
 //
 // `facet` は、アーキテクチャの**外側**で定義された集合 — 規制・ポリシー・監査
 // スコープ — を表す。tag は要素が「何であるか」を述べ、facet は「外部定義の

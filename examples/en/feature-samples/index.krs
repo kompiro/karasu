@@ -23,8 +23,8 @@
 //   boundary-clusters.krs     boundary / contains — the Group by: boundary axis (experimental)
 //   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas (experimental)
 //   boundary-multi-membership.krs  a node listed in two boundaries — both frames enclose it (experimental)
-//   facets.krs                facet / facets — the viewer-side highlight overlay (experimental)
-//   tag-facet-registers.krs   tag vs annotation vs facet vs boundary — which register says what (experimental)
+//   facets.krs                facet / facets — the viewer-side highlight overlay
+//   tag-facet-registers.krs   tag vs annotation vs facet vs boundary — which register says what
 //   multi-system-root.krs     two `system` blocks in one file — the side-by-side root view
 
 system FeatureSamples {

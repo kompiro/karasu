@@ -1,5 +1,5 @@
-// The four vocabulary registers, side by side (Issue #2177 — `facet` and
-// `boundary` are experimental).
+// The four vocabulary registers, side by side (Issue #2177; `facet` is core
+// from `.krs language v2.0`, `boundary` is experimental).
 //
 // karasu has four ways to say something extra about an element, and they are
 // not interchangeable. Picking the wrong one is the most common modelling
@@ -30,7 +30,8 @@
 //      frames and the rings coexist — one is a layout, the other is a paint.
 //   4. Look at `tag-facet-registers.krs.style`. `[facets=pci]` styles by
 //      membership, which is what an arbitrary `[pci]` tag selector used to be
-//      abused for. The tag route is deprecated; this is the replacement.
+//      abused for. In `.krs language v2.0` that tag rule matches nothing; this is the
+//      replacement.
 
 @import "tag-facet-registers.krs.style"
 
