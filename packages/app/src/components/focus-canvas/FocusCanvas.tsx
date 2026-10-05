@@ -61,16 +61,22 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
       pan.current = null;
       setPanning(false);
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    // Capture phase: the overlay stops a release inside it from bubbling (so
+    // the diagram underneath never sees it), which would also keep it from a
+    // bubbling listener here and leave the pan running after the button is up.
+    window.addEventListener("mousemove", onMove, true);
+    window.addEventListener("mouseup", onUp, true);
     return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("mousemove", onMove, true);
+      window.removeEventListener("mouseup", onUp, true);
     };
   }, [panning]);
 
   const onBodyMouseDown = (e: MouseEvent) => {
     if (e.button !== 0 || !bodyRef.current) return;
+    // A press on a label is for selecting its text, which this canvas exists
+    // to show in full: the browser's selection, not a pan.
+    if ((e.target as Element).closest(".focus-canvas__label")) return;
     e.preventDefault(); // no text selection while dragging
     suppressClick.current = false;
     pan.current = {
@@ -132,6 +138,8 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
       suppressClick.current = false;
       return;
     }
+    // The end of a text selection is not a click on the lane under it.
+    if (window.getSelection()?.toString()) return;
     const target = e.target as Element;
     const card = target.closest("[data-focus-node]")?.getAttribute("data-focus-node");
     if (card) {

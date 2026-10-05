@@ -296,6 +296,12 @@
   cursor: grabbing;
 }
 
+/* Labels are text to read and copy: a press on one selects, it does not pan. */
+.preview-container .focus-canvas__label {
+  cursor: text;
+  user-select: text;
+}
+
 /* Natural size, like a map: a pane narrower than the drawing scrolls it
    rather than shrinking the text or rearranging the picture. Undoes the
    main diagram's fit-to-pane rule (`.preview-container svg` in layout.css),

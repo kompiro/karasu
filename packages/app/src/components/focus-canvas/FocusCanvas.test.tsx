@@ -174,17 +174,46 @@ describe("the focus canvas in the preview", () => {
     // Press, move past the click threshold, release on a card: a pan.
     fireEvent.mouseDown(teams, { button: 0, clientX: 100, clientY: 100 });
     expect(body.hasAttribute("data-panning")).toBe(true);
-    fireEvent.mouseMove(window, { clientX: 160, clientY: 130 });
-    fireEvent.mouseUp(window, { clientX: 160, clientY: 130 });
+    fireEvent.mouseMove(teams, { clientX: 160, clientY: 130 });
+    // Released inside the canvas, where the overlay keeps the event from
+    // bubbling: the pan must still end.
+    fireEvent.mouseUp(teams, { clientX: 160, clientY: 130 });
     fireEvent.click(teams);
     expect(title(root)).toBe("Identity & access");
     expect(body.hasAttribute("data-panning")).toBe(false);
 
     // Press and release in place: a click, which moves to that node.
     fireEvent.mouseDown(teams, { button: 0, clientX: 100, clientY: 100 });
-    fireEvent.mouseUp(window, { clientX: 101, clientY: 100 });
+    fireEvent.mouseUp(teams, { clientX: 101, clientY: 100 });
     fireEvent.click(teams);
     expect(title(root)).toBe("Teams");
+  });
+
+  it("leaves a press on a label to text selection, and does not navigate after one", async () => {
+    const { container: root } = render(pane());
+    await openNode(root, "Identity");
+    const body = root.querySelector<HTMLElement>(".focus-canvas__body")!;
+    const label = root.querySelector(
+      '.focus-canvas [data-focus-from="Teams"][data-focus-to="Identity"] .focus-canvas__label tspan',
+    )!;
+
+    // No pan starts, so nothing prevents the browser from selecting.
+    const press = fireEvent.mouseDown(label, { button: 0, clientX: 100, clientY: 100 });
+    expect(press).toBe(true); // not default-prevented
+    expect(body.hasAttribute("data-panning")).toBe(false);
+
+    // A selection made over the label: its click does not move to the pair.
+    const range = document.createRange();
+    range.selectNodeContents(label);
+    window.getSelection()!.removeAllRanges();
+    window.getSelection()!.addRange(range);
+    fireEvent.click(label);
+    expect(title(root)).toBe("Identity & access");
+
+    // Without a selection, the same click still moves to the pair.
+    window.getSelection()!.removeAllRanges();
+    fireEvent.click(label);
+    expect(title(root)).toBe("Teams → Identity & access");
   });
 
   it("stays open when a drag that began in the canvas ends on the backdrop", async () => {

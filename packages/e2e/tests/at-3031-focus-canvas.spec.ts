@@ -229,7 +229,50 @@ test.describe("AT-3031 focus canvas", () => {
     await page.mouse.up();
     const after = await body.evaluate((el) => [el.scrollLeft, el.scrollTop]);
     expect(after[0]).toBeLessThan(before[0]);
+    // The button is up, so moving on does not keep dragging the view.
+    await page.mouse.move(cx - 200, cy - 100, { steps: 4 });
+    expect(await body.evaluate((el) => [el.scrollLeft, el.scrollTop])).toEqual(after);
     // The drag ended where a press began, not on a new focus.
+    await expect(page.locator(".focus-canvas__title")).toHaveText("Identity & access");
+
+    // A drag across a label selects its text instead: the view stays put and
+    // the canvas stays on the node. First, a line of label text that is in view and is what the pointer hits.
+    const t = await page.evaluate(() => {
+      // Bring a label to the middle of the panel first; the narrow pane opens
+      // on the node card, with the labels out of view on either side.
+      const panel = document.querySelector<HTMLElement>(".focus-canvas__body")!;
+      const first = document.querySelector(".focus-canvas .focus-canvas__label tspan")!;
+      const f = first.getBoundingClientRect();
+      const b = panel.getBoundingClientRect();
+      panel.scrollLeft += f.left - b.left - (b.width - f.width) / 2;
+      panel.scrollTop += f.top - b.top - b.height / 2;
+      const view = panel.getBoundingClientRect();
+      for (const span of document.querySelectorAll(".focus-canvas .focus-canvas__label tspan")) {
+        const r = span.getBoundingClientRect();
+        const inView =
+          r.left > view.left && r.right < view.right && r.top > view.top && r.bottom < view.bottom;
+        const y = r.top + r.height / 2;
+        const hit = document.elementFromPoint(r.left + 2, y);
+        // Chromium reports the <text> for a point on its <tspan>.
+        if (
+          inView &&
+          hit?.closest(".focus-canvas__label") === span.closest(".focus-canvas__label")
+        ) {
+          return { x: r.left, y: r.top, width: r.width, height: r.height };
+        }
+      }
+      return null;
+    });
+    expect(t).not.toBeNull();
+    const held = await body.evaluate((el) => [el.scrollLeft, el.scrollTop]);
+    await page.mouse.move(t!.x + 2, t!.y + t!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(t!.x + t!.width - 2, t!.y + t!.height / 2, { steps: 6 });
+    await page.mouse.up();
+    expect(
+      await page.evaluate(() => window.getSelection()?.toString().length ?? 0),
+    ).toBeGreaterThan(0);
+    expect(await body.evaluate((el) => [el.scrollLeft, el.scrollTop])).toEqual(held);
     await expect(page.locator(".focus-canvas__title")).toHaveText("Identity & access");
   });
 });
