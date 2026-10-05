@@ -282,7 +282,8 @@ function cardBox(g: Element): Box | null {
       }
     }
   };
-  for (const child of g.children) visit(child, 0, 0);
+  // The card's own group first: a `translate` on it moves everything it draws.
+  visit(g, 0, 0);
   return bounds.box;
 }
 

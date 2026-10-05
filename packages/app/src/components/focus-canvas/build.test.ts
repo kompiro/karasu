@@ -227,6 +227,18 @@ describe("cards that are not boxes (#3031)", () => {
     expect(collisions(d)).toEqual([]);
   });
 
+  it("applies a translate on the card's own group", () => {
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg">` +
+      `<g data-node-id="A" transform="translate(100 50)"><rect x="0" y="0" width="40" height="20"/></g></svg>`;
+    expect(readFocusSource(svg).cards.get("A")!.box).toEqual({
+      x: 100,
+      y: 50,
+      width: 40,
+      height: 20,
+    });
+  });
+
   it("measures a cylinder from its path and ellipse, not from a missing rect", () => {
     const svg =
       `<svg xmlns="http://www.w3.org/2000/svg">` +

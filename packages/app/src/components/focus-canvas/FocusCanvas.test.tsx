@@ -187,6 +187,25 @@ describe("the focus canvas in the preview", () => {
     expect(title(root)).toBe("Teams");
   });
 
+  it("stays open when a drag that began in the canvas ends on the backdrop", async () => {
+    const { container: root } = render(pane());
+    await openNode(root, "Identity");
+    const card = root.querySelector('.focus-canvas [data-focus-node="Teams"] rect')!;
+    const backdrop = canvas(root)!;
+
+    fireEvent.mouseDown(card, { button: 0, clientX: 100, clientY: 100 });
+    fireEvent.mouseMove(window, { clientX: 400, clientY: 100 });
+    fireEvent.mouseUp(window, { clientX: 400, clientY: 100 });
+    // The browser sends the click to the common ancestor: the backdrop.
+    fireEvent.click(backdrop);
+    expect(canvas(root)).not.toBeNull();
+
+    // A press and release on the backdrop itself still closes it.
+    fireEvent.mouseDown(backdrop, { button: 0 });
+    fireEvent.click(backdrop);
+    expect(canvas(root)).toBeNull();
+  });
+
   it("leaves Esc in a text field to that field", () => {
     const { container: root } = render(
       <>

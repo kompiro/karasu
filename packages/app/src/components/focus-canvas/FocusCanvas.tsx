@@ -36,6 +36,11 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
     null,
   );
   const suppressClick = useRef(false);
+  // Whether the press that ends in a click began on the backdrop. A drag that
+  // starts in the canvas and ends on the backdrop also clicks the backdrop
+  // (the click goes to the two targets' common ancestor); that is a pan, not
+  // a request to close.
+  const pressedBackdrop = useRef(false);
   const [panning, setPanning] = useState(false);
 
   useEffect(() => {
@@ -149,13 +154,16 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
       // The pane's wheel zoom is a native listener; this is how a subtree that
       // scrolls on its own opts out of it (#1537).
       data-wheel-zoom-ignore=""
-      onMouseDown={stop}
+      onMouseDown={(e) => {
+        stop(e);
+        pressedBackdrop.current = e.target === e.currentTarget;
+      }}
       onMouseUp={stop}
       onDoubleClick={stop}
       onContextMenu={stop}
       onClick={(e) => {
         stop(e);
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && pressedBackdrop.current) onClose();
       }}
     >
       <div
