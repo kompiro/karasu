@@ -217,6 +217,21 @@ describe("the focus canvas in the preview", () => {
     expect(canvas(root)).toBeNull();
   });
 
+  it("draws every edge the pill counts, an edge to a database included", async () => {
+    const example = readFileSync(
+      resolve(__dirname, "../../../../../examples/en/feature-samples/boundary-clusters.krs"),
+      "utf8",
+    );
+    const { container: root } = render(pane(compile(example).svg));
+    const card = root.querySelector(`.preview-container svg [data-node-id="Checkout"] rect`)!;
+    fireEvent.mouseOver(card);
+    const count = Number(/(\d+)$/.exec(root.querySelector(".node-focus-pill")!.textContent!)![1]);
+    await userEvent.setup().click(root.querySelector(".node-focus-pill")!);
+    const lanes = [...root.querySelectorAll(".focus-canvas .focus-canvas__lane")];
+    expect(lanes).toHaveLength(count);
+    expect(lanes.map((l) => l.getAttribute("data-focus-to"))).toContain("OrderDB");
+  });
+
   it("leaves an aggregated edge to its detail panel", () => {
     const svg =
       `<svg xmlns="http://www.w3.org/2000/svg">` +

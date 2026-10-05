@@ -124,6 +124,168 @@ function stripIdentity(el: Element): void {
 
 const num = (el: Element, name: string): number => Number(el.getAttribute(name) ?? 0);
 
+/** The numbers in a `points` or path `d` attribute, in order. */
+const numbersIn = (value: string | null): number[] =>
+  (value ?? "").match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi)?.map(Number) ?? [];
+
+/** A growing bounding box. */
+class Bounds {
+  minX = Infinity;
+  minY = Infinity;
+  maxX = -Infinity;
+  maxY = -Infinity;
+
+  add(x: number, y: number): void {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    this.minX = Math.min(this.minX, x);
+    this.minY = Math.min(this.minY, y);
+    this.maxX = Math.max(this.maxX, x);
+    this.maxY = Math.max(this.maxY, y);
+  }
+
+  get box(): Box | null {
+    if (this.minX > this.maxX) return null;
+    return {
+      x: this.minX,
+      y: this.minY,
+      width: this.maxX - this.minX,
+      height: this.maxY - this.minY,
+    };
+  }
+}
+
+/**
+ * Adds a path's extent: every point it passes through, every control point
+ * (a curve stays inside its control polygon), and for an arc the box of the
+ * radii around its chord's midpoint, which holds the bulge of the shapes core
+ * draws (a cylinder's base, a queue's ends). Generous rather than exact: an
+ * over-estimate only adds space around a card.
+ */
+function addPath(bounds: Bounds, d: string, dx: number, dy: number): void {
+  let x = 0;
+  let y = 0;
+  let startX = 0;
+  let startY = 0;
+  for (const [, command, args] of d.matchAll(
+    /([MLHVCSQTAZmlhvcsqtaz])([^MLHVCSQTAZmlhvcsqtaz]*)/g,
+  )) {
+    const n = numbersIn(args);
+    const rel = command === command.toLowerCase();
+    const at = (px: number, py: number) => bounds.add(px + dx, py + dy);
+    switch (command.toUpperCase()) {
+      case "M":
+      case "L":
+      case "T":
+        for (let i = 0; i + 1 < n.length; i += 2) {
+          x = rel ? x + n[i] : n[i];
+          y = rel ? y + n[i + 1] : n[i + 1];
+          if (command.toUpperCase() === "M" && i === 0) [startX, startY] = [x, y];
+          at(x, y);
+        }
+        break;
+      case "H":
+        for (const v of n) at((x = rel ? x + v : v), y);
+        break;
+      case "V":
+        for (const v of n) at(x, (y = rel ? y + v : v));
+        break;
+      case "C":
+      case "S":
+      case "Q": {
+        const size = command.toUpperCase() === "C" ? 6 : 4;
+        for (let i = 0; i + size - 1 < n.length; i += size) {
+          for (let j = 0; j < size; j += 2)
+            at(rel ? x + n[i + j] : n[i + j], rel ? y + n[i + j + 1] : n[i + j + 1]);
+          x = rel ? x + n[i + size - 2] : n[i + size - 2];
+          y = rel ? y + n[i + size - 1] : n[i + size - 1];
+        }
+        break;
+      }
+      case "A":
+        for (let i = 0; i + 6 < n.length; i += 7) {
+          const [rx, ry] = [Math.abs(n[i]), Math.abs(n[i + 1])];
+          const ex = rel ? x + n[i + 5] : n[i + 5];
+          const ey = rel ? y + n[i + 6] : n[i + 6];
+          const mx = (x + ex) / 2;
+          const my = (y + ey) / 2;
+          at(mx - Math.min(rx, Math.abs(ex - x) / 2 || rx), my - ry);
+          at(mx + Math.min(rx, Math.abs(ex - x) / 2 || rx), my + ry);
+          at((x = ex), (y = ey));
+        }
+        break;
+      case "Z":
+        [x, y] = [startX, startY];
+        break;
+    }
+  }
+}
+
+/** `translate(a b)` / `translate(a, b)` / `translate(a)`; any other transform reads as none. */
+function translation(el: Element): [number, number] {
+  const m = /translate\(\s*(-?[\d.]+)(?:[\s,]+(-?[\d.]+))?\s*\)/.exec(
+    el.getAttribute("transform") ?? "",
+  );
+  return m ? [Number(m[1]), Number(m[2] ?? 0)] : [0, 0];
+}
+
+/**
+ * The extent of a card, from its own geometry: the frame whatever its shape
+ * (a box is a `<rect>`, a database a cylinder `<path>`, a cloud a curve, an
+ * icon whatever the icon draws), and any caption written under it. Read from
+ * attributes, not `getBBox()`: a parsed document is never laid out, so its
+ * boxes are all zero.
+ */
+function cardBox(g: Element): Box | null {
+  const bounds = new Bounds();
+  const visit = (el: Element, dx: number, dy: number) => {
+    const at = (x: number, y: number) => bounds.add(x + dx, y + dy);
+    switch (el.localName) {
+      case "rect":
+      case "image":
+      case "use":
+      case "svg":
+        at(num(el, "x"), num(el, "y"));
+        at(num(el, "x") + num(el, "width"), num(el, "y") + num(el, "height"));
+        return;
+      case "circle":
+        at(num(el, "cx") - num(el, "r"), num(el, "cy") - num(el, "r"));
+        at(num(el, "cx") + num(el, "r"), num(el, "cy") + num(el, "r"));
+        return;
+      case "ellipse":
+        at(num(el, "cx") - num(el, "rx"), num(el, "cy") - num(el, "ry"));
+        at(num(el, "cx") + num(el, "rx"), num(el, "cy") + num(el, "ry"));
+        return;
+      case "line":
+        at(num(el, "x1"), num(el, "y1"));
+        at(num(el, "x2"), num(el, "y2"));
+        return;
+      case "polygon":
+      case "polyline": {
+        const n = numbersIn(el.getAttribute("points"));
+        for (let i = 0; i + 1 < n.length; i += 2) at(n[i], n[i + 1]);
+        return;
+      }
+      case "path":
+        addPath(bounds, el.getAttribute("d") ?? "", dx, dy);
+        return;
+      case "text": {
+        // A caption under the frame (a deploy unit's name) belongs to the
+        // card. Its baseline is enough to reserve the room below the frame.
+        const y = num(el, "y");
+        at(num(el, "x"), y + 4);
+        return;
+      }
+      case "g": {
+        const [tx, ty] = translation(el);
+        for (const child of el.children) visit(child, dx + tx, dy + ty);
+        return;
+      }
+    }
+  };
+  for (const child of g.children) visit(child, 0, 0);
+  return bounds.box;
+}
+
 /**
  * Reads the cards and edges of a rendered diagram. Returns an empty source for
  * markup that is not an SVG diagram.
@@ -142,24 +304,15 @@ export function readFocusSource(svgMarkup: string): FocusSource {
     // A bare id can name two cards on a multi-system root (#2917). Edges name
     // their ends by the same bare id, so the first card is the one they meet.
     if (!id || cards.has(id)) continue;
-    const frame = g.querySelector(":scope > rect");
-    if (!frame) continue;
-    const x = num(frame, "x");
-    const y = num(frame, "y");
-    const width = num(frame, "width");
-    let bottom = y + num(frame, "height");
-    // A caption under the frame (a deploy unit's name) belongs to the card.
-    for (const text of g.querySelectorAll(":scope > text")) {
-      const ty = num(text, "y");
-      if (ty > bottom) bottom = ty + 4;
-    }
+    const box = cardBox(g);
+    if (!box || box.width <= 0 || box.height <= 0) continue;
     const copy = g.cloneNode(true) as Element;
     stripIdentity(copy);
     cards.set(id, {
       id,
       name: g.querySelector("text")?.textContent?.trim() || id,
       markup: serializer.serializeToString(copy),
-      box: { x, y, width, height: bottom - y },
+      box,
     });
   }
 

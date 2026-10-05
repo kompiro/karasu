@@ -56,15 +56,26 @@ export function attachNodeFocus(container: HTMLElement, options: NodeFocusOption
     pill.hidden = true;
   };
 
-  /** The node's edges on the canvas on screen, self-loops aside. */
+  /**
+   * The node's edges on the canvas on screen that the focus canvas can draw:
+   * self-loops aside, and only between two cards (an edge to something that is
+   * not a card has no card to place at its other end). The pill shows this
+   * number, so it must count what the canvas will draw.
+   */
   const countEdges = (id: string): number => {
+    const cards = new Set(
+      [...container.querySelectorAll(`${scope} [data-node-id]`)].map((c) =>
+        c.getAttribute("data-node-id"),
+      ),
+    );
     let n = 0;
     for (const g of container.querySelectorAll(
       `${scope} .krs-edge[data-edge-from][data-edge-to]`,
     )) {
       const from = g.getAttribute("data-edge-from");
       const to = g.getAttribute("data-edge-to");
-      if (from !== to && (from === id || to === id)) n++;
+      if (from === to || !cards.has(from) || !cards.has(to)) continue;
+      if (from === id || to === id) n++;
     }
     return n;
   };

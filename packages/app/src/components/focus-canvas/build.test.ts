@@ -188,6 +188,59 @@ describe("buildFocusCanvas on the dense canvas", () => {
   });
 });
 
+describe("cards that are not boxes (#3031)", () => {
+  // A database is a cylinder <path>, a queue a path with arcs, a cloud a
+  // curve: none of them has a <rect> frame. An edge to one must still be drawn.
+  const example = readFileSync(
+    resolve(__dirname, "../../../../../examples/en/feature-samples/boundary-clusters.krs"),
+    "utf8",
+  );
+  const source = readFocusSource(compile(example).svg);
+
+  it("reads a database card and draws the edge to it", () => {
+    const db = source.cards.get("OrderDB")!;
+    expect(db).toBeDefined();
+    expect(db.markup).toMatch(/^<g[^>]*>\s*<path/);
+    expect(db.box.width).toBeGreaterThan(0);
+    expect(db.box.height).toBeGreaterThan(0);
+    const d = buildFocusCanvas(source, { kind: "node", id: "Checkout" });
+    expect(d.lanes.map((l) => l.to)).toContain("OrderDB");
+    expect(collisions(d)).toEqual([]);
+  });
+
+  it("reads every card of every builtin shape, so no edge is dropped", () => {
+    const shapes = `system S {
+  service Api { label "Api" }
+  database Main { label "Main" }
+  queue Jobs { label "Jobs" }
+  Api -> Main "reads and writes"
+  Api -> Jobs "enqueues"
+}`;
+    const svg = compile(shapes).svg;
+    const s2 = readFocusSource(svg);
+    const ids = [...svg.matchAll(/<g data-node-id="([^"]*)"/g)].map((m) => m[1]);
+    expect(ids.length).toBeGreaterThan(0);
+    expect(ids).toEqual(["Api", "Main", "Jobs"]);
+    for (const id of ids) expect(s2.cards.has(id)).toBe(true);
+    const d = buildFocusCanvas(s2, { kind: "node", id: "Api" });
+    expect(d.lanes.map((l) => l.to).sort()).toEqual(["Jobs", "Main"]);
+    expect(collisions(d)).toEqual([]);
+  });
+
+  it("measures a cylinder from its path and ellipse, not from a missing rect", () => {
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg">` +
+      `<g data-node-id="Db"><path d="M10 25 L10 75 A50 15 0 0 0 110 75 L110 25 A50 15 0 0 1 10 25"/>` +
+      `<ellipse cx="60" cy="25" rx="50" ry="15"/><text x="60" y="50">Db</text></g></svg>`;
+    expect(readFocusSource(svg).cards.get("Db")!.box).toEqual({
+      x: 10,
+      y: 10,
+      width: 100,
+      height: 80,
+    });
+  });
+});
+
 describe("canFocus", () => {
   const source = readFocusSource(denseSvg);
   const edge = source.edges[0];
