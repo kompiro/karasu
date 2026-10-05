@@ -216,6 +216,27 @@ describe("the focus canvas in the preview", () => {
     expect(title(root)).toBe("Teams → Identity & access");
   });
 
+  it("leaves a press on a card's text to text selection too", async () => {
+    const { container: root } = render(pane());
+    await openNode(root, "Identity");
+    const body = root.querySelector<HTMLElement>(".focus-canvas__body")!;
+    const name = root.querySelector('.focus-canvas [data-focus-node="Teams"] text')!;
+
+    expect(fireEvent.mouseDown(name, { button: 0, clientX: 100, clientY: 100 })).toBe(true);
+    expect(body.hasAttribute("data-panning")).toBe(false);
+
+    const range = document.createRange();
+    range.selectNodeContents(name);
+    window.getSelection()!.removeAllRanges();
+    window.getSelection()!.addRange(range);
+    fireEvent.click(name);
+    expect(title(root)).toBe("Identity & access");
+
+    window.getSelection()!.removeAllRanges();
+    fireEvent.click(name);
+    expect(title(root)).toBe("Teams");
+  });
+
   it("stays open when a drag that began in the canvas ends on the backdrop", async () => {
     const { container: root } = render(pane());
     await openNode(root, "Identity");

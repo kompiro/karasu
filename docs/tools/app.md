@@ -107,7 +107,7 @@ The three dimensions behind System / Deploy / Org are explained in
 - **Node in focus** — hover a node to fade the edges it does not touch, then press
   **⇄ Relations** on its corner to open it with every node it connects to: what
   depends on it on one side, what it depends on on the other. Click a node or an
-  edge inside to move there, or drag to move the view; **← Back** returns,
+  edge inside to move there, or drag to move the view (a press on text selects it instead); **← Back** returns,
   **Esc** closes.
 - **Cross-view navigation** — jump between related views, e.g. from a service in
   **System** to where it runs in **Deploy**, or to the team that owns it in

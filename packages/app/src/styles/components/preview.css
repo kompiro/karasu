@@ -296,8 +296,10 @@
   cursor: grabbing;
 }
 
-/* Labels are text to read and copy: a press on one selects, it does not pan. */
-.preview-container .focus-canvas__label {
+/* Text is there to read and copy, a label's and a card's alike: a press on it
+   selects, it does not pan. */
+.preview-container .focus-canvas__label,
+.preview-container .focus-canvas__card text {
   cursor: text;
   user-select: text;
 }

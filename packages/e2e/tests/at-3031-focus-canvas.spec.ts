@@ -220,9 +220,25 @@ test.describe("AT-3031 focus canvas", () => {
 
     // Dragging moves the view, as on the main canvas.
     const before = await body.evaluate((el) => [el.scrollLeft, el.scrollTop]);
-    const box = (await body.boundingBox())!;
-    const cx = box.x + box.width / 2;
-    const cy = box.y + box.height / 2;
+    // From a point that is not text: a press on text selects instead.
+    const { cx, cy } = await body.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      for (let dy = 0.5; dy < 0.95; dy += 0.05) {
+        for (let dx = 0.5; dx < 0.95; dx += 0.05) {
+          const x = r.left + r.width * dx;
+          const y = r.top + r.height * dy;
+          const hit = document.elementFromPoint(x, y);
+          if (
+            hit &&
+            el.contains(hit) &&
+            !hit.closest(".focus-canvas__label, .focus-canvas__card text")
+          ) {
+            return { cx: x, cy: y };
+          }
+        }
+      }
+      throw new Error("no point in the panel that is not text");
+    });
     await page.mouse.move(cx, cy);
     await page.mouse.down();
     await page.mouse.move(cx + 120, cy + 60, { steps: 6 });
@@ -273,6 +289,31 @@ test.describe("AT-3031 focus canvas", () => {
       await page.evaluate(() => window.getSelection()?.toString().length ?? 0),
     ).toBeGreaterThan(0);
     expect(await body.evaluate((el) => [el.scrollLeft, el.scrollTop])).toEqual(held);
+    await expect(page.locator(".focus-canvas__title")).toHaveText("Identity & access");
+
+    // The same for what a card says: its name selects, the view stays put.
+    await page.evaluate(() => window.getSelection()?.removeAllRanges());
+    const n = await page.evaluate(() => {
+      const panel = document.querySelector<HTMLElement>(".focus-canvas__body")!;
+      const text = document.querySelector('.focus-canvas [data-focus-node="Identity"] text')!;
+      const f = text.getBoundingClientRect();
+      const b = panel.getBoundingClientRect();
+      panel.scrollLeft += f.left - b.left - (b.width - f.width) / 2;
+      panel.scrollTop += f.top - b.top - (b.height - f.height) / 2;
+      const r = text.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + 1, r.top + r.height / 2);
+      return hit === text ? { x: r.left, y: r.top, width: r.width, height: r.height } : null;
+    });
+    expect(n).not.toBeNull();
+    const still = await body.evaluate((el) => [el.scrollLeft, el.scrollTop]);
+    await page.mouse.move(n!.x + 1, n!.y + n!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(n!.x + n!.width - 1, n!.y + n!.height / 2, { steps: 6 });
+    await page.mouse.up();
+    expect(await page.evaluate(() => window.getSelection()?.toString() ?? "")).toContain(
+      "Identity",
+    );
+    expect(await body.evaluate((el) => [el.scrollLeft, el.scrollTop])).toEqual(still);
     await expect(page.locator(".focus-canvas__title")).toHaveText("Identity & access");
   });
 });

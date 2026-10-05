@@ -71,11 +71,13 @@ type: product
 
   > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › the focus canvas in the preview › walks the graph: a card moves to that node, a lane to that pair, Back returns
 
-- [x] canvas と同じく、ドラッグで表示範囲を動かせる。ボタンを離せばそこで止まり、動かしたドラッグは離した位置の card や行のクリックにならない。ラベルの上で押したときは動かさず、文字を選択できる（選択を終えても別の組へは移らない）
+- [x] canvas と同じく、ドラッグで表示範囲を動かせる。ボタンを離せばそこで止まり、動かしたドラッグは離した位置の card や行のクリックにならない。ラベルや card の文字の上で押したときは動かさず、文字を選択できる（選択を終えても別のノードや組へは移らない）
 
   > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › the focus canvas in the preview › moves the view on a drag, and a drag that ends on a card does not open it
 
   > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › the focus canvas in the preview › leaves a press on a label to text selection, and does not navigate after one
+
+  > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › the focus canvas in the preview › leaves a press on a card's text to text selection too
 
   > ✅ Automated — `packages/e2e/tests/at-3031-focus-canvas.spec.ts` › AT-3031 focus canvas › a narrow preview keeps the same picture and scrolls, opening on the node
 

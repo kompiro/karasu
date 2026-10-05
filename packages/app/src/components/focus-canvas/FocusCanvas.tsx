@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "../../i18n/index.js";
 import { buildFocusCanvas, type Focus, type FocusSource } from "./build.js";
 
+/** Text on the canvas that a press selects instead of panning: edge labels and what the cards say. */
+const SELECTABLE = ".focus-canvas__label, .focus-canvas__card text";
+
 /** Movement under which a press is a click, as on the main canvas (`PreviewPane`). */
 const CLICK_THRESHOLD = 3;
 
@@ -74,9 +77,9 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
 
   const onBodyMouseDown = (e: MouseEvent) => {
     if (e.button !== 0 || !bodyRef.current) return;
-    // A press on a label is for selecting its text, which this canvas exists
-    // to show in full: the browser's selection, not a pan.
-    if ((e.target as Element).closest(".focus-canvas__label")) return;
+    // A press on text (a label, or what a card says) is for selecting it: the
+    // browser's selection, not a pan. Panning starts from anywhere else.
+    if ((e.target as Element).closest(SELECTABLE)) return;
     e.preventDefault(); // no text selection while dragging
     suppressClick.current = false;
     pan.current = {
@@ -138,7 +141,7 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
       suppressClick.current = false;
       return;
     }
-    // The end of a text selection is not a click on the lane under it.
+    // The end of a text selection is not a click on the card or lane under it.
     if (window.getSelection()?.toString()) return;
     const target = e.target as Element;
     const card = target.closest("[data-focus-node]")?.getAttribute("data-focus-node");
