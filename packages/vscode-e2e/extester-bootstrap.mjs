@@ -62,6 +62,9 @@ export async function runExtester({ testGlob, seedFixtures }) {
   });
 
   const extester = new ExTester(storage);
+  // "max" is the newest VS Code this ExTester declares in `supportedVersions`,
+  // not latest stable, so it caps `engines.vscode` (guarded by
+  // scripts/ci/vscode-version-policy.test.ts).
   await extester.downloadCode("max");
   await extester.downloadChromeDriver("max");
   await extester.installVsix({ vsixFile: vsixOut, useYarn: false });

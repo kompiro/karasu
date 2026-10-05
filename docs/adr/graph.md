@@ -167,6 +167,14 @@ flowchart TD
     ADR_2839["ADR-2839<br/>dependabot-triage workflow の週次 cron を止め、dispatc..."]
     ADR_2877["ADR-2877<br/>Dependabot トリアージ 2026-09-22：changesets 3 は CI が..."]
     ADR_2898["ADR-2898<br/>/code-review は draft PR に当て、CodeRabbit の初回レビューは..."]
+    ADR_2939["ADR-2939<br/>リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の Gi..."]
+    ADR_2949["ADR-2949<br/>auto-merge する ADR-only PR は CodeRabbit の自動レビュー対..."]
+    ADR_2983["ADR-2983<br/>Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upst..."]
+    ADR_2985["ADR-2985<br/>Dependabot security alert 2026-09-29（`undici` の..."]
+    ADR_3000["ADR-3000<br/>karasu-nest を main への push で自動 deploy し、対象 path..."]
+    ADR_3002["ADR-3002<br/>Dependabot security alert 2026-09-30（5 つの overr..."]
+    ADR_3011["ADR-3011<br/>正否が差分だけで決まる小さな PR は、人間の承認を得て skip-coderabbit ラベ..."]
+    ADR_3020["ADR-3020<br/>karasu-nest を karasu-nest.kompiro.dev カスタムドメインだ..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -312,6 +320,8 @@ flowchart TD
     ADR_2592["ADR-2592<br/>ギャラリーの構築 — 投稿は repo に紐づかず、投稿者が自分で管理する"]
     ADR_2655["ADR-2655<br/>nest のセッション期限を idle 窓と絶対上限に分ける"]
     ADR_2859["ADR-2859<br/>spike ブランチは答える Issue 番号で名付け、その Issue が open なあいだ残す"]
+    ADR_2969["ADR-2969<br/>運用者だけの段階をコードで守る — サインインを数値 user id の許可リストに限る"]
+    ADR_2993["ADR-2993<br/>ギャラリーの投稿ページを origin を持たない sandbox の viewer として配..."]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   end
   subgraph renderer["renderer"]
@@ -362,10 +372,16 @@ flowchart TD
     ADR_2521["ADR-2521<br/>multi-system ルートビューは single-system パイプラインの計算に合わせる"]
     ADR_2593["ADR-2593<br/>キャンバスの空き空間を目的関数にして行幅予算を選ぶ"]
     ADR_2598["ADR-2598<br/>層間チャネルに容量を持たせ、配線の需要を配置へ返す"]
+    ADR_2611["ADR-2611<br/>層をまたぐエッジは内部の列へ入り、列の無い行にだけ列を 1 本予約する"]
+    ADR_2631["ADR-2631<br/>トランクの合流と分岐を本数で読ませ、交差マークを装飾で潰さない"]
     ADR_2714["ADR-2714<br/>deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
     ADR_2756["ADR-2756<br/>root view の各 system フレームは自分の子から導出したエッジ集合を持つ"]
+    ADR_2761["ADR-2761<br/>行幅予算の候補ラダーの長さを計測して 8 段にする"]
     ADR_2802["ADR-2802<br/>組み込みアイコンは core が import 時に登録し、解決しない url() は値 va..."]
     ADR_2803["ADR-2803<br/>shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通ス..."]
+    ADR_2906["ADR-2906<br/>icon display mode は非推奨のまま据え置き、削除する major はまだ決めない"]
+    ADR_2917["ADR-2917<br/>複数 system のルートビューは同名ノードを両方描き、要素の id は bare id の..."]
+    ADR_3022["ADR-3022<br/>edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は foc..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -424,6 +440,7 @@ flowchart TD
     ADR_1316["ADR-1316<br/>VS Code 拡張を Entra ID + GitHub OIDC（managed iden..."]
     ADR_1417["ADR-1417<br/>LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
     ADR_2456["ADR-2456<br/>LSP の position drift は position encoding ではなく v..."]
+    ADR_2782["ADR-2782<br/>VS Code の floor を 1.137 に上げ、ExTester の vscode-m..."]
     ADR_9014["ADR-9014<br/>VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画"]
   end
   ADR_14 --> ADR_9003
@@ -554,8 +571,19 @@ flowchart TD
   ADR_2585 --> ADR_1870
   ADR_2585 --> ADR_644
   ADR_2592 --> ADR_2578
+  ADR_2611 --> ADR_2598
   ADR_2655 --> ADR_2578
+  ADR_2782 --> ADR_2562
   ADR_2818 --> ADR_2714
+  ADR_2917 --> ADR_1884
+  ADR_2917 --> ADR_2714
+  ADR_2969 --> ADR_2592
+  ADR_2993 --> ADR_2592
+  ADR_2993 --> ADR_2578
+  ADR_3000 --> ADR_2578
+  ADR_3000 --> ADR_2969
+  ADR_3020 --> ADR_2578
+  ADR_3020 --> ADR_2969
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -573,6 +601,7 @@ flowchart TD
   ADR_2578 -.supersedes.-> ADR_1994
   ADR_2716 -.supersedes.-> ADR_2640
   ADR_2807 -.supersedes.-> ADR_2805
+  ADR_2906 -.supersedes.-> ADR_2376
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -886,7 +915,7 @@ flowchart TD
   class ADR_2356 accepted
   class ADR_2360 accepted
   class ADR_2366 accepted
-  class ADR_2376 accepted
+  class ADR_2376 superseded
   class ADR_2390 accepted
   class ADR_2394 accepted
   class ADR_2397 accepted
@@ -924,8 +953,10 @@ flowchart TD
   class ADR_2596 accepted
   class ADR_2597 accepted
   class ADR_2598 accepted
+  class ADR_2611 accepted
   class ADR_2623 accepted
   class ADR_2628 accepted
+  class ADR_2631 accepted
   class ADR_2640 superseded
   class ADR_2643 accepted
   class ADR_2648 accepted
@@ -938,7 +969,9 @@ flowchart TD
   class ADR_2716 accepted
   class ADR_2753 accepted
   class ADR_2756 accepted
+  class ADR_2761 accepted
   class ADR_2773 accepted
+  class ADR_2782 accepted
   class ADR_2786 accepted
   class ADR_2802 accepted
   class ADR_2803 accepted
@@ -953,6 +986,19 @@ flowchart TD
   class ADR_2859 accepted
   class ADR_2877 accepted
   class ADR_2898 accepted
+  class ADR_2906 accepted
+  class ADR_2917 accepted
+  class ADR_2939 accepted
+  class ADR_2949 accepted
+  class ADR_2969 accepted
+  class ADR_2983 accepted
+  class ADR_2985 accepted
+  class ADR_2993 accepted
+  class ADR_3000 accepted
+  class ADR_3002 accepted
+  class ADR_3011 accepted
+  class ADR_3020 accepted
+  class ADR_3022 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

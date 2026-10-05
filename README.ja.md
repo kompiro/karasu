@@ -68,12 +68,32 @@ npx --yes karasu@latest serve .
 全コマンドは [CLI の使い方](https://kompiro.github.io/karasu/ja/tools/cli/)
 を参照してください。
 
-### 3. AI agent でリポジトリをリバースエンジニアリングする
+### 3. AI agent とモデルを作る
 
-[`reverse-architecture` skill](.claude/skills/reverse-architecture/SKILL.md) を使うと、
-リポジトリを読める AI agent が既存のコードベースを調査し、karasu model を構築します。
-ドメイン構造には agent の判断を使い、CLI による決定的な抽出と検証を組み合わせる
-ワークフローです。
+2 つの agent skill が karasu CLI を使ってモデルを作ります:
+
+- [`karasu-author`](packages/skills/skills/karasu-author/SKILL.md) は、自分の
+  システムのモデルを会話しながら作り・更新します。1 層ずつインタビューし、
+  コードで分かることはコードを読んで質問を省き、変更のたびに `karasu check`
+  で検証します。
+- [`reverse-architecture`](packages/skills/skills/reverse-architecture/SKILL.md)
+  は、リポジトリを読める AI agent が既存のコードベースを調査し、karasu model を
+  構築します。ドメイン構造には agent の判断を使い、CLI による決定的な抽出と
+  検証を組み合わせます。
+
+skill は karasu CLI を使うので、`npm i -g karasu` で CLI も入れてください。
+Claude Code では plugin として入れられます:
+
+```text
+/plugin marketplace add kompiro/karasu
+/plugin install karasu@karasu
+```
+
+ほかのエージェントでは、エージェントが skill を読むディレクトリにコピーします:
+
+```bash
+npx karasu skill install --dir .agents/skills
+```
 
 生成物はレビューして進化させるための地図であり、完全な正解を主張するものではありません。
 karasu は AI がなくても使えます。モデルは plain text で、人間が編集でき、

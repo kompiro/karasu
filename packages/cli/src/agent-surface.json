@@ -1,0 +1,46 @@
+{
+  "commands": {
+    "serve": ["--port", "-p"],
+    "render": ["--format", "--include-matrix", "--output", "--theme", "--view", "-o"],
+    "check": [],
+    "translate": [
+      "--database",
+      "--emit-bindings",
+      "--emit-crud-decoration",
+      "--from",
+      "--granularity",
+      "--map",
+      "--output",
+      "--service",
+      "--system",
+      "-o"
+    ],
+    "append": [],
+    "apply": [],
+    "remove": [],
+    "insert": [],
+    "diff": ["--output", "--view", "-o"],
+    "fmt": ["--check", "--stdin"],
+    "tidy-style": ["--check", "--no-merge", "--stdin"],
+    "lint-style": ["--stdin"],
+    "matrix": [
+      "--external",
+      "--format",
+      "--infra",
+      "--no-external",
+      "--no-totals",
+      "--omit-empty",
+      "--output",
+      "--service",
+      "--writes-only",
+      "-o"
+    ],
+    "coverage": ["--format", "--output", "--threshold", "-o"],
+    "team-dependencies": ["--format", "--output", "-o"],
+    "subtree": ["--output", "--with-ancestors", "-o"],
+    "capabilities": ["--json"],
+    "skill": [],
+    "skill install": ["--dir", "--force"],
+    "skill path": []
+  }
+}

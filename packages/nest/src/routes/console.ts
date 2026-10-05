@@ -255,6 +255,7 @@ export async function consoleSubmit(context: RouteContext): Promise<Response> {
     {
       title: validated.title,
       krs: validated.krs,
+      description: validated.description,
       visibility: draft.unlisted ? "unlisted" : "public",
     },
     new Date(),
@@ -376,7 +377,9 @@ export async function consoleReplace(context: RouteContext): Promise<Response> {
   await signed.store.submissions.update(
     owned.submission.accountId,
     owned.submission.slug,
-    { title: validated.title, krs: validated.krs },
+    // `description` is always written, even as `undefined`: a replacement
+    // whose system has none must not keep showing the old document's.
+    { title: validated.title, krs: validated.krs, description: validated.description },
     new Date(),
   );
   return redirect(`/console/s/${owned.id}`);

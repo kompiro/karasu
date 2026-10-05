@@ -124,6 +124,8 @@ export interface PreviewContextValue {
   orgView: OrgViewData;
 
   nodeMetadata: Map<string, NodeMetadata>;
+  /** Metadata keyed by a card's `data-node-path` (#2917). */
+  nodeMetadataByPath: Map<string, NodeMetadata>;
 
   deployBlocks?: DeployBlockInfo[];
   selectedDeployBlockId?: string | null;

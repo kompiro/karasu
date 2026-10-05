@@ -4,7 +4,7 @@ title: "multi-system root view でも Group by: team を効かせる（per-(syst
 status: accepted
 date: 2026-07-16
 topic: renderer
-related_to: [ADR-1858, ADR-1859]
+related_to: [ADR-1858, ADR-1859, ADR-2917]
 scope:
   concerns: []
 ---

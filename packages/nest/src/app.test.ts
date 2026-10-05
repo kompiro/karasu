@@ -26,6 +26,7 @@ describe("handleRequest", () => {
         GITHUB_OAUTH_CLIENT_ID: false,
         GITHUB_OAUTH_CLIENT_SECRET: false,
         NEST_PUBLIC_ORIGIN: false,
+        NEST_SIGN_IN_ALLOWLIST: false,
       },
     });
   });

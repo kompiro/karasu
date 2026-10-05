@@ -76,6 +76,7 @@ import type { LegendUsage } from "../legend/usage.js";
 import type { StyleSheet } from "../types/style.js";
 import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palette.js";
 import { FACET_DIM_OPACITY, type FacetOverlay } from "./facet-overlay.js";
+import { nodePathRefId } from "../parser/node-path.js";
 
 const GHOST_OPACITY = 0.3;
 
@@ -595,6 +596,9 @@ export function renderFromLayout(
     edgeLines,
   } = buildLabelInputs(layoutResult.edges, layoutResult.nodes, edgeStyleFor);
   const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects, edgeLines);
+  // Labels the pass could not seat clear under `label-display: auto` (#3022).
+  // The pass reports them on its inputs; `renderEdge` leaves them off the canvas.
+  const deferredLabels = new Set(labelInputs.filter((l) => l.deferred).map((l) => l.index));
 
   const edgeStroke: { color: string; strokeWidth: number }[] = [];
   let edgeIndex = 0;
@@ -628,6 +632,7 @@ export function renderFromLayout(
       labelPlacements.get(edgeIndex),
       edgeFacets,
       overlay?.colorOf,
+      deferredLabels.has(edgeIndex),
     );
     edgeIndex++;
     const withDim = edgeDimmed ? el("g", { opacity: FACET_DIM_OPACITY }, rendered) : rendered;
@@ -682,7 +687,16 @@ export function renderFromLayout(
   // pick up their resolved style — notably the Icon Mode `shape: url(...)`,
   // without which they hit `defaultNodeStyle` and never render an icon. For
   // system-view nodes `layoutNode.id === nodeId`, so the fallback is a no-op.
-  for (const [nodeId, layoutNode] of layoutResult.nodes) {
+  // The element id — `data-node-id` and every per-node lookup keyed by it — is
+  // the Map key only where the layout says the key is the identity (deploy,
+  // `nodeIdentity: "key"`). Otherwise it is the node's own bare id: the
+  // multi-system root keys its Map by (system, id) so two same-named nodes both
+  // survive the merge, while the id space the app, the outline and the
+  // permalinks read stays the bare id (#2917).
+  const elementIdOf = (mapKey: string, layoutNode: LayoutNode): string =>
+    layoutResult.nodeIdentity === "key" ? mapKey : layoutNode.id;
+  for (const [mapKey, layoutNode] of layoutResult.nodes) {
+    const nodeId = elementIdOf(mapKey, layoutNode);
     const nodeStyle = resolveNodeStyle(styles, nodeId, layoutNode.annotations, layoutNode.id);
     const diffMeta =
       options?.nodeDiffMeta?.get(layoutNode.id) ?? options?.nodeDiffMeta?.get(nodeId);
@@ -1894,6 +1908,9 @@ function renderNode(
     "g",
     {
       "data-node-id": nodeId,
+      // The one node this card stands for, where `data-node-id` may name two
+      // (#2917). Same text form as a deploy container's id (ADR-2714).
+      "data-node-path": node.path ? nodePathRefId(node.path) : undefined,
       "data-node-kind": node.kind,
       "data-has-children": node.hasChildren ? "true" : "false",
       "data-has-description": node.hasDescription ? "true" : "false",
@@ -2527,7 +2544,9 @@ function assignChipZones(
   serviceIdsWithDeploy?: Set<string>,
 ): void {
   const applyShapeInsets = layoutResult.shapeInsetsApplied ?? false;
-  for (const [nodeId, node] of layoutResult.nodes) {
+  for (const [mapKey, node] of layoutResult.nodes) {
+    // Same element-id rule as the node loop in `render` (#2917).
+    const nodeId = layoutResult.nodeIdentity === "key" ? mapKey : node.id;
     // Stamped here rather than in layout even though layout computes the same
     // rectangle for its port keep-outs (#2422): layout's copy predates
     // `normalizeCoordinates`, which shifts the whole canvas. Recomputing from

@@ -204,10 +204,10 @@ describe("the data-handling document matches the code (#1996, #2591)", () => {
 
   it("states the size limits a submitter is actually held to", () => {
     expect(constant("packages/nest/src/store/submissions.ts", "MAX_SUBMISSION_BYTES")).toBe(
-      256 * 1024,
+      1024 * 1024,
     );
     expect(constant("packages/nest/src/store/submissions.ts", "MAX_TITLE_LENGTH")).toBe(120);
-    expect(policy).toContain("1 投稿あたり 256KB");
+    expect(policy).toContain("1 投稿あたり 1MiB");
   });
 
   it("names each prefix the purge is wired for (not that the list is complete)", () => {

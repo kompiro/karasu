@@ -4,7 +4,7 @@ title: キャンバスの空き空間を目的関数にして行幅予算を選�
 status: accepted
 date: 2026-08-27
 topic: renderer
-related_to: [ADR-1737, ADR-1000, ADR-2521, ADR-649]
+related_to: [ADR-1737, ADR-1000, ADR-2521, ADR-649, ADR-2761]
 scope:
   packages: [core]
 assumptions:

@@ -9,6 +9,7 @@ import { PreviewProvider, type PreviewContextValue } from "../state/preview-cont
 import { LocaleProvider } from "../i18n/index.js";
 import { CommandProvider, useCommandRegistry } from "../keyboard/command-context.js";
 import { readSharedProjectFromHash } from "../utils/inline-share.js";
+import { PreviewToolbarSlotContext, type PreviewToolbarSlot } from "./preview-toolbar-slot.js";
 
 afterEach(cleanup);
 
@@ -90,6 +91,7 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
       onBreadcrumbNavigate: noop,
     },
     nodeMetadata: new Map(),
+    nodeMetadataByPath: new Map(),
     onExportSvg: vi.fn<() => void>(),
     isAllLayersOpen: false,
     onAllLayersToggle: vi.fn<() => void>(),
@@ -1157,6 +1159,54 @@ describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
 
     // Eager copy of the private link happened on the same gesture chain.
     expect(await navigator.clipboard.readText()).toBe(copied);
+  });
+});
+
+const EMPTY_SLOT: PreviewToolbarSlot = {};
+const HOST_SLOT: PreviewToolbarSlot = {
+  extras: <button type="button">Host extra</button>,
+  hideShare: true,
+};
+
+describe("PreviewColumn — toolbar slot (#2997)", () => {
+  const toolbarButtons = (container: HTMLElement) =>
+    Array.from(
+      container.querySelectorAll(".preview-toolbar > button, .preview-toolbar > * > button"),
+    )
+      .map((button) => button.getAttribute("aria-label") ?? button.textContent)
+      .filter(Boolean);
+
+  it("leaves the app's toolbar unchanged when no host fills the slot", () => {
+    const props = makeProps({ hasKrsSource: true, getShareBundle: async () => ({ krs: "" }) });
+    const withoutSlot = renderPreview(props);
+    const appButtons = toolbarButtons(withoutSlot.container);
+    cleanup();
+
+    // An empty slot value is what the context defaults to; the toolbar must be
+    // identical to rendering with no provider at all.
+    const withEmptySlot = render(
+      <PreviewToolbarSlotContext.Provider value={EMPTY_SLOT}>
+        <PreviewProvider value={props}>
+          <PreviewColumn />
+        </PreviewProvider>
+      </PreviewToolbarSlotContext.Provider>,
+    );
+    expect(toolbarButtons(withEmptySlot.container)).toEqual(appButtons);
+    expect(screen.getByRole("button", { name: /Share/ })).toBeTruthy();
+  });
+
+  it("appends a host's extras after the toolbar's own controls and can drop Share", () => {
+    const props = makeProps({ hasKrsSource: true, getShareBundle: async () => ({ krs: "" }) });
+    const { container } = render(
+      <PreviewToolbarSlotContext.Provider value={HOST_SLOT}>
+        <PreviewProvider value={props}>
+          <PreviewColumn />
+        </PreviewProvider>
+      </PreviewToolbarSlotContext.Provider>,
+    );
+    expect(screen.queryByRole("button", { name: /Share/ })).toBeNull();
+    const buttons = toolbarButtons(container);
+    expect(buttons.at(-1)).toBe("Host extra");
   });
 });
 

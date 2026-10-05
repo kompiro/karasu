@@ -45,18 +45,28 @@ export function emptyDrilldownState(): DrilldownState {
 /**
  * Transition for a `drillDown` message: descend into `nodeId`.
  *
- * Uses `viewPath` from metadata (includes the system ID prefix) when
- * available, falling back to appending `nodeId` for nodes not in the index.
- * Labels use the raw id for intermediate path segments and the resolved
+ * Resolution order (#2917): the card's own decoded `data-node-path` when the
+ * message carried one, else `viewPath` from metadata (includes the system ID
+ * prefix), else appending `nodeId` to the current path for nodes not in the
+ * index. Labels use the raw id for intermediate path segments and the resolved
  * label for the last (only the clicked node's label is known here).
  */
 export function drillDown(
   state: DrilldownState,
   nodeId: string,
   meta: DrilldownNodeMeta | undefined,
+  /**
+   * The path the clicked card itself carries (`data-node-path`, decoded), which
+   * names exactly one node where `nodeId` may name two (#2917). Wins over the
+   * metadata's index-resolved `viewPath` when present.
+   */
+  nodePath?: readonly string[],
 ): DrilldownState {
   const lastLabel = meta?.label ?? nodeId;
-  const viewPath = meta?.viewPath ?? [...state.viewPath, nodeId];
+  const viewPath =
+    nodePath !== undefined && nodePath.length > 0
+      ? [...nodePath]
+      : (meta?.viewPath ?? [...state.viewPath, nodeId]);
   const viewLabels = viewPath.map((id, i) => (i === viewPath.length - 1 ? lastLabel : id));
   return { viewPath, viewLabels };
 }

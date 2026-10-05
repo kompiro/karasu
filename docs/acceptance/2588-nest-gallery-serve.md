@@ -19,7 +19,9 @@
 
 - [x] AT-A: 図として返る（ソースを返すだけにならない）
 
-  > ✅ Automated — `packages/nest/src/gallery/render.test.ts` › `renders a diagram rather than returning the source`、`packages/nest/src/routes/gallery.test.ts` › `serves an HTML page with the diagram inline`
+  > ✅ Automated — `packages/nest/src/gallery/render.test.ts` › `renders a diagram rather than returning the source`、`packages/nest/src/routes/gallery.test.ts` › `serves the viewer with the submission embedded, not a server-drawn diagram`
+  >
+  > #2998 以降、既定のページで図を描くのはブラウザの viewer で、Worker は `?format=svg` のときだけ描く（[2993-gallery-client-side-rendering](2993-gallery-client-side-rendering.md)）
 
 - [x] AT-B: view 未指定で全 view バンドル、指定すれば単一 view を返す
 
@@ -27,7 +29,7 @@
 
 - [x] AT-C: `format=svg` / `format=krs` で生の SVG と `.krs` を返す
 
-  > ✅ Automated — `packages/nest/src/routes/gallery.test.ts` › `serves the raw SVG and the .krs on request`
+  > ✅ Automated — `packages/nest/src/routes/gallery.test.ts` › `serves the raw SVG and the .krs on request, without the sandbox`
 
 - [x] AT-D: 投稿者が付けたタイトルが HTML にエスケープされて出る
 

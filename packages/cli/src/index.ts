@@ -2,6 +2,7 @@
 import { program } from "commander";
 import { serve } from "./serve.js";
 import { render } from "./render.js";
+import { check } from "./check.js";
 import { translate } from "./translate/index.js";
 import {
   resolveTranslateCliOptions,
@@ -19,7 +20,10 @@ import { matrix } from "./matrix.js";
 import { coverage } from "./coverage.js";
 import { teamDependencies } from "./team-dependencies.js";
 import { subtree } from "./subtree.js";
-import { versionText } from "./version.js";
+import { cliPackageVersion, versionText } from "./version.js";
+import { buildCapabilities, capabilitiesText } from "./capabilities.js";
+import { applyDeprecations, DEPRECATIONS } from "./deprecations.js";
+import { DEFAULT_SKILL_DIR, skillInstall, skillPath } from "./skill.js";
 
 program.name("karasu").description("karasu — architecture diagram tool").version(versionText());
 
@@ -111,6 +115,31 @@ Examples:
       });
     },
   );
+
+program
+  .command("check <file>")
+  .description(
+    "Validate a .krs project (imports included) and write nothing. " +
+      "Prints every diagnostic; exits 1 when any is an error.",
+  )
+  .addHelpText(
+    "after",
+    `
+Runs the same compile as \`karasu render\`, so a file that passes \`check\`
+renders. Use it after every edit, before \`karasu fmt\`: \`fmt\` refuses a file
+with parse errors without saying where they are.
+
+\`lint-style\` checks .krs.style files, not .krs.
+
+Examples:
+  # Validate a project entry file
+  $ karasu check index.krs
+
+  # Edit, then validate before formatting
+  $ echo 'service NewService { label "New" }' | karasu insert ECommerce arch.krs
+  $ karasu check arch.krs && karasu fmt arch.krs`,
+  )
+  .action((file: string) => check(file));
 
 program
   .command("translate <file>")
@@ -564,11 +593,78 @@ Examples:
     });
   });
 
+program
+  .command("capabilities")
+  .description("List this CLI's commands, flags and deprecated names (for skills and scripts)")
+  .option("--json", "Print machine-readable JSON")
+  .addHelpText(
+    "after",
+    `
+Deprecated names still work and print one stderr line:
+  karasu: deprecated: 'old' -> 'new' (since X, removal Y)
+Removed names exit 1 with the same line, starting \`karasu: removed:\`.
+
+Examples:
+  # Check what the installed CLI accepts before calling it
+  $ karasu capabilities --json`,
+  )
+  .action((options: { json?: boolean }) => {
+    const caps = buildCapabilities(program, cliPackageVersion(), DEPRECATIONS);
+    process.stdout.write(
+      options.json ? JSON.stringify(caps, null, 2) + "\n" : capabilitiesText(caps),
+    );
+  });
+
+const skillCommand = program
+  .command("skill")
+  .description("Copy the karasu agent skills into a project (default: .claude/skills)")
+  .addHelpText(
+    "after",
+    `
+Claude Code users can install the skills as a plugin instead:
+  /plugin marketplace add kompiro/karasu
+  /plugin install karasu@karasu
+
+Examples:
+  # Copy every skill into ./.claude/skills
+  $ npx karasu skill install
+
+  # Copy one skill into the directory your agent reads skills from
+  $ npx karasu skill install karasu-author --dir .agents/skills
+
+  # Print where a skill is, to point an agent at it without copying
+  $ karasu skill path karasu-author`,
+  );
+
+skillCommand
+  .command("install [name]")
+  .description("Copy a skill (default: all skills) into <dir>/<name>/")
+  .option("--dir <path>", `Directory to install into (default: ${DEFAULT_SKILL_DIR})`)
+  .option("--force", "Replace a skill that is already installed")
+  .action((name: string | undefined, options: { dir?: string; force?: boolean }) => {
+    for (const target of skillInstall(name, { dir: options.dir, force: options.force === true })) {
+      process.stdout.write(`installed ${target}\n`);
+    }
+  });
+
+skillCommand
+  .command("path [name]")
+  .description("Print the absolute path of a skill (default: the directory holding all skills)")
+  .action((name: string | undefined) => {
+    process.stdout.write(skillPath(name) + "\n");
+  });
+
 export { program };
 
-/* v8 ignore next 5 */
+/* v8 ignore next 12 */
 if (!process.env.VITEST) {
-  program.parseAsync().catch((err: unknown) => {
+  const resolved = applyDeprecations(process.argv, DEPRECATIONS);
+  if (resolved.error) {
+    process.stderr.write(resolved.error);
+    process.exit(1);
+  }
+  for (const line of resolved.notices) process.stderr.write(line);
+  program.parseAsync(resolved.argv).catch((err: unknown) => {
     process.stderr.write(`Error: ${err instanceof Error ? err.message : String(err)}\n`);
     process.exit(1);
   });

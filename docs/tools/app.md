@@ -100,6 +100,15 @@ The three dimensions behind System / Deploy / Org are explained in
   breadcrumb tracks your depth.
 - **Node details** — click a leaf node (or its info button) to open a side panel
   with the node's id, description, tags, and related connections.
+- **Edge in focus** — click an edge to open a second canvas over the preview with
+  its two nodes and every edge between them, labels in full. A dense diagram
+  shortens long labels and leaves off the ones that would overlap; this is where
+  they are read.
+- **Node in focus** — hover a node to fade the edges it does not touch, then press
+  **⇄ Relations** on its corner to open it with every node it connects to: what
+  depends on it on one side, what it depends on on the other. Click a node or an
+  edge inside to move there, or drag to move the view (a press on text selects it instead); **← Back** returns,
+  **Esc** closes.
 - **Cross-view navigation** — jump between related views, e.g. from a service in
   **System** to where it runs in **Deploy**, or to the team that owns it in
   **Org**.
@@ -209,8 +218,8 @@ Settings holds the preferences that outlive a single diagram: **Language**,
 - **Shape cards (default)** — variable-width cards sized to their content.
 - **Icon cards (deprecated)** — every node drawn at a fixed size with its
   kind's icon, so the layout stays dense and stable however long the labels
-  are. **This mode is deprecated and will be removed in the next major
-  version.** Move to shape cards with an external SVG icon
+  are. **This mode is deprecated and will be removed in a future major
+  version; which release removes it is not decided yet.** Move to shape cards with an external SVG icon
   (`shape: url()`): in shape mode such an icon now paints the card frame you
   declare and keeps its aspect ratio, so switching costs you neither the
   frame nor the drawing (see `docs/spec/style.md` § shape property).

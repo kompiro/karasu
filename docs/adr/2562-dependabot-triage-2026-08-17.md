@@ -7,7 +7,7 @@ topic: build
 scope:
   packages: [app, cli, core, i18n, lsp, nest, vscode]
   concerns: [dependencies, ci]
-related_to: [ADR-2447, ADR-769, ADR-2397, ADR-199, ADR-784]
+related_to: [ADR-2447, ADR-769, ADR-2397, ADR-199, ADR-784, ADR-2782]
 assumptions:
   - "file: scripts/ci/vscode-version-policy.test.ts"
   # 本 ADR が決めたのは engines.vscode と @types/vscode を同値に保ち stable に

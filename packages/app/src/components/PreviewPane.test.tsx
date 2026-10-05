@@ -905,3 +905,82 @@ describe("PreviewPane in-place expansion controls (#1921)", () => {
     expect(onExpandToggle).toHaveBeenCalledWith("OrderService");
   });
 });
+
+describe("data-node-path resolves the clicked card (#2917)", () => {
+  // Two cards share `data-node-id="Api"` on the multi-system root; each
+  // carries its own `data-node-path`. The click must drill into, and open the
+  // panel of, the card that was clicked — not the bare-id index winner.
+  const svg = `
+    <div data-node-id="Api" data-node-path="Shop.Api" data-has-children="true"></div>
+    <div data-node-id="Api" data-node-path="Admin.Api" data-has-children="true"></div>
+    <div data-node-id="Leaf" data-node-path="Admin.Leaf" data-has-children="false"></div>
+    <div data-node-id="Leaf" data-node-path="Shop.Leaf" data-has-children="false"></div>
+  `;
+  const metadata = (label: string, viewPath: string[]): NodeMetadata => ({
+    kind: "service",
+    label,
+    links: [],
+    tags: [],
+    annotations: [],
+    hasChildren: false,
+    viewPath,
+  });
+  const previewOf = (container: HTMLElement) =>
+    container.querySelector(".preview-container") as HTMLElement;
+
+  it("drills into the clicked card's own path, not the bare-id index winner", () => {
+    const onDrillDown = vi.fn<(path: string[]) => void>();
+    const nodeMetadata = new Map([["Api", metadata("Api", ["Shop", "Api"])]]);
+    const { container } = render(
+      <PreviewPane
+        {...baseProps()}
+        svg={svg}
+        nodeMetadata={nodeMetadata}
+        onDrillDown={onDrillDown}
+      />,
+    );
+    click(previewOf(container), () => container.querySelector('[data-node-path="Admin.Api"]')!);
+    expect(onDrillDown).toHaveBeenCalledWith(["Admin", "Api"]);
+  });
+
+  it("decodes a quoted path segment before drilling", () => {
+    const onDrillDown = vi.fn<(path: string[]) => void>();
+    const quoted = `<div data-node-id="www.example.com" data-node-path="Weird.&quot;www.example.com&quot;" data-has-children="true"></div>`;
+    const { container } = render(
+      <PreviewPane {...baseProps()} svg={quoted} onDrillDown={onDrillDown} />,
+    );
+    click(previewOf(container), () => container.querySelector("[data-node-path]")!);
+    expect(onDrillDown).toHaveBeenCalledWith(["Weird", "www.example.com"]);
+  });
+
+  it("opens the detail panel with the clicked card's own metadata", () => {
+    const nodeMetadata = new Map([
+      ["Leaf", metadata("Leaf in Admin (index winner)", ["Admin", "Leaf"])],
+    ]);
+    const nodeMetadataByPath = new Map([
+      ["Admin.Leaf", metadata("Leaf in Admin", ["Admin", "Leaf"])],
+      ["Shop.Leaf", metadata("Leaf in Shop", ["Shop", "Leaf"])],
+    ]);
+    const { container, getByText, queryByText } = render(
+      <PreviewPane
+        {...baseProps()}
+        svg={svg}
+        nodeMetadata={nodeMetadata}
+        nodeMetadataByPath={nodeMetadataByPath}
+      />,
+    );
+    click(previewOf(container), () => container.querySelector('[data-node-path="Shop.Leaf"]')!);
+    expect(getByText("Leaf in Shop")).toBeTruthy();
+    expect(queryByText("Leaf in Admin (index winner)")).toBeNull();
+  });
+
+  it("falls back to the bare-id metadata for a card without a path", () => {
+    const bare = `<div data-node-id="Leaf" data-has-children="false"></div>`;
+    const nodeMetadata = new Map([["Leaf", metadata("Bare leaf", ["Leaf"])]]);
+    const { container, getByText } = render(
+      <PreviewPane {...baseProps()} svg={bare} nodeMetadata={nodeMetadata} />,
+    );
+    click(previewOf(container), () => container.querySelector('[data-node-id="Leaf"]')!);
+    expect(getByText("Bare leaf")).toBeTruthy();
+  });
+});

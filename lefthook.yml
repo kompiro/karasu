@@ -98,7 +98,7 @@ pre-push:
       # parser has never accepted (#2415). Globbed on the parser too: a grammar
       # change is exactly what turns a green snippet red. The vitest mirror in
       # scripts/lint runs it in CI.
-      glob: "{docs/acceptance/**,docs/spec/**,docs/guide/**,docs/concepts*.md,packages/core/src/parser/**,scripts/lint/krs-fences.ts}"
+      glob: "{docs/acceptance/**,docs/spec/**,docs/guide/**,docs/concepts*.md,packages/skills/skills/**,packages/core/src/parser/**,scripts/lint/krs-fences.ts}"
       run: pnpm run lint:krs-fences
     app-shortcut-docs-sync:
       # Every `keybinding` chord registered in packages/app must be documented
@@ -108,14 +108,17 @@ pre-push:
       glob: "{packages/app/src/**,docs/tools/**,scripts/lint/app-shortcut-docs-sync.ts}"
       run: pnpm run lint:app-shortcut-docs-sync
     skill-cli-refs:
-      # Every `karasu <cmd>` hardcoded in .claude/skills/** must be a registered
+      # Every `karasu <cmd>` hardcoded in a skill (.claude/skills/**,
+      # packages/skills/skills/**) must be a registered
       # CLI command (Issue #2093). Catches a skill referencing a renamed/removed
       # command. Globbed on the CLI's command surface too — index.ts and the
       # translate adapters — so it re-runs (and prints its residual advisory)
       # when that surface changes, i.e. on exactly the PR that can make a skill's
-      # CLI claims stale (#2084 lint-style, #2090 wrangler). The vitest mirror in
-      # scripts/lint runs it in CI.
-      glob: "{.claude/skills/**,packages/cli/src/index.ts,packages/core/src/translate/**,scripts/lint/skill-cli-refs.ts}"
+      # CLI claims stale (#2084 lint-style, #2090 wrangler). It also fails a
+      # skill that uses a name listed in the CLI's deprecation table (#2961), so
+      # deprecations.ts is in the glob. The vitest mirror in scripts/lint runs
+      # it in CI.
+      glob: "{.claude/skills/**,packages/skills/skills/**,packages/cli/src/index.ts,packages/cli/src/deprecations.ts,packages/core/src/translate/**,scripts/lint/skill-cli-refs.ts}"
       run: pnpm run lint:skill-cli-refs
     skill-reference-bundle-sync:
       # The reverse-architecture skill ships byte-identical copies of the specs
@@ -124,7 +127,7 @@ pre-push:
       # docs/ is what puts the copy out of date, and editing the copy directly
       # is the mistake the notice in the bundle's README warns against.
       # Fix with `pnpm run lint:skill-reference-bundle-sync --write`.
-      glob: "{docs/spec/**,docs/guide/notation-cookbook.md,.claude/skills/reverse-architecture/**,scripts/lint/skill-reference-bundle-sync.ts}"
+      glob: "{docs/spec/**,docs/guide/notation-cookbook.md,packages/skills/skills/**,scripts/lint/skill-reference-bundle-sync.ts}"
       run: pnpm run lint:skill-reference-bundle-sync
     builtin-icons-check:
       # packages/core/src/shapes/builtin-icons.generated.ts is generated from

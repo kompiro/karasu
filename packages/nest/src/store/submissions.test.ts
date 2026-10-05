@@ -88,6 +88,17 @@ describe("SubmissionStore", () => {
     expect((await store.get(42, created.slug))?.visibility).toBe("unlisted");
   });
 
+  it("keeps the description it was given, and clears it when a replacement has none (#2995)", async () => {
+    const kv = new MemoryKV();
+    const store = new SubmissionStore(kv);
+    const created = await store.create(42, { ...input, description: "The storefront." }, at);
+    expect((await store.get(42, created.slug))?.description).toBe("The storefront.");
+    await store.update(42, created.slug, { krs: KRS, description: undefined }, later);
+    const stored = JSON.parse((await kv.get(`sub/v1/42/${created.slug}`)) as string);
+    expect(stored).not.toHaveProperty("description");
+    expect((await store.get(42, created.slug))?.description).toBeUndefined();
+  });
+
   it("reads a corrupt record as absent rather than throwing", async () => {
     const kv = new MemoryKV();
     const store = new SubmissionStore(kv);
@@ -130,6 +141,6 @@ describe("SubmissionStore", () => {
   });
 
   it("declares a cap far inside what KV holds", async () => {
-    expect(MAX_SUBMISSION_BYTES).toBe(256 * 1024);
+    expect(MAX_SUBMISSION_BYTES).toBe(1024 * 1024);
   });
 });

@@ -7,6 +7,7 @@ import {
   nodePathKey,
   nodePathMatchesSuffix,
   nodePathRefId,
+  parseNodePathRefId,
   resolveNodePathBySuffix,
 } from "./node-path.js";
 import { Parser } from "./parser.js";
@@ -247,5 +248,32 @@ describe("nodePathRefId (#2714)", () => {
       ["Shop", ""],
     ];
     expect(new Set(paths.map(nodePathRefId)).size).toBe(paths.length);
+  });
+});
+
+describe("parseNodePathRefId (#2917)", () => {
+  it("round-trips every path nodePathRefId can produce", () => {
+    const paths: string[][] = [
+      ["Api"],
+      ["Shop", "Api"],
+      ["Weird", "www.example.com"],
+      ["Sys", 'say "hi"'],
+      ["Sys", "back\\slash"],
+      ["Sys", ""],
+      ["Sys", 'a.b"c\\d'],
+      ["a.b", "c"],
+    ];
+    for (const p of paths) {
+      expect(parseNodePathRefId(nodePathRefId(p))).toEqual(p);
+    }
+  });
+
+  it("tells a quoted dotted id from a two-segment path", () => {
+    expect(parseNodePathRefId("Shop.Api")).toEqual(["Shop", "Api"]);
+    expect(parseNodePathRefId('"Shop.Api"')).toEqual(["Shop.Api"]);
+  });
+
+  it("decodes the empty string to no segments", () => {
+    expect(parseNodePathRefId("")).toEqual([]);
   });
 });

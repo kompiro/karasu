@@ -1,0 +1,12 @@
+{
+  "name": "karasu",
+  "description": "Skills for karasu, the text-based architecture modeling tool: reverse-engineer a repository into a .krs model.",
+  "author": {
+    "name": "kompiro",
+    "url": "https://github.com/kompiro"
+  },
+  "homepage": "https://github.com/kompiro/karasu",
+  "repository": "https://github.com/kompiro/karasu",
+  "license": "Apache-2.0",
+  "keywords": ["karasu", "architecture", "krs"]
+}

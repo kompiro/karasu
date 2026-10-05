@@ -1,5 +1,25 @@
 # karasu-vscode
 
+## 0.3.0
+
+### Minor Changes
+
+- afb3f03: Raise the minimum VS Code version to 1.137. `engines.vscode` keeps tracking
+  `@types/vscode`, so the extension is typechecked against exactly the API level it
+  advertises. VS Code ships weekly and auto-updates, so hosts at or above 1.137 are
+  the norm; installs on 1.125 through 1.136 stay on the previously published version.
+
+### Patch Changes
+
+- 612aa45: Preview drill-down and the detail panel resolve the clicked card by its
+  `data-node-path` (#2917): with two same-named services in different systems,
+  clicking the card inside `Admin` now drills into `Admin` and shows `Admin`'s
+  metadata, instead of the bare-id winner. Cards without a path behave as before.
+- Updated dependencies:
+  - @karasu-tools/core@0.3.1
+  - @karasu-tools/i18n@0.0.1
+  - @karasu-tools/lsp@0.1.0
+
 ## 0.2.0
 
 ### Minor Changes

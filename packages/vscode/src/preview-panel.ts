@@ -4,6 +4,7 @@ import {
   isSafeLinkUrl,
   type DiagramTheme,
   type NodeMetadata,
+  parseNodePathRefId,
 } from "@karasu-tools/core";
 import { resolveLocaleTag } from "@karasu-tools/i18n";
 import { marked } from "marked";
@@ -22,6 +23,7 @@ import {
   isNodeId,
   isValidNavIndex,
   isViewType,
+  isOptionalNodePath,
 } from "./message-validation.js";
 import { diagramThemeFromColorTheme } from "./theme-mapping.js";
 import { VsCodeFileSystemProvider } from "./vscode-fs-provider.js";
@@ -73,6 +75,8 @@ export class PreviewPanel {
   private _theme: DiagramTheme = diagramThemeFromColorTheme(vscode.window.activeColorTheme.kind);
   private _drilldown: DrilldownState = emptyDrilldownState();
   private _lastNodeMetadata: Map<string, NodeMetadata> | undefined;
+  /** The same metadata keyed by a card's `data-node-path` (#2917); system view only. */
+  private _lastNodeMetadataByPath: Map<string, NodeMetadata> | undefined;
   private _currentDocument: vscode.TextDocument | undefined;
   private readonly _disposables: vscode.Disposable[] = [];
   private _disposed = false;
@@ -95,6 +99,7 @@ export class PreviewPanel {
         nodeId?: unknown;
         index?: unknown;
         url?: unknown;
+        nodePath?: unknown;
       }) => {
         // The webview is a trust boundary: messages it posts are tainted and
         // must be validated here before acting on them. See message-validation.ts.
@@ -103,11 +108,24 @@ export class PreviewPanel {
           this._viewType = message.viewType;
           this._drilldown = emptyDrilldownState();
           void this._rerender();
-        } else if (message.type === "drillDown" && isNodeId(message.nodeId)) {
+        } else if (
+          message.type === "drillDown" &&
+          isNodeId(message.nodeId) &&
+          isOptionalNodePath(message.nodePath)
+        ) {
+          // The card's own path names one node where the bare id may name two
+          // (#2917): read its metadata by path and drill to that path.
+          const byPath =
+            message.nodePath !== undefined
+              ? this._lastNodeMetadataByPath?.get(message.nodePath)
+              : undefined;
           // NodeMetadata satisfies DrilldownNodeMeta structurally; the
           // annotation records the subset the transition actually reads.
-          const meta: DrilldownNodeMeta | undefined = this._lastNodeMetadata?.get(message.nodeId);
-          this._drilldown = drillDown(this._drilldown, message.nodeId, meta);
+          const meta: DrilldownNodeMeta | undefined =
+            byPath ?? this._lastNodeMetadata?.get(message.nodeId);
+          const nodePath =
+            message.nodePath !== undefined ? parseNodePathRefId(message.nodePath) : undefined;
+          this._drilldown = drillDown(this._drilldown, message.nodeId, meta, nodePath);
           void this._rerender();
         } else if (
           message.type === "navigateTo" &&
@@ -229,66 +247,84 @@ export class PreviewPanel {
       });
       svg = result.svg;
       this._lastNodeMetadata = result.diagramType !== "org" ? result.nodeMetadata : undefined;
+      this._lastNodeMetadataByPath =
+        result.diagramType === "system" ? result.nodeMetadataByPath : undefined;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="60">
         <text x="10" y="30" fill="#f44" font-family="monospace" font-size="13">Error: ${escapeHtml(msg)}</text>
       </svg>`;
     }
-    this._panel.webview.html = this._buildHtml(svg, this._lastNodeMetadata);
+    this._panel.webview.html = this._buildHtml(
+      svg,
+      this._lastNodeMetadata,
+      this._lastNodeMetadataByPath,
+    );
   }
 
-  private _buildHtml(svg: string, nodeMetadata?: Map<string, NodeMetadata>): string {
+  private _buildHtml(
+    svg: string,
+    nodeMetadata?: Map<string, NodeMetadata>,
+    nodeMetadataByPath?: Map<string, NodeMetadata>,
+  ): string {
     const breadcrumbHtml = buildBreadcrumbHtml(this._drilldown.viewLabels);
 
     // Serialize full node metadata for the webview, with pre-rendered description HTML.
+    const serialize = (meta: NodeMetadata): SerializedNodeMeta => ({
+      kind: meta.kind,
+      label: meta.label,
+      descriptionHtml: meta.description
+        ? (marked.parse(meta.description, { async: false }) as string)
+        : "",
+      // Filter disallowed-scheme links host-side (#1525) using core's
+      // canonical allowlist, so an unsafe URL never reaches the webview
+      // string at all. The webview can't import core (serialized IIFE), so
+      // doing it here keeps a single source of truth instead of a second,
+      // drift-prone regex inside the webview.
+      links: meta.links.filter((l) => isSafeLinkUrl(l.url)),
+      team: meta.team,
+      teamLabel: meta.teamLabel,
+      role: meta.role,
+      runtime: meta.runtime,
+      type: meta.type,
+      image: meta.image,
+      schedule: meta.schedule,
+      realizes: meta.realizes,
+      tags: meta.tags,
+      hasDeployContainer: meta.hasDeployContainer,
+      resources: meta.resources?.map((r) => ({ storageKind: r.storageKind, name: r.name })),
+      capabilities: meta.capabilities?.map((c) => ({
+        name: c.name,
+        label: c.label,
+        description: c.description,
+      })),
+      migrationIntent: meta.migrationIntent
+        ? {
+            until: meta.migrationIntent.until
+              ? { kind: meta.migrationIntent.until.kind, raw: meta.migrationIntent.until.raw }
+              : undefined,
+            from: meta.migrationIntent.from,
+          }
+        : undefined,
+    });
     const metadataMap: Record<string, SerializedNodeMeta> = {};
     if (nodeMetadata) {
-      for (const [id, meta] of nodeMetadata) {
-        metadataMap[id] = {
-          kind: meta.kind,
-          label: meta.label,
-          descriptionHtml: meta.description
-            ? (marked.parse(meta.description, { async: false }) as string)
-            : "",
-          // Filter disallowed-scheme links host-side (#1525) using core's
-          // canonical allowlist, so an unsafe URL never reaches the webview
-          // string at all. The webview can't import core (serialized IIFE), so
-          // doing it here keeps a single source of truth instead of a second,
-          // drift-prone regex inside the webview.
-          links: meta.links.filter((l) => isSafeLinkUrl(l.url)),
-          team: meta.team,
-          teamLabel: meta.teamLabel,
-          role: meta.role,
-          runtime: meta.runtime,
-          type: meta.type,
-          image: meta.image,
-          schedule: meta.schedule,
-          realizes: meta.realizes,
-          tags: meta.tags,
-          hasDeployContainer: meta.hasDeployContainer,
-          resources: meta.resources?.map((r) => ({ storageKind: r.storageKind, name: r.name })),
-          capabilities: meta.capabilities?.map((c) => ({
-            name: c.name,
-            label: c.label,
-            description: c.description,
-          })),
-          migrationIntent: meta.migrationIntent
-            ? {
-                until: meta.migrationIntent.until
-                  ? { kind: meta.migrationIntent.until.kind, raw: meta.migrationIntent.until.raw }
-                  : undefined,
-                from: meta.migrationIntent.from,
-              }
-            : undefined,
-        };
-      }
+      for (const [id, meta] of nodeMetadata) metadataMap[id] = serialize(meta);
+    }
+    // Keyed by `data-node-path` (#2917): a second object rather than extra keys
+    // in the first, because a quoted dotted id (`"Shop.Api"`) and a two-segment
+    // path (`Shop.Api`) can spell the same string.
+    const metadataByPathMap: Record<string, SerializedNodeMeta> = {};
+    if (nodeMetadataByPath) {
+      for (const [path, meta] of nodeMetadataByPath) metadataByPathMap[path] = serialize(meta);
     }
     const metadataJson = JSON.stringify(metadataMap);
+    const metadataByPathJson = JSON.stringify(metadataByPathMap);
 
     return buildPreviewHtml({
       svg,
       metadataJson,
+      metadataByPathJson,
       breadcrumbHtml,
       viewType: this._viewType,
       displayMode: this._displayMode,

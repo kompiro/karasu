@@ -167,6 +167,14 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2839](2839-pause-dependabot-triage-schedule.md) — dependabot-triage workflow の週次 cron を止め、dispatch で運用する
 - [ADR-2877](2877-dependabot-triage-2026-09-22.md) — Dependabot トリアージ 2026-09-22：changesets 3 は CI が回さない release flow を壊すので差し替え PR で入れ、gh-aw は再生成で上げる
 - [ADR-2898](2898-draft-first-code-review.md) — /code-review は draft PR に当て、CodeRabbit の初回レビューは ready にした時点の 1 回にする
+- [ADR-2939](2939-release-record-tags-and-github-release.md) — リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の GitHub Release を 1 つ作る
+- [ADR-2949](2949-coderabbit-skips-adr-auto-merge.md) — auto-merge する ADR-only PR は CodeRabbit の自動レビュー対象から外す
+- [ADR-2983](2983-dependabot-triage-2026-09-29.md) — Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upstream の regression なので差し替えず 30.1.1 の bot 提案を待ち、@types/vscode 1.138 は ExTester の上限まで保留する
+- [ADR-2985](2985-dependabot-security-2026-09-29.md) — Dependabot security alert 2026-09-29（`undici` の override floor が脆弱範囲の内側だったので `^7.29.1` に上げた）
+- [ADR-3000](3000-nest-deploys-on-main.md) — karasu-nest を main への push で自動 deploy し、対象 path は nest の workspace 依存から機械的に決める
+- [ADR-3002](3002-dependabot-security-2026-09-30.md) — Dependabot security alert 2026-09-30（5 つの override floor がすべて新しい advisory の脆弱範囲の内側だったので、修正版へ上げた）
+- [ADR-3011](3011-skip-coderabbit-label.md) — 正否が差分だけで決まる小さな PR は、人間の承認を得て skip-coderabbit ラベルで CodeRabbit から外す
+- [ADR-3020](3020-nest-custom-domain-karasu-nest-kompiro-dev.md) — karasu-nest を karasu-nest.kompiro.dev カスタムドメインだけで公開し、workers.dev を閉じる
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -315,6 +323,8 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2592](2592-nest-as-a-gallery.md) — ギャラリーの構築 — 投稿は repo に紐づかず、投稿者が自分で管理する
 - [ADR-2655](2655-nest-sliding-session.md) — nest のセッション期限を idle 窓と絶対上限に分ける
 - [ADR-2859](2859-spike-branch-naming.md) — spike ブランチは答える Issue 番号で名付け、その Issue が open なあいだ残す
+- [ADR-2969](2969-nest-operator-only-sign-in.md) — 運用者だけの段階をコードで守る — サインインを数値 user id の許可リストに限る
+- [ADR-2993](2993-gallery-client-side-rendering.md) — ギャラリーの投稿ページを origin を持たない sandbox の viewer として配信し、ブラウザで描画する
 - [ADR-9006](9006-project-and-filesystem.md) — プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS
 
 ## renderer
@@ -359,16 +369,21 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2330](2330-ungrouped-routing-parity.md) — グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける
 - [ADR-2360](2360-label-placement-line-obstacles.md) — label placement の障害物にエッジ polyline を加える — 自分の線だけ除外する
 - [ADR-2366](2366-node-chrome-and-ports.md) — node chrome は 1 本のコーナーレーンに畳み、色は色相表から導き、ポートは描画輪郭に置く
-- [ADR-2376](2376-icon-display-mode-de-emphasis-and-removal-path.md) — icon display mode は主導線から外し、移行先が出荷されるまで告知しない removal path に載せる
 - [ADR-2394](2394-external-side-straddle-rule.md) — external のサイド振り分けは「跨いでいるか」で 2 つの regime に分ける
 - [ADR-2473](2473-dy-instead-of-dominant-baseline.md) — テキストの縦位置は `dominant-baseline` ではなく em 単位の `dy` で指定する
 - [ADR-2521](2521-multi-system-pipeline-convergence.md) — multi-system ルートビューは single-system パイプラインの計算に合わせる
 - [ADR-2593](2593-canvas-space-objective.md) — キャンバスの空き空間を目的関数にして行幅予算を選ぶ
 - [ADR-2598](2598-edge-routing-channel-capacity.md) — 層間チャネルに容量を持たせ、配線の需要を配置へ返す
+- [ADR-2611](2611-layer-spanning-edge-columns.md) — 層をまたぐエッジは内部の列へ入り、列の無い行にだけ列を 1 本予約する
+- [ADR-2631](2631-trunk-legibility-by-count.md) — トランクの合流と分岐を本数で読ませ、交差マークを装飾で潰さない
 - [ADR-2714](2714-deploy-container-id-injective.md) — deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の id で行う
 - [ADR-2756](2756-root-view-system-edge-ownership.md) — root view の各 system フレームは自分の子から導出したエッジ集合を持つ
+- [ADR-2761](2761-width-budget-ladder-length.md) — 行幅予算の候補ラダーの長さを計測して 8 段にする
 - [ADR-2802](2802-builtin-icon-registration.md) — 組み込みアイコンは core が import 時に登録し、解決しない url() は値 validator が診断する
 - [ADR-2803](2803-slotted-icon-card-text.md) — shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通スタックで描く
+- [ADR-2906](2906-icon-mode-removal-release-undecided.md) — icon display mode は非推奨のまま据え置き、削除する major はまだ決めない
+- [ADR-2917](2917-multi-system-root-same-id-nodes.md) — 複数 system のルートビューは同名ノードを両方描き、要素の id は bare id のまま、着地は path で決める
+- [ADR-3022](3022-edge-label-disclosure.md) — edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は focus canvas で読む
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
 - [ADR-9015](9015-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG（buildAllViewsSvg）
@@ -428,4 +443,5 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1316](1316-vscode-marketplace-publish.md) — VS Code 拡張を Entra ID + GitHub OIDC（managed identity）で Marketplace に publish する
 - [ADR-1417](1417-lsp-cli-i18n.md) — LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n の切り出し
 - [ADR-2456](2456-lsp-custom-request-duplicate-jsonrpc.md) — LSP の position drift は position encoding ではなく vscode-jsonrpc の二重コピーだった
+- [ADR-2782](2782-vscode-floor-capped-by-extester.md) — VS Code の floor を 1.137 に上げ、ExTester の vscode-max を上限として機械チェックする
 - [ADR-9014](9014-vscode-extension-lsp-first.md) — VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画

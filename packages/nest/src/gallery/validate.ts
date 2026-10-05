@@ -61,7 +61,13 @@ export type SubmissionRejection =
   | { code: "credential_shaped"; message: string };
 
 export type ValidationResult =
-  | { ok: true; title: string; krs: string }
+  | {
+      ok: true;
+      title: string;
+      krs: string;
+      /** The first system's `description`, for the page's OGP (#2995). */
+      description?: string;
+    }
   | { ok: false; rejection: SubmissionRejection };
 
 /**
@@ -93,10 +99,14 @@ export function validateSubmission(rawTitle: unknown, rawKrs: unknown): Validati
   }
 
   let errors: number;
+  let description: string | undefined;
   try {
-    errors = Parser.parse(krs).diagnostics.filter(
-      (diagnostic) => diagnostic.severity === "error",
-    ).length;
+    const parsed = Parser.parse(krs);
+    errors = parsed.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length;
+    // Taken here because the document is already parsed here. The page shows
+    // it in its OGP (#2995), and reading it again per request would put a
+    // parse of up to 1MiB back on the Worker that #2998 took the render off.
+    description = parsed.value.systems[0]?.properties.description?.trim() || undefined;
   } catch {
     // A parser that throws rather than reporting is still "this does not
     // parse" from where a submitter stands.
@@ -122,7 +132,7 @@ export function validateSubmission(rawTitle: unknown, rawKrs: unknown): Validati
   ]);
   if (violation !== undefined) return reject("credential_shaped", violation);
 
-  return { ok: true, title, krs };
+  return { ok: true, title, krs, ...(description === undefined ? {} : { description }) };
 }
 
 /**

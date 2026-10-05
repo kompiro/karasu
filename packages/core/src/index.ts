@@ -56,6 +56,10 @@ export { warningSeverity } from "./types/warnings.js";
 // same colour dot the diagram paints (#2174). One source of truth — a second
 // palette in the app would drift the moment either side is edited.
 export { FACET_OVERLAY_COLORS } from "./renderer/facet-overlay.js";
+// The width estimate core lays labels out with. The app's focus canvas (#3031)
+// wraps edge labels with it, so its layout matches core's and is the same in
+// every runtime.
+export { estimateTextWidth } from "./renderer/rendering-constants.js";
 export { tidyStyleSheet, type TidyOptions, type TidyResult } from "./style/tidy.js";
 export { serializeStyleSheet } from "./style/serialize.js";
 export { validateStyleValues } from "./style/value-validator.js";
@@ -133,6 +137,7 @@ export {
 } from "./share/synthesize.js";
 export { Parser } from "./parser/parser.js";
 export { isSafeLinkUrl } from "./parser/link-url.js";
+export { nodePathRefId, parseNodePathRefId } from "./parser/node-path.js";
 export { KRS_KEYWORD_NAMES } from "./lexer/lexer.js";
 export { KRS_LANGUAGE_VERSION } from "./language-version.js";
 export {

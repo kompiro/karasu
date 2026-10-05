@@ -15,6 +15,7 @@ discovered_from:
   - issue: "#1352"
   - issue: "#2714"
   - issue: "#2817"
+  - issue: "#2917"
   - root_cause_file: "packages/core/src/resolver/style-resolver.ts"
 related_to:
   - TPL-2167
@@ -102,6 +103,20 @@ system のコンテナに着いて dedup で消えた。
    している**なら端点はそのノードそのものなので、bare id で別 system の同名コンテナを拾わない
    （拾ってよいのはパスを持たない broadcast コンテナだけ）。宣言していない id だけが bare id に
    フォールバックし、それもその id を持つコンテナが 1 つのときに限る（複数あれば推測しない）。上のチェックリスト「フォールバックの挙動を意図的に決める」の具体例
+
+## 既知の consumer: multi-system ルートのノード merge（#2917）
+
+`layoutMultipleSystems` は system ごとに bare id を key にレイアウトした `localNodes` を
+1 つの `allLayoutNodes` に畳んでいた。key に system の次元が無いので、後の system の
+`Api` が前の system の `Api` を上書きし、枠が空になった。同じ関数の collapse stub は
+ADR-1884 が生成時点で `__group_collapsed_<sys>_<team>__` と namespace していたので、
+ノードだけが残っていた形。直し方は merge の key を `nodePathIdentityKey([sys.id, id])`
+にすること（識別専用なので JSON）。加えて、ループ内で蓄積中の Map を受け取っていた
+`placeExternalServicesOnSides` / `computeEdgePoints` にはその system の `localNodes` を渡し、
+`markParallelBundles` は system ごと（cross-system edge は source system ごと）に呼ぶ。
+key を scope しても**引く側**が bare id のままなら同じ取りこぼしが起きる（#2817 と同型）。
+要素の id（`data-node-id`）は key ではなく `LayoutNode.id` から出すので、出力の id 空間は
+変わらない。
 
 ## 関連テスト
 

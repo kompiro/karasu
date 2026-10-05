@@ -138,6 +138,37 @@ organization Demo {
 `,
     );
     process.env.KARASU_E2E_FIXTURE_KRS_AT0038 = at0038FixtureKrs;
+
+    // AT-2917 fixture: two systems that both declare `Api` (a parent, so the
+    // drill half has somewhere to go) and a same-named leaf `Ops` whose
+    // descriptions differ, so the detail panel proves which node it read.
+    const at2917FixtureDir = path.join(storage, "at-2917-fixture");
+    const at2917FixtureKrs = path.join(at2917FixtureDir, "at-2917.krs");
+    fs.mkdirSync(at2917FixtureDir, { recursive: true });
+    fs.writeFileSync(
+      at2917FixtureKrs,
+      `system Shop {
+  service Api {
+    domain Orders {}
+  }
+  service Ops {
+    description "Shop operations"
+  }
+  service Worker {}
+  Api -> Worker "queues"
+}
+
+system Admin {
+  service Api {
+    domain Users {}
+  }
+  service Ops {
+    description "Admin operations"
+  }
+}
+`,
+    );
+    process.env.KARASU_E2E_FIXTURE_KRS_AT2917 = at2917FixtureKrs;
   },
 });
 

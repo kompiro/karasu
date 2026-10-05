@@ -86,6 +86,7 @@ AST を意味論レベルで解釈し、モデルの健全性を検査する層�
 - [ADR-681](681-top-level-service-rendering.md) — トップレベル service / domain を `(Unassigned)` 擬似システムで描画する
 - [ADR-702](702-top-level-infra-rendering.md) — トップレベル infra ブロック（database / queue / storage）を `(Unassigned)` で描画する
 - [ADR-974](974-infra-row-by-deepest-consumer.md) — Infra/external ノードを最深 consumer の直下行に引き上げる
+- [ADR-2761](2761-width-budget-ladder-length.md) — 行幅予算の候補ラダーの長さを計測して 8 段にする（ADR-2593 を refine）
 
 ### エッジ
 

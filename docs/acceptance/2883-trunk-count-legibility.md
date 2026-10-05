@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-09-24
 - **関連 Issue**: [#2883](https://github.com/kompiro/karasu/issues/2883)（親: [#2631](https://github.com/kompiro/karasu/issues/2631) スライス A / [#2598](https://github.com/kompiro/karasu/issues/2598)）
+- **設計 (ADR)**: [ADR-2631](../adr/2631-trunk-legibility-by-count.md)
 - **Related TPLs**: [TPL-2631](../test-perspectives/TPL-2631-decoration-must-not-hide-a-crossing-mark.md)（装飾を足したら、それが覆うマークがまだ読めることを寸法で測る）, [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)（計測柵は資源の限界に達する入力を持って初めて柵になる）, [TPL-2385](../test-perspectives/TPL-2385-attachment-follows-drawn-outline.md)（端点は描かれた輪郭に載る）, [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（貫通と重なりを同じテストで測る）
 - **対象ファイル**:
   - `packages/core/src/renderer/crossing-marks.ts`（検出と帯の分離、合流マークの本数、帯、帯に載るマークの退避）
