@@ -873,8 +873,8 @@ export class Parser {
         // which children a kind may hold; anything outside it carries no
         // defined semantics (`docs/concepts.ja.md` fixes the hierarchy as
         // service → domain → usecase → resource). `.krs language v2.0` rejects
-        // it (#2924): an error, and the node is kept out of the model with its
-        // subtree. It was parsed whole above, so the block after it still
+        // such a nesting (#2924): an error, and the node is kept out of the
+        // model with its subtree. It was parsed whole above, so the block after it still
         // parses, and a reference to it falls to the unresolved-reference
         // warnings (spec §S6) rather than to a second error.
         if (!LOGICAL_CONTAINMENT.get(kind)?.has(child.kind)) {

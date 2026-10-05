@@ -10,7 +10,6 @@ import type { WarningKind, WarningSeverity } from "../types/warnings.js";
 import { StyleParser } from "../parser/style-parser.js";
 import { Parser } from "../parser/parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
-import { resolveStyles } from "./style-resolver.js";
 import { resetRegistryToBuiltins } from "../renderer/shapes.js";
 
 describe("invalid-owns warning", () => {
