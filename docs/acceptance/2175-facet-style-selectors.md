@@ -31,7 +31,7 @@
 
 - [x] AT-D: `edge[facets=…]` が**全エッジに一致しない**（v1 では facets はノードのプロパティ。述語を無視する実装だと黙って全エッジに一致してしまう）
 
-  > ✅ Automated — 同 describe › `does not widen to every edge when written on an edge selector`
+  > ✅ Automated — 同 describe › `does not widen to every edge when no edge declares the facet`
 
 - [x] AT-E: `[facets=pii]` の specificity が `[pii]` と**同じ 10**、`kind[facets=pii]` が 11
 
@@ -41,9 +41,9 @@
 
   > ✅ Automated — 同 describe › `loses to an id selector and beats a bare kind selector`
 
-- [x] AT-G: タグセレクタと同点なので宣言順で決まる（両向き）
+- [x] AT-G: builtin タグセレクタと同点なので宣言順で決まる（両向き）。任意名タグセレクタは v2.0 でどの要素にも一致しないため、同点の比較相手は builtin タグに限られる（`.krs language v2.0` で変更 — #2677）
 
-  > ✅ Automated — 同 describe › `ties with the tag selector, so declaration order decides`
+  > ✅ Automated — 同 describe › `ties with a builtin tag selector, so declaration order decides`
 
 - [x] AT-H: `database[facets=pii][facets=gdpr]@deprecated` が `formatSelector` で round-trip する（TPL-1101）
 
@@ -81,9 +81,9 @@
 
   > ✅ Automated — 同 describe › `emits nothing when there are no sheets — the LSP's single-document case`。TPL-1522 は style 結合の新診断に「どちら側に倒すか」を決めて記録することを求めており、`packages/lsp/src/diagnostics.ts` の `analyze()` 呼び出し地点にも同じ判断をコメントで残した。ここでの「出ない」は不足ではなく正しい — 2 診断はシートの中身について述べるもので、編集中のドキュメントは `.krs` だから言うことが無い
 
-- [x] AT-P: 非推奨セレクタが **v1.x では引き続き適用される**（告知しただけで挙動を変えていない）
+- [x] AT-P: 任意名タグを名指すセレクタのルールは **v2.0 ではどの要素にも一致しない**。外来の項だけでなくルール全体が落ちる（`service[pci]` が全 service に広がらない）（`.krs language v2.0` で変更 — #2677。v1.x では告知のみでルールは引き続き適用されていた）
 
-  > ✅ Automated — 同 describe › `still applies the deprecated rule — v1.x behaviour is unchanged`。ADR-1314 の freeze がここに掛かる
+  > ✅ Automated — 同 describe › `no longer applies a rule whose selector names a non-builtin tag (v2.0)`
 
 - [x] AT-Q: `compile()` の通常経路（`styleSource`）で facet セレクタが SVG に届く
 

@@ -76,24 +76,28 @@ $ karasu translate --from openapi api.yaml --service OrderService --system Shop 
 ```krs
 system Shop {
   service OrderService {
-    usecase ManageOrders {
-      label "manage orders"
-      description """
-        Operations:
-        - GET /orders — List orders
-        - POST /orders — Create an order
-        - GET /orders/{id} — Get an order
-        - DELETE /orders/{id} — Cancel an order
-        """
-      resource OrdersResource {
-        operations list:read, post:create, get:read, delete
+    domain OrderServiceApi {
+      // TODO: provisional domain from `translate --from openapi`.
+      // Rename it, or split the usecases into the domains they belong to.
+      usecase ManageOrders {
+        label "manage orders"
+        description """
+          Operations:
+          - GET /orders — List orders
+          - POST /orders — Create an order
+          - GET /orders/{id} — Get an order
+          - DELETE /orders/{id} — Cancel an order
+          """
+        resource OrdersResource {
+          operations list:read, post:create, get:read, delete
+        }
       }
     }
   }
 }
 ```
 
-OpenAPI paths and operations land as a `usecase`; with `--emit-crud-decoration`, each operation lands as `resource` operations with `<verb>:<crud>` decoration. This captures the **read/write shape** as CRUD — "this API does read/create/delete against orders." Use `--system` for the wrapping system and `--service` for the service name.
+OpenAPI paths and operations land as a `usecase` inside one provisional `domain` (`OrderServiceApi`), because a usecase belongs to a domain; rename the domain or split the usecases into the domains they really belong to. With `--emit-crud-decoration`, each operation lands as `resource` operations with `<verb>:<crud>` decoration. This captures the **read/write shape** as CRUD — "this API does read/create/delete against orders." Use `--system` for the wrapping system and `--service` for the service name.
 
 ### 1.3 The shape of the data from a SQL schema
 
@@ -313,7 +317,7 @@ The crux of onboarding is **being able to express a partially-understood state a
 
 ### 5.1 Marking reading confidence with facets
 
-Sometimes you want to record the middle ground between "undecided" and "confirmed" — **a guess you still want to draw.** Declare that set once as a [`facet`](../spec/syntax.md#cross-cutting-membership-facet--experimental) and mark the guessed elements with `facets`, keeping reading confidence as a first-class mark. A facet fits this register precisely: whether your *reading* of an element is confirmed is imposed from outside the architecture (it describes the map, not the territory), which is exactly what a facet declares — unlike the builtin annotations, which mark the *system's own* lifecycle (`@deprecated` / `@new` / …).
+Sometimes you want to record the middle ground between "undecided" and "confirmed" — **a guess you still want to draw.** Declare that set once as a [`facet`](../spec/syntax.md#cross-cutting-membership-facet) and mark the guessed elements with `facets`, keeping reading confidence as a first-class mark. A facet fits this register precisely: whether your *reading* of an element is confirmed is imposed from outside the architecture (it describes the map, not the territory), which is exactly what a facet declares — unlike the builtin annotations, which mark the *system's own* lifecycle (`@deprecated` / `@new` / …).
 
 ```krs
 facet unverified {
@@ -340,7 +344,7 @@ system Shop {
 }
 ```
 
-- Membership has **no default rendering**, but two opt-in surfaces make it visible. The preview's **Facets selector** turns on an overlay — members get a coloured ring, everything else dims — so "how much of this map is still guessed" is one toggle away, and **Membership overview** lists every guessed element in one view. For an always-on treatment, a `.krs.style` [facet selector](../spec/style.md#facet-selectors-facetsid--experimental) styles members with color or badges (same approach as [Communicating Diagrams Guide §3](05-communicating-diagrams.md#3-showing-lifecycle-state-with-color-and-badges)):
+- Membership has **no default rendering**, but two opt-in surfaces make it visible. The preview's **Facets selector** turns on an overlay — members get a coloured ring, everything else dims — so "how much of this map is still guessed" is one toggle away, and **Membership overview** lists every guessed element in one view. For an always-on treatment, a `.krs.style` [facet selector](../spec/style.md#facet-selectors-facetsid) styles members with color or badges (same approach as [Communicating Diagrams Guide §3](05-communicating-diagrams.md#3-showing-lifecycle-state-with-color-and-badges)):
 
   ```css
   /* theme.krs.style — make guessed areas stand out with a dashed border + badge */
@@ -350,7 +354,7 @@ system Shop {
 - Typo detection is **complete**: the declarations define the correct set, so `facets unverifed` is caught as `facet-not-declared` — more reliable than the near-miss hint custom annotation names used to get.
 - When understanding firms up, just remove the `facets` line. Grepping for `facets unverified` (or opening Membership overview) gives you a **list of unconfirmed homework.**
 
-> Older models marked reading confidence with custom annotations (`@unverified`). Annotation names outside the builtin set are **deprecated** since [#2159](https://github.com/kompiro/karasu/issues/2159) — they still parse, but each use draws `annotation-not-builtin`, and styling them draws `style-annotation-selector-not-builtin`. The facet form above is the migration target.
+> Older models marked reading confidence with custom annotations (`@unverified`). Annotation names outside the builtin set have **no effect** in `.krs language v2.0` ([#2159](https://github.com/kompiro/karasu/issues/2159)): they still parse, but each use draws `annotation-not-builtin`, and a stylesheet rule on them matches nothing (`style-annotation-selector-not-builtin`). The facet form above is the migration target.
 
 This "tolerate incompleteness" stance is the heart of karasu's fit with onboarding. You commit without waiting for perfect understanding, and knock out warnings and `facets unverified` marks one at a time as understanding grows. The warning panel and your confidence facets become your **remaining-homework list.**
 

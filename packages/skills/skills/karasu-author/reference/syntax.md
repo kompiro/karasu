@@ -2,7 +2,7 @@
 
 > **English** (this file) · [日本語](syntax.ja.md)
 
-> Language version: **`.krs language v1.0`** (frozen — [ADR-1314](../adr/1314-krs-spec-v1-freeze.md); independent from every package's npm version — [ADR-2124](../adr/2124-version-vocabulary.md)). `karasu --version` reports the language version a build implements.
+> Language version: **`.krs language v2.0`**, the first major after the v1.0 freeze ([ADR-1314](../adr/1314-krs-spec-v1-freeze.md)). It closes the tag and annotation vocabularies, promotes `facet` and `boundary` to core, and rejects two forms that v1.x only warned about ([design](../design/language-v2-act.md)). The language version is independent from every package's npm version ([ADR-2124](../adr/2124-version-vocabulary.md)); `karasu --version` reports the one a build implements.
 
 ## File structure
 
@@ -518,24 +518,23 @@ out of scope here (see [#1639](https://github.com/kompiro/karasu/issues/1639)).
 #### Nesting placement
 
 The **May contain** column of the [Logical structure](#logical-structure-what--why)
-table is the single definition of which children a kind may hold. Nesting a
-logical node anywhere else emits the `node-not-in-context` **warning**: the node
-is kept and still renders, it simply carries no defined meaning there. Only the
-listed nestings have semantics — `docs/concepts.md` fixes the hierarchy as
+table is the single definition of which children a kind may hold. Only the
+listed nestings have semantics: `docs/concepts.md` fixes the hierarchy as
 `service → domain → usecase → resource`, so a `usecase` written directly inside
-a `client` has nothing to mean.
+a `service` or a `client` has nothing to mean.
 
-It is a warning rather than an error because `.krs language v1.0` is frozen
-([ADR-1314](../adr/1314-krs-spec-v1-freeze.md)): a file that parses today keeps
-parsing. Promotion to an error is registered to `.krs language v2.0`
-([roadmap §Syntax 2.0](../roadmap.md#syntax-20-プログラム)) — the same
-warning-in-v1.x / error-in-v2.0 path the tag and annotation vocabularies take.
+Every other nesting is **rejected**: it is an [error](./diagnostics.md#registers-and-severities),
+and the misplaced node is dropped from the model together with its subtree. The
+block is still read to its closing brace, so what follows it parses normally,
+and a reference to the dropped node is reported as an unresolved reference (§S6)
+rather than as a second error. Language v1.x reported the general case as a
+`node-not-in-context` warning and kept the node; `.krs language v2.0` makes it
+an error ([#2924](https://github.com/kompiro/karasu/issues/2924)). To migrate,
+move the node under a kind that may contain it (a `usecase` goes in a `domain`).
 
-Four nestings are rejected outright rather than warned, and the misplaced node is
-dropped:
-
-| Rejected nesting | Diagnostic | Why it is an error, not a warning |
+| Rejected nesting | Diagnostic | Why it carries no meaning |
 |---|---|---|
+| a logical node under a kind whose **May contain** does not list it (e.g. a `usecase` directly in a `service`) | `node-not-in-context` | the hierarchy gives it no role there |
 | an infra block outside `system` | `infra-not-in-context` | the block has no system to belong to |
 | an `entity` outside a `domain` | `entity-not-in-domain` | an entity is owned by exactly one domain |
 | a `boundary` inside a kind that draws no canvas | `boundary-not-in-context` | there are no peers to frame |
@@ -1707,12 +1706,9 @@ Under either *Group by* axis the group frame is titled with the group's declared
 
 ---
 
-## Cross-cutting membership (`facet`) — experimental
+## Cross-cutting membership (`facet`)
 
-> **Experimental notation (post-v1.0 watch).** `facet` lands as experimental,
-> not frozen — backward compatibility is **not yet promised**, and promotion to
-> a v1.0-stable construct is gated on real-usage evidence (the notation
-> promotion gate, [ADR-1820](../adr/1820-notation-promotion-gate.md)).
+> **Core notation** from `.krs language v2.0`: backward compatibility is promised, and `facet` is the only user extension point of the vocabulary ([ADR-2065](../adr/2065-tags-and-facets.md)).
 >
 > **Membership is shown by the overlay, which the reader turns on.** Pick facets
 > in the preview's *Facets* selector: members get a coloured ring, everything
@@ -1726,7 +1722,7 @@ Under either *Group by* axis the group frame is titled with the group's declared
 > for every reader until one of them selects something.
 >
 > Two surfaces sit alongside the overlay. A sheet can style by membership —
-> [`[facets=<id>]`](style.md#facet-selectors-facetsid--experimental), the
+> [`[facets=<id>]`](style.md#facet-selectors-facetsid), the
 > replacement for abusing an arbitrary tag selector. And **Membership overview**,
 > at the bottom of the Facets menu, answers "which elements are in facet X" in
 > one view. That list is **derived from the `facets` properties on every

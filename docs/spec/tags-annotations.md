@@ -35,7 +35,7 @@ A tag is a semantic declaration, not a direct appearance override. Visual contro
 | `[storage]` | Storage-like resource (shape: cloud) | Rendered as a cloud shape |
 <!-- /gen:reference:tags -->
 
-> The seven `client` form-factor tags are **recognized** by karasu — Icon Mode renders each with a kind-specific icon (Phase 2 of #823); layout hints (Phase 6) are a future addition. Tags outside the builtin table are accepted in v1.x but **deprecated** — see *Non-builtin tag names are deprecated* below.
+> The seven `client` form-factor tags are **recognized** by karasu — Icon Mode renders each with a kind-specific icon (Phase 2 of #823); layout hints (Phase 6) are a future addition. Tags outside the tool vocabulary parse but **have no effect**; see *Non-builtin tag names have no effect* below.
 
 > **Shape tags mirror the infra-block keywords — they are related, not interchangeable.** An infra-block **keyword** (`table` inside a `database`, `queue-item` inside a `queue`, `bucket` inside a `storage`) declares the actual **shared-store node** on the system view. A usecase's `resource` is the **operational reference** to what that usecase reads or writes; when a `resource` points at an infra leaf via dot-notation — `resource OrderDB.OrderTable` — karasu **infers the matching shape tag from the referenced infra sub-resource kind** (`table` → `[table]`/cylinder, `queue-item` → `[queue]`, `bucket` → `[storage]`), so the reference is drawn in the same shape as the store it points to. The shape tags `[table]` / `[queue]` / `[storage]` therefore deliberately **mirror** the infra sub-resource kinds; you can also write them by hand on any `resource` as a pure shape hint when there is no infra leaf to reference. `[api]` (hexagon) has no infra counterpart — it is a manual-only shape for API-like resources. The same word in two positions never *collides*: the keyword **starts a declaration** and sets a node's *kind*; the `[...]` tag is a **suffix** on a `resource` and sets only its *shape* — they are complementary layers linked by the resource reference. See the *Infra layer* section of [syntax.md](./syntax.md).
 >
@@ -66,14 +66,14 @@ A tag is a semantic declaration, not a direct appearance override. Visual contro
 
 > Related TPLs: [TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — the stopping rule above is the third of the three questions a builtin-addition request must pass, and the rejections it produced are recorded rather than re-argued. [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — every kind listed in a tag's `appliesTo` carries the badge, so a tag is never accepted-and-inert on one of its own kinds.
 
-### Non-builtin tag names are deprecated (v1.x)
+### Non-builtin tag names have no effect
 
-Bare `[<identifier>]` still accepts any name in v1.x — the v1.0 freeze ([ADR-1314](../adr/1314-krs-spec-v1-freeze.md)) keeps parse behaviour unchanged — but a tag outside the **tool vocabulary** (the builtin table above plus the [system-assigned tags](#system-assigned-tags) below) is **deprecated**: karasu emits a `tag-not-builtin` **warning** on every use. There is deliberately **no suppression condition** — a `.krs.style` selector or a `legend` ref proves the name is intentional, but intent does not change the outcome: syntax v2.0 accepts tool vocabulary only (still enforced as a warning, never a parse error — existing files keep parsing). Migration targets:
+`.krs language v2.0` closes the tag register to the **tool vocabulary**: the builtin table above plus the [system-assigned tags](#system-assigned-tags) below. Bare `[<identifier>]` still parses with any name, so existing files keep parsing, but a tag outside the tool vocabulary **has no effect** and karasu emits a `tag-not-builtin` **warning** on every use. The enforcement is a warning, never a parse error ([ADR-2065](../adr/2065-tags-and-facets.md)). There is deliberately **no suppression condition**: a `.krs.style` selector or a `legend` ref proves the name is intentional, but intent does not change the outcome. Through language v1.x the same names were accepted under the v1.0 freeze ([ADR-1314](../adr/1314-krs-spec-v1-freeze.md)) and warned as deprecated. Migration targets:
 
-- **Membership or model-specific labeling** (PCI scope, PII, "requires auth") → the [`facet` construct](./syntax.md#cross-cutting-membership-facet--experimental): declare the set once at the top level and write `facets <id>` on the elements.
-- **A missing archetype** → request a builtin tag addition. A deprecated tag keeps working meanwhile — warned, without default-rendering effect. [#2172](https://github.com/kompiro/karasu/issues/2172) is the worked example of this route: `[cache]` and `[analytics]` were adopted, `[kv]` (a technology, not a role) and `[bff]` (already expressed structurally by `delivers <ClientId>`) were rejected with their reasons recorded.
+- **Membership or model-specific labeling** (PCI scope, PII, "requires auth") → the [`facet` construct](./syntax.md#cross-cutting-membership-facet): declare the set once at the top level and write `facets <id>` on the elements.
+- **A missing archetype** → request a builtin tag addition. A non-builtin tag has no effect until then: it is warned, and nothing renders it. [#2172](https://github.com/kompiro/karasu/issues/2172) is the worked example of this route: `[cache]` and `[analytics]` were adopted, `[kv]` (a technology, not a role) and `[bff]` (already expressed structurally by `delivers <ClientId>`) were rejected with their reasons recorded.
 
-A `.krs.style` rule that **targets** such a name (`[pci] { … }`) is deprecated on the same terms (`style-tag-selector-not-builtin`) and rewrites to a [facet selector](./style.md#facet-selectors-facetsid--experimental). Both halves warn: the tag on the node and the selector in the sheet are two edits, and reporting only one leaves the other unfound.
+A `.krs.style` rule that **targets** such a name (`[pci] { … }`) **matches nothing** in v2.0 and is warned as `style-tag-selector-not-builtin`; it rewrites to a [facet selector](./style.md#facet-selectors-facetsid). Both halves warn: the tag on the node and the selector in the sheet are two edits, and reporting only one leaves the other unfound.
 
 See [*Vocabulary registers*](#vocabulary-registers--boundary--annotation--tag--facet) below for how to pick the right construct.
 
@@ -152,18 +152,18 @@ system OrderSystem {
 > Duplication is tolerated as long as at least one side carries `@deprecated` alone, or `@migration_target` alone.
 > If neither annotation is present, the duplicate remains an error.
 
-### Non-builtin annotation names are deprecated (v1.x)
+### Non-builtin annotation names have no effect
 
-`@<identifier>` still accepts any identifier in v1.x — the open annotation set itself is frozen by [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) — but a name outside the builtin table above is **deprecated**: karasu emits an `annotation-not-builtin` **warning** on every use, with **no suppression condition** (a stylesheet selector proves intent, but intent does not change the outcome: syntax v2.0 accepts tool vocabulary only, still enforced as a warning, never a parse error). Non-builtin annotations have no default rendering; in v1.x they remain syntactically valid targets for annotation selectors in `.krs.style`, and **that use is now deprecated too** (`style-annotation-selector-not-builtin`) — the styling hook has moved to [facet selectors](./style.md#facet-selectors-facetsid--experimental), which is where the before/after rewrite is written out. Migration targets:
+`.krs language v2.0` closes the annotation register to the builtin table above. `@<identifier>` still parses with any identifier, but a name outside the table **has no effect** and karasu emits an `annotation-not-builtin` **warning** on every use, with **no suppression condition** (a stylesheet selector proves intent, but intent does not change the outcome). A `.krs.style` annotation selector on such a name **matches nothing** and is warned as `style-annotation-selector-not-builtin`; the styling hook is a [facet selector](./style.md#facet-selectors-facetsid), where the before/after rewrite is written out. Through language v1.x the open annotation set was frozen by [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) and its non-builtin names were warned as deprecated. Migration targets:
 
-- **Membership or model-specific labeling** (team ownership marks, audience labels) → the [`facet` construct](./syntax.md#cross-cutting-membership-facet--experimental).
+- **Membership or model-specific labeling** (team ownership marks, audience labels) → the [`facet` construct](./syntax.md#cross-cutting-membership-facet).
 - **A missing lifecycle state** → request a builtin annotation addition. [#2172](https://github.com/kompiro/karasu/issues/2172) is the worked example: `@planned` was adopted, while `@canary` (a runtime rollout state that lives for hours, not the slowly-changing structure karasu models — and overlapping `@experimental`) and `@sunset` (`@deprecated` already says it) were rejected. A long-lived canary is `@new @experimental`; a coexisting old and new is `@migration_target`.
 
-The near-miss **typo hint** (`annotation-possible-typo`, info) also still fires: a typo in a builtin name (e.g. `@depracated`) would otherwise surface only as "my badge did not appear". The hint stays suppressed for names that appear in a stylesheet annotation selector. Both diagnostics coexist during v1.x — a near-miss can carry both — and are consolidated in v2.0.
+A **near-miss** of a builtin name is not an unknown word but a misspelling, and it is **rejected**: `annotation-possible-typo` is an [error](./diagnostics.md#registers-and-severities), the annotation is not applied and is kept out of the model, and the message names the builtin. Left alone, `@depracated` would only surface as "my badge did not appear". A name is a near-miss when it is within **1 edit** of a builtin of 4 characters or fewer (`new`) or within **2 edits** of a longer one, counting an adjacent transposition as 1 edit; the nearest builtin is suggested. There is no suppression condition. This makes short names next to `@new` (`@news`, `@now`) errors too: write a builtin, or a name further from one, or move the meaning to a `facet`. A near-miss draws only this error, never `annotation-not-builtin` as well. (Through language v1.x the near-miss was an `info` hint that coexisted with the deprecation warning.)
 
-```krs
-service Billing @team_alpha   // deprecated: annotation-not-builtin warning
-service Legacy  @depracated   // warned twice: typo hint (info) + not-builtin (warning)
+```krs invalid
+service Billing @team_alpha   // annotation-not-builtin warning: no effect
+service Legacy  @depracated   // annotation-possible-typo error: did you mean @deprecated?
 ```
 
 > Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — the deprecation keeps non-builtin names in state (2), *warned as unknown*, instead of the former undocumented open-set acceptance. [TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — the same three-question gate applies to a requested builtin *annotation*, where the lifecycle register is the first filter.
@@ -295,14 +295,14 @@ The identifier set is **open** — any kebab-case identifier is accepted, no war
 
 ## Vocabulary registers — boundary / annotation / tag / facet
 
-karasu separates "what kind of label is this?" into four registers. The tag and annotation vocabularies are **tool-owned**; the sole user extension point is the [`facet` construct](./syntax.md#cross-cutting-membership-facet--experimental) (experimental).
+karasu separates "what kind of label is this?" into four registers. The tag and annotation vocabularies are **tool-owned**; the sole user extension point is the [`facet` construct](./syntax.md#cross-cutting-membership-facet) (experimental).
 
 | Register | Construct | Vocabulary | Question it answers |
 | --- | --- | --- | --- |
 | Archetype | tag `[...]` | tool-owned (builtin table above) | What *is* this element, architecturally? (`[external]`, `[index]`) |
 | Lifecycle | annotation `@...` | tool-owned (builtin table above) | What development state is it in? (`@deprecated`, `@new`) |
 | View grouping | `boundary` | user-declared ids | How should peers be grouped in this view? (see [syntax.md](./syntax.md)) |
-| Set membership | [`facet`](./syntax.md#cross-cutting-membership-facet--experimental) (experimental) | user-declared ids | Which externally defined set does it belong to? (PCI scope, PII, "requires auth") |
+| Set membership | [`facet`](./syntax.md#cross-cutting-membership-facet) | user-declared ids | Which externally defined set does it belong to? (PCI scope, PII, "requires auth") |
 
 Worked decomposition — modeling PCI compliance and authentication without misusing tags:
 
@@ -315,7 +315,7 @@ Worked decomposition — modeling PCI compliance and authentication without misu
 
 The registers matter because membership semantics differ from archetype semantics: an element is a `database` whether or not it is in PCI scope, and a diagram where 9 of 10 in-scope elements carry a membership tag silently reads as a false audit guarantee. Membership therefore gets its own construct with declared metadata (`label` / `description` / `link`) instead of borrowing the tag namespace.
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — each register's accepted vocabulary must have an effect or be warned; the v1.x deprecation diagnostics (`tag-not-builtin` / `annotation-not-builtin`) keep the tool-owned registers in state (2).
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — each register's accepted vocabulary must have an effect or be warned; the closed-register diagnostics (`tag-not-builtin` / `annotation-not-builtin`) keep the tool-owned registers in state (2).
 
 ---
 
@@ -345,6 +345,7 @@ They can be referenced and overridden via tag selectors in `.krs.style`.
 | `[write]` | A synthesized usecase→resource edge whose target resource declares any of `create` / `update` / `delete` in its `operations` | `stroke-width: 2`, label `"W"` |
 | `[read]` | A synthesized usecase→resource edge classified as read-only (no write verbs, or `operations` omitted) | `stroke-width: 1.5`, label `"R"` |
 | `[inferred]` | An entity relation, or a `table` → `table` edge (#2722), that `translate --from db` derived from a **Soft FK** (a `<stem>_id` / `<stem>_code` column with no declared `REFERENCES` / `FOREIGN KEY`). Relations from an explicit FK are left untagged (confirmed) | Muted grey (`#94A3B8` dark / `#64748B` light). **Colour only** — line style stays owned by `[sync]` / `[async]`, so an inferred async relation still reads as dashed |
+| `[delivers]` | A service → client edge derived from the service's `delivers <ClientId>` property ([syntax.md](./syntax.md)) | Violet (`#A78BFA` dark / `#7C3AED` light) dashed |
 | `[projected]` | A `table` → `table` edge the `database` canvas derived from an `entity` relation whose both endpoints map into that store (see [syntax.md](./syntax.md#store-scoped-er-view-entity-relations-projected-onto-a-database-canvas)) | Sky blue (`#38BDF8` dark / `#0369A1` light). **Colour only** — line style stays owned by `[sync]` / `[async]` |
 
 > `[implicit]` uses color (amber) to signal "derived," while the line style distinguishes sync from async.

@@ -79,8 +79,8 @@ scope:
 
 - `packages/core/src/style/value-validator.test.ts` — `PROPERTY_SCHEMAS` に対する受理 / 拒否挙動
   （ghost 検出の subset チェックは未整備 — 本 TPL 起点の追加候補）
-- `packages/core/src/resolver/warnings.test.ts`（`annotation-possible-typo hint`）—
-  open set 明文化 + 組み込み名近傍の info ヒント（チェックリスト最終 2 項の実装、#1499）
+- `packages/core/src/resolver/warnings.test.ts`（`annotation-possible-typo error (#2677)`）—
+  組み込み名近傍の名前を拒否する距離規則（言語 v1.x では info ヒント、#1499）
 
 ## 派生元 spec
 
@@ -97,8 +97,9 @@ scope:
   効果を伴う必要があるという本 TPL を新タグに適用したもの。`[index]` は `REFERENCE_DATA.tags`
   への登録 + `default-style.ts` の `database[index]` バッジで効果を持つ。登録 / スタイル /
   生成ドキュメントの 3 表現の同期は [[TPL-1415]] を参照）
-- `docs/spec/tags-annotations.md` — Non-builtin tag names are deprecated (v1.x) /
-  Non-builtin annotation names are deprecated (v1.x) / Vocabulary registers（#2159、
+- `docs/spec/tags-annotations.md` — Non-builtin tag names have no effect /
+  Non-builtin annotation names have no effect / Vocabulary registers（言語 v2.0 で
+  「… are deprecated (v1.x)」から改題、#2677。元は #2159、
   tags-and-facets Part A）。非 builtin のタグ名が置かれていた**第 4 状態**（受理・無効果・
   spec 記述は client 限定の 1 文のみ — 2026-07-28 の probe で `[cache]` が全 kind で診断ゼロ
   受理と実測）を、`tag-not-builtin` / `annotation-not-builtin` warning により**状態 (2)

@@ -1,7 +1,7 @@
 # karasu ロードマップ
 
 - **ステータス**: living（決定は ADR、実行・進捗は GitHub Issues で管理し、本書は**全体方針の現在地と次の一手のみ**を保持する。完了・決着した内容は該当の close を扱う PR で削除し、経緯は ADR / closed Issue / git history が担う — [ADR-2218](adr/2218-roadmap-pruning-policy.md)）
-- **現在のフォーカス**: `.krs` / `.krs.style` **言語 v1.0 発効済み**（[ADR-1314](adr/1314-krs-spec-v1-freeze.md)、公開ローンチで確定）。現在の地平は [§post-v1.0 horizon（ロードマップ）](#post-v10-horizonロードマップ)、構文の次 major の枠は [§Syntax 2.0 プログラム](#syntax-20-プログラム)（登録 = [#2162](https://github.com/kompiro/karasu/issues/2162)）。
+- **現在のフォーカス**: `.krs` / `.krs.style` **言語 v2.0 発効済み**（v1.0 freeze = [ADR-1314](adr/1314-krs-spec-v1-freeze.md)、v2.0 = [設計](design/language-v2-act.md)）。現在の地平は [§post-v1.0 horizon（ロードマップ）](#post-v10-horizonロードマップ)、構文の次 major の枠は [§Syntax 2.0 プログラム](#syntax-20-プログラム)。
 
 ## Syntax v1.0（凍結済み）
 
@@ -25,13 +25,16 @@
 
 補足:
 
-- **warn-don't-error が stable 判定の前提**: 未完成・in-flight なモデルでも render
-  できることが karasu の差別化要因であり、診断 register は fact vs style の二分
-  （[TPL-1386](test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)）に従う。
-- **open annotation set は v1.x では stable 側**（未知の annotation は display-only で
-  通るため新語彙の追加が後方互換を壊さない — [ADR-1568](adr/1568-migration-intent-fields.md)）。
-  これは v1.x の凍結セマンティクスであり、v2.0 では tag / annotation はツール語彙に
-  閉じる（[§Syntax 2.0 プログラム](#syntax-20-プログラム)、移行診断 = [#2159](https://github.com/kompiro/karasu/issues/2159)）。
+- **warn-don't-error が stable 判定の前提**: 未解決の参照を含む in-flight なモデルでも
+  render できることが karasu の差別化要因であり（spec §S6）、診断 register は fact vs
+  style の二分（[TPL-1386](test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)）に従う。
+  これは参照についての方針で、構文の書き方を受理するかは別の問題である。言語が意味を
+  与えない書き方は error で、error がある間はどの surface も新しい図を出さない
+  （[ADR-2208](adr/2208-positional-label-error-promotion.md) /
+  [ADR-2501](adr/2501-errored-edge-declaration-renders-nowhere.md)、言語 v2.0 の
+  [設計](design/language-v2-act.md) 論点 4）。
+- **tag / annotation はツール語彙に閉じている**（言語 v2.0、[ADR-2065](adr/2065-tags-and-facets.md)）。
+  言語 v1.x では open annotation set を stable 側に置いていた（[ADR-1568](adr/1568-migration-intent-fields.md)）。
 
 ### version vocabulary（版語彙の定義 — 正典）
 
@@ -46,7 +49,7 @@
 
 | 軸 | 対象 | 現在の版 | 約束 | 定義元 |
 | --- | --- | --- | --- | --- |
-| **言語**（`.krs` / `.krs.style`） | 構文・診断 register | 言語 v1.0（frozen） | 後方互換。追加は言語 v1.x、破壊は言語 v2.0 でのみ | [ADR-1314](adr/1314-krs-spec-v1-freeze.md) |
+| **言語**（`.krs` / `.krs.style`） | 構文・診断 register | 言語 v2.0 | 後方互換。追加は minor（言語 v2.x）、破壊は次の major でのみ | [ADR-1314](adr/1314-krs-spec-v1-freeze.md)（版のセマンティクス）/ [設計](design/language-v2-act.md)（v2.0） |
 | **CLI**（`karasu`） | コマンド UX・配布物 | 0.x（npm） | npm semver（0.x = 安定約束なし。floor 0.6.0 — #1774） | `docs/release.md` |
 | **TS API**（`@karasu-tools/core`） | ライブラリ API | 0.x（npm） | **明示的に約束なし**（minor で変わりうる） | [ADR-1314](adr/1314-krs-spec-v1-freeze.md) 非スコープ節 |
 | **VS Code 拡張**（`karasu-vscode`） | Marketplace 配布 | 0.x | 別ケイデンス（changesets bump、公開は手動） | [ADR-1758](adr/1758-vscode-changeset-versioning.md) |
@@ -111,8 +114,7 @@ funnel→retained の背骨。notation / cookbook はこの retained record を�
 `epic: comprehension` / `epic: boundary` / `epic: facets` は宣言していた子がすべて着地した
 ため柱から降ろした（Epic close は本節を prune した PR — [ADR-2218](adr/2218-roadmap-pruning-policy.md)）。
 comprehension の残余は下の [§comprehension の残余](#comprehension-の残余)、syntax 2.0 の
-二本柱（boundary / facets）の残余は v2.0 の act 1 件ずつに畳んで
-[§追跡（Issues）](#追跡issues) に持つ。
+残余は [§追跡（Issues）](#追跡issues) に持つ。
 
 #### comprehension の残余
 
@@ -145,7 +147,6 @@ gate の生きた適用状態。ここに載る構文は **後方互換を約束
 | notation | 追加 | 現状 | promotion trigger（判断材料） |
 | --- | --- | --- | --- |
 | **`boundary`**（system view の意味的クラスタ宣言 / `contains` / スコープ宣言） | [#1974](https://github.com/kompiro/karasu/issues/1974)（[ADR-1974](adr/1974-boundary-declaration-syntax.md)）+ [#2036](https://github.com/kompiro/karasu/issues/2036)（[ADR-2036](adr/2036-scoped-boundary-declaration.md)・[syntax](spec/syntax.md#grouping-the-system-view-boundary--experimental)） | experimental。**昇格先は確定 — v2.0 core**（[ADR-2065](adr/2065-tags-and-facets.md) 決定 3、[§Syntax 2.0 プログラム](#syntax-20-プログラム)）。所属 1:N 一般化 + 多重包含 banded 描画（[ADR-2161](adr/2161-boundary-membership-1n.md)）と frame colour の style-sheet override + legend（[ADR-2234](adr/2234-boundary-style-selector.md)）が着地し、v1.x で出せる宿題は残っていない。**昇格そのものの追跡 = [#2678](https://github.com/kompiro/karasu/issues/2678)** | 昇格先が確定しているので corpus 観測の役目は「昇格するか」でなく「v2.0 core の形の妥当性」の検証（初回エビデンス = [#2079](https://github.com/kompiro/karasu/issues/2079)）。ただし第三者の corpus は現時点で実在しない（[ADR-2522](adr/2522-vocabulary-census-drift.md) 決定 3 の実測）ため、当面の実質的な観測面はトリガー (iii)（混乱 / bug Issue の再発）と自前モデル・`examples/**` への適用 |
-| **`facet`**（要素横断の集合所属 — **唯一のユーザー拡張点**） | [#2160](https://github.com/kompiro/karasu/issues/2160)（[syntax](spec/syntax.md#cross-cutting-membership-facet--experimental)） | experimental。**昇格先は確定 — v2.0 core**（[ADR-2065](adr/2065-tags-and-facets.md) 決定 3、[§Syntax 2.0 プログラム](#syntax-20-プログラム)）。v1.x で出せるものは出し切っており、宿題は残っていない。**昇格 + 語彙の閉鎖の追跡 = [#2677](https://github.com/kompiro/karasu/issues/2677)** | (a) 任意名 tag / annotation セレクタからの移行が facet に置き換わるか — `pnpm census:vocabulary` の**件数**で測る（非 builtin セレクタが減り facet セレクタが増える。[§語彙の閉鎖](#語彙の閉鎖tag--annotation) の前提条件 1 と同じ計測器）。(b) register 偽装（`facet bff` / `facet canary`）の分布は**名前を要するので corpus からは測れない**（上記 §promotion gate の証拠源の線）。[ADR-2065](adr/2065-tags-and-facets.md) のリスク台帳が「構造的には防げない」と認めた項目なので、シグナルは builtin 追加要望（[ADR-2172](adr/2172-builtin-vocabulary-expansion.md) の経路）と混乱 / bug Issue の再発に取り、再発したら昇格前に guide か診断で手当てする。(c) 明示的除外（excludes tri-state）の要求は corpus ではなく Issue で観測する |
 
 #### watch 対象の notation gap（構文未満の欠落）
 
@@ -192,7 +193,7 @@ gate で評価する。
 ### sequencing
 
 1. **karasu-nest pivot**（[#1990](https://github.com/kompiro/karasu/issues/1990)）が現在の主線。宣言していた実装スライスは全消化し、主線は**運用の問い**へ移った — quota の適用範囲（[#2382](https://github.com/kompiro/karasu/issues/2382)）とラチェットの検証（[#2228](https://github.com/kompiro/karasu/issues/2228)）。permalink layer（retained の背骨）は完成形に到達しており、律速ではない。
-2. **syntax 2.0 の二本柱**（facets / boundary）は**どちらも v1.x 分が着地**して Epic を close した。`boundary` / `facet` とも experimental として [§watch 登録](#watch-対象の-experimental-notation登録) に載っており、残るのは閉鎖・core 昇格そのもの — [#2677](https://github.com/kompiro/karasu/issues/2677)（閉鎖 + `facet` 昇格）と [#2678](https://github.com/kompiro/karasu/issues/2678)（`boundary` 昇格）が追跡する（[§Syntax 2.0 プログラム](#syntax-20-プログラム) で時期未定）。
+2. **言語 v2.0** は語彙の閉鎖・`facet` の core 昇格・2 つの error 化を実施した。残るのは `boundary` の core 昇格（[#2678](https://github.com/kompiro/karasu/issues/2678)）。
 3. **AI authoring** は経路を決定済み（エージェントセッション + karasu CLI skill、Chat は凍結）で、実装は [#2901](https://github.com/kompiro/karasu/issues/2901)。**interop** は評価可能。
 4. **非ゴール圧力 log** は随時追記（安価）。
 
@@ -200,60 +201,20 @@ gate で評価する。
 
 ## Syntax 2.0 プログラム
 
-- **ステータス**: 方針確定・時期未定（登録 = [#2162](https://github.com/kompiro/karasu/issues/2162)）。**実施時期は決めない**。版運用は [ADR-2124](adr/2124-version-vocabulary.md) で確定済み — 「v2.0」= 言語 v2.0（言語軸の major）であり、パッケージ bump は独立（[§版語彙との同時確定](#版語彙との同時確定2124決定済み)）。
-- **決定源**: [ADR-2065](adr/2065-tags-and-facets.md)（`refines: [ADR-832]`。[#2065](https://github.com/kompiro/karasu/issues/2065) / [#2155](https://github.com/kompiro/karasu/pull/2155) の 2026-07-28 レビューで決定事項 1–5 を確定し、Part B 全スライス完了後の [#2177](https://github.com/kompiro/karasu/issues/2177) で昇格）。閉鎖実施時には [ADR-1314](adr/1314-krs-spec-v1-freeze.md)（v1.0 freeze）との関係を新 ADR で明示する。
-- **位置づけ**: [§post-v1.0 horizon](#post-v10-horizonロードマップ) が後方互換の rolling horizon であるのに対し、本セクションは**破壊的変更を伴う次 major の枠**のみを持つ。v1.x で進む移行措置（deprecation 診断・facet の experimental 導入）は後方互換であり通常の v1.x minor で出る。
-
-### 柱（pillars）
-
-`boundary` と `facet` を構文 2.0 の語彙体系の主軸に据える（決定事項 4）:
-
-| 柱 | 現在地 | v2.0 での到達点 | 経路 |
-| --- | --- | --- | --- |
-| **`boundary`**（view 内 peer グルーピング） | experimental（[§watch 登録](#watch-対象の-experimental-notation登録)） | **core 昇格** | 昇格前の宿題は全消化 — 所属 1:N 一般化 + 多重包含 banded 描画（[ADR-2161](adr/2161-boundary-membership-1n.md)、[ADR-1974](adr/1974-boundary-declaration-syntax.md) refine）と frame colour の override + legend（[ADR-2234](adr/2234-boundary-style-selector.md)）。昇格そのものは [#2678](https://github.com/kompiro/karasu/issues/2678) |
-| **`facet`**（外在的集合所属 — **唯一のユーザー拡張点**） | experimental（[§watch 登録](#watch-対象の-experimental-notation登録)） | **core**（v1.x に experimental で導入 → 実利用観測 → 昇格） | v1.x 分は [#2160](https://github.com/kompiro/karasu/issues/2160) 全 4 スライスで着地（宣言 + `facets` + overlay + facet セレクタ + 導出概観）。決定は [ADR-2065](adr/2065-tags-and-facets.md) / [ADR-2173](adr/2173-facet-grammar-and-model.md) / [ADR-2174](adr/2174-facet-overlay.md)。昇格 + 閉鎖の実施は [#2677](https://github.com/kompiro/karasu/issues/2677) |
-
-### 語彙の閉鎖（tag / annotation）
-
-- **v2.0 で tag / annotation はツール語彙のみを受理する**（決定事項 5）。register の確定: **tag = アーキテクチャの意味（アーキタイプ）** / **annotation = lifecycle**。ユーザー拡張点は facet に一本化し、新しいアーキタイプ / lifecycle 状態はツールの builtin 語彙への追加要望として扱う（この機構の最初の行使が [ADR-2172](adr/2172-builtin-vocabulary-expansion.md) — `[cache]` / `[analytics]` / `@planned` を採用し、`[kv]` / `[bff]` / `@canary` / `@sunset` を理由付きで却下した）。
-- **enforcement は warning に留める**（parse は通り、効果を持たず、警告される — [TPL-1503](test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) の状態 (2)。既存ファイルを parse error で壊さない）。
-- **v1.x の移行診断**: builtin 集合外の tag / annotation に `tag-not-builtin` / `annotation-not-builtin`（warning、additive — freeze 非抵触）を出す = [#2159](https://github.com/kompiro/karasu/issues/2159)。
-- **style セレクタの移行**: 任意名の tag / annotation セレクタ（今日 `.krs.style` で generic に照合される styling フック）は **v1.x で deprecation 告知 → v2.0 で無効化**し、フックは **facet セレクタ**（[#2160](https://github.com/kompiro/karasu/issues/2160)）が引き継ぐ。移行経路 = facet 宣言 + `facets` 付与 + セレクタ書き換え。
-
-### 閉鎖原則
-
-> **語彙の宇宙をツールが所有するもの（tag = アーキタイプ / annotation = lifecycle）は閉じ、
-> 世界が所有するもの（client `capability` = デバイス / ブラウザ能力 — spec / [ADR-837](adr/837-client-capability-modeling.md)）は open のまま。**
-
-`capability` は例外ではなく原則の帰結（tags-and-facets 設計 (B9)）。
-
-### 閉鎖の前提条件（v2.0 実施前に満たす）
-
-1. **警告カウントの実測** — 閉鎖がどれだけ警告するかを `pnpm census:vocabulary`（[#2508](https://github.com/kompiro/karasu/issues/2508)）で実測し、閉鎖判断時に再実行する（`docs/release.md` の promotion gate 接点に相乗り）。2026-08 の実測とこの再スコープの経緯は [ADR-2522](adr/2522-vocabulary-census-drift.md) 決定 3 — shipped examples の非 builtin 名は 0 件で、docs fence 由来の drift は解消済み。当初この項目が求めた「どの custom 名が使われているか」（names）は**収集不能と実測**された（in-the-wild corpus は実在せず、nest の共有 corpus は data-trust 設計により名前を集計できない）ため、ゲートから外し [ADR-2172](adr/2172-builtin-vocabulary-expansion.md) の builtin 追加経路に委ねる。閉鎖は warning であり parse error ではないので、事前に収集できなかった名前が書けなくなることはなく、警告を受けた author の builtin 追加要望が受け皿になる（(B7) の「custom lifecycle 状態の受け皿は builtin 追加要望のみ — lifecycle 系 facet は不許可」は維持）。
-2. **concepts.md の同時改訂** — 「タグシステム自体は open のまま」の原則記述は、閉鎖 ADR と**同時に supersede** する（keystone 文書を黙って単独更新しない）。
-3. **リスク台帳の緩和の履行** — tags-and-facets 設計「閉鎖の弊害と緩和」の表（styling 退行の facet セレクタでの引き継ぎ、版スキュー warning の許容、生成パイプラインの builtin + facet 化など）を v2.0 作業の checklist として使う。
-
-### 版語彙との同時確定（#2124・決定済み）
-
-版語彙は [#2124](https://github.com/kompiro/karasu/issues/2124) → [ADR-2124](adr/2124-version-vocabulary.md) で確定した（定義 = [§version vocabulary](#version-vocabulary版語彙の定義--正典)）。本プログラムの「v2.0」は**言語 v2.0**（言語軸の major — ADR-1314 のセマンティクス）を指し、パッケージの bump レベルは semver 規約で独立に決まる。閉鎖を実施するリリースは changeset / CHANGELOG に言語版遷移（言語 v1.x → v2.0）を明記する。実施時期は引き続き未定（本プログラムの前提条件が律速）。
+- **ステータス**: 言語 v2.0 として実施済み。決定は [設計](design/language-v2-act.md)（ADR-2677 へ昇格予定）、
+  版の運用は [ADR-2124](adr/2124-version-vocabulary.md)（言語版とパッケージ版は独立）。
+- **到達点**: tag / annotation はツール語彙に閉じ（非 builtin 名は受理・効果なし・warning、
+  任意名の style セレクタは何にも一致しない）、`facet` が唯一のユーザー拡張点として core に
+  なった。`node-not-in-context` と `annotation-possible-typo` は error になった。閉鎖の原則は
+  [`docs/concepts.md`](concepts.md) と [ADR-2065](adr/2065-tags-and-facets.md) が持つ。
+- 本節は以後の破壊的変更（次の言語 major）の受け皿として見出しだけ残す。
 
 ### 追跡（Issues）
-
-二本柱の Epic（`epic: facets` / `epic: boundary`）は宣言した v1.x スライスを全消化して
-close 済みで、残る v2.0 の act は柱ごとに 1 Issue へ畳んである（ラベルはテーマ軸として
-残す — 運用は [§実行中の柱](#実行中の柱テーマ--epic-issue--epic-ラベル) と同じ）。
-下表は**未決の項目のみ**を持つ。着地した v1.x スライスは closed Issue と
-[ADR-2065](adr/2065-tags-and-facets.md) / [ADR-2172](adr/2172-builtin-vocabulary-expansion.md)
-が担うので本表からは外す（[ADR-2218](adr/2218-roadmap-pruning-policy.md)）。下記マーカーは
-この「未決のみ」を `pnpm lint:roadmap-issue-state` に預ける宣言で、以後この表の
-Issue 列に closed な番号が現れると lint が落ちる。
 
 <!-- roadmap-issue-state: open-only -->
 
 | Issue | 内容 | 時期 |
 | --- | --- | --- |
-| （未起票） | 論理ノードの containment 規則の error 化 — v1.x の `node-not-in-context` warning は [ADR-2165](adr/2165-logical-containment-rules.md) で着地済み（[`docs/spec/diagnostics.md`](spec/diagnostics.md) が本節を error 化の tracker として指している） | 言語 v2.0 |
-| [#2677](https://github.com/kompiro/karasu/issues/2677) | 閉鎖の実施（tag / annotation の warning enforcement・任意名セレクタ無効化・concepts 改訂 + ADR-1314 関係の新 ADR）+ `facet` の core 昇格 — 移行先が experimental のままでは閉鎖できないので同一リリースで動く | 言語 v2.0 |
 | [#2678](https://github.com/kompiro/karasu/issues/2678) | `boundary` の core 昇格（tier flip・spec 見出しの experimental 解除・昇格 ADR） | 言語 v2.0 |
 
 ---

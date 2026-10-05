@@ -2,7 +2,7 @@
 
 > [English](style.md) · **日本語**（このファイル）
 
-> 言語バージョン: **`.krs language v1.0`**（言語 v1.0） — `.krs` と `.krs.style` は 1 つの言語版を共有する（freeze 済み [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)。各パッケージの npm 版とは独立 — [ADR-2124](../adr/2124-version-vocabulary.md)）。
+> 言語バージョン: **`.krs language v2.0`**（言語 v2.0）。`.krs` と `.krs.style` は 1 つの言語版を共有し、各パッケージの npm 版とは独立（[ADR-2124](../adr/2124-version-vocabulary.md)）。v2.0 ではツール語彙にない tag / annotation を狙うルールは何にも一致しない（[後述](#任意名タグ--アノテーションセレクタからの移行)）。
 
 ## セレクタの種類
 
@@ -59,14 +59,12 @@
 
 ---
 
-## ファセットセレクタ（`[facets=<id>]`）— experimental
+## ファセットセレクタ（`[facets=<id>]`）
 
-> **Experimental notation（post-v1.0 watch）。** `facet` が experimental なので
-> このセレクタも experimental。後方互換はまだ約束しておらず、昇格は実利用の証拠を
-> 条件とする（[ADR-1820](../adr/1820-notation-promotion-gate.md)）。
+> `facet` と同じく `.krs language v2.0` から **core の記法**。任意名の tag / annotation セレクタが担っていた styling のフックを引き継ぐ。
 
 宣言済み `facet` に所属する要素をスタイリングする
-（[syntax.ja.md § 横断的な所属](syntax.ja.md#横断的な所属facet-experimental)）。
+（[syntax.ja.md § 横断的な所属](syntax.ja.md#横断的な所属facet)）。
 
 ```css
 [facets=pii] {
@@ -108,11 +106,13 @@ database[facets=pci_scope] {
 
 ### 任意名タグ / アノテーションセレクタからの移行
 
-`.krs.style` は以前から任意のタグ名 / アノテーション名に一致してきた。そして今まで、
-それが横断的関心事をスタイリングする唯一の手段だった。facet セレクタがその置き換えなので、
-任意名セレクタは **v1.x で非推奨**（`style-tag-selector-not-builtin` /
-`style-annotation-selector-not-builtin`）とし、構文 v2.0 で一致しなくなる。それまでは
-引き続き動く — ルールを黙って落とすと既存モデルの見た目が変わってしまう。
+言語 v1.x の `.krs.style` は任意のタグ名 / アノテーション名に一致し、それが横断的関心事を
+スタイリングする唯一の手段だった。facet セレクタがその置き換えである。
+`.krs language v2.0` では、ツール語彙の外の tag / annotation を名指すセレクタのルールは
+**丸ごと何にも一致しない**（`service[pci]` が全 service を塗る形に広がることはない）。
+そうしたルールは `style-tag-selector-not-builtin` / `style-annotation-selector-not-builtin`
+として警告され、これがルールが効かなくなったことを知る唯一の手がかりになる。書き換える
+までの間、そのルールに頼っていたモデルの見た目は変わる。
 
 **移行前** — 名前が関心事を担っており、その意味はどこにも宣言されていない:
 
