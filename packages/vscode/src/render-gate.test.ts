@@ -29,7 +29,12 @@ describe("gateRender (#2677: no new diagram while an error stands)", () => {
   });
 
   it("never draws the partial model core recovered", () => {
-    const decision = gateRender({ key: "a", value: "partial", errorCount: 1, lastValid: undefined });
+    const decision = gateRender({
+      key: "a",
+      value: "partial",
+      errorCount: 1,
+      lastValid: undefined,
+    });
     expect(decision.kind).toBe("blocked");
   });
 });

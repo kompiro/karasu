@@ -90,10 +90,9 @@ describe("what the tool stamps and styles is in its own vocabulary (#2677)", () 
   });
 
   it("styles delivers edges with the builtin theme", () => {
-    const result = compile(
-      `system S {\n  service Api { delivers Web }\n  client Web\n}\n`,
-      { theme: "light" },
-    );
+    const result = compile(`system S {\n  service Api { delivers Web }\n  client Web\n}\n`, {
+      theme: "light",
+    });
     expect(result.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
     expect(result.svg.toLowerCase()).toContain("#7c3aed");
   });
