@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 対象 Dependabot PR: [#3060](https://github.com/kompiro/karasu/pull/3060) / [#3061](https://github.com/kompiro/karasu/pull/3061) / [#3062](https://github.com/kompiro/karasu/pull/3062) / [#3063](https://github.com/kompiro/karasu/pull/3063) / [#3064](https://github.com/kompiro/karasu/pull/3064) / [#3065](https://github.com/kompiro/karasu/pull/3065) / [#3066](https://github.com/kompiro/karasu/pull/3066) / [#3067](https://github.com/kompiro/karasu/pull/3067) / [#3068](https://github.com/kompiro/karasu/pull/3068) / [#2973](https://github.com/kompiro/karasu/pull/2973)（前回から保留）
+  - VS Code floor の追随方針の見直し: [#3070](https://github.com/kompiro/karasu/issues/3070)
   - 前回トリアージ: [ADR-2983](../adr/2983-dependabot-triage-2026-09-29.md)
   - gh-aw の再生成規則: [ADR-2753](../adr/2753-dependabot-triage-2026-09-07.md)、`.claude/rules/dependabot.md`
   - VS Code floor と ExTester の `vscode-max`: [ADR-2782](../adr/2782-vscode-floor-capped-by-extester.md)
@@ -45,7 +46,7 @@ CI が red なのは 3 件。#3060 は `gh-aw-lock-consistency.test.ts` が規�
 | [#3061](https://github.com/kompiro/karasu/pull/3061) | `cloudflare/wrangler-action` | 4.0.0 → 4.1.3 | minor | green | low | 採用（そのままマージ） |
 | [#3064](https://github.com/kompiro/karasu/pull/3064) | `mocha` | 11.8.0 → 12.0.2 | **major** | Playwright red（flake、再実行中） | low | 採用（再実行で green を確認してマージ） |
 | [#3060](https://github.com/kompiro/karasu/pull/3060) | `github/gh-aw-actions/setup` | 0.89.17 → 0.90.0 | minor | Check red | low | **却下**（`gh aw compile` の再生成 PR で入れる） |
-| [#2973](https://github.com/kompiro/karasu/pull/2973) | `@types/vscode` | 1.137.0 → 1.138.0 | minor | Check / ExTester red | low | **保留**（ExTester 8.28 の cooldown 待ち） |
+| [#2973](https://github.com/kompiro/karasu/pull/2973) | `@types/vscode` | 1.137.0 → 1.138.0 | minor | Check / ExTester red | low | **却下**（追随方針を #3070 で見直す。close） |
 
 ## PR ごとの分析
 
@@ -102,16 +103,28 @@ bot は `uses:` 行しか書き換えないため、`gh-aw-lock-consistency.test
 
 ### #2973 `@types/vscode` 1.137.0 → 1.138.0（前回から保留）
 
-**判定: low / 保留を継続。前提条件はほぼ揃ったが cooldown が未達。**
+**判定: low / 却下（close）。パッケージに問題は無いが、bot の提案の仕方が floor の制約と構造的に噛み合わない。**
 
 - ADR-2782 の前提だった ExTester の上限は、`vscode-extension-tester@8.28.0`（2026-10-02 公開）と 8.28.1（10-05 公開）で
   `vscode-min 1.138.0` / `vscode-max 1.140.0` になった。lock は 8.27.0（max 1.137.0）のままなので CI は red
 - cooldown: 8.28.0 は 2026-10-09、8.28.1 は 10-12 に満たす。publisher は 8.27.0 と同じ `rhdevelopers-ci`
-- `@types/vscode` は 1.139 が無く、1.140.0（10-01 公開、10-08 に cooldown 充足）が出ている。次の weekly run（10-12）で
-  Dependabot が #2973 を 1.140 で supersede する見込み
+- `@types/vscode` は 1.139 が無く、1.140.0（10-01 公開、10-08 に cooldown 充足）が出ている
 
-次回のトリアージで、ExTester ≥ 8.28 の bump、`engines.vscode` の引き上げ、`@types/vscode` を ADR-2782 の手順どおり
-まとめて入れる。bot PR は open のまま残す。
+**保留を続けない理由**: ADR-2562 は floor を「最新の `@types/vscode`」に追随させ、ADR-2782 はそれを ExTester の `vscode-max`
+以下に抑える。`@types/vscode` は VS Code stable と同日に出るが、ExTester の `vscode-max` はそれより遅れて上がり、さらに
+両方に cooldown 7 日が掛かる。Dependabot は常に最新の `@types/vscode` だけを提案するので、提案はほぼ毎回上限を超えて
+起票時点で red になる。ExTester が追いつく頃には次の VS Code が出ており、保留して待つ運用ではいつまでも入らない
+可能性がある（#2973 は 2026-09-28 から保留していた）。
+
+**今後の方針**（[#3070](https://github.com/kompiro/karasu/issues/3070) で ADR にする）:
+
+- floor の目標値を、cooldown を満たした ExTester の `vscode-max` にする。floor は VS Code stable より少し古い版を追う
+- floor を上げるきっかけは `vscode-extension-tester` の Dependabot PR とし、ExTester の bump と floor の引き上げを同じ
+  コミットにした差し替え PR で入れる（bot はこの対の diff を作れない）
+- `.github/dependabot.yml` で `@types/vscode` の version update を `ignore` する（security update は対象外）
+
+最初の適用は ExTester ^8.28 + floor ^1.140.0 になる見込み。#2973 は close する。`@dependabot ignore` のコメントは使わず、
+抑止は #3070 の `dependabot.yml` 変更で行う（設定ファイルに理由と一緒に残すため）。
 
 ### #3068 `jsdom` 30.0.1 → 30.1.1
 
@@ -224,7 +237,7 @@ patched 版が出た時点で `security-alert` skill の手順で別に扱う。
 | #3065 / #3067 / #3063 / #3062 / #3068 / #3066 / #3061 | 採用 | bot PR をそのままマージ。lock が衝突するので 1 件ずつ入れ、各マージの後に次の PR へ `@dependabot rebase` を掛けて CI を通し直す（#3061 は lock を触らない） |
 | #3064 `mocha` | 採用 | flake の再実行で green を確認してから、上と同じ順番待ちでマージ |
 | #3060 `gh-aw-actions/setup` | 却下 | bot PR を close し、`gh aw compile` の再生成 PR を v0.89.21（正式版の最新）で出す。`@dependabot ignore` は設定しない |
-| #2973 `@types/vscode` | 保留 | open のまま。ExTester 8.28 が cooldown を満たしたら（10-09 以降）ADR-2782 の手順でまとめて入れる |
+| #2973 `@types/vscode` | 却下 | bot PR を close。floor の追随方針を #3070 で見直し、ExTester の bump と対にした差し替え PR で上げる |
 
 ### 理由
 
@@ -232,7 +245,7 @@ patched 版が出た時点で `security-alert` skill の手順で別に扱う。
 - #3064 は major だが、breaking change はどれも vscode-e2e の使い方に当たらず、ExTester のジョブが mocha 12.0.2 で通っている
 - #3060 は版ではなく bot の diff の形の問題で、規則（ADR-2753）が却下と再生成を決めている。v0.90.0 は prerelease なので、
   再生成では正式版の v0.89.21 を入れる
-- #2973 は前提条件（ExTester の `vscode-max`）が upstream で外れたが、cooldown 前なので待つ
+- #2973 は最新の `@types/vscode` を追う提案と ExTester の上限が構造的に噛み合わず、保留では解消しない。追随の起点を ExTester に移す（#3070）
 - #3066 は CI が docs site をビルドしないため、PR ブランチでのローカルビルドを採用の条件にした
 
 ## 却下した案
@@ -246,6 +259,7 @@ bot ブランチに人手でコミットを足しても、次の recreate / reba
 v0.90.0 は `gh aw` CLI 側で prerelease 扱いで、現行は正式版を使っている。prerelease を入れる利点（step summary の改善など）は
 当方の 2 workflow（dispatch のみ）にとって小さい。
 
-### #2973 を今週中に ExTester 8.28 と一緒に差し替え PR で入れる
+### #2973 を保留のまま次回に持ち越す
 
-8.28.0 の cooldown 充足は 10-09 で、今入れると cooldown 7 日（ADR-784）の例外になる。VS Code 型定義の更新を急ぐ理由が無い。
+次回（10-12）に ExTester 8.28 と `@types/vscode` 1.140 がたまたま揃う見込みはあるが、それは今月の巡り合わせにすぎない。
+VS Code の次の stable が出れば同じ保留がまた始まるので、方針側を直す（#3070）。
