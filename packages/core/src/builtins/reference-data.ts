@@ -902,7 +902,7 @@ export const REFERENCE_DATA = {
         en: "On the element: `facets <id>, <id>` — repeatable and merged (1:N). The declaration has no member list",
         ja: "要素側に記述: `facets <id>, <id>`（繰り返し可・マージされる。1:N）。宣言側にメンバーリストは無い",
       },
-      experimental: true,
+      experimental: false,
     },
   ],
   shapes: [
@@ -949,9 +949,9 @@ export const REFERENCE_DATA = {
  * `kind → the child kinds it may contain`, derived from the `canContain`
  * column above so the rule has exactly one definition (#2165).
  *
- * The parser reads this to emit `node-not-in-context` (a **warning** in v1.x —
- * `.krs language v1.0` is frozen by ADR-1314, so a nesting that parses today must keep
- * parsing; error-ification is registered to the Syntax 2.0 program, #2162).
+ * The parser reads this to emit `node-not-in-context`: an **error** from
+ * `.krs language v2.0` (#2924), which keeps the misplaced node out of the model.
+ * It was a warning through language v1.x (ADR-1314 froze that behaviour).
  * Because the parser is the enforcer, `canContain` stopped being a
  * documentation-only column and `reference-parser-sync.test.ts` can now fence
  * it in both directions.

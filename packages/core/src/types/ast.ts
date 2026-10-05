@@ -1018,6 +1018,9 @@ export interface DiagnosticParamsByCode {
   "annotation-param-conflict": { annotation: string; key: string; existing: string; value: string };
   // The same annotation is written more than once on one element (#2707).
   "duplicate-annotation": { annotation: string };
+  // A non-builtin annotation name within typo distance of a builtin one
+  // (`@depracated`). Rejected: an error, kept out of the model (#2677).
+  "annotation-possible-typo": { annotation: string; suggestion: string };
   "link-url-scheme-not-allowed": { url: string; scheme: string };
   "edge-source-mismatch": { from: string; parentId: string };
   "client-resource-invalid-kind": { kind: string; name: string };

@@ -174,7 +174,7 @@ system ECPlatform {
 describe("buildDrillDownSvg with top-level services", () => {
   it("renders an orphan service inside an Unassigned frame when no system wraps it", () => {
     const krsFile = Parser.parse(
-      `service ECommerce { usecase ManageOrders { label "注文管理" } }`,
+      `service ECommerce { domain Orders { usecase ManageOrders { label "注文管理" } } }`,
     ).value;
     const { svg } = buildDrillDownSvg(krsFile);
     expect(svg).not.toContain("No diagram");
@@ -182,6 +182,8 @@ describe("buildDrillDownSvg with top-level services", () => {
     expect(svg).toContain('data-node-id="ECommerce"');
     // Drill-down page for the orphan service is produced so clicking it works
     expect(svg).toContain('id="krs-system-ECommerce"');
+    expect(svg).toContain('data-node-id="Orders"');
+    // ...and the domain inside it drills further down to its usecase.
     expect(svg).toContain('data-node-id="ManageOrders"');
   });
 
@@ -623,13 +625,15 @@ system EC {
     expect(backIdx).toBeGreaterThan(firstRectIdx);
   });
 
-  it("emits an entity view for a domain nested below another domain (deep nesting)", () => {
+  it("emits an entity view for a domain placed directly under the system (no service)", () => {
+    // `.krs language v2.0` (#2677) rejects domain-in-domain, so the former
+    // deep-nesting fixture is no longer a valid model. The depth-independence
+    // of the entity-view walk is now exercised by the shallowest legal
+    // placement (system → domain) against ENTITY_KRS's system → service → domain.
     const krsFile = Parser.parse(`
 system EC {
-  domain Sales {
-    domain Ordering {
-      entity Order {}
-    }
+  domain Ordering {
+    entity Order {}
   }
 }
 `).value;

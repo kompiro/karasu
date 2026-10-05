@@ -1338,78 +1338,62 @@ system S {
   });
 });
 
-describe("annotation-possible-typo hint", () => {
-  function typoHints(krs: string, userStyle?: string) {
-    const file = Parser.parse(krs).value;
-    const sheets = [getBuiltinStyleSheet()];
-    if (userStyle) sheets.push(StyleParser.parse(userStyle).value);
-    return analyze(file, sheets).filter((w) => w.kind === "annotation-possible-typo");
+// `.krs language v2.0` rejects a near-miss of a builtin annotation (#2677). The
+// check moved from this resolver to the parser, because a rejected annotation
+// must stay out of the model; these cases pin the distance rule the spec fixes.
+describe("annotation-possible-typo error (#2677)", () => {
+  function typos(krs: string) {
+    return Parser.parse(krs).diagnostics.filter((d) => d.code === "annotation-possible-typo");
   }
 
-  it("hints a near-miss of a built-in annotation", () => {
-    const hints = typoHints(`
+  it("rejects a near-miss of a builtin annotation and keeps it out of the model", () => {
+    const result = Parser.parse(`
 system S {
   service Legacy @depracated {}
 }
     `);
-    expect(hints).toHaveLength(1);
-    if (hints[0].kind !== "annotation-possible-typo") throw new Error("kind mismatch");
-    expect(hints[0].params).toEqual({
-      nodeId: "Legacy",
-      annotation: "depracated",
-      suggestion: "deprecated",
-    });
+    const errors = result.diagnostics.filter((d) => d.code === "annotation-possible-typo");
+    expect(errors).toHaveLength(1);
+    expect(errors[0].severity).toBe("error");
+    expect(errors[0].params).toEqual({ annotation: "depracated", suggestion: "deprecated" });
+    expect(result.value.systems[0].children[0].annotations).toEqual([]);
   });
 
-  it("catches an adjacent transposition of a short built-in (@nwe → @new)", () => {
-    const hints = typoHints(`
-system S {
-  service Api @nwe {}
-}
-    `);
-    expect(hints).toHaveLength(1);
-    if (hints[0].kind !== "annotation-possible-typo") throw new Error("kind mismatch");
-    expect(hints[0].params.suggestion).toBe("new");
+  it("catches an adjacent transposition of a short builtin (@nwe → @new)", () => {
+    const errors = typos(`system S {\n  service Api @nwe {}\n}`);
+    expect(errors.map((d) => d.params)).toEqual([{ annotation: "nwe", suggestion: "new" }]);
   });
 
-  it("renders as info, not warning — annotation names are an open set", () => {
-    expect(warningSeverity("annotation-possible-typo")).toBe("info");
+  it.each([
+    ["news", "new"],
+    ["drafted", "draft"],
+    ["experimentl", "experimental"],
+  ])("treats @%s as a misspelling of @%s (inside the budget)", (name, suggestion) => {
+    const errors = typos(`system S {\n  service Api @${name} {}\n}`);
+    expect(errors.map((d) => d.params)).toEqual([{ annotation: name, suggestion }]);
   });
 
-  it("stays silent for exact built-in names", () => {
-    expect(
-      typoHints(`
-system S {
-  service Legacy @deprecated @migration_target {}
-}
-    `),
-    ).toHaveLength(0);
+  it.each(["next", "drafting", "team_alpha", "canary"])(
+    "leaves @%s alone (outside the budget, so annotation-not-builtin instead)",
+    (name) => {
+      expect(typos(`system S {\n  service Api @${name} {}\n}`)).toHaveLength(0);
+    },
+  );
+
+  it("stays silent for exact builtin names", () => {
+    expect(typos(`system S {\n  service Legacy @deprecated @migration_target {}\n}`)).toHaveLength(
+      0,
+    );
   });
 
-  it("stays silent for user-defined names far from any built-in", () => {
-    expect(
-      typoHints(`
-system S {
-  service Billing @internal @team_alpha {}
-}
-    `),
-    ).toHaveLength(0);
+  it("consumes the rejected annotation's parameters without judging them", () => {
+    const result = Parser.parse(`system S {\n  service Legacy @depracated(until: "2027") {}\n}`);
+    expect(result.diagnostics.map((d) => d.code)).toEqual(["annotation-possible-typo"]);
+    expect(result.value.systems[0].children[0].annotationParams ?? {}).toEqual({});
   });
 
-  it("treats a name targeted by a stylesheet annotation selector as intentional", () => {
-    const krs = `
-system S {
-  service Legacy @deprecate {}
-}
-    `;
-    // Without a stylesheet the near-miss is hinted...
-    expect(typoHints(krs)).toHaveLength(1);
-    // ...but a user selector for the name marks it user-defined.
-    expect(typoHints(krs, `service@deprecate { opacity: 0.5; }`)).toHaveLength(0);
-  });
-
-  it("walks annotations on systems and nested resources", () => {
-    const hints = typoHints(`
+  it("walks systems, nested resources and teams", () => {
+    const errors = typos(`
 system S @experimentl {
   service Svc {
     domain Orders {
@@ -1419,12 +1403,21 @@ system S @experimentl {
     }
   }
 }
+organization Corp {
+  team ops @depracated {
+    owns Svc
+  }
+}
     `);
-    expect(hints.map((h) => h.params.suggestion).sort()).toEqual(["deprecated", "experimental"]);
+    expect(errors.map((d) => d.params.suggestion).sort()).toEqual([
+      "deprecated",
+      "deprecated",
+      "experimental",
+    ]);
   });
 });
 
-describe("tag-not-builtin deprecation warning (#2159)", () => {
+describe("tag-not-builtin warning (#2159, closed register in v2.0)", () => {
   function tagWarnings(krs: string, userStyle?: string) {
     const file = Parser.parse(krs).value;
     const sheets = [getBuiltinStyleSheet()];
@@ -1760,7 +1753,7 @@ system S {
   });
 });
 
-describe("annotation-not-builtin deprecation warning (#2159)", () => {
+describe("annotation-not-builtin warning (#2159, closed register in v2.0)", () => {
   function annotationWarnings(krs: string, userStyle?: string) {
     const file = Parser.parse(krs).value;
     const sheets = [getBuiltinStyleSheet()];
@@ -1798,31 +1791,21 @@ system S {
     ).toHaveLength(0);
   });
 
-  it("is NOT suppressed by a style selector, unlike the typo hint", () => {
-    const krs = `
-system S {
-  service Legacy @deprecate {}
-}
-    `;
-    const style = `service@deprecate { opacity: 0.5; }`;
-    // The near-miss typo hint is suppressed by the selector...
-    const file = Parser.parse(krs).value;
-    const sheets = [getBuiltinStyleSheet(), StyleParser.parse(style).value];
-    const all = analyze(file, sheets);
-    expect(all.filter((w) => w.kind === "annotation-possible-typo")).toHaveLength(0);
-    // ...but the deprecation still fires: v2.0 closes the set regardless of intent.
-    expect(all.filter((w) => w.kind === "annotation-not-builtin")).toHaveLength(1);
+  it("is not suppressed by a style selector", () => {
+    // A selector proves the name is intentional, but intent does not change the
+    // outcome: the register is closed to the tool vocabulary.
+    const warnings = annotationWarnings(
+      `system S {\n  service Billing @team_alpha {}\n}`,
+      `service@team_alpha { opacity: 0.5; }`,
+    );
+    expect(warnings).toHaveLength(1);
   });
 
-  it("fires alongside the typo hint on an unstyled near-miss", () => {
-    const file = Parser.parse(`
-system S {
-  service Legacy @depracated {}
-}
-    `).value;
-    const all = analyze(file, [getBuiltinStyleSheet()]);
-    expect(all.filter((w) => w.kind === "annotation-possible-typo")).toHaveLength(1);
-    expect(all.filter((w) => w.kind === "annotation-not-builtin")).toHaveLength(1);
+  it("never fires on a near-miss: the parser rejects it as annotation-possible-typo", () => {
+    const result = Parser.parse(`system S {\n  service Legacy @depracated {}\n}`);
+    expect(result.diagnostics.map((d) => d.code)).toEqual(["annotation-possible-typo"]);
+    const all = analyze(result.value, [getBuiltinStyleSheet()]);
+    expect(all.filter((w) => w.kind === "annotation-not-builtin")).toHaveLength(0);
   });
 
   it("covers team annotations in organization blocks", () => {
@@ -1839,29 +1822,6 @@ system S {
     expect(warnings).toHaveLength(1);
     if (warnings[0].kind !== "annotation-not-builtin") throw new Error("kind mismatch");
     expect(warnings[0].params).toEqual({ nodeId: "payments", annotation: "sunset" });
-  });
-
-  it("a team near-miss carries both diagnostics, same as a node (spec: coexist in v1.x)", () => {
-    const file = Parser.parse(`
-organization Corp {
-  team ops @depracated {
-    owns Payment
-  }
-}
-system S {
-  service Payment {}
-}
-    `).value;
-    const all = analyze(file, [getBuiltinStyleSheet()]);
-    const hints = all.filter((w) => w.kind === "annotation-possible-typo");
-    expect(hints).toHaveLength(1);
-    if (hints[0].kind !== "annotation-possible-typo") throw new Error("kind mismatch");
-    expect(hints[0].params).toEqual({
-      nodeId: "ops",
-      annotation: "depracated",
-      suggestion: "deprecated",
-    });
-    expect(all.filter((w) => w.kind === "annotation-not-builtin")).toHaveLength(1);
   });
 
   it("renders as warning", () => {
@@ -2992,60 +2952,6 @@ system S {
   });
 });
 
-describe("unassigned-usecase warning", () => {
-  it("warns when a usecase is a direct child of a service (not inside a domain)", () => {
-    const krs = `
-system ECPlatform {
-  service ECommerce {
-    usecase PlaceOrder { label "POST /orders" }
-    usecase CancelOrder { label "POST /orders/{id}/cancel" }
-  }
-}
-    `;
-    const file = Parser.parse(krs).value;
-    const builtin = getBuiltinStyleSheet();
-    const warnings = analyze(file, [builtin]);
-    const unassigned = warnings.filter((w) => w.kind === "unassigned-usecase");
-    expect(unassigned).toHaveLength(2);
-    expect(unassigned[0].params.usecaseId).toBe("PlaceOrder");
-    expect(unassigned[1].params.usecaseId).toBe("CancelOrder");
-  });
-
-  it("uses usecase id (not label) in the warning message", () => {
-    const krs = `
-service OrderService {
-  usecase PlaceOrder { label "POST /orders" }
-}
-    `;
-    const file = Parser.parse(krs).value;
-    const builtin = getBuiltinStyleSheet();
-    const warnings = analyze(file, [builtin]);
-    const unassigned = warnings.filter((w) => w.kind === "unassigned-usecase");
-    expect(unassigned).toHaveLength(1);
-    // The detection keys on the id, not the label — params carry the id,
-    // and the label is not part of the structured payload.
-    expect(unassigned[0].params.usecaseId).toBe("PlaceOrder");
-    expect(unassigned[0].params).not.toHaveProperty("label");
-  });
-
-  it("does not warn when a usecase is properly nested inside a domain", () => {
-    const krs = `
-system ECPlatform {
-  service ECommerce {
-    domain Order {
-      usecase PlaceOrder { label "POST /orders" }
-    }
-  }
-}
-    `;
-    const file = Parser.parse(krs).value;
-    const builtin = getBuiltinStyleSheet();
-    const warnings = analyze(file, [builtin]);
-    const unassigned = warnings.filter((w) => w.kind === "unassigned-usecase");
-    expect(unassigned).toHaveLength(0);
-  });
-});
-
 describe("unassigned-database warning", () => {
   it("warns for each top-level database not wrapped in a system", () => {
     const krs = `
@@ -3351,7 +3257,6 @@ describe("warningSeverity — exhaustive register map", () => {
     "missing-realizes": "info",
     // Low-confidence hint on an open name set — never a defect karasu can
     // assert (#1499).
-    "annotation-possible-typo": "info",
     // v1.x deprecation of non-builtin vocabulary ahead of the v2.0 closure —
     // a definite migration fact, not a low-confidence hint (#2159,
     // TPL-1503 state (2)).
@@ -3381,7 +3286,6 @@ describe("warningSeverity — exhaustive register map", () => {
     "unassigned-database": "warning",
     "unassigned-queue": "warning",
     "unassigned-storage": "warning",
-    "unassigned-usecase": "warning",
     "unassigned-resource": "warning",
     // Deep-link addressability degrades, but the model still renders and
     // resolves — a defect worth surfacing, not a style-school fact.
@@ -3618,8 +3522,11 @@ system S {
     const sheet = StyleParser.parse(`
 [my-team] { border-style: dashed; }
     `).value;
-    const result = resolveStyles(file.systems, [sheet]);
-    expect(result.nodes.get("Pay")!.borderStyle).toBe("dashed");
+    // Compared by name, not by painting: in `.krs language v2.0` a rule on a
+    // non-builtin tag matches nothing (#2677), but the two lexers must still
+    // agree on the name so the warnings on both sides point at the same word.
+    expect(file.systems[0].children[0].tags).toEqual(["my-team"]);
+    expect(sheet.rules[0].selector.tags).toEqual(["my-team"]);
   });
 
   it("matches a .krs.style selector when a fragment starts with a digit (#2707)", () => {
@@ -3633,8 +3540,11 @@ system S {
     const sheet = StyleParser.parse(`
 [team-1] { border-style: dashed; }
     `).value;
-    const result = resolveStyles(file.systems, [sheet]);
-    expect(result.nodes.get("Pay")!.borderStyle).toBe("dashed");
+    // Compared by name, not by painting: in `.krs language v2.0` a rule on a
+    // non-builtin tag matches nothing (#2677), but the two lexers must still
+    // agree on the name so the warnings on both sides point at the same word.
+    expect(file.systems[0].children[0].tags).toEqual(["team-1"]);
+    expect(sheet.rules[0].selector.tags).toEqual(["team-1"]);
   });
 
   it("warns on a tag that starts with a digit instead of losing it (#2707)", () => {

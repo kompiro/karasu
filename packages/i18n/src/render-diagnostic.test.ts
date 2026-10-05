@@ -71,9 +71,14 @@ const SAMPLES: SamplesByCode = {
     params: { parentKind: "service" },
   },
   "node-not-in-context": {
-    severity: "warning",
+    severity: "error",
     code: "node-not-in-context",
     params: { childKind: "usecase", parentKind: "client" },
+  },
+  "annotation-possible-typo": {
+    severity: "error",
+    code: "annotation-possible-typo",
+    params: { annotation: "depracated", suggestion: "deprecated" },
   },
   "legend-not-top-level": {
     severity: "error",
@@ -484,6 +489,7 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "infra-not-in-context": ["database", "domain"],
   "entity-not-in-domain": ["service"],
   "node-not-in-context": ["usecase", "client"],
+  "annotation-possible-typo": ["@depracated", "@deprecated"],
   "legend-not-top-level": ["system"],
   "expected-id-or-string": ["entity table infra id"],
   "expected-node-id": ["service"],

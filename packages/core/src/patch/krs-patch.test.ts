@@ -169,11 +169,11 @@ describe("applyKrsPatch", () => {
     });
 
     it("inserts into a nested block at the correct indentation level", () => {
-      const src = "system Outer {\n  system Inner {\n    service Foo {}\n  }\n}";
-      const result = applyKrsPatch(src, "insert-child", "Inner", "service Bar {}");
+      const src = "system Outer {\n  service Inner {\n    domain Foo {}\n  }\n}";
+      const result = applyKrsPatch(src, "insert-child", "Inner", "domain Bar {}");
       expect(result).toEqual({
         ok: true,
-        source: "system Outer {\n  system Inner {\n    service Foo {}\n    service Bar {}\n  }\n}",
+        source: "system Outer {\n  service Inner {\n    domain Foo {}\n    domain Bar {}\n  }\n}",
       });
     });
 
