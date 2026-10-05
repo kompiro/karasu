@@ -162,8 +162,11 @@ system OrderSystem {
 
 組み込み名の**綴り誤り**（near-miss）は未知の語ではなく書き間違いであり、**拒否される**。`annotation-possible-typo` は [error](./diagnostics.ja.md#register-と-severity) で、annotation は適用されずモデルから除かれ、メッセージが組み込み名を示す。放置すると `@depracated` は「バッジが出ない」という形でしか表面化しないためである。4 文字以下の組み込み名（`new`）から **1 編集**以内、それより長い組み込み名から **2 編集**以内の名前を綴り誤りとみなし（隣接する 2 文字の入れ替えは 1 編集と数える）、最も近い組み込み名を候補として示す。抑制条件はない。このため `@new` に近い短い名前（`@news`、`@now`）も error になる。組み込み名を書くか、組み込み名から離れた名前にするか、意味を `facet` に移す。綴り誤りにはこの error だけが付き、`annotation-not-builtin` は重ならない（言語 v1.x では info のヒントで、非推奨の warning と共存していた）。
 
-```krs invalid
+```krs
 service Billing @team_alpha   // annotation-not-builtin warning: 効果なし
+```
+
+```krs invalid
 service Legacy  @depracated   // annotation-possible-typo error: @deprecated の綴り誤り
 ```
 

@@ -161,8 +161,11 @@ system OrderSystem {
 
 A **near-miss** of a builtin name is not an unknown word but a misspelling, and it is **rejected**: `annotation-possible-typo` is an [error](./diagnostics.md#registers-and-severities), the annotation is not applied and is kept out of the model, and the message names the builtin. Left alone, `@depracated` would only surface as "my badge did not appear". A name is a near-miss when it is within **1 edit** of a builtin of 4 characters or fewer (`new`) or within **2 edits** of a longer one, counting an adjacent transposition as 1 edit; the nearest builtin is suggested. There is no suppression condition. This makes short names next to `@new` (`@news`, `@now`) errors too: write a builtin, or a name further from one, or move the meaning to a `facet`. A near-miss draws only this error, never `annotation-not-builtin` as well. (Through language v1.x the near-miss was an `info` hint that coexisted with the deprecation warning.)
 
-```krs invalid
+```krs
 service Billing @team_alpha   // annotation-not-builtin warning: no effect
+```
+
+```krs invalid
 service Legacy  @depracated   // annotation-possible-typo error: did you mean @deprecated?
 ```
 
