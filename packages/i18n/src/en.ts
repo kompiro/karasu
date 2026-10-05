@@ -154,6 +154,12 @@ export const en: Translations = {
     count === 1 ? "1 domain edge" : `${count} domain edges`,
   "edgeDetail.label.title": "🏷 Label",
   "edgeDetail.links.title": "🔗 Links",
+  // Focus canvas (#3031)
+  "focusCanvas.relations": ({ count }) => `⇄ Relations ${count}`,
+  "focusCanvas.counts": ({ incoming, outgoing }) => `${incoming} in · ${outgoing} out`,
+  "focusCanvas.back": "← Back",
+  "focusCanvas.close": "✕ Close",
+  "focusCanvas.region": "Focus canvas",
   "nodeDetail.links.title": "🔗 Links",
   "nodeDetail.openDeployView": "🚀 View in Deploy diagram →",
   "nodeDetail.jumpToEditor": "↗ Jump to editor",

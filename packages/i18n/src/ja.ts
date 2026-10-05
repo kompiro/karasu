@@ -152,6 +152,12 @@ export const ja: Partial<Translations> = {
   "edgeDetail.domainEdges.count": ({ count }) => `ドメインエッジ ${count} 本`,
   "edgeDetail.label.title": "🏷 ラベル",
   "edgeDetail.links.title": "🔗 リンク",
+  // Focus canvas (#3031)
+  "focusCanvas.relations": ({ count }) => `⇄ 関係 ${count}`,
+  "focusCanvas.counts": ({ incoming, outgoing }) => `入 ${incoming} · 出 ${outgoing}`,
+  "focusCanvas.back": "← 戻る",
+  "focusCanvas.close": "✕ 閉じる",
+  "focusCanvas.region": "フォーカスキャンバス",
   "nodeDetail.links.title": "🔗 リンク",
   "nodeDetail.openDeployView": "🚀 Deploy 図で確認 →",
   "nodeDetail.jumpToEditor": "↗ エディタへジャンプ",
