@@ -1,17 +1,38 @@
-# Dependabot トリアージ 2026-10-05
+---
+id: ADR-3069
+title: Dependabot トリアージ 2026-10-05：mocha 12 を含む 8 件を採用し、gh-aw は正式版 v0.89.21 で再生成し、@types/vscode は追随方針の見直し（#3070）に回して close する
+status: accepted
+date: 2026-10-05
+topic: build
+related_to:
+  - ADR-2983
+  - ADR-2753
+  - ADR-2782
+  - ADR-2562
+  - ADR-2474
+  - ADR-784
+  - ADR-2839
+scope:
+  packages: [app, cli, core, docs-site, lsp, vscode, vscode-e2e]
+  concerns: [ci, dependencies, security]
+---
+
+# ADR-3069: Dependabot トリアージ 2026-10-05：mocha 12 を含む 8 件を採用し、gh-aw は正式版 v0.89.21 で再生成し、@types/vscode は追随方針の見直し（#3070）に回して close する
 
 - **日付**: 2026-10-05
-- **ステータス**: 検討中
+- **ステータス**: 決定済み
 - **関連**:
+  - Design Doc PR: [#3069](https://github.com/kompiro/karasu/pull/3069)（本 ADR に昇格し削除）
+  - gh-aw 再生成 PR: [#3074](https://github.com/kompiro/karasu/pull/3074)（#3060 の差し替え）
   - 対象 Dependabot PR: [#3060](https://github.com/kompiro/karasu/pull/3060) / [#3061](https://github.com/kompiro/karasu/pull/3061) / [#3062](https://github.com/kompiro/karasu/pull/3062) / [#3063](https://github.com/kompiro/karasu/pull/3063) / [#3064](https://github.com/kompiro/karasu/pull/3064) / [#3065](https://github.com/kompiro/karasu/pull/3065) / [#3066](https://github.com/kompiro/karasu/pull/3066) / [#3067](https://github.com/kompiro/karasu/pull/3067) / [#3068](https://github.com/kompiro/karasu/pull/3068) / [#2973](https://github.com/kompiro/karasu/pull/2973)（前回から保留）
   - VS Code floor の追随方針の見直し: [#3070](https://github.com/kompiro/karasu/issues/3070)
-  - 前回トリアージ: [ADR-2983](../adr/2983-dependabot-triage-2026-09-29.md)
-  - gh-aw の再生成規則: [ADR-2753](../adr/2753-dependabot-triage-2026-09-07.md)、`.claude/rules/dependabot.md`
-  - VS Code floor と ExTester の `vscode-max`: [ADR-2782](../adr/2782-vscode-floor-capped-by-extester.md)
-  - 差し替え PR の語彙: [ADR-2474](../adr/2474-dependabot-replacement-pr-vocabulary.md)
-  - cooldown 7 日: [ADR-784](../adr/784-update-dependencies-20260421.md)
+  - 前回トリアージ: [ADR-2983](2983-dependabot-triage-2026-09-29.md)
+  - gh-aw の再生成規則: [ADR-2753](2753-dependabot-triage-2026-09-07.md)、`.claude/rules/dependabot.md`
+  - VS Code floor と ExTester の `vscode-max`: [ADR-2782](2782-vscode-floor-capped-by-extester.md)
+  - 差し替え PR の語彙: [ADR-2474](2474-dependabot-replacement-pr-vocabulary.md)
+  - cooldown 7 日: [ADR-784](784-update-dependencies-20260421.md)
 
-## 背景・課題
+## 背景
 
 2026-10-05（月）の weekly バッチ。npm 7 件、github-actions 2 件、前回から保留中の #2973 を合わせて 10 件を対象にする。
 `security` ラベル付きの PR はない。週次 workflow は ADR-2839 で schedule を止めているため所見 Issue も PR コメントもなく、
@@ -173,7 +194,7 @@ bot は `uses:` 行しか書き換えないため、`gh-aw-lock-consistency.test
   `preview` は使わないので「Wrangler 4.136.3 以上が必要」は該当しない
 - v4.1.0 / v4.1.1（09-22）は壊れた publish（upstream #454）で、4.1.2 / 4.1.3 がリリース手順を直した。commit は Cloudflare の
   maintainer と github-actions[bot]。v4.1.3 は 2026-09-24 リリース
-- 未確認: 実際の deploy は動かしていない。main にマージ後、最初の deploy / preview の成功で確かめる
+- 実際の deploy はトリアージ時点では動かしていない。マージ後の main の deploy 成功で確かめた（「決定」節）
 
 ### #3062 LSP group
 
@@ -230,14 +251,17 @@ bot は `uses:` 行しか書き換えないため、`gh-aw-lock-consistency.test
 patched 版が出ていないため、今は override で上げる先が無い。`pnpm-workspace.yaml` の `overrides:` にはどちらも載っていない。
 patched 版が出た時点で `security-alert` skill の手順で別に扱う。
 
-## 現時点の方針
+## 決定
+
+**採用 8 件は bot PR をそのままマージし、#3060 は却下して正式版 v0.89.21 の再生成 PR で入れ、#2973 は却下して floor の追随方針を #3070 で見直す。**
 
 | PR | 判定 | 反映 |
 | --- | --- | --- |
-| #3065 / #3067 / #3063 / #3062 / #3068 / #3066 / #3061 | 採用 | bot PR をそのままマージ。lock が衝突するので 1 件ずつ入れ、各マージの後に次の PR へ `@dependabot rebase` を掛けて CI を通し直す（#3061 は lock を触らない） |
-| #3064 `mocha` | 採用 | flake の再実行で green を確認してから、上と同じ順番待ちでマージ |
-| #3060 `gh-aw-actions/setup` | 却下 | bot PR を close し、`gh aw compile` の再生成 PR を v0.89.21（正式版の最新）で出す。`@dependabot ignore` は設定しない |
-| #2973 `@types/vscode` | 却下 | bot PR を close。floor の追随方針を #3070 で見直し、ExTester の bump と対にした差し替え PR で上げる |
+| #3061 / #3065 / #3067 / #3063 / #3062 / #3068 / #3064 / #3066 | 採用 | bot PR をマージ。lock が衝突するので #3061 → #3065 → #3067 → #3063 → #3062 → #3068 → #3064 → #3066 の順に 1 件ずつ入れ、最初の lock 変更より後の PR には `@dependabot rebase` を掛けて CI を通し直した（#3061 は lock を触らない）。#3064 は flake の再実行で green を確認してから入れた |
+| #3060 `gh-aw-actions/setup` | 却下 | bot PR を close し、`gh aw compile` の再生成 PR [#3074](https://github.com/kompiro/karasu/pull/3074) を v0.89.21 で出した。`@dependabot ignore` は設定しない |
+| #2973 `@types/vscode` | 却下 | bot PR を close。floor の追随方針を [#3070](https://github.com/kompiro/karasu/issues/3070) で見直し、ExTester の bump と対にした差し替え PR で上げる |
+
+マージ後の main で、`wrangler-action` 4.1.3 を使う `Deploy` と `Deploy karasu-nest` が成功したことを確認した（#3061 の「未確認」を解消）。
 
 ### 理由
 
