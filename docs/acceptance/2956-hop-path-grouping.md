@@ -46,6 +46,7 @@
 | `<path>` 要素 | 43,079 | 5,401 |
 | ホップの `<path>` 要素 | 38,572 | 894 |
 | `crossing-marks` レイヤ | 3.74MB | 1.50MB |
+| `DifyDB` 1 枚の表示（Chromium、20 ラウンドの中央値） | 50.5ms | 16.6ms |
 
 **画素の差。** Playwright の Chromium で各ビューを viewBox の 1 単位 = 1 画素で canvas に描き、変更前後を比べた。差はすべてホップの縁のアンチエイリアスだった。
 
