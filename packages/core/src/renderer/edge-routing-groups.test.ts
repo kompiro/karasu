@@ -1121,6 +1121,103 @@ organization Org {
   });
 });
 
+describe("trunk ends survive the normalization shift (#2966)", () => {
+  // Trunk siblings share one point object for their common end, and a left
+  // gutter lane pushes the canvas negative, so `normalizeCoordinates` has to
+  // shift it. Shifting per edge moved the shared end once per sibling. The
+  // examples corpus never has both at once, so each fixture puts a FAN-style
+  // fan-in (which takes the left gutter) above a trunk.
+  const FAN_PART = `
+  service S1 { label "S1" }
+  service S2 { label "S2" }
+  service S3 { label "S3" }
+  service S4 { label "S4" }
+  service S5 { label "S5" }
+  service W1 { label "W1" }
+  service W2 { label "W2" }
+  service W3 { label "W3" }
+  database Store { label "Store" }
+  S1 -> Store
+  S2 -> Store
+  S3 -> Store
+  S4 -> Store
+  S5 -> Store
+  S1 -> W1`;
+  const TEAMS = `
+organization Org {
+  team "src" { label "Sources" owns S1 owns S2 owns S3 owns S4 owns S5 }
+  team "wall" { label "Wall" owns W1 owns W2 owns W3 }
+  team "alpha" { label "Alpha" owns A }
+  team "beta" { label "Beta" owns B }
+  team "gamma" { label "Gamma" owns C }
+}`;
+  const OWNER_2966 = shopOwner([
+    ...["S1", "S2", "S3", "S4", "S5"].map((id) => [id, "src"] as const),
+    ...["W1", "W2", "W3"].map((id) => [id, "wall"] as const),
+    ["A", "alpha"],
+    ["B", "beta"],
+    ["C", "gamma"],
+  ]);
+  const FAN_IN = `
+system Shop {${FAN_PART}
+  service A { label "A" }
+  service B { label "B" }
+  service C { label "C" }
+  database DB { label "DB" }
+  service EXT [external] { label "EXT" }
+  A -> DB "w"
+  B -> DB "w"
+  A -> EXT "call"
+  B -> EXT "call"
+}${TEAMS}`;
+  const FAN_OUT = `
+system Shop {${FAN_PART}
+  service A { label "A" }
+  service B { label "B" }
+  service C { label "C" }
+  database DB { label "DB" }
+  DB -> A
+  DB -> B
+}${TEAMS}`;
+
+  // The shift only happens when some route runs left of every card.
+  const usesLeftGutter = (res: LayoutResult): boolean => {
+    const minLeft = Math.min(...[...res.nodes.values()].map((n) => n.x));
+    return res.edges.some((e) => (e.waypoints ?? []).some((w) => w.x < minLeft));
+  };
+  // A trunk end sits on its node's right side.
+  const onRightSide = (res: LayoutResult, p: Point, id: string): void => {
+    const n = res.nodes.get(id)!;
+    expect(p.x).toBe(n.x + n.width);
+    expect(p.y).toBeGreaterThanOrEqual(n.y);
+    expect(p.y).toBeLessThanOrEqual(n.y + n.height);
+  };
+
+  it("keeps a fan-in trunk's shared entry on its target", () => {
+    const res = layoutOf(FAN_IN, OWNER_2966, "team");
+    expect(usesLeftGutter(res)).toBe(true);
+    for (const target of ["DB", "EXT"]) {
+      const siblings = [edge(res, "A", target), edge(res, "B", target)];
+      for (const e of siblings) {
+        expect(e.trunkId).toBe(target);
+        onRightSide(res, e.toPoint, target);
+      }
+      expect(siblings[0].toPoint).toBe(siblings[1].toPoint);
+    }
+  });
+
+  it("keeps a fan-out trunk's shared exit on its source", () => {
+    const res = layoutOf(FAN_OUT, OWNER_2966, "team");
+    expect(usesLeftGutter(res)).toBe(true);
+    const siblings = [edge(res, "DB", "A"), edge(res, "DB", "B")];
+    for (const e of siblings) {
+      expect(e.outTrunkId).toBe("DB");
+      onRightSide(res, e.fromPoint, "DB");
+    }
+    expect(siblings[0].fromPoint).toBe(siblings[1].fromPoint);
+  });
+});
+
 describe("layer-spanning edges reach the interior (#2611)", () => {
   /**
    * Eight sources fanning into three shared targets, with five mid-layer cards

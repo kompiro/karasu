@@ -57,16 +57,17 @@ export function normalizeCoordinates(
       node.x += shiftX;
       node.y += shiftY;
     }
+    // Trunk siblings share one point object for their common end (fan-in
+    // `toPoint`, fan-out `fromPoint`), so shift each object once. Shifting per
+    // edge would move a shared end once per sibling and pull it off its node
+    // (#2966).
+    const moved = new Set<{ x: number; y: number }>();
     for (const edge of layoutEdges) {
-      edge.fromPoint.x += shiftX;
-      edge.fromPoint.y += shiftY;
-      edge.toPoint.x += shiftX;
-      edge.toPoint.y += shiftY;
-      if (edge.waypoints) {
-        for (const wp of edge.waypoints) {
-          wp.x += shiftX;
-          wp.y += shiftY;
-        }
+      for (const p of [edge.fromPoint, edge.toPoint, ...(edge.waypoints ?? [])]) {
+        if (moved.has(p)) continue;
+        moved.add(p);
+        p.x += shiftX;
+        p.y += shiftY;
       }
     }
   }
