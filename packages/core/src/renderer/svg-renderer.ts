@@ -958,10 +958,11 @@ function renderCrossingMarks(
 
 /**
  * Where one hop `<path>` ends and the next begins: a hop joins the path before it
- * when this holds for the previous hop's stroke and its own (#2956). Only *consecutive* hops merge, never every hop
- * of one stroke, because SVG paints later elements on top: pulling a stroke's
- * later hops forward to its first one would flip which of two overlapping hops
- * of different colours is on top (4,757 such pairs on the Dify model, TPL-2956).
+ * when this holds for the previous hop's stroke and its own (#2956). Only
+ * *consecutive* hops merge, never every hop of one stroke, because SVG paints
+ * later elements on top: pulling a stroke's later hops forward to its first one
+ * would flip which of two overlapping hops of different colours is on top
+ * (4,757 such pairs on the Dify model, TPL-2956).
  *
  * To make each edge's hops addressable (e.g. dimmed with their edge on hover,
  * #2632), also require the same edge here and tag the path with it. That is
