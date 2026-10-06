@@ -474,8 +474,11 @@ organization O { team "t1" { owns A owns B owns C } team "t2" { owns X owns Y } 
     expect(gapped.length).toBeGreaterThan(0);
     // Each arc's start coordinate reappears as a gap boundary in some host path,
     // proving line and arc meet seamlessly.
-    const arcStarts = [...r.svg.matchAll(/<path d="M ([\d.]+ [\d.]+) A /g)].map((m) => m[1]);
-    expect(arcStarts.length).toBeGreaterThan(0);
+    // Consecutive hops of one stroke share a `<path>` (#2956), so every subpath
+    // of the layer is an arc, not only the first of each path.
+    const layer = r.svg.match(/<g class="crossing-marks">.*?<\/g>/s)?.[0] ?? "";
+    const arcStarts = [...layer.matchAll(/(?:<path d="| )M ([\d.]+ [\d.]+) A /g)].map((m) => m[1]);
+    expect(arcStarts.length).toBe(2);
     for (const start of arcStarts) {
       expect(gapped.some((d) => d.includes(`M ${start}`) || d.includes(`L ${start}`))).toBe(true);
     }
