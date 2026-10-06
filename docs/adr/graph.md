@@ -176,6 +176,7 @@ flowchart TD
     ADR_3011["ADR-3011<br/>正否が差分だけで決まる小さな PR は、人間の承認を得て skip-coderabbit ラベ..."]
     ADR_3020["ADR-3020<br/>karasu-nest を karasu-nest.kompiro.dev カスタムドメインだ..."]
     ADR_3069["ADR-3069<br/>Dependabot トリアージ 2026-10-05：mocha 12 を含む 8 件を採用..."]
+    ADR_3077["ADR-3077<br/>Dependabot security alert 2026-10-06（transitive..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -1001,6 +1002,7 @@ flowchart TD
   class ADR_3020 accepted
   class ADR_3022 accepted
   class ADR_3069 accepted
+  class ADR_3077 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
