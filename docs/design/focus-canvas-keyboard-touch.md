@@ -123,9 +123,16 @@ main canvas の全 card に `tabindex` を付け、Tab で card を巡り、Ente
    （両端が card の edge、self-loop を除く）。0 のときは出さない。押すとパネルを閉じて
    focus canvas を開く。文言は pill と同じ i18n キーを使う。
 2. **コマンド。** `view.showRelations`（「Show Relations of Highlighted Node」）をパレット専用で
-   登録する。キーバインドは持たない。ハイライトされた node が無い、または focus canvas に
-   描けない（card が無い）ときは何もしない。登録は `PreviewPane` で行う（同時に mount される
+   登録する。キーバインドは持たない。登録は `PreviewPane` で行う（同時に mount される
    `PreviewPane` は 1 つで、表示中の図と focus canvas の状態を持つのがここだから）。
+   - 対象は、ハイライトされた node のうち**いま表示している階層に card があるもの**に限る。
+     Outline は全階層の node を並べるので、Outline で深い階層の node を選ぶと、ハイライトは
+     付くが canvas に card が無い。このときコマンドは何もしない。
+   - キーボードには下の階層へ降りる手段が今は無い（Outline の drill-down はダブルクリック
+     だけで、Enter は選択になる）。そのため、キーボードだけで開けるのは表示中の階層の node
+     に限られる。この制限は本件では解かず、別 Issue にする（「未解決の問い」）。
+   - deploy / org ビューでは、ハイライトの属性が `data-node-id` でない（ADR-2818）ので、
+     コマンドは何もしない。focus canvas は system ビュー（各階層）のものとして扱う。
 3. **focus canvas の中のキーボード。**
    - card（どの canvas でも）と、node の canvas の行に `tabindex="0"`・`role="button"`・
      `aria-label` を付ける。card の label は node の名前、行の label は「from → to: ラベル全文」。
@@ -145,12 +152,15 @@ main canvas の全 card に `tabindex` を付け、Tab で card を巡り、Ente
   元の要素に focus が戻る。
 - e2e: キーボードだけで、Outline で node を選ぶ → パレットでコマンド → 開いた canvas で Tab と
   Enter で辿る、を通す。マウスを使わない。
+- e2e（touch）: Playwright の touch エミュレーション（`hasTouch` と `tap`）で、ⓘ を tap → パネルの
+  `Relations` を tap → focus canvas が開く、を通す。
 - e2e（TPL-3022）: 線をクリックできない edge の全文に、キーボードだけで届く。
 
 ### AT
 
 `docs/acceptance/edge-label-focus-canvas.md` に AC を足す（新規ファイルにしない。同じ機能の
-受け入れ条件なので）。手動確認は、実機の touch 端末で ⓘ → `Relations` が押せること。
+受け入れ条件なので）。touch の経路は Playwright のエミュレーションで自動化できるので、手動
+確認は足さない（`.claude/rules/acceptance.md`「自動テストで判定できる条件は手動項目に写さない」）。
 
 ### 影響範囲
 
@@ -163,3 +173,5 @@ main canvas の全 card に `tabindex` を付け、Tab で card を巡り、Ente
 - preview 本体のキーボード操作（案2）。card を focus できるようにするなら、矢印キーでの
   移動を含めて別 Issue で設計する。
 - コマンドにキーバインドを付けるか（案4）。使われ方を見て決める。
+- キーボードで下の階層へ降りる手段（Outline で Enter が選択にしかならない）。本件の実装 PR と
+  一緒に Issue を起こす。
