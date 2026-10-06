@@ -211,12 +211,17 @@ describe("deprecation table", () => {
 });
 
 describe("agent-facing surface baseline (agent-surface.json)", () => {
-  const live = new Map(
-    program.commands.map((c) => [
-      c.name(),
-      c.options.flatMap((o) => [o.long, o.short].filter((f): f is string => !!f)),
-    ]),
-  );
+  // Nested commands are recorded by their full path, e.g. `skill install`.
+  type Cmd = (typeof program.commands)[number];
+  const flatten = (cmds: readonly Cmd[], prefix: string): [string, string[]][] =>
+    cmds.flatMap((c) => [
+      [
+        prefix + c.name(),
+        c.options.flatMap((o) => [o.long, o.short].filter((f): f is string => !!f)),
+      ] as [string, string[]],
+      ...flatten(c.commands, `${prefix}${c.name()} `),
+    ]);
+  const live = new Map(flatten(program.commands, ""));
   const tabled = (kind: Deprecation["kind"], name: string, command?: string) =>
     DEPRECATIONS.some((e) => e.kind === kind && e.name === name && e.command === command);
 
@@ -337,5 +342,18 @@ describe("karasu capabilities --json", () => {
     expect(text).toContain(`karasu ${cliPackageVersion()}`);
     expect(text).toContain("render <file>");
     expect(text).toContain("(none)");
+    expect(text).toContain("skill install [name]  --dir --force");
+    expect(text).toContain("skill path [name]");
+  });
+
+  it("lists nested commands under subcommands, and omits the field elsewhere", async () => {
+    const caps = JSON.parse(await run("--json"));
+    const skill = caps.commands.find((c: { name: string }) => c.name === "skill");
+    expect(skill.subcommands.map((c: { name: string }) => c.name)).toEqual(["install", "path"]);
+    const install = skill.subcommands.find((c: { name: string }) => c.name === "install");
+    expect(install.arguments).toEqual(["[name]"]);
+    expect(install.options.map((o: { long: string }) => o.long)).toEqual(["--dir", "--force"]);
+    const render = caps.commands.find((c: { name: string }) => c.name === "render");
+    expect(render).not.toHaveProperty("subcommands");
   });
 });

@@ -4,6 +4,7 @@ paths:
   - "docs/spec/**/*.md"
   - "docs/guide/**/*.md"
   - "docs/concepts*.md"
+  - "packages/skills/skills/**/*.md"
 ---
 
 # ドキュメントに `.krs` を埋めるときのルール
@@ -15,7 +16,8 @@ pnpm run lint:krs-fences
 ```
 
 ドキュメントの `.krs` は誰も実行しないので、放っておくと静かに文法から外れる。
-このガードが `docs/{acceptance,spec,guide}/**` と `docs/concepts*.md` の全 fence を
+このガードが `docs/{acceptance,spec,guide}/**` と `docs/concepts*.md`、公開する skill
+（`packages/skills/skills/**`）の全 fence を
 実際に parse する。観点は
 [TPL-2047](../../docs/test-perspectives/TPL-2047-doc-embedded-krs-is-parsed-not-prose.md)。
 

@@ -23,6 +23,8 @@ interface CapabilityCommand {
   /** Positional arguments as written in usage, e.g. `<file>`, `[files...]`. */
   arguments: string[];
   options: CapabilityOption[];
+  /** Nested commands, e.g. `install` under `skill`. Present only when there are some. */
+  subcommands?: CapabilityCommand[];
 }
 
 interface CapabilityDeprecation {
@@ -49,6 +51,20 @@ function argumentUsage(arg: Command["registeredArguments"][number]): string {
   return arg.required ? `<${name}>` : `[${name}]`;
 }
 
+function describeCommand(cmd: Command): CapabilityCommand {
+  return {
+    name: cmd.name(),
+    arguments: cmd.registeredArguments.map(argumentUsage),
+    options: cmd.options.map((opt) => ({
+      flags: opt.flags,
+      ...(opt.long ? { long: opt.long } : {}),
+      ...(opt.short ? { short: opt.short } : {}),
+      takesValue: opt.required || opt.optional,
+    })),
+    ...(cmd.commands.length > 0 ? { subcommands: cmd.commands.map(describeCommand) } : {}),
+  };
+}
+
 export function buildCapabilities(
   program: Command,
   version: string,
@@ -59,16 +75,7 @@ export function buildCapabilities(
     name: program.name(),
     version,
     languageVersion: KRS_LANGUAGE_VERSION,
-    commands: program.commands.map((cmd) => ({
-      name: cmd.name(),
-      arguments: cmd.registeredArguments.map(argumentUsage),
-      options: cmd.options.map((opt) => ({
-        flags: opt.flags,
-        ...(opt.long ? { long: opt.long } : {}),
-        ...(opt.short ? { short: opt.short } : {}),
-        takesValue: opt.required || opt.optional,
-      })),
-    })),
+    commands: program.commands.map(describeCommand),
     deprecations: table.map((e) => ({
       kind: e.kind,
       name: e.name,
@@ -88,11 +95,15 @@ export function capabilitiesText(caps: Capabilities): string {
     "",
     "Commands:",
   ];
-  for (const cmd of caps.commands) {
-    const usage = [cmd.name, ...cmd.arguments].join(" ");
-    const flags = cmd.options.map((o) => o.long ?? o.short).join(" ");
-    lines.push(`  ${usage}${flags ? `  ${flags}` : ""}`);
-  }
+  const list = (cmds: readonly CapabilityCommand[], prefix: string): void => {
+    for (const cmd of cmds) {
+      const usage = [prefix + cmd.name, ...cmd.arguments].join(" ");
+      const flags = cmd.options.map((o) => o.long ?? o.short).join(" ");
+      lines.push(`  ${usage}${flags ? `  ${flags}` : ""}`);
+      if (cmd.subcommands) list(cmd.subcommands, `${prefix}${cmd.name} `);
+    }
+  };
+  list(caps.commands, "");
   lines.push("", "Deprecated and removed names:");
   if (caps.deprecations.length === 0) {
     lines.push("  (none)");

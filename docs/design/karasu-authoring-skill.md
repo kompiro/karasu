@@ -88,7 +88,6 @@ karasu skill path                     # 同梱 skill の絶対パスを表示（
 
 #### 案 1-D: skills パッケージを正本にし、plugin marketplace と `karasu skill install` の両方から配る（推奨）
 
-<!-- absent-path-next-line: the package this design proposes to create (#2901 distribution slice) -->
 skill の正本を karasu repo の新しい workspace package `packages/skills/` に置き、npm に `karasu-skills` として公開する。package の中身は Claude Code plugin の形をそのまま取る:
 
 ```

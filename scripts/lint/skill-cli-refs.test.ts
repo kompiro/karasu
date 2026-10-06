@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
@@ -9,6 +9,7 @@ import {
   referencedCommands,
   referencedFlags,
   registeredCommands,
+  PACKAGED_SKILLS_DIR,
   SKILLS_DIR,
 } from "./skill-cli-refs.ts";
 
@@ -163,5 +164,24 @@ describe("check (synthetic fixture)", () => {
     // "karasu architecture" and "karasu model" are prose, not invocations.
     writeFixture("Turn this repo into a karasu architecture model with `karasu render f`.");
     expect(check(root)).toEqual([]);
+  });
+});
+
+describe("check (packaged skills and the dev symlink)", () => {
+  const root = mkdtempSync(join(tmpdir(), "skill-cli-refs-pkg-"));
+  afterAll(() => rmSync(root, { recursive: true, force: true }));
+
+  it("scans packages/skills/skills and reads a symlinked skill once, at its real path", () => {
+    const real = join(root, PACKAGED_SKILLS_DIR, "demo");
+    mkdirSync(real, { recursive: true });
+    writeFileSync(join(real, "SKILL.md"), "Validate with `karasu lint-style frag.krs`.");
+    mkdirSync(join(root, SKILLS_DIR), { recursive: true });
+    symlinkSync(real, join(root, SKILLS_DIR, "demo"));
+    mkdirSync(join(root, CLI_INDEX, ".."), { recursive: true });
+    writeFileSync(join(root, CLI_INDEX), '.command("render <file>")');
+
+    expect(check(root)).toEqual([
+      { file: "packages/skills/skills/demo/SKILL.md", command: "lint-style" },
+    ]);
   });
 });

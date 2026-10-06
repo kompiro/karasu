@@ -223,13 +223,14 @@ describe("analyzeKrsFences over the real corpus", () => {
     expect(analyzeKrsFences(REPO_ROOT).map((f) => `${f.file}:${f.line} ${f.detail}`)).toEqual([]);
   });
 
-  it("covers the spec, guide, acceptance and concepts docs", () => {
+  it("covers the spec, guide, acceptance and concepts docs, and the published skills", () => {
     expect(DEFAULT_DOC_ROOTS).toEqual([
       "docs/acceptance",
       "docs/spec",
       "docs/guide",
       "docs/concepts.md",
       "docs/concepts.ja.md",
+      "packages/skills/skills",
     ]);
   });
 

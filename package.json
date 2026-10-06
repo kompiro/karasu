@@ -65,15 +65,15 @@
     "@kompiro/adr-tools": "^0.0.13",
     "@kompiro/tpl-tools": "^0.0.10",
     "@playwright/test": "^1.63.0",
-    "@types/node": "^26.5.0",
-    "knip": "^6.33.0",
+    "@types/node": "^26.6.2",
+    "knip": "^6.38.0",
     "lefthook": "^2.1.14",
     "madge": "^8.0.0",
     "oxfmt": "^0.63.0",
-    "oxlint": "1.82.0",
+    "oxlint": "1.85.0",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.2"
   },
   "dependencies": {
     "@resvg/resvg-wasm": "^2.6.2"

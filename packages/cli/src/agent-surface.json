@@ -38,6 +38,9 @@
     "coverage": ["--format", "--output", "--threshold", "-o"],
     "team-dependencies": ["--format", "--output", "-o"],
     "subtree": ["--output", "--with-ancestors", "-o"],
-    "capabilities": ["--json"]
+    "capabilities": ["--json"],
+    "skill": [],
+    "skill install": ["--dir", "--force"],
+    "skill path": []
   }
 }

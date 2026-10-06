@@ -32,25 +32,29 @@ allowBuilds:
 # duplicate key.
 overrides:
   brace-expansion@1: ^1.1.18
-  brace-expansion@2: ^2.1.4
-  brace-expansion@5: ^5.0.9
+  brace-expansion@2: ^2.1.7
+  brace-expansion@5: ^5.0.12
   diff: ^8.0.3
-  dompurify: ^3.4.13
+  dompurify: ^3.4.16
   esbuild: ^0.28.1
-  fast-uri: ^3.1.6
+  fast-uri: ^3.1.8
   form-data: ^4.0.6
   js-yaml@4: ^4.3.2
   linkify-it: ^5.0.2
-  markdown-it: ^14.2.0
+  markdown-it: ^14.3.1
   nanoid: ^3.3.18
   postcss: ^8.5.18
+  postcss-nested@6: ^7.0.2
   qs: ^6.16.0
   read-yaml-file@1: ^2.1.0
   serialize-javascript: ^7.0.5
   sharp: ^0.35.0
+  smol-toml: ^1.9.0
+  source-map-js: ^1.2.2
   svgo: ^4.0.2
+  tinypool: ~2.1.2
   tmp: ^0.2.6
-  undici: ^7.28.0
+  undici: ^7.29.1
   uuid: ^14.0.0
   vite@8: ^8.0.16
   ws: ^8.21.0

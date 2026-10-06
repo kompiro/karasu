@@ -120,7 +120,7 @@ jobs:
           # Changesets that name only packages this repo does not release move
           # no released version; there is nothing to publish, so no train.
           if [ "$(node scripts/release/train.mts bumped-count --before "$RUNNER_TEMP/before.json")" = "0" ]; then
-            echo "::warning::Pending changesets move no released package (karasu, @karasu-tools/core, karasu-vscode): nothing to release."
+            echo "::warning::Pending changesets move no released package (see RELEASED_PACKAGES in scripts/release/github-release.mts): nothing to release."
             exit 0
           fi
           DATE=$(date -u +%Y-%m-%d)

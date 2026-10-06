@@ -5,7 +5,8 @@ name: Reference docs check
 # structure guard (`spec-structure-sync.ts`, Issue #1501) plus the guide
 # diagram drift guard (`gen-guide-diagrams.ts --check`, Issue #1574) plus the
 # roadmap ledger guard (`roadmap-issue-state.ts`, Issue #2245) plus the
-# embedded-snippet parse guard (`krs-fences.ts`, Issue #2415) on PRs
+# embedded-snippet parse guard (`krs-fences.ts`, Issue #2415) plus the skill
+# guards (`skill-reference-bundle-sync.ts`, `skill-cli-refs.ts`) on PRs
 # that touch the reference single-source / guide / roadmap paths. The skip workflow emits a no-op
 # `Reference docs` job for all other PRs so a Required status named
 # `Reference docs` stays green repository-wide.
@@ -45,7 +46,7 @@ on:
       - "docs/tools/**"
       - "packages/docs-site/**"
       - "scripts/lint/docs-site-ci-paths-sync.ts"
-      - ".claude/skills/reverse-architecture/**"
+      - "packages/skills/**"
       - "scripts/lint/skill-reference-bundle-sync.ts"
       - ".github/workflows/reference-docs-check.yml"
   push:
@@ -67,7 +68,7 @@ on:
       - "docs/tools/**"
       - "packages/docs-site/**"
       - "scripts/lint/docs-site-ci-paths-sync.ts"
-      - ".claude/skills/reverse-architecture/**"
+      - "packages/skills/**"
       - "scripts/lint/skill-reference-bundle-sync.ts"
       - ".github/workflows/reference-docs-check.yml"
 
@@ -117,6 +118,12 @@ jobs:
       # the PR that edits a source and leaves its copy behind.
       - name: Skill reference bundle in sync
         run: pnpm run lint:skill-reference-bundle-sync
+
+      # Every `karasu <cmd>` a skill prescribes must be a registered command
+      # (Issue #2093). `ci.yml` runs the vitest mirror, but its `paths-ignore:
+      # **/*.md` skips exactly the PR that edits only a SKILL.md (Issue #2932).
+      - name: Skill CLI references registered
+        run: pnpm run lint:skill-cli-refs
 
       # The roadmap's watch ledgers track work that has no Issue yet, and
       # nothing re-reads a row once its promotion trigger fires (Issue #2245).

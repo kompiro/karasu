@@ -181,6 +181,8 @@ karasu はこれを sync/async 種別ごとに **1 本の implicit エッジへ�
 
 参照: ADR-445、ADR-510、PR #607。
 
+> Related TPLs: [TPL-3022](test-perspectives/TPL-3022-withheld-content-stays-reachable.md) — canvas が省略・保留した authored 情報は、その surface 上で全文に到達できる経路を持つ。
+
 ### ghost — drill-down で視野が狭まっても境界を失わない
 
 drill-down で service や domain の内部に降りると、外の世界は視野の外に出る。

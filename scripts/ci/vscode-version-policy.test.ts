@@ -24,6 +24,14 @@ import { describe, expect, it } from "vitest";
 // comparing numbers: the newest VS Code is always at least as new as any
 // published `@types/vscode`. Pin a version there and that stops holding for
 // free, so this guard fails and forces the comparison to be written down.
+//
+// The floor is bounded from above as well (ADR-2773). The WebView suite runs
+// `extester.downloadCode("max")`, and "max" is not latest stable but the
+// newest VS Code the installed `vscode-extension-tester` declares in its
+// `supportedVersions`. A floor above that fails the E2E job at install time
+// with "not compatible with VS Code '<max>'", which reads as an extension bug
+// rather than as a manifest that outran the test harness. The ceiling is read
+// from the installed package for the same reason no floor constant lives here.
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 
@@ -31,6 +39,9 @@ const VSCODE_TEST_CONFIG = "packages/vscode-e2e/.vscode-test.mjs";
 
 /** The manifest that ships the extension, and therefore owns the floor. */
 const EXTENSION_MANIFEST = "packages/vscode/package.json";
+
+/** The installed ExTester, whose `supportedVersions` caps the floor. */
+const EXTESTER_MANIFEST = "packages/vscode-e2e/node_modules/vscode-extension-tester/package.json";
 
 type Declaration = { readonly where: string; readonly value: string };
 
@@ -69,6 +80,28 @@ function readEnginesRange(): string | undefined {
   return manifest.engines?.vscode;
 }
 
+/** The newest VS Code the installed ExTester supports, i.e. what `downloadCode("max")` fetches. */
+function readExtesterMax(): string | undefined {
+  const manifest = JSON.parse(read(EXTESTER_MANIFEST)) as {
+    supportedVersions?: { "vscode-max"?: string };
+  };
+  return manifest.supportedVersions?.["vscode-max"];
+}
+
+/** `^1.137.0` / `1.137.0` → `[1, 137, 0]`. */
+function parseVersion(range: string): number[] {
+  const match = /(\d+)\.(\d+)\.(\d+)/.exec(range);
+  if (match === null) throw new Error(`no version in ${JSON.stringify(range)}`);
+  return match.slice(1).map(Number);
+}
+
+function compareVersions(a: number[], b: number[]): number {
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return a[i] - b[i];
+  }
+  return 0;
+}
+
 describe("VS Code version policy", () => {
   it("finds the declarations it is meant to guard", () => {
     // Parser sanity: a rename or a manifest reshuffle would otherwise make
@@ -93,6 +126,22 @@ describe("VS Code version policy", () => {
     // typechecked, and `vsce` only rejects the other direction.
     const types = readTypesRanges().find((r) => r.where === EXTENSION_MANIFEST)?.value;
     expect(readEnginesRange()).toBe(types);
+  });
+
+  it("keeps engines.vscode within the VS Code versions the installed ExTester supports", () => {
+    const engines = readEnginesRange();
+    const max = readExtesterMax();
+    expect(max, `${EXTESTER_MANIFEST} must declare supportedVersions["vscode-max"]`).toBeDefined();
+    if (engines === undefined || max === undefined) return;
+    const offenders =
+      compareVersions(parseVersion(engines), parseVersion(max)) > 0
+        ? [
+            `engines.vscode ${engines} in ${EXTENSION_MANIFEST} is above vscode-max ${max} of ` +
+              `vscode-extension-tester; the WebView E2E would fail to install the extension. ` +
+              `Lower the floor or bump vscode-extension-tester in packages/vscode-e2e/package.json.`,
+          ]
+        : [];
+    expect(offenders).toEqual([]);
   });
 
   it("runs the extension suite against the stable channel, not a pinned version", () => {

@@ -17,6 +17,44 @@ name = "karasu-nest"
 main = "src/worker.ts"
 compatibility_date = "2025-01-01"
 
+# The service answers on one host only: the product domain (ADR-3020).
+#
+# The origin is not just an address here. `NEST_PUBLIC_ORIGIN` below is the
+# OAuth `redirect_uri` and the `Origin` every state-changing request must
+# carry, and the session cookie is `__Host-` scoped to it. On any other host
+# sign-in fails every time (the `state` cookie lands on one host, the callback
+# on the other) and every POST fails the `Origin` check. So the workers.dev
+# host is turned off rather than left up as a copy that cannot work.
+#
+# Declared here rather than in the dashboard for the same reason as `[vars]`:
+# the deploy should say where the service lives. Every deploy reconciles the
+# custom domain attachment against this entry (Cloudflare provisions its DNS
+# record and certificate), so the deploy token needs Workers Routes: Edit on
+# the `kompiro.dev` zone as well as its account permissions (README).
+workers_dev = false
+routes = [{ pattern = "karasu-nest.kompiro.dev", custom_domain = true }]
+
+# The gallery viewer (#2998): `packages/app`'s preview built on its own
+# (`build:viewer`, #2997) and staged here by `pnpm run build:viewer`
+# (`scripts/stage-viewer.ts`). `.github/workflows/nest-deploy.yml` stages it
+# before deploying; a local `wrangler dev` needs the same step first.
+#
+# Only `/assets/*` is served straight from the static assets. Every other
+# path, `/viewer.html` included, reaches the Worker first. The template holds
+# the viewer's script, and this origin holds the session cookie, so it must
+# never be served here as a page of its own; the Worker reads it through
+# `ASSETS` and serves it only under the `/g/<id>` sandbox (TPL-2993,
+# `src/gallery/viewer-assets.ts`). `html_handling` and `not_found_handling`
+# are off so no other path can resolve to it either.
+#
+# Static-asset requests do not run the Worker, so the bundle adds no CPU.
+[assets]
+directory = "./viewer-assets"
+binding = "ASSETS"
+run_worker_first = ["/*", "!/assets/*"]
+html_handling = "none"
+not_found_handling = "none"
+
 # This service needs a paid Workers plan, and the reason is CPU rather than
 # anything about scale.
 #
@@ -29,17 +67,29 @@ compatibility_date = "2025-01-01"
 #   89KB document   ->  41ms CPU
 #   220KB document  ->  78ms CPU   (just inside MAX_SUBMISSION_BYTES)
 #
-# Roughly linear in document size, so ~100ms is the worst case a submission at
-# the 256KB cap can ask for. Rendering therefore still needs the paid plan, and
-# a document does not have to be unusual to need it.
+# Rendering therefore still needs the paid plan, and a document does not have
+# to be unusual to need it.
 #
-# 1 second rather than the 60 the generation service declared: that was sized
-# against minutes-long runs and is now 600x the measured worst case. This
-# leaves roughly 10x headroom over the measurement -- enough for slower
-# hardware than the machine it was taken on -- while still stopping a runaway
-# rather than billing for it. Raise it with a measurement, not a guess.
+# Those three looked linear in size, and that turned out not to hold (#2969).
+# The cost follows the number of domains and drill-down views, which the
+# default gallery page bundles into one SVG, more than the byte count:
+#
+#   355KB reverse of Dify (21 domains) -> ~600ms per render, 740ms cold,
+#                                         8.4MB of SVG for the all-views page
+#                                         (a single system/deploy/org view:
+#                                         20-36ms)
+#
+# Since #2998 the page itself is drawn in the reader's browser; the Worker
+# renders only for `?format=svg`, which still bundles every view. Whether the
+# limit (or the paid plan) can come down is measured after that lands, not
+# assumed: ingest still parses the whole submission (#2993).
+#
+# 1 second left under 2x headroom over that, on the machine it was measured
+# on. 5 seconds leaves ~8x -- room for slower hardware and for a model up to
+# the 1MiB MAX_SUBMISSION_BYTES -- while still stopping a runaway rather than
+# billing for it. Raise it with a measurement, not a guess.
 [limits]
-cpu_ms = 1_000
+cpu_ms = 5_000
 
 # Keep the logs, rather than requiring someone to be watching.
 #
@@ -51,19 +101,34 @@ enabled = true
 [vars]
 ENVIRONMENT = "production"
 
-# The origin this deploy answers on, e.g. "https://karasu-nest.<account>.workers.dev"
-# or a custom hostname. Submitter sign-in (#2586) needs it for two things:
+# The origin this deploy answers on: the custom domain in `routes` above.
+# Submitter sign-in (#2586) needs it for two things:
 # GitHub's `redirect_uri`, and the `Origin` every state-changing request is
 # checked against.
 #
 # Deliberately NOT derived from the incoming request. Both uses stop meaning
 # anything if an attacker-supplied `Host` header can decide them.
 #
-# Left unset here because this repository does not record the hostname. Set it
-# on the deploy (uncomment with the real value, or set the var in the
-# dashboard). Until it is set, sign-in answers 503 naming the binding rather
-# than sending anyone to a broken consent screen.
-# NEST_PUBLIC_ORIGIN = "https://karasu-nest.example.workers.dev"
+# Recorded here rather than in the dashboard: `wrangler deploy` replaces the
+# Worker's plain-text vars with the ones in this file, so a dashboard value
+# would be dropped by the next deploy. It is not a secret.
+#
+# Exactly the origin, with no path and no trailing slash. It is compared to the
+# browser's `Origin` header as a string, and GitHub requires the OAuth App's
+# callback URL to equal `<origin>/auth/callback`.
+NEST_PUBLIC_ORIGIN = "https://karasu-nest.kompiro.dev"
+
+# GitHub numeric user ids allowed to sign in (#2969). Only the operator
+# (kompiro, 42963) until the legal review in #2691 is done: signing in is what
+# writes someone's GitHub id and login, and what lets them show a submission to
+# third parties.
+#
+# Kept here rather than in the dashboard on purpose. Adding an id is the act of
+# opening the gallery to that person, so it should arrive as a reviewed change
+# with #2691's state in view, not as a setting nobody can see. The ids are
+# public on GitHub; this is not a secret. Numeric ids, not logins: a login can
+# be renamed and claimed by someone else.
+NEST_SIGN_IN_ALLOWLIST = "42963"
 
 # Accounts, sessions and submissions share one namespace, separated by key
 # prefix (`acct/`, `sess/`, `sub/`) rather than by binding, because deleting an

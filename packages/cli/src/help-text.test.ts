@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { Parser } from "@karasu-tools/core";
 import { program } from "./index.js";
 
@@ -113,4 +114,24 @@ describe("--help .krs Examples parse cleanly (#2910)", () => {
     const [snippet] = krsSnippetsIn(help);
     expect(Parser.parse(snippet).diagnostics.some((d) => d.severity === "error")).toBe(true);
   });
+});
+
+describe("karasu skill --help (#2912)", () => {
+  it("shows both ways to install the skills", () => {
+    const help = helpTextOf("skill");
+    expect(help).toContain("/plugin install karasu@karasu");
+    expect(help).toContain("$ npx karasu skill install");
+    expect(help).toContain("--dir .agents/skills");
+  });
+
+  it.each(["cli.md", "cli.ja.md"])(
+    "is documented in docs/tools/%s, with every subcommand in the table",
+    (doc) => {
+      // TPL-1716: the command table is where a reader looks first.
+      const md = readFileSync(new URL(`../../../docs/tools/${doc}`, import.meta.url), "utf8");
+      expect(md).toContain("| `skill install [name]` |");
+      expect(md).toContain("| `skill path [name]` |");
+      expect(md).toContain("npx karasu skill install karasu-author --dir .agents/skills");
+    },
+  );
 });

@@ -1,0 +1,4 @@
+/* The app's web fonts, from Google Fonts. Kept out of `index.css` so the
+   gallery viewer, which imports `index.css` and must stay off the network,
+   does not load them (#2997). `main.tsx` imports this before `index.css`. */
+@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");

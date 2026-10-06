@@ -1,0 +1,111 @@
+// A dense domain-level canvas: 10 domains and 41 labelled domain edges, every label a
+// sentence of evidence (median 76 characters). Reduced from the model the
+// reverse-architecture skill produced for umami-software/umami 3.4.0, keeping only the
+// services, their domains and the domain-to-domain edges, with the labels as written.
+//
+// The fence for edge-label disclosure (#3022): drawn in full, these labels collide with
+// cards, with each other and with other edges' lines dozens of times over.
+system Umami {
+  label "Umami"
+
+  service UmamiApp {
+    label "Umami app"
+    description "Next.js App Router application (src/app, src/lib, src/queries)"
+
+    domain Tracking {
+      label "Tracking"
+      description "Ingest pageviews, custom events, identify calls, pixel hits and link redirects; resolve visitor sessions"
+      -> TrackedEntities "resolves the tracked website / link / pixel (fetchWebsite, findLink, findPixel)"
+    }
+
+    domain Analytics {
+      label "Analytics"
+      description "Query recorded events: stats, metrics, realtime, funnels, goals, journeys, retention, attribution, revenue, UTM, performance, heatmaps, saved reports, segments, annotations, export"
+      -> Identity "authorizes every request via @/permissions (canViewWebsiteSection, canViewReport, canUpdateWebsite, ...) and parseRequest/checkAuth"
+      -> TrackedEntities "loads the website (fetchWebsite, Redis website:* cache) to resolve date ranges and filters"
+      -> Tracking "delegates session deletion to deleteSession (src/queries/prisma/session.ts)"
+    }
+
+    domain SessionReplay {
+      label "Session replay"
+      description "Record and replay visitor sessions (rrweb recordings, saved replays). Seam resolved in Phase 2: own context downstream of Tracking session identity - own vocabulary (recording, chunk, mask level), own client (src/recorder), own enable flags and tables; heatmap ingest moved to Tracking."
+      -> Tracking "relies on the x-umami-cache session token issued by /api/send; writes heatmap events via saveHeatmapEvents; joins session/website_event"
+      -> TrackedEntities "reads website.recorderEnabled / replayConfig to gate recording"
+      -> Identity "auth (parseRequest) and website permissions (canViewAuthenticatedWebsite, canUpdateWebsite)"
+      -> Analytics "reuses getQueryFilters / segment and cohort resolution for replay listing"
+      -> Teams "CLOUD_MODE plan gate reads team:* cache (fetchTeam)"
+    }
+
+    domain TrackedEntities {
+      label "Websites, links & pixels"
+      description "The things Umami tracks: websites, short links and pixels. Seam resolved in Phase 2: one context - src/lib/entity.ts treats them as one 'entity', events attribute link/pixel hits through website_id + event_type, and they share ownership, permissions and share/chart APIs."
+      -> Sharing "creates / deletes / looks up website share links (createShare, deleteSharesByEntityId, getShareByEntityId)"
+      -> Identity "authorizes every route via @/permissions (canViewLink, canUpdateWebsite, ...); cloud account lookup (fetchAccount)"
+      -> Teams "team website limit lookup (fetchTeam) and team-membership join for includeTeams listing"
+      -> Analytics "list sparkline charts (getWebsiteListCharts)"
+      -> SessionReplay "normalizes website replayConfig (getRecorderConfig / getRecorderEnabled)"
+      -> Boards "getEntity resolves an id against Board too (lib/entity.ts)"
+      -> Administration "checks cloud plan limits (lib/subscription.ts)"
+    }
+
+    domain Boards {
+      label "Boards"
+      description "Custom dashboards composed of charts"
+      -> Identity "authorizes via @/permissions (canViewBoard, canCreateWebsite, hasPermission on team role); share-token auth for shared boards"
+      -> TrackedEntities "checks the caller can view every referenced website/pixel/link (canViewWebsite / canViewPixel / canViewLink)"
+      -> Analytics "validates Funnel/Goal component reportIds against saved reports (getReport)"
+      -> Teams "team board listing and team-role checks (canViewTeam, getTeamUser)"
+    }
+
+    domain Sharing {
+      label "Sharing"
+      description "Public share links for websites, links, pixels and boards; white-label share pages"
+      -> TrackedEntities "loads the shared website/link/pixel, entity permission checks (lib/entity, canUpdateWebsite/Link/Pixel)"
+      -> Boards "loads the shared board and expands its entity ids (getBoard, getBoardEntityIds, canUpdateBoard)"
+      -> Teams "finds the team owner for white-label and team members for board id filtering"
+      -> Identity "loads the board owner user and reuses canViewWebsite; share token verified in lib/auth.ts"
+      -> Analytics "share page embeds the website overview and report pages"
+    }
+
+    domain Teams {
+      label "Teams"
+      description "Teams, membership, roles and invitations"
+      -> Identity "authenticates every route (parseRequest) and authorizes via @/permissions team checks; reads users for member lists"
+      -> TrackedEntities "team deletion soft/hard-deletes the team's links and pixels and drops their Redis slug caches (direct table access in deleteTeam)"
+      -> Boards "team deletion deletes the team's boards (direct table access in deleteTeam)"
+      -> Sharing "team deletion deletes share rows of the team's links, pixels and boards"
+      -> Administration "checks cloud plan limits (lib/subscription.ts)"
+    }
+
+    domain Identity {
+      label "Identity & access"
+      description "Users, login/logout, SSO, auth tokens, two-factor authentication, API keys, the /me account area, permissions"
+      -> Teams "loads a user's team memberships at login/verify and checks team membership/roles in permissions"
+      -> TrackedEntities "permissions look up website/link/pixel ownership; user deletion removes owned websites, links and pixels"
+      -> Boards "permissions look up board ownership; user deletion removes owned boards"
+      -> Analytics "permissions look up reports; user deletion removes the user's reports"
+      -> Administration "checks cloud plan limits (lib/subscription.ts)"
+    }
+
+    domain Administration {
+      label "Administration"
+      description "Instance settings, admin views over users/teams/websites, config, heartbeat, telemetry and update checks"
+      -> Identity "authorizes admin routes via @/permissions (isAdmin checks); lists and updates users via queries/prisma/user (getUsers, updateUser)"
+      -> Teams "lists all teams via queries/prisma/team getTeams"
+      -> TrackedEntities "lists all websites via queries/prisma/website getWebsites"
+    }
+  }
+
+  service McpServer {
+    label "Umami MCP server"
+    description "@umami/mcp (packages/mcp): read-only MCP tools that call the Umami API through @umami/api-client"
+
+    domain McpTools {
+      label "MCP tools"
+      description "Read-only analytics tools exposed to MCP clients"
+      -> TrackedEntities "list_websites calls GET /api/websites (includeTeams) to resolve websiteIds"
+      -> Analytics "every other tool calls the Analytics read API (stats, metrics, events, sessions, reports, segments, annotations)"
+      -> Identity "the embedded /mcp endpoint verifies the bearer API key with checkApiKeyAuth / isApiKey (src/lib/auth, src/lib/api-key)"
+    }
+  }
+}

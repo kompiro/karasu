@@ -1,7 +1,7 @@
 /**
  * Submitted `.krs` documents, kept until their author deletes them.
  *
- *     sub/v1/<account>/<slug> -> { slug, title, krs, submittedAt, updatedAt, visibility }
+ *     sub/v1/<account>/<slug> -> { slug, title, krs, description?, submittedAt, updatedAt, visibility }
  *
  * **No TTL, and that is the decision rather than an omission.** Every other
  * key this service writes expires, because the generation service's whole
@@ -30,13 +30,20 @@ import {
 import { purgeByPrefix } from "./sweep.js";
 
 /**
- * 256KB.
+ * 1MiB.
  *
- * A `.krs` is structure, not source: the largest model in `examples/` is a
- * few kilobytes, and a reverse of a substantial system lands in the tens. This
- * is a bound on abuse rather than a bound anyone modelling honestly will meet.
+ * A `.krs` is structure, not source, but a reverse of a large system at uniform
+ * domain depth is not small: the operator's model of Dify (21 domains, every
+ * table and use case) is 355KB and was refused by the 256KB this replaced
+ * (#2969). This is a bound on abuse, sized so an honest reverse of a large
+ * product fits with room to grow.
+ *
+ * Bytes are not what the Worker pays for, though. Rendering cost follows the
+ * number of domains and drill-down views more than the byte count, and the
+ * CPU budget in `wrangler.toml` is sized against that measurement, not this
+ * number. Raising this again means re-measuring there.
  */
-export const MAX_SUBMISSION_BYTES = 256 * 1024;
+export const MAX_SUBMISSION_BYTES = 1024 * 1024;
 
 /** How long a title may be. Long enough for a sentence, short enough for a list. */
 export const MAX_TITLE_LENGTH = 120;
@@ -64,6 +71,11 @@ export interface Submission {
   accountId: string;
   title: string;
   krs: string;
+  /**
+   * The document's first system `description`, read at ingest (#2995). Absent
+   * when the system has none, and on records written before it existed.
+   */
+  description?: string;
   submittedAt: string;
   updatedAt: string;
   visibility: Visibility;
@@ -72,6 +84,7 @@ export interface Submission {
 export interface NewSubmission {
   title: string;
   krs: string;
+  description?: string;
   visibility?: Visibility;
 }
 
@@ -98,6 +111,7 @@ function parse(raw: string, accountId: string): Submission | undefined {
     accountId,
     title: record.title,
     krs: record.krs,
+    ...(typeof record.description === "string" ? { description: record.description } : {}),
     submittedAt: record.submittedAt,
     updatedAt: record.updatedAt,
     // A record written before this field existed reads as `unlisted`. Being
@@ -120,6 +134,7 @@ export class SubmissionStore {
       accountId: canonical,
       title: input.title,
       krs: input.krs,
+      ...(input.description === undefined ? {} : { description: input.description }),
       submittedAt: now,
       updatedAt: now,
       visibility: input.visibility ?? "public",
@@ -177,7 +192,7 @@ export class SubmissionStore {
   async update(
     accountId: number | string,
     slug: string,
-    changes: Partial<Pick<Submission, "title" | "krs" | "visibility">>,
+    changes: Partial<Pick<Submission, "title" | "krs" | "description" | "visibility">>,
     at: Date,
   ): Promise<Submission | undefined> {
     const current = await this.get(accountId, slug);

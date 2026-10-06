@@ -6,6 +6,7 @@ import { ReferenceWindow } from "./components/ReferenceWindow.js";
 import { LocaleProvider } from "./i18n/index.js";
 import { ThemeProvider } from "./theme/index.js";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import "./styles/web-fonts.css";
 import "./styles/index.css";
 
 // `?reference` mode: the app was opened as the pop-out reference window
