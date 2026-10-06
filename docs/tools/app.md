@@ -100,6 +100,15 @@ The three dimensions behind System / Deploy / Org are explained in
   breadcrumb tracks your depth.
 - **Node details** — click a leaf node (or its info button) to open a side panel
   with the node's id, description, tags, and related connections.
+- **Edge in focus** — click an edge to open a second canvas over the preview with
+  its two nodes and every edge between them, labels in full. A dense diagram
+  shortens long labels and leaves off the ones that would overlap; this is where
+  they are read.
+- **Node in focus** — hover a node to fade the edges it does not touch, then press
+  **⇄ Relations** on its corner to open it with every node it connects to: what
+  depends on it on one side, what it depends on on the other. Click a node or an
+  edge inside to move there, or drag to move the view (a press on text selects it instead); **← Back** returns,
+  **Esc** closes.
 - **Cross-view navigation** — jump between related views, e.g. from a service in
   **System** to where it runs in **Deploy**, or to the team that owns it in
   **Org**.

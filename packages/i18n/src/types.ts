@@ -152,6 +152,11 @@ export type Translations = {
   "edgeDetail.domainEdges.count": (params: { count: number }) => string;
   "edgeDetail.label.title": string;
   "edgeDetail.links.title": string;
+  "focusCanvas.relations": (params: { count: number }) => string;
+  "focusCanvas.counts": (params: { incoming: number; outgoing: number }) => string;
+  "focusCanvas.back": string;
+  "focusCanvas.close": string;
+  "focusCanvas.region": string;
   "nodeDetail.links.title": string;
   "nodeDetail.openDeployView": string;
   "nodeDetail.jumpToEditor": string;

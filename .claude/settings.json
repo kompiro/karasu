@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "FILE=$(cat | jq -r '.tool_input.file_path'); if [[ \"$FILE\" == *.ts || \"$FILE\" == *.tsx ]]; then cd /workspaces/karasu && npx oxfmt --write \"$FILE\" 2>&1 && npx oxlint \"$FILE\" 2>&1; fi"
+            "command": "FILE=$(jq -r '.tool_input.file_path'); case \"$FILE\" in *.ts|*.tsx) cd /workspaces/karasu && npx oxfmt --write \"$FILE\" 2>&1 && npx oxlint \"$FILE\" 2>&1 ;; esac"
           }
         ]
       }
