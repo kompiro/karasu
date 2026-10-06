@@ -202,6 +202,23 @@ export interface ResolvedEdgeStyle {
    * anchor — that lift stays in place so the offset adds on top.
    */
   labelOffsetY: number;
+  /**
+   * How many characters of the label the canvas draws (`label-max-chars`,
+   * #3022). A longer label is drawn truncated with an ellipsis; the authored
+   * text stays on the edge group (`data-edge-label`, and a `<title>`), so a
+   * viewer can still read all of it. `Infinity` (`none`) draws it whole.
+   */
+  labelMaxChars: number;
+  /**
+   * Whether the canvas draws the label at all (`label-display`, #3022).
+   *
+   * - `auto`: only when the placement pass can seat it clear of node cards,
+   *   other labels and other edges' lines. A label it cannot seat is left off
+   *   the canvas instead of being drawn into the collision.
+   * - `always`: wherever it lands, the behaviour before this property existed.
+   * - `hover`: never; the viewer discloses it on demand.
+   */
+  labelDisplay: "always" | "auto" | "hover";
 }
 
 /**

@@ -31,7 +31,7 @@ const read = (relative: string): string =>
   readFileSync(fileURLToPath(new URL(relative, import.meta.url)), "utf8");
 
 const ADR = "../../docs/adr/2077-reverse-bc-granularity.md";
-const SKILL = "../../.claude/skills/reverse-architecture/SKILL.md";
+const SKILL = "../../packages/skills/skills/reverse-architecture/SKILL.md";
 
 /** The indented `> ` quote block inside ADR-2077's decision 1. */
 function quotedDirective(): string {

@@ -1,0 +1,22 @@
+{
+  "name": "karasu",
+  "owner": {
+    "name": "kompiro",
+    "url": "https://github.com/kompiro"
+  },
+  "metadata": {
+    "description": "Claude Code plugins for karasu, the text-based architecture modeling tool."
+  },
+  "plugins": [
+    {
+      "name": "karasu",
+      "description": "Skills for karasu: reverse-engineer a repository into a .krs architecture model.",
+      "source": {
+        "source": "npm",
+        "package": "karasu-skills"
+      },
+      "homepage": "https://github.com/kompiro/karasu",
+      "license": "Apache-2.0"
+    }
+  ]
+}

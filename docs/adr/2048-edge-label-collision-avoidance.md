@@ -8,6 +8,7 @@ related_to:
   - ADR-1184
   - ADR-1185
   - ADR-968
+  - ADR-3022
 scope:
   packages: [core]
 assumptions:

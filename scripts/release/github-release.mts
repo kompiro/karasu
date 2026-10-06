@@ -30,6 +30,7 @@ export const RELEASED_PACKAGES: ReadonlyArray<{ name: string; dir: string }> = [
   { name: "karasu", dir: "packages/cli" },
   { name: "@karasu-tools/core", dir: "packages/core" },
   { name: "karasu-vscode", dir: "packages/vscode" },
+  { name: "karasu-skills", dir: "packages/skills" },
 ];
 
 export type PackageTag = { name: string; version: string };

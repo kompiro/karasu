@@ -169,6 +169,13 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2898](2898-draft-first-code-review.md) — /code-review は draft PR に当て、CodeRabbit の初回レビューは ready にした時点の 1 回にする
 - [ADR-2939](2939-release-record-tags-and-github-release.md) — リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の GitHub Release を 1 つ作る
 - [ADR-2949](2949-coderabbit-skips-adr-auto-merge.md) — auto-merge する ADR-only PR は CodeRabbit の自動レビュー対象から外す
+- [ADR-2983](2983-dependabot-triage-2026-09-29.md) — Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upstream の regression なので差し替えず 30.1.1 の bot 提案を待ち、@types/vscode 1.138 は ExTester の上限まで保留する
+- [ADR-2985](2985-dependabot-security-2026-09-29.md) — Dependabot security alert 2026-09-29（`undici` の override floor が脆弱範囲の内側だったので `^7.29.1` に上げた）
+- [ADR-3000](3000-nest-deploys-on-main.md) — karasu-nest を main への push で自動 deploy し、対象 path は nest の workspace 依存から機械的に決める
+- [ADR-3002](3002-dependabot-security-2026-09-30.md) — Dependabot security alert 2026-09-30（5 つの override floor がすべて新しい advisory の脆弱範囲の内側だったので、修正版へ上げた）
+- [ADR-3011](3011-skip-coderabbit-label.md) — 正否が差分だけで決まる小さな PR は、人間の承認を得て skip-coderabbit ラベルで CodeRabbit から外す
+- [ADR-3020](3020-nest-custom-domain-karasu-nest-kompiro-dev.md) — karasu-nest を karasu-nest.kompiro.dev カスタムドメインだけで公開し、workers.dev を閉じる
+- [ADR-3069](3069-dependabot-triage-2026-10-05.md) — Dependabot トリアージ 2026-10-05：mocha 12 を含む 8 件を採用し、gh-aw は正式版 v0.89.21 で再生成し、@types/vscode は追随方針の見直し（#3070）に回して close する
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -317,6 +324,8 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2592](2592-nest-as-a-gallery.md) — ギャラリーの構築 — 投稿は repo に紐づかず、投稿者が自分で管理する
 - [ADR-2655](2655-nest-sliding-session.md) — nest のセッション期限を idle 窓と絶対上限に分ける
 - [ADR-2859](2859-spike-branch-naming.md) — spike ブランチは答える Issue 番号で名付け、その Issue が open なあいだ残す
+- [ADR-2969](2969-nest-operator-only-sign-in.md) — 運用者だけの段階をコードで守る — サインインを数値 user id の許可リストに限る
+- [ADR-2993](2993-gallery-client-side-rendering.md) — ギャラリーの投稿ページを origin を持たない sandbox の viewer として配信し、ブラウザで描画する
 - [ADR-9006](9006-project-and-filesystem.md) — プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS
 
 ## renderer
@@ -375,6 +384,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2803](2803-slotted-icon-card-text.md) — shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通スタックで描く
 - [ADR-2906](2906-icon-mode-removal-release-undecided.md) — icon display mode は非推奨のまま据え置き、削除する major はまだ決めない
 - [ADR-2917](2917-multi-system-root-same-id-nodes.md) — 複数 system のルートビューは同名ノードを両方描き、要素の id は bare id のまま、着地は path で決める
+- [ADR-3022](3022-edge-label-disclosure.md) — edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は focus canvas で読む
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
 - [ADR-9015](9015-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG（buildAllViewsSvg）
@@ -434,4 +444,5 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1316](1316-vscode-marketplace-publish.md) — VS Code 拡張を Entra ID + GitHub OIDC（managed identity）で Marketplace に publish する
 - [ADR-1417](1417-lsp-cli-i18n.md) — LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n の切り出し
 - [ADR-2456](2456-lsp-custom-request-duplicate-jsonrpc.md) — LSP の position drift は position encoding ではなく vscode-jsonrpc の二重コピーだった
+- [ADR-2782](2782-vscode-floor-capped-by-extester.md) — VS Code の floor を 1.137 に上げ、ExTester の vscode-max を上限として機械チェックする
 - [ADR-9014](9014-vscode-extension-lsp-first.md) — VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画

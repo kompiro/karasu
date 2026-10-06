@@ -596,6 +596,9 @@ export function renderFromLayout(
     edgeLines,
   } = buildLabelInputs(layoutResult.edges, layoutResult.nodes, edgeStyleFor);
   const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects, edgeLines);
+  // Labels the pass could not seat clear under `label-display: auto` (#3022).
+  // The pass reports them on its inputs; `renderEdge` leaves them off the canvas.
+  const deferredLabels = new Set(labelInputs.filter((l) => l.deferred).map((l) => l.index));
 
   const edgeStroke: { color: string; strokeWidth: number }[] = [];
   let edgeIndex = 0;
@@ -629,6 +632,7 @@ export function renderFromLayout(
       labelPlacements.get(edgeIndex),
       edgeFacets,
       overlay?.colorOf,
+      deferredLabels.has(edgeIndex),
     );
     edgeIndex++;
     const withDim = edgeDimmed ? el("g", { opacity: FACET_DIM_OPACITY }, rendered) : rendered;

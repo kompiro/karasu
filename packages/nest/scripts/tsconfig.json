@@ -1,0 +1,12 @@
+{
+  // The build-time scripts, typechecked with Node's types. Kept apart from
+  // `../tsconfig.json`, whose `"types": []` keeps Node globals out of the
+  // Worker code; including these files there would let them in.
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node"]
+  },
+  "include": ["*.ts"]
+}

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { BUNDLE_README, BUNDLED_DOCS, check, write } from "./skill-reference-bundle-sync.js";
+import { BUNDLE_READMES, BUNDLED_DOCS, check, write } from "./skill-reference-bundle-sync.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -20,7 +20,9 @@ function fixture(files: Record<string, string>): string {
 
 /** Every manifest path, with matching contents — the in-sync state. */
 function inSyncFiles(): Record<string, string> {
-  const files: Record<string, string> = { [BUNDLE_README]: "# notice\n" };
+  const files: Record<string, string> = Object.fromEntries(
+    BUNDLE_READMES.map((readme) => [readme, "# notice\n"]),
+  );
   for (const { source, bundled } of BUNDLED_DOCS) {
     files[source] = `contents of ${source}\n`;
     files[bundled] = `contents of ${source}\n`;
@@ -94,10 +96,10 @@ describe("check()", () => {
 
   it("requires the bundle's do-not-edit notice", () => {
     const files = inSyncFiles();
-    delete files[BUNDLE_README];
+    delete files[BUNDLE_READMES[0]];
     const root = fixture(files);
     try {
-      expect(check(root)).toEqual([{ kind: "missing-readme", file: BUNDLE_README }]);
+      expect(check(root)).toEqual([{ kind: "missing-readme", file: BUNDLE_READMES[0] }]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

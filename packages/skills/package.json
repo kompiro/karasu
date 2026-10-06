@@ -1,0 +1,31 @@
+{
+  "name": "karasu-skills",
+  "version": "0.1.0",
+  "description": "Agent skills for karasu (.krs architecture models), packaged as a Claude Code plugin.",
+  "keywords": [
+    "agent-skills",
+    "architecture",
+    "claude-code",
+    "claude-code-plugin",
+    "karasu"
+  ],
+  "homepage": "https://github.com/kompiro/karasu#readme",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kompiro/karasu.git",
+    "directory": "packages/skills"
+  },
+  "files": [
+    ".claude-plugin",
+    "skills"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepack": "node scripts/stamp-version.mjs stamp",
+    "postpack": "node scripts/stamp-version.mjs restore",
+    "typecheck": "node --check scripts/stamp-version.mjs"
+  }
+}

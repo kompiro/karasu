@@ -29,6 +29,12 @@ export type Translations = {
   "theme.light": string;
   "theme.dark": string;
 
+  // Gallery viewer (#2997): the theme and language switches on its preview toolbar.
+  "viewer.theme.toLight.ariaLabel": string;
+  "viewer.theme.toDark.ariaLabel": string;
+  "viewer.locale.toEnglish.ariaLabel": string;
+  "viewer.locale.toJapanese.ariaLabel": string;
+
   // Settings pane — display (#2376)
   "settings.display.title": string;
   "settings.displayMode.label": string;
@@ -146,6 +152,11 @@ export type Translations = {
   "edgeDetail.domainEdges.count": (params: { count: number }) => string;
   "edgeDetail.label.title": string;
   "edgeDetail.links.title": string;
+  "focusCanvas.relations": (params: { count: number }) => string;
+  "focusCanvas.counts": (params: { incoming: number; outgoing: number }) => string;
+  "focusCanvas.back": string;
+  "focusCanvas.close": string;
+  "focusCanvas.region": string;
   "nodeDetail.links.title": string;
   "nodeDetail.openDeployView": string;
   "nodeDetail.jumpToEditor": string;

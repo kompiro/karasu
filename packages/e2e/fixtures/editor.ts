@@ -114,15 +114,22 @@ export async function replaceEditorContent(page: Page, content: string): Promise
   // chord never reaches the editor and the viewport stays at end-of-file
   // (#990). Re-focus the textbox and dispatch the chord through the locator
   // so it is bound to the focused element rather than the page.
-  await editorTextbox.focus();
-  await expect(editorTextbox).toBeFocused();
-  await editorTextbox.press("Control+Home");
-
+  //
+  // Re-focusing narrows that window but does not close it: a long buffer
+  // (the 112-line fixture of AT-3031) still lost the chord on CI and left the
+  // viewport at the end. So the scroll is retried until the top is in view,
+  // rather than sent once and waited on.
   const firstLine = content.split("\n").find((line) => line.trim().length > 0);
-  if (firstLine) {
-    const probe = firstLine.trim().slice(0, 24);
-    await expect(page.locator(".monaco-editor .view-lines").first()).toContainText(probe);
-  }
+  const probe = firstLine?.trim().slice(0, 24);
+  await expect(async () => {
+    await editorTextbox.focus();
+    await editorTextbox.press("Control+Home");
+    if (probe) {
+      await expect(page.locator(".monaco-editor .view-lines").first()).toContainText(probe, {
+        timeout: 1000,
+      });
+    }
+  }).toPass({ timeout: 10_000 });
 
   await page.waitForTimeout(COMPILE_SETTLE_MS);
 }

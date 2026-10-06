@@ -63,5 +63,5 @@
       "version": "19"
     }
   },
-  "ignorePatterns": ["dist", "out", "node_modules", "*.d.ts"]
+  "ignorePatterns": ["dist", "dist-viewer", "viewer-assets", "out", "node_modules", "*.d.ts"]
 }

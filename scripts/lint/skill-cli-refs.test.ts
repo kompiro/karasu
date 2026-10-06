@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
@@ -7,7 +7,9 @@ import {
   CLI_INDEX,
   codeText,
   referencedCommands,
+  referencedFlags,
   registeredCommands,
+  PACKAGED_SKILLS_DIR,
   SKILLS_DIR,
 } from "./skill-cli-refs.ts";
 
@@ -71,6 +73,22 @@ describe("referencedCommands", () => {
   });
 });
 
+describe("referencedFlags", () => {
+  it("pairs each long flag with the command on its invocation line", () => {
+    const md = [
+      "`karasu render a.krs --output a.svg --theme=light`",
+      "```",
+      "karasu coverage index.krs --format json | jq . --raw-output",
+      "```",
+    ].join("\n");
+    expect(referencedFlags(md)).toEqual([
+      { command: "render", flag: "--output" },
+      { command: "render", flag: "--theme" },
+      { command: "coverage", flag: "--format" },
+    ]);
+  });
+});
+
 describe("the real skills are in sync with the CLI registry", () => {
   it("references no unknown command", () => {
     expect(check(REPO_ROOT)).toEqual([]);
@@ -100,9 +118,70 @@ describe("check (synthetic fixture)", () => {
     expect(check(root)).toEqual([]);
   });
 
+  const table = [
+    {
+      kind: "command" as const,
+      name: "draw",
+      replacement: "render",
+      since: "0.7.0",
+      removal: "1.0.0",
+    },
+    {
+      kind: "flag" as const,
+      command: "render",
+      name: "--out",
+      replacement: "--output",
+      since: "0.7.0",
+      removal: "1.0.0",
+      removed: true,
+    },
+  ];
+
+  it("flags a deprecated command with its replacement (in-repo skills use current names)", () => {
+    writeFixture("Render with `karasu draw frag.krs`.");
+    expect(check(root, table)).toEqual([
+      { file: ".claude/skills/demo/SKILL.md", command: "draw", replacement: "render" },
+    ]);
+  });
+
+  it("flags a deprecated or removed flag of a registered command", () => {
+    writeFixture(
+      "Render with `karasu render frag.krs --out a.svg`, not `karasu diff a b --out x`.",
+      '.command("render <file>")\n.command("diff <before> <after>")',
+    );
+    expect(check(root, table)).toEqual([
+      {
+        file: ".claude/skills/demo/SKILL.md",
+        command: "render",
+        flag: "--out",
+        replacement: "--output",
+        removed: true,
+      },
+    ]);
+  });
+
   it("ignores a prose mention of a non-command word", () => {
     // "karasu architecture" and "karasu model" are prose, not invocations.
     writeFixture("Turn this repo into a karasu architecture model with `karasu render f`.");
     expect(check(root)).toEqual([]);
+  });
+});
+
+describe("check (packaged skills and the dev symlink)", () => {
+  const root = mkdtempSync(join(tmpdir(), "skill-cli-refs-pkg-"));
+  afterAll(() => rmSync(root, { recursive: true, force: true }));
+
+  it("scans packages/skills/skills and reads a symlinked skill once, at its real path", () => {
+    const real = join(root, PACKAGED_SKILLS_DIR, "demo");
+    mkdirSync(real, { recursive: true });
+    writeFileSync(join(real, "SKILL.md"), "Validate with `karasu lint-style frag.krs`.");
+    mkdirSync(join(root, SKILLS_DIR), { recursive: true });
+    symlinkSync(real, join(root, SKILLS_DIR, "demo"));
+    mkdirSync(join(root, CLI_INDEX, ".."), { recursive: true });
+    writeFileSync(join(root, CLI_INDEX), '.command("render <file>")');
+
+    expect(check(root)).toEqual([
+      { file: "packages/skills/skills/demo/SKILL.md", command: "lint-style" },
+    ]);
   });
 });

@@ -14,7 +14,11 @@ const KRS = "system Shop {\n  service api\n}\n";
 const BROKEN = "system Shop {\n  service\n";
 const at = new Date("2026-08-02T00:00:00Z");
 
-const env = (kv: MemoryKV): NestEnv => ({ NEST_STORE: kv, NEST_PUBLIC_ORIGIN: ORIGIN });
+const env = (kv: MemoryKV): NestEnv => ({
+  NEST_STORE: kv,
+  NEST_PUBLIC_ORIGIN: ORIGIN,
+  NEST_SIGN_IN_ALLOWLIST: "42 420",
+});
 
 async function account(kv: MemoryKV, accountId: number, login = "kompiro"): Promise<string> {
   const store = new GalleryStore(kv);
@@ -295,6 +299,17 @@ describe("POST /console/s/<id>/replace", () => {
     const stored = (await new GalleryStore(kv).submissions.list(42))[0];
     expect(stored?.krs).toBe(replaced);
     expect(stored?.title).toBe("Shop v2");
+  });
+
+  it("re-reads the description from the replacement (#2995)", async () => {
+    const kv = new MemoryKV();
+    const cookie = await account(kv, 42);
+    const id = await submission(kv, 42);
+    const described = 'system Shop {\n  description "Now with a worker."\n  service api\n}\n';
+    await post(kv, `/console/s/${id}/replace`, { title: "Shop", krs: described }, { cookie });
+    expect((await new GalleryStore(kv).submissions.list(42))[0]?.description).toBe(
+      "Now with a worker.",
+    );
   });
 
   it("refuses a replacement that does not parse, keeping the old one", async () => {

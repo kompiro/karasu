@@ -14,6 +14,7 @@
  * victim's browser, and the victim then submits under the attacker's handle.
  */
 import { requireBinding, type NestEnv } from "../env.js";
+import { signInAllowlist } from "../auth/allowlist.js";
 import { error, redirect } from "../http.js";
 import { logError } from "../log.js";
 import type { RouteContext } from "../router.js";
@@ -51,6 +52,9 @@ function oauthConfig(env: NestEnv): OAuthConfig {
 /** `GET /auth/login` — start the round trip. */
 export function signIn(context: RouteContext): Response {
   const config = oauthConfig(context.env);
+  // Read here as well as in the callback so a deploy without a list says so
+  // before sending anyone through GitHub's consent screen.
+  signInAllowlist(context.env);
   const state = newOAuthState();
   return redirect(authorizeUrl(config, state), { cookies: [oauthStateCookie(state)] });
 }
@@ -65,6 +69,7 @@ export function signIn(context: RouteContext): Response {
 export async function signInCallback(context: RouteContext): Promise<Response> {
   const { url, request, env } = context;
   const config = oauthConfig(env);
+  const allowed = signInAllowlist(env);
   const drop = [clearCookie(OAUTH_STATE_COOKIE)];
 
   const expected = readCookie(request, OAUTH_STATE_COOKIE);
@@ -101,6 +106,13 @@ export async function signInCallback(context: RouteContext): Promise<Response> {
     throw cause;
   }
 
+  // Before anything is written. An account record is the first personal data
+  // the gallery holds about someone, and #2691 has to be done before it holds
+  // any about people other than its operator.
+  if (!allowed.has(user.id)) {
+    return signInFailed("not_invited", "This gallery is not open for sign-in yet.", drop, 403);
+  }
+
   const store = new GalleryStore(requireBinding(env, "NEST_STORE"));
   const now = new Date();
   await store.accounts.signIn(user.id, user.login, now);
@@ -111,8 +123,8 @@ export async function signInCallback(context: RouteContext): Promise<Response> {
   });
 }
 
-function signInFailed(code: string, message: string, cookies: string[]): Response {
-  const response = error(400, code, message);
+function signInFailed(code: string, message: string, cookies: string[], status = 400): Response {
+  const response = error(status, code, message);
   for (const cookie of cookies) response.headers.append("Set-Cookie", cookie);
   return response;
 }

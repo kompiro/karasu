@@ -13,17 +13,19 @@
       "project": ["src/**/*.ts", "!src/**/*.test.ts"]
     },
     "packages/app": {
+      "entry": ["src/viewer/main.tsx"],
       "project": ["src/**/*.{ts,tsx,css}", "!src/**/*.test.{ts,tsx}"]
     },
     "packages/cli": {
       "project": ["src/**/*.ts"],
-      "ignoreDependencies": ["yaml"]
+      "ignoreDependencies": ["yaml", "karasu-skills"]
     },
     "packages/lsp": {
       "project": ["src/**/*.ts"]
     },
     "packages/nest": {
-      "project": ["src/**/*.ts", "!src/**/*.test.ts", "!src/testing/**"]
+      "project": ["src/**/*.ts", "!src/**/*.test.ts", "!src/testing/**"],
+      "ignoreDependencies": ["@karasu-tools/app"]
     },
     "packages/docs-site": {
       "entry": ["scripts/{sync,check-links}.ts"],

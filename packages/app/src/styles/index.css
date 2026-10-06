@@ -3,14 +3,18 @@
    A precision theme with raven-wing iridescence. Named for Huginn &
    Muninn — thought and memory surveying the world.
 
-   This file is the single stylesheet `main.tsx` imports. It only wires
+   This file is the stylesheet `main.tsx` and the viewer import. It only wires
    things together; real rules live in the imported modules.
 
    Load order matters — it is the CSS cascade for equal-specificity
    rules. Tokens first, then themes, then base, layout, components.
    ================================================================ */
 
-@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+/* The web fonts (Figtree, JetBrains Mono) are not imported here: they come
+   from a third-party host, and the gallery viewer (`src/viewer/`, #2997)
+   imports this file but must make no network requests. The app loads them
+   through `web-fonts.css` from `main.tsx`; the viewer falls back to the
+   system stacks in `tokens.css`. */
 
 /* Tailwind v4 — shadcn/ui (ADR-1368).
  * Loaded before our own modules so our unlayered rules still win over

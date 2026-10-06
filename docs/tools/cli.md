@@ -128,6 +128,9 @@ changes. Run `karasu <command> --help` for the full option list and examples.
 | `insert <parent-id> <file>` | Insert piped `.krs` from stdin as the last child of a node |
 | `remove <node-id> <file>` | Remove a node by id from a `.krs` file in place |
 | `diff <before> <after>` | Render a diff SVG between two `.krs` revisions (either side may be `-` for stdin) |
+| `capabilities` | List the commands, flags and deprecated names this CLI accepts (`--json` for skills and scripts; see [below](#karasu-capabilities-what-this-cli-accepts)) |
+| `skill install [name]` | Copy the karasu agent skills (default: all) into `.claude/skills/` or `--dir <path>`, for agents that cannot install the Claude Code plugin (see [below](#karasu-skill-install-the-agent-skills)) |
+| `skill path [name]` | Print where the installed CLI keeps a skill |
 
 `translate` together with `apply` on a Unix pipe is how you fold changes from
 the infrastructure side back into an existing model:
@@ -135,6 +138,94 @@ the infrastructure side back into an existing model:
 ```bash
 # Translate a compose file and merge it into an existing deploy.krs
 karasu translate --from compose docker-compose.yml | karasu apply deploy.krs
+```
+
+## `karasu capabilities`: what this CLI accepts
+
+Skills and scripts that drive the CLI can ask it what it accepts instead of
+assuming a version. `karasu capabilities --json` prints:
+
+```json
+{
+  "schemaVersion": 1,
+  "name": "karasu",
+  "version": "0.8.0",
+  "languageVersion": "1.0",
+  "commands": [
+    {
+      "name": "render",
+      "arguments": ["<file>"],
+      "options": [
+        { "flags": "-o, --output <path>", "long": "--output", "short": "-o", "takesValue": true }
+      ]
+    }
+  ],
+  "deprecations": [
+    {
+      "kind": "flag",
+      "name": "--out",
+      "command": "render",
+      "replacement": "--output",
+      "since": "0.8.0",
+      "removal": "1.0.0",
+      "status": "deprecated"
+    }
+  ]
+}
+```
+
+(The values above are illustrative.) A command with nested commands, such as
+`skill`, lists them under `subcommands` in the same shape. `schemaVersion`
+changes only when a field changes meaning or goes away; new fields may appear
+without a bump. Without
+`--json` the same information is printed as plain text.
+
+### Renamed and removed names
+
+A command or flag that the CLI renames or retires keeps working under its old
+name until the next major release (the CLI stays on `0.x` until 1.0.0, and no
+old name is removed before then). Using an old name runs the replacement and
+prints one line on stderr:
+
+```text
+karasu: deprecated: 'render --out' -> 'render --output' (since 0.8.0, removal 1.0.0)
+```
+
+After the major release that removes it, the old name fails with exit status
+`1` and the same line, starting `karasu: removed:`, so the caller still learns
+what to use instead. The line's format is fixed and not translated, so an agent
+can match it with
+`^karasu: (deprecated|removed): '(.+)' -> '(.+)' \(since (\S+), removal (\S+)\)$`.
+
+## `karasu skill`: install the agent skills
+
+The CLI ships the karasu agent skills (the
+[`karasu-skills`](https://www.npmjs.com/package/karasu-skills) package) so any
+agent that reads skill directories can use them, not only Claude Code:
+
+| Skill | What it does |
+| --- | --- |
+| `karasu-author` | Builds and updates a model of your own system through conversation, one layer at a time, checking every change with `karasu check` |
+| `reverse-architecture` | Reverse-engineers an existing repository into a model |
+
+```bash
+# Copy every skill into ./.claude/skills
+npx karasu skill install
+
+# Copy one skill into the directory your agent reads skills from
+npx karasu skill install karasu-author --dir .agents/skills
+```
+
+Each skill lands in `<dir>/<name>/` with its `SKILL.md` and the bundled
+reference docs. An installed skill is not overwritten unless you pass
+`--force`, which replaces it with the copy from this CLI. `karasu skill path
+<name>` prints where the skill is, to point an agent at it without copying.
+
+In Claude Code, install the plugin instead; it updates from the `/plugin` menu:
+
+```text
+/plugin marketplace add kompiro/karasu
+/plugin install karasu@karasu
 ```
 
 ## See also
