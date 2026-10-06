@@ -857,7 +857,7 @@ function collapseGlyph(
  * Render the Group-by crossing marks layer (#1859 P2c-C). Emitted above the edge
  * layer so marks sit on top of the lines.
  *
- * - **hop**: a `<path>` arc that bumps *over* the crossing (crossing = NOT
+ * - **hop**: an arc subpath that bumps *over* the crossing (crossing = NOT
  *   connected), centred at `(x, y)` and oriented along the host segment via
  *   `angle` (degrees). Elliptical (`rx = halfWidth`, `ry = HopMark.ry` or
  *   {@link HOP_RADIUS}) so a clustered wide hop stays a shallow bump;
@@ -865,6 +865,7 @@ function collapseGlyph(
  *   exactly as the pre-#1939 flat bump. The arc's own `ry` is what makes it
  *   rise out of a trunk band: drawing the constant here instead left a widened
  *   arc flat inside the band it hops, which reads as a connection (#2884).
+ *   Consecutive hops of one stroke share a `<path>` ({@link hopRunKey}).
  * - **junction**: the merge mark at a trunk elbow (merge = connected), drawn as
  *   a chip carrying the number of edges the spine holds onward from there
  *   (#2883). A bare dot said only that a merge happened, which left the line
@@ -892,6 +893,21 @@ function renderCrossingMarks(
   const r = round2;
   const strokeOf = (edge: number) => edgeStroke[edge] ?? fallback;
   const parts: string[] = [];
+  // Consecutive hops that share a stroke are one `<path>` with a subpath per hop
+  // (#2956): hops were 43% of a dense diagram's SVG, one element apiece.
+  let run: { key: string; color: string; strokeWidth: number; d: string[] } | undefined;
+  const flushRun = () => {
+    if (!run) return;
+    parts.push(
+      el("path", {
+        d: run.d.join(" "),
+        fill: "none",
+        stroke: run.color,
+        "stroke-width": run.strokeWidth,
+      }),
+    );
+    run = undefined;
+  };
   for (const hop of marks.hops) {
     const rad = (hop.angle * Math.PI) / 180;
     const c = Math.cos(rad);
@@ -901,15 +917,16 @@ function renderCrossingMarks(
     const x1 = r(hop.x + hop.halfWidth * c);
     const y1 = r(hop.y + hop.halfWidth * s);
     const stroke = strokeOf(hop.edge);
-    parts.push(
-      el("path", {
-        d: `M ${x0} ${y0} A ${r(hop.halfWidth)} ${r(hop.ry ?? HOP_RADIUS)} ${r(hop.angle)} 0 1 ${x1} ${y1}`,
-        fill: "none",
-        stroke: stroke.color,
-        "stroke-width": stroke.strokeWidth,
-      }),
+    const key = hopRunKey(stroke);
+    if (run?.key !== key) {
+      flushRun();
+      run = { key, color: stroke.color, strokeWidth: stroke.strokeWidth, d: [] };
+    }
+    run.d.push(
+      `M ${x0} ${y0} A ${r(hop.halfWidth)} ${r(hop.ry ?? HOP_RADIUS)} ${r(hop.angle)} 0 1 ${x1} ${y1}`,
     );
   }
+  flushRun();
   for (const j of marks.junctions) {
     const stroke = strokeOf(j.edge);
     // Punched out of the canvas so the chip reads as a marker on the line rather
@@ -938,6 +955,21 @@ function renderCrossingMarks(
     );
   }
   return el("g", { class: "crossing-marks" }, ...parts);
+}
+
+/**
+ * Where one hop `<path>` ends and the next begins: a hop joins the path before it
+ * when this key matches (#2956). Only *consecutive* hops merge, never every hop
+ * of one stroke, because SVG paints later elements on top: pulling a stroke's
+ * later hops forward to its first one would flip which of two overlapping hops
+ * of different colours is on top (4,757 such pairs on the Dify model, TPL-2956).
+ *
+ * To make each edge's hops addressable (e.g. dimmed with their edge on hover,
+ * #2632), add the edge to this key and tag the path with it. That is option 3 of
+ * the #2956 design, about +2% output on Dify.
+ */
+function hopRunKey(stroke: { color: string; strokeWidth: number }): string {
+  return `${stroke.color}|${stroke.strokeWidth}`;
 }
 
 /** Type size of the numeral in a merge mark, and its baseline offset. */
