@@ -26,6 +26,7 @@ import {
   centerRowsHorizontally,
   computeTotalDimensions,
   normalizeCoordinates,
+  translateEdgePoints,
 } from "./layout-geometry.js";
 import {
   computeLayoutEdges,
@@ -1423,14 +1424,7 @@ function layoutMultipleSystems(
         c.x += dx;
         for (const piece of c.coverage ?? []) piece.x += dx;
       }
-      const moved = new Set<{ x: number; y: number }>();
-      for (const e of systemEdges) {
-        for (const p of [e.fromPoint, ...(e.waypoints ?? []), e.toPoint]) {
-          if (moved.has(p)) continue;
-          moved.add(p);
-          p.x += dx;
-        }
-      }
+      translateEdgePoints(systemEdges, dx, 0);
     }
     // The larger of the two bases: `offsetX + width` over-covers a rect whose
     // x a left side column (#1728) pulled leftwards, and `x + width` covers a
