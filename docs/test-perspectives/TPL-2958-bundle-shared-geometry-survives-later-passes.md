@@ -53,7 +53,7 @@ scope:
 1. `collectChannels` が兄弟の同一の水平 run を別レーンに分けた。
 2. `normalizeCoordinates` が共有の `toPoint` を兄弟ごとに平行移動し、Dify の Knowledge 画面で貫通が 0 → 33 になった。
 
-2 は main の grouped 表示にも既に潜んでいた（#2966。Dify / team で 5 本の矢印が 128〜256px カードから外れている）。examples の grouped 図はどれも、トランクがあるときに平行移動が起きないので、柵が検出していなかった。
+2 は main の grouped 表示にも既に潜んでいた（#2966。Dify / team で 9 本の矢印がカードから外れていた。fan-in の入口 5 本が 128〜256px、fan-out の出口 4 本が 384px）。examples の grouped 図はどれも、トランクがあるときに平行移動が起きないので、柵が検出していなかった。
 
 ## チェックリスト
 
@@ -71,4 +71,5 @@ scope:
 
 ## 関連テスト
 
+- `packages/core/src/renderer/edge-routing-groups.test.ts`「trunk ends survive the normalization shift (#2966)」: 左ガターで平行移動が 0 でない grouped 図に fan-in / fan-out のトランクを置き、正規化後も共有端が同じオブジェクトのままカードの右辺に載ることを測る。
 - `packages/core/src/renderer/routing-parity.test.ts`: 貫通 0 / 共線 0 の計測柵。#2958 の実装で「全チェーン後に兄弟の共有区間が同一座標」の柵を飽和フィクスチャとともに足す予定。
