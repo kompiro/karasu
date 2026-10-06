@@ -8,6 +8,8 @@ import { StyleParser } from "../parser/style-parser.js";
 import { analyze } from "../resolver/warnings.js";
 import { flattenSheetsInCascadeOrder } from "../style/cascade.js";
 import { getBuiltinStyleSheet } from "./default-style.js";
+import { getIconThemeStyleSheet } from "./icon-theme.js";
+import { INFRA_SUB_KIND_TO_TAG } from "../resolver/style-resolver.js";
 import {
   TOOL_ANNOTATIONS,
   TOOL_TAGS,
@@ -53,16 +55,29 @@ edge[delivers] { color: #444444; }
 });
 
 describe("what the tool stamps and styles is in its own vocabulary (#2677)", () => {
-  it.each(["dark", "light"] as const)(
-    "every rule of the %s builtin theme survives the closure",
-    (theme) => {
-      const sheet = getBuiltinStyleSheet(theme);
-      const outside = sheet.rules
-        .filter((r) => !selectorUsesToolVocabularyOnly(r.selector))
-        .map((r) => [...r.selector.tags, ...r.selector.annotations.map((a) => `@${a}`)]);
-      expect(outside).toEqual([]);
-    },
-  );
+  // Every sheet the tool injects as a system sheet goes through the same
+  // cascade filter, so a rule on a name outside the vocabulary would silently
+  // stop applying there.
+  it.each([
+    ["dark builtin theme", () => getBuiltinStyleSheet("dark")],
+    ["light builtin theme", () => getBuiltinStyleSheet("light")],
+    ["icon theme", () => getIconThemeStyleSheet()],
+  ] as const)("every rule of the %s survives the closure", (_name, load) => {
+    const sheet = load();
+    expect(sheet.rules.length).toBeGreaterThan(0);
+    const outside = sheet.rules
+      .filter((r) => !selectorUsesToolVocabularyOnly(r.selector))
+      .map((r) => [...r.selector.tags, ...r.selector.annotations.map((a) => `@${a}`)]);
+    expect(outside).toEqual([]);
+  });
+
+  it("every shape tag the style resolver infers from an infra sub-kind is a tool tag", () => {
+    // `resource OrderDB.OrdersTable` is styled as `resource[table]` without the
+    // tag ever being written; the inferred tag has to survive the closure too.
+    const inferred = Object.values(INFRA_SUB_KIND_TO_TAG);
+    expect(inferred.length).toBeGreaterThan(0);
+    expect(inferred.filter((t) => !TOOL_TAGS.has(t))).toEqual([]);
+  });
 
   it("every tag literal the source stamps on an element is a tool tag", () => {
     // `delivers` was missing from the system-assigned tags: view-extract stamps
