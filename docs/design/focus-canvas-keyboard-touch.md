@@ -130,7 +130,8 @@ main canvas の全 card に `tabindex` を付け、Tab で card を巡り、Ente
      付くが canvas に card が無い。このときコマンドは何もしない。
    - キーボードには下の階層へ降りる手段が今は無い（Outline の drill-down はダブルクリック
      だけで、Enter は選択になる）。そのため、キーボードだけで開けるのは表示中の階層の node
-     に限られる。この制限は本件では解かず、別 Issue にする（「未解決の問い」）。
+     に限られる。この制限は本件では解かず、[#3082](https://github.com/kompiro/karasu/issues/3082)
+     で扱う。
    - deploy / org ビューでは、ハイライトの属性が `data-node-id` でない（ADR-2818）ので、
      コマンドは何もしない。focus canvas は system ビュー（各階層）のものとして扱う。
 3. **focus canvas の中のキーボード。**
@@ -173,5 +174,8 @@ main canvas の全 card に `tabindex` を付け、Tab で card を巡り、Ente
 - preview 本体のキーボード操作（案2）。card を focus できるようにするなら、矢印キーでの
   移動を含めて別 Issue で設計する。
 - コマンドにキーバインドを付けるか（案4）。使われ方を見て決める。
-- キーボードで下の階層へ降りる手段（Outline で Enter が選択にしかならない）。本件の実装 PR と
-  一緒に Issue を起こす。
+- キーボードで下の階層へ降りる手段（Outline で Enter が選択にしかならない）。
+  [#3082](https://github.com/kompiro/karasu/issues/3082) で扱う。
+- キーボードで node の詳細パネルを開く手段。本件が前提にしかけた経路で、今は無い。
+  [#3083](https://github.com/kompiro/karasu/issues/3083) で扱う。本件のコマンドと、対象の
+  node の決め方を共有できる。
