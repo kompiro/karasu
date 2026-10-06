@@ -35,7 +35,7 @@
 | `[storage]` | ストレージ系リソース（シェイプ: cloud） | cloud シェイプで描画 |
 <!-- /gen:reference:tags -->
 
-> `client` 用の 7 つの form-factor タグは karasu が **認識** している。将来的に kind 固有のアイコン（#823 Phase 2）やレイアウトヒント（Phase 6）に反応する予定。ツール語彙の外のタグはパースされるが**効果を持たない**。下記「非 builtin のタグ名は効果を持たない」を参照。
+> `client` 用の 7 つの form-factor タグは karasu が **認識** している。Icon Mode はそれぞれを kind 固有のアイコンで描画する（#823 Phase 2）。レイアウトヒント（Phase 6）は今後の追加である。ツール語彙の外のタグはパースされるが**効果を持たない**。下記「非 builtin のタグ名は効果を持たない」を参照。
 
 > **shape タグは infra ブロックキーワードをミラーする — 別物ではなく対応関係にある。** infra ブロックの **キーワード**（`database` 配下の `table`、`queue` 配下の `queue-item`、`storage` 配下の `bucket`）は、system 図上の **共有ストアノード（実体）を宣言**する。usecase の `resource` は、その usecase が読み書きする対象への **操作参照**であり、`resource` が dot 記法で infra leaf を参照する（`resource OrderDB.OrderTable`）と、karasu は **参照先 infra sub-resource の kind から対応する shape タグを推論**する（`table` → `[table]`/cylinder, `queue-item` → `[queue]`, `bucket` → `[storage]`）。つまり参照は、指し示すストアと同じ形で描画される。だから shape タグ `[table]` / `[queue]` / `[storage]` は infra sub-resource kind を**意図的にミラー**している。参照する infra leaf が無い `resource` には、純粋な shape ヒントとして手書きで付けることもできる。`[api]`（hexagon）だけは infra 側に対応 kind が無く、API 系 resource 用の手書き専用 shape。同じ語が 2 つの位置に現れても **衝突しない**: キーワードは **宣言の先頭**でノードの *kind* を決め、`[...]` タグは `resource` への **接尾辞**で *shape* だけを決める — 両者は resource 参照で結ばれた相補的なレイヤーである。[syntax.md](./syntax.md) の *Infra layer* 節も参照。
 >
