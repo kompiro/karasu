@@ -46,7 +46,7 @@ The recognized `client` form-factor tags are listed below.
 
 #### `client` form-factor tags (recognized)
 
-karasu's tag system is intentionally open — any tag is accepted and styles react via selectors. For `client` specifically, **seven names are recognized** as form-factor classifications. Icon Mode renders each with a kind-specific icon; layout hints are a future addition. Tags outside this list still parse and behave as ordinary user-defined tags; they simply do not trigger karasu's built-in form-factor treatment.
+Tags are tool-owned from `.krs language v2.0`: a tag outside the builtin table parses but has no effect, and a selector on it matches nothing ([tags-annotations.md](./tags-annotations.md#non-builtin-tag-names-have-no-effect)). For `client` specifically, **seven names are recognized** as form-factor classifications. Icon Mode renders each with a kind-specific icon; layout hints are a future addition. Another builtin tag (such as `[external]`) keeps its own meaning on a client; it just does not trigger the form-factor treatment. Membership or labels of your own belong in a `facet`.
 
 <!-- gen:reference:client-form-factor-tags — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | Tag | Form factor |
@@ -1822,8 +1822,8 @@ system Shop {
 - **Typo detection is complete, not best-effort.** Because the declarations
   define the correct set, a slip between two author-defined names
   (`facets pcl` for `pii`) is caught just as reliably as a misspelt builtin —
-  unlike the near-miss `annotation-possible-typo` hint, which can only compare
-  against a fixed vocabulary.
+  unlike `annotation-possible-typo` (an error), which can only compare against
+  a fixed vocabulary. An undeclared facet stays a `facet-not-declared` warning.
 - **Default rendering is unchanged.** Adding `facets` to an element never alters
   how the diagram is drawn; every effect of a facet is opt-in.
 

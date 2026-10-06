@@ -29,8 +29,10 @@ karasu は問題を 2 つのレイヤーの語彙で報告する。
 
 診断は **severity** を持つ: `error` / `warning` / `info`。
 
-- `error` — karasu が受理しない構文。該当構文は拒否されてモデルに入らず、error が
-  1 件でも立っている間は**どの surface も新しい図を出さない**。app と VS Code の
+- `error` — モデルを書かれたとおりには受理できない。言語が拒否する構文（parser が
+  該当構文をモデルから除く。例: `node-not-in-context`）か、import 先の欠落や id の
+  重複のようなプロジェクト単位の不備である。原因によらず、error が 1 件でも立って
+  いる間は**どの surface も新しい図を出さない**。app と VS Code の
   プレビューは同じビューの直前の有効な図を出し続け、`karasu render` /
   `karasu subtree` は何も書かずに exit 1、share・`serve`・nest の描画エンドポイントは
   422 を返す。error を直すと描画が再開する。

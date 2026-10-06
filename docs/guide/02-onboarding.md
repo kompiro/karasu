@@ -121,7 +121,7 @@ database OrderDB {
 
 By default (`--granularity aggregate`), related tables are **folded into their aggregate root** — `order_items` is treated as part of `orders` from its FK and naming, and folded into `OrdersTable`'s description. This is exactly the "raise the abstraction" move, producing an architecture granularity rather than an ER diagram. Use `--granularity table` to emit tables one-to-one.
 
-> What translate produces is a **scaffold** (a starting point), not a finished artifact. The generated `usecase`s may lack `domain` wrappers, and service names may be mechanical. §2–§5 below shape this to match human understanding.
+> What translate produces is a **scaffold** (a starting point), not a finished artifact. The generated `usecase`s sit in one provisional `domain` that you rename or split, and service names may be mechanical. §2–§5 below shape this to match human understanding.
 
 ---
 

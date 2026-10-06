@@ -46,7 +46,7 @@ karasu は**論理構造**と**物理構造**を明確に分離して表現す�
 
 #### `client` の form-factor タグ（認識されるもの）
 
-karasu のタグシステムは意図的にオープンで、任意のタグを受け付けつつスタイルがセレクタで反応する設計になっている。`client` に限っては、form factor 分類として **7 つの名前が認識される**。将来的に kind 固有のアイコン（Phase 2）やレイアウトヒントで反応する予定。リスト外のタグもパースは通り、通常のユーザー定義タグとして振る舞うが、karasu 内蔵の form-factor 扱いはトリガしない。
+`.krs language v2.0` からタグはツール所有である。組み込み表の外のタグはパースされるが効果を持たず、それを狙うセレクタは何にも一致しない（[tags-annotations.ja.md](./tags-annotations.ja.md#非-builtin-のタグ名は効果を持たない)）。`client` に限っては、form factor 分類として **7 つの名前が認識される**。将来的に kind 固有のアイコン（Phase 2）やレイアウトヒントで反応する予定。それ以外の組み込みタグ（`[external]` など）は client 上でも本来の意味を持つが、form-factor 扱いはトリガしない。独自の所属やラベルは `facet` に書く。
 
 <!-- gen:reference:client-form-factor-tags — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | タグ | Form factor |
@@ -1670,8 +1670,9 @@ system Shop {
   構成はサポートされる。
 - **タイポ検出は best-effort ではなく完全である。** 宣言集合が「正」を与えるため、
   著者定義の名前どうしの取り違え（`pii` に対する `facets pcl`）も、組み込み名の
-  綴り間違いと同じ確実さで検出される — 固定語彙としか比較できない near-miss の
-  `annotation-possible-typo` ヒントとは異なる。
+  綴り間違いと同じ確実さで検出される。固定語彙としか比較できない
+  `annotation-possible-typo`（error）とは異なる。未宣言の facet は
+  `facet-not-declared` warning のままである。
 - **既定の描画は変わらない。** 要素に `facets` を付けても図の描かれ方は一切変わらず、
   facet の効果はすべて opt-in である。
 

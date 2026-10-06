@@ -113,8 +113,7 @@ funnel→retained の背骨。notation / cookbook はこの retained record を�
 
 `epic: comprehension` / `epic: boundary` / `epic: facets` は宣言していた子がすべて着地した
 ため柱から降ろした（Epic close は本節を prune した PR — [ADR-2218](adr/2218-roadmap-pruning-policy.md)）。
-comprehension の残余は下の [§comprehension の残余](#comprehension-の残余)に持つ。syntax 2.0 は
-言語 v2.0 として実施した（[§Syntax 2.0 プログラム](#syntax-20-プログラム)）。
+comprehension の残余は下の [§comprehension の残余](#comprehension-の残余)に持つ。
 
 #### comprehension の残余
 
@@ -146,7 +145,7 @@ gate の生きた適用状態。ここに載る構文は **後方互換を約束
 
 | notation | 追加 | 現状 | promotion trigger（判断材料） |
 | --- | --- | --- | --- |
-| （現在登録なし） | — | `boundary` / `facet` は言語 v2.0 で core に昇格した（[#2677](https://github.com/kompiro/karasu/issues/2677) / [#2678](https://github.com/kompiro/karasu/issues/2678)） | — |
+| （現在登録なし） | — | — | — |
 
 #### watch 対象の notation gap（構文未満の欠落）
 
@@ -193,21 +192,15 @@ gate で評価する。
 ### sequencing
 
 1. **karasu-nest pivot**（[#1990](https://github.com/kompiro/karasu/issues/1990)）が現在の主線。宣言していた実装スライスは全消化し、主線は**運用の問い**へ移った — quota の適用範囲（[#2382](https://github.com/kompiro/karasu/issues/2382)）とラチェットの検証（[#2228](https://github.com/kompiro/karasu/issues/2228)）。permalink layer（retained の背骨）は完成形に到達しており、律速ではない。
-2. **言語 v2.0** は語彙の閉鎖・`facet` と `boundary` の core 昇格・2 つの error 化を実施した。
-3. **AI authoring** は経路を決定済み（エージェントセッション + karasu CLI skill、Chat は凍結）で、実装は [#2901](https://github.com/kompiro/karasu/issues/2901)。**interop** は評価可能。
-4. **非ゴール圧力 log** は随時追記（安価）。
+2. **AI authoring** は経路を決定済み（エージェントセッション + karasu CLI skill、Chat は凍結）で、実装は [#2901](https://github.com/kompiro/karasu/issues/2901)。**interop** は評価可能。
+3. **非ゴール圧力 log** は随時追記（安価）。
 
 ---
 
 ## Syntax 2.0 プログラム
 
-- **ステータス**: 言語 v2.0 として実施済み。決定は [設計](design/language-v2-act.md)（ADR-2677 へ昇格予定）、
+- **ステータス**: 次の言語 major（破壊的変更）の受け皿。現在登録している項目は無い。
   版の運用は [ADR-2124](adr/2124-version-vocabulary.md)（言語版とパッケージ版は独立）。
-- **到達点**: tag / annotation はツール語彙に閉じ（非 builtin 名は受理・効果なし・warning、
-  任意名の style セレクタは何にも一致しない）、`facet` が唯一のユーザー拡張点として、`boundary` が view 内の
-  グルーピングとして core になった。`node-not-in-context` と `annotation-possible-typo` は error になった。閉鎖の原則は
-  [`docs/concepts.md`](concepts.md) と [ADR-2065](adr/2065-tags-and-facets.md) が持つ。
-- 本節は以後の破壊的変更（次の言語 major）の受け皿として見出しだけ残す。
 
 ---
 

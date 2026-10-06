@@ -298,7 +298,7 @@ The identifier set is **open** — any kebab-case identifier is accepted, no war
 
 ## Vocabulary registers — boundary / annotation / tag / facet
 
-karasu separates "what kind of label is this?" into four registers. The tag and annotation vocabularies are **tool-owned**; the sole user extension point is the [`facet` construct](./syntax.md#cross-cutting-membership-facet) (experimental).
+karasu separates "what kind of label is this?" into four registers. The tag and annotation vocabularies are **tool-owned**; the sole user extension point is the [`facet` construct](./syntax.md#cross-cutting-membership-facet).
 
 | Register | Construct | Vocabulary | Question it answers |
 | --- | --- | --- | --- |

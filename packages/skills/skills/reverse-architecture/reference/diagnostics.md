@@ -32,8 +32,10 @@ belongs to exactly one rule. This document is the catalog that maps the two.
 
 A diagnostic has a **severity**: `error`, `warning`, or `info`.
 
-- `error` — syntax karasu does not accept. The offending construct is rejected:
-  it is kept out of the model, and while any error stands **no surface draws a
+- `error` — the model cannot be accepted as written: syntax the language
+  rejects (the parser keeps the offending construct out of the model, e.g.
+  `node-not-in-context`), or a project-level fault such as a missing import or a
+  duplicate id. Whatever the cause, while any error stands **no surface draws a
   new diagram**. The app keeps showing the last valid diagram for the same
   view, the VS Code preview does the same, `karasu render` / `karasu subtree`
   exit 1 without writing, and the share, `serve` and nest render endpoints
