@@ -80,6 +80,8 @@ export class PreviewPanel {
   private _lastNodeMetadataByPath: Map<string, NodeMetadata> | undefined;
   private _currentDocument: vscode.TextDocument | undefined;
   private _lastValid: LastValidRender<RenderedPreview> | undefined;
+  /** Bumped per `_render()` call, so a compile that finishes late cannot land over a newer one. */
+  private _renderSeq = 0;
   private readonly _disposables: vscode.Disposable[] = [];
   private _disposed = false;
   private readonly _onDispose: () => void;
@@ -228,6 +230,7 @@ export class PreviewPanel {
   }
 
   private async _render(document: vscode.TextDocument): Promise<void> {
+    const seq = ++this._renderSeq;
     const viewPathOpts =
       this._viewType === "org" || this._viewType === "system"
         ? { viewPath: this._drilldown.viewPath }
@@ -254,6 +257,10 @@ export class PreviewPanel {
         nodeControls: true,
         ...viewPathOpts,
       });
+      // A document edit or view switch started a newer render while this one
+      // compiled. Its result describes an older target: drop it before it can
+      // become `_lastValid` or replace the newer picture.
+      if (seq !== this._renderSeq) return;
       // Core returns an SVG of whatever it recovered even when an error stands.
       // Drawing it would show a model karasu does not accept (#2677), so the
       // gate keeps the last valid picture or says the drawing is blocked.
@@ -274,6 +281,7 @@ export class PreviewPanel {
           ? { svg: messageSvg(this._blockedMessage(decision.errorCount), "#d19a00") }
           : decision.value;
     } catch (err) {
+      if (seq !== this._renderSeq) return;
       const msg = err instanceof Error ? err.message : String(err);
       rendered = { svg: messageSvg(`Error: ${msg}`, "#f44") };
     }
