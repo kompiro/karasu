@@ -1,7 +1,8 @@
 ---
 id: ADR-2898
 title: /code-review は draft PR に当て、CodeRabbit の初回レビューは ready にした時点の 1 回にする
-status: accepted
+status: superseded
+superseded_by: ADR-3052
 date: 2026-09-26
 topic: build
 authors: [kompiro]
@@ -20,7 +21,7 @@ assumptions:
 # ADR-2898: /code-review は draft PR に当て、CodeRabbit の初回レビューは ready にした時点の 1 回にする
 
 - **日付**: 2026-09-26
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by ADR-3052
 - **関連**:
   - Issue [#2898](https://github.com/kompiro/karasu/issues/2898)
   - [ADR-2643](2643-stacked-pr-workflow.md): draft では分単位の CI を止め、CodeRabbit も draft をレビューしない

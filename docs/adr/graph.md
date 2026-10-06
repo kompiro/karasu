@@ -175,6 +175,7 @@ flowchart TD
     ADR_3002["ADR-3002<br/>Dependabot security alert 2026-09-30（5 つの overr..."]
     ADR_3011["ADR-3011<br/>正否が差分だけで決まる小さな PR は、人間の承認を得て skip-coderabbit ラベ..."]
     ADR_3020["ADR-3020<br/>karasu-nest を karasu-nest.kompiro.dev カスタムドメインだ..."]
+    ADR_3052["ADR-3052<br/>/engineering:code-review は draft PR を作る前に base ..."]
     ADR_3069["ADR-3069<br/>Dependabot トリアージ 2026-10-05：mocha 12 を含む 8 件を採用..."]
     ADR_3077["ADR-3077<br/>Dependabot security alert 2026-10-06（transitive..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
@@ -604,6 +605,7 @@ flowchart TD
   ADR_2716 -.supersedes.-> ADR_2640
   ADR_2807 -.supersedes.-> ADR_2805
   ADR_2906 -.supersedes.-> ADR_2376
+  ADR_3052 -.supersedes.-> ADR_2898
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -987,7 +989,7 @@ flowchart TD
   class ADR_2839 accepted
   class ADR_2859 accepted
   class ADR_2877 accepted
-  class ADR_2898 accepted
+  class ADR_2898 superseded
   class ADR_2906 accepted
   class ADR_2917 accepted
   class ADR_2939 accepted
@@ -1001,6 +1003,7 @@ flowchart TD
   class ADR_3011 accepted
   class ADR_3020 accepted
   class ADR_3022 accepted
+  class ADR_3052 accepted
   class ADR_3069 accepted
   class ADR_3077 accepted
   class ADR_9001 accepted
