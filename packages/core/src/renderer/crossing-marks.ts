@@ -165,8 +165,9 @@ function segmentGrid(segs: Seg[]): BoxGrid {
 
 /**
  * Derive hop and junction marks from the final edge geometry. Every single-system
- * layout calls this — grouped and, since #1956, ungrouped (Group by: none). The
- * ungrouped view has no aggregation trunks, so it gets hops only (no junctions).
+ * layout calls this — grouped and, since #1956, ungrouped (Group by: none).
+ * Junctions and bands come from edges that share a spine: the trunk passes'
+ * (grouped only) and, since #2958, lane bundles (both modes).
  */
 export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
   const { hops, junctions, trunks } = detectMarks(edges);
@@ -215,7 +216,8 @@ export function detectMarks(edges: LayoutEdge[]): {
   const segs: Seg[] = [];
   // Trunk elbows grouped by spine (trunk id @ spine x). For a fan-in trunk each
   // edge's `waypoints[0]` is where its stub joins the shared vertical spine; for
-  // a fan-out trunk its last waypoint is where its branch leaves it. `edge` is
+  // a fan-out trunk its last waypoint is where its branch leaves it (or the
+  // waypoint `trunkJoin` names, on a lane bundle's route). `edge` is
   // that edge's index so its mark can be coloured like the edge.
   const trunkElbows = new Map<string, TrunkGroup>();
   /**
@@ -281,11 +283,15 @@ export function detectMarks(edges: LayoutEdge[]): {
 
     // Junction candidates: the elbow where a trunked edge's stub joins the
     // spine, and the one where a fan-out edge's branch leaves it (#2885).
+    // `trunkJoin` names that elbow on a lane bundle's route (#2958); the trunk
+    // passes' 2-waypoint routes leave it unset. Waypoint `j` is point `j + 1`.
     const wps = edge.waypoints;
     if (edge.trunkId !== undefined && wps && wps.length > 0) {
-      addElbow(`in:${edge.trunkId}@${wps[0].x}`, pts, 1, 1, edgeIdx);
+      const j = edge.trunkJoin ?? 0;
+      addElbow(`in:${edge.trunkId}@${wps[j].x}`, pts, j + 1, 1, edgeIdx);
     } else if (edge.outTrunkId !== undefined && wps && wps.length > 0) {
-      addElbow(`out:${edge.outTrunkId}@${wps[wps.length - 1].x}`, pts, wps.length, -1, edgeIdx);
+      const j = edge.trunkJoin ?? wps.length - 1;
+      addElbow(`out:${edge.outTrunkId}@${wps[j].x}`, pts, j + 1, -1, edgeIdx);
     }
   });
 
@@ -505,24 +511,93 @@ function clearMarksOfBands(
   bands: readonly TrunkBand[],
   trunks: readonly TrunkGroup[],
 ): void {
+  if (hops.length === 0) return;
+  // Both halves ask "which hops are near this?", once per band and once per
+  // count mark. Since lane bundles (#2958) a dense canvas has hundreds of each,
+  // so the hops are indexed by position and each question reads only the
+  // cells around it. The grid only narrows the candidates; every decision is
+  // still the exact test below, so the marks come out the same.
+  const grid = hopGrid(hops);
+  const near: number[] = [];
   if (bands.length > 0) {
-    for (const hop of hops) {
-      let clearance = 0;
-      for (const band of bands) {
-        const half = trunkBandHalfWidth(band.count);
-        if (half <= clearance) continue;
-        if (onBand(hop, band, half)) clearance = half;
+    // A hop's clearance is the widest band it lies on.
+    const clearance = new Float64Array(hops.length);
+    for (const band of bands) {
+      const half = trunkBandHalfWidth(band.count);
+      // `onBand` accepts a hop up to `half + 2` across the band and `EPS`
+      // beyond its ends, so this box holds every hop it can accept.
+      const reach = half + 2 + EPS;
+      const xs = band.points.map((p) => p.x);
+      const ys = band.points.map((p) => p.y);
+      grid.query(
+        Math.min(...xs) - reach,
+        Math.min(...ys) - reach,
+        Math.max(...xs) + reach,
+        Math.max(...ys) + reach,
+        near,
+      );
+      for (const i of near) {
+        if (half > clearance[i] && onBand(hops[i], band, half)) clearance[i] = half;
       }
-      if (clearance === 0) continue;
+    }
+    hops.forEach((hop, i) => {
+      if (clearance[i] === 0) return;
       // Wide enough that the arc's feet land outside the band, tall enough that
       // its crown rises out of it.
-      hop.halfWidth = Math.max(hop.halfWidth, clearance + BAND_CLEARANCE);
-      hop.ry = Math.max(HOP_RADIUS, clearance + BAND_CLEARANCE);
-    }
+      hop.halfWidth = Math.max(hop.halfWidth, clearance[i] + BAND_CLEARANCE);
+      hop.ry = Math.max(HOP_RADIUS, clearance[i] + BAND_CLEARANCE);
+    });
+  }
+  // How far a count mark can reach a hop, now that the band pass has set the
+  // hops' final sizes: `covers` is true only within these of the hop's centre.
+  let reachX = 0;
+  let reachY = 0;
+  for (const hop of hops) {
+    reachX = Math.max(reachX, JUNCTION_CHIP_RADIUS + hop.halfWidth);
+    reachY = Math.max(reachY, JUNCTION_CHIP_RADIUS + (hop.ry ?? HOP_RADIUS) + 2);
   }
   for (const mark of junctions) {
-    slideOffCrossings(mark, hops, junctions, spineOf(mark, trunks));
+    const spine = spineOf(mark, trunks);
+    // Every spot the mark may try lies within the slide range of where it
+    // starts, or on its spine where the spine clamps it.
+    const slide = JUNCTION_SLIDE * JUNCTION_SLIDE_STEPS;
+    const lo = Math.min(mark.y - slide, spine?.lo ?? Infinity);
+    const hi = Math.max(mark.y + slide, spine?.hi ?? -Infinity);
+    grid.query(mark.x - reachX, lo - reachY, mark.x + reachX, hi + reachY, near);
+    // In the hops' own order, which `slideOffCrossings` reads the first clash in.
+    near.sort((a, b) => a - b);
+    slideOffCrossings(
+      mark,
+      near.map((i) => hops[i]),
+      junctions,
+      spine,
+    );
   }
+}
+
+/** The hops' centres in a grid, for `clearMarksOfBands`'s nearness questions. */
+function hopGrid(hops: readonly HopMark[]): BoxGrid {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const hop of hops) {
+    minX = Math.min(minX, hop.x);
+    minY = Math.min(minY, hop.y);
+    maxX = Math.max(maxX, hop.x);
+    maxY = Math.max(maxY, hop.y);
+  }
+  // Sized by a hop's own width, the scale every question above asks at.
+  const widths = hops.map((hop) => hop.halfWidth * 2);
+  const grid = new BoxGrid(
+    chooseCellSize(widths, maxX - minX, maxY - minY),
+    minX,
+    minY,
+    maxX,
+    maxY,
+  );
+  hops.forEach((hop, i) => grid.insert(i, hop.x, hop.y, hop.x, hop.y));
+  return grid;
 }
 
 /**

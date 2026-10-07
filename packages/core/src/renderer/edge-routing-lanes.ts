@@ -137,7 +137,17 @@ export function collectChannels(
     // Stable sort keeps edge order for ties, so no explicit tiebreak is needed.
     runs.sort((a, b) => a.leftX - b.leftX || a.rightX - b.rightX);
     const laneEnds: number[] = [];
+    // A bundle's siblings draw their shared runs on the same pixels (#2958);
+    // separating them as overlapping traffic would split the bundle back into
+    // parallel lines (TPL-2958). An identical run of the same bundle takes the
+    // lane its first sibling got.
+    const bundleLane = new Map<string, number>();
     const laned = runs.map((run) => {
+      const bundle = run.edge.trunkId ?? run.edge.outTrunkId;
+      const key =
+        bundle !== undefined ? `${bundle}|${run.y}|${run.leftX}|${run.rightX}` : undefined;
+      const shared = key !== undefined ? bundleLane.get(key) : undefined;
+      if (shared !== undefined) return { ...run, lane: shared };
       let lane = laneEnds.findIndex((end) => end + LANE_SHARE_GAP <= run.leftX);
       if (lane === -1) {
         lane = laneEnds.length;
@@ -145,6 +155,7 @@ export function collectChannels(
       } else {
         laneEnds[lane] = run.rightX;
       }
+      if (key !== undefined) bundleLane.set(key, lane);
       return { ...run, lane };
     });
     channels.push({ upper, lower, runs: laned, lanes: laneEnds.length });

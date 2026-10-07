@@ -453,14 +453,22 @@ export function labelAnchorWithSegment(
  * A fan-out edge (#2885) is the mirror: it shares the exit and the spine with
  * its siblings and owns only the branch into its own target, the last segment.
  *
+ * A lane bundle's route (#2958) may carry channel elbows before or after the
+ * spine, so its own segment is the one next to the elbow `trunkJoin` names:
+ * the one arriving at it (fan-in) or the one leaving it (fan-out). On a
+ * 2-waypoint route those are the first and the last segment.
+ *
  * `undefined` for every other edge, which keeps ADR-1184's default anchor and
  * the byte-stability it was chosen for.
  */
 export function ownLabelSegment(edge: LayoutEdge): number | undefined {
-  if (edge.trunkId !== undefined) return 0;
-  // The route is `fromPoint, ...waypoints, toPoint`, so its last segment starts
-  // at the last waypoint, whose index in the points is `waypoints.length`.
-  if (edge.outTrunkId !== undefined) return edge.waypoints?.length ?? 0;
+  // The route is `fromPoint, ...waypoints, toPoint`: waypoint `j` is point
+  // `j + 1`, so segment `j` arrives at it and segment `j + 1` leaves it.
+  if (edge.trunkId !== undefined) return edge.trunkJoin ?? 0;
+  // Without `trunkJoin` the elbow is the last waypoint, `waypoints.length - 1`.
+  if (edge.outTrunkId !== undefined) {
+    return edge.trunkJoin !== undefined ? edge.trunkJoin + 1 : (edge.waypoints?.length ?? 0);
+  }
   return undefined;
 }
 

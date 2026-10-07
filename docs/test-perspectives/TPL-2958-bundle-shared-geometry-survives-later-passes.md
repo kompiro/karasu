@@ -72,4 +72,5 @@ scope:
 ## 関連テスト
 
 - `packages/core/src/renderer/edge-routing-groups.test.ts`「trunk ends survive the normalization shift (#2966)」: 左ガターで平行移動が 0 でない grouped 図に fan-in / fan-out のトランクを置き、正規化後も共有端が同じオブジェクトのままカードの右辺に載ることを測る。
-- `packages/core/src/renderer/routing-parity.test.ts`: 貫通 0 / 共線 0 の計測柵。#2958 の実装で「全チェーン後に兄弟の共有区間が同一座標」の柵を飽和フィクスチャとともに足す予定。
+- `packages/core/src/renderer/routing-parity.test.ts`「saturated gutter — lane bundle fence (#2958, TPL-2958 / TPL-2598)」: Dify Knowledge 画面を縮小した合成モデル（usecase 16 → table 10、ungrouped、左ガターあり）で、全チェーン後に兄弟の spine と共有区間が同一座標のままであることを測る。行間チャネルの束対応（`collectChannels`）を外すと落ちることを確認済み。usecase あたり table 4 個の入力では共有区間がチャネルを通らず、外しても緑のままだったので 5 個にした。
+- `packages/core/src/renderer/edge-routing-lane-bundles.test.ts`「lane bundles downstream (#2958)」: 同じ束の同一 run が 1 レーンに残ること、合流マークとラベル区間が `trunkJoin` から求まることを単体で測る。

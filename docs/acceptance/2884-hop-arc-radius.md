@@ -21,11 +21,11 @@ type: product
 
 ### AC-1: 既定の半径が回廊に収まり、その柵が限界に達している（TPL-2598）
 
-- [x] AT-A: グループ化ビューが作る最も狭い回廊（1 つの hub が 12 target を呼び、各 target も自分の service から読まれる合成 fixture）で、既定半径のアーチが隣の平行線に届かない
+- [x] AT-A: グループ化ビューが作る最も狭い回廊で、既定半径のアーチが隣の平行線に届かない。入力は examples の hato（team）と、アーチ数を確保する合成 fixture（1 つの hub が 12 target を呼び、各 target に hub と同じ帯の呼び出し元を 1 つずつ足したもの）。当初の合成 fixture（hub が 12 target を呼ぶだけ）は #2958 の lane bundle で hub のガターエッジが 1 本にまとまり、回廊が 125px に広がったため置き換えた
 
   > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `hop arc radius — corridor fence (#2884, TPL-2598)` › `the default radius fits the tightest corridor, and the corpus reaches that limit`
 
-- [x] AT-B: 同 fixture の回廊が 9px より狭い（設計が却下した半径に達している）ので、半径を上げると AT-A が落ちる。半径 7 で実際に落ちることを確認した。なお回廊を拘束しているのは実測 7.0px で、dify の team ビューの最狭部 9.6px より狭い（fixture の方が実モデルより厳しい）
+- [x] AT-B: 同入力の回廊が 9px より狭い（設計が却下した半径に達している）ので、半径を上げると AT-A が落ちる。半径 7 で実際に落ちることを確認した。回廊を拘束しているのは hato の 6.7px（#2958 の前後で不変）。当初の fixture は 7.0px だったが、#2958 のあと束を割る合成入力を 12 通り試しても 8px を切れず、実在の図の hato が最も狭かった
 
   > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `hop arc radius — corridor fence (#2884, TPL-2598)` › `the default radius fits the tightest corridor, and the corpus reaches that limit`
 

@@ -181,6 +181,15 @@ export interface LayoutEdge {
    * `trunkId`: a shared target is claimed first.
    */
   outTrunkId?: string;
+  /**
+   * Index into `waypoints` of the elbow where this edge meets its shared
+   * spine: where it joins (`trunkId`) or leaves (`outTrunkId`) it. Set by the
+   * lane bundles of `distributeGutterLanes` (#2958), whose routes may carry
+   * channel elbows before or after the spine. Unset for the trunk passes'
+   * 2-waypoint routes, where the elbow is `waypoints[0]` (fan-in) or the last
+   * waypoint (fan-out).
+   */
+  trunkJoin?: number;
 }
 
 /** Axis-aligned box. The unit `ContainerRect.coverage` is built from. */
@@ -346,7 +355,9 @@ export interface LayoutResult {
   /**
    * Hop/junction crossing marks for the system view (#1859 P2c-C). Set by every
    * single-system layout — grouped and, since #1956, ungrouped (Group by: none) —
-   * from final coordinates; junction dots stay grouped-only (no trunks ungrouped).
+   * from final coordinates. Junction dots and bands appear wherever edges share a
+   * spine: the trunk passes run grouped only, and the lane bundles of #2958 run
+   * in both modes.
    * Multi-system (`layoutMultipleSystems`) leaves it unset (straight-line edges,
    * out of scope). The renderer emits a `crossing-marks` layer on top of the edges
    * when present. See docs/design/system-view-grouping.md § "P2c-C 詳細設計".
@@ -428,7 +439,8 @@ export interface TrunkBand {
 /**
  * Marks for the Group-by view: hops (crossing = not connected), junctions
  * (merge = connected, carrying the count), and the bands that give the count a
- * width. `bands` is empty in the ungrouped view, which has no trunks.
+ * width. Junctions and bands come from shared spines, so a canvas whose edges
+ * share none has neither.
  */
 export interface CrossingMarks {
   hops: HopMark[];

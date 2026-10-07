@@ -1319,10 +1319,12 @@ function maxTrunkXOf(layoutEdges: readonly LayoutEdge[]): number {
  * disambiguates only fan-in (≥ 2 incoming) targets; single-incoming gutter edges
  * keep colliding on the default gutter x. Runs *after* `aggregateGroupTrunks`.
  *
- * Each colliding corridor gets its own lane x, allocated by greedy interval
- * partitioning on the corridor y-range: corridors whose y-ranges are disjoint may
- * share a lane (no visual overlap → minimal width and snapshot churn); overlapping
- * ones get distinct lanes. Lane order is coordinate-derived (sorted by y then id),
+ * Corridors whose routes share an end first form lane bundles
+ * (`bundleGutterCorridors`, #2958), which take one lane between them. Each
+ * remaining corridor, and each bundle, gets its own lane x, allocated by greedy
+ * interval partitioning on the y-range: ranges that are disjoint may share a
+ * lane (no visual overlap → minimal width and snapshot churn); overlapping ones
+ * get distinct lanes. Lane order is coordinate-derived (sorted by y then id),
  * so snapshots stay stable.
  *
  * Right-side lanes are numbered clear of the trunk lanes (P2c-B): overflow
@@ -1373,42 +1375,161 @@ export function distributeGutterLanes(
     else if (corridor.x < minLeft) left.push({ e, corridor });
   }
 
-  assignGutterLanes(right, (lane) => (lane === 0 ? rightBase : maxTrunkX + lane * TRUNK_LANE_GAP));
-  assignGutterLanes(left, (lane) => leftBase - lane * TRUNK_LANE_GAP);
+  // One counter across both sides, so every lane bundle's id is unique.
+  const bundleIds = { next: 0 };
+  assignGutterLanes(bundleGutterCorridors(right, bundleIds), (lane) =>
+    lane === 0 ? rightBase : maxTrunkX + lane * TRUNK_LANE_GAP,
+  );
+  assignGutterLanes(
+    bundleGutterCorridors(left, bundleIds),
+    (lane) => leftBase - lane * TRUNK_LANE_GAP,
+  );
+}
+
+/** A gutter corridor and the edge whose route it belongs to. */
+interface CorridorItem {
+  e: LayoutEdge;
+  corridor: GutterCorridor;
 }
 
 /**
- * Greedy interval partitioning of gutter corridors into lanes: corridors with
- * overlapping y-ranges land on distinct lanes, disjoint ones may share. `laneX`
- * maps a lane index to its gutter x. Rewrites only the corridor's two waypoints'
- * x to the assigned lane (ports, corridor y, and any channel elbows are
- * untouched — moving the corridor x automatically slides the channel horizontal
- * that meets it, staying orthogonal and clear beyond `maxRight`/`minLeft`).
+ * What takes one lane: a single corridor, or a lane bundle of corridors that
+ * draw one shared spine. `lo`/`hi` is the y-range the unit occupies — the
+ * union of its members' ranges.
  */
-function assignGutterLanes(
-  items: { e: LayoutEdge; corridor: GutterCorridor }[],
-  laneX: (lane: number) => number,
-): void {
-  if (items.length === 0) return;
-  // Deterministic order: by corridor start, then end, then edge identity.
-  const ranges = [...items].sort(
-    (a, b) => a.corridor.lo - b.corridor.lo || a.corridor.hi - b.corridor.hi || cmpEdgeId(a.e, b.e),
+interface LaneUnit {
+  members: CorridorItem[];
+  lo: number;
+  hi: number;
+}
+
+/**
+ * Lane bundles (#2958): gutter corridors on one side whose routes share an end
+ * take one lane between them, so they draw one spine instead of one lane each.
+ *
+ * - **Fan-in**: corridors whose routes agree on everything from the corridor's
+ *   far end onwards — the same target, entered the same way. Each sibling
+ *   joins the spine at its corridor's start (`waypoints[corridor.i]`).
+ * - **Fan-out**: of the rest, corridors whose routes agree on everything up to
+ *   the corridor's near end — the same source, left the same way. Each
+ *   sibling leaves the spine at its corridor's end (`waypoints[corridor.i + 1]`).
+ *
+ * Fan-in claims first: a shared target is the stronger statement, as in the
+ * trunk passes (ADR-2631). The route's shape is never compared, only the part
+ * the siblings will draw together, so a plain gutter route and a mixed route
+ * (#1954) bundle by the same rule; for a 2-waypoint route the result is the
+ * trunk passes' shape (one entry, one spine).
+ *
+ * Only a corridor's lane x changes, never its side or shape, so a short route
+ * is never pulled out to the canvas edge (the #2364 cost ADR-2330 rejected),
+ * and a lane beyond all content stays clear by construction.
+ *
+ * Siblings are tagged `trunkId` / `outTrunkId` — ids unique per bundle, since
+ * one node can have several bundles and `fanOutGutterPorts` moves every edge
+ * sharing an id as one slot — and `trunkJoin` marks where each meets the
+ * spine. Edges of different kinds (sync / async) never share a bundle: one
+ * spine would draw a solid and a dashed stroke on the same pixels, which is
+ * #2490's overlap (ADR-2598 decision 8). For the same reason the bundle drops
+ * `groupBackward`, as the trunk passes do.
+ *
+ * A group of one is not a bundle: the corridor keeps a lane of its own, so a
+ * model whose gutter edges share no end lays out exactly as before.
+ */
+function bundleGutterCorridors(items: CorridorItem[], ids: { next: number }): LaneUnit[] {
+  const units: LaneUnit[] = [];
+  const pointsKey = (pts: readonly Point[]) => pts.map((p) => `${p.x},${p.y}`).join(";");
+  const groupBy = (list: CorridorItem[], key: (it: CorridorItem) => string) => {
+    const groups = new Map<string, CorridorItem[]>();
+    for (const it of list) {
+      const k = key(it);
+      const g = groups.get(k);
+      if (g) g.push(it);
+      else groups.set(k, [it]);
+    }
+    return [...groups.values()];
+  };
+  const unitOf = (members: CorridorItem[]): LaneUnit => ({
+    members,
+    lo: Math.min(...members.map((m) => m.corridor.lo)),
+    hi: Math.max(...members.map((m) => m.corridor.hi)),
+  });
+
+  // Fan-in: the far end of the corridor and everything after it. The
+  // corridor's own x is left out, since the lane is what decides it.
+  const tailKey = ({ e, corridor }: CorridorItem) => {
+    const wps = e.waypoints!;
+    const tail = [...wps.slice(corridor.i + 2), e.toPoint];
+    return `${e.kind ?? ""}|${e.to}|${wps[corridor.i + 1].y}|${pointsKey(tail)}`;
+  };
+  const rest: CorridorItem[] = [];
+  for (const group of groupBy(items, tailKey)) {
+    if (group.length < 2) {
+      rest.push(...group);
+      continue;
+    }
+    const id = `${group[0].e.to}#lane-in-${ids.next++}`;
+    for (const { e, corridor } of group) {
+      e.trunkId = id;
+      e.trunkJoin = corridor.i;
+      e.groupBackward = false;
+    }
+    units.push(unitOf(group));
+  }
+
+  // Fan-out: everything before the corridor and its near end.
+  const headKey = ({ e, corridor }: CorridorItem) => {
+    const wps = e.waypoints!;
+    const head = [e.fromPoint, ...wps.slice(0, corridor.i)];
+    return `${e.kind ?? ""}|${e.from}|${wps[corridor.i].y}|${pointsKey(head)}`;
+  };
+  for (const group of groupBy(rest, headKey)) {
+    if (group.length < 2) {
+      units.push(unitOf(group));
+      continue;
+    }
+    const id = `${group[0].e.from}#lane-out-${ids.next++}`;
+    for (const { e, corridor } of group) {
+      e.outTrunkId = id;
+      e.trunkJoin = corridor.i + 1;
+      e.groupBackward = false;
+    }
+    units.push(unitOf(group));
+  }
+  return units;
+}
+
+/**
+ * Greedy interval partitioning of lane units into lanes: units with
+ * overlapping y-ranges land on distinct lanes, disjoint ones may share. `laneX`
+ * maps a lane index to its gutter x. Rewrites only each corridor's two
+ * waypoints' x to the assigned lane (ports, corridor y, and any channel elbows
+ * are untouched — moving the corridor x automatically slides the channel
+ * horizontal that meets it, staying orthogonal and clear beyond
+ * `maxRight`/`minLeft`). Every member of a bundle gets the same x.
+ */
+function assignGutterLanes(units: LaneUnit[], laneX: (lane: number) => number): void {
+  if (units.length === 0) return;
+  // Deterministic order: by range start, then end, then edge identity.
+  const ranges = [...units].sort(
+    (a, b) => a.lo - b.lo || a.hi - b.hi || cmpEdgeId(a.members[0].e, b.members[0].e),
   );
-  const laneEnds: number[] = []; // last-assigned corridor `hi` per lane
-  for (const { e, corridor } of ranges) {
-    // First lane whose corridor ends at or before this one starts (no overlap;
+  const laneEnds: number[] = []; // last-assigned range `hi` per lane
+  for (const unit of ranges) {
+    // First lane whose range ends at or before this one starts (no overlap;
     // touching at a single point is not a visual overlap, so `<=`).
-    let lane = laneEnds.findIndex((end) => end <= corridor.lo);
+    let lane = laneEnds.findIndex((end) => end <= unit.lo);
     if (lane === -1) {
       lane = laneEnds.length;
-      laneEnds.push(corridor.hi);
+      laneEnds.push(unit.hi);
     } else {
-      laneEnds[lane] = corridor.hi;
+      laneEnds[lane] = unit.hi;
     }
     const x = laneX(lane);
-    const wps = e.waypoints!;
-    wps[corridor.i] = { x, y: wps[corridor.i].y };
-    wps[corridor.i + 1] = { x, y: wps[corridor.i + 1].y };
+    for (const { e, corridor } of unit.members) {
+      const wps = e.waypoints!;
+      wps[corridor.i] = { x, y: wps[corridor.i].y };
+      wps[corridor.i + 1] = { x, y: wps[corridor.i + 1].y };
+    }
   }
 }
 
