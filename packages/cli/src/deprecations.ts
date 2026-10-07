@@ -1,6 +1,6 @@
 /**
  * The CLI's backward-compatibility table (Issue #2961, design
- * `docs/design/karasu-authoring-skill.md` 論点 5).
+ * `docs/adr/2901-karasu-authoring-skill.md`).
  *
  * Agent-facing names — command names and flags — are never dropped outright.
  * A renamed or retired name gets an entry here and keeps working as a hidden

@@ -74,7 +74,7 @@ dependent は版 bump するが、`devDependencies` は範囲更新のみで bum
 > skill が前提にする CLI の挙動を変えたのに `karasu-skills` を名指さないと、CLI だけが
 > 公開され、利用者の手元の skill は古い手順のまま残る。skill は SKILL.md の Step 0 で
 > CLI の版の**下限**しか照合しないので、この食い違いは利用者側では検出されない
-> （[設計](../../docs/design/karasu-authoring-skill.md) 案 1-D、#2932）。
+> （[ADR-2901](../../docs/adr/2901-karasu-authoring-skill.md)、#2932）。
 
 `.changeset/*.md` の frontmatter 例（core 変更）:
 

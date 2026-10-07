@@ -16,12 +16,15 @@ flowchart TD
     ADR_1580["ADR-1580<br/>組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする"]
     ADR_1895["ADR-1895<br/>アーキテクチャリバースハーネス — multi-subagent fan-out + CLI ..."]
     ADR_2077["ADR-2077<br/>reverse harness の分解粒度 — bounded-context 既定と構造 g..."]
+    ADR_2901["ADR-2901<br/>AI authoring は利用者のエージェントセッションと karasu CLI skill..."]
     ADR_9017["ADR-9017<br/>Cloudflare Pages デプロイ基盤と BYOK AI 連携"]
   end
   ADR_33["ADR-33<br/>[testing] E2EテストよりQA手動確認を優先する"]
   ADR_813["ADR-813<br/>[app-ui] ユーザー向け文字列はデフォルトで i18n を通す"]
+  ADR_1315["ADR-1315<br/>[build] OSS リリース自動化に changesets を採用し、当面は `karasu`（CLI）の..."]
   ADR_1417["ADR-1417<br/>[vscode] LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
   ADR_1583["ADR-1583<br/>[core-concepts] team アノテーション対応と `@migration_target` による primary..."]
+  ADR_1758["ADR-1758<br/>[build] VS Code 拡張を changesets の版管理対象に含める"]
   ADR_34 --> ADR_639
   ADR_362 --> ADR_9017
   ADR_363 --> ADR_362
@@ -31,6 +34,8 @@ flowchart TD
   ADR_420 --> ADR_419
   ADR_420 --> ADR_362
   ADR_1580 --> ADR_1583
+  ADR_2901 --> ADR_1315
+  ADR_2901 --> ADR_1758
   ADR_813 --> ADR_34
   ADR_1417 --> ADR_34
   ADR_529 -.supersedes.-> ADR_33
@@ -51,9 +56,12 @@ flowchart TD
   class ADR_1580 accepted
   class ADR_1895 accepted
   class ADR_2077 accepted
+  class ADR_2901 accepted
   class ADR_9017 accepted
   class ADR_33 ghost
   class ADR_813 ghost
+  class ADR_1315 ghost
   class ADR_1417 ghost
   class ADR_1583 ghost
+  class ADR_1758 ghost
 ```

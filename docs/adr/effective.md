@@ -192,6 +192,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1580](1580-org-graph-in-chat-prompt.md) — 組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする
 - [ADR-1895](1895-reverse-architecture-harness.md) — アーキテクチャリバースハーネス — multi-subagent fan-out + CLI spine で repo を .krs 化する
 - [ADR-2077](2077-reverse-bc-granularity.md) — reverse harness の分解粒度 — bounded-context 既定と構造 grounding の不採用
+- [ADR-2901](2901-karasu-authoring-skill.md) — AI authoring は利用者のエージェントセッションと karasu CLI skill で行い、skill は karasu-skills パッケージから plugin と karasu skill install の両方で配る
 - [ADR-9017](9017-cloudflare-deployment-and-byok-ai.md) — Cloudflare Pages デプロイ基盤と BYOK AI 連携
 
 ## cli
