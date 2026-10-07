@@ -536,6 +536,21 @@ describe("GET /g/<id>/og.png (#2995)", () => {
     expect(rasterizeOgPng).toHaveBeenCalledTimes(2);
   });
 
+  it("names a missing ASSETS binding as a configuration error, not a failed drawing", async () => {
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal("caches", { default: new MemoryCache() });
+    const response = await handleRequest(
+      new Request(`${ORIGIN}/g/${id}/og.png`),
+      { ...env(kv), ASSETS: undefined },
+      ctx,
+    );
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ error: { code: "not_configured" } });
+    expect(rasterizeOgPng).not.toHaveBeenCalled();
+  });
+
   it("still answers when the cache refuses the image", async () => {
     const kv = new MemoryKV();
     const { id } = await seed(kv);

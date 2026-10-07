@@ -224,11 +224,14 @@ export async function submissionOgImage(context: RouteContext): Promise<Response
   // cached: `text` defaults to `no-store`, and nothing reaches the edge cache.
   if (rendered.status !== 200) return text(rendered.body, { status: rendered.status });
 
+  // Outside the `try`: a deploy without the binding is a configuration error,
+  // which `app.ts` answers as 503 naming it, not a failed drawing.
+  const assets = requireBinding(context.env, "ASSETS");
   let image: Uint8Array<ArrayBuffer>;
   try {
     image = await rasterizeOgPng(
       wrapSvgForOgpFrame(rendered.body, OG_IMAGE_WIDTH, OG_IMAGE_HEIGHT, OG_IMAGE_BACKGROUND),
-      requireBinding(context.env, "ASSETS"),
+      assets,
       context.url,
     );
   } catch (cause) {
