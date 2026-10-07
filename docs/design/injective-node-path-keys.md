@@ -2,7 +2,7 @@
 
 - **日付**: 2026-10-07
 - **ステータス**: 検討中
-- **PR**: #TBD
+- **PR**: #3092
 - **関連**:
   - 引き金 Issue: [#2819](https://github.com/kompiro/karasu/issues/2819)
   - 関連 ADR: [ADR-2714](../adr/2714-deploy-container-id-injective.md)（deploy コンテナ id を `nodePathRefId` で injective にした前例。本 Issue はその残課題）, [ADR-2088](../adr/2088-node-reference-path-notation.md)（`ownerIndex` / `boundaryMembership` を full path キーにした決定。エンコードは定めていない）, [ADR-2547](../adr/2547-shared-node-path-machinery.md)（`nodePathKey` を含む node path の共有機構）, [ADR-2036](../adr/2036-scoped-boundary-declaration.md)（scope キーを JSON で injective にした前例）, [ADR-2756](../adr/2756-root-view-system-edge-ownership.md)（edge diff キーに system が無いことへの per-frame 対処）
