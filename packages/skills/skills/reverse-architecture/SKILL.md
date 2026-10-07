@@ -35,7 +35,7 @@ Do this before anything else, and before touching any `.krs`.
 2. **Compare versions.** This skill was written for karasu
    `{{KARASU_MIN_VERSION}}` or later. If that is not a version number but a
    template marker in double braces, you are running the unreleased copy inside
-   the karasu repository: skip the rest of this step.
+   the karasu repository: skip to item 4.
 3. Run `karasu --version` and compare the first line's version with the one
    above (semver).
    - **Command not found, or older:** stop and tell the user: "This skill needs
@@ -47,6 +47,12 @@ Do this before anything else, and before touching any `.krs`.
      Do not suggest `npx karasu@latest`: it runs once and does not change what
      `karasu` resolves to afterwards.
    - **Same or newer:** continue without comment.
+4. **Check the commands this skill uses.** Run `karasu capabilities --json` once.
+   This skill calls `translate`, `subtree`, `coverage`, `render` and `fmt`. For
+   each one listed under `deprecations`, use its `replacement` from then on, and
+   tell the user once that this skill is older than their karasu and can be
+   updated. If the CLI prints a line starting `karasu: deprecated:` or
+   `karasu: removed:` while you work, do the same with the name it gives.
 
 ## Prerequisites
 
@@ -725,9 +731,8 @@ footprint and makes the `coverage` numbers incomparable across domains.
    whose source is `docs/guide/notation-cookbook.md`),
    and a genuinely missing construct is judged by the promotion gate,
    `docs/adr/1820-notation-promotion-gate.md`. That gate wants **real-usage
-   evidence**, which is what a run of this skill produces for the experimental
-   `boundary` and `facet` — so report how they were used, not only where they
-   fell short.
+   evidence**, which is what a run of this skill produces for `boundary` and
+   `facet` — so report how they were used, not only where they fell short.
 
    These recur across agents and repos; expect them rather than rediscovering
    them, and report only what is new or a sharper instance:
@@ -832,8 +837,9 @@ Two authoring notes for that script, both learned the hard way:
 - The list of seams left `@draft`, **and the seams that started `@draft` and were
   resolved**, with the evidence — the resolutions are what a reviewer most needs
   and they are invisible in the `.krs` once the mark is gone.
-- Notes on any notation gaps encountered, and on how the experimental `boundary`
-  / `facet` constructs were used (evidence for the promotion gate, ADR-1820):
+- Notes on any notation gaps encountered, and on how the `boundary` / `facet`
+  constructs were used (both are core from `.krs language v2.0`; the usage is
+  still evidence for how their shape holds up, ADR-1820):
   which facets were declared and how many memberships each carries, which were
   proposed and declined and why, which proposals were **convergent**, and which
   `boundary` placements were used — a run that used only the top-level form has
@@ -871,9 +877,10 @@ Two authoring notes for that script, both learned the hard way:
   would move a seam, it is telling you something about Phase 1 — go re-argue the
   seam there, on ubiquitous-language evidence, and leave the overlay out.
 - **Match identity by `id`**, not `label`. **Never silently drop thin domains**
-  (surface them via `coverage`). **Invent no vocabulary of your own**: v1 is
-  frozen, and `boundary` / `facet` are shipped-but-experimental (backward
-  compatibility is not yet promised, ADR-1820) — use them as spec'd, and route
+  (surface them via `coverage`). **Invent no vocabulary of your own**: `.krs
+  language v2.0` closes the tag and annotation vocabularies to the tool's own, a
+  non-builtin name has no effect, and `facet` and `boundary` are core notation.
+  Use them as spec'd, and route
   anything they do not cover to the gap notes rather than to a new keyword or a
   non-builtin tag. `facet` is the *only* user extension point in the vocabulary;
   tags and annotations are tool-owned.

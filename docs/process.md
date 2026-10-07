@@ -105,9 +105,9 @@ ready → implementing → in-review → (close)
 5. 実装する
 6. /hane:commit でコミットする（Conventional Commits 形式）
 7. PR 前に main を取り込む — git fetch origin main && git merge --no-edit origin/main（rebase は使わない。「ブランチ戦略」参照）。コンフリクトを解消し、lint / test を再確認する
-8. PR を draft で作成する（gh pr create --draft、Closes #N で Issue と紐付ける）。draft には CodeRabbit も分単位の CI も走らない
-9. /code-review <PR番号> を当て、対応すると決めた修正をコミットして push する（draft への push は CodeRabbit の review 枠を使わない）
-10. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の、`adr-auto-merge` ラベルの無い PR）では初回レビューもここで走る
+8. base ブランチとの差分（git diff origin/main...HEAD）に /engineering:code-review を当て、対応すると決めた修正をコミットし、lint / test を再確認する。PR はまだ作らない
+9. PR を draft で作成する（gh pr create --draft、Closes #N で Issue と紐付ける）。draft には CodeRabbit も分単位の CI も走らない
+10. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の、`adr-auto-merge` / `skip-coderabbit` ラベルの無い PR）では初回レビューもここで走る
 11. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 12. Issue ラベルを status: in-review に更新する
 13. 手動検証チェックリストを実施する
@@ -115,14 +115,65 @@ ready → implementing → in-review → (close)
 15. 人間のレビュー → マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
 ```
 
-**CodeRabbit の初回レビューは `/code-review` の修正を反映したコードに当てる。** ready の
+**CodeRabbit の初回レビューは `/engineering:code-review` の修正を反映したコードに当てる。** ready の
 PR への push は、自動レビューが走るたびに CodeRabbit の review 枠を 1 回使い（rate limit で
 弾かれた push は使わない）、枠の補充レートは直近 7 日の
-利用量が増えるほど下がる。PR を ready で開いてから `/code-review` を当てると、直す前の
-コードと直した後のコードで 2 回使う。順序の決定と計測値は
-[ADR-2898](adr/2898-draft-first-code-review.md)。
+利用量が増えるほど下がる。PR を ready で開いてから `/engineering:code-review` を当てると、直す前の
+コードと直した後のコードで 2 回使う。レビューは PR を作る前に base ブランチとの差分へ当てるので、
+修正は PR の最初の push に含まれる。順序の決定と計測値は
+[ADR-2898](adr/2898-draft-first-code-review.md)、レビュー対象を base との差分にした決定は
+[ADR-3052](adr/3052-review-branch-diff-before-draft-pr.md)。
 
 詳細な手順は `/hane:start-dev` スキル（[`kompiro/hane`](https://github.com/kompiro/hane) plugin）を参照。
+
+### CodeRabbit を外す小さな PR（`skip-coderabbit` ラベル）
+
+**到達状態**: `skip-coderabbit` ラベルの付いた PR は、下の判定基準を満たすと人間が
+承認したものだけで、CodeRabbit の自動レビューを受けずに人間のレビューへ進んでいる。
+ラベルの付いた PR は `gh pr list --label skip-coderabbit --state all` で一覧できる。
+
+判定基準は 1 つ、**差分が正しいかどうかが、差分そのものと外部の事実（リンク先・画像・
+綴り）だけで決まり、周辺のコードや規約を読まずに判断できるか**。行数は問わない。
+実行時の振る舞い（コードの経路・ルーティング・CI の動き）を変える差分は、この基準を
+満たさない。差分の一部でも満たさなければ、PR 全体にラベルを付けない。
+
+| 差分 | ラベル | 理由 |
+| --- | --- | --- |
+| README のリンク切れ修正 | 付ける | リンク先を開けば正否が決まる |
+| nest に favicon を静的アセットと `<link rel="icon">` で足す | 付ける | 画像とその参照だけ |
+| 同じ favicon を Worker の新しいルートで返す | 付けない | ルーティングという振る舞いが変わる |
+| i18n テーブルにある UI 文言の typo 修正 | 付ける | 綴りで決まる。表示文字列の修正は振る舞いの変更に数えない |
+| `examples/` の .krs の typo 修正（`examples.ts` のミラー同期を含む） | 付ける | 綴りで決まり、ミラーの一致は drift ガードが見る |
+| コードコメント・JSDoc の修正 | 付けない | コードについての主張なので、コードとの照合が要る |
+| `docs/process.md` の 1 行修正 | 付けない | 運用についての主張なので、規約との照合が要る |
+| テストだけの追加 | 付けない | 何を検証すべきかの判断が要る |
+| `.github/workflows` の action バージョン更新 | 付けない | CI の振る舞いが変わる |
+| core の 1 行のバグ修正 | 付けない | 振る舞いが変わる |
+
+**ラベルは Claude が提案し、人間が承認してから付ける。** Claude は判定基準を満たすと
+考えたら、表のどの行に当たるかを添えて付けてよいか尋ねる。承認を得るまでは付けずに
+通常の手順で進める。承認後は draft のうちに付けてから ready にする。
+
+```
+gh pr create --draft ...
+gh pr edit <N> --add-label skip-coderabbit   # 人間の承認後
+gh pr ready <N>
+```
+
+- **ready の後に付けた場合**、それ以降の push の自動レビューは止まるが、既に付いた
+  レビューとその changes-requested は残る。changes-requested はマージを止めないので、
+  そのまま人間のレビューに進んでよい
+- ラベルの付いた PR では `/coderabbit-converge` を回さず、次節の到達状態
+  （CodeRabbit の approve）も求めない。CI が通れば人間のレビューに渡す
+- ラベルを付けた後に判定基準を満たさない差分を足すなら、push の前にラベルを外し
+  （`gh pr edit <N> --remove-label skip-coderabbit`）、push 後に
+  `@coderabbitai review` を投げて通常の手順に戻る
+- **PR 本文に `@coderabbitai ignore` という文字列を書かない。** CodeRabbit は文脈を
+  区別せず、引用や却下した案の説明として書いただけでもその PR をレビューから外す。
+  外れたときのステータスは理由の付かない `Review skipped` で、ラベルや draft による
+  除外と見分けられる（#3012 で起きた）。コマンドに触れるときは「the ignore command」
+  のように `@coderabbitai` を付けずに書く
+- 判定の経緯と却下した案は [ADR-3011](adr/3011-skip-coderabbit-label.md)
 
 ### 人間のレビューは CodeRabbit が approve してから始める
 
@@ -189,6 +240,7 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 - `adr-auto-merge` ラベルの付いた ADR-only PR も対象外。auto-merge の適用条件を
   満たすと diff で確認した PR にだけ、draft のうちに付ける（`.claude/rules/adr.md`
   「ADR PR の auto-merge」、ADR-2949）
+- `skip-coderabbit` ラベルの付いた PR も対象外（「CodeRabbit を外す小さな PR」）
 - 採用しない指摘は**返信で理由を書いてから閉じる**。approve は指摘に従わなくても
   到達できる。**approve を取ることを目的に指摘へ従わない**。従うべきか迷うものは、
   上の表に従って人間へ回す
@@ -277,8 +329,8 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 | # | すること |
 | --- | --- |
 | 0 | 最下層以外を draft にする（`gh pr ready <n> --undo`） |
-| 1 | 最下層が draft のうちに `/code-review <n>` を当てる |
-| 2 | code-review の指摘の対応可否を決め、対応すると決めたものを直して push する（記録済みの決定を変えるものだけ人に確認する）。draft への push は CodeRabbit の review 枠を使わない |
+| 1 | 最下層が draft のうちに、最下層のブランチで base（`main`）との差分（`git diff origin/main...HEAD`）に `/engineering:code-review` を当てる |
+| 2 | `/engineering:code-review` の指摘の対応可否を決め、対応すると決めたものを直して push する（記録済みの決定を変えるものだけ人に確認する）。draft への push は CodeRabbit の review 枠を使わない |
 | 3 | 最下層の draft を外す（`gh pr ready <n>`）。CodeRabbit と分単位の CI はここで動き出す |
 | 4 | `/coderabbit-converge` で CodeRabbit のラウンドを回す（判定基準は 2 と同じ） |
 | 5 | CodeRabbit が approve するか、人の判断待ちで止まるまで 4 が繰り返す |

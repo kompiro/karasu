@@ -11,6 +11,9 @@ import { parseNodePathRefId } from "@karasu-tools/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
 import { EdgeDetailPanel, type SingleEdgeDetail } from "./EdgeDetailPanel.js";
 import { EdgeContextMenu } from "./EdgeContextMenu.js";
+import { FocusCanvas } from "./focus-canvas/FocusCanvas.js";
+import { canFocus, readFocusSource, type Focus } from "./focus-canvas/build.js";
+import { attachNodeFocus, type NodeFocusOptions } from "./focus-canvas/node-focus.js";
 import { useFormattedDiagnostic } from "../i18n/format-diagnostic.js";
 import { useTranslation } from "../i18n/index.js";
 import { diagnosticLocationLabel, findingKeys } from "../utils/diagnostic-location.js";
@@ -170,6 +173,26 @@ export function PreviewPane({
   const [edgeMenu, setEdgeMenu] = useState<EdgeContextMenuState | null>(null);
   const dragStart = useRef({ x: 0, y: 0 });
   const mouseDownPos = useRef({ x: 0, y: 0 });
+  // The focus canvas (#3031): what it has shown, oldest first. Empty when closed.
+  const [focusTrail, setFocusTrail] = useState<Focus[]>([]);
+  const focusOpen = focusTrail.length > 0;
+  // Parsed only while the focus canvas is open, and again for each new diagram
+  // so the canvas follows an edit.
+  const focusSource = useMemo(() => (focusOpen ? readFocusSource(svg) : null), [focusOpen, svg]);
+  const focusTop = focusTrail[focusTrail.length - 1];
+  const focusShown =
+    focusSource !== null && focusTop !== undefined && canFocus(focusSource, focusTop);
+
+  /** Opens the focus canvas on `focus` when the diagram on screen can draw it. */
+  const openFocus = useCallback(
+    (focus: Focus): boolean => {
+      if (!canFocus(readFocusSource(svg), focus)) return false;
+      setDetailPanel(null);
+      setFocusTrail([focus]);
+      return true;
+    },
+    [svg],
+  );
 
   const handleContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
     const target = e.target as Element;
@@ -198,6 +221,34 @@ export function PreviewPane({
     },
     [edgeMenu, onPickEdgeDirection],
   );
+
+  // An edit that removes what the focus canvas shows closes it, rather than
+  // leaving it on a node or edge the diagram no longer has (and reopening it
+  // should a later edit bring that back). Reset during render, from the value
+  // that changed, rather than in an effect a render later.
+  if (focusOpen && !focusShown) setFocusTrail([]);
+
+  // Node focus and the Relations pill (#3031). Attached once; the options
+  // read the latest callbacks through a ref so a re-render never re-attaches.
+  const nodeFocusRef = useRef<NodeFocusOptions | null>(null);
+  useEffect(() => {
+    nodeFocusRef.current = {
+      relationsLabel: (count) => t("focusCanvas.relations", { count }),
+      onRelations: (id) => {
+        openFocus({ kind: "node", id });
+      },
+      isSuspended: () => focusOpen,
+    };
+  });
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    return attachNodeFocus(el, {
+      relationsLabel: (count) => nodeFocusRef.current!.relationsLabel(count),
+      onRelations: (id) => nodeFocusRef.current!.onRelations(id),
+      isSuspended: () => nodeFocusRef.current!.isSuspended(),
+    });
+  }, []);
 
   // Radix Popover handles outside-click + Escape dismissal internally via
   // its DismissableLayer (see EdgeContextMenu — Popover migration, #1368).
@@ -364,6 +415,20 @@ export function PreviewPane({
         return;
       }
 
+      // Any other edge opens the focus canvas on it (#3031): its two cards and
+      // every edge between them, labels in full. An aggregated edge whose
+      // label is the panel's click target keeps the panel, wherever on the
+      // edge the click lands.
+      const focusEdge = target.closest(".krs-edge[data-edge-from][data-edge-to]");
+      if (focusEdge && !focusEdge.querySelector("[data-domain-edges]")) {
+        const opened = openFocus({
+          kind: "edge",
+          from: focusEdge.getAttribute("data-edge-from") ?? "",
+          to: focusEdge.getAttribute("data-edge-to") ?? "",
+        });
+        if (opened) return;
+      }
+
       // Check for info button click
       const infoButton = target.closest("[data-info-button]");
       if (infoButton) {
@@ -520,6 +585,7 @@ export function PreviewPane({
       onDrillDown,
       calcAnchor,
       openDetailPanel,
+      openFocus,
       onContainerClick,
       onDeployButtonClick,
       onTeamButtonClick,
@@ -567,6 +633,8 @@ export function PreviewPane({
     // to the new ones. Dropping it would leave the class on a detached node.
     // eslint-disable-next-line react/exhaustive-effect-dependencies
   }, [highlightedNodeId, highlightAttribute, svg]);
+
+  const closeFocus = useCallback(() => setFocusTrail([]), []);
 
   const nodePanelMetadata =
     detailPanel?.kind === "node"
@@ -630,6 +698,15 @@ export function PreviewPane({
             anchorX={detailPanel.anchorX}
             anchorY={detailPanel.anchorY}
             onClose={() => setDetailPanel(null)}
+          />
+        )}
+        {focusShown && (
+          <FocusCanvas
+            source={focusSource}
+            trail={focusTrail}
+            onNavigate={(focus) => setFocusTrail((trail) => [...trail, focus])}
+            onBack={() => setFocusTrail((trail) => trail.slice(0, -1))}
+            onClose={closeFocus}
           />
         )}
         {detailPanel?.kind === "single-edge" && (

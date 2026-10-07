@@ -196,20 +196,23 @@ describe("[facets=<id>] selector — cascade", () => {
     expect(styles.nodes.get("Search")?.color).toBe("#aaaaaa");
   });
 
-  it("ties with the tag selector, so declaration order decides", () => {
+  it("ties with a builtin tag selector, so declaration order decides", () => {
+    // `[external]` is in the tool vocabulary, so its rule still applies under
+    // v2.0 (an arbitrary-name tag selector would match nothing and could not
+    // show the tie).
     const file = parseModel(`
       facet pii { label "PII" }
       system Shop {
-        service Payments [legacy] { facets pii }
+        service Payments [external] { facets pii }
       }
     `);
     const later = resolveStyles(file.systems, [
-      sheet(`[legacy] { color: #111111; }\n[facets=pii] { color: #222222; }`),
+      sheet(`[external] { color: #111111; }\n[facets=pii] { color: #222222; }`),
     ]);
     expect(later.nodes.get("Payments")?.color).toBe("#222222");
 
     const earlier = resolveStyles(file.systems, [
-      sheet(`[facets=pii] { color: #222222; }\n[legacy] { color: #111111; }`),
+      sheet(`[facets=pii] { color: #222222; }\n[external] { color: #111111; }`),
     ]);
     expect(earlier.nodes.get("Payments")?.color).toBe("#111111");
   });
@@ -320,16 +323,20 @@ describe("arbitrary-name selector deprecation (#2175)", () => {
     expect(warnings.some((w) => w.kind === "tag-not-builtin")).toBe(true);
   });
 
-  it("still applies the deprecated rule — v1.x behaviour is unchanged", () => {
-    // The deprecation is an announcement. Dropping the rule now would silently
-    // change how existing models look; disablement is v2.0.
+  it("no longer applies a rule whose selector names a non-builtin tag (v2.0)", () => {
+    // `.krs language v2.0` (#2677) disables arbitrary-name selectors: the rule
+    // matches nothing, so the element keeps the color it would have without it.
     const file = parseModel(`
       system Shop {
         service Payments [pci] {}
       }
     `);
     const styles = resolveStyles(file.systems, [sheet(`[pci] { color: #111111; }`)]);
-    expect(styles.nodes.get("Payments")?.color).toBe("#111111");
+    expect(styles.nodes.get("Payments")?.color).not.toBe("#111111");
+    // The whole rule is dropped, not just the foreign term — otherwise
+    // `service[pci]` would widen to every service.
+    const widened = resolveStyles(file.systems, [sheet(`service[pci] { color: #222222; }`)]);
+    expect(widened.nodes.get("Payments")?.color).not.toBe("#222222");
   });
 });
 

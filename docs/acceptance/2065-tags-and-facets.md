@@ -29,9 +29,9 @@
 
 - [x] AT-C: builtin 外の tag / annotation を書くと警告が出る（第 4 状態の解消 — 受理・無効果・無警告が残っていない）
 
-  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts` › `tag-not-builtin deprecation warning (#2159)` ほか
+  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts` › `tag-not-builtin warning (#2159, closed register in v2.0)` ほか
 
-- [x] AT-D: `.krs.style` 側で builtin 外の名前を狙うセレクタにも警告が出る（model 側だけでは移行の片側しか見つからない）
+- [x] AT-D: `.krs.style` 側で builtin 外の名前を狙うセレクタにも警告が出る（model 側だけでは移行の片側しか見つからない）。v2.0 ではそのルールはどの要素にも一致しない（`.krs language v2.0` で変更 — #2677）
 
   > ✅ Automated — `packages/core/src/resolver/facet-style-selector.test.ts` › `arbitrary-name selector deprecation (#2175)`
 
@@ -79,9 +79,9 @@
 
 - [ ] AT-M: 🧑 Manual — <https://karasu.kompiro.dev/> で `tag-facet-registers.krs` を開き、**4 register がそれぞれ別のことを言っている**と読めること。とくに `[external]` が何もグルーピングせず、`facets pci` だけが overlay に出ることが「所属とアーキタイプは別物」という主張の目視根拠になる
 
-- [ ] AT-N: 🧑 Manual — user-defined アーキタイプ tag + style + legend の 3 点セットが app で意図どおり見えること（design doc の目視観点 1）
+- [ ] AT-N: 🧑 Manual — user-defined アーキタイプ tag に当てた style は効かず（`tag-not-builtin` / `style-tag-selector-not-builtin` が出る）、facet + `[facets=<id>]` セレクタ + legend の 3 点セットで同じ見た目が app で意図どおり得られること（design doc の目視観点 1）（`.krs language v2.0` で変更 — #2677）
 
-- [ ] AT-O: 🧑 Manual — `[extenal]` の typo hint が出ること（design doc の目視観点 2）。**style セレクタ / legend ref による抑止は無い**ことも確認する — #2159 が抑止条件を設けない判断をしたので、design doc 当時の「消える」という観点は決定によって覆っている
+- [ ] AT-O: 🧑 Manual — `[extenal]` に `tag-not-builtin`（効果なし）の warning が出ること（design doc の目視観点 2）（`.krs language v2.0` で変更 — #2677）。**style セレクタ / legend ref による抑止は無い**ことも確認する — #2159 が抑止条件を設けない判断をしたので、design doc 当時の「消える」という観点は決定によって覆っている
 
 - [ ] AT-P: 🧑 Manual — facet overlay が Group by: team / boundary と**同時に**視認できること（design doc の目視観点 3）
 
@@ -101,4 +101,4 @@
   要求が実測されてから記法を決める。監査系 facet を使い始めた人が最初に踏む可能性が高い穴なので、
   watch 対象として roadmap に置いてある。
 - **v2.0 の閉鎖そのもの**は実施していない。v1.x で出したのは追加的な deprecation 診断だけで、
-  既存モデルは 1 つも壊れない。閉鎖の AT は実施時に別途起こす。
+  既存モデルは 1 つも壊れない。閉鎖の AT は実施時に別途起こす。（閉鎖はその後 `.krs language v2.0` で実施 — #2677）

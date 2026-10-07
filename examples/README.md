@@ -43,7 +43,7 @@ scope, personal data), styled from a sheet with `[facets=<id>]` selectors. Shows
 the three forms side by side: bare membership, membership compounded with a kind
 (`database[facets=pci]`), and two predicates ANDed. The sheet's footer carries
 the migration recipe from the arbitrary-name tag selectors this replaces.
-`facet` is experimental notation.
+`facet` is core notation from `.krs language v2.0`.
 
 ### `org/system.krs`
 

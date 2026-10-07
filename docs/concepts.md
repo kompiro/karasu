@@ -166,6 +166,8 @@ Aggregation is done separately for sync and async, so if a pair has both kinds o
 
 References: ADR-445, ADR-510, PR #607.
 
+> Related TPLs: [TPL-3022](test-perspectives/TPL-3022-withheld-content-stays-reachable.md) — authored content the canvas truncates or withholds stays reachable in full on the same surface.
+
 ### Ghost — keep boundaries visible even as the field narrows under drill-down
 
 When you drill down into a service or domain, the outside world drops out of view.
@@ -228,7 +230,12 @@ In practice this means karasu will:
   services across three files renders as three edges into one DB node. A `domain`
   reused under multiple services renders under each of them. A `service [external]`
   pointing back into the system is drawn the way it was written. No configuration
-  that is *structurally* valid is rejected on stylistic grounds.
+  that is *structurally* valid is rejected on stylistic grounds. What the
+  language does reject (an `error`) is a form it gives no meaning to, such as a
+  `usecase` written directly in a `service` or a misspelled builtin annotation,
+  never a school's judgment; while such an error stands, no new diagram is drawn.
+  The **warn-don't-error** stance governs unresolved *references* (spec §S6): a
+  dangling relation is dropped and warned, and the rest still renders.
 - **Surface informational diagnostics (`info`, not `warning`) for style smells.**
   When the resolver detects a configuration that *some* style calls a smell, it
   emits an `info` diagnostic that states the fact and links here. The diagnostic
@@ -291,8 +298,13 @@ payload, or a runtime value.** That is the structure side of the line:
 
 - **Form-factor tags** (`[web]` / `[mobile]` / `[desktop]` / …) classify the
   *kind of surface* a user reaches the system through. They do **not** record the
-  framework or stack (React vs. SwiftUI), which is implementation. The recognized
-  set is closed only for built-in treatment; the tag system itself stays open.
+  framework or stack (React vs. SwiftUI), which is implementation. The set is
+  closed, like the whole tag vocabulary: from `.krs language v2.0` karasu owns
+  the tag and annotation vocabularies, and the only user extension point is
+  `facet` ([ADR-2065](adr/2065-tags-and-facets.md)). The closure follows one
+  principle: a vocabulary whose universe the tool owns (archetype, lifecycle) is
+  closed, and one the world owns stays open, which is why `capability` below is
+  open.
 - **`handles`** declares which domains a client (or service) **exposes to its
   callers** — a *validated structural cross-reference* (the domain must be
   reachable via the one-hop expose rule). It is about reachability in the access

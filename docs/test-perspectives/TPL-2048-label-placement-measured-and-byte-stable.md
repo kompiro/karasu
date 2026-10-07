@@ -83,10 +83,12 @@ scope:
 
 ## 関連テスト
 
+- `packages/core/src/renderer/label-placement.test.ts` の「dense canvas fence」（41 本のラベル付き edge を持つ fixture で、`auto` の下で card / label / 実線との衝突が 0、かつ全部を外したわけではないことを assert。#3022）
 - `packages/core/src/renderer/label-placement.test.ts`（合成 fixture での貫通 0 / オーバーラップ 0 / 線貫通 0 / own-line 除外 / byte-stable / author 不可侵 / 決定論、および `examples/en/ec-platform/01-system.krs`（#2048）と `examples/en/hr-tool/system.krs`（#2360）を実サンプル柵に）
 
 ## 派生元 spec / 設計
 
+- `docs/spec/style.md`「[`label-display`](../spec/style.md#label-display--auto--always--hover)」節（`docs/spec/style.ja.md` の同名節も同じ）— `auto` は重ならずに置けない label を canvas から外す。置けた label の衝突が 0 であることと、外すものが無い canvas が `always` と同一出力であることを数値と等値で縛る（#3022）。節の末尾に本 TPL への `> Related TPLs:` 注釈がある
 - `docs/adr/2048-edge-label-collision-avoidance.md`（ADR-2048）— auto label collision-avoidance（本観点の一次ソース、#2048）
 - [ADR-2360](../adr/2360-label-placement-line-obstacles.md) — 障害物集合にエッジ polyline を追加（label↔line 軸の出所、#2360）
 - [ADR-1184](../adr/1184-edge-label-position-offset.md) — 手動 `label-position` / `label-offset` lever（auto が尊重する author precedence の出所）

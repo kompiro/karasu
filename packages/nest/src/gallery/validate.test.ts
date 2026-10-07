@@ -96,7 +96,7 @@ describe("validateSubmission", () => {
     const duplicateEdgeIds = `system Shop {
   service api
   service worker
-  resource db [database]
+  database db
   api -> db #shared
   worker -> db #shared
 }
@@ -156,7 +156,7 @@ describe("validateSubmission", () => {
     // has no standing to vouch for.
     const oneBigDomain = `system Everything {\n  domain all {\n${Array.from(
       { length: 40 },
-      (_unused, index) => `    service s${index}`,
+      (_unused, index) => `    usecase u${index}`,
     ).join("\n")}\n  }\n}\n`;
     expect(validateSubmission("Everything", oneBigDomain).ok).toBe(true);
   });

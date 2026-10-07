@@ -50,11 +50,6 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         details: [],
       };
     }
-    case "unassigned-usecase":
-      return {
-        message: t("warning.unassignedUsecase.message", { usecaseId: w.params.usecaseId }),
-        details: [],
-      };
     case "unassigned-resource":
       return {
         message: t("warning.unassignedResource.message", { resourceId: w.params.resourceId }),
@@ -228,15 +223,6 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
           name: w.params.name,
         }),
         details: [],
-      };
-    case "annotation-possible-typo":
-      return {
-        message: t("warning.annotationPossibleTypo.message", {
-          nodeId: w.params.nodeId,
-          annotation: w.params.annotation,
-          suggestion: w.params.suggestion,
-        }),
-        details: [t("warning.annotationPossibleTypo.openSetNote")],
       };
     case "tag-not-builtin":
       return {

@@ -2,7 +2,7 @@
 
 > [English](style.md) · **日本語**（このファイル）
 
-> 言語バージョン: **`.krs language v1.0`**（言語 v1.0） — `.krs` と `.krs.style` は 1 つの言語版を共有する（freeze 済み [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)。各パッケージの npm 版とは独立 — [ADR-2124](../adr/2124-version-vocabulary.md)）。
+> 言語バージョン: **`.krs language v2.0`**（言語 v2.0）。`.krs` と `.krs.style` は 1 つの言語版を共有し、各パッケージの npm 版とは独立（[ADR-2124](../adr/2124-version-vocabulary.md)）。v2.0 ではツール語彙にない tag / annotation を狙うルールは何にも一致しない（[後述](#任意名タグ--アノテーションセレクタからの移行)）。
 
 ## セレクタの種類
 
@@ -59,14 +59,12 @@
 
 ---
 
-## ファセットセレクタ（`[facets=<id>]`）— experimental
+## ファセットセレクタ（`[facets=<id>]`）
 
-> **Experimental notation（post-v1.0 watch）。** `facet` が experimental なので
-> このセレクタも experimental。後方互換はまだ約束しておらず、昇格は実利用の証拠を
-> 条件とする（[ADR-1820](../adr/1820-notation-promotion-gate.md)）。
+> `facet` と同じく `.krs language v2.0` から **core の記法**。任意名の tag / annotation セレクタが担っていた styling のフックを引き継ぐ。
 
 宣言済み `facet` に所属する要素をスタイリングする
-（[syntax.ja.md § 横断的な所属](syntax.ja.md#横断的な所属facet-experimental)）。
+（[syntax.ja.md § 横断的な所属](syntax.ja.md#横断的な所属facet)）。
 
 ```css
 [facets=pii] {
@@ -108,11 +106,13 @@ database[facets=pci_scope] {
 
 ### 任意名タグ / アノテーションセレクタからの移行
 
-`.krs.style` は以前から任意のタグ名 / アノテーション名に一致してきた。そして今まで、
-それが横断的関心事をスタイリングする唯一の手段だった。facet セレクタがその置き換えなので、
-任意名セレクタは **v1.x で非推奨**（`style-tag-selector-not-builtin` /
-`style-annotation-selector-not-builtin`）とし、構文 v2.0 で一致しなくなる。それまでは
-引き続き動く — ルールを黙って落とすと既存モデルの見た目が変わってしまう。
+言語 v1.x の `.krs.style` は任意のタグ名 / アノテーション名に一致し、それが横断的関心事を
+スタイリングする唯一の手段だった。facet セレクタがその置き換えである。
+`.krs language v2.0` では、ツール語彙の外の tag / annotation を名指すセレクタのルールは
+**丸ごと何にも一致しない**（`service[pci]` が全 service を塗る形に広がることはない）。
+そうしたルールは `style-tag-selector-not-builtin` / `style-annotation-selector-not-builtin`
+として警告され、これがルールが効かなくなったことを知る唯一の手がかりになる。書き換える
+までの間、そのルールに頼っていたモデルの見た目は変わる。
 
 **移行前** — 名前が関心事を担っており、その意味はどこにも宣言されていない:
 
@@ -259,6 +259,8 @@ border-style:     solid;         /* solid | dashed | dotted（stroke-style の�
 direction:        auto;          /* up | down | left | right | auto（ヒント、後述） */
 label-position:   middle;        /* start | middle | end | <0.0..1.0> */
 label-offset:     0 0;            /* <dy>px or <dx>px <dy>px（screen-axis） */
+label-max-chars:  48;             /* <n> | none（canvas に描く label の文字数） */
+label-display:    auto;           /* auto | always | hover */
 
 /* karasu固有プロパティ（CSS非対応のため例外） */
 shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
@@ -676,6 +678,71 @@ typographic な lift はそのまま、その上にこの offset が加算され
 > 予測が立てにくかった。screen-axis CSS shorthand に切り替えた。詳細は
 > [ADR-1184](../adr/1184-edge-label-position-offset.md)。
 
+### `label-max-chars` — `<n> | none`
+
+canvas に描く label の文字数。デフォルトは `48`。超えた label は単語の
+境界で切り、末尾に `…` を付ける。`…` も文字数に含めるので、描かれる
+文字列が上限を超えることはない。
+
+```css
+edge { label-max-chars: 24; }                   /* 密な canvas 向けに短くする */
+edge#criticalWrite { label-max-chars: none; }   /* この 1 本は常に全文を描く */
+```
+
+書いた label は失われない。省略した edge は全文を `data-edge-label` と
+`<title>` に持つので、viewer は hover で全文を出せる（ブラウザで開いた
+静的 SVG も含む）。その edge には `data-edge-label-withheld="truncated"`
+が付く。上限に収まる label の edge は、この property が無かったときと
+同じ出力になる。
+
+文字数は code point で数え、描画幅では数えない。正の整数でない値は
+無視され、デフォルトが使われる。
+
+機械生成の label（usecase → resource edge の `W` / `R`、集約 edge の
+`N domain edges`）は省略しない。
+
+### `label-display` — `auto | always | hover`
+
+canvas に label を描くかどうか。デフォルトは `auto`。
+
+| 値 | canvas が label を描く条件 |
+| --- | --- |
+| `auto` | node card・他の label・他の edge の線に重ならずに置けるときだけ |
+| `always` | 常に。重なる位置でも描く |
+| `hover` | 描かない。viewer が hover で出す |
+
+```css
+edge { label-display: always; }            /* 全 label を、重なっても描く */
+edge[async] { label-display: hover; }      /* hover するまで出さない */
+```
+
+`auto` では、まず自動配置（上の `label-position` を参照）が label を
+空いた位置へ動かす。空いた位置とは、card・他の label・他の edge の線に
+重ならない位置である。届く範囲に空きが無ければ、そこには描かずに
+canvas から外す。外した label の場所は、
+後から置く label が使える。全部の label が重ならずに置ける canvas は、
+`auto` でも `always` でも同じ出力になる。
+
+canvas から外した label には、同じ surface 上で必ず届く。edge は書いた
+文字列を `data-edge-label` と `<title>` に持ち、
+`data-edge-label-withheld="deferred"` が付く。
+
+次の label は値にかかわらず常に描く。
+
+- `auto` のとき、author が `label-position` / `label-offset` で位置を
+  指定した label。author の指定が勝つので、重なる位置でもそこに描く。
+- 機械生成の label（`W` / `R`、`N domain edges`）。書かれた文字列では
+  ないので、hover で出し直す元が無い。
+- 集約 edge の label。内訳を開くためにクリックする対象でもある。
+
+この 2 つの property が無かったときの挙動に戻すには次のように書く。
+
+```css
+edge { label-max-chars: none; label-display: always; }
+```
+
+> Related TPLs: [TPL-3022](../test-perspectives/TPL-3022-withheld-content-stays-reachable.md) — canvas が省略・保留した authored 情報は、その surface 上で全文に到達できる。[TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md) — label の衝突は数値で計測し、保留するものが無い canvas は byte-stable に保つ。
+
 ---
 
 ## @import のスコープと衝突
@@ -889,8 +956,8 @@ id を名指すがスコープは名指さないので、**すべてのスコー
 team フレーム（*Group by: team*）の指定方法は本節と異なる。team は**ノードであり**
 `#<id>` が既に届いているためで、下の [team フレーム](#team-フレームgroup-by-team) を参照。
 
-`boundary` は experimental notation なので、本セレクタもスタイルを当てる構文と同じく
-後方互換を約束しない（[syntax.ja.md](syntax.ja.md#システムビューのグルーピングboundary-experimental)）。
+本セレクタは、スタイルを当てる構文と同じ互換性 tier に属する。`boundary` は言語 v2.0 から core
+（[syntax.ja.md](syntax.ja.md#システムビューのグルーピングboundary)）。
 
 > Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — boundary の色はフレームと `◇` タブに届き、両者は別のコードが描く。1 つの resolver を読むことで、style の上書きが片方だけを塗り替える事故を防ぐ。[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 裸の `boundary` ルールは本セレクタ以前は parse されて無効果だった。今は効果を持つ。[TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — 上の specificity 行は `reference-data.ts` からの生成物で、ここに手書きしない。
 

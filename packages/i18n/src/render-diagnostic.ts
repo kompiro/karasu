@@ -63,6 +63,8 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.entityNotInDomain.message", d.params);
     case "node-not-in-context":
       return t("diagnostic.nodeNotInContext.message", d.params);
+    case "annotation-possible-typo":
+      return t("diagnostic.annotationPossibleTypo.message", d.params);
     case "legend-not-top-level":
       return t("diagnostic.legendNotTopLevel.message", d.params);
     case "expected-id-or-string":

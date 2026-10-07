@@ -1606,7 +1606,7 @@ describe("resource tag auto-inference in resolveStyles", () => {
     const db = makeInfraNode("database", "OrderDB", "table", "OrderTable");
     const resource = {
       ...makeResourceNode("OrderDB.OrderTable", { parent: "OrderDB", child: "OrderTable" }),
-      tags: ["custom"],
+      tags: ["cache"],
     };
     const system = makeSystem(
       [db],
@@ -1620,14 +1620,14 @@ describe("resource tag auto-inference in resolveStyles", () => {
           1,
         ),
         makeRule(
-          { nodeType: "resource", tags: ["custom"], annotations: [] },
-          { "background-color": "#CUSTOM" },
+          { nodeType: "resource", tags: ["cache"], annotations: [] },
+          { "background-color": "#CACHE" },
           1,
         ),
       ],
     };
     const result = resolveStyles([system], [sheet]);
-    expect(result.nodes.get("OrderDB.OrderTable")!.backgroundColor).toBe("#CUSTOM");
+    expect(result.nodes.get("OrderDB.OrderTable")!.backgroundColor).toBe("#CACHE");
   });
 });
 
@@ -1900,5 +1900,55 @@ describe("id selectors narrow rather than short-circuit (#2269)", () => {
 
     const deploy = resolveStyles([], [getBuiltinStyleSheet(), sheet], [DEPLOY]);
     expect(deploy.nodes.get("Shared")!.backgroundColor).not.toBe("#FF0000");
+  });
+});
+
+describe("label-max-chars / label-display properties (#3022)", () => {
+  const edge = () => [
+    {
+      from: "A",
+      to: "B",
+      kind: "sync" as const,
+      tags: [],
+      loc: dummyLoc,
+      canonicalId: "A->B",
+    },
+  ];
+  const styleWith = (props: Record<string, string>) => {
+    const sheet: StyleSheet = {
+      rules: [makeRule({ nodeType: "edge", tags: [], annotations: [] }, props, 1, 0)],
+    };
+    return resolveStyles([], [sheet], undefined, undefined, undefined, edge()).edges.get("A->B")!;
+  };
+
+  it("defaults to 48 characters and `auto`", () => {
+    const style = resolveStyles([], [], undefined, undefined, undefined, edge()).edges.get("A->B")!;
+    expect(style.labelMaxChars).toBe(48);
+    expect(style.labelDisplay).toBe("auto");
+  });
+
+  it("reads a whole number of characters", () => {
+    expect(styleWith({ "label-max-chars": "24" }).labelMaxChars).toBe(24);
+    expect(styleWith({ "label-max-chars": "1" }).labelMaxChars).toBe(1);
+  });
+
+  it("reads `none` as no budget", () => {
+    expect(styleWith({ "label-max-chars": "none" }).labelMaxChars).toBe(Infinity);
+  });
+
+  it("keeps the default for a value that is not a positive whole number", () => {
+    for (const bad of ["0", "2.5", "12px", "banana", ""]) {
+      expect(styleWith({ "label-max-chars": bad }).labelMaxChars).toBe(48);
+    }
+  });
+
+  it("reads each `label-display` keyword", () => {
+    expect(styleWith({ "label-display": "always" }).labelDisplay).toBe("always");
+    expect(styleWith({ "label-display": "hover" }).labelDisplay).toBe("hover");
+    expect(styleWith({ "label-display": "auto" }).labelDisplay).toBe("auto");
+  });
+
+  it("keeps the default for an unknown `label-display`", () => {
+    expect(styleWith({ "label-display": "sometimes" }).labelDisplay).toBe("auto");
   });
 });

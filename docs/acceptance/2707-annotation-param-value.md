@@ -89,7 +89,7 @@ type: product
 
   > ✅ Automated — `packages/core/src/parser/parser.test.ts` › `kebab-case vocabulary names stitch into one name (#2509)` › `stitches a fragment that starts with a digit`
 
-- [x] AT-N: `.krs` の `[team-1]` に `.krs.style` の同綴りセレクタが当たる
+- [x] AT-N: `.krs` の `[team-1]` と `.krs.style` の同綴りセレクタが同じ名前 `team-1` として読まれる（v2.0 では非 builtin タグのルールはどの要素にも一致しないため、描画ではなく両 lexer が読んだ名前の一致で確かめる）（`.krs language v2.0` で変更 — #2677）
 
   > ✅ Automated — `packages/core/src/resolver/warnings.test.ts` › `hyphenated tag names warn once with the full name (#2509)` › `matches a .krs.style selector when a fragment starts with a digit (#2707)`
 

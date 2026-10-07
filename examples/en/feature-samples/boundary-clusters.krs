@@ -1,4 +1,4 @@
-// Semantic clusters via `boundary` / `contains` (Issue #1822, P2b — experimental).
+// Semantic clusters via `boundary` / `contains` (Issue #1822, P2b).
 //
 // A `boundary` block declares a named cluster of system-view nodes, drawn as the
 // second "Group by" axis of the system view (the first is team ownership —
@@ -19,8 +19,8 @@
 // disjoint frames on several levels. Keep "Group by: Boundary" on while you
 // drill to see each level's frame.
 //
-// `boundary` is experimental notation — backward compatibility is not yet
-// promised (docs/spec/syntax.md § Grouping the system view).
+// `boundary` is core notation from `.krs language v2.0` (docs/spec/syntax.md
+// § Grouping the system view).
 
 system Marketplace {
   label "Marketplace"
