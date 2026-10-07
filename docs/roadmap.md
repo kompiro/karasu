@@ -1,7 +1,7 @@
 # karasu ロードマップ
 
 - **ステータス**: living（決定は ADR、実行・進捗は GitHub Issues で管理し、本書は**全体方針の現在地と次の一手のみ**を保持する。完了・決着した内容は該当の close を扱う PR で削除し、経緯は ADR / closed Issue / git history が担う — [ADR-2218](adr/2218-roadmap-pruning-policy.md)）
-- **現在のフォーカス**: `.krs` / `.krs.style` **言語 v2.0 発効済み**（v1.0 freeze = [ADR-1314](adr/1314-krs-spec-v1-freeze.md)、v2.0 = [設計](design/language-v2-act.md)）。現在の地平は [§post-v1.0 horizon（ロードマップ）](#post-v10-horizonロードマップ)、構文の次 major の枠は [§Syntax 2.0 プログラム](#syntax-20-プログラム)。
+- **現在のフォーカス**: `.krs` / `.krs.style` **言語 v2.0 発効済み**（v1.0 freeze = [ADR-1314](adr/1314-krs-spec-v1-freeze.md)、v2.0 = [ADR-2677](adr/2677-language-v2-act.md)）。現在の地平は [§post-v1.0 horizon（ロードマップ）](#post-v10-horizonロードマップ)、構文の次 major の枠は [§Syntax 2.0 プログラム](#syntax-20-プログラム)。
 
 ## Syntax v1.0（凍結済み）
 
@@ -32,7 +32,7 @@
   与えない書き方は error で、error がある間はどの surface も新しい図を出さない
   （[ADR-2208](adr/2208-positional-label-error-promotion.md) /
   [ADR-2501](adr/2501-errored-edge-declaration-renders-nowhere.md)、言語 v2.0 の
-  [設計](design/language-v2-act.md) 論点 4）。
+  [ADR-2677](adr/2677-language-v2-act.md) 決定事項 9）。
 - **tag / annotation はツール語彙に閉じている**（言語 v2.0、[ADR-2065](adr/2065-tags-and-facets.md)）。
   言語 v1.x では open annotation set を stable 側に置いていた（[ADR-1568](adr/1568-migration-intent-fields.md)）。
 
@@ -49,7 +49,7 @@
 
 | 軸 | 対象 | 現在の版 | 約束 | 定義元 |
 | --- | --- | --- | --- | --- |
-| **言語**（`.krs` / `.krs.style`） | 構文・診断 register | 言語 v2.0 | 後方互換。追加は minor（言語 v2.x）、破壊は次の major でのみ | [ADR-1314](adr/1314-krs-spec-v1-freeze.md)（版のセマンティクス）/ [設計](design/language-v2-act.md)（v2.0） |
+| **言語**（`.krs` / `.krs.style`） | 構文・診断 register | 言語 v2.0 | 後方互換。追加は minor（言語 v2.x）、破壊は次の major でのみ | [ADR-1314](adr/1314-krs-spec-v1-freeze.md)（版のセマンティクス）/ [ADR-2677](adr/2677-language-v2-act.md)（v2.0） |
 | **CLI**（`karasu`） | コマンド UX・配布物 | 0.x（npm） | npm semver（0.x = 安定約束なし。floor 0.6.0 — #1774） | `docs/release.md` |
 | **TS API**（`@karasu-tools/core`） | ライブラリ API | 0.x（npm） | **明示的に約束なし**（minor で変わりうる） | [ADR-1314](adr/1314-krs-spec-v1-freeze.md) 非スコープ節 |
 | **VS Code 拡張**（`karasu-vscode`） | Marketplace 配布 | 0.x | 別ケイデンス（changesets bump、公開は手動） | [ADR-1758](adr/1758-vscode-changeset-versioning.md) |
