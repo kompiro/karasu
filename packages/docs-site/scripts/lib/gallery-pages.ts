@@ -11,10 +11,18 @@ import {
   type GalleryPage,
   type LocalizedString,
   resolveGithubDir,
+  resolveSpecDoc,
 } from "./examples-manifest.ts";
 import { frontmatter } from "./markdown.ts";
 import type { RenderedDiagram } from "./render-examples.ts";
-import { APP_URL, githubUrl, type Locale } from "./site-map.ts";
+import {
+  APP_URL,
+  galleryRouteOf,
+  githubUrl,
+  type Locale,
+  routeOf,
+  routeRelative,
+} from "./site-map.ts";
 
 const VIEW_LABEL: Record<DiagramType, LocalizedString> = {
   system: { en: "System view", ja: "System ビュー" },
@@ -57,6 +65,22 @@ function openInAppLink(page: GalleryPage, locale: Locale): string | null {
   return `[${text}](${APP_URL}/?example=${page.slug}&lang=${locale})`;
 }
 
+/** The note under a diagram plus its spec link, or null when the diagram has neither. */
+function diagramNote(
+  page: GalleryPage,
+  diagram: GalleryPage["diagrams"][number],
+  locale: Locale,
+): string | null {
+  const parts: string[] = [];
+  if (diagram.note) parts.push(diagram.note[locale]);
+  if (diagram.spec) {
+    const target = routeOf(resolveSpecDoc(diagram.spec, locale));
+    const href = `${routeRelative(galleryRouteOf(locale, page.slug), target)}#${diagram.spec.anchor[locale]}`;
+    parts.push(`[${locale === "ja" ? "仕様を読む" : "Read the spec"}](${href})`);
+  }
+  return parts.length > 0 ? parts.join(" ") : null;
+}
+
 /** Markdown for a single example page (one diagram), or the feature-samples page (many). */
 export function examplePageMarkdown(
   page: GalleryPage,
@@ -69,12 +93,16 @@ export function examplePageMarkdown(
 
   if (page.diagrams.length === 1) {
     out.push(figures(rendered[0], locale), "");
+    const note = diagramNote(page, page.diagrams[0], locale);
+    if (note) out.push(note, "");
     out.push(locale === "ja" ? "## ソース" : "## Source", "", sourceFence(rendered[0].source));
   } else {
     page.diagrams.forEach((diagram, i) => {
       const caption = diagram.caption?.[locale];
       if (caption) out.push(`## ${caption}`, "");
       out.push(figures(rendered[i], locale), "");
+      const note = diagramNote(page, diagram, locale);
+      if (note) out.push(note, "");
       out.push(sourceFence(rendered[i].source), "");
     });
   }

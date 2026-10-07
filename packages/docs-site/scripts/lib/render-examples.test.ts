@@ -10,19 +10,27 @@ function entryOf(slug: string, locale: Locale): string {
 }
 
 // PR-time guard (docs-site build runs only in pages.yml): every example in the
-// manifest — for both locales — must compile and yield at least one non-empty
-// view, so a broken or renamed example fails the build before it ships.
+// manifest — for both locales, with its render options — must compile and
+// yield at least one non-empty view, so a broken or renamed example fails the
+// build before it ships.
 describe("examples gallery rendering", () => {
-  const entries = [
-    ...new Set(
+  const cases = [
+    ...new Map(
       GALLERY_PAGES.flatMap((p) =>
-        p.diagrams.flatMap((d) => [resolveEntry(d.entry, "en"), resolveEntry(d.entry, "ja")]),
+        p.diagrams.flatMap((d) =>
+          (["en", "ja"] as const).map((locale) => {
+            const entry = resolveEntry(d.entry, locale);
+            const render = d.render ?? {};
+            const key = `${entry} ${JSON.stringify(render)}`;
+            return [key, { key, entry, render }] as const;
+          }),
+        ),
       ),
-    ),
+    ).values(),
   ];
 
-  it.each(entries)("renders %s to at least one non-empty view", async (entry) => {
-    const rendered = await renderDiagram(entry);
+  it.each(cases)("renders $key to at least one non-empty view", async ({ entry, render }) => {
+    const rendered = await renderDiagram(entry, render);
     expect(rendered.source.length).toBeGreaterThan(0);
     expect(rendered.views.length).toBeGreaterThan(0);
     for (const view of rendered.views) {
@@ -70,4 +78,47 @@ describe("locale-distinct rendering", () => {
     expect(ja.views[0].svg).toMatch(japanese);
     expect(en.views[0].svg).not.toMatch(japanese);
   });
+});
+
+// boundary frames draw only under Group by: Boundary, and the facet ring only
+// under a facet selection, so a diagram whose `render` options were dropped on
+// the way to compileProject would still pass the smoke test above while the
+// page silently shows the plain view (#2937). These pin that each option takes
+// effect, driven from the manifest so a typo'd facet id fails too.
+describe("per-diagram render options", () => {
+  const withRender = GALLERY_PAGES.flatMap((p) =>
+    p.diagrams
+      .filter((d) => d.render)
+      .map((d) => ({ entry: resolveEntry(d.entry, "en"), render: d.render ?? {} })),
+  );
+
+  it("the manifest sets both kinds of option somewhere", () => {
+    expect(withRender.some((d) => d.render.groupBy === "boundary")).toBe(true);
+    expect(withRender.some((d) => (d.render.selectedFacets ?? []).length > 0)).toBe(true);
+  });
+
+  it.each(withRender.filter((d) => d.render.groupBy === "boundary"))(
+    "$entry draws boundary frames only with groupBy: boundary",
+    async ({ entry, render }) => {
+      const frame = 'data-container-id="__group_';
+      const grouped = await renderDiagram(entry, render);
+      expect(grouped.views[0].type).toBe("system");
+      expect(grouped.views[0].svg).toContain(frame);
+      const plain = await renderDiagram(entry);
+      expect(plain.views[0].svg).not.toContain(frame);
+    },
+  );
+
+  it.each(withRender.filter((d) => (d.render.selectedFacets ?? []).length > 0))(
+    "$entry rings every selected facet",
+    async ({ entry, render }) => {
+      const rendered = await renderDiagram(entry, render);
+      expect(rendered.views[0].type).toBe("system");
+      for (const facet of render.selectedFacets ?? []) {
+        expect(rendered.views[0].svg).toContain(`data-facet-ring="${facet}"`);
+      }
+      const plain = await renderDiagram(entry);
+      expect(plain.views[0].svg).not.toContain("data-facet-ring");
+    },
+  );
 });
