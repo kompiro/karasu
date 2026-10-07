@@ -342,8 +342,11 @@ describe("annotation parameter values keep their meaning", () => {
       ...["legacy", "Legacy_2", "_x", "日本語", "store", "2legacy", "a-b", "a.b", "my legacy"],
       // Every lexer keyword: a hand-copied keyword list printed `boundary` bare.
       ...KRS_KEYWORD_NAMES,
-      // A character outside the BMP, which the lexer reads one UTF-16 unit at a time.
+      // A character outside the BMP and combining marks, which the lexer
+      // dropped until #2848 and now reads as part of the word.
       "𠮷野家",
+      "cafe\u0301",
+      "हिन्दी",
     ];
     for (const id of ids) {
       const src = HOSTS.node(`@migration_target(from: "${id}")`);

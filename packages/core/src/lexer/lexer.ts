@@ -70,17 +70,16 @@ export const KRS_KEYWORD_TOKEN_TYPES: ReadonlySet<TokenType> = new Set(Object.va
 
 /**
  * Whether `value` has the shape the lexer reads as a single identifier word
- * (`[\p{L}_][\p{L}\p{N}_]*`), from the same character tests `readToken` uses.
+ * (`[\p{L}_][\p{L}\p{M}\p{N}_]*`), from the same character tests `readToken`
+ * uses.
  * Keyword spellings pass this check; they arrive as keyword tokens, so a caller
  * that also needs "not a keyword" tests the token type.
  */
 export function isBareWord(value: string): boolean {
-  if (value.length === 0 || !isIdentStart(value[0])) return false;
-  // Index by UTF-16 unit, as `readToken` does, so both agree on every string.
-  for (let i = 1; i < value.length; i++) {
-    if (!isIdentPart(value[i])) return false;
-  }
-  return true;
+  // Split by code point, as `readToken` reads, so both agree on every string.
+  const chars = [...value];
+  if (chars.length === 0 || !isIdentStart(chars[0])) return false;
+  return chars.slice(1).every(isIdentPart);
 }
 
 export class Lexer {
@@ -147,22 +146,31 @@ export class Lexer {
     return token;
   }
 
+  /**
+   * The code point at the cursor, so a character outside the BMP is one
+   * character to every test, not two surrogate halves that each fail it (#2848).
+   */
   private peek(): string {
-    return this.source[this.pos] ?? "";
+    return codePointAt(this.source, this.pos);
   }
 
   private peekAt(offset: number): string {
     return this.source[this.pos + offset] ?? "";
   }
 
+  /**
+   * Consume one code point. `offset` and `column` stay in UTF-16 units, the
+   * unit LSP positions and `String#slice` use, so a surrogate pair moves both
+   * by two.
+   */
   private advance(): string {
-    const ch = this.source[this.pos];
-    this.pos++;
+    const ch = codePointAt(this.source, this.pos);
+    this.pos += ch.length;
     if (ch === "\n") {
       this.line++;
       this.column = 1;
     } else {
-      this.column++;
+      this.column += ch.length;
     }
     return ch;
   }
@@ -306,9 +314,10 @@ export class Lexer {
         // fences relies on this only for `=` and `;` (`label = "x"`,
         // `runtime "n"; realizes X`), and `lexer-discard.test.ts` pins the
         // dropped set among ASCII and sampled non-ASCII characters, so one that
-        // starts landing here is a visible change. Each half of a surrogate
-        // pair still lands here. Digits used to as well, which turned
-        // `until: 2026-12-31` into `until: "-"` (#2707).
+        // starts landing here is a visible change. Digits used to land here,
+        // which turned `until: 2026-12-31` into `until: "-"` (#2707), and so
+        // did each half of a surrogate pair and every combining mark, which
+        // turned `𠮷野家` into `野家` and a decomposed `café` into `cafe` (#2848).
         this.advance();
         return null;
     }
@@ -397,10 +406,10 @@ export class Lexer {
 
   private peekWord(): string {
     let word = "";
-    let offset = 0;
-    while (this.pos + offset < this.source.length && isIdentPart(this.source[this.pos + offset])) {
-      word += this.source[this.pos + offset];
-      offset++;
+    let ch = codePointAt(this.source, this.pos);
+    while (ch !== "" && isIdentPart(ch)) {
+      word += ch;
+      ch = codePointAt(this.source, this.pos + word.length);
     }
     return word;
   }
@@ -453,8 +462,18 @@ function isIdentStart(ch: string): boolean {
   return /[\p{L}_]/u.test(ch);
 }
 
+/**
+ * A combining mark continues a word but cannot start one: it modifies the
+ * character before it, so a decomposed `café` is one word (#2848).
+ */
 function isIdentPart(ch: string): boolean {
-  return /[\p{L}\p{N}_]/u.test(ch);
+  return /[\p{L}\p{M}\p{N}_]/u.test(ch);
+}
+
+/** The code point starting at UTF-16 index `i`, or `""` past the end. */
+function codePointAt(s: string, i: number): string {
+  const cp = s.codePointAt(i);
+  return cp === undefined ? "" : String.fromCodePoint(cp);
 }
 
 /**
