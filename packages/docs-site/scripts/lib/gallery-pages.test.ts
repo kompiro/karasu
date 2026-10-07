@@ -105,14 +105,14 @@ describe("gallery-pages", () => {
 // docs source the site syncs from.
 describe("gallery spec links resolve (TPL-1621)", () => {
   const refs = GALLERY_PAGES.flatMap((p) =>
-    p.diagrams.flatMap((d) =>
-      d.spec
+    p.diagrams.flatMap(({ spec }) =>
+      spec
         ? (["en", "ja"] as const).map((locale) => ({
             slug: p.slug,
             locale,
-            doc: resolveSpecDoc(d.spec!, locale),
-            published: PUBLISHED_EN_FILES.includes(d.spec!.doc),
-            anchor: d.spec!.anchor[locale],
+            doc: resolveSpecDoc(spec, locale),
+            published: PUBLISHED_EN_FILES.includes(spec.doc),
+            anchor: spec.anchor[locale],
           }))
         : [],
     ),
