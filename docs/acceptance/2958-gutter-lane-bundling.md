@@ -6,7 +6,7 @@ type: product
 
 - **日付**: 2026-10-07
 - **関連 Issue**: [#2958](https://github.com/kompiro/karasu/issues/2958)（派生: [#3088](https://github.com/kompiro/karasu/issues/3088) 接するだけの corridor がチャネルのレーン分けで重なる既存 bug）
-- **設計**: #2958 の Design Doc（案 B、ADR 昇格予定）。関連 ADR: [ADR-2330](../adr/2330-ungrouped-routing-parity.md)（refine 予定）、[ADR-2631](../adr/2631-trunk-legibility-by-count.md)、[ADR-2598](../adr/2598-edge-routing-channel-capacity.md)（決定 8 / #2490）、[ADR-1185](../adr/1185-parallel-edge-bundling.md)
+- **設計**: [ADR-2958](../adr/2958-gutter-lane-bundling.md)（案 B）。関連 ADR: [ADR-2330](../adr/2330-ungrouped-routing-parity.md)（refine 予定）、[ADR-2631](../adr/2631-trunk-legibility-by-count.md)、[ADR-2598](../adr/2598-edge-routing-channel-capacity.md)（決定 8 / #2490）、[ADR-1185](../adr/1185-parallel-edge-bundling.md)
 - **Related TPLs**: [TPL-2958](../test-perspectives/TPL-2958-bundle-shared-geometry-survives-later-passes.md)（束の共有区間はチェーンの最後まで同一座標）, [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)（柵は限界に届く入力を持つ）, [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md) / [TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md)（貫通 0・兄弟以外の共線 0）
 - **対象ファイル**:
   - `packages/core/src/renderer/edge-routing-groups.ts`（`distributeGutterLanes` / `bundleGutterCorridors`）
