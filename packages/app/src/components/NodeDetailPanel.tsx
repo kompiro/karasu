@@ -32,6 +32,12 @@ interface NodeDetailPanelProps {
    * (Issue #738 / design doc D-2).
    */
   annotationDiff?: { added: string[]; removed: string[] };
+  /**
+   * The node's edges on the canvas on screen, and how to open its focus canvas
+   * (#3057). The panel is the entry that a tap reaches, where the card's hover
+   * `Relations` pill never appears. Absent, or a count of 0, hides the button.
+   */
+  relations?: { count: number; onOpen: () => void };
 }
 
 // Maps node kind to the registered icon name (mirrors ICON_THEME_STYLE_SOURCE
@@ -61,6 +67,7 @@ export function NodeDetailPanel({
   onNavigateToOrg,
   onJumpToEditor,
   annotationDiff,
+  relations,
 }: NodeDetailPanelProps) {
   const { t } = useTranslation();
   const descriptionHtml = useMemo(() => {
@@ -267,6 +274,14 @@ export function NodeDetailPanel({
               {NODE_DETAIL_TAGS_EMOJI} {metadata.tags.map((tag) => `[${tag}]`).join(" ")}
             </div>
           )}
+        </div>
+      )}
+
+      {relations && relations.count > 0 && (
+        <div className="node-detail-section">
+          <button className="node-detail-nav-btn" onClick={relations.onOpen}>
+            {t("focusCanvas.relations", { count: relations.count })}
+          </button>
         </div>
       )}
 

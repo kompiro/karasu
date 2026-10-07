@@ -5,10 +5,11 @@ import { resolve } from "node:path";
 import { render as rtlRender, fireEvent, cleanup, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
-import { compile } from "@karasu-tools/core";
+import { compile, type NodeMetadata } from "@karasu-tools/core";
 import { PreviewPane } from "../PreviewPane.js";
 import { LocaleProvider } from "../../i18n/index.js";
 import { edgesOf, readFocusSource } from "./build.js";
+import { CommandProvider, useCommandRegistry } from "../../keyboard/command-context.js";
 
 afterEach(cleanup);
 
@@ -334,5 +335,163 @@ describe("the focus canvas in the preview", () => {
     const { container: root } = render(pane(svg));
     click(root, root.querySelector(".krs-edge path")!);
     expect(canvas(root)).toBeNull();
+  });
+});
+
+describe("keyboard and touch routes into the focus canvas (#3057)", () => {
+  const relations = (id: string) => {
+    const { incoming, outgoing } = edgesOf(source, id);
+    return incoming.length + outgoing.length;
+  };
+
+  /** The pane under a command registry, with a handle on the registry. */
+  function paneWithCommands(highlightedNodeId: string | null) {
+    let registry!: ReturnType<typeof useCommandRegistry>;
+    function Probe() {
+      registry = useCommandRegistry();
+      return null;
+    }
+    const result = render(
+      <CommandProvider>
+        <Probe />
+        <PreviewPane
+          svg={denseSvg}
+          diagnostics={[]}
+          nodeMetadata={new Map([["Identity", identityMetadata]])}
+          currentFilePath={null}
+          displayRoot={null}
+          highlightedNodeId={highlightedNodeId}
+        />
+      </CommandProvider>,
+    );
+    const run = () =>
+      act(() =>
+        registry
+          .getCommands()
+          .find((c) => c.id === "view.showRelations")!
+          .run(),
+      );
+    return { ...result, registry: () => registry, run };
+  }
+
+  const identityMetadata: NodeMetadata = {
+    kind: "domain",
+    label: "Identity & access",
+    description: "",
+    links: [],
+    tags: [],
+    annotations: [],
+    hasChildren: true,
+  };
+
+  it("offers Relations in the node detail panel, which a tap opens", async () => {
+    // The app draws each card's ⓘ (`nodeControls`); a tap on it opens the panel.
+    const withControls = compile(dense, {
+      viewPath: ["Umami", "UmamiApp"],
+      interactive: true,
+      nodeControls: true,
+    }).svg;
+    const { container: root } = render(
+      <PreviewPane
+        svg={withControls}
+        diagnostics={[]}
+        nodeMetadata={new Map([["Identity", identityMetadata]])}
+        currentFilePath={null}
+        displayRoot={null}
+      />,
+    );
+    // ⓘ opens the panel (a tap is a click without movement).
+    const info = root.querySelector('.preview-container svg [data-info-button="Identity"]');
+    expect(info).not.toBeNull();
+    click(root, info!);
+    const button = [...root.querySelectorAll(".node-detail-panel button")].find((b) =>
+      b.textContent?.startsWith("⇄ Relations"),
+    );
+    expect(button?.textContent).toBe(`⇄ Relations ${relations("Identity")}`);
+
+    await userEvent.setup().click(button!);
+    expect(title(root)).toBe("Identity & access");
+    expect(root.querySelectorAll(".focus-canvas .focus-canvas__lane")).toHaveLength(
+      relations("Identity"),
+    );
+    // The panel gave way to the canvas.
+    expect(root.querySelector(".node-detail-panel")).toBeNull();
+  });
+
+  it("registers a palette-only command that opens the highlighted node", () => {
+    const { container: root, registry, run } = paneWithCommands("Identity");
+    const command = registry()
+      .getCommands()
+      .find((c) => c.id === "view.showRelations");
+    expect(command?.title).toBe("Show Relations of Highlighted Node");
+    expect(command?.keybinding).toBeUndefined();
+    run();
+    expect(title(root)).toBe("Identity & access");
+  });
+
+  it("opens nothing without a highlighted node, or for one not on this level", () => {
+    const none = paneWithCommands(null);
+    none.run();
+    expect(canvas(none.container)).toBeNull();
+    cleanup();
+    // Highlighted in the Outline, but its card is on another level.
+    const elsewhere = paneWithCommands("SomeDeepNode");
+    elsewhere.run();
+    expect(canvas(elsewhere.container)).toBeNull();
+  });
+
+  it("is a set of buttons to the keyboard: focus moves in, Enter moves on, focus returns", async () => {
+    const { container: root, run } = paneWithCommands("Identity");
+    const before = document.createElement("button");
+    document.body.appendChild(before);
+    before.focus();
+    run();
+
+    // Focus is on the canvas, not left behind on the page.
+    const panel = root.querySelector<HTMLElement>(".focus-canvas__panel")!;
+    expect(document.activeElement).toBe(panel);
+
+    // The neighbours and the lanes are buttons; the node itself is not.
+    const teams = root.querySelector('.focus-canvas [data-focus-node="Teams"]')!;
+    expect(teams.getAttribute("tabindex")).toBe("0");
+    expect(teams.getAttribute("role")).toBe("button");
+    expect(teams.getAttribute("aria-label")).toBe("Teams");
+    expect(
+      root.querySelector('.focus-canvas [data-focus-node="Identity"]')!.hasAttribute("tabindex"),
+    ).toBe(false);
+    const lane = root.querySelector(
+      '.focus-canvas [data-focus-from="Teams"][data-focus-to="Identity"]',
+    )!;
+    expect(lane.getAttribute("role")).toBe("button");
+    expect(lane.getAttribute("aria-label")).toMatch(/^Teams → Identity & access: /);
+
+    // Enter on a lane moves to that pair; focus comes back to the panel.
+    (lane as unknown as HTMLElement).focus();
+    fireEvent.keyDown(lane, { key: "Enter" });
+    expect(title(root)).toBe("Teams → Identity & access");
+    expect(document.activeElement).toBe(root.querySelector(".focus-canvas__panel"));
+
+    // Space on a card moves to that node.
+    const card = root.querySelector('.focus-canvas [data-focus-node="Teams"]')!;
+    fireEvent.keyDown(card, { key: " " });
+    expect(title(root)).toBe("Teams");
+
+    // Closing hands focus back to where it was.
+    await userEvent.setup().keyboard("{Escape}");
+    expect(canvas(root)).toBeNull();
+    expect(document.activeElement).toBe(before);
+    before.remove();
+  });
+
+  it("makes no lane a button on an edge's canvas, where a lane leads nowhere", () => {
+    const { container: root } = render(pane());
+    click(root, edgeGroup(root, "Analytics", "Identity").querySelector("path")!);
+    for (const lane of root.querySelectorAll(".focus-canvas .focus-canvas__lane")) {
+      expect(lane.hasAttribute("tabindex")).toBe(false);
+    }
+    // Both cards still move to their node.
+    expect(root.querySelectorAll('.focus-canvas .focus-canvas__card[role="button"]')).toHaveLength(
+      2,
+    );
   });
 });

@@ -1,4 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "../../i18n/index.js";
 import { buildFocusCanvas, type Focus, type FocusSource } from "./build.js";
@@ -32,6 +40,23 @@ const stop = (e: MouseEvent) => e.stopPropagation();
 export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: FocusCanvasProps) {
   const { t } = useTranslation();
   const bodyRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Keyboard focus (#3057): the canvas takes it when it opens and after every
+  // move (a card or lane that was pressed is gone with the drawing it was in),
+  // and hands it back to whatever had it before when the canvas closes.
+  useEffect(() => {
+    const before = document.activeElement;
+    return () => {
+      if (before instanceof HTMLElement && before.isConnected) before.focus();
+    };
+  }, []);
+  useEffect(() => {
+    panelRef.current?.focus({ preventScroll: true });
+    // `trail` is a trigger, not a value this body reads: each move replaces
+    // the drawing, and the control that had focus with it.
+    // eslint-disable-next-line react/exhaustive-effect-dependencies
+  }, [trail]);
   // Drag to move the view, as on the main canvas: a press anywhere in the
   // canvas starts a pan, and one that moved past the threshold is not a click
   // on whatever card or line it ended over.
@@ -136,14 +161,8 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
   const name = (id: string) => source.cards.get(id)?.name ?? id;
   const title = focus.kind === "edge" ? `${name(focus.from)} → ${name(focus.to)}` : name(focus.id);
 
-  const onBodyClick = (e: MouseEvent) => {
-    if (suppressClick.current) {
-      suppressClick.current = false;
-      return;
-    }
-    // The end of a text selection is not a click on the card or lane under it.
-    if (window.getSelection()?.toString()) return;
-    const target = e.target as Element;
+  /** What a press on `target` does: move to its card's node, or to its lane's pair. */
+  const activate = (target: Element) => {
     const card = target.closest("[data-focus-node]")?.getAttribute("data-focus-node");
     if (card) {
       if (!(focus.kind === "node" && focus.id === card)) onNavigate({ kind: "node", id: card });
@@ -157,6 +176,26 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
         to: lane.getAttribute("data-focus-to") ?? "",
       });
     }
+  };
+
+  const onBodyClick = (e: MouseEvent) => {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
+    // The end of a text selection is not a click on the card or lane under it.
+    if (window.getSelection()?.toString()) return;
+    activate(e.target as Element);
+  };
+
+  // A card or lane is a button (`role="button"`, `tabindex="0"`): Enter and
+  // Space press it, as a click does (#3057).
+  const onBodyKeyDown = (e: ReactKeyboardEvent) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const control = (e.target as Element).closest('[role="button"]');
+    if (!control || !bodyRef.current?.contains(control)) return;
+    e.preventDefault();
+    activate(control);
   };
 
   return (
@@ -178,7 +217,9 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
       }}
     >
       <div
+        ref={panelRef}
         className="focus-canvas__panel"
+        tabIndex={-1}
         role="region"
         aria-label={t("focusCanvas.region")}
         data-focus={focus.kind}
@@ -205,6 +246,7 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
           data-panning={panning ? "" : undefined}
           onMouseDown={onBodyMouseDown}
           onClick={onBodyClick}
+          onKeyDown={onBodyKeyDown}
           dangerouslySetInnerHTML={html}
         />
       </div>

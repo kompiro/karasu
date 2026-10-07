@@ -315,6 +315,33 @@
   filter: none;
 }
 
+/* Keyboard (#3057): the panel takes focus when the canvas opens, so a ring on
+   it would only say "the canvas is open". The cards and lanes are the
+   buttons, and they show where Tab has got to. */
+.preview-container .focus-canvas__panel:focus {
+  outline: none;
+}
+
+.preview-container .focus-canvas__card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* A lane's box is the bounding box of a curve, often most of the canvas, so
+   the lane marks focus on itself: the line and its label in the accent. */
+.preview-container .focus-canvas__lane:focus-visible {
+  outline: none;
+}
+
+.preview-container .focus-canvas__lane:focus-visible path {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.preview-container .focus-canvas__lane:focus-visible .focus-canvas__label {
+  fill: var(--accent);
+}
+
 .preview-container .focus-canvas__card,
 .preview-container .focus-canvas__panel[data-focus="node"] .focus-canvas__lane {
   cursor: pointer;
