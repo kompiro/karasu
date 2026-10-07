@@ -135,8 +135,12 @@ main canvas の全 card に `tabindex` を付け、Tab で card を巡り、Ente
    - deploy / org ビューでは、ハイライトの属性が `data-node-id` でない（ADR-2818）ので、
      コマンドは何もしない。focus canvas は system ビュー（各階層）のものとして扱う。
 3. **focus canvas の中のキーボード。**
-   - card（どの canvas でも）と、node の canvas の行に `tabindex="0"`・`role="button"`・
+   - 押すと移動する card と、node の canvas の行に `tabindex="0"`・`role="button"`・
      `aria-label` を付ける。card の label は node の名前、行の label は「from → to: ラベル全文」。
+     node の canvas の中央の card（いま見ている node）と、edge の canvas の行は、押しても何も
+     起きないのでボタンにしない。
+   - focus の表示は、card は枠線、行は線とラベルを強調色にする。行の外接矩形は曲線を
+     囲むので canvas の大半を覆うことがあり、枠線では何に focus があるか分からない。
    - Enter / Space でクリックと同じ動作（card ならその node へ、行ならその組へ）。
    - 開いたら focus を panel（`tabIndex=-1` の region）に移す。移動（card / 行 / Back）の後も
      panel に戻す。閉じたら、開く前に focus があった要素に戻す（あれば）。
@@ -152,10 +156,13 @@ main canvas の全 card に `tabindex` を付け、Tab で card を巡り、Ente
 - component: 開いたら focus が panel にあり、Tab で card と行に届き、Enter で移動し、閉じたら
   元の要素に focus が戻る。
 - e2e: キーボードだけで、Outline で node を選ぶ → パレットでコマンド → 開いた canvas で Tab と
-  Enter で辿る、を通す。マウスを使わない。
+  Enter で辿る、を通す。マウスは使わない。ただし fixture の node は root の 1 つ下の階層に
+  あり、キーボードで降りる手段は無い（#3082）ので、その 1 手だけは準備としてクリックする。
 - e2e（touch）: Playwright の touch エミュレーション（`hasTouch` と `tap`）で、ⓘ を tap → パネルの
   `Relations` を tap → focus canvas が開く、を通す。
-- e2e（TPL-3022）: 線をクリックできない edge の全文に、キーボードだけで届く。
+- 到達性（TPL-3022）: どの edge も両端の node の canvas に行として載ること（ADR-3022 の
+  e2e）と、node の canvas がキーボードで開けること（上の e2e）の組み合わせで、線をクリック
+  できない edge の全文にもキーボードで届く。
 
 ### AT
 
