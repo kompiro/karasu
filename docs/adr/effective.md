@@ -387,6 +387,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2803](2803-slotted-icon-card-text.md) — shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通スタックで描く
 - [ADR-2906](2906-icon-mode-removal-release-undecided.md) — icon display mode は非推奨のまま据え置き、削除する major はまだ決めない
 - [ADR-2917](2917-multi-system-root-same-id-nodes.md) — 複数 system のルートビューは同名ノードを両方描き、要素の id は bare id のまま、着地は path で決める
+- [ADR-2958](2958-gutter-lane-bundling.md) — ガターを通るエッジを、共有する端ごとに 1 レーンへ束ねる
 - [ADR-3022](3022-edge-label-disclosure.md) — edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は focus canvas で読む
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
