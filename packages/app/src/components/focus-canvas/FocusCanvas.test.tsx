@@ -418,6 +418,31 @@ describe("keyboard and touch routes into the focus canvas (#3057)", () => {
     expect(root.querySelector(".node-detail-panel")).toBeNull();
   });
 
+  it("shows no Relations button for a node with no edges", () => {
+    const lone =
+      `<svg xmlns="http://www.w3.org/2000/svg">` +
+      `<g data-node-id="Lone" data-has-children="false"><rect x="0" y="0" width="100" height="40"/>` +
+      `<text>Lone</text></g></svg>`;
+    const { container: root } = render(
+      <PreviewPane
+        svg={lone}
+        diagnostics={[]}
+        nodeMetadata={
+          new Map([["Lone", { ...identityMetadata, label: "Lone", hasChildren: false }]])
+        }
+        currentFilePath={null}
+        displayRoot={null}
+      />,
+    );
+    // A leaf card opens the panel.
+    click(root, root.querySelector('[data-node-id="Lone"] rect')!);
+    expect(root.querySelector(".node-detail-panel")).not.toBeNull();
+    const labels = [...root.querySelectorAll(".node-detail-panel button")].map(
+      (b) => b.textContent,
+    );
+    expect(labels.some((l) => l?.startsWith("⇄"))).toBe(false);
+  });
+
   it("registers a palette-only command that opens the highlighted node", () => {
     const { container: root, registry, run } = paneWithCommands("Identity");
     const command = registry()

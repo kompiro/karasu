@@ -107,6 +107,8 @@ type: product
 
   > ✅ Automated — `packages/e2e/tests/at-3057-focus-canvas-keyboard-touch.spec.ts` › AT-3057 focus canvas from touch › a tap on ⓘ, then on Relations in the panel, opens the node's canvas
 
+  > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › keyboard and touch routes into the focus canvas (#3057) › shows no Relations button for a node with no edges
+
 - [x] キーボード: パレット専用のコマンド「Show Relations of Highlighted Node」が、ハイライトされたノードの focus canvas を開く。ハイライトが無い、またはそのノードが表示中の階層に無いときは何もしない
 
   > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › keyboard and touch routes into the focus canvas (#3057) › registers a palette-only command that opens the highlighted node
