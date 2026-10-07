@@ -51,7 +51,7 @@
 
 - [x] AT-N: og:image は `&fit=contain&width=1200&height=630` を指す。`/render` の `fit=contain` は SVG を 1200×630 フレームに `preserveAspectRatio="xMidYMid meet"` で**全体を縮小して収め**（縦長の図でもクロップされない）、余白を背景で埋める
 
-  > ✅ Automated — `packages/app/src/render/ogp-frame.test.ts` / `packages/app/src/render/share-page.test.ts`
+  > ✅ Automated — `packages/core/src/renderer/ogp-frame.test.ts` / `packages/app/src/render/share-page.test.ts`
 
 ### 手動（プレビューデプロイで検証）
 

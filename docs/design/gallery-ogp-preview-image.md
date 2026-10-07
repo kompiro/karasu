@@ -8,7 +8,7 @@
   - 同じ画像を使う一覧ページ: [#3016](https://github.com/kompiro/karasu/issues/3016)（`/` に公開投稿をカードで並べる）
   - 関連 ADR: [ADR-1805](../adr/1805-resvg-wasm-png-rasterization.md)（resvg-wasm で PNG にする）、[ADR-1801](../adr/1801-karasu-nest-ogp-share-page.md)（app の `/s` の OGP）、[ADR-105](../adr/105-png-export-not-adopted.md)（core/cli/app に PNG を入れない）、[ADR-2993](../adr/2993-gallery-client-side-rendering.md)（投稿ページは sandbox の viewer）、[ADR-2592](../adr/2592-nest-as-a-gallery.md)（ギャラリーの構築）、[ADR-3020](../adr/3020-nest-custom-domain-karasu-nest-kompiro-dev.md)（nest を独自ドメインに移す）、[ADR-1994](../adr/1994-karasu-nest-free-tier-quota.md)、[ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)、[ADR-1828](../adr/1828-repo-backed-ref-pinned-permalink.md)
   - 関連 TPL: [TPL-1799](../test-perspectives/TPL-1799-raster-pipeline-glyph-coverage.md)、[TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)、[TPL-2284](../test-perspectives/TPL-2284-purge-scope-identity-is-canonical.md)、[TPL-2993](../test-perspectives/TPL-2993-third-party-content-runs-outside-session-origin.md)、[TPL-2995](../test-perspectives/TPL-2995-purge-must-catch-writes-that-land-after-it.md)（本設計から起こした proactive TPL）
-  - コード: `packages/nest/src/routes/gallery.ts`、`packages/nest/src/gallery/ogp.ts`、`functions/render.ts`、`functions/[[path]].ts`、`packages/app/src/render/ogp-frame.ts`
+  - コード: `packages/nest/src/routes/gallery.ts`、`packages/nest/src/gallery/ogp.ts`、`functions/render.ts`、`functions/[[path]].ts`、`packages/core/src/renderer/ogp-frame.ts`
 
 ## 背景・課題
 
@@ -24,7 +24,7 @@
 | --- | --- |
 | app の PNG 経路 | `functions/render.ts`: core で system view の SVG → `wrapSvgForOgpFrame`（1200×630 の枠に contain で収める）→ resvg-wasm で PNG。wasm の初期化とフォントの読み込みは isolate ごとに 1 回キャッシュする |
 | フォント | `packages/app/public/fonts/` の 4 本（Noto Sans / Noto Sans JP / Noto Emoji / Noto Sans Symbols 2、計 8.3MB）。カバレッジは `packages/app/src/render/png-font-coverage.test.ts` が検査する（TPL-1799） |
-| 枠の関数 | `wrapSvgForOgpFrame` は `packages/app/src/render/ogp-frame.ts` にある純粋な文字列変換 |
+| 枠の関数 | `wrapSvgForOgpFrame` は純粋な文字列変換。設計時は app にあり、実装で `packages/core/src/renderer/ogp-frame.ts` に移した |
 | nest の配信 | `wrangler.toml` の `[assets]` で viewer を配る。静的に直接返すのは `/assets/*` だけで、他のパスは Worker を通る（ADR-2993） |
 | nest の公開 URL | `https://karasu-nest.kompiro.dev`（独自ドメイン、ADR-3020）。`workers_dev = false` で、workers.dev のホストは止めてある |
 | nest の KV | 投稿・アカウント・セッションを 1 つの namespace にキー接頭辞で分けて持つ。アカウント削除はアカウント起点の接頭辞を掃除する（TPL-2226、`gallery-purge-coverage.test.ts`）。`KVNamespaceLike` は文字列の値だけを扱う |
@@ -192,7 +192,7 @@ S1 を採るなら R5 が要る。S3 ではこの節の全体が要らなくな�
 
 ### 実装の指針
 
-1. **core**: `wrapSvgForOgpFrame` を `packages/app/src/render/ogp-frame.ts` から core に移して export し、`functions/render.ts` と app のテストを core 参照に変える。changeset は `@karasu-tools/core` と `karasu`。
+1. **core**: `wrapSvgForOgpFrame` を app から core（`packages/core/src/renderer/ogp-frame.ts`）に移して export し、`functions/render.ts` と app のテストを core 参照に変える。changeset は `@karasu-tools/core` と `karasu`。
 2. **nest のフォントと wasm**:
    - `@resvg/resvg-wasm` を nest の依存に足す。nest の「core 以外に runtime 依存を持たない」約束は、Worker の中だけで PNG を作るという ADR-1805 の例外として更新する。
    - wasm は `functions/render.ts` と同じく `@resvg/resvg-wasm/index_bg.wasm` を module として import し、wrangler に bundle させる。`initWasm` は画像のルートで初めて呼び、isolate ごとに 1 回だけにする。

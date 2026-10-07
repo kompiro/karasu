@@ -1,5 +1,5 @@
 import { renderSharePayload } from "../packages/app/src/render/share-render.js";
-import { wrapSvgForOgpFrame } from "../packages/app/src/render/ogp-frame.js";
+import { wrapSvgForOgpFrame } from "@karasu-tools/core";
 import { Resvg, initWasm } from "@resvg/resvg-wasm";
 // wrangler resolves the `.wasm` import to a WebAssembly.Module at bundle time.
 import resvgWasm from "@resvg/resvg-wasm/index_bg.wasm";
