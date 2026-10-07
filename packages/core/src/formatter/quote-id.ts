@@ -10,8 +10,10 @@ import { KRS_KEYWORD_NAMES, isBareWord } from "../lexer/lexer.js";
  * (#2707). This file used to hand-copy both. The copy missed `boundary`,
  * `contains`, `facet`, `facets` and `operations`, so `from: "boundary"` was
  * printed bare and read back as a keyword, and its pattern tested code points
- * where the lexer tests UTF-16 units, so an id with a character outside the
- * BMP was printed bare and lost that character when read back.
+ * where the lexer then tested UTF-16 units, so an id with a character outside
+ * the BMP was printed bare and lost that character when read back. The lexer
+ * reads by code point since #2848, so such an id now prints bare and reads
+ * back whole.
  */
 
 /**
