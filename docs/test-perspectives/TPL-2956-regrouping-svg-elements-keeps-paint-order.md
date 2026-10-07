@@ -73,4 +73,5 @@ SVG は**後に描いた要素が上に来る**。要素をまとめ直すと、
 
 ## 関連テスト
 
-（#2956 の実装で `svg-renderer` 側に追加する予定。展開した `d` の列の一致と、A, B, A の入力で 3 本に分かれることを固定する）
+- `packages/core/src/renderer/svg-renderer.test.ts` › `crossing hop paths (#2956)`: A, B, A の stroke で 3 本に分かれること、展開したサブパスの列が 1 個ずつ描いたときの `d` の列と一致すること、各 `<path>` の stroke が区間のホップの host エッジと一致すること
+- [AT 2956](../acceptance/2956-hop-path-grouping.md)「計測」: dify と examples での変更前後のホップ列の一致と、Chromium での画素差の記録

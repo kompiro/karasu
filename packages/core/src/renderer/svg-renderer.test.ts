@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { render, renderFromLayout } from "./svg-renderer.js";
-import type { LayoutNode, LayoutResult } from "./layout-types.js";
+import type {
+  HopMark,
+  JunctionMark,
+  LayoutEdge,
+  LayoutNode,
+  LayoutResult,
+} from "./layout-types.js";
+import { HOP_RADIUS } from "./crossing-marks.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { extractView } from "../view/view-extract.js";
 import { assignEdgeCanonicalIds } from "../resolver/canonical-id.js";
@@ -1331,5 +1338,126 @@ system S {
       '<text x="60" y="84" text-anchor="middle" dy="0.35em" ' +
         'fill="#F9FAFB" font-size="10px" font-family="sans-serif">(Payments)</text>',
     );
+  });
+});
+
+// Hops used to be one `<path>` apiece and were 43% of a dense diagram's SVG.
+// Consecutive hops of one stroke now share a path (#2956), and grouping must not
+// reorder them: SVG paints later elements on top (TPL-2956).
+describe("crossing hop paths (#2956)", () => {
+  const RED = { color: "#dc143c", strokeWidth: 1.5 };
+  const BLUE = { color: "#1e90ff", strokeWidth: 1.5 };
+
+  // One horizontal edge per stroke in `strokes`, edge `i` running along y = 100 + 50i.
+  const renderHops = (
+    strokes: { color: string; strokeWidth: number }[],
+    hops: HopMark[],
+    junctions: JunctionMark[] = [],
+  ): string => {
+    const styles = resolveStyles(
+      Parser.parse('system S { service Svc { label "Svc" } }').value.systems,
+      [getBuiltinStyleSheet()],
+    );
+    const edges: LayoutEdge[] = strokes.map((stroke, i) => {
+      styles.edges.set(`a${i}->b${i}`, { ...styles.defaultEdgeStyle, ...stroke });
+      return {
+        from: `a${i}`,
+        to: `b${i}`,
+        fromPoint: { x: 0, y: 100 + 50 * i },
+        toPoint: { x: 600, y: 100 + 50 * i },
+      };
+    });
+    const node: LayoutNode = {
+      kind: "service",
+      id: "Svc",
+      label: "Svc",
+      properties: { links: [] },
+      linkCount: 0,
+      hasChildren: false,
+      hasDescription: false,
+      x: 700,
+      y: 700,
+      width: 100,
+      height: 50,
+    };
+    return renderFromLayout(
+      {
+        nodes: new Map([["Svc", node]]),
+        edges,
+        containers: [],
+        width: 900,
+        height: 900,
+        crossingMarks: { hops, junctions, bands: [] },
+      },
+      styles,
+    );
+  };
+  const hopAt = (edge: number, x: number): HopMark => ({
+    x,
+    y: 100 + 50 * edge,
+    halfWidth: 6,
+    angle: 0,
+    edge,
+  });
+  const hopPaths = (svg: string) => {
+    const layer = svg.match(/<g class="crossing-marks">.*?<\/g>/s)?.[0] ?? "";
+    return [
+      ...layer.matchAll(/<path d="([^"]*)" fill="none" stroke="([^"]*)" stroke-width="([^"]*)"/g),
+    ].map((m) => ({ subpaths: m[1].split(/ (?=M )/), color: m[2], strokeWidth: Number(m[3]) }));
+  };
+
+  it("draws consecutive hops of one stroke as one <path>, in their original order", () => {
+    const paths = hopPaths(renderHops([RED, RED], [hopAt(0, 100), hopAt(1, 200), hopAt(0, 300)]));
+    expect(paths).toHaveLength(1);
+    expect(paths[0].subpaths.map((d) => d.split(" ")[1])).toEqual(["94", "194", "294"]);
+  });
+
+  it("starts a new <path> whenever the stroke changes, so A, B, A stays three paths", () => {
+    // Folding the second red hop into the first path would paint it under the
+    // blue one, which was drawn before it.
+    const paths = hopPaths(renderHops([RED, BLUE], [hopAt(0, 100), hopAt(1, 200), hopAt(0, 300)]));
+    expect(paths.map((p) => p.color)).toEqual([RED.color, BLUE.color, RED.color]);
+  });
+
+  it("splits on stroke width alone, since width is part of what a hop paints", () => {
+    const thick = { ...RED, strokeWidth: 3 };
+    const paths = hopPaths(renderHops([RED, thick], [hopAt(0, 100), hopAt(1, 200)]));
+    expect(paths.map((p) => p.strokeWidth)).toEqual([1.5, 3]);
+  });
+
+  it("paints each path in the stroke of the edges whose hops it holds", () => {
+    const paths = hopPaths(
+      renderHops([RED, BLUE, RED], [hopAt(0, 100), hopAt(2, 150), hopAt(1, 200), hopAt(1, 300)]),
+    );
+    expect(paths).toEqual([
+      { subpaths: [expect.any(String), expect.any(String)], ...RED },
+      { subpaths: [expect.any(String), expect.any(String)], ...BLUE },
+    ]);
+  });
+
+  it("keeps every hop's geometry: the subpaths, in order, are the arcs drawn one by one", () => {
+    // The pre-#2956 per-hop `d`, written out by hand so a change to the arc
+    // itself fails here and not only in the grouping.
+    const hops: HopMark[] = [
+      hopAt(0, 100),
+      { x: 250.004, y: 175, halfWidth: 9.5, angle: 33.3, edge: 1, ry: 11 },
+      hopAt(0, 400),
+    ];
+    const paths = hopPaths(renderHops([RED, RED], hops));
+    expect(paths.flatMap((p) => p.subpaths)).toEqual([
+      `M 94 100 A 6 ${HOP_RADIUS} 0 0 1 106 100`,
+      "M 242.06 169.78 A 9.5 11 33.3 0 1 257.94 180.22",
+      `M 394 100 A 6 ${HOP_RADIUS} 0 0 1 406 100`,
+    ]);
+  });
+
+  it("still draws the merge marks after every hop", () => {
+    const svg = renderHops(
+      [RED, BLUE],
+      [hopAt(0, 100), hopAt(1, 200)],
+      [{ x: 300, y: 100, edge: 0, count: 2 }],
+    );
+    const layer = svg.match(/<g class="crossing-marks">.*?<\/g>/s)?.[0] ?? "";
+    expect(layer.lastIndexOf("<path")).toBeLessThan(layer.indexOf("<circle"));
   });
 });
