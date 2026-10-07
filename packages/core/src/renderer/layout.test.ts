@@ -523,7 +523,10 @@ system PaymentGateway {
     // reported canvas and the renderer clipped it. Six stores is the smallest
     // count that crosses it here. Grouped, because that is where trunks
     // aggregate; this path now uses the same `computeTotalDimensions` the
-    // single-system one does.
+    // single-system one does. Each store's pair mixes a sync and an async edge,
+    // which never share a lane bundle (#2958): bundled, the pairs fold onto
+    // fewer lanes and the routes no longer reach past the containers, so the
+    // premise below would stop holding (TPL-2598).
     const src = `
 system A {
   user Ua {}
@@ -547,17 +550,17 @@ system B {
   Cb -> S2
   Cb -> S3
   S2 -> D1
-  S3 -> D1
+  S3 --> D1
   S1 -> D2
-  S3 -> D2
+  S3 --> D2
   S1 -> D3
-  S2 -> D3
+  S2 --> D3
   S2 -> D4
-  S3 -> D4
+  S3 --> D4
   S1 -> D5
-  S3 -> D5
+  S3 --> D5
   S1 -> D6
-  S2 -> D6
+  S2 --> D6
 }
 organization Org {
   team "blue" { owns S1

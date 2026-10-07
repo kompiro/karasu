@@ -165,8 +165,9 @@ function segmentGrid(segs: Seg[]): BoxGrid {
 
 /**
  * Derive hop and junction marks from the final edge geometry. Every single-system
- * layout calls this — grouped and, since #1956, ungrouped (Group by: none). The
- * ungrouped view has no aggregation trunks, so it gets hops only (no junctions).
+ * layout calls this — grouped and, since #1956, ungrouped (Group by: none).
+ * Junctions and bands come from edges that share a spine: the trunk passes'
+ * (grouped only) and, since #2958, lane bundles (both modes).
  */
 export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
   const { hops, junctions, trunks } = detectMarks(edges);
@@ -215,7 +216,8 @@ export function detectMarks(edges: LayoutEdge[]): {
   const segs: Seg[] = [];
   // Trunk elbows grouped by spine (trunk id @ spine x). For a fan-in trunk each
   // edge's `waypoints[0]` is where its stub joins the shared vertical spine; for
-  // a fan-out trunk its last waypoint is where its branch leaves it. `edge` is
+  // a fan-out trunk its last waypoint is where its branch leaves it (or the
+  // waypoint `trunkJoin` names, on a lane bundle's route). `edge` is
   // that edge's index so its mark can be coloured like the edge.
   const trunkElbows = new Map<string, TrunkGroup>();
   /**
@@ -281,11 +283,15 @@ export function detectMarks(edges: LayoutEdge[]): {
 
     // Junction candidates: the elbow where a trunked edge's stub joins the
     // spine, and the one where a fan-out edge's branch leaves it (#2885).
+    // `trunkJoin` names that elbow on a lane bundle's route (#2958); the trunk
+    // passes' 2-waypoint routes leave it unset. Waypoint `j` is point `j + 1`.
     const wps = edge.waypoints;
     if (edge.trunkId !== undefined && wps && wps.length > 0) {
-      addElbow(`in:${edge.trunkId}@${wps[0].x}`, pts, 1, 1, edgeIdx);
+      const j = edge.trunkJoin ?? 0;
+      addElbow(`in:${edge.trunkId}@${wps[j].x}`, pts, j + 1, 1, edgeIdx);
     } else if (edge.outTrunkId !== undefined && wps && wps.length > 0) {
-      addElbow(`out:${edge.outTrunkId}@${wps[wps.length - 1].x}`, pts, wps.length, -1, edgeIdx);
+      const j = edge.trunkJoin ?? wps.length - 1;
+      addElbow(`out:${edge.outTrunkId}@${wps[j].x}`, pts, j + 1, -1, edgeIdx);
     }
   });
 

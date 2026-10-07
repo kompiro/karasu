@@ -445,10 +445,12 @@ export function runRoutingChain(
   }
   // Give the remaining non-trunked gutter corridors distinct lanes so two
   // single-incoming edges no longer share a collinear vertical segment
-  // (#1927), and fan out the anchors of edges leaving *or entering* one
-  // node/frame on the same side. Both are waypoint-driven, so every route
-  // shape the chain can produce takes part in the overlap passes (TPL-1954)
-  // in both modes.
+  // (#1927), except that corridors sharing an end take one lane as a bundle
+  // (#2958): only the lane x changes, so unlike the trunk passes above this
+  // runs on ungrouped canvases too. Then fan out the anchors of edges leaving
+  // *or entering* one node/frame on the same side. Both are waypoint-driven,
+  // so every route shape the chain can produce takes part in the overlap
+  // passes (TPL-1954) in both modes.
   distributeGutterLanes(nodes, edges, groupFrames);
   fanOutGutterPorts(nodes, edges, obstacleIndex, expandedFrames, ports);
   // Stagger the horizontal runs that share an inter-row channel across

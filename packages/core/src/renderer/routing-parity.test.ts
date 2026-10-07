@@ -244,10 +244,10 @@ function layoutOf(file: string, groupBy?: GroupBy): LayoutResult {
   return layoutOfSource(readFileSync(resolve(EXAMPLES, file), "utf8"), groupBy);
 }
 
-function layoutOfSource(src: string, groupBy?: GroupBy): LayoutResult {
+function layoutOfSource(src: string, groupBy?: GroupBy, path: string[] = []): LayoutResult {
   const parsed = Parser.parse(src);
   const krsFile = parsed.value;
-  const slice = extractView(krsFile.systems, []);
+  const slice = extractView(krsFile.systems, path);
   const styles = resolveStyles(krsFile.systems, [getBuiltinStyleSheet()]);
   return layout(slice, {
     ownerIndex: krsFile.ownerIndex,
@@ -373,7 +373,9 @@ describe("shared routing chain — grouped output is unchanged (#2362, AC-5 repl
     // Re-pinned 5 -> 4 and (team-ownership) 2 -> 0 with #2885: edges leaving
     // one source share one fan-out spine, so the corridors that each held one
     // edge, and the crossings between them, collapse into one.
-    ["en/getting-started/index.krs", "team", 4],
+    // Re-pinned 4 -> 3 with #2958: the remaining gutter corridors that share an
+    // end take one lane, which leaves the canvas one crossing fewer.
+    ["en/getting-started/index.krs", "team", 3],
     // Re-pinned 3 -> 2 and 7 -> 2 with #2610: the gutter side is chosen by
     // occupancy and length instead of right-first, so a detour whose
     // endpoints sit nearer the left takes the left gutter and crosses less.
@@ -889,28 +891,41 @@ describe("fan-in trunk — count fence (#2883, TPL-2598 / TPL-2631 / TPL-2385)",
 });
 
 describe("hop arc radius — corridor fence (#2884, TPL-2598)", () => {
-  // One hub calling twelve targets, each target also read by its own service,
-  // grouped by team. That crowds one card side with the widest port fan a
-  // grouped view builds: `fanOutGutterPorts` spaces ports by side length over
-  // count, so the corridor an arc has to fit in closes as the fan grows. This
-  // is what bounds the radius — not `LANE_PITCH`, which the design measured at
-  // 22px without moving the number.
+  // What bounds the radius is the spacing of parallel lines a crossing sits
+  // between: `fanOutGutterPorts` spaces the ports on one card side by side
+  // length over count, so the corridor an arc has to fit in closes as a fan
+  // grows. Not `LANE_PITCH`, which the design measured at 22px without moving
+  // the number.
+  //
+  // The corpus that reaches the limit used to be one hub calling twelve
+  // targets, whose eleven gutter edges fanned out of one side 7px apart. Lane
+  // bundles (#2958) put those edges on one spine, and none of the twelve
+  // synthetic inputs tried in #2958 to split the bundles came back under 8px:
+  // a fan that wide no longer forms from edges of one kind. The tightest corridor left is a real one, in hato's
+  // grouped view (6.7px), which the bundles do not touch.
+  //
+  // PARTNERED supplies the arc count. It is that hub with a caller V_i of its
+  // own for every target, in the hub's band: a V_i -> T_i entering T_i the way
+  // the hub's edge does takes that edge into T_i's fan-in bundle first, so
+  // those edges stay apart and the gutter keeps crossing them (82 arcs).
   //
   // Only the grouped view is fenced. The design measured that raising the
   // radius costs the *ungrouped* view arcs that reach a neighbour on the most
   // crowded side of a 10k-line model, and took that cost knowingly; asserting a
   // clearance there would assert something the project decided against.
   const N = 12;
-  const WIDE = `system Wide {
+  const PARTNERED = `system Wide {
   service Hub { label "Hub" }
+${Array.from({ length: N }, (_v, i) => `  service V${i} { label "V${i}" }`).join("\n")}
 ${Array.from({ length: N }, (_v, i) => `  service T${i} { label "T${i}" }`).join("\n")}
 ${Array.from({ length: N }, (_v, i) => `  service U${i} { label "U${i}" }`).join("\n")}
 ${Array.from({ length: N }, (_v, i) => `  Hub -> T${i} "call"`).join("\n")}
+${Array.from({ length: N }, (_v, i) => `  V${i} -> T${i} "call"`).join("\n")}
 ${Array.from({ length: N }, (_v, i) => `  U${i} -> T${(i + 2) % N} "read"`).join("\n")}
 }
 organization Org {
 ${Array.from({ length: N }, (_v, i) => `  team "t${i}" { label "T${i}" owns T${i} owns U${i} }`).join("\n")}
-  team "hub" { label "Hub" owns Hub }
+  team "hub" { label "Hub" owns Hub ${Array.from({ length: N }, (_v, i) => `owns V${i}`).join(" ")} }
 }`;
 
   it("the crown direction matches the drawn arc", () => {
@@ -920,7 +935,7 @@ ${Array.from({ length: N }, (_v, i) => `  team "t${i}" { label "T${i}" owns T${i
     // Re-derive the direction from the emitted path instead of restating the
     // formula: centre at the midpoint of the endpoints, then 90 degrees on from
     // the start in the direction the sweep flag advances (TPL-2803).
-    const svg = renderFromLayout(layoutOfSource(WIDE, "team"), stylesOfSource(WIDE));
+    const svg = renderFromLayout(layoutOfSource(PARTNERED, "team"), stylesOfSource(PARTNERED));
     const arcs = [
       ...svg.matchAll(
         /M (-?[\d.]+) (-?[\d.]+) A ([\d.]+) ([\d.]+) (-?[\d.]+) 0 1 (-?[\d.]+) (-?[\d.]+)/g,
@@ -944,7 +959,10 @@ ${Array.from({ length: N }, (_v, i) => `  team "t${i}" { label "T${i}" owns T${i
   });
 
   it("the default radius fits the tightest corridor, and the corpus reaches that limit", () => {
-    const clearances = crownClearances(layoutOfSource(WIDE, "team"));
+    const clearances = [
+      ...crownClearances(layoutOf("en/hato/index.krs", "team")),
+      ...crownClearances(layoutOfSource(PARTNERED, "team")),
+    ];
     expect(clearances.length).toBeGreaterThan(20);
     const tightest = Math.min(...clearances);
     // Arcs fit today.
@@ -1111,6 +1129,121 @@ ${Array.from({ length: FAN_OUT }, (_g, i) => `  team "g${i}" { label "G${i}" own
     const b = laid();
     expect(JSON.stringify(a.edges)).toBe(JSON.stringify(b.edges));
     expect(JSON.stringify(a.crossingMarks)).toBe(JSON.stringify(b.crossingMarks));
+  });
+});
+
+describe("saturated gutter — lane bundle fence (#2958, TPL-2958 / TPL-2598)", () => {
+  // Sixteen use cases each reading five of ten tables, drawn at the domain's
+  // level, ungrouped: a reduced copy of the reverse-engineered Dify Knowledge
+  // canvas that #2958 was raised for. The use cases settle into rows of four,
+  // so most gutter edges are mixed routes that leave or enter through a
+  // channel, and every table is read by several of them. Before lane bundles
+  // each of those corridors took a lane of its own (41 lanes for 69 gutter
+  // edges; 18 after). The bundled examples never share an end in the gutter,
+  // so without this model the bundles sit outside every fence (TPL-2598).
+  //
+  // Five tables per use case, not four: with four, no bundle's shared part
+  // runs along a channel, and the check that the siblings still share it at
+  // the end of the chain stayed green with the channel-lane half of #2958
+  // removed (TPL-2958).
+  const NU = 16;
+  const NT = 10;
+  const tablesOf = (i: number) => [
+    ...new Set([0, 1, 2, 3, 4].map((k) => (i * 2 + k * 2 + (k > 1 ? 1 : 0)) % NT)),
+  ];
+  const SATURATED = `system Sat {
+  service Api {
+    domain Know {
+${Array.from(
+  { length: NU },
+  (_v, i) =>
+    `      usecase U${i} {\n${tablesOf(i)
+      .map((t) => `        resource DB.T${t} { operations read }`)
+      .join("\n")}\n      }`,
+).join("\n")}
+    }
+  }
+  database DB {
+${Array.from({ length: NT }, (_v, i) => `    table T${i} {}`).join("\n")}
+  }
+}`;
+  const laid = () => layoutOfSource(SATURATED, undefined, ["Sat", "Api", "Know"]);
+  const res = laid();
+  const nodes = [...res.nodes.values()];
+  const minX = Math.min(...nodes.map((n) => n.x));
+  const maxX = Math.max(...nodes.map((n) => n.x + n.width));
+  /** Bundles by id, each with which end its siblings share. */
+  const bundles = () => {
+    const out = new Map<string, { end: "in" | "out"; edges: LayoutEdge[] }>();
+    for (const e of res.edges) {
+      const id = e.trunkId ?? e.outTrunkId;
+      if (id === undefined) continue;
+      const b = out.get(id) ?? { end: e.trunkId !== undefined ? "in" : "out", edges: [] };
+      b.edges.push(e);
+      out.set(id, b);
+    }
+    return [...out.values()];
+  };
+  const key = (pts: Point[]) => pts.map((p) => `${p.x},${p.y}`).join(";");
+
+  it("the fixture actually bundles, both ways and through channels", () => {
+    const all = bundles();
+    expect(all.filter((b) => b.end === "in").length).toBeGreaterThanOrEqual(3);
+    expect(all.filter((b) => b.end === "out").length).toBeGreaterThanOrEqual(1);
+    // Mixed routes are the shape the bundles were designed for; a fixture of
+    // plain 2-waypoint routes would leave the general case unfenced.
+    const mixed = all.flatMap((b) => b.edges).filter((e) => (e.waypoints?.length ?? 0) >= 3);
+    expect(mixed.length).toBeGreaterThanOrEqual(10);
+    // A bundle sits in the left gutter, so the normalization shift is not 0
+    // and the shared points have been moved after the bundling (TPL-2958).
+    const leftSpine = all.some((b) => b.edges.every((e) => e.waypoints![e.trunkJoin!].x < minX));
+    expect(leftSpine).toBe(true);
+  });
+
+  it("each bundle takes one lane, so the gutter needs no more lanes than bundles and singles", () => {
+    const lanes = new Set<number>();
+    let singles = 0;
+    for (const e of res.edges) {
+      const pts = pointsOf(e);
+      let inGutter = false;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [a, b] = [pts[i], pts[i + 1]];
+        if (a.x === b.x && a.y !== b.y && (a.x < minX || a.x > maxX)) {
+          lanes.add(a.x);
+          inGutter = true;
+        }
+      }
+      if (inGutter && e.trunkId === undefined && e.outTrunkId === undefined) singles++;
+    }
+    expect(lanes.size).toBeLessThanOrEqual(bundles().length + singles);
+  });
+
+  it("siblings still share their spine and their shared end after the whole chain (TPL-2958)", () => {
+    for (const { end, edges } of bundles()) {
+      const spines = new Set(edges.map((e) => e.waypoints![e.trunkJoin!].x));
+      expect(spines.size).toBe(1);
+      // Fan-in siblings share everything after the corridor; fan-out siblings
+      // everything before it.
+      const shared = edges.map((e) => {
+        const pts = pointsOf(e);
+        const at = e.trunkJoin! + 1; // the elbow's index in the points
+        return key(end === "in" ? pts.slice(at + 1) : pts.slice(0, at));
+      });
+      expect(new Set(shared).size).toBe(1);
+    }
+  });
+
+  it("no edge pierces a card, and no two non-siblings share a collinear segment", () => {
+    expect(totalPenetrations(res)).toBe(0);
+    expect(collinearOverlaps(res, "v")).toBe(0);
+    expect(collinearOverlaps(res, "h")).toBe(0);
+  });
+
+  it("gives the same geometry twice", () => {
+    const again = laid();
+    expect(again.edges.map((e) => key(pointsOf(e)))).toEqual(
+      res.edges.map((e) => key(pointsOf(e))),
+    );
   });
 });
 
