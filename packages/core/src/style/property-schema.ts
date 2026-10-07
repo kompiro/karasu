@@ -75,6 +75,15 @@ export const PROPERTY_SCHEMAS: Record<string, ValueSpec> = {
   // a single length parses as a bare length — the validator's
   // `list-of` case accepts both.
   "label-offset": { kind: "list-of", item: LENGTH_PX_SPEC },
+  // The canvas tier of edge-label disclosure (#3022).
+  "label-max-chars": {
+    kind: "union",
+    specs: [
+      { kind: "ident-of", values: ["none"] },
+      { kind: "number", min: 1 },
+    ],
+  },
+  "label-display": { kind: "ident-of", values: ["always", "auto", "hover"] },
 
   // karasu-specific (badges, shape)
   shape: {

@@ -43,6 +43,7 @@ import type {
 } from "../types/ast.js";
 import { INFRA_KIND_SET, createEmptyKrsFile } from "../types/ast.js";
 import { LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
+import { nearestToolAnnotation } from "../builtins/tool-vocabulary.js";
 import { Lexer, isBareWord } from "../lexer/lexer.js";
 import { isRecognizedResourceOperation, type CrudVerb } from "../spec/operations.js";
 import type { ResourceOperation } from "../spec/operations.js";
@@ -871,16 +872,19 @@ export class Parser {
         // Nesting placement (#2165). `canContain` is the single definition of
         // which children a kind may hold; anything outside it carries no
         // defined semantics (`docs/concepts.ja.md` fixes the hierarchy as
-        // service → domain → usecase → resource). This is a **warning**, not an
-        // error: `.krs language v1.0` is frozen (ADR-1314), so the node is kept and
-        // still renders. Error-ification is registered to Syntax 2.0 (#2162).
+        // service → domain → usecase → resource). `.krs language v2.0` rejects
+        // such a nesting (#2924): an error, and the node is kept out of the
+        // model with its subtree. It was parsed whole above, so the block after it still
+        // parses, and a reference to it falls to the unresolved-reference
+        // warnings (spec §S6) rather than to a second error.
         if (!LOGICAL_CONTAINMENT.get(kind)?.has(child.kind)) {
           this.diagnostics.push({
-            severity: "warning",
+            severity: "error",
             code: "node-not-in-context",
             params: { childKind: child.kind, parentKind: kind },
             loc: child.loc,
           });
+          continue;
         }
         children.push(child);
         continue;
@@ -1914,6 +1918,20 @@ export class Parser {
       // `<word> - <word>` token run — stitch, same as tags (#2509).
       const nameToken = this.advance();
       const { name, end: nameEnd } = stitchKebabTail(nameToken, this.cursor);
+      // A near-miss of a builtin name is rejected (`.krs language v2.0`, #2677):
+      // the author meant the builtin, and keeping the misspelling would silently
+      // drop its effect. It stays out of the model, parameters included.
+      const suggestion = nearestToolAnnotation(name);
+      if (suggestion !== undefined) {
+        this.diagnostics.push({
+          severity: "error",
+          code: "annotation-possible-typo",
+          params: { annotation: name, suggestion },
+          loc: this.range(nameToken.loc, nameEnd.end ?? nameEnd.loc),
+        });
+        this.skipAnnotationParamList();
+        continue;
+      }
       if (names.includes(name)) {
         // A repeat says nothing the first occurrence did not, and
         // `annotationParams` holds one slot per name, so it cannot carry a
@@ -2000,6 +2018,18 @@ export class Parser {
       }
     }
     return { names, params };
+  }
+
+  /**
+   * Consume a rejected annotation's `( … )` list without judging it: its
+   * parameters belong to an annotation that is not in the model, so warning
+   * about them would only repeat the rejection.
+   */
+  private skipAnnotationParamList(): void {
+    if (this.peek().type !== TokenType.LeftParen) return;
+    this.advance(); // (
+    while (!isAnnotationParamListEnd(this.peek())) this.advance();
+    if (this.peek().type !== TokenType.EOF) this.expect(TokenType.RightParen);
   }
 
   /**

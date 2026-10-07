@@ -16,11 +16,11 @@
 - [x] AT-A: `system { domain D {} }` が診断ゼロで parse される（service に未割り当ての domain は正当な状態 — ADR-681 / ADR-702）
   > ✅ Automated — `packages/core/src/parser/parser.test.ts` › `accepts a domain declared directly inside a system`
 
-- [x] AT-B: `client { usecase U {} }` が `node-not-in-context` **warning** を発行する（error ではない）
-  > ✅ Automated — `packages/core/src/parser/parser.test.ts` › `warns when a logical node is nested outside its parent's canContain`
+- [x] AT-B: `client { usecase U {} }` が `node-not-in-context` を発行する。言語 v1.x では **warning**、`.krs language v2.0` から **error**（[#2924](https://github.com/kompiro/karasu/issues/2924)）
+  > ✅ Automated — `packages/core/src/parser/parser.test.ts` › `rejects a logical node nested outside its parent's canContain as an error`
 
-- [x] AT-C: warning が出てもノードは AST から落ちず、従来どおり保持・描画される（v1.0 freeze の後方互換）
-  > ✅ Automated — `packages/core/src/parser/parser.test.ts` › `keeps a misplaced node in the tree so rendering is unchanged`
+- [x] AT-C: `.krs language v2.0` では、置き場所を誤ったノードは subtree ごと AST から除かれ、後続のブロックは通常どおりパースされる（言語 v1.x ではノードを保持して描画していた）
+  > ✅ Automated — `packages/core/src/parser/parser.test.ts` › `rejects a misplaced node and keeps it (with its subtree) out of the tree`
 
 - [x] AT-D: `canContain` に載っている入れ子と、parser が warning なしで受理する入れ子が完全一致する（双方向）
   > ✅ Automated — `packages/core/src/builtins/reference-parser-sync.test.ts` › ``​`%s`: canContain matches exactly the children the parser accepts without `node-not-in-context``（全 14 kind）
@@ -37,14 +37,15 @@
 - [x] AT-H: `docs/spec/syntax.md` / `syntax.ja.md` の Logical structure 表で `system` の May contain に `domain` が入り、`domain` 行の説明が 3 つの配置を述べる
   > ✅ Automated — `pnpm gen:reference --check`（lefthook pre-push / `ci.yml` / `reference-docs-check.yml`）
 
-- [ ] AT-I: app の警告パネルに `node-not-in-context` が warning として（error ではなく）表示され、該当ノードは図に描かれたままである
-  > 🖐 手動確認 — 本番 app（https://karasu.kompiro.dev/）を開き、`system S { client C { usecase U {} } }` を入力し、警告パネルの severity 表示とキャンバスを確認する
+- [ ] AT-I: app で `node-not-in-context` が error として表示され、error を直すまで図は更新されない（直前の有効な図が出たまま）。直すと描画が再開する（`.krs language v2.0`）
+  > 🖐 手動確認 — app（https://karasu.kompiro.dev/）を開き、有効なモデルを描画させてから `system S { client C { usecase U {} } }` を入力し、診断の severity とキャンバスを確認する
 
-- [ ] AT-J: VS Code 拡張で同じ診断が Problems パネルに Warning として出る（Error ではない）
+- [ ] AT-J: VS Code 拡張で同じ診断が Problems パネルに Error として出て、プレビューは直前の有効な図のまま（または描画できない旨の表示）になる（`.krs language v2.0`）
   > 🖐 手動確認 — 拡張ホストで同じ `.krs` を開く
 
 ## 備考
 
 error 化は v1.0 freeze（ADR-1314）に抵触するため次 major に送り、`docs/roadmap.md`
 §Syntax 2.0 の追跡表に登録した。移行期間中に warning を出しておくことで、v2.0 で
-error にしたときの破壊面が事前に観測できる。
+error にしたときの破壊面が事前に観測できる。`.krs language v2.0`（#2924）で error 化を
+実施し、AT-B / AT-C / AT-I / AT-J を v2.0 の挙動に改めた。

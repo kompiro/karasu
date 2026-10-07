@@ -152,9 +152,17 @@ export const ja: Partial<Translations> = {
   "edgeDetail.domainEdges.count": ({ count }) => `ドメインエッジ ${count} 本`,
   "edgeDetail.label.title": "🏷 ラベル",
   "edgeDetail.links.title": "🔗 リンク",
+  // Focus canvas (#3031)
+  "focusCanvas.relations": ({ count }) => `⇄ 関係 ${count}`,
+  "focusCanvas.counts": ({ incoming, outgoing }) => `入 ${incoming} · 出 ${outgoing}`,
+  "focusCanvas.back": "← 戻る",
+  "focusCanvas.close": "✕ 閉じる",
+  "focusCanvas.region": "フォーカスキャンバス",
   "nodeDetail.links.title": "🔗 リンク",
   "nodeDetail.openDeployView": "🚀 Deploy 図で確認 →",
   "nodeDetail.jumpToEditor": "↗ エディタへジャンプ",
+  "vscodePreview.blockedByErrors": ({ count }) =>
+    `モデルに ${count} 件の error があります。直すとプレビューが再び描画されます（Problems パネルを参照）。`,
   "nodeDetail.annotationDiff.title": "⇄ アノテーション差分",
   "nodeDetail.resources.title": "📦 ストレージリソース",
   "nodeDetail.capabilities.title": "🔐 ケイパビリティ",
@@ -315,8 +323,6 @@ export const ja: Partial<Translations> = {
     "他ドメインの store に踏み込むことを境界の smell とみなす流派があります（shared kernel や移行期には正当なこともあります）",
   "warning.unassignedDomain.message": ({ display }) =>
     `domain "${display}" はどの service にも割り当てられていません`,
-  "warning.unassignedUsecase.message": ({ usecaseId }) =>
-    `usecase "${usecaseId}" はどの domain にも割り当てられていません`,
   "warning.unassignedResource.message": ({ resourceId }) =>
     `resource "${resourceId}" はどの database にも entity にも解決されていません`,
   "warning.entityAnchorCollision.message": ({ id }) =>
@@ -380,12 +386,8 @@ export const ja: Partial<Translations> = {
     `service "${serviceId}" の delivers 先 "${targetId}" は client ノードではありません`,
   "warning.clientCapabilityDuplicate.message": ({ clientId, name }) =>
     `client "${clientId}" は capability "${name}" を複数回宣言しています`,
-  "warning.annotationPossibleTypo.message": ({ nodeId, annotation, suggestion }) =>
-    `${nodeId} の "@${annotation}" — "@${suggestion}" の誤記ではありませんか？`,
-  "warning.annotationPossibleTypo.openSetNote":
-    "このヒントは組み込み名に近い名前にのみ表示されます。任意の名前は v1.x では引き続きパースされますが、非組み込み名は非推奨です（annotation-not-builtin を参照）。",
   "warning.tagNotBuiltin.message": ({ nodeId, tag }) =>
-    `${nodeId} の "[${tag}]" は組み込みタグではありません — 非推奨です。構文 v2.0 はツール語彙のみを受理します（警告であり、パースは通ります）。`,
+    `${nodeId} の "[${tag}]" はツール語彙にないため効果がありません。ファイルのパースは通ります。`,
   "warning.tagNotBuiltin.migrationNote":
     "所属やモデル固有のラベリングは facet 構文（#2065）へ移行してください。新しいアーキタイプが必要な場合は組み込みタグの追加要望を出してください。",
   "warning.tagNotApplicable.message": ({ nodeId, tag, nodeKind, appliesTo }) =>
@@ -393,13 +395,13 @@ export const ja: Partial<Translations> = {
   "warning.tagNotApplicable.applicabilityNote":
     "組み込みタグは適用範囲に挙げられた kind の上でのみ意味を持ちます。タグを外すか、適用範囲に含まれる kind のノードへ移してください。",
   "warning.annotationNotBuiltin.message": ({ nodeId, annotation }) =>
-    `${nodeId} の "@${annotation}" は組み込みアノテーションではありません — 非推奨です。構文 v2.0 はツール語彙のみを受理します（警告であり、パースは通ります）。`,
+    `${nodeId} の "@${annotation}" はツール語彙にないため効果がありません。ファイルのパースは通ります。`,
   "warning.annotationNotBuiltin.migrationNote":
     "所属やモデル固有のラベリングは facet 構文（#2065）へ移行してください。新しい lifecycle 状態が必要な場合は組み込みアノテーションの追加要望を出してください。",
   "warning.styleTagSelectorNotBuiltin.message": ({ tag, selector }) =>
-    `セレクタ "${selector}" が指す "[${tag}]" は組み込みタグではありません — 非推奨です。v1.x ではこのルールは引き続き適用されますが、構文 v2.0 はツール語彙のみに一致します。`,
+    `セレクタ "${selector}" が指す "[${tag}]" はツール語彙にないため、このルールはどの要素にも一致しません。`,
   "warning.styleAnnotationSelectorNotBuiltin.message": ({ annotation, selector }) =>
-    `セレクタ "${selector}" が指す "@${annotation}" は組み込みアノテーションではありません — 非推奨です。v1.x ではこのルールは引き続き適用されますが、構文 v2.0 はツール語彙のみに一致します。`,
+    `セレクタ "${selector}" が指す "@${annotation}" はツール語彙にないため、このルールはどの要素にも一致しません。`,
   "warning.styleSelectorNotBuiltin.migrationNote":
     '移行は 3 手順です: 関心事を宣言し（facet <id> { label "..." }）、対象要素に "facets <id>" を書き、セレクタを [facets=<id>] に書き換えます。specificity は同じなので、カスケードの他の部分は動きません。',
   "warning.facetNotDeclared.message": ({ subject, facetId }) =>
@@ -461,7 +463,9 @@ export const ja: Partial<Translations> = {
   "diagnostic.entityNotInDomain.message": ({ parentKind }) =>
     `"entity" は domain の子としてのみ有効です。"${parentKind}" の内側には配置できません`,
   "diagnostic.nodeNotInContext.message": ({ childKind, parentKind }) =>
-    `"${childKind}" は "${parentKind}" の子として定義されていません。描画はされますが意味は定義されていません`,
+    `"${childKind}" は "${parentKind}" の中に置けないため、モデルから除かれます`,
+  "diagnostic.annotationPossibleTypo.message": ({ annotation, suggestion }) =>
+    `"@${annotation}" は組み込みの "@${suggestion}" の綴り誤りとみなされ、適用されません。"@${suggestion}" と書いてください`,
   "diagnostic.legendNotTopLevel.message": ({ parentKind }) =>
     `legend ブロックはファイルのトップレベルにのみ書けます。"${parentKind}" の内側には配置できません`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>

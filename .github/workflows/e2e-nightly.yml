@@ -4,15 +4,34 @@ name: E2E (nightly)
 # - 21:00 UTC = 06:00 JST.
 # - On failure: open or update an Issue labelled `ci: nightly-e2e`.
 # - On success after a previous failure: close that Issue.
-# The PR-label-gated run lives in `e2e.yml` and is unaffected.
+# The PR run lives in `e2e.yml` (path filter, ADR-1729; Required check,
+# ADR-1866) and is unaffected.
+#
+# `workflow_dispatch` doubles as the measurement harness for the Playwright
+# `workers` setting (#3041): a run dispatched with a non-default `workers`
+# value exercises the suite under that parallelism without touching the
+# tracker Issue (see the `notify` job's `if:`).
 
 on:
   schedule:
     - cron: "0 21 * * *"
   workflow_dispatch:
+    inputs:
+      workers:
+        description: >-
+          Playwright worker count for this run. Leave at 1 for a plain re-run
+          (the tracker Issue follows the verdict); any other value is a
+          measurement run and leaves the tracker untouched (#3041).
+        required: false
+        default: 1
+        type: number
 
 concurrency:
-  group: e2e-nightly-${{ github.ref }}
+  # The cron keeps one slot per ref so a late run supersedes an earlier one.
+  # A dispatched run gets its own slot: with the shared key, dispatching the
+  # three measurement runs of #3041 back to back cancels the first two, and
+  # the 21:00 UTC cron cancels whichever measurement is still in flight.
+  group: e2e-nightly-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -64,6 +83,12 @@ jobs:
         # this step outcome, so a job cancelled during setup is not reported as
         # a test failure.
         timeout-minutes: 15
+        env:
+          # Read by `playwright.config.ts` in Node, so the dispatch input never
+          # reaches a shell line and the launch command stays identical to
+          # `e2e.yml` (TPL-2046's second half: one route, no drift). The cron
+          # has no inputs and falls back to the shipped value.
+          PLAYWRIGHT_WORKERS: ${{ inputs.workers || 1 }}
         run: pnpm --filter @karasu-tools/e2e test
 
       # Informative-only — surfaces tests that failed once then passed on
@@ -92,7 +117,19 @@ jobs:
   notify:
     name: Update tracking issue
     needs: e2e
-    if: ${{ always() }}
+    # The tracker is about main under the shipped configuration, so only a
+    # run on main with the default worker count may touch it: a measurement
+    # run (non-default `workers`) and a dispatch on a feature branch both say
+    # nothing about that. A plain dispatch on main still does, so a maintainer
+    # can re-run after a fix and close the tracker without waiting for the
+    # next cron. The empty input of a cron run normalises to the default.
+    if: ${{ always() && github.ref == 'refs/heads/main' && (inputs.workers || 1) == 1 }}
+    # Serialise tracker updates. Dispatched runs no longer share the suite's
+    # concurrency slot (see the top of the file), so two `notify` jobs could
+    # otherwise race `listForRepo` and open the tracker twice.
+    concurrency:
+      group: e2e-nightly-notify
+      cancel-in-progress: false
     # GitHub-hosted on purpose (ADR-1890): a single Issues API call, no build.
     runs-on: ubuntu-latest
     permissions:

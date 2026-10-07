@@ -172,8 +172,12 @@ flowchart TD
     ADR_2983["ADR-2983<br/>Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upst..."]
     ADR_2985["ADR-2985<br/>Dependabot security alert 2026-09-29（`undici` の..."]
     ADR_3000["ADR-3000<br/>karasu-nest を main への push で自動 deploy し、対象 path..."]
+    ADR_3002["ADR-3002<br/>Dependabot security alert 2026-09-30（5 つの overr..."]
     ADR_3011["ADR-3011<br/>正否が差分だけで決まる小さな PR は、人間の承認を得て skip-coderabbit ラベ..."]
     ADR_3020["ADR-3020<br/>karasu-nest を karasu-nest.kompiro.dev カスタムドメインだ..."]
+    ADR_3052["ADR-3052<br/>/engineering:code-review は draft PR を作る前に base ..."]
+    ADR_3069["ADR-3069<br/>Dependabot トリアージ 2026-10-05：mocha 12 を含む 8 件を採用..."]
+    ADR_3077["ADR-3077<br/>Dependabot security alert 2026-10-06（transitive..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -229,6 +233,7 @@ flowchart TD
     ADR_2522["ADR-2522<br/>語彙センサスが見つけた drift の閉鎖 — kebab-case 字句規則・読解確度の r..."]
     ADR_2585["ADR-2585<br/>ストアスコープの ER ビュー — FK は記録し、entity 関連は投影し、確認済みかどう..."]
     ADR_2597["ADR-2597<br/>チーム間の依存を `owns` × 論理エッジから導出する"]
+    ADR_2677["ADR-2677<br/>言語 v2.0 を実施する: tag / annotation 語彙を閉じ、facet と b..."]
     ADR_9002["ADR-9002<br/>ツール名「karasu」の採用"]
     ADR_9003["ADR-9003<br/>論理構造と物理構造の分離"]
   end
@@ -380,6 +385,7 @@ flowchart TD
     ADR_2803["ADR-2803<br/>shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通ス..."]
     ADR_2906["ADR-2906<br/>icon display mode は非推奨のまま据え置き、削除する major はまだ決めない"]
     ADR_2917["ADR-2917<br/>複数 system のルートビューは同名ノードを両方描き、要素の id は bare id の..."]
+    ADR_3022["ADR-3022<br/>edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は foc..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -571,6 +577,10 @@ flowchart TD
   ADR_2592 --> ADR_2578
   ADR_2611 --> ADR_2598
   ADR_2655 --> ADR_2578
+  ADR_2677 --> ADR_1314
+  ADR_2677 --> ADR_1820
+  ADR_2677 --> ADR_2065
+  ADR_2677 --> ADR_2124
   ADR_2782 --> ADR_2562
   ADR_2818 --> ADR_2714
   ADR_2917 --> ADR_1884
@@ -600,6 +610,7 @@ flowchart TD
   ADR_2716 -.supersedes.-> ADR_2640
   ADR_2807 -.supersedes.-> ADR_2805
   ADR_2906 -.supersedes.-> ADR_2376
+  ADR_3052 -.supersedes.-> ADR_2898
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -961,6 +972,7 @@ flowchart TD
   class ADR_2655 accepted
   class ADR_2658 accepted
   class ADR_2671 accepted
+  class ADR_2677 accepted
   class ADR_2687 accepted
   class ADR_2693 accepted
   class ADR_2714 accepted
@@ -983,7 +995,7 @@ flowchart TD
   class ADR_2839 accepted
   class ADR_2859 accepted
   class ADR_2877 accepted
-  class ADR_2898 accepted
+  class ADR_2898 superseded
   class ADR_2906 accepted
   class ADR_2917 accepted
   class ADR_2939 accepted
@@ -993,8 +1005,13 @@ flowchart TD
   class ADR_2985 accepted
   class ADR_2993 accepted
   class ADR_3000 accepted
+  class ADR_3002 accepted
   class ADR_3011 accepted
   class ADR_3020 accepted
+  class ADR_3022 accepted
+  class ADR_3052 accepted
+  class ADR_3069 accepted
+  class ADR_3077 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

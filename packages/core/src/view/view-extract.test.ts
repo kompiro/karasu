@@ -351,10 +351,12 @@ system ECPlatform {
       ]);
     });
 
-    it("drills into unassigned service with usecase child", () => {
+    it("drills into unassigned service with a domain child", () => {
       const krs = `
 service ECommerce {
-  usecase ManageOrders { label "注文管理" }
+  domain Orders {
+    usecase ManageOrders { label "注文管理" }
+  }
 }
 
 system ECPlatform {
@@ -370,13 +372,15 @@ system ECPlatform {
       );
       expect(view.containerNode?.id).toBe("ECommerce");
       expect(view.childNodes).toHaveLength(1);
-      expect(view.childNodes[0].id).toBe("ManageOrders");
+      expect(view.childNodes[0].id).toBe("Orders");
     });
 
     it("renders orphan services with no system as a container-less peer view", () => {
       const krs = `
 service ECommerce {
-  usecase ManageOrders { label "注文管理" }
+  domain Orders {
+    usecase ManageOrders { label "注文管理" }
+  }
 }
 domain Audit { label "監査" }
       `;
@@ -394,7 +398,9 @@ domain Audit { label "監査" }
     it("drills into orphan service when there is no system", () => {
       const krs = `
 service ECommerce {
-  usecase ManageOrders { label "注文管理" }
+  domain Orders {
+    usecase ManageOrders { label "注文管理" }
+  }
 }
       `;
       const result = Parser.parse(krs);
@@ -406,7 +412,7 @@ service ECommerce {
       );
       expect(view.containerNode?.id).toBe("ECommerce");
       expect(view.childNodes).toHaveLength(1);
-      expect(view.childNodes[0].id).toBe("ManageOrders");
+      expect(view.childNodes[0].id).toBe("Orders");
     });
 
     it("returns empty when no systems and no unassigned nodes exist", () => {
@@ -857,10 +863,13 @@ system EC {
       expect(slice.ghostEntities).toHaveLength(0);
     });
 
-    it("resolves a domain nested below a service→domain path (deep nesting)", () => {
+    it("resolves a domain nested below a service→domain path", () => {
+      // The former fixture nested a domain in a domain, which `.krs language
+      // v2.0` (#2677) rejects; the service→domain path the test names is the
+      // deepest legal placement of a domain.
       const systems = parseSystem(`
 system EC {
-  domain Sales {
+  service Sales {
     domain Ordering {
       entity Order {}
     }
@@ -2396,11 +2405,11 @@ system EC {
 describe("per-system-frame edge sets on the root view (#2756)", () => {
   const TWO_SYSTEMS = `
 system Alpha {
-  service Api { usecase U { resource Store.T } }
+  service Api { domain DA { usecase U { resource Store.T } } }
   database Store { table T }
 }
 system Beta {
-  service Svc { usecase V { resource BStore.T } }
+  service Svc { domain DB { usecase V { resource BStore.T } } }
   database BStore { table T }
 }
 `;

@@ -33,17 +33,18 @@
   "dependencies": {
     "chokidar": "^5.0.0",
     "commander": "^15.0.0",
-    "yaml": "^2.9.0"
+    "karasu-skills": "workspace:*",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@karasu-tools/core": "workspace:*",
     "@karasu-tools/i18n": "workspace:*",
     "@types/node": "^26.6.2",
-    "@vitest/coverage-v8": "^5.0.1",
+    "@vitest/coverage-v8": "^5.0.2",
     "esbuild": "^0.28.2",
     "svgo": "^4.1.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.2"
   },
   "engines": {
     "node": ">=22.12"

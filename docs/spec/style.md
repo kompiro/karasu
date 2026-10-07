@@ -2,7 +2,7 @@
 
 > **English** (this file) · [日本語](style.ja.md)
 
-> Language version: **`.krs language v1.0`** — `.krs` and `.krs.style` share one language version (frozen — [ADR-1314](../adr/1314-krs-spec-v1-freeze.md); independent from every package's npm version — [ADR-2124](../adr/2124-version-vocabulary.md)).
+> Language version: **`.krs language v2.0`**. `.krs` and `.krs.style` share one language version, independent from every package's npm version ([ADR-2124](../adr/2124-version-vocabulary.md)). In v2.0 a rule that targets a tag or annotation outside the tool vocabulary matches nothing ([below](#migrating-an-arbitrary-name-tag-or-annotation-selector)).
 
 ## Selector types
 
@@ -59,14 +59,12 @@ When scores are equal, the later declaration wins (same as CSS).
 
 ---
 
-## Facet selectors (`[facets=<id>]`) — experimental
+## Facet selectors (`[facets=<id>]`)
 
-> **Experimental notation (post-v1.0 watch).** `facet` is experimental, so this
-> selector is too — backward compatibility is not yet promised, and promotion is
-> gated on real-usage evidence ([ADR-1820](../adr/1820-notation-promotion-gate.md)).
+> **Core notation** from `.krs language v2.0`, like `facet` itself. It is the styling hook that arbitrary-name tag and annotation selectors used to provide.
 
 Style the elements belonging to a declared `facet` (see
-[syntax.md § Cross-cutting membership](syntax.md#cross-cutting-membership-facet--experimental)).
+[syntax.md § Cross-cutting membership](syntax.md#cross-cutting-membership-facet)).
 
 ```css
 [facets=pii] {
@@ -112,12 +110,14 @@ database[facets=pci_scope] {
 
 ### Migrating an arbitrary-name tag or annotation selector
 
-`.krs.style` has always matched arbitrary tag and annotation names, and until
-now that was the only way to style a cross-cutting concern. Facet selectors are
-the replacement, so those selectors are **deprecated in v1.x**
-(`style-tag-selector-not-builtin` / `style-annotation-selector-not-builtin`) and
-stop matching in syntax v2.0. They keep working meanwhile — dropping a rule
-silently would change how existing models look.
+Through language v1.x `.krs.style` matched arbitrary tag and annotation names,
+and that was the only way to style a cross-cutting concern. Facet selectors are
+the replacement. In `.krs language v2.0` a rule whose selector names a tag or
+annotation outside the tool vocabulary **matches nothing**, as a whole:
+`service[pci]` does not fall back to painting every service. Each such rule is
+warned as `style-tag-selector-not-builtin` / `style-annotation-selector-not-builtin`,
+which is the only sign the rule went dead, so a model that relied on it looks
+different until the rule is rewritten.
 
 **Before** — the name carries the concern, and nothing declares what it means:
 
@@ -275,6 +275,8 @@ border-style:     solid;         /* solid | dashed | dotted (edge alias of strok
 direction:        auto;          /* up | down | left | right | auto (hint, see below) */
 label-position:   middle;        /* start | middle | end | <0.0..1.0> */
 label-offset:     0 0;            /* <dy>px or <dx>px <dy>px (screen-axis) */
+label-max-chars:  48;             /* <n> | none (characters of the label drawn on the canvas) */
+label-display:    auto;           /* auto | always | hover */
 
 /* karasu-specific properties (not standard CSS) */
 shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
@@ -729,6 +731,74 @@ labels off the line, and the offset adds on top.
 > reason about. Switched to screen-axis CSS-shorthand semantics — see
 > [ADR-1184](../adr/1184-edge-label-position-offset.md).
 
+### `label-max-chars` — `<n> | none`
+
+How many characters of the label the canvas draws. Default `48`. A
+longer label is cut at a word boundary and ends with `…`. The count
+includes the ellipsis, so the drawn text never exceeds the budget.
+
+```css
+edge { label-max-chars: 24; }                   /* tighter, for a dense canvas */
+edge#criticalWrite { label-max-chars: none; }   /* always draw this one whole */
+```
+
+The authored label is not lost. A truncated edge carries it in full as
+`data-edge-label` and in a `<title>`, so a viewer can show all of it on
+hover, a static SVG opened in a browser included. The edge is marked
+`data-edge-label-withheld="truncated"`. An edge whose label fits is
+emitted exactly as it was before this property existed.
+
+Characters are counted as code points, not as rendered width. A value
+that is not a positive whole number is ignored, and the default stands.
+
+Machine-generated labels (the `W` / `R` markers on usecase → resource
+edges, the `N domain edges` count on an aggregated edge) are never
+truncated.
+
+### `label-display` — `auto | always | hover`
+
+Whether the canvas draws the label at all. Default `auto`.
+
+| Value | The canvas draws the label |
+| --- | --- |
+| `auto` | only where it can be seated clear of node cards, other labels and other edges' lines |
+| `always` | wherever it lands, even into a collision |
+| `hover` | never; the viewer shows it on hover |
+
+```css
+edge { label-display: always; }            /* every label, wherever it lands */
+edge[async] { label-display: hover; }      /* keep these quiet until hovered */
+```
+
+Under `auto`, the automatic placement (see `label-position` above) first
+tries to move the label to a clear position: one where it overlaps no
+card, no other label and no other edge's line. If no position within
+its reach is clear, the label is left off the canvas instead of being
+drawn there, and the labels placed after it may use the room. A canvas whose labels all find a clear
+position is identical under `auto` and `always`.
+
+A label left off the canvas stays reachable on the same surface. The
+edge carries the authored text as `data-edge-label` and in a `<title>`,
+and is marked `data-edge-label-withheld="deferred"`.
+
+Some labels are always drawn, whatever the value:
+
+- Under `auto`, a label the author positioned with `label-position` or
+  `label-offset`. The author's position wins, so it is drawn there even
+  into a collision.
+- A machine-generated label (`W` / `R`, `N domain edges`). It is not
+  authored text, so nothing could show it again on hover.
+- The label of an aggregated edge. It is what a reader clicks to open
+  the edge's breakdown.
+
+To get the behaviour from before these two properties existed:
+
+```css
+edge { label-max-chars: none; label-display: always; }
+```
+
+> Related TPLs: [TPL-3022](../test-perspectives/TPL-3022-withheld-content-stays-reachable.md) — authored content the canvas truncates or withholds stays reachable in full on the same surface. [TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md) — label collisions are measured numerically, and a canvas with nothing to withhold stays byte-stable.
+
 ---
 
 ## @import scope and conflicts
@@ -948,9 +1018,9 @@ Team frames (*Group by: team*) are addressed differently, because a team **is** 
 node and `#<id>` already reaches it — see
 [Team frames](#team-frames-group-by-team) below.
 
-`boundary` is experimental notation, so this selector carries the same
-no-compatibility-promise as the construct it styles
-([syntax.md](syntax.md#grouping-the-system-view-boundary--experimental)).
+The selector shares the compatibility tier of the construct it styles: `boundary`
+is core from `.krs language v2.0`
+([syntax.md](syntax.md#grouping-the-system-view-boundary)).
 
 > Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — a boundary's colour reaches the frame and the `◇` tab, which are drawn by different code; both read one resolver so a style override cannot repaint only half of it. [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — a bare `boundary` rule parsed and did nothing before this selector existed; it now has an effect. [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — the specificity rows above are generated from `reference-data.ts`, not written here.
 

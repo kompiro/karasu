@@ -283,9 +283,9 @@ PCI 対象」「この entity は PII」「この usecase はログイン必須�
 | view で peer を**どうまとめるか** | view 内グルーピング | `boundary` |
 | 外部定義の**どの集合に属するか** | 所属 | `facet`（top-level 宣言 + 要素側の `facets` プロパティ） |
 
-`facet` は [experimental](../spec/syntax.ja.md#横断的な所属facet-experimental) で、
-後方互換はまだ約束されない。所属は読み手が on にする overlay で見えるので、誰かが
-facet を選ぶまでファイルの描画は変わらない。
+`facet` は `.krs language v2.0` から [core の記法](../spec/syntax.ja.md#横断的な所属facet)である。
+所属は読み手が on にする overlay で見えるので、誰かが facet を選ぶまでファイルの描画は
+変わらない。
 
 **`.krs`** — スコープは `facet` に、ルールの内容は prose + `link` のまま:
 
@@ -314,9 +314,9 @@ system Shop {
 }
 ```
 
-**Why** — タグ / アノテーションの語彙はツール所有であり、非 builtin 名は v1.x で
-`tag-not-builtin` / `annotation-not-builtin` の deprecation warning を受け、構文
-v2.0 はツール語彙のみを受理する。所属は**意味論的にも**タグに合わない: database は
+**Why** — タグ / アノテーションの語彙はツール所有であり、`.krs language v2.0` は
+ツール語彙のみを受理する。非 builtin 名は `tag-not-builtin` / `annotation-not-builtin`
+の warning を受け、効果を持たない。所属は**意味論的にも**タグに合わない: database は
 PCI スコープに入っていようがいまいが database であり、対象 10 要素中 9 要素にしか
 `[pci]` が付いていない図は偽の監査保証として読まれる。ルールの**内容**（role・
 プラン・条件）は恒久的に prose + `link` のまま

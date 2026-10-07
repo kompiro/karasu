@@ -49,16 +49,20 @@ karasu translate --from openapi api.yaml --service ECommerce
 **Expected output** (stdout):
 ```krs
 service ECommerce {
-  usecase ManageOrders {
-    label "manage orders"
-    description """
-      Operations:
-      - GET /orders — List all orders
-      - POST /orders — Place a new order
-      - GET /orders/{id}
-      - DELETE /orders/{id}
-      - POST /orders/{id}/cancel — Cancel an order
-      """
+  domain ECommerceApi {
+    // TODO: provisional domain from `translate --from openapi`.
+    // Rename it, or split the usecases into the domains they belong to.
+    usecase ManageOrders {
+      label "manage orders"
+      description """
+        Operations:
+        - GET /orders — List all orders
+        - POST /orders — Place a new order
+        - GET /orders/{id}
+        - DELETE /orders/{id}
+        - POST /orders/{id}/cancel — Cancel an order
+        """
+    }
   }
 }
 ```
@@ -93,13 +97,17 @@ karasu translate --from openapi api.yaml --service ItemService
 **Expected output**:
 ```krs
 service ItemService {
-  usecase ManageItems {
-    label "manage items"
-    description """
-      Operations:
-      - GET /items
-      - POST /items
-      """
+  domain ItemServiceApi {
+    // TODO: provisional domain from `translate --from openapi`.
+    // Rename it, or split the usecases into the domains they belong to.
+    usecase ManageItems {
+      label "manage items"
+      description """
+        Operations:
+        - GET /items
+        - POST /items
+        """
+    }
   }
 }
 ```
@@ -129,12 +137,16 @@ karasu translate --from openapi api.yaml
 **Expected output**:
 ```krs
 service OrderService {
-  usecase ManageOrders {
-    label "manage orders"
-    description """
-      Operations:
-      - GET /orders
-      """
+  domain OrderServiceApi {
+    // TODO: provisional domain from `translate --from openapi`.
+    // Rename it, or split the usecases into the domains they belong to.
+    usecase ManageOrders {
+      label "manage orders"
+      description """
+        Operations:
+        - GET /orders
+        """
+    }
   }
 }
 ```
@@ -211,16 +223,13 @@ database OrderDb {
 
 ---
 
-### AT-0053-06: Generated krs with unclassified usecase shows warning in preview
+### AT-0053-06: Generated krs renders with its usecases in a provisional domain
 
 > ⏸ Manual — preview rendering and diagnostics panel are verified visually.
 
 **Setup**: Paste the output of AT-0053-01 into the karasu preview or a `.krs` file.
 
-**Expected**: The preview renders the `service` block with the grouped `usecase` node directly under it, and the diagnostics panel shows:
-```
-⚠ usecase "ManageOrders" is not assigned to any domain
-```
+**Expected**: The preview renders the `service` block, the provisional `ECommerceApi` domain inside it, and the grouped `usecase` inside the domain. The diagnostics panel shows **no error**: a usecase directly under a service is rejected from `.krs language v2.0` (`node-not-in-context`, #2924), so the translator scaffolds the provisional domain that the author renames or splits.
 
 ---
 
@@ -278,8 +287,12 @@ karasu translate --from openapi api.yaml --service ECommerce --granularity opera
 **Expected output**:
 ```krs
 service ECommerce {
-  usecase PlaceOrder { label "POST /orders" }
-  usecase CancelOrder { label "POST /orders/{id}/cancel" }
+  domain ECommerceApi {
+    // TODO: provisional domain from `translate --from openapi`.
+    // Rename it, or split the usecases into the domains they belong to.
+    usecase PlaceOrder { label "POST /orders" }
+    usecase CancelOrder { label "POST /orders/{id}/cancel" }
+  }
 }
 ```
 

@@ -2732,13 +2732,16 @@ system S {
   database OrderDB {
     table OrderTable {}
   }
-  usecase PlaceOrder {
-    resource OrderDB.OrderTable #placeOrderWrite { operations create, read }
+  domain Ordering {
+    usecase PlaceOrder {
+      resource OrderDB.OrderTable #placeOrderWrite { operations create, read }
+    }
   }
 }
       `);
       expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
-      const usecase = result.value.systems[0].children.find((c) => c.kind === "usecase");
+      const domain = result.value.systems[0].children.find((c) => c.kind === "domain");
+      const usecase = domain?.children.find((c) => c.kind === "usecase");
       if (!usecase) throw new Error("usecase not found");
       const resource = usecase.children[0];
       if (resource.kind !== "resource") throw new Error("resource kind mismatch");
@@ -3173,7 +3176,7 @@ system EC {
       expect(result.value.systems[0].children.map((c) => c.kind)).toEqual(["domain", "service"]);
     });
 
-    it("warns when a logical node is nested outside its parent's canContain", () => {
+    it("rejects a logical node nested outside its parent's canContain as an error", () => {
       const result = Parser.parse(`
 system EC {
   client Web {
@@ -3183,23 +3186,38 @@ system EC {
       `);
       const misplaced = result.diagnostics.filter((d) => d.code === "node-not-in-context");
       expect(misplaced).toHaveLength(1);
-      expect(misplaced[0]?.severity).toBe("warning");
+      // `.krs language v2.0` (#2677): containment is part of the language, so
+      // a misplaced node is an error rather than a warning.
+      expect(misplaced[0]?.severity).toBe("error");
       expect(misplaced[0]?.params).toEqual({ childKind: "usecase", parentKind: "client" });
-      // Warning only — nothing is escalated to an error (`.krs` v1.0 is frozen).
-      expect(result.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toEqual(misplaced);
     });
 
-    it("keeps a misplaced node in the tree so rendering is unchanged", () => {
+    it("rejects a misplaced node and keeps it (with its subtree) out of the tree", () => {
       const result = Parser.parse(`
 system EC {
   client Web {
-    usecase PlaceOrder {}
+    usecase PlaceOrder {
+      resource OrderDB.OrderTable
+    }
+  }
+  service OrderService {
+    domain Ordering {
+      usecase Checkout {}
+    }
   }
 }
       `);
       const client = result.value.systems[0].children[0];
       expect(client.kind).toBe("client");
-      expect(client.children.map((c) => c.id)).toEqual(["PlaceOrder"]);
+      expect(client.children).toEqual([]);
+      // Recovery is clean: the block after the misplaced node still parses.
+      const service = result.value.systems[0].children[1];
+      expect(service?.kind).toBe("service");
+      expect(service?.id).toBe("OrderService");
+      expect(service?.children.map((c) => c.id)).toEqual(["Ordering"]);
+      expect(service?.children[0]?.children.map((c) => c.id)).toEqual(["Checkout"]);
+      expect(result.diagnostics.map((d) => d.code)).toEqual(["node-not-in-context"]);
     });
 
     it("flags a usecase and entity sharing an id under one domain (duplicate-node-id-parent)", () => {

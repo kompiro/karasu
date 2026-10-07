@@ -746,6 +746,25 @@ export const REFERENCE_DATA = {
       },
     },
     {
+      name: "label-max-chars",
+      appliesTo: "edge",
+      valueType: "number",
+      description: {
+        en: "Characters of the label drawn on the canvas; a longer label is truncated and its full text stays readable on hover (a number, or none)",
+        ja: "canvas に描くラベルの文字数。超えた分は省略し、全文は hover で読める（数値、または none）",
+      },
+    },
+    {
+      name: "label-display",
+      appliesTo: "edge",
+      valueType: "keyword",
+      keywords: ["always", "auto", "hover"],
+      description: {
+        en: "Whether the canvas draws the label: auto (only where it fits without overlapping), always, or hover (never; read it on hover)",
+        ja: "canvas にラベルを描くかどうか。auto（重ならずに置けるときだけ）/ always / hover（描かず、hover で読む）",
+      },
+    },
+    {
       name: "badge-color",
       appliesTo: "node",
       valueType: "color",
@@ -870,7 +889,7 @@ export const REFERENCE_DATA = {
         en: "By reference, from the declaration: `contains <id>`, one member per line (1:N)",
         ja: "宣言側から参照で記述: `contains <id>` を 1 行 1 メンバー（1:N）",
       },
-      experimental: true,
+      experimental: false,
     },
     {
       construct: "facet",
@@ -883,7 +902,7 @@ export const REFERENCE_DATA = {
         en: "On the element: `facets <id>, <id>` — repeatable and merged (1:N). The declaration has no member list",
         ja: "要素側に記述: `facets <id>, <id>`（繰り返し可・マージされる。1:N）。宣言側にメンバーリストは無い",
       },
-      experimental: true,
+      experimental: false,
     },
   ],
   shapes: [
@@ -930,9 +949,9 @@ export const REFERENCE_DATA = {
  * `kind → the child kinds it may contain`, derived from the `canContain`
  * column above so the rule has exactly one definition (#2165).
  *
- * The parser reads this to emit `node-not-in-context` (a **warning** in v1.x —
- * `.krs language v1.0` is frozen by ADR-1314, so a nesting that parses today must keep
- * parsing; error-ification is registered to the Syntax 2.0 program, #2162).
+ * The parser reads this to emit `node-not-in-context`: an **error** from
+ * `.krs language v2.0` (#2924), which keeps the misplaced node out of the model.
+ * It was a warning through language v1.x (ADR-1314 froze that behaviour).
  * Because the parser is the enforcer, `canContain` stopped being a
  * documentation-only column and `reference-parser-sync.test.ts` can now fence
  * it in both directions.
@@ -1078,10 +1097,11 @@ import { Foo, Bar.Baz } from "p.krs"  // named import — pull specific ids
 import "p.krs"                        // whole-file import — merge everything
 import "dir/"                         // directory import — every .krs directly under dir/`,
     },
-    { heading: "Grouping & Membership", groupingTable: true, experimental: true },
+    // `boundary` and `facet` are core from language v2.0 (#2677, #2678), so no
+    // section is flagged; the flag stays available for future experimental notation.
+    { heading: "Grouping & Membership", groupingTable: true },
     {
       heading: "Grouping & Membership — Declaration",
-      experimental: true,
       code: `// boundary — a semantic cluster. Members are listed BY REFERENCE, so a
 // boundary can gather nodes declared anywhere (including imported files).
 // Drawn only under "Group by: boundary".

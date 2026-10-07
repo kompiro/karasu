@@ -130,6 +130,8 @@ CI ステップの成否判定に使えます。すぐ使える GitHub Actions �
 | `remove <node-id> <file>` | 指定 id のノードを `.krs` から in-place で削除 |
 | `diff <before> <after>` | 2 つの `.krs` リビジョン間の差分 SVG を描画（どちらの側も `-` で stdin 可） |
 | `capabilities` | この CLI が受け付けるコマンド・フラグと、廃止した名前を一覧（skill やスクリプトからは `--json`。[下記](#karasu-capabilities-この-cli-が受け付けるもの)） |
+| `skill install [name]` | karasu の agent skill（省略時はすべて）を `.claude/skills/` か `--dir <path>` にコピー。Claude Code の plugin を入れられないエージェント向け（[下記](#karasu-skill-agent-skill-を入れる)） |
+| `skill path [name]` | インストール済み CLI が skill を置いている場所を表示 |
 
 `translate` と Unix パイプの `apply` を組み合わせると、インフラ側の変更を既存の
 モデルに取り込めます。
@@ -173,7 +175,8 @@ CLI を呼ぶ skill やスクリプトは、版を決め打ちせずに、受け
 }
 ```
 
-（値は例です。）`schemaVersion` が変わるのは、フィールドの意味が変わるか無くなる
+（値は例です。）`skill` のように下にコマンドを持つコマンドは、それを同じ形で
+`subcommands` に並べます。`schemaVersion` が変わるのは、フィールドの意味が変わるか無くなる
 ときだけです。フィールドは版を上げずに増えることがあります。`--json` を付けない
 と、同じ内容をプレーンテキストで出力します。
 
@@ -192,6 +195,37 @@ karasu: deprecated: 'render --out' -> 'render --output' (since 0.8.0, removal 1.
 引き続き知ることができます。この行の形式は固定で翻訳しないので、エージェントは
 `^karasu: (deprecated|removed): '(.+)' -> '(.+)' \(since (\S+), removal (\S+)\)$`
 で照合できます。
+
+## `karasu skill`: agent skill を入れる
+
+CLI は karasu の agent skill（[`karasu-skills`](https://www.npmjs.com/package/karasu-skills)
+パッケージ）を同梱しているので、Claude Code に限らず、skill のディレクトリを読む
+エージェントならどれでも使えます:
+
+| Skill | 何をするか |
+| --- | --- |
+| `karasu-author` | 自分のシステムのモデルを、会話しながら 1 層ずつ作り・更新する。変更のたびに `karasu check` で検証する |
+| `reverse-architecture` | 既存のリポジトリをリバースエンジニアリングしてモデルにする |
+
+```bash
+# すべての skill を ./.claude/skills にコピー
+npx karasu skill install
+
+# 1 つの skill を、エージェントが skill を読むディレクトリにコピー
+npx karasu skill install karasu-author --dir .agents/skills
+```
+
+skill は `<dir>/<name>/` に `SKILL.md` と同梱の reference と一緒に入ります。
+インストール済みの skill は上書きしません。`--force` を付けると、この CLI が
+持つ版で置き換えます。コピーせずにエージェントに場所を教えたいときは
+`karasu skill path <name>` で場所を表示できます。
+
+Claude Code では代わりに plugin を入れてください。`/plugin` メニューから更新できます:
+
+```text
+/plugin marketplace add kompiro/karasu
+/plugin install karasu@karasu
+```
 
 ## 関連項目
 

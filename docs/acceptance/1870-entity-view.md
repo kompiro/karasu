@@ -50,7 +50,7 @@ system EC {
 - [ ] `buildAllViewsSvg` output contains a group `id="krs-entity-Ordering"`
 - [ ] It also contains `id="krs-entity-Customers"` (a domain owning only entities)
 - [ ] A domain with no entities produces **no** `#krs-entity-<domainId>` level
-- [ ] A domain nested below another domain still gets its entity view level
+- [ ] A domain placed directly under the system (no service) still gets its entity view level — the entity-view walk does not depend on nesting depth (changed in `.krs language v2.0` — #2677: domain-in-domain is now invalid, so the shallowest legal placement stands in for the former deep-nesting case)
 
 ### Entities and relations in the entity view
 

@@ -2,7 +2,7 @@
 
 > [English](syntax.md) · **日本語**（このファイル）
 
-> 言語バージョン: **`.krs language v1.0`**（言語 v1.0 — freeze 済み [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)。各パッケージの npm 版とは独立 — [ADR-2124](../adr/2124-version-vocabulary.md)）。ビルドが実装する言語版は `karasu --version` が表示する。
+> 言語バージョン: **`.krs language v2.0`**（言語 v2.0）。v1.0 の freeze（[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)）以降で最初の major で、tag / annotation の語彙を閉じ、`facet` と `boundary` を core に昇格し、v1.x では warning だった 2 つの書き方を拒否する（[#2677](https://github.com/kompiro/karasu/issues/2677)）。言語版は各パッケージの npm 版とは独立（[ADR-2124](../adr/2124-version-vocabulary.md)）。ビルドが実装する言語版は `karasu --version` が表示する。
 
 ## ファイル構造
 
@@ -46,7 +46,7 @@ karasu は**論理構造**と**物理構造**を明確に分離して表現す�
 
 #### `client` の form-factor タグ（認識されるもの）
 
-karasu のタグシステムは意図的にオープンで、任意のタグを受け付けつつスタイルがセレクタで反応する設計になっている。`client` に限っては、form factor 分類として **7 つの名前が認識される**。将来的に kind 固有のアイコン（Phase 2）やレイアウトヒントで反応する予定。リスト外のタグもパースは通り、通常のユーザー定義タグとして振る舞うが、karasu 内蔵の form-factor 扱いはトリガしない。
+`.krs language v2.0` からタグはツール所有である。組み込み表の外のタグはパースされるが効果を持たず、それを狙うセレクタは何にも一致しない（[tags-annotations.ja.md](./tags-annotations.ja.md#非-builtin-のタグ名は効果を持たない)）。`client` に限っては、form factor 分類として **7 つの名前が認識される**。Icon Mode はそれぞれを kind 固有のアイコンで描画する。レイアウトヒントは今後の追加である。それ以外の組み込みタグ（`[external]` など）は client 上でも本来の意味を持つが、form-factor 扱いはトリガしない。独自の所属やラベルは `facet` に書く。
 
 <!-- gen:reference:client-form-factor-tags — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | タグ | Form factor |
@@ -248,7 +248,7 @@ system Shop {
 | `team` | 責任を持つチーム。ネスト可 | `team`, `member`, `owns` |
 | `member` | チームに所属する個人 | — |
 
-関連するグルーピングのオーバーレイ **`boundary`**（experimental）は、system view 内に意味的クラスタを
+関連するグルーピングのオーバーレイ **`boundary`** は、system view 内に意味的クラスタを
 宣言し、team 所有と並ぶ第二の「Group by」軸として描画する。後述の「システムビューのグルーピング（`boundary`）」節を参照。
 
 ### 物理構造（どのように）— 別図で表現
@@ -494,22 +494,22 @@ post-v1.0 の拡張余地として意図的に残しており、ここではス�
 #### 入れ子の配置
 
 [論理構造](#論理構造何をなぜ)の表の **含められるもの** 列が、その kind が持てる
-子の唯一の定義である。それ以外の入れ子は `node-not-in-context` **warning** を
-発行する。ノードは保持され描画もされるが、その位置での意味は定義されていない。
-意味を持つのは表に載っている入れ子だけで、`docs/concepts.ja.md` が階層を
-`service → domain → usecase → resource` と定めている以上、`client` の直下に
-書かれた `usecase` には意味を与えようがない。
+子の唯一の定義である。意味を持つのは表に載っている入れ子だけで、
+`docs/concepts.ja.md` が階層を `service → domain → usecase → resource` と
+定めている以上、`service` や `client` の直下に書かれた `usecase` には意味を
+与えようがない。
 
-error ではなく warning なのは言語 v1.0 が freeze 済み
-（[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)）だからである — 今日パースが通る
-ファイルは通り続ける。error への格上げは言語 v2.0 に登録してある
-（[roadmap §Syntax 2.0](../roadmap.md#syntax-20-プログラム)）。tag / annotation の
-語彙が辿るのと同じ「言語 v1.x は warning、言語 v2.0 で error」の経路である。
+それ以外の入れ子は**拒否される**。[error](./diagnostics.ja.md#register-と-severity) になり、
+置き場所を誤ったノードは subtree ごとモデルから除かれる。ブロックは閉じ括弧まで
+読まれるので後続は通常どおりパースされ、除かれたノードへの参照は 2 つ目の error
+ではなく未解決参照（§S6）として報告される。言語 v1.x はこの一般の場合を
+`node-not-in-context` warning として報告しノードを保持していたが、
+`.krs language v2.0` で error にした（[#2924](https://github.com/kompiro/karasu/issues/2924)）。
+移行は、そのノードを含められる kind の下へ移す（`usecase` は `domain` の中へ）。
 
-次の 4 つは warning ではなく拒否され、該当ノードは捨てられる:
-
-| 拒否される入れ子 | 診断 | warning ではなく error である理由 |
+| 拒否される入れ子 | 診断 | 意味を持たない理由 |
 |---|---|---|
+| **含められるもの** に載っていない kind の下の論理ノード（例: `service` 直下の `usecase`） | `node-not-in-context` | 階層上、その位置での役割が無い |
 | `system` 外のインフラブロック | `infra-not-in-context` | 所属すべき system が無い |
 | `domain` 外の `entity` | `entity-not-in-domain` | entity はちょうど 1 つの domain に所有される |
 | canvas を描かない kind の中の `boundary` | `boundary-not-in-context` | 囲む対象の peer が存在しない |
@@ -1417,11 +1417,11 @@ label として読み取るが、プロパティ形式にするまでファイ�
 
 ---
 
-## システムビューのグルーピング（`boundary`）— experimental
+## システムビューのグルーピング（`boundary`）
 
-> **experimental notation（post-v1.0 watch）。** `boundary` は freeze せず experimental として保持する。
-> 後方互換は**まだ約束しない**。v1.0-stable への昇格は実利用証拠に基づく notation promotion gate
-> （[ADR-1820](../adr/1820-notation-promotion-gate.md)）で判断する。`docs/roadmap.md` § post-v1.0 horizon を参照。
+> **言語 v2.0 から core notation。** `boundary`（宣言・`contains`・スコープ宣言）は notation promotion gate
+> （[ADR-1820](../adr/1820-notation-promotion-gate.md)）を通過し、言語 v2.0 で core に昇格する
+> （[#2678](https://github.com/kompiro/karasu/issues/2678)）。以降この形は後方互換を約束し、破壊的変更は言語の major でのみ入る。
 
 `boundary` ブロックは system view のノードの**意味的クラスタ**を宣言する。論理構造の上に著者が引く
 グルーピングで、kind ティアとも team 所有とも独立している。system view の第二の**「Group by」軸**
@@ -1566,12 +1566,9 @@ label が無い場合は id にフォールバックする（#2133）。
 
 ---
 
-## 横断的な所属（`facet`）— experimental
+## 横断的な所属（`facet`）
 
-> **experimental な記法（post-v1.0 watch）。** `facet` は experimental として
-> 着地する — 後方互換はまだ約束されず、v1.0-stable への昇格は実利用の
-> エビデンスを条件とする（notation promotion gate、
-> [ADR-1820](../adr/1820-notation-promotion-gate.md)）。
+> `.krs language v2.0` から **core の記法**。後方互換を約束し、`facet` は語彙で唯一のユーザー拡張点である（[ADR-2065](../adr/2065-tags-and-facets.md)）。
 >
 > **所属は overlay で見る。表示するかは読み手が決める。** プレビューの *Facets*
 > セレクタで facet を選ぶと、所属要素に色付きのリングが付き、それ以外は減光し、
@@ -1584,7 +1581,7 @@ label が無い場合は id にフォールバックする（#2133）。
 > にも同じように描画される。
 >
 > overlay の隣に 2 つのサーフェスがある。シートは所属でスタイリングできる
-> （[`[facets=<id>]`](style.ja.md#ファセットセレクタfacetsid-experimental) —
+> （[`[facets=<id>]`](style.ja.md#ファセットセレクタfacetsid) —
 > 任意名タグセレクタの流用に代わるもの）。そして Facets メニュー下部の
 > **所属一覧**が「facet X に属する要素はどれか」を 1 画面で答える。この一覧は
 > **コンパイルのたびに `facets` プロパティから導出され、著述されない** — 所属を
@@ -1673,8 +1670,9 @@ system Shop {
   構成はサポートされる。
 - **タイポ検出は best-effort ではなく完全である。** 宣言集合が「正」を与えるため、
   著者定義の名前どうしの取り違え（`pii` に対する `facets pcl`）も、組み込み名の
-  綴り間違いと同じ確実さで検出される — 固定語彙としか比較できない near-miss の
-  `annotation-possible-typo` ヒントとは異なる。
+  綴り間違いと同じ確実さで検出される。固定語彙としか比較できない
+  `annotation-possible-typo`（error）とは異なる。未宣言の facet は
+  `facet-not-declared` warning のままである。
 - **既定の描画は変わらない。** 要素に `facets` を付けても図の描かれ方は一切変わらず、
   facet の効果はすべて opt-in である。
 

@@ -13,7 +13,7 @@ import { buildDocumentSymbols } from "./document-symbols.js";
 const KRS_SOURCE = `\
 system MySystem {
   service AuthService {
-    usecase Login {}
+    domain Auth { usecase Login {} }
   }
   domain Core {}
 }
@@ -76,8 +76,8 @@ describe("findNodeAtPosition", () => {
 
   it("returns innermost node for deeply nested usecase", () => {
     const file = parse(KRS_SOURCE);
-    // "    usecase Login {}" is line index 2 (0-based)
-    const result = findNodeAtPosition(file, { line: 2, character: 12 });
+    // "    domain Auth { usecase Login {} }" is line index 2 (0-based); column 27 is in "Login"
+    const result = findNodeAtPosition(file, { line: 2, character: 27 });
     expect(result).toBe("Login");
   });
 });

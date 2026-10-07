@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
-import { openViewTab } from "../fixtures/tabs.js";
+import { openViewTab, setTheme } from "../fixtures/tabs.js";
+import { luminance } from "../fixtures/color.js";
 
 /**
  * AT-1479 (app section): the rendered SVG diagram follows the app theme, on
@@ -68,16 +69,6 @@ const USER_STYLE = `service {
 `;
 const USER_COLOR = "rgb(255, 0, 170)";
 
-function luminance(rgb: string): number {
-  const m = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-  if (!m) return Number.NaN;
-  const [r, g, b] = [Number(m[1]), Number(m[2]), Number(m[3])].map((v) => {
-    const c = v / 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
 /** Luminance of the diagram canvas (the renderer's background rect). */
 function canvasLuminance(page: Page) {
   return async () => {
@@ -107,14 +98,6 @@ async function readNodeFill(page: Page, id: string): Promise<string> {
   return fill;
 }
 
-async function selectTheme(page: Page, theme: "light" | "dark"): Promise<void> {
-  await page.getByRole("tab", { name: /Settings/ }).click();
-  await page.locator("#settings-theme").selectOption(theme);
-  await expect
-    .poll(() => page.evaluate(() => document.documentElement.getAttribute("data-theme")))
-    .toBe(theme);
-}
-
 test.describe("AT-1479 SVG diagram theming (app)", () => {
   test("the diagram follows a theme switch and returns on switching back", async ({
     page,
@@ -131,13 +114,13 @@ test.describe("AT-1479 SVG diagram theming (app)", () => {
     await expect.poll(canvasLuminance(page)).toBeLessThan(0.2);
     const darkNode = await readNodeFill(page, "Api");
 
-    await selectTheme(page, "light");
+    await setTheme(page, "light");
     await page.getByRole("tab", { name: /System$/ }).click();
     await expect.poll(canvasLuminance(page)).toBeGreaterThan(0.5);
     // The node palette follows too, not just the backdrop.
     expect(await readNodeFill(page, "Api")).not.toBe(darkNode);
 
-    await selectTheme(page, "dark");
+    await setTheme(page, "dark");
     await page.getByRole("tab", { name: /System$/ }).click();
     await expect.poll(canvasLuminance(page)).toBeLessThan(0.2);
     await expect.poll(nodeFill(page, "Api")).toBe(darkNode);
@@ -151,7 +134,7 @@ test.describe("AT-1479 SVG diagram theming (app)", () => {
     await opfs.gotoApp();
     await expect(page.locator('.preview-container svg [data-node-id="Api"]')).toBeVisible();
 
-    await selectTheme(page, "light");
+    await setTheme(page, "light");
     await page.getByRole("tab", { name: /System$/ }).click();
     await expect.poll(canvasLuminance(page)).toBeGreaterThan(0.5);
 
@@ -213,7 +196,7 @@ test.describe("AT-1479 SVG diagram theming (app)", () => {
 
     // …and is not re-themed under light. The canvas *does* change, which is
     // what makes this a real invariance check rather than a no-op.
-    await selectTheme(page, "light");
+    await setTheme(page, "light");
     await page.getByRole("tab", { name: /System$/ }).click();
     await expect.poll(canvasLuminance(page)).toBeGreaterThan(0.5);
     await expect.poll(nodeFill(page, "Api")).toBe(USER_COLOR);

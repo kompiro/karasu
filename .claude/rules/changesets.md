@@ -59,13 +59,17 @@ dependent は版 bump するが、`devDependencies` は範囲更新のみで bum
 | `packages/core`（利用者向け） | **`@karasu-tools/core` と `karasu` の両方** | core → `karasu-vscode` に patch |
 | `packages/cli` 固有 | `karasu` | なし |
 | `packages/vscode` 固有 | `karasu-vscode` | なし |
-| `packages/skills`（skill 本文・reference） | `karasu-skills` | なし |
-| skill が前提にする CLI の挙動（コマンド・フラグ・出力・診断） | `karasu` **と** `karasu-skills`（skill 本文も同じ PR で直す） | なし |
+| `packages/skills`（skill 本文・reference） | `karasu-skills` | skills → `karasu` に patch |
+| skill が前提にする CLI の挙動（コマンド・フラグ・出力・診断） | `karasu` **と** `karasu-skills`（skill 本文も同じ PR で直す） | skills → `karasu` に patch |
 
 > core の変更を `"karasu"` だけに付けると、core を実 dependency に持つ
 > `karasu-vscode` が bump されず、拡張に core 変更が乗っても版が上がらない取り
 > こぼしになる。CLI は core を `devDependency`（esbuild バンドル）にしているため
 > `@karasu-tools/core` の bump が CLI に cascade せず、`karasu` の明示が別途要る。
+
+> CLI は `karasu-skills` を実 dependency に持つ（`karasu skill install` が同梱の skill を
+> コピーするため、#2912）。そのため skill だけの変更でも `karasu` が patch で一緒に出る。
+> 名指すのは `karasu-skills` だけでよい。
 
 > skill が前提にする CLI の挙動を変えたのに `karasu-skills` を名指さないと、CLI だけが
 > 公開され、利用者の手元の skill は古い手順のまま残る。skill は SKILL.md の Step 0 で

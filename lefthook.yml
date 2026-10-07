@@ -127,7 +127,7 @@ pre-push:
       # docs/ is what puts the copy out of date, and editing the copy directly
       # is the mistake the notice in the bundle's README warns against.
       # Fix with `pnpm run lint:skill-reference-bundle-sync --write`.
-      glob: "{docs/spec/**,docs/guide/notation-cookbook.md,packages/skills/skills/reverse-architecture/**,scripts/lint/skill-reference-bundle-sync.ts}"
+      glob: "{docs/spec/**,docs/guide/notation-cookbook.md,packages/skills/skills/**,scripts/lint/skill-reference-bundle-sync.ts}"
       run: pnpm run lint:skill-reference-bundle-sync
     builtin-icons-check:
       # packages/core/src/shapes/builtin-icons.generated.ts is generated from

@@ -18,7 +18,6 @@ assumptions:
   - "symbol: packages/core/src/parser/kebab-name.ts :: stitchKebabTail"
   - "file: docs/test-perspectives/TPL-2509-kebab-name-positions-share-one-lexical-rule.md"
   - "grep: docs/guide/02-onboarding.md :: facet unverified"
-  - "grep: docs/roadmap.md :: 警告カウントの実測"
 ---
 
 # ADR-2522: 語彙センサスが見つけた drift の閉鎖 — kebab-case 字句規則・読解確度の register・閉鎖前提条件の再スコープ

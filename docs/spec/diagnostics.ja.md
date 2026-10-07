@@ -29,7 +29,13 @@ karasu は問題を 2 つのレイヤーの語彙で報告する。
 
 診断は **severity** を持つ: `error` / `warning` / `info`。
 
-- `error` — モデルが不正で、該当構文は拒否される。
+- `error` — モデルを書かれたとおりには受理できない。言語が拒否する構文（parser が
+  該当構文をモデルから除く。例: `node-not-in-context`）か、import 先の欠落や id の
+  重複のようなプロジェクト単位の不備である。原因によらず、error が 1 件でも立って
+  いる間は**どの surface も新しい図を出さない**。app と VS Code の
+  プレビューは同じビューの直前の有効な図を出し続け、`karasu render` /
+  `karasu subtree` は何も書かずに exit 1、share・`serve`・nest の描画エンドポイントは
+  422 を返す。error を直すと描画が再開する。
 - `warning` — 著者が直すべき実際の欠陥（dangling な参照、スタイル衝突など）。
 - `info` — 欠陥ではなく **事実**。外部の流派が smell と呼びうる構造（共有
   database、領域分散など）を、誤りと断じずに surface する。これが *事実 vs 流派*
@@ -37,7 +43,10 @@ karasu は問題を 2 つのレイヤーの語彙で報告する。
 
 karasu は未解決参照に対し **warn-don't-error**（spec §S6）に従う。未解決の関係は
 落とすが、参照元の node は保存し、レンダー全体を失敗させずに warning として報告
-する。
+する。これは参照についての方針であり、構文の書き方を受理するかどうかは別の問題で
+ある。言語が拒否する書き方は `error` になる
+（[ADR-2208](../adr/2208-positional-label-error-promotion.md)、
+[ADR-2501](../adr/2501-errored-edge-declaration-renders-nowhere.md)）。
 
 ## ソース位置
 
@@ -93,7 +102,7 @@ karasu は未解決参照に対し **warn-don't-error**（spec §S6）に従う�
 | `infra-not-in-context` | error | infra ブロック（`database` / `queue` / `storage`）が `system` の直接の子でない。 |
 | `boundary-not-in-context` | error | 自身のキャンバスを持たない kind（`entity` / `resource` / `user` / `client` / infra leaf）の中に `boundary` ブロックが宣言されており、囲む対象が存在しない。 |
 | `entity-not-in-domain` | error | `entity` が `domain` の子以外の場所で宣言されている。 |
-| `node-not-in-context` | warning | 論理ノードが、その親の **含められるもの** 列に載っていない入れ子で宣言されている（例: `client` 内の `usecase`）。ノードは保持され描画もされるが、その位置での意味は定義されていない。言語 v2.0 で error 化予定（[roadmap §Syntax 2.0](../roadmap.md#syntax-20-プログラム)）。 |
+| `node-not-in-context` | error | 論理ノードが、その親の **含められるもの** 列に載っていない入れ子で宣言されている（例: `service` 直下の `usecase`）。ノードは subtree ごとモデルから除かれる。後続は通常どおりパースされ、そのノードへの参照は §S6 で報告される。言語 v1.x ではノードを保持する warning だったが、`.krs language v2.0` から error（[#2924](https://github.com/kompiro/karasu/issues/2924)）。 |
 | `legend-not-top-level` | error | `legend` ブロックがトップレベル以外で宣言されている。 |
 | `top-level-declaration` | error | `user` またはエッジが `system` ブロック内ではなくトップレベルで宣言されている。 |
 | `system-property-conflict` | warning | merge された import 間で `system` の `label` / `description` が衝突する。 |
@@ -185,7 +194,6 @@ resource への operation / CRUD decoration の文法。
 | --- | --- | --- |
 | `unassigned-service` | warning | service が team 割り当てなしにトップレベルに置かれる。 |
 | `unassigned-domain` | warning | domain がどの service にも割り当てられていない（トップレベル、または `system` 直下に置かれている）。2 つの配置は同じモデリング状態を表すため両方で発火する（[#2184](https://github.com/kompiro/karasu/issues/2184)）。`(Unassigned)` 擬似 system に包まれるのはトップレベル形のみ。 |
-| `unassigned-usecase` | warning | usecase が domain の親なしに service の直接の子になる。 |
 | `unassigned-client` | warning | client が team 割り当てなしにトップレベルに置かれる。 |
 | `unassigned-database` | warning | database が team 割り当てなしにトップレベルに置かれる。 |
 | `unassigned-queue` | warning | queue が team 割り当てなしにトップレベルに置かれる。 |
@@ -197,8 +205,8 @@ resource への operation / CRUD decoration の文法。
 
 ### annotation・lifecycle
 
-annotation パラメータ、削除・非推奨になったプロパティ、および非 builtin の
-tag / annotation 語彙の v1.x deprecation（構文 v2.0 はツール語彙のみを受理 —
+annotation パラメータ、削除・非推奨になったプロパティ、および閉じた tag /
+annotation 語彙（`.krs language v2.0` はツール語彙のみを受理する。
 [tags-annotations.ja.md](./tags-annotations.ja.md) 参照）。
 
 | Code | Severity | 発火条件 |
@@ -207,11 +215,11 @@ tag / annotation 語彙の v1.x deprecation（構文 v2.0 はツール語彙の�
 | `annotation-param-value-unreadable` | warning | 認識される annotation パラメータの値が、文字列リテラル 1 つでも裸の語 1 つでもない（`until: 2026-12-31`、`from: system`、`from: Shop.Legacy`）。何も記録しない。描画は止まらない。AST を出力すると値が消えるため、`karasu fmt` はファイルを書き換えない。 |
 | `annotation-param-conflict` | warning | 1 つの要素が同じ annotation パラメータに異なる 2 つの値を与えている（アノテーションを繰り返した場合も、1 つの中で繰り返した場合も）。最初の値を保ち、`karasu fmt` は最初の値を後の値に上書きして出力せず、ファイルを書き換えない。 |
 | `duplicate-annotation` | warning | 同じ annotation が 1 つの要素に複数回書かれている。2 回目以降は効果を持たない。 |
-| `annotation-possible-typo` | info | annotation 名が builtin の near-match（typo の示唆）。 |
-| `tag-not-builtin` | warning | tag 名がツール語彙（builtin + system-assigned tag）の外にある。v1.x で非推奨。抑制条件なし。 |
+| `annotation-possible-typo` | error | 非 builtin の annotation 名が builtin 名の綴り誤り（`@depracated`）である。4 文字以下の builtin なら 1 編集以内、それより長ければ 2 編集以内（隣接する 2 文字の入れ替えは 1 編集と数える）。annotation は適用されずモデルから除かれ、メッセージが builtin 名を示す。抑制条件なし。言語 v1.x では info のヒントだったが、`.krs language v2.0` から error になり、`annotation-not-builtin` とは排他になった。 |
+| `tag-not-builtin` | warning | tag 名がツール語彙（builtin + system-assigned tag）の外にある。パースは通るが効果を持たない（`.krs language v2.0` は tag の register をツール語彙に閉じる）。抑制条件なし。 |
 | `tag-not-applicable` | warning | 組み込み tag が適用範囲外の kind に書かれている（例: `service Api [index]` — `[index]` は `database` に適用）。その場所では効果を持たない。`tag-not-builtin` と同時には発火しない（builtin 外の名前には違反する適用範囲が無いため）。 |
-| `annotation-not-builtin` | warning | annotation 名が builtin 集合の外にある。v1.x で非推奨。抑制条件なし。 |
-| `style-tag-selector-not-builtin` | warning | `.krs.style` のセレクタがツール語彙の外の tag 名を狙っている（例 `[pci] { … }`）。v1.x で非推奨 — ルール自体は引き続き一致する。構文 v2.0 はツール語彙のみに一致する。facet セレクタ（`[facets=<id>]`）へ移行する。モデル側の `tag-not-builtin` とは独立にセレクタ単位で発火する（両者は別々の編集を指しており、片方だけ警告すると残った方が見つからない）。builtin テーマや注入された system sheet では発火しない。 |
+| `annotation-not-builtin` | warning | annotation 名が builtin 集合の外にあり、builtin 名の綴り誤りでもない（綴り誤りは `annotation-possible-typo`）。パースは通るが効果を持たない。抑制条件なし。 |
+| `style-tag-selector-not-builtin` | warning | `.krs.style` のセレクタがツール語彙の外の tag 名を狙っている（例 `[pci] { … }`）。そのルールは何にも一致しない（`.krs language v2.0`。v1.x までは適用されていた）。この warning がそれを知らせる唯一の手がかりである。facet セレクタ（`[facets=<id>]`）へ移行する。モデル側の `tag-not-builtin` とは独立にセレクタ単位で発火する（両者は別々の編集を指しており、片方だけ警告すると残った方が見つからない）。builtin テーマや注入された system sheet では発火しない。 |
 | `style-annotation-selector-not-builtin` | warning | `.krs.style` のセレクタが builtin 集合の外の annotation 名を狙っている（例 `@canary { … }`）。契約は `style-tag-selector-not-builtin` と同じ。 |
 | `team-property-removed` | error | 削除済みの `team` プロパティが使われる（[ADR-1564](../adr/1564-remove-team-property.md) 参照）。 |
 
