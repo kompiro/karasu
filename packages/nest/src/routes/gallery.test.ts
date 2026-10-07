@@ -1,10 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { handleRequest } from "../app.js";
+import { rasterizeOgPng } from "../gallery/og-rasterize.js";
+import { OG_EDGE_CACHE_SECONDS, ogImageUrl, type EdgeCacheLike } from "../gallery/og-image.js";
 import { renderSubmission } from "../gallery/render.js";
 import { VIEWER_TEMPLATE_PATH } from "../gallery/viewer-assets.js";
 import type { NestEnv, NestExecutionContext } from "../env.js";
 import { GalleryStore } from "../store/gallery-store.js";
-import { formatSubmissionId } from "../store/gallery-keys.js";
+import { formatSubmissionId, parseSubmissionId } from "../store/gallery-keys.js";
 import { MemoryKV } from "../testing/memory-kv.js";
 import { SESSION_COOKIE } from "../auth/session.js";
 
@@ -16,6 +18,16 @@ vi.mock("../gallery/render.js", async (importOriginal) => {
     renderSubmission: vi.fn<typeof actual.renderSubmission>(actual.renderSubmission),
   };
 });
+
+// vitest cannot load resvg's `.wasm`, so the rasterizer is the one piece of the
+// image route replaced here. `wrangler dev` is where the real one is checked
+// (`docs/acceptance/2995-nest-gallery-ogp.md`).
+const PNG = vi.hoisted(() => new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+vi.mock("../gallery/og-rasterize.js", () => ({
+  rasterizeOgPng: vi.fn<typeof import("../gallery/og-rasterize.js").rasterizeOgPng>(
+    async () => PNG,
+  ),
+}));
 
 // The shape of `packages/app/viewer.html` as built: a title, the two
 // placeholders the route fills, and the bundle. `viewer-html.test.ts` in the
@@ -155,7 +167,26 @@ describe("GET /g/<id>", () => {
       '<meta property="og:description" content="The storefront &amp; checkout.">',
     );
     expect(head).toContain(`<meta property="og:url" content="${ORIGIN}/g/${id}">`);
-    expect(head).toContain('<meta name="twitter:card" content="summary">');
+    // The image URL carries the version, so a replaced model is fetched anew.
+    const image = ogImageUrl(ORIGIN, id, created.updatedAt);
+    expect(image).toBe(`${ORIGIN}/g/${id}/og.png?v=${Date.parse(created.updatedAt)}`);
+    expect(head).toContain(`<meta property="og:image" content="${image}">`);
+    expect(head).toContain('<meta property="og:image:width" content="1200">');
+    expect(head).toContain('<meta property="og:image:height" content="630">');
+    expect(head).toContain('<meta name="twitter:card" content="summary_large_image">');
+  });
+
+  it("keeps the small card when the deploy does not know its own origin", async () => {
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    const response = await handleRequest(
+      new Request(`${ORIGIN}/g/${id}`),
+      { ...env(kv), NEST_PUBLIC_ORIGIN: undefined },
+      ctx,
+    );
+    const body = await response.text();
+    expect(body).not.toContain("og:image");
+    expect(body).toContain('<meta name="twitter:card" content="summary">');
   });
 
   it("falls back to whose model it is when the record has no description", async () => {
@@ -296,5 +327,228 @@ describe("GET /g/<id>", () => {
     expect((await get(kv, `/g/${id}`)).status).toBe(200);
     expect((await get(kv, "/kompiro/karasu")).status).toBe(404);
     expect((await get(kv, `/kompiro/${id}`)).status).toBe(404);
+  });
+});
+
+/** The Cache API, in memory: what was put, keyed by URL, and how often it was asked. */
+class MemoryCache implements EdgeCacheLike {
+  readonly entries = new Map<string, Response>();
+  matches = 0;
+  failPut = false;
+
+  async match(request: Request): Promise<Response | undefined> {
+    this.matches += 1;
+    return this.entries.get(request.url)?.clone();
+  }
+
+  async put(request: Request, response: Response): Promise<void> {
+    if (this.failPut) throw new Error("cache put failed");
+    this.entries.set(request.url, response.clone());
+  }
+}
+
+describe("GET /g/<id>/og.png (#2995)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.mocked(rasterizeOgPng).mockClear();
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * Request the image with `caches.default` stubbed, then wait for whatever
+   * the route parked on `waitUntil`, so the cache's contents are settled.
+   */
+  async function image(
+    kv: MemoryKV,
+    path: string,
+    { cookie, cache }: { cookie?: string; cache?: MemoryCache | null } = {},
+  ): Promise<Response> {
+    if (cache !== null) vi.stubGlobal("caches", { default: cache ?? new MemoryCache() });
+    const pending: Promise<unknown>[] = [];
+    const response = await handleRequest(
+      new Request(`${ORIGIN}${path}`, { headers: cookie === undefined ? {} : { Cookie: cookie } }),
+      env(kv),
+      { waitUntil: (promise) => pending.push(promise) },
+    );
+    await Promise.all(pending);
+    return response;
+  }
+
+  it("draws a public submission as a framed PNG, cacheable as briefly as its page", async () => {
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    const cache = new MemoryCache();
+    const response = await image(kv, `/g/${id}/og.png`, { cache });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("image/png");
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(response.headers.get("Cache-Control")).toBe("public, max-age=600");
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(PNG);
+    // The system view, letterboxed into the 1200×630 card frame.
+    const [svg] = vi.mocked(rasterizeOgPng).mock.calls[0];
+    expect(svg).toMatch(/^<svg xmlns="http:\/\/www.w3.org\/2000\/svg" width="1200" height="630"/);
+  });
+
+  it("keeps the drawn image in the edge cache for a day, without cookies or Vary", async () => {
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    const cache = new MemoryCache();
+    await image(kv, `/g/${id}/og.png`, { cache });
+    expect(cache.entries.size).toBe(1);
+    const [entry] = cache.entries.values();
+    expect(entry.headers.get("Cache-Control")).toBe(`public, max-age=${OG_EDGE_CACHE_SECONDS}`);
+    expect(entry.headers.get("Set-Cookie")).toBeNull();
+    expect(entry.headers.get("Vary")).toBeNull();
+  });
+
+  it("serves the second request from the cache without drawing again", async () => {
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    const cache = new MemoryCache();
+    await image(kv, `/g/${id}/og.png`, { cache });
+    const second = await image(kv, `/g/${id}/og.png`, { cache });
+    expect(second.status).toBe(200);
+    // Readers get the page's ten minutes, not the cache's day.
+    expect(second.headers.get("Cache-Control")).toBe("public, max-age=600");
+    expect(new Uint8Array(await second.arrayBuffer())).toEqual(PNG);
+    expect(rasterizeOgPng).toHaveBeenCalledTimes(1);
+  });
+
+  it("keys the cache on the stored record, so the request's query cannot force a redraw", async () => {
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    const cache = new MemoryCache();
+    await image(kv, `/g/${id}/og.png?v=1`, { cache });
+    await image(kv, `/g/${id}/og.png?v=2&bust=${Math.random()}`, { cache });
+    await image(kv, `/g/${id}/og.png`, { cache });
+    expect(rasterizeOgPng).toHaveBeenCalledTimes(1);
+    expect(cache.entries.size).toBe(1);
+  });
+
+  it("draws again once the submission is replaced", async () => {
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    const { accountId, slug } = parseSubmissionId(id);
+    const cache = new MemoryCache();
+    await image(kv, `/g/${id}/og.png`, { cache });
+    await new GalleryStore(kv).submissions.update(
+      accountId,
+      slug,
+      { krs: "system Shop {\n  service web\n}\n" },
+      new Date("2026-08-03T00:00:00Z"),
+    );
+    await image(kv, `/g/${id}/og.png`, { cache });
+    expect(rasterizeOgPng).toHaveBeenCalledTimes(2);
+    expect(cache.entries.size).toBe(2);
+  });
+
+  it("answers an unlisted, a missing and a malformed id with the same 404, even for the owner", async () => {
+    const kv = new MemoryKV();
+    const { id: unlisted, cookie } = await seed(kv, "unlisted");
+    const missing = formatSubmissionId(42, "0123456789ab");
+    const responses = [
+      await image(kv, `/g/${unlisted}/og.png`),
+      await image(kv, `/g/${unlisted}/og.png`, { cookie }),
+      await image(kv, `/g/${missing}/og.png`),
+      await image(kv, "/g/not-an-id/og.png"),
+    ];
+    const bodies = await Promise.all(responses.map((response) => response.text()));
+    for (const response of responses) {
+      expect(response.status).toBe(404);
+      expect(response.headers.get("Cache-Control")).toBe("no-store");
+    }
+    expect(new Set(bodies).size).toBe(1);
+    expect(rasterizeOgPng).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "the submission is deleted",
+      async (store: GalleryStore, ref: { accountId: string; slug: string }) => {
+        await store.submissions.delete(ref.accountId, ref.slug);
+      },
+    ],
+    [
+      "the submission is unlisted",
+      async (store: GalleryStore, ref: { accountId: string; slug: string }) => {
+        await store.submissions.update(ref.accountId, ref.slug, { visibility: "unlisted" }, at);
+      },
+    ],
+    [
+      "the account is deleted",
+      async (store: GalleryStore, ref: { accountId: string; slug: string }) => {
+        await store.purgeAccount(ref.accountId);
+      },
+    ],
+  ])("does not serve a cached image once %s", async (_, change) => {
+    // The deletion promise rests on this: the edge cache still holds the
+    // image, and the record read in front of it is what refuses to serve it.
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    const cache = new MemoryCache();
+    expect((await image(kv, `/g/${id}/og.png`, { cache })).status).toBe(200);
+    expect(cache.entries.size).toBe(1);
+    await change(new GalleryStore(kv), parseSubmissionId(id));
+    const after = await image(kv, `/g/${id}/og.png`, { cache });
+    expect(after.status).toBe(404);
+    expect(cache.matches).toBe(1);
+  });
+
+  it("never reads the session, so a signed-in browser's thumbnail costs no session write", async () => {
+    const kv = new MemoryKV();
+    const { id, cookie } = await seed(kv);
+    const authenticate = vi.spyOn(GalleryStore.prototype, "authenticate");
+    expect((await image(kv, `/g/${id}/og.png`, { cookie })).status).toBe(200);
+    expect(authenticate).not.toHaveBeenCalled();
+  });
+
+  it("writes nothing to KV", async () => {
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    const before = kv.puts.length;
+    await image(kv, `/g/${id}/og.png`);
+    expect(kv.puts.length).toBe(before);
+  });
+
+  it("answers 422 for a document that cannot be drawn, and caches nothing", async () => {
+    const kv = new MemoryKV();
+    const { id } = await seed(kv, "public", 42, "system Shop {\n  service\n");
+    const cache = new MemoryCache();
+    const response = await image(kv, `/g/${id}/og.png`, { cache });
+    expect(response.status).toBe(422);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(cache.entries.size).toBe(0);
+    expect(rasterizeOgPng).not.toHaveBeenCalled();
+  });
+
+  it("answers 500 when the rasterizer fails, caches nothing, and tries again next time", async () => {
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    const cache = new MemoryCache();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(rasterizeOgPng).mockRejectedValueOnce(new Error("font fetch failed"));
+    const failed = await image(kv, `/g/${id}/og.png`, { cache });
+    expect(failed.status).toBe(500);
+    expect(failed.headers.get("Cache-Control")).toBe("no-store");
+    expect(await failed.text()).not.toContain("font fetch failed");
+    expect(cache.entries.size).toBe(0);
+    expect((await image(kv, `/g/${id}/og.png`, { cache })).status).toBe(200);
+    expect(rasterizeOgPng).toHaveBeenCalledTimes(2);
+  });
+
+  it("still answers when the cache refuses the image", async () => {
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    const cache = new MemoryCache();
+    cache.failPut = true;
+    expect((await image(kv, `/g/${id}/og.png`, { cache })).status).toBe(200);
+  });
+
+  it("draws every time where the runtime has no Cache API", async () => {
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    expect((await image(kv, `/g/${id}/og.png`, { cache: null })).status).toBe(200);
+    expect((await image(kv, `/g/${id}/og.png`, { cache: null })).status).toBe(200);
+    expect(rasterizeOgPng).toHaveBeenCalledTimes(2);
   });
 });

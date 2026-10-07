@@ -11,9 +11,20 @@ describe("ogpMeta (#2995)", () => {
     expect(meta).toContain('<meta property="og:url" content="https://nest.example/g/42-abc">');
     expect(meta).toContain('<meta property="og:title" content="Shop">');
     expect(meta).toContain('<meta property="og:description" content="The storefront.">');
-    // No image until the stored preview lands, so not the large card.
+    // No image, so not the large card.
     expect(meta).toContain('<meta name="twitter:card" content="summary">');
     expect(meta).not.toContain("og:image");
+  });
+
+  it("switches to the large card when there is an image", () => {
+    const image = "https://nest.example/g/42-abc/og.png?v=1";
+    const meta = ogpMeta({ ...base, image });
+    expect(meta).toContain(`<meta property="og:image" content="${image}">`);
+    expect(meta).toContain('<meta property="og:image:type" content="image/png">');
+    expect(meta).toContain('<meta property="og:image:width" content="1200">');
+    expect(meta).toContain('<meta property="og:image:height" content="630">');
+    expect(meta).toContain(`<meta name="twitter:image" content="${image}">`);
+    expect(meta).toContain('<meta name="twitter:card" content="summary_large_image">');
   });
 
   it("escapes what strangers typed", () => {

@@ -331,6 +331,9 @@ importers:
       '@karasu-tools/core':
         specifier: workspace:*
         version: link:../core
+      '@resvg/resvg-wasm':
+        specifier: ^2.6.2
+        version: 2.6.2
     devDependencies:
       '@karasu-tools/app':
         specifier: workspace:*

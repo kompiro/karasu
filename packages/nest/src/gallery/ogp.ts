@@ -12,10 +12,11 @@
  * alone, and a card describing it would be a description of something its
  * author chose not to show.
  *
- * No image yet, so `twitter:card` is `summary`. The stored preview image is the
- * second half of #2995 and switches it to `summary_large_image`.
+ * With an image (`/g/<id>/og.png`, the second half of #2995) the card is
+ * `summary_large_image`; without one, `summary`.
  */
 import { escapeHtml } from "./html.js";
+import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH } from "./og-image.js";
 
 /** Keep `og:description` within what crawlers display. The same cap as the app's `/s` (ADR-1801). */
 export const OGP_DESCRIPTION_MAX = 200;
@@ -30,6 +31,8 @@ export interface SubmissionOgp {
   submitter: string;
   /** The page's own canonical URL. Strict crawlers (LinkedIn) want one. */
   url?: string;
+  /** The absolute URL of the card's image (`gallery/og-image.ts`). */
+  image?: string;
 }
 
 /**
@@ -54,6 +57,7 @@ export function ogpDescription(ogp: Pick<SubmissionOgp, "description" | "submitt
 export function ogpMeta(ogp: SubmissionOgp): string {
   const title = escapeHtml(ogp.title);
   const description = escapeHtml(ogpDescription(ogp));
+  const image = ogp.image === undefined ? undefined : escapeHtml(ogp.image);
   return [
     `<meta property="og:type" content="website">`,
     `<meta property="og:site_name" content="${SITE_NAME}">`,
@@ -61,7 +65,16 @@ export function ogpMeta(ogp: SubmissionOgp): string {
     `<meta property="og:title" content="${title}">`,
     `<meta property="og:description" content="${description}">`,
     `<meta name="description" content="${description}">`,
-    `<meta name="twitter:card" content="summary">`,
+    ...(image === undefined
+      ? []
+      : [
+          `<meta property="og:image" content="${image}">`,
+          `<meta property="og:image:type" content="image/png">`,
+          `<meta property="og:image:width" content="${OG_IMAGE_WIDTH}">`,
+          `<meta property="og:image:height" content="${OG_IMAGE_HEIGHT}">`,
+          `<meta name="twitter:image" content="${image}">`,
+        ]),
+    `<meta name="twitter:card" content="${image === undefined ? "summary" : "summary_large_image"}">`,
     `<meta name="twitter:title" content="${title}">`,
     `<meta name="twitter:description" content="${description}">`,
   ]

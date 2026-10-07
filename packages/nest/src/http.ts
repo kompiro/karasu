@@ -106,3 +106,17 @@ export function svg(body: string, options: ResponseOptions = {}): Response {
     headers: baseHeaders("image/svg+xml; charset=utf-8", options),
   });
 }
+
+/**
+ * A PNG response (#2995's OGP image). `no-store` by default, like everything
+ * else here. `nosniff` because the bytes are drawn from a stranger's document.
+ */
+export function png(body: Uint8Array<ArrayBuffer>, options: ResponseOptions = {}): Response {
+  return new Response(body, {
+    status: options.status ?? 200,
+    headers: baseHeaders("image/png", {
+      ...options,
+      headers: { ...options.headers, "X-Content-Type-Options": "nosniff" },
+    }),
+  });
+}

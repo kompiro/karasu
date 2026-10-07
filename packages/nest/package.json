@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p scripts"
   },
   "dependencies": {
-    "@karasu-tools/core": "workspace:*"
+    "@karasu-tools/core": "workspace:*",
+    "@resvg/resvg-wasm": "^2.6.2"
   },
   "devDependencies": {
     "@karasu-tools/app": "workspace:*",
