@@ -303,26 +303,28 @@ system Test {
   it("renders dotted edges with a distinct stroke-dasharray from dashed", () => {
     const dashedSvg = renderFromSource(
       `
+facet weak { label "Weak dependency" }
 system Test {
   service A
   service B
-  A -> B [link]
+  A -> B { facets weak }
 }
       `,
       `
-edge[link] { border-style: dashed; }
+edge[facets=weak] { border-style: dashed; }
       `,
     );
     const dottedSvg = renderFromSource(
       `
+facet weak { label "Weak dependency" }
 system Test {
   service A
   service B
-  A -> B [link]
+  A -> B { facets weak }
 }
       `,
       `
-edge[link] { border-style: dotted; }
+edge[facets=weak] { border-style: dotted; }
       `,
     );
     expect(dashedSvg).toContain('stroke-dasharray="8 4"');

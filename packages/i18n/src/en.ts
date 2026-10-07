@@ -163,6 +163,8 @@ export const en: Translations = {
   "nodeDetail.links.title": "🔗 Links",
   "nodeDetail.openDeployView": "🚀 View in Deploy diagram →",
   "nodeDetail.jumpToEditor": "↗ Jump to editor",
+  "vscodePreview.blockedByErrors": ({ count }) =>
+    `The model has ${count} error${count === 1 ? "" : "s"}. The preview draws again once ${count === 1 ? "it is" : "they are"} fixed (see the Problems panel).`,
   "nodeDetail.annotationDiff.title": "⇄ Annotation diff",
   "nodeDetail.resources.title": "📦 Storage resources",
   "nodeDetail.capabilities.title": "🔐 Capabilities",
@@ -324,8 +326,6 @@ export const en: Translations = {
     "Reaching into another domain's store is sometimes called a boundary smell (legitimate under a shared kernel or during migration)",
   "warning.unassignedDomain.message": ({ display }) =>
     `Domain "${display}" is not assigned to any service`,
-  "warning.unassignedUsecase.message": ({ usecaseId }) =>
-    `Usecase "${usecaseId}" is not assigned to any domain`,
   "warning.unassignedResource.message": ({ resourceId }) =>
     `resource "${resourceId}" is not assigned to any database or entity`,
   "warning.entityAnchorCollision.message": ({ id }) =>
@@ -389,12 +389,8 @@ export const en: Translations = {
     `service "${serviceId}" delivers target "${targetId}" is not a client node`,
   "warning.clientCapabilityDuplicate.message": ({ clientId, name }) =>
     `client "${clientId}" declares capability "${name}" more than once`,
-  "warning.annotationPossibleTypo.message": ({ nodeId, annotation, suggestion }) =>
-    `"@${annotation}" on ${nodeId} — did you mean "@${suggestion}"?`,
-  "warning.annotationPossibleTypo.openSetNote":
-    "This hint only fires for names close to a built-in. Any name still parses in v1.x, but non-builtin names are deprecated (see annotation-not-builtin).",
   "warning.tagNotBuiltin.message": ({ nodeId, tag }) =>
-    `"[${tag}]" on ${nodeId} is not a builtin tag — deprecated. Syntax v2.0 accepts tool vocabulary only (warned, files still parse).`,
+    `"[${tag}]" on ${nodeId} is not in the tool vocabulary, so it has no effect. The file still parses.`,
   "warning.tagNotBuiltin.migrationNote":
     "For membership or model-specific labeling, migrate to the facet construct (#2065). For a missing archetype, request a builtin tag addition instead.",
   "warning.tagNotApplicable.message": ({ nodeId, tag, nodeKind, appliesTo }) =>
@@ -402,13 +398,13 @@ export const en: Translations = {
   "warning.tagNotApplicable.applicabilityNote":
     "A builtin tag only carries meaning on the kinds listed in its applicability. Remove it, or move it to a node of an applicable kind.",
   "warning.annotationNotBuiltin.message": ({ nodeId, annotation }) =>
-    `"@${annotation}" on ${nodeId} is not a builtin annotation — deprecated. Syntax v2.0 accepts tool vocabulary only (warned, files still parse).`,
+    `"@${annotation}" on ${nodeId} is not in the tool vocabulary, so it has no effect. The file still parses.`,
   "warning.annotationNotBuiltin.migrationNote":
     "For membership or model-specific labeling, migrate to the facet construct (#2065). For a missing lifecycle state, request a builtin annotation addition instead.",
   "warning.styleTagSelectorNotBuiltin.message": ({ tag, selector }) =>
-    `The selector "${selector}" targets "[${tag}]", which is not a builtin tag — deprecated. The rule still applies in v1.x; syntax v2.0 matches tool vocabulary only.`,
+    `The selector "${selector}" targets "[${tag}]", which is not in the tool vocabulary, so the rule matches nothing.`,
   "warning.styleAnnotationSelectorNotBuiltin.message": ({ annotation, selector }) =>
-    `The selector "${selector}" targets "@${annotation}", which is not a builtin annotation — deprecated. The rule still applies in v1.x; syntax v2.0 matches tool vocabulary only.`,
+    `The selector "${selector}" targets "@${annotation}", which is not in the tool vocabulary, so the rule matches nothing.`,
   "warning.styleSelectorNotBuiltin.migrationNote":
     'Migrate in three steps: declare the concern — facet <id> { label "..." } — add "facets <id>" to the elements, then rewrite the selector as [facets=<id>]. Specificity is unchanged, so nothing else in the cascade moves.',
   "warning.facetNotDeclared.message": ({ subject, facetId }) =>
@@ -470,7 +466,9 @@ export const en: Translations = {
   "diagnostic.entityNotInDomain.message": ({ parentKind }) =>
     `"entity" is only valid as a child of domain, not inside "${parentKind}"`,
   "diagnostic.nodeNotInContext.message": ({ childKind, parentKind }) =>
-    `"${childKind}" is not a defined child of "${parentKind}"; it is drawn but carries no defined meaning there`,
+    `"${childKind}" cannot be placed inside "${parentKind}", so it is left out of the model`,
+  "diagnostic.annotationPossibleTypo.message": ({ annotation, suggestion }) =>
+    `"@${annotation}" is a misspelling of the builtin "@${suggestion}", so it is not applied. Write "@${suggestion}"`,
   "diagnostic.legendNotTopLevel.message": ({ parentKind }) =>
     `legend blocks are only allowed at the top level of a file, not inside "${parentKind}"`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>

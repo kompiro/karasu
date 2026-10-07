@@ -72,20 +72,19 @@ describe("computeDiagnostics — resolver warnings (.krs)", () => {
     expect(computeDiagnostics(src, false)).toHaveLength(0);
   });
 
-  it("surfaces annotation-possible-typo without stylesheet suppression (sheetless context)", () => {
-    // TPL-1522: the LSP runs analyze() with no sheets, so the
-    // style-*suppressed* hint fires here even when the user's .krs.style
-    // defines a selector for the name (the app, which has the sheets,
-    // would stay silent). This test pins the accepted asymmetry (#1522).
+  it("surfaces annotation-possible-typo as an error", () => {
+    // `.krs language v2.0` rejects a near-miss of a builtin annotation (#2677).
+    // It is a parser diagnostic with no stylesheet suppression, so the LSP and
+    // the app (which has the sheets) agree on it: the #1522 asymmetry is gone.
     const src = `system S {
   service Legacy @depracated {}
 }`;
     const diagnostics = computeDiagnostics(src, false);
 
-    const hint = diagnostics.find((d) => messageOf(d).includes("@depracated"));
-    expect(hint).toBeDefined();
-    expect(messageOf(hint!)).toContain("@deprecated");
-    expect(hint!.severity).toBe(DiagnosticSeverity.Information);
+    const typo = diagnostics.filter((d) => messageOf(d).includes("@depracated"));
+    expect(typo).toHaveLength(1);
+    expect(messageOf(typo[0])).toContain("@deprecated");
+    expect(typo[0].severity).toBe(DiagnosticSeverity.Error);
   });
 
   it("surfaces edge-endpoint-not-at-scope when the endpoint resolves in this document", () => {

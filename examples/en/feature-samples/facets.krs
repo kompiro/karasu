@@ -1,5 +1,5 @@
 // Cross-cutting membership with `facet`, and the overlay that shows it
-// (Issue #2174 — experimental).
+// (Issue #2174; core notation from `.krs language v2.0`).
 //
 // A `facet` is a set defined OUTSIDE the architecture — a regulation, a policy,
 // an audit scope. A tag says what an element *is*; a facet says what

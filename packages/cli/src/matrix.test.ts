@@ -163,9 +163,11 @@ database OrderDB {
 }
 
 service OrderDBService {
-  usecase ManageOrders {
-    resource OrderDB.OrdersTable {
-      operations select:read, insert:create, update, delete
+  domain OrderDBData {
+    usecase ManageOrders {
+      resource OrderDB.OrdersTable {
+        operations select:read, insert:create, update, delete
+      }
     }
   }
 }

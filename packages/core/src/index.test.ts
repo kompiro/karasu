@@ -736,8 +736,8 @@ system S {
   service Backend {
     domain Order {
       label "Order"
-      domain Inner1 { label "Inner1" }
-      domain Inner2 { label "Inner2" }
+      usecase Inner1 { label "Inner1" }
+      usecase Inner2 { label "Inner2" }
       Inner1 -> Inner2 "forward"
       Inner2 -> Inner1 "reply"
     }

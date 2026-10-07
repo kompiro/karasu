@@ -645,7 +645,6 @@ system Shop {
       entity OrderEntity {
         table ShopDB.orders
       }
-      resource DirectRes
     }
     domain ShippingDomain {}
   }
@@ -674,7 +673,6 @@ boundary fence_storage { contains Files }
 boundary fence_nested_domain { contains OrderDomain }
 boundary fence_usecase { contains PlaceOrder }
 boundary fence_entity { contains OrderEntity }
-boundary fence_resource_domain { contains DirectRes }
 boundary fence_resource_usecase { contains OrderRes }
 boundary fence_table { contains orders }
 boundary fence_queue_item { contains emailJob }
@@ -712,12 +710,9 @@ describe("every containable kind renders (framed) at some groupable level — th
       fence: "fence_usecase",
       viewPath: ["Shop", "Orders", "OrderDomain"],
     },
-    {
-      kind: "resource (domain child)",
-      memberId: "DirectRes",
-      fence: "fence_resource_domain",
-      viewPath: ["Shop", "Orders", "OrderDomain"],
-    },
+    // No "resource (domain child)" case: `.krs language v2.0` (#2677) limits
+    // a domain to usecase / entity children, so a resource is only ever a
+    // usecase child (the case below).
     {
       kind: "resource (usecase child)",
       memberId: "OrderRes",

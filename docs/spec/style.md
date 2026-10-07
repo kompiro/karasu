@@ -2,7 +2,7 @@
 
 > **English** (this file) · [日本語](style.ja.md)
 
-> Language version: **`.krs language v1.0`** — `.krs` and `.krs.style` share one language version (frozen — [ADR-1314](../adr/1314-krs-spec-v1-freeze.md); independent from every package's npm version — [ADR-2124](../adr/2124-version-vocabulary.md)).
+> Language version: **`.krs language v2.0`**. `.krs` and `.krs.style` share one language version, independent from every package's npm version ([ADR-2124](../adr/2124-version-vocabulary.md)). In v2.0 a rule that targets a tag or annotation outside the tool vocabulary matches nothing ([below](#migrating-an-arbitrary-name-tag-or-annotation-selector)).
 
 ## Selector types
 
@@ -59,14 +59,12 @@ When scores are equal, the later declaration wins (same as CSS).
 
 ---
 
-## Facet selectors (`[facets=<id>]`) — experimental
+## Facet selectors (`[facets=<id>]`)
 
-> **Experimental notation (post-v1.0 watch).** `facet` is experimental, so this
-> selector is too — backward compatibility is not yet promised, and promotion is
-> gated on real-usage evidence ([ADR-1820](../adr/1820-notation-promotion-gate.md)).
+> **Core notation** from `.krs language v2.0`, like `facet` itself. It is the styling hook that arbitrary-name tag and annotation selectors used to provide.
 
 Style the elements belonging to a declared `facet` (see
-[syntax.md § Cross-cutting membership](syntax.md#cross-cutting-membership-facet--experimental)).
+[syntax.md § Cross-cutting membership](syntax.md#cross-cutting-membership-facet)).
 
 ```css
 [facets=pii] {
@@ -112,12 +110,14 @@ database[facets=pci_scope] {
 
 ### Migrating an arbitrary-name tag or annotation selector
 
-`.krs.style` has always matched arbitrary tag and annotation names, and until
-now that was the only way to style a cross-cutting concern. Facet selectors are
-the replacement, so those selectors are **deprecated in v1.x**
-(`style-tag-selector-not-builtin` / `style-annotation-selector-not-builtin`) and
-stop matching in syntax v2.0. They keep working meanwhile — dropping a rule
-silently would change how existing models look.
+Through language v1.x `.krs.style` matched arbitrary tag and annotation names,
+and that was the only way to style a cross-cutting concern. Facet selectors are
+the replacement. In `.krs language v2.0` a rule whose selector names a tag or
+annotation outside the tool vocabulary **matches nothing**, as a whole:
+`service[pci]` does not fall back to painting every service. Each such rule is
+warned as `style-tag-selector-not-builtin` / `style-annotation-selector-not-builtin`,
+which is the only sign the rule went dead, so a model that relied on it looks
+different until the rule is rewritten.
 
 **Before** — the name carries the concern, and nothing declares what it means:
 
@@ -1018,9 +1018,9 @@ Team frames (*Group by: team*) are addressed differently, because a team **is** 
 node and `#<id>` already reaches it — see
 [Team frames](#team-frames-group-by-team) below.
 
-`boundary` is experimental notation, so this selector carries the same
-no-compatibility-promise as the construct it styles
-([syntax.md](syntax.md#grouping-the-system-view-boundary--experimental)).
+The selector shares the compatibility tier of the construct it styles: `boundary`
+is core from `.krs language v2.0`
+([syntax.md](syntax.md#grouping-the-system-view-boundary)).
 
 > Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — a boundary's colour reaches the frame and the `◇` tab, which are drawn by different code; both read one resolver so a style override cannot repaint only half of it. [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — a bare `boundary` rule parsed and did nothing before this selector existed; it now has an effect. [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — the specificity rows above are generated from `reference-data.ts`, not written here.
 

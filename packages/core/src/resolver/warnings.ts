@@ -27,13 +27,17 @@ import {
 } from "./edge-endpoint.js";
 import { buildEntityResolver } from "./resource-entity.js";
 import { REFERENCE_DATA, LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
+import {
+  TOOL_ANNOTATIONS,
+  TOOL_TAGS,
+  selectorUsesToolVocabularyOnly,
+} from "../builtins/tool-vocabulary.js";
 import { formatSelector } from "../style/serialize.js";
 
 export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 1): Warning[] {
   const warnings: Warning[] = [];
-  // Built once per pass: detectAnnotationPossibleTypos and
-  // detectUnresolvedLegendRefs both consume the same selector index, and
-  // analyze() runs per keystroke (app) / per document change (LSP).
+  // Built once per pass: analyze() runs per keystroke (app) / per document
+  // change (LSP).
   const stylesIndex = indexStyleSelectors(sheets);
   // One scope walk shared by the two endpoint detectors, lazy for the same
   // reason `declaredNodePathsOnce` is: a file with no dotted target and no
@@ -52,7 +56,6 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectUnassignedDatabases(file));
   warnings.push(...detectUnassignedQueues(file));
   warnings.push(...detectUnassignedStorages(file));
-  warnings.push(...detectUnassignedUsecases(file));
   warnings.push(...detectUnassignedResources(file));
   warnings.push(...detectEntityAnchorCollisions(file));
   warnings.push(...detectStyleConflicts(sheets, systemSheetCount));
@@ -65,7 +68,6 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectCyclicDependencies(file));
   warnings.push(...detectDeliversTargetNotClient(file));
   warnings.push(...detectDuplicateClientCapabilities(file));
-  warnings.push(...detectAnnotationPossibleTypos(file, stylesIndex));
   warnings.push(...detectTagsNotBuiltin(file));
   warnings.push(...detectTagsNotApplicable(file));
   warnings.push(...detectAnnotationsNotBuiltin(file));
@@ -127,6 +129,10 @@ function indexStyleSelectors(sheets: StyleSheet[]): StyleSelectorIndex {
   for (const sheet of sheets) {
     for (const rule of sheet.rules) {
       const sel: StyleSelector = rule.selector;
+      // A rule outside the tool vocabulary matches nothing (#2677), so it cannot
+      // be what a legend ref resolves to: the swatch side drops it in
+      // `flattenSheetsInCascadeOrder`, and the two must agree.
+      if (!selectorUsesToolVocabularyOnly(sel)) continue;
       if (sel.id) ids.add(sel.id);
       if (sel.nodeType) nodeTypes.add(sel.nodeType);
       for (const a of sel.annotations) annotations.add(a);
@@ -224,80 +230,7 @@ function detectDuplicateClientCapabilities(file: KrsFile): Warning[] {
   return warnings;
 }
 
-/**
- * Any annotation identifier still parses in v1.x (docs/spec/tags-annotations.md
- * § Non-builtin annotation names are deprecated (v1.x)). This hint surfaces a
- * *near-miss* of a built-in name — `@depracated` silently losing its badge is
- * the failure mode it exists for (#1499). Fires as `info`, never `warning`.
- *
- * A name that appears in any stylesheet annotation selector is treated as
- * intentionally user-defined and is never hinted, even when it sits close
- * to a built-in. The unconditional v1.x deprecation of non-builtin names is
- * `detectAnnotationsNotBuiltin` (#2159); both coexist during v1.x and are
- * consolidated in v2.0.
- */
-function detectAnnotationPossibleTypos(file: KrsFile, stylesIndex: StyleSelectorIndex): Warning[] {
-  const builtins = REFERENCE_DATA.annotations.map((a) => a.name);
-  const styledAnnotations = stylesIndex.annotations;
-  const warnings: Warning[] = [];
-
-  const checkAnnotations = (annotations: string[], nodeId: string, loc: KrsNode["loc"]): void => {
-    for (const annotation of annotations) {
-      if (builtins.includes(annotation) || styledAnnotations.has(annotation)) continue;
-      const suggestion = closestBuiltinAnnotation(annotation, builtins);
-      if (suggestion !== undefined) {
-        warnings.push({
-          kind: "annotation-possible-typo",
-          params: { nodeId, annotation, suggestion },
-          loc,
-        });
-      }
-    }
-  };
-  const visit = (node: KrsNode): void => {
-    checkAnnotations(node.annotations, node.id, node.loc);
-    for (const child of node.children) visit(child);
-  };
-  // `team` blocks accept the same annotation grammar (added by #1605, after
-  // this hint) — walk them too so a near-miss on a team gets the same
-  // suggestion it would get on a node, keeping parity with
-  // `detectAnnotationsNotBuiltin` (spec: both diagnostics coexist in v1.x).
-  const visitTeam = (team: TeamNode): void => {
-    checkAnnotations(team.annotations, team.id, team.loc);
-    for (const child of team.children) {
-      if (child.kind === "team") visitTeam(child);
-    }
-  };
-
-  for (const system of file.systems) visit(system);
-  for (const client of file.clients) visit(client);
-  for (const service of file.services) visit(service);
-  for (const domain of file.domains) visit(domain);
-  for (const database of file.databases) visit(database);
-  for (const queue of file.queues) visit(queue);
-  for (const storage of file.storages) visit(storage);
-  for (const organization of file.organizations) {
-    for (const team of organization.teams) visitTeam(team);
-  }
-  return warnings;
-}
-
-/**
- * Tags outside the tool vocabulary that are still legitimate in authored
- * source: the system-assigned tags of docs/spec/tags-annotations.md
- * § System-assigned tags. Most are synthesized after parsing and never
- * appear in `.krs` files, but `[inferred]` is stamped *into* the emitted
- * source by `translate --from db` and persists until curated away —
- * warning on these would flag the tool's own vocabulary as foreign.
- */
-export const SYSTEM_ASSIGNED_TAGS = [
-  "implicit",
-  "cyclic",
-  "read",
-  "write",
-  "inferred",
-  "projected",
-];
+export { SYSTEM_ASSIGNED_TAGS } from "../builtins/tool-vocabulary.js";
 
 /**
  * A builtin tag written on a node kind outside its declared `appliesTo`
@@ -312,7 +245,7 @@ export const SYSTEM_ASSIGNED_TAGS = [
  * Only builtin names are checked: a non-builtin name has no `appliesTo` to
  * violate and already draws `tag-not-builtin`, so warning twice on one tag
  * would say the same thing in two registers. System-assigned tags
- * ({@link SYSTEM_ASSIGNED_TAGS}) are absent from `REFERENCE_DATA.tags` and so
+ * (`SYSTEM_ASSIGNED_TAGS`) are absent from `REFERENCE_DATA.tags` and so
  * are skipped by the same lookup rather than by a second exclusion list.
  *
  * The shape tags inferred from infra sub-kinds (`table` / `queue-item` /
@@ -359,21 +292,15 @@ function detectTagsNotApplicable(file: KrsFile): Warning[] {
 }
 
 /**
- * v1.x deprecation for tag names outside the tool vocabulary
- * (ADR-2065 Part A, #2159). The name is still accepted
- * unchanged — ADR-1314 freezes bare-tag acceptance for v1.x — but syntax
- * v2.0 keeps only tool-owned tags, so every non-builtin use is warned now.
- * Unlike `annotation-possible-typo` there is deliberately **no suppression
- * condition**: a style selector or legend ref proves the name is intentional,
- * but intent does not change the v2.0 outcome, so the deprecation is
- * announced unconditionally. Resolves the TPL-1503 fourth state
- * (accepted, inert, undocumented) into state (2): warned as unknown.
+ * Tag names outside the tool vocabulary. `.krs language v2.0` closes the tag
+ * register (ADR-2065 decision 4, #2677): the name still parses, so existing
+ * files keep compiling, but it has no effect and is warned about. There is
+ * deliberately **no suppression condition**: a style selector or legend ref
+ * proves the name is intentional, but intent does not change the outcome.
+ * This is TPL-1503 state (2): warned as unknown.
  */
 function detectTagsNotBuiltin(file: KrsFile): Warning[] {
-  const allowed = new Set<string>([
-    ...REFERENCE_DATA.tags.map((t) => t.name),
-    ...SYSTEM_ASSIGNED_TAGS,
-  ]);
+  const allowed = TOOL_TAGS;
   const warnings: Warning[] = [];
 
   const checkTags = (tags: string[], nodeId: string, loc: KrsNode["loc"]): void => {
@@ -402,15 +329,15 @@ function detectTagsNotBuiltin(file: KrsFile): Warning[] {
 }
 
 /**
- * v1.x deprecation for annotation names outside the builtin lifecycle
- * vocabulary — same contract as `detectTagsNotBuiltin` (accepted in v1.x,
- * tool vocabulary only in v2.0, no suppression condition). Subsumes the
- * near-miss case of `annotation-possible-typo`; both diagnostics coexist
- * during v1.x and are consolidated in v2.0. Also covers `team` blocks,
- * which accept the same annotation grammar (spec § Team annotations).
+ * Annotation names outside the builtin lifecycle vocabulary: the same contract
+ * as `detectTagsNotBuiltin` (parses, no effect, warned, no suppression).
+ * A near-miss of a builtin name never reaches this walk: the parser rejects it
+ * as `annotation-possible-typo` (an error) and keeps it out of the model. Also
+ * covers `team` blocks, which accept the same annotation grammar
+ * (spec § Team annotations).
  */
 function detectAnnotationsNotBuiltin(file: KrsFile): Warning[] {
-  const builtins = new Set<string>(REFERENCE_DATA.annotations.map((a) => a.name));
+  const builtins = TOOL_ANNOTATIONS;
   const warnings: Warning[] = [];
 
   const checkAnnotations = (annotations: string[], nodeId: string, loc: KrsNode["loc"]): void => {
@@ -465,16 +392,14 @@ function detectAnnotationsNotBuiltin(file: KrsFile): Warning[] {
  * construction. The `sourceIndex` split is the same one `detectStyleConflicts`
  * uses.
  *
- * Matching is untouched — v1.x keeps applying these rules (ADR-1314). Dropping
- * them now would silently change how existing models look, which is a v2.0
- * decision (design Part A step 4).
+ * In `.krs language v2.0` such a rule matches nothing (#2677):
+ * `flattenSheetsInCascadeOrder` leaves it out of the cascade. This warning is
+ * what tells the author the rule is dead (TPL-1503: accepted but inert must be
+ * warned).
  */
 function detectStyleSelectorsNotBuiltin(sheets: StyleSheet[], systemSheetCount: number): Warning[] {
-  const allowedTags = new Set<string>([
-    ...REFERENCE_DATA.tags.map((t) => t.name),
-    ...SYSTEM_ASSIGNED_TAGS,
-  ]);
-  const allowedAnnotations = new Set<string>(REFERENCE_DATA.annotations.map((a) => a.name));
+  const allowedTags = TOOL_TAGS;
+  const allowedAnnotations = TOOL_ANNOTATIONS;
   const warnings: Warning[] = [];
 
   for (const sheet of sheets.slice(systemSheetCount)) {
@@ -565,50 +490,6 @@ function detectFacetsNotDeclared(file: KrsFile): Warning[] {
   for (const root of facetWalkRoots(file)) visit(root);
 
   return warnings;
-}
-
-/**
- * Return the built-in annotation name within typo distance of `name`, or
- * undefined when none is close enough. The budget scales with the
- * built-in's length so short names like `new` only match single-edit
- * slips while `migration_target` tolerates two.
- */
-function closestBuiltinAnnotation(name: string, builtins: string[]): string | undefined {
-  let best: { builtin: string; distance: number } | undefined;
-  for (const builtin of builtins) {
-    const budget = builtin.length <= 4 ? 1 : 2;
-    const distance = levenshtein(name, builtin);
-    if (distance <= budget && (best === undefined || distance < best.distance)) {
-      best = { builtin, distance };
-    }
-  }
-  return best?.builtin;
-}
-
-/**
- * Optimal-string-alignment distance (Levenshtein + adjacent transposition).
- * Transpositions count as one edit so the classic slip `@nwe` sits at
- * distance 1 from `new`, inside the short-name budget.
- */
-function levenshtein(a: string, b: string): number {
-  let prevPrev: number[] = [];
-  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
-  for (let i = 1; i <= a.length; i++) {
-    const curr = [i];
-    for (let j = 1; j <= b.length; j++) {
-      curr[j] = Math.min(
-        prev[j] + 1,
-        curr[j - 1] + 1,
-        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
-      );
-      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
-        curr[j] = Math.min(curr[j], prevPrev[j - 2] + 1);
-      }
-    }
-    prevPrev = prev;
-    prev = curr;
-  }
-  return prev[b.length];
 }
 
 function detectDomainDispersal(file: KrsFile): Warning[] {
@@ -1295,35 +1176,6 @@ function detectUnassignedStorages(file: KrsFile): Warning[] {
   }));
 }
 
-function detectUnassignedUsecases(file: KrsFile): Warning[] {
-  const warnings: Warning[] = [];
-
-  function walkServiceChildren(nodes: KrsNode[]): void {
-    for (const node of nodes) {
-      if (node.kind === "service") {
-        for (const child of node.children) {
-          if (child.kind === "usecase") {
-            warnings.push({
-              kind: "unassigned-usecase",
-              params: { usecaseId: child.id },
-              loc: child.loc,
-            });
-          }
-        }
-        // recurse into domains to find nested services (not expected, but safe)
-        walkServiceChildren(node.children.filter((c) => c.kind !== "usecase"));
-      }
-    }
-  }
-
-  for (const system of file.systems) {
-    walkServiceChildren(system.children);
-  }
-  walkServiceChildren(file.services);
-
-  return warnings;
-}
-
 /**
  * The `entity` deep-link view token addresses a model-wide namespace of
  * {all domain ids} ∪ {all entity ids} (a domain id opens that domain's entity
@@ -1391,6 +1243,10 @@ function detectStyleConflicts(sheets: StyleSheet[], systemSheetCount = 1): Warni
 
   for (let i = 0; i < userSheets.length; i++) {
     for (const rule of userSheets[i].rules) {
+      // A rule outside the tool vocabulary matches nothing (#2677), so two sheets
+      // that both declare it do not conflict over anything. It is already
+      // reported by `style-*-selector-not-builtin`.
+      if (!selectorUsesToolVocabularyOnly(rule.selector)) continue;
       // The Tidy formatter's spelling, not a second one written here: the two
       // had drifted, and this side put the id before the kind (`team#Platform`
       // read as `#Platformteam`) and dropped `edge#<id>` / `boundary#<id>`

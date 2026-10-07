@@ -2615,7 +2615,7 @@ describe("the root view draws every derived edge family, not just the declared o
     {
       family: "infra derived from a usecase resource ref",
       body: `
-  service Api { usecase U { resource Store.T } }
+  service Api { domain D { usecase U { resource Store.T } } }
   database Store { table T }`,
       expected: ["Api->Store"],
     },
@@ -2663,7 +2663,7 @@ describe("the root view draws every derived edge family, not just the declared o
     // derived edge too — the same defect, reached without a second system.
     const systems = withUnassignedSystem(
       Parser.parse(`
-service Api { usecase U { resource Store.T } }
+service Api { domain D { usecase U { resource Store.T } } }
 database Store { table T }
 `).value,
     );
@@ -2680,7 +2680,7 @@ database Store { table T }
     const root = layout(
       parseAndExtract(`
 system Alpha {
-  service Api { usecase U { resource Store.T } }
+  service Api { domain D { usecase U { resource Store.T } } }
   database Store { table T }
 }
 system Beta {
@@ -2734,7 +2734,7 @@ system Beta {
     const root = layout(
       parseAndExtract(`
 system Alpha {
-  service Api { usecase U { resource Store.T } }
+  service Api { domain D { usecase U { resource Store.T } } }
   database Store { table T }
 }
 system Beta {
@@ -2760,11 +2760,11 @@ system Beta {
     const sliceOf = (krs: string) => extractView(Parser.parse(krs).value.systems, []);
     const before = sliceOf(`
 system Alpha {
-  service Api { usecase U { resource Store.T } }
+  service Api { domain D { usecase U { resource Store.T } } }
   database Store { table T }
 }
 system Beta {
-  service Svc { usecase V { resource BStore.T } }
+  service Svc { domain D { usecase V { resource BStore.T } } }
   database BStore { table T }
 }
 `);
@@ -2774,7 +2774,7 @@ system Alpha {
   database Store { table T }
 }
 system Beta {
-  service Svc { usecase V { resource BStore.T } }
+  service Svc { domain D { usecase V { resource BStore.T } } }
   database BStore { table T }
 }
 `);
@@ -2793,11 +2793,11 @@ describe("compare-mode diff state stays with its own system frame (#2756)", () =
   // Alpha loses the dependency between the two revisions.
   const BEFORE = `
 system Alpha {
-  service Api { usecase U { resource Store.T } }
+  service Api { domain D { usecase U { resource Store.T } } }
   database Store { table T }
 }
 system Beta {
-  service Api { usecase V { resource Store.T } }
+  service Api { domain D { usecase V { resource Store.T } } }
   database Store { table T }
 }
 `;
@@ -2807,20 +2807,20 @@ system Alpha {
   database Store { table T }
 }
 system Beta {
-  service Api { usecase V { resource Store.T } }
+  service Api { domain D { usecase V { resource Store.T } } }
   database Store { table T }
 }
 `;
 
   const BEFORE_ALPHA_ONLY = `
 system Alpha {
-  service Api { usecase U { resource Store.T } }
+  service Api { domain D { usecase U { resource Store.T } } }
   database Store { table T }
 }
 `;
   const BETA_WITH_SAME_IDS = `
 system Beta {
-  service Api { usecase V { resource Store.T } }
+  service Api { domain D { usecase V { resource Store.T } } }
   database Store { table T }
 }
 `;

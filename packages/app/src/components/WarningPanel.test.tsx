@@ -83,8 +83,6 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { queueId: "test-queue" } };
     case "unassigned-storage":
       return { kind, params: { storageId: "test-storage" } };
-    case "unassigned-usecase":
-      return { kind, params: { usecaseId: "test-usecase" } };
     case "unassigned-resource":
       return { kind, params: { resourceId: "test-resource" } };
     case "entity-anchor-collision":
@@ -165,11 +163,6 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { property: "shape", name: "databse" } };
     case "client-capability-duplicate":
       return { kind, params: { clientId: "test-client", name: "camera" } };
-    case "annotation-possible-typo":
-      return {
-        kind,
-        params: { nodeId: "test-node", annotation: "depracated", suggestion: "deprecated" },
-      };
     case "tag-not-builtin":
       return { kind, params: { nodeId: "test-node", tag: "cache" } };
     case "tag-not-applicable":

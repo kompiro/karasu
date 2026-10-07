@@ -70,7 +70,7 @@ builtin の tag / annotation を追加する PR で:
 
 ## 派生元 spec
 
-- `docs/spec/tags-annotations.md` §*Non-builtin tag names are deprecated (v1.x)* / §*Non-builtin annotation names are deprecated (v1.x)* — builtin 追加要望という移行先経路を規定している節。本 TPL はその経路を裁く側の観点。
+- `docs/spec/tags-annotations.md` §*Non-builtin tag names have no effect* / §*Non-builtin annotation names have no effect*（言語 v2.0 で改題、#2677） — builtin 追加要望という移行先経路を規定している節。本 TPL はその経路を裁く側の観点。
 - [`docs/spec/tags-annotations.md` §*Store role tags — one axis, four states*](../spec/tags-annotations.md#store-role-tags--one-axis-four-states) — 3 問目（停止規則）が実際に置かれた場所。「役割タグは同一 kind 内で正本かどうかの違いだけを表す」という規定と、そこから落ちる `[kv]` / `[graph]` / `[timeseries]` / `[replica]` の却下。
 - [`docs/spec/tags-annotations.md` §*`@planned` — designed, not yet built*](../spec/tags-annotations.md#planned--designed-not-yet-built) — annotation 側で 3 問を通した実例（lifecycle register / 「まだ無い」を言う既存表現の不在 / 状態の数え上げに広げない）。
 - [ADR-1718](../adr/1718-vector-store-vs-database.md) — 「役割は修飾で、技術は物理層で」という判断基準の出典。

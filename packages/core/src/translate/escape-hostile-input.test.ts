@@ -37,7 +37,11 @@ describe("translate emitters survive hostile input", () => {
 
     expect(parseErrors(krs)).toEqual([]);
     // The summary text survives into the description, not just "it parses".
-    const description = Parser.parse(krs).value.services[0].children[0].properties.description;
+    // `service Orders { domain OrdersApi { usecase … } }` — the usecase sits in
+    // the provisional domain the translator wraps it in (v2.0, #2677).
+    const domain = Parser.parse(krs).value.services[0].children[0];
+    expect(domain.kind).toBe("domain");
+    const description = domain.children[0].properties.description;
     expect(description).toContain(HOSTILE);
   });
 

@@ -1,6 +1,6 @@
 /* facet-styling/facets.krs.style
  *
- * facet 所属によるスタイリング（#2175 — experimental）。
+ * facet 所属によるスタイリング（#2175。`.krs language v2.0` から core の記法）。
  *
  * `[facets=<id>]` は `index.krs` で `facets <id>` を宣言した全要素に一致する。
  * カスケード上の振る舞いはタグセレクタと同じで、これは意図的 — 末尾の移行
@@ -41,8 +41,8 @@ database[facets=pci] {
  *
  *     [pci] { border-color: #f59e0b; }
  *
- * v1.x では今も動くが、警告が出るようになり（`style-tag-selector-not-builtin`）、
- * 構文 v2.0 では一致しなくなる。書き換えは 3 手順:
+ * `.krs language v2.0` ではこのルールは何にも一致せず、警告が出る
+ * （`style-tag-selector-not-builtin`）。書き換えは 3 手順:
  *
  *     1. 関心事を宣言する   — facet pci { label "…" description "…" }
  *     2. 所属を移す         — 要素の `[pci]` を `facets pci` に置き換える

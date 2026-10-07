@@ -160,6 +160,7 @@ export type Translations = {
   "nodeDetail.links.title": string;
   "nodeDetail.openDeployView": string;
   "nodeDetail.jumpToEditor": string;
+  "vscodePreview.blockedByErrors": (params: { count: number }) => string;
   "nodeDetail.annotationDiff.title": string;
   "nodeDetail.resources.title": string;
   "nodeDetail.capabilities.title": string;
@@ -308,7 +309,6 @@ export type Translations = {
   }) => string;
   "warning.crossDomainStoreAccess.checkBoundary": string;
   "warning.unassignedDomain.message": (params: { display: string }) => string;
-  "warning.unassignedUsecase.message": (params: { usecaseId: string }) => string;
   "warning.unassignedResource.message": (params: { resourceId: string }) => string;
   "warning.entityAnchorCollision.message": (params: { id: string }) => string;
   "warning.unassignedService.message": (params: { display: string }) => string;
@@ -388,12 +388,6 @@ export type Translations = {
     clientId: string;
     name: string;
   }) => string;
-  "warning.annotationPossibleTypo.message": (params: {
-    nodeId: string;
-    annotation: string;
-    suggestion: string;
-  }) => string;
-  "warning.annotationPossibleTypo.openSetNote": string;
   "warning.tagNotBuiltin.message": (params: { nodeId: string; tag: string }) => string;
   "warning.tagNotBuiltin.migrationNote": string;
   "warning.tagNotApplicable.message": (params: {
@@ -506,6 +500,10 @@ export type Translations = {
   "diagnostic.nodeNotInContext.message": (params: {
     childKind: string;
     parentKind: string;
+  }) => string;
+  "diagnostic.annotationPossibleTypo.message": (params: {
+    annotation: string;
+    suggestion: string;
   }) => string;
   "diagnostic.legendNotTopLevel.message": (params: { parentKind: string }) => string;
   "diagnostic.expectedIdOrString.message": (params: { context: string }) => string;

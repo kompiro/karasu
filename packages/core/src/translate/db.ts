@@ -481,16 +481,23 @@ function emitServiceBindings(dbName: string, rootTables: Table[], decorated: boo
   const lines: string[] = [];
   lines.push("");
   lines.push(`service ${dbName}Service {`);
+  // A usecase directly under a service is rejected (`node-not-in-context`, an
+  // error from `.krs language v2.0`, #2924), so the bindings go in one
+  // provisional domain, the same scaffold `translate --from openapi` emits.
+  lines.push(`  domain ${dbName}Data {`);
+  lines.push("    // TODO: provisional domain from `translate --from db --emit-bindings`.");
+  lines.push("    // Rename it, or split the usecases into the domains they belong to.");
   const opsLine = buildSqlOperationsLine(decorated);
   for (const t of rootTables) {
     const usecaseId = `Manage${toPascalCase(t.name)}`;
     const tableId = toTableId(t.name);
-    lines.push(`  usecase ${usecaseId} {`);
-    lines.push(`    resource ${dbName}.${tableId} {`);
-    lines.push(`      operations ${opsLine}`);
+    lines.push(`    usecase ${usecaseId} {`);
+    lines.push(`      resource ${dbName}.${tableId} {`);
+    lines.push(`        operations ${opsLine}`);
+    lines.push(`      }`);
     lines.push(`    }`);
-    lines.push(`  }`);
   }
+  lines.push("  }");
   lines.push("}");
   return lines;
 }

@@ -78,7 +78,11 @@ describe("ReferenceContent", () => {
   it("marks the experimental Syntax sections with a badge, and only those", () => {
     const { container } = render(<ReferenceContent />);
     const badges = container.querySelectorAll(".reference-experimental-badge");
-    expect(badges.length).toBeGreaterThan(0);
+    // One badge per flagged section of the data the panel renders. Since
+    // language v2.0 no shipped notation is experimental (#2677, #2678), so the
+    // count is zero today; the badge comes back as soon as a section is flagged.
+    const flagged = getReference("en").syntaxByView.system.filter((s) => s.experimental);
+    expect(badges.length).toBe(flagged.length);
     for (const badge of badges) {
       expect(badge.textContent).toBe("experimental");
       // The badge belongs to a heading, so a reader cannot see the notation

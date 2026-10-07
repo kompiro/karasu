@@ -1,5 +1,5 @@
 // facet-styling/index.krs
-// Demonstrates: styling by facet membership with `[facets=<id>]` (#2175 — experimental).
+// Demonstrates: styling by facet membership with `[facets=<id>]` (#2175; core from `.krs language v2.0`).
 //
 // A `facet` is a set defined OUTSIDE the architecture — a regulation, a policy,
 // an audit scope. A tag says what an element *is*; a facet says what

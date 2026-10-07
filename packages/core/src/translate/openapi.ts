@@ -251,7 +251,21 @@ export class OpenApiTranslator implements Translator {
         ? operations.map(emitOperationUsecase)
         : emitResourceUsecases(operations, { emitBindings, emitCrudDecoration });
 
-    const lines: string[] = [`service ${serviceName} {`, ...bodyLines, "}", ""];
+    // A usecase directly under a service is rejected (`node-not-in-context`,
+    // an error from `.krs language v2.0`, #2924), so the operations go in one
+    // provisional domain, the same scaffold `translate --from db` emits.
+    // A spec with no operations has nothing to scaffold, so no domain either.
+    const domainLines =
+      bodyLines.length === 0
+        ? []
+        : [
+            `  domain ${serviceName}Api {`,
+            "    // TODO: provisional domain from `translate --from openapi`.",
+            "    // Rename it, or split the usecases into the domains they belong to.",
+            ...bodyLines.map((line) => (line === "" ? line : `  ${line}`)),
+            "  }",
+          ];
+    const lines: string[] = [`service ${serviceName} {`, ...domainLines, "}", ""];
     return lines.join("\n");
   }
 }

@@ -111,7 +111,7 @@ karasu の boundary 多重包含（#2179）では次の 3 つが同時に成り�
 
 ## 派生元 spec
 
-- `docs/spec/syntax.md` § [Grouping the system view (`boundary`) — experimental](../spec/syntax.md#grouping-the-system-view-boundary--experimental)
+- `docs/spec/syntax.md` § [Grouping the system view (`boundary`)](../spec/syntax.md#grouping-the-system-view-boundary)
   — 「A frame is widened … only when the corridor to the card holds no non-member」
   および縮退時の `◇` タブと `boundary-membership-not-drawn`。
 - `docs/spec/diagnostics.md` — `boundary-membership-not-drawn`（info）。
