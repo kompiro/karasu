@@ -43,6 +43,12 @@ karasu（鴉）はアーキテクチャのためのテキストベース DSL で
 するチーム） — を記述し、チームとアーキテクチャを一緒に設計できます。各次元は
 ドリルダウン可能な SVG 図としてレンダリングされます。
 
+描いたものには 4 種類のラベル（register）が付きます。**tag** は何であるか、
+**annotation** はいまどの段階か（どちらも karasu が定める語彙）、**facet** はどの
+集合に属するか（利用者が宣言する）、**boundary** はビューの中でどう束ねて見るかを
+表します。詳しくは [語彙の register](spec/tags-annotations/#語彙の-register--boundary--annotation--tag--facet)
+と [グルーピングと所属](examples/grouping-and-membership/) のサンプルを参照してください。
+
 - **[ガイド](guide/)** — サービス境界・チーム境界の設計、オンボーディング、進化。
 - **[リファレンス](spec/syntax/)** — `.krs` / `.krs.style` の構文・タグ・アノテーション。
 - **[コンセプト](concepts/)** — karasu の設計思想。

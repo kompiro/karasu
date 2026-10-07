@@ -44,6 +44,12 @@ the **organizational** structure (the teams that own them) — so teams and arch
 can be co-designed together. karasu renders each dimension as an SVG diagram you can
 drill down into.
 
+Four registers label what you draw: a **tag** says what an element is and an
+**annotation** says what stage it is at (both are karasu's own vocabulary), a **facet**
+says which sets it belongs to (you declare them), and a **boundary** says how to group
+it in a view. See [Vocabulary registers](spec/tags-annotations/#vocabulary-registers--boundary--annotation--tag--facet)
+and the [Grouping & membership](examples/grouping-and-membership/) examples.
+
 - **[Guides](guide/)** — designing service and team boundaries, onboarding, evolution.
 - **[Reference](spec/syntax/)** — the `.krs` / `.krs.style` syntax, tags, and annotations.
 - **[Concepts](concepts/)** — the design philosophy behind karasu.
