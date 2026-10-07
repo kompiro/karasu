@@ -77,7 +77,9 @@ storage Blobs [zzznotatag] { label "Blobs" }
 system Shop [zzznotatag] {
   service Nested [zzznotatag] {
     label "Nested"
-    usecase Buy [zzznotatag] { label "Buy" }
+    domain Checkout {
+      usecase Buy [zzznotatag] { label "Buy" }
+    }
   }
   service Other { label "Other" }
   Nested -> Other "calls" [zzznotatag]

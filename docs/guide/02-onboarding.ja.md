@@ -76,24 +76,28 @@ $ karasu translate --from openapi api.yaml --service OrderService --system Shop 
 ```krs
 system Shop {
   service OrderService {
-    usecase ManageOrders {
-      label "manage orders"
-      description """
-        Operations:
-        - GET /orders — List orders
-        - POST /orders — Create an order
-        - GET /orders/{id} — Get an order
-        - DELETE /orders/{id} — Cancel an order
-        """
-      resource OrdersResource {
-        operations list:read, post:create, get:read, delete
+    domain OrderServiceApi {
+      // TODO: provisional domain from `translate --from openapi`.
+      // Rename it, or split the usecases into the domains they belong to.
+      usecase ManageOrders {
+        label "manage orders"
+        description """
+          Operations:
+          - GET /orders — List orders
+          - POST /orders — Create an order
+          - GET /orders/{id} — Get an order
+          - DELETE /orders/{id} — Cancel an order
+          """
+        resource OrdersResource {
+          operations list:read, post:create, get:read, delete
+        }
       }
     }
   }
 }
 ```
 
-OpenAPI のパスと操作が `usecase` に、`--emit-crud-decoration` を付けると各操作が `<verb>:<crud>` 装飾付きの `resource` operations に落ちます。これで「この API は orders に対して read/create/delete をする」という **読み取り/書き込みの形** が CRUD として残ります。`--system` でラップ先 system を、`--service` でサービス名を指定します。
+OpenAPI のパスと操作が仮置きの `domain`（`OrderServiceApi`）の中の `usecase` に落ちます（usecase は domain に属するため）。domain の名前を付け直すか、本来属する domain へ usecase を分けてください。`--emit-crud-decoration` を付けると各操作が `<verb>:<crud>` 装飾付きの `resource` operations に落ちます。これで「この API は orders に対して read/create/delete をする」という **読み取り/書き込みの形** が CRUD として残ります。`--system` でラップ先 system を、`--service` でサービス名を指定します。
 
 ### 1.3 データの形を SQL スキーマから
 
@@ -117,7 +121,7 @@ database OrderDB {
 
 デフォルト（`--granularity aggregate`）では、関連テーブルが集約ルートに **折りたたまれます** — `order_items` は FK と命名から `orders` の一部とみなされ、`OrdersTable` の description に畳まれます。これはまさに「抽象度を上げる」動きで、ER 図ではなくアーキテクチャの粒度になります。テーブルを 1:1 で出したいときは `--granularity table` を使います。
 
-> translate が生むのは **スキャフォールド**（出発点）であって完成品ではありません。生成された `usecase` には `domain` ラッパーが無かったり、サービス名が機械的だったりします。次の §2〜§5 で、これを人間の理解に沿って整えていきます。
+> translate が生むのは **スキャフォールド**（出発点）であって完成品ではありません。生成された `usecase` は仮置きの `domain` 1 つに入っているので名前を付け直すか分割し、サービス名も機械的なことがあります。次の §2〜§5 で、これを人間の理解に沿って整えていきます。
 
 ---
 
@@ -327,7 +331,7 @@ $ karasu matrix index.krs --format md
 
 ### 5.1 読解の確度を facet で示す
 
-「未確定」と「確認済み」の中間 — **推測だが描いておきたい** — を残したいことがあります。その集合を [`facet`](../spec/syntax.ja.md#横断的な所属facet-experimental) として一度宣言し、推測中の要素に `facets` を付ければ、読解の確度を一級のマークとして残せます。facet はこの register にぴったり合います: 要素の *読解* が確認済みかどうかはアーキテクチャの外から課される性質（地図の話であって現地の話ではない）で、それこそが facet の宣言するもの — システム自身の lifecycle を示す組み込みアノテーション（`@deprecated` / `@new` / …）とは軸が違います。
+「未確定」と「確認済み」の中間 — **推測だが描いておきたい** — を残したいことがあります。その集合を [`facet`](../spec/syntax.ja.md#横断的な所属facet) として一度宣言し、推測中の要素に `facets` を付ければ、読解の確度を一級のマークとして残せます。facet はこの register にぴったり合います: 要素の *読解* が確認済みかどうかはアーキテクチャの外から課される性質（地図の話であって現地の話ではない）で、それこそが facet の宣言するもの — システム自身の lifecycle を示す組み込みアノテーション（`@deprecated` / `@new` / …）とは軸が違います。
 
 ```krs
 facet unverified {
@@ -354,7 +358,7 @@ system Shop {
 }
 ```
 
-- membership に **デフォルト描画は付きません** が、opt-in の 2 面で可視化できます。プレビューの **Facets セレクタ** で overlay を点けると、メンバーに色付きリングが付き、それ以外が薄くなるので、「この地図のどこまでが推測か」はトグル 1 つで見えます。**Membership overview** は推測中の要素を一覧で答えます。常時表示したいなら `.krs.style` の [facet セレクタ](../spec/style.ja.md#ファセットセレクタfacetsid-experimental) で色やバッジを付けられます（[伝達ガイド §3](05-communicating-diagrams.ja.md#3-ライフサイクル状態を色バッジで示す) と同じ要領）:
+- membership に **デフォルト描画は付きません** が、opt-in の 2 面で可視化できます。プレビューの **Facets セレクタ** で overlay を点けると、メンバーに色付きリングが付き、それ以外が薄くなるので、「この地図のどこまでが推測か」はトグル 1 つで見えます。**Membership overview** は推測中の要素を一覧で答えます。常時表示したいなら `.krs.style` の [facet セレクタ](../spec/style.ja.md#ファセットセレクタfacetsid) で色やバッジを付けられます（[伝達ガイド §3](05-communicating-diagrams.ja.md#3-ライフサイクル状態を色バッジで示す) と同じ要領）:
 
   ```css
   /* theme.krs.style — 推測中の領域を点線＋バッジで目立たせる */
@@ -364,7 +368,7 @@ system Shop {
 - typo 検出は **完全** です: 宣言が正解集合を定義するので、`facets unverifed` のような書き間違いは `facet-not-declared` として確実に検出されます（独自アノテーション名に出ていた近傍ヒントより信頼できます）。
 - 理解が確定したら `facets` 行を外すだけ。`facets unverified` を grep すれば（または Membership overview を開けば）、**未確認の宿題一覧** になります。
 
-> 以前のモデルは読解の確度を独自アノテーション（`@unverified`）で示していました。組み込み外のアノテーション名は [#2159](https://github.com/kompiro/karasu/issues/2159) 以降 **deprecated** です — parse はされますが、使うたびに `annotation-not-builtin` が、スタイルで狙うと `style-annotation-selector-not-builtin` が出ます。上記の facet 形が移行先です。
+> 以前のモデルは読解の確度を独自アノテーション（`@unverified`）で示していました。組み込み外のアノテーション名は `.krs language v2.0` では**効果を持ちません**（[#2159](https://github.com/kompiro/karasu/issues/2159)）。parse はされますが、使うたびに `annotation-not-builtin` が出て、スタイルで狙ったルールは何にも一致しません（`style-annotation-selector-not-builtin`）。上記の facet 形が移行先です。
 
 この「未完成を許容する」姿勢が、オンボーディングと karasu の相性の核心です。完璧な理解を待たずにコミットし、理解が進むたびに警告と `facets unverified` を 1 つずつ潰していけます。warning パネルと確度 facet が **残りの宿題リスト** になります。
 

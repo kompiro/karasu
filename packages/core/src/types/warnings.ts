@@ -17,7 +17,6 @@ export type WarningKind =
   | "unassigned-database"
   | "unassigned-queue"
   | "unassigned-storage"
-  | "unassigned-usecase"
   | "unassigned-resource"
   | "cross-system-ref-implicit-external"
   | "cross-system-ref-unresolved"
@@ -27,7 +26,6 @@ export type WarningKind =
   | "cyclic-dependency"
   | "delivers-target-not-client"
   | "client-capability-duplicate"
-  | "annotation-possible-typo"
   | "tag-not-builtin"
   | "tag-not-applicable"
   | "annotation-not-builtin"
@@ -132,7 +130,6 @@ export interface WarningParamsByKind {
   "unassigned-database": { databaseId: string; label?: string };
   "unassigned-queue": { queueId: string; label?: string };
   "unassigned-storage": { storageId: string; label?: string };
-  "unassigned-usecase": { usecaseId: string };
   "unassigned-resource": { resourceId: string };
   "cross-system-ref-implicit-external": {
     ref: string;
@@ -244,34 +241,14 @@ export interface WarningParamsByKind {
    */
   "client-capability-duplicate": { clientId: string; name: string };
   /**
-   * An annotation name is not one of the built-ins but is within a small
-   * edit distance of one (e.g. `@depracated`). Unknown names still parse
-   * in v1.x (docs/spec/tags-annotations.md § Non-builtin annotation names
-   * are deprecated (v1.x)) — this hint only fires on near-misses of a
-   * built-in, where a typo is the likely intent. Names that appear in a
-   * stylesheet annotation selector are treated as intentional and never
-   * hinted. The unconditional deprecation itself is
-   * `annotation-not-builtin`.
-   */
-  "annotation-possible-typo": {
-    /** id of the node carrying the suspicious annotation */
-    nodeId: string;
-    /** the annotation name as written, without the `@` sigil */
-    annotation: string;
-    /** the closest built-in annotation name, without the `@` sigil */
-    suggestion: string;
-  };
-  /**
    * A tag name is outside the tool vocabulary (builtin tags plus the
    * system-assigned tags of docs/spec/tags-annotations.md § System-assigned
-   * tags). v1.x accepts the name unchanged (ADR-1314 freeze) but deprecates
-   * it: syntax v2.0 keeps only tool-owned tag vocabulary, with membership /
-   * model-specific labeling moving to `facet` (#2065 Part B) and new
-   * archetypes going through builtin-addition requests. Deliberately has no
-   * suppression condition — a style selector or legend ref proves intent,
-   * but intent does not change the v2.0 outcome (ADR-2065
-   * Part A). Warning register: resolves the TPL-1503 fourth state
-   * into state (2), "warned as unknown".
+   * tags). `.krs language v2.0` closes the tag register (ADR-2065, #2677):
+   * the name still parses but has no effect. Membership / model-specific
+   * labeling belongs to `facet`; a new archetype goes through a
+   * builtin-addition request. Deliberately has no suppression condition: a
+   * style selector or legend ref proves intent, but intent does not change
+   * the outcome. Warning register, TPL-1503 state (2): "warned as unknown".
    */
   "tag-not-builtin": {
     /** id of the node carrying the tag, or `"<from> -> <to>"` for an edge */
@@ -308,10 +285,9 @@ export interface WarningParamsByKind {
   };
   /**
    * An annotation name is outside the builtin lifecycle vocabulary. Same
-   * deprecation contract as `tag-not-builtin`: accepted in v1.x, tool
-   * vocabulary only in v2.0, no suppression condition. Subsumes the
-   * `annotation-possible-typo` hint for the near-miss case; both coexist
-   * during v1.x and are consolidated in v2.0.
+   * contract as `tag-not-builtin`: parses, no effect, no suppression
+   * condition. A near-miss of a builtin name is not this warning: the parser
+   * rejects it as the `annotation-possible-typo` error (#2677).
    */
   "annotation-not-builtin": {
     /** id of the node (or `team`) carrying the annotation */
@@ -327,9 +303,9 @@ export interface WarningParamsByKind {
    * thing that works. Facet selectors (`[facets=<id>]`) are that target, so
    * this fires from the same release they ship in.
    *
-   * v1.x keeps matching these selectors unchanged — ADR-1314 freezes the
-   * behaviour, and silently dropping a rule would change how existing models
-   * look. Disablement is v2.0.
+   * In `.krs language v2.0` the rule matches nothing (#2677): the cascade
+   * leaves it out. This warning is the only sign the rule is dead, which is
+   * why it stays a warning (TPL-1503).
    *
    * Model-side and style-side both fire for one name (`[pci]` on a node and
    * `[pci] { … }` in a sheet), which is intentional: they are two edits the
@@ -355,7 +331,7 @@ export interface WarningParamsByKind {
   /**
    * A `facets <id>` reference names no declared `facet` block (#2065 Part B).
    *
-   * Unlike the near-miss `annotation-possible-typo` hint, this check is
+   * Unlike the near-miss `annotation-possible-typo` check, this one is
    * **complete**: the declarations give the validator a definitive "correct"
    * set, so a typo between two user-defined names is caught as surely as a
    * typo of a builtin. Evaluated on the import-merged model, since the
@@ -499,10 +475,6 @@ const INFO_WARNING_KINDS: ReadonlySet<WarningKind> = new Set<WarningKind>([
   // the ℹ icon via the old `WARNING_ICONS` map; preserve that register.
   "missing-runtime",
   "missing-realizes",
-  // Low-confidence hint: annotation names are an open set, so a near-miss
-  // of a built-in is only *probably* a typo — never a defect karasu can
-  // assert (#1499).
-  "annotation-possible-typo",
 ]);
 
 export function warningSeverity(kind: WarningKind): WarningSeverity {

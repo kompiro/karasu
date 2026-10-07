@@ -79,7 +79,7 @@ const LABEL_POSITION_KEYWORDS: Record<string, number> = {
 const SHAPE_KEYWORDS = new Set<string>(["box", "user", "cylinder", "queue", "hexagon", "cloud"]);
 
 /** Maps infra sub-resource AST kind → the style tag used in resource[tag] selectors. */
-const INFRA_SUB_KIND_TO_TAG: Record<string, string> = {
+export const INFRA_SUB_KIND_TO_TAG: Readonly<Record<string, string>> = {
   table: "table",
   "queue-item": "queue",
   bucket: "storage",

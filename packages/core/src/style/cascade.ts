@@ -1,4 +1,5 @@
 import type { StyleRule, StyleSheet } from "../types/style.js";
+import { selectorUsesToolVocabularyOnly } from "../builtins/tool-vocabulary.js";
 
 /**
  * The `.krs.style` cascade, in one place.
@@ -24,13 +25,20 @@ import type { StyleRule, StyleSheet } from "../types/style.js";
  *
  * Rules are cloned rather than mutated: the builtin sheet is a cached
  * singleton shared by every compile.
+ *
+ * A rule whose selector names a tag or annotation outside the tool vocabulary
+ * is left out here (`.krs language v2.0`, #2677): it matches nothing, on every
+ * surface that reads the cascade. Its `sourceIndex` is still consumed, so the
+ * declaration order of the rules that remain is unchanged.
  */
 export function flattenSheetsInCascadeOrder(sheets: StyleSheet[]): StyleRule[] {
   let globalIndex = 0;
   const rules: StyleRule[] = [];
   for (const sheet of sheets) {
     for (const rule of sheet.rules) {
-      rules.push({ ...rule, sourceIndex: globalIndex++ });
+      const sourceIndex = globalIndex++;
+      if (!selectorUsesToolVocabularyOnly(rule.selector)) continue;
+      rules.push({ ...rule, sourceIndex });
     }
   }
   return rules;

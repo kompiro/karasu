@@ -81,11 +81,11 @@ const DUPLICATE_EDGE_ID = `system S {
 }
 `;
 
-// A usecase directly under a service warns node-not-in-context.
+// A tag outside the tool vocabulary parses and warns (tag-not-builtin). A
+// usecase directly under a service used to be the warning-only fixture, but
+// `.krs language v2.0` makes that an error (#2924).
 const WARNING_ONLY = `system S {
-  service A {
-    usecase Foo {}
-  }
+  service A [pci] {}
 }
 `;
 

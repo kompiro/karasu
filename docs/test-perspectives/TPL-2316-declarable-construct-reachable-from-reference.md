@@ -94,5 +94,5 @@ scope:
 
 ## 派生元 spec
 
-- `docs/spec/syntax.md` / `syntax.ja.md` §「Grouping the system view (`boundary`) — experimental」
+- `docs/spec/syntax.md` / `syntax.ja.md` §「Grouping the system view (`boundary`)」
 - `docs/spec/syntax.md` / `syntax.ja.md` §「Cross-cutting membership (`facet`) — experimental」

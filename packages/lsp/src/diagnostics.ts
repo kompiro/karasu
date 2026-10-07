@@ -72,14 +72,11 @@ export function computeDiagnostics(
   // single-document LSP context, which cuts both ways: style-dependent
   // warnings (`style-conflict`, `legend-ref-unresolved`,
   // `style-tag-selector-not-builtin`, `style-annotation-selector-not-builtin`)
-  // simply do not fire here, and style-*suppressed* hints fire without their
-  // suppression —
-  // `annotation-possible-typo` still flags a near-builtin name even when the
-  // user defined a stylesheet annotation selector for it (the app, which has
-  // the sheets, stays silent). Accepted asymmetry: the hint is info-register
-  // and the intentional-name case is rare (#1522). New style-coupled
-  // diagnostics must decide and record their side of this split here
-  // (TPL-1522).
+  // simply do not fire here. No diagnostic is style-*suppressed* any more:
+  // `annotation-possible-typo`, the one that was (#1522), became a parser error
+  // with no suppression condition in `.krs language v2.0` (#2677), so the LSP
+  // and the app now agree on it. New style-coupled diagnostics must decide and
+  // record their side of this split here (TPL-1522).
   //
   // The two `style-*-selector-not-builtin` deprecations (#2175) land on the
   // "does not fire" side, and unlike the others that is not a shortfall: they

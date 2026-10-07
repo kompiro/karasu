@@ -96,16 +96,18 @@ describe("insert — multi-node file scenarios", () => {
     const targetPath = join(tmpDir, "arch.krs");
     writeFileSync(
       targetPath,
-      "system Outer {\n  system Inner {\n    service Existing {}\n  }\n}",
+      "system Outer {\n  service Inner {\n    domain Existing {}\n  }\n}",
       "utf-8",
     );
 
-    restoreStdin = mockStdin("service New {}");
+    // A domain inside a service inside a system: two levels deep, and a nesting
+    // the language accepts (a system inside a system is rejected in v2.0).
+    restoreStdin = mockStdin("domain New {}");
     await insert("Inner", targetPath);
 
     const content = readFileSync(targetPath, "utf-8");
     expect(content).toBe(
-      "system Outer {\n  system Inner {\n    service Existing {}\n    service New {}\n  }\n}",
+      "system Outer {\n  service Inner {\n    domain Existing {}\n    domain New {}\n  }\n}",
     );
     expect(exitSpy).not.toHaveBeenCalled();
   });

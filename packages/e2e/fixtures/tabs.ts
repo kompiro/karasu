@@ -37,3 +37,18 @@ export async function setDisplayMode(page: Page, mode: "shape" | "icon"): Promis
   await select.selectOption(mode);
   await expect(select).toHaveValue(mode);
 }
+
+/**
+ * Pick an explicit theme from the Settings tab and wait until the document
+ * carries it (`<html data-theme>`), which is the signal every themed surface
+ * repaints from. Only `light` / `dark` are offered here: the `system` value
+ * follows the OS and is driven through `test.use({ colorScheme })` instead
+ * (AT-1470).
+ */
+export async function setTheme(page: Page, theme: "light" | "dark"): Promise<void> {
+  await page.getByRole("tab", { name: /Settings/ }).click();
+  await page.locator("#settings-theme").selectOption(theme);
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.getAttribute("data-theme")))
+    .toBe(theme);
+}

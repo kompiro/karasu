@@ -64,7 +64,7 @@ describe.each(["dark", "light"] as DiagramTheme[])("builtin badge colors (%s the
   // two-tier guard: 4.5:1 on the bare canvas (above) plus an AA-large 3:1
   // backstop over the worst-case single-frame tint. The #2366 follow-up's
   // stronger alternatives (headroom colors, or full AA asserted over the
-  // composite) stay open with the experimental boundary work.
+  // composite) stay open as boundary follow-up work.
   it.each(badgeRules.map((r) => [ruleLabel(r), r.properties["badge-color"]] as const))(
     "badge-color of %s stays above the AA-large backstop under boundary tints",
     (_label, color) => {

@@ -35,9 +35,10 @@ stylesheet を入力に取る diagnostic は、この文脈差で挙動が **2 �
 
 1. **style 依存型** — stylesheet がなければ発火しようがない
    （`style-conflict`, `legend-ref-unresolved`）。LSP では単に出ない
-2. **style 抑制型** — stylesheet は「出さない」判断にだけ使われる
-   （`annotation-possible-typo` のセレクタ定義による抑制）。LSP では
-   **抑制なしで発火**し、app より診断が増える
+2. **style 抑制型** — stylesheet は「出さない」判断にだけ使われる。LSP では
+   **抑制なしで発火**し、app より診断が増える。実例は言語 v1.x の
+   `annotation-possible-typo`（セレクタ定義による抑制）だったが、言語 v2.0 で
+   抑制条件の無い parser error になり（#2677）、現在この型の診断は無い
 
 どちらの割れ方も設計上は許容しうるが、**どちらに割れるかを実装時に明示的に
 決め、コード（当該 surface のコメント）に記録する**こと。決めずに出荷すると、
@@ -108,5 +109,5 @@ stylesheet を入力に取る diagnostic を追加・変更するとき:
 ## 関連テスト
 
 - `packages/lsp/src/diagnostics.test.ts` — LSP 文脈（シートなし）での診断出力
-- `packages/core/src/resolver/warnings.test.ts`（`annotation-possible-typo hint`）—
-  シートあり / なし両方の抑制挙動
+- `packages/lsp/src/diagnostics.test.ts`（`surfaces annotation-possible-typo as an error`）—
+  言語 v2.0 で抑制が消え、LSP と app の診断が一致することの確認

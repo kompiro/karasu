@@ -21,8 +21,12 @@ system ECPlatform {
 }
 `;
 
+// The usecase sits in a domain: directly under a service it is rejected
+// (`node-not-in-context`, an error from `.krs language v2.0`, #2924).
 const ZERO_SYSTEM_KRS = `service ECommerce {
-  usecase ManageOrders { label "注文管理" }
+  domain Orders {
+    usecase ManageOrders { label "注文管理" }
+  }
 }
 `;
 

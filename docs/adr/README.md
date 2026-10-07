@@ -248,6 +248,7 @@ VS Code 拡張と LSP の段階的実装。
 - [ADR-2805](2805-suite-timeout-bounds-the-test-step.md) — テスト suite の timeout はテストステップに置き、job 予算は setup を吸収する側に回す
 - [ADR-2807](2807-suite-budget-clears-its-setup.md) — suite の job 予算は、共有の setup 観測最大を step 境界の上に載せて確保する（ADR-2805 を supersede）
 - [ADR-2898](2898-draft-first-code-review.md) — /code-review は draft PR に当て、CodeRabbit の初回レビューは ready にした時点の 1 回にする
+- [ADR-3052](3052-review-branch-diff-before-draft-pr.md) — /engineering:code-review は draft PR を作る前に base ブランチとの差分へ当て、CodeRabbit の初回レビューは ready にした時点の 1 回にする（ADR-2898 を supersede）
 
 ### ADR 運用・ツール — `adr-tooling`
 

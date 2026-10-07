@@ -111,8 +111,12 @@ flowchart TD
     ADR_2983["ADR-2983<br/>Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upst..."]
     ADR_2985["ADR-2985<br/>Dependabot security alert 2026-09-29（`undici` の..."]
     ADR_3000["ADR-3000<br/>karasu-nest を main への push で自動 deploy し、対象 path..."]
+    ADR_3002["ADR-3002<br/>Dependabot security alert 2026-09-30（5 つの overr..."]
     ADR_3011["ADR-3011<br/>正否が差分だけで決まる小さな PR は、人間の承認を得て skip-coderabbit ラベ..."]
     ADR_3020["ADR-3020<br/>karasu-nest を karasu-nest.kompiro.dev カスタムドメインだ..."]
+    ADR_3052["ADR-3052<br/>/engineering:code-review は draft PR を作る前に base ..."]
+    ADR_3069["ADR-3069<br/>Dependabot トリアージ 2026-10-05：mocha 12 を含む 8 件を採用..."]
+    ADR_3077["ADR-3077<br/>Dependabot security alert 2026-10-06（transitive..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -124,6 +128,7 @@ flowchart TD
   ADR_2184["ADR-2184<br/>[resolver] 同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
   ADR_2209["ADR-2209<br/>[edges] エッジのプロパティブロックを additive に足し、位置引数 label は正式な sho..."]
   ADR_2578["ADR-2578<br/>[project] karasu-nest は server-side reverse をやめ、投稿を預かるギャラ..."]
+  ADR_2677["ADR-2677<br/>[core-concepts] 言語 v2.0 を実施する: tag / annotation 語彙を閉じ、facet と b..."]
   ADR_2782["ADR-2782<br/>[vscode] VS Code の floor を 1.137 に上げ、ExTester の vscode-m..."]
   ADR_2901["ADR-2901<br/>[chat-ai] AI authoring は利用者のエージェントセッションと karasu CLI skill..."]
   ADR_2969["ADR-2969<br/>[project] 運用者だけの段階をコードで守る — サインインを数値 user id の許可リストに限る"]
@@ -145,11 +150,16 @@ flowchart TD
   ADR_2184 --> ADR_2165
   ADR_2184 --> ADR_1314
   ADR_2209 --> ADR_1314
+  ADR_2677 --> ADR_1314
+  ADR_2677 --> ADR_1820
+  ADR_2677 --> ADR_2065
+  ADR_2677 --> ADR_2124
   ADR_2782 --> ADR_2562
   ADR_2901 --> ADR_1315
   ADR_2901 --> ADR_1758
   ADR_2716 -.supersedes.-> ADR_2640
   ADR_2807 -.supersedes.-> ADR_2805
+  ADR_3052 -.supersedes.-> ADR_2898
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -256,14 +266,18 @@ flowchart TD
   class ADR_2836 accepted
   class ADR_2839 accepted
   class ADR_2877 accepted
-  class ADR_2898 accepted
+  class ADR_2898 superseded
   class ADR_2939 accepted
   class ADR_2949 accepted
   class ADR_2983 accepted
   class ADR_2985 accepted
   class ADR_3000 accepted
+  class ADR_3002 accepted
   class ADR_3011 accepted
   class ADR_3020 accepted
+  class ADR_3052 accepted
+  class ADR_3069 accepted
+  class ADR_3077 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost
@@ -274,6 +288,7 @@ flowchart TD
   class ADR_2184 ghost
   class ADR_2209 ghost
   class ADR_2578 ghost
+  class ADR_2677 ghost
   class ADR_2782 ghost
   class ADR_2901 ghost
   class ADR_2969 ghost

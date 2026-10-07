@@ -23,10 +23,7 @@
 <g data-edge-from="PaymentService" data-edge-to="NotificationService" data-edge-kind="async" data-edge-canonical-id="PaymentService--&gt;NotificationService" data-edge-label="notify payment result" class="krs-edge krs-edge--interactive"><line x1="580" y1="511" x2="387.7333333333333" y2="631" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
 <line x1="580" y1="511" x2="387.7333333333333" y2="631" stroke="#B45309" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
 <text x="483.8666666666667" y="565" text-anchor="middle" fill="#B45309" font-size="11px" font-family="sans-serif">notify payment result</text></g></g>
-<g class="crossing-marks"><path d="M 474.1 358.3 A 6 6 -37.23 0 1 483.66 351.04" fill="none" stroke="#B45309" stroke-width="1.5"/>
-<path d="M 297.25 385 A 6 6 0 0 1 309.25 385" fill="none" stroke="#B45309" stroke-width="1.5"/>
-<path d="M 432.96 385 A 6 6 0 0 1 444.96 385" fill="none" stroke="#B45309" stroke-width="1.5"/>
-<path d="M 260.51 403.78 A 6 6 -23.71 0 1 271.49 398.95" fill="none" stroke="#B45309" stroke-width="1.5"/></g>
+<g class="crossing-marks"><path d="M 474.1 358.3 A 6 6 -37.23 0 1 483.66 351.04 M 297.25 385 A 6 6 0 0 1 309.25 385 M 432.96 385 A 6 6 0 0 1 444.96 385 M 260.51 403.78 A 6 6 -23.71 0 1 271.49 398.95" fill="none" stroke="#B45309" stroke-width="1.5"/></g>
 <g class="nodes"><g data-node-id="Customer" data-node-path="Shop.Customer" data-node-kind="user" data-has-children="false" data-has-description="false"><rect x="280" y="73" width="160" height="66" rx="8" ry="8" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
 <circle cx="360" cy="73" r="13" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
 <circle cx="360" cy="69.5" r="3.4" fill="#1E3A8A"/>

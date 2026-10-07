@@ -17,29 +17,29 @@
 
 - [x] AT-A: 非 builtin タグ（例 `[cache]`）は任意の node kind / edge で `tag-not-builtin`（warning）になる
 
-  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts` › `tag-not-builtin deprecation warning (#2159)` › `warns on a non-builtin tag on any node kind` / `warns on a non-builtin tag on an edge` / `walks nested nodes`
+  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts` › `tag-not-builtin warning (#2159, closed register in v2.0)` › `warns on a non-builtin tag on any node kind` / `warns on a non-builtin tag on an edge` / `walks nested nodes`
 
 - [x] AT-B: builtin 17 種と system-assigned タグ（`[inferred]` 等）は警告されない — `translate --from db` の出力が警告ゼロで通る
 
   > ✅ Automated — 同 describe › `stays silent for every builtin tag` / `stays silent for system-assigned tags — [inferred] is stamped into source by translate`
 
-- [x] AT-C: 非 builtin アノテーション（例 `@canary`）は node / team で `annotation-not-builtin`（warning）になり、builtin 4 種は警告されない
+- [x] AT-C: 非 builtin アノテーション（例 `@canary`）は node / team で `annotation-not-builtin`（warning）になり、builtin アノテーションは警告されない
 
-  > ✅ Automated — `annotation-not-builtin deprecation warning (#2159)` › `warns on a non-builtin annotation` / `stays silent for the four builtin annotations` / `covers team annotations in organization blocks`
+  > ✅ Automated — `annotation-not-builtin warning (#2159, closed register in v2.0)` › `warns on a non-builtin annotation` / `stays silent for every builtin annotation` / `covers team annotations in organization blocks`
 
-- [x] AT-D: style セレクタがあっても抑制されない（`annotation-possible-typo` の抑制条件は温存され、near-miss には両診断が併発する）
+- [x] AT-D: style セレクタがあっても抑制されない。near-miss はパーサーが `annotation-possible-typo` エラーで拒否するため `annotation-not-builtin` は出ず、両診断は排他になる（v1.x では typo ヒントだけがセレクタで抑制され、near-miss には両診断が併発していた）（`.krs language v2.0` で変更 — #2677）
 
-  > ✅ Automated — 同 describe › `is NOT suppressed by a style selector, unlike the typo hint` / `fires alongside the typo hint on an unstyled near-miss`、tag 側 › `is NOT suppressed by a style selector — intent does not change the v2.0 outcome`
+  > ✅ Automated — 同 describe › `is not suppressed by a style selector` / `never fires on a near-miss: the parser rejects it as annotation-possible-typo`、tag 側 › `is NOT suppressed by a style selector — intent does not change the v2.0 outcome`
 
 - [x] AT-E: 両診断の register は warning（info ではない）
 
   > ✅ Automated — `warningSeverity — exhaustive register map` › `tag-not-builtin → warning` / `annotation-not-builtin → warning`
 
-- [x] AT-F: en / ja の警告メッセージが移行先（facet #2065 / builtin 追加要望）を案内する
+- [x] AT-F: en / ja の警告メッセージが「ツール語彙にないため効果がない」ことを述べ、移行先（facet #2065 / builtin 追加要望）を案内する（文言は「非推奨」から「効果なし」へ）（`.krs language v2.0` で変更 — #2677）
 
   > ✅ Automated — `packages/i18n/src/render-warning.test.ts`（`tag-not-builtin` / `annotation-not-builtin` の en/ja レンダリングとプレースホルダ解決）
 
 ### 手動確認（CI で検証できない項目）
 
-- [ ] M-1: app の WarningPanel で `[cache]` タグ / `@canary` アノテーションを持つモデルを開くと、deprecation warning が警告アイコン（info ではない）付きで表示され、詳細行の移行先ガイドが en / ja とも読めること
+- [ ] M-1: app の WarningPanel で `[cache]` タグ / `@canary` アノテーションを持つモデルを開くと、「効果がない」旨の warning が警告アイコン（info ではない）付きで表示され、詳細行の移行先ガイドが en / ja とも読めること（`.krs language v2.0` で変更 — #2677）
 - [ ] M-2: 既存の examples（getting-started / ec-platform / multi-file-system）を app で開いても deprecation warning が 1 件も出ないこと

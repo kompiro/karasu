@@ -159,7 +159,9 @@ describe("dotted-path site recovery (pinned behavior)", () => {
   });
 
   it("resource with a dangling dot reports once and joins the bad token's value", () => {
-    const result = Parser.parse("system S {\n  service Api {\n    resource OrderDB.\n  }\n}\n");
+    const result = Parser.parse(
+      "system S {\n  service Api {\n    domain D {\n      usecase U {\n        resource OrderDB.\n      }\n    }\n  }\n}\n",
+    );
     const errors = result.diagnostics.filter((d) => d.severity === "error");
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
@@ -167,7 +169,8 @@ describe("dotted-path site recovery (pinned behavior)", () => {
       params: { context: "resource child id" },
     });
     const service = result.value.systems[0]?.children?.[0] as KrsNode;
-    expect(service.children?.map((c) => ({ id: c.id, ref: (c as { ref?: unknown }).ref }))).toEqual(
+    const usecase = service.children?.[0]?.children?.[0] as KrsNode;
+    expect(usecase.children?.map((c) => ({ id: c.id, ref: (c as { ref?: unknown }).ref }))).toEqual(
       [{ id: "OrderDB.}", ref: { parent: "OrderDB", child: "}" } }],
     );
   });
