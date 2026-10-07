@@ -7,7 +7,7 @@
   - Design Doc の PR: [#3014](https://github.com/kompiro/karasu/pull/3014)
   - 同じ画像を使う一覧ページ: [#3016](https://github.com/kompiro/karasu/issues/3016)（`/` に公開投稿をカードで並べる）
   - 関連 ADR: [ADR-1805](../adr/1805-resvg-wasm-png-rasterization.md)（resvg-wasm で PNG にする）、[ADR-1801](../adr/1801-karasu-nest-ogp-share-page.md)（app の `/s` の OGP）、[ADR-105](../adr/105-png-export-not-adopted.md)（core/cli/app に PNG を入れない）、[ADR-2993](../adr/2993-gallery-client-side-rendering.md)（投稿ページは sandbox の viewer）、[ADR-2592](../adr/2592-nest-as-a-gallery.md)（ギャラリーの構築）、[ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)、[ADR-1828](../adr/1828-repo-backed-ref-pinned-permalink.md)
-  - 関連 TPL: [TPL-1799](../test-perspectives/TPL-1799-raster-pipeline-glyph-coverage.md)、[TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)、[TPL-2284](../test-perspectives/TPL-2284-purge-scope-identity-is-canonical.md)、[TPL-2993](../test-perspectives/TPL-2993-third-party-content-runs-outside-session-origin.md)
+  - 関連 TPL: [TPL-1799](../test-perspectives/TPL-1799-raster-pipeline-glyph-coverage.md)、[TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)、[TPL-2284](../test-perspectives/TPL-2284-purge-scope-identity-is-canonical.md)、[TPL-2993](../test-perspectives/TPL-2993-third-party-content-runs-outside-session-origin.md)、[TPL-2995](../test-perspectives/TPL-2995-purge-must-catch-writes-that-land-after-it.md)（本設計から起こした proactive TPL）
   - コード: `packages/nest/src/routes/gallery.ts`、`packages/nest/src/gallery/ogp.ts`、`functions/render.ts`、`packages/app/src/render/ogp-frame.ts`
 
 ## 背景・課題
@@ -27,6 +27,8 @@
 | 枠の関数 | `wrapSvgForOgpFrame` は `packages/app/src/render/ogp-frame.ts` にある純粋な文字列変換 |
 | nest の配信 | `wrangler.toml` の `[assets]` で viewer を配る。静的に直接返すのは `/assets/*` だけで、他のパスは Worker を通る（ADR-2993） |
 | nest の KV | 投稿・アカウント・セッションを 1 つの namespace にキー接頭辞で分けて持つ。アカウント削除はアカウント起点の接頭辞を掃除する（TPL-2226、`gallery-purge-coverage.test.ts`）。`KVNamespaceLike` は文字列の値だけを扱う |
+| KV の一貫性 | 書いた場所では直後に見えるが、他の場所では最大 60 秒程度古い値が返りうる（Cloudflare のドキュメント）。compare-and-set は無い。`submissions.ts` の `update` は、読んでから書くあいだに削除が割り込む競合を「閉じていない」と明記している。セッションの失効は、消えないマーカーを書きの前後で確かめて狭めている（`sessions.ts` の `refreshIfStale`） |
+| 定期実行 | 無い。Worker は `fetch` だけを export し、`wrangler.toml` に `[triggers]` は無い |
 | nest の公開 URL | `https://karasu-nest.kompiro.workers.dev`（独自ドメインではない） |
 | 投稿レコード | `updatedAt` は差し替え・公開範囲の変更で進む |
 
@@ -49,7 +51,7 @@ ADR-2993 が Worker から描画を外したのは、全ビューを 1 枚にま
 
 - **app に nest への接続口を足さない。** `/render` を呼ばない。モデルを URL に載せない。
 - **公開範囲を広げない。** 限定公開と削除済みの投稿の画像は、存在しない投稿と同じ 404 で答える。
-- **保存したものはアカウント削除で必ず消える。** 新しいキー接頭辞はアカウント起点にし、掃除の対象に含める（TPL-2226、TPL-2284）。
+- **保存したものはアカウント削除で必ず消える。** 新しいキー接頭辞はアカウント起点にし、掃除の対象に含める（TPL-2226、TPL-2284）。削除の時点で進行中だった要求が後から書いた画像も含む。期限（TTL）で消えるのを待つことは、この約束を満たしたことにしない。
 - **PNG は Worker の中だけで作る。** core/cli/app は SVG-only のまま（ADR-105、ADR-1805）。
 - **グリフの欠けを出さない。** app の `/render` と同じフォントの組を使う（TPL-1799）。
 - **Cache API は使えない。** Cloudflare の Cache API は `*.workers.dev` では何もしない（[Cloudflare Workers の Cache API のドキュメント](https://developers.cloudflare.com/workers/runtime-apis/cache/)）。nest は workers.dev で動いているので、「保存せず edge にキャッシュする」形（ADR-1828 の方式）は今のドメインでは効かない。
@@ -117,6 +119,34 @@ ADR-2993 が Worker から描画を外したのは、全ビューを 1 枚にま
 
 **デメリット**: 2 か所に同じ関数ができ、枠の比率を変えたときにずれる。
 
+### 削除との競合をどう閉じるか
+
+T3 では、匿名のクローラーの要求が画像を書く。要求が投稿を「見える」と読んでから画像を書くまでのあいだにアカウント削除の掃除が終わると、画像だけが掃除の後に書き戻される。保存の直後に投稿を読み直しても、KV の読み出しは古い値を返しうる（最大 60 秒程度）ので、読み直しは「まだ見える」と答えて画像を残しうる。
+
+#### 案 R1: 読み直しと期限（TTL）だけで済ませる
+
+**デメリット**: 取りこぼした画像は期限（30 日）まで残る。「アカウント削除で必ず消える」を満たさない。
+
+#### 案 R2: 削除のマーカーを、書く前と書いた後に確かめる
+
+削除の始めに、消えないマーカーを書く。画像のルートは書く前と書いた後にマーカーを確かめ、あれば書かない／消す。`sessions.ts` の失効マーカーと同じ形。
+
+**メリット**: 書いた場所では直後に見えるので、同じ場所の要求との競合は閉じる。
+
+**デメリット**: 別の場所の要求には、マーカーも最大 60 秒程度見えない。窓を狭めるが閉じない。
+
+#### 案 R3: R2 に加え、時間をおいて掃除をもう一度走らせる
+
+削除のマーカーを Cron Trigger が拾い、削除から一定時間（5 分）たってから、同じ掃除をもう一度走らせてマーカーを消す。
+
+**メリット**: 遅れて書かれる画像は、古い読み出しを根拠にした要求からしか来ない。古い読み出しは KV の伝播の時間（約 60 秒）に収まるので、5 分後の掃除はその書き込みをすべて拾う。掃除はもともと冪等なので、同じ処理を 2 回呼ぶだけで済む。途中で失敗した削除も、マーカーが残っていれば次の Cron が続きをやる。
+
+**デメリット**: Worker に `scheduled` の入口と `[triggers]` が 1 つずつ増える。マーカーはアカウント ID を持つ鍵で、削除の後も最大 15 分程度（5 分 + Cron の間隔 10 分）残る。
+
+#### 案 R4: アカウントごとに Durable Object を置き、強い一貫性で書く
+
+**デメリット**: ADR-1994 が正確なカウンタのために見送ったのと同じ判断で、1 つの画像の競合のために store 全体の持ち主を変えるのは見合わない。`ctx.waitUntil` で 2 回目の掃除を遅らせる案も考えたが、応答後に延ばせるのは 30 秒までで、KV の伝播（約 60 秒）より短い。Queues の遅延メッセージは binding がもう 1 つ増え、Cron で足りる。
+
 ## 比較
 
 | 観点 | T1 | T2 | T3 |
@@ -131,9 +161,14 @@ ADR-2993 が Worker から描画を外したのは、全ビューを 1 枚にま
 | 追加の binding | なし | 1 つ | なし |
 | アカウント削除の掃除 | 既存の仕組みに乗る | 別途要る | 不要 |
 
+| 観点 | R1（TTL） | R2（マーカー） | R3（マーカー + 再掃除） | R4（Durable Object） |
+| --- | --- | --- | --- | --- |
+| 削除後に書かれた画像 | 30 日残る | 別の場所なら残る | 15 分以内に消える | 書かれない |
+| 増える仕組み | なし | マーカー | マーカー + Cron | store の作り替え |
+
 ## 現時点の方針
 
-**T3（初めて求められたときに描いて保存）+ S1（既存の KV）+ C1（枠の関数を core に移す）を採用する。** 画像を扱うのが 1 つのルートに閉じ、投稿の書き込みの経路を変えずに済み、失敗しても次の要求で直る。保存先は既存の KV で足り、アカウント削除の掃除にもそのまま乗る。一覧（#3016）を初めて開いたときに未生成の画像の要求がまとめて来ても、それぞれが別のリクエストとして描いて保存し、2 回目からは保存済みを返すので、一覧のために別の生成経路は要らない。
+**T3（初めて求められたときに描いて保存）+ S1（既存の KV）+ C1（枠の関数を core に移す）+ R3（削除のマーカーと時間をおいた再掃除）を採用する。** 画像を扱うのが 1 つのルートに閉じ、投稿の書き込みの経路を変えずに済み、失敗しても次の要求で直る。保存先は既存の KV で足り、アカウント削除の掃除にもそのまま乗る。一覧（#3016）を初めて開いたときに未生成の画像の要求がまとめて来ても、それぞれが別のリクエストとして描いて保存し、2 回目からは保存済みを返すので、一覧のために別の生成経路は要らない。
 
 ### 実装の指針
 
@@ -152,13 +187,23 @@ ADR-2993 が Worker から描画を外したのは、全ビューを 1 枚にま
    - 描画は既存の `renderSubmission`（`gallery/render.ts`、`view=system`）を使う。表示できない文書は 422 で答える既存の扱いをそのまま引き継ぎ、画像は保存しない。得た SVG を `wrapSvgForOgpFrame(svg, 1200, 630, "#ffffff")` で枠に収め、resvg-wasm で PNG にする。テーマは既定（ダーク）のままで、app の `/s` の画像と同じ見た目にする（ADR-1801）。ライトのテーマも試したが、`/s` と見た目を揃えることを優先した。
    - ラスタライズそのものの失敗（wasm やフォントの読み込みの失敗）は 500 で返し、保存しない。
    - 応答は `image/png`、`X-Content-Type-Options: nosniff`。キャッシュは投稿ページと同じ `public, max-age=600` で、404・422・500 は `no-store`（`http.ts` の既定）。
-   - **削除との競合を閉じる。** 描いて保存するあいだに投稿の削除やアカウント削除が割り込むと、画像だけが書き戻されて掃除から漏れる（`submissions.ts` の `update` が書いているのと同じ種類の競合）。保存した直後に投稿を読み直し、消えていれば画像も消す。アカウント削除は画像を投稿の後に掃除する（次の 6）。こうすれば、読み直しで投稿が見えたなら後から来る掃除が画像を消し、見えなければこのルートが消す。KV の読み出しは結果整合（最大 60 秒程度古い値が返りうる）なので、画像のキーには `expirationTtl`（30 日）も付けて、取りこぼしても期限で消えるようにする。期限が来た画像は次の要求で描き直す。
+   - **削除との競合を閉じる（R3）。** 描いて保存するあいだに投稿の削除やアカウント削除が割り込むと、画像だけが書き戻されて掃除から漏れる（`submissions.ts` の `update` が書いているのと同じ種類の競合）。このルートでは次の 2 つを行い、それでも残る分は 6 の再掃除が消す。
+     - 描く前に削除のマーカー（`purge/v1/<account>` と `purge/v1/<account>/<slug>`、6 を参照）を確かめ、あれば 404 で答えて描かない。
+     - 保存した直後に、マーカーをもう一度確かめ、投稿も読み直す。マーカーがあるか投稿が消えていれば、画像を消す。
+     - この 2 つで閉じるのは、削除と同じ場所で読み書きした要求との競合だけである。別の場所の要求は古い投稿とマーカーの無い状態を最大 60 秒程度読みうるので、その画像は 6 の再掃除が消す。画像を消す約束はこの再掃除で満たす。
+   - 画像のキーには `expirationTtl`（30 日）も付ける。Cron が止まったときの最後の受け皿で、約束を満たす手段ではない。期限が来た画像は次の要求で描き直す。
 5. **ページの OGP**:
    - 公開投稿では `og:image`（`${NEST_PUBLIC_ORIGIN}/g/<id>/og.png?v=<updatedAt を数値にしたもの>`）、`og:image:width` / `og:image:height` / `og:image:type` を出す。`twitter:card` は `summary_large_image` にする。`NEST_PUBLIC_ORIGIN` が無い deploy では `og:image` を出さず、`summary` のままにする。
    - `?v=` は、差し替えた後にクローラーが古い画像のキャッシュを使い続けないためのもの。ルートは `?v=` を見ず、常に最新の `updatedAt` で判断する。
 6. **掃除**:
-   - 投稿の削除で、投稿を消してから `og/v1/<account>/<slug>` を消す。
-   - アカウント削除（`GalleryStore.purgeAccount`）に `og/v1/<account>/` の掃除を足す。順序は投稿の掃除の後で、結果に消した画像の件数を含める（TPL-2226 のチェックリスト）。`gallery-purge-coverage.test.ts` が新しい接頭辞を検査するようにし、`gallery-keys.ts` のキーの一覧も更新する（TPL-2226、TPL-2284）。
+   - 投稿の削除で、削除のマーカー `purge/v1/<account>/<slug>` を書いてから、投稿を消し、`og/v1/<account>/<slug>` を消す。
+   - アカウント削除（`GalleryStore.purgeAccount`）は、削除のマーカー `purge/v1/<account>` を**最初に**書く（セッションの掃除より前）。続けて既存の順序で掃除し、`og/v1/<account>/` の掃除を投稿の掃除の後に足す。結果に消した画像の件数を含める（TPL-2226 のチェックリスト）。`gallery-purge-coverage.test.ts` が新しい接頭辞を検査するようにし、`gallery-keys.ts` のキーの一覧も更新する（TPL-2226、TPL-2284）。
+   - マーカーの値は削除した時刻で、`expirationTtl` は 7 日とする（Cron が長く止まっても、マーカーそのものは残らない）。
+   - **再掃除**: Worker に `scheduled` の入口を足し、`wrangler.toml` に `[triggers] crons = ["*/10 * * * *"]` を足す。Cron は `purge/v1/` を列挙し、削除から 5 分以上たったマーカーについて同じ掃除をもう一度走らせてから、マーカーを消す。アカウントのマーカーなら `purgeAccount` の掃除（セッション・投稿・画像・アカウント）を、投稿のマーカーならその投稿と画像の削除を、もう一度呼ぶ。どちらも冪等である。再掃除はマーカーを書き直さない。
+   - 5 分は、古い読み出しを根拠にした書き込みがすべて終わるまでの余裕である。KV の伝播（約 60 秒、Cloudflare のドキュメントにもとづく前提で、測っていない）に、1 回の要求の長さ（CPU の上限 5 秒、描画は 100ms 前後）を足しても、十分に収まる。再掃除が使う KV の列挙（`list`）も結果整合だが、同じ待ち時間で、遅れて書かれた画像が列挙に現れる。削除からマーカーが消えるまでは最大 15 分程度で、そのあいだマーカーがアカウント ID を持つ鍵として残る。これは削除を最後までやり遂げるための鍵なので、`gallery-keys.ts` に「削除の後に残る唯一の鍵で、再掃除が消す」と書く。
+   - マーカーは `purgeAccount` が最初に書くので、途中で失敗した削除も、次の Cron が残りを掃除する。
+   - `purge/v1/42` は `purge/v1/420` の文字列の接頭辞なので、マーカーは列挙して 1 件ずつ解釈し、キーを名指しして消す（`acct/v1/<account>` と同じ扱い）。
+   - 投稿の `update` の競合（`submissions.ts` が閉じていないと書いている分）も、アカウント削除については同じ再掃除で消える。投稿の削除と `update` の競合は対象外とし、`update` の注記はそのまま残す。
    - 限定公開にした投稿の画像は消さない。どこからも配られず（ルートが 404）、もとの `.krs` 自体も保存されたままなので、画像だけを消す意味が無い。公開に戻したときは `updatedAt` が進むので描き直しになる。
 7. **テスト**:
    - 自動テスト（`packages/nest/src/routes/gallery.test.ts` ほか）:
@@ -168,7 +213,10 @@ ADR-2993 が Worker から描画を外したのは、全ビューを 1 枚にま
      - 差し替えで描き直す
      - 表示できない文書は 422 で、保存されない
      - 描いているあいだに投稿が消えたら、画像も残らない
+     - 削除のマーカーがあれば描かずに 404 になり、保存した後にマーカーが見えたら画像を消す
+     - **削除との競合の順序**: アカウント削除が画像の掃除まで終わった後に、古い投稿を読んだ要求が画像を書き、読み直しも古い投稿を返す。この状態から、削除から 5 分未満の Cron では画像とマーカーが残り、5 分以上たった Cron で画像とマーカーが消える。投稿の削除でも同じ順序を確かめる。KV の古い読み出しは、テスト用の `MemoryKV` に「指定したキーの削除前の値を返す」設定を足して再現する
      - 削除とアカウント削除で消え、アカウント削除の結果に件数が出る
+     - アカウント削除の直後はストアにマーカーだけが残り、再掃除の後は空になる（`gallery-purge-coverage.test.ts`）
      - ページの `og:image` と `summary_large_image`
      - フォントの組が app と一致する
    - 自動テストでは確かめられないもの: vitest は Workers の実行環境で wasm を読み込めない。マージ前に `wrangler deploy --dry-run`（bundle のサイズと wasm の取り込み）と `wrangler dev`（実際に PNG が返ること）で確かめ、PR に記録する。
@@ -180,7 +228,8 @@ ADR-2993 が Worker から描画を外したのは、全ビューを 1 枚にま
 
 - 既存ユーザーへの影響: 公開投稿のカードが大きな画像付きに変わる。既存の投稿は、最初に画像が求められたときに描かれる。
 - Worker の bundle: resvg-wasm（約 2.4MB）が加わる。有料プランの上限（10MB）には収まる。wasm の初期化は画像のルートでだけ行う。
-- ドキュメント更新: `packages/nest/README.md`（ルート、runtime 依存の約束、`viewer-assets` の中身）。
+- Worker の入口: `worker.ts` が `fetch` に加えて `scheduled` を export し、`wrangler.toml` に `[triggers]` が入る。Cron 1 回あたりの KV 操作は、`purge/v1/` の列挙 1 回と、残っているマーカーの数に比例する掃除だけで、削除が無ければ列挙 1 回で終わる（10 分ごとで 1 日 144 回）。
+- ドキュメント更新: `packages/nest/README.md`（ルート、runtime 依存の約束、`viewer-assets` の中身、Cron による再掃除）。
 - テスト・examples への影響: app の `ogp-frame` のテストは core に移る。
 
 ## 未解決の問い / 決めないこと
