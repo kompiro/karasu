@@ -15,7 +15,7 @@ TPL は **2 つの起源** から生まれる:
 - **Retrospective（事後）** — 過去の `bug` / `test-infra` Issue から、実際に起きた失敗を一般化する。バックフィルの主流（初期バックフィルの 17 件）はこの形
 - **Proactive（事前）** — `docs/concepts.ja.md` のようなアーキテクチャ原則 / 非目標 / north-star から、**原則が破られたときに起きるであろう失敗** を予測して観点化する（初期の proactive 3 件 — TPL-1207 / TPL-2166 / TPL-2167 — はこの形）
 
-どちらも 3-Yes ルール（次節）と同じ基準で評価する。バグ起源 / 原則起源は frontmatter の `discovered_from` を見れば分かる（原則側のエントリ `root_cause_file: docs/concepts.*` を持つかどうか。`issue:` はどちらの起源でも書く。詳しくは [起源と運用ルールは独立](#起源と運用ルールは独立)）。両方とも同じスキーマ・同じ運用ルールに乗る。
+どちらも 3-Yes ルール（次節）と同じ基準で評価する。バグ起源 / 原則起源を分けるのは、観点が防ぐ失敗が起こした時点で既に起きていたかどうかの 1 点で、`discovered_from` の根拠エントリ（`issue:` 以外）に現れる。先頭の `issue:` は採番の起点でどちらの起源でも書くので、起源の目印にはならない（[起源と運用ルールは独立](#起源と運用ルールは独立)）。両方とも同じスキーマ・同じ運用ルールに乗る。
 
 ## ADR との違い
 
@@ -197,10 +197,12 @@ retrospective TPL を書くたびに「**この観点を proactive TPL として
 
 ### 起源と運用ルールは独立
 
-proactive / retrospective の区別は **起源** の違いだけで、frontmatter スキーマも 3-Yes ルールも運用ルール（更新 / deprecated）も同じ。`discovered_from` を見れば起源は判る:
+proactive / retrospective の区別は **起源** の違いだけで、frontmatter スキーマも 3-Yes ルールも運用ルール（更新 / deprecated）も同じ。判断基準は 1 つ、**その TPL を起こした時点で、観点が防ぐ失敗が既に起きていたかどうか**:
 
-- `discovered_from.root_cause_file: docs/concepts.*` を持つ → proactive（原則起源）
-- 持たず、先頭の `issue:` が `bug` / `test-infra` の Issue → retrospective
+- 起きていた（失敗を一般化した）→ retrospective。根拠エントリは失敗した箇所（コードの `root_cause_file`、`bug` / `test-infra` の Issue）を指す
+- まだ起きていない（原則から予測した）→ proactive。根拠エントリは原則側（`root_cause_file: docs/concepts.*` / `docs/spec/*`、`root_cause_adr`）を指す
+
+個々のフィールドや Issue のラベルは起源を決めない。原則側の根拠は `docs/concepts.*` に限らず spec や ADR でもよく（TPL-2585 / TPL-2993 は ADR が根拠）、`bug` Issue の設計作業から proactive TPL が生まれることもある（TPL-2631 は `bug` の #2631 の設計 PR で起こした proactive）。
 
 **`issue:` は起源の種別ではなく採番の起点**なので、どちらの起源でも先頭に書く（[エントリの構造](#エントリの構造)）。proactive TPL の `issue:` は、それを起こした Design Doc や機能の Issue を指す。`issue:` を持たないのは、Issue の無い作業で起こした TPL だけである（[ADR-2188](../adr/2188-tpl-issue-number-ids.md) の移行時に PR 番号 / local 採番で番号を振った TPL-1207 / TPL-2166 / TPL-2167 など）。
 
