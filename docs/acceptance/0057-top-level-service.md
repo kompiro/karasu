@@ -60,7 +60,9 @@ Mirrors AT-0040 (top-level domain).
 1. Enter the following in the editor (no `system` block):
    ```krs
    service ECommerce {
-     usecase ManageOrders { label "注文管理" }
+     domain Orders {
+       usecase ManageOrders { label "注文管理" }
+     }
    }
    ```
 2. Verify the preview is not the "No diagram" placeholder and renders a single `Unassigned` frame containing `ECommerce`
@@ -68,7 +70,7 @@ Mirrors AT-0040 (top-level domain).
 
 **Expected**:
 - Root view shows the `ECommerce` service node inside the `Unassigned` frame
-- Drill-down into `ECommerce` shows the `ManageOrders` usecase
+- Drill-down into `ECommerce` shows the `Orders` domain (a usecase directly under a service is rejected from `.krs language v2.0`, #2924)
 
 ### TC-4: Services nested in a system do not emit unassigned-service warning
 

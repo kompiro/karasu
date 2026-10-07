@@ -2138,11 +2138,11 @@ export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
 //   deploy-all.krs            every deploy artifact type (war / jar / oci / lambda / ...)
 //   team-ownership.krs        organization / team / owns — the Group by: team axis
 //   team-dependencies.krs     derived team dependencies — cross-team / nested / unowned / structural overlap
-//   boundary-clusters.krs     boundary / contains — the Group by: boundary axis (experimental)
-//   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas (experimental)
-//   boundary-multi-membership.krs  a node listed in two boundaries — both frames enclose it (experimental)
-//   facets.krs                facet / facets — the viewer-side highlight overlay (experimental)
-//   tag-facet-registers.krs   tag vs annotation vs facet vs boundary — which register says what (experimental)
+//   boundary-clusters.krs     boundary / contains — the Group by: boundary axis
+//   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas
+//   boundary-multi-membership.krs  a node listed in two boundaries — both frames enclose it
+//   facets.krs                facet / facets — the viewer-side highlight overlay
+//   tag-facet-registers.krs   tag vs annotation vs facet vs boundary — which register says what
 //   multi-system-root.krs     two \`system\` blocks in one file — the side-by-side root view
 
 system FeatureSamples {
@@ -2926,7 +2926,7 @@ organization ShopOrg {
     },
     {
       path: "boundary-clusters.krs",
-      content: `// Semantic clusters via \`boundary\` / \`contains\` (Issue #1822, P2b — experimental).
+      content: `// Semantic clusters via \`boundary\` / \`contains\` (Issue #1822, P2b).
 //
 // A \`boundary\` block declares a named cluster of system-view nodes, drawn as the
 // second "Group by" axis of the system view (the first is team ownership —
@@ -2947,8 +2947,8 @@ organization ShopOrg {
 // disjoint frames on several levels. Keep "Group by: Boundary" on while you
 // drill to see each level's frame.
 //
-// \`boundary\` is experimental notation — backward compatibility is not yet
-// promised (docs/spec/syntax.md § Grouping the system view).
+// \`boundary\` is core notation from \`.krs language v2.0\` (docs/spec/syntax.md
+// § Grouping the system view).
 
 system Marketplace {
   label "Marketplace"
@@ -2996,7 +2996,7 @@ boundary catalog {
     },
     {
       path: "scoped-boundary.krs",
-      content: `// Scoped boundary — a \`boundary\` declared INSIDE a node block (#2036, experimental).
+      content: `// Scoped boundary — a \`boundary\` declared INSIDE a node block (#2036).
 //
 // Written inside a node block, a boundary is that layer's own concern: its
 // members are the declaring node's DIRECT CHILDREN (bare ids — siblings are
@@ -3013,8 +3013,8 @@ boundary catalog {
 // A same-named boundary in another scope is a DIFFERENT boundary (identity =
 // declaring scope + id): its frame, label, and collapse state are independent.
 //
-// \`boundary\` is experimental notation — backward compatibility is not yet
-// promised (docs/spec/syntax.md § Grouping the system view).
+// \`boundary\` is core notation from \`.krs language v2.0\` (docs/spec/syntax.md
+// § Grouping the system view).
 
 system Shop {
   label "Shop"
@@ -3050,7 +3050,7 @@ system Shop {
     {
       path: "facets.krs",
       content: `// Cross-cutting membership with \`facet\`, and the overlay that shows it
-// (Issue #2174 — experimental).
+// (Issue #2174; core notation from \`.krs language v2.0\`).
 //
 // A \`facet\` is a set defined OUTSIDE the architecture — a regulation, a policy,
 // an audit scope. A tag says what an element *is*; a facet says what
@@ -3254,8 +3254,8 @@ system Billing {
     },
     {
       path: "tag-facet-registers.krs",
-      content: `// The four vocabulary registers, side by side (Issue #2177 — \`facet\` and
-// \`boundary\` are experimental).
+      content: `// The four vocabulary registers, side by side (Issue #2177; \`facet\` and
+// \`boundary\` are core from \`.krs language v2.0\`).
 //
 // karasu has four ways to say something extra about an element, and they are
 // not interchangeable. Picking the wrong one is the most common modelling
@@ -3286,7 +3286,8 @@ system Billing {
 //      frames and the rings coexist — one is a layout, the other is a paint.
 //   4. Look at \`tag-facet-registers.krs.style\`. \`[facets=pci]\` styles by
 //      membership, which is what an arbitrary \`[pci]\` tag selector used to be
-//      abused for. The tag route is deprecated; this is the replacement.
+//      abused for. In \`.krs language v2.0\` that tag rule matches nothing; this is the
+//      replacement.
 
 @import "tag-facet-registers.krs.style"
 
@@ -3418,7 +3419,7 @@ system Shop {
  * \`[pci] { … }\` against a made-up tag. It scores 10, exactly what that tag
  * selector scored, so a sheet can be migrated one rule at a time.
  *
- * Deprecated form, for comparison:
+ * The old form, for comparison (matches nothing in \`.krs language v2.0\`):
  *   [pci] { border-color: #F59E0B; }      ← warns: style-tag-selector-not-builtin
  */
 [facets=pci] {
@@ -3457,7 +3458,7 @@ service[external] {
     },
     {
       path: "boundary-multi-membership.krs",
-      content: `// A node in more than one \`boundary\` (Issue #2161 — experimental).
+      content: `// A node in more than one \`boundary\` (Issue #2161).
 //
 // Ledger is listed in BOTH \`payments\` and \`pci\` below. Both memberships are
 // kept in the model, and with "Group by: Boundary" on you can see both: the
@@ -3512,8 +3513,8 @@ service[external] {
 // \`boundary\` in an imported file and one here both count, rather than the
 // first one winning.
 //
-// \`boundary\` is experimental notation — backward compatibility is not yet
-// promised (docs/spec/syntax.md § Grouping the system view).
+// \`boundary\` is core notation from \`.krs language v2.0\` (docs/spec/syntax.md
+// § Grouping the system view).
 
 system Payments {
   label "Payments platform"
@@ -3647,7 +3648,7 @@ export const FACET_STYLING_PROJECT: ExampleProject = {
     {
       path: "index.krs",
       content: `// facet-styling/index.krs
-// 対象: \`[facets=<id>]\` による facet 所属でのスタイリング（#2175 — experimental）。
+// 対象: \`[facets=<id>]\` による facet 所属でのスタイリング（#2175。\`.krs language v2.0\` から core）。
 //
 // \`facet\` は、アーキテクチャの**外側**で定義された集合 — 規制・ポリシー・監査
 // スコープ — を表す。tag は要素が「何であるか」を述べ、facet は「外部定義の
@@ -3750,7 +3751,7 @@ system Shop {
       path: "facets.krs.style",
       content: `/* facet-styling/facets.krs.style
  *
- * facet 所属によるスタイリング（#2175 — experimental）。
+ * facet 所属によるスタイリング（#2175。\`.krs language v2.0\` から core の記法）。
  *
  * \`[facets=<id>]\` は \`index.krs\` で \`facets <id>\` を宣言した全要素に一致する。
  * カスケード上の振る舞いはタグセレクタと同じで、これは意図的 — 末尾の移行
@@ -3791,8 +3792,8 @@ database[facets=pci] {
  *
  *     [pci] { border-color: #f59e0b; }
  *
- * v1.x では今も動くが、警告が出るようになり（\`style-tag-selector-not-builtin\`）、
- * 構文 v2.0 では一致しなくなる。書き換えは 3 手順:
+ * \`.krs language v2.0\` ではこのルールは何にも一致せず、警告が出る
+ * （\`style-tag-selector-not-builtin\`）。書き換えは 3 手順:
  *
  *     1. 関心事を宣言する   — facet pci { label "…" description "…" }
  *     2. 所属を移す         — 要素の \`[pci]\` を \`facets pci\` に置き換える
@@ -3818,7 +3819,7 @@ export const FACET_STYLING_PROJECT_EN: ExampleProject = {
     {
       path: "index.krs",
       content: `// facet-styling/index.krs
-// Demonstrates: styling by facet membership with \`[facets=<id>]\` (#2175 — experimental).
+// Demonstrates: styling by facet membership with \`[facets=<id>]\` (#2175; core from \`.krs language v2.0\`).
 //
 // A \`facet\` is a set defined OUTSIDE the architecture — a regulation, a policy,
 // an audit scope. A tag says what an element *is*; a facet says what
@@ -3921,7 +3922,7 @@ system Shop {
       path: "facets.krs.style",
       content: `/* facet-styling/facets.krs.style
  *
- * Styling by facet membership (#2175 — experimental).
+ * Styling by facet membership (#2175; core notation from \`.krs language v2.0\`).
  *
  * \`[facets=<id>]\` matches every element that declares \`facets <id>\` in
  * \`index.krs\`. It behaves like a tag selector in every way that matters to the
@@ -3963,8 +3964,8 @@ database[facets=pci] {
  *
  *     [pci] { border-color: #f59e0b; }
  *
- * That still works in v1.x, but it now warns (\`style-tag-selector-not-builtin\`)
- * and stops matching in syntax v2.0. The rewrite is three steps:
+ * In \`.krs language v2.0\` that rule matches nothing and warns
+ * (\`style-tag-selector-not-builtin\`). The rewrite is three steps:
  *
  *     1. declare the concern   — facet pci { label "…" description "…" }
  *     2. move membership       — replace \`[pci]\` on the element with \`facets pci\`

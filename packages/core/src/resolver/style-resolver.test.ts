@@ -1606,7 +1606,7 @@ describe("resource tag auto-inference in resolveStyles", () => {
     const db = makeInfraNode("database", "OrderDB", "table", "OrderTable");
     const resource = {
       ...makeResourceNode("OrderDB.OrderTable", { parent: "OrderDB", child: "OrderTable" }),
-      tags: ["custom"],
+      tags: ["cache"],
     };
     const system = makeSystem(
       [db],
@@ -1620,14 +1620,14 @@ describe("resource tag auto-inference in resolveStyles", () => {
           1,
         ),
         makeRule(
-          { nodeType: "resource", tags: ["custom"], annotations: [] },
-          { "background-color": "#CUSTOM" },
+          { nodeType: "resource", tags: ["cache"], annotations: [] },
+          { "background-color": "#CACHE" },
           1,
         ),
       ],
     };
     const result = resolveStyles([system], [sheet]);
-    expect(result.nodes.get("OrderDB.OrderTable")!.backgroundColor).toBe("#CUSTOM");
+    expect(result.nodes.get("OrderDB.OrderTable")!.backgroundColor).toBe("#CACHE");
   });
 });
 

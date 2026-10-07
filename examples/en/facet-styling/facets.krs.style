@@ -1,6 +1,6 @@
 /* facet-styling/facets.krs.style
  *
- * Styling by facet membership (#2175 — experimental).
+ * Styling by facet membership (#2175; core notation from `.krs language v2.0`).
  *
  * `[facets=<id>]` matches every element that declares `facets <id>` in
  * `index.krs`. It behaves like a tag selector in every way that matters to the
@@ -42,8 +42,8 @@ database[facets=pci] {
  *
  *     [pci] { border-color: #f59e0b; }
  *
- * That still works in v1.x, but it now warns (`style-tag-selector-not-builtin`)
- * and stops matching in syntax v2.0. The rewrite is three steps:
+ * In `.krs language v2.0` that rule matches nothing and warns
+ * (`style-tag-selector-not-builtin`). The rewrite is three steps:
  *
  *     1. declare the concern   — facet pci { label "…" description "…" }
  *     2. move membership       — replace `[pci]` on the element with `facets pci`

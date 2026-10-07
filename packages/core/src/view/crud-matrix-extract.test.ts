@@ -188,7 +188,9 @@ system S {
 describe("extractCrudMatrix — top-level (unassigned) blocks via withUnassignedSystem", () => {
   // Mirrors the shape produced by `karasu translate --from db ... --emit-bindings`,
   // which emits `database` and `service` at the top level (no enclosing
-  // `system { ... }`). Without `withUnassignedSystem` wrapping, these orphans
+  // `system { ... }`). The usecases sit in a domain because `.krs language
+  // v2.0` (#2677) no longer accepts a usecase directly under a service.
+  // Without `withUnassignedSystem` wrapping, these orphans
   // were invisible to extractCrudMatrix and the matrix came out empty.
   const ORPHAN_KRS = `
 database OrderDB {
@@ -197,14 +199,16 @@ database OrderDB {
 }
 
 service OrderDBService {
-  usecase ManageOrders {
-    resource OrderDB.OrdersTable {
-      operations select:read, insert:create, update, delete
+  domain OrderDBData {
+    usecase ManageOrders {
+      resource OrderDB.OrdersTable {
+        operations select:read, insert:create, update, delete
+      }
     }
-  }
-  usecase ManagePayments {
-    resource OrderDB.PaymentsTable {
-      operations select:read, insert:create, update, delete
+    usecase ManagePayments {
+      resource OrderDB.PaymentsTable {
+        operations select:read, insert:create, update, delete
+      }
     }
   }
 }

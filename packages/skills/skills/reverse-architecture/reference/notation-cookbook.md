@@ -292,10 +292,9 @@ set is *not* a tag and *not* an annotation:
 | how peers **group** in a view | view grouping | `boundary` |
 | which externally defined **set** it belongs to | membership | `facet` — a top-level declaration plus a `facets` property on the element |
 
-`facet` is [experimental](../spec/syntax.md#cross-cutting-membership-facet--experimental):
-backward compatibility is not promised yet, and membership shows up through an
-overlay the reader turns on, so a file renders identically until someone selects a
-facet.
+`facet` is [core notation](../spec/syntax.md#cross-cutting-membership-facet) from
+`.krs language v2.0`. Membership shows up through an overlay the reader turns on,
+so a file renders identically until someone selects a facet.
 
 **`.krs`** — the scope goes in a `facet`; the rule content stays prose + `link`:
 
@@ -325,8 +324,8 @@ system Shop {
 ```
 
 **Why** — tag / annotation vocabularies are tool-owned: a non-builtin name draws a
-`tag-not-builtin` / `annotation-not-builtin` deprecation warning in v1.x, and
-syntax v2.0 accepts tool vocabulary only. Membership also *semantically* misfits
+`tag-not-builtin` / `annotation-not-builtin` warning and has no effect, because
+`.krs language v2.0` accepts tool vocabulary only. Membership also *semantically* misfits
 tags: a database is a database whether or not it is in PCI scope, and a
 nine-out-of-ten `[pci]` diagram reads as a false audit guarantee. The rule
 *content* (roles, plans, conditions) stays prose + `link` permanently

@@ -12,9 +12,9 @@
 
 ## 受け入れ条件
 
-- [x] AT-A: `getReference()` が `boundary` / `facet` を返し、どちらも `experimental: true` を持つ
+- [x] AT-A: `getReference()` が `boundary` / `facet` を返し、どちらも `experimental: true` を持たない（言語 v2.0 で両方 core に昇格 — #2677 / #2678。`.krs language v2.0` で変更）
 
-  > ✅ Automated — `packages/core/src/builtins/reference-top-level-coverage.test.ts` › `experimental notation is listed AND flagged (ADR-2316)` › `marks boundary and facet experimental`
+  > ✅ Automated — `packages/core/src/builtins/reference-top-level-coverage.test.ts` › `experimental notation is listed AND flagged (ADR-2316)` › `lists boundary and facet, and flags neither: both are core from language v2.0 (#2677, #2678)`
 
 - [x] AT-B: `KrsFile` の**全** array フィールドが `getReference()` から到達できる（新しい top-level 構文を足したら、到達経路を宣言するまで型エラーで落ちる）
 

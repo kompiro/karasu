@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
 import { openViewTab } from "../fixtures/tabs.js";
+import { drillInto } from "../fixtures/drill.js";
 
 /**
  * AT-0049: Resource nodes in the domain-level UseCase diagram.
@@ -81,10 +82,7 @@ const INLINE_KRS = `system ECPlatform {
 
 async function drillIntoOrderDomain(page: Page) {
   await openViewTab(page, "System");
-  await page.locator('[data-node-id="OrderService"]').click();
-  await expect(page.locator(".breadcrumb-current")).toHaveText("OrderService");
-  await page.locator('[data-node-id="Order"]').click();
-  await expect(page.locator(".breadcrumb-current")).toHaveText("Order");
+  await drillInto(page, ["OrderService", "Order"], { expectBreadcrumb: true });
 }
 
 test.describe("AT-0049 Resource nodes in domain-level UseCase diagram", () => {

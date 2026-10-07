@@ -7,6 +7,28 @@ import type { ViewSlice } from "../view/view-extract.js";
 import type { LayoutNode, LayoutEdge, ContainerRect, DisplayMode } from "./layout-types.js";
 import { CONTAINER_PADDING, GHOST_MARGIN, getLayoutConstants } from "./layout-constants.js";
 
+/**
+ * Move every edge point by (dx, dy) in place, each point object once. Trunk
+ * siblings share one object for their common end (fan-in `toPoint`, fan-out
+ * `fromPoint`), so moving per edge would move a shared end once per sibling and
+ * pull it off its node (#2966, TPL-2958). Sharing the object is what keeps the
+ * siblings together through later passes, so do not copy it per edge instead.
+ */
+export function translateEdgePoints(edges: readonly LayoutEdge[], dx: number, dy: number): void {
+  const moved = new Set<{ x: number; y: number }>();
+  const move = (p: { x: number; y: number }): void => {
+    if (moved.has(p)) return;
+    moved.add(p);
+    p.x += dx;
+    p.y += dy;
+  };
+  for (const edge of edges) {
+    move(edge.fromPoint);
+    move(edge.toPoint);
+    for (const wp of edge.waypoints ?? []) move(wp);
+  }
+}
+
 export function normalizeCoordinates(
   containers: ContainerRect[],
   layoutNodes: Map<string, LayoutNode>,
@@ -57,18 +79,7 @@ export function normalizeCoordinates(
       node.x += shiftX;
       node.y += shiftY;
     }
-    for (const edge of layoutEdges) {
-      edge.fromPoint.x += shiftX;
-      edge.fromPoint.y += shiftY;
-      edge.toPoint.x += shiftX;
-      edge.toPoint.y += shiftY;
-      if (edge.waypoints) {
-        for (const wp of edge.waypoints) {
-          wp.x += shiftX;
-          wp.y += shiftY;
-        }
-      }
-    }
+    translateEdgePoints(layoutEdges, shiftX, shiftY);
   }
 
   // Assert non-negative coordinates after normalization (dev/test only).

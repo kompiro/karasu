@@ -35,7 +35,7 @@
 | `[storage]` | ストレージ系リソース（シェイプ: cloud） | cloud シェイプで描画 |
 <!-- /gen:reference:tags -->
 
-> `client` 用の 7 つの form-factor タグは karasu が **認識** している。将来的に kind 固有のアイコン（#823 Phase 2）やレイアウトヒント（Phase 6）に反応する予定。組み込み表の外のタグは v1.x では受理されるが**非推奨** — 下記「非 builtin のタグ名は非推奨（v1.x）」を参照。
+> `client` 用の 7 つの form-factor タグは karasu が **認識** している。Icon Mode はそれぞれを kind 固有のアイコンで描画する（#823 Phase 2）。レイアウトヒント（Phase 6）は今後の追加である。ツール語彙の外のタグはパースされるが**効果を持たない**。下記「非 builtin のタグ名は効果を持たない」を参照。
 
 > **shape タグは infra ブロックキーワードをミラーする — 別物ではなく対応関係にある。** infra ブロックの **キーワード**（`database` 配下の `table`、`queue` 配下の `queue-item`、`storage` 配下の `bucket`）は、system 図上の **共有ストアノード（実体）を宣言**する。usecase の `resource` は、その usecase が読み書きする対象への **操作参照**であり、`resource` が dot 記法で infra leaf を参照する（`resource OrderDB.OrderTable`）と、karasu は **参照先 infra sub-resource の kind から対応する shape タグを推論**する（`table` → `[table]`/cylinder, `queue-item` → `[queue]`, `bucket` → `[storage]`）。つまり参照は、指し示すストアと同じ形で描画される。だから shape タグ `[table]` / `[queue]` / `[storage]` は infra sub-resource kind を**意図的にミラー**している。参照する infra leaf が無い `resource` には、純粋な shape ヒントとして手書きで付けることもできる。`[api]`（hexagon）だけは infra 側に対応 kind が無く、API 系 resource 用の手書き専用 shape。同じ語が 2 つの位置に現れても **衝突しない**: キーワードは **宣言の先頭**でノードの *kind* を決め、`[...]` タグは `resource` への **接尾辞**で *shape* だけを決める — 両者は resource 参照で結ばれた相補的なレイヤーである。[syntax.md](./syntax.md) の *Infra layer* 節も参照。
 >
@@ -66,14 +66,14 @@
 
 > Related TPLs: [TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — 上記の停止規則は builtin 追加要望が通る 3 問の 3 番目であり、そこで生じた却下は議論をやり直さずに済むよう記録される。[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — タグの `appliesTo` に挙げた kind はすべてバッジを持つので、自分の kind の内側で受理・無効果になることがない。
 
-### 非 builtin のタグ名は非推奨（v1.x）
+### 非 builtin のタグ名は効果を持たない
 
-bare `[<identifier>]` は v1.x では引き続き任意の名前を受理する（v1.0 freeze — [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) — が parse 挙動を凍結している）。ただし**ツール語彙**（上記の組み込み表 + 下記の[システム自動付与タグ](#システム自動付与タグsystem-assigned-tags)）の外のタグは**非推奨**であり、karasu は使用のたびに `tag-not-builtin` **warning** を出す。抑制条件は意図的に**設けない** — `.krs.style` のセレクタや `legend` の ref は名前が意図的である証跡になるが、意図があっても結果は変わらない: 構文 v2.0 はツール語彙のみを受理する（enforcement は warning のままで、parse error にはしない — 既存ファイルはパースされ続ける）。移行先:
+`.krs language v2.0` は tag の register を**ツール語彙**（上記の組み込み表 + 下記の[システム自動付与タグ](#システム自動付与タグsystem-assigned-tags)）に閉じる。bare `[<identifier>]` は任意の名前のままパースされるので既存ファイルはパースされ続けるが、ツール語彙の外のタグは**効果を持たず**、karasu は使用のたびに `tag-not-builtin` **warning** を出す。enforcement は warning であり parse error にはしない（[ADR-2065](../adr/2065-tags-and-facets.md)）。抑制条件は意図的に**設けない**。`.krs.style` のセレクタや `legend` の ref は名前が意図的である証跡になるが、意図があっても結果は変わらない。言語 v1.x では同じ名前を v1.0 freeze（[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)）のもとで受理し、非推奨として警告していた。移行先:
 
-- **所属やモデル固有のラベリング**（PCI スコープ、PII、「認証必須」）→ [`facet` 構文](./syntax.ja.md#横断的な所属facet-experimental): 集合を top-level で 1 度宣言し、要素に `facets <id>` を書く。
-- **足りないアーキタイプ** → 組み込みタグの追加要望。非推奨タグはその間も動き続ける — 警告されるだけで、既定描画への効果は持たない。この経路の実例が [#2172](https://github.com/kompiro/karasu/issues/2172) で、`[cache]` / `[analytics]` は採用、`[kv]`（役割ではなく技術）と `[bff]`（`delivers <ClientId>` が構造として表現済み）は理由を記録して却下した。
+- **所属やモデル固有のラベリング**（PCI スコープ、PII、「認証必須」）→ [`facet` 構文](./syntax.ja.md#横断的な所属facet): 集合を top-level で 1 度宣言し、要素に `facets <id>` を書く。
+- **足りないアーキタイプ** → 組み込みタグの追加要望。それまでの間、非 builtin のタグは警告されるだけで何も描画しない。この経路の実例が [#2172](https://github.com/kompiro/karasu/issues/2172) で、`[cache]` / `[analytics]` は採用、`[kv]`（役割ではなく技術）と `[bff]`（`delivers <ClientId>` が構造として表現済み）は理由を記録して却下した。
 
-`.krs.style` 側でそうした名前を**狙っているルール**（`[pci] { … }`）も同じ条件で非推奨になり（`style-tag-selector-not-builtin`）、[facet セレクタ](./style.ja.md#ファセットセレクタfacetsid-experimental)へ書き換える。両方が警告されるのは、ノード側のタグとシート側のセレクタが別々の編集だからで、片方しか報告しないと残った方が見つからない。
+`.krs.style` 側でそうした名前を**狙っているルール**（`[pci] { … }`）は v2.0 では**何にも一致せず**、`style-tag-selector-not-builtin` として警告される。[facet セレクタ](./style.ja.md#ファセットセレクタfacetsid)へ書き換える。両方が警告されるのは、ノード側のタグとシート側のセレクタが別々の編集だからで、片方しか報告しないと残った方が見つからない。
 
 どの構文を選ぶかは下記[「語彙の register」](#語彙の-register--boundary--annotation--tag--facet)を参照。
 
@@ -153,18 +153,21 @@ system OrderSystem {
 > `@deprecated` 単独、または `@migration_target` 単独、どちらか一方が付いていれば重複を許容する。
 > どちらにも付いていない場合はエラーのまま。
 
-### 非 builtin のアノテーション名は非推奨（v1.x）
+### 非 builtin のアノテーション名は効果を持たない
 
-`@<identifier>` は v1.x では引き続き任意の識別子を受け付ける（open set であること自体を [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) が凍結している）。ただし上記の組み込み表の外の名前は**非推奨**であり、karasu は使用のたびに `annotation-not-builtin` **warning** を出す。抑制条件は**設けない**（スタイルシートのセレクタは意図の証跡になるが、意図があっても結果は変わらない: 構文 v2.0 はツール語彙のみを受理する。enforcement は warning のままで parse error にはしない）。非 builtin アノテーションにデフォルト描画はなく、v1.x では `.krs.style` のアノテーションセレクタのターゲットとして引き続き機能するが、**その用法も非推奨になった**（`style-annotation-selector-not-builtin`）— styling フックは [facet セレクタ](./style.ja.md#ファセットセレクタfacetsid-experimental)へ移った（移行前後の書き換え例もそこにある）。移行先:
+`.krs language v2.0` は annotation の register を上記の組み込み表に閉じる。`@<identifier>` は任意の識別子のままパースされるが、表の外の名前は**効果を持たず**、karasu は使用のたびに `annotation-not-builtin` **warning** を出す。抑制条件は**設けない**（スタイルシートのセレクタは意図の証跡になるが、意図があっても結果は変わらない）。そうした名前を狙う `.krs.style` のアノテーションセレクタは**何にも一致せず**、`style-annotation-selector-not-builtin` として警告される。styling のフックは [facet セレクタ](./style.ja.md#ファセットセレクタfacetsid)で、移行前後の書き換え例もそこにある。言語 v1.x では open な annotation 集合を [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) が凍結しており、非 builtin 名は非推奨として警告していた。移行先:
 
-- **所属やモデル固有のラベリング**（チーム所有マーク、audience ラベルなど）→ [`facet` 構文](./syntax.ja.md#横断的な所属facet-experimental)。
+- **所属やモデル固有のラベリング**（チーム所有マーク、audience ラベルなど）→ [`facet` 構文](./syntax.ja.md#横断的な所属facet)。
 - **足りない lifecycle 状態** → 組み込みアノテーションの追加要望。実例は [#2172](https://github.com/kompiro/karasu/issues/2172) で、`@planned` は採用、`@canary`（数時間で終わる runtime のロールアウト状態であり karasu が扱う slowly-changing な構造の外側。`@experimental` とも重なる）と `@sunset`（`@deprecated` が既に言っている）は却下した。長期併存する canary は `@new @experimental`、新旧併存は `@migration_target` で書ける。
 
-near-miss の**タイポヒント**（`annotation-possible-typo`、info）も引き続き発火する: 組み込み名のタイポ（例: `@depracated`）は放置すると「バッジが出ない」という形でしか表面化しないためである。ヒントはスタイルシートのアノテーションセレクタに現れる名前について従来どおり抑制される。両診断は v1.x の間共存し（near-miss には両方が付きうる）、v2.0 で整理される。
+組み込み名の**綴り誤り**（near-miss）は未知の語ではなく書き間違いであり、**拒否される**。`annotation-possible-typo` は [error](./diagnostics.ja.md#register-と-severity) で、annotation は適用されずモデルから除かれ、メッセージが組み込み名を示す。放置すると `@depracated` は「バッジが出ない」という形でしか表面化しないためである。4 文字以下の組み込み名（`new`）から **1 編集**以内、それより長い組み込み名から **2 編集**以内の名前を綴り誤りとみなし（隣接する 2 文字の入れ替えは 1 編集と数える）、最も近い組み込み名を候補として示す。抑制条件はない。このため `@new` に近い短い名前（`@news`、`@now`）も error になる。組み込み名を書くか、組み込み名から離れた名前にするか、意味を `facet` に移す。綴り誤りにはこの error だけが付き、`annotation-not-builtin` は重ならない（言語 v1.x では info のヒントで、非推奨の warning と共存していた）。
 
 ```krs
-service Billing @team_alpha   // 非推奨: annotation-not-builtin warning
-service Legacy  @depracated   // 二重に警告: タイポヒント (info) + not-builtin (warning)
+service Billing @team_alpha   // annotation-not-builtin warning: 効果なし
+```
+
+```krs invalid
+service Legacy  @depracated   // annotation-possible-typo error: @deprecated の綴り誤り
 ```
 
 > Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — deprecation により非 builtin 名は、従来の文書化なき open set 受理ではなく状態 (2)「unknown として警告」に保たれる。[TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — builtin *アノテーション*の追加要望にも同じ 3 問の gate を適用し、lifecycle register が最初のフィルタになる。
@@ -296,14 +299,14 @@ identifier セットは **オープン** — 任意の kebab-case 識別子を�
 
 ## 語彙の register — boundary / annotation / tag / facet
 
-karasu は「このラベルはどの種類か」を 4 つの register に分離する。tag と annotation の語彙は**ツール所有**であり、ユーザー拡張点は [`facet` 構文](./syntax.ja.md#横断的な所属facet-experimental)（experimental）に一本化される。
+karasu は「このラベルはどの種類か」を 4 つの register に分離する。tag と annotation の語彙は**ツール所有**であり、ユーザー拡張点は [`facet` 構文](./syntax.ja.md#横断的な所属facet)に一本化される。
 
 | Register | 構文 | 語彙 | 答える問い |
 | --- | --- | --- | --- |
 | アーキタイプ | tag `[...]` | ツール所有（上記の組み込み表） | この要素はアーキテクチャ上**何であるか**？（`[external]`、`[index]`） |
 | lifecycle | annotation `@...` | ツール所有（上記の組み込み表） | どの開発状態にあるか？（`@deprecated`、`@new`） |
 | view 内グルーピング | `boundary` | ユーザー宣言 id | この view で peer をどうまとめるか？（[syntax.ja.md](./syntax.ja.md) 参照） |
-| 集合所属 | [`facet` 構文](./syntax.ja.md#横断的な所属facet-experimental)（experimental） | ユーザー宣言 id | 外部で定義された**どの集合に属するか**？（PCI スコープ、PII、認証必須） |
+| 集合所属 | [`facet` 構文](./syntax.ja.md#横断的な所属facet) | ユーザー宣言 id | 外部で定義された**どの集合に属するか**？（PCI スコープ、PII、認証必須） |
 
 分解の実例 — PCI 対応と認証を、タグを誤用せずにモデリングする:
 
@@ -316,7 +319,7 @@ karasu は「このラベルはどの種類か」を 4 つの register に分離
 
 register を分ける理由は、所属のセマンティクスがアーキタイプと異なるからである: database は PCI スコープに入っていようがいまいが database であり、対象 10 要素中 9 要素にしか所属タグが付いていない図は、監査文脈で偽の保証として読まれてしまう。したがって所属はタグの名前空間を借りず、宣言メタデータ（`label` / `description` / `link`）を持つ専用構文を得る。
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — どの register でも、受理される語彙は効果を持つか警告される必要がある。v1.x の deprecation 診断（`tag-not-builtin` / `annotation-not-builtin`）はツール所有 register を状態 (2) に保つ。
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — どの register でも、受理される語彙は効果を持つか警告される必要がある。閉じた register の診断（`tag-not-builtin` / `annotation-not-builtin`）はツール所有 register を状態 (2) に保つ。
 
 ---
 
@@ -346,6 +349,7 @@ register を分ける理由は、所属のセマンティクスがアーキタ�
 | `[write]` | usecase→resource の合成エッジで、対象 resource の `operations` に `create` / `update` / `delete` が含まれる場合 | `stroke-width: 2`、ラベル `"W"` |
 | `[read]` | usecase→resource の合成エッジで read-only と分類される場合（write 動詞なし、または `operations` 省略） | `stroke-width: 1.5`、ラベル `"R"` |
 | `[inferred]` | `translate --from db` が **Soft FK**（`REFERENCES` / `FOREIGN KEY` 宣言の無い `<stem>_id` / `<stem>_code` 列）から導いた entity 関連、または `table` → `table` エッジ（#2722）。明示 FK 由来の関連は無タグ（確認済み） | 薄いグレー（dark `#94A3B8` / light `#64748B`）。**色のみ** — 線種は `[sync]` / `[async]` が所有する |
+| `[delivers]` | service の `delivers <ClientId>` プロパティから導いた service → client のエッジ（[syntax.ja.md](./syntax.ja.md)） | 紫（dark `#A78BFA` / light `#7C3AED`）の破線 |
 | `[projected]` | `database` キャンバスが、両端がそのストアへ対応する `entity` 関連から導いた `table` → `table` エッジ（[syntax.ja.md](./syntax.ja.md#ストアスコープの-er-ビューdatabase-キャンバスへの-entity-関連の投影) 参照） | スカイブルー（dark `#38BDF8` / light `#0369A1`）。**色のみ** — 線種は `[sync]` / `[async]` が所有する |
 
 > `[implicit]` は色（アンバー）で「派生」を表し、線種は同期/非同期の区別に使う。

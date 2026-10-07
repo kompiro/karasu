@@ -80,11 +80,14 @@ pnpm gen:reference --check
       親の `canContain` の**両方**を更新したか。
 - [ ] 変更後に `reference-parser-sync.test.ts` が通るか（表 ↔ parser の双方向）。
 - [ ] `pnpm gen:reference --check` が通るか（表 ↔ データ）。
-- [ ] `examples/**/*.krs` が warning ゼロのままか（出荷サンプルが自分の規則に
-      違反していないか）。
-- [ ] 新しい配置規則を error にする必要があると判断したなら、それが freeze
-      （[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)）に抵触しないか。抵触するなら
-      v1.x は warning に留め、error 化を roadmap §Syntax 2.0 に登録したか。
+- [ ] `examples/**/*.krs` が `node-not-in-context` ゼロのままか（出荷サンプルが自分の
+      規則に違反していないか）。言語 v2.0 からこれは error なので、違反はサンプルが
+      描画されなくなることを意味する。
+- [ ] 規則を厳しくする（`canContain` から子を外す）なら、それは既存ファイルを error に
+      する破壊的変更であり、言語の major でしか入れられない
+      （[ADR-1314](../adr/1314-krs-spec-v1-freeze.md) の版セマンティクス）。言語 v1.x は
+      warning、言語 v2.0 で error にした `node-not-in-context` 自体がその経路の実例
+      （#2924）。
 
 ## 既知の対処パターン
 

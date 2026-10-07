@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { OpenApiTranslator } from "./openapi.js";
+import { Parser } from "../parser/parser.js";
 import type { TranslatorContext } from "./translator.js";
 
 const ctx: TranslatorContext = {
@@ -253,5 +254,39 @@ paths:
     });
     expect(result).toContain('  usecase GetItems { label "GET /items" }');
     expect(result).toContain('  usecase PostItems { label "POST /items" }');
+  });
+});
+
+// `.krs language v2.0` rejects a usecase written directly under a service
+// (`node-not-in-context`, #2924), so the scaffold has to stay inside a domain
+// or `karasu render` would refuse what `translate` just wrote.
+describe("OpenApiTranslator — output stays inside the containment rules", () => {
+  const translator = new OpenApiTranslator();
+  const input = `
+openapi: "3.0.0"
+info:
+  title: Shop API
+paths:
+  /orders:
+    get:
+      operationId: listOrders
+    post:
+      operationId: placeOrder
+  /health:
+    get: {}
+`;
+
+  it.each([
+    ["resource", {}],
+    ["resource with bindings", { emitBindings: true }],
+    ["resource with CRUD decoration", { emitCrudDecoration: true }],
+    ["operation", { granularity: "operation" as const }],
+  ])("parses with no errors at %s granularity", async (_name, options) => {
+    const result = await translator.translate(input, { ...ctx, service: "Shop", ...options });
+    const parsed = Parser.parse(result);
+    expect(parsed.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    const service = parsed.value.services[0];
+    expect(service.children.map((c) => `${c.kind} ${c.id}`)).toEqual(["domain ShopApi"]);
+    expect(service.children[0].children.every((c) => c.kind === "usecase")).toBe(true);
   });
 });

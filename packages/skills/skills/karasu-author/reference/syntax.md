@@ -2,7 +2,7 @@
 
 > **English** (this file) · [日本語](syntax.ja.md)
 
-> Language version: **`.krs language v1.0`** (frozen — [ADR-1314](../adr/1314-krs-spec-v1-freeze.md); independent from every package's npm version — [ADR-2124](../adr/2124-version-vocabulary.md)). `karasu --version` reports the language version a build implements.
+> Language version: **`.krs language v2.0`**, the first major after the v1.0 freeze ([ADR-1314](../adr/1314-krs-spec-v1-freeze.md)). It closes the tag and annotation vocabularies, promotes `facet` and `boundary` to core, and rejects two forms that v1.x only warned about ([#2677](https://github.com/kompiro/karasu/issues/2677)). The language version is independent from every package's npm version ([ADR-2124](../adr/2124-version-vocabulary.md)); `karasu --version` reports the one a build implements.
 
 ## File structure
 
@@ -46,7 +46,7 @@ The recognized `client` form-factor tags are listed below.
 
 #### `client` form-factor tags (recognized)
 
-karasu's tag system is intentionally open — any tag is accepted and styles react via selectors. For `client` specifically, **seven names are recognized** as form-factor classifications. Icon Mode renders each with a kind-specific icon; layout hints are a future addition. Tags outside this list still parse and behave as ordinary user-defined tags; they simply do not trigger karasu's built-in form-factor treatment.
+Tags are tool-owned from `.krs language v2.0`: a tag outside the builtin table parses but has no effect, and a selector on it matches nothing ([tags-annotations.md](./tags-annotations.md#non-builtin-tag-names-have-no-effect)). For `client` specifically, **seven names are recognized** as form-factor classifications. Icon Mode renders each with a kind-specific icon; layout hints are a future addition. Another builtin tag (such as `[external]`) keeps its own meaning on a client; it just does not trigger the form-factor treatment. Membership or labels of your own belong in a `facet`.
 
 <!-- gen:reference:client-form-factor-tags — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | Tag | Form factor |
@@ -270,9 +270,9 @@ An independent axis from logical/physical, describing the **ownership** of servi
 | `team` | A team with responsibility. May be nested | `team`, `member`, `owns` |
 | `member` | An individual belonging to a team | — |
 
-A related grouping overlay — **`boundary`** (experimental) — lets an author
+A related grouping overlay — **`boundary`** — lets an author
 declare semantic clusters *within* the system view, drawn as a second "Group by"
-axis alongside team ownership. See [§ Grouping the system view (`boundary`)](#grouping-the-system-view-boundary--experimental).
+axis alongside team ownership. See [§ Grouping the system view (`boundary`)](#grouping-the-system-view-boundary).
 
 ### Physical structure (how) — rendered as a separate diagram
 
@@ -518,24 +518,23 @@ out of scope here (see [#1639](https://github.com/kompiro/karasu/issues/1639)).
 #### Nesting placement
 
 The **May contain** column of the [Logical structure](#logical-structure-what--why)
-table is the single definition of which children a kind may hold. Nesting a
-logical node anywhere else emits the `node-not-in-context` **warning**: the node
-is kept and still renders, it simply carries no defined meaning there. Only the
-listed nestings have semantics — `docs/concepts.md` fixes the hierarchy as
+table is the single definition of which children a kind may hold. Only the
+listed nestings have semantics: `docs/concepts.md` fixes the hierarchy as
 `service → domain → usecase → resource`, so a `usecase` written directly inside
-a `client` has nothing to mean.
+a `service` or a `client` has nothing to mean.
 
-It is a warning rather than an error because `.krs language v1.0` is frozen
-([ADR-1314](../adr/1314-krs-spec-v1-freeze.md)): a file that parses today keeps
-parsing. Promotion to an error is registered to `.krs language v2.0`
-([roadmap §Syntax 2.0](../roadmap.md#syntax-20-プログラム)) — the same
-warning-in-v1.x / error-in-v2.0 path the tag and annotation vocabularies take.
+Every other nesting is **rejected**: it is an [error](./diagnostics.md#registers-and-severities),
+and the misplaced node is dropped from the model together with its subtree. The
+block is still read to its closing brace, so what follows it parses normally,
+and a reference to the dropped node is reported as an unresolved reference (§S6)
+rather than as a second error. Language v1.x reported the general case as a
+`node-not-in-context` warning and kept the node; `.krs language v2.0` makes it
+an error ([#2924](https://github.com/kompiro/karasu/issues/2924)). To migrate,
+move the node under a kind that may contain it (a `usecase` goes in a `domain`).
 
-Four nestings are rejected outright rather than warned, and the misplaced node is
-dropped:
-
-| Rejected nesting | Diagnostic | Why it is an error, not a warning |
+| Rejected nesting | Diagnostic | Why it carries no meaning |
 |---|---|---|
+| a logical node under a kind whose **May contain** does not list it (e.g. a `usecase` directly in a `service`) | `node-not-in-context` | the hierarchy gives it no role there |
 | an infra block outside `system` | `infra-not-in-context` | the block has no system to belong to |
 | an `entity` outside a `domain` | `entity-not-in-domain` | an entity is owned by exactly one domain |
 | a `boundary` inside a kind that draws no canvas | `boundary-not-in-context` | there are no peers to frame |
@@ -1450,7 +1449,7 @@ organization TechCorp {
 ### team node
 
 - `owns <ref>` declares a node the team owns, where `<ref>` is a node reference path (see [§ Node reference path notation](#node-reference-path-notation)): a bare id claims every node with that id (broadcast), a longer suffix path narrows to the node it names, and a mixed-kind/depth multi-match draws `owns-target-ambiguous`. When the same node is `owns`-ed by more than one team, it is a tolerated fact (transient co-ownership during an inverse-Conway migration): the first-declared team is kept as the node's primary owner and the overlap surfaces as the `duplicate-owner-assignment` **info** diagnostic — not an error (ADR-1566). A `@migration_target` team takes primary over unmarked, and `@deprecated` last.
-- Under *Group by: team*, grouping resolves **per view, against the nodes rendered at the level being drawn**. `owns` has no level restriction, so a team owning a `domain` nested under a `service` gets a team frame in that service's drill-down view — the same per-view semantics as the `boundary` axis (see [§ Grouping the system view](#grouping-the-system-view-boundary--experimental)).
+- Under *Group by: team*, grouping resolves **per view, against the nodes rendered at the level being drawn**. `owns` has no level restriction, so a team owning a `domain` nested under a `service` gets a team frame in that service's drill-down view — the same per-view semantics as the `boundary` axis (see [§ Grouping the system view](#grouping-the-system-view-boundary)).
 - Teams can be nested — placing child teams under a parent team expresses organizational hierarchy.
 - Team IDs must be unique within the same organization. Duplicates produce an error.
 - During parsing, an `ownerIndex` (`node full path → team id`, #2548) is built so that a logical-diagram node can look up its owner team; each `owns` reference is expanded through the suffix rule at build time.
@@ -1517,13 +1516,13 @@ The legacy positional argument (`team backend "Backend Team"`) is **rejected** w
 
 ---
 
-## Grouping the system view (`boundary`) — experimental
+## Grouping the system view (`boundary`)
 
-> **Experimental notation (post-v1.0 watch).** `boundary` is retained as
-> experimental, not frozen — backward compatibility is **not yet promised**, and
-> promotion to a v1.0-stable construct is gated on real-usage evidence (the
-> notation promotion gate, [ADR-1820](../adr/1820-notation-promotion-gate.md)).
-> See `docs/roadmap.md` § post-v1.0 horizon.
+> **Core notation from `.krs language v2.0`.** `boundary` (the declaration,
+> `contains` and the scoped declaration) passed the notation promotion gate
+> ([ADR-1820](../adr/1820-notation-promotion-gate.md)) and is promoted to core in
+> language v2.0 ([#2678](https://github.com/kompiro/karasu/issues/2678)): its shape is
+> backward-compatible from then on, and a breaking change needs a language major.
 
 A `boundary` block declares a **semantic cluster** of system-view nodes — a
 grouping the author draws on top of the logical structure, independent of the
@@ -1707,12 +1706,9 @@ Under either *Group by* axis the group frame is titled with the group's declared
 
 ---
 
-## Cross-cutting membership (`facet`) — experimental
+## Cross-cutting membership (`facet`)
 
-> **Experimental notation (post-v1.0 watch).** `facet` lands as experimental,
-> not frozen — backward compatibility is **not yet promised**, and promotion to
-> a v1.0-stable construct is gated on real-usage evidence (the notation
-> promotion gate, [ADR-1820](../adr/1820-notation-promotion-gate.md)).
+> **Core notation** from `.krs language v2.0`: backward compatibility is promised, and `facet` is the only user extension point of the vocabulary ([ADR-2065](../adr/2065-tags-and-facets.md)).
 >
 > **Membership is shown by the overlay, which the reader turns on.** Pick facets
 > in the preview's *Facets* selector: members get a coloured ring, everything
@@ -1726,7 +1722,7 @@ Under either *Group by* axis the group frame is titled with the group's declared
 > for every reader until one of them selects something.
 >
 > Two surfaces sit alongside the overlay. A sheet can style by membership —
-> [`[facets=<id>]`](style.md#facet-selectors-facetsid--experimental), the
+> [`[facets=<id>]`](style.md#facet-selectors-facetsid), the
 > replacement for abusing an arbitrary tag selector. And **Membership overview**,
 > at the bottom of the Facets menu, answers "which elements are in facet X" in
 > one view. That list is **derived from the `facets` properties on every
@@ -1826,8 +1822,8 @@ system Shop {
 - **Typo detection is complete, not best-effort.** Because the declarations
   define the correct set, a slip between two author-defined names
   (`facets pcl` for `pii`) is caught just as reliably as a misspelt builtin —
-  unlike the near-miss `annotation-possible-typo` hint, which can only compare
-  against a fixed vocabulary.
+  unlike `annotation-possible-typo` (an error), which can only compare against
+  a fixed vocabulary. An undeclared facet stays a `facet-not-declared` warning.
 - **Default rendering is unchanged.** Adding `facets` to an element never alters
   how the diagram is drawn; every effect of a facet is opt-in.
 

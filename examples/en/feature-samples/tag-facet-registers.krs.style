@@ -8,7 +8,7 @@
  * `[pci] { … }` against a made-up tag. It scores 10, exactly what that tag
  * selector scored, so a sheet can be migrated one rule at a time.
  *
- * Deprecated form, for comparison:
+ * The old form, for comparison (matches nothing in `.krs language v2.0`):
  *   [pci] { border-color: #F59E0B; }      ← warns: style-tag-selector-not-builtin
  */
 [facets=pci] {
