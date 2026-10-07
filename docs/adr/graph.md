@@ -192,6 +192,7 @@ flowchart TD
     ADR_1580["ADR-1580<br/>組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする"]
     ADR_1895["ADR-1895<br/>アーキテクチャリバースハーネス — multi-subagent fan-out + CLI ..."]
     ADR_2077["ADR-2077<br/>reverse harness の分解粒度 — bounded-context 既定と構造 g..."]
+    ADR_2901["ADR-2901<br/>AI authoring は利用者のエージェントセッションと karasu CLI skill..."]
     ADR_9017["ADR-9017<br/>Cloudflare Pages デプロイ基盤と BYOK AI 連携"]
   end
   subgraph cli["cli"]
@@ -233,6 +234,7 @@ flowchart TD
     ADR_2522["ADR-2522<br/>語彙センサスが見つけた drift の閉鎖 — kebab-case 字句規則・読解確度の r..."]
     ADR_2585["ADR-2585<br/>ストアスコープの ER ビュー — FK は記録し、entity 関連は投影し、確認済みかどう..."]
     ADR_2597["ADR-2597<br/>チーム間の依存を `owns` × 論理エッジから導出する"]
+    ADR_2677["ADR-2677<br/>言語 v2.0 を実施する: tag / annotation 語彙を閉じ、facet と b..."]
     ADR_9002["ADR-9002<br/>ツール名「karasu」の採用"]
     ADR_9003["ADR-9003<br/>論理構造と物理構造の分離"]
   end
@@ -576,8 +578,14 @@ flowchart TD
   ADR_2592 --> ADR_2578
   ADR_2611 --> ADR_2598
   ADR_2655 --> ADR_2578
+  ADR_2677 --> ADR_1314
+  ADR_2677 --> ADR_1820
+  ADR_2677 --> ADR_2065
+  ADR_2677 --> ADR_2124
   ADR_2782 --> ADR_2562
   ADR_2818 --> ADR_2714
+  ADR_2901 --> ADR_1315
+  ADR_2901 --> ADR_1758
   ADR_2917 --> ADR_1884
   ADR_2917 --> ADR_2714
   ADR_2969 --> ADR_2592
@@ -967,6 +975,7 @@ flowchart TD
   class ADR_2655 accepted
   class ADR_2658 accepted
   class ADR_2671 accepted
+  class ADR_2677 accepted
   class ADR_2687 accepted
   class ADR_2693 accepted
   class ADR_2714 accepted
@@ -990,6 +999,7 @@ flowchart TD
   class ADR_2859 accepted
   class ADR_2877 accepted
   class ADR_2898 superseded
+  class ADR_2901 accepted
   class ADR_2906 accepted
   class ADR_2917 accepted
   class ADR_2939 accepted

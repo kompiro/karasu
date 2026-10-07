@@ -49,7 +49,7 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 
 > **`karasu`（CLI）の version floor は 0.6.0**。npm の `karasu` 名は旧 incarnation が `〜0.5.2` まで公開済みで、それ以下は `E400 Cannot publish over previously published version` になる。`@karasu-tools/core` は履歴がクリーンなため独立して 0.x（independent versioning）。
 
-`karasu-skills` は `prepack` で、その時点の CLI の版（`packages/cli/package.json`）を各 SKILL.md の `metadata.karasu-version` と本文 Step 0 に刻み、`postpack` で元に戻す（刻むのは「この版以降の CLI 向け」という下限）。利用者はルートの `.claude-plugin/marketplace.json` を marketplace として追加し、npm の `karasu-skills` を plugin として入れる（`/plugin marketplace add kompiro/karasu` → `/plugin install karasu@karasu`）。設計は `docs/design/karasu-authoring-skill.md` 案 1-D（#2932）。
+`karasu-skills` は `prepack` で、その時点の CLI の版（`packages/cli/package.json`）を各 SKILL.md の `metadata.karasu-version` と本文 Step 0 に刻み、`postpack` で元に戻す（刻むのは「この版以降の CLI 向け」という下限）。利用者はルートの `.claude-plugin/marketplace.json` を marketplace として追加し、npm の `karasu-skills` を plugin として入れる（`/plugin marketplace add kompiro/karasu` → `/plugin install karasu@karasu`）。設計は [ADR-2901](adr/2901-karasu-authoring-skill.md)（#2932）。
 
 > **`karasu` は `karasu-skills` に依存する**（#2912）。`karasu skill install` が同梱の skill をコピーするため、CLI は `karasu-skills` を esbuild で内包せず実行時に解決する（ADR-1363 の「CLI は依存を内包する」の例外。中身は skill の文書だけ）。公開される `karasu` はその時点の `karasu-skills` の版を完全一致で指すので、同じトレインで `karasu-skills` の publish が失敗すると `npm i karasu` が解決できなくなる。`release.yml` の結果で両方が公開されたことを確かめる。
 
@@ -111,7 +111,7 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 
 ### CLI の後方互換
 
-`karasu` CLI のうち、skill やスクリプトが呼ぶ面（コマンド名、フラグ、stdout / stderr の形式、終了コード）は後方互換を保つ（[#2961](https://github.com/kompiro/karasu/issues/2961)、設計は `docs/design/karasu-authoring-skill.md` の論点 5）。Claude Code はサードパーティ marketplace の plugin を自動更新しないので、新しい CLI と古い skill の組み合わせは利用者の手元で普通に起きる。その互換の責任を CLI が持つ。
+`karasu` CLI のうち、skill やスクリプトが呼ぶ面（コマンド名、フラグ、stdout / stderr の形式、終了コード）は後方互換を保つ（[#2961](https://github.com/kompiro/karasu/issues/2961)、設計は [ADR-2901](adr/2901-karasu-authoring-skill.md) の「利用者の手元でのずれ」）。Claude Code はサードパーティ marketplace の plugin を自動更新しないので、新しい CLI と古い skill の組み合わせは利用者の手元で普通に起きる。その互換の責任を CLI が持つ。
 
 - **名前を変える・廃止する**: 古い名前を消さず、`packages/cli/src/deprecations.ts` の `DEPRECATIONS` に 1 行足す（種別、古い名前、代わり、廃止した版、削除する版）。古い名前は `--help` に出ない別名として動き続け、呼ばれると stderr に 1 行出す: `karasu: deprecated: 'old' -> 'new' (since 0.8.0, removal 1.0.0)`。
 - **別名を削除してよいのは major のリリースだけ**（0.x の間は 1.0.0 まで削除しない）。削除は CHANGELOG で予告する。削除した項目には `removed: true` を付け、**表から消さずに墓標として残す**。墓標の名前は「未知のコマンド」ではなく、同じ形式の `karasu: removed: ...` 行を出して終了コード 1 で失敗する。
