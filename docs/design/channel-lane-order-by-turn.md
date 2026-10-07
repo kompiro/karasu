@@ -1,0 +1,122 @@
+# 行間チャネルのレーンを、run がつながる縦線の向きで並べる
+
+- **日付**: 2026-10-07
+- **ステータス**: 検討中
+- **Issue**: [#3088](https://github.com/kompiro/karasu/issues/3088)
+- **PR**: #（作成後に記入）
+- **関連**:
+  - 関連 ADR: [ADR-2598](../adr/2598-edge-routing-channel-capacity.md)（行間チャネルのレーン。決定 1・2 で run を x 範囲の区間分割でレーンに割る）、[ADR-2958](../adr/2958-gutter-lane-bundling.md)（ガターの lane bundle。#3088 はその飽和フィクスチャで見つかった）、[ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)（ガター corridor のレーン分割、#1927）
+  - 関連 TPL: [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)、[TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md)、[TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)、[TPL-2958](../test-perspectives/TPL-2958-bundle-shared-geometry-survives-later-passes.md)
+  - コード: `packages/core/src/renderer/edge-routing-lanes.ts`（`collectChannels` / `distributeChannelLanes`）、`edge-routing-groups.ts`（`assignGutterLanes` / `fanOutGutterPorts`）
+  - 計測: 実装用 worktree の `reports/3088/`（gitignore。`measure.test.ts` / `run.sh` / `sum.py`）
+
+## 背景・課題
+
+同じガターのレーンに載った 2 本の縦線が、14px だけ重なって 1 本に見えることがある（兄弟以外の共線ペア、TPL-1927）。
+
+1. `assignGutterLanes` は、y 範囲が**接するだけ**の corridor を「重ならない」とみなして同じレーンに置く（`end <= lo`）。上の corridor の下端と、下の corridor の上端が同じ行間チャネルの同じ y で接している場合である。
+2. その後で `distributeChannelLanes` が、同じチャネルを通る水平 run を x 範囲の区間分割でレーンに分け、`LANE_PITCH`（14px）ずつ上下にずらす。上の corridor につながる run と下の corridor につながる run は同じ x で終わるので、必ず別のレーンになる。
+3. レーンの上下の順は区間分割の都合で決まり、縦線の向きを見ていない。上の corridor の run が下のレーンに、下の corridor の run が上のレーンに入ると、2 本の縦線が 2 レーンの間隔だけ重なる。
+
+main で既に起きている。Dify の全階層（約 600 view）と `examples/en` では 0 件だが、合成入力では出る。
+
+| 入力 | main の縦の共線ペア |
+|---|---|
+| 飽和フィクスチャの table 4 本版（usecase 16 → table 10、ungrouped） | 1 |
+| hub + 相方付き入力（Group by team、#2958 の探索で使ったもの）N=12 / 12（相方を専用チームに）/ 24 / 36 | 1 / 2 / 1 / 1 |
+
+## 現状（インベントリ）
+
+| 観点 | 現状 |
+|---|---|
+| ガターのレーン | `assignGutterLanes`。lane bundle（ADR-2958）と単独の corridor を y 範囲の区間分割でレーンに割る。接するだけなら同じレーンを共有する |
+| ポートの扇 | `fanOutGutterPorts`。同じ辺の接続を、行き先の位置（`bendKey`）の順に並べて入れ子にする。接するだけの corridor がポートで接していても、上から来るものが上、下へ行くものが下に並ぶので重ならない |
+| 行間チャネルのレーン | `collectChannels` が run を x 範囲の区間分割でレーンに割り、`distributeChannelLanes` がレーン番号の順に上から y を振る。レーンの上下順は区間分割の結果そのまま |
+| 実行順 | ガターのレーン → ポートの扇 → チャネルのレーン → outline seating（`runRoutingChain`） |
+
+## 制約・前提
+
+- 兄弟以外の共線ペア 0、貫通 0 を保つ（TPL-1927 / TPL-1954）。
+- 直す必要のない図は 1 バイトも変えない。Dify と examples の現状 0 件を保ったまま、面積を増やさない。
+- 再配線を繰り返すループは入れない（ADR-2598 の却下した案「衝突が消えるまで再配線を繰り返す」）。
+- lane bundle の兄弟が共有する run は 1 レーンにまとまっている（ADR-2958、TPL-2958）。並べ替えでこれを割らない。
+- out of scope: 接してはいないが近い corridor がチャネルのずらし幅で重なるケース。router は 1 本のチャネルの run を同じ y に置くので、ガター側で接していない 2 本の端が同じチャネルにあることは今の経路形状では起きない（計測した全入力で 0）。
+
+## 検討した選択肢
+
+計測は、Dify の全階層 + `examples/en` の全ファイル（ルートは ungrouped / team / boundary）+ 上の合成入力の計 672 view。指標は兄弟以外の共線ペア（縦・横）、貫通、キャンバス面積。
+
+### 案A: 接するだけでも別レーンにする
+
+`assignGutterLanes` の判定を `end < lo` にする。
+
+**メリット**
+
+- 1 文字の変更で、合成入力の 6 件がすべて 0 になる。
+
+**デメリット**
+
+- もともと重なっていなかった図まで広げる。Dify `ApiBackend.Knowledge` が面積 +10.2%、getting-started（team）が +2.1%。接するだけの corridor の多くは、チャネルのレーンがたまたま正しい順に並んでいて重なっていなかった。
+
+### 案B: 接する点が行間チャネルの角のときだけ別レーンにする
+
+接する点がポートなら扇が正しく並べるので、チャネルの run につながる端どうしで接するときだけ重なりとみなす。
+
+**メリット**
+
+- getting-started（team）は変わらない。合成入力の 6 件は 0 になる。
+
+**デメリット**
+
+- Dify Knowledge は案 A と同じく +10.2%。チャネルの角で接していても、レーンの順が正しければ重ならないので、分ける必要のない corridor まで分けている。
+
+### 案C: チャネルのレーンを、run がつながる縦線の向きで並べる（採用候補）
+
+ガターのレーンには触れない。チャネルのレーンの上下順だけを決め直す。
+
+- 同じ x で端を共有する 2 本の run のうち、その x から**上へ**続く run のレーンを、**下へ**続く run のレーンより上に置く、という制約を集める。
+- 制約を満たすレーンの並びを、元の順にできるだけ近い形で選ぶ（制約の無いレーンは元の順。安定なトポロジカル順序）。制約が互いに矛盾する場合は元の順のまま。
+- レーンは丸ごと動かすので、同じレーンに載った run どうしが触れることはない（区間分割の不変条件はそのまま）。lane bundle の共有 run も 1 レーンのまま動く。
+
+ポートの扇（`fanOutGutterPorts`）がすでにしている「行き先の向きで並べて入れ子にする」を、行間チャネルにも当てる形になる。
+
+**メリット**
+
+- 合成入力の 6 件がすべて 0 になり、面積は 1 件も増えない。
+- 制約が 1 つも無いチャネルは元の順のままなので、Dify と examples の 56 ファイルは全 view の SVG がバイト一致する。
+- 原因（チャネルのレーン順が縦線の向きを見ていない）に当たっている。
+
+**デメリット**
+
+- 新しい順序決定のロジックが入る。ペアの探索は、端の x ごとに run を引く索引で行う（試作は総当たりで、Dify の DifyDB 階層が 99 → 102 ms）。
+
+## 比較
+
+| 観点 | 案A | 案B | 案C |
+|---|---|---|---|
+| 合成入力の縦の共線（main 6） | 0 | 0 | 0 |
+| 変わる実在の図 | Dify Knowledge +10.2%、getting-started(team) +2.1% | Dify Knowledge +10.2% | なし（SVG バイト一致） |
+| 合成入力の面積 | +0.9% | +0.9% | ±0 |
+| 原因への当たり方 | 症状（予防的に分ける） | 症状（範囲を絞って分ける） | 原因（並び順） |
+| 変更量 | 1 行 | 十数行 | 関数 1 つ（数十行） |
+
+## 現時点の方針
+
+**案C を採用する。** 唯一、実在の図を 1 つも変えずに合成入力の重なりを 0 にする案で、原因（チャネルのレーンの上下順が縦線の向きを見ていない）そのものを直す。ポートの扇が向きで入れ子にするのと同じ規則なので、レーンの並べ方が 2 か所で揃う。
+
+### 実装の指針
+
+1. `edge-routing-lanes.ts` に、チャネルのレーンの上下順を返す関数を足す。各 run の両端で、その x から続く縦線の向き（上 / 下 / なし）を求め、端の x ごとに run を索引する。同じ x に上向きと下向きがあれば「上向きのレーンを上に」の制約を立てる。安定なトポロジカル順序で順位を決め、矛盾すれば元の順を返す。
+2. `distributeChannelLanes` は、レーン番号の代わりにその順位で y を振る。`collectChannels` が返すレーン数（配置の予約に使う）は変えない。
+3. 柵:
+   - `routing-parity.test.ts` に、table 4 本版の飽和入力（main で 1 件）と hub + 相方付き入力（main で 1〜2 件）を足し、兄弟以外の共線 0・貫通 0 を assert する。修正を外すと落ちることを確認する（TPL-2598）。
+   - 単体テスト: 上向きと下向きの run が同じ x で終わり、区間分割が逆順に割ったチャネルで、並べ替え後に上向きのレーンが上にあること。制約の無いチャネルの順が変わらないこと。矛盾する制約で元の順に戻ること。
+4. 実在の図が変わらないこと: Dify + `examples/en` の全 view の SVG ハッシュが main と一致することを PR に書く。`bench:render` で Dify の描画時間を確認する。
+5. TPL: 「前のパスが『重ならない』と判定した 2 つの要素の端を、後のパスが別々に動かすなら、動かす向きが判定と矛盾しないことを測る」を retrospective TPL として起こす（#3088、3-Yes: ポートの扇・チャネル・ガターのレーンなど、並び順を決めるパスはどれも同じ形で壊れうる / パスの順序が固定である限り構造的に再発する / TPL-2958 は束の共有区間、TPL-1954 は新しい経路形状が対象で、これは未掲載）。
+6. AT: `docs/acceptance/3088-channel-lane-order.md`。自動テストで覆うので手動項目は無し。
+7. ADR 昇格: 実装完了後に `docs/adr/3088-channel-lane-order-by-turn.md` として昇格し、本 Design Doc は同じ PR で削除する。ADR-2598 を `refines` する。
+
+### 影響範囲・マイグレーション
+
+- 既存ユーザーへの影響: チャネルの run の上下順が向きと矛盾していた図だけ、そのチャネルの run の y が入れ替わる。計測した実在の図では 0 件。`.krs` の構文は変えない。
+- ドキュメント更新: なし（描画の修正）。
