@@ -235,6 +235,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2522](2522-vocabulary-census-drift.md) — 語彙センサスが見つけた drift の閉鎖 — kebab-case 字句規則・読解確度の register・閉鎖前提条件の再スコープ
 - [ADR-2585](2585-store-scoped-er-view.md) — ストアスコープの ER ビュー — FK は記録し、entity 関連は投影し、確認済みかどうかで描き分ける
 - [ADR-2597](2597-team-dependencies.md) — チーム間の依存を `owns` × 論理エッジから導出する
+- [ADR-2677](2677-language-v2-act.md) — 言語 v2.0 を実施する: tag / annotation 語彙を閉じ、facet と boundary を core にし、受理しない構文を error と定義する
 - [ADR-9002](9002-karasu-naming.md) — ツール名「karasu」の採用
 - [ADR-9003](9003-logical-physical-separation.md) — 論理構造と物理構造の分離
 
