@@ -3,7 +3,7 @@
 - **日付**: 2026-10-07
 - **ステータス**: 検討中
 - **Issue**: [#3088](https://github.com/kompiro/karasu/issues/3088)
-- **PR**: #（作成後に記入）
+- **PR**: #3095
 - **関連**:
   - 関連 ADR: [ADR-2598](../adr/2598-edge-routing-channel-capacity.md)（行間チャネルのレーン。決定 1・2 で run を x 範囲の区間分割でレーンに割る）、[ADR-2958](../adr/2958-gutter-lane-bundling.md)（ガターの lane bundle。#3088 はその飽和フィクスチャで見つかった）、[ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)（ガター corridor のレーン分割、#1927）
   - 関連 TPL: [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)、[TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md)、[TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)、[TPL-2958](../test-perspectives/TPL-2958-bundle-shared-geometry-survives-later-passes.md)
