@@ -1,7 +1,12 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { GALLERY_PAGES } from "./examples-manifest.ts";
+import { GALLERY_PAGES, resolveSpecDoc } from "./examples-manifest.ts";
 import { examplePageMarkdown, indexPageMarkdown } from "./gallery-pages.ts";
+import { collectAnchors, extractTitle } from "./markdown.ts";
 import type { RenderedDiagram } from "./render-examples.ts";
+import { PUBLISHED_EN_FILES } from "./site-map.ts";
+import { REPO_ROOT } from "../sources.ts";
 
 const stub = (): RenderedDiagram => ({
   entry: "example.krs",
@@ -68,5 +73,58 @@ describe("gallery-pages", () => {
       "ja",
     );
     for (const d of page.diagrams) expect(md).toContain(`## ${d.caption?.ja}`);
+  });
+
+  it("grouping-and-membership puts a note and a route-relative spec link under each diagram", () => {
+    const page = GALLERY_PAGES.find((p) => p.slug === "grouping-and-membership");
+    if (!page) throw new Error("fixture missing");
+    const stubs = page.diagrams.map(() => stub());
+    const en = examplePageMarkdown(page, stubs, "en");
+    expect(en).toContain("Drawn with Group by: Boundary.");
+    // /examples/grouping-and-membership/ -> /spec/syntax/
+    expect(en).toContain("](../../spec/syntax/#grouping-the-system-view-boundary)");
+    expect(en).toContain("](../../spec/syntax/#cross-cutting-membership-facet)");
+    const ja = examplePageMarkdown(page, stubs, "ja");
+    expect(ja).toContain("グループ化: 境界 で描いた");
+    // /ja/examples/grouping-and-membership/ -> /ja/spec/syntax/
+    expect(ja).toContain("](../../../ja/spec/syntax/#システムビューのグルーピングboundary)");
+  });
+
+  it("publishes each feature sample on one page only", () => {
+    // tag-facet-registers moved from feature-samples to grouping-and-membership
+    // (#2937); a copy left behind would show the same file twice, once without
+    // the facet selection that is the point of the move.
+    const entries = GALLERY_PAGES.flatMap((p) => p.diagrams.map((d) => JSON.stringify(d.entry)));
+    expect(entries.length).toBe(new Set(entries).size);
+  });
+});
+
+// Spec links on gallery pages are written into generated markdown, which
+// check-links never sees (it walks docs/ sources only), so a renamed heading
+// would 404 silently on the site (TPL-1621). Resolve every one against the
+// docs source the site syncs from.
+describe("gallery spec links resolve (TPL-1621)", () => {
+  const refs = GALLERY_PAGES.flatMap((p) =>
+    p.diagrams.flatMap(({ spec }) =>
+      spec
+        ? (["en", "ja"] as const).map((locale) => ({
+            slug: p.slug,
+            locale,
+            doc: resolveSpecDoc(spec, locale),
+            published: PUBLISHED_EN_FILES.includes(spec.doc),
+            anchor: spec.anchor[locale],
+          }))
+        : [],
+    ),
+  );
+
+  it("has spec links to check", () => {
+    expect(refs.length).toBeGreaterThan(0);
+  });
+
+  it.each(refs)("$slug ($locale) -> $doc#$anchor", ({ doc, published, anchor }) => {
+    expect(published).toBe(true);
+    const { title, body } = extractTitle(readFileSync(path.join(REPO_ROOT, "docs", doc), "utf8"));
+    expect([...collectAnchors(body, title)]).toContain(anchor);
   });
 });

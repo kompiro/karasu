@@ -20,10 +20,32 @@ export type GroupKey = "getting-started" | "scenarios" | "feature-samples";
  */
 export type LocalizedEntry = string | LocalizedString;
 
+/**
+ * Viewer state the app's preview toolbar sets (Group by / Facets), applied to
+ * the system view so the gallery can show what those toggles draw. Never passed
+ * to the deploy or org views, which do not take it.
+ */
+export interface GalleryRenderOptions {
+  groupBy?: "team" | "boundary";
+  selectedFacets?: readonly string[];
+}
+
+/** A link from a gallery diagram into a synced spec section. */
+export interface SpecRef {
+  /** docs/-relative English source, one of PUBLISHED_EN_FILES; ja uses its `.ja.md` sibling. */
+  doc: string;
+  /** Heading anchor per locale (ja headings slug differently). */
+  anchor: LocalizedString;
+}
+
 interface GalleryDiagram {
   entry: LocalizedEntry;
   /** Per-diagram heading (used on multi-diagram pages like feature-samples). */
   caption?: LocalizedString;
+  render?: GalleryRenderOptions;
+  /** A sentence under the diagram, e.g. which app toggle reproduces it. */
+  note?: LocalizedString;
+  spec?: SpecRef;
 }
 
 export interface GalleryPage {
@@ -40,6 +62,10 @@ export interface GalleryPage {
 
 export function resolveEntry(entry: LocalizedEntry, locale: Locale): string {
   return typeof entry === "string" ? entry : entry[locale];
+}
+
+export function resolveSpecDoc(spec: SpecRef, locale: Locale): string {
+  return locale === "ja" ? spec.doc.replace(/\.md$/, ".ja.md") : spec.doc;
 }
 
 export function resolveGithubDir(page: GalleryPage, locale: Locale): string {
@@ -96,6 +122,11 @@ const localized = (
   githubDir: { en: `examples/en/${dir}`, ja: `examples/ja/${dir}` },
   diagrams: [{ entry: { en: `examples/en/${dir}/${entry}`, ja: `examples/ja/${dir}/${entry}` } }],
 });
+
+const BOUNDARY_ANCHOR: LocalizedString = {
+  en: "grouping-the-system-view-boundary",
+  ja: "システムビューのグルーピングboundary",
+};
 
 export const GALLERY_PAGES: readonly GalleryPage[] = [
   {
@@ -289,15 +320,85 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
         ["domain-drift", "Domain drift warning", "ドメイン分散の警告"],
         ["legend", "Legend block", "legend ブロック"],
         ["resource-operations", "resource operations (CRUD)", "resource の operations（CRUD）"],
-        [
-          "tag-facet-registers",
-          "tag / annotation / facet / boundary — which register says what",
-          "tag / annotation / facet / boundary — どの register が何を言うか",
-        ],
       ] as const
     ).map(([file, en, ja]) => ({
       entry: `examples/en/feature-samples/${file}.krs`,
       caption: { en, ja },
     })),
+  },
+  {
+    // boundary and facet are core vocabulary from `.krs language v2.0`
+    // (ADR-2677), but both draw only under viewer state: boundary frames under
+    // "Group by: Boundary", the facet ring under a facet selection. These
+    // diagrams set that state through `render`, so the page shows what the
+    // toggles draw rather than the plain view (#2937).
+    slug: "grouping-and-membership",
+    group: "feature-samples",
+    title: { en: "Grouping & membership", ja: "グルーピングと所属" },
+    blurb: {
+      en: "`boundary` groups nodes into frames for one view; `facet` marks which declared sets an element belongs to.",
+      ja: "`boundary` はビューの中でノードを枠にまとめ、`facet` は要素がどの宣言済みの集合に属するかを示す。",
+    },
+    githubDir: "examples/en/feature-samples",
+    diagrams: [
+      {
+        entry: "examples/en/feature-samples/boundary-clusters.krs",
+        caption: { en: "Semantic clusters (`boundary`)", ja: "意味のまとまり（`boundary`）" },
+        render: { groupBy: "boundary" },
+        note: {
+          en: "Drawn with Group by: Boundary. Turn on the same toggle in the app to get this diagram.",
+          ja: "グループ化: 境界 で描いた図。app で同じ切り替えを入れると同じ図になる。",
+        },
+        spec: { doc: "spec/syntax.md", anchor: BOUNDARY_ANCHOR },
+      },
+      {
+        entry: "examples/en/feature-samples/boundary-multi-membership.krs",
+        caption: {
+          en: "One node in two boundaries",
+          ja: "2 つの boundary に属するノード",
+        },
+        render: { groupBy: "boundary" },
+        note: {
+          en: "Drawn with Group by: Boundary. The two frames overlap over the shared node; the node itself is drawn once.",
+          ja: "グループ化: 境界 で描いた図。共有ノードの上で 2 つの枠が重なり、ノード自体は 1 回だけ描かれる。",
+        },
+        spec: { doc: "spec/syntax.md", anchor: BOUNDARY_ANCHOR },
+      },
+      {
+        entry: "examples/en/feature-samples/scoped-boundary.krs",
+        caption: {
+          en: "Scoped declaration (`boundary` inside a node block)",
+          ja: "スコープ宣言（ノードブロック内の `boundary`）",
+        },
+        render: { groupBy: "boundary" },
+        note: {
+          en: "Drawn with Group by: Boundary. This is the root view; the boundary declared inside Checkout frames only Checkout's drill-down view.",
+          ja: "グループ化: 境界 で描いたルートビュー。Checkout の中で宣言した boundary は、Checkout のドリルダウンビューにだけ枠を描く。",
+        },
+        spec: {
+          doc: "spec/syntax.md",
+          anchor: {
+            en: "scoped-declaration--boundary-inside-a-node-block",
+            ja: "スコープ宣言--ノードブロック内の-boundary",
+          },
+        },
+      },
+      {
+        entry: "examples/en/feature-samples/tag-facet-registers.krs",
+        caption: {
+          en: "tag / annotation / facet / boundary: which register says what",
+          ja: "tag / annotation / facet / boundary: どの register が何を言うか",
+        },
+        render: { selectedFacets: ["pci"] },
+        note: {
+          en: "Drawn with the `pci` facet selected. Select the same facet from Facets in the app to get this diagram.",
+          ja: "facet `pci` を選択して描いた図。app のファセットで同じ facet を選ぶと同じ図になる。",
+        },
+        spec: {
+          doc: "spec/syntax.md",
+          anchor: { en: "cross-cutting-membership-facet", ja: "横断的な所属facet" },
+        },
+      },
+    ],
   },
 ];

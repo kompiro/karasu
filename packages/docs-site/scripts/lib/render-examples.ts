@@ -12,6 +12,7 @@ import {
   type DirEntry,
   type FileSystemProvider,
 } from "./core.ts";
+import type { GalleryRenderOptions } from "./examples-manifest.ts";
 import { REPO_ROOT } from "../sources.ts";
 
 /** Read-only Node filesystem for the import resolver. Writes are not needed. */
@@ -62,14 +63,23 @@ export interface RenderedDiagram {
 /**
  * Render one example entry to its non-empty views. `compileProject` reports
  * `systems` / `hasDeployDiagram` / `hasOrgDiagram`, so we only render and emit
- * the views that have content.
+ * the views that have content. `render` (Group by / facet selection) applies to
+ * the system view only; deploy and org do not take it.
  */
-export async function renderDiagram(entryRelToRepo: string): Promise<RenderedDiagram> {
+export async function renderDiagram(
+  entryRelToRepo: string,
+  render: GalleryRenderOptions = {},
+): Promise<RenderedDiagram> {
   const abs = path.join(REPO_ROOT, entryRelToRepo);
   const source = await readFile(abs, "utf-8");
   const fs = new ReadOnlyNodeFs();
 
-  const system = await compileProject(abs, fs, { diagramType: "system", theme: "light" });
+  const system = await compileProject(abs, fs, {
+    diagramType: "system",
+    theme: "light",
+    groupBy: render.groupBy,
+    selectedFacets: render.selectedFacets,
+  });
   // diagramType: "system" always yields a SystemCompileResult; narrow the union
   // so the system-only fields (systems / hasDeployDiagram / hasOrgDiagram) type.
   if (system.diagramType !== "system") {

@@ -5,7 +5,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { GALLERY_PAGES, resolveEntry } from "./lib/examples-manifest.ts";
+import { GALLERY_PAGES, type GalleryRenderOptions, resolveEntry } from "./lib/examples-manifest.ts";
 import { examplePageMarkdown, indexPageMarkdown } from "./lib/gallery-pages.ts";
 import { extractTitle, frontmatter } from "./lib/markdown.ts";
 import { renderDiagram, type RenderedDiagram } from "./lib/render-examples.ts";
@@ -52,19 +52,23 @@ async function generateGallery(): Promise<number> {
   writeContent(galleryContentPathOf("en"), indexPageMarkdown("en"));
   writeContent(galleryContentPathOf("ja"), indexPageMarkdown("ja"));
 
-  // Render once per distinct entry path; locale-shared sources resolve to the
-  // same path and are reused, while localized pairs (e.g. getting started) render
-  // their en/ja variants.
+  // Render once per distinct entry path and render options; locale-shared
+  // sources resolve to the same path and are reused, while localized pairs (e.g.
+  // getting started) render their en/ja variants.
   const cache = new Map<string, RenderedDiagram>();
-  const render = async (entry: string): Promise<RenderedDiagram> => {
-    const cached = cache.get(entry);
+  const render = async (
+    entry: string,
+    options: GalleryRenderOptions = {},
+  ): Promise<RenderedDiagram> => {
+    const key = `${entry}\0${JSON.stringify(options)}`;
+    const cached = cache.get(key);
     if (cached) return cached;
-    const rendered = await renderDiagram(entry);
-    cache.set(entry, rendered);
+    const rendered = await renderDiagram(entry, options);
+    cache.set(key, rendered);
     return rendered;
   };
   const renderPage = async (page: (typeof GALLERY_PAGES)[number], locale: Locale) =>
-    Promise.all(page.diagrams.map((d) => render(resolveEntry(d.entry, locale))));
+    Promise.all(page.diagrams.map((d) => render(resolveEntry(d.entry, locale), d.render)));
 
   for (const page of GALLERY_PAGES) {
     writeContent(
