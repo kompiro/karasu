@@ -30,7 +30,7 @@ export const OG_IMAGE_BACKGROUND = "#ffffff";
  * fonts, theme, frame, renderer options. Part of the cache key, so a change
  * takes effect without waiting out the one-day lifetime.
  */
-export const OG_RENDER_VERSION = 1;
+const OG_RENDER_VERSION = 1;
 
 /** How long a drawn image stays in a data center's cache. The upper bound on how long its bytes outlive a deletion. */
 export const OG_EDGE_CACHE_SECONDS = 24 * 60 * 60;

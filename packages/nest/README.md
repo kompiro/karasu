@@ -40,19 +40,19 @@ so one address never resolves to two different things.
 
 ## Layout
 
-| Module          | Responsibility                                                 |
-| --------------- | -------------------------------------------------------------- |
-| `src/index.ts`  | Package barrel                                                 |
-| `src/worker.ts` | Workers entry. A default handler and nothing else              |
-| `src/app.ts`    | Route table and the single failure boundary                    |
-| `src/router.ts` | Literal and `:param` path matching, 404 vs 405                 |
-| `src/http.ts`   | Response helpers. Everything defaults to `no-store`            |
-| `src/env.ts`    | Bindings, plus the guard that refuses rather than degrades     |
-| `src/auth/`     | The OAuth round trip and the session cookie                    |
-| `src/store/`    | Accounts, sessions, submissions — keyed account-first          |
+| Module          | Responsibility                                                                |
+| --------------- | ----------------------------------------------------------------------------- |
+| `src/index.ts`  | Package barrel                                                                |
+| `src/worker.ts` | Workers entry. A default handler and nothing else                             |
+| `src/app.ts`    | Route table and the single failure boundary                                   |
+| `src/router.ts` | Literal and `:param` path matching, 404 vs 405                                |
+| `src/http.ts`   | Response helpers. Everything defaults to `no-store`                           |
+| `src/env.ts`    | Bindings, plus the guard that refuses rather than degrades                    |
+| `src/auth/`     | The OAuth round trip and the session cookie                                   |
+| `src/store/`    | Accounts, sessions, submissions — keyed account-first                         |
 | `src/gallery/`  | Validation, `?format=svg` rendering, the HTML, the viewer page, the OGP image |
-| `src/redact/`   | The structure-only scan, on ingress                            |
-| `scripts/`      | Build time only: staging the viewer and the OGP fonts into `viewer-assets/` |
+| `src/redact/`   | The structure-only scan, on ingress                                           |
+| `scripts/`      | Build time only: staging the viewer and the OGP fonts into `viewer-assets/`   |
 
 ## Conventions this package holds itself to
 
