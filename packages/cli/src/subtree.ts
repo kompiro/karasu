@@ -88,15 +88,15 @@ export async function subtree(
 ): Promise<void> {
   const resolved = await resolveKrsFileOrExit(filePath);
   if (!resolved) return;
-  const { absolutePath, fs } = resolved;
+  const { absolutePath, displayPath, fs } = resolved;
 
-  const result = await compileSystemViewOrExit(fs, absolutePath, filePath, "subtree");
+  const result = await compileSystemViewOrExit(fs, absolutePath, displayPath, "subtree");
   if (!result) return;
 
   const matches = findMatches(result.systems, nodeId);
 
   if (matches.length === 0) {
-    process.stderr.write(`Error: no node with id "${nodeId}" found in ${filePath}\n`);
+    process.stderr.write(`Error: no node with id "${nodeId}" found in ${displayPath}\n`);
     process.exit(1);
     return;
   }

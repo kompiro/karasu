@@ -106,6 +106,12 @@ karasu render index.krs --format drawio --output arch.drawio
 CI ステップの成否判定に使えます。すぐ使える GitHub Actions ワークフローについて
 は[GitHub Actions 連携](../github-actions.md)を参照してください。
 
+ファイルの代わりにディレクトリを渡すこともできます。`karasu render docs/model`
+は `serve` が開くのと同じエントリ `docs/model/index.krs` をレンダリングし、診断の
+位置も `docs/model/index.krs:<行>:<列>` と表示します。`index.krs` が無いディレクトリ
+を渡すと、そのことを伝えて終了コード `1` で終わります。`check`・`matrix`・
+`coverage`・`team-dependencies`・`subtree` も同じようにディレクトリを受け付けます。
+
 ## コマンドリファレンス
 
 `serve` と `render` で日常の用途はほぼカバーできます。CLI にはこのほか、ファイル

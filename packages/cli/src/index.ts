@@ -32,6 +32,15 @@ function collect(value: string, prev?: string[]): string[] {
   return [...(prev ?? []), value];
 }
 
+/**
+ * Help line for every command whose `<file>` goes through `resolveKrsFileOrExit`,
+ * which reads a directory as its `index.krs` (#2942).
+ */
+const DIRECTORY_ENTRY_HELP = `
+<file> may be a directory: its index.krs is the entry, as with \`karasu serve\`.
+
+`;
+
 program
   .command("serve [dir]")
   .description("Serve .krs files from a local directory with live preview")
@@ -66,8 +75,7 @@ program
   )
   .addHelpText(
     "after",
-    `
-Examples:
+    `${DIRECTORY_ENTRY_HELP}Examples:
   # Pipe to stdout and redirect to file
   $ karasu render index.krs > docs/arch.svg
 
@@ -124,8 +132,7 @@ program
   )
   .addHelpText(
     "after",
-    `
-Runs the same compile as \`karasu render\`, so a file that passes \`check\`
+    `${DIRECTORY_ENTRY_HELP}Runs the same compile as \`karasu render\`, so a file that passes \`check\`
 renders. Use it after every edit, before \`karasu fmt\`: \`fmt\` refuses a file
 with parse errors without saying where they are.
 
@@ -473,8 +480,7 @@ program
   .option("--no-totals", "Hide row/column ΣC/ΣR/ΣU/ΣD totals (default: show)")
   .addHelpText(
     "after",
-    `
-Examples:
+    `${DIRECTORY_ENTRY_HELP}Examples:
   # Markdown to terminal (default)
   $ karasu matrix index.krs
 
@@ -515,8 +521,7 @@ program
   .option("--threshold <score>", "Override the thin-score threshold (0..1)")
   .addHelpText(
     "after",
-    `
-Examples:
+    `${DIRECTORY_ENTRY_HELP}Examples:
   # Markdown density table to terminal (default)
   $ karasu coverage index.krs
 
@@ -546,8 +551,7 @@ program
   .option("--format <format>", "Output format: md | csv (default: md)", "md")
   .addHelpText(
     "after",
-    `
-Derived from the model as written — no .krs syntax declares a team dependency.
+    `${DIRECTORY_ENTRY_HELP}Derived from the model as written — no .krs syntax declares a team dependency.
 A node with no \`owns\` of its own inherits its nearest owned ancestor's team,
 and endpoints that reach no team are listed as unowned rather than dropped, so
 the output states how much of the model the join actually covered.
@@ -578,8 +582,7 @@ program
   .option("--with-ancestors", "Keep the full system → node ancestor chain (default: minimal wrap)")
   .addHelpText(
     "after",
-    `
-Examples:
+    `${DIRECTORY_ENTRY_HELP}Examples:
   # Emit just the Order domain's interior
   $ karasu subtree Order index.krs
 
