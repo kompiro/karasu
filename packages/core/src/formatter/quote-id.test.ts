@@ -52,7 +52,9 @@ describe("needsQuotes", () => {
 
   it("returns false for an id with ZWNJ inside, and true for one with a symbol (#3093)", () => {
     expect(needsQuotes("\u0645\u06CC\u200C\u062E")).toBe(false);
-    expect(["😀A", "A😀", "Foo\u200BBar"].filter((id) => !needsQuotes(id))).toEqual([]);
+    expect(
+      ["😀A", "A😀", "Foo\u200BBar", "Foo\u200DBar", "A\u200C"].filter((id) => !needsQuotes(id)),
+    ).toEqual([]);
   });
 });
 

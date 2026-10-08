@@ -70,16 +70,23 @@ export const KRS_KEYWORD_TOKEN_TYPES: ReadonlySet<TokenType> = new Set(Object.va
 
 /**
  * Whether `value` has the shape the lexer reads as a single identifier word
- * (`[\p{L}_][\p{L}\p{M}\p{N}_]*`), from the same character tests `readToken`
- * uses.
+ * (`[\p{L}_][\p{L}\p{M}\p{N}_]*`, plus a ZWNJ / ZWJ where `wordPartAt`
+ * allows one), from the same character tests `readToken` uses.
  * Keyword spellings pass this check; they arrive as keyword tokens, so a caller
  * that also needs "not a keyword" tests the token type.
  */
 export function isBareWord(value: string): boolean {
-  // Split by code point, as `readToken` reads, so both agree on every string.
-  const chars = [...value];
-  if (chars.length === 0 || !isIdentStart(chars[0])) return false;
-  return chars.slice(1).every(isIdentPart);
+  // Walk by code point with `wordPartAt`, as `readToken` reads, so both agree
+  // on every string.
+  if (!isIdentStart(codePointAt(value, 0))) return false;
+  let prev = "";
+  for (let i = 0; i < value.length;) {
+    const ch = wordPartAt(value, i, prev);
+    if (ch === "") return false;
+    i += ch.length;
+    prev = ch;
+  }
+  return true;
 }
 
 export class Lexer {
@@ -330,11 +337,22 @@ export class Lexer {
    * (#3093). The same shape as `readNumber`.
    */
   private readUnknown(loc: SourceLocation): Token {
-    let value = this.advance();
-    while (this.pos < this.source.length && isIdentPart(this.peek())) {
+    return { type: TokenType.Unknown, value: this.readWordTail(this.advance()), loc };
+  }
+
+  /**
+   * Consume the word characters after `head` (already consumed) and return
+   * `head` with them appended. Every word-shaped token ends where this stops.
+   */
+  private readWordTail(head: string): string {
+    let value = head;
+    let prev = head;
+    for (let ch = wordPartAt(this.source, this.pos, prev); ch !== "";) {
       value += this.advance();
+      prev = ch;
+      ch = wordPartAt(this.source, this.pos, prev);
     }
-    return { type: TokenType.Unknown, value, loc };
+    return value;
   }
 
   private readString(loc: SourceLocation): Token {
@@ -420,19 +438,17 @@ export class Lexer {
 
   private peekWord(): string {
     let word = "";
-    let ch = codePointAt(this.source, this.pos);
-    while (ch !== "" && isIdentPart(ch)) {
+    let prev = "";
+    for (let ch = wordPartAt(this.source, this.pos, prev); ch !== "";) {
       word += ch;
-      ch = codePointAt(this.source, this.pos + word.length);
+      prev = ch;
+      ch = wordPartAt(this.source, this.pos + word.length, prev);
     }
     return word;
   }
 
   private readIdentifierOrKeyword(loc: SourceLocation): Token {
-    let value = "";
-    while (this.pos < this.source.length && isIdentPart(this.peek())) {
-      value += this.advance();
-    }
+    const value = this.readWordTail(this.advance());
     const kwType = KEYWORDS[value];
     if (kwType) {
       return { type: kwType, value, loc };
@@ -446,11 +462,7 @@ export class Lexer {
    * covers the whole word the author wrote, not just its leading digits.
    */
   private readNumber(loc: SourceLocation): Token {
-    let value = "";
-    while (this.pos < this.source.length && isIdentPart(this.peek())) {
-      value += this.advance();
-    }
-    return { type: TokenType.Number, value, loc };
+    return { type: TokenType.Number, value: this.readWordTail(this.advance()), loc };
   }
 
   /**
@@ -458,12 +470,7 @@ export class Lexer {
    * `#NodeId`). Used for legend swatch colors and ref id-selector targets.
    */
   private readHashToken(loc: SourceLocation): Token {
-    this.advance(); // #
-    let value = "#";
-    while (this.pos < this.source.length && isIdentPart(this.peek())) {
-      value += this.advance();
-    }
-    return { type: TokenType.Identifier, value, loc };
+    return { type: TokenType.Identifier, value: this.readWordTail(this.advance()), loc };
   }
 }
 
@@ -500,12 +507,38 @@ function isIdentStart(ch: string): boolean {
 
 /**
  * A combining mark continues a word but cannot start one: it modifies the
- * character before it, so a decomposed `café` is one word (#2848). ZWNJ and
- * ZWJ (U+200C / U+200D) are the same: they sit inside Persian and Indic words
- * and change how the letters around them join (#3093).
+ * character before it, so a decomposed `café` is one word (#2848).
  */
 function isIdentPart(ch: string): boolean {
-  return /[\p{L}\p{M}\p{N}_\u200C\u200D]/u.test(ch);
+  return /[\p{L}\p{M}\p{N}_]/u.test(ch);
+}
+
+/**
+ * Scripts in which ZWNJ / ZWJ change how the letters around them are drawn:
+ * the cursive-joining scripts and the Indic scripts that form conjuncts after
+ * a virama. Outside them a joiner is invisible, so `A\u200C` would look exactly
+ * like `A` while being another id (#3093). An approximation of the contexts
+ * UAX #31 allows joiners in, which JavaScript cannot test directly.
+ */
+const JOINER_SCRIPTS =
+  /[\p{scx=Arabic}\p{scx=Syriac}\p{scx=Mandaic}\p{scx=Mongolian}\p{scx=Nko}\p{scx=Adlam}\p{scx=Devanagari}\p{scx=Bengali}\p{scx=Gurmukhi}\p{scx=Gujarati}\p{scx=Oriya}\p{scx=Tamil}\p{scx=Telugu}\p{scx=Kannada}\p{scx=Malayalam}\p{scx=Sinhala}\p{scx=Myanmar}\p{scx=Khmer}]/u;
+
+/**
+ * The word character at UTF-16 index `i` of `s`, or `""` where the word ends.
+ * `prev` is the character before it. Most characters decide alone
+ * (`isIdentPart`); ZWNJ / ZWJ (U+200C / U+200D) continue a word only between
+ * a letter or mark of a `JOINER_SCRIPTS` script and another letter or mark, so
+ * a Persian or Indic name stays whole while a stray joiner after a Latin
+ * letter or at the end of a name is refused (#3093).
+ */
+function wordPartAt(s: string, i: number, prev: string): string {
+  const ch = codePointAt(s, i);
+  if (ch === "" || isIdentPart(ch)) return ch;
+  if (ch !== "\u200C" && ch !== "\u200D") return "";
+  const next = codePointAt(s, i + ch.length);
+  const joins =
+    /[\p{L}\p{M}]/u.test(prev) && JOINER_SCRIPTS.test(prev) && /[\p{L}\p{M}]/u.test(next);
+  return joins ? ch : "";
 }
 
 /** The code point starting at UTF-16 index `i`, or `""` past the end. */

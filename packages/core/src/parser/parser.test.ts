@@ -4408,6 +4408,14 @@ describe("non-ASCII characters outside words (#3093)", () => {
     expect(result.value.systems[0].children.map((c) => c.id)).toEqual([word]);
   });
 
+  it("does not declare a lookalike id with a stray joiner after a Latin name", () => {
+    // Accepting the joiner would declare an id that looks like `A` but is not,
+    // and `B -> A` would then fail to resolve with nothing visible to fix.
+    const result = Parser.parse(`system S {\n  service A\u200C {}\n}`);
+    expect(result.diagnostics.some((d) => d.severity === "error")).toBe(true);
+    expect(result.value.systems[0].children.map((c) => c.id)).not.toContain("A\u200C");
+  });
+
   it("records a kebab name with an emoji fragment whole", () => {
     // Like `team-1` (#2707), so the name is reported as written rather than
     // split into `team`, `-` and `😀`.

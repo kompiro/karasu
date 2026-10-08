@@ -334,10 +334,26 @@ describe("non-ASCII characters outside words (#3093)", () => {
     expect(b.loc).toEqual({ line: 1, column: 3, offset: 2 });
   });
 
-  it("keeps ZWNJ and ZWJ inside a word but does not start one with them", () => {
+  it("keeps ZWNJ and ZWJ inside a Persian or Indic word", () => {
     expect(tokenValues("\u0645\u06CC\u200C\u062E")).toEqual(["\u0645\u06CC\u200C\u062E"]);
     expect(tokenValues("\u0915\u094D\u200D\u0937")).toEqual(["\u0915\u094D\u200D\u0937"]);
-    expect(new Lexer("\u200Ca").tokenize()[0].type).toBe(TokenType.Unknown);
+  });
+
+  it("refuses a joiner that would be invisible: at the start, at the end, or after a Latin letter", () => {
+    // `A\u200C` would look exactly like `A` while being another id.
+    const read = (source: string) => new Lexer(source).tokenize().map((t) => [t.type, t.value]);
+    expect(read("\u200Ca")[0]).toEqual([TokenType.Unknown, "\u200Ca"]);
+    expect(read("A\u200C")).toEqual([
+      [TokenType.Identifier, "A"],
+      [TokenType.Unknown, "\u200C"],
+      [TokenType.EOF, ""],
+    ]);
+    expect(read("Foo\u200DBar")).toEqual([
+      [TokenType.Identifier, "Foo"],
+      [TokenType.Unknown, "\u200DBar"],
+      [TokenType.EOF, ""],
+    ]);
+    expect(read("\u0645\u06CC\u200C")[1]).toEqual([TokenType.Unknown, "\u200C"]);
   });
 });
 
@@ -371,6 +387,9 @@ describe("isBareWord", () => {
       "a😀",
       "\u200Ca",
       "a\u200Bb",
+      "A\u200C",
+      "Foo\u200DBar",
+      "\u0645\u06CC\u200C",
     ];
     expect(values.filter((value) => isBareWord(value))).toEqual([]);
   });
