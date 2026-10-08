@@ -154,16 +154,16 @@ TPL-1583 は「1:1 index は主を選ぶ規則を全 index で揃える」と規
 上の判定基準で Map を 2 つに分ける。1 ノード側は案 A、broadcast 側は bare の union のまま
 doc comment に「broadcast」と書く。
 
-| Map                                                           | 区分                     | primary（1 ノード）                                            | bare の見え方                                                                     |
-| ------------------------------------------------------------- | ------------------------ | -------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `nodeMetadata`                                                | 1 ノード                 | `nodeMetadataByPath`（既存）                                   | 勝者の entry（`viewPath` も勝者自身なので混ざらない）                             |
-| `nodeFileIndex`                                               | 1 ノード                 | `nodeFileIndexByPath`（新設）                                  | 勝者の file                                                                       |
-| style（`nodes` / `layoutHints` / `paintedColors`）            | 1 ノード                 | `ResolvedStyles.nodesByPath` ほか（新設、別 Map）              | 勝者の解決結果。`id@annotation` の修飾 key は ghost 用に残す                      |
-| facet の所属（overlay のリング）                              | 1 ノード                 | `KrsFile.facetIndexByPath`（新設）                             | なし（リングは path で引き、path を持たない stub は畳み込み元の path から集める） |
-| `facetIndex`（facet id の列挙・`[facets=]` 以外の集合の問い） | broadcast                | —                                                              | union のまま。doc comment に「1 ノードを塗る用途に使わない」と書く                |
-| diff 状態                                                     | 1 ノード                 | `nodeDiffByPath`（新設）                                       | 勝者の状態                                                                        |
-| draw.io cell id                                               | 1 ノード                 | layout の Map key（ルートは `nodePathIdentityKey([sys, id])`） | —                                                                                 |
-| `nodePathIndex`                                               | 1 ノード（勝者そのもの） | —                                                              | 規則の出どころ。変えない                                                          |
+| Map                                                | 区分                     | primary（1 ノード）                                            | bare の見え方                                                                     |
+| -------------------------------------------------- | ------------------------ | -------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `nodeMetadata`                                     | 1 ノード                 | `nodeMetadataByPath`（既存）                                   | 勝者の entry（`viewPath` も勝者自身なので混ざらない）                             |
+| `nodeFileIndex`                                    | 1 ノード                 | `nodeFileIndexByPath`（新設）                                  | 勝者の file                                                                       |
+| style（`nodes` / `layoutHints` / `paintedColors`） | 1 ノード                 | `ResolvedStyles.nodesByPath` ほか（新設、別 Map）              | 勝者の解決結果。`id@annotation` の修飾 key は ghost 用に残す                      |
+| facet の所属（overlay のリング）                   | 1 ノード                 | `KrsFile.facetIndexByPath`（新設）                             | なし（リングは path で引き、path を持たない stub は畳み込み元の path から集める） |
+| `facetIndex`（model が知る facet id の列挙）       | broadcast                | —                                                              | union のまま。doc comment に「1 ノードを塗る用途に使わない」と書く                |
+| diff 状態                                          | 1 ノード                 | `nodeDiffByPath`（新設）                                       | 勝者の状態                                                                        |
+| draw.io cell id                                    | 1 ノード                 | layout の Map key（ルートは `nodePathIdentityKey([sys, id])`） | —                                                                                 |
+| `nodePathIndex`                                    | 1 ノード（勝者そのもの） | —                                                              | 規則の出どころ。変えない                                                          |
 
 **メリット**
 
