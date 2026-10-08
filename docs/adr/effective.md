@@ -310,6 +310,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2550](2550-order-independent-node-path-index.md) — nodePathIndex の多重判定を collect-then-decide にして宣言順非依存にする
 - [ADR-2552](2552-duplicate-realizes-target.md) — 同じ `realizes` ターゲットの繰り返しは 1 つの関係を宣言する（冪等）
 - [ADR-2571](2571-fmt-annotation-parameters.md) — アノテーションのパラメータを emit 1 箇所に畳み、値の種類ごとに正準形を 1 つ決める
+- [ADR-2707](2707-annotation-param-value-lexing.md) — 引用符なしのアノテーションパラメータ値を壊さずに拒否する
 - [ADR-9008](9008-ast-restructure-discriminated-union.md) — AST 再構成 — Discriminated Union とプロパティブロック
 
 ## project

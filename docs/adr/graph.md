@@ -306,6 +306,7 @@ flowchart TD
     ADR_2550["ADR-2550<br/>nodePathIndex の多重判定を collect-then-decide にして宣言順..."]
     ADR_2552["ADR-2552<br/>同じ `realizes` ターゲットの繰り返しは 1 つの関係を宣言する（冪等）"]
     ADR_2571["ADR-2571<br/>アノテーションのパラメータを emit 1 箇所に畳み、値の種類ごとに正準形を 1 つ決める"]
+    ADR_2707["ADR-2707<br/>引用符なしのアノテーションパラメータ値を壊さずに拒否する"]
     ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
   end
   subgraph project["project"]
@@ -980,6 +981,7 @@ flowchart TD
   class ADR_2677 accepted
   class ADR_2687 accepted
   class ADR_2693 accepted
+  class ADR_2707 accepted
   class ADR_2714 accepted
   class ADR_2716 accepted
   class ADR_2753 accepted
