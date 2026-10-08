@@ -335,9 +335,11 @@ class MemoryCache implements EdgeCacheLike {
   readonly entries = new Map<string, Response>();
   matches = 0;
   failPut = false;
+  failMatch = false;
 
   async match(request: Request): Promise<Response | undefined> {
     this.matches += 1;
+    if (this.failMatch) throw new Error("cache match failed");
     return this.entries.get(request.url)?.clone();
   }
 
@@ -549,6 +551,18 @@ describe("GET /g/<id>/og.png (#2995)", () => {
     expect(response.status).toBe(503);
     expect(await response.json()).toMatchObject({ error: { code: "not_configured" } });
     expect(rasterizeOgPng).not.toHaveBeenCalled();
+  });
+
+  it("draws the image when the cache cannot be read, instead of failing the request", async () => {
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    const cache = new MemoryCache();
+    cache.failMatch = true;
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await image(kv, `/g/${id}/og.png`, { cache });
+    expect(response.status).toBe(200);
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(PNG);
+    expect(rasterizeOgPng).toHaveBeenCalledTimes(1);
   });
 
   it("still answers when the cache refuses the image", async () => {

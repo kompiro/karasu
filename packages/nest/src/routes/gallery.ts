@@ -36,6 +36,7 @@ import { viewerHeader, viewerPage } from "../gallery/viewer-page.js";
 import { ogpMeta } from "../gallery/ogp.js";
 import {
   edgeCache,
+  type EdgeCacheLike,
   OG_IMAGE_BACKGROUND,
   OG_IMAGE_HEIGHT,
   OG_IMAGE_WIDTH,
@@ -212,11 +213,11 @@ export async function submissionOgImage(context: RouteContext): Promise<Response
   const origin = context.env.NEST_PUBLIC_ORIGIN ?? context.url.origin;
   const key = ogImageCacheKey(origin, id, submission.updatedAt);
   const cache = edgeCache();
-  const hit = await cache?.match(key);
-  if (hit !== undefined) {
+  const cached = cache === undefined ? undefined : await cachedImage(cache, key);
+  if (cached !== undefined) {
     // The cached copy carries the cache's one-day lifetime; readers get the
     // page's ten minutes, so unpublishing reaches them as fast as it does the page.
-    return png(new Uint8Array(await hit.arrayBuffer()), { cacheControl: PUBLIC_CACHE });
+    return png(cached, { cacheControl: PUBLIC_CACHE });
   }
 
   const rendered = renderSubmission(submission.krs, new URLSearchParams({ view: "system" }));
@@ -245,4 +246,24 @@ export async function submissionOgImage(context: RouteContext): Promise<Response
     context.ctx.waitUntil(cache.put(key, ogImageCacheEntry(image)).catch(() => {}));
   }
   return png(image, { cacheControl: PUBLIC_CACHE });
+}
+
+/**
+ * The cached image's bytes, or `undefined` on a miss.
+ *
+ * A cache that fails to answer counts as a miss, the same way a failed `put`
+ * only costs a redraw: the cache saves work, and must never be the reason an
+ * image that can be drawn is not served.
+ */
+async function cachedImage(
+  cache: EdgeCacheLike,
+  key: Request,
+): Promise<Uint8Array<ArrayBuffer> | undefined> {
+  try {
+    const hit = await cache.match(key);
+    return hit === undefined ? undefined : new Uint8Array(await hit.arrayBuffer());
+  } catch (cause) {
+    logError("karasu-nest could not read the OGP image cache", cause);
+    return undefined;
+  }
 }
