@@ -476,6 +476,8 @@ export class Lexer {
 
 /** Any numeric character, matching the `\p{N}` that `isIdentPart` accepts. */
 function isDigit(ch: string): boolean {
+  const c = ch.charCodeAt(0);
+  if (c < 0x80) return c >= 0x30 && c <= 0x39;
   return /\p{N}/u.test(ch);
 }
 
@@ -487,21 +489,24 @@ function isDigit(ch: string): boolean {
  * stay the ones LSP and the editor count.
  */
 function isWhitespace(ch: string): boolean {
-  return (
-    ch === " " ||
-    ch === "\t" ||
-    ch === "\r" ||
-    ch === "\n" ||
-    ch === "\uFEFF" ||
-    /\p{White_Space}/u.test(ch)
-  );
+  const c = ch.charCodeAt(0);
+  // ASCII `White_Space`: tab, LF, VT, FF, CR and space.
+  if (c < 0x80) return c === 0x20 || (c >= 0x09 && c <= 0x0d);
+  return ch === "\uFEFF" || /\p{White_Space}/u.test(ch);
 }
 
 function isAscii(ch: string): boolean {
   return ch.length === 1 && ch.charCodeAt(0) <= 0x7f;
 }
 
+// The character tests below answer ASCII by range before reaching a `\p{...}`
+// regex: the lexer calls them once per character, and most `.krs` outside
+// strings is ASCII. `lexer.test.ts` checks every ASCII character against the
+// regex form.
+
 function isIdentStart(ch: string): boolean {
+  const c = ch.charCodeAt(0);
+  if (c < 0x80) return isAsciiLetter(c) || c === 0x5f;
   return /[\p{L}_]/u.test(ch);
 }
 
@@ -510,7 +515,13 @@ function isIdentStart(ch: string): boolean {
  * character before it, so a decomposed `café` is one word (#2848).
  */
 function isIdentPart(ch: string): boolean {
+  const c = ch.charCodeAt(0);
+  if (c < 0x80) return isAsciiLetter(c) || (c >= 0x30 && c <= 0x39) || c === 0x5f;
   return /[\p{L}\p{M}\p{N}_]/u.test(ch);
+}
+
+function isAsciiLetter(c: number): boolean {
+  return (c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a);
 }
 
 /**
@@ -541,8 +552,14 @@ function wordPartAt(s: string, i: number, prev: string): string {
   return joins ? ch : "";
 }
 
-/** The code point starting at UTF-16 index `i`, or `""` past the end. */
+/**
+ * The code point starting at UTF-16 index `i`, or `""` past the end. A unit
+ * that is not a surrogate is the whole code point, so it is returned without
+ * building a new string.
+ */
 function codePointAt(s: string, i: number): string {
+  const c = s.charCodeAt(i);
+  if (c < 0xd800 || c > 0xdfff) return s[i];
   const cp = s.codePointAt(i);
   return cp === undefined ? "" : String.fromCodePoint(cp);
 }

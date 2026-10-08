@@ -357,6 +357,22 @@ describe("non-ASCII characters outside words (#3093)", () => {
   });
 });
 
+describe("ASCII character tests", () => {
+  // The lexer answers ASCII by range before reaching its `\\p{...}` regexes.
+  // Every ASCII character must get the answer the regex form gives.
+  const ascii = Array.from({ length: 0x80 }, (_, code) => String.fromCharCode(code));
+
+  it("starts a word on exactly the characters `[\\p{L}_]` matches", () => {
+    const disagree = ascii.filter((ch) => isBareWord(ch) !== /[\p{L}_]/u.test(ch));
+    expect(disagree).toEqual([]);
+  });
+
+  it("continues a word on exactly the characters `[\\p{L}\\p{M}\\p{N}_]` matches", () => {
+    const disagree = ascii.filter((ch) => isBareWord(`a${ch}`) !== /[\p{L}\p{M}\p{N}_]/u.test(ch));
+    expect(disagree).toEqual([]);
+  });
+});
+
 describe("isBareWord", () => {
   it("accepts what the lexer reads as one identifier word", () => {
     const values = [
