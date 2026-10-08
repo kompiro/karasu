@@ -10,6 +10,7 @@ applicable_to:
 discovered_from:
   - issue: "#2509"
   - issue: "#2707"
+  - issue: "#2849"
   - root_cause_file: "packages/core/src/parser/parser.ts"
 related_to:
   - TPL-1415
@@ -54,6 +55,12 @@ kebab-case 名は `<word> - <word>` のトークン列として parser に届く
   `[legacy-system]` のような語彙が keyword 境界で切れる。
 - `.krs` 側だけ・`.krs.style` 側だけをテストし、両面の一致
   （タグ ↔ セレクタ、annotation ↔ セレクタ）を通しで検証しない。
+- 一方の lexer が名前の先頭文字によって別の読み方に分岐し、その分岐が
+  名前規則を共有しない。#2849 の実例: style-lexer は先頭が数字の語を
+  数値（`2px` 等）として読み、単位の文字のあとで止まった。`.krs` 側の
+  タグ `3d-secure` に対しセレクタは `[3d]` になり、token-type の診断だけが
+  出た。テストは先頭が英字の断片（`team-1`）に加え、先頭が数字の断片
+  （`3d-secure`, `2026-q3`）も両面で通す。
 
 ## テストの書き方
 
