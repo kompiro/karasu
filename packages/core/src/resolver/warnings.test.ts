@@ -3546,6 +3546,33 @@ system S {
     expect(sheet.rules[0].selector.tags).toEqual(["team-1"]);
   });
 
+  it.each(["3d-secure", "2026-q3", "2026q3"])(
+    "matches a .krs.style selector when the first fragment starts with a digit: %s (#2849)",
+    (tag) => {
+      // The .krs.style lexer read a leading digit as a numeric value and stopped
+      // at the `-` (or at a digit after the unit letters), so `[3d-secure]`
+      // became `[3d]` plus token-type errors while the .krs tag was `3d-secure`.
+      const file = Parser.parse(`
+system S {
+  service Pay [${tag}] {}
+}
+    `).value;
+      const sheet = StyleParser.parse(`
+[${tag}] { border-style: dashed; }
+    `);
+      expect(file.systems[0].children[0].tags).toEqual([tag]);
+      expect(sheet.diagnostics).toEqual([]);
+      expect(sheet.value.rules[0].selector.tags).toEqual([tag]);
+      // The sheet now says why the rule paints nothing, naming the same word.
+      const warnings = analyze(file, [getBuiltinStyleSheet(), sheet.value]).filter(
+        (w) => w.kind === "style-tag-selector-not-builtin",
+      );
+      expect(warnings.map((w) => w.params)).toEqual([
+        expect.objectContaining({ tag, selector: `[${tag}]` }),
+      ]);
+    },
+  );
+
   it("warns on a tag that starts with a digit instead of losing it (#2707)", () => {
     const file = Parser.parse(`
 system S {
