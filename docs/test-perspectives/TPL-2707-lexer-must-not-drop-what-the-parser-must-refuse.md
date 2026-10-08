@@ -12,6 +12,7 @@ known_consumers:
   - annotation-parameters
 discovered_from:
   - issue: "#2707"
+  - issue: "#2848"
   - root_cause_file: "packages/core/src/lexer/lexer.ts :: readToken"
   - root_cause_file: "packages/core/src/parser/parser.ts :: parseAnnotations"
 related_to:
@@ -39,6 +40,7 @@ lexer が文字をトークンにせず読み飛ばすと、parser はその文�
 ## 想定される失敗モード
 
 - **値が別の値に化ける**（#2707）: lexer が数字を捨て、`@deprecated(until: 2026-12-31)` が `-` `-` として届いた。parser は `until: "-"` を記録し、`karasu fmt --write` がそれを著者のファイルに書き戻した。`until: 2026abc` は数字だけが消え、`"abc"` という診断ゼロのもっともらしい値になった。
+- **文字列の一部が消えたまま記録される**（#2848）: lexer が UTF-16 の単位で文字を判定していたため、BMP 外の文字はサロゲートペアの片割れ 2 つとしてどちらも識別子の文字判定に落ち、捨てられた。`from: 𠮷野家` は `"野家"` と記録され、分解形（NFD）の `café` は結合文字が捨てられて `cafe` になった。デーヴァナーガリーのように母音記号が結合文字である文字体系では、語そのものが 3 つに割れた。
 - **参照が別の実在ノードに付け替わる**（#2707）: `A -> 2B` が `A -> B` として受理された。`B` が実在すると、図は正しく描かれているように見える。最も発見が遅れる形。
 - **語彙の綴りが `.krs.style` と食い違う**（#2707、TPL-2509）: `[team-1]` は数字が消えて `team` と `-` に割れ、`.krs.style` の `[team-1]` セレクタが一致しなかった。
 - **値の断片が次のキーとして診断される**（#2571 review、#2707）: `from: Legacy-Monolith` の `-` や `Shop.Legacy` の `.` が「未対応のキー」として報告された。著者はキーとして書いていないので、誤った場所に誘導される。
@@ -48,6 +50,7 @@ lexer が文字をトークンにせず読み飛ばすと、parser はその文�
 lexer / tokenizer を追加・変更するとき、または値や名前を読む parser ポジションを追加するときに確認する:
 
 - [ ] 読み飛ばす分岐に落ちる文字の集合を、1 文字ずつの入力で実測してテストで固定したか（完全一致で。部分集合の検査では新しく捨てられ始めた文字を捕まえられない）
+- [ ] 文字判定と実測を code point 単位で行っているか。UTF-16 の単位で見ると、BMP 外の文字は文字判定にも固定にも片割れとしてしか現れない。候補に BMP 外の文字と結合文字を含めたか
 - [ ] その固定が空振りしないことを、分岐を 1 つ外して落ちることで確認したか（コーパスだけを入力にしたテストは、コーパスにその文字が無ければ空振りする）
 - [ ] 値を読むポジションで、値が 1 トークンで読み切れて次が区切りであることを確かめているか。複数トークンの並びを先頭だけで読んでいないか
 - [ ] 拒否した値を区切りまで消費し、その断片を次の要素（キー・子要素）として読んでいないか
@@ -55,7 +58,8 @@ lexer / tokenizer を追加・変更するとき、または値や名前を読�
 
 ## 既知の対処パターン
 
-- **捨てる集合の完全一致テスト**: `packages/core/src/lexer/lexer-discard.test.ts` は、印字可能な ASCII と非 ASCII の数字・文字を 1 文字ずつトークン化し、どのトークンにも覆われない文字の集合を定数と完全一致で比べる。あわせて、examples と `lint:krs-fences` が parse する docs の `krs` fence が頼っている捨てる文字が `=` と `;` 以外に無いことを確かめる。1 文字ずつの入力は UTF-16 の単位で見るので、BMP 外の文字（サロゲートペアの片割れ）はこの固定の外にあり、今も捨てられる。
+- **捨てる集合の完全一致テスト**: `packages/core/src/lexer/lexer-discard.test.ts` は、印字可能な ASCII と非 ASCII の数字・文字を 1 文字ずつトークン化し、どのトークンにも覆われない文字の集合を定数と完全一致で比べる。あわせて、examples と `lint:krs-fences` が parse する docs の `krs` fence が頼っている捨てる文字が `=` と `;` 以外に無いことを確かめる。#2848 以降、lexer と固定はどちらも code point 単位で読み、候補には BMP 外の文字と結合文字が入っている。基になる文字が無い結合文字、BMP 外の記号（絵文字）、対にならないサロゲート、全角スペース（U+3000）、BOM（U+FEFF）は今も捨てられる文字として固定されている。全角スペースと BOM は捨てられることで区切りとして通っているので、非 ASCII の未分類文字を拒否するトークンにするには、先にこの 2 つを空白として読む判断が要る。
+- **結合文字は語を続けるが始めない**: `isIdentPart` は `\p{M}` を含み、`isIdentStart` は含まない（#2848）。結合文字は直前の文字を修飾するので、分解形の `café` やデーヴァナーガリーの語は 1 語として読まれる。NFC と NFD は正規化せず、書かれたとおりに記録する（別の綴りとして扱う）。
 - **捨てずに、どこも受理しないトークンにする**: #2707 は数字始まりの語を `TokenType.Number` として出した。どのポジションも黙っては受理しないので、受理される言語は広がらず、見えなかった入力が診断に変わる。全ての未分類文字を一度にトークン化する案は、黙認に頼っている `=` / `;` を壊すので採らなかった（範囲はコーパスで実測して決めた）。
 - **値は 1 トークンで読み切る**: `parseAnnotations` の `readAnnotationParamValue` は、文字列リテラルか裸の語が単独で区切りの前にあるときだけ値として読み、それ以外は区切りまで消費して `annotation-param-value-unreadable` を出す。
 - **「記録できなかった」を書き戻す側だけで止める**: 診断の register は描画も含む全ての面に効くので、error にすると `karasu render` や外部サービスまで拒否する。#2707 は warning のままにし、`format()` が `FORMAT_BLOCKING_CODES` の診断を名指しで拒否する。AST が著者の書いたものを保持していないとき、整形して書き戻すと必ず失われる、というのが判定条件である。
@@ -65,6 +69,8 @@ lexer / tokenizer を追加・変更するとき、または値や名前を読�
 
 - `packages/core/src/lexer/lexer-discard.test.ts`（捨てる文字の集合の固定と、コーパスが頼る文字の固定）
 - `packages/core/src/lexer/lexer.test.ts` › `words that start with a digit (#2707)`
+- `packages/core/src/lexer/lexer.test.ts` › `characters outside the BMP and combining marks (#2848)`
+- `packages/core/src/parser/annotation-params.test.ts` › `bare values with characters outside the BMP or combining marks (#2848)`
 - `packages/core/src/parser/annotation-params.test.ts` › `annotation parameter values that are not one token (#2707)`
 - `packages/core/src/parser/parser.test.ts` › `digit-led words outside vocabulary positions (#2707)`
 - `packages/core/src/formatter/annotation-params-round-trip.test.ts` › `reads back every reference it prints bare (#2707)`

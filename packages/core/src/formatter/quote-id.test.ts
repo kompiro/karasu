@@ -40,10 +40,14 @@ describe("needsQuotes", () => {
     expect(needsQuotes("store")).toBe(true);
   });
 
-  it("returns true for an id with a character outside the BMP (#2707)", () => {
-    // The lexer tests UTF-16 units and drops each half of a surrogate pair,
-    // so this id would lose its first character if printed bare.
-    expect(needsQuotes("𠮷野家")).toBe(true);
+  it("returns false for an id with a character outside the BMP or a combining mark (#2848)", () => {
+    // #2707 quoted these because the lexer dropped each half of a surrogate
+    // pair and every mark. It now reads them, so they print bare.
+    expect(["𠮷野家", "cafe\u0301", "हिन्दी"].filter(needsQuotes)).toEqual([]);
+  });
+
+  it("returns true for an id that starts with a combining mark (#2848)", () => {
+    expect(needsQuotes("\u0301a")).toBe(true);
   });
 });
 

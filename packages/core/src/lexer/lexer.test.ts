@@ -256,14 +256,58 @@ describe("words that start with a digit (#2707)", () => {
   });
 });
 
+describe("characters outside the BMP and combining marks (#2848)", () => {
+  it("reads a word with a character outside the BMP as one identifier", () => {
+    // Read one UTF-16 unit at a time, each half of the pair failed the letter
+    // test and was dropped, so this was `野家`.
+    expect(tokenValues("𠮷野家")).toEqual(["𠮷野家"]);
+    expect(tokenValues("A𝟘")).toEqual(["A𝟘"]);
+  });
+
+  it("keeps a combining mark in the word it modifies", () => {
+    // A decomposed `café` was recorded as `cafe`.
+    expect(tokenValues("cafe\u0301")).toEqual(["cafe\u0301"]);
+    // Devanagari vowel signs are marks; this word used to split into three.
+    expect(tokenValues("हिन्दी")).toEqual(["हिन्दी"]);
+  });
+
+  it("does not start a word with a combining mark", () => {
+    // A mark modifies the character before it. With none, it is dropped like
+    // any other unread character (pinned in lexer-discard.test.ts).
+    expect(tokenValues("\u0301A")).toEqual(["A"]);
+  });
+
+  it("keeps offsets and columns in UTF-16 units", () => {
+    const [, b] = new Lexer("𠮷 B").tokenize();
+    expect(b.loc).toEqual({ line: 1, column: 4, offset: 3 });
+    const [word] = new Lexer("𠮷野家 ").tokenize();
+    expect(word.end).toEqual({ line: 1, column: 5, offset: 4 });
+  });
+
+  it("reads `@import` followed by a character outside the BMP as an annotation word", () => {
+    // The `@import` lookahead reads words the way identifiers are read, so the
+    // word is `import𠮷`, not the `@import` keyword followed by `𠮷`.
+    expect(tokenTypes("@import𠮷")).toEqual([TokenType.At, TokenType.Identifier, TokenType.EOF]);
+  });
+});
+
 describe("isBareWord", () => {
   it("accepts what the lexer reads as one identifier word", () => {
-    const values = ["legacy", "Legacy_2", "_x", "日本語", "system"];
+    const values = [
+      "legacy",
+      "Legacy_2",
+      "_x",
+      "日本語",
+      "system",
+      "𠮷野家",
+      "cafe\u0301",
+      "हिन्दी",
+    ];
     expect(values.filter((value) => !isBareWord(value))).toEqual([]);
   });
 
   it("rejects anything the lexer would split, drop or read as another token", () => {
-    const values = ["", "2legacy", "a-b", "a.b", "my legacy", "-", "#abc", "é!"];
+    const values = ["", "2legacy", "a-b", "a.b", "my legacy", "-", "#abc", "é!", "\u0301a", "a😀"];
     expect(values.filter((value) => isBareWord(value))).toEqual([]);
   });
 });

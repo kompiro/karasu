@@ -182,6 +182,21 @@ describe("annotation parameter values that are not one token (#2707)", () => {
   });
 });
 
+describe("bare values with characters outside the BMP or combining marks (#2848)", () => {
+  it("records every character of the value the author wrote", () => {
+    // Each half of the surrogate pair was dropped, so this recorded `野家`
+    // with no diagnostic; a decomposed `café` recorded `cafe`.
+    for (const value of ["𠮷野家", "cafe\u0301", "हिन्दी"]) {
+      const src = onService(`@migration_target(from: ${value})`);
+      expect([value, paramsOf(src), Parser.parse(src).diagnostics]).toEqual([
+        value,
+        [{ migration_target: { from: value } }],
+        [],
+      ]);
+    }
+  });
+});
+
 // #2707: `annotationParams` holds one value per annotation and key, so a
 // repeated annotation overwrote the first value and `fmt` then printed the
 // second over it.
