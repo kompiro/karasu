@@ -97,7 +97,7 @@ export enum TokenType {
   // parser nothing to refuse (#2707).
   Number = "Number",
   // A non-ASCII character that is neither whitespace nor part of a word (an
-  // emoji, `→`, a combining mark with no letter before it), read together with
+  // emoji, `→`, a combining mark that does not continue a word), read together with
   // any word characters that follow (`😀A`). Like `Number`, no position accepts
   // it silently. The lexer used to discard it, so `service 😀A` declared `A`
   // with no diagnostic (#3093).
