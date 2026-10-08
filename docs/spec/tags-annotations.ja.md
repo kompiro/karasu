@@ -7,7 +7,7 @@
 タグは**アーキテクチャ上の意味**を宣言する。スタイルはタグを受けて変わる。
 タグは意味の宣言であり、見た目の直接指定ではない。見た目の制御は `.krs.style` で行う。
 
-**名前は kebab-case 識別子として lex される。** `[my-team-internal-tag]` は `my-team-internal-tag` という 1 つのタグであり、open vocabulary を受けるすべてのポジション — annotation 名（`@my-mark`）、`capability` 名、legend の `ref` 対象 — で同じ規則が成り立つ。断片が keyword と同綴りでもよい（`[legacy-system]` は 1 つのタグ）。`.krs.style` はハイフンを識別子に natively 含めるので、`.krs` に書いたタグと `.krs.style` に書いたセレクタは同じ名前に着地する。（#2509）
+**名前は kebab-case 識別子として lex される。** `[my-team-internal-tag]` は `my-team-internal-tag` という 1 つのタグであり、open vocabulary を受けるすべてのポジション — annotation 名（`@my-mark`）、`capability` 名、legend の `ref` 対象 — で同じ規則が成り立つ。断片が keyword と同綴りでもよい（`[legacy-system]` は 1 つのタグ）。断片が数字で始まってもよい（`[team-1]`、`[3d-secure]`、`[2026-q3]`）。`.krs.style` はハイフンを識別子に natively 含め、数字で始まる語も同じ規則で読むので、`.krs` に書いたタグと `.krs.style` に書いたセレクタは同じ名前に着地する。（#2509、#2707、#2849）
 
 > Related TPLs: [TPL-2509](../test-perspectives/TPL-2509-kebab-name-positions-share-one-lexical-rule.md) — kebab-case 名ポジションは 1 つの字句ヘルパーを共有する。新しい名前ポジションは `.krs` / `.krs.style` 両面でハイフン入り名を検証する。
 

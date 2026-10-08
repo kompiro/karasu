@@ -33,6 +33,39 @@ service {
     expect(rule.properties["border-style"]).toBe("dashed");
   });
 
+  it("reads a digit-led kebab name as one tag (#2849)", () => {
+    const result = StyleParser.parse(`
+[3d-secure][2026-q3][2026q3][team-1] {
+  border-style: dashed;
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.value.rules[0].selector.tags).toEqual([
+      "3d-secure",
+      "2026-q3",
+      "2026q3",
+      "team-1",
+    ]);
+  });
+
+  it("keeps numeric values with units whole next to digit-led names (#2849)", () => {
+    const result = StyleParser.parse(`
+service {
+  border-width: 2px;
+  opacity: 0.6;
+  font-size: 1.5em;
+  width: 50%;
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.value.rules[0].properties).toMatchObject({
+      "border-width": "2px",
+      opacity: "0.6",
+      "font-size": "1.5em",
+      width: "50%",
+    });
+  });
+
   it("parses an annotation selector", () => {
     const result = StyleParser.parse(`
 @deprecated {

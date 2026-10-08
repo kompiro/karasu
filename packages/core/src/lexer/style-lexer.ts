@@ -299,12 +299,30 @@ export class StyleLexer {
     while (this.pos < this.source.length && /[a-zA-Z%]/.test(this.peek())) {
       value += this.advance();
     }
+    // A word that merely starts with a digit continues as a kebab name, the way
+    // the `.krs` side reads a tag such as `[3d-secure]` or `[2026-q3]`: without
+    // this, the selector stopped at `3d` and never matched the tag (#2849,
+    // TPL-2509). No value with a unit is followed by a word character or by
+    // `-<word>`, so `2px` / `1.5em` / `50%` end where they did.
+    while (this.pos < this.source.length) {
+      const ch = this.peek();
+      if (ch === "-" && isIdentPart(this.peekAt(1))) {
+        value += this.advance();
+        continue;
+      }
+      if (!isIdentPart(ch)) break;
+      value += this.advance();
+    }
     return { type: TokenType.Identifier, value, loc };
   }
 }
 
 function isIdentStart(ch: string): boolean {
   return /[a-zA-Z_]/.test(ch);
+}
+
+function isIdentPart(ch: string): boolean {
+  return /[a-zA-Z0-9_]/.test(ch);
 }
 
 function isIdentPartWithHyphen(ch: string): boolean {
