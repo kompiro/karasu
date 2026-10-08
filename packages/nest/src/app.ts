@@ -15,7 +15,7 @@ import { logError } from "./log.js";
 import { health } from "./routes/health.js";
 import { signIn, signInCallback, signOut } from "./routes/auth.js";
 import { submitKrs } from "./routes/submit.js";
-import { submissionPage } from "./routes/gallery.js";
+import { submissionOgImage, submissionPage } from "./routes/gallery.js";
 import {
   consoleConfirmAccountDelete,
   consoleConfirmDelete,
@@ -32,9 +32,10 @@ import { Router } from "./router.js";
 export function createRouter(): Router {
   // Registration order is match order within a group, and `Router.candidates`
   // prefers the group with the fewest captures. Nothing in this table reaches
-  // that tie-break: the literals and the two capture routes (`/g/:id`,
-  // `/console/s/:id`) never match the same path, because no literal has `s` in
-  // the segment `/console/s/:id` captures. Registering the literals first is
+  // that tie-break: the literals and the capture routes (`/g/:id`,
+  // `/g/:id/og.png`, `/console/s/:id`) never match the same path, because no
+  // literal has `s` in the segment `/console/s/:id` captures and the two `/g/`
+  // routes differ in length. Registering the literals first is
   // what keeps that easy to see; `router.test.ts` is what keeps the rule
   // itself honest for the next capture route added here.
   return new Router()
@@ -52,7 +53,8 @@ export function createRouter(): Router {
     .post("/console/s/:id/replace", consoleReplace)
     .get("/console/s/:id/delete", consoleConfirmDelete)
     .post("/console/s/:id/delete", consoleDelete)
-    .get("/g/:id", submissionPage);
+    .get("/g/:id", submissionPage)
+    .get("/g/:id/og.png", submissionOgImage);
 }
 
 const router = createRouter();

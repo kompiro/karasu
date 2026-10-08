@@ -34,34 +34,40 @@ so one address never resolves to two different things.
 | `POST /auth/logout`                      | Revoke this session                                                          |
 | `POST /api/submissions`                  | Submit a `.krs` (JSON, authenticated)                                        |
 | `GET /g/<id>`                            | A submission, in the viewer. `?format=svg` / `?format=krs` for the raw forms |
+| `GET /g/<id>/og.png`                     | A public submission's OGP image (system view, 1200×630), from the edge cache |
 | `GET /assets/*`                          | The viewer's bundle, straight from the static assets (never the Worker)      |
 | `GET /console`                           | Manage your own submissions                                                  |
 
 ## Layout
 
-| Module          | Responsibility                                                 |
-| --------------- | -------------------------------------------------------------- |
-| `src/index.ts`  | Package barrel                                                 |
-| `src/worker.ts` | Workers entry. A default handler and nothing else              |
-| `src/app.ts`    | Route table and the single failure boundary                    |
-| `src/router.ts` | Literal and `:param` path matching, 404 vs 405                 |
-| `src/http.ts`   | Response helpers. Everything defaults to `no-store`            |
-| `src/env.ts`    | Bindings, plus the guard that refuses rather than degrades     |
-| `src/auth/`     | The OAuth round trip and the session cookie                    |
-| `src/store/`    | Accounts, sessions, submissions — keyed account-first          |
-| `src/gallery/`  | Validation, `?format=svg` rendering, the HTML, the viewer page |
-| `src/redact/`   | The structure-only scan, on ingress                            |
-| `scripts/`      | Build time only: staging the viewer into `viewer-assets/`      |
+| Module          | Responsibility                                                                |
+| --------------- | ----------------------------------------------------------------------------- |
+| `src/index.ts`  | Package barrel                                                                |
+| `src/worker.ts` | Workers entry. A default handler and nothing else                             |
+| `src/app.ts`    | Route table and the single failure boundary                                   |
+| `src/router.ts` | Literal and `:param` path matching, 404 vs 405                                |
+| `src/http.ts`   | Response helpers. Everything defaults to `no-store`                           |
+| `src/env.ts`    | Bindings, plus the guard that refuses rather than degrades                    |
+| `src/auth/`     | The OAuth round trip and the session cookie                                   |
+| `src/store/`    | Accounts, sessions, submissions — keyed account-first                         |
+| `src/gallery/`  | Validation, `?format=svg` rendering, the HTML, the viewer page, the OGP image |
+| `src/redact/`   | The structure-only scan, on ingress                                           |
+| `scripts/`      | Build time only: staging the viewer and the OGP fonts into `viewer-assets/`   |
 
 ## Conventions this package holds itself to
 
 - **A missing binding is a refusal, not a degradation.** `requireBinding` throws
   and the boundary in `app.ts` answers 503 naming the binding.
-- **No runtime dependencies beyond `@karasu-tools/core`.** The router exists
-  instead of a framework, and the console is server-rendered HTML with plain
-  forms rather than a bundled front end. `@karasu-tools/app` is a build-time
-  dependency only: its viewer build is deployed as static assets, never
-  bundled into the Worker.
+- **No runtime dependencies beyond `@karasu-tools/core`, and resvg for PNG.**
+  The router exists instead of a framework, and the console is
+  server-rendered HTML with plain forms rather than a bundled front end.
+  `@karasu-tools/app` is a build-time dependency only: its viewer build is
+  deployed as static assets, never bundled into the Worker. The one exception
+  is `@resvg/resvg-wasm`, for the OGP image (#2995): PNG is made only inside a
+  Worker, as in the app's `/render`, so core, the CLI and the app stay
+  SVG-only (ADR-105, ADR-1805). It is loaded in `src/gallery/og-rasterize.ts`
+  alone; vitest cannot load its `.wasm`, so `vitest.config.ts` aliases that
+  import to `src/testing/resvg-wasm-stub.ts`.
 - **No script with the session's authority.** The console is same-origin with
   the session cookie, so any script served there would run with that session's
   authority; it has none. The one page with script, `/g/<id>`, is served under
@@ -72,6 +78,13 @@ so one address never resolves to two different things.
   account-first so deleting an account is one sweep, and
   `gallery-purge-coverage.test.ts` fails the build if a prefix escapes it
   (TPL-2226).
+- **The OGP image is cached, not stored.** `GET /g/<id>/og.png` draws on a
+  cache miss and keeps the PNG in the Cache API for a day, so there is no KV
+  prefix for the purge to know about. It reads the submission before every
+  cache lookup, which is what stops a cached image of a deleted or unlisted
+  submission from being served once that change reaches KV, and it never reads
+  the session: the image is the same for everyone (TPL-2995,
+  `src/gallery/og-image.ts`).
 
 ## Submitter sign-in
 
@@ -107,7 +120,9 @@ pnpm --filter @karasu-tools/nest typecheck
 ```
 
 To run the Worker locally, stage the viewer first; `wrangler.toml`'s `[assets]`
-directory does not exist until then (the deploy workflow runs the same step):
+directory does not exist until then (the deploy workflow runs the same step).
+`build:viewer` also stages the four fonts the OGP image needs into
+`viewer-assets/og-fonts/`:
 
 ```
 pnpm --filter @karasu-tools/core run build

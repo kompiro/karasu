@@ -54,10 +54,11 @@ export interface KVNamespaceLike {
 
 /**
  * The Workers static-assets binding, narrowed to what this service uses:
- * reading one staged file (`gallery/viewer-assets.ts`). Structural for the
- * same reason as `KVNamespaceLike`.
+ * reading staged files it never serves itself (the viewer template,
+ * `gallery/viewer-assets.ts`, and the OGP image's fonts, `gallery/og-image.ts`).
+ * Structural for the same reason as `KVNamespaceLike`.
  */
-interface AssetsFetcherLike {
+export interface AssetsFetcherLike {
   fetch(request: Request): Promise<Response>;
 }
 

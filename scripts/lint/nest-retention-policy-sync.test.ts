@@ -182,6 +182,17 @@ describe("the data-handling document matches the code (#1996, #2591)", () => {
     expect(policy).toMatch(/`sub\/v1\/<account>\/<id>` \| \*\*投稿者が削除するまで\*\*/);
   });
 
+  it("states how long the OGP image's edge cache keeps it, since it is not stored (#2995)", () => {
+    // Not a KV prefix, so nothing in the purge ledger sees it. What a reader is
+    // told instead is a bound on the bytes' lifetime after a deletion, and that
+    // bound is this constant.
+    const seconds = constant("packages/nest/src/gallery/og-image.ts", "OG_EDGE_CACHE_SECONDS");
+    expect(seconds % (24 * 60 * 60)).toBe(0);
+    expect(policy).toContain(
+      `| 公開投稿の OGP 画像 | Cloudflare のキャッシュ（Cache API） | 最大 ${seconds / (24 * 60 * 60)} 日 |`,
+    );
+  });
+
   it("keeps the account record on the same condition", () => {
     assertNoTtl("packages/nest/src/store/accounts.ts");
     expect(policy).toMatch(/`acct\/v1\/<account>` \| \*\*アカウント削除まで\*\*/);

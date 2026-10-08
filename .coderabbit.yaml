@@ -104,8 +104,13 @@ reviews:
       instructions: |
         - `packages/nest` is the Cloudflare Workers deployment that holds the
           service secrets, and it carries no runtime dependency but
-          `@karasu-tools/core`. Flag a new entry under `dependencies`; never
-          propose one. Its user-visible surface is a JSON API whose `error.code`
+          `@karasu-tools/core` and one deliberate exception,
+          `@resvg/resvg-wasm`, which rasterizes the gallery's OGP image
+          (#2995; PNG stays inside a Worker per ADR-1805, the same version the
+          app's `functions/render.ts` uses). Only
+          `src/gallery/og-rasterize.ts` may import it. Flag any other new entry
+          under `dependencies`, and any import of resvg from another module;
+          never propose one. Its user-visible surface is a JSON API whose `error.code`
           is what callers branch on, so its messages are outside the
           `docs/spec/i18n.md` scope — do not ask for them to move into
           `@karasu-tools/i18n`.

@@ -9,7 +9,8 @@
  * filled by `background`.
  *
  * Pure string transform (no DOM / resvg) so it is unit-testable; the Workers
- * function rasterizes the result.
+ * that rasterize the result (the app's `/render` Pages Function and nest's
+ * `/g/<id>/og.png`, #2995) call it from here so both frames stay identical.
  */
 export function wrapSvgForOgpFrame(
   svg: string,

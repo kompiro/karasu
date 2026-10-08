@@ -21,8 +21,10 @@
  * repository route entirely; until then, both are reachable and neither
  * shadows the other.
  */
+import { wrapSvgForOgpFrame } from "@karasu-tools/core";
 import { requireBinding } from "../env.js";
-import { error, html, svg, text } from "../http.js";
+import { error, html, png, svg, text } from "../http.js";
+import { logError } from "../log.js";
 import type { RouteContext } from "../router.js";
 import { currentViewer } from "../auth/current.js";
 import { GalleryStore } from "../store/gallery-store.js";
@@ -32,6 +34,17 @@ import { renderSubmission } from "../gallery/render.js";
 import { VIEWER_TEMPLATE_PATH } from "../gallery/viewer-assets.js";
 import { viewerHeader, viewerPage } from "../gallery/viewer-page.js";
 import { ogpMeta } from "../gallery/ogp.js";
+import {
+  edgeCache,
+  type EdgeCacheLike,
+  OG_IMAGE_BACKGROUND,
+  OG_IMAGE_HEIGHT,
+  OG_IMAGE_WIDTH,
+  ogImageCacheEntry,
+  ogImageCacheKey,
+  ogImageUrl,
+} from "../gallery/og-image.js";
+import { rasterizeOgPng } from "../gallery/og-rasterize.js";
 
 /**
  * Ten minutes, and only for a submission its author published.
@@ -136,6 +149,9 @@ export async function submissionPage(context: RouteContext): Promise<Response> {
             description: submission.description,
             submitter: login,
             url: origin ? `${origin}/g/${id}` : undefined,
+            // Absolute, which crawlers require, so only where the deploy knows
+            // its own origin. Without one the card stays `summary`.
+            image: origin ? ogImageUrl(origin, id, submission.updatedAt) : undefined,
           })
         : undefined,
     header: viewerHeader({
@@ -162,4 +178,92 @@ async function viewerTemplate(context: RouteContext): Promise<string | undefined
   const assets = requireBinding(context.env, "ASSETS");
   const response = await assets.fetch(new Request(new URL(VIEWER_TEMPLATE_PATH, context.url)));
   return response.ok ? response.text() : undefined;
+}
+
+/**
+ * `GET /g/<id>/og.png` — a public submission's OGP image (#2995).
+ *
+ * Drawn on request and kept in the edge cache, never stored
+ * (`gallery/og-image.ts` says why, and why the session is not read).
+ *
+ * Only `public` answers. An unlisted submission's image is a 404 even for its
+ * owner, exactly as a missing one is: the image exists to be unfurled, and an
+ * unlisted page advertises none.
+ *
+ * **The submission is read before the cache, every time.** That read is what
+ * stops a cached image of a deleted or unlisted submission from being served
+ * once the change reaches KV; looking in the cache first would serve it for
+ * the cache's whole day.
+ */
+export async function submissionOgImage(context: RouteContext): Promise<Response> {
+  const store = new GalleryStore(requireBinding(context.env, "NEST_STORE"));
+  let ref: { accountId: string; slug: string };
+  try {
+    ref = parseSubmissionId(context.params.id ?? "");
+  } catch (cause) {
+    if (cause instanceof InvalidGalleryRefError) return error(404, "not_found", NOT_FOUND);
+    throw cause;
+  }
+  const submission = await store.submissions.get(ref.accountId, ref.slug);
+  if (submission === undefined || submission.visibility !== "public") {
+    return error(404, "not_found", NOT_FOUND);
+  }
+  const id = context.params.id as string;
+
+  const origin = context.env.NEST_PUBLIC_ORIGIN ?? context.url.origin;
+  const key = ogImageCacheKey(origin, id, submission.updatedAt);
+  const cache = edgeCache();
+  const cached = cache === undefined ? undefined : await cachedImage(cache, key);
+  if (cached !== undefined) {
+    // The cached copy carries the cache's one-day lifetime; readers get the
+    // page's ten minutes, so unpublishing reaches them as fast as it does the page.
+    return png(cached, { cacheControl: PUBLIC_CACHE });
+  }
+
+  const rendered = renderSubmission(submission.krs, new URLSearchParams({ view: "system" }));
+  // 422 for a document that cannot be shown, as `?format=svg` answers. Not
+  // cached: `text` defaults to `no-store`, and nothing reaches the edge cache.
+  if (rendered.status !== 200) return text(rendered.body, { status: rendered.status });
+
+  // Outside the `try`: a deploy without the binding is a configuration error,
+  // which `app.ts` answers as 503 naming it, not a failed drawing.
+  const assets = requireBinding(context.env, "ASSETS");
+  let image: Uint8Array<ArrayBuffer>;
+  try {
+    image = await rasterizeOgPng(
+      wrapSvgForOgpFrame(rendered.body, OG_IMAGE_WIDTH, OG_IMAGE_HEIGHT, OG_IMAGE_BACKGROUND),
+      assets,
+      context.url,
+    );
+  } catch (cause) {
+    // wasm or a font failed to load. The next request retries both.
+    logError("karasu-nest could not draw an OGP image", cause);
+    return error(500, "image_failed", "The preview image could not be drawn.");
+  }
+
+  if (cache !== undefined) {
+    // Off the response path, and a failed put only costs a redraw next time.
+    context.ctx.waitUntil(cache.put(key, ogImageCacheEntry(image)).catch(() => {}));
+  }
+  return png(image, { cacheControl: PUBLIC_CACHE });
+}
+
+/**
+ * The cached image's bytes, or `undefined` on a miss.
+ *
+ * A cache that fails to answer counts as a miss, the same way a failed `put`
+ * only costs a redraw: the cache saves work, and must never be the reason an
+ * image that can be drawn is not served.
+ */
+async function cachedImage(
+  cache: EdgeCacheLike,
+  key: Request,
+): Promise<Uint8Array<ArrayBuffer> | undefined> {
+  try {
+    const hit = await cache.match(key);
+    return hit === undefined ? undefined : new Uint8Array(await hit.arrayBuffer());
+  } catch (cause) {
+    logError("karasu-nest could not read the OGP image cache", cause);
+    return undefined;
+  }
 }
