@@ -11,6 +11,7 @@ import {
   NODE_DETAIL_KIND_ICON_NAMES,
 } from "@karasu-tools/core";
 import type { NodeMetadata } from "@karasu-tools/core";
+import { Button } from "@/components/ui/button";
 import { useTranslation } from "../i18n/index.js";
 
 interface NodeDetailPanelProps {
@@ -279,9 +280,12 @@ export function NodeDetailPanel({
 
       {relations && relations.count > 0 && (
         <div className="node-detail-section">
-          <button className="node-detail-nav-btn" onClick={relations.onOpen}>
+          {/* The panel's older nav buttons predate the shadcn Button
+              (`.claude/rules/app-ui.md`); this one uses it, laid out like
+              them: full width, label at the start. */}
+          <Button className="w-full justify-start" onClick={relations.onOpen}>
             {t("focusCanvas.relations", { count: relations.count })}
-          </button>
+          </Button>
         </div>
       )}
 

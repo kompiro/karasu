@@ -508,6 +508,53 @@ describe("keyboard and touch routes into the focus canvas (#3057)", () => {
     before.remove();
   });
 
+  it("keeps focus in the canvas when an edit redraws it, and in the editor when it was there", () => {
+    let registry!: ReturnType<typeof useCommandRegistry>;
+    function Probe() {
+      registry = useCommandRegistry();
+      return null;
+    }
+    const tree = (svg: string) => (
+      <CommandProvider>
+        <Probe />
+        <textarea aria-label="editor" />
+        <PreviewPane
+          svg={svg}
+          diagnostics={[]}
+          nodeMetadata={new Map()}
+          currentFilePath={null}
+          displayRoot={null}
+          highlightedNodeId="Identity"
+        />
+      </CommandProvider>
+    );
+    const { container: root, rerender } = render(tree(denseSvg));
+    act(() =>
+      registry
+        .getCommands()
+        .find((c) => c.id === "view.showRelations")!
+        .run(),
+    );
+    const edit = (n: number) =>
+      compile(dense.replace("Identity & access", `Identity & access ${n}`), {
+        viewPath: ["Umami", "UmamiApp"],
+      }).svg;
+
+    // Focus on a card, then an edit replaces the drawing (and the card).
+    const card = root.querySelector<HTMLElement>('.focus-canvas [data-focus-node="Teams"]')!;
+    act(() => card.focus());
+    expect(document.activeElement).toBe(card);
+    act(() => rerender(tree(edit(1))));
+    expect(card.isConnected).toBe(false);
+    expect(document.activeElement).toBe(root.querySelector(".focus-canvas__panel"));
+
+    // Focus in the editor: an edit there redraws the canvas but keeps the editor.
+    const editor = root.querySelector("textarea")!;
+    act(() => editor.focus());
+    act(() => rerender(tree(edit(2))));
+    expect(document.activeElement).toBe(editor);
+  });
+
   it("makes no lane a button on an edge's canvas, where a lane leads nowhere", () => {
     const { container: root } = render(pane());
     click(root, edgeGroup(root, "Analytics", "Identity").querySelector("path")!);

@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -54,6 +55,15 @@ export function FocusCanvas({
   const { t } = useTranslation();
   const bodyRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  // An edit redraws the canvas without a move: the card or lane that had
+  // focus is replaced with the drawing. Keep focus in the canvas then, but
+  // only if it was there: an edit typed in the editor keeps the editor's.
+  const focusInDrawing = useRef(false);
+  /** Focus the panel itself: no card or lane of the drawing has focus after. */
+  const focusPanel = useCallback(() => {
+    focusInDrawing.current = false;
+    panelRef.current?.focus({ preventScroll: true });
+  }, []);
 
   // Keyboard focus (#3057): the canvas takes it when it opens and after every
   // move (a card or lane that was pressed is gone with the drawing it was in),
@@ -71,11 +81,11 @@ export function FocusCanvas({
     };
   }, []);
   useEffect(() => {
-    panelRef.current?.focus({ preventScroll: true });
+    focusPanel();
     // `trail` is a trigger, not a value this body reads: each move replaces
     // the drawing, and the control that had focus with it.
     // eslint-disable-next-line react/exhaustive-effect-dependencies
-  }, [trail]);
+  }, [trail, focusPanel]);
   // Drag to move the view, as on the main canvas: a press anywhere in the
   // canvas starts a pan, and one that moved past the threshold is not a click
   // on whatever card or line it ended over.
@@ -141,6 +151,14 @@ export function FocusCanvas({
   // scrolls instead of the picture rearranging.
   const drawing = useMemo(() => buildFocusCanvas(source, focus), [source, focus]);
   const html = useMemo(() => ({ __html: drawing.svg }), [drawing]);
+
+  useEffect(() => {
+    const active = document.activeElement;
+    if (focusInDrawing.current && !(active && bodyRef.current?.contains(active))) focusPanel();
+    // `html` is a trigger, not a value this body reads: a new drawing
+    // replaces the control that had focus.
+    // eslint-disable-next-line react/exhaustive-effect-dependencies
+  }, [html, focusPanel]);
 
   // Not a Radix Dialog (that is for modal dialogs, `.claude/rules/dialog.md`),
   // so Esc is ours to handle.
@@ -266,6 +284,16 @@ export function FocusCanvas({
           onMouseDown={onBodyMouseDown}
           onClick={onBodyClick}
           onKeyDown={onBodyKeyDown}
+          onFocus={() => {
+            focusInDrawing.current = true;
+          }}
+          onBlur={(e) => {
+            // A blur toward somewhere else is a real move. A control removed
+            // by a redraw blurs (if at all) toward nothing.
+            if (e.relatedTarget && !bodyRef.current?.contains(e.relatedTarget)) {
+              focusInDrawing.current = false;
+            }
+          }}
           dangerouslySetInnerHTML={html}
         />
       </div>
