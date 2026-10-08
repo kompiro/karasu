@@ -178,7 +178,7 @@ export class Lexer {
   private skipWhitespace(): void {
     while (this.pos < this.source.length) {
       const ch = this.peek();
-      if (ch === " " || ch === "\t" || ch === "\r" || ch === "\n") {
+      if (isWhitespace(ch)) {
         this.advance();
       } else {
         break;
@@ -309,18 +309,32 @@ export class Lexer {
         if (isDigit(ch)) {
           return this.readNumber(loc);
         }
-        // Skip any other character. The parser never learns it was there, so
-        // it cannot refuse it. The `.krs` in `examples/` and in linted doc
+        if (!isAscii(ch)) return this.readUnknown(loc);
+        // Skip any other ASCII character. The parser never learns it was there,
+        // so it cannot refuse it. The `.krs` in `examples/` and in linted doc
         // fences relies on this only for `=` and `;` (`label = "x"`,
         // `runtime "n"; realizes X`), and `lexer-discard.test.ts` pins the
-        // dropped set among ASCII and sampled non-ASCII characters, so one that
-        // starts landing here is a visible change. Digits used to land here,
-        // which turned `until: 2026-12-31` into `until: "-"` (#2707), and so
-        // did each half of a surrogate pair and every combining mark, which
-        // turned `𠮷野家` into `野家` and a decomposed `café` into `cafe` (#2848).
+        // dropped set, so one that starts landing here is a visible change.
+        // Digits used to land here, which turned `until: 2026-12-31` into
+        // `until: "-"` (#2707), and so did every non-ASCII character that is
+        // not a letter, which turned `service 😀A` into `service A` (#3093).
         this.advance();
         return null;
     }
+  }
+
+  /**
+   * Read a non-ASCII character that no other branch takes, plus any word
+   * characters after it, as one Unknown token (`😀A`), so a diagnostic covers
+   * what the author wrote and `A` is not left behind to be read as a name
+   * (#3093). The same shape as `readNumber`.
+   */
+  private readUnknown(loc: SourceLocation): Token {
+    let value = this.advance();
+    while (this.pos < this.source.length && isIdentPart(this.peek())) {
+      value += this.advance();
+    }
+    return { type: TokenType.Unknown, value, loc };
   }
 
   private readString(loc: SourceLocation): Token {
@@ -458,16 +472,40 @@ function isDigit(ch: string): boolean {
   return /\p{N}/u.test(ch);
 }
 
+/**
+ * ASCII space, tab, CR and LF, every other character with the Unicode
+ * `White_Space` property (U+3000, NBSP, U+2028, ...), and the byte order mark,
+ * which nothing strips before lexing (#3093). Close to ECMAScript's
+ * WhiteSpace and LineTerminator. Only `\n` starts a new line, so line numbers
+ * stay the ones LSP and the editor count.
+ */
+function isWhitespace(ch: string): boolean {
+  return (
+    ch === " " ||
+    ch === "\t" ||
+    ch === "\r" ||
+    ch === "\n" ||
+    ch === "\uFEFF" ||
+    /\p{White_Space}/u.test(ch)
+  );
+}
+
+function isAscii(ch: string): boolean {
+  return ch.length === 1 && ch.charCodeAt(0) <= 0x7f;
+}
+
 function isIdentStart(ch: string): boolean {
   return /[\p{L}_]/u.test(ch);
 }
 
 /**
  * A combining mark continues a word but cannot start one: it modifies the
- * character before it, so a decomposed `café` is one word (#2848).
+ * character before it, so a decomposed `café` is one word (#2848). ZWNJ and
+ * ZWJ (U+200C / U+200D) are the same: they sit inside Persian and Indic words
+ * and change how the letters around them join (#3093).
  */
 function isIdentPart(ch: string): boolean {
-  return /[\p{L}\p{M}\p{N}_]/u.test(ch);
+  return /[\p{L}\p{M}\p{N}_\u200C\u200D]/u.test(ch);
 }
 
 /** The code point starting at UTF-16 index `i`, or `""` past the end. */

@@ -4364,6 +4364,59 @@ system S {
   });
 });
 
+describe("non-ASCII characters outside words (#3093)", () => {
+  it("does not read a node id as the word after an emoji", () => {
+    // `service 😀A` used to declare `A` with no diagnostic: the emoji was
+    // dropped and the rest read as a plausible name.
+    const result = Parser.parse(`system S {\n  service 😀A {}\n}`);
+    expect(result.diagnostics.map((d) => d.code)).toContain("expected-node-id");
+    expect(result.value.systems[0].children.map((c) => c.id)).not.toContain("A");
+  });
+
+  it("does not retarget an edge to the node named after the dropped character", () => {
+    const result = Parser.parse(`system S {\n  service A {}\n  service B {}\n  A -> 😀B\n}`);
+    expect(result.diagnostics.some((d) => d.severity === "error")).toBe(true);
+    expect(result.value.systems[0].edges.map((e) => `${e.from}->${e.to}`)).not.toContain("A->B");
+  });
+
+  it("reports a symbol written where no token belongs", () => {
+    // `A → B` used to read as `A B`.
+    const result = Parser.parse(`system S {\n  service A {}\n  service B {}\n  A → B\n}`);
+    expect(result.diagnostics.some((d) => d.severity === "error")).toBe(true);
+  });
+
+  it("reports an invisible character inside a name instead of joining the halves", () => {
+    // A zero-width space is not whitespace and not a word character.
+    const result = Parser.parse(`system S {\n  service Foo\u200BBar {}\n}`);
+    expect(result.diagnostics.some((d) => d.severity === "error")).toBe(true);
+    expect(result.value.systems[0].children.map((c) => c.id)).not.toContain("FooBar");
+  });
+
+  it("reads a byte order mark, an ideographic space and NBSP as whitespace", () => {
+    for (const space of ["\u3000", "\u00A0", "\u2028"]) {
+      const result = Parser.parse(`\uFEFFsystem${space}S {\n  service${space}A {}\n}`);
+      expect([JSON.stringify(space), result.diagnostics]).toEqual([JSON.stringify(space), []]);
+      expect(result.value.systems[0].children.map((c) => c.id)).toEqual(["A"]);
+    }
+  });
+
+  it("keeps a name with a zero-width non-joiner whole", () => {
+    // ZWNJ belongs inside Persian words; it used to be dropped and split the word.
+    const word = "\u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645";
+    const result = Parser.parse(`system S {\n  service ${word} {}\n}`);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.value.systems[0].children.map((c) => c.id)).toEqual([word]);
+  });
+
+  it("records a kebab name with an emoji fragment whole", () => {
+    // Like `team-1` (#2707), so the name is reported as written rather than
+    // split into `team`, `-` and `😀`.
+    const result = Parser.parse(`system S {\n  service A [team-😀] @phase-😀 {}\n}`);
+    const [node] = result.value.systems[0].children;
+    expect([node.tags, node.annotations]).toEqual([["team-😀"], ["phase-😀"]]);
+  });
+});
+
 // #2715 / TPL-2715: a range names the document it indexes when the parse was
 // handed a path, so a diagnostic re-derived on a merged model still can.
 describe("Parser source file identity", () => {

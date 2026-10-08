@@ -19,6 +19,41 @@ system ECPlatform {
 }
 ```
 
+## 字句構造
+
+文字列とコメントの外では、lexer は各文字を次のどれかとして読む
+（[#2707](https://github.com/kompiro/karasu/issues/2707)、[#2848](https://github.com/kompiro/karasu/issues/2848)、[#3093](https://github.com/kompiro/karasu/issues/3093)）。
+
+| 分類 | 文字 | 読み方 |
+|------|------|--------|
+| 空白 | スペース・タブ・CR・LF、Unicode の `White_Space` 属性を持つほかの文字（U+3000 全角スペース、U+00A0 ノーブレークスペース、U+2028 / U+2029 など）、U+FEFF（BOM） | トークンを区切る。改行として数えるのは LF だけなので、行番号は LSP とエディタが数えるものと一致する |
+| 語 | 文字（`\p{L}`）か `_` で始まり、文字・数字（`\p{N}`）・結合文字（`\p{M}`）・`_`・ZWNJ / ZWJ（U+200C / U+200D）が続く | 裸の名前 1 つかキーワード。BMP 外の文字もふつうの文字として読み（`𠮷野家`）、結合文字は修飾する語の中に残る（分解形の `café`） |
+| 数字で始まる語 | 数字で始まる（`2026`、`2Foo`） | どの名前ポジションも受け付けないトークン。ノード id やエッジの端点ならエラー、アノテーションパラメータの値なら読めない値として警告。タグや kebab-case の 2 つ目以降の断片（`[team-1]`）では書いたとおりに残る |
+| ほかの非 ASCII | 絵文字、`→` や `©` などの記号、ゼロ幅スペース、前に文字のない結合文字や ZWNJ、対にならないサロゲート | 後に続く語の文字とまとめて（`😀A`）、どの名前ポジションも受け付けないトークン 1 つとして読む。扱いは数字で始まる語と同じ。タグ・アノテーション名・kebab-case の 2 つ目以降の断片（`[team-😀]`）では書いたとおりに残る |
+| ほかの ASCII 記号 | `!`、`$`、`=`、`;` など | 読み飛ばす。古いファイルが `=` と `;` でこれに頼っている（`label = "x"`） |
+
+名前は書いたとおりに記録する。Unicode の正規化はしないので、`café` の合成形と
+分解形は別の id になり、もう一方の綴りで書いたエッジは端点を解決できないと報告される。
+これ以外の文字を名前に使うときは引用符で囲む。`karasu fmt` は引用符が必要な名前に
+だけ引用符を残す。
+
+```krs
+system Shop {
+  service 注文 {}
+  service "Checkout 🛒" {}
+
+  注文 -> "Checkout 🛒"
+}
+```
+
+```krs invalid
+system Shop {
+  service 🛒Checkout {}
+}
+```
+
+> Related TPLs: [TPL-2707](../test-perspectives/TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md) — lexer は parser が拒否すべき入力を黙って捨ててはならない。`lexer-discard.test.ts` が全ての非 ASCII の code point をこの表と突き合わせ、捨てる ASCII の集合を完全一致で固定する。
+
 ---
 
 ## 概念の全体像

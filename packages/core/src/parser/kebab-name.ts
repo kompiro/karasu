@@ -51,11 +51,14 @@ export function stitchKebabTail(first: Token, cursor: TokenCursor): { name: stri
  * starting with a digit. The last lets `team-1` / `phase-2` stitch the way the
  * `.krs.style` lexer already reads them (TPL-2509). It only ever follows a `-`;
  * whether a name may *start* with a digit stays the call site's decision
- * (`parseTags` takes any token, the annotation reader refuses `@2026`) (#2707). */
+ * (`parseTags` takes any token, the annotation reader refuses `@2026`) (#2707).
+ * An Unknown token (`team-😀`) stitches the same way, so the name the author
+ * wrote is recorded or reported whole rather than split into `team`, `-` and
+ * `😀` (#3093). */
 function isWordToken(token: Token): boolean {
   if (token.type === TokenType.Identifier) {
     return token.value !== "-" && token.value !== "--";
   }
-  if (token.type === TokenType.Number) return true;
+  if (token.type === TokenType.Number || token.type === TokenType.Unknown) return true;
   return KRS_KEYWORD_TOKEN_TYPES.has(token.type);
 }

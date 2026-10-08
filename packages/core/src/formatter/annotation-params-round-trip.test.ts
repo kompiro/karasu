@@ -347,6 +347,10 @@ describe("annotation parameter values keep their meaning", () => {
       "𠮷野家",
       "cafe\u0301",
       "हिन्दी",
+      // ZWNJ inside a word, read as part of it since #3093, and a symbol,
+      // which must stay quoted.
+      "\u0645\u06CC\u200C\u062E",
+      "😀A",
     ];
     for (const id of ids) {
       const src = HOSTS.node(`@migration_target(from: "${id}")`);

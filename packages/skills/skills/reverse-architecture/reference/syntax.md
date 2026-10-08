@@ -19,6 +19,42 @@ system ECPlatform {
 }
 ```
 
+## Lexical structure
+
+Outside strings and comments, the lexer reads each character as one of these
+([#2707](https://github.com/kompiro/karasu/issues/2707), [#2848](https://github.com/kompiro/karasu/issues/2848), [#3093](https://github.com/kompiro/karasu/issues/3093)):
+
+| Class | Characters | How it is read |
+|-------|------------|----------------|
+| Whitespace | Space, tab, CR, LF, every other character with the Unicode `White_Space` property (U+3000 ideographic space, U+00A0 no-break space, U+2028 / U+2029, ...), and U+FEFF (byte order mark) | Separates tokens. Only LF starts a new line, so line numbers match the ones LSP and the editor count |
+| Word | Starts with a letter (`\p{L}`) or `_`; continues with letters, digits (`\p{N}`), combining marks (`\p{M}`), `_`, and ZWNJ / ZWJ (U+200C / U+200D) | One bare name or keyword. Characters outside the BMP are ordinary letters (`𠮷野家`), and a combining mark stays in the word it modifies (a decomposed `café`) |
+| Digit-led word | Starts with a digit (`2026`, `2Foo`) | A token no name position accepts: a node id or edge endpoint is an error, an annotation parameter value is warned as unreadable. In a tag or a later kebab-case fragment (`[team-1]`) it is kept as written |
+| Other non-ASCII | Emoji, symbols such as `→` or `©`, a zero-width space, a combining mark or ZWNJ with no letter before it, an unpaired surrogate | Read together with the word characters after it (`😀A`) as one token that no name position accepts, handled like a digit-led word. In a tag, an annotation name or a later kebab-case fragment (`[team-😀]`) it is kept as written |
+| Other ASCII punctuation | `!`, `$`, `=`, `;`, ... | Skipped. Older files rely on this for `=` and `;` (`label = "x"`) |
+
+Names are recorded as written. There is no Unicode normalization, so the
+composed and decomposed spellings of `café` are two different ids, and an edge
+that uses the other spelling reports an unresolved endpoint. To use any other
+character in a name, quote it: `karasu fmt` keeps the quotes on exactly the
+names that need them.
+
+```krs
+system Shop {
+  service 注文 {}
+  service "Checkout 🛒" {}
+
+  注文 -> "Checkout 🛒"
+}
+```
+
+```krs invalid
+system Shop {
+  service 🛒Checkout {}
+}
+```
+
+> Related TPLs: [TPL-2707](../test-perspectives/TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md) — the lexer must not drop what the parser must refuse; `lexer-discard.test.ts` checks every non-ASCII code point against this table and pins the dropped ASCII set exactly.
+
 ---
 
 ## Overview of concepts
