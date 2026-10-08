@@ -25,6 +25,12 @@ export interface FocusCanvasProps {
   onNavigate: (focus: Focus) => void;
   onBack: () => void;
   onClose: () => void;
+  /**
+   * Where keyboard focus goes on close when the element that had it at open
+   * time is gone. Opened from the command palette, that element was the
+   * palette's own input; the place the reader came from is the caller's to say.
+   */
+  returnFocus?: () => HTMLElement | null;
 }
 
 // A press on the overlay is not a press on the diagram under it: it must not
@@ -37,7 +43,14 @@ const stop = (e: MouseEvent) => e.stopPropagation();
  * pane only, so the editor stays usable, and it is rebuilt from each new
  * diagram (`source`).
  */
-export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: FocusCanvasProps) {
+export function FocusCanvas({
+  source,
+  trail,
+  onNavigate,
+  onBack,
+  onClose,
+  returnFocus,
+}: FocusCanvasProps) {
   const { t } = useTranslation();
   const bodyRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -45,10 +58,16 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
   // Keyboard focus (#3057): the canvas takes it when it opens and after every
   // move (a card or lane that was pressed is gone with the drawing it was in),
   // and hands it back to whatever had it before when the canvas closes.
+  const returnFocusRef = useRef(returnFocus);
+  useEffect(() => {
+    returnFocusRef.current = returnFocus;
+  });
   useEffect(() => {
     const before = document.activeElement;
     return () => {
-      if (before instanceof HTMLElement && before.isConnected) before.focus();
+      const target =
+        before instanceof HTMLElement && before.isConnected ? before : returnFocusRef.current?.();
+      target?.focus();
     };
   }, []);
   useEffect(() => {

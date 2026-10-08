@@ -176,6 +176,9 @@ export function PreviewPane({
   const mouseDownPos = useRef({ x: 0, y: 0 });
   // The focus canvas (#3031): what it has shown, oldest first. Empty when closed.
   const [focusTrail, setFocusTrail] = useState<Focus[]>([]);
+  // Closing a canvas the command opened returns focus to the Outline entry
+  // the reader selected: the palette input that had focus at open is gone.
+  const [returnToOutline, setReturnToOutline] = useState(false);
   const focusOpen = focusTrail.length > 0;
   // Parsed only while the focus canvas is open, and again for each new diagram
   // so the canvas follows an edit.
@@ -227,7 +230,10 @@ export function PreviewPane({
   // leaving it on a node or edge the diagram no longer has (and reopening it
   // should a later edit bring that back). Reset during render, from the value
   // that changed, rather than in an effect a render later.
-  if (focusOpen && !focusShown) setFocusTrail([]);
+  if (focusOpen && !focusShown) {
+    setFocusTrail([]);
+    setReturnToOutline(false);
+  }
 
   // The keyboard route to a node's focus canvas (#3057): the node highlighted
   // in the preview, chosen from the Outline view, which the keyboard reaches.
@@ -239,7 +245,7 @@ export function PreviewPane({
     title: "Show Relations of Highlighted Node",
     run: () => {
       if (highlightedNodeId && highlightAttribute === "data-node-id") {
-        openFocus({ kind: "node", id: highlightedNodeId });
+        if (openFocus({ kind: "node", id: highlightedNodeId })) setReturnToOutline(true);
       }
     },
   });
@@ -650,7 +656,10 @@ export function PreviewPane({
     // eslint-disable-next-line react/exhaustive-effect-dependencies
   }, [highlightedNodeId, highlightAttribute, svg]);
 
-  const closeFocus = useCallback(() => setFocusTrail([]), []);
+  const closeFocus = useCallback(() => {
+    setFocusTrail([]);
+    setReturnToOutline(false);
+  }, []);
 
   // The node panel's Relations button (#3057): the touch route to the focus
   // canvas. Counted the way the pill counts, so the number equals the lanes.
@@ -740,6 +749,11 @@ export function PreviewPane({
             onNavigate={(focus) => setFocusTrail((trail) => [...trail, focus])}
             onBack={() => setFocusTrail((trail) => trail.slice(0, -1))}
             onClose={closeFocus}
+            returnFocus={
+              returnToOutline
+                ? () => document.querySelector<HTMLElement>('.outline-item[aria-current="true"]')
+                : undefined
+            }
           />
         )}
         {detailPanel?.kind === "single-edge" && (

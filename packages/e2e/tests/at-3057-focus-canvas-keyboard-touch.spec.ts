@@ -102,6 +102,8 @@ test.describe("AT-3057 focus canvas from the keyboard", () => {
     // Back is a button too; Esc closes.
     await page.keyboard.press("Escape");
     await expect(page.locator(".focus-canvas")).toHaveCount(0);
+    // Back where the reader came from: the Outline entry, not the page body.
+    await expect(entry).toBeFocused();
   });
 });
 
