@@ -76,7 +76,7 @@ Issue 本文は「`->` を含む id は quote なしで書ける」としてい�
 | 読み取り（team 依存）       | `team-dependency-extract.ts` の `resolveOwners` / structural overlap、`unowned` map                                    | `nodePathKey`                                            |
 | 読み取り（app）             | `packages/app/src/hooks/useChatSession/prompt.ts` の `serializeNode`                                                   | `path.join(".")`                                         |
 
-`projectPathIndexOntoCanvas` は、残りに `.` を含むキーを「別の深さのエントリ」として捨てる。このため root canvas のトップレベル `service "Shop.Api"` は、team / boundary の grouping から黙って外れる。Issue に無い、同じ原因の 4 つ目の症状である。
+`projectPathIndexOntoCanvas` は、prefix を外した残りに `.` を含むキーを「別の深さのエントリ」として捨てる。`system Shop { service "a.b" {} }` では索引のキーが `Shop.a.b` になり、`Shop` の canvas では prefix `Shop.` を外した残り `a.b` が `.` を含むので、このノードは team / boundary の grouping から黙って外れる。Issue に無い、同じ原因の 4 つ目の症状である（コードから確定。root canvas のトップレベル dotted id が同じ経路を通るかは、root ビューが system frame ごとに membership を解決するため未確認）。
 
 ### owns の参照キー（site 2）
 
@@ -86,7 +86,7 @@ Issue 本文は「`->` を含む id は quote なしで書ける」としてい�
 | diff        | `org-view-diff.ts` の `ownsEdgeKey` と `diffOwns` の `beforeSet` / `seen`                        | `${teamId}#owns#${nodePathKey(ref)}`        |
 | 遷移（app） | `useCrossNavigation.ts` の `handleOwnedServiceClick`                                             | 属性値を bare id として `nodePathIndex.get` |
 
-`handleOwnedServiceClick` は属性値を bare id として引くので、`owns Shop.Api` のような修飾参照は今も遷移先を引けない（`nodePathIndex` に `"Shop.Api"` というキーは無い）。
+`handleOwnedServiceClick` は属性値を bare id として `nodePathIndex` を引く。修飾参照 `owns Shop.Api` は通常そのキーが無く遷移しない。site 2 のモデルではトップレベルの `service "Shop.Api"` が bare キー `Shop.Api` を持つため、`owns Shop.Api` のクリックが**別のノード**（トップレベルの方）へ遷移する。
 
 ### edge の diff キー（site 3）
 
@@ -104,6 +104,7 @@ Issue 本文は「`->` を含む id は quote なしで書ける」としてい�
 - **out of scope**:
   - `ghost-layout.ts` の ghost ノード id（`layoutNodes` のキー）。Issue で到達するモデルを作れなかったもの。ただし同じファイルの owner 解決は索引を引くので、site 1 として変える
   - `styles.edges` の `${from}->${to}` style キー。`.krs.style` のセレクタとの契約で、diff キーとは別物
+  - diff キー以外の `${from}->${to}` join。`implicitEdgeDetails` の `${from}->${to}#${kind}`（`view-extract.ts` / `layout.ts`）、`layer-assignment.ts` / `layer-layout-logics.ts` の `edgeDirections`、`edge-routing-bundles.ts` のバンドルキー、`view-extract.ts` の dedup キーなど。同じ形の join だが、quoted id で衝突に到達するかを本 Issue では確かめていない。実装 PR で follow-up Issue を起こし、本 Design Doc の対象は **diff キー**（compare モードで要素の状態を突き合わせるキー）に限る
   - 診断の params（`duplicate-owner-assignment` の `nodeId` など）。メッセージ用の text で、identity ではない
   - `owns Shop.Api` のような修飾参照の遷移を、`nodePathIndex` の勝者以外まで正しく解決すること（下の「現時点の方針」の遷移規則で、勝者が一致する場合だけ改善する）
 
@@ -177,7 +178,9 @@ injective である理由: 囲まない端点は `->` を含まず `"` で始ま
 
 ### `ownsEdgeKey` の team 側
 
-`${teamId}#owns#${ref}` は ref を injective にしても、team id が `#` を含むと衝突しうる。区切り `#owns#` は先頭と末尾がともに `#` で自分自身と重なるので、team id `a#owns` と ref `owns#x`（キー `a#owns#owns#x`）は team id `a` と ref `owns#owns#x` と同じ文字列になる。team id が `#`・`"`・`\` を含むときだけリテラル形で囲めば、案D と同じ理由で injective になる。
+`${teamId}#owns#${ref}` は ref を injective にしても、team id と ref のどちらも区切り `#owns#` を含みうるので衝突する。team id は `parseIdOrString` で quoted id を受理するので到達できる。team `"A#owns#B"` が `owns C` を持つ場合と、team `A` が `owns "B#owns#C"` を持つ場合は、どちらもキー `A#owns#B#owns#C` になる。
+
+team id が `#`・`"`・`\` を含むときだけリテラル形で囲めば injective になる。囲まない team id は `#` を含まず `"` で始まらないので、team id が bare なら最初の `#` が区切りの始まりで、`"` で始まるならリテラルの終わりの直後が区切りになる。ref 側は区切りの後ろ全体なので、何を含んでもよい（案D とは理由が違う。案D は `->` が自分自身と重ならないことに依る）。
 
 ## 比較
 
@@ -209,8 +212,8 @@ injective である理由: 囲まない端点は `->` を含まず `"` で始ま
    - `nodePathKey` の docstring から索引の話を外し、「text 専用。identity には `nodePathRefId` か `nodePathIdentityKey`」に書き換える
 2. **owns ボタン**: `org-renderer.ts` / `org-tree-renderer.ts` の属性値と表示テキストを `nodePathRefId(ref)` にする（表示は `→ Shop.Api` と `→ "Shop.Api"` になり、作者の書いた形に近くなる）。`org-view-diff.ts` の `ownsEdgeKey` と `diffOwns` の集合も同じキーにする
 3. **app の遷移**: `handleOwnedServiceClick` は属性値を `parseNodePathRefId` で segments に戻す。highlight の id は最後の segment、遷移先は `nodePathIndex.get(最後の segment)` が segments を接尾辞として満たすとき（`nodePathMatchesSuffix`。core の index から export されていなければ足す）だけ使う。bare id 1 つの参照は今と同じ動きになり、`owns Shop.Api` は勝者が `Shop.Api` のとき新たに遷移できる
-4. **edge の diff キー**: `view-diff.ts` の `edgeKey` を案D の形に差し替え（名前と signature は公開 API なので保つ）、`deploy-view-diff.ts`・`group-collapse.ts`・`svg-renderer.ts` の diff 参照（style 参照は除く）・`layout.ts:1372` をすべて通す。`DiffedDeployView.edges` などの docstring の「keyed `${from}->${to}`」も直す
-5. **テスト**: Issue の 3 つのモデルと、`projectPathIndexOntoCanvas` が root のトップレベル `service "Shop.Api"` を grouping に入れることを regression test にする。`edgeKey` と `ownsEdgeKey` は injectivity（境界をずらした 2 組が別キーになる）と、普通の id で今と同じ文字列になることをテストする
+4. **edge の diff キー**: `view-diff.ts` の `edgeKey` を案D の形に差し替え（名前と signature は公開 API なので保つ）、`deploy-view-diff.ts`・`group-collapse.ts`・`svg-renderer.ts` の diff 参照（style 参照は除く）・`layout.ts:1372` をすべて通す。`DiffedDeployView.edges` などの docstring の「keyed `${from}->${to}`」も直す。同じ `view-diff.ts` の `detailKey`（`${from}->${to}#${label}`。集約 edge の構成 domain edge を before / after で突き合わせる diff キー）も対象に含める。こちらは関数内でしか使わず外へ出ないので、`nodePathIdentityKey` と同じく JSON（`JSON.stringify([from, to, label])`）でよい
+5. **テスト**: Issue の 3 つのモデルと、`projectPathIndexOntoCanvas` が `system Shop { service "a.b" {} }` の `a.b` を `Shop` の canvas の grouping に入れることを regression test にする。root canvas のトップレベル dotted id も同じ経路を通るなら、そのテストも足す。`edgeKey` と `ownsEdgeKey` は injectivity（境界をずらした 2 組が別キーになる）と、普通の id で今と同じ文字列になることをテストする
 6. **TPL-1352**: 「キーを分解する読み手はエンコーダの逆関数を使う（文字列の prefix 一致や `includes(".")` で割らない）」をチェックリストに足し、本 Issue を `discovered_from` に追記する
 7. **AT**: `docs/acceptance/` に新規ファイル。人手で確かめる項目は 1 つ:
    - app で site 2 のモデルを開き、org ビューの 2 つのボタン（`→ Shop.Api` / `→ "Shop.Api"`）がそれぞれ自分のノードへ遷移する
@@ -219,7 +222,8 @@ injective である理由: 囲まない端点は `->` を含まず `"` で始ま
 ### 影響範囲・マイグレーション
 
 - `.`・`"`・`\` を含まず空でもない id だけのモデル: 索引キー・SVG 属性・diff キーは変わらない
-- dotted / quoted id のノードを owns / contains するモデル: 別々のノードの owner・boundary が別々に保たれ、誤った `duplicate-owner-assignment` / `duplicate-boundary-assignment` が消える。root canvas のトップレベル dotted id ノードが team / boundary の frame に入るようになる。owns ボタンの表示と属性に引用符が付く
+- dotted / quoted id のノードを owns / contains するモデル: 別々のノードの owner・boundary が別々に保たれ、誤った `duplicate-owner-assignment` / `duplicate-boundary-assignment` が消える。system 内の dotted id ノード（`service "a.b"`）が team / boundary の frame に入るようになる。owns ボタンの表示と属性に引用符が付く
 - `->` を含む quoted id の edge を持つモデルの compare: 別々の edge が別々の diff state を持つ
+- `karasu team-dependencies` の出力: `--format csv` / JSON が出す `path` / `fromPath` / `toPath` / `insidePath` は、dotted / quoted id のときだけ `"Shop.Api"` のように引用符付きになる。外から読まれる出力なので、実装 PR の changeset（core / cli / app の patch）に明記する
 - ドキュメント更新: `docs/spec/` の変更はない（キーは内部表現で、構文と表示規則は変わらない）。TPL-1352 を更新する
 - テスト・examples への影響: examples に dotted / quoted id の owns は無い想定（実装時に `examples.test.ts` の snapshot で確かめる）
