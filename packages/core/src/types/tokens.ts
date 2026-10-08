@@ -96,6 +96,12 @@ export enum TokenType {
   // (`team-1`). The lexer used to discard the digits outright, which left the
   // parser nothing to refuse (#2707).
   Number = "Number",
+  // A non-ASCII character that is neither whitespace nor part of a word (an
+  // emoji, `→`, a combining mark that does not continue a word), read together with
+  // any word characters that follow (`😀A`). Like `Number`, no position accepts
+  // it silently. The lexer used to discard it, so `service 😀A` declared `A`
+  // with no diagnostic (#3093).
+  Unknown = "Unknown",
 
   // Annotations
   At = "At", // @

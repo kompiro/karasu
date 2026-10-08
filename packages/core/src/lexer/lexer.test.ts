@@ -272,9 +272,12 @@ describe("characters outside the BMP and combining marks (#2848)", () => {
   });
 
   it("does not start a word with a combining mark", () => {
-    // A mark modifies the character before it. With none, it is dropped like
-    // any other unread character (pinned in lexer-discard.test.ts).
-    expect(tokenValues("\u0301A")).toEqual(["A"]);
+    // A mark modifies the character before it. With none, it and the word
+    // after it are one Unknown token that no position accepts (#3093).
+    expect(new Lexer("\u0301A").tokenize()[0]).toMatchObject({
+      type: TokenType.Unknown,
+      value: "\u0301A",
+    });
   });
 
   it("keeps offsets and columns in UTF-16 units", () => {
@@ -291,6 +294,85 @@ describe("characters outside the BMP and combining marks (#2848)", () => {
   });
 });
 
+describe("non-ASCII characters outside words (#3093)", () => {
+  it("reads a symbol and the word after it as one Unknown token", () => {
+    // One token, so a diagnostic covers what the author wrote and `A` is not
+    // left behind to be read as a name.
+    expect(new Lexer("😀A").tokenize().map((t) => [t.type, t.value])).toEqual([
+      [TokenType.Unknown, "😀A"],
+      [TokenType.EOF, ""],
+    ]);
+  });
+
+  it("ends a word at the symbol", () => {
+    expect(new Lexer("A😀B").tokenize().map((t) => [t.type, t.value])).toEqual([
+      [TokenType.Identifier, "A"],
+      [TokenType.Unknown, "😀B"],
+      [TokenType.EOF, ""],
+    ]);
+  });
+
+  it("reads a zero-width space as a symbol, not as whitespace", () => {
+    expect(tokenTypes("Foo\u200BBar")).toEqual([
+      TokenType.Identifier,
+      TokenType.Unknown,
+      TokenType.EOF,
+    ]);
+  });
+
+  it("skips Unicode whitespace and the byte order mark", () => {
+    for (const space of ["\uFEFF", "\u3000", "\u00A0", "\u2028", "\u2029", "\u202F"]) {
+      expect([JSON.stringify(space), tokenValues(`a${space}b`)]).toEqual([
+        JSON.stringify(space),
+        ["a", "b"],
+      ]);
+    }
+  });
+
+  it("starts a new line only at LF, as LSP counts lines", () => {
+    const [, b] = new Lexer("a\u2028b").tokenize();
+    expect(b.loc).toEqual({ line: 1, column: 3, offset: 2 });
+  });
+
+  it("keeps ZWNJ and ZWJ inside a Persian or Indic word", () => {
+    expect(tokenValues("\u0645\u06CC\u200C\u062E")).toEqual(["\u0645\u06CC\u200C\u062E"]);
+    expect(tokenValues("\u0915\u094D\u200D\u0937")).toEqual(["\u0915\u094D\u200D\u0937"]);
+  });
+
+  it("refuses a joiner that would be invisible: at the start, at the end, or after a Latin letter", () => {
+    // `A\u200C` would look exactly like `A` while being another id.
+    const read = (source: string) => new Lexer(source).tokenize().map((t) => [t.type, t.value]);
+    expect(read("\u200Ca")[0]).toEqual([TokenType.Unknown, "\u200Ca"]);
+    expect(read("A\u200C")).toEqual([
+      [TokenType.Identifier, "A"],
+      [TokenType.Unknown, "\u200C"],
+      [TokenType.EOF, ""],
+    ]);
+    expect(read("Foo\u200DBar")).toEqual([
+      [TokenType.Identifier, "Foo"],
+      [TokenType.Unknown, "\u200DBar"],
+      [TokenType.EOF, ""],
+    ]);
+    expect(read("\u0645\u06CC\u200C")[1]).toEqual([TokenType.Unknown, "\u200C"]);
+  });
+});
+
+describe("ASCII character tests", () => {
+  // The lexer answers ASCII by range before reaching its `\\p{...}` regexes.
+  // Every ASCII character must get the answer the regex form gives.
+  const ascii = Array.from({ length: 0x80 }, (_, code) => String.fromCharCode(code));
+
+  it("starts a word on exactly the characters `[\\p{L}_]` matches", () => {
+    const disagree = ascii.filter((ch) => isBareWord(ch) !== /[\p{L}_]/u.test(ch));
+    expect(disagree).toEqual([]);
+  });
+
+  it("continues a word on exactly the characters `[\\p{L}\\p{M}\\p{N}_]` matches", () => {
+    const disagree = ascii.filter((ch) => isBareWord(`a${ch}`) !== /[\p{L}\p{M}\p{N}_]/u.test(ch));
+    expect(disagree).toEqual([]);
+  });
+});
+
 describe("isBareWord", () => {
   it("accepts what the lexer reads as one identifier word", () => {
     const values = [
@@ -302,12 +384,29 @@ describe("isBareWord", () => {
       "𠮷野家",
       "cafe\u0301",
       "हिन्दी",
+      "\u0645\u06CC\u200C\u062E",
     ];
     expect(values.filter((value) => !isBareWord(value))).toEqual([]);
   });
 
   it("rejects anything the lexer would split, drop or read as another token", () => {
-    const values = ["", "2legacy", "a-b", "a.b", "my legacy", "-", "#abc", "é!", "\u0301a", "a😀"];
+    const values = [
+      "",
+      "2legacy",
+      "a-b",
+      "a.b",
+      "my legacy",
+      "-",
+      "#abc",
+      "é!",
+      "\u0301a",
+      "a😀",
+      "\u200Ca",
+      "a\u200Bb",
+      "A\u200C",
+      "Foo\u200DBar",
+      "\u0645\u06CC\u200C",
+    ];
     expect(values.filter((value) => isBareWord(value))).toEqual([]);
   });
 });

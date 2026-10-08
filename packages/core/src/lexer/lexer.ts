@@ -70,16 +70,23 @@ export const KRS_KEYWORD_TOKEN_TYPES: ReadonlySet<TokenType> = new Set(Object.va
 
 /**
  * Whether `value` has the shape the lexer reads as a single identifier word
- * (`[\p{L}_][\p{L}\p{M}\p{N}_]*`), from the same character tests `readToken`
- * uses.
+ * (`[\p{L}_][\p{L}\p{M}\p{N}_]*`, plus a ZWNJ / ZWJ where `wordPartAt`
+ * allows one), from the same character tests `readToken` uses.
  * Keyword spellings pass this check; they arrive as keyword tokens, so a caller
  * that also needs "not a keyword" tests the token type.
  */
 export function isBareWord(value: string): boolean {
-  // Split by code point, as `readToken` reads, so both agree on every string.
-  const chars = [...value];
-  if (chars.length === 0 || !isIdentStart(chars[0])) return false;
-  return chars.slice(1).every(isIdentPart);
+  // Walk by code point with `wordPartAt`, as `readToken` reads, so both agree
+  // on every string.
+  if (!isIdentStart(codePointAt(value, 0))) return false;
+  let prev = "";
+  for (let i = 0; i < value.length;) {
+    const ch = wordPartAt(value, i, prev);
+    if (ch === "") return false;
+    i += ch.length;
+    prev = ch;
+  }
+  return true;
 }
 
 export class Lexer {
@@ -178,7 +185,7 @@ export class Lexer {
   private skipWhitespace(): void {
     while (this.pos < this.source.length) {
       const ch = this.peek();
-      if (ch === " " || ch === "\t" || ch === "\r" || ch === "\n") {
+      if (isWhitespace(ch)) {
         this.advance();
       } else {
         break;
@@ -309,18 +316,43 @@ export class Lexer {
         if (isDigit(ch)) {
           return this.readNumber(loc);
         }
-        // Skip any other character. The parser never learns it was there, so
-        // it cannot refuse it. The `.krs` in `examples/` and in linted doc
+        if (!isAscii(ch)) return this.readUnknown(loc);
+        // Skip any other ASCII character. The parser never learns it was there,
+        // so it cannot refuse it. The `.krs` in `examples/` and in linted doc
         // fences relies on this only for `=` and `;` (`label = "x"`,
         // `runtime "n"; realizes X`), and `lexer-discard.test.ts` pins the
-        // dropped set among ASCII and sampled non-ASCII characters, so one that
-        // starts landing here is a visible change. Digits used to land here,
-        // which turned `until: 2026-12-31` into `until: "-"` (#2707), and so
-        // did each half of a surrogate pair and every combining mark, which
-        // turned `𠮷野家` into `野家` and a decomposed `café` into `cafe` (#2848).
+        // dropped set, so one that starts landing here is a visible change.
+        // Digits used to land here, which turned `until: 2026-12-31` into
+        // `until: "-"` (#2707), and so did every non-ASCII character that is
+        // not a letter, which turned `service 😀A` into `service A` (#3093).
         this.advance();
         return null;
     }
+  }
+
+  /**
+   * Read a non-ASCII character that no other branch takes, plus any word
+   * characters after it, as one Unknown token (`😀A`), so a diagnostic covers
+   * what the author wrote and `A` is not left behind to be read as a name
+   * (#3093). The same shape as `readNumber`.
+   */
+  private readUnknown(loc: SourceLocation): Token {
+    return { type: TokenType.Unknown, value: this.readWordTail(this.advance()), loc };
+  }
+
+  /**
+   * Consume the word characters after `head` (already consumed) and return
+   * `head` with them appended. Every word-shaped token ends where this stops.
+   */
+  private readWordTail(head: string): string {
+    let value = head;
+    let prev = head;
+    for (let ch = wordPartAt(this.source, this.pos, prev); ch !== "";) {
+      value += this.advance();
+      prev = ch;
+      ch = wordPartAt(this.source, this.pos, prev);
+    }
+    return value;
   }
 
   private readString(loc: SourceLocation): Token {
@@ -406,19 +438,17 @@ export class Lexer {
 
   private peekWord(): string {
     let word = "";
-    let ch = codePointAt(this.source, this.pos);
-    while (ch !== "" && isIdentPart(ch)) {
+    let prev = "";
+    for (let ch = wordPartAt(this.source, this.pos, prev); ch !== "";) {
       word += ch;
-      ch = codePointAt(this.source, this.pos + word.length);
+      prev = ch;
+      ch = wordPartAt(this.source, this.pos + word.length, prev);
     }
     return word;
   }
 
   private readIdentifierOrKeyword(loc: SourceLocation): Token {
-    let value = "";
-    while (this.pos < this.source.length && isIdentPart(this.peek())) {
-      value += this.advance();
-    }
+    const value = this.readWordTail(this.advance());
     const kwType = KEYWORDS[value];
     if (kwType) {
       return { type: kwType, value, loc };
@@ -432,11 +462,7 @@ export class Lexer {
    * covers the whole word the author wrote, not just its leading digits.
    */
   private readNumber(loc: SourceLocation): Token {
-    let value = "";
-    while (this.pos < this.source.length && isIdentPart(this.peek())) {
-      value += this.advance();
-    }
-    return { type: TokenType.Number, value, loc };
+    return { type: TokenType.Number, value: this.readWordTail(this.advance()), loc };
   }
 
   /**
@@ -444,21 +470,43 @@ export class Lexer {
    * `#NodeId`). Used for legend swatch colors and ref id-selector targets.
    */
   private readHashToken(loc: SourceLocation): Token {
-    this.advance(); // #
-    let value = "#";
-    while (this.pos < this.source.length && isIdentPart(this.peek())) {
-      value += this.advance();
-    }
-    return { type: TokenType.Identifier, value, loc };
+    return { type: TokenType.Identifier, value: this.readWordTail(this.advance()), loc };
   }
 }
 
 /** Any numeric character, matching the `\p{N}` that `isIdentPart` accepts. */
 function isDigit(ch: string): boolean {
+  const c = ch.charCodeAt(0);
+  if (c < 0x80) return c >= 0x30 && c <= 0x39;
   return /\p{N}/u.test(ch);
 }
 
+/**
+ * ASCII space, tab, CR and LF, every other character with the Unicode
+ * `White_Space` property (U+3000, NBSP, U+2028, ...), and the byte order mark,
+ * which nothing strips before lexing (#3093). Close to ECMAScript's
+ * WhiteSpace and LineTerminator. Only `\n` starts a new line, so line numbers
+ * stay the ones LSP and the editor count.
+ */
+function isWhitespace(ch: string): boolean {
+  const c = ch.charCodeAt(0);
+  // ASCII `White_Space`: tab, LF, VT, FF, CR and space.
+  if (c < 0x80) return c === 0x20 || (c >= 0x09 && c <= 0x0d);
+  return ch === "\uFEFF" || /\p{White_Space}/u.test(ch);
+}
+
+function isAscii(ch: string): boolean {
+  return ch.length === 1 && ch.charCodeAt(0) <= 0x7f;
+}
+
+// The character tests below answer ASCII by range before reaching a `\p{...}`
+// regex: the lexer calls them once per character, and most `.krs` outside
+// strings is ASCII. `lexer.test.ts` checks every ASCII character against the
+// regex form.
+
 function isIdentStart(ch: string): boolean {
+  const c = ch.charCodeAt(0);
+  if (c < 0x80) return isAsciiLetter(c) || c === 0x5f;
   return /[\p{L}_]/u.test(ch);
 }
 
@@ -467,11 +515,51 @@ function isIdentStart(ch: string): boolean {
  * character before it, so a decomposed `café` is one word (#2848).
  */
 function isIdentPart(ch: string): boolean {
+  const c = ch.charCodeAt(0);
+  if (c < 0x80) return isAsciiLetter(c) || (c >= 0x30 && c <= 0x39) || c === 0x5f;
   return /[\p{L}\p{M}\p{N}_]/u.test(ch);
 }
 
-/** The code point starting at UTF-16 index `i`, or `""` past the end. */
+function isAsciiLetter(c: number): boolean {
+  return (c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a);
+}
+
+/**
+ * Scripts in which ZWNJ / ZWJ change how the letters around them are drawn:
+ * the cursive-joining scripts and the Indic scripts that form conjuncts after
+ * a virama. Outside them a joiner is invisible, so `A\u200C` would look exactly
+ * like `A` while being another id (#3093). An approximation of the contexts
+ * UAX #31 allows joiners in, which JavaScript cannot test directly.
+ */
+const JOINER_SCRIPTS =
+  /[\p{scx=Arabic}\p{scx=Syriac}\p{scx=Mandaic}\p{scx=Mongolian}\p{scx=Nko}\p{scx=Adlam}\p{scx=Devanagari}\p{scx=Bengali}\p{scx=Gurmukhi}\p{scx=Gujarati}\p{scx=Oriya}\p{scx=Tamil}\p{scx=Telugu}\p{scx=Kannada}\p{scx=Malayalam}\p{scx=Sinhala}\p{scx=Myanmar}\p{scx=Khmer}]/u;
+
+/**
+ * The word character at UTF-16 index `i` of `s`, or `""` where the word ends.
+ * `prev` is the character before it. Most characters decide alone
+ * (`isIdentPart`); ZWNJ / ZWJ (U+200C / U+200D) continue a word only between
+ * a letter or mark of a `JOINER_SCRIPTS` script and another letter or mark, so
+ * a Persian or Indic name stays whole while a stray joiner after a Latin
+ * letter or at the end of a name is refused (#3093).
+ */
+function wordPartAt(s: string, i: number, prev: string): string {
+  const ch = codePointAt(s, i);
+  if (ch === "" || isIdentPart(ch)) return ch;
+  if (ch !== "\u200C" && ch !== "\u200D") return "";
+  const next = codePointAt(s, i + ch.length);
+  const joins =
+    /[\p{L}\p{M}]/u.test(prev) && JOINER_SCRIPTS.test(prev) && /[\p{L}\p{M}]/u.test(next);
+  return joins ? ch : "";
+}
+
+/**
+ * The code point starting at UTF-16 index `i`, or `""` past the end. A unit
+ * that is not a surrogate is the whole code point, so it is returned without
+ * building a new string.
+ */
 function codePointAt(s: string, i: number): string {
+  const c = s.charCodeAt(i);
+  if (c < 0xd800 || c > 0xdfff) return s[i];
   const cp = s.codePointAt(i);
   return cp === undefined ? "" : String.fromCodePoint(cp);
 }
