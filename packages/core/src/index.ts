@@ -140,7 +140,7 @@ export {
 } from "./share/synthesize.js";
 export { Parser } from "./parser/parser.js";
 export { isSafeLinkUrl } from "./parser/link-url.js";
-export { nodePathRefId, parseNodePathRefId } from "./parser/node-path.js";
+export { nodePathMatchesSuffix, nodePathRefId, parseNodePathRefId } from "./parser/node-path.js";
 export { KRS_KEYWORD_NAMES } from "./lexer/lexer.js";
 export { KRS_LANGUAGE_VERSION } from "./language-version.js";
 export {

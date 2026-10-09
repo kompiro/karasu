@@ -61,7 +61,8 @@ import {
   type MeasureContext,
   type OwnerResolver,
 } from "./layout-measure.js";
-import { nodePathIdentityKey, nodePathKey } from "../parser/node-path.js";
+import { nodePathIdentityKey, nodePathRefId } from "../parser/node-path.js";
+import { edgeKey } from "../diff/view-diff.js";
 import { computeCrossingMarks } from "./crossing-marks.js";
 import type {
   LayoutNode,
@@ -454,7 +455,8 @@ function layoutInner(
   // domain). The ghost placers below keep the raw `ownerOf` — their qualified
   // ids are already full paths. Synthetic ids (collapse / category stubs)
   // simply miss the index, exactly as before.
-  const canvasOwnerOf: OwnerResolver = (kind, nid) => ownerOf(kind, nodePathKey(canvasPathOf(nid)));
+  const canvasOwnerOf: OwnerResolver = (kind, nid) =>
+    ownerOf(kind, nodePathRefId(canvasPathOf(nid)));
 
   // Category collapse (#1821): fold external/infra tiers to a `⊕ N` stub and
   // **re-target** their boundary-crossing edges onto the stub (so "who depends
@@ -1123,7 +1125,8 @@ function layoutMultipleSystems(
     };
     // Path-keyed owner lookups for this frame's real nodes (#2548), same
     // shape as `canvasOwnerOf` on the single-system path.
-    const frameOwnerOf: OwnerResolver = (kind, nid) => ownerOf(kind, nodePathKey(framePathOf(nid)));
+    const frameOwnerOf: OwnerResolver = (kind, nid) =>
+      ownerOf(kind, nodePathRefId(framePathOf(nid)));
     const systemMembership = canvasMembershipFor(frameScope, options);
     // Same per-canvas resolution as `layout()`: a boundary with no band of its
     // own claims one of the shared members present in *this* system (#2176).
@@ -1366,10 +1369,10 @@ function layoutMultipleSystems(
           );
           if (domainEdges) le.domainEdges = domainEdges;
           // Stamp the frame's own compare-mode state onto the edge, for the same
-          // reason as the details above: `${from}->${to}` is not unique across
+          // reason as the details above: `edgeKey` is not unique across
           // frames here, so the renderer cannot ask a shared keyed map which
           // system a line belongs to (#2756).
-          const frameDiffState = systemFrame?.edgeDiffState?.get(`${edge.from}->${edge.to}`);
+          const frameDiffState = systemFrame?.edgeDiffState?.get(edgeKey(edge));
           if (frameDiffState !== undefined) le.diffState = frameDiffState;
           systemEdges.push(le);
           allEdges.push(le);

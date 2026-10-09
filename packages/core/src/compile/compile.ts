@@ -813,7 +813,7 @@ function buildNodeMetadata(
     // kind a team can `owns` reports it — the panel row went missing on
     // `client` while the org view drew the same ownership (Issue #2157).
     const team = OWNABLE_KIND_SET.has(node.kind)
-      ? ownerIndex?.get(nodePathKey([...pathPrefix, id]))
+      ? ownerIndex?.get(nodePathRefId([...pathPrefix, id]))
       : undefined;
     const fullPath = [...pathPrefix, id];
     const meta: NodeMetadata = {

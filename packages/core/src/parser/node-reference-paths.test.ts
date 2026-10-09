@@ -916,3 +916,47 @@ system Shop {
     ]);
   });
 });
+
+describe("path-keyed indices are injective (#2819)", () => {
+  // `Shop.Api` (a service in `Shop`) and `"Shop.Api"` (a top-level service)
+  // are different nodes. A dotted join gave them one key, so the second claim
+  // overwrote the first and the parse reported a co-ownership nobody wrote.
+  const TWO_NODES = `
+system Shop { service Api {} }
+service "Shop.Api" {}
+`;
+
+  it("keeps one owner per node and reports no false co-ownership", () => {
+    const r = Parser.parse(`${TWO_NODES}
+organization Acme {
+  team Alpha { owns Shop.Api }
+  team Beta { owns "Shop.Api" }
+}
+`);
+    expect([...r.value.ownerIndex]).toEqual([
+      ["Shop.Api", "Alpha"],
+      ['"Shop.Api"', "Beta"],
+    ]);
+    expect(r.diagnostics.map((d) => d.code)).not.toContain("duplicate-owner-assignment");
+  });
+
+  it("keeps boundary membership per node and reports no false multi-membership", () => {
+    const r = Parser.parse(`${TWO_NODES}
+boundary inner { contains Shop.Api }
+boundary outer { contains "Shop.Api" }
+`);
+    expect([...r.value.boundaryMembership]).toEqual([
+      ["Shop.Api", ["inner"]],
+      ['"Shop.Api"', ["outer"]],
+    ]);
+    expect(r.diagnostics.map((d) => d.code)).not.toContain("duplicate-boundary-assignment");
+  });
+
+  it("leaves the key of a path with no dot, quote or backslash unchanged", () => {
+    const r = Parser.parse(`
+system Shop { service Api {} }
+organization Acme { team Alpha { owns Api } }
+`);
+    expect([...r.value.ownerIndex]).toEqual([["Shop.Api", "Alpha"]]);
+  });
+});

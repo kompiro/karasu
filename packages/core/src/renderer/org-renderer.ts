@@ -13,7 +13,7 @@ import {
 import { badgeChildren } from "./badge.js";
 import { getIconDef, pictogramGroup, PICTOGRAM_OFFSET } from "../shapes/shape-registry.js";
 import { ownsEdgeKey } from "../diff/org-view-diff.js";
-import { nodePathKey } from "../parser/node-path.js";
+import { nodePathRefId } from "../parser/node-path.js";
 import {
   ICON_LABEL_CHAR_WIDTH,
   ICON_DESC_CHAR_WIDTH,
@@ -258,8 +258,10 @@ function renderTeamCard(
   }
 
   visibleOwns.forEach((ref, i) => {
-    // Render the reference as the author wrote it (joined path, #2088).
-    const serviceId = nodePathKey(ref);
+    // Render the reference as the author wrote it (#2088), in the injective
+    // form (#2819): `owns Shop.Api` and `owns "Shop.Api"` name different nodes,
+    // so their buttons must not carry one id.
+    const serviceId = nodePathRefId(ref);
     const ownsDiff = options?.edgeDiffState?.get(ownsEdgeKey(team.id, serviceId));
     parts.push(
       el(

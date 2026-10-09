@@ -6,7 +6,7 @@
  */
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import { boundaryScopeKey, scopedBoundaryGroupId } from "../types/ast.js";
-import { nodePathKey } from "../parser/node-path.js";
+import { parseNodePathRefId } from "../parser/node-path.js";
 import { collapseGroups } from "./group-collapse.js";
 import {
   assignGroupedLayers,
@@ -32,18 +32,22 @@ interface GroupedLayerBands {
  * scopes or deeper levels drop out. This is where the path-keyed indices
  * meet the canvas machinery, which keys everything by the node ids present
  * on the canvas being drawn.
+ *
+ * The keys are `nodePathRefId` text, so they are split with its inverse and
+ * compared segment by segment (#2819). Cutting the string at a `.` instead
+ * read a node whose own id carries a dot (`service "a.b"`) as an entry one
+ * level deeper, and dropped it from every team and boundary frame.
  */
 function projectPathIndexOntoCanvas<V>(
   index: ReadonlyMap<string, V>,
   scopePath: readonly string[],
 ): Map<string, V> {
-  const prefix = scopePath.length > 0 ? `${nodePathKey(scopePath)}.` : "";
   const out = new Map<string, V>();
   for (const [pathKey, value] of index) {
-    if (!pathKey.startsWith(prefix)) continue;
-    const nid = pathKey.slice(prefix.length);
-    if (nid.length === 0 || nid.includes(".")) continue;
-    out.set(nid, value);
+    const segments = parseNodePathRefId(pathKey);
+    if (segments.length !== scopePath.length + 1) continue;
+    if (!scopePath.every((id, i) => segments[i] === id)) continue;
+    out.set(segments[scopePath.length], value);
   }
   return out;
 }

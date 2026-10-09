@@ -1,5 +1,6 @@
 import { useCallback, useMemo, type Dispatch } from "react";
 import type { DisplayMode } from "@karasu-tools/core";
+import { nodePathMatchesSuffix, parseNodePathRefId } from "@karasu-tools/core";
 import type { AppAction } from "../state/app-reducer.js";
 
 interface UseCrossNavigationArgs {
@@ -20,8 +21,11 @@ export interface UseCrossNavigationResult {
   handleDeployButtonClick: (serviceId: string) => void;
   /** Click the team-badge button on a service → switch to org view, navigate to the parent. */
   handleTeamButtonClick: (teamId: string) => void;
-  /** Click an "owned by" service in the org view → switch to system view, navigate to it. */
-  handleOwnedServiceClick: (serviceId: string) => void;
+  /**
+   * Click an "owned by" service in the org view → switch to system view, navigate to it.
+   * Takes the button's `nodePathRefId` text, the reference as the author wrote it.
+   */
+  handleOwnedServiceClick: (ref: string) => void;
   handleDisplayModeChange: (mode: DisplayMode) => void;
   handleDeployBlockChange: (id: string) => void;
   clearHighlight: () => void;
@@ -69,9 +73,21 @@ export function useCrossNavigation({
   );
 
   const handleOwnedServiceClick = useCallback(
-    (serviceId: string) => {
-      const resolvedPath = orgNodePathIndex.get(serviceId);
-      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: serviceId });
+    (ref: string) => {
+      // The button carries the reference in `nodePathRefId` form (#2819), so
+      // decode it rather than look the text up as an id: `owns Shop.Api` would
+      // otherwise land on a top-level `service "Shop.Api"` instead. The node id
+      // is the last segment; the indexed path is used only when the reference
+      // actually names it (the suffix rule), so a qualified reference whose id
+      // resolves elsewhere switches views without navigating to the wrong node.
+      const segments = parseNodePathRefId(ref);
+      const nodeId = segments[segments.length - 1] ?? ref;
+      const indexedPath = orgNodePathIndex.get(nodeId);
+      const resolvedPath =
+        indexedPath !== undefined && nodePathMatchesSuffix(segments, indexedPath)
+          ? indexedPath
+          : undefined;
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: nodeId });
       if (resolvedPath !== undefined) navigateViewPath(resolvedPath);
     },
     [dispatch, orgNodePathIndex, navigateViewPath],

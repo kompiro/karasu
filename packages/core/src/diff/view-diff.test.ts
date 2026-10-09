@@ -199,3 +199,37 @@ system Shop {
     expect(ids).toContain("Payments");
   });
 });
+
+describe("edgeKey (#2819)", () => {
+  it("keeps the plain `${from}->${to}` form for ordinary ids", () => {
+    expect(edgeKey({ from: "Catalog", to: "Orders" })).toBe("Catalog->Orders");
+    expect(edgeKey({ from: "Shop.Api", to: "Shop.Db" })).toBe("Shop.Api->Shop.Db");
+  });
+
+  it("separates pairs whose plain join collides", () => {
+    // Each pair joins to the same plain string; shifting the boundary between
+    // the endpoints must change the key.
+    const pairs: [string, string][][] = [
+      [
+        ["a", "b->c"],
+        ["a->b", "c"],
+      ],
+      [
+        ['a"', "b"],
+        ["a", '"b'],
+      ],
+      [
+        ["a\\", "b"],
+        ["a", "\\b"],
+      ],
+    ];
+    for (const [[f1, t1], [f2, t2]] of pairs) {
+      expect(edgeKey({ from: f1, to: t1 })).not.toBe(edgeKey({ from: f2, to: t2 }));
+    }
+  });
+
+  it("quotes only the endpoint that makes the join ambiguous", () => {
+    expect(edgeKey({ from: "a", to: "b->c" })).toBe('a->"b->c"');
+    expect(edgeKey({ from: "a->b", to: "c" })).toBe('"a->b"->c');
+  });
+});

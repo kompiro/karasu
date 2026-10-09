@@ -68,7 +68,7 @@ import {
   META_GLYPH_GAP,
 } from "./rendering-constants.js";
 import { edgeStyleKey, nodeStyleKey } from "../resolver/style-resolver.js";
-import type { NodeDiffMeta } from "../diff/view-diff.js";
+import { edgeKey, type NodeDiffMeta } from "../diff/view-diff.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 import { DEPLOY_AFFORDANCE_KIND_SET, displayGroupId } from "../types/ast.js";
 import type { Diagnostic, LegendBlock, LegendViewScope } from "../types/ast.js";
@@ -573,13 +573,12 @@ export function renderFromLayout(
   // Resolve the edge style once per edge (reused by both the label-placement
   // pre-pass and the render loop below).
   const edgeStyleFor = (edgeLayout: LayoutResult["edges"][number]) => {
-    const edgeKey = `${edgeLayout.from}->${edgeLayout.to}`;
     // Prefer the kind-qualified style entry so parallel sync/async edges between
     // the same pair keep their own stroke style; fall back to the bare key for
     // synthetic layout edges (delivers, owns, ghosts, aggregated domain edges).
     return (
       styles.edges.get(edgeStyleKey(edgeLayout.from, edgeLayout.to, edgeLayout.kind)) ??
-      styles.edges.get(edgeKey) ??
+      styles.edges.get(edgeStyleKey(edgeLayout.from, edgeLayout.to, undefined)) ??
       styles.defaultEdgeStyle
     );
   };
@@ -603,15 +602,14 @@ export function renderFromLayout(
   const edgeStroke: { color: string; strokeWidth: number }[] = [];
   let edgeIndex = 0;
   for (const edgeLayout of layoutResult.edges) {
-    const edgeKey = `${edgeLayout.from}->${edgeLayout.to}`;
     const edgeStyle = edgeStyleFor(edgeLayout);
     edgeStroke.push({ color: edgeStyle.color, strokeWidth: edgeStyle.strokeWidth });
     const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
     // An edge that resolved its own state while being laid out wins over the
-    // keyed map (#2756): on the multi-system root `edgeKey` is shared by every
+    // keyed map (#2756): on the multi-system root the `edgeKey` is shared by every
     // frame that draws the same pair, so the map cannot tell them apart. Layout
     // leaves it unset everywhere else, where the keyed lookup is the answer.
-    const diffState = edgeLayout.diffState ?? effectiveEdgeDiffState?.get(edgeKey);
+    const diffState = edgeLayout.diffState ?? effectiveEdgeDiffState?.get(edgeKey(edgeLayout));
     // An edge belongs to the selection two ways, and either one is enough to
     // keep it at full strength: it carries the facet itself (#2544), or it
     // touches a member node. The second is why the rule is "dim when *both*
