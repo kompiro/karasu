@@ -44,7 +44,7 @@ import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
 import { declaredGroupOrderOf, buildGroupLabelIndex } from "./group-labels.js";
 import { countPolylinePenetrations, type Rect, type Point } from "./edge-geometry.js";
-import { collectChannels } from "./edge-routing-lanes.js";
+import { collectChannels, LANE_PITCH } from "./edge-routing-lanes.js";
 import { HOP_RADIUS, trunkBandHalfWidth } from "./crossing-marks.js";
 import { labelAnchorWithSegment, ownLabelSegment } from "./edge-routing.js";
 import { ObstacleIndex } from "./obstacle-index.js";
@@ -890,6 +890,59 @@ describe("fan-in trunk — count fence (#2883, TPL-2598 / TPL-2631 / TPL-2385)",
   });
 });
 
+/**
+ * One hub calling `n` targets, each target also read by its own service and
+ * called by a partner V_i placed in the hub's band, grouped by team. A
+ * partner's edge enters its target the way the hub's does, so the two form a
+ * fan-in lane bundle (#2958) and the hub's gutter edges stay apart.
+ */
+function partneredHub(n: number): string {
+  return `system Wide {
+  service Hub { label "Hub" }
+${Array.from({ length: n }, (_v, i) => `  service V${i} { label "V${i}" }`).join("\n")}
+${Array.from({ length: n }, (_v, i) => `  service T${i} { label "T${i}" }`).join("\n")}
+${Array.from({ length: n }, (_v, i) => `  service U${i} { label "U${i}" }`).join("\n")}
+${Array.from({ length: n }, (_v, i) => `  Hub -> T${i} "call"`).join("\n")}
+${Array.from({ length: n }, (_v, i) => `  V${i} -> T${i} "call"`).join("\n")}
+${Array.from({ length: n }, (_v, i) => `  U${i} -> T${(i + 2) % n} "read"`).join("\n")}
+}
+organization Org {
+${Array.from({ length: n }, (_v, i) => `  team "t${i}" { label "T${i}" owns T${i} owns U${i} }`).join("\n")}
+  team "hub" { label "Hub" owns Hub ${Array.from({ length: n }, (_v, i) => `owns V${i}`).join(" ")} }
+}`;
+}
+
+/**
+ * Sixteen use cases in one domain, each reading `tablesPerUseCase` of ten
+ * tables: a reduced copy of the reverse-engineered Dify Knowledge canvas
+ * (#2958). Drawn at `Sat.Api.Know`, ungrouped.
+ */
+function saturatedGutter(tablesPerUseCase: number): string {
+  const NU = 16;
+  const NT = 10;
+  const tablesOf = (i: number) => [
+    ...new Set(
+      Array.from({ length: tablesPerUseCase }, (_v, k) => (i * 2 + k * 2 + (k > 1 ? 1 : 0)) % NT),
+    ),
+  ];
+  return `system Sat {
+  service Api {
+    domain Know {
+${Array.from(
+  { length: NU },
+  (_v, i) =>
+    `      usecase U${i} {\n${tablesOf(i)
+      .map((t) => `        resource DB.T${t} { operations read }`)
+      .join("\n")}\n      }`,
+).join("\n")}
+    }
+  }
+  database DB {
+${Array.from({ length: NT }, (_v, i) => `    table T${i} {}`).join("\n")}
+  }
+}`;
+}
+
 describe("hop arc radius — corridor fence (#2884, TPL-2598)", () => {
   // What bounds the radius is the spacing of parallel lines a crossing sits
   // between: `fanOutGutterPorts` spaces the ports on one card side by side
@@ -914,19 +967,7 @@ describe("hop arc radius — corridor fence (#2884, TPL-2598)", () => {
   // crowded side of a 10k-line model, and took that cost knowingly; asserting a
   // clearance there would assert something the project decided against.
   const N = 12;
-  const PARTNERED = `system Wide {
-  service Hub { label "Hub" }
-${Array.from({ length: N }, (_v, i) => `  service V${i} { label "V${i}" }`).join("\n")}
-${Array.from({ length: N }, (_v, i) => `  service T${i} { label "T${i}" }`).join("\n")}
-${Array.from({ length: N }, (_v, i) => `  service U${i} { label "U${i}" }`).join("\n")}
-${Array.from({ length: N }, (_v, i) => `  Hub -> T${i} "call"`).join("\n")}
-${Array.from({ length: N }, (_v, i) => `  V${i} -> T${i} "call"`).join("\n")}
-${Array.from({ length: N }, (_v, i) => `  U${i} -> T${(i + 2) % N} "read"`).join("\n")}
-}
-organization Org {
-${Array.from({ length: N }, (_v, i) => `  team "t${i}" { label "T${i}" owns T${i} owns U${i} }`).join("\n")}
-  team "hub" { label "Hub" owns Hub ${Array.from({ length: N }, (_v, i) => `owns V${i}`).join(" ")} }
-}`;
+  const PARTNERED = partneredHub(N);
 
   it("the crown direction matches the drawn arc", () => {
     // `crownClearances` measures along `crownNormal`, so if that points the wrong
@@ -1146,27 +1187,7 @@ describe("saturated gutter — lane bundle fence (#2958, TPL-2958 / TPL-2598)", 
   // runs along a channel, and the check that the siblings still share it at
   // the end of the chain stayed green with the channel-lane half of #2958
   // removed (TPL-2958).
-  const NU = 16;
-  const NT = 10;
-  const tablesOf = (i: number) => [
-    ...new Set([0, 1, 2, 3, 4].map((k) => (i * 2 + k * 2 + (k > 1 ? 1 : 0)) % NT)),
-  ];
-  const SATURATED = `system Sat {
-  service Api {
-    domain Know {
-${Array.from(
-  { length: NU },
-  (_v, i) =>
-    `      usecase U${i} {\n${tablesOf(i)
-      .map((t) => `        resource DB.T${t} { operations read }`)
-      .join("\n")}\n      }`,
-).join("\n")}
-    }
-  }
-  database DB {
-${Array.from({ length: NT }, (_v, i) => `    table T${i} {}`).join("\n")}
-  }
-}`;
+  const SATURATED = saturatedGutter(5);
   const laid = () => layoutOfSource(SATURATED, undefined, ["Sat", "Api", "Know"]);
   const res = laid();
   const nodes = [...res.nodes.values()];
@@ -1245,6 +1266,67 @@ ${Array.from({ length: NT }, (_v, i) => `    table T${i} {}`).join("\n")}
       res.edges.map((e) => key(pointsOf(e))),
     );
   });
+});
+
+describe("channel lane order — corridors that touch in one channel (#3088, TPL-3088 / TPL-2598)", () => {
+  // Two gutter corridors whose y-ranges only touch share a lane (#1927). When
+  // they touch inside an inter-row channel, the channel-lane pass then spreads
+  // the two runs that meet them, and before #3088 it could put the corridor
+  // arriving from above on the lower lane: the two verticals overlapped by a
+  // pitch. Neither the Dify levels nor the examples reach this, so both inputs
+  // here are synthetic: the saturated gutter fixture with four tables per use
+  // case (one overlapping pair before #3088), and the partnered hub (one).
+  const CASES: [string, () => LayoutResult][] = [
+    [
+      "saturated gutter, four tables per use case",
+      () => layoutOfSource(saturatedGutter(4), undefined, ["Sat", "Api", "Know"]),
+    ],
+    ["partnered hub (group by team)", () => layoutOfSource(partneredHub(12), "team")],
+  ];
+
+  /**
+   * Pairs of vertical segments from edges that are not siblings, on one x,
+   * that do not overlap but come within two lanes of each other: corridors
+   * that met in a channel and were kept apart by the lane order.
+   */
+  function nearMeetingPairs(res: LayoutResult): number {
+    const segs: { edge: LayoutEdge; x: number; lo: number; hi: number }[] = [];
+    for (const e of res.edges) {
+      const pts = pointsOf(e);
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [a, b] = [pts[i], pts[i + 1]];
+        if (a.x !== b.x || a.y === b.y) continue;
+        segs.push({ edge: e, x: a.x, lo: Math.min(a.y, b.y), hi: Math.max(a.y, b.y) });
+      }
+    }
+    let n = 0;
+    for (const a of segs) {
+      for (const b of segs) {
+        if (a.edge === b.edge || a.x !== b.x || a.hi > b.lo) continue;
+        const siblings =
+          (a.edge.trunkId !== undefined && a.edge.trunkId === b.edge.trunkId) ||
+          (a.edge.outTrunkId !== undefined && a.edge.outTrunkId === b.edge.outTrunkId);
+        if (!siblings && b.lo - a.hi <= 2 * LANE_PITCH) n++;
+      }
+    }
+    return n;
+  }
+
+  // The premise: corridors do meet in a channel here. Before #3088 the same
+  // pairs overlapped instead, so they showed up as collinear, not near.
+  it.each(CASES)("%s: the fixture puts two corridors' ends in one channel", (_name, laid) => {
+    expect(nearMeetingPairs(laid())).toBeGreaterThan(0);
+  });
+
+  it.each(CASES)(
+    "%s: no two non-siblings share a collinear segment, and nothing pierces a card",
+    (_name, laid) => {
+      const res = laid();
+      expect(collinearOverlaps(res, "v")).toBe(0);
+      expect(collinearOverlaps(res, "h")).toBe(0);
+      expect(totalPenetrations(res)).toBe(0);
+    },
+  );
 });
 
 describe("crowded inter-row channel — capacity fence (#2608, TPL-2598)", () => {
