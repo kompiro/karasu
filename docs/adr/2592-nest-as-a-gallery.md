@@ -15,6 +15,7 @@ related_to:
   - ADR-2259
   - ADR-2262
   - ADR-2077
+  - ADR-2995
 scope:
   packages: [nest]
   concerns: [deployment, security]

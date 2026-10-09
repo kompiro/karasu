@@ -2,7 +2,7 @@
  * A public submission's OGP image (#2995): `GET /g/<id>/og.png`.
  *
  * Drawn on request and kept in the edge cache (the Cache API), not stored
- * (`docs/design/gallery-ogp-preview-image.md`, T3 + S3 + P1). Nothing here is
+ * (ADR-2995, `docs/adr/2995-gallery-ogp-image-edge-cache.md`). Nothing here is
  * written to KV, so the account-deletion promise (ADR-2592 decision 5) has no
  * new data to cover. What keeps a cached image of a deleted or unlisted
  * submission from being served is that the route reads the submission before

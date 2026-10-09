@@ -132,6 +132,7 @@ flowchart TD
   ADR_2782["ADR-2782<br/>[vscode] VS Code の floor を 1.137 に上げ、ExTester の vscode-m..."]
   ADR_2901["ADR-2901<br/>[chat-ai] AI authoring は利用者のエージェントセッションと karasu CLI skill..."]
   ADR_2969["ADR-2969<br/>[project] 運用者だけの段階をコードで守る — サインインを数値 user id の許可リストに限る"]
+  ADR_2995["ADR-2995<br/>[project] ギャラリーの公開投稿の OGP 画像を要求時に描き、保存せず edge のキャッシュに置く"]
   ADR_1296 --> ADR_8
   ADR_1628 --> ADR_1575
   ADR_1820 --> ADR_1314
@@ -157,6 +158,7 @@ flowchart TD
   ADR_2782 --> ADR_2562
   ADR_2901 --> ADR_1315
   ADR_2901 --> ADR_1758
+  ADR_2995 --> ADR_3020
   ADR_2716 -.supersedes.-> ADR_2640
   ADR_2807 -.supersedes.-> ADR_2805
   ADR_3052 -.supersedes.-> ADR_2898
@@ -292,4 +294,5 @@ flowchart TD
   class ADR_2782 ghost
   class ADR_2901 ghost
   class ADR_2969 ghost
+  class ADR_2995 ghost
 ```
