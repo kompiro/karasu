@@ -108,7 +108,11 @@ The three dimensions behind System / Deploy / Org are explained in
   **⇄ Relations** on its corner to open it with every node it connects to: what
   depends on it on one side, what it depends on on the other. Click a node or an
   edge inside to move there, or drag to move the view (a press on text selects it instead); **← Back** returns,
-  **Esc** closes.
+  **Esc** closes. Without a mouse: on a touch screen, tap a node's ⓘ and press
+  **⇄ Relations** in its panel; from the keyboard, select the node in the
+  **Outline** and run **Show Relations of Highlighted Node** from the command
+  palette (`Ctrl/Cmd+Shift+P`). Inside, **Tab** moves between the nodes and
+  edges, and **Enter** or **Space** opens the one in focus.
 - **Cross-view navigation** — jump between related views, e.g. from a service in
   **System** to where it runs in **Deploy**, or to the team that owns it in
   **Org**.

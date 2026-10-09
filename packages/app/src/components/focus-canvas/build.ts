@@ -363,6 +363,15 @@ export function edgesOf(
   };
 }
 
+/**
+ * How many edges a node's focus canvas draws: the number the `Relations`
+ * entries show, so it always equals the lanes that open.
+ */
+export function relationsCount(source: FocusSource, id: string): number {
+  const { incoming, outgoing } = edgesOf(source, id);
+  return incoming.length + outgoing.length;
+}
+
 // ── Measuring ────────────────────────────────────────────────────────────────
 
 export const labelTextWidth = (text: string): number => estimateTextWidth(text, LABEL_CHAR_WIDTH);
@@ -565,14 +574,21 @@ class Canvas {
   constructor(
     private readonly source: FocusSource,
     private readonly idPrefix: string,
+    /** The card the canvas is about, which a press does not move away from. */
+    private readonly current: string | null,
+    /** Whether a lane is a control (it moves to that pair). True on a node's canvas. */
+    private readonly lanesAct: boolean,
   ) {}
 
   card(id: string, x: number, y: number): void {
     const card = this.source.cards.get(id)!;
     const box = { x, y, width: card.box.width, height: card.box.height };
     this.cards.push({ id, box });
+    // A card that moves the focus is a button, reachable with Tab (#3057).
+    const control =
+      id === this.current ? "" : ` tabindex="0" role="button" aria-label="${escapeXml(card.name)}"`;
     this.parts.push(
-      `<g class="focus-canvas__card" data-focus-node="${escapeXml(id)}" transform="translate(${x - card.box.x} ${y - card.box.y})">${card.markup}</g>`,
+      `<g class="focus-canvas__card" data-focus-node="${escapeXml(id)}"${control} transform="translate(${x - card.box.x} ${y - card.box.y})">${card.markup}</g>`,
     );
   }
 
@@ -599,8 +615,14 @@ class Canvas {
       text = `<text class="focus-canvas__label" fill="${escapeXml(edge.textFill)}" font-size="${LABEL_FONT}px" font-family="sans-serif">${spans}</text>`;
     }
     this.lanes.push({ from: edge.from, to: edge.to, label, lines, points: line.points });
+    const name = (id: string) => this.source.cards.get(id)?.name ?? id;
+    const control = this.lanesAct
+      ? ` tabindex="0" role="button" aria-label="${escapeXml(
+          `${name(edge.from)} → ${name(edge.to)}${edge.label ? `: ${edge.label}` : ""}`,
+        )}"`
+      : "";
     this.parts.push(
-      `<g class="focus-canvas__lane" data-focus-from="${escapeXml(edge.from)}" data-focus-to="${escapeXml(edge.to)}">` +
+      `<g class="focus-canvas__lane" data-focus-from="${escapeXml(edge.from)}" data-focus-to="${escapeXml(edge.to)}"${control}>` +
         `<path d="${line.d}" fill="none" stroke="${escapeXml(edge.stroke)}" stroke-width="1.5"${dash} marker-end="url(#${marker})"/>` +
         `${text}</g>`,
     );
@@ -656,7 +678,8 @@ function drawEdge(source: FocusSource, from: string, to: string, idPrefix: strin
   const b = source.cards.get(to)!.box;
   const zone = EASE * 2 + LABEL_WIDTH;
   const height = Math.max(a.height, b.height, lanesHeight(lanes)) + PAD * 2;
-  const canvas = new Canvas(source, idPrefix);
+  // Both cards move to their node; the lanes are this pair already.
+  const canvas = new Canvas(source, idPrefix, null, false);
 
   const ay = (height - a.height) / 2;
   const by = (height - b.height) / 2;
@@ -776,7 +799,7 @@ function drawColumns(
 ): FocusDrawing {
   const c = source.cards.get(id)!.box;
   const height = Math.max(stackHeight(ins), stackHeight(outs), c.height) + PAD * 2;
-  const canvas = new Canvas(source, idPrefix);
+  const canvas = new Canvas(source, idPrefix, id, true);
   const inWidth = ins.length > 0 ? columnWidth(ins) + ZONE : 0;
   const centre: Box = {
     x: PAD + inWidth,

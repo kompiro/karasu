@@ -99,6 +99,32 @@ type: product
 
   > ✅ Automated — `packages/e2e/tests/at-3031-focus-canvas.spec.ts` › AT-3031 focus canvas › every edge is reachable: by its own line, or from either end's Relations (TPL-3022)
 
+### AC-6: マウスを使わずに開いて辿れる（#3057）
+
+- [x] touch: ノードの詳細パネルに `⇄ Relations N` があり、押すとそのノードの focus canvas が開く。`N` は開いたときの行数と一致し、edge の無いノードでは出ない
+
+  > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › keyboard and touch routes into the focus canvas (#3057) › offers Relations in the node detail panel, which a tap opens
+
+  > ✅ Automated — `packages/e2e/tests/at-3057-focus-canvas-keyboard-touch.spec.ts` › AT-3057 focus canvas from touch › a tap on ⓘ, then on Relations in the panel, opens the node's canvas
+
+  > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › keyboard and touch routes into the focus canvas (#3057) › shows no Relations button for a node with no edges
+
+- [x] キーボード: パレット専用のコマンド「Show Relations of Highlighted Node」が、ハイライトされたノードの focus canvas を開く。ハイライトが無い、またはそのノードが表示中の階層に無いときは何もしない
+
+  > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › keyboard and touch routes into the focus canvas (#3057) › registers a palette-only command that opens the highlighted node
+
+  > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › keyboard and touch routes into the focus canvas (#3057) › opens nothing without a highlighted node, or for one not on this level
+
+- [x] キーボード: 開くと focus が canvas に移り、Tab でノードと（ノードの canvas では）行を辿り、Enter / Space で開く。閉じると元の場所に focus が戻る
+
+  > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › keyboard and touch routes into the focus canvas (#3057) › is a set of buttons to the keyboard: focus moves in, Enter moves on, focus returns
+
+  > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › keyboard and touch routes into the focus canvas (#3057) › makes no lane a button on an edge's canvas, where a lane leads nowhere
+
+- [x] Outline でノードを選び、パレットでコマンドを実行し、Tab と Enter で辿る流れが、マウスを使わずに通る（下の階層へ降りる 1 手を除く。キーボードで降りる手段は #3082）
+
+  > ✅ Automated — `packages/e2e/tests/at-3057-focus-canvas-keyboard-touch.spec.ts` › AT-3057 focus canvas from the keyboard › Outline, then the palette command, then Tab and Enter: no mouse past the setup
+
 ## 手動確認
 
 - [ ] 本番 app（<https://karasu.kompiro.dev/>）で、edge が十数本以上ある図を開く。card に hover して `⇄ Relations` を押し、開いた canvas のラベルが自分の線のすぐ上に読める形で並び、card と重ならないことを目で確かめる

@@ -1,4 +1,13 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "../../i18n/index.js";
 import { buildFocusCanvas, type Focus, type FocusSource } from "./build.js";
@@ -17,6 +26,12 @@ export interface FocusCanvasProps {
   onNavigate: (focus: Focus) => void;
   onBack: () => void;
   onClose: () => void;
+  /**
+   * Where keyboard focus goes on close when the element that had it at open
+   * time is gone. Opened from the command palette, that element was the
+   * palette's own input; the place the reader came from is the caller's to say.
+   */
+  returnFocus?: () => HTMLElement | null;
 }
 
 // A press on the overlay is not a press on the diagram under it: it must not
@@ -29,9 +44,48 @@ const stop = (e: MouseEvent) => e.stopPropagation();
  * pane only, so the editor stays usable, and it is rebuilt from each new
  * diagram (`source`).
  */
-export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: FocusCanvasProps) {
+export function FocusCanvas({
+  source,
+  trail,
+  onNavigate,
+  onBack,
+  onClose,
+  returnFocus,
+}: FocusCanvasProps) {
   const { t } = useTranslation();
   const bodyRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  // An edit redraws the canvas without a move: the card or lane that had
+  // focus is replaced with the drawing. Keep focus in the canvas then, but
+  // only if it was there: an edit typed in the editor keeps the editor's.
+  const focusInDrawing = useRef(false);
+  /** Focus the panel itself: no card or lane of the drawing has focus after. */
+  const focusPanel = useCallback(() => {
+    focusInDrawing.current = false;
+    panelRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  // Keyboard focus (#3057): the canvas takes it when it opens and after every
+  // move (a card or lane that was pressed is gone with the drawing it was in),
+  // and hands it back to whatever had it before when the canvas closes.
+  const returnFocusRef = useRef(returnFocus);
+  useEffect(() => {
+    returnFocusRef.current = returnFocus;
+  });
+  useEffect(() => {
+    const before = document.activeElement;
+    return () => {
+      const target =
+        before instanceof HTMLElement && before.isConnected ? before : returnFocusRef.current?.();
+      target?.focus();
+    };
+  }, []);
+  useEffect(() => {
+    focusPanel();
+    // `trail` is a trigger, not a value this body reads: each move replaces
+    // the drawing, and the control that had focus with it.
+    // eslint-disable-next-line react/exhaustive-effect-dependencies
+  }, [trail, focusPanel]);
   // Drag to move the view, as on the main canvas: a press anywhere in the
   // canvas starts a pan, and one that moved past the threshold is not a click
   // on whatever card or line it ended over.
@@ -98,6 +152,14 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
   const drawing = useMemo(() => buildFocusCanvas(source, focus), [source, focus]);
   const html = useMemo(() => ({ __html: drawing.svg }), [drawing]);
 
+  useEffect(() => {
+    const active = document.activeElement;
+    if (focusInDrawing.current && !(active && bodyRef.current?.contains(active))) focusPanel();
+    // `html` is a trigger, not a value this body reads: a new drawing
+    // replaces the control that had focus.
+    // eslint-disable-next-line react/exhaustive-effect-dependencies
+  }, [html, focusPanel]);
+
   // Not a Radix Dialog (that is for modal dialogs, `.claude/rules/dialog.md`),
   // so Esc is ours to handle.
   useEffect(() => {
@@ -136,14 +198,8 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
   const name = (id: string) => source.cards.get(id)?.name ?? id;
   const title = focus.kind === "edge" ? `${name(focus.from)} → ${name(focus.to)}` : name(focus.id);
 
-  const onBodyClick = (e: MouseEvent) => {
-    if (suppressClick.current) {
-      suppressClick.current = false;
-      return;
-    }
-    // The end of a text selection is not a click on the card or lane under it.
-    if (window.getSelection()?.toString()) return;
-    const target = e.target as Element;
+  /** What a press on `target` does: move to its card's node, or to its lane's pair. */
+  const activate = (target: Element) => {
     const card = target.closest("[data-focus-node]")?.getAttribute("data-focus-node");
     if (card) {
       if (!(focus.kind === "node" && focus.id === card)) onNavigate({ kind: "node", id: card });
@@ -157,6 +213,26 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
         to: lane.getAttribute("data-focus-to") ?? "",
       });
     }
+  };
+
+  const onBodyClick = (e: MouseEvent) => {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
+    // The end of a text selection is not a click on the card or lane under it.
+    if (window.getSelection()?.toString()) return;
+    activate(e.target as Element);
+  };
+
+  // A card or lane is a button (`role="button"`, `tabindex="0"`): Enter and
+  // Space press it, as a click does (#3057).
+  const onBodyKeyDown = (e: ReactKeyboardEvent) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const control = (e.target as Element).closest('[role="button"]');
+    if (!control || !bodyRef.current?.contains(control)) return;
+    e.preventDefault();
+    activate(control);
   };
 
   return (
@@ -178,7 +254,9 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
       }}
     >
       <div
+        ref={panelRef}
         className="focus-canvas__panel"
+        tabIndex={-1}
         role="region"
         aria-label={t("focusCanvas.region")}
         data-focus={focus.kind}
@@ -205,6 +283,17 @@ export function FocusCanvas({ source, trail, onNavigate, onBack, onClose }: Focu
           data-panning={panning ? "" : undefined}
           onMouseDown={onBodyMouseDown}
           onClick={onBodyClick}
+          onKeyDown={onBodyKeyDown}
+          onFocus={() => {
+            focusInDrawing.current = true;
+          }}
+          onBlur={(e) => {
+            // A blur toward somewhere else is a real move. A control removed
+            // by a redraw blurs (if at all) toward nothing.
+            if (e.relatedTarget && !bodyRef.current?.contains(e.relatedTarget)) {
+              focusInDrawing.current = false;
+            }
+          }}
           dangerouslySetInnerHTML={html}
         />
       </div>
