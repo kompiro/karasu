@@ -756,8 +756,10 @@ export function buildNodePathIndex(file: KrsFile): MembershipResult<Map<string, 
  * path-keyed index (TPL-1352). The encoding must be injective too (#2819): a
  * dotted join gave `Shop.Api` (a service in `Shop`) and `"Shop.Api"` (a
  * top-level service) one key, so one team's claim overwrote the other's and
- * `duplicate-owner-assignment` reported a co-ownership nobody declared. Every `owns` ref is expanded through the
- * suffix rule at build time: a bare id claims every node with that id
+ * `duplicate-owner-assignment` reported a co-ownership nobody declared.
+ *
+ * Every `owns` ref is expanded through the suffix rule at build time: a bare
+ * id claims every node with that id
  * (broadcast, structurally identical to the old bare-id keying), a longer
  * path narrows to exactly the nodes it suffixes. Refs that resolve to
  * nothing add no entry — `owns-target-not-found` is the surface for those.
