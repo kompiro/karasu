@@ -112,7 +112,8 @@ export async function resolveKrsFileOrExit(
   filePath: string,
 ): Promise<ResolvedKrsEntry | undefined> {
   const fs = new NodeFileSystemProvider();
-  const kind = await pathKind(resolve(filePath));
+  const kind = await pathKindOrExit(filePath);
+  if (kind === undefined) return undefined;
 
   if (kind === "missing") {
     process.stderr.write(`Error: File not found: ${filePath}\n`);
@@ -125,7 +126,9 @@ export async function resolveKrsFileOrExit(
   }
 
   const displayPath = join(filePath, "index.krs");
-  if ((await pathKind(resolve(displayPath))) !== "file") {
+  const entryKind = await pathKindOrExit(displayPath);
+  if (entryKind === undefined) return undefined;
+  if (entryKind !== "file") {
     process.stderr.write(`Error: ${filePath} has no index.krs; pass the entry .krs file\n`);
     process.exit(1);
     return undefined;
@@ -133,11 +136,22 @@ export async function resolveKrsFileOrExit(
   return { absolutePath: resolve(displayPath), displayPath, fs };
 }
 
-async function pathKind(path: string): Promise<"file" | "directory" | "missing"> {
+/**
+ * What `path` names on disk. Only `ENOENT` / `ENOTDIR` mean it is not there: a
+ * path that exists but cannot be stat'ed (`EACCES`, `ELOOP`, ...) is reported
+ * with the system's reason on one line and exits(1), returning `undefined`.
+ * Folding those into "missing" would print the false "File not found" this
+ * resolver exists to remove (#2942, TPL-2942).
+ */
+async function pathKindOrExit(path: string): Promise<"file" | "directory" | "missing" | undefined> {
   try {
-    return (await stat(path)).isDirectory() ? "directory" : "file";
-  } catch {
-    return "missing";
+    return (await stat(resolve(path))).isDirectory() ? "directory" : "file";
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return "missing";
+    process.stderr.write(`Error: cannot read ${path}: ${code ?? String(e)}\n`);
+    process.exit(1);
+    return undefined;
   }
 }
 

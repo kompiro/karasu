@@ -162,6 +162,26 @@ describe("resolveKrsFileOrExit", () => {
     expect(stderr).toContain("has no index.krs");
   });
 
+  // A path that exists but cannot be stat'ed is not "missing" (#2942 review):
+  // a symlink loop fails with ELOOP for every user, root included.
+  it("reports a path it cannot stat with the reason, not as not found", async () => {
+    const loop = join(tmpDir, "loop.krs");
+    symlinkSync(loop, loop);
+
+    expect(await resolveKrsFileOrExit(loop)).toBeUndefined();
+    expect(exitCode).toBe(1);
+    expect(stderr).toBe(`Error: cannot read ${loop}: ELOOP\n`);
+  });
+
+  it("reports an index.krs it cannot stat with the reason, not as absent", async () => {
+    const entry = join(tmpDir, "index.krs");
+    symlinkSync(entry, entry);
+
+    expect(await resolveKrsFileOrExit(tmpDir)).toBeUndefined();
+    expect(exitCode).toBe(1);
+    expect(stderr).toBe(`Error: cannot read ${entry}: ELOOP\n`);
+  });
+
   it("reports a path that does not exist as not found", async () => {
     const missing = join(tmpDir, "missing");
 

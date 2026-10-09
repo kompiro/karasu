@@ -78,11 +78,15 @@ import resolver が読み込みに失敗して `Error: dir: File not found: /abs
   止める。返り値の `displayPath` を診断の表示に使う（#2942）
 - 種類の判定は `stat().isDirectory()` で行い、解決先も同じ判定で「ファイルであること」を
   確かめる（解決先がディレクトリなら「無い」と同じ扱い）
+- 「存在しない」と読んでよいのは `stat` の `ENOENT` / `ENOTDIR` だけ。`EACCES` / `ELOOP` /
+  `EPERM` まで `catch {}` で「無い」に畳むと、存在するパスがまた "File not found" になる。
+  それ以外のエラーはシステムの理由を 1 行で出して止める（#2942 のレビュー指摘）
 
 ## 関連テスト
 
 - `packages/cli/src/compile-system-view.test.ts` — `resolveKrsFileOrExit`（ファイル /
-  ディレクトリ / `index.krs` の無いディレクトリ / `index.krs/` ディレクトリ / 不在）
+  ディレクトリ / `index.krs` の無いディレクトリ / `index.krs/` ディレクトリ / 不在 /
+  stat できないパス（`ELOOP`））
 - `packages/cli/src/check.test.ts` — `given a directory`（実コンパイラでの位置表示と
   `render` との一致）
 
