@@ -328,6 +328,7 @@ flowchart TD
     ADR_2859["ADR-2859<br/>spike ブランチは答える Issue 番号で名付け、その Issue が open なあいだ残す"]
     ADR_2969["ADR-2969<br/>運用者だけの段階をコードで守る — サインインを数値 user id の許可リストに限る"]
     ADR_2993["ADR-2993<br/>ギャラリーの投稿ページを origin を持たない sandbox の viewer として配..."]
+    ADR_2995["ADR-2995<br/>ギャラリーの公開投稿の OGP 画像を要求時に描き、保存せず edge のキャッシュに置く"]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   end
   subgraph renderer["renderer"]
@@ -594,6 +595,9 @@ flowchart TD
   ADR_2969 --> ADR_2592
   ADR_2993 --> ADR_2592
   ADR_2993 --> ADR_2578
+  ADR_2995 --> ADR_2592
+  ADR_2995 --> ADR_3020
+  ADR_2995 --> ADR_1805
   ADR_3000 --> ADR_2578
   ADR_3000 --> ADR_2969
   ADR_3020 --> ADR_2578
@@ -1013,6 +1017,7 @@ flowchart TD
   class ADR_2983 accepted
   class ADR_2985 accepted
   class ADR_2993 accepted
+  class ADR_2995 accepted
   class ADR_3000 accepted
   class ADR_3002 accepted
   class ADR_3011 accepted

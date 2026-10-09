@@ -330,6 +330,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2859](2859-spike-branch-naming.md) — spike ブランチは答える Issue 番号で名付け、その Issue が open なあいだ残す
 - [ADR-2969](2969-nest-operator-only-sign-in.md) — 運用者だけの段階をコードで守る — サインインを数値 user id の許可リストに限る
 - [ADR-2993](2993-gallery-client-side-rendering.md) — ギャラリーの投稿ページを origin を持たない sandbox の viewer として配信し、ブラウザで描画する
+- [ADR-2995](2995-gallery-ogp-image-edge-cache.md) — ギャラリーの公開投稿の OGP 画像を要求時に描き、保存せず edge のキャッシュに置く
 - [ADR-9006](9006-project-and-filesystem.md) — プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS
 
 ## renderer
