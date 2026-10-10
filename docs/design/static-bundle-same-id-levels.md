@@ -43,7 +43,7 @@ anchor は持たないが、同じ path の組み方なので Issue のモデル
 
 **5. 参考: SPA 側の取りこぼし**（本設計の範囲外）
 
-トップレベルの `service Api { domain Parked }` が `Shop.Api` と id を共有すると、`nodePathIndex.get("Parked")` は `["Api", "Parked"]`（system の段なし）で、SPA の `compile(..., { viewPath: ["Api", "Parked"] })` は空のビューを返す。`resolveContainerChain` が `Api` を最初の所有 system（`Shop`）で探すため。静的バンドルと同じ根の SPA 側のバグで、follow-up Issue に切り出す。
+トップレベルの `service Api { domain Parked }` が `Shop.Api` と id を共有すると、`nodePathIndex.get("Parked")` は `["Api", "Parked"]`（system の段なし）で、SPA の `compile(..., { viewPath: ["Api", "Parked"] })` は空のビューを返す。`resolveContainerChain` が `Api` を最初の所有 system（`Shop`）で探すため。静的バンドルと同じ根の SPA 側のバグで、[#3113](https://github.com/kompiro/karasu/issues/3113) に切り出した。
 
 ### なぜ今これを決めるか
 
@@ -160,11 +160,10 @@ walk はそのままで、すでに出した anchor id を飛ばす。
    - 同じ検査を `buildAllViewsSvg` にもかける（TPL-219: 並列する 2 つの生成器）。
    - stacked: Issue のモデルで `Admin.Api.Users` の帯があり、帯ラベルが `Admin › Api` で始まる。
    - 不変性: `examples/` の全モデルについて、`buildDrillDownSvg` / `buildAllViewsSvg` の出力が変わらないことを既存の snapshot / fence で確かめる（無ければ PR で main の出力と diff を取る）。
-8. **follow-up Issue**: 実測 5（トップレベルのノードと system の子が id を共有すると、SPA の `nodePathIndex` の path が `resolveContainerChain` で別の system に解決される）を起票する。
-9. **TPL**: TPL-2920 の「既知の対処パターン」の静的 SVG の行を本設計の規則（anchor id ごとに 1 レベル、勝者で選ぶ、別ノードに着くリンクは張らない）に書き換え、`known_consumers` の `drill-down-svg-child-links` の着地点を更新する。TPL-1352 の `discovered_from` に #2933 を足す（walk の path が区別に要る次元 system を落としていた）。原則は既存 TPL に収まるので新しい proactive TPL は起こさない。
-10. **AT**: `docs/acceptance/2933-static-bundle-same-id-levels.md`。手動項目は 1 つ: CLI で Issue のモデルを `karasu render` し、ブラウザで `#krs-system-Users` と `#krs-system-Api` を開いて、SPA で同じ fragment を開いたときと同じノードが出ること。他は自動テストで覆う。
-11. **spec**: `docs/spec/permalink.md` の Static rendered SVG の行に「同じ id のノードが複数あるときは `nodePathIndex` の勝者のレベルだけを出す」を 1 文足す。`docs/spec/diagnostics.md` の `node-id-multiple-locations` の末尾（hand-over の着地点）に静的バンドルを足す。
-12. **ADR 昇格**: 実装完了後に ADR-2933 として昇格し、本 Design Doc は同じ PR で削除する。
+8. **TPL**: TPL-2920 の「既知の対処パターン」の静的 SVG の行を本設計の規則（anchor id ごとに 1 レベル、勝者で選ぶ、別ノードに着くリンクは張らない）に書き換え、`known_consumers` の `drill-down-svg-child-links` の着地点を更新する。TPL-1352 の `discovered_from` に #2933 を足す（walk の path が区別に要る次元 system を落としていた）。原則は既存 TPL に収まるので新しい proactive TPL は起こさない。
+9. **AT**: `docs/acceptance/2933-static-bundle-same-id-levels.md`。手動項目は 1 つ: CLI で Issue のモデルを `karasu render` し、ブラウザで `#krs-system-Users` と `#krs-system-Api` を開いて、SPA で同じ fragment を開いたときと同じノードが出ること。他は自動テストで覆う。
+10. **spec**: `docs/spec/permalink.md` の Static rendered SVG の行に「同じ id のノードが複数あるときは `nodePathIndex` の勝者のレベルだけを出す」を 1 文足す。`docs/spec/diagnostics.md` の `node-id-multiple-locations` の末尾（hand-over の着地点）に静的バンドルを足す。
+11. **ADR 昇格**: 実装完了後に ADR-2933 として昇格し、本 Design Doc は同じ PR で削除する。
 
 ### 影響範囲・マイグレーション
 
