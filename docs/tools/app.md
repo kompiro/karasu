@@ -137,8 +137,9 @@ sheet can change them.
   recorded one is drawn.
 - The diagram legend does not list these colours: they come from the built-in
   style, not from a `legend` block in your model.
-- The view is not a complete ER diagram of the store. A relation appears only
-  when both of its entities map to a table in this store. See
+- The view is not a complete ER diagram of the store. Recorded edges always
+  appear, but an `entity` relation is projected only when both of its entities
+  map to a table in this store. See
   [Store-scoped ER view](../spec/syntax.md#store-scoped-er-view-entity-relations-projected-onto-a-database-canvas)
   for what is left out, and
   [Automatic tags on edges](../spec/tags-annotations.md#automatic-tags-on-edges)
