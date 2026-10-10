@@ -17,10 +17,10 @@ import { reportDiagnostics } from "./report-diagnostics.js";
 export async function check(filePath: string): Promise<void> {
   const resolved = await resolveKrsFileOrExit(filePath);
   if (!resolved) return;
-  const { absolutePath, fs } = resolved;
+  const { absolutePath, displayPath, fs } = resolved;
 
   const result = await buildAllViewsSvgProject(absolutePath, fs);
-  if (reportDiagnostics(filePath, result.diagnostics, result.warnings) > 0) {
+  if (reportDiagnostics(displayPath, result.diagnostics, result.warnings) > 0) {
     process.exit(1);
   }
 }

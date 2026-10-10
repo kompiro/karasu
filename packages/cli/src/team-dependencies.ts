@@ -19,7 +19,7 @@ export async function teamDependencies(
 ): Promise<void> {
   const resolved = await resolveKrsFileOrExit(filePath);
   if (!resolved) return;
-  const { absolutePath, fs } = resolved;
+  const { absolutePath, displayPath, fs } = resolved;
 
   const format: TeamDependenciesFormat = options.format ?? "md";
   if (format !== "md" && format !== "csv") {
@@ -28,7 +28,7 @@ export async function teamDependencies(
     return;
   }
 
-  const krsFile = await resolveProjectOrExit(fs, absolutePath, filePath);
+  const krsFile = await resolveProjectOrExit(fs, absolutePath, displayPath);
   if (!krsFile) return;
 
   const report = extractTeamDependencies(krsFile);

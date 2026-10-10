@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, mkdtemp, writeFile, rm } from "node:fs/promises";
+import { join, relative } from "node:path";
 import { tmpdir } from "node:os";
 import { check } from "./check.js";
 import { render } from "./render.js";
@@ -124,6 +124,52 @@ describe("karasu check", () => {
     const out = await run(() => check(join(tmpDir, "missing.krs")));
     expect(out.exitCode).toBe(1);
     expect(out.stderr).toContain("File not found");
+  });
+
+  // A directory is read as its index.krs, the entry `serve` and the app open
+  // (#2942). It used to pass the existence guard and then fail in the import
+  // resolver as "File not found: <dir>", which was false.
+  describe("given a directory", () => {
+    it("checks the directory's index.krs", async () => {
+      await krsFile("index.krs", VALID);
+      const out = await run(() => check(tmpDir));
+      expect(out.exitCode).toBeUndefined();
+      expect(out.stderr).toBe("");
+    });
+
+    // A position must name a file the reader can open: `dir/index.krs:2:5`,
+    // never `dir:2:5` (TPL-2715). The relative spelling is kept as typed.
+    it("names dir/index.krs in a diagnostic's location", async () => {
+      await krsFile("index.krs", PARSE_ERROR);
+      const dir = relative(process.cwd(), tmpDir);
+      const out = await run(() => check(dir));
+      expect(out.exitCode).toBe(1);
+      expect(out.stderr).toMatch(
+        new RegExp(`^Error: ${join(dir, "index.krs").replace(/\./g, "\\.")}:2:\\d+: `, "m"),
+      );
+    });
+
+    it("exits 1 and says the directory has no index.krs", async () => {
+      await krsFile("other.krs", VALID);
+      const out = await run(() => check(tmpDir));
+      expect(out.exitCode).toBe(1);
+      expect(out.stderr).toBe(`Error: ${tmpDir} has no index.krs; pass the entry .krs file\n`);
+    });
+
+    it("does not take a directory named index.krs as the entry", async () => {
+      await mkdir(join(tmpDir, "index.krs"));
+      const out = await run(() => check(tmpDir));
+      expect(out.exitCode).toBe(1);
+      expect(out.stderr).toContain("has no index.krs");
+    });
+
+    it("agrees with karasu render", async () => {
+      await krsFile("index.krs", PARSE_ERROR);
+      const checked = await run(() => check(tmpDir));
+      const rendered = await run(() => render(tmpDir, {}));
+      expect(checked.exitCode).toBe(rendered.exitCode);
+      expect(checked.stderr).toBe(rendered.stderr);
+    });
   });
 
   // An import that cannot be resolved is an error diagnostic from the import
