@@ -47,8 +47,12 @@ reviews:
     # keeps its review (ADR-2949).
     # `skip-coderabbit` marks a small PR whose diff can be judged correct from
     # the diff and external facts alone and which changes no runtime behavior.
-    # Claude may propose it; a human approves before it is added
+    # Claude may propose it; a human approves before the PR is created
     # (docs/process.md "CodeRabbit を外す小さな PR", ADR-3011).
+    # The ignore command in the PR body is what skips such a PR: this label
+    # filter does not stop the review CodeRabbit runs when the PR is opened.
+    # The label is the record for listing skipped PRs, and this filter is the
+    # fallback when the body line is missing (ADR-3117).
     labels:
       - "!adr-auto-merge"
       - "!skip-coderabbit"
