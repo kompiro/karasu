@@ -178,15 +178,21 @@ opt-in のフラグとして別に検討する。
    結果から 1 回集め、各 view の結果の `warnings` は連結しない。
 4. **CLI の印字を render と同じ規則にする**（`report-diagnostics.ts` / `diff.ts`）: warning の印字部分を
    `reportWarnings(filePath, warnings)` として切り出し、`reportDiagnostics` と `diff` の両方が使う。
-   info の register（ADR-1386）と位置の表記（`<file>:<line>:<col>`、#2802）が揃う。基準のファイルは
-   after。after が stdin（`-`）のときは一時ファイルのパスではなく `-` と表記する。
+   info の register（ADR-1386）と位置の表記（`<file>:<line>:<col>`、#2802）が揃う。`<file>` は
+   warning の `loc.file` が決める（`diagLocFormatter` の既存の規則）。`loc.file` が after の entry か
+   `loc.file` が無いときだけ after の entry を表記し、それ以外（after が import した `.krs` や
+   `.krs.style`）は作業ディレクトリからの相対パスで表記する。entry のパスで import 先のファイルを
+   置き換えない。置き換えると行番号が別のファイルを指す（TPL-2715）。after が stdin（`-`）のときは、
+   entry にあたる一時ファイルのパスではなく `-` と表記する。
    `diff.ts` の `DiffCompileResult.warnings?` は必須にし、到達しないループを消す。
 5. テスト:
    - core: 各 `compile*Diff` と bundled が after の warning を返し、before の warning を返さない。
      bundled で同じ warning が 1 回だけ。before と after が同じ style sheet を import しても
      循環 import の誤報が出ず、診断が重複しない。
-   - cli（`packages/cli` の vitest）: `karasu diff` が既定・`--view` の両方で after の warning を
-     `Warning: after.krs:<line>:<col>: ...` の形で出し、info kind は `Info:` で出す。stdin の after。
+   - cli（`packages/cli` の vitest）: `karasu diff` が既定・`--view` の両方で after の warning を出し、
+     info kind は `Info:` で出す。位置は発生元のファイルで出す: after の entry の warning は
+     `Warning: after.krs:<line>:<col>: ...`、after が import した style sheet の warning（`style-unknown-icon`
+     など）は `Warning: after.krs.style:<line>:<col>: ...`。stdin の after は entry の warning が `-:<line>:<col>`。
 6. TPL: TPL-219 の `discovered_from` に #2879 を足す。resolver の共有は 3-Yes を満たす
    （状態を持つ core のクラスは他にもある / 並行呼び出しは構造的に再発しうる / 既存 TPL に無い）ので、
    「状態を持つインスタンスを並行する呼び出しで共有しない」TPL を実装 PR で起こす。
@@ -201,8 +207,8 @@ opt-in のフラグとして別に検討する。
 - core の公開型: 4 つの diff 結果型に `warnings` が増える（追加のみ）。
 - app: 比較モードの診断の重複と誤報が消える。warning の出所は変えない。
 - ドキュメント: `docs/spec/diagnostics.md` の位置表記の表で `karasu diff` の行を書き換える。今は
-  「`<line>:<column>`、ファイルなし」だけで、warning は after を基準に `<file>:<line>:<column>`、
-  診断は従来どおりと分けて書く。表には TPL-2715 の back-ref がすでにあるので、新しい規定の破れも
+  「`<line>:<column>`、ファイルなし」だけで、warning は `karasu render` と同じ規則（`<file>` は
+  `loc.file`、entry のときは after の entry の表記）で `<file>:<line>:<column>`、診断は従来どおりと分けて書く。表には TPL-2715 の back-ref がすでにあるので、新しい規定の破れも
   TPL-2715 が観点として覆う（`.claude/rules/spec-audit.md`）。
 
 ## 未解決の問い / 決めないこと
