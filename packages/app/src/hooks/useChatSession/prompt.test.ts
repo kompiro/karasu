@@ -188,6 +188,28 @@ organization TechCorp {
     expect(prompt).toMatch(/"id":\s*"ECommerce"[\s\S]*?"owner":\s*"ec-team"/);
   });
 
+  it("reads the owner of a node whose id carries a dot (#2819)", () => {
+    // The prompt must encode the path the way core keys ownerIndex; a plain
+    // join reads `Shop."a.b"` as `Shop.a.b` and drops the owner.
+    const source = `
+system Shop { service "a.b" {} }
+organization O { team T { owns "a.b" } }
+`;
+    const org = compile(source, { diagramType: "org" });
+    const sys = compile(source, { diagramType: "system" });
+    if (org.diagramType !== "org" || sys.diagramType !== "system") {
+      throw new Error("expected org and system compile results");
+    }
+    const prompt = buildSystemPrompt({
+      ...baseArgs,
+      resolvedSystems: sys.systems,
+      organizations: org.organizations,
+      ownerIndex: org.ownerIndex,
+      locale: "en",
+    });
+    expect(prompt).toMatch(/"id":\s*"a\.b"[\s\S]*?"owner":\s*"T"/);
+  });
+
   it("renders the model section when organizations exist even with no systems", () => {
     const { organizations, ownerIndex } = mergedOrgArgs();
     const ja = buildSystemPrompt({

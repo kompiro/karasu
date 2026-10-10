@@ -181,3 +181,30 @@ organization Acme {
     expect(diff.nodes.get("node1")?.state).toBe("changed");
   });
 });
+
+describe("ownsEdgeKey (#2819)", () => {
+  it("keeps the plain form for an ordinary team id", () => {
+    expect(ownsEdgeKey("teamA", "Shop.Api")).toBe("teamA#owns#Shop.Api");
+  });
+
+  it("separates a team id that carries the separator from the ref it would swallow", () => {
+    // Both joined to `A#owns#B#owns#C` before the team id was quoted.
+    expect(ownsEdgeKey("A#owns#B", "C")).not.toBe(ownsEdgeKey("A", "B#owns#C"));
+  });
+
+  it('diffs `owns Shop.Api` and `owns "Shop.Api"` as two edges', () => {
+    const src = (owns: string) => `
+system Shop { service Api {} }
+service "Shop.Api" {}
+organization Acme { team Core {
+${owns}
+} }
+`;
+    const diff = diffOrgViewSlices(
+      orgViewOf(src("owns Shop.Api")),
+      orgViewOf(src('owns "Shop.Api"')),
+    );
+    expect(diff.edges.get(ownsEdgeKey("Core", "Shop.Api"))?.state).toBe("removed");
+    expect(diff.edges.get(ownsEdgeKey("Core", '"Shop.Api"'))?.state).toBe("added");
+  });
+});

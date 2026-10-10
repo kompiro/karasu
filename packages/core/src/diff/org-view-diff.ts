@@ -1,5 +1,6 @@
 import type { MemberNode, NodeIdPath, TeamNode } from "../types/ast.js";
-import { nodePathKey } from "../parser/node-path.js";
+import { nodePathRefId } from "../parser/node-path.js";
+import { quotedIdLiteral } from "../formatter/quote-id.js";
 import type { OrgViewSlice } from "../view/org-view-extract.js";
 import type { DiffState, EdgeDiffMeta, NodeDiffMeta } from "./view-diff.js";
 
@@ -14,12 +15,22 @@ export interface DiffedOrgView {
 
 /**
  * Key used by the org-view diff to identify a team → owned-node edge. `ref`
- * is the author-written reference joined (`nodePathKey`) — the diff compares
+ * is the author-written reference encoded (`nodePathRefId`) — the diff compares
  * notation, not resolution, so `owns Payment` vs `owns Shop.Payment` is a
- * remove + add (#2088).
+ * remove + add (#2088), and `owns Shop.Api` vs `owns "Shop.Api"` are two
+ * edges, not one (#2819).
+ *
+ * Both halves may carry the `#owns#` separator (a team id is a quoted id like
+ * any other), so a team id that would make the join ambiguous (it carries `#`,
+ * or the `"` / `\` the quoted form is built from) is wrapped in the `.krs`
+ * string-literal form. A bare team id then ends at its first `#` and a quoted
+ * one at its closing quote, so the key splits one way only; the ref is
+ * everything after the separator and may hold anything. Every other team id
+ * keeps the `${teamId}#owns#${ref}` it always had.
  */
 export function ownsEdgeKey(teamId: string, ref: string): string {
-  return `${teamId}#owns#${ref}`;
+  const team = /[#"\\]/.test(teamId) ? quotedIdLiteral(teamId) : teamId;
+  return `${team}#owns#${ref}`;
 }
 
 function setDescriptiveStateForTeam(
@@ -30,7 +41,7 @@ function setDescriptiveStateForTeam(
 ): void {
   nodes.set(team.id, { state });
   for (const ref of team.properties.owns) {
-    edges.set(ownsEdgeKey(team.id, nodePathKey(ref)), { state });
+    edges.set(ownsEdgeKey(team.id, nodePathRefId(ref)), { state });
   }
   for (const child of team.children) {
     if (child.kind === "team") {
@@ -63,20 +74,20 @@ function diffOwns(
   afterOwns: readonly NodeIdPath[],
   edges: Map<string, EdgeDiffMeta>,
 ): { merged: NodeIdPath[]; anyChanged: boolean } {
-  const beforeSet = new Set(beforeOwns.map(nodePathKey));
+  const beforeSet = new Set(beforeOwns.map(nodePathRefId));
   const merged: NodeIdPath[] = [...afterOwns];
   const seen = new Set<string>();
   let anyChanged = false;
 
   for (const ref of afterOwns) {
-    const key = nodePathKey(ref);
+    const key = nodePathRefId(ref);
     const state: DiffState = beforeSet.has(key) ? "unchanged" : "added";
     if (state === "added") anyChanged = true;
     edges.set(ownsEdgeKey(teamId, key), { state });
     seen.add(key);
   }
   for (const ref of beforeOwns) {
-    const key = nodePathKey(ref);
+    const key = nodePathRefId(ref);
     if (seen.has(key)) continue;
     edges.set(ownsEdgeKey(teamId, key), { state: "removed" });
     anyChanged = true;
@@ -118,12 +129,12 @@ function mergeChildren(
       if (prev.kind === "team") {
         // Clear any owns edges the removed team carried; the merged node is a member.
         for (const ref of prev.properties.owns) {
-          edges.set(ownsEdgeKey(prev.id, nodePathKey(ref)), { state: "removed" });
+          edges.set(ownsEdgeKey(prev.id, nodePathRefId(ref)), { state: "removed" });
         }
       }
       if (child.kind === "team") {
         for (const ref of child.properties.owns) {
-          edges.set(ownsEdgeKey(child.id, nodePathKey(ref)), { state: "added" });
+          edges.set(ownsEdgeKey(child.id, nodePathRefId(ref)), { state: "added" });
         }
       }
       nodes.set(child.id, { state: "changed" });

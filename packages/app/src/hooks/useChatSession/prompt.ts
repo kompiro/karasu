@@ -8,6 +8,7 @@ import type {
   TeamNode,
   MemberNode,
 } from "@karasu-tools/core";
+import { nodePathRefId } from "@karasu-tools/core";
 import type { Locale } from "../../i18n/locale";
 
 // ── Drill-down level detection ────────────────────────────────────────────────
@@ -143,9 +144,9 @@ function serializeNode(
   ownerIndex: Map<string, string>,
   prefix: readonly string[],
 ): SerializedNode {
-  // ownerIndex is keyed by full node path (#2548).
+  // ownerIndex is keyed by full node path (#2548), encoded by core (#2819).
   const path = [...prefix, node.id];
-  const owner = ownerIndex.get(path.join("."));
+  const owner = ownerIndex.get(nodePathRefId(path));
   const out: SerializedNode = {
     id: node.id,
     kind: node.kind,
