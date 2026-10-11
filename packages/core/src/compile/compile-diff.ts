@@ -727,7 +727,14 @@ export async function buildAllViewsSvgDiffProject(
   // returns the same resolver diagnostics. To avoid duplicates, use the
   // diagnostics from the upfront resolver pass (which is the same data).
   const diagnostics = resolverDiagnostics;
-  const warnings = collectAfterWarnings(afterResolved, theme, options.annotationBadgeLabels);
+  // Every view result already holds the same set (one after model, one sheet
+  // list), so take it from whichever view ran instead of a fourth pass; collect
+  // only when no view applies.
+  const warnings =
+    systemResult?.warnings ??
+    deployResult?.warnings ??
+    orgResult?.warnings ??
+    collectAfterWarnings(afterResolved, theme, options.annotationBadgeLabels);
 
   const bundled = bundleSingleLevelViews(
     {
