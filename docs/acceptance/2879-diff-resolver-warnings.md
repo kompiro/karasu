@@ -27,7 +27,7 @@
 - [x] before と after の診断がそれぞれ 1 回だけ出る。両側が同じ style sheet を import しても循環 import を報告せず、after の sheet が残る。
   > ✅ Automated — `packages/core/src/compile/compile-diff-warnings.test.ts` › `reports each side's diagnostics once` / `lets both sides import the same style sheet without a circular-import report`
 
-- [x] `karasu diff` が既定（bundled）と `--view system | deploy | org` のすべてで after の warning を `Warning: <after>:<line>:<col>: ...` の形で 1 回だけ出し、before の warning を出さない。
+- [x] `karasu diff` が既定（bundled）と `--view system | deploy | org` のすべてで after の warning を 1 回だけ出し、before の warning を出さない。after の entry で起きた warning は `Warning: <after>:<line>:<col>: ...` の形で出る（import 先のファイルで起きた warning は次の条件）。
   > ✅ Automated — `packages/cli/src/diff.test.ts` › `prints after's warning, and not before's, on %s`
 
 - [x] after が import した style sheet の warning は、after の entry ではなくその sheet のファイル名で出る。
