@@ -177,7 +177,9 @@ function bandAround(y: number, obstacles: readonly Rect[]): { upper: number; low
 /**
  * Move every run of a channel onto its lane: lanes `LANE_PITCH` apart,
  * centred on the channel. A channel that needs a single lane is left exactly
- * where the router put it.
+ * where the router put it. The lanes are stacked in the order `laneOrder`
+ * gives, so a run that carries on upwards sits above one that carries on
+ * downwards from the same x (#3088).
  */
 export function distributeChannelLanes(
   nodes: Map<string, LayoutNode>,
@@ -195,11 +197,133 @@ export function distributeChannelLanes(
     // pass has sized.
     const pitch =
       bounded && lanes * LANE_PITCH > lower - upper ? (lower - upper) / lanes : LANE_PITCH;
+    const rank = laneOrder(runs, lanes);
     for (const run of runs) {
-      const y = centre + (run.lane - (lanes - 1) / 2) * pitch;
+      const y = centre + (rank[run.lane] - (lanes - 1) / 2) * pitch;
       const wps = run.edge.waypoints!;
       wps[run.i] = { x: wps[run.i].x, y };
       wps[run.i + 1] = { x: wps[run.i + 1].x, y };
     }
   }
+}
+
+/**
+ * Where each lane of a channel goes, top to bottom: `rank[lane]` (#3088).
+ *
+ * Lanes are handed out by x-range alone, so two runs that end at one x can come
+ * out in either vertical order. When one carries on upwards from that x and the
+ * other downwards, the wrong order lays their two verticals over each other for
+ * the gap between the lanes: two gutter corridors that only touched, say, and
+ * shared a lane on the strength of it. Each such pair asks for the upward run's
+ * lane above the downward run's, the way `fanOutGutterPorts` nests a fan by
+ * where each edge heads next.
+ *
+ * Lanes move as whole lanes, so runs that share a lane never meet, and a lane
+ * bundle's shared run (#2958) stays one run. With no request the order is the
+ * identity, which keeps every such channel byte-identical.
+ *
+ * Requests can form a cycle: two runs that both end on the same two columns
+ * and turn opposite ways at each. No order satisfies it, and one of the two
+ * columns keeps an overlap that only moving a column or a gutter lane could
+ * remove. The requests are therefore condensed into strongly connected
+ * components: the order between components honours every request, ties go to
+ * the component holding the lowest lane, and a component lists its own lanes
+ * in their original order. Without a cycle every component is a single lane
+ * and this is a plain stable topological order.
+ */
+export function laneOrder(runs: readonly ChannelRun[], lanes: number): number[] {
+  const identity = Array.from({ length: lanes }, (_v, l) => l);
+  // The lanes whose runs carry on upwards / downwards from each end x.
+  const ends = new Map<number, { up: Set<number>; down: Set<number> }>();
+  for (const run of runs) {
+    const pts = [run.edge.fromPoint, ...run.edge.waypoints!, run.edge.toPoint];
+    // The run is pts[a] -> pts[a + 1]; both are interior, so a neighbour
+    // exists beyond each end.
+    const a = run.i + 1;
+    for (const [end, beyond] of [
+      [pts[a], pts[a - 1]],
+      [pts[a + 1], pts[a + 2]],
+    ] as const) {
+      const dy = beyond.y - end.y;
+      if (Math.abs(beyond.x - end.x) > EPS || Math.abs(dy) <= EPS) continue;
+      const key = Math.round(end.x / EPS) * EPS;
+      let at = ends.get(key);
+      if (!at) ends.set(key, (at = { up: new Set(), down: new Set() }));
+      (dy < 0 ? at.up : at.down).add(run.lane);
+    }
+  }
+  // below[l]: the lanes that have to sit below lane l.
+  const below: Set<number>[] = identity.map(() => new Set<number>());
+  let requests = 0;
+  for (const { up, down } of ends.values()) {
+    for (const u of up) {
+      for (const d of down) {
+        if (u === d || below[u].has(d)) continue;
+        below[u].add(d);
+        requests++;
+      }
+    }
+  }
+  if (requests === 0) return identity;
+
+  // Strongly connected components (Tarjan). Lanes are visited in index order,
+  // so the numbering is deterministic.
+  const comp = new Array<number>(lanes).fill(-1);
+  const index = new Array<number>(lanes).fill(-1);
+  const low = new Array<number>(lanes).fill(0);
+  const onStack = new Array<boolean>(lanes).fill(false);
+  const stack: number[] = [];
+  let counter = 0;
+  let comps = 0;
+  const visit = (v: number): void => {
+    index[v] = low[v] = counter++;
+    stack.push(v);
+    onStack[v] = true;
+    for (const w of [...below[v]].sort((x, y) => x - y)) {
+      if (index[w] === -1) {
+        visit(w);
+        low[v] = Math.min(low[v], low[w]);
+      } else if (onStack[w]) {
+        low[v] = Math.min(low[v], index[w]);
+      }
+    }
+    if (low[v] === index[v]) {
+      let w: number;
+      do {
+        w = stack.pop()!;
+        onStack[w] = false;
+        comp[w] = comps;
+      } while (w !== v);
+      comps++;
+    }
+  };
+  for (const v of identity) if (index[v] === -1) visit(v);
+
+  // The condensed order: stable topological order over components, each
+  // keyed by the lowest lane it holds, then each component's lanes in order.
+  const members: number[][] = Array.from({ length: comps }, () => []);
+  for (const l of identity) members[comp[l]].push(l);
+  const indegree = new Array<number>(comps).fill(0);
+  const next: Set<number>[] = Array.from({ length: comps }, () => new Set<number>());
+  for (const u of identity) {
+    for (const d of below[u]) {
+      if (comp[u] === comp[d] || next[comp[u]].has(comp[d])) continue;
+      next[comp[u]].add(comp[d]);
+      indegree[comp[d]]++;
+    }
+  }
+  const rank = new Array<number>(lanes).fill(-1);
+  const placed = new Array<boolean>(comps).fill(false);
+  let position = 0;
+  for (let n = 0; n < comps; n++) {
+    let pick = -1;
+    for (let c = 0; c < comps; c++) {
+      if (placed[c] || indegree[c] > 0) continue;
+      if (pick === -1 || members[c][0] < members[pick][0]) pick = c;
+    }
+    placed[pick] = true;
+    for (const l of members[pick]) rank[l] = position++;
+    for (const c of next[pick]) indegree[c]--;
+  }
+  return rank;
 }
