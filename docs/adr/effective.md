@@ -167,7 +167,6 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2839](2839-pause-dependabot-triage-schedule.md) — dependabot-triage workflow の週次 cron を止め、dispatch で運用する
 - [ADR-2877](2877-dependabot-triage-2026-09-22.md) — Dependabot トリアージ 2026-09-22：changesets 3 は CI が回さない release flow を壊すので差し替え PR で入れ、gh-aw は再生成で上げる
 - [ADR-2939](2939-release-record-tags-and-github-release.md) — リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の GitHub Release を 1 つ作る
-- [ADR-2949](2949-coderabbit-skips-adr-auto-merge.md) — auto-merge する ADR-only PR は CodeRabbit の自動レビュー対象から外す
 - [ADR-2983](2983-dependabot-triage-2026-09-29.md) — Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upstream の regression なので差し替えず 30.1.1 の bot 提案を待ち、@types/vscode 1.138 は ExTester の上限まで保留する
 - [ADR-2985](2985-dependabot-security-2026-09-29.md) — Dependabot security alert 2026-09-29（`undici` の override floor が脆弱範囲の内側だったので `^7.29.1` に上げた）
 - [ADR-3000](3000-nest-deploys-on-main.md) — karasu-nest を main への push で自動 deploy し、対象 path は nest の workspace 依存から機械的に決める
@@ -176,7 +175,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3052](3052-review-branch-diff-before-draft-pr.md) — /engineering:code-review は draft PR を作る前に base ブランチとの差分へ当て、CodeRabbit の初回レビューは ready にした時点の 1 回にする
 - [ADR-3069](3069-dependabot-triage-2026-10-05.md) — Dependabot トリアージ 2026-10-05：mocha 12 を含む 8 件を採用し、gh-aw は正式版 v0.89.21 で再生成し、@types/vscode は追随方針の見直し（#3070）に回して close する
 - [ADR-3077](3077-dependabot-security-2026-10-06.md) — Dependabot security alert 2026-10-06（transitive 5 件を override で解消し、修正版の無い v6 系 postcss-selector-parser は postcss-nested を 7 に上げて逃がす）
-- [ADR-3117](3117-coderabbit-ignore-command-for-skip.md) — CodeRabbit を外す小さな PR は、PR 本文の ignore コマンドで外し、skip-coderabbit ラベルは記録として残す
+- [ADR-3117](3117-coderabbit-ignore-command-for-skip.md) — CodeRabbit から外す PR は PR 本文の ignore コマンドで外し、ラベルは外した PR の記録として残す
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 

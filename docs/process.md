@@ -107,7 +107,7 @@ ready → implementing → in-review → (close)
 7. PR 前に main を取り込む — git fetch origin main && git merge --no-edit origin/main（rebase は使わない。「ブランチ戦略」参照）。コンフリクトを解消し、lint / test を再確認する
 8. base ブランチとの差分（git diff origin/main...HEAD）に /engineering:code-review を当て、対応すると決めた修正をコミットし、lint / test を再確認する。PR はまだ作らない
 9. PR を draft で作成する（gh pr create --draft、Closes #N で Issue と紐付ける）。draft には CodeRabbit も分単位の CI も走らない
-10. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の、`adr-auto-merge` / `skip-coderabbit` ラベルが無く、本文に ignore コマンドの無い PR）では初回レビューもここで走る
+10. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の、本文に ignore コマンドが無く、`adr-auto-merge` / `skip-coderabbit` ラベルの無い PR）では初回レビューもここで走る
 11. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 12. Issue ラベルを status: in-review に更新する
 13. 手動検証チェックリストを実施する
@@ -173,7 +173,8 @@ gh pr ready <N>
   （CodeRabbit の approve）も求めない。CI が通れば人間のレビューに渡す
 - 外した後に判定基準を満たさない差分を足すなら、push の前に本文の行とラベルの両方を外し
   （`gh pr edit <N> --body-file <本文> --remove-label skip-coderabbit`）、push 後に
-  `@coderabbitai review` を投げて通常の手順に戻る
+  `@coderabbitai full review` を投げて通常の手順に戻る。それまでのコミットは一度も
+  レビューされていないので、差分だけを見る `@coderabbitai review` では足りない
 - **外すと決めた PR 以外の本文に `@coderabbitai ignore` という文字列を書かない。**
   CodeRabbit は文脈を区別せず、引用や却下した案の説明として書いただけでもその PR を
   レビューから外す。外れたときのステータスは理由の付かない `Review skipped` で、
@@ -244,9 +245,9 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 - 対象外は draft PR と `dependabot[bot]` / `renovate[bot]` の PR（依存更新は
   `/hane:dependabot` が別途トリアージ）。`ignore_usernames` は完全一致なので、
   他の bot を除外するには login を `.coderabbit.yaml` に足す
-- `adr-auto-merge` ラベルの付いた ADR-only PR も対象外。auto-merge の適用条件を
-  満たすと diff で確認した PR にだけ、draft のうちに付ける（`.claude/rules/adr.md`
-  「ADR PR の auto-merge」、ADR-2949）
+- 本文の ignore コマンドと `adr-auto-merge` ラベルで外した ADR-only PR も対象外。
+  auto-merge の適用条件を満たすと PR を作る前にブランチの差分で確認した PR にだけ、
+  作成時に入れる（`.claude/rules/adr.md`「ADR PR の auto-merge」、ADR-3117）
 - 本文の ignore コマンドと `skip-coderabbit` ラベルで外した PR も対象外（「CodeRabbit を外す小さな PR」）
 - 採用しない指摘は**返信で理由を書いてから閉じる**。approve は指摘に従わなくても
   到達できる。**approve を取ることを目的に指摘へ従わない**。従うべきか迷うものは、

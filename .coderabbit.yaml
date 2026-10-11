@@ -42,17 +42,18 @@ reviews:
       - renovate[bot]
     # An ADR-only PR that meets the auto-merge exception in
     # `.claude/rules/adr.md` merges before anyone reads a review, and its diff
-    # only records a decision. The label is added after the diff is checked,
-    # while the PR is still a draft, so a `docs(adr):` PR that does not qualify
-    # keeps its review (ADR-2949).
+    # only records a decision. The label is added only after the branch diff is
+    # checked, so a `docs(adr):` PR that does not qualify keeps its review
+    # (ADR-2949).
     # `skip-coderabbit` marks a small PR whose diff can be judged correct from
     # the diff and external facts alone and which changes no runtime behavior.
     # Claude may propose it; a human approves before the PR is created
     # (docs/process.md "CodeRabbit を外す小さな PR", ADR-3011).
-    # The ignore command in the PR body is what skips such a PR: this label
-    # filter does not stop the review CodeRabbit runs when the PR is opened.
-    # The label is the record for listing skipped PRs, and this filter is the
-    # fallback when the body line is missing (ADR-3117).
+    # For both labels, the ignore command in the PR body is what skips the PR:
+    # this label filter does not stop the review CodeRabbit runs when the PR
+    # is opened. The labels record why a PR was skipped and let us list those
+    # PRs, and this filter is the fallback when the body line is missing
+    # (ADR-3117).
     labels:
       - "!adr-auto-merge"
       - "!skip-coderabbit"
