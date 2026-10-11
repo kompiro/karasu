@@ -133,19 +133,19 @@ export interface DrillDownCallbacks<S> {
 /**
  * Children of a system-view level, each with the full path that reaches it.
  *
- * The multi-system root draws every system's children, so a child's path has
- * to start with its own system: a bare `["Api"]` resolves to the first system
- * that owns an `Api`, and a second system's `Api` would be extracted as the
- * first one's (#2933). The single-system root is the system itself.
+ * The root slice lists every system (one or many) and draws each one's
+ * children, so a child's path has to start with its own system: a bare
+ * `["Api"]` resolves to the first system that owns an `Api`, and a second
+ * system's `Api` would be extracted as the first one's (#2933). Below the root,
+ * a child extends the drilled path.
  */
 export function systemDrillChildren(slice: ViewSlice, path: string[]): DrillChild[] {
-  if (path.length === 0 && slice.systems.length > 0) {
+  if (path.length === 0) {
     return slice.systems.flatMap((s) =>
       s.children.map((c) => ({ node: c, path: [s.id, c.id], scopeLabel: s.label ?? s.id })),
     );
   }
-  const scope = path.length === 0 && slice.containerNode !== null ? [slice.containerNode.id] : path;
-  return slice.childNodes.map((c) => ({ node: c, path: [...scope, c.id] }));
+  return slice.childNodes.map((c) => ({ node: c, path: [...path, c.id] }));
 }
 
 /** Child teams of an org-view level. Team ids are unique within an organization. */

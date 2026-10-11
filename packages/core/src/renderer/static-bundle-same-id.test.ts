@@ -102,6 +102,9 @@ describe.each(BUILDERS)("%s: one level per anchor id (#2933)", (_name, build) =>
   });
 
   it("shows the node the SPA resolves the same anchor to, for every anchor", () => {
+    // PARKED is left out: the SPA's own extraction of `nodePathIndex.get("Parked")`
+    // (`["Api", "Parked"]`) resolves through Shop.Api and comes back empty (#3113),
+    // so there is no SPA view to compare with. The bundle's level is pinned below.
     for (const src of [TWO_SYSTEMS, MIGRATION_TARGET, ONE_SYSTEM_SHARED_DOMAIN]) {
       const index = Parser.parse(src).value.nodePathIndex;
       for (const level of levelsOf(build(src).svg)) {
