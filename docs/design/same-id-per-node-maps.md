@@ -4,7 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#2934](https://github.com/kompiro/karasu/issues/2934)（[ADR-2917](../adr/2917-multi-system-root-same-id-nodes.md) の再点検で切り出した残課題）
-  - 隣接 Issue: [#2935](https://github.com/kompiro/karasu/issues/2935)（hand-over に path を運ぶ。エディタへジャンプ・ハイライト・deploy → system）, [#2933](https://github.com/kompiro/karasu/issues/2933)（静的バンドルの重複レベル）, [#2819](https://github.com/kompiro/karasu/issues/2819)（区切り文字で連結した path key の単射化）
+  - 隣接 Issue: [#3126](https://github.com/kompiro/karasu/issues/3126)（ルートの diff が systems[0] 以外の子に状態を付けない。本件で見つけた既存の欠落）, [#2935](https://github.com/kompiro/karasu/issues/2935)（hand-over に path を運ぶ。エディタへジャンプ・ハイライト・deploy → system）, [#2933](https://github.com/kompiro/karasu/issues/2933)（静的バンドルの重複レベル）, [#2819](https://github.com/kompiro/karasu/issues/2819)（区切り文字で連結した path key の単射化）
   - 関連 ADR: [ADR-2917](../adr/2917-multi-system-root-same-id-nodes.md)（`data-node-path` と `nodeMetadataByPath`。bare の `nodeMetadata` は互換のため last write のまま残した）, [ADR-2088](../adr/2088-node-reference-path-notation.md)（決定 4: 索引は path キー。bare id の揃った多重一致は意図的 broadcast）, [ADR-2550](../adr/2550-order-independent-node-path-index.md)（`nodePathIndex` の勝者は `migrationPriority()` 最大、同点は traversal 順で最初）, [ADR-2714](../adr/2714-deploy-container-id-injective.md)（`nodePathRefId`。衝突したときだけ key を変える案の却下）, [ADR-2173](../adr/2173-facet-grammar-and-model.md)（`facetIndex` は 1:N、所属を捨てない）, [ADR-2174](../adr/2174-facet-overlay.md)（overlay は node id で引く）
   - 関連 TPL: [TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md)（1:1 index の勝者規則を全 index で揃える）, [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md)（区別に要る次元をキーに含める）, [TPL-2920](../test-perspectives/TPL-2920-duplicate-element-id-on-one-canvas-names-its-landing.md)（同じ canvas の重複要素 id は着地を名指す）, [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)（宣言された所属を派生 index で捨てない）, [TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md)（派生値の複製を持たない）
   - コード: `packages/core/src/compile/compile.ts`（`buildNodeMetadata`）, `packages/core/src/fs/import-resolver.ts`（`nodeFileIndex`）, `packages/core/src/resolver/style-resolver.ts`, `packages/core/src/renderer/facet-overlay.ts`, `packages/core/src/diff/view-diff.ts`, `packages/core/src/exporter/drawio/drawio-exporter.ts`
@@ -97,7 +97,7 @@ TPL-1583 は「1:1 index は主を選ぶ規則を全 index で揃える」と規
   （`docs/spec/style.md`）で、本件はその一致の**結果をどこに保存するか**だけを扱う。
 - **out of scope**:
   - ルートの diff が `systems[0]` 以外の子に状態を付けないこと。同名 id と無関係に起きる既存の欠落
-    （上の `Admin.Console`）で、別 Issue に切る（「未解決の問い」）。
+    （上の `Admin.Console`）で、[#3126](https://github.com/kompiro/karasu/issues/3126) に切った（「未解決の問い」）。
   - ghost と合成 stub の per-node 値。`LayoutNode.path` を持たないため、bare の見え方
     （下の勝者規則）で引く。
   - `ownerIndex` / `boundaryMembership` の key の単射化（#2819）。
@@ -245,7 +245,7 @@ bare id で引く entry は、**その Map が保持している同じ bare id �
    「overlay は `facetIndexByPath` を引く。本 Map は broadcast（facet id の列挙）専用」に書き換える。
 6. **diff**: `diffNodeArray` に canvas の path prefix を渡し、`nodeDiffByPath` を併せて作る。renderer は
    `layoutNode.path` があれば path を先に引く。ルートの `Admin.Api` は `Shop.Api` の状態を借りなくなる
-   （`systems[0]` 以外に状態が付かない既存の欠落は残る。別 Issue）。
+   （`systems[0]` 以外に状態が付かない既存の欠落は残る。[#3126](https://github.com/kompiro/karasu/issues/3126)）。
 7. **draw.io**: cell id を layout の Map key から作る（`nodeIdentity` と同じ考え方）。ルートの edge の
    source / target を引けるよう、`layoutMultipleSystems` が `LayoutEdge` に端点の Map key
    （`fromKey` / `toKey`、ルートでだけ設定）を載せ、exporter は無ければ bare id に落ちる。
@@ -294,7 +294,7 @@ bare id で引く entry は、**その Map が保持している同じ bare id �
 
 ## 未解決の問い / 決めないこと
 
-- **ルートの diff が `systems[0]` 以外の子に状態を付けない**ことは別 Issue に切る。同名 id と
+- **ルートの diff が `systems[0]` 以外の子に状態を付けない**ことは[#3126](https://github.com/kompiro/karasu/issues/3126) に切った。同名 id と
   無関係な既存の欠落で、#2756 が edge 側について同じ形（frame ごとに diff する）で直した。本件の
   path キー化はその修正の前提になる（system ごとの子を同じ Map に入れても潰れない）。
 - **ghost と合成 stub に path を持たせるか**は決めない。ADR-2917 が `data-node-path` を出さないと
