@@ -187,9 +187,12 @@ reviews:
       instructions: |
         - `docs/spec/*.md` and `docs/concepts.md` are English with a `*.ja.md`
           twin; the pair must keep an identical heading structure, so a section
-          added, removed or re-leveled on one side only is a defect. Everything
-          else under `docs/` (process, adr, design, prd, test-perspectives) is
-          Japanese — do not propose translating it or restyling its prose.
+          added, removed or re-leveled on one side only is a defect. A file
+          forms a pair only when its `*.ja.md` sibling exists:
+          `docs/spec/i18n.md` has none and is written in Japanese, so never ask
+          for its translation or a twin. Everything else under `docs/`
+          (process, adr, design, prd, test-perspectives) is Japanese — do not
+          propose translating it or restyling its prose.
         - Regions between `<!-- gen:reference:* -->` markers in `docs/spec/*.md`
           are generated from `packages/core/src/builtins/reference-data.ts` by
           `pnpm gen:reference`. A hand edit inside one is always wrong.
@@ -208,7 +211,13 @@ reviews:
         which happens after the implementation is reviewed (`.claude/rules/adr.md`),
         while the section records the direction the draft is arguing for. Never
         ask for the adoption sentence to be removed, or for the ADR to be written
-        before the implementation PR. Report only:
+        before the implementation PR.
+        The guideline in `.claude/rules/program-slices.md` against listing what
+        each stage delivers applies only to a doc with a `### スライス` section,
+        and only to its per-slice "what works / what does not yet" table. The
+        steps under `### 実装の指針` (TPL, AT, spec, ADR promotion) are what
+        `docs/design/TEMPLATE.md` prescribes; never ask for them to be moved to
+        an Issue. Report only:
         - a statement that contradicts an ADR still in force (`docs/adr/*.md`
           with `status: accepted`) or `docs/spec/`
         - an assumption the design depends on but never states
