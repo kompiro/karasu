@@ -27,7 +27,7 @@ interface MatrixCliOptions {
 export async function matrix(filePath: string, options: MatrixCliOptions): Promise<void> {
   const resolved = await resolveKrsFileOrExit(filePath);
   if (!resolved) return;
-  const { absolutePath, fs } = resolved;
+  const { absolutePath, displayPath, fs } = resolved;
 
   const format: MatrixFormat = options.format ?? "md";
   if (format !== "md" && format !== "csv" && format !== "svg") {
@@ -41,7 +41,7 @@ export async function matrix(filePath: string, options: MatrixCliOptions): Promi
     process.exit(1);
   }
 
-  const result = await compileSystemViewOrExit(fs, absolutePath, filePath, "matrix");
+  const result = await compileSystemViewOrExit(fs, absolutePath, displayPath, "matrix");
   if (!result) return;
 
   const extractOptions: CrudMatrixOptions = {
