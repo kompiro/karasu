@@ -6,7 +6,7 @@ type: product
 
 - **日付**: 2026-10-09
 - **関連 Issue**: [#3088](https://github.com/kompiro/karasu/issues/3088)
-- **設計**: #3088 の Design Doc（[#3095](https://github.com/kompiro/karasu/pull/3095)、ADR 昇格予定）。関連 ADR: [ADR-2598](../adr/2598-edge-routing-channel-capacity.md)、[ADR-2958](../adr/2958-gutter-lane-bundling.md)
+- **設計**: [ADR-3088](../adr/3088-channel-lane-order-by-turn.md)。関連 ADR: [ADR-2598](../adr/2598-edge-routing-channel-capacity.md)、[ADR-2958](../adr/2958-gutter-lane-bundling.md)
 - **Related TPLs**: [TPL-3088](../test-perspectives/TPL-3088-later-pass-moves-ends-in-the-direction-earlier-separation-assumed.md)（本 PR で起こした retrospective TPL）, [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md), [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md), [TPL-2958](../test-perspectives/TPL-2958-bundle-shared-geometry-survives-later-passes.md)
 - **対象ファイル**: `packages/core/src/renderer/edge-routing-lanes.ts`（`laneOrder` / `distributeChannelLanes`）
 
