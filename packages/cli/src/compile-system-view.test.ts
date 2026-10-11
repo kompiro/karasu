@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Diagnostic } from "@karasu-tools/core";
-import { diagLocFormatter } from "./compile-system-view.js";
+import { diagLocFormatter, resolveKrsFileOrExit } from "./compile-system-view.js";
 
 /**
  * `diagLocFormatter` decides which document a printed position names (#2715,
@@ -95,5 +95,98 @@ describe("diagLocFormatter", () => {
     expect(formatDiagLoc("index.krs", at(12, 3, imported))).toBe(
       `${join("slices", "legacy.krs")}:12:3`,
     );
+  });
+});
+
+/**
+ * The entry every `<file>` command (render / check / matrix / coverage /
+ * subtree / team-dependencies) compiles. A directory reads as its index.krs,
+ * and diagnostics name that file, not the directory (#2942).
+ */
+describe("resolveKrsFileOrExit", () => {
+  let tmpDir: string;
+  let stderr: string;
+  let exitCode: number | undefined;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "karasu-entry-"));
+    stderr = "";
+    exitCode = undefined;
+    vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+      stderr += String(chunk);
+      return true;
+    });
+    vi.spyOn(process, "exit").mockImplementation((code) => {
+      exitCode = Number(code ?? 0);
+      return undefined as never;
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("takes a file as the entry, in the user's spelling", async () => {
+    const file = join(tmpDir, "arch.krs");
+    writeFileSync(file, "");
+
+    const resolved = await resolveKrsFileOrExit(file);
+
+    expect(resolved).toMatchObject({ absolutePath: file, displayPath: file });
+  });
+
+  it("takes a directory's index.krs as the entry", async () => {
+    writeFileSync(join(tmpDir, "index.krs"), "");
+
+    const resolved = await resolveKrsFileOrExit(tmpDir);
+
+    expect(resolved).toMatchObject({
+      absolutePath: join(tmpDir, "index.krs"),
+      displayPath: join(tmpDir, "index.krs"),
+    });
+  });
+
+  it("says a directory has no index.krs instead of calling it missing", async () => {
+    writeFileSync(join(tmpDir, "arch.krs"), "");
+
+    expect(await resolveKrsFileOrExit(tmpDir)).toBeUndefined();
+    expect(exitCode).toBe(1);
+    expect(stderr).toBe(`Error: ${tmpDir} has no index.krs; pass the entry .krs file\n`);
+  });
+
+  it("does not read a directory named index.krs as the entry", async () => {
+    mkdirSync(join(tmpDir, "index.krs"));
+
+    expect(await resolveKrsFileOrExit(tmpDir)).toBeUndefined();
+    expect(stderr).toContain("has no index.krs");
+  });
+
+  // A path that exists but cannot be stat'ed is not "missing" (#2942 review):
+  // a symlink loop fails with ELOOP for every user, root included.
+  it("reports a path it cannot stat with the reason, not as not found", async () => {
+    const loop = join(tmpDir, "loop.krs");
+    symlinkSync(loop, loop);
+
+    expect(await resolveKrsFileOrExit(loop)).toBeUndefined();
+    expect(exitCode).toBe(1);
+    expect(stderr).toBe(`Error: cannot read ${loop}: ELOOP\n`);
+  });
+
+  it("reports an index.krs it cannot stat with the reason, not as absent", async () => {
+    const entry = join(tmpDir, "index.krs");
+    symlinkSync(entry, entry);
+
+    expect(await resolveKrsFileOrExit(tmpDir)).toBeUndefined();
+    expect(exitCode).toBe(1);
+    expect(stderr).toBe(`Error: cannot read ${entry}: ELOOP\n`);
+  });
+
+  it("reports a path that does not exist as not found", async () => {
+    const missing = join(tmpDir, "missing");
+
+    expect(await resolveKrsFileOrExit(missing)).toBeUndefined();
+    expect(exitCode).toBe(1);
+    expect(stderr).toBe(`Error: File not found: ${missing}\n`);
   });
 });

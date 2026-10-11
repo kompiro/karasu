@@ -73,7 +73,7 @@ function formatAsMarkdown(report: CoverageReport): string {
 export async function coverage(filePath: string, options: CoverageCliOptions): Promise<void> {
   const resolved = await resolveKrsFileOrExit(filePath);
   if (!resolved) return;
-  const { absolutePath, fs } = resolved;
+  const { absolutePath, displayPath, fs } = resolved;
 
   const format: CoverageFormat = options.format ?? "md";
   if (format !== "md" && format !== "json") {
@@ -90,7 +90,7 @@ export async function coverage(filePath: string, options: CoverageCliOptions): P
     }
   }
 
-  const result = await compileSystemViewOrExit(fs, absolutePath, filePath, "coverage");
+  const result = await compileSystemViewOrExit(fs, absolutePath, displayPath, "coverage");
   if (!result) return;
 
   const report = extractCoverage(result.systems, { threshold });
