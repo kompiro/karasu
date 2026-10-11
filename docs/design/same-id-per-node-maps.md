@@ -5,7 +5,7 @@
 - **関連**:
   - 引き金 Issue: [#2934](https://github.com/kompiro/karasu/issues/2934)（[ADR-2917](../adr/2917-multi-system-root-same-id-nodes.md) の再点検で切り出した残課題）
   - 隣接 Issue: [#2935](https://github.com/kompiro/karasu/issues/2935)（hand-over に path を運ぶ。エディタへジャンプ・ハイライト・deploy → system）, [#2933](https://github.com/kompiro/karasu/issues/2933)（静的バンドルの重複レベル）, [#2819](https://github.com/kompiro/karasu/issues/2819)（区切り文字で連結した path key の単射化）
-  - 関連 ADR: [ADR-2917](../adr/2917-multi-system-root-same-id-nodes.md)（`data-node-path` と `nodeMetadataByPath`。bare の `nodeMetadata` は互換のため last write のまま残した）, [ADR-2088](../adr/2088-node-reference-path-notation.md)（決定 4: 索引は path キー。bare id の揃った多重一致は意図的 broadcast）, [ADR-2550](../adr/2550-order-independent-node-path-index.md)（`nodePathIndex` の勝者は宣言順に依存しない）, [ADR-2714](../adr/2714-deploy-container-id-injective.md)（`nodePathRefId`。衝突したときだけ key を変える案の却下）, [ADR-2173](../adr/2173-facet-grammar-and-model.md)（`facetIndex` は 1:N、所属を捨てない）, [ADR-2174](../adr/2174-facet-overlay.md)（overlay は node id で引く）
+  - 関連 ADR: [ADR-2917](../adr/2917-multi-system-root-same-id-nodes.md)（`data-node-path` と `nodeMetadataByPath`。bare の `nodeMetadata` は互換のため last write のまま残した）, [ADR-2088](../adr/2088-node-reference-path-notation.md)（決定 4: 索引は path キー。bare id の揃った多重一致は意図的 broadcast）, [ADR-2550](../adr/2550-order-independent-node-path-index.md)（`nodePathIndex` の勝者は `migrationPriority()` 最大、同点は traversal 順で最初）, [ADR-2714](../adr/2714-deploy-container-id-injective.md)（`nodePathRefId`。衝突したときだけ key を変える案の却下）, [ADR-2173](../adr/2173-facet-grammar-and-model.md)（`facetIndex` は 1:N、所属を捨てない）, [ADR-2174](../adr/2174-facet-overlay.md)（overlay は node id で引く）
   - 関連 TPL: [TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md)（1:1 index の勝者規則を全 index で揃える）, [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md)（区別に要る次元をキーに含める）, [TPL-2920](../test-perspectives/TPL-2920-duplicate-element-id-on-one-canvas-names-its-landing.md)（同じ canvas の重複要素 id は着地を名指す）, [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)（宣言された所属を派生 index で捨てない）, [TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md)（派生値の複製を持たない）
   - コード: `packages/core/src/compile/compile.ts`（`buildNodeMetadata`）, `packages/core/src/fs/import-resolver.ts`（`nodeFileIndex`）, `packages/core/src/resolver/style-resolver.ts`, `packages/core/src/renderer/facet-overlay.ts`, `packages/core/src/diff/view-diff.ts`, `packages/core/src/exporter/drawio/drawio-exporter.ts`
 
@@ -65,16 +65,16 @@ TPL-1583 は「1:1 index は主を選ぶ規則を全 index で揃える」と規
 
 ## 現状（インベントリ）
 
-| Map                                                      | 構築箇所                                                         | 今日の規則                                                            | 主な消費側                                                                                                               |
-| -------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `nodePathIndex`                                          | `parser/reference-validation.ts`（`buildNodePathIndex`）         | 勝者: `migrationPriority()` 優先、同点は宣言順（TPL-1583 / ADR-2550） | `nodeMetadata.viewPath`、permalink・hash の解決                                                                          |
-| `nodeMetadata`                                           | `compile/compile.ts`（`buildNodeMetadata`、`map.set(id, meta)`） | 後勝ち（後の system）                                                 | app `PreviewPane`（path が無いときの fallback、詳細パネル）、VS Code webview（同上）、draw.io の `metadata.get(node.id)` |
-| `nodeMetadataByPath`                                     | 同上                                                             | path ごとに 1 件（#2917）                                             | app / VS Code の click delegation                                                                                        |
-| `nodeFileIndex`                                          | `fs/import-resolver.ts`（`indexNode`）                           | 先勝ち（merge 順）                                                    | app `useJumpToEditor`                                                                                                    |
-| `ResolvedStyles.nodes` / `layoutHints` / `paintedColors` | `resolver/style-resolver.ts`（`processNodes`）                   | 後勝ち。annotation が違う場合だけ `id@annotation` の修飾 key で分ける | renderer `resolveNodeStyle`、layout の column hint                                                                       |
-| `KrsFile.facetIndex`                                     | `parser/parser.ts`・`fs/import-resolver.ts`（`buildFacetIndex`） | bare id で union                                                      | `knownFacetIds`（facet id の列挙）、`resolveFacetOverlay`（リングの所属）、`compile-diff.ts`（before/after の所属統合）  |
-| `nodeDiff` / `nodeDiffState`                             | `diff/view-diff.ts`（`diffNodeArray`）                           | 配列内で 1 件。ルートは `systems[0]` の子のみ                         | renderer `data-diff-state`、詳細パネルの diff 表示                                                                       |
-| draw.io cell id                                          | `exporter/drawio/drawio-exporter.ts`（`cellId(node.id)`）        | bare id → 同ページで重複                                              | `.drawio` の構造（parent / source / target）                                                                             |
+| Map                                                      | 構築箇所                                                         | 今日の規則                                                                         | 主な消費側                                                                                                               |
+| -------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `nodePathIndex`                                          | `parser/reference-validation.ts`（`buildNodePathIndex`）         | 勝者: `migrationPriority()` 最大、同点は traversal 順で最初（TPL-1583 / ADR-2550） | `nodeMetadata.viewPath`、permalink・hash の解決                                                                          |
+| `nodeMetadata`                                           | `compile/compile.ts`（`buildNodeMetadata`、`map.set(id, meta)`） | 後勝ち（後の system）                                                              | app `PreviewPane`（path が無いときの fallback、詳細パネル）、VS Code webview（同上）、draw.io の `metadata.get(node.id)` |
+| `nodeMetadataByPath`                                     | 同上                                                             | path ごとに 1 件（#2917）                                                          | app / VS Code の click delegation                                                                                        |
+| `nodeFileIndex`                                          | `fs/import-resolver.ts`（`indexNode`）                           | 先勝ち（merge 順）                                                                 | app `useJumpToEditor`                                                                                                    |
+| `ResolvedStyles.nodes` / `layoutHints` / `paintedColors` | `resolver/style-resolver.ts`（`processNodes`）                   | 後勝ち。annotation が違う場合だけ `id@annotation` の修飾 key で分ける              | renderer `resolveNodeStyle`、layout の column hint                                                                       |
+| `KrsFile.facetIndex`                                     | `parser/parser.ts`・`fs/import-resolver.ts`（`buildFacetIndex`） | bare id で union                                                                   | `knownFacetIds`（facet id の列挙）、`resolveFacetOverlay`（リングの所属）、`compile-diff.ts`（before/after の所属統合）  |
+| `nodeDiff` / `nodeDiffState`                             | `diff/view-diff.ts`（`diffNodeArray`）                           | 配列内で 1 件。ルートは `systems[0]` の子のみ                                      | renderer `data-diff-state`、詳細パネルの diff 表示                                                                       |
+| draw.io cell id                                          | `exporter/drawio/drawio-exporter.ts`（`cellId(node.id)`）        | bare id → 同ページで重複                                                           | `.drawio` の構造（parent / source / target）                                                                             |
 
 前提として使える道具はすでにある。
 
@@ -198,13 +198,23 @@ doc comment に「broadcast」と書く。
 
 ### bare の見え方の規則
 
-bare id で引く entry は、**その Map が保持している同じ bare id の entry のうち、path が
-`nodePathIndex.get(id)` と一致するもの。一致するものが無ければ Map に最初に入ったもの**とする。
+bare id で引く entry は、**その Map が保持している同じ bare id の entry のうち、`nodePathIndex` と
+同じ順位付け（`migrationPriority()` 最大、同点は model の traversal 順で最初。ADR-2550）で最上位の
+もの**とする。勝者がその Map に居れば勝者になり、居なければ次点以下から選ぶ。
 
-- 一致するものが無いのは、勝者がそのビューに居ないとき（`Shop` に潜ったビューで勝者が `Admin.Api`）
-  である。そのビューの論理 canvas には同名の兄弟は居ない（id は兄弟間で一意。ADR-927）ので、
-  候補は canvas の 1 件と ghost に限られ、最初に入るのは canvas の 1 件になる。
-- 規則は core に helper を 1 つ置いて全 Map で共有する（例: `bareIdView(byPath, nodePathIndex)`）。
+- 勝者が Map に居ないことはある。`Shop` に潜ったビューで勝者が `Admin.Api` のときは候補が canvas の
+  1 件と ghost に限られるが、ルートビューでも候補は複数になりうる（`Shop.Api` と `Admin.Api` が
+  無印の service で、勝者が `@migration_target` を継承した別 service 配下の `domain Api` のとき、
+  ルートの canvas には 2 つの service だけが載る）。このとき「Map に最初に入ったもの」を選ぶと、
+  system や ghost を Map に入れる順で答えが変わる。順位を Map の外（model）から取ることで、
+  Map の組み立て順に依存しない。
+- 順位の出どころは `buildNodePathIndex` が walk 中に集めている候補リスト（`candidates`。priority と
+  traversal 順を持つ）である。今は勝者だけを残して捨てているので、id ごとの**順位付き path 列**
+  （例: `nodePathRanking: Map<id, path[]>`、先頭が勝者）を `KrsFile` に併せて残す。勝者は従来どおり
+  その先頭で、`nodePathIndex` の値は変わらない。
+- 順位付き path 列に載らない path（候補にならない kind。今の Map の利用範囲では出ない想定）は
+  最後に回し、その中では `nodePathRefId` の文字列順で決める。ここも Map の組み立て順に依存させない。
+- 規則は core に helper を 1 つ置いて全 Map で共有する（例: `bareIdView(byPath, nodePathRanking)`）。
   Map ごとに書き下さない（TPL-1583「三項のコピペ」）。
 
 ### 実装の指針
@@ -212,7 +222,9 @@ bare id で引く entry は、**その Map が保持している同じ bare id �
 1 PR で入れる（各 Map の変更は小さく、共有 helper と AT が全 Map にまたがるため）。
 
 1. **helper**: `parser/node-path.ts` か新設の `compile/bare-id-view.ts` に、path キーの Map から bare
-   の見え方を作る関数を置く。入力は `Map<nodePathRefId, V>` と `nodePathIndex`、出力は `Map<id, V>`。
+   の見え方を作る関数を置く。入力は `Map<nodePathRefId, V>` と `nodePathRanking`、出力は `Map<id, V>`。
+   `buildNodePathIndex` は `nodePathRanking` を併せて返し、`resolve()` が `nodePathIndex` と同じ位置で
+   再構築する（ADR-2596）。
    path の末尾 segment は `parseNodePathRefId` で取り出す（key を `.` で split しない。#2819 /
    TPL-1352）。
 2. **`nodeMetadata`**: `buildNodeMetadata` は `byPath` だけを組み立て、`byId` は helper で導く。
@@ -239,8 +251,12 @@ bare id で引く entry は、**その Map が保持している同じ bare id �
    （`fromKey` / `toKey`、ルートでだけ設定）を載せ、exporter は無ければ bare id に落ちる。
    同名なしモデルでは Map key が bare id と同じなので出力は変わらない。
 8. **tests**: `packages/core/src/renderer/multi-system-same-id.test.ts` に上の実測モデルで Map ごとの
-   規則を固定する。宣言順を入れ替えても結果が変わらないこと（TPL-1583 チェックリスト最終項）を
-   各 Map で確かめる。同名なしモデルの byte-identical は既存の fence が見る。
+   規則を固定する。bare の見え方について、priority が異なるときは宣言順を入れ替えても高い方が
+   勝ち、同点のときは traversal 順で最初が勝つこと（TPL-1583 チェックリスト最終項、ADR-2550）を
+   各 Map で確かめる。勝者がその Map に居ない場合（勝者が別 service 配下の `domain Api` で、ルートに
+   無印の `Shop.Api` / `Admin.Api` が載る）に、次点の選択が system の宣言順以外で変わらないことも
+   確かめる。path キーの primary は宣言順に依存しない。同名なしモデルの byte-identical は既存の
+   fence が見る。
 9. **TPL**: TPL-1583 の `discovered_from` に `#2934` を足し、チェックリストに「bare id の Map を
    足すときは、1 ノードの値なら path キー + 勝者規則の bare ビュー、broadcast なら doc comment に
    そう書く」を 1 項足す。新規 proactive TPL は起こさない（原則は TPL-1583 / TPL-1352 / TPL-2920 に
