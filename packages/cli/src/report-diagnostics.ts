@@ -35,6 +35,32 @@ export function reportDiagnostics(
   for (const [prefix, list] of severityGroups) {
     printDiagnostics(prefix, list);
   }
+  printWarnings(locOf, warnings);
+
+  return errors.length;
+}
+
+/**
+ * Print a compile's warnings to stderr in the format `reportDiagnostics` uses.
+ * Exported for `karasu diff`, which keeps its own diagnostic format (it
+ * compiles two inputs) but reports the after model's warnings the way
+ * `render` does (#2879).
+ *
+ * `entryLabel` names the entry when it is not a file the user typed (a stdin
+ * side of the diff); see `diagLocFormatter`.
+ */
+export function reportWarnings(
+  filePath: string,
+  warnings: Warning[],
+  entryLabel: string = filePath,
+): void {
+  printWarnings(diagLocFormatter(filePath, entryLabel), warnings);
+}
+
+function printWarnings(
+  locOf: (d: { loc?: Diagnostic["loc"] }) => string,
+  warnings: Warning[],
+): void {
   for (const w of warnings) {
     // Honour the warning's register: info-severity kinds (e.g.
     // domain-dispersal) print as `Info:`, not `Warning:` — see
@@ -48,6 +74,4 @@ export function reportDiagnostics(
     const where = w.loc ? `${locOf(w)}: ` : "";
     process.stderr.write(`${prefix}: ${where}${formatWarning(w).message}\n`);
   }
-
-  return errors.length;
 }

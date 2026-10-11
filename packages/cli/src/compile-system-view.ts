@@ -43,8 +43,16 @@ import { NodeFileSystemProvider } from "./node-fs.js";
  * carries the same optional `loc` and the CLI prints both through one rule
  * (#2802): the spec's per-surface location table names the surface, not the
  * channel the position arrived on.
+ *
+ * `entryLabel` replaces the entry's spelling in the output when the entry is a
+ * file the user never named: `karasu diff` reads a `-` side from stdin into a
+ * temporary file, and printing that path would name a file that is deleted
+ * before the user reads the line (#2879).
  */
-export function diagLocFormatter(filePath: string): (d: { loc?: Diagnostic["loc"] }) => string {
+export function diagLocFormatter(
+  filePath: string,
+  entryLabel: string = filePath,
+): (d: { loc?: Diagnostic["loc"] }) => string {
   const canonical = new Map<string, string>();
   const canonicalOf = (path: string): string => {
     let hit = canonical.get(path);
@@ -55,10 +63,10 @@ export function diagLocFormatter(filePath: string): (d: { loc?: Diagnostic["loc"
     return hit;
   };
   return (d) => {
-    if (!d.loc) return filePath;
+    if (!d.loc) return entryLabel;
     const file =
       d.loc.file === undefined || canonicalOf(d.loc.file) === canonicalOf(filePath)
-        ? filePath
+        ? entryLabel
         : relative(process.cwd(), d.loc.file);
     return `${file}:${d.loc.start.line}:${d.loc.start.column}`;
   };

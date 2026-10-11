@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import type { Diagnostic } from "../types/ast.js";
+import type { Warning } from "../types/warnings.js";
 import { mergeMembership } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
 import type { FileSystemProvider } from "../fs/types.js";
@@ -45,12 +46,19 @@ import { diffOrgViewSlices } from "../diff/org-view-diff.js";
 import type { NodeDiffMeta, EdgeDiffMeta } from "../diff/view-diff.js";
 import { injectDiffStyle } from "../diff/diff-style.js";
 import { nodePathKey } from "../parser/node-path.js";
+import { collectModelWarnings } from "./compile.js";
 
 /**
- * Resolve the before / after project entries with a shared `ImportResolver`
- * and concatenate their resolver diagnostics (before-side first). Shared
- * boilerplate for the `compile*Diff` pipelines and
- * `buildAllViewsSvgDiffProject`.
+ * Resolve the before / after project entries and concatenate their resolver
+ * diagnostics (before-side first). Shared boilerplate for the `compile*Diff`
+ * pipelines and `buildAllViewsSvgDiffProject`.
+ *
+ * Each side gets its own `ImportResolver`. `resolve()` resets the instance's
+ * state (diagnostics, visited files and style sheets) on entry, so two
+ * concurrent calls on one instance cleared each other's state mid-flight:
+ * every diagnostic came back on both sides, and a style sheet both sides
+ * import was dropped from one of them with a false circular-import warning
+ * (#2879).
  */
 async function resolveBeforeAfter(
   fs: FileSystemProvider,
@@ -61,10 +69,9 @@ async function resolveBeforeAfter(
   afterResolved: ResolvedProject;
   diagnostics: Diagnostic[];
 }> {
-  const resolver = new ImportResolver(fs);
   const [beforeResolved, afterResolved] = await Promise.all([
-    resolver.resolve(beforeEntryPath),
-    resolver.resolve(afterEntryPath),
+    new ImportResolver(fs).resolve(beforeEntryPath),
+    new ImportResolver(fs).resolve(afterEntryPath),
   ]);
   return {
     beforeResolved,
@@ -94,6 +101,28 @@ function assembleDiffSheets(
 }
 
 /**
+ * The warnings a diff reports: the after model's, collected once from the
+ * model rather than per rendered view (#2879). Before is the side being
+ * replaced, so its warnings are not reported; this is the set
+ * `karasu render <after>` and the app's compare mode show.
+ *
+ * Collected against the after side's own sheets, not the before + after
+ * concatenation `assembleDiffSheets` builds for rendering: that one carries
+ * before's sheets so removed nodes keep their style, and validating it would
+ * report positions in before's style files.
+ */
+function collectAfterWarnings(
+  afterResolved: ResolvedProject,
+  theme: DiagramTheme | undefined,
+  annotationBadgeLabels: AnnotationBadgeLabels | undefined,
+): Warning[] {
+  return collectModelWarnings(afterResolved.krsFile, [
+    getBuiltinStyleSheet(theme, annotationBadgeLabels),
+    ...afterResolved.styleSheets,
+  ]);
+}
+
+/**
  * Flatten diff metadata maps into the plain `Map<id, state>` shape the
  * renderers consume for `data-diff-state` stamping.
  */
@@ -112,6 +141,8 @@ export interface SystemDiffCompileResult {
   diagramType: "system";
   svg: string;
   diagnostics: Diagnostic[];
+  /** The after model's warnings, once per diff (#2879). */
+  warnings: Warning[];
   /** Diff metadata per node id (for UI hover / detail panel). */
   nodeDiff: Map<string, NodeDiffMeta>;
   /** Diff metadata per edge key (`from->to`). */
@@ -403,6 +434,7 @@ export async function compileSystemDiff(
     diagramType: "system",
     svg: injectDiffStyle(svg),
     diagnostics,
+    warnings: collectAfterWarnings(afterResolved, theme, options.annotationBadgeLabels),
     nodeDiff: diffed.nodes,
     edgeDiff: diffed.edges,
   };
@@ -412,6 +444,8 @@ export interface DeployDiffCompileResult {
   diagramType: "deploy";
   svg: string;
   diagnostics: Diagnostic[];
+  /** The after model's warnings, once per diff (#2879). */
+  warnings: Warning[];
   nodeDiff: Map<string, NodeDiffMeta>;
   edgeDiff: Map<string, EdgeDiffMeta>;
 }
@@ -511,6 +545,7 @@ export async function compileDeployDiff(
     diagramType: "deploy",
     svg: injectDiffStyle(svg),
     diagnostics,
+    warnings: collectAfterWarnings(afterResolved, theme, options.annotationBadgeLabels),
     nodeDiff: diffed.nodes,
     edgeDiff: diffed.edges,
   };
@@ -520,6 +555,8 @@ export interface OrgDiffCompileResult {
   diagramType: "org";
   svg: string;
   diagnostics: Diagnostic[];
+  /** The after model's warnings, once per diff (#2879). */
+  warnings: Warning[];
   /** Diff metadata per team / member id. */
   nodeDiff: Map<string, NodeDiffMeta>;
   /** Diff metadata per `ownsEdgeKey(teamId, serviceId)`. */
@@ -592,6 +629,7 @@ export async function compileOrgDiff(
     diagramType: "org",
     svg: injectDiffStyle(svg),
     diagnostics,
+    warnings: collectAfterWarnings(afterResolved, theme, options.annotationBadgeLabels),
     nodeDiff: diffed.nodes,
     edgeDiff: diffed.edges,
   };
@@ -612,6 +650,11 @@ export interface CompileBundledDiffOptions {
 export interface BundledDiffCompileResult {
   svg: string;
   diagnostics: Diagnostic[];
+  /**
+   * The after model's warnings, collected once for the whole bundle rather than
+   * concatenated from `views`, which would repeat each one per view (#2879).
+   */
+  warnings: Warning[];
   /** Per-view diff result for each view that was applicable and rendered. */
   views: {
     system?: SystemDiffCompileResult;
@@ -684,6 +727,14 @@ export async function buildAllViewsSvgDiffProject(
   // returns the same resolver diagnostics. To avoid duplicates, use the
   // diagnostics from the upfront resolver pass (which is the same data).
   const diagnostics = resolverDiagnostics;
+  // Every view result already holds the same set (one after model, one sheet
+  // list), so take it from whichever view ran instead of a fourth pass; collect
+  // only when no view applies.
+  const warnings =
+    systemResult?.warnings ??
+    deployResult?.warnings ??
+    orgResult?.warnings ??
+    collectAfterWarnings(afterResolved, theme, options.annotationBadgeLabels);
 
   const bundled = bundleSingleLevelViews(
     {
@@ -700,8 +751,8 @@ export async function buildAllViewsSvgDiffProject(
     const placeholder = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="${
       resolvePalette(theme).emptyStateText
     }" font-family="sans-serif">${emptyStateLabels?.systemNoDiagram ?? "No diagram"}</text></svg>`;
-    return { svg: placeholder, diagnostics, views };
+    return { svg: placeholder, diagnostics, warnings, views };
   }
 
-  return { svg: injectDiffStyle(bundled), diagnostics, views };
+  return { svg: injectDiffStyle(bundled), diagnostics, warnings, views };
 }

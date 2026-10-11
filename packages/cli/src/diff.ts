@@ -8,9 +8,10 @@ import {
   compileSystemDiff,
 } from "@karasu-tools/core";
 import type { DiagramType } from "@karasu-tools/core";
-import { formatDiagnostic, formatWarning } from "./i18n.js";
+import { formatDiagnostic } from "./i18n.js";
 import { NodeFileSystemProvider } from "./node-fs.js";
 import { writeOutput } from "./output.js";
+import { reportWarnings } from "./report-diagnostics.js";
 
 interface DiffOptions {
   output?: string;
@@ -91,9 +92,10 @@ export async function diff(
       const loc = d.loc ? `${d.loc.start.line}:${d.loc.start.column}` : "";
       process.stderr.write(`Warning: ${loc} ${formatDiagnostic(d)}\n`);
     }
-    for (const w of result.warnings ?? []) {
-      process.stderr.write(`Warning: ${formatWarning(w).message}\n`);
-    }
+    // Warnings are the after model's, once per diff (#2879), so they can name
+    // their file the way `render` does: the after entry as the user typed it
+    // (`-` for stdin), any file it imports by its own path.
+    reportWarnings(afterAbs, result.warnings, afterArg);
 
     if (errors.length > 0) {
       process.exit(1);
@@ -110,7 +112,7 @@ export async function diff(
 interface DiffCompileResult {
   svg: string;
   diagnostics: import("@karasu-tools/core").Diagnostic[];
-  warnings?: import("@karasu-tools/core").Warning[];
+  warnings: import("@karasu-tools/core").Warning[];
 }
 
 async function compileFor(
@@ -129,7 +131,7 @@ async function compileFor(
       return compileOrgDiff(opts);
     case undefined: {
       const result = await buildAllViewsSvgDiffProject(opts);
-      return { svg: result.svg, diagnostics: result.diagnostics };
+      return { svg: result.svg, diagnostics: result.diagnostics, warnings: result.warnings };
     }
   }
 }
