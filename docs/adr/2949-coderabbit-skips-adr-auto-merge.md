@@ -1,7 +1,8 @@
 ---
 id: ADR-2949
 title: auto-merge する ADR-only PR は CodeRabbit の自動レビュー対象から外す
-status: accepted
+status: superseded
+superseded_by: ADR-3117
 date: 2026-09-27
 topic: build
 related_to: [ADR-2716, ADR-2331, ADR-2898]
@@ -13,7 +14,7 @@ assumptions:
 # ADR-2949: auto-merge する ADR-only PR は CodeRabbit の自動レビュー対象から外す
 
 - **日付**: 2026-09-27
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by [ADR-3117](3117-coderabbit-ignore-command-for-skip.md)（外す手段のみ。外す範囲は引き継がれている）
 - **関連**:
   - Issue [#2949](https://github.com/kompiro/karasu/issues/2949)
   - [ADR-2716](2716-coderabbit-request-changes-workflow.md)（CodeRabbit の運用と自動レビューの除外対象。本 ADR は除外対象を 1 つ足す）

@@ -178,6 +178,7 @@ flowchart TD
     ADR_3052["ADR-3052<br/>/engineering:code-review は draft PR を作る前に base ..."]
     ADR_3069["ADR-3069<br/>Dependabot トリアージ 2026-10-05：mocha 12 を含む 8 件を採用..."]
     ADR_3077["ADR-3077<br/>Dependabot security alert 2026-10-06（transitive..."]
+    ADR_3117["ADR-3117<br/>CodeRabbit から外す PR は PR 本文の ignore コマンドで外し、ラベルは..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -621,6 +622,8 @@ flowchart TD
   ADR_2807 -.supersedes.-> ADR_2805
   ADR_2906 -.supersedes.-> ADR_2376
   ADR_3052 -.supersedes.-> ADR_2898
+  ADR_3117 -.supersedes.-> ADR_3011
+  ADR_3117 -.supersedes.-> ADR_2949
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -1011,7 +1014,7 @@ flowchart TD
   class ADR_2906 accepted
   class ADR_2917 accepted
   class ADR_2939 accepted
-  class ADR_2949 accepted
+  class ADR_2949 superseded
   class ADR_2958 accepted
   class ADR_2969 accepted
   class ADR_2983 accepted
@@ -1020,12 +1023,13 @@ flowchart TD
   class ADR_2995 accepted
   class ADR_3000 accepted
   class ADR_3002 accepted
-  class ADR_3011 accepted
+  class ADR_3011 superseded
   class ADR_3020 accepted
   class ADR_3022 accepted
   class ADR_3052 accepted
   class ADR_3069 accepted
   class ADR_3077 accepted
+  class ADR_3117 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

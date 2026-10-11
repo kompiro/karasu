@@ -107,7 +107,7 @@ ready → implementing → in-review → (close)
 7. PR 前に main を取り込む — git fetch origin main && git merge --no-edit origin/main（rebase は使わない。「ブランチ戦略」参照）。コンフリクトを解消し、lint / test を再確認する
 8. base ブランチとの差分（git diff origin/main...HEAD）に /engineering:code-review を当て、対応すると決めた修正をコミットし、lint / test を再確認する。PR はまだ作らない
 9. PR を draft で作成する（gh pr create --draft、Closes #N で Issue と紐付ける）。draft には CodeRabbit も分単位の CI も走らない
-10. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の、`adr-auto-merge` / `skip-coderabbit` ラベルの無い PR）では初回レビューもここで走る
+10. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の、本文に ignore コマンドが無く、`adr-auto-merge` / `skip-coderabbit` ラベルの無い PR）では初回レビューもここで走る
 11. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 12. Issue ラベルを status: in-review に更新する
 13. 手動検証チェックリストを実施する
@@ -126,54 +126,62 @@ PR への push は、自動レビューが走るたびに CodeRabbit の review 
 
 詳細な手順は `/hane:start-dev` スキル（[`kompiro/hane`](https://github.com/kompiro/hane) plugin）を参照。
 
-### CodeRabbit を外す小さな PR（`skip-coderabbit` ラベル）
+### CodeRabbit を外す小さな PR（ignore コマンドと `skip-coderabbit` ラベル）
 
-**到達状態**: `skip-coderabbit` ラベルの付いた PR は、下の判定基準を満たすと人間が
-承認したものだけで、CodeRabbit の自動レビューを受けずに人間のレビューへ進んでいる。
-ラベルの付いた PR は `gh pr list --label skip-coderabbit --state all` で一覧できる。
+**到達状態**: 本文に `@coderabbitai ignore` の行を持ち `skip-coderabbit` ラベルの付いた PR は、
+下の判定基準を満たすと人間が承認したものだけで、CodeRabbit の review 枠を 1 回も使わずに
+人間のレビューへ進んでいる。外した PR は `gh pr list --label skip-coderabbit --state all`
+で一覧できる。
+
+レビューから外すのは本文の行で、ラベルは外した PR を一覧するための記録である。ラベルだけ
+では CodeRabbit が PR を開いた時点の 1 回を止められない（#3003）。`.coderabbit.yaml` の
+ラベル除外は、本文に行を書き忘れたときの後ろ盾として残している。
 
 判定基準は 1 つ、**差分が正しいかどうかが、差分そのものと外部の事実（リンク先・画像・
 綴り）だけで決まり、周辺のコードや規約を読まずに判断できるか**。行数は問わない。
 実行時の振る舞い（コードの経路・ルーティング・CI の動き）を変える差分は、この基準を
-満たさない。差分の一部でも満たさなければ、PR 全体にラベルを付けない。
+満たさない。差分の一部でも満たさなければ、PR 全体を外さない。
 
-| 差分 | ラベル | 理由 |
+| 差分 | 外すか | 理由 |
 | --- | --- | --- |
-| README のリンク切れ修正 | 付ける | リンク先を開けば正否が決まる |
-| nest に favicon を静的アセットと `<link rel="icon">` で足す | 付ける | 画像とその参照だけ |
-| 同じ favicon を Worker の新しいルートで返す | 付けない | ルーティングという振る舞いが変わる |
-| i18n テーブルにある UI 文言の typo 修正 | 付ける | 綴りで決まる。表示文字列の修正は振る舞いの変更に数えない |
-| `examples/` の .krs の typo 修正（`examples.ts` のミラー同期を含む） | 付ける | 綴りで決まり、ミラーの一致は drift ガードが見る |
-| コードコメント・JSDoc の修正 | 付けない | コードについての主張なので、コードとの照合が要る |
-| `docs/process.md` の 1 行修正 | 付けない | 運用についての主張なので、規約との照合が要る |
-| テストだけの追加 | 付けない | 何を検証すべきかの判断が要る |
-| `.github/workflows` の action バージョン更新 | 付けない | CI の振る舞いが変わる |
-| core の 1 行のバグ修正 | 付けない | 振る舞いが変わる |
+| README のリンク切れ修正 | 外す | リンク先を開けば正否が決まる |
+| nest に favicon を静的アセットと `<link rel="icon">` で足す | 外す | 画像とその参照だけ |
+| 同じ favicon を Worker の新しいルートで返す | 外さない | ルーティングという振る舞いが変わる |
+| i18n テーブルにある UI 文言の typo 修正 | 外す | 綴りで決まる。表示文字列の修正は振る舞いの変更に数えない |
+| `examples/` の .krs の typo 修正（`examples.ts` のミラー同期を含む） | 外す | 綴りで決まり、ミラーの一致は drift ガードが見る |
+| コードコメント・JSDoc の修正 | 外さない | コードについての主張なので、コードとの照合が要る |
+| `docs/process.md` の 1 行修正 | 外さない | 運用についての主張なので、規約との照合が要る |
+| テストだけの追加 | 外さない | 何を検証すべきかの判断が要る |
+| `.github/workflows` の action バージョン更新 | 外さない | CI の振る舞いが変わる |
+| core の 1 行のバグ修正 | 外さない | 振る舞いが変わる |
 
-**ラベルは Claude が提案し、人間が承認してから付ける。** Claude は判定基準を満たすと
-考えたら、表のどの行に当たるかを添えて付けてよいか尋ねる。承認を得るまでは付けずに
-通常の手順で進める。承認後は draft のうちに付けてから ready にする。
+**外すかどうかは PR を作る前に Claude が提案し、人間が承認する。** Claude は判定基準を
+満たすと考えたら、表のどの行に当たるかを添えて外してよいか尋ねる。承認を得るまでは
+通常の手順で進める。承認後は、本文の最後に `@coderabbitai ignore` だけの行を置き、
+ラベルと一緒に draft で作ってから ready にする。
 
 ```
-gh pr create --draft ...
-gh pr edit <N> --add-label skip-coderabbit   # 人間の承認後
+gh pr create --draft --label skip-coderabbit --body-file <本文>   # 本文の最後の行が @coderabbitai ignore
 gh pr ready <N>
 ```
 
-- **ready の後に付けた場合**、それ以降の push の自動レビューは止まるが、既に付いた
-  レビューとその changes-requested は残る。changes-requested はマージを止めないので、
-  そのまま人間のレビューに進んでよい
-- ラベルの付いた PR では `/coderabbit-converge` を回さず、次節の到達状態
+- **PR を作ってから外すと決めた場合**は、draft のうちに本文へ行を足し
+  （`gh pr edit <N> --body-file <本文>`）、ラベルを付ける。ready の後に足した場合、
+  それ以降の push の自動レビューは止まるが、既に付いたレビューとその changes-requested は
+  残る。changes-requested はマージを止めないので、そのまま人間のレビューに進んでよい
+- 外した PR では `/coderabbit-converge` を回さず、次節の到達状態
   （CodeRabbit の approve）も求めない。CI が通れば人間のレビューに渡す
-- ラベルを付けた後に判定基準を満たさない差分を足すなら、push の前にラベルを外し
-  （`gh pr edit <N> --remove-label skip-coderabbit`）、push 後に
-  `@coderabbitai review` を投げて通常の手順に戻る
-- **PR 本文に `@coderabbitai ignore` という文字列を書かない。** CodeRabbit は文脈を
-  区別せず、引用や却下した案の説明として書いただけでもその PR をレビューから外す。
-  外れたときのステータスは理由の付かない `Review skipped` で、ラベルや draft による
-  除外と見分けられる（#3012 で起きた）。コマンドに触れるときは「the ignore command」
-  のように `@coderabbitai` を付けずに書く
-- 判定の経緯と却下した案は [ADR-3011](adr/3011-skip-coderabbit-label.md)
+- 外した後に判定基準を満たさない差分を足すなら、push の前に本文の行とラベルの両方を外し
+  （`gh pr edit <N> --body-file <本文> --remove-label skip-coderabbit`）、push 後に
+  `@coderabbitai full review` を投げて通常の手順に戻る。それまでのコミットは一度も
+  レビューされていないので、差分だけを見る `@coderabbitai review` では足りない
+- **外すと決めた PR 以外の本文に `@coderabbitai ignore` という文字列を書かない。**
+  CodeRabbit は文脈を区別せず、引用や却下した案の説明として書いただけでもその PR を
+  レビューから外す。外れたときのステータスは理由の付かない `Review skipped` で、
+  ラベルや draft による除外と見分けられる（#3012 で起きた）。コマンドに触れるときは
+  「the ignore command」のように `@coderabbitai` を付けずに書く
+- 判定の経緯と却下した案は [ADR-3117](adr/3117-coderabbit-ignore-command-for-skip.md)
+  （外す手段）と [ADR-3011](adr/3011-skip-coderabbit-label.md)（判定基準）
 
 ### 人間のレビューは CodeRabbit が approve してから始める
 
@@ -237,10 +245,10 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 - 対象外は draft PR と `dependabot[bot]` / `renovate[bot]` の PR（依存更新は
   `/hane:dependabot` が別途トリアージ）。`ignore_usernames` は完全一致なので、
   他の bot を除外するには login を `.coderabbit.yaml` に足す
-- `adr-auto-merge` ラベルの付いた ADR-only PR も対象外。auto-merge の適用条件を
-  満たすと diff で確認した PR にだけ、draft のうちに付ける（`.claude/rules/adr.md`
-  「ADR PR の auto-merge」、ADR-2949）
-- `skip-coderabbit` ラベルの付いた PR も対象外（「CodeRabbit を外す小さな PR」）
+- 本文の ignore コマンドと `adr-auto-merge` ラベルで外した ADR-only PR も対象外。
+  auto-merge の適用条件を満たすと PR を作る前にブランチの差分で確認した PR にだけ、
+  作成時に入れる（`.claude/rules/adr.md`「ADR PR の auto-merge」、ADR-3117）
+- 本文の ignore コマンドと `skip-coderabbit` ラベルで外した PR も対象外（「CodeRabbit を外す小さな PR」）
 - 採用しない指摘は**返信で理由を書いてから閉じる**。approve は指摘に従わなくても
   到達できる。**approve を取ることを目的に指摘へ従わない**。従うべきか迷うものは、
   上の表に従って人間へ回す
