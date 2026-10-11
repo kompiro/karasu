@@ -16,6 +16,7 @@ discovered_from:
   - issue: "#2714"
   - issue: "#2817"
   - issue: "#2917"
+  - issue: "#2933"
   - root_cause_file: "packages/core/src/resolver/style-resolver.ts"
 related_to:
   - TPL-2167
@@ -118,6 +119,17 @@ key を scope しても**引く側**が bare id のままなら同じ取りこ�
 要素の id（`data-node-id`）は key ではなく `LayoutNode.id` から出すので、出力の id 空間は
 変わらない。
 
+## 既知の consumer: 静的バンドルのドリル walk（#2933）
+
+`buildDrillDownSvg` / `buildAllViewsSvg` / `buildAllLayersSvg` は、複数 system のルートの
+子を `slice.systems.flatMap((s) => s.children)` で集めたあと、子の path を `[child.id]` と
+組んでいた。どの system の子かという次元をそこで落とすので、`extract(["Api"])` は最初の
+所有 system に解決され、後の system の `Api` とその部分木はすべて前の system の複製として
+描かれた（`Admin.Api.Users` のレベルが一度も出ない）。直し方は子と一緒に full path
+（`[system.id, child.id]`）を運ぶこと（`systemDrillChildren`）。key ではなく「引くための
+path」が次元を落とした例で、#2817 と同じく、集めた時点で持っていた次元を引く側まで
+渡さないと同じ取りこぼしが起きる。
+
 ## 関連テスト
 
 - `packages/core/src/renderer/svg-renderer.test.ts` — "keeps the sync edge solid when a parallel async edge exists between the same pair"
@@ -125,6 +137,7 @@ key を scope しても**引く側**が bare id のままなら同じ取りこ�
 - `packages/core/src/parser/node-path.test.ts` — "nodePathRefId (#2714) › tells apart the paths a plain join collapses"
 - `packages/core/src/view/deploy-view-extract.test.ts` — "a dotted id cannot claim a qualified container's id (#2714)"
 - `packages/core/src/view/deploy-view-extract.test.ts` — "same-named service and infra in two systems (#2817)"
+- `packages/core/src/renderer/static-bundle-same-id.test.ts` — "one level per anchor id (#2933) › draws the later system's subtree from its own nodes"
 
 ## 派生元 spec
 

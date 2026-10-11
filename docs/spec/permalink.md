@@ -2,17 +2,17 @@
 
 > **English**（this file） · [日本語](permalink.ja.md)
 
-A **deep permalink** addresses a *specific structural element or view* inside a
+A **deep permalink** addresses a _specific structural element or view_ inside a
 karasu model, so a reader who follows the link lands drilled/focused on exactly
 that element — not on the whole model. This page is the authoritative contract
 for the **fragment anchor** that both deep-link surfaces share.
 
 Two surfaces resolve the same anchor:
 
-| Surface | How it consumes the anchor |
-| --- | --- |
-| **Static rendered SVG** (`buildDrillDownSvg` / all-views export) | Pure CSS `:target` + `:has()`. Opening `<svg-url>#krs-system-Payment` shows that level — no JavaScript. |
-| **nest/app SPA** (`useHistoryNavigation`) | Parses the `#krs-…` hash on mount / `popstate` and drills + focuses through the node-path index. |
+| Surface                                                          | How it consumes the anchor                                                                                                                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Static rendered SVG** (`buildDrillDownSvg` / all-views export) | Pure CSS `:target` + `:has()`. Opening `<svg-url>#krs-system-Payment` shows that level — no JavaScript. When two nodes share an id, the bundle emits one level for the anchor: the node the SPA resolves it to (the `nodePathIndex` winner). The other node's card is drawn without a link, and its uniquely named descendants keep their own levels (#2933). |
+| **nest/app SPA** (`useHistoryNavigation`)                        | Parses the `#krs-…` hash on mount / `popstate` and drills + focuses through the node-path index.                                                                                                                                                                                                                                                              |
 
 Because both surfaces use the **same grammar**, one anchor is portable: the
 fragment you copy from a rendered SVG resolves in the app, and vice versa.
@@ -41,7 +41,7 @@ fragment you copy from a rendered SVG resolves in the app, and vice versa.
   through `sanitizeId` (non-`[A-Za-z0-9_-]` → `_`). The literal `root` denotes
   the view's top level. Identity is always the `id`, never a `label` or any
   translated/display string.
-- **`:<highlight>`** *(SPA only)* — an optional `id` to focus-highlight on
+- **`:<highlight>`** _(SPA only)_ — an optional `id` to focus-highlight on
   arrival. The static SVG has no highlight channel (CSS `:target` selects one
   element only), so this suffix is dropped there.
 
@@ -79,12 +79,12 @@ throws.
 ## Route forms that carry an anchor
 
 The anchor above is portable across every URL karasu serves it on. Two of those
-URLs are addresses of a *model*; the rest are addresses of a *payload*.
+URLs are addresses of a _model_; the rest are addresses of a _payload_.
 
-| Form | What it addresses |
-| --- | --- |
+| Form                                      | What it addresses                                                                      |
+| ----------------------------------------- | -------------------------------------------------------------------------------------- |
 | `…/<owner>/<repo>[/<path>][@<ref>]#krs-…` | A `.krs` committed in a GitHub repo, resolved at `<ref>` (default branch when omitted) |
-| `…/s?s=<payload>#…` / `…/#s=<payload>` | An inline snapshot frozen into the URL |
+| `…/s?s=<payload>#…` / `…/#s=<payload>`    | An inline snapshot frozen into the URL                                                 |
 
 The repo-backed form takes the GitHub path verbatim, so **swapping the host is
 the whole transformation**: `github.com/<owner>/<repo>` →
@@ -92,7 +92,7 @@ the whole transformation**: `github.com/<owner>/<repo>` →
 owner. A `/r/` prefix was retired by [ADR-1961](../adr/1961-bare-permalink-route.md)
 and now answers 301 to the bare form; do not write new links in that shape.
 
-Two consequences follow from the repo-backed form being a *resolution*, never a
+Two consequences follow from the repo-backed form being a _resolution_, never a
 generation ([ADR-2249](../adr/2249-permalink-generation-seam.md)):
 
 - A repo with no `.krs` gets a page saying so, not a diagram and not the app.
@@ -113,4 +113,4 @@ which fails CI when a `permalink:` anchor no longer resolves (#1830).
 Do not work around it by anchoring on `label` — labels are display/i18n strings
 and are explicitly not identity.
 
-> Related TPLs: [TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md) — the static-SVG and SPA-hash anchors must stay one id-based grammar; a divergence makes a permalink resolve on one surface but not the other.
+> Related TPLs: [TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md) — the static-SVG and SPA-hash anchors must stay one id-based grammar; a divergence makes a permalink resolve on one surface but not the other; [TPL-2920](../test-perspectives/TPL-2920-duplicate-element-id-on-one-canvas-names-its-landing.md) — where two nodes share an id, each consumer of the bare id names its landing, and the static bundle's is the SPA's.
