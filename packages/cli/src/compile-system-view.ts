@@ -1,5 +1,6 @@
 import { realpathSync } from "node:fs";
-import { relative, resolve } from "node:path";
+import { stat } from "node:fs/promises";
+import { join, relative, resolve } from "node:path";
 import {
   compileProject,
   ImportResolver,
@@ -42,8 +43,16 @@ import { NodeFileSystemProvider } from "./node-fs.js";
  * carries the same optional `loc` and the CLI prints both through one rule
  * (#2802): the spec's per-surface location table names the surface, not the
  * channel the position arrived on.
+ *
+ * `entryLabel` replaces the entry's spelling in the output when the entry is a
+ * file the user never named: `karasu diff` reads a `-` side from stdin into a
+ * temporary file, and printing that path would name a file that is deleted
+ * before the user reads the line (#2879).
  */
-export function diagLocFormatter(filePath: string): (d: { loc?: Diagnostic["loc"] }) => string {
+export function diagLocFormatter(
+  filePath: string,
+  entryLabel: string = filePath,
+): (d: { loc?: Diagnostic["loc"] }) => string {
   const canonical = new Map<string, string>();
   const canonicalOf = (path: string): string => {
     let hit = canonical.get(path);
@@ -54,10 +63,10 @@ export function diagLocFormatter(filePath: string): (d: { loc?: Diagnostic["loc"
     return hit;
   };
   return (d) => {
-    if (!d.loc) return filePath;
+    if (!d.loc) return entryLabel;
     const file =
       d.loc.file === undefined || canonicalOf(d.loc.file) === canonicalOf(filePath)
-        ? filePath
+        ? entryLabel
         : relative(process.cwd(), d.loc.file);
     return `${file}:${d.loc.start.line}:${d.loc.start.column}`;
   };
@@ -79,31 +88,79 @@ function canonicalPath(path: string): string {
 }
 
 /**
- * Resolve `filePath` to an absolute path and verify it exists, exiting with
- * the shared `Error: File not found: <file>` message otherwise. Returns
- * `undefined` (after writing stderr and calling `process.exit(1)`) so
- * callers can `return` immediately — mirroring real process termination
- * even when `process.exit` is mocked (e.g. in tests).
+ * The entry file a command compiles, resolved from the path the user typed.
  *
- * Shared first step of matrix / coverage / subtree's "compile system view
- * or exit" prologue — split out from {@link compileSystemViewOrExit}
+ * `displayPath` is the spelling diagnostics print for the entry. It is the
+ * argument itself when that names a file, and `<dir>/index.krs` when it names
+ * a directory (#2942): a location must name a file the reader can open, and
+ * `dir:3:5` names none.
+ */
+export interface ResolvedKrsEntry {
+  absolutePath: string;
+  displayPath: string;
+  fs: NodeFileSystemProvider;
+}
+
+/**
+ * Resolve `filePath` to the entry `.krs` file, exiting with a message that
+ * says why when there is none. A directory resolves to its `index.krs`, the
+ * entry `serve` and the app already open (#2942); a directory without one is
+ * reported as such rather than as a missing file. Returns `undefined` (after
+ * writing stderr and calling `process.exit(1)`) so callers can `return`
+ * immediately — mirroring real process termination even when `process.exit`
+ * is mocked (e.g. in tests).
+ *
+ * Shared first step of render / check / matrix / coverage / subtree /
+ * team-dependencies — split out from {@link compileSystemViewOrExit}
  * because matrix and coverage run their own `--format`/`--infra`/
  * `--threshold` validation *between* the exists check and the compile
  * step, and that relative ordering must stay byte-identical.
  */
 export async function resolveKrsFileOrExit(
   filePath: string,
-): Promise<{ absolutePath: string; fs: NodeFileSystemProvider } | undefined> {
-  const absolutePath = resolve(filePath);
+): Promise<ResolvedKrsEntry | undefined> {
   const fs = new NodeFileSystemProvider();
+  const kind = await pathKindOrExit(filePath);
+  if (kind === undefined) return undefined;
 
-  if (!(await fs.exists(absolutePath))) {
+  if (kind === "missing") {
     process.stderr.write(`Error: File not found: ${filePath}\n`);
     process.exit(1);
     return undefined;
   }
 
-  return { absolutePath, fs };
+  if (kind === "file") {
+    return { absolutePath: resolve(filePath), displayPath: filePath, fs };
+  }
+
+  const displayPath = join(filePath, "index.krs");
+  const entryKind = await pathKindOrExit(displayPath);
+  if (entryKind === undefined) return undefined;
+  if (entryKind !== "file") {
+    process.stderr.write(`Error: ${filePath} has no index.krs; pass the entry .krs file\n`);
+    process.exit(1);
+    return undefined;
+  }
+  return { absolutePath: resolve(displayPath), displayPath, fs };
+}
+
+/**
+ * What `path` names on disk. Only `ENOENT` / `ENOTDIR` mean it is not there: a
+ * path that exists but cannot be stat'ed (`EACCES`, `ELOOP`, ...) is reported
+ * with the system's reason on one line and exits(1), returning `undefined`.
+ * Folding those into "missing" would print the false "File not found" this
+ * resolver exists to remove (#2942, TPL-2942).
+ */
+async function pathKindOrExit(path: string): Promise<"file" | "directory" | "missing" | undefined> {
+  try {
+    return (await stat(resolve(path))).isDirectory() ? "directory" : "file";
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return "missing";
+    process.stderr.write(`Error: cannot read ${path}: ${code ?? String(e)}\n`);
+    process.exit(1);
+    return undefined;
+  }
 }
 
 /**

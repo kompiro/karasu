@@ -21,8 +21,10 @@ paths:
 | 各スライスでできること / その時点でできないこと | 親 Issue body の `## Slice status` 表 | 人。切ったときに書き、スライスが増減・順序変更したときに直す |
 | なぜその切り方にしたか（依存・独立出荷の根拠） | Design Doc の `### スライス` 節 | 人 |
 
-Design Doc に到達点の一覧を置かない。Design Doc は ADR 昇格時に削除されるので、
-プログラムが完成した瞬間に一覧が失われる（実例: [#2232](https://github.com/kompiro/karasu/pull/2232) が
+`### スライス` 節を持つ Design Doc に、スライスごとの到達点の一覧（各スライスで
+できること / その時点でできないこと）を置かない。Design Doc は ADR 昇格時に削除されるので、
+プログラムが完成した瞬間に一覧が失われる。`### 実装の指針` の手順（TPL・AT・spec・
+ADR 昇格など）は `docs/design/TEMPLATE.md` が求める設計の中身で、この一覧には当たらない（実例: [#2232](https://github.com/kompiro/karasu/pull/2232) が
 `boundary-membership-1n.md` に入れた capability map — [#2237](https://github.com/kompiro/karasu/issues/2237) で親 Issue へ移した）。
 
 ## 守ること 2 つ

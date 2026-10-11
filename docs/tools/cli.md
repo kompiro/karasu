@@ -106,6 +106,12 @@ multi-file model you only point it at the top-level file. It exits with status
 makes it safe to gate a CI step on. For a ready-made GitHub Actions workflow,
 see [GitHub Actions integration](../github-actions.md).
 
+You can also pass a directory: `karasu render docs/model` renders
+`docs/model/index.krs`, the same entry `serve` opens, and diagnostics name
+`docs/model/index.krs:<line>:<column>`. A directory without an `index.krs` exits
+`1` and says so. `check`, `matrix`, `coverage`, `team-dependencies` and
+`subtree` read a directory the same way.
+
 ## Command reference
 
 `serve` and `render` cover most day-to-day use. The CLI also includes commands

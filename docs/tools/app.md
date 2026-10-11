@@ -117,6 +117,34 @@ The three dimensions behind System / Deploy / Org are explained in
   **System** to where it runs in **Deploy**, or to the team that owns it in
   **Org**.
 
+### Edge colours on a database canvas
+
+Clicking a `database` in the **System** view drills into a simple ER view: the
+store's `table` leaves and the relations between them. The colour of a relation
+says who vouches for it. The line style keeps its usual meaning: solid is sync,
+dashed is async. The colours below are those of the built-in style; a `.krs.style`
+sheet can change them.
+
+| Colour (dark / light theme) | Tag | Meaning |
+| --- | --- | --- |
+| Slate grey, the default edge colour (`#94A3B8` / `#64748B`) | none | Recorded in the `.krs` as a `table` → `table` edge, written by hand or emitted by `translate --from db` from a declared foreign key. Confirmed. |
+| Sky blue (`#38BDF8` / `#0369A1`) | `[projected]` | Not in the `.krs`. Drawn from an `entity` relation whose two entities both map to tables in this store. The entity layer asserts it; nothing recorded it against the store. |
+| Muted grey (`#94A3B8` / `#64748B`) | `[inferred]` | Written by `translate --from db` from a naming convention (a `<stem>_id` or `<stem>_code` column with no declared foreign key). Delete the tag once you have confirmed the relation. |
+
+- The built-in style currently gives `[inferred]` the same colour as an untagged
+  edge, so on the canvas the two look alike. Check the source to tell them apart.
+- When a recorded edge and a projected one join the same two tables, only the
+  recorded one is drawn.
+- The diagram legend does not list these colours: they come from the built-in
+  style, not from a `legend` block in your model.
+- The view is not a complete ER diagram of the store. Recorded edges always
+  appear, but an `entity` relation is projected only when both of its entities
+  map to a table in this store. See
+  [Store-scoped ER view](../spec/syntax.md#store-scoped-er-view-entity-relations-projected-onto-a-database-canvas)
+  for what is left out, and
+  [Automatic tags on edges](../spec/tags-annotations.md#automatic-tags-on-edges)
+  for every tag the renderer assigns.
+
 ### Diagnostics
 
 Parse errors, warnings, and informational messages appear in a banner above the

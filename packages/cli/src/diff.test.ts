@@ -195,3 +195,71 @@ organization Org { team Squad {} team Squad2 {} }
     expect(stdout).not.toContain('id="krs-org-root"');
   });
 });
+
+// #2879: `karasu diff` printed no resolver warnings on any path. It now prints
+// the after model's warnings once, in `render`'s format, each naming the file
+// it came from.
+describe("diff CLI — after-side warnings (#2879)", () => {
+  const BEFORE_KRS = `system Shop {\n  service Api {}\n}\ndomain Legacy {}\n`;
+  const AFTER_KRS = `@import "./after.krs.style"\nsystem Shop {\n  service Api {}\n  service Web {}\n}\ndomain Orphan {}\n`;
+  const AFTER_STYLE = `#Api { shape: url("nope"); }\n`;
+
+  async function writeProject(): Promise<{ before: string; after: string }> {
+    const before = join(tmpDir, "before.krs");
+    const after = join(tmpDir, "after.krs");
+    await writeFile(before, BEFORE_KRS);
+    await writeFile(after, AFTER_KRS);
+    await writeFile(join(tmpDir, "after.krs.style"), AFTER_STYLE);
+    return { before, after };
+  }
+
+  const lines = (): string[] => stderr.split("\n").filter((l) => l.length > 0);
+
+  it.each([
+    ["the bundled default", {}],
+    ["--view system", { view: "system" as const }],
+    ["--view deploy", { view: "deploy" as const }],
+    ["--view org", { view: "org" as const }],
+  ])("prints after's warning, and not before's, on %s", async (_label, options) => {
+    const { before, after } = await writeProject();
+    await diff(before, after, options);
+
+    const orphan = lines().filter((l) => l.includes('"Orphan"'));
+    // Once, even on the bundled path that renders several views.
+    expect(orphan).toEqual([
+      `Warning: ${after}:6:1: Domain "Orphan" is not assigned to any service`,
+    ]);
+    expect(stderr).not.toContain('"Legacy"');
+  });
+
+  it("names an imported style sheet's own file, not the after entry", async () => {
+    const { before, after } = await writeProject();
+    await diff(before, after, { view: "system" });
+
+    const icon = lines().find((l) => l.includes('url("nope")'));
+    expect(icon).toMatch(/^Warning: \S*after\.krs\.style:1:\d+: /);
+    expect(icon).not.toContain(`${after}:`);
+  });
+
+  it("prints an info-severity warning with an `Info:` prefix", async () => {
+    const before = join(tmpDir, "before.krs");
+    const after = join(tmpDir, "after.krs");
+    await writeFile(before, `system S {\n  service A {}\n}\n`);
+    await writeFile(
+      after,
+      `system S {\n  service A { domain Order {} }\n  service B { domain Order {} }\n}\n`,
+    );
+    await diff(before, after, {});
+
+    const order = lines().filter((l) => l.includes('"Order"'));
+    expect(order).toHaveLength(1);
+    expect(order[0]).toMatch(/^Info: /);
+  });
+
+  it("does not fail the diff on warnings", async () => {
+    const { before, after } = await writeProject();
+    await diff(before, after, {});
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(stdout).toContain("<svg");
+  });
+});

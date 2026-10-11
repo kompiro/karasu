@@ -4,6 +4,8 @@ import {
   collectChannels,
   distributeChannelLanes,
   LANE_PITCH,
+  laneOrder,
+  type ChannelRun,
 } from "./edge-routing-lanes.js";
 import type { LayoutEdge, LayoutNode } from "./layout.js";
 
@@ -248,5 +250,85 @@ describe("distributeChannelLanes", () => {
     distributeChannelLanes(NO_NODES, first, NO_FRAMES);
     distributeChannelLanes(NO_NODES, second, NO_FRAMES);
     expect(first.map(runYs)).toEqual(second.map(runYs));
+  });
+});
+
+describe("channel lane order (#3088)", () => {
+  // Two runs share the channel at y=200 and both end at x=300. `up` reaches
+  // the channel from above at that x and carries on to the right; `down`
+  // comes in from the left and leaves downwards at that x. Lanes go by x
+  // range, so `down` (left end 100) takes the top lane and `up` (left end 300)
+  // the one below it: the order that lays the two x=300 verticals over each
+  // other for a pitch.
+  const meetingAtOneColumn = () => [
+    polyline("u", "u2", [
+      { x: 300, y: 0 },
+      { x: 300, y: 200 },
+      { x: 500, y: 200 },
+      { x: 500, y: 400 },
+    ]),
+    polyline("d", "d2", [
+      { x: 100, y: 0 },
+      { x: 100, y: 200 },
+      { x: 300, y: 200 },
+      { x: 300, y: 400 },
+    ]),
+  ];
+
+  it("puts the run that carries on upwards above the one that carries on downwards", () => {
+    const edges = meetingAtOneColumn();
+    // The premise: by x range alone the downward run is handed the top lane.
+    const [channel] = collectChannels(NO_NODES, edges, NO_FRAMES);
+    const laneOf = (e: LayoutEdge) => channel.runs.find((r) => r.edge === e)!.lane;
+    expect(laneOf(edges[1])).toBeLessThan(laneOf(edges[0]));
+
+    distributeChannelLanes(NO_NODES, edges, NO_FRAMES);
+    const [up, down] = edges.map((e) => e.waypoints![0].y);
+    // `up`'s vertical at x=300 spans 0..up, `down`'s spans down..400: they
+    // stay apart only when `up` is the higher lane.
+    expect(up).toBeLessThan(down);
+    expect(down - up).toBe(LANE_PITCH);
+  });
+
+  it("keeps the order lanes were handed out in when no run asks otherwise", () => {
+    const edges = [lEdge("a", "b", 200, 0, 100), lEdge("c", "d", 200, 50, 200)];
+    const [channel] = collectChannels(NO_NODES, edges, NO_FRAMES);
+    expect(laneOrder(channel.runs, channel.lanes)).toEqual([0, 1]);
+  });
+
+  /** A run on `lane` from `left` to `right` at y=200, turning to `turnL` / `turnR` (-1 up, 1 down). */
+  function run(
+    lane: number,
+    left: number,
+    right: number,
+    turnL: -1 | 1,
+    turnR: -1 | 1,
+  ): ChannelRun {
+    const edge = polyline(`r${lane}-${left}`, "t", [
+      { x: left, y: 200 + turnL * 100 },
+      { x: left, y: 200 },
+      { x: right, y: 200 },
+      { x: right, y: 200 + turnR * 100 },
+    ]);
+    return { edge, i: 0, y: 200, leftX: left, rightX: right, lane };
+  }
+
+  it("keeps every request outside a cycle, and orders inside it by lane", () => {
+    // Lanes C=0, A=1, B=2. At x=100 A turns up and B down (A above B); at
+    // x=200 B turns up and A down (B above A): a cycle no order can satisfy.
+    // At x=400 B turns up and C down (B above C), which is outside the cycle.
+    // Breaking the cycle by "lowest lane next" would put C first and break
+    // B above C as well; condensing the cycle keeps it.
+    const runs = [
+      run(1, 100, 200, -1, 1), // A
+      run(2, 100, 200, 1, -1), // B
+      run(2, 400, 600, -1, 1), // B again, further along its lane
+      run(0, 300, 400, -1, 1), // C: carries on downwards at x=400
+    ];
+    const rank = laneOrder(runs, 3);
+    expect(rank[2]).toBeLessThan(rank[0]); // B above C
+    // A and B form one component and keep their own order, A then B.
+    expect(rank).toEqual([2, 0, 1]);
+    expect(laneOrder(runs, 3)).toEqual(rank);
   });
 });

@@ -37,7 +37,7 @@ interface RenderOptions {
 export async function render(filePath: string, options: RenderOptions): Promise<void> {
   const resolved = await resolveKrsFileOrExit(filePath);
   if (!resolved) return;
-  const { absolutePath, fs } = resolved;
+  const { absolutePath, displayPath, fs } = resolved;
 
   const format: RenderFormat = options.format ?? "svg";
   let output: string;
@@ -73,7 +73,7 @@ export async function render(filePath: string, options: RenderOptions): Promise<
     warnings = result.warnings;
   }
 
-  if (reportDiagnostics(filePath, diagnostics, warnings) > 0) {
+  if (reportDiagnostics(displayPath, diagnostics, warnings) > 0) {
     process.exit(1);
   }
 
