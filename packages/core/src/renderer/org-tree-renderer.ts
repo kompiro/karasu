@@ -18,7 +18,7 @@ import type {
 } from "../types/style.js";
 import { el, escapeXml, diffStateAttr } from "./svg-builder.js";
 import { ownsEdgeKey } from "../diff/org-view-diff.js";
-import { nodePathKey } from "../parser/node-path.js";
+import { nodePathRefId } from "../parser/node-path.js";
 import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palette.js";
 import { badgeChildren } from "./badge.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
@@ -488,8 +488,9 @@ function renderTreeNode(
   const ownsEdges = options.edgeDiffState;
   if (ownsEdges) {
     for (const ref of node.team.properties.owns) {
-      // Diff keys carry the author-written notation, joined (#2088).
-      const serviceId = nodePathKey(ref);
+      // Diff keys carry the author-written notation, encoded injectively
+      // (#2088, #2819).
+      const serviceId = nodePathRefId(ref);
       const state = ownsEdges.get(ownsEdgeKey(node.team.id, serviceId));
       if (state) {
         elements.push(

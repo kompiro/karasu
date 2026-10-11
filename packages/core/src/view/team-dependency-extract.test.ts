@@ -530,3 +530,40 @@ organization O {
     expect(qualified.overlaps.map((o) => o.path)).not.toContain("A.Checkout.Pricing");
   });
 });
+
+describe("extractTeamDependencies — dotted ids (#2819)", () => {
+  it("tells a nested node from a top-level node whose id carries the dot", () => {
+    // Both nodes used to share the ownership key `Shop.Api`, so the edge to the
+    // nested one also named Beta, which owns only the top-level node.
+    const { dependencies } = report(`
+system Shop {
+  service Api {}
+  service Web {}
+  Web -> Api "call"
+}
+service "Shop.Api" {}
+organization O {
+  team Alpha { owns Shop.Api }
+  team Beta { owns "Shop.Api" }
+  team Gamma { owns Web }
+}
+`);
+    expect(dependencies.map((d) => [d.fromTeam, d.toTeam])).toEqual([["Gamma", "Alpha"]]);
+    expect(dependencies[0].via.map((v) => [v.fromPath, v.toPath])).toEqual([
+      ["Shop.Web", "Shop.Api"],
+    ]);
+  });
+
+  it("reports a path through a dotted id in the injective form", () => {
+    // An edge endpoint is a plain string, so it cannot name `"a.b"` itself
+    // (`edgeEndpointRef` splits it on the dot); a domain inside it is reachable.
+    const { unowned } = report(`
+system Shop {
+  service "a.b" { domain D {} }
+  service Web { domain W { W -> D "call" } }
+}
+organization O { team Gamma { owns Web } }
+`);
+    expect(unowned.map((u) => u.path)).toEqual(['Shop."a.b".D']);
+  });
+});

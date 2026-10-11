@@ -1,4 +1,5 @@
 import type { KrsEdge, KrsNode } from "../types/ast.js";
+import { quotedIdLiteral } from "../formatter/quote-id.js";
 import type { DomainEdgeDetail, SystemFrameEdges, ViewSlice } from "../view/view-extract.js";
 
 export type DiffState = "unchanged" | "added" | "removed" | "changed";
@@ -32,15 +33,36 @@ export interface DiffedView {
   /** Diff state keyed by node id. Includes ghost users and child nodes. */
   nodes: Map<string, NodeDiffMeta>;
   /**
-   * Diff state keyed by `${from}->${to}`.
+   * Diff state keyed by {@link edgeKey}.
    * Matches the LayoutEdge identification used by svg-renderer; sync/async
    * pairs that share endpoints are treated as a single edge for diff purposes.
    */
   edges: Map<string, EdgeDiffMeta>;
 }
 
+/**
+ * Compare-mode identity of an edge: the key every diff map is written under
+ * and every renderer reads back (`svg-renderer.ts`, `group-collapse.ts`, the
+ * root view's per-frame lookup in `layout.ts`, the deploy ghost-edge diff).
+ * Build it here and nowhere else, so the writers and readers cannot drift
+ * apart (TPL-1352).
+ *
+ * A plain `${from}->${to}` join is not injective: a quoted id may contain
+ * `->`, so `a -> "b->c"` and `"a->b" -> c` both joined to `a->b->c` and the
+ * two edges shared one diff state (#2819). An endpoint that would make the
+ * join ambiguous (it carries the `->` separator, or the `"` / `\` the quoted
+ * form is built from) is therefore wrapped in the `.krs` string-literal form,
+ * the same rule `nodePathRefId` applies to path segments (ADR-2714). The key
+ * then splits one way only: a bare `from` has no `->` in it and cannot end the
+ * separator early (`->` does not overlap itself), and a quoted `from` ends at
+ * its closing quote. Every other edge keeps the `${from}->${to}` it always had.
+ */
 export function edgeKey(edge: Pick<KrsEdge, "from" | "to">): string {
-  return `${edge.from}->${edge.to}`;
+  return `${quoteEdgeEndpoint(edge.from)}->${quoteEdgeEndpoint(edge.to)}`;
+}
+
+function quoteEdgeEndpoint(endpoint: string): string {
+  return endpoint.includes("->") || /["\\]/.test(endpoint) ? quotedIdLiteral(endpoint) : endpoint;
 }
 
 function nodeChanges(before: KrsNode, after: KrsNode): NodeDiffMeta["changes"] | undefined {
@@ -123,8 +145,14 @@ function diffEdgeArray(
   return merged;
 }
 
+/**
+ * Identity of one constituent domain edge within an aggregated edge. Local to
+ * this module and never read back as text, so JSON is enough to keep it
+ * injective: a `${from}->${to}#${label}` join let a quoted id carrying `->`
+ * or `#` stand for a different pair (#2819).
+ */
 function detailKey(d: DomainEdgeDetail): string {
-  return `${d.fromDomainId}->${d.toDomainId}#${d.label ?? ""}`;
+  return JSON.stringify([d.fromDomainId, d.toDomainId, d.label ?? ""]);
 }
 
 /**
@@ -137,16 +165,23 @@ function diffImplicitEdgeDetails(
   before: ReadonlyMap<string, DomainEdgeDetail[]>,
   after: ReadonlyMap<string, DomainEdgeDetail[]>,
   edgeDiff: Map<string, EdgeDiffMeta>,
+  edges: readonly KrsEdge[],
 ): Map<string, DomainEdgeDetail[]> {
   const merged = new Map<string, DomainEdgeDetail[]>();
   const keys = new Set<string>([...before.keys(), ...after.keys()]);
+  // The details map is keyed `${from}->${to}#${kind}` (view-extract's
+  // `groupKey`). Its diff state lives under `edgeKey` of the same edge, so map
+  // one to the other through the edges themselves: cutting the detail key at
+  // its first `#` misreads an endpoint that carries `#` or `->` (#2819).
+  const edgeDiffKeyOf = new Map<string, string>();
+  for (const edge of edges) {
+    edgeDiffKeyOf.set(`${edge.from}->${edge.to}#${edge.kind}`, edgeKey(edge));
+  }
 
   for (const key of keys) {
     const b = before.get(key);
     const a = after.get(key);
-    // Derive the view-diff edge key (strip `#kind`) for looking up EdgeDiffMeta.
-    const hashIdx = key.indexOf("#");
-    const edgeDiffKey = hashIdx === -1 ? key : key.slice(0, hashIdx);
+    const edgeDiffKey = edgeDiffKeyOf.get(key);
 
     if (b === undefined || a === undefined) {
       // Only one side has details. Leave the underlying edge's state as-is
@@ -186,7 +221,7 @@ function diffImplicitEdgeDetails(
     }
     merged.set(key, rows);
 
-    if (added.length > 0 || removed.length > 0) {
+    if ((added.length > 0 || removed.length > 0) && edgeDiffKey !== undefined) {
       const meta = edgeDiff.get(edgeDiffKey);
       if (meta && meta.state === "unchanged") {
         edgeDiff.set(edgeDiffKey, {
@@ -246,6 +281,7 @@ function diffSystemFrames(
       bf?.implicitEdgeDetails ?? EMPTY_DETAILS,
       af?.implicitEdgeDetails ?? EMPTY_DETAILS,
       frameDiff,
+      edges,
     );
     for (const [key, meta] of frameDiff) edgeDiff.set(key, meta);
     merged.set(systemId, {
@@ -306,6 +342,7 @@ export function diffSystemViewSlices(before: ViewSlice, after: ViewSlice): Diffe
       before.implicitEdgeDetails,
       after.implicitEdgeDetails,
       edgeDiff,
+      [...childEdges, ...crossSystemEdges, ...ghostUserEdges],
     ),
     systemEdges: diffSystemFrames(before, after, edgeDiff),
     expandedFrames: after.expandedFrames,

@@ -45,7 +45,7 @@ import { diffDeployViewSlices } from "../diff/deploy-view-diff.js";
 import { diffOrgViewSlices } from "../diff/org-view-diff.js";
 import type { NodeDiffMeta, EdgeDiffMeta } from "../diff/view-diff.js";
 import { injectDiffStyle } from "../diff/diff-style.js";
-import { nodePathKey } from "../parser/node-path.js";
+import { nodePathRefId } from "../parser/node-path.js";
 import { collectModelWarnings } from "./compile.js";
 
 /**
@@ -282,8 +282,8 @@ export async function compileSystemDiff(
       : [];
   const diffKeyOf = (id: string): string =>
     diffScope.length > 0
-      ? nodePathKey([...diffScope, id])
-      : nodePathKey(beforeResolved.krsFile.nodePathIndex.get(id) ?? [id]);
+      ? nodePathRefId([...diffScope, id])
+      : nodePathRefId(beforeResolved.krsFile.nodePathIndex.get(id) ?? [id]);
   const mergedOwnerIndex = new Map<string, string>(afterResolved.krsFile.ownerIndex);
   for (const [id, meta] of diffed.nodes) {
     const key = diffKeyOf(id);

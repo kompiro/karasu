@@ -35,6 +35,7 @@ import { boundaryScopeKey, OWNS_TARGET_KIND_SET, REALIZES_TARGET_KIND_SET } from
 import {
   ambiguousNodePathCandidates,
   nodePathKey,
+  nodePathRefId,
   nodePathMatchesSuffix,
   resolveNodePathBySuffix,
 } from "./node-path.js";
@@ -751,9 +752,14 @@ export function buildNodePathIndex(file: KrsFile): MembershipResult<Map<string, 
 
 /**
  * Build the 1:1 ownerIndex, keyed by each owned node's **full path**
- * (`nodePathKey`) since #2548 — a path-accepting reference needs a
- * path-keyed index (TPL-1352). Every `owns` ref is expanded through the
- * suffix rule at build time: a bare id claims every node with that id
+ * (`nodePathRefId`) since #2548 — a path-accepting reference needs a
+ * path-keyed index (TPL-1352). The encoding must be injective too (#2819): a
+ * dotted join gave `Shop.Api` (a service in `Shop`) and `"Shop.Api"` (a
+ * top-level service) one key, so one team's claim overwrote the other's and
+ * `duplicate-owner-assignment` reported a co-ownership nobody declared.
+ *
+ * Every `owns` ref is expanded through the suffix rule at build time: a bare
+ * id claims every node with that id
  * (broadcast, structurally identical to the old bare-id keying), a longer
  * path narrows to exactly the nodes it suffixes. Refs that resolve to
  * nothing add no entry — `owns-target-not-found` is the surface for those.
@@ -789,7 +795,7 @@ export function buildOwnerIndex(file: KrsFile): MembershipResult<Map<string, str
         // resolution stay observable there. `owns-target-not-found` is the
         // surface that reports it in files that can decide existence.
         const keys =
-          matches.length > 0 ? matches.map((m) => nodePathKey(m.path)) : [nodePathKey(ref)];
+          matches.length > 0 ? matches.map((m) => nodePathRefId(m.path)) : [nodePathRefId(ref)];
         let existingTeam: string | undefined;
         for (const key of keys) {
           const current = index.get(key);
@@ -825,7 +831,7 @@ export function buildOwnerIndex(file: KrsFile): MembershipResult<Map<string, str
 
 /**
  * Build the **1:N** ownership relation — every team that declared `owns` over
- * a node, keyed by the node's full path (`nodePathKey`) exactly like
+ * a node, keyed by the node's full path (`nodePathRefId`) exactly like
  * {@link buildOwnerIndex}.
  *
  * Deliberately a second index rather than a widening of `ownerIndex`, because
@@ -869,9 +875,9 @@ export function buildTeamOwnership(file: KrsFile): Map<string, string[]> {
         // non-ownable nodes is a different case — it was decided, and refused.
         const keys =
           matches.length > 0
-            ? matches.map((m) => nodePathKey(m.path))
+            ? matches.map((m) => nodePathRefId(m.path))
             : resolveDeclaredRef(declared, ref).length === 0
-              ? [nodePathKey(ref)]
+              ? [nodePathRefId(ref)]
               : [];
         for (const key of keys) {
           const owners = ownership.get(key);
@@ -890,7 +896,7 @@ export function buildTeamOwnership(file: KrsFile): Map<string, string[]> {
 }
 
 // Build the 1:N boundaryMembership — since #2548 keyed by each member
-// node's **full path** (`nodePathKey`), with every `contains` ref expanded
+// node's **full path** (`nodePathRefId`), with every `contains` ref expanded
 // through the suffix rule exactly like buildOwnerIndex above (bare id =
 // broadcast; unresolved refs add no entry and are `contains-target-not-found`'s
 // surface).
@@ -916,7 +922,7 @@ export function buildBoundaryMembership(file: KrsFile): MembershipResult<Map<str
       // like buildOwnerIndex above (TPL-2161): a member declared in a file
       // this one cannot see must survive until the merged rebuild decides.
       const keys =
-        matches.length > 0 ? matches.map((m) => nodePathKey(m.path)) : [nodePathKey(ref)];
+        matches.length > 0 ? matches.map((m) => nodePathRefId(m.path)) : [nodePathRefId(ref)];
       let existingBoundary: string | undefined;
       for (const key of keys) {
         const declaredList = membership.get(key);

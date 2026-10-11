@@ -6,7 +6,7 @@
 import type { KrsNode } from "../types/ast.js";
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
 import type { LayoutNode, ContainerRect } from "./layout-types.js";
-import { nodePathKey } from "../parser/node-path.js";
+import { nodePathKey, nodePathRefId } from "../parser/node-path.js";
 import {
   CONTAINER_PADDING,
   CONTAINER_LABEL_HEIGHT,
@@ -267,11 +267,12 @@ function layoutGhostSystem(
   let y = originY + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING;
 
   for (const { node: svc, path, subLabel } of gs.visibleServices) {
-    // The resolved full path is the layout key, which is exactly what the
-    // path-keyed ownerIndex holds for the node (#2548). A direct child's path
-    // joins to the same `Sys.Svc` the hand-built qualified id used to produce.
+    // The resolved full path is the layout key. A direct child's path joins to
+    // the same `Sys.Svc` the hand-built qualified id used to produce. The owner
+    // lookup encodes the same path the way the ownerIndex does (#2548, #2819):
+    // the two spellings agree unless a segment carries a `.`.
     const qualifiedId = nodePathKey(path);
-    const owner = ownerOf(svc.kind, qualifiedId);
+    const owner = ownerOf(svc.kind, nodePathRefId(path));
     const dims = measureNode(svc, owner, ctx);
     const x = originX + CONTAINER_PADDING;
     nodes.set(

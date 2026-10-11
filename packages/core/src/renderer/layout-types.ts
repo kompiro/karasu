@@ -110,7 +110,7 @@ export interface LayoutEdge {
   domainEdges?: DomainEdgeDetail[];
   /**
    * This edge's compare-mode state, resolved while the edge was laid out rather
-   * than looked up later by `${from}->${to}` (#2756).
+   * than looked up later by `edgeKey` (#2756).
    *
    * Only the multi-system root sets it, and it exists because that key is not
    * unique there: two system frames may each draw an `Api->Store`, so one shared
@@ -339,7 +339,7 @@ export interface LayoutResult {
   shapeInsetsApplied?: boolean;
   /**
    * Diff state re-keyed onto collapsed-group stub edges, keyed by the render
-   * lookup form `${from}->${to}` (#1886). Present only when a team collapses in
+   * lookup form `edgeKey` (#1886). Present only when a team collapses in
    * compare/diff mode; `renderFromLayout` merges it over `options.edgeDiffState`
    * so a re-targeted stub edge keeps its diff decoration.
    */
@@ -549,7 +549,7 @@ export interface LayoutOptions {
   groupBy?: "team" | "boundary";
   collapsedGroups?: ReadonlySet<string>;
   /**
-   * Per-edge diff state keyed `${from}->${to}` (compare/diff mode). Passed
+   * Per-edge diff state keyed by `edgeKey` (compare/diff mode). Passed
    * through to `collapseGroups` so a collapsed team's re-targeted stub edges
    * keep their diff decoration, re-keyed onto the stub id (#1886).
    */

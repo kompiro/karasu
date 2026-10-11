@@ -4,7 +4,7 @@ import type {
   DeployGhostEdge,
   DeployViewSlice,
 } from "../view/deploy-view-extract.js";
-import type { DiffState, EdgeDiffMeta, NodeDiffMeta } from "./view-diff.js";
+import { edgeKey, type DiffState, type EdgeDiffMeta, type NodeDiffMeta } from "./view-diff.js";
 
 export interface DiffedDeployView {
   /** Union DeployViewSlice — passed to the existing layout/render pipeline. */
@@ -14,7 +14,7 @@ export interface DiffedDeployView {
    * `container:<serviceId>` keys for whole-container additions/removals).
    */
   nodes: Map<string, NodeDiffMeta>;
-  /** Diff state per ghost edge keyed `${from}->${to}`. */
+  /** Diff state per ghost edge keyed by `edgeKey`. */
   edges: Map<string, EdgeDiffMeta>;
   /** Diff state per container keyed by `serviceId` (Issue #750). */
   containers: Map<string, DiffState>;
@@ -107,19 +107,21 @@ function diffGhostEdges(
   after: readonly DeployGhostEdge[],
   diff: Map<string, EdgeDiffMeta>,
 ): DeployGhostEdge[] {
-  const key = (e: DeployGhostEdge) => `${e.from}->${e.to}`;
-  const beforeByKey = new Map(before.map((e) => [key(e), e]));
+  // `edgeKey`, the same key the renderer reads back: a container id may carry
+  // `->` (a quoted `service "b->c"`), so a local `${from}->${to}` join let two
+  // edges share one diff state (#2819).
+  const beforeByKey = new Map(before.map((e) => [edgeKey(e), e]));
   const merged: DeployGhostEdge[] = [];
   const seen = new Set<string>();
 
   for (const edge of after) {
-    const k = key(edge);
+    const k = edgeKey(edge);
     diff.set(k, { state: beforeByKey.has(k) ? "unchanged" : "added" });
     merged.push(edge);
     seen.add(k);
   }
   for (const edge of before) {
-    const k = key(edge);
+    const k = edgeKey(edge);
     if (seen.has(k)) continue;
     diff.set(k, { state: "removed" });
     merged.push(edge);
@@ -131,7 +133,7 @@ function diffGhostEdges(
  * Produce a union DeployViewSlice of two deploy views plus per-element diff state.
  *
  * Containers are matched by `serviceId`, deploy units by their id, ghost edges by
- * `from->to`. The "after" elements appear first so the union layout reflects the
+ * `edgeKey`. The "after" elements appear first so the union layout reflects the
  * new structure; removed elements are appended in their original order so the
  * reader still sees what disappeared.
  *
