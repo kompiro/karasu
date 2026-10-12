@@ -9,6 +9,7 @@ scope:
     - ci
 related_to:
   - ADR-1315
+  - ADR-3017
 ---
 
 # ADR-1681: karasu CLI の publish 成果物を単一バンドル `dist/index.js` に固定する

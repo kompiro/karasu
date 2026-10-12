@@ -171,6 +171,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2985](2985-dependabot-security-2026-09-29.md) — Dependabot security alert 2026-09-29（`undici` の override floor が脆弱範囲の内側だったので `^7.29.1` に上げた）
 - [ADR-3000](3000-nest-deploys-on-main.md) — karasu-nest を main への push で自動 deploy し、対象 path は nest の workspace 依存から機械的に決める
 - [ADR-3002](3002-dependabot-security-2026-09-30.md) — Dependabot security alert 2026-09-30（5 つの override floor がすべて新しい advisory の脆弱範囲の内側だったので、修正版へ上げた）
+- [ADR-3017](3017-serve-app-shipping.md) — `karasu serve` のプレビュー app を serve 専用 build として npm パッケージに同梱する
 - [ADR-3020](3020-nest-custom-domain-karasu-nest-kompiro-dev.md) — karasu-nest を karasu-nest.kompiro.dev カスタムドメインだけで公開し、workers.dev を閉じる
 - [ADR-3052](3052-review-branch-diff-before-draft-pr.md) — /engineering:code-review は draft PR を作る前に base ブランチとの差分へ当て、CodeRabbit の初回レビューは ready にした時点の 1 回にする
 - [ADR-3069](3069-dependabot-triage-2026-10-05.md) — Dependabot トリアージ 2026-10-05：mocha 12 を含む 8 件を採用し、gh-aw は正式版 v0.89.21 で再生成し、@types/vscode は追随方針の見直し（#3070）に回して close する
