@@ -58,8 +58,15 @@ function startServe(bundle: string, dir: string, listenPort: number): Promise<Ch
       stdout += chunk.toString();
       if (stdout.includes("Watching for .krs file changes")) {
         clearTimeout(timer);
-        // Anything on stderr by now is the missing-app warning.
-        setTimeout(() => (stderr === "" ? resolveChild(child) : reject(new Error(stderr))), 100);
+        // `serve` warns right after the banner when it found no app; an
+        // unrelated runtime warning on stderr is not this test's concern.
+        setTimeout(
+          () =>
+            stderr.includes("preview app")
+              ? reject(new Error(`karasu serve found no preview app.\nstderr: ${stderr}`))
+              : resolveChild(child),
+          100,
+        );
       }
     });
     child.once("exit", (code) => {
