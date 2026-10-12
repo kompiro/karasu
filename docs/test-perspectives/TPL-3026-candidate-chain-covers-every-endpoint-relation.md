@@ -60,7 +60,7 @@ never worse の原則により、どの候補も成立しなければ入力は�
 
 - **位置関係別に貫通を集計する**: #3026 の計測は、貫通を「端点が縦に重なる組」とそれ以外に分けて数えた（`reports/3026-same-row-chord/measure-3026.mts`）。合計だけを見ると、dify では 17 件のうち 3 件だけが同じ行で、残りは別の類型だと分からない。
 - **位置関係ごとの合成 fixture**: 3 つの domain が互いに両方向で依存する fixture は、3 枚が 1 行に並び、両端の組が必ず中央を挟む（どう並べても 1 組は隣にならない）。
-- **欠けた位置関係に候補を足す**: 同じ行の組には、行のすぐ上か下の行間チャネルで回る U 字の候補を足した（`trySameRowChannelRoute`、[same-row-channel-route.md](../design/same-row-channel-route.md)）。
+- **欠けた位置関係に候補を足す**: 同じ行の組には、行のすぐ上か下の行間チャネルで回る U 字の候補を足した（`trySameRowChannelRoute`、[ADR-3026](../adr/3026-same-row-channel-route.md)）。
 
 ## 関連テスト
 
