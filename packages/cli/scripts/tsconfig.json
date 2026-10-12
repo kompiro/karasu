@@ -1,0 +1,11 @@
+{
+  // The pack-time scripts, typechecked apart from `../tsconfig.json`, whose
+  // `rootDir: ./src` would reject files outside `src/`.
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node"]
+  },
+  "include": ["*.ts"]
+}

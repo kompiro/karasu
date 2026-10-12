@@ -16,7 +16,7 @@ export default defineConfig({
     ],
   },
   test: {
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "scripts/**/*.test.ts"],
     exclude: ["**/node_modules/**", "**/.worktrees/**", "**/dist/**"],
     // `src/i18n.ts` binds the CLI translator once, at module load, from the
     // ambient POSIX locale variables. Suites that assert on CLI output
