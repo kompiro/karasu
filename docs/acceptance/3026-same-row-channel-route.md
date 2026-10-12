@@ -14,27 +14,33 @@ type: product
 
 ## 受け入れ条件
 
+fixture は、互いに両方向で依存する domain を 1 行に並べたもの 3 種: 3 枚、3 枚で中央だけ背が高いもの、5 枚。
+
 ### AC-1: 同じ行の組が間のカードを貫通しない
 
-- [x] AT-A: 3 つの domain が互いに両方向で依存する fixture で、3 枚が 1 行に並び、両端の組の中心どうしの直線は中央のカードを貫通する（fixture が形に届いている）
+- [x] AT-A: どの fixture も全カードが 1 行に並び、隣り合わない組の中心どうしの直線はカードを貫通する（fixture が形に届いている）
 
-  > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `same-row pair around the card between (#3026, TPL-3026 / TPL-1927)` › `the fixture puts the outer pair in one row, with the middle card on the chord`
+  > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `same-row pair around the card between (#3026, TPL-3026 / TPL-1927)` › `%s: the fixture puts every card in one row, and a chord on a card`
 
-- [x] AT-B: 同じ fixture で、貫通 0、両軸の collinear overlap 0。修正を外すと落ちる
+- [x] AT-B: どの fixture でも、貫通 0、両軸の collinear overlap 0。修正を外すと落ちる
 
-  > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `same-row pair around the card between (#3026, TPL-3026 / TPL-1927)` › `no edge pierces a card, and no two edges share a collinear segment`
+  > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `same-row pair around the card between (#3026, TPL-3026 / TPL-1927)` › `%s: no edge pierces a card, and no two edges share a collinear segment`
 
-- [x] AT-C: 交差には hop が付く
+- [x] AT-C: 行を回る経路の折れ点は、すべて行の上端より上か下端より下にある。5 枚の行では、最上段の上（と最下段の下）のチャネルに 5 本のレーンが積まれ、行へ向かって広がらない。レーン配置を修正前に戻すと落ちる
 
-  > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `same-row pair around the card between (#3026, TPL-3026 / TPL-1927)` › `every crossing carries a hop mark`
+  > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `same-row pair around the card between (#3026, TPL-3026 / TPL-1927)` › `%s: every route round the row stays clear of the row`
+
+- [x] AT-D: 5 枚の行では、行を回る経路どうしが交差し、交差には hop が付く
+
+  > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `same-row pair around the card between (#3026, TPL-3026 / TPL-1927)` › `five cards: the routes round the row cross, and every crossing carries a hop mark`
 
 ### AC-2: 上下の選び方
 
-- [x] AT-D: 両方向のエッジがある組は、行の上と下に分かれて 1 つのループになる（交差が同数のときの時計回り）
+- [x] AT-E: 両方向のエッジがある組は、行の上と下に分かれて 1 つのループになる（交差が同数のときの時計回り）。中央のカードが背の高い行でも同じで、下側のチャネルは 2 枚ではなく行全体の高さから測られる（2 枚の高さで測ると中央のカードに入り、両方とも上を回る）
 
-  > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `same-row pair around the card between (#3026, TPL-3026 / TPL-1927)` › `the two edges of the outer pair go round the row on opposite sides, as one loop`
+  > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `same-row pair around the card between (#3026, TPL-3026 / TPL-1927)` › `%s: the outer pair goes round the row on opposite sides, as one loop`
 
-- [x] AT-E: 交差の数え方は真の交差だけで、接触・端点の共有・共線の重なりは数えない
+- [x] AT-F: 交差の数え方は真の交差だけで、接触・端点の共有・共線の重なりは数えない
 
   > ✅ Automated — `packages/core/src/renderer/edge-geometry.test.ts` › `countPolylineCrossings (#3026)` › `counts a segment that crosses another at an interior point`
   >
@@ -42,7 +48,7 @@ type: product
 
 ### AC-3: 該当しない図は変わらない
 
-- [x] AT-F: `examples/` の全モデルと既存の routing fence が無変更で通る。4 つの逆生成モデル（1,542 ビュー）で経路が変わるのは同じ行の貫通があった 5 ビューだけで、collinear overlap は増えない（`reports/3026-same-row-chord/` で計測）
+- [x] AT-G: `examples/` の全モデルと既存の routing fence・スナップショットが無変更で通る。grouped キャンバスは対象外（チャネルを枠を見ずに測るため。corridor / staircase と同じ）。4 つの逆生成モデル（1,542 ビュー）で経路が変わるのは同じ行の貫通があった 5 ビューだけで、collinear overlap は増えない（`reports/3026-same-row-chord/` で計測）
 
   > ✅ Automated — `pnpm --filter @karasu-tools/core test`
 
