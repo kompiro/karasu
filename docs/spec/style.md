@@ -287,6 +287,13 @@ badge-icon:       "⚠";
 badge-label:      "Deprecated";
 ```
 
+A number or a length may carry a sign: `label-offset: -8px` moves the label
+up. `border-width`, `border-radius`, `font-size` and `stroke-width` cannot be
+negative, and `opacity` lies in `[0, 1]`. A value outside is reported as
+`style-out-of-range` and the default stands. The other bounded properties
+(`label-position`, `grid-columns`, `label-max-chars`) give their own rule in
+their sections below.
+
 ---
 
 ## stroke-style property (edges)
