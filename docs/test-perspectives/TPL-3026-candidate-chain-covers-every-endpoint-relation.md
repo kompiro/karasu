@@ -64,4 +64,4 @@ never worse の原則により、どの候補も成立しなければ入力は�
 
 ## 関連テスト
 
-- `packages/core/src/renderer/routing-parity.test.ts` — 貫通 0 / collinear overlap 0 / 全交差に hop の計測柵。同じ行の組の fixture は #3026 の実装 PR で足す
+- `packages/core/src/renderer/routing-parity.test.ts` — 貫通 0 / collinear overlap 0 / 全交差に hop の計測柵。`same-row pair around the card between (#3026, TPL-3026 / TPL-1927)` が同じ行の組の合成 fixture（3 つの domain が互いに両方向で依存）。修正前のツリーで 4 件中 3 件が落ちることを確認してから固定した
