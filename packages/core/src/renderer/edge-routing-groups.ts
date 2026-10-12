@@ -48,7 +48,7 @@
  */
 import { firstInOrder } from "./first-in-order.js";
 import type { LayoutEdge, LayoutNode, ContainerRect } from "./layout-types.js";
-import type { Point } from "./edge-geometry.js";
+import { countPolylineCrossings, type Point } from "./edge-geometry.js";
 import { framePieces } from "./frame-geometry.js";
 import type { ObstacleIndex, ObstacleQuery } from "./obstacle-index.js";
 import { attachableSpans, BBOX_PORT_FRAME, mapToSpans, type PortResolver } from "./port-frame.js";
@@ -319,6 +319,20 @@ export function routeGroupedEdges(
       )
       .some((x) => tryCorridorRoute(edge, from, to, x, obstacles, nodes, claimed, bands));
     if (routedInner) continue;
+    // Endpoints in one row (the stretch between their facing edges is empty)
+    // have no channel between them for the candidates below to use; the
+    // channel beside the row takes them round the card in between (#3026).
+    // Ungrouped only, like the interior candidates above: the channel is
+    // measured from the cards alone, so on a grouped canvas it can fall in a
+    // frame's header or outside the frame both endpoints sit in.
+    if (
+      frames.length === 0 &&
+      innerBottom < innerTop &&
+      trySameRowChannelRoute(edge, from, to, obstacles, nodes, claimed, bands, () =>
+        settledRoutes(layoutEdges, edge, obstacleIndex),
+      )
+    )
+      continue;
     // A **staircase**: through one gap of every row between the endpoints,
     // shifting x in the inter-row channels in between (#2611). This is the
     // route shape a Sugiyama dummy chain produces, reached without dummy
@@ -526,7 +540,23 @@ function mixedEnd(
   // Blocked → detour this end through the adjacent inter-row channel.
   const outward = isSource ? forward : !forward; // does this end leave/enter downward?
   const channelY = outward ? channelBelow(box, nodes) : channelAbove(box, nodes);
-  const portY = outward ? box.y + box.height : box.y;
+  return channelStub(box, outward, channelY, claimed, bands);
+}
+
+/**
+ * A top/bottom port on `box` and the vertical stub from it into the channel at
+ * `channelY`. Shared by the mixed and corridor ends and by the same-row route
+ * (#3026), so every route that leaves a card through a channel picks its stub
+ * the same way (TPL-219).
+ */
+function channelStub(
+  box: EdgeBox,
+  downward: boolean,
+  channelY: number,
+  claimed: ClaimRegister,
+  bands: readonly { top: number; bottom: number }[],
+): MixedEnd {
+  const portY = downward ? box.y + box.height : box.y;
   // The stub drops from the card's centre unless a corridor already claimed
   // that x over the same band; then it steps sideways by whole lane pitches,
   // staying on the card so the port remains attachable (#2611). Without this,
@@ -544,6 +574,112 @@ function mixedEnd(
     }
   }
   return { port: { x: cx, y: portY }, elbows: [{ x: cx, y: channelY }], cy: channelY };
+}
+
+/**
+ * Route an edge whose endpoints overlap vertically, i.e. sit in one row
+ * (#3026), out of one card's top (or bottom), along the inter-row channel
+ * above (or below) the row, and into the other card's top (or bottom).
+ *
+ * Every other candidate needs a channel *between* the two ends, so a same-row
+ * pair with a card standing between them had no route at all and was left as
+ * a straight chord through that card. The channel next to the row is the
+ * shortest way around it: a U whose run the lane pass spreads like any other
+ * channel run (TPL-1954).
+ *
+ * Of the two sides, the one whose route crosses fewer of the settled routes
+ * wins (see {@link settledRoutes}). A run along a channel crosses every edge
+ * that drops through it, so the busier channel costs crossings the chord used
+ * to hide under the card. Measured on four reverse-engineered models, no fixed side
+ * was the cheaper one on all of them, and this choice added the fewest
+ * crossings over the four (131, against 151 to 361 for a fixed side). A tie
+ * goes clockwise (rightward above, leftward below), so a pair drawn both ways
+ * between two quiet cards forms one loop instead of nesting. Applied only when
+ * the whole polyline is clear (AC-1).
+ */
+function trySameRowChannelRoute(
+  edge: LayoutEdge,
+  from: EdgeBox,
+  to: EdgeBox,
+  obstacles: ObstacleQuery,
+  nodes: LayoutNode[],
+  claimed: ClaimRegister,
+  bands: readonly { top: number; bottom: number }[],
+  /** The routes of the other edges that will not move again; asked only when both sides clear. */
+  settled: () => Point[][],
+): boolean {
+  // One channel y for both ends, measured from the cards the route passes
+  // over: the pair and every card standing between them. Cards of a row share
+  // their top but not their height, and a taller card between the pair
+  // reaches further down than either end. A card outside that x range is not
+  // in the way, and a side column (ADR-1728) is spaced on its own steps, not
+  // on the rows, so taking its cards in would stretch the row over the next
+  // one and put the channel below that. Repeated until nothing more joins, so
+  // the result does not depend on the order the cards are visited in.
+  const left = Math.min(from.x + from.width / 2, to.x + to.width / 2);
+  const right = Math.max(from.x + from.width / 2, to.x + to.width / 2);
+  let top = Math.min(from.y, to.y);
+  let bottom = Math.max(from.y + from.height, to.y + to.height);
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const n of nodes) {
+      if (n.x >= right || n.x + n.width <= left) continue;
+      if (n.y >= bottom - 1e-6 || n.y + n.height <= top + 1e-6) continue;
+      if (n.y < top || n.y + n.height > bottom) {
+        top = Math.min(top, n.y);
+        bottom = Math.max(bottom, n.y + n.height);
+        grew = true;
+      }
+    }
+  }
+  const row: EdgeBox = { id: "", x: 0, y: top, width: 0, height: bottom - top };
+  const leftward = to.x + to.width / 2 < from.x + from.width / 2;
+  const clear: { path: Point[]; segments: ClaimedSegment[] }[] = [];
+  for (const downward of [leftward, !leftward]) {
+    const cy = downward ? channelBelow(row, nodes) : channelAbove(row, nodes);
+    const src = channelStub(from, downward, cy, claimed, bands);
+    const tgt = channelStub(to, downward, cy, claimed, bands);
+    const path = [src.port, ...src.elbows, ...tgt.elbows, tgt.port];
+    const segments = claimedSegmentsOf(path, from, to, bands);
+    if (segments.some((v) => claimed.conflicts(v))) continue;
+    if (!obstacles.polylineClear(path)) continue;
+    clear.push({ path, segments });
+  }
+  if (clear.length === 0) return false;
+  let pick = clear[0];
+  if (clear.length === 2) {
+    const routes = settled();
+    if (countPolylineCrossings(clear[1].path, routes) < countPolylineCrossings(pick.path, routes)) {
+      pick = clear[1];
+    }
+  }
+  applyPath(edge, pick.path);
+  claimed.add(pick.segments);
+  return true;
+}
+
+/**
+ * The routes of every edge but `self` that the routing pass will not move
+ * again: those already given waypoints, and straight ones that are clear and
+ * so are left as they are. A straight edge that still crosses a card is
+ * waiting for its own route, and pricing a candidate against the chord it is
+ * about to leave would pick a side on geometry that is not going to be drawn.
+ */
+function settledRoutes(
+  edges: readonly LayoutEdge[],
+  self: LayoutEdge,
+  obstacleIndex: ObstacleIndex,
+): Point[][] {
+  const out: Point[][] = [];
+  for (const e of edges) {
+    if (e === self || e.ghost || e.cyclic) continue;
+    if (e.waypoints && e.waypoints.length > 0) {
+      out.push([e.fromPoint, ...e.waypoints, e.toPoint]);
+    } else if (!obstaclesFor(e, obstacleIndex).segmentCrosses(e.fromPoint, e.toPoint)) {
+      out.push([e.fromPoint, e.toPoint]);
+    }
+  }
+  return out;
 }
 
 /**

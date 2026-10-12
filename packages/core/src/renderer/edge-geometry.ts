@@ -69,3 +69,30 @@ export function countPolylinePenetrations(points: Point[], obstacles: Rect[]): n
   }
   return count;
 }
+
+/**
+ * Count the proper crossings between a polyline and the polylines of other
+ * edges: pairs of segments that cross at a single interior point. Segments
+ * that only touch, share an end, or run collinear are not counted, which is
+ * the sense in which the router compares candidate routes (#3026).
+ */
+export function countPolylineCrossings(points: Point[], others: readonly Point[][]): number {
+  const turn = (o: Point, a: Point, b: Point) =>
+    (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const straddles = (d1: number, d2: number) => (d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0);
+  let count = 0;
+  for (const q of others) {
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i];
+      const b = points[i + 1];
+      for (let j = 0; j < q.length - 1; j++) {
+        const c = q[j];
+        const d = q[j + 1];
+        if (straddles(turn(c, d, a), turn(c, d, b)) && straddles(turn(a, b, c), turn(a, b, d))) {
+          count++;
+        }
+      }
+    }
+  }
+  return count;
+}
