@@ -391,6 +391,7 @@ flowchart TD
     ADR_2917["ADR-2917<br/>複数 system のルートビューは同名ノードを両方描き、要素の id は bare id の..."]
     ADR_2958["ADR-2958<br/>ガターを通るエッジを、共有する端ごとに 1 レーンへ束ねる"]
     ADR_3022["ADR-3022<br/>edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は foc..."]
+    ADR_3026["ADR-3026<br/>同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す"]
     ADR_3088["ADR-3088<br/>行間チャネルのレーンを、run がつながる縦線の向きで並べる"]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
@@ -1027,6 +1028,7 @@ flowchart TD
   class ADR_3011 superseded
   class ADR_3020 accepted
   class ADR_3022 accepted
+  class ADR_3026 accepted
   class ADR_3052 accepted
   class ADR_3069 accepted
   class ADR_3077 accepted

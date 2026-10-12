@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-10-12
 - **関連 Issue**: [#3026](https://github.com/kompiro/karasu/issues/3026)
+- **設計 (ADR)**: [ADR-3026](../adr/3026-same-row-channel-route.md)
 - **関連 ADR**: [ADR-968](../adr/968-orthogonal-edge-routing-skip-layer.md)、[ADR-2330](../adr/2330-ungrouped-routing-parity.md)、[ADR-2611](../adr/2611-layer-spanning-edge-columns.md)
 - **Related TPLs**: [TPL-3026](../test-perspectives/TPL-3026-candidate-chain-covers-every-endpoint-relation.md), [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md), [TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md), [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)
 - **対象ファイル**: `packages/core/src/renderer/edge-routing-groups.ts`（`trySameRowChannelRoute` / `channelStub`）、`packages/core/src/renderer/edge-geometry.ts`（`countPolylineCrossings`）
