@@ -56,7 +56,8 @@ export interface FacetOverlay {
   /**
    * Selected-facet ids per bare node id, in known-facet order. Non-members are
    * absent. A union over every node sharing the id (`KrsFile.facetIndex`), so
-   * it serves only what has no path: edge endpoints and ghost cards.
+   * it serves only what has no path: ghost cards and the edge endpoints that
+   * are not a card on the canvas.
    */
   membership: Map<string, string[]>;
   /**

@@ -795,8 +795,8 @@ export interface KrsFile {
    * {@link facetIndexByPath} for every card that knows its path (#2934).
    *
    * This map is a **broadcast**: the facets the model knows (`knownFacetIds`),
-   * and the elements that carry no path (edge endpoints, ghost cards). Do not
-   * use it to paint one node.
+   * and the elements that carry no path (ghost cards, edge endpoints that are
+   * not a card on the canvas). Do not use it to paint one node.
    */
   facetIndex: Map<string, Set<string>>;
   /**

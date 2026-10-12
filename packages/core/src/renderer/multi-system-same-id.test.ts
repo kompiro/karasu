@@ -467,6 +467,11 @@ describe("per-node maps are keyed by path; bare ids answer with the winner (#293
     const { svg } = rootCompile(MEASURED(order), { selectedFacets: ["pii"] });
     expect(cardOf(svg, "Shop.Api")).toContain('data-facet-member="pii"');
     expect(cardOf(svg, "Admin.Api")).not.toContain("data-facet-member");
+    // Admin's edge touches no member, so it dims with its cards.
+    const dimmed = (label: string) =>
+      new RegExp(`<g opacity="0.28"><g [^>]*data-edge-label="${label}"`).test(svg);
+    expect(dimmed("runs")).toBe(true);
+    expect(dimmed("queues")).toBe(false);
   });
 
   it.each(ORDERS)("describes the winner in one bare metadata record (%s)", (order) => {

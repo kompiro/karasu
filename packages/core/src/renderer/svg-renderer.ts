@@ -653,12 +653,17 @@ export function renderFromLayout(
     // touches a member node. The second is why the rule is "dim when *both*
     // endpoints are outside" — where the highlighted set meets the rest of the
     // model is the main thing an overlay is read for.
+    // An endpoint is read through its card, so a card sharing its id with a
+    // member does not keep its edge lit (#2934); the multi-system root names
+    // the card by `fromKey` / `toKey`, every other canvas by the bare id.
+    const endpointFacets = (id: string, key: string | undefined): readonly string[] =>
+      facetsFor(id, id, layoutResult.nodes.get(key ?? id)?.path);
     const edgeFacets = edgeFacetsFor(edgeLayout);
     const edgeDimmed =
       overlay !== undefined &&
       edgeFacets.length === 0 &&
-      facetsFor(edgeLayout.from, edgeLayout.from).length === 0 &&
-      facetsFor(edgeLayout.to, edgeLayout.to).length === 0;
+      endpointFacets(edgeLayout.from, edgeLayout.fromKey).length === 0 &&
+      endpointFacets(edgeLayout.to, edgeLayout.toKey).length === 0;
     const rendered = renderEdge(
       edgeLayout,
       edgeStyle,
