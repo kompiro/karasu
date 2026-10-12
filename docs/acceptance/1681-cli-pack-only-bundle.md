@@ -10,8 +10,8 @@
 
 ## 受け入れ条件
 
-- [x] `package.json` の `files` が `["dist/index.js", "THIRD_PARTY_NOTICES.md"]` と完全一致する（ディレクトリ全体の `"dist"` glob には退行しない）
-  > ✅ Automated — `packages/cli/src/packaging.test.ts` › `ships only the bundle and the third-party notices` / `never falls back to a whole-directory dist glob`
+- [x] `package.json` の `files` が `["dist/index.js", "dist/app/", "THIRD_PARTY_NOTICES.md"]` と完全一致する（ディレクトリ全体の `"dist"` glob には退行しない。`dist/app/` は #3017 で足した `karasu serve` のプレビュー app で、pack のたびに空にして詰め直す。[AT-3017](3017-serve-from-npm-package.md)）
+  > ✅ Automated — `packages/cli/src/packaging.test.ts` › `ships only the bundle, the preview app and the third-party notices` / `never falls back to a whole-directory dist glob`
 
 - [x] `bin.karasu` が `./dist/index.js` を指し、その対象が `files` に含まれる
   > ✅ Automated — `packages/cli/src/packaging.test.ts` › `points the bin at the bundle that files ships`

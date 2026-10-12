@@ -6,7 +6,10 @@
 // `packages/vscode`, whose deps are esbuild-bundled into the `.vsix`).
 //
 // Usage: tsx scripts/ci/generate-third-party-notices.ts <packageDir> [<packageDir> ...]
+//        tsx scripts/ci/generate-third-party-notices.ts <packageDir> --out <file>
 // Wired into each publishable package's `build` script; the output is git-ignored.
+// `--out` writes one package's notices somewhere other than its own directory:
+// the CLI uses it for the preview app it ships in `dist/app/` (#3017).
 //
 // See `docs/design/license-compliance-automation.md`.
 
@@ -22,6 +25,12 @@ export interface DependencyNotice {
   license: string;
   /** Full LICENSE file text, or `null` if no license file was found in the package. */
   licenseText: string | null;
+  /**
+   * The package's own third-party notices (e.g. `monaco-editor`'s
+   * `ThirdPartyNotices.txt`), for code it bundles from others. Shipping the
+   * package's bundle ships that code too, so its notices travel with it (#3017).
+   */
+  upstreamNotices?: string | null;
 }
 
 const LICENSE_FILE_PATTERN = /^(LICEN[CS]E|COPYING|NOTICE)(\.\w+)?$/i;
@@ -39,6 +48,27 @@ export function readLicenseFile(packagePath: string): string | null {
     .filter((name) => LICENSE_FILE_PATTERN.test(name))
     .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
   for (const name of matches) {
+    try {
+      const text = readFileSync(join(packagePath, name), "utf8").trim();
+      if (text.length > 0) return text;
+    } catch {
+      // unreadable — try the next candidate
+    }
+  }
+  return null;
+}
+
+const UPSTREAM_NOTICES_PATTERN = /^third[-_]?party[-_]?notices(\.\w+)?$/i;
+
+/** Read the package's own third-party notices file (`ThirdPartyNotices.txt` etc.), if any. */
+export function readUpstreamNoticesFile(packagePath: string): string | null {
+  let entries: string[];
+  try {
+    entries = readdirSync(packagePath);
+  } catch {
+    return null;
+  }
+  for (const name of entries.filter((entry) => UPSTREAM_NOTICES_PATTERN.test(entry)).sort()) {
     try {
       const text = readFileSync(join(packagePath, name), "utf8").trim();
       if (text.length > 0) return text;
@@ -89,6 +119,7 @@ function collectNotices(packageName: string): DependencyNotice[] {
           version,
           license,
           licenseText: path !== undefined ? readLicenseFile(path) : null,
+          upstreamNotices: path !== undefined ? readUpstreamNoticesFile(path) : null,
         });
       });
     }
@@ -116,6 +147,16 @@ export function renderNotices(packageName: string, notices: DependencyNotice[]):
     } else {
       lines.push("```", notice.licenseText, "```", ``);
     }
+    if (notice.upstreamNotices) {
+      lines.push(
+        `Third-party notices of \`${notice.name}\` itself:`,
+        ``,
+        "```",
+        notice.upstreamNotices,
+        "```",
+        ``,
+      );
+    }
   }
   return lines.join("\n");
 }
@@ -130,10 +171,14 @@ function packageNameOf(packageDir: string): string {
 }
 
 function main(argv: string[]): void {
-  const dirs = argv.slice(2);
-  if (dirs.length === 0) {
+  const args = argv.slice(2);
+  const outIndex = args.indexOf("--out");
+  const out = outIndex === -1 ? undefined : args[outIndex + 1];
+  const dirs = outIndex === -1 ? args : args.filter((_, i) => i !== outIndex && i !== outIndex + 1);
+  if (dirs.length === 0 || (outIndex !== -1 && (out === undefined || dirs.length !== 1))) {
     process.stderr.write(
-      "usage: tsx scripts/ci/generate-third-party-notices.ts <packageDir> [<packageDir> ...]\n",
+      "usage: tsx scripts/ci/generate-third-party-notices.ts <packageDir> [<packageDir> ...]\n" +
+        "       tsx scripts/ci/generate-third-party-notices.ts <packageDir> --out <file>\n",
     );
     process.exitCode = 1;
     return;
@@ -142,7 +187,7 @@ function main(argv: string[]): void {
     const packageDir = resolve(dir);
     const packageName = packageNameOf(packageDir);
     const notices = collectNotices(packageName);
-    const outPath = join(packageDir, "THIRD_PARTY_NOTICES.md");
+    const outPath = out !== undefined ? resolve(out) : join(packageDir, "THIRD_PARTY_NOTICES.md");
     writeFileSync(outPath, renderNotices(packageName, notices));
     process.stdout.write(
       `Wrote ${outPath} (${notices.length} dependenc${notices.length === 1 ? "y" : "ies"}).\n`,

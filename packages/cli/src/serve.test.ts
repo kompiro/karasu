@@ -12,6 +12,8 @@ vi.mock("chokidar", () => ({
 
 import {
   collectKrsFiles,
+  findAppDistDir,
+  missingAppMessage,
   resolveDefaultFile,
   resolveKrsFile,
   serveStaticFile,
@@ -324,13 +326,100 @@ describe("HTTP server", () => {
     });
 
     it("returns 503 when the app has not been built", async () => {
-      const { status } = await get(spaPort, "/");
+      const { status, body } = await get(spaPort, "/");
       expect(status).toBe(503);
+      expect(body).toContain("/nonexistent-dist");
     });
 
     it("returns 503 for unknown asset paths", async () => {
       const { status } = await get(spaPort, "/assets/unknown.js");
       expect(status).toBe(503);
     });
+  });
+});
+
+// ── findAppDistDir (#3017, TPL-1024) ─────────────────────────────────────────
+
+describe("findAppDistDir", () => {
+  let root: string;
+
+  beforeEach(async () => {
+    root = await makeTmpDir();
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true });
+  });
+
+  async function writeIndex(dir: string): Promise<void> {
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, "index.html"), "<div id=root></div>");
+  }
+
+  async function writeAppPackage(appRoot: string, name: string): Promise<void> {
+    await mkdir(appRoot, { recursive: true });
+    await writeFile(join(appRoot, "package.json"), JSON.stringify({ name }));
+  }
+
+  it("takes the app the npm package ships beside the bundle", async () => {
+    // node_modules/karasu/dist/index.js → node_modules/karasu/dist/app/
+    const cliDir = join(root, "node_modules/karasu/dist");
+    await writeIndex(join(cliDir, "app"));
+    expect(findAppDistDir(cliDir)).toEqual({ dir: join(cliDir, "app") });
+  });
+
+  it("prefers the shipped app over the monorepo build", async () => {
+    const cliDir = join(root, "packages/cli/dist");
+    await writeIndex(join(cliDir, "app"));
+    await writeAppPackage(join(root, "packages/app"), "@karasu-tools/app");
+    await writeIndex(join(root, "packages/app/dist"));
+    expect(findAppDistDir(cliDir)).toEqual({ dir: join(cliDir, "app") });
+  });
+
+  it("falls back to the monorepo's packages/app/dist", async () => {
+    const cliDir = join(root, "packages/cli/dist");
+    await writeAppPackage(join(root, "packages/app"), "@karasu-tools/app");
+    await writeIndex(join(root, "packages/app/dist"));
+    expect(findAppDistDir(cliDir)).toEqual({ dir: join(root, "packages/app/dist") });
+  });
+
+  it("does not serve an unrelated package that happens to sit at ../../app", async () => {
+    // An installed karasu: node_modules/karasu/dist → node_modules/app/dist
+    const cliDir = join(root, "node_modules/karasu/dist");
+    await writeAppPackage(join(root, "node_modules/app"), "app");
+    await writeIndex(join(root, "node_modules/app/dist"));
+    expect(findAppDistDir(cliDir)).toEqual({
+      dir: null,
+      inMonorepo: false,
+      tried: [join(cliDir, "app")],
+    });
+  });
+
+  it("reports both places in the monorepo when the app has not been built", async () => {
+    const cliDir = join(root, "packages/cli/dist");
+    await writeAppPackage(join(root, "packages/app"), "@karasu-tools/app");
+    expect(findAppDistDir(cliDir)).toEqual({
+      dir: null,
+      inMonorepo: true,
+      tried: [join(cliDir, "app"), join(root, "packages/app/dist")],
+    });
+  });
+});
+
+describe("missingAppMessage", () => {
+  it("tells an npm user to reinstall, not to run a monorepo command (#3017)", () => {
+    const message = missingAppMessage({ inMonorepo: false, tried: ["/x/dist/app"] });
+    expect(message).toContain("/x/dist/app");
+    expect(message).toContain("karasu@latest");
+    expect(message).not.toMatch(/pnpm|--workspace|--filter/);
+  });
+
+  it("tells a monorepo contributor which build to run", () => {
+    const message = missingAppMessage({
+      inMonorepo: true,
+      tried: ["/r/packages/cli/dist/app", "/r/packages/app/dist"],
+    });
+    expect(message).toContain("/r/packages/app/dist");
+    expect(message).toContain("pnpm --filter @karasu-tools/app run build");
   });
 });

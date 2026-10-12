@@ -10,11 +10,14 @@ applicable_to:
 known_consumers:
   - vscode-extension
   - vscode-lsp
+  - karasu-cli-serve
 related_to:
   - TPL-976
 discovered_from:
   - issue: "#1024"
   - root_cause_file: "packages/vscode/src/extension.ts:46"
+  - issue: "#3017"
+  - root_cause_file: "packages/cli/src/serve.ts"
 topic: vscode
 scope:
   packages:
@@ -62,3 +65,5 @@ dev tree の relative path（`asAbsolutePath(path.join("..", "lsp", "out", "serv
 
 - `packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts` — installed extension で LSP が動くかの E2E
 - `packages/vscode/scripts/` — packaging 関連スクリプト（bundling step がここに入る）
+- `packages/cli/pack/serve-from-tarball.test.ts`（`pnpm --filter ./packages/cli run test:pack`）— 実際の `prepack` を通した tarball を展開して `karasu serve` を起動する packaged mode のスモーク。#3017 では `serve` が app の build を monorepo 相対の `../../app/dist` で探し、npm 版で全リクエストが 503 になっていた
+- `packages/cli/src/serve.test.ts` › `findAppDistDir` — packaged（`dist/app/`）と dev（`packages/app/dist`）の候補探索、install 先の無関係な `node_modules/app` を拾わないこと

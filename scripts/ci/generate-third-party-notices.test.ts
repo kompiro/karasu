@@ -2,7 +2,11 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { readLicenseFile, renderNotices } from "./generate-third-party-notices.ts";
+import {
+  readLicenseFile,
+  readUpstreamNoticesFile,
+  renderNotices,
+} from "./generate-third-party-notices.ts";
 
 describe("readLicenseFile", () => {
   let dir: string;
@@ -45,6 +49,36 @@ describe("readLicenseFile", () => {
   });
 });
 
+describe("readUpstreamNoticesFile (#3017)", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "karasu-notices-"));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("reads a package's own ThirdPartyNotices.txt (monaco-editor's form)", () => {
+    writeFileSync(join(dir, "LICENSE"), "MIT");
+    writeFileSync(join(dir, "ThirdPartyNotices.txt"), "bundled: vscode-css-languageservice\n");
+    expect(readUpstreamNoticesFile(dir)).toBe("bundled: vscode-css-languageservice");
+    // It stays apart from the license text, which keeps preferring LICENSE.
+    expect(readLicenseFile(dir)).toBe("MIT");
+  });
+
+  it("also matches THIRD_PARTY_NOTICES.md", () => {
+    writeFileSync(join(dir, "THIRD_PARTY_NOTICES.md"), "notices");
+    expect(readUpstreamNoticesFile(dir)).toBe("notices");
+  });
+
+  it("returns null when the package has none", () => {
+    writeFileSync(join(dir, "LICENSE"), "MIT");
+    expect(readUpstreamNoticesFile(dir)).toBeNull();
+  });
+});
+
 describe("renderNotices", () => {
   it("renders a heading, version, license and fenced license text per dependency", () => {
     const md = renderNotices("karasu-vscode", [
@@ -58,6 +92,21 @@ describe("renderNotices", () => {
     expect(md).toContain("```\nMIT License\nblah\n```");
     expect(md).toContain("## vscode-languageclient@9.0.1");
     expect(md).toContain("_No license file was found");
+  });
+
+  it("appends a dependency's own third-party notices after its license", () => {
+    const md = renderNotices("@karasu-tools/app", [
+      {
+        name: "monaco-editor",
+        version: "0.56.0",
+        license: "MIT",
+        licenseText: "MIT License",
+        upstreamNotices: "THIRD-PARTY SOFTWARE NOTICES",
+      },
+    ]);
+    expect(md).toContain(
+      "```\nMIT License\n```\n\nThird-party notices of `monaco-editor` itself:\n\n```\nTHIRD-PARTY SOFTWARE NOTICES\n```",
+    );
   });
 
   it("notes when there are no third-party dependencies", () => {

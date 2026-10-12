@@ -132,7 +132,6 @@ ADR-1681 の「`files` を成果物そのものに固定する」は、`dist/app
 
 ### 実装の指針
 
-<!-- absent-path-next-line: the serve build config this design intends to create (#3017) -->
 1. **serve 用 build**: `packages/app/vite.serve.config.ts` を追加し、`build:serve` script を足す。
    `outDir: "dist-serve"`、minify あり、sourcemap なし、`publicDir: false`（viewer と同じ）。
    `publicDir: false` では `index.html` が参照する `favicon.svg` も出なくなるので、serve build が
