@@ -2,7 +2,7 @@
 
 - **日付**: 2026-10-12
 - **ステータス**: 検討中
-- **PR**: TBD
+- **PR**: [#3135](https://github.com/kompiro/karasu/pull/3135)
 - **関連**:
   - 引き金 Issue: [#3026](https://github.com/kompiro/karasu/issues/3026)（Umami の `UmamiApp` drill-down で 5 本が間のカードを貫通する）
   - 発見の経緯: [#3022](https://github.com/kompiro/karasu/issues/3022)（edge label disclosure の計測中に見つかった）
