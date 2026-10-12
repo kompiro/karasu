@@ -16,6 +16,7 @@ discovered_from:
   - root_cause_adr: "ADR-2818"
   - root_cause_file: "docs/spec/permalink.md"
   - issue: "#2917"
+  - issue: "#2933"
 related_to:
   - TPL-1352
   - TPL-1583
@@ -45,11 +46,11 @@ bare id の key で片方が上書きされ、1 つしか描かれない）、�
 - **最初の要素を返す API**（`querySelector`、Playwright の non-strict locator）: DOM 順で最初、つまり**先に配置された system** の要素
 - **1:1 の index**（SPA の `nodePathIndex` → `nodeMetadata.viewPath`、hash の解決）:
   `@migration_target` 優先・同点は宣言順の**勝者**（TPL-1583）
-- **静的 SVG のドリル**（`childLevelLinks` は `nodePathIndex` を参照しない）: 同名のカードは
-  すべて同じ anchor `#krs-system-<id>` にリンクし、CSS `:target` は同じ id を持つレベルのうち
-  DOM 順で最初のものを表示する。そのレベルの内容も `resolveContainerChain` が**最初の所有
-  system** に解決する（#2933）。後の system が `@migration_target` を持つと SPA とは別の
-  ノードに着く
+- **静的 SVG のドリル**: anchor id ごとにレベルを 1 つだけ出し、その中身は SPA と同じ
+  `nodePathIndex` の**勝者**（#2933）。勝者でない同名のカードはリンクを持たない。#2933 までは
+  同名のカードがすべて同じ anchor にリンクし、同じ id のレベルが複数出て、CSS `:target` が
+  DOM 順で最初のもの（中身は最初の所有 system）を表示していた。後の system が
+  `@migration_target` を持つと SPA とは別のノードに着いた
 - **path を持つ消費側**（`data-node-path` を読む click delegation。#2917 の設計）: 曖昧さなく
   自分のノードに着く
 
@@ -99,8 +100,11 @@ bare id の key で片方が上書きされ、1 つしか描かれない）、�
   ジャンプ・ADR-2818 A-2）は #2935
 - **path を持てない消費側の着地点は仕様として AT に書く**: SPA の permalink と hash は
   `nodePathIndex` の勝者、ハイライトとアウトラインは DOM 順で最初。`node-id-multiple-locations`
-  が作者にその状態を伝える。静的 SVG のドリルが最初の所有 system に解決する既存の食い違いは
-  #2933
+  が作者にその状態を伝える
+- **1 つの id に 1 要素しか置けない面（静的バンドルのレベル）は、SPA と同じ index で 1 つを
+  選び、別のノードに着くリンクは張らない**（#2933）。勝者でないノードもその下を
+  たどり、一意な id の子孫は自分のレベルを持つ。戻るボタンは自分のノードを出すレベルを持つ
+  最も近い祖先へ向ける
 
 ## 関連テスト
 
@@ -116,6 +120,10 @@ bare id の key で片方が上書きされ、1 つしか描かれない）、�
   (#2917)（ドリルと詳細パネルが DOM 順や index の勝者ではなく、クリックしたカードの path に着く）
 - `packages/vscode/src/drilldown-state.test.ts` › drillDown with the card's own path (#2917) ／
   `packages/vscode/src/webview-content.test.ts` › data-node-path in the webview (#2917)
+- `packages/core/src/renderer/static-bundle-same-id.test.ts` › … one level per anchor id (#2933) ›
+  shows the node the SPA resolves the same anchor to, for every anchor ／ links and back buttons
+  around a same-id node (#2933) › links only the card whose own level the anchor names（静的
+  バンドルの着地点が SPA と一致し、別ノードに着くリンクが無い）
 - `packages/e2e/tests/at-2917-multi-system-root-same-id.spec.ts`（ルートに同じ `data-node-id` が
   2 つ描かれ、2 枚目のクリックが自分の system に潜る。strict locator は `data-node-path` で着地点を
   明示する）
