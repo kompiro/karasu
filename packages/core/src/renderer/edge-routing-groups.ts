@@ -587,10 +587,10 @@ function channelStub(
  * shortest way around it: a U whose run the lane pass spreads like any other
  * channel run (TPL-1954).
  *
- * Of the two sides, the one whose route crosses fewer of the edges already on
- * the canvas wins. A run along a channel crosses every edge that drops
- * through it, so the busier channel costs crossings the chord used to hide
- * under the card. Measured on four reverse-engineered models, no fixed side
+ * Of the two sides, the one whose route crosses fewer of the settled routes
+ * wins (see {@link settledRoutes}). A run along a channel crosses every edge
+ * that drops through it, so the busier channel costs crossings the chord used
+ * to hide under the card. Measured on four reverse-engineered models, no fixed side
  * was the cheaper one on all of them, and this choice added the fewest
  * crossings over the four (131, against 151 to 361 for a fixed side). A tie
  * goes clockwise (rightward above, leftward below), so a pair drawn both ways
@@ -608,15 +608,28 @@ function trySameRowChannelRoute(
   /** The routes of the other edges that will not move again; asked only when both sides clear. */
   settled: () => Point[][],
 ): boolean {
-  // One channel y for both ends, measured from the whole row: the cards of a
-  // row share their top but not their height, and a taller card between the
-  // pair reaches further down than either end.
+  // One channel y for both ends, measured from the cards the route passes
+  // over: the pair and every card standing between them. Cards of a row share
+  // their top but not their height, and a taller card between the pair
+  // reaches further down than either end. A card outside that x range is not
+  // in the way, and a side column (ADR-1728) is spaced on its own steps, not
+  // on the rows, so taking its cards in would stretch the row over the next
+  // one and put the channel below that. Repeated until nothing more joins, so
+  // the result does not depend on the order the cards are visited in.
+  const left = Math.min(from.x + from.width / 2, to.x + to.width / 2);
+  const right = Math.max(from.x + from.width / 2, to.x + to.width / 2);
   let top = Math.min(from.y, to.y);
   let bottom = Math.max(from.y + from.height, to.y + to.height);
-  for (const n of nodes) {
-    if (n.y < bottom - 1e-6 && n.y + n.height > top + 1e-6) {
-      top = Math.min(top, n.y);
-      bottom = Math.max(bottom, n.y + n.height);
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const n of nodes) {
+      if (n.x >= right || n.x + n.width <= left) continue;
+      if (n.y >= bottom - 1e-6 || n.y + n.height <= top + 1e-6) continue;
+      if (n.y < top || n.y + n.height > bottom) {
+        top = Math.min(top, n.y);
+        bottom = Math.max(bottom, n.y + n.height);
+        grew = true;
+      }
     }
   }
   const row: EdgeBox = { id: "", x: 0, y: top, width: 0, height: bottom - top };
