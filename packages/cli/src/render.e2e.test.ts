@@ -388,3 +388,68 @@ describe("karasu render: diagnostic locations name their file (#2715)", () => {
     });
   });
 });
+
+// #3097: the default render (every view bundled) dropped the sheets a model
+// `@import`s, so it drew in builtin styles and printed none of their warnings,
+// while `--view <x>` applied and validated the same sheets (TPL-219).
+describe("default karasu render applies the imported style sheets (#3097)", () => {
+  let tmpDir: string;
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+  let streams: ReturnType<typeof captureStreams>;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "karasu-render-styles-"));
+    exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as never);
+    streams = captureStreams();
+  });
+
+  afterEach(() => {
+    streams.restore();
+    exitSpy.mockRestore();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function writeProject(): { entry: string } {
+    const entry = join(tmpDir, "after.krs");
+    const theme = join(tmpDir, "after.krs.style");
+    writeFileSync(entry, `@import "./after.krs.style"\nsystem Shop {\n  service Api {}\n}\n`);
+    writeFileSync(
+      theme,
+      "#Api { background-color: #ff00aa; border-color: #ff00aa; column: middle; }\n",
+    );
+    return { entry };
+  }
+
+  function warningLines(): string[] {
+    return streams
+      .stderr()
+      .split("\n")
+      .filter((l) => l.startsWith("Warning: "));
+  }
+
+  it("draws the bundle with the imported sheet", async () => {
+    const { entry } = writeProject();
+    const out = join(tmpDir, "a.svg");
+
+    await render(entry, { output: out });
+
+    expect(readFileSync(out, "utf-8").toLowerCase()).toContain("#ff00aa");
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it("prints the sheet's warnings, the same ones `--view system` prints", async () => {
+    const { entry } = writeProject();
+
+    await render(entry, { output: join(tmpDir, "b.svg"), view: "system" });
+    const perView = warningLines();
+    // One finding placed in the sheet, one from resolving it against `Api`.
+    expect(perView.some((l) => l.includes("after.krs.style:1:"))).toBe(true);
+    expect(perView.some((l) => l.includes("on #Api"))).toBe(true);
+
+    streams.restore();
+    streams = captureStreams();
+    await render(entry, { output: join(tmpDir, "a.svg") });
+
+    expect(warningLines()).toEqual(perView);
+  });
+});

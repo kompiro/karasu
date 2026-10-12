@@ -46,7 +46,7 @@ import { diffOrgViewSlices } from "../diff/org-view-diff.js";
 import type { NodeDiffMeta, EdgeDiffMeta } from "../diff/view-diff.js";
 import { injectDiffStyle } from "../diff/diff-style.js";
 import { nodePathRefId } from "../parser/node-path.js";
-import { collectModelWarnings } from "./compile.js";
+import { collectModelWarnings } from "../resolver/model-warnings.js";
 
 /**
  * Resolve the before / after project entries and concatenate their resolver

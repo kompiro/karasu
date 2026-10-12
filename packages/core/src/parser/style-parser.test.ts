@@ -22,6 +22,14 @@ service {
     expect(rule.properties["color"]).toBe("#DBEAFE");
   });
 
+  // #3032: the lexer dropped the `-`, so the declaration read `8px`.
+  it("keeps the sign of a negative value", () => {
+    const result = StyleParser.parse("edge { label-offset: -8px; }");
+    expect(result.value.rules[0].properties["label-offset"]).toBe("-8px");
+    const twoLengths = StyleParser.parse("edge { label-offset: -4px -8px; }");
+    expect(twoLengths.value.rules[0].properties["label-offset"]).toBe("-4px -8px");
+  });
+
   it("parses a tag selector", () => {
     const result = StyleParser.parse(`
 [external] {

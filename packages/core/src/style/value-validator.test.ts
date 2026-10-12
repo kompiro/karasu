@@ -100,10 +100,51 @@ describe("validateStyleValues — number with range", () => {
     expect(diags[0].params).toMatchObject({ property: "opacity", value: 1.5, max: 1 });
   });
 
-  // Note: negative numbers (e.g. `opacity: -0.1`) currently fall outside
-  // the lexer's recognized atoms (the `-` is treated as a stray arrow
-  // start). Below-min violations therefore aren't reachable for opacity
-  // today; covered by the above-max test only.
+  // #3032: the lexer used to drop the sign, so a below-min value was read as
+  // its absolute and passed.
+  it("rejects a value below min", () => {
+    const diags = validate(`service { opacity: -0.1; }`);
+    expect(diags).toHaveLength(1);
+    expect(diags[0].code).toBe("style-out-of-range");
+    expect(diags[0].params).toMatchObject({ property: "opacity", value: -0.1, min: 0 });
+  });
+
+  // Which diagnostic a union reports is its first-branch rule (the same one
+  // `label-max-chars: 0` gets); this pins only that the value is refused.
+  it("rejects a negative label-max-chars", () => {
+    const diags = validate(`edge { label-max-chars: -3; }`);
+    expect(diags).toHaveLength(1);
+    expect(diags[0].severity).toBe("error");
+    expect(diags[0].params).toMatchObject({ property: "label-max-chars" });
+  });
+});
+
+// #3032: a width, a radius or a size has no drawing when negative.
+describe("validateStyleValues — length with a minimum", () => {
+  it.each([
+    ["service", "border-width"],
+    ["service", "border-radius"],
+    ["service", "font-size"],
+    ["edge", "stroke-width"],
+  ])("rejects a negative %s %s with style-out-of-range", (selector, property) => {
+    const diags = validate(`${selector} { ${property}: -2px; }`);
+    expect(diags).toHaveLength(1);
+    expect(diags[0].code).toBe("style-out-of-range");
+    expect(diags[0].params).toMatchObject({ property, value: -2, min: 0 });
+  });
+
+  it("accepts zero", () => {
+    expect(validate(`edge { stroke-width: 0px; }`)).toEqual([]);
+  });
+
+  it("accepts a negative label-offset, which shifts left and up", () => {
+    expect(validate(`edge { label-offset: -8px; }`)).toEqual([]);
+  });
+
+  it("accepts a length or a number written without a leading digit", () => {
+    expect(validate(`edge { label-offset: -.5px; }`)).toEqual([]);
+    expect(validate(`service { opacity: .5; }`)).toEqual([]);
+  });
 });
 
 describe("validateStyleValues — shape union", () => {

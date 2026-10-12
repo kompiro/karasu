@@ -6,6 +6,7 @@ import type {
   ResolvedStyles,
 } from "../types/style.js";
 import type { ViewSlice } from "../view/view-extract.js";
+import { withoutUnassignedSegment } from "../view/unassigned-system.js";
 import { layout } from "./layout.js";
 import type { GroupLabelIndex } from "./group-labels.js";
 import { CATEGORY_STUB_TAG, categoryOf, type CategoryId } from "./category-collapse.js";
@@ -141,6 +142,17 @@ export function sanitizeId(id: string): string {
  */
 export function anchorId(viewPrefix: string, nodeId: string): string {
   return `krs-${viewPrefix}-${sanitizeId(nodeId)}`;
+}
+
+/**
+ * The `childLevelLinks` key of a logical-view card: its node path, without the
+ * synthetic Unassigned system segment (a root card drops it and a drilled one
+ * keeps it, so both sides of the lookup normalize the same way). Keyed by path,
+ * not bare id, because two cards on the multi-system root can share an id and
+ * only one of them owns the level its anchor names (#2933).
+ */
+export function cardLinkKey(path: readonly string[]): string {
+  return nodePathRefId(withoutUnassignedSegment(path));
 }
 
 export interface RenderOptions {
@@ -328,6 +340,10 @@ export function render(
   serviceIdsWithDeploy?: Set<string>,
   ownerIndex?: Map<string, string>,
   displayMode?: DisplayMode,
+  /**
+   * Card → anchor of the level it drills to. Keyed by {@link cardLinkKey} for a
+   * card with a node path, by bare id otherwise (#2933).
+   */
   childLevelLinks?: Map<string, string>,
   options?: RenderOptions,
 ): string {
@@ -2000,7 +2016,7 @@ function renderNode(
     ...children,
   );
 
-  const childLevelId = childLevelLinks?.get(nodeId);
+  const childLevelId = childLevelLinks?.get(node.path ? cardLinkKey(node.path) : nodeId);
   if (childLevelId) {
     return el("a", { href: `#${childLevelId}` }, nodeEl);
   }
