@@ -18,8 +18,9 @@ import { analyze } from "./warnings.js";
  * validated.
  *
  * One builder for every surface that reports a model's warnings — the per-view
- * compile and the diff pipelines (#2879) — so a check added to one reaches the
- * other (TPL-219).
+ * compile, the diff pipelines (#2879), the bundled all-views builder (#3097)
+ * and the draw.io export — so a check added to one reaches the others
+ * (TPL-219).
  */
 export function collectModelWarnings(krsFile: KrsFile, sheets: StyleSheet[]): Warning[] {
   const systemSheetCount = 1; // only builtin counts as system for conflict detection

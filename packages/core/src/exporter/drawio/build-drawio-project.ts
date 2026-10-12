@@ -9,7 +9,7 @@ import { nodePathRefId } from "../../parser/node-path.js";
 import { withUnassignedSystem } from "../../view/unassigned-system.js";
 import { layout } from "../../renderer/layout.js";
 import { layoutDeploy } from "../../renderer/deploy-layout.js";
-import { analyze } from "../../resolver/warnings.js";
+import { collectModelWarnings } from "../../resolver/model-warnings.js";
 import { getBuiltinStyleSheet } from "../../builtins/default-style.js";
 import { exportDrawio, type DrawioNodeMeta, type DrawioPage } from "./drawio-exporter.js";
 import { layoutOrganization } from "./org-layout.js";
@@ -104,7 +104,12 @@ export async function buildDrawioProject(
   const resolver = new ImportResolver(fs);
   const resolved = await resolver.resolve(entryPath);
   const diagnostics = [...resolved.diagnostics];
-  const warnings = analyze(resolved.krsFile, [getBuiltinStyleSheet()], 1);
+  // draw.io carries no styles, but the warnings are the model's: the sheets it
+  // `@import`s are checked as every other `karasu render` checks them (#3097).
+  const warnings = collectModelWarnings(resolved.krsFile, [
+    getBuiltinStyleSheet(),
+    ...resolved.styleSheets,
+  ]);
   const xml = buildDrawio(resolved.krsFile, options);
   return { xml, diagnostics, warnings };
 }

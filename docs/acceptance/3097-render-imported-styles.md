@@ -7,6 +7,7 @@
   - `packages/core/src/renderer/drill-down-svg.ts`（`buildAllViewsSvg`）
   - `packages/core/src/renderer/all-layers-svg.ts`（`buildStyles`）
   - `packages/core/src/resolver/model-warnings.ts`（`collectModelWarnings` / `resolvedStyleWarningToWarning`）
+  - `packages/core/src/exporter/drawio/build-drawio-project.ts`（`buildDrawioProject`）
 - **関連 TPL**: TPL-219（並列関数ファミリの parameter parity）
 
 ## 受け入れ条件
@@ -23,11 +24,20 @@
 - [x] style 系 warning は、同じプロジェクトを `compileProject` で system view にコンパイルしたときと一致する。
   > ✅ Automated — `packages/core/src/compile/all-views-project-styles.test.ts` › `reports the style warnings \`compileProject\` reports for the system view`
 
-- [x] スタイル解決の warning（`style-column-invalid-value` など）は、bundle が複数の view で同じノードを解決しても 1 回だけ出る。
+- [x] スタイル解決の warning（`style-column-invalid-value` など）は、bundle が複数の view で同じノードを解決しても重複して出ない。
   > ✅ Automated — `packages/core/src/compile/all-views-project-styles.test.ts` › `reports a style-resolution finding once, although every view resolves the node`
 
 - [x] deploy / org view が無視する `column` の warning は、それぞれの view の compile と同じものが出る。
   > ✅ Automated — `packages/core/src/compile/all-views-project-styles.test.ts` › `reports what the deploy and org views ignore, as their own compiles do`
+
+- [x] 2 つのノードが同じ id を持つとき、per-view の compile と同じく finding はノードごとに出る。
+  > ✅ Automated — `packages/core/src/compile/all-views-project-styles.test.ts` › `keeps a finding per node when two nodes share an id, as the per-view compile does`
+
+- [x] deploy block が複数あるとき、bundle が描く block（per-view の deploy view と同じ先頭の block）のノードについてだけ報告する。
+  > ✅ Automated — `packages/core/src/compile/all-views-project-styles.test.ts` › `reports only the deploy block the bundle draws`
+
+- [x] `--format drawio` も、import した sheet の値の warning をその sheet のファイルを位置に持って出す。
+  > ✅ Automated — `packages/core/src/compile/all-views-project-styles.test.ts` › `reports the sheet's value warnings, as the SVG render does`
 
 - [x] icon theme は検査の対象に入らず、icon モードでも shape モードと同じ warning になる（偽の `style-conflict` を出さない）。
   > ✅ Automated — `packages/core/src/compile/all-views-project-styles.test.ts` › `leaves the icon theme out of the checks, so icon mode warns as shape mode does`
@@ -44,4 +54,4 @@ N/A — 自動テストですべて覆っている（`karasu check` は既定の
 
 ## 補足
 
-- `--format drawio` は style を描画に使わない形式で、今回の対象外。
+- `--format drawio` は style を描画に使わない。対象にしたのは warning だけ。

@@ -109,8 +109,7 @@ export function buildStyles(
     diagnostics.push(...unplacedStyleDiagnostics(styleResult.diagnostics));
   }
   // Icon theme is appended last so it takes highest priority for `shape`.
-  const sheets =
-    displayMode === "icon" ? [...modelSheets, getIconThemeStyleSheet()] : [...modelSheets];
+  const sheets = displayMode === "icon" ? [...modelSheets, getIconThemeStyleSheet()] : modelSheets;
   return { sheets, modelSheets, diagnostics };
 }
 

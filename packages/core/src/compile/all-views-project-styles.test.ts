@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildAllViewsSvgProject, compileProject } from "./compile.js";
 import { InMemoryFileSystemProvider } from "../fs/in-memory-provider.js";
+import { buildDrawioProject } from "../exporter/drawio/build-drawio-project.js";
 import type { Warning } from "../types/warnings.js";
 
 /**
@@ -115,5 +116,47 @@ describe("buildAllViewsSvgProject applies the project's imported style sheets (#
     const shape = await buildAllViewsSvgProject(ENTRY_PATH, fs, undefined, "shape");
     expect(icon.warnings.filter((w) => w.kind === "style-conflict")).toEqual([]);
     expect(styleWarnings(icon.warnings)).toEqual(styleWarnings(shape.warnings));
+  });
+
+  it("keeps a finding per node when two nodes share an id, as the per-view compile does", async () => {
+    const model = `@import "./index.krs.style"
+system Shop {
+  service Api {}
+}
+system Ops {
+  service Api {}
+}
+`;
+    const fs = await project("service { column: middle; }\n", model);
+    const bundle = await buildAllViewsSvgProject(ENTRY_PATH, fs);
+    const perView = await compileProject(ENTRY_PATH, fs, { diagramType: "system" });
+    const columnInvalid = (ws: readonly Warning[]) =>
+      ws.filter((w) => w.kind === "style-column-invalid-value");
+    expect(columnInvalid(perView.warnings)).toHaveLength(2);
+    expect(columnInvalid(bundle.warnings)).toEqual(columnInvalid(perView.warnings));
+  });
+
+  it("reports only the deploy block the bundle draws", async () => {
+    const model = `${MODEL}deploy Staging {
+  oci stgweb {
+    realizes Api
+  }
+}
+`;
+    const fs = await project("#stgweb { column: left; }\n", model);
+    const bundle = await buildAllViewsSvgProject(ENTRY_PATH, fs);
+    const deploy = await compileProject(ENTRY_PATH, fs, { diagramType: "deploy" });
+    expect(styleWarnings(deploy.warnings)).toEqual([]);
+    expect(styleWarnings(bundle.warnings)).toEqual([]);
+  });
+});
+
+describe("buildDrawioProject checks the project's imported style sheets (#3097)", () => {
+  it("reports the sheet's value warnings, as the SVG render does", async () => {
+    const fs = await project("#Api { colour: red; }\n");
+    const drawio = await buildDrawioProject(ENTRY_PATH, fs);
+    const unknown = drawio.warnings.filter((w) => w.kind === "style-unknown-property");
+    expect(unknown).toHaveLength(1);
+    expect(unknown[0].loc?.file).toBe(STYLE_PATH);
   });
 });
