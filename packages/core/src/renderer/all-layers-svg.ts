@@ -3,9 +3,9 @@ import { resolveFacetOverlay } from "./facet-overlay.js";
 import type { StyleSheet } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import type { DisplayMode } from "./layout-types.js";
-import { createViewExtractor } from "../view/view-extract.js";
+import { createViewExtractor, type ViewSlice } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
-import { extractOrgView } from "../view/org-view-extract.js";
+import { extractOrgView, type OrgViewSlice } from "../view/org-view-extract.js";
 import { render, legendScopeForLogicalSlice, type RenderOptions } from "./svg-renderer.js";
 import { buildGroupLabelIndex, buildTeamLabelIndex, declaredGroupOrderOf } from "./group-labels.js";
 import { renderOrgView } from "./org-renderer.js";
@@ -104,11 +104,57 @@ export function buildStyles(
   return { sheets: resolveSheets, diagnostics };
 }
 
+/** One child of a drawn level, with the full path its own level is extracted from. */
+export interface DrillChild {
+  node: HierarchyNode;
+  path: string[];
+  /**
+   * Label of the scope the child sits in when that is not the drawn level: the
+   * owning system of a child on the multi-system root (#2933).
+   */
+  scopeLabel?: string;
+}
+
 export interface DrillDownCallbacks<S> {
   getSlice(path: string[]): S;
   hasContent(slice: S): boolean;
-  getChildren(slice: S): HierarchyNode[];
+  getChildren(slice: S, path: string[]): DrillChild[];
   render(slice: S, childLevelLinks?: Map<string, string>): string;
+  /**
+   * Whether the node at `path` is the one its bare-id anchor names. Two nodes
+   * can share an id, and `#krs-<view>-<id>` has room for one level (#2933).
+   * Absent: every node owns its anchor (ids are unique in that view).
+   */
+  ownsAnchor?(path: string[]): boolean;
+  /** Key of `childLevelLinks` for a child's card. Absent: the bare id. */
+  linkKey?(child: DrillChild): string;
+}
+
+/**
+ * Children of a system-view level, each with the full path that reaches it.
+ *
+ * The root slice lists every system (one or many) and draws each one's
+ * children, so a child's path has to start with its own system: a bare
+ * `["Api"]` resolves to the first system that owns an `Api`, and a second
+ * system's `Api` would be extracted as the first one's (#2933). Below the root,
+ * a child extends the drilled path.
+ */
+export function systemDrillChildren(slice: ViewSlice, path: string[]): DrillChild[] {
+  if (path.length === 0) {
+    return slice.systems.flatMap((s) =>
+      s.children.map((c) => ({ node: c, path: [s.id, c.id], scopeLabel: s.label ?? s.id })),
+    );
+  }
+  return slice.childNodes.map((c) => ({ node: c, path: [...path, c.id] }));
+}
+
+/** Child teams of an org-view level. Team ids are unique within an organization. */
+export function orgDrillChildren(slice: OrgViewSlice, path: string[]): DrillChild[] {
+  const teams =
+    slice.focusedTeam !== null
+      ? slice.focusedTeam.children.filter((c): c is TeamNode => c.kind === "team")
+      : slice.teams;
+  return teams.map((t) => ({ node: t, path: [...path, t.id] }));
 }
 
 /** Legend plumbing shared by every multi-level render path (Issue #1513). */
@@ -195,12 +241,15 @@ function collectAllLayersLevelsGeneric<S>(
 
   levels.push({ pathLabels, viewBox, width, height, innerContent });
 
-  const children = callbacks.getChildren(slice);
+  // Every band is visible at once and none is addressed by an anchor, so a
+  // same-id node is drawn at its own path and not deduplicated (#2933).
+  const children = callbacks.getChildren(slice, path);
   for (const child of children) {
+    const label = child.node.label ?? child.node.id;
     collectAllLayersLevelsGeneric(
       callbacks,
-      [...path, child.id],
-      [...pathLabels, child.label ?? child.id],
+      child.path,
+      child.scopeLabel !== undefined ? [child.scopeLabel, label] : [...pathLabels, label],
       levels,
     );
   }
@@ -251,8 +300,7 @@ export function buildAllLayersSvg(
     {
       getSlice: (path) => styleDerivedEdges(extract(path), styles, sheets),
       hasContent: (slice) => slice.childNodes.length > 0 || slice.systems.length > 0,
-      getChildren: (slice) =>
-        slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes,
+      getChildren: systemDrillChildren,
       // Each stacked band carries the legends for its own depth scope
       // (Issue #1513): top band = system / unscoped, service bands =
       // `legend service`, domain bands = `legend domain`.
@@ -319,10 +367,7 @@ export function buildAllLayersSvgOrg(
     {
       getSlice: (path) => extractOrgView(organizations, path),
       hasContent: (slice) => slice.focusedTeam !== null || slice.teams.length > 0,
-      getChildren: (slice) =>
-        slice.focusedTeam !== null
-          ? slice.focusedTeam.children.filter((c): c is TeamNode => c.kind === "team")
-          : slice.teams,
+      getChildren: orgDrillChildren,
       render: (slice, links) =>
         renderOrgView(slice, styles, displayMode, links, { theme, ...legendOptions }),
     },
