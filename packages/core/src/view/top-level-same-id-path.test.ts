@@ -84,4 +84,17 @@ describe("resolveContainerChain: a path with no system segment (#3113)", () => {
       "Place",
     ]);
   });
+
+  it("keeps resolving a top-level node passed separately under a system id, as before", () => {
+    // Those callers draw top-level nodes inside the first system's frame.
+    const real = krsFile.systems;
+    expect(
+      resolveContainerChain(
+        real,
+        ["Shop", "Parked"],
+        [],
+        krsFile.services[0].children,
+      )?.ancestorChain.map((n) => n.id),
+    ).toEqual(["Shop", "Parked"]);
+  });
 });

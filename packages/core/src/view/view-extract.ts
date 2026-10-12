@@ -1638,19 +1638,28 @@ export function resolveContainerChain(
   unassignedDomains: readonly KrsNode[] = [],
 ): ResolvedContainerChain | null {
   if (systems.length === 0 || path.length === 0) return null;
+  // A caller without the pseudo-system passes top-level nodes separately and
+  // draws them in the first system's frame, so one may follow a system id too.
+  const orphanAt = (i: number): KrsNode | undefined =>
+    unassignedServices.find((c) => nodeId(c) === path[i]) ??
+    unassignedDomains.find((c) => nodeId(c) === path[i]);
+
   const systemNode = systems.find((s) => s.id === path[0]);
-  if (systemNode) return walkContainerChain([systemNode], path, 1);
+  if (systemNode) {
+    const resolved = walkContainerChain([systemNode], path, 1);
+    if (resolved) return resolved;
+    const orphan = orphanAt(1);
+    return orphan ? walkContainerChain([systemNode, orphan], path, 2, 1) : null;
+  }
 
   const unassigned = systems.find(isUnassignedSystem);
   if (unassigned) {
     const resolved = walkContainerChain([unassigned], path, 0);
     if (resolved) return resolved;
   }
-  const orphan =
-    unassignedServices.find((c) => nodeId(c) === path[0]) ??
-    unassignedDomains.find((c) => nodeId(c) === path[0]);
+  const orphan = orphanAt(0);
   if (orphan) {
-    // Seeded with `systems[0]` as before: these callers have no pseudo-system.
+    // Seeded with `systems[0]`, the frame these callers draw top-level nodes in.
     const resolved = walkContainerChain([systems[0], orphan], path, 1, 0);
     if (resolved) return resolved;
   }
