@@ -319,13 +319,18 @@ export function routeGroupedEdges(
       )
       .some((x) => tryCorridorRoute(edge, from, to, x, obstacles, nodes, claimed, bands));
     if (routedInner) continue;
-    // Endpoints in one row have no channel between them for the candidates
-    // below to use; the channel beside the row takes them round the card in
-    // between (#3026).
-    const overlapping = !(to.y >= from.y + from.height) && !(from.y >= to.y + to.height);
+    // Endpoints in one row (the stretch between their facing edges is empty)
+    // have no channel between them for the candidates below to use; the
+    // channel beside the row takes them round the card in between (#3026).
+    // Ungrouped only, like the interior candidates above: the channel is
+    // measured from the cards alone, so on a grouped canvas it can fall in a
+    // frame's header or outside the frame both endpoints sit in.
     if (
-      overlapping &&
-      trySameRowChannelRoute(edge, from, to, obstacles, nodes, claimed, bands, layoutEdges)
+      frames.length === 0 &&
+      innerBottom < innerTop &&
+      trySameRowChannelRoute(edge, from, to, obstacles, nodes, claimed, bands, () =>
+        settledRoutes(layoutEdges, edge, obstacleIndex),
+      )
     )
       continue;
     // A **staircase**: through one gap of every row between the endpoints,
@@ -587,7 +592,7 @@ function channelStub(
  * through it, so the busier channel costs crossings the chord used to hide
  * under the card. Measured on four reverse-engineered models, no fixed side
  * was the cheaper one on all of them, and this choice added the fewest
- * crossings over the four (149, against 151 to 361 for a fixed side). A tie
+ * crossings over the four (131, against 151 to 361 for a fixed side). A tie
  * goes clockwise (rightward above, leftward below), so a pair drawn both ways
  * between two quiet cards forms one loop instead of nesting. Applied only when
  * the whole polyline is clear (AC-1).
@@ -600,34 +605,68 @@ function trySameRowChannelRoute(
   nodes: LayoutNode[],
   claimed: ClaimRegister,
   bands: readonly { top: number; bottom: number }[],
-  /** Every edge on the canvas, as routed so far; the candidates are priced against them. */
-  others: readonly LayoutEdge[],
+  /** The routes of the other edges that will not move again; asked only when both sides clear. */
+  settled: () => Point[][],
 ): boolean {
-  // One channel y for both ends: cards of one row share their top but not
-  // always their bottom, so the channel is measured from the pair's span.
-  const top = Math.min(from.y, to.y);
-  const bottom = Math.max(from.y + from.height, to.y + to.height);
-  const span: EdgeBox = { id: "", x: 0, y: top, width: 0, height: bottom - top };
+  // One channel y for both ends, measured from the whole row: the cards of a
+  // row share their top but not their height, and a taller card between the
+  // pair reaches further down than either end.
+  let top = Math.min(from.y, to.y);
+  let bottom = Math.max(from.y + from.height, to.y + to.height);
+  for (const n of nodes) {
+    if (n.y < bottom - 1e-6 && n.y + n.height > top + 1e-6) {
+      top = Math.min(top, n.y);
+      bottom = Math.max(bottom, n.y + n.height);
+    }
+  }
+  const row: EdgeBox = { id: "", x: 0, y: top, width: 0, height: bottom - top };
   const leftward = to.x + to.width / 2 < from.x + from.width / 2;
-  const routes = others
-    .filter((e) => e !== edge && !e.ghost && !e.cyclic)
-    .map((e) => [e.fromPoint, ...(e.waypoints ?? []), e.toPoint]);
-  let best: { path: Point[]; segments: ClaimedSegment[]; crossings: number } | null = null;
+  const clear: { path: Point[]; segments: ClaimedSegment[] }[] = [];
   for (const downward of [leftward, !leftward]) {
-    const cy = downward ? channelBelow(span, nodes) : channelAbove(span, nodes);
+    const cy = downward ? channelBelow(row, nodes) : channelAbove(row, nodes);
     const src = channelStub(from, downward, cy, claimed, bands);
     const tgt = channelStub(to, downward, cy, claimed, bands);
     const path = [src.port, ...src.elbows, ...tgt.elbows, tgt.port];
     const segments = claimedSegmentsOf(path, from, to, bands);
     if (segments.some((v) => claimed.conflicts(v))) continue;
     if (!obstacles.polylineClear(path)) continue;
-    const crossings = countPolylineCrossings(path, routes);
-    if (best === null || crossings < best.crossings) best = { path, segments, crossings };
+    clear.push({ path, segments });
   }
-  if (!best) return false;
-  applyPath(edge, best.path);
-  claimed.add(best.segments);
+  if (clear.length === 0) return false;
+  let pick = clear[0];
+  if (clear.length === 2) {
+    const routes = settled();
+    if (countPolylineCrossings(clear[1].path, routes) < countPolylineCrossings(pick.path, routes)) {
+      pick = clear[1];
+    }
+  }
+  applyPath(edge, pick.path);
+  claimed.add(pick.segments);
   return true;
+}
+
+/**
+ * The routes of every edge but `self` that the routing pass will not move
+ * again: those already given waypoints, and straight ones that are clear and
+ * so are left as they are. A straight edge that still crosses a card is
+ * waiting for its own route, and pricing a candidate against the chord it is
+ * about to leave would pick a side on geometry that is not going to be drawn.
+ */
+function settledRoutes(
+  edges: readonly LayoutEdge[],
+  self: LayoutEdge,
+  obstacleIndex: ObstacleIndex,
+): Point[][] {
+  const out: Point[][] = [];
+  for (const e of edges) {
+    if (e === self || e.ghost || e.cyclic) continue;
+    if (e.waypoints && e.waypoints.length > 0) {
+      out.push([e.fromPoint, ...e.waypoints, e.toPoint]);
+    } else if (!obstaclesFor(e, obstacleIndex).segmentCrosses(e.fromPoint, e.toPoint)) {
+      out.push([e.fromPoint, e.toPoint]);
+    }
+  }
+  return out;
 }
 
 /**

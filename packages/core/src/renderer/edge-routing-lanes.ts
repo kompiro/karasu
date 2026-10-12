@@ -176,7 +176,8 @@ function bandAround(y: number, obstacles: readonly Rect[]): { upper: number; low
 
 /**
  * Move every run of a channel onto its lane: lanes `LANE_PITCH` apart,
- * centred on the channel. A channel that needs a single lane is left exactly
+ * centred on the channel, or stacked away from the row when the channel is
+ * open on one side (#3026). A channel that needs a single lane is left exactly
  * where the router put it. The lanes are stacked in the order `laneOrder`
  * gives, so a run that carries on upwards sits above one that carries on
  * downwards from the same x (#3088).
@@ -198,8 +199,23 @@ export function distributeChannelLanes(
     const pitch =
       bounded && lanes * LANE_PITCH > lower - upper ? (lower - upper) / lanes : LANE_PITCH;
     const rank = laneOrder(runs, lanes);
+    // A channel open on one side (above the first row, below the last) has
+    // nothing to centre on, and centring on the router's y spread half the
+    // lanes back towards the row the runs were routed round: five same-row
+    // routes over one row put a lane on the cards' top edge, six inside them
+    // (#3026). Lanes there stack away from the row instead, the one nearest it
+    // staying where the router put the run.
+    const openAbove = !Number.isFinite(upper) && Number.isFinite(lower);
+    const openBelow = Number.isFinite(upper) && !Number.isFinite(lower);
+    const nearest = openAbove
+      ? Math.max(...runs.map((r) => r.y))
+      : Math.min(...runs.map((r) => r.y));
     for (const run of runs) {
-      const y = centre + (rank[run.lane] - (lanes - 1) / 2) * pitch;
+      const y = openAbove
+        ? nearest - (lanes - 1 - rank[run.lane]) * LANE_PITCH
+        : openBelow
+          ? nearest + rank[run.lane] * LANE_PITCH
+          : centre + (rank[run.lane] - (lanes - 1) / 2) * pitch;
       const wps = run.edge.waypoints!;
       wps[run.i] = { x: wps[run.i].x, y };
       wps[run.i + 1] = { x: wps[run.i + 1].x, y };
