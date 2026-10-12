@@ -1414,6 +1414,72 @@ describe("crowded inter-row channel — capacity fence (#2608, TPL-2598)", () =>
   });
 });
 
+describe("same-row pair around the card between (#3026, TPL-3026 / TPL-1927)", () => {
+  // Three domains that each depend on the other two, both ways. They share one
+  // row, and however they are ordered, the two outer cards are a pair with the
+  // third standing between them. No candidate in the chain accepted endpoints
+  // that overlap vertically until #3026, so that pair was drawn as a straight
+  // chord through the middle card. Neither `examples/` nor the models above
+  // contain the relation, which is why their zero never caught it.
+  const TRIANGLE = `system S {
+  service App {
+    domain A {
+      A -> B
+      A -> C
+    }
+    domain B {
+      B -> A
+      B -> C
+    }
+    domain C {
+      C -> A
+      C -> B
+    }
+  }
+}`;
+  const laid = () => layoutOfSource(TRIANGLE, undefined, ["S", "App"]);
+
+  /** The three cards left to right, and the two edges between the outer pair. */
+  function outerPair(res: LayoutResult) {
+    const [left, middle, right] = [...res.nodes.values()].sort((a, b) => a.x - b.x);
+    const between = res.edges.filter(
+      (e) => (e.from === left.id && e.to === right.id) || (e.from === right.id && e.to === left.id),
+    );
+    return { left, middle, right, between };
+  }
+
+  it("the fixture puts the outer pair in one row, with the middle card on the chord", () => {
+    const res = laid();
+    const { left, middle, right, between } = outerPair(res);
+    expect(new Set([left.y, middle.y, right.y]).size).toBe(1);
+    expect(between).toHaveLength(2);
+    expect(straightCentrePenetrations(res)).toBeGreaterThan(0);
+  });
+
+  it("no edge pierces a card, and no two edges share a collinear segment", () => {
+    const res = laid();
+    expect(totalPenetrations(res)).toBe(0);
+    expect(collinearOverlaps(res, "v")).toBe(0);
+    expect(collinearOverlaps(res, "h")).toBe(0);
+  });
+
+  it("the two edges of the outer pair go round the row on opposite sides, as one loop", () => {
+    const { left, between } = outerPair(laid());
+    const side = (e: LayoutEdge) => {
+      const ys = (e.waypoints ?? []).map((p) => p.y);
+      if (ys.length > 0 && ys.every((y) => y < left.y)) return "above";
+      if (ys.length > 0 && ys.every((y) => y > left.y + left.height)) return "below";
+      return "through";
+    };
+    expect(new Set(between.map(side))).toEqual(new Set(["above", "below"]));
+  });
+
+  it("every crossing carries a hop mark", () => {
+    const res = laid();
+    expect((res.crossingMarks?.hops.length ?? 0) > 0).toBe(totalCrossings(res) > 0);
+  });
+});
+
 describe("deploy view routes through the shared chain (#2609, TPL-219)", () => {
   // Bundled models whose deploy block carries at least one edge between
   // containers. The deploy view never ran the chain until #2609: each edge
