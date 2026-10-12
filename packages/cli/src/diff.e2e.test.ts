@@ -75,6 +75,21 @@ describe("AT-1020 karasu diff — stdin handling", () => {
     expect(stdout).toContain("<svg");
     expect(stdout).toMatch(/<g[^>]*data-diff-state="removed"/);
   });
+
+  // #2879: the after model's warnings name the entry as the user typed it. For
+  // a stdin side that is `-`, not the temporary file the shim deletes on exit.
+  it("names a stdin after side `-` in its warnings", async () => {
+    const before = join(tmpDir, "before.krs");
+    await writeFile(before, "system Demo { service Api {} }\n");
+    const restore = pipeStdin("system Demo { service Api {} }\ndomain Orphan {}\n");
+    try {
+      await diff(before, "-", {});
+    } finally {
+      restore();
+    }
+    expect(stderr).toContain('Warning: -:2:1: Domain "Orphan" is not assigned to any service');
+    expect(stderr).not.toContain(".karasu-diff-");
+  });
 });
 
 // #2715: core positions are 1-based, and `karasu diff` used to add 1 to both

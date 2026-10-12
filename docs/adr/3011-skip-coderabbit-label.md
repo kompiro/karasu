@@ -1,7 +1,8 @@
 ---
 id: ADR-3011
 title: 正否が差分だけで決まる小さな PR は、人間の承認を得て skip-coderabbit ラベルで CodeRabbit から外す
-status: accepted
+status: superseded
+superseded_by: ADR-3117
 date: 2026-10-01
 topic: build
 authors: [kompiro]
@@ -14,7 +15,7 @@ assumptions:
 # ADR-3011: 正否が差分だけで決まる小さな PR は、人間の承認を得て skip-coderabbit ラベルで CodeRabbit から外す
 
 - **日付**: 2026-10-01
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by [ADR-3117](3117-coderabbit-ignore-command-for-skip.md)（外す手段のみ。判定基準と人間の承認は引き継がれている）
 - **関連**:
   - Issue [#3011](https://github.com/kompiro/karasu/issues/3011)
   - [ADR-2949](2949-coderabbit-skips-adr-auto-merge.md)（ADR-only PR をラベルで外す。本 ADR は同じ仕組みで別の対象を外す）

@@ -11,7 +11,7 @@ related_to:
   - ADR-788
 assumptions:
   - "file: .claude/rules/adr.md"
-  - "grep: .claude/rules/adr.md :: gh pr diff"
+  - "grep: .claude/rules/adr.md :: git diff origin/main\\.\\.\\.HEAD"
 ---
 
 # ADR-2331: ADR PR の auto-merge 例外は、変更の場所ではなく差分の性質で判定する

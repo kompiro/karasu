@@ -344,6 +344,34 @@ interface PreparedCompileInput {
 }
 
 /**
+ * The warnings a model raises on its own, independent of which view is drawn:
+ * the resolver's `analyze()` findings plus the value-level validation of every
+ * user style sheet. `sheets[0]` is the builtin theme and is trusted, not
+ * validated.
+ *
+ * One builder for every surface that reports a model's warnings — the per-view
+ * compile and the diff pipelines (#2879) — so a check added to one reaches the
+ * other (TPL-219).
+ */
+export function collectModelWarnings(krsFile: KrsFile, sheets: StyleSheet[]): Warning[] {
+  const systemSheetCount = 1; // only builtin counts as system for conflict detection
+  const warnings = analyze(krsFile, sheets, systemSheetCount);
+
+  // Phase 3 value-level validator. Translate the validator's parser-shaped
+  // Diagnostics into Warnings so the App's WarningPanel displays them next to
+  // the existing `style-column-invalid-value` entry. LSP / CLI invoke
+  // `validateStyleValues` directly, so this translation is only for the
+  // App / compile-pipeline path.
+  for (let i = 1; i < sheets.length; i++) {
+    for (const d of validateStyleValues(sheets[i])) {
+      const w = diagnosticToWarning(d);
+      if (w) warnings.push(w);
+    }
+  }
+  return warnings;
+}
+
+/**
  * Shared compile pipeline. Both _compileCore and _compileProjectCore delegate
  * here after preparing their inputs (parsing source vs resolving imports).
  */
@@ -373,21 +401,7 @@ function _compileFromPreparedInput(
   // they live in different views' slices.
   diagnostics.push(...validateProjectEdgeIdUniqueness(krsFile));
 
-  const systemSheetCount = 1; // only builtin counts as system for conflict detection
-  const warnings = analyze(krsFile, sheets, systemSheetCount);
-
-  // Phase 3 value-level validator. Walk every user sheet (sheets[0] is
-  // the builtin theme; trust it) and translate the validator's
-  // parser-shaped Diagnostics into Warnings so the App's WarningPanel
-  // displays them next to the existing `style-column-invalid-value`
-  // entry. LSP / CLI invoke `validateStyleValues` directly, so this
-  // translation is only for the App / compile-pipeline path.
-  for (let i = 1; i < sheets.length; i++) {
-    for (const d of validateStyleValues(sheets[i])) {
-      const w = diagnosticToWarning(d);
-      if (w) warnings.push(w);
-    }
-  }
+  const warnings = collectModelWarnings(krsFile, sheets);
 
   // Merge structural style-resolver warnings (e.g. invalid `column` value)
   // into the analyze() output. Both sources speak the same Warning shape;
@@ -813,7 +827,7 @@ function buildNodeMetadata(
     // kind a team can `owns` reports it — the panel row went missing on
     // `client` while the org view drew the same ownership (Issue #2157).
     const team = OWNABLE_KIND_SET.has(node.kind)
-      ? ownerIndex?.get(nodePathKey([...pathPrefix, id]))
+      ? ownerIndex?.get(nodePathRefId([...pathPrefix, id]))
       : undefined;
     const fullPath = [...pathPrefix, id];
     const meta: NodeMetadata = {
