@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
+import { existsSync, readFileSync } from "node:fs";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join, resolve, extname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,9 +17,51 @@ const MIME_TYPES: Record<string, string> = {
   ".json": "application/json",
 };
 
-function getAppDistDir(): string {
-  const cliDir = fileURLToPath(new URL(".", import.meta.url));
-  return resolve(cliDir, "../../app/dist");
+const APP_PACKAGE_NAME = "@karasu-tools/app";
+
+export type AppDistLookup = { dir: string } | { dir: null; inMonorepo: boolean; tried: string[] };
+
+function isKarasuApp(appRoot: string): boolean {
+  try {
+    const manifest = JSON.parse(readFileSync(join(appRoot, "package.json"), "utf8")) as {
+      name?: unknown;
+    };
+    return manifest.name === APP_PACKAGE_NAME;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Find the preview app build that `serve` hands to the browser (#3017,
+ * TPL-1024). `cliDir` is the directory of the running bundle.
+ *
+ * - The `karasu` npm package ships the app as `app/` beside the bundle
+ *   (`dist/app/`, staged by `scripts/stage-app.ts` at pack time).
+ * - In the monorepo the bundle sits in `packages/cli/dist/` (or the source in
+ *   `packages/cli/src/`), and the app's own build is `packages/app/dist/`.
+ *   That candidate is taken only when its `package.json` names the karasu
+ *   app, so an unrelated `node_modules/app` beside an installed karasu is
+ *   never served.
+ */
+export function findAppDistDir(cliDir: string): AppDistLookup {
+  const packaged = join(cliDir, "app");
+  if (existsSync(join(packaged, "index.html"))) return { dir: packaged };
+  const appRoot = resolve(cliDir, "../../app");
+  const dev = join(appRoot, "dist");
+  const inMonorepo = isKarasuApp(appRoot);
+  if (inMonorepo && existsSync(join(dev, "index.html"))) return { dir: dev };
+  return { dir: null, inMonorepo, tried: inMonorepo ? [packaged, dev] : [packaged] };
+}
+
+/** What `serve` says when no app was found: what to run, in the reader's setting. */
+export function missingAppMessage(lookup: { inMonorepo: boolean; tried: string[] }): string {
+  const looked = `looked in ${lookup.tried.join(", ")}`;
+  return lookup.inMonorepo
+    ? `The preview app has not been built (${looked}). ` +
+        `Run: pnpm --filter ${APP_PACKAGE_NAME} run build\n`
+    : `The preview app is missing from this karasu installation (${looked}). ` +
+        `Reinstall karasu (npm i -g karasu@latest) or run: npx --yes karasu@latest serve\n`;
 }
 
 export async function collectKrsFiles(dir: string): Promise<string[]> {
@@ -89,7 +132,13 @@ export async function serveStaticFile(filePath: string, res: ServerResponse): Pr
 
 export function serve(dir: string, port: number, appDistDir?: string): Server {
   const absDir = resolve(dir);
-  appDistDir ??= getAppDistDir();
+  let missingApp: string | null = null;
+  if (appDistDir === undefined) {
+    const lookup = findAppDistDir(fileURLToPath(new URL(".", import.meta.url)));
+    if (lookup.dir === null) missingApp = missingAppMessage(lookup);
+    else appDistDir = lookup.dir;
+  }
+  const appDir = appDistDir ?? null;
   const watcher = new FileWatcher(absDir);
   watcher.start();
 
@@ -162,20 +211,21 @@ export function serve(dir: string, port: number, appDistDir?: string): Server {
       return;
     }
 
-    // 静的アセット（app dist）
-    if (pathname !== "/" && pathname !== "") {
-      const assetPath = join(appDistDir, pathname);
-      const served = await serveStaticFile(assetPath, res);
+    if (appDir !== null) {
+      // 静的アセット（app dist）
+      if (pathname !== "/" && pathname !== "") {
+        const assetPath = join(appDir, pathname);
+        const served = await serveStaticFile(assetPath, res);
+        if (served) return;
+      }
+
+      // SPA fallback — index.html
+      const indexPath = join(appDir, "index.html");
+      const served = await serveStaticFile(indexPath, res);
       if (served) return;
     }
-
-    // SPA fallback — index.html
-    const indexPath = join(appDistDir, "index.html");
-    const served = await serveStaticFile(indexPath, res);
-    if (!served) {
-      res.writeHead(503);
-      res.end("App not built. Run: npm run build --workspace=packages/app");
-    }
+    res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end(missingApp ?? `The preview app is not at ${appDir}.\n`);
   });
 
   server.listen(port, () => {
@@ -183,6 +233,7 @@ export function serve(dir: string, port: number, appDistDir?: string): Server {
     process.stdout.write(`  Directory : ${absDir}\n`);
     process.stdout.write(`  Preview   : http://localhost:${port}\n`);
     process.stdout.write(`\nWatching for .krs file changes...\n`);
+    if (missingApp !== null) process.stderr.write(`\nWarning: ${missingApp}`);
   });
   return server;
 }
