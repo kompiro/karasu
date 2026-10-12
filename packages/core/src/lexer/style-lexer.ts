@@ -183,6 +183,11 @@ export class StyleLexer {
         this.advance();
         return { type: TokenType.At, value: "@", loc };
       case "-":
+        // A sign before a number belongs to the value (`label-offset: -20px`).
+        // Dropping it, as a stray `-`, read the value as its absolute (#3032).
+        if (isDigit(this.peekAt(1)) || (this.peekAt(1) === "." && isDigit(this.peekAt(2)))) {
+          return this.readValue(loc);
+        }
         return this.readArrow(loc);
       case '"':
         return this.readString(loc);
@@ -291,6 +296,7 @@ export class StyleLexer {
 
   private readValue(loc: SourceLocation): Token {
     let value = "";
+    if (this.peek() === "-") value += this.advance();
     // Read number part (including decimal)
     while (this.pos < this.source.length && (isDigit(this.peek()) || this.peek() === ".")) {
       value += this.advance();
