@@ -477,13 +477,11 @@ function toResolvedFrameStyle(props: Record<string, string>): ResolvedFrameStyle
   if (props["border-color"]) style.borderColor = props["border-color"];
   if (props["background-color"]) style.backgroundColor = props["background-color"];
   if (props["color"]) style.color = props["color"];
-  if (props["border-width"]) {
-    // A non-numeric value would otherwise reach the SVG as `stroke-width="NaN"`,
-    // which renderers and the drawio exporter disagree about. Drop it and let the
-    // frame keep its own width instead.
-    const width = parseFloat(props["border-width"]);
-    if (Number.isFinite(width)) style.borderWidth = width;
-  }
+  // A non-numeric value would otherwise reach the SVG as `stroke-width="NaN"`,
+  // which renderers and the drawio exporter disagree about. Drop it, and a
+  // negative one, and let the frame keep its own width instead.
+  const width = nonNegativeLength(props["border-width"]);
+  if (width !== undefined) style.borderWidth = width;
   if (props["border-style"]) {
     style.borderStyle = props["border-style"] as "solid" | "dashed" | "dotted";
   }
@@ -638,20 +636,38 @@ function edgeSelectorMatches(edge: KrsEdge, selector: StyleSelector): boolean {
   return true;
 }
 
+/**
+ * A width, a radius or a size. A negative one is dropped and the default
+ * stands, as the validator's `style-out-of-range` says (#3032), and so is one
+ * that is not a finite number.
+ */
+function nonNegativeLength(raw: string | undefined): number | undefined {
+  if (!raw) return undefined;
+  const n = parseFloat(raw);
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+}
+
 function toResolvedNodeStyle(props: Record<string, string>): ResolvedNodeStyle {
   const style = { ...DEFAULT_NODE_STYLE };
 
   if (props["background-color"]) style.backgroundColor = props["background-color"];
   if (props["color"]) style.color = props["color"];
   if (props["border-color"]) style.borderColor = props["border-color"];
-  if (props["border-width"]) style.borderWidth = parseFloat(props["border-width"]);
+  const borderWidth = nonNegativeLength(props["border-width"]);
+  if (borderWidth !== undefined) style.borderWidth = borderWidth;
   if (props["border-style"])
     style.borderStyle = props["border-style"] as "solid" | "dashed" | "dotted";
-  if (props["border-radius"]) style.borderRadius = parseFloat(props["border-radius"]);
-  if (props["font-size"]) style.fontSize = parseFloat(props["font-size"]);
+  const borderRadius = nonNegativeLength(props["border-radius"]);
+  if (borderRadius !== undefined) style.borderRadius = borderRadius;
+  const fontSize = nonNegativeLength(props["font-size"]);
+  if (fontSize !== undefined) style.fontSize = fontSize;
   if (props["font-weight"]) style.fontWeight = props["font-weight"] as "normal" | "bold";
   if (props["font-family"]) style.fontFamily = props["font-family"];
-  if (props["opacity"]) style.opacity = parseFloat(props["opacity"]);
+  if (props["opacity"]) {
+    // Outside `[0, 1]` is `style-out-of-range` and the default stands (#3032).
+    const opacity = parseFloat(props["opacity"]);
+    if (opacity >= 0 && opacity <= 1) style.opacity = opacity;
+  }
   if (props["shape"]) {
     const shapeVal = props["shape"];
     if (shapeVal.startsWith("url(")) {
@@ -676,8 +692,10 @@ function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
   const style = { ...DEFAULT_EDGE_STYLE };
 
   if (props["color"]) style.color = props["color"];
-  if (props["stroke-width"]) style.strokeWidth = parseFloat(props["stroke-width"]);
-  if (props["font-size"]) style.fontSize = parseFloat(props["font-size"]);
+  const strokeWidth = nonNegativeLength(props["stroke-width"]);
+  if (strokeWidth !== undefined) style.strokeWidth = strokeWidth;
+  const fontSize = nonNegativeLength(props["font-size"]);
+  if (fontSize !== undefined) style.fontSize = fontSize;
   if (props["border-style"]) {
     const value = props["border-style"] as ResolvedEdgeStyle["strokeStyle"];
     if (EDGE_STROKE_STYLES.has(value)) style.strokeStyle = value;

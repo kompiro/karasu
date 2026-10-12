@@ -15,7 +15,7 @@ export type ValueSpec =
   | { kind: "ident-of"; values: readonly string[] }
   | { kind: "hex" }
   | { kind: "number"; min?: number; max?: number }
-  | { kind: "length"; allowedUnits: readonly string[] }
+  | { kind: "length"; allowedUnits: readonly string[]; min?: number }
   | { kind: "string" }
   | { kind: "url" }
   | { kind: "list-of"; item: ValueSpec }
@@ -28,6 +28,8 @@ const COLOR_SPEC: ValueSpec = {
 };
 
 const LENGTH_PX_SPEC: ValueSpec = { kind: "length", allowedUnits: ["px"] };
+// A width, a radius or a size: a negative one has no drawing (#3032).
+const NON_NEGATIVE_LENGTH_PX_SPEC: ValueSpec = { kind: "length", allowedUnits: ["px"], min: 0 };
 
 const SHAPE_KIND_VALUES = ["box", "user", "cylinder", "queue", "hexagon", "cloud"] as const;
 
@@ -48,15 +50,15 @@ export const PROPERTY_SCHEMAS: Record<string, ValueSpec> = {
   color: COLOR_SPEC,
   "background-color": COLOR_SPEC,
   "border-color": COLOR_SPEC,
-  "border-width": LENGTH_PX_SPEC,
+  "border-width": NON_NEGATIVE_LENGTH_PX_SPEC,
   "border-style": { kind: "ident-of", values: ["solid", "dashed", "dotted"] },
-  "border-radius": LENGTH_PX_SPEC,
+  "border-radius": NON_NEGATIVE_LENGTH_PX_SPEC,
   opacity: { kind: "number", min: 0, max: 1 },
-  "stroke-width": LENGTH_PX_SPEC,
+  "stroke-width": NON_NEGATIVE_LENGTH_PX_SPEC,
   "stroke-style": { kind: "ident-of", values: ["solid", "dashed", "dotted"] },
 
   // Typography
-  "font-size": LENGTH_PX_SPEC,
+  "font-size": NON_NEGATIVE_LENGTH_PX_SPEC,
   "font-weight": { kind: "ident-of", values: ["normal", "bold"] },
   "font-family": { kind: "list-of", item: FONT_FAMILY_ITEM_SPEC },
 

@@ -10,12 +10,15 @@ applicable_to:
 known_consumers:
   - krs-lexer
   - annotation-parameters
+  - style-lexer
 discovered_from:
   - issue: "#2707"
   - issue: "#2848"
   - issue: "#3093"
+  - issue: "#3032"
   - root_cause_file: "packages/core/src/lexer/lexer.ts :: readToken"
   - root_cause_file: "packages/core/src/parser/parser.ts :: parseAnnotations"
+  - root_cause_file: "packages/core/src/lexer/style-lexer.ts :: readToken"
 related_to:
   - TPL-1101
   - TPL-1503
@@ -45,6 +48,7 @@ lexer が文字をトークンにせず読み飛ばすと、parser はその文�
 - **記号の後ろの語が名前として読まれる**（#3093）: 文字でも数字でもない非 ASCII の文字（絵文字、`→`、ゼロ幅スペース、語を続けない位置の結合文字）は捨てられていた。`service 😀A` は `A` を宣言し、`A → B` は `A B` と読まれ、`Foo\u200BBar` は語が 2 つに割れた。いずれも診断なし。
 - **参照が別の実在ノードに付け替わる**（#2707）: `A -> 2B` が `A -> B` として受理された。`B` が実在すると、図は正しく描かれているように見える。最も発見が遅れる形。
 - **語彙の綴りが `.krs.style` と食い違う**（#2707、TPL-2509）: `[team-1]` は数字が消えて `team` と `-` に割れ、`.krs.style` の `[team-1]` セレクタが一致しなかった。
+- **符号が消えて値が絶対値に化ける**（#3032）: `.krs.style` の lexer は `->` / `-->` 以外の `-` を「迷子の記号」として捨てていた。`label-offset: -20px` は `20px` として parser に届き、label は上ではなく下へ動いた。`label-max-chars: -3` は `3` として受理され、範囲外の診断も出なかった。resolver のテストは値の文字列を `resolveStyles` に直接渡しており、lexer と parser を通っていなかったので、負の値のテストがあっても検出できなかった。
 - **値の断片が次のキーとして診断される**（#2571 review、#2707）: `from: Legacy-Monolith` の `-` や `Shop.Legacy` の `.` が「未対応のキー」として報告された。著者はキーとして書いていないので、誤った場所に誘導される。
 
 ## チェックリスト
@@ -64,6 +68,7 @@ lexer / tokenizer を追加・変更するとき、または値や名前を読�
 - **結合文字は語を続けるが始めない**: `isIdentPart` は `\p{M}` を含み、`isIdentStart` は含まない（#2848）。結合文字は直前の文字を修飾するので、分解形の `café` やデーヴァナーガリーの語は 1 語として読まれる。NFC と NFD は正規化せず、書かれたとおりに記録する（別の綴りとして扱う）。
 - **捨てる前に、空白として読むべき文字を決める**: 捨てられることで区切りとして通っていた文字がある。#3093 は文字でも数字でもない非 ASCII を拒否するトークンにする前に、Unicode の `White_Space` と BOM を空白として読むようにした。順序を逆にすると、BOM 付きのファイルや全角スペースを含むファイルが壊れる。
 - **捨てずに、どこも受理しないトークンにする**: #2707 は数字始まりの語を `TokenType.Number` として出し、#3093 は文字でも数字でもない非 ASCII を後続の語の文字とまとめて `TokenType.Unknown` として出した。どのポジションも黙っては受理しないので、受理される言語は広がらず、見えなかった入力が診断に変わる。全ての未分類文字を一度にトークン化する案は、黙認に頼っている `=` / `;` を壊すので採らなかった（範囲はコーパスで実測して決めた）。
+- **符号は値の一部として読む**: `.krs.style` の lexer は、`-` の直後が数字か `.` + 数字のときだけ符号付きの値として読む（#3032）。`-` 単独は従来どおり捨てるが、その集合を `packages/core/src/lexer/style-lexer.test.ts` が印字可能な ASCII 1 文字ずつの入力で完全一致に固定している。値の検証は、シートの文字列から lexer・parser を通して行う（`packages/core/src/integration/style-sheet-signed-values.test.ts`）。
 - **値は 1 トークンで読み切る**: `parseAnnotations` の `readAnnotationParamValue` は、文字列リテラルか裸の語が単独で区切りの前にあるときだけ値として読み、それ以外は区切りまで消費して `annotation-param-value-unreadable` を出す。
 - **「記録できなかった」を書き戻す側だけで止める**: 診断の register は描画も含む全ての面に効くので、error にすると `karasu render` や外部サービスまで拒否する。#2707 は warning のままにし、`format()` が `FORMAT_BLOCKING_CODES` の診断を名指しで拒否する。AST が著者の書いたものを保持していないとき、整形して書き戻すと必ず失われる、というのが判定条件である。
 - **裸の語の判定を lexer から導く**: `isBareWord`（`packages/core/src/lexer/lexer.ts`）は `readToken` と同じ文字判定を使い、formatter の `needsQuotes`（`packages/core/src/formatter/quote-id.ts`）もキーワード集合ともども lexer から導く。手写しの一覧は `boundary` など 5 語を欠き、`from: "boundary"` が裸で出力されてキーワードとして読み戻されていた。
@@ -79,6 +84,8 @@ lexer / tokenizer を追加・変更するとき、または値や名前を読�
 - `packages/core/src/parser/annotation-params.test.ts` › `annotation parameter values that are not one token (#2707)`
 - `packages/core/src/parser/parser.test.ts` › `digit-led words outside vocabulary positions (#2707)`
 - `packages/core/src/formatter/annotation-params-round-trip.test.ts` › `reads back every reference it prints bare (#2707)`
+- `packages/core/src/lexer/style-lexer.test.ts`（`.krs.style` の lexer が捨てる印字可能 ASCII の集合の固定と、符号付きの値 #3032）
+- `packages/core/src/integration/style-sheet-signed-values.test.ts`（シートの文字列から描画までの符号付きの値 #3032）
 
 ## 派生元 spec
 

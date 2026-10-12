@@ -196,6 +196,15 @@ function collectMismatch(node: ValueNode, spec: ValueSpec, property: string): Di
           },
         ];
       }
+      if (spec.min !== undefined && node.value < spec.min) {
+        return [
+          {
+            severity: "error",
+            code: "style-out-of-range",
+            params: { property, value: node.value, min: spec.min },
+          },
+        ];
+      }
       return [];
     case "string":
       if (node.kind === "string") return [];
