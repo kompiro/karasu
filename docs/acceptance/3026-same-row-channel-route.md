@@ -36,7 +36,7 @@ fixture は、互いに両方向で依存する domain を 1 行に並べたも�
 
 ### AC-2: 上下の選び方
 
-- [x] AT-E: 両方向のエッジがある組は、行の上と下に分かれて 1 つのループになる（交差が同数のときの時計回り）。中央のカードが背の高い行でも同じで、下側のチャネルは 2 枚ではなく行全体の高さから測られる（2 枚の高さで測ると中央のカードに入り、両方とも上を回る）
+- [x] AT-E: 両方向のエッジがある組は、行の上と下に分かれて 1 つのループになる（交差が同数のときの時計回り）。中央のカードが背の高い行でも同じで、下側のチャネルは 2 枚だけでなく、間に立つカードも含めた高さから測られる（2 枚の高さで測ると中央のカードに入り、両方とも上を回る）
 
   > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `same-row pair around the card between (#3026, TPL-3026 / TPL-1927)` › `%s: the outer pair goes round the row on opposite sides, as one loop`
 
@@ -46,9 +46,15 @@ fixture は、互いに両方向で依存する domain を 1 行に並べたも�
   >
   > ✅ Automated — `packages/core/src/renderer/edge-geometry.test.ts` › `countPolylineCrossings (#3026)` › `does not count a touch, a shared end or a collinear overlap`
 
+- [x] AT-G: 行の高さに取り込むのは 2 枚と、x 方向でその間に立つカードだけ。2 行にまたがる側面列のカードは取り込まず、下側のチャネルは次の行より上に残る。取り込みは増えなくなるまで繰り返し、カードの走査順に依らない
+
+  > ✅ Automated — `packages/core/src/renderer/edge-routing-same-row.test.ts` › `same-row route measures the row it goes round (#3026)` › `leaves a side-column card out of the row, so the channel below stays above the next row`
+  >
+  > ✅ Automated — `packages/core/src/renderer/edge-routing-same-row.test.ts` › `same-row route measures the row it goes round (#3026)` › `takes in every card between the pair, whatever order the cards are visited in`
+
 ### AC-3: 該当しない図は変わらない
 
-- [x] AT-G: `examples/` の全モデルと既存の routing fence・スナップショットが無変更で通る。grouped キャンバスは対象外（チャネルを枠を見ずに測るため。corridor / staircase と同じ）。4 つの逆生成モデル（1,542 ビュー）で経路が変わるのは同じ行の貫通があった 5 ビューだけで、collinear overlap は増えない（`reports/3026-same-row-chord/` で計測）
+- [x] AT-H: `examples/` の全モデルと既存の routing fence・スナップショットが無変更で通る。grouped キャンバスは対象外（チャネルを枠を見ずに測るため。corridor / staircase と同じ）。4 つの逆生成モデル（1,542 ビュー）で経路が変わるのは同じ行の貫通があった 5 ビューだけで、collinear overlap は増えない（`reports/3026-same-row-chord/` で計測）
 
   > ✅ Automated — `pnpm --filter @karasu-tools/core test`
 
