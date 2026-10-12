@@ -25,7 +25,7 @@
   "scripts": {
     "prebuild": "tsx ../../scripts/ci/generate-third-party-notices.ts .",
     "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node22.12 --outfile=dist/index.js --alias:@karasu-tools/core=../core/src/index.ts --alias:@karasu-tools/i18n=../i18n/src/index.ts --external:commander --external:chokidar --external:yaml",
-    "build:app": "pnpm --filter @karasu-tools/app run build:serve && node scripts/stage-app.ts && tsx ../../scripts/ci/generate-third-party-notices.ts ../app --out dist/app/THIRD_PARTY_NOTICES.md",
+    "build:app": "pnpm --filter @karasu-tools/app run build:serve && tsx scripts/stage-app.ts && tsx ../../scripts/ci/generate-third-party-notices.ts ../app --out dist/app/THIRD_PARTY_NOTICES.md",
     "prepack": "pnpm run build && pnpm run build:app",
     "dev": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node22.12 --outfile=dist/index.js --alias:@karasu-tools/core=../core/src/index.ts --alias:@karasu-tools/i18n=../i18n/src/index.ts --external:commander --external:chokidar --external:yaml --watch",
     "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",

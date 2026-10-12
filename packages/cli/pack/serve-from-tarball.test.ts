@@ -60,13 +60,14 @@ function startServe(bundle: string, dir: string, listenPort: number): Promise<Ch
         clearTimeout(timer);
         // `serve` warns right after the banner when it found no app; an
         // unrelated runtime warning on stderr is not this test's concern.
-        setTimeout(
-          () =>
-            stderr.includes("preview app")
-              ? reject(new Error(`karasu serve found no preview app.\nstderr: ${stderr}`))
-              : resolveChild(child),
-          100,
-        );
+        setTimeout(() => {
+          if (!stderr.includes("preview app")) {
+            resolveChild(child);
+            return;
+          }
+          child.kill();
+          reject(new Error(`karasu serve found no preview app.\nstderr: ${stderr}`));
+        }, 100);
       }
     });
     child.once("exit", (code) => {

@@ -154,5 +154,7 @@ jobs:
       # (`build:serve`) and stages it into the package, then runs the packed
       # bundle. The workspace tests cannot see a package that ships without
       # the app, because `packages/app/dist` is always in reach from `src/`.
+      # A pack takes about 30s (one vite build); the bound marks a hang.
       - name: Pack test (cli)
+        timeout-minutes: 10
         run: pnpm --filter ./packages/cli run test:pack
