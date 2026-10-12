@@ -67,8 +67,13 @@ export { tidyStyleSheet, type TidyOptions, type TidyResult } from "./style/tidy.
 export { serializeStyleSheet } from "./style/serialize.js";
 export { validateStyleValues } from "./style/value-validator.js";
 
-export type { ViewPath, ViewSlice, DomainEdgeDetail } from "./view/view-extract.js";
-export { extractView, extractEntityView } from "./view/view-extract.js";
+export type {
+  ViewPath,
+  ViewSlice,
+  DomainEdgeDetail,
+  ResolvedContainerChain,
+} from "./view/view-extract.js";
+export { extractView, extractEntityView, resolveContainerChain } from "./view/view-extract.js";
 export type {
   CrudMatrix,
   CrudMatrixRow,
