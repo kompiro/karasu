@@ -272,8 +272,10 @@ badge-label:      "非推奨";
 ```
 
 数値と長さには符号を付けられる（`label-offset: -8px` は label を上へ動かす）。
-`border-width` / `border-radius` / `font-size` / `stroke-width` は負にできない。
-負の値は `style-out-of-range` として報告され、既定値が使われる。
+`border-width` / `border-radius` / `font-size` / `stroke-width` は負にできず、
+`opacity` は `[0, 1]` に収まる。範囲外の値は `style-out-of-range` として報告され、
+既定値が使われる。範囲を持つほかのプロパティ（`label-position` / `grid-columns` /
+`label-max-chars`）は、後述の各節にそれぞれの規定がある。
 
 ---
 

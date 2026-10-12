@@ -481,7 +481,7 @@ function classifyIdentAtom(value: string, token: Token, file: string | undefined
   if (value.startsWith("#")) {
     return { kind: "hex", value, loc: tokenLoc(token, file) };
   }
-  const numericMatch = /^(-?\d+(?:\.\d+)?)([a-zA-Z%]+)?$/.exec(value);
+  const numericMatch = /^(-?(?:\d+(?:\.\d+)?|\.\d+))([a-zA-Z%]+)?$/.exec(value);
   if (numericMatch) {
     const numeric = Number.parseFloat(numericMatch[1]);
     const unit = numericMatch[2];

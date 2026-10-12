@@ -51,4 +51,14 @@ describe("signed lengths in a style sheet (#3032)", () => {
       ].map((m) => m[1]);
     expect(strokeWidths("edge { stroke-width: -3px; }")).toEqual(strokeWidths());
   });
+
+  it("draws a negative opacity at the default opacity", () => {
+    const opacities = (style?: string) =>
+      [
+        ...compile(MODEL, style === undefined ? {} : { styleSource: style }).svg.matchAll(
+          /opacity="([^"]+)"/g,
+        ),
+      ].map((m) => m[1]);
+    expect(opacities("service { opacity: -0.5; }")).toEqual(opacities());
+  });
 });

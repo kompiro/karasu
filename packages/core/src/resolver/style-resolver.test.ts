@@ -142,6 +142,27 @@ describe("resolveStyles", () => {
     expect(style.fontSize).toBe(defaults.fontSize);
   });
 
+  it("drops an opacity outside [0, 1] and a width that is not finite", () => {
+    const system = makeNode({
+      kind: "system",
+      id: "Test",
+      children: [makeNode({ kind: "service", id: "Svc", label: "Service" })],
+    });
+    const defaults = resolveStyles([system], []).nodes.get("Svc")!;
+    const sheet: StyleSheet = {
+      rules: [
+        makeRule(
+          { nodeType: "service", tags: [], annotations: [] },
+          { opacity: "-0.5", "border-width": "1e999px" },
+          1,
+        ),
+      ],
+    };
+    const style = resolveStyles([system], [sheet]).nodes.get("Svc")!;
+    expect(style.opacity).toBe(defaults.opacity);
+    expect(style.borderWidth).toBe(defaults.borderWidth);
+  });
+
   it("gives `database [index]` an `index` badge from the builtin stylesheet (#1718)", () => {
     const system = makeNode({
       kind: "system",

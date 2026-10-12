@@ -140,6 +140,11 @@ describe("validateStyleValues — length with a minimum", () => {
   it("accepts a negative label-offset, which shifts left and up", () => {
     expect(validate(`edge { label-offset: -8px; }`)).toEqual([]);
   });
+
+  it("accepts a length or a number written without a leading digit", () => {
+    expect(validate(`edge { label-offset: -.5px; }`)).toEqual([]);
+    expect(validate(`service { opacity: .5; }`)).toEqual([]);
+  });
 });
 
 describe("validateStyleValues — shape union", () => {

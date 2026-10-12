@@ -638,12 +638,13 @@ function edgeSelectorMatches(edge: KrsEdge, selector: StyleSelector): boolean {
 
 /**
  * A width, a radius or a size. A negative one is dropped and the default
- * stands, as the validator's `style-out-of-range` says (#3032).
+ * stands, as the validator's `style-out-of-range` says (#3032), and so is one
+ * that is not a finite number.
  */
 function nonNegativeLength(raw: string | undefined): number | undefined {
   if (!raw) return undefined;
   const n = parseFloat(raw);
-  return n >= 0 ? n : undefined;
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
 }
 
 function toResolvedNodeStyle(props: Record<string, string>): ResolvedNodeStyle {
@@ -662,7 +663,11 @@ function toResolvedNodeStyle(props: Record<string, string>): ResolvedNodeStyle {
   if (fontSize !== undefined) style.fontSize = fontSize;
   if (props["font-weight"]) style.fontWeight = props["font-weight"] as "normal" | "bold";
   if (props["font-family"]) style.fontFamily = props["font-family"];
-  if (props["opacity"]) style.opacity = parseFloat(props["opacity"]);
+  if (props["opacity"]) {
+    // Outside `[0, 1]` is `style-out-of-range` and the default stands (#3032).
+    const opacity = parseFloat(props["opacity"]);
+    if (opacity >= 0 && opacity <= 1) style.opacity = opacity;
+  }
   if (props["shape"]) {
     const shapeVal = props["shape"];
     if (shapeVal.startsWith("url(")) {
