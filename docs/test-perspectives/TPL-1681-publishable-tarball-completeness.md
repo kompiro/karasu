@@ -12,6 +12,7 @@ known_consumers:
 discovered_from:
   - issue: "#1681"
   - root_cause_file: "packages/cli/package.json"
+  - issue: "#3017"
 related_to:
   - TPL-1024
 topic: build
@@ -58,7 +59,8 @@ publish 対象パッケージを追加・変更するとき、以下を確認す
 
 ## 関連テスト
 
-- `packages/cli/src/packaging.test.ts` — `files` がバンドル単体に固定され、`bin` がその成果物を指すことの回帰ガード
+- `packages/cli/src/packaging.test.ts` — `files` がバンドルとプレビュー app（`dist/app/`）に固定され、`bin` がその成果物を指すことの回帰ガード
+- `packages/cli/pack/serve-from-tarball.test.ts`（`pnpm --filter ./packages/cli run test:pack`）— 実際の tarball の中身を検査する（app が入る、sourcemap と Pages 専用ファイルが入らない）。#3017 では `karasu serve` が要る app の build が tarball に入っていなかった
 - 手動 AT: `docs/acceptance/1681-cli-pack-only-bundle.md`（`npm pack --dry-run` の Tarball Contents 目視確認、stale dist 混入の決定論性確認）
 
 ## 関連 TPL
