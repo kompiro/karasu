@@ -43,6 +43,16 @@ export function synthesizeUnassignedSystem(krsFile: KrsFile): SystemNode | null 
 }
 
 /**
+ * Drop the synthetic pseudo-system segment from the front of a node path, so a
+ * top-level node reads as `["Api", "Parked"]`, the form `nodePathIndex` records
+ * it in, however the walk that produced the path reached it (#2933). A path
+ * under a real system is returned unchanged.
+ */
+export function withoutUnassignedSegment(path: readonly string[]): readonly string[] {
+  return path[0] === UNASSIGNED_SYSTEM_ID ? path.slice(1) : path;
+}
+
+/**
  * Return the original systems plus a pseudo-system for orphans, or the original
  * list unchanged when the file has none. Convenience wrapper used by the entry
  * points that need to drive the renderer.

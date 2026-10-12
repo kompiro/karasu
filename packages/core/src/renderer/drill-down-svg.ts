@@ -1,13 +1,20 @@
-import type { Diagnostic, KrsFile, KrsNode, TeamNode } from "../types/ast.js";
+import type { Diagnostic, KrsFile, KrsNode } from "../types/ast.js";
 import type { ResolvedStyleWarning, StyleSheet } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import type { DisplayMode } from "./layout-types.js";
 import { createViewExtractor, extractEntityView } from "../view/view-extract.js";
 import type { ViewPath } from "../view/view-extract.js";
-import { withUnassignedSystem } from "../view/unassigned-system.js";
+import { withUnassignedSystem, withoutUnassignedSegment } from "../view/unassigned-system.js";
+import { nodePathRefId } from "../parser/node-path.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
-import { render, sanitizeId, anchorId, legendScopeForLogicalSlice } from "./svg-renderer.js";
+import {
+  render,
+  sanitizeId,
+  anchorId,
+  cardLinkKey,
+  legendScopeForLogicalSlice,
+} from "./svg-renderer.js";
 import {
   buildGroupLabelIndex,
   buildTeamLabelIndex,
@@ -24,7 +31,10 @@ import {
   buildStyles,
   buildNoDiagramSvg,
   buildLegendRenderOptions,
+  systemDrillChildren,
+  orgDrillChildren,
   type LegendRenderOptions,
+  type DrillChild,
   type DrillDownCallbacks,
   type SvgResult,
   type AllViewsSvgResult,
@@ -52,50 +62,100 @@ function renderBackButton(parentViewId: string, viewPrefix: string): string {
 
 // ─── Drill-down SVG (CSS :target navigation) ───────────────────────────────
 
-function collectDrillDownLevelsGeneric<S>(
+interface BundledLevel {
+  element: string;
+  width: number;
+  height: number;
+}
+
+/**
+ * Walk the drill hierarchy from `path` and push one `<g id="krs-<view>-<id>">`
+ * level per node that owns its anchor.
+ *
+ * A node that does not own its anchor (a same-id node that is not the
+ * `nodePathIndex` winner, #2933) emits no level and no card link, but the walk
+ * still descends into it: a uniquely named descendant has its own anchor and
+ * gets its level. `parentViewId` is the nearest ancestor that emitted one, so
+ * a back button never points at a level that shows another node.
+ */
+function collectDrillDownLevels<S>(
   callbacks: DrillDownCallbacks<S>,
   path: string[],
   viewId: string,
   parentViewId: string | null,
-  levels: string[],
+  emit: boolean,
+  levels: BundledLevel[],
   viewPrefix: string,
 ): void {
   const slice = callbacks.getSlice(path);
   if (!callbacks.hasContent(slice)) return;
 
-  const children = callbacks.getChildren(slice);
+  const children = callbacks.getChildren(slice, path);
   // A child is drillable only if it actually emits a level. Having children is
   // necessary but not sufficient: a domain whose only children are entities
   // renders an empty usecase view (entities live in the separate
   // #krs-entity-<id> view), so `hasContent` is false and no #krs-system-<id>
   // level is emitted. Linking to it would dead-end and bounce back to root.
   const drillable = children.filter(
-    (c) => c.children.length > 0 && callbacks.hasContent(callbacks.getSlice([...path, c.id])),
+    (c) => c.node.children.length > 0 && callbacks.hasContent(callbacks.getSlice(c.path)),
   );
-  const childLevelLinks = new Map(drillable.map((c) => [c.id, anchorId(viewPrefix, c.id)]));
+  const ownsAnchor = (c: DrillChild): boolean => callbacks.ownsAnchor?.(c.path) ?? true;
 
-  const svg = callbacks.render(slice, childLevelLinks);
-  const { viewBox, innerContent } = extractSvgParts(svg);
+  if (emit) {
+    // A card links only to its own level: a same-id card whose anchor names
+    // another node's level stays unlinked rather than landing there (#2933).
+    const childLevelLinks = new Map(
+      drillable
+        .filter(ownsAnchor)
+        .map((c) => [callbacks.linkKey?.(c) ?? c.node.id, anchorId(viewPrefix, c.node.id)]),
+    );
 
-  const backButton = parentViewId !== null ? renderBackButton(parentViewId, viewPrefix) : "";
-  // Paint the back button after (on top of) innerContent: innerContent carries
-  // the opaque level canvas <rect>, and SVG paints in document order, so a
-  // back button emitted first is buried and becomes invisible/unclickable
-  // (#2044). It must come last to stay hit-testable.
-  const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${innerContent}${backButton}</svg>`;
-  const cssClass = parentViewId === null ? "krs-view krs-root-level" : "krs-view";
-  levels.push(`<g id="${anchorId(viewPrefix, viewId)}" class="${cssClass}">${innerSvg}</g>`);
+    const svg = callbacks.render(slice, childLevelLinks);
+    const { viewBox, innerContent, width, height } = extractSvgParts(svg);
+
+    const backButton = parentViewId !== null ? renderBackButton(parentViewId, viewPrefix) : "";
+    // Paint the back button after (on top of) innerContent: innerContent carries
+    // the opaque level canvas <rect>, and SVG paints in document order, so a
+    // back button emitted first is buried and becomes invisible/unclickable
+    // (#2044). It must come last to stay hit-testable.
+    const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${innerContent}${backButton}</svg>`;
+    const cssClass = parentViewId === null ? "krs-view krs-root-level" : "krs-view";
+    const element = `<g id="${anchorId(viewPrefix, viewId)}" class="${cssClass}">${innerSvg}</g>`;
+    levels.push({ element, width, height });
+  }
 
   for (const child of drillable) {
-    collectDrillDownLevelsGeneric(
+    collectDrillDownLevels(
       callbacks,
-      [...path, child.id],
-      sanitizeId(child.id),
-      viewId,
+      child.path,
+      sanitizeId(child.node.id),
+      emit ? viewId : parentViewId,
+      ownsAnchor(child),
       levels,
       viewPrefix,
     );
   }
+}
+
+/**
+ * Decides which node a system-view anchor names, by the index the SPA resolves
+ * `#krs-system-<id>` / `#krs-entity-<id>` through (`nodePathIndex`, TPL-1583),
+ * so the static bundle and the app land on the same node (TPL-1827, #2933).
+ *
+ * An id the index does not cover (not one of its kinds) is owned by the first
+ * path the walk reaches it at, which is the level the bundle used to show.
+ */
+function systemAnchorOwner(nodePathIndex: ReadonlyMap<string, readonly string[]>) {
+  const firstSeen = new Map<string, string>();
+  return (path: readonly string[]): boolean => {
+    const id = path[path.length - 1];
+    const key = nodePathRefId(withoutUnassignedSegment(path));
+    const winner = nodePathIndex.get(id);
+    if (winner !== undefined) return nodePathRefId(winner) === key;
+    const seen = firstSeen.get(id);
+    if (seen === undefined) firstSeen.set(id, key);
+    return (seen ?? key) === key;
+  };
 }
 
 /**
@@ -136,8 +196,9 @@ export function buildDrillDownSvg(
   const facetOverlay = resolveFacetOverlay(krsFile, selectedFacets);
   const legendOptions = buildLegendRenderOptions(krsFile, sheets);
 
-  const levels: string[] = [];
-  collectDrillDownLevelsGeneric(
+  const ownsAnchor = systemAnchorOwner(krsFile.nodePathIndex);
+  const levels: BundledLevel[] = [];
+  collectDrillDownLevels(
     {
       getSlice: (path) => styleDerivedEdges(extract(path), styles, sheets),
       hasContent: (slice) => slice.childNodes.length > 0 || slice.systems.length > 0,
@@ -145,8 +206,9 @@ export function buildDrillDownSvg(
       // (real + synthesized "Unassigned" pseudo-system) so drill-down pages
       // are produced for each. For deeper levels slice.systems is empty and
       // we fall back to the container's direct children.
-      getChildren: (slice) =>
-        slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes,
+      getChildren: systemDrillChildren,
+      ownsAnchor,
+      linkKey: (child) => cardLinkKey(child.path),
       render: (slice, links) =>
         render(slice, styles, undefined, ownerIndex, displayMode, links, {
           theme,
@@ -171,6 +233,7 @@ export function buildDrillDownSvg(
     [],
     "root",
     null,
+    true,
     levels,
     "system",
   );
@@ -195,11 +258,12 @@ export function buildDrillDownSvg(
     declaredGroupOrderOf(krsFile, groupBy),
     groupLabels,
     diagnostics,
+    ownsAnchor,
   );
-  for (const level of entityLevels) levels.push(level.element);
+  levels.push(...entityLevels);
 
   return {
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${buildDrillDownCss(resolvePalette(theme))}</style>${levels.join("")}</svg>`,
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${buildDrillDownCss(resolvePalette(theme))}</style>${levels.map((l) => l.element).join("")}</svg>`,
     diagnostics,
   };
 }
@@ -305,15 +369,12 @@ export function buildDrillDownSvgOrg(
   const styles = resolveStyles(krsFile.systems, sheets, [], krsFile.organizations);
   const legendOptions = buildLegendRenderOptions(krsFile, sheets);
 
-  const levels: string[] = [];
-  collectDrillDownLevelsGeneric(
+  const levels: BundledLevel[] = [];
+  collectDrillDownLevels(
     {
       getSlice: (path) => extractOrgView(krsFile.organizations, path),
       hasContent: (slice) => slice.focusedTeam !== null || slice.teams.length > 0,
-      getChildren: (slice) =>
-        slice.focusedTeam !== null
-          ? slice.focusedTeam.children.filter((c): c is TeamNode => c.kind === "team")
-          : slice.teams,
+      getChildren: orgDrillChildren,
       // renderOrgView paints the legend footer on its top-level branch only,
       // so drilled team levels stay legend-free (org has no depth vocabulary).
       render: (slice, links) =>
@@ -322,12 +383,13 @@ export function buildDrillDownSvgOrg(
     [],
     "root",
     null,
+    true,
     levels,
     "org",
   );
 
   return {
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${buildDrillDownCss(resolvePalette(theme))}</style>${levels.join("")}</svg>`,
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${buildDrillDownCss(resolvePalette(theme))}</style>${levels.map((l) => l.element).join("")}</svg>`,
     diagnostics,
   };
 }
@@ -342,56 +404,6 @@ const VIEW_TYPES: { type: ViewType; label: string }[] = [
   { type: "deploy", label: "Deploy" },
   { type: "org", label: "Org" },
 ];
-
-interface BundledLevel {
-  element: string;
-  width: number;
-  height: number;
-}
-
-function collectDrillDownLevelsWithDimensions<S>(
-  callbacks: DrillDownCallbacks<S>,
-  path: string[],
-  viewId: string,
-  parentViewId: string | null,
-  levels: BundledLevel[],
-  viewPrefix: string,
-): void {
-  const slice = callbacks.getSlice(path);
-  if (!callbacks.hasContent(slice)) return;
-
-  const children = callbacks.getChildren(slice);
-  // A child is drillable only if it actually emits a level. Having children is
-  // necessary but not sufficient: a domain whose only children are entities
-  // renders an empty usecase view (entities live in the separate
-  // #krs-entity-<id> view), so `hasContent` is false and no #krs-system-<id>
-  // level is emitted. Linking to it would dead-end and bounce back to root.
-  const drillable = children.filter(
-    (c) => c.children.length > 0 && callbacks.hasContent(callbacks.getSlice([...path, c.id])),
-  );
-  const childLevelLinks = new Map(drillable.map((c) => [c.id, anchorId(viewPrefix, c.id)]));
-
-  const svg = callbacks.render(slice, childLevelLinks);
-  const { viewBox, innerContent, width, height } = extractSvgParts(svg);
-
-  const backButton = parentViewId !== null ? renderBackButton(parentViewId, viewPrefix) : "";
-  // Back button last so it paints on top of the opaque level canvas rect (#2044).
-  const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${innerContent}${backButton}</svg>`;
-  const cssClass = parentViewId === null ? "krs-view krs-root-level" : "krs-view";
-  const element = `<g id="${anchorId(viewPrefix, viewId)}" class="${cssClass}">${innerSvg}</g>`;
-  levels.push({ element, width, height });
-
-  for (const child of drillable) {
-    collectDrillDownLevelsWithDimensions(
-      callbacks,
-      [...path, child.id],
-      sanitizeId(child.id),
-      viewId,
-      levels,
-      viewPrefix,
-    );
-  }
-}
 
 /**
  * Collect the per-domain **entity view** levels for the all-views bundle. Each
@@ -424,6 +436,12 @@ function collectEntityLevels(
   groupLabels?: GroupLabelIndex,
   /** Caller's diagnostics list; the entity levels report into it (#2179). */
   diagnostics?: Diagnostic[],
+  /**
+   * The system levels' anchor owner (#2933): a same-id domain that is not the
+   * one `#krs-entity-<id>` names emits no level, and a back button skips an
+   * ancestor whose anchor names another node. Absent: every node owns its anchor.
+   */
+  ownsAnchor: (path: readonly string[]) => boolean = () => true,
 ): BundledLevel[] {
   const levels: BundledLevel[] = [];
   const styles = resolveStyles(effectiveSystems, sheets, []);
@@ -442,6 +460,7 @@ function collectEntityLevels(
   }
 
   for (const { domain, path } of domainsWithPath) {
+    if (!ownsAnchor(path)) continue;
     const slice = extractEntityView(effectiveSystems, path);
     if (slice.childNodes.length === 0) continue;
     const svg = render(slice, styles, undefined, ownerIndex, displayMode, new Map(), {
@@ -466,14 +485,11 @@ function collectEntityLevels(
     const { viewBox, innerContent } = extractSvgParts(svg);
     // Back target: the domain's usecase view when it exists (the domain has
     // non-entity children, so extractView emits a #krs-system-<domainId>
-    // level), otherwise the parent drill level (always emitted). This avoids a
-    // dead back-link for entity-only domains.
+    // level), otherwise the nearest drill level above it that shows its own
+    // node. This avoids a dead back-link for entity-only domains, and a link
+    // to a same-id ancestor's level that shows another node (#2933).
     const hasUsecaseView = domain.children.some((c) => c.kind !== "entity");
-    const backTarget = hasUsecaseView
-      ? domain.id
-      : path.length >= 3
-        ? path[path.length - 2]
-        : "root";
+    const backTarget = hasUsecaseView ? domain.id : nearestOwnedAncestor(path, ownsAnchor);
     const backButton = renderBackButton(backTarget, "system");
     // Back button last so it paints on top of the opaque level canvas rect (#2044).
     const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${innerContent}${backButton}</svg>`;
@@ -486,6 +502,20 @@ function collectEntityLevels(
     });
   }
   return levels;
+}
+
+/**
+ * The id of the nearest ancestor of `path` whose level shows its own node, or
+ * `"root"`. `path[0]` is the system, whose level is the root (#2933).
+ */
+function nearestOwnedAncestor(
+  path: readonly string[],
+  ownsAnchor: (path: readonly string[]) => boolean,
+): string {
+  for (let depth = path.length - 1; depth >= 2; depth--) {
+    if (ownsAnchor(path.slice(0, depth))) return path[depth - 1];
+  }
+  return "root";
 }
 
 function renderTabBar(enabledViews: Set<ViewType>): string {
@@ -646,6 +676,9 @@ export function buildAllViewsSvg(
   const facetOverlay = resolveFacetOverlay(krsFile, selectedFacets);
   const teamLabels = buildTeamLabelIndex(krsFile);
   const systemLevels: BundledLevel[] = [];
+  // Shared by the system levels and the entity levels: both anchor on a node
+  // id and resolve the same way in the SPA (#2933).
+  const ownsAnchor = systemAnchorOwner(krsFile.nodePathIndex);
   // One extractor per build: the model is fixed for the whole walk (#2759).
   const extract = createViewExtractor(effectiveSystems);
   const systemRootSlice = extract([]);
@@ -653,12 +686,13 @@ export function buildAllViewsSvg(
     const styles = resolveStyles(effectiveSystems, sheets, []);
     styleWarningPasses.push(styles.warnings);
     const ownerIndex = krsFile.ownerIndex ?? new Map();
-    collectDrillDownLevelsWithDimensions(
+    collectDrillDownLevels(
       {
         getSlice: (path) => styleDerivedEdges(extract(path), styles, sheets),
         hasContent: (slice) => slice.childNodes.length > 0 || slice.systems.length > 0,
-        getChildren: (slice) =>
-          slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes,
+        getChildren: systemDrillChildren,
+        ownsAnchor,
+        linkKey: (child) => cardLinkKey(child.path),
         render: (slice, links) =>
           render(slice, styles, undefined, ownerIndex, displayMode, links, {
             theme,
@@ -683,6 +717,7 @@ export function buildAllViewsSvg(
       [],
       "root",
       null,
+      true,
       systemLevels,
       "system",
     );
@@ -705,6 +740,7 @@ export function buildAllViewsSvg(
     declaredGroupOrderOf(krsFile, groupBy),
     groupLabels,
     diagnostics,
+    ownsAnchor,
   );
 
   // Collect deploy level
@@ -723,20 +759,18 @@ export function buildAllViewsSvg(
   if (topLevelTeams.length > 0) {
     const styles = resolveStyles(krsFile.systems, sheets, [], krsFile.organizations);
     styleWarningPasses.push(styles.warnings);
-    collectDrillDownLevelsWithDimensions(
+    collectDrillDownLevels(
       {
         getSlice: (path) => extractOrgView(krsFile.organizations, path),
         hasContent: (slice) => slice.focusedTeam !== null || slice.teams.length > 0,
-        getChildren: (slice) =>
-          slice.focusedTeam !== null
-            ? slice.focusedTeam.children.filter((c): c is TeamNode => c.kind === "team")
-            : slice.teams,
+        getChildren: orgDrillChildren,
         render: (slice, links) =>
           renderOrgView(slice, styles, displayMode, links, { theme, ...legendOptions }),
       },
       [],
       "root",
       null,
+      true,
       orgLevels,
       "org",
     );

@@ -2,17 +2,17 @@
 
 > [English](permalink.md) · **日本語**（このファイル）
 
-**deep permalink** は karasu モデル内の *特定の構造要素 / view* を指すリンクで、
+**deep permalink** は karasu モデル内の _特定の構造要素 / view_ を指すリンクで、
 リンクをたどった読者がモデル全体ではなく**ちょうどその要素にドリル / フォーカス
 した状態**で着地する。本ページは2つの deep-link サーフェスが共有する
 **fragment アンカー**の正典である。
 
 同じアンカーを2つのサーフェスが解決する:
 
-| サーフェス | アンカーの消費方法 |
-| --- | --- |
-| **静的レンダリング SVG**（`buildDrillDownSvg` / all-views エクスポート） | 純 CSS `:target` + `:has()`。`<svg-url>#krs-system-Payment` を開くとその階層が表示される（JS 不要）。 |
-| **nest/app SPA**（`useHistoryNavigation`） | mount 時 / `popstate` で `#krs-…` ハッシュを解析し、node-path index 経由でドリル + フォーカスする。 |
+| サーフェス                                                               | アンカーの消費方法                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **静的レンダリング SVG**（`buildDrillDownSvg` / all-views エクスポート） | 純 CSS `:target` + `:has()`。`<svg-url>#krs-system-Payment` を開くとその階層が表示される（JS 不要）。同じ id のノードが 2 つあるとき、バンドルはその anchor のレベルを 1 つだけ出す。node path index が扱う id（`service` / `domain` / `client`、トップレベルの infra）では、中身は SPA が同じ anchor を解決するノード（`nodePathIndex` の勝者）である。それ以外の id は walk 順で最初のレベルを残す。もう一方のノードのカードはリンクを持たずに描かれ、その下の一意な id のノードは自分のレベルを持つ。そのレベルへリンクするカードは無いので、anchor で開く（#2933）。 |
+| **nest/app SPA**（`useHistoryNavigation`）                               | mount 時 / `popstate` で `#krs-…` ハッシュを解析し、node-path index 経由でドリル + フォーカスする。                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 両サーフェスが**同一の文法**を使うため、1つのアンカーは可搬である。レンダリング
 SVG からコピーした fragment はアプリでも解決し、その逆も成り立つ。
@@ -39,7 +39,7 @@ SVG からコピーした fragment はアプリでも解決し、その逆も成
 - **`<id>`** — ドリル先要素の**著者が付けた `id`**。`sanitizeId` を通す
   （`[A-Za-z0-9_-]` 以外は `_`）。リテラル `root` は view の最上位を表す。
   identity は常に `id` であり、`label` や翻訳 / 表示文字列は使わない。
-- **`:<highlight>`** *(SPA のみ)* — 着地時にフォーカス強調する `id`（任意）。
+- **`:<highlight>`** _(SPA のみ)_ — 着地時にフォーカス強調する `id`（任意）。
   静的 SVG は highlight チャネルを持たない（CSS `:target` は1要素のみ選択）ため、
   この接尾は静的 SVG では落とす。
 
@@ -77,10 +77,10 @@ root で開く。開く際、app は history hook の mount より前に URL を
 上記のアンカーは、karasu が配信するどの URL でも同じように解決する。そのうち 2 つは
 **モデル**のアドレスで、残りは **payload** のアドレスである。
 
-| 形 | 何を指すか |
-| --- | --- |
+| 形                                        | 何を指すか                                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------------------ |
 | `…/<owner>/<repo>[/<path>][@<ref>]#krs-…` | GitHub repo に commit された `.krs` を `<ref>` 時点で解決（省略時は default branch） |
-| `…/s?s=<payload>#…` / `…/#s=<payload>` | URL に凍結したインラインスナップショット |
+| `…/s?s=<payload>#…` / `…/#s=<payload>`    | URL に凍結したインラインスナップショット                                             |
 
 repo-backed 形は GitHub のパスをそのまま取るので、**host を差し替えるだけで変換が完了する**:
 `github.com/<owner>/<repo>` → `karasu.kompiro.dev/<owner>/<repo>`。host と owner の間には
@@ -107,4 +107,4 @@ repo-backed 形が **generation ではなく resolution** であることから 
 アンカーして回避してはならない — label は表示 / i18n 文字列であり identity では
 ない。
 
-> Related TPLs: [TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md) — 静的 SVG と SPA ハッシュのアンカーは1つの id ベース文法を保たねばならない。drift すると permalink が片方のサーフェスでしか解決しなくなる。
+> Related TPLs: [TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md) — 静的 SVG と SPA ハッシュのアンカーは1つの id ベース文法を保たねばならない。drift すると permalink が片方のサーフェスでしか解決しなくなる。[TPL-2920](../test-perspectives/TPL-2920-duplicate-element-id-on-one-canvas-names-its-landing.md) — 同じ id のノードが 2 つあるとき、bare id を引く消費側ごとに着地点を決める。静的バンドルの着地点は SPA と同じ。
