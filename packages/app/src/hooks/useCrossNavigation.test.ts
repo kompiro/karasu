@@ -94,6 +94,45 @@ describe("useCrossNavigation", () => {
       expect(navigateViewPath).toHaveBeenCalledWith(["Web", "api"]);
     });
 
+    // The button carries the reference in `nodePathRefId` form (#2819).
+    it("navigates a qualified reference to the node it names", () => {
+      const orgNodePathIndex = new Map([["Api", ["Shop", "Api"]]]);
+      const { result, dispatch, navigateViewPath } = setup({ orgNodePathIndex });
+      act(() => result.current.handleOwnedServiceClick("Shop.Api"));
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_ACTIVE_VIEW",
+        activeView: "system",
+        highlightNodeId: "Api",
+      });
+      expect(navigateViewPath).toHaveBeenCalledWith(["Shop", "Api"]);
+    });
+
+    it("decodes a quoted id that carries a dot as one segment", () => {
+      // `owns Shop.Api` and `owns "Shop.Api"` name different nodes: the quoted
+      // one is the top-level service whose id is `Shop.Api`.
+      const orgNodePathIndex = new Map([
+        ["Api", ["Shop", "Api"]],
+        ["Shop.Api", ["Shop.Api"]],
+      ]);
+      const { result, dispatch, navigateViewPath } = setup({ orgNodePathIndex });
+      act(() => result.current.handleOwnedServiceClick('"Shop.Api"'));
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_ACTIVE_VIEW",
+        activeView: "system",
+        highlightNodeId: "Shop.Api",
+      });
+      expect(navigateViewPath).toHaveBeenCalledWith(["Shop.Api"]);
+    });
+
+    it("does not navigate when the indexed node is not the one the reference names", () => {
+      // `Api` resolves to `Billing.Api`, which `Shop.Api` does not suffix.
+      const orgNodePathIndex = new Map([["Api", ["Billing", "Api"]]]);
+      const { result, dispatch, navigateViewPath } = setup({ orgNodePathIndex });
+      act(() => result.current.handleOwnedServiceClick("Shop.Api"));
+      expect(dispatch).toHaveBeenCalledTimes(1);
+      expect(navigateViewPath).not.toHaveBeenCalled();
+    });
+
     it("dispatches but does not navigate when id is unresolved", () => {
       const { result, dispatch, navigateViewPath } = setup();
       act(() => result.current.handleOwnedServiceClick("unknown"));

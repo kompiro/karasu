@@ -126,19 +126,17 @@ export function resolveNodePathBySuffix<T extends { path: NodeIdPath }>(
 }
 
 /**
- * Canonical string key for a full node path, used by the path-keyed indices
- * (`ownerIndex`, `boundaryMembership`).
+ * Plain dotted join of a node path, for TEXT only: diagnostic params and
+ * messages.
  *
- * A dotted join is not injective for quoted ids that themselves contain a
- * dot — the same caveat the renderer's qualified ids (`Sys.Svc`) and deep
- * permalinks already carry. JSON keying (like `boundaryScopeKey`) would be
- * injective but would break consumers that already hold a dotted qualified
- * id as their node key, so the renderer's existing convention wins.
- *
- * Use it for TEXT — index keys a consumer reads back as a qualified id, and
- * diagnostic params. For a key whose only job is identity, reach for
- * {@link nodePathIdentityKey} instead; for TEXT that is *also* an identity —
- * an id two elements must not share — reach for {@link nodePathRefId}.
+ * The join is not injective: `["Shop", "Api"]` and `["Shop.Api"]` both give
+ * `Shop.Api`. Never key anything on it. The path-keyed indices
+ * (`ownerIndex`, `teamOwnership`, `boundaryMembership`) used to, and two nodes
+ * shared one owner slot until #2819 moved them to {@link nodePathRefId}. For a
+ * key whose only job is identity, reach for {@link nodePathIdentityKey}; for
+ * TEXT that is *also* an identity (an id two elements must not share, or an
+ * index key a consumer reads back as a qualified id), reach for
+ * {@link nodePathRefId}, and split it with {@link parseNodePathRefId}.
  */
 export function nodePathKey(segments: readonly string[]): string {
   return segments.join(".");

@@ -16,6 +16,7 @@ discovered_from:
   - issue: "#2714"
   - issue: "#2817"
   - issue: "#2917"
+  - issue: "#2819"
   - root_cause_file: "packages/core/src/resolver/style-resolver.ts"
 related_to:
   - TPL-2167
@@ -50,6 +51,7 @@ scope:
 - [ ] その要素を一意に識別する属性を列挙し、解決結果がどの属性に依存するか確認する（依存するものは全てキーに入れる）
 - [ ] 同じ部分キーを共有する複数要素（parallel edge、同 ID の annotation 違いノード等）が存在しうるか考える
 - [ ] 衝突しうるなら、合成キーのヘルパー関数を 1 つ用意し、書き込み側と参照側の両方で同じ関数を使う。そのキーを**外へ出す**（id・属性・アンカーとして書き出す）なら、エンコード自体が injective かも確認する。次元が揃っていても、セパレータ join は区切りを失うので `["a.b"]` と `["a", "b"]` が同じ文字列になる（#2714）
+- [ ] キーを分解する読み手（キーから segment や端点を取り出す側）は、エンコーダの逆関数（`parseNodePathRefId` 等）を使う。文字列の prefix 一致・`includes(".")`・最初の `#` での切断で割らない。エンコードを injective にしても、読み手が区切り文字で割れば同じ取り違えが読み手の側で起きる（#2819）
 - [ ] 合成キーで引けなかった場合のフォールバック（synthetic 要素用の bare key 等）の挙動を意図的に決める
 - [ ] parallel / 共存ケースを 1 件、レンダリング結果の差（実線 vs 破線等）まで含めてテストする
 
@@ -118,6 +120,24 @@ key を scope しても**引く側**が bare id のままなら同じ取りこ�
 要素の id（`data-node-id`）は key ではなく `LayoutNode.id` から出すので、出力の id 空間は
 変わらない。
 
+## 既知の consumer: path キーの索引と edge の diff キー（#2819）
+
+#2714 がコンテナ id で直したのと同じ畳み方が、3 箇所に残っていた。
+
+- **path キーの索引**（`ownerIndex` / `teamOwnership` / `boundaryMembership`）は
+  `nodePathKey`（素の `join(".")`）をキーにしていた。`Shop.Api` と `"Shop.Api"` が
+  1 つのキーに落ち、後の team の `owns` が前の team を上書きし、
+  `duplicate-owner-assignment` が誰も書いていない共同所有を報告した。キーは
+  `nodePathRefId` に揃えた
+- **canvas への射影**（`projectPathIndexOntoCanvas`）は、キーを prefix 一致で外し、残りに
+  `.` があれば「別の深さ」として捨てていた。キーのエンコードとは別に、**読み手の割り方**が
+  同じ取り違えを起こす。`service "a.b"` は自分の team / boundary の枠から黙って外れていた。
+  `parseNodePathRefId` で segment に戻してから比べる（チェックリストの「逆関数で割る」）
+- **edge の diff キー**（`${from}->${to}`）は quoted id が `->` を含むと衝突し、compare で
+  2 本の edge が 1 つの diff state を共有した。書き込み 2 箇所と読み取り 3 箇所が同じ形を
+  それぞれ組み立てていたので、`edgeKey` 1 つに集め、曖昧にする端点だけ引用符で囲む。
+  集約 edge の構成 domain edge を突き合わせる局所キーは、外に出ないので JSON にした
+
 ## 関連テスト
 
 - `packages/core/src/renderer/svg-renderer.test.ts` — "keeps the sync edge solid when a parallel async edge exists between the same pair"
@@ -125,6 +145,10 @@ key を scope しても**引く側**が bare id のままなら同じ取りこ�
 - `packages/core/src/parser/node-path.test.ts` — "nodePathRefId (#2714) › tells apart the paths a plain join collapses"
 - `packages/core/src/view/deploy-view-extract.test.ts` — "a dotted id cannot claim a qualified container's id (#2714)"
 - `packages/core/src/view/deploy-view-extract.test.ts` — "same-named service and infra in two systems (#2817)"
+- `packages/core/src/parser/node-reference-paths.test.ts` — "path-keyed indices are injective (#2819)"
+- `packages/core/src/compile/injective-identity-keys.test.ts` — "a node whose id carries a dot keeps its frame (#2819)" / "an edge whose endpoint carries `->` keeps its own diff state (#2819)"
+- `packages/core/src/diff/view-diff.test.ts` — "edgeKey (#2819)"
+- `packages/core/src/diff/org-view-diff.test.ts` — "ownsEdgeKey (#2819)"
 
 ## 派生元 spec
 

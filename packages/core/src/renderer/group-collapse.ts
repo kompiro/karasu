@@ -1,6 +1,7 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import { displayGroupId, unionEdgeFacets } from "../types/ast.js";
 import { makeStubNode } from "./collapse-stub.js";
+import { edgeKey } from "../diff/view-diff.js";
 
 /**
  * Per-group collapse for the system-view "Group by: team" mode (Issue #1858,
@@ -54,8 +55,8 @@ interface GroupCollapseResult {
    */
   remapEndpoint: (id: string) => string;
   /**
-   * Diff state re-keyed onto the re-targeted stub edges, keyed by the render
-   * lookup form `${from}->${to}` (kind-less, matching `svg-renderer.ts`). A stub
+   * Diff state re-keyed onto the re-targeted stub edges, keyed by `edgeKey`,
+   * the render lookup form (kind-less, matching `svg-renderer.ts`). A stub
    * edge aggregates one-or-more original cross-group edges; its state is the
    * single original state when unambiguous, else `changed` (#1886, decision 2).
    * Only populated when a diff-state map is supplied AND something collapses;
@@ -160,8 +161,8 @@ export function collapseGroups(
   const outEdges: KrsEdge[] = [];
   const stubEdges = new Map<string, KrsEdge>();
   // Accumulate the original diff states that fold onto each stub edge, keyed by
-  // the render lookup form `${from}->${to}` (kind-less — the render diff lookup
-  // in `svg-renderer.ts` and the `diffed.edges` key both drop `#kind`, so a
+  // `edgeKey`, the render lookup form (kind-less — the render diff lookup in
+  // `svg-renderer.ts` and the `diffed.edges` key both drop `#kind`, so a
   // sync+async stub-edge pair shares one slot and folds together). #1886.
   const foldAccum = new Map<string, string[]>();
   for (const edge of edges) {
@@ -180,8 +181,8 @@ export function collapseGroups(
       // keyed on the pre-collapse endpoints would otherwise miss the stub id and
       // render undecorated - TPL-1886). `unchanged` default so a collapse
       // in non-diff mode (no diff map entries) contributes nothing.
-      const renderKey = `${from}->${to}`;
-      const origState = edgeDiffState.get(`${edge.from}->${edge.to}`) ?? "unchanged";
+      const renderKey = edgeKey({ from, to });
+      const origState = edgeDiffState.get(edgeKey(edge)) ?? "unchanged";
       const bucket = foldAccum.get(renderKey);
       if (bucket) bucket.push(origState);
       else foldAccum.set(renderKey, [origState]);

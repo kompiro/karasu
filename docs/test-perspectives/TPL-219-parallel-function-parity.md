@@ -24,11 +24,13 @@ discovered_from:
   - issue: "#2033"
   - issue: "#2646"
   - issue: "#2911"
+  - issue: "#2879"
   - root_cause_file: "packages/core/src/renderer/drill-down-svg.ts"
   - root_cause_file: "packages/core/src/index.ts:480"
   - root_cause_file: "packages/core/src/renderer/org-tree-renderer.ts:544"
   - root_cause_file: "packages/core/src/renderer/layout.ts"
   - root_cause_file: "packages/app/src/components/AppShell.tsx:228"
+  - root_cause_file: "packages/core/src/compile/compile-diff.ts"
 topic: build
 scope:
   packages:
@@ -64,7 +66,7 @@ karasu には「ビューごとに分かれた似た形の関数群」が複数�
 
 - [ ] 同じ family に属する **兄弟関数の一覧** が把握できているか（grep で関数名 / シグネチャの近さから機械的に洗い出す）
 - [ ] 追加・変更した parameter が、兄弟関数すべてで **実際に内部の振る舞いに繋がっている** か（型シグネチャだけでなく実装本体を見る）
-- [ ] 共通 helper（`buildStyles`, `analyze`, `buildExportSvg` など）に同じ引数を同じ意図で渡しているか（一方だけ default 値で呼んでいないか）。**検証ステップも同じく揃っているか**: per-view の `_compileFromPreparedInput` が走らせる model-level の検証（`validateProjectEdgeIdUniqueness` など）を all-views の経路も走らせているか（#2911: 既定の `karasu render` が `duplicate-edge-id` を出さず、`render --view system` の拒否するモデルを通していた。#1438 の `analyze()` 欠落も同じ形）。揃える場所は呼び出し側の契約で選ぶ。#2911 は CLI の入口 `buildAllViewsSvgProject` にだけ足し、`duplicate-edge-id` を投稿者の品質判断として通す gallery / share render が呼ぶ `buildAllViewsSvg` には足さなかった。この非対称は `all-views-project-edge-id.test.ts` で固定している
+- [ ] 共通 helper（`buildStyles`, `analyze`, `buildExportSvg` など）に同じ引数を同じ意図で渡しているか（一方だけ default 値で呼んでいないか）。**検証ステップも同じく揃っているか**: per-view の `_compileFromPreparedInput` が走らせる model-level の検証（`validateProjectEdgeIdUniqueness` など）を all-views の経路も走らせているか（#2911: 既定の `karasu render` が `duplicate-edge-id` を出さず、`render --view system` の拒否するモデルを通していた。#1438 の `analyze()` 欠落も同じ形）。揃える場所は呼び出し側の契約で選ぶ。#2911 は CLI の入口 `buildAllViewsSvgProject` にだけ足し、`duplicate-edge-id` を投稿者の品質判断として通す gallery / share render が呼ぶ `buildAllViewsSvg` には足さなかった。この非対称は `all-views-project-edge-id.test.ts` で固定している。**diff の pipeline も兄弟である**: #2879 では `compile{System,Deploy,Org}Diff` / `buildAllViewsSvgDiffProject` が `analyze()` も `validateStyleValues()` も走らせず、`karasu diff` は warning を 1 件も出さなかった。per-view compile と同じ `collectModelWarnings()` を呼ぶ形に揃え、`compile-diff-warnings.test.ts` が両者の一致を view ごとに固定している
 - [ ] family 共通の振る舞いを **共通ヘルパに抽出** できないか（重複させ続ける限り drift は再発する）
 - [ ] family 横断の test（同じ入力を全 view 種別で compile し、振る舞いの一致を assert）が 1 件でもあるか
 

@@ -30,7 +30,7 @@
 
 import type { EdgeKind, KrsEdge, KrsFile, KrsNode, NodeIdPath, TeamNode } from "../types/ast.js";
 import { buildTeamOwnership, type DeclaredNodePath } from "../parser/reference-validation.js";
-import { nodePathKey } from "../parser/node-path.js";
+import { nodePathRefId } from "../parser/node-path.js";
 import { OWNS_TARGET_KIND_SET } from "../types/ast.js";
 import {
   buildEdgeEndpointIndex,
@@ -56,7 +56,7 @@ export interface TeamDependencyEdge {
   to: string;
   kind: EdgeKind;
   label?: string;
-  /** Full path (`nodePathKey`) each endpoint resolved to. */
+  /** Full path (`nodePathRefId`) each endpoint resolved to. */
   fromPath: string;
   toPath: string;
   /** True when the endpoint's team came from an ancestor rather than its own `owns`. */
@@ -92,7 +92,7 @@ export interface TeamDependency {
  * inverse-Conway smell of the two signals this module derives.
  */
 export interface StructuralOverlap {
-  /** Full path (`nodePathKey`) of the node whose ownership crosses in. */
+  /** Full path (`nodePathRefId`) of the node whose ownership crosses in. */
   path: string;
   kind: string;
   /**
@@ -127,7 +127,7 @@ export interface StructuralOverlap {
 
 /** An endpoint that names a real node which no team owns, directly or by inheritance. */
 export interface UnownedEndpoint {
-  /** Full path (`nodePathKey`) of the node. */
+  /** Full path (`nodePathRefId`) of the node. */
   path: string;
   kind: string;
   /** The edges that reached it, in declaration order. */
@@ -179,7 +179,9 @@ function couldBeOwned(path: NodeIdPath, index: EdgeEndpointIndex): boolean {
   for (let length = path.length; length > 0; length--) {
     const id = path[length - 1];
     const prefix = path.slice(0, length);
-    const node = (declared.get(id) ?? []).find((d) => nodePathKey(d.path) === nodePathKey(prefix));
+    const node = (declared.get(id) ?? []).find(
+      (d) => nodePathRefId(d.path) === nodePathRefId(prefix),
+    );
     if (node !== undefined && OWNS_TARGET_KIND_SET.has(node.kind)) return true;
   }
   return false;
@@ -239,7 +241,7 @@ function resolveOwners(
   ownership: ReadonlyMap<string, string[]>,
 ): OwnerResolution | undefined {
   for (let length = path.length; length > 0; length--) {
-    const owners = ownership.get(nodePathKey(path.slice(0, length)));
+    const owners = ownership.get(nodePathRefId(path.slice(0, length)));
     if (owners !== undefined && owners.length > 0) {
       return { teams: owners, inherited: length !== path.length };
     }
@@ -325,7 +327,7 @@ function endpointNodes(
  * and `"Team A" + sep + "B"` would collide, and the second pair's edges would
  * be appended to the first pair's row while the pair itself vanished. JSON is
  * a total encoding, which is what a composite key needs — the same reason
- * `nodePathKey` exists for paths.
+ * `nodePathIdentityKey` exists for paths.
  */
 function dependencyKey(fromTeam: string, toTeam: string, kind: EdgeKind): string {
   return JSON.stringify([fromTeam, toTeam, kind]);
@@ -356,7 +358,7 @@ export function extractTeamDependencies(file: KrsFile): TeamDependencyReport {
 
   const noteUnowned = (match: DeclaredNodePath, edge: KrsEdge): void => {
     if (!couldBeOwned(match.path, endpointIndex)) return;
-    const key = nodePathKey(match.path);
+    const key = nodePathRefId(match.path);
     const entry = unowned.get(key);
     const via = { from: edge.from, to: edge.to, kind: edge.kind };
     if (entry === undefined) {
@@ -392,7 +394,7 @@ export function extractTeamDependencies(file: KrsFile): TeamDependencyReport {
       const noted = new Set<string>();
       for (const { match, owners } of [...fromResolved, ...toResolved]) {
         if (owners !== undefined) continue;
-        const key = nodePathKey(match.path);
+        const key = nodePathRefId(match.path);
         if (noted.has(key)) continue;
         noted.add(key);
         noteUnowned(match, edge);
@@ -419,8 +421,8 @@ export function extractTeamDependencies(file: KrsFile): TeamDependencyReport {
                 to: edge.to,
                 kind: edge.kind,
                 ...(edge.label === undefined ? {} : { label: edge.label }),
-                fromPath: nodePathKey(fromMatch.path),
-                toPath: nodePathKey(toMatch.path),
+                fromPath: nodePathRefId(fromMatch.path),
+                toPath: nodePathRefId(toMatch.path),
                 fromInherited: fromOwners.inherited,
                 toInherited: toOwners.inherited,
               };
@@ -490,17 +492,17 @@ function findStructuralOverlaps(
 
   const walk = (node: KrsNode, prefix: NodeIdPath, enclosing: EnclosingOwner | undefined): void => {
     const path = [...prefix, node.id];
-    const declared = ownership.get(nodePathKey(path));
+    const declared = ownership.get(nodePathRefId(path));
     let next = enclosing;
     if (declared !== undefined && declared.length > 0) {
       const outer = enclosing?.teams ?? [];
       const crossing = enclosing === undefined ? [] : declared.filter((t) => !outer.includes(t));
       if (crossing.length > 0) {
         overlaps.push({
-          path: nodePathKey(path),
+          path: nodePathRefId(path),
           kind: node.kind,
           teams: crossing,
-          insidePath: nodePathKey(enclosing!.path),
+          insidePath: nodePathRefId(enclosing!.path),
           insideKind: enclosing!.kind,
           insideTeams: [...outer],
           // `nested` when every crossing/enclosing pairing sits in one team's
