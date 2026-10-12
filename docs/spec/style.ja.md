@@ -271,6 +271,10 @@ badge-icon:       "⚠";
 badge-label:      "非推奨";
 ```
 
+数値と長さには符号を付けられる（`label-offset: -8px` は label を上へ動かす）。
+`border-width` / `border-radius` / `font-size` / `stroke-width` は負にできない。
+負の値は `style-out-of-range` として報告され、既定値が使われる。
+
 ---
 
 ## stroke-style プロパティ（エッジ）
