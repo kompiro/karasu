@@ -192,6 +192,7 @@ export function buildContainersForEmpty(viewSlice: ViewSlice): ContainerRect[] {
       width: minW,
       height: minH,
       ghost: false,
+      path: [...viewSlice.ancestorChain.map((n) => n.id), viewSlice.containerNode.id],
     });
   }
 
@@ -206,6 +207,7 @@ export function buildContainersForEmpty(viewSlice: ViewSlice): ContainerRect[] {
       width: inner ? inner.width + GHOST_MARGIN * 2 : minW + GHOST_MARGIN * 2,
       height: inner ? inner.height + GHOST_MARGIN * 2 : minH + GHOST_MARGIN * 2,
       ghost: true,
+      path: viewSlice.ancestorChain.slice(0, i + 1).map((n) => n.id),
     });
   }
 

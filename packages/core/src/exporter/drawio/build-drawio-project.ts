@@ -5,7 +5,7 @@ import type { Warning } from "../../types/warnings.js";
 import type { KrsFile, KrsNode, OrganizationBlock, TeamNode } from "../../types/ast.js";
 import { extractView } from "../../view/view-extract.js";
 import { extractDeployView } from "../../view/deploy-view-extract.js";
-import { nodePathRefId } from "../../parser/node-path.js";
+import { bareIdView, nodePathRefId } from "../../parser/node-path.js";
 import { withUnassignedSystem } from "../../view/unassigned-system.js";
 import { layout } from "../../renderer/layout.js";
 import { layoutDeploy } from "../../renderer/deploy-layout.js";
@@ -15,14 +15,11 @@ import { exportDrawio, type DrawioNodeMeta, type DrawioPage } from "./drawio-exp
 import { layoutOrganization } from "./org-layout.js";
 
 /**
- * Walk the logical node tree and collect tags/annotations for every node id.
+ * Walk the logical node tree and collect tags/annotations for every node,
+ * keyed by its full path under `nodePathRefId` — the encoding a deploy
+ * container's id already uses when it is qualified (#2549) or quoted (#2714).
  * Used so the draw.io exporter can show badges on both leaf nodes (LayoutNode)
  * and containers (ContainerRect) that do not carry these fields directly.
- */
-/**
- * The same walk as {@link collectLogicalMeta}, keyed by each node's full path
- * under `nodePathRefId` — the encoding a deploy container's id already uses
- * when it is qualified (#2549) or quoted (#2714).
  *
  * The bare-id map cannot serve those containers: two same-named services
  * collide in it, so the last one walked would hand its tags to both. Keying by
@@ -45,16 +42,16 @@ function collectLogicalMetaByPath(
   }
 }
 
-function collectLogicalMeta(nodes: KrsNode[], into: Map<string, DrawioNodeMeta>): void {
-  for (const node of nodes) {
-    into.set(node.id, {
-      tags: node.tags.length > 0 ? [...node.tags] : undefined,
-      annotations: node.annotations.length > 0 ? [...node.annotations] : undefined,
-    });
-    if (node.children.length > 0) {
-      collectLogicalMeta(node.children, into);
-    }
-  }
+/**
+ * The bare-id view of {@link collectLogicalMetaByPath}: one entry per id, the
+ * `nodePathRanking` winner's where two nodes share it (#2934), for the lookups
+ * that only have an id (containers, ghost cards).
+ */
+function logicalMetaById(
+  byPath: ReadonlyMap<string, DrawioNodeMeta>,
+  krsFile: KrsFile,
+): Map<string, DrawioNodeMeta> {
+  return bareIdView(byPath, krsFile.nodePathRanking);
 }
 
 /** Which karasu views to emit as draw.io pages. Defaults to all supported views. */
@@ -117,8 +114,9 @@ export async function buildDrawioProject(
 function buildSystemPages(krsFile: KrsFile): DrawioPage[] {
   if (krsFile.systems.length === 0) return [];
   const pages: DrawioPage[] = [];
-  const metadata = new Map<string, DrawioNodeMeta>();
-  collectLogicalMeta(krsFile.systems, metadata);
+  const metadataByPath = new Map<string, DrawioNodeMeta>();
+  collectLogicalMetaByPath(krsFile.systems, [], metadataByPath);
+  const metadata = logicalMetaById(metadataByPath, krsFile);
   const labelById = new Map<string, string>();
   collectLogicalLabels(krsFile.systems, labelById);
 
@@ -131,7 +129,7 @@ function buildSystemPages(krsFile: KrsFile): DrawioPage[] {
       viewPath.length === 0
         ? "System"
         : `System ▸ ${viewPath.map((segId) => labelById.get(segId) ?? segId).join(" ▸ ")}`;
-    pages.push({ id, name, layout: layoutResult, metadata });
+    pages.push({ id, name, layout: layoutResult, metadata, metadataByPath });
   };
 
   // Top-level view
@@ -170,16 +168,15 @@ function buildDeployPage(krsFile: KrsFile): DrawioPage | null {
   const effectiveSystems = withUnassignedSystem(krsFile);
   const slice = extractDeployView(krsFile.deploys, effectiveSystems);
   const layoutResult = layoutDeploy(slice);
-  const metadata = new Map<string, DrawioNodeMeta>();
-  // Deploy containers are keyed by the realized service id, so the logical
-  // tree provides their tags/annotations.
-  collectLogicalMeta(effectiveSystems, metadata);
   // The exporter looks metadata up by the container's id, which is not always
   // the realized node's id — it is quoted when a segment carries the path
   // separator (#2714) and qualified when two containers share a bare id
   // (#2549). Give each such container an entry under the id the lookup uses.
   const metaByPath = new Map<string, DrawioNodeMeta>();
   collectLogicalMetaByPath(effectiveSystems, [], metaByPath);
+  // Deploy containers are keyed by the realized service id, so the logical
+  // tree provides their tags/annotations.
+  const metadata = logicalMetaById(metaByPath, krsFile);
   for (const container of slice.containers) {
     // A qualified id IS the node's path under the same encoding, so it finds
     // its own node's metadata rather than whichever same-named node the

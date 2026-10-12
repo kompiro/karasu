@@ -2,9 +2,15 @@ import { describe, expect, it } from "vitest";
 import { Parser } from "../parser/parser.js";
 import { extractView } from "../view/view-extract.js";
 import { diffSystemViewSlices } from "../diff/view-diff.js";
-import { compile } from "../compile/compile.js";
+import { compile, type CompileOptions } from "../compile/compile.js";
 import { nodePathRefId, parseNodePathRefId } from "../parser/node-path.js";
 import { layout } from "./layout.js";
+import { compileSystemDiff } from "../compile/compile-diff.js";
+import { InMemoryFileSystemProvider } from "../fs/in-memory-provider.js";
+import { ImportResolver } from "../fs/import-resolver.js";
+import { buildDrawio } from "../exporter/drawio/build-drawio-project.js";
+import { StyleParser } from "../parser/style-parser.js";
+import { resolveStyles } from "../resolver/style-resolver.js";
 import type { LayoutNode, LayoutResult, Rect } from "./layout-types.js";
 
 // #2917: two systems may both declare the same service id. The multi-system
@@ -139,7 +145,7 @@ system Shop {
     if (result.diagramType !== "system") throw new Error();
     expect(result.nodeMetadataByPath.get("Shop.Api")?.viewPath).toEqual(["Shop", "Api"]);
     expect(result.nodeMetadataByPath.get("Admin.Api")?.viewPath).toEqual(["Admin", "Api"]);
-    // The bare-id map keeps holding one of the two (the later write), unchanged.
+    // The bare-id map holds one of the two: the ranking's winner since #2934.
     expect(result.nodeMetadata.get("Api")).toBeDefined();
   });
 });
@@ -382,5 +388,173 @@ system Admin {
     const orders = [...r.nodes.values()].find((n) => n.id === "Orders")!;
     expect(orders.path).toEqual(["Shop", "Api", "Orders"]);
     expect(orders.properties.team).toBe("orders-team");
+  });
+});
+
+// #2934: the per-node maps built at compile / render time are keyed by full path,
+// and a bare-id lookup is answered by one rule for every map, the
+// `nodePathRanking` winner (highest migration priority, then traversal order).
+// AT-2934.
+
+const SHOP = `
+system Shop {
+  service Api [external] @migration_target {
+    description "Shop's Api"
+    facets pii
+  }
+  service Worker {}
+  Api -> Worker "queues"
+}`;
+const ADMIN = `
+system Admin {
+  service Api {
+    description "Admin's Api"
+  }
+  service Jobs {}
+  Api -> Jobs "runs"
+}`;
+const PII = `facet pii { label "PII" }`;
+/** The measured model of the design, in either system order. */
+const MEASURED = (order: "shop-first" | "admin-first"): string =>
+  order === "shop-first" ? `${PII}\n${SHOP}\n${ADMIN}` : `${PII}\n${ADMIN}\n${SHOP}`;
+const RED = "service[external] { background-color: #ff0000; }";
+const ORDERS = ["shop-first", "admin-first"] as const;
+
+/** One card's markup: from its opening tag to the next card. */
+const cardOf = (svg: string, path: string): string => {
+  const start = svg.indexOf(`data-node-path="${path}"`);
+  if (start < 0) throw new Error(`no card for ${path}`);
+  const open = svg.lastIndexOf("<g", start);
+  const next = svg.indexOf("data-node-path=", start + 1);
+  return svg.slice(open, next < 0 ? undefined : svg.lastIndexOf("<g", next));
+};
+
+const rootCompile = (krs: string, opts: CompileOptions = {}) => {
+  const result = compile(krs, { diagramType: "system", viewPath: [], ...opts });
+  if (result.diagramType !== "system") throw new Error("expected the system view");
+  return result;
+};
+
+describe("per-node maps are keyed by path; bare ids answer with the winner (#2934)", () => {
+  it.each(ORDERS)("styles only the tagged Shop.Api card (%s)", (order) => {
+    const { svg } = rootCompile(MEASURED(order), { styleSource: RED });
+    expect(cardOf(svg, "Shop.Api")).toContain('fill="#ff0000"');
+    expect(cardOf(svg, "Admin.Api")).not.toContain('fill="#ff0000"');
+  });
+
+  it.each(ORDERS)(
+    "keeps each node's own column hint, and the winner's under the bare id (%s)",
+    (order) => {
+      const file = Parser.parse(MEASURED(order)).value;
+      const sheet = StyleParser.parse("service[external] { column: left; }").value;
+      const styles = resolveStyles(
+        file.systems,
+        [sheet],
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        file.nodePathRanking,
+      );
+      expect(styles.layoutHintsByPath.get("Shop.Api")).toEqual({ column: "left" });
+      // An empty own entry, so the layout does not hand Admin.Api the bare one.
+      expect(styles.layoutHintsByPath.get("Admin.Api")).toEqual({});
+      expect(styles.layoutHints.get("Api")).toEqual({ column: "left" });
+    },
+  );
+
+  it.each(ORDERS)("rings only the Shop.Api card for its facet (%s)", (order) => {
+    const { svg } = rootCompile(MEASURED(order), { selectedFacets: ["pii"] });
+    expect(cardOf(svg, "Shop.Api")).toContain('data-facet-member="pii"');
+    expect(cardOf(svg, "Admin.Api")).not.toContain("data-facet-member");
+  });
+
+  it.each(ORDERS)("describes the winner in one bare metadata record (%s)", (order) => {
+    const { nodeMetadata, nodeMetadataByPath } = rootCompile(MEASURED(order));
+    const api = nodeMetadata.get("Api")!;
+    expect(api.description).toBe("Shop's Api");
+    expect(api.viewPath).toEqual(["Shop", "Api"]);
+    expect(nodeMetadataByPath.get("Admin.Api")?.description).toBe("Admin's Api");
+  });
+
+  it("falls to traversal order on a priority tie, so the first system wins", () => {
+    const tie = (first: string, second: string) =>
+      rootCompile(`system ${first} { service Api { description "${first}" } }
+system ${second} { service Api { description "${second}" } }`).nodeMetadata.get("Api");
+    expect(tie("Shop", "Admin")?.description).toBe("Shop");
+    expect(tie("Admin", "Shop")?.description).toBe("Admin");
+  });
+
+  it("answers with the next ranked path when the winner is not on the canvas", () => {
+    // The winner is `Core.Hub.Api`, a domain under a @migration_target service:
+    // the root canvas only holds the two unmarked services. The bare record is
+    // the first of them in the ranking, never "whichever was added last".
+    const krs = (order: "shop-first" | "admin-first") => {
+      const shop = `system Shop { service Api { description "Shop" } }`;
+      const admin = `system Admin { service Api { description "Admin" } }`;
+      const core = `system Core { service Hub @migration_target { domain Api {} } }`;
+      return order === "shop-first" ? `${shop}\n${admin}\n${core}` : `${admin}\n${shop}\n${core}`;
+    };
+    const parsed = Parser.parse(krs("shop-first"));
+    expect(parsed.value.nodePathRanking.get("Api")).toEqual([
+      ["Core", "Hub", "Api"],
+      ["Shop", "Api"],
+      ["Admin", "Api"],
+    ]);
+    expect(rootCompile(krs("shop-first")).nodeMetadata.get("Api")?.description).toBe("Shop");
+    expect(rootCompile(krs("admin-first")).nodeMetadata.get("Api")?.description).toBe("Admin");
+  });
+
+  it.each(ORDERS)(
+    "keeps each node's own file, and the winner's under the bare id (%s)",
+    async (order) => {
+      const fs = new InMemoryFileSystemProvider();
+      await fs.writeFile("/shop.krs", SHOP);
+      await fs.writeFile("/admin.krs", ADMIN);
+      const imports =
+        order === "shop-first"
+          ? `import "./shop.krs"\nimport "./admin.krs"`
+          : `import "./admin.krs"\nimport "./shop.krs"`;
+      await fs.writeFile("/index.krs", `${PII}\n${imports}`);
+      const { krsFile } = await new ImportResolver(fs).resolve("/index.krs");
+      expect(krsFile.nodeFileIndexByPath.get("Shop.Api")).toBe("/shop.krs");
+      expect(krsFile.nodeFileIndexByPath.get("Admin.Api")).toBe("/admin.krs");
+      expect(krsFile.nodeFileIndex.get("Api")).toBe("/shop.krs");
+    },
+  );
+
+  it("gives each system's Api its own draw.io cell, with its own system's edge", () => {
+    const xml = buildDrawio(Parser.parse(MEASURED("shop-first")).value, { view: "system" });
+    const ids = [...xml.matchAll(/<mxCell id="(system-[^"]*)"/g)].map((m) => m[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toContain("system-Shop_Api");
+    expect(ids).toContain("system-Admin_Api");
+    const edge = (label: string) =>
+      new RegExp(`<mxCell id="[^"]*" value="${label}"[^>]*source="([^"]*)" target="([^"]*)"`).exec(
+        xml,
+      );
+    expect(edge("queues")?.slice(1)).toEqual(["system-Shop_Api", "system-Shop_Worker"]);
+    expect(edge("runs")?.slice(1)).toEqual(["system-Admin_Api", "system-Admin_Jobs"]);
+  });
+
+  it("does not let Admin.Api borrow Shop.Api's diff state, nor move Shop.Api's", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/before.krs", MEASURED("shop-first"));
+    await fs.writeFile(
+      "/after.krs",
+      MEASURED("shop-first").replace(`description "Admin's Api"`, `description "Admin's new Api"`),
+    );
+    const result = await compileSystemDiff({
+      beforeEntryPath: "/before.krs",
+      afterEntryPath: "/after.krs",
+      fs,
+      viewPath: [],
+    });
+    expect(cardOf(result.svg, "Shop.Api")).toContain('data-diff-state="unchanged"');
+    // Only the first system's cards are diffed on the root today (#3126), so
+    // Admin.Api has no state of its own; it must not show Shop.Api's either.
+    expect(cardOf(result.svg, "Admin.Api")).not.toContain("data-diff-state");
+    expect(result.nodeDiffByPath.get("Shop.Api")?.state).toBe("unchanged");
+    expect(result.nodeDiffByPath.has("Admin.Api")).toBe(false);
   });
 });

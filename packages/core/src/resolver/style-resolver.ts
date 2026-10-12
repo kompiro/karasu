@@ -7,6 +7,8 @@ import type {
   TeamNode,
 } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
+import { bareIdView, nodePathRefId } from "../parser/node-path.js";
+import { UNASSIGNED_SYSTEM_ID } from "../view/unassigned-system.js";
 import { hasShape } from "../shapes/shape-registry.js";
 // `hasShape` answers for the built-in icons only once they are registered (#2802).
 import "../shapes/builtin-icons.js";
@@ -111,12 +113,24 @@ export function resolveStyles(
   organizations?: OrganizationBlock[],
   extraNodes?: KrsNode[],
   extraEdges?: KrsEdge[],
+  /**
+   * `KrsFile.nodePathRanking`, which picks the bare-id entry where two logical
+   * nodes share an id (#2934). Without it a shared id falls to path text order.
+   */
+  nodePathRanking?: ReadonlyMap<string, readonly (readonly string[])[]>,
 ): ResolvedStyles {
   const allRules = flattenSheetsInCascadeOrder(sheets);
   const nodeStyles = new Map<string, ResolvedNodeStyle>();
   const edgeStyles = new Map<string, ResolvedEdgeStyle>();
   const layoutHints = new Map<string, ResolvedLayoutHints>();
   const paintedColors = new Map<string, PaintedNodeColors>();
+  // The logical nodes' values per full path (#2934). The bare `nodeStyles` /
+  // `layoutHints` / `paintedColors` entries for them are derived from these
+  // once every logical node is processed, so a shared id resolves to one node
+  // in all three instead of to whichever was processed last.
+  const nodeStylesByPath = new Map<string, ResolvedNodeStyle>();
+  const layoutHintsByPath = new Map<string, ResolvedLayoutHints>();
+  const paintedByPath = new Map<string, PaintedNodeColors | undefined>();
   const resolvedStyleWarnings: ResolvedStyleWarning[] = [];
 
   /**
@@ -124,15 +138,18 @@ export function resolveStyles(
    * same way `toResolvedNodeStyle` does, so "painted" means exactly "this
    * property was applied" rather than "this property appeared".
    */
-  function recordPaintedColors(id: string, props: Record<string, string>): void {
+  function paintedOf(props: Record<string, string>): PaintedNodeColors | undefined {
     const color = Boolean(props["color"]);
     const borderColor = Boolean(props["border-color"]);
+    return color || borderColor ? { color, borderColor } : undefined;
+  }
+  function recordPaintedColors(id: string, painted: PaintedNodeColors | undefined): void {
     // Set or clear, never only set. `nodeStyles.set` overwrites unconditionally,
-    // and an id can be stored twice: the same name is a service in one system
-    // and a system in another. Leaving the first pass's flags standing against
-    // the second pass's values is how the two maps come to disagree, which
-    // reads as the frame keeping a colour nothing named for it.
-    if (color || borderColor) paintedColors.set(id, { color, borderColor });
+    // and an id can be stored twice (a deploy unit or an org node named like a
+    // logical node). Leaving the first pass's flags standing against the second
+    // pass's values is how the two maps come to disagree, which reads as the
+    // frame keeping a colour nothing named for it.
+    if (painted !== undefined) paintedColors.set(id, painted);
     else paintedColors.delete(id);
   }
 
@@ -147,8 +164,14 @@ export function resolveStyles(
   // docs/design/inherit-service-annotations.md. Explicit annotations always
   // win, and a child with its own annotations becomes the new propagation
   // root for its own subtree.
-  function processNodes(nodes: KrsNode[], parentAnnotations: string[]): void {
+  function processNodes(
+    nodes: KrsNode[],
+    parentAnnotations: string[],
+    prefix: readonly string[],
+  ): void {
     for (const node of nodes) {
+      const path = [...prefix, node.id];
+      const pathKey = nodePathRefId(path);
       // Inject inferred tag for dot-notation resource nodes with no explicit tags.
       let resolvedNode = node;
       if (
@@ -169,19 +192,22 @@ export function resolveStyles(
       // not touch `column`), so it must run after the layout-hint read.
       applyClientSubtypeFirstMatch(resolvedNode, merged);
       const style = toResolvedNodeStyle(merged);
-      // Always store under the simple ID key for backward-compat lookups (e.g., container
-      // rendering uses container.id directly).
-      nodeStyles.set(node.id, style);
-      recordPaintedColors(node.id, merged);
-      if (hints) layoutHints.set(node.id, hints);
+      const painted = paintedOf(merged);
+      // Keyed by the node's own path; the simple-id entry is derived from these
+      // after the walk (see `nodeStylesByPath`).
+      nodeStylesByPath.set(pathKey, style);
+      paintedByPath.set(pathKey, painted);
+      // An entry for every node reached, empty when no hint resolved, so a card
+      // can tell "no hints of its own" from "a path this pass never saw".
+      layoutHintsByPath.set(pathKey, hints ?? {});
       // Also store under the annotation-qualified key so that two nodes sharing the same
       // ID but carrying different annotations (migration coexistence) each get their own
-      // distinct style entry.  The renderer prefers the qualified key and falls back to
-      // the simple key, so both single-annotated and collision scenarios are handled.
+      // distinct style entry. A card that knows its path reads `nodesByPath`; the
+      // qualified key serves the ones that do not (ghosts, stubs), ahead of the simple key.
       const qualifiedKey = nodeStyleKey(node.id, resolvedNode.annotations);
       if (qualifiedKey !== node.id) {
         nodeStyles.set(qualifiedKey, style);
-        recordPaintedColors(qualifiedKey, merged);
+        recordPaintedColors(qualifiedKey, painted);
       }
       // Inheritance only starts at `service`. A `system` carrying annotations
       // does not propagate them to its services (YAGNI).
@@ -191,12 +217,15 @@ export function resolveStyles(
           : node.kind === "service"
             ? node.annotations
             : resolvedNode.annotations;
-      processNodes(node.children, downAnnotations);
+      // The synthesized "Unassigned" pseudo-system wraps top-level orphans,
+      // whose full paths carry no system prefix (the layout stamps them so).
+      const childPrefix = node.kind === "system" && node.id === UNASSIGNED_SYSTEM_ID ? [] : path;
+      processNodes(node.children, downAnnotations, childPrefix);
     }
   }
 
   for (const system of systems) {
-    processNodes([system], []);
+    processNodes([system], [], []);
     for (const edge of collectEdges(system)) {
       const style = resolveEdgeStyle(edge, allRules);
       // Kind-qualified key (preferred by the renderer) so parallel sync/async
@@ -207,7 +236,17 @@ export function resolveStyles(
   }
 
   if (extraNodes) {
-    processNodes(extraNodes, []);
+    processNodes(extraNodes, [], []);
+  }
+
+  // The bare entries for the logical nodes: one node per shared id, the same one
+  // in every map (#2934). Written before the deploy and org passes so those keep
+  // overwriting a same-named logical entry, as they always did.
+  const ranking = nodePathRanking ?? new Map<string, readonly (readonly string[])[]>();
+  for (const [id, style] of bareIdView(nodeStylesByPath, ranking)) nodeStyles.set(id, style);
+  for (const [id, painted] of bareIdView(paintedByPath, ranking)) recordPaintedColors(id, painted);
+  for (const [id, hints] of bareIdView(layoutHintsByPath, ranking)) {
+    if (Object.keys(hints).length > 0) layoutHints.set(id, hints);
   }
 
   if (extraEdges) addMissingEdgeStyles(edgeStyles, allRules, extraEdges);
@@ -229,7 +268,7 @@ export function resolveStyles(
         });
       }
       nodeStyles.set(unit.id, toResolvedNodeStyle(merged));
-      recordPaintedColors(unit.id, merged);
+      recordPaintedColors(unit.id, paintedOf(merged));
     }
   }
 
@@ -248,19 +287,26 @@ export function resolveStyles(
         layoutHints.set(node.id, { gridColumns: hint.gridColumns });
       }
       nodeStyles.set(node.id, toResolvedNodeStyle(merged));
-      recordPaintedColors(node.id, merged);
+      recordPaintedColors(node.id, paintedOf(merged));
     }
   }
 
   return {
     nodes: nodeStyles,
+    nodesByPath: nodeStylesByPath,
     edges: edgeStyles,
     boundaryFrames: resolveBoundaryFrames(allRules),
     teamFrames: resolveTeamFrames(allRules),
     paintedColors,
+    paintedColorsByPath: new Map(
+      [...paintedByPath].flatMap(([key, painted]) =>
+        painted !== undefined ? [[key, painted] as const] : [],
+      ),
+    ),
     defaultNodeStyle: { ...DEFAULT_NODE_STYLE },
     defaultEdgeStyle: resolveDefaultEdgeStyle(allRules),
     layoutHints,
+    layoutHintsByPath,
     warnings: resolvedStyleWarnings,
   };
 }

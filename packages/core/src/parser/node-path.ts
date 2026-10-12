@@ -282,3 +282,58 @@ export function ambiguousNodePathCandidates<T extends KindedPathCandidate>(
   const keys = new Set(matches.map((m) => `${m.kind}:${m.path.length}`));
   return keys.size > 1 ? [...matches] : undefined;
 }
+
+/**
+ * The bare-id view of a map keyed by full path ({@link nodePathRefId}): one
+ * entry per bare id, so a consumer that only knows an id still gets one node's
+ * value rather than a mix of two (#2934).
+ *
+ * Where several paths in the map end in the same id, the entry is the one
+ * `ranking` (`KrsFile.nodePathRanking`) puts first: the `nodePathIndex` winner
+ * when it is in the map, otherwise the next ranked path that is (TPL-1583,
+ * ADR-2550). A path the ranking does not hold (a kind `nodePathIndex` does not
+ * index, such as a system) sorts after the ranked ones, by its key text. The
+ * order is taken from the model and never from the map, so the answer does not
+ * depend on the order the map was filled in.
+ *
+ * Every per-node map with one value per node builds its bare view here rather
+ * than by its own tie-break, which is how the maps used to disagree on which
+ * same-id node they described.
+ */
+export function bareIdView<V>(
+  byPath: ReadonlyMap<string, V>,
+  ranking: ReadonlyMap<string, readonly (readonly string[])[]>,
+): Map<string, V> {
+  const keysById = new Map<string, string[]>();
+  for (const key of byPath.keys()) {
+    const segments = parseNodePathRefId(key);
+    const id = segments[segments.length - 1];
+    if (id === undefined) continue;
+    const keys = keysById.get(id);
+    if (keys === undefined) keysById.set(id, [key]);
+    else keys.push(key);
+  }
+  const view = new Map<string, V>();
+  for (const [id, keys] of keysById) {
+    view.set(id, byPath.get(keys.length === 1 ? keys[0] : pickRanked(keys, ranking.get(id)))!);
+  }
+  return view;
+}
+
+function pickRanked(
+  keys: readonly string[],
+  ranked: readonly (readonly string[])[] | undefined,
+): string {
+  const rankOf = new Map<string, number>();
+  for (const [i, path] of (ranked ?? []).entries()) {
+    const key = nodePathRefId(path);
+    if (!rankOf.has(key)) rankOf.set(key, i);
+  }
+  let best = keys[0];
+  for (const key of keys.slice(1)) {
+    const a = rankOf.get(key) ?? Infinity;
+    const b = rankOf.get(best) ?? Infinity;
+    if (a < b || (a === b && key < best)) best = key;
+  }
+  return best;
+}

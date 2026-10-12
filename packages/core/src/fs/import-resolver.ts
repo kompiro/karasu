@@ -23,7 +23,8 @@ import {
   declaredNodePathsOnce,
   validatePhysicalRefs,
   validateFacetDeclarations,
-  buildFacetIndex,
+  buildFacetIndexByPath,
+  facetUnionByBareId,
   buildOwnerIndex,
   buildBoundaryMembership,
   buildScopedBoundaryMembership,
@@ -32,7 +33,9 @@ import {
 import { resolvePath } from "./path-utils.js";
 import {
   ambiguousNodePathCandidates,
+  bareIdView,
   nodePathKey,
+  nodePathRefId,
   resolveNodePathBySuffix,
 } from "../parser/node-path.js";
 
@@ -205,6 +208,10 @@ export class ImportResolver {
     // how `owns` broke in #2082.
     const mergedNodePaths = buildNodePathIndex(krsFile);
     krsFile.nodePathIndex = mergedNodePaths.membership;
+    krsFile.nodePathRanking = mergedNodePaths.ranking;
+    // The bare file index answers a shared id with the ranking's winner, the
+    // node a bare-id drill lands on, instead of the first file merged (#2934).
+    krsFile.nodeFileIndex = bareIdView(krsFile.nodeFileIndexByPath, krsFile.nodePathRanking);
     this.diagnostics.push(...mergedNodePaths.diagnostics);
 
     // Reference-existence re-validation against the merged id-space. The
@@ -241,7 +248,7 @@ export class ImportResolver {
     this.diagnostics.push(...validatePhysicalRefs(krsFile));
     // Facet membership is rebuilt from the merged tree rather than merged
     // per file, so it cannot drift between merge paths (#2065 Part B).
-    krsFile.facetIndex = buildFacetIndex([
+    krsFile.facetIndexByPath = buildFacetIndexByPath([
       ...krsFile.systems,
       ...krsFile.services,
       ...krsFile.clients,
@@ -250,6 +257,7 @@ export class ImportResolver {
       ...krsFile.queues,
       ...krsFile.storages,
     ]);
+    krsFile.facetIndex = facetUnionByBareId(krsFile.facetIndexByPath);
     // Ownership is rebuilt from the merged declarations rather than unioned
     // per file (#2548): the index is path-keyed, and a path declared in one
     // file can only resolve against nodes another file contributes — a
@@ -453,32 +461,35 @@ export class ImportResolver {
     // and it carried an entry only from this site (the file's own parse index)
     // and from `mergeWildcardResolved` — never from `mergeNamedImport`, which is
     // why a named-imported node was in the tree and absent from the index.
-    // Record definition file for all nodes defined in this file (full recursive walk)
-    const indexNode = (node: KrsNode): void => {
-      if (!mergedFile.nodeFileIndex.has(node.id)) {
-        mergedFile.nodeFileIndex.set(node.id, filePath);
+    // Record the definition file of every node this file declares, keyed by the
+    // node's full path so two same-id nodes keep their own files (#2934). The
+    // bare `nodeFileIndex` is derived from this once, in `resolve()`, after the
+    // merged model has its `nodePathRanking`. First wins per path: a system
+    // reopened in several files records the file that declared it first.
+    const indexAt = (path: readonly string[]): void => {
+      const key = nodePathRefId(path);
+      if (!mergedFile.nodeFileIndexByPath.has(key)) {
+        mergedFile.nodeFileIndexByPath.set(key, filePath);
       }
+    };
+    const indexNode = (node: KrsNode, prefix: readonly string[]): void => {
+      const path = [...prefix, node.id];
+      indexAt(path);
       for (const child of node.children) {
-        indexNode(child);
+        indexNode(child, path);
       }
     };
     for (const system of file.systems) {
-      if (!mergedFile.nodeFileIndex.has(system.id)) {
-        mergedFile.nodeFileIndex.set(system.id, filePath);
-      }
+      indexAt([system.id]);
       for (const child of system.children) {
-        indexNode(child);
+        indexNode(child, [system.id]);
       }
     }
     for (const service of file.services) {
-      if (!mergedFile.nodeFileIndex.has(service.id)) {
-        mergedFile.nodeFileIndex.set(service.id, filePath);
-      }
+      indexAt([service.id]);
     }
     for (const client of file.clients ?? []) {
-      if (!mergedFile.nodeFileIndex.has(client.id)) {
-        mergedFile.nodeFileIndex.set(client.id, filePath);
-      }
+      indexAt([client.id]);
     }
 
     // import を処理
@@ -626,9 +637,9 @@ export class ImportResolver {
     // ownerIndex deliberately not unioned (#2548), and `nodePathIndex` not
     // since #2596 — see the comment in `resolveKrsFromMap` where the file's own
     // index used to be unioned; `resolve()` rebuilds both from the merged model.
-    for (const [nodeId, filePath] of resolved.nodeFileIndex) {
-      if (!mergedFile.nodeFileIndex.has(nodeId)) {
-        mergedFile.nodeFileIndex.set(nodeId, filePath);
+    for (const [key, filePath] of resolved.nodeFileIndexByPath) {
+      if (!mergedFile.nodeFileIndexByPath.has(key)) {
+        mergedFile.nodeFileIndexByPath.set(key, filePath);
       }
     }
     for (const styleImport of resolved.styleImports) {
@@ -935,9 +946,9 @@ export class ImportResolver {
     }
 
     mergedFile.styleImports.push(...importedFile.styleImports);
-    for (const [nodeId, filePath] of importedFile.nodeFileIndex) {
-      if (!mergedFile.nodeFileIndex.has(nodeId)) {
-        mergedFile.nodeFileIndex.set(nodeId, filePath);
+    for (const [key, filePath] of importedFile.nodeFileIndexByPath) {
+      if (!mergedFile.nodeFileIndexByPath.has(key)) {
+        mergedFile.nodeFileIndexByPath.set(key, filePath);
       }
     }
   }

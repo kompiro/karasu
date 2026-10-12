@@ -53,15 +53,25 @@ interface FacetOverlayEntry {
 export interface FacetOverlay {
   /** Selected facets in known-facet order — the legend rows, in the order shown. */
   entries: FacetOverlayEntry[];
-  /** Selected-facet ids per node id, in known-facet order. Non-members are absent. */
+  /**
+   * Selected-facet ids per bare node id, in known-facet order. Non-members are
+   * absent. A union over every node sharing the id (`KrsFile.facetIndex`), so
+   * it serves only what has no path: edge endpoints and ghost cards.
+   */
   membership: Map<string, string[]>;
+  /**
+   * The same per node full path (`nodePathRefId`, `KrsFile.facetIndexByPath`):
+   * what a card that knows its path is ringed by, so `Admin.Api` does not wear
+   * the facet only `Shop.Api` declares (#2934).
+   */
+  membershipByPath: Map<string, string[]>;
   /** Colour by facet id, for the ring stroke and the legend swatch. */
   colorOf: Map<string, string>;
 }
 
 /**
  * The roots every model-wide `facets` walk starts from — the same set the
- * parser hands `buildFacetIndex`, so a top-level orphan block (a system-less
+ * parser hands `buildFacetIndexByPath`, so a top-level orphan block (a system-less
  * `service` / `client` / `domain` / infra block) is reached too.
  */
 export function facetWalkRoots(file: KrsFile): KrsNode[] {
@@ -159,17 +169,21 @@ export function resolveFacetOverlay(
     return { id, label: labelOf.get(id) ?? id, color };
   });
 
-  const membership = new Map<string, string[]>();
-  for (const [nodeId, ids] of file.facetIndex) {
-    // Filter through `active` (not `ids`) so every node lists its facets in the
-    // same known-facet order — the ring order has to agree from node to node,
-    // otherwise the same two facets stack differently in different places.
-    const mine = active.filter((id) => ids.has(id));
-    if (mine.length > 0) membership.set(nodeId, mine);
-  }
+  // Filter through `active` (not `ids`) so every node lists its facets in the
+  // same known-facet order — the ring order has to agree from node to node,
+  // otherwise the same two facets stack differently in different places.
+  const selectedOf = (index: ReadonlyMap<string, ReadonlySet<string>>): Map<string, string[]> => {
+    const out = new Map<string, string[]>();
+    for (const [key, ids] of index) {
+      const mine = active.filter((id) => ids.has(id));
+      if (mine.length > 0) out.set(key, mine);
+    }
+    return out;
+  };
+  const membership = selectedOf(file.facetIndex);
   if (membership.size === 0 && entries.length === 0) return undefined;
 
-  return { entries, membership, colorOf };
+  return { entries, membership, membershipByPath: selectedOf(file.facetIndexByPath), colorOf };
 }
 
 /**
@@ -188,16 +202,21 @@ export function resolveFacetOverlay(
 export function foldFacetMembership(
   nodes: readonly { id: string }[],
   remapEndpoint: (id: string) => string,
-  membership: ReadonlyMap<string, readonly string[]> | undefined,
+  /**
+   * A folded node's own selected facets. The caller looks it up by the node's
+   * path (#2934): a stub collects what its members declared, not what a
+   * same-named node elsewhere did. `undefined` when no overlay is active.
+   */
+  membershipOf: ((id: string) => readonly string[] | undefined) | undefined,
   /** Known-facet order, so a stub's rings stack like every other element's. */
   order: readonly string[],
 ): Map<string, string[]> | undefined {
-  if (!membership || membership.size === 0) return undefined;
+  if (!membershipOf) return undefined;
   const accum = new Map<string, Set<string>>();
   for (const node of nodes) {
     const stubId = remapEndpoint(node.id);
     if (stubId === node.id) continue; // not folded — the node draws its own rings
-    const mine = membership.get(node.id);
+    const mine = membershipOf(node.id);
     if (!mine || mine.length === 0) continue;
     const bucket = accum.get(stubId);
     if (bucket) for (const id of mine) bucket.add(id);

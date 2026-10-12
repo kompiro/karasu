@@ -128,7 +128,15 @@ export function buildDrillDownSvg(
   }
 
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
-  const styles = resolveStyles(effectiveSystems, sheets, []);
+  const styles = resolveStyles(
+    effectiveSystems,
+    sheets,
+    [],
+    undefined,
+    undefined,
+    undefined,
+    krsFile.nodePathRanking,
+  );
   const ownerIndex = krsFile.ownerIndex ?? new Map();
   const teamLabels = buildTeamLabelIndex(krsFile);
   const groupLabels = buildGroupLabelIndex(krsFile, groupBy);
@@ -194,6 +202,7 @@ export function buildDrillDownSvg(
     declaredGroupOrderOf(krsFile, groupBy),
     groupLabels,
     diagnostics,
+    krsFile.nodePathRanking,
   );
   for (const level of entityLevels) levels.push(level.element);
 
@@ -250,7 +259,15 @@ export function renderEntityView(
       hasContent: false,
     };
   }
-  const styles = resolveStyles(effectiveSystems, sheets, []);
+  const styles = resolveStyles(
+    effectiveSystems,
+    sheets,
+    [],
+    undefined,
+    undefined,
+    undefined,
+    krsFile.nodePathRanking,
+  );
   const ownerIndex = krsFile.ownerIndex ?? new Map();
   const legendOptions = buildLegendRenderOptions(krsFile, sheets);
   // Grouping resolves per view: entity members frame here, like any other
@@ -423,9 +440,19 @@ function collectEntityLevels(
   groupLabels?: GroupLabelIndex,
   /** Caller's diagnostics list; the entity levels report into it (#2179). */
   diagnostics?: Diagnostic[],
+  /** `KrsFile.nodePathRanking`, for the bare-id style entries (#2934). */
+  nodePathRanking?: KrsFile["nodePathRanking"],
 ): BundledLevel[] {
   const levels: BundledLevel[] = [];
-  const styles = resolveStyles(effectiveSystems, sheets, []);
+  const styles = resolveStyles(
+    effectiveSystems,
+    sheets,
+    [],
+    undefined,
+    undefined,
+    undefined,
+    nodePathRanking,
+  );
 
   // Enumerate every domain at any depth (domain under system / service, or a
   // nested sub-domain) with its full drill path, mirroring how the system view
@@ -548,7 +575,15 @@ function collectDeployLevel(
   if (deployView.containers.length === 0 && deployView.unclassifiedUnits.length === 0) return null;
 
   const deployNodes = deployBlocks.flatMap((b) => b.nodes);
-  const styles = resolveStyles(krsFile.systems, sheets, deployNodes);
+  const styles = resolveStyles(
+    krsFile.systems,
+    sheets,
+    deployNodes,
+    undefined,
+    undefined,
+    undefined,
+    krsFile.nodePathRanking,
+  );
   const svg = renderDeploy(deployView, styles, displayMode, {
     theme,
     ...legendOptions,
@@ -596,7 +631,15 @@ export function buildAllViewsSvg(
   const extract = createViewExtractor(effectiveSystems);
   const systemRootSlice = extract([]);
   if (systemRootSlice.childNodes.length > 0) {
-    const styles = resolveStyles(effectiveSystems, sheets, []);
+    const styles = resolveStyles(
+      effectiveSystems,
+      sheets,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      krsFile.nodePathRanking,
+    );
     const ownerIndex = krsFile.ownerIndex ?? new Map();
     collectDrillDownLevelsWithDimensions(
       {
@@ -650,6 +693,7 @@ export function buildAllViewsSvg(
     declaredGroupOrderOf(krsFile, groupBy),
     groupLabels,
     diagnostics,
+    krsFile.nodePathRanking,
   );
 
   // Collect deploy level

@@ -237,7 +237,15 @@ export function buildAllLayersSvg(
   }
 
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
-  const styles = resolveStyles(effectiveSystems, sheets, []);
+  const styles = resolveStyles(
+    effectiveSystems,
+    sheets,
+    [],
+    undefined,
+    undefined,
+    undefined,
+    krsFile.nodePathRanking,
+  );
   const rootNode = effectiveSystems[0];
   const rootLabel = rootNode.label ?? rootNode.id;
   const ownerIndex = krsFile.ownerIndex ?? new Map();

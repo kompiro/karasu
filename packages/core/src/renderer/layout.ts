@@ -62,6 +62,7 @@ import {
   type OwnerResolver,
 } from "./layout-measure.js";
 import { nodePathIdentityKey, nodePathRefId } from "../parser/node-path.js";
+import type { ResolvedLayoutHints } from "../types/style.js";
 import { edgeKey } from "../diff/view-diff.js";
 import { computeCrossingMarks } from "./crossing-marks.js";
 import type {
@@ -371,6 +372,58 @@ function freeLanesAcrossRow(
   return Math.max(0, lanes - taken.size);
 }
 
+/**
+ * The layout hints one canvas places its cards by, keyed by the bare ids the
+ * placement helpers look up (`bucketByColumn`, `placeExternalServicesOnSides`).
+ *
+ * A card's own entry in `layoutHintsByPath` replaces the bare one, so of two
+ * nodes sharing an id only the one a `column` rule matched is moved (#2934).
+ * An empty own entry removes the bare one: the card has no hint, and the bare
+ * entry belongs to its namesake. A path the style pass never recorded keeps the
+ * bare entry, as before. `cards` are the canvas's real nodes, whose paths
+ * `pathOf` knows; ghosts and stubs stay on the bare map.
+ */
+function canvasLayoutHints(
+  options: Pick<LayoutOptions, "layoutHints" | "layoutHintsByPath">,
+  cards: readonly { id: string }[],
+  pathOf: (id: string) => readonly string[],
+): Map<string, ResolvedLayoutHints> | undefined {
+  const { layoutHints, layoutHintsByPath } = options;
+  if (layoutHintsByPath === undefined || layoutHintsByPath.size === 0) return layoutHints;
+  const local = new Map(layoutHints);
+  for (const { id } of cards) {
+    const own = layoutHintsByPath.get(nodePathRefId(pathOf(id)));
+    if (own === undefined) continue;
+    if (Object.keys(own).length > 0) local.set(id, own);
+    else local.delete(id);
+  }
+  return local;
+}
+
+/**
+ * A canvas card's own selected facets, by its full path when the overlay has
+ * the path-keyed membership (#2934), so a stub folds what its members declared.
+ * `undefined` when no overlay is active.
+ */
+function canvasFacetMembership(
+  options: Pick<LayoutOptions, "facetMembership" | "facetMembershipByPath">,
+  pathOf: (id: string) => readonly string[],
+): ((id: string) => readonly string[] | undefined) | undefined {
+  const { facetMembership, facetMembershipByPath } = options;
+  if (facetMembership === undefined) return undefined;
+  if (facetMembershipByPath === undefined) return (id) => facetMembership.get(id);
+  return (id) => facetMembershipByPath.get(nodePathRefId(pathOf(id)));
+}
+
+/** One container's hints (`grid-columns`) by its full path, else by its bare id (#2934). */
+function containerLayoutHints(
+  options: Pick<LayoutOptions, "layoutHints" | "layoutHintsByPath">,
+  id: string,
+  path: readonly string[],
+): ResolvedLayoutHints | undefined {
+  return options.layoutHintsByPath?.get(nodePathRefId(path)) ?? options.layoutHints?.get(id);
+}
+
 function layoutInner(
   viewSlice: ViewSlice,
   options: LayoutOptions,
@@ -387,7 +440,6 @@ function layoutInner(
     declaredGroupOrder,
     groupLabels,
     displayMode,
-    layoutHints,
     edgeDirections,
     collapsedCategories,
     groupBy,
@@ -450,6 +502,7 @@ function layoutInner(
     const expandedParent = expandedParentOf.get(nid);
     return expandedParent !== undefined ? [...scopePath, expandedParent, nid] : [...scopePath, nid];
   };
+  const canvasHints = canvasLayoutHints(options, viewSlice.childNodes, canvasPathOf);
   // ownerIndex is keyed by full path (#2548): a real canvas node's path is
   // the canvas scope plus its id (plus the expanded service for a spliced
   // domain). The ghost placers below keep the raw `ownerOf` — their qualified
@@ -639,7 +692,7 @@ function layoutInner(
   // direct children wrap. Absent a hint, the column count auto-balances
   // (see `gridColumnCount`).
   const containerGridHint = viewSlice.containerNode
-    ? layoutHints?.get(viewSlice.containerNode.id)?.gridColumns
+    ? containerLayoutHints(options, viewSlice.containerNode.id, scopePath)?.gridColumns
     : undefined;
 
   // Group-by mode: reserve a vertical gap above each group's first row for its
@@ -656,7 +709,7 @@ function layoutInner(
     edgeDirections,
     layers,
     forcedLayers,
-    layoutHints,
+    layoutHints: canvasHints,
     gridHint: containerGridHint,
     groupStartLayer,
     widthBudget,
@@ -670,7 +723,7 @@ function layoutInner(
     },
     measure: (nid) => {
       const krsNode = nodeMap.get(nid)!;
-      return measureNode(krsNode, canvasOwnerOf(krsNode.kind, nid), measureCtx);
+      return measureNode(krsNode, canvasOwnerOf(krsNode.kind, nid), measureCtx, canvasPathOf(nid));
     },
   });
   childMaxWidth = placed.childMaxWidth;
@@ -743,6 +796,7 @@ function layoutInner(
       width: Math.max(containerW, 200),
       height: Math.max(containerH, 100),
       ghost: false,
+      path: scopePath,
     });
   }
 
@@ -774,6 +828,7 @@ function layoutInner(
       width: gw,
       height: gh,
       ghost: true,
+      path: viewSlice.ancestorChain.slice(0, i + 1).map((n) => n.id),
     });
   }
 
@@ -861,7 +916,7 @@ function layoutInner(
         layoutNodes,
         containers,
         allEdges,
-        layoutHints,
+        canvasHints,
       );
 
   // Boundary-frame boxes for in-place-expanded containers, keyed by the expanded
@@ -960,7 +1015,7 @@ function layoutInner(
       foldedFacetMembership: foldFacetMembership(
         viewSlice.childNodes,
         remapGhostEndpoint,
-        options.facetMembership,
+        canvasFacetMembership(options, canvasPathOf),
         options.facetOrder ?? [],
       ),
       degradedMemberships,
@@ -993,7 +1048,6 @@ function layoutMultipleSystems(
     declaredGroupOrder,
     groupLabels,
     displayMode,
-    layoutHints,
     edgeDirections,
     collapsedCategories,
     groupBy,
@@ -1123,6 +1177,7 @@ function layoutMultipleSystems(
         ? [...frameScope, expandedParent, nid]
         : [...frameScope, nid];
     };
+    const frameHints = canvasLayoutHints(options, systemNodes, framePathOf);
     // Path-keyed owner lookups for this frame's real nodes (#2548), same
     // shape as `canvasOwnerOf` on the single-system path.
     const frameOwnerOf: OwnerResolver = (kind, nid) =>
@@ -1219,9 +1274,9 @@ function layoutMultipleSystems(
       edgeDirections,
       layers,
       forcedLayers,
-      layoutHints,
+      layoutHints: frameHints,
       // `grid-columns` on this system governs how its direct children wrap.
-      gridHint: layoutHints?.get(sys.id)?.gridColumns,
+      gridHint: containerLayoutHints(options, sys.id, [sys.id])?.gridColumns,
       groupStartLayer,
       widthBudget,
       gaps: {
@@ -1232,7 +1287,7 @@ function layoutMultipleSystems(
       },
       measure: (nid) => {
         const krsNode = nodeMap.get(nid)!;
-        return measureNode(krsNode, frameOwnerOf(krsNode.kind, nid), measureCtx);
+        return measureNode(krsNode, frameOwnerOf(krsNode.kind, nid), measureCtx, framePathOf(nid));
       },
     });
     if (placed.widthBound) anyWidthBound = true;
@@ -1275,6 +1330,7 @@ function layoutMultipleSystems(
       width: containerW,
       height: containerH,
       ghost: false,
+      path: [sys.id],
     };
     allContainers.push(containerRect);
 
@@ -1347,7 +1403,7 @@ function layoutMultipleSystems(
           localNodes,
           allContainers,
           sysEdges,
-          layoutHints,
+          frameHints,
         );
 
     // Intra-system edges
@@ -1374,6 +1430,10 @@ function layoutMultipleSystems(
           // system a line belongs to (#2756).
           const frameDiffState = systemFrame?.edgeDiffState?.get(edgeKey(edge));
           if (frameDiffState !== undefined) le.diffState = frameDiffState;
+          // The endpoints' keys in the merged Map, the same keys the cards are
+          // stored under below (#2934).
+          le.fromKey = nodePathIdentityKey([sys.id, edge.from]);
+          le.toKey = nodePathIdentityKey([sys.id, edge.to]);
           systemEdges.push(le);
           allEdges.push(le);
         }

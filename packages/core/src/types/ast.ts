@@ -791,14 +791,39 @@ export interface KrsFile {
    * worked example of doing it). `facet-not-declared` learned this the hard
    * way: it read this index and reported the first same-named node's location
    * instead of the one that wrote the reference, and now walks the declaration
-   * sites instead. The overlay slice paints specific nodes and has the same
-   * requirement.
+   * sites instead. The overlay rings specific nodes, so it reads
+   * {@link facetIndexByPath} for every card that knows its path (#2934).
+   *
+   * This map is a **broadcast**: the facets the model knows (`knownFacetIds`),
+   * and the elements that carry no path (edge endpoints, ghost cards). Do not
+   * use it to paint one node.
    */
   facetIndex: Map<string, Set<string>>;
+  /**
+   * Facet membership by each declaring node's full path (`nodePathRefId`):
+   * what the overlay rings one card by (#2934). {@link facetIndex} is its
+   * bare-id union.
+   */
+  facetIndexByPath: Map<string, Set<string>>;
   /** Maps each node id to its viewPath (e.g. "EC" → ["Payment", "EC"]). System nodes are excluded. */
   nodePathIndex: Map<string, string[]>;
-  /** Maps each node id to the absolute file path where it is defined. */
+  /**
+   * Every full path a bare id is declared at, in the order `nodePathIndex`
+   * ranks them: highest migration priority first, traversal order within a
+   * priority (ADR-2550). The head is the `nodePathIndex` winner. A map keyed by
+   * path answers its bare-id lookups through this order (`bareIdView`), so every
+   * such map picks the same node for a shared id (TPL-1583, #2934). Same kinds
+   * as `nodePathIndex`: a path it does not rank sorts after the ranked ones.
+   */
+  nodePathRanking: Map<string, string[][]>;
+  /**
+   * Maps each node id to the absolute file path where it is defined. Where two
+   * nodes share the id, the entry is the {@link nodePathRanking} winner's
+   * (#2934); {@link nodeFileIndexByPath} holds each node's own file.
+   */
   nodeFileIndex: Map<string, string>;
+  /** The defining file of each node, keyed by its full path (`nodePathRefId`). */
+  nodeFileIndexByPath: Map<string, string>;
 }
 
 /**
@@ -952,8 +977,11 @@ export function createEmptyKrsFile(): KrsFile {
     boundaryMembership: new Map(),
     scopedBoundaryMembership: new Map(),
     facetIndex: new Map(),
+    facetIndexByPath: new Map(),
     nodePathIndex: new Map(),
+    nodePathRanking: new Map(),
     nodeFileIndex: new Map(),
+    nodeFileIndexByPath: new Map(),
   };
 }
 

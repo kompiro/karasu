@@ -77,7 +77,7 @@ import {
 import { ImportResolver } from "../fs/import-resolver.js";
 import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "../builtins/default-style.js";
 import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
-import { nodePathKey, nodePathRefId } from "../parser/node-path.js";
+import { bareIdView, nodePathKey, nodePathRefId } from "../parser/node-path.js";
 import "../renderer/shapes.js"; // ensure built-in shapes are registered
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
 import { summarizeDescription } from "../renderer/description-summary.js";
@@ -231,9 +231,9 @@ export interface SystemCompileResult {
   /**
    * The same metadata keyed by the node's full path in the `nodePathRefId`
    * text form (`Shop.Api`), the value a card carries as `data-node-path`
-   * (#2917). Where two nodes share a bare id, `nodeMetadata` holds one of
-   * them (the last written); this map holds both, each with the `viewPath`
-   * that drills to exactly that node.
+   * (#2917). Where two nodes share a bare id, `nodeMetadata` holds the
+   * `nodePathRanking` winner's (#2934); this map holds both, each with the
+   * `viewPath` that drills to exactly that node.
    */
   nodeMetadataByPath: Map<string, NodeMetadata>;
   hasDeployDiagram: boolean;
@@ -505,10 +505,15 @@ function _compileFromPreparedInput(
   const teamLabels = buildTeamLabelIndex(krsFile);
 
   if (diagramType === "deploy") {
-    const styles = resolveStyles(krsFile.systems, resolveSheets, deployUnits, undefined, [
-      ...krsFile.services,
-      ...krsFile.domains,
-    ]);
+    const styles = resolveStyles(
+      krsFile.systems,
+      resolveSheets,
+      deployUnits,
+      undefined,
+      [...krsFile.services, ...krsFile.domains],
+      undefined,
+      krsFile.nodePathRanking,
+    );
     mergeResolvedStyleWarnings(styles);
     const svg = renderDeploy(deploySliceForStyle, styles, displayMode, {
       emptyLabels: emptyStateLabels,
@@ -552,6 +557,7 @@ function _compileFromPreparedInput(
     undefined,
     undefined,
     viewSlice.childEdges,
+    krsFile.nodePathRanking,
   );
   mergeResolvedStyleWarnings(styles);
   const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode, undefined, {
@@ -584,6 +590,7 @@ function _compileFromPreparedInput(
     ownerIndex,
     teamLabels,
     krsFile.nodePathIndex,
+    krsFile.nodePathRanking,
   );
   return {
     diagramType: "system",
@@ -809,8 +816,8 @@ function buildNodeMetadata(
   ownerIndex?: Map<string, string>,
   teamLabels?: ReadonlyMap<string, string>,
   nodePathIndex?: Map<string, string[]>,
+  nodePathRanking?: ReadonlyMap<string, readonly (readonly string[])[]>,
 ): { byId: Map<string, NodeMetadata>; byPath: Map<string, NodeMetadata> } {
-  const map = new Map<string, NodeMetadata>();
   const byPath = new Map<string, NodeMetadata>();
 
   // ownerIndex is keyed by full path (#2548); each add-site below passes the
@@ -855,13 +862,12 @@ function buildNodeMetadata(
       hasDeployContainer: DEPLOY_AFFORDANCE_KIND_SET.has(node.kind)
         ? (serviceIdsWithDeploy?.has(id) ?? false)
         : undefined,
-      viewPath: nodePathIndex?.get(id),
+      // Keyed by the path this very node sits at, so a click that carries
+      // `data-node-path` lands on this node's metadata and drills to it, not to
+      // the `nodePathIndex` winner of a shared bare id (#2917).
+      viewPath: fullPath,
     };
-    map.set(id, meta);
-    // Keyed by the path this very node sits at, so a click that carries
-    // `data-node-path` lands on this node's metadata and drills to it, not to
-    // the `nodePathIndex` winner of a shared bare id (#2917).
-    byPath.set(nodePathRefId(fullPath), { ...meta, viewPath: fullPath });
+    byPath.set(nodePathRefId(fullPath), meta);
   }
 
   // A domain spliced onto the canvas by in-place expansion (#1921) belongs to
@@ -915,7 +921,17 @@ function buildNodeMetadata(
     }
   }
 
-  return { byId: map, byPath };
+  // The bare-id view is derived, not built beside `byPath`: a shared id gets the
+  // ranking's winner (#2934), where it used to get whichever system was added
+  // last, mixed with the winner's `viewPath`. Its `viewPath` stays the bare-id
+  // drill target `nodePathIndex` names, as it always was, so a model without a
+  // shared id reads exactly as before (a kind the index does not cover has no
+  // `viewPath`, and a root-view orphan drills to its own top-level path).
+  const byId = new Map<string, NodeMetadata>();
+  for (const [id, meta] of bareIdView(byPath, nodePathRanking ?? new Map())) {
+    byId.set(id, { ...meta, viewPath: nodePathIndex?.get(id) });
+  }
+  return { byId, byPath };
 }
 
 function buildDeployNodeMetadata(deploySlice: DeployViewSlice): Map<string, NodeMetadata> {
