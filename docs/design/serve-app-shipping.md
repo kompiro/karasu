@@ -134,10 +134,13 @@ ADR-1681 の「`files` を成果物そのものに固定する」は、`dist/app
 
 <!-- absent-path-next-line: the serve build config this design intends to create (#3017) -->
 1. **serve 用 build**: `packages/app/vite.serve.config.ts` を追加し、`build:serve` script を足す。
-   `outDir: "dist-serve"`、minify あり、sourcemap なし。出力に入るのは `index.html` / `assets/` /
-   app が実際に参照する public ファイル（`favicon.svg` など）だけで、`_redirects` / `_routes.json` /
-   `karasu-logo-1200w.png` / `fonts/` は入らない。`viewer` と同じく設定を守るテストを置く。
-   `dist-serve/` を `.gitignore` に足す。
+   `outDir: "dist-serve"`、minify あり、sourcemap なし、`publicDir: false`（viewer と同じ）。
+   `publicDir: false` では `index.html` が参照する `favicon.svg` も出なくなるので、serve build が
+   `dist-serve/` へ明示的にコピーする（コピーするのは `index.html` が参照するファイルだけ。
+   現時点では `favicon.svg` のみ）。`_redirects` / `_routes.json` / `karasu-logo-1200w.png` /
+   `fonts/` はコピーしない。`viewer` の `build-config.test.ts` と同じく設定（`publicDir: false`、
+   コピー対象の一覧）を守るテストを置き、出力に何が入ったかは手順 6 の `test:pack` が tarball の
+   中身で確かめる。`dist-serve/` を `.gitignore` に足す。
 2. **stage**: `packages/cli` に `build:app` script を足す。`@karasu-tools/app` の `build:serve` を実行し、
    `packages/cli/dist/app/` を消してから `dist-serve/` をコピーする。
    `prepack` を `pnpm run build && pnpm run build:app` にする。`build`（バンドルのみ）は今のまま速く保つ。
