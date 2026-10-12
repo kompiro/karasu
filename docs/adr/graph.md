@@ -276,6 +276,7 @@ flowchart TD
     ADR_2249["ADR-2249<br/>permalink 面と karasu-nest の境界 — 解決は本体、生成は nest、合..."]
     ADR_2259["ADR-2259<br/>repo-backed permalink の payload 上限 — degrade せず..."]
     ADR_2818["ADR-2818<br/>クロスナビゲーションのハイライトは、手渡す側が名指した 1 つの属性でノード id を突き合わせる"]
+    ADR_3113["ADR-3113<br/>system の段のない path は、トップレベルのノードとして先に解決する"]
   end
   subgraph parser["parser"]
     ADR_7["ADR-7<br/>YAML スタイル構文移行の見送り"]
@@ -1033,6 +1034,7 @@ flowchart TD
   class ADR_3069 accepted
   class ADR_3077 accepted
   class ADR_3088 accepted
+  class ADR_3113 accepted
   class ADR_3117 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted

@@ -83,7 +83,7 @@ path を書く処理か読む処理を作る / 触るとき:
 
 ## 既知の対処パターン
 
-- **書く側の約束に読む側を合わせ、読む側を 1 つにする**（#3113、ADR-3113 に昇格予定）。`resolveContainerChain` は system の段の無い path を
+- **書く側の約束に読む側を合わせ、読む側を 1 つにする**（#3113、[ADR-3113](../adr/3113-top-level-same-id-drill.md)）。`resolveContainerChain` は system の段の無い path を
   まずトップレベルとして歩き、歩けなければ実 system で歩く。app のパンくずと chat の
   drill レベル判定は core の `resolveContainerChain` を呼ぶ
 - **比べる側は省略をそろえてから比べる**（#2933）。静的バンドルの canonical 判定は

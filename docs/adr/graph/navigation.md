@@ -21,6 +21,7 @@ flowchart TD
     ADR_2249["ADR-2249<br/>permalink 面と karasu-nest の境界 — 解決は本体、生成は nest、合..."]
     ADR_2259["ADR-2259<br/>repo-backed permalink の payload 上限 — degrade せず..."]
     ADR_2818["ADR-2818<br/>クロスナビゲーションのハイライトは、手渡す側が名指した 1 つの属性でノード id を突き合わせる"]
+    ADR_3113["ADR-3113<br/>system の段のない path は、トップレベルのノードとして先に解決する"]
   end
   ADR_211["ADR-211<br/>[parser] `compile()` API 統一 — Discriminated Union による戻り値型"]
   ADR_218["ADR-218<br/>[vscode] VSCode Phase 3.5 — Webview ドリルダウンナビゲーション"]
@@ -62,6 +63,7 @@ flowchart TD
   class ADR_2249 accepted
   class ADR_2259 accepted
   class ADR_2818 accepted
+  class ADR_3113 accepted
   class ADR_211 ghost
   class ADR_218 ghost
   class ADR_412 ghost
