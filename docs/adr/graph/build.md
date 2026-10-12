@@ -113,6 +113,7 @@ flowchart TD
     ADR_3000["ADR-3000<br/>karasu-nest を main への push で自動 deploy し、対象 path..."]
     ADR_3002["ADR-3002<br/>Dependabot security alert 2026-09-30（5 つの overr..."]
     ADR_3011["ADR-3011<br/>正否が差分だけで決まる小さな PR は、人間の承認を得て skip-coderabbit ラベ..."]
+    ADR_3017["ADR-3017<br/>`karasu serve` のプレビュー app を serve 専用 build として ..."]
     ADR_3020["ADR-3020<br/>karasu-nest を karasu-nest.kompiro.dev カスタムドメインだ..."]
     ADR_3052["ADR-3052<br/>/engineering:code-review は draft PR を作る前に base ..."]
     ADR_3069["ADR-3069<br/>Dependabot トリアージ 2026-10-05：mocha 12 を含む 8 件を採用..."]
@@ -279,6 +280,7 @@ flowchart TD
   class ADR_3000 accepted
   class ADR_3002 accepted
   class ADR_3011 superseded
+  class ADR_3017 accepted
   class ADR_3020 accepted
   class ADR_3052 accepted
   class ADR_3069 accepted

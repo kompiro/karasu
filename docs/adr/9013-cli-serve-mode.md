@@ -8,6 +8,7 @@ depends_on:
   - ADR-9006
 related_to:
   - ADR-9014
+  - ADR-3017
 scope:
   packages:
     - cli
