@@ -1,5 +1,6 @@
 import type { Diagnostic, KrsFile, KrsNode } from "../types/ast.js";
-import type { StyleSheet } from "../types/style.js";
+import type { ResolvedStyleWarning, StyleSheet } from "../types/style.js";
+import type { Warning } from "../types/warnings.js";
 import type { DisplayMode } from "./layout-types.js";
 import { createViewExtractor, extractEntityView } from "../view/view-extract.js";
 import type { ViewPath } from "../view/view-extract.js";
@@ -24,7 +25,7 @@ import { renderOrgView } from "./org-renderer.js";
 import { renderDeploy } from "./deploy-renderer.js";
 import { escapeXml } from "./svg-builder.js";
 import { resolveStyles, styleDerivedEdges } from "../resolver/style-resolver.js";
-import { analyze } from "../resolver/warnings.js";
+import { collectModelWarnings, resolvedStyleWarningToWarning } from "../resolver/model-warnings.js";
 import {
   extractSvgParts,
   buildStyles,
@@ -568,6 +569,8 @@ function collectDeployLevel(
   legendOptions: LegendRenderOptions,
   displayMode?: DisplayMode,
   theme?: DiagramTheme,
+  /** Caller's list; the deploy level's style-resolution warnings join it as one pass (#3097). */
+  styleWarningPasses?: ResolvedStyleWarning[][],
 ): BundledLevel | null {
   const deployBlocks = krsFile.deploys;
   if (deployBlocks.length === 0) return null;
@@ -577,8 +580,14 @@ function collectDeployLevel(
   const deployView = extractDeployView(deployBlocks, withUnassignedSystem(krsFile));
   if (deployView.containers.length === 0 && deployView.unclassifiedUnits.length === 0) return null;
 
-  const deployNodes = deployBlocks.flatMap((b) => b.nodes);
-  const styles = resolveStyles(krsFile.systems, sheets, deployNodes);
+  // The units this level draws, as the per-view compile resolves them: the
+  // first deploy block's, not every block's (#3097).
+  const deployUnits = [
+    ...deployView.containers.flatMap((c) => c.units),
+    ...deployView.unclassifiedUnits,
+  ];
+  const styles = resolveStyles(krsFile.systems, sheets, deployUnits);
+  styleWarningPasses?.push(styles.warnings);
   const svg = renderDeploy(deployView, styles, displayMode, {
     theme,
     ...legendOptions,
@@ -589,6 +598,34 @@ function collectDeployLevel(
   const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${innerContent}</svg>`;
   const element = `<g id="krs-deploy-root" class="krs-view krs-root-level">${innerSvg}</g>`;
   return { element, width, height };
+}
+
+/**
+ * Merge the style-resolution warnings of the bundle's per-view passes.
+ *
+ * The deploy and org passes resolve the system nodes again, so a system node's
+ * finding arrives once per pass. A pass can also hold the same finding more
+ * than once on its own — two nodes sharing an id — and the per-view compile
+ * reports each. So a finding is kept as many times as the pass that holds it
+ * most often, not deduplicated outright (#3097).
+ */
+function mergeStyleWarningPasses(passes: readonly ResolvedStyleWarning[][]): Warning[] {
+  const merged = new Map<string, { warning: ResolvedStyleWarning; count: number }>();
+  for (const pass of passes) {
+    const counts = new Map<string, { warning: ResolvedStyleWarning; count: number }>();
+    for (const warning of pass) {
+      const key = JSON.stringify(warning);
+      const entry = counts.get(key);
+      if (entry) entry.count++;
+      else counts.set(key, { warning, count: 1 });
+    }
+    for (const [key, entry] of counts) {
+      if ((merged.get(key)?.count ?? 0) < entry.count) merged.set(key, entry);
+    }
+  }
+  return [...merged.values()].flatMap(({ warning, count }) =>
+    Array.from({ length: count }, () => resolvedStyleWarningToWarning(warning)),
+  );
 }
 
 /**
@@ -609,11 +646,28 @@ export function buildAllViewsSvg(
    * shows (TPL-219).
    */
   selectedFacets?: readonly string[],
+  /**
+   * The project's `@import`ed `.krs.style` sheets, already parsed by the
+   * ImportResolver. Without them a project bundle drew and validated against
+   * the builtin sheet alone (#3097).
+   */
+  importedSheets?: readonly StyleSheet[],
 ): AllViewsSvgResult {
-  const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
+  const { sheets, modelSheets, diagnostics } = buildStyles(
+    displayMode,
+    styleSource,
+    theme,
+    badgeLabels,
+    importedSheets,
+  );
   // Resolver warnings are a model-level fact, independent of which view is
-  // rendered — surface them on the all-views path too (Issue #1438).
-  const warnings = analyze(krsFile, sheets);
+  // rendered — surface them on the all-views path too (Issue #1438), from the
+  // same builder the per-view compile uses so the value validation of every
+  // user sheet comes along (#3097, TPL-219).
+  const warnings = collectModelWarnings(krsFile, modelSheets);
+  // What each view's style resolution reports, as the per-view compile merges
+  // it — one pass per view the bundle resolves.
+  const styleWarningPasses: ResolvedStyleWarning[][] = [];
   const effectiveSystems = withUnassignedSystem(krsFile);
 
   // Collect system levels
@@ -630,6 +684,7 @@ export function buildAllViewsSvg(
   const systemRootSlice = extract([]);
   if (systemRootSlice.childNodes.length > 0) {
     const styles = resolveStyles(effectiveSystems, sheets, []);
+    styleWarningPasses.push(styles.warnings);
     const ownerIndex = krsFile.ownerIndex ?? new Map();
     collectDrillDownLevels(
       {
@@ -689,13 +744,21 @@ export function buildAllViewsSvg(
   );
 
   // Collect deploy level
-  const deployLevel = collectDeployLevel(krsFile, sheets, legendOptions, displayMode, theme);
+  const deployLevel = collectDeployLevel(
+    krsFile,
+    sheets,
+    legendOptions,
+    displayMode,
+    theme,
+    styleWarningPasses,
+  );
 
   // Collect org levels
   const orgLevels: BundledLevel[] = [];
   const topLevelTeams = krsFile.organizations?.flatMap((o) => o.teams) ?? [];
   if (topLevelTeams.length > 0) {
     const styles = resolveStyles(krsFile.systems, sheets, [], krsFile.organizations);
+    styleWarningPasses.push(styles.warnings);
     collectDrillDownLevels(
       {
         getSlice: (path) => extractOrgView(krsFile.organizations, path),
@@ -712,6 +775,8 @@ export function buildAllViewsSvg(
       "org",
     );
   }
+
+  warnings.push(...mergeStyleWarningPasses(styleWarningPasses));
 
   // Determine which views have content
   const enabledViews = new Set<ViewType>();

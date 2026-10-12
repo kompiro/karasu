@@ -4,7 +4,7 @@
 - **関連 Issue**: [#2879](https://github.com/kompiro/karasu/issues/2879)
 - **対象ファイル**:
   - `packages/core/src/compile/compile-diff.ts`（`resolveBeforeAfter` / `collectAfterWarnings`）
-  - `packages/core/src/compile/compile.ts`（`collectModelWarnings`）
+  - `packages/core/src/resolver/model-warnings.ts`（`collectModelWarnings`。#3097 で `compile.ts` から移した）
   - `packages/cli/src/diff.ts`
   - `packages/cli/src/report-diagnostics.ts`（`reportWarnings`）
   - `packages/cli/src/compile-system-view.ts`（`diagLocFormatter` の `entryLabel`）
@@ -46,4 +46,4 @@ N/A — 自動テストですべて覆っている（git の external diff か�
 ## 補足
 
 - `karasu diff` の**診断**（error / warning severity の Diagnostic）の表記は変えていない。ファイル名を出すかは before / after の 2 系統の示し方が未決のため、Design Doc の「決めないこと」に残している。
-- 既定の `karasu render` は #3097 が直るまで style-value warning を出さない。diff は出すので、それまで両者はこの分だけ食い違う。
+- 既定の `karasu render` が style-value warning を出さなかった食い違いは #3097 で解消した。スタイル解決の warning（`style-column-invalid-value` など）は、受け入れ条件 3 のとおり diff は出さず、既定の `karasu render` は #3097 から出す。この分は両者で食い違ったまま残る。

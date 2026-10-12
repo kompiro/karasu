@@ -90,18 +90,27 @@ export function buildStyles(
   styleSource?: string,
   theme?: DiagramTheme,
   badgeLabels?: AnnotationBadgeLabels,
-): { sheets: StyleSheet[]; diagnostics: Diagnostic[] } {
-  // Build sheets for conflict analysis: [builtin(theme), ...userSheets]
-  // Icon theme is appended last in resolveSheets so it takes highest priority for `shape`.
-  const sheets: StyleSheet[] = [getBuiltinStyleSheet(theme, badgeLabels)];
+  /**
+   * Sheets the caller already parsed — a project's `@import`ed `.krs.style`
+   * files, from the ImportResolver (#3097). They sit between the builtin
+   * sheet and `styleSource`, so a source handed in as a string still wins.
+   */
+  importedSheets: readonly StyleSheet[] = [],
+): { sheets: StyleSheet[]; modelSheets: StyleSheet[]; diagnostics: Diagnostic[] } {
+  // Sheets for conflict analysis and value validation:
+  // [builtin(theme), ...userSheets]. The icon theme is left out of these, as
+  // the per-view compile leaves it out, so it raises no style-conflict or
+  // value warnings of its own.
+  const modelSheets: StyleSheet[] = [getBuiltinStyleSheet(theme, badgeLabels), ...importedSheets];
   const diagnostics: Diagnostic[] = [];
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
-    sheets.push(styleResult.value);
+    modelSheets.push(styleResult.value);
     diagnostics.push(...unplacedStyleDiagnostics(styleResult.diagnostics));
   }
-  const resolveSheets = displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
-  return { sheets: resolveSheets, diagnostics };
+  // Icon theme is appended last so it takes highest priority for `shape`.
+  const sheets = displayMode === "icon" ? [...modelSheets, getIconThemeStyleSheet()] : modelSheets;
+  return { sheets, modelSheets, diagnostics };
 }
 
 /** One child of a drawn level, with the full path its own level is extracted from. */
