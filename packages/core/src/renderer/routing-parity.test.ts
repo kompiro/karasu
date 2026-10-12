@@ -1415,68 +1415,106 @@ describe("crowded inter-row channel — capacity fence (#2608, TPL-2598)", () =>
 });
 
 describe("same-row pair around the card between (#3026, TPL-3026 / TPL-1927)", () => {
-  // Three domains that each depend on the other two, both ways. They share one
-  // row, and however they are ordered, the two outer cards are a pair with the
-  // third standing between them. No candidate in the chain accepted endpoints
-  // that overlap vertically until #3026, so that pair was drawn as a straight
-  // chord through the middle card. Neither `examples/` nor the models above
-  // contain the relation, which is why their zero never caught it.
-  const TRIANGLE = `system S {
-  service App {
-    domain A {
-      A -> B
-      A -> C
-    }
-    domain B {
-      B -> A
-      B -> C
-    }
-    domain C {
-      C -> A
-      C -> B
-    }
-  }
-}`;
-  const laid = () => layoutOfSource(TRIANGLE, undefined, ["S", "App"]);
-
-  /** The three cards left to right, and the two edges between the outer pair. */
-  function outerPair(res: LayoutResult) {
-    const [left, middle, right] = [...res.nodes.values()].sort((a, b) => a.x - b.x);
-    const between = res.edges.filter(
-      (e) => (e.from === left.id && e.to === right.id) || (e.from === right.id && e.to === left.id),
+  // Domains that each depend on every other one, both ways, laid out in one
+  // row. With three, however they are ordered, the two outer cards are a pair
+  // with the third standing between them. No candidate in the chain accepted
+  // endpoints that overlap vertically until #3026, so such a pair was drawn as
+  // a straight chord through the card between. Neither `examples/` nor the
+  // models above contain the relation, which is why their zero never caught
+  // it. With five, the routes round the row crowd the channels above and below
+  // it, which are open on their outer side (TPL-2598).
+  function mutualRow(ids: string[], tall?: string): string {
+    const domains = ids.map(
+      (a) =>
+        `    domain ${a} {\n${a === tall ? `      description "${TALL_DESCRIPTION}"\n` : ""}${ids
+          .filter((b) => b !== a)
+          .map((b) => `      ${a} -> ${b}`)
+          .join("\n")}\n    }`,
     );
-    return { left, middle, right, between };
+    return `system S {\n  service App {\n${domains.join("\n")}\n  }\n}`;
+  }
+  // Long enough to wrap onto more lines than the card's neighbours carry, so
+  // the middle card reaches further down than the pair it stands between.
+  const TALL_DESCRIPTION =
+    "Owns the long-running work the other two hand over, and the records that work leaves behind for both of them to read back";
+  const three = () => layoutOfSource(mutualRow(["A", "B", "C"]), undefined, ["S", "App"]);
+  const tall = () => layoutOfSource(mutualRow(["A", "B", "C"], "B"), undefined, ["S", "App"]);
+  const five = () => layoutOfSource(mutualRow(["A", "B", "C", "D", "E"]), undefined, ["S", "App"]);
+  const CASES: [string, () => LayoutResult][] = [
+    ["three cards", three],
+    ["three cards, the middle one taller", tall],
+    ["five cards", five],
+  ];
+
+  /** The cards left to right, and the edges between two cards that are not neighbours. */
+  function rowOf(res: LayoutResult) {
+    const cards = [...res.nodes.values()].sort((a, b) => a.x - b.x);
+    const order = new Map(cards.map((c, i) => [c.id, i]));
+    const apart = res.edges.filter(
+      (e) => Math.abs((order.get(e.from) ?? 0) - (order.get(e.to) ?? 0)) >= 2,
+    );
+    return { cards, apart };
   }
 
-  it("the fixture puts the outer pair in one row, with the middle card on the chord", () => {
+  /** Which side of the row an edge goes round: every bend above it, below it, or neither. */
+  function sideOf(e: LayoutEdge, top: number, bottom: number): "above" | "below" | "through" {
+    const ys = (e.waypoints ?? []).map((p) => p.y);
+    if (ys.length > 0 && ys.every((y) => y < top)) return "above";
+    if (ys.length > 0 && ys.every((y) => y > bottom)) return "below";
+    return "through";
+  }
+
+  it.each(CASES)(
+    "%s: the fixture puts every card in one row, and a chord on a card",
+    (_n, laid) => {
+      const res = laid();
+      const { cards, apart } = rowOf(res);
+      expect(new Set(cards.map((c) => c.y)).size).toBe(1);
+      expect(apart.length).toBeGreaterThan(0);
+      expect(straightCentrePenetrations(res)).toBeGreaterThan(0);
+    },
+  );
+
+  it.each(CASES)(
+    "%s: no edge pierces a card, and no two edges share a collinear segment",
+    (_n, laid) => {
+      const res = laid();
+      expect(totalPenetrations(res)).toBe(0);
+      expect(collinearOverlaps(res, "v")).toBe(0);
+      expect(collinearOverlaps(res, "h")).toBe(0);
+    },
+  );
+
+  it.each(CASES)("%s: every route round the row stays clear of the row", (_n, laid) => {
+    // A lane spread back towards the row would still clear the penetration
+    // count by running along the cards' top edge, so the bends are held
+    // strictly outside the row instead.
     const res = laid();
-    const { left, middle, right, between } = outerPair(res);
-    expect(new Set([left.y, middle.y, right.y]).size).toBe(1);
-    expect(between).toHaveLength(2);
-    expect(straightCentrePenetrations(res)).toBeGreaterThan(0);
+    const { cards, apart } = rowOf(res);
+    const top = Math.min(...cards.map((c) => c.y));
+    const bottom = Math.max(...cards.map((c) => c.y + c.height));
+    expect(apart.filter((e) => sideOf(e, top, bottom) === "through")).toEqual([]);
   });
 
-  it("no edge pierces a card, and no two edges share a collinear segment", () => {
-    const res = laid();
-    expect(totalPenetrations(res)).toBe(0);
-    expect(collinearOverlaps(res, "v")).toBe(0);
-    expect(collinearOverlaps(res, "h")).toBe(0);
-  });
+  // The taller middle card is what the channel below has to be measured from:
+  // measured from the pair alone it falls inside that card, the side is
+  // refused, and both edges go round above.
+  it.each(CASES.slice(0, 2))(
+    "%s: the outer pair goes round the row on opposite sides, as one loop",
+    (_n, laid) => {
+      const { cards, apart } = rowOf(laid());
+      const top = Math.min(...cards.map((c) => c.y));
+      const bottom = Math.max(...cards.map((c) => c.y + c.height));
+      expect(new Set(apart.map((e) => sideOf(e, top, bottom)))).toEqual(
+        new Set(["above", "below"]),
+      );
+    },
+  );
 
-  it("the two edges of the outer pair go round the row on opposite sides, as one loop", () => {
-    const { left, between } = outerPair(laid());
-    const side = (e: LayoutEdge) => {
-      const ys = (e.waypoints ?? []).map((p) => p.y);
-      if (ys.length > 0 && ys.every((y) => y < left.y)) return "above";
-      if (ys.length > 0 && ys.every((y) => y > left.y + left.height)) return "below";
-      return "through";
-    };
-    expect(new Set(between.map(side))).toEqual(new Set(["above", "below"]));
-  });
-
-  it("every crossing carries a hop mark", () => {
-    const res = laid();
-    expect((res.crossingMarks?.hops.length ?? 0) > 0).toBe(totalCrossings(res) > 0);
+  it("five cards: the routes round the row cross, and every crossing carries a hop mark", () => {
+    const res = five();
+    expect(totalCrossings(res)).toBeGreaterThan(0);
+    expect(res.crossingMarks?.hops.length ?? 0).toBeGreaterThan(0);
   });
 });
 
