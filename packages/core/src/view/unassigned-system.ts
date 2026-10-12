@@ -61,3 +61,12 @@ export function withUnassignedSystem(krsFile: KrsFile): SystemNode[] {
   const pseudo = synthesizeUnassignedSystem(krsFile);
   return pseudo ? [...krsFile.systems, pseudo] : krsFile.systems;
 }
+
+/**
+ * Whether `node` is the synthetic pseudo-system {@link synthesizeUnassignedSystem}
+ * wraps top-level declarations in, so readers test for it without spelling
+ * out its id (#3113).
+ */
+export function isUnassignedSystem(node: { readonly id: string }): boolean {
+  return node.id === UNASSIGNED_SYSTEM_ID;
+}

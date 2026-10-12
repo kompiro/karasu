@@ -8,6 +8,7 @@ import {
 } from "../resolver/edge-endpoint.js";
 import { isWriteOperation } from "../spec/operations.js";
 import { buildEntityResolver, type EntityResolver } from "../resolver/resource-entity.js";
+import { isUnassignedSystem } from "./unassigned-system.js";
 
 /**
  * A single constituent domain edge that was aggregated into an implicit service edge.
@@ -343,8 +344,10 @@ function deriveDeliversEdges(children: KrsNode[]): KrsEdge[] {
  * ["ECPlatform", "ECommerce"] = ECommerce service inside ECPlatform system
  * ["ECPlatform", "ECommerce", "Order"] = Order domain inside ECommerce
  *
- * path[0] is the system ID when it matches a known system.
- * Unassigned top-level domains retain single-segment paths (e.g. ["Payment"]).
+ * path[0] is the system ID when it matches a known system. A path with no
+ * system segment names a top-level (Unassigned) node, e.g. ["Payment"], and
+ * falls back to a real system's child only when no top-level node walks it
+ * ({@link resolveContainerChain}, #3113).
  */
 export type ViewPath = string[];
 
@@ -1393,10 +1396,9 @@ function extractSystemDrillDownView(
 
   // Determine the active system and walk the path to the container.
   // path[0] is the system ID when it matches a known system. Otherwise the
-  // caller omitted the system prefix (e.g. drilling into a child shown at the
-  // multi-system root, including the "Unassigned" pseudo-system) — the shared
-  // helper searches every system for a direct child whose id matches so the
-  // correct owning system becomes the drill-down root.
+  // path names a top-level node first and a real system's child second; the
+  // shared helper picks the owning system (the "Unassigned" pseudo-system for
+  // a top-level node) that becomes the drill-down root.
   const resolved = resolveContainerChain(systems, path, unassignedServices, unassignedDomains);
   if (!resolved) return empty;
   const { ancestorChain, startIndex } = resolved;
@@ -1604,40 +1606,86 @@ export function extractView(
   );
 }
 
+/** A {@link ViewPath} resolved to its nodes; see {@link resolveContainerChain}. */
+export interface ResolvedContainerChain {
+  /** `[system, …, container]`: the owning system (the `__unassigned__` pseudo-system for a top-level node) first, the container last. */
+  ancestorChain: KrsNode[];
+  /** Index of the first path segment below the system: 1 when `path[0]` is the system id, 0 when the path has no system segment. */
+  startIndex: number;
+}
+
 /**
  * Walk `path` to its container node, returning the ancestor chain (the
  * container is the last element) or `null` when the path does not resolve.
- * Shared by {@link extractView} and {@link extractEntityView} so the two views
- * of the same node always resolve to the same container.
+ *
+ * This is the one reader of a {@link ViewPath} (#3113): {@link extractView},
+ * {@link extractEntityView} and the app's breadcrumb and chat-level lookups all
+ * call it, so a path lands on the same node whichever of them reads it.
+ *
+ * A path with no system segment names a top-level node first, because that is
+ * the only node the writers (`nodePathIndex`, the root canvas's
+ * `data-node-path`) leave the segment off for. It is walked from the
+ * `__unassigned__` pseudo-system, then from the top-level services / domains a
+ * caller without the pseudo-system passes separately, then from each real
+ * system that owns the first segment, and the first walk that reaches the end
+ * of the path wins. The real-system fallback keeps a path that omits its
+ * system id resolving as it did, as long as no top-level node walks it too.
  */
-function resolveContainerChain(
-  systems: KrsNode[],
+export function resolveContainerChain(
+  systems: readonly KrsNode[],
   path: ViewPath,
-  unassignedServices: KrsNode[] = [],
-  unassignedDomains: KrsNode[] = [],
-): { ancestorChain: KrsNode[]; startIndex: number } | null {
+  unassignedServices: readonly KrsNode[] = [],
+  unassignedDomains: readonly KrsNode[] = [],
+): ResolvedContainerChain | null {
   if (systems.length === 0 || path.length === 0) return null;
+  // A caller without the pseudo-system passes top-level nodes separately and
+  // draws them in the first system's frame, so one may follow a system id too.
+  const orphanAt = (i: number): KrsNode | undefined =>
+    unassignedServices.find((c) => nodeId(c) === path[i]) ??
+    unassignedDomains.find((c) => nodeId(c) === path[i]);
+
   const systemNode = systems.find((s) => s.id === path[0]);
-  let system: KrsNode;
-  let startIndex: number;
   if (systemNode) {
-    system = systemNode;
-    startIndex = 1;
-  } else {
-    const owningSystem = systems.find((s) => s.children.some((c) => c.id === path[0]));
-    system = owningSystem ?? systems[0];
-    startIndex = 0;
+    const resolved = walkContainerChain([systemNode], path, 1);
+    if (resolved) return resolved;
+    const orphan = orphanAt(1);
+    return orphan ? walkContainerChain([systemNode, orphan], path, 2, 1) : null;
   }
-  const ancestorChain: KrsNode[] = [system];
-  let current: KrsNode = system;
-  for (let i = startIndex; i < path.length; i++) {
-    const segment = path[i];
-    let child = current.children.find((c) => nodeId(c) === segment);
-    if (!child && i === startIndex) {
-      child =
-        unassignedServices.find((c) => nodeId(c) === segment) ??
-        unassignedDomains.find((c) => nodeId(c) === segment);
-    }
+
+  const unassigned = systems.find(isUnassignedSystem);
+  if (unassigned) {
+    const resolved = walkContainerChain([unassigned], path, 0);
+    if (resolved) return resolved;
+  }
+  const orphan = orphanAt(0);
+  if (orphan) {
+    // Seeded with `systems[0]`, the frame these callers draw top-level nodes in.
+    const resolved = walkContainerChain([systems[0], orphan], path, 1, 0);
+    if (resolved) return resolved;
+  }
+  for (const system of systems) {
+    if (system === unassigned || !system.children.some((c) => c.id === path[0])) continue;
+    const resolved = walkContainerChain([system], path, 0);
+    if (resolved) return resolved;
+  }
+  return null;
+}
+
+/**
+ * Walk `path[from…]` down from the last node of `seed`. `startIndex` is the
+ * index of the first segment below the system, which differs from `from` only
+ * when the seed already holds a top-level node.
+ */
+function walkContainerChain(
+  seed: KrsNode[],
+  path: ViewPath,
+  from: number,
+  startIndex: number = from,
+): ResolvedContainerChain | null {
+  const ancestorChain = [...seed];
+  let current = ancestorChain[ancestorChain.length - 1];
+  for (let i = from; i < path.length; i++) {
+    const child = current.children.find((c) => nodeId(c) === path[i]);
     if (!child) return null;
     ancestorChain.push(child);
     current = child;

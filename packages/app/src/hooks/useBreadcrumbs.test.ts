@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { renderHook, cleanup } from "@testing-library/react";
 import { useBreadcrumbs } from "./useBreadcrumbs.js";
 import type { SystemNode, OrganizationBlock, DeployBlockInfo, TeamNode } from "@karasu-tools/core";
+import { compile } from "@karasu-tools/core";
 
 afterEach(cleanup);
 
@@ -82,6 +83,57 @@ describe("useBreadcrumbs", () => {
         }),
       );
       expect(result.current.breadcrumbItems).toEqual([]);
+    });
+  });
+
+  describe("a top-level node sharing its id with a system's child (#3113)", () => {
+    // `compile` wraps the top-level `Api` in the "Unassigned" pseudo-system,
+    // as the app's `resolvedSystems` does.
+    const compiled = compile(
+      `system Shop {
+        service Api { domain Orders { usecase Place {} } }
+      }
+      service Api { domain Parked { usecase P {} } }`,
+      { diagramType: "system" },
+    );
+    if (compiled.diagramType !== "system") throw new Error("expected the system view");
+    const { systems } = compiled;
+    const crumbs = (viewPath: string[]) =>
+      renderHook(() =>
+        useBreadcrumbs({
+          resolvedSystems: systems,
+          organizations: [],
+          viewPath,
+          activeView: "system",
+          deployBlocks: [],
+          selectedDeployBlockId: null,
+        }),
+      ).result.current.breadcrumbItems;
+
+    it("labels a permalink path with no system segment under Unassigned", () => {
+      expect(crumbs(["Api", "Parked"])).toEqual([
+        { id: "__unassigned__", label: "Unassigned", navigatePath: [] },
+        { id: "Api", label: "Api", navigatePath: ["Api"] },
+        { id: "Parked", label: "Parked", navigatePath: ["Api", "Parked"] },
+      ]);
+    });
+
+    it("labels the same node alike whichever path form reached it", () => {
+      const labels = (viewPath: string[]) => crumbs(viewPath).map((item) => item.label);
+      expect(labels(["Api"])).toEqual(["Unassigned", "Api"]);
+      expect(labels(["__unassigned__", "Api", "Parked"])).toEqual(labels(["Api", "Parked"]));
+    });
+
+    it("leaves a system's path unchanged", () => {
+      expect(crumbs(["Shop", "Api"])).toEqual([
+        { id: "Shop", label: "Shop", navigatePath: [] },
+        { id: "Api", label: "Api", navigatePath: ["Shop", "Api"] },
+      ]);
+    });
+
+    it("shows the live part of a path the model has outgrown", () => {
+      expect(crumbs(["Shop", "Api", "Gone"]).map((item) => item.id)).toEqual(["Shop", "Api"]);
+      expect(crumbs(["Gone"]).map((item) => item.id)).toEqual(["Shop"]);
     });
   });
 
