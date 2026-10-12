@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "build:viewer": "vite build --config vite.viewer.config.ts",
+    "build:serve": "vite build --config vite.serve.config.ts",
     "preview": "vite preview",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
