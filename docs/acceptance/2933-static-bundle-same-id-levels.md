@@ -26,7 +26,7 @@ type: product
 
 ### AC-2: 中身は SPA が同じ anchor で開くノード
 
-- [x] AT-B: バンドルの各 `krs-system-<id>` のレベルのカードの `data-node-path` の集合が、`compile(..., { viewPath: nodePathIndex.get(id) })` の出力と一致する（全 anchor について）。トップレベルのノードと system の子が id を共有するモデルは、SPA 側の抽出がその path を別の system に解決して空になる（#3113）ため、比較から外して AT-F で中身を固定する
+- [x] AT-B: バンドルの各 `krs-system-<id>` のレベルのカードの `data-node-path` の集合が、`compile(..., { viewPath: nodePathIndex.get(id) })` の出力と一致する（全 anchor について）。トップレベルのノードと system の子が id を共有するモデルも比べる（SPA 側の抽出が system の段のない path をトップレベルとして解決するようになった #3113 から）
 
   > ✅ Automated — `packages/core/src/renderer/static-bundle-same-id.test.ts` › buildDrillDownSvg: one level per anchor id (#2933) › shows the node the SPA resolves the same anchor to, for every anchor ／ buildAllViewsSvg: … › shows the node the SPA resolves the same anchor to, for every anchor
 
