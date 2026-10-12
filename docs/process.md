@@ -171,10 +171,11 @@ gh pr ready <N>
   残る。changes-requested はマージを止めないので、そのまま人間のレビューに進んでよい
 - 外した PR では `/coderabbit-converge` を回さず、次節の到達状態
   （CodeRabbit の approve）も求めない。CI が通れば人間のレビューに渡す
-- 外した後に判定基準を満たさない差分を足すなら、push の前に本文の行とラベルの両方を外し
-  （`gh pr edit <N> --body-file <本文> --remove-label skip-coderabbit`）、push 後に
-  `@coderabbitai full review` を投げて通常の手順に戻る。それまでのコミットは一度も
-  レビューされていないので、差分だけを見る `@coderabbitai review` では足りない
+- 外した後に判定基準を満たさない差分を足すなら、本文の行とラベルを残したまま push し、
+  `@coderabbitai full review` を投げる。それまでのコミットは一度もレビューされていないので、
+  差分だけを見る `@coderabbitai review` では足りない。full review が届いたら、新しいコミットを
+  足さずに本文の行とラベルの両方を外し（`gh pr edit <N> --body-file <本文> --remove-label skip-coderabbit`）、
+  通常の手順に戻る。先に外すと、その push で自動レビューが走って full review と二重になる
 - **外すと決めた PR 以外の本文に `@coderabbitai ignore` という文字列を書かない。**
   CodeRabbit は文脈を区別せず、引用や却下した案の説明として書いただけでもその PR を
   レビューから外す。外れたときのステータスは理由の付かない `Review skipped` で、

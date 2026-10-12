@@ -225,16 +225,22 @@ gh pr merge <N> --auto --squash --delete-branch
   「何を検証したか」の記録なので、レビューなしに書き換わってよい対象ではない
 - 適用条件のいずれかが満たされない場合（例: `packages/**` のファイルが 1 つでも
   差分に含まれる場合）も同様に例外を適用せず、通常通りユーザー確認を経る
-- PR を作った後に差分を足すときは、**push の前に** auto-merge と除外を
-  解く。push した瞬間に auto-merge が確認前の差分をマージしうるからである。
+- PR を作った後に差分を足すときは、**push の前に** auto-merge を解いて draft に戻す。
+  push した瞬間に auto-merge が確認前の差分をマージしうるからである。本文の行とラベルは
+  この時点では残す（残っていれば push で自動レビューは走らない）。
   ```
   gh pr merge <N> --disable-auto
-  gh pr edit <N> --remove-label adr-auto-merge --body-file <行を消した本文>
   gh pr ready <N> --undo
   ```
-  push 後は手順 1（適用条件の確認）からやり直す。満たすときだけ本文の行・ラベル・
-  auto-merge を戻す。満たさなければ `gh pr ready <N>` のあと `@coderabbitai full review`
-  を投げる（それまでのコミットは一度もレビューされていないので、差分レビューでは足りない）。
+  push 後は手順 1（適用条件の確認）からやり直す。
+  - 満たすとき: `gh pr ready <N>` で draft を外してから auto-merge を戻す
+    （`gh pr merge <N> --auto --squash --delete-branch`）。draft のままではマージされない
+  - 満たさないとき: `gh pr ready <N>` で draft を外し、本文の行とラベルを残したまま
+    `@coderabbitai full review` を投げる。それまでのコミットは一度もレビューされていないので、
+    差分レビューでは足りない。full review が届いたら、新しいコミットを足さずに本文の行と
+    ラベルを外し、通常の PR として扱う。先に外すと ready や次の push で自動レビューが走り、
+    full review と二重に review 枠を使う
+
   本文の行とラベルは「この差分で条件を満たした」という判定の記録で、CodeRabbit の
   レビューを外すのはその判定だけが根拠になる
 - `--auto` を使うので CI 完走前にコマンド発行して構わない（GitHub 側が
