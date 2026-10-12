@@ -4,8 +4,9 @@ import type {
   OrganizationBlock,
   DeployBlockInfo,
   TeamNode,
-  KrsNode,
+  ResolvedContainerChain,
 } from "@karasu-tools/core";
+import { resolveContainerChain } from "@karasu-tools/core";
 import type { ActiveView } from "../state/app-reducer.js";
 import type { BreadcrumbItem } from "../components/Breadcrumb.js";
 
@@ -42,29 +43,29 @@ export function useBreadcrumbs({
       return [{ id: system.id, label: system.label ?? system.id }];
     }
 
-    // Phase 2: viewPath[0] is the system ID, viewPath[1:] is the navigation within it.
-    // Build breadcrumb items with explicit navigatePath so that clicking each item
-    // navigates to the correct Phase 2 path (including system ID prefix).
-    const activeSystem = resolvedSystems.find((s) => s.id === viewPath[0]) ?? resolvedSystems[0];
-    const items: BreadcrumbItem[] = [
-      {
-        id: activeSystem.id,
-        label: activeSystem.label ?? activeSystem.id,
-        navigatePath: [], // Clicking the system root goes back to root view
-      },
-    ];
-
-    let current: KrsNode = activeSystem;
-    for (let i = 1; i < viewPath.length; i++) {
-      const child: KrsNode | undefined = current.children.find((c) => c.id === viewPath[i]);
-      if (!child) break;
-      items.push({
-        id: child.id,
-        label: child.label ?? child.id,
-        navigatePath: viewPath.slice(0, i + 1),
-      });
-      current = child;
+    // The path resolves through the same reader the view extraction uses
+    // (#3113): a path with no system segment names a top-level node, whose
+    // owning system is the "Unassigned" pseudo-system. The longest prefix that
+    // resolves is shown, so a path the model has outgrown still shows its live
+    // part.
+    let resolved: ResolvedContainerChain | null = null;
+    for (let length = viewPath.length; length > 0 && resolved === null; length--) {
+      resolved = resolveContainerChain(resolvedSystems, viewPath.slice(0, length));
     }
+    if (resolved === null) {
+      const system = resolvedSystems.find((s) => s.id === viewPath[0]) ?? resolvedSystems[0];
+      return [{ id: system.id, label: system.label ?? system.id, navigatePath: [] }];
+    }
+
+    const { ancestorChain, startIndex } = resolved;
+    // Each item navigates to the prefix of the path it came from, so a path
+    // without the system segment keeps navigating without it.
+    const items: BreadcrumbItem[] = ancestorChain.map((node, depth) => ({
+      id: node.id,
+      label: node.label ?? node.id,
+      // Clicking the system root goes back to the root view.
+      navigatePath: depth === 0 ? [] : viewPath.slice(0, startIndex + depth),
+    }));
 
     return items;
   }, [resolvedSystems, viewPath]);

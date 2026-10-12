@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { detectDrillDownLevel } from "./useChatSession.js";
 import type { SystemNode, KrsNode } from "@karasu-tools/core";
+import { compile } from "@karasu-tools/core";
 
 const EMPTY_LOC = {
   start: { line: 0, column: 0, offset: 0 },
@@ -99,5 +100,27 @@ describe("detectDrillDownLevel", () => {
 
   it("returns 'system' when a path segment is not found", () => {
     expect(detectDrillDownLevel(["ECPlatform", "NonExistent"], systems)).toBe("system");
+  });
+});
+
+describe("detectDrillDownLevel on a path with no system segment (#3113)", () => {
+  const compiled = compile(
+    `system Shop {
+      service Api { domain Orders { usecase Place {} } }
+    }
+    service Api { domain Parked { usecase P {} } }`,
+    { diagramType: "system" },
+  );
+  if (compiled.diagramType !== "system") throw new Error("expected the system view");
+  const { systems } = compiled;
+
+  it("reads the top-level node the canvas shows", () => {
+    expect(detectDrillDownLevel(["Api"], systems)).toBe("service");
+    expect(detectDrillDownLevel(["Api", "Parked"], systems)).toBe("domain");
+    expect(detectDrillDownLevel(["Api", "Parked", "P"], systems)).toBe("usecase");
+  });
+
+  it("still reads a system's child", () => {
+    expect(detectDrillDownLevel(["Shop", "Api", "Orders"], systems)).toBe("domain");
   });
 });

@@ -8,7 +8,7 @@ import type {
   TeamNode,
   MemberNode,
 } from "@karasu-tools/core";
-import { nodePathRefId } from "@karasu-tools/core";
+import { nodePathRefId, resolveContainerChain } from "@karasu-tools/core";
 import type { Locale } from "../../i18n/locale";
 
 // ── Drill-down level detection ────────────────────────────────────────────────
@@ -19,19 +19,12 @@ export function detectDrillDownLevel(
   viewPath: string[],
   resolvedSystems: SystemNode[],
 ): DrillDownLevel {
-  if (viewPath.length === 0 || resolvedSystems.length === 0) return "system";
+  // Same reader as the view extraction (#3113), so a path with no system
+  // segment reads as the top-level node the canvas shows.
+  const container = resolveContainerChain(resolvedSystems, viewPath)?.ancestorChain.at(-1);
+  if (container === undefined) return "system";
 
-  const system = resolvedSystems.find((s) => s.id === viewPath[0]);
-  if (!system || viewPath.length === 1) return "system";
-
-  let current: KrsNode = system;
-  for (let i = 1; i < viewPath.length; i++) {
-    const child: KrsNode | undefined = current.children.find((c) => c.id === viewPath[i]);
-    if (!child) return "system";
-    current = child;
-  }
-
-  const kind = current.kind;
+  const kind = container.kind;
   if (kind === "service") return "service";
   if (kind === "domain") return "domain";
   if (kind === "usecase") return "usecase";
