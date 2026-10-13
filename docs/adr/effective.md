@@ -177,6 +177,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3069](3069-dependabot-triage-2026-10-05.md) — Dependabot トリアージ 2026-10-05：mocha 12 を含む 8 件を採用し、gh-aw は正式版 v0.89.21 で再生成し、@types/vscode は追随方針の見直し（#3070）に回して close する
 - [ADR-3077](3077-dependabot-security-2026-10-06.md) — Dependabot security alert 2026-10-06（transitive 5 件を override で解消し、修正版の無い v6 系 postcss-selector-parser は postcss-nested を 7 に上げて逃がす）
 - [ADR-3117](3117-coderabbit-ignore-command-for-skip.md) — CodeRabbit から外す PR は PR 本文の ignore コマンドで外し、ラベルは外した PR の記録として残す
+- [ADR-3138](3138-serve-app-without-monaco.md) — `karasu serve` の app build は専用 entry から始め、Monaco を含めない
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
