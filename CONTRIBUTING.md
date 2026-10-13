@@ -243,7 +243,9 @@ when their code ships inside our artifacts.
 `scripts/ci/generate-third-party-notices.ts` runs as a `prebuild` step for
 `packages/cli` and `packages/vscode` and writes a `THIRD_PARTY_NOTICES.md`
 (git-ignored, regenerated on every build) listing each production
-dependency with its version, SPDX id, and full license text. It is included
+dependency with its version, SPDX id, and full license text. The list also
+covers the dependencies of the workspace packages a bundle carries (core,
+i18n, lsp), since their code ships in the bundle too. It is included
 in the published npm tarball (`files`) and in the `.vsix` produced by
 `vsce package`. **Do not edit it by hand** — change the generator instead.
 You can regenerate locally with `pnpm run gen:notices`.

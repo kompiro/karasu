@@ -1,5 +1,13 @@
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -113,6 +121,17 @@ describe("the karasu tarball (TPL-1681)", () => {
     expect(entries).toContain("package/THIRD_PARTY_NOTICES.md");
     expect(entries).toContain("package/dist/app/THIRD_PARTY_NOTICES.md");
     expect(entries.some((entry) => entry.startsWith("package/dist/app/assets/"))).toBe(true);
+  });
+
+  it("lists the dependencies of the workspace packages the bundle carries (#3137, TPL-3137)", () => {
+    // core is bundled from source, so its dependency smol-toml ships inside
+    // dist/index.js. The private workspace root shares the name `karasu`;
+    // its dependencies must not leak in.
+    const notices = readFileSync(join(work, "package/THIRD_PARTY_NOTICES.md"), "utf8");
+    expect(notices).toMatch(/^## smol-toml@/m);
+    expect(notices).not.toContain("@resvg/resvg-wasm");
+    const appNotices = readFileSync(join(work, "package/dist/app/THIRD_PARTY_NOTICES.md"), "utf8");
+    expect(appNotices).toMatch(/^## smol-toml@/m);
   });
 
   it("ships no sourcemaps and none of the files that serve Pages only", () => {

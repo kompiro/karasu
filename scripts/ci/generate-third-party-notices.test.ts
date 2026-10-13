@@ -1,11 +1,14 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  bundledWorkspaceDirs,
+  directoryFilters,
   readLicenseFile,
   readUpstreamNoticesFile,
   renderNotices,
+  unselectedDirs,
 } from "./generate-third-party-notices.ts";
 
 describe("readLicenseFile", () => {
@@ -76,6 +79,130 @@ describe("readUpstreamNoticesFile (#3017)", () => {
   it("returns null when the package has none", () => {
     writeFileSync(join(dir, "LICENSE"), "MIT");
     expect(readUpstreamNoticesFile(dir)).toBeNull();
+  });
+});
+
+describe("bundledWorkspaceDirs (#3137, TPL-3137)", () => {
+  let root: string;
+
+  /** A workspace package at `root/<name>`, linked into the packages that depend on it. */
+  type Deps = Record<string, string>;
+  type Manifest = Partial<
+    Record<"dependencies" | "devDependencies" | "peerDependencies" | "optionalDependencies", Deps>
+  >;
+
+  /** A workspace package at `root/<name>`, linked into the packages that depend on it. */
+  function writePackage(name: string, manifest: Manifest): void {
+    const dir = join(root, name);
+    mkdirSync(join(dir, "node_modules"), { recursive: true });
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ name, ...manifest }));
+    const workspaceDeps = Object.values(manifest)
+      .flatMap((deps) => Object.entries(deps))
+      .filter(([, spec]) => spec.startsWith("workspace:"))
+      .map(([dep]) => dep);
+    for (const dep of workspaceDeps) {
+      symlinkSync(join(root, dep), join(dir, "node_modules", dep), "dir");
+    }
+  }
+
+  beforeEach(() => {
+    root = realpathSync(mkdtempSync(join(tmpdir(), "karasu-workspace-")));
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("follows the package's devDependencies, which it bundles through an alias", () => {
+    writePackage("cli", {
+      dependencies: { commander: "^15.0.0" },
+      devDependencies: { core: "workspace:*" },
+    });
+    writePackage("core", { dependencies: { "smol-toml": "^1.9.0" } });
+    expect(bundledWorkspaceDirs(join(root, "cli")).sort()).toEqual(
+      [join(root, "cli"), join(root, "core")].sort(),
+    );
+  });
+
+  it("follows only the dependencies of a reached workspace package", () => {
+    writePackage("vscode", { dependencies: { lsp: "workspace:*" } });
+    writePackage("lsp", {
+      dependencies: { core: "workspace:*" },
+      devDependencies: { testkit: "workspace:*" },
+    });
+    writePackage("core", {});
+    writePackage("testkit", {});
+    expect(bundledWorkspaceDirs(join(root, "vscode")).sort()).toEqual(
+      [join(root, "vscode"), join(root, "lsp"), join(root, "core")].sort(),
+    );
+  });
+
+  it("follows peer and optional dependencies, which a bundler resolves too", () => {
+    writePackage("vscode", { dependencies: { lsp: "workspace:*" } });
+    writePackage("lsp", {
+      peerDependencies: { core: "workspace:*" },
+      optionalDependencies: { i18n: "workspace:*" },
+    });
+    writePackage("core", {});
+    writePackage("i18n", {});
+    expect(bundledWorkspaceDirs(join(root, "vscode")).sort()).toEqual(
+      [join(root, "vscode"), join(root, "lsp"), join(root, "core"), join(root, "i18n")].sort(),
+    );
+  });
+
+  it("stops at a cycle", () => {
+    writePackage("app", { dependencies: { core: "workspace:*" } });
+    writePackage("core", { dependencies: { i18n: "workspace:*" } });
+    writePackage("i18n", { dependencies: { core: "workspace:*" } });
+    expect(bundledWorkspaceDirs(join(root, "app")).sort()).toEqual(
+      [join(root, "app"), join(root, "core"), join(root, "i18n")].sort(),
+    );
+  });
+
+  it("fails when a workspace dependency is not linked, instead of dropping its notices", () => {
+    writePackage("cli", {});
+    writeFileSync(
+      join(root, "cli", "package.json"),
+      JSON.stringify({ name: "cli", devDependencies: { core: "workspace:*" } }),
+    );
+    expect(() => bundledWorkspaceDirs(join(root, "cli"))).toThrow(/core is a workspace dependency/);
+  });
+
+  it("reaches core and i18n from the CLI, and never the workspace root", () => {
+    const packages = resolve(import.meta.dirname, "../../packages");
+    const dirs = bundledWorkspaceDirs(join(packages, "cli"));
+    expect(dirs).toContain(realpathSync(join(packages, "core")));
+    expect(dirs).toContain(realpathSync(join(packages, "i18n")));
+    expect(dirs).not.toContain(realpathSync(resolve(packages, "..")));
+  });
+});
+
+describe("directoryFilters (#3137)", () => {
+  it("selects each directory by a relative path pnpm reads as a path", () => {
+    const cwd = join("/w", "packages", "cli");
+    const dirs = [
+      cwd,
+      join("/w", "packages", "core"),
+      join(cwd, "vendor", "x"),
+      join(cwd, "..foo"),
+    ];
+    expect(directoryFilters(cwd, dirs)).toEqual([
+      "--filter",
+      ".",
+      "--filter",
+      "../core",
+      "--filter",
+      "./vendor/x",
+      "--filter",
+      "./..foo",
+    ]);
+  });
+});
+
+describe("unselectedDirs (#3137)", () => {
+  it("reports the directories pnpm did not select", () => {
+    expect(unselectedDirs(["/w/cli", "/w/core"], ["/w/cli"])).toEqual(["/w/core"]);
+    expect(unselectedDirs(["/w/cli"], ["/w/cli", "/w/core"])).toEqual([]);
   });
 });
 
