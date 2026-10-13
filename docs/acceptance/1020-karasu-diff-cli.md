@@ -16,7 +16,7 @@
   > ✅ Automated — `packages/cli/src/diff.e2e.test.ts` › `reads the before side from stdin when first arg is -` / `reads the after side from stdin when second arg is -`
 
 - [x] stdin 側の相対 import（`import "./x.krs"` / `@import "./x.krs.style"`）が、対側のファイルと同じディレクトリから解決される（#3122）
-  > ✅ Automated — `packages/cli/src/diff.e2e.test.ts` › `resolves a stdin before side's relative imports against the after side's directory` / `resolves a stdin after side's style import against the before side's directory` / `removes the stdin tempfile from the other side's directory`
+  > ✅ Automated — `packages/cli/src/diff.e2e.test.ts` › `resolves a stdin before side's relative imports against the after side's directory` / `resolves a stdin after side's style import against the before side's directory` / `removes the stdin tempfile from the other side's directory` / `removes the stdin tempfile before exiting on a failed compile`
 
 - [x] 両方の引数が `-` の場合はエラーで exit 1
   > ✅ Automated — `packages/cli/src/diff.test.ts` › `rejects when both sides are stdin`

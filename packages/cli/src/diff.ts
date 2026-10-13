@@ -36,16 +36,16 @@ export async function diff(
   afterArg: string,
   options: DiffOptions,
 ): Promise<void> {
-  const view: DiagramType | undefined = options.view;
+  if (beforeArg === STDIN_TOKEN && afterArg === STDIN_TOKEN) {
+    process.stderr.write(`Error: cannot use - for both sides of the diff\n`);
+    process.exit(1);
+  }
 
   let stdinTempFile: string | null = null;
-  let beforeAbs: string;
-  let afterAbs: string;
+  let ok: boolean;
   try {
-    if (beforeArg === STDIN_TOKEN && afterArg === STDIN_TOKEN) {
-      process.stderr.write(`Error: cannot use - for both sides of the diff\n`);
-      process.exit(1);
-    }
+    let beforeAbs: string;
+    let afterAbs: string;
     // The stdin side is written next to the *other* side's file, so the most
     // common `git diff` use case (compare a working-tree file to a committed
     // revision) keeps working: a relative import in the stdin content resolves
@@ -63,46 +63,62 @@ export async function diff(
       beforeAbs = resolve(beforeArg);
       afterAbs = resolve(afterArg);
     }
-
-    const fs = new NodeFileSystemProvider();
-    for (const [label, p] of [
-      ["before", beforeAbs],
-      ["after", afterAbs],
-    ] as const) {
-      if (!(await fs.exists(p))) {
-        process.stderr.write(`Error: ${label} file not found: ${p}\n`);
-        process.exit(1);
-      }
-    }
-
-    const result = await compileFor(view, beforeAbs, afterAbs, fs);
-    const errors = result.diagnostics.filter((d) => d.severity === "error");
-    const diagWarnings = result.diagnostics.filter((d) => d.severity === "warning");
-
-    // Core positions are 1-based already; print them as they are (#2715).
-    for (const d of errors) {
-      const loc = d.loc ? `${d.loc.start.line}:${d.loc.start.column}` : "";
-      process.stderr.write(`Error: ${loc} ${formatDiagnostic(d)}\n`);
-    }
-    for (const d of diagWarnings) {
-      const loc = d.loc ? `${d.loc.start.line}:${d.loc.start.column}` : "";
-      process.stderr.write(`Warning: ${loc} ${formatDiagnostic(d)}\n`);
-    }
-    // Warnings are the after model's, once per diff (#2879), so they can name
-    // their file the way `render` does: the after entry as the user typed it
-    // (`-` for stdin), any file it imports by its own path.
-    reportWarnings(afterAbs, result.warnings, afterArg);
-
-    if (errors.length > 0) {
-      process.exit(1);
-    }
-
-    await writeOutput(result.svg, options.output);
+    ok = await compileAndWrite(beforeAbs, afterAbs, afterArg, options);
   } finally {
     if (stdinTempFile) {
       await rm(stdinTempFile, { force: true });
     }
   }
+  // Exit only once the tempfile is gone: `process.exit` ends the process
+  // without running a pending `finally`, which would leave the hidden file
+  // in the user's directory.
+  if (!ok) {
+    process.exit(1);
+  }
+}
+
+/** Compile, report, and write the diff SVG. Returns false when the diff failed. */
+async function compileAndWrite(
+  beforeAbs: string,
+  afterAbs: string,
+  afterArg: string,
+  options: DiffOptions,
+): Promise<boolean> {
+  const fs = new NodeFileSystemProvider();
+  for (const [label, p] of [
+    ["before", beforeAbs],
+    ["after", afterAbs],
+  ] as const) {
+    if (!(await fs.exists(p))) {
+      process.stderr.write(`Error: ${label} file not found: ${p}\n`);
+      return false;
+    }
+  }
+
+  const result = await compileFor(options.view, beforeAbs, afterAbs, fs);
+  const errors = result.diagnostics.filter((d) => d.severity === "error");
+  const diagWarnings = result.diagnostics.filter((d) => d.severity === "warning");
+
+  // Core positions are 1-based already; print them as they are (#2715).
+  for (const d of errors) {
+    const loc = d.loc ? `${d.loc.start.line}:${d.loc.start.column}` : "";
+    process.stderr.write(`Error: ${loc} ${formatDiagnostic(d)}\n`);
+  }
+  for (const d of diagWarnings) {
+    const loc = d.loc ? `${d.loc.start.line}:${d.loc.start.column}` : "";
+    process.stderr.write(`Warning: ${loc} ${formatDiagnostic(d)}\n`);
+  }
+  // Warnings are the after model's, once per diff (#2879), so they can name
+  // their file the way `render` does: the after entry as the user typed it
+  // (`-` for stdin), any file it imports by its own path.
+  reportWarnings(afterAbs, result.warnings, afterArg);
+
+  if (errors.length > 0) {
+    return false;
+  }
+
+  await writeOutput(result.svg, options.output);
+  return true;
 }
 
 interface DiffCompileResult {

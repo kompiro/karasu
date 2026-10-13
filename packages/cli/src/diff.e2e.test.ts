@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { Readable } from "node:stream";
@@ -135,6 +136,27 @@ describe("AT-1020 karasu diff — stdin handling", () => {
       restore();
     }
     expect(await readdir(tmpDir)).toEqual(["before.krs"]);
+  });
+
+  // `process.exit` skips a pending `finally`, so a failing diff must remove
+  // the tempfile before it exits. The mocked exit throws, which would run the
+  // `finally` anyway, so look at the directory at the moment exit is called.
+  it("removes the stdin tempfile before exiting on a failed compile", async () => {
+    const before = join(tmpDir, "before.krs");
+    await writeFile(before, "system Demo { service Api {} }\n");
+    let filesAtExit: string[] = [];
+    exitSpy.mockImplementation(((code: number) => {
+      filesAtExit = readdirSync(tmpDir);
+      throw new Error(`process.exit(${code})`);
+    }) as never);
+    const restore = pipeStdin("system Demo { service Api {\n");
+    try {
+      await expect(diff(before, "-", {})).rejects.toThrow("process.exit(1)");
+    } finally {
+      restore();
+    }
+    expect(stderr).toContain("Error:");
+    expect(filesAtExit).toEqual(["before.krs"]);
   });
 });
 
