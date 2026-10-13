@@ -44,7 +44,13 @@ import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
 import { declaredGroupOrderOf, buildGroupLabelIndex } from "./group-labels.js";
 import { countPolylinePenetrations, type Rect, type Point } from "./edge-geometry.js";
-import { collectChannels, LANE_PITCH } from "./edge-routing-lanes.js";
+import {
+  channelRunsOf,
+  collectChannels,
+  LANE_PITCH,
+  NO_CHANNEL_LIMITS,
+} from "./edge-routing-lanes.js";
+import { CONTAINER_LABEL_HEIGHT } from "./layout-constants.js";
 import { HOP_RADIUS, trunkBandHalfWidth } from "./crossing-marks.js";
 import { labelAnchorWithSegment, ownLabelSegment } from "./edge-routing.js";
 import { ObstacleIndex } from "./obstacle-index.js";
@@ -1360,7 +1366,7 @@ describe("crowded inter-row channel — capacity fence (#2608, TPL-2598)", () =>
     expect(routed.length).toBeGreaterThanOrEqual(20);
     const frames = res.containers.filter((c) => c.group).flatMap((c) => c.coverage ?? [c]);
     const busiest = Math.max(
-      ...collectChannels(res.nodes, res.edges, frames).map((c) => c.runs.length),
+      ...collectChannels(res.nodes, res.edges, frames, NO_CHANNEL_LIMITS).map((c) => c.runs.length),
     );
     expect(busiest).toBeGreaterThanOrEqual(5);
   });
@@ -1515,6 +1521,162 @@ describe("same-row pair around the card between (#3026, TPL-3026 / TPL-1927)", (
     const res = five();
     expect(totalCrossings(res)).toBeGreaterThan(0);
     expect(res.crossingMarks?.hops.length ?? 0).toBeGreaterThan(0);
+  });
+});
+
+describe("drill-down channels end at the frame (#3132, TPL-3132 / TPL-2598)", () => {
+  // The channels above the first row and below the last were measured without
+  // the drill-down frame around the cards: up to a ghost card placed outside
+  // the frame, or as open and stacked outwards. Their lanes then ran on the
+  // frame's border or past it. The band a run may use is the frame's inside:
+  // below its title strip, above its bottom border, with half a lane pitch
+  // left on each side for the label drawn on the run. Measured here from the
+  // drawn frame, not from the implementation's own limits.
+  function focusFrame(res: LayoutResult) {
+    const frame = res.containers.find((c) => !c.ghost && !c.group);
+    if (!frame) throw new Error("the fixture is not a drill-down");
+    return frame;
+  }
+  function runsOf(res: LayoutResult) {
+    return res.edges.filter((e) => !e.ghost && !e.cyclic).flatMap(channelRunsOf);
+  }
+  function runsOutsideFrame(res: LayoutResult): number[] {
+    const frame = focusFrame(res);
+    const top = frame.y + CONTAINER_LABEL_HEIGHT + LANE_PITCH / 2;
+    const bottom = frame.y + frame.height - LANE_PITCH / 2;
+    return runsOf(res)
+      .map((r) => r.y)
+      .filter((y) => y < top || y > bottom);
+  }
+
+  // Every domain depends on every other one, both sync and async, in one row:
+  // the routes round the row crowd the channels above and below it past what
+  // the frame's padding holds at `LANE_PITCH` (TPL-2598: the fence needs an
+  // input that reaches the limit). On main, five cards put runs 44px above
+  // the frame's top and 74px below its bottom.
+  function mutualRow(ids: string[]): string {
+    const domains = ids.map(
+      (a) =>
+        `    domain ${a} {\n${ids
+          .filter((b) => b !== a)
+          .map((b) => `      ${a} -> ${b}\n      ${a} --> ${b}`)
+          .join("\n")}\n    }`,
+    );
+    return `system S {\n  service App {\n${domains.join("\n")}\n  }\n}`;
+  }
+  const crowded = (n: number) => () =>
+    layoutOfSource(mutualRow("ABCDE".slice(0, n).split("")), undefined, ["S", "App"]);
+  const CROWDED: [string, () => LayoutResult][] = [
+    ["four cards", crowded(4)],
+    ["five cards", crowded(5)],
+  ];
+
+  /** The room between the title strip and the row, as a placement with no reservation leaves it. */
+  function defaultRoomAbove(): number {
+    const res = crowded(3)();
+    expect(res.placementPasses).toBe(1);
+    const rowTop = Math.min(...[...res.nodes.values()].map((c) => c.y));
+    return rowTop - (focusFrame(res).y + CONTAINER_LABEL_HEIGHT);
+  }
+
+  it.each(CROWDED)(
+    "%s: the fixture puts every card in one row and needs more lanes than the default padding holds",
+    (_n, laid) => {
+      const res = laid();
+      const cards = [...res.nodes.values()];
+      expect(new Set(cards.map((c) => c.y)).size).toBe(1);
+      const above = runsOf(res).filter((r) => r.y < cards[0].y).length;
+      expect(above * LANE_PITCH).toBeGreaterThan(defaultRoomAbove());
+    },
+  );
+
+  it.each(CROWDED)(
+    "%s: every run stays inside the frame, and the frame grew to hold them",
+    (_n, laid) => {
+      const res = laid();
+      expect(runsOutsideFrame(res)).toEqual([]);
+      expect(res.placementPasses).toBe(2);
+    },
+  );
+
+  it.each(CROWDED)(
+    "%s: no edge pierces a card, and no two edges share a collinear segment",
+    (_n, laid) => {
+      const res = laid();
+      expect(totalPenetrations(res)).toBe(0);
+      expect(collinearOverlaps(res, "v")).toBe(0);
+      expect(collinearOverlaps(res, "h")).toBe(0);
+    },
+  );
+
+  it("a ghost card outside the frame does not widen the channel below the last row", () => {
+    // `X` calls into `App` from a sibling service, so the drill-down places it
+    // as a ghost card below the frame. The channel below the row ends at the
+    // frame's bottom border, and the one run there sits midway between the row
+    // and that border, not midway between the row and the ghost card.
+    const res = layoutOfSource(
+      `system S {
+  service App {
+    domain A {
+      -> B
+      -> C
+    }
+    domain B {
+      -> A
+    }
+    domain C {
+      -> A
+      -> B
+    }
+  }
+  service Tools {
+    domain X {
+      -> A
+    }
+  }
+}`,
+      undefined,
+      ["S", "App"],
+    );
+    const frame = focusFrame(res);
+    const floor = frame.y + frame.height;
+    const ghost = [...res.nodes.values()].find((n) => n.ghost);
+    expect(ghost?.y).toBeGreaterThan(floor);
+    const rowBottom = Math.max(
+      ...[...res.nodes.values()].filter((n) => !n.ghost).map((n) => n.y + n.height),
+    );
+    const below = runsOf(res).filter((r) => r.y > rowBottom);
+    expect(below).toHaveLength(1);
+    expect(below[0].y).toBe((rowBottom + floor) / 2);
+    expect(runsOutsideFrame(res)).toEqual([]);
+  });
+
+  it("a system view has no frame, and its open channels still stack away from the row (ADR-3026)", () => {
+    const res = layoutOfSource(
+      `system S {
+${["A", "B", "C"]
+  .map(
+    (a) =>
+      `  service ${a} {\n${["A", "B", "C"]
+        .filter((b) => b !== a)
+        .map((b) => `    -> ${b}\n    --> ${b}`)
+        .join("\n")}\n  }`,
+  )
+  .join("\n")}
+}`,
+      undefined,
+      ["S"],
+    );
+    expect(res.containers.some((c) => !c.ghost && !c.group)).toBe(false);
+    const cards = [...res.nodes.values()];
+    const rowTop = Math.min(...cards.map((c) => c.y));
+    const above = runsOf(res)
+      .map((r) => r.y)
+      .filter((y) => y < rowTop)
+      .sort((a, b) => b - a);
+    expect(above.length).toBeGreaterThanOrEqual(2);
+    // The lane nearest the row keeps the router's y, the rest stack upwards.
+    expect(above[1]).toBe(above[0] - LANE_PITCH);
   });
 });
 
