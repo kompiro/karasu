@@ -54,6 +54,7 @@ flowchart TD
   ADR_2184["ADR-2184<br/>[resolver] 同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
   ADR_2209["ADR-2209<br/>[edges] エッジのプロパティブロックを additive に足し、位置引数 label は正式な sho..."]
   ADR_2234["ADR-2234<br/>[styling] boundary フレーム色の style セレクタ — `boundary` / `boun..."]
+  ADR_2934["ADR-2934<br/>[renderer] 同名ノードの per-node Map は path をキーにし、bare id の見え方は勝..."]
   ADR_9007["ADR-9007<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
   ADR_19 --> ADR_9008
   ADR_292 --> ADR_281
@@ -92,6 +93,7 @@ flowchart TD
   ADR_2209 --> ADR_438
   ADR_2234 --> ADR_1974
   ADR_2234 --> ADR_2036
+  ADR_2934 --> ADR_2550
   ADR_9007 --> ADR_9008
   ADR_2088 -.supersedes.-> ADR_2075
 
@@ -148,5 +150,6 @@ flowchart TD
   class ADR_2184 ghost
   class ADR_2209 ghost
   class ADR_2234 ghost
+  class ADR_2934 ghost
   class ADR_9007 ghost
 ```

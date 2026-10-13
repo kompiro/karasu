@@ -6,7 +6,7 @@ type: product
 
 - **日付**: 2026-10-12
 - **関連 Issue**: [#2934](https://github.com/kompiro/karasu/issues/2934)（隣接: [#3126](https://github.com/kompiro/karasu/issues/3126)）
-- **設計 (ADR)**: ADR-2934（[#2934](https://github.com/kompiro/karasu/issues/2934) の Design Doc PR #3108 から、実装マージ後に昇格する）
+- **設計 (ADR)**: [ADR-2934](../adr/2934-same-id-per-node-maps.md)
 - **Related TPLs**: [TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md)（1:1 の値は全 Map で同じ勝者規則。AC-3・AC-4）、[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md)（区別に要る次元を key に含める。AC-1・AC-2・AC-5・AC-6）、[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)（facet の所属を捨てない。AC-2）、[TPL-2920](../test-perspectives/TPL-2920-duplicate-element-id-on-one-canvas-names-its-landing.md)（同じ canvas の重複要素 id は着地を名指す。AC-5）
 - **対象ファイル**:
   - `packages/core/src/parser/reference-validation.ts`（`buildNodePathIndex` の `ranking`、`buildFacetIndexByPath`）
