@@ -182,6 +182,24 @@ describe("the focus canvas in the preview", () => {
     expect(injected()).toBe("");
   });
 
+  it("dims the other edges' marks while an edge with no canonical id is hovered (#2632)", () => {
+    // The same canvas with every edge's identity taken away, as on a deploy
+    // view or a multi-system root: the marks follow the hover all the same.
+    const unaddressed = denseSvg
+      .replace(/ data-edge-canonical-id="[^"]*"/g, "")
+      .replaceAll(" krs-edge--interactive", "");
+    const { container: root } = render(pane(unaddressed));
+    const group = root.querySelector(`.preview-container svg .krs-edge[data-edge-index]`)!;
+    const index = group.getAttribute("data-edge-index")!;
+    fireEvent.mouseOver(group.querySelector(".krs-edge__hitline")!);
+    const dimmed = dimmedBy();
+    const all = marks(root);
+    const own = all.filter((m) => edgesOfMark(m).includes(index));
+    expect(own.length).toBeGreaterThan(0);
+    for (const mark of all) expect(dimmed(mark)).toBe(!own.includes(mark));
+    expect(injected()).toMatch(/\{opacity:0\.25/);
+  });
+
   it("walks the graph: a card moves to that node, a lane to that pair, Back returns", async () => {
     const { container: root } = render(pane());
     await openNode(root, "Identity");
@@ -390,6 +408,25 @@ describe("the focus canvas in the preview", () => {
     const { container: root } = render(pane(svg));
     click(root, root.querySelector(".krs-edge path")!);
     expect(canvas(root)).toBeNull();
+  });
+
+  it("opens on an edge that has no canonical id, from its hit-line (#2632)", () => {
+    // Two edges on the base `A->B` with no #<id>: the canonical-id pass clears
+    // both, so neither is addressable. A reader can still follow either.
+    const svg = compile(`
+system S {
+  service A {}
+  service B {}
+  A -> B "reads"
+  A -> B "writes"
+}
+`).svg;
+    const { container: root } = render(pane(svg));
+    const group = edgeGroup(root, "A", "B");
+    expect(group.hasAttribute("data-edge-canonical-id")).toBe(false);
+    click(root, group.querySelector(".krs-edge__hitline")!);
+    expect(canvas(root)).not.toBeNull();
+    expect(title(root)).toBe("A → B");
   });
 });
 
