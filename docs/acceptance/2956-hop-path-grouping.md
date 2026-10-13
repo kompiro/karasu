@@ -12,9 +12,9 @@
 
 ## 受け入れ条件
 
-- [x] AT-A: 同じ stroke のホップが連続すると 1 本の `<path>` になり、サブパスの順は元の順と同じ
+- [x] AT-A: 同じ stroke のホップが連続すると 1 本の `<path>` になり、サブパスの順は元の順と同じ（[#3090](https://github.com/kompiro/karasu/issues/3090) 以降は、host エッジも同じ連続区間に限る）
 
-  > ✅ Automated — `packages/core/src/renderer/svg-renderer.test.ts` › `crossing hop paths (#2956)` › `draws consecutive hops of one stroke as one <path>, in their original order`
+  > ✅ Automated — `packages/core/src/renderer/svg-renderer.test.ts` › `crossing hop paths (#2956)` › `draws consecutive hops of one edge and stroke as one <path>, in their original order`
 
 - [x] AT-B: stroke が A, B, A と並ぶと 3 本に分かれる（A を 1 本にまとめない = 描画順を保つ）。線幅だけが違っても分かれる
 
@@ -24,7 +24,7 @@
 
 - [x] AT-C: まとめた各 `<path>` の `stroke` / `stroke-width` は、その区間のホップの host エッジの stroke と一致する
 
-  > ✅ Automated — `packages/core/src/renderer/svg-renderer.test.ts` › `crossing hop paths (#2956)` › `paints each path in the stroke of the edges whose hops it holds`
+  > ✅ Automated — `packages/core/src/renderer/svg-renderer.test.ts` › `crossing hop paths (#2956)` › `paints each path in the stroke of the edge whose hops it holds, and names that edge`
 
 - [x] AT-D: サブパスを順に展開すると、1 個ずつ描いていたときの `d` の列と一致する（回転・`ry` 付きのホップを含む）
 
