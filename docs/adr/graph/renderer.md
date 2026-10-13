@@ -62,6 +62,7 @@ flowchart TD
     ADR_2803["ADR-2803<br/>shape mode のカードデザインアイコンは、ピクトグラムだけを角に置き、テキストは共通ス..."]
     ADR_2906["ADR-2906<br/>icon display mode は非推奨のまま据え置き、削除する major はまだ決めない"]
     ADR_2917["ADR-2917<br/>複数 system のルートビューは同名ノードを両方描き、要素の id は bare id の..."]
+    ADR_2934["ADR-2934<br/>同名ノードの per-node Map は path をキーにし、bare id の見え方は勝..."]
     ADR_2958["ADR-2958<br/>ガターを通るエッジを、共有する端ごとに 1 レーンへ束ねる"]
     ADR_3022["ADR-3022<br/>edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は foc..."]
     ADR_3026["ADR-3026<br/>同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す"]
@@ -87,6 +88,7 @@ flowchart TD
   ADR_2120["ADR-2120<br/>[app-ui] bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改..."]
   ADR_2173["ADR-2173<br/>[parser] facet の文法と model 層 — 診断は resolver 側、カタログには載せる、m..."]
   ADR_2269["ADR-2269<br/>[styling] team フレームの色は team カードと同じセレクタで指定する — `team` / `#..."]
+  ADR_2550["ADR-2550<br/>[parser] nodePathIndex の多重判定を collect-then-decide にして宣言順..."]
   ADR_2818["ADR-2818<br/>[navigation] クロスナビゲーションのハイライトは、手渡す側が名指した 1 つの属性でノード id を突き合わせる"]
   ADR_2995["ADR-2995<br/>[project] ギャラリーの公開投稿の OGP 画像を要求時に描き、保存せず edge のキャッシュに置く"]
   ADR_9008["ADR-9008<br/>[parser] AST 再構成 — Discriminated Union とプロパティブロック"]
@@ -111,6 +113,8 @@ flowchart TD
   ADR_2611 --> ADR_2598
   ADR_2917 --> ADR_1884
   ADR_2917 --> ADR_2714
+  ADR_2934 --> ADR_2917
+  ADR_2934 --> ADR_2550
   ADR_2958 --> ADR_2631
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
@@ -196,6 +200,7 @@ flowchart TD
   class ADR_2803 accepted
   class ADR_2906 accepted
   class ADR_2917 accepted
+  class ADR_2934 accepted
   class ADR_2958 accepted
   class ADR_3022 accepted
   class ADR_3026 accepted
@@ -220,6 +225,7 @@ flowchart TD
   class ADR_2120 ghost
   class ADR_2173 ghost
   class ADR_2269 ghost
+  class ADR_2550 ghost
   class ADR_2818 ghost
   class ADR_2995 ghost
   class ADR_9008 ghost
