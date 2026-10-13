@@ -112,7 +112,7 @@ Issue は「claim で離した 2 本の縦線を `distributeChannelLanes` が寄
 ### 実装の指針
 
 1. `edge-routing-groups.ts` に、2 つの端と corridor の x から経路を組む関数を置き、`tryCorridorRoute` と `planMixedRoute` から呼ぶ。両端がチャネル stub で `cy` が一致するときは corridor の 2 点を入れない。
-2. `cheapestSide` は corridor が無い経路を受け入れ、混み具合を 0 とし、`occupancy` に積まない。
+2. `cheapestSide` は corridor が無い経路を受け入れ、混み具合を 0 とする。戻り値の `corridor` は `null` を取りうる型にし、呼び出し側（`routeGroupedEdges`）は選んだ経路に corridor があるときだけ `occupancy` に積む。
 3. テスト:
    - unit: 隣り合う行の組で両端の横 stub が塞がれた corridor 経路と mixed 経路が、waypoint 2 点（チャネル 1 本の run）になること。
    - 柵: `routing-parity.test.ts` に、隣り合う行の双方向の組を持つ合成入力を 2 つ（ungrouped で corridor を通るもの、grouped で mixed を通るもの）足し、兄弟以外の共線 0・貫通 0 を assert する。修正を外すと落ちることを確かめる（TPL-2598）。
