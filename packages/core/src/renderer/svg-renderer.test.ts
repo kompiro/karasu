@@ -1117,9 +1117,10 @@ system S {
       expect(svg.match(/data-edge-links=/g)).toHaveLength(1);
     });
 
-    it("gives an edge with a property block a hit area even without a canonical id (#2543)", () => {
+    it("gives every edge a hit area even without a canonical id (#2543, #2632)", () => {
       // Two edges share the base `A->B` with no #<id>, so the canonical-id pass
-      // clears both. The one carrying prose still needs to be clickable.
+      // clears both. The one carrying prose still needs to be clickable, and
+      // the other one still needs to be hoverable.
       const krs = `
 system S {
   service A {}
@@ -1133,7 +1134,7 @@ system S {
       const svg = renderWithDiff(krs, new Map(), new Map());
       expect(svg).not.toContain("data-edge-canonical-id");
       expect(svg).toContain('data-edge-description="the one with prose"');
-      expect(svg).toContain('class="krs-edge__hitline"');
+      expect(svg.match(/class="krs-edge__hitline"/g)).toHaveLength(2);
       // …but not the right-click advertisement: `krs-edge--interactive` gives
       // `cursor: context-menu`, and no direction menu can open for an edge with
       // no canonical id to write a selector against.
