@@ -9,7 +9,7 @@ import type { ViewSlice } from "../view/view-extract.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
 import { placeNodesInLayers } from "./layer-layout-logics.js";
 import { searchWidthBudget } from "./aspect-search.js";
-import { collectChannels, LANE_PITCH } from "./edge-routing-lanes.js";
+import { channelLimitsOf, collectChannels, LANE_PITCH } from "./edge-routing-lanes.js";
 import { TRUNK_LANE_GAP } from "./edge-routing-groups.js";
 import { framePieces } from "./frame-geometry.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
@@ -119,7 +119,11 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // winner, and with it the rows the reservation is keyed on (ADR-2593 found
   // the placement is not monotone in the budget). Views whose channels fit
   // never take this branch, so their output is unchanged byte for byte.
-  const reservations = channelReservations(found.result.result, found.result.rows);
+  const reservations = channelReservations(
+    found.result.result,
+    found.result.rows,
+    found.result.enclosure,
+  );
   // Column capacity (#2611): the same measurement on the horizontal axis. A
   // long edge that found no free lane between the rows it crosses had to run
   // out to a gutter; where a row carries more such columns than the gaps
@@ -162,6 +166,12 @@ interface LayoutRun {
    * which has never carried marks.
    */
   crossingMarksPending: boolean;
+  /**
+   * The drill-down frame the routing chain bounded its channels by (#3132),
+   * so the reservation measures the same channels. `undefined` on the paths
+   * that pass the chain none.
+   */
+  enclosure?: ContainerRect;
 }
 
 /**
@@ -171,29 +181,41 @@ interface LayoutRun {
  * between sub-rows too. Empty when every channel fits its default gap: the
  * threshold sits at "fits the current constant", the floor-first shape
  * ADR-2593 settled on, so a view that never needed the room is not grown.
+ *
+ * Inside a drill-down frame the channels above the first row and below the
+ * last are bounded by the frame (#3132), and their room is the gap before row
+ * 0 and the gap after the last row (ordinal `rows.length`). Growing either
+ * grows the frame, which is drawn around the placed rows.
  */
 function channelReservations(
   result: LayoutResult,
   rows: readonly (readonly string[])[],
+  enclosure: ContainerRect | undefined,
 ): Map<number, number> {
   const out = new Map<number, number>();
-  if (rows.length < 2) return out;
+  if (rows.length === 0) return out;
   const rowTop = rows.map((row) =>
     row.reduce((top, id) => Math.min(top, result.nodes.get(id)?.y ?? Infinity), Infinity),
   );
   const frames = result.containers.filter((c) => c.group).flatMap(framePieces);
-  for (const channel of collectChannels(result.nodes, result.edges, frames)) {
-    // A channel bounded on one side only (above the first row, below the
-    // last) has no row gap to grow; the lane pass clamps there instead.
+  const limits = channelLimitsOf(enclosure);
+  for (const channel of collectChannels(result.nodes, result.edges, frames, limits)) {
+    // A channel bounded on one side only (above the first row or below the
+    // last, with no frame around the canvas) has no gap to grow; the lane
+    // pass stacks its lanes away from the row instead.
     if (!Number.isFinite(channel.upper) || !Number.isFinite(channel.lower)) continue;
     const extra = channel.lanes * LANE_PITCH - (channel.lower - channel.upper);
     if (extra <= 0) continue;
     // The row the channel runs above: the first whose top is at or below the
     // band's floor (a frame's top may sit between the two). A row every member
     // of which left for a side column has no top (`Infinity`) and is not a
-    // row the channel can run above.
-    const rowBelow = rowTop.findIndex((top) => Number.isFinite(top) && top >= channel.lower - 0.5);
-    if (rowBelow <= 0) continue;
+    // row the channel can run above. Below the last row, the frame's bottom
+    // border is the floor and the gap is the one after the last row.
+    let rowBelow = rowTop.findIndex((top) => Number.isFinite(top) && top >= channel.lower - 0.5);
+    if (rowBelow === -1 && channel.lower === limits.floor) rowBelow = rows.length;
+    // Above the first row only the frame's title strip makes a gap to grow:
+    // anything else up there (a ghost card) is not moved by the placement.
+    if (rowBelow < 0 || (rowBelow === 0 && channel.upper !== limits.ceiling)) continue;
     out.set(rowBelow, Math.max(out.get(rowBelow) ?? 0, extra));
   }
   return out;
@@ -727,6 +749,8 @@ function layoutInner(
 
   // Build container rects
   const containers: ContainerRect[] = [];
+  /** The drill-down frame around the canvas's cards, when there is one (#3132). */
+  let focusFrame: ContainerRect | undefined;
 
   if (hasContainer && viewSlice.containerNode) {
     // Focused container wraps child nodes
@@ -735,7 +759,7 @@ function layoutInner(
     const containerW = childMaxWidth - totalNestOffset + CONTAINER_PADDING * 2;
     const containerH =
       childMaxHeight - totalNestOffset + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING;
-    containers.push({
+    focusFrame = {
       id: viewSlice.containerNode.id,
       label: viewSlice.containerNode.label ?? viewSlice.containerNode.id,
       x: containerX,
@@ -743,7 +767,8 @@ function layoutInner(
       width: Math.max(containerW, 200),
       height: Math.max(containerH, 100),
       ghost: false,
-    });
+    };
+    containers.push(focusFrame);
   }
 
   // Ghost ancestor containers (inner to outer)
@@ -920,6 +945,7 @@ function layoutInner(
       // through the two arguments above.
       groupBands: groupBy ? groupBands : null,
       ports: portResolver(options),
+      enclosure: focusFrame,
     },
   );
 
@@ -969,6 +995,7 @@ function layoutInner(
     // no longer says where the row is; the remaining members do.
     rows: placed.rows.map((row) => row.filter((id) => !sideExternals.has(id))),
     crossingMarksPending: true,
+    enclosure: focusFrame,
   };
 }
 
@@ -1398,6 +1425,10 @@ function layoutMultipleSystems(
       // per-node and keyed by id, so the same one serves every system frame.
       // Without it #2452's outline anchoring stopped at the drill-down views.
       ports: portResolver(options),
+      // Each system frame is its own canvas, but nothing reserves room in it
+      // (no canvas-wide row ordinal, ADR-2598), so its channels are left as
+      // they were.
+      enclosure: undefined,
     });
 
     // A gutter route runs outside the system's cards, so it can reach past the

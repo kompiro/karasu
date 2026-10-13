@@ -9,7 +9,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { distributeGutterLanes, TRUNK_LANE_GAP } from "./edge-routing-groups.js";
-import { collectChannels } from "./edge-routing-lanes.js";
+import { collectChannels, NO_CHANNEL_LIMITS } from "./edge-routing-lanes.js";
 import { detectMarks } from "./crossing-marks.js";
 import { ownLabelSegment } from "./edge-routing.js";
 import type { LayoutEdge, LayoutNode } from "./layout-types.js";
@@ -173,14 +173,14 @@ describe("lane bundles downstream (#2958)", () => {
     const edges = [mixed("B", "T"), mixed("B", "U")];
     distributeGutterLanes(NODES, edges, []);
     expect(edges[0].outTrunkId).toBeDefined();
-    const runs = collectChannels(NODES, edges, []).flatMap((c) => c.runs);
+    const runs = collectChannels(NODES, edges, [], NO_CHANNEL_LIMITS).flatMap((c) => c.runs);
     expect(runs).toHaveLength(2);
     expect(runs[0].lane).toBe(runs[1].lane);
   });
 
   it("separates the same runs when they belong to no bundle", () => {
     const edges = [mixed("B", "T"), mixed("B", "U")];
-    const runs = collectChannels(NODES, edges, []).flatMap((c) => c.runs);
+    const runs = collectChannels(NODES, edges, [], NO_CHANNEL_LIMITS).flatMap((c) => c.runs);
     expect(runs[0].lane).not.toBe(runs[1].lane);
   });
 

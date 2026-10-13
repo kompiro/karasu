@@ -340,6 +340,16 @@ describe("placeNodesInLayers > channel reservation (#2608)", () => {
     expect(reserved.placements.get("g")!.y - plain.placements.get("g")!.y).toBe(30);
     expect(reserved.placements.get("d")!.y).toBe(plain.placements.get("d")!.y);
   });
+
+  it("reserves below the last row through the ordinal one past it (#3132)", () => {
+    // The channel below the last row of a drill-down ends at the frame, and
+    // the frame is drawn around `childMaxHeight`: the room opens there and no
+    // card moves.
+    const plain = place();
+    const reserved = place(new Map([[plain.rows.length, 40]]));
+    expect(reserved.placements).toEqual(plain.placements);
+    expect(reserved.childMaxHeight - plain.childMaxHeight).toBe(40);
+  });
 });
 
 describe("placeNodesInLayers > column reservation (#2611, TPL-2611)", () => {

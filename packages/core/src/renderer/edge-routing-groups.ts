@@ -49,6 +49,7 @@
 import { firstInOrder } from "./first-in-order.js";
 import type { LayoutEdge, LayoutNode, ContainerRect } from "./layout-types.js";
 import { countPolylineCrossings, type Point } from "./edge-geometry.js";
+import { NO_CHANNEL_LIMITS, type ChannelLimits } from "./edge-routing-lanes.js";
 import { framePieces } from "./frame-geometry.js";
 import type { ObstacleIndex, ObstacleQuery } from "./obstacle-index.js";
 import { attachableSpans, BBOX_PORT_FRAME, mapToSpans, type PortResolver } from "./port-frame.js";
@@ -179,6 +180,11 @@ export function routeGroupedEdges(
    * passes `false` on an ungrouped canvas (#2362).
    */
   markBackward = true,
+  /**
+   * The inner edges of the frame enclosing every card (#3132). A channel stub
+   * stops at them instead of being measured against a card outside the frame.
+   */
+  limits: ChannelLimits = NO_CHANNEL_LIMITS,
 ): void {
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
@@ -317,7 +323,7 @@ export function routeGroupedEdges(
         (x) =>
           !blockersAt.get(x)?.some((b) => b.top < innerBottom - 1e-6 && b.bottom > innerTop + 1e-6),
       )
-      .some((x) => tryCorridorRoute(edge, from, to, x, obstacles, nodes, claimed, bands));
+      .some((x) => tryCorridorRoute(edge, from, to, x, obstacles, nodes, limits, claimed, bands));
     if (routedInner) continue;
     // Endpoints in one row (the stretch between their facing edges is empty)
     // have no channel between them for the candidates below to use; the
@@ -328,7 +334,7 @@ export function routeGroupedEdges(
     if (
       frames.length === 0 &&
       innerBottom < innerTop &&
-      trySameRowChannelRoute(edge, from, to, obstacles, nodes, claimed, bands, () =>
+      trySameRowChannelRoute(edge, from, to, obstacles, nodes, limits, claimed, bands, () =>
         settledRoutes(layoutEdges, edge, obstacleIndex),
       )
     )
@@ -360,7 +366,7 @@ export function routeGroupedEdges(
       cheapestSide(
         [rightGutter, leftGutter].map((g) => ({
           gutter: g,
-          path: planMixedRoute(from, to, g, obstacles, nodes, claimed, bands),
+          path: planMixedRoute(from, to, g, obstacles, nodes, limits, claimed, bands),
         })),
         occupancy,
       );
@@ -482,20 +488,21 @@ function cmpEdgeGeometry(
  * lets that endpoint out via a **top/bottom port** instead — the same
  * inter-band channel the ungrouped router uses (ADR-968). These return
  * the clear-band y just below / above a box, from the nearest node in the next
- * row; with no neighbour they fall back to a `GUTTER_GAP` offset.
+ * row or the enclosing frame's limit, whichever is nearer (#3132): a ghost card
+ * placed outside a drill-down frame is not the edge of a channel inside it.
+ * With neither they fall back to a `GUTTER_GAP` offset.
  */
-function channelBelow(box: EdgeBox, nodes: LayoutNode[]): number {
-  let nearestTop = Infinity;
+function channelBelow(box: EdgeBox, nodes: LayoutNode[], limits: ChannelLimits): number {
+  const bottom = box.y + box.height;
+  let nearestTop = limits.floor >= bottom - 1e-6 ? limits.floor : Infinity;
   for (const n of nodes) {
     if (n.id === box.id) continue;
-    if (n.y >= box.y + box.height - 1e-6) nearestTop = Math.min(nearestTop, n.y);
+    if (n.y >= bottom - 1e-6) nearestTop = Math.min(nearestTop, n.y);
   }
-  return nearestTop === Infinity
-    ? box.y + box.height + GUTTER_GAP
-    : (box.y + box.height + nearestTop) / 2;
+  return nearestTop === Infinity ? bottom + GUTTER_GAP : (bottom + nearestTop) / 2;
 }
-function channelAbove(box: EdgeBox, nodes: LayoutNode[]): number {
-  let nearestBottom = -Infinity;
+function channelAbove(box: EdgeBox, nodes: LayoutNode[], limits: ChannelLimits): number {
+  let nearestBottom = limits.ceiling <= box.y + 1e-6 ? limits.ceiling : -Infinity;
   for (const n of nodes) {
     if (n.id === box.id) continue;
     const b = n.y + n.height;
@@ -528,6 +535,7 @@ function mixedEnd(
   gutter: Gutter,
   obstacles: ObstacleQuery,
   nodes: LayoutNode[],
+  limits: ChannelLimits,
   forward: boolean,
   isSource: boolean,
   claimed: ClaimRegister = createClaimRegister(),
@@ -539,7 +547,7 @@ function mixedEnd(
   if (sideClear) return { port: { x: sideX, y: midY }, elbows: [], cy: midY };
   // Blocked → detour this end through the adjacent inter-row channel.
   const outward = isSource ? forward : !forward; // does this end leave/enter downward?
-  const channelY = outward ? channelBelow(box, nodes) : channelAbove(box, nodes);
+  const channelY = outward ? channelBelow(box, nodes, limits) : channelAbove(box, nodes, limits);
   return channelStub(box, outward, channelY, claimed, bands);
 }
 
@@ -603,6 +611,7 @@ function trySameRowChannelRoute(
   to: EdgeBox,
   obstacles: ObstacleQuery,
   nodes: LayoutNode[],
+  limits: ChannelLimits,
   claimed: ClaimRegister,
   bands: readonly { top: number; bottom: number }[],
   /** The routes of the other edges that will not move again; asked only when both sides clear. */
@@ -636,7 +645,7 @@ function trySameRowChannelRoute(
   const leftward = to.x + to.width / 2 < from.x + from.width / 2;
   const clear: { path: Point[]; segments: ClaimedSegment[] }[] = [];
   for (const downward of [leftward, !leftward]) {
-    const cy = downward ? channelBelow(row, nodes) : channelAbove(row, nodes);
+    const cy = downward ? channelBelow(row, nodes, limits) : channelAbove(row, nodes, limits);
     const src = channelStub(from, downward, cy, claimed, bands);
     const tgt = channelStub(to, downward, cy, claimed, bands);
     const path = [src.port, ...src.elbows, ...tgt.elbows, tgt.port];
@@ -697,6 +706,7 @@ function planMixedRoute(
   gutter: Gutter,
   obstacles: ObstacleQuery,
   nodes: LayoutNode[],
+  limits: ChannelLimits,
   claimed: ClaimRegister = createClaimRegister(),
   bands: readonly { top: number; bottom: number }[] = [],
 ): Point[] | null {
@@ -706,8 +716,8 @@ function planMixedRoute(
   // them; leave such an edge straight (it rarely penetrates in a band layout).
   if (!forward && !backward) return null;
 
-  const src = mixedEnd(from, gutter, obstacles, nodes, forward, true, claimed, bands);
-  const tgt = mixedEnd(to, gutter, obstacles, nodes, forward, false, claimed, bands);
+  const src = mixedEnd(from, gutter, obstacles, nodes, limits, forward, true, claimed, bands);
+  const tgt = mixedEnd(to, gutter, obstacles, nodes, limits, forward, false, claimed, bands);
   const path: Point[] = [
     src.port,
     ...src.elbows,
@@ -795,6 +805,7 @@ function tryCorridorRoute(
   corridorX: number,
   obstacles: ObstacleQuery,
   nodes: LayoutNode[],
+  limits: ChannelLimits,
   claimed: ClaimRegister,
   bands: readonly { top: number; bottom: number }[],
 ): boolean {
@@ -817,6 +828,7 @@ function tryCorridorRoute(
     { x: corridorX, side: srcSide },
     obstacles,
     nodes,
+    limits,
     forward,
     backward,
     true,
@@ -828,6 +840,7 @@ function tryCorridorRoute(
     { x: corridorX, side: tgtSide },
     obstacles,
     nodes,
+    limits,
     forward,
     backward,
     false,
@@ -1195,6 +1208,7 @@ function corridorEnd(
   corridor: Gutter,
   obstacles: ObstacleQuery,
   nodes: LayoutNode[],
+  limits: ChannelLimits,
   forward: boolean,
   backward: boolean,
   isSource: boolean,
@@ -1206,7 +1220,7 @@ function corridorEnd(
   const sideClear = !obstacles.segmentCrosses({ x: sideX, y: midY }, { x: corridor.x, y: midY });
   if (sideClear) return { port: { x: sideX, y: midY }, elbows: [], cy: midY };
   if (!forward && !backward) return null;
-  return mixedEnd(box, corridor, obstacles, nodes, forward, isSource, claimed, bands);
+  return mixedEnd(box, corridor, obstacles, nodes, limits, forward, isSource, claimed, bands);
 }
 
 /**

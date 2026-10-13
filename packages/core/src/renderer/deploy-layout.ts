@@ -650,6 +650,8 @@ function routeDeployEdges(containers: ContainerRect[], edges: LayoutEdge[]): voi
     groupBands: null,
     // Containers are rectangles; the bounding box is the outline.
     ports: undefined,
+    // The containers are the cards here; no frame encloses them all.
+    enclosure: undefined,
   });
   for (const e of edges) e.ghost = true;
 }

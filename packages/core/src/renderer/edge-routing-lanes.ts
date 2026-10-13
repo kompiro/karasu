@@ -34,11 +34,40 @@
  */
 import type { LayoutEdge, LayoutNode } from "./layout-types.js";
 import type { Rect } from "./edge-geometry.js";
+import { CONTAINER_LABEL_HEIGHT } from "./layout-constants.js";
 
 /** Vertical distance between two lanes that share a channel (px). */
 export const LANE_PITCH = 14;
 
 const EPS = 1e-6;
+
+/**
+ * The part of the frame enclosing every card that a channel may use (#3132):
+ * below the frame's title strip and above its bottom border.
+ *
+ * A drill-down frame encloses every run, so as an obstacle it bounds nothing,
+ * and the channels above the first row and below the last were measured
+ * against whatever lay beyond it: nothing (open on that side), or a ghost card
+ * placed outside the frame. Either way the lanes could be put on the border or
+ * past it. These two lines bound those channels the way a row of cards does.
+ * Without such a frame (a system view, the multi-system root) both are
+ * infinite and nothing changes.
+ */
+export interface ChannelLimits {
+  /** Bottom of the frame's title strip; `-Infinity` without a frame. */
+  ceiling: number;
+  /** The frame's bottom border; `Infinity` without a frame. */
+  floor: number;
+}
+
+/** No enclosing frame: channels are bounded by cards and group frames alone. */
+export const NO_CHANNEL_LIMITS: ChannelLimits = { ceiling: -Infinity, floor: Infinity };
+
+export function channelLimitsOf(frame: Rect | undefined): ChannelLimits {
+  return frame
+    ? { ceiling: frame.y + CONTAINER_LABEL_HEIGHT, floor: frame.y + frame.height }
+    : NO_CHANNEL_LIMITS;
+}
 
 /** One horizontal run an inter-row channel has to carry. */
 export interface ChannelRun {
@@ -109,6 +138,9 @@ export function channelRunsOf(edge: LayoutEdge): Omit<ChannelRun, "lane">[] {
  * and so bounds nothing). Ghost and cyclic edges are not routed and do not
  * count.
  *
+ * The enclosing frame's {@link ChannelLimits} bound a channel too, so the
+ * channels above the first row and below the last end at the frame (#3132).
+ *
  * Lanes are handed out by greedy interval partitioning over the runs' x-ranges
  * in (left end, right end, edge order) — optimal for intervals, and
  * coordinate-derived so the output is deterministic. `lanes` is what the
@@ -118,8 +150,13 @@ export function collectChannels(
   nodes: Map<string, LayoutNode>,
   edges: readonly LayoutEdge[],
   frames: readonly Rect[],
+  limits: ChannelLimits,
 ): Channel[] {
-  const obstacles: readonly Rect[] = [...nodes.values(), ...frames];
+  const obstacles: Rect[] = [...nodes.values(), ...frames];
+  // Each limit is a line: an obstacle of no height (`bandAround` reads y only).
+  for (const y of [limits.ceiling, limits.floor]) {
+    if (Number.isFinite(y)) obstacles.push({ x: 0, y, width: 0, height: 0 });
+  }
   type Band = { upper: number; lower: number; runs: Omit<ChannelRun, "lane">[] };
   const bands = new Map<string, Band>();
   for (const edge of edges) {
@@ -186,8 +223,9 @@ export function distributeChannelLanes(
   nodes: Map<string, LayoutNode>,
   edges: LayoutEdge[],
   frames: readonly Rect[],
+  limits: ChannelLimits,
 ): void {
-  for (const channel of collectChannels(nodes, edges, frames)) {
+  for (const channel of collectChannels(nodes, edges, frames, limits)) {
     const { runs, lanes, upper, lower } = channel;
     if (lanes < 2) continue;
     const bounded = Number.isFinite(upper) && Number.isFinite(lower);
