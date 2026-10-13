@@ -1,9 +1,20 @@
 import { useEffect, useCallback, useRef, useState } from "react";
 import { AppShell } from "./components/AppShell.js";
+import {
+  PreviewToolbarSlotContext,
+  type PreviewToolbarSlot,
+} from "./components/preview-toolbar-slot.js";
 import { useAppContext } from "./state/app-context.js";
 import { useFileSelection } from "./hooks/useFileSelection.js";
 
 const SERVE_FILE_PATH = "/serve/index.krs";
+
+/**
+ * Serve mode drops Share (#3138). Its links point at this local server, so
+ * they open only on this machine while `karasu serve` runs, and the npm
+ * build — which leaves the editor out — does not open them at all.
+ */
+const SERVE_TOOLBAR: PreviewToolbarSlot = { hideShare: true };
 
 function resolveFileNameFromUrl(): string {
   const pathname = window.location.pathname;
@@ -103,5 +114,9 @@ export function ServeModeApp() {
     );
   }
 
-  return <AppShell entryPath={SERVE_FILE_PATH} hideEditor recompileRef={recompileRef} />;
+  return (
+    <PreviewToolbarSlotContext.Provider value={SERVE_TOOLBAR}>
+      <AppShell entryPath={SERVE_FILE_PATH} hideEditor recompileRef={recompileRef} />
+    </PreviewToolbarSlotContext.Provider>
+  );
 }

@@ -16,14 +16,14 @@
 
 2026-10-13 時点の `pnpm --filter @karasu-tools/app build:serve` の実測:
 
-| ファイル | サイズ | 中身 |
-| --- | --- | --- |
-| `ts.worker-*.js` | 6.9MB | TypeScript の言語 worker |
-| `index-*.js` | 5.5MB | app 本体 + Monaco 本体 + 80 余りの言語定義 |
-| `css.worker` / `html.worker` / `json.worker` | 2.2MB | CSS / HTML / JSON の言語 worker |
-| `editor.worker-*.js` | 0.3MB | Monaco の基本 worker |
-| その他（言語ごとの chunk 等） | 約 1MB | |
-| **合計** | **16MB（97 ファイル）** | |
+| ファイル                                     | サイズ                  | 中身                                       |
+| -------------------------------------------- | ----------------------- | ------------------------------------------ |
+| `ts.worker-*.js`                             | 6.9MB                   | TypeScript の言語 worker                   |
+| `index-*.js`                                 | 5.5MB                   | app 本体 + Monaco 本体 + 80 余りの言語定義 |
+| `css.worker` / `html.worker` / `json.worker` | 2.2MB                   | CSS / HTML / JSON の言語 worker            |
+| `editor.worker-*.js`                         | 0.3MB                   | Monaco の基本 worker                       |
+| その他（言語ごとの chunk 等）                | 約 1MB                  |                                            |
+| **合計**                                     | **16MB（97 ファイル）** |                                            |
 
 `main.tsx` 先頭の `import "./monaco-setup.js"` を 1 行消して同じ build をすると、
 **1.7MB（4 ファイル）** になる。Monaco を読み込んでいるのは `monaco-setup.ts` の
@@ -38,13 +38,13 @@ serve かどうかを **実行時に** 決めている（`detect-storage-mode.ts
 
 ## 現状（インベントリ）
 
-| 観点 | 現状 |
-| --- | --- |
-| entry | `index.html` → `src/main.tsx`。`main.tsx` が `monaco-setup` を import し、`?reference` なら `ReferenceWindow`、それ以外は `App` を render する |
-| モード判定 | `App` が `#s=`（inline share）を読み、無ければ `detectAppMode()` で serve / opfs / memory を決める。`?krs=` の deep link 正規化もここ |
-| serve の画面 | `ModeWrapper` が Provider 群（`AppProvider` / `CommandProvider` / `KeyboardShortcutDispatcher` / `CommandPalette` / `TranslateProvider`）で `ServeModeApp` を包む。`ServeModeApp` は `AppShell hideEditor` |
-| serve 用 build | `vite.serve.config.ts` が Pages 用 config を `mergeConfig` で継承し、minify・sourcemap なし・`dist-serve/` に出す。input は `index.html` のまま |
-| CLI が配る app | npm パッケージでは `dist/app/`（`dist-serve/` を stage したもの）。**monorepo では `packages/app/dist/`（Pages 用 build）** を使う（`packages/cli/src/serve.ts` `findAppDistDir`） |
+| 観点           | 現状                                                                                                                                                                                                       |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| entry          | `index.html` → `src/main.tsx`。`main.tsx` が `monaco-setup` を import し、`?reference` なら `ReferenceWindow`、それ以外は `App` を render する                                                             |
+| モード判定     | `App` が `#s=`（inline share）を読み、無ければ `detectAppMode()` で serve / opfs / memory を決める。`?krs=` の deep link 正規化もここ                                                                      |
+| serve の画面   | `ModeWrapper` が Provider 群（`AppProvider` / `CommandProvider` / `KeyboardShortcutDispatcher` / `CommandPalette` / `TranslateProvider`）で `ServeModeApp` を包む。`ServeModeApp` は `AppShell hideEditor` |
+| serve 用 build | `vite.serve.config.ts` が Pages 用 config を `mergeConfig` で継承し、minify・sourcemap なし・`dist-serve/` に出す。input は `index.html` のまま                                                            |
+| CLI が配る app | npm パッケージでは `dist/app/`（`dist-serve/` を stage したもの）。**monorepo では `packages/app/dist/`（Pages 用 build）** を使う（`packages/cli/src/serve.ts` `findAppDistDir`）                         |
 
 最後の行が効く。monorepo の `karasu serve` は Pages 用 build を配るので、Pages 用 build も
 serve モードで動き続ける必要がある。実行時のモード判定は残す。
@@ -136,12 +136,12 @@ import すれば worker 4 つ（9.2MB）が消える。
 
 ## 比較
 
-| 観点 | 案1 entry 分割 | 案2 define + dynamic import | 案3 alias stub | 案4 言語 worker 除外 |
-| --- | --- | --- | --- | --- |
-| serve 用 build のサイズ | 1.7MB | 1.7MB | 約 1.7MB | 約 7MB |
-| Pages の挙動 | 変わらない | 起動順序が変わる | 変わらない | 変わらない |
-| monaco-editor の version bump への耐性 | 影響なし | 影響なし | stub を合わせる | contrib の写しを合わせる |
-| 読み手が分かるか | entry を見れば分かる | 定数の分岐を追う | config を読まないと分からない | 写したリストの意図が要る |
+| 観点                                   | 案1 entry 分割       | 案2 define + dynamic import | 案3 alias stub                | 案4 言語 worker 除外     |
+| -------------------------------------- | -------------------- | --------------------------- | ----------------------------- | ------------------------ |
+| serve 用 build のサイズ                | 1.7MB                | 1.7MB                       | 約 1.7MB                      | 約 7MB                   |
+| Pages の挙動                           | 変わらない           | 起動順序が変わる            | 変わらない                    | 変わらない               |
+| monaco-editor の version bump への耐性 | 影響なし             | 影響なし                    | stub を合わせる               | contrib の写しを合わせる |
+| 読み手が分かるか                       | entry を見れば分かる | 定数の分岐を追う            | config を読まないと分からない | 写したリストの意図が要る |
 
 ## Related TPLs
 
@@ -162,13 +162,23 @@ import すれば worker 4 つ（9.2MB）が消える。
 外していることがコードから読めるのは案1 だけである。案4 は serve 用 build を十分に小さくせず、
 Pages でも読まれていない worker を外すために version bump ごとの保守を背負うので採らない。
 
-### serve 用 build で `#s=`（inline share）を読まない
+### serve モードでは Share を出さず、serve 用 build は `#s=` を読まない
 
 `App` はモードを渡されたとき `#s=` を読まない。inline share は memory モードでエディタ付きの
 画面を開くが、serve 用 build には Monaco が無いので、開くと `@monaco-editor/react` が既定の
-CDN から Monaco を取りに行く。`#s=` は karasu-nest / Pages の URL 形式で、`karasu serve` の
-URL には付かないので、読まなくても失うものは無い。`?krs=` の deep link 正規化は serve モードでも
-意味があるので残す。
+CDN から Monaco を取りに行く。`?krs=` の deep link 正規化は serve モードでも意味があるので残す。
+
+ただし serve モードの Share ボタンは `window.location` を元に `http://localhost:<port>/#s=…` を
+作る（`buildShareUrls`）。これを読まないだけだと、Share で作ったリンクが黙って `index.krs` を
+開くことになる（PR #3160 のレビューで判明）。そこで **serve モードでは Share を出さない**
+（`ServeModeApp` が `PreviewToolbarSlotContext` に `hideShare` を渡す。gallery viewer と同じ仕組み）。
+手元のサーバーを指すリンクは同じマシンで serve が動いている間しか開けず、`/s?s=` の unfurl URL は
+CLI が配っていないので、他の人と共有する手段として成り立っていなかった。Pages 用 build で動く
+monorepo の `karasu serve` も同じく Share を出さないので、serve モードの見え方は 2 つの build で
+揃う（TPL-1024）。
+
+serve モードから hosted app（`karasu.kompiro.dev`）を指す共有リンクを作れるようにするかは、
+別 Issue（[#3162](https://github.com/kompiro/karasu/issues/3162)）で扱う。
 
 ### 実装の指針
 
@@ -176,6 +186,7 @@ URL には付かないので、読まなくても失うものは無い。`?krs=`
    `mountApp(options)` に切り出す。`main.tsx` は `import "./monaco-setup.js"` の後に
    `mountApp({})` を、`src/serve-main.tsx` は `mountApp({ mode: "serve" })` を呼ぶ。
    `App` は `mode?: AppMode` を受け、渡されたら `detectAppMode()` と `#s=` の読み取りを飛ばす。
+   `ServeModeApp` は `PreviewToolbarSlotContext` で `hideShare` を渡す。
 2. `vite.serve.config.ts` に 2 つの plugin を足す。
    - `index.html` の `/src/main.tsx` を `/src/serve-main.tsx` に置き換える。置き換え対象が
      見つからなければ build を失敗させる。

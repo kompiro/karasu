@@ -5,6 +5,7 @@
 - **対象ファイル**:
   - `packages/app/vite.serve.config.ts`（serve 用 build。minify あり、sourcemap なし、Pages 専用の public ファイルなし。entry を `serve-main.tsx` に差し替え、`monaco-editor` が入ったら失敗する）
   - `packages/app/src/serve-main.tsx` / `packages/app/src/mount-app.tsx`（Monaco を読まない serve 用 entry と、両 entry 共通の mount）
+  - `packages/app/src/ServeModeApp.tsx`（serve モードでは Share を出さない）
   - `packages/cli/scripts/stage-app.ts`（serve build を `dist/app/` に stage）
   - `packages/cli/package.json`（`files` に `dist/app/`、`prepack` が `build:app` を実行）
   - `packages/cli/src/serve.ts`（`findAppDistDir` / `missingAppMessage`）
@@ -38,17 +39,21 @@
 
   > ✅ Automated — `packages/cli/src/serve.test.ts` › `findAppDistDir` › `does not serve an unrelated package that happens to sit at ../../app`
 
-- [x] tarball に Monaco の worker と codicon フォントが入らない（#3138）
+- [x] tarball に Monaco の `editor.worker` と codicon フォントが入らない（#3138）
 
   > ✅ Automated — `packages/cli/pack/serve-from-tarball.test.ts` › `ships no Monaco editor, which serve mode never shows (#3138)`
 
 - [x] serve 用 build が `monaco-editor` の module を 1 つでも含むと build が失敗する（#3138）
 
-  > ✅ Automated — `packages/app/src/serve-build-config.test.ts` › `loads the serve entry, which leaves Monaco out (#3138)` / `recognizes monaco-editor modules, and not the @monaco-editor/react wrapper`（plugin の実体は `vite.serve.config.ts` の `rejectMonaco`。`build:serve` が `prepack` で毎回通る）
+  > ✅ Automated — `packages/app/src/serve-build-config.test.ts` › `loads the serve entry, which leaves Monaco out (#3138)` / `fails the build when a monaco-editor module is bundled` / `recognizes monaco-editor modules, and not the @monaco-editor/react wrapper`（`build:serve` は `prepack` で毎回通る）
 
 - [x] モードを固定した app は実行時のモード判定をせず、`#s=` の共有 URL も開かない（#3138）
 
   > ✅ Automated — `packages/app/src/App.test.tsx` › `App with the mode fixed by the entry (#3138)`
+
+- [x] serve モードのプレビューツールバーに Share が出ない（共有リンクが手元のサーバーを指し、npm の serve build はそれを開けないため。#3138）
+
+  > ✅ Automated — `packages/app/src/ServeModeApp.test.tsx` › `drops Share from the preview toolbar (#3138)`
 
 - [ ] npm で入れた `karasu serve` で、コマンドパレット・キーボードショートカット・pop-out reference window が Pages 用 build の serve モードと同じに動く（#3138）
 
