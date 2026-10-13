@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>reverse-architecture replay</title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #0f172a;
+        --line: #1e293b;
+        --fg: #e2e8f0;
+        --dim: #64748b;
+        --ok: #4ade80;
+        --accent: #60a5fa;
+        --warn: #fbbf24;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--bg);
+      }
+      body {
+        display: grid;
+        justify-items: center;
+        align-content: start;
+        padding-top: 34px;
+        box-sizing: border-box;
+        font:
+          16px/1.5 "DejaVu Sans Mono",
+          ui-monospace,
+          monospace;
+        color: var(--fg);
+      }
+      .term {
+        width: 1120px;
+        height: 500px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+      }
+      .bar {
+        height: 34px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 14px;
+        border-bottom: 1px solid var(--line);
+        color: var(--dim);
+        font-size: 13px;
+      }
+      .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: #334155;
+      }
+      .bar span {
+        margin-left: 10px;
+      }
+      .body {
+        padding: 18px 24px;
+        white-space: pre;
+      }
+      .line {
+        opacity: 0;
+        transform: translateY(4px);
+        transition:
+          opacity 0.18s,
+          transform 0.18s;
+      }
+      .line.on {
+        opacity: 1;
+        transform: none;
+      }
+      .prompt {
+        color: var(--accent);
+      }
+      .dim {
+        color: var(--dim);
+      }
+      .ok {
+        color: var(--ok);
+      }
+      .head {
+        color: var(--warn);
+        font-weight: bold;
+      }
+      .cursor {
+        display: inline-block;
+        width: 9px;
+        height: 18px;
+        background: var(--fg);
+        vertical-align: -3px;
+        animation: blink 1s steps(1) infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+      .grid {
+        display: inline-grid;
+        grid-template-columns: repeat(5, 200px);
+        column-gap: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="term">
+      <div class="bar">
+        <i class="dot"></i><i class="dot"></i><i class="dot"></i
+        ><span>~/src/ai-journal · agent</span>
+      </div>
+      <div class="body" id="out"></div>
+    </div>
+    <script>
+      // A sped-up replay of the actual reverse-architecture run over a private repository.
+      // Every count below is taken from that run's outputs.
+      const out = document.getElementById("out");
+      const typed = "/reverse-architecture  turn this repo into a karasu model";
+      const domains = [
+        ["Conversation", 24],
+        ["Topics", 5],
+        ["Memory", 22],
+        ["Reflection", 11],
+        ["Goals", 15],
+        ["Ask", 8],
+        ["Handoff", 9],
+        ["Brief", 2],
+        ["Integrations", 17],
+        ["Notifications", 13],
+        ["Usage", 8],
+        ["Operations", 54],
+        ["McpAccess", 18],
+      ];
+      const script = [
+        [250, '<span class="head">● Phase 1 · scout</span>'],
+        [
+          200,
+          '  <span class="dim">$</span> karasu translate --from wrangler wrangler.toml   <span class="dim">→ 2 workers, D1, R2, 2 Vectorize, 3 queues, KV</span>',
+        ],
+        [
+          200,
+          '  <span class="dim">$</span> karasu translate --from db drizzle/*.sql          <span class="dim">→ 46 tables</span>',
+        ],
+        [200, "  13 domains at bounded-context granularity"],
+        [280, '<span class="head">● Phase 2 · one agent per domain</span>'],
+        ["grid", null],
+        [280, '<span class="head">● Phase 3 · synthesis</span>'],
+        [200, '  merged 13 fragments → index.krs <span class="dim">(4,361 lines)</span>'],
+        [280, '<span class="head">● Phase 4 · validate</span>'],
+        [
+          200,
+          '  <span class="dim">$</span> karasu check index.krs   <span class="ok">0 errors · 0 warnings</span>',
+        ],
+        [320, '<span class="ok">✓ 13 domains · 206 use cases · 52 entities · 46 tables</span>'],
+        [280, '  <span class="dim">$</span> karasu serve .'],
+      ];
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      function line(html) {
+        const d = document.createElement("div");
+        d.className = "line";
+        d.innerHTML = html;
+        out.append(d);
+        requestAnimationFrame(() => d.classList.add("on"));
+        return d;
+      }
+      async function run() {
+        const p = line(
+          '<span class="prompt">›</span> <span id="t"></span><span class="cursor"></span>',
+        );
+        const t = p.querySelector("#t");
+        await sleep(250);
+        for (const ch of typed) {
+          t.textContent += ch;
+          await sleep(18);
+        }
+        await sleep(250);
+        p.querySelector(".cursor").remove();
+        for (const [ms, html] of script) {
+          if (ms === "grid") {
+            const row = line('  <span class="grid"></span>');
+            const grid = row.querySelector(".grid");
+            for (const [name, n] of domains) {
+              const cell = document.createElement("span");
+              cell.innerHTML = `<span class="ok">✓</span> ${name.padEnd(13)}<span class="dim">${String(n).padStart(2)}</span>`;
+              grid.append(cell);
+              await sleep(70);
+            }
+            continue;
+          }
+          await sleep(ms);
+          line(html);
+        }
+        await sleep(200);
+        document.body.dataset.done = "1";
+      }
+      run();
+    </script>
+  </body>
+</html>

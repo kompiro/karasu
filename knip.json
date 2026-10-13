@@ -1,6 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "treatConfigHintsAsErrors": true,
+  "ignoreBinaries": ["convert"],
   "workspaces": {
     ".": {
       "entry": ["scripts/report/index.ts", "scripts/coderabbit/await-review.ts"],

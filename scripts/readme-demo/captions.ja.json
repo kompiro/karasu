@@ -1,0 +1,19 @@
+{
+  "intro": [
+    "AI エージェントでリポジトリをリバースする",
+    "reverse-architecture スキルが、Cloudflare 上の AI ジャーナリングシステムを 1 つの .krs モデルにする"
+  ],
+  "whole": [
+    "システム全体を見渡す",
+    "ユーザー、サービス、データストア、外部 API を 1 つのモデルから描く"
+  ],
+  "drill": ["ドリルダウンする", "AI ジャーナリングサービスと、その 12 の domain へ"],
+  "node": ["ノードを焦点に", "Memory に依存するものと、Memory が依存するもの"],
+  "edge": ["edge を焦点に", "2 つのノードの間の関係を、ラベルを省略せずに読む"],
+  "usecases": [
+    "ユースケースまで降りる",
+    "Conversation の 24 のユースケースと、それぞれが読み書きするテーブル"
+  ],
+  "deploy": ["同じモデルを物理の視点で", "Cloudflare の Worker、ストア、キュー、cron ジョブ"],
+  "end": ["karasu: architecture as code", "ブラウザですぐに試せます: karasu.kompiro.dev"]
+}

@@ -15,6 +15,10 @@ karasu is a text-based architecture modeling language and toolchain. It keeps a
 system's **logical structure**, **physical deployment**, and **team ownership**
 in one model that people, code, and AI agents can all read and evolve.
 
+<p align="center">
+  <img src="docs/assets/readme-demo.en.gif" width="960" alt="An AI agent reverse-engineers a repository into one karasu model; the web app then shows the whole system, drills into a service and its domains, focuses on a node and on an edge, zooms into the use cases of a domain, and switches to the deploy view." />
+</p>
+
 [**Try it in your browser →**](https://karasu.kompiro.dev/)
 
 [Documentation](https://kompiro.github.io/karasu/) ·

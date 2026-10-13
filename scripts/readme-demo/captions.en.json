@@ -1,0 +1,19 @@
+{
+  "intro": [
+    "Reverse-engineer a repository with an AI agent",
+    "the reverse-architecture skill turns an AI journaling system on Cloudflare into one .krs model"
+  ],
+  "whole": [
+    "See the whole system",
+    "users, services, data stores and external APIs, all from one model"
+  ],
+  "drill": ["Drill down", "into the AI journaling service and its 12 domains"],
+  "node": ["Focus on a node", "who depends on Memory, and what Memory depends on"],
+  "edge": ["Focus on an edge", "every relation between two nodes, with its label in full"],
+  "usecases": [
+    "Down to use cases",
+    "24 use cases in Conversation and the tables they read and write"
+  ],
+  "deploy": ["Same model, physical view", "Cloudflare workers, stores, queues and cron jobs"],
+  "end": ["karasu: architecture as code", "try it in your browser at karasu.kompiro.dev"]
+}
