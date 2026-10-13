@@ -317,7 +317,20 @@ export interface ResolvedTeamFrames {
 }
 
 export interface ResolvedStyles {
+  /**
+   * Resolved node styles by bare id, plus `id@annotation` keys for nodes that
+   * share an id but differ in annotations, plus deploy units and org nodes.
+   * Where two logical nodes share a bare id, the bare entry is the
+   * `nodePathRanking` winner's (#2934): a card that knows its path reads
+   * {@link nodesByPath} instead, so it is drawn with its own style.
+   */
   nodes: Map<string, ResolvedNodeStyle>;
+  /**
+   * The logical nodes' resolved styles keyed by full path (`nodePathRefId`).
+   * A separate map from {@link nodes}, not extra keys in it: a quoted bare id
+   * `"Shop.Api"` and the path `Shop.Api` spell the same text.
+   */
+  nodesByPath: Map<string, ResolvedNodeStyle>;
   edges: Map<string, ResolvedEdgeStyle>;
   /**
    * Boundary frame styles (#2234). Keyed by boundary id, which is a different
@@ -353,6 +366,12 @@ export interface ResolvedStyles {
    * anything painted this node, not who did.
    */
   paintedColors: Map<string, PaintedNodeColors>;
+  /**
+   * {@link paintedColors} for logical nodes by full path, read together with
+   * {@link nodesByPath}: a path present there and absent here was painted by
+   * nothing (#2934).
+   */
+  paintedColorsByPath: Map<string, PaintedNodeColors>;
   defaultNodeStyle: ResolvedNodeStyle;
   defaultEdgeStyle: ResolvedEdgeStyle;
   /**
@@ -361,6 +380,13 @@ export interface ResolvedStyles {
    * produced a recognized layout hint.
    */
   layoutHints: Map<string, ResolvedLayoutHints>;
+  /**
+   * {@link layoutHints} for logical nodes, keyed by full path like
+   * {@link nodesByPath}. Unlike the bare map it has an entry for every logical
+   * node the style pass reached, `{}` when none resolved: a card whose own entry
+   * is empty must not take a same-named node's hint from the bare map.
+   */
+  layoutHintsByPath: Map<string, ResolvedLayoutHints>;
   /**
    * Warnings produced during style resolution itself — e.g. an invalid
    * `column` value. These are surfaced separately from the schema-level

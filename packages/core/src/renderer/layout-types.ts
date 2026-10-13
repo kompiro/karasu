@@ -120,6 +120,16 @@ export interface LayoutEdge {
    * same reason. Unset elsewhere, where the keyed lookup stays the answer.
    */
   diffState?: string;
+  /**
+   * The `LayoutResult.nodes` keys of this edge's endpoints, set on the
+   * multi-system root's intra-system edges only (#2934). There the map is keyed
+   * by (system, id), so the bare `from` / `to` cannot name the card when two
+   * systems both hold an `Api`; a consumer that walks the map (the draw.io
+   * exporter) resolves the endpoints through these. Unset elsewhere, where
+   * `from` / `to` are the map keys.
+   */
+  fromKey?: string;
+  toKey?: string;
   /** Mirrors `KrsEdge.description`: prose from the edge property block (#2543). */
   description?: string;
   /** Mirrors `KrsEdge.links`: `link` rows from the edge property block (#2543). */
@@ -282,6 +292,14 @@ export interface ContainerRect {
    * never share a field because the container renderer is shared.
    */
   realizedNodeId?: string;
+  /**
+   * Full path of the logical node this frame stands for: a root-view system
+   * frame, a drilled view's focused container, or one of its ancestors. The
+   * renderer resolves the frame's style by it, so a system named like a service
+   * elsewhere keeps its own frame style (#2934). Unset on frames that are not a
+   * node of the model (group, boundary, deploy, ghost-system frames).
+   */
+  path?: readonly string[];
 }
 
 export interface LayoutResult {
@@ -467,7 +485,12 @@ export interface LayoutOptions {
    * tests) omit it; measurement then assumes padding-only clearance,
    * matching the pre-F behavior.
    */
-  shapeForNode?: (id: string, annotations: readonly string[]) => string | undefined;
+  shapeForNode?: (
+    id: string,
+    annotations: readonly string[],
+    /** The card's full path, when it has one, so a shared id measures its own shape (#2934). */
+    path?: readonly string[],
+  ) => string | undefined;
   /**
    * The corner lane a node's chrome occupies (#2420), so ports can keep out of
    * it (#2422). Injected rather than computed here because the lane's width
@@ -507,6 +530,12 @@ export interface LayoutOptions {
    * is what keeps the overlay orthogonal to the Group-by axis.
    */
   facetMembership?: ReadonlyMap<string, readonly string[]>;
+  /**
+   * The same per node full path (`FacetOverlay.membershipByPath`). A folded
+   * card contributes what *it* declared to its stub, read by its path (#2934);
+   * omitted → by bare id from {@link facetMembership}.
+   */
+  facetMembershipByPath?: ReadonlyMap<string, readonly string[]>;
   /** Known-facet order, so a stub's folded membership stacks like every other element's. */
   facetOrder?: readonly string[];
 
@@ -544,6 +573,12 @@ export interface LayoutOptions {
   groupLabels?: GroupLabelIndex;
   displayMode?: DisplayMode;
   layoutHints?: Map<string, ResolvedLayoutHints>;
+  /**
+   * `ResolvedStyles.layoutHintsByPath`: each logical node's own hints by full
+   * path, so a card sharing its id with another is placed by its own `column`
+   * (#2934). Read through `canvasLayoutHints`; omitted → the bare map alone.
+   */
+  layoutHintsByPath?: Map<string, ResolvedLayoutHints>;
   edgeDirections?: Map<string, EdgeDirection>;
   collapsedCategories?: ReadonlySet<CategoryId>;
   groupBy?: "team" | "boundary";

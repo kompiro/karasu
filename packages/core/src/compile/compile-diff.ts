@@ -145,6 +145,12 @@ export interface SystemDiffCompileResult {
   warnings: Warning[];
   /** Diff metadata per node id (for UI hover / detail panel). */
   nodeDiff: Map<string, NodeDiffMeta>;
+  /**
+   * Diff metadata per canvas card, keyed by the full path the card carries as
+   * `data-node-path` (#2934). Where two cards share a bare id, `nodeDiff` holds
+   * one entry and this map holds each card's own.
+   */
+  nodeDiffByPath: Map<string, NodeDiffMeta>;
   /** Diff metadata per edge key (`from->to`). */
   edgeDiff: Map<string, EdgeDiffMeta>;
 }
@@ -257,6 +263,7 @@ export async function compileSystemDiff(
     undefined,
     undefined,
     diffed.slice.childEdges,
+    afterResolved.krsFile.nodePathRanking,
   );
 
   const { nodeDiffState, edgeDiffState } = toDiffStateMaps(diffed);
@@ -310,12 +317,28 @@ export async function compileSystemDiff(
     const former = beforeResolved.krsFile.facetIndex.get(id);
     if (former !== undefined) mergedFacetIndex.set(id, new Set(former));
   }
+  // The path-keyed index the cards are ringed by (#2934) gets the same backfill,
+  // keyed by the removed card's own path, so a removed `Admin.Api` takes back
+  // what *it* declared rather than what a same-named node did.
+  const mergedFacetIndexByPath = new Map<string, Set<string>>();
+  for (const [key, facetIds] of afterResolved.krsFile.facetIndexByPath) {
+    mergedFacetIndexByPath.set(key, new Set(facetIds));
+  }
+  for (const [key, meta] of diffed.nodesByPath) {
+    if (meta.state !== "removed" || mergedFacetIndexByPath.has(key)) continue;
+    const former = beforeResolved.krsFile.facetIndexByPath.get(key);
+    if (former !== undefined) mergedFacetIndexByPath.set(key, new Set(former));
+  }
   // Declarations come from the after side (labels and colour order follow the
   // current model); only membership is backfilled. A facet that existed only
   // before is still reachable through the merged index, so its removed members
   // keep a ring even though the declaration is gone.
   const mergedFacetOverlay = resolveFacetOverlay(
-    { ...afterResolved.krsFile, facetIndex: mergedFacetIndex },
+    {
+      ...afterResolved.krsFile,
+      facetIndex: mergedFacetIndex,
+      facetIndexByPath: mergedFacetIndexByPath,
+    },
     selectedFacets,
   );
 
@@ -412,6 +435,7 @@ export async function compileSystemDiff(
     nodeDiffState,
     edgeDiffState,
     nodeDiffMeta: diffed.nodes,
+    nodeDiffMetaByPath: diffed.nodesByPath,
     emptyLabels: emptyStateLabels,
     theme,
     groupBy,
@@ -436,6 +460,7 @@ export async function compileSystemDiff(
     diagnostics,
     warnings: collectAfterWarnings(afterResolved, theme, options.annotationBadgeLabels),
     nodeDiff: diffed.nodes,
+    nodeDiffByPath: diffed.nodesByPath,
     edgeDiff: diffed.edges,
   };
 }
@@ -527,6 +552,8 @@ export async function compileDeployDiff(
     deployUnits,
     undefined,
     [...afterResolved.krsFile.services, ...afterResolved.krsFile.domains],
+    undefined,
+    afterResolved.krsFile.nodePathRanking,
   );
 
   const { nodeDiffState, edgeDiffState } = toDiffStateMaps(diffed);

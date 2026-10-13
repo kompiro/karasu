@@ -55,7 +55,8 @@ import {
   declaredNodePathsOnce,
   validatePhysicalRefs,
   validateFacetDeclarations,
-  buildFacetIndex,
+  buildFacetIndexByPath,
+  facetUnionByBareId,
   buildOwnerIndex,
   buildBoundaryMembership,
   buildScopedBoundaryMembership,
@@ -451,7 +452,7 @@ export class Parser {
     // node kind, so the index must reach top-level orphans (a system-less
     // `service` / `client` / `domain` / infra block) and their descendants, not
     // just what hangs off a `system` (TPL-1160 / TPL-1720).
-    file.facetIndex = buildFacetIndex([
+    file.facetIndexByPath = buildFacetIndexByPath([
       ...file.systems,
       ...file.services,
       ...file.clients,
@@ -460,6 +461,7 @@ export class Parser {
       ...file.queues,
       ...file.storages,
     ]);
+    file.facetIndex = facetUnionByBareId(file.facetIndexByPath);
     file.scopedBoundaryMembership = scopedMembership.membership;
     this.diagnostics.push(...scopedMembership.diagnostics);
     // Top-level (system-less) services get the same per-parent duplicate-child
@@ -503,6 +505,7 @@ export class Parser {
     // function the ImportResolver re-runs on the merged model (#2596).
     const nodePaths = buildNodePathIndex(file);
     file.nodePathIndex = nodePaths.membership;
+    file.nodePathRanking = nodePaths.ranking;
     this.diagnostics.push(...nodePaths.diagnostics);
     // One declared-path walk for all the node-reference checks below: each
     // built the same O(nodes) map for itself, on the path the LSP re-runs at

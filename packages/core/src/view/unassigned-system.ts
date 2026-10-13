@@ -1,7 +1,7 @@
 import type { KrsFile, KrsNode, SystemNode } from "../types/ast.js";
 
 /** Synthetic id used for the pseudo-system that wraps top-level (unassigned) services/domains. */
-const UNASSIGNED_SYSTEM_ID = "__unassigned__";
+export const UNASSIGNED_SYSTEM_ID = "__unassigned__";
 
 /** Label rendered in the SVG for the pseudo-system container. */
 const UNASSIGNED_SYSTEM_LABEL = "Unassigned";

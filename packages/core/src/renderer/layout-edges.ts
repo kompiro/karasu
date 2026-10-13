@@ -246,7 +246,7 @@ export function portResolver(options: LayoutOptions): PortResolver | undefined {
   return (node) => {
     // `LayoutNode.annotations` already carries the effective (inherited) set —
     // the same value `measureNode` resolved the shape from.
-    const shapeName = shapeForNode(node.id, node.annotations ?? []);
+    const shapeName = shapeForNode(node.id, node.annotations ?? [], node.path);
     const frameFn = shapeName ? getShapePortFrame(shapeName) : undefined;
     // A zero-area zone — a card with no chip and no buttons still reports its
     // empty lane — blocks nothing, and dropping it here is what lets the
