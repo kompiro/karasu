@@ -121,6 +121,14 @@ describe("the karasu tarball (TPL-1681)", () => {
     );
     expect(unwanted).toEqual([]);
   });
+
+  it("ships no Monaco editor, which serve mode never shows (#3138)", () => {
+    // The files Monaco always emits: its worker and the icon font.
+    const monaco = entries.filter((entry) =>
+      /\/editor\.worker-[^/]*\.js$|\/codicon-[^/]*\.ttf$/.test(entry),
+    );
+    expect(monaco).toEqual([]);
+  });
 });
 
 describe("karasu serve from the tarball (#3017)", () => {

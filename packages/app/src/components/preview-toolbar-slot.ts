@@ -6,7 +6,8 @@ import { createContext, type ReactNode } from "react";
  * The app provides nothing, so its toolbar is exactly the default. The gallery
  * viewer (`src/viewer/`) uses it to add the theme and language switches it
  * needs, because an opaque-origin page cannot persist preferences, and to drop
- * Share, because the clipboard is unusable there.
+ * Share, because the clipboard is unusable there. `karasu serve` drops Share
+ * too (`ServeModeApp`, #3138).
  */
 export interface PreviewToolbarSlot {
   /** Controls appended after the toolbar's own. */
