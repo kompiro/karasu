@@ -163,6 +163,13 @@ export class ImportResolver {
    * this block" (see `noteChainReopen`).
    */
   private chainOrigins = new WeakMap<KrsNode, Set<KrsNode>>();
+  /**
+   * The file that declared each node object, recorded when the file is parsed
+   * (#2934). `nodeFileIndexByPath` is derived from it on the merged tree, so a
+   * node a named import mounts under a system (`Shop.Payments`) is filed at the
+   * path it ends up at, not at a path its own file never spelled.
+   */
+  private declaringFile = new WeakMap<KrsNode, string>();
   /** ディレクトリ import の展開結果キャッシュ（Pass 1 で構築、Pass 2 で参照） */
   private dirExpansions = new Map<string, string[]>();
   /** Pass 2: ファイル単位の解決済み KrsFile cache（DAG 経由の同一ファイル到達で再利用） */
@@ -177,6 +184,7 @@ export class ImportResolver {
    * マージ済みの KrsFile とスタイルシートを返す。
    */
   async resolve(entryPath: string): Promise<ResolvedProject> {
+    this.declaringFile = new WeakMap();
     this.loadingKrs.clear();
     this.loadedKrs.clear();
     this.visitedStyles.clear();
@@ -209,8 +217,12 @@ export class ImportResolver {
     const mergedNodePaths = buildNodePathIndex(krsFile);
     krsFile.nodePathIndex = mergedNodePaths.membership;
     krsFile.nodePathRanking = mergedNodePaths.ranking;
-    // The bare file index answers a shared id with the ranking's winner, the
-    // node a bare-id drill lands on, instead of the first file merged (#2934).
+    // Filed by the path each node sits at in the merged tree (#2934), for the
+    // same reason the path index above is rebuilt here: a named import moves a
+    // node to a path no single file declares. The bare file index answers a
+    // shared id with the ranking's winner, the node a bare-id drill lands on,
+    // instead of the first file merged.
+    krsFile.nodeFileIndexByPath = this.buildNodeFileIndexByPath(krsFile);
     krsFile.nodeFileIndex = bareIdView(krsFile.nodeFileIndexByPath, krsFile.nodePathRanking);
     this.diagnostics.push(...mergedNodePaths.diagnostics);
 
@@ -351,6 +363,7 @@ export class ImportResolver {
       ...parseResult.diagnostics.filter((d) => !MERGED_SPACE_REFERENCE_CODES.has(d.code)),
     );
     fileMap.set(filePath, parseResult.value);
+    this.recordDeclaringFile(parseResult.value, filePath);
 
     for (const nodeImport of parseResult.value.nodeImports) {
       if (nodeImport.path === "") continue;
@@ -461,37 +474,6 @@ export class ImportResolver {
     // and it carried an entry only from this site (the file's own parse index)
     // and from `mergeWildcardResolved` — never from `mergeNamedImport`, which is
     // why a named-imported node was in the tree and absent from the index.
-    // Record the definition file of every node this file declares, keyed by the
-    // node's full path so two same-id nodes keep their own files (#2934). The
-    // bare `nodeFileIndex` is derived from this once, in `resolve()`, after the
-    // merged model has its `nodePathRanking`. First wins per path: a system
-    // reopened in several files records the file that declared it first.
-    const indexAt = (path: readonly string[]): void => {
-      const key = nodePathRefId(path);
-      if (!mergedFile.nodeFileIndexByPath.has(key)) {
-        mergedFile.nodeFileIndexByPath.set(key, filePath);
-      }
-    };
-    const indexNode = (node: KrsNode, prefix: readonly string[]): void => {
-      const path = [...prefix, node.id];
-      indexAt(path);
-      for (const child of node.children) {
-        indexNode(child, path);
-      }
-    };
-    for (const system of file.systems) {
-      indexAt([system.id]);
-      for (const child of system.children) {
-        indexNode(child, [system.id]);
-      }
-    }
-    for (const service of file.services) {
-      indexAt([service.id]);
-    }
-    for (const client of file.clients ?? []) {
-      indexAt([client.id]);
-    }
-
     // import を処理
     // service-outside-system 警告は同じファイルに対して 1 回だけ出す（DAG 経由でも重複させない）
     const warnedServiceOutsideSystem = new Set<string>();
@@ -637,11 +619,6 @@ export class ImportResolver {
     // ownerIndex deliberately not unioned (#2548), and `nodePathIndex` not
     // since #2596 — see the comment in `resolveKrsFromMap` where the file's own
     // index used to be unioned; `resolve()` rebuilds both from the merged model.
-    for (const [key, filePath] of resolved.nodeFileIndexByPath) {
-      if (!mergedFile.nodeFileIndexByPath.has(key)) {
-        mergedFile.nodeFileIndexByPath.set(key, filePath);
-      }
-    }
     for (const styleImport of resolved.styleImports) {
       if (!mergedFile.styleImports.includes(styleImport)) {
         mergedFile.styleImports.push(styleImport);
@@ -946,11 +923,6 @@ export class ImportResolver {
     }
 
     mergedFile.styleImports.push(...importedFile.styleImports);
-    for (const [key, filePath] of importedFile.nodeFileIndexByPath) {
-      if (!mergedFile.nodeFileIndexByPath.has(key)) {
-        mergedFile.nodeFileIndexByPath.set(key, filePath);
-      }
-    }
   }
 
   /**
@@ -996,11 +968,14 @@ export class ImportResolver {
           if (stubIndex >= 0) {
             // 1. スタブあり: タグ・アノテーションを保持して定義で補完する
             const stub = system.children[stubIndex] as ServiceNode;
-            system.children[stubIndex] = {
+            const completed = {
               ...service,
               tags: stub.tags.length > 0 ? stub.tags : service.tags,
               annotations: stub.annotations.length > 0 ? stub.annotations : service.annotations,
             };
+            // Filed where the body is defined, not where the stub named it.
+            this.inheritDeclaringFile(completed, service);
+            system.children[stubIndex] = completed;
             mergedIntoSystem = true;
           } else if (system.edges.some((e) => e.from === id || e.to === id)) {
             // 2. スタブなし・edges で参照あり: child として追加する
@@ -1243,7 +1218,47 @@ export class ImportResolver {
   private chainStub(source: KrsNode): KrsNode {
     const stub = { ...source, children: [], edges: [] } as KrsNode;
     this.chainOriginsOf(stub).add(source);
+    this.inheritDeclaringFile(stub, source);
     return stub;
+  }
+
+  /** A copy of `source` stands for the same declaration, so it is filed with it. */
+  private inheritDeclaringFile(copy: KrsNode, source: KrsNode): void {
+    const file = this.declaringFile.get(source);
+    if (file !== undefined) this.declaringFile.set(copy, file);
+  }
+
+  /** Record `filePath` as the declaring file of every node `file` parsed into. */
+  private recordDeclaringFile(file: KrsFile, filePath: string): void {
+    const walk = (node: KrsNode): void => {
+      this.declaringFile.set(node, filePath);
+      for (const child of node.children) walk(child);
+    };
+    for (const roots of this.topLevelHomes(file).values()) {
+      for (const root of roots) walk(root);
+    }
+  }
+
+  /**
+   * Each node's declaring file, keyed by the full path it sits at in the merged
+   * tree (`nodePathRefId`). Covers what the index always has: every node under
+   * a system, and the top-level services and clients themselves. First wins per
+   * path; a node mounted into two systems is filed under both paths.
+   */
+  private buildNodeFileIndexByPath(merged: KrsFile): Map<string, string> {
+    const index = new Map<string, string>();
+    const file = (path: readonly string[], node: KrsNode): void => {
+      const declared = this.declaringFile.get(node);
+      const key = nodePathRefId(path);
+      if (declared !== undefined && !index.has(key)) index.set(key, declared);
+    };
+    const walk = (node: KrsNode, path: readonly string[]): void => {
+      file(path, node);
+      for (const child of node.children) walk(child, [...path, child.id]);
+    };
+    for (const system of merged.systems) walk(system, [system.id]);
+    for (const node of [...merged.services, ...merged.clients]) file([node.id], node);
+    return index;
   }
 
   private chainOriginsOf(node: KrsNode): Set<KrsNode> {

@@ -528,6 +528,26 @@ system ${second} { service Api { description "${second}" } }`).nodeMetadata.get(
     },
   );
 
+  it.each([
+    ["a stub it completes", "service Payments\n  Api -> Payments"],
+    ["the system's edges", "Api -> Payments"],
+  ])("files a named-imported node at the path it is mounted at, via %s", async (_, body) => {
+    // The import moves `Payments` under `Shop`, a path no single file spells:
+    // the index is derived on the merged tree, so the mounted node and its
+    // children are filed where they are defined, not where they were named.
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/payments.krs", "service Payments { domain Billing {} }");
+    await fs.writeFile(
+      "/index.krs",
+      `import { Payments } from "./payments.krs"\nsystem Shop {\n  service Api {}\n  ${body}\n}`,
+    );
+    const { krsFile } = await new ImportResolver(fs).resolve("/index.krs");
+    expect(krsFile.nodeFileIndexByPath.get("Shop.Payments")).toBe("/payments.krs");
+    expect(krsFile.nodeFileIndexByPath.get("Shop.Payments.Billing")).toBe("/payments.krs");
+    expect(krsFile.nodeFileIndexByPath.get("Shop.Api")).toBe("/index.krs");
+    expect(krsFile.nodeFileIndex.get("Payments")).toBe("/payments.krs");
+  });
+
   it("gives each system's Api its own draw.io cell, with its own system's edge", () => {
     const xml = buildDrawio(Parser.parse(MEASURED("shop-first")).value, { view: "system" });
     const ids = [...xml.matchAll(/<mxCell id="(system-[^"]*)"/g)].map((m) => m[1]);
