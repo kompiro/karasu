@@ -5,7 +5,7 @@
 - **関連**:
   - 引き金 Issue: [#3137](https://github.com/kompiro/karasu/issues/3137)
   - 関連 ADR: [ADR-1320](../adr/1320-license-compliance-automation.md)（notices の自動生成。本件はその前提「core は npm 依存ゼロ」が崩れたことへの対応）、[ADR-3017](../adr/3017-serve-app-shipping.md)（CLI に同梱した app の notices。「決めずに残したこと」で本件を後続に回した）
-  - 関連 TPL: [TPL-1681](../test-perspectives/TPL-1681-publishable-tarball-completeness.md)（tarball の中身で評価する）。本件の観点は TPL-1681 に無いので、実装 PR で新規 TPL を起こす
+  - 関連 TPL: [TPL-3137](../test-perspectives/TPL-3137-bundled-notices-cover-workspace-deps.md)（本 Design Doc と同じ PR で起こした。notices はバンドルに入る workspace パッケージの依存まで数える）、[TPL-1681](../test-perspectives/TPL-1681-publishable-tarball-completeness.md)（tarball に入るファイル。notices の中身は扱わない）
   - コード: `scripts/ci/generate-third-party-notices.ts`
 
 ## 背景・課題
@@ -108,7 +108,7 @@ build に `--metafile` を足し、出力に寄与した入力ファイルのパ
    - 一時ディレクトリの fixture で辿り方の規則を確かめる（root は devDependencies も辿る、辿った先は devDependencies を辿らない、循環しても止まる）。
    - 実 repo に対して、CLI の集合が core / i18n を含み、root を含まないことを確かめる。
 4. CLI の `pack/serve-from-tarball.test.ts` で、tarball の `THIRD_PARTY_NOTICES.md` に `## smol-toml@` があり `@resvg/resvg-wasm` が無いことを確かめる（CI の `test:pack` で走る）。
-5. TPL: 「バンドルする配布物の notices は、バンドルに入る workspace パッケージの依存まで数える」を新規 TPL として起こす（3-Yes: VS Code と app にも同じ形で出ていた / workspace パッケージが依存を足すたびに再発しうる / TPL-1681 は tarball に入るファイルの観点で、notices の中身は扱っていない）。
+5. TPL: [TPL-3137](../test-perspectives/TPL-3137-bundled-notices-cover-workspace-deps.md) を本 Design Doc と同じ PR で起こした（3-Yes: VS Code と app にも同じ形で出ていた / workspace パッケージが依存を足すたびに再発しうる / TPL-1681 は tarball に入るファイルの観点で、notices の中身は扱っていない）。実装 PR では 3・4 のテストを TPL-3137 の「関連テスト」に反映する。
 6. AT は置かない。確認はすべて 3・4 のテストで機械的に行える。
 7. ADR 昇格: 実装のマージ後、`docs/adr/3137-bundled-workspace-notices.md` として昇格し、本 Design Doc は同 PR で削除する。ADR-1320 の「core は npm 依存ゼロ」の記述は本 ADR が置き換える旨を書く（ADR-1320 は書き換えない）。
 
