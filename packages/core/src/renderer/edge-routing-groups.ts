@@ -388,7 +388,7 @@ export function routeGroupedEdges(
     // nothing separates the stubs, so they are claimed here and the interior
     // candidates of later edges see them (#2611).
     claimed.add(claimedSegmentsOf(pick.path, from, to, bands));
-    occupancy[pick.gutter.side].push(pick.corridor);
+    if (pick.corridor) occupancy[pick.gutter.side].push(pick.corridor);
   }
 }
 
@@ -410,15 +410,19 @@ interface YRange {
 function cheapestSide(
   candidates: { gutter: Gutter; path: Point[] | null }[],
   occupancy: Record<Gutter["side"], YRange[]>,
-): { gutter: Gutter; path: Point[]; corridor: YRange } | null {
-  let best: { gutter: Gutter; path: Point[]; corridor: YRange; cost: number } | null = null;
+): { gutter: Gutter; path: Point[]; corridor: YRange | null } | null {
+  let best: { gutter: Gutter; path: Point[]; corridor: YRange | null; cost: number } | null = null;
   for (const { gutter, path } of candidates) {
     if (!path) continue;
+    // A mixed route whose ends share a channel never reaches the gutter
+    // (#3134, see `joinEnds`): it has no corridor, so it competes on length
+    // alone and occupies no lane there.
     const corridor = corridorOfPath(path);
-    if (!corridor) continue;
-    const lanes = occupancy[gutter.side].filter(
-      (r) => Math.min(r.hi, corridor.hi) - Math.max(r.lo, corridor.lo) > 1e-6,
-    ).length;
+    const lanes = corridor
+      ? occupancy[gutter.side].filter(
+          (r) => Math.min(r.hi, corridor.hi) - Math.max(r.lo, corridor.lo) > 1e-6,
+        ).length
+      : 0;
     const cost = pathLength(path) + 2 * lanes * TRUNK_LANE_GAP;
     if (best === null || cost < best.cost - 1e-9) best = { gutter, path, corridor, cost };
   }
@@ -777,15 +781,39 @@ function planMixedRoute(
 
   const src = mixedEnd(from, gutter, obstacles, nodes, forward, true, claimed, bands);
   const tgt = mixedEnd(to, gutter, obstacles, nodes, forward, false, claimed, bands);
-  const path: Point[] = [
+  const path = joinEnds(src, gutter.x, tgt);
+  return obstacles.polylineClear(path) ? path : null;
+}
+
+/**
+ * The polyline from one end, along the vertical at `x`, to the other end.
+ * Shared by the mixed and corridor routes, so both join their ends the same
+ * way (TPL-219).
+ *
+ * When both ends enter through a channel stub and meet `x` at one y, they
+ * have dropped into the *same* channel (two cards in adjacent rows), and the
+ * vertical between them has no length. It is left out (#3134). Kept, it folded
+ * the channel run in two at `x`: the claim check skips a zero-length segment,
+ * so the pair drawn the other way took the same `x`, and the lane pass then put
+ * each half of each run on its own lane, giving both verticals a length on one
+ * line. Without it the route crosses the channel as one run. Its segments are
+ * a subset of the folded route's, so the obstacle check answers as before.
+ */
+function joinEnds(src: MixedEnd, x: number, tgt: MixedEnd): Point[] {
+  const oneChannel =
+    src.elbows.length > 0 && tgt.elbows.length > 0 && Math.abs(src.cy - tgt.cy) < 1e-6;
+  return [
     src.port,
     ...src.elbows,
-    { x: gutter.x, y: src.cy },
-    { x: gutter.x, y: tgt.cy },
+    ...(oneChannel
+      ? []
+      : [
+          { x, y: src.cy },
+          { x, y: tgt.cy },
+        ]),
     ...tgt.elbows,
     tgt.port,
   ];
-  return obstacles.polylineClear(path) ? path : null;
 }
 
 /** Midpoint between two boxes' centres on the x axis — the yardstick for "nearest corridor". */
@@ -908,14 +936,7 @@ function tryCorridorRoute(
   );
   if (!src || !tgt) return false;
 
-  const path: Point[] = [
-    src.port,
-    ...src.elbows,
-    { x: corridorX, y: src.cy },
-    { x: corridorX, y: tgt.cy },
-    ...tgt.elbows,
-    tgt.port,
-  ];
+  const path = joinEnds(src, corridorX, tgt);
   // Every axis-aligned segment of the route is claimed — verticals as
   // corridors, horizontals as stubs — and a route is rejected when any of
   // its segments would lie collinear on a claimed one. Two edges may share a
