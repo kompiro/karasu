@@ -914,8 +914,9 @@ function renderCrossingMarks(
   const r = round2;
   const strokeOf = (edge: number) => edgeStroke[edge] ?? fallback;
   const parts: string[] = [];
-  // Consecutive hops that share a stroke are one `<path>` with a subpath per hop
-  // (#2956): hops were 43% of a dense diagram's SVG, one element apiece.
+  // Consecutive hops that share an edge and a stroke are one `<path>` with a
+  // subpath per hop (#2956, per edge since #3090): hops were 43% of a dense
+  // diagram's SVG, one element apiece.
   let run: (HopRun & { d: string[] }) | undefined;
   const flushRun = () => {
     if (!run) return;
