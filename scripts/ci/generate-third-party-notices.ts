@@ -16,11 +16,11 @@
 // `workspace:` links, so the generator walks them itself and lists every
 // reached package (#3137, TPL-3137).
 //
-// See ADR-1320 (and ADR-3137 once the design for #3137 is promoted).
+// See ADR-1320 and TPL-3137.
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
-import { basename, join, relative, resolve } from "node:path";
+import { basename, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { PnpmLicensesList } from "./license-allowlist.ts";
 
@@ -96,6 +96,8 @@ function rank(fileName: string): number {
 interface Manifest {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
 }
 
 function readManifest(dir: string): Manifest {
@@ -104,10 +106,11 @@ function readManifest(dir: string): Manifest {
 
 /**
  * The directories of `packageDir` and of every workspace package its bundle
- * carries. The package itself contributes both `dependencies` and
- * `devDependencies` (the CLI bundles core through a devDependency and an
- * esbuild alias); a reached workspace package contributes `dependencies`
- * only, since its own devDependencies never reach the bundle.
+ * carries. The package itself contributes its devDependencies too (the CLI
+ * bundles core through a devDependency and an esbuild alias); a reached
+ * workspace package does not, since its own devDependencies never reach the
+ * bundle. Peer and optional dependencies count everywhere: a bundler resolves
+ * them like any other import.
  */
 export function bundledWorkspaceDirs(packageDir: string): string[] {
   const start = realpathSync(packageDir);
@@ -117,6 +120,8 @@ export function bundledWorkspaceDirs(packageDir: string): string[] {
     const manifest = readManifest(dir);
     const specs = {
       ...(dir === start ? manifest.devDependencies : {}),
+      ...manifest.peerDependencies,
+      ...manifest.optionalDependencies,
       ...manifest.dependencies,
     };
     for (const [name, spec] of Object.entries(specs)) {
@@ -134,15 +139,47 @@ export function bundledWorkspaceDirs(packageDir: string): string[] {
   return [...seen];
 }
 
+/**
+ * `--filter` arguments that select each of `dirs` by path, for a pnpm run
+ * from `cwd`. pnpm reads a filter as a path only when it is relative and
+ * starts with `.` or `..` (an absolute path matches nothing), and with `/`
+ * as the separator on every platform.
+ */
+export function directoryFilters(cwd: string, dirs: readonly string[]): string[] {
+  return dirs.flatMap((dir) => {
+    const path = relative(cwd, dir).split(sep).join("/");
+    const selector =
+      path === "" ? "." : path === ".." || path.startsWith("../") ? path : `./${path}`;
+    return ["--filter", selector];
+  });
+}
+
+/**
+ * The directories in `dirs` that pnpm did not select. pnpm drops a filter
+ * that matches nothing and still exits 0, which would silently drop that
+ * package's dependencies from the notices.
+ */
+export function unselectedDirs(dirs: readonly string[], selected: readonly string[]): string[] {
+  const selectedSet = new Set(selected);
+  return dirs.filter((dir) => !selectedSet.has(dir));
+}
+
 function collectNotices(packageDir: string): DependencyNotice[] {
   // Select by directory, not by name: the private workspace root is also
   // named `karasu`, and `--filter karasu` picks up its dependencies too.
-  // pnpm matches relative paths only, so run it from the package directory.
   const cwd = realpathSync(packageDir);
-  const filters = bundledWorkspaceDirs(cwd).flatMap((dir) => {
-    const path = relative(cwd, dir);
-    return ["--filter", path === "" ? "." : path.startsWith("..") ? path : `./${path}`];
-  });
+  const dirs = bundledWorkspaceDirs(cwd);
+  const filters = directoryFilters(cwd, dirs);
+  const projects = JSON.parse(
+    execFileSync("pnpm", [...filters, "ls", "--depth", "-1", "--json"], { cwd, encoding: "utf8" }),
+  ) as { path: string }[];
+  const missed = unselectedDirs(
+    dirs,
+    projects.map((project) => realpathSync(project.path)),
+  );
+  if (missed.length > 0) {
+    throw new Error(`pnpm selected no workspace project at ${missed.join(", ")}.`);
+  }
   let stdout: string;
   try {
     stdout = execFileSync("pnpm", [...filters, "licenses", "list", "--prod", "--json"], {

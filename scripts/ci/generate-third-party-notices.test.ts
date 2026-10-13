@@ -4,9 +4,11 @@ import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   bundledWorkspaceDirs,
+  directoryFilters,
   readLicenseFile,
   readUpstreamNoticesFile,
   renderNotices,
+  unselectedDirs,
 } from "./generate-third-party-notices.ts";
 
 describe("readLicenseFile", () => {
@@ -84,14 +86,18 @@ describe("bundledWorkspaceDirs (#3137, TPL-3137)", () => {
   let root: string;
 
   /** A workspace package at `root/<name>`, linked into the packages that depend on it. */
-  function writePackage(
-    name: string,
-    manifest: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> },
-  ): void {
+  type Deps = Record<string, string>;
+  type Manifest = Partial<
+    Record<"dependencies" | "devDependencies" | "peerDependencies" | "optionalDependencies", Deps>
+  >;
+
+  /** A workspace package at `root/<name>`, linked into the packages that depend on it. */
+  function writePackage(name: string, manifest: Manifest): void {
     const dir = join(root, name);
     mkdirSync(join(dir, "node_modules"), { recursive: true });
     writeFileSync(join(dir, "package.json"), JSON.stringify({ name, ...manifest }));
-    const workspaceDeps = Object.entries({ ...manifest.dependencies, ...manifest.devDependencies })
+    const workspaceDeps = Object.values(manifest)
+      .flatMap((deps) => Object.entries(deps))
       .filter(([, spec]) => spec.startsWith("workspace:"))
       .map(([dep]) => dep);
     for (const dep of workspaceDeps) {
@@ -131,6 +137,19 @@ describe("bundledWorkspaceDirs (#3137, TPL-3137)", () => {
     );
   });
 
+  it("follows peer and optional dependencies, which a bundler resolves too", () => {
+    writePackage("vscode", { dependencies: { lsp: "workspace:*" } });
+    writePackage("lsp", {
+      peerDependencies: { core: "workspace:*" },
+      optionalDependencies: { i18n: "workspace:*" },
+    });
+    writePackage("core", {});
+    writePackage("i18n", {});
+    expect(bundledWorkspaceDirs(join(root, "vscode")).sort()).toEqual(
+      [join(root, "vscode"), join(root, "lsp"), join(root, "core"), join(root, "i18n")].sort(),
+    );
+  });
+
   it("stops at a cycle", () => {
     writePackage("app", { dependencies: { core: "workspace:*" } });
     writePackage("core", { dependencies: { i18n: "workspace:*" } });
@@ -155,6 +174,35 @@ describe("bundledWorkspaceDirs (#3137, TPL-3137)", () => {
     expect(dirs).toContain(realpathSync(join(packages, "core")));
     expect(dirs).toContain(realpathSync(join(packages, "i18n")));
     expect(dirs).not.toContain(realpathSync(resolve(packages, "..")));
+  });
+});
+
+describe("directoryFilters (#3137)", () => {
+  it("selects each directory by a relative path pnpm reads as a path", () => {
+    const cwd = join("/w", "packages", "cli");
+    const dirs = [
+      cwd,
+      join("/w", "packages", "core"),
+      join(cwd, "vendor", "x"),
+      join(cwd, "..foo"),
+    ];
+    expect(directoryFilters(cwd, dirs)).toEqual([
+      "--filter",
+      ".",
+      "--filter",
+      "../core",
+      "--filter",
+      "./vendor/x",
+      "--filter",
+      "./..foo",
+    ]);
+  });
+});
+
+describe("unselectedDirs (#3137)", () => {
+  it("reports the directories pnpm did not select", () => {
+    expect(unselectedDirs(["/w/cli", "/w/core"], ["/w/cli"])).toEqual(["/w/core"]);
+    expect(unselectedDirs(["/w/cli"], ["/w/cli", "/w/core"])).toEqual([]);
   });
 });
 
