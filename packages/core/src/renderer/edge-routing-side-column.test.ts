@@ -115,13 +115,15 @@ describe("last-resort corridor beside a side column (#3133)", () => {
   });
 
   it("measures the channel from the cards under the run, not from the side column", () => {
-    // The corner card's neighbour is taller, and a column card starts just
-    // below the corner card. Measured from every card, the channel falls
-    // between that column card and the corner card's bottom — inside the
-    // neighbour, so the stub's run crosses it. Measured from the cards the
-    // run passes over, it falls between the row and the next one.
-    const { cards, gateway } = canvas(-18, [0, 140, 260, 380, 500], {
-      G01: 90,
+    // The corner card's neighbour is taller, reaching past the midpoint
+    // between its row and the next, and a column card starts just below the
+    // corner card. Measured from every card, the channel falls between that
+    // column card and the corner card's bottom; measured from the corner card
+    // alone, at the midpoint. Both are inside the neighbour, so the stub's run
+    // crosses it. Measured from the whole row under the run, it falls between
+    // the neighbour's bottom and the next row.
+    const { cards, gateway, gap } = canvas(-18, [0, 140, 260, 380, 500], {
+      G01: 120,
     });
     const edge = fromCorner(cards, gateway);
 
@@ -130,6 +132,7 @@ describe("last-resort corridor beside a side column (#3133)", () => {
     const neighbour = cards.find((c) => c.id === "G01")!;
     const runs = path.slice(1).flatMap((p, i) => (Math.abs(p.y - path[i].y) < 1e-6 ? [p.y] : []));
     expect(runs[0]).toBeGreaterThan(neighbour.y + neighbour.height);
+    expect(verticalXs(path).some((x) => x > gap.left && x < gap.right)).toBe(true);
   });
 
   it("is not offered on a grouped canvas", () => {

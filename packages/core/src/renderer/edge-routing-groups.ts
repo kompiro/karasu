@@ -502,25 +502,50 @@ function cmpEdgeGeometry(
  * `span`, only the cards reaching into it count (#3133): the run along the
  * channel crosses nothing outside it, and a side column's cards, spaced on
  * their own steps, would otherwise put the channel inside the box's own row.
+ * Within the span the row is also measured whole, so a taller card beside the
+ * box pushes the channel past its own edge; without a span the side column
+ * would stretch the row over the next one, as ADR-3026 found.
  */
 function channelBelow(box: EdgeBox, nodes: LayoutNode[], span?: XSpan): number {
-  let nearestTop = Infinity;
-  for (const n of nodes) {
-    if (n.id === box.id || outsideSpan(n, span)) continue;
-    if (n.y >= box.y + box.height - 1e-6) nearestTop = Math.min(nearestTop, n.y);
+  const inSpan = nodes.filter((n) => n.id !== box.id && !outsideSpan(n, span));
+  let rowBottom = box.y + box.height;
+  if (span) {
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const n of inSpan) {
+        if (n.y < rowBottom - 1e-6 && n.y + n.height > rowBottom + 1e-6) {
+          rowBottom = n.y + n.height;
+          grew = true;
+        }
+      }
+    }
   }
-  return nearestTop === Infinity
-    ? box.y + box.height + GUTTER_GAP
-    : (box.y + box.height + nearestTop) / 2;
+  let nearestTop = Infinity;
+  for (const n of inSpan) {
+    if (n.y >= rowBottom - 1e-6) nearestTop = Math.min(nearestTop, n.y);
+  }
+  return nearestTop === Infinity ? rowBottom + GUTTER_GAP : (rowBottom + nearestTop) / 2;
 }
 function channelAbove(box: EdgeBox, nodes: LayoutNode[], span?: XSpan): number {
-  let nearestBottom = -Infinity;
-  for (const n of nodes) {
-    if (n.id === box.id || outsideSpan(n, span)) continue;
-    const b = n.y + n.height;
-    if (b <= box.y + 1e-6) nearestBottom = Math.max(nearestBottom, b);
+  const inSpan = nodes.filter((n) => n.id !== box.id && !outsideSpan(n, span));
+  let rowTop = box.y;
+  if (span) {
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const n of inSpan) {
+        if (n.y + n.height > rowTop + 1e-6 && n.y < rowTop - 1e-6) {
+          rowTop = n.y;
+          grew = true;
+        }
+      }
+    }
   }
-  return nearestBottom === -Infinity ? box.y - GUTTER_GAP : (nearestBottom + box.y) / 2;
+  let nearestBottom = -Infinity;
+  for (const n of inSpan) {
+    const b = n.y + n.height;
+    if (b <= rowTop + 1e-6) nearestBottom = Math.max(nearestBottom, b);
+  }
+  return nearestBottom === -Infinity ? rowTop - GUTTER_GAP : (nearestBottom + rowTop) / 2;
 }
 
 interface XSpan {
