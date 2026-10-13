@@ -65,7 +65,7 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
     // trunk head — a plain L-corner — so it gets NO junction dot. `edge` is the
     // joining stub's index (b = 1) so the dot is coloured like that edge.
     // The count is what the spine carries on from here: both stubs, in this case.
-    expect(junctions).toEqual([{ x: 50, y: 80, edge: 1, count: 2 }]);
+    expect(junctions).toEqual([{ x: 50, y: 80, edge: 1, count: 2, edges: [0, 1] }]);
   });
 
   it("does not dot the trunk head (topmost stub is an L-corner, not a merge)", () => {
@@ -84,8 +84,8 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
     // Counting down the spine: below y=70 it carries A and B, below y=120 all
     // three. The number and the band's width always say the same thing.
     expect(junctions).toEqual([
-      { x: 60, y: 70, edge: 1, count: 2 },
-      { x: 60, y: 120, edge: 2, count: 3 },
+      { x: 60, y: 70, edge: 1, count: 2, edges: [0, 1] },
+      { x: 60, y: 120, edge: 2, count: 3, edges: [0, 1, 2] },
     ]);
   });
 
@@ -108,7 +108,7 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
     );
     const { junctions } = computeCrossingMarks([a, b]);
     // Both stubs share the elbow, so one mark stands for the pair.
-    expect(junctions).toEqual([{ x: 50, y: 50, edge: 0, count: 2 }]);
+    expect(junctions).toEqual([{ x: 50, y: 50, edge: 0, count: 2, edges: [0, 1] }]);
   });
 
   it("keeps a count mark on its own spine when there is nowhere to slide", () => {
@@ -569,10 +569,10 @@ function referenceCrossingMarks(edges: LayoutEdge[]): {
         // (elbow to shared end) contains a point just past this elbow, on the
         // shared end's side.
         const probe = y + (endY > y ? EPS * 10 : -EPS * 10);
-        const count = entries.filter(
+        const carried = entries.filter(
           (e) => Math.min(e.y, endY) < probe && probe < Math.max(e.y, endY),
-        ).length;
-        junctions.push({ x, y, edge, count });
+        );
+        junctions.push({ x, y, edge, count: carried.length, edges: carried.map((e) => e.edge) });
       }
     }
   }
@@ -655,8 +655,8 @@ describe("computeCrossingMarks — fan-out trunks and arms (#2885)", () => {
     // three reach y=70, two reach y=120. The branch at y=200 is where the spine
     // ends, a plain corner.
     expect(junctions).toEqual([
-      { x: 60, y: 70, edge: 0, count: 3 },
-      { x: 60, y: 120, edge: 1, count: 2 },
+      { x: 60, y: 70, edge: 0, count: 3, edges: [0, 1, 2] },
+      { x: 60, y: 120, edge: 1, count: 2, edges: [1, 2] },
     ]);
   });
 
@@ -673,6 +673,7 @@ describe("computeCrossingMarks — fan-out trunks and arms (#2885)", () => {
         ],
         count: 3,
         edge: 0,
+        edges: [0, 1, 2],
       },
       {
         points: [
@@ -681,6 +682,7 @@ describe("computeCrossingMarks — fan-out trunks and arms (#2885)", () => {
         ],
         count: 2,
         edge: 1,
+        edges: [1, 2],
       },
     ]);
   });
@@ -701,8 +703,8 @@ describe("computeCrossingMarks — fan-out trunks and arms (#2885)", () => {
       );
     const { junctions } = computeCrossingMarks([up(100, "A"), up(150, "B"), up(200, "C")]);
     expect(junctions).toEqual([
-      { x: 60, y: 100, edge: 0, count: 3 },
-      { x: 60, y: 150, edge: 1, count: 2 },
+      { x: 60, y: 100, edge: 0, count: 3, edges: [0, 1, 2] },
+      { x: 60, y: 150, edge: 1, count: 2, edges: [1, 2] },
     ]);
   });
 
@@ -723,7 +725,7 @@ describe("computeCrossingMarks — fan-out trunks and arms (#2885)", () => {
     const { junctions, bands } = computeCrossingMarks([mid(20, "A"), mid(60, "B"), mid(180, "C")]);
     // Up: y=60 splits off with y=20 still beyond it. Down: y=180 is alone, so
     // it is that arm's head and no split.
-    expect(junctions).toEqual([{ x: 60, y: 60, edge: 1, count: 2 }]);
+    expect(junctions).toEqual([{ x: 60, y: 60, edge: 1, count: 2, edges: [0, 1] }]);
     expect(bands).toEqual([
       {
         points: [
@@ -732,6 +734,7 @@ describe("computeCrossingMarks — fan-out trunks and arms (#2885)", () => {
         ],
         count: 3,
         edge: 0,
+        edges: [0, 1, 2],
       },
       {
         points: [
@@ -740,6 +743,7 @@ describe("computeCrossingMarks — fan-out trunks and arms (#2885)", () => {
         ],
         count: 2,
         edge: 0,
+        edges: [0, 1],
       },
     ]);
   });

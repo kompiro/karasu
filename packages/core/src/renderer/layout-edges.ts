@@ -17,7 +17,7 @@ import {
 import { framePieces } from "./frame-geometry.js";
 import { ObstacleIndex, type ObstacleQuery } from "./obstacle-index.js";
 import { distributePorts } from "./edge-routing-ports.js";
-import { distributeChannelLanes } from "./edge-routing-lanes.js";
+import { channelLimitsOf, distributeChannelLanes } from "./edge-routing-lanes.js";
 import { BBOX_PORT_FRAME, seatPortsOnOutline, type PortResolver } from "./port-frame.js";
 import { degradedTabsZone } from "./degraded-tabs.js";
 import { getShapePortFrame } from "../shapes/shape-registry.js";
@@ -397,9 +397,17 @@ export function runRoutingChain(
      * multi-system path passes none today (#2515).
      */
     ports: PortResolver | undefined;
+    /**
+     * The drill-down frame that encloses every card (#3132). Its title strip
+     * and bottom border bound the channels above the first row and below the
+     * last, so their lanes stay inside it. `undefined` where no single frame
+     * encloses the canvas.
+     */
+    enclosure: Rect | undefined;
   },
 ): void {
   const { expandedFrames, ports } = opts;
+  const limits = channelLimitsOf(opts.enclosure);
   const grouped = opts.groupBands !== null;
   // Index the canvas's obstacles once for the whole chain (#2790).
   //
@@ -429,7 +437,7 @@ export function runRoutingChain(
   // Candidate 2: side gutter, then mixed channel, for whatever is still
   // blocked. `groupBackward` dashing stays band-gated — "against the flow" is
   // only defined where there is a band stack.
-  routeGroupedEdges(nodes, edges, groupFrames, obstacleIndex, expandedFrames, grouped);
+  routeGroupedEdges(nodes, edges, groupFrames, obstacleIndex, expandedFrames, grouped, limits);
   // Merge edges sharing an infra/external target onto one trunk lane per
   // target so distinct targets' spines no longer overlap (#1859 P2c-B).
   // Grouped only: trunk lanes live in the right gutter, so on an ungrouped
@@ -459,7 +467,7 @@ export function runRoutingChain(
   // the lanes need is reserved by `layout()`'s second placement pass. Frames
   // bound a channel the same way cards do, so a lane never lands in the
   // padding of a frame the edge is not in.
-  distributeChannelLanes(nodes, edges, groupFrames.flatMap(framePieces));
+  distributeChannelLanes(nodes, edges, groupFrames.flatMap(framePieces), limits);
   // Seat every endpoint on the shape's drawn outline, now that the chain has
   // settled which route each edge takes (#2422). The candidate passes
   // re-anchor what they reroute, so this is where the guarantee is finally

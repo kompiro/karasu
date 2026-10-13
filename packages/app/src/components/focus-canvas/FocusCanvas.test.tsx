@@ -127,6 +127,61 @@ describe("the focus canvas in the preview", () => {
     expect(root.querySelector<HTMLElement>(".node-focus-pill")!.hidden).toBe(true);
   });
 
+  // The marks sit outside the edge groups, so the rule has to name them (#3090).
+  const injected = () =>
+    [...document.head.querySelectorAll("style")].map((s) => s.textContent).join("");
+  /** Whether an injected rule selects `mark`, by the selector of each rule. */
+  const dimmedBy = () => {
+    const selectors = [...injected().matchAll(/([^{}]+)\{[^}]*\}/g)].map((m) => m[1]);
+    return (mark: Element) => selectors.some((sel) => mark.matches(sel));
+  };
+  const marks = (root: HTMLElement) => [
+    ...root.querySelectorAll(".preview-container svg [data-edges]"),
+  ];
+  const edgesOfMark = (mark: Element) => mark.getAttribute("data-edges")!.split(" ");
+
+  it("dims the crossing marks of the edges a hovered card does not touch, and keeps its own", () => {
+    const { container: root } = render(pane());
+    fireEvent.mouseOver(
+      root.querySelector(`.preview-container svg [data-node-id="Identity"] rect`)!,
+    );
+    const own = new Set(
+      [
+        ...root.querySelectorAll(
+          '.preview-container svg .krs-edge:is([data-edge-from="Identity"],[data-edge-to="Identity"])[data-edge-index]',
+        ),
+      ].map((g) => g.getAttribute("data-edge-index")!),
+    );
+    expect(own.size).toBeGreaterThan(0);
+    const dimmed = dimmedBy();
+    const all = marks(root);
+    const kept = all.filter((m) => edgesOfMark(m).some((e) => own.has(e)));
+    expect(kept.length).toBeGreaterThan(0);
+    expect(kept.length).toBeLessThan(all.length);
+    for (const mark of all) expect(dimmed(mark)).toBe(!kept.includes(mark));
+    expect(injected()).toContain("[data-edges]");
+    expect(injected()).toMatch(/\[data-edges\][^{]*\{opacity:0\.12/);
+  });
+
+  it("dims the other edges' crossing marks while an edge is hovered, and keeps its own", () => {
+    const { container: root } = render(pane());
+    const group = root.querySelector(
+      `.preview-container svg .krs-edge.krs-edge--interactive[data-edge-index]`,
+    )!;
+    const index = group.getAttribute("data-edge-index")!;
+    fireEvent.mouseOver(group.querySelector("path")!);
+    const dimmed = dimmedBy();
+    const all = marks(root);
+    const own = all.filter((m) => edgesOfMark(m).includes(index));
+    expect(own.length).toBeGreaterThan(0);
+    for (const mark of all) expect(dimmed(mark)).toBe(!own.includes(mark));
+    expect(injected()).toMatch(/\{opacity:0\.25/);
+    expect(root.querySelector<HTMLElement>(".node-focus-pill")!.hidden).toBe(true);
+    // Off the edge, onto the bare canvas: everything comes back.
+    fireEvent.mouseOver(container(root).querySelector("svg")!);
+    expect(injected()).toBe("");
+  });
+
   it("walks the graph: a card moves to that node, a lane to that pair, Back returns", async () => {
     const { container: root } = render(pane());
     await openNode(root, "Identity");

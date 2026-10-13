@@ -89,6 +89,7 @@ function routePair(
     expandedFrames: undefined,
     groupBands: null,
     ports: undefined,
+    enclosure: undefined,
   });
   return edges;
 }

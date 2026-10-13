@@ -392,10 +392,12 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2906](2906-icon-mode-removal-release-undecided.md) — icon display mode は非推奨のまま据え置き、削除する major はまだ決めない
 - [ADR-2917](2917-multi-system-root-same-id-nodes.md) — 複数 system のルートビューは同名ノードを両方描き、要素の id は bare id のまま、着地は path で決める
 - [ADR-2934](2934-same-id-per-node-maps.md) — 同名ノードの per-node Map は path をキーにし、bare id の見え方は勝者規則 1 つで決める
+- [ADR-2956](2956-hop-path-grouping.md) — 交差ホップを同じ stroke の連続区間ごとに 1 本の `<path>` にまとめる
 - [ADR-2958](2958-gutter-lane-bundling.md) — ガターを通るエッジを、共有する端ごとに 1 レーンへ束ねる
 - [ADR-3022](3022-edge-label-disclosure.md) — edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は focus canvas で読む
 - [ADR-3026](3026-same-row-channel-route.md) — 同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す
 - [ADR-3088](3088-channel-lane-order-by-turn.md) — 行間チャネルのレーンを、run がつながる縦線の向きで並べる
+- [ADR-3090](3090-crossing-marks-follow-edge-focus.md) — 交差マーク（ホップ・junction chip・trunk band）をエッジの減光に追随させる
 - [ADR-3133](3133-side-column-last-resort-corridor.md) — 側面列の端点へのエッジは、どの候補も成立しないとき、端点の間の空き列で通す
 - [ADR-3134](3134-same-channel-fold.md) — 同じ行間チャネルに降りる corridor / mixed route を、チャネルの中で 1 本の run につなぐ
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式

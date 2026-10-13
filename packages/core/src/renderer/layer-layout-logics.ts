@@ -252,8 +252,9 @@ interface PlaceNodesInput {
    * capacity the inter-row channel there was measured to need beyond the
    * default gap. Ordinals count every row this function lays down, sub-rows
    * included, in placement order — the same count `rows` reports back — so
-   * a caller can key a reservation on what it measured. Absent, or 0 for a
-   * row, leaves the default gaps, and the placement is byte-identical.
+   * a caller can key a reservation on what it measured. The ordinal one past
+   * the last row is the room below it (#3132). Absent, or 0 for a row, leaves
+   * the default gaps, and the placement is byte-identical.
    */
   extraGapBeforeRow?: ReadonlyMap<number, number>;
   /**
@@ -404,6 +405,9 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
     }
     layerBaselineY = layerBottom + layerGap;
   }
+  // A channel reserved below the last row (#3132) opens the gap between that
+  // row and the frame drawn around the placement.
+  childMaxHeight += extraGapBeforeRow?.get(placedRows.length) ?? 0;
 
   return { placements, childMaxWidth, childMaxHeight, widthBound, rows: placedRows };
 }

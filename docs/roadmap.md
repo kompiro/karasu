@@ -109,7 +109,7 @@ funnel→retained の背骨。notation / cookbook はこの retained record を�
 
 | 柱 | Epic parent / label | 中身 | 着手 intent |
 | --- | --- | --- | --- |
-| **karasu-nest pivot** | [#1990](https://github.com/kompiro/karasu/issues/1990) ・`epic: karasu-nest` | GitHub App でリポジトリを読み、サーバ側 AI reverse で `.krs` を返す/描くホスト型サービス（[ADR-1990](adr/1990-karasu-nest-pivot-server-reverse.md)）。permalink との境界は [ADR-2249](adr/2249-permalink-generation-seam.md) で確定 | [ADR-1990](adr/1990-karasu-nest-pivot-server-reverse.md) が宣言した実装スライスは scaffold から PR 還元・data-trust まで全消化（受付と完了通知の決定 = [ADR-2262](adr/2262-nest-intake-and-completion.md)）。現在地は動かして出てきた運用の問い — quota を誰に効かせるか [#2382](https://github.com/kompiro/karasu/issues/2382)、PR 還元ラチェットの検証 [#2228](https://github.com/kompiro/karasu/issues/2228) |
+| **karasu-nest public** | [#3171](https://github.com/kompiro/karasu/issues/3171) ・`epic: karasu-nest-public` | karasu-nest のギャラリーを運用者以外に開く。開く前提条件は [`docs/policy/nest-data-handling.md`](policy/nest-data-handling.md) の未了節が空になること | 律速はコードではなく法務レビュー（[#2691](https://github.com/kompiro/karasu/issues/2691)）。入口となる `/` の公開一覧（[#3016](https://github.com/kompiro/karasu/issues/3016)）は先に作れるが、運用者以外への告知は #2691 の後 |
 
 `epic: comprehension` / `epic: boundary` / `epic: facets` は宣言していた子がすべて着地した
 ため柱から降ろした（Epic close は本節を prune した PR — [ADR-2218](adr/2218-roadmap-pruning-policy.md)）。
@@ -191,7 +191,7 @@ gate で評価する。
 
 ### sequencing
 
-1. **karasu-nest pivot**（[#1990](https://github.com/kompiro/karasu/issues/1990)）が現在の主線。宣言していた実装スライスは全消化し、主線は**運用の問い**へ移った — quota の適用範囲（[#2382](https://github.com/kompiro/karasu/issues/2382)）とラチェットの検証（[#2228](https://github.com/kompiro/karasu/issues/2228)）。permalink layer（retained の背骨）は完成形に到達しており、律速ではない。
+1. **karasu-nest public**（[#3171](https://github.com/kompiro/karasu/issues/3171)）: ギャラリーを運用者以外に開く。律速はコードではなく法務レビュー（[#2691](https://github.com/kompiro/karasu/issues/2691)）。permalink layer（retained の背骨）は完成形に到達しており、律速ではない。
 2. **AI authoring** は経路を決定済み（エージェントセッション + karasu CLI skill、Chat は凍結）で、実装は [#2901](https://github.com/kompiro/karasu/issues/2901)。**interop** は評価可能。
 3. **非ゴール圧力 log** は随時追記（安価）。
 
