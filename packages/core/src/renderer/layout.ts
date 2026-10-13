@@ -213,9 +213,16 @@ function channelReservations(
     // border is the floor and the gap is the one after the last row.
     let rowBelow = rowTop.findIndex((top) => Number.isFinite(top) && top >= channel.lower - 0.5);
     if (rowBelow === -1 && channel.lower === limits.floor) rowBelow = rows.length;
-    // Above the first row only the frame's title strip makes a gap to grow:
-    // anything else up there (a ghost card) is not moved by the placement.
-    if (rowBelow < 0 || (rowBelow === 0 && channel.upper !== limits.ceiling)) continue;
+    // Above the first row only the gap between the frame's title strip and the
+    // row itself grows. A ghost card up there, or beside the frame (the band
+    // ignores x), is placed from the frame and does not move with the row.
+    if (rowBelow < 0) continue;
+    if (
+      rowBelow === 0 &&
+      (channel.upper !== limits.ceiling || Math.abs(rowTop[0] - channel.lower) > 0.5)
+    ) {
+      continue;
+    }
     out.set(rowBelow, Math.max(out.get(rowBelow) ?? 0, extra));
   }
   return out;
