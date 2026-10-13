@@ -308,21 +308,17 @@ export function routeGroupedEdges(
     // dismissed early.
     const innerTop = Math.min(from.y + from.height, to.y + to.height);
     const innerBottom = Math.max(from.y, to.y);
-    const routedInner = firstInOrder(
-      innerCorridors,
-      MAX_CORRIDOR_TRIES,
-      (a, b) =>
-        Math.abs(a - mid) - Math.abs(b - mid) ||
-        Math.abs(a - toCentre) - Math.abs(b - toCentre) ||
-        a - b,
-    )
+    const nearerCorridor = (a: number, b: number) =>
+      Math.abs(a - mid) - Math.abs(b - mid) ||
+      Math.abs(a - toCentre) - Math.abs(b - toCentre) ||
+      a - b;
+    const corridorMayClear = (x: number) =>
+      !blockersAt.get(x)?.some((b) => b.top < innerBottom - 1e-6 && b.bottom > innerTop + 1e-6);
+    const routedInner = firstInOrder(innerCorridors, MAX_CORRIDOR_TRIES, nearerCorridor)
       // Filtered after the cap, not before it: the cap counts candidates
       // tried, and dismissing the hopeless ones earlier would let further
       // ones in and change which corridor an edge takes.
-      .filter(
-        (x) =>
-          !blockersAt.get(x)?.some((b) => b.top < innerBottom - 1e-6 && b.bottom > innerTop + 1e-6),
-      )
+      .filter(corridorMayClear)
       .some((x) => tryCorridorRoute(edge, from, to, x, obstacles, nodes, limits, claimed, bands));
     if (routedInner) continue;
     // Endpoints in one row (the stretch between their facing edges is empty)
@@ -370,7 +366,38 @@ export function routeGroupedEdges(
         })),
         occupancy,
       );
-    if (!pick) continue;
+    if (!pick) {
+      // Last resort before leaving the edge straight (#3133): every lane of
+      // every column no card stands in between the endpoints. The corridors
+      // above are the few nearest the midpoint, which is enough while a gutter
+      // route catches the rest; here none does. The case is an end in a side
+      // column (ADR-1728): a stack of cards with no channel through it, so
+      // every stub out to a gutter is blocked, while the gap between it and
+      // the grid is a free column — far from the midpoint, and offered above
+      // only as the lanes beside its cards. The column's cards sit on their
+      // own vertical steps, so an end's channel is measured only from the
+      // cards under its run (see `mixedEnd`). Only an edge that would
+      // otherwise cross a card reaches this, so no route already taken moves.
+      if (frames.length === 0 && innerTop < innerBottom) {
+        freeColumnLanes(nodes, innerTop, innerBottom)
+          .sort(nearerCorridor)
+          .some((x) =>
+            tryCorridorRoute(
+              edge,
+              from,
+              to,
+              x,
+              obstacles,
+              nodes,
+              limits,
+              claimed,
+              bands,
+              "under-run",
+            ),
+          );
+      }
+      continue;
+    }
     applyPath(edge, pick.path);
     // A gutter route occupies columns too — its lane out beyond the content,
     // and, for a mixed route, the stub that drops from a card into the
@@ -488,27 +515,80 @@ function cmpEdgeGeometry(
  * lets that endpoint out via a **top/bottom port** instead — the same
  * inter-band channel the ungrouped router uses (ADR-968). These return
  * the clear-band y just below / above a box, from the nearest node in the next
- * row or the enclosing frame's limit, whichever is nearer (#3132): a ghost card
- * placed outside a drill-down frame is not the edge of a channel inside it.
- * With neither they fall back to a `GUTTER_GAP` offset.
+ * row; with no neighbour they fall back to a `GUTTER_GAP` offset. Given a
+ * `span`, only the cards reaching into it count (#3133): the run along the
+ * channel crosses nothing outside it, and a side column's cards, spaced on
+ * their own steps, would otherwise put the channel inside the box's own row.
+ * Within the span the row is also measured whole, so a taller card beside the
+ * box pushes the channel past its own edge; without a span the side column
+ * would stretch the row over the next one, as ADR-3026 found.
+ *
+ * The enclosing frame's limit bounds the channel too, whichever of it and the
+ * nearest card is nearer (#3132): a ghost card placed outside a drill-down
+ * frame is not the edge of a channel inside it.
  */
-function channelBelow(box: EdgeBox, nodes: LayoutNode[], limits: ChannelLimits): number {
-  const bottom = box.y + box.height;
-  let nearestTop = limits.floor >= bottom - 1e-6 ? limits.floor : Infinity;
-  for (const n of nodes) {
-    if (n.id === box.id) continue;
-    if (n.y >= bottom - 1e-6) nearestTop = Math.min(nearestTop, n.y);
+function channelBelow(
+  box: EdgeBox,
+  nodes: LayoutNode[],
+  limits: ChannelLimits,
+  span?: XSpan,
+): number {
+  const inSpan = nodes.filter((n) => n.id !== box.id && !outsideSpan(n, span));
+  let rowBottom = box.y + box.height;
+  if (span) {
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const n of inSpan) {
+        if (n.y < rowBottom - 1e-6 && n.y + n.height > rowBottom + 1e-6) {
+          rowBottom = n.y + n.height;
+          grew = true;
+        }
+      }
+    }
   }
-  return nearestTop === Infinity ? bottom + GUTTER_GAP : (bottom + nearestTop) / 2;
+  let nearestTop = limits.floor >= rowBottom - 1e-6 ? limits.floor : Infinity;
+  for (const n of inSpan) {
+    if (n.y >= rowBottom - 1e-6) nearestTop = Math.min(nearestTop, n.y);
+  }
+  return nearestTop === Infinity ? rowBottom + GUTTER_GAP : (rowBottom + nearestTop) / 2;
 }
-function channelAbove(box: EdgeBox, nodes: LayoutNode[], limits: ChannelLimits): number {
-  let nearestBottom = limits.ceiling <= box.y + 1e-6 ? limits.ceiling : -Infinity;
-  for (const n of nodes) {
-    if (n.id === box.id) continue;
-    const b = n.y + n.height;
-    if (b <= box.y + 1e-6) nearestBottom = Math.max(nearestBottom, b);
+function channelAbove(
+  box: EdgeBox,
+  nodes: LayoutNode[],
+  limits: ChannelLimits,
+  span?: XSpan,
+): number {
+  const inSpan = nodes.filter((n) => n.id !== box.id && !outsideSpan(n, span));
+  let rowTop = box.y;
+  if (span) {
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const n of inSpan) {
+        if (n.y + n.height > rowTop + 1e-6 && n.y < rowTop - 1e-6) {
+          rowTop = n.y;
+          grew = true;
+        }
+      }
+    }
   }
-  return nearestBottom === -Infinity ? box.y - GUTTER_GAP : (nearestBottom + box.y) / 2;
+  let nearestBottom = limits.ceiling <= rowTop + 1e-6 ? limits.ceiling : -Infinity;
+  for (const n of inSpan) {
+    const b = n.y + n.height;
+    if (b <= rowTop + 1e-6) nearestBottom = Math.max(nearestBottom, b);
+  }
+  return nearestBottom === -Infinity ? rowTop - GUTTER_GAP : (nearestBottom + rowTop) / 2;
+}
+
+interface XSpan {
+  left: number;
+  right: number;
+}
+
+/** The cards an end's channel is measured from; see {@link mixedEnd}. */
+type ChannelBasis = "all" | "under-run";
+
+function outsideSpan(n: LayoutNode, span: XSpan | undefined): boolean {
+  return span !== undefined && (n.x >= span.right || n.x + n.width <= span.left);
 }
 
 /**
@@ -540,6 +620,12 @@ function mixedEnd(
   isSource: boolean,
   claimed: ClaimRegister = createClaimRegister(),
   bands: readonly { top: number; bottom: number }[] = [],
+  /**
+   * Which cards bound the channel: all of them, or only those under the run
+   * from the card to the gutter (#3133). Only the last-resort corridor asks
+   * for the latter, so the routes every other candidate takes stay as they are.
+   */
+  channel: ChannelBasis = "all",
 ): MixedEnd {
   const sideX = gutter.side === "right" ? box.x + box.width : box.x;
   const midY = box.y + box.height / 2;
@@ -547,7 +633,16 @@ function mixedEnd(
   if (sideClear) return { port: { x: sideX, y: midY }, elbows: [], cy: midY };
   // Blocked → detour this end through the adjacent inter-row channel.
   const outward = isSource ? forward : !forward; // does this end leave/enter downward?
-  const channelY = outward ? channelBelow(box, nodes, limits) : channelAbove(box, nodes, limits);
+  const span =
+    channel === "under-run"
+      ? {
+          left: Math.min(box.x, gutter.x),
+          right: Math.max(box.x + box.width, gutter.x),
+        }
+      : undefined;
+  const channelY = outward
+    ? channelBelow(box, nodes, limits, span)
+    : channelAbove(box, nodes, limits, span);
   return channelStub(box, outward, channelY, claimed, bands);
 }
 
@@ -808,6 +903,7 @@ function tryCorridorRoute(
   limits: ChannelLimits,
   claimed: ClaimRegister,
   bands: readonly { top: number; bottom: number }[],
+  channel: ChannelBasis = "all",
 ): boolean {
   // Each end reaches the corridor the way a mixed gutter route reaches its
   // gutter (#2611): a side stub at mid-height when that is clear, otherwise a
@@ -834,6 +930,7 @@ function tryCorridorRoute(
     true,
     claimed,
     bands,
+    channel,
   );
   const tgt = corridorEnd(
     to,
@@ -846,6 +943,7 @@ function tryCorridorRoute(
     false,
     claimed,
     bands,
+    channel,
   );
   if (!src || !tgt) return false;
 
@@ -990,16 +1088,51 @@ function buildRowGrid(nodes: LayoutNode[]): RowGrid {
   const half = GUTTER_GAP / 2;
   const lanesByRow = rows.map((row) => {
     const lanes: number[] = [];
-    for (const g of row.gaps) {
-      const n = Math.max(1, Math.floor((g.right - g.left - 2 * half) / TRUNK_LANE_GAP) + 1);
-      const centre = (g.left + g.right) / 2;
-      for (let k = 0; k < n; k++) lanes.push(centre + (k - (n - 1) / 2) * TRUNK_LANE_GAP);
-    }
+    for (const g of row.gaps) lanes.push(...lanesAcross(g.left, g.right));
     for (let gx = row.left - half; gx >= contentLeft + half; gx -= TRUNK_LANE_GAP) lanes.push(gx);
     for (let gx = row.right + half; gx <= contentRight - half; gx += TRUNK_LANE_GAP) lanes.push(gx);
     return lanes.sort((a, b) => a - b);
   });
   return { rows, lanesByRow };
+}
+
+/**
+ * The lanes a gap between two cards offers a vertical: one every
+ * `TRUNK_LANE_GAP`, centred in the gap, and at least one however narrow.
+ * Callers offer only gaps that clear `GUTTER_GAP` on both sides.
+ */
+function lanesAcross(left: number, right: number): number[] {
+  const half = GUTTER_GAP / 2;
+  const n = Math.max(1, Math.floor((right - left - 2 * half) / TRUNK_LANE_GAP) + 1);
+  const centre = (left + right) / 2;
+  return Array.from({ length: n }, (_, k) => centre + (k - (n - 1) / 2) * TRUNK_LANE_GAP);
+}
+
+/**
+ * The lanes of every column no card stands in over the stretch `top..bottom`
+ * (#3133): the x ranges, inside the content, that the cards reaching into the
+ * stretch leave uncovered, each cut into lanes the way a row's gaps are. A
+ * card above or below the stretch does not close a column, so a gap that rows
+ * of different heights never line up on — the one beside a side column — is
+ * one column here, where per-row gaps never find it. Beyond the content is
+ * the gutters' room and is not offered.
+ */
+function freeColumnLanes(nodes: LayoutNode[], top: number, bottom: number): number[] {
+  const real = nodes.filter((n) => !n.ghost);
+  if (real.length === 0) return [];
+  const half = GUTTER_GAP / 2;
+  const contentRight = Math.max(...real.map((n) => n.x + n.width));
+  const spans = real
+    .filter((n) => n.y < bottom - 1e-6 && n.y + n.height > top + 1e-6)
+    .map((n) => ({ left: n.x, right: n.x + n.width }))
+    .sort((a, b) => a.left - b.left);
+  const lanes: number[] = [];
+  let covered = Math.min(...real.map((n) => n.x));
+  for (const s of [...spans, { left: contentRight, right: contentRight }]) {
+    if (s.left - covered >= 2 * half) lanes.push(...lanesAcross(covered, s.left));
+    covered = Math.max(covered, s.right);
+  }
+  return lanes;
 }
 
 /**
@@ -1214,13 +1347,25 @@ function corridorEnd(
   isSource: boolean,
   claimed: ClaimRegister,
   bands: readonly { top: number; bottom: number }[],
+  channel: ChannelBasis,
 ): MixedEnd | null {
   const sideX = corridor.side === "right" ? box.x + box.width : box.x;
   const midY = box.y + box.height / 2;
   const sideClear = !obstacles.segmentCrosses({ x: sideX, y: midY }, { x: corridor.x, y: midY });
   if (sideClear) return { port: { x: sideX, y: midY }, elbows: [], cy: midY };
   if (!forward && !backward) return null;
-  return mixedEnd(box, corridor, obstacles, nodes, limits, forward, isSource, claimed, bands);
+  return mixedEnd(
+    box,
+    corridor,
+    obstacles,
+    nodes,
+    limits,
+    forward,
+    isSource,
+    claimed,
+    bands,
+    channel,
+  );
 }
 
 /**
