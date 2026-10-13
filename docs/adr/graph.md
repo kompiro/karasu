@@ -395,6 +395,7 @@ flowchart TD
     ADR_3022["ADR-3022<br/>edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は foc..."]
     ADR_3026["ADR-3026<br/>同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す"]
     ADR_3088["ADR-3088<br/>行間チャネルのレーンを、run がつながる縦線の向きで並べる"]
+    ADR_3133["ADR-3133<br/>側面列の端点へのエッジは、どの候補も成立しないとき、端点の間の空き列で通す"]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -1038,6 +1039,7 @@ flowchart TD
   class ADR_3088 accepted
   class ADR_3113 accepted
   class ADR_3117 accepted
+  class ADR_3133 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
