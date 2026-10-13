@@ -111,7 +111,7 @@ funnel→retained の背骨。notation / cookbook はこの retained record を�
 | --- | --- | --- | --- |
 | **karasu-nest public** | [#3171](https://github.com/kompiro/karasu/issues/3171) ・`epic: karasu-nest-public` | karasu-nest のギャラリーを運用者以外に開く。開く前提条件は [`docs/policy/nest-data-handling.md`](policy/nest-data-handling.md) の未了節が空になること | 律速はコードではなく法務レビュー（[#2691](https://github.com/kompiro/karasu/issues/2691)）。入口となる `/` の公開一覧（[#3016](https://github.com/kompiro/karasu/issues/3016)）は先に作れるが、運用者以外への告知は #2691 の後 |
 
-`epic: comprehension` / `epic: boundary` / `epic: facets` / `epic: karasu-nest` は宣言していた子がすべて着地した
+`epic: comprehension` / `epic: boundary` / `epic: facets` は宣言していた子がすべて着地した
 ため柱から降ろした（Epic close は本節を prune した PR — [ADR-2218](adr/2218-roadmap-pruning-policy.md)）。
 comprehension の残余は下の [§comprehension の残余](#comprehension-の残余)に持つ。
 
@@ -191,7 +191,7 @@ gate で評価する。
 
 ### sequencing
 
-1. **karasu-nest** は pivot（[ADR-1990](adr/1990-karasu-nest-pivot-server-reverse.md)）の実装スライスと運用の問いをすべて閉じた。残るのはギャラリーを運用者以外に開くこと（[#3171](https://github.com/kompiro/karasu/issues/3171)）で、律速は法務レビュー（[#2691](https://github.com/kompiro/karasu/issues/2691)）。permalink layer（retained の背骨）は完成形に到達しており、律速ではない。
+1. **karasu-nest public**（[#3171](https://github.com/kompiro/karasu/issues/3171)）: ギャラリーを運用者以外に開く。律速はコードではなく法務レビュー（[#2691](https://github.com/kompiro/karasu/issues/2691)）。permalink layer（retained の背骨）は完成形に到達しており、律速ではない。
 2. **AI authoring** は経路を決定済み（エージェントセッション + karasu CLI skill、Chat は凍結）で、実装は [#2901](https://github.com/kompiro/karasu/issues/2901)。**interop** は評価可能。
 3. **非ゴール圧力 log** は随時追記（安価）。
 
