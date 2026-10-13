@@ -1,7 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import serveConfig, { SERVE_PUBLIC_FILES } from "../vite.serve.config";
+import type { Plugin } from "vite";
+import serveConfig, {
+  APP_ENTRY,
+  SERVE_ENTRY,
+  SERVE_PUBLIC_FILES,
+  isMonacoModule,
+  swapInServeEntry,
+} from "../vite.serve.config";
 
 const APP_ROOT = path.resolve(__dirname, "..");
 const REPO_ROOT = path.resolve(APP_ROOT, "../..");
@@ -41,4 +48,42 @@ describe("serve build for the karasu npm package (#3017)", () => {
     };
     expect(oxlint.ignorePatterns).toContain(outDir);
   });
+
+  it("loads the serve entry, which leaves Monaco out (#3138)", () => {
+    const names = (serveConfig.plugins as Plugin[]).map((plugin) => plugin.name);
+    expect(names).toContain("karasu-serve-entry");
+    expect(names).toContain("karasu-serve-reject-monaco");
+
+    const html = readFileSync(path.join(APP_ROOT, "index.html"), "utf8");
+    const swapped = transformHtml(html);
+    expect(swapped).toContain(`src="${SERVE_ENTRY}"`);
+    expect(swapped).not.toContain(`src="${APP_ENTRY}"`);
+    expect(existsSync(path.join(APP_ROOT, SERVE_ENTRY))).toBe(true);
+  });
+
+  it("fails rather than ship the app entry when index.html stops loading it", () => {
+    expect(() => transformHtml('<script type="module" src="/src/other.tsx"></script>')).toThrow(
+      APP_ENTRY,
+    );
+  });
+
+  it("recognizes monaco-editor modules, and not the @monaco-editor/react wrapper", () => {
+    expect(
+      isMonacoModule(
+        "/repo/node_modules/.pnpm/monaco-editor@0.56.0/node_modules/monaco-editor/esm/vs/editor/editor.api.js",
+      ),
+    ).toBe(true);
+    expect(
+      isMonacoModule(
+        "/repo/node_modules/.pnpm/@monaco-editor+react@4.7.0/node_modules/@monaco-editor/react/dist/index.mjs",
+      ),
+    ).toBe(false);
+  });
 });
+
+function transformHtml(html: string): string {
+  const hook = swapInServeEntry().transformIndexHtml as {
+    handler: (html: string) => string;
+  };
+  return hook.handler(html);
+}

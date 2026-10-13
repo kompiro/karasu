@@ -31,11 +31,61 @@ function copyServePublicFiles(): Plugin {
   };
 }
 
+/** The entry `index.html` loads, and the one the serve build loads instead (#3138). */
+export const APP_ENTRY = "/src/main.tsx";
+export const SERVE_ENTRY = "/src/serve-main.tsx";
+
+/**
+ * Point `index.html` at the serve entry, which leaves Monaco out. The page
+ * keeps its name, so the CLI still serves it as `index.html`.
+ */
+export function swapInServeEntry(): Plugin {
+  return {
+    name: "karasu-serve-entry",
+    transformIndexHtml: {
+      order: "pre",
+      handler(html) {
+        const tag = `src="${APP_ENTRY}"`;
+        if (!html.includes(tag)) {
+          throw new Error(
+            `index.html no longer loads ${APP_ENTRY}; point the serve build at ${SERVE_ENTRY} another way`,
+          );
+        }
+        return html.replace(tag, `src="${SERVE_ENTRY}"`);
+      },
+    },
+  };
+}
+
+/** Whether a module id belongs to the `monaco-editor` package. */
+export function isMonacoModule(id: string): boolean {
+  return /[\\/]node_modules[\\/]monaco-editor[\\/]/.test(id);
+}
+
+/**
+ * Fail the build when a `monaco-editor` module is bundled. Serve mode never
+ * shows the editor, and Monaco is most of the app build: one import of it
+ * outside `monaco-setup.ts` would put it back into the npm package unseen.
+ */
+export function rejectMonaco(): Plugin {
+  return {
+    name: "karasu-serve-reject-monaco",
+    generateBundle() {
+      const bundled = [...this.getModuleIds()].filter(isMonacoModule);
+      if (bundled.length > 0) {
+        this.error(
+          `the karasu serve build bundles monaco-editor (${bundled.length} modules, e.g. ${bundled[0]}). Only main.tsx may import monaco-setup.`,
+        );
+      }
+    },
+  };
+}
+
 export default mergeConfig(
   base,
   defineConfig({
     publicDir: false,
-    plugins: [copyServePublicFiles()],
+    plugins: [swapInServeEntry(), rejectMonaco(), copyServePublicFiles()],
     build: {
       outDir: "dist-serve",
       emptyOutDir: true,

@@ -121,6 +121,13 @@ describe("the karasu tarball (TPL-1681)", () => {
     );
     expect(unwanted).toEqual([]);
   });
+
+  it("ships no Monaco editor, which serve mode never shows (#3138)", () => {
+    const monaco = entries.filter((entry) =>
+      /\.worker-[^/]*\.js$|\/codicon-[^/]*\.ttf$/.test(entry),
+    );
+    expect(monaco).toEqual([]);
+  });
 });
 
 describe("karasu serve from the tarball (#3017)", () => {
