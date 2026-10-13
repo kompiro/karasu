@@ -11,6 +11,7 @@ known_consumers:
   - renderer
 discovered_from:
   - issue: "#3026"
+  - issue: "#3133"
   - root_cause_file: "packages/core/src/renderer/edge-routing-groups.ts"
 related_to:
   - TPL-1927
