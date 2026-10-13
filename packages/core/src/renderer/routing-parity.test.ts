@@ -1518,6 +1518,73 @@ describe("same-row pair around the card between (#3026, TPL-3026 / TPL-1927)", (
   });
 });
 
+describe("edge into a side column (#3133, TPL-3026 / TPL-1927)", () => {
+  // Externals consumed by two hubs go to a side column (ADR-1728), here on the
+  // left, and `Gateway` sits low in it. `Storefront -> Gateway` runs from the
+  // grid's top row across the console to it. Every stub out to a gutter
+  // crosses the column or the grid, and the gap between the two is far from
+  // the endpoints' midpoint, so before #3133 no candidate cleared and the edge
+  // was drawn straight through `Console`. The fixture is reduced from dify's
+  // system view, where three such edges crossed seven cards; its geometry
+  // depends on the card widths, which the first test holds.
+  const SIDE_COLUMN = `system Shop {
+  client Console [web] {
+    description "Back-office console where staff run the catalogue"
+  }
+  client Storefront [web]
+  client ShopCli [cli] {
+    description "Command line tool for importing products and prices"
+  }
+  service WebServer {
+    description "Server-side renderer for the console and the storefront pages"
+  }
+  service Proxy [external]
+  service Gateway [external]
+  service PartnerWebhookSource [external]
+  service MetricsAndTracesVendor [external]
+  service Crawler [external]
+  service Sandbox [external]
+  service Marketplace [external]
+  PartnerWebhookSource -> Gateway
+  Storefront -> Gateway
+}`;
+  const GRID = ["Console", "Storefront", "ShopCli", "WebServer"];
+  const laid = () => layoutOfSource(SIDE_COLUMN);
+  /** The x range between the left side column and the grid. */
+  function gapOf(res: LayoutResult): { left: number; right: number } {
+    const cards = [...res.nodes.values()];
+    const grid = cards.filter((c) => GRID.includes(c.id));
+    const gridLeft = Math.min(...grid.map((c) => c.x));
+    const column = cards.filter((c) => !GRID.includes(c.id) && c.x < gridLeft);
+    return { left: Math.max(...column.map((c) => c.x + c.width)), right: gridLeft };
+  }
+
+  it("the fixture puts Gateway in the left column, and its edge's straight line on a card", () => {
+    const res = laid();
+    const gateway = nodeOf(res, "Gateway")!;
+    expect(gateway.x + gateway.width).toBeLessThanOrEqual(gapOf(res).left);
+    expect(straightCentrePenetrations(res)).toBeGreaterThan(0);
+  });
+
+  it("no edge pierces a card, and no two edges share a collinear segment", () => {
+    const res = laid();
+    expect(totalPenetrations(res)).toBe(0);
+    expect(collinearOverlaps(res, "v")).toBe(0);
+    expect(collinearOverlaps(res, "h")).toBe(0);
+  });
+
+  it("the edge runs down the gap between the column and the grid", () => {
+    const res = laid();
+    const gap = gapOf(res);
+    const edge = res.edges.find((e) => e.from === "Storefront" && e.to === "Gateway")!;
+    const path = pointsOf(edge);
+    const verticals = path
+      .slice(1)
+      .flatMap((p, i) => (Math.abs(p.x - path[i].x) < 1e-6 ? [p.x] : []));
+    expect(verticals.some((x) => x > gap.left && x < gap.right)).toBe(true);
+  });
+});
+
 describe("deploy view routes through the shared chain (#2609, TPL-219)", () => {
   // Bundled models whose deploy block carries at least one edge between
   // containers. The deploy view never ran the chain until #2609: each edge
