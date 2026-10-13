@@ -202,8 +202,14 @@
    `[data-diff-state="added"|"removed"|"changed"] { opacity: 1 !important }`).
    Without this, hovering an unchanged edge in diff mode would leave it at
    0.55 (focused edge fails to stand out), and added/removed/changed peers
-   would resist dimming — the focus effect would only partially work. */
-.preview-container svg .krs-edge {
+   would resist dimming — the focus effect would only partially work.
+
+   The crossing marks (hops, count chips, trunk bands) sit outside the edge
+   groups, so this rule cannot reach them. `focus-canvas/node-focus.ts` dims
+   them in JS on the same trigger (`EDGE_HOVER_TRIGGER`) and opacity: change
+   the two together (#3090). They fade at the edges' pace. */
+.preview-container svg .krs-edge,
+.preview-container svg [data-edges] {
   transition: opacity 0.15s ease;
 }
 

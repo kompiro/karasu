@@ -11,6 +11,14 @@
  * is one `<button>` beside the diagram. Neither is React state and neither
  * touches the SVG's own DOM, so hovering never re-renders the pane and both
  * survive the diagram being re-injected (AT-1186 AT-D).
+ *
+ * The crossing marks (hops, count chips, trunk bands) are drawn in layers of
+ * their own, outside the edge groups, so a rule on `.krs-edge` leaves them
+ * bright. Each mark names its edges in `data-edges` and those edges carry the
+ * index in `data-edge-index`, so the rule dims the marks of the dimmed edges
+ * too (#3090). The same goes for edge hover (#1186): `preview.css` dims the
+ * peer edges with `:hover`, which cannot reach the marks, so this module dims
+ * theirs.
  */
 
 export interface NodeFocusOptions {
@@ -26,6 +34,30 @@ let nextScope = 0;
 
 /** A CSS string body for use inside double quotes. */
 const quote = (value: string): string => value.replace(/["\\]/g, "\\$&");
+
+/**
+ * The edges whose hover dims their peers (#1186). `preview.css` dims the peer
+ * edges on the same selector and this module dims their marks, so widening it
+ * (#2632) means changing both.
+ */
+const EDGE_HOVER_TRIGGER = ".krs-edge--interactive";
+
+/** What node focus dims the other edges to. */
+const NODE_FOCUS_DIM = 0.12;
+/** What edge hover dims the other edges to; `preview.css` uses the same value. */
+const EDGE_HOVER_DIM = 0.25;
+
+/**
+ * A rule dimming, inside `scope`, every crossing mark that belongs to none of
+ * the edges in `keep` (their `data-edge-index` values). A chip or band carries
+ * several edges and stays bright while any of them is kept: it is part of the
+ * path in focus. With nothing to keep, every mark dims.
+ */
+function marksDimRule(scope: string, keep: readonly string[], opacity: number): string {
+  const kept =
+    keep.length > 0 ? `:not(:is(${keep.map((i) => `[data-edges~="${quote(i)}"]`).join(",")}))` : "";
+  return `${scope} [data-edges]${kept}{opacity:${opacity} !important}`;
+}
 
 /**
  * Attaches node focus to `container` (the element the diagram's `<svg>` is
@@ -48,12 +80,28 @@ export function attachNodeFocus(container: HTMLElement, options: NodeFocusOption
   pill.hidden = true;
   container.appendChild(pill);
 
+  /** What the rule is for: `node:<id>` or `edge:<index>`. */
   let focused: string | null = null;
 
   const clear = () => {
     focused = null;
     style.textContent = "";
     pill.hidden = true;
+  };
+
+  /** Hovering an edge dims the other edges' marks; the edges dim in CSS. */
+  const focusEdge = (edge: Element) => {
+    if (!edge.matches(`${scope} ${EDGE_HOVER_TRIGGER}`)) {
+      clear();
+      return;
+    }
+    // An edge with no index has no marks, so every mark belongs to a peer.
+    const index = edge.getAttribute("data-edge-index");
+    const key = `edge:${index ?? ""}`;
+    if (key === focused) return;
+    focused = key;
+    pill.hidden = true;
+    style.textContent = marksDimRule(scope, index === null ? [] : [index], EDGE_HOVER_DIM);
   };
 
   /**
@@ -88,21 +136,31 @@ export function attachNodeFocus(container: HTMLElement, options: NodeFocusOption
       clear();
       return;
     }
-    const card = target.closest(".krs-edge") ? null : target.closest(`${scope} [data-node-id]`);
+    const edge = target.closest(".krs-edge");
+    if (edge) {
+      focusEdge(edge);
+      return;
+    }
+    const card = target.closest(`${scope} [data-node-id]`);
     const id = card?.getAttribute("data-node-id") ?? null;
     if (!card || !id) {
       clear();
       return;
     }
-    if (id === focused) return;
+    if (`node:${id}` === focused) return;
     const count = countEdges(id);
     if (count === 0) {
       clear();
       return;
     }
-    focused = id;
+    focused = `node:${id}`;
     const mine = `:is([data-edge-from="${quote(id)}"],[data-edge-to="${quote(id)}"])`;
-    style.textContent = `${scope} .krs-edge:not(${mine}){opacity:0.12 !important}`;
+    const keep = [...container.querySelectorAll(`${scope} .krs-edge${mine}[data-edge-index]`)].map(
+      (g) => g.getAttribute("data-edge-index")!,
+    );
+    style.textContent =
+      `${scope} .krs-edge:not(${mine}){opacity:${NODE_FOCUS_DIM} !important}` +
+      marksDimRule(scope, keep, NODE_FOCUS_DIM);
     pill.textContent = options.relationsLabel(count);
     // Not `data-node-id`: the pill is not a card, and every query that finds
     // cards by that attribute (the pane's, the e2e suite's) must not find it.

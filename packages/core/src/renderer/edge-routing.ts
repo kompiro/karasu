@@ -160,6 +160,13 @@ export function renderEdge(
    * `label-display: auto` (#3022), so the canvas leaves it off.
    */
   labelDeferred = false,
+  /**
+   * This edge's index in `LayoutResult.edges`, set only when a crossing mark
+   * belongs to it. The marks carry the same index in `data-edges`, which is how
+   * hover dims an edge's hops, chips and bands with it (#3090). Left off
+   * everywhere else so a canvas without marks renders byte-identical.
+   */
+  markIndex?: number,
 ): string {
   const { fromPoint, toPoint } = edge;
   const points: Point[] = [fromPoint, ...(edge.waypoints ?? []), toPoint];
@@ -338,6 +345,7 @@ export function renderEdge(
       "data-edge-to": edge.to,
       "data-edge-kind": edge.kind,
       "data-edge-canonical-id": edge.canonicalId,
+      "data-edge-index": markIndex,
       "data-edge-label": edge.syntheticLabel ? undefined : edge.label || undefined,
       "data-edge-label-withheld": labelWithheld,
       // The property block's payload, read back by the app to open
