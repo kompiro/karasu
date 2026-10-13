@@ -11,11 +11,16 @@
 // `--out` writes one package's notices somewhere other than its own directory:
 // the CLI uses it for the preview app it ships in `dist/app/` (#3017).
 //
-// See `docs/design/license-compliance-automation.md`.
+// A bundle also carries the workspace packages it bundles (core, i18n, lsp)
+// and, with them, their dependencies. `pnpm licenses list` stops at
+// `workspace:` links, so the generator walks them itself and lists every
+// reached package (#3137, TPL-3137).
+//
+// See ADR-1320 (and ADR-3137 once the design for #3137 is promoted).
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { basename, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { PnpmLicensesList } from "./license-allowlist.ts";
 
@@ -88,17 +93,63 @@ function rank(fileName: string): number {
   return 4; // NOTICE and anything else last
 }
 
-function collectNotices(packageName: string): DependencyNotice[] {
+interface Manifest {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+}
+
+function readManifest(dir: string): Manifest {
+  return JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as Manifest;
+}
+
+/**
+ * The directories of `packageDir` and of every workspace package its bundle
+ * carries. The package itself contributes both `dependencies` and
+ * `devDependencies` (the CLI bundles core through a devDependency and an
+ * esbuild alias); a reached workspace package contributes `dependencies`
+ * only, since its own devDependencies never reach the bundle.
+ */
+export function bundledWorkspaceDirs(packageDir: string): string[] {
+  const start = realpathSync(packageDir);
+  const seen = new Set([start]);
+  const queue = [start];
+  for (let dir = queue.shift(); dir !== undefined; dir = queue.shift()) {
+    const manifest = readManifest(dir);
+    const specs = {
+      ...(dir === start ? manifest.devDependencies : {}),
+      ...manifest.dependencies,
+    };
+    for (const [name, spec] of Object.entries(specs)) {
+      if (!spec.startsWith("workspace:")) continue;
+      const link = join(dir, "node_modules", name);
+      if (!existsSync(link)) {
+        throw new Error(`${name} is a workspace dependency of ${dir}, but ${link} is missing.`);
+      }
+      const target = realpathSync(link);
+      if (seen.has(target)) continue;
+      seen.add(target);
+      queue.push(target);
+    }
+  }
+  return [...seen];
+}
+
+function collectNotices(packageDir: string): DependencyNotice[] {
+  // Select by directory, not by name: the private workspace root is also
+  // named `karasu`, and `--filter karasu` picks up its dependencies too.
+  // pnpm matches relative paths only, so run it from the package directory.
+  const cwd = realpathSync(packageDir);
+  const filters = bundledWorkspaceDirs(cwd).flatMap((dir) => {
+    const path = relative(cwd, dir);
+    return ["--filter", path === "" ? "." : path.startsWith("..") ? path : `./${path}`];
+  });
   let stdout: string;
   try {
-    stdout = execFileSync(
-      "pnpm",
-      ["--filter", packageName, "licenses", "list", "--prod", "--json"],
-      {
-        encoding: "utf8",
-        maxBuffer: 64 * 1024 * 1024,
-      },
-    );
+    stdout = execFileSync("pnpm", [...filters, "licenses", "list", "--prod", "--json"], {
+      cwd,
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+    });
   } catch (error) {
     const stdoutOnError = (error as { stdout?: string | Buffer }).stdout;
     if (stdoutOnError === undefined) throw error;
@@ -186,7 +237,7 @@ function main(argv: string[]): void {
   for (const dir of dirs) {
     const packageDir = resolve(dir);
     const packageName = packageNameOf(packageDir);
-    const notices = collectNotices(packageName);
+    const notices = collectNotices(packageDir);
     const outPath = out !== undefined ? resolve(out) : join(packageDir, "THIRD_PARTY_NOTICES.md");
     writeFileSync(outPath, renderNotices(packageName, notices));
     process.stdout.write(
