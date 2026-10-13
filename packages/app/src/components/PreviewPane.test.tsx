@@ -762,7 +762,7 @@ describe("PreviewPane", () => {
   });
 
   // #2632: every drawn edge carries a hit-line, so an edge with no canonical id
-  // (a deploy edge, a ghost edge, an edge of a multi-system root) now receives
+  // (a deploy edge, a ghost edge, an edge whose id a base collision cleared) now receives
   // the pane's delegated pointer events too. These pin what each of them does.
   describe("an edge without a canonical id (#2632)", () => {
     const unaddressed = (extra = "") =>

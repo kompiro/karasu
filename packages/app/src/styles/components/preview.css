@@ -164,7 +164,7 @@
    transparent hit-line behind the visible stroke of every edge, and the
    hover-tinted stroke keys on `.krs-edge`, so a reader can follow an edge
    whether or not the author gave it an identity (deploy edges, ghost
-   edges, the edges of a multi-system root).
+   edges, edges whose id a base collision cleared).
 
    Right-clickability is a separate capability. Only an edge with a
    canonical id carries `krs-edge--interactive`, and only that class gets
@@ -197,9 +197,8 @@
 
    Any edge triggers it (#2632). It used to be gated to edges with a
    canonical id, on the reading that an edge without one has no domain
-   meaning; but the edges without one turned out to be every deploy edge
-   and every edge of a multi-system root, which a reader follows as much
-   as any other.
+   meaning; but the edges without one turned out to include every deploy
+   edge, which a reader follows as much as any other.
 
    `!important` is used on both the focused-edge lift and the peer-dim so
    the rules win against the diff-mode opacity rules below

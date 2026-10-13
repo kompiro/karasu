@@ -9,8 +9,8 @@ import { openViewTab } from "../fixtures/tabs.js";
  * Every drawn edge is hoverable (#2632,
  * docs/acceptance/2632-edge-hover-affordance.md). The hover highlight and the
  * peer dim (#1186) used to key on `krs-edge--interactive`, which only an edge
- * with a canonical id carries; deploy edges, ghost edges and the edges of a
- * multi-system root never get one. Right-click stays limited to addressable
+ * with a canonical id carries; deploy edges and ghost edges never get one, and
+ * a base collision clears it. Right-click stays limited to addressable
  * edges.
  */
 

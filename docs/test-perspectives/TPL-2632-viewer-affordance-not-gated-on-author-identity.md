@@ -6,7 +6,7 @@ date: 2026-10-13
 applicable_to:
   - "描かれた要素（エッジ・カード・マーク）に hover・hit・強調・減光などの閲覧者向けの反応を付ける、またはその発火条件のセレクタ・フラグを変える変更"
   - "作者が書いた identity（canonical id・`#<id>`・selector で指せること）を必要とする機能（書き戻し・context menu・jump to source）を、閲覧者向けの反応と同じ class やフラグに載せる変更"
-  - "identity を配らない描画経路（deploy view・ghost 縮約・multi-system root・collapse stub など）を足す、または既存の経路の要素を別の経路に流す変更"
+  - "identity を配らない描画経路（deploy view・ghost 縮約・collapse stub など）を足す、または既存の経路の要素を別の経路に流す変更"
 known_consumers:
   - edge-hover-affordance
   - node-focus
@@ -34,7 +34,8 @@ scope:
 > hover の強調と peer の減光（#1186）が `.krs-edge--interactive` を条件にしていて、その class は
 > canonical id を持つエッジにしか付かない。deploy エッジは `realizes` から導出されるので
 > canonical id を持たず、hover も hit-line も無かった。spike で数えると、描かれたエッジの
-> 24.7% が同じ理由で反応しなかった（deploy view のほか、multi-system root と ghost 縮約）。
+> 24.7% が同じ理由で反応しなかった（deploy view のほか、当時の multi-system root と ghost 縮約。
+> multi-system root のエッジはその後 canonical id を持つようになった）。
 
 閲覧者がしたいこと（線を目で追う、どれが焦点か見分ける）は、要素が描かれていれば成り立つ。
 作者が書いた identity は、**書き戻す先がある操作**（direction menu・`edge#<id>` selector）の
@@ -46,8 +47,8 @@ scope:
 
 ## 想定される失敗モード
 
-- **identity を配らない経路で、要素が反応しなくなる。** deploy view・multi-system root・ghost
-  縮約が `canonicalId` を持たない（#2632）。小さな system view ではほぼ全エッジが id を持つので、
+- **identity を配らない経路で、要素が反応しなくなる。** deploy view と ghost 縮約のエッジ、
+  base が衝突したエッジが `canonicalId` を持たない（#2632）。小さな system view ではほぼ全エッジが id を持つので、
   既定のテストモデルでは気づかない。
 - **identity を合成して直そうとし、書き戻し先の無い操作を開く。** deploy エッジに canonical id を
   振ると hover は付くが、direction menu の書き戻しは system 側のエッジに当たり、読者が見ている

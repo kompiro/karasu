@@ -200,7 +200,7 @@ export function renderEdge(
   // `preview.css` keys the hover highlight and the peer dim (#1186) on
   // `.krs-edge`. A reader can follow any edge they can see, whether or not the
   // author gave it an identity: deploy edges are derived from `realizes`, and
-  // ghost or multi-system-root edges never get a canonical id.
+  // ghost edges never get a canonical id, and a base collision clears one.
   //
   // `interactive` drives the `krs-edge--interactive` class, and that class is
   // the *right-click* advertisement only: `preview.css` gives it `cursor:

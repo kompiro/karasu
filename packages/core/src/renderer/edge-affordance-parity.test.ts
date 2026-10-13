@@ -16,8 +16,8 @@ import {
 // - Hover and hit: every `.krs-edge` group carries exactly one transparent
 //   hit-line, on every render surface. `preview.css` keys the hover highlight
 //   and the peer dim on `.krs-edge`, so the hit-line is what makes an edge
-//   with no canonical id (a deploy edge, a ghost edge, an edge of a
-//   multi-system root) followable at all.
+//   with no canonical id (a deploy edge, a ghost edge, an edge whose id a
+//   base collision cleared) followable at all.
 // - Right-click: `krs-edge--interactive` stays the advertisement for the
 //   direction menu, so it appears exactly where `data-edge-canonical-id` does.
 //
@@ -81,7 +81,7 @@ const SURFACES: readonly Surface[] = [
   { name: "all-layers", render: (f) => svgOrNull(buildAllLayersSvg(source(f)).svg) },
   {
     // The project entry point resolves imports, so it is also where the
-    // multi-file, multi-system roots (`multi-file-system`) are drawn whole.
+    // multi-file projects (`multi-file-system`) are drawn whole.
     name: "all-views bundle (project)",
     render: async (f) =>
       svgOrNull((await buildAllViewsSvgProject(f.slice(REPO_ROOT.length), fs)).svg),

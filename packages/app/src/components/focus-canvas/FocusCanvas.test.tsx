@@ -184,7 +184,7 @@ describe("the focus canvas in the preview", () => {
 
   it("dims the other edges' marks while an edge with no canonical id is hovered (#2632)", () => {
     // The same canvas with every edge's identity taken away, as on a deploy
-    // view or a multi-system root: the marks follow the hover all the same.
+    // view: the marks follow the hover all the same.
     const unaddressed = denseSvg
       .replace(/ data-edge-canonical-id="[^"]*"/g, "")
       .replaceAll(" krs-edge--interactive", "");
