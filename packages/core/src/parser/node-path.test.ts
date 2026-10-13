@@ -3,6 +3,7 @@ import { Lexer } from "../lexer/lexer.js";
 import { TokenType, type Token } from "../types/tokens.js";
 import type { TokenCursor } from "./kebab-name.js";
 import {
+  bareIdView,
   readNodeIdPathTail,
   nodePathKey,
   nodePathMatchesSuffix,
@@ -278,5 +279,52 @@ describe("parseNodePathRefId (#2917)", () => {
 
   it("decodes the empty string to no segments", () => {
     expect(parseNodePathRefId("")).toEqual([]);
+  });
+});
+
+describe("bareIdView (#2934)", () => {
+  const ranking = new Map([
+    [
+      "Api",
+      [
+        ["Core", "Hub", "Api"],
+        ["Shop", "Api"],
+        ["Admin", "Api"],
+      ],
+    ],
+  ]);
+
+  it("answers a shared id with the highest-ranked path the map holds", () => {
+    const byPath = new Map([
+      ["Admin.Api", "admin"],
+      ["Shop.Api", "shop"],
+    ]);
+    // The ranking's head (`Core.Hub.Api`) is not in the map, so the next one is.
+    expect(bareIdView(byPath, ranking).get("Api")).toBe("shop");
+  });
+
+  it("does not depend on the order the map was filled in", () => {
+    const forward = new Map([
+      ["Shop.Api", "shop"],
+      ["Admin.Api", "admin"],
+    ]);
+    const backward = new Map([...forward].reverse());
+    expect(bareIdView(forward, ranking).get("Api")).toBe("shop");
+    expect(bareIdView(backward, ranking).get("Api")).toBe("shop");
+  });
+
+  it("puts unranked paths after the ranked ones, ordered by key text", () => {
+    const byPath = new Map([
+      ["Zeta.Store", "zeta"],
+      ["Alpha.Store", "alpha"],
+    ]);
+    expect(bareIdView(byPath, ranking).get("Store")).toBe("alpha");
+    const withRanked = new Map([...byPath, ["Admin.Api", "admin"]]);
+    expect(bareIdView(withRanked, ranking).get("Api")).toBe("admin");
+  });
+
+  it("reads the id off the path's last segment without splitting a quoted one", () => {
+    const byPath = new Map([[nodePathRefId(["Shop", "a.b"]), "quoted"]]);
+    expect([...bareIdView(byPath, ranking).keys()]).toEqual(["a.b"]);
   });
 });

@@ -37,6 +37,7 @@ import {
   nodePathKey,
   nodePathRefId,
   nodePathMatchesSuffix,
+  parseNodePathRefId,
   resolveNodePathBySuffix,
 } from "./node-path.js";
 import { indexDeclaredInfra } from "../spec/infra-index.js";
@@ -516,30 +517,62 @@ export function validateFacetDeclarations(facets: readonly FacetBlock[]): Diagno
 }
 
 /**
- * Build the node id → facet ids map from the element-side `facets` property.
+ * The bare-id union of a {@link buildFacetIndexByPath} result: the shape of
+ * `KrsFile.facetIndex`. Derived from the path-keyed index rather than walked a
+ * second time, so the two cannot disagree on what was declared (TPL-1032).
+ */
+export function facetUnionByBareId(
+  byPath: ReadonlyMap<string, ReadonlySet<string>>,
+): Map<string, Set<string>> {
+  const index = new Map<string, Set<string>>();
+  for (const [key, facetIds] of byPath) {
+    const segments = parseNodePathRefId(key);
+    const id = segments[segments.length - 1];
+    let memberships = index.get(id);
+    if (memberships === undefined) {
+      memberships = new Set<string>();
+      index.set(id, memberships);
+    }
+    for (const facetId of facetIds) memberships.add(facetId);
+  }
+  return index;
+}
+
+/**
+ * Build the facet membership map from the element-side `facets` property,
+ * keyed by each declaring node's full path (`nodePathRefId`): the index a view
+ * reads to ring *one* node (#2934). Its {@link facetUnionByBareId} union answers
+ * "which facets does the model know", and would ring `Admin.Api` for the `pii`
+ * that only `Shop.Api` declares.
  *
  * **Every declared membership is kept.** The map is 1:N because multi-membership
  * is a normal state — an `entity` can be both PII and PCI scope — and because a
  * downstream view that can only paint one value per node must resolve that
  * itself rather than have the model layer decide for it (TPL-2161).
  * Nodes without the property never enter the map.
+ *
+ * A root's path is its own id: the roots are the model's top-level blocks, so a
+ * system-less `service` sits at `[service]`, the path the root view's
+ * "Unassigned" frame stamps on its card.
  */
-export function buildFacetIndex(roots: readonly KrsNode[]): Map<string, Set<string>> {
+export function buildFacetIndexByPath(roots: readonly KrsNode[]): Map<string, Set<string>> {
   const index = new Map<string, Set<string>>();
 
-  const walk = (node: KrsNode): void => {
+  const walk = (node: KrsNode, prefix: readonly string[]): void => {
+    const path = [...prefix, node.id];
     if (node.facets !== undefined && node.facets.length > 0) {
-      let memberships = index.get(node.id);
+      const key = nodePathRefId(path);
+      let memberships = index.get(key);
       if (memberships === undefined) {
         memberships = new Set<string>();
-        index.set(node.id, memberships);
+        index.set(key, memberships);
       }
       for (const facetId of node.facets) memberships.add(facetId);
     }
-    for (const child of node.children) walk(child);
+    for (const child of node.children) walk(child, path);
   };
 
-  for (const root of roots) walk(root);
+  for (const root of roots) walk(root, []);
   return index;
 }
 
@@ -572,9 +605,12 @@ interface MembershipResult<T> {
  * (TPL-2221). The Parser calls this with the file it just parsed, the
  * ImportResolver with the merged model.
  */
-export function buildNodePathIndex(file: KrsFile): MembershipResult<Map<string, string[]>> {
+export function buildNodePathIndex(
+  file: KrsFile,
+): MembershipResult<Map<string, string[]>> & { ranking: Map<string, string[][]> } {
   const diagnostics: Diagnostic[] = [];
   const index = new Map<string, string[]>();
+  const ranking = new Map<string, string[][]>();
   // INDEXED_KINDS governs the recursive walk() passes over the logical
   // layer: service, domain, and client are what `viewPath` / permalinks
   // address by bare id. resource / usecase / user are intentionally
@@ -730,11 +766,17 @@ export function buildNodePathIndex(file: KrsFile): MembershipResult<Map<string, 
       seenPaths.add(key);
       distinct.push(candidate);
     }
-    let winner = distinct[0];
-    for (const candidate of distinct) {
-      if (candidate.priority > winner.priority) winner = candidate;
-    }
+    // Highest priority first, traversal order within a priority (the sort is
+    // stable), so the head is the winner and the rest is the order a bare-id
+    // view falls back through when the winner is not in the map it reads
+    // (#2934, `bareIdView`).
+    const ranked = [...distinct].sort((a, b) => b.priority - a.priority);
+    const winner = ranked[0];
     index.set(id, winner.path);
+    ranking.set(
+      id,
+      ranked.map((c) => c.path),
+    );
     const logical = distinct.filter((c) => c.layer === "logical");
     if (logical.length < 2 || logical.every((c) => c.kind === "domain")) continue;
     for (const candidate of logical) {
@@ -747,7 +789,7 @@ export function buildNodePathIndex(file: KrsFile): MembershipResult<Map<string, 
       });
     }
   }
-  return { membership: index, diagnostics };
+  return { membership: index, diagnostics, ranking };
 }
 
 /**

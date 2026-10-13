@@ -252,13 +252,16 @@ function makeStyles(
   }
   return {
     nodes,
+    nodesByPath: new Map(),
     edges: new Map(),
     boundaryFrames: { base: {}, byId: new Map() },
     teamFrames: { base: {}, byId: new Map() },
     paintedColors: new Map(),
+    paintedColorsByPath: new Map(),
     defaultNodeStyle: base,
     defaultEdgeStyle: baseEdge,
     layoutHints: new Map(),
+    layoutHintsByPath: new Map(),
     warnings: [],
   };
 }

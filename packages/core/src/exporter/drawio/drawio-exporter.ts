@@ -5,6 +5,7 @@ import type {
   LayoutResult,
 } from "../../renderer/layout-types.js";
 import { sanitizeId } from "../../renderer/svg-renderer.js";
+import { nodePathRefId } from "../../parser/node-path.js";
 import { escapeXml, renderAttrs, renderStyle, type AttrValue } from "./mxgraph-builder.js";
 import {
   buildContainerStyle,
@@ -36,6 +37,12 @@ export interface DrawioPage {
    * Tags drive the label badges; annotations supplement LayoutNode.annotations.
    */
   metadata?: Map<string, DrawioNodeMeta>;
+  /**
+   * The same keyed by full path (`nodePathRefId`). A card that knows its path
+   * reads its own node's entry here first, so two cards sharing an id do not
+   * share one entry's badges (#2934).
+   */
+  metadataByPath?: Map<string, DrawioNodeMeta>;
 }
 
 export interface DrawioExportInput {
@@ -144,8 +151,18 @@ function buildCellsForPage(page: DrawioPage): Cell[] {
     });
   }
 
+  // A card's cell key is its bare id, except where the layout keys cards by
+  // more than their id: the multi-system root keys them by (system, id), so two
+  // systems' `Api` cards are both on the page and need two cells (#2934). There
+  // every card takes the key from its path (`Shop.Api`), whether or not its id
+  // is shared, so a cell id does not change when a same-named node is added
+  // elsewhere (the reason ADR-2714 keyed deploy containers by path outright).
+  const cellKeyByMapKey = new Map<string, string>();
   const nodeIds = new Set<string>();
-  for (const node of page.layout.nodes.values()) {
+  for (const [mapKey, node] of page.layout.nodes) {
+    const cellKey =
+      node.path !== undefined && mapKey !== node.id ? nodePathRefId(node.path) : node.id;
+    cellKeyByMapKey.set(mapKey, cellKey);
     nodeIds.add(node.id);
     const enclosing = findEnclosingContainerForNode(node, sortedContainers);
     const parentContainerId = enclosing ? cellId(enclosing.id) : rootParent;
@@ -163,11 +180,13 @@ function buildCellsForPage(page: DrawioPage): Cell[] {
         : { x: node.x, y: node.y, width: node.width, height: node.height };
 
     const nodeKind = node.kind as NodeKind;
-    const meta = metadata.get(node.id);
+    const meta =
+      (node.path !== undefined ? page.metadataByPath?.get(nodePathRefId(node.path)) : undefined) ??
+      metadata.get(node.id);
     const annotations = node.annotations ?? meta?.annotations;
     const tags = meta?.tags;
     cells.push({
-      id: cellId(node.id),
+      id: cellId(cellKey),
       parent: parentContainerId,
       value: formatCellValue({ label: node.label, kind: nodeKind, annotations, tags }),
       style: buildNodeStyle({
@@ -181,17 +200,23 @@ function buildCellsForPage(page: DrawioPage): Cell[] {
     });
   }
 
+  // An endpoint resolves through the map key the edge carries when it has one
+  // (the multi-system root's intra-system edges, #2934), else by bare id.
+  const endpointCell = (bare: string, mapKey: string | undefined): string | undefined =>
+    mapKey !== undefined ? cellKeyByMapKey.get(mapKey) : nodeIds.has(bare) ? bare : undefined;
   for (const edge of page.layout.edges) {
+    const from = endpointCell(edge.from, edge.fromKey);
+    const to = endpointCell(edge.to, edge.toKey);
     // Skip edges whose endpoints aren't rendered on this page.
-    if (!nodeIds.has(edge.from) || !nodeIds.has(edge.to)) continue;
+    if (from === undefined || to === undefined) continue;
     cells.push({
-      id: cellId(`edge-${edge.from}->${edge.to}`),
+      id: cellId(`edge-${from}->${to}`),
       parent: rootParent,
       value: edge.label ?? "",
       style: buildEdgeStyle({ ghost: edge.ghost, cyclic: edge.cyclic }),
       edge: true,
-      source: cellId(edge.from),
-      target: cellId(edge.to),
+      source: cellId(from),
+      target: cellId(to),
       geometry: "edge",
       customAttrs: buildEdgeCustomAttrs(edge),
     });

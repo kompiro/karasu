@@ -9,6 +9,7 @@ applicable_to:
 discovered_from:
   - issue: "#1583"
   - issue: "#2550"
+  - issue: "#2934"
   - root_cause_adr: "ADR-477"
 related_to:
   - TPL-1386
@@ -69,6 +70,9 @@ karasu は逆コンウェイ戦略の過渡期（移行元 → 移行先の引�
       入力アノテーションを選んでいるか
 - [ ] 宣言順を入れ替えても勝者が変わらないこと（`@migration_target` が後置でも前置でも勝つ）を
       テストしているか
+- [ ] per-node の Map を bare id キーで足すとき、1 ノードの値なら path キー（`nodePathRefId`）を
+      primary にし、bare の見え方は `bareIdView(byPath, nodePathRanking)` で導いているか。
+      id を持つノード全部の値（broadcast）なら、その旨を Map の doc comment に書いているか（#2934）
 
 ## 既知の対処パターン
 
@@ -77,6 +81,9 @@ karasu は逆コンウェイ戦略の過渡期（移行元 → 移行先の引�
 - index 構築時に「現在の主の priority」を併走 `Map` で持ち、より高い priority が来たら
   差し替える（`indexTeams` / `buildNodePathIndex` のインライン swap パターン）
 - info 診断の文言は「採用した主」を事実先行で述べる（swap 後の値を読む）
+- 1 ノードの値を持つ per-node Map（`nodeMetadata` / `nodeFileIndex` / style / diff 状態）は
+  path キーの Map を primary にし、bare id の Map は `bareIdView()`（`parser/node-path.ts`）で
+  `KrsFile.nodePathRanking` の順に導く。Map ごとに後勝ち・先勝ちを書き下さない（#2934）
 
 ## 関連テスト
 
@@ -84,6 +91,10 @@ karasu は逆コンウェイ戦略の過渡期（移行元 → 移行先の引�
   主になる（宣言順 前後 両方）/ `@deprecated` が負ける / 無印 tie は first-wins /
   info が依然発火するケース。domain 側は同名 domain の `@migration_target` が
   nodePathIndex の勝者になるケース
+- `packages/core/src/renderer/multi-system-same-id.test.ts` — 同名 `Api` を持つ 2 system で、
+  style・column hint・facet リング・metadata・file index・draw.io の cell・diff 状態がそれぞれ
+  自分のノードの値になり、bare id の見え方が勝者になる（宣言順 前後 両方、tie、勝者が Map に居ない
+  ケース）
 
 ## 派生元 spec
 

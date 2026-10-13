@@ -173,6 +173,12 @@ export function measureNode(
   node: KrsNode,
   owner: CardOwner | undefined,
   ctx: MeasureContext,
+  /**
+   * The card's full path (`LayoutNode.path`), so the shape it is measured for
+   * is the one it is drawn with when two nodes share its id (#2934). Ghost
+   * placers have none and measure by id.
+   */
+  path?: readonly string[],
 ): { width: number; height: number } {
   if (ctx.displayMode === "icon") {
     return {
@@ -264,7 +270,7 @@ export function measureNode(
   // Without a shapeForNode hook the card keeps padding-only clearance
   // (pre-F behavior), and renderFromLayout is told not to apply insets.
   const annotations = ctx.effectiveAnnotations(node);
-  const shapeName = ctx.shapeForNode?.(node.id, annotations);
+  const shapeName = ctx.shapeForNode?.(node.id, annotations, path);
   const insetFn = shapeName ? getShapeContentInset(shapeName) : undefined;
   if (insetFn) {
     const contentW = width - NODE_PADDING_X * 2;

@@ -25,13 +25,23 @@ import { Button } from "@/components/ui/button";
 const ENTRY_HASH = typeof window !== "undefined" ? window.location.hash : "";
 const ENTRY_SEARCH = typeof window !== "undefined" ? window.location.search : "";
 
-export function App() {
+export interface AppProps {
+  /**
+   * The mode, fixed by the entry at build time (`serve-main.tsx`, #3138).
+   * When given, the app neither detects the mode nor reads a shared inline
+   * URL: a shared URL opens with the editor, which a build without Monaco
+   * cannot show, and `karasu serve` URLs never carry one.
+   */
+  mode?: AppMode;
+}
+
+export function App({ mode: fixedMode }: AppProps = {}) {
   // A shared inline URL (`#s=…`, karasu-nest) is read once at mount. A valid
   // payload opens as an ephemeral in-memory view regardless of the visitor's
   // browser storage, so it never touches their local (OPFS) project. A present
   // but unrestorable payload falls back to the normal app with a warning.
   const [shared] = useState(() => {
-    const result = readSharedProjectFromHash(ENTRY_HASH);
+    const result = fixedMode === undefined ? readSharedProjectFromHash(ENTRY_HASH) : null;
     // When a deep permalink target is present — an inline share's
     // `payload.target` (#1827) or a repo-backed permalink's `?krs=` anchor
     // (#1958) — normalize the URL to the canonical `#krs-<view>-<node>:highlight`
@@ -50,12 +60,12 @@ export function App() {
   const sharedPayload = shared !== null && "payload" in shared ? shared.payload : null;
   const restoreFailed = shared !== null && "error" in shared;
 
-  const [mode, setMode] = useState<AppMode | null>(null);
+  const [mode, setMode] = useState<AppMode | null>(fixedMode ?? null);
 
   useEffect(() => {
-    if (sharedPayload !== null) return;
+    if (fixedMode !== undefined || sharedPayload !== null) return;
     detectAppMode().then(setMode);
-  }, [sharedPayload]);
+  }, [fixedMode, sharedPayload]);
 
   if (sharedPayload !== null) {
     return (

@@ -177,6 +177,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3069](3069-dependabot-triage-2026-10-05.md) — Dependabot トリアージ 2026-10-05：mocha 12 を含む 8 件を採用し、gh-aw は正式版 v0.89.21 で再生成し、@types/vscode は追随方針の見直し（#3070）に回して close する
 - [ADR-3077](3077-dependabot-security-2026-10-06.md) — Dependabot security alert 2026-10-06（transitive 5 件を override で解消し、修正版の無い v6 系 postcss-selector-parser は postcss-nested を 7 に上げて逃がす）
 - [ADR-3117](3117-coderabbit-ignore-command-for-skip.md) — CodeRabbit から外す PR は PR 本文の ignore コマンドで外し、ラベルは外した PR の記録として残す
+- [ADR-3138](3138-serve-app-without-monaco.md) — `karasu serve` の app build は専用 entry から始め、Monaco を含めない
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -394,6 +395,8 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3022](3022-edge-label-disclosure.md) — edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は focus canvas で読む
 - [ADR-3026](3026-same-row-channel-route.md) — 同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す
 - [ADR-3088](3088-channel-lane-order-by-turn.md) — 行間チャネルのレーンを、run がつながる縦線の向きで並べる
+- [ADR-3133](3133-side-column-last-resort-corridor.md) — 側面列の端点へのエッジは、どの候補も成立しないとき、端点の間の空き列で通す
+- [ADR-3134](3134-same-channel-fold.md) — 同じ行間チャネルに降りる corridor / mixed route を、チャネルの中で 1 本の run につなぐ
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
 - [ADR-9015](9015-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG（buildAllViewsSvg）

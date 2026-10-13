@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { Readable } from "node:stream";
@@ -89,6 +90,73 @@ describe("AT-1020 karasu diff — stdin handling", () => {
     }
     expect(stderr).toContain('Warning: -:2:1: Domain "Orphan" is not assigned to any service');
     expect(stderr).not.toContain(".karasu-diff-");
+  });
+
+  // #3122: a relative import in the stdin side resolves against the other
+  // side's directory, the way it does for the file on disk. The shim used to
+  // write stdin one directory below it, where `./` found nothing.
+  it("resolves a stdin before side's relative imports against the after side's directory", async () => {
+    await writeFile(join(tmpDir, "shared.krs"), "system Demo { service Shared {} }\n");
+    const after = join(tmpDir, "after.krs");
+    await writeFile(
+      after,
+      'import "./shared.krs"\nsystem Demo { service Api {} service NewService {} }\n',
+    );
+    const restore = pipeStdin('import "./shared.krs"\nsystem Demo { service Api {} }\n');
+    try {
+      await diff("-", after, {});
+    } finally {
+      restore();
+    }
+    expect(stderr).not.toContain("not found");
+    expect(stdout).toMatch(/<g[^>]*data-node-id="Shared"[^>]*data-diff-state="unchanged"/);
+    expect(stdout).toMatch(/<g[^>]*data-node-id="NewService"[^>]*data-diff-state="added"/);
+  });
+
+  it("resolves a stdin after side's style import against the before side's directory", async () => {
+    await writeFile(join(tmpDir, "after.krs.style"), "service { color: #ff0000; }\n");
+    const before = join(tmpDir, "before.krs");
+    await writeFile(before, "system Demo { service Api {} }\n");
+    const restore = pipeStdin('@import "./after.krs.style"\nsystem Demo { service Api {} }\n');
+    try {
+      await diff(before, "-", {});
+    } finally {
+      restore();
+    }
+    expect(stderr).not.toContain("Style file not found");
+  });
+
+  it("removes the stdin tempfile from the other side's directory", async () => {
+    const before = join(tmpDir, "before.krs");
+    await writeFile(before, "system Demo { service Api {} }\n");
+    const restore = pipeStdin("system Demo { service Api {} }\n");
+    try {
+      await diff(before, "-", {});
+    } finally {
+      restore();
+    }
+    expect(await readdir(tmpDir)).toEqual(["before.krs"]);
+  });
+
+  // `process.exit` skips a pending `finally`, so a failing diff must remove
+  // the tempfile before it exits. The mocked exit throws, which would run the
+  // `finally` anyway, so look at the directory at the moment exit is called.
+  it("removes the stdin tempfile before exiting on a failed compile", async () => {
+    const before = join(tmpDir, "before.krs");
+    await writeFile(before, "system Demo { service Api {} }\n");
+    let filesAtExit: string[] = [];
+    exitSpy.mockImplementation(((code: number) => {
+      filesAtExit = readdirSync(tmpDir);
+      throw new Error(`process.exit(${code})`);
+    }) as never);
+    const restore = pipeStdin("system Demo { service Api {\n");
+    try {
+      await expect(diff(before, "-", {})).rejects.toThrow("process.exit(1)");
+    } finally {
+      restore();
+    }
+    expect(stderr).toContain("Error:");
+    expect(filesAtExit).toEqual(["before.krs"]);
   });
 });
 

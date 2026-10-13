@@ -13,6 +13,7 @@ discovered_from:
   - issue: "#1681"
   - root_cause_file: "packages/cli/package.json"
   - issue: "#3017"
+  - issue: "#3138"
 related_to:
   - TPL-1024
 topic: build
@@ -56,11 +57,12 @@ publish 対象パッケージを追加・変更するとき、以下を確認す
 - `package.json` の `files` / `bin` を読み、退行を検出する**ユニットテスト**を置く（`packages/cli/src/packaging.test.ts`）。`files` が再びディレクトリ glob に戻る、bin の指す先が `files` から外れる、を assert で防ぐ
 - build を `dist/` の clean から始める（`rm -rf dist && …`）と dev の hygiene は上がるが、`files` 限定ほど決定論性は強くない。両者は併用可
 - 複数成果物を tsc で出すパッケージ（core 等）は `tsconfig.build.json` で `*.test.ts` を `exclude` し、emit 対象を絞る
+- **配布用 build に専用 entry を持たせ、読まれない部品を build 時に締め出す**（#3138）。`karasu serve` はエディタを表示しないので、serve 用 build の entry（`packages/app/src/serve-main.tsx`）は Monaco を読まない。`vite.serve.config.ts` の plugin が module graph に `monaco-editor` が入ったら build を失敗させるので、import が 1 つ増えても黙って 16MB に戻らない
 
 ## 関連テスト
 
 - `packages/cli/src/packaging.test.ts` — `files` がバンドルとプレビュー app（`dist/app/`）に固定され、`bin` がその成果物を指すことの回帰ガード
-- `packages/cli/pack/serve-from-tarball.test.ts`（`pnpm --filter ./packages/cli run test:pack`）— 実際の tarball の中身を検査する（app が入る、sourcemap と Pages 専用ファイルが入らない）。#3017 では `karasu serve` が要る app の build が tarball に入っていなかった
+- `packages/cli/pack/serve-from-tarball.test.ts`（`pnpm --filter ./packages/cli run test:pack`）— 実際の tarball の中身を検査する（app が入る、sourcemap と Pages 専用ファイルと Monaco の worker が入らない）。#3017 では `karasu serve` が要る app の build が tarball に入っていなかった
 - 手動 AT: `docs/acceptance/1681-cli-pack-only-bundle.md`（`npm pack --dry-run` の Tarball Contents 目視確認、stale dist 混入の決定論性確認）
 
 ## 関連 TPL

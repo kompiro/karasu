@@ -39,13 +39,16 @@ const DEFAULT_EDGE_STYLE = {
 function makeStyles(nodeMap: Map<string, ResolvedNodeStyle> = new Map()): ResolvedStyles {
   return {
     nodes: nodeMap,
+    nodesByPath: new Map(),
     edges: new Map(),
     boundaryFrames: { base: {}, byId: new Map() },
     teamFrames: { base: {}, byId: new Map() },
     paintedColors: new Map(),
+    paintedColorsByPath: new Map(),
     defaultNodeStyle: DEFAULT_STYLE,
     defaultEdgeStyle: DEFAULT_EDGE_STYLE,
     layoutHints: new Map(),
+    layoutHintsByPath: new Map(),
     warnings: [],
   };
 }

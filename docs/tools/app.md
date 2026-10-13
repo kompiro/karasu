@@ -38,11 +38,11 @@ Watching for .krs file changes...
 Open the printed URL (default **http://localhost:3000**). The page resolves which
 file to show from the URL path:
 
-| URL | File shown |
-| --- | --- |
-| `/` | `index.krs` (or the only `.krs` file if there is just one) |
-| `/payment` | `payment.krs` |
-| `/org` | `org.krs` |
+| URL        | File shown                                                 |
+| ---------- | ---------------------------------------------------------- |
+| `/`        | `index.krs` (or the only `.krs` file if there is just one) |
+| `/payment` | `payment.krs`                                              |
+| `/org`     | `org.krs`                                                  |
 
 `serve` is **preview-only** — it does not embed an editor. The workflow is a tight
 loop:
@@ -82,12 +82,12 @@ playground.
 A model is shown through four views, selectable from the view tab bar or with a
 keyboard shortcut:
 
-| View | Shortcut | Shows |
-| --- | --- | --- |
-| **System** | `Ctrl/Cmd+1` | Service and system architecture |
-| **Deploy** | `Ctrl/Cmd+2` | Deployment topology (physical structure) |
-| **Org** | `Ctrl/Cmd+3` | Teams and roles (organizational structure) |
-| **CRUD** | `Ctrl/Cmd+4` | Usecase × resource read/write matrix |
+| View       | Shortcut     | Shows                                      |
+| ---------- | ------------ | ------------------------------------------ |
+| **System** | `Ctrl/Cmd+1` | Service and system architecture            |
+| **Deploy** | `Ctrl/Cmd+2` | Deployment topology (physical structure)   |
+| **Org**    | `Ctrl/Cmd+3` | Teams and roles (organizational structure) |
+| **CRUD**   | `Ctrl/Cmd+4` | Usecase × resource read/write matrix       |
 
 The three dimensions behind System / Deploy / Org are explained in
 [Core Concepts](../concepts.md).
@@ -125,11 +125,11 @@ says who vouches for it. The line style keeps its usual meaning: solid is sync,
 dashed is async. The colours below are those of the built-in style; a `.krs.style`
 sheet can change them.
 
-| Colour (dark / light theme) | Tag | Meaning |
-| --- | --- | --- |
-| Slate grey, the default edge colour (`#94A3B8` / `#64748B`) | none | Recorded in the `.krs` as a `table` → `table` edge, written by hand or emitted by `translate --from db` from a declared foreign key. Confirmed. |
-| Sky blue (`#38BDF8` / `#0369A1`) | `[projected]` | Not in the `.krs`. Drawn from an `entity` relation whose two entities both map to tables in this store. The entity layer asserts it; nothing recorded it against the store. |
-| Muted grey (`#94A3B8` / `#64748B`) | `[inferred]` | Written by `translate --from db` from a naming convention (a `<stem>_id` or `<stem>_code` column with no declared foreign key). Delete the tag once you have confirmed the relation. |
+| Colour (dark / light theme)                                 | Tag           | Meaning                                                                                                                                                                              |
+| ----------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Slate grey, the default edge colour (`#94A3B8` / `#64748B`) | none          | Recorded in the `.krs` as a `table` → `table` edge, written by hand or emitted by `translate --from db` from a declared foreign key. Confirmed.                                      |
+| Sky blue (`#38BDF8` / `#0369A1`)                            | `[projected]` | Not in the `.krs`. Drawn from an `entity` relation whose two entities both map to tables in this store. The entity layer asserts it; nothing recorded it against the store.          |
+| Muted grey (`#94A3B8` / `#64748B`)                          | `[inferred]`  | Written by `translate --from db` from a naming convention (a `<stem>_id` or `<stem>_code` column with no declared foreign key). Delete the tag once you have confirmed the relation. |
 
 - The built-in style currently gives `[inferred]` the same colour as an untagged
   edge, so on the canvas the two look alike. Check the source to tell them apart.
@@ -175,7 +175,7 @@ a second row at ordinary window widths.
   The selection lives in the viewer: nothing is written to your `.krs`, and
   clearing it returns the diagram to exactly its unmodified appearance.
   At the bottom of the same menu, **Membership overview** answers the other
-  question — *which elements are in facet X* — in one panel, with each facet's
+  question — _which elements are in facet X_ — in one panel, with each facet's
   description, policy links and member list. That list is derived from the
   `facets` properties on every compile, so it is never something you maintain.
   Clicking a facet's name there toggles its highlight, the same as the menu.
@@ -216,12 +216,14 @@ On a narrow window these wrap below the drill path rather than squeezing it.
   exports the drill-down tree, a single SVG bundling **all** views, **draw.io**
   (mxGraph XML) for further manual editing, and **Open All Views**, which opens
   that same all-views bundle in a new tab instead of downloading it.
-- **Share** — copy a link that carries the model in the URL.
+- **Share** — copy a link that carries the model in the URL. Not shown in
+  `karasu serve`, where the link would point at your local server and open for
+  no one else.
 - **Docs** — the built-in tag/annotation **Reference**, in a pop-out window you
   can keep beside the diagram, and the published documentation site. The
-  Reference answers *what you can write*; every tab links on to the guides and
-  the notation cookbook (*when* you would reach for a form) and the Examples
-  gallery (*how it renders*), including inside the pop-out.
+  Reference answers _what you can write_; every tab links on to the guides and
+  the notation cookbook (_when_ you would reach for a form) and the Examples
+  gallery (_how it renders_), including inside the pop-out.
 - **Focus** (`Ctrl/Cmd+Shift+F`) — expand the preview to full width.
 
 ## The editor (playground)
@@ -262,15 +264,15 @@ reached the same way, as is the Chat API key, and share that limitation.
 
 ## Keyboard shortcuts
 
-| Shortcut | Action |
-| --- | --- |
-| `Ctrl/Cmd+Shift+P` | Open the command palette — search and run any command |
-| `Ctrl/Cmd+1` … `Ctrl/Cmd+4` | Switch to System / Deploy / Org / CRUD view |
-| `Ctrl/Cmd+Shift+F` | Toggle preview focus (full width) |
-| `Ctrl/Cmd+B` | Toggle the sidebar (playground) |
-| `Ctrl/Cmd+Shift+E` | Show the Files tree (playground) |
-| `Ctrl/Cmd+Shift+O` | Show the Outline (playground) |
-| `Shift+Alt+F` | Format the current `.krs` file (playground) |
+| Shortcut                    | Action                                                |
+| --------------------------- | ----------------------------------------------------- |
+| `Ctrl/Cmd+Shift+P`          | Open the command palette — search and run any command |
+| `Ctrl/Cmd+1` … `Ctrl/Cmd+4` | Switch to System / Deploy / Org / CRUD view           |
+| `Ctrl/Cmd+Shift+F`          | Toggle preview focus (full width)                     |
+| `Ctrl/Cmd+B`                | Toggle the sidebar (playground)                       |
+| `Ctrl/Cmd+Shift+E`          | Show the Files tree (playground)                      |
+| `Ctrl/Cmd+Shift+O`          | Show the Outline (playground)                         |
+| `Shift+Alt+F`               | Format the current `.krs` file (playground)           |
 
 ## See also
 
