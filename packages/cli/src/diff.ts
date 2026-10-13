@@ -1,5 +1,5 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { randomBytes } from "node:crypto";
+import { rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
   buildAllViewsSvgDiffProject,
@@ -24,8 +24,8 @@ const STDIN_TOKEN = "-";
 /**
  * Compile two `.krs` entry points and emit an SVG annotated with diff
  * state attributes. Either positional argument may be `-`, in which case
- * stdin is read and written to a tempfile co-located with the other
- * side's directory so relative `@import`s resolve consistently.
+ * stdin is read and written to a tempfile directly in the other side's
+ * directory so relative imports resolve consistently.
  *
  * Supports `--view system | deploy | org` for single-view output. When
  * `--view` is omitted, emits a bundled SVG that contains all applicable
@@ -38,16 +38,7 @@ export async function diff(
 ): Promise<void> {
   const view: DiagramType | undefined = options.view;
 
-  // Decide a stable directory for any temp files the stdin shim creates.
-  // Co-locating the temp file with the *other* side's directory makes the
-  // most common `git diff` use case (compare a working-tree file to a
-  // committed revision) keep working: relative @imports in the stdin
-  // content resolve against the same project root as the file argument.
-  const sideADir = beforeArg === STDIN_TOKEN ? null : dirname(resolve(beforeArg));
-  const sideBDir = afterArg === STDIN_TOKEN ? null : dirname(resolve(afterArg));
-  const stdinAnchorDir = sideBDir ?? sideADir;
-
-  let stdinTempDir: string | null = null;
+  let stdinTempFile: string | null = null;
   let beforeAbs: string;
   let afterAbs: string;
   try {
@@ -55,14 +46,19 @@ export async function diff(
       process.stderr.write(`Error: cannot use - for both sides of the diff\n`);
       process.exit(1);
     }
+    // The stdin side is written next to the *other* side's file, so the most
+    // common `git diff` use case (compare a working-tree file to a committed
+    // revision) keeps working: a relative import in the stdin content resolves
+    // against the same directory as the file argument. A subdirectory would
+    // shift every `./` import one level down (#3122).
     if (beforeArg === STDIN_TOKEN) {
-      stdinTempDir = await mkdtemp(join(stdinAnchorDir ?? tmpdir(), ".karasu-diff-"));
-      beforeAbs = await materializeStdin(stdinTempDir, "before.krs");
       afterAbs = resolve(afterArg);
+      stdinTempFile = await materializeStdin(dirname(afterAbs), "before");
+      beforeAbs = stdinTempFile;
     } else if (afterArg === STDIN_TOKEN) {
-      stdinTempDir = await mkdtemp(join(stdinAnchorDir ?? tmpdir(), ".karasu-diff-"));
       beforeAbs = resolve(beforeArg);
-      afterAbs = await materializeStdin(stdinTempDir, "after.krs");
+      stdinTempFile = await materializeStdin(dirname(beforeAbs), "after");
+      afterAbs = stdinTempFile;
     } else {
       beforeAbs = resolve(beforeArg);
       afterAbs = resolve(afterArg);
@@ -103,8 +99,8 @@ export async function diff(
 
     await writeOutput(result.svg, options.output);
   } finally {
-    if (stdinTempDir) {
-      await rm(stdinTempDir, { recursive: true, force: true });
+    if (stdinTempFile) {
+      await rm(stdinTempFile, { force: true });
     }
   }
 }
@@ -136,12 +132,16 @@ async function compileFor(
   }
 }
 
-async function materializeStdin(dir: string, basename: string): Promise<string> {
+/**
+ * Write stdin to a hidden file in `dir`. The random part keeps parallel runs
+ * apart, and the exclusive flag refuses to overwrite a file already there.
+ */
+async function materializeStdin(dir: string, side: "before" | "after"): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) {
     chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
   }
-  const target = join(dir, basename);
-  await writeFile(target, Buffer.concat(chunks));
+  const target = join(dir, `.karasu-diff-${randomBytes(6).toString("hex")}-${side}.krs`);
+  await writeFile(target, Buffer.concat(chunks), { flag: "wx" });
   return target;
 }
