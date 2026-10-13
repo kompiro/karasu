@@ -40,7 +40,7 @@ const quote = (value: string): string => value.replace(/["\\]/g, "\\$&");
  * edges on the same selector and this module dims their marks, so widening it
  * (#2632) means changing both.
  */
-export const EDGE_HOVER_TRIGGER = ".krs-edge--interactive";
+const EDGE_HOVER_TRIGGER = ".krs-edge--interactive";
 
 /** What node focus dims the other edges to. */
 const NODE_FOCUS_DIM = 0.12;
@@ -53,7 +53,7 @@ const EDGE_HOVER_DIM = 0.25;
  * several edges and stays bright while any of them is kept: it is part of the
  * path in focus. With nothing to keep, every mark dims.
  */
-export function marksDimRule(scope: string, keep: readonly string[], opacity: number): string {
+function marksDimRule(scope: string, keep: readonly string[], opacity: number): string {
   const kept =
     keep.length > 0 ? `:not(:is(${keep.map((i) => `[data-edges~="${quote(i)}"]`).join(",")}))` : "";
   return `${scope} [data-edges]${kept}{opacity:${opacity} !important}`;
