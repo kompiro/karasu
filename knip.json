@@ -13,7 +13,7 @@
       "project": ["src/**/*.ts", "!src/**/*.test.ts"]
     },
     "packages/app": {
-      "entry": ["src/viewer/main.tsx"],
+      "entry": ["src/viewer/main.tsx", "src/serve-main.tsx"],
       "project": ["src/**/*.{ts,tsx,css}", "!src/**/*.test.{ts,tsx}"]
     },
     "packages/cli": {
