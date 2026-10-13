@@ -7,6 +7,7 @@ import serveConfig, {
   SERVE_ENTRY,
   SERVE_PUBLIC_FILES,
   isMonacoModule,
+  rejectMonaco,
   swapInServeEntry,
 } from "../vite.serve.config";
 
@@ -79,7 +80,27 @@ describe("serve build for the karasu npm package (#3017)", () => {
       ),
     ).toBe(false);
   });
+
+  it("fails the build when a monaco-editor module is bundled", () => {
+    const monacoId =
+      "/repo/node_modules/.pnpm/monaco-editor@0.56.0/node_modules/monaco-editor/esm/vs/editor/editor.api.js";
+    expect(() => generateBundle(["/repo/packages/app/src/serve-main.tsx", monacoId])).toThrow(
+      /bundles monaco-editor \(1 modules/,
+    );
+    expect(() => generateBundle(["/repo/packages/app/src/serve-main.tsx"])).not.toThrow();
+  });
 });
+
+/** Run `rejectMonaco`'s hook against a bundle made of `moduleIds`. */
+function generateBundle(moduleIds: string[]): void {
+  const hook = rejectMonaco().generateBundle as (this: unknown) => void;
+  hook.call({
+    getModuleIds: () => moduleIds[Symbol.iterator](),
+    error: (message: string) => {
+      throw new Error(message);
+    },
+  });
+}
 
 function transformHtml(html: string): string {
   const hook = swapInServeEntry().transformIndexHtml as {

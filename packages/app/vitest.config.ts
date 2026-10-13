@@ -31,7 +31,6 @@ export default defineConfig({
         "src/vite-env.d.ts",
         "src/main.tsx",
         "src/serve-main.tsx",
-        "src/mount-app.tsx",
       ],
       reporter: ["text", "html"],
       reportsDirectory: "./coverage",
