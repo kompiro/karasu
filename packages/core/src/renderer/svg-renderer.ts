@@ -616,6 +616,7 @@ export function renderFromLayout(
   const deferredLabels = new Set(labelInputs.filter((l) => l.deferred).map((l) => l.index));
 
   const edgeStroke: { color: string; strokeWidth: number }[] = [];
+  const markedEdges = edgesWithMarks(layoutResult.crossingMarks);
   let edgeIndex = 0;
   for (const edgeLayout of layoutResult.edges) {
     const edgeStyle = edgeStyleFor(edgeLayout);
@@ -647,6 +648,7 @@ export function renderFromLayout(
       edgeFacets,
       overlay?.colorOf,
       deferredLabels.has(edgeIndex),
+      markedEdges.has(edgeIndex) ? edgeIndex : undefined,
     );
     edgeIndex++;
     const withDim = edgeDimmed ? el("g", { opacity: FACET_DIM_OPACITY }, rendered) : rendered;
@@ -879,7 +881,7 @@ function collapseGlyph(
  *   exactly as the pre-#1939 flat bump. The arc's own `ry` is what makes it
  *   rise out of a trunk band: drawing the constant here instead left a widened
  *   arc flat inside the band it hops, which reads as a connection (#2884).
- *   Consecutive hops of one stroke share a `<path>` ({@link continuesHopRun}).
+ *   Consecutive hops of one edge and stroke share a `<path>` ({@link continuesHopRun}).
  * - **junction**: the merge mark at a trunk elbow (merge = connected), drawn as
  *   a chip carrying the number of edges the spine holds onward from there
  *   (#2883). A bare dot said only that a merge happened, which left the line
@@ -893,6 +895,11 @@ function collapseGlyph(
  * of the lines they annotate on a colour-styled diagram; `fallback` covers an
  * out-of-range index. Coordinates are rounded to 2 decimals so tiny float noise
  * never destabilises the SVG snapshot.
+ *
+ * Every mark names the edges it belongs to in `data-edges` (space-separated
+ * indices, matching the `data-edge-index` of those edges), so the app can dim a
+ * mark with its edges on hover (#3090). Only attributes are added: the marks keep
+ * this layer and their order (TPL-2956).
  *
  * Scope: crossings in any *single-system* view (right-angle and, since #1939,
  * diagonal; grouped and, since #1956, ungrouped). The multi-system view is
@@ -909,7 +916,7 @@ function renderCrossingMarks(
   const parts: string[] = [];
   // Consecutive hops that share a stroke are one `<path>` with a subpath per hop
   // (#2956): hops were 43% of a dense diagram's SVG, one element apiece.
-  let run: { stroke: { color: string; strokeWidth: number }; d: string[] } | undefined;
+  let run: (HopRun & { d: string[] }) | undefined;
   const flushRun = () => {
     if (!run) return;
     parts.push(
@@ -918,6 +925,7 @@ function renderCrossingMarks(
         fill: "none",
         stroke: run.stroke.color,
         "stroke-width": run.stroke.strokeWidth,
+        "data-edges": run.edge,
       }),
     );
     run = undefined;
@@ -930,10 +938,10 @@ function renderCrossingMarks(
     const y0 = r(hop.y - hop.halfWidth * s);
     const x1 = r(hop.x + hop.halfWidth * c);
     const y1 = r(hop.y + hop.halfWidth * s);
-    const stroke = strokeOf(hop.edge);
-    if (!run || !continuesHopRun(run.stroke, stroke)) {
+    const next: HopRun = { edge: hop.edge, stroke: strokeOf(hop.edge) };
+    if (!run || !continuesHopRun(run, next)) {
       flushRun();
-      run = { stroke, d: [] };
+      run = { ...next, d: [] };
     }
     run.d.push(
       `M ${x0} ${y0} A ${r(hop.halfWidth)} ${r(hop.ry ?? HOP_RADIUS)} ${r(hop.angle)} 0 1 ${x1} ${y1}`,
@@ -942,6 +950,8 @@ function renderCrossingMarks(
   flushRun();
   for (const j of marks.junctions) {
     const stroke = strokeOf(j.edge);
+    // On both elements: a `<g>` around the pair would nest inside the layer.
+    const edges = j.edges.join(" ");
     // Punched out of the canvas so the chip reads as a marker on the line rather
     // than a node sitting behind it, which is why it needs the palette.
     parts.push(
@@ -952,6 +962,7 @@ function renderCrossingMarks(
         fill: palette.canvasBg,
         stroke: stroke.color,
         "stroke-width": stroke.strokeWidth,
+        "data-edges": edges,
       }),
       el(
         "text",
@@ -962,6 +973,7 @@ function renderCrossingMarks(
           fill: stroke.color,
           "font-size": `${JUNCTION_COUNT_FONT_SIZE}px`,
           "font-family": "sans-serif",
+          "data-edges": edges,
         },
         String(j.count),
       ),
@@ -970,23 +982,46 @@ function renderCrossingMarks(
   return el("g", { class: "crossing-marks" }, ...parts);
 }
 
+/** What one hop `<path>` holds in common: the host edge and its stroke. */
+interface HopRun {
+  edge: number;
+  stroke: { color: string; strokeWidth: number };
+}
+
 /**
  * Where one hop `<path>` ends and the next begins: a hop joins the path before it
- * when this holds for the previous hop's stroke and its own (#2956). Only
- * *consecutive* hops merge, never every hop of one stroke, because SVG paints
- * later elements on top: pulling a stroke's later hops forward to its first one
- * would flip which of two overlapping hops of different colours is on top
- * (4,757 such pairs on the Dify model, TPL-2956).
+ * when this holds for the previous hop and itself (#2956). Only *consecutive*
+ * hops merge, never every hop of one stroke, because SVG paints later elements
+ * on top: pulling a stroke's later hops forward to its first one would flip
+ * which of two overlapping hops of different colours is on top (4,757 such
+ * pairs on the Dify model, TPL-2956).
  *
- * To make each edge's hops addressable (e.g. dimmed with their edge on hover,
- * #2632), also require the same edge here and tag the path with it. That is
- * option 3 of the #2956 design, about +2% output on Dify.
+ * A run is also one edge's, because the path carries that edge in `data-edges`
+ * and hover dims the hops with their edge (#3090). A hop bridges a gap in its
+ * host edge's line, so it is part of that line: a path shared by two edges
+ * would stay bright for both. This is option 3 of the #2956 design, about +2%
+ * output on Dify.
  */
-function continuesHopRun(
-  prev: { color: string; strokeWidth: number },
-  next: { color: string; strokeWidth: number },
-): boolean {
-  return prev.color === next.color && prev.strokeWidth === next.strokeWidth;
+function continuesHopRun(prev: HopRun, next: HopRun): boolean {
+  return (
+    prev.edge === next.edge &&
+    prev.stroke.color === next.stroke.color &&
+    prev.stroke.strokeWidth === next.stroke.strokeWidth
+  );
+}
+
+/**
+ * The edges some crossing mark belongs to. Only these get `data-edge-index`,
+ * which is all hover needs to match an edge to its marks (#3090).
+ */
+function edgesWithMarks(marks: CrossingMarks | undefined): Set<number> {
+  const edges = new Set<number>();
+  if (!marks) return edges;
+  for (const hop of marks.hops) edges.add(hop.edge);
+  for (const mark of [...marks.junctions, ...marks.bands]) {
+    for (const edge of mark.edges) edges.add(edge);
+  }
+  return edges;
 }
 
 /** Type size of the numeral in a merge mark, and its baseline offset. */
@@ -1035,14 +1070,20 @@ function renderTrunkBands(
         stroke: stroke.color,
         "stroke-width": r(trunkBandHalfWidth(band.count) * 2),
         "stroke-linejoin": "miter",
-        opacity: TRUNK_BAND_OPACITY,
+        "stroke-opacity": TRUNK_BAND_OPACITY,
+        "data-edges": band.edges.join(" "),
       }),
     );
   }
   return el("g", { class: "trunk-bands" }, ...parts);
 }
 
-/** Bands sit behind the lines, so they read as a backdrop and not as an edge. */
+/**
+ * Bands sit behind the lines, so they read as a backdrop and not as an edge.
+ * A stroke opacity, not `opacity`: hover dims a band with a CSS `opacity`, which
+ * would replace an `opacity` attribute and leave the band at 0.12 against lines
+ * dimmed from 1 to 0.12. On one unfilled polyline the two look the same (#3090).
+ */
 const TRUNK_BAND_OPACITY = 0.4;
 
 /**

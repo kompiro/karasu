@@ -6,6 +6,7 @@ import type {
   LayoutEdge,
   LayoutNode,
   LayoutResult,
+  TrunkBand,
 } from "./layout-types.js";
 import { HOP_RADIUS } from "./crossing-marks.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
@@ -1344,8 +1345,9 @@ system S {
 });
 
 // Hops used to be one `<path>` apiece and were 43% of a dense diagram's SVG.
-// Consecutive hops of one stroke now share a path (#2956), and grouping must not
-// reorder them: SVG paints later elements on top (TPL-2956).
+// Consecutive hops of one edge and stroke now share a path (#2956, split per edge
+// in #3090), and grouping must not reorder them: SVG paints later elements on
+// top (TPL-2956).
 describe("crossing hop paths (#2956)", () => {
   const RED = { color: "#dc143c", strokeWidth: 1.5 };
   const BLUE = { color: "#1e90ff", strokeWidth: 1.5 };
@@ -1355,6 +1357,7 @@ describe("crossing hop paths (#2956)", () => {
     strokes: { color: string; strokeWidth: number }[],
     hops: HopMark[],
     junctions: JunctionMark[] = [],
+    bands: TrunkBand[] = [],
   ): string => {
     const styles = resolveStyles(
       Parser.parse('system S { service Svc { label "Svc" } }').value.systems,
@@ -1389,7 +1392,7 @@ describe("crossing hop paths (#2956)", () => {
         containers: [],
         width: 900,
         height: 900,
-        crossingMarks: { hops, junctions, bands: [] },
+        crossingMarks: { hops, junctions, bands },
       },
       styles,
     );
@@ -1404,14 +1407,28 @@ describe("crossing hop paths (#2956)", () => {
   const hopPaths = (svg: string) => {
     const layer = svg.match(/<g class="crossing-marks">.*?<\/g>/s)?.[0] ?? "";
     return [
-      ...layer.matchAll(/<path d="([^"]*)" fill="none" stroke="([^"]*)" stroke-width="([^"]*)"/g),
-    ].map((m) => ({ subpaths: m[1].split(/ (?=M )/), color: m[2], strokeWidth: Number(m[3]) }));
+      ...layer.matchAll(
+        /<path d="([^"]*)" fill="none" stroke="([^"]*)" stroke-width="([^"]*)" data-edges="([^"]*)"/g,
+      ),
+    ].map((m) => ({
+      subpaths: m[1].split(/ (?=M )/),
+      color: m[2],
+      strokeWidth: Number(m[3]),
+      edges: m[4],
+    }));
   };
 
-  it("draws consecutive hops of one stroke as one <path>, in their original order", () => {
-    const paths = hopPaths(renderHops([RED, RED], [hopAt(0, 100), hopAt(1, 200), hopAt(0, 300)]));
+  it("draws consecutive hops of one edge and stroke as one <path>, in their original order", () => {
+    const paths = hopPaths(renderHops([RED], [hopAt(0, 100), hopAt(0, 200), hopAt(0, 300)]));
     expect(paths).toHaveLength(1);
     expect(paths[0].subpaths.map((d) => d.split(" ")[1])).toEqual(["94", "194", "294"]);
+  });
+
+  it("starts a new <path> whenever the host edge changes, even in one stroke (#3090)", () => {
+    // A path shared by two edges would stay bright on hover for both, while the
+    // line it bridges dims with its own edge.
+    const paths = hopPaths(renderHops([RED, RED], [hopAt(0, 100), hopAt(1, 200), hopAt(0, 300)]));
+    expect(paths.map((p) => p.edges)).toEqual(["0", "1", "0"]);
   });
 
   it("starts a new <path> whenever the stroke changes, so A, B, A stays three paths", () => {
@@ -1427,13 +1444,13 @@ describe("crossing hop paths (#2956)", () => {
     expect(paths.map((p) => p.strokeWidth)).toEqual([1.5, 3]);
   });
 
-  it("paints each path in the stroke of the edges whose hops it holds", () => {
+  it("paints each path in the stroke of the edge whose hops it holds, and names that edge", () => {
     const paths = hopPaths(
-      renderHops([RED, BLUE, RED], [hopAt(0, 100), hopAt(2, 150), hopAt(1, 200), hopAt(1, 300)]),
+      renderHops([RED, BLUE], [hopAt(0, 100), hopAt(0, 150), hopAt(1, 200), hopAt(1, 300)]),
     );
     expect(paths).toEqual([
-      { subpaths: [expect.any(String), expect.any(String)], ...RED },
-      { subpaths: [expect.any(String), expect.any(String)], ...BLUE },
+      { subpaths: [expect.any(String), expect.any(String)], ...RED, edges: "0" },
+      { subpaths: [expect.any(String), expect.any(String)], ...BLUE, edges: "1" },
     ]);
   });
 
@@ -1457,9 +1474,138 @@ describe("crossing hop paths (#2956)", () => {
     const svg = renderHops(
       [RED, BLUE],
       [hopAt(0, 100), hopAt(1, 200)],
-      [{ x: 300, y: 100, edge: 0, count: 2 }],
+      [{ x: 300, y: 100, edge: 0, count: 2, edges: [0, 1] }],
     );
     const layer = svg.match(/<g class="crossing-marks">.*?<\/g>/s)?.[0] ?? "";
     expect(layer.lastIndexOf("<path")).toBeLessThan(layer.indexOf("<circle"));
+  });
+});
+
+// Hover dims the edges that are not in focus. The marks sit in their own layers,
+// outside the edge groups, so each one names the edges it belongs to and those
+// edges carry the index it names (#3090).
+describe("crossing marks name their edges (#3090)", () => {
+  const RED = { color: "#dc143c", strokeWidth: 1.5 };
+
+  const renderMarks = (
+    edgeCount: number,
+    marks: { hops?: HopMark[]; junctions?: JunctionMark[]; bands?: TrunkBand[] },
+  ): string => {
+    const styles = resolveStyles(
+      Parser.parse('system S { service Svc { label "Svc" } }').value.systems,
+      [getBuiltinStyleSheet()],
+    );
+    const edges: LayoutEdge[] = Array.from({ length: edgeCount }, (_, i) => {
+      styles.edges.set(`a${i}->b${i}`, { ...styles.defaultEdgeStyle, ...RED });
+      return {
+        from: `a${i}`,
+        to: `b${i}`,
+        fromPoint: { x: 0, y: 100 + 50 * i },
+        toPoint: { x: 600, y: 100 + 50 * i },
+      };
+    });
+    const node: LayoutNode = {
+      kind: "service",
+      id: "Svc",
+      label: "Svc",
+      properties: { links: [] },
+      linkCount: 0,
+      hasChildren: false,
+      hasDescription: false,
+      x: 700,
+      y: 700,
+      width: 100,
+      height: 50,
+    };
+    return renderFromLayout(
+      {
+        nodes: new Map([["Svc", node]]),
+        edges,
+        containers: [],
+        width: 900,
+        height: 900,
+        crossingMarks: {
+          hops: marks.hops ?? [],
+          junctions: marks.junctions ?? [],
+          bands: marks.bands ?? [],
+        },
+      },
+      styles,
+    );
+  };
+  const edgeIndexOf = (svg: string, from: string): string | undefined => {
+    const group = svg.match(new RegExp(`<g data-edge-from="${from}"[^>]*>`))?.[0] ?? "";
+    return group.match(/data-edge-index="([^"]*)"/)?.[1];
+  };
+  const hop = (edge: number): HopMark => ({
+    x: 300,
+    y: 100 + 50 * edge,
+    halfWidth: 6,
+    angle: 0,
+    edge,
+  });
+
+  it("tags both elements of a count chip with every edge the spine carries past it", () => {
+    const svg = renderMarks(3, {
+      junctions: [{ x: 300, y: 100, edge: 2, count: 2, edges: [1, 2] }],
+    });
+    const layer = svg.match(/<g class="crossing-marks">.*?<\/g>/s)?.[0] ?? "";
+    expect(layer).toMatch(/<circle [^>]*data-edges="1 2"/);
+    expect(layer).toMatch(/<text [^>]*data-edges="1 2"/);
+  });
+
+  it("tags a band with every edge it carries, and keeps its 0.4 as a stroke opacity", () => {
+    // A CSS `opacity` replaces an `opacity` attribute but multiplies a
+    // `stroke-opacity`, so only the latter lets hover dim the band as far as its lines.
+    const band: TrunkBand = {
+      points: [
+        { x: 50, y: 100 },
+        { x: 50, y: 300 },
+      ],
+      count: 3,
+      edge: 0,
+      edges: [0, 1, 2],
+    };
+    const svg = renderMarks(3, { bands: [band] });
+    const polyline = svg.match(/<g class="trunk-bands">(<polyline [^>]*>)/)?.[1] ?? "";
+    expect(polyline).toContain('data-edges="0 1 2"');
+    expect(polyline).toContain('stroke-opacity="0.4"');
+    expect(polyline).not.toMatch(/ opacity=/);
+  });
+
+  it("gives the edges a mark names the same index, and no other edge one", () => {
+    const svg = renderMarks(3, {
+      hops: [hop(0)],
+      junctions: [{ x: 300, y: 200, edge: 2, count: 2, edges: [0, 2] }],
+    });
+    expect(edgeIndexOf(svg, "a0")).toBe("0");
+    expect(edgeIndexOf(svg, "a1")).toBeUndefined();
+    expect(edgeIndexOf(svg, "a2")).toBe("2");
+  });
+
+  it("names only indices some edge carries", () => {
+    const svg = renderMarks(4, {
+      hops: [hop(3), hop(1)],
+      junctions: [{ x: 300, y: 200, edge: 2, count: 2, edges: [1, 2] }],
+      bands: [
+        {
+          points: [
+            { x: 50, y: 100 },
+            { x: 50, y: 300 },
+          ],
+          count: 2,
+          edge: 0,
+          edges: [0, 2],
+        },
+      ],
+    });
+    const indices = new Set([...svg.matchAll(/data-edge-index="(\d+)"/g)].map((m) => m[1]));
+    const named = [...svg.matchAll(/data-edges="([^"]*)"/g)].flatMap((m) => m[1].split(" "));
+    expect(named.length).toBeGreaterThan(0);
+    for (const index of named) expect(indices).toContain(index);
+  });
+
+  it("leaves a canvas without marks byte-identical: no edge gets an index", () => {
+    expect(renderMarks(2, {})).not.toContain("data-edge-index");
   });
 });

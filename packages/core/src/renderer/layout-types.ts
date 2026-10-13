@@ -401,7 +401,9 @@ export interface HopMark {
 /**
  * The merge mark at a trunk elbow (#1859 P2c-C, numbered in #2883). `edge` is
  * the index of the joining stub edge, so the mark is coloured like the edge that
- * merges there.
+ * merges there. `edges` is every edge the spine carries past the mark (the
+ * `count` of them), which is what the mark belongs to: hover keeps it bright
+ * while any of them is in focus (#3090).
  *
  * `count` is how many edges the spine carries onward from this point, which the
  * renderer draws as the mark itself: a dot says a merge happened, and nothing
@@ -417,6 +419,7 @@ export interface JunctionMark {
   y: number;
   edge: number;
   count: number;
+  edges: number[];
 }
 
 /**
@@ -428,12 +431,14 @@ export interface JunctionMark {
  * the corner is a join rather than two butted ends. Drawn under the edges, in
  * the colour of one of them, at a width derived from `count` alone — the stroke
  * width of the edges themselves already means read versus write (ADR-1061), so
- * the band borrows the colour and not the weight.
+ * the band borrows the colour and not the weight. `edges` is every edge the band
+ * carries, so it dims only when none of them is in focus (#3090).
  */
 export interface TrunkBand {
   points: Point[];
   count: number;
   edge: number;
+  edges: number[];
 }
 
 /**

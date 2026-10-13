@@ -427,7 +427,8 @@ export function detectMarks(edges: LayoutEdge[]): {
       // What the spine carries between here and the shared end, which is what
       // the band on that side is drawn as. At a fan-in merge that is the count
       // it carries onward; at a fan-out branch, the count that reached it.
-      junctions.push({ x, y, edge, count: carriedAt(group, y - arm * EPS * 10).length });
+      const carried = carriedAt(group, y - arm * EPS * 10);
+      junctions.push({ x, y, edge, count: carried.length, edges: carried.map((c) => c.edge) });
     }
   }
 
@@ -482,7 +483,12 @@ function bandsOf(trunks: readonly TrunkGroup[]): TrunkBand[] {
       const points =
         atEnd && hasRun && arms.size === 1 ? [from, to, { x: entryX, y: endY }] : [from, to];
       if (out) points.reverse();
-      bands.push({ points, count: carried.length, edge: carried[0].edge });
+      bands.push({
+        points,
+        count: carried.length,
+        edge: carried[0].edge,
+        edges: carried.map((c) => c.edge),
+      });
     }
     if (hasRun && arms.size > 1 && entries.length >= 2) {
       const run = [
@@ -490,7 +496,12 @@ function bandsOf(trunks: readonly TrunkGroup[]): TrunkBand[] {
         { x: entryX, y: endY },
       ];
       if (out) run.reverse();
-      bands.push({ points: run, count: entries.length, edge: entries[0].edge });
+      bands.push({
+        points: run,
+        count: entries.length,
+        edge: entries[0].edge,
+        edges: entries.map((e) => e.edge),
+      });
     }
   }
   return bands;
