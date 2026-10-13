@@ -15,6 +15,9 @@
 - [x] before / after どちらの引数も `-` で stdin から読み取れる（git external-diff からのパイプ用）
   > ✅ Automated — `packages/cli/src/diff.e2e.test.ts` › `reads the before side from stdin when first arg is -` / `reads the after side from stdin when second arg is -`
 
+- [x] stdin 側の相対 import（`import "./x.krs"` / `@import "./x.krs.style"`）が、対側のファイルと同じディレクトリから解決される（#3122）
+  > ✅ Automated — `packages/cli/src/diff.e2e.test.ts` › `resolves a stdin before side's relative imports against the after side's directory` / `resolves a stdin after side's style import against the before side's directory` / `removes the stdin tempfile from the other side's directory`
+
 - [x] 両方の引数が `-` の場合はエラーで exit 1
   > ✅ Automated — `packages/cli/src/diff.test.ts` › `rejects when both sides are stdin`
 
@@ -38,5 +41,5 @@
 
 ## 補足
 
-- Stdin → tempfile shim: `-` が指定された側は stdin を読み込んで対側のディレクトリ（無ければ OS 標準 tempdir）に `before.krs` / `after.krs` の名前で一時保存する。これにより stdin 側の relative `@import` も対側のプロジェクトルートから解決される。tempfile は finally で削除する。
+- Stdin → tempfile shim: `-` が指定された側は stdin を読み込んで対側のファイルと同じディレクトリに `.karasu-diff-<random>-before.krs` / `.karasu-diff-<random>-after.krs` の名前で一時保存する（既存ファイルは上書きしない）。これにより stdin 側の relative import も対側のファイルと同じディレクトリから解決される。tempfile は finally で削除する。当初は `mkdtemp` で対側ディレクトリの下に子ディレクトリを作っていたため、`./` の import が 1 階層下で解決されて見つからなかった（#3122）。
 - All-views 統合 SVG（`buildAllViewsSvgProject` の diff 版）は未実装。3 種類の view を 1 ファイルに束ねる需要が出たら follow-up。
