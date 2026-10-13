@@ -93,75 +93,100 @@ function routePair(
   return edges;
 }
 
-/** The channel between rows `upper` and `lower`, as a y range. */
-function channel(upper: LayoutNode, lower: LayoutNode): { top: number; bottom: number } {
-  return { top: upper.y + upper.height, bottom: lower.y };
+/** A hand-placed layout: the cards, the two ends of the pair, and any group frames. */
+interface Case {
+  cards: LayoutNode[];
+  pair: [string, string];
+  frames?: ContainerRect[];
 }
 
-describe("a two-way pair in adjacent rows crosses their channel as one run (#3134)", () => {
-  describe("through an interior corridor", () => {
-    // C (top right) and D (bottom left). B is wider than E, so the corridor
-    // beside E runs through B's column: C's side stub towards it crosses B,
-    // D's crosses E, and both ends drop into the channel between the rows.
-    // On main both edges took the corridor beside E and overlapped on it.
-    const cards = [
+/**
+ * Two rows with the pair in the corner columns: C (top right) and D (bottom
+ * left). B is wider than E, so the corridor beside E runs through B's column:
+ * C's side stub towards it crosses B, D's crosses E, and both ends drop into
+ * the channel between the rows. On main both edges took that corridor and
+ * overlapped on it, as the Umami pairs did.
+ */
+const throughColumn: Case = {
+  cards: [
+    card("A", 0, 0),
+    card("B", 220, 0, 180),
+    card("C", 460, 0),
+    card("D", 0, 166),
+    card("E", 220, 166, 140),
+    card("F", 460, 166),
+  ],
+  pair: ["C", "D"],
+};
+
+/**
+ * The same pair with the corridor in a gap: B stands right of E, so the
+ * corridor between them blocks C's side stub on B and D's on E. With `height`
+ * below the row's, C is shorter than its row-mates, and its channel stub stops
+ * higher in the channel than D's does: the two ends no longer agree on a y,
+ * though they are in one channel. On main that left a short corridor between
+ * them, and the run still folded.
+ */
+function throughGap(height: number): Case {
+  return {
+    cards: [
       card("A", 0, 0),
-      card("B", 220, 0, 180),
-      card("C", 460, 0),
+      card("B", 400, 0),
+      card("C", 620, 0, 160, height),
       card("D", 0, 166),
-      card("E", 220, 166, 140),
-      card("F", 460, 166),
-    ];
-    const laid = () => routePair(cards, "C", "D");
+      card("E", 200, 166, 140),
+      card("F", 620, 166),
+    ],
+    pair: ["C", "D"],
+  };
+}
 
-    it("routes both edges, and each has a single run in the channel", () => {
-      const { top, bottom } = channel(cards[2], cards[3]);
-      for (const e of laid()) {
-        const wps = e.waypoints ?? [];
-        expect(wps).toHaveLength(2);
-        expect(wps[0].y).toBe(wps[1].y);
-        expect(wps[0].y).toBeGreaterThan(top);
-        expect(wps[0].y).toBeLessThan(bottom);
-      }
-    });
+/**
+ * One frame round two rows of five, so the interior candidates are off and the
+ * gutters are what is left. C and E sit in inner columns: a side stub towards
+ * either gutter crosses a neighbour, so both ends drop into the channel. On
+ * main both edges ran out to the left gutter and back, and overlapped on it.
+ * With `height` below the row's, C is shorter than its row-mates, as above.
+ */
+function mixed(height: number): Case {
+  return {
+    cards: [..."ACBGH"]
+      .map((id, i) => card(id, i * 220, 0, 160, id === "C" ? height : 66))
+      .concat([..."DIJEF"].map((id, i) => card(id, i * 220, 166))),
+    pair: ["C", "E"],
+    frames: [
+      {
+        id: "team:x",
+        label: "X",
+        x: -20,
+        y: -40,
+        width: 1100,
+        height: 312,
+        ghost: false,
+        group: true,
+      } as ContainerRect,
+    ],
+  };
+}
 
-    it("the two edges share no vertical, and neither crosses a card", () => {
-      const edges = laid();
-      expect(sharedVerticals(edges)).toBe(0);
-      for (const e of edges) {
-        const others = cards.filter((c) => c.id !== e.from && c.id !== e.to);
-        expect(countPolylinePenetrations(pointsOf(e), others)).toBe(0);
-      }
-    });
-  });
+const CASES: [string, Case][] = [
+  ["interior corridor through a column", throughColumn],
+  ["interior corridor through a gap", throughGap(66)],
+  ["interior corridor through a gap, the upper card shorter than its row", throughGap(50)],
+  ["mixed gutter route", mixed(66)],
+  ["mixed gutter route, the upper card shorter than its row", mixed(50)],
+];
 
-  describe("through a mixed gutter route", () => {
-    // One frame round both rows, so the interior candidates are off and the
-    // gutters are what is left. C and E sit in inner columns: a side stub
-    // towards either gutter crosses a neighbour, so both ends drop into the
-    // channel. On main both edges ran out to the left gutter and back, and
-    // overlapped on it.
-    const cards = [..."ACBGH"]
-      .map((id, i) => card(id, i * 220, 0))
-      .concat([..."DIJEF"].map((id, i) => card(id, i * 220, 166)));
-    const frame = {
-      id: "team:x",
-      label: "X",
-      x: -20,
-      y: -40,
-      width: 1100,
-      height: 312,
-      ghost: false,
-      group: true,
-    } as ContainerRect;
-    const laid = () => routePair(cards, "C", "E", [frame]);
-    const byId = (id: string) => cards.find((c) => c.id === id)!;
-
-    it("routes both edges, and each has a single run in the channel, inside the content", () => {
-      const { top, bottom } = channel(byId("C"), byId("E"));
+describe("a two-way pair in adjacent rows crosses their channel as one run (#3134)", () => {
+  it.each(CASES)(
+    "%s: each edge has a single run, inside the channel and the content",
+    (_name, { cards, pair, frames }) => {
+      const upper = cards.filter((c) => c.y === 0);
+      const top = Math.max(...upper.map((c) => c.y + c.height));
+      const bottom = Math.min(...cards.filter((c) => c.y > 0).map((c) => c.y));
       const left = Math.min(...cards.map((c) => c.x));
       const right = Math.max(...cards.map((c) => c.x + c.width));
-      for (const e of laid()) {
+      for (const e of routePair(cards, pair[0], pair[1], frames)) {
         const wps = e.waypoints ?? [];
         expect(wps).toHaveLength(2);
         expect(wps[0].y).toBe(wps[1].y);
@@ -172,15 +197,18 @@ describe("a two-way pair in adjacent rows crosses their channel as one run (#313
           expect(p.x).toBeLessThanOrEqual(right);
         }
       }
-    });
+    },
+  );
 
-    it("the two edges share no vertical, and neither crosses a card", () => {
-      const edges = laid();
+  it.each(CASES)(
+    "%s: the two edges share no vertical, and neither crosses a card",
+    (_name, { cards, pair, frames }) => {
+      const edges = routePair(cards, pair[0], pair[1], frames);
       expect(sharedVerticals(edges)).toBe(0);
       for (const e of edges) {
         const others = cards.filter((c) => c.id !== e.from && c.id !== e.to);
         expect(countPolylinePenetrations(pointsOf(e), others)).toBe(0);
       }
-    });
-  });
+    },
+  );
 });
