@@ -167,6 +167,13 @@ export interface RenderOptions {
    */
   nodeDiffMeta?: Map<string, NodeDiffMeta>;
   /**
+   * The canvas cards' diff metadata keyed by full path (`DiffedView.nodesByPath`).
+   * When provided, a card that knows its path takes its state from here and
+   * nowhere else: a miss means the card has no state, not that it may borrow
+   * the bare-id entry of a same-named node (#2934).
+   */
+  nodeDiffMetaByPath?: Map<string, NodeDiffMeta>;
+  /**
    * Diff state per container keyed by container id (deploy: `serviceId`). When
    * present, the matching `<g data-container-id>` emits `data-diff-state` so
    * CSS can highlight whole-container additions/removals (Issue #750).
@@ -346,8 +353,12 @@ export function render(
   }
   // Resolved-shape lookup for measureNode's inset-aware sizing (#2366 F) —
   // the same resolveNodeStyle chain renderFromLayout draws with.
-  const shapeForNode = (id: string, annotations: readonly string[]): string | undefined =>
-    shapeNameOf(resolveNodeStyle(styles, id, annotations).shape);
+  const shapeForNode = (
+    id: string,
+    annotations: readonly string[],
+    path?: readonly string[],
+  ): string | undefined =>
+    shapeNameOf(resolveNodeStyle(styles, id, annotations, undefined, path).shape);
   // The corner lane the ports must keep clear of (#2422). Resolved here
   // because the lane's width comes from the badge style; layout only knows
   // where the card ended up.
@@ -367,6 +378,7 @@ export function render(
     groupLabels: options?.groupLabels,
     displayMode,
     layoutHints: styles.layoutHints,
+    layoutHintsByPath: styles.layoutHintsByPath,
     edgeDirections,
     collapsedCategories: options?.collapsedCategories,
     groupBy: options?.groupBy,
@@ -379,6 +391,7 @@ export function render(
     // never influences placement, which is what keeps the overlay orthogonal to
     // the Group-by axis (#2174).
     facetMembership: options?.facetOverlay?.membership,
+    facetMembershipByPath: options?.facetOverlay?.membershipByPath,
     facetOrder: options?.facetOverlay?.entries.map((e) => e.id),
   });
   const sink = options?.diagnosticSink;
@@ -505,14 +518,14 @@ export function renderFromLayout(
   // Ghost ancestor containers (outermost first)
   for (const container of layoutResult.containers) {
     if (container.ghost) {
-      parts.push(renderContainer(container, containerStyleOf(styles, container.id, palette), true));
+      parts.push(renderContainer(container, containerStyleOf(styles, container, palette), true));
     }
   }
 
   // Focused container
   for (const container of layoutResult.containers) {
     if (!container.ghost) {
-      const containerStyle = containerStyleOf(styles, container.id, palette);
+      const containerStyle = containerStyleOf(styles, container, palette);
       const diffState = options?.containerDiffState?.get(container.id);
       parts.push(
         renderContainer(
@@ -551,8 +564,17 @@ export function renderFromLayout(
         ])
       : overlay.membership
     : undefined;
-  const facetsFor = (nodeId: string, layoutId: string): readonly string[] =>
-    facetMembership?.get(nodeId) ?? facetMembership?.get(layoutId) ?? [];
+  // A card that knows its path is ringed by what that node declared (#2934); the
+  // bare union would ring every node sharing its id. Stubs, ghosts and edge
+  // endpoints carry no path and read the bare map (with the folded stubs).
+  const facetsFor = (
+    nodeId: string,
+    layoutId: string,
+    path?: readonly string[],
+  ): readonly string[] =>
+    (overlay !== undefined && path !== undefined
+      ? overlay.membershipByPath.get(nodePathRefId(path))
+      : (facetMembership?.get(nodeId) ?? facetMembership?.get(layoutId))) ?? [];
   /**
    * An edge's own selected facets (#2544), read off the layout edge rather than
    * out of a membership map: an edge's `canonicalId` is `undefined` whenever its
@@ -631,12 +653,17 @@ export function renderFromLayout(
     // touches a member node. The second is why the rule is "dim when *both*
     // endpoints are outside" — where the highlighted set meets the rest of the
     // model is the main thing an overlay is read for.
+    // An endpoint is read through its card, so a card sharing its id with a
+    // member does not keep its edge lit (#2934); the multi-system root names
+    // the card by `fromKey` / `toKey`, every other canvas by the bare id.
+    const endpointFacets = (id: string, key: string | undefined): readonly string[] =>
+      facetsFor(id, id, layoutResult.nodes.get(key ?? id)?.path);
     const edgeFacets = edgeFacetsFor(edgeLayout);
     const edgeDimmed =
       overlay !== undefined &&
       edgeFacets.length === 0 &&
-      facetsFor(edgeLayout.from, edgeLayout.from).length === 0 &&
-      facetsFor(edgeLayout.to, edgeLayout.to).length === 0;
+      endpointFacets(edgeLayout.from, edgeLayout.fromKey).length === 0 &&
+      endpointFacets(edgeLayout.to, edgeLayout.toKey).length === 0;
     const rendered = renderEdge(
       edgeLayout,
       edgeStyle,
@@ -711,18 +738,30 @@ export function renderFromLayout(
     layoutResult.nodeIdentity === "key" ? mapKey : layoutNode.id;
   for (const [mapKey, layoutNode] of layoutResult.nodes) {
     const nodeId = elementIdOf(mapKey, layoutNode);
-    const nodeStyle = resolveNodeStyle(styles, nodeId, layoutNode.annotations, layoutNode.id);
-    const diffMeta =
-      options?.nodeDiffMeta?.get(layoutNode.id) ?? options?.nodeDiffMeta?.get(nodeId);
-    const diffState =
-      diffMeta?.state ??
-      options?.nodeDiffState?.get(layoutNode.id) ??
-      options?.nodeDiffState?.get(nodeId);
+    const nodeStyle = resolveNodeStyle(
+      styles,
+      nodeId,
+      layoutNode.annotations,
+      layoutNode.id,
+      layoutNode.path,
+    );
+    const byPath =
+      layoutNode.path !== undefined && options?.nodeDiffMetaByPath !== undefined
+        ? options.nodeDiffMetaByPath
+        : undefined;
+    const diffMeta = byPath
+      ? byPath.get(nodePathRefId(layoutNode.path!))
+      : (options?.nodeDiffMeta?.get(layoutNode.id) ?? options?.nodeDiffMeta?.get(nodeId));
+    const diffState = byPath
+      ? diffMeta?.state
+      : (diffMeta?.state ??
+        options?.nodeDiffState?.get(layoutNode.id) ??
+        options?.nodeDiffState?.get(nodeId));
     const rendered = layoutNode.tags?.includes(CATEGORY_STUB_TAG)
       ? renderCategoryStub(
           layoutNode,
           palette,
-          facetsFor(nodeId, layoutNode.id),
+          facetsFor(nodeId, layoutNode.id, layoutNode.path),
           overlay !== undefined,
           overlay?.colorOf,
         )
@@ -736,7 +775,7 @@ export function renderFromLayout(
           childLevelLinks,
           diffState,
           diffMeta,
-          facetsFor(nodeId, layoutNode.id),
+          facetsFor(nodeId, layoutNode.id, layoutNode.path),
           overlay !== undefined,
           overlay?.colorOf,
           styles.boundaryFrames,
@@ -1600,11 +1639,19 @@ function resolveFramePaint(
  */
 function containerStyleOf(
   styles: ResolvedStyles,
-  containerId: string,
+  container: ContainerRect,
   palette: DiagramPalette,
 ): ResolvedNodeStyle {
-  const style = styles.nodes.get(containerId) ?? styles.defaultNodeStyle;
-  const painted = styles.paintedColors.get(containerId);
+  // By the frame's own path first (#2934), so a system that shares its id with
+  // a service elsewhere is not drawn from that service's resolved style. The
+  // painted record is read from the same place the style came from.
+  const pathKey = container.path !== undefined ? nodePathRefId(container.path) : undefined;
+  const ownStyle = pathKey !== undefined ? styles.nodesByPath.get(pathKey) : undefined;
+  const style = ownStyle ?? styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
+  const painted =
+    ownStyle !== undefined
+      ? styles.paintedColorsByPath.get(pathKey!)
+      : styles.paintedColors.get(container.id);
   return {
     ...style,
     color: painted?.color ? style.color : palette.textPrimary,
@@ -2209,14 +2256,22 @@ function shapeNameOf(shape: ResolvedNodeStyle["shape"]): string {
  * measurement-time shapeForNode hook so the two can never resolve different
  * styles (#2412 review). `layoutId` is the deploy `containerId::unitId`
  * carrier — resolved styles are keyed by the bare unit id (#735 / #1666).
+ *
+ * `path` is the card's `LayoutNode.path`. It is looked up first, so two nodes
+ * that share an id are each drawn with their own style rather than with the
+ * one the bare entry holds (#2934). A card without one (a ghost, a stub, a
+ * deploy unit) and a path the style pass did not record fall through to the
+ * id-keyed chain.
  */
 function resolveNodeStyle(
   styles: ResolvedStyles,
   id: string,
   annotations: readonly string[] | undefined,
   layoutId?: string,
+  path?: readonly string[],
 ): ResolvedNodeStyle {
   return (
+    (path !== undefined ? styles.nodesByPath.get(nodePathRefId(path)) : undefined) ??
     styles.nodes.get(nodeStyleKey(id, annotations)) ??
     styles.nodes.get(id) ??
     (layoutId !== undefined ? styles.nodes.get(layoutId) : undefined) ??
@@ -2627,7 +2682,7 @@ function chipZoneOf(
 ): Rect | undefined {
   {
     if (node.tags?.includes(CATEGORY_STUB_TAG)) return undefined;
-    const style = resolveNodeStyle(styles, nodeId, node.annotations, node.id);
+    const style = resolveNodeStyle(styles, nodeId, node.annotations, node.id, node.path);
     const buttonCount =
       (node.hasDescription || node.linkCount > 0 || !!node.properties.team || !!node.properties.role
         ? 1

@@ -1,5 +1,7 @@
 import type { KrsEdge, KrsNode } from "../types/ast.js";
 import { quotedIdLiteral } from "../formatter/quote-id.js";
+import { nodePathRefId } from "../parser/node-path.js";
+import { UNASSIGNED_SYSTEM_ID } from "../view/unassigned-system.js";
 import type { DomainEdgeDetail, SystemFrameEdges, ViewSlice } from "../view/view-extract.js";
 
 export type DiffState = "unchanged" | "added" | "removed" | "changed";
@@ -32,6 +34,14 @@ export interface DiffedView {
   slice: ViewSlice;
   /** Diff state keyed by node id. Includes ghost users and child nodes. */
   nodes: Map<string, NodeDiffMeta>;
+  /**
+   * The canvas cards' diff state keyed by the full path the layout stamps on
+   * each card (`LayoutNode.path`, in `nodePathRefId` form). A card reads its
+   * own state here, so on the multi-system root `Admin.Api` no longer shows the
+   * state `nodes` holds for `Shop.Api` (#2934). Ghosts and system frames carry
+   * no path and stay in `nodes` only.
+   */
+  nodesByPath: Map<string, NodeDiffMeta>;
   /**
    * Diff state keyed by {@link edgeKey}.
    * Matches the LayoutEdge identification used by svg-renderer; sync/async
@@ -85,20 +95,51 @@ function nodeChanges(before: KrsNode, after: KrsNode): NodeDiffMeta["changes"] |
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
+/**
+ * The full path the layout stamps on a canvas card of `slice` (`LayoutNode.path`):
+ * the canvas scope plus the card's id, with the expanded service in between for
+ * a domain spliced in by in-place expansion (#1921 / #2917). The same rule as
+ * layout's `canvasPathOf` and, on the multi-system root, the primary frame's
+ * `framePathOf`, whose scope is the first system, or nothing for the "Unassigned"
+ * pseudo-system (its children are top-level nodes).
+ */
+function canvasCardPathOf(slice: ViewSlice): (id: string) => string[] {
+  const container = slice.containerNode;
+  const scope =
+    container === null ||
+    (container.id === UNASSIGNED_SYSTEM_ID && slice.ancestorChain.length === 0)
+      ? []
+      : [...slice.ancestorChain.map((n) => n.id), container.id];
+  const expandedParentOf = new Map<string, string>();
+  for (const frame of slice.expandedFrames) {
+    for (const memberId of frame.memberIds) expandedParentOf.set(memberId, frame.containerId);
+  }
+  return (id) => {
+    const parent = expandedParentOf.get(id);
+    return parent !== undefined ? [...scope, parent, id] : [...scope, id];
+  };
+}
+
 function diffNodeArray(
   before: readonly KrsNode[],
   after: readonly KrsNode[],
   diff: Map<string, NodeDiffMeta>,
+  /** Also record each node's state by its card path (canvas cards only). */
+  byPath?: { map: Map<string, NodeDiffMeta>; pathOf: (id: string) => string[] },
 ): KrsNode[] {
   const beforeById = new Map(before.map((n) => [n.id, n]));
   const merged: KrsNode[] = [];
   const seen = new Set<string>();
+  const set = (id: string, meta: NodeDiffMeta): void => {
+    diff.set(id, meta);
+    byPath?.map.set(nodePathRefId(byPath.pathOf(id)), meta);
+  };
 
   // Iterate in `after` order first so the union slice presents the new structure.
   for (const node of after) {
     const prev = beforeById.get(node.id);
     if (prev === undefined) {
-      diff.set(node.id, { state: "added" });
+      set(node.id, { state: "added" });
       merged.push(node);
     } else {
       const changes = nodeChanges(prev, node);
@@ -107,7 +148,7 @@ function diffNodeArray(
       // frequent annotation churn remain readable, while `changes.annotations`
       // is still carried forward for the renderer and detail panel.
       const bodyChanged = changes !== undefined && (changes.label || changes.description);
-      diff.set(node.id, { state: bodyChanged ? "changed" : "unchanged", changes });
+      set(node.id, { state: bodyChanged ? "changed" : "unchanged", changes });
       merged.push(node);
     }
     seen.add(node.id);
@@ -115,7 +156,7 @@ function diffNodeArray(
   // Append removed nodes preserving their original order.
   for (const node of before) {
     if (seen.has(node.id)) continue;
-    diff.set(node.id, { state: "removed" });
+    set(node.id, { state: "removed" });
     merged.push(node);
   }
   return merged;
@@ -307,9 +348,16 @@ function diffSystemFrames(
  */
 export function diffSystemViewSlices(before: ViewSlice, after: ViewSlice): DiffedView {
   const nodeDiff = new Map<string, NodeDiffMeta>();
+  const nodeDiffByPath = new Map<string, NodeDiffMeta>();
   const edgeDiff = new Map<string, EdgeDiffMeta>();
 
-  const childNodes = diffNodeArray(before.childNodes, after.childNodes, nodeDiff);
+  // Keyed by the path the layout will stamp on each card of the union slice,
+  // whose canvas scope and expanded frames are the after side's (see `slice`
+  // below), so a removed card is keyed the way it is drawn.
+  const childNodes = diffNodeArray(before.childNodes, after.childNodes, nodeDiff, {
+    map: nodeDiffByPath,
+    pathOf: canvasCardPathOf(after),
+  });
   const childEdges = diffEdgeArray(before.childEdges, after.childEdges, edgeDiff);
   const systems = diffNodeArray(before.systems, after.systems, nodeDiff);
   const crossSystemEdges = diffEdgeArray(before.crossSystemEdges, after.crossSystemEdges, edgeDiff);
@@ -348,5 +396,5 @@ export function diffSystemViewSlices(before: ViewSlice, after: ViewSlice): Diffe
     expandedFrames: after.expandedFrames,
   };
 
-  return { slice, nodes: nodeDiff, edges: edgeDiff };
+  return { slice, nodes: nodeDiff, nodesByPath: nodeDiffByPath, edges: edgeDiff };
 }
