@@ -48,12 +48,12 @@ scope:
 
 ## 既知の対処パターン
 
-- 生成器が `workspace:` の依存を辿り、到達したパッケージのディレクトリを `--filter <dir>` で並べて 1 回で一覧する（#3137 で実装。pnpm は相対パスの `--filter` しか照合しないので、パッケージのディレクトリから相対で渡す。対象パッケージ自身は devDependencies も辿り、辿った先は dependencies だけを辿る）
+- 生成器が `workspace:` の依存を辿り、到達したパッケージのディレクトリを `--filter <dir>` で並べて 1 回で一覧する（#3137 で実装。pnpm は相対パスの `--filter` しか照合しないので、パッケージのディレクトリから相対で渡す。対象パッケージ自身は devDependencies も辿り、辿った先は devDependencies を辿らない。peerDependencies と optionalDependencies はバンドラが解決するので、どちらでも辿る。pnpm は一致しない `--filter` を黙って捨てて exit 0 で終わるので、`pnpm ls` で選ばれたプロジェクトを照合し、漏れたら落とす）
 - esbuild の metafile から出力に寄与した `node_modules` 配下のパッケージを数え、notices と照合する。Vite のバンドルには使えない（#3137 で検討し、生成には採らなかった）
 
 ## 関連テスト
 
-- `scripts/ci/generate-third-party-notices.test.ts`（`bundledWorkspaceDirs`）: 対象パッケージは devDependencies も辿る、辿った先は dependencies だけを辿る、循環で止まる、link が無ければ落ちる、を fixture で検査する。実 repo でも CLI から core / i18n に届き、workspace root に届かないことを確かめる
+- `scripts/ci/generate-third-party-notices.test.ts`（`bundledWorkspaceDirs`）: 対象パッケージは devDependencies も辿る、辿った先は devDependencies を辿らない、peerDependencies と optionalDependencies も辿る、循環で止まる、link が無ければ落ちる、を fixture で検査する。`directoryFilters` と `unselectedDirs` で、`--filter` のパスの形と、pnpm が選ばなかったディレクトリの検出を確かめる。実 repo でも CLI から core / i18n に届き、workspace root に届かないことを確かめる
 - `packages/cli/pack/serve-from-tarball.test.ts`（`pnpm --filter ./packages/cli run test:pack`）: 実際の tarball の notices に `smol-toml` が載り、root だけの依存 `@resvg/resvg-wasm` が載らないことを検査する。同梱した app の notices にも `smol-toml` が載ることを見る
 
 ## 関連 TPL
