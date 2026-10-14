@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { PreviewPane } from "./PreviewPane.js";
 import { LocaleProvider } from "../i18n/index.js";
-import type { NodeMetadata } from "@karasu-tools/core";
+import type { NodeDiffMeta, NodeMetadata } from "@karasu-tools/core";
 
 afterEach(cleanup);
 
@@ -972,6 +972,35 @@ describe("data-node-path resolves the clicked card (#2917)", () => {
     click(previewOf(container), () => container.querySelector('[data-node-path="Shop.Leaf"]')!);
     expect(getByText("Leaf in Shop")).toBeTruthy();
     expect(queryByText("Leaf in Admin (index winner)")).toBeNull();
+  });
+
+  it("shows the clicked card's own annotation diff, not the bare-id winner's (#3126)", () => {
+    const nodeMetadataByPath = new Map([
+      ["Admin.Leaf", metadata("Leaf in Admin", ["Admin", "Leaf"])],
+      ["Shop.Leaf", metadata("Leaf in Shop", ["Shop", "Leaf"])],
+    ]);
+    const diffOf = (added: string): NodeDiffMeta => ({
+      state: "unchanged",
+      changes: { annotations: { added: [added], removed: [] } },
+    });
+    const { container } = render(
+      <PreviewPane
+        {...baseProps()}
+        svg={svg}
+        nodeMetadataByPath={nodeMetadataByPath}
+        nodeDiff={new Map([["Leaf", diffOf("admin_only")]])}
+        nodeDiffByPath={
+          new Map([
+            ["Admin.Leaf", diffOf("admin_only")],
+            ["Shop.Leaf", diffOf("shop_only")],
+          ])
+        }
+      />,
+    );
+    click(previewOf(container), () => container.querySelector('[data-node-path="Shop.Leaf"]')!);
+    const diffList = container.querySelector(".node-detail-annotation-diff-list")!;
+    expect(diffList.textContent).toContain("@shop_only");
+    expect(diffList.textContent).not.toContain("@admin_only");
   });
 
   it("falls back to the bare-id metadata for a card without a path", () => {
