@@ -1289,10 +1289,12 @@ system EC {
     // Builtin `[projected]` colour (dark theme). Colour is the only axis the tag
     // owns: the sync relation stays solid, the async one stays dashed (TPL-510).
     expect(page).toContain('stroke="#38BDF8"');
+    // The visible stroke, past the transparent hit-line every edge opens with
+    // (#2632).
     const strokeOf = (to: string): string | undefined =>
-      new RegExp(`<g data-edge-from="orders" data-edge-to="${to}"[^>]*><(?:line|path)[^>]*>`).exec(
-        page,
-      )?.[0];
+      new RegExp(
+        `<g data-edge-from="orders" data-edge-to="${to}"[^>]*>(?:\\s*<[^>]*krs-edge__hitline[^>]*>)?\\s*(<(?:line|path)[^>]*>)`,
+      ).exec(page)?.[1];
     const syncStroke = strokeOf("line_items");
     const asyncStroke = strokeOf("shipments");
     expect(syncStroke).toBeDefined();

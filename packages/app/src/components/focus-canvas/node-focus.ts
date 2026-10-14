@@ -36,11 +36,12 @@ let nextScope = 0;
 const quote = (value: string): string => value.replace(/["\\]/g, "\\$&");
 
 /**
- * The edges whose hover dims their peers (#1186). `preview.css` dims the peer
- * edges on the same selector and this module dims their marks, so widening it
- * (#2632) means changing both.
+ * The edges whose hover dims their peers (#1186): every drawn edge, with or
+ * without a canonical id (#2632). `preview.css` dims the peer edges on the
+ * same selector and this module dims their marks, so changing it means
+ * changing both.
  */
-const EDGE_HOVER_TRIGGER = ".krs-edge--interactive";
+const EDGE_HOVER_TRIGGER = ".krs-edge";
 
 /** What node focus dims the other edges to. */
 const NODE_FOCUS_DIM = 0.12;

@@ -83,7 +83,7 @@ const DIMMING_ALLOWED = [
   // Diagram glyphs, not chrome text: the SVG's own diff and hover states.
   '.preview-pane svg [data-diff-state="unchanged"]',
   '.preview-pane svg [data-diff-state="removed"]',
-  ".preview-container svg:has(.krs-edge--interactive:hover)",
+  ".preview-container svg:has(.krs-edge:hover)",
   ".preview-pane--has-errors .preview-container svg",
   // Icon glyphs beside a label that carries the meaning.
   ".diagram-tab-icon",

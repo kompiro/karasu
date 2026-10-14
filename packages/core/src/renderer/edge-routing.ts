@@ -192,49 +192,46 @@ export function renderEdge(
     class: edge.cyclic ? "krs-edge--cyclic" : undefined,
   };
 
-  // Two separate questions, deliberately not folded into one flag.
+  // Two different capabilities, keyed on different things (#2632).
+  //
+  // Hover and hit belong to every drawn edge: the wide invisible hit-line
+  // behind the visible stroke keeps the pointer target practical on default
+  // 1.5px edges without changing the diagram's visual weight, and
+  // `preview.css` keys the hover highlight and the peer dim (#1186) on
+  // `.krs-edge`. A reader can follow any edge they can see, whether or not the
+  // author gave it an identity: deploy edges are derived from `realizes`, and
+  // ghost edges never get a canonical id, and a base collision clears one.
   //
   // `interactive` drives the `krs-edge--interactive` class, and that class is
-  // the *right-click* advertisement: `preview.css` gives it `cursor:
+  // the *right-click* advertisement only: `preview.css` gives it `cursor:
   // context-menu`, and `handleContextMenu` opens the direction menu only for
-  // an edge addressable by an `edge#<id>` selector. Widening it to
-  // detail-carrying edges would promise a menu that cannot open (#2543).
-  //
-  // `needsHitArea` drives the wide invisible hit-line behind the visible
-  // stroke, which keeps the click target practical on default 1.5px edges
-  // without changing the diagram's visual weight. A property block gives an
-  // edge something to open a panel with on *left* click, so it needs the hit
-  // area even when a base collision cleared its id.
-  const hasDetail =
-    edge.description !== undefined || (edge.links !== undefined && edge.links.length > 0);
+  // an edge addressable by an `edge#<id>` selector. Widening it would promise a
+  // menu that cannot open (#2543).
   const interactive = edge.canonicalId !== undefined;
-  const needsHitArea = interactive || hasDetail;
-  if (needsHitArea) {
-    if (points.length === 2) {
-      parts.push(
-        el("line", {
-          x1: fromPoint.x,
-          y1: fromPoint.y,
-          x2: toPoint.x,
-          y2: toPoint.y,
-          stroke: "transparent",
-          "stroke-width": 14,
-          "stroke-linecap": "butt",
-          class: "krs-edge__hitline",
-        }),
-      );
-    } else {
-      parts.push(
-        el("polyline", {
-          points: points.map((p) => `${p.x},${p.y}`).join(" "),
-          fill: "none",
-          stroke: "transparent",
-          "stroke-width": 14,
-          "stroke-linecap": "butt",
-          class: "krs-edge__hitline",
-        }),
-      );
-    }
+  if (points.length === 2) {
+    parts.push(
+      el("line", {
+        x1: fromPoint.x,
+        y1: fromPoint.y,
+        x2: toPoint.x,
+        y2: toPoint.y,
+        stroke: "transparent",
+        "stroke-width": 14,
+        "stroke-linecap": "butt",
+        class: "krs-edge__hitline",
+      }),
+    );
+  } else {
+    parts.push(
+      el("polyline", {
+        points: points.map((p) => `${p.x},${p.y}`).join(" "),
+        fill: "none",
+        stroke: "transparent",
+        "stroke-width": 14,
+        "stroke-linecap": "butt",
+        class: "krs-edge__hitline",
+      }),
+    );
   }
 
   /**
