@@ -212,6 +212,29 @@ assertions.
 - `readDownloadText(download)` — reads the download's bytes into a UTF-8
   string for content assertions.
 
+## `share.ts` — Share dialog and opening a shared URL
+
+Used by the share / permalink specs (AT-1783, AT-1801, AT-1827, AT-1958).
+
+- `openShareDialog(page)` clicks Share and returns the dialog once the private
+  link has been generated. `privateUrlInput(dialog)`, `previewUrlInput(dialog)`
+  and `readPrivateUrl(dialog)` read the two links; `sharePayloadOf(url)` pulls
+  the `<enc>` out of either `#s=<enc>` or `?s=<enc>`. `shareButton(page)` is the
+  toolbar button itself (for the disabled-state check).
+- `bootSharer(page, opfs, krs, seed?)` puts the sharer on an explicit
+  `/?mode=memory` with `krs` in the editor while the fixture stays in `opfs`
+  mode. `seed` goes to `opfs.seed` first, so the visitor can have a local
+  project the shared link must leave alone.
+- `openSharedUrl(page, opfs, url)` opens a produced URL as a full document
+  load. `App.tsx` reads `#s=` and `?krs=` once, from a snapshot taken when the
+  module loads, so a navigation that changes only the hash never restores
+  anything, and a spec asserting on the still-rendered sharer view passes
+  without testing the restore. The helper refuses both ways that happens: the
+  fixture in `memory` mode (its `gotoApp` appends `?mode=memory`, rewriting the
+  URL under test) and a current page with the same path and query as `url`
+  (sharing from `/projects/<id>` yields `/projects/<id>#s=…`). Use it instead
+  of `opfs.gotoApp(url)` for any URL a Share produced.
+
 ## `anthropic.ts` — Anthropic transport mock
 
 Intercepts `POST https://api.anthropic.com/v1/messages` (the only endpoint
