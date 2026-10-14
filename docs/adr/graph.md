@@ -182,6 +182,7 @@ flowchart TD
     ADR_3117["ADR-3117<br/>CodeRabbit から外す PR は PR 本文の ignore コマンドで外し、ラベルは..."]
     ADR_3138["ADR-3138<br/>`karasu serve` の app build は専用 entry から始め、Monac..."]
     ADR_3196["ADR-3196<br/>Dependabot トリアージ 2026-10-14：npm 6 件を採用し、Radix は..."]
+    ADR_3203["ADR-3203<br/>Dependabot security alert 2026-10-14（sharp の ov..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -1056,6 +1057,7 @@ flowchart TD
   class ADR_3138 accepted
   class ADR_3169 accepted
   class ADR_3196 accepted
+  class ADR_3203 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
