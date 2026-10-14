@@ -38,12 +38,14 @@
 - [x] `.facet-overview-panel` の `top` が `--preview-toolbar-bottom` を参照し、`--preview-toolbar-h` を参照しない
   > ✅ Automated — `packages/app/src/components/FacetSelector.test.tsx` › `anchors on the toolbar's published bottom edge, not on its height`
 
+### AC-3: 実寸でツールバーに重ならない
+
+- [x] facet を宣言したモデルで「ファセット → 所属一覧」を開くと、パネルの上端がツールバーの下端以下にあり、ツールバーのボタンを覆わない。パネルは facet ごとに所属要素を並べ、閉じるボタンで閉じる
+  > ✅ Automated — `packages/e2e/tests/at-2492-facet-overview-panel.spec.ts` › `Membership overview opens below the toolbar, lists each facet's members and closes`
+
 ## 手動確認
 
-判定に実寸が要る 1 点だけを残す。到達先は本番 app（`https://karasu.kompiro.dev/`）。
-
-- [ ] facet を宣言したモデルで「ファセット → 所属一覧」を開き、パネルがツールバーに重ならず、
-      ツールバーのボタンがすべて押せる
+N/A — 自動テストですべて覆っている（実寸の判定は AC-3 の e2e がブラウザで測る）
 
 ## 補足
 

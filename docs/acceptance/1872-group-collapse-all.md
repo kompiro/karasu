@@ -57,12 +57,17 @@ Group by: Team の system view に **Collapse all / Expand all** の一括操作
 
 - [ ] **手動（レビュー）**: toolbar action の追加が `docs/tools/app.md` と `docs/tools/app.ja.md` の両方に反映されている（本 PR で対応済み — レビューで確認）
 
-### AC-5: 手動（app 目視確認）
+### AC-5: app での一括操作
 
-app で `examples/en/feature-samples/team-ownership.krs` を開き、system view で「Group by」を **Team** に切り替える:
+`examples/en/feature-samples/team-ownership.krs` と同じモデル（3 チーム + 所有者のいない database）を開き、system view で「Group by」を **Team** に切り替える:
 
-- [ ] toolbar に **⊖ Collapse all** ボタンが現れる
-- [ ] クリックすると全チームが `Team (N)` stub に畳まれ、**external / infra 帯も畳まれ**、図が詰まって俯瞰ビューになる。ボタンは **⊕ Expand all** に変わる
-- [ ] **⊕ Expand all** をクリックすると team・カテゴリとも展開に戻り、ボタンは **⊖ Collapse all** に戻る
-- [ ] per-group ⊖/⊕ や per-category ⊖/⊕ で一部だけ畳んだ状態から **Collapse all** を押すと残りも畳まれる（一部畳み → ボタンは Collapse all のまま）
-- [ ] 「Group by」を None に戻すとボタンが消える
+- [x] toolbar に **⊖ Collapse all** ボタンが現れる
+  > ✅ Automated — `packages/e2e/tests/at-1872-group-collapse-all.spec.ts` › `Collapse all folds every team and the infra band; Expand all restores them`
+- [x] クリックすると全チームが `Team (N)` stub に畳まれ、**external / infra 帯も畳まれ**、図が詰まって俯瞰ビューになる。ボタンは **⊕ Expand all** に変わる
+  > ✅ Automated — `packages/e2e/tests/at-1872-group-collapse-all.spec.ts` › `Collapse all folds every team and the infra band; Expand all restores them`
+- [x] **⊕ Expand all** をクリックすると team・カテゴリとも展開に戻り、ボタンは **⊖ Collapse all** に戻る
+  > ✅ Automated — `packages/e2e/tests/at-1872-group-collapse-all.spec.ts` › `Collapse all folds every team and the infra band; Expand all restores them`
+- [x] per-group ⊖/⊕ や per-category ⊖/⊕ で一部だけ畳んだ状態から **Collapse all** を押すと残りも畳まれる（一部畳み → ボタンは Collapse all のまま）
+  > ✅ Automated — `packages/e2e/tests/at-1872-group-collapse-all.spec.ts` › `after a per-team ⊖, Collapse all folds the rest`
+- [x] 「Group by」を None に戻すとチーム枠が消える。infra 帯（database）が残るのでボタンは残り、押すと帯を畳む（AC-3 の「畳めるものがあれば出す」。当初の「ボタンが消える」は AC-3 と矛盾していたため #3045 で実挙動に合わせた）
+  > ✅ Automated — `packages/e2e/tests/at-1872-group-collapse-all.spec.ts` › `Group by: None drops the team frames; the infra band keeps the toggle`
