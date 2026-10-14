@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { type Page, expect } from "@playwright/test";
 import { replaceEditorContent } from "./editor.js";
 import type { OpfsFixture } from "./opfs.js";
 
@@ -19,4 +19,26 @@ export async function bootMemoryApp(page: Page, opfs: OpfsFixture, krs: string):
   await opfs.seed({ mode: "memory" });
   await opfs.gotoApp();
   await replaceEditorContent(page, krs);
+}
+
+/**
+ * Boot the app in project (OPFS) mode with a single project holding `krs` as
+ * its `index.krs`, and wait until the diagram has drawn a node.
+ *
+ * Project mode is what mounts the file sidebar, the Outline view and the
+ * `Switch Project…` command, which memory mode lacks. Specs that need several
+ * projects call `opfs.seed` themselves.
+ */
+export async function bootProjectApp(
+  page: Page,
+  opfs: OpfsFixture,
+  krs: string,
+  project: { id: string; name: string } = { id: "demo", name: "Demo" },
+): Promise<void> {
+  await opfs.seed({
+    projects: [{ ...project, files: { "index.krs": krs } }],
+    lastProjectId: project.id,
+  });
+  await opfs.gotoApp();
+  await expect(page.locator(".preview-container svg [data-node-id]").first()).toBeVisible();
 }
