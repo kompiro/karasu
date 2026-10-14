@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import {
@@ -71,6 +71,7 @@ export function NodeDetailPanel({
   relations,
 }: NodeDetailPanelProps) {
   const { t } = useTranslation();
+  const titleId = useId();
   const descriptionHtml = useMemo(() => {
     if (!metadata.description) return "";
     const raw = marked.parse(metadata.description, { async: false }) as string;
@@ -86,6 +87,11 @@ export function NodeDetailPanel({
   return (
     <div
       className="node-detail-panel"
+      // A named landmark, the same contract as EdgeDetailPanel (TPL-1399). Not
+      // `dialog`: an inline side panel that does not take focus, and a second
+      // `dialog` role would collide with any shadcn Dialog open at the time.
+      role="region"
+      aria-labelledby={titleId}
       // Opt this subtree out of the diagram's native wheel-zoom listener so the
       // panel's own overflow region scrolls instead of zooming the diagram. A
       // React synthetic stopPropagation can't stop a native listener on the
@@ -109,7 +115,9 @@ export function NodeDetailPanel({
         ) : (
           <span className="node-detail-icon">{fallbackIcon}</span>
         )}
-        <span className="node-detail-label">{metadata.label}</span>
+        <span id={titleId} className="node-detail-label">
+          {metadata.label}
+        </span>
         <button className="node-detail-close" onClick={onClose} aria-label={t("nodeDetail.close")}>
           ×
         </button>
