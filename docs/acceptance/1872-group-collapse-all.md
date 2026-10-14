@@ -61,7 +61,7 @@ Group by: Team の system view に **Collapse all / Expand all** の一括操作
 
 `examples/en/feature-samples/team-ownership.krs` と同じモデル（3 チーム + 所有者のいない database）を開き、system view で「Group by」を **Team** に切り替える:
 
-- [x] toolbar に **⊖ Collapse all** ボタンが現れる
+- [x] Team ではチーム枠ごとに ⊖ が付き、toolbar のボタンは **⊖ Collapse all**（`aria-pressed=false`）を示す（ボタンの有無そのものは infra 帯でも決まるため、ここでは表示状態を判定する。有無の分岐は AC-3）
   > ✅ Automated — `packages/e2e/tests/at-1872-group-collapse-all.spec.ts` › `Collapse all folds every team and the infra band; Expand all restores them`
 - [x] クリックすると全チームが `Team (N)` stub に畳まれ、**external / infra 帯も畳まれ**、図が詰まって俯瞰ビューになる。ボタンは **⊕ Expand all** に変わる
   > ✅ Automated — `packages/e2e/tests/at-1872-group-collapse-all.spec.ts` › `Collapse all folds every team and the infra band; Expand all restores them`

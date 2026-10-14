@@ -198,9 +198,11 @@ panel for an edge with a property block; a right-click opens the direction menu
 (`EdgeContextMenu`). `edgeLocator(page, canonicalId)` is the group itself.
 
 The pointer lands on a point read off the edge's transparent 14px hitline
-(`krs-edge__hitline`) through the SVG's screen transform, a third of the way
-along: the bounding-box centre misses an L-shaped or diagonal edge, and the
-midpoint is where the label sits. Used by AT-1098 (which also hosts AT-1141 /
+(`krs-edge__hitline`) through the SVG's screen transform, 35% of the way along
+(the bounding-box centre misses an L-shaped or diagonal edge). Because
+`page.mouse.click` skips Playwright's actionability check, the helper first
+asserts with `elementFromPoint` that the point hits the edge group, and throws
+naming the covering element otherwise. Used by AT-1098 (which also hosts AT-1141 /
 AT-1142) and AT-2543 (#3045).
 
 ## `color.ts` — WCAG colour maths

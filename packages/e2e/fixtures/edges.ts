@@ -11,10 +11,10 @@ export function edgeLocator(page: Page, canonicalId: string): Locator {
 }
 
 /**
- * The fraction of the edge's length the pointer lands on. The midpoint is
- * where the renderer puts the label, which is a sibling of the stroke and
- * could take the hit; a third of the way along is still clear of the source
- * card on every layout the specs draw.
+ * The fraction of the edge's length the pointer lands on: past the source
+ * card's border, and off the midpoint, where parallel edges and crossing marks
+ * tend to meet. Whatever the layout, `pointOnEdge` checks the point actually
+ * hits the edge before anything clicks it.
  */
 const HIT_FRACTION = 0.35;
 
@@ -36,6 +36,18 @@ async function pointOnEdge(edge: Locator): Promise<{ x: number; y: number }> {
     const ctm = hitline.getScreenCTM();
     if (!ctm) throw new Error("edge hitline has no screen transform");
     const p = new DOMPoint(at.x, at.y).matrixTransform(ctm);
+    // page.mouse.click skips Playwright's actionability check, so make sure the
+    // edge, not a card or overlay drawn over it, is what receives the click.
+    // Otherwise the spec would time out waiting for a panel with no clue why.
+    const hit = document.elementFromPoint(p.x, p.y);
+    if (!hit || !group.contains(hit)) {
+      throw new Error(
+        `the point ${Math.round(fraction * 100)}% along the edge is covered by ` +
+          (hit
+            ? `<${hit.tagName.toLowerCase()} class="${hit.getAttribute("class") ?? ""}">`
+            : "nothing"),
+      );
+    }
     return { x: p.x, y: p.y };
   }, HIT_FRACTION);
 }
