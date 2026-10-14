@@ -192,6 +192,10 @@ spec 側の照合は docs 表示形（`Ctrl/Cmd+Shift+P`）ではなく、chord 
 `packages/e2e/tests/*.spec.ts` のいずれかに現れることとする。spec は `page.keyboard.press` で chord を打ち
 aria 状態を assert するので、表示形は自然には現れない。除外は 1 つの `EXEMPT` リストに理由付きで置く。
 lefthook（glob `packages/app/src/**` + `packages/e2e/tests/**`）と CI の `Check` で走らせる。
+実装（#3042）では、平坦な `id[:=]"…"` の grep が HTML の `id` 属性（`id="settings-language"`）や `run` 内の
+ネストした object（`{ kind: "node", id: highlightedNodeId }`）も拾うため、`useCommand({...})` の最上位の `id` /
+`keybinding` を読み、同一ファイルの `const` とコンポーネント prop 経由（JSX 側の属性）を解決する形にした。
+`app-shortcut-docs-sync.ts` の `collectChords` は、どの登録にも属さない keybinding を検出する第 2 の網として再利用する。
 
 **メリット**: 「操作面を足したのに e2e が無い」を機械で止める。既存 guard と同じ形（TPL-1480、TPL-2446）。
 **デメリット**: spec に id が文字列として現れることしか見ない（assert の質は見ない）。

@@ -88,8 +88,10 @@ e2e に入れるかどうかの判定条件は 1 つ、**その流れが jsdom �
 ## 既知の対処パターン
 
 - **登録点 → spec の drift guard**: `scripts/lint/app-shortcut-docs-sync.ts` が `keybinding` を
-  抽出して docs に要求するのと同じ形で、`scripts/lint/` 配下に足す `e2e-command-coverage`（#3042 で追加）が `keybinding` と
-  `useCommand` id を `packages/e2e/tests/**` に要求する（#3039 S1、Issue #3042）。lefthook と
+  抽出して docs に要求するのと同じ形で、`scripts/lint/e2e-command-coverage.ts` が `useCommand` の
+  id と `keybinding` を `packages/e2e/tests/**` に要求する（#3039 S1、Issue #3042）。id は
+  `useCommand({...})` の最上位プロパティから読み、同一ファイルの `const` とコンポーネント prop 経由
+  （`<SidebarViewCommand id="…">`）を解決し、解決できない登録は guard を落とす。lefthook と
   CI の `Check` で走らせる。走査は列挙ではなく `packages/app/src` 全体（[TPL-2446]）。
 - **面ごとのスライス化**: 操作面を互いに素な `docs/acceptance/*.md` 集合で切り、スライス 1 本 =
   Issue 1 本 = PR 1 本にする（#1997、#3039）。順序を持たないので並行して landing できる。
@@ -100,4 +102,5 @@ e2e に入れるかどうかの判定条件は 1 つ、**その流れが jsdom �
 
 - `scripts/acceptance/coverage.ts`（AT ↔ spec の紐付け guard。spec → AT の方向だけを見る）
 - `scripts/lint/app-shortcut-docs-sync.ts`（登録点の抽出元。`e2e-command-coverage` はこれを再利用する）
+- `scripts/lint/e2e-command-coverage.ts` / `scripts/lint/e2e-command-coverage.test.ts`（登録点 → spec の guard。keybinding か command id を spec に要求する）
 - `packages/e2e/tests/at-0046-system-id-in-viewpath.spec.ts`（「#534 待ち」の注記が残っていた実例）
