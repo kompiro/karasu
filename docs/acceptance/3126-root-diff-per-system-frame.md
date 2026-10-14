@@ -63,6 +63,10 @@ system Admin {
 
   > ✅ Automated — `packages/core/src/renderer/multi-system-root-diff.test.ts` › root compare mode diffs every system frame by system id (#3126) › draws every system's children as removed in its own frame when the model is emptied
 
+- [x] AT-L: サービスを枠内で展開したまま、before の先頭の system を消して after の先頭が入れ替わっても、展開したサービスのドメインは `unchanged` で、サービス自体が `removed` として並ばない
+
+  > ✅ Automated — `packages/core/src/renderer/multi-system-root-diff.test.ts` › root compare mode diffs every system frame by system id (#3126) › builds the first frame the same way on both sides when it was not before's first
+
 ### AC-3: 同名ノードはそれぞれ自分の状態を持ち、bare id は勝者の状態を返す
 
 - [x] AT-H: `Shop.Api` と `Admin.Api` があり `Admin.Api` だけを変えると、`Admin.Api` が `changed`、`Shop.Api` が `unchanged`。`nodeDiff.get("Api")` は `@migration_target` の付いた方の状態
@@ -73,11 +77,23 @@ system Admin {
 
   > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › data-node-path resolves the clicked card (#2917) › shows the clicked card's own annotation diff, not the bare-id winner's (#3126)
 
-### AC-4: 消した子は自分の team の帯に戻る
+- [x] AT-M: 先頭の system で展開したドメインと同じ id の子を別の system が持っていても、その子は自分の path（`Admin.Orders`）で自分の状態を持つ
+
+  > ✅ Automated — `packages/core/src/renderer/multi-system-root-diff.test.ts` › root compare mode diffs every system frame by system id (#3126) › keeps another frame's card on its own path when it shares an expanded member's id
+
+- [x] AT-N: 消した子だけが持っていた facet を選ぶと、同じ id の子が別の system に残っていても、消した子に facet のリングが付く
+
+  > ✅ Automated — `packages/core/src/renderer/multi-system-root-diff.test.ts` › root compare mode diffs every system frame by system id (#3126) › rings a removed card for a facet only it carried, beside a surviving same-named card
+
+### AC-4: 消した子は自分の team / boundary の帯に戻る
 
 - [x] AT-J: group by team で、`Admin` から消した子は before で所属していた team の帯に描かれる（同じ id の子が `Shop` にあっても、その team を借りない）
 
   > ✅ Automated — `packages/core/src/renderer/multi-system-root-diff.test.ts` › root compare mode diffs every system frame by system id (#3126) › returns a child removed from a non-first system to its own team's band
+
+- [x] AT-O: group by boundary で複数の boundary に属していた子を消すと、同じ id の子が別の system に残っていても、消した子は自分の状態で主の boundary に戻される
+
+  > ✅ Automated — `packages/core/src/renderer/multi-system-root-diff.test.ts` › root compare mode diffs every system frame by system id (#3126) › cuts a removed card back to its primary boundary by its own state, not a same-named card's
 
 ### AC-5: app で compare モードを開いたときの見え方
 
