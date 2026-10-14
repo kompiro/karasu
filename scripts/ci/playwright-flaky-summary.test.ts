@@ -4,9 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   collectFlakies,
+  percentile,
   renderAnnotations,
   renderSummary,
+  renderTimingSummary,
   runMain,
+  summarizeTimings,
   type FlakyTest,
 } from "./playwright-flaky-summary.ts";
 
@@ -243,5 +246,203 @@ describe("runMain", () => {
     const code = runMain({ reportPath, summaryPath: undefined, stdout: (l) => lines.push(l) });
     expect(code).toBe(0);
     expect(lines.join("\n")).toContain("failed to parse");
+  });
+});
+
+interface TimedResult {
+  status?: "passed" | "failed" | "timedOut" | "skipped";
+  duration: number;
+  /** Seconds after the run start. */
+  at?: number;
+  error?: string;
+  stderr?: string;
+}
+
+function makeTimedReport(
+  files: Record<string, Record<string, TimedResult>>,
+  extra: { workers?: number; runDuration?: number } = {},
+) {
+  const t0 = Date.parse("2026-10-14T00:00:00.000Z");
+  return {
+    config: { workers: extra.workers },
+    stats: { startTime: new Date(t0).toISOString(), duration: extra.runDuration },
+    suites: Object.entries(files).map(([file, tests]) => ({
+      title: file,
+      file,
+      specs: Object.entries(tests).map(([title, r], i) => ({
+        title,
+        file,
+        line: i + 1,
+        tests: [
+          {
+            title: "",
+            results: [
+              {
+                status: r.status ?? "passed",
+                retry: 0,
+                duration: r.duration,
+                startTime:
+                  r.at !== undefined ? new Date(t0 + r.at * 1000).toISOString() : undefined,
+                errors: r.error ? [{ message: r.error }] : [],
+                stdout: [],
+                stderr: r.stderr ? [{ text: r.stderr }] : [],
+              },
+            ],
+          },
+        ],
+      })),
+    })),
+  };
+}
+
+describe("percentile", () => {
+  it("uses the nearest rank", () => {
+    const xs = Array.from({ length: 20 }, (_, i) => i + 1);
+    expect(percentile(xs, 95)).toBe(19);
+    expect(percentile(xs, 100)).toBe(20);
+    expect(percentile([7], 95)).toBe(7);
+  });
+
+  it("returns 0 for no samples", () => {
+    expect(percentile([], 95)).toBe(0);
+  });
+});
+
+describe("summarizeTimings", () => {
+  it("aggregates per spec file and ranks by summed duration", () => {
+    const summary = summarizeTimings(
+      makeTimedReport(
+        {
+          "a.spec.ts": { one: { duration: 1000, at: 0 }, two: { duration: 2000, at: 1 } },
+          "b.spec.ts": { only: { duration: 5000, at: 0 } },
+        },
+        { workers: 2, runDuration: 6000 },
+      ),
+    );
+    expect(summary.workers).toBe(2);
+    expect(summary.runWallMs).toBe(6000);
+    expect(summary.tests).toBe(3);
+    expect(summary.specs).toEqual([
+      { file: "b.spec.ts", tests: 1, totalMs: 5000, wallMs: 5000 },
+      { file: "a.spec.ts", tests: 2, totalMs: 3000, wallMs: 3000 },
+    ]);
+    expect(summary.slowestTest?.title).toBe("b.spec.ts › only");
+    expect(summary.p95Ms).toBe(5000);
+  });
+
+  it("measures a file's wall span apart from its summed duration when its tests overlap", () => {
+    const summary = summarizeTimings(
+      makeTimedReport({
+        "a.spec.ts": { one: { duration: 4000, at: 0 }, two: { duration: 4000, at: 1 } },
+      }),
+    );
+    expect(summary.specs[0]).toMatchObject({ totalMs: 8000, wallMs: 5000 });
+  });
+
+  it("leaves the wall span unknown when a start time is missing", () => {
+    const summary = summarizeTimings(makeTimedReport({ "a.spec.ts": { one: { duration: 1000 } } }));
+    expect(summary.specs[0].wallMs).toBeUndefined();
+  });
+
+  it("does not time skipped tests", () => {
+    const summary = summarizeTimings(
+      makeTimedReport({
+        "a.spec.ts": {
+          ran: { duration: 1000, at: 0 },
+          skipped: { status: "skipped", duration: 0 },
+        },
+      }),
+    );
+    expect(summary.tests).toBe(1);
+    expect(summary.specs[0].tests).toBe(1);
+  });
+
+  it("reports OPFS-handle errors from error messages and captured output", () => {
+    const summary = summarizeTimings(
+      makeTimedReport({
+        "a.spec.ts": {
+          failed: {
+            status: "failed",
+            duration: 1000,
+            at: 0,
+            error: "Error: boom\nAbortError: The operation was aborted.",
+          },
+          logged: { duration: 1000, at: 1, stderr: "createWritable failed: lock held" },
+          clean: { duration: 1000, at: 2, error: "Error: unrelated" },
+        },
+      }),
+    );
+    expect(summary.opfsErrors).toEqual([
+      {
+        file: "a.spec.ts",
+        title: "a.spec.ts › failed",
+        line: 1,
+        excerpt: "AbortError: The operation was aborted.",
+      },
+      {
+        file: "a.spec.ts",
+        title: "a.spec.ts › logged",
+        line: 2,
+        excerpt: "createWritable failed: lock held",
+      },
+    ]);
+  });
+
+  it("handles an empty report", () => {
+    expect(summarizeTimings({})).toMatchObject({ tests: 0, p95Ms: 0, specs: [], opfsErrors: [] });
+  });
+});
+
+describe("renderTimingSummary", () => {
+  it("prints the headline numbers and the top-N spec table", () => {
+    const summary = summarizeTimings(
+      makeTimedReport(
+        {
+          "a.spec.ts": { one: { duration: 1000, at: 0 } },
+          "b.spec.ts": { one: { duration: 2000, at: 0 } },
+          "c.spec.ts": { one: { duration: 3000, at: 0 } },
+        },
+        { workers: 2, runDuration: 3500 },
+      ),
+    );
+    const out = renderTimingSummary(summary, 2);
+    expect(out).toContain("- Workers: 2");
+    expect(out).toContain("- Run wall time: 3.5s");
+    expect(out).toContain("- p95 per test: 3.0s");
+    expect(out).toContain("OPFS-handle errors (`createWritable` / `AbortError`): 0");
+    expect(out).toContain("top 2 of 3");
+    expect(out).toContain("| `c.spec.ts` | 1 | 3.0s | 3.0s |");
+    expect(out).toContain("| `b.spec.ts` | 1 | 2.0s | 2.0s |");
+    expect(out).not.toContain("`a.spec.ts`");
+    expect(out).not.toContain("### OPFS-handle errors");
+  });
+
+  it("lists OPFS-handle errors with pipes escaped", () => {
+    const summary = summarizeTimings(
+      makeTimedReport({
+        "a.spec.ts": { bad: { status: "failed", duration: 1, at: 0, error: "AbortError | lock" } },
+      }),
+    );
+    expect(renderTimingSummary(summary)).toContain(
+      "| `a.spec.ts:1` | a.spec.ts › bad | AbortError \\| lock |",
+    );
+  });
+});
+
+describe("runMain timings", () => {
+  it("appends the timing section after the flaky summary", () => {
+    const dir = mkdtempSync(join(tmpdir(), "flaky-summary-"));
+    const reportPath = join(dir, "results.json");
+    const summaryPath = join(dir, "step-summary.md");
+    writeFileSync(
+      reportPath,
+      JSON.stringify(makeTimedReport({ "a.spec.ts": { one: { duration: 1000, at: 0 } } })),
+    );
+    writeFileSync(summaryPath, "");
+    runMain({ reportPath, summaryPath, stdout: () => {} });
+    const written = readFileSync(summaryPath, "utf8");
+    expect(written.indexOf("## Playwright flaky-pass summary")).toBeLessThan(
+      written.indexOf("## Playwright timings"),
+    );
   });
 });
