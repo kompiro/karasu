@@ -1,0 +1,4 @@
+system ServeLive {
+  label "Serve Live"
+  service LiveWeb { label "Before Edit" }
+}

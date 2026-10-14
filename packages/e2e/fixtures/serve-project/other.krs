@@ -1,0 +1,4 @@
+system ServeOther {
+  label "Serve Other"
+  service OtherWeb { label "Other Web" }
+}
