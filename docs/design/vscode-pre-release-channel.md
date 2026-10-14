@@ -55,27 +55,29 @@ Marketplace は、既にある pre-release より**低い**版の stable を受�
 
 ### A. 版の付け方
 
-#### A1: stable と同じ `major.minor` に日時の patch を付ける（採用）
+#### A1: stable と同じ `major.minor` に日付と通し番号の patch を付ける（採用）
 
-pre-release の版を `<main の major>.<main の minor>.<YYYYMMDDHH>`（UTC、起動時刻）にする。`main` の `package.json` が `0.3.0` なら、2026-10-14 00:00 UTC の pre-release は `0.3.2026101400` になる。
+pre-release の版を `<main の major>.<main の minor>.<YYYYMMDDNN>` にする。`YYYYMMDD` は起動した日（UTC）、`NN` はその日の通し番号で `01` から始める。`main` の `package.json` が `0.3.0` なら、2026-10-14 の pre-release は `0.3.2026101401` になる。
 
-- **stable と重ならない**: stable の patch は changesets が 1 ずつ上げるので、10 桁の日時に届かない。pre-release の版は月次トレインの版と衝突しない。
-- **現在の stable より必ず高い**: patch が日時なので、同じ minor の stable より高い。pre-release を選んだ利用者に毎週届く。
-- **stable の minor（または major）が上がると、stable が pre-release を追い越す**: トレインが `0.4.0` を出すと、`0.3.2026...` にいる利用者は `0.4.0` に更新される。次の週の pre-release は `0.4.<日時>` から始まる。
+`NN` は Marketplace の版一覧から決める。同じ `major.minor` と同じ日付の版が既にあれば、その最大の `NN` に 1 を足す（`0.3.2026101401` があれば `0.3.2026101402`）。同じ日に何度起動しても版は衝突しない。中身が前回と同じ再実行は、版を決める前に B1 の判定で公開を飛ばす。1 日 99 本を超えたら失敗させる。
+
+- **stable と重ならない**: stable の patch は changesets が 1 ずつ上げるので、10 桁の patch に届かない。pre-release の版は月次トレインの版と衝突しない。
+- **現在の stable より必ず高い**: patch が日付から始まる 10 桁なので、同じ minor の stable より高い。pre-release を選んだ利用者に毎週届く。
+- **stable の minor（または major）が上がると、stable が pre-release を追い越す**: トレインが `0.4.0` を出すと、`0.3.2026...` にいる利用者は `0.4.0` に更新される。次の週の pre-release は `0.4.<日付>` から始まる。
 - **stable の patch は追い越さない**: トレインが `0.3.1` を出しても、pre-release の利用者は `0.3.2026...` に留まる。その pre-release は `0.3.1` を出したリリースコミットより前の `main` から作られていることがあるが、次の週の pre-release は `0.3.1` の内容を含む `main` から作られる。遅れは最長 1 週間。
 
 Marketplace が低い版の stable を受け付けること（上の観測）が前提。
 
-- メリット: changesets に手を入れない。版から「どの stable の系列で、いつ作ったか」が読める。他の大きな拡張（Python、Jupyter）と同じ日時の patch。
+- メリット: changesets に手を入れない。版から「どの stable の系列で、いつ作ったか」が読める。他の大きな拡張（Python、Jupyter）と同じ `YYYYMMDDNN` の patch（Python は同じ日の 2 本目を `2026.7.2026093002` としている）。
 - デメリット: stable の patch リリースが pre-release 利用者に直接届かない（翌週の pre-release で届く）。
 
 #### A2: 偶数 minor = stable、奇数 minor = pre-release
 
 VS Code ドキュメントが勧める方式。stable の minor を偶数に限る必要があり、changesets の bump と噛み合わない（今の stable は `0.3.0` で奇数）。minor bump のたびに 2 つ進めるような版の後処理を Prepare に入れることになり、`CHANGELOG.md` の見出しと利用者が見る版の対応が崩れる。不採用。
 
-#### A3: 「次の stable」の minor に日時の patch を付ける
+#### A3: 「次の stable」の minor に日付の patch を付ける
 
-`0.3.0` が stable のとき `0.4.<日時>` にする案。次の stable が `0.4.0` だと pre-release より低く、利用者は stable に移らない。次の stable が `0.3.1` でも同じ。A1 より stable が pre-release を追い越す場面が減るだけで、得るものが無い。不採用。
+`0.3.0` が stable のとき `0.4.<日付>` にする案。次の stable が `0.4.0` だと pre-release より低く、利用者は stable に移らない。次の stable が `0.3.1` でも同じ。A1 より stable が pre-release を追い越す場面が減るだけで、得るものが無い。不採用。
 
 #### A4: patch に `github.run_number` を使う
 
@@ -105,8 +107,8 @@ run 番号は 1 から始まるので、stable の patch（`0.3.1` など）と�
 
 #### C1: タグは打つ。名前空間を stable と分ける。GitHub Release は作らない（採用）
 
-- 公開に成功した pre-release のビルド元コミットに **`karasu-vscode-pre/<版>`**（例 `karasu-vscode-pre/0.3.2026101400`）を打つ。pre-release の利用者から不具合が届いたとき、どのコミットから作った版かを辿るため。
-- 名前に `@` を含めない。`release.yml` の「マージコミットにある `@` を含むタグを集める」処理と、`github-release.mts` の `parsePackageTag`（`karasu-vscode@0.3.2026101400` は `karasu-vscode` の版として読めてしまう）に拾われないようにする。pre-release のビルド元がたまたまリリースのマージコミットと同じでも、`release-YYYY-MM-DD` の Release に pre-release が混ざらない。
+- 公開に成功した pre-release のビルド元コミットに **`karasu-vscode-pre/<版>`**（例 `karasu-vscode-pre/0.3.2026101401`）を打つ。pre-release の利用者から不具合が届いたとき、どのコミットから作った版かを辿るため。
+- 名前に `@` を含めない。`release.yml` の「マージコミットにある `@` を含むタグを集める」処理と、`github-release.mts` の `parsePackageTag`（`karasu-vscode@0.3.2026101401` は `karasu-vscode` の版として読めてしまう）に拾われないようにする。pre-release のビルド元がたまたまリリースのマージコミットと同じでも、`release-YYYY-MM-DD` の Release に pre-release が混ざらない。
 - GitHub Release は作らない。pre-release には `CHANGELOG.md` の節が無く、Release の本文を組めない。毎週の Release は月次の `release-YYYY-MM-DD` を一覧で埋もれさせる。pre-release の利用者が見るのは Marketplace のページである。
 
 #### C2: タグも Release も作らない（ADR-2939 の現状どおり）
@@ -126,8 +128,8 @@ run 番号は 1 から始まるので、stable の patch（`0.3.1` など）と�
 pre-release のときだけ変わるステップ:
 
 1. ビルド元: リリースコミットではなく、起動したコミット（`main` の先頭）。
-2. 版: `train.mts` 相当のスクリプトで `<major>.<minor>.<YYYYMMDDHH>` を作り、runner の作業ツリーの `packages/vscode/package.json` に書く（コミットしない）。作った版が Marketplace の一番高い版より高いことを確かめ、そうでなければ失敗する。
-3. 判定: package の後に、Marketplace の一番高い版の `.vsix` と比べる（B1）。
+2. 判定: package の後に、Marketplace の一番高い版の `.vsix` と比べる（B1）。比較は `version` を揃えて行うので、この時点の `package.json` の版は stable のままでよい。同じなら以降を飛ばす。
+3. 版: 違うときだけ、`train.mts` 相当のスクリプトで `<major>.<minor>.<YYYYMMDDNN>` を作り（`NN` は A1 のとおり版一覧から）、runner の作業ツリーの `packages/vscode/package.json` に書いて（コミットしない）もう一度 `vsce package` する。作った版が Marketplace の一番高い版より高いことを確かめ、そうでなければ失敗する（`NN` を版一覧から取るので、時計が戻るなど前提が崩れたときだけ落ちる柵）。
 4. 公開: `vsce publish --pre-release`。
 5. 記録: 公開に成功したら `karasu-vscode-pre/<版>` を push する（C1）。Release は触らない。
 
@@ -139,13 +141,13 @@ stable の経路（`release.yml` からの `workflow_call`、`pre_release: false
 
 ## 現時点の方針
 
-**A1 + B1 + C1 + D1 を採用する。** 版は `<stable の major>.<stable の minor>.<YYYYMMDDHH>` にして changesets に手を入れず、stable との衝突を patch の桁で避ける。毎週水曜に `main` の先頭から作り、Marketplace の一番高い版と `.vsix` の中身が同じなら出さない。公開したらビルド元に `karasu-vscode-pre/<版>` を打ち、GitHub Release は作らない。経路は既存の `vscode-release.yml` に足す。
+**A1 + B1 + C1 + D1 を採用する。** 版は `<stable の major>.<stable の minor>.<YYYYMMDDNN>` にして changesets に手を入れず、stable との衝突を patch の桁で避ける。毎週水曜に `main` の先頭から作り、Marketplace の一番高い版と `.vsix` の中身が同じなら出さない。公開したらビルド元に `karasu-vscode-pre/<版>` を打ち、GitHub Release は作らない。経路は既存の `vscode-release.yml` に足す。
 
 ### 実装の指針
 
 1. `scripts/release/`（`train.mts` に足すか、`pre-release.mts` を新設）に判定を置き、vitest で確かめる。
-   - `preReleaseVersion(stableVersion, now)`: `0.3.0` と 2026-10-14T00:xxZ → `0.3.2026101400`。
-   - `highestVersion(vsceShow)`: チャネルを問わず一番高い版（数値として比べる。`0.3.2026101400` > `0.3.1`）。
+   - `preReleaseVersion(stableVersion, now, existingVersions)`: `0.3.0` と 2026-10-14 → `0.3.2026101401`。同じ日の `0.3.2026101401` が既にあれば `0.3.2026101402`。`NN` が 99 を超えるなら失敗。
+   - `highestVersion(vsceShow)`: チャネルを問わず一番高い版（数値として比べる。`0.3.2026101401` > `0.3.1`）。
    - 作った版が一番高い版以下なら失敗する。
    - `.vsix` 2 つの `extension/` 配下を比べる関数。`extension/package.json` の `version` を揃えてから比べる。片方にしか無いファイルは差分。
 2. `vscode-release.yml`
