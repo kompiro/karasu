@@ -55,7 +55,8 @@ export interface AppCommand {
 const SOURCE_EXT_RE = /\.(tsx?|jsx?)$/;
 const TEST_FILE_RE = /\.(test|spec)\.[jt]sx?$/;
 const SPEC_FILE_RE = /\.spec\.ts$/;
-const USE_COMMAND_RE = /\buseCommand\(\s*\{/g;
+// Every call, whatever the argument; the hook's own declaration is skipped.
+const USE_COMMAND_RE = /(?<!function\s+)\buseCommand\(\s*/g;
 const IDENT_RE = /^[A-Za-z_$][\w$]*$/;
 
 function walk(dir: string, accept: (name: string) => boolean): string[] {
@@ -80,6 +81,10 @@ function matchBrace(src: string, open: number): number {
       i = skipString(src, i);
       continue;
     }
+    if (ch === "/" && (src[i + 1] === "/" || src[i + 1] === "*")) {
+      i = skipComment(src, i);
+      continue;
+    }
     if (ch === "{") depth++;
     else if (ch === "}") {
       depth--;
@@ -87,6 +92,35 @@ function matchBrace(src: string, open: number): number {
     }
   }
   throw new Error(`unbalanced braces from offset ${open}`);
+}
+
+/** Index of the last character of the line or block comment starting at `start`. */
+function skipComment(src: string, start: number): number {
+  if (src[start + 1] === "/") {
+    const nl = src.indexOf("\n", start);
+    return nl === -1 ? src.length : nl - 1;
+  }
+  const end = src.indexOf("*/", start + 2);
+  return end === -1 ? src.length : end + 1;
+}
+
+/** `src` with its comments removed; string literals are left intact. */
+export function stripComments(src: string): string {
+  let out = "";
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (ch === '"' || ch === "'" || ch === "`") {
+      const end = skipString(src, i);
+      out += src.slice(i, end + 1);
+      i = end;
+    } else if (ch === "/" && (src[i + 1] === "/" || src[i + 1] === "*")) {
+      i = skipComment(src, i);
+      out += " ";
+    } else {
+      out += ch;
+    }
+  }
+  return out;
 }
 
 function skipString(src: string, start: number): number {
@@ -194,6 +228,30 @@ function jsxSites(
   return sites;
 }
 
+/**
+ * Top-level properties of the object a `useCommand(` call at `argStart`
+ * receives: an inline object literal, or an identifier bound by
+ * `const NAME = {` in the same file. Any other argument fails the check, so
+ * no registration is skipped silently.
+ */
+function commandProps(src: string, rel: string, argStart: number): Map<string, string> {
+  let open = argStart;
+  if (src[argStart] !== "{") {
+    const ident = /^[A-Za-z_$][\w$]*/.exec(src.slice(argStart))?.[0];
+    const decl =
+      ident === undefined
+        ? null
+        : new RegExp(`\\bconst\\s+${escapeRe(ident)}\\s*(?::[^=]+)?=\\s*\\{`).exec(src);
+    if (decl === null) {
+      throw new Error(
+        `${rel}: useCommand argument is neither an object literal nor a same-file \`const\` object`,
+      );
+    }
+    open = decl.index + decl[0].length - 1;
+  }
+  return topLevelProps(stripComments(src.slice(open + 1, matchBrace(src, open) - 1)));
+}
+
 type Resolved = { kind: "literal"; value: string } | { kind: "prop"; prop: string };
 
 function resolveValue(src: string, expr: string): Resolved | null {
@@ -220,8 +278,7 @@ export function collectCommands(repoRoot: string, appSrcDir = APP_SRC_DIR): AppC
   const commands: AppCommand[] = [];
   for (const { rel, src } of files) {
     for (const m of src.matchAll(USE_COMMAND_RE)) {
-      const open = (m.index ?? 0) + m[0].length - 1;
-      const props = topLevelProps(src.slice(open + 1, matchBrace(src, open) - 1));
+      const props = commandProps(src, rel, (m.index ?? 0) + m[0].length);
       const idExpr = props.get("id");
       if (idExpr === undefined) throw new Error(`${rel}: useCommand call without an \`id\``);
       const id = resolveValue(src, idExpr);

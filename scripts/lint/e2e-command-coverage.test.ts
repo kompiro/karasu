@@ -151,6 +151,41 @@ describe("check (synthetic fixture)", () => {
     expect(ids.sort()).toEqual(["command.open mod+k", "view.one mod+shift+1"]);
   });
 
+  it("requires coverage for a palette-only command passed through a variable", () => {
+    app(
+      "Export.tsx",
+      `const command = { id: "file.export", title: "Export", run };\nuseCommand(command);`,
+    );
+    spec("at-1-other.spec.ts", `test("unrelated", () => {});`);
+    expect(check(root, noExempt).map((p) => p.id)).toEqual(["file.export"]);
+  });
+
+  it("fails loudly on a useCommand argument it cannot read", () => {
+    app("Built.tsx", `useCommand(makeCommand("file.export"));`);
+    expect(() => check(root, noExempt)).toThrow(/useCommand argument is neither/);
+  });
+
+  it("reads id and keybinding behind line and block comments", () => {
+    app(
+      "Commented.tsx",
+      [
+        `useCommand({`,
+        `  // palette action, with a comma`,
+        `  id: "file.export",`,
+        `  /* bound to mod+e, see } */ keybinding: "mod+e",`,
+        `  run,`,
+        `});`,
+        `useCommand({ /* palette */ id: "file.print", run });`,
+      ].join("\n"),
+    );
+    spec("at-1-cmds.spec.ts", `await pressChord(page, "E");\n// file.print`);
+    expect(check(root, noExempt)).toEqual([]);
+    expect(collectCommands(root).map((c) => `${c.id} ${c.keybinding}`)).toEqual([
+      "file.export mod+e",
+      "file.print undefined",
+    ]);
+  });
+
   it("fails loudly on an id it cannot resolve to a string literal", () => {
     app("Dyn.tsx", "useCommand({ id: `view.${name}`, title: 'Dyn', run });");
     expect(() => check(root, noExempt)).toThrow(/cannot resolve useCommand id/);
