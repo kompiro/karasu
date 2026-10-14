@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "../fixtures/opfs.js";
+import { type OpfsFixture, expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
 import { openViewTab } from "../fixtures/tabs.js";
 
@@ -61,7 +61,7 @@ function readGrid(page: Page): Promise<string[][]> {
     );
 }
 
-async function openMatrix(page: Page, opfs: Parameters<typeof bootMemoryApp>[1]) {
+async function openMatrix(page: Page, opfs: OpfsFixture) {
   await bootMemoryApp(page, opfs, CRUD_KRS);
   await openViewTab(page, "CRUD");
   await expect(panel(page).locator("table")).toBeVisible();
@@ -118,5 +118,8 @@ test.describe("AT-1062 CRUD matrix view", () => {
     await expect
       .poll(header)
       .toEqual(["usecase \\ resource", "OrderPlaced", "ΣC", "ΣR", "ΣU", "ΣD"]);
+    await expect
+      .poll(rowLabels)
+      .toEqual(["CancelOrder", "PlaceOrder", "ExportOrders", "ΣC", "ΣR", "ΣU", "ΣD"]);
   });
 });
