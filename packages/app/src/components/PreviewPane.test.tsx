@@ -761,6 +761,53 @@ describe("PreviewPane", () => {
     });
   });
 
+  // #2632: every drawn edge carries a hit-line, so an edge with no canonical id
+  // (a deploy edge, a ghost edge, an edge whose id a base collision cleared) now receives
+  // the pane's delegated pointer events too. These pin what each of them does.
+  describe("an edge without a canonical id (#2632)", () => {
+    const unaddressed = (extra = "") =>
+      `<g class="krs-edge" data-edge-from="A" data-edge-to="B" data-edge-kind="sync"${extra}>` +
+      `<div class="krs-edge__hitline"></div></g>`;
+
+    it("opens no menu on right-click and leaves the browser's own menu alone", () => {
+      const { container } = render(
+        <PreviewPane {...baseProps()} svg={unaddressed()} styleTargetPath="/style.krs.style" />,
+      );
+      const hitline = container.querySelector(".krs-edge__hitline")!;
+      // `fireEvent` returns false when a handler called preventDefault.
+      expect(fireEvent.contextMenu(hitline, { clientX: 50, clientY: 60 })).toBe(true);
+      expect(document.querySelector(".edge-context-menu")).toBeNull();
+    });
+
+    it("closes an open detail panel on a click, as a click off any node does", () => {
+      const domainEdges = [
+        { fromDomainId: "C", fromDomainLabel: "Domain C", toDomainId: "D", toDomainLabel: "D" },
+        { fromDomainId: "E", fromDomainLabel: "Domain E", toDomainId: "F", toDomainLabel: "F" },
+      ];
+      const svg = `<div data-domain-edges='${JSON.stringify(domainEdges)}'></div>${unaddressed()}`;
+      const { container, queryByText } = render(<PreviewPane {...baseProps()} svg={svg} />);
+      const previewContainer = container.querySelector<HTMLElement>(".preview-container")!;
+      click(previewContainer, () => container.querySelector("[data-domain-edges]")!);
+      expect(queryByText("2 domain edges")).toBeTruthy();
+
+      // No cards to draw, so the focus canvas cannot open either (#3031).
+      click(previewContainer, () => container.querySelector(".krs-edge__hitline")!);
+      expect(queryByText("2 domain edges")).toBeNull();
+      expect(container.querySelector(".node-detail-panel")).toBeNull();
+      expect(container.querySelector(".focus-canvas")).toBeNull();
+    });
+
+    it("still opens its detail panel when it carries a description (#2543)", () => {
+      const svg = unaddressed(' data-edge-description="At-least-once."');
+      const { container } = render(<PreviewPane {...baseProps()} svg={svg} />);
+      const previewContainer = container.querySelector<HTMLElement>(".preview-container")!;
+      click(previewContainer, () => container.querySelector(".krs-edge__hitline")!);
+      expect(container.querySelector(".node-detail-description")?.textContent).toContain(
+        "At-least-once.",
+      );
+    });
+  });
+
   // #1537: the zoom handler must be a native, non-passive wheel listener so
   // preventDefault actually suppresses page/ancestor scroll. React's synthetic
   // onWheel is passive (React 17+) and would silently drop the preventDefault.

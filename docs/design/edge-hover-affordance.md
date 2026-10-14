@@ -245,7 +245,6 @@ hover affordance と addressability は違う能力である、という #2543 �
    hit-line になったため落ちる。`(?![^>]*krs-edge__hitline)` を足す。挙動の変更ではなく
    ハーネスの前提。
 6. **テスト**
-   <!-- absent-path-next-line: 本 Design Doc が作る予定のテスト (#2632) -->
    - `packages/core/src/renderer/edge-affordance-parity.test.ts`（新規）: 組み込みコーパスの
      system / deploy / drill-down / all-layers 各 surface で、`krs-edge` グループが必ず hit-line を
      1 本持ち、`krs-edge--interactive` と `data-edge-canonical-id` が双方向に一致すること。
@@ -262,7 +261,6 @@ hover affordance と addressability は違う能力である、という #2543 �
      `data-edge-description` / `data-edge-links`）を持たないエッジで、移動なしのクリックが
      detail panel を閉じる以外の action を起動しないこと。canonical id は無いが detail payload は
      持つエッジ（base 衝突で id を失った #2543 のケース）では、従来どおり detail panel が開くこと。
-   <!-- absent-path-next-line: 本 Design Doc が作る予定のテスト (#2632) -->
    - `packages/e2e/tests/at-2632-deploy-edge-hover.spec.ts`（新規）: Deploy タブでエッジに
      hover し、peer が 0.25 に、焦点が **実効 opacity 1** に（祖先グループの合成込みで
      測る — 子の computed opacity だけ見ると ghost group の 0.3 を見逃す）。

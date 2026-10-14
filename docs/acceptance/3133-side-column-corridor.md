@@ -49,7 +49,7 @@ type: product
 
 ## 手動確認
 
-判定に「読めるか」の目が要る 1 項目。app（https://karasu.kompiro.dev/）で下のモデルを `index.krs` として開き、system ビューを表示する（Group by: none）。
+判定に「読めるか」の目が要る 1 項目。この領域を変える PR の preview（またはローカルの checkout）の app で、下のモデルを `index.krs` として開き、system ビューを表示する（Group by: none）。
 
 ```krs
 system Shop {
