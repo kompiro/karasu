@@ -89,6 +89,8 @@ export interface SystemViewBundle {
   nodeFileIndex: Map<string, string>;
   /** Per-node diff metadata when diff mode is active. */
   nodeDiff?: Map<string, NodeDiffMeta>;
+  /** The same keyed by each card's `data-node-path` (#3126). */
+  nodeDiffByPath?: Map<string, NodeDiffMeta>;
   /** Collapsed external/infra categories on the system view (Issue #1821). */
   collapsedCategories: ReadonlySet<CategoryId>;
   toggleCategory: (category: CategoryId) => void;
@@ -252,6 +254,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     expansionOverload,
     onCollapseAllToggle,
     nodeDiff: systemNodeDiff,
+    nodeDiffByPath: systemNodeDiffByPath,
   } = useSystemView(
     effEntryPath,
     effFs,
@@ -386,6 +389,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       resolvedSystems,
       nodeFileIndex,
       nodeDiff: systemNodeDiff,
+      nodeDiffByPath: systemNodeDiffByPath,
       collapsedCategories,
       toggleCategory,
       groupBy,

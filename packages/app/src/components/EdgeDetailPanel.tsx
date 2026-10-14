@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { isSafeLinkUrl } from "@karasu-tools/core";
@@ -31,6 +31,7 @@ type EdgeDetailPanelProps = {
 export function EdgeDetailPanel(props: EdgeDetailPanelProps) {
   const { anchorX, anchorY, onClose } = props;
   const { t } = useTranslation();
+  const titleId = useId();
   const descriptionHtml = useMemo(() => {
     const description = props.edge?.description;
     if (!description) return "";
@@ -41,6 +42,9 @@ export function EdgeDetailPanel(props: EdgeDetailPanelProps) {
   return (
     <div
       className="node-detail-panel"
+      // See NodeDetailPanel: a named landmark, not a `dialog` (TPL-1399).
+      role="region"
+      aria-labelledby={titleId}
       // See NodeDetailPanel: opt out of the diagram's native wheel-zoom listener
       // so the panel scrolls instead of zooming the diagram (#1537).
       data-wheel-zoom-ignore
@@ -65,7 +69,7 @@ export function EdgeDetailPanel(props: EdgeDetailPanelProps) {
                 so it stays English until a label is injected the way
                 `emptyStateLabels` is (docs/spec/i18n.md § core). The panel is on
                 the app side of that line and is translated. */}
-            <span className="node-detail-label">
+            <span id={titleId} className="node-detail-label">
               {t("edgeDetail.domainEdges.count", { count: props.domainEdges.length })}
             </span>
             <button
@@ -112,7 +116,7 @@ export function EdgeDetailPanel(props: EdgeDetailPanelProps) {
         <>
           <div className="node-detail-header">
             <span className="node-detail-icon">{props.edge.kind === "async" ? "⇢" : "→"}</span>
-            <span className="node-detail-label">
+            <span id={titleId} className="node-detail-label">
               {props.edge.from} {props.edge.kind === "async" ? "⇢" : "→"} {props.edge.to}
             </span>
             <button

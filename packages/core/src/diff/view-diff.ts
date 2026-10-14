@@ -1,6 +1,6 @@
 import type { KrsEdge, KrsNode } from "../types/ast.js";
 import { quotedIdLiteral } from "../formatter/quote-id.js";
-import { nodePathRefId } from "../parser/node-path.js";
+import { bareIdView, nodePathRefId } from "../parser/node-path.js";
 import { UNASSIGNED_SYSTEM_ID } from "../view/unassigned-system.js";
 import type { DomainEdgeDetail, SystemFrameEdges, ViewSlice } from "../view/view-extract.js";
 
@@ -32,14 +32,18 @@ export interface EdgeDiffMeta {
 export interface DiffedView {
   /** Union ViewSlice — passed to the existing layout/render pipeline. */
   slice: ViewSlice;
-  /** Diff state keyed by node id. Includes ghost users and child nodes. */
+  /**
+   * Diff state keyed by node id. Includes ghost users, systems and the canvas
+   * cards. Where cards in two system frames share an id, the entry is the one
+   * `bareIdView` picks from {@link nodesByPath} (ADR-2934).
+   */
   nodes: Map<string, NodeDiffMeta>;
   /**
    * The canvas cards' diff state keyed by the full path the layout stamps on
-   * each card (`LayoutNode.path`, in `nodePathRefId` form). A card reads its
-   * own state here, so on the multi-system root `Admin.Api` no longer shows the
-   * state `nodes` holds for `Shop.Api` (#2934). Ghosts and system frames carry
-   * no path and stay in `nodes` only.
+   * each card (`LayoutNode.path`, in `nodePathRefId` form), for every system
+   * frame on the multi-system root (#3126). A card reads its own state here, so
+   * `Admin.Api` no longer shows the state `nodes` holds for `Shop.Api` (#2934).
+   * Ghosts and system frames carry no path and stay in `nodes` only.
    */
   nodesByPath: Map<string, NodeDiffMeta>;
   /**
@@ -120,20 +124,34 @@ function canvasCardPathOf(slice: ViewSlice): (id: string) => string[] {
   };
 }
 
+/**
+ * The full path the layout stamps on a card of a non-primary system frame on
+ * the multi-system root: the system plus the child id, or the id alone in the
+ * "Unassigned" pseudo-system (its children are top-level nodes). The same rule
+ * as `layoutMultipleSystems`' `framePathOf`; in-place expansion is primary-only,
+ * so no expanded service sits in between.
+ */
+function frameCardPathOf(systemId: string): (id: string) => string[] {
+  return systemId === UNASSIGNED_SYSTEM_ID ? (id) => [id] : (id) => [systemId, id];
+}
+
 function diffNodeArray(
   before: readonly KrsNode[],
   after: readonly KrsNode[],
-  diff: Map<string, NodeDiffMeta>,
-  /** Also record each node's state by its card path (canvas cards only). */
-  byPath?: { map: Map<string, NodeDiffMeta>; pathOf: (id: string) => string[] },
+  /**
+   * Where each node's state is recorded: by bare id, or, for canvas cards, by
+   * the card path (the bare view is then derived from it, see
+   * {@link diffSystemViewSlices}).
+   */
+  record: Map<string, NodeDiffMeta> | ((id: string, meta: NodeDiffMeta) => void),
 ): KrsNode[] {
   const beforeById = new Map(before.map((n) => [n.id, n]));
   const merged: KrsNode[] = [];
   const seen = new Set<string>();
-  const set = (id: string, meta: NodeDiffMeta): void => {
-    diff.set(id, meta);
-    byPath?.map.set(nodePathRefId(byPath.pathOf(id)), meta);
-  };
+  const set =
+    typeof record === "function"
+      ? record
+      : (id: string, meta: NodeDiffMeta) => record.set(id, meta);
 
   // Iterate in `after` order first so the union slice presents the new structure.
   for (const node of after) {
@@ -342,24 +360,81 @@ function diffSystemFrames(
  * graph in which unchanged elements have stable positions while added/removed
  * elements appear in the same neighborhood as their context.
  *
+ * On the multi-system root every system frame diffs its own children, paired
+ * with the same system on the other side by id and never by position (#3126,
+ * TPL-3126): each slice's `childNodes` holds *its own* `systems[0]`'s children,
+ * so pairing the two lists compared two different systems as soon as the first
+ * system was added or removed. A frame on one side only diffs against an empty
+ * counterpart, the way {@link diffSystemFrames} does for edges.
+ *
+ * `ranking` (`KrsFile.nodePathRanking`) decides which card answers a bare id
+ * when cards in two frames share it (ADR-2934). Without it the tie falls to the
+ * path's key text.
+ *
  * Aggregated implicit edges, ghost domains/systems, and resource label maps
  * are taken from `after` for now — refining their diff semantics is tracked
  * separately (see `docs/design/graphical-diff-viewer.md`).
  */
-export function diffSystemViewSlices(before: ViewSlice, after: ViewSlice): DiffedView {
-  const nodeDiff = new Map<string, NodeDiffMeta>();
+export function diffSystemViewSlices(
+  before: ViewSlice,
+  after: ViewSlice,
+  ranking: ReadonlyMap<string, readonly (readonly string[])[]> = new Map(),
+): DiffedView {
   const nodeDiffByPath = new Map<string, NodeDiffMeta>();
   const edgeDiff = new Map<string, EdgeDiffMeta>();
+  const recordCard =
+    (pathOf: (id: string) => string[]) =>
+    (id: string, meta: NodeDiffMeta): void => {
+      nodeDiffByPath.set(nodePathRefId(pathOf(id)), meta);
+    };
 
-  // Keyed by the path the layout will stamp on each card of the union slice,
-  // whose canvas scope and expanded frames are the after side's (see `slice`
-  // below), so a removed card is keyed the way it is drawn.
-  const childNodes = diffNodeArray(before.childNodes, after.childNodes, nodeDiff, {
-    map: nodeDiffByPath,
-    pathOf: canvasCardPathOf(after),
+  // Systems first, so each frame's pair is known. Their bare states are written
+  // after the cards' bare view below, as they always were.
+  const systemDiff = new Map<string, NodeDiffMeta>();
+  const unionSystems = diffNodeArray(before.systems, after.systems, systemDiff);
+  const beforeSystemById = new Map(before.systems.map((s) => [s.id, s]));
+  const afterSystemById = new Map(after.systems.map((s) => [s.id, s]));
+
+  // The primary frame stays in `childNodes`, which carries in-place expansion
+  // (#1921). Its before side is the same system's: `before.childNodes` only when
+  // before's first system is that system too. Keyed by the path the layout will
+  // stamp on each card of the union slice, whose canvas scope and expanded
+  // frames are the after side's (see `slice` below), so a removed card is keyed
+  // the way it is drawn.
+  const primary = unionSystems[0];
+  const beforePrimaryChildren =
+    primary === undefined || before.systems[0]?.id === primary.id
+      ? before.childNodes
+      : (beforeSystemById.get(primary.id)?.children ?? []);
+  // When after has no system at all (the whole model was deleted), the primary
+  // is a before-only system and after's canvas scope says nothing about it. The
+  // multi-system layout then scopes the frame by the system, as it does every
+  // frame; a lone system goes through the single-canvas layout, which scopes it
+  // by after's (empty) container like any other card.
+  const primaryPathOf =
+    primary !== undefined && after.systems.length === 0 && unionSystems.length > 1
+      ? frameCardPathOf(primary.id)
+      : canvasCardPathOf(after);
+  const childNodes = diffNodeArray(
+    beforePrimaryChildren,
+    after.childNodes,
+    recordCard(primaryPathOf),
+  );
+  // Every other frame: the layout places `sys.children`, so the union system
+  // node carries the union of the frame's children, removed ones included.
+  const systems = unionSystems.map((sys, i) => {
+    if (i === 0) return sys;
+    const children = diffNodeArray(
+      beforeSystemById.get(sys.id)?.children ?? [],
+      afterSystemById.get(sys.id)?.children ?? [],
+      recordCard(frameCardPathOf(sys.id)),
+    );
+    return { ...sys, children };
   });
+
+  const nodeDiff = bareIdView(nodeDiffByPath, ranking);
+  for (const [id, meta] of systemDiff) nodeDiff.set(id, meta);
   const childEdges = diffEdgeArray(before.childEdges, after.childEdges, edgeDiff);
-  const systems = diffNodeArray(before.systems, after.systems, nodeDiff);
   const crossSystemEdges = diffEdgeArray(before.crossSystemEdges, after.crossSystemEdges, edgeDiff);
   const ghostUsers = diffNodeArray(before.ghostUsers, after.ghostUsers, nodeDiff);
   const ghostUserEdges = diffEdgeArray(before.ghostUserEdges, after.ghostUserEdges, edgeDiff);

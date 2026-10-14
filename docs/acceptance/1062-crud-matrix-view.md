@@ -59,6 +59,7 @@ type: product
 
 - [x] AT-J: `CrudMatrixPanel` が systems から HTML テーブルを描画し、service / infra dropdown フィルタが行・列を絞り込む
   > ✅ Automated — `packages/app/src/components/CrudMatrixPanel.test.tsx`
+  > ✅ Automated — `packages/e2e/tests/at-1062-crud-matrix-view.spec.ts` › `the CRUD tab lists usecase rows × resource columns with C/R/U/D cells and Σ totals (AT-J)` / `the Service filter narrows rows and the Infra filter narrows columns (AT-J)`（editor → parser → CRUD タブまでの経路）
 
 - [x] AT-J2: app の `DiagramTabBar` に Matrix タブが出て、選択すると `CrudMatrixPanel` が描画される（preview-toolbar は隠れる）
   > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `matrix tab`

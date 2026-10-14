@@ -847,6 +847,11 @@ export function boundaryScopeKey(pathIds: readonly string[]): string {
   return JSON.stringify(pathIds);
 }
 
+/** The node-id chain a {@link boundaryScopeKey} was built from. */
+export function parseBoundaryScopeKey(key: string): string[] {
+  return JSON.parse(key) as string[];
+}
+
 /**
  * Union the facet membership of an edge that folds several edges into one — an
  * aggregated `"N domain edges"`, a collapse stub's re-targeted edge (#2544).

@@ -91,6 +91,10 @@
 
   > ✅ Automated — `packages/app/src/hooks/useSystemView.test.tsx` › `recompiles the overlay when a facet is toggled`。**レビューで検出**（`facetsKey` が `deps` から漏れており、トグルしても図が変わらなかった）。dep を外すとこのテストが落ちることを変異で確認済み
 
+- [x] AT-V: app のツールバーで facet を選ぶと、その `menuitemcheckbox` がチェックされ（メニューは開いたまま）、ボタンが `◎ Facets (N)`・`aria-pressed` になり、メンバーにリングが付く。選択をすべて外すとボタンとリングが元に戻る（TPL-1402）
+
+  > ✅ Automated — `packages/e2e/tests/at-2174-facet-overlay.spec.ts` › `picking facets checks them, counts them on the button and rings their members; clearing them restores the picture (AT-V)`
+
 - [ ] AT-Q: 🧑 Manual — app で facet を選び、メンバーにリング・非メンバーの減光・legend の色凡例が**目で読めること**（色のコントラストが light / dark 双方で成立しているか。TPL-1697）
 
   > `pnpm --filter @karasu-tools/app dev` → `index.krs` に `facet pii { label "Personal data" }` と `service Api { facets pii }` を書き、Facets セレクタから選択。テーマを切り替えて両方で確認

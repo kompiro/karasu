@@ -29,6 +29,7 @@ interface UsePreviewContextValueArgs {
     | "warnings"
     | "hasDeployDiagram"
     | "nodeDiff"
+    | "nodeDiffByPath"
     | "resolvedSystems"
     | "toggleCategory"
     | "toggleGroup"
@@ -191,6 +192,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         highlightAttribute,
         onClearHighlight: nav.clearHighlight,
         nodeDiff: system.nodeDiff,
+        nodeDiffByPath: system.nodeDiffByPath,
         systems: system.resolvedSystems,
       },
       deployView: {
@@ -262,6 +264,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       system.diagnostics,
       system.warnings,
       system.nodeDiff,
+      system.nodeDiffByPath,
       system.resolvedSystems,
       deploy.svg,
       deploy.diagnostics,
