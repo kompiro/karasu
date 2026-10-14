@@ -50,3 +50,4 @@ scope:
 ## 関連テスト
 
 - `packages/app/src/hooks/useHistoryNavigation.test.ts`
+- `packages/e2e/tests/at-1094-matrix-url-hash.spec.ts`（`matrix` が hash と browser history を実際に往復する）

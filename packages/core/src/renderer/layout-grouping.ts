@@ -6,7 +6,7 @@
  */
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import { boundaryScopeKey, scopedBoundaryGroupId } from "../types/ast.js";
-import { parseNodePathRefId } from "../parser/node-path.js";
+import { nodePathRefId, parseNodePathRefId } from "../parser/node-path.js";
 import { collapseGroups } from "./group-collapse.js";
 import {
   assignGroupedLayers,
@@ -122,12 +122,19 @@ function boundaryAxisFor(
  */
 function placementMembership(
   membership: Map<string, string[]> | undefined,
+  scopePath: readonly string[],
   nodeDiffState: ReadonlyMap<string, string> | undefined,
+  nodeDiffMetaByPath: ReadonlyMap<string, { readonly state: string }> | undefined,
 ): Map<string, string[]> | undefined {
   if (membership === undefined || nodeDiffState === undefined) return membership;
+  // The card's own state first (#3126): on the multi-system root two frames may
+  // each hold a card of this id, and the bare entry answers for only one of them.
+  const stateOf = (nodeId: string): string | undefined =>
+    nodeDiffMetaByPath?.get(nodePathRefId([...scopePath, nodeId]))?.state ??
+    nodeDiffState.get(nodeId);
   let reduced: Map<string, string[]> | undefined;
   for (const [nodeId, groupIds] of membership) {
-    if (groupIds.length < 2 || nodeDiffState.get(nodeId) !== "removed") continue;
+    if (groupIds.length < 2 || stateOf(nodeId) !== "removed") continue;
     reduced ??= new Map(membership);
     reduced.set(nodeId, [groupIds[0]]);
   }
@@ -155,12 +162,20 @@ export function canvasMembershipFor(
   scopePath: readonly string[],
   options: LayoutOptions,
 ): Map<string, string[]> | undefined {
-  const { groupBy, boundaryMembership, scopedBoundaryMembership, nodeDiffState } = options;
+  const {
+    groupBy,
+    boundaryMembership,
+    scopedBoundaryMembership,
+    nodeDiffState,
+    nodeDiffMetaByPath,
+  } = options;
   return placementMembership(
     groupBy === "boundary"
       ? boundaryAxisFor(scopePath, boundaryMembership, scopedBoundaryMembership)
       : undefined,
+    scopePath,
     nodeDiffState,
+    nodeDiffMetaByPath,
   );
 }
 

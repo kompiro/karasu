@@ -71,6 +71,35 @@ describe("EdgeDetailPanel", () => {
     expect(markers[2].textContent).toBe("-");
   });
 
+  // Both forms are a named `region` landmark, the same contract as
+  // NodeDetailPanel (TPL-1399). Not `dialog`: an inline side panel that does
+  // not trap focus. e2e finds the panel by this role (#3045).
+  describe("landmark (#3045)", () => {
+    it("names the single-edge panel after its route", () => {
+      const { getByRole, queryByRole } = render(
+        <EdgeDetailPanel
+          edge={{ from: "A", to: "B", kind: "sync", links: [] }}
+          anchorX={0}
+          anchorY={0}
+          onClose={() => {}}
+        />,
+      );
+      expect(getByRole("region", { name: "A → B" })).toBeTruthy();
+      expect(queryByRole("dialog")).toBeNull();
+    });
+
+    it("names the aggregated panel after its translated edge count", () => {
+      const details: DomainEdgeDetail[] = [
+        { fromDomainId: "A", fromDomainLabel: "A", toDomainId: "X", toDomainLabel: "X" },
+        { fromDomainId: "B", fromDomainLabel: "B", toDomainId: "X", toDomainLabel: "X" },
+      ];
+      const { getByRole } = render(
+        <EdgeDetailPanel domainEdges={details} anchorX={0} anchorY={0} onClose={() => {}} />,
+      );
+      expect(getByRole("region", { name: "2 domain edges" })).toBeTruthy();
+    });
+  });
+
   // The single-edge form, from the edge property block (#2543).
   describe("single edge (#2543)", () => {
     it("renders the route, the label and the prose", () => {

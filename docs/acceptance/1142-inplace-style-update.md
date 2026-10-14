@@ -44,11 +44,11 @@ type: product
 - [x] AT-J: 既存ファイルに対象 rule が存在しない場合、末尾に append する（旧 append-only と同じ挙動を維持）
   > ✅ Automated — `packages/app/src/lib/append-style-rule.test.ts` › `upsertEdgeDirectionRule › appends to an existing file when no matching rule is present`
 
-- [ ] AT-K（manual）: brand-new な `.krs`（`@import` 無し）を本番 app（https://karasu.kompiro.dev/）で開き、edge を右クリック → Direction ▸ Down → Right → Up と 3 回切り替える。**`.krs.style` のファイル末尾には 1 行だけ** `edge#<id> { direction: up; }` が残ることを目視（旧実装では 3 行積まれていた）
-  > 🧑 Manual — 本 PR の主要な体験改善ポイント。サイドバーが #1148 で reload するので、Preview を開いたまま `.krs.style` をクリックして中身を確認する
+- [x] AT-K: brand-new な `.krs`（`@import` 無し）を開き、edge を右クリック → Direction ▸ Down → Right → Up と 3 回切り替える。**`.krs.style` には 1 行だけ** `edge#<id> { direction: up; }` が残る（旧実装では 3 行積まれていた）
+  > ✅ Automated — `packages/e2e/tests/at-1098-edge-direction-context-menu.spec.ts` › `later picks rewrite the rule in place and add no second @import (AT-1141 AT-I, AT-1142 AT-K)`
 
-- [ ] AT-L（manual）: 同じ Preview で、ユーザーが事前に `.krs.style` を手動編集して `edge#<id> { color: red; direction: down; }` の **複数プロパティ** rule を書いておき、GUI で direction を変更すると、**手書き rule は触らず** 末尾に `edge#<id> { direction: <new>; }` が追加される（手書き整形を壊さない）
-  > 🧑 Manual — fallback 経路の実機確認。手書き整形保護が効いていることを担保する
+- [x] AT-L: `.krs.style` に `edge#<id> { color: red; direction: down; }` の **複数プロパティ** rule を手書きしておき、GUI で direction を変更すると、**手書き rule は触らず** 末尾に `edge#<id> { direction: <new>; }` が追加される（手書き整形を壊さない）
+  > ✅ Automated — `packages/e2e/tests/at-1098-edge-direction-context-menu.spec.ts` › `a hand-written multi-property rule is left alone and the pick is appended (AT-1142 AT-L)`
 
 ## 補足
 

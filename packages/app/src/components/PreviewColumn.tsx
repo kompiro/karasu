@@ -416,6 +416,7 @@ export function PreviewColumn() {
           onClearHighlight={view.onClearHighlight}
           onJumpToEditor={onJumpToEditor}
           nodeDiff={view.nodeDiff}
+          nodeDiffByPath={view.nodeDiffByPath}
           styleTargetPath={view.styleTargetPath}
           onPickEdgeDirection={view.onPickEdgeDirection}
           currentFilePath={currentFilePath}
