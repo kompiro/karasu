@@ -18,9 +18,7 @@ import { test as base, expect } from "@playwright/test";
  *     });
  *     await opfs.gotoApp();
  *
- *     await expect(
- *       page.locator(".project-selector select.project-selector-dropdown"),
- *     ).toHaveValue("demo");
+ *     await expect(page.getByRole("combobox", { name: "Project", exact: true })).toHaveValue("demo");
  *   });
  *
  * Chromium-only: OPFS support varies across browsers and the karasu Playwright

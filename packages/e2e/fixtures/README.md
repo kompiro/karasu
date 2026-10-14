@@ -29,9 +29,7 @@ test("seeded project is preselected", async ({ page, opfs }) => {
   });
   await opfs.gotoApp();
 
-  await expect(page.locator(".project-selector select.project-selector-dropdown")).toHaveValue(
-    "demo",
-  );
+  await expect(page.getByRole("combobox", { name: "Project", exact: true })).toHaveValue("demo");
 });
 ```
 
@@ -211,6 +209,9 @@ assertions.
   `locator.page()` _before_ clicking, so the event cannot be missed.
 - `readDownloadText(download)` — reads the download's bytes into a UTF-8
   string for content assertions.
+- `downloadToPath(download)` — returns the download's on-disk path, asserting
+  the file exists, so it can be passed to `setInputFiles` (the ZIP export →
+  import round trip in AT-0004).
 
 ## `anthropic.ts` — Anthropic transport mock
 
