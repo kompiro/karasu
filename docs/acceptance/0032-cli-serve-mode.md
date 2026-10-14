@@ -28,7 +28,7 @@
 
 ### TC-02: index.krs のプレビュー
 
-> 🟡 Partially automated — `packages/cli/src/serve.e2e.test.ts` › `serves the seeded index.krs through /api/file/index (TC-02)`（API レベルで確認、ブラウザ表示は手動）
+> ✅ Automated — `packages/e2e/tests/at-0032-cli-serve-mode.spec.ts` › `TC-02: / previews index.krs with no editor pane`（nightly の `serve` project。API 側は `packages/cli/src/serve.e2e.test.ts` › `serves the seeded index.krs through /api/file/index (TC-02)`）
 
 **手順**:
 1. TC-01 の状態でブラウザを開く
@@ -41,7 +41,7 @@
 
 ### TC-03: 複数ファイルの URL ルーティング
 
-> 🟡 Partially automated — `packages/cli/src/serve.test.ts` › `resolveKrsFile` › `returns the full path when the file exists` / `GET /api/file/:name` › `returns file content with 200`（ファイル名 → `.krs` 解決と API 応答を確認、ブラウザでのプレビュー表示は手動）
+> ✅ Automated — `packages/e2e/tests/at-0032-cli-serve-mode.spec.ts` › `TC-03: /other previews other.krs`（nightly の `serve` project。API 側は `packages/cli/src/serve.test.ts` › `resolveKrsFile` / `GET /api/file/:name`）
 
 **手順**:
 1. テスト用ディレクトリに `index.krs` と `system.krs` を置く
@@ -54,7 +54,7 @@
 
 ### TC-04: リアルタイム更新
 
-> 🟡 Partially automated — `packages/cli/src/serve.e2e.test.ts` › `emits an SSE event when a watched file is rewritten (TC-04)`（SSE イベント発火を確認、ブラウザ自動更新は手動）
+> ✅ Automated — `packages/e2e/tests/at-0032-cli-serve-mode.spec.ts` › `TC-04: rewriting the file on disk redraws the diagram without a reload`（nightly の `serve` project。SSE の発火は `packages/cli/src/serve.e2e.test.ts` › `emits an SSE event when a watched file is rewritten (TC-04)`）
 
 **手順**:
 1. ブラウザで `http://localhost:3000` を開く
@@ -81,7 +81,7 @@
 
 ### TC-06: 存在しないファイルへのアクセス
 
-> ✅ Automated — `packages/cli/src/serve.test.ts` › `GET /api/file/:name` › `returns 404 for a missing file`（API レベルで確認。ブラウザのエラー画面表示は手動）
+> ✅ Automated — `packages/e2e/tests/at-0032-cli-serve-mode.spec.ts` › `TC-06: a missing file shows File not found`（nightly の `serve` project。API 側は `packages/cli/src/serve.test.ts` › `GET /api/file/:name` › `returns 404 for a missing file`）
 
 **手順**:
 1. `http://localhost:3000/nonexistent` にアクセスする

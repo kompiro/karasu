@@ -342,3 +342,19 @@ specs cannot drift apart. `paneSelector` names one pane (e.g.
 - `expectDragPans(page, paneSelector)` — a press that moves past the click
   threshold changes the `transform`. The move is stepped so it lands after the
   mousedown's drag state has rendered.
+
+## `serve.ts` — the `karasu serve` project
+
+For specs in the `serve` project (AT-0032, #3049), which runs only under
+`E2E_SERVE=1` — see "Serve mode" in [`../README.md`](../README.md). The
+server watches `.serve-scratch/`, a fresh copy of `serve-project/` made on
+every server start. Ports and paths live in `serve-env.ts`, which imports
+nothing from Playwright so `scripts/start-serve.ts` can share it.
+
+- `serveProject.open(path = "/")` — navigate on the serve server. `/` is the
+  default file, `/<name>` is `<name>.krs`.
+- `serveProject.write(name, content)` — overwrite `<name>.krs` on disk, as an
+  external editor would. The file goes back to its checked-in content after
+  the test. Give a test that rewrites a file a file of its own
+  (`live.krs` for TC-04): the other specs run in parallel and read theirs.
+- `serveProject.dir` — the served directory, for anything else on disk.

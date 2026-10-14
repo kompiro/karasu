@@ -1,0 +1,4 @@
+system ServeIndex {
+  label "Serve Index"
+  service IndexWeb { label "Index Web" }
+}

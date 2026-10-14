@@ -89,6 +89,10 @@ jobs:
           # `e2e.yml` (TPL-2046's second half: one route, no drift). The cron
           # has no inputs and falls back to the shipped value.
           PLAYWRIGHT_WORKERS: ${{ inputs.workers || 1 }}
+          # Adds the `serve` project and its `karasu serve` webServer
+          # (AT-0032, #3049). Only the nightly sets it: `e2e.yml` would
+          # otherwise build and start the CLI on every PR (#3039 decision 4).
+          E2E_SERVE: "1"
         run: pnpm --filter @karasu-tools/e2e test
 
       # Informative-only — surfaces tests that failed once then passed on

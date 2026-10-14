@@ -57,6 +57,26 @@ gh workflow run e2e-nightly.yml -f workers=2    # measurement run; tracker left 
 Each dispatched run gets its own concurrency slot, so back-to-back dispatches
 do not cancel each other.
 
+### Serve mode (`serve` project, nightly only)
+
+AT-0032 runs in a second project, `serve`, against `karasu serve` on port
+5174 instead of the app's own server (#3049). Playwright starts every
+`webServer` entry whatever `--project` says, so the project and its server
+exist only when `E2E_SERVE=1`. The nightly sets it and `e2e.yml` does not, so
+the PR gate never builds or starts the CLI; a `packages/cli` regression in
+serve mode shows up in the nightly, not on the PR
+([#3039](https://github.com/kompiro/karasu/issues/3039), decision 4).
+
+`scripts/start-serve.ts` copies `fixtures/serve-project/` into the
+git-ignored `.serve-scratch/`, builds the CLI bundle and runs it. Locally it
+also builds the app first, since the first server is `vite` dev there:
+
+```bash
+E2E_SERVE=1 pnpm --filter @karasu-tools/e2e exec playwright test --project serve
+```
+
+Override the port with `PLAYWRIGHT_SERVE_PORT`.
+
 ## Linking specs to acceptance tests
 
 Every `tests/at-*.spec.ts` must be cited by full path from at least one
