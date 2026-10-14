@@ -10,7 +10,11 @@ updates:
     # peer 不整合を lockfile に固定してしまうため 8 に引き上げる（ADR-2447）。
     # ただし枠をいくら広げても pair の同時到着は保証されない。相互に
     # ブロックする組は枠ではなく下の groups: で結ぶ（ADR-2671）。
-    open-pull-requests-limit: 8
+    # 8 でも 1 週間分のオファーが 3 波に割れ、波ごとにトリアージと記録が
+    # 要った（2026-10-14 は cooldown を満たした更新が 24 件）。1 回の月曜の
+    # 実行で 1 週間分が出揃うよう 25 にする。オファー量は cooldown が絞る
+    # ので、この値は上限であって目標ではない（ADR-3221）。
+    open-pull-requests-limit: 25
     cooldown:
       default-days: 7
       semver-major-days: 7

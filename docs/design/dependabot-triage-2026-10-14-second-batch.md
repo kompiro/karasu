@@ -137,9 +137,9 @@ publisher は同じ 3 名、GitHub Actions OIDC + provenance、09-13 公開。ad
 `env` の own property 判定）には触れていない。
 
 B を採ると ADR-3077 の `assumptions:`（`grep: pnpm-workspace.yaml :: tinypool: ~2\.1\.`）が
-`pnpm adr:check-assumptions` で落ちる。差し替え PR で同 assumption を `tinypool: \^2\.` などの floor の存在確認に
-緩め、理由（oxfmt の pin が 2.2.0 に移った）を ADR-3077 に追記する（ADR-2623 が ADR-2447 の assumption を緩めた
-前例と同じ扱い）。
+`pnpm adr:check-assumptions` で落ちる。差し替え PR で同 assumption を `tinypool: \^2\.`（floor の存在確認）に
+緩め、理由は frontmatter のコメントに書く。ADR-3077 の本文は触らない（ADR-2687）。ADR-2623 が ADR-2447 の
+assumption を緩めた前例と同じ扱い。
 
 ### #3209 `marked` 18.0.13 → 18.1.0（`packages/app` / `packages/vscode`、runtime）
 
@@ -173,7 +173,17 @@ watch モードでテストファイルが 0 件でも落ちない、ESM fallbac
 短いフラグの解釈修正。lock では `js-yaml` が 5.4.2 → 5.4.3 に移る（advisory 範囲 `<= 5.4.0` の外）。
 `vscode-extension-tester` が peer で読む mocha も 12.0.3 になり、ExTester ジョブは green。
 
-## 現時点の方針
+## 反映
+
+ユーザー判断（2026-10-14）: 採否は推奨どおり。差し替え PR は 2 本に分け、#3070 の ADR 化とも切り離す。
+
+- そのままマージ: #3215（マージ済み）、#3214 / #3212 / #3211 / #3209（rebase してから順にマージ）
+- VS Code の下限の差し替え PR: [#3225](https://github.com/kompiro/karasu/pull/3225)（#3210 / #3216 は close）。
+  lockfile は #3210 の bot ブランチの lock から作り直し、transitive の解決をトリアージで確認した版に留めた
+  （ローカルで素直に `pnpm install` すると、前日公開の `@azure/identity@4.14.0` を拾うため）
+- oxfmt の差し替え PR: [#3226](https://github.com/kompiro/karasu/pull/3226)（#3213 は close）
+
+## 当初の方針
 
 1. **そのままマージ（5 件）**: #3215 / #3214 / #3212 / #3211 / #3209。すべて `pnpm-lock.yaml` を触るので、1 件ずつ
    マージし、残りには `@dependabot rebase` を掛けて CI を待つ
@@ -183,9 +193,31 @@ watch モードでテストファイルが 0 件でも落ちない、ESM fallbac
    ADR-3077 の assumption 緩和を入れる
 4. 差し替え PR の 2 本は「採用」なので `@dependabot ignore` は設定しない
 
-## 残した問い
+## npm の `open-pull-requests-limit` を 8 から 25 に上げる
 
-- 差し替え PR を 2 本に分けるか 1 本にまとめるか。分ける案を推す（触るファイルが重ならず、VS Code 側は changeset を
-  伴うのでレビューの観点が違う）
-- #3070 の ADR 化をこの差し替え PR と同時に進めるか。今回は分ける案を推す（今回の変更は現行規則で正当化でき、#3070 は
-  `dependabot.yml` の変更を伴う別の判断）
+**観測**: 今週 cooldown 7 日を満たした npm の更新は 24 件あり、上限 8 のために 3 波に割れた。
+
+| 波 | 起票 | 件数 | 記録 |
+| --- | --- | --- | --- |
+| 第 1 波 | 10-14 午前 | 8 | ADR-3196 |
+| 第 2 波 | 10-14 15:38 UTC（第 1 波の PR がマージ / close されて枠が空いた直後） | 8 | 本 Design Doc |
+| 未起票 | — | 8（`@anthropic-ai/sdk` 0.132.0、`@playwright/test` 1.64.0、`@vscode/vsce` 4.0.0、`astro` 7.3.7、`jsdom` 30.1.2、`knip` 6.40.0、`lucide-react` 1.52.0、`vite` 8.3.3） | 次の波 |
+
+未起票の 8 件は、`pnpm outdated -r` の直接依存のうち、現在の版より新しく、かつ公開から 7 日を過ぎた版があるもの
+（10-14 23:40 UTC 時点。第 2 波で扱った 7 パッケージは除く）。
+
+波が分かれると、トリアージ（upstream の追跡と Design Doc / ADR）が 1 週間に 3 回走る。ADR-2447 で 5 から 8 に
+上げたときの理由（peer で結ばれた依存の片方だけがオファーされる）は、その後 ADR-2671 / ADR-3196 の `groups:` で
+解決しており、枠を絞っておく理由は残っていない。
+
+**決定案**: npm の `open-pull-requests-limit` を 25 にする。1 回の月曜の実行で 1 週間分が出揃う値として、今週の
+実測 24 件に少し余裕を持たせた。オファー量は cooldown 7 日が絞るので、この値は上限であって目標ではない。
+
+**コスト**: 起票数そのものは変わらない（同じ更新が数波に分かれて来るか、1 回で来るか）。変わるのは同時に開く PR
+の数で、1 度に最大 25 本の CI が走る。lockfile を触る PR を順にマージすると、各 PR は直前のマージの後に 1 度
+rebase して CI を回し直すので、CI の総実行回数はおよそ 2N で、波に分けた場合と同じである。
+
+github-actions の枠（既定 5）は今週 4 件で足りているので変えない。
+
+ADR-2447 の `assumptions:` は `open-pull-requests-limit: 8` の完全一致だったため、「枠を明示している」ことの確認
+（`open-pull-requests-limit: [0-9]+`）に緩める。値は本トリアージの ADR が持つ。

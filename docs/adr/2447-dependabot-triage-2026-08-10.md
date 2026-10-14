@@ -9,7 +9,8 @@ scope:
   concerns: [dependencies, ci]
 related_to: [ADR-2440, ADR-2333, ADR-2318, ADR-784, ADR-1320]
 assumptions:
-  - "grep: .github/dependabot.yml :: open-pull-requests-limit: 8"
+  # 本 ADR が決めたのは既定の 5 に頼らず枠を明示することで、値は ADR-3221 が 25 に上げた。
+  - "grep: .github/dependabot.yml :: open-pull-requests-limit: [0-9]+"
   # 特定の minor / patch 番号ではなく「caret で pin されている」ことを表明する。
   # 本 ADR が oxfmt / vitest について決めたのは採用と反映の形（整形の同梱、
   # 9 manifest の版揃え）であって、0.62.0 / 4.1.10 というリテラルの版ではない
