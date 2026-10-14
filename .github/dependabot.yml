@@ -52,6 +52,14 @@ updates:
         patterns:
           - "vitest"
           - "@vitest/coverage-v8"
+      # Radix の各 component は共有 primitive（react-primitive / react-slot /
+      # react-dismissable-layer / react-focus-scope など）を exact pin で持つ。
+      # 1 件ずつ来ると primitive が lock に 2 版ずつ並び、module 単位で持つ
+      # layer / focus の stack が版ごとに割れる（ADR-3196）。同じ release train
+      # で出る組をまとめて上げるため、ここだけは wildcard で全 component を結ぶ。
+      radix:
+        patterns:
+          - "@radix-ui/*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
