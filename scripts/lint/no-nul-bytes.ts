@@ -36,7 +36,7 @@ import { lstatSync, readFileSync } from "node:fs";
 // (TPL-2446). The design is recorded in Issue #2804.
 
 /** Extensions whose files legitimately carry NUL bytes. Each must be backed by one. */
-export const BINARY_EXTENSIONS = [".otf", ".png", ".ttf"];
+export const BINARY_EXTENSIONS = [".gif", ".otf", ".png", ".ttf"];
 
 /** Git's mode for a tracked symbolic link. */
 const SYMLINK_MODE = "120000";

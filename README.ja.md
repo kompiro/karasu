@@ -15,6 +15,10 @@ karasu は、テキストベースのアーキテクチャモデリング言語�
 システムの **論理構造**、**物理デプロイ**、**チームのオーナーシップ**を、
 人間・コード・AI agent が共に読み、進化させられる一つのモデルに保ちます。
 
+<p align="center">
+  <img src="docs/assets/readme-demo.ja.gif" width="960" alt="AI エージェントがリポジトリを 1 つの karasu モデルにリバースし、Web アプリでシステム全体を表示して、service とその domain へドリルダウンし、ノードと edge を焦点に表示し、domain のユースケースを拡大して、Deploy ビューに切り替える様子" />
+</p>
+
 [**ブラウザで試す →**](https://karasu.kompiro.dev/)
 
 [ドキュメント](https://kompiro.github.io/karasu/ja/) ·
