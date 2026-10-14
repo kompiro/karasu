@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { FileTreeView } from "./FileTreeView.js";
+import { LocaleProvider } from "../../i18n/index.js";
 import type { FileTreeNode } from "./types.js";
 
 afterEach(cleanup);
@@ -35,7 +36,15 @@ function renderView(overrides: Partial<Parameters<typeof FileTreeView>[0]> = {})
     onNewDir: vi.fn<() => void>(),
     ...overrides,
   };
-  return { ...render(<FileTreeView {...props} />), props };
+  // The inline name input reads its aria-label through useTranslation.
+  return {
+    ...render(
+      <LocaleProvider initialLocale="en">
+        <FileTreeView {...props} />
+      </LocaleProvider>,
+    ),
+    props,
+  };
 }
 
 describe("FileTreeView", () => {

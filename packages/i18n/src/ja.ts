@@ -57,6 +57,7 @@ export const ja: Partial<Translations> = {
     "ブラウザのストレージ (OPFS) が使用できない場合に発生することがあります（プライベートブラウジング、ストレージ容量超過など）。ブラウザの設定を確認して再読み込みしてください。",
 
   // Project selector
+  "projectSelector.dropdown.ariaLabel": "プロジェクト",
   "projectSelector.namePlaceholder": "プロジェクト名",
   "projectSelector.new.title": "新規プロジェクト",
   "projectSelector.new.button": "+ 新規",
@@ -81,6 +82,9 @@ export const ja: Partial<Translations> = {
   "project.error.openExample": ({ detail }) => `⚠ example を開けませんでした: ${detail}`,
   "project.error.snapshot": ({ detail }) => `⚠ スナップショットの取得に失敗しました: ${detail}`,
   "project.error.dismiss": "✕ 閉じる",
+
+  // File tree: the inline name input for New File / New Folder / Rename
+  "fileTree.inlineInput.ariaLabel": "名前",
 
   // Translate dialog
   "translateDialog.title": "⇄ インフラ設定を .krs に変換",

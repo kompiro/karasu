@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "../../i18n/index.js";
 
 interface InlineInputProps {
   depth: number;
@@ -8,6 +9,7 @@ interface InlineInputProps {
 }
 
 export function InlineInput({ depth, initialValue, onConfirm, onCancel }: InlineInputProps) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const handledRef = useRef(false);
 
@@ -38,6 +40,7 @@ export function InlineInput({ depth, initialValue, onConfirm, onCancel }: Inline
       <input
         ref={inputRef}
         className="file-tree-inline-input"
+        aria-label={t("fileTree.inlineInput.ariaLabel")}
         defaultValue={initialValue}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
