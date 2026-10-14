@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures/anthropic.js";
 import { bootChat, sendChatMessage, CHAT_ERROR_CASES } from "../fixtures/chat.js";
+import { rightClickEdge } from "../fixtures/edges.js";
 
 /**
  * AT-0050 Chat UI Phase 2 — BYOK + AI integration.
@@ -344,7 +345,7 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
     const EDGE_KRS = `system Shop {
   service Api {}
   service Db {}
-  Api -> Db "reads"
+  Api -> Db
 }
 `;
     const IMPORTED_KRS = `@import "index.krs.style"\n${EDGE_KRS}`;
@@ -381,14 +382,8 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
       await expect(proposal.getByRole("button", { name: /Apply/ })).toBeVisible();
       const requestsAtProposal = anthropic.requests.length;
 
-      // Dirty the file from the preview while Chat stays on screen. The edge
-      // is a straight vertical line (a zero-width box Playwright will not
-      // click), so the right-click lands on its label, inside the same group.
-      await page
-        .locator('.preview-container svg [data-edge-canonical-id="Api->Db"] text', {
-          hasText: "reads",
-        })
-        .click({ button: "right" });
+      // Dirty the file from the preview while Chat stays on screen.
+      await rightClickEdge(page, "Api->Db");
       await page.getByRole("menuitem", { name: "↓ Down" }).click();
       await expect.poll(() => opfs.read(INDEX_PATH)).toBe(IMPORTED_KRS);
 
