@@ -49,18 +49,22 @@ test.describe("AT-1827 deep permalink", () => {
 
   test("with the checkbox off, the same share opens the whole model", async ({ page, opfs }) => {
     await bootSharer(page, opfs, KRS);
+    // The whole-model link: shared at the root, where there is no target.
+    const rootUrl = await readPrivateUrl(await openShareDialog(page));
+    await page.keyboard.press("Escape");
+
     await drillInto(page, ["OrderService"], { expectBreadcrumb: true });
-
     const dialog = await openShareDialog(page);
-    const drilledUrl = await readPrivateUrl(dialog);
     await includeTarget(dialog).uncheck();
-    // Re-encoded without the target.
-    await expect.poll(() => readPrivateUrl(dialog)).not.toBe(drilledUrl);
+    // Re-encoded without the target: byte-for-byte the root link. Asserting
+    // this, rather than the absence of a drill after opening, cannot pass
+    // before a late drill would have landed.
+    await expect.poll(() => readPrivateUrl(dialog)).toBe(rootUrl);
 
-    await openSharedUrl(page, opfs, await readPrivateUrl(dialog));
+    await openSharedUrl(page, opfs, rootUrl);
 
     await expect(page.locator('svg [data-node-id="OrderService"]')).toBeVisible();
     await expect(page.locator('svg [data-node-id="Billing"]')).toBeVisible();
-    await expect(page.locator('svg [data-node-id="Ordering"]')).toHaveCount(0);
+    await expect(page.locator(".breadcrumb-current")).toHaveText("EC");
   });
 });
