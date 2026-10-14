@@ -576,10 +576,12 @@ system ${second} { service Api { description "${second}" } }`).nodeMetadata.get(
       viewPath: [],
     });
     expect(cardOf(result.svg, "Shop.Api")).toContain('data-diff-state="unchanged"');
-    // Only the first system's cards are diffed on the root today (#3126), so
-    // Admin.Api has no state of its own; it must not show Shop.Api's either.
-    expect(cardOf(result.svg, "Admin.Api")).not.toContain("data-diff-state");
+    // Every system frame diffs its own children (#3126), so Admin.Api carries
+    // its own change and Shop.Api keeps its own state.
+    expect(cardOf(result.svg, "Admin.Api")).toContain('data-diff-state="changed"');
     expect(result.nodeDiffByPath.get("Shop.Api")?.state).toBe("unchanged");
-    expect(result.nodeDiffByPath.has("Admin.Api")).toBe(false);
+    expect(result.nodeDiffByPath.get("Admin.Api")?.state).toBe("changed");
+    // The bare id answers with the winner (`Shop`, @migration_target).
+    expect(result.nodeDiff.get("Api")?.state).toBe("unchanged");
   });
 });

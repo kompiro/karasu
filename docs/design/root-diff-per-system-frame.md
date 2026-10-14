@@ -144,7 +144,6 @@ after に system が 1 つも無いとき（モデルが空）は、union の先
 2. **compile-diff**: `diffSystemViewSlices` に after と before の順位を合わせて渡す。owner / boundary の removed backfill は `diffed.nodesByPath` を回し、key はカードの path そのものにする（ルートでも勝者の path を使わない）。scoped boundary の backfill もカードの path から scope と id を取る。bare の facet backfill は bare の見え方のまま。
 3. **app**: `SystemDiffCompileResult.nodeDiffByPath` を `useSystemView` → view data → `PreviewPane` に通し、詳細パネルの `annotationDiff` を `nodePath` で先に引く（metadata と同じ順）。
 4. **tests**:
-   <!-- absent-path-next-line: new test file this design creates (#3126) -->
    - `packages/core/src/renderer/multi-system-root-diff.test.ts`（新規）: 上の実測表の 6 行を 1 件ずつ固定する。非先頭フレームの `changed` / `added` / `removed`（removed の子が自分の枠の中に描かれる）、system を丸ごと消す・足す、先頭の system が入れ替わる 2 通り。
    - 同名: `Shop.Api` と `Admin.Api` があり `Admin.Api` だけを変えたとき、`Admin.Api` = `changed`、`Shop.Api` = `unchanged`。bare の `nodeDiff.get("Api")` は勝者のもの。`multi-system-same-id.test.ts` の「Admin.Api has no state of its own」の期待を書き換える。
    - group-by team で、非先頭フレームの removed の子が自分の team の帯に戻る（owner backfill を path で行う柵）。
