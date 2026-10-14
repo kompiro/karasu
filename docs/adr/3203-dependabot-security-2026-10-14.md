@@ -10,7 +10,7 @@ scope:
 related_to: [ADR-1038, ADR-2115, ADR-2401, ADR-2628, ADR-3069, ADR-3077, ADR-3196]
 assumptions:
   # 決定は patched な系列へ floor を置くことであって、そのときの patch 番号ではない（ADR-2628）。
-  - "grep: pnpm-workspace.yaml :: sharp: \\^0\\.35\\."
+  - "grep: pnpm-workspace.yaml :: sharp: \\^0\\."
   - "grep: pnpm-workspace.yaml :: shell-quote: \\^1\\."
 ---
 
@@ -87,8 +87,8 @@ install script なし、2026-10-02 公開で cooldown 7 日も満たす。1.11.0
 ### postcss の副次的な移動を受け入れる
 
 override を変えたことで pnpm が再解決し、`vite@8.3.0` の postcss が、docs site 経由で既に lock にあった 8.5.29 に寄った（vite の宣言は
-`^8.5.28`）。8.5.29 は ADR-3196 で確認済みの版（GitHub Actions + provenance、2026-10-05 公開）で、lock から postcss 8.5.28 が消えて
-1 版に揃う。app のビルドは通る。
+`^8.5.28`）。8.5.29 は ADR-3196 で確認済みの版（GitHub Actions + provenance、2026-10-05 公開）。lock から postcss 8.5.28 は消えるが、
+`@vue/compiler-sfc` / `precinct` などが持つ 8.5.26 は残り、8.5.26 と 8.5.29 の 2 版になる。app のビルドは通る。
 
 ### #86 http-cache-semantics: tolerable_risk で dismiss する
 
