@@ -106,8 +106,16 @@ type: product
 
   > ✅ Automated — `scripts/lint/krs-fences.test.ts` › `analyzeKrsFencesIn` › `accepts a ```krs block the parser understands` / `accepts a fence marked invalid while it still fails to parse` / `reports a fence marked invalid that the parser started accepting`
 
+### AC-5: app で実際のエッジを押す
+
+- [x] M-2: `A --> B [async] #orderPlaced { label … description … link … }` を書き、キャンバスのエッジを左クリックするとパネルが開いて散文とリンクが読める。リンクを押すと別タブで開く
+
+  > ✅ Automated — `packages/e2e/tests/at-2543-edge-property-block.spec.ts` › `left-click opens the detail panel with the prose and a link that opens a new tab (M-2)`
+
+- [x] M-3: 同じモデルを右クリックすると従来どおり方向メニュー（`EdgeContextMenu`）が開き、詳細パネルは開かない
+
+  > ✅ Automated — `packages/e2e/tests/at-2543-edge-property-block.spec.ts` › `right-click opens the direction menu, not the detail panel (M-3)`
+
 ## 手動確認
 
 - [ ] M-1: <https://karasu.kompiro.dev/> の Reference で Edge Syntax を開くと、shorthand とプロパティブロックの両方が載っている
-- [ ] M-2: 同サイトで `A --> B [async] #orderPlaced { label … description … link … }` を書き、キャンバスのエッジを左クリックするとパネルが開いて散文とリンクが読める。リンクを押すと別タブで開く
-- [ ] M-3: 同じモデルを右クリックすると従来どおり方向メニュー（`EdgeContextMenu`）が開き、詳細パネルは開かない
