@@ -1,8 +1,30 @@
-# Dependabot トリアージ 2026-10-14
+---
+id: ADR-3196
+title: Dependabot トリアージ 2026-10-14：npm 6 件を採用し、Radix は 4 件を揃える差し替え PR、actions/* は gh-aw の生成物を除く差し替え PR で入れ、download-artifact と gh-aw-actions は却下する
+status: accepted
+date: 2026-10-14
+topic: build
+related_to:
+  - ADR-3069
+  - ADR-2753
+  - ADR-2671
+  - ADR-2474
+  - ADR-784
+  - ADR-2839
+scope:
+  packages: [app, cli, core, docs-site, e2e, i18n, lsp, nest, vscode, vscode-e2e]
+  concerns: [ci, dependencies, security]
+---
+
+# ADR-3196: Dependabot トリアージ 2026-10-14：npm 6 件を採用し、Radix は 4 件を揃える差し替え PR、actions/* は gh-aw の生成物を除く差し替え PR で入れ、download-artifact と gh-aw-actions は却下する
 
 - **日付**: 2026-10-14
-- **ステータス**: 検討中
+- **ステータス**: 決定済み
 - **関連**:
+  - Design Doc PR: [#3196](https://github.com/kompiro/karasu/pull/3196)（本 ADR に昇格し削除）
+  - Radix の差し替え PR: [#3199](https://github.com/kompiro/karasu/pull/3199)（#3191 / #3194 の差し替え）
+  - `actions/*` の差し替え PR: [#3200](https://github.com/kompiro/karasu/pull/3200)（#3184 / #3186 の差し替え）
+  - `.lock.yml` の drift ガードを `actions/*` に広げる: [#3201](https://github.com/kompiro/karasu/issues/3201)
   - 対象 Dependabot PR: [#3184](https://github.com/kompiro/karasu/pull/3184) / [#3185](https://github.com/kompiro/karasu/pull/3185) / [#3186](https://github.com/kompiro/karasu/pull/3186) / [#3187](https://github.com/kompiro/karasu/pull/3187) / [#3188](https://github.com/kompiro/karasu/pull/3188) / [#3189](https://github.com/kompiro/karasu/pull/3189) / [#3190](https://github.com/kompiro/karasu/pull/3190) / [#3191](https://github.com/kompiro/karasu/pull/3191) / [#3192](https://github.com/kompiro/karasu/pull/3192) / [#3193](https://github.com/kompiro/karasu/pull/3193) / [#3194](https://github.com/kompiro/karasu/pull/3194) / [#3195](https://github.com/kompiro/karasu/pull/3195)
   - 前回トリアージ: [ADR-3069](../adr/3069-dependabot-triage-2026-10-05.md)
   - gh-aw の再生成規則: [ADR-2753](../adr/2753-dependabot-triage-2026-09-07.md)、`.claude/rules/dependabot.md`
@@ -264,22 +286,24 @@ Dependabot が日付単位で丸めて判定している可能性が高い（未
 「Security alert 時は advisory の脆弱範囲を override / 宣言レンジと突き合わせる」の型）。#92 / #93 は patched 版が出ているので、
 本トリアージとは別に `security-alert` skill の手順で扱う。#85 / #86 は前回（ADR-3069）から変わらず patched 版待ち。
 
-## 現時点の方針
+## 決定
+
+**npm 6 件は bot PR をそのままマージし、Radix 2 件は dialog / tooltip を含む 4 件を揃える差し替え PR、`actions/*` の 2 件は gh-aw の
+生成物を除く差し替え PR で採用し、download-artifact と gh-aw-actions/setup は却下する。**
 
 | PR | 判定 | 反映 |
 | --- | --- | --- |
-| #3195 / #3192 / #3188 / #3190 / #3189 / #3193 | 採用 | bot PR をマージ。lock が衝突するので 1 件ずつ入れ、2 件目以降は `@dependabot rebase` で CI を通し直す。#3190 と #3192 はどちらも `@types/node@26.6.4` の周辺を触る |
-| #3191 / #3194 Radix | 採用 | bot PR を close し、tabs 1.1.22 / dropdown-menu 2.1.25 / dialog 1.2.0 / tooltip 1.3.0 を 1 コミットで上げ、`dependabot.yml` に `@radix-ui/*` group を足す差し替え PR で入れる。`@dependabot ignore` は設定しない |
-| #3184 upload-artifact / #3186 setup-node | 採用 | bot PR を close し、`.lock.yml` を除く workflow だけを上げる差し替え PR 1 本で入れる（10-15T02:52Z 以降）。`@dependabot ignore` は設定しない |
+| #3195 / #3189 / #3193 / #3192 / #3188 / #3190 | 採用 | bot PR をマージ。lock が衝突するので 1 件ずつ入れ、衝突した PR には `@dependabot rebase` を掛けて CI を通し直した |
+| #3191 / #3194 Radix | 採用 | bot PR を close。tabs 1.1.22 / dropdown-menu 2.1.25 / dialog 1.2.0 / tooltip 1.3.0 を 1 コミットで上げ、`dependabot.yml` に `@radix-ui/*` の `radix` group を足す差し替え PR [#3199](https://github.com/kompiro/karasu/pull/3199) で入れる。lock の全 `@radix-ui/*` が 1 版に揃い、Radix 以外の依存エッジは動かない。`@dependabot ignore` は設定しない |
+| #3184 upload-artifact / #3186 setup-node | 採用 | bot PR を close。`.lock.yml` を除く workflow だけを上げる差し替え PR [#3200](https://github.com/kompiro/karasu/pull/3200) 1 本で入れる（setup-node の cooldown が満ちる 10-15T02:52Z までは draft）。`@dependabot ignore` は設定しない |
 | #3185 download-artifact | 却下 | bot PR を close。`.lock.yml` は gh-aw の正式版での再生成で上がる。`@dependabot ignore` は設定しない |
 | #3187 gh-aw-actions/setup | 却下 | bot PR を close。正式版の最新が現行 pin（v0.89.21）なので再生成 PR は作らない |
 
-follow-up（Issue を起こす）:
+follow-up:
 
 - `gh-aw-lock-consistency.test.ts` を `.lock.yml` の `gh-aw-manifest` にある全 action と `uses:` の突き合わせに広げ、
-  `.claude/rules/dependabot.md` に「`actions/*` の bot PR が `.lock.yml` を触るときは、生成物を除いた差し替え PR で入れる
-  （生成物だけなら却下）」を足す
-- security alert #92 / #93 を `security-alert` skill で処理する
+  `.claude/rules/dependabot.md` に `actions/*` の bot PR が `.lock.yml` を触るときの扱いを足す（[#3201](https://github.com/kompiro/karasu/issues/3201)）
+- security alert #92 / #93 は `security-alert` skill で別に処理する
 
 ### 理由
 
@@ -291,8 +315,29 @@ follow-up（Issue を起こす）:
 - #3187 は前回と同じく、Dependabot が prerelease を区別できないことによる提案で、入れるべき正式版が無い
 - #3190 は CI が docs site をビルドしないため、ローカルビルドの比較を採用の条件にした
 
-## 未解決の問い
+## 却下した案
 
-- 差し替え PR で Radix の 4 件を揃える案と、bot PR 2 件をそのまま入れて次の週に dialog / tooltip が来るのを待つ案のどちらを取るか
-  （本書は前者を推奨。後者は現行コードでは実害が出ないが、group を足すまで同じ割れ方が毎回起きる）
-- #3190 の CSS コードブロックの色の変化を目視で確かめるか（docs 側のフェンスを `krs-style` に寄せればこの揺れは消えるが、本件の範囲外）
+### Radix の bot PR 2 件をそのまま入れ、dialog / tooltip の提案を次の週に待つ
+
+現行コードには版の割れで壊れる経路が無いので、実害は出ない。ただし dialog / tooltip の提案は npm の枠（8 件）が空くまで
+来ない可能性があり、その間 primitive が 2 版のまま残る。group を足さない限り、次の Radix の release train でも同じ割れ方が
+毎回起きる。
+
+### `actions/*` の bot PR をそのままマージする
+
+CI は通るが、`.lock.yml` の `uses:` と同じファイルの `gh-aw-manifest` が食い違ったまま main に入り、次の `gh aw compile` で
+黙って旧版に戻る。ADR-2753 が gh-aw-actions/setup について退けたのと同じ理由で退ける。
+
+### `actions/*` の bot PR に人手で `.lock.yml` を戻すコミットを足す
+
+次の rebase / recreate で失われる。差し替え PR が規則上の正しい形である。
+
+### #3187 の再生成で Dependabot の要求版 v0.91.5 を入れる
+
+v0.91.5 は `gh aw` CLI で prerelease 扱いで、現行は正式版を使っている。v0.90 / v0.91 系に正式版が出て cooldown を満たしたら、
+次の Dependabot 提案で改めて扱う。
+
+## 残した問い
+
+- #3190 で docs site の CSS コードブロックの色付けが一部変わる件は目視していない。docs 側のフェンスを `krs-style` に寄せれば
+  この揺れは消えるが、本件の範囲外とした
