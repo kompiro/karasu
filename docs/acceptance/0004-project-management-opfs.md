@@ -70,6 +70,17 @@ OPFS（Origin Private File System）によるプロジェクトの永続化と�
 > - 「ドリルダウン・ブレッドクラム」は AT-0029 / AT-0030 で、「ワーニングパネル」
 >   は AT-0045 / AT-0057 で別途自動化されている。
 
+### AC-4: プロジェクトのリネーム・エクスポート・インポート
+
+- [x] 「✎ Rename」で現在の名前が入った入力欄が表示され、Enter でドロップダウンと `/meta/projects.json` の名前が変わる
+> ✅ Automated — `packages/e2e/tests/at-0004-project-management-opfs.spec.ts` › `✎ Rename updates the dropdown and /meta/projects.json`
+
+- [x] 「↓ Export」で `<プロジェクト名>.zip` がダウンロードされる
+> ✅ Automated — `packages/e2e/tests/at-0004-project-management-opfs.spec.ts` › `↓ Export downloads the project as <name>.zip`
+
+- [x] エクスポートした ZIP を「↑ Import」すると、同名を避けた `<プロジェクト名> (2)` が作成・選択され、URL が `/projects/<新しい ID>` になり、ネストしたファイルも含めて内容が一致する
+> ✅ Automated — `packages/e2e/tests/at-0004-project-management-opfs.spec.ts` › `↑ Import of an exported ZIP creates and selects a disambiguated copy`
+
 ## 検証方法
 
 ```bash

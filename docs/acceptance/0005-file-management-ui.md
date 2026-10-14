@@ -68,21 +68,22 @@ FileTree コンポーネントにファイル管理機能を追加する。ヘ�
 
 - [x] リネーム対象がエディタで開かれている場合、新パスで再選択される
 
-> 🟡 Partially automated — `packages/app/src/components/FileTree.test.tsx` › `Rename flow renames the file and re-selects it`（旧・新パスでの `onFileRenamed` 発火まで fence。ProjectModeApp 側でエディタが実際に新パスへ切り替わる様子は手動）
+> ✅ Automated — `packages/e2e/tests/at-0005-file-management-ui.spec.ts` › `context menu Rename moves the open file and re-selects it (AC-3 / AC-6)`（開いている `index.krs` をリネームし、新パスの項目が選択状態になりエディタに同じ内容が出ること、OPFS の旧パスが消え新パスに内容があることを実ブラウザで検証）
 
 ### AC-4: 削除
 
 - [x] Delete で確認ダイアログが表示される
 
 > ✅ Automated — `packages/app/src/components/FileTree.test.tsx` › `Delete confirms then removes and clears the editor`（`window.confirm` がファイル名入りメッセージで呼ばれることを検証。ダイアログの表示自体はブラウザ標準機能）
+> ✅ Automated — `packages/e2e/tests/at-0005-file-management-ui.spec.ts` › `context menu Delete removes the file once the confirm is accepted (AC-4 / AC-6)` / `context menu Delete keeps the file when the confirm is dismissed (AC-4)`（実ブラウザの `dialog` がファイル名入りで出ること、accept で削除・dismiss で残ることを検証）
 
 - [x] 確認後にファイル/ディレクトリが削除される
 
-> 🟡 Partially automated — `packages/app/src/components/FileTree.test.tsx` › `Delete confirms then removes and clears the editor` と `packages/app/src/hooks/useFileTreeOps.test.ts` › `deletes and fires onFileDeleted when confirmed` / `skips deletion when the confirm hook returns false`（ファイル削除を fence。ディレクトリ削除の実挙動は手動）
+> 🟡 Partially automated — `packages/app/src/components/FileTree.test.tsx` › `Delete confirms then removes and clears the editor` と `packages/app/src/hooks/useFileTreeOps.test.ts` › `deletes and fires onFileDeleted when confirmed` / `skips deletion when the confirm hook returns false`（ファイル削除を fence。ディレクトリ削除の実挙動は手動）。ファイル削除は `packages/e2e/tests/at-0005-file-management-ui.spec.ts` › `context menu Delete removes the file once the confirm is accepted (AC-4 / AC-6)` がツリーと OPFS から消えることまで実ブラウザで検証
 
 - [x] 削除対象がエディタで開かれていた場合、エディタがクリアされる
 
-> 🟡 Partially automated — `packages/app/src/components/FileTree.test.tsx` › `Delete confirms then removes and clears the editor`（削除パスでの `onFileDeleted` 発火まで fence。ProjectModeApp 側でエディタが実際にクリアされる様子は手動）
+> ✅ Automated — `packages/e2e/tests/at-0005-file-management-ui.spec.ts` › `context menu Delete removes the file once the confirm is accepted (AC-4 / AC-6)`（開いていた `index.krs` を削除するとエディタから内容が消えることを実ブラウザで検証）
 
 ### AC-5: ディレクトリ操作
 
@@ -102,11 +103,11 @@ FileTree コンポーネントにファイル管理機能を追加する。ヘ�
 
 - [x] ファイル削除後にエディタがクリアされる（`onFileDeleted`、削除対象が開かれていた場合）
 
-> 🟡 Partially automated — `packages/app/src/components/FileTree.test.tsx` › `Delete confirms then removes and clears the editor`（削除パスでの `onFileDeleted` 発火まで fence。エディタクリアの実挙動は手動）
+> ✅ Automated — `packages/e2e/tests/at-0005-file-management-ui.spec.ts` › `context menu Delete removes the file once the confirm is accepted (AC-4 / AC-6)`
 
 - [x] ファイルリネーム後にエディタが新パスで再選択される（`onFileRenamed`、リネーム対象が開かれていた場合）
 
-> 🟡 Partially automated — `packages/app/src/components/FileTree.test.tsx` › `Rename flow renames the file and re-selects it`（旧・新パスでの `onFileRenamed` 発火まで fence。再選択の実挙動は手動）
+> ✅ Automated — `packages/e2e/tests/at-0005-file-management-ui.spec.ts` › `context menu Rename moves the open file and re-selects it (AC-3 / AC-6)`
 
 ## 検証方法
 
