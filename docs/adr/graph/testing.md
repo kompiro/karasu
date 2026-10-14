@@ -20,6 +20,7 @@ flowchart TD
     ADR_2348["ADR-2348<br/>AT レコードは Design Doc ではなく Issue を指す — 削除が規約で確定して..."]
     ADR_2648["ADR-2648<br/>記録が名指すソースパスを機械で照合し、不在が正しい場合は宣言させる"]
     ADR_2810["ADR-2810<br/>TPL 本文のソースパス照合を `@kompiro/tpl-tools` へ移し、Requir..."]
+    ADR_3169["ADR-3169<br/>受け入れテストの手動項目は、マージ前に確かめられるものに限る"]
     ADR_9012["ADR-9012<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
   end
   ADR_529["ADR-529<br/>[chat-ai] Playwright と AI による視覚レビューの併用"]
@@ -47,6 +48,7 @@ flowchart TD
   class ADR_2348 accepted
   class ADR_2648 accepted
   class ADR_2810 accepted
+  class ADR_3169 accepted
   class ADR_9012 accepted
   class ADR_529 ghost
 ```

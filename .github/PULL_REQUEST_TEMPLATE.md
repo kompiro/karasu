@@ -62,6 +62,7 @@ NOTICE item below is a manual check CI cannot do. Mark "N/A" otherwise.
 ## Manual Verification Checklist
 
 <!-- List items that cannot be verified by CI -->
+<!-- Copy here the manual items of the acceptance records (docs/acceptance/) this PR adds or whose area it changes, and check them on this PR's preview or a local checkout before merge (ADR-3169) -->
 <!-- If none, write "N/A — all covered by automated tests" -->
 
 - [ ]
