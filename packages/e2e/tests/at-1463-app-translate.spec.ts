@@ -34,9 +34,11 @@ function translateDialog(page: Page) {
  *
  * Kept local until the shared keyboard fixture from #3042 lands; the chord is
  * pressed with focus outside Monaco, where the palette shortcut is live.
+ * Blurring (rather than clicking somewhere neutral) cannot act on whatever
+ * control happens to be under the click.
  */
 async function openTranslateFromPalette(page: Page): Promise<void> {
-  await page.locator("body").click({ position: { x: 1, y: 1 } });
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await page.keyboard.press("ControlOrMeta+Shift+P");
   const search = page.getByRole("combobox", { name: "Search commands" });
   await expect(search).toBeFocused();

@@ -49,6 +49,9 @@ test.describe("AT-0067 Warnings refresh after editor edits", () => {
     await expectNoWarningMatching(page, /declares handles/);
 
     await replaceEditorContent(page, HANDLES_TYPO);
+    // The fixture confirms a paste by its first line, which all three buffers
+    // share; confirm the edited line too, so a dropped paste fails here.
+    await expect(page.locator(".monaco-editor .view-lines").first()).toContainText("handles Ordr");
     await expect(warningItem(page, unresolved)).toHaveCount(1);
 
     await replaceEditorContent(page, HANDLES_OK);

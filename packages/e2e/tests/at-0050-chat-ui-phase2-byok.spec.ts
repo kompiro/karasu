@@ -401,7 +401,10 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
 
       await proposal.getByRole("button", { name: /Apply/ }).click();
 
-      // The click reached `applyPatch`, which refused the stale proposal...
+      // The click reached `applyPatch`, which refused the stale proposal. Its
+      // warning is the only positive signal of the refusal (a no-op leaves no
+      // DOM trace), and it is what keeps the absence checks below from passing
+      // on a click that never landed...
       await expect.poll(() => staleWarnings.length).toBe(1);
       // ...so nothing changed: the proposal is still pending, no follow-up
       // turn was sent, and the file differs from the seed only by the import.

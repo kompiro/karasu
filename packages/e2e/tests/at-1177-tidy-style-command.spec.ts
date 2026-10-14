@@ -54,14 +54,15 @@ async function seedProject(opfs: OpfsFixture): Promise<void> {
   await opfs.gotoApp();
 }
 
+// Exact name: `index.krs` is a prefix of `index.krs.style`.
 async function openFile(page: Page, name: string): Promise<void> {
-  await page.locator(".file-tree-item", { hasText: name }).first().click();
+  await page.locator(".file-tree-item", { has: page.getByText(name, { exact: true }) }).click();
 }
 
 const editorLines = (page: Page) => page.locator(".monaco-editor .view-lines").first();
 // Each buffer here is a few lines long, so every line is rendered and the
 // rendered line count is the buffer's line count.
-const renderedLines = (page: Page) => page.locator(".monaco-editor .view-line");
+const renderedLines = (page: Page) => page.locator(".monaco-editor").first().locator(".view-line");
 const tidyButton = (page: Page) => page.getByRole("button", { name: "✨ Tidy" });
 const formatButton = (page: Page) => page.getByRole("button", { name: "⌥ Format" });
 
