@@ -86,8 +86,35 @@ For a `.krs` file with `system EC { service Payment {} }`,
 
 ### AC5: Hash-based navigation resolves correctly
 
+> ✅ Automated — `packages/e2e/tests/at-0046-system-id-in-viewpath.spec.ts` › `reload restores the drilled service from the hash (AC5)`
+
 **Setup**: Open the app, drill into a service (ECommerce), then reload the page.
 
 **Expected**:
 - The URL hash contains the service ID (e.g. `#krs-system-ECommerce`).
 - After reload, the app navigates back to the service view for ECommerce.
+
+### AC6: Browser back / forward walks the drill levels
+
+> ✅ Automated — `packages/e2e/tests/at-0046-system-id-in-viewpath.spec.ts` › `browser back and forward walk the drill levels (AC6)`
+
+**Setup**: A single-system `.krs` file opened as `index.krs`:
+
+```krs
+system ECPlatform {
+  service ECommerce {
+    domain Ordering {
+      usecase PlaceOrder {}
+    }
+  }
+}
+```
+
+**Steps**:
+1. Click ECommerce, then Ordering.
+2. Press the browser's Back button twice.
+3. Press the browser's Forward button twice.
+
+**Expected**:
+- Each Back returns one drill level: the breadcrumb ends at `ECommerce`, then at `ECPlatform` (the system view). The URL hash follows (`#krs-system-ECommerce`, then `#krs-system-root`).
+- Each Forward re-enters the next level, ending on the Ordering view with PlaceOrder drawn.

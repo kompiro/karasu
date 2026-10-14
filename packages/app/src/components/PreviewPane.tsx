@@ -81,6 +81,12 @@ interface PreviewPaneProps {
    */
   nodeDiff?: Map<string, NodeDiffMeta>;
   /**
+   * The same keyed by each card's `data-node-path` (#3126). The detail panel
+   * reads it first, the way it reads `nodeMetadataByPath`, so a card that shares
+   * its id with a card in another system frame shows its own annotation diff.
+   */
+  nodeDiffByPath?: Map<string, NodeDiffMeta>;
+  /**
    * Resolved path of the `.krs.style` file the GUI writer should append
    * to. `undefined` disables the right-click → Direction menu's
    * write path (the menu still shows but the items are disabled with a
@@ -156,6 +162,7 @@ export function PreviewPane({
   onClearHighlight,
   onJumpToEditor,
   nodeDiff,
+  nodeDiffByPath,
   styleTargetPath,
   onPickEdgeDirection,
   currentFilePath,
@@ -730,7 +737,13 @@ export function PreviewPane({
             onNavigateToDeploy={onDeployButtonClick}
             onNavigateToOrg={onTeamButtonClick}
             onJumpToEditor={onJumpToEditor ? () => onJumpToEditor(detailPanel.nodeId) : undefined}
-            annotationDiff={nodeDiff?.get(detailPanel.nodeId)?.changes?.annotations}
+            annotationDiff={
+              (
+                (detailPanel.nodePath !== null
+                  ? nodeDiffByPath?.get(detailPanel.nodePath)
+                  : undefined) ?? nodeDiff?.get(detailPanel.nodeId)
+              )?.changes?.annotations
+            }
             relations={panelRelations}
           />
         )}

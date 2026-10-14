@@ -51,8 +51,8 @@ compare モードの突き合わせを書く・変えるときに確認する:
 ## 既知の対処パターン
 
 - **エッジ**: `diffSystemFrames`（ADR-2756）は `systemEdges` を system id で引き、片方にしか無いフレームは空の相手と diff する。
-- **ノード**: #3126 で同じ形にする（`docs/design/root-diff-per-system-frame.md`）。先頭フレームは in-place 展開のために `childNodes` で表すが、before 側の相手は id で決める。
+- **ノード**: `diffSystemViewSlices`（#3126）はフレームごとに同じ id の system の子を突き合わせる。先頭フレームは in-place 展開のために `childNodes` で表すが、before 側の相手は id で決める（`docs/design/root-diff-per-system-frame.md`）。
 
 ## 関連テスト
 
-- （未確立）#3126 の実装 PR で、先頭の system を足す / 消す fixture を含むテストを追加し、ここにパスを書く
+- `packages/core/src/renderer/multi-system-root-diff.test.ts`（先頭の system を足す / 消す fixture、片方にしか無い system、モデルを空にする場合を含む）

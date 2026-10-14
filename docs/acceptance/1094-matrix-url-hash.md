@@ -34,11 +34,11 @@ type: product
 - [x] AT-G: 既存の挙動（potential bug）が解消される — `activeView === "matrix"` で `#krs-system-root` が emit されない
   > ✅ Automated — AT-A の `buildHash("matrix", [])` が `#krs-matrix` を返すことで担保
 
-- [ ] AT-H（manual）: app preview で CRUD タブを選択 → URL hash が `#krs-matrix` に変わる → ブラウザの戻るで前タブに戻り、進むで CRUD タブに復帰することを目視確認する
-  > 🧑 Manual — preview で確認
+- [x] AT-H: CRUD タブを選択すると URL hash が `#krs-matrix` に変わり、ブラウザの戻るで前のタブ（System）と hash に戻り、進むで CRUD タブに復帰する
+  > ✅ Automated — `packages/e2e/tests/at-1094-matrix-url-hash.spec.ts` › `selecting CRUD pushes #krs-matrix; Back returns to the previous tab and Forward re-selects CRUD (AT-H)`
 
 - [ ] AT-I（manual）: `#krs-matrix` を含む URL を直接開くと CRUD タブが選択された状態でロードされることを目視確認する
-  > 🧑 Manual — preview で確認
+  > 🧑 Manual — 現状は満たされない。project の seed が復元した view を `VIEW_RESET` で System に戻すため、`#krs-deploy` / `#krs-org-*` / `#krs-matrix` の cold boot と reload はどれも System に着地する（[#3208](https://github.com/kompiro/karasu/issues/3208)）。e2e は #3208 の修正 PR で入れ、本項目を Automated に切り替える
 
 ## 補足
 

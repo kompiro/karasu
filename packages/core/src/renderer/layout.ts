@@ -1203,10 +1203,11 @@ function layoutMultipleSystems(
     // whose full paths carry no system prefix, so its frame scope is empty.
     const frameScope = sys.id === "__unassigned__" ? [] : [sys.id];
     // A domain spliced into this frame by in-place expansion (#1921) sits
-    // under its expanded service (#2917: `Shop.Api.Orders`, not `Shop.Orders`);
-    // a member is only spliced into the frame of the system that owns it.
+    // under its expanded service (#2917: `Shop.Api.Orders`, not `Shop.Orders`).
+    // Expansion is primary-only, so another frame's child that happens to share
+    // a spliced member's id keeps its own `Admin.Orders` path (#3126).
     const framePathOf = (nid: string): string[] => {
-      const expandedParent = expandedParentOf.get(nid);
+      const expandedParent = si === 0 ? expandedParentOf.get(nid) : undefined;
       return expandedParent !== undefined
         ? [...frameScope, expandedParent, nid]
         : [...frameScope, nid];

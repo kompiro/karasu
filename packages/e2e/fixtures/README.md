@@ -189,6 +189,22 @@ the documented exception above). The two toggle locators
 (`orgTreeViewToggle`, `teamDependenciesToggle`) are exported for presence
 assertions.
 
+## `edges.ts` — clicking a drawn edge
+
+`clickEdge(page, canonicalId)` and `rightClickEdge(page, canonicalId)` press the
+edge whose group carries `data-edge-canonical-id` (the author id such as
+`settlementFeed`, or the base id `From->To`). A left-click opens the edge detail
+panel for an edge with a property block; a right-click opens the direction menu
+(`EdgeContextMenu`). `edgeLocator(page, canonicalId)` is the group itself.
+
+The pointer lands on a point read off the edge's transparent 14px hitline
+(`krs-edge__hitline`) through the SVG's screen transform, 35% of the way along
+(the bounding-box centre misses an L-shaped or diagonal edge). Because
+`page.mouse.click` skips Playwright's actionability check, the helper first
+asserts with `elementFromPoint` that the point hits the edge group, and throws
+naming the covering element otherwise. Used by AT-1098 (which also hosts AT-1141 /
+AT-1142) and AT-2543 (#3045).
+
 ## `color.ts` — WCAG colour maths
 
 - `luminance(rgb)` — relative luminance of a computed `rgb()` / `rgba()`

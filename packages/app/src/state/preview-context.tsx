@@ -85,6 +85,8 @@ interface SystemViewData {
    * (Issue #738 / design doc D-2).
    */
   nodeDiff?: Map<string, NodeDiffMeta>;
+  /** The same keyed by each card's `data-node-path` (#3126). */
+  nodeDiffByPath?: Map<string, NodeDiffMeta>;
   /** Resolved system AST — used by the CRUD matrix view. */
   systems: SystemNode[];
 }

@@ -387,6 +387,7 @@ export function render(
     // Diff state reaches the layout so a removed node cannot be claimed by a
     // band-less boundary (#2176); it must stay in the frame ADR-1886 returns it to.
     nodeDiffState: options?.nodeDiffState,
+    nodeDiffMetaByPath: options?.nodeDiffMetaByPath,
     // Layout needs the membership only to re-derive it onto collapse stubs; it
     // never influences placement, which is what keeps the overlay orthogonal to
     // the Group-by axis (#2174).
