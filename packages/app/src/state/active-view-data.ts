@@ -74,6 +74,8 @@ export interface ActiveViewData {
   onOwnedServiceClick?: (serviceId: string) => void;
   /** system diff mode: per-node diff metadata. */
   nodeDiff?: Map<string, NodeDiffMeta>;
+  /** system diff mode: the same keyed by each card's `data-node-path` (#3126). */
+  nodeDiffByPath?: Map<string, NodeDiffMeta>;
   /** system: the `.krs.style` file a GUI edge-direction rule targets. */
   styleTargetPath?: string;
   /** system: apply a GUI edge-direction override. */
@@ -150,6 +152,7 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         expansionOverload: systemView.expansionOverload,
         onCollapseAllToggle: systemView.onCollapseAllToggle,
         nodeDiff: systemView.nodeDiff,
+        nodeDiffByPath: systemView.nodeDiffByPath,
         styleTargetPath: ctx.styleTargetPath,
         onPickEdgeDirection: ctx.onPickEdgeDirection,
       };

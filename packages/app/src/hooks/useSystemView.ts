@@ -54,6 +54,11 @@ interface SystemViewState {
    * diff mode, so consumers can treat presence as the diff-mode flag.
    */
   nodeDiff?: Map<string, NodeDiffMeta>;
+  /**
+   * The same keyed by each card's `data-node-path` (#3126), so a card that
+   * shares its id with a card in another system frame reads its own entry.
+   */
+  nodeDiffByPath?: Map<string, NodeDiffMeta>;
 }
 
 /**
@@ -271,6 +276,7 @@ export function useSystemView(
     if (base.diagramType !== "system") return null;
     const sysBase = base;
     const nodeDiff: Map<string, NodeDiffMeta> | undefined = diff?.nodeDiff;
+    const nodeDiffByPath: Map<string, NodeDiffMeta> | undefined = diff?.nodeDiffByPath;
 
     const toState = (s: string): SystemViewState => ({
       svg: s,
@@ -286,6 +292,7 @@ export function useSystemView(
       systems: sysBase.systems,
       nodeFileIndex: sysBase.nodeFileIndex,
       nodeDiff,
+      nodeDiffByPath,
     });
     return {
       fingerprint: computeViewResultFingerprint({
