@@ -388,6 +388,16 @@ describe("summarizeTimings", () => {
     ]);
   });
 
+  it("decodes buffer-backed captured output before matching", () => {
+    const report = makeTimedReport({ "a.spec.ts": { logged: { duration: 1000, at: 0 } } });
+    report.suites[0].specs[0].tests[0].results[0].stdout = [
+      { buffer: Buffer.from("createWritable rejected\n").toString("base64") },
+    ] as never;
+    expect(summarizeTimings(report).opfsErrors.map((e) => e.excerpt)).toEqual([
+      "createWritable rejected",
+    ]);
+  });
+
   it("handles an empty report", () => {
     expect(summarizeTimings({})).toMatchObject({ tests: 0, p95Ms: 0, specs: [], opfsErrors: [] });
   });

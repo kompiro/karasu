@@ -32,14 +32,20 @@ interface PlaywrightError {
   stack?: string;
 }
 
+// A captured stdout/stderr chunk: `text` for a string, base64 `buffer` for a Buffer.
+interface PlaywrightStdio {
+  text?: string;
+  buffer?: string;
+}
+
 interface PlaywrightTestResult {
   status: "passed" | "failed" | "timedOut" | "skipped" | "interrupted";
   retry: number;
   duration?: number;
   startTime?: string;
   errors?: PlaywrightError[];
-  stdout?: Array<{ text?: string }>;
-  stderr?: Array<{ text?: string }>;
+  stdout?: PlaywrightStdio[];
+  stderr?: PlaywrightStdio[];
 }
 
 interface PlaywrightTest {
@@ -190,6 +196,10 @@ export interface TimingSummary {
 // still passed is counted too.
 const OPFS_ERROR_PATTERN = /createWritable|AbortError/;
 
+const stdioText = (chunk: PlaywrightStdio): string =>
+  chunk.text ??
+  (chunk.buffer !== undefined ? Buffer.from(chunk.buffer, "base64").toString("utf8") : "");
+
 /** Nearest-rank percentile of an ascending array; 0 for an empty one. */
 export function percentile(sortedAsc: number[], p: number): number {
   if (sortedAsc.length === 0) return 0;
@@ -217,8 +227,8 @@ export function collectTimings(report: PlaywrightReport): {
       }
       const texts = [
         ...(result.errors ?? []).flatMap((e) => [e.message ?? "", e.stack ?? ""]),
-        ...(result.stdout ?? []).map((c) => c.text ?? ""),
-        ...(result.stderr ?? []).map((c) => c.text ?? ""),
+        ...(result.stdout ?? []).map(stdioText),
+        ...(result.stderr ?? []).map(stdioText),
       ];
       const hit = texts.flatMap((t) => t.split("\n")).find((l) => OPFS_ERROR_PATTERN.test(l));
       if (hit !== undefined) {
