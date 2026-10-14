@@ -66,6 +66,12 @@ jobs:
       - name: No raw NUL bytes in tracked text files
         run: pnpm run lint:no-nul-bytes
 
+      # Every app command (`useCommand` id / keybinding) must be driven by some
+      # packages/e2e/tests spec (Issue #3042, TPL-3039). It reads only app
+      # source and specs, which docs-only PRs (`ci-skip.yml`) cannot change.
+      - name: E2E command coverage
+        run: pnpm run lint:e2e-command-coverage
+
       - name: Knip
         run: pnpm run knip
 
