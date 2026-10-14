@@ -97,6 +97,32 @@ describe("root compare mode diffs every system frame by system id (#3126)", () =
     });
   });
 
+  it("keys a changed child of the first system by its system-scoped path", async () => {
+    // The first frame's cards are keyed through after's canvas scope, which on
+    // the root is `systems[0]`: `Shop.Web`, and `Shop.Api.Orders` for a domain
+    // spliced in under its expanded service. An unscoped key would leave both
+    // drawn without a state.
+    const MODEL = (description: string) => `system Shop {
+  service Api {
+    domain Orders { description "${description}" }
+  }
+  service Web { description "${description}" }
+}
+system Admin {
+  service Console {}
+}
+`;
+    const r = await diff(MODEL("v1"), MODEL("v2"), { expandedContainers: new Set(["Api"]) });
+    expect(cardStates(r.svg)).toEqual({
+      "Shop.Api.Orders": "changed",
+      "Shop.Web": "changed",
+      "Admin.Console": "unchanged",
+    });
+    expect([...r.nodeDiffByPath.keys()]).toEqual(
+      expect.arrayContaining(["Shop.Api.Orders", "Shop.Web", "Admin.Console"]),
+    );
+  });
+
   it("marks a child added to a non-first system as added", async () => {
     const r = await diff(BASE, WITH_MAIL);
     expect(cardStates(r.svg)["Admin.Mail"]).toBe("added");
