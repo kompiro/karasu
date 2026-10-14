@@ -10,8 +10,9 @@ scope:
 related_to: [ADR-1038, ADR-2341, ADR-2401, ADR-2115, ADR-2628, ADR-2985, ADR-3069]
 assumptions:
   # 決定は patched な系列へ floor を置くことであって、そのときの patch 番号ではない（ADR-2628）。
-  # tinypool だけは oxfmt の exact pin に対する patch 内の移動に留めると決めたので `~2.1.` まで書く。
-  - "grep: pnpm-workspace.yaml :: tinypool: ~2\\.1\\."
+  # tinypool は当初 oxfmt 0.63.0 の exact pin（2.1.0）に合わせ `~2.1.2` にしたが、oxfmt 0.72.0 が 2.2.0 を
+  # exact pin したため `^2.1.2` に緩めた（2026-10-14 第 2 波の Dependabot トリアージ）。floor の存在だけを確かめる。
+  - "grep: pnpm-workspace.yaml :: tinypool: \\^2\\."
   - "grep: pnpm-workspace.yaml :: source-map-js: \\^1\\."
   - "grep: pnpm-workspace.yaml :: smol-toml: \\^1\\."
   - "grep: pnpm-workspace.yaml :: postcss-nested@6: \\^7\\."

@@ -306,7 +306,7 @@ boot/send choreography and error-expectation table can't drift apart.
 
 - `bootChat(opfs, anthropic, options)` — seeds OPFS (`projects` /
   `lastProjectId`), then either `anthropic.seedApiKey(options.apiKey ??
-"sk-ant-test-fake")` or, when `options.apiKey` is `null`,
+  "sk-ant-test-fake")` or, when `options.apiKey` is `null`,
   `anthropic.clearApiKey()` (the ApiKeySetup / no-key boot path), then
   `opfs.gotoApp()`.
 - `sendChatMessage(page, text)` — opens the Chat tab, fills the message
