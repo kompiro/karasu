@@ -19,7 +19,7 @@ call the Anthropic API, and correctly handle `navigate_view` and `apply_krs_patc
 
 ---
 
-> 🟡 Partially automated — `packages/e2e/tests/at-0050-chat-ui-phase2-byok.spec.ts` covers AC-2 / AC-3 (key storage), AC-4 / AC-5 (UI gating), and AC-6 (mock-driven send/receive). AC-1 (security copy), AC-7 / AC-8 (tool calls) stay manual until follow-up coverage lands. Per-AC `[x]` flips deferred to phase B (#920).
+> 🟡 Partially automated — `packages/e2e/tests/at-0050-chat-ui-phase2-byok.spec.ts` covers AC-1 through AC-15 against the Anthropic transport mock with the English UI (the `anthropic` fixture pins `karasu-locale=en`). What stays manual is a round-trip with a real API key and the Japanese copy quoted in the steps.
 
 ## AC-1: Settings pane shows BYOK security explanation
 
@@ -182,18 +182,22 @@ call the Anthropic API, and correctly handle `navigate_view` and `apply_krs_patc
 
 ---
 
-## AC-11: Apply button is disabled if file was edited after patch was proposed
+## AC-11: Apply does nothing if the file changed after the patch was proposed
 
 **Steps:**
 
-1. Trigger a patch proposal
-2. Switch to the **Editor** tab and manually edit the `.krs` file
-3. Switch back to **Chat** tab
+1. Open a `.krs` that has an edge and **no** `@import` line
+2. Trigger a patch proposal
+3. With the **Chat** tab still open, right-click the edge in the preview and pick a direction (e.g. **↓ Down**). The app writes the direction to `index.krs.style` and injects `@import "index.krs.style"` at the top of the `.krs`, so the file changes while Chat stays on screen
 4. Click **✓ Apply**
 
 **Expected:**
 
-- The patch is silently ignored (Apply does nothing when hash mismatch is detected)
+- The patch is silently ignored (Apply does nothing when hash mismatch is detected): the proposal stays with its Apply / Reject buttons, no follow-up request is sent, and the `.krs` differs from the original only by the injected `@import` line
+
+> Why not edit in the Editor tab: `EditPane` mounts the Chat pane only while the Chat tab is active, so switching to the Editor tab discards the pending proposal before Apply can be clicked. Writing through the preview changes the file the same way an editor edit does, without leaving Chat.
+
+> ✅ Automated — `packages/e2e/tests/at-0050-chat-ui-phase2-byok.spec.ts` › `AC-11: Apply on a patch proposed before the file changed is a no-op`
 
 ---
 
