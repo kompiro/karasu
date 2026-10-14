@@ -292,11 +292,12 @@ test.describe("AT-0004 Project management & OPFS", () => {
     await opfs.gotoApp();
 
     const download = await clickAndDownload(page.getByRole("button", { name: "↓ Export" }));
-    // The ↑ Import button forwards to this hidden input; drive it directly so
-    // no OS file picker opens.
-    await page
-      .locator('.project-selector input[type="file"][accept=".zip"]')
-      .setInputFiles(await downloadToPath(download));
+    // Go through the ↑ Import button: Playwright intercepts the file chooser
+    // it opens on the hidden `.zip` input, so no OS picker appears.
+    const chooserPromise = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "↑ Import" }).click();
+    const chooser = await chooserPromise;
+    await chooser.setFiles(await downloadToPath(download));
 
     // The ZIP's top-level directory names the project; "Alpha" is taken, so
     // the import becomes "Alpha (2)" and is selected.

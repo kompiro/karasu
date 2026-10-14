@@ -203,6 +203,18 @@ assertions.
   assertion fails (a selector on the wrong element, not a 21:1 contrast).
   Used by the AA sweeps in AT-1470.
 
+## `file-tree.ts` — file-tree rows and context menu
+
+- `treeItem(page, name)` — the `.file-tree-item` row whose name is exactly
+  `name` (`index.krs` does not match `index.krs.style`).
+- `openTreeContextMenu(page, name)` — right-clicks the row and returns the
+  `.context-menu` once it is visible.
+- `treeContextMenuAction(page, name, "Rename" | "Delete")` — opens the menu
+  and clicks the item. The item is looked up inside `.context-menu`, because
+  the project selector's "✎ Rename" / "✕ Delete" buttons match the same
+  names. A Delete asks `window.confirm`, so register `page.once("dialog", …)`
+  before calling it.
+
 ## `download.ts` — download plumbing
 
 - `clickAndDownload(locator)` — registers `waitForEvent("download")` on

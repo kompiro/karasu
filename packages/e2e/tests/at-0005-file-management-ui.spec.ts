@@ -1,5 +1,6 @@
-import type { Page } from "@playwright/test";
 import { expect, test, type OpfsFixture } from "../fixtures/opfs.js";
+import { replaceEditorContent } from "../fixtures/editor.js";
+import { treeContextMenuAction, treeItem } from "../fixtures/file-tree.js";
 
 /**
  * AT-0005: File management UI (FileTree CRUD).
@@ -17,9 +18,6 @@ import { expect, test, type OpfsFixture } from "../fixtures/opfs.js";
  * Out of scope:
  *  - `.krs.style` extension preservation (unit: `useFileTreeOps.test.ts`).
  *  - Directory rename / delete (unit: `useFileTreeOps.test.ts`).
- *
- * Menu items are scoped to `.context-menu`: the project selector's
- * "✎ Rename" / "✕ Delete" buttons would otherwise match the same names.
  */
 
 const INDEX_KRS = 'system "Index Content" {}\n';
@@ -33,19 +31,6 @@ async function seedTwoFiles(opfs: OpfsFixture) {
     lastProjectId: "files",
   });
   await opfs.gotoApp();
-}
-
-function treeItem(page: Page, name: string) {
-  return page.locator(".file-tree-item", {
-    has: page.getByText(name, { exact: true }),
-  });
-}
-
-async function contextMenuAction(page: Page, fileName: string, action: "Rename" | "Delete") {
-  await treeItem(page, fileName).click({ button: "right" });
-  const menu = page.locator(".context-menu");
-  await expect(menu).toBeVisible();
-  await menu.getByRole("button", { name: action, exact: true }).click();
 }
 
 test.describe("AT-0005 File management UI", () => {
@@ -106,7 +91,7 @@ test.describe("AT-0005 File management UI", () => {
     await seedTwoFiles(opfs);
     await expect(treeItem(page, "index.krs")).toHaveClass(/file-tree-item-selected/);
 
-    await contextMenuAction(page, "index.krs", "Rename");
+    await treeContextMenuAction(page, "index.krs", "Rename");
     const input = page.getByRole("textbox", { name: "Name", exact: true });
     await expect(input).toHaveValue("index.krs");
     await input.fill("main.krs");
@@ -114,12 +99,18 @@ test.describe("AT-0005 File management UI", () => {
 
     await expect(treeItem(page, "main.krs")).toHaveCount(1);
     await expect(treeItem(page, "index.krs")).toHaveCount(0);
-    // The renamed file was open, so the editor follows it to the new path.
-    await expect(treeItem(page, "main.krs")).toHaveClass(/file-tree-item-selected/);
-    await expect(page.locator(".monaco-editor")).toContainText("Index Content");
+    await expect.poll(() => opfs.read("/projects/files/main.krs")).toBe(INDEX_KRS);
+    await expect.poll(() => opfs.read("/projects/files/index.krs")).toBeNull();
 
+    // The renamed file was open, so the editor follows it to the new path.
+    // Showing the same text is not enough (it showed it before the rename):
+    // an edit must autosave to main.krs and must not resurrect index.krs.
+    await expect(treeItem(page, "main.krs")).toHaveClass(/file-tree-item-selected/);
+    await replaceEditorContent(page, 'system "Edited After Rename" {}\n');
+    await expect
+      .poll(() => opfs.read("/projects/files/main.krs"))
+      .toContain('system "Edited After Rename"');
     expect(await opfs.read("/projects/files/index.krs")).toBeNull();
-    expect(await opfs.read("/projects/files/main.krs")).toBe(INDEX_KRS);
   });
 
   test("context menu Delete removes the file once the confirm is accepted (AC-4 / AC-6)", async ({
@@ -135,7 +126,7 @@ test.describe("AT-0005 File management UI", () => {
       message = d.message();
       void d.accept();
     });
-    await contextMenuAction(page, "index.krs", "Delete");
+    await treeContextMenuAction(page, "index.krs", "Delete");
 
     await expect(treeItem(page, "index.krs")).toHaveCount(0);
     await expect(treeItem(page, "other.krs")).toHaveCount(1);
@@ -143,7 +134,7 @@ test.describe("AT-0005 File management UI", () => {
     // The deleted file was open, so the editor is cleared.
     await expect(editor).not.toContainText("Index Content");
 
-    expect(await opfs.read("/projects/files/index.krs")).toBeNull();
+    await expect.poll(() => opfs.read("/projects/files/index.krs")).toBeNull();
     expect(await opfs.read("/projects/files/other.krs")).toBe(OTHER_KRS);
   });
 
@@ -158,9 +149,19 @@ test.describe("AT-0005 File management UI", () => {
       dialogSeen = true;
       void d.dismiss();
     });
-    await contextMenuAction(page, "other.krs", "Delete");
+    await treeContextMenuAction(page, "other.krs", "Delete");
 
     await expect.poll(() => dialogSeen).toBe(true);
+
+    // "Still there" right after the dismiss would also hold for a delete that
+    // runs a moment later. Accept a second delete and wait for it to finish
+    // in the tree and in OPFS, which gives a stray delete of other.krs, started
+    // earlier, a full round trip to land.
+    page.once("dialog", (d) => void d.accept());
+    await treeContextMenuAction(page, "index.krs", "Delete");
+    await expect(treeItem(page, "index.krs")).toHaveCount(0);
+    await expect.poll(() => opfs.read("/projects/files/index.krs")).toBeNull();
+
     await expect(treeItem(page, "other.krs")).toHaveCount(1);
     expect(await opfs.read("/projects/files/other.krs")).toBe(OTHER_KRS);
   });
