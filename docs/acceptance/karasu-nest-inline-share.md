@@ -37,21 +37,30 @@
 
 - [x] AT-F: Share ボタン押下で inline URL がクリップボードへコピーされ、ダイアログに表示される（コピー URL がソースへラウンドトリップ）
 
-  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `copies an inline share URL and opens the dialog on click (round-trips)`
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `copies an inline share URL and opens the dialog on click (round-trips)` / `packages/e2e/tests/at-1783-inline-share.spec.ts` › `Share opens the dialog with a private #s= link that is copied, and Copy re-copies`
 
 - [x] AT-G: ソースが無いとき Share ボタンは disabled
 
-  > ✅ Automated — `PreviewColumn.test.tsx` › `disables Share when there is no source`
+  > ✅ Automated — `PreviewColumn.test.tsx` › `disables Share when there is no source` / `packages/e2e/tests/at-1783-inline-share.spec.ts` › `Share is disabled while the source is empty and enabled once it is not`
 
 - [x] AT-H: ダイアログの Copy ボタンで再コピーでき、コピー済み表示が出る
 
-  > ✅ Automated — `packages/app/src/components/ShareDialog.test.tsx` › `re-copies the URL and shows confirmation when Copy is clicked`
+  > ✅ Automated — `packages/app/src/components/ShareDialog.test.tsx` › `re-copies the URL and shows confirmation when Copy is clicked` / `packages/e2e/tests/at-1783-inline-share.spec.ts` › `Share opens the dialog with a private #s= link that is copied, and Copy re-copies`
 
 ### 手動確認（CI で検証できない項目）
 
-- [ ] M-1: 実ブラウザで Share → 実際に別アプリへ貼り付け、URL が有効なこと（clipboard の実挙動）
-- [ ] M-2: 生成 URL を別タブ／別ブラウザで開くと、元の図が **drill-down 付き**で再現されること
-- [ ] M-3: OPFS 対応ブラウザで共有 URL を開いても、訪問者のローカル（OPFS）プロジェクトが汚れない（ephemeral）こと
-- [ ] M-4: 実リバース `.krs`（Dify, system + deploy）を共有 → 全ビューに drill-down できること
-- [ ] M-5: 壊れた `#s=` URL を開くと警告バナーが出て、ProjectMode で開かれる（白画面／クラッシュにならない）こと
-- [ ] M-6: クロスブラウザ（特に Safari）でアドレスバーの URL 長が問題にならないこと
+- [ ] M-1: 実ブラウザで Share → 実際に別アプリへ貼り付け、URL が有効なこと（clipboard の実挙動）。ブラウザ内のクリップボードへの書き込みは AT-F の e2e が見ている。残るのは OS のクリップボードを経由して別アプリに貼る部分
+- [x] M-2: 生成 URL を別タブ／別ブラウザで開くと、元の図が **drill-down 付き**で再現されること
+
+  > ✅ Automated — `packages/e2e/tests/at-1783-inline-share.spec.ts` › `the private link opens in memory mode and leaves the visitor's OPFS project untouched` / `packages/e2e/tests/at-1827-permalink-deep-element.spec.ts` › `a link shared while drilled into a service opens drilled into it`
+
+- [x] M-3: OPFS 対応ブラウザで共有 URL を開いても、訪問者のローカル（OPFS）プロジェクトが汚れない（ephemeral）こと
+
+  > ✅ Automated — `packages/e2e/tests/at-1783-inline-share.spec.ts` › `the private link opens in memory mode and leaves the visitor's OPFS project untouched`（`/meta/projects.json` と訪問者の `index.krs` が開く前と同じ）
+
+- [ ] M-4: 実リバース `.krs`（Dify, system + deploy）を共有 → 全ビューに drill-down できること。e2e は小さな合成モデルで同じ経路を通している。実リバースの大きなモデルでの確認は、そのモデルを手元に置いて行う
+- [x] M-5: 壊れた `#s=` URL を開くと警告バナーが出て、ProjectMode で開かれる（白画面／クラッシュにならない）こと
+
+  > ✅ Automated — `packages/e2e/tests/at-1783-inline-share.spec.ts` › `a corrupt #s= link shows the restore-failed banner and opens Project mode`
+
+- [ ] M-6: クロスブラウザ（特に Safari）でアドレスバーの URL 長が問題にならないこと。Playwright の project は chromium だけなので、Safari では手で確かめる

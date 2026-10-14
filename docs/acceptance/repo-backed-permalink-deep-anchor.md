@@ -30,11 +30,15 @@
 
 - [x] AT-C: `?krs=<anchor>` が有効なら canonical `#krs-…` を返す（`payload.target` より優先）。無効なら payload target、無ければ null（whole-model）にフォールバック。検証は既存 `parseHash` grammar を流用し fork しない（TPL-1827）
 
-  > ✅ Automated — `packages/app/src/utils/deep-link-anchor.test.ts` › `resolveDeepLinkHash`（7 ケース）
+  > ✅ Automated — `packages/app/src/utils/deep-link-anchor.test.ts` › `resolveDeepLinkHash`（7 ケース） / `packages/e2e/tests/at-1958-deep-link-anchor.spec.ts` › `?krs=krs-system-<id> drills into the element and strips the query`
 
 ### 手動確認（実デプロイでのみ検証可能）
 
-- [ ] M-1: `https://<host>/r/kompiro/karasu/examples/en/getting-started/index.krs@<sha>#krs-system-<id>` を開くと、nest SPA がその要素にドリル／フォーカスした状態で開く（whole-model ではなく）。`#krs-` 無しは従来どおり whole-model
-- [ ] M-2: 存在しない / rename された anchor は whole-model（または nearest-resolvable）で開き、throw しない（tolerant）
+- [x] M-1: `https://<host>/r/kompiro/karasu/examples/en/getting-started/index.krs@<sha>#krs-system-<id>` を開くと、nest SPA がその要素にドリル／フォーカスした状態で開く（whole-model ではなく）。`#krs-` 無しは従来どおり whole-model
+
+  > 🟡 Partially automated — `packages/e2e/tests/at-1958-deep-link-anchor.spec.ts` › `?krs=krs-system-<id> drills into the element and strips the query`（bounce 先の `/?krs=<anchor>#s=<payload>` を直接開く SPA 側。`/r/…` を返す Pages Function は `vite preview` で動かないので、そこからの redirect は PR の preview で確かめる）
+- [x] M-2: 存在しない / rename された anchor は whole-model（または nearest-resolvable）で開き、throw しない（tolerant）
+
+  > ✅ Automated — `packages/e2e/tests/at-1958-deep-link-anchor.spec.ts` › `an anchor that no longer resolves opens the whole model`
 - [ ] M-3: full 40-hex `@<sha>` の `/r/...` 応答が `Cache-Control: public, max-age=31536000, immutable` を返す。`HEAD`/branch/abbreviated-SHA は `public, s-maxage=60, max-age=0, must-revalidate`（CDN は 60s キャッシュ、ブラウザは stale redirect を握らない）。`curl -s -D - -o /dev/null <url>`（GET）で確認 — `curl -I` は HEAD で GET-only Function に当たらない
-- [ ] M-4: 既存の inline share（`/s?s=` → `/#s=`、`#krs-` 無し）が従来どおり動作する（回帰なし）
+- [ ] M-4: 既存の inline share（`/s?s=` → `/#s=`、`#krs-` 無し）が従来どおり動作する（回帰なし）。`/s` は Pages Function が返すので e2e には現れない。bounce 先の `/#s=` の復元は `karasu-nest-ogp-share-page.md` の AT-M が e2e で見ている
