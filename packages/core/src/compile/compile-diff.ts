@@ -8,7 +8,7 @@
 
 import type { Diagnostic } from "../types/ast.js";
 import type { Warning } from "../types/warnings.js";
-import { mergeMembership } from "../types/ast.js";
+import { mergeMembership, parseBoundaryScopeKey } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
 import type { FileSystemProvider } from "../fs/types.js";
 import {
@@ -120,6 +120,25 @@ function collectAfterWarnings(
     getBuiltinStyleSheet(theme, annotationBadgeLabels),
     ...afterResolved.styleSheets,
   ]);
+}
+
+/**
+ * The ranking `diffSystemViewSlices` picks a bare id's card by (ADR-2934): the
+ * after model's, with the paths only the before model has (removed nodes)
+ * ranked after them in the before model's order.
+ */
+function unionRanking(
+  after: ReadonlyMap<string, string[][]>,
+  before: ReadonlyMap<string, string[][]>,
+): Map<string, string[][]> {
+  const ranking = new Map(after);
+  for (const [id, paths] of before) {
+    const ranked = ranking.get(id) ?? [];
+    const known = new Set(ranked.map((p) => nodePathRefId(p)));
+    const removed = paths.filter((p) => !known.has(nodePathRefId(p)));
+    if (removed.length > 0) ranking.set(id, [...ranked, ...removed]);
+  }
+  return ranking;
 }
 
 /**
@@ -244,7 +263,11 @@ export async function compileSystemDiff(
   diagnostics.push(...assignEdgeCanonicalIds(beforeSlice.childEdges));
   diagnostics.push(...assignEdgeCanonicalIds(afterSlice.childEdges));
 
-  const diffed = diffSystemViewSlices(beforeSlice, afterSlice);
+  const diffed = diffSystemViewSlices(
+    beforeSlice,
+    afterSlice,
+    unionRanking(afterResolved.krsFile.nodePathRanking, beforeResolved.krsFile.nodePathRanking),
+  );
 
   // Resolve styles against the union (after-side systems augmented with
   // any removed nodes — the union slice's childNodes will be styled via
@@ -278,22 +301,14 @@ export async function compileSystemDiff(
   // before team — that is why this backfills off the removed diff state rather
   // than blindly unioning the two maps. See #1886 and
   // docs/design/system-view-grouping.md § "差分モードの grouping".
-  // ownerIndex / boundaryMembership are path-keyed (#2548): the backfill keys
-  // carry the removed node's full path. On a drilled canvas that is the
-  // canvas scope plus the id; on the root view the before-side nodePathIndex
-  // names the path for the kinds it indexes, and a bare id is the last resort
-  // (matching the parse-time fallback for unresolvable refs).
-  const diffScope =
-    diffed.slice.containerNode !== null
-      ? [...diffed.slice.ancestorChain.map((n) => n.id), diffed.slice.containerNode.id]
-      : [];
-  const diffKeyOf = (id: string): string =>
-    diffScope.length > 0
-      ? nodePathRefId([...diffScope, id])
-      : nodePathRefId(beforeResolved.krsFile.nodePathIndex.get(id) ?? [id]);
+  // ownerIndex / boundaryMembership are path-keyed (#2548), and so is the card
+  // diff: each removed card is backfilled under its own path, the one it is drawn
+  // and grouped by. On the multi-system root that is the card's own system frame
+  // (#3126), so a removed `Admin.Api` takes back what it declared rather than
+  // what the same-named winner did. Only cards are banded, so ghosts and system
+  // frames need no backfill.
   const mergedOwnerIndex = new Map<string, string>(afterResolved.krsFile.ownerIndex);
-  for (const [id, meta] of diffed.nodes) {
-    const key = diffKeyOf(id);
+  for (const [key, meta] of diffed.nodesByPath) {
     if (meta.state !== "removed" || mergedOwnerIndex.has(key)) continue;
     const formerTeam = beforeResolved.krsFile.ownerIndex.get(key);
     if (formerTeam !== undefined) mergedOwnerIndex.set(key, formerTeam);
@@ -346,8 +361,7 @@ export async function compileSystemDiff(
   for (const [id, boundaryIds] of afterResolved.krsFile.boundaryMembership) {
     mergedBoundaryMembership.set(id, [...boundaryIds]);
   }
-  for (const [id, meta] of diffed.nodes) {
-    const key = diffKeyOf(id);
+  for (const [key, meta] of diffed.nodesByPath) {
     if (meta.state !== "removed" || mergedBoundaryMembership.has(key)) continue;
     const formerBoundaries = beforeResolved.krsFile.boundaryMembership.get(key);
     if (formerBoundaries !== undefined) {
@@ -367,8 +381,11 @@ export async function compileSystemDiff(
     mergedScopedBoundaryMembership.set(scope, copy);
   }
   for (const [scope, membership] of beforeResolved.krsFile.scopedBoundaryMembership) {
+    const scopePath = parseBoundaryScopeKey(scope);
     for (const [id, boundaryIds] of membership) {
-      if (diffed.nodes.get(id)?.state !== "removed") continue;
+      // A scoped member is a card on its scope's canvas, so its state is the
+      // card's own, not the bare id's (which another system's card may answer).
+      if (diffed.nodesByPath.get(nodePathRefId([...scopePath, id]))?.state !== "removed") continue;
       let target = mergedScopedBoundaryMembership.get(scope);
       if (target === undefined) {
         target = new Map<string, string[]>();
