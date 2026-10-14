@@ -136,7 +136,7 @@ function stringLiteral(expr: string): string | null {
 /** `const NAME = "…"` in the same file. */
 function constString(src: string, name: string): string | null {
   const m = new RegExp(
-    `\\bconst\\s+${name}\\s*(?::[^=]+)?=\\s*(["'])((?:\\\\.|(?!\\1).)*)\\1`,
+    `\\bconst\\s+${escapeRe(name)}\\s*(?::[^=]+)?=\\s*(["'])((?:\\\\.|(?!\\1).)*)\\1`,
   ).exec(src);
   return m ? m[2] : null;
 }
@@ -306,7 +306,8 @@ export function chordPatterns(chord: string): RegExp[] {
 }
 
 export function isCovered(command: AppCommand, specText: string): boolean {
-  if (specText.includes(command.id)) return true;
+  // Bounded so `view.showOrg` is not covered by a spec naming `view.showOrgTree`.
+  if (new RegExp(`(?<![\\w.$])${escapeRe(command.id)}(?![\\w.$])`).test(specText)) return true;
   return (
     command.keybinding !== undefined &&
     chordPatterns(command.keybinding).some((re) => re.test(specText))

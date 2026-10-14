@@ -119,6 +119,12 @@ describe("check (synthetic fixture)", () => {
     expect(check(root, noExempt)).toEqual([]);
   });
 
+  it("does not count an id that only appears as a prefix of a longer id", () => {
+    app("Cmds.tsx", `useCommand({ id: "view.showOrg", title: "Org", run });`);
+    spec("at-1-cmds.spec.ts", `// view.showOrgTree`);
+    expect(check(root, noExempt).map((p) => p.id)).toEqual(["view.showOrg"]);
+  });
+
   it("does not accept the docs display form or a bare digit string", () => {
     app("Cmds.tsx", `useCommand({ id: "b.short", title: "B", keybinding: "mod+2", run });`);
     spec("at-1-cmds.spec.ts", `// Ctrl/Cmd+2\nconst n = "2";`);
