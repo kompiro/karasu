@@ -35,11 +35,11 @@ type: product
 - [x] AT-G: `appendEdgeDirectionRule` は対象 `.krs.style` が存在しないとき新規作成する（既存挙動の継続。bootstrap 経路でも同じパスが通る）
   > ✅ Automated — `packages/app/src/lib/append-style-rule.test.ts` › `appendEdgeDirectionRule › creates the file with the rule when it does not exist`
 
-- [ ] AT-H（manual）: brand-new な `.krs`（`@import` 無し）を本番 app（https://karasu.kompiro.dev/）で開き、edge を右クリック → Direction ▸ Down を選ぶ。`.krs` の先頭に `@import "<basename>.krs.style"` が挿入され、隣に `.krs.style` ファイルが作られて 1 ルール書かれていることを確認する
-  > 🧑 Manual — Preview で `examples/ja/getting-started/index.krs` の `.krs.style` を一旦消した状態を作り、右クリック→Direction を試す
+- [x] AT-H: brand-new な `.krs`（`@import` 無し）を開き、edge を右クリック → Direction ▸ Down を選ぶ。`.krs` の先頭に `@import "<basename>.krs.style"` が挿入され（エディタにも出る）、隣に `.krs.style` ファイルが作られて 1 ルール書かれる
+  > ✅ Automated — `packages/e2e/tests/at-1098-edge-direction-context-menu.spec.ts` › `with no @import, the first pick injects it and creates the style file (AT-1141 AT-H)`
 
-- [ ] AT-I（manual）: 同じ操作をもう一度行うと、`@import` 行は重複せず、`.krs.style` には新しい rule だけが追記される（idempotent な bootstrap）
-  > 🧑 Manual — 上記 AT-H と同じ Preview で再度 Direction を選び、`.krs` の頭が変わらないこと・`.krs.style` だけが伸びることを目視
+- [x] AT-I: 同じ操作をもう一度行うと、`@import` 行は重複しない（idempotent な bootstrap）。`.krs.style` の rule は AT-1142 の upsert により同じ行が書き換わる
+  > ✅ Automated — `packages/e2e/tests/at-1098-edge-direction-context-menu.spec.ts` › `later picks rewrite the rule in place and add no second @import (AT-1141 AT-I, AT-1142 AT-K)`
 
 - [ ] AT-J（manual）: basename 衝突の意図しない取り違えが起きないこと — 同名の `flow.krs` が別ディレクトリにあっても、bootstrap 先は **開いている `.krs` の隣** になる
   > 🧑 Manual — `proj-a/flow.krs` と `proj-b/flow.krs` の両方を持つプロジェクトで、片方を開いて Direction を選ぶ → そのディレクトリの `flow.krs.style` のみ更新されることを目視

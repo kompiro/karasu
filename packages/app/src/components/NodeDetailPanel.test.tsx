@@ -116,6 +116,15 @@ describe("NodeDetailPanel", () => {
     expect(outerClick).not.toHaveBeenCalled();
   });
 
+  // A named `region` landmark, the same contract as EdgeDetailPanel
+  // (TPL-1399). Not `dialog`: an inline side panel that does not trap focus.
+  // e2e finds the panel by this role (#3045).
+  it("is a region landmark named after the node's label", () => {
+    const { getByRole, queryByRole } = render(<NodeDetailPanel {...baseProps()} />);
+    expect(getByRole("region", { name: "My Service" })).toBeTruthy();
+    expect(queryByRole("dialog")).toBeNull();
+  });
+
   it("clicking the Close button calls onClose", () => {
     const props = baseProps();
     const { getByRole } = render(<NodeDetailPanel {...props} />);

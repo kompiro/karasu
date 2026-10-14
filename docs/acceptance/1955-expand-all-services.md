@@ -57,8 +57,11 @@ overload トグルは二値（全畳み ⇄ 全開き）でラベルは `allColl
 
 > user-facing surface（トグルの拡張された意味）は本 PR で `docs/tools/app.md` / `app.ja.md` に反映済み。toolbar surface は機械チェック対象外でレビュー担保（TPL-1716）。
 
-### AC-6: 手動確認
+### AC-6: app での一括展開
 
-- [ ] **[人間確認]** store を持たない純 service モデル（`index.krs`）で、起動時トグルが「Expand all」表示、1 クリックで全 service が domain フレームに展開されエッジが接続されること、⚠ overload ヒントが出ること、「Collapse all」1 クリックで俯瞰へ戻れることを確認する
-- [ ] **[人間確認]** database を含むモデルで、起動時トグルが「Collapse all」表示、Collapse all → Expand all の 2 クリックで全 service 展開に到達すること（band ありの受け入れ済み tradeoff）を確認する
-- [ ] **[人間確認]** Group by: team に切り替えると「Expand all」が team フレームのみ開き、service はその場展開されないことを確認する
+- [x] store を持たない純 service モデルで、起動時トグルが「Expand all」表示、1 クリックで全 service が domain フレームに展開されエッジが接続されること、⚠ overload ヒントが出ること、「Collapse all」1 クリックで俯瞰へ戻れること
+  > ✅ Automated — `packages/e2e/tests/at-1955-expand-all-services.spec.ts` › `a pure-service model starts on Expand all and opens every service in one click (AC-6 item 1)`
+- [x] database を含むモデルで、起動時トグルが「Collapse all」表示、Collapse all → Expand all の 2 クリックで全 service 展開に到達すること（band ありの受け入れ済み tradeoff）
+  > ✅ Automated — `packages/e2e/tests/at-1955-expand-all-services.spec.ts` › `a model with a database needs Collapse all, then Expand all (AC-6 item 2)`
+- [x] Group by: team に切り替えると「Expand all」が team フレームのみ開き、service はその場展開されないこと
+  > ✅ Automated — `packages/e2e/tests/at-1955-expand-all-services.spec.ts` › `under Group by: Team, Expand all opens the team frames but no service (AC-6 item 3)`
