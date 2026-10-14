@@ -60,3 +60,4 @@ URL/共有から state を復元する hook を実装・修正するとき:
 ## 関連テスト
 
 - `packages/app/src/hooks/useHistoryNavigation.test.ts` › `pending highlight restoration (#1842)`（空 index で再適用なし → index 充填で再適用 / 一度きり）
+- `packages/e2e/tests/at-0046-system-id-in-viewpath.spec.ts` › `reload restores the drilled service from the hash (AC5)`（実アプリの mount 順で、reload 後に drill 先 node が seed reset を越えて復元される）
