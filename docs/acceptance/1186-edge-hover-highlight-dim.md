@@ -13,7 +13,7 @@ type: product
 
 ## 受け入れ条件
 
-- [x] AT-A: インタラクティブな edge（`[data-edge-canonical-id]` が付いた cross-service / cross-domain edge）に hover すると、**他の edge** が `opacity: 0.25` まで dim される
+- [x] AT-A: 描かれた edge に hover すると、**他の edge** が `opacity: 0.25` まで dim される。canonical id の有無は問わない（当初は `[data-edge-canonical-id]` を持つ edge だけが対象だったが、#2632 で全 edge に広げた。[AT-2632](2632-edge-hover-affordance.md)）
   > ✅ Automated — `packages/e2e/tests/at-1186-edge-hover-highlight-dim.spec.ts` › `hovering an interactive edge dims its peers`
 
 - [x] AT-B: hover を外す（ポインタを edge 領域の外に移動）と、すべての edge が **元の opacity に戻る**（`opacity: 1`）
@@ -24,7 +24,7 @@ type: product
 
 - [x] AT-D: hover dim は `:has()` を使った **CSS のみ** で実現される（React state も DOM mutation も伴わない）。SVG の re-inject や useSystemView の debounce と race しない
   > ✅ Automated — dim は `packages/app/src/styles/components/preview.css` の
-  > `.preview-container svg:has(.krs-edge--interactive:hover) .krs-edge:not(:hover)` 1 ルールで、
+  > `.preview-container svg:has(.krs-edge:hover) .krs-edge:not(:hover)` 1 ルールで、
   > AT-A / AT-B / AT-C の e2e が state 変更なしにこれを実行している。当時の PR 差分ではなく
   > 現在のツリーで読み直せる形にした（#2648）
 

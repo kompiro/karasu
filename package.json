@@ -67,7 +67,7 @@
     "@kompiro/adr-tools": "^0.0.13",
     "@kompiro/tpl-tools": "^0.0.10",
     "@playwright/test": "^1.63.0",
-    "@types/node": "^26.6.2",
+    "@types/node": "^26.6.4",
     "knip": "^6.38.0",
     "lefthook": "^2.1.14",
     "madge": "^8.0.0",
@@ -75,7 +75,7 @@
     "oxlint": "1.85.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.2"
+    "vitest": "^5.0.3"
   },
   "dependencies": {
     "@resvg/resvg-wasm": "^2.6.2"

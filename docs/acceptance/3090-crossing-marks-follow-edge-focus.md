@@ -35,11 +35,13 @@
 
   > ✅ Automated — `packages/e2e/tests/at-3090-crossing-marks-follow-edge-focus.spec.ts` › `AT-3090 crossing marks follow the hover dim` › `hovering a card dims the marks of the edges it does not touch, to the edges' opacity`
 
-- [x] AT-D: interactive なエッジに hover すると、ほかのエッジのマークが 0.25 に沈み、そのエッジのマークは 1 のまま。エッジから離れると戻る
+- [x] AT-D: エッジに hover すると、ほかのエッジのマークが 0.25 に沈み、そのエッジのマークは 1 のまま。エッジから離れると戻る。canonical id の無いエッジも同じ（#2632 で発火条件を `.krs-edge` に広げた）
 
   > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › `the focus canvas in the preview` › `dims the other edges' crossing marks while an edge is hovered, and keeps its own`
 
   > ✅ Automated — `packages/e2e/tests/at-3090-crossing-marks-follow-edge-focus.spec.ts` › `AT-3090 crossing marks follow the hover dim` › `hovering an edge dims the other edges' marks and keeps its own`
+
+  > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › `the focus canvas in the preview` › `dims the other edges' marks while an edge with no canonical id is hovered (#2632)`
 
 ## 計測（2026-10-13）
 

@@ -449,7 +449,7 @@ gh run view <run-id>                                             # Summary に P
   **その spike が答える Issue が閉じたとき**で、open な間は preview が残るのが
   正しい（「spike の名前と寿命」節）。
 - **この URL を記録に残さない。** Issue が閉じてブランチを消した時点で 404 になるので、
-  AT やドキュメントの到達先には書かない（「手動確認の到達先は本番 URL で書く」節）。
+  AT やドキュメントの到達先には書かない（`.claude/rules/acceptance.md`「手動項目には入力と期待結果を書き、URL は書かない」節）。
   open な Issue のコメントに貼るのはよい — そのコメントは Issue が閉じるまでしか
   参照されない。
 
