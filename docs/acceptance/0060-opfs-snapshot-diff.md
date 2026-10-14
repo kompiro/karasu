@@ -50,7 +50,7 @@ modal, and the diff banner reflecting snapshot metadata.
 
 ### AT-2 — Manual snapshot with label
 
-> ✅ Automated — `packages/e2e/tests/at-0060-opfs-snapshot-diff.spec.ts` › `Snapshot now writes a labeled manual record and keeps .snapshots out of the tree (AT-2, AT-5)`
+> ✅ Automated — `packages/e2e/tests/at-0060-opfs-snapshot-diff.spec.ts` › `Snapshot now writes a labeled manual record (AT-2)`
 
 1. Right-click `index.krs` in the FileTree.
 2. Pick **⤓ Snapshot now**.
@@ -61,7 +61,7 @@ modal, and the diff banner reflecting snapshot metadata.
 
 ### AT-3 — Compare with snapshot via picker
 
-> ✅ Automated — `packages/e2e/tests/at-0060-opfs-snapshot-diff.spec.ts` › `Compare with snapshot lists records newest-first and diffs against the picked one (AT-3)`
+> ✅ Automated — `packages/e2e/tests/at-0060-opfs-snapshot-diff.spec.ts` › `Compare with snapshot lists records newest-first and diffs against the picked one (AT-3, AT-5)`
 
 1. Create at least one snapshot (AT-1 or AT-2).
 2. Edit `index.krs` so its content differs from the snapshot.
@@ -89,7 +89,7 @@ also gone.
 
 ### AT-5 — `.snapshots/` hidden from FileTree
 
-> ✅ Automated — `packages/e2e/tests/at-0060-opfs-snapshot-diff.spec.ts` › `Snapshot now writes a labeled manual record and keeps .snapshots out of the tree (AT-2, AT-5)`
+> ✅ Automated — `packages/e2e/tests/at-0060-opfs-snapshot-diff.spec.ts` › `Compare with snapshot lists records newest-first and diffs against the picked one (AT-3, AT-5)`
 
 1. After any snapshot is created, look at the sidebar FileTree.
 

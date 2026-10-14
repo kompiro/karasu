@@ -18,23 +18,19 @@ import {
  * spec drives the wiring between them.
  *
  * Coverage:
- *  - AT-2 / AT-5: "⤓ Snapshot now" with a prompted label writes a `manual`
- *    record whose content is the file; `.snapshots` stays out of the tree.
- *  - AT-3: "⇄ Compare with snapshot…" lists the records newest-first and the
- *    picked one drives the diff (banner names the snapshot, node marked).
- *  - AT-1: the idle auto-capture fires after 5 minutes of no edits.
+ *  - AT-2: "⤓ Snapshot now" with a prompted label writes a `manual` record
+ *    whose content is the file.
+ *  - AT-3 / AT-5: "⇄ Compare with snapshot…" lists the records newest-first
+ *    and the picked one drives the diff (banner names the snapshot, node
+ *    marked); the seeded `.snapshots/` never shows in the tree.
+ *  - AT-1: the idle auto-capture fires after 5 minutes of no edits, not
+ *    before.
  *  - AT-4: the 21st auto capture drops the oldest auto, never a manual.
  *  - AT-6: deleting the project removes its `.snapshots/` tree.
  *
- * The idle timer is driven with `page.clock` (#3047): `install()` must run
- * before `opfs.seed()` because the fixture navigates, and an install after
- * the last navigation would leave the app's `setTimeout` on the real clock.
- * `install()` keeps time flowing at the real rate, so Monaco and the compile
- * debounce behave as in every other spec. The idle period is `fastForward`,
- * not `runFor`: `runFor` replays every tick of the 5 minutes (Monaco's cursor
- * blink, animation frames) and crashed the renderer in about 1 run in 10,
- * while `fastForward` fires each due timer once — which is what an idle tab
- * sees.
+ * The idle timer is driven with `page.clock` (#3047): installed before
+ * `opfs.seed()` and advanced with `fastForward`. Why both matter is in
+ * `fixtures/README.md` ("Driving the 5-minute idle timer with `page.clock`").
  *
  * Not covered: the `beforeunload` flush in `useSnapshotAutoCapture`. The
  * handler starts an async OPFS write from an unloading document; in a local
@@ -47,6 +43,15 @@ const REL = "index.krs";
 
 /** Mirrors the `debounceMs` default of `useSnapshotAutoCapture`. */
 const AUTO_CAPTURE_IDLE_MS = 5 * 60 * 1000;
+
+/**
+ * Real time given to a capture that should *not* have happened before its
+ * absence is sampled. A capture is three OPFS writes (tens of ms); there is
+ * no positive signal to wait on for "nothing was written", so this settles,
+ * like `expectNoWarningMatching`. A too-short settle can only miss a
+ * regression, never fail a correct app.
+ */
+const NO_CAPTURE_SETTLE_MS = 500;
 
 const INDEX_KRS = `system Shop {
   service Catalog
@@ -85,10 +90,7 @@ async function openIndexContextMenu(page: Page): Promise<void> {
 }
 
 test.describe("AT-0060 OPFS snapshot as diff source", () => {
-  test("Snapshot now writes a labeled manual record and keeps .snapshots out of the tree (AT-2, AT-5)", async ({
-    page,
-    opfs,
-  }) => {
+  test("Snapshot now writes a labeled manual record (AT-2)", async ({ page, opfs }) => {
     await opfs.seed({
       projects: [{ id: PID, name: "Snap", files: { [REL]: INDEX_KRS } }],
       lastProjectId: PID,
@@ -104,13 +106,9 @@ test.describe("AT-0060 OPFS snapshot as diff source", () => {
     const [record] = (await readSnapshotIndex(opfs, PID, REL))!;
     expect(record).toMatchObject({ trigger: "manual", label: "before refactor", filePath: REL });
     expect(await readSnapshotContent(opfs, PID, REL, record.id)).toBe(INDEX_KRS);
-
-    // The snapshot directory now exists on disk but the tree hides it.
-    await expect(page.locator(".file-tree-item", { hasText: REL })).toHaveCount(1);
-    await expect(page.locator(".file-tree-item", { hasText: ".snapshots" })).toHaveCount(0);
   });
 
-  test("Compare with snapshot lists records newest-first and diffs against the picked one (AT-3)", async ({
+  test("Compare with snapshot lists records newest-first and diffs against the picked one (AT-3, AT-5)", async ({
     page,
     opfs,
   }) => {
@@ -124,6 +122,11 @@ test.describe("AT-0060 OPFS snapshot as diff source", () => {
     });
     await opfs.gotoApp();
     await openIndex(page);
+
+    // `.snapshots/` was on disk before the first tree render, so the tree
+    // listing `index.krs` is the one that had to filter it out.
+    await expect(page.locator(".file-tree-item")).toHaveCount(1);
+    await expect(page.locator(".file-tree-item", { hasText: ".snapshots" })).toHaveCount(0);
 
     await openIndexContextMenu(page);
     await page.getByRole("button", { name: "⇄ Compare with snapshot…" }).click();
@@ -159,7 +162,12 @@ test.describe("AT-0060 OPFS snapshot as diff source", () => {
     await openIndex(page);
     await replaceEditorContent(page, EDITED_KRS);
 
-    await page.clock.fastForward(AUTO_CAPTURE_IDLE_MS);
+    // Ten seconds short of the idle period: nothing is captured yet.
+    await page.clock.fastForward(AUTO_CAPTURE_IDLE_MS - 10_000);
+    await page.waitForTimeout(NO_CAPTURE_SETTLE_MS);
+    expect(await readSnapshotIndex(opfs, PID, REL)).toBeNull();
+
+    await page.clock.fastForward(10_000);
 
     await expect
       .poll(async () => (await readSnapshotIndex(opfs, PID, REL))?.map((r) => r.trigger))
@@ -191,11 +199,15 @@ test.describe("AT-0060 OPFS snapshot as diff source", () => {
     await opfs.gotoApp();
     await openIndex(page);
 
-    await page.clock.fastForward(AUTO_CAPTURE_IDLE_MS);
-
+    // Forward inside the poll: this test is about retention, not timing, so
+    // a late input change that re-arms the idle timer must not hang it.
     await expect
-      .poll(async () => (await readSnapshotIndex(opfs, PID, REL))?.map((r) => r.id))
-      .not.toContain(oldestAuto.id);
+      .poll(async () => {
+        await page.clock.fastForward(AUTO_CAPTURE_IDLE_MS);
+        const ids = (await readSnapshotIndex(opfs, PID, REL))?.map((r) => r.id);
+        return ids === undefined ? "index missing" : ids.includes(oldestAuto.id);
+      })
+      .toBe(false);
     const after = (await readSnapshotIndex(opfs, PID, REL))!;
     const autos = after.filter((r) => r.trigger === "auto");
     expect(autos).toHaveLength(20);
@@ -227,8 +239,8 @@ test.describe("AT-0060 OPFS snapshot as diff source", () => {
     const dropdown = page.locator(".project-selector select.project-selector-dropdown");
     await expect(dropdown.locator('option:has-text("Snap")')).toHaveCount(0);
 
-    expect(await opfs.read(`${snapshotDir(PID, REL)}/index.json`)).toBeNull();
-    expect(await readSnapshotContent(opfs, PID, REL, records[0].id)).toBeNull();
+    await expect.poll(() => opfs.read(`${snapshotDir(PID, REL)}/index.json`)).toBeNull();
+    await expect.poll(() => readSnapshotContent(opfs, PID, REL, records[0].id)).toBeNull();
     // Only the deleted project's tree goes.
     expect(await opfs.read(`/projects/other/${REL}`)).toBe(BEFORE_KRS);
   });
