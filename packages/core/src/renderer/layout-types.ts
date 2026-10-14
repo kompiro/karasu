@@ -569,6 +569,13 @@ export interface LayoutOptions {
    */
   nodeDiffState?: ReadonlyMap<string, string>;
   /**
+   * The same keyed by each card's full path (`nodePathRefId`), from
+   * `nodeDiffMetaByPath` upstream. Read first, so on the multi-system root a
+   * card is cut back by its own state rather than a same-named card's in
+   * another frame (#3126).
+   */
+  nodeDiffMetaByPath?: ReadonlyMap<string, { readonly state: string }>;
+  /**
    * Declared group labels for the active axis (#2133), from
    * `buildGroupLabelIndex`. Resolved per canvas via `groupLabelsFor`; scoped
    * entries are keyed by their scope-qualified group id (#2036), so the model

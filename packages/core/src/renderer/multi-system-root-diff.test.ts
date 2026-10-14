@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { compileSystemDiff, type SystemDiffCompileResult } from "../compile/compile-diff.js";
 import { InMemoryFileSystemProvider } from "../fs/in-memory-provider.js";
+import { canvasMembershipFor } from "./layout-grouping.js";
+import type { LayoutOptions } from "./layout-types.js";
 
 // #3126: on the multi-system root in compare mode only `systems[0]`'s children
 // were diffed, and before/after each took *their own* first system as that
@@ -26,7 +28,11 @@ const WITH_MAIL = BASE.replace("service Jobs {}", "service Jobs {}\n  service Ma
 const diff = async (
   before: string,
   after: string,
-  options: { groupBy?: "team" } = {},
+  options: {
+    groupBy?: "team";
+    expandedContainers?: ReadonlySet<string>;
+    selectedFacets?: readonly string[];
+  } = {},
 ): Promise<SystemDiffCompileResult> => {
   const fs = new InMemoryFileSystemProvider();
   await fs.writeFile("/before.krs", before);
@@ -185,5 +191,87 @@ organization Org {
     expect(cardStates(r.svg)).toMatchObject({ "Shop.Mail": "unchanged", "Admin.Mail": "removed" });
     const opsFrame = rectAfter(r.svg, /<g [^>]*data-container-id="__group_[^"]*ops[^"]*"[^>]*>/);
     expect(inside(cardBox(r.svg, "Admin.Mail"), opsFrame)).toBe(true);
+  });
+
+  it("builds the first frame the same way on both sides when it was not before's first", async () => {
+    // Before's first system is Admin; after drops it, so Shop becomes the first
+    // frame and carries the in-place expansion of Api. Before's Shop must be
+    // expanded too, or its Api reads as removed next to its own frame.
+    const SHOP = `system Shop {
+  service Api {
+    domain Orders {}
+  }
+  service Web {}
+}
+`;
+    const r = await diff(`system Admin { service Console {} }\n${SHOP}`, SHOP, {
+      expandedContainers: new Set(["Api"]),
+    });
+    expect(cardStates(r.svg)).toEqual({
+      "Shop.Api.Orders": "unchanged",
+      "Shop.Web": "unchanged",
+      "Admin.Console": "removed",
+    });
+  });
+
+  it("keeps another frame's card on its own path when it shares an expanded member's id", async () => {
+    const MODEL = (description: string) => `system Shop {
+  service Api {
+    domain Orders {}
+  }
+}
+system Admin {
+  service Orders { description "${description}" }
+}
+`;
+    const r = await diff(MODEL("v1"), MODEL("v2"), { expandedContainers: new Set(["Api"]) });
+    expect(cardStates(r.svg)).toEqual({
+      "Shop.Api.Orders": "unchanged",
+      "Admin.Orders": "changed",
+    });
+  });
+
+  it("rings a removed card for a facet only it carried, beside a surviving same-named card", async () => {
+    const before = `facet pii {}
+system Shop {
+  service Mail {}
+}
+system Admin {
+  service Mail { facets pii }
+  service Jobs {}
+}
+`;
+    const after = `system Shop {
+  service Mail {}
+}
+system Admin {
+  service Jobs {}
+}
+`;
+    const r = await diff(before, after, { selectedFacets: ["pii"] });
+    const card = (path: string) =>
+      new RegExp(`<g [^>]*data-node-path="${path.replace(".", "\\.")}"[^>]*>`).exec(r.svg)?.[0] ??
+      "";
+    expect(cardStates(r.svg)).toMatchObject({ "Shop.Mail": "unchanged", "Admin.Mail": "removed" });
+    expect(card("Admin.Mail")).toContain('data-facet-member="pii"');
+    expect(card("Shop.Mail")).not.toContain('data-facet-member="pii"');
+  });
+
+  it("cuts a removed card back to its primary boundary by its own state, not a same-named card's", () => {
+    const options = {
+      groupBy: "boundary",
+      boundaryMembership: new Map([
+        ["Shop.Mail", ["a", "b"]],
+        ["Admin.Mail", ["a", "b"]],
+      ]),
+      // The bare id answers with Shop.Mail, which survives.
+      nodeDiffState: new Map([["Mail", "unchanged"]]),
+      nodeDiffMetaByPath: new Map([
+        ["Shop.Mail", { state: "unchanged" }],
+        ["Admin.Mail", { state: "removed" }],
+      ]),
+    } as LayoutOptions;
+    expect(canvasMembershipFor(["Admin"], options)?.get("Mail")).toEqual(["a"]);
+    expect(canvasMembershipFor(["Shop"], options)?.get("Mail")).toEqual(["a", "b"]);
   });
 });

@@ -45,7 +45,7 @@ import { diffDeployViewSlices } from "../diff/deploy-view-diff.js";
 import { diffOrgViewSlices } from "../diff/org-view-diff.js";
 import type { NodeDiffMeta, EdgeDiffMeta } from "../diff/view-diff.js";
 import { injectDiffStyle } from "../diff/diff-style.js";
-import { nodePathRefId } from "../parser/node-path.js";
+import { nodePathRefId, parseNodePathRefId } from "../parser/node-path.js";
 import { collectModelWarnings } from "../resolver/model-warnings.js";
 
 /**
@@ -120,6 +120,27 @@ function collectAfterWarnings(
     getBuiltinStyleSheet(theme, annotationBadgeLabels),
     ...afterResolved.styleSheets,
   ]);
+}
+
+/**
+ * `systems` with the system named `primaryId` moved to the front, when it is
+ * there and not already first; otherwise `systems` itself.
+ */
+function withPrimaryFirst<T extends { id: string }>(
+  systems: T[],
+  primaryId: string | undefined,
+): T[] {
+  const i = primaryId === undefined ? -1 : systems.findIndex((s) => s.id === primaryId);
+  return i <= 0 ? systems : [systems[i], ...systems.slice(0, i), ...systems.slice(i + 1)];
+}
+
+/**
+ * The id a card path ends in: the card's own id, under which the bare-id maps
+ * hold it.
+ */
+function lastSegment(key: string): string {
+  const segments = parseNodePathRefId(key);
+  return segments[segments.length - 1] ?? key;
 }
 
 /**
@@ -258,7 +279,17 @@ export async function compileSystemDiff(
   const beforeSystems = withUnassignedSystem(beforeResolved.krsFile);
   const afterSystems = withUnassignedSystem(afterResolved.krsFile);
 
-  const beforeSlice = extractView(beforeSystems, viewPath ?? [], [], [], expandedContainers);
+  // The root's primary frame is built from the first system and carries the
+  // in-place expansion (#1921). Put after's first system first on the before
+  // side too, so both sides build that frame from the same system the same way
+  // and the diff pairs it by id (#3126, TPL-3126).
+  const beforeSlice = extractView(
+    withPrimaryFirst(beforeSystems, afterSystems[0]?.id),
+    viewPath ?? [],
+    [],
+    [],
+    expandedContainers,
+  );
   const afterSlice = extractView(afterSystems, viewPath ?? [], [], [], expandedContainers);
   diagnostics.push(...assignEdgeCanonicalIds(beforeSlice.childEdges));
   diagnostics.push(...assignEdgeCanonicalIds(afterSlice.childEdges));
@@ -305,11 +336,33 @@ export async function compileSystemDiff(
   // diff: each removed card is backfilled under its own path, the one it is drawn
   // and grouped by. On the multi-system root that is the card's own system frame
   // (#3126), so a removed `Admin.Api` takes back what it declared rather than
-  // what the same-named winner did. Only cards are banded, so ghosts and system
-  // frames need no backfill.
+  // what the same-named winner did.
+  //
+  // An entry that is not a card (a system frame, a ghost user) has no card path
+  // and keeps the key it always had: on a drilled canvas the canvas scope plus
+  // the id, on the root view the before-side nodePathIndex path, and the bare id
+  // as the last resort (matching the parse-time fallback for unresolvable refs).
+  const cardIds = new Set([...diffed.nodesByPath.keys()].map(lastSegment));
+  const diffScope =
+    diffed.slice.containerNode !== null
+      ? [...diffed.slice.ancestorChain.map((n) => n.id), diffed.slice.containerNode.id]
+      : [];
+  const removedNonCardKeys: string[] = [];
+  for (const [id, meta] of diffed.nodes) {
+    if (meta.state !== "removed" || cardIds.has(id)) continue;
+    removedNonCardKeys.push(
+      diffScope.length > 0
+        ? nodePathRefId([...diffScope, id])
+        : nodePathRefId(beforeResolved.krsFile.nodePathIndex.get(id) ?? [id]),
+    );
+  }
+  const removedKeys = [
+    ...[...diffed.nodesByPath].filter(([, meta]) => meta.state === "removed").map(([key]) => key),
+    ...removedNonCardKeys,
+  ];
   const mergedOwnerIndex = new Map<string, string>(afterResolved.krsFile.ownerIndex);
-  for (const [key, meta] of diffed.nodesByPath) {
-    if (meta.state !== "removed" || mergedOwnerIndex.has(key)) continue;
+  for (const key of removedKeys) {
+    if (mergedOwnerIndex.has(key)) continue;
     const formerTeam = beforeResolved.krsFile.ownerIndex.get(key);
     if (formerTeam !== undefined) mergedOwnerIndex.set(key, formerTeam);
   }
@@ -327,8 +380,21 @@ export async function compileSystemDiff(
   for (const [id, facetIds] of afterResolved.krsFile.facetIndex) {
     mergedFacetIndex.set(id, new Set(facetIds));
   }
+  // The bare index is a broadcast (the facets any node of that id carries,
+  // ADR-2934), so a removed card adds what it carried even when a same-named
+  // card in another frame survives and answers the bare id (#3126). Entries
+  // that are not cards keep the backfill they always had.
+  for (const [key, meta] of diffed.nodesByPath) {
+    if (meta.state !== "removed") continue;
+    const former = beforeResolved.krsFile.facetIndexByPath.get(key);
+    if (former === undefined) continue;
+    const id = lastSegment(key);
+    const merged = mergedFacetIndex.get(id) ?? new Set<string>();
+    for (const facetId of former) merged.add(facetId);
+    mergedFacetIndex.set(id, merged);
+  }
   for (const [id, meta] of diffed.nodes) {
-    if (meta.state !== "removed" || mergedFacetIndex.has(id)) continue;
+    if (meta.state !== "removed" || cardIds.has(id) || mergedFacetIndex.has(id)) continue;
     const former = beforeResolved.krsFile.facetIndex.get(id);
     if (former !== undefined) mergedFacetIndex.set(id, new Set(former));
   }
@@ -361,8 +427,8 @@ export async function compileSystemDiff(
   for (const [id, boundaryIds] of afterResolved.krsFile.boundaryMembership) {
     mergedBoundaryMembership.set(id, [...boundaryIds]);
   }
-  for (const [key, meta] of diffed.nodesByPath) {
-    if (meta.state !== "removed" || mergedBoundaryMembership.has(key)) continue;
+  for (const key of removedKeys) {
+    if (mergedBoundaryMembership.has(key)) continue;
     const formerBoundaries = beforeResolved.krsFile.boundaryMembership.get(key);
     if (formerBoundaries !== undefined) {
       mergeMembership(mergedBoundaryMembership, key, formerBoundaries);
