@@ -1,3 +1,5 @@
 test-results/
 playwright-report/
 playwright/.cache/
+# The directory `karasu serve` watches in the `serve` project (scripts/start-serve.ts, #3049).
+.serve-scratch/
