@@ -182,7 +182,19 @@ karasu が import するアイコンは `ChevronRight`（`components/ui/breadcru
 非 prerelease の v0.91.12（10-14 04:49）と v0.92.0（10-15 04:47）はまだ cooldown 内である。0.89.22–0.92.0 の変更は
 ネットワーク既定の縮小（read-only な agent workflow の既定を network なしに）、MCP gateway image の digest 固定、
 `pull_request_target` の strict 化、GitHub App token の scope 明示など hardening が中心。**v0.91.12 が cooldown を越える
-10-21 以降に `gh aw compile` で再生成する**（そのとき `permissions:` / `GH_AW_INFO_ALLOWED_DOMAINS` / `ghcr.io` の image 版を読む）。
+10-21 以降に、その版（その時点で cooldown を越えた、より新しい非 prerelease 版があればそちら）を pin してから
+`gh aw compile` で再生成する**。手順は `.claude/rules/dependabot.md` のとおりで、
+ローカルの extension が v0.89.21 のまま compile すると v0.89.21 の生成物を作り直すだけになる。
+
+```bash
+gh extension install github/gh-aw --force --pin v0.91.12
+gh aw version   # v0.91.12 であること。これが PR に書く版になる
+gh aw compile
+git add .github && gh aw compile && git diff --quiet -- .github   # 2 回目で差分が出ない
+npx vitest run --config scripts/vitest.config.ts ci/gh-aw-lock-consistency.test.ts ci/agentic-workflow-safety.test.ts
+```
+
+再生成の diff では `permissions:` / `GH_AW_INFO_ALLOWED_DOMAINS` / `ghcr.io` の image 版を読む。
 これは本トリアージの範囲外の作業として残す。
 
 ## rebase で版が変わるもの
