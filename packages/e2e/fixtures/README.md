@@ -29,9 +29,7 @@ test("seeded project is preselected", async ({ page, opfs }) => {
   });
   await opfs.gotoApp();
 
-  await expect(page.locator(".project-selector select.project-selector-dropdown")).toHaveValue(
-    "demo",
-  );
+  await expect(page.getByRole("combobox", { name: "Project", exact: true })).toHaveValue("demo");
 });
 ```
 
@@ -221,12 +219,27 @@ AT-1142) and AT-2543 (#3045).
   assertion fails (a selector on the wrong element, not a 21:1 contrast).
   Used by the AA sweeps in AT-1470.
 
+## `file-tree.ts` — file-tree rows and context menu
+
+- `treeItem(page, name)` — the `.file-tree-item` row whose name is exactly
+  `name` (`index.krs` does not match `index.krs.style`).
+- `openTreeContextMenu(page, name)` — right-clicks the row and returns the
+  `.context-menu` once it is visible.
+- `treeContextMenuAction(page, name, "Rename" | "Delete")` — opens the menu
+  and clicks the item. The item is looked up inside `.context-menu`, because
+  the project selector's "✎ Rename" / "✕ Delete" buttons match the same
+  names. A Delete asks `window.confirm`, so register `page.once("dialog", …)`
+  before calling it.
+
 ## `download.ts` — download plumbing
 
 - `clickAndDownload(locator)` — registers `waitForEvent("download")` on
   `locator.page()` _before_ clicking, so the event cannot be missed.
 - `readDownloadText(download)` — reads the download's bytes into a UTF-8
   string for content assertions.
+- `downloadToPath(download)` — returns the download's on-disk path, asserting
+  the file exists, so it can be passed to `setInputFiles` (the ZIP export →
+  import round trip in AT-0004).
 
 ## `anthropic.ts` — Anthropic transport mock
 

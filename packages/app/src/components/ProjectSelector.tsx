@@ -140,6 +140,7 @@ export function ProjectSelector({
         <select
           value={currentProject?.id ?? ""}
           onChange={handleSelect}
+          aria-label={t("projectSelector.dropdown.ariaLabel")}
           className="project-selector-dropdown"
         >
           {projects.map((p) => (

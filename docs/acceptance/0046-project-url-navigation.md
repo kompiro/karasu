@@ -28,16 +28,22 @@ ProjectMode でアクティブなプロジェクトが URL パス（`/projects/<
 1. プロジェクト A を表示している状態でプロジェクト B に切り替える
 2. URL が `/projects/<プロジェクト B の ID>` に変わる
 
+> ✅ Automated — `packages/e2e/tests/at-0004-project-management-opfs.spec.ts` › `browser Back / Forward walk the project switches`
+
 ### TC-4: ブラウザの戻るボタンでプロジェクトが戻る
 
 1. プロジェクト A → プロジェクト B の順に切り替える
 2. ブラウザの戻るボタンを押す
 3. プロジェクト A に戻り、URL も `/projects/<プロジェクト A の ID>` になる
 
+> ✅ Automated — `packages/e2e/tests/at-0004-project-management-opfs.spec.ts` › `browser Back / Forward walk the project switches`
+
 ### TC-5: ブラウザの進むボタンでプロジェクトが進む
 
 1. TC-4 の状態でブラウザの進むボタンを押す
 2. プロジェクト B に戻り、URL も `/projects/<プロジェクト B の ID>` になる
+
+> ✅ Automated — `packages/e2e/tests/at-0004-project-management-opfs.spec.ts` › `browser Back / Forward walk the project switches`
 
 ### TC-6: URL をコピーしてリロードしてもプロジェクトが復元される
 

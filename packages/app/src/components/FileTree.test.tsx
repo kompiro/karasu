@@ -4,6 +4,7 @@ import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/re
 import userEvent from "@testing-library/user-event";
 import { InMemoryFileSystemProvider } from "@karasu-tools/core";
 import { FileTree } from "./FileTree.js";
+import { LocaleProvider } from "../i18n/index.js";
 
 afterEach(() => {
   cleanup();
@@ -47,7 +48,15 @@ function renderTree(
     onFileRenamed: vi.fn<(oldPath: string, newPath: string) => void>(),
     ...overrides,
   };
-  return { ...render(<FileTree {...props} />), props };
+  // The inline name input reads its aria-label through useTranslation.
+  return {
+    ...render(
+      <LocaleProvider initialLocale="en">
+        <FileTree {...props} />
+      </LocaleProvider>,
+    ),
+    props,
+  };
 }
 
 // The context menu is our own component (`file-tree/ContextMenu`), rendered

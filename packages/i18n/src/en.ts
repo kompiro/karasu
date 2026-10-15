@@ -57,6 +57,7 @@ export const en: Translations = {
     "This can happen if browser storage (OPFS) is unavailable — e.g. in private browsing or when storage is full. Check your browser settings and reload.",
 
   // Project selector
+  "projectSelector.dropdown.ariaLabel": "Project",
   "projectSelector.namePlaceholder": "Project name",
   "projectSelector.new.title": "New project",
   "projectSelector.new.button": "+ New",
@@ -81,6 +82,9 @@ export const en: Translations = {
   "project.error.openExample": ({ detail }) => `⚠ Could not open the example: ${detail}`,
   "project.error.snapshot": ({ detail }) => `⚠ Failed to capture snapshot: ${detail}`,
   "project.error.dismiss": "✕ Dismiss",
+
+  // File tree: the inline name input for New File / New Folder / Rename
+  "fileTree.inlineInput.ariaLabel": "Name",
 
   // Translate dialog
   "translateDialog.title": "⇄ Translate infra config to .krs",
