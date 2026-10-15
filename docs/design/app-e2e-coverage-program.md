@@ -266,8 +266,8 @@ proactive（本 PR で起こす）:
 - `workers: 2` は nightly の `workflow_dispatch` に `inputs.workers` を足して 3 回計測し、
   全 pass・p95 ≤ 5s（`timeout: 15_000` の 1/3）・最長 spec ≤ 60s・at-0050 と OPFS handle のエラーがゼロ、を
   満たしたときだけ `playwright.config.ts` に反映する。満たさなければ `workers: 1` のまま進める
-  （結果: p95 が 6 回中 3 回、最遅 spec が 1 回基準を超えたので見送り）
-  （+57 テストでも 730s / 900s に収まる）
+  （結果: p95 が 6 回中 3 回、最遅 spec が 1 回基準を超えたので見送り。計画時は +57 テストでも 730s / 900s と
+  見込んだが、10-14 の nightly は 671s で、+57 テストで約 840s / 900s になる。再計測の条件は論点 3「計測結果」）
 - AC-11 は preview 経由の書き込み（5-C）で dirty にし、AT の手順文を書き換える。`<ChatPane>` を mount したままにする
   案（5-A）は UX 改善として別 Issue の候補に留める
 - serve mode は環境変数で gate した第 2 `webServer` + `serve` project。nightly だけが変数を立てる。
