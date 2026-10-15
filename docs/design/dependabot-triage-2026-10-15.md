@@ -187,8 +187,9 @@ karasu が import するアイコンは `ChevronRight`（`components/ui/breadcru
 ローカルの extension が v0.89.21 のまま compile すると v0.89.21 の生成物を作り直すだけになる。
 
 ```bash
-gh extension install github/gh-aw --force --pin v0.91.12
-gh aw version   # v0.91.12 であること。これが PR に書く版になる
+v=v0.91.12   # より新しい非 prerelease 版を選んだら、ここをその版にする
+gh extension install github/gh-aw --force --pin "$v"
+gh aw version   # "$v" であること。これが PR に書く版になる
 gh aw compile
 git add .github && gh aw compile && git diff --quiet -- .github   # 2 回目で差分が出ない
 npx vitest run --config scripts/vitest.config.ts ci/gh-aw-lock-consistency.test.ts ci/agentic-workflow-safety.test.ts
