@@ -203,6 +203,47 @@ asserts with `elementFromPoint` that the point hits the edge group, and throws
 naming the covering element otherwise. Used by AT-1098 (which also hosts AT-1141 /
 AT-1142) and AT-2543 (#3045).
 
+## `snapshots.ts` — OPFS history snapshots
+
+Reads and seeds the per-file snapshot store under
+`/projects/<pid>/.snapshots/<relPath>/` (`index.json` plus one `<id>.krs` per
+record), restating the on-disk shape of `SnapshotManager` (AT-0060, #3047).
+
+- `seedSnapshotRecords(relPath, seeds)` — returns `{ files, records }`. Spread
+  `files` into an `opfs.seed` project's `files` map; `records` carries the
+  generated ids. Records are dated in `seeds` order from 2020-01-01, one
+  minute apart, so `seeds[0]` is the oldest and every seeded record is older
+  than a capture the app makes. `contentHash` is a non-hex placeholder, so a
+  seeded record never makes the next auto capture look like a duplicate.
+- `readSnapshotIndex(opfs, pid, relPath)` — the stored records, or `null`
+  before the first write. The app creates `index.json` empty and commits its
+  content on `close()`, so an empty read also returns `null`; poll on it.
+- `readSnapshotContent(opfs, pid, relPath, id)` / `snapshotDir(pid, relPath)`
+  — one record's content, and the directory path for `opfs.read`.
+
+### Driving the 5-minute idle timer with `page.clock`
+
+`useSnapshotAutoCapture` waits 5 minutes after the last edit. AT-0060 installs
+Playwright's clock and jumps over the wait:
+
+```ts
+await page.clock.install(); // before opfs.seed(): the fixture navigates
+await opfs.seed({ projects: [...] });
+await opfs.gotoApp();
+// ... edit ...
+await page.clock.fastForward(5 * 60 * 1000);
+await expect.poll(() => readSnapshotIndex(opfs, pid, "index.krs")).not.toBeNull();
+```
+
+- **Install before the first navigation.** The clock is injected into each
+  new document; installing after `gotoApp()` leaves the app on real timers.
+- **`fastForward`, not `runFor`.** `runFor` replays every tick of the period
+  (Monaco's cursor blink, animation frames) and crashed the renderer in about
+  1 run in 10. `fastForward` fires each due timer once, which is what an idle
+  tab sees.
+- `install()` keeps time flowing at the real rate, so the compile debounce
+  and `replaceEditorContent` behave as in any other spec.
+
 ## `color.ts` — WCAG colour maths
 
 - `luminance(rgb)` — relative luminance of a computed `rgb()` / `rgba()`
