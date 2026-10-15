@@ -6,15 +6,14 @@ date: 2026-09-30
 topic: build
 scope:
   concerns: [security, dependencies]
-related_to: [ADR-2985, ADR-2813, ADR-2693, ADR-2564, ADR-2404, ADR-2401, ADR-2115, ADR-2628]
+related_to: [ADR-2985, ADR-2813, ADR-2693, ADR-2564, ADR-2404, ADR-2401, ADR-2115, ADR-2628, ADR-3246]
 assumptions:
   # 決定は patched な系列へ caret で floor を置くことであって、そのときの
   # patch 番号ではない（ADR-2628 / ADR-2813）。
   - "grep: pnpm-workspace.yaml :: brace-expansion@2: \\^2\\."
   - "grep: pnpm-workspace.yaml :: brace-expansion@5: \\^5\\."
   - "grep: pnpm-workspace.yaml :: dompurify: \\^3\\."
-  - "grep: pnpm-workspace.yaml :: fast-uri: \\^3\\."
-  - "grep: pnpm-workspace.yaml :: markdown-it: \\^14\\."
+  # `fast-uri` / `markdown-it` の override は ADR-3246 で外した（利用元が lock から消えた）。
 ---
 
 # ADR-3002: Dependabot security alert 2026-09-30（5 つの override floor がすべて新しい advisory の脆弱範囲の内側だったので、修正版へ上げた）

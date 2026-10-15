@@ -1,7 +1,8 @@
 ---
 id: ADR-1338
 title: "`fast-uri` を `pnpm.overrides` で `^3.1.2` に固定（GHSA セキュリティ修正）"
-status: accepted
+status: superseded
+superseded_by: ADR-3246
 date: 2026-05-12
 topic: build
 scope:
@@ -16,14 +17,13 @@ assumptions:
   # 特定パッチ番号ではなく「3.x 系に caret で pin されている」ことを表明する。
   # 本 ADR の決定は patched な 3.x への固定であって、特定のパッチ版ではない
   # （後続の security bump のたびに assumption が壊れるのを避ける — ADR-2115）。
-  - "grep: pnpm-workspace.yaml :: fast-uri: \\^3\\."
-  - "grep: pnpm-lock.yaml :: fast-uri: 3\\."
+  - "pnpm-workspace.yaml の overrides に fast-uri の 3.x への caret floor があり、lock の fast-uri は 3.x だった。ADR-3246 が override を外し（@vscode/vsce 4.0.0 で利用元が lock から消えた）、いずれも現存しない。本 ADR は superseded であり、これは当時の状態への参照である"
 ---
 
 # ADR-1338: `fast-uri` を `pnpm.overrides` で `^3.1.2` に固定（GHSA セキュリティ修正）
 
 - **日付**: 2026-05-12
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by [ADR-3246](3246-drop-overrides-left-by-vsce-4.md)（`@vscode/vsce` 4.0.0 で `fast-uri` の利用元がいなくなり、override を外した）
 - **関連**:
   - Dependabot alert [#15](https://github.com/kompiro/karasu/security/dependabot/15) — `fast-uri <= 3.1.0`：percent-encoded dot segments による path traversal（patched in 3.1.1, high）
   - Dependabot alert [#16](https://github.com/kompiro/karasu/security/dependabot/16) — `fast-uri <= 3.1.1`：percent-encoded authority delimiters による host confusion（patched in 3.1.2, high）

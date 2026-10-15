@@ -122,6 +122,7 @@ flowchart TD
     ADR_3138["ADR-3138<br/>`karasu serve` の app build は専用 entry から始め、Monac..."]
     ADR_3196["ADR-3196<br/>Dependabot トリアージ 2026-10-14：npm 6 件を採用し、Radix は..."]
     ADR_3203["ADR-3203<br/>Dependabot security alert 2026-10-14（sharp の ov..."]
+    ADR_3246["ADR-3246<br/>`@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -169,6 +170,7 @@ flowchart TD
   ADR_3052 -.supersedes.-> ADR_2898
   ADR_3117 -.supersedes.-> ADR_3011
   ADR_3117 -.supersedes.-> ADR_2949
+  ADR_3246 -.supersedes.-> ADR_1338
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -204,7 +206,7 @@ flowchart TD
   class ADR_1314 accepted
   class ADR_1315 accepted
   class ADR_1320 accepted
-  class ADR_1338 accepted
+  class ADR_1338 superseded
   class ADR_1350 accepted
   class ADR_1363 accepted
   class ADR_1370 accepted
@@ -292,6 +294,7 @@ flowchart TD
   class ADR_3138 accepted
   class ADR_3196 accepted
   class ADR_3203 accepted
+  class ADR_3246 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost

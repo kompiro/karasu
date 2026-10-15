@@ -16,6 +16,7 @@ related_to:
   - ADR-1474
   - ADR-1652
   - ADR-2111
+  - ADR-3246
 ---
 
 # ADR-2115: Dependabot security update 第 2 便 — fast-uri / sharp / svgo / linkify-it / dompurify と、override 付き直接依存の bot PR が構造的にマージ不能である件

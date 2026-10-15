@@ -6,11 +6,11 @@ date: 2026-09-03
 topic: build
 scope:
   concerns: [security, dependencies]
-related_to: [ADR-2564, ADR-2404, ADR-2390, ADR-2401, ADR-2115, ADR-1474, ADR-1338, ADR-128]
+related_to: [ADR-2564, ADR-2404, ADR-2390, ADR-2401, ADR-2115, ADR-1474, ADR-1338, ADR-128, ADR-3246]
 assumptions:
   # 決定は patched な系列へ caret で floor を置くことであって、そのときの
   # patch 番号ではない（ADR-2628 / ADR-2115）。
-  - "grep: pnpm-workspace.yaml :: fast-uri: \\^3\\."
+  # `fast-uri` の override は ADR-3246 で外した（利用元が lock から消えた）。
   - "grep: pnpm-workspace.yaml :: qs: \\^6\\."
 ---
 

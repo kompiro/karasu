@@ -15,6 +15,7 @@ related_to:
   - ADR-1474
   - ADR-1593
   - ADR-1675
+  - ADR-3246
 ---
 
 # ADR-1652: Dependabot security update — transitive 依存を pnpm.overrides で解決（ws / vite / form-data / js-yaml / markdown-it / dompurify）
