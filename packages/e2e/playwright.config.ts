@@ -5,6 +5,11 @@ import { defineConfig, devices } from "@playwright/test";
 // another value without editing this file or `e2e.yml` (#3040, #3041); it is
 // read here, in Node, so the input never reaches a shell line. Anything that
 // is not a positive integer falls back to the shipped value.
+//
+// `2` was measured and not adopted (#3041): it roughly halves the suite, but
+// p95 per test went over 5s in 3 of 6 runs and the serial at-0050 went over
+// 60s once. The numbers and when to re-measure are in
+// docs/design/app-e2e-coverage-program.md (論点 3).
 const CI_WORKERS_DEFAULT = 1;
 const ciWorkers = (() => {
   const raw = process.env.PLAYWRIGHT_WORKERS;
