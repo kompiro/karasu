@@ -177,11 +177,30 @@ watch モードでテストファイルが 0 件でも落ちない、ESM fallbac
 
 ユーザー判断（2026-10-14）: 採否は推奨どおり。差し替え PR は 2 本に分け、#3070 の ADR 化とも切り離す。
 
-- そのままマージ: #3215（マージ済み）、#3214 / #3212 / #3211 / #3209（rebase してから順にマージ）
+- そのままマージ: #3215 / #3214 / #3212 / #3211 / #3209。#3215 以外は `@dependabot rebase` で main に追従させ、
+  CI green を待って 1 件ずつ squash merge した（10-14 23:49 〜 10-15 00:37 UTC）
+- **#3214 は rebase で版が変わってマージされた。** トリアージしたのは lefthook 2.1.17 だったが、`@dependabot rebase`
+  が PR を作り直した時点（10-14 23:35 UTC）で 2.2.0（10-07 19:12 公開）が cooldown 7 日を満たしており、PR は
+  「bump lefthook from 2.1.14 to 2.2.0」に書き換わった。rebase 直後に auto-merge を掛けたため、版の変化に気づかず
+  そのまま入った。事後に 2.2.0 を同じ手順で確認し、問題は無かった:
+  - publisher / maintainer は 2.1.17 と同じ（`mrexox`、GitHub Actions OIDC + provenance）
+  - npm の差分は `package.json` の版と optionalDependencies、README の Go の版表記だけ。`postinstall.js`
+    （`allowBuilds: true` で実行される）は無変更
+  - upstream の変更は依存更新と修正 3 件（AI hook 設定への install 時パスの書き込み停止、`--files-from-stdin` の
+    末尾 NUL、`git diff --output` の引数）
+- 差し替え PR の lockfile は、main を取り込んだときにテキストマージで重複キーが残った（`ERR_PNPM_BROKEN_LOCKFILE`）。
+  main の lock を起点に `pnpm install --config.minimum-release-age=10080`（cooldown と同じ 7 日）で作り直した
 - VS Code の下限の差し替え PR: [#3225](https://github.com/kompiro/karasu/pull/3225)（#3210 / #3216 は close）。
   lockfile は #3210 の bot ブランチの lock から作り直し、transitive の解決をトリアージで確認した版に留めた
   （ローカルで素直に `pnpm install` すると、前日公開の `@azure/identity@4.14.0` を拾うため）
 - oxfmt の差し替え PR: [#3226](https://github.com/kompiro/karasu/pull/3226)（#3213 は close）
+
+## 運用上の学び（ADR 化のときに規則へ反映する候補）
+
+- `@dependabot rebase` は rebase だけでなく PR の作り直しで、その時点で cooldown を満たした最新版に**版を上げうる**。
+  トリアージ後に rebase したら、マージ前に PR タイトルの版がトリアージした版と同じかを確かめる。違えば、その版で
+  リスク分析をやり直してからマージする（`.claude/rules/dependabot.md` に追記する候補）
+- 差し替え PR に main を取り込むときは、lockfile をテキストマージせず、main の lock を起点に作り直す
 
 ## 当初の方針
 
