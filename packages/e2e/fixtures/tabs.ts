@@ -52,3 +52,12 @@ export async function setTheme(page: Page, theme: "light" | "dark"): Promise<voi
     .poll(() => page.evaluate(() => document.documentElement.getAttribute("data-theme")))
     .toBe(theme);
 }
+
+/**
+ * The tab named `name` (a view tab or an edit-pane tab), matched only while it
+ * is selected. `toBeVisible()` on it waits for the switch; specs that drive
+ * the switch from the keyboard read the result through this.
+ */
+export function selectedTab(page: Page, name: string) {
+  return page.getByRole("tab", { name, selected: true });
+}

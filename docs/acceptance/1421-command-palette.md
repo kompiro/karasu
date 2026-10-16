@@ -55,9 +55,23 @@
 `examples/ja/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
 jsdom では描画の見た目を検証できないため、実ブラウザで確認する。
 
-- [ ] `Ctrl/Cmd+Shift+P` でパレットが画面中央上部に表示され、検索入力にフォーカスが当たる
-- [ ] Monaco エディタで編集中（テキスト入力にフォーカスがある状態）でも `Ctrl/Cmd+Shift+P` でパレットが開く
+- [x] `Ctrl/Cmd+Shift+P` でパレットが画面中央上部に表示され、検索入力にフォーカスが当たる
+
+  > 🟡 Partially automated — `packages/e2e/tests/at-1421-command-palette.spec.ts` › `opens from the editor, filters, and runs Show Deploy View on Enter`（検索入力へのフォーカスは自動、表示位置は目視）
+
+- [x] Monaco エディタで編集中（テキスト入力にフォーカスがある状態）でも `Ctrl/Cmd+Shift+P` でパレットが開く
+
+  > ✅ Automated — `packages/e2e/tests/at-1421-command-palette.spec.ts` › `opens from the editor, filters, and runs Show Deploy View on Enter`
+
 - [ ] macOS で `Cmd+Shift+P` を押したとき、ブラウザの操作（プライベートウィンドウ等）が発火せず karasu のパレットが開く（`preventDefault` 済み）
-- [ ] 検索欄に文字を入力すると一覧が絞り込まれ、上下キーでハイライトが視覚的に移動する
-- [ ] Enter またはクリックで選択コマンドが実行され、パレットが閉じる（例: `Toggle Sidebar` を選ぶとサイドバーが開閉する）
-- [ ] Esc キー、またはパレット外側のクリックでパレットが閉じる
+- [x] 検索欄に文字を入力すると一覧が絞り込まれ、上下キーでハイライトが視覚的に移動する
+
+  > ✅ Automated — `packages/e2e/tests/at-1421-command-palette.spec.ts` › `arrow keys move the selection and a click runs the command`。選択は `aria-selected` で検証し、絞り込みは `opens from the editor, filters, and runs Show Deploy View on Enter` が検証する
+
+- [x] Enter またはクリックで選択コマンドが実行され、パレットが閉じる（例: `Toggle Sidebar` を選ぶとサイドバーが開閉する）
+
+  > ✅ Automated — `packages/e2e/tests/at-1421-command-palette.spec.ts` › `arrow keys move the selection and a click runs the command`。Enter は `opens from the editor, filters, and runs Show Deploy View on Enter` が検証する
+
+- [x] Esc キー、またはパレット外側のクリックでパレットが閉じる
+
+  > 🟡 Partially automated — `packages/e2e/tests/at-1421-command-palette.spec.ts` › `Esc closes the palette`（外側クリックは手動）

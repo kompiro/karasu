@@ -107,6 +107,13 @@ pre-push:
       # without `mod+shift+p`. The vitest mirror in scripts/lint runs it in CI.
       glob: "{packages/app/src/**,docs/tools/**,scripts/lint/app-shortcut-docs-sync.ts}"
       run: pnpm run lint:app-shortcut-docs-sync
+    e2e-command-coverage:
+      # Every app command (`useCommand` id / keybinding) must be driven by some
+      # packages/e2e/tests spec (Issue #3042, TPL-3039). Globbed on both sides
+      # (TPL-1480): adding a command and deleting the spec that drove it both
+      # re-run it. CI runs it in the Check job.
+      glob: "{packages/app/src/**,packages/e2e/tests/**,scripts/lint/e2e-command-coverage.ts,scripts/lint/app-shortcut-docs-sync.ts}"
+      run: pnpm run lint:e2e-command-coverage
     skill-cli-refs:
       # Every `karasu <cmd>` hardcoded in a skill (.claude/skills/**,
       # packages/skills/skills/**) must be a registered
