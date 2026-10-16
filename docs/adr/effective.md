@@ -97,7 +97,6 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1314](1314-krs-spec-v1-freeze.md) — .krs / .krs.style を v1.0 として凍結する（ハイブリッド版管理）
 - [ADR-1315](1315-release-automation-changesets.md) — OSS リリース自動化に changesets を採用し、当面は `karasu`（CLI）のみを npm 公開する
 - [ADR-1320](1320-license-compliance-automation.md) — OSS リリースのライセンス順守を allowlist CI と自動生成 THIRD_PARTY_NOTICES で機械化する
-- [ADR-1338](1338-fast-uri-override-pin.md) — `fast-uri` を `pnpm.overrides` で `^3.1.2` に固定（GHSA セキュリティ修正）
 - [ADR-1350](1350-dependabot-batch-2026-05-12.md) — Dependabot Batch Triage (2026-05-12) — `pnpm/action-setup` 6.0.5
 - [ADR-1363](1363-publish-core-package.md) — @karasu-tools/core を v0.x の公開パッケージにする（development 条件で build 非依存 typecheck を維持）
 - [ADR-1370](1370-release-flow-actions-driven.md) — リリースを workflow_dispatch 起動の Prepare → release PR → マージで publish にする
@@ -180,6 +179,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3138](3138-serve-app-without-monaco.md) — `karasu serve` の app build は専用 entry から始め、Monaco を含めない
 - [ADR-3196](3196-dependabot-triage-2026-10-14.md) — Dependabot トリアージ 2026-10-14：npm 6 件を採用し、Radix は 4 件を揃える差し替え PR、actions/* は gh-aw の生成物を除く差し替え PR で入れ、download-artifact と gh-aw-actions は却下する
 - [ADR-3203](3203-dependabot-security-2026-10-14.md) — Dependabot security alert 2026-10-14（sharp の override floor を修正版へ上げ、shell-quote を override し、修正版が無く upstream が異議を出している http-cache-semantics と braces は dismiss する）
+- [ADR-3246](3246-drop-overrides-left-by-vsce-4.md) — `@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast-uri` / `form-data` / `linkify-it` / `markdown-it`）を外す
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
