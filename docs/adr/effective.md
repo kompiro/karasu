@@ -387,6 +387,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2598](2598-edge-routing-channel-capacity.md) — 層間チャネルに容量を持たせ、配線の需要を配置へ返す
 - [ADR-2611](2611-layer-spanning-edge-columns.md) — 層をまたぐエッジは内部の列へ入り、列の無い行にだけ列を 1 本予約する
 - [ADR-2631](2631-trunk-legibility-by-count.md) — トランクの合流と分岐を本数で読ませ、交差マークを装飾で潰さない
+- [ADR-2632](2632-edge-hover-affordance.md) — エッジの hover affordance を identity から切り離し、描かれた全エッジに付ける
 - [ADR-2714](2714-deploy-container-id-injective.md) — deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の id で行う
 - [ADR-2756](2756-root-view-system-edge-ownership.md) — root view の各 system フレームは自分の子から導出したエッジ集合を持つ
 - [ADR-2761](2761-width-budget-ladder-length.md) — 行幅予算の候補ラダーの長さを計測して 8 段にする

@@ -389,6 +389,7 @@ flowchart TD
     ADR_2598["ADR-2598<br/>層間チャネルに容量を持たせ、配線の需要を配置へ返す"]
     ADR_2611["ADR-2611<br/>層をまたぐエッジは内部の列へ入り、列の無い行にだけ列を 1 本予約する"]
     ADR_2631["ADR-2631<br/>トランクの合流と分岐を本数で読ませ、交差マークを装飾で潰さない"]
+    ADR_2632["ADR-2632<br/>エッジの hover affordance を identity から切り離し、描かれた全エッ..."]
     ADR_2714["ADR-2714<br/>deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
     ADR_2756["ADR-2756<br/>root view の各 system フレームは自分の子から導出したエッジ集合を持つ"]
     ADR_2761["ADR-2761<br/>行幅予算の候補ラダーの長さを計測して 8 段にする"]
@@ -997,6 +998,7 @@ flowchart TD
   class ADR_2623 accepted
   class ADR_2628 accepted
   class ADR_2631 accepted
+  class ADR_2632 accepted
   class ADR_2640 superseded
   class ADR_2643 accepted
   class ADR_2648 accepted
