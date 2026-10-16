@@ -34,8 +34,22 @@
 
 `examples/ja/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
 
-- [ ] Monaco エディタにフォーカスを置いた状態で `Ctrl/Cmd+Shift+2` を押すと、エディットペインが Chat タブに切替わる（エディタの入力は妨げられない）
-- [ ] Chat タブの入力欄にフォーカスを置いた状態で `Ctrl/Cmd+Shift+1` を押すと、Editor タブに戻る
-- [ ] すでにアクティブなタブのショートカットを押しても何も起きない（無害な no-op）
-- [ ] コマンドパレット（`Ctrl/Cmd+Shift+P`）に `Show Editor` / `Show Chat` が表示され、選択するとそれぞれのタブに切替わる
-- [ ] `EditTabBar` のタブを直接クリックする従来の操作も引き続き動作する
+- [x] Monaco エディタにフォーカスを置いた状態で `Ctrl/Cmd+Shift+2` を押すと、エディットペインが Chat タブに切替わる（エディタの入力は妨げられない）
+
+  > ✅ Automated — `packages/e2e/tests/at-1462-edit-tab-shortcuts.spec.ts` › `Ctrl/Cmd+Shift+2 and Ctrl/Cmd+Shift+1 switch tabs while typing`
+
+- [x] Chat タブの入力欄にフォーカスを置いた状態で `Ctrl/Cmd+Shift+1` を押すと、Editor タブに戻る
+
+  > ✅ Automated — `packages/e2e/tests/at-1462-edit-tab-shortcuts.spec.ts` › `Ctrl/Cmd+Shift+2 and Ctrl/Cmd+Shift+1 switch tabs while typing`
+
+- [x] すでにアクティブなタブのショートカットを押しても何も起きない（無害な no-op）
+
+  > ✅ Automated — `packages/e2e/tests/at-1462-edit-tab-shortcuts.spec.ts` › `Ctrl/Cmd+Shift+2 and Ctrl/Cmd+Shift+1 switch tabs while typing`
+
+- [x] コマンドパレット（`Ctrl/Cmd+Shift+P`）に `Show Editor` / `Show Chat` が表示され、選択するとそれぞれのタブに切替わる
+
+  > ✅ Automated — `packages/e2e/tests/at-1462-edit-tab-shortcuts.spec.ts` › `the palette's Show Chat and Show Editor switch tabs`
+
+- [x] `EditTabBar` のタブを直接クリックする従来の操作も引き続き動作する
+
+  > ✅ Automated — `packages/e2e/tests/at-1462-edit-tab-shortcuts.spec.ts` › `clicking the edit tabs still switches them`

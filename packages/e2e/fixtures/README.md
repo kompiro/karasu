@@ -138,6 +138,13 @@ Use it whenever a spec just needs "the app in memory mode with this
 locale opt-out) or a custom `gotoApp` path keep calling the fixture
 methods directly.
 
+`bootProjectApp(page, opfs, krs, project?)` is the project-mode (OPFS)
+counterpart: it seeds one project (`demo` / `Demo` by default) whose
+`index.krs` is `krs`, opens it, and waits until the diagram has drawn a
+node. Use it when the spec needs what only project mode mounts: the file
+sidebar, the Outline view, or the `Switch Project…` command. Specs that
+need several projects call `opfs.seed` themselves (AT-1482).
+
 ## `tabs.ts` — race-safe view-tab switching
 
 `openViewTab(page, name)` clicks the view tab (`"System"`, `"Deploy"`,
@@ -151,12 +158,37 @@ Specs that intentionally skip the selected assertion (AT-0044's
 `openOrgTab`) or assert `aria-selected` via `toHaveAttribute` keep their
 own inline choreography.
 
+`selectedTab(page, name)` is the tab locator restricted to the selected
+state. Specs that switch tabs from the keyboard (or the command palette)
+rather than by clicking read the result through it:
+`await expect(selectedTab(page, "Deploy")).toBeVisible()`.
+
 `setDisplayMode(page, "shape" | "icon")` and `setTheme(page, "light" | "dark")`
 drive the two Settings-tab selects the preview re-renders from. `setTheme`
 polls `<html data-theme>` before returning, which is the signal every themed
 surface (app chrome, Monaco, the SVG canvas) repaints on. The `system` theme
 is not offered: it follows the OS and is exercised through
 `test.use({ colorScheme })` instead (AT-1470).
+
+## `keyboard.ts` — app keyboard shortcuts
+
+- `pressChord(page, "Shift+P")` presses `ControlOrMeta+Shift+P`, which the
+  app reads as `mod+shift+p` (`packages/app/src/keyboard/chord.ts`). Write
+  the chord as a literal at the call site:
+  `scripts/lint/e2e-command-coverage.ts` finds a keybinding's spec by this
+  argument or by the full `"ControlOrMeta+…"` string, so a chord built from
+  a variable does not count.
+- `blurToPreview(page)` clicks the preview's empty corner so no text input
+  holds focus, and asserts that. Commands with `whenTextInputFocused:
+"skip"` (the default) only fire then.
+- `focusEditor(page)` focuses the Monaco textbox and waits for it;
+  `editorTextbox(page)` is that locator.
+
+A "this shortcut is ignored in the editor" assertion has nothing to wait on.
+Instead of a sleep, follow the ignored chord with one that fires inside the
+editor (`pressChord(page, "Shift+2")` selects Chat) and wait for that. Key
+events are handled in order, so once Chat is selected the ignored chord has
+already been processed (AT-1411 / 1422 / 1423 / 1458).
 
 ## `drill.ts` — drilling through rendered nodes
 
