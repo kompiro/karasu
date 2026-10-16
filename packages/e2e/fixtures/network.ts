@@ -15,7 +15,7 @@ import { test as base } from "@playwright/test";
  * Diagram layout does not move with it, since node sizes come from
  * `estimateTextWidth`, not from measuring the rendered font.
  */
-export const GOOGLE_FONTS_URL = /^https:\/\/fonts\.(googleapis|gstatic)\.com\//;
+const GOOGLE_FONTS_URL = /^https:\/\/fonts\.(googleapis|gstatic)\.com\//;
 
 export const test = base.extend<{ stubWebFonts: void }>({
   stubWebFonts: [
@@ -24,6 +24,9 @@ export const test = base.extend<{ stubWebFonts: void }>({
         route.fulfill({
           status: 200,
           contentType: route.request().resourceType() === "stylesheet" ? "text/css" : "font/woff2",
+          // Google Fonts serves both hosts with this header; fonts are fetched
+          // in CORS mode, so the stub keeps it.
+          headers: { "access-control-allow-origin": "*" },
           body: "",
         }),
       );
