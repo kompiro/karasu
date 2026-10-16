@@ -52,15 +52,16 @@
 
   > ✅ Automated — `packages/app/src/components/ShareDialog.test.tsx` › `hides the deep-link checkbox when there is nothing to link to` / `notifies on toggling the deep-link checkbox` / `packages/e2e/tests/at-1827-permalink-deep-element.spec.ts` › `with the checkbox off, the same share opens the whole model`
 
-### 手動確認（CI で検証できない項目）
-
 - [x] M-1: あるサービスにドリルした状態で Share → チェック ON のリンクを別タブで開くと、そのサービス階層にドリルした状態で開くこと
 
   > ✅ Automated — `packages/e2e/tests/at-1827-permalink-deep-element.spec.ts` › `a link shared while drilled into a service opens drilled into it`（breadcrumb と `#krs-system-<id>` の hash）
-- [x] M-2: ノードを選択（highlight）した状態で共有 → 開いたとき当該ノードがフォーカス強調されること
+
+### 手動確認（CI で検証できない項目）
+
+- [ ] M-2: ノードを選択（highlight）した状態で共有 → 開いたとき当該ノードがフォーカス強調されること
 
   > 🟡 Partially automated — `packages/app/src/hooks/useHistoryNavigation.test.ts` › `pending highlight restoration (#1842)`（共有オープン時に highlight が seed の VIEW_RESET 後に再適用されることを検証。実ブラウザ上の視覚的フォーカス強調の確認は手動）
-- [x] M-3: 共有後にモデルの当該 node `id` を rename → 古いリンクを開くと（クラッシュせず）view root にフォールバックすること
+- [ ] M-3: 共有後にモデルの当該 node `id` を rename → 古いリンクを開くと（クラッシュせず）view root にフォールバックすること
 
   > 🟡 Partially automated — `packages/e2e/tests/at-1958-deep-link-anchor.spec.ts` › `an anchor that no longer resolves opens the whole model`（`?krs=` 経由で解決できない `#krs-system-<id>` が root で開くことを見る。payload の `target` も同じ hash に正規化されてから解決されるが、`target` 経由の経路そのものは手動）
 - [ ] M-4: 静的にエクスポートした drill-down SVG を `<file>#krs-system-<id>` で直接開くと、CSS `:target` で当該階層が表示されること（JS 無効でも）。書き出したファイルを直接開く操作で、app を相手にする e2e の外にある

@@ -47,9 +47,6 @@
 
   > ✅ Automated — `packages/app/src/components/ShareDialog.test.tsx` › `re-copies the URL and shows confirmation when Copy is clicked` / `packages/e2e/tests/at-1783-inline-share.spec.ts` › `Share opens the dialog with a private #s= link that is copied, and Copy re-copies`
 
-### 手動確認（CI で検証できない項目）
-
-- [ ] M-1: 実ブラウザで Share → 実際に別アプリへ貼り付け、URL が有効なこと（clipboard の実挙動）。ブラウザ内のクリップボードへの書き込みは AT-F の e2e が見ている。残るのは OS のクリップボードを経由して別アプリに貼る部分
 - [x] M-2: 生成 URL を別タブ／別ブラウザで開くと、元の図が **drill-down 付き**で再現されること
 
   > ✅ Automated — `packages/e2e/tests/at-1783-inline-share.spec.ts` › `the private link opens in memory mode and leaves the visitor's OPFS project untouched` / `packages/e2e/tests/at-1827-permalink-deep-element.spec.ts` › `a link shared while drilled into a service opens drilled into it`
@@ -58,9 +55,12 @@
 
   > ✅ Automated — `packages/e2e/tests/at-1783-inline-share.spec.ts` › `the private link opens in memory mode and leaves the visitor's OPFS project untouched`（`/meta/projects.json` と訪問者の `index.krs` が開く前と同じ）
 
-- [ ] M-4: 実リバース `.krs`（Dify, system + deploy）を共有 → 全ビューに drill-down できること。e2e は小さな合成モデルで同じ経路を通している。実リバースの大きなモデルでの確認は、そのモデルを手元に置いて行う
 - [x] M-5: 壊れた `#s=` URL を開くと警告バナーが出て、ProjectMode で開かれる（白画面／クラッシュにならない）こと
 
   > ✅ Automated — `packages/e2e/tests/at-1783-inline-share.spec.ts` › `a corrupt #s= link shows the restore-failed banner and opens Project mode`
 
+### 手動確認（CI で検証できない項目）
+
+- [ ] M-1: 実ブラウザで Share → 実際に別アプリへ貼り付け、URL が有効なこと（clipboard の実挙動）。ブラウザ内のクリップボードへの書き込みは AT-F の e2e が見ている。残るのは OS のクリップボードを経由して別アプリに貼る部分
+- [ ] M-4: 実リバース `.krs`（Dify, system + deploy）を共有 → 全ビューに drill-down できること。e2e は小さな合成モデルで同じ経路を通している。実リバースの大きなモデルでの確認は、そのモデルを手元に置いて行う
 - [ ] M-6: クロスブラウザ（特に Safari）でアドレスバーの URL 長が問題にならないこと。Playwright の project は chromium だけなので、Safari では手で確かめる

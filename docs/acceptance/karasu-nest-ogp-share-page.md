@@ -53,6 +53,10 @@
 
   > ✅ Automated — `packages/core/src/renderer/ogp-frame.test.ts` / `packages/app/src/render/share-page.test.ts`
 
+- [x] AT-M: 大きいプロジェクトでは Share ダイアログが private リンクのみ + oversize 警告になり、private リンクで復元できる
+
+  > ✅ Automated — `packages/e2e/tests/at-1801-ogp-share-page.spec.ts` › `an oversize project gets only the private link, and it still restores`
+
 ### 手動（プレビューデプロイで検証）
 
 > OGP の実 unfurl はクローラ挙動に依存するため CI では検証できない。Cloudflare プレビューデプロイで確認する。
@@ -61,6 +65,3 @@
 - [ ] AT-J: 同 URL を **Slack** に貼ると system 図のプレビュー画像が表示され、**図全体が（クロップされず）収まっている**
 - [ ] AT-K: 同 URL を **Discord** / **X** に貼ってもプレビューが表示される（少なくとも 1 つ。各社のクローラ差は許容）
 - [ ] AT-L: og:title / og:description にプロジェクト名・説明が反映される（label / description を設定したモデルで確認）
-- [x] AT-M: 大きいプロジェクトでは Share ダイアログが private リンクのみ + oversize 警告になり、private リンクで復元できる
-
-  > ✅ Automated — `packages/e2e/tests/at-1801-ogp-share-page.spec.ts` › `an oversize project gets only the private link, and it still restores`
