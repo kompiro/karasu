@@ -1,7 +1,7 @@
 # Dependabot トリアージ 2026-10-15
 
 - **日付**: 2026-10-15
-- **ステータス**: 検討中
+- **ステータス**: 採用（反映中）
 - **関連**:
   - 対象 Dependabot PR: [#3227](https://github.com/kompiro/karasu/pull/3227) / [#3228](https://github.com/kompiro/karasu/pull/3228) / [#3229](https://github.com/kompiro/karasu/pull/3229) / [#3230](https://github.com/kompiro/karasu/pull/3230) / [#3231](https://github.com/kompiro/karasu/pull/3231) / [#3232](https://github.com/kompiro/karasu/pull/3232) / [#3233](https://github.com/kompiro/karasu/pull/3233) / [#3234](https://github.com/kompiro/karasu/pull/3234) / [#3235](https://github.com/kompiro/karasu/pull/3235)
   - 前回（10-14 第 2 波）: [#3221](https://github.com/kompiro/karasu/pull/3221)（`open-pull-requests-limit` を 25 へ。Design Doc `dependabot-triage-2026-10-14-second-batch.md` は ADR 昇格待ち）
@@ -211,6 +211,38 @@ npx vitest run --config scripts/vitest.config.ts ci/gh-aw-lock-consistency.test.
 
 10-16 中に cooldown を越えるもの: `lucide-react` 1.54.0（06:18）、`knip` 6.41.0（07:57）、`@anthropic-ai/sdk` 0.133.0
 （15:44）。rebase がそれ以降になったら、マージ前に PR タイトルの版を確かめ、変わっていればその版の差分を確認する。
+
+## 反映
+
+ユーザー判断（2026-10-15）:
+
+1. #3230 は override の floor も上げる（推奨どおり）
+2. #3235 の override は、利用元がいなくなるなら**外して ADR を supersede する**（案 B。Design Doc の推奨 A から変更）
+3. 差し替え PR は 3 本に分ける
+
+- 差し替え PR:
+  - vite: [#3244](https://github.com/kompiro/karasu/pull/3244)（#3230 は close）。lock は 8.3.4 に解決し、`vite@8.3.0` は 0 件
+  - knip: [#3245](https://github.com/kompiro/karasu/pull/3245)（#3229 は close）。main の `knip.json` では 6.40.0 で同じ hint が出て
+    exit 1、修正後は exit 0 になることをローカルで確かめた
+  - vsce: [#3247](https://github.com/kompiro/karasu/pull/3247)（#3235 は close）。Issue [#3246](https://github.com/kompiro/karasu/issues/3246)
+    と ADR-3246 で 4 つの override を外し、ADR-1338 を supersede する。ADR-2693 / ADR-3002 は frontmatter の assumption だけを除く。
+    `.vsix` を main と比べ、README / manifest / `extension.js` / `server.js` がバイト単位で一致することを確かめた
+    （差分は同梱される `package.json` の `@vscode/vsce` の行だけ）
+- 却下: #3227 を close した
+- そのままマージ: #3231 / #3228 / #3233 / #3234 / #3232 の順に `@dependabot rebase` → CI green → squash merge
+  （10-16 00:05 〜 01:09 UTC）。毎回マージの前に、PR タイトルの版と、rebase 後の lock の依存エッジを main と比べた
+  - #3231 / #3228 / #3233 / #3234 は rebase 後も版が変わらなかった。#3233 では、直前にマージした #3228 が持ち込んだ
+    `@babel/runtime` 7.29.10 へ `@testing-library/dom` が乗り換えた（10-07 公開、OIDC + provenance、helper 2 つの修正だけ）
+  - **#3232 は予想どおり rebase で astro 7.3.8 になった。** 7.3.7 から新しく入る版は `vite` 8.3.4（確認済み）、`undici`
+    7.30.0（09-25 公開、v7 系のバックポート修正のみ、maintainer 3 名は同じ、provenance あり）、`verkit` 0.5.0（provenance あり、
+    maintainer 同じ）。docs-site のビルド比較を 7.3.8 でやり直し、73 ページの HTML が正規化後にすべて一致すること、
+    WARN が main と同じ 2 件であることを確かめてからマージした
+- 差し替え PR 3 本は、5 件のマージ後に main を取り込み、lockfile を main の lock から作り直した。再解決で寄ったのは
+  上で確認済みの版（`vite` 8.3.4 / `undici` 7.30.0 / `package-manager-detector` 1.9.0）だけで、新しいパッケージ名は無い
+
+案 B に変えた理由は ADR-3246 に書いた。効かない override は「まだツリーにある」と誤って伝え、戻ってきたときに古い floor が
+そのまま効くことは、その floor が新しい advisory の脆弱範囲に入りうる以上、利点にならない。`uuid` の override も main の
+時点で利用元がいないが、vsce とは関係が無いので別途扱う。
 
 ## 当初の方針
 
