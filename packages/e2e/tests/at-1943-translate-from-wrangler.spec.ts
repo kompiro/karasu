@@ -53,6 +53,6 @@ test.describe("AT-1943 Translate from wrangler.toml (App dialog)", () => {
     await expect(output).toHaveValue(/^deploy "my-worker" \{/m);
     await expect(output).toHaveValue(/type "Cloudflare D1"/);
     // The technology stays on the physical store, never on a logical label.
-    await expect(output).not.toHaveValue(/label "Cloudflare/);
+    await expect(output).not.toHaveValue(/\blabel\s+"[^"\n]*Cloudflare[^"\n]*"/);
   });
 });

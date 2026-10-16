@@ -76,7 +76,9 @@ test.describe("AT-0067 Warnings refresh after editor edits", () => {
     opfs,
   }) => {
     await bootMemoryApp(page, opfs, HANDLES_OK);
-    await expect(page.locator(".preview-container svg").first()).toBeVisible();
+    const diagram = page.locator(".preview-container svg").first();
+    await expect(diagram).toBeVisible();
+    const lastGoodSvg = await diagram.innerHTML();
     // The overlay is `aria-hidden` (the banner carries the error for assistive
     // tech), so it is found by text rather than by role.
     await expect(page.getByText(OUTDATED_BADGE)).toHaveCount(0);
@@ -84,7 +86,8 @@ test.describe("AT-0067 Warnings refresh after editor edits", () => {
     // Drop the closing brace: the last good diagram stays, flagged outdated.
     await replaceEditorContent(page, HANDLES_OK.trimEnd().replace(/\}$/, ""));
     await expect(page.getByText(OUTDATED_BADGE)).toBeVisible();
-    await expect(page.locator(".preview-container svg").first()).toBeVisible();
+    // Visible is not enough: it must be the same diagram, not a re-render.
+    await expect.poll(() => diagram.innerHTML()).toBe(lastGoodSvg);
 
     await replaceEditorContent(page, HANDLES_OK);
     await expect(page.getByText(OUTDATED_BADGE)).toHaveCount(0);

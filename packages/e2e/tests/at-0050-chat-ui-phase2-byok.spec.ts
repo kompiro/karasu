@@ -19,6 +19,8 @@ import { rightClickEdge } from "../fixtures/edges.js";
 const PROJECT_ID = "at-0050-byok";
 const INITIAL_KRS = 'system "BYOK Demo" {}\n';
 const INDEX_PATH = `/projects/${PROJECT_ID}/index.krs`;
+/** How long AC-11 watches for a save or follow-up after a refused Apply. */
+const APPLY_SETTLE_MS = 1000;
 const SEED_PROJECT = {
   id: PROJECT_ID,
   name: "BYOK Demo",
@@ -403,10 +405,17 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
       await expect.poll(() => staleWarnings.length).toBe(1);
       // ...so nothing changed: the proposal is still pending, no follow-up
       // turn was sent, and the file differs from the seed only by the import.
+      // Apply leaves no completion signal, so the absence is held for a
+      // window: a regression that warned and then went on to save or send
+      // the follow-up would show up inside it.
+      const holdUntil = Date.now() + APPLY_SETTLE_MS;
+      do {
+        expect(anthropic.requests.length).toBe(requestsAtProposal);
+        expect(await opfs.read(INDEX_PATH)).toBe(IMPORTED_KRS);
+        await page.waitForTimeout(100);
+      } while (Date.now() < holdUntil);
       await expect(proposal.getByRole("button", { name: /Apply/ })).toBeVisible();
       await expect(proposal.getByRole("button", { name: /Reject/ })).toBeVisible();
-      expect(anthropic.requests.length).toBe(requestsAtProposal);
-      expect(await opfs.read(INDEX_PATH)).toBe(IMPORTED_KRS);
     });
   });
 });

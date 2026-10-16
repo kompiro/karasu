@@ -47,7 +47,7 @@
 
   > ✅ Automated — `packages/e2e/tests/at-1463-app-translate.spec.ts` › `the sidebar entry translates a pasted compose file into a deploy block`
 
-- [x] Memory モードで、コマンドパレット（`Ctrl/Cmd+Shift+P`）の「Translate Infra Config to .krs…」からダイアログが開く
+- [x] Memory モードで、コマンドパレット（`Ctrl/Cmd+Shift+P`）の「Translate Infra Config to .krs…」からダイアログが開く（コマンドを登録する `TranslateProvider` は `App.tsx` でモード分岐の外側に置かれているので、Serve モードも同じコマンドを持つ）
 
   > ✅ Automated — `packages/e2e/tests/at-1463-app-translate.spec.ts` › `the palette command opens the dialog in memory mode`
 
@@ -66,4 +66,3 @@
 
 - [ ] ダイアログがモーダルとして中央に表示され、Esc・外側クリックで閉じる
 - [ ] フォーマット選択（Docker Compose / Kubernetes / OpenAPI / DB schema）で詳細オプションが切り替わる
-- [ ] Serve モードでもコマンドパレットからダイアログを開いて変換できる
