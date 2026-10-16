@@ -1,4 +1,5 @@
-import { test as base, expect } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test as base } from "./network.js";
 
 /**
  * OPFS fixture for Playwright tests.
