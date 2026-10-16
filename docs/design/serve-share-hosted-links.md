@@ -3,7 +3,7 @@
 - **日付**: 2026-10-16
 - **ステータス**: 検討中
 - **Issue**: [#3162](https://github.com/kompiro/karasu/issues/3162)
-- **PR**: TBD
+- **PR**: [#3254](https://github.com/kompiro/karasu/pull/3254)
 - **関連**:
   - 関連 ADR: [ADR-3138](../adr/3138-serve-app-without-monaco.md)（serve モードから Share を外した決定。決定 5）、[ADR-3017](../adr/3017-serve-app-shipping.md)（npm の CLI に serve 用 app を同梱）、[ADR-2993](../adr/2993-gallery-client-side-rendering.md)（`PreviewToolbarSlotContext` と viewer）、[ADR-1809](../adr/1809-app-custom-domain-karasu-kompiro-dev.md)（公開版 app の URL）
   - 関連 TPL: [TPL-1024](../test-perspectives/TPL-1024-dev-vs-packaged-mode-parity.md)、[TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md)、[TPL-2259](../test-perspectives/TPL-2259-shared-budget-enforced-at-every-producer.md)、[TPL-168](../test-perspectives/TPL-168-trust-boundary-input-validation.md)、[TPL-3162](../test-perspectives/TPL-3162-link-for-others-built-on-reachable-origin.md)（本 Design Doc で起こす proactive TPL）
