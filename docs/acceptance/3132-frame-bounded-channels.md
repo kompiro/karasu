@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-10-13
 - **関連 Issue**: [#3132](https://github.com/kompiro/karasu/issues/3132)
+- **設計 (ADR)**: [ADR-3132](../adr/3132-frame-bounded-channels.md)
 - **関連 ADR**: [ADR-2598](../adr/2598-edge-routing-channel-capacity.md)、[ADR-3026](../adr/3026-same-row-channel-route.md)
 - **Related TPLs**: [TPL-3132](../test-perspectives/TPL-3132-resource-inside-a-frame-measured-against-the-frame.md), [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md), [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)
 - **対象ファイル**: `packages/core/src/renderer/edge-routing-lanes.ts`（`ChannelLimits` / `collectChannels`）、`packages/core/src/renderer/edge-routing-groups.ts`（`channelBelow` / `channelAbove`）、`packages/core/src/renderer/layout.ts`（`channelReservations`）、`packages/core/src/renderer/layer-layout-logics.ts`（`placeNodesInLayers`）
