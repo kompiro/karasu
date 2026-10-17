@@ -11,6 +11,8 @@ known_consumers:
   - keyboard-shortcut-dispatcher
 discovered_from:
   - root_cause_file: "packages/app/src/keyboard/KeyboardShortcutDispatcher.tsx"
+  - issue: "#3207"
+  - root_cause_file: "packages/app/src/keyboard/chord.ts :: isTextInputFocused"
 related_to:
   - TPL-1053
 topic: app-ui
@@ -50,6 +52,13 @@ scope:
   `run` が鳴り続ける
 - chord 正規化（`mod` の platform 差、修飾子順）の取りこぼしで、特定
   platform でだけショートカットが一致しない
+- **エディタのフォーカス先が「テキスト入力」の判定から外れる**（#3207）。
+  エディタのフォーカス先はエディタの実装で変わる。Monaco は Chromium で
+  EditContext API を使い、`<textarea>` でも contenteditable でもない
+  `<div class="native-edit-context">` にフォーカスするので、
+  `INPUT` / `TEXTAREA` / `isContentEditable` だけの判定をすり抜けて、
+  `skip` のショートカットがエディタ内で発火した。jsdom には EditContext が
+  無く、`<textarea>` を focus する単体テストはすべて通っていた
 
 ## チェックリスト
 
@@ -63,6 +72,9 @@ scope:
 - [ ] コマンドを登録するコンポーネントのアンマウントで登録解除されるか
 - [ ] platform 依存（`mod` = Cmd/Ctrl）や修飾子順に依存する場合、その
       正規化を検証したか
+- [ ] エディタにフォーカスした状態の検証を、jsdom の `<textarea>` ではなく
+      **実ブラウザで実際のエディタにフォーカスして**行ったか（フォーカス先の
+      要素はエディタの実装と browser で変わる。#3207）
 
 ## 既知の対処パターン
 
@@ -77,5 +89,10 @@ karasu のキーボードショートカット基盤（`packages/app/src/keyboar
 - `packages/app/src/keyboard/keyboard-shortcuts.test.tsx` — skip / allow 双方を
   テキスト入力フォーカス下で検証
 - `packages/app/src/keyboard/chord.test.ts` — chord 正規化・`isTextInputFocused`
+  （EditContext を持つ要素を含む。#3207）
+- `packages/e2e/tests/at-1411-sidebar-toggle-shortcut.spec.ts` /
+  `at-1422-sidebar-view-shortcuts.spec.ts` / `at-1423-diagram-view-shortcuts.spec.ts` /
+  `at-1458-preview-focus-shortcut.spec.ts` — `… is ignored while the editor has focus`
+  （実ブラウザで Monaco にフォーカスして keydown を撃つ。#3207）
 - `packages/app/src/components/EditArea.test.tsx` — `mod+B` がエディタ
   フォーカス中は発火しないこと
