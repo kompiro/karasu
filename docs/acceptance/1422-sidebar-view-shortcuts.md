@@ -44,8 +44,10 @@
 
   > ✅ Automated — `packages/e2e/tests/at-1422-sidebar-view-shortcuts.spec.ts` › `Ctrl/Cmd+Shift+O reopens a collapsed sidebar on the Outline view`
 
-- [ ] Monaco エディタにフォーカスを置いた状態で `Ctrl/Cmd+Shift+O` を押してもサイドバーは切替わらず、Monaco の Go to Symbol も発火しない（エディタの入力を妨げない）
+- [x] Monaco エディタにフォーカスを置いた状態で `Ctrl/Cmd+Shift+O` を押してもサイドバーは切替わらない（エディタの入力を妨げない）
 
-  > e2e は [#3207](https://github.com/kompiro/karasu/issues/3207) の修正まで `test.fixme`（`packages/e2e/tests/at-1422-sidebar-view-shortcuts.spec.ts` › `Ctrl/Cmd+Shift+O is ignored while the editor has focus`）。Monaco の EditContext はフォーカス先が contenteditable でないため、現状はこのショートカットがエディタ内でも発火する。
+  > ✅ Automated — `packages/e2e/tests/at-1422-sidebar-view-shortcuts.spec.ts` › `Ctrl/Cmd+Shift+O is ignored while the editor has focus`（Chromium の Monaco は EditContext の div にフォーカスする。[#3207](https://github.com/kompiro/karasu/issues/3207) までこの経路ではショートカットが発火していた）
 
-  > Monaco の Go to Symbol が開かないことは Monaco 側の挙動なので手動で確認する。
+- [ ] Monaco エディタにフォーカスを置いた状態で `Ctrl/Cmd+Shift+O` を押しても、Monaco の Go to Symbol が開かない
+
+  > Monaco 側の挙動なので手動で確認する。

@@ -45,10 +45,9 @@ test.describe("AT-1411 sidebar toggle shortcut", () => {
     );
   });
 
-  // #3207: Monaco's EditContext focus target is not contenteditable, so the
-  // dispatcher does not see a text input and `mod+b` fires. Remove the fixme
-  // with the fix.
-  test.fixme("Ctrl/Cmd+B is ignored while the editor has focus", async ({ page, opfs }) => {
+  // Monaco in Chromium focuses an EditContext div, not a textarea; `mod+b`
+  // fired there until #3207.
+  test("Ctrl/Cmd+B is ignored while the editor has focus", async ({ page, opfs }) => {
     await bootProjectApp(page, opfs, SHOP_KRS);
     await expect(page.locator(".sidebar-area")).toBeVisible();
     await focusEditor(page);
