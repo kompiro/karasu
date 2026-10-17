@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures/anthropic.js";
 import { bootChat, sendChatMessage, CHAT_ERROR_CASES } from "../fixtures/chat.js";
+import { rightClickEdge } from "../fixtures/edges.js";
 
 /**
  * AT-0050 Chat UI Phase 2 — BYOK + AI integration.
@@ -18,6 +19,8 @@ import { bootChat, sendChatMessage, CHAT_ERROR_CASES } from "../fixtures/chat.js
 const PROJECT_ID = "at-0050-byok";
 const INITIAL_KRS = 'system "BYOK Demo" {}\n';
 const INDEX_PATH = `/projects/${PROJECT_ID}/index.krs`;
+/** How long AC-11 watches for a save or follow-up after a refused Apply. */
+const APPLY_SETTLE_MS = 1000;
 const SEED_PROJECT = {
   id: PROJECT_ID,
   name: "BYOK Demo",
@@ -280,19 +283,7 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
       ]);
     });
 
-    // AC-11 — "Apply is silently ignored when the file changes after the
-    // proposal" — is currently not E2E-testable. The AC requires (a)
-    // surfacing a patch proposal in Chat, (b) switching to the Editor tab
-    // and editing the .krs, (c) switching back to Chat and clicking
-    // Apply. But `EditPane` mounts `<ChatPane>` only while the Chat tab
-    // is active (`{activeTab === "chat" && <ChatPane>}`), so the chat
-    // session — including the pending patch — is unmounted on the tab
-    // switch and the proposal disappears. The hash-mismatch path in
-    // `useChatSession.applyPatch` is exercised by unit tests instead.
-    // Re-enable here once `<ChatPane>` is kept mounted across tab
-    // switches (or AT-0050 AC-11 is rewritten with a different dirtying
-    // mechanism).
-    test.skip("AC-11: stale-patch Apply is no-op (skipped — see comment)", () => {});
+    // AC-11 needs a seed with an edge to write through — see its own describe below.
 
     test("AC-12: New Session resets the chat including a pending patch", async ({
       page,
@@ -340,5 +331,91 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
         await expect(errorMsg.getByRole("button", { name: hiddenButton })).toHaveCount(0);
       });
     }
+  });
+
+  // ── AC-11: a stale patch is not applied ─────────────────────────────────
+  //
+  // The AC needs the open `.krs` to change while the proposal is pending, with
+  // Chat still mounted. Editing in the Editor tab cannot do that: `EditPane`
+  // mounts `<ChatPane>` only while the Chat tab is active, so the proposal is
+  // gone on the tab switch. The preview column stays mounted, and picking an
+  // edge direction on a `.krs` without `@import` makes `useEdgeDirectionWriter`
+  // inject the import through `handleEditorChange` — the same state update an
+  // editor edit makes, so `fileContentRef` (and its hash) changes under Chat.
+
+  test.describe("with an edge to write through the preview", () => {
+    const EDGE_KRS = `system Shop {
+  service Api {}
+  service Db {}
+  Api -> Db
+}
+`;
+    const IMPORTED_KRS = `@import "index.krs.style"\n${EDGE_KRS}`;
+
+    test.beforeEach(async ({ opfs, anthropic }) => {
+      await bootChat(opfs, anthropic, {
+        projects: [{ ...SEED_PROJECT, files: { "index.krs": EDGE_KRS } }],
+        lastProjectId: PROJECT_ID,
+      });
+    });
+
+    test("AC-11: Apply on a patch proposed before the file changed is a no-op", async ({
+      page,
+      opfs,
+      anthropic,
+    }) => {
+      // One scripted turn only: if Apply went through, its follow-up request
+      // would find the queue empty and show up in `anthropic.requests`.
+      anthropic.scriptTurns([
+        {
+          kind: "tool_use",
+          tool: "apply_krs_patch",
+          input: {
+            operation: "append",
+            description: "Add Order service",
+            content: 'service "Order" {}',
+          },
+          toolUseId: "toolu_patch_ac11",
+        },
+      ]);
+
+      await sendChatMessage(page, "Add Order");
+      const proposal = page.locator(".chat-patch-proposal");
+      await expect(proposal.getByRole("button", { name: /Apply/ })).toBeVisible();
+      const requestsAtProposal = anthropic.requests.length;
+
+      // Dirty the file from the preview while Chat stays on screen.
+      await rightClickEdge(page, "Api->Db");
+      await page.getByRole("menuitem", { name: "↓ Down" }).click();
+      await expect.poll(() => opfs.read(INDEX_PATH)).toBe(IMPORTED_KRS);
+
+      const staleWarnings: string[] = [];
+      page.on("console", (msg) => {
+        if (msg.type() === "warning" && msg.text().includes("hash mismatch")) {
+          staleWarnings.push(msg.text());
+        }
+      });
+
+      await proposal.getByRole("button", { name: /Apply/ }).click();
+
+      // The click reached `applyPatch`, which refused the stale proposal. Its
+      // warning is the only positive signal of the refusal (a no-op leaves no
+      // DOM trace), and it is what keeps the absence checks below from passing
+      // on a click that never landed...
+      await expect.poll(() => staleWarnings.length).toBe(1);
+      // ...so nothing changed: the proposal is still pending, no follow-up
+      // turn was sent, and the file differs from the seed only by the import.
+      // Apply leaves no completion signal, so the absence is held for a
+      // window: a regression that warned and then went on to save or send
+      // the follow-up would show up inside it.
+      const holdUntil = Date.now() + APPLY_SETTLE_MS;
+      do {
+        expect(anthropic.requests.length).toBe(requestsAtProposal);
+        expect(await opfs.read(INDEX_PATH)).toBe(IMPORTED_KRS);
+        await page.waitForTimeout(100);
+      } while (Date.now() < holdUntil);
+      await expect(proposal.getByRole("button", { name: /Apply/ })).toBeVisible();
+      await expect(proposal.getByRole("button", { name: /Reject/ })).toBeVisible();
+    });
   });
 });
