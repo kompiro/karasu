@@ -316,4 +316,41 @@ test.describe("AT-3031 focus canvas", () => {
     expect(await body.evaluate((el) => [el.scrollLeft, el.scrollTop])).toEqual(still);
     await expect(page.locator(".focus-canvas__title")).toHaveText("Identity & access");
   });
+
+  // #3180: a lane took a press only on its stroke and on the glyphs of its
+  // label, so a click between the two lines of a wrapped label landed on the
+  // background and did nothing.
+  test("a lane takes a press between the lines of its label (#3180)", async ({ page, opfs }) => {
+    await openDenseCanvas(page, opfs);
+    await openRelations(page, "Identity");
+
+    const point = await page.evaluate(() => {
+      for (const lane of document.querySelectorAll(".focus-canvas .focus-canvas__lane")) {
+        const spans = lane.querySelectorAll("tspan");
+        if (spans.length < 2) continue;
+        // The canvas scrolls on its own: bring the lane on screen to hit-test it.
+        lane.scrollIntoView({ block: "center", inline: "center" });
+        const first = spans[0].getBoundingClientRect();
+        const second = spans[1].getBoundingClientRect();
+        // Between the two lines, left of where either line's glyphs end.
+        const x = first.left + Math.min(first.width, second.width) / 2;
+        const y = (first.bottom + second.top) / 2;
+        const hit = document.elementFromPoint(x, y)?.closest(".focus-canvas__lane");
+        return {
+          x,
+          y,
+          hitsLane: hit === lane,
+          from: lane.getAttribute("data-focus-from"),
+          to: lane.getAttribute("data-focus-to"),
+        };
+      }
+      return null;
+    });
+    expect(point, "a lane on Identity's canvas wraps its label onto two lines").not.toBeNull();
+    expect(point!.hitsLane).toBe(true);
+
+    await page.mouse.click(point!.x, point!.y);
+    // The edge focus: the pair's two cards, nothing else.
+    await expect(page.locator(".focus-canvas .focus-canvas__card")).toHaveCount(2);
+  });
 });
