@@ -182,6 +182,9 @@ flowchart TD
     ADR_3117["ADR-3117<br/>CodeRabbit から外す PR は PR 本文の ignore コマンドで外し、ラベルは..."]
     ADR_3138["ADR-3138<br/>`karasu serve` の app build は専用 entry から始め、Monac..."]
     ADR_3196["ADR-3196<br/>Dependabot トリアージ 2026-10-14：npm 6 件を採用し、Radix は..."]
+    ADR_3203["ADR-3203<br/>Dependabot security alert 2026-10-14（sharp の ov..."]
+    ADR_3242["ADR-3242<br/>Dependabot トリアージ 2026-10-15：npm 5 件をそのまま採用し、vit..."]
+    ADR_3246["ADR-3246<br/>`@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -386,6 +389,7 @@ flowchart TD
     ADR_2598["ADR-2598<br/>層間チャネルに容量を持たせ、配線の需要を配置へ返す"]
     ADR_2611["ADR-2611<br/>層をまたぐエッジは内部の列へ入り、列の無い行にだけ列を 1 本予約する"]
     ADR_2631["ADR-2631<br/>トランクの合流と分岐を本数で読ませ、交差マークを装飾で潰さない"]
+    ADR_2632["ADR-2632<br/>エッジの hover affordance を identity から切り離し、描かれた全エッ..."]
     ADR_2714["ADR-2714<br/>deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
     ADR_2756["ADR-2756<br/>root view の各 system フレームは自分の子から導出したエッジ集合を持つ"]
     ADR_2761["ADR-2761<br/>行幅予算の候補ラダーの長さを計測して 8 段にする"]
@@ -638,6 +642,7 @@ flowchart TD
   ADR_3052 -.supersedes.-> ADR_2898
   ADR_3117 -.supersedes.-> ADR_3011
   ADR_3117 -.supersedes.-> ADR_2949
+  ADR_3246 -.supersedes.-> ADR_1338
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -804,7 +809,7 @@ flowchart TD
   class ADR_1315 accepted
   class ADR_1316 accepted
   class ADR_1320 accepted
-  class ADR_1338 accepted
+  class ADR_1338 superseded
   class ADR_1344 accepted
   class ADR_1350 accepted
   class ADR_1357 accepted
@@ -993,6 +998,7 @@ flowchart TD
   class ADR_2623 accepted
   class ADR_2628 accepted
   class ADR_2631 accepted
+  class ADR_2632 accepted
   class ADR_2640 superseded
   class ADR_2643 accepted
   class ADR_2648 accepted
@@ -1056,6 +1062,9 @@ flowchart TD
   class ADR_3138 accepted
   class ADR_3169 accepted
   class ADR_3196 accepted
+  class ADR_3203 accepted
+  class ADR_3242 accepted
+  class ADR_3246 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

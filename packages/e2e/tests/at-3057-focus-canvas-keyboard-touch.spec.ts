@@ -65,6 +65,7 @@ test.describe("AT-3057 focus canvas from the keyboard", () => {
       page.locator('.preview-container svg [data-node-id="Identity"].karasu-highlighted'),
     ).toHaveCount(1);
 
+    // The palette-only `view.showRelations` command.
     await page.keyboard.press("ControlOrMeta+Shift+P");
     await page.keyboard.type("Show Relations");
     await page.keyboard.press("Enter");

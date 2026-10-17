@@ -1,10 +1,16 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices, type PlaywrightTestConfig } from "@playwright/test";
+import { SERVE_PORT } from "./fixtures/serve-env.js";
 
 // CI worker count. `1` has been the shipped value since the foundation PR
 // (#532). `PLAYWRIGHT_WORKERS` lets the nightly's `workflow_dispatch` measure
 // another value without editing this file or `e2e.yml` (#3040, #3041); it is
 // read here, in Node, so the input never reaches a shell line. Anything that
 // is not a positive integer falls back to the shipped value.
+//
+// `2` was measured and not adopted (#3041): it roughly halves the suite, but
+// p95 per test went over 5s in 3 of 6 runs and the serial at-0050 went over
+// 60s once. The numbers and when to re-measure are in
+// docs/design/app-e2e-coverage-program.md (論点 3).
 const CI_WORKERS_DEFAULT = 1;
 const ciWorkers = (() => {
   const raw = process.env.PLAYWRIGHT_WORKERS;
@@ -18,6 +24,37 @@ const BASE_URL = `http://localhost:${PORT}`;
 const webServerCommand = process.env.CI
   ? `pnpm --filter @karasu-tools/app exec vite build && pnpm --filter @karasu-tools/app exec vite preview --port ${PORT} --strictPort`
   : `pnpm --filter @karasu-tools/app exec vite --port ${PORT} --strictPort`;
+
+type WebServer = Extract<NonNullable<PlaywrightTestConfig["webServer"]>, unknown[]>[number];
+
+const appServer: WebServer = {
+  command: webServerCommand,
+  url: BASE_URL,
+  reuseExistingServer: !process.env.CI,
+  timeout: 180_000,
+  stdout: "pipe",
+  stderr: "pipe",
+};
+
+// Serve mode (`karasu serve`, AT-0032) runs against a second server (#3049).
+// Playwright starts every `webServer` entry whatever `--project` says, so the
+// entry and its project exist only under `E2E_SERVE=1`, which the nightly
+// sets and `e2e.yml` does not: the PR gate neither builds the CLI nor fails
+// when it cannot start (packages/cli is outside its path filter). Entries
+// start in order, each after the previous is ready, so the app build of the
+// first entry is in place when `start-serve.ts` serves it.
+const SERVE_SPECS = /at-0032-/;
+const serveEnabled = process.env.E2E_SERVE === "1";
+const SERVE_URL = `http://localhost:${SERVE_PORT}`;
+
+const serveServer: WebServer = {
+  command: "pnpm exec tsx scripts/start-serve.ts",
+  url: SERVE_URL,
+  reuseExistingServer: !process.env.CI,
+  timeout: 180_000,
+  stdout: "pipe",
+  stderr: "pipe",
+};
 
 export default defineConfig({
   testDir: "./tests",
@@ -62,15 +99,18 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
+      testIgnore: SERVE_SPECS,
       use: { ...devices["Desktop Chrome"] },
     },
+    ...(serveEnabled
+      ? [
+          {
+            name: "serve",
+            testMatch: SERVE_SPECS,
+            use: { ...devices["Desktop Chrome"], baseURL: SERVE_URL },
+          },
+        ]
+      : []),
   ],
-  webServer: {
-    command: webServerCommand,
-    url: BASE_URL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
-    stdout: "pipe",
-    stderr: "pipe",
-  },
+  webServer: serveEnabled ? [appServer, serveServer] : [appServer],
 });

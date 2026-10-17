@@ -30,9 +30,9 @@ import { openViewTab } from "../fixtures/tabs.js";
  *    flow so the two do not overlap.
  *
  * Out of scope (documented to avoid false "missing coverage" reads):
- *  - Snapshot compare source (AT-0060) and open-file-as-entry history /
- *    deep-link (AT-0063) — the latter's meaningful ACs are browser-history
- *    and app-reducer unit-level, not an app e2e fit.
+ *  - Snapshot compare source (AT-0060) — `at-0060-opfs-snapshot-diff.spec.ts`.
+ *  - Open-file-as-entry history / deep-link (AT-0063) — its meaningful ACs
+ *    are browser-history and app-reducer unit-level, not an app e2e fit.
  */
 
 // `index.krs` is the project entry → always the after-side. It has `Payments`

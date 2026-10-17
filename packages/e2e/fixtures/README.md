@@ -2,6 +2,19 @@
 
 Reusable test fixtures for `@karasu-tools/e2e`.
 
+## `network.ts` — the base every `test` extends
+
+An auto fixture that answers every request to Google Fonts
+(`fonts.googleapis.com`, `fonts.gstatic.com`) with an empty body, so no test
+reaches that host (#3249). The app imports its web fonts with a CSS
+`@import`, which holds the page's `load` event; a stalled request on the CI
+runner used to time out `page.goto` in whatever test happened to be booting.
+
+`opfs.ts` and `serve.ts` extend this `test`, and `anthropic.ts` extends
+`opfs.ts`, so specs pick it up through any of them. A new fixture that defines
+its own `test` extends `./network.js`, not `@playwright/test`.
+`tests/fixtures/network.smoke.spec.ts` checks the stub answers the request.
+
 ## `opfs.ts` — OPFS state fixture
 
 Seeds and resets OPFS / `localStorage` state so tests can drive
@@ -29,9 +42,7 @@ test("seeded project is preselected", async ({ page, opfs }) => {
   });
   await opfs.gotoApp();
 
-  await expect(page.locator(".project-selector select.project-selector-dropdown")).toHaveValue(
-    "demo",
-  );
+  await expect(page.getByRole("combobox", { name: "Project", exact: true })).toHaveValue("demo");
 });
 ```
 
@@ -140,6 +151,13 @@ Use it whenever a spec just needs "the app in memory mode with this
 locale opt-out) or a custom `gotoApp` path keep calling the fixture
 methods directly.
 
+`bootProjectApp(page, opfs, krs, project?)` is the project-mode (OPFS)
+counterpart: it seeds one project (`demo` / `Demo` by default) whose
+`index.krs` is `krs`, opens it, and waits until the diagram has drawn a
+node. Use it when the spec needs what only project mode mounts: the file
+sidebar, the Outline view, or the `Switch Project…` command. Specs that
+need several projects call `opfs.seed` themselves (AT-1482).
+
 ## `tabs.ts` — race-safe view-tab switching
 
 `openViewTab(page, name)` clicks the view tab (`"System"`, `"Deploy"`,
@@ -153,12 +171,37 @@ Specs that intentionally skip the selected assertion (AT-0044's
 `openOrgTab`) or assert `aria-selected` via `toHaveAttribute` keep their
 own inline choreography.
 
+`selectedTab(page, name)` is the tab locator restricted to the selected
+state. Specs that switch tabs from the keyboard (or the command palette)
+rather than by clicking read the result through it:
+`await expect(selectedTab(page, "Deploy")).toBeVisible()`.
+
 `setDisplayMode(page, "shape" | "icon")` and `setTheme(page, "light" | "dark")`
 drive the two Settings-tab selects the preview re-renders from. `setTheme`
 polls `<html data-theme>` before returning, which is the signal every themed
 surface (app chrome, Monaco, the SVG canvas) repaints on. The `system` theme
 is not offered: it follows the OS and is exercised through
 `test.use({ colorScheme })` instead (AT-1470).
+
+## `keyboard.ts` — app keyboard shortcuts
+
+- `pressChord(page, "Shift+P")` presses `ControlOrMeta+Shift+P`, which the
+  app reads as `mod+shift+p` (`packages/app/src/keyboard/chord.ts`). Write
+  the chord as a literal at the call site:
+  `scripts/lint/e2e-command-coverage.ts` finds a keybinding's spec by this
+  argument or by the full `"ControlOrMeta+…"` string, so a chord built from
+  a variable does not count.
+- `blurToPreview(page)` clicks the preview's empty corner so no text input
+  holds focus, and asserts that. Commands with `whenTextInputFocused:
+"skip"` (the default) only fire then.
+- `focusEditor(page)` focuses the Monaco textbox and waits for it;
+  `editorTextbox(page)` is that locator.
+
+A "this shortcut is ignored in the editor" assertion has nothing to wait on.
+Instead of a sleep, follow the ignored chord with one that fires inside the
+editor (`pressChord(page, "Shift+2")` selects Chat) and wait for that. Key
+events are handled in order, so once Chat is selected the ignored chord has
+already been processed (AT-1411 / 1422 / 1423 / 1458).
 
 ## `drill.ts` — drilling through rendered nodes
 
@@ -205,6 +248,47 @@ asserts with `elementFromPoint` that the point hits the edge group, and throws
 naming the covering element otherwise. Used by AT-1098 (which also hosts AT-1141 /
 AT-1142) and AT-2543 (#3045).
 
+## `snapshots.ts` — OPFS history snapshots
+
+Reads and seeds the per-file snapshot store under
+`/projects/<pid>/.snapshots/<relPath>/` (`index.json` plus one `<id>.krs` per
+record), restating the on-disk shape of `SnapshotManager` (AT-0060, #3047).
+
+- `seedSnapshotRecords(relPath, seeds)` — returns `{ files, records }`. Spread
+  `files` into an `opfs.seed` project's `files` map; `records` carries the
+  generated ids. Records are dated in `seeds` order from 2020-01-01, one
+  minute apart, so `seeds[0]` is the oldest and every seeded record is older
+  than a capture the app makes. `contentHash` is a non-hex placeholder, so a
+  seeded record never makes the next auto capture look like a duplicate.
+- `readSnapshotIndex(opfs, pid, relPath)` — the stored records, or `null`
+  before the first write. The app creates `index.json` empty and commits its
+  content on `close()`, so an empty read also returns `null`; poll on it.
+- `readSnapshotContent(opfs, pid, relPath, id)` / `snapshotDir(pid, relPath)`
+  — one record's content, and the directory path for `opfs.read`.
+
+### Driving the 5-minute idle timer with `page.clock`
+
+`useSnapshotAutoCapture` waits 5 minutes after the last edit. AT-0060 installs
+Playwright's clock and jumps over the wait:
+
+```ts
+await page.clock.install(); // before opfs.seed(): the fixture navigates
+await opfs.seed({ projects: [...] });
+await opfs.gotoApp();
+// ... edit ...
+await page.clock.fastForward(5 * 60 * 1000);
+await expect.poll(() => readSnapshotIndex(opfs, pid, "index.krs")).not.toBeNull();
+```
+
+- **Install before the first navigation.** The clock is injected into each
+  new document; installing after `gotoApp()` leaves the app on real timers.
+- **`fastForward`, not `runFor`.** `runFor` replays every tick of the period
+  (Monaco's cursor blink, animation frames) and crashed the renderer in about
+  1 run in 10. `fastForward` fires each due timer once, which is what an idle
+  tab sees.
+- `install()` keeps time flowing at the real rate, so the compile debounce
+  and `replaceEditorContent` behave as in any other spec.
+
 ## `color.ts` — WCAG colour maths
 
 - `luminance(rgb)` — relative luminance of a computed `rgb()` / `rgba()`
@@ -221,12 +305,27 @@ AT-1142) and AT-2543 (#3045).
   assertion fails (a selector on the wrong element, not a 21:1 contrast).
   Used by the AA sweeps in AT-1470.
 
+## `file-tree.ts` — file-tree rows and context menu
+
+- `treeItem(page, name)` — the `.file-tree-item` row whose name is exactly
+  `name` (`index.krs` does not match `index.krs.style`).
+- `openTreeContextMenu(page, name)` — right-clicks the row and returns the
+  `.context-menu` once it is visible.
+- `treeContextMenuAction(page, name, "Rename" | "Delete")` — opens the menu
+  and clicks the item. The item is looked up inside `.context-menu`, because
+  the project selector's "✎ Rename" / "✕ Delete" buttons match the same
+  names. A Delete asks `window.confirm`, so register `page.once("dialog", …)`
+  before calling it.
+
 ## `download.ts` — download plumbing
 
 - `clickAndDownload(locator)` — registers `waitForEvent("download")` on
   `locator.page()` _before_ clicking, so the event cannot be missed.
 - `readDownloadText(download)` — reads the download's bytes into a UTF-8
   string for content assertions.
+- `downloadToPath(download)` — returns the download's on-disk path, asserting
+  the file exists, so it can be passed to `setInputFiles` (the ZIP export →
+  import round trip in AT-0004).
 
 ## `share.ts` — Share dialog and opening a shared URL
 
@@ -369,3 +468,19 @@ specs cannot drift apart. `paneSelector` names one pane (e.g.
 - `expectDragPans(page, paneSelector)` — a press that moves past the click
   threshold changes the `transform`. The move is stepped so it lands after the
   mousedown's drag state has rendered.
+
+## `serve.ts` — the `karasu serve` project
+
+For specs in the `serve` project (AT-0032, #3049), which runs only under
+`E2E_SERVE=1` — see "Serve mode" in [`../README.md`](../README.md). The
+server watches `.serve-scratch/`, a fresh copy of `serve-project/` made on
+every server start. Ports and paths live in `serve-env.ts`, which imports
+nothing from Playwright so `scripts/start-serve.ts` can share it.
+
+- `serveProject.open(path = "/")` — navigate on the serve server. `/` is the
+  default file, `/<name>` is `<name>.krs`.
+- `serveProject.write(name, content)` — overwrite `<name>.krs` on disk, as an
+  external editor would. The file goes back to its checked-in content after
+  the test. Give a test that rewrites a file a file of its own
+  (`live.krs` for TC-04): the other specs run in parallel and read theirs.
+- `serveProject.dir` — the served directory, for anything else on disk.

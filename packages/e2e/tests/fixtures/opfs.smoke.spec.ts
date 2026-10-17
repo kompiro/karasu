@@ -18,7 +18,7 @@ test.describe("OPFS fixture smoke", () => {
     await opfs.reset();
     await opfs.gotoApp();
 
-    const dropdown = page.locator(".project-selector select.project-selector-dropdown");
+    const dropdown = page.getByRole("combobox", { name: "Project", exact: true });
     await expect(dropdown).toBeVisible();
     // First-run seeding writes the Getting Started project plus the ec-platform
     // examples. We don't pin the exact count here — just confirm seeding ran.
@@ -42,7 +42,7 @@ test.describe("OPFS fixture smoke", () => {
     });
     await opfs.gotoApp();
 
-    const dropdown = page.locator(".project-selector select.project-selector-dropdown");
+    const dropdown = page.getByRole("combobox", { name: "Project", exact: true });
     await expect(dropdown).toBeVisible();
     await expect(dropdown).toHaveValue("fixture-only");
     await expect(dropdown.locator("option")).toHaveCount(1);
