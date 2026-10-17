@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
 import { clickAndDownload, readDownloadText } from "../fixtures/download.js";
+import { pressChord } from "../fixtures/keyboard.js";
 
 /**
  * AT-1463: the in-app Translate dialog, in a real browser.
@@ -32,14 +33,17 @@ function translateDialog(page: Page) {
 /**
  * Open the dialog from the command palette (`translate.openDialog`).
  *
- * Kept local until the shared keyboard fixture from #3042 lands; the chord is
- * pressed with focus outside Monaco, where the palette shortcut is live.
- * Blurring (rather than clicking somewhere neutral) cannot act on whatever
- * control happens to be under the click.
+ * The palette's chord is live while Monaco has focus (`whenTextInputFocused:
+ * "allow"`, TPL-1419), so focus does not matter here. What does is that the
+ * app has registered its handlers: `KeyboardShortcutDispatcher` listens, and
+ * `TranslateProvider` registers `translate.openDialog`, from effects that can
+ * run after `gotoApp()` returns. A chord pressed before them opens nothing.
+ * A drawn node means the tree under `App` has committed, which is the same
+ * readiness `bootProjectApp` waits for.
  */
 async function openTranslateFromPalette(page: Page): Promise<void> {
-  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-  await page.keyboard.press("ControlOrMeta+Shift+P");
+  await expect(page.locator("svg [data-node-id]").first()).toBeVisible();
+  await pressChord(page, "Shift+P");
   const search = page.getByRole("combobox", { name: "Search commands" });
   await expect(search).toBeFocused();
   await search.fill("Translate");
