@@ -21,6 +21,8 @@ known_consumers:
   - cli-fmt
   - cli-diff
   - cli-translate
+  - cli-tidy-style
+  - cli-lint-style
 discovered_from:
   - issue: "#2942"
   - issue: "#3106"
@@ -81,12 +83,23 @@ import resolver が読み込みに失敗して `Error: dir: File not found: /abs
 - 「存在しない」と読んでよいのは `stat` の `ENOENT` / `ENOTDIR` だけ。`EACCES` / `ELOOP` /
   `EPERM` まで `catch {}` で「無い」に畳むと、存在するパスがまた "File not found" になる。
   それ以外のエラーはシステムの理由を 1 行で出して止める（#2942 のレビュー指摘）
+- 種類の判定は `packages/cli/src/path-arg.ts` の `pathKindOrExit` 1 か所で行い、コマンドは
+  引数の種類ごとに共有の入口を通す（#3106）。エントリ `.krs`（`diff` を含む）は
+  `resolveKrsFileOrExit`、その場で書き換える・読むだけの 1 ファイル（`remove` / `insert` /
+  `apply` / `append` / `translate`）は `fileArgumentOrExit`（ディレクトリは
+  `Error: <dir> is a directory; pass a .krs file`）、ファイルを歩くコマンド（`fmt` /
+  `tidy-style` / `lint-style`）は `resolveTargets`（ディレクトリは配下を、引数なしの
+  ときと同じ規則で歩く）
 
 ## 関連テスト
 
 - `packages/cli/src/compile-system-view.test.ts` — `resolveKrsFileOrExit`（ファイル /
   ディレクトリ / `index.krs` の無いディレクトリ / `index.krs/` ディレクトリ / 不在 /
   stat できないパス（`ELOOP`））
+- `packages/cli/src/directory-argument.test.ts` — #3106 の全コマンド（`remove` / `insert` /
+  `apply` / `append` / `translate` / `fmt` / `diff`）に空のディレクトリを渡したときのメッセージと、
+  `fmt` / `diff` がディレクトリを受け付けること
+- `packages/cli/src/find-files.test.ts` — `resolveTargets`（ディレクトリの展開、重複の除去、不在）
 - `packages/cli/src/check.test.ts` — `given a directory`（実コンパイラでの位置表示と
   `render` との一致）
 

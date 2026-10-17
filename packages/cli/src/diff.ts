@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { rm, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import {
   buildAllViewsSvgDiffProject,
   compileDeployDiff,
@@ -8,6 +8,7 @@ import {
   compileSystemDiff,
 } from "@karasu-tools/core";
 import type { DiagramType } from "@karasu-tools/core";
+import { resolveKrsFileOrExit } from "./compile-system-view.js";
 import { formatDiagnostic } from "./i18n.js";
 import { NodeFileSystemProvider } from "./node-fs.js";
 import { writeOutput } from "./output.js";
@@ -51,17 +52,30 @@ export async function diff(
     // revision) keeps working: a relative import in the stdin content resolves
     // against the same directory as the file argument. A subdirectory would
     // shift every `./` import one level down (#3122).
+    //
+    // A file side goes through the same entry resolver as `render` (#3106): a
+    // directory reads as its index.krs, and a path that is not there is
+    // reported per side. Resolved before stdin is materialized, so an early
+    // exit leaves no tempfile behind.
     if (beforeArg === STDIN_TOKEN) {
-      afterAbs = resolve(afterArg);
+      const after = await resolveKrsFileOrExit(afterArg, "after file not found");
+      if (after === undefined) return;
+      afterAbs = after.absolutePath;
       stdinTempFile = await materializeStdin(dirname(afterAbs), "before");
       beforeAbs = stdinTempFile;
     } else if (afterArg === STDIN_TOKEN) {
-      beforeAbs = resolve(beforeArg);
+      const before = await resolveKrsFileOrExit(beforeArg, "before file not found");
+      if (before === undefined) return;
+      beforeAbs = before.absolutePath;
       stdinTempFile = await materializeStdin(dirname(beforeAbs), "after");
       afterAbs = stdinTempFile;
     } else {
-      beforeAbs = resolve(beforeArg);
-      afterAbs = resolve(afterArg);
+      const before = await resolveKrsFileOrExit(beforeArg, "before file not found");
+      if (before === undefined) return;
+      const after = await resolveKrsFileOrExit(afterArg, "after file not found");
+      if (after === undefined) return;
+      beforeAbs = before.absolutePath;
+      afterAbs = after.absolutePath;
     }
     ok = await compileAndWrite(beforeAbs, afterAbs, afterArg, options);
   } finally {
