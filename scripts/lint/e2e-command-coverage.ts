@@ -42,7 +42,6 @@ export const EXEMPT: ReadonlyMap<string, string> = new Map([
     "view.openReference",
     "opens the Reference pop-out window (AT-1461); no e2e yet, listed as still missing after #3039 S1",
   ],
-  ["translate.openDialog", "Translate dialog is covered by #3039 S7 (#3048)"],
 ]);
 
 export interface AppCommand {
