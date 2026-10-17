@@ -1,9 +1,16 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { BUNDLE_READMES, BUNDLED_DOCS, check, write } from "./skill-reference-bundle-sync.js";
+import {
+  BUNDLE_READMES,
+  BUNDLED_DOCS,
+  REPOSITORY_BLOB_URL,
+  bundledContent,
+  check,
+  write,
+} from "./skill-reference-bundle-sync.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -120,4 +127,80 @@ describe("write()", () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+});
+
+describe("bundledContent() (#3103)", () => {
+  const SPEC = "docs/spec/syntax.md";
+  const GUIDE = "docs/guide/notation-cookbook.md";
+
+  it("points a link to a file that is not bundled at the file on GitHub", () => {
+    expect(bundledContent(SPEC, "See [TPL](../test-perspectives/TPL-1.md#x).")).toBe(
+      `See [TPL](${REPOSITORY_BLOB_URL}docs/test-perspectives/TPL-1.md#x).`,
+    );
+    expect(bundledContent(SPEC, "[ja](syntax.ja.md)")).toBe(
+      `[ja](${REPOSITORY_BLOB_URL}docs/spec/syntax.ja.md)`,
+    );
+  });
+
+  it("points a link to a bundled source at its sibling copy", () => {
+    expect(bundledContent(GUIDE, "[grammar](../spec/syntax.md#node)")).toBe(
+      "[grammar](syntax.md#node)",
+    );
+  });
+
+  it("leaves a link that already reads as its sibling copy as it is", () => {
+    const text = "[a](./tags-annotations.md#x) [b](diagnostics.md)";
+    expect(bundledContent(SPEC, text)).toBe(text);
+  });
+
+  it("leaves URLs, anchors, absolute paths and fenced code alone", () => {
+    const text = [
+      "[web](https://example.com/a.md) [mail](mailto:a@b.c) [here](#top) [root](/docs/x.md)",
+      "```md",
+      "[example](../adr/1.md)",
+      "```",
+    ].join("\n");
+    expect(bundledContent(SPEC, text)).toBe(text);
+  });
+
+  it("keeps a link title", () => {
+    expect(bundledContent(SPEC, '[a](../adr/1.md "ADR 1")')).toBe(
+      `[a](${REPOSITORY_BLOB_URL}docs/adr/1.md "ADR 1")`,
+    );
+  });
+});
+
+/**
+ * The point of the transform, checked on the real copies: the installed skill
+ * has only its own directory, so every link must resolve there or be absolute.
+ */
+describe("links in the bundled copies", () => {
+  const LINK = /\]\(([^)\s]+)/g;
+
+  for (const { source, bundled } of BUNDLED_DOCS.filter((d) =>
+    d.bundled.startsWith("packages/skills/skills/karasu-author/"),
+  )) {
+    it(`${source}: every link resolves inside the bundle or on GitHub`, () => {
+      const text = readFileSync(resolve(REPO_ROOT, bundled), "utf8");
+      const dangling: string[] = [];
+      let inFence = false;
+      for (const line of text.split("\n")) {
+        if (/^\s{0,3}(```|~~~)/.test(line)) inFence = !inFence;
+        if (inFence) continue;
+        for (const [, target] of line.matchAll(LINK)) {
+          const path = target.split("#")[0];
+          if (path === "" || /^mailto:/.test(path)) continue;
+          if (path.startsWith(REPOSITORY_BLOB_URL)) {
+            // A GitHub link must name a file this repository has.
+            const repoPath = path.slice(REPOSITORY_BLOB_URL.length);
+            if (!existsSync(resolve(REPO_ROOT, repoPath))) dangling.push(target);
+            continue;
+          }
+          if (/^[a-z][a-z0-9+.-]*:/i.test(path)) continue;
+          if (!existsSync(resolve(REPO_ROOT, dirname(bundled), path))) dangling.push(target);
+        }
+      }
+      expect(dangling).toEqual([]);
+    });
+  }
 });
