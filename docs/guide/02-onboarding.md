@@ -105,6 +105,8 @@ OpenAPI paths and operations land as a `usecase` inside one provisional `domain`
 $ karasu translate --from db schema.sql --database OrderDB
 ```
 
+The input can be a schema dump or an ORM's migration history concatenated in order (drizzle, Prisma, Rails): statements are replayed, so a `DROP TABLE` removes a table and `ALTER TABLE … RENAME TO` renames it, and only the tables the history leaves behind are emitted.
+
 ```krs
 database OrderDB {
   table OrdersTable {
