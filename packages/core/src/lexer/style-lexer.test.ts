@@ -78,6 +78,17 @@ describe("StyleLexer — characters outside ASCII (#3140)", () => {
     expect(values("#注文API")).toEqual(["#", "注文API"]);
   });
 
+  it("keeps an id that only continues past a hex run, instead of reading a color", () => {
+    // A combining mark, a non-ASCII digit, or `-` before a word continues the
+    // word, so these are ids, not `#cafe` / `#abc` / `#add` plus a stray tail.
+    expect(values("#cafe\u0301")).toEqual(["#", "cafe\u0301"]);
+    expect(values("#abc\u0661")).toEqual(["#", "abc\u0661"]);
+    expect(values("#add-on")).toEqual(["#", "add-on"]);
+    // Still colors: nothing after the run, or a `-` that starts an arrow.
+    expect(values("#fff;")).toEqual(["#fff", ";"]);
+    expect(values("#abc->x")).toEqual(["#abc", "->", "x"]);
+  });
+
   it("reads a character that starts no word as one Unknown token with its word tail", () => {
     const tokens = new StyleLexer("[😀A]").tokenize();
     expect(tokens.map((t) => [t.type, t.value])).toEqual([

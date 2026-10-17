@@ -229,8 +229,14 @@ export class StyleLexer {
     const hexLen = offset - 1;
     // Must be valid hex color length AND not followed by an ident char
     if (hexLen === 0) return false;
-    const nextChar = codePointAt(this.source, this.pos + offset);
-    const followedByIdent = nextChar !== "" && isIdentStart(nextChar);
+    // Anything that continues a word keeps the run in an id, not only what can
+    // start one: a combining mark or a non-ASCII digit (`#café`, written
+    // decomposed), or a `-` before a word character (`#add-on`). Otherwise the
+    // selector stopped at `#cafe` / `#add` and could not name the id (#3140).
+    const end = this.pos + offset;
+    const followedByIdent =
+      wordPartAt(this.source, end, this.source[end - 1]) !== "" ||
+      (this.source[end] === "-" && isIdentPart(codePointAt(this.source, end + 1)));
     // If hex chars are followed by more ident chars, it's an ID not a color
     return !followedByIdent && (hexLen === 3 || hexLen === 4 || hexLen === 6 || hexLen === 8);
   }

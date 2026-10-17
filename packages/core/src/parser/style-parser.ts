@@ -426,7 +426,12 @@ export class StyleParser {
           this.advance(); // (
           let arg = "";
           while (this.peek().type !== TokenType.RightParen && this.peek().type !== TokenType.EOF) {
-            if (this.peek().type === TokenType.StringLiteral) {
+            if (this.peek().type === TokenType.Unknown) {
+              // `url(😀A)`: refused like an Unknown token outside the parens.
+              this.reportUnknownValueToken(this.peek());
+              refused = true;
+              arg += this.advance().value;
+            } else if (this.peek().type === TokenType.StringLiteral) {
               arg = this.advance().value;
             } else {
               arg += this.advance().value;
@@ -469,12 +474,7 @@ export class StyleParser {
       } else if (token.type === TokenType.Unknown) {
         // A character no value can hold (a stray `-`, an emoji): refuse the
         // declaration. Keeping the rest would apply `- 20px` as `20px` (#3140).
-        this.diagnostics.push({
-          severity: "error",
-          code: "style-token-type-mismatch",
-          params: { expected: "Value", got: String(token.type), value: token.value },
-          loc: this.rangeBetween(token, token),
-        });
+        this.reportUnknownValueToken(token);
         refused = true;
         parts.push(this.advance().value);
       } else {
@@ -487,6 +487,16 @@ export class StyleParser {
     const text = parts.join(" ").trim();
     const node = buildValueNode(atoms, segmentStarts);
     return { text, node, refused };
+  }
+
+  /** A token no value can hold; the caller refuses the whole declaration. */
+  private reportUnknownValueToken(token: Token): void {
+    this.diagnostics.push({
+      severity: "error",
+      code: "style-token-type-mismatch",
+      params: { expected: "Value", got: String(token.type), value: token.value },
+      loc: this.rangeBetween(token, token),
+    });
   }
 }
 

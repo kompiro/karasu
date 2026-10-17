@@ -6,7 +6,19 @@
 
 ## 字句構造
 
-スタイルシートは、文字列とコメントの外の各文字を `.krs` ファイルと同じ分類で読む（[syntax.ja.md § 字句構造](syntax.ja.md#字句構造)）。そのため、モデルに書いたノード id・タグ・facet id は selector でも同じ語として読まれる（`#注文`、`[facets=個人情報]`）。違いは 2 つ（[#3140](https://github.com/kompiro/karasu/issues/3140)）:
+スタイルシートは、文字列とコメントの外の各文字を `.krs` ファイルと同じ分類で読む（[syntax.ja.md § 字句構造](syntax.ja.md#字句構造)）。そのため、モデルに書いたノード id・タグ・facet id は selector でも同じ語として読まれる（`#注文`、`[facets=個人情報]`）。この 2 つの selector は、次のモデルの service と facet を指す:
+
+```krs
+facet 個人情報 {}
+
+system Example {
+  service 注文 {
+    facets 個人情報
+  }
+}
+```
+
+違いは 2 つ（[#3140](https://github.com/kompiro/karasu/issues/3140)）:
 
 - 語は `-` も含められる（`font-size`、`[team-1]`）。`.` の後に語が続くと、ドット記法の id としてつながる（`OrderDB.OrderTable`）。
 - `-` は数字の前では符号付きの数（`-20px`）を、`->` / `-->` では矢印を始める。それ以外の `-` や `--` は、語を始めない非 ASCII 文字と同じく、どの位置も受け付けないトークンになる。値の中では `style-token-type-mismatch` として報告され、その宣言は効かない（`label-offset: - 20px` は `20px` として読まれず、拒否される）。

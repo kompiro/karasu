@@ -6,7 +6,19 @@
 
 ## Lexical structure
 
-A style sheet reads each character outside strings and comments with the same classes as a `.krs` file ([syntax.md § Lexical structure](syntax.md#lexical-structure)), so a node id, tag or facet id written in the model is the same word in a selector (`#注文`, `[facets=個人情報]`). Two differences ([#3140](https://github.com/kompiro/karasu/issues/3140)):
+A style sheet reads each character outside strings and comments with the same classes as a `.krs` file ([syntax.md § Lexical structure](syntax.md#lexical-structure)), so a node id, tag or facet id written in the model is the same word in a selector (`#注文`, `[facets=個人情報]`). Those two selectors name the service and the facet in this model:
+
+```krs
+facet 個人情報 {}
+
+system Example {
+  service 注文 {
+    facets 個人情報
+  }
+}
+```
+
+Two differences ([#3140](https://github.com/kompiro/karasu/issues/3140)):
 
 - A word may also contain `-` (`font-size`, `[team-1]`), and a `.` followed by a word joins a dot-notation id (`OrderDB.OrderTable`).
 - A `-` starts a signed number before a digit (`-20px`) and an arrow in `->` / `-->`. Any other `-` or `--`, like a non-ASCII character that starts no word, is a token no position accepts: in a value it is reported as `style-token-type-mismatch` and the declaration takes no effect (`label-offset: - 20px` is refused, not read as `20px`).

@@ -50,6 +50,12 @@ describe("characters the style lexer used to drop (#3140)", () => {
     },
   );
 
+  it("refuses a function argument holding a character that starts no word", () => {
+    const sheet = StyleParser.parse("service { shape: url(😀A); }");
+    expect(sheet.diagnostics.map((d) => d.code)).toEqual(["style-token-type-mismatch"]);
+    expect(sheet.value.rules[0].properties).not.toHaveProperty("shape");
+  });
+
   it("still applies a signed label-offset", () => {
     const { at, errors } = render("edge { label-offset: -20px; }");
     expect(errors).toEqual([]);
