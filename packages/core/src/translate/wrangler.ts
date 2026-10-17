@@ -46,6 +46,8 @@ interface InfraNode {
 /** A logical `service [external]` reached by the Worker via a `->` edge. */
 interface ExternalService {
   id: string;
+  /** Set when `id` is not the name the binding was declared with (#3183). */
+  label?: string;
 }
 
 const IDENT_START = /[A-Za-z_]/;
@@ -117,6 +119,30 @@ function bindingId(
 ): string {
   const candidate = toIdentifier(entry.binding) ?? toIdentifier(entry[resourceNameKey]) ?? fallback;
   return dedupe(candidate, used, onWarning);
+}
+
+/**
+ * The external service for a Durable Object binding. Its id is the class name
+ * (`class_name`), which often equals the id derived from the Worker's own name
+ * (`foo-mcp` and `FooMcp`): one Worker, one Durable Object class named after
+ * it. A numeric suffix there (`FooMcp2`) hid the class name (#3183), so a taken
+ * id is disambiguated by role instead, `<Class>Object`, with the class name
+ * kept in the label. A numeric suffix is left for a clash that remains.
+ */
+function durableObjectService(
+  entry: Record<string, unknown>,
+  used: Set<string>,
+  onWarning?: (message: string) => void,
+): ExternalService {
+  const className = typeof entry.class_name === "string" ? entry.class_name : undefined;
+  const candidate =
+    toIdentifier(entry.binding) ?? toIdentifier(entry.class_name) ?? "DurableObject";
+  if (!used.has(candidate)) return { id: dedupe(candidate, used, onWarning) };
+  const id = dedupe(`${candidate}Object`, used, onWarning);
+  onWarning?.(
+    `Durable Object "${className ?? candidate}" shares the id "${candidate}"; declared as "${id}".`,
+  );
+  return { id, label: `${className ?? candidate} (Durable Object)` };
 }
 
 export class WranglerTranslator implements Translator {
@@ -192,8 +218,7 @@ export class WranglerTranslator implements Translator {
     // Durable Objects → service [external] (opaque stateful actor; notation-watch)
     const durableObjects = doc.durable_objects as { bindings?: unknown } | undefined;
     for (const e of asArray(durableObjects?.bindings)) {
-      const id = bindingId(e, "class_name", "DurableObject", used, onWarning);
-      externals.push({ id });
+      externals.push(durableObjectService(e, used, onWarning));
     }
     // Service bindings → Worker→Worker communication edge
     for (const e of asArray(doc.services)) {
@@ -248,6 +273,7 @@ export class WranglerTranslator implements Translator {
     for (const ext of m.externals) {
       body.push(``);
       body.push(`service ${ext.id} [external] {`);
+      if (ext.label !== undefined) body.push(`  label ${quoteString(ext.label)}`);
       body.push(`}`);
     }
 

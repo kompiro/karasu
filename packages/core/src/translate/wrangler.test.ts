@@ -103,6 +103,60 @@ describe("WranglerTranslator", () => {
     expect(krs).toContain("Hato -> SessionActor");
   });
 
+  // #3183: one Worker, one Durable Object class named after it. The numeric
+  // dedupe suffix (`FooMcp2`) hid the class name.
+  it("keeps a Durable Object named like its Worker readable, by role and label", async () => {
+    const warnings: string[] = [];
+    const krs = await translator.translate(
+      `
+name = "foo-mcp"
+main = "src/worker.ts"
+
+[[durable_objects.bindings]]
+name = "MCP_AGENT"
+class_name = "FooMcp"
+`,
+      { ...ctx, onWarning: (w) => warnings.push(w) },
+    );
+    expect(krs).toContain('service FooMcp {\n    label "foo-mcp"');
+    expect(krs).toContain(
+      'service FooMcpObject [external] {\n    label "FooMcp (Durable Object)"\n  }',
+    );
+    expect(krs).toContain("FooMcp -> FooMcpObject");
+    expect(krs).not.toContain("FooMcp2");
+    expect(warnings).toEqual([
+      'Durable Object "FooMcp" shares the id "FooMcp"; declared as "FooMcpObject".',
+    ]);
+    const { diagnostics } = Parser.parse(krs);
+    expect(diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+  });
+
+  it("falls back to a numeric suffix when the role-suffixed id is taken too", async () => {
+    const krs = await translator.translate(
+      `
+name = "foo-mcp"
+
+[[d1_databases]]
+binding = "foo-mcp-object"
+database_name = "x"
+
+[[durable_objects.bindings]]
+name = "A"
+class_name = "FooMcp"
+`,
+      ctx,
+    );
+    expect(krs).toContain("database FooMcpObject {");
+    expect(krs).toContain(
+      'service FooMcpObject2 [external] {\n    label "FooMcp (Durable Object)"',
+    );
+  });
+
+  it("leaves a Durable Object whose class name is free unlabelled", async () => {
+    const krs = await translator.translate(FULL, ctx);
+    expect(krs).toContain("service SessionActor [external] {\n  }");
+  });
+
   it("maps a service binding to a Worker→Worker communication edge", async () => {
     const krs = await translator.translate(FULL, ctx);
     expect(krs).toContain("Hato -> AuthWorker");
