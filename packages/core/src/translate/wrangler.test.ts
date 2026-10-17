@@ -132,6 +132,7 @@ class_name = "FooMcp"
   });
 
   it("falls back to a numeric suffix when the role-suffixed id is taken too", async () => {
+    const warnings: string[] = [];
     const krs = await translator.translate(
       `
 name = "foo-mcp"
@@ -144,12 +145,39 @@ database_name = "x"
 name = "A"
 class_name = "FooMcp"
 `,
-      ctx,
+      { ...ctx, onWarning: (w) => warnings.push(w) },
     );
     expect(krs).toContain("database FooMcpObject {");
     expect(krs).toContain(
       'service FooMcpObject2 [external] {\n    label "FooMcp (Durable Object)"',
     );
+    // One warning, naming the final id — not a second "duplicate binding name"
+    // one for the generated `FooMcpObject`.
+    expect(warnings).toEqual([
+      'Durable Object "FooMcp" shares the id "FooMcp"; declared as "FooMcpObject2".',
+    ]);
+  });
+
+  it("keeps a Durable Object off an id a service binding points at", async () => {
+    const krs = await translator.translate(
+      `
+name = "foo-mcp"
+
+[[durable_objects.bindings]]
+name = "A"
+class_name = "FooMcp"
+
+[[services]]
+binding = "PEER"
+service = "foo-mcp-object"
+`,
+      ctx,
+    );
+    expect(krs).toContain(
+      'service FooMcpObject2 [external] {\n    label "FooMcp (Durable Object)"',
+    );
+    expect(krs).toContain("FooMcp -> FooMcpObject2");
+    expect(krs).toContain("FooMcp -> FooMcpObject\n");
   });
 
   it("leaves a Durable Object whose class name is free unlabelled", async () => {

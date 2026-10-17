@@ -19,9 +19,13 @@ type: product
 
   > ✅ Automated — `packages/core/src/translate/wrangler.test.ts` › `WranglerTranslator` › `keeps a Durable Object named like its Worker readable, by role and label`
 
-- [x] AT-B: `<Class>Object` も埋まっているときだけ数字を付ける（`FooMcpObject2`）。label は同じ
+- [x] AT-B: `<Class>Object` も埋まっているときだけ数字を付ける（`FooMcpObject2`）。label は同じで、警告は最終の id を名指す 1 件だけ
 
   > ✅ Automated — `packages/core/src/translate/wrangler.test.ts` › `WranglerTranslator` › `falls back to a numeric suffix when the role-suffixed id is taken too`
+
+- [x] AT-D: service binding の向き先の id（`service = "foo-mcp-object"` → `FooMcpObject`）は Durable Object に使わない。Durable Object は `FooMcpObject2` になり、2 本の edge は別の node を指す
+
+  > ✅ Automated — `packages/core/src/translate/wrangler.test.ts` › `WranglerTranslator` › `keeps a Durable Object off an id a service binding points at`
 
 ### AC-2: 衝突しない Durable Object は変わらない
 
