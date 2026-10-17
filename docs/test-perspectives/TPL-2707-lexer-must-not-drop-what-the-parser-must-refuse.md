@@ -16,6 +16,7 @@ discovered_from:
   - issue: "#2848"
   - issue: "#3093"
   - issue: "#3032"
+  - issue: "#3140"
   - root_cause_file: "packages/core/src/lexer/lexer.ts :: readToken"
   - root_cause_file: "packages/core/src/parser/parser.ts :: parseAnnotations"
   - root_cause_file: "packages/core/src/lexer/style-lexer.ts :: readToken"
@@ -86,8 +87,11 @@ lexer / tokenizer を追加・変更するとき、または値や名前を読�
 - `packages/core/src/formatter/annotation-params-round-trip.test.ts` › `reads back every reference it prints bare (#2707)`
 - `packages/core/src/lexer/style-lexer.test.ts`（`.krs.style` の lexer が捨てる印字可能 ASCII の集合の固定と、符号付きの値 #3032）
 - `packages/core/src/integration/style-sheet-signed-values.test.ts`（シートの文字列から描画までの符号付きの値 #3032）
+- `packages/core/src/lexer/style-lexer.test.ts` › `characters outside ASCII (#3140)` / `a hyphen that starts no number or arrow (#3140)`（`.krs.style` の lexer が非 ASCII のコードポイントを 1 つも捨てないこと）
+- `packages/core/src/integration/style-sheet-unknown-characters.test.ts`（シートの文字列から、拒否される `-` と非 ASCII の selector まで #3140）
 
 ## 派生元 spec
 
 - `docs/spec/syntax.md` § Lexical structure（文字列とコメントの外の各文字を空白・語・拒否されるトークン・読み飛ばす ASCII 記号のどれかとして読む）。本 TPL はその表から外れて文字が黙って捨てられたときに検出する観点。
+- `docs/spec/style.md` § Lexical structure（スタイルシートも `.krs` と同じ分類で文字を読み、数字も矢印も始めない `-` と語を始めない非 ASCII 文字は拒否されるトークンになる、#3140）。本 TPL はスタイルシートの lexer が文字を黙って捨てたときに検出する観点。
 - `docs/spec/tags-annotations.md` § Annotation parameters（値は文字列リテラル 1 つか裸の語 1 つ、1 つの要素でパラメータの値は 1 つ）。本 TPL はその規定が lexer の読み飛ばしや先頭トークンだけの読み取りで破られたときに検出する観点。

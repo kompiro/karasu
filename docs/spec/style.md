@@ -4,6 +4,15 @@
 
 > Language version: **`.krs language v2.0`**. `.krs` and `.krs.style` share one language version, independent from every package's npm version ([ADR-2124](../adr/2124-version-vocabulary.md)). In v2.0 a rule that targets a tag or annotation outside the tool vocabulary matches nothing ([below](#migrating-an-arbitrary-name-tag-or-annotation-selector)).
 
+## Lexical structure
+
+A style sheet reads each character outside strings and comments with the same classes as a `.krs` file ([syntax.md § Lexical structure](syntax.md#lexical-structure)), so a node id, tag or facet id written in the model is the same word in a selector (`#注文`, `[facets=個人情報]`). Two differences ([#3140](https://github.com/kompiro/karasu/issues/3140)):
+
+- A word may also contain `-` (`font-size`, `[team-1]`), and a `.` followed by a word joins a dot-notation id (`OrderDB.OrderTable`).
+- A `-` starts a signed number before a digit (`-20px`) and an arrow in `->` / `-->`. Any other `-` or `--`, like a non-ASCII character that starts no word, is a token no position accepts: in a value it is reported as `style-token-type-mismatch` and the declaration takes no effect (`label-offset: - 20px` is refused, not read as `20px`).
+
+> Related TPLs: [TPL-2707](../test-perspectives/TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md) (a character the lexer drops cannot be refused), [TPL-2509](../test-perspectives/TPL-2509-kebab-name-positions-share-one-lexical-rule.md) (every name position reads names with one lexical rule)
+
 ## Selector types
 
 | Selector | Example | Target |

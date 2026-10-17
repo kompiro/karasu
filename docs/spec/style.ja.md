@@ -4,6 +4,15 @@
 
 > 言語バージョン: **`.krs language v2.0`**（言語 v2.0）。`.krs` と `.krs.style` は 1 つの言語版を共有し、各パッケージの npm 版とは独立（[ADR-2124](../adr/2124-version-vocabulary.md)）。v2.0 ではツール語彙にない tag / annotation を狙うルールは何にも一致しない（[後述](#任意名タグ--アノテーションセレクタからの移行)）。
 
+## 字句構造
+
+スタイルシートは、文字列とコメントの外の各文字を `.krs` ファイルと同じ分類で読む（[syntax.ja.md § 字句構造](syntax.ja.md#字句構造)）。そのため、モデルに書いたノード id・タグ・facet id は selector でも同じ語として読まれる（`#注文`、`[facets=個人情報]`）。違いは 2 つ（[#3140](https://github.com/kompiro/karasu/issues/3140)）:
+
+- 語は `-` も含められる（`font-size`、`[team-1]`）。`.` の後に語が続くと、ドット記法の id としてつながる（`OrderDB.OrderTable`）。
+- `-` は数字の前では符号付きの数（`-20px`）を、`->` / `-->` では矢印を始める。それ以外の `-` や `--` は、語を始めない非 ASCII 文字と同じく、どの位置も受け付けないトークンになる。値の中では `style-token-type-mismatch` として報告され、その宣言は効かない（`label-offset: - 20px` は `20px` として読まれず、拒否される）。
+
+> Related TPLs: [TPL-2707](../test-perspectives/TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md)（lexer が捨てた文字は拒否できない）、[TPL-2509](../test-perspectives/TPL-2509-kebab-name-positions-share-one-lexical-rule.md)（名前の位置はすべて 1 つの字句規則で名前を読む）
+
 ## セレクタの種類
 
 | セレクタ | 例 | 対象 |
