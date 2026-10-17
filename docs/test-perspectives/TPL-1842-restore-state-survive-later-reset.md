@@ -10,6 +10,7 @@ known_consumers:
   - history-navigation
 discovered_from:
   - issue: "#1842"
+  - issue: "#3208"
   - root_cause_file: "packages/app/src/hooks/useHistoryNavigation.ts"
 related_to:
   - TPL-1827
@@ -61,3 +62,5 @@ URL/共有から state を復元する hook を実装・修正するとき:
 
 - `packages/app/src/hooks/useHistoryNavigation.test.ts` › `pending highlight restoration (#1842)`（空 index で再適用なし → index 充填で再適用 / 一度きり）
 - `packages/e2e/tests/at-0046-system-id-in-viewpath.spec.ts` › `reload restores the drilled service from the hash (AC5)`（実アプリの mount 順で、reload 後に drill 先 node が seed reset を越えて復元される）
+- `packages/app/src/hooks/useHistoryNavigation.test.ts` › `pending view restoration (#3208)`（`activeView` も同じ deferral で再適用する。node・highlight より先、一度きり。#3208 まで deploy / org / matrix の hash は seed reset で System に戻っていた）
+- `packages/e2e/tests/at-1094-matrix-url-hash.spec.ts` › `a cold boot at ${hash} lands on the ${tab} tab (AT-I)` / `reloading on the ${tab} tab in memory mode stays on it (AT-I)`（実アプリの cold boot と reload で、非 system のタブが seed reset を越えて残る）

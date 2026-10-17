@@ -289,6 +289,12 @@ export function useHistoryNavigation({
   // SET_ACTIVE_VIEW, so it would read the view being left, not the one the
   // hash names, and overwrite the attribute effect ① set.
   const pendingHighlightAttributeRef = useRef<HighlightAttribute>("data-node-id");
+  // The non-system view the initial hash names, re-applied once the index is
+  // ready (#3208). The seed's VIEW_RESET sets `activeView: "system"` after
+  // effect ① restored the tab, the same wipe as the highlight above (TPL-1842:
+  // every restored field needs the deferral, not only the node). `system` is
+  // what the reset leaves, so it has nothing to restore.
+  const pendingActiveViewRestoreRef = useRef<ActiveView | null>(null);
 
   // Stable ref for onFileChange — referenced inside long-lived effects without re-running them.
   const onFileChangeRef = useLatestRef(onFileChange);
@@ -331,6 +337,9 @@ export function useHistoryNavigation({
       pendingHighlightRef.current = parsed.highlightNodeId;
       pendingHighlightAttributeRef.current = hashHighlightAttribute(parsed.activeView);
     }
+    if (parsed.activeView !== "system") {
+      pendingActiveViewRestoreRef.current = parsed.activeView;
+    }
     // Restore activeView from hash if different (include highlightNodeId in the transition)
     if (parsed.activeView !== activeViewRef.current) {
       dispatch({
@@ -364,9 +373,29 @@ export function useHistoryNavigation({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ② Resolve pendingNodeId and re-apply the pending highlight once the
-  // relevant path index is available.
+  // ② Re-apply the pending view, resolve pendingNodeId and re-apply the
+  // pending highlight once the relevant path index is available.
   useEffect(() => {
+    // Gate on a populated index: it derives from the seeded file content, so a
+    // non-empty one proves the seed's SELECT_FILE (and its VIEW_RESET) has run.
+    const indexReady =
+      (!!nodePathIndex && nodePathIndex.size > 0) || (!!orgPathIndex && orgPathIndex.size > 0);
+
+    // The view first (#3208): SET_ACTIVE_VIEW clears viewPath and the
+    // highlight, so the node and highlight below must land after it, and an
+    // org drill must resolve against the org index of the restored tab.
+    if (pendingActiveViewRestoreRef.current !== null) {
+      if (!indexReady) return;
+      const view = pendingActiveViewRestoreRef.current;
+      pendingActiveViewRestoreRef.current = null;
+      dispatch({
+        type: "SET_ACTIVE_VIEW",
+        activeView: view,
+        highlightNodeId: pendingHighlightRef.current,
+        highlightAttribute: pendingHighlightAttributeRef.current,
+      });
+    }
+
     const nodeId = pendingNodeIdRef.current;
     const isOrgPending = pendingActiveViewRef.current === "org";
     const index = isOrgPending ? orgPathIndex : nodePathIndex;
@@ -385,8 +414,6 @@ export function useHistoryNavigation({
     // the highlight-only-at-root case (no pending node), which effect ① could
     // not defer on its own.
     if (pendingHighlightRef.current !== null) {
-      const indexReady =
-        (!!nodePathIndex && nodePathIndex.size > 0) || (!!orgPathIndex && orgPathIndex.size > 0);
       if (!indexReady) return;
       const highlight = pendingHighlightRef.current;
       pendingHighlightRef.current = null;
