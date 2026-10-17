@@ -133,9 +133,16 @@ export function PreviewColumn() {
   const svg = view.svg;
   const diagnostics = view.diagnostics;
   const viewPath = view.viewPath;
-  // One diagram per view, drill path and deploy block: moving to another one
-  // starts at the initial zoom and pan (#3178). An edit keeps the key.
-  const diagramKey = JSON.stringify([activeView, selectedDeployBlockId ?? null, viewPath]);
+  // One diagram per project, view, drill path and deploy block: moving to
+  // another one starts at the initial zoom and pan (#3178). Switching projects
+  // keeps this pane mounted, so the project root is part of the key. An edit
+  // keeps the key.
+  const diagramKey = JSON.stringify([
+    displayRoot,
+    activeView,
+    selectedDeployBlockId ?? null,
+    viewPath,
+  ]);
   const onDrillDown = view.onBreadcrumbNavigate;
 
   const exportFilename = buildSvgExportFilename(activeView, {

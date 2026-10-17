@@ -98,8 +98,9 @@ scope:
   隠れる（#2799 では Tree View → Dependencies）
 - **同じペインの中で図が変わるときも、ズームとパンは持ち越さない**（#3178）。
   `key="diagram"` のペインは、タブ（system / deploy / org）の切替とドリルダウンで
-  同じインスタンスのまま別の図を描くので、key だけでは防げない。ペインに
-  `diagramKey`（view・drill path・deploy ブロック）を渡し、それが変わったら
+  同じインスタンスのまま別の図を描くので、key だけでは防げない。プロジェクトの
+  切替でもペインはマウントされたままになる。ペインに `diagramKey`（プロジェクトの
+  root・view・drill path・deploy ブロック）を渡し、それが変わったら
   transform を初期値に戻す。編集で同じ図を描き直すときは key が変わらないので、
   読み手のズームは残る
 
@@ -142,5 +143,8 @@ grep -rn "dangerouslySetInnerHTML\|srcDoc" packages/app/src --include=*.tsx
 - `packages/app/src/components/PreviewPane.test.tsx` ›
   `keeps the zoom when the same diagram re-renders, and resets it for another diagram`
   （`diagramKey` の変化でだけ transform を戻す。#3178）
+- `packages/app/src/components/PreviewColumn.test.tsx` ›
+  `resets zoom when the project changes but keeps it on an edit`
+  （プロジェクトの切替で transform を戻し、編集では残す。#3178）
 - `packages/e2e/tests/at-3178-zoom-resets-on-diagram-change.spec.ts` — ドリルダウンと
   タブ切替でズームを持ち越さないこと、編集では残ること

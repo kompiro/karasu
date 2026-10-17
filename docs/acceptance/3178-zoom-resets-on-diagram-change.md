@@ -23,6 +23,10 @@ type: product
 
   > ✅ Automated — `packages/e2e/tests/at-3178-zoom-resets-on-diagram-change.spec.ts` › `AT-3178 zoom and pan reset for another diagram` › `switching the view tab starts it at the initial zoom (AT-B)`
 
+- [x] AT-D: ホイールで縮小したあとに別のプロジェクトへ切り替えると、同じタブ・同じ drill path でも新しいプロジェクトの図は初期値で表示される
+
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `SVG rendering` › `resets zoom when the project changes but keeps it on an edit`
+
 ### AC-2: 同じ図の描き直しではズームが残る
 
 - [x] AT-C: 縮小したあとに `.krs` を編集して同じ図が描き直されても、ズームとパンは変わらない
