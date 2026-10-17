@@ -2,6 +2,19 @@
 
 Reusable test fixtures for `@karasu-tools/e2e`.
 
+## `network.ts` — the base every `test` extends
+
+An auto fixture that answers every request to Google Fonts
+(`fonts.googleapis.com`, `fonts.gstatic.com`) with an empty body, so no test
+reaches that host (#3249). The app imports its web fonts with a CSS
+`@import`, which holds the page's `load` event; a stalled request on the CI
+runner used to time out `page.goto` in whatever test happened to be booting.
+
+`opfs.ts` and `serve.ts` extend this `test`, and `anthropic.ts` extends
+`opfs.ts`, so specs pick it up through any of them. A new fixture that defines
+its own `test` extends `./network.js`, not `@playwright/test`.
+`tests/fixtures/network.smoke.spec.ts` checks the stub answers the request.
+
 ## `opfs.ts` — OPFS state fixture
 
 Seeds and resets OPFS / `localStorage` state so tests can drive
