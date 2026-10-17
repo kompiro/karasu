@@ -187,21 +187,81 @@ function augmentWithSoftForeignKeys(tables: Table[]): void {
   }
 }
 
+const QUOTE = "[\"'`]";
+/** A table name as these statements write it: optionally schema-qualified and quoted. */
+const TABLE_NAME = String.raw`(?:${QUOTE}?\w+${QUOTE}?\.)?${QUOTE}?\w+${QUOTE}?`;
+/** The same, capturing the bare name. */
+const TABLE_NAME_CAPTURE = String.raw`(?:${QUOTE}?\w+${QUOTE}?\.)?${QUOTE}?(\w+)${QUOTE}?`;
+
+/**
+ * The tables a SQL script leaves behind, replayed statement by statement
+ * (#3182). An ORM's migration history (drizzle, Prisma, Rails) is the usual
+ * input, not a schema dump, so reading only `CREATE TABLE` resurrects dropped
+ * tables and the temporaries of a table rebuild
+ * (`CREATE __new_x` → `DROP x` → `ALTER TABLE __new_x RENAME TO x`).
+ *
+ * - `CREATE TABLE` adds a table, or replaces one of the same name (a recreate);
+ *   `IF NOT EXISTS` keeps the existing one.
+ * - `DROP TABLE` (`IF EXISTS`, one or more names) removes it.
+ * - `ALTER TABLE … RENAME TO` renames it, and every foreign key that pointed
+ *   at the old name follows it, as SQLite / PostgreSQL / MySQL do.
+ *
+ * Names are matched case-insensitively, as unquoted SQL identifiers are. The
+ * survivors keep the order they were created in (a rename keeps its place).
+ */
 function parseTables(sql: string): Table[] {
-  const tables: Table[] = [];
-  const headerPattern =
-    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:["'`]?\w+["'`]?\.)?["'`]?(\w+)["'`]?\s*(?=\()/gi;
+  const tables = new Map<string, Table>();
+  const keyOf = (name: string) => name.toLowerCase();
+  const statementPattern = new RegExp(
+    [
+      // 1: CREATE, 2: IF NOT EXISTS, 3: name
+      String.raw`(CREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?${TABLE_NAME_CAPTURE}\s*(?=\())`,
+      // 4: DROP, 5: the comma-separated names
+      String.raw`(DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?((?:${TABLE_NAME}\s*,\s*)*${TABLE_NAME}))`,
+      // 6: RENAME, 7: from, 8: to
+      String.raw`(ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?${TABLE_NAME_CAPTURE}\s+RENAME\s+TO\s+${TABLE_NAME_CAPTURE})`,
+    ].join("|"),
+    "gi",
+  );
   let match: RegExpExecArray | null;
-  while ((match = headerPattern.exec(sql)) !== null) {
-    const name = match[1];
-    const openIdx = sql.indexOf("(", match.index);
-    if (openIdx === -1) continue;
-    const extracted = extractParenBody(sql, openIdx);
-    if (!extracted) continue;
-    tables.push(parseTable(name, extracted.body));
-    headerPattern.lastIndex = extracted.end + 1;
+  while ((match = statementPattern.exec(sql)) !== null) {
+    if (match[1] !== undefined) {
+      const name = match[3];
+      const openIdx = sql.indexOf("(", match.index + match[1].length - 1);
+      if (openIdx === -1) continue;
+      const extracted = extractParenBody(sql, openIdx);
+      if (!extracted) continue;
+      statementPattern.lastIndex = extracted.end + 1;
+      const ifNotExists = match[2] !== undefined;
+      if (ifNotExists && tables.has(keyOf(name))) continue;
+      // Delete first so a recreate takes the position of its new CREATE.
+      tables.delete(keyOf(name));
+      tables.set(keyOf(name), parseTable(name, extracted.body));
+    } else if (match[4] !== undefined) {
+      for (const ref of match[5].split(",")) {
+        const name = ref.trim().split(".").pop() ?? "";
+        tables.delete(keyOf(stripIdentQuotes(name)));
+      }
+    } else if (match[6] !== undefined) {
+      const from = match[7];
+      const to = match[8];
+      const table = tables.get(keyOf(from));
+      if (!table) continue;
+      // A rename keeps the table where it was; only a recreate moves it.
+      tables.delete(keyOf(to));
+      const renamed = new Map<string, Table>();
+      for (const [key, t] of tables) renamed.set(key === keyOf(from) ? keyOf(to) : key, t);
+      tables.clear();
+      for (const [key, t] of renamed) tables.set(key, t);
+      table.name = to;
+      for (const t of tables.values()) {
+        for (const fk of t.foreignKeys) {
+          if (keyOf(fk.refTable) === keyOf(from)) fk.refTable = to;
+        }
+      }
+    }
   }
-  return tables;
+  return [...tables.values()];
 }
 
 // ─── Aggregate grouping ───────────────────────────────────────────────────────
