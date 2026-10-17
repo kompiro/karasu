@@ -28,9 +28,9 @@ system Admin {
 }
 `;
 
-async function diffSvg(before: string, after: string): Promise<string> {
+async function diffSvg(before: string, after: string, sheet = SHEET): Promise<string> {
   const fs = new InMemoryFileSystemProvider();
-  await fs.writeFile("/theme.krs.style", SHEET);
+  await fs.writeFile("/theme.krs.style", sheet);
   await fs.writeFile("/before.krs", before);
   await fs.writeFile("/after.krs", after);
   const result = await compileSystemDiff({
@@ -74,4 +74,36 @@ system Admin {
     expect(card(svg, "Shop.Mail")).not.toContain("#ff0000");
     expect(card(svg, "Admin.Mail")).toContain("#ff0000");
   });
+
+  it("places the removed card by its own column hint, not a same-named card's", async () => {
+    // `column: left` pins the external `Admin.Mail` to the left side column,
+    // although its consumer `Gamma` sits on the right. The plain `Shop.Mail`
+    // has no hint. Once `Admin.Mail` is removed, the bare id `Mail` answers
+    // with `Shop.Mail`'s empty hint, and without its own path entry the
+    // removed card would move back to the consumer's side.
+    const sheet = `service[external] { column: left; }\n`;
+    const system = (name: string, mail: string | null) => `system ${name} {
+  service Alpha {}
+  service Beta {}
+  service Gamma {}${mail === null ? "" : `\n  service Mail ${mail} {}\n  Gamma -> Mail`}
+  database Db {}
+  Alpha -> Db
+}
+`;
+    const before = `@import "theme.krs.style"\n${system("Shop", "")}${system("Admin", "[external]")}`;
+    const after = `@import "theme.krs.style"\n${system("Shop", "")}${system("Admin", null)}`;
+
+    const unchanged = await diffSvg(before, before, sheet);
+    const removed = await diffSvg(before, after, sheet);
+    expect(card(removed, "Admin.Mail")).toMatch(/data-diff-state="removed"/);
+    expect(cardX(unchanged, "Admin.Mail")).toBeLessThan(cardX(unchanged, "Admin.Alpha"));
+    expect(cardX(removed, "Admin.Mail")).toBeLessThan(cardX(removed, "Admin.Alpha"));
+  });
 });
+
+/** The x of the card's first rect, which is where the card is placed. */
+function cardX(svg: string, path: string): number {
+  const match = /<rect x="([\d.]+)"/.exec(card(svg, path));
+  if (match === null) throw new Error(`no rect for ${path}`);
+  return Number(match[1]);
+}
