@@ -133,6 +133,9 @@ export function PreviewColumn() {
   const svg = view.svg;
   const diagnostics = view.diagnostics;
   const viewPath = view.viewPath;
+  // One diagram per view, drill path and deploy block: moving to another one
+  // starts at the initial zoom and pan (#3178). An edit keeps the key.
+  const diagramKey = JSON.stringify([activeView, selectedDeployBlockId ?? null, viewPath]);
   const onDrillDown = view.onBreadcrumbNavigate;
 
   const exportFilename = buildSvgExportFilename(activeView, {
@@ -398,6 +401,7 @@ export function PreviewColumn() {
       ) : (
         <PreviewPane
           key="diagram"
+          diagramKey={diagramKey}
           svg={svg}
           diagnostics={diagnostics}
           viewPath={viewPath}

@@ -15,6 +15,7 @@ known_consumers:
 discovered_from:
   - issue: "#2800"
   - issue: "#2799"
+  - issue: "#3178"
   - root_cause_file: "packages/app/src/components/PreviewColumn.tsx:299"
   - root_cause_file: "packages/app/src/components/PreviewPane.tsx:148"
 related_to:
@@ -95,6 +96,12 @@ scope:
   org の 2 ペインで同じ漏れを再現した。**テストはキーの無い同士の直接切替で書く** —
   key 付きのペインを経由する切替（grid → tree など）では再マウントが起きて漏れが
   隠れる（#2799 では Tree View → Dependencies）
+- **同じペインの中で図が変わるときも、ズームとパンは持ち越さない**（#3178）。
+  `key="diagram"` のペインは、タブ（system / deploy / org）の切替とドリルダウンで
+  同じインスタンスのまま別の図を描くので、key だけでは防げない。ペインに
+  `diagramKey`（view・drill path・deploy ブロック）を渡し、それが変わったら
+  transform を初期値に戻す。編集で同じ図を描き直すときは key が変わらないので、
+  読み手のズームは残る
 
 ## 到達状態
 
@@ -132,3 +139,8 @@ grep -rn "dangerouslySetInnerHTML\|srcDoc" packages/app/src --include=*.tsx
   `org tab panes go through the shared preview pane (#2799)` — 両ペインの構造、
   `onTeamToggle` の発火、org ビューの診断が両モードのバナーに出ること、
   2 サブモード間でズームを持ち越さないこと
+- `packages/app/src/components/PreviewPane.test.tsx` ›
+  `keeps the zoom when the same diagram re-renders, and resets it for another diagram`
+  （`diagramKey` の変化でだけ transform を戻す。#3178）
+- `packages/e2e/tests/at-3178-zoom-resets-on-diagram-change.spec.ts` — ドリルダウンと
+  タブ切替でズームを持ち越さないこと、編集では残ること
