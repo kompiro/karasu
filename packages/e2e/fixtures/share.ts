@@ -1,3 +1,4 @@
+import { deflateRawSync, inflateRawSync } from "node:zlib";
 import { type Locator, type Page, expect } from "@playwright/test";
 import { replaceEditorContent } from "./editor.js";
 import type { OpfsFixture, SeedOptions } from "./opfs.js";
@@ -42,6 +43,28 @@ export function sharePayloadOf(url: string): string {
   const encoded = fromHash ?? parsed.searchParams.get("s");
   if (encoded === null) throw new Error(`no s= payload in ${url}`);
   return encoded;
+}
+
+/** The JSON a `#s=` payload decodes to (`SharePayload` in `@karasu-tools/core`). */
+export interface DecodedSharePayload {
+  krs: string;
+  style?: string;
+  target?: { view: string; node?: string; highlight?: string; orgTree?: true };
+}
+
+/**
+ * Decode a share `<enc>`, apply `edit`, and encode it again. The app's codec is
+ * JSON → raw DEFLATE (fflate `deflateSync`) → base64url (`utils/inline-share.ts`).
+ * For links no Share click can produce, e.g. a `target` whose node the model
+ * no longer has.
+ */
+export function rewriteSharePayload(
+  encoded: string,
+  edit: (payload: DecodedSharePayload) => DecodedSharePayload,
+): string {
+  const json = inflateRawSync(Buffer.from(encoded, "base64url")).toString("utf8");
+  const payload = edit(JSON.parse(json) as DecodedSharePayload);
+  return deflateRawSync(Buffer.from(JSON.stringify(payload), "utf8")).toString("base64url");
 }
 
 /**

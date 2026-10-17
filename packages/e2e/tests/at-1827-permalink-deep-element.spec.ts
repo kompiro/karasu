@@ -1,7 +1,14 @@
 import type { Locator } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
 import { drillInto } from "../fixtures/drill.js";
-import { bootSharer, openShareDialog, openSharedUrl, readPrivateUrl } from "../fixtures/share.js";
+import {
+  bootSharer,
+  openShareDialog,
+  openSharedUrl,
+  readPrivateUrl,
+  rewriteSharePayload,
+  sharePayloadOf,
+} from "../fixtures/share.js";
 
 /**
  * AT-1827 (`docs/acceptance/permalink-deep-element.md`): a share link made
@@ -45,6 +52,33 @@ test.describe("AT-1827 deep permalink", () => {
     await expect
       .poll(() => page.evaluate(() => location.hash.split("?")[0]))
       .toBe("#krs-system-OrderService");
+  });
+
+  test("a shared target whose node was renamed opens the whole model", async ({
+    page,
+    opfs,
+    baseURL,
+  }) => {
+    await bootSharer(page, opfs, KRS);
+    await drillInto(page, ["OrderService"], { expectBreadcrumb: true });
+    const encoded = sharePayloadOf(await readPrivateUrl(await openShareDialog(page)));
+
+    // The model the link carries renames OrderService; the target still
+    // names it, so it no longer resolves (M-3, through `payload.target`
+    // rather than `?krs=`).
+    const stale = rewriteSharePayload(encoded, (payload) => {
+      expect(payload.target).toEqual({ view: "system", node: "OrderService" });
+      return { ...payload, krs: payload.krs.replaceAll("OrderService", "RenamedService") };
+    });
+    await openSharedUrl(page, opfs, `${baseURL}/#s=${stale}`);
+
+    await expect(page.locator('svg [data-node-id="RenamedService"]')).toBeVisible();
+    await expect(page.locator('svg [data-node-id="Billing"]')).toBeVisible();
+    await expect(page.locator(".breadcrumb-current")).toHaveText("EC");
+    // A stale target degrades quietly: the payload itself restored fine.
+    await expect(page.getByRole("alert").filter({ hasText: "could not be restored" })).toHaveCount(
+      0,
+    );
   });
 
   test("with the checkbox off, the same share opens the whole model", async ({ page, opfs }) => {

@@ -56,13 +56,15 @@
 
   > ✅ Automated — `packages/e2e/tests/at-1827-permalink-deep-element.spec.ts` › `a link shared while drilled into a service opens drilled into it`（breadcrumb と `#krs-system-<id>` の hash）
 
+- [x] M-3: 共有後にモデルの当該 node `id` を rename → 古いリンクを開くと（クラッシュせず）view root にフォールバックすること
+
+  > ✅ Automated — `packages/e2e/tests/at-1827-permalink-deep-element.spec.ts` › `a shared target whose node was renamed opens the whole model`（payload の `target` 経由。ドリル中に共有した payload の `.krs` だけ rename して開き、root で開いて restore 失敗のバナーが出ないことを見る）/ `packages/e2e/tests/at-1958-deep-link-anchor.spec.ts` › `an anchor that no longer resolves opens the whole model`（`?krs=` 経由）
+
 ### 手動確認（CI で検証できない項目）
 
 - [ ] M-2: ノードを選択（highlight）した状態で共有 → 開いたとき当該ノードがフォーカス強調されること
 
   > 🟡 Partially automated — `packages/app/src/hooks/useHistoryNavigation.test.ts` › `pending highlight restoration (#1842)`（共有オープン時に highlight が seed の VIEW_RESET 後に再適用されることを検証。実ブラウザ上の視覚的フォーカス強調の確認は手動）
-- [ ] M-3: 共有後にモデルの当該 node `id` を rename → 古いリンクを開くと（クラッシュせず）view root にフォールバックすること
 
-  > 🟡 Partially automated — `packages/e2e/tests/at-1958-deep-link-anchor.spec.ts` › `an anchor that no longer resolves opens the whole model`（`?krs=` 経由で解決できない `#krs-system-<id>` が root で開くことを見る。payload の `target` も同じ hash に正規化されてから解決されるが、`target` 経由の経路そのものは手動）
 - [ ] M-4: 静的にエクスポートした drill-down SVG を `<file>#krs-system-<id>` で直接開くと、CSS `:target` で当該階層が表示されること（JS 無効でも）。書き出したファイルを直接開く操作で、app を相手にする e2e の外にある
 - [ ] M-5: `/s?s=<target 付き>` を実ブラウザで開くと、人間訪問者が `#s=` に bounce され deep-link が効くこと（OGP 画像はモデル全体のまま＝想定内）。`/s` は Pages Function が返すので e2e には現れない。bounce 後の deep-link は M-1 の e2e が見ている

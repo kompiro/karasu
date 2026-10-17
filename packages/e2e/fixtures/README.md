@@ -237,6 +237,10 @@ Used by the share / permalink specs (AT-1783, AT-1801, AT-1827, AT-1958).
   and `readPrivateUrl(dialog)` read the two links; `sharePayloadOf(url)` pulls
   the `<enc>` out of either `#s=<enc>` or `?s=<enc>`. `shareButton(page)` is the
   toolbar button itself (for the disabled-state check).
+- `rewriteSharePayload(encoded, edit)` decodes an `<enc>` with the app's codec
+  (JSON → raw DEFLATE → base64url), applies `edit`, and encodes it again. Use
+  it for links no Share click produces, such as a `target` naming a node the
+  shared model no longer has.
 - `bootSharer(page, opfs, krs, seed?)` puts the sharer on an explicit
   `/?mode=memory` with `krs` in the editor while the fixture stays in `opfs`
   mode. `seed` goes to `opfs.seed` first, so the visitor can have a local
