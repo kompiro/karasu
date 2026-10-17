@@ -185,6 +185,7 @@ flowchart TD
     ADR_3203["ADR-3203<br/>Dependabot security alert 2026-10-14（sharp の ov..."]
     ADR_3242["ADR-3242<br/>Dependabot トリアージ 2026-10-15：npm 5 件をそのまま採用し、vit..."]
     ADR_3246["ADR-3246<br/>`@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast..."]
+    ADR_3271["ADR-3271<br/>PR と Issue はマージで同時に閉じ、マージ後にしか確かめられない項目は別の Issue..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -1065,6 +1066,7 @@ flowchart TD
   class ADR_3203 accepted
   class ADR_3242 accepted
   class ADR_3246 accepted
+  class ADR_3271 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
