@@ -91,6 +91,8 @@ ready → implementing → in-review → (close)
 ```
 
 > `close` は PR に `Closes #N` を記載することで GitHub が自動で行う。
+>
+> マージ後にしか確かめられない項目（次のリリース、本番にしか現れない設定、`main` でのバックフィルなど）は、PR を作る前に別の Issue に起こし、PR 本文から番号を示す。元の Issue は `Closes #N` のまま PR と一緒に閉じる。ADR への昇格などこの文書が手順として持つ後工程は書かない（ADR-3271）。
 
 ### PR ワークフロー
 

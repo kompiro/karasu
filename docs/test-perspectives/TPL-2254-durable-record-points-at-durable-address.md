@@ -12,6 +12,7 @@ discovered_from:
   - issue: "#2254"
   - issue: "#2259"
   - issue: "#3169"
+  - issue: "#3271"
   - root_cause_file: "docs/acceptance/0999-legend-in-use-fallback.md"
   - root_cause_file: "docs/acceptance/1821-layer-toggle-external-infra.md"
 related_to:
@@ -53,7 +54,7 @@ scope:
 - [ ] ブランチ名・PR 番号・セッション固有のパスが URL に含まれていないか
 - [ ] AT の手順にローカル dev サーバの起動コマンドを書いていないか（確かめる場所はその PR の preview かローカルの checkout で、手順はそこで開く入力と期待結果だけにする）
 - [ ] preview URL を記録に焼き付けず、PR 本文の Preview URL 欄に置いたか
-- [ ] 本番にしか現れない項目（デプロイ設定、OAuth など）を AT に置かず、PR の Post-merge follow-ups から Issue へ載せたか
+- [ ] 本番にしか現れない項目（デプロイ設定、OAuth など）を AT に置かず、別の Issue に起こしたか
 
 ## 既知の対処パターン
 
@@ -69,7 +70,7 @@ scope:
   `<!-- absent-path-next-line: <理由> -->` で宣言する。宣言は逆向きにも検査され、パスが
   実在するようになると落ちる — 実装済みの設計ドキュメントが ADR 昇格の時期を自ら告げる。
   `docs/adr/**` は対象外（本文は当時の記録 — ADR-706）
-- **本番にしか確認手段がない項目は AT から外す**: 本番にしか現れないもの（デプロイ設定、OAuth、カスタムドメイン）は、マージを止める検査にならない。AT ではなく PR の Post-merge follow-ups に置き、Issue に載せて消化する。docs-site も [#2260](https://github.com/kompiro/karasu/issues/2260) で PR preview を得たので、記録の手順は app と同じく preview で実行できる（URL は PR 本文の欄に置く）
+- **本番にしか確認手段がない項目は AT から外す**: 本番にしか現れないもの（デプロイ設定、OAuth、カスタムドメイン）は、マージを止める検査にならない。AT ではなく別の Issue に起こして消化する（ADR-3271）。docs-site も [#2260](https://github.com/kompiro/karasu/issues/2260) で PR preview を得たので、記録の手順は app と同じく preview で実行できる（URL は PR 本文の欄に置く）
 
 ## 由来
 

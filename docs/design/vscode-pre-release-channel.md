@@ -159,7 +159,7 @@ stable の経路（`release.yml` からの `workflow_call`、`pre_release: false
 3. `docs/release.md` の「VS Code 拡張のリリース」に pre-release の節を足す（起動・版の付け方・変更が無い週・タグ・利用者が pre-release に切り替える方法）。#2940 への参照を置き換える。
 4. 柵: stable 側の「同じ版が pre-release にしか無いなら失敗」は残す。A1 では起きないはずの状態で、起きたら版の付け方の前提が崩れたことを知らせる。
 5. TPL: 既存の TPL-2786（取得・比較できないときは失敗）と TPL-2804（集合を持たない判定）を PR description で引用する。spec / concepts に節を足さないので proactive TPL の義務は無い。
-6. AT: マージ前に確かめられる人手の項目は無い（判定はスクリプトの unit test、ワークフローは CI と dispatch で確かめる）。本番の Marketplace でしか確かめられない項目は PR の Post-merge follow-ups に置く:
+6. AT: マージ前に確かめられる人手の項目は無い（判定はスクリプトの unit test、ワークフローは CI と dispatch で確かめる）。本番の Marketplace でしか確かめられない項目は、実装 PR を作る前に別の Issue に起こす（ADR-3271）:
    - 最初の水曜のスケジュール起動で pre-release が公開され、`karasu-vscode-pre/<版>` が打たれる。
    - 次の週、`main` に拡張の変更が無ければ「変更なし」で公開を飛ばす。
    - pre-release を選んだ VS Code に更新が届く。次の月次トレインで minor が上がった stable が出たとき、その利用者が stable に移る。
