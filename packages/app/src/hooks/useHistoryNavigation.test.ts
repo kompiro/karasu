@@ -384,6 +384,11 @@ function makeDispatch() {
   return vi.fn<() => void>();
 }
 
+/** The `type` of every action `dispatch` received, in order. */
+function dispatchedTypes(dispatch: ReturnType<typeof makeDispatch>): string[] {
+  return (dispatch.mock.calls as unknown as [{ type: string }][]).map(([action]) => action.type);
+}
+
 function makeOptions(overrides: Partial<Parameters<typeof useHistoryNavigation>[0]> = {}) {
   return {
     activeView: "system" as const,
@@ -526,6 +531,134 @@ describe("useHistoryNavigation", () => {
   // dispatched on mount. Effect ② must re-apply the highlight once the
   // model-derived index populates (which is guaranteed to be after that reset).
   // The growing index simulates the seed having loaded the file content.
+  // #3208: on a cold boot the seed's SELECT_FILE spreads VIEW_RESET
+  // (`activeView: "system"`) after effect ① restored the tab, so a Deploy /
+  // Org / CRUD hash landed on System. Effect ② re-applies the view, like the
+  // node and highlight (TPL-1842).
+  describe("pending view restoration (#3208)", () => {
+    it.each([
+      ["#krs-deploy", "deploy"],
+      ["#krs-org-root", "org"],
+      ["#krs-matrix", "matrix"],
+    ] as const)("re-applies %s once the index populates", async (hash, view) => {
+      history.replaceState(null, "", hash);
+      const dispatch = makeDispatch();
+      let nodePathIndex = new Map<string, string[]>();
+
+      const { rerender } = renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, nodePathIndex })),
+      );
+
+      // Effect ① restored the tab; the seed's VIEW_RESET (not modeled here)
+      // then wipes it. Only the deferred re-application is asserted.
+      dispatch.mockClear();
+
+      nodePathIndex = new Map([["Payment", ["Payment"]]]);
+      await act(async () => {
+        rerender();
+      });
+
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "SET_ACTIVE_VIEW", activeView: view }),
+      );
+    });
+
+    it("does not re-apply before the index is ready, nor more than once", async () => {
+      history.replaceState(null, "", "#krs-deploy");
+      const dispatch = makeDispatch();
+      let nodePathIndex = new Map<string, string[]>();
+
+      const { rerender } = renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, nodePathIndex })),
+      );
+      dispatch.mockClear();
+
+      // Still empty: re-applying now would land before the seed's reset.
+      await act(async () => {
+        rerender();
+      });
+      expect(dispatch).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: "SET_ACTIVE_VIEW" }),
+      );
+
+      nodePathIndex = new Map([["Payment", ["Payment"]]]);
+      await act(async () => {
+        rerender();
+      });
+      nodePathIndex = new Map([
+        ["Payment", ["Payment"]],
+        ["Api", ["Api"]],
+      ]);
+      await act(async () => {
+        rerender();
+      });
+      expect(dispatchedTypes(dispatch).filter((t) => t === "SET_ACTIVE_VIEW")).toHaveLength(1);
+    });
+
+    it("applies the view before the org drill it resolves", async () => {
+      history.replaceState(null, "", "#krs-org-backend");
+      const dispatch = makeDispatch();
+      let orgPathIndex = new Map<string, string[]>();
+
+      const { rerender } = renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, orgPathIndex })),
+      );
+      dispatch.mockClear();
+
+      orgPathIndex = new Map([["backend", ["eng", "backend"]]]);
+      await act(async () => {
+        rerender();
+      });
+
+      const types = dispatchedTypes(dispatch);
+      expect(types.indexOf("SET_ACTIVE_VIEW")).toBeGreaterThanOrEqual(0);
+      expect(types.indexOf("SET_ACTIVE_VIEW")).toBeLessThan(types.indexOf("SET_VIEW_PATH"));
+      expect(dispatch).toHaveBeenCalledWith({ type: "SET_VIEW_PATH", path: ["eng", "backend"] });
+    });
+
+    it("carries the hash's highlight with the re-applied view", async () => {
+      history.replaceState(null, "", "#krs-deploy:ECommerce");
+      const dispatch = makeDispatch();
+      let nodePathIndex = new Map<string, string[]>();
+
+      const { rerender } = renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, nodePathIndex })),
+      );
+      dispatch.mockClear();
+
+      nodePathIndex = new Map([["ECommerce", ["ECommerce"]]]);
+      await act(async () => {
+        rerender();
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_ACTIVE_VIEW",
+        activeView: "deploy",
+        highlightNodeId: "ECommerce",
+        highlightAttribute: "data-realized-node-id",
+      });
+    });
+
+    it("leaves a system hash alone: the reset already lands on System", async () => {
+      history.replaceState(null, "", "#krs-system-root");
+      const dispatch = makeDispatch();
+      let nodePathIndex = new Map<string, string[]>();
+
+      const { rerender } = renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, nodePathIndex })),
+      );
+      dispatch.mockClear();
+
+      nodePathIndex = new Map([["Payment", ["Payment"]]]);
+      await act(async () => {
+        rerender();
+      });
+      expect(dispatch).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: "SET_ACTIVE_VIEW" }),
+      );
+    });
+  });
+
   describe("pending highlight restoration (#1842)", () => {
     // #2818: with the index already populated on mount (Memory / Serve mode),
     // effect ② re-applies in the same flush as effect ①'s SET_ACTIVE_VIEW.
