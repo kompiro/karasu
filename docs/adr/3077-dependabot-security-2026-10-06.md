@@ -11,7 +11,9 @@ related_to: [ADR-1038, ADR-2341, ADR-2401, ADR-2115, ADR-2628, ADR-2985, ADR-306
 assumptions:
   # 決定は patched な系列へ floor を置くことであって、そのときの patch 番号ではない（ADR-2628）。
   # tinypool は当初 oxfmt 0.63.0 の exact pin（2.1.0）に合わせ `~2.1.2` にしたが、oxfmt 0.72.0 が 2.2.0 を
-  # exact pin したため `^2.1.2` に緩めた（2026-10-14 第 2 波の Dependabot トリアージ）。floor の存在だけを確かめる。
+  # exact pin したため `^2.1.2` に緩めた（2026-10-14 第 2 波の Dependabot トリアージ）。他の行と同じく major で止める
+  # （.claude/rules/adr.md「assumptions に書くこと」、ADR-1338 と同形）。表明するのは「override が 2.x に caret で
+  # 掛かっていること」までで、floor の値（2.1.2）はこの grep では確かめない。
   - "grep: pnpm-workspace.yaml :: tinypool: \\^2\\."
   - "grep: pnpm-workspace.yaml :: source-map-js: \\^1\\."
   - "grep: pnpm-workspace.yaml :: smol-toml: \\^1\\."
