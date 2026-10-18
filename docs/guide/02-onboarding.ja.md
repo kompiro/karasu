@@ -105,6 +105,8 @@ OpenAPI のパスと操作が仮置きの `domain`（`OrderServiceApi`）の中�
 $ karasu translate --from db schema.sql --database OrderDB
 ```
 
+入力はスキーマのダンプでも、ORM の SQL マイグレーション履歴を順に連結したもの（drizzle、Prisma）でもかまいません。表を作る・消す・改名する文を順に再生するので、`CREATE TABLE` は表を足すか作り直し、`DROP TABLE` は表を消し、`ALTER TABLE … RENAME TO`（MySQL の `RENAME TABLE` も）は表の名前を変え、履歴の最後に残る表だけが出力されます。それ以外の文は再生しません。表の列はその表の最後の `CREATE TABLE` から取るので、`ALTER TABLE … ADD COLUMN` で足した列は出ません。コメントや引用符の中の文は読み飛ばします。
+
 ```krs
 database OrderDB {
   table OrdersTable {

@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import { format, FormatError } from "@karasu-tools/core";
-import { DEFAULT_SKIP_DIRS, findFilesBySuffix, resolveTargets } from "./find-files.js";
+import { resolveTargets } from "./find-files.js";
 import { readStdin } from "./stdin.js";
 
 interface FmtOptions {
@@ -14,10 +14,10 @@ export async function fmt(files: string[], options: FmtOptions): Promise<void> {
     return;
   }
 
-  // Default: all .krs files under the current directory (recursive)
-  const targets = resolveTargets(files, () =>
-    findFilesBySuffix(process.cwd(), ".krs", DEFAULT_SKIP_DIRS),
-  );
+  // Default: all .krs files under the current directory (recursive); a
+  // directory argument expands the same way under that directory.
+  const targets = resolveTargets(files, ".krs");
+  if (targets === undefined) return;
 
   if (targets.length === 0) {
     process.stderr.write("No .krs files found.\n");

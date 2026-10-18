@@ -33,9 +33,9 @@
 
   > ✅ Automated — `packages/e2e/tests/at-1458-preview-focus-shortcut.spec.ts` › `Ctrl/Cmd+Shift+F enters and leaves Focus mode from the preview`
 
-- [ ] Monaco エディタにフォーカスを置いた状態で `Ctrl/Cmd+Shift+F` を押しても Focus モードは切り替わらず、エディタの入力／キーバインドを妨げない
+- [x] Monaco エディタにフォーカスを置いた状態で `Ctrl/Cmd+Shift+F` を押しても Focus モードは切り替わらず、エディタの入力／キーバインドを妨げない
 
-  > e2e は [#3207](https://github.com/kompiro/karasu/issues/3207) の修正まで `test.fixme`（`packages/e2e/tests/at-1458-preview-focus-shortcut.spec.ts` › `Ctrl/Cmd+Shift+F is ignored while the editor has focus`）。Monaco の EditContext はフォーカス先が contenteditable でないため、現状はこのショートカットがエディタ内でも発火する。
+  > ✅ Automated — `packages/e2e/tests/at-1458-preview-focus-shortcut.spec.ts` › `Ctrl/Cmd+Shift+F is ignored while the editor has focus`（Chromium の Monaco は EditContext の div にフォーカスする。[#3207](https://github.com/kompiro/karasu/issues/3207) までこの経路ではショートカットが発火していた）
 
 - [x] コマンドパレット（`Ctrl/Cmd+Shift+P`）に `Toggle Preview Focus` が表示され、選択すると Focus モードがトグルされる
 

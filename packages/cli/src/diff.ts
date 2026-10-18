@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { rm, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import {
   buildAllViewsSvgDiffProject,
   compileDeployDiff,
@@ -8,6 +8,7 @@ import {
   compileSystemDiff,
 } from "@karasu-tools/core";
 import type { DiagramType } from "@karasu-tools/core";
+import { resolveKrsFileOrExit } from "./compile-system-view.js";
 import { formatDiagnostic } from "./i18n.js";
 import { NodeFileSystemProvider } from "./node-fs.js";
 import { writeOutput } from "./output.js";
@@ -46,24 +47,43 @@ export async function diff(
   try {
     let beforeAbs: string;
     let afterAbs: string;
+    // How warnings name the after entry: its resolved file (a directory's
+    // index.krs), or `-` for stdin.
+    let afterDisplayPath: string;
     // The stdin side is written next to the *other* side's file, so the most
     // common `git diff` use case (compare a working-tree file to a committed
     // revision) keeps working: a relative import in the stdin content resolves
     // against the same directory as the file argument. A subdirectory would
     // shift every `./` import one level down (#3122).
+    //
+    // A file side goes through the same entry resolver as `render` (#3106): a
+    // directory reads as its index.krs, and a path that is not there is
+    // reported per side. Resolved before stdin is materialized, so an early
+    // exit leaves no tempfile behind.
     if (beforeArg === STDIN_TOKEN) {
-      afterAbs = resolve(afterArg);
+      const after = await resolveKrsFileOrExit(afterArg, "after file not found");
+      if (after === undefined) return;
+      afterAbs = after.absolutePath;
+      afterDisplayPath = after.displayPath;
       stdinTempFile = await materializeStdin(dirname(afterAbs), "before");
       beforeAbs = stdinTempFile;
     } else if (afterArg === STDIN_TOKEN) {
-      beforeAbs = resolve(beforeArg);
+      const before = await resolveKrsFileOrExit(beforeArg, "before file not found");
+      if (before === undefined) return;
+      beforeAbs = before.absolutePath;
       stdinTempFile = await materializeStdin(dirname(beforeAbs), "after");
       afterAbs = stdinTempFile;
+      afterDisplayPath = STDIN_TOKEN;
     } else {
-      beforeAbs = resolve(beforeArg);
-      afterAbs = resolve(afterArg);
+      const before = await resolveKrsFileOrExit(beforeArg, "before file not found");
+      if (before === undefined) return;
+      const after = await resolveKrsFileOrExit(afterArg, "after file not found");
+      if (after === undefined) return;
+      beforeAbs = before.absolutePath;
+      afterAbs = after.absolutePath;
+      afterDisplayPath = after.displayPath;
     }
-    ok = await compileAndWrite(beforeAbs, afterAbs, afterArg, options);
+    ok = await compileAndWrite(beforeAbs, afterAbs, afterDisplayPath, options);
   } finally {
     if (stdinTempFile) {
       await rm(stdinTempFile, { force: true });
@@ -81,7 +101,7 @@ export async function diff(
 async function compileAndWrite(
   beforeAbs: string,
   afterAbs: string,
-  afterArg: string,
+  afterDisplayPath: string,
   options: DiffOptions,
 ): Promise<boolean> {
   const fs = new NodeFileSystemProvider();
@@ -109,9 +129,10 @@ async function compileAndWrite(
     process.stderr.write(`Warning: ${loc} ${formatDiagnostic(d)}\n`);
   }
   // Warnings are the after model's, once per diff (#2879), so they can name
-  // their file the way `render` does: the after entry as the user typed it
-  // (`-` for stdin), any file it imports by its own path.
-  reportWarnings(afterAbs, result.warnings, afterArg);
+  // their file the way `render` does: the after entry by its resolved path
+  // (a directory's index.krs, `-` for stdin), any file it imports by its own
+  // path.
+  reportWarnings(afterAbs, result.warnings, afterDisplayPath);
 
   if (errors.length > 0) {
     return false;
