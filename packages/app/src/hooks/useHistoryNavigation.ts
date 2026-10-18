@@ -295,6 +295,12 @@ export function useHistoryNavigation({
   // every restored field needs the deferral, not only the node). `system` is
   // what the reset leaves, so it has nothing to restore.
   const pendingActiveViewRestoreRef = useRef<ActiveView | null>(null);
+  // The view effect ② re-applied, until it commits. Effect ③ may write the
+  // reset `system` state before then; every write until the restored view
+  // lands replaces the entry instead of pushing one, so the deep link stays a
+  // single history entry and Back does not land on the reset System hash
+  // (#3208).
+  const restoringViewRef = useRef<ActiveView | null>(null);
 
   // Stable ref for onFileChange — referenced inside long-lived effects without re-running them.
   const onFileChangeRef = useLatestRef(onFileChange);
@@ -388,6 +394,7 @@ export function useHistoryNavigation({
       if (!indexReady) return;
       const view = pendingActiveViewRestoreRef.current;
       pendingActiveViewRestoreRef.current = null;
+      restoringViewRef.current = view;
       dispatch({
         type: "SET_ACTIVE_VIEW",
         activeView: view,
@@ -458,14 +465,16 @@ export function useHistoryNavigation({
       highlight: highlightedNodeId,
       file: currentFilePath,
     });
+    const restoring = restoringViewRef.current;
     if (location.hash !== newHash) {
       const isInitialLoad = prev === null && currentFilePath !== null;
-      if (isInitialLoad) {
+      if (isInitialLoad || restoring !== null) {
         history.replaceState(null, "", newHash);
       } else {
         history.pushState(null, "", newHash);
       }
     }
+    if (restoring === activeView) restoringViewRef.current = null;
     prevFilePathRef.current = currentFilePath;
   }, [activeView, viewPath, isOrgTreeView, isEntityView, highlightedNodeId, currentFilePath]);
 

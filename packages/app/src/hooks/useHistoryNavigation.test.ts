@@ -8,6 +8,8 @@ import {
   useHistoryNavigation,
 } from "./useHistoryNavigation.js";
 import { anchorId } from "@karasu-tools/core";
+import { useReducer } from "react";
+import { appReducer, initialState } from "../state/app-reducer.js";
 
 afterEach(cleanup);
 
@@ -657,6 +659,63 @@ describe("useHistoryNavigation", () => {
         expect.objectContaining({ type: "SET_ACTIVE_VIEW" }),
       );
     });
+
+    // With the real reducer: the seed's SELECT_FILE resets the view, effect ②
+    // re-applies it. The commit in between still holds `system`; writing it
+    // and then pushing the restored hash left a System entry right behind
+    // the deep link, so Back landed on System.
+    it.each([
+      ["in the seed's render", true],
+      ["a render after the seed", false],
+    ])(
+      "re-applies the view without adding a history entry when the index fills %s",
+      async (_when, withSeed) => {
+        history.replaceState(null, "", "#krs-deploy?file=%2Findex.krs");
+        let indexed = false;
+        const { result, rerender } = renderHook(() => {
+          const [state, dispatch] = useReducer(appReducer, initialState);
+          const nodePathIndex =
+            state.fileContent && (withSeed || indexed)
+              ? new Map([["A", ["A"]]])
+              : new Map<string, string[]>();
+          useHistoryNavigation(
+            makeOptions({
+              dispatch,
+              nodePathIndex,
+              activeView: state.activeView,
+              viewPath: state.viewPath,
+              currentFilePath: state.currentFilePath,
+              highlightedNodeId: state.highlightedNodeId,
+            }),
+          );
+          return { state, dispatch };
+        });
+        // Only what the seed and the restoration write; the mount's own writes are not this fix's.
+        const pushState = vi.spyOn(history, "pushState");
+        const replaceState = vi.spyOn(history, "replaceState");
+        pushState.mockClear();
+        replaceState.mockClear();
+
+        await act(async () => {
+          result.current.dispatch({
+            type: "SELECT_FILE",
+            path: "/index.krs",
+            content: "system S {\n  service A {}\n}\n",
+          });
+        });
+        indexed = true;
+        await act(async () => {
+          rerender();
+        });
+
+        expect(result.current.state.activeView).toBe("deploy");
+        expect(pushState).not.toHaveBeenCalled();
+        expect(replaceState.mock.calls.at(-1)?.[2]).toBe("#krs-deploy?file=%2Findex.krs");
+        expect(location.hash).toBe("#krs-deploy?file=%2Findex.krs");
+        pushState.mockRestore();
+        replaceState.mockRestore();
+      },
+    );
   });
 
   describe("pending highlight restoration (#1842)", () => {
