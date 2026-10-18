@@ -24,9 +24,11 @@ type: product
   >
   > ✅ Automated — `packages/core/src/translate/db.test.ts` › `a migration history is replayed in order (#3182)` › `matches names case-insensitively and ignores RENAME COLUMN`
 
-- [x] AT-E: `-- …` と `/* … */` の中の文は再生しない。引用符の中のコメント記号はコメントとして扱わない
+- [x] AT-E: `-- …` と `/* … */` の中の文、文字列リテラルの中の文は再生しない。引用符の中のコメント記号はコメントとして扱わない
 
   > ✅ Automated — `packages/core/src/translate/db.test.ts` › `a migration history is replayed in order (#3182)` › `skips statements inside comments, but not comment markers inside quotes`
+  >
+  > ✅ Automated — `packages/core/src/translate/db.test.ts` › `a migration history is replayed in order (#3182)` › `skips statements inside string literals`
 
 ### AC-2: 改名と作り直しが関連を保つ
 

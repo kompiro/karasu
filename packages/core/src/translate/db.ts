@@ -248,7 +248,9 @@ function blankComments(sql: string): string {
  *
  * Names are matched case-insensitively, as unquoted SQL identifiers are. The
  * survivors keep the order they were created in (a rename keeps its place).
- * Comments are skipped, so a commented-out statement changes nothing.
+ * Other statements (`ALTER TABLE … ADD COLUMN`, …) are not replayed: a table's
+ * columns come from its last `CREATE TABLE`. Comments and quoted text are
+ * skipped, so a statement inside them changes nothing.
  */
 function parseTables(input: string): Table[] {
   const sql = blankComments(input);
@@ -273,6 +275,9 @@ function parseTables(input: string): Table[] {
   };
   const statementPattern = new RegExp(
     [
+      // Quoted text is consumed whole, so DDL inside a string literal
+      // (`DEFAULT 'DROP TABLE a'`) is not replayed. No capture group.
+      String.raw`'(?:''|[^'])*'|"(?:""|[^"])*"|\x60(?:\x60\x60|[^\x60])*\x60`,
       // 1: CREATE, 2: IF NOT EXISTS, 3: name
       String.raw`(CREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?${TABLE_NAME_CAPTURE}\s*(?=\())`,
       // 4: DROP, 5: the comma-separated names

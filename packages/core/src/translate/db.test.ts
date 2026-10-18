@@ -622,6 +622,16 @@ CREATE TABLE d (id int PRIMARY KEY);
       expect(out).toContain("BTable -> ATable");
     });
 
+    it("skips statements inside string literals", async () => {
+      const out = await flat(`
+CREATE TABLE a (id int PRIMARY KEY);
+CREATE TABLE b (id int PRIMARY KEY);
+ALTER TABLE b ADD COLUMN note text DEFAULT 'it''s DROP TABLE a';
+INSERT INTO b (note) VALUES ('ALTER TABLE a RENAME TO c'), ("RENAME TABLE b TO d");
+`);
+      expect(tableIds(out)).toEqual(["ATable", "BTable"]);
+    });
+
     it("keeps a table whose rename changes only the letter case", async () => {
       const out = await flat(`
 CREATE TABLE orders (id int PRIMARY KEY);
