@@ -351,6 +351,11 @@ test.describe("AT-3031 focus canvas", () => {
 
     await page.mouse.click(point!.x, point!.y);
     // The edge focus: the pair's two cards, nothing else.
-    await expect(page.locator(".focus-canvas .focus-canvas__card")).toHaveCount(2);
+    const cards = page.locator(".focus-canvas .focus-canvas__card");
+    await expect(cards).toHaveCount(2);
+    const shown = await cards.evaluateAll((els) =>
+      els.map((el) => el.getAttribute("data-focus-node")).sort(),
+    );
+    expect(shown).toEqual([point!.from, point!.to].sort());
   });
 });
