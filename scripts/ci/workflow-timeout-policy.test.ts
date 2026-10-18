@@ -2,7 +2,8 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// Fences the timeout policy decided in ADR-2805 and corrected in ADR-2807: in
+// Fences the timeout policy decided in ADR-2805, corrected in ADR-2807 and
+// restated with the e2e bound raised in ADR-3257: in
 // every workflow that runs a test suite, the bound that means "the suite hung"
 // sits on the test step, and the job budget above it is what absorbs setup.
 //
@@ -25,12 +26,12 @@ const SUITE_WORKFLOWS = ["e2e-nightly.yml", "e2e.yml", "vscode-e2e.yml"];
  * The budgets, in minutes. `stepTimeout` is the real bound — it says how long
  * the suite may run before it counts as hung, and it is the number to revisit
  * when the suite grows. `jobTimeout` only has to clear it with room for setup
- * and teardown. Changing either is a policy change: update ADR-2807 in the
- * same PR.
+ * and teardown. Changing either is a policy change: record it in an ADR that
+ * supersedes ADR-3257, in the same PR.
  */
 const SUITE_JOBS = [
-  { key: "e2e-nightly.yml#e2e", testStep: "Run E2E tests", stepTimeout: 15, jobTimeout: 35 },
-  { key: "e2e.yml#e2e", testStep: "Run E2E tests", stepTimeout: 15, jobTimeout: 35 },
+  { key: "e2e-nightly.yml#e2e", testStep: "Run E2E tests", stepTimeout: 25, jobTimeout: 45 },
+  { key: "e2e.yml#e2e", testStep: "Run E2E tests", stepTimeout: 25, jobTimeout: 45 },
   {
     key: "vscode-e2e.yml#vscode-e2e",
     testStep: "Run extension host smoke tests",
@@ -213,7 +214,7 @@ const allJobs = SUITE_WORKFLOWS.filter((file) => !missingWorkflows.includes(file
 );
 const jobsByKey = new Map(allJobs.map((job) => [job.key, job]));
 
-describe("suite timeout policy (ADR-2807)", () => {
+describe("suite timeout policy (ADR-3257)", () => {
   it("reads every suite workflow this guard names", () => {
     // Parser sanity: a rename or a reformat that breaks the line scan would
     // otherwise make the assertions below pass vacuously. Missing files are
