@@ -1,7 +1,8 @@
 ---
 id: ADR-2807
 title: suite の job 予算は、共有の setup 観測最大を step 境界の上に載せて確保する
-status: accepted
+status: superseded
+superseded_by: ADR-3257
 date: 2026-09-12
 topic: build
 supersedes:
@@ -19,7 +20,6 @@ scope:
 assumptions:
   - "file: scripts/ci/workflow-timeout-policy.test.ts"
   - "symbol: scripts/ci/workflow-timeout-policy.test.ts :: OBSERVED_SETUP_MINUTES"
-  - "grep: .github/workflows/e2e.yml :: timeout-minutes: 35"
   - "grep: .github/workflows/vscode-e2e.yml :: timeout-minutes: 30"
   - "grep: .github/workflows/e2e-nightly.yml :: TEST_OUTCOME"
 ---
@@ -27,7 +27,7 @@ assumptions:
 # ADR-2807: suite の job 予算は、共有の setup 観測最大を step 境界の上に載せて確保する
 
 - **日付**: 2026-09-12
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by [ADR-3257](3257-e2e-step-bound-follows-suite-growth.md)
 - **きっかけ**: [#2807](https://github.com/kompiro/karasu/issues/2807)。[#2806](https://github.com/kompiro/karasu/pull/2806) のレビューで、ADR-2805 が定めた不変条件を ADR-2805 自身の値が満たしていないことが分かった
 - **関連**:
   - [ADR-2805](2805-suite-timeout-bounds-the-test-step.md): 本 ADR が supersede する。step に境界を置くという決定はそのまま引き継ぐ
