@@ -1610,3 +1610,134 @@ describe("crossing marks name their edges (#3090)", () => {
     expect(renderMarks(2, {})).not.toContain("data-edge-index");
   });
 });
+
+// #3157: the facet overlay and diff mode dim edges, but the crossing marks that
+// belong to them stayed bright. A mark now follows its edges: dimmed only when
+// every edge it names is, the rule node focus and hover follow (#3090).
+describe("crossing marks follow their edges' dim (#3157)", () => {
+  // Three horizontal edges; edge 0 carries the selected facet, 1 and 2 do not.
+  const renderWith = (
+    marks: { hops?: HopMark[]; junctions?: JunctionMark[]; bands?: TrunkBand[] },
+    options: { facet?: boolean; diffStates?: (string | undefined)[] } = {},
+  ): string => {
+    const styles = resolveStyles(
+      Parser.parse('system S { service Svc { label "Svc" } }').value.systems,
+      [getBuiltinStyleSheet()],
+    );
+    const edges: LayoutEdge[] = [0, 1, 2].map((i) => ({
+      from: `a${i}`,
+      to: `b${i}`,
+      fromPoint: { x: 0, y: 100 + 50 * i },
+      toPoint: { x: 600, y: 100 + 50 * i },
+      ...(i === 0 ? { facets: ["pii"] } : {}),
+      ...(options.diffStates?.[i] !== undefined
+        ? { diffState: options.diffStates[i] as LayoutEdge["diffState"] }
+        : {}),
+    }));
+    const node: LayoutNode = {
+      kind: "service",
+      id: "Svc",
+      label: "Svc",
+      properties: { links: [] },
+      linkCount: 0,
+      hasChildren: false,
+      hasDescription: false,
+      x: 700,
+      y: 700,
+      width: 100,
+      height: 50,
+    };
+    return renderFromLayout(
+      {
+        nodes: new Map([["Svc", node]]),
+        edges,
+        containers: [],
+        width: 900,
+        height: 900,
+        crossingMarks: {
+          hops: marks.hops ?? [],
+          junctions: marks.junctions ?? [],
+          bands: marks.bands ?? [],
+        },
+      },
+      styles,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      options.facet
+        ? {
+            facetOverlay: {
+              entries: [{ id: "pii", label: "PII", color: "#ff00ff" }],
+              membership: new Map(),
+              membershipByPath: new Map(),
+              colorOf: new Map([["pii", "#ff00ff"]]),
+            },
+          }
+        : undefined,
+    );
+  };
+  const hop = (edge: number): HopMark => ({
+    x: 300,
+    y: 100 + 50 * edge,
+    halfWidth: 6,
+    angle: 0,
+    edge,
+  });
+  const junction = (edges: number[]): JunctionMark =>
+    ({ x: 300, y: 150, count: edges.length, edge: edges[0], edges }) as JunctionMark;
+  const band = (edges: number[]): TrunkBand =>
+    ({
+      points: [
+        { x: 100, y: 150 },
+        { x: 400, y: 150 },
+      ],
+      count: edges.length,
+      edge: edges[0],
+      edges,
+    }) as TrunkBand;
+  /** The element carrying `data-edges="<edges>"`, with any dim wrapper before it. */
+  const markFor = (svg: string, tag: string, edges: string) =>
+    new RegExp(`(<g opacity="[^"]+">)?<${tag} [^>]*data-edges="${edges}"[^>]*>`).exec(svg);
+
+  it("dims a mark under the facet overlay when every edge it names is dimmed", () => {
+    const svg = renderWith(
+      { hops: [hop(1), hop(0)], junctions: [junction([1, 2])], bands: [band([1, 2])] },
+      { facet: true },
+    );
+    expect(markFor(svg, "path", "1")?.[1]).toBe('<g opacity="0.28">');
+    expect(markFor(svg, "circle", "1 2")?.[1]).toBe('<g opacity="0.28">');
+    expect(markFor(svg, "text", "1 2")?.[1]).toBe('<g opacity="0.28">');
+    expect(markFor(svg, "polyline", "1 2")?.[1]).toBe('<g opacity="0.28">');
+  });
+
+  it("keeps a mark bright when one of its edges is lit", () => {
+    const svg = renderWith(
+      { hops: [hop(0)], junctions: [junction([0, 1])], bands: [band([0, 2])] },
+      { facet: true },
+    );
+    expect(markFor(svg, "path", "0")?.[1]).toBeUndefined();
+    expect(markFor(svg, "circle", "0 1")?.[1]).toBeUndefined();
+    expect(markFor(svg, "polyline", "0 2")?.[1]).toBeUndefined();
+  });
+
+  it("marks a mark unchanged in compare mode only when every edge it names is", () => {
+    const svg = renderWith(
+      { hops: [hop(1)], junctions: [junction([0, 1])], bands: [band([1, 2])] },
+      { diffStates: ["added", "unchanged", "unchanged"] },
+    );
+    expect(markFor(svg, "path", "1")?.[0]).toContain('data-diff-state="unchanged"');
+    expect(markFor(svg, "polyline", "1 2")?.[0]).toContain('data-diff-state="unchanged"');
+    expect(markFor(svg, "circle", "0 1")?.[0]).not.toContain("data-diff-state");
+  });
+
+  it("changes nothing with no facet selected and diff mode off (TPL-2174)", () => {
+    const svg = renderWith({
+      hops: [hop(1)],
+      junctions: [junction([1, 2])],
+      bands: [band([1, 2])],
+    });
+    expect(svg).not.toContain('<g opacity="0.28">');
+    expect(svg).not.toContain("data-diff-state");
+  });
+});
