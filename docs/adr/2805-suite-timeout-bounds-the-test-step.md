@@ -20,8 +20,6 @@ scope:
     - ci
 assumptions:
   - "file: scripts/ci/workflow-timeout-policy.test.ts"
-  - "grep: .github/workflows/e2e.yml :: timeout-minutes: 15"
-  - "grep: .github/workflows/e2e-nightly.yml :: timeout-minutes: 15"
   - "grep: .github/workflows/vscode-e2e.yml :: timeout-minutes: 10"
 ---
 
