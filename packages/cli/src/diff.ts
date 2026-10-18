@@ -47,6 +47,9 @@ export async function diff(
   try {
     let beforeAbs: string;
     let afterAbs: string;
+    // How warnings name the after entry: its resolved file (a directory's
+    // index.krs), or `-` for stdin.
+    let afterDisplayPath: string;
     // The stdin side is written next to the *other* side's file, so the most
     // common `git diff` use case (compare a working-tree file to a committed
     // revision) keeps working: a relative import in the stdin content resolves
@@ -61,6 +64,7 @@ export async function diff(
       const after = await resolveKrsFileOrExit(afterArg, "after file not found");
       if (after === undefined) return;
       afterAbs = after.absolutePath;
+      afterDisplayPath = after.displayPath;
       stdinTempFile = await materializeStdin(dirname(afterAbs), "before");
       beforeAbs = stdinTempFile;
     } else if (afterArg === STDIN_TOKEN) {
@@ -69,6 +73,7 @@ export async function diff(
       beforeAbs = before.absolutePath;
       stdinTempFile = await materializeStdin(dirname(beforeAbs), "after");
       afterAbs = stdinTempFile;
+      afterDisplayPath = STDIN_TOKEN;
     } else {
       const before = await resolveKrsFileOrExit(beforeArg, "before file not found");
       if (before === undefined) return;
@@ -76,8 +81,9 @@ export async function diff(
       if (after === undefined) return;
       beforeAbs = before.absolutePath;
       afterAbs = after.absolutePath;
+      afterDisplayPath = after.displayPath;
     }
-    ok = await compileAndWrite(beforeAbs, afterAbs, afterArg, options);
+    ok = await compileAndWrite(beforeAbs, afterAbs, afterDisplayPath, options);
   } finally {
     if (stdinTempFile) {
       await rm(stdinTempFile, { force: true });
@@ -95,7 +101,7 @@ export async function diff(
 async function compileAndWrite(
   beforeAbs: string,
   afterAbs: string,
-  afterArg: string,
+  afterDisplayPath: string,
   options: DiffOptions,
 ): Promise<boolean> {
   const fs = new NodeFileSystemProvider();
@@ -123,9 +129,10 @@ async function compileAndWrite(
     process.stderr.write(`Warning: ${loc} ${formatDiagnostic(d)}\n`);
   }
   // Warnings are the after model's, once per diff (#2879), so they can name
-  // their file the way `render` does: the after entry as the user typed it
-  // (`-` for stdin), any file it imports by its own path.
-  reportWarnings(afterAbs, result.warnings, afterArg);
+  // their file the way `render` does: the after entry by its resolved path
+  // (a directory's index.krs, `-` for stdin), any file it imports by its own
+  // path.
+  reportWarnings(afterAbs, result.warnings, afterDisplayPath);
 
   if (errors.length > 0) {
     return false;

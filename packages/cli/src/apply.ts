@@ -15,6 +15,10 @@ import { readStdin } from "./stdin.js";
  * If the target file does not exist, it is created with the stdin content.
  */
 export async function apply(targetFile: string): Promise<void> {
+  // Check the target before reading stdin, so a directory is reported as such
+  // even when stdin is empty.
+  const kind = fileArgumentOrExit(targetFile, ".krs file");
+  if (kind === undefined) return;
   const incoming = await readStdin();
 
   if (!incoming.trim()) {
@@ -24,8 +28,6 @@ export async function apply(targetFile: string): Promise<void> {
   }
 
   const targetPath = resolve(targetFile);
-  const kind = fileArgumentOrExit(targetFile, ".krs file");
-  if (kind === undefined) return;
   const existing = kind === "file" ? readFileSync(targetPath, "utf-8") : "";
 
   const result = applyIncoming(existing, incoming);

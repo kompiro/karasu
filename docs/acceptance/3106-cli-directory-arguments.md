@@ -41,9 +41,13 @@ type: product
   >
   > ✅ Automated — `packages/cli/src/directory-argument.test.ts` › `a directory argument` › `diff resolves the file side before reading stdin, so an early exit leaves no tempfile`
 
+- [x] AT-H: after 側がディレクトリのとき、after の警告はディレクトリではなく `<dir>/index.krs` を名指しする
+
+  > ✅ Automated — `packages/cli/src/directory-argument.test.ts` › `a directory argument` › `diff names a directory's index.krs, not the directory, in the after side's warnings`
+
 ### AC-3: 1 ファイルを書き換える・読むコマンドは、ディレクトリだと言って止める
 
-- [x] AT-F: `remove` / `insert` / `apply` / `append` は `Error: <dir> is a directory; pass a .krs file` で止まり、何も書かない
+- [x] AT-F: `remove` / `insert` / `apply` / `append` は `Error: <dir> is a directory; pass a .krs file` で止まり、何も書かない。`insert` / `apply` / `append` は stdin より先にパスを確かめるので、stdin が空でも同じ文言になる
 
   > ✅ Automated — `packages/cli/src/directory-argument.test.ts` › `a directory argument` › `remove says the path is a directory`
   >
@@ -52,6 +56,8 @@ type: product
   > ✅ Automated — `packages/cli/src/directory-argument.test.ts` › `a directory argument` › `apply says the path is a directory, and writes nothing`
   >
   > ✅ Automated — `packages/cli/src/directory-argument.test.ts` › `a directory argument` › `append says the path is a directory, and writes nothing`
+  >
+  > ✅ Automated — `packages/cli/src/directory-argument.test.ts` › `a directory argument` › `%s checks the path before stdin, so empty stdin still reports the directory`
 
 - [x] AT-G: `translate` は `Error: <dir> is a directory; pass a file` で止まる（"File not found" ではない）
 

@@ -3,7 +3,8 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-vi.mock("./stdin.js", () => ({ readStdin: async () => "service Added {}\n" }));
+const stdin = vi.hoisted(() => ({ content: "service Added {}\n" }));
+vi.mock("./stdin.js", () => ({ readStdin: async () => stdin.content }));
 
 const { remove } = await import("./remove.js");
 const { insert } = await import("./insert.js");
@@ -34,6 +35,7 @@ describe("a directory argument", () => {
     mkdirSync(dir);
     stderr = "";
     stdout = "";
+    stdin.content = "service Added {}\n";
     vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
       stderr += String(chunk);
       return true;
@@ -77,6 +79,19 @@ describe("a directory argument", () => {
     expect(readdirSync(dir)).toEqual([]);
   });
 
+  it.each([
+    ["insert", () => insert("A", dir)],
+    ["apply", () => apply(dir)],
+    ["append", () => append(dir)],
+  ])(
+    "%s checks the path before stdin, so empty stdin still reports the directory",
+    async (_name, run) => {
+      stdin.content = "";
+      await expect(run()).rejects.toThrow("process.exit(1)");
+      expect(stderr).toBe(isDirectory());
+    },
+  );
+
   it("translate says the source is a directory, not that it is missing", async () => {
     await expect(translate(dir, { from: "compose" })).rejects.toThrow("process.exit(1)");
     expect(stderr).toBe(`Error: ${dir} is a directory; pass a file\n`);
@@ -110,6 +125,18 @@ describe("a directory argument", () => {
 
     expect(stderr).not.toContain("not found");
     expect(readFileSync(output, "utf8")).toContain("<svg");
+  });
+
+  it("diff names a directory's index.krs, not the directory, in the after side's warnings", async () => {
+    const before = join(tmpDir, "before.krs");
+    writeFileSync(before, "system S {}\n");
+    writeFileSync(join(dir, "index.krs"), "system S {}\ndomain Orphan {}\n");
+
+    await diff(before, dir, { view: "system", output: join(tmpDir, "diff.svg") });
+
+    expect(stderr).toContain(
+      `Warning: ${join(dir, "index.krs")}:2:1: Domain "Orphan" is not assigned to any service`,
+    );
   });
 
   it("diff says a directory without index.krs has none, not that it is missing", async () => {

@@ -14,6 +14,10 @@ import { readStdin } from "./stdin.js";
  *   - the parent node ID is not found in the file
  */
 export async function insert(parentId: string, targetFile: string): Promise<void> {
+  // Check the target before reading stdin, so a directory is reported as such
+  // even when stdin is empty.
+  const kind = fileArgumentOrExit(targetFile, ".krs file");
+  if (kind === undefined) return;
   const content = await readStdin();
 
   if (!content.trim()) {
@@ -23,8 +27,6 @@ export async function insert(parentId: string, targetFile: string): Promise<void
   }
 
   const targetPath = resolve(targetFile);
-  const kind = fileArgumentOrExit(targetFile, ".krs file");
-  if (kind === undefined) return;
 
   if (kind === "missing") {
     process.stderr.write(`Error: file not found: ${targetFile}\n`);
