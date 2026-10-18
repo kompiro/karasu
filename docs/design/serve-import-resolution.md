@@ -42,8 +42,9 @@
 - `karasu render` と同じ import を解決する。whole-file、named、directory（`import "dir/"`）、style（`@import "x.krs.style"`）、それぞれ開いたファイルの実際のパスを起点に
 - import グラフ内のどのファイル（`.krs.style` を含む）を保存しても、開いている図を描き直す
 - 配信ディレクトリの外は読ませない（TPL-168）。新しい API がパスを受け取るなら、`/api/file/:name` と同じ検査を通す
+- symlink をたどって配信ディレクトリの外を読まない（TPL-168 の symlink 越えの観点）。既存の `/api/file/:name` は文字列の検査だけで symlink を解決しない（`serve.ts` のコメントに既知として書いてある）ので、新しい API はこの穴を広げない形にする。`/api/file/:name` 自体の修正は #3283 で行う
 - 既存の URL（`/` と `/:name`）と `/api/files`・`/api/file/:name` の形は変えない。ADR-9013 の利用者（e2e #3049 を含む）を壊さない
-- out of scope: VS Code 拡張の更新契機（開いているファイルを追う設計で、別の論点）、配信ディレクトリから `node_modules` などを除く walk の見直し（`/api/files` が今すでに同じ walk をしている）
+- out of scope: VS Code 拡張の更新契機（開いているファイルを追う設計で、別の論点）、配信ディレクトリから `node_modules` などを除く walk の見直し（`/api/files` が今すでに同じ walk をしている）、既存 `/api/file/:name` の symlink 越えと bind address・CORS の見直し（#3283）
 
 ## 検討した選択肢
 
@@ -126,7 +127,9 @@ core の API を増やすが、減る量が小さい。
 
 1. **server**（`packages/cli/src/serve.ts`）: `GET /api/project` を足す。`collectKrsFiles` と同じ walk で
    `.krs` と `.krs.style` を集め、`{ files: [{ path, content }] }` を返す。`path` は `/` 区切りの相対パス
-   （Windows でも `/`）。既存の `/api/files`・`/api/file/:name` は残す
+   （Windows でも `/`）。symlink はたどらない: walk は `Dirent.isDirectory()` / `isFile()` で振り分け、どちらも
+   link を解決しないので、symlink は file としても directory としても拾われない。読むのは walk が返したパスだけで、
+   request からパスを受け取らない。既存の `/api/files`・`/api/file/:name` は残す
 2. **watcher**（`packages/cli/src/watcher.ts`）: `.krs.style` の change / add / unlink も通知する。payload に
    拡張子付きの相対パス `path` を足す。`file`（拡張子なし）は `.krs` のときだけ今までどおり入れる
 3. **app**（`packages/app/src/ServeModeApp.tsx`）:
@@ -137,7 +140,8 @@ core の API を増やすが、減る量が小さい。
      消してから描き直す。取り直しは直列にし、走っている間に来たイベントは 1 回の取り直しにまとめる
    - `EventSource` が切れて再接続したとき（`open` が 2 回目以降に来たとき）も取り直す
 4. **テスト**
-   - `packages/cli/src/serve.test.ts`: `/api/project` が `.krs` と `.krs.style` を入れ子のパスつきで返し、他の拡張子を返さない
+   - `packages/cli/src/serve.test.ts`: `/api/project` が `.krs` と `.krs.style` を入れ子のパスつきで返し、他の拡張子を返さない。
+     配信ディレクトリの外を指す symlink（`.krs` の file link と directory link の両方）の中身を返さない
    - `packages/cli/src/watcher.test.ts`: `.krs.style` の変更が `path` つきで通知される
    - `packages/app/src/ServeModeApp.test.tsx`: import 先・directory import・style import がメモリに入り、サブディレクトリのファイルを
      実際のパスで開く。import 先の変更イベントで取り直し、消えたファイルが fs から消える
