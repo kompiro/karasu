@@ -281,6 +281,42 @@ describe("PreviewColumn", () => {
       expect(container.querySelector('[data-testid="org"]')).toBeTruthy();
       expect(container.querySelector('[data-testid="sys"]')).toBeNull();
     });
+
+    // #3178 (CodeRabbit on #3276): switching projects keeps AppShell and this
+    // pane mounted, and the other project can open on the same view and drill
+    // path. The project root is part of the diagram key, so the new project
+    // starts at the initial zoom; an edit within one project keeps it.
+    it("resets zoom when the project changes but keeps it on an edit", () => {
+      const tree = (displayRoot: string, svg: string) => (
+        <LocaleProvider initialLocale="en">
+          <PreviewProvider
+            value={makeProps({
+              activeView: "system",
+              displayRoot,
+              systemView: { ...makeProps().systemView, svg },
+            })}
+          >
+            <PreviewColumn />
+          </PreviewProvider>
+        </LocaleProvider>
+      );
+      const svgA = '<svg xmlns="http://www.w3.org/2000/svg" data-testid="a"></svg>';
+      const svgB = '<svg xmlns="http://www.w3.org/2000/svg" data-testid="b"></svg>';
+      const zoomLayer = (container: HTMLElement) =>
+        container.querySelector<HTMLElement>(".preview-container > div");
+
+      const { container, rerender } = rtlRender(tree("/projects/shop", svgA));
+      fireEvent.wheel(container.querySelector(".preview-container")!, { deltaY: -100 });
+      expect(zoomLayer(container)?.style.transform).toContain("scale(1.1)");
+
+      rerender(tree("/projects/shop", svgB));
+      expect(container.querySelector('[data-testid="b"]')).toBeTruthy();
+      expect(zoomLayer(container)?.style.transform).toContain("scale(1.1)");
+
+      rerender(tree("/projects/blog", svgA));
+      expect(container.querySelector('[data-testid="a"]')).toBeTruthy();
+      expect(zoomLayer(container)?.style.transform).toContain("scale(1)");
+    });
   });
 
   describe("Entity view sub-mode (#1907)", () => {

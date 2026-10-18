@@ -121,6 +121,13 @@ interface PreviewPaneProps {
    * The base `preview-pane` class is always applied.
    */
   className?: string;
+  /**
+   * Which diagram is on screen (the view, the drill path, the deploy block).
+   * When it changes the zoom and pan go back to the start: a scale and offset
+   * chosen for one diagram leave the next one tiny or off screen (#3178). An
+   * edit re-renders the same diagram under the same key, so it keeps them.
+   */
+  diagramKey?: string;
 }
 
 interface EdgeContextMenuState {
@@ -142,6 +149,7 @@ const CLICK_THRESHOLD = 3;
 // render, which breaks referential equality for memoized consumers.
 const EMPTY_VIEW_PATH: string[] = [];
 const EMPTY_METADATA_BY_PATH: Map<string, NodeMetadata> = new Map();
+const INITIAL_TRANSFORM = { scale: 1, x: 0, y: 0 };
 
 export function PreviewPane({
   svg,
@@ -169,12 +177,20 @@ export function PreviewPane({
   displayRoot,
   onTeamToggle,
   className,
+  diagramKey,
 }: PreviewPaneProps) {
   const formatDiagnostic = useFormattedDiagnostic();
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<HTMLDivElement>(null);
-  const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
+  const [transform, setTransform] = useState(INITIAL_TRANSFORM);
+  // Reset during render, from the value that changed (as for the focus canvas
+  // below), so the new diagram never paints once at the old transform.
+  const [transformDiagram, setTransformDiagram] = useState(diagramKey);
+  if (transformDiagram !== diagramKey) {
+    setTransformDiagram(diagramKey);
+    setTransform(INITIAL_TRANSFORM);
+  }
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(false);
   const [detailPanel, setDetailPanel] = useState<DetailPanelState | null>(null);
