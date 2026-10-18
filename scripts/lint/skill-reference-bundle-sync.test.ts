@@ -8,6 +8,7 @@ import {
   BUNDLED_DOCS,
   REPOSITORY_BLOB_URL,
   bundledContent,
+  fenceScanner,
   check,
   write,
 } from "./skill-reference-bundle-sync.js";
@@ -163,6 +164,25 @@ describe("bundledContent() (#3103)", () => {
     expect(bundledContent(SPEC, text)).toBe(text);
   });
 
+  it("closes a fence only on a matching fence line", () => {
+    const text = [
+      "~~~md",
+      "```",
+      "[example](../adr/1.md)",
+      "~~~",
+      "````md",
+      "```",
+      "[example](../adr/2.md)",
+      "``` not a closer",
+      "````",
+      "[after](../adr/3.md)",
+    ].join("\n");
+    expect(bundledContent(SPEC, text).split("\n")).toEqual([
+      ...text.split("\n").slice(0, 9),
+      `[after](${REPOSITORY_BLOB_URL}docs/adr/3.md)`,
+    ]);
+  });
+
   it("keeps a link title", () => {
     expect(bundledContent(SPEC, '[a](../adr/1.md "ADR 1")')).toBe(
       `[a](${REPOSITORY_BLOB_URL}docs/adr/1.md "ADR 1")`,
@@ -183,10 +203,9 @@ describe("links in the bundled copies", () => {
     it(`${source}: every link resolves inside the bundle or on GitHub`, () => {
       const text = readFileSync(resolve(REPO_ROOT, bundled), "utf8");
       const dangling: string[] = [];
-      let inFence = false;
+      const inFence = fenceScanner();
       for (const line of text.split("\n")) {
-        if (/^\s{0,3}(```|~~~)/.test(line)) inFence = !inFence;
-        if (inFence) continue;
+        if (inFence(line)) continue;
         for (const [, target] of line.matchAll(LINK)) {
           const path = target.split("#")[0];
           if (path === "" || /^mailto:/.test(path)) continue;

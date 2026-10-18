@@ -75,6 +75,31 @@ export const REPOSITORY_BLOB_URL = "https://github.com/kompiro/karasu/blob/main/
 const LINK_TARGET = /(\]\()([^)\s]+)((?:\s+"[^"]*")?\))/g;
 
 /**
+ * A line-by-line scanner for fenced code blocks: returns whether each line it
+ * is given opens, sits inside, or closes one. A fence closes only on a line of
+ * the opener's character, at least as long, with nothing but whitespace after
+ * it (CommonMark), so a `~~~` block may hold a line starting with three
+ * backticks and a four-backtick block may hold a three-backtick one.
+ */
+export function fenceScanner(): (line: string) => boolean {
+  let open: { char: string; length: number } | null = null;
+  return (line) => {
+    if (open === null) {
+      const opener = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+      // A backtick fence's info string may not contain a backtick.
+      if (opener && !(opener[1][0] === "`" && line.slice(opener[0].length).includes("`"))) {
+        open = { char: opener[1][0], length: opener[1].length };
+        return true;
+      }
+      return false;
+    }
+    const closer = /^ {0,3}(`+|~+)\s*$/.exec(line);
+    if (closer && closer[1][0] === open.char && closer[1].length >= open.length) open = null;
+    return true;
+  };
+}
+
+/**
  * `source`'s contents as the bundled copy carries them (#3103).
  *
  * A relative link target (no scheme, not `#…`, not `/…`) is resolved against
@@ -86,15 +111,11 @@ const LINK_TARGET = /(\]\()([^)\s]+)((?:\s+"[^"]*")?\))/g;
 export function bundledContent(source: string, content: string): string {
   const sourceDir = posix.dirname(source);
   const bundledNames = new Map(REFERENCE_DOCS.map((d) => [d.source, d.name]));
-  let inFence = false;
+  const inFence = fenceScanner();
   return content
     .split("\n")
     .map((line) => {
-      if (/^\s{0,3}(```|~~~)/.test(line)) {
-        inFence = !inFence;
-        return line;
-      }
-      if (inFence) return line;
+      if (inFence(line)) return line;
       return line.replace(LINK_TARGET, (whole, open: string, target: string, close: string) => {
         if (
           /^[a-z][a-z0-9+.-]*:/i.test(target) ||
