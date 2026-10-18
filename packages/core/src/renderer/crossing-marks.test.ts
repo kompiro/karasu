@@ -609,10 +609,8 @@ function randomEdges(rnd: () => number): LayoutEdge[] {
     pts.push([x, y]);
     for (let k = 1; k < pointCount; k++) {
       const kind = rnd();
-      if (kind < 0.35)
-        x = coord(); // horizontal step
-      else if (kind < 0.7)
-        y = coord(); // vertical step
+      if (kind < 0.35) x = coord(); // horizontal step
+      else if (kind < 0.7) y = coord(); // vertical step
       else if (kind < 0.8) {
         /* zero-length: repeat the point */
       } else {

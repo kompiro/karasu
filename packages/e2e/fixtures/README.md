@@ -193,7 +193,7 @@ is not offered: it follows the OS and is exercised through
   a variable does not count.
 - `blurToPreview(page)` clicks the preview's empty corner so no text input
   holds focus, and asserts that. Commands with `whenTextInputFocused:
-"skip"` (the default) only fire then.
+  "skip"` (the default) only fire then.
 - `focusEditor(page)` focuses the Monaco textbox and waits for it;
   `editorTextbox(page)` is that locator.
 
@@ -432,7 +432,7 @@ boot/send choreography and error-expectation table can't drift apart.
 
 - `bootChat(opfs, anthropic, options)` — seeds OPFS (`projects` /
   `lastProjectId`), then either `anthropic.seedApiKey(options.apiKey ??
-"sk-ant-test-fake")` or, when `options.apiKey` is `null`,
+  "sk-ant-test-fake")` or, when `options.apiKey` is `null`,
   `anthropic.clearApiKey()` (the ApiKeySetup / no-key boot path), then
   `opfs.gotoApp()`.
 - `sendChatMessage(page, text)` — opens the Chat tab, fills the message
