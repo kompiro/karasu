@@ -539,4 +539,126 @@ CREATE TABLE orders (
       expect(kinds).not.toContain("duplicate-node-id-parent");
     });
   });
+  // #3182: an ORM keeps migrations, not a schema dump. Reading only CREATE
+  // TABLE resurrected dropped tables and the temporaries of a table rebuild.
+  describe("a migration history is replayed in order (#3182)", () => {
+    const flat = (input: string) =>
+      translator.translate(input, { ...ctx, database: "Db", granularity: "table" });
+    const tableIds = (out: string) => [...out.matchAll(/^ {2}table (\w+)/gm)].map((m) => m[1]);
+
+    it("keeps only the tables a drizzle-style rebuild leaves behind", async () => {
+      const out = await flat(`
+CREATE TABLE \`entries\` (\`id\` text PRIMARY KEY NOT NULL);
+CREATE TABLE \`goal_proposals\` (\`id\` text PRIMARY KEY NOT NULL, \`old_col\` text);
+DROP TABLE \`entries\`;
+CREATE TABLE \`__new_goal_proposals\` (\`id\` text PRIMARY KEY NOT NULL, \`new_col\` text);
+INSERT INTO \`__new_goal_proposals\`("id") SELECT "id" FROM \`goal_proposals\`;
+DROP TABLE \`goal_proposals\`;
+ALTER TABLE \`__new_goal_proposals\` RENAME TO \`goal_proposals\`;
+`);
+      expect(tableIds(out)).toEqual(["GoalProposalsTable"]);
+      expect(out).toContain('label "goal_proposals"');
+    });
+
+    it("drops every table a DROP TABLE names, with IF EXISTS and a schema", async () => {
+      const out = await flat(`
+CREATE TABLE a (id int PRIMARY KEY);
+CREATE TABLE b (id int PRIMARY KEY);
+CREATE TABLE c (id int PRIMARY KEY);
+DROP TABLE IF EXISTS public.a, "b";
+DROP TABLE IF EXISTS never_created;
+`);
+      expect(tableIds(out)).toEqual(["CTable"]);
+    });
+
+    it("moves the foreign keys that pointed at a renamed table to its new name", async () => {
+      const out = await flat(`
+CREATE TABLE accounts (id int PRIMARY KEY);
+CREATE TABLE orders (id int PRIMARY KEY, account_ref int REFERENCES accounts(id));
+ALTER TABLE accounts RENAME TO customers;
+`);
+      expect(tableIds(out)).toEqual(["CustomersTable", "OrdersTable"]);
+      expect(out).toContain("OrdersTable -> CustomersTable");
+      expect(out).not.toContain("AccountsTable");
+    });
+
+    it("lets a recreated table replace the earlier one, at its new position", async () => {
+      const out = await flat(`
+CREATE TABLE a (id int PRIMARY KEY, old_ref int REFERENCES b(id));
+CREATE TABLE b (id int PRIMARY KEY);
+DROP TABLE a;
+CREATE TABLE a (id int PRIMARY KEY);
+`);
+      expect(tableIds(out)).toEqual(["BTable", "ATable"]);
+      expect(out).not.toContain("ATable -> BTable");
+    });
+
+    it("follows MySQL's RENAME TABLE, pair by pair", async () => {
+      const out = await flat(`
+CREATE TABLE accounts (id int PRIMARY KEY);
+CREATE TABLE orders (id int PRIMARY KEY, account_ref int REFERENCES accounts(id));
+CREATE TABLE a (id int PRIMARY KEY);
+CREATE TABLE b (id int PRIMARY KEY, note text);
+RENAME TABLE \`shop\`.\`accounts\` TO \`customers\`;
+RENAME TABLE a TO tmp, b TO a, tmp TO b;
+`);
+      expect(tableIds(out)).toEqual(["CustomersTable", "OrdersTable", "BTable", "ATable"]);
+      expect(out).toContain("OrdersTable -> CustomersTable");
+    });
+
+    it("skips statements inside comments, but not comment markers inside quotes", async () => {
+      const out = await flat(`
+-- CreateTable
+CREATE TABLE a (id int PRIMARY KEY);
+CREATE TABLE b (id int PRIMARY KEY, note text DEFAULT '-- not a comment', ref int REFERENCES a(id));
+-- DROP TABLE a;
+/* DROP TABLE b;
+   ALTER TABLE a RENAME TO c; */
+--> statement-breakpoint
+CREATE TABLE c (id int PRIMARY KEY, note text DEFAULT '/* not a comment');
+CREATE TABLE d (id int PRIMARY KEY);
+`);
+      expect(tableIds(out)).toEqual(["ATable", "BTable", "CTable", "DTable"]);
+      expect(out).toContain("BTable -> ATable");
+    });
+
+    it("skips statements inside string literals", async () => {
+      const out = await flat(`
+CREATE TABLE a (id int PRIMARY KEY);
+CREATE TABLE b (id int PRIMARY KEY);
+ALTER TABLE b ADD COLUMN note text DEFAULT 'it''s DROP TABLE a';
+INSERT INTO b (note) VALUES ('ALTER TABLE a RENAME TO c'), ("RENAME TABLE b TO d");
+`);
+      expect(tableIds(out)).toEqual(["ATable", "BTable"]);
+    });
+
+    it("keeps a table whose rename changes only the letter case", async () => {
+      const out = await flat(`
+CREATE TABLE orders (id int PRIMARY KEY);
+ALTER TABLE orders RENAME TO "Orders";
+`);
+      expect(tableIds(out)).toEqual(["OrdersTable"]);
+      expect(out).toContain('label "Orders"');
+    });
+
+    it("keeps the first table when a later CREATE says IF NOT EXISTS", async () => {
+      const out = await flat(`
+CREATE TABLE orders (id int PRIMARY KEY, customer_id int);
+CREATE TABLE customers (id int PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS orders (id int PRIMARY KEY);
+`);
+      expect(tableIds(out)).toEqual(["OrdersTable", "CustomersTable"]);
+      // The first definition's Soft FK survives.
+      expect(out).toContain("OrdersTable -> CustomersTable [inferred]");
+    });
+
+    it("matches names case-insensitively and ignores RENAME COLUMN", async () => {
+      const out = await flat(`
+CREATE TABLE Orders (id int PRIMARY KEY, total int);
+ALTER TABLE orders RENAME COLUMN total TO amount;
+DROP TABLE ORDERS;
+`);
+      expect(tableIds(out)).toEqual([]);
+    });
+  });
 });

@@ -1,5 +1,4 @@
 import { realpathSync } from "node:fs";
-import { stat } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import {
   compileProject,
@@ -10,6 +9,7 @@ import {
 } from "@karasu-tools/core";
 import { formatDiagnostic } from "./i18n.js";
 import { NodeFileSystemProvider } from "./node-fs.js";
+import { pathKindOrExit } from "./path-arg.js";
 
 /**
  * A formatter for diagnostic source locations in CLI stderr output, for one
@@ -110,21 +110,25 @@ export interface ResolvedKrsEntry {
  * immediately — mirroring real process termination even when `process.exit`
  * is mocked (e.g. in tests).
  *
+ * `notFound` is the wording for a path that is not there; `diff` names the
+ * side (`before file not found`).
+ *
  * Shared first step of render / check / matrix / coverage / subtree /
- * team-dependencies — split out from {@link compileSystemViewOrExit}
+ * team-dependencies / diff — split out from {@link compileSystemViewOrExit}
  * because matrix and coverage run their own `--format`/`--infra`/
  * `--threshold` validation *between* the exists check and the compile
  * step, and that relative ordering must stay byte-identical.
  */
 export async function resolveKrsFileOrExit(
   filePath: string,
+  notFound = "File not found",
 ): Promise<ResolvedKrsEntry | undefined> {
   const fs = new NodeFileSystemProvider();
-  const kind = await pathKindOrExit(filePath);
+  const kind = pathKindOrExit(filePath);
   if (kind === undefined) return undefined;
 
   if (kind === "missing") {
-    process.stderr.write(`Error: File not found: ${filePath}\n`);
+    process.stderr.write(`Error: ${notFound}: ${filePath}\n`);
     process.exit(1);
     return undefined;
   }
@@ -134,7 +138,7 @@ export async function resolveKrsFileOrExit(
   }
 
   const displayPath = join(filePath, "index.krs");
-  const entryKind = await pathKindOrExit(displayPath);
+  const entryKind = pathKindOrExit(displayPath);
   if (entryKind === undefined) return undefined;
   if (entryKind !== "file") {
     process.stderr.write(`Error: ${filePath} has no index.krs; pass the entry .krs file\n`);
@@ -142,25 +146,6 @@ export async function resolveKrsFileOrExit(
     return undefined;
   }
   return { absolutePath: resolve(displayPath), displayPath, fs };
-}
-
-/**
- * What `path` names on disk. Only `ENOENT` / `ENOTDIR` mean it is not there: a
- * path that exists but cannot be stat'ed (`EACCES`, `ELOOP`, ...) is reported
- * with the system's reason on one line and exits(1), returning `undefined`.
- * Folding those into "missing" would print the false "File not found" this
- * resolver exists to remove (#2942, TPL-2942).
- */
-async function pathKindOrExit(path: string): Promise<"file" | "directory" | "missing" | undefined> {
-  try {
-    return (await stat(resolve(path))).isDirectory() ? "directory" : "file";
-  } catch (e) {
-    const code = (e as NodeJS.ErrnoException).code;
-    if (code === "ENOENT" || code === "ENOTDIR") return "missing";
-    process.stderr.write(`Error: cannot read ${path}: ${code ?? String(e)}\n`);
-    process.exit(1);
-    return undefined;
-  }
 }
 
 /**

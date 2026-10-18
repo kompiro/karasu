@@ -1,4 +1,11 @@
 import { TokenType, type Token, type SourceLocation, type Trivia } from "../types/tokens.js";
+import {
+  codePointAt,
+  isIdentPart as isKrsIdentPart,
+  isIdentStart as isKrsIdentStart,
+  isWhitespace,
+  wordPartAt,
+} from "./lexer.js";
 
 export class StyleLexer {
   private source: string;
@@ -33,22 +40,24 @@ export class StyleLexer {
     return { line: this.line, column: this.column, offset: this.pos };
   }
 
+  /** The code point at the cursor, so a letter outside the BMP reads as one character. */
   private peek(): string {
-    return this.source[this.pos] ?? "";
+    return codePointAt(this.source, this.pos);
   }
 
   private peekAt(offset: number): string {
     return this.source[this.pos + offset] ?? "";
   }
 
+  /** Consume one code point. Columns count UTF-16 units, as the `.krs` lexer does. */
   private advance(): string {
-    const ch = this.source[this.pos];
-    this.pos++;
+    const ch = codePointAt(this.source, this.pos);
+    this.pos += ch.length;
     if (ch === "\n") {
       this.line++;
       this.column = 1;
     } else {
-      this.column++;
+      this.column += ch.length;
     }
     return ch;
   }
@@ -85,7 +94,9 @@ export class StyleLexer {
         continue;
       }
 
-      if (ch === " " || ch === "\t" || ch === "\r") {
+      // Every Unicode `White_Space` character and the BOM, as in `.krs` (#3093):
+      // U+3000 typed in a Japanese IME would otherwise be an Unknown token.
+      if (isWhitespace(ch)) {
         this.advance();
         continue;
       }
@@ -199,6 +210,11 @@ export class StyleLexer {
         if (isDigit(ch) || (ch === "." && isDigit(this.peekAt(1)))) {
           return this.readValue(loc);
         }
+        if (!isAscii(ch)) return this.readUnknown(loc);
+        // Skip any other ASCII character. The parser never learns it was there,
+        // so it cannot refuse it; `style-lexer.test.ts` pins the dropped set.
+        // Non-ASCII used to land here too, so `[日本語]` was read as the tag
+        // `]` and never matched (#3140).
         this.advance();
         return null;
     }
@@ -213,8 +229,14 @@ export class StyleLexer {
     const hexLen = offset - 1;
     // Must be valid hex color length AND not followed by an ident char
     if (hexLen === 0) return false;
-    const nextChar = this.source[this.pos + offset] ?? "";
-    const followedByIdent = /[a-zA-Z_]/.test(nextChar);
+    // Anything that continues a word keeps the run in an id, not only what can
+    // start one: a combining mark or a non-ASCII digit (`#café`, written
+    // decomposed), or a `-` before a word character (`#add-on`). Otherwise the
+    // selector stopped at `#cafe` / `#add` and could not name the id (#3140).
+    const end = this.pos + offset;
+    const followedByIdent =
+      wordPartAt(this.source, end, this.source[end - 1]) !== "" ||
+      (this.source[end] === "-" && isIdentPart(codePointAt(this.source, end + 1)));
     // If hex chars are followed by more ident chars, it's an ID not a color
     return !followedByIdent && (hexLen === 3 || hexLen === 4 || hexLen === 6 || hexLen === 8);
   }
@@ -230,10 +252,11 @@ export class StyleLexer {
 
   /**
    * Lex `->` (sync) or `-->` (async) for use inside `edge#<base>` selectors.
-   * Returns null on a bare `-` so unexpected hyphens still fall through to
-   * the existing "advance and skip" default at the call site.
+   * A `-` or `--` that starts neither an arrow nor a number is an Unknown
+   * token: dropping it turned `label-offset: - 20px` into `20px` with no
+   * diagnostic (#3140, TPL-2707).
    */
-  private readArrow(loc: SourceLocation): Token | null {
+  private readArrow(loc: SourceLocation): Token {
     this.advance(); // first -
     if (this.peek() === "-") {
       this.advance(); // second -
@@ -241,15 +264,34 @@ export class StyleLexer {
         this.advance(); // >
         return { type: TokenType.DashedArrow, value: "-->", loc };
       }
-      // Stray `--`: drop and let the parser recover at the next token.
-      return null;
+      return { type: TokenType.Unknown, value: "--", loc };
     }
     if (this.peek() === ">") {
       this.advance(); // >
       return { type: TokenType.Arrow, value: "->", loc };
     }
-    // Stray `-`: drop.
-    return null;
+    return { type: TokenType.Unknown, value: "-", loc };
+  }
+
+  /**
+   * A non-ASCII character that starts no identifier, plus the word characters
+   * after it, as one Unknown token (`😀A`), the way the `.krs` lexer reads it
+   * (#3093), so a diagnostic covers what was written.
+   */
+  private readUnknown(loc: SourceLocation): Token {
+    return { type: TokenType.Unknown, value: this.readWordTail(this.advance()), loc };
+  }
+
+  /** `head` (already consumed) plus the word characters after it. */
+  private readWordTail(head: string): string {
+    let value = head;
+    let prev = head;
+    for (let ch = wordPartAt(this.source, this.pos, prev); ch !== "";) {
+      value += this.advance();
+      prev = ch;
+      ch = wordPartAt(this.source, this.pos, prev);
+    }
+    return value;
   }
 
   private readString(loc: SourceLocation): Token {
@@ -269,6 +311,7 @@ export class StyleLexer {
 
   private readIdentifier(loc: SourceLocation): Token {
     let value = "";
+    let prev = "";
     while (this.pos < this.source.length) {
       const ch = this.peek();
       // Hyphens are normally part of identifiers (e.g. `font-family`,
@@ -284,12 +327,18 @@ export class StyleLexer {
       // consuming when the character after the dot starts another identifier
       // segment — otherwise the dot belongs to a different token (e.g. a
       // numeric value `0.5`, but those go through `readValue`, not here).
-      if (ch === "." && isIdentStart(this.peekAt(1))) {
-        value += this.advance();
+      if (ch === "." && isIdentStart(codePointAt(this.source, this.pos + 1))) {
+        prev = this.advance();
+        value += prev;
         continue;
       }
-      if (!isIdentPartWithHyphen(ch)) break;
-      value += this.advance();
+      // Letters, marks and digits in any script, and a joiner only where
+      // `wordPartAt` allows one: the `.krs` lexer's rule, so a tag or id
+      // written in the model is the same word here (#3140, TPL-2509).
+      const part = ch === "-" ? ch : wordPartAt(this.source, this.pos, prev);
+      if (part === "") break;
+      prev = this.advance();
+      value += prev;
     }
     return { type: TokenType.Identifier, value, loc };
   }
@@ -310,29 +359,33 @@ export class StyleLexer {
     // this, the selector stopped at `3d` and never matched the tag (#2849,
     // TPL-2509). No value with a unit is followed by a word character or by
     // `-<word>`, so `2px` / `1.5em` / `50%` end where they did.
+    let prev = value.slice(-1);
     while (this.pos < this.source.length) {
       const ch = this.peek();
-      if (ch === "-" && isIdentPart(this.peekAt(1))) {
-        value += this.advance();
+      if (ch === "-" && isIdentPart(codePointAt(this.source, this.pos + 1))) {
+        prev = this.advance();
+        value += prev;
         continue;
       }
-      if (!isIdentPart(ch)) break;
-      value += this.advance();
+      const part = wordPartAt(this.source, this.pos, prev);
+      if (part === "") break;
+      prev = this.advance();
+      value += prev;
     }
     return { type: TokenType.Identifier, value, loc };
   }
 }
 
 function isIdentStart(ch: string): boolean {
-  return /[a-zA-Z_]/.test(ch);
+  return ch !== "" && isKrsIdentStart(ch);
 }
 
 function isIdentPart(ch: string): boolean {
-  return /[a-zA-Z0-9_]/.test(ch);
+  return ch !== "" && isKrsIdentPart(ch);
 }
 
-function isIdentPartWithHyphen(ch: string): boolean {
-  return /[a-zA-Z0-9_-]/.test(ch);
+function isAscii(ch: string): boolean {
+  return ch.length === 1 && ch.charCodeAt(0) <= 0x7f;
 }
 
 function isDigit(ch: string): boolean {

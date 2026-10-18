@@ -839,6 +839,35 @@ describe("PreviewPane", () => {
       expect(zoomLayer().style.transform).toContain("scale(0.99");
     });
 
+    // #3178: zoom and pan chosen for one diagram carried into the next after a
+    // drill-down, leaving it tiny or off screen.
+    it("keeps the zoom when the same diagram re-renders, and resets it for another diagram", () => {
+      const { container, rerender } = render(
+        <PreviewPane {...baseProps()} svg="<div>a</div>" diagramKey='["system",null,[]]' />,
+      );
+      const previewContainer = container.querySelector(".preview-container")!;
+      const zoomLayer = () => previewContainer.querySelector(":scope > div") as HTMLElement;
+
+      dispatchWheel(previewContainer, 100);
+      expect(zoomLayer().style.transform).toContain("scale(0.9)");
+
+      // An edit: new SVG, same diagram.
+      rerender(
+        <PreviewPane {...baseProps()} svg="<div>a edited</div>" diagramKey='["system",null,[]]' />,
+      );
+      expect(zoomLayer().style.transform).toContain("scale(0.9)");
+
+      // A drill-down: another diagram.
+      rerender(
+        <PreviewPane
+          {...baseProps()}
+          svg="<div>b</div>"
+          diagramKey='["system",null,["Payment"]]'
+        />,
+      );
+      expect(zoomLayer().style.transform).toBe("translate(0px, 0px) scale(1)");
+    });
+
     it("removes the wheel listener on unmount", () => {
       const { container, unmount } = render(<PreviewPane {...baseProps()} svg="<div></div>" />);
       const previewContainer = container.querySelector(".preview-container")!;

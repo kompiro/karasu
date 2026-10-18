@@ -17,6 +17,7 @@ discovered_from:
   - issue: "#2571"
   - issue: "#2650"
   - issue: "#2707"
+  - issue: "#3101"
   - root_cause_file: "packages/core/src/formatter/formatter.ts:203"
   - root_cause_file: "packages/core/src/types/ast.ts :: KrsEdge.to"
   - root_cause_file: "packages/core/src/formatter/quote-id.ts:14"
@@ -46,6 +47,12 @@ round-trip が破れるのは値の変換ミスだけではない。**構文が�
 #2076 では formatter の top-level 出力リスト（`printFile` が `KrsFile` の配列プロパティを手で列挙している箇所）が 11 個中 5 個しか列挙しておらず、parser が受理する `boundary` / `legend` / `client` / `database` / `queue` / `storage` の 6 構文が `karasu fmt` で無言のうちに削除されていた。top-level infra だけで構成されたファイル（`karasu translate --from db` が生成する形 — ADR-702）は **ファイル全体が空になった**。
 
 この種の欠落は「既存の構文を 1 つ選んでテストする」書き方では絶対に捕まらない。テストが列挙する構文の集合と、実装が列挙する構文の集合が、同じ人間の同じ思い込みから生まれるからである。**期待集合を型・スキーマ側から機械的に導出する**こと（下記「既知の対処パターン」）。
+
+### ノードのプロパティも同じ形で漏れる（#3101）
+
+`renderProperties` もノードのプロパティを手で列挙している。#3101 では client の `resource` と `capability` が列挙から抜けていて、`karasu fmt` と保存時のフォーマットが client の `resource` / `capability` の行をすべて削除していた（#2549 の `handles` と同じ形）。top-level のガードは `KrsFile` の配列しか見ないので、ノードの中のプロパティは守らない。
+
+対処は top-level と同じく導出で、`formatter-property-coverage.test.ts` が全 `KrsNode` の `properties` のキー集合（`PropertyKeys<KrsNode>`）に `satisfies` で fixture 表を突き合わせ、fixture ごとに round-trip させる。修正を外すと `resources` / `capabilities` の 2 件が落ち、型にダミーのキーを足すと `tsc` が落ちることを確かめた。
 
 ### AST 比較のヘルパがあっても、fixture が通らない枝は守られない（#2571）
 
@@ -148,6 +155,7 @@ pin する**。とくにドット記法・引用符・省略形のように「�
 
 - `packages/core/src/formatter/formatter.test.ts`
 - `packages/core/src/formatter/formatter-top-level-coverage.test.ts`（top-level 構文の網羅性ガード）
+- `packages/core/src/formatter/formatter-property-coverage.test.ts`（ノードのプロパティの網羅性ガード。#3101）
 - `packages/core/src/formatter/quote-id.test.ts`
 - `packages/core/src/formatter/quote-string.test.ts`（値のエスケープ規則 + 生補間の構造ガード）
 - `packages/core/src/formatter/escape-round-trip.test.ts`（各構文の hostile value round-trip）

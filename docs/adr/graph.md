@@ -185,6 +185,7 @@ flowchart TD
     ADR_3203["ADR-3203<br/>Dependabot security alert 2026-10-14（sharp の ov..."]
     ADR_3242["ADR-3242<br/>Dependabot トリアージ 2026-10-15：npm 5 件をそのまま採用し、vit..."]
     ADR_3246["ADR-3246<br/>`@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast..."]
+    ADR_3257["ADR-3257<br/>app の E2E suite の step 境界を 25 分、job 予算を 45 分に上げる"]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -404,6 +405,7 @@ flowchart TD
     ADR_3026["ADR-3026<br/>同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す"]
     ADR_3088["ADR-3088<br/>行間チャネルのレーンを、run がつながる縦線の向きで並べる"]
     ADR_3090["ADR-3090<br/>交差マーク（ホップ・junction chip・trunk band）をエッジの減光に追随させる"]
+    ADR_3132["ADR-3132<br/>ドリルダウンの最上段の上と最下段の下のチャネルを、枠の内側で測る"]
     ADR_3133["ADR-3133<br/>側面列の端点へのエッジは、どの候補も成立しないとき、端点の間の空き列で通す"]
     ADR_3134["ADR-3134<br/>同じ行間チャネルに降りる corridor / mixed route を、チャネルの中で 1..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
@@ -643,6 +645,7 @@ flowchart TD
   ADR_3117 -.supersedes.-> ADR_3011
   ADR_3117 -.supersedes.-> ADR_2949
   ADR_3246 -.supersedes.-> ADR_1338
+  ADR_3257 -.supersedes.-> ADR_2807
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -1021,7 +1024,7 @@ flowchart TD
   class ADR_2803 accepted
   class ADR_2804 accepted
   class ADR_2805 superseded
-  class ADR_2807 accepted
+  class ADR_2807 superseded
   class ADR_2810 accepted
   class ADR_2813 accepted
   class ADR_2818 accepted
@@ -1057,6 +1060,7 @@ flowchart TD
   class ADR_3090 accepted
   class ADR_3113 accepted
   class ADR_3117 accepted
+  class ADR_3132 accepted
   class ADR_3133 accepted
   class ADR_3134 accepted
   class ADR_3138 accepted
@@ -1065,6 +1069,7 @@ flowchart TD
   class ADR_3203 accepted
   class ADR_3242 accepted
   class ADR_3246 accepted
+  class ADR_3257 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

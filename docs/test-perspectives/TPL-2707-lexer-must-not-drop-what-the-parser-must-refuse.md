@@ -16,6 +16,7 @@ discovered_from:
   - issue: "#2848"
   - issue: "#3093"
   - issue: "#3032"
+  - issue: "#3140"
   - root_cause_file: "packages/core/src/lexer/lexer.ts :: readToken"
   - root_cause_file: "packages/core/src/parser/parser.ts :: parseAnnotations"
   - root_cause_file: "packages/core/src/lexer/style-lexer.ts :: readToken"
@@ -68,7 +69,7 @@ lexer / tokenizer を追加・変更するとき、または値や名前を読�
 - **結合文字は語を続けるが始めない**: `isIdentPart` は `\p{M}` を含み、`isIdentStart` は含まない（#2848）。結合文字は直前の文字を修飾するので、分解形の `café` やデーヴァナーガリーの語は 1 語として読まれる。NFC と NFD は正規化せず、書かれたとおりに記録する（別の綴りとして扱う）。
 - **捨てる前に、空白として読むべき文字を決める**: 捨てられることで区切りとして通っていた文字がある。#3093 は文字でも数字でもない非 ASCII を拒否するトークンにする前に、Unicode の `White_Space` と BOM を空白として読むようにした。順序を逆にすると、BOM 付きのファイルや全角スペースを含むファイルが壊れる。
 - **捨てずに、どこも受理しないトークンにする**: #2707 は数字始まりの語を `TokenType.Number` として出し、#3093 は文字でも数字でもない非 ASCII を後続の語の文字とまとめて `TokenType.Unknown` として出した。どのポジションも黙っては受理しないので、受理される言語は広がらず、見えなかった入力が診断に変わる。全ての未分類文字を一度にトークン化する案は、黙認に頼っている `=` / `;` を壊すので採らなかった（範囲はコーパスで実測して決めた）。
-- **符号は値の一部として読む**: `.krs.style` の lexer は、`-` の直後が数字か `.` + 数字のときだけ符号付きの値として読む（#3032）。`-` 単独は従来どおり捨てるが、その集合を `packages/core/src/lexer/style-lexer.test.ts` が印字可能な ASCII 1 文字ずつの入力で完全一致に固定している。値の検証は、シートの文字列から lexer・parser を通して行う（`packages/core/src/integration/style-sheet-signed-values.test.ts`）。
+- **符号は値の一部として読む**: `.krs.style` の lexer は、`-` の直後が数字か `.` + 数字のときだけ符号付きの値として読む（#3032）。数字も矢印も始めない `-` / `--` は #3140 以降 `TokenType.Unknown` として出し、値の中では宣言ごと拒否する。捨てる文字の集合（`-` はもう含まない）は `packages/core/src/lexer/style-lexer.test.ts` が印字可能な ASCII 1 文字ずつの入力で完全一致に固定している。値の検証は、シートの文字列から lexer・parser を通して行う（`packages/core/src/integration/style-sheet-signed-values.test.ts`）。
 - **値は 1 トークンで読み切る**: `parseAnnotations` の `readAnnotationParamValue` は、文字列リテラルか裸の語が単独で区切りの前にあるときだけ値として読み、それ以外は区切りまで消費して `annotation-param-value-unreadable` を出す。
 - **「記録できなかった」を書き戻す側だけで止める**: 診断の register は描画も含む全ての面に効くので、error にすると `karasu render` や外部サービスまで拒否する。#2707 は warning のままにし、`format()` が `FORMAT_BLOCKING_CODES` の診断を名指しで拒否する。AST が著者の書いたものを保持していないとき、整形して書き戻すと必ず失われる、というのが判定条件である。
 - **裸の語の判定を lexer から導く**: `isBareWord`（`packages/core/src/lexer/lexer.ts`）は `readToken` と同じ文字判定を使い、formatter の `needsQuotes`（`packages/core/src/formatter/quote-id.ts`）もキーワード集合ともども lexer から導く。手写しの一覧は `boundary` など 5 語を欠き、`from: "boundary"` が裸で出力されてキーワードとして読み戻されていた。
@@ -86,8 +87,11 @@ lexer / tokenizer を追加・変更するとき、または値や名前を読�
 - `packages/core/src/formatter/annotation-params-round-trip.test.ts` › `reads back every reference it prints bare (#2707)`
 - `packages/core/src/lexer/style-lexer.test.ts`（`.krs.style` の lexer が捨てる印字可能 ASCII の集合の固定と、符号付きの値 #3032）
 - `packages/core/src/integration/style-sheet-signed-values.test.ts`（シートの文字列から描画までの符号付きの値 #3032）
+- `packages/core/src/lexer/style-lexer.test.ts` › `characters outside ASCII (#3140)` / `a hyphen that starts no number or arrow (#3140)`（`.krs.style` の lexer が非 ASCII のコードポイントを 1 つも捨てないこと）
+- `packages/core/src/integration/style-sheet-unknown-characters.test.ts`（シートの文字列から、拒否される `-` と非 ASCII の selector まで #3140）
 
 ## 派生元 spec
 
 - `docs/spec/syntax.md` § Lexical structure（文字列とコメントの外の各文字を空白・語・拒否されるトークン・読み飛ばす ASCII 記号のどれかとして読む）。本 TPL はその表から外れて文字が黙って捨てられたときに検出する観点。
+- `docs/spec/style.md` § Lexical structure（スタイルシートも `.krs` と同じ分類で文字を読み、数字も矢印も始めない `-` と語を始めない非 ASCII 文字は拒否されるトークンになる、#3140）。本 TPL はスタイルシートの lexer が文字を黙って捨てたときに検出する観点。
 - `docs/spec/tags-annotations.md` § Annotation parameters（値は文字列リテラル 1 つか裸の語 1 つ、1 つの要素でパラメータの値は 1 つ）。本 TPL はその規定が lexer の読み飛ばしや先頭トークンだけの読み取りで破られたときに検出する観点。
