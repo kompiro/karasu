@@ -332,6 +332,9 @@ program
   .addHelpText(
     "after",
     `
+<before> and <after> may be directories: each one's index.krs is the entry,
+as with \`karasu render\`.
+
 By default emits a bundled SVG containing every applicable view (system /
 deploy / org) with CSS-only tab navigation, intended for full-document
 review. Use \`--view\` to emit a single-view SVG instead.
@@ -379,6 +382,9 @@ Examples:
   # Format specific files
   $ karasu fmt index.krs deploy.krs
 
+  # Format every .krs file under a directory
+  $ karasu fmt docs/
+
   # CI check (exit 1 if any file would change)
   $ karasu fmt --check
 
@@ -404,6 +410,9 @@ Examples:
 
   # Tidy specific files
   $ karasu tidy-style theme.krs.style site.krs.style
+
+  # Tidy every .krs.style file under a directory
+  $ karasu tidy-style styles/
 
   # CI check (exit 1 if any file would change)
   $ karasu tidy-style --check
@@ -436,6 +445,9 @@ Examples:
 
   # Lint specific files
   $ karasu lint-style theme.krs.style site.krs.style
+
+  # Lint every .krs.style file under a directory
+  $ karasu lint-style styles/
 
   # Pipe via stdin
   $ cat theme.krs.style | karasu lint-style --stdin

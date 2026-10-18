@@ -1,6 +1,7 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { applyKrsPatch } from "@karasu-tools/core";
+import { fileArgumentOrExit } from "./path-arg.js";
 import { readStdin } from "./stdin.js";
 
 /**
@@ -10,6 +11,10 @@ import { readStdin } from "./stdin.js";
  * Exits with a non-zero code if stdin is empty.
  */
 export async function append(targetFile: string): Promise<void> {
+  // Check the target before reading stdin, so a directory is reported as such
+  // even when stdin is empty.
+  const kind = fileArgumentOrExit(targetFile, ".krs file");
+  if (kind === undefined) return;
   const content = await readStdin();
 
   if (!content.trim()) {
@@ -19,7 +24,7 @@ export async function append(targetFile: string): Promise<void> {
   }
 
   const targetPath = resolve(targetFile);
-  const existing = existsSync(targetPath) ? readFileSync(targetPath, "utf-8") : "";
+  const existing = kind === "file" ? readFileSync(targetPath, "utf-8") : "";
 
   const result = applyKrsPatch(existing, "append", undefined, content.trim());
   if (!result.ok) {
