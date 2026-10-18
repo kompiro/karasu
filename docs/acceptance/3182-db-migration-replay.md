@@ -24,11 +24,19 @@ type: product
   >
   > ✅ Automated — `packages/core/src/translate/db.test.ts` › `a migration history is replayed in order (#3182)` › `matches names case-insensitively and ignores RENAME COLUMN`
 
+- [x] AT-E: `-- …` と `/* … */` の中の文は再生しない。引用符の中のコメント記号はコメントとして扱わない
+
+  > ✅ Automated — `packages/core/src/translate/db.test.ts` › `a migration history is replayed in order (#3182)` › `skips statements inside comments, but not comment markers inside quotes`
+
 ### AC-2: 改名と作り直しが関連を保つ
 
-- [x] AT-C: `RENAME TO` で改名した表を指していた FK は新しい名前を指し、表は元の位置に残る
+- [x] AT-C: `RENAME TO` または MySQL の `RENAME TABLE`（複数の組は左から順に）で改名した表を指していた FK は新しい名前を指し、表は元の位置に残る。大文字小文字だけの改名でも表は消えない
 
   > ✅ Automated — `packages/core/src/translate/db.test.ts` › `a migration history is replayed in order (#3182)` › `moves the foreign keys that pointed at a renamed table to its new name`
+  >
+  > ✅ Automated — `packages/core/src/translate/db.test.ts` › `a migration history is replayed in order (#3182)` › `follows MySQL's RENAME TABLE, pair by pair`
+  >
+  > ✅ Automated — `packages/core/src/translate/db.test.ts` › `a migration history is replayed in order (#3182)` › `keeps a table whose rename changes only the letter case`
 
 - [x] AT-D: 作り直した表は前の定義を置き換えて新しい位置に出る。`IF NOT EXISTS` の `CREATE` は既存の表を残す
 

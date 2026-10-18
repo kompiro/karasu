@@ -593,6 +593,35 @@ CREATE TABLE a (id int PRIMARY KEY);
       expect(out).not.toContain("ATable -> BTable");
     });
 
+    it("follows MySQL's RENAME TABLE, pair by pair", async () => {
+      const out = await flat(`
+CREATE TABLE accounts (id int PRIMARY KEY);
+CREATE TABLE orders (id int PRIMARY KEY, account_ref int REFERENCES accounts(id));
+CREATE TABLE a (id int PRIMARY KEY);
+CREATE TABLE b (id int PRIMARY KEY, note text);
+RENAME TABLE \`shop\`.\`accounts\` TO \`customers\`;
+RENAME TABLE a TO tmp, b TO a, tmp TO b;
+`);
+      expect(tableIds(out)).toEqual(["CustomersTable", "OrdersTable", "BTable", "ATable"]);
+      expect(out).toContain("OrdersTable -> CustomersTable");
+    });
+
+    it("skips statements inside comments, but not comment markers inside quotes", async () => {
+      const out = await flat(`
+-- CreateTable
+CREATE TABLE a (id int PRIMARY KEY);
+CREATE TABLE b (id int PRIMARY KEY, note text DEFAULT '-- not a comment', ref int REFERENCES a(id));
+-- DROP TABLE a;
+/* DROP TABLE b;
+   ALTER TABLE a RENAME TO c; */
+--> statement-breakpoint
+CREATE TABLE c (id int PRIMARY KEY, note text DEFAULT '/* not a comment');
+CREATE TABLE d (id int PRIMARY KEY);
+`);
+      expect(tableIds(out)).toEqual(["ATable", "BTable", "CTable", "DTable"]);
+      expect(out).toContain("BTable -> ATable");
+    });
+
     it("keeps a table whose rename changes only the letter case", async () => {
       const out = await flat(`
 CREATE TABLE orders (id int PRIMARY KEY);

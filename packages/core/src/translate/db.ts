@@ -193,6 +193,45 @@ const TABLE_NAME = String.raw`(?:${QUOTE}?\w+${QUOTE}?\.)?${QUOTE}?\w+${QUOTE}?`
 /** The same, capturing the bare name. */
 const TABLE_NAME_CAPTURE = String.raw`(?:${QUOTE}?\w+${QUOTE}?\.)?${QUOTE}?(\w+)${QUOTE}?`;
 
+/** A possibly schema-qualified, quoted table name as a bare name. */
+function bareName(ref: string): string {
+  return stripIdentQuotes(ref.trim().split(".").pop() ?? "");
+}
+
+/**
+ * `sql` with its `-- …` and `/* … *\/` comments replaced by spaces, so the
+ * statement scanner skips them and every offset stays where it was. Quoted
+ * text (`'…'`, `"…"`, `` `…` ``) is kept as it is, comment markers included.
+ */
+function blankComments(sql: string): string {
+  let out = "";
+  let i = 0;
+  while (i < sql.length) {
+    const ch = sql[i];
+    if (ch === "'" || ch === '"' || ch === "`") {
+      // A doubled quote inside the text closes and reopens it: same result.
+      const close = sql.indexOf(ch, i + 1);
+      const end = close === -1 ? sql.length : close + 1;
+      out += sql.slice(i, end);
+      i = end;
+    } else if (ch === "-" && sql[i + 1] === "-") {
+      const newline = sql.indexOf("\n", i);
+      const end = newline === -1 ? sql.length : newline;
+      out += " ".repeat(end - i);
+      i = end;
+    } else if (ch === "/" && sql[i + 1] === "*") {
+      const close = sql.indexOf("*/", i + 2);
+      const end = close === -1 ? sql.length : close + 2;
+      out += sql.slice(i, end).replace(/[^\n]/g, " ");
+      i = end;
+    } else {
+      out += ch;
+      i++;
+    }
+  }
+  return out;
+}
+
 /**
  * The tables a SQL script leaves behind, replayed statement by statement
  * (#3182). An ORM's SQL migration history (drizzle, Prisma) is the usual
@@ -203,15 +242,35 @@ const TABLE_NAME_CAPTURE = String.raw`(?:${QUOTE}?\w+${QUOTE}?\.)?${QUOTE}?(\w+)
  * - `CREATE TABLE` adds a table, or replaces one of the same name (a recreate);
  *   `IF NOT EXISTS` keeps the existing one.
  * - `DROP TABLE` (`IF EXISTS`, one or more names) removes it.
- * - `ALTER TABLE … RENAME TO` renames it, and every foreign key that pointed
- *   at the old name follows it, as SQLite / PostgreSQL / MySQL do.
+ * - `ALTER TABLE … RENAME TO` and MySQL's `RENAME TABLE a TO b[, c TO d]`
+ *   rename it, and every foreign key that pointed at the old name follows it,
+ *   as SQLite / PostgreSQL / MySQL do.
  *
  * Names are matched case-insensitively, as unquoted SQL identifiers are. The
  * survivors keep the order they were created in (a rename keeps its place).
+ * Comments are skipped, so a commented-out statement changes nothing.
  */
-function parseTables(sql: string): Table[] {
+function parseTables(input: string): Table[] {
+  const sql = blankComments(input);
   const tables = new Map<string, Table>();
   const keyOf = (name: string) => name.toLowerCase();
+  const rename = (from: string, to: string) => {
+    const table = tables.get(keyOf(from));
+    if (!table) return;
+    // A rename keeps the table where it was; only a recreate moves it.
+    // A case-only rename (`orders` → `"Orders"`) shares its key: keep it.
+    if (keyOf(to) !== keyOf(from)) tables.delete(keyOf(to));
+    const renamed = new Map<string, Table>();
+    for (const [key, t] of tables) renamed.set(key === keyOf(from) ? keyOf(to) : key, t);
+    tables.clear();
+    for (const [key, t] of renamed) tables.set(key, t);
+    table.name = to;
+    for (const t of tables.values()) {
+      for (const fk of t.foreignKeys) {
+        if (keyOf(fk.refTable) === keyOf(from)) fk.refTable = to;
+      }
+    }
+  };
   const statementPattern = new RegExp(
     [
       // 1: CREATE, 2: IF NOT EXISTS, 3: name
@@ -220,6 +279,8 @@ function parseTables(sql: string): Table[] {
       String.raw`(DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?((?:${TABLE_NAME}\s*,\s*)*${TABLE_NAME}))`,
       // 6: RENAME, 7: from, 8: to
       String.raw`(ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?${TABLE_NAME_CAPTURE}\s+RENAME\s+TO\s+${TABLE_NAME_CAPTURE})`,
+      // 9: MySQL RENAME TABLE, 10: the comma-separated `a TO b` pairs
+      String.raw`(RENAME\s+TABLE\s+((?:${TABLE_NAME}\s+TO\s+${TABLE_NAME}\s*,\s*)*${TABLE_NAME}\s+TO\s+${TABLE_NAME}))`,
     ].join("|"),
     "gi",
   );
@@ -238,27 +299,14 @@ function parseTables(sql: string): Table[] {
       tables.delete(keyOf(name));
       tables.set(keyOf(name), parseTable(name, extracted.body));
     } else if (match[4] !== undefined) {
-      for (const ref of match[5].split(",")) {
-        const name = ref.trim().split(".").pop() ?? "";
-        tables.delete(keyOf(stripIdentQuotes(name)));
-      }
+      for (const ref of match[5].split(",")) tables.delete(keyOf(bareName(ref)));
     } else if (match[6] !== undefined) {
-      const from = match[7];
-      const to = match[8];
-      const table = tables.get(keyOf(from));
-      if (!table) continue;
-      // A rename keeps the table where it was; only a recreate moves it.
-      // A case-only rename (`orders` → `"Orders"`) shares its key: keep it.
-      if (keyOf(to) !== keyOf(from)) tables.delete(keyOf(to));
-      const renamed = new Map<string, Table>();
-      for (const [key, t] of tables) renamed.set(key === keyOf(from) ? keyOf(to) : key, t);
-      tables.clear();
-      for (const [key, t] of renamed) tables.set(key, t);
-      table.name = to;
-      for (const t of tables.values()) {
-        for (const fk of t.foreignKeys) {
-          if (keyOf(fk.refTable) === keyOf(from)) fk.refTable = to;
-        }
+      rename(match[7], match[8]);
+    } else if (match[9] !== undefined) {
+      // MySQL applies the pairs left to right, so `a TO tmp, b TO a, tmp TO b` swaps.
+      for (const pair of match[10].split(",")) {
+        const [from, to] = pair.trim().split(/\s+TO\s+/i);
+        rename(bareName(from), bareName(to));
       }
     }
   }
