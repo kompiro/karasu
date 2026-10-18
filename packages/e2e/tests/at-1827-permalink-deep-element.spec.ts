@@ -1,0 +1,104 @@
+import type { Locator } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
+import { drillInto } from "../fixtures/drill.js";
+import {
+  bootSharer,
+  openShareDialog,
+  openSharedUrl,
+  readPrivateUrl,
+  rewriteSharePayload,
+  sharePayloadOf,
+} from "../fixtures/share.js";
+
+/**
+ * AT-1827 (`docs/acceptance/permalink-deep-element.md`): a share link made
+ * while drilled in opens drilled in (#3043).
+ *
+ * The unit layer round-trips `target` and maps it to the canonical hash
+ * (`inline-share.test.ts`, `useHistoryNavigation.test.ts`). What it does not
+ * reach is the real mount order: `App.tsx` rewrites the URL to
+ * `#krs-system-<id>` before AppShell mounts, and the drill has to survive
+ * MemoryModeApp's seed reset (TPL-1842).
+ */
+
+const KRS = `system EC {
+  service OrderService {
+    domain Ordering {}
+  }
+  service Billing {}
+}
+`;
+
+const includeTarget = (dialog: Locator) =>
+  dialog.getByRole("checkbox", { name: /Link to the current view/ });
+
+test.describe("AT-1827 deep permalink", () => {
+  test("a link shared while drilled into a service opens drilled into it", async ({
+    page,
+    opfs,
+  }) => {
+    await bootSharer(page, opfs, KRS);
+    await drillInto(page, ["OrderService"], { expectBreadcrumb: true });
+
+    const dialog = await openShareDialog(page);
+    // On by default whenever there is a position to link to.
+    await expect(includeTarget(dialog)).toBeChecked();
+
+    await openSharedUrl(page, opfs, await readPrivateUrl(dialog));
+
+    await expect(page.locator(".breadcrumb-current")).toHaveText("OrderService");
+    await expect(page.locator('svg [data-node-id="Ordering"]')).toBeVisible();
+    // The anchor, before the `?file=` suffix the app adds for the active file.
+    await expect
+      .poll(() => page.evaluate(() => location.hash.split("?")[0]))
+      .toBe("#krs-system-OrderService");
+  });
+
+  test("a shared target whose node was renamed opens the whole model", async ({
+    page,
+    opfs,
+    baseURL,
+  }) => {
+    await bootSharer(page, opfs, KRS);
+    await drillInto(page, ["OrderService"], { expectBreadcrumb: true });
+    const encoded = sharePayloadOf(await readPrivateUrl(await openShareDialog(page)));
+
+    // The model the link carries renames OrderService; the target still
+    // names it, so it no longer resolves (M-3, through `payload.target`
+    // rather than `?krs=`).
+    const stale = rewriteSharePayload(encoded, (payload) => {
+      expect(payload.target).toEqual({ view: "system", node: "OrderService" });
+      return { ...payload, krs: payload.krs.replaceAll("OrderService", "RenamedService") };
+    });
+    await openSharedUrl(page, opfs, `${baseURL}/#s=${stale}`);
+
+    await expect(page.locator('svg [data-node-id="RenamedService"]')).toBeVisible();
+    await expect(page.locator('svg [data-node-id="Billing"]')).toBeVisible();
+    await expect(page.locator(".breadcrumb-current")).toHaveText("EC");
+    // A stale target degrades quietly: the payload itself restored fine.
+    await expect(page.getByRole("alert").filter({ hasText: "could not be restored" })).toHaveCount(
+      0,
+    );
+  });
+
+  test("with the checkbox off, the same share opens the whole model", async ({ page, opfs }) => {
+    await bootSharer(page, opfs, KRS);
+    // The whole-model link: shared at the root, where there is no target.
+    const rootUrl = await readPrivateUrl(await openShareDialog(page));
+    await page.keyboard.press("Escape");
+
+    await drillInto(page, ["OrderService"], { expectBreadcrumb: true });
+    const dialog = await openShareDialog(page);
+    await includeTarget(dialog).uncheck();
+    // Re-encoded without the target: byte-for-byte the root link. Asserting
+    // this, rather than the absence of a drill after opening, cannot pass
+    // before a late drill would have landed.
+    await expect.poll(() => readPrivateUrl(dialog)).toBe(rootUrl);
+
+    await openSharedUrl(page, opfs, rootUrl);
+
+    await expect(page.locator('svg [data-node-id="OrderService"]')).toBeVisible();
+    await expect(page.locator('svg [data-node-id="Billing"]')).toBeVisible();
+    await expect(page.locator(".breadcrumb-current")).toHaveText("EC");
+  });
+});
