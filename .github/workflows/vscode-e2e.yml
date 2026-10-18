@@ -37,7 +37,7 @@ jobs:
     # chrome-for-testing ship no linux-arm64 chromedriver, so the `-arm`
     # Ubicloud labels are not an option for these jobs.
     runs-on: ubicloud-standard-4-ubuntu-2404
-    # Setup plus the smoke tests (ADR-2807). The Electron deps install below is
+    # Setup plus the smoke tests (ADR-3257). The Electron deps install below is
     # an unbounded `apt-get` — 586s here, 1013s on the WebView job that installs
     # the same packages — while the tests themselves run in seconds, so nearly
     # all of this budget exists for setup. The bound that means "the tests hung"
@@ -71,7 +71,7 @@ jobs:
             ${{ runner.os }}-vscode-test-
 
       - name: Run extension host smoke tests
-        # The bound that means "the tests hung" (ADR-2807). They run in ~20s;
+        # The bound that means "the tests hung" (ADR-3257). They run in ~20s;
         # the margin is for a cold VS Code download inside the step.
         timeout-minutes: 10
         run: xvfb-run -a pnpm --filter @karasu-tools/vscode-e2e test
@@ -93,7 +93,7 @@ jobs:
     # Ubicloud runner (ADR-1890). The job installs its own Electron / Chromium
     # system deps below, so it does not lean on runner-image preinstalls.
     runs-on: ubicloud-standard-4-ubuntu-2404
-    # Setup plus the WebView suite (ADR-2807): the deps install below is an
+    # Setup plus the WebView suite (ADR-3257): the deps install below is an
     # unbounded `apt-get`, observed at 1013s (run 34600028141), so the budget
     # clears that on top of the test step bound. The bound that means "the
     # suite hung" sits on the test step, not here.
@@ -128,7 +128,7 @@ jobs:
             ${{ runner.os }}-extester-
 
       - name: Run WebView E2E (ExTester)
-        # The bound that means "the suite hung" (ADR-2807). Runs in ~45s with a
+        # The bound that means "the suite hung" (ADR-3257). Runs in ~45s with a
         # warm cache; the margin covers a cold ExTester / chromedriver download
         # and the retry attempts in the WebView specs.
         timeout-minutes: 15
