@@ -584,13 +584,22 @@ ALTER TABLE accounts RENAME TO customers;
 
     it("lets a recreated table replace the earlier one, at its new position", async () => {
       const out = await flat(`
-CREATE TABLE a (id int PRIMARY KEY, old_ref int REFERENCES gone(id));
+CREATE TABLE a (id int PRIMARY KEY, old_ref int REFERENCES b(id));
 CREATE TABLE b (id int PRIMARY KEY);
 DROP TABLE a;
 CREATE TABLE a (id int PRIMARY KEY);
 `);
       expect(tableIds(out)).toEqual(["BTable", "ATable"]);
-      expect(out).not.toContain("old_ref");
+      expect(out).not.toContain("ATable -> BTable");
+    });
+
+    it("keeps a table whose rename changes only the letter case", async () => {
+      const out = await flat(`
+CREATE TABLE orders (id int PRIMARY KEY);
+ALTER TABLE orders RENAME TO "Orders";
+`);
+      expect(tableIds(out)).toEqual(["OrdersTable"]);
+      expect(out).toContain('label "Orders"');
     });
 
     it("keeps the first table when a later CREATE says IF NOT EXISTS", async () => {

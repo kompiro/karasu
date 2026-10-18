@@ -105,7 +105,7 @@ OpenAPI のパスと操作が仮置きの `domain`（`OrderServiceApi`）の中�
 $ karasu translate --from db schema.sql --database OrderDB
 ```
 
-入力はスキーマのダンプでも、ORM のマイグレーション履歴を順に連結したもの（drizzle、Prisma、Rails）でもかまいません。文を順に再生するので、`DROP TABLE` は表を消し、`ALTER TABLE … RENAME TO` は表の名前を変え、履歴の最後に残る表だけが出力されます。
+入力はスキーマのダンプでも、ORM の SQL マイグレーション履歴を順に連結したもの（drizzle、Prisma）でもかまいません。文を順に再生するので、`DROP TABLE` は表を消し、`ALTER TABLE … RENAME TO` は表の名前を変え、履歴の最後に残る表だけが出力されます。
 
 ```krs
 database OrderDB {

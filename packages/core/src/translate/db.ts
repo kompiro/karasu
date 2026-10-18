@@ -195,7 +195,7 @@ const TABLE_NAME_CAPTURE = String.raw`(?:${QUOTE}?\w+${QUOTE}?\.)?${QUOTE}?(\w+)
 
 /**
  * The tables a SQL script leaves behind, replayed statement by statement
- * (#3182). An ORM's migration history (drizzle, Prisma, Rails) is the usual
+ * (#3182). An ORM's SQL migration history (drizzle, Prisma) is the usual
  * input, not a schema dump, so reading only `CREATE TABLE` resurrects dropped
  * tables and the temporaries of a table rebuild
  * (`CREATE __new_x` → `DROP x` → `ALTER TABLE __new_x RENAME TO x`).
@@ -248,7 +248,8 @@ function parseTables(sql: string): Table[] {
       const table = tables.get(keyOf(from));
       if (!table) continue;
       // A rename keeps the table where it was; only a recreate moves it.
-      tables.delete(keyOf(to));
+      // A case-only rename (`orders` → `"Orders"`) shares its key: keep it.
+      if (keyOf(to) !== keyOf(from)) tables.delete(keyOf(to));
       const renamed = new Map<string, Table>();
       for (const [key, t] of tables) renamed.set(key === keyOf(from) ? keyOf(to) : key, t);
       tables.clear();
