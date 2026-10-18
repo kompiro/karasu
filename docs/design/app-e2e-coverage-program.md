@@ -53,7 +53,7 @@ unit テストでは代替できない。ADR-33 が「UI 構造が安定し、E2
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 実行環境            | chromium 1 project、`fullyParallel: true`、`workers: process.env.CI ? 1 : undefined`（foundation PR #532 から未再計測）、`retries: 0`、`timeout: 15_000`、CI の `webServer` は `vite build && vite preview`                                                                                                    |
 | CI                  | `e2e.yml`（path filter: app / core / e2e / lockfile、draft skip、required `Playwright`）と `e2e-skip.yml`（逆 filter の stub）、`e2e-nightly.yml`（cron。計測時点では `workflow_dispatch` に input が無く `notify` が `if: always()` だった。PR-A #3040 で `inputs.workers` と計測 run の notify skip を追加） |
-| 予算                | test step 15 分、job 35 分（ADR-2807）。runner `ubicloud-standard-4`（4 vCPU）                                                                                                                                                                                                                                 |
+| 予算                | test step 15 分、job 35 分（ADR-2807。2026-10-17 に ADR-3257 で 25 分 / 45 分へ）。runner `ubicloud-standard-4`（4 vCPU）                                                                                                                                                                                      |
 | fixtures            | `opfs.ts`（seed / reset / read / gotoApp、`karasu-locale=en` 固定、`gotoApp` は `new URL(path, baseURL)` なので full URL も受ける）、`boot.ts`、`tabs.ts`、`editor.ts`、`download.ts`、`anthropic.ts`、`chat.ts`、`preview-pane.ts`                                                                            |
 | spec 内の重複ヘルパ | `drillInto*`（1907-toggle / 2800 / 0049 / 0054）、`luminance()`（1470 / 1479）、`seedAndOpen`（0041 / 0058-diff-colors）、Tree View トグル（0044 / 2799）                                                                                                                                                      |
 | セレクタ            | `data-testid` は app / core にゼロ。role / aria-label / 表示文字列 / `data-*`（core が SVG に書く）だけ                                                                                                                                                                                                        |
@@ -64,7 +64,7 @@ unit テストでは代替できない。ADR-33 が「UI 構造が安定し、E2
 ## 制約・前提
 
 - `retries: 0` と「flake は `test.fixme` + 追跡 Issue」（ADR-1008）は変えない。flake を隠す方向の変更は入れない
-- test step 15 分の予算（ADR-2807）は据え置く。追加分はこの中に収める
+- test step の予算は 25 分（[ADR-3257](../adr/3257-e2e-step-bound-follows-suite-growth.md)）。追加分はこの中に収め、通った run が 20 分を超えたら値ではなく suite の短縮を先に検討する（経緯: 起案時は ADR-2807 の 15 分を据え置く前提だったが、S1/S5/S6/S7 の後に通る suite が 15 分の境界で打ち切られたため、2026-10-17 に ADR-3257 で 25 分に上げた）
 - `page.goto` 直書きは `lint:e2e-page-goto` で禁止。navigation は `opfs.gotoApp` 経由
 - AT の書式は `.claude/rules/acceptance.md`（`> ✅ Automated — <path> › <test>`、手動項目は未チェックのまま本番 URL を指す）
 - 手動 QA は残す（ADR-529 の三層モデル）。視覚判断、Pages Functions でしか動く経路（`/s?s=`）、LLM 応答品質は自動化対象外
@@ -129,8 +129,8 @@ seed するので、同じ条件が再現しうる。計測では 0050 の結果
 （[#3205](https://github.com/kompiro/karasu/pull/3205) の `cd5e965a`、main `85a36611` 起点、204 テスト）で 1 回ずつ順に流した。
 数値は `playwright-flaky-summary.ts` の「Playwright timings」節。spec の時間は最初の開始から最後の終了まで。
 
-| run                                  | workers | 全体時間 | p95（基準 ≤ 5s） | 最遅テスト | 最遅 spec（基準 ≤ 60s） | 5s 超のテスト |
-| ------------------------------------ | ------- | -------- | ---------------- | ---------- | ----------------------- | ------------- |
+| run                                                                   | workers | 全体時間 | p95（基準 ≤ 5s） | 最遅テスト | 最遅 spec（基準 ≤ 60s） | 5s 超のテスト |
+| --------------------------------------------------------------------- | ------- | -------- | ---------------- | ---------- | ----------------------- | ------------- |
 | [nightly](https://github.com/kompiro/karasu/actions/runs/38638929182) | 1       | 671s     | 4.5s             | 5.6s       | at-0050 46.7s           | 4             |
 | [1](https://github.com/kompiro/karasu/actions/runs/38640858261)       | 2       | 336s     | 4.5s             | 8.1s       | at-0050 42.1s           | 5             |
 | [2](https://github.com/kompiro/karasu/actions/runs/38641921644)       | 2       | 407s     | **5.2s**         | 10.7s      | at-0050 58.5s           | 19            |
