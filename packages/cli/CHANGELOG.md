@@ -332,7 +332,7 @@
 
 - 2b80387: A usecase's bare `resource <id>` now resolves to a unique `entity` of the same
   id (the canonical logical form): the resolver follows `usecase → entity → table
-→ database` to derive the same `service → database` edge and read/write tags as
+  → database` to derive the same `service → database` edge and read/write tags as
   a physical dot-notation reference, and a physical and entity-mediated reference
   to the same store are no longer double-counted. A bare resource is promoted with
   zero edits — its `unassigned-resource` warning disappears — the moment a matching
