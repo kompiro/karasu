@@ -216,9 +216,9 @@ On a narrow window these wrap below the drill path rather than squeezing it.
   exports the drill-down tree, a single SVG bundling **all** views, **draw.io**
   (mxGraph XML) for further manual editing, and **Open All Views**, which opens
   that same all-views bundle in a new tab instead of downloading it.
-- **Share** — copy a link that carries the model in the URL. Not shown in
-  `karasu serve`, where the link would point at your local server and open for
-  no one else.
+- **Share** — copy a link that carries the model in the URL. In `karasu serve`
+  the link points at the public app (https://karasu.kompiro.dev) instead of your
+  local server, so whoever you send it to can open it without running karasu.
 - **Docs** — the built-in tag/annotation **Reference**, in a pop-out window you
   can keep beside the diagram, and the published documentation site. The
   Reference answers _what you can write_; every tab links on to the guides and

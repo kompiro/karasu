@@ -74,4 +74,22 @@ test.describe("AT-0032: CLI serve mode", () => {
     await expect(page.getByText("File not found: missing.krs")).toBeVisible();
     await expect(page.locator(".preview-container svg")).toHaveCount(0);
   });
+
+  // #3162: Share is back in serve mode, with links built on the public app so
+  // that someone not running `karasu serve` can open them. The file name serve
+  // puts in the path must not follow the link there.
+  test("TC-07: Share builds its links on the public app, not on the local server", async ({
+    page,
+    serveProject,
+  }) => {
+    await serveProject.open("/other");
+    await expect(diagram(page)).toContainText("Other Web");
+
+    await page.getByRole("button", { name: /Share/ }).click();
+
+    const priv = page.getByLabel("Private shareable URL");
+    await expect(priv).toHaveValue(/^https:\/\/karasu\.kompiro\.dev\/#s=/);
+    await expect(priv).not.toHaveValue(/\/other/);
+    await expect(page.getByText(/These links open on karasu\.kompiro\.dev/)).toBeVisible();
+  });
 });

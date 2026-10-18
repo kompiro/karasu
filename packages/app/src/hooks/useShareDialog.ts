@@ -15,6 +15,8 @@ interface ShareDialogRenderProps {
   onIncludeTargetChange: (next: boolean) => void;
   onCopy: (url: string) => void;
   onClose: () => void;
+  /** The origin the links open on, when it is not this page's (#3162). */
+  hostedOrigin: string | null;
 }
 
 interface UseShareDialogParams {
@@ -28,6 +30,12 @@ interface UseShareDialogParams {
   hasEntityView: boolean;
   /** Flattens the current project into a share payload; undefined when sharing isn't wired up. */
   getShareBundle: (() => Promise<SharePayload>) | undefined;
+  /**
+   * Build the links on this origin instead of `window.location` (#3162). Its
+   * path is `/`: the page's own path (a file name under `karasu serve`) does
+   * not exist there.
+   */
+  shareOrigin?: string;
 }
 
 /**
@@ -47,6 +55,7 @@ export function useShareDialog({
   isEntityViewOpen,
   hasEntityView,
   getShareBundle,
+  shareOrigin,
 }: UseShareDialogParams): {
   handleShare: () => Promise<void>;
   shareDialogProps: ShareDialogRenderProps;
@@ -106,7 +115,8 @@ export function useShareDialog({
     include: boolean,
   ): string {
     const finalPayload = include && target ? { ...payload, target } : payload;
-    const { fragmentUrl, unfurlUrl } = buildShareUrls(finalPayload, window.location);
+    const base = shareOrigin ? { origin: shareOrigin, pathname: "/" } : window.location;
+    const { fragmentUrl, unfurlUrl } = buildShareUrls(finalPayload, base);
     setShareFragmentUrl(fragmentUrl);
     setShareUnfurlUrl(unfurlUrl);
     return fragmentUrl;
@@ -149,6 +159,7 @@ export function useShareDialog({
       onIncludeTargetChange: handleIncludeTargetChange,
       onCopy: copyShare,
       onClose: () => setShareOpen(false),
+      hostedOrigin: shareOrigin && shareOrigin !== window.location.origin ? shareOrigin : null,
     },
   };
 }
