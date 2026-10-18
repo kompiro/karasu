@@ -2,11 +2,11 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-// Fences the reporting rule decided in ADR-2807: the `ci: nightly-e2e` tracker
-// follows the *suite's* verdict, not the job's result. A job cancelled by its
-// own budget during setup reached no verdict and must not be reported as a
-// failing test (#2807), while a job that failed before the suite ran leaves
-// main unverified and still has to be reported.
+// Fences the reporting rule decided in ADR-2807 and kept by ADR-3257: the
+// `ci: nightly-e2e` tracker follows the *suite's* verdict, not the job's
+// result. A job cancelled by its own budget during setup reached no verdict
+// and must not be reported as a failing test (#2807), while a job that failed
+// before the suite ran leaves main unverified and still has to be reported.
 //
 // The script is inline JavaScript inside YAML, so nothing else can see it. It
 // is extracted and run here against stubs, the way `actions/github-script`
@@ -83,7 +83,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe("nightly tracking issue follows the suite's verdict (ADR-2807)", () => {
+describe("nightly tracking issue follows the suite's verdict (ADR-3257)", () => {
   it("opens the tracker when the suite ran and failed", async () => {
     const { calls } = await runNotify({ jobResult: "failure", testOutcome: "failure" });
     expect(calls.map((call) => call.method)).toEqual(["create"]);
