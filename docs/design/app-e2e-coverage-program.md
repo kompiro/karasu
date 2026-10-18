@@ -64,7 +64,7 @@ unit テストでは代替できない。ADR-33 が「UI 構造が安定し、E2
 ## 制約・前提
 
 - `retries: 0` と「flake は `test.fixme` + 追跡 Issue」（ADR-1008）は変えない。flake を隠す方向の変更は入れない
-- test step 15 分の予算（ADR-2807）は据え置く。追加分はこの中に収める（2026-10-17 改訂: S1/S5/S6/S7 の後に通る suite が 15 分の境界で打ち切られたため、[ADR-3257](../adr/3257-e2e-step-bound-follows-suite-growth.md) で 25 分に上げた。通った run が 20 分を超えたら、値ではなく suite の短縮を先に検討する）
+- test step の予算は 25 分（[ADR-3257](../adr/3257-e2e-step-bound-follows-suite-growth.md)）。追加分はこの中に収め、通った run が 20 分を超えたら値ではなく suite の短縮を先に検討する（経緯: 起案時は ADR-2807 の 15 分を据え置く前提だったが、S1/S5/S6/S7 の後に通る suite が 15 分の境界で打ち切られたため、2026-10-17 に ADR-3257 で 25 分に上げた）
 - `page.goto` 直書きは `lint:e2e-page-goto` で禁止。navigation は `opfs.gotoApp` 経由
 - AT の書式は `.claude/rules/acceptance.md`（`> ✅ Automated — <path> › <test>`、手動項目は未チェックのまま本番 URL を指す）
 - 手動 QA は残す（ADR-529 の三層モデル）。視覚判断、Pages Functions でしか動く経路（`/s?s=`）、LLM 応答品質は自動化対象外
