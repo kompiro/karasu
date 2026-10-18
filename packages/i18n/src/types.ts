@@ -58,6 +58,7 @@ export type Translations = {
   // Project selector (Phase C3)
   "projectInit.error.title": string;
   "projectInit.error.hint": string;
+  "projectSelector.dropdown.ariaLabel": string;
   "projectSelector.namePlaceholder": string;
   "projectSelector.new.title": string;
   "projectSelector.new.button": string;
@@ -82,6 +83,9 @@ export type Translations = {
   "project.error.openExample": (params: { detail: string }) => string;
   "project.error.snapshot": (params: { detail: string }) => string;
   "project.error.dismiss": string;
+
+  // File tree: the inline name input for New File / New Folder / Rename
+  "fileTree.inlineInput.ariaLabel": string;
 
   // Translate dialog
   "translateDialog.title": string;

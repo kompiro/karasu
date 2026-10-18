@@ -53,7 +53,7 @@ unit テストでは代替できない。ADR-33 が「UI 構造が安定し、E2
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 実行環境            | chromium 1 project、`fullyParallel: true`、`workers: process.env.CI ? 1 : undefined`（foundation PR #532 から未再計測）、`retries: 0`、`timeout: 15_000`、CI の `webServer` は `vite build && vite preview`                                                                                                    |
 | CI                  | `e2e.yml`（path filter: app / core / e2e / lockfile、draft skip、required `Playwright`）と `e2e-skip.yml`（逆 filter の stub）、`e2e-nightly.yml`（cron。計測時点では `workflow_dispatch` に input が無く `notify` が `if: always()` だった。PR-A #3040 で `inputs.workers` と計測 run の notify skip を追加） |
-| 予算                | test step 15 分、job 35 分（ADR-2807）。runner `ubicloud-standard-4`（4 vCPU）                                                                                                                                                                                                                                 |
+| 予算                | test step 15 分、job 35 分（ADR-2807。2026-10-17 に ADR-3257 で 25 分 / 45 分へ）。runner `ubicloud-standard-4`（4 vCPU）                                                                                                                                                                                      |
 | fixtures            | `opfs.ts`（seed / reset / read / gotoApp、`karasu-locale=en` 固定、`gotoApp` は `new URL(path, baseURL)` なので full URL も受ける）、`boot.ts`、`tabs.ts`、`editor.ts`、`download.ts`、`anthropic.ts`、`chat.ts`、`preview-pane.ts`                                                                            |
 | spec 内の重複ヘルパ | `drillInto*`（1907-toggle / 2800 / 0049 / 0054）、`luminance()`（1470 / 1479）、`seedAndOpen`（0041 / 0058-diff-colors）、Tree View トグル（0044 / 2799）                                                                                                                                                      |
 | セレクタ            | `data-testid` は app / core にゼロ。role / aria-label / 表示文字列 / `data-*`（core が SVG に書く）だけ                                                                                                                                                                                                        |
@@ -64,7 +64,7 @@ unit テストでは代替できない。ADR-33 が「UI 構造が安定し、E2
 ## 制約・前提
 
 - `retries: 0` と「flake は `test.fixme` + 追跡 Issue」（ADR-1008）は変えない。flake を隠す方向の変更は入れない
-- test step 15 分の予算（ADR-2807）は据え置く。追加分はこの中に収める
+- test step の予算は 25 分（[ADR-3257](../adr/3257-e2e-step-bound-follows-suite-growth.md)）。追加分はこの中に収め、通った run が 20 分を超えたら値ではなく suite の短縮を先に検討する（経緯: 起案時は ADR-2807 の 15 分を据え置く前提だったが、S1/S5/S6/S7 の後に通る suite が 15 分の境界で打ち切られたため、2026-10-17 に ADR-3257 で 25 分に上げた）
 - `page.goto` 直書きは `lint:e2e-page-goto` で禁止。navigation は `opfs.gotoApp` 経由
 - AT の書式は `.claude/rules/acceptance.md`（`> ✅ Automated — <path> › <test>`、手動項目は未チェックのまま本番 URL を指す）
 - 手動 QA は残す（ADR-529 の三層モデル）。視覚判断、Pages Functions でしか動く経路（`/s?s=`）、LLM 応答品質は自動化対象外
@@ -122,6 +122,32 @@ seed するので、同じ条件が再現しうる。計測では 0050 の結果
 **デメリット**: 4 vCPU で Chromium + Monaco が 2 本並ぶと重い spec（0041 / 0058）が `timeout: 15_000` に
 近づく可能性。固定 sleep（`COMPILE_SETTLE_MS` 400ms、`WARNING_SETTLE_MS` 500ms）が負荷で足りなくなる可能性。
 → 先に計測して判定する。
+
+**計測結果（PR-B [#3041](https://github.com/kompiro/karasu/issues/3041)、2026-10-14〜15）**: 見送り。`workers: 1` のまま進める。
+
+比較用の `workers: 1` は 10-14 の nightly（main `7a8ed4bb`、224 テスト）。`workers: 2` の 6 回は同じ commit
+（[#3205](https://github.com/kompiro/karasu/pull/3205) の `cd5e965a`、main `85a36611` 起点、204 テスト）で 1 回ずつ順に流した。
+数値は `playwright-flaky-summary.ts` の「Playwright timings」節。spec の時間は最初の開始から最後の終了まで。
+
+| run                                                                   | workers | 全体時間 | p95（基準 ≤ 5s） | 最遅テスト | 最遅 spec（基準 ≤ 60s） | 5s 超のテスト |
+| --------------------------------------------------------------------- | ------- | -------- | ---------------- | ---------- | ----------------------- | ------------- |
+| [nightly](https://github.com/kompiro/karasu/actions/runs/38638929182) | 1       | 671s     | 4.5s             | 5.6s       | at-0050 46.7s           | 4             |
+| [1](https://github.com/kompiro/karasu/actions/runs/38640858261)       | 2       | 336s     | 4.5s             | 8.1s       | at-0050 42.1s           | 5             |
+| [2](https://github.com/kompiro/karasu/actions/runs/38641921644)       | 2       | 407s     | **5.2s**         | 10.7s      | at-0050 58.5s           | 19            |
+| [3](https://github.com/kompiro/karasu/actions/runs/38642995496)       | 2       | 333s     | 4.8s             | 7.0s       | at-0050 57.8s           | 8             |
+| [4](https://github.com/kompiro/karasu/actions/runs/38715805301)       | 2       | 329s     | 4.3s             | 7.1s       | at-0050 55.3s           | 7             |
+| [5](https://github.com/kompiro/karasu/actions/runs/38716849013)       | 2       | 358s     | **5.3s**         | 8.3s       | **at-0050 64.4s**       | 15            |
+| [6](https://github.com/kompiro/karasu/actions/runs/38717902036)       | 2       | 387s     | **5.7s**         | 9.3s       | at-0050 55.6s           | 31            |
+
+- 6 回とも全 pass、flaky 0、OPFS handle のエラー（`createWritable` / `AbortError`）0。at-0050 が別ファイルと並んでも OPFS は壊れなかった
+- 全体時間は約半分になる。代わりに 1 本あたりが伸び、p95 は 6 回中 3 回で基準を超えた。遅い runner に当たった回は
+  5s 超のテストが 15〜31 本に増える。最初の 3 回では 2 回目だけが超えたので 3 回追加し、偶然ではないことを確かめた
+- at-0050 は `serial` で 1 worker に固定されるので並列化の恩恵が無く、もう 1 本のブラウザと CPU を取り合う分だけ伸びる
+  （47s → 55〜64s）。「最遅 spec ≤ 60s」を構造的に割りやすい → [#3236](https://github.com/kompiro/karasu/issues/3236)
+- 最も timeout に近づいたのは at-3031 の 2 本（10.7s / 10.3s、`timeout: 15_000` の約 7 割）→ [#3237](https://github.com/kompiro/karasu/issues/3237)
+- 見送りでも容量の余裕は想定より小さい。10-14 の nightly は `workers: 1` で 671s（前夜は 478s）で、
+  +57 テスト（約 +170s）を足すと約 840s / 900s になる。S1 以降で nightly の全体時間が 900s に近づいたら、
+  #3236 / #3237 を片付けたうえで `workers: 2` を同じ手順（`-f workers=2` を 3 回以上）で再計測する
 
 #### 案 3-B: 重い新規 spec を nightly 限定にする
 
@@ -192,6 +218,10 @@ spec 側の照合は docs 表示形（`Ctrl/Cmd+Shift+P`）ではなく、chord 
 `packages/e2e/tests/*.spec.ts` のいずれかに現れることとする。spec は `page.keyboard.press` で chord を打ち
 aria 状態を assert するので、表示形は自然には現れない。除外は 1 つの `EXEMPT` リストに理由付きで置く。
 lefthook（glob `packages/app/src/**` + `packages/e2e/tests/**`）と CI の `Check` で走らせる。
+実装（#3042）では、平坦な `id[:=]"…"` の grep が HTML の `id` 属性（`id="settings-language"`）や `run` 内の
+ネストした object（`{ kind: "node", id: highlightedNodeId }`）も拾うため、`useCommand({...})` の最上位の `id` /
+`keybinding` を読み、同一ファイルの `const` とコンポーネント prop 経由（JSX 側の属性）を解決する形にした。
+`app-shortcut-docs-sync.ts` の `collectChords` は、どの登録にも属さない keybinding を検出する第 2 の網として再利用する。
 
 **メリット**: 「操作面を足したのに e2e が無い」を機械で止める。既存 guard と同じ形（TPL-1480、TPL-2446）。
 **デメリット**: spec に id が文字列として現れることしか見ない（assert の質は見ない）。
@@ -233,13 +263,15 @@ proactive（本 PR で起こす）:
 ## 現時点の方針
 
 **1-A、2-A、3-A（計測つき）、4-A、5-C、6-A を採用する。** app の挙動を変えるスライスは無い。
+3-A は計測の結果見送った（論点 3「計測結果」）。CI は `workers: 1` のまま。
 
 - e2e に入れるかどうかの判定条件は 1 つ、「jsdom が模せない境界を跨ぐか」
 - `data-testid` は導入しない。role / label が無い操作面は app に足す（detail panel 2 つに `role="region"` を揃えて）
 - `workers: 2` は nightly の `workflow_dispatch` に `inputs.workers` を足して 3 回計測し、
   全 pass・p95 ≤ 5s（`timeout: 15_000` の 1/3）・最長 spec ≤ 60s・at-0050 と OPFS handle のエラーがゼロ、を
   満たしたときだけ `playwright.config.ts` に反映する。満たさなければ `workers: 1` のまま進める
-  （+57 テストでも 730s / 900s に収まる）
+  （結果: p95 が 6 回中 3 回、最遅 spec が 1 回基準を超えたので見送り。計画時は +57 テストでも 730s / 900s と
+  見込んだが、10-14 の nightly は 671s で、+57 テストで約 840s / 900s になる。再計測の条件は論点 3「計測結果」）
 - AC-11 は preview 経由の書き込み（5-C）で dirty にし、AT の手順文を書き換える。`<ChatPane>` を mount したままにする
   案（5-A）は UX 改善として別 Issue の候補に留める
 - serve mode は環境変数で gate した第 2 `webServer` + `serve` project。nightly だけが変数を立てる。

@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures/opfs";
 import { replaceEditorContent } from "../fixtures/editor.js";
+import { clickAndDownload, downloadToPath } from "../fixtures/download.js";
 
 /**
  * AT-0004: Project management & OPFS.
@@ -16,12 +17,15 @@ import { replaceEditorContent } from "../fixtures/editor.js";
  *  - "first-run seeding ..."                           → AC-3 empty-OPFS bootstrap
  *  - "lastProjectId in localStorage restores ..."      → AC-3 last-project restore + AC-1 dropdown switch effect
  *  - "editor edits autosave to OPFS"                   → AC-3 autosave round-trip
+ *  - "✎ Rename updates ..."                            → AC-4 rename
+ *  - "↓ Export downloads ..."                          → AC-4 export
+ *  - "↑ Import of an exported ZIP ..."                 → AC-4 import
+ *  - "browser Back / Forward ..."                      → AT-0046 TC-3 / TC-4 / TC-5
  *
  * Out of scope here:
  *  - Drilldown / breadcrumb behavior (covered by AT-0029, AT-0030)
  *  - Warning panel (covered by AT-0045, AT-0057)
  *  - Live preview re-render (visual; stays in human / AI review)
- *  - Rename / Export / Import flows (not part of AT-0004's bullets)
  */
 
 const SAMPLE_KRS_A = 'system "Project A" {}\n';
@@ -42,7 +46,7 @@ test.describe("AT-0004 Project management & OPFS", () => {
     });
     await opfs.gotoApp();
 
-    const dropdown = page.locator(".project-selector select.project-selector-dropdown");
+    const dropdown = page.getByRole("combobox", { name: "Project", exact: true });
     await expect(dropdown).toHaveValue("alpha");
     await expect(dropdown.locator("option")).toHaveText(["Alpha", "Bravo", "Charlie"]);
   });
@@ -58,7 +62,7 @@ test.describe("AT-0004 Project management & OPFS", () => {
     await page.locator(".project-selector-input").fill("Fresh Project");
     await page.getByRole("button", { name: "OK" }).click();
 
-    const dropdown = page.locator(".project-selector select.project-selector-dropdown");
+    const dropdown = page.getByRole("combobox", { name: "Project", exact: true });
     await expect(dropdown.locator('option:has-text("Fresh Project")')).toHaveCount(1);
 
     // The newly created project becomes the active selection.
@@ -91,7 +95,7 @@ test.describe("AT-0004 Project management & OPFS", () => {
     page.once("dialog", (d) => d.accept());
     await page.getByRole("button", { name: "✕ Delete" }).click();
 
-    const dropdown = page.locator(".project-selector select.project-selector-dropdown");
+    const dropdown = page.getByRole("combobox", { name: "Project", exact: true });
     await expect(dropdown.locator('option:has-text("Bravo")')).toHaveCount(0);
     await expect(dropdown.locator('option:has-text("Alpha")')).toHaveCount(1);
 
@@ -182,7 +186,7 @@ test.describe("AT-0004 Project management & OPFS", () => {
     await opfs.reset();
     await opfs.gotoApp();
 
-    const dropdown = page.locator(".project-selector select.project-selector-dropdown");
+    const dropdown = page.getByRole("combobox", { name: "Project", exact: true });
     await expect(dropdown).toBeVisible();
 
     // First-run seeds Getting Started + the ec-platform examples. We assert
@@ -207,7 +211,7 @@ test.describe("AT-0004 Project management & OPFS", () => {
     });
     await opfs.gotoApp();
 
-    const dropdown = page.locator(".project-selector select.project-selector-dropdown");
+    const dropdown = page.getByRole("combobox", { name: "Project", exact: true });
     await expect(dropdown).toHaveValue("charlie");
     await expect(page.locator(".monaco-editor")).toContainText("Project C");
   });
@@ -227,5 +231,122 @@ test.describe("AT-0004 Project management & OPFS", () => {
     await expect
       .poll(() => opfs.read("/projects/edit-me/index.krs"), { timeout: 5_000 })
       .toContain('system "Edited Live"');
+  });
+
+  // ── AC-4: Rename / Export / Import ───────────────────────────────────
+
+  test("✎ Rename updates the dropdown and /meta/projects.json", async ({ page, opfs }) => {
+    await opfs.seed({
+      projects: [{ id: "alpha", name: "Alpha", files: { "index.krs": SAMPLE_KRS_A } }],
+      lastProjectId: "alpha",
+    });
+    await opfs.gotoApp();
+
+    await page.getByRole("button", { name: "✎ Rename" }).click();
+    const input = page.getByPlaceholder("Project name");
+    await expect(input).toHaveValue("Alpha");
+    await input.fill("Renamed Alpha");
+    await input.press("Enter");
+
+    const dropdown = page.getByRole("combobox", { name: "Project", exact: true });
+    await expect(dropdown).toHaveValue("alpha");
+    await expect(dropdown.locator("option")).toHaveText(["Renamed Alpha"]);
+
+    // The rename is persisted, not just reflected in React state.
+    await expect
+      .poll(async () => {
+        const json = await opfs.read("/meta/projects.json");
+        const meta = JSON.parse(json ?? "[]") as Array<{ id: string; name: string }>;
+        return meta.find((m) => m.id === "alpha")?.name;
+      })
+      .toBe("Renamed Alpha");
+  });
+
+  test("↓ Export downloads the project as <name>.zip", async ({ page, opfs }) => {
+    await opfs.seed({
+      projects: [{ id: "alpha", name: "Alpha", files: { "index.krs": SAMPLE_KRS_A } }],
+      lastProjectId: "alpha",
+    });
+    await opfs.gotoApp();
+
+    const download = await clickAndDownload(page.getByRole("button", { name: "↓ Export" }));
+    expect(download.suggestedFilename()).toBe("Alpha.zip");
+    await downloadToPath(download);
+  });
+
+  test("↑ Import of an exported ZIP creates and selects a disambiguated copy", async ({
+    page,
+    opfs,
+  }) => {
+    const notes = 'system "Notes" {}\n';
+    await opfs.seed({
+      projects: [
+        {
+          id: "alpha",
+          name: "Alpha",
+          files: { "index.krs": SAMPLE_KRS_A, "extras/notes.krs": notes },
+        },
+      ],
+      lastProjectId: "alpha",
+    });
+    await opfs.gotoApp();
+
+    const download = await clickAndDownload(page.getByRole("button", { name: "↓ Export" }));
+    // Go through the ↑ Import button: Playwright intercepts the file chooser
+    // it opens on the hidden `.zip` input, so no OS picker appears.
+    const chooserPromise = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "↑ Import" }).click();
+    const chooser = await chooserPromise;
+    await chooser.setFiles(await downloadToPath(download));
+
+    // The ZIP's top-level directory names the project; "Alpha" is taken, so
+    // the import becomes "Alpha (2)" and is selected.
+    const dropdown = page.getByRole("combobox", { name: "Project", exact: true });
+    await expect(dropdown.locator("option:checked")).toHaveText("Alpha (2)");
+    const newId = await dropdown.inputValue();
+    expect(newId).not.toBe("alpha");
+    await expect(page).toHaveURL((url) => url.pathname === `/projects/${newId}`);
+
+    // Every file survives the round trip, nested paths included.
+    expect(await opfs.read(`/projects/${newId}/index.krs`)).toBe(SAMPLE_KRS_A);
+    expect(await opfs.read(`/projects/${newId}/extras/notes.krs`)).toBe(notes);
+    // The source project is untouched.
+    expect(await opfs.read("/projects/alpha/index.krs")).toBe(SAMPLE_KRS_A);
+  });
+
+  // ── AT-0046: project switching is browser history ────────────────────
+
+  test("browser Back / Forward walk the project switches", async ({ page, opfs }) => {
+    await opfs.seed({
+      projects: [
+        { id: "alpha", name: "Alpha", files: { "index.krs": SAMPLE_KRS_A } },
+        { id: "bravo", name: "Bravo", files: { "index.krs": SAMPLE_KRS_B } },
+      ],
+      lastProjectId: "alpha",
+    });
+    await opfs.gotoApp();
+
+    const dropdown = page.getByRole("combobox", { name: "Project", exact: true });
+    const editor = page.locator(".monaco-editor");
+    // The hash carries the drill state (`#krs-system-root?file=…`); only the
+    // pathname names the project.
+    await expect(page).toHaveURL((url) => url.pathname === "/projects/alpha");
+
+    // TC-3: switching pushes /projects/<id>.
+    await dropdown.selectOption("bravo");
+    await expect(page).toHaveURL((url) => url.pathname === "/projects/bravo");
+    await expect(editor).toContainText("Project B");
+
+    // TC-4: Back returns to A — URL, dropdown and editor together.
+    await page.goBack();
+    await expect(page).toHaveURL((url) => url.pathname === "/projects/alpha");
+    await expect(dropdown).toHaveValue("alpha");
+    await expect(editor).toContainText("Project A");
+
+    // TC-5: Forward returns to B.
+    await page.goForward();
+    await expect(page).toHaveURL((url) => url.pathname === "/projects/bravo");
+    await expect(dropdown).toHaveValue("bravo");
+    await expect(editor).toContainText("Project B");
   });
 });

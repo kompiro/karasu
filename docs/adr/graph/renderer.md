@@ -55,6 +55,7 @@ flowchart TD
     ADR_2598["ADR-2598<br/>層間チャネルに容量を持たせ、配線の需要を配置へ返す"]
     ADR_2611["ADR-2611<br/>層をまたぐエッジは内部の列へ入り、列の無い行にだけ列を 1 本予約する"]
     ADR_2631["ADR-2631<br/>トランクの合流と分岐を本数で読ませ、交差マークを装飾で潰さない"]
+    ADR_2632["ADR-2632<br/>エッジの hover affordance を identity から切り離し、描かれた全エッ..."]
     ADR_2714["ADR-2714<br/>deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
     ADR_2756["ADR-2756<br/>root view の各 system フレームは自分の子から導出したエッジ集合を持つ"]
     ADR_2761["ADR-2761<br/>行幅予算の候補ラダーの長さを計測して 8 段にする"]
@@ -69,6 +70,7 @@ flowchart TD
     ADR_3026["ADR-3026<br/>同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す"]
     ADR_3088["ADR-3088<br/>行間チャネルのレーンを、run がつながる縦線の向きで並べる"]
     ADR_3090["ADR-3090<br/>交差マーク（ホップ・junction chip・trunk band）をエッジの減光に追随させる"]
+    ADR_3132["ADR-3132<br/>ドリルダウンの最上段の上と最下段の下のチャネルを、枠の内側で測る"]
     ADR_3133["ADR-3133<br/>側面列の端点へのエッジは、どの候補も成立しないとき、端点の間の空き列で通す"]
     ADR_3134["ADR-3134<br/>同じ行間チャネルに降りる corridor / mixed route を、チャネルの中で 1..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
@@ -195,6 +197,7 @@ flowchart TD
   class ADR_2598 accepted
   class ADR_2611 accepted
   class ADR_2631 accepted
+  class ADR_2632 accepted
   class ADR_2714 accepted
   class ADR_2756 accepted
   class ADR_2761 accepted
@@ -209,6 +212,7 @@ flowchart TD
   class ADR_3026 accepted
   class ADR_3088 accepted
   class ADR_3090 accepted
+  class ADR_3132 accepted
   class ADR_3133 accepted
   class ADR_3134 accepted
   class ADR_9005 accepted

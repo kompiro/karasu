@@ -50,7 +50,18 @@
 
 `examples/ja/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
 
-- [ ] エディタ・サイドバー以外（プレビュー等）にフォーカスがある状態で `Ctrl+B`（macOS は `Cmd+B`）を押すとサイドバーが閉じる
-- [ ] もう一度 `Ctrl/Cmd+B` を押すとサイドバーが開く
-- [ ] Outline ビューを表示した状態で `Ctrl/Cmd+B` で閉じ→開くと Outline ビューのまま復元される
+- [x] エディタ・サイドバー以外（プレビュー等）にフォーカスがある状態で `Ctrl+B`（macOS は `Cmd+B`）を押すとサイドバーが閉じる
+
+  > ✅ Automated — `packages/e2e/tests/at-1411-sidebar-toggle-shortcut.spec.ts` › `Ctrl/Cmd+B collapses the sidebar and re-expands it on the Outline view`
+
+- [x] もう一度 `Ctrl/Cmd+B` を押すとサイドバーが開く
+
+  > ✅ Automated — `packages/e2e/tests/at-1411-sidebar-toggle-shortcut.spec.ts` › `Ctrl/Cmd+B collapses the sidebar and re-expands it on the Outline view`
+
+- [x] Outline ビューを表示した状態で `Ctrl/Cmd+B` で閉じ→開くと Outline ビューのまま復元される
+
+  > ✅ Automated — `packages/e2e/tests/at-1411-sidebar-toggle-shortcut.spec.ts` › `Ctrl/Cmd+B collapses the sidebar and re-expands it on the Outline view`
+
 - [ ] Monaco エディタにフォーカスを置いた状態で `Ctrl/Cmd+B` を押してもサイドバーは開閉しない（エディタの入力を妨げない）
+
+  > e2e は [#3207](https://github.com/kompiro/karasu/issues/3207) の修正まで `test.fixme`（`packages/e2e/tests/at-1411-sidebar-toggle-shortcut.spec.ts` › `Ctrl/Cmd+B is ignored while the editor has focus`）。Monaco の EditContext はフォーカス先が contenteditable でないため、現状はこのショートカットがエディタ内でも発火する。

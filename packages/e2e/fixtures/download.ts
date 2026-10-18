@@ -1,4 +1,5 @@
 import type { Download, Locator } from "@playwright/test";
+import { existsSync } from "node:fs";
 
 /**
  * Click `locator` and wait for the resulting `download` event.
@@ -24,4 +25,17 @@ export async function readDownloadText(download: Download): Promise<string> {
     chunks.push(Buffer.from(chunk));
   }
   return Buffer.concat(chunks).toString("utf-8");
+}
+
+/**
+ * Resolve a Playwright download to its on-disk path, asserting the file
+ * exists. The path is what `setInputFiles` takes, so a download can be fed
+ * straight back into an upload (export → import round trips).
+ */
+export async function downloadToPath(download: Download): Promise<string> {
+  const path = await download.path();
+  if (!existsSync(path)) {
+    throw new Error(`download "${download.suggestedFilename()}" has no file at ${path}`);
+  }
+  return path;
 }

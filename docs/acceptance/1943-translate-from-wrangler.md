@@ -51,11 +51,12 @@ Cloudflare Workers アプリの物理層を `wrangler.toml` から決定的に�
 
 ### AC-5: App の translate ダイアログ
 
-> ✅ Manual — App の Translate ダイアログで "Cloudflare wrangler.toml" を選択
+> ✅ Automated by `packages/e2e/tests/at-1943-translate-from-wrangler.spec.ts` (suite-wide)
 
-- [ ] format ドロップダウンに "Cloudflare wrangler.toml" が出る（en/ja）
-- [ ] wrangler 選択時は system 名フィールドが表示され、mapFile / granularity / bindings は隠れる
+- [x] format ドロップダウンに "Cloudflare wrangler.toml" が出る（ラベルは固有名詞なので en/ja で同じ文字列。spec は en で検証する）
+- [x] wrangler 選択時は system 名フィールドが表示され、mapFile / granularity / bindings は隠れる
+- [x] ダイアログで変換すると `system` と `deploy` が出力され、技術名は `store { type "Cloudflare D1" }` に入り論理ラベルには出ない
 
 ## 手動確認
 
-本番 app（https://karasu.kompiro.dev/）で Translate ダイアログを開き、format に "Cloudflare wrangler.toml" を選択、AC-1 のサンプル `wrangler.toml` を貼り付けて translate。system + deploy が出力され、`store` に技術名が入り論理ラベルに漏れないことを目視する。
+N/A — 自動テストですべて覆っている（変換の中身は AC-1〜AC-4 の core / CLI テスト、ダイアログ面は AC-5 の e2e）。

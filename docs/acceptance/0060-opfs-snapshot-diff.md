@@ -13,7 +13,7 @@ modal, and the diff banner reflecting snapshot metadata.
 
 ## Prerequisites
 
-- The app is open at <https://karasu.kompiro.dev/> in OPFS / Project mode
+- The app is open in OPFS / Project mode
 - A project exists with an `index.krs` file
 
 ---
@@ -28,12 +28,17 @@ modal, and the diff banner reflecting snapshot metadata.
   workspace fallback for relative imports
 - `packages/app/src/hooks/useSnapshotAutoCapture.test.tsx` — debounced capture,
   timer reset on content change, no-op when manager is absent
+- `packages/e2e/tests/at-0060-opfs-snapshot-diff.spec.ts` — every case below in
+  the app against real OPFS; the 5-minute idle timer is fast-forwarded with
+  Playwright's `page.clock` ([#3047](https://github.com/kompiro/karasu/issues/3047))
 
 ---
 
-## Manual verification checklist
+## Test cases
 
 ### AT-1 — Auto snapshot fires after debounce
+
+> ✅ Automated — `packages/e2e/tests/at-0060-opfs-snapshot-diff.spec.ts` › `an edit followed by 5 idle minutes is captured as an auto snapshot (AT-1)`
 
 1. Open the project and edit `index.krs` (any non-whitespace change).
 2. Wait 5 minutes without further edits.
@@ -45,6 +50,8 @@ modal, and the diff banner reflecting snapshot metadata.
 
 ### AT-2 — Manual snapshot with label
 
+> ✅ Automated — `packages/e2e/tests/at-0060-opfs-snapshot-diff.spec.ts` › `Snapshot now writes a labeled manual record (AT-2)`
+
 1. Right-click `index.krs` in the FileTree.
 2. Pick **⤓ Snapshot now**.
 3. Enter a label (e.g. `before-refactor`) in the prompt.
@@ -53,6 +60,8 @@ modal, and the diff banner reflecting snapshot metadata.
 `trigger: "manual"` and the given label.
 
 ### AT-3 — Compare with snapshot via picker
+
+> ✅ Automated — `packages/e2e/tests/at-0060-opfs-snapshot-diff.spec.ts` › `Compare with snapshot lists records newest-first and diffs against the picked one (AT-3, AT-5)`
 
 1. Create at least one snapshot (AT-1 or AT-2).
 2. Edit `index.krs` so its content differs from the snapshot.
@@ -67,6 +76,8 @@ modal, and the diff banner reflecting snapshot metadata.
 
 ### AT-4 — Auto retention drops oldest auto, keeps manual
 
+> ✅ Automated — `packages/e2e/tests/at-0060-opfs-snapshot-diff.spec.ts` › `the 21st auto snapshot drops the oldest auto and keeps manual ones (AT-4)`
+
 1. Force 21+ auto snapshots (edit file, wait, repeat — or temporarily lower
    the debounce in source for testing).
 2. Between them, take 1 manual snapshot with a distinct label.
@@ -78,12 +89,16 @@ also gone.
 
 ### AT-5 — `.snapshots/` hidden from FileTree
 
+> ✅ Automated — `packages/e2e/tests/at-0060-opfs-snapshot-diff.spec.ts` › `Compare with snapshot lists records newest-first and diffs against the picked one (AT-3, AT-5)`
+
 1. After any snapshot is created, look at the sidebar FileTree.
 
 **Expected**: the `.snapshots/` directory is NOT visible in the tree. Other
 `.`-prefixed entries (if any) are also hidden.
 
 ### AT-6 — Project delete removes snapshots
+
+> ✅ Automated — `packages/e2e/tests/at-0060-opfs-snapshot-diff.spec.ts` › `deleting the project removes its .snapshots tree (AT-6)`
 
 1. With a project that has snapshots, delete the project from the selector.
 2. Re-inspect OPFS.
@@ -93,10 +108,17 @@ No orphan snapshot data remains.
 
 ---
 
+## Manual verification
+
+N/A — all covered by automated tests.
+
+---
+
 ## Notes
 
-- The 5-minute debounce is hardcoded in `useSnapshotAutoCapture`; adjust
-  locally while verifying AT-1 / AT-4 if a full wait is impractical.
+- The 5-minute debounce is hardcoded in `useSnapshotAutoCapture`. The e2e spec
+  does not wait for it: it installs `page.clock` before the app loads and
+  fast-forwards the idle period.
 - The picker lists snapshots newest-first with a trigger badge (`auto` /
   `manual`) and the optional label.
 - The diff viewer (and this snapshot picker entry point) is now enabled by

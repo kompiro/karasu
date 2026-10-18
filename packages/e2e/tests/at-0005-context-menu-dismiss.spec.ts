@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures/opfs.js";
+import { openTreeContextMenu } from "../fixtures/file-tree.js";
 
 /**
  * AT-0005 AC-2: the file-tree context menu closes on Esc and on an outside
@@ -18,15 +19,6 @@ const KRS = `system Demo {
 }
 `;
 
-async function openFileContextMenu(page: import("@playwright/test").Page) {
-  await page.locator(".file-tree-item", { hasText: "index.krs" }).first().click({
-    button: "right",
-  });
-  const menu = page.locator(".context-menu");
-  await expect(menu).toBeVisible();
-  return menu;
-}
-
 test.describe("AT-0005 file context menu dismissal", () => {
   test("Esc closes the context menu (AC-2)", async ({ page, opfs }) => {
     await opfs.seed({
@@ -35,7 +27,7 @@ test.describe("AT-0005 file context menu dismissal", () => {
     });
     await opfs.gotoApp();
 
-    const menu = await openFileContextMenu(page);
+    const menu = await openTreeContextMenu(page, "index.krs");
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
   });
@@ -47,7 +39,7 @@ test.describe("AT-0005 file context menu dismissal", () => {
     });
     await opfs.gotoApp();
 
-    const menu = await openFileContextMenu(page);
+    const menu = await openTreeContextMenu(page, "index.krs");
     // Click well away from the menu, in the preview pane.
     await page.locator(".preview-container").click({ position: { x: 10, y: 10 } });
     await expect(menu).toHaveCount(0);
@@ -60,7 +52,7 @@ test.describe("AT-0005 file context menu dismissal", () => {
     });
     await opfs.gotoApp();
 
-    const menu = await openFileContextMenu(page);
+    const menu = await openTreeContextMenu(page, "index.krs");
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
 

@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { test as base } from "@playwright/test";
+import { test as base } from "./network.js";
 import { SERVE_FIXTURE_DIR, SERVE_SCRATCH_DIR } from "./serve-env.js";
 
 export { expect } from "@playwright/test";

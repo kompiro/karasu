@@ -1,7 +1,7 @@
 {
   "name": "karasu-vscode",
   "displayName": "karasu",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Syntax highlighting and tooling for .krs architecture files",
   "categories": [
@@ -48,8 +48,8 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
-    "@types/vscode": "^1.137.0",
-    "@vscode/vsce": "^3.9.2",
+    "@types/vscode": "^1.140.0",
+    "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.3"
@@ -125,6 +125,6 @@
     "theme": "dark"
   },
   "engines": {
-    "vscode": "^1.137.0"
+    "vscode": "^1.140.0"
   }
 }

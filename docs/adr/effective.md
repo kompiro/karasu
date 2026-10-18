@@ -97,7 +97,6 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1314](1314-krs-spec-v1-freeze.md) — .krs / .krs.style を v1.0 として凍結する（ハイブリッド版管理）
 - [ADR-1315](1315-release-automation-changesets.md) — OSS リリース自動化に changesets を採用し、当面は `karasu`（CLI）のみを npm 公開する
 - [ADR-1320](1320-license-compliance-automation.md) — OSS リリースのライセンス順守を allowlist CI と自動生成 THIRD_PARTY_NOTICES で機械化する
-- [ADR-1338](1338-fast-uri-override-pin.md) — `fast-uri` を `pnpm.overrides` で `^3.1.2` に固定（GHSA セキュリティ修正）
 - [ADR-1350](1350-dependabot-batch-2026-05-12.md) — Dependabot Batch Triage (2026-05-12) — `pnpm/action-setup` 6.0.5
 - [ADR-1363](1363-publish-core-package.md) — @karasu-tools/core を v0.x の公開パッケージにする（development 条件で build 非依存 typecheck を維持）
 - [ADR-1370](1370-release-flow-actions-driven.md) — リリースを workflow_dispatch 起動の Prepare → release PR → マージで publish にする
@@ -161,7 +160,6 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2773](2773-dependabot-triage-2026-09-08.md) — Dependabot トリアージ 2026-09-08 — repo 側の宣言が bot の届かない所にある 2 件
 - [ADR-2786](2786-threat-detection-fail-closed.md) — 安全網が結論を出せない回は run ごと失敗させ、detection のモデルを pin する
 - [ADR-2804](2804-no-nul-bytes-guard.md) — raw NUL byte を含む tracked file を除外リスト方式の全走査で検出し、Required な Check の両側で走らせる
-- [ADR-2807](2807-suite-budget-clears-its-setup.md) — suite の job 予算は、共有の setup 観測最大を step 境界の上に載せて確保する
 - [ADR-2813](2813-dependabot-security-2026-09-12.md) — Dependabot security alert 2026-09-12（`js-yaml` の floor が 2 度続けて脆弱範囲の内側だった。同じ key での再発は「その時点の patched 版」を書く運用の帰結である）
 - [ADR-2836](2836-dependabot-triage-2026-09-14.md) — Dependabot トリアージ 2026-09-14：vitest 5 の major は ADR の assumption が捕まえ、差し替え PR で入れる
 - [ADR-2839](2839-pause-dependabot-triage-schedule.md) — dependabot-triage workflow の週次 cron を止め、dispatch で運用する
@@ -179,6 +177,10 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3117](3117-coderabbit-ignore-command-for-skip.md) — CodeRabbit から外す PR は PR 本文の ignore コマンドで外し、ラベルは外した PR の記録として残す
 - [ADR-3138](3138-serve-app-without-monaco.md) — `karasu serve` の app build は専用 entry から始め、Monaco を含めない
 - [ADR-3196](3196-dependabot-triage-2026-10-14.md) — Dependabot トリアージ 2026-10-14：npm 6 件を採用し、Radix は 4 件を揃える差し替え PR、actions/* は gh-aw の生成物を除く差し替え PR で入れ、download-artifact と gh-aw-actions は却下する
+- [ADR-3203](3203-dependabot-security-2026-10-14.md) — Dependabot security alert 2026-10-14（sharp の override floor を修正版へ上げ、shell-quote を override し、修正版が無く upstream が異議を出している http-cache-semantics と braces は dismiss する）
+- [ADR-3242](3242-dependabot-triage-2026-10-15.md) — Dependabot トリアージ 2026-10-15：npm 5 件をそのまま採用し、vite（override の floor 引き上げ）・knip（entry 修正）・vsce（利用元のいない override の削除）は差し替え PR で入れ、gh-aw-actions は却下する
+- [ADR-3246](3246-drop-overrides-left-by-vsce-4.md) — `@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast-uri` / `form-data` / `linkify-it` / `markdown-it`）を外す
+- [ADR-3257](3257-e2e-step-bound-follows-suite-growth.md) — app の E2E suite の step 境界を 25 分、job 予算を 45 分に上げる
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -385,6 +387,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2598](2598-edge-routing-channel-capacity.md) — 層間チャネルに容量を持たせ、配線の需要を配置へ返す
 - [ADR-2611](2611-layer-spanning-edge-columns.md) — 層をまたぐエッジは内部の列へ入り、列の無い行にだけ列を 1 本予約する
 - [ADR-2631](2631-trunk-legibility-by-count.md) — トランクの合流と分岐を本数で読ませ、交差マークを装飾で潰さない
+- [ADR-2632](2632-edge-hover-affordance.md) — エッジの hover affordance を identity から切り離し、描かれた全エッジに付ける
 - [ADR-2714](2714-deploy-container-id-injective.md) — deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の id で行う
 - [ADR-2756](2756-root-view-system-edge-ownership.md) — root view の各 system フレームは自分の子から導出したエッジ集合を持つ
 - [ADR-2761](2761-width-budget-ladder-length.md) — 行幅予算の候補ラダーの長さを計測して 8 段にする
@@ -399,6 +402,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3026](3026-same-row-channel-route.md) — 同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す
 - [ADR-3088](3088-channel-lane-order-by-turn.md) — 行間チャネルのレーンを、run がつながる縦線の向きで並べる
 - [ADR-3090](3090-crossing-marks-follow-edge-focus.md) — 交差マーク（ホップ・junction chip・trunk band）をエッジの減光に追随させる
+- [ADR-3132](3132-frame-bounded-channels.md) — ドリルダウンの最上段の上と最下段の下のチャネルを、枠の内側で測る
 - [ADR-3133](3133-side-column-last-resort-corridor.md) — 側面列の端点へのエッジは、どの候補も成立しないとき、端点の間の空き列で通す
 - [ADR-3134](3134-same-channel-fold.md) — 同じ行間チャネルに降りる corridor / mixed route を、チャネルの中で 1 本の run につなぐ
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式

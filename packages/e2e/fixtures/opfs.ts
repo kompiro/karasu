@@ -1,4 +1,5 @@
-import { test as base, expect } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test as base } from "./network.js";
 
 /**
  * OPFS fixture for Playwright tests.
@@ -18,9 +19,7 @@ import { test as base, expect } from "@playwright/test";
  *     });
  *     await opfs.gotoApp();
  *
- *     await expect(
- *       page.locator(".project-selector select.project-selector-dropdown"),
- *     ).toHaveValue("demo");
+ *     await expect(page.getByRole("combobox", { name: "Project", exact: true })).toHaveValue("demo");
  *   });
  *
  * Chromium-only: OPFS support varies across browsers and the karasu Playwright

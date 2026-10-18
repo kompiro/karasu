@@ -53,7 +53,7 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 
 > **`karasu` は `karasu-skills` に依存する**（#2912）。`karasu skill install` が同梱の skill をコピーするため、CLI は `karasu-skills` を esbuild で内包せず実行時に解決する（ADR-1363 の「CLI は依存を内包する」の例外。中身は skill の文書だけ）。公開される `karasu` はその時点の `karasu-skills` の版を完全一致で指すので、同じトレインで `karasu-skills` の publish が失敗すると `npm i karasu` が解決できなくなる。`release.yml` の結果で両方が公開されたことを確かめる。
 
-> **`karasu-skills` の初回 publish は手動**。npm の Trusted Publisher はパッケージが存在してからでないと登録できない（下の「前提」）。最初のリリース PR で版が確定したら、ローカルの `packages/skills` で `pnpm publish --access public`（OTP を求められる）を実行して一度だけ公開し、npmjs.com で Trusted Publisher（org `kompiro` / repo `karasu` / workflow `release.yml`）を登録する。以降は `release.yml` が OIDC で公開する。`packages/skills/package.json` は `publishConfig.provenance` を持たない: provenance は Trusted Publishing で自動的に付き（`release.yml` の header）、ローカルからの初回 publish は provenance を作れないため。
+> **`karasu-skills` の初回 publish は手動**。npm の Trusted Publisher はパッケージが存在してからでないと登録できない（下の「前提」）。最初のリリース PR で版が確定したら、ローカルの `packages/skills` で `pnpm publish --access public`（OTP を求められる）を実行して一度だけ公開する。npmjs.com での Trusted Publisher（org `kompiro` / repo `karasu` / workflow `release.yml`）の登録は、次に版を上げるリリース PR をマージする直前に行う（登録から 2 日以内に `release.yml` が公開しないと設定が失効する。下の「前提」）。以降は `release.yml` が OIDC で公開する。`packages/skills/package.json` は `publishConfig.provenance` を持たない: provenance は Trusted Publishing で自動的に付き（`release.yml` の header）、ローカルからの初回 publish は provenance を作れないため。
 
 > **`karasu-skills` をリリースしたら、インストール済みの plugin への届き方を確かめる**（#2932 の AT から移した項目）。新しい版を公開した後、前の版を入れた Claude Code で更新が自動で届くか、`/plugin` から手動で更新するかを確かめ、結果を `packages/skills/README.md` の「Install in Claude Code」に書く。書き終えたらこの注記を消す。
 
@@ -94,6 +94,11 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 8. 最後の `close-train` ジョブが、マージされた PR のブランチ名でトラッキング Issue を特定し、全部成功していれば Release のリンクを付けて閉じる。失敗があれば、失敗した run のリンクをコメントして Issue を開いたままにする（次のトレインはそれが閉じるまで発車しない）。直したら **Re-run failed jobs** で再実行する。main が先に進んでいなければ `workflow_dispatch` での再実行でも閉じる。
 
 > 前提: 公開対象パッケージごとに npmjs.com で **Trusted Publisher**（org `kompiro` / repo `karasu` / workflow `release.yml`）を登録しておくこと。未登録のパッケージは OIDC publish が失敗する。新規パッケージは登録前に一度存在している必要があるため、**初回だけローカルから手動 publish**（`pnpm publish`、provenance off + OTP）してから登録する。
+>
+> 登録するときと、公開が失敗したときは次の 2 点を確かめる（2026-10-15 のトレインで `karasu-skills` が両方に当たった。[#3238](https://github.com/kompiro/karasu/issues/3238)）。
+>
+> - **Allowed actions の「Allow `npm publish`」にチェックを入れる**。2026-09-03 以降に登録した設定は `npm stage publish` しか許可しない状態で始まり、`release.yml` の `npm publish` は `E403 ... OIDC permission denied for this action` で拒否される。「Allow `npm dist-tag`」は要らない（`latest` は公開と同時に付く）。staged publishing への移行は [#3240](https://github.com/kompiro/karasu/issues/3240) で検討している。
+> - **登録は、`release.yml` が未公開の版を 2 日以内に公開するときに行う**。登録直後の設定は「not yet validated」で、登録から 2 日以内にその設定で公開が 1 回成功しないと失効する（[npm docs](https://docs.npmjs.com/trusted-publishers/)）。登録前に手動で公開した初回の版はこの 1 回にならない（`changeset publish` は npm にある版を公開し直さない）。なので、版を上げたリリース PR をマージする直前に登録する。失効した設定では公開が `E404 Not Found - PUT https://registry.npmjs.org/<package>` になり、npmjs.com には「This trusted publisher configuration has expired」と出る。`karasu-skills` は 0.1.0 を手動で公開した直後に登録し、次の版が出る前に失効した。失効したら削除し、同じく次のリリース PR をマージする直前に登録し直す。
 
 ### VS Code 拡張のリリース
 
