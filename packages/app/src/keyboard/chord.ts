@@ -38,14 +38,20 @@ export function eventToChord(event: KeyboardEvent): string {
 }
 
 /**
- * True when focus is in a text input, textarea, or contenteditable element.
- * The Monaco editor's focus target is a `<textarea>`, so editor focus is
- * covered by the textarea check.
+ * True when focus is in a text input, textarea, contenteditable element, or an
+ * element with an attached EditContext.
+ *
+ * The last is the Monaco editor in Chromium: it takes input through the
+ * EditContext API on a plain `<div class="native-edit-context">`, which is
+ * neither a textarea nor contenteditable. Checking only those two let every
+ * `skip` shortcut fire while typing in the editor (#3207). Where EditContext
+ * is not available Monaco still focuses a `<textarea>`.
  */
 export function isTextInputFocused(): boolean {
   const el = typeof document !== "undefined" ? document.activeElement : null;
   if (!el) return false;
   const tag = el.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA") return true;
+  if ((el as HTMLElement & { editContext?: unknown }).editContext) return true;
   return (el as HTMLElement).isContentEditable === true;
 }
