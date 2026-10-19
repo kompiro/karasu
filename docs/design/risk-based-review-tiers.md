@@ -80,10 +80,20 @@ PR の差分に含まれるファイルのパスから段階を決める。PR �
 
 | 段階 | パス | CodeRabbit | 人間 |
 | --- | --- | --- | --- |
-| Low | `docs/adr/**`、`docs/acceptance/**`、`docs/test-perspectives/**`、`docs/guide/**`、テストファイルだけ（`*.test.ts(x)`・`*.spec.ts`）、`examples/**` | 初回 1 回だけ。再レビューはしない | 読まない。指摘に答え、CI が通ったら auto-merge |
+| Low | `docs/adr/**`、`docs/test-perspectives/**`、`docs/guide/**`、テストファイルだけ（`*.test.ts(x)`・`*.spec.ts`） | 初回 1 回だけ。再レビューはしない | 読まない。指摘に答え、CI が通ったら auto-merge |
 | Design | `docs/design/**` | 初回 1 回だけ。再レビューは人間が頼んだときだけ | 必ずレビューする |
-| Medium | 上と下に当たらないもの（`packages/*` の feat / fix、`packages/nest/**` を含む） | 再レビューは 3 回まで。3 回目で止めて、進め方は人間が決める | サマリー・証拠・preview を見て判断する（今の運用） |
-| High | `.github/workflows/**`、`.github/actions/**`、release（`.changeset/**` を除く `release*` workflow・`CHANGELOG.md`）、依存の変更（`package.json` の `dependencies` / `devDependencies` / `pnpm.overrides`、`pnpm-workspace.yaml`）、`docs/spec/**`、`docs/concepts*.md`、`docs/process.md`、`.claude/rules/**`、`.coderabbit.yaml`、`lefthook.yml`、`scripts/lint/**` | approve まで回す（今の converge、上限 5） | 差分を読む |
+| Medium | 上と下に当たらないもの（`packages/*` の feat / fix、`packages/nest/**`、`docs/acceptance/**`、`examples/**` を含む） | 再レビューは 3 回まで。3 回目で止めて、進め方は人間が決める | サマリー・証拠・preview を見て判断する（今の運用） |
+
+`docs/acceptance/**` と `examples/**` は Low に入れない。
+
+- **`docs/acceptance/**`**：ADR-2331 は、AT の受け入れ条件を変える差分を人間のレビューなしに
+  通さないとして、auto-merge の例外から外した。理由は 2 つで、手動項目のチェック状態は ADR-3169 で
+  常に未チェックの定義になり消えたが、TC の増減は残っている。AT の変更は実装 PR と一緒に来ることが
+  多く、AT だけの PR は少ないので、Medium に置いて失うものは小さい
+- **`examples/**`**：パスでは typo と構造の変更を区別できない。登録済みのディレクトリは
+  `packages/core/src/builtins/examples.ts` とミラーで同期するので、どのみち Medium になる。
+  Low に入れて効くのは登録されていないディレクトリだけで、それも docs-site のギャラリーに出る内容である
+| High | `.github/workflows/**`、`.github/actions/**`、release（各パッケージの `CHANGELOG.md` と `package.json` の `version`）、依存の変更（`package.json` の `dependencies` / `devDependencies` / `pnpm.overrides`、`pnpm-workspace.yaml`）、`docs/spec/**`、`docs/concepts*.md`、`docs/process.md`、`.claude/rules/**`、`.coderabbit.yaml`、`lefthook.yml`、`scripts/lint/**` | approve まで回す（今の converge、上限 5） | 差分を読む |
 
 段階とは別に、**差分が `packages/nest/**` か `.github/workflows/**` に触れる PR は、PR 前の
 `/engineering:code-review` に加えて `/security-review` を当てる。** nest はシークレットと
@@ -197,7 +207,8 @@ PR になる。`skip-coderabbit` を付けた PR は段階にかかわらず人�
    各段階の代表パス、最大値の取り方、どれにも当たらないパスが Medium になること、
    `package.json` の scripts だけの変更は依存の変更に数えないことを固める
 2. required check の workflow `review-tier.yml` を足す。パスフィルタは付けない（TPL-1725）ので、
-   skip stub は要らない。draft では動かさない（ADR-2643）。最終の差分を判定し、`risk: low` ラベルが
+   skip stub は要らない。draft では動かさない（ADR-2643）。`if` で飛ばした job は required check に success を返すので、
+   `types:` に `ready_for_review` を入れる。ラベルの付け替えでも判定し直すよう `labeled` / `unlabeled` も入れる。最終の差分を判定し、`risk: low` ラベルが
    付いているのに Low でない、または作成者が信頼リストにいない場合に失敗する。
    read-only の `GITHUB_TOKEN` で動くので、fork からの PR でも同じに動く
 3. ラベル `risk: low` / `risk: medium` / `risk: high` を作る
@@ -227,14 +238,8 @@ PR になる。`skip-coderabbit` を付けた PR は段階にかかわらず人�
   CodeRabbit のレビュー回数（本 Design Doc の 115 回 / 60 本と比べる）を見る。revert か
   fix PR が増えたら Low の範囲を狭める
 
-## 未解決の問い / 決めないこと
+## 決めないこと
 
-- **`docs/acceptance/**` を Low に入れるか。** ADR-2331 は、AT の受け入れ条件（TC の増減・手動項目の
-  チェック状態）を変える差分は人間のレビューなしに通さない、として auto-merge の例外から
-  `docs/acceptance/**` を外した。その後 ADR-3169 で手動項目は常に未チェックの定義になったので、
-  チェック状態の理由は消えた。TC の増減の理由は残っている。Low に入れると、CodeRabbit の 1 回だけで
-  受け入れ条件が変わりうる
-- **`examples/**` を Low に入れるか。** パスでは typo と構造の変更を区別できない。
-  `examples.ts` のミラーを同期すると `packages/core` に触れて Medium になるので、実際に Low に
-  なるのは登録されていないディレクトリの変更だけになる
 - `engineering:code-review` と組み込みの `/code-review high` の比較（制約・前提の out of scope）
+- Low の範囲を広げること。導入後の計測（影響範囲・マイグレーションの「計測」）で revert と
+  fix PR が増えないことを確かめてから、別途検討する
