@@ -1742,6 +1742,13 @@ describe("crossing marks follow their edges' dim (#3157)", () => {
       junctions: [junction([1, 2])],
       bands: [band([1, 2])],
     });
+    // Each mark is drawn, so the absences below are about the marks.
+    const marks = [
+      markFor(svg, "path", "1"),
+      markFor(svg, "circle", "1 2"),
+      markFor(svg, "polyline", "1 2"),
+    ];
+    expect(marks.map((m) => m !== null)).toEqual([true, true, true]);
     expect(svg).not.toContain('<g opacity="0.28">');
     expect(svg).not.toContain("data-diff-state");
   });
