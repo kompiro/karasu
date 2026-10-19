@@ -200,6 +200,27 @@ CodeRabbit の状態は changes-requested のまま残るが、マージは止�
 として位置づける。**`skip-coderabbit` と Low は組み合わせない。** 組み合わせると誰も読まない
 PR になる。`skip-coderabbit` を付けた PR は段階にかかわらず人間がレビューする。
 
+### main の取り込みは再レビューしない
+
+CodeRabbit の approve の後や、段階の最後のラウンドの後に main を取り込んでコンフリクトを
+解消しても、PR が変える中身が同じなら再レビューは何も足さない。並行する PR が同じ一覧表
+（`docs/test-perspectives/README.md` の TPL 一覧など）に行を足すと、この取り込みは頻繁に起きる。
+
+判定は 1 つ、**取り込みの前と後で、PR の差分（`git diff -U0 origin/main...HEAD`）の追加行と
+削除行の集合が同じかどうか**。hunk の位置や前後の文脈が変わっても、集合が同じなら同じとみなす。
+
+| 取り込みの結果 | どうするか |
+| --- | --- |
+| 集合が同じ（両方の行を残すだけの解消、コンフリクトのない取り込み） | 再レビューを頼まない。ラウンドにも数えない。Low は required check の段階判定だけが走る |
+| 集合が違う（解消で PR の行を書き換えた） | 修正コミットとして扱う。Medium と High は 1 ラウンドに数えて再レビューを頼み、Low は Medium に移す |
+
+本 PR（#3287）で実際に起きた例: #3272 が TPL 一覧に TPL-3180 の行を足し、本 PR の TPL-3286 の
+行と同じ位置でコンフリクトした。両方の行を番号順に残して解消すると、追加行と削除行の集合は
+取り込み前と一致し、違ったのは hunk の位置だけだった。
+
+`auto_incremental_review: false` にすると、この push で CodeRabbit が自動で再レビューすることは
+なくなる。converge は上の判定が「同じ」なら再レビューを頼まずに終わる。
+
 ### 実装の指針
 
 1. 段階判定のスクリプトとそのテストを書く。
@@ -218,7 +239,12 @@ PR になる。`skip-coderabbit` を付けた PR は段階にかかわらず人�
    自動再レビューが止まり、再レビューは `@coderabbitai review` を投げたときだけになる
 5. `/coderabbit-converge` を段階で分岐させる。Low と Design は初回レビューへの対応で終わり、
    Medium は再レビュー 3 回、High は今の上限 5 で止まる。再レビューは push の後に
-   converge が明示的に頼む
+   converge が明示的に頼む。main を取り込んだ push は、段階判定のスクリプトに足す
+   「取り込みの前後で追加行と削除行の集合が同じか」の判定で、再レビューを頼むかを決める
+   （「main の取り込みは再レビューしない」）。ruleset の `dismiss_stale_reviews_on_push: true` が
+   取り込みの push で CodeRabbit の approve を dismiss するかを確かめ、dismiss するなら
+   「人間のレビューは CodeRabbit が approve してから始める」の判定（最新レビューの state）を
+   この場合も approve とみなすよう直す
 6. `.github/PULL_REQUEST_TEMPLATE.md` に「Risk」（段階と、その段階になった理由）と
    「How to revert」を足す
 7. `docs/process.md` の PR ワークフローに段階ごとの流れを書き、「PR のマージはユーザー確認を経る」
