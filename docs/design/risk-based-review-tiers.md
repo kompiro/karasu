@@ -203,8 +203,9 @@ PR になる。`skip-coderabbit` を付けた PR は段階にかかわらず人�
 ### 実装の指針
 
 1. 段階判定のスクリプト `scripts/review/tier.ts` を書く。入力は変更ファイルの一覧と（あれば）
-   `package.json` の差分、出力は段階とセキュリティレビューの要否。`scripts/review/tier.test.ts` で
-   各段階の代表パス、最大値の取り方、どれにも当たらないパスが Medium になること、
+   `package.json` の差分、出力は段階とセキュリティレビューの要否。テストでは
+   <!-- absent-path-next-line: test file this design intends to create (#3286) -->
+   `scripts/review/tier.test.ts` で各段階の代表パス、最大値の取り方、どれにも当たらないパスが Medium になること、
    `package.json` の scripts だけの変更は依存の変更に数えないことを固める
 2. required check の workflow `review-tier.yml` を足す。パスフィルタは付けない（TPL-1725）ので、
    skip stub は要らない。draft では動かさない（ADR-2643）。`if` で飛ばした job は required check に success を返すので、
