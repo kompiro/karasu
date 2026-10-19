@@ -1716,9 +1716,14 @@ describe("crossing marks follow their edges' dim (#3157)", () => {
       { hops: [hop(0)], junctions: [junction([0, 1])], bands: [band([0, 2])] },
       { facet: true },
     );
-    expect(markFor(svg, "path", "0")?.[1]).toBeUndefined();
-    expect(markFor(svg, "circle", "0 1")?.[1]).toBeUndefined();
-    expect(markFor(svg, "polyline", "0 2")?.[1]).toBeUndefined();
+    // Each mark is drawn, with no dim wrapper before it.
+    const marks = [
+      markFor(svg, "path", "0"),
+      markFor(svg, "circle", "0 1"),
+      markFor(svg, "polyline", "0 2"),
+    ];
+    expect(marks.map((m) => m !== null)).toEqual([true, true, true]);
+    expect(marks.map((m) => m?.[1])).toEqual([undefined, undefined, undefined]);
   });
 
   it("marks a mark unchanged in compare mode only when every edge it names is", () => {
