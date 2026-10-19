@@ -66,5 +66,5 @@ scope:
 
 ## 関連テスト
 
-- [#3286](https://github.com/kompiro/karasu/issues/3286) の実装 PR で足すもの: `tier.test.ts`（段階判定のスクリプトのテスト。
-  どの規則にも当たらないパスが Medium になること、`package.json` の依存と scripts を分けることを assert する）
+- まだない。[#3286](https://github.com/kompiro/karasu/issues/3286) の実装 PR で、段階判定のスクリプトのテストとして足し、
+  ここに名前を書く（どの規則にも当たらないパスが Medium になること、`package.json` の依存と scripts を分けることを assert する）

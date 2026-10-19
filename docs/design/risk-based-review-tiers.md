@@ -280,9 +280,10 @@ CodeRabbit の approve の後に main を取り込んでコンフリクトを解
 2. required check の workflow `review-tier.yml` を足す。パスフィルタは付けない（TPL-1725）ので、
    skip stub は要らない。draft では動かさない（ADR-2643）。`if` で飛ばした job は required check に
    success を返すので、`types:` に `ready_for_review` を入れる。ラベルの付け替えでも判定し直すよう
-   `labeled` / `unlabeled` も入れる。最終の差分を判定し、`risk: low` ラベルが付いているのに Low でない、
-   または作成者が信頼リストにいない場合に失敗する。read-only の `GITHUB_TOKEN` で動くので、
-   fork からの PR でも同じに動く
+   `labeled` / `unlabeled` も入れる。最終の差分と作成者から段階を出し、**`risk: low` ラベルが付いているのに
+   その段階が Low でない場合だけ失敗する。** 作成者が信頼リストにいない PR は段階が High になるので、
+   `risk: low` が付いていなければ通り、人間のレビューを経てマージできる。read-only の `GITHUB_TOKEN` で
+   動くので、fork からの PR でも同じに動く
 3. ラベル `risk: low` / `risk: design` / `risk: medium` / `risk: high` を作る
 4. `.coderabbit.yaml` を変える。`reviews.auto_review.auto_incremental_review: false` にして、push のたびの
    自動再レビューを止め、再レビューは `@coderabbitai review` を投げたときだけにする。同じ種類の問題は
@@ -321,6 +322,9 @@ CodeRabbit の approve の後に main を取り込んでコンフリクトを解
 ## 決めないこと
 
 - `engineering:code-review` と組み込みの `/code-review high` の比較（制約・前提の out of scope）
+- PR を作る前に、CodeRabbit CLI（`coderabbit review --agent`）で同じレビュアーをローカルで当てるか。
+  初回で拾えない指摘を PR の前に拾える可能性があるが、PR のレビューと枠を共有するか、
+  `.coderabbit.yaml` の `path_instructions` が効くかを確かめてから決める
 - Low の範囲を広げること（例: `packages/e2e/**` のヘルパーまで含めるか）。過去の 37 本では、テストの PR も
   e2e のヘルパーに触れて Medium になり、Low に当たる PR はなかった。導入後の計測で revert と fix PR が
   増えないことを確かめてから、別途検討する
