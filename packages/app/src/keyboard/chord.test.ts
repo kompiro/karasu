@@ -61,7 +61,28 @@ describe("isTextInputFocused", () => {
     expect(isTextInputFocused()).toBe(true);
   });
 
-  it("is true when a textarea is focused (covers the Monaco editor)", () => {
+  // #3207: Monaco in Chromium takes input through the EditContext API on a
+  // plain div, which is neither a textarea nor contenteditable. jsdom has no
+  // EditContext, so the property is stubbed.
+  it("is true when an element with an attached EditContext is focused (Monaco in Chromium)", () => {
+    const div = document.createElement("div");
+    div.tabIndex = 0;
+    Object.defineProperty(div, "editContext", { value: {}, configurable: true });
+    document.body.appendChild(div);
+    div.focus();
+    expect(isTextInputFocused()).toBe(true);
+  });
+
+  it("is false for a focused element whose editContext is null", () => {
+    const div = document.createElement("div");
+    div.tabIndex = 0;
+    Object.defineProperty(div, "editContext", { value: null, configurable: true });
+    document.body.appendChild(div);
+    div.focus();
+    expect(isTextInputFocused()).toBe(false);
+  });
+
+  it("is true when a textarea is focused (Monaco without EditContext)", () => {
     const textarea = document.createElement("textarea");
     document.body.appendChild(textarea);
     textarea.focus();

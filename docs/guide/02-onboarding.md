@@ -105,6 +105,8 @@ OpenAPI paths and operations land as a `usecase` inside one provisional `domain`
 $ karasu translate --from db schema.sql --database OrderDB
 ```
 
+The input can be a schema dump or an ORM's SQL migration history concatenated in order (drizzle, Prisma): the table statements are replayed in order, so `CREATE TABLE` adds or recreates a table, `DROP TABLE` removes it and `ALTER TABLE … RENAME TO` (or MySQL's `RENAME TABLE`) renames it, and only the tables the history leaves behind are emitted. Other statements are not replayed: a column added by `ALTER TABLE … ADD COLUMN` does not appear, because a table's columns come from its last `CREATE TABLE`. Statements inside comments or quoted text are skipped.
+
 ```krs
 database OrderDB {
   table OrdersTable {

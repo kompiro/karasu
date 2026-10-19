@@ -488,7 +488,7 @@ function isDigit(ch: string): boolean {
  * WhiteSpace and LineTerminator. Only `\n` starts a new line, so line numbers
  * stay the ones LSP and the editor count.
  */
-function isWhitespace(ch: string): boolean {
+export function isWhitespace(ch: string): boolean {
   const c = ch.charCodeAt(0);
   // ASCII `White_Space`: tab, LF, VT, FF, CR and space.
   if (c < 0x80) return c === 0x20 || (c >= 0x09 && c <= 0x0d);
@@ -500,11 +500,12 @@ function isAscii(ch: string): boolean {
 }
 
 // The character tests below answer ASCII by range before reaching a `\p{...}`
-// regex: the lexer calls them once per character, and most `.krs` outside
+// regex. The style lexer imports them, so a name reads the same in a `.krs`
+// file and in a `.krs.style` selector (#3140, TPL-2509): the lexer calls them once per character, and most `.krs` outside
 // strings is ASCII. `lexer.test.ts` checks every ASCII character against the
 // regex form.
 
-function isIdentStart(ch: string): boolean {
+export function isIdentStart(ch: string): boolean {
   const c = ch.charCodeAt(0);
   if (c < 0x80) return isAsciiLetter(c) || c === 0x5f;
   return /[\p{L}_]/u.test(ch);
@@ -514,7 +515,7 @@ function isIdentStart(ch: string): boolean {
  * A combining mark continues a word but cannot start one: it modifies the
  * character before it, so a decomposed `café` is one word (#2848).
  */
-function isIdentPart(ch: string): boolean {
+export function isIdentPart(ch: string): boolean {
   const c = ch.charCodeAt(0);
   if (c < 0x80) return isAsciiLetter(c) || (c >= 0x30 && c <= 0x39) || c === 0x5f;
   return /[\p{L}\p{M}\p{N}_]/u.test(ch);
@@ -542,7 +543,7 @@ const JOINER_SCRIPTS =
  * a Persian or Indic name stays whole while a stray joiner after a Latin
  * letter or at the end of a name is refused (#3093).
  */
-function wordPartAt(s: string, i: number, prev: string): string {
+export function wordPartAt(s: string, i: number, prev: string): string {
   const ch = codePointAt(s, i);
   if (ch === "" || isIdentPart(ch)) return ch;
   if (ch !== "\u200C" && ch !== "\u200D") return "";
@@ -557,7 +558,7 @@ function wordPartAt(s: string, i: number, prev: string): string {
  * that is not a surrogate is the whole code point, so it is returned without
  * building a new string.
  */
-function codePointAt(s: string, i: number): string {
+export function codePointAt(s: string, i: number): string {
   const c = s.charCodeAt(i);
   if (c < 0xd800 || c > 0xdfff) return s[i];
   const cp = s.codePointAt(i);

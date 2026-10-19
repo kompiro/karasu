@@ -41,9 +41,11 @@
 
   > ✅ Automated — `packages/e2e/tests/at-1423-diagram-view-shortcuts.spec.ts` › `Ctrl/Cmd+1..4 select System, Deploy, Org and CRUD from the preview`
 
-- [ ] Monaco エディタにフォーカスを置いた状態で `Ctrl/Cmd+1〜4` を押してもビューは切り替わらず、エディタの入力／キーバインドを妨げない
+- [x] Monaco エディタにフォーカスを置いた状態で `Ctrl/Cmd+1〜4` を押してもビューは切り替わらず、エディタの入力／キーバインドを妨げない
 
-  > e2e は [#3207](https://github.com/kompiro/karasu/issues/3207) の修正まで `test.fixme`（`packages/e2e/tests/at-1423-diagram-view-shortcuts.spec.ts` › `Ctrl/Cmd+1 is ignored while the editor has focus`）。Monaco の EditContext はフォーカス先が contenteditable でないため、現状はこのショートカットがエディタ内でも発火する。
+  > ✅ Automated — `packages/e2e/tests/at-1423-diagram-view-shortcuts.spec.ts` › `Ctrl/Cmd+1 is ignored while the editor has focus`（`mod+1` が代表。`mod+1〜4` は同じ skip 判定 `isTextInputFocused` を通る。Chromium の Monaco は EditContext の div にフォーカスし、[#3207](https://github.com/kompiro/karasu/issues/3207) までこの経路では発火していた）
+  >
+  > ✅ Automated — `packages/app/src/keyboard/chord.test.ts` › `isTextInputFocused` › `is true when an element with an attached EditContext is focused (Monaco in Chromium)`
 
 - [ ] macOS で `Cmd+1〜4`（ブラウザのタブ切替）を押したとき、ブラウザのタブが切り替わらず karasu のビュー切替に使われる（`preventDefault` 済み）
 - [x] deploy ブロックを持たない `.krs` を開いた状態で `Ctrl/Cmd+2` を押すと、空の Deploy ビューが表示されるだけでエラーにならない

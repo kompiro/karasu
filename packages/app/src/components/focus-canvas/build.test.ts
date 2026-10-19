@@ -188,6 +188,65 @@ describe("buildFocusCanvas on the dense canvas", () => {
   });
 });
 
+// #3180: a lane that opens the edge focus took a press only on its 1.5px stroke
+// and on the glyphs of its label; between two words, or two lines, of a label
+// the press fell through to the background.
+describe("lane hit areas (#3180)", () => {
+  const source = readFocusSource(denseSvg);
+  const parse = (svg: string) => new DOMParser().parseFromString(svg, "image/svg+xml");
+  const busiest = [...source.cards.keys()].sort(
+    (a, b) =>
+      edgesOf(source, b).incoming.length +
+      edgesOf(source, b).outgoing.length -
+      (edgesOf(source, a).incoming.length + edgesOf(source, a).outgoing.length),
+  )[0];
+
+  it("gives every lane that acts a band along its line and an area over its whole label", () => {
+    const d = buildFocusCanvas(source, { kind: "node", id: busiest });
+    const doc = parse(d.svg);
+    const lanes = [...doc.querySelectorAll(".focus-canvas__lane")];
+    expect(lanes.length).toBe(d.lanes.length);
+    const bands = lanes.map((g) => g.querySelector("path.focus-canvas__lane-hit"));
+    expect(bands.map((b) => b?.getAttribute("stroke-width"))).toEqual(lanes.map(() => "12"));
+    // Drawn first, so it sits behind the visible line and label.
+    expect(lanes.map((g) => g.firstElementChild)).toEqual(bands);
+
+    const areas = lanes.map((g) => g.querySelector("rect.focus-canvas__lane-hit"));
+    // A label-less lane has nothing to cover.
+    expect(areas.map((a) => a !== null)).toEqual(d.lanes.map((l) => l.label !== null));
+    const covers = d.lanes.flatMap((lane, i) => {
+      const area = areas[i];
+      if (!lane.label || !area) return [];
+      const x = Number(area.getAttribute("x"));
+      const y = Number(area.getAttribute("y"));
+      const right = x + Number(area.getAttribute("width"));
+      const bottom = y + Number(area.getAttribute("height"));
+      const { label } = lane;
+      return [
+        x <= label.x &&
+          y <= label.y &&
+          right >= label.x + label.width &&
+          bottom >= label.y + label.height,
+      ];
+    });
+    expect(covers.length).toBeGreaterThan(0);
+    expect(covers.every(Boolean)).toBe(true);
+  });
+
+  it("keeps the hit areas invisible", () => {
+    const doc = parse(buildFocusCanvas(source, { kind: "node", id: busiest }).svg);
+    for (const el of doc.querySelectorAll(".focus-canvas__lane-hit")) {
+      expect(el.getAttribute(el.tagName === "rect" ? "fill" : "stroke")).toBe("transparent");
+    }
+  });
+
+  it("adds none on the edge focus, where a lane does not act", () => {
+    const e = source.edges[0];
+    const doc = parse(buildFocusCanvas(source, { kind: "edge", from: e.from, to: e.to }).svg);
+    expect(doc.querySelectorAll(".focus-canvas__lane-hit")).toHaveLength(0);
+  });
+});
+
 describe("cards that are not boxes (#3031)", () => {
   // A database is a cylinder <path>, a queue a path with arcs, a cloud a
   // curve: none of them has a <rect> frame. An edge to one must still be drawn.

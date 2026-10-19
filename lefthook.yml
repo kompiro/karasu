@@ -128,9 +128,10 @@ pre-push:
       glob: "{.claude/skills/**,packages/skills/skills/**,packages/cli/src/index.ts,packages/cli/src/deprecations.ts,packages/core/src/translate/**,scripts/lint/skill-cli-refs.ts}"
       run: pnpm run lint:skill-cli-refs
     skill-reference-bundle-sync:
-      # The reverse-architecture skill ships byte-identical copies of the specs
-      # it teaches (Issue #2574) because it runs against repositories where
-      # docs/ does not exist. Globbed on BOTH sides: editing a source under
+      # Each bundling skill ships copies of the specs it teaches (Issue #2574),
+      # identical except for links rewritten to resolve outside this repo
+      # (#3103), because it runs against repositories where docs/ does not
+      # exist. Globbed on BOTH sides: editing a source under
       # docs/ is what puts the copy out of date, and editing the copy directly
       # is the mistake the notice in the bundle's README warns against.
       # Fix with `pnpm run lint:skill-reference-bundle-sync --write`.

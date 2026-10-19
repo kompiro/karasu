@@ -71,10 +71,9 @@ test.describe("AT-1422 sidebar view shortcuts", () => {
     );
   });
 
-  // #3207: Monaco's EditContext focus target is not contenteditable, so the
-  // dispatcher does not see a text input and `mod+shift+o` fires. Remove the
-  // fixme with the fix.
-  test.fixme("Ctrl/Cmd+Shift+O is ignored while the editor has focus", async ({ page, opfs }) => {
+  // Monaco in Chromium focuses an EditContext div, not a textarea; `mod+shift+o`
+  // fired there until #3207.
+  test("Ctrl/Cmd+Shift+O is ignored while the editor has focus", async ({ page, opfs }) => {
     await bootProjectApp(page, opfs, SHOP_KRS);
     await focusEditor(page);
 

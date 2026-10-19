@@ -640,6 +640,8 @@ export function renderFromLayout(
 
   const edgeStroke: { color: string; strokeWidth: number }[] = [];
   const markedEdges = edgesWithMarks(layoutResult.crossingMarks);
+  // What the crossing marks follow from their edges (#3157), by edge index.
+  const markState: MarkState = { dimmed: new Set(), diffStates: [] };
   let edgeIndex = 0;
   for (const edgeLayout of layoutResult.edges) {
     const edgeStyle = edgeStyleFor(edgeLayout);
@@ -678,6 +680,8 @@ export function renderFromLayout(
       deferredLabels.has(edgeIndex),
       markedEdges.has(edgeIndex) ? edgeIndex : undefined,
     );
+    if (edgeDimmed) markState.dimmed.add(edgeIndex);
+    markState.diffStates[edgeIndex] = diffState;
     edgeIndex++;
     const withDim = edgeDimmed ? el("g", { opacity: FACET_DIM_OPACITY }, rendered) : rendered;
     const isDimmedGhost =
@@ -696,7 +700,12 @@ export function renderFromLayout(
   // the backdrop it is and the lines stay what you follow.
   if (layoutResult.crossingMarks && layoutResult.crossingMarks.bands.length > 0) {
     parts.push(
-      renderTrunkBands(layoutResult.crossingMarks.bands, edgeStroke, styles.defaultEdgeStyle),
+      renderTrunkBands(
+        layoutResult.crossingMarks.bands,
+        edgeStroke,
+        styles.defaultEdgeStyle,
+        markState,
+      ),
     );
   }
   parts.push(el("g", { class: "edges" }, ...normalEdgeParts));
@@ -714,6 +723,7 @@ export function renderFromLayout(
           edgeStroke,
           styles.defaultEdgeStyle,
           palette,
+          markState,
         ),
       );
     }
@@ -950,6 +960,7 @@ function renderCrossingMarks(
   edgeStroke: { color: string; strokeWidth: number }[],
   fallback: { color: string; strokeWidth: number },
   palette: DiagramPalette,
+  state: MarkState,
 ): string {
   const r = round2;
   const strokeOf = (edge: number) => edgeStroke[edge] ?? fallback;
@@ -960,14 +971,20 @@ function renderCrossingMarks(
   let run: (HopRun & { d: string[] }) | undefined;
   const flushRun = () => {
     if (!run) return;
+    const edges = [run.edge];
     parts.push(
-      el("path", {
-        d: run.d.join(" "),
-        fill: "none",
-        stroke: run.stroke.color,
-        "stroke-width": run.stroke.strokeWidth,
-        "data-edges": run.edge,
-      }),
+      followEdges(
+        el("path", {
+          d: run.d.join(" "),
+          fill: "none",
+          stroke: run.stroke.color,
+          "stroke-width": run.stroke.strokeWidth,
+          "data-edges": run.edge,
+          "data-diff-state": markDiffState(state, edges),
+        }),
+        state,
+        edges,
+      ),
     );
     run = undefined;
   };
@@ -995,32 +1012,74 @@ function renderCrossingMarks(
     const edges = j.edges.join(" ");
     // Punched out of the canvas so the chip reads as a marker on the line rather
     // than a node sitting behind it, which is why it needs the palette.
+    const diff = markDiffState(state, j.edges);
     parts.push(
-      el("circle", {
-        cx: r(j.x),
-        cy: r(j.y),
-        r: JUNCTION_CHIP_RADIUS,
-        fill: palette.canvasBg,
-        stroke: stroke.color,
-        "stroke-width": stroke.strokeWidth,
-        "data-edges": edges,
-      }),
-      el(
-        "text",
-        {
-          x: r(j.x),
-          y: r(j.y + JUNCTION_COUNT_BASELINE),
-          "text-anchor": "middle",
-          fill: stroke.color,
-          "font-size": `${JUNCTION_COUNT_FONT_SIZE}px`,
-          "font-family": "sans-serif",
+      followEdges(
+        el("circle", {
+          cx: r(j.x),
+          cy: r(j.y),
+          r: JUNCTION_CHIP_RADIUS,
+          fill: palette.canvasBg,
+          stroke: stroke.color,
+          "stroke-width": stroke.strokeWidth,
           "data-edges": edges,
-        },
-        String(j.count),
+          "data-diff-state": diff,
+        }),
+        state,
+        j.edges,
+      ),
+      followEdges(
+        el(
+          "text",
+          {
+            x: r(j.x),
+            y: r(j.y + JUNCTION_COUNT_BASELINE),
+            "text-anchor": "middle",
+            fill: stroke.color,
+            "font-size": `${JUNCTION_COUNT_FONT_SIZE}px`,
+            "font-family": "sans-serif",
+            "data-edges": edges,
+            "data-diff-state": diff,
+          },
+          String(j.count),
+        ),
+        state,
+        j.edges,
       ),
     );
   }
   return el("g", { class: "crossing-marks" }, ...parts);
+}
+
+/**
+ * What a crossing mark takes from the edges it belongs to (#3157), by edge index:
+ * the edges the facet overlay dims, and each edge's diff state. A mark is dimmed
+ * only when every one of its edges is, the rule hover follows (#3090): a band or
+ * chip that carries one lit edge stays lit.
+ */
+interface MarkState {
+  dimmed: Set<number>;
+  diffStates: (string | undefined)[];
+}
+
+/**
+ * `mark` wrapped in the facet overlay's dim when every edge it belongs to is
+ * dimmed. One wrapper per element, so the marks keep their order (TPL-2956).
+ */
+function followEdges(mark: string, state: MarkState, edges: readonly number[]): string {
+  const dimmed = edges.length > 0 && edges.every((e) => state.dimmed.has(e));
+  return dimmed ? el("g", { opacity: FACET_DIM_OPACITY }, mark) : mark;
+}
+
+/**
+ * `unchanged` when every edge a mark belongs to is unchanged in compare mode,
+ * so the diff stylesheet dims it with them; otherwise no attribute, and with
+ * diff mode off there is never one (TPL-2174).
+ */
+function markDiffState(state: MarkState, edges: readonly number[]): string | undefined {
+  return edges.length > 0 && edges.every((e) => state.diffStates[e] === "unchanged")
+    ? "unchanged"
+    : undefined;
 }
 
 /** What one hop `<path>` holds in common: the host edge and its stroke. */
@@ -1086,6 +1145,7 @@ function renderTrunkBands(
   bands: readonly TrunkBand[],
   edgeStroke: { color: string; strokeWidth: number }[],
   fallback: { color: string; strokeWidth: number },
+  state: MarkState,
 ): string {
   const r = round2;
   const parts: string[] = [];
@@ -1105,15 +1165,20 @@ function renderTrunkBands(
       };
     }
     parts.push(
-      el("polyline", {
-        points: points.map((p) => `${r(p.x)},${r(p.y)}`).join(" "),
-        fill: "none",
-        stroke: stroke.color,
-        "stroke-width": r(trunkBandHalfWidth(band.count) * 2),
-        "stroke-linejoin": "miter",
-        "stroke-opacity": TRUNK_BAND_OPACITY,
-        "data-edges": band.edges.join(" "),
-      }),
+      followEdges(
+        el("polyline", {
+          points: points.map((p) => `${r(p.x)},${r(p.y)}`).join(" "),
+          fill: "none",
+          stroke: stroke.color,
+          "stroke-width": r(trunkBandHalfWidth(band.count) * 2),
+          "stroke-linejoin": "miter",
+          "stroke-opacity": TRUNK_BAND_OPACITY,
+          "data-edges": band.edges.join(" "),
+          "data-diff-state": markDiffState(state, band.edges),
+        }),
+        state,
+        band.edges,
+      ),
     );
   }
   return el("g", { class: "trunk-bands" }, ...parts);
