@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { DEFAULT_SKIP_DIRS, findFilesBySuffix, resolveTargets } from "./find-files.js";
 
@@ -44,18 +44,74 @@ describe("findFilesBySuffix", () => {
 });
 
 describe("resolveTargets", () => {
-  it("resolves explicit arguments without invoking the finder", () => {
-    let called = false;
-    const targets = resolveTargets(["x/y.krs"], () => {
-      called = true;
-      return [];
+  let stderr: string;
+  let exitCode: number | undefined;
+
+  beforeEach(() => {
+    stderr = "";
+    exitCode = undefined;
+    vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+      stderr += String(chunk);
+      return true;
     });
-    expect(targets).toEqual([resolve("x/y.krs")]);
-    expect(called).toBe(false);
+    vi.spyOn(process, "exit").mockImplementation((code) => {
+      exitCode = Number(code ?? 0);
+      return undefined as never;
+    });
   });
 
-  it("falls back to the sorted finder result when no files are given", () => {
-    const targets = resolveTargets([], () => ["/b.krs", "/a.krs"]);
-    expect(targets).toEqual(["/a.krs", "/b.krs"]);
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("takes a file argument as it is, whatever its suffix", async () => {
+    const file = join(tmpDir, "notes.txt");
+    await writeFile(file, "");
+
+    expect(resolveTargets([file], ".krs")).toEqual([file]);
+  });
+
+  it("walks the working directory, sorted, when no files are given", async () => {
+    await writeFile(join(tmpDir, "b.krs"), "");
+    await writeFile(join(tmpDir, "a.krs"), "");
+    vi.spyOn(process, "cwd").mockReturnValue(tmpDir);
+
+    expect(resolveTargets([], ".krs")).toEqual([join(tmpDir, "a.krs"), join(tmpDir, "b.krs")]);
+  });
+
+  // #3106: a directory argument was read as a file and crashed with a stack trace.
+  it("expands a directory argument to the matching files under it", async () => {
+    await writeFile(join(tmpDir, "b.krs"), "");
+    await writeFile(join(tmpDir, "theme.krs.style"), "");
+    await mkdir(join(tmpDir, "nested"));
+    await writeFile(join(tmpDir, "nested", "a.krs"), "");
+    await mkdir(join(tmpDir, "node_modules"));
+    await writeFile(join(tmpDir, "node_modules", "skipped.krs"), "");
+
+    expect(resolveTargets([tmpDir], ".krs")).toEqual([
+      join(tmpDir, "b.krs"),
+      join(tmpDir, "nested", "a.krs"),
+    ]);
+    expect(resolveTargets([tmpDir], ".krs.style")).toEqual([join(tmpDir, "theme.krs.style")]);
+  });
+
+  it("returns an empty list for a directory with no matching file", async () => {
+    expect(resolveTargets([tmpDir], ".krs")).toEqual([]);
+    expect(exitCode).toBeUndefined();
+  });
+
+  it("lists a file once when a directory argument also covers it", async () => {
+    const file = join(tmpDir, "a.krs");
+    await writeFile(file, "");
+
+    expect(resolveTargets([file, tmpDir], ".krs")).toEqual([file]);
+  });
+
+  it("reports an argument that is not there as not found", () => {
+    const missing = join(tmpDir, "missing.krs");
+
+    expect(resolveTargets([missing], ".krs")).toBeUndefined();
+    expect(exitCode).toBe(1);
+    expect(stderr).toBe(`Error: File not found: ${missing}\n`);
   });
 });

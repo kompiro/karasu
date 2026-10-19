@@ -11,6 +11,7 @@ discovered_from:
   - issue: "#2509"
   - issue: "#2707"
   - issue: "#2849"
+  - issue: "#3140"
   - root_cause_file: "packages/core/src/parser/parser.ts"
 related_to:
   - TPL-1415
@@ -76,3 +77,4 @@ kebab-case 名は `<word> - <word>` のトークン列として parser に届く
 - `docs/spec/tags-annotations.md` §Tags — 名前の字句規則（kebab-case が
   1 つの名前として lex される）の規定。本 TPL はその規定が新しい名前
   ポジションで破られたときに検出する観点。
+- `docs/spec/style.md` § Lexical structure（スタイルシートの selector は `.krs` と同じ文字の分類で名前を読む、#3140）。本 TPL は `.krs.style` の lexer が `.krs` と違う文字の分類で名前を読んだときに検出する観点。
