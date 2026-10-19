@@ -67,3 +67,4 @@ dev tree の relative path（`asAbsolutePath(path.join("..", "lsp", "out", "serv
 - `packages/vscode/scripts/` — packaging 関連スクリプト（bundling step がここに入る）
 - `packages/cli/pack/serve-from-tarball.test.ts`（`pnpm --filter ./packages/cli run test:pack`）— 実際の `prepack` を通した tarball を展開して `karasu serve` を起動する packaged mode のスモーク。#3017 では `serve` が app の build を monorepo 相対の `../../app/dist` で探し、npm 版で全リクエストが 503 になっていた
 - `packages/cli/src/serve.test.ts` › `findAppDistDir` — packaged（`dist/app/`）と dev（`packages/app/dist`）の候補探索、install 先の無関係な `node_modules/app` を拾わないこと
+- `packages/e2e/tests/at-0032-cli-serve-mode.spec.ts` › `TC-02`（nightly の `serve` project）— `packages/e2e/scripts/start-serve.ts` が `build:app` で packaged と同じ serve build を `dist/app/` に置いてから起動し、TC-02 は通常 app にしか無い `/api/files` の mode 判定リクエストが出ないことを確かめる。#3303 では monorepo の fallback で通常 app の build を配信しており、冷えたサーバーで 200ms の判定が間に合わず OPFS mode で起動していた
