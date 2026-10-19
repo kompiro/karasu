@@ -1164,6 +1164,8 @@ const HOSTED_SHARE_SLOT: PreviewToolbarSlot = { shareOrigin: "https://karasu.kom
 
 describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
   const SAMPLE = 'system Shop {\n  service Api { label "API" }\n}';
+  // One test moves the page to a file path; put it back even when it fails.
+  afterEach(() => window.history.replaceState(null, "", "/"));
 
   it("disables Share when there is no source", () => {
     const props = makeProps({ hasKrsSource: false });
@@ -1226,7 +1228,6 @@ describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
     expect(unfurl.value.startsWith("https://karasu.kompiro.dev/s?s=")).toBe(true);
     expect(priv.value).not.toContain("/shop");
     expect(screen.getByText(/These links open on karasu\.kompiro\.dev/)).toBeTruthy();
-    window.history.replaceState(null, "", "/");
   });
 
   it("builds the links on this page, with no destination line, when no host sets an origin", async () => {
