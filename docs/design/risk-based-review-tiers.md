@@ -2,7 +2,7 @@
 
 - **日付**: 2026-10-18
 - **ステータス**: 検討中
-- **PR**: #<番号>
+- **PR**: #3287
 - **関連**:
   - 引き金 Issue: [#3286](https://github.com/kompiro/karasu/issues/3286)
   - 関連 ADR: [ADR-2716](../adr/2716-coderabbit-request-changes-workflow.md)（CodeRabbit の approve はマージ許可ではない）、[ADR-2331](../adr/2331-adr-automerge-scope.md)（ADR-only PR の auto-merge）、[ADR-3117](../adr/3117-coderabbit-ignore-command-for-skip.md)（CodeRabbit から外す PR）、[ADR-3052](../adr/3052-review-branch-diff-before-draft-pr.md)（PR 前の `/engineering:code-review`）、[ADR-2643](../adr/2643-stacked-pr-workflow.md)（draft では分単位の CI を止める）
