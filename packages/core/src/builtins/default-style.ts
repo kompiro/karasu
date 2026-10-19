@@ -340,8 +340,10 @@ edge[implicit] {
   color: #F59E0B;
 }
 
+/* Warm grey: the base edge's lightness in another hue, so a guessed relation
+   reads apart from a confirmed one without looking more or less important (#3115). */
 edge[inferred] {
-  color: #94A3B8;
+  color: #A8A29E;
 }
 
 edge[projected] {
@@ -622,8 +624,9 @@ edge[implicit] {
   color: #B45309;
 }
 
+/* Warm grey: see the dark sheet (#3115). */
 edge[inferred] {
-  color: #64748B;
+  color: #78716C;
 }
 
 edge[projected] {
