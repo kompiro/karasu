@@ -18,6 +18,8 @@ discovered_from:
   - root_cause_file: "packages/vscode/src/extension.ts:46"
   - issue: "#3017"
   - root_cause_file: "packages/cli/src/serve.ts"
+  - issue: "#3303"
+  - root_cause_file: "packages/e2e/scripts/start-serve.ts"
 topic: vscode
 scope:
   packages:
