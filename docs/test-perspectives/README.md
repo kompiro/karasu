@@ -582,3 +582,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-3162](TPL-3162-link-for-others-built-on-reachable-origin.md) | 他人に渡すリンクは、受け取った人が開ける origin から作る。`window.location` は今ページを開いている場所で、ローカルの CLI サーバー・preview deploy・viewer・webview で同じ画面を動かすと、そこから作ったリンクは黙って他人に届かなくなる。宛先は画面を動かしている側が渡す | app-ui | #3162, ADR-3138 |
 | [TPL-3180](TPL-3180-svg-control-hit-area-is-its-region.md) | SVG の押せる要素は、描いた線と文字の形ではなく、押せる領域を当たり判定に持つ。`fill="none"` の線と `<text>` だけの要素は、線の幅と文字の形の上でしか押せない。透明な帯と rect を見える要素の後ろに置く | app-ui | #3180 |
 | [TPL-3103](TPL-3103-shipped-doc-links-resolve-where-installed.md) | 配布物に入る文書のリンクは、配布物の中か絶対 URL を指す。repo の構成を前提にした相対リンクは、コピー先のインストール先やレジストリのページで黙って切れる。原本との一致を保つ drift ガードは、書き換えを込みで比べる | build | #3103, #1779 |
+| [TPL-3197](TPL-3197-removed-card-reads-every-per-node-value-from-before-by-path.md) | compare モードで削除されたカードを描くのに引く per-node の値は、すべて before 側から自分の path で補う。1 つでも補い漏れると、その値だけが別の枠の同名カードのものになる | renderer | #3197 |
