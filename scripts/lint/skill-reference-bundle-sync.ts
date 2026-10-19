@@ -1,10 +1,10 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, posix, resolve } from "node:path";
 
-// Keeps the reference docs bundled inside each published skill byte-identical
-// to their sources in `docs/` (Issue #2574; generalized to every skill that
-// bundles them in #2912).
+// Keeps the reference docs bundled inside each published skill identical to
+// their sources in `docs/`, links aside (Issue #2574; generalized to every
+// skill that bundles them in #2912; links rewritten in #3103).
 //
 // The skill runs against an ARBITRARY repository. `docs/spec/syntax.md` is not
 // there, so every reference the skill made to a `docs/…` path resolved only by
@@ -18,10 +18,14 @@ import { dirname, resolve } from "node:path";
 // guard checks the skill's claims ABOUT the CLI, this one checks the skill's
 // copy OF the spec.
 //
-// Byte-identical on purpose. Annotating the copies (a "generated, do not edit"
-// header) would make them self-explaining but would cost the trivial
-// comparison that makes this guard strong; the notice lives in the bundle's
-// README instead, which this guard also requires.
+// Identical to the source after one transform, `bundledContent`: a relative
+// link resolves against `docs/`, which the installed skill does not have, so
+// the copy points it at the bundled sibling when there is one and at the file
+// on GitHub otherwise (#3103). The guard compares the copy to the transformed
+// source, so it stays a plain string comparison. Nothing else is changed:
+// annotating the copies (a "generated, do not edit" header) would make them
+// self-explaining but make the comparison less obvious; the notice lives in
+// the bundle's README instead, which this guard also requires.
 
 /**
  * The skills that bundle the reference, by directory under
@@ -64,6 +68,79 @@ export const BUNDLED_DOCS: ReadonlyArray<{ source: string; bundled: string }> =
     REFERENCE_DOCS.map(({ source, name }) => ({ source, bundled: `${bundleDir(skill)}/${name}` })),
   );
 
+/** Where a link to a file that is not bundled points instead. */
+export const REPOSITORY_BLOB_URL = "https://github.com/kompiro/karasu/blob/main/";
+
+/** A markdown link or image target: `](target)` or `](target "title")`. */
+const LINK_TARGET = /(\]\()([^)\s]+)((?:\s+"[^"]*")?\))/g;
+
+/**
+ * A line-by-line scanner for fenced code blocks: returns whether each line it
+ * is given opens, sits inside, or closes one. A fence closes only on a line of
+ * the opener's character, at least as long, with nothing but whitespace after
+ * it (CommonMark), so a `~~~` block may hold a line starting with three
+ * backticks and a four-backtick block may hold a three-backtick one.
+ */
+export function fenceScanner(): (line: string) => boolean {
+  let open: { char: string; length: number } | null = null;
+  return (line) => {
+    if (open === null) {
+      const opener = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+      // A backtick fence's info string may not contain a backtick.
+      if (opener && !(opener[1][0] === "`" && line.slice(opener[0].length).includes("`"))) {
+        open = { char: opener[1][0], length: opener[1].length };
+        return true;
+      }
+      return false;
+    }
+    const closer = /^ {0,3}(`+|~+)\s*$/.exec(line);
+    if (closer && closer[1][0] === open.char && closer[1].length >= open.length) open = null;
+    return true;
+  };
+}
+
+/**
+ * `source`'s contents as the bundled copy carries them (#3103).
+ *
+ * A relative link target (no scheme, not `#…`, not `/…`) is resolved against
+ * the source's directory. When it names a bundled source, it points at that
+ * sibling copy (unchanged when it already reads that way, as `./syntax.md`
+ * does from `docs/spec/`); otherwise it points at the file on GitHub. Fenced
+ * code blocks are left alone: a `](…)` there is example text, not a link.
+ */
+export function bundledContent(source: string, content: string): string {
+  const sourceDir = posix.dirname(source);
+  const bundledNames = new Map(REFERENCE_DOCS.map((d) => [d.source, d.name]));
+  const inFence = fenceScanner();
+  return content
+    .split("\n")
+    .map((line) => {
+      if (inFence(line)) return line;
+      return line.replace(LINK_TARGET, (whole, open: string, target: string, close: string) => {
+        if (
+          /^[a-z][a-z0-9+.-]*:/i.test(target) ||
+          target.startsWith("#") ||
+          target.startsWith("/")
+        ) {
+          return whole;
+        }
+        const hash = target.indexOf("#");
+        const path = hash === -1 ? target : target.slice(0, hash);
+        const anchor = hash === -1 ? "" : target.slice(hash);
+        const repoPath = posix.normalize(posix.join(sourceDir, path));
+        // Outside the repository: there is nothing to point at.
+        if (repoPath.startsWith("..")) return whole;
+        const sibling = bundledNames.get(repoPath);
+        if (sibling !== undefined) {
+          if (posix.normalize(path) === sibling) return whole;
+          return `${open}${sibling}${anchor}${close}`;
+        }
+        return `${open}${REPOSITORY_BLOB_URL}${repoPath}${anchor}${close}`;
+      });
+    })
+    .join("\n");
+}
+
 /** Each bundle's own notice; a copy with no "do not edit here" invites the wrong edit. */
 export const BUNDLE_READMES: readonly string[] = BUNDLED_SKILLS.map(
   (skill) => `${bundleDir(skill)}/README.md`,
@@ -99,7 +176,8 @@ export function check(repoRoot: string): Problem[] {
       problems.push({ kind: "missing-copy", file: bundled, source });
       continue;
     }
-    if (readFileSync(bundledAbs, "utf8") !== readFileSync(sourceAbs, "utf8")) {
+    const expected = bundledContent(source, readFileSync(sourceAbs, "utf8"));
+    if (readFileSync(bundledAbs, "utf8") !== expected) {
       problems.push({ kind: "stale-copy", file: bundled, source });
     }
   }
@@ -120,7 +198,7 @@ export function write(repoRoot: string): string[] {
     const sourceAbs = resolve(repoRoot, source);
     if (!existsSync(sourceAbs)) continue;
     const bundledAbs = resolve(repoRoot, bundled);
-    const content = readFileSync(sourceAbs, "utf8");
+    const content = bundledContent(source, readFileSync(sourceAbs, "utf8"));
     if (existsSync(bundledAbs) && readFileSync(bundledAbs, "utf8") === content) continue;
     mkdirSync(dirname(bundledAbs), { recursive: true });
     writeFileSync(bundledAbs, content);
