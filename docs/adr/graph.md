@@ -181,6 +181,7 @@ flowchart TD
     ADR_3077["ADR-3077<br/>Dependabot security alert 2026-10-06（transitive..."]
     ADR_3117["ADR-3117<br/>CodeRabbit から外す PR は PR 本文の ignore コマンドで外し、ラベルは..."]
     ADR_3138["ADR-3138<br/>`karasu serve` の app build は専用 entry から始め、Monac..."]
+    ADR_3162["ADR-3162<br/>karasu serve の Share は、公開版 app を指すリンクで出す"]
     ADR_3196["ADR-3196<br/>Dependabot トリアージ 2026-10-14：npm 6 件を採用し、Radix は..."]
     ADR_3203["ADR-3203<br/>Dependabot security alert 2026-10-14（sharp の ov..."]
     ADR_3242["ADR-3242<br/>Dependabot トリアージ 2026-10-15：npm 5 件をそのまま採用し、vit..."]
@@ -1067,6 +1068,7 @@ flowchart TD
   class ADR_3133 accepted
   class ADR_3134 accepted
   class ADR_3138 accepted
+  class ADR_3162 accepted
   class ADR_3169 accepted
   class ADR_3196 accepted
   class ADR_3203 accepted
