@@ -53,7 +53,9 @@
 
 - [x] serve モードのプレビューツールバーの Share は、手元のサーバーではなく公開版 app を指すリンクを作る。#3138 では、共有リンクが手元のサーバーを指し npm の serve build はそれを開けないため Share を外した。#3162 でリンクの宛先を公開版 app にして戻した（詳細は [AT-3162](3162-serve-share-hosted-links.md)）
 
-  > ✅ Automated — `packages/app/src/ServeModeApp.test.tsx` › `ServeModeApp` › `keeps Share and points its links at the public app (#3162)`
+  > ✅ Automated — `packages/app/src/ServeModeApp.test.tsx` › `ServeModeApp` › `keeps Share and points its links at the public app (#3162)`（Share が出て、公開版の origin を渡す）
+  >
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `PreviewColumn — Share (karasu-nest inline URL)` › `builds both links on the slot's share origin, at its root, and says so`（渡された origin からリンクを作る）
 
 - [ ] npm で入れた `karasu serve` で、コマンドパレット・キーボードショートカット・pop-out reference window が Pages 用 build の serve モードと同じに動く（#3138）
 
