@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-10-18
 - **関連 Issue**: [#3162](https://github.com/kompiro/karasu/issues/3162)
+- **関連 ADR**: [ADR-3162](../adr/3162-serve-share-hosted-links.md)
 - **Related TPLs**: [TPL-3162](../test-perspectives/TPL-3162-link-for-others-built-on-reachable-origin.md), [TPL-1024](../test-perspectives/TPL-1024-dev-vs-packaged-mode-parity.md), [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md), [TPL-2259](../test-perspectives/TPL-2259-shared-budget-enforced-at-every-producer.md)
 - **対象ファイル**: `packages/app/src/ServeModeApp.tsx`、`packages/app/src/hooks/useShareDialog.ts`、`packages/app/src/components/ShareDialog.tsx`、`packages/app/src/components/preview-toolbar-slot.ts`、`packages/app/src/utils/hosted-app.ts`
 
