@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.scripts.json"
   },
   "devDependencies": {
-    "@astrojs/starlight": "^0.42.5",
+    "@astrojs/starlight": "^0.42.6",
     "@karasu-tools/core": "workspace:*",
     "@vitest/coverage-v8": "^5.0.4",
     "astro": "^7.3.8",
