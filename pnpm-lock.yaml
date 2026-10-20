@@ -240,8 +240,8 @@ importers:
   packages/docs-site:
     devDependencies:
       '@astrojs/starlight':
-        specifier: ^0.42.5
-        version: 0.42.5(astro@7.3.8(@azure/identity@4.13.3(supports-color@10.2.2))(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(supports-color@10.2.2)(typescript@7.0.2)
+        specifier: ^0.42.6
+        version: 0.42.6(astro@7.3.8(@azure/identity@4.13.3(supports-color@10.2.2))(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(supports-color@10.2.2)(typescript@7.0.2)
       '@karasu-tools/core':
         specifier: workspace:*
         version: link:../core
@@ -531,8 +531,8 @@ packages:
   '@astrojs/sitemap@3.7.4':
     resolution: {integrity: sha512-LbKNC24bdUWcQf/pThB6qLlSqHojxGjZDURIzFocY8rlWnAn2t74nnhnK6S5x0NHriHoAduLEpVjRykmeGiVvA==}
 
-  '@astrojs/starlight@0.42.5':
-    resolution: {integrity: sha512-S6hjUexk9rrKtjJF3WR8T9dM1woNR7X2XU8e3wj4OpRT4X15AXk/mzPjWe/Qd5+P8whHj2+ves+k06qirBzimg==}
+  '@astrojs/starlight@0.42.6':
+    resolution: {integrity: sha512-Cfs7GdgzgNRCauDxQVsFUVL1thrGHK/rQdbv/SURv/xhGBXx+j5ypOHW9ENPraQxbIzUC8KAnJV7L9mvEVRuyQ==}
     peerDependencies:
       '@astrojs/markdown-remark': ^7.3.0
       astro: ^7.2.10
@@ -2553,11 +2553,8 @@ packages:
   '@types/nlcst@2.0.3':
     resolution: {integrity: sha512-vSYNSDe6Ix3q+6Z7ri9lyWqgGhJTmzRjZRqyq15N0Z/1/UnVsno9G/N40NBijoYx2seFDIl0+B2mgAb9mezUCA==}
 
-  '@types/node@24.19.1':
-    resolution: {integrity: sha512-aS3/DG0oM05K0RIXXP+hKjinGG5IgSSVGzswZxW3O0sS3pH4/fycXundUC9XsszgKCk4gHXylTEK6hyFxVxnoQ==}
-
-  '@types/node@26.6.4':
-    resolution: {integrity: sha512-ldVPDCzj7fsaGZrLB0NuHuTvJcsNasysBAqMolr/cgxrLd1xbqxIr3XJiPnHHJUCxj5sNF1vnRj9aWnrVh5Jcg==}
+  '@types/node@24.19.2':
+    resolution: {integrity: sha512-93d49wCWJkCyN87MxLpNN6KXPCwFw7bVUg79mGUV1OS40JGWwVCr8n61DXCSqz7CV6/VfPkb7xec7uP2M+QHWQ==}
 
   '@types/node@26.6.5':
     resolution: {integrity: sha512-uMzsv9stDdofIZBx4UGh4Z9ZgXnGC9seRDscilBcTHAeOFk67MZg/k9bWVfO+bk4qZmG+l52hRnLwUiH2LnJTg==}
@@ -3797,8 +3794,8 @@ packages:
     resolution: {integrity: sha512-eKCa6bwnJhvxj14kZk5NCPc6Hb6BdsU9DZcOnmQKSnO1VKrfV0zCvtttPZUsBvjmNDn8rpcJfpwSYnHBjc95MQ==}
     engines: {node: '>=18.18.0'}
 
-  i18next@26.4.2:
-    resolution: {integrity: sha512-RX+R0VLg13IbvRuJSxnqykUFS9vQZTl8wYpWPCIUDWVrSGjsQywB5Y+pjzrkboxGAuYfJZVH1InFTdgBdxq6ug==}
+  i18next@26.4.4:
+    resolution: {integrity: sha512-O+rqmQUi54OwAgnZ4SAwO6aRrbXZt36VZXWt6zvq0FpC3vJbH46oQRs6u4Uwm1vf8ZI7UqOXQiJhQVTor7vRiQ==}
     peerDependencies:
       typescript: ^5 || ^6 || ^7
     peerDependenciesMeta:
@@ -4775,6 +4772,10 @@ packages:
 
   postcss@8.5.29:
     resolution: {integrity: sha512-49cGhUbXj8Qenv0iTMxA1cFBzxXoctpC9Ujd77t1WcbJIr6nF/eI7g/8MgxrYldFRuAXvja7xQRwavoW7kgrxQ==}
+    engines: {node: ^10 || ^12 || >=14}
+
+  postcss@8.5.30:
+    resolution: {integrity: sha512-zkd+e9S1AQHhmaBKye9zlFHWjOwVgqXl1q3ECYy8561K7qxR2cREf/STLskulBFd78k6AOFeA+ff1TtEzk9bAA==}
     engines: {node: ^10 || ^12 || >=14}
 
   powershell-utils@0.2.1:
@@ -5902,9 +5903,9 @@ snapshots:
   '@astrojs/sitemap@3.7.4':
     dependencies:
       sitemap: 9.0.1
-      zod: 4.6.5
+      zod: 4.6.7
 
-  '@astrojs/starlight@0.42.5(astro@7.3.8(@azure/identity@4.13.3(supports-color@10.2.2))(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(supports-color@10.2.2)(typescript@7.0.2)':
+  '@astrojs/starlight@0.42.6(astro@7.3.8(@azure/identity@4.13.3(supports-color@10.2.2))(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(supports-color@10.2.2)(typescript@7.0.2)':
     dependencies:
       '@astrojs/markdown-satteri': 0.4.3
       '@astrojs/mdx': 8.0.3(@astrojs/markdown-satteri@0.4.3)(astro@7.3.8(@azure/identity@4.13.3(supports-color@10.2.2))(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
@@ -5921,7 +5922,7 @@ snapshots:
       hast-util-to-html: 9.0.5
       hast-util-to-string: 3.0.1
       hastscript: 9.0.1
-      i18next: 26.4.2(typescript@7.0.2)
+      i18next: 26.4.4(typescript@7.0.2)
       js-yaml: 4.3.2
       klona: 2.0.6
       magic-string: 1.4.3
@@ -6452,8 +6453,8 @@ snapshots:
       hast-util-to-html: 9.0.5
       hast-util-to-text: 4.0.2
       hastscript: 9.0.1
-      postcss: 8.5.29
-      postcss-nested: 7.0.2(postcss@8.5.29)
+      postcss: 8.5.30
+      postcss-nested: 7.0.2(postcss@8.5.30)
       unist-util-visit: 5.1.0
       unist-util-visit-parents: 6.0.2
 
@@ -7617,13 +7618,9 @@ snapshots:
     dependencies:
       '@types/unist': 3.0.3
 
-  '@types/node@24.19.1':
+  '@types/node@24.19.2':
     dependencies:
       undici-types: 7.24.6
-
-  '@types/node@26.6.4':
-    dependencies:
-      undici-types: 8.9.0
 
   '@types/node@26.6.5':
     dependencies:
@@ -7639,7 +7636,7 @@ snapshots:
 
   '@types/sax@1.2.7':
     dependencies:
-      '@types/node': 26.6.4
+      '@types/node': 26.6.5
 
   '@types/selenium-webdriver@4.35.7':
     dependencies:
@@ -9051,7 +9048,7 @@ snapshots:
 
   human-signals@8.0.1: {}
 
-  i18next@26.4.2(typescript@7.0.2):
+  i18next@26.4.4(typescript@7.0.2):
     optionalDependencies:
       typescript: 7.0.2
 
@@ -10133,9 +10130,9 @@ snapshots:
 
   pluralize@8.0.0: {}
 
-  postcss-nested@7.0.2(postcss@8.5.29):
+  postcss-nested@7.0.2(postcss@8.5.30):
     dependencies:
-      postcss: 8.5.29
+      postcss: 8.5.30
       postcss-selector-parser: 7.1.6
 
   postcss-selector-parser@7.1.6:
@@ -10151,6 +10148,12 @@ snapshots:
       quote-unquote: 1.0.0
 
   postcss@8.5.29:
+    dependencies:
+      nanoid: 3.3.20
+      picocolors: 1.1.1
+      source-map-js: 1.2.2
+
+  postcss@8.5.30:
     dependencies:
       nanoid: 3.3.20
       picocolors: 1.1.1
@@ -10528,7 +10531,7 @@ snapshots:
 
   sitemap@9.0.1:
     dependencies:
-      '@types/node': 24.19.1
+      '@types/node': 24.19.2
       '@types/sax': 1.2.7
       arg: 5.0.2
       sax: 1.6.1
