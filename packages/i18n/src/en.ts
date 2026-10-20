@@ -285,6 +285,8 @@ export const en: Translations = {
   "preview.share.dialog.unfurlHint":
     "Unfurls with the diagram in Slack, X, etc. The shared content is sent to the server (and may appear in logs).",
   "preview.share.dialog.unfurlUrlAriaLabel": "Shareable URL with preview",
+  "preview.share.dialog.hostedHint": ({ host }) =>
+    `These links open on ${host}, so whoever you send them to does not need karasu running.`,
   "preview.share.dialog.oversizeWarning":
     "This project is too large for a preview link. The private link still works.",
   "preview.share.dialog.includeTargetLabel": "Link to the current view",

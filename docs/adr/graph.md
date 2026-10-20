@@ -181,11 +181,13 @@ flowchart TD
     ADR_3077["ADR-3077<br/>Dependabot security alert 2026-10-06（transitive..."]
     ADR_3117["ADR-3117<br/>CodeRabbit から外す PR は PR 本文の ignore コマンドで外し、ラベルは..."]
     ADR_3138["ADR-3138<br/>`karasu serve` の app build は専用 entry から始め、Monac..."]
+    ADR_3162["ADR-3162<br/>karasu serve の Share は、公開版 app を指すリンクで出す"]
     ADR_3196["ADR-3196<br/>Dependabot トリアージ 2026-10-14：npm 6 件を採用し、Radix は..."]
     ADR_3203["ADR-3203<br/>Dependabot security alert 2026-10-14（sharp の ov..."]
     ADR_3242["ADR-3242<br/>Dependabot トリアージ 2026-10-15：npm 5 件をそのまま採用し、vit..."]
     ADR_3246["ADR-3246<br/>`@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast..."]
     ADR_3257["ADR-3257<br/>app の E2E suite の step 境界を 25 分、job 予算を 45 分に上げる"]
+    ADR_3304["ADR-3304<br/>Dependabot トリアージ 2026-10-19：npm 11 件をそのまま採用し、gh..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -201,6 +203,7 @@ flowchart TD
     ADR_1895["ADR-1895<br/>アーキテクチャリバースハーネス — multi-subagent fan-out + CLI ..."]
     ADR_2077["ADR-2077<br/>reverse harness の分解粒度 — bounded-context 既定と構造 g..."]
     ADR_2901["ADR-2901<br/>AI authoring は利用者のエージェントセッションと karasu CLI skill..."]
+    ADR_3103["ADR-3103<br/>skill に同梱する reference は、相対リンクだけを書き換えたコピーにする"]
     ADR_9017["ADR-9017<br/>Cloudflare Pages デプロイ基盤と BYOK AI 連携"]
   end
   subgraph cli["cli"]
@@ -1058,18 +1061,21 @@ flowchart TD
   class ADR_3077 accepted
   class ADR_3088 accepted
   class ADR_3090 accepted
+  class ADR_3103 accepted
   class ADR_3113 accepted
   class ADR_3117 accepted
   class ADR_3132 accepted
   class ADR_3133 accepted
   class ADR_3134 accepted
   class ADR_3138 accepted
+  class ADR_3162 accepted
   class ADR_3169 accepted
   class ADR_3196 accepted
   class ADR_3203 accepted
   class ADR_3242 accepted
   class ADR_3246 accepted
   class ADR_3257 accepted
+  class ADR_3304 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

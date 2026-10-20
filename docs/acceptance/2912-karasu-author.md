@@ -27,7 +27,7 @@ type: product
 
   > ✅ Automated — `scripts/lint/krs-fences.test.ts`（`pnpm run lint:krs-fences` が `packages/skills/skills/**` を走査する）
 
-- [x] AT-C: `karasu-author/reference/` の 4 文書が `docs/` の原本とバイト単位で一致し、編集禁止の README を持つ。reverse-architecture の同梱物も引き続き一致する
+- [x] AT-C: `karasu-author/reference/` の 4 文書が `docs/` の原本と一致し（#3103 以降はリンクを書き換えた原本と一致）、編集禁止の README を持つ。reverse-architecture の同梱物も引き続き一致する
 
   > ✅ Automated — `scripts/lint/skill-reference-bundle-sync.test.ts` › the skill's bundled reference docs › are in sync in this repository / check() › requires the bundle's do-not-edit notice
 

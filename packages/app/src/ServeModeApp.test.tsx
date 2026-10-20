@@ -4,11 +4,12 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { useContext } from "react";
 import { PreviewToolbarSlotContext } from "./components/preview-toolbar-slot.js";
 import { ServeModeApp } from "./ServeModeApp.js";
+import { HOSTED_APP_ORIGIN } from "./utils/hosted-app.js";
 
 vi.mock("./components/AppShell.js", () => ({
   AppShell: function AppShellProbe() {
-    const { hideShare } = useContext(PreviewToolbarSlotContext);
-    return <div>{hideShare ? "share-hidden" : "share-shown"}</div>;
+    const { hideShare, shareOrigin } = useContext(PreviewToolbarSlotContext);
+    return <div>{hideShare ? "share-hidden" : `share-shown:${shareOrigin ?? "this-page"}`}</div>;
   },
 }));
 vi.mock("./state/app-context.js", () => ({
@@ -41,8 +42,10 @@ afterEach(() => {
 });
 
 describe("ServeModeApp", () => {
-  it("drops Share from the preview toolbar (#3138)", async () => {
+  // #3138 dropped Share because links built on this local server open only
+  // here. #3162 brings it back with the links built on the public app.
+  it("keeps Share and points its links at the public app (#3162)", async () => {
     render(<ServeModeApp />);
-    expect(await screen.findByText("share-hidden")).toBeTruthy();
+    expect(await screen.findByText(`share-shown:${HOSTED_APP_ORIGIN}`)).toBeTruthy();
   });
 });

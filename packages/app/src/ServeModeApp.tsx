@@ -6,15 +6,18 @@ import {
 } from "./components/preview-toolbar-slot.js";
 import { useAppContext } from "./state/app-context.js";
 import { useFileSelection } from "./hooks/useFileSelection.js";
+import { HOSTED_APP_ORIGIN } from "./utils/hosted-app.js";
 
 const SERVE_FILE_PATH = "/serve/index.krs";
 
 /**
- * Serve mode drops Share (#3138). Its links point at this local server, so
- * they open only on this machine while `karasu serve` runs, and the npm
- * build — which leaves the editor out — does not open them at all.
+ * Serve mode builds its Share links on the public app (#3162). Built on this
+ * page they would point at the local server, which opens only on this machine
+ * while `karasu serve` runs, and the npm build, which leaves the editor out,
+ * would not open them at all (why #3138 dropped Share). Both builds go through
+ * this component, so they share one destination (TPL-1024).
  */
-const SERVE_TOOLBAR: PreviewToolbarSlot = { hideShare: true };
+const SERVE_TOOLBAR: PreviewToolbarSlot = { shareOrigin: HOSTED_APP_ORIGIN };
 
 function resolveFileNameFromUrl(): string {
   const pathname = window.location.pathname;

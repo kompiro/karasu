@@ -68,8 +68,11 @@ serve mode shows up in the nightly, not on the PR
 ([#3039](https://github.com/kompiro/karasu/issues/3039), decision 4).
 
 `scripts/start-serve.ts` copies `fixtures/serve-project/` into the
-git-ignored `.serve-scratch/`, builds the CLI bundle and runs it. Locally it
-also builds the app first, since the first server is `vite` dev there:
+git-ignored `.serve-scratch/`, builds the CLI bundle, stages the serve build
+the npm package ships into `packages/cli/dist/app/` (the CLI's `build:app`,
+which `prepack` runs) and runs the bundle. It does not serve the regular app
+build in `packages/app/dist`, which picks serve mode at runtime and is not what
+users get ([#3303](https://github.com/kompiro/karasu/issues/3303)):
 
 ```bash
 E2E_SERVE=1 pnpm --filter @karasu-tools/e2e exec playwright test --project serve

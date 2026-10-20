@@ -1,8 +1,8 @@
 # Bundled reference — generated copies, do not edit here
 
 The reverse-architecture skill runs against an **arbitrary repository**, where
-karasu's `docs/` tree does not exist. These files are byte-identical copies of
-their sources in this repo, bundled so the skill carries its own grammar
+karasu's `docs/` tree does not exist. These files are copies of their sources in
+this repo, identical except for their links, bundled so the skill carries its own grammar
 instead of depending on the agent happening to run inside a karasu checkout.
 
 | Bundled copy | Source | Why the skill needs it |
@@ -24,8 +24,10 @@ lefthook on pushes that touch either side, and in the `Reference docs` CI
 workflow — the one that still runs on a docs-only PR, which is exactly the PR
 that puts these copies out of date.
 
-The copies keep their sources' relative links (`../adr/…`, `./style.md`), which
-resolve in this repo and dangle outside it. That is the deliberate cost of
-byte-identity: a link rewrite would break the comparison that makes the drift
-guard trustworthy. Follow a dangling link back to
-[the karasu repository](https://github.com/kompiro/karasu).
+The one difference from the source is the links (#3103). A relative link in
+the source resolves against `docs/`, which an installed skill does not have, so
+the copy points it at the bundled sibling when the target is one of the files
+above, and at the file in
+[the karasu repository](https://github.com/kompiro/karasu) on GitHub otherwise.
+`--write` applies that rewrite, and the check compares each copy to its
+rewritten source.
