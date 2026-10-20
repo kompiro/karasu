@@ -118,9 +118,11 @@ Worker であることは変わらない。workflow は権限と secret の扱�
 
 CodeRabbit の effort 見積もりは段階を**上げる**ためにだけ使う。パスで Low と決まった PR でも、
 初回レビューの見積もりが 4 以上なら Medium として扱う。見積もりで段階を下げることはしない
-（背景の観測のとおり、見積もりはリスクと一致しない）。この引き上げは手順で守るもので、required check
-「Review tier」からは見えない。check は push の時点で走り、CodeRabbit のサマリーより先に終わるからである。
-引き上げを忘れたときに残る誤りは、パスでは Low に当たる docs とテストの PR が Low のまま扱われることに限られる。
+（背景の観測のとおり、見積もりはリスクと一致しない）。この引き上げは required check「Review tier」が
+機械で検査する。push の時点ではまだサマリーがないので、check は CodeRabbit がレビューを出した時点
+（`pull_request_review` の `submitted`）でも走り、サマリーの見積もりを読む。見積もりが 4 以上なのに
+`risk: low` が付いていれば失敗する。サマリーがなければ（CodeRabbit が止まっているなど）パスの段階だけで
+判定する。見積もりは段階を上げる方向にしか効かないので、CodeRabbit が止まってもマージ不能にはならない。
 
 ラウンドを減らすために、初回の指摘で出し切らせる手も合わせて入れる。
 
@@ -234,8 +236,8 @@ approve まで回す。そのうえで、3 回の再レビューで approve さ�
 
 **approve の後**
 
-- **Low**：required check「Review tier」が最終の差分を判定し、Low のままなら通る。
-  `gh pr merge --auto --squash --delete-branch` で auto-merge にする
+- **Low**：required check「Review tier」が、最終の差分・作成者・初回レビューの見積もりから段階を出し、
+  Low のときだけ通る。そのうえで `gh pr merge --auto --squash --delete-branch` で auto-merge にする
 - **Design**：人間がレビューする
 - **Medium**：人間がサマリー・証拠・preview を見て判断する
 - **High**：人間が差分を読む
@@ -265,6 +267,12 @@ CodeRabbit の approve の後に main を取り込んでコンフリクトを解
 | 集合が同じ（両方の行を残すだけの解消、コンフリクトのない取り込み） | 再レビューを頼まない。ラウンドにも数えない。Low は required check の段階判定だけが走る |
 | 集合が違う（解消で PR の行を書き換えた） | 修正コミットとして扱い、1 ラウンドに数えて再レビューを頼む |
 
+この判定が拾えないことが 1 つある。main の変更が PR の行の意味を変えても、行そのものが同じなら
+「同じ」になる（例: PR が足した行の上の見出しを main が書き換えた）。見出しや構文のまとまりが
+変わったかを観測できる形で判定する方法はなく、判定を前後の文脈まで広げると、上の TPL 一覧の例のような
+日常的な取り込みも毎回再レビューになる。そこで判定は行の集合のままにする。main 側の変更はその PR で
+レビュー済みであること、Medium 以上は人間が読むこと、で受け入れる。
+
 本 PR（#3287）で実際に起きた例: #3272 が TPL 一覧に TPL-3180 の行を足し、本 PR の TPL-3286 の
 行と同じ位置でコンフリクトした。両方の行を番号順に残して解消すると、追加行と削除行の集合は
 取り込み前と一致し、違ったのは hunk の位置だけだった。
@@ -272,11 +280,12 @@ CodeRabbit の approve の後に main を取り込んでコンフリクトを解
 **ラウンドの途中では main を取り込まない。取り込みは approve の後に行う。** 本 PR では、初回の
 指摘への修正と main の取り込みを 1 回の push にまとめたところ、CodeRabbit は
 `Review skipped: We couldn't safely recover the incremental review` を返し、その push をレビューしなかった。
+次のラウンドでも修正と main の取り込みを 1 回で push したが、こちらは普通にレビューされた。
 merge commit を含む push では差分だけの再レビューを組み立てられないことがあり、そのときは
 PR 全体を見直す `@coderabbitai full review` を頼むしかない。コンフリクトはマージを止めるがレビューは
 止めないので、取り込みを approve の後に回しても失うものはない。これまでの規則（ADR-3052 が ADR-2898 から
 引き継いだ「ラウンド中の取り込みは単独で push せず、そのラウンドの修正と一緒に push する」）は、
-この観測で置き換える。観測は 1 回なので、実装の際に再現するかを確かめる。
+この観測で置き換える。2 回のうち 1 回で起きたので、毎回起きるわけではない。
 
 `auto_incremental_review: false` にすると、この push で CodeRabbit が自動で再レビューすることは
 なくなる。converge は上の判定が「同じ」なら再レビューを頼まずに終わる。
@@ -308,7 +317,8 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
 2. required check の workflow `review-tier.yml` を足す。パスフィルタは付けない（TPL-1725）ので、
    skip stub は要らない。draft では動かさない（ADR-2643）。`if` で飛ばした job は required check に
    success を返すので、`types:` に `ready_for_review` を入れる。ラベルの付け替えでも判定し直すよう
-   `labeled` / `unlabeled` も入れる。最終の差分と作成者から段階を出し、**`risk: low` ラベルが付いているのに
+   `labeled` / `unlabeled` も入れ、CodeRabbit の見積もりを読むために `pull_request_review` の `submitted` でも
+   走らせる。最終の差分・作成者・（あれば）見積もりから段階を出し、**`risk: low` ラベルが付いているのに
    その段階が Low でない場合だけ失敗する。** 作成者が信頼リストにいない PR は段階が High になるので、
    `risk: low` が付いていなければ通り、人間のレビューを経てマージできる。read-only の `GITHUB_TOKEN` で
    動くので、fork からの PR でも同じに動く
