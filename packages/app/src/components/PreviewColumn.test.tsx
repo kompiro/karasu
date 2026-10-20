@@ -1159,8 +1159,13 @@ describe("PreviewColumn — the toolbar measurement it publishes", () => {
   });
 });
 
+/** What `karasu serve` puts in the toolbar slot (#3162). */
+const HOSTED_SHARE_SLOT: PreviewToolbarSlot = { shareOrigin: "https://karasu.kompiro.dev" };
+
 describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
   const SAMPLE = 'system Shop {\n  service Api { label "API" }\n}';
+  // One test moves the page to a file path; put it back even when it fails.
+  afterEach(() => window.history.replaceState(null, "", "/"));
 
   it("disables Share when there is no source", () => {
     const props = makeProps({ hasKrsSource: false });
@@ -1195,6 +1200,49 @@ describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
 
     // Eager copy of the private link happened on the same gesture chain.
     expect(await navigator.clipboard.readText()).toBe(copied);
+  });
+
+  // #3162: `karasu serve` passes the public app's origin through the toolbar
+  // slot, so the links open for someone who is not running serve. The page's
+  // own path (a file name under serve) must not follow them there.
+  it("builds both links on the slot's share origin, at its root, and says so", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/shop");
+    const props = makeProps({
+      hasKrsSource: true,
+      getShareBundle: async () => ({ krs: SAMPLE }),
+    });
+    render(
+      <PreviewToolbarSlotContext.Provider value={HOSTED_SHARE_SLOT}>
+        <PreviewProvider value={props}>
+          <PreviewColumn />
+        </PreviewProvider>
+      </PreviewToolbarSlotContext.Provider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Share/ }));
+
+    const priv = (await screen.findByLabelText("Private shareable URL")) as HTMLInputElement;
+    expect(priv.value.startsWith("https://karasu.kompiro.dev/#s=")).toBe(true);
+    const unfurl = screen.getByLabelText("Shareable URL with preview") as HTMLInputElement;
+    expect(unfurl.value.startsWith("https://karasu.kompiro.dev/s?s=")).toBe(true);
+    expect(priv.value).not.toContain("/shop");
+    expect(screen.getByText(/These links open on karasu\.kompiro\.dev/)).toBeTruthy();
+  });
+
+  it("builds the links on this page, with no destination line, when no host sets an origin", async () => {
+    const user = userEvent.setup();
+    const props = makeProps({
+      hasKrsSource: true,
+      getShareBundle: async () => ({ krs: SAMPLE }),
+    });
+    renderPreview(props);
+
+    await user.click(screen.getByRole("button", { name: /Share/ }));
+
+    const priv = (await screen.findByLabelText("Private shareable URL")) as HTMLInputElement;
+    expect(priv.value.startsWith(`${window.location.origin}/#s=`)).toBe(true);
+    expect(screen.queryByText(/These links open on/)).toBeNull();
   });
 });
 

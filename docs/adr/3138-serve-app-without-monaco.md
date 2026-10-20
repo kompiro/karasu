@@ -16,7 +16,7 @@ assumptions:
   - "symbol: packages/app/vite.serve.config.ts :: swapInServeEntry"
   - "symbol: packages/app/vite.serve.config.ts :: rejectMonaco"
   - "symbol: packages/app/vite.serve.config.ts :: isMonacoModule"
-  - "grep: packages/app/src/ServeModeApp.tsx :: hideShare: true"
+  - "symbol: packages/app/src/ServeModeApp.tsx :: SERVE_TOOLBAR"
   - 'grep: packages/app/src/main.tsx :: import "./monaco-setup.js"'
   - "grep: knip.json :: src/serve-main.tsx"
 ---

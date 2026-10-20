@@ -57,7 +57,6 @@
 
 #### 案 1A: app に定数を置き、serve モードがツールバーの口で渡す
 
-<!-- absent-path-next-line: file this design creates (#3162) -->
 `packages/app/src/utils/hosted-app.ts` に `HOSTED_APP_ORIGIN = "https://karasu.kompiro.dev"` を置く。
 `PreviewToolbarSlot` に `shareOrigin?: string` を足し、`ServeModeApp` は `{ shareOrigin: HOSTED_APP_ORIGIN }` を渡す。
 `useShareDialog` は口に `shareOrigin` があればそれを、無ければ `window.location` を使う。
@@ -167,7 +166,6 @@ CLI のオプションは、自前の app に向けたい利用者が現れた�
 
 ### 実装の指針
 
-<!-- absent-path-next-line: file this design creates (#3162) -->
 1. **定数**: `packages/app/src/utils/hosted-app.ts` に `HOSTED_APP_ORIGIN` を置く。docs-site の `APP_URL` と
    値が同じであることを、`scripts/` の drift テストか docs-site 側の test で 1 本固定する（2 か所になる代わり）。
 2. **口**: `PreviewToolbarSlot` に `shareOrigin?: string` を足す。`hideShare` があれば Share は出ない（今と同じ）。

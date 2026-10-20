@@ -78,8 +78,9 @@ scope:
 
 ## 関連テスト
 
-- `packages/app/src/ServeModeApp.test.tsx`: serve モードがツールバーの口に渡す値（#3138 では Share を出さないこと。
-  #3162 の実装で、宛先が公開版であることに書き換える）
-- #3162 の実装 PR で足すもの: `inline-share.test.ts`（公開版の origin と `pathname: "/"` で 2 本のリンクが
-  公開版を指す）、`useShareDialog` の test（口に宛先があれば serve の `pathname` を含まない）、
-  `at-0032-cli-serve-mode.spec.ts`（karasu serve で作ったリンクが公開版を指し、decode すると開いたファイルになる）
+- `packages/app/src/ServeModeApp.test.tsx` › `keeps Share and points its links at the public app (#3162)`（serve モードがツールバーの口に公開版の origin を渡す。2 つの build は同じ `ServeModeApp` を通る）
+- `packages/app/src/components/PreviewColumn.test.tsx` › `builds both links on the slot's share origin, at its root, and says so` / `builds the links on this page, with no destination line, when no host sets an origin`
+- `packages/app/src/utils/inline-share.test.ts` › `points both links at the public app when given its origin and the root path`
+- `packages/app/src/components/ShareDialog.test.tsx` › `names the host the links open on only when they are built elsewhere`
+- `scripts/lint/hosted-app-origin.test.ts`（app の `HOSTED_APP_ORIGIN` と docs-site の `APP_URL` が同じ値）
+- `packages/e2e/tests/at-0032-cli-serve-mode.spec.ts` › `TC-07: Share builds its links on the public app, not on the local server`（nightly、karasu serve に対して）

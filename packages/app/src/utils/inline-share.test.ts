@@ -10,6 +10,7 @@ import {
   readSharedProjectFromHash,
   SHARE_FRAGMENT_KEY,
 } from "./inline-share.js";
+import { HOSTED_APP_ORIGIN } from "./hosted-app.js";
 
 const SAMPLE = `system Shop {
   service Api { label "API" }
@@ -139,6 +140,16 @@ describe("buildShareUrl", () => {
 
 describe("buildShareUrls", () => {
   const loc = { origin: "https://karasu-nest.example", pathname: "/" };
+
+  // #3162: `karasu serve` builds its links on the public app at `/`.
+  it("points both links at the public app when given its origin and the root path", () => {
+    const { fragmentUrl, unfurlUrl } = buildShareUrls(
+      { krs: SAMPLE },
+      { origin: HOSTED_APP_ORIGIN, pathname: "/" },
+    );
+    expect(fragmentUrl.startsWith(`${HOSTED_APP_ORIGIN}/#${SHARE_FRAGMENT_KEY}=`)).toBe(true);
+    expect(unfurlUrl?.startsWith(`${HOSTED_APP_ORIGIN}/s?${SHARE_FRAGMENT_KEY}=`)).toBe(true);
+  });
 
   it("returns a fragment URL (private) and an unfurl URL (query) for a small payload", () => {
     const { fragmentUrl, unfurlUrl } = buildShareUrls({ krs: SAMPLE, style: STYLE }, loc);
