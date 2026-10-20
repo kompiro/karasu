@@ -15,7 +15,7 @@
 
 Umami の `Analytics`（Issue のスクリーンショット）では、左右のガターに十数本が並び、右側は `UmamiApp` / `Umami` の ghost 枠の外まで伸びる。
 
-逆生成した 4 モデルのドリルダウン全ビューで、ghost でない edge の縦の線分のうち、x が枠の側面の上か外にあるもの:
+逆生成した 4 モデルのドリルダウン全ビューで、ghost でも循環でもない edge の縦の線分のうち、x が枠の側面の上か外にあるもの:
 
 | モデル | ビュー | 線分 |
 | --- | --- | --- |
@@ -38,7 +38,7 @@ Umami の `Analytics`（Issue のスクリーンショット）では、左右�
 - **枠の無いビューは変えない。** system ビュー、複数 system の root、deploy ビューのガターは今のまま。
 - **予約は ADR-2598 の枠内で行う。** 配置は最大 2 回。予約量は 1 回目の配線の測定から一意に決める。足りている枠は広げない。
 - **ガターを使う 4 つのパスは同じ基準を使う**（TPL-219）。どれか 1 つでも別の基準で測ると、レーンの番号付けと左右の振り分けが食い違う。
-- **1 本目の位置は変えない。** 内容から 28px の 1 本目は今も枠の内側に収まっている。予約は 2 本目以降が要るときだけ。
+- **基準がすでに枠の内側にあるビューでは、1 本目の位置は変えない。** 内容から 28px の 1 本目は枠の内側に収まっている。予約は 2 本目以降が要るときだけ。枠の横の ghost カードが基準を決めていたビューは、基準が枠の内側に移るので 1 本目も動く（案1 の 1）。
 - out of scope: 枠の側面を見ないラベル配置（#3132 の follow-up と同じ扱い）、group 枠の内側のガター、複数 system の root の system 枠（行序数も枠の幅の予約先も無い）。
 
 ## 検討した選択肢
@@ -48,13 +48,13 @@ Umami の `Analytics`（Issue のスクリーンショット）では、左右�
 #3132 と同じ「枠の内側で測り、足りなければ枠を広げる」規則を横方向に当てる。2 つの変更から成る。
 
 1. **基準**: `ChannelLimits` に枠の側面（`left` / `right`）を足し、`contentBounds` は枠の内側にあるカードだけで `minLeft` / `maxRight` を測る。枠の横の ghost カードはガターの基準にならない。4 つのパスは同じ `limits` を受け取る。枠が無ければ `left` / `right` は無限大で、今の挙動になる。
-2. **容量**: `layout()` は 1 回目の配線を見て、ghost でない edge の縦の線のうち、枠の側面から `FRAME_SIDE_MARGIN`（12px = `CONTAINER_PADDING - GUTTER_GAP`、今 1 本目と枠の間にある隙間）より外にあるものの最大のはみ出しを、左右それぞれ測る。どちらかが正なら、2 回目の配置で枠をその分広げる。`layoutInner` は行を中央に寄せた後、カードを左の予約分だけ右へずらし、枠の幅に左右の予約を足す。ghost カードと祖先の枠は枠から配置されるので、一緒に外へ動く。
+2. **容量**: `layout()` は 1 回目の配線を見て、ghost でも循環でもない edge の縦の線のうち、枠の側面から `FRAME_SIDE_MARGIN`（12px = `CONTAINER_PADDING - GUTTER_GAP`、今 1 本目と枠の間にある隙間）より外にあるものの最大のはみ出しを、左右それぞれ測る。どちらかが正なら、2 回目の配置で枠をその分広げる。`layoutInner` は行を中央に寄せた後、カードを左の予約分だけ右へずらし、枠の幅に左右の予約を足す。ghost カードと祖先の枠は枠から配置されるので、一緒に外へ動く。
 
 **メリット**
 
 - 枠の横の ghost カードの件（1 本目から外）と、本数の件（2 本目から外）の両方が、1 つの規則で直る。
 - 予約は既存の 2 パス目に相乗りするので、配置の回数は増えない（コーパスで 2 回目を走らせたビュー数は main と同じ）。
-- 1 本しか使わないビューは 1 バイトも変わらない。
+- 基準がすでに枠の内側にあり、1 本しか使わないビューは 1 バイトも変わらない。
 
 **デメリット**
 
@@ -132,10 +132,10 @@ ADR-2593 は「採点は最終キャンバス」と決めている。側面の�
 2. `edge-routing-groups.ts`: `contentBounds(nodes, frames, limits)` は枠の内側にあるカードだけを数える。`aggregateGroupTrunks` / `aggregateGroupSourceTrunks` / `distributeGutterLanes` は `limits` を受け取る（`routeGroupedEdges` は受け取り済み）。`runRoutingChain` は 4 つに同じ `limits` を渡す。
 3. `layout.ts`: `gutterReservations(result, enclosure)` を足す。測る対象は ghost でも循環でもない edge の縦の線分で、境界は `channelLimitsOf(enclosure)` の `left` / `right` から `FRAME_SIDE_MARGIN` 内側。`layout()` は既存の `reservations` / `columns` と並べて測り、どれかがあれば 2 回目の `layoutInner` に渡す。`layoutInner` は `centerRowsHorizontally` の後、枠を作る前に、カードを左の予約分だけ右へずらし、`childMaxWidth` に左右の予約を足す。行幅予算の探索の採点は変えない。
 4. テスト:
-   - `routing-parity.test.ts`: 上記フィクスチャ（N = 4, 5）で、ghost でない edge の縦の線がすべて枠の側面から `FRAME_SIDE_MARGIN` 以上内側にあり、枠が広がり、貫通・共線が 0 であること。main で落ちることを確かめてから固定する（TPL-2598）。
+   - `routing-parity.test.ts`: 上記フィクスチャ（N = 4, 5）で、ghost でも循環でもない edge の縦の線がすべて枠の側面から `FRAME_SIDE_MARGIN` 以上内側にあり、枠が広がり、貫通・共線が 0 であること。main で落ちることを確かめてから固定する（TPL-2598）。
    - 同じファイルに、枠の左に ghost の利用者がいるドリルダウンで、1 本目のガターが枠の内側にあることのケースを足す（基準の件）。
    - `edge-routing-lanes.test.ts`: `channelLimitsOf` が側面を返すこと（#3132 のケースを更新）。
-   - 1 本しか使わないビューで配置が変わらないこと（既存のスナップショットが通ることで確認）。
+   - 基準がすでに枠の内側にあり、1 本しか使わないビューで配置が変わらないこと（既存のスナップショットが通ることで確認）。
 5. TPL: 新しい TPL は起こさない。TPL-3132 が「横方向の同型」として本件を既に挙げているので、「既知の対処パターン」と「関連テスト」に本件を足す（3-Yes ルールの 3 つ目「既存 TPL に未掲載」を満たさない）。
 6. AT: `docs/acceptance/3154-frame-bounded-gutters.md`。自動化できる条件は上記テストで判定する。手動は「Umami の `Analytics` をアプリで開き、左右のガターが `Analytics` の枠の内側に描かれる」の 1 件。
 7. changeset: `@karasu-tools/core` と `karasu` に patch（ドリルダウンの枠の幅とガターの位置が変わる）。
