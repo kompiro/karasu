@@ -129,10 +129,8 @@ sheet can change them.
 | ----------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Slate grey, the default edge colour (`#94A3B8` / `#64748B`) | none          | Recorded in the `.krs` as a `table` → `table` edge, written by hand or emitted by `translate --from db` from a declared foreign key. Confirmed.                                      |
 | Sky blue (`#38BDF8` / `#0369A1`)                            | `[projected]` | Not in the `.krs`. Drawn from an `entity` relation whose two entities both map to tables in this store. The entity layer asserts it; nothing recorded it against the store.          |
-| Muted grey (`#94A3B8` / `#64748B`)                          | `[inferred]`  | Written by `translate --from db` from a naming convention (a `<stem>_id` or `<stem>_code` column with no declared foreign key). Delete the tag once you have confirmed the relation. |
+| Warm grey (`#A8A29E` / `#78716C`)                           | `[inferred]`  | Written by `translate --from db` from a naming convention (a `<stem>_id` or `<stem>_code` column with no declared foreign key). Delete the tag once you have confirmed the relation. |
 
-- The built-in style currently gives `[inferred]` the same colour as an untagged
-  edge, so on the canvas the two look alike. Check the source to tell them apart.
 - When a recorded edge and a projected one join the same two tables, only the
   recorded one is drawn.
 - The diagram legend does not list these colours: they come from the built-in
@@ -216,9 +214,9 @@ On a narrow window these wrap below the drill path rather than squeezing it.
   exports the drill-down tree, a single SVG bundling **all** views, **draw.io**
   (mxGraph XML) for further manual editing, and **Open All Views**, which opens
   that same all-views bundle in a new tab instead of downloading it.
-- **Share** — copy a link that carries the model in the URL. Not shown in
-  `karasu serve`, where the link would point at your local server and open for
-  no one else.
+- **Share** — copy a link that carries the model in the URL. In `karasu serve`
+  the link points at the public app (https://karasu.kompiro.dev) instead of your
+  local server, so whoever you send it to can open it without running karasu.
 - **Docs** — the built-in tag/annotation **Reference**, in a pop-out window you
   can keep beside the diagram, and the published documentation site. The
   Reference answers _what you can write_; every tab links on to the guides and

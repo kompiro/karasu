@@ -30,6 +30,16 @@ function renderDialog(props: Partial<Parameters<typeof ShareDialog>[0]> = {}) {
 }
 
 describe("ShareDialog", () => {
+  // #3162: under `karasu serve` the links are built on the public app, so the
+  // dialog says where the recipient lands. The app itself shows no such line.
+  it("names the host the links open on only when they are built elsewhere", () => {
+    renderDialog({ hostedOrigin: "https://karasu.kompiro.dev" });
+    expect(screen.getByText(/These links open on karasu\.kompiro\.dev/)).toBeTruthy();
+    cleanup();
+    renderDialog();
+    expect(screen.queryByText(/These links open on/)).toBeNull();
+  });
+
   it("shows both the private and the preview link in read-only fields", () => {
     renderDialog();
     const priv = screen.getByDisplayValue(FRAGMENT) as HTMLInputElement;

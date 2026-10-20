@@ -37,8 +37,12 @@ type: product
 - [x] AT-H: CRUD タブを選択すると URL hash が `#krs-matrix` に変わり、ブラウザの戻るで前のタブ（System）と hash に戻り、進むで CRUD タブに復帰する
   > ✅ Automated — `packages/e2e/tests/at-1094-matrix-url-hash.spec.ts` › `selecting CRUD pushes #krs-matrix; Back returns to the previous tab and Forward re-selects CRUD (AT-H)`
 
-- [ ] AT-I（manual）: `#krs-matrix` を含む URL を直接開くと CRUD タブが選択された状態でロードされることを目視確認する
-  > 🧑 Manual — 現状は満たされない。project の seed が復元した view を `VIEW_RESET` で System に戻すため、`#krs-deploy` / `#krs-org-*` / `#krs-matrix` の cold boot と reload はどれも System に着地する（[#3208](https://github.com/kompiro/karasu/issues/3208)）。e2e は #3208 の修正 PR で入れ、本項目を Automated に切り替える
+- [x] AT-I: `#krs-matrix` を含む URL を直接開くと CRUD タブが選択された状態でロードされる。同じ復元を通る `#krs-deploy` / `#krs-org-root` も、cold boot と memory mode の reload でそのタブに着地する（[#3208](https://github.com/kompiro/karasu/issues/3208) までは project の seed の `VIEW_RESET` で System に戻っていた）
+  > ✅ Automated — `packages/e2e/tests/at-1094-matrix-url-hash.spec.ts` › `AT-1094 CRUD matrix tab in the URL hash` › `a cold boot at ${hash} lands on the ${tab} tab (AT-I)`
+  >
+  > ✅ Automated — `packages/e2e/tests/at-1094-matrix-url-hash.spec.ts` › `AT-1094 CRUD matrix tab in the URL hash` › `reloading on the ${tab} tab in memory mode stays on it (AT-I)`
+  >
+  > ✅ Automated — `packages/app/src/hooks/useHistoryNavigation.test.ts` › `pending view restoration (#3208)` › `re-applies %s once the index populates`
 
 ## 補足
 

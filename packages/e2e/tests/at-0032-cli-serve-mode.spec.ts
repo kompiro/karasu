@@ -21,10 +21,20 @@ async function expectPreviewOnly(page: Page): Promise<void> {
 
 test.describe("AT-0032: CLI serve mode", () => {
   test("TC-02: / previews index.krs with no editor pane", async ({ page, serveProject }) => {
+    // The npm package ships the serve build, which fixes the mode at build
+    // time. Only the regular app build probes `/api/files` to pick serve mode,
+    // and with a 200ms timeout a cold server can miss it and boot OPFS mode
+    // (#3303). A probe here means this project is testing the wrong build.
+    const probes: string[] = [];
+    page.on("request", (req) => {
+      if (new URL(req.url()).pathname === "/api/files") probes.push(req.url());
+    });
+
     await serveProject.open("/");
 
     await expect(diagram(page)).toContainText("Index Web");
     await expectPreviewOnly(page);
+    expect(probes).toEqual([]);
   });
 
   test("TC-03: /other previews other.krs", async ({ page, serveProject }) => {
@@ -73,5 +83,23 @@ test.describe("AT-0032: CLI serve mode", () => {
 
     await expect(page.getByText("File not found: missing.krs")).toBeVisible();
     await expect(page.locator(".preview-container svg")).toHaveCount(0);
+  });
+
+  // #3162: Share is back in serve mode, with links built on the public app so
+  // that someone not running `karasu serve` can open them. The file name serve
+  // puts in the path must not follow the link there.
+  test("TC-07: Share builds its links on the public app, not on the local server", async ({
+    page,
+    serveProject,
+  }) => {
+    await serveProject.open("/other");
+    await expect(diagram(page)).toContainText("Other Web");
+
+    await page.getByRole("button", { name: /Share/ }).click();
+
+    const priv = page.getByLabel("Private shareable URL");
+    await expect(priv).toHaveValue(/^https:\/\/karasu\.kompiro\.dev\/#s=/);
+    await expect(priv).not.toHaveValue(/\/other/);
+    await expect(page.getByText(/These links open on karasu\.kompiro\.dev/)).toBeVisible();
   });
 });

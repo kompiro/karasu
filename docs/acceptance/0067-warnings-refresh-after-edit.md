@@ -45,11 +45,15 @@ system S {
 
 → 数百ミリ秒後に WarningPanel に「Client "WebApp" declares handles "Ordr"...」が表示される。
 
+> ✅ Automated — `packages/e2e/tests/at-0067-warnings-refresh-after-edit.spec.ts` › `an unresolved handles warning appears on the typo and clears on the fix`
+
 ### 2. 警告を解消する修正で WarningPanel から消える
 
 上記の typo 状態から `Ordr` を `Order` に直す。
 
 → 数百ミリ秒後に WarningPanel が空になる（警告が残らない）。
+
+> ✅ Automated — `packages/e2e/tests/at-0067-warnings-refresh-after-edit.spec.ts` › `an unresolved handles warning appears on the typo and clears on the fix`
 
 ### 3. 既存の `unassigned-*` 警告でも同じ振る舞い
 
@@ -62,11 +66,25 @@ service Standalone { label "Standalone" }
 
 逆に取り出す → 再び出る。
 
+> ✅ Automated — `packages/e2e/tests/at-0067-warnings-refresh-after-edit.spec.ts` › `unassigned-service follows the service in and out of a system`
+
 ### 4. Deploy / Org ビューでも同じ振る舞い
 
 Deploy view / Org view を開いて、それぞれの警告（例: `missing-runtime` を伴う deploy ノードの `runtime` を消す/追加する操作、`invalid-owns` を伴う team の `owns` を直す操作）でも、両方向の更新が反映されることを確認する。
 
+### 5. 構文エラーの間は図が古いことを示し、直すと消える
+
+1 の `.krs` から最後の `}` を消して構文エラーにする。
+
+→ 直前に描けていた図は残り、その上に「⚠ Diagram is outdated — fix errors to update」が出る。
+
+`}` を戻す → 表示が消える。
+
+> ✅ Automated — `packages/e2e/tests/at-0067-warnings-refresh-after-edit.spec.ts` › `a parse error marks the diagram outdated until the source is fixed`
+
 ## 自動化された検証
+
+- `packages/e2e/tests/at-0067-warnings-refresh-after-edit.spec.ts` — 1・2・3・5 を Monaco への実入力と実際の compile debounce で検証する（4 は未自動化）
 
 - `packages/app/src/hooks/useSystemView.test.tsx` —
   - 「clears a warning after the source is fixed even when SVG topology is identical」

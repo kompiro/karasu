@@ -32,6 +32,10 @@
 
   > ✅ Automated — `scripts/` の vitest（TPL-2019 の key naming チェック）
 
+- [x] AT-H: 実ブラウザで、英語表示から Settings の言語セレクタで日本語を選ぶと、プレビューのツールバーが日本語の名前に切り替わり（英語の名前は残らない）、選択が `localStorage["karasu-locale"]` に `ja` として保存され、リロード後も日本語のまま起動する
+
+  > ✅ Automated — `packages/e2e/tests/at-2317-preview-toolbar-i18n.spec.ts` › `Settings → Language → 日本語 relabels the toolbar and persists across a reload`。他の e2e spec は `opfs` fixture が `karasu-locale=en` を固定するため、`ja` への切替を実ブラウザで通すのはこの spec だけ
+
 - [ ] AT-E: 🧑 Manual — <https://karasu.kompiro.dev/> を `ja` で開き、プレビューのツールバーが**1 行の中で英日が混ざっていない**ことを目で確認する（#2317 が報告した「半分だけ翻訳されている」状態の解消）
 
   > Settings の言語セレクタで日本語を選ぶ。`facet` を宣言したモデルを開いて Facets を、`organization` ブロックを持つモデルで グループ化 / すべて畳む を、Org タブで ツリー表示 を、それぞれ出した状態で確認する

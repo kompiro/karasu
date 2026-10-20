@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { NodeMetadata } from "@karasu-tools/core";
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { BreadcrumbBar } from "./BreadcrumbBar.js";
@@ -16,6 +16,7 @@ import { useCommand } from "../keyboard/use-command.js";
 import { Button } from "@/components/ui/button";
 import { FacetOverviewPanel } from "./FacetOverviewPanel.js";
 import { PreviewToolbar } from "./PreviewToolbar.js";
+import { PreviewToolbarSlotContext } from "./preview-toolbar-slot.js";
 import { PreviewViewControls } from "./PreviewViewControls.js";
 
 // Stable identity for "this pane has no node metadata" — an inline `new Map()`
@@ -104,6 +105,7 @@ export function PreviewColumn() {
   }, []);
 
   const shareAvailable = !!hasKrsSource && !!getShareBundle;
+  const { shareOrigin } = useContext(PreviewToolbarSlotContext);
   const { handleShare, shareDialogProps } = useShareDialog({
     activeView,
     viewPath: view.viewPath,
@@ -112,6 +114,7 @@ export function PreviewColumn() {
     isEntityViewOpen,
     hasEntityView,
     getShareBundle,
+    shareOrigin,
   });
 
   // Register "Open Reference" as a command so the reference is reachable from
@@ -133,6 +136,16 @@ export function PreviewColumn() {
   const svg = view.svg;
   const diagnostics = view.diagnostics;
   const viewPath = view.viewPath;
+  // One diagram per project, view, drill path and deploy block: moving to
+  // another one starts at the initial zoom and pan (#3178). Switching projects
+  // keeps this pane mounted, so the project root is part of the key. An edit
+  // keeps the key.
+  const diagramKey = JSON.stringify([
+    displayRoot,
+    activeView,
+    selectedDeployBlockId ?? null,
+    viewPath,
+  ]);
   const onDrillDown = view.onBreadcrumbNavigate;
 
   const exportFilename = buildSvgExportFilename(activeView, {
@@ -398,6 +411,7 @@ export function PreviewColumn() {
       ) : (
         <PreviewPane
           key="diagram"
+          diagramKey={diagramKey}
           svg={svg}
           diagnostics={diagnostics}
           viewPath={viewPath}
