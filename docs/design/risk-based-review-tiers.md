@@ -281,6 +281,21 @@ PR 全体を見直す `@coderabbitai full review` を頼むしかない。コン
 `auto_incremental_review: false` にすると、この push で CodeRabbit が自動で再レビューすることは
 なくなる。converge は上の判定が「同じ」なら再レビューを頼まずに終わる。
 
+**approve は取り込みの push で取り消される。** ruleset の `dismiss_stale_reviews_on_push: true` は、
+main を取り込んだだけの push でも CodeRabbit の approve を dismiss する（maintainer が確認済み）。
+直近 80 本のうち 5 本（#3276、#3270、#3264、#3222、#3199）は approve の後に merge commit だけを push しており、
+この場面は日常的に起きる。approve の取り消しはマージを止めない（ruleset は approve を 0 件で許す）が、
+「CodeRabbit の approve を待ってから人間がレビューする」と「Low は approve の後に auto-merge する」の
+2 つの判定が、HEAD に対する最新レビューの state を見ているので、取り込みのたびに外れる。
+
+そこで、**approve の有効性も同じ判定で決める。** CodeRabbit が approve したコミットから HEAD までの push が
+すべて main の取り込みで、approve したコミットと HEAD とで PR の差分の追加行と削除行の集合が同じなら、
+その approve は HEAD に対しても有効とみなす。集合が違えば、approve は無効で、再レビューを頼む。
+
+ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正を push した後も古い approve が
+`APPROVED` のまま残り、見た目と中身が食い違う。取り消しは残したまま、こちらの判定を「approve された
+中身が HEAD まで変わっていないか」に揃える。
+
 ### 実装の指針
 
 1. 段階判定のスクリプトとそのテストを書く。
@@ -307,10 +322,13 @@ PR 全体を見直す `@coderabbitai full review` を頼むしかない。コン
    `/engineering:code-review` を入れる。再レビューは push の後に converge が明示的に頼む。
    人間のレビューの後の修正では再レビューを頼み、上限を数え直す。
    ラウンド中は main を取り込まず、approve の後に取り込む（「main の取り込みは再レビューしない」）。
-   main を取り込んだ push は、1 の判定で再レビューを頼むかを決める。ruleset の
-   `dismiss_stale_reviews_on_push: true` が取り込みの push で CodeRabbit の approve を dismiss するかを
-   確かめ、dismiss するなら「人間のレビューは CodeRabbit が approve してから始める」の判定
-   （最新レビューの state）をこの場合も approve とみなすよう直す
+   main を取り込んだ push は、1 の判定で再レビューを頼むかを決める。converge の到達状態と
+   `docs/process.md`「人間のレビューは CodeRabbit が approve してから始める」の判定は、HEAD に対する
+   最新レビューの state ではなく、「approve したコミットと HEAD とで追加行と削除行の集合が同じか」で決める。
+   取り込みの push で dismiss された approve の commit は、timeline の `review_dismissed` イベント
+   （`dismissed_review.state` が `approved`）から引ける。この判定は `scripts/coderabbit/review-state.ts` に置き、
+   converge と Low の auto-merge の手順が使う。required check「Review tier」は approve を見ない
+   （CodeRabbit を required check にしない、という ADR-2716 の決定を保つ）
 6. `.github/PULL_REQUEST_TEMPLATE.md` に「Risk」（段階と、その段階になった理由）と
    「How to revert」を足す
 7. `docs/process.md` の PR ワークフローに段階ごとの流れを書き、「PR のマージはユーザー確認を経る」
