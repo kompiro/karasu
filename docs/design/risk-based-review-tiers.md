@@ -269,8 +269,14 @@ CodeRabbit の approve の後に main を取り込んでコンフリクトを解
 行と同じ位置でコンフリクトした。両方の行を番号順に残して解消すると、追加行と削除行の集合は
 取り込み前と一致し、違ったのは hunk の位置だけだった。
 
-ラウンドの途中の取り込みは、これまでどおり単独で push せず、そのラウンドの修正と一緒に push する
-（ADR-3052 が ADR-2898 から引き継いだ規則）。
+**ラウンドの途中では main を取り込まない。取り込みは approve の後に行う。** 本 PR では、初回の
+指摘への修正と main の取り込みを 1 回の push にまとめたところ、CodeRabbit は
+`Review skipped: We couldn't safely recover the incremental review` を返し、その push をレビューしなかった。
+merge commit を含む push では差分だけの再レビューを組み立てられないことがあり、そのときは
+PR 全体を見直す `@coderabbitai full review` を頼むしかない。コンフリクトはマージを止めるがレビューは
+止めないので、取り込みを approve の後に回しても失うものはない。これまでの規則（ADR-3052 が ADR-2898 から
+引き継いだ「ラウンド中の取り込みは単独で push せず、そのラウンドの修正と一緒に push する」）は、
+この観測で置き換える。観測は 1 回なので、実装の際に再現するかを確かめる。
 
 `auto_incremental_review: false` にすると、この push で CodeRabbit が自動で再レビューすることは
 なくなる。converge は上の判定が「同じ」なら再レビューを頼まずに終わる。
@@ -300,6 +306,7 @@ CodeRabbit の approve の後に main を取り込んでコンフリクトを解
    全段階で同じにする。修正を push する前に、同じパターンの箇所の検索と、修正で触れたファイル全体への
    `/engineering:code-review` を入れる。再レビューは push の後に converge が明示的に頼む。
    人間のレビューの後の修正では再レビューを頼み、上限を数え直す。
+   ラウンド中は main を取り込まず、approve の後に取り込む（「main の取り込みは再レビューしない」）。
    main を取り込んだ push は、1 の判定で再レビューを頼むかを決める。ruleset の
    `dismiss_stale_reviews_on_push: true` が取り込みの push で CodeRabbit の approve を dismiss するかを
    確かめ、dismiss するなら「人間のレビューは CodeRabbit が approve してから始める」の判定
