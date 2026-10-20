@@ -181,6 +181,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3242](3242-dependabot-triage-2026-10-15.md) — Dependabot トリアージ 2026-10-15：npm 5 件をそのまま採用し、vite（override の floor 引き上げ）・knip（entry 修正）・vsce（利用元のいない override の削除）は差し替え PR で入れ、gh-aw-actions は却下する
 - [ADR-3246](3246-drop-overrides-left-by-vsce-4.md) — `@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast-uri` / `form-data` / `linkify-it` / `markdown-it`）を外す
 - [ADR-3257](3257-e2e-step-bound-follows-suite-growth.md) — app の E2E suite の step 境界を 25 分、job 予算を 45 分に上げる
+- [ADR-3304](3304-dependabot-triage-2026-10-19.md) — Dependabot トリアージ 2026-10-19：npm 11 件をそのまま採用し、gh-aw-actions は却下する。lefthook 2.2.2 の手動 publish は採用可と判断する
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
