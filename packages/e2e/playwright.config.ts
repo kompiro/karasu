@@ -40,9 +40,9 @@ const appServer: WebServer = {
 // Playwright starts every `webServer` entry whatever `--project` says, so the
 // entry and its project exist only under `E2E_SERVE=1`, which the nightly
 // sets and `e2e.yml` does not: the PR gate neither builds the CLI nor fails
-// when it cannot start (packages/cli is outside its path filter). Entries
-// start in order, each after the previous is ready, so the app build of the
-// first entry is in place when `start-serve.ts` serves it.
+// when it cannot start (packages/cli is outside its path filter).
+// `start-serve.ts` builds and stages the serve build the npm package ships
+// (#3303), so this project does not depend on the first entry's app build.
 const SERVE_SPECS = /at-0032-/;
 const serveEnabled = process.env.E2E_SERVE === "1";
 const SERVE_URL = `http://localhost:${SERVE_PORT}`;

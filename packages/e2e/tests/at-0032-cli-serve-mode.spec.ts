@@ -21,10 +21,20 @@ async function expectPreviewOnly(page: Page): Promise<void> {
 
 test.describe("AT-0032: CLI serve mode", () => {
   test("TC-02: / previews index.krs with no editor pane", async ({ page, serveProject }) => {
+    // The npm package ships the serve build, which fixes the mode at build
+    // time. Only the regular app build probes `/api/files` to pick serve mode,
+    // and with a 200ms timeout a cold server can miss it and boot OPFS mode
+    // (#3303). A probe here means this project is testing the wrong build.
+    const probes: string[] = [];
+    page.on("request", (req) => {
+      if (new URL(req.url()).pathname === "/api/files") probes.push(req.url());
+    });
+
     await serveProject.open("/");
 
     await expect(diagram(page)).toContainText("Index Web");
     await expectPreviewOnly(page);
+    expect(probes).toEqual([]);
   });
 
   test("TC-03: /other previews other.krs", async ({ page, serveProject }) => {
