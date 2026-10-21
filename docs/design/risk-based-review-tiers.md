@@ -119,12 +119,15 @@ approve されなければ止めて、人間が見る。** 段階が変えるの
 Worker であることは変わらない。workflow は権限と secret の扱いを変えうる。
 
 CodeRabbit の effort 見積もりは段階を**上げる**ためにだけ使う。パスで Low と決まった PR でも、
-初回レビューの見積もりが 4 以上なら Medium として扱う。見積もりで段階を下げることはしない
+CodeRabbit のサマリーにある見積もりが 4 以上なら Medium として扱う。見積もりで段階を下げることはしない
 （背景の観測のとおり、見積もりはリスクと一致しない）。この引き上げは required check「Review tier」が
 機械で検査する。push の時点ではまだサマリーがないので、check は CodeRabbit がレビューを出した時点
 （`pull_request_review` の `submitted`）でも走り、サマリーの見積もりを読む。見積もりが 4 以上なのに
-`risk: low` が付いていれば失敗する。サマリーがなければ（CodeRabbit が止まっているなど）パスの段階だけで
-判定する。見積もりは段階を上げる方向にしか効かないので、CodeRabbit が止まってもマージ不能にはならない。
+`risk: low` が付いていれば失敗する。読むのは `coderabbitai[bot]` が書いたサマリーだけである。public
+リポジトリでは誰でも PR にコメントを書けるので、ほかの人が書いた見積もりは使わない。CodeRabbit のサマリーが
+あるのに見積もりが 1〜5 の整数として読めなければ、`risk: low` を通さない（読めない入力は厳しい側に倒す、
+TPL-3286）。サマリーがなければ（CodeRabbit が止まっているなど）パスの段階だけで判定する。見積もりは
+段階を上げる方向にしか効かないので、CodeRabbit が止まってもマージ不能にはならない。
 
 ラウンドを減らすために、初回の指摘で出し切らせる手も合わせて入れる。
 
@@ -238,7 +241,7 @@ approve まで回す。そのうえで、3 回の再レビューで approve さ�
 
 **approve の後**
 
-- **Low**：required check「Review tier」が、最終の差分・作成者・初回レビューの見積もりから段階を出し、
+- **Low**：required check「Review tier」が、最終の差分・作成者・CodeRabbit のサマリーの見積もりから段階を出し、
   Low のときだけ通る。そのうえで `gh pr merge --auto --squash --delete-branch` で auto-merge にする
 - **Design**：人間がレビューする
 - **Medium**：人間がサマリー・証拠・preview を見て判断する
@@ -250,6 +253,10 @@ approve まで回す。そのうえで、3 回の再レビューで approve さ�
 指摘にはその Issue へのリンクを返して閉じる（thread は `resolveReviewThread`、本文だけの指摘は
 `<!-- cr-comment:v1:<id> -->` を書いたコメント）。直し始めると PR のスコープが広がり、approve の後なら
 approve が外れて再レビューにもなる。
+
+**場所が判定できない指摘は、PR の範囲として扱う。** ファイルと行を持たない指摘や、指す行が PR の差分の
+中か外か決められない指摘は、差分の外として Issue に回さない。通常の指摘と同じく直すか理由を返して却下し、
+どちらも決められなければ人間に確認する。Issue に回すのは、差分の外だと確かめられた指摘だけである。
 
 CodeRabbit の「Outside diff range」はこの判定に使わない。CodeRabbit の言う範囲外は、たいていその回の
 push の差分の外で、PR の差分の外とは限らない。本 PR でも、approve と一緒に届いた「Outside diff range」の
@@ -344,7 +351,8 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
    skip stub は要らない。draft では動かさない（ADR-2643）。`if` で飛ばした job は required check に
    success を返すので、`types:` に `ready_for_review` を入れる。ラベルの付け替えでも判定し直すよう
    `labeled` / `unlabeled` も入れ、CodeRabbit の見積もりを読むために `pull_request_review` の `submitted` でも
-   走らせる。最終の差分・作成者・（あれば）見積もりから段階を出し、**`risk: low` ラベルが付いているのに
+   走らせる。見積もりは `coderabbitai[bot]` が書いたサマリーからだけ読み、サマリーがあるのに 1〜5 の整数として
+   読めなければ `risk: low` を通さない。最終の差分・作成者・（あれば）見積もりから段階を出し、**`risk: low` ラベルが付いているのに
    その段階が Low でない場合だけ失敗する。** 作成者が信頼リストにいない PR は段階が High になるので、
    `risk: low` が付いていなければ通り、人間のレビューを経てマージできる。read-only の `GITHUB_TOKEN` で
    動くので、fork からの PR でも同じに動く
@@ -359,6 +367,7 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
    人間のレビューの後の修正では再レビューを頼み、上限を数え直す。
    指摘を分ける最初の段で、指摘された行が PR の差分の hunk に含まれるかを判定し、含まれなければ
    直さずに Issue を起こして閉じる（重複を検索してから。Issue は英語で、指摘の要旨と PR へのリンクを書く）。
+   ファイルと行を持たない指摘など、含まれるかを判定できない指摘は Issue に回さず、PR の範囲として扱う。
    この判定は 1 のスクリプトに置く。
    ラウンド中は main を取り込まず、approve の後に取り込む（「main の取り込みは再レビューしない」）。
    main を取り込んだ push は、1 の判定で再レビューを頼むかを決める。converge の到達状態と
