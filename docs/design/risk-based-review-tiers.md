@@ -275,6 +275,11 @@ CodeRabbit の approve の後に main を取り込んでコンフリクトを解
 
 判定は 1 つ、**取り込みの前と後で、PR の差分（`git diff -U0 origin/main...HEAD`）の追加行と
 削除行の集合が同じかどうか**。hunk の位置や前後の文脈が変わっても、集合が同じなら同じとみなす。
+比べるのは、`.coderabbit.yaml` の `path_filters` で除外していないファイルの行だけにする。CodeRabbit が
+読まないファイル（`pnpm-lock.yaml`、`pnpm adr:regenerate` が出す `docs/adr/effective.md` や graph、
+`pnpm gen:guide-diagrams` が出す guide の図）は、取り込みの後に作り直して行が変わっても再レビューを起こさない。
+実測では、approve の後に main を取り込み、lockfile を作り直した push が 2 回、それだけのために再レビューを
+起こしていた（#3247、#3225）。
 
 | 取り込みの結果 | どうするか |
 | --- | --- |
@@ -333,7 +338,8 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
    入力は変更ファイルの一覧と（あれば）`package.json` の差分、出力は段階とセキュリティレビューの要否。
    テストでは各段階の代表パス、最大値の取り方、どれにも当たらないパスが Medium になること、
    `package.json` の scripts だけの変更は依存の変更に数えないことを固める。
-   main の取り込みの前後で追加行と削除行の集合を比べる判定も同じスクリプトに置く
+   main の取り込みの前後で追加行と削除行の集合を比べる判定も同じスクリプトに置く。比較から外すファイルは
+   `.coderabbit.yaml` の `path_filters` から読み、一覧を二重に持たない
 2. required check の workflow `review-tier.yml` を足す。パスフィルタは付けない（TPL-1725）ので、
    skip stub は要らない。draft では動かさない（ADR-2643）。`if` で飛ばした job は required check に
    success を返すので、`types:` に `ready_for_review` を入れる。ラベルの付け替えでも判定し直すよう
