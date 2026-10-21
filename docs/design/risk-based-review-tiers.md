@@ -244,6 +244,18 @@ approve まで回す。そのうえで、3 回の再レビューで approve さ�
 - **Medium**：人間がサマリー・証拠・preview を見て判断する
 - **High**：人間が差分を読む
 
+**PR の差分の外への指摘は直さず、Issue にする。** 判定は 1 つ、**指摘された行が PR の差分
+（`git diff -U0 origin/main...HEAD`）の hunk に含まれるかどうか**。含まれなければ、PR が持ち込んだ
+問題ではないので、この PR では直さない。重複がないか既存の Issue を検索してから Issue を起こし、
+指摘にはその Issue へのリンクを返して閉じる（thread は `resolveReviewThread`、本文だけの指摘は
+`<!-- cr-comment:v1:<id> -->` を書いたコメント）。直し始めると PR のスコープが広がり、approve の後なら
+approve が外れて再レビューにもなる。
+
+CodeRabbit の「Outside diff range」はこの判定に使わない。CodeRabbit の言う範囲外は、たいていその回の
+push の差分の外で、PR の差分の外とは限らない。本 PR でも、approve と一緒に届いた「Outside diff range」の
+2 件はどちらも本 PR が足したファイルの行で、うち 1 件は正しい Major だった。PR の差分の中の行への指摘は、
+CodeRabbit の分類にかかわらず、この PR の範囲として直すか理由を返して却下する。
+
 **人間のレビューの後**：人間が修正を頼み、その修正を push したら、CodeRabbit に再レビューを頼む。
 再レビュー 3 回の上限は、ここから数え直す。人間の指摘への修正は CodeRabbit の approve より後に入る
 コードなので、確かめずに残さない。一方で、人間がすでに PR を読んでいるので、それまでのラウンドの
@@ -339,6 +351,9 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
    全段階で同じにする。修正を push する前に、同じパターンの箇所の検索と、修正で触れたファイル全体への
    `/engineering:code-review` を入れる。再レビューは push の後に converge が明示的に頼む。
    人間のレビューの後の修正では再レビューを頼み、上限を数え直す。
+   指摘を分ける最初の段で、指摘された行が PR の差分の hunk に含まれるかを判定し、含まれなければ
+   直さずに Issue を起こして閉じる（重複を検索してから。Issue は英語で、指摘の要旨と PR へのリンクを書く）。
+   この判定は 1 のスクリプトに置く。
    ラウンド中は main を取り込まず、approve の後に取り込む（「main の取り込みは再レビューしない」）。
    main を取り込んだ push は、1 の判定で再レビューを頼むかを決める。converge の到達状態と
    `docs/process.md`「人間のレビューは CodeRabbit が approve してから始める」の判定は、HEAD に対する
