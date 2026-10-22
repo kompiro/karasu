@@ -155,11 +155,15 @@ function parseTable(name: string, body: string): Table {
     const colName = colMatch[1];
     columns.push(colName);
 
-    if (/\bPRIMARY\s+KEY\b/i.test(part)) {
+    // A string literal (`DEFAULT 'PRIMARY KEY'`) declares nothing. Only `'…'`
+    // is one: `"…"` and `` `…` `` are identifiers (`REFERENCES "users"`).
+    const definition = part.replace(/'(?:''|[^'])*'/g, "''");
+
+    if (/\bPRIMARY\s+KEY\b/i.test(definition)) {
       primaryKey.push(colName);
     }
 
-    const inlineRef = part.match(/\bREFERENCES\s+(?:["'`]?\w+["'`]?\.)?["'`]?(\w+)["'`]?/i);
+    const inlineRef = definition.match(/\bREFERENCES\s+(?:["'`]?\w+["'`]?\.)?["'`]?(\w+)["'`]?/i);
     if (inlineRef) {
       foreignKeys.push({
         column: colName,

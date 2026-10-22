@@ -653,6 +653,23 @@ CREATE TABLE orders (id int PRIMARY KEY, note text DEFAULT 'x, customer_id int',
       expect(out).not.toContain("OrdersTable -> CustomersTable");
     });
 
+    it("reads no key or reference from a column's string literal", async () => {
+      const out = await flat(`
+CREATE TABLE customers (id int PRIMARY KEY);
+CREATE TABLE orders (id int, note text DEFAULT 'PRIMARY KEY REFERENCES customers(id)');
+`);
+      expect(out).not.toContain("OrdersTable -> CustomersTable");
+    });
+
+    it("keeps a key and a reference written after a string literal", async () => {
+      const out = await flat(`
+CREATE TABLE customers (id int PRIMARY KEY);
+CREATE TABLE orders (id int PRIMARY KEY, buyer int DEFAULT 'x' REFERENCES "customers"(id));
+`);
+      expect(out).toContain("OrdersTable -> CustomersTable");
+      expect(out).not.toContain("OrdersTable -> CustomersTable [inferred]");
+    });
+
     it("keeps a table whose rename changes only the letter case", async () => {
       const out = await flat(`
 CREATE TABLE orders (id int PRIMARY KEY);

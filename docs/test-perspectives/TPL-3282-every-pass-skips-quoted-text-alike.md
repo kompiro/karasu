@@ -60,9 +60,14 @@ scope:
   （`blankComments`）、括弧の対応（`extractParenBody`）、カンマでの分割
   （`splitTopLevelCommas`）で共有する。文を探す正規表現も同じ規則（二重にした引用符は
   閉じてすぐ開き直すのと同じ）で引用符の中を丸ごと消費する（#3282）
+- 列の定義から `PRIMARY KEY` / `REFERENCES` を探す段（`parseTable`）は、文字列リテラル
+  `'…'` の中身を空にしてから探す。`"…"` と `` `…` `` は識別子（`REFERENCES "users"`）なので
+  残す。どの引用符が「中を読まない」ものかは段の役割で決まり、括弧・カンマを数える段は
+  3 種すべて、キーワードを探す段は文字列リテラルだけを飛ばす（#3282）
 
 ## 関連テスト
 
 - `packages/core/src/translate/db.test.ts` — `a migration history is replayed in order (#3182)` の
   `skips statements inside string literals` / `reads a CREATE TABLE body to its own ')', past
-  parentheses in quoted text` / `splits columns only at commas outside quoted text`
+  parentheses in quoted text` / `splits columns only at commas outside quoted text` /
+  `reads no key or reference from a column's string literal`
