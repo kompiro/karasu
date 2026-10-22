@@ -409,6 +409,40 @@ function makeOptions(overrides: Partial<Parameters<typeof useHistoryNavigation>[
   };
 }
 
+/**
+ * The hook on the real `appReducer`, with a node-path index that is empty
+ * until a file is loaded. With `withSeed` the index fills in the seed's own
+ * render; without it, only after `indexNow()` (a model compiled a render
+ * later).
+ */
+function renderWithReducer(withSeed: boolean) {
+  let indexed = false;
+  const hook = renderHook(() => {
+    const [state, dispatch] = useReducer(appReducer, initialState);
+    const nodePathIndex =
+      state.fileContent && (withSeed || indexed)
+        ? new Map([["A", ["A"]]])
+        : new Map<string, string[]>();
+    useHistoryNavigation(
+      makeOptions({
+        dispatch,
+        nodePathIndex,
+        activeView: state.activeView,
+        viewPath: state.viewPath,
+        currentFilePath: state.currentFilePath,
+        highlightedNodeId: state.highlightedNodeId,
+      }),
+    );
+    return { state, dispatch };
+  });
+  return {
+    ...hook,
+    indexNow: () => {
+      indexed = true;
+    },
+  };
+}
+
 describe("useHistoryNavigation", () => {
   beforeEach(() => {
     // Reset hash before each test
@@ -716,6 +750,102 @@ describe("useHistoryNavigation", () => {
         replaceState.mockRestore();
       },
     );
+  });
+
+  // #3284: from mount until the restored state commits, effect ③ sees
+  // pre-restore states (the mount's `system` root, the seed's reset, the
+  // commit before effect ②'s dispatches land). Pushing any of them put an
+  // entry between the deep link and the page that linked to it.
+  describe("a cold boot on a deep link adds no history entry (#3284)", () => {
+    it.each([
+      ["#krs-deploy?file=%2Findex.krs", true],
+      ["#krs-deploy?file=%2Findex.krs", false],
+      ["#krs-system-A?file=%2Findex.krs", true],
+      ["#krs-system-A?file=%2Findex.krs", false],
+      ["#krs-system-root:A?file=%2Findex.krs", true],
+      ["#krs-system-A:A?file=%2Findex.krs", false],
+      ["#krs-system-A", true],
+      ["#krs-system-root?file=%2Findex.krs", true],
+    ])("%s (index fills in the seed's render: %s)", async (hash, withSeed) => {
+      history.replaceState(null, "", hash);
+      const pushState = vi.spyOn(history, "pushState");
+      const { result, rerender, indexNow } = renderWithReducer(withSeed);
+
+      await act(async () => {
+        result.current.dispatch({
+          type: "SELECT_FILE",
+          path: "/index.krs",
+          content: "system S {\n  service A {}\n}\n",
+        });
+      });
+      indexNow();
+      await act(async () => {
+        rerender();
+      });
+
+      expect(pushState).not.toHaveBeenCalled();
+      // The entry the link opened now holds the restored state.
+      const expected = hash.includes("?") ? hash : `${hash}?file=%2Findex.krs`;
+      expect(location.hash).toBe(expected);
+
+      // Once restored, the user's navigation pushes again.
+      await act(async () => {
+        result.current.dispatch({ type: "SET_ACTIVE_VIEW", activeView: "org" });
+      });
+      expect(pushState).toHaveBeenCalledTimes(1);
+      expect(pushState.mock.calls[0]?.[2]).toBe("#krs-org-root?file=%2Findex.krs");
+      pushState.mockRestore();
+    });
+
+    it("pushes the first navigation after a boot with the index ready at mount", async () => {
+      // Memory / Serve mode: no deferral is pending, so the restoration
+      // settles as soon as the file is in.
+      history.replaceState(null, "", "#krs-system-root?file=%2Findex.krs");
+      const pushState = vi.spyOn(history, "pushState");
+      const { result } = renderWithReducer(true);
+      await act(async () => {
+        result.current.dispatch({
+          type: "SELECT_FILE",
+          path: "/index.krs",
+          content: "system S {\n  service A {}\n}\n",
+        });
+      });
+      expect(pushState).not.toHaveBeenCalled();
+
+      await act(async () => {
+        result.current.dispatch({ type: "SET_VIEW_PATH", path: ["A"] });
+      });
+      expect(pushState).toHaveBeenCalledTimes(1);
+      expect(pushState.mock.calls[0]?.[2]).toBe("#krs-system-A?file=%2Findex.krs");
+      pushState.mockRestore();
+    });
+
+    it("pushes the first navigation when the restored value was already in the state", async () => {
+      // A node the model does not have resolves to the root path the reset
+      // already shows; a target equal to the state must not hold the
+      // restoration open past the boot.
+      history.replaceState(null, "", "#krs-system-Missing?file=%2Findex.krs");
+      const pushState = vi.spyOn(history, "pushState");
+      const { result, rerender, indexNow } = renderWithReducer(false);
+      await act(async () => {
+        result.current.dispatch({
+          type: "SELECT_FILE",
+          path: "/index.krs",
+          content: "system S {\n  service A {}\n}\n",
+        });
+      });
+      indexNow();
+      await act(async () => {
+        rerender();
+      });
+      expect(pushState).not.toHaveBeenCalled();
+      expect(location.hash).toBe("#krs-system-root?file=%2Findex.krs");
+      await act(async () => {
+        result.current.dispatch({ type: "SET_ACTIVE_VIEW", activeView: "deploy" });
+      });
+      expect(pushState).toHaveBeenCalledTimes(1);
+      pushState.mockRestore();
+    });
   });
 
   describe("pending highlight restoration (#1842)", () => {
