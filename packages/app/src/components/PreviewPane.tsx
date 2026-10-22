@@ -72,7 +72,10 @@ interface PreviewPaneProps {
   highlightAttribute?: HighlightAttribute;
   /** Called when a node interaction or a click on the diagram background clears the cross-navigation highlight */
   onClearHighlight?: () => void;
-  /** Called when user clicks "Jump to editor" in the detail panel */
+  /**
+   * Jumps to the node's definition: the detail panel's "Jump to editor", and a
+   * Cmd/Ctrl+click on the node (ADR-177, #3311). Unset, neither is offered.
+   */
   onJumpToEditor?: (nodeId: string) => void;
   /**
    * Per-node diff metadata from `compileSystemDiff`. When provided, the
@@ -99,6 +102,11 @@ interface PreviewPaneProps {
    * forwards intent.
    */
   onPickEdgeDirection?: (canonicalId: string, direction: EdgeDirection) => void;
+  /**
+   * The host cannot write files yet (the VS Code webview before #3313), so the
+   * edge context menu, whose every item is a write, does not open at all.
+   */
+  readOnly?: boolean;
   /**
    * The open document and the directory other files are shown relative to, so
    * the diagnostic banner can tell a position in the open document from one in
@@ -173,6 +181,7 @@ export function PreviewPane({
   nodeDiffByPath,
   styleTargetPath,
   onPickEdgeDirection,
+  readOnly,
   currentFilePath,
   displayRoot,
   onTeamToggle,
@@ -221,25 +230,29 @@ export function PreviewPane({
     [svg],
   );
 
-  const handleContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
-    const target = e.target as Element;
-    const edgeGroup = target.closest("[data-edge-canonical-id]");
-    if (!edgeGroup) return;
-    const canonicalId = edgeGroup.getAttribute("data-edge-canonical-id");
-    const from = edgeGroup.getAttribute("data-edge-from") ?? "";
-    const to = edgeGroup.getAttribute("data-edge-to") ?? "";
-    const kind = edgeGroup.getAttribute("data-edge-kind");
-    if (!canonicalId) return;
-    e.preventDefault();
-    const arrow = kind === "async" ? "→→" : "→";
-    setEdgeMenu({
-      x: e.clientX,
-      y: e.clientY,
-      canonicalId,
-      displayLabel: `${from} ${arrow} ${to}`,
-      edgeLabel: edgeGroup.getAttribute("data-edge-label") ?? undefined,
-    });
-  }, []);
+  const handleContextMenu = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      if (readOnly) return;
+      const target = e.target as Element;
+      const edgeGroup = target.closest("[data-edge-canonical-id]");
+      if (!edgeGroup) return;
+      const canonicalId = edgeGroup.getAttribute("data-edge-canonical-id");
+      const from = edgeGroup.getAttribute("data-edge-from") ?? "";
+      const to = edgeGroup.getAttribute("data-edge-to") ?? "";
+      const kind = edgeGroup.getAttribute("data-edge-kind");
+      if (!canonicalId) return;
+      e.preventDefault();
+      const arrow = kind === "async" ? "→→" : "→";
+      setEdgeMenu({
+        x: e.clientX,
+        y: e.clientY,
+        canonicalId,
+        displayLabel: `${from} ${arrow} ${to}`,
+        edgeLabel: edgeGroup.getAttribute("data-edge-label") ?? undefined,
+      });
+    },
+    [readOnly],
+  );
 
   const handlePickDirection = useCallback(
     (direction: EdgeDirection) => {
@@ -576,6 +589,17 @@ export function PreviewPane({
         }
       }
 
+      // Cmd/Ctrl+click jumps to the node's definition (ADR-177), drillable or
+      // not, so it is checked before the click's other meanings. Every control
+      // above is a button on the card, and keeps its own meaning.
+      if ((e.metaKey || e.ctrlKey) && onJumpToEditor) {
+        const jumpNodeId = target.closest("[data-node-id]")?.getAttribute("data-node-id");
+        if (jumpNodeId) {
+          onJumpToEditor(jumpNodeId);
+          return;
+        }
+      }
+
       // Check for container click (deploy diagram cross-navigation)
       const containerGroup = target.closest("[data-container-id]");
       if (containerGroup && onContainerClick) {
@@ -640,6 +664,7 @@ export function PreviewPane({
       onOwnedServiceClick,
       onTeamToggle,
       onClearHighlight,
+      onJumpToEditor,
     ],
   );
 

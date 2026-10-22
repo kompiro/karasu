@@ -8,8 +8,12 @@ import { HOSTED_APP_ORIGIN } from "./utils/hosted-app.js";
 
 vi.mock("./components/AppShell.js", () => ({
   AppShell: function AppShellProbe() {
-    const { hideShare, shareOrigin } = useContext(PreviewToolbarSlotContext);
-    return <div>{hideShare ? "share-hidden" : `share-shown:${shareOrigin ?? "this-page"}`}</div>;
+    const { hide, shareOrigin } = useContext(PreviewToolbarSlotContext);
+    return (
+      <div>
+        {hide?.includes("share") ? "share-hidden" : `share-shown:${shareOrigin ?? "this-page"}`}
+      </div>
+    );
   },
 }));
 vi.mock("./state/app-context.js", () => ({

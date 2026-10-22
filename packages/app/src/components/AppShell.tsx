@@ -65,6 +65,20 @@ interface AppShellProps {
    * per-file navigation (Serve/Memory) omit this. Issue #811.
    */
   onFileChange?: (path: string) => Promise<void> | void;
+  /**
+   * A host that owns the editor (the VS Code webview, #3311) takes the jump to a
+   * node's definition: it gets the node and the file that defines it, and the
+   * detail panel's "Jump to editor" and Cmd/Ctrl+click are offered. Without it,
+   * the jump goes to the app's own editor, and an editor-less mode has none.
+   */
+  onRevealNode?: (nodeId: string, filePath: string) => void;
+  /** The host cannot write files yet: GUI writes (edge direction) are not offered. */
+  readOnly?: boolean;
+  /**
+   * Bumped by a host whose files change behind `fs` (the VS Code webview), so
+   * the imported style sheets are read again (#3311).
+   */
+  sourceRevision?: number;
 }
 
 /**
@@ -89,6 +103,9 @@ export function AppShell({
   recompileRef,
   onViewPasted,
   onFileChange,
+  onRevealNode,
+  readOnly,
+  sourceRevision,
 }: AppShellProps) {
   const { state, dispatch, fs } = useAppContext();
   const {
@@ -194,6 +211,20 @@ export function AppShell({
     dispatch,
   });
 
+  // The defining file is looked up here, not by the host: the index is the
+  // compile's, and the open file is the fallback for a node the index lacks.
+  const nodeFileIndex = views.system.nodeFileIndex;
+  const revealNode = useMemo(
+    () =>
+      onRevealNode
+        ? (nodeId: string) => {
+            const filePath = nodeFileIndex.get(nodeId) ?? currentFilePath;
+            if (filePath) onRevealNode(nodeId, filePath);
+          }
+        : undefined,
+    [onRevealNode, nodeFileIndex, currentFilePath],
+  );
+
   const nav = useCrossNavigation({
     dispatch,
     teamPathIndex: views.teamPathIndex,
@@ -229,7 +260,7 @@ export function AppShell({
 
   const hasParseErrors = views.system.diagnostics.some((d) => d.severity === "error");
 
-  const styleSource = useStyleSource(fileContent, currentFilePath ?? undefined, fs);
+  const styleSource = useStyleSource(fileContent, currentFilePath ?? undefined, fs, sourceRevision);
 
   const { onPickEdgeDirection, styleTargetPath } = useEdgeDirectionWriter({
     fs,
@@ -361,7 +392,7 @@ export function AppShell({
     exportBundlesAvailable: exportAvailable && !hasParseErrors,
     previewFocused,
     togglePreviewFocus,
-    onJumpToEditor: !hideEditor ? handleJumpToEditor : undefined,
+    onJumpToEditor: revealNode ?? (!hideEditor ? handleJumpToEditor : undefined),
     isOrgTreeViewOpen,
     toggleOrgTreeView,
     isTeamDependenciesOpen,
@@ -371,8 +402,9 @@ export function AppShell({
     entityViewSvg,
     entityViewDiagnostics,
     hasEntityView,
-    styleTargetPath,
-    onPickEdgeDirection,
+    styleTargetPath: readOnly ? undefined : styleTargetPath,
+    onPickEdgeDirection: readOnly ? undefined : onPickEdgeDirection,
+    readOnly,
     onExportSvg: downloadSvg,
     onExportDrawio,
     hasKrsSource,
