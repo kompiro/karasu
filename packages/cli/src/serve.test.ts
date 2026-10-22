@@ -1,10 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { mkdtemp, writeFile, mkdir, rm, symlink } from "node:fs/promises";
+import { mkdtemp, writeFile, mkdir, readFile, rm, symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { AddressInfo } from "node:net";
 import type { ServerResponse, Server } from "node:http";
 import * as http from "node:http";
+
+// Pass-through, so a test can make one read fail as a file vanishing would.
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return { ...actual, readFile: vi.fn<typeof actual.readFile>(actual.readFile) };
+});
 
 vi.mock("chokidar", () => ({
   watch: vi.fn<() => object>(() => ({ on: vi.fn<() => void>().mockReturnThis() })),
@@ -115,6 +121,26 @@ describe("collectProjectFiles", () => {
     await writeFile(join(tmpDir, "theme.style"), "");
     await writeFile(join(tmpDir, "old.krs.bak"), "");
     expect((await collectProjectFiles(tmpDir)).map((f) => f.path)).toEqual(["index.krs"]);
+  });
+
+  it("leaves out a file that disappears between the walk and the read", async () => {
+    await writeFile(join(tmpDir, "index.krs"), "system A {}");
+    await writeFile(join(tmpDir, "saving.krs"), "");
+    const actual = vi.mocked(readFile).getMockImplementation();
+    vi.mocked(readFile).mockImplementation(((path: string, options: unknown) =>
+      String(path).endsWith("saving.krs")
+        ? Promise.reject(Object.assign(new Error("gone"), { code: "ENOENT" }))
+        : (actual as (p: string, o: unknown) => Promise<string>)(
+            path,
+            options,
+          )) as typeof readFile);
+    try {
+      expect(await collectProjectFiles(tmpDir)).toEqual([
+        { path: "index.krs", content: "system A {}" },
+      ]);
+    } finally {
+      vi.mocked(readFile).mockImplementation(actual as typeof readFile);
+    }
   });
 
   // TPL-168: a link inside the served directory must not read what lies outside it.

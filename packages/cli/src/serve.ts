@@ -110,9 +110,20 @@ export async function collectProjectFiles(dir: string): Promise<ProjectFile[]> {
     dir,
     (name) => name.endsWith(".krs") || name.endsWith(".krs.style"),
   );
-  return Promise.all(
-    paths.map(async (path) => ({ path, content: await readFile(join(dir, path), "utf-8") })),
+  const files = await Promise.all(
+    paths.map(async (path): Promise<ProjectFile | null> => {
+      try {
+        return { path, content: await readFile(join(dir, path), "utf-8") };
+      } catch (err) {
+        // Gone since the walk: an editor's atomic save (temp file, then
+        // rename) or a delete. Leave it out rather than fail the snapshot;
+        // its own watch event brings the next one.
+        if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+        throw err;
+      }
+    }),
   );
+  return files.filter((f): f is ProjectFile => f !== null);
 }
 
 export async function resolveKrsFile(dir: string, name: string): Promise<string | null> {
