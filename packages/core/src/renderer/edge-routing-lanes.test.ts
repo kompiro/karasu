@@ -268,10 +268,13 @@ describe("the enclosing frame bounds the outer channels (#3132)", () => {
   const limits = channelLimitsOf(frame);
   const row = () => new Map([["r", card("r", 100, 200, 800, 60)]]);
 
-  it("reads the limits off the frame: below its title strip, at its bottom border", () => {
+  it("reads the limits off the frame: below its title strip, at its bottom border and sides", () => {
+    // The sides bound the gutters (#3154).
     expect(limits).toEqual({
       ceiling: 100 + CONTAINER_LABEL_HEIGHT,
       floor: 400,
+      left: 0,
+      right: 1000,
     });
     expect(channelLimitsOf(undefined)).toBe(NO_CHANNEL_LIMITS);
   });

@@ -130,12 +130,12 @@ function cmpEdgeId(a: LayoutEdge, b: LayoutEdge): number {
 }
 
 /**
- * Content bounds (leftmost / rightmost x over every card and frame). The gutter
- * and trunk/single lane x's are all derived from these, so the three routing
- * passes MUST agree on the basis for their lane numbering to align — hence one
- * shared helper rather than three inline copies.
+ * Content bounds (leftmost / rightmost x over every card inside `limits` and
+ * every frame). The gutter and trunk/single lane x's are all derived from
+ * these, so the four routing passes MUST agree on the basis for their lane
+ * numbering to align — hence one shared helper rather than inline copies.
  */
-function contentBounds(
+export function contentBounds(
   nodes: LayoutNode[],
   frames: ContainerRect[],
   limits: ChannelLimits,

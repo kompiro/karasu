@@ -50,7 +50,7 @@ import {
   LANE_PITCH,
   NO_CHANNEL_LIMITS,
 } from "./edge-routing-lanes.js";
-import { CONTAINER_LABEL_HEIGHT } from "./layout-constants.js";
+import { CONTAINER_LABEL_HEIGHT, CONTAINER_PADDING } from "./layout-constants.js";
 import { HOP_RADIUS, trunkBandHalfWidth } from "./crossing-marks.js";
 import { labelAnchorWithSegment, ownLabelSegment } from "./edge-routing.js";
 import { ObstacleIndex } from "./obstacle-index.js";
@@ -1678,6 +1678,91 @@ ${["A", "B", "C"]
     // The lane nearest the row keeps the router's y, the rest stack upwards.
     expect(above[1]).toBe(above[0] - LANE_PITCH);
   });
+});
+
+describe("drill-down gutters stay inside the frame (#3154, TPL-3132 / TPL-2598)", () => {
+  // The gutter lanes step outward from the content by `TRUNK_LANE_GAP`, while
+  // the frame's side padding was fixed before routing: from the second lane on
+  // they ran on the frame's border or past it. The frame now grows on each
+  // side by what the first placement overshot, so every vertical run keeps the
+  // gap the padding leaves beside the first lane. Measured here from the drawn
+  // frame, not from the implementation's own reservation.
+  const FRAME_SIDE_MARGIN = 12;
+
+  // Three rows: every T calls its own M and every B, both sync and async. The
+  // M row blocks the straight T -> B lines, so they take the gutters, and the
+  // gutters need more lanes than the frame's padding holds (TPL-2598). On main,
+  // four columns put one vertical run past the frame's side and five put six.
+  function crowdedColumns(n: number): string {
+    const ids = Array.from({ length: n }, (_, i) => i);
+    const domain = (name: string, deps: string[]) =>
+      `    domain ${name} {\n${deps.map((d) => `      ${name} -> ${d}\n      ${name} --> ${d}`).join("\n")}\n    }`;
+    const t = ids.map((i) => domain(`T${i}`, [`M${i}`, ...ids.map((j) => `B${j}`)]));
+    const m = ids.map((i) => domain(`M${i}`, [`B${i}`]));
+    const b = ids.map((i) => `    domain B${i} {}`);
+    return `system S {\n  service App {\n${[...t, ...m, ...b].join("\n")}\n  }\n}`;
+  }
+  const laidOut = (n: number) => () => layoutOfSource(crowdedColumns(n), undefined, ["S", "App"]);
+  const CROWDED: [string, () => LayoutResult][] = [
+    ["four columns", laidOut(4)],
+    ["five columns", laidOut(5)],
+  ];
+
+  function focusFrame(res: LayoutResult) {
+    const frame = res.containers.find((c) => !c.ghost && !c.group);
+    if (!frame) throw new Error("the fixture is not a drill-down");
+    return frame;
+  }
+  function verticalXs(res: LayoutResult): number[] {
+    return res.edges
+      .filter((e) => !e.ghost && !e.cyclic)
+      .flatMap((e) => {
+        const pts = pointsOf(e);
+        return pts.slice(1).flatMap((p, i) => (Math.abs(p.x - pts[i].x) < 1e-6 ? [p.x] : []));
+      });
+  }
+  function cardSpan(res: LayoutResult): { left: number; right: number } {
+    const cards = [...res.nodes.values()].filter((c) => !c.ghost);
+    return {
+      left: Math.min(...cards.map((c) => c.x)),
+      right: Math.max(...cards.map((c) => c.x + c.width)),
+    };
+  }
+
+  it.each(CROWDED)("%s: the fixture needs more than one gutter lane on a side", (_n, laid) => {
+    const res = laid();
+    const { left, right } = cardSpan(res);
+    const outside = new Set(verticalXs(res).filter((x) => x < left || x > right));
+    expect(outside.size).toBeGreaterThan(1);
+  });
+
+  it.each(CROWDED)(
+    "%s: every vertical run stays inside the frame, and the frame grew to hold them",
+    (_n, laid) => {
+      const res = laid();
+      const frame = focusFrame(res);
+      const inner = {
+        left: frame.x + FRAME_SIDE_MARGIN,
+        right: frame.x + frame.width - FRAME_SIDE_MARGIN,
+      };
+      expect(verticalXs(res).filter((x) => x < inner.left - 0.5 || x > inner.right + 0.5)).toEqual(
+        [],
+      );
+      const { left, right } = cardSpan(res);
+      expect(frame.width).toBeGreaterThan(right - left + 2 * CONTAINER_PADDING);
+      expect(res.placementPasses).toBe(2);
+    },
+  );
+
+  it.each(CROWDED)(
+    "%s: no edge pierces a card, and no two edges share a collinear segment",
+    (_n, laid) => {
+      const res = laid();
+      expect(totalPenetrations(res)).toBe(0);
+      expect(collinearOverlaps(res, "v")).toBe(0);
+      expect(collinearOverlaps(res, "h")).toBe(0);
+    },
+  );
 });
 
 describe("edge into a side column (#3133, TPL-3026 / TPL-1927)", () => {
