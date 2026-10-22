@@ -32,6 +32,12 @@ reviews:
 
   auto_review:
     enabled: true
+    # Only the first review runs on its own (when the PR is opened or taken out of
+    # draft). Every later review is asked for with `@coderabbitai review` by the
+    # round that needs it (`/coderabbit-converge`), so a push that only merges
+    # main, or only rebuilds a file this config filters out, costs no review
+    # (docs/process.md "main の取り込み", #3286).
+    auto_incremental_review: false
     # Drafts are work in progress, and `spike/**` branches routinely open as one.
     drafts: false
     # Dependency PRs are triaged by the /hane:dependabot workflow against the
@@ -68,6 +74,14 @@ reviews:
     - "!pnpm-lock.yaml"
 
   path_instructions:
+
+    # Findings in later rounds were mostly more instances of something an earlier
+    # round had already flagged in the same file (#3286), each costing a round.
+    - path: "**"
+      instructions: |
+        When you flag a problem, report every place in this PR where the same
+        problem occurs, in one comment that lists them all, rather than one
+        instance per comment or per round.
 
     - path: "packages/**/*.{ts,tsx}"
       instructions: |
