@@ -69,15 +69,18 @@ Issue が表面化した「失敗の種類」によってラベルを使い分�
 
 ### Issue トピックラベル（ADR の topic で分類する）
 
-Issue の分類は、ADR と同じ語彙で付ける。ラベル名は `topic: <name>` で、`<name>` は
-[`adr.config.json`](../adr.config.json) の `topics` のいずれかである。修正が ADR になったら
-その ADR に付く topic と同じものを Issue にも付けておけば、Issue と ADR を同じ軸で引ける。
+Issue には `topic: <name>` ラベルを 1 つ付ける。`<name>` は
+[`adr.config.json`](../adr.config.json) の `topics` のいずれかで、ADR の `topic` と同じ語彙である。
 
-- 1 Issue に 1 つ付ける（ADR の `topic` が 1 つなのと揃える）
-- 迷ったら、似た内容の既存 ADR の `topic` に合わせる（`grep -l <キーワード> docs/adr/*.md | xargs grep -h '^topic:'`）。
-  たとえば配線・ラベル配置は `renderer`、formatter は `parser`、`translate` は `cli`
-- `adr.config.json` の `topics` を増減したら、同じ PR で `topic:` ラベルも作成・削除する。
-  食い違いを機械的に検出する仕組みは [#3314](https://github.com/kompiro/karasu/issues/3314) で検討中
+- 各 topic が何を含むかは [`docs/adr/README.md`](adr/README.md)「トピック別」の見出しで判断する
+- 迷ったら、似た内容の既存 ADR で最も多い `topic` に合わせる:
+
+  ```bash
+  grep -il <キーワード> docs/adr/*.md | xargs grep -h '^topic:' | sort | uniq -c | sort -rn
+  ```
+
+- topics の追加・改名・削除は、ラベルの作成・`gh label edit`・付け替えを伴う。手順と到達状態は
+  `.claude/rules/adr-topics.md`（`adr.config.json` / `tpl.config.json` の編集時に読み込まれる）
 
 ### Issue ステータスラベル
 
