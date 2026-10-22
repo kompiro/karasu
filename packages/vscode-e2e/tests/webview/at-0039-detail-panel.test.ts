@@ -10,7 +10,6 @@ import {
   isViewActive,
   leaveWebViewFrame,
   openFixtureAndPreview,
-  reacquireFrame,
   readBreadcrumb,
   readEditorCursorLine,
   switchToView,
@@ -19,6 +18,10 @@ import {
 /**
  * AT-0039 / AT-0042-vscode (WebView E2E — Phase 6 detail panel +
  * cross-diagram navigation).
+ *
+ * Since #3312 the preview is the app's viewer, so the panel under test is
+ * the app's `NodeDetailPanel` (`.node-detail-panel`), the tabs are the app's
+ * `DiagramTabBar`, and a drill or a view switch happens in place.
  *
  * AT-0039 coverage:
  *   TC-01: clicking a leaf node opens the detail panel.
@@ -30,17 +33,18 @@ import {
  *   TC-06: ⓘ info button on a parent node opens the detail panel
  *          without drilling. (The "plain click on parent → drill" half
  *          of TC-06 is already covered by AT-0038 TC-02.)
- *   TC-08: tooltip is suppressed while the detail panel is open and
- *          reappears once it is closed.
+ *   TC-08 (tooltip suppressed while the panel is open) is retired: the
+ *          app's viewer shows no hover description; whether it should is
+ *          #3325.
  *
  * AT-0042 coverage (co-located here to share the WebView/fixture):
- *   AT-0042-1: detail panel renders a `data-nav-view="org"` button for
- *              a node owned by a team (resolved via the organization
- *              `owns` block → `ownerIndex`); clicking it switches the
- *              preview to the Org diagram.
- *   AT-0042-2: detail panel renders a `data-nav-view="deploy"` button
- *              for a node with `hasDeployContainer=true`; clicking it
- *              switches the preview to the Deploy diagram.
+ *   AT-0042-1: detail panel renders a team navigation button for a node
+ *              owned by a team (resolved via the organization `owns` block
+ *              → `ownerIndex`); clicking it switches the preview to the
+ *              Org diagram.
+ *   AT-0042-2: detail panel renders the "View in Deploy diagram" button for
+ *              a node with `hasDeployContainer=true`; clicking it switches
+ *              the preview to the Deploy diagram.
  *   AT-0042-5: detail panel for a team-owned service with no deploy
  *              container does NOT render the deploy navigation button.
  *
@@ -49,20 +53,15 @@ import {
  * AT-0038 TC-01.
  *
  * TC-07 of AT-0039 (clicking a Links link opens the URL in the external
- * browser) stays manual: from inside the WebView frame we can verify
- * that the page posts an `openExternal` message to the extension, but
- * cannot observe `vscode.env.openExternal` actually being called by the
- * host without test-only seams in production code (see ADR-926's
- * "no extension-host stubs" rule).
+ * browser) stays manual: from inside the WebView frame we can verify that
+ * the page posts an `openExternal` message to the extension, but cannot
+ * observe `vscode.env.openExternal` actually being called by the host
+ * without test-only seams in production code (see ADR-926's "no
+ * extension-host stubs" rule).
  *
- * AT-0042-3 (runtime/realizes section above team/role/tags section) is
- * a static layout invariant of the renderer — sections are emitted in
- * fixed source order in `webview-content.ts`, and no live fixture node
- * carries both runtime/realizes AND team/role/tags simultaneously
- * (services have team; deploy units have runtime/realizes; metadata
- * does not aggregate across them). Verified by code review of
- * `buildPreviewHtml`'s `// Runtime / realizes` and `// Team / role / tags`
- * blocks; see AT-0076 for context.
+ * AT-0042-3 (runtime/realizes section above team/role/tags section) is a
+ * static layout invariant of `NodeDetailPanel`, whose sections are emitted
+ * in fixed source order; see AT-0076 for context.
  *
  * AT-0042-4 is N/A in VSCode per the AT-0042 spec (the extension
  * always provides the team navigation button when team is set).
@@ -74,30 +73,23 @@ import {
  * `NodeDetailPanel`, co-located here rather than under a new AT number
  * since it reuses this suite's fixture and WebView):
  *   - the deploy `store "order-db"` unit (realizing `OrderDB`) gets its
- *     own detail-panel icon distinct from the "■" fallback it rendered
- *     with before the fix (`store` had no `KIND_ICONS` entry at all).
+ *     own detail-panel icon distinct from the "■" fallback.
  *   - the `client WebApp` node's `resource`/`capability` declarations
- *     render the panel's Storage resources / Capabilities sections
- *     (previously omitted by the webview panel entirely).
+ *     render the panel's Storage resources / Capabilities sections.
  *   - `UserService`'s `@deprecated(until: …)` annotation renders the
- *     panel's Migration intent section (also previously omitted).
+ *     panel's Migration intent section.
  * The `usecase`/`domain` icon collision the issue also fixed is pinned by
- * the `webview-content.test.ts` golden snapshot (the exact `KIND_ICONS`
- * `<script>` text the browser evaluates) and by
- * `packages/core/src/builtins/node-detail-fields.test.ts`, rather than by
- * a live click here — reaching a `usecase` node requires drilling into a
- * domain, which would turn `OrderManagement`/`Inventory` into parent
- * nodes and break TC-01's "leaf node" assumption for this shared fixture.
+ * `packages/core/src/builtins/node-detail-fields.test.ts`, rather than by a
+ * live click here: reaching a `usecase` node requires drilling into a
+ * domain, which would turn `OrderManagement`/`Inventory` into parent nodes
+ * and break TC-01's "leaf node" assumption for this shared fixture.
  *
- * Issue #2074: the panel's section titles / buttons are now resolved by the
- * extension host per VS Code's active display language (`vscode.env.language`)
- * from the shared `@karasu-tools/i18n` `nodeDetail.*` keys, matching the
- * app's `NodeDetailPanel`. The ExTester harness launches vanilla VS Code,
- * whose display language defaults to English, so the assertions below match
- * the **en** labels ("Storage resources", "Capabilities", "Migration
- * intent", "Jump to editor"). Japanese-locale label parity is verified
- * manually (AT-0039 TC-10) — swapping the harness's display language mid-run
- * is not worth the flake budget for a non-required check.
+ * Issue #2074: the panel speaks VS Code's display language
+ * (`vscode.env.language`, passed to the viewer as its locale). The ExTester
+ * harness launches vanilla VS Code, whose display language defaults to
+ * English, so the assertions below match the **en** labels ("Storage
+ * resources", "Capabilities", "Migration intent", "Jump to editor").
+ * Japanese-locale label parity is verified manually (AT-0039 TC-10).
  */
 
 const FIXTURE_NAME = "at-0039.krs";
@@ -123,65 +115,60 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
   let driver: WebDriver;
   let ctx: FrameContext;
 
-  async function dispatchMouseMoveOnSelector(selector: string): Promise<void> {
-    await driver.executeScript(
-      `const el = document.querySelector(${JSON.stringify(selector)});` +
-        "if (!el) throw new Error('selector did not match: ' + " +
-        JSON.stringify(selector) +
-        ");" +
-        "const rect = el.getBoundingClientRect();" +
-        "const cx = rect.left + rect.width / 2;" +
-        "const cy = rect.top + rect.height / 2;" +
-        "el.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true, clientX: cx, clientY: cy }));",
-    );
-  }
-
+  // The panel is the app's `NodeDetailPanel` (#3312): present while open,
+  // absent once closed.
   async function detailPanelText(): Promise<string> {
     return (await driver.executeScript(
-      "const el = document.getElementById('detail-panel');" +
+      "const el = document.querySelector('.node-detail-panel');" +
         "return el ? (el.textContent || '') : '';",
     )) as string;
   }
 
   async function detailPanelHtml(): Promise<string> {
     return (await driver.executeScript(
-      "const el = document.getElementById('detail-panel');" +
+      "const el = document.querySelector('.node-detail-panel');" +
         "return el ? (el.innerHTML || '') : '';",
     )) as string;
   }
 
-  async function detailPanelHasVisibleClass(): Promise<boolean> {
+  async function detailPanelIsOpen(): Promise<boolean> {
     return (await driver.executeScript(
-      "const el = document.getElementById('detail-panel');" +
-        "return !!(el && el.classList.contains('visible'));",
+      "return document.querySelector('.node-detail-panel') !== null;",
     )) as boolean;
   }
 
-  async function tooltipIsVisible(): Promise<boolean> {
+  /** The text of each navigation button in the open panel (team, deploy, jump). */
+  async function panelNavButtons(): Promise<string[]> {
     return (await driver.executeScript(
-      "const t = document.getElementById('karasu-tooltip');" +
-        "return !!(t && t.style.display === 'block');",
-    )) as boolean;
+      "return Array.from(document.querySelectorAll('.node-detail-panel .node-detail-nav-btn'))" +
+        ".map(b => (b.textContent || '').trim());",
+    )) as string[];
   }
 
-  // AT-0039-specific waits on the detail panel's `visible` class. Kept
-  // spec-local (not in the harness): the detail panel is AT-0039 DOM.
-  async function awaitPanelVisible(message: string): Promise<void> {
-    await driver.wait(async () => await detailPanelHasVisibleClass(), ELEMENT_TIMEOUT_MS, message);
-  }
-
-  async function awaitPanelHidden(message: string): Promise<void> {
-    await driver.wait(
-      async () => !(await detailPanelHasVisibleClass()),
-      ELEMENT_TIMEOUT_MS,
-      message,
+  /** Click the panel's navigation button whose text contains `text`. */
+  async function clickPanelNavButton(text: string): Promise<void> {
+    await driver.executeScript(
+      "const btn = Array.from(document.querySelectorAll('.node-detail-panel .node-detail-nav-btn'))" +
+        `.find(b => (b.textContent || '').includes(${JSON.stringify(text)}));` +
+        `if (!btn) throw new Error('no panel button containing ' + ${JSON.stringify(JSON.stringify(text))});` +
+        "btn.click();",
     );
   }
 
+  // AT-0039-specific waits on the detail panel. Kept spec-local (not in the
+  // harness): the detail panel is AT-0039 DOM.
+  async function awaitPanelVisible(message: string): Promise<void> {
+    await driver.wait(async () => await detailPanelIsOpen(), ELEMENT_TIMEOUT_MS, message);
+  }
+
+  async function awaitPanelHidden(message: string): Promise<void> {
+    await driver.wait(async () => !(await detailPanelIsOpen()), ELEMENT_TIMEOUT_MS, message);
+  }
+
   async function closePanelIfOpen(): Promise<void> {
-    if (await detailPanelHasVisibleClass()) {
+    if (await detailPanelIsOpen()) {
       await driver.executeScript(
-        "const btn = document.getElementById('dp-close-btn'); if (btn) btn.click();",
+        "const btn = document.querySelector('.node-detail-panel .node-detail-close'); if (btn) btn.click();",
       );
       await awaitPanelHidden("detail panel did not close");
     }
@@ -246,14 +233,13 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     assert.match(html, /<li>Accept new orders<\/li>/i, "description should render the bullet list");
     assert.match(text, /Design Wiki/, "panel should mention the Design Wiki link");
     assert.match(text, /API Docs/, "panel should mention the API Docs link");
-    // The Org nav button is keyed on the resolved owner team id (ownerIndex) —
-    // `order-team` for OrderService (owned via the organization block) — while
-    // its text shows that team's declared label (#2157).
+    // The Org nav button navigates by the resolved owner team id (ownerIndex,
+    // `order-team` for OrderService) while its text shows that team's declared
+    // label (#2157); AT-0042-1 clicks it.
     assert.match(text, /Order Team/, "panel should mention the owning team's label");
-    assert.match(
-      html,
-      /data-nav-node="order-team"/,
-      "the org nav button should still target the team id",
+    assert.ok(
+      (await panelNavButtons()).some((b) => b.includes("Order Team")),
+      "panel should offer the owning team as a navigation button",
     );
   });
 
@@ -264,13 +250,13 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     await awaitPanelVisible("panel did not open before testing close");
 
     await driver.executeScript(
-      "const btn = document.getElementById('dp-close-btn');" +
-        "if (!btn) throw new Error('dp-close-btn not found');" +
+      "const btn = document.querySelector('.node-detail-panel .node-detail-close');" +
+        "if (!btn) throw new Error('the panel close button was not found');" +
         "btn.click();",
     );
     await awaitPanelHidden("panel did not close after pressing the × button");
     assert.strictEqual(
-      await detailPanelHasVisibleClass(),
+      await detailPanelIsOpen(),
       false,
       "panel should be hidden after clicking the × button",
     );
@@ -278,17 +264,13 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     await dispatchClick(driver, '[data-node-id="Customer"]');
     await awaitPanelVisible("panel did not re-open before testing click-outside");
 
-    // A click that lands on `#preview` itself (no `[data-node-id]`
-    // ancestor) is treated as "click outside any node" by the WebView
-    // handler and triggers `hideDetailPanel()`.
-    await driver.executeScript(
-      "const preview = document.getElementById('preview');" +
-        "if (!preview) throw new Error('#preview not found');" +
-        "preview.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));",
-    );
+    // A press on the diagram's container itself (no `[data-node-id]`
+    // ancestor) is "click outside any node" for the viewer, which dismisses
+    // the panel.
+    await dispatchClick(driver, ".preview-container");
     await awaitPanelHidden("panel did not close after clicking outside any node");
     assert.strictEqual(
-      await detailPanelHasVisibleClass(),
+      await detailPanelIsOpen(),
       false,
       "panel should be hidden after clicking outside any node",
     );
@@ -297,10 +279,11 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
   it("TC-06: ⓘ info button on a parent does not drill the preview", async () => {
     await closePanelIfOpen();
 
+    // The root view's breadcrumb is the system's label alone.
     const beforeBreadcrumb = await readBreadcrumb(driver);
-    assert.deepStrictEqual(
-      breadcrumbSegments(beforeBreadcrumb),
-      ["Root"],
+    assert.strictEqual(
+      breadcrumbSegments(beforeBreadcrumb).length,
+      1,
       `expected to start at root, but breadcrumb was "${beforeBreadcrumb}"`,
     );
 
@@ -309,9 +292,9 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     await awaitPanelVisible("detail panel did not open after ⓘ click");
 
     const afterBreadcrumb = await readBreadcrumb(driver);
-    assert.deepStrictEqual(
-      breadcrumbSegments(afterBreadcrumb),
-      ["Root"],
+    assert.strictEqual(
+      afterBreadcrumb,
+      beforeBreadcrumb,
       `ⓘ click should not drill the preview; breadcrumb went to "${afterBreadcrumb}"`,
     );
 
@@ -319,43 +302,14 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     assert.match(text, /OrderService/, `panel should mention OrderService; saw: ${text}`);
   });
 
-  it("TC-08: tooltip is suppressed while the detail panel is open", async () => {
-    await closePanelIfOpen();
-
-    // With panel CLOSED, hovering OrderService (which has a
-    // description) should make the tooltip visible.
-    await dispatchMouseMoveOnSelector('[data-node-id="OrderService"]');
-    await driver.wait(
-      async () => await tooltipIsVisible(),
-      ELEMENT_TIMEOUT_MS,
-      "tooltip should appear when hovering a described node with the panel closed",
-    );
-
-    // Open the panel; the tooltip should not show even when we hover
-    // OrderService again.
-    await dispatchClick(driver, '[data-node-id="Customer"]');
-    await awaitPanelVisible("detail panel did not open before testing tooltip suppression");
-
-    await dispatchMouseMoveOnSelector('[data-node-id="OrderService"]');
-    await driver.sleep(300);
-    assert.strictEqual(
-      await tooltipIsVisible(),
-      false,
-      "tooltip should be hidden while the detail panel is open",
-    );
-  });
-
-  // NOTE: TC-03 leaves `ctx.inWebViewFrame = false` (focusing the .krs
-  // editor rebuilds the WebView). The AT-0042 tests below recover via
-  // `beforeEach`'s `ensureWebViewFrame()` and call `switchToView` to
-  // restore System view, since the TC-03 rebuild also resets state.
+  // NOTE: TC-03 leaves `ctx.inWebViewFrame = false` (it reads the .krs
+  // editor's cursor). The AT-0042 tests below recover via `beforeEach`'s
+  // `ensureWebViewFrame()` and call `switchToView` to start from System view.
   it("TC-03: Jump to editor button moves the .krs editor cursor and leaves the panel open", async () => {
     // Park the cursor off the Customer line first, so "cursor reached line 17"
     // proves the jump happened rather than that something earlier left it
     // there — the false-green that kept AT-0038 TC-03 passing through the
-    // whole LSP breakage (Issue #2456). This has to run before the panel is
-    // opened: focusing the .krs editor rebuilds `webview.html` and wipes
-    // panel state.
+    // whole LSP breakage (Issue #2456).
     await leaveWebViewFrame(ctx, { swallowErrors: false });
     const krsEditor = (await new EditorView().openEditor(FIXTURE_NAME, 0)) as TextEditor;
     await krsEditor.moveCursor(CURSOR_PARK_LINE, 1);
@@ -368,32 +322,19 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     await dispatchClick(driver, '[data-node-id="Customer"]');
     await awaitPanelVisible("panel did not open before testing Jump to editor");
 
-    await driver.executeScript(
-      "const btn = document.getElementById('dp-jump-btn');" +
-        "if (!btn) throw new Error('dp-jump-btn not found');" +
-        "btn.click();",
-    );
+    await clickPanelNavButton("Jump to editor");
 
-    // Allow the postMessage roundtrip to settle, then assert that the
-    // panel is still visible — this proves the dp-jump-btn handler
-    // does not call hideDetailPanel(). We MUST do this assertion
-    // before focusing the .krs editor below: focusing the editor fires
-    // `onDidChangeActiveTextEditor`, which rebuilds `webview.html` and
-    // wipes panel state. That rebuild is a test-only artefact (real
-    // users keep looking at the preview after Jump-to-editor) so we
-    // capture the panel state while we are still inside the live
-    // WebView frame.
+    // Allow the postMessage roundtrip to settle, then assert that the panel
+    // is still visible: the jump leaves the panel open.
     await driver.sleep(500);
     assert.strictEqual(
-      await detailPanelHasVisibleClass(),
+      await detailPanelIsOpen(),
       true,
-      "panel should remain visible after Jump-to-editor (handler does not call hideDetailPanel)",
+      "panel should remain visible after Jump-to-editor",
     );
 
     // Read the editor's coordinates. `readEditorCursorLine` leaves the
-    // WebView frame on every iteration; bringing the .krs editor to focus
-    // rebuilds the preview, which is why the visibility assertion above
-    // runs first.
+    // WebView frame on every iteration.
     //
     // Build the failure message in the catch, NOT as `driver.wait`'s third
     // argument: that argument is a plain string evaluated at call time, so
@@ -435,16 +376,14 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     await dispatchClick(driver, '[data-info-button="UserService"]');
     await awaitPanelVisible("detail panel did not open after clicking UserService ⓘ button");
 
-    const html = await detailPanelHtml();
-    assert.match(
-      html,
-      /data-nav-view="org"/,
-      `panel for UserService should still show the team nav button; saw HTML: ${html.slice(0, 400)}`,
+    const buttons = await panelNavButtons();
+    assert.ok(
+      buttons.some((b) => b.endsWith("→") && !b.includes("Deploy")),
+      `panel for UserService should still show the team nav button; saw: ${JSON.stringify(buttons)}`,
     );
-    assert.doesNotMatch(
-      html,
-      /data-nav-view="deploy"/,
-      `panel for UserService must NOT show the deploy nav button; saw HTML: ${html.slice(0, 400)}`,
+    assert.ok(
+      !buttons.some((b) => b.includes("View in Deploy diagram")),
+      `panel for UserService must NOT show the deploy nav button; saw: ${JSON.stringify(buttons)}`,
     );
   });
 
@@ -459,22 +398,14 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     await dispatchClick(driver, '[data-info-button="OrderService"]');
     await awaitPanelVisible("panel did not open before testing team nav button");
 
-    const html = await detailPanelHtml();
-    assert.match(
-      html,
-      /data-nav-view="org"[^>]*data-nav-node="order-team"/,
-      `panel should render an org nav button for "order-team"; saw HTML: ${html.slice(0, 600)}`,
+    const buttons = await panelNavButtons();
+    assert.ok(
+      buttons.some((b) => b.includes("Order Team")),
+      `panel should render a nav button for the owning team; saw: ${JSON.stringify(buttons)}`,
     );
 
-    // Click the team nav button. The handler postMessages
-    // switchViewAndHighlight, the extension reassigns webview.html, and
-    // the iframe needs to be re-acquired (same as the drill flow).
-    await driver.executeScript(
-      "const btn = document.querySelector('[data-nav-view=\"org\"]');" +
-        "if (!btn) throw new Error('org nav button not found');" +
-        "btn.click();",
-    );
-    await reacquireFrame(ctx);
+    // Click the team nav button; the viewer switches to the Org view in place.
+    await clickPanelNavButton("Order Team");
 
     await driver.wait(
       async () => await isViewActive(driver, "org"),
@@ -484,7 +415,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     assert.strictEqual(
       await isViewActive(driver, "org"),
       true,
-      "Org toolbar button should carry the active style after team nav click",
+      "the Org tab should be selected after team nav click",
     );
   });
 
@@ -499,19 +430,13 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     await dispatchClick(driver, '[data-info-button="OrderService"]');
     await awaitPanelVisible("panel did not open before testing deploy nav button");
 
-    const html = await detailPanelHtml();
-    assert.match(
-      html,
-      /data-nav-view="deploy"[^>]*data-nav-node="OrderService"/,
-      `panel should render a deploy nav button for OrderService; saw HTML: ${html.slice(0, 600)}`,
+    const buttons = await panelNavButtons();
+    assert.ok(
+      buttons.some((b) => b.includes("View in Deploy diagram")),
+      `panel should render a deploy nav button for OrderService; saw: ${JSON.stringify(buttons)}`,
     );
 
-    await driver.executeScript(
-      "const btn = document.querySelector('[data-nav-view=\"deploy\"]');" +
-        "if (!btn) throw new Error('deploy nav button not found');" +
-        "btn.click();",
-    );
-    await reacquireFrame(ctx);
+    await clickPanelNavButton("View in Deploy diagram");
 
     await driver.wait(
       async () => await isViewActive(driver, "deploy"),
@@ -521,7 +446,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     assert.strictEqual(
       await isViewActive(driver, "deploy"),
       true,
-      "Deploy toolbar button should carry the active style after deploy nav click",
+      "the Deploy tab should be selected after deploy nav click",
     );
 
     // #2818: the jump hands over the node id, and the deploy view marks that
@@ -538,8 +463,8 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     );
   });
 
-  // Issue #2068: `store` had no `KIND_ICONS` entry before this fix, so its
-  // panel header always fell back to the generic "■" glyph. `order-db`
+  // Issue #2068: `store` had no icon entry before this fix, so its panel
+  // header always fell back to the generic "■" glyph. `order-db`
   // realizes the logical `database OrderDB` and has no children, so a
   // plain click opens its panel directly (no ⓘ button needed).
   it("#2068: detail panel for a store deploy unit renders its own icon, not the generic fallback", async () => {
@@ -553,11 +478,14 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     await dispatchClick(driver, '[data-node-id="OrderDB::order-db"]');
     await awaitPanelVisible("detail panel did not open after clicking the order-db store unit");
 
-    const html = await detailPanelHtml();
-    assert.match(
-      html,
-      /<span class="dp-icon">🗄<\/span>/,
-      `store panel should render its own icon, not the "■" fallback; saw HTML: ${html.slice(0, 300)}`,
+    const icon = (await driver.executeScript(
+      "const el = document.querySelector('.node-detail-panel .node-detail-icon');" +
+        "return el ? { svg: el.querySelector('svg') !== null, text: (el.textContent || '').trim() } : null;",
+    )) as { svg: boolean; text: string } | null;
+    assert.ok(icon, "the store panel should have a header icon");
+    assert.ok(
+      icon.svg || (icon.text !== "" && icon.text !== "■"),
+      `store panel should render its own icon, not the "■" fallback; saw: ${JSON.stringify(icon)}`,
     );
   });
 
@@ -601,7 +529,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     );
     assert.match(
       html,
-      /<p class="dp-capability-description">Used to scan QR codes<\/p>/,
+      /<p class="node-detail-capability-description">Used to scan QR codes<\/p>/,
       `panel should render the camera capability's description; saw HTML: ${html.slice(0, 600)}`,
     );
 
@@ -613,7 +541,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     // title. (With the old `||`, "geolocation" would have shown.)
     assert.match(
       html,
-      /<p class="dp-capability-description">explicit empty label[^<]*<\/p>/,
+      /<p class="node-detail-capability-description">explicit empty label[^<]*<\/p>/,
       `empty-label capability should still render its description; saw HTML: ${html.slice(0, 800)}`,
     );
     assert.doesNotMatch(

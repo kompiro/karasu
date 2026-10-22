@@ -21,10 +21,11 @@ import {
  *   2. opening the preview and switching into its WebView iframe,
  *   3. the WebView frame lifecycle — `ensureWebViewFrame`, `leaveWebViewFrame`
  *      (lenient teardown exit vs strict in-test exit, see its docstring), and
- *      the `switchBack → sleep → switchToFrame` frame-reacquire dance that the
- *      extension forces whenever it reassigns `webview.html` (drill-down, view
- *      switch, cross-diagram navigation),
- *   4. synthetic MouseEvent dispatch on an exact selector (`dispatchClick`) —
+ *      the `switchBack → sleep → switchToFrame` frame-reacquire dance. Since
+ *      the preview became the app's viewer (#3312) the page is written once
+ *      and a drill or a view switch happens in place; the dance remains for
+ *      re-entering the frame after the editor took focus,
+ *   4. synthetic mouse-press dispatch on an exact selector (`dispatchClick`) —
  *      rule 4's answer to coordinate-based clicks landing on an overlapping
  *      ancestor,
  *   5. breadcrumb reading/parsing (`readBreadcrumb` / `breadcrumbSegments`),
@@ -264,9 +265,10 @@ export async function readEditorCursorLine(
 }
 
 /**
- * The frame-reacquire dance after an action that rebuilds `webview.html`
- * (drill-down, view switch, cross-diagram nav): `switchBack` → `sleep` →
- * `switchToFrame`. Leaves the driver inside the freshly rebuilt iframe.
+ * The frame-reacquire dance: `switchBack` → `sleep` → `switchToFrame`. The
+ * viewer no longer rebuilds the page (#3312), but a settle after a drill
+ * still gives its debounced compile (300ms) time to draw. Leaves the driver
+ * inside the iframe.
  */
 export async function reacquireFrame(
   ctx: FrameContext,
@@ -280,14 +282,18 @@ export async function reacquireFrame(
 }
 
 /**
- * Dispatch a synthetic `click` MouseEvent on the exact element matched by
- * `selector` via `executeScript`, so the WebView handler's `e.target` is the
- * intended element (Selenium's coordinate-based `element.click()` can land on
- * an overlapping ancestor — `.claude/rules/vscode-webview-tests.md` rule 4).
- * `ctrlKey: true` sets both `ctrlKey` and `metaKey` on the synthetic event —
- * the WebView handler reads `e.metaKey || e.ctrlKey` from the event object,
- * so the OS keyboard never needs to be driven (xvfb-friendly). Throws when
- * the selector matches nothing.
+ * Click the exact element matched by `selector` via `executeScript`, so the
+ * handler's `e.target` is the intended element (Selenium's coordinate-based
+ * `element.click()` can land on an overlapping ancestor —
+ * `.claude/rules/vscode-webview-tests.md` rule 4).
+ *
+ * The preview is the app's viewer (#3312), which reads a press as
+ * `mousedown` on the diagram then `mouseup` on the target (a drag between the
+ * two pans instead), and whose tabs switch on `mousedown`. So the full
+ * `mousedown` → `mouseup` → `click` sequence is sent, at one point, to the
+ * element. `ctrlKey: true` sets both `ctrlKey` and `metaKey` — the viewer reads
+ * `e.metaKey || e.ctrlKey` — so the OS keyboard never needs to be driven
+ * (xvfb-friendly). Throws when the selector matches nothing.
  */
 export async function dispatchClick(
   driver: WebDriver,
@@ -300,18 +306,21 @@ export async function dispatchClick(
       "if (!el) throw new Error('selector did not match: ' + " +
       JSON.stringify(selector) +
       ");" +
-      `el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: ${ctrl}, metaKey: ${ctrl} }));`,
+      `const init = { bubbles: true, cancelable: true, button: 0, clientX: 1, clientY: 1, ctrlKey: ${ctrl}, metaKey: ${ctrl} };` +
+      "for (const type of ['mousedown', 'mouseup', 'click']) el.dispatchEvent(new MouseEvent(type, init));",
   );
 }
 
 /**
  * Read the preview breadcrumb as a single "A › B › C" string (empty string when
- * the `#breadcrumb` element is absent). Must be called inside the WebView frame.
+ * there is none). The viewer's breadcrumb starts at the system's label. Must
+ * be called inside the WebView frame.
  */
 export async function readBreadcrumb(driver: WebDriver): Promise<string> {
   return (await driver.executeScript(
-    "const el = document.getElementById('breadcrumb');" +
-      "return el ? Array.from(el.querySelectorAll('button')).map(b => b.textContent).join(' › ') : '';",
+    "const nav = document.querySelector('nav.breadcrumb');" +
+      "return nav ? Array.from(nav.querySelectorAll('.breadcrumb-link, .breadcrumb-current'))" +
+      ".map(b => b.textContent.trim()).join(' › ') : '';",
   )) as string;
 }
 
@@ -323,29 +332,46 @@ export function breadcrumbSegments(text: string): string[] {
     .filter(Boolean);
 }
 
-/** True when the toolbar button for `view` carries the active (background) style. */
+/** The viewer's tab label for each view (`DiagramTabBar`). */
+const VIEW_TAB_LABEL: Record<PreviewView, string> = {
+  system: "System",
+  deploy: "Deploy",
+  org: "Org",
+};
+
+/** A selector-free script expression for the tab of `view`. */
+function viewTabExpression(view: PreviewView): string {
+  return (
+    "Array.from(document.querySelectorAll('.diagram-tab-bar [role=\"tab\"]'))" +
+    `.find(t => t.textContent.includes(${JSON.stringify(VIEW_TAB_LABEL[view])}))`
+  );
+}
+
+/** True when the viewer's tab for `view` is the selected one. */
 export async function isViewActive(driver: WebDriver, view: PreviewView): Promise<boolean> {
   return (await driver.executeScript(
-    `const btn = document.querySelector('[data-view="${view}"]');` +
-      "const style = btn ? (btn.getAttribute('style') || '') : '';" +
-      "return style.includes('background');",
+    `const tab = ${viewTabExpression(view)};` +
+      "return !!tab && tab.getAttribute('aria-selected') === 'true';",
   )) as boolean;
 }
 
 /**
- * Click a toolbar view button and wait for the WebView to rebuild. The
- * switchView postMessage causes the extension to reassign `webview.html`,
- * invalidating the current frame context (same recovery as the drill flow).
+ * Switch the preview to `view` with its tab and wait for the tab to be
+ * selected. The viewer switches in place (#3312), so the frame stays valid.
  * No-op when `view` is already active.
  */
 export async function switchToView(ctx: FrameContext, view: PreviewView): Promise<void> {
   await ensureWebViewFrame(ctx);
   if (await isViewActive(ctx.driver, view)) return;
-  await dispatchClick(ctx.driver, `[data-view="${view}"]`);
-  await reacquireFrame(ctx);
+  await ctx.driver.executeScript(
+    `const tab = ${viewTabExpression(view)};` +
+      `if (!tab) throw new Error('no ${view} tab');` +
+      "const init = { bubbles: true, cancelable: true, button: 0 };" +
+      "for (const type of ['mousedown', 'mouseup', 'click']) tab.dispatchEvent(new MouseEvent(type, init));",
+  );
   await ctx.driver.wait(
     async () => await isViewActive(ctx.driver, view),
     ELEMENT_TIMEOUT_MS,
-    `${view} view did not become active after toolbar click`,
+    `${view} view did not become active after its tab was clicked`,
   );
 }

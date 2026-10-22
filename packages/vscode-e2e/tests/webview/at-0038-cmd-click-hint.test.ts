@@ -1,5 +1,12 @@
 import * as assert from "node:assert";
-import { By, EditorView, type TextEditor, type WebDriver, until } from "vscode-extension-tester";
+import {
+  By,
+  EditorView,
+  type TextEditor,
+  type WebDriver,
+  Workbench,
+  until,
+} from "vscode-extension-tester";
 import {
   ELEMENT_TIMEOUT_MS,
   type FrameContext,
@@ -28,6 +35,13 @@ import {
  *              and does NOT drill the preview.
  *   TC-04:     Cmd/Ctrl+Click on a leaf node moves the editor cursor
  *              and does NOT change the preview view.
+ *   #3252:     the edge hover rules reach the webview (the preview is
+ *              the app's viewer since #3312, so it loads the app's
+ *              stylesheet). The hover itself is asserted by the app's
+ *              Playwright suite (AT-1186 / AT-2632); a real `:hover`
+ *              through Selenium coordinates is not worth the flake.
+ *   TPL-2996:  an edit made without saving reaches the preview, and the
+ *              drilled view is kept.
  *
  * AT-0037-9 is colocated here (rather than its own file) on purpose:
  * the WebView ExTester harness's "File: Open File..." simple-dialog
@@ -54,23 +68,21 @@ import {
  *      to the synthetic MouseEvent — the WebView handler reads
  *      `e.metaKey || e.ctrlKey` from the event object, so we don't
  *      need to drive the OS keyboard via Actions (xvfb-friendly).
- *   2. The drill-down handler reassigns `webview.html` from the
- *      extension host, replacing the iframe document and invalidating
- *      Selenium's current frame context. After a drill click we
- *      `switchBack` and `switchToFrame` again before reading post-
- *      drill state (the shared `reacquireFrame` helper). The
- *      Cmd/Ctrl+Click navigate path does NOT rebuild the WebView, so
- *      it does not need this dance.
+ *   2. The preview is the app's viewer (#3312): a drill happens in place
+ *      and the page is never rebuilt, but the viewer compiles 300ms after
+ *      the click, so post-drill state is polled for rather than read
+ *      once. The viewer reads a press as mousedown then mouseup, which
+ *      `dispatchClick` sends.
  *   3. Reading the .krs editor's cursor needs the .krs editor to be
  *      active. After clicking inside the WebView the preview panel is
  *      active, so `editorView.openEditor("at-0038.krs", 0)` returns
  *      the TextEditor and brings it into focus. We refocus the preview
  *      afterwards so the next test starts in the same WebView frame.
  *
- * The drill assertion in TC-02 only checks `segments.length > 1` —
- * drilling OrderService surfaces its full ancestor chain
- * ("Root › ECommerce › OrderService") and TC-02's purpose is just
- * "hint stays visible after *some* drill happened".
+ * The viewer's breadcrumb starts at the system's label, so the root view
+ * reads as one segment ("ECommerce") and a drill adds one per level. The
+ * drill assertion in TC-02 only checks `segments.length > 1`: TC-02's
+ * purpose is just "hint stays visible after *some* drill happened".
  *
  * Test order is state-driven (01 → 03 → 02 → 04) rather than spec
  * order: TC-01/03 both run at root view, TC-02 drills into OrderService,
@@ -80,8 +92,10 @@ import {
 
 const FIXTURE_NAME = "at-0038.krs";
 const HINT_TEXT = "Cmd/Ctrl+Click to jump";
-// Re-acquiring the frame after the TC-02 drill needs a longer settle than the
-// default view-switch reacquire (the drill rebuilds more of the SVG).
+// The hint the VS Code toolbar adds to the viewer (`VscodeToolbarExtras`, #3312).
+const HINT_SELECTOR = '[data-testid="vscode-jump-hint"]';
+// Settle after the TC-02 drill click, so the viewer's debounced compile
+// (300ms) has drawn the drilled view before it is read.
 const DRILL_REACQUIRE_SLEEP_MS = 1000;
 
 // Identifiers in the AT-0038 fixture (see run-webview-tests.mjs). Lines
@@ -221,21 +235,59 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
   });
 
   it("TC-01: shows the hint text on the root view", async () => {
-    const hint = await driver.wait(until.elementLocated(By.css("#jump-hint")), ELEMENT_TIMEOUT_MS);
-    assert.strictEqual(await hint.isDisplayed(), true, "#jump-hint should be visible at root view");
+    const hint = await driver.wait(until.elementLocated(By.css(HINT_SELECTOR)), ELEMENT_TIMEOUT_MS);
+    assert.strictEqual(
+      await hint.isDisplayed(),
+      true,
+      "the jump hint should be visible at root view",
+    );
     const text = await hint.getText();
     assert.ok(
       text.includes(HINT_TEXT),
-      `#jump-hint should contain "${HINT_TEXT}" at root; saw: ${text}`,
+      `the jump hint should contain "${HINT_TEXT}" at root; saw: ${text}`,
+    );
+  });
+
+  it("#3252: the preview carries the edge hover rules", async () => {
+    await driver.wait(
+      until.elementLocated(By.css(".preview-container svg .krs-edge__hitline")),
+      ELEMENT_TIMEOUT_MS,
+    );
+    const selectors = (await driver.executeScript(
+      "const out = [];" +
+        "for (const sheet of Array.from(document.styleSheets)) {" +
+        "  let rules; try { rules = sheet.cssRules; } catch (e) { continue; }" +
+        "  const walk = (list) => { for (const r of Array.from(list)) {" +
+        "    if (r.selectorText) out.push(r.selectorText);" +
+        "    if (r.cssRules) walk(r.cssRules);" +
+        "  } };" +
+        "  walk(rules);" +
+        "}" +
+        "return out.filter(s => s.includes('krs-edge'));",
+    )) as string[];
+    // The highlight on the hovered edge, and the dim on every other edge.
+    assert.ok(
+      selectors.some((sel) => sel.includes(".krs-edge:hover")),
+      `no .krs-edge:hover rule reached the webview; saw: ${JSON.stringify(selectors)}`,
+    );
+    assert.ok(
+      selectors.some(
+        (sel) => sel.includes(":has(.krs-edge:hover)") && sel.includes(":not(:hover)"),
+      ),
+      `no peer-dim rule reached the webview; saw: ${JSON.stringify(selectors)}`,
     );
   });
 
   it("TC-03: Cmd/Ctrl+Click on a parent node moves the editor cursor without drilling", async () => {
-    const beforeBreadcrumb = await readBreadcrumb(driver);
-    assert.deepStrictEqual(
-      breadcrumbSegments(beforeBreadcrumb),
-      ["Root"],
-      `expected to start at root, but breadcrumb was "${beforeBreadcrumb}"`,
+    // The root view's breadcrumb is the system's label alone.
+    let beforeBreadcrumb = "";
+    await driver.wait(
+      async () => {
+        beforeBreadcrumb = await readBreadcrumb(driver);
+        return breadcrumbSegments(beforeBreadcrumb).length === 1;
+      },
+      ELEMENT_TIMEOUT_MS,
+      "expected to start at the root view",
     );
 
     const selector = '[data-node-id="OrderService"][data-has-children="true"]';
@@ -244,17 +296,17 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
     await clickAndAwaitCursor(selector, FIXTURE_LINE.OrderService, "OrderService");
 
     const afterBreadcrumb = await readBreadcrumb(driver);
-    assert.deepStrictEqual(
-      breadcrumbSegments(afterBreadcrumb),
-      ["Root"],
-      `Cmd/Ctrl+Click should not drill the preview; breadcrumb went to "${afterBreadcrumb}"`,
+    assert.strictEqual(
+      afterBreadcrumb,
+      beforeBreadcrumb,
+      `Cmd/Ctrl+Click should not drill the preview; breadcrumb went from "${beforeBreadcrumb}" to "${afterBreadcrumb}"`,
     );
   });
 
   it("TC-02: keeps the hint visible after plain-clicking a parent node to drill in", async () => {
     await dispatchClick(driver, '[data-node-id="OrderService"][data-has-children="true"]');
 
-    // Drill rebuilds webview.html — re-acquire the frame.
+    // The drill happens in place; settle for the viewer's compile.
     await reacquireFrame(ctx, DRILL_REACQUIRE_SLEEP_MS);
 
     let lastBreadcrumb = "";
@@ -265,25 +317,25 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
           return breadcrumbSegments(lastBreadcrumb).length > 1;
         },
         ELEMENT_TIMEOUT_MS,
-        "breadcrumb did not advance past Root after drill click",
+        "breadcrumb did not advance past the root after drill click",
       );
     } catch (err) {
       throw new Error(
-        `breadcrumb did not advance past Root after drill click; last seen: "${lastBreadcrumb}". Original: ${(err as Error).message}`,
+        `breadcrumb did not advance past the root after drill click; last seen: "${lastBreadcrumb}". Original: ${(err as Error).message}`,
         { cause: err },
       );
     }
 
-    const hint = await driver.wait(until.elementLocated(By.css("#jump-hint")), ELEMENT_TIMEOUT_MS);
+    const hint = await driver.wait(until.elementLocated(By.css(HINT_SELECTOR)), ELEMENT_TIMEOUT_MS);
     assert.strictEqual(
       await hint.isDisplayed(),
       true,
-      "#jump-hint should remain visible after drilling into OrderService",
+      "the jump hint should remain visible after drilling into OrderService",
     );
     const text = await hint.getText();
     assert.ok(
       text.includes(HINT_TEXT),
-      `#jump-hint should still contain "${HINT_TEXT}" after drill-down; saw: ${text}`,
+      `the jump hint should still contain "${HINT_TEXT}" after drill-down; saw: ${text}`,
     );
   });
 
@@ -305,5 +357,46 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
       beforeBreadcrumb,
       `Cmd/Ctrl+Click on a leaf should not change the preview view; breadcrumb went from "${beforeBreadcrumb}" to "${afterBreadcrumb}"`,
     );
+  });
+
+  // TPL-2996: the preview reads the open buffer, not the file on disk, and a
+  // change keeps the drilled view (#2996 decision 3). Runs last: it leaves the
+  // preview drilled into OrderService (TC-02) and reverts its own edit, so
+  // `after()` can close the editors without a save prompt.
+  it("TPL-2996: an unsaved edit reaches the preview and keeps the drilled view", async () => {
+    const beforeBreadcrumb = await readBreadcrumb(driver);
+    assert.ok(
+      breadcrumbSegments(beforeBreadcrumb).length > 1,
+      `expected to start drilled into OrderService; breadcrumb was "${beforeBreadcrumb}"`,
+    );
+
+    await leaveWebViewFrame(ctx, { swallowErrors: false });
+    const editor = (await new EditorView().openEditor(FIXTURE_NAME, 0)) as TextEditor;
+    try {
+      // One more domain inside OrderService, on the same line so no other
+      // line moves. Not saved.
+      await editor.setTextAtLine(
+        FIXTURE_LINE.OrderManagement,
+        "    domain OrderManagement {} domain Payments {}",
+      );
+      assert.strictEqual(await editor.isDirty(), true, "the edit should stay unsaved");
+
+      await ensureWebViewFrame(ctx);
+      await driver.wait(
+        until.elementLocated(By.css('.preview-container [data-node-id="Payments"]')),
+        ELEMENT_TIMEOUT_MS,
+        "the unsaved domain never appeared in the preview",
+      );
+      const afterBreadcrumb = await readBreadcrumb(driver);
+      assert.strictEqual(
+        afterBreadcrumb,
+        beforeBreadcrumb,
+        `the edit should keep the drilled view; breadcrumb went from "${beforeBreadcrumb}" to "${afterBreadcrumb}"`,
+      );
+    } finally {
+      await leaveWebViewFrame(ctx);
+      await new EditorView().openEditor(FIXTURE_NAME, 0);
+      await new Workbench().executeCommand("File: Revert File");
+    }
   });
 });
