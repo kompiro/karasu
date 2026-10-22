@@ -18,10 +18,10 @@ assumptions:
 - **ステータス**: 決定済み
 - **関連**:
   - Issue #3271（起点）
-  - Issue #2957 / PR #2959（`Post-merge follow-ups` 節と、マージ時に Issue へ項目を写す workflow の提案。マージせずに閉じた）
+  - Issue #2957 / PR #2959（`Post-merge follow-ups` 節と、マージ時に Issue へ項目を写す workflow の提案。マージしない。本 ADR のマージ後に not planned で閉じる）
   - [ADR-3169](3169-at-manual-items-before-merge.md)（AT の手動項目はマージ前に確かめられるものに限る。本番にしか現れない項目の行き先を本 ADR で改める）
   - [ADR-3052](3052-review-branch-diff-before-draft-pr.md)（PR を作るまでの手順。同じく hane の `ship` / `start-dev` が実行する）
-  - kompiro/hane#97（`ship` / `start-dev` 側の変更）
+  - kompiro/hane#97 / kompiro/hane#98（`ship` / `start-dev` 側の変更。Issue と PR）
 
 ## 背景
 
