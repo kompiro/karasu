@@ -66,15 +66,16 @@ export function isMonacoModule(id: string): boolean {
  * Fail the build when a `monaco-editor` module is bundled. Serve mode never
  * shows the editor, and Monaco is most of the app build: one import of it
  * outside `monaco-setup.ts` would put it back into the npm package unseen.
+ * The VS Code webview build (#3312) reuses it under its own name.
  */
-export function rejectMonaco(): Plugin {
+export function rejectMonaco(buildName = "the karasu serve build"): Plugin {
   return {
     name: "karasu-serve-reject-monaco",
     generateBundle() {
       const bundled = [...this.getModuleIds()].filter(isMonacoModule);
       if (bundled.length > 0) {
         this.error(
-          `the karasu serve build bundles monaco-editor (${bundled.length} modules, e.g. ${bundled[0]}). Only main.tsx may import monaco-setup.`,
+          `${buildName} bundles monaco-editor (${bundled.length} modules, e.g. ${bundled[0]}). Only main.tsx may import monaco-setup.`,
         );
       }
     },

@@ -165,6 +165,9 @@ export const ja: Partial<Translations> = {
   "nodeDetail.links.title": "🔗 リンク",
   "nodeDetail.openDeployView": "🚀 Deploy 図で確認 →",
   "nodeDetail.jumpToEditor": "↗ エディタへジャンプ",
+  "vscodePreview.iconMode.label": "◇ アイコン表示",
+  "vscodePreview.iconMode.ariaLabel": "アイコンカードの表示を切り替える",
+  "vscodePreview.jumpHint": "ⓘ で詳細 · Cmd/Ctrl+クリックでジャンプ",
   "vscodePreview.blockedByErrors": ({ count }) =>
     `モデルに ${count} 件の error があります。直すとプレビューが再び描画されます（Problems パネルを参照）。`,
   "nodeDetail.annotationDiff.title": "⇄ アノテーション差分",

@@ -167,6 +167,11 @@ export const en: Translations = {
   "nodeDetail.links.title": "🔗 Links",
   "nodeDetail.openDeployView": "🚀 View in Deploy diagram →",
   "nodeDetail.jumpToEditor": "↗ Jump to editor",
+  // VS Code preview toolbar (#3312): the controls the extension adds to the
+  // shared viewer's toolbar.
+  "vscodePreview.iconMode.label": "◇ Icon Mode",
+  "vscodePreview.iconMode.ariaLabel": "Toggle icon cards",
+  "vscodePreview.jumpHint": "ⓘ for details · Cmd/Ctrl+Click to jump",
   "vscodePreview.blockedByErrors": ({ count }) =>
     `The model has ${count} error${count === 1 ? "" : "s"}. The preview draws again once ${count === 1 ? "it is" : "they are"} fixed (see the Problems panel).`,
   "nodeDetail.annotationDiff.title": "⇄ Annotation diff",
