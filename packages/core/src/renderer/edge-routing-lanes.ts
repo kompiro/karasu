@@ -58,14 +58,28 @@ export interface ChannelLimits {
   ceiling: number;
   /** The frame's bottom border; `Infinity` without a frame. */
   floor: number;
+  /** The frame's left border; `-Infinity` without a frame (#3154). */
+  left: number;
+  /** The frame's right border; `Infinity` without a frame (#3154). */
+  right: number;
 }
 
 /** No enclosing frame: channels are bounded by cards and group frames alone. */
-export const NO_CHANNEL_LIMITS: ChannelLimits = { ceiling: -Infinity, floor: Infinity };
+export const NO_CHANNEL_LIMITS: ChannelLimits = {
+  ceiling: -Infinity,
+  floor: Infinity,
+  left: -Infinity,
+  right: Infinity,
+};
 
 export function channelLimitsOf(frame: Rect | undefined): ChannelLimits {
   return frame
-    ? { ceiling: frame.y + CONTAINER_LABEL_HEIGHT, floor: frame.y + frame.height }
+    ? {
+        ceiling: frame.y + CONTAINER_LABEL_HEIGHT,
+        floor: frame.y + frame.height,
+        left: frame.x,
+        right: frame.x + frame.width,
+      }
     : NO_CHANNEL_LIMITS;
 }
 

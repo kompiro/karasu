@@ -133,9 +133,10 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // are applied by **one** re-placement: `placementPasses` stays 1 or 2, the
   // bound ADR-2598 set.
   const columns = columnReservations(found.result.result, found.result.rows);
-  const reserved = reservations.size > 0 || columns.size > 0;
+  const sides = gutterReservations(found.result.result, found.result.enclosure);
+  const reserved = reservations.size > 0 || columns.size > 0 || sides !== undefined;
   const run = reserved
-    ? layoutInner(viewSlice, options, found.budget, reservations, columns)
+    ? layoutInner(viewSlice, options, found.budget, reservations, columns, sides)
     : found.result;
   const result = run.result;
   // Crossing marks decorate the routed edges and change neither the canvas
@@ -227,6 +228,50 @@ function channelReservations(
     out.set(rowBelow, Math.max(out.get(rowBelow) ?? 0, extra));
   }
   return out;
+}
+
+/** Width to add inside the drill-down frame on each side (#3154). */
+interface FrameSides {
+  left: number;
+  right: number;
+}
+
+/**
+ * Gap kept between the outermost gutter lane and the drill-down frame's side:
+ * what the default padding leaves beside the first lane
+ * (`CONTAINER_PADDING - GUTTER_GAP`).
+ */
+const FRAME_SIDE_MARGIN = 12;
+
+/**
+ * Extra width the drill-down frame needs on each side so every vertical run
+ * stays inside it (#3154): the horizontal counterpart of the frame-bounded
+ * channels (#3132). Gutter lanes step outward from the content by
+ * `TRUNK_LANE_GAP`, while the frame's side padding is fixed before routing,
+ * so from the second lane on they were drawn on or past the border.
+ */
+function gutterReservations(
+  result: LayoutResult,
+  enclosure: ContainerRect | undefined,
+): FrameSides | undefined {
+  if (!enclosure) return undefined;
+  const innerLeft = enclosure.x + FRAME_SIDE_MARGIN;
+  const innerRight = enclosure.x + enclosure.width - FRAME_SIDE_MARGIN;
+  let left = 0;
+  let right = 0;
+  for (const edge of result.edges) {
+    if (edge.ghost || edge.cyclic) continue;
+    const pts = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
+    for (let k = 0; k + 1 < pts.length; k++) {
+      const a = pts[k];
+      const b = pts[k + 1];
+      if (Math.abs(a.x - b.x) > 1e-6) continue;
+      left = Math.max(left, innerLeft - a.x);
+      right = Math.max(right, a.x - innerRight);
+    }
+  }
+  if (left <= 0.5 && right <= 0.5) return undefined;
+  return { left: Math.ceil(Math.max(0, left)), right: Math.ceil(Math.max(0, right)) };
 }
 
 /**
@@ -462,6 +507,8 @@ function layoutInner(
   extraGapBeforeRow?: ReadonlyMap<number, number>,
   /** Column capacity to reserve inside rows on that same second pass (#2611). */
   extraGapBeforeCard?: ReadonlyMap<number, ReadonlyMap<string, number>>,
+  /** Gutter capacity to reserve inside the drill-down frame's sides (#3154). */
+  extraFrameSides?: FrameSides,
 ): LayoutRun {
   const {
     ownerIndex,
@@ -805,6 +852,10 @@ function layoutInner(
     }
     childMaxWidth += totalNestOffset;
     childMaxHeight += totalNestOffset;
+  }
+  if (extraFrameSides && hasContainer && viewSlice.containerNode) {
+    for (const [, node] of layoutNodes) node.x += extraFrameSides.left;
+    childMaxWidth += extraFrameSides.left + extraFrameSides.right;
   }
 
   // Build container rects
