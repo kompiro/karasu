@@ -140,7 +140,9 @@ viewer をそのまま webview で動かす。viewer の `FileSystemProvider` �
    - 戻り値をハンドルにする: `filesChanged(paths)`（表示中のビューを保って再コンパイル。`SELECT_FILE` ではなく `UPDATE_FILE_CONTENT` の経路）、`setEntry(path)`（別のファイルを開く。こちらはビューを初期化する）、`setTheme` / `setLocale` / `setDisplayMode`、`highlight(nodeId, attribute)`、`unmount`
    - `onRevealNode` を渡したときは、詳細パネルの「Jump to editor」を出し、Cmd/Ctrl+クリックをジャンプにする（ADR-177）。app でエディタがあるときの `onJumpToEditor` も同じ条件で Cmd/Ctrl+クリックに乗せるかは、スライス A で決める
    - スタイルファイルだけの編集でも図が更新されるようにする。`useStyleSource` は今、entry の import の並びが変わったときだけ読み直す
-4. **ホスト FS とメッセージ。** 読み出しは要求 id 付きの往復にする（`readFile` / `readDir` / `exists`）。ホストはパスを検査し、ワークスペースフォルダの中（ワークスペースが無いときは entry のディレクトリの下）だけを読む。書き込みは `.krs` / `.krs.style` だけを受け、`WorkspaceEdit` で適用する。webview から来るメッセージはすべて今の `message-validation.ts` と同じく形を検査する（TPL-168）。
+4. **ホスト FS とメッセージ。** 読み出しは要求 id 付きの往復にする（`readFile` / `readDir` / `exists`）。webview から来るメッセージはすべて今の `message-validation.ts` と同じく形を検査する（TPL-168）。
+   - **読める範囲と書ける範囲。** 許可ルートはワークスペースフォルダ（ワークスペースが無いときは entry のディレクトリ）とする。ホストは受けたパスを正規化して `..`・符号化した区切り・NUL を落とし、許可ルート + 区切りの前方一致で範囲を確かめる。`file` スキームでは `realpath` を取ってもう一度確かめ、symlink が許可ルートの外を指していれば拒否する（書き込みでファイルがまだ無いときは親ディレクトリの `realpath` で見る）。書き込みはこれに加えて `.krs` / `.krs.style` だけを受け、検査を通った URI にだけ `WorkspaceEdit` を適用する。読み出しと書き込みは同じ検査関数を通す
+   - **古い応答を捨てる。** viewer 側のホスト FS は世代番号を持ち、`filesChanged`・`setEntry` のたびに進める。要求には出したときの世代を付け、応答の世代が今と違えばキャッシュに入れない。応答そのものは要求したコンパイルに返してよい。そのコンパイルは `useDebouncedCompile` が古い結果として捨てる（#1534）。世代をまたいで同じパスの要求を相乗りさせない。`unmount` では待っている要求をすべて reject し、後から届いた応答は無視する
 5. **エディタとの連携。** アクティブな `.krs` エディタが変わったら `setEntry`。どこかの `.krs` / `.krs.style` のバッファが変わるか保存されたら、そのパスを `filesChanged` で送る（300ms debounce は viewer 側の既存の debounce に任せる）。カーソル → highlight は今の LSP 経路のままハンドルの `highlight` に渡す。ジャンプは viewer が `nodeFileIndex` から引いたファイルを開き（表示されていなければ開く）、そのファイルに LSP `PositionOfNodeRequest` を送る。これで別ファイルへのジャンプと、切替後に古いファイルを引く問題が直る。
 6. **テーマと言語。** `activeColorTheme.kind` を今の `theme-mapping.ts` で light / dark に写して初期値と `setTheme` に渡す。言語は `vscode.env.language` を `resolveLocaleTag` に通して渡す（TPL-2536）。viewer のテーマ / 言語の切替ボタンは出さない。VS Code の設定に従うのが期待であり、webview の中で別の値を持つと次の起動で食い違う。
 7. **ツールバー。** VS Code 用のツールバーの差し込みには Icon Mode のトグルを置く（ADR-299 / ADR-2906）。隠すのは共有・書き出し（SVG / draw.io）・全層表示（`blob:` の新しいウィンドウ）・Docs / Reference。どれも webview では動かないか、別ウィンドウを前提にしている。現行の preview に無いので、隠しても後退にはならない。書き出しを保存ダイアログにつなぐのは別 Issue にする。
@@ -182,6 +184,7 @@ viewer をそのまま webview で動かす。viewer の `FileSystemProvider` �
    - app: `src/viewer/vscode/main.tsx`（`acquireVsCodeApi` とメッセージの型はここだけが持つ）、`vite.vscode-webview.config.ts`、ビルド設定のガードテスト（固定名、Monaco の混入、ネットワークに出る `url(` が無いこと）
    <!-- absent-path-next-line: a file slice B creates in packages/vscode -->
    - vscode: `scripts/stage-webview.ts`、build への組み込み、notices、`preview-panel.ts` の書き直し（HTML の組み立て、CSP、ホスト FS、エディタ連携）、`message-validation.ts` の拡張、`webview-content.ts` の削除
+   - ホスト FS の unit test: (1) `filesChanged` / `setEntry` の後に届いた古い世代の `readFile` 応答がキャッシュに入らず、次のコンパイルが新しい内容を読む。(2) `unmount` の後に届いた応答が何も更新しない。(3) 許可ルートの外を指すパス（`..`、絶対パス、符号化した区切り、NUL、外を指す symlink）を読み出し・書き込みの両方で拒否する（TPL-168 の negative test）
    - `.vsix` に `out/webview/` が入ることを `marketplace-manifest.test.ts` の並びで確かめる（TPL-1024）
    - e2e: `tests/webview/` の harness と AT-0038 / AT-0039 / AT-2917 の spec を書き直す。#3252 の edge hover を 1 件足す
 3. スライス C: ホスト FS の書き込みを `WorkspaceEdit` で適用し、`readOnly` を外す。

@@ -50,4 +50,5 @@ entry のファイルだけをバッファから読むのでは足りない。`@
 
 ## 関連テスト
 
-- 未整備。#2996 のスライス B で、ホスト FS の unit test と、保存せずに編集した内容が preview に出ることを見る webview e2e を足す
+- `packages/lsp/src/definition-imports.test.ts` — import 先をたどる定義ジャンプの fence。今はディスク上のファイルだけを読む前提で、import 先のバッファを優先する項目はまだ無い（チェックリストの 1・2 が未検証）
+- VS Code の preview 側には、この観点を見るテストがまだ無い（proactive TPL）。#2996 のスライス B で、ホスト FS の unit test と、保存せずに編集した内容が preview に出ることを見る webview e2e を足し、ここにパスを書く
