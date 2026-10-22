@@ -32,23 +32,24 @@ karasu serve
   Directory : /path/to/architecture
   Preview   : http://localhost:3000
 
-Watching for .krs file changes...
+Watching for .krs and .krs.style file changes...
 ```
 
 表示された URL（既定は **http://localhost:3000**）を開きます。どのファイルを
 表示するかは URL のパスで決まります。
 
-| URL        | 表示されるファイル                                |
-| ---------- | ------------------------------------------------- |
-| `/`        | `index.krs`（`.krs` が 1 つだけならそのファイル） |
-| `/payment` | `payment.krs`                                     |
-| `/org`     | `org.krs`                                         |
+| URL               | 表示されるファイル                                |
+| ----------------- | ------------------------------------------------- |
+| `/`               | `index.krs`（`.krs` が 1 つだけならそのファイル） |
+| `/payment`        | `payment.krs`                                     |
+| `/services/order` | `services/order.krs`                              |
 
 `serve` は**プレビュー専用**で、エディタは内蔵しません。次の短いループで
 作業します。
 
 1. 普段使いのエディタ（または [VS Code 拡張](../guide/02-onboarding.ja.md)）で
-   `.krs` を編集する。
+   `.krs` を編集する。開いているファイルでも、それが import するファイルや
+   `@import` する `.krs.style` でもよい。
 2. 保存する。
 3. サーバーが変更を検知してブラウザに通知し、図が自動で再描画される。手動
    リロードは不要。
