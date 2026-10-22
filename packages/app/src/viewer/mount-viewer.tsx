@@ -211,16 +211,23 @@ function Viewer({ fs, toolbar, ...project }: ViewerProps) {
 
 /**
  * Hands a click on a new-tab link to the host instead of letting the page
- * follow it. It listens on the document, not the container: menus render
- * through a portal outside it (the Docs menu's site link), and the viewer is
- * the only thing on a page that passes `onOpenExternal`.
+ * follow it. Only the viewer's own links: those inside its container, and
+ * those in the menus it renders through a Radix portal outside it (the Docs
+ * menu's site link). A link the host put elsewhere on the page is left alone.
  */
-function interceptExternalLinks(doc: Document, onOpenExternal: (url: string) => void): () => void {
+function interceptExternalLinks(
+  container: HTMLElement,
+  onOpenExternal: (url: string) => void,
+): () => void {
+  const doc = container.ownerDocument;
   const onClick = (event: MouseEvent) => {
     // `auxclick` also fires for the right button, which means the context menu.
     if (event.type === "auxclick" && event.button !== 1) return;
     const anchor = (event.target as Element | null)?.closest?.("a[href]");
     if (!(anchor instanceof HTMLAnchorElement) || anchor.target !== "_blank") return;
+    const ownedByViewer =
+      container.contains(anchor) || anchor.closest("[data-radix-popper-content-wrapper]") !== null;
+    if (!ownedByViewer) return;
     event.preventDefault();
     onOpenExternal(anchor.href);
   };
@@ -245,7 +252,7 @@ export function mountViewer(container: HTMLElement, options: ViewerOptions): Vie
     options.source !== undefined ? fs.writeFile(VIEW_PATH, options.source) : Promise.resolve();
   const controller = new ViewerController(options.entryPath ?? VIEW_PATH);
   const stopIntercepting = options.onOpenExternal
-    ? interceptExternalLinks(container.ownerDocument, options.onOpenExternal)
+    ? interceptExternalLinks(container, options.onOpenExternal)
     : () => {};
 
   const root = createRoot(container);

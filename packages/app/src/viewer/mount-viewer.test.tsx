@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { InMemoryFileSystemProvider } from "@karasu-tools/core";
 import { mountViewer, type ViewerHandle, type ViewerOptions } from "./mount-viewer.js";
 
@@ -242,6 +243,34 @@ describe("mountViewer — host callbacks", () => {
     expect(onOpenExternal).toHaveBeenCalledTimes(2);
     expect(aux(2)).toBe(true);
     expect(onOpenExternal).toHaveBeenCalledTimes(2);
+
+    // A link the host put elsewhere on the page is not the viewer's.
+    const hostLink = document.createElement("a");
+    hostLink.href = "https://example.com/host";
+    hostLink.target = "_blank";
+    document.body.appendChild(hostLink);
+    hostLink.addEventListener("click", (e) => e.preventDefault()); // jsdom would try to navigate
+    fireEvent.click(hostLink);
+    hostLink.remove();
+    expect(onOpenExternal).toHaveBeenCalledTimes(2);
+  });
+
+  // The Docs menu renders through a portal outside the container; its link is
+  // still the viewer's.
+  it("hands the Docs menu's link to onOpenExternal although it is portalled", async () => {
+    const user = userEvent.setup();
+    const onOpenExternal = vi.fn<(url: string) => void>();
+    const fs = await projectFs();
+    const el = mount({ fs, entryPath: ENTRY, onOpenExternal });
+    await shows(el, "Web");
+    await user.click(screen.getByRole("button", { name: "Documentation links" }));
+    const site = await screen.findByRole("menuitem", {
+      name: "Open the documentation site in a new tab",
+    });
+    expect(el.contains(site)).toBe(false);
+    fireEvent.click(site);
+    expect(onOpenExternal).toHaveBeenCalledTimes(1);
+    expect(onOpenExternal.mock.calls[0][0]).toMatch(/^https:\/\//);
   });
 
   it("opens no edge menu when read-only", async () => {
