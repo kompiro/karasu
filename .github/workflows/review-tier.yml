@@ -1,0 +1,52 @@
+name: Review tier
+
+# Holds a PR labeled `risk: low` to what its change actually is (Issue #3286,
+# docs/process.md "リスク段階"). A Low PR merges on its own once CodeRabbit
+# approves, so the label must match the final diff, the author and CodeRabbit's
+# effort estimate. The check fails only on that mismatch; every other PR passes,
+# since its tier just says how far a human reads it.
+#
+# No path filter and no skip stub: docs-only PRs are exactly the ones that can be
+# Low, and a filter that skipped them would drop the check where it matters
+# (TPL-1725, TPL-3286). It runs on drafts too: the script needs no install and
+# finishes in seconds, unlike the minute-scale jobs ADR-2643 keeps off drafts.
+#
+# `pull_request_review` re-runs the check when CodeRabbit posts a review, which is
+# when its effort estimate first exists. The estimate is read only from
+# CodeRabbit's own summary comment (see scripts/review/tier.ts).
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+  pull_request_review:
+    types: [submitted]
+
+concurrency:
+  group: review-tier-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  review-tier:
+    name: Review tier
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Check the risk label against the change
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/review/tier.ts check --pr "$PR"
