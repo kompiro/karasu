@@ -4,8 +4,8 @@ description: >
   Drive an open PR's CodeRabbit rounds to approval without a human relaying them: wait for
   CodeRabbit (including its rate limit), read and act on the review threads, push once per
   round, and notify the maintainer only when the PR is ready for them or needs their judgment.
-  Run it after /engineering:code-review has been applied to the branch diff against its base and
-  the PR was taken out of draft (gh pr ready), or when resuming a PR that is still in CodeRabbit rounds.
+  Run it after /engineering:code-review and one CodeRabbit CLI run have been applied to the branch
+  diff against its base and the PR was taken out of draft (gh pr ready), or when resuming a PR that is still in CodeRabbit rounds.
   Trigger when the user says: "CodeRabbit を収束させて", "CodeRabbit のラウンドを回して",
   "CodeRabbit の approve まで", "coderabbit converge", "drive coderabbit to approval",
   or similar phrases.
@@ -42,6 +42,9 @@ pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --once
   push すると review 枠を 1 回余分に使う（`docs/process.md` の PR ワークフロー、ADR-2898 / ADR-3052）
   すでに ready で `/engineering:code-review` がまだなら、その修正は単独で push せず、最初のラウンドの
   修正と一緒に下の「3. 指摘に対応する」の 1 回の push に含める
+- CodeRabbit CLI（`coderabbit review --agent --deep --base origin/main --committed`）も ready より前に
+  同じ差分へ 1 回だけ当ててある（`docs/process.md` の手順 9、ADR-3326）。まだでも、ラウンド中に CLI は回さない。
+  CLI はラウンドの前に 1 回だけ使うもので、ラウンドの中で PR のレビューを待つ代わりにはしない
 - PR のブランチの worktree にいる。`gh pr view --json number --jq .number` で PR 番号を得る
 
 ## ループ
