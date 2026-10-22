@@ -32,7 +32,7 @@ export default mergeConfig(
         // carry no hash, and everything else is inlined: one script under
         // `script-src` and one stylesheet under `style-src`.
         output: {
-          inlineDynamicImports: true,
+          codeSplitting: false,
           entryFileNames: `${WEBVIEW_ASSET_DIR}/viewer.js`,
           assetFileNames: (asset) =>
             asset.names.some((name) => name.endsWith(".css"))

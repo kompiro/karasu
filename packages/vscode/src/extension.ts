@@ -8,9 +8,9 @@ import {
   TransportKind,
 } from "vscode-languageclient/node";
 import { NodeAtPositionRequest, PositionOfNodeRequest } from "@karasu-tools/lsp/protocol";
+import { isKarasuSourcePath } from "./host-files.js";
 import { PreviewPanel } from "./preview-panel.js";
 
-const PREVIEW_DEBOUNCE_MS = 300;
 const CURSOR_DEBOUNCE_MS = 150;
 
 /**
@@ -25,7 +25,6 @@ let onDeactivate: (() => Thenable<void> | undefined) | undefined;
 export function activate(context: vscode.ExtensionContext): void {
   let client: LanguageClient | undefined;
   let previewPanel: PreviewPanel | undefined;
-  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
   let cursorDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   // --- LSP ---
@@ -65,15 +64,40 @@ export function activate(context: vscode.ExtensionContext): void {
   onDeactivate = () => client?.stop();
   client.start();
 
-  async function handleNavigate(nodeId: string, uri: string): Promise<void> {
+  // Which editor column the user last worked in on a .krs, so a jump to
+  // another file opens beside it rather than over the preview.
+  let lastSourceColumn: vscode.ViewColumn | undefined;
+  // Set while a jump opens a file, so the editor change it causes does not
+  // switch the preview to that file: the user asked to see a definition, not
+  // a different model.
+  let jumpingTo: string | undefined;
+
+  // Jump from the preview to a node's definition (ADR-177), in the file that
+  // defines it, which may be another file than the preview's entry (#3312).
+  // The panel has checked that `filePath` is a readable .krs.
+  async function revealNode(nodeId: string, filePath: string): Promise<void> {
     if (!client) return;
+    const uri = vscode.Uri.file(filePath);
+    const visible = vscode.window.visibleTextEditors.find(
+      (e) => e.document.uri.fsPath === uri.fsPath,
+    );
+    jumpingTo = uri.fsPath;
+    let editor: vscode.TextEditor;
+    try {
+      editor = visible
+        ? await vscode.window.showTextDocument(visible.document, visible.viewColumn)
+        : await vscode.window.showTextDocument(uri, {
+            viewColumn: lastSourceColumn ?? vscode.ViewColumn.One,
+          });
+    } finally {
+      jumpingTo = undefined;
+    }
 
-    const result = await client.sendRequest(PositionOfNodeRequest, { uri, nodeId });
+    const result = await client.sendRequest(PositionOfNodeRequest, {
+      uri: editor.document.uri.toString(),
+      nodeId,
+    });
     if (!result.range) return;
-
-    const editor = vscode.window.visibleTextEditors.find((e) => e.document.uri.toString() === uri);
-    if (!editor) return;
-
     const range = new vscode.Range(
       new vscode.Position(result.range.start.line, result.range.start.character),
       new vscode.Position(result.range.end.line, result.range.end.character),
@@ -82,6 +106,10 @@ export function activate(context: vscode.ExtensionContext): void {
     editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
   }
 
+  /** Whether a document is a .krs / .krs.style on disk, the only files the preview reads. */
+  const isSourceDocument = (doc: vscode.TextDocument) =>
+    doc.uri.scheme === "file" && isKarasuSourcePath(doc.uri.fsPath);
+
   // --- Preview ---
   const openPreviewCmd = vscode.commands.registerCommand("karasu.openPreview", () => {
     const editor = vscode.window.activeTextEditor;
@@ -89,40 +117,57 @@ export function activate(context: vscode.ExtensionContext): void {
       void vscode.window.showInformationMessage("Open a .krs file to preview it.");
       return;
     }
+    lastSourceColumn = editor.viewColumn;
 
     if (!previewPanel || previewPanel.isDisposed) {
       previewPanel = PreviewPanel.create(
-        () => {
-          previewPanel = undefined;
+        {
+          extensionUri: context.extensionUri,
+          onRevealNode: (nodeId, filePath) => void revealNode(nodeId, filePath),
+          onDispose: () => {
+            previewPanel = undefined;
+          },
         },
-        (nodeId) => {
-          void handleNavigate(nodeId, editor.document.uri.toString());
-        },
+        editor.document,
       );
+    } else {
+      previewPanel.showEntry(editor.document);
     }
-
-    previewPanel.update(editor.document);
     previewPanel.reveal();
   });
 
+  // Every .krs / .krs.style buffer, not only the entry: an import's unsaved
+  // edit reaches the preview too (TPL-2996). The viewer debounces the compile.
   const changeWatcher = vscode.workspace.onDidChangeTextDocument((e) => {
-    if (previewPanel && !previewPanel.isDisposed && e.document.languageId === "krs") {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        previewPanel?.update(e.document);
-      }, PREVIEW_DEBOUNCE_MS);
+    if (previewPanel && !previewPanel.isDisposed && isSourceDocument(e.document)) {
+      previewPanel.filesChanged([e.document.uri.fsPath]);
     }
   });
 
-  const editorWatcher = vscode.window.onDidChangeActiveTextEditor((editor) => {
-    if (
-      previewPanel &&
-      !previewPanel.isDisposed &&
-      editor &&
-      editor.document.languageId === "krs"
-    ) {
-      previewPanel.update(editor.document);
+  // Closing a buffer with unsaved edits puts the disk's text back in force.
+  const closeWatcher = vscode.workspace.onDidCloseTextDocument((doc) => {
+    if (previewPanel && !previewPanel.isDisposed && isSourceDocument(doc)) {
+      previewPanel.filesChanged([doc.uri.fsPath]);
     }
+  });
+
+  // A change on disk that no editor made: a pull, a generator, another tool.
+  const fileWatcher = vscode.workspace.createFileSystemWatcher("**/*.{krs,krs.style}");
+  const onDiskChange = (uri: vscode.Uri) => {
+    if (previewPanel && !previewPanel.isDisposed && uri.scheme === "file") {
+      previewPanel.filesChanged([uri.fsPath]);
+    }
+  };
+  fileWatcher.onDidChange(onDiskChange);
+  fileWatcher.onDidCreate(onDiskChange);
+  fileWatcher.onDidDelete(onDiskChange);
+
+  const editorWatcher = vscode.window.onDidChangeActiveTextEditor((editor) => {
+    if (!editor || editor.document.languageId !== "krs") return;
+    lastSourceColumn = editor.viewColumn;
+    if (!previewPanel || previewPanel.isDisposed) return;
+    if (jumpingTo === editor.document.uri.fsPath) return;
+    previewPanel.showEntry(editor.document);
   });
 
   // --- Cursor tracking → preview highlight ---
@@ -178,6 +223,8 @@ export function activate(context: vscode.ExtensionContext): void {
     { dispose: () => client?.stop() },
     openPreviewCmd,
     changeWatcher,
+    closeWatcher,
+    fileWatcher,
     editorWatcher,
     cursorWatcher,
     tidyStyleCmd,

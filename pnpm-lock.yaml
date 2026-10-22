@@ -361,9 +361,6 @@ importers:
       '@karasu-tools/lsp':
         specifier: workspace:*
         version: link:../lsp
-      marked:
-        specifier: ^18.1.1
-        version: 18.1.1
       vscode-languageclient:
         specifier: ^10.1.2
         version: 10.1.2

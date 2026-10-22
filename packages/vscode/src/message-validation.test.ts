@@ -1,63 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  VIEW_TYPES,
-  isAllowedExternalUrl,
-  isNodeId,
-  isValidNavIndex,
-  isViewType,
-  isOptionalNodePath,
-} from "./message-validation.js";
-
-describe("isViewType", () => {
-  it("accepts every known view type", () => {
-    for (const v of VIEW_TYPES) {
-      expect(isViewType(v)).toBe(true);
-    }
-  });
-
-  it("rejects an unknown string", () => {
-    expect(isViewType("matrix")).toBe(false);
-    expect(isViewType("timeline")).toBe(false);
-    expect(isViewType("")).toBe(false);
-  });
-
-  it("rejects non-string values", () => {
-    expect(isViewType(undefined)).toBe(false);
-    expect(isViewType(null)).toBe(false);
-    expect(isViewType(0)).toBe(false);
-    expect(isViewType({ system: true })).toBe(false);
-  });
-});
-
-describe("isValidNavIndex", () => {
-  it("accepts non-negative integers within [0, pathLength]", () => {
-    expect(isValidNavIndex(0, 3)).toBe(true);
-    expect(isValidNavIndex(1, 3)).toBe(true);
-    expect(isValidNavIndex(3, 3)).toBe(true); // == length is allowed (no-op slice)
-  });
-
-  it("rejects an index greater than pathLength", () => {
-    expect(isValidNavIndex(4, 3)).toBe(false);
-    expect(isValidNavIndex(100, 0)).toBe(false);
-  });
-
-  it("rejects negative indices", () => {
-    expect(isValidNavIndex(-1, 3)).toBe(false);
-    expect(isValidNavIndex(-100, 5)).toBe(false);
-  });
-
-  it("rejects non-integer numbers", () => {
-    expect(isValidNavIndex(1.5, 3)).toBe(false);
-    expect(isValidNavIndex(Number.NaN, 3)).toBe(false);
-    expect(isValidNavIndex(Number.POSITIVE_INFINITY, 3)).toBe(false);
-  });
-
-  it("rejects non-number values", () => {
-    expect(isValidNavIndex("1", 3)).toBe(false);
-    expect(isValidNavIndex(undefined, 3)).toBe(false);
-    expect(isValidNavIndex(null, 3)).toBe(false);
-  });
-});
+import { isAllowedExternalUrl, isNodeId, parseWebviewMessage } from "./message-validation.js";
 
 describe("isAllowedExternalUrl", () => {
   it("accepts http / https / mailto", () => {
@@ -138,21 +80,40 @@ describe("isNodeId", () => {
   });
 });
 
-describe("isOptionalNodePath (#2917)", () => {
-  it("accepts undefined and a canonical nodePathRefId string, rejects everything else", () => {
-    expect(isOptionalNodePath(undefined)).toBe(true);
-    expect(isOptionalNodePath("Shop.Api")).toBe(true);
-    expect(isOptionalNodePath('Weird."www.example.com"')).toBe(true);
-    expect(isOptionalNodePath("")).toBe(false);
-    expect(isOptionalNodePath(null)).toBe(false);
-    expect(isOptionalNodePath(42)).toBe(false);
-    expect(isOptionalNodePath(["Shop", "Api"])).toBe(false);
+describe("parseWebviewMessage (#3312, TPL-168)", () => {
+  it.each([
+    [{ type: "ready" }],
+    [{ type: "fs", id: 1, op: "readFile", path: "/p/index.krs" }],
+    [{ type: "fs", id: 7, op: "readDir", path: "/p" }],
+    [{ type: "fs", id: 9, op: "exists", path: "/p/a.krs.style" }],
+    [{ type: "revealNode", nodeId: "Api", filePath: "/p/index.krs" }],
+    [{ type: "openExternal", url: "https://example.com/" }],
+  ])("accepts %o", (message) => {
+    expect(parseWebviewMessage(message)).toEqual(message);
   });
 
-  it("rejects a string that is not the canonical form (would decode to empty or odd segments)", () => {
-    expect(isOptionalNodePath(".")).toBe(false);
-    expect(isOptionalNodePath("Shop.")).toBe(false);
-    expect(isOptionalNodePath('"unterminated')).toBe(false);
-    expect(isOptionalNodePath('"Shop.Api"x')).toBe(false);
+  it("drops fields the protocol does not name", () => {
+    expect(
+      parseWebviewMessage({ type: "ready", command: "workbench.action.terminal.new" }),
+    ).toEqual({ type: "ready" });
+    expect(
+      parseWebviewMessage({ type: "fs", id: 1, op: "readFile", path: "/p/a.krs", write: "x" }),
+    ).toEqual({ type: "fs", id: 1, op: "readFile", path: "/p/a.krs" });
+  });
+
+  it.each([
+    ["no object", "ready"],
+    ["null", null],
+    ["an unknown type", { type: "switchView", viewType: "system" }],
+    ["a write the preview cannot do yet", { type: "fs", id: 1, op: "writeFile", path: "/p/a.krs" }],
+    ["a fractional id", { type: "fs", id: 1.5, op: "readFile", path: "/p/a.krs" }],
+    ["a negative id", { type: "fs", id: -1, op: "readFile", path: "/p/a.krs" }],
+    ["a string id", { type: "fs", id: "1", op: "readFile", path: "/p/a.krs" }],
+    ["a missing path", { type: "fs", id: 1, op: "readFile" }],
+    ["an empty node id", { type: "revealNode", nodeId: "", filePath: "/p/a.krs" }],
+    ["a non-string file path", { type: "revealNode", nodeId: "Api", filePath: 3 }],
+    ["a file: URL", { type: "openExternal", url: "file:///etc/passwd" }],
+  ])("refuses %s", (_name, data) => {
+    expect(parseWebviewMessage(data)).toBeNull();
   });
 });

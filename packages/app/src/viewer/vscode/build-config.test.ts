@@ -28,7 +28,7 @@ describe("VS Code webview build (#3312)", () => {
   });
 
   it("emits one script, so the CSP names exactly one", () => {
-    expect(output.inlineDynamicImports).toBe(true);
+    expect(output.codeSplitting).toBe(false);
   });
 
   it("resolves its assets against the script's own URL, not the webview origin root", () => {

@@ -172,8 +172,6 @@ export const en: Translations = {
   "vscodePreview.iconMode.label": "◇ Icon Mode",
   "vscodePreview.iconMode.ariaLabel": "Toggle icon cards",
   "vscodePreview.jumpHint": "ⓘ for details · Cmd/Ctrl+Click to jump",
-  "vscodePreview.blockedByErrors": ({ count }) =>
-    `The model has ${count} error${count === 1 ? "" : "s"}. The preview draws again once ${count === 1 ? "it is" : "they are"} fixed (see the Problems panel).`,
   "nodeDetail.annotationDiff.title": "⇄ Annotation diff",
   "nodeDetail.resources.title": "📦 Storage resources",
   "nodeDetail.capabilities.title": "🔐 Capabilities",
