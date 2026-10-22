@@ -160,7 +160,6 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2773](2773-dependabot-triage-2026-09-08.md) — Dependabot トリアージ 2026-09-08 — repo 側の宣言が bot の届かない所にある 2 件
 - [ADR-2786](2786-threat-detection-fail-closed.md) — 安全網が結論を出せない回は run ごと失敗させ、detection のモデルを pin する
 - [ADR-2804](2804-no-nul-bytes-guard.md) — raw NUL byte を含む tracked file を除外リスト方式の全走査で検出し、Required な Check の両側で走らせる
-- [ADR-2807](2807-suite-budget-clears-its-setup.md) — suite の job 予算は、共有の setup 観測最大を step 境界の上に載せて確保する
 - [ADR-2813](2813-dependabot-security-2026-09-12.md) — Dependabot security alert 2026-09-12（`js-yaml` の floor が 2 度続けて脆弱範囲の内側だった。同じ key での再発は「その時点の patched 版」を書く運用の帰結である）
 - [ADR-2836](2836-dependabot-triage-2026-09-14.md) — Dependabot トリアージ 2026-09-14：vitest 5 の major は ADR の assumption が捕まえ、差し替え PR で入れる
 - [ADR-2839](2839-pause-dependabot-triage-schedule.md) — dependabot-triage workflow の週次 cron を止め、dispatch で運用する
@@ -177,11 +176,14 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3077](3077-dependabot-security-2026-10-06.md) — Dependabot security alert 2026-10-06（transitive 5 件を override で解消し、修正版の無い v6 系 postcss-selector-parser は postcss-nested を 7 に上げて逃がす）
 - [ADR-3117](3117-coderabbit-ignore-command-for-skip.md) — CodeRabbit から外す PR は PR 本文の ignore コマンドで外し、ラベルは外した PR の記録として残す
 - [ADR-3138](3138-serve-app-without-monaco.md) — `karasu serve` の app build は専用 entry から始め、Monaco を含めない
+- [ADR-3162](3162-serve-share-hosted-links.md) — karasu serve の Share は、公開版 app を指すリンクで出す
 - [ADR-3196](3196-dependabot-triage-2026-10-14.md) — Dependabot トリアージ 2026-10-14：npm 6 件を採用し、Radix は 4 件を揃える差し替え PR、actions/* は gh-aw の生成物を除く差し替え PR で入れ、download-artifact と gh-aw-actions は却下する
 - [ADR-3203](3203-dependabot-security-2026-10-14.md) — Dependabot security alert 2026-10-14（sharp の override floor を修正版へ上げ、shell-quote を override し、修正版が無く upstream が異議を出している http-cache-semantics と braces は dismiss する）
 - [ADR-3242](3242-dependabot-triage-2026-10-15.md) — Dependabot トリアージ 2026-10-15：npm 5 件をそのまま採用し、vite（override の floor 引き上げ）・knip（entry 修正）・vsce（利用元のいない override の削除）は差し替え PR で入れ、gh-aw-actions は却下する
 - [ADR-3246](3246-drop-overrides-left-by-vsce-4.md) — `@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast-uri` / `form-data` / `linkify-it` / `markdown-it`）を外す
+- [ADR-3257](3257-e2e-step-bound-follows-suite-growth.md) — app の E2E suite の step 境界を 25 分、job 予算を 45 分に上げる
 - [ADR-3271](3271-close-issue-with-pr.md) — PR と Issue はマージで同時に閉じ、マージ後にしか確かめられない項目は別の Issue にする
+- [ADR-3304](3304-dependabot-triage-2026-10-19.md) — Dependabot トリアージ 2026-10-19：npm 11 件をそのまま採用し、gh-aw-actions は却下する。lefthook 2.2.2 の手動 publish は採用可と判断する
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -198,6 +200,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1895](1895-reverse-architecture-harness.md) — アーキテクチャリバースハーネス — multi-subagent fan-out + CLI spine で repo を .krs 化する
 - [ADR-2077](2077-reverse-bc-granularity.md) — reverse harness の分解粒度 — bounded-context 既定と構造 grounding の不採用
 - [ADR-2901](2901-karasu-authoring-skill.md) — AI authoring は利用者のエージェントセッションと karasu CLI skill で行い、skill は karasu-skills パッケージから plugin と karasu skill install の両方で配る
+- [ADR-3103](3103-bundled-reference-link-rewrite.md) — skill に同梱する reference は、相対リンクだけを書き換えたコピーにする
 - [ADR-9017](9017-cloudflare-deployment-and-byok-ai.md) — Cloudflare Pages デプロイ基盤と BYOK AI 連携
 
 ## cli
@@ -403,8 +406,10 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3026](3026-same-row-channel-route.md) — 同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す
 - [ADR-3088](3088-channel-lane-order-by-turn.md) — 行間チャネルのレーンを、run がつながる縦線の向きで並べる
 - [ADR-3090](3090-crossing-marks-follow-edge-focus.md) — 交差マーク（ホップ・junction chip・trunk band）をエッジの減光に追随させる
+- [ADR-3132](3132-frame-bounded-channels.md) — ドリルダウンの最上段の上と最下段の下のチャネルを、枠の内側で測る
 - [ADR-3133](3133-side-column-last-resort-corridor.md) — 側面列の端点へのエッジは、どの候補も成立しないとき、端点の間の空き列で通す
 - [ADR-3134](3134-same-channel-fold.md) — 同じ行間チャネルに降りる corridor / mixed route を、チャネルの中で 1 本の run につなぐ
+- [ADR-3154](3154-frame-bounded-gutters.md) — ドリルダウンのガターは枠の内側のカードで測り、足りない幅を枠の側面に予約する
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
 - [ADR-9015](9015-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG（buildAllViewsSvg）

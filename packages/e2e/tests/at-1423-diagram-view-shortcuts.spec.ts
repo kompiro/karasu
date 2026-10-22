@@ -50,10 +50,9 @@ test.describe("AT-1423 diagram view shortcuts", () => {
     await expect(selectedTab(page, "System")).toBeVisible();
   });
 
-  // #3207: Monaco's EditContext focus target is not contenteditable, so the
-  // dispatcher does not see a text input and `mod+1` fires. Remove the fixme
-  // with the fix.
-  test.fixme("Ctrl/Cmd+1 is ignored while the editor has focus", async ({ page, opfs }) => {
+  // Monaco in Chromium focuses an EditContext div, not a textarea; `mod+1`
+  // fired there until #3207.
+  test("Ctrl/Cmd+1 is ignored while the editor has focus", async ({ page, opfs }) => {
     await bootProjectApp(page, opfs, SHOP_KRS);
     await blurToPreview(page);
     await pressChord(page, "2");

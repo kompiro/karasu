@@ -70,9 +70,9 @@ timeout / 予算を置く・変えるときに確認する:
 
 ## 既知の対処パターン
 
-- **step 側に本命の境界、job 側に上位予算**（[ADR-2807](../adr/2807-suite-budget-clears-its-setup.md)、
-  [ADR-2805](../adr/2805-suite-timeout-bounds-the-test-step.md) を supersede）。
-  `.github/workflows/e2e.yml` では `Run E2E tests` に 15 分、job に 35 分を置き、境界のない
+- **step 側に本命の境界、job 側に上位予算**（[ADR-3257](../adr/3257-e2e-step-bound-follows-suite-growth.md)、
+  [ADR-2807](../adr/2807-suite-budget-clears-its-setup.md) を supersede）。
+  `.github/workflows/e2e.yml` では `Run E2E tests` に 25 分、job に 45 分を置き、境界のない
   `apt-get` は job 予算に吸収させる。**外側の予算は「内側の境界 + 準備の観測最大」以上**という
   関係そのものを機械で固定する — 差の下限を適当な定数（当初は 5 分）にすると、観測より薄い
   予算がそのまま通る（#2807）

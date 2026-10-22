@@ -445,11 +445,11 @@ export function runRoutingChain(
   // interior corridors (#2365) those edges would otherwise take. Measured and
   // rejected in #2364.
   if (grouped) {
-    aggregateGroupTrunks(nodes, edges, groupFrames, obstacleIndex, expandedFrames);
+    aggregateGroupTrunks(nodes, edges, groupFrames, obstacleIndex, expandedFrames, limits);
     // The mirror (#2885): edges leaving one source share one spine that sheds a
     // branch at each target's row. After the fan-in pass, which claims a shared
     // target first; grouped only, for the same reason.
-    aggregateGroupSourceTrunks(nodes, edges, groupFrames, obstacleIndex, expandedFrames);
+    aggregateGroupSourceTrunks(nodes, edges, groupFrames, obstacleIndex, expandedFrames, limits);
   }
   // Give the remaining non-trunked gutter corridors distinct lanes so two
   // single-incoming edges no longer share a collinear vertical segment
@@ -459,7 +459,7 @@ export function runRoutingChain(
   // *or entering* one node/frame on the same side. Both are waypoint-driven,
   // so every route shape the chain can produce takes part in the overlap
   // passes (TPL-1954) in both modes.
-  distributeGutterLanes(nodes, edges, groupFrames);
+  distributeGutterLanes(nodes, edges, groupFrames, limits);
   fanOutGutterPorts(nodes, edges, obstacleIndex, expandedFrames, ports);
   // Stagger the horizontal runs that share an inter-row channel across
   // distinct lanes at a fixed pitch (#2608). Keyed on the channel rather than

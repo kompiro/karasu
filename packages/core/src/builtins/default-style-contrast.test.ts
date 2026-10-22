@@ -121,7 +121,53 @@ describe.each(["dark", "light"] as DiagramTheme[])("builtin badge colors (%s the
       ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
     },
   );
+
+  // A tag rule that sets an edge colour must set one a reader can tell from
+  // the untagged edge, or the tag has no visible effect (TPL-1503).
+  // `edge[inferred]` shipped with the base colour in both themes (#3115).
+  const baseEdge = edgeRules.find(
+    (r) => r.selector.nodeType === "edge" && r.selector.tags.length === 0,
+  );
+  it.each(
+    edgeRules
+      .filter((r) => r !== baseEdge)
+      .map((r) => [ruleLabel(r), r.properties["color"]] as const),
+  )("edge color of %s reads apart from the untagged edge", (_label, color) => {
+    expect(baseEdge, "the base edge rule").toBeDefined();
+    const base = baseEdge!.properties["color"];
+    expect(
+      deltaE(color, base),
+      `edge color ${color} is within ${MIN_DELTA_E} (CIE76) of the base edge color ${base}`,
+    ).toBeGreaterThanOrEqual(MIN_DELTA_E);
+  });
 });
+
+/**
+ * The smallest CIE76 difference between a tagged edge colour and the base
+ * edge colour. 10 is clearly apart side by side on a 1.5px line; the closest
+ * built-in pair is `[inferred]` at about 15 in the dark theme.
+ */
+const MIN_DELTA_E = 10;
+
+/** CIE76 colour difference of two `#RRGGBB` colours (sRGB, D65). */
+function deltaE(a: string, b: string): number {
+  const [l1, a1, b1] = toLab(a);
+  const [l2, a2, b2] = toLab(b);
+  return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
+}
+
+function toLab(hex: string): [number, number, number] {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const x = f((r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047);
+  const y = f(r * 0.2126 + g * 0.7152 + b * 0.0722);
+  const z = f((r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883);
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
 
 /**
  * The kind color vocabulary (#2421, docs/spec/style.md § Kind color vocabulary)

@@ -355,9 +355,12 @@ export class StyleParser {
     this.expect(TokenType.Colon);
 
     const valueResult = this.parseValue(property);
-    properties[property] = valueResult.text;
-    if (valueResult.node) {
-      valueNodes[property] = valueResult.node;
+    // A refused value has been reported; the declaration takes no effect.
+    if (!valueResult.refused) {
+      properties[property] = valueResult.text;
+      if (valueResult.node) {
+        valueNodes[property] = valueResult.node;
+      }
     }
 
     const semicolonToken = this.peek().type === TokenType.Semicolon ? this.peek() : null;
@@ -391,8 +394,13 @@ export class StyleParser {
    * `;` / `}`) or every atom failed to classify; in that case only the
    * joined string is meaningful and the validator pass will skip it.
    */
-  private parseValue(propertyName: string): { text: string; node: ValueNode | undefined } {
+  private parseValue(propertyName: string): {
+    text: string;
+    node: ValueNode | undefined;
+    refused: boolean;
+  } {
     const parts: string[] = [];
+    let refused = false;
     const atoms: ValueNode[] = [];
     const segmentStarts: number[] = [0]; // indices into `atoms` where each comma-separated segment starts
 
@@ -418,7 +426,12 @@ export class StyleParser {
           this.advance(); // (
           let arg = "";
           while (this.peek().type !== TokenType.RightParen && this.peek().type !== TokenType.EOF) {
-            if (this.peek().type === TokenType.StringLiteral) {
+            if (this.peek().type === TokenType.Unknown) {
+              // `url(😀A)`: refused like an Unknown token outside the parens.
+              this.reportUnknownValueToken(this.peek());
+              refused = true;
+              arg += this.advance().value;
+            } else if (this.peek().type === TokenType.StringLiteral) {
               arg = this.advance().value;
             } else {
               arg += this.advance().value;
@@ -458,6 +471,12 @@ export class StyleParser {
         // Legitimate comma — start a new segment for the list builder.
         parts.push(this.advance().value);
         segmentStarts.push(atoms.length);
+      } else if (token.type === TokenType.Unknown) {
+        // A character no value can hold (a stray `-`, an emoji): refuse the
+        // declaration. Keeping the rest would apply `- 20px` as `20px` (#3140).
+        this.reportUnknownValueToken(token);
+        refused = true;
+        parts.push(this.advance().value);
       } else {
         // Unknown / unhandled token — keep it in the joined string but
         // do not attempt to classify into a ValueNode.
@@ -467,7 +486,17 @@ export class StyleParser {
 
     const text = parts.join(" ").trim();
     const node = buildValueNode(atoms, segmentStarts);
-    return { text, node };
+    return { text, node, refused };
+  }
+
+  /** A token no value can hold; the caller refuses the whole declaration. */
+  private reportUnknownValueToken(token: Token): void {
+    this.diagnostics.push({
+      severity: "error",
+      code: "style-token-type-mismatch",
+      params: { expected: "Value", got: String(token.type), value: token.value },
+      loc: this.rangeBetween(token, token),
+    });
   }
 }
 

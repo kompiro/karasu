@@ -8,9 +8,10 @@ import { openViewTab } from "../fixtures/tabs.js";
  * cannot reach is the browser side: selecting the tab pushes a history entry
  * that Back / Forward walk (AT-H).
  *
- * AT-I (a cold boot at `#krs-matrix` lands on the tab) is not here: the
- * project seed's VIEW_RESET wipes the restored view, so every non-system hash
- * boots into System (#3208). The cold-boot case lands with that fix.
+ * AT-I: a cold boot or reload at `#krs-matrix` lands on the tab. Until #3208
+ * the project seed's VIEW_RESET wiped the restored view, so every non-system
+ * hash booted into System; the same cases for `#krs-deploy` and
+ * `#krs-org-root` are checked here, since they share the restoration.
  *
  * The hash carries `?file=` in OPFS mode (#811), so the view token is matched
  * as a prefix.
@@ -28,6 +29,18 @@ const MATRIX_KRS = `system Shop {
         }
       }
     }
+  }
+}
+`;
+
+const VIEWS_KRS = `${MATRIX_KRS}
+deploy Prod {
+  oci "order-api" { realizes OrderService }
+}
+
+organization Acme {
+  team Orders {
+    owns OrderService
   }
 }
 `;
@@ -69,4 +82,46 @@ test.describe("AT-1094 CRUD matrix tab in the URL hash", () => {
     await expect(matrixTable).toBeVisible();
     await expect.poll(hash).toMatch(MATRIX_HASH);
   });
+
+  // AT-I (#3208)
+  for (const [hash, tab, pattern, rendered] of [
+    ["#krs-matrix", "CRUD", MATRIX_HASH, ".crud-matrix-table"],
+    [
+      "#krs-deploy",
+      "Deploy",
+      /^#krs-deploy(?:[:?]|$)/,
+      'svg [data-realized-node-id="OrderService"]',
+    ],
+    ["#krs-org-root", "Org", /^#krs-org-root(?:[:?]|$)/, 'svg [data-node-id="Orders"]'],
+  ] as const) {
+    test(`a cold boot at ${hash} lands on the ${tab} tab (AT-I)`, async ({ page, opfs }) => {
+      await opfs.seed({
+        projects: [{ id: "views", name: "Views", files: { "index.krs": VIEWS_KRS } }],
+        lastProjectId: "views",
+      });
+      await opfs.gotoApp(`/${hash}`);
+
+      await expect(page.getByRole("tab", { name: tab, selected: true })).toBeVisible();
+      await expect.poll(() => page.evaluate(() => location.hash)).toMatch(pattern);
+      // Still there once the project has settled: the seed's reset ran before
+      // the restored view was re-applied, not after.
+      await expect(page.locator(rendered).first()).toBeVisible();
+      await expect(page.getByRole("tab", { name: tab, selected: true })).toBeVisible();
+    });
+
+    test(`reloading on the ${tab} tab in memory mode stays on it (AT-I)`, async ({
+      page,
+      opfs,
+    }) => {
+      await opfs.seed({ mode: "memory" });
+      await opfs.gotoApp();
+      await openViewTab(page, tab);
+      await expect.poll(() => page.evaluate(() => location.hash)).toMatch(pattern);
+
+      await page.reload();
+
+      await expect(page.getByRole("tab", { name: tab, selected: true })).toBeVisible();
+      await expect.poll(() => page.evaluate(() => location.hash)).toMatch(pattern);
+    });
+  }
 });

@@ -1,6 +1,7 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { applyKrsPatch } from "@karasu-tools/core";
+import { fileArgumentOrExit } from "./path-arg.js";
 import { readStdin } from "./stdin.js";
 
 /**
@@ -8,11 +9,15 @@ import { readStdin } from "./stdin.js";
  * in a .krs file, automatically indenting relative to the parent's closing `}`.
  *
  * Exits with a non-zero code if:
- *   - the file does not exist
+ *   - the file does not exist, or is a directory
  *   - stdin is empty
  *   - the parent node ID is not found in the file
  */
 export async function insert(parentId: string, targetFile: string): Promise<void> {
+  // Check the target before reading stdin, so a directory is reported as such
+  // even when stdin is empty.
+  const kind = fileArgumentOrExit(targetFile, ".krs file");
+  if (kind === undefined) return;
   const content = await readStdin();
 
   if (!content.trim()) {
@@ -23,7 +28,7 @@ export async function insert(parentId: string, targetFile: string): Promise<void
 
   const targetPath = resolve(targetFile);
 
-  if (!existsSync(targetPath)) {
+  if (kind === "missing") {
     process.stderr.write(`Error: file not found: ${targetFile}\n`);
     process.exit(1);
     return;

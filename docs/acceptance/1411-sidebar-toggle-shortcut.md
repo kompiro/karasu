@@ -62,6 +62,6 @@
 
   > ✅ Automated — `packages/e2e/tests/at-1411-sidebar-toggle-shortcut.spec.ts` › `Ctrl/Cmd+B collapses the sidebar and re-expands it on the Outline view`
 
-- [ ] Monaco エディタにフォーカスを置いた状態で `Ctrl/Cmd+B` を押してもサイドバーは開閉しない（エディタの入力を妨げない）
+- [x] Monaco エディタにフォーカスを置いた状態で `Ctrl/Cmd+B` を押してもサイドバーは開閉しない（エディタの入力を妨げない）
 
-  > e2e は [#3207](https://github.com/kompiro/karasu/issues/3207) の修正まで `test.fixme`（`packages/e2e/tests/at-1411-sidebar-toggle-shortcut.spec.ts` › `Ctrl/Cmd+B is ignored while the editor has focus`）。Monaco の EditContext はフォーカス先が contenteditable でないため、現状はこのショートカットがエディタ内でも発火する。
+  > ✅ Automated — `packages/e2e/tests/at-1411-sidebar-toggle-shortcut.spec.ts` › `Ctrl/Cmd+B is ignored while the editor has focus`（Chromium の Monaco は EditContext の div にフォーカスする。[#3207](https://github.com/kompiro/karasu/issues/3207) までこの経路ではショートカットが発火していた）

@@ -6,7 +6,7 @@ type: product
 
 - **日付**: 2026-10-04
 - **関連 Issue**: [#3031](https://github.com/kompiro/karasu/issues/3031)（slice B）（親: [#3022](https://github.com/kompiro/karasu/issues/3022)）
-- **Related TPLs**: [TPL-3022](../test-perspectives/TPL-3022-withheld-content-stays-reachable.md)（canvas が省略・保留したラベルの全文に、pointer が届く経路で辿り着ける）, [TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md)（衝突は数値で数える）, [TPL-1468](../test-perspectives/TPL-1468-overlay-z-index-scale.md)（overlay の重なり順は `--z-*` スケールから）
+- **Related TPLs**: [TPL-3180](../test-perspectives/TPL-3180-svg-control-hit-area-is-its-region.md)（押せる要素は描いた線と文字の形ではなく、押せる領域を持つ）, [TPL-3022](../test-perspectives/TPL-3022-withheld-content-stays-reachable.md)（canvas が省略・保留したラベルの全文に、pointer が届く経路で辿り着ける）, [TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md)（衝突は数値で数える）, [TPL-1468](../test-perspectives/TPL-1468-overlay-z-index-scale.md)（overlay の重なり順は `--z-*` スケールから）
 - **対象ファイル**:
   - `packages/app/src/components/focus-canvas/build.ts`（focus canvas の組み立て。純粋関数）
   - `packages/app/src/components/focus-canvas/FocusCanvas.tsx`（overlay）
@@ -70,6 +70,12 @@ type: product
 - [x] focus canvas の中の card でその node へ、node の canvas の行でその組へ移り、`← Back` で戻る
 
   > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › the focus canvas in the preview › walks the graph: a card moves to that node, a lane to that pair, Back returns
+
+- [x] node の canvas の行は、線の上だけでなく、線に沿った帯とラベルの領域のどこを押しても（単語と単語のあいだ、折り返した 2 行のあいだでも）その組へ移る（[#3180](https://github.com/kompiro/karasu/issues/3180)。それまでは線の 1.5px と文字の形の上しか押せなかった）
+
+  > ✅ Automated — `packages/e2e/tests/at-3031-focus-canvas.spec.ts` › AT-3031 focus canvas › a lane takes a press between the lines of its label (#3180)
+
+  > ✅ Automated — `packages/app/src/components/focus-canvas/build.test.ts` › lane hit areas (#3180) › gives every lane that acts a band along its line and an area over its whole label
 
 - [x] canvas と同じく、ドラッグで表示範囲を動かせる。ボタンを離せばそこで止まり、動かしたドラッグは離した位置の card や行のクリックにならない。ラベルや card の文字の上で押したときは動かさず、文字を選択できる（選択を終えても別のノードや組へは移らない）
 

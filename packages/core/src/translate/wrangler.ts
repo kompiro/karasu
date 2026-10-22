@@ -46,6 +46,8 @@ interface InfraNode {
 /** A logical `service [external]` reached by the Worker via a `->` edge. */
 interface ExternalService {
   id: string;
+  /** Set when `id` is not the name the binding was declared with (#3183). */
+  label?: string;
 }
 
 const IDENT_START = /[A-Za-z_]/;
@@ -119,6 +121,44 @@ function bindingId(
   return dedupe(candidate, used, onWarning);
 }
 
+/**
+ * The external service for a Durable Object binding. Its id is the class name
+ * (`class_name`), which often equals the id derived from the Worker's own name
+ * (`foo-mcp` and `FooMcp`): one Worker, one Durable Object class named after
+ * it. A numeric suffix there (`FooMcp2`) hid the class name (#3183), so a taken
+ * id is disambiguated by role instead, `<Class>Object`, with the class name
+ * kept in the label. A numeric suffix is left for a clash that remains.
+ *
+ * `serviceTargets` are the ids the service bindings will point at. They are
+ * not declared nodes, so they are not in `used`, but a Durable Object that
+ * took one would make the two edges indistinguishable; they count as taken.
+ */
+function durableObjectService(
+  entry: Record<string, unknown>,
+  used: Set<string>,
+  serviceTargets: ReadonlySet<string>,
+  onWarning?: (message: string) => void,
+): ExternalService {
+  const taken = (id: string) => used.has(id) || serviceTargets.has(id);
+  const className = typeof entry.class_name === "string" ? entry.class_name : undefined;
+  const candidate =
+    toIdentifier(entry.binding) ?? toIdentifier(entry.class_name) ?? "DurableObject";
+  if (!taken(candidate)) {
+    used.add(candidate);
+    return { id: candidate };
+  }
+  const base = `${candidate}Object`;
+  let id = base;
+  let n = 2;
+  while (taken(id)) id = `${base}${n++}`;
+  used.add(id);
+  // One warning naming the final id; `dedupe`'s own warning would add a second.
+  onWarning?.(
+    `Durable Object "${className ?? candidate}" shares the id "${candidate}"; declared as "${id}".`,
+  );
+  return { id, label: `${className ?? candidate} (Durable Object)` };
+}
+
 export class WranglerTranslator implements Translator {
   async translate(input: string, context: TranslatorContext): Promise<string> {
     let doc: WranglerToml;
@@ -189,19 +229,23 @@ export class WranglerTranslator implements Translator {
       const candidate = toIdentifier((doc.ai as Record<string, unknown>).binding) ?? "WorkersAi";
       externals.push({ id: dedupe(candidate, used, onWarning) });
     }
-    // Durable Objects → service [external] (opaque stateful actor; notation-watch)
-    const durableObjects = doc.durable_objects as { bindings?: unknown } | undefined;
-    for (const e of asArray(durableObjects?.bindings)) {
-      const id = bindingId(e, "class_name", "DurableObject", used, onWarning);
-      externals.push({ id });
-    }
-    // Service bindings → Worker→Worker communication edge
+    // Service binding targets, read before the Durable Objects so a Durable
+    // Object id cannot land on one of them (see durableObjectService).
+    const serviceTargets: string[] = [];
     for (const e of asArray(doc.services)) {
       const id = toIdentifier(e.service) ?? toIdentifier(e.binding);
-      if (id) {
-        if (!used.has(id)) used.add(id);
-        serviceBindings.push(id);
-      }
+      if (id) serviceTargets.push(id);
+    }
+    // Durable Objects → service [external] (opaque stateful actor; notation-watch)
+    const durableObjects = doc.durable_objects as { bindings?: unknown } | undefined;
+    const reservedForServices = new Set(serviceTargets);
+    for (const e of asArray(durableObjects?.bindings)) {
+      externals.push(durableObjectService(e, used, reservedForServices, onWarning));
+    }
+    // Service bindings → Worker→Worker communication edge
+    for (const id of serviceTargets) {
+      if (!used.has(id)) used.add(id);
+      serviceBindings.push(id);
     }
 
     // Unknown binding kinds → warn + skip, never hallucinate an infra kind.
@@ -248,6 +292,7 @@ export class WranglerTranslator implements Translator {
     for (const ext of m.externals) {
       body.push(``);
       body.push(`service ${ext.id} [external] {`);
+      if (ext.label !== undefined) body.push(`  label ${quoteString(ext.label)}`);
       body.push(`}`);
     }
 

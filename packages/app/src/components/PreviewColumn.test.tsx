@@ -281,6 +281,42 @@ describe("PreviewColumn", () => {
       expect(container.querySelector('[data-testid="org"]')).toBeTruthy();
       expect(container.querySelector('[data-testid="sys"]')).toBeNull();
     });
+
+    // #3178 (CodeRabbit on #3276): switching projects keeps AppShell and this
+    // pane mounted, and the other project can open on the same view and drill
+    // path. The project root is part of the diagram key, so the new project
+    // starts at the initial zoom; an edit within one project keeps it.
+    it("resets zoom when the project changes but keeps it on an edit", () => {
+      const tree = (displayRoot: string, svg: string) => (
+        <LocaleProvider initialLocale="en">
+          <PreviewProvider
+            value={makeProps({
+              activeView: "system",
+              displayRoot,
+              systemView: { ...makeProps().systemView, svg },
+            })}
+          >
+            <PreviewColumn />
+          </PreviewProvider>
+        </LocaleProvider>
+      );
+      const svgA = '<svg xmlns="http://www.w3.org/2000/svg" data-testid="a"></svg>';
+      const svgB = '<svg xmlns="http://www.w3.org/2000/svg" data-testid="b"></svg>';
+      const zoomLayer = (container: HTMLElement) =>
+        container.querySelector<HTMLElement>(".preview-container > div");
+
+      const { container, rerender } = rtlRender(tree("/projects/shop", svgA));
+      fireEvent.wheel(container.querySelector(".preview-container")!, { deltaY: -100 });
+      expect(zoomLayer(container)?.style.transform).toContain("scale(1.1)");
+
+      rerender(tree("/projects/shop", svgB));
+      expect(container.querySelector('[data-testid="b"]')).toBeTruthy();
+      expect(zoomLayer(container)?.style.transform).toContain("scale(1.1)");
+
+      rerender(tree("/projects/blog", svgA));
+      expect(container.querySelector('[data-testid="a"]')).toBeTruthy();
+      expect(zoomLayer(container)?.style.transform).toContain("scale(1)");
+    });
   });
 
   describe("Entity view sub-mode (#1907)", () => {
@@ -1123,8 +1159,13 @@ describe("PreviewColumn — the toolbar measurement it publishes", () => {
   });
 });
 
+/** What `karasu serve` puts in the toolbar slot (#3162). */
+const HOSTED_SHARE_SLOT: PreviewToolbarSlot = { shareOrigin: "https://karasu.kompiro.dev" };
+
 describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
   const SAMPLE = 'system Shop {\n  service Api { label "API" }\n}';
+  // One test moves the page to a file path; put it back even when it fails.
+  afterEach(() => window.history.replaceState(null, "", "/"));
 
   it("disables Share when there is no source", () => {
     const props = makeProps({ hasKrsSource: false });
@@ -1159,6 +1200,49 @@ describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
 
     // Eager copy of the private link happened on the same gesture chain.
     expect(await navigator.clipboard.readText()).toBe(copied);
+  });
+
+  // #3162: `karasu serve` passes the public app's origin through the toolbar
+  // slot, so the links open for someone who is not running serve. The page's
+  // own path (a file name under serve) must not follow them there.
+  it("builds both links on the slot's share origin, at its root, and says so", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/shop");
+    const props = makeProps({
+      hasKrsSource: true,
+      getShareBundle: async () => ({ krs: SAMPLE }),
+    });
+    render(
+      <PreviewToolbarSlotContext.Provider value={HOSTED_SHARE_SLOT}>
+        <PreviewProvider value={props}>
+          <PreviewColumn />
+        </PreviewProvider>
+      </PreviewToolbarSlotContext.Provider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Share/ }));
+
+    const priv = (await screen.findByLabelText("Private shareable URL")) as HTMLInputElement;
+    expect(priv.value.startsWith("https://karasu.kompiro.dev/#s=")).toBe(true);
+    const unfurl = screen.getByLabelText("Shareable URL with preview") as HTMLInputElement;
+    expect(unfurl.value.startsWith("https://karasu.kompiro.dev/s?s=")).toBe(true);
+    expect(priv.value).not.toContain("/shop");
+    expect(screen.getByText(/These links open on karasu\.kompiro\.dev/)).toBeTruthy();
+  });
+
+  it("builds the links on this page, with no destination line, when no host sets an origin", async () => {
+    const user = userEvent.setup();
+    const props = makeProps({
+      hasKrsSource: true,
+      getShareBundle: async () => ({ krs: SAMPLE }),
+    });
+    renderPreview(props);
+
+    await user.click(screen.getByRole("button", { name: /Share/ }));
+
+    const priv = (await screen.findByLabelText("Private shareable URL")) as HTMLInputElement;
+    expect(priv.value.startsWith(`${window.location.origin}/#s=`)).toBe(true);
+    expect(screen.queryByText(/These links open on/)).toBeNull();
   });
 });
 
