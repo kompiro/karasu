@@ -184,7 +184,7 @@ viewer をそのまま webview で動かす。viewer の `FileSystemProvider` �
    - app: `src/viewer/vscode/main.tsx`（`acquireVsCodeApi` とメッセージの型はここだけが持つ）、`vite.vscode-webview.config.ts`、ビルド設定のガードテスト（固定名、Monaco の混入、ネットワークに出る `url(` が無いこと）
    <!-- absent-path-next-line: a file slice B creates in packages/vscode -->
    - vscode: `scripts/stage-webview.ts`、build への組み込み、notices、`preview-panel.ts` の書き直し（HTML の組み立て、CSP、ホスト FS、エディタ連携）、`message-validation.ts` の拡張、`webview-content.ts` の削除
-   - ホスト FS の unit test: (1) `filesChanged` / `setEntry` の後に届いた古い世代の `readFile` 応答がキャッシュに入らず、次のコンパイルが新しい内容を読む。(2) `unmount` の後に届いた応答が何も更新しない。(3) 許可ルートの外を指すパス（`..`、絶対パス、符号化した区切り、NUL、外を指す symlink）を読み出し・書き込みの両方で拒否する（TPL-168 の negative test）
+   - ホスト FS の unit test: (1) `filesChanged` / `setEntry` の後に届いた古い世代の `readFile` 応答がキャッシュに入らず、次のコンパイルが新しい内容を読む。(2) `unmount` の後に届いた応答が何も更新しない。(3) 許可ルートの外を指すパス（`..`、許可ルート外の絶対パス、符号化した区切り、NUL、外を指す symlink）を読み出し・書き込みの両方で拒否し、許可ルート内の絶対パスは受け入れる（TPL-168 の negative test と正例。`entryPath` / `setEntry` は今の `document.uri.fsPath` と同じく絶対パスを受ける）
    - `.vsix` に `out/webview/` が入ることを `marketplace-manifest.test.ts` の並びで確かめる（TPL-1024）
    - e2e: `tests/webview/` の harness と AT-0038 / AT-0039 / AT-2917 の spec を書き直す。#3252 の edge hover を 1 件足す
 3. スライス C: ホスト FS の書き込みを `WorkspaceEdit` で適用し、`readOnly` を外す。
