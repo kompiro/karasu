@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { mkdtemp, writeFile, mkdir, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, mkdir, rm, symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { AddressInfo } from "node:net";
@@ -12,6 +12,7 @@ vi.mock("chokidar", () => ({
 
 import {
   collectKrsFiles,
+  collectProjectFiles,
   findAppDistDir,
   missingAppMessage,
   resolveDefaultFile,
@@ -77,6 +78,56 @@ describe("collectKrsFiles", () => {
     await writeFile(join(tmpDir, "services", "api.krs"), "");
     await writeFile(join(tmpDir, "index.krs"), "");
     expect(await collectKrsFiles(tmpDir)).toEqual(["index", "services/api"]);
+  });
+});
+
+// ── collectProjectFiles (#3258) ───────────────────────────────────────────────
+
+describe("collectProjectFiles", () => {
+  let tmpDir: string;
+  let outside: string;
+
+  beforeEach(async () => {
+    tmpDir = await makeTmpDir();
+    outside = await makeTmpDir();
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true });
+    await rm(outside, { recursive: true });
+  });
+
+  it("returns every .krs and .krs.style with its nested path and content", async () => {
+    await mkdir(join(tmpDir, "services", "billing"), { recursive: true });
+    await writeFile(join(tmpDir, "index.krs"), 'import "services/"');
+    await writeFile(join(tmpDir, "theme.krs.style"), "service { color: red }");
+    await writeFile(join(tmpDir, "services", "billing", "api.krs"), "system Billing {}");
+    expect(await collectProjectFiles(tmpDir)).toEqual([
+      { path: "index.krs", content: 'import "services/"' },
+      { path: "services/billing/api.krs", content: "system Billing {}" },
+      { path: "theme.krs.style", content: "service { color: red }" },
+    ]);
+  });
+
+  it("leaves out every other extension", async () => {
+    await writeFile(join(tmpDir, "index.krs"), "");
+    await writeFile(join(tmpDir, "notes.md"), "");
+    await writeFile(join(tmpDir, "theme.style"), "");
+    await writeFile(join(tmpDir, "old.krs.bak"), "");
+    expect((await collectProjectFiles(tmpDir)).map((f) => f.path)).toEqual(["index.krs"]);
+  });
+
+  // TPL-168: a link inside the served directory must not read what lies outside it.
+  it("does not follow a symlinked file or directory out of the served directory", async () => {
+    await writeFile(join(outside, "secret.krs"), "system Secret {}");
+    await writeFile(join(outside, "secret.krs.style"), "service { color: red }");
+    await writeFile(join(tmpDir, "index.krs"), "");
+    await symlink(join(outside, "secret.krs"), join(tmpDir, "linked.krs"));
+    await symlink(join(outside, "secret.krs.style"), join(tmpDir, "linked.krs.style"));
+    await symlink(outside, join(tmpDir, "linked-dir"));
+    const files = await collectProjectFiles(tmpDir);
+    expect(files.map((f) => f.path)).toEqual(["index.krs"]);
+    expect(JSON.stringify(files)).not.toContain("Secret");
   });
 });
 
@@ -270,6 +321,32 @@ describe("HTTP server", () => {
     it("returns 400 when the file name is empty", async () => {
       const { status } = await get(port, "/api/file/");
       expect(status).toBe(400);
+    });
+  });
+
+  describe("GET /api/project (#3258)", () => {
+    it("returns the .krs and .krs.style files with their paths and content", async () => {
+      await mkdir(join(tmpDir, "services"));
+      await writeFile(join(tmpDir, "index.krs"), '@import "theme.krs.style"');
+      await writeFile(join(tmpDir, "theme.krs.style"), "service { color: red }");
+      await writeFile(join(tmpDir, "services", "api.krs"), "system Api {}");
+      await writeFile(join(tmpDir, "readme.md"), "# readme");
+      const { status, body, headers } = await get(port, "/api/project");
+      expect(status).toBe(200);
+      expect(headers["content-type"]).toBe("application/json");
+      expect(JSON.parse(body)).toEqual({
+        files: [
+          { path: "index.krs", content: '@import "theme.krs.style"' },
+          { path: "services/api.krs", content: "system Api {}" },
+          { path: "theme.krs.style", content: "service { color: red }" },
+        ],
+      });
+    });
+
+    it("returns an empty list for an empty directory", async () => {
+      const { status, body } = await get(port, "/api/project");
+      expect(status).toBe(200);
+      expect(JSON.parse(body)).toEqual({ files: [] });
     });
   });
 

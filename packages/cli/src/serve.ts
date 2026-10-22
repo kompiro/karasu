@@ -64,22 +64,55 @@ export function missingAppMessage(lookup: { inMonorepo: boolean; tried: string[]
         `Reinstall karasu (npm i -g karasu@latest) or run: npx --yes karasu@latest serve\n`;
 }
 
-export async function collectKrsFiles(dir: string): Promise<string[]> {
-  const names: string[] = [];
+/**
+ * Every regular file under `dir` whose name passes `accept`, as `/`-separated
+ * paths relative to `dir`. Symlinks are skipped: `Dirent.isDirectory()` and
+ * `isFile()` do not follow them, so a link is neither walked into nor read,
+ * and nothing outside `dir` can come back through one (TPL-168).
+ */
+async function walkFiles(dir: string, accept: (name: string) => boolean): Promise<string[]> {
+  const paths: string[] = [];
   async function walk(current: string): Promise<void> {
     const entries = await readdir(current, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = join(current, entry.name);
       if (entry.isDirectory()) {
         await walk(fullPath);
-      } else if (entry.isFile() && entry.name.endsWith(".krs")) {
-        const rel = relative(dir, fullPath);
-        names.push(rel.replace(/\.krs$/, ""));
+      } else if (entry.isFile() && accept(entry.name)) {
+        paths.push(relative(dir, fullPath).split(sep).join("/"));
       }
     }
   }
   await walk(dir);
-  return names.sort();
+  return paths.sort();
+}
+
+export async function collectKrsFiles(dir: string): Promise<string[]> {
+  const paths = await walkFiles(dir, (name) => name.endsWith(".krs"));
+  return paths.map((path) => path.replace(/\.krs$/, ""));
+}
+
+export interface ProjectFile {
+  /** `/`-separated, relative to the served directory, extension included. */
+  path: string;
+  content: string;
+}
+
+/**
+ * The whole served directory as the preview needs it to resolve imports
+ * (#3258): every `.krs` and `.krs.style`, at its real relative path. The app
+ * writes these into its in-memory fs and compiles the entry from there, so
+ * whole-file, named, directory and style imports all find their targets.
+ * Paths come from the walk, never from the request.
+ */
+export async function collectProjectFiles(dir: string): Promise<ProjectFile[]> {
+  const paths = await walkFiles(
+    dir,
+    (name) => name.endsWith(".krs") || name.endsWith(".krs.style"),
+  );
+  return Promise.all(
+    paths.map(async (path) => ({ path, content: await readFile(join(dir, path), "utf-8") })),
+  );
 }
 
 export async function resolveKrsFile(dir: string, name: string): Promise<string | null> {
@@ -178,6 +211,19 @@ export function serve(dir: string, port: number, appDistDir?: string): Server {
       return;
     }
 
+    // 配信ディレクトリの .krs / .krs.style すべて（import の解決用、#3258）
+    if (pathname === "/api/project") {
+      try {
+        const files = await collectProjectFiles(absDir);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ files }));
+      } catch {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: "Failed to read project" }));
+      }
+      return;
+    }
+
     // .krs ファイル内容
     if (pathname.startsWith("/api/file/")) {
       const name = pathname.slice("/api/file/".length);
@@ -232,7 +278,7 @@ export function serve(dir: string, port: number, appDistDir?: string): Server {
     process.stdout.write(`karasu serve\n`);
     process.stdout.write(`  Directory : ${absDir}\n`);
     process.stdout.write(`  Preview   : http://localhost:${port}\n`);
-    process.stdout.write(`\nWatching for .krs file changes...\n`);
+    process.stdout.write(`\nWatching for .krs and .krs.style file changes...\n`);
     if (missingApp !== null) process.stderr.write(`\nWarning: ${missingApp}`);
   });
   return server;
