@@ -80,6 +80,18 @@ export function validateStyleValues(
 }
 
 /**
+ * Whether a declaration's value satisfies its property's schema. A property
+ * the schema does not know is kept: it is forward-compatible and the resolver
+ * ignores what it does not read. `flattenSheetsInCascadeOrder` drops a
+ * declaration this rejects, so the resolver never sees a value the validator
+ * reports (#3141).
+ */
+export function satisfiesPropertySchema(property: string, node: ValueNode): boolean {
+  if (!isKnownProperty(property)) return true;
+  return collectMismatch(node, PROPERTY_SCHEMAS[property], property).length === 0;
+}
+
+/**
  * Match `node` against `spec` and append any diagnostics to `out`.
  * Walks the spec union recursively. The `union` case tries each branch
  * and only emits a diagnostic if every branch fails (using the most
@@ -134,6 +146,15 @@ function collectMismatch(node: ValueNode, spec: ValueSpec, property: string): Di
             severity: "error",
             code: "style-invalid-enum-value",
             params: { property, value: stringifyValueNode(node), allowed: ["<number>"] },
+          },
+        ];
+      }
+      if (spec.integer && !Number.isInteger(node.value)) {
+        return [
+          {
+            severity: "error",
+            code: "style-invalid-enum-value",
+            params: { property, value: stringifyValueNode(node), allowed: ["<integer>"] },
           },
         ];
       }
@@ -244,16 +265,24 @@ function collectMismatch(node: ValueNode, spec: ValueSpec, property: string): Di
       return [];
     case "union": {
       // Try each branch. If any matches, the whole union matches with
-      // no diagnostics. Otherwise pick the diagnostic from the branch
-      // that came "closest" — for now, the first branch's diagnostic
-      // (callers can refine if it matters).
+      // no diagnostics. Otherwise report one branch's failure: a number
+      // goes to the branch that reads numbers, so `label-position: -0.5`
+      // says it is out of `[0, 1]` rather than that it is not
+      // `start / middle / end` (#3141); anything else gets the first
+      // branch's. Keywords keep the first branch on purpose: for `color`
+      // that is the hex message, where the keyword branch would list
+      // every CSS named color.
       let firstFailure: Diagnostic[] | null = null;
+      let numericFailure: Diagnostic[] | null = null;
       for (const branch of spec.specs) {
         const branchDiags = collectMismatch(node, branch, property);
         if (branchDiags.length === 0) return [];
         if (firstFailure === null) firstFailure = branchDiags;
+        if (numericFailure === null && node.kind === "number" && readsNumbers(branch)) {
+          numericFailure = branchDiags;
+        }
       }
-      return firstFailure ?? [];
+      return numericFailure ?? firstFailure ?? [];
     }
     default: {
       const _exhaustive: never = spec;
@@ -277,6 +306,10 @@ function unregisteredUrlName(
   if (node.kind !== "function" || node.name !== "url") return undefined;
   if (!specAcceptsUrl(spec)) return undefined;
   return isRegisteredShape(node.argRaw) ? undefined : node.argRaw;
+}
+
+function readsNumbers(spec: ValueSpec): boolean {
+  return spec.kind === "number" || spec.kind === "length";
 }
 
 function specAcceptsUrl(spec: ValueSpec): boolean {

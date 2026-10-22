@@ -10,11 +10,17 @@ import { CSS_NAMED_COLORS } from "./css-named-colors.js";
  * (e.g. `shape` is `ident-of {box,user,...} | url(...)`; `color` is
  * `hex | ident-of {CSS named colors}`). The validator tries each spec
  * in order and treats the first match as a success.
+ *
+ * This table is the only place a value's bounds are written (#3141). A
+ * declaration whose value fails its spec is dropped from the cascade
+ * (`flattenSheetsInCascadeOrder`) and reported once by the validator; the
+ * resolver reads only declarations that passed, so it states no bound of its
+ * own.
  */
 export type ValueSpec =
   | { kind: "ident-of"; values: readonly string[] }
   | { kind: "hex" }
-  | { kind: "number"; min?: number; max?: number }
+  | { kind: "number"; min?: number; max?: number; integer?: boolean }
   | { kind: "length"; allowedUnits: readonly string[]; min?: number }
   | { kind: "string" }
   | { kind: "url" }
@@ -65,7 +71,7 @@ export const PROPERTY_SCHEMAS: Record<string, ValueSpec> = {
   // Layout (karasu-specific)
   direction: { kind: "ident-of", values: ["auto", "up", "down", "left", "right"] },
   column: { kind: "ident-of", values: ["left", "center", "right"] },
-  "grid-columns": { kind: "number", min: 1 },
+  "grid-columns": { kind: "number", min: 1, integer: true },
   "label-position": {
     kind: "union",
     specs: [
@@ -82,7 +88,7 @@ export const PROPERTY_SCHEMAS: Record<string, ValueSpec> = {
     kind: "union",
     specs: [
       { kind: "ident-of", values: ["none"] },
-      { kind: "number", min: 1 },
+      { kind: "number", min: 1, integer: true },
     ],
   },
   "label-display": { kind: "ident-of", values: ["always", "auto", "hover"] },

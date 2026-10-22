@@ -1,5 +1,6 @@
 import type { StyleRule, StyleSheet } from "../types/style.js";
 import { selectorUsesToolVocabularyOnly } from "../builtins/tool-vocabulary.js";
+import { satisfiesPropertySchema } from "./value-validator.js";
 
 /**
  * The `.krs.style` cascade, in one place.
@@ -30,6 +31,14 @@ import { selectorUsesToolVocabularyOnly } from "../builtins/tool-vocabulary.js";
  * is left out here (`.krs language v2.0`, #2677): it matches nothing, on every
  * surface that reads the cascade. Its `sourceIndex` is still consumed, so the
  * declaration order of the rules that remain is unchanged.
+ *
+ * A declaration whose value fails its property's schema (`PROPERTY_SCHEMAS`)
+ * is left out the same way (#3141): the cascade continues as if it had not
+ * been written, so a weaker rule's value for that property applies, or the
+ * default when none sets it. The validator reports it once, where it was
+ * written. Doing it here, once, is what keeps the bounds in one table: the
+ * resolver never reads a value the validator rejected, so it needs no guard
+ * of its own that could disagree with the diagnostic.
  */
 export function flattenSheetsInCascadeOrder(sheets: StyleSheet[]): StyleRule[] {
   let globalIndex = 0;
@@ -38,10 +47,29 @@ export function flattenSheetsInCascadeOrder(sheets: StyleSheet[]): StyleRule[] {
     for (const rule of sheet.rules) {
       const sourceIndex = globalIndex++;
       if (!selectorUsesToolVocabularyOnly(rule.selector)) continue;
-      rules.push({ ...rule, sourceIndex });
+      rules.push({ ...withoutInvalidDeclarations(rule), sourceIndex });
     }
   }
   return rules;
+}
+
+/**
+ * `rule` without the declarations whose value fails its schema. A rule built
+ * without value nodes (hand-built in a test) has nothing to check against and
+ * is returned as it is, and so is a declaration whose value the parser could
+ * not classify (the parser already reported it).
+ */
+function withoutInvalidDeclarations(rule: StyleRule): StyleRule {
+  const nodes = rule.valueNodes;
+  if (!nodes) return rule;
+  const invalid = Object.keys(rule.properties).filter((property) => {
+    const node = nodes[property];
+    return node !== undefined && !satisfiesPropertySchema(property, node);
+  });
+  if (invalid.length === 0) return rule;
+  const properties = { ...rule.properties };
+  for (const property of invalid) delete properties[property];
+  return { ...rule, properties };
 }
 
 /**
