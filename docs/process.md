@@ -350,7 +350,7 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 | # | すること |
 | --- | --- |
 | 0 | 最下層以外を draft にする（`gh pr ready <n> --undo`） |
-| 1 | 最下層が draft のうちに、最下層のブランチで base（`main`）との差分（`git diff origin/main...HEAD`）に `/engineering:code-review` を当て、続けて同じ差分に CodeRabbit CLI を 1 回だけ当てる（`coderabbit review --agent --deep --base origin/main --committed`） |
+| 1 | 最下層が draft のうちに、最下層のブランチで base（`main`）との差分（`git diff origin/main...HEAD`）に `/engineering:code-review` を当て、続けて同じ差分に CodeRabbit CLI を 1 回だけ当てる（`coderabbit review --agent --deep --base origin/main --committed`。CLI が使えない環境では飛ばす） |
 | 2 | `/engineering:code-review` と CLI の指摘の対応可否を決め、対応すると決めたものを直して push する（記録済みの決定を変えるものだけ人に確認する）。draft への push は CodeRabbit の review 枠を使わない |
 | 3 | 最下層の draft を外す（`gh pr ready <n>`）。CodeRabbit と分単位の CI はここで動き出す |
 | 4 | `/coderabbit-converge` で CodeRabbit のラウンドを回す（判定基準は 2 と同じ） |

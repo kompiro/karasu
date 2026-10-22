@@ -43,7 +43,8 @@ pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --once
   すでに ready で `/engineering:code-review` がまだなら、その修正は単独で push せず、最初のラウンドの
   修正と一緒に下の「3. 指摘に対応する」の 1 回の push に含める
 - CodeRabbit CLI（`coderabbit review --agent --deep --base origin/main --committed`）も ready より前に
-  同じ差分へ 1 回だけ当ててある（`docs/process.md` の手順 9、ADR-3326）。まだでも、ラウンド中に CLI は回さない。
+  同じ差分へ 1 回だけ当ててある（`docs/process.md` の手順 9、ADR-3326）。CLI が使えない環境（未インストール・
+  未認証・枠切れ）で飛ばした場合や、当て忘れた場合もそのまま始めてよい。ラウンド中に CLI は回さない。
   CLI はラウンドの前に 1 回だけ使うもので、ラウンドの中で PR のレビューを待つ代わりにはしない
 - PR のブランチの worktree にいる。`gh pr view --json number --jq .number` で PR 番号を得る
 
