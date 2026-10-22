@@ -67,6 +67,18 @@ Issue が表面化した「失敗の種類」によってラベルを使い分�
 - `bug` と `test-infra` は **mutually exclusive**（同時に付けない）
 - 3-Yes ルールの起動トリガーは双方
 
+### Issue トピックラベル（ADR の topic で分類する）
+
+Issue の分類は、ADR と同じ語彙で付ける。ラベル名は `topic: <name>` で、`<name>` は
+[`adr.config.json`](../adr.config.json) の `topics` のいずれかである。修正が ADR になったら
+その ADR に付く topic と同じものを Issue にも付けておけば、Issue と ADR を同じ軸で引ける。
+
+- 1 Issue に 1 つ付ける（ADR の `topic` が 1 つなのと揃える）
+- 迷ったら、似た内容の既存 ADR の `topic` に合わせる（`grep -l <キーワード> docs/adr/*.md | xargs grep -h '^topic:'`）。
+  たとえば配線・ラベル配置は `renderer`、formatter は `parser`、`translate` は `cli`
+- `adr.config.json` の `topics` を増減したら、同じ PR で `topic:` ラベルも作成・削除する。
+  食い違いを機械的に検出する仕組みは [#3314](https://github.com/kompiro/karasu/issues/3314) で検討中
+
 ### Issue ステータスラベル
 
 Issue の進捗は以下のラベルで管理する。
