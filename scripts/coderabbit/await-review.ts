@@ -16,6 +16,8 @@ import {
   type Snapshot,
   threadsAwaitingReply,
 } from "./review-state.ts";
+import { changedLines, excludedPathFilters, sameLines } from "../review/tier.ts";
+import { readFileSync } from "node:fs";
 
 // Reads a PR's CodeRabbit state and, unless `--once`, polls until the author has
 // something to act on (Issue #2846). Read-only: it never posts, pushes or
@@ -67,6 +69,7 @@ function ghPages<T>(args: string[]): T[] {
 }
 
 interface RestReview {
+  id: number;
   user: { login: string } | null;
   state: string;
   body: string | null;
@@ -139,15 +142,15 @@ function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
   const { headSha, headCommittedAt } = fetchHead(pr);
   const [owner, name] = REPO.split("/");
 
-  const reviews: CodeRabbitReview[] = ghPages<RestReview[]>([`repos/${REPO}/pulls/${pr}/reviews`])
+  const restReviews = ghPages<RestReview[]>([`repos/${REPO}/pulls/${pr}/reviews`])
     .flat()
-    .filter((r) => byCodeRabbit(r.user?.login) && r.submitted_at !== null)
-    .map((r) => ({
-      state: r.state,
-      commitId: r.commit_id,
-      submittedAt: r.submitted_at as string,
-      body: r.body ?? "",
-    }));
+    .filter((r) => byCodeRabbit(r.user?.login) && r.submitted_at !== null);
+  const reviews: CodeRabbitReview[] = restReviews.map((r) => ({
+    state: r.state,
+    commitId: r.commit_id,
+    submittedAt: r.submitted_at as string,
+    body: r.body ?? "",
+  }));
 
   const allComments = ghPages<RestComment[]>([`repos/${REPO}/issues/${pr}/comments`]).flat();
   const comments: CodeRabbitComment[] = allComments
@@ -188,7 +191,61 @@ function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
     comments,
     authorComments,
     threads,
+    carriedApproval: carriedApproval(pr, headSha, restReviews),
   };
+}
+
+interface TimelineEvent {
+  event: string;
+  dismissed_review?: { state: string; review_id: number };
+}
+
+function git(args: string[]): string {
+  return execFileSync("git", args, { encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
+}
+
+/** The PR's own lines at `head`, measured from where it left main. */
+function prLines(head: string, excluded: string[]): string[] {
+  const mergeBase = git(["merge-base", "origin/main", head]).trim();
+  return changedLines(git(["diff", "-U0", mergeBase, head]), excluded);
+}
+
+/**
+ * The newest CodeRabbit approval a push dismissed, if its commit changes the same
+ * lines as the head. Only the newest is tried: an older one was followed by a
+ * review, which {@link classify} would find newer than it anyway. Any git or API
+ * failure (a commit not fetched locally, say) means no carried approval, so the
+ * round asks CodeRabbit again rather than assuming the approval holds.
+ */
+function carriedApproval(
+  pr: number,
+  headSha: string,
+  restReviews: RestReview[],
+): { approvedAt: string } | undefined {
+  try {
+    const dismissedApprovals = new Set(
+      ghPages<TimelineEvent[]>([`repos/${REPO}/issues/${pr}/timeline`])
+        .flat()
+        .filter((e) => e.event === "review_dismissed" && e.dismissed_review?.state === "approved")
+        .map((e) => e.dismissed_review?.review_id),
+    );
+    const newest = restReviews
+      .filter((r) => dismissedApprovals.has(r.id) && r.commit_id !== headSha)
+      .sort((a, b) => Date.parse(a.submitted_at ?? "") - Date.parse(b.submitted_at ?? ""))
+      .at(-1);
+    if (newest === undefined) return undefined;
+    let excluded: string[] = [];
+    try {
+      excluded = excludedPathFilters(readFileSync(".coderabbit.yaml", "utf-8"));
+    } catch {
+      // No config in the cwd: compare every file, which can only ask for more review.
+    }
+    return sameLines(prLines(newest.commit_id, excluded), prLines(headSha, excluded))
+      ? { approvedAt: newest.submitted_at as string }
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 interface Args {

@@ -99,6 +99,15 @@ export interface Snapshot {
   authorComments: AuthorComment[];
   /** Every review thread on the PR, whoever opened it. */
   threads: ReviewThread[];
+  /**
+   * An approval that a later push dismissed, but whose commit changes the same
+   * lines as the head (`scripts/review/tier.ts` `sameLines`, files CodeRabbit
+   * does not read left out). The ruleset dismisses an approval on any push, a
+   * merge of main included; when the merge left the PR's own lines alone, the
+   * approval still covers the head (docs/process.md "main の取り込み", #3286).
+   * Computed by the caller, which owns git; absent when there is none.
+   */
+  carriedApproval?: { approvedAt: string };
 }
 
 export interface ClassifyOptions {
@@ -309,6 +318,15 @@ export function classify(
   const latest = commitReviews.at(-1);
 
   if (latest && onHead(latest) && latest.state === "APPROVED" && unresolved === 0) {
+    return { kind: "approved" };
+  }
+  // A carried approval stands only while nothing CodeRabbit reviewed came after it.
+  const carried = s.carriedApproval;
+  if (
+    carried !== undefined &&
+    unresolved === 0 &&
+    !commitReviews.some((r) => ms(r.submittedAt) > ms(carried.approvedAt))
+  ) {
     return { kind: "approved" };
   }
 

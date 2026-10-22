@@ -96,6 +96,65 @@ describe("classify", () => {
     expect(state).toEqual({ kind: "waiting" });
   });
 
+  describe("an approval dismissed by a merge of main (#3286)", () => {
+    // The ruleset dismisses the approval on the merge push; GitHub then reports it
+    // as DISMISSED, and the latest commit review left is the earlier change request.
+    const reviews = [
+      {
+        state: "CHANGES_REQUESTED",
+        commitId: OLD,
+        submittedAt: "2026-09-15T12:00:00Z",
+        body: "**Actionable comments posted: 1**",
+      },
+      { state: "DISMISSED", commitId: OLD, submittedAt: "2026-09-15T13:00:00Z", body: "" },
+    ];
+
+    it("still counts as approved when the caller found the head's lines unchanged", () => {
+      expect(
+        classify(snapshot({ reviews, carriedApproval: { approvedAt: "2026-09-15T13:00:00Z" } })),
+      ).toEqual({ kind: "approved" });
+    });
+
+    it("does not count without that finding", () => {
+      expect(classify(snapshot({ reviews }))).not.toEqual({ kind: "approved" });
+    });
+
+    it("does not count once CodeRabbit reviewed something after it", () => {
+      const later = {
+        state: "CHANGES_REQUESTED",
+        commitId: HEAD,
+        submittedAt: "2026-09-15T14:10:00Z",
+        body: "**Actionable comments posted: 1**",
+      };
+      expect(
+        classify(
+          snapshot({
+            reviews: [...reviews, later],
+            carriedApproval: { approvedAt: "2026-09-15T13:00:00Z" },
+          }),
+        ),
+      ).not.toEqual({ kind: "approved" });
+    });
+
+    it("does not count while a thread is open", () => {
+      expect(
+        classify(
+          snapshot({
+            reviews,
+            carriedApproval: { approvedAt: "2026-09-15T13:00:00Z" },
+            threads: [
+              {
+                isResolved: false,
+                lastCommentAt: "2026-09-15T13:30:00Z",
+                lastCommentByCodeRabbit: false,
+              },
+            ],
+          }),
+        ),
+      ).not.toEqual({ kind: "approved" });
+    });
+  });
+
   it("waits for the burst to go quiet before reading a round (#2840)", () => {
     // A review with outside-diff findings, then a thread answer seconds later.
     const burst = snapshot({
