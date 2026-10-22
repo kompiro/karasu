@@ -66,6 +66,43 @@ describe("formatter node-property coverage", () => {
   }
 });
 
+// Comments are not in the AST, so the round trip above cannot see them
+// (#3263): a comment on a property line went to the end of the file. Each
+// fixture is run again with a comment above and beside every line, and every
+// comment has to come back next to the same statement.
+describe("formatter node-property comment placement", () => {
+  for (const [key, src] of Object.entries(FIXTURES)) {
+    it(`keeps comments next to the ${key} property lines`, () => {
+      const lines = src.trimEnd().split("\n");
+      const annotated = lines
+        .flatMap((line, i) => {
+          const indent = line.match(/^\s*/)?.[0] ?? "";
+          return [`${indent}// above ${i}`, `${line} // beside ${i}`];
+        })
+        .join("\n");
+      const out = format(annotated).trimEnd().split("\n");
+
+      lines.forEach((line, i) => {
+        const keyword = firstWord(line);
+        const beside = out.filter((l) => l.endsWith(`// beside ${i}`));
+        expect(beside, `beside ${i}`).toHaveLength(1);
+        expect(firstWord(beside[0]), `beside ${i}`).toBe(keyword);
+
+        const above = out.findIndex((l) => l.trim() === `// above ${i}`);
+        expect(above, `above ${i}`).toBeGreaterThanOrEqual(0);
+        const next = out.slice(above + 1).find((l) => !l.trim().startsWith("//"));
+        expect(next && firstWord(next), `above ${i}`).toBe(keyword);
+      });
+
+      expect(format(format(annotated))).toBe(format(annotated));
+    });
+  }
+});
+
+function firstWord(line: string): string {
+  return line.trim().split(/\s/, 1)[0];
+}
+
 /**
  * How many entries `key` holds across every node with a `properties` object:
  * the array length for list-valued keys, 1 for a set scalar.

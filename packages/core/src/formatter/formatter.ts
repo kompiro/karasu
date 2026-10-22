@@ -1,7 +1,7 @@
 import { Parser, annotationParamKind } from "../parser/parser.js";
 import { Lexer } from "../lexer/lexer.js";
 import { TokenType } from "../types/tokens.js";
-import type { Token } from "../types/tokens.js";
+import type { SourceRange, Token } from "../types/tokens.js";
 import { quoteId } from "./quote-id.js";
 import { quoteString, emitDescription } from "./quote-string.js";
 import type {
@@ -56,9 +56,9 @@ export const FORMAT_BLOCKING_CODES: ReadonlySet<DiagnosticCode> = new Set<Diagno
  *   formatter cannot preserve (`FORMAT_BLOCKING_CODES`).
  * - Idempotent: format(format(src)) === format(src).
  *
- * Known limitation (v1): comments that appear between properties inside a
- * block body may be relocated to immediately before the next child node or
- * edge, because property positions are not stored in the AST.
+ * A comment stays with the line it annotates: above it, or after it on the
+ * same line. Properties print in a canonical order, so a comment written
+ * above or beside a property moves with that property (#3263).
  */
 export function format(src: string): string {
   const parseResult = Parser.parse(src);
@@ -75,10 +75,7 @@ export function format(src: string): string {
       `Cannot format: the source holds a value this command cannot preserve (${unpreservable.join(", ")})`,
     );
   }
-  const commentTokens = new Lexer(src)
-    .tokenizeWithComments()
-    .filter((t) => t.type === TokenType.LineComment || t.type === TokenType.BlockComment);
-  return new Printer(commentTokens).printFile(parseResult.value);
+  return new Printer(new Lexer(src).tokenizeWithComments()).printFile(parseResult.value);
 }
 
 /**
@@ -103,7 +100,30 @@ function kindToKeyword(kind: string): string {
   return kind === "queue-item" ? "queue" : kind;
 }
 
-type HasLoc = { loc: { start: { line: number }; end: { line: number } } };
+type HasLoc = { loc: SourceRange };
+
+function isComment(tok: Token): boolean {
+  return tok.type === TokenType.LineComment || tok.type === TokenType.BlockComment;
+}
+
+/**
+ * One statement of a block body, as written in the source: the first token on
+ * a line inside the block's braces starts one, and it runs until the next.
+ * A nested block (a child node, a capability block) belongs to the statement
+ * that opened it.
+ */
+interface BodyStatement {
+  keyword: string;
+  startLine: number;
+  endLine: number;
+}
+
+/** A block body: the line its `{` is on and the statements inside it. */
+interface BlockBody {
+  openOffset: number;
+  openLine: number;
+  statements: BodyStatement[];
+}
 
 // ---------------------------------------------------------------------------
 // Printer
@@ -114,14 +134,49 @@ class Printer {
   private readonly byLine: Map<number, Token[]>;
   /** Lines whose comment tokens have already been emitted. */
   private readonly emitted: Set<number>;
+  /** Lines that hold a non-comment token, so a comment there trails it. */
+  private readonly tokenLines: Set<number>;
+  /** Every block body in the source, in the order their `{` appears. */
+  private readonly bodies: BlockBody[];
 
-  constructor(commentTokens: Token[]) {
+  /** `tokens` is the full stream from `tokenizeWithComments()`. */
+  constructor(tokens: Token[]) {
     this.byLine = new Map();
     this.emitted = new Set();
-    for (const tok of commentTokens) {
-      const bucket = this.byLine.get(tok.loc.line) ?? [];
-      bucket.push(tok);
-      this.byLine.set(tok.loc.line, bucket);
+    this.tokenLines = new Set();
+    this.bodies = [];
+    // The AST stores no position for most properties, so the statement
+    // positions a comment is placed against come from the token stream.
+    const open: { body: BlockBody; lastLine: number }[] = [];
+    for (const tok of tokens) {
+      if (isComment(tok)) {
+        const bucket = this.byLine.get(tok.loc.line) ?? [];
+        bucket.push(tok);
+        this.byLine.set(tok.loc.line, bucket);
+        continue;
+      }
+      if (tok.type === TokenType.EOF) continue;
+      const endLine = tok.end?.line ?? tok.loc.line;
+      this.tokenLines.add(tok.loc.line);
+      this.tokenLines.add(endLine);
+      if (tok.type === TokenType.RightBrace) open.pop();
+      const top = open.at(-1);
+      if (top) {
+        const current = top.body.statements.at(-1);
+        // A closing brace ends the statement that opened the block, whatever
+        // line it is on.
+        if (tok.type !== TokenType.RightBrace && tok.loc.line > top.lastLine) {
+          top.body.statements.push({ keyword: tok.value, startLine: tok.loc.line, endLine });
+        } else if (current) {
+          current.endLine = endLine;
+        }
+        top.lastLine = endLine;
+      }
+      if (tok.type === TokenType.LeftBrace) {
+        const body = { openOffset: tok.loc.offset, openLine: tok.loc.line, statements: [] };
+        this.bodies.push(body);
+        open.push({ body, lastLine: tok.loc.line });
+      }
     }
   }
 
@@ -236,6 +291,122 @@ class Printer {
     return `/* ${tok.value} */`;
   }
 
+  /** The body of the block declared at `loc`: the first `{` inside its range. */
+  private bodyOf(loc: SourceRange): BlockBody | undefined {
+    let lo = 0;
+    let hi = this.bodies.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (this.bodies[mid].openOffset < loc.start.offset) lo = mid + 1;
+      else hi = mid;
+    }
+    const body = this.bodies[lo];
+    return body !== undefined && body.openOffset < loc.end.offset ? body : undefined;
+  }
+
+  /**
+   * Give each property line of the block at `loc` the comments written above
+   * and beside it in the source (#3263).
+   *
+   * `propLines` is what the block's renderer printed, in canonical order, at
+   * `indent`; an element that starts a property begins with `indent` and its
+   * keyword, anything else continues the property above it (a capability
+   * block, its closing brace). Printed properties are paired with source
+   * statements of the same keyword in order. Properties a canonical form
+   * merges (repeated `facets` lines) take the comments of every statement
+   * they came from; properties it splits (a `realizes` comma list) leave the
+   * comments on the first. A trailing comment of the first statement stays
+   * trailing; every other comment goes above the property, so none is lost
+   * and a second pass leaves them where they are.
+   *
+   * Statements starting on a line in `itemLines` (child nodes, edges) are not
+   * properties and are left to the item loop.
+   */
+  private withPropertyComments(
+    loc: SourceRange,
+    propLines: string[],
+    indent: string,
+    itemLines: ReadonlySet<number> = new Set(),
+  ): string[] {
+    const body = this.bodyOf(loc);
+    if (!body || this.byLine.size === 0) return propLines;
+
+    const entries: { keyword: string; lines: string[] }[] = [];
+    for (const line of propLines) {
+      const rest = line.startsWith(indent) ? line.slice(indent.length) : "";
+      const current = entries.at(-1);
+      if (/^[A-Za-z]/.test(rest) || !current) {
+        entries.push({ keyword: rest.split(/\s/, 1)[0], lines: [line] });
+      } else {
+        current.lines.push(line);
+      }
+    }
+
+    // Source statements by keyword, each with the line its predecessor ended on.
+    const byKeyword = new Map<string, { stmt: BodyStatement; prevEnd: number }[]>();
+    body.statements.forEach((stmt, i) => {
+      if (itemLines.has(stmt.startLine)) return;
+      const prevEnd = i === 0 ? body.openLine : body.statements[i - 1].endLine;
+      const list = byKeyword.get(stmt.keyword) ?? [];
+      list.push({ stmt, prevEnd });
+      byKeyword.set(stmt.keyword, list);
+    });
+
+    const out: string[] = [];
+    const seen = new Map<string, number>();
+    entries.forEach((entry, i) => {
+      const nth = seen.get(entry.keyword) ?? 0;
+      seen.set(entry.keyword, nth + 1);
+      const sources = byKeyword.get(entry.keyword) ?? [];
+      const isLast = !entries.slice(i + 1).some((e) => e.keyword === entry.keyword);
+      const paired = isLast ? sources.slice(nth) : sources.slice(nth, nth + 1);
+
+      const above: Token[] = [];
+      let trailing: Token[] | undefined;
+      for (const { stmt, prevEnd } of paired) {
+        above.push(...this.extractLeading(prevEnd + 1, stmt.startLine - 1));
+        for (let line = stmt.startLine; line <= stmt.endLine; line++) {
+          if (this.emitted.has(line)) continue;
+          const toks = this.byLine.get(line);
+          if (!toks) continue;
+          this.emitted.add(line);
+          if (trailing === undefined && this.tokenLines.has(line)) trailing = toks;
+          else above.push(...toks);
+        }
+      }
+
+      out.push(...this.renderLeading(above, indent));
+      const lines = [...entry.lines];
+      if (trailing) {
+        // On the property's first element: for a multi-line description that
+        // element holds the whole string, so the comment lands after the
+        // closing quotes, where it was written.
+        lines[0] += " " + trailing.map((t) => this.renderCommentToken(t)).join(" ");
+      }
+      out.push(...lines);
+    });
+    return out;
+  }
+
+  /** Whether a not-yet-emitted comment sits inside the block at `loc`. */
+  private hasCommentsWithin(loc: SourceRange): boolean {
+    for (let line = loc.start.line + 1; line < loc.end.line; line++) {
+      if (!this.emitted.has(line) && this.byLine.has(line)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Close the block at `loc`: the comments still unplaced inside it go above
+   * the closing brace, and a comment after the brace stays after it.
+   */
+  private closeBlock(loc: SourceRange, indent: string): string[] {
+    const inner = this.extractLeading(loc.start.line + 1, loc.end.line - 1);
+    const close = `${indent}}`;
+    const trail = loc.end.line > loc.start.line ? this.extractTrailing(loc.end.line) : "";
+    return [...this.renderLeading(inner, indent + "  "), close + trail];
+  }
+
   // ── Import ────────────────────────────────────────────────────────────────
 
   private renderImport(imp: ImportDeclaration): string {
@@ -281,19 +452,25 @@ class Printer {
     if (node.tags.length > 0) decl.push(`[${node.tags.join(", ")}]`);
     decl.push(...renderAnnotations(node.annotations, node.annotationParams));
 
-    const propLines = this.renderProperties(node, indent + "  ");
-    const hasProps = propLines.length > 0;
+    const trail = this.extractTrailing(node.loc.start.line);
+    const rawPropLines = this.renderProperties(node, indent + "  ");
+    const hasProps = rawPropLines.length > 0;
     const hasChildren = node.children.length > 0;
     const hasEdges = node.edges.length > 0;
+    const hasBoundaries = (node.boundaries ?? []).length > 0;
 
-    if (!hasProps && !hasChildren && !hasEdges) {
-      const trail = this.extractTrailing(node.loc.start.line);
+    // An empty body collapses to `{}` unless a comment is written inside it.
+    if (
+      !hasProps &&
+      !hasChildren &&
+      !hasEdges &&
+      !hasBoundaries &&
+      !this.hasCommentsWithin(node.loc)
+    ) {
       return [`${indent}${decl.join(" ")} {}${trail}`];
     }
 
-    const trail = this.extractTrailing(node.loc.start.line);
     const lines: string[] = [`${indent}${decl.join(" ")} {${trail}`];
-    lines.push(...propLines);
 
     // Children and edges sorted by source line
     type Item =
@@ -326,6 +503,15 @@ class Printer {
       })),
     ].sort((a, b) => a.line - b.line);
 
+    lines.push(
+      ...this.withPropertyComments(
+        node.loc,
+        rawPropLines,
+        indent + "  ",
+        new Set(items.map((item) => item.line)),
+      ),
+    );
+
     let prevEndLine = node.loc.start.line;
     let prevItemKind: "property" | "child" | "edge" | "boundary" | null = hasProps
       ? "property"
@@ -351,19 +537,14 @@ class Printer {
       } else if (item.kind === "boundary") {
         lines.push(...this.renderBoundaryBlock(item.block).map((l) => `${indent}  ${l}`));
       } else {
-        const edgeTrail = this.extractTrailing(item.edge.loc.start.line);
-        // The trailing comment belongs to the declaration line, which for the
-        // block form is the line that opens the block.
-        const edgeLines = this.renderEdge(item.edge, node.kind);
-        edgeLines[0] += edgeTrail;
-        lines.push(...edgeLines.map((l) => `${indent}  ${l}`));
+        lines.push(...this.renderEdge(item.edge, node.kind).map((l) => `${indent}  ${l}`));
       }
 
       prevEndLine = item.endLine;
       prevItemKind = item.kind;
     }
 
-    lines.push(`${indent}}`);
+    lines.push(...this.closeBlock(node.loc, indent));
     return lines;
   }
 
@@ -449,14 +630,17 @@ class Printer {
     const head = `${indent}capability ${capability.name}`;
     if (capability.label === undefined && capability.description === undefined) return [head];
     const inner = indent + "  ";
-    const lines = [`${head} {`];
+    const props: string[] = [];
     if (capability.label !== undefined)
-      lines.push(`${inner}label ${quoteString(capability.label)}`);
+      props.push(`${inner}label ${quoteString(capability.label)}`);
     if (capability.description !== undefined) {
-      lines.push(this.renderDescription(capability.description, inner));
+      props.push(this.renderDescription(capability.description, inner));
     }
-    lines.push(`${indent}}`);
-    return lines;
+    return [
+      `${head} {`,
+      ...this.withPropertyComments(capability.loc, props, inner),
+      ...this.closeBlock(capability.loc, indent),
+    ];
   }
 
   private renderDescription(value: string, indent: string): string {
@@ -479,6 +663,9 @@ class Printer {
    * of one fact (TPL-1415, TPL-2542).
    */
   private renderEdge(edge: KrsEdge, parentKind?: string): string[] {
+    // The trailing comment belongs to the declaration line, which for the
+    // block form is the line that opens the block.
+    const trail = this.extractTrailing(edge.loc.start.line);
     const arrow = edgeArrow(edge.kind);
     const tags = edge.tags.length > 0 ? ` [${edge.tags.join(", ")}]` : "";
     // The author's `#<id>` is data, not decoration. Dropping it here silently
@@ -500,20 +687,26 @@ class Printer {
       (edge.facets !== undefined && edge.facets.length > 0);
     if (!hasBlockOnlyProperty) {
       const label = edge.label !== undefined ? ` ${quoteString(edge.label)}` : "";
-      return [`${head}${label}${tags}${id}`];
+      // A label-only block folds onto one line, so the comments written
+      // inside it go above the edge.
+      const inner = this.extractLeading(edge.loc.start.line + 1, edge.loc.end.line);
+      return [...this.renderLeading(inner, ""), `${head}${label}${tags}${id}${trail}`];
     }
 
-    const lines = [`${head}${tags}${id} {`];
-    if (edge.label !== undefined) lines.push(`  label ${quoteString(edge.label)}`);
-    if (edge.description !== undefined) lines.push(this.renderDescription(edge.description, "  "));
+    const props: string[] = [];
+    if (edge.label !== undefined) props.push(`  label ${quoteString(edge.label)}`);
+    if (edge.description !== undefined) props.push(this.renderDescription(edge.description, "  "));
     // Same slot and same canonicalization the node property gets in
     // `renderProperties`: one comma list, before `link`.
     if (edge.facets !== undefined && edge.facets.length > 0) {
-      lines.push(`  facets ${edge.facets.map(quoteId).join(", ")}`);
+      props.push(`  facets ${edge.facets.map(quoteId).join(", ")}`);
     }
-    for (const link of edge.links ?? []) lines.push(this.renderLink(link, "  "));
-    lines.push("}");
-    return lines;
+    for (const link of edge.links ?? []) props.push(this.renderLink(link, "  "));
+    return [
+      `${head}${tags}${id} {${trail}`,
+      ...this.withPropertyComments(edge.loc, props, "  "),
+      ...this.closeBlock(edge.loc, ""),
+    ];
   }
 
   // ── DeployBlock ───────────────────────────────────────────────────────────
@@ -522,7 +715,15 @@ class Printer {
     const trail = this.extractTrailing(block.loc.start.line);
     const lines: string[] = [`deploy ${quoteId(block.id)} {${trail}`];
 
-    if (block.label !== undefined) lines.push(`  label ${quoteString(block.label)}`);
+    const props = block.label !== undefined ? [`  label ${quoteString(block.label)}`] : [];
+    lines.push(
+      ...this.withPropertyComments(
+        block.loc,
+        props,
+        "  ",
+        new Set(block.nodes.map((n) => n.loc.start.line)),
+      ),
+    );
 
     let prevEndLine = block.loc.start.line;
     for (let i = 0; i < block.nodes.length; i++) {
@@ -534,7 +735,7 @@ class Printer {
       prevEndLine = node.loc.end.line;
     }
 
-    lines.push("}");
+    lines.push(...this.closeBlock(block.loc, ""));
     return lines;
   }
 
@@ -542,24 +743,26 @@ class Printer {
     const trail = this.extractTrailing(node.loc.start.line);
     const lines: string[] = [`  ${node.kind} ${quoteId(node.id)} {${trail}`];
 
-    if (node.label !== undefined) lines.push(`    label ${quoteString(node.label)}`);
+    const props: string[] = [];
+    if (node.label !== undefined) props.push(`    label ${quoteString(node.label)}`);
     if (node.properties.runtime !== undefined)
-      lines.push(`    runtime ${quoteString(node.properties.runtime)}`);
+      props.push(`    runtime ${quoteString(node.properties.runtime)}`);
     if (node.properties.image !== undefined)
-      lines.push(`    image ${quoteString(node.properties.image)}`);
+      props.push(`    image ${quoteString(node.properties.image)}`);
     if (node.properties.type !== undefined)
-      lines.push(`    type ${quoteString(node.properties.type)}`);
+      props.push(`    type ${quoteString(node.properties.type)}`);
     if (node.properties.schedule !== undefined)
-      lines.push(`    schedule ${quoteString(node.properties.schedule)}`);
+      props.push(`    schedule ${quoteString(node.properties.schedule)}`);
     // One target per line, even when the source wrote them comma-separated
     // (#2167): repeated lines are the canonical form the comma list sugars.
     for (const r of node.properties.realizes ?? []) {
       // Path refs print as written; each segment is re-quoted only when
       // needed (TPL-1101, #2088).
-      lines.push(`    realizes ${r.path.map(quoteId).join(".")}`);
+      props.push(`    realizes ${r.path.map(quoteId).join(".")}`);
     }
 
-    lines.push("  }");
+    lines.push(...this.withPropertyComments(node.loc, props, "    "));
+    lines.push(...this.closeBlock(node.loc, "  "));
     return lines;
   }
 
@@ -569,13 +772,22 @@ class Printer {
     const trail = this.extractTrailing(block.loc.start.line);
     const lines: string[] = [`organization ${quoteId(block.id)} {${trail}`];
 
-    if (block.label !== undefined) lines.push(`  label ${quoteString(block.label)}`);
+    const props: string[] = [];
+    if (block.label !== undefined) props.push(`  label ${quoteString(block.label)}`);
     if (block.properties.description !== undefined) {
-      lines.push(this.renderDescription(block.properties.description, "  "));
+      props.push(this.renderDescription(block.properties.description, "  "));
     }
     for (const link of block.properties.links) {
-      lines.push(this.renderLink(link, "  "));
+      props.push(this.renderLink(link, "  "));
     }
+    lines.push(
+      ...this.withPropertyComments(
+        block.loc,
+        props,
+        "  ",
+        new Set(block.teams.map((t) => t.loc.start.line)),
+      ),
+    );
 
     let prevEndLine = block.loc.start.line;
     for (let i = 0; i < block.teams.length; i++) {
@@ -587,7 +799,7 @@ class Printer {
       prevEndLine = team.loc.end.line;
     }
 
-    lines.push("}");
+    lines.push(...this.closeBlock(block.loc, ""));
     return lines;
   }
 
@@ -601,18 +813,27 @@ class Printer {
     ];
     const lines: string[] = [`${indent}${decl.join(" ")} {${trail}`];
 
-    if (team.label !== undefined) lines.push(`${indent}  label ${quoteString(team.label)}`);
+    const props: string[] = [];
+    if (team.label !== undefined) props.push(`${indent}  label ${quoteString(team.label)}`);
     if (team.properties.description !== undefined) {
-      lines.push(this.renderDescription(team.properties.description, `${indent}  `));
+      props.push(this.renderDescription(team.properties.description, `${indent}  `));
     }
     for (const link of team.properties.links) {
-      lines.push(this.renderLink(link, `${indent}  `));
+      props.push(this.renderLink(link, `${indent}  `));
     }
     for (const owns of team.properties.owns) {
       // Author notation is preserved segment-for-segment (TPL-1101): a path
       // ref prints as written, each segment re-quoted only if it needs it.
-      lines.push(`${indent}  owns ${owns.map(quoteId).join(".")}`);
+      props.push(`${indent}  owns ${owns.map(quoteId).join(".")}`);
     }
+    lines.push(
+      ...this.withPropertyComments(
+        team.loc,
+        props,
+        `${indent}  `,
+        new Set(team.children.map((c) => c.loc.start.line)),
+      ),
+    );
 
     let prevEndLine = team.loc.start.line;
     for (const child of team.children) {
@@ -629,7 +850,7 @@ class Printer {
       prevEndLine = endLine;
     }
 
-    lines.push(`${indent}}`);
+    lines.push(...this.closeBlock(team.loc, indent));
     return lines;
   }
 
@@ -638,16 +859,18 @@ class Printer {
     const trail = this.extractTrailing(member.loc.start.line);
     const lines: string[] = [`${indent}member ${quoteId(member.id)} {${trail}`];
 
-    if (member.label !== undefined) lines.push(`${indent}  label ${quoteString(member.label)}`);
+    const props: string[] = [];
+    if (member.label !== undefined) props.push(`${indent}  label ${quoteString(member.label)}`);
     if (member.properties.description !== undefined) {
-      lines.push(this.renderDescription(member.properties.description, `${indent}  `));
+      props.push(this.renderDescription(member.properties.description, `${indent}  `));
     }
     if (member.properties.slack !== undefined)
-      lines.push(`${indent}  slack ${quoteString(member.properties.slack)}`);
+      props.push(`${indent}  slack ${quoteString(member.properties.slack)}`);
     if (member.properties.github !== undefined)
-      lines.push(`${indent}  github ${quoteString(member.properties.github)}`);
+      props.push(`${indent}  github ${quoteString(member.properties.github)}`);
 
-    lines.push(`${indent}}`);
+    lines.push(...this.withPropertyComments(member.loc, props, `${indent}  `));
+    lines.push(...this.closeBlock(member.loc, indent));
     return lines;
   }
 
@@ -660,19 +883,21 @@ class Printer {
     // canonical form keeps the output idempotent.
     const lines: string[] = [`boundary ${quoteId(block.id)} {${trail}`];
 
-    if (block.label !== undefined) lines.push(`  label ${quoteString(block.label)}`);
+    const props: string[] = [];
+    if (block.label !== undefined) props.push(`  label ${quoteString(block.label)}`);
     if (block.properties.description !== undefined) {
-      lines.push(this.renderDescription(block.properties.description, "  "));
+      props.push(this.renderDescription(block.properties.description, "  "));
     }
     for (const link of block.properties.links) {
-      lines.push(this.renderLink(link, "  "));
+      props.push(this.renderLink(link, "  "));
     }
     for (const ref of block.contains) {
       // Same round-trip rule as `owns` (TPL-1101): print the path as written.
-      lines.push(`  contains ${ref.map(quoteId).join(".")}`);
+      props.push(`  contains ${ref.map(quoteId).join(".")}`);
     }
 
-    lines.push("}");
+    lines.push(...this.withPropertyComments(block.loc, props, "  "));
+    lines.push(...this.closeBlock(block.loc, ""));
     return lines;
   }
 
@@ -682,15 +907,17 @@ class Printer {
     const trail = this.extractTrailing(block.loc.start.line);
     const lines: string[] = [`facet ${quoteId(block.id)} {${trail}`];
 
-    if (block.label !== undefined) lines.push(`  label ${quoteString(block.label)}`);
+    const props: string[] = [];
+    if (block.label !== undefined) props.push(`  label ${quoteString(block.label)}`);
     if (block.properties.description !== undefined) {
-      lines.push(this.renderDescription(block.properties.description, "  "));
+      props.push(this.renderDescription(block.properties.description, "  "));
     }
     for (const link of block.properties.links) {
-      lines.push(this.renderLink(link, "  "));
+      props.push(this.renderLink(link, "  "));
     }
 
-    lines.push("}");
+    lines.push(...this.withPropertyComments(block.loc, props, "  "));
+    lines.push(...this.closeBlock(block.loc, ""));
     return lines;
   }
 
@@ -703,10 +930,9 @@ class Printer {
     if (block.title !== undefined) decl.push(`${quoteString(block.title)}`);
 
     const lines: string[] = [`${decl.join(" ")} {${trail}`];
-    for (const entry of block.entries) {
-      lines.push(`  ${this.renderLegendEntry(entry)}`);
-    }
-    lines.push("}");
+    const entries = block.entries.map((entry) => `  ${this.renderLegendEntry(entry)}`);
+    lines.push(...this.withPropertyComments(block.loc, entries, "  "));
+    lines.push(...this.closeBlock(block.loc, ""));
     return lines;
   }
 
