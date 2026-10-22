@@ -156,8 +156,10 @@ Issue が無ければ **その ADR を書いた PR の番号**を使う（[#2083
 
 **到達状態**: 適用条件を満たす PR は、本文の最後の行が `@coderabbitai ignore` で
 `adr-auto-merge` ラベルを持ち、CodeRabbit の review 枠を 1 度も使わずに auto-merge
-待ちになっている。満たさない `docs(adr):` PR は本文の行もラベルも持たず、通常どおり
-レビューされる。
+待ちになっている。満たさない `docs(adr):` PR は本文の行もラベルも持たず、
+`docs/process.md`「リスク段階」に従ってレビューされる（差分が `docs/adr/**` だけなら Low で、
+CodeRabbit の approve の後に auto-merge される）。本節の auto-merge は、CodeRabbit も通らない
+Low の特別な場合である。
 
 > この節は「PR のマージはユーザー確認を経る」という本リポジトリの既定運用に
 > **優先する明示的な例外**。例外が成立するのは下の適用条件をすべて満たす
@@ -178,7 +180,8 @@ gh pr merge <N> --auto --squash --delete-branch
 ```
 
 適用条件を満たさなければ、本文に行を入れずラベルも付けずに draft で作り、
-`gh pr ready <N>` だけ実行して通常の PR として扱う（CodeRabbit のレビューとユーザー確認を経る）。
+`gh pr ready <N>` だけ実行して通常の PR として扱う（CodeRabbit のレビューを経て、`docs/process.md`
+「リスク段階」の段階に従う）。
 
 ### 適用条件（すべて満たすこと）
 
@@ -238,7 +241,7 @@ gh pr merge <N> --auto --squash --delete-branch
   - 満たさないとき: `gh pr ready <N>` で draft を外し、本文の行とラベルを残したまま
     `@coderabbitai full review` を投げる。それまでのコミットは一度もレビューされていないので、
     差分レビューでは足りない。full review が届いたら、新しいコミットを足さずに本文の行と
-    ラベルを外し、通常の PR として扱う。先に外すと ready や次の push で自動レビューが走り、
+    ラベルを外し、通常の PR として扱う。先に外すと ready で自動レビューが走り、
     full review と二重に review 枠を使う
 
   本文の行とラベルは「この差分で条件を満たした」という判定の記録で、CodeRabbit の

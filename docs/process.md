@@ -105,26 +105,62 @@ ready → implementing → in-review → (close)
 5. 実装する
 6. /hane:commit でコミットする（Conventional Commits 形式）
 7. PR 前に main を取り込む — git fetch origin main && git merge --no-edit origin/main（rebase は使わない。「ブランチ戦略」参照）。コンフリクトを解消し、lint / test を再確認する
-8. base ブランチとの差分（git diff origin/main...HEAD）に /engineering:code-review を当て、対応すると決めた修正をコミットし、lint / test を再確認する。PR はまだ作らない
-9. PR を draft で作成する（gh pr create --draft、Closes #N で Issue と紐付ける）。draft には CodeRabbit も分単位の CI も走らない
+8. base ブランチとの差分（git diff origin/main...HEAD）に /engineering:code-review を当て、対応すると決めた修正をコミットし、lint / test を再確認する。`node scripts/review/tier.ts classify` で段階を判定し、`securityReview` が true なら /security-review も当てる（「リスク段階」）。PR はまだ作らない
+9. PR を draft で作成する（gh pr create --draft --label "risk: <段階>"、Closes #N で Issue と紐付ける）。draft には CodeRabbit も分単位の CI も走らない
 10. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の、本文に ignore コマンドが無く、`adr-auto-merge` / `skip-coderabbit` ラベルの無い PR）では初回レビューもここで走る
 11. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 12. Issue ラベルを status: in-review に更新する
 13. 手動検証チェックリストを実施する
-14. CodeRabbit のレビューを収束させる（`/coderabbit-converge` で approve まで回す。記録済みの決定を変える指摘だけ人間に確認する）
-15. 人間のレビュー → マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
+14. CodeRabbit のレビューを収束させる（`/coderabbit-converge` で approve まで回す。再レビューは 3 回まで。記録済みの決定を変える指摘だけ人間に確認する）
+15. 段階に従ってマージする。Low は auto-merge、それ以外は人間のレビュー → マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
 ```
 
-**CodeRabbit の初回レビューは `/engineering:code-review` の修正を反映したコードに当てる。** ready の
-PR への push は、自動レビューが走るたびに CodeRabbit の review 枠を 1 回使い（rate limit で
-弾かれた push は使わない）、枠の補充レートは直近 7 日の
-利用量が増えるほど下がる。PR を ready で開いてから `/engineering:code-review` を当てると、直す前の
-コードと直した後のコードで 2 回使う。レビューは PR を作る前に base ブランチとの差分へ当てるので、
+**CodeRabbit の初回レビューは `/engineering:code-review` の修正を反映したコードに当てる。** CodeRabbit が
+自動でレビューするのは ready にした時点の 1 回だけで、それ以降は頼んだときだけレビューする。どちらも
+review 枠を 1 回使い、枠の補充レートは直近 7 日の利用量が増えるほど下がる。PR を ready で開いてから
+`/engineering:code-review` を当てると、直す前のコードと、直した後のコードへの再レビューで 2 回使う。レビューは PR を作る前に base ブランチとの差分へ当てるので、
 修正は PR の最初の push に含まれる。順序の決定と計測値は
 [ADR-2898](adr/2898-draft-first-code-review.md)、レビュー対象を base との差分にした決定は
 [ADR-3052](adr/3052-review-branch-diff-before-draft-pr.md)。
 
 詳細な手順は `/hane:start-dev` スキル（[`kompiro/hane`](https://github.com/kompiro/hane) plugin）を参照。
+
+### リスク段階
+
+**到達状態**: どの PR にも、変更から判定した段階のラベル（`risk: low` / `risk: design` /
+`risk: medium` / `risk: high`）が付いている。required check「Review tier」は、`risk: low` が付いて
+いるのに判定が Low でない PR だけを落とす。
+
+```
+node scripts/review/tier.ts classify            # PR を作る前、ブランチの差分で判定する
+node scripts/review/tier.ts check --pr <n>      # CI と同じ判定（ラベルとの食い違いで exit 1）
+```
+
+段階は変更から決め、作成者の判断や差分の行数では決めない。PR の段階は、変更したファイルの
+段階の最大値で、どの規則にも当たらないパスは Medium になる。規則の正本は `scripts/review/tier.ts` の
+glob の一覧で、ここには要約だけを置く。
+
+| 段階 | 変更したもの | approve の後 |
+| --- | --- | --- |
+| Low | `docs/adr/**`・`docs/test-perspectives/**`・`docs/guide/**`・テストファイル（`*.test.ts(x)` / `*.spec.ts`）だけ | CI が通れば auto-merge。人間は読まない |
+| Design | `docs/design/**` | 人間が必ずレビューする |
+| Medium | ほかのすべて（`packages/*`・`docs/acceptance/**`・`examples/**` などを含む） | 人間がサマリー・証拠・preview を見て判断する |
+| High | workflow・release・依存の変更・`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`.claude/rules/**`・`.coderabbit.yaml` など | 人間が差分を読む |
+
+- **段階は上がる方向にだけ補正される。** 作成者が信頼リスト（`kompiro`）にいなければ High になる。
+  CodeRabbit のサマリーの effort 見積もりが 4 以上なら、Low は Medium になる。見積もりは
+  `coderabbitai[bot]` のサマリーからだけ読み、読めなければ Low にしない。段階を下げる補正はない
+- **差分が `packages/nest/**` か `.github/workflows/**` に触れる PR は、段階とは別に `/security-review` を当てる**
+- **CodeRabbit のラウンドは、どの段階でも approve まで回す。** 再レビューを 3 回頼んでも approve
+  されなければ止めて、人間が見る。人間がレビューして修正を頼んだ後は、その修正にも再レビューを頼み、
+  3 回はそこから数え直す
+- **Low の auto-merge は「PR のマージはユーザー確認を経る」という既定運用への例外である。** 条件は、
+  `risk: low` が付き、required check「Review tier」を含む CI が通り、CodeRabbit の approve が HEAD を覆う
+  （「人間のレビューは CodeRabbit が approve してから始める」）こと。`/coderabbit-converge` が
+  `gh pr merge <n> --auto --squash --delete-branch` を有効にする。有効にした後に変更を足すなら、先に
+  `gh pr merge <n> --disable-auto` で解く
+- **`skip-coderabbit` と Low は組み合わせない。** `skip-coderabbit` を付けた PR は段階にかかわらず人間が
+  レビューする。ADR-only の auto-merge（`.claude/rules/adr.md`）は、CodeRabbit も通らない Low の特別な場合
 
 ### CodeRabbit を外す小さな PR（ignore コマンドと `skip-coderabbit` ラベル）
 
@@ -167,15 +203,14 @@ gh pr ready <N>
 
 - **PR を作ってから外すと決めた場合**は、draft のうちに本文へ行を足し
   （`gh pr edit <N> --body-file <本文>`）、ラベルを付ける。ready の後に足した場合、
-  それ以降の push の自動レビューは止まるが、既に付いたレビューとその changes-requested は
-  残る。changes-requested はマージを止めないので、そのまま人間のレビューに進んでよい
+  既に付いたレビューとその changes-requested は残る。changes-requested はマージを止めないので、そのまま人間のレビューに進んでよい
 - 外した PR では `/coderabbit-converge` を回さず、次節の到達状態
   （CodeRabbit の approve）も求めない。CI が通れば人間のレビューに渡す
 - 外した後に判定基準を満たさない差分を足すなら、本文の行とラベルを残したまま push し、
   `@coderabbitai full review` を投げる。それまでのコミットは一度もレビューされていないので、
   差分だけを見る `@coderabbitai review` では足りない。full review が届いたら、新しいコミットを
   足さずに本文の行とラベルの両方を外し（`gh pr edit <N> --body-file <本文> --remove-label skip-coderabbit`）、
-  通常の手順に戻る。先に外すと、その push で自動レビューが走って full review と二重になる
+  通常の手順に戻る
 - **外すと決めた PR 以外の本文に `@coderabbitai ignore` という文字列を書かない。**
   CodeRabbit は文脈を区別せず、引用や却下した案の説明として書いただけでもその PR を
   レビューから外す。外れたときのステータスは理由の付かない `Review skipped` で、
@@ -186,17 +221,21 @@ gh pr ready <N>
 
 ### 人間のレビューは CodeRabbit が approve してから始める
 
-**到達状態**: 人間がレビューを開いた時点で、CodeRabbit の最新レビューが `APPROVED`、
+**到達状態**: 人間がレビューを開いた時点で、CodeRabbit の approve が HEAD を覆い、
 未解決の review thread が 0、そして人間の判断が要る論点は PR 上で質問済みになっている。
+
+approve が HEAD を覆うとは、approve が HEAD commit に対するものか、approve した commit から HEAD
+までの push が main の取り込みだけで、PR の追加行と削除行が変わっていないことをいう（「main の
+取り込み」）。ruleset は取り込みの push でも approve を dismiss するので、最新レビューの state だけを
+見ると外れて見える。判定は `await-review.ts` が行い、`outcome` が `approved` になる。
 
 2 本目は **`--paginate` で全ページ数える**。`reviewThreads` を 1 ページだけ読むと、
 古い未解決 thread が範囲外に落ちて `0` が返る。`--slurp` は `--jq` と併用できないので
 `jq` に繋ぐ。
 
 ```
-gh pr view <n> --json reviews \
-  --jq '[.reviews[] | select(.author.login == "coderabbitai")] | last | .state'
-# => APPROVED
+pnpm exec tsx scripts/coderabbit/await-review.ts <n> --once | jq -r .outcome
+# => approved
 
 gh api graphql --paginate --slurp -F n=<n> -f query='query($n: Int!, $endCursor: String) {
   repository(owner: "kompiro", name: "karasu") {
@@ -218,7 +257,7 @@ CodeRabbit は actionable な指摘があるあいだ changes-requested を出�
 **この approve は「自動レビューが収束した」印であって、マージ許可ではない。**
 required check ではなく、default branch の ruleset は approving review を要求しない
 ので、changes-requested はマージを止めず approve はマージを許可しない。マージ判断は
-人間が持つ。
+人間が持つ。例外は Low の auto-merge だけで、条件は「リスク段階」に従う。
 
 **PR を出した側が approve までのラウンドを回しきってから人間に渡す。** 人間の
 レビューを CodeRabbit のラウンドと並走させない。並走させると収束途中の差分を人間が
@@ -250,6 +289,13 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
   auto-merge の適用条件を満たすと PR を作る前にブランチの差分で確認した PR にだけ、
   作成時に入れる（`.claude/rules/adr.md`「ADR PR の auto-merge」、ADR-3117）
 - 本文の ignore コマンドと `skip-coderabbit` ラベルで外した PR も対象外（「CodeRabbit を外す小さな PR」）
+- **PR の差分の外への指摘は直さず、Issue にする。** 判定は 1 つ、指摘された行が PR の差分
+  （`git diff -U0 origin/main...HEAD`）の hunk に含まれるかどうか（`node scripts/review/tier.ts in-diff <path> <行>`）。
+  含まれなければ、重複を検索してから英語で Issue を起こし、指摘に Issue へのリンクを返して閉じる。
+  CodeRabbit の「Outside diff range」はこの判定に使わない（その回の push の差分の外という意味で、PR の差分の
+  外とは限らない）。ファイルや行を持たず判定できない指摘は、PR の範囲として扱う
+- **修正を push する前に、同じ種類の問題をほかの箇所でも探してまとめて直し、修正で触れたファイル全体に
+  `/engineering:code-review` を当てる。** 後のラウンドで出る指摘は、修正で触れたファイルの中に出る
 - 採用しない指摘は**返信で理由を書いてから閉じる**。approve は指摘に従わなくても
   到達できる。**approve を取ることを目的に指摘へ従わない**。従うべきか迷うものは、
   上の表に従って人間へ回す
@@ -314,16 +360,35 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
   instruction に書く
 - **review 枠は開発者単位で他のリポジトリとも共有され、補充レートは直近 7 日の利用量が
   増えるほど下がる**（適応型の制限が掛かるプランでは最後は 1 回/時まで落ちる。段階はプランや契約ごとに違い、
-  [rate limits](https://docs.coderabbit.ai/management/rate-limits) にある）。ready の PR への push は
-  自動レビューが走るたびに枠を 1 回使う（rate limit で弾かれた push は使わない）ので、
-  main の取り込みを単独で push しない。取り込みが要るときは
-  そのラウンドの修正と一緒に 1 回の push にする。上限に当たると
+  [rate limits](https://docs.coderabbit.ai/management/rate-limits) にある）。push は自動レビューを
+  起こさない（`.coderabbit.yaml` の `auto_incremental_review: false`）。自動で走るのは ready にした時点の
+  初回だけで、2 回目以降は `/coderabbit-converge` がラウンドの push の後に `@coderabbitai review` で頼む。
+  頼むたびに枠を 1 回使う（rate limit で弾かれた依頼は使わない）。上限に当たると
   サマリーコメントに「Next included review available in N minutes」が出るが、
   **CodeRabbit は明けても自分では再レビューしない。** 告知時刻を過ぎてから
   `@coderabbitai review` を 1 回投げる。それより前に投げても「Review rate limited.」で
   弾かれ、枠の試行回数を増やすだけになる。1 ラウンドの修正はまとめて 1 回の push にする。
   状態の判定は `pnpm exec tsx scripts/coderabbit/await-review.ts <n> --once`
 - 設定は `.coderabbit.yaml`（レビュー言語・除外パス・path ごとの規約）
+
+#### main の取り込み
+
+**到達状態**: レビューを始めてから main を取り込んだ push は、コンフリクトを解消するためのものだけで、
+PR の追加行と削除行を変えなかった取り込みには再レビューを頼んでいない。
+
+- **ラウンドの途中では main を取り込まない。** merge commit を含む push では、CodeRabbit が差分の
+  レビューを組み立てられず `Review skipped` を返すことがある。コンフリクトはマージを止めるがレビューは
+  止めないので、取り込みは approve の後に回す
+- **approve の後も、取り込むのはコンフリクトがあるときだけ**（`gh pr view <n> --json mergeable` が
+  `CONFLICTING`）。ruleset は base に追いついていることを求めないので、コンフリクトがなければ取り込まずに
+  squash merge できる
+- **取り込んだら、PR の行が変わったかを見る。** 判定は 1 つ、取り込みの前と後で PR の差分の追加行と
+  削除行の集合が同じかどうか（`node scripts/review/tier.ts same-lines --approved <approve した commit>`）。
+  hunk の位置や前後の文脈の変化は数えず、`.coderabbit.yaml` の `path_filters` で除外したファイル
+  （lockfile や生成物）も比べない。同じなら再レビューを頼まず、approve は HEAD を覆ったまま扱う。
+  違えば修正の push として 1 ラウンドに数え、再レビューを頼む
+- この判定は、main の変更が PR の行の意味を変えた場合（PR が足した行の上の見出しを main が書き換えた、
+  など）を拾えない。main 側の変更はその PR でレビュー済みで、Medium 以上は人間が読むことで受け入れる
 
 ### Stacked PR の進め方
 

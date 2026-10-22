@@ -13,6 +13,24 @@
 
 -
 
+## Risk
+
+<!--
+The review tier from `node scripts/review/tier.ts classify`, matching the PR's
+`risk: *` label (docs/process.md "リスク段階"), and what made it that tier.
+Add "+ security review" when the classifier asks for one (packages/nest or
+.github/workflows), with what /security-review found.
+e.g. "Medium: packages/core/src/parser.ts" / "High: .github/workflows/ci.yml + security review (no findings)"
+-->
+
+## How to revert
+
+<!--
+How to undo this change if it misbehaves after merge: usually "revert the
+squash commit". Say what else a revert must touch when it is not enough on its
+own (a ruleset or label change, a published package, a migration, a deploy).
+-->
+
 ## Preview URL
 
 <!-- Cloudflare Pages preview URL (generated automatically by the Preview workflow) -->

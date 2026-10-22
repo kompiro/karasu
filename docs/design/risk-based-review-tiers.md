@@ -340,7 +340,6 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
 ### 実装の指針
 
 1. 段階判定のスクリプトとそのテストを書く。
-   <!-- absent-path-next-line: files this design creates (#3286) -->
    置き場は `scripts/review/tier.ts` と `scripts/review/tier.test.ts`。
    入力は変更ファイルの一覧と（あれば）`package.json` の差分、出力は段階とセキュリティレビューの要否。
    テストでは各段階の代表パス、最大値の取り方、どれにも当たらないパスが Medium になること、
