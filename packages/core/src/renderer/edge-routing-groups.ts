@@ -392,7 +392,27 @@ export function routeGroupedEdges(
       // own vertical steps, so an end's channel is measured only from the
       // cards under its run (see `mixedEnd`). Only an edge that would
       // otherwise cross a card reaches this, so no route already taken moves.
-      if (frames.length === 0 && innerTop < innerBottom) {
+      //
+      // The same-row pair's counterpart (#3309): its route round the row was
+      // refused above only because every stub seat near a card's centre was
+      // already claimed by the routes dropping into the same channel, though
+      // the path itself was clear. Asked again with the stubs free to take any
+      // lane pitch across their cards. `fanOutGutterPorts` spreads each side's
+      // ports afterwards, so the seat only has to be free while routing.
+      if (frames.length === 0 && innerBottom < innerTop) {
+        trySameRowChannelRoute(
+          edge,
+          from,
+          to,
+          obstacles,
+          nodes,
+          limits,
+          claimed,
+          bands,
+          () => settledRoutes(layoutEdges, edge, obstacleIndex),
+          "whole-side",
+        );
+      } else if (frames.length === 0 && innerTop < innerBottom) {
         freeColumnLanes(nodes, innerTop, innerBottom)
           .sort(nearerCorridor)
           .some((x) =>
@@ -669,6 +689,14 @@ function mixedEnd(
 }
 
 /**
+ * How far along a card's side a channel stub may step to find an x no other
+ * route has claimed: the two lane pitches either side of the centre, or every
+ * pitch across the card. Only the same-row route's last resort asks for the
+ * latter (#3309), so the stubs every other route takes stay where they were.
+ */
+type StubSeats = "near-centre" | "whole-side";
+
+/**
  * A top/bottom port on `box` and the vertical stub from it into the channel at
  * `channelY`. Shared by the mixed and corridor ends and by the same-row route
  * (#3026), so every route that leaves a card through a channel picks its stub
@@ -680,24 +708,29 @@ function channelStub(
   channelY: number,
   claimed: ClaimRegister,
   bands: readonly { top: number; bottom: number }[],
+  seats: StubSeats = "near-centre",
 ): MixedEnd {
   const portY = downward ? box.y + box.height : box.y;
   // The stub drops from the card's centre unless a corridor already claimed
   // that x over the same band; then it steps sideways by whole lane pitches,
   // staying on the card so the port remains attachable (#2611). Without this,
   // a channel stub and an interior corridor that share a gap draw one line.
+  // With `whole-side` the steps go on across the card (#3309); the seat is
+  // only reserved here, since `fanOutGutterPorts` spreads the side's ports
+  // over the whole side afterwards.
   const centre = box.x + box.width / 2;
   const lo = Math.min(portY, channelY);
   const hi = Math.max(portY, channelY);
-  let cx = centre;
-  for (const dx of [0, -TRUNK_LANE_GAP, TRUNK_LANE_GAP, -2 * TRUNK_LANE_GAP, 2 * TRUNK_LANE_GAP]) {
-    const x = centre + dx;
-    if (x <= box.x || x >= box.x + box.width) continue;
-    if (!claimed.conflicts(verticalClaim(x, lo, hi, bands))) {
-      cx = x;
-      break;
-    }
+  const steps = seats === "whole-side" ? Math.ceil(box.width / 2 / TRUNK_LANE_GAP) : 3;
+  const seatsInOrder = [centre];
+  for (let k = 1; k < steps; k++) {
+    seatsInOrder.push(centre - k * TRUNK_LANE_GAP, centre + k * TRUNK_LANE_GAP);
   }
+  const free = seatsInOrder.find(
+    (x) =>
+      x > box.x && x < box.x + box.width && !claimed.conflicts(verticalClaim(x, lo, hi, bands)),
+  );
+  const cx = free ?? centre;
   return { port: { x: cx, y: portY }, elbows: [{ x: cx, y: channelY }], cy: channelY };
 }
 
@@ -721,6 +754,11 @@ function channelStub(
  * goes clockwise (rightward above, leftward below), so a pair drawn both ways
  * between two quiet cards forms one loop instead of nesting. Applied only when
  * the whole polyline is clear (AC-1).
+ *
+ * `seats` is how far each stub may step from its card's centre (see
+ * {@link StubSeats}). The chain asks with `near-centre` first; only an edge no
+ * other candidate routed is asked again with `whole-side`, as its last resort
+ * (#3309).
  */
 function trySameRowChannelRoute(
   edge: LayoutEdge,
@@ -733,6 +771,7 @@ function trySameRowChannelRoute(
   bands: readonly { top: number; bottom: number }[],
   /** The routes of the other edges that will not move again; asked only when both sides clear. */
   settled: () => Point[][],
+  seats: StubSeats = "near-centre",
 ): boolean {
   // One channel y for both ends, measured from the cards the route passes
   // over: the pair and every card standing between them. Cards of a row share
@@ -763,8 +802,8 @@ function trySameRowChannelRoute(
   const clear: { path: Point[]; segments: ClaimedSegment[] }[] = [];
   for (const downward of [leftward, !leftward]) {
     const cy = downward ? channelBelow(row, nodes, limits) : channelAbove(row, nodes, limits);
-    const src = channelStub(from, downward, cy, claimed, bands);
-    const tgt = channelStub(to, downward, cy, claimed, bands);
+    const src = channelStub(from, downward, cy, claimed, bands, seats);
+    const tgt = channelStub(to, downward, cy, claimed, bands, seats);
     const path = joinInChannel(src, tgt, cy);
     const segments = claimedSegmentsOf(path, from, to, bands);
     if (segments.some((v) => claimed.conflicts(v))) continue;
