@@ -110,3 +110,30 @@ system S { service Svc { label "Svc" } }
     expect(result.current).toBe("service { color: #BBB; }");
   });
 });
+
+describe("useStyleSource revision (#3311)", () => {
+  // A host that edits files behind the viewer (the VS Code webview) announces
+  // the edit by bumping the revision. The import list is unchanged, so without
+  // the revision the sheet would never be read again.
+  it("re-reads the imported sheets when the revision changes", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile(STYLE_PATH, STYLE_CONTENT);
+    const { result, rerender } = renderHook(
+      ({ revision }) => useStyleSource(KRS_WITH_IMPORT, ENTRY, fs, revision),
+      { initialProps: { revision: 0 } },
+    );
+    await act(() => new Promise((r) => setTimeout(r, 0)));
+    expect(result.current).toBe(STYLE_CONTENT);
+
+    await fs.writeFile(STYLE_PATH, "service { color: #00FF00; }");
+    rerender({ revision: 0 });
+    await act(() => new Promise((r) => setTimeout(r, 0)));
+    expect(result.current).toBe(STYLE_CONTENT);
+
+    rerender({ revision: 1 });
+    // The previous sheet stays until the new one has been read.
+    expect(result.current).toBe(STYLE_CONTENT);
+    await act(() => new Promise((r) => setTimeout(r, 0)));
+    expect(result.current).toBe("service { color: #00FF00; }");
+  });
+});
