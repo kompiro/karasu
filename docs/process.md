@@ -90,7 +90,9 @@ ready → implementing → designing → designed → implementing → in-review
 ready → implementing → in-review → (close)
 ```
 
-> `close` は PR に `Closes #N` を記載することで GitHub が自動で行う。
+> 実装 PR の `close` は、PR に `Closes #N` を記載することで GitHub が自動で行う（Design Doc の PR は `Refs #N`。下の PR ワークフローの手順 9）。
+>
+> マージ後にしか確かめられない項目（次のリリース、本番にしか現れない設定、`main` でのバックフィルなど）は、PR を作る前に別の Issue に起こし、PR 本文から番号を示す。元の Issue は `Closes #N` のまま PR と一緒に閉じる。ADR への昇格などこの文書が手順として持つ後工程は書かない（ADR-3271）。
 
 ### PR ワークフロー
 
@@ -106,7 +108,7 @@ ready → implementing → in-review → (close)
 6. /hane:commit でコミットする（Conventional Commits 形式）
 7. PR 前に main を取り込む — git fetch origin main && git merge --no-edit origin/main（rebase は使わない。「ブランチ戦略」参照）。コンフリクトを解消し、lint / test を再確認する
 8. base ブランチとの差分（git diff origin/main...HEAD）に /engineering:code-review を当て、対応すると決めた修正をコミットし、lint / test を再確認する。PR はまだ作らない
-9. PR を draft で作成する（gh pr create --draft、Closes #N で Issue と紐付ける）。draft には CodeRabbit も分単位の CI も走らない
+9. PR を draft で作成する（gh pr create --draft、Closes #N で Issue と紐付ける。Design Doc の PR は Refs #N にして Issue を残す。ADR-3271）。draft には CodeRabbit も分単位の CI も走らない
 10. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の、本文に ignore コマンドが無く、`adr-auto-merge` / `skip-coderabbit` ラベルの無い PR）では初回レビューもここで走る
 11. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 12. Issue ラベルを status: in-review に更新する
