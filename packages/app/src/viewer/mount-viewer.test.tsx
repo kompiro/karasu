@@ -234,6 +234,14 @@ describe("mountViewer — host callbacks", () => {
     const followed = fireEvent.click(link);
     expect(followed).toBe(false);
     expect(onOpenExternal).toHaveBeenCalledWith("https://example.com/web");
+
+    // The middle button opens the link too; the right button means the menu.
+    const aux = (button: number) =>
+      link.dispatchEvent(new MouseEvent("auxclick", { bubbles: true, cancelable: true, button }));
+    expect(aux(1)).toBe(false);
+    expect(onOpenExternal).toHaveBeenCalledTimes(2);
+    expect(aux(2)).toBe(true);
+    expect(onOpenExternal).toHaveBeenCalledTimes(2);
   });
 
   it("opens no edge menu when read-only", async () => {

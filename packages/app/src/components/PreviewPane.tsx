@@ -593,7 +593,14 @@ export function PreviewPane({
       // not, so it is checked before the click's other meanings. Every control
       // above is a button on the card, and keeps its own meaning.
       if ((e.metaKey || e.ctrlKey) && onJumpToEditor) {
-        const jumpNodeId = target.closest("[data-node-id]")?.getAttribute("data-node-id");
+        // A deploy card's `data-node-id` is its `<container>::<unit>` key, not
+        // a node id; the container names the node it realizes (#2818). A
+        // composite key with no realized node has nothing to jump to.
+        const realizedId = target
+          .closest("[data-realized-node-id]")
+          ?.getAttribute("data-realized-node-id");
+        const cardId = target.closest("[data-node-id]")?.getAttribute("data-node-id");
+        const jumpNodeId = realizedId || (cardId && !cardId.includes("::") ? cardId : null);
         if (jumpNodeId) {
           onJumpToEditor(jumpNodeId);
           return;

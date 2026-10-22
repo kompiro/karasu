@@ -368,6 +368,28 @@ describe("PreviewPane", () => {
       },
     );
 
+    it("jumps to the node a deploy card realizes, not its composite key", () => {
+      const onJumpToEditor = vi.fn<(id: string) => void>();
+      const svg = `<div data-container-id="Api" data-realized-node-id="Api"><div data-node-id="Api::api-pod"></div></div><div data-container-id="__unclassified__"><div data-node-id="__unclassified__::job"></div></div>`;
+      const { container } = render(
+        <PreviewPane {...baseProps()} svg={svg} onJumpToEditor={onJumpToEditor} />,
+      );
+      const previewContainer = container.querySelector(".preview-container") as HTMLElement;
+      modifierClick(
+        previewContainer,
+        () => container.querySelector("[data-node-id='Api::api-pod']")!,
+        "metaKey",
+      );
+      expect(onJumpToEditor).toHaveBeenCalledWith("Api");
+
+      modifierClick(
+        previewContainer,
+        () => container.querySelector("[data-node-id='__unclassified__::job']")!,
+        "metaKey",
+      );
+      expect(onJumpToEditor).toHaveBeenCalledTimes(1);
+    });
+
     it("drills on Cmd+click when the host offers no jump", () => {
       const onDrillDown = vi.fn<(path: string[]) => void>();
       const svg = `<div data-node-id="parent-svc" data-has-children="true"></div>`;

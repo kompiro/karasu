@@ -217,6 +217,8 @@ function Viewer({ fs, toolbar, ...project }: ViewerProps) {
  */
 function interceptExternalLinks(doc: Document, onOpenExternal: (url: string) => void): () => void {
   const onClick = (event: MouseEvent) => {
+    // `auxclick` also fires for the right button, which means the context menu.
+    if (event.type === "auxclick" && event.button !== 1) return;
     const anchor = (event.target as Element | null)?.closest?.("a[href]");
     if (!(anchor instanceof HTMLAnchorElement) || anchor.target !== "_blank") return;
     event.preventDefault();
