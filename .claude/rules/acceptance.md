@@ -59,15 +59,15 @@ AT は**チケットが実現できたかを評価するテスト**であって�
 **到達状態**: どの手動項目も、その PR の preview かローカルの checkout で確かめられ、
 マージ前に PR の Manual Verification Checklist で消化されている。
 
-判断基準は 1 つ、**その項目をマージ前に確かめられるかどうか**。PR テンプレートが
-Manual Verification Checklist と Post-merge follow-ups を分ける基準と同じである。
+判断基準は 1 つ、**その項目をマージ前に確かめられるかどうか**。PR の Manual
+Verification Checklist に置くか、別の Issue に起こすかを分ける基準と同じである。
 マージ後にしか確かめられない検査はマージを止められないので、受け入れテストとして
 機能しない。
 
 | 確かめられる場所 | どこに書くか |
 | --- | --- |
 | その PR の preview、またはローカルの checkout | AT の手動項目。マージ前に PR の Manual Verification Checklist へ写してチェックする |
-| 本番にしか現れないもの（デプロイ設定、OAuth、カスタムドメインなど） | AT には書かない。PR の Post-merge follow-ups に置き、Issue へ載せる |
+| 本番にしか現れないもの（デプロイ設定、OAuth、カスタムドメインなど） | AT にも PR の checklist にも書かない。PR を作る前に別の Issue に起こし、PR 本文から番号を示す。元の Issue は `Closes #N` で PR と一緒に閉じる（ADR-3271） |
 
 **AT は手動項目の定義を持ち、チェックは PR で入れる。** AT の `- [ ]` は常に未チェックの
 まま置き、「この領域を変える PR が確かめる項目の一覧」として読む。チェック済みの状態は、
