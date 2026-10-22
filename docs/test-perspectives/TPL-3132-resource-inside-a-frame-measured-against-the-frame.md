@@ -12,6 +12,7 @@ known_consumers:
   - renderer
 discovered_from:
   - issue: "#3132"
+  - issue: "#3154"
   - root_cause_file: "packages/core/src/renderer/edge-routing-lanes.ts"
   - root_cause_file: "packages/core/src/renderer/edge-routing-groups.ts"
 related_to:
@@ -61,10 +62,13 @@ scope:
 
 - **枠の内側の線を高さ 0 の障害物として足す**: `ChannelLimits`（`ceiling` = 枠の y + `CONTAINER_LABEL_HEIGHT`、`floor` = 枠の下端）を、ルーターの `channelBelow` / `channelAbove`、レーンの `collectChannels`、予約の `channelReservations` が共通に受け取る（#3132）。
 - **外側の端の gap を予約できるようにする**: 行 0 の上と最終行の下（行序数 `rows.length`）も予約の対象にし、配置は最終行の下の予約分だけ枠の高さを伸ばす（#3132）。
+- **横方向は側面を `ChannelLimits` に足し、ガターの基準を枠の内側で測る**: `left` / `right`（枠の側面）を足し、ガターの基準 x を決める `contentBounds` は枠の内側にあるカードだけを数える。4 つのガターのパス（`routeGroupedEdges` / `aggregateGroupTrunks` / `aggregateGroupSourceTrunks` / `distributeGutterLanes`）は同じ `limits` を受け取る。容量は、1 回目の配線で縦の線が枠の側面から `FRAME_SIDE_MARGIN`（12px）より外に出た量を左右それぞれ測り、既存の 2 回目の配置で枠をその分広げる（`gutterReservations`、#3154）。
 - **枠の外側の端を測る指標を持つ**: 枠の内側の帯（境界から半ピッチ）から外れる run を数える。実モデルの corpus ではほぼ 0 なので、合成 fixture と組で使う。
 
 ## 関連テスト
 
 - `packages/core/src/renderer/routing-parity.test.ts` — `drill-down channels end at the frame (#3132, TPL-3132 / TPL-2598)`。同期と非同期の依存を互いに張った 1 行（4 枚・5 枚）で、全 run が枠の内側に入り枠が広がることと、枠の外の ghost カードが最下段の下のチャネルの境界にならないことを確かめる。修正前のツリーで 3 件が落ちることを確認してから固定した
-- `packages/core/src/renderer/edge-routing-lanes.test.ts` — `the enclosing frame bounds the outer channels (#3132)`
+- `packages/core/src/renderer/routing-parity.test.ts` — `drill-down gutters stay inside the frame (#3154, TPL-3132 / TPL-2598)`。3 行（T / M / B）で各 T が自分の M と全 B を同期・非同期で呼ぶ fixture（4 列・5 列）で、ghost でも循環でもない edge の縦の線がすべて枠の側面から 12px 以上内側にあり、枠が広がることを確かめる。修正前のツリーで 2 件が落ちることを確認してから固定した
+- `packages/core/src/renderer/edge-routing-frame-sides.test.ts` — `drill-down gutters are measured inside the frame (#3154, TPL-3132)`。枠の横の ghost カードがガターの基準（`contentBounds`）にならないこと
+- `packages/core/src/renderer/edge-routing-lanes.test.ts` — `the enclosing frame bounds the outer channels (#3132)`（#3154 で側面も確かめる）
 - `packages/core/src/renderer/layer-layout-logics.test.ts` — `reserves below the last row through the ordinal one past it (#3132)`
