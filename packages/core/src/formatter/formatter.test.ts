@@ -621,6 +621,16 @@ describe("format()", () => {
     expectIdempotent(src);
   });
 
+  it.each([
+    ["after the dot", "realizes S.\n      A // target"],
+    ["before the dot", "realizes S\n      .A // target"],
+  ])("keeps the comment of a reference path continued %s on the next line", (_where, line) => {
+    // The parser reads the two lines as one path, so they are one statement.
+    const src = `system S {\n  service A {}\n}\ndeploy D {\n  oci X {\n    ${line}\n  }\n}`;
+    expect(fmt(src)).toContain(`    realizes S.A // target\n  }`);
+    expectIdempotent(src);
+  });
+
   it("keeps an empty body open when a comment is written inside it", () => {
     const src = `system S {\n  service A {\n    // todo\n  }\n}`;
     expect(fmt(src)).toBe(src);

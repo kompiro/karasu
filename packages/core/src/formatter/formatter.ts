@@ -149,7 +149,7 @@ class Printer {
     this.bodies = [];
     // The AST stores no position for most properties, so the statement
     // positions a comment is placed against come from the token stream.
-    const open: { body: BlockBody; lastLine: number }[] = [];
+    const open: { body: BlockBody; lastLine: number; lastType: TokenType }[] = [];
     for (const tok of tokens) {
       if (isComment(tok)) {
         const bucket = this.byLine.get(tok.loc.line) ?? [];
@@ -166,8 +166,13 @@ class Printer {
       if (top) {
         const current = top.body.statements.at(-1);
         // A closing brace ends the statement that opened the block, whatever
-        // line it is on.
-        if (tok.type !== TokenType.RightBrace && tok.loc.line > top.lastLine) {
+        // line it is on, and a dotted path continues across a line break on
+        // either side of its `.` (the parser reads `S.` / `A` as `S.A`).
+        const continues =
+          tok.type === TokenType.RightBrace ||
+          tok.type === TokenType.Dot ||
+          top.lastType === TokenType.Dot;
+        if (!continues && tok.loc.line > top.lastLine) {
           top.body.statements.push({
             keyword: tok.value,
             startLine: tok.loc.line,
@@ -179,11 +184,12 @@ class Printer {
           if (tok.type === TokenType.Comma) current.items++;
         }
         top.lastLine = endLine;
+        top.lastType = tok.type;
       }
       if (tok.type === TokenType.LeftBrace) {
         const body = { openOffset: tok.loc.offset, openLine: tok.loc.line, statements: [] };
         this.bodies.push(body);
-        open.push({ body, lastLine: tok.loc.line });
+        open.push({ body, lastLine: tok.loc.line, lastType: tok.type });
       }
     }
   }
