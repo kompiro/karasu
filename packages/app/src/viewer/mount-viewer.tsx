@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useRef } from "react";
+import { StrictMode, useEffect, useRef, type MouseEvent, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { DisplayMode, FileSystemProvider } from "@karasu-tools/core";
 import { AppShell } from "../components/AppShell.js";
@@ -111,6 +111,9 @@ function ViewerProject({ controller, seeded, onRevealNode, readOnly }: ViewerPro
   const { entryPath, filesRevision, displayMode, highlight } = useViewerHostState(controller);
   const recompileRef = useRef<(() => void) | null>(null);
   const currentFilePathRef = useLatestRef(state.currentFilePath);
+  // Re-reads of the open file run one after another, so a slow earlier read
+  // cannot land after a later one and put older text back.
+  const currentFileReads = useRef<Promise<void>>(Promise.resolve());
 
   // Open the entry, and open it again whenever the host switches it.
   useEffect(() => {
@@ -136,16 +139,18 @@ function ViewerProject({ controller, seeded, onRevealNode, readOnly }: ViewerPro
     if (filesRevision === 0) return;
     const changed = controller.takeChangedPaths();
     const current = currentFilePathRef.current;
-    void (async () => {
-      if (current && changed.has(current)) {
+    let reread = Promise.resolve();
+    if (current && changed.has(current)) {
+      reread = currentFileReads.current.then(async () => {
         const content = await fs.readFile(current).catch(() => null);
         // The host may have switched files while the read was out.
         if (content !== null && currentFilePathRef.current === current) {
           dispatch({ type: "UPDATE_FILE_CONTENT", content });
         }
-      }
-      recompileRef.current?.();
-    })();
+      });
+      currentFileReads.current = reread;
+    }
+    void reread.then(() => recompileRef.current?.());
     // Runs once per `filesChanged`, which is what the revision counts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filesRevision]);
@@ -211,35 +216,36 @@ function Viewer({ fs, toolbar, ...project }: ViewerProps) {
 
 /**
  * Hands a click on a new-tab link to the host instead of letting the page
- * follow it. Only the viewer's own links: those inside its container, and
- * those in the menus it renders through a Radix portal outside it (the Docs
- * menu's site link). A link the host put elsewhere on the page is left alone.
+ * follow it, for the viewer's own links only.
+ *
+ * The handler sits in React's tree, not on the document: React events travel
+ * the component tree, so links in menus portalled outside the container (the
+ * Docs menu's site link) reach it, and a link the host put on the page never
+ * does. It handles the capture phase because the detail panels stop their
+ * clicks from bubbling, so a click inside one does not reach the diagram.
+ * `display: contents` keeps the wrapper out of the layout.
  */
-function interceptExternalLinks(
-  container: HTMLElement,
-  onOpenExternal: (url: string) => void,
-): () => void {
-  const doc = container.ownerDocument;
+function ExternalLinkBoundary({
+  onOpenExternal,
+  children,
+}: {
+  onOpenExternal?: (url: string) => void;
+  children: ReactNode;
+}) {
+  if (!onOpenExternal) return children;
   const onClick = (event: MouseEvent) => {
     // `auxclick` also fires for the right button, which means the context menu.
     if (event.type === "auxclick" && event.button !== 1) return;
     const anchor = (event.target as Element | null)?.closest?.("a[href]");
     if (!(anchor instanceof HTMLAnchorElement) || anchor.target !== "_blank") return;
-    const ownedByViewer =
-      container.contains(anchor) || anchor.closest("[data-radix-popper-content-wrapper]") !== null;
-    if (!ownedByViewer) return;
     event.preventDefault();
     onOpenExternal(anchor.href);
   };
-  // Capture phase, because the panels stop their clicks from bubbling out (so a
-  // click inside one does not reach the diagram under it). `auxclick` is the
-  // middle button, which would otherwise open the link too.
-  doc.addEventListener("click", onClick, true);
-  doc.addEventListener("auxclick", onClick, true);
-  return () => {
-    doc.removeEventListener("click", onClick, true);
-    doc.removeEventListener("auxclick", onClick, true);
-  };
+  return (
+    <div style={{ display: "contents" }} onClickCapture={onClick} onAuxClickCapture={onClick}>
+      {children}
+    </div>
+  );
 }
 
 /**
@@ -251,9 +257,6 @@ export function mountViewer(container: HTMLElement, options: ViewerOptions): Vie
   const seeded =
     options.source !== undefined ? fs.writeFile(VIEW_PATH, options.source) : Promise.resolve();
   const controller = new ViewerController(options.entryPath ?? VIEW_PATH);
-  const stopIntercepting = options.onOpenExternal
-    ? interceptExternalLinks(container, options.onOpenExternal)
-    : () => {};
 
   const root = createRoot(container);
   root.render(
@@ -262,14 +265,16 @@ export function mountViewer(container: HTMLElement, options: ViewerOptions): Vie
         <ThemeProvider initialTheme={options.initialTheme}>
           <HostThemeAndLocale controller={controller} />
           <TooltipProvider delayDuration={300}>
-            <Viewer
-              fs={fs}
-              seeded={seeded}
-              controller={controller}
-              toolbar={options.toolbar ?? DEFAULT_TOOLBAR}
-              onRevealNode={options.onRevealNode}
-              readOnly={options.readOnly}
-            />
+            <ExternalLinkBoundary onOpenExternal={options.onOpenExternal}>
+              <Viewer
+                fs={fs}
+                seeded={seeded}
+                controller={controller}
+                toolbar={options.toolbar ?? DEFAULT_TOOLBAR}
+                onRevealNode={options.onRevealNode}
+                readOnly={options.readOnly}
+              />
+            </ExternalLinkBoundary>
           </TooltipProvider>
         </ThemeProvider>
       </LocaleProvider>
@@ -283,9 +288,6 @@ export function mountViewer(container: HTMLElement, options: ViewerOptions): Vie
     setLocale: (locale) => controller.setLocale(locale),
     setDisplayMode: (mode) => controller.setDisplayMode(mode),
     highlight: (nodeId, attribute) => controller.highlight(nodeId, attribute),
-    unmount: () => {
-      stopIntercepting();
-      root.unmount();
-    },
+    unmount: () => root.unmount(),
   };
 }

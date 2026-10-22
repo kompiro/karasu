@@ -244,14 +244,18 @@ describe("mountViewer — host callbacks", () => {
     expect(aux(2)).toBe(true);
     expect(onOpenExternal).toHaveBeenCalledTimes(2);
 
-    // A link the host put elsewhere on the page is not the viewer's.
+    // A link the host put elsewhere on the page is not the viewer's, even in a
+    // menu of the host's own that is portalled the way the viewer's are.
+    const hostMenu = document.createElement("div");
+    hostMenu.setAttribute("data-radix-popper-content-wrapper", "");
     const hostLink = document.createElement("a");
     hostLink.href = "https://example.com/host";
     hostLink.target = "_blank";
-    document.body.appendChild(hostLink);
+    hostMenu.appendChild(hostLink);
+    document.body.appendChild(hostMenu);
     hostLink.addEventListener("click", (e) => e.preventDefault()); // jsdom would try to navigate
     fireEvent.click(hostLink);
-    hostLink.remove();
+    hostMenu.remove();
     expect(onOpenExternal).toHaveBeenCalledTimes(2);
   });
 
