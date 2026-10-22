@@ -14,6 +14,7 @@ known_consumers:
   - view-diff
 discovered_from:
   - issue: "#3090"
+  - issue: "#3157"
   - root_cause_file: "packages/app/src/components/focus-canvas/node-focus.ts"
   - root_cause_file: "packages/core/src/renderer/svg-renderer.ts"
 related_to:
@@ -90,6 +91,8 @@ scope:
 - `packages/core/src/renderer/svg-renderer.test.ts` › `crossing marks name their edges (#3090)`: chip・band・ホップが
   運ぶエッジを `data-edges` に持ち、その index のエッジだけが `data-edge-index` を持つこと
 - `packages/core/src/renderer/svg-renderer.test.ts` › `crossing hop paths (#2956)` › `starts a new <path> whenever the host edge changes, even in one stroke (#3090)`
+- `packages/core/src/renderer/svg-renderer.test.ts` › `crossing marks follow their edges' dim (#3157)`: facet overlay と
+  diff モードでも、マークは名指すエッジがすべて薄いときだけ薄くなること（どちらも無いときは出力が変わらない）
 - `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx`: node focus と edge hover の規則が
   無関係なマークだけを選ぶこと
 - `packages/e2e/tests/at-3090-crossing-marks-follow-edge-focus.spec.ts`: Chromium で computed opacity が

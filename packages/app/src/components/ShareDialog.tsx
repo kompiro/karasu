@@ -35,6 +35,12 @@ interface ShareDialogProps {
   onIncludeTargetChange: (next: boolean) => void;
   onCopy: (url: string) => void;
   onClose: () => void;
+  /**
+   * The origin the links open on when it is not this page's (`karasu serve`
+   * builds them on the public app, #3162), so the dialog can say where the
+   * recipient lands. `null` / absent on the app itself.
+   */
+  hostedOrigin?: string | null;
 }
 
 /**
@@ -62,6 +68,7 @@ export function ShareDialog({
   onIncludeTargetChange,
   onCopy,
   onClose,
+  hostedOrigin = null,
 }: ShareDialogProps) {
   const { t } = useTranslation();
   const firstInputRef = useRef<HTMLInputElement>(null);
@@ -110,6 +117,11 @@ export function ShareDialog({
           <DialogTitle>{t("preview.share.dialog.title")}</DialogTitle>
           <DialogDescription>{t("preview.share.dialog.description")}</DialogDescription>
         </DialogHeader>
+        {hostedOrigin && (
+          <p className="share-dialog__hosted-hint text-xs text-[color:var(--text-secondary)]">
+            {t("preview.share.dialog.hostedHint", { host: new URL(hostedOrigin).host })}
+          </p>
+        )}
         {fragmentUrl === null ? (
           <p className="text-sm text-[color:var(--text-secondary)]">
             {t("preview.share.dialog.generating")}

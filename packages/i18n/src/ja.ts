@@ -282,6 +282,8 @@ export const ja: Partial<Translations> = {
   "preview.share.dialog.unfurlHint":
     "Slack や X などでこの図がプレビュー表示されます。共有内容はサーバーに送信されます（ログに残る場合があります）。",
   "preview.share.dialog.unfurlUrlAriaLabel": "プレビュー付き共有 URL",
+  "preview.share.dialog.hostedHint": ({ host }) =>
+    `リンクは ${host} で開きます。受け取った人は karasu を動かしていなくても開けます。`,
   "preview.share.dialog.oversizeWarning":
     "このプロジェクトは大きすぎてプレビュー付きリンクを作成できません。プライベートリンクは利用できます。",
   "preview.share.dialog.includeTargetLabel": "現在の表示位置にリンクする",

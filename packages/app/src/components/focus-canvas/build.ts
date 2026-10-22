@@ -41,6 +41,10 @@ const FAN = 84;
 const PORT_GAP = 12;
 /** A port stays this far inside a card's corner. */
 const PORT_INSET = 10;
+/** Width of the invisible band along a lane that takes a press (#3180). */
+const LANE_HIT_WIDTH = 12;
+/** How far the invisible area behind a lane's label reaches past the text. */
+const LABEL_HIT_PAD = 3;
 export interface Point {
   x: number;
   y: number;
@@ -621,8 +625,20 @@ class Canvas {
           `${name(edge.from)} → ${name(edge.to)}${edge.label ? `: ${edge.label}` : ""}`,
         )}"`
       : "";
+    // SVG hit-tests a `fill="none"` path on its 1.5px stroke and a text on its
+    // glyphs, so a lane that acts took a press only there: between two words
+    // or two lines of its label the press fell through to the background
+    // (#3180). Invisible hit areas behind the drawing: a band along the line
+    // and the whole label block.
+    const hit = this.lanesAct
+      ? `<path class="focus-canvas__lane-hit" d="${line.d}" fill="none" stroke="transparent" stroke-width="${LANE_HIT_WIDTH}"/>` +
+        (label
+          ? `<rect class="focus-canvas__lane-hit" x="${label.x - LABEL_HIT_PAD}" y="${label.y - LABEL_HIT_PAD}" width="${label.width + LABEL_HIT_PAD * 2}" height="${label.height + LABEL_HIT_PAD * 2}" fill="transparent"/>`
+          : "")
+      : "";
     this.parts.push(
       `<g class="focus-canvas__lane" data-focus-from="${escapeXml(edge.from)}" data-focus-to="${escapeXml(edge.to)}"${control}>` +
+        hit +
         `<path d="${line.d}" fill="none" stroke="${escapeXml(edge.stroke)}" stroke-width="1.5"${dash} marker-end="url(#${marker})"/>` +
         `${text}</g>`,
     );

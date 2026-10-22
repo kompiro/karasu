@@ -320,6 +320,32 @@ export async function compileSystemDiff(
     afterResolved.krsFile.nodePathRanking,
   );
 
+  // A removed card is drawn with the style it had, by its own path (#3197).
+  // `styles` comes from the after model, where a removed card has no path
+  // entry, so the renderer fell back to the bare id, which a same-named card in
+  // another frame answers on the multi-system root (ADR-2934). The same sheets
+  // resolve the before model; only removed cards' paths are taken from it, the
+  // way owner, boundary and facet membership are backfilled below.
+  const beforeStyles = resolveStyles(
+    beforeSystems,
+    resolveSheets,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    beforeResolved.krsFile.nodePathRanking,
+  );
+  for (const [key, meta] of diffed.nodesByPath) {
+    if (meta.state !== "removed" || styles.nodesByPath.has(key)) continue;
+    const style = beforeStyles.nodesByPath.get(key);
+    if (style === undefined) continue;
+    styles.nodesByPath.set(key, style);
+    const painted = beforeStyles.paintedColorsByPath.get(key);
+    if (painted !== undefined) styles.paintedColorsByPath.set(key, painted);
+    const hints = beforeStyles.layoutHintsByPath.get(key);
+    if (hints !== undefined) styles.layoutHintsByPath.set(key, hints);
+  }
+
   const { nodeDiffState, edgeDiffState } = toDiffStateMaps(diffed);
 
   // Grouping axis for diff mode. `diffed.slice` is the union of both sides, so a

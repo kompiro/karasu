@@ -1,8 +1,8 @@
 # Notation cookbook — idioms for modeling with karasu
 
-> **English**（this file） · [日本語](notation-cookbook.ja.md)
+> **English**（this file） · [日本語](https://github.com/kompiro/karasu/blob/main/docs/guide/notation-cookbook.ja.md)
 
-[`docs/spec/syntax.md`](../spec/syntax.md) is the **grammar** — every keyword and
+[`docs/spec/syntax.md`](syntax.md) is the **grammar** — every keyword and
 rule. This cookbook is the missing companion: a compact **idiom catalog** that
 answers "how do I express *X*" for patterns that are reachable from the grammar
 but not obvious from it. Each entry is a worked snippet you can copy, adapt, and
@@ -10,7 +10,7 @@ learn from.
 
 It is deliberately short so you can **feed it to an LLM alongside `syntax.md`**
 when reverse-engineering a project (see
-[Reverse-engineering with an LLM](reverse-engineering-with-ai.md)), and it doubles
+[Reverse-engineering with an LLM](https://github.com/kompiro/karasu/blob/main/docs/guide/reverse-engineering-with-ai.md)), and it doubles
 as human onboarding. Like any generated model, treat the output as a *map, not a
 spec* — verify against the code.
 
@@ -77,7 +77,7 @@ deploy "production" {
   everyone out; it does not lose business data, which is exactly the test the tag
   encodes. Tag the *role*, never the technology — `[kv]` is rejected for the same
   reason `@kv` is (see
-  [store role tags](../spec/tags-annotations.md#store-role-tags--one-axis-four-states)).
+  [store role tags](tags-annotations.md#store-role-tags--one-axis-four-states)).
 
 ## 2. A store that is not the system of record — `[index]` / `[cache]` / `[analytics]`
 
@@ -114,7 +114,7 @@ the physical layer" discipline as idiom #1 — it avoids minting a `vector-store
 origin cache — if losing it loses business data, it is the system of record and
 takes no tag) and **`[analytics]`** for a warehouse / data lake ingested for
 analysis. No tag means the store *is* the system of record. See
-[store role tags](../spec/tags-annotations.md#store-role-tags--one-axis-four-states).
+[store role tags](tags-annotations.md#store-role-tags--one-axis-four-states).
 
 ## 3. Something outside the boundary — the `[external]` tag
 
@@ -173,7 +173,7 @@ service Authoring {
 info diagnostic (never an error — karasu surfaces the coupling without prescribing
 against it). Note this uses the `resource` dot-path because the store *has* a
 modeled leaf (`articles`); contrast idiom #1, where a leaf-less store uses a
-node-level edge instead. See [diagnostics](../spec/diagnostics.md).
+node-level edge instead. See [diagnostics](diagnostics.md).
 
 ## 5. Cross-domain and cross-system references
 
@@ -292,7 +292,7 @@ set is *not* a tag and *not* an annotation:
 | how peers **group** in a view | view grouping | `boundary` |
 | which externally defined **set** it belongs to | membership | `facet` — a top-level declaration plus a `facets` property on the element |
 
-`facet` is [core notation](../spec/syntax.md#cross-cutting-membership-facet) from
+`facet` is [core notation](syntax.md#cross-cutting-membership-facet) from
 `.krs language v2.0`. Membership shows up through an overlay the reader turns on,
 so a file renders identically until someone selects a facet.
 
@@ -329,11 +329,11 @@ system Shop {
 tags: a database is a database whether or not it is in PCI scope, and a
 nine-out-of-ten `[pci]` diagram reads as a false audit guarantee. The rule
 *content* (roles, plans, conditions) stays prose + `link` permanently
-([ADR-832](../adr/832-no-runtime-authz-modeling.md)) — above it sits in the facet's
+([ADR-832](https://github.com/kompiro/karasu/blob/main/docs/adr/832-no-runtime-authz-modeling.md)) — above it sits in the facet's
 `description` and `link`. What `facet` makes first-class is the *scope*: which
 elements the rule reaches. If what you actually need is a missing archetype,
 request a builtin tag addition instead — see
-[`tags-annotations.md`](../spec/tags-annotations.md).
+[`tags-annotations.md`](tags-annotations.md).
 
 ## 9. An edge that needs more than a verb — the property block
 
@@ -377,7 +377,7 @@ belong here: protocol, cardinality and retry counts stay prose inside
 
 ## See also
 
-- [`docs/spec/syntax.md`](../spec/syntax.md) — the precise `.krs` grammar (feed this first)
-- [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md) — the full tag / annotation list
-- [Reverse-engineering with an LLM](reverse-engineering-with-ai.md) — feed this cookbook alongside the grammar
-- [Onboarding guide](02-onboarding.md) — reading an existing system down into diagrams
+- [`docs/spec/syntax.md`](syntax.md) — the precise `.krs` grammar (feed this first)
+- [`docs/spec/tags-annotations.md`](tags-annotations.md) — the full tag / annotation list
+- [Reverse-engineering with an LLM](https://github.com/kompiro/karasu/blob/main/docs/guide/reverse-engineering-with-ai.md) — feed this cookbook alongside the grammar
+- [Onboarding guide](https://github.com/kompiro/karasu/blob/main/docs/guide/02-onboarding.md) — reading an existing system down into diagrams

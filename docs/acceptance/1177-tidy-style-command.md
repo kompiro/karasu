@@ -42,11 +42,14 @@ type: product
 - [x] AT-I: Tidy ボタンを click すると `onTidyStyle` が呼ばれる
   > ✅ Automated — `packages/app/src/components/EditPaneToolbar.test.tsx` › `... clicking Tidy button calls onTidyStyle`
 
-- [ ] AT-J（manual）: 本番 app（https://karasu.kompiro.dev/）で `.krs.style` を開き、`✨ Tidy` を押す。**サイドバーや preview のリロードを挟まずに** バッファが整形される（軸グループ順で再配置、コメント保持）
-  > 🧑 Manual — ObservableFileSystemProvider 経由のリロードまで含めて目視確認
+- [x] AT-J: App で `.krs.style` を開き `✨ Tidy` を押すと、**サイドバーや preview のリロードを挟まずに** 開いているバッファが整形され（重複ルールのマージ）、整形結果がプロジェクトのファイルに保存される。軸グループ順の再配置とコメント保持そのものは `packages/core/src/style/tidy.test.ts` が覆う
+  > ✅ Automated — `packages/e2e/tests/at-1177-tidy-style-command.spec.ts` › `✨ Tidy appears only for .krs.style and rewrites the buffer and the saved file`
 
-- [ ] AT-K（manual）: `.krs` を開いている時、`✨ Tidy` ボタンは現れない（誤誘導しない）
-  > 🧑 Manual — `currentFilePath` が `.krs.style` で終わる時のみ AppShell が `onTidyStyle` を渡す挙動の目視確認
+- [x] AT-K: `.krs` を開いている時、`✨ Tidy` ボタンは現れない（誤誘導しない）
+  > ✅ Automated — `packages/e2e/tests/at-1177-tidy-style-command.spec.ts` › `on a .krs, ✨ Tidy is absent and ⌥ Format formats the buffer and the saved file`
+
+- [x] AT-O: `.krs` を開いている時は代わりに `⌥ Format` が出て（`.krs.style` では出ない）、押すと開いているバッファとプロジェクトのファイルが formatter の出力どおりに整形される
+  > ✅ Automated — `packages/e2e/tests/at-1177-tidy-style-command.spec.ts` › `on a .krs, ✨ Tidy is absent and ⌥ Format formats the buffer and the saved file`（`.krs.style` で出ないことは `✨ Tidy appears only for .krs.style and rewrites the buffer and the saved file`）
 
 - [x] AT-L: VS Code 拡張で `.krs.style` を開き、`Karasu: Tidy Style` パレットコマンドを実行すると tidy され、保存されていないバッファに反映される
   > 🟡 Partially automated — `packages/vscode-e2e/tests/suite/lsp-features.test.ts` › `AT-1177 — Tidy Style formatting › formats a .krs.style buffer to tidied output`（extension host 上で formatter provider 経由の tidy と未保存バッファへの反映を自動化。パレットコマンド自体は `editor.action.formatDocument` への薄い委譲 — 「補足」参照）

@@ -1,8 +1,8 @@
 # .krs Syntax Reference
 
-> **English** (this file) · [日本語](syntax.ja.md)
+> **English** (this file) · [日本語](https://github.com/kompiro/karasu/blob/main/docs/spec/syntax.ja.md)
 
-> Language version: **`.krs language v2.0`**, the first major after the v1.0 freeze ([ADR-1314](../adr/1314-krs-spec-v1-freeze.md)). It closes the tag and annotation vocabularies, promotes `facet` and `boundary` to core, and rejects two forms that v1.x only warned about ([#2677](https://github.com/kompiro/karasu/issues/2677)). The language version is independent from every package's npm version ([ADR-2124](../adr/2124-version-vocabulary.md)); `karasu --version` reports the one a build implements.
+> Language version: **`.krs language v2.0`**, the first major after the v1.0 freeze ([ADR-1314](https://github.com/kompiro/karasu/blob/main/docs/adr/1314-krs-spec-v1-freeze.md)). It closes the tag and annotation vocabularies, promotes `facet` and `boundary` to core, and rejects two forms that v1.x only warned about ([#2677](https://github.com/kompiro/karasu/issues/2677)). The language version is independent from every package's npm version ([ADR-2124](https://github.com/kompiro/karasu/blob/main/docs/adr/2124-version-vocabulary.md)); `karasu --version` reports the one a build implements.
 
 ## File structure
 
@@ -53,7 +53,7 @@ system Shop {
 }
 ```
 
-> Related TPLs: [TPL-2707](../test-perspectives/TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md) — the lexer must not drop what the parser must refuse; `lexer-discard.test.ts` checks every non-ASCII code point against this table and pins the dropped ASCII set exactly.
+> Related TPLs: [TPL-2707](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md) — the lexer must not drop what the parser must refuse; `lexer-discard.test.ts` checks every non-ASCII code point against this table and pins the dropped ASCII set exactly.
 
 ---
 
@@ -76,7 +76,7 @@ karasu explicitly separates **logical structure** and **physical structure**.
 | `entity` | A conceptual data entity owned by a domain — a name and its relations, no attributes. Maps to an infra sub-resource with `table` | — |
 <!-- /gen:reference:node-kinds-logical -->
 
-> Related TPLs: [TPL-2158](../test-perspectives/TPL-2158-catalog-fenced-against-parser-not-generated-doc.md) — this table is generated from `REFERENCE_DATA`, so it cannot be used as the independent source a sync test compares that catalog against; the kind and property columns are fenced against the parser instead.
+> Related TPLs: [TPL-2158](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2158-catalog-fenced-against-parser-not-generated-doc.md) — this table is generated from `REFERENCE_DATA`, so it cannot be used as the independent source a sync test compares that catalog against; the kind and property columns are fenced against the parser instead.
 
 The recognized `client` form-factor tags are listed below.
 
@@ -146,7 +146,7 @@ See [§ Comma-separated value lists](#comma-separated-value-lists) for the list 
 
 ### Infra layer (shared data stores) — rendered on the system view
 
-Some data stores are shared by several services rather than owned by a single `usecase`. Declare them at the **top level of a `.krs` file** (or directly inside a `system` block) using one of the three infra-block keywords below; each may nest leaf sub-resources. These nodes render on the **system view**, in the dependency tier next to `[external]` services — services *depend on* shared infra, never the other way round. They were promoted to first-class nodes in [ADR-316](../adr/316-database-as-first-class-node.md).
+Some data stores are shared by several services rather than owned by a single `usecase`. Declare them at the **top level of a `.krs` file** (or directly inside a `system` block) using one of the three infra-block keywords below; each may nest leaf sub-resources. These nodes render on the **system view**, in the dependency tier next to `[external]` services — services *depend on* shared infra, never the other way round. They were promoted to first-class nodes in [ADR-316](https://github.com/kompiro/karasu/blob/main/docs/adr/316-database-as-first-class-node.md).
 
 <!-- gen:reference:node-kinds-infra — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | Keyword | Layer | Intended use | May contain |
@@ -190,7 +190,7 @@ system ECPlatform {
 }
 ```
 
-> Related TPLs: [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — the infra-sub-kind → shape-tag inference (`INFRA_SUB_KIND_TO_TAG`) and the shape-tag table are two representations of one vocabulary that must stay in sync. [TPL-2200](../test-perspectives/TPL-2200-render-claim-names-its-view-level.md) — a claim that something "is rendered" names the view level it is rendered at, and both sides (the level it is promoted to, the level it stays in) are fenced; the unassigned-`resource` bullet above said only "rendered as an orphan node" and drifted for months (#2200).
+> Related TPLs: [TPL-1415](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — the infra-sub-kind → shape-tag inference (`INFRA_SUB_KIND_TO_TAG`) and the shape-tag table are two representations of one vocabulary that must stay in sync. [TPL-2200](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2200-render-claim-names-its-view-level.md) — a claim that something "is rendered" names the view level it is rendered at, and both sides (the level it is promoted to, the level it stays in) are fenced; the unassigned-`resource` bullet above said only "rendered as an orphan node" and drifted for months (#2200).
 
 #### Store-scoped ER view (entity relations projected onto a `database` canvas)
 
@@ -293,7 +293,7 @@ system Shop {
 }
 ```
 
-> Related TPLs: [TPL-2585](../test-perspectives/TPL-2585-partial-mapping-view-states-its-denominator.md) — a derived view that travels through an optional mapping counts what did not project (`coverage`) and states in the spec that it is not a complete diagram. [TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md) — `[projected]` is colour only; the `[sync]` / `[async]` line style of the source relation is preserved. [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — the projection resolves endpoints with the entity view's rules, so a bare cross-domain id is not projected and a qualified one is. [TPL-1944](../test-perspectives/TPL-1944-inferred-tag-only-soft-fk.md) — a recorded table edge is `[inferred]` only when every contributing FK is a Soft FK; one declared FK leaves it untagged.
+> Related TPLs: [TPL-2585](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2585-partial-mapping-view-states-its-denominator.md) — a derived view that travels through an optional mapping counts what did not project (`coverage`) and states in the spec that it is not a complete diagram. [TPL-510](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-510-derivation-tag-semantics.md) — `[projected]` is colour only; the `[sync]` / `[async]` line style of the source relation is preserved. [TPL-1936](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — the projection resolves endpoints with the entity view's rules, so a bare cross-domain id is not projected and a qualified one is. [TPL-1944](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1944-inferred-tag-only-soft-fk.md) — a recorded table edge is `[inferred]` only when every contributing FK is a Soft FK; one declared FK leaves it untagged.
 
 ### Organizational structure (who owns what) — rendered as a separate diagram
 
@@ -349,7 +349,7 @@ Properties are written inside the body block `{ }`. Properties come before child
 |----------|--------|-----------------|-------------|
 | `label` | `label "<display-name>"` | All | Display name on the diagram. Defaults to the id when omitted |
 | `description` | `description "<text>"` | All | Description text (use `"""..."""` for multi-line) |
-| `role` | `role "<role-name>"` | user | Actor archetype, or a short one-line description of what this user does. **Not** an authz primitive (no `requires role = ...` predicate, no RBAC permission bundle) — see [ADR-832](../adr/832-no-runtime-authz-modeling.md) and [ADR-1281](../adr/1281-user-role-keyword-clarification.md) |
+| `role` | `role "<role-name>"` | user | Actor archetype, or a short one-line description of what this user does. **Not** an authz primitive (no `requires role = ...` predicate, no RBAC permission bundle) — see [ADR-832](https://github.com/kompiro/karasu/blob/main/docs/adr/832-no-runtime-authz-modeling.md) and [ADR-1281](https://github.com/kompiro/karasu/blob/main/docs/adr/1281-user-role-keyword-clarification.md) |
 | `delivers` | `delivers <ClientId>[, <ClientId>...]` | service | Client(s) this service ships (BFF / SSR pattern). The renderer draws each entry as a distinct dashed edge from the service to the referenced `client` |
 | `link` | `link "<URL>" "<label>"` | All | Link to related documentation (multiple allowed). Label is optional |
 | `resource` | `resource <storageKind> "<name>"` | client | Operation-tied local storage on the client. Multiple allowed. See client resource kinds below |
@@ -390,7 +390,7 @@ service Search {
 
 A **triple-quoted** string (`"""..."""`) is **raw**: no escape processing
 happens inside it, and it ends at the first `"""`. It exists so Markdown can be
-written verbatim (see [ADR-9008](../adr/9008-ast-restructure-discriminated-union.md)),
+written verbatim (see [ADR-9008](https://github.com/kompiro/karasu/blob/main/docs/adr/9008-ast-restructure-discriminated-union.md)),
 with the indentation of the closing `"""` stripped from every line. A value that
 must itself contain `"""` therefore has no triple-quoted form and must use the
 single-line form with `\n` escapes — which is what `karasu fmt` emits for such
@@ -399,7 +399,7 @@ a value.
 `karasu fmt` and `karasu translate` both escape on emit, so any value the lexer
 accepts survives a round trip unchanged.
 
-> Related TPLs: [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `コードを変換する機能では parse(format(x)) ≡ parse(x) の round-trip を保証する`
+> Related TPLs: [TPL-1101](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1101-round-trip-guarantee.md) — `コードを変換する機能では parse(format(x)) ≡ parse(x) の round-trip を保証する`
 
 ### user node example
 
@@ -412,7 +412,7 @@ user <id> [<human|ai>] {
 ```
 
 - The tag `[human]` / `[ai]` distinguishes human users from AI agents.
-- `role` describes the actor archetype or what this user does within the system (a short one-line label or sentence). It is **not** an authz primitive: it does not represent a RBAC permission bundle, and karasu does not introduce a `requires role = ...` predicate or similar authz construct (see [ADR-832](../adr/832-no-runtime-authz-modeling.md) and [ADR-1281](../adr/1281-user-role-keyword-clarification.md)). To document who may execute a usecase, use the usecase's `description` and a `link` to an external policy document.
+- `role` describes the actor archetype or what this user does within the system (a short one-line label or sentence). It is **not** an authz primitive: it does not represent a RBAC permission bundle, and karasu does not introduce a `requires role = ...` predicate or similar authz construct (see [ADR-832](https://github.com/kompiro/karasu/blob/main/docs/adr/832-no-runtime-authz-modeling.md) and [ADR-1281](https://github.com/kompiro/karasu/blob/main/docs/adr/1281-user-role-keyword-clarification.md)). To document who may execute a usecase, use the usecase's `description` and a `link` to an external policy document.
 - Properties and the body block `{ }` are optional.
 
 ### service / domain node example
@@ -466,7 +466,7 @@ client WebApp [web] {
 }
 ```
 
-**Rendering**: the SVG card shows a single `×N` count chip (package vector glyph, `data-meta-glyph="package"`) count badge instead of one row per resource (so card height stays bounded as the list grows). The full list — kind and name in declaration order — is surfaced in the `NodeDetailPanel` "Storage resources" section. See [AT-0069](../acceptance/0069-client-resource-badge-and-detail-panel.md).
+**Rendering**: the SVG card shows a single `×N` count chip (package vector glyph, `data-meta-glyph="package"`) count badge instead of one row per resource (so card height stays bounded as the list grows). The full list — kind and name in declaration order — is surfaced in the `NodeDetailPanel` "Storage resources" section. See [AT-0069](https://github.com/kompiro/karasu/blob/main/docs/acceptance/0069-client-resource-badge-and-detail-panel.md).
 
 #### `client` `capability`
 
@@ -493,7 +493,7 @@ client OrderClient [mobile] {
 
 Capability identifier set is **open**: any kebab-case identifier is accepted. Names outside the recommended set parse without warning so that domain-specific capabilities (industry devices, internal-only features) can be expressed. The validator emits `client-capability-duplicate` when the same capability name is declared more than once on the same client.
 
-**Rendering**: the SVG card shows a single `×N` count chip (lock vector glyph, `data-meta-glyph="capability"`) count badge mirroring the `resource` badge so the card height stays bounded. The full list (with label / description) surfaces in the `NodeDetailPanel`. See [AT-1002](../acceptance/1002-client-capability.md).
+**Rendering**: the SVG card shows a single `×N` count chip (lock vector glyph, `data-meta-glyph="capability"`) count badge mirroring the `resource` badge so the card height stays bounded. The full list (with label / description) surfaces in the `NodeDetailPanel`. See [AT-1002](https://github.com/kompiro/karasu/blob/main/docs/acceptance/1002-client-capability.md).
 
 ---
 
@@ -549,7 +549,7 @@ is two `user` nodes, linked only by a shared id (by convention). A cross-system
 shared actor / persona is intentionally left as a possible post-v1.0 extension,
 out of scope here (see [#1639](https://github.com/kompiro/karasu/issues/1639)).
 
-> Related TPLs: [TPL-2171](../test-perspectives/TPL-2171-spec-promised-diagnostics-implemented.md) — a spec-promised placement rule must have a dedicated diagnostic code, not fall through to a generic parse error.
+> Related TPLs: [TPL-2171](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2171-spec-promised-diagnostics-implemented.md) — a spec-promised placement rule must have a dedicated diagnostic code, not fall through to a generic parse error.
 
 #### Nesting placement
 
@@ -583,13 +583,13 @@ author picks the spelling, not the meaning
 ([#2184](https://github.com/kompiro/karasu/issues/2184)).
 
 Rendering is where the two forms legitimately differ. The `(Unassigned)`
-pseudo-system ([ADR-681](../adr/681-top-level-service-rendering.md)) wraps only
+pseudo-system ([ADR-681](https://github.com/kompiro/karasu/blob/main/docs/adr/681-top-level-service-rendering.md)) wraps only
 the top-level form, because it exists to give a container to nodes that have
 none — a system-nested domain already renders inside its system. Diagnosing "not
 assigned to a service" and framing "has nowhere to be drawn" are separate
 concerns, so only the first is symmetric across the two placements.
 
-> Related TPLs: [TPL-2165](../test-perspectives/TPL-2165-containment-rule-has-single-definition.md) — the containment rule has exactly one definition (`canContain`), and the parser is what enforces it. [TPL-2184](../test-perspectives/TPL-2184-equivalent-placements-share-one-diagnostic.md) — placements that express the same modelling state carry the same diagnostic, whichever spelling the author picked.
+> Related TPLs: [TPL-2165](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2165-containment-rule-has-single-definition.md) — the containment rule has exactly one definition (`canContain`), and the parser is what enforces it. [TPL-2184](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2184-equivalent-placements-share-one-diagnostic.md) — placements that express the same modelling state carry the same diagnostic, whichever spelling the author picked.
 
 ### service block
 
@@ -715,7 +715,7 @@ Behavior:
 - An empty right-hand side (`list:`) raises `empty-crud-decoration` (error).
 - A duplicated CRUD verb on the right (`replace:create,create`) raises `duplicate-crud-decoration-target` (warning) and is deduplicated.
 - A decorated verb does **not** raise `unknown-resource-operation`, even if the verb itself is outside the recognised set — the decoration is the author's CRUD declaration.
-- The CRUD matrix view ([ADR-1062](../adr/1062-crud-matrix-view.md)) reads `decoratedAs` first when computing cell letters, ΣC/R/U/D totals, and the write-dominates flag. A decorated verb never produces a `?` suffix.
+- The CRUD matrix view ([ADR-1062](https://github.com/kompiro/karasu/blob/main/docs/adr/1062-crud-matrix-view.md)) reads `decoratedAs` first when computing cell letters, ΣC/R/U/D totals, and the write-dominates flag. A decorated verb never produces a `?` suffix.
 
 Disambiguation rule for 1:N + multiple verbs on one line: once the parser sees `verb:`, the comma-separated identifiers that follow are CRUD-RHS continuations until the next `<id>:` boundary. So `search:read,create, list:read` parses as `search:[read,create]` then `list:[read]`. To express a bare verb after a decorated one, place the bare verb earlier in the list (`create, list:read`).
 
@@ -723,7 +723,7 @@ Disambiguation rule for 1:N + multiple verbs on one line: once the parser sees `
 
 #### Authorization notes — write them as `description` + `link`
 
-[ADR-832](../adr/832-no-runtime-authz-modeling.md) decided that karasu does **not** model usecase-level authorization (role / license / plan / scope predicates) in its vocabulary. The structural language describes *what exists* and *how it relates*; *who may call a usecase at runtime* is left to the canonical policy doc or IAM tool (OPA, Cedar, Casbin, internal RBAC docs, etc.).
+[ADR-832](https://github.com/kompiro/karasu/blob/main/docs/adr/832-no-runtime-authz-modeling.md) decided that karasu does **not** model usecase-level authorization (role / license / plan / scope predicates) in its vocabulary. The structural language describes *what exists* and *how it relates*; *who may call a usecase at runtime* is left to the canonical policy doc or IAM tool (OPA, Cedar, Casbin, internal RBAC docs, etc.).
 
 To keep that prose from drifting into ad-hoc vocabulary across teams, write authz notes on a `usecase` using this pattern:
 
@@ -774,7 +774,7 @@ domain). It is deliberately **not** a schema: an entity carries a name,
 relations, and an optional physical mapping — **never attributes** (columns,
 types, indexes). This "no attributes" line is what keeps entities on the
 slowly-changing structural side of the DB-schema non-goal (see
-[`docs/concepts.md`](../concepts.md) → Non-goals). Physical schema stays out of
+[`docs/concepts.md`](https://github.com/kompiro/karasu/blob/main/docs/concepts.md) → Non-goals). Physical schema stays out of
 scope; the conceptual entity–relationship layer comes in.
 
 ```krs
@@ -838,7 +838,7 @@ domain. A **bare** id that does not match a local entity is **not** resolved
 cross-domain — it is dropped from the entity view (write it qualified to surface
 the relation).
 
-> Related TPLs: [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — a cross-domain entity relation must use a qualified `DomainId.EntityId` target; a bare id is intra-domain only and is dropped (not ghosted) across a domain boundary.
+> Related TPLs: [TPL-1936](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — a cross-domain entity relation must use a qualified `DomainId.EntityId` target; a bare id is intra-domain only and is dropped (not ghosted) across a domain boundary.
 
 **Placement.** `entity` is valid **only** as a `domain` child. Declaring one
 elsewhere raises `entity-not-in-domain` and the stray entity is dropped.
@@ -874,10 +874,10 @@ valid as a bottom-up intermediate state.
   not resolve (it keeps the `unassigned-resource` warning); the root-cause
   collision is reported by `entity-anchor-collision`.
 
-> Related TPLs: [TPL-1882](../test-perspectives/TPL-1882-entity-carries-no-attributes.md) — an `entity` accepts only name / relations / physical mapping; attribute-like declarations (columns, types) must be rejected, keeping the model on the structural side of the DB-schema non-goal.
-> [TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md) — the resource→store target set is consumed by several resolvers (`deriveInfraEdges`, `detectSharedInfraFanIn`, `detectUnassignedResources`); adding `entity` as a resolution target must be synchronized across all of them.
-> [TPL-2170](../test-perspectives/TPL-2170-dangling-edge-preserves-node.md) — an unresolved bare `resource` / a cross-domain entity relation must not drop the node that did resolve.
-> [TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md) — read/write tag synthesis on the entity-mediated usecase→resource edge preserves the source resource's operation semantics.
+> Related TPLs: [TPL-1882](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1882-entity-carries-no-attributes.md) — an `entity` accepts only name / relations / physical mapping; attribute-like declarations (columns, types) must be rejected, keeping the model on the structural side of the DB-schema non-goal.
+> [TPL-1720](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md) — the resource→store target set is consumed by several resolvers (`deriveInfraEdges`, `detectSharedInfraFanIn`, `detectUnassignedResources`); adding `entity` as a resolution target must be synchronized across all of them.
+> [TPL-2170](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2170-dangling-edge-preserves-node.md) — an unresolved bare `resource` / a cross-domain entity relation must not drop the node that did resolve.
+> [TPL-510](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-510-derivation-tag-semantics.md) — read/write tag synthesis on the entity-mediated usecase→resource edge preserves the source resource's operation semantics.
 
 #### Domain ownership of an infra leaf — cross-domain store access
 
@@ -901,7 +901,7 @@ no `entity` mapping a leaf leaves the leaf unowned, so no diagnostic fires
 (adding an entity later promotes it with zero edits to the usecase). See the
 [diagnostics reference](diagnostics.md).
 
-> Related TPLs: [TPL-1967](../test-perspectives/TPL-1967-domain-ownership-derived-from-entity-not-declared.md) — infra-leaf domain ownership is derived from the `entity` layer (never declared on the physical `table`), keyed at leaf granularity, held as a set of owning domains, and scoped per system. [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — the same fact must not gain a second representation the two would have to keep in sync.
+> Related TPLs: [TPL-1967](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1967-domain-ownership-derived-from-entity-not-declared.md) — infra-leaf domain ownership is derived from the `entity` layer (never declared on the physical `table`), keyed at leaf granularity, held as a set of owning domains, and scoped per system. [TPL-1415](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — the same fact must not gain a second representation the two would have to keep in sync.
 
 ### Edge declaration
 
@@ -1046,7 +1046,7 @@ All of these diagnostics are catalogued in the
 [diagnostics & rules reference](diagnostics.md).
 
 > Related TPLs:
-> - [TPL-2577](../test-perspectives/TPL-2577-endpoint-reach-is-one-rule-for-bare-and-qualified.md) — endpoint の到達範囲は bare / qualified に共通の 1 規則で決まる。綴りが検査を免れる例外を作らない
+> - [TPL-2577](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2577-endpoint-reach-is-one-rule-for-bare-and-qualified.md) — endpoint の到達範囲は bare / qualified に共通の 1 規則で決まる。綴りが検査を免れる例外を作らない
 
 #### Optional edge id (`#<id>`)
 
@@ -1076,9 +1076,9 @@ usecase PlaceOrder {
 }
 ```
 
-See [`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md)
+See [`docs/adr/1096-edge-id-selector.md`](https://github.com/kompiro/karasu/blob/main/docs/adr/1096-edge-id-selector.md)
 for how the id flows into the `edge#<id>` style selector. The selector
-itself is documented in [`docs/spec/style.md` — Edge ID selector](style.md#edge-id-selector-edgeid).
+itself is documented in [`docs/spec/style.md` — Edge ID selector](https://github.com/kompiro/karasu/blob/main/docs/spec/style.md#edge-id-selector-edgeid).
 
 #### Property block (`{ label / description / link / facets }`)
 
@@ -1170,7 +1170,7 @@ edge that cross-service domain edges would otherwise derive for the same pair
 (see below).
 
 > Related TPLs:
-> - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — an edge the parser accepts renders on some view or is reported; the anchored spelling must not drop silently
+> - [TPL-2075](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — an edge the parser accepts renders on some view or is reported; the anchored spelling must not drop silently
 
 #### Edges inside a domain block
 
@@ -1202,13 +1202,13 @@ If an explicit service-level edge already exists in the same direction, the impl
 See [`docs/spec/tags-annotations.md`](tags-annotations.md) for the full list of available tags and styles.
 
 > Related TPLs:
-> - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — a construct the parser accepts is either rendered on some view or reported; an edge endpoint that is not at the edge's declaring scope must not drop silently (§ Endpoint scope)
-> - [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — a cross-domain entity relation must use a qualified `DomainId.EntityId` target
-> - [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — the shorthand and the property block are two spellings of one edge, so both must land on one AST and `karasu fmt` must fold them to a single canonical form (§ Property block)
-> - [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — every property the block accepts ships with its visible effect; `facets` on an edge must reach the overlay and the `edge[facets=…]` selector, not parse and vanish (§ Property block)
-> - [TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md) — writing `facets` on an edge must leave the rendered SVG byte-identical while no facet is selected (§ Property block)
-> - [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) / [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — an edge's `facets` is a cross-reference like a node's, validated by `facet-not-declared` on the import-merged model (§ Property block)
-> - [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — an edge's membership stays 1:N, and a derived edge (aggregated `"N domain edges"`, collapse stub) takes the union of what it folds rather than one constituent's (§ Property block)
+> - [TPL-2075](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — a construct the parser accepts is either rendered on some view or reported; an edge endpoint that is not at the edge's declaring scope must not drop silently (§ Endpoint scope)
+> - [TPL-1936](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — a cross-domain entity relation must use a qualified `DomainId.EntityId` target
+> - [TPL-2542](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — the shorthand and the property block are two spellings of one edge, so both must land on one AST and `karasu fmt` must fold them to a single canonical form (§ Property block)
+> - [TPL-1503](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — every property the block accepts ships with its visible effect; `facets` on an edge must reach the overlay and the `edge[facets=…]` selector, not parse and vanish (§ Property block)
+> - [TPL-2174](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md) — writing `facets` on an edge must leave the rendered SVG byte-identical while no facet is selected (§ Property block)
+> - [TPL-907](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-907-cross-reference-validation.md) / [TPL-2032](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — an edge's `facets` is a cross-reference like a node's, validated by `facet-not-declared` on the import-merged model (§ Property block)
+> - [TPL-2161](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — an edge's membership stays 1:N, and a derived edge (aggregated `"N domain edges"`, collapse stub) takes the union of what it folds rather than one constituent's (§ Property block)
 
 ---
 
@@ -1301,7 +1301,7 @@ that is drawn only once. Two refs that *resolve* to one node (`realizes Api` alo
 `unresolved-realizes` / `realizes-target-ambiguous`, and the deploy view still places the unit in
 that one container once.
 
-> Related TPLs: [TPL-2552](../test-perspectives/TPL-2552-repeated-relation-is-idempotent-across-counting-and-keyed-consumers.md) — a reference list that can name one target twice reaches both a consumer that counts entries and a consumer that keys by identity; the two have to agree. [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — adding a second accepted form for one property fixes, in the same change, that both forms land on one AST, that the formatter round-trips the non-canonical form, and that element-level diagnostics carry element-level ranges.
+> Related TPLs: [TPL-2552](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2552-repeated-relation-is-idempotent-across-counting-and-keyed-consumers.md) — a reference list that can name one target twice reaches both a consumer that counts entries and a consumer that keys by identity; the two have to agree. [TPL-2542](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — adding a second accepted form for one property fixes, in the same change, that both forms land on one AST, that the formatter round-trips the non-canonical form, and that element-level diagnostics carry element-level ranges.
 
 ### Realizing shared infra (the `store` kind)
 
@@ -1330,11 +1330,11 @@ other kinds (`oci`, …) *may* realize an infra node too, but `store` keeps the 
 
 When a service depends on a realized infra node (a usecase references it via `resource <Infra>.<Sub>`)
 and both the service and the store are realized, the deploy diagram draws a dependency edge from the
-service's container to the realized store's container ([ADR-1658](../adr/1658-deploy-infra-dependency-edges.md)).
+service's container to the realized store's container ([ADR-1658](https://github.com/kompiro/karasu/blob/main/docs/adr/1658-deploy-infra-dependency-edges.md)).
 
 > Scope: this stays within `deploy`'s **runtime-contract** layer (which concrete form backs the store).
-> Infrastructure topology — regions, AZs, clusters, nodes — remains out of scope (see [concepts.md](../concepts.md)).
-> Decided in [ADR-1632](../adr/1632-infra-physical-realize.md).
+> Infrastructure topology — regions, AZs, clusters, nodes — remains out of scope (see [concepts.md](https://github.com/kompiro/karasu/blob/main/docs/concepts.md)).
+> Decided in [ADR-1632](https://github.com/kompiro/karasu/blob/main/docs/adr/1632-infra-physical-realize.md).
 
 ---
 
@@ -1384,7 +1384,7 @@ system Shop {
 Which form `karasu fmt` emits is a per-property decision, stated in each
 property's section; the grammar above is what the parser accepts on input.
 
-> Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md). A list form and a repeated-line form must land on one AST, elements must carry element-level ranges, and a dangling separator must be reported on the separator itself, symmetrically in both directions.
+> Related TPLs: [TPL-2542](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md). A list form and a repeated-line form must land on one AST, elements must carry element-level ranges, and a dangling separator must be reported on the separator itself, symmetrically in both directions.
 
 ---
 
@@ -1433,7 +1433,7 @@ shape and one resolution rule (#2088):
   the segments they read. What the nine sites share is the notation and the
   suffix rule, not what a malformed reference leaves in the model.
 
-> Related TPLs: [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md) — ノード id を指す記法はサイト間で 1 つの規則を共有し、受理側と解決側が同じヘルパーを引く。[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — path を受理する参照は path をキーに持つ索引を要求する（`ownerIndex` / `boundaryMembership` は full path キー）。
+> Related TPLs: [TPL-2088](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md) — ノード id を指す記法はサイト間で 1 つの規則を共有し、受理側と解決側が同じヘルパーを引く。[TPL-1352](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — path を受理する参照は path をキーに持つ索引を要求する（`ownerIndex` / `boundaryMembership` は full path キー）。
 
 ---
 
@@ -1528,7 +1528,7 @@ The nearest declaration wins outright rather than being unioned with what enclos
 Inheritance governs **derived** readings of ownership, not the declared index. `ownerIndex` still records only the nodes `owns` names, and the team chip still marks only those cards. The reader that walks is the team-dependency derivation (`karasu team-dependencies`), which joins ownership against the logical edges; an endpoint that reaches no team through the walk is reported as unowned rather than dropped, so the derivation states how much of the model it covered. `user` endpoints are excluded from that count — an actor is not an ownership target.
 
 
-> Related TPLs: [TPL-2157](../test-perspectives/TPL-2157-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。[TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md) — `realizes` / `owns` の valid-target set は spec が許す全 kind（service / domain / client / infra）を列挙し、parser・resolver の重複した集合を同期させる。[TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) — 重複 `owns` は tolerated fact として **info** 診断（`duplicate-owner-assignment`）で surface し error にしない（ADR-1566）。[TPL-2635](../test-perspectives/TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は宣言だけを読むのか nearest owned ancestor まで遡るのかを宣言し、その選択を固定するテストを持つ。
+> Related TPLs: [TPL-2157](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2157-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。[TPL-1720](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md) — `realizes` / `owns` の valid-target set は spec が許す全 kind（service / domain / client / infra）を列挙し、parser・resolver の重複した集合を同期させる。[TPL-1386](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) — 重複 `owns` は tolerated fact として **info** 診断（`duplicate-owner-assignment`）で surface し error にしない（ADR-1566）。[TPL-2635](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は宣言だけを読むのか nearest owned ancestor まで遡るのかを宣言し、その選択を固定するテストを持つ。
 
 ### member node
 
@@ -1545,10 +1545,10 @@ All properties are optional. `member` cannot be nested.
 
 ### How to specify a label
 
-`organization`, `team`, and `member` take their label as the `label` property (`team backend { label "Backend Team" }`), like every node kind ([ADR-19](../adr/19-required-id-label-as-property.md)).
+`organization`, `team`, and `member` take their label as the `label` property (`team backend { label "Backend Team" }`), like every node kind ([ADR-19](https://github.com/kompiro/karasu/blob/main/docs/adr/19-required-id-label-as-property.md)).
 The legacy positional argument (`team backend "Backend Team"`) is **rejected** with the `positional-label-removed` error (#2133 deprecated it, #2208 removed it). The string is still read as the label so the org chart keeps its names while the file is fixed, but the file does not compile clean until the property form is used. `karasu fmt` rewrites the form only while it parses without an error, so migrate before upgrading. When both are specified, the property form takes precedence.
 
-> Related TPLs: [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — every form the parser accepts must be documented here; undocumented leniency is drift (this section's positional form went unspecified-but-accepted for four months, #2133).
+> Related TPLs: [TPL-2133](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — every form the parser accepts must be documented here; undocumented leniency is drift (this section's positional form went unspecified-but-accepted for four months, #2133).
 
 ---
 
@@ -1556,7 +1556,7 @@ The legacy positional argument (`team backend "Backend Team"`) is **rejected** w
 
 > **Core notation from `.krs language v2.0`.** `boundary` (the declaration,
 > `contains` and the scoped declaration) passed the notation promotion gate
-> ([ADR-1820](../adr/1820-notation-promotion-gate.md)) and is promoted to core in
+> ([ADR-1820](https://github.com/kompiro/karasu/blob/main/docs/adr/1820-notation-promotion-gate.md)) and is promoted to core in
 > language v2.0 ([#2678](https://github.com/kompiro/karasu/issues/2678)): its shape is
 > backward-compatible from then on, and a breaking change needs a language major.
 
@@ -1622,7 +1622,7 @@ boundary payments {
 - **The colours are settable.** The cycle is a default, not a claim by the
   author. A `.krs.style` sheet can name a boundary and take its frame colour
   over (`boundary#pci { border-color: ... }`); see
-  [style.md § Boundary frame selectors](style.md#boundary-frame-selectors-boundary--boundaryid).
+  [style.md § Boundary frame selectors](https://github.com/kompiro/karasu/blob/main/docs/spec/style.md#boundary-frame-selectors-boundary--boundaryid).
 - **When a frame cannot reach, the membership goes on the card.** A frame is
   only widened when the corridor to the card holds no **non-member**: a frame
   must never enclose a node that is not its member, and that rule outranks
@@ -1733,18 +1733,18 @@ Diagnostics (see [diagnostics.md](diagnostics.md)):
 - `contains-target-not-found` (warning) — a `contains` target does not exist (top-level: anywhere in the system hierarchy; scoped: among the declaring node's direct children).
 - `boundary-not-in-context` (error) — a `boundary` block inside a node kind that draws no canvas of its own.
 - `duplicate-boundary-id` (error) — two `boundary` blocks in the same enclosing node declare the same id. Top-level blocks are unaffected (they keep merging).
-- `positional-label-removed` (error) — a positional label after the boundary id (`boundary payments "Payments"`). The `label` property is the only form ([ADR-19](../adr/19-required-id-label-as-property.md), #2133).
+- `positional-label-removed` (error) — a positional label after the boundary id (`boundary payments "Payments"`). The `label` property is the only form ([ADR-19](https://github.com/kompiro/karasu/blob/main/docs/adr/19-required-id-label-as-property.md), #2133).
 
 Under either *Group by* axis the group frame is titled with the group's declared
 `label`, falling back to the group id when no label is given (#2133).
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish). [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — forms the parser accepts must be documented here (the retired positional label was accepted-but-unspecified, #2133). [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) — the per-view scope promised above must hold identically on every render surface (interactive compile, the static export bundles, the entity view); a gate added or removed on one surface only ships an undocumented split (#1983). [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — the scoped membership index and the scoped group identity key by (declaring scope, id); dropping the scope dimension fuses same-named boundaries across scopes (#2036). [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — the scoped block must round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover per-node constructs. [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — the scoped `contains-target-not-found` is re-derived on the merged model, like every existence check (#2036 slice A regressed exactly this). [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — boundary membership is 1:N in the model; the banded view's primary is a view-side resolution, and the group order comes from the declarations rather than from the axis map's values (#2178). [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md) — placement is exactly-once across the whole band machinery: the seam bias and the band-less boundary's claim rewrite which band and which row a node takes, and neither may drop or duplicate one (#2176). [TPL-2179](../test-perspectives/TPL-2179-derived-outline-measured-on-coverage-not-bbox.md) — a frame widened to reach a member is measured on what it actually covers, and is widened only when the corridor holds no non-member; "no frame encloses a non-member" outranks showing the containment, and the fallback is the `◇` tab above (#2179). [TPL-2316](../test-perspectives/TPL-2316-declarable-construct-reachable-from-reference.md) — a declarable construct must be reachable from the in-app Reference; `boundary` and `facet` were shipped and spec'd yet absent from `REFERENCE_DATA`, while `facet`'s element-side `facets` property was listed on all 14 node kinds (#2316).
+> Related TPLs: [TPL-1503](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish). [TPL-2133](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — forms the parser accepts must be documented here (the retired positional label was accepted-but-unspecified, #2133). [TPL-1983](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) — the per-view scope promised above must hold identically on every render surface (interactive compile, the static export bundles, the entity view); a gate added or removed on one surface only ships an undocumented split (#1983). [TPL-1352](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — the scoped membership index and the scoped group identity key by (declaring scope, id); dropping the scope dimension fuses same-named boundaries across scopes (#2036). [TPL-1101](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1101-round-trip-guarantee.md) — the scoped block must round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover per-node constructs. [TPL-2032](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — the scoped `contains-target-not-found` is re-derived on the merged model, like every existence check (#2036 slice A regressed exactly this). [TPL-2161](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — boundary membership is 1:N in the model; the banded view's primary is a view-side resolution, and the group order comes from the declarations rather than from the axis map's values (#2178). [TPL-1738](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md) — placement is exactly-once across the whole band machinery: the seam bias and the band-less boundary's claim rewrite which band and which row a node takes, and neither may drop or duplicate one (#2176). [TPL-2179](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2179-derived-outline-measured-on-coverage-not-bbox.md) — a frame widened to reach a member is measured on what it actually covers, and is widened only when the corridor holds no non-member; "no frame encloses a non-member" outranks showing the containment, and the fallback is the `◇` tab above (#2179). [TPL-2316](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2316-declarable-construct-reachable-from-reference.md) — a declarable construct must be reachable from the in-app Reference; `boundary` and `facet` were shipped and spec'd yet absent from `REFERENCE_DATA`, while `facet`'s element-side `facets` property was listed on all 14 node kinds (#2316).
 
 ---
 
 ## Cross-cutting membership (`facet`)
 
-> **Core notation** from `.krs language v2.0`: backward compatibility is promised, and `facet` is the only user extension point of the vocabulary ([ADR-2065](../adr/2065-tags-and-facets.md)).
+> **Core notation** from `.krs language v2.0`: backward compatibility is promised, and `facet` is the only user extension point of the vocabulary ([ADR-2065](https://github.com/kompiro/karasu/blob/main/docs/adr/2065-tags-and-facets.md)).
 >
 > **Membership is shown by the overlay, which the reader turns on.** Pick facets
 > in the preview's *Facets* selector: members get a coloured ring, everything
@@ -1758,7 +1758,7 @@ Under either *Group by* axis the group frame is titled with the group's declared
 > for every reader until one of them selects something.
 >
 > Two surfaces sit alongside the overlay. A sheet can style by membership —
-> [`[facets=<id>]`](style.md#facet-selectors-facetsid), the
+> [`[facets=<id>]`](https://github.com/kompiro/karasu/blob/main/docs/spec/style.md#facet-selectors-facetsid), the
 > replacement for abusing an arbitrary tag selector. And **Membership overview**,
 > at the bottom of the Facets menu, answers "which elements are in facet X" in
 > one view. That list is **derived from the `facets` properties on every
@@ -1816,7 +1816,7 @@ system Shop {
   attribute declarations, no `policy` block. A facet says *which* behaviours a
   policy covers; *what the policy says* stays prose in `description` plus a
   `link` to the real policy document. This is the structural half of
-  [ADR-832](../adr/832-no-runtime-authz-modeling.md)'s decision not to model
+  [ADR-832](https://github.com/kompiro/karasu/blob/main/docs/adr/832-no-runtime-authz-modeling.md)'s decision not to model
   runtime authorization: with no value language there is no gradient from
   "declare a scope" to "declare a rule".
 - **`facets <id>[, <id>]*` is accepted on every node kind** — `system`,
@@ -1872,9 +1872,9 @@ Diagnostics (see [diagnostics.md](diagnostics.md)):
 
 - `facet-not-declared` (warning) — a `facets` reference names no declared `facet`. Checked on the merged model, so a declaration in an imported file counts.
 - `duplicate-facet-id` (error) — two `facet` blocks declare the same id, in one file or across merged files. The first declaration is the one references resolve to.
-- `positional-label-removed` (error) — a positional label after the facet id (`facet pii "Personal data"`). The `label` property is the only form ([ADR-19](../adr/19-required-id-label-as-property.md)).
+- `positional-label-removed` (error) — a positional label after the facet id (`facet pii "Personal data"`). The `label` property is the only form ([ADR-19](https://github.com/kompiro/karasu/blob/main/docs/adr/19-required-id-label-as-property.md)).
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — accepted vocabulary must have an effect; the overlay above is that effect. [TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md) — the overlay is opt-in, so it must emit nothing at all when no facet is selected. [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — `facets` is a cross-reference property, so it ships with a resolver-side validator and an unresolved warning, not parser-side acceptance alone. [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — the 1:N membership promised above is kept whole in the derived index and through every merge path; a view needing a single value resolves it on the view side. [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — `facet-not-declared` and `duplicate-facet-id` are decided on the merged model, since declaration and reference may sit in different files. [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — both the declaration block and the per-node `facets` property round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover the per-node property. [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — every kind that accepts `facets` is listed here, because the parser accepts it everywhere; edges accept it too and say so in § Property block (#2544). [TPL-1281](../test-perspectives/TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — the pull from "membership" toward "rule language" is fenced by ADR-832, linked above, rather than by renaming the keyword. [TPL-2316](../test-perspectives/TPL-2316-declarable-construct-reachable-from-reference.md) — a declarable construct must be reachable from the in-app Reference; `boundary` and `facet` were shipped and spec'd yet absent from `REFERENCE_DATA`, while `facet`'s element-side `facets` property was listed on all 14 node kinds (#2316).
+> Related TPLs: [TPL-1503](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — accepted vocabulary must have an effect; the overlay above is that effect. [TPL-2174](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md) — the overlay is opt-in, so it must emit nothing at all when no facet is selected. [TPL-907](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-907-cross-reference-validation.md) — `facets` is a cross-reference property, so it ships with a resolver-side validator and an unresolved warning, not parser-side acceptance alone. [TPL-2161](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — the 1:N membership promised above is kept whole in the derived index and through every merge path; a view needing a single value resolves it on the view side. [TPL-2032](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — `facet-not-declared` and `duplicate-facet-id` are decided on the merged model, since declaration and reference may sit in different files. [TPL-1101](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1101-round-trip-guarantee.md) — both the declaration block and the per-node `facets` property round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover the per-node property. [TPL-2133](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — every kind that accepts `facets` is listed here, because the parser accepts it everywhere; edges accept it too and say so in § Property block (#2544). [TPL-1281](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — the pull from "membership" toward "rule language" is fenced by ADR-832, linked above, rather than by renaming the keyword. [TPL-2316](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2316-declarable-construct-reachable-from-reference.md) — a declarable construct must be reachable from the in-app Reference; `boundary` and `facet` were shipped and spec'd yet absent from `REFERENCE_DATA`, while `facet`'s element-side `facets` property was listed on all 14 node kinds (#2316).
 
 ## Diagram legend
 
@@ -1963,13 +1963,13 @@ legend domain "Data access" {
 - A **fill-less** kind (merged `background-color: transparent`, e.g. the built-in `usecase`) is swatched with its `border-color`, because the border is what identifies it on the canvas.
 - A `ref` whose target appears on at least one node in the file but has no painting style rule renders with a **neutral fallback swatch** so semantic-only annotations / tags (e.g. `[human]`, `[ai]`) still surface in the legend.
 - A `ref` that matches no rule **and** no node is **dropped from the rendered footer** and surfaced in the warning panel as `legend-ref-unresolved`. Authors can then either remove the entry or add a matching style rule.
-- `.class` selectors are accepted by the parser for forward compatibility but always resolve as unresolved today (`.krs.style` has no class concept — see [`style.md`](style.md)).
+- `.class` selectors are accepted by the parser for forward compatibility but always resolve as unresolved today (`.krs.style` has no class concept — see [`style.md`](https://github.com/kompiro/karasu/blob/main/docs/spec/style.md)).
 
-> Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — the swatch and the node it stands for are one appearance, so both read one cascade implementation rather than each deriving the order (Issue #2445).
+> Related TPLs: [TPL-2234](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — the swatch and the node it stands for are one appearance, so both read one cascade implementation rather than each deriving the order (Issue #2445).
 
 ### Labels are not localized
 
-Legend labels are author-supplied strings, treated the same way as `name` and `label` properties on regular nodes — the renderer embeds them verbatim into the SVG and the app's i18n layer does **not** translate them. See [`i18n.md`](i18n.md) for the exemption list.
+Legend labels are author-supplied strings, treated the same way as `name` and `label` properties on regular nodes — the renderer embeds them verbatim into the SVG and the app's i18n layer does **not** translate them. See [`i18n.md`](https://github.com/kompiro/karasu/blob/main/docs/spec/i18n.md) for the exemption list.
 
 ### Sample file
 
@@ -1977,7 +1977,7 @@ Legend labels are author-supplied strings, treated the same way as `name` and `l
 
 ### What's not in v1
 
-The following are deferred (see [`docs/adr/833-diagram-legend-syntax.md`](../adr/833-diagram-legend-syntax.md) for rationale):
+The following are deferred (see [`docs/adr/833-diagram-legend-syntax.md`](https://github.com/kompiro/karasu/blob/main/docs/adr/833-diagram-legend-syntax.md) for rationale):
 
 - Shape / icon / pattern legends (only color today).
 - Interactive legends (click to filter, etc.).
@@ -1986,9 +1986,9 @@ The following are deferred (see [`docs/adr/833-diagram-legend-syntax.md`](../adr
 - Rendering on diff views (`compileSystemDiff` / `compileDeployDiff`) and on org focused-team / icon-mode return paths.
 
 > **Related TPLs**:
-> - [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md) — scoped glance: each drill-down level shows only its own vocabulary (exact-match legend switching applies this to legends)
-> - [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) — top-level / drill-down / all-layers render paths must carry the same legend options
-> - [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — the view-scope vocabulary here must stay in sync with the built-in reference data
+> - [TPL-1223](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1223-scoped-glance-drill-down.md) — scoped glance: each drill-down level shows only its own vocabulary (exact-match legend switching applies this to legends)
+> - [TPL-219](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-219-parallel-function-parity.md) — top-level / drill-down / all-layers render paths must carry the same legend options
+> - [TPL-1296](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — the view-scope vocabulary here must stay in sync with the built-in reference data
 
 ---
 
@@ -2064,7 +2064,7 @@ import { ECPlatform.NotThere.Order } from "./services.krs"
 
 ## Multi-file import semantics
 
-This section defines what each `import` form means when a model is split across multiple `.krs` files. Implementation: `packages/core/src/fs/import-resolver.ts`. Related ADRs: [ADR-281](../adr/281-wildcard-import-two-pass-resolution.md) (wildcard / two-pass), [ADR-292](../adr/292-directory-import.md) (directory), [ADR-412](../adr/412-named-import-toplevel-service.md) (named top-level), [ADR-927](../adr/927-import-system-nested.md) (named path syntax).
+This section defines what each `import` form means when a model is split across multiple `.krs` files. Implementation: `packages/core/src/fs/import-resolver.ts`. Related ADRs: [ADR-281](https://github.com/kompiro/karasu/blob/main/docs/adr/281-wildcard-import-two-pass-resolution.md) (wildcard / two-pass), [ADR-292](https://github.com/kompiro/karasu/blob/main/docs/adr/292-directory-import.md) (directory), [ADR-412](https://github.com/kompiro/karasu/blob/main/docs/adr/412-named-import-toplevel-service.md) (named top-level), [ADR-927](https://github.com/kompiro/karasu/blob/main/docs/adr/927-import-system-nested.md) (named path syntax).
 
 ### S1. The four import forms
 
@@ -2187,13 +2187,13 @@ No `infra-redeclared-across-files` diagnostic fires for this pattern — each in
 The same project always produces the same merged AST.
 
 > **Related TPLs**:
-> - [TPL-1381](../test-perspectives/TPL-1381-import-dag-not-cycle.md) — DAG re-arrival is not a cycle (S5)
-> - [TPL-1383](../test-perspectives/TPL-1383-whole-file-import-completeness.md) — whole-file import preserves all top-level and nested nodes (S2)
-> - [TPL-2168](../test-perspectives/TPL-2168-system-reopen-merge.md) — reopened `system` merges children, root entry wins for properties (S3)
-> - [TPL-2169](../test-perspectives/TPL-2169-deploy-org-wildcard-propagation.md) — `deploy` / `organization` propagate through whole-file import (S4)
-> - [TPL-2170](../test-perspectives/TPL-2170-dangling-edge-preserves-node.md) — unresolved edge endpoint does not drop the surviving node (S6)
-> - [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — every cross-reference form, including the physical `resource` / `table` dot-notation, carries resolver-side validation and an unresolved warning (S6)
-> - [TPL-1385](../test-perspectives/TPL-1385-infra-redeclared-across-files.md) — same-id `database` / `queue` / `storage` reopens union-merge with an info diagnostic (S4.5)
+> - [TPL-1381](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1381-import-dag-not-cycle.md) — DAG re-arrival is not a cycle (S5)
+> - [TPL-1383](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1383-whole-file-import-completeness.md) — whole-file import preserves all top-level and nested nodes (S2)
+> - [TPL-2168](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2168-system-reopen-merge.md) — reopened `system` merges children, root entry wins for properties (S3)
+> - [TPL-2169](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2169-deploy-org-wildcard-propagation.md) — `deploy` / `organization` propagate through whole-file import (S4)
+> - [TPL-2170](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2170-dangling-edge-preserves-node.md) — unresolved edge endpoint does not drop the surviving node (S6)
+> - [TPL-907](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-907-cross-reference-validation.md) — every cross-reference form, including the physical `resource` / `table` dot-notation, carries resolver-side validation and an unresolved warning (S6)
+> - [TPL-1385](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1385-infra-redeclared-across-files.md) — same-id `database` / `queue` / `storage` reopens union-merge with an info diagnostic (S4.5)
 
 ---
 

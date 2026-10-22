@@ -15,6 +15,7 @@ import type {
   TeamNode,
   MemberNode,
   LinkEntry,
+  ClientCapability,
   BoundaryBlock,
   FacetBlock,
   LegendBlock,
@@ -406,6 +407,18 @@ class Printer {
     ) {
       lines.push(`${indent}operations ${this.renderOperations(node.properties.operations)}`);
     }
+    // Client-only. Neither was printed until #3101, so `karasu fmt` and
+    // format-on-save deleted every `resource` / `capability` line of a client.
+    // `formatter-property-coverage.test.ts` now fails on any property key
+    // without a fixture that round-trips (TPL-1101).
+    if (node.kind === "client") {
+      for (const resource of node.properties.resources) {
+        lines.push(`${indent}resource ${resource.storageKind} ${quoteString(resource.name)}`);
+      }
+      for (const capability of node.properties.capabilities) {
+        lines.push(...this.renderCapability(capability, indent));
+      }
+    }
     // Canonicalized to a single comma list, whatever the author wrote: repeated
     // `facets` lines and duplicate ids were already collapsed at parse time, so
     // emitting one line is what makes `format(format(x)) === format(x)` hold.
@@ -429,6 +442,21 @@ class Printer {
         return quoteId(op.verb);
       })
       .join(", ");
+  }
+
+  /** `capability <name>`, or the block form when it carries a label or description. */
+  private renderCapability(capability: ClientCapability, indent: string): string[] {
+    const head = `${indent}capability ${capability.name}`;
+    if (capability.label === undefined && capability.description === undefined) return [head];
+    const inner = indent + "  ";
+    const lines = [`${head} {`];
+    if (capability.label !== undefined)
+      lines.push(`${inner}label ${quoteString(capability.label)}`);
+    if (capability.description !== undefined) {
+      lines.push(this.renderDescription(capability.description, inner));
+    }
+    lines.push(`${indent}}`);
+    return lines;
   }
 
   private renderDescription(value: string, indent: string): string {
