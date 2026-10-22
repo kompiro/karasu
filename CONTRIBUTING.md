@@ -173,7 +173,8 @@ is required to contribute: a plain `git` / `pnpm` / `gh` workflow works.
    check, build, vitest with coverage, and a license allowlist — see
    [License compliance](#license-compliance) below).
 3. Open a PR using the [pull request template](.github/PULL_REQUEST_TEMPLATE.md).
-   Link to the Issue with `Closes #N`. Write the description in English.
+   Link to the Issue with `Closes #N` (a design-doc PR uses `Refs #N`, since the
+   Issue stays open for the implementation). Write the description in English.
 4. Wait for CI. The required checks for merge are visible on the PR.
 5. CodeRabbit posts an automated review. It requests changes while
    actionable findings are open, and approves once they are all resolved.
