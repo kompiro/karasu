@@ -100,6 +100,10 @@ The three dimensions behind System / Deploy / Org are explained in
   breadcrumb tracks your depth.
 - **Node details** — click a leaf node (or its info button) to open a side panel
   with the node's id, description, tags, and related connections.
+- **Jump to the definition** — Cmd/Ctrl+click a node to move the editor to the
+  line that defines it, opening the file it is defined in if that is another
+  one. Drillable nodes jump too instead of drilling. The detail panel's
+  **↗ Jump to editor** does the same.
 - **Edge in focus** — click an edge to open a second canvas over the preview with
   its two nodes and every edge between them, labels in full. A dense diagram
   shortens long labels and leaves off the ones that would overlap; this is where
