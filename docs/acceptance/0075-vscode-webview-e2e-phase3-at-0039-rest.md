@@ -80,8 +80,7 @@ OrderManagement と Inventory を追加（OrderService が drill 可能になる
 - [x] TC-06: parent への ⓘ click は drill しない
 > ✅ Automated — `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-06: ⓘ info button on a parent does not drill the preview` (CI は `vscode-webview-e2e` ラベル opt-in、xvfb 必要のため required check には昇格しない)
 
-- [x] TC-08: panel 開いている間 tooltip 抑制
-> ✅ Automated — `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-08: tooltip is suppressed while the detail panel is open` (CI は `vscode-webview-e2e` ラベル opt-in、xvfb 必要のため required check には昇格しない)
+- TC-08（引退）: panel 開いている間 tooltip 抑制（#3312 で引退。preview が app の viewer になり hover の説明自体が無い。app に入れるかは #3325）
 
 ### AC-2: AT-0039 doc の Coverage policy が更新される
 

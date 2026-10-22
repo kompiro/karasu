@@ -5,8 +5,11 @@ name: VS Code E2E
 # were an opt-in that created a detection blind spot (TPL-1725): a PR
 # changing a surface these suites assert on but missing the label could merge
 # with stale assertions undetected. Both jobs share the same build chain
-# (core / i18n / lsp / vscode), so a single workflow-level `paths` union is
-# precise. nightly (e2e-nightly.yml) remains the final safety net.
+# (core / i18n / lsp / app / vscode), so a single workflow-level `paths` union
+# is precise. The app is in it since the preview became the app's viewer
+# (#3312): the extension ships the app's build, so an app change is a change
+# to what these suites assert on. nightly (e2e-nightly.yml) remains the final
+# safety net.
 on:
   pull_request:
     branches: [main]
@@ -15,6 +18,7 @@ on:
       - "packages/core/**"
       - "packages/i18n/**"
       - "packages/lsp/**"
+      - "packages/app/**"
       - "packages/vscode/**"
       - "packages/vscode-e2e/**"
       - "pnpm-lock.yaml"

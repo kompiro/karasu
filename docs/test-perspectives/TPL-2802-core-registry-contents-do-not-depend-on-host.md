@@ -103,7 +103,7 @@ core の関数が「名前 → 実装」のレジストリを引くとき、**�
 - `packages/cli/src/render.e2e.test.ts` — `karasu render` が `url("database")` をアイコンで描き、typo を warning にすること
 - `packages/cli/src/lint-style.test.ts` — `karasu lint-style` が typo を宣言位置つきの warning にすること
 - `packages/lsp/src/diagnostics.test.ts` — 描画しない LSP でも同じ判定になり、組み込みの名前を誤検知しないこと
-- `packages/vscode/src/builtin-icons-extension-host.test.ts` — 拡張ホストの `compileProject` 経路で同じこと
+- VS Code の preview は #3312 以降、webview の中で app の viewer が compile する。拡張ホストに compile の経路はもう無く、app と同じ経路として上の fence に含まれる
 
 ## 派生元 spec
 
