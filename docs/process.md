@@ -145,7 +145,7 @@ glob の一覧で、ここには要約だけを置く。
 | Low | `docs/adr/**`・`docs/test-perspectives/**`・`docs/guide/**`・テストファイル（`*.test.ts(x)` / `*.spec.ts`）だけ | CI が通れば auto-merge。人間は読まない |
 | Design | `docs/design/**` | 人間が必ずレビューする |
 | Medium | ほかのすべて（`packages/*`・`docs/acceptance/**`・`examples/**` などを含む） | 人間がサマリー・証拠・preview を見て判断する |
-| High | workflow・release・依存の変更・`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`.claude/rules/**`・`.coderabbit.yaml` など | 人間が差分を読む |
+| High | workflow・release・依存の変更・`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`.claude/rules/**`・`.coderabbit.yaml`・レビューの仕組み自体（`scripts/review/**`・`scripts/coderabbit/**`・`/coderabbit-converge`）など | 人間が差分を読む |
 
 - **段階は上がる方向にだけ補正される。** 作成者が信頼リスト（`kompiro`）にいなければ High になる。
   CodeRabbit のサマリーの effort 見積もりが 4 以上なら、Low は Medium になる。見積もりは

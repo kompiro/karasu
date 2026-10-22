@@ -43,6 +43,10 @@ export const HIGH_GLOBS: readonly string[] = [
   ".coderabbit.yaml",
   "lefthook.yml",
   "scripts/lint/**",
+  // The review machinery itself: a change here decides how every later PR is read.
+  "scripts/review/**",
+  "scripts/coderabbit/**",
+  ".claude/skills/coderabbit-converge/**",
 ];
 
 export const DESIGN_GLOBS: readonly string[] = ["docs/design/**"];
@@ -237,15 +241,21 @@ export function changedLines(diff: string, excluded: readonly string[] = []): st
   const out: string[] = [];
   let minus: string | null = null;
   let file: string | null = null;
+  // `---` / `+++` are headers only before a section's first hunk. Inside a hunk the
+  // same prefix is content: removing a SQL comment `-- x` prints `--- x`.
+  let inHeader = false;
   for (const line of diff.split("\n")) {
     if (line.startsWith("diff --git ")) {
       minus = null;
       file = null;
-    } else if (line.startsWith("--- ")) {
+      inHeader = true;
+    } else if (inHeader && line.startsWith("--- ")) {
       minus = line.slice(4);
-    } else if (line.startsWith("+++ ")) {
+    } else if (inHeader && line.startsWith("+++ ")) {
       file = diffFile(minus, line.slice(4));
-    } else if (file !== null && (line.startsWith("+") || line.startsWith("-"))) {
+    } else if (line.startsWith("@@")) {
+      inHeader = false;
+    } else if (!inHeader && file !== null && (line.startsWith("+") || line.startsWith("-"))) {
       if (!matchesAny(file, excluded)) out.push(`${file}\t${line}`);
     }
   }
@@ -273,15 +283,19 @@ export function lineInDiff(
   const last = end !== undefined && Number.isInteger(end) && end >= start ? end : start;
   let minus: string | null = null;
   let file: string | null = null;
+  let inHeader = false;
   for (const line of diff.split("\n")) {
     if (line.startsWith("diff --git ")) {
       minus = null;
       file = null;
-    } else if (line.startsWith("--- ")) {
+      inHeader = true;
+    } else if (inHeader && line.startsWith("--- ")) {
       minus = line.slice(4);
-    } else if (line.startsWith("+++ ")) {
+    } else if (inHeader && line.startsWith("+++ ")) {
       file = diffFile(minus, line.slice(4));
-    } else if (file === path && line.startsWith("@@")) {
+    } else if (line.startsWith("@@")) {
+      inHeader = false;
+      if (file !== path) continue;
       const m = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(line);
       if (!m) continue;
       const from = Number(m[1]);
@@ -314,12 +328,14 @@ function gitShow(rev: string, path: string): string | null {
 /** The PR's own diff: from where it left `base` to `head`. */
 function prDiff(base: string, head: string, unified0 = true): string {
   const mergeBase = git("merge-base", base, head).trim();
-  return git("diff", ...(unified0 ? ["-U0"] : []), mergeBase, head);
+  // `--no-renames`: a rename shows as a delete plus an add, so the old path counts too.
+  return git("diff", "--no-renames", ...(unified0 ? ["-U0"] : []), mergeBase, head);
 }
 
 function changedFiles(base: string, head: string): ChangedFile[] {
   const mergeBase = git("merge-base", base, head).trim();
-  return git("diff", "--name-only", mergeBase, head)
+  // `--no-renames`: moving a High file under docs/adr/ must not read as a Low change.
+  return git("diff", "--name-only", "--no-renames", mergeBase, head)
     .split("\n")
     .filter((p) => p !== "")
     .map((path) =>

@@ -40,6 +40,9 @@ describe("pathTier", () => {
     [".coderabbit.yaml", "high"],
     ["lefthook.yml", "high"],
     ["scripts/lint/record-source-paths.ts", "high"],
+    ["scripts/review/tier.ts", "high"],
+    ["scripts/coderabbit/review-state.ts", "high"],
+    [".claude/skills/coderabbit-converge/SKILL.md", "high"],
   ])("%s is %s", (path, tier) => {
     expect(pathTier(path)).toBe(tier);
   });
@@ -241,6 +244,15 @@ describe("changedLines / sameLines", () => {
         changedLines(diffOf("b.md", "@@ -1,0 +2 @@", "+same")),
       ),
     ).toBe(false);
+  });
+
+  it("reads a removed `-- x` or an added `++ x` as content, not as a file header", () => {
+    // Inside a hunk, git prints them as `--- x` and `+++ x`.
+    const sql = diffOf("db/schema.sql", "@@ -3 +3 @@", "--- old comment", "+++ new");
+    expect(changedLines(sql)).toEqual(["db/schema.sql\t+++ new", "db/schema.sql\t--- old comment"]);
+    expect(lineInDiff([sql, diffOf("b.md", "@@ -1,0 +2 @@", "+x")].join("\n"), "b.md", 2)).toBe(
+      "inside",
+    );
   });
 
   it("names a deleted file by its old path", () => {

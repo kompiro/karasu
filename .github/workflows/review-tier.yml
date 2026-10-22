@@ -14,6 +14,11 @@ name: Review tier
 # `pull_request_review` re-runs the check when CodeRabbit posts a review, which is
 # when its effort estimate first exists. The estimate is read only from
 # CodeRabbit's own summary comment (see scripts/review/tier.ts).
+#
+# The classifier that judges a PR is the one on main, not the PR's own copy: a PR
+# that edits scripts/review/tier.ts must not be the one deciding its own tier.
+# Only while main has no classifier yet (the PR that introduces it) does the
+# head's copy run.
 
 on:
   pull_request:
@@ -29,6 +34,7 @@ concurrency:
 permissions:
   contents: read
   pull-requests: read
+  issues: read
 
 jobs:
   review-tier:
@@ -49,4 +55,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/review/tier.ts check --pr "$PR"
+        run: |
+          script=scripts/review/tier.ts
+          if git cat-file -e "origin/main:$script" 2>/dev/null; then
+            git worktree add --detach "$RUNNER_TEMP/main" origin/main
+            script="$RUNNER_TEMP/main/$script"
+          fi
+          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$script" check --pr "$PR"

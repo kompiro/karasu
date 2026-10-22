@@ -101,7 +101,7 @@ approve されなければ止めて、人間が見る。** 段階が変えるの
 | Low | `docs/adr/**`、`docs/test-perspectives/**`、`docs/guide/**`、テストファイルだけ（`*.test.ts(x)`・`*.spec.ts`） | CI が通れば auto-merge。人間は読まない |
 | Design | `docs/design/**` | 人間が必ずレビューする |
 | Medium | 上と下に当たらないもの（`packages/*` の feat / fix、`packages/nest/**`、`docs/acceptance/**`、`examples/**` を含む） | 人間がサマリー・証拠・preview を見て判断する（今の運用） |
-| High | `.github/workflows/**`、`.github/actions/**`、release（各パッケージの `CHANGELOG.md` と `package.json` の `version`）、依存の変更（`package.json` の `dependencies` / `devDependencies` / `pnpm.overrides`、`pnpm-workspace.yaml`）、`docs/spec/**`、`docs/concepts*.md`、`docs/process.md`、`.claude/rules/**`、`.coderabbit.yaml`、`lefthook.yml`、`scripts/lint/**` | 人間が差分を読む |
+| High | `.github/workflows/**`、`.github/actions/**`、release（各パッケージの `CHANGELOG.md` と `package.json` の `version`）、依存の変更（`package.json` の `dependencies` / `devDependencies` / `pnpm.overrides`、`pnpm-workspace.yaml`）、`docs/spec/**`、`docs/concepts*.md`、`docs/process.md`、`.claude/rules/**`、`.coderabbit.yaml`、`lefthook.yml`、`scripts/lint/**`、レビューの仕組み自体（`scripts/review/**`、`scripts/coderabbit/**`、`/coderabbit-converge`） | 人間が差分を読む |
 
 `docs/acceptance/**` と `examples/**` は Low に入れない。
 
@@ -347,8 +347,10 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
    main の取り込みの前後で追加行と削除行の集合を比べる判定も同じスクリプトに置く。比較から外すファイルは
    `.coderabbit.yaml` の `path_filters` から読み、一覧を二重に持たない
 2. required check の workflow `review-tier.yml` を足す。パスフィルタは付けない（TPL-1725）ので、
-   skip stub は要らない。draft では動かさない（ADR-2643）。`if` で飛ばした job は required check に
-   success を返すので、`types:` に `ready_for_review` を入れる。ラベルの付け替えでも判定し直すよう
+   skip stub は要らない。draft でも動かす。スクリプトは依存のインストールなしに素の `node` で数秒で終わるので、
+   ADR-2643 が draft で止める分単位の job には当たらない。判定には PR の head ではなく main にある
+   判定スクリプトを使い、判定スクリプトを書き換えた PR が自分の段階を決められないようにする。`types:` に
+   `ready_for_review` を入れる。ラベルの付け替えでも判定し直すよう
    `labeled` / `unlabeled` も入れ、CodeRabbit の見積もりを読むために `pull_request_review` の `submitted` でも
    走らせる。見積もりは `coderabbitai[bot]` が書いたサマリーからだけ読み、サマリーがあるのに 1〜5 の整数として
    読めなければ `risk: low` を通さない。最終の差分・作成者・（あれば）見積もりから段階を出し、**`risk: low` ラベルが付いているのに

@@ -207,7 +207,7 @@ function git(args: string[]): string {
 /** The PR's own lines at `head`, measured from where it left main. */
 function prLines(head: string, excluded: string[]): string[] {
   const mergeBase = git(["merge-base", "origin/main", head]).trim();
-  return changedLines(git(["diff", "-U0", mergeBase, head]), excluded);
+  return changedLines(git(["diff", "--no-renames", "-U0", mergeBase, head]), excluded);
 }
 
 /**
