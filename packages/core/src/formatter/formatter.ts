@@ -116,6 +116,8 @@ interface BodyStatement {
   keyword: string;
   startLine: number;
   endLine: number;
+  /** Comma-separated items written at the statement's own depth (`realizes A, B` holds 2). */
+  items: number;
 }
 
 /** A block body: the line its `{` is on and the statements inside it. */
@@ -166,9 +168,15 @@ class Printer {
         // A closing brace ends the statement that opened the block, whatever
         // line it is on.
         if (tok.type !== TokenType.RightBrace && tok.loc.line > top.lastLine) {
-          top.body.statements.push({ keyword: tok.value, startLine: tok.loc.line, endLine });
+          top.body.statements.push({
+            keyword: tok.value,
+            startLine: tok.loc.line,
+            endLine,
+            items: 1,
+          });
         } else if (current) {
           current.endLine = endLine;
+          if (tok.type === TokenType.Comma) current.items++;
         }
         top.lastLine = endLine;
       }
@@ -314,8 +322,9 @@ class Printer {
    * block, its closing brace). Printed properties are paired with source
    * statements of the same keyword in order. Properties a canonical form
    * merges (repeated `facets` lines) take the comments of every statement
-   * they came from; properties it splits (a `realizes` comma list) leave the
-   * comments on the first. A trailing comment of the first statement stays
+   * they came from; properties it splits (a `realizes` comma list, one line
+   * per item) give each statement as many printed lines as it has items and
+   * leave its comments on the first of them. A trailing comment of the first statement stays
    * trailing; every other comment goes above the property, so none is lost
    * and a second pass leaves them where they are.
    *
@@ -352,14 +361,39 @@ class Printer {
       byKeyword.set(stmt.keyword, list);
     });
 
+    // For each keyword, which source statements each printed entry carries.
+    const entryCount = new Map<string, number>();
+    for (const entry of entries) {
+      entryCount.set(entry.keyword, (entryCount.get(entry.keyword) ?? 0) + 1);
+    }
+    const pairing = new Map<string, { stmt: BodyStatement; prevEnd: number }[][]>();
+    for (const [keyword, count] of entryCount) {
+      const sources = byKeyword.get(keyword) ?? [];
+      const slots: { stmt: BodyStatement; prevEnd: number }[][] = Array.from(
+        { length: count },
+        () => [],
+      );
+      const itemTotal = sources.reduce((sum, s) => sum + s.stmt.items, 0);
+      if (count !== sources.length && count === itemTotal) {
+        // Split one line per item: each statement starts at its first item.
+        let at = 0;
+        for (const source of sources) {
+          slots[at].push(source);
+          at += source.stmt.items;
+        }
+      } else {
+        // One to one; statements past the last entry merge into it.
+        sources.forEach((source, i) => slots[Math.min(i, count - 1)].push(source));
+      }
+      pairing.set(keyword, slots);
+    }
+
     const out: string[] = [];
     const seen = new Map<string, number>();
-    entries.forEach((entry, i) => {
+    entries.forEach((entry) => {
       const nth = seen.get(entry.keyword) ?? 0;
       seen.set(entry.keyword, nth + 1);
-      const sources = byKeyword.get(entry.keyword) ?? [];
-      const isLast = !entries.slice(i + 1).some((e) => e.keyword === entry.keyword);
-      const paired = isLast ? sources.slice(nth) : sources.slice(nth, nth + 1);
+      const paired = pairing.get(entry.keyword)?.[nth] ?? [];
 
       const above: Token[] = [];
       let trailing: Token[] | undefined;
@@ -459,13 +493,18 @@ class Printer {
     const hasEdges = node.edges.length > 0;
     const hasBoundaries = (node.boundaries ?? []).length > 0;
 
-    // An empty body collapses to `{}` unless a comment is written inside it.
+    // An empty body collapses to `{}` unless a comment is written inside it
+    // or after its closing brace on a line of its own; `closeBlock` places
+    // both.
+    const closingLineHasComment =
+      !this.emitted.has(node.loc.end.line) && this.byLine.has(node.loc.end.line);
     if (
       !hasProps &&
       !hasChildren &&
       !hasEdges &&
       !hasBoundaries &&
-      !this.hasCommentsWithin(node.loc)
+      !this.hasCommentsWithin(node.loc) &&
+      !closingLineHasComment
     ) {
       return [`${indent}${decl.join(" ")} {}${trail}`];
     }

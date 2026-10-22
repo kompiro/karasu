@@ -592,6 +592,35 @@ describe("format()", () => {
     expectIdempotent(src);
   });
 
+  it("keeps a comment after the closing brace of an empty body", () => {
+    const src = `system S {\n  service A {\n  } // closes A\n}`;
+    expect(fmt(src)).toBe(src);
+    expectIdempotent(src);
+  });
+
+  it("keeps each realizes line's comment when an earlier line is a comma list", () => {
+    // `realizes S.A, S.B` prints as two lines; the next statement's comment
+    // still belongs to its own target, not to the second line of the split.
+    const src = [
+      `system S {`,
+      `  service A {}`,
+      `  service B {}`,
+      `  service C {}`,
+      `}`,
+      `deploy D {`,
+      `  oci X {`,
+      `    realizes S.A, S.B // ab`,
+      `    // about C`,
+      `    realizes S.C // c`,
+      `  }`,
+      `}`,
+    ].join("\n");
+    expect(fmt(src)).toContain(
+      `    realizes S.A // ab\n    realizes S.B\n    // about C\n    realizes S.C // c\n  }`,
+    );
+    expectIdempotent(src);
+  });
+
   it("keeps an empty body open when a comment is written inside it", () => {
     const src = `system S {\n  service A {\n    // todo\n  }\n}`;
     expect(fmt(src)).toBe(src);
