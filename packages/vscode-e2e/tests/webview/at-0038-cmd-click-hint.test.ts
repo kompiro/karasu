@@ -17,6 +17,7 @@ import {
   dispatchClick,
   ensureWebViewFrame,
   leaveWebViewFrame,
+  openFileWithRetry,
   openFixtureAndPreview,
   reacquireFrame,
   readBreadcrumb,
@@ -457,6 +458,21 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
       assert.ok(
         !styleOnDisk.includes("direction"),
         `the rule must stay in the buffer, not on disk; the sheet on disk holds: ${styleOnDisk}`,
+      );
+
+      // The rule itself is in the new sheet's buffer. The edit may not have
+      // opened a tab for it, so open the file (its dirty buffer is what shows).
+      const styleName = path.basename(stylePath);
+      const editorView = new EditorView();
+      if (!(await editorView.getOpenEditorTitles()).some((t) => t.includes(styleName))) {
+        await openFileWithRetry(driver, new Workbench(), editorView, stylePath, styleName);
+      }
+      const styleEditor = (await editorView.openEditor(styleName)) as TextEditor;
+      const styleText = await styleEditor.getText();
+      assert.match(
+        styleText,
+        /edge#\S+\s*\{[^}]*direction:\s*down;/,
+        `the new sheet's buffer should hold the direction rule; saw: ${styleText}`,
       );
     } finally {
       await new Workbench().executeCommand("File: Revert File");

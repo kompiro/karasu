@@ -33,7 +33,7 @@ import {
  *      the frame-reacquire sleeps) plus toolbar view switching
  *      (`switchToView` / `isViewActive`),
  *   7. the suite-level `before()` bootstrap — env-var validation, driver /
- *      EditorView / Workbench construction, `openFixtureWithRetry`, and
+ *      EditorView / Workbench construction, `openFileWithRetry`, and
  *      `openPreviewAndEnterFrame` (`openFixtureAndPreview`), and
  *   8. reading the .krs editor's cursor line via the frame-exit → open-editor
  *      → settle → `getCoordinates()` dance (`readEditorCursorLine`).
@@ -91,7 +91,7 @@ export interface FrameContext {
  * dismiss any lingering dialog with ESC between attempts. Throws after the last
  * attempt fails.
  */
-async function openFixtureWithRetry(
+export async function openFileWithRetry(
   driver: WebDriver,
   workbench: Workbench,
   editorView: EditorView,
@@ -121,7 +121,7 @@ async function openFixtureWithRetry(
           return titles.some((t) => t.includes(fixtureName));
         },
         OPEN_FIXTURE_ATTEMPT_TIMEOUT_MS,
-        "fixture .krs file did not appear as an open editor",
+        `${fixtureName} did not appear as an open editor`,
       );
       opened = true;
     } catch (err) {
@@ -168,7 +168,7 @@ async function openPreviewAndEnterFrame(
  * suite: read `envVar` from the environment (throwing a "not set by
  * `<runnerName>`" error if missing — the same failure mode as a misconfigured
  * runner script), then construct the `driver`/`EditorView`/`Workbench` trio,
- * open the fixture via {@link openFixtureWithRetry}, and enter the preview
+ * open the fixture via {@link openFileWithRetry}, and enter the preview
  * frame via {@link openPreviewAndEnterFrame}. Wraps — does not modify — the
  * 3-attempt retry.
  *
@@ -193,7 +193,7 @@ export async function openFixtureAndPreview({
   const editorView = new EditorView();
   const workbench = new Workbench();
 
-  await openFixtureWithRetry(driver, workbench, editorView, fixturePath, fixtureName);
+  await openFileWithRetry(driver, workbench, editorView, fixturePath, fixtureName);
   return openPreviewAndEnterFrame(driver, workbench, editorView);
 }
 

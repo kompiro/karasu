@@ -298,8 +298,9 @@ async function readDisk(path: string): Promise<string> {
  * it is not saved, so the document turns dirty and the editor's undo takes it
  * back, and the text stays the one source of truth (TPL-1207). Only the span
  * that changed is replaced. When the buffer no longer holds the text the
- * viewer computed the write from (the user typed meanwhile), nothing is
- * written. A file that does not exist yet (a new style sheet) is created.
+ * viewer computed the write from (the user typed meanwhile), or the viewer
+ * sent none for a file that now exists, nothing is written. A file that does
+ * not exist yet (a new style sheet) is created.
  */
 async function applyPreviewWrite(
   path: string,
@@ -317,7 +318,10 @@ async function applyPreviewWrite(
   } else {
     const document = await vscode.workspace.openTextDocument(uri);
     const current = document.getText();
-    if (base !== undefined && current !== base) {
+    // An existing document is written only against the text it was computed
+    // from: a write without a base was computed from nothing (the viewer read
+    // the file as missing), so it must not replace what is there now.
+    if (base === undefined || current !== base) {
       throw new Error("The file changed since the preview read it; nothing was written.");
     }
     const span = minimalEdit(current, content);

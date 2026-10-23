@@ -67,7 +67,7 @@ import {
  * always provides the team navigation button when team is set).
  *
  * The "File: Open File..." simple-dialog stalls intermittently under
- * xvfb (the shared `openFixtureWithRetry` 3-attempt retry handles it).
+ * xvfb (the shared `openFileWithRetry` 3-attempt retry handles it).
  *
  * Issue #2068 coverage (detail-panel parity with the app's
  * `NodeDetailPanel`, co-located here rather than under a new AT number
