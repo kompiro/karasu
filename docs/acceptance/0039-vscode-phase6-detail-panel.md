@@ -21,8 +21,8 @@ without test-only seams in production code (see
 [ADR-926](../adr/926-vscode-webview-manual-tests.md)
 "no extension-host stubs" rule).
 
-The harness job runs on pull requests that touch the extension or what it
-bundles (path filter, ADR-1742), skips draft PRs, and is **not** a required check.
+The harness job runs on pull requests that touch the extension or core / i18n /
+lsp, not on a change to the app alone (path filter, ADR-1742), skips draft PRs, and is **not** a required check.
 
 Issue #2068 (icon-mapping and section parity with the app's
 `NodeDetailPanel`) added three more cases to the same test file: a `store`
