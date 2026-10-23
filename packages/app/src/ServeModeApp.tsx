@@ -5,6 +5,7 @@ import {
   type PreviewToolbarSlot,
 } from "./components/preview-toolbar-slot.js";
 import { useAppContext } from "./state/app-context.js";
+import { useTranslation } from "./i18n/index.js";
 import { HOSTED_APP_ORIGIN } from "./utils/hosted-app.js";
 
 /** Where the served directory is mirrored in the in-memory fs. */
@@ -23,6 +24,9 @@ interface ProjectFile {
   path: string;
   content: string;
 }
+
+/** Why there is no diagram, kept as a key so it follows the active locale. */
+type LoadError = { kind: "fileNotFound"; file: string } | { kind: "loadFailed" };
 
 function resolveFileNameFromUrl(): string {
   const name = window.location.pathname.slice(1);
@@ -68,8 +72,9 @@ async function fetchProject(): Promise<ProjectFile[] | null> {
  */
 export function ServeModeApp() {
   const { dispatch, fs } = useAppContext();
+  const { t } = useTranslation();
   const [entryPath, setEntryPath] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<LoadError | null>(null);
   // Bumped after each refetch so the style sheets the entry imports are read again.
   const [sourceRevision, setSourceRevision] = useState(0);
   const recompileRef = useRef<(() => void) | null>(null);
@@ -87,7 +92,7 @@ export function ServeModeApp() {
     if (files === null) {
       // Keep what is on screen when the server drops out mid-session; the
       // reconnect refetches. Only a first load that never arrives is an error.
-      if (!everLoaded.current) setLoadError("Could not load files from karasu serve");
+      if (!everLoaded.current) setLoadError({ kind: "loadFailed" });
       return;
     }
     everLoaded.current = true;
@@ -106,7 +111,7 @@ export function ServeModeApp() {
     const content = next.get(entry);
     if (content === undefined) {
       shownEntry.current = null;
-      setLoadError(`File not found: ${entry.slice(SERVE_ROOT.length + 1)}`);
+      setLoadError({ kind: "fileNotFound", file: entry.slice(SERVE_ROOT.length + 1) });
       return;
     }
     setLoadError(null);
@@ -183,7 +188,9 @@ export function ServeModeApp() {
             fontFamily: "monospace",
           }}
         >
-          {loadError}
+          {loadError.kind === "fileNotFound"
+            ? t("serve.error.fileNotFound", { file: loadError.file })
+            : t("serve.error.loadFailed")}
         </div>
       </div>
     );

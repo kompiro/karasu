@@ -4,6 +4,7 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { useContext, useEffect, type RefObject } from "react";
 import { compileProject, InMemoryFileSystemProvider } from "@karasu-tools/core";
 import { PreviewToolbarSlotContext } from "./components/preview-toolbar-slot.js";
+import { LocaleProvider } from "./i18n/index.js";
 import { ServeModeApp } from "./ServeModeApp.js";
 import { HOSTED_APP_ORIGIN } from "./utils/hosted-app.js";
 
@@ -96,6 +97,14 @@ system Blog {
   { path: "theme.krs.style", content: "service {\n  background-color: #123456;\n}\n" },
 ];
 
+function renderServe(locale: "en" | "ja" = "en") {
+  return render(
+    <LocaleProvider initialLocale={locale}>
+      <ServeModeApp />
+    </LocaleProvider>,
+  );
+}
+
 function json(body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status: 200,
@@ -172,14 +181,14 @@ describe("ServeModeApp", () => {
   // #3138 dropped Share because links built on this local server open only
   // here. #3162 brings it back with the links built on the public app.
   it("keeps Share and points its links at the public app (#3162)", async () => {
-    render(<ServeModeApp />);
+    renderServe();
     expect(await screen.findByText(`share-shown:${HOSTED_APP_ORIGIN}`)).toBeTruthy();
   });
 
   // #3258: only the entry used to reach the in-memory fs, as /serve/index.krs.
   describe("import resolution (#3258)", () => {
     it("mirrors the directory so whole-file, named, directory and style imports resolve", async () => {
-      render(<ServeModeApp />);
+      renderServe();
       expect(await screen.findByText("/serve/index.krs")).toBeTruthy();
       expect(screen.getByTestId("display-root").textContent).toBe("/serve");
 
@@ -196,7 +205,7 @@ describe("ServeModeApp", () => {
 
     it("opens a file in a subdirectory at its real path, so relative imports resolve", async () => {
       window.history.replaceState({}, "", "/services/moderation");
-      render(<ServeModeApp />);
+      renderServe();
       expect(await screen.findByText("/serve/services/moderation.krs")).toBeTruthy();
       expect(dispatched("SELECT_FILE")).toEqual([
         {
@@ -214,18 +223,33 @@ describe("ServeModeApp", () => {
     it("decodes a percent-encoded file name from the URL", async () => {
       project = [{ path: "my model.krs", content: "system A {}\n" }];
       window.history.replaceState({}, "", "/my%20model");
-      render(<ServeModeApp />);
+      renderServe();
       expect(await screen.findByText("/serve/my model.krs")).toBeTruthy();
     });
 
     it("shows File not found when the opened file is not in the directory", async () => {
       window.history.replaceState({}, "", "/missing");
-      render(<ServeModeApp />);
+      renderServe();
       expect(await screen.findByText("File not found: missing.krs")).toBeTruthy();
     });
 
+    it("says File not found in the active locale", async () => {
+      window.history.replaceState({}, "", "/missing");
+      renderServe("ja");
+      expect(await screen.findByText("ファイルが見つかりません: missing.krs")).toBeTruthy();
+    });
+
+    it("says it could not load the files when the first fetch fails", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn<typeof fetch>(async () => new Response("error", { status: 500 })),
+      );
+      renderServe();
+      expect(await screen.findByText("Could not load files from karasu serve")).toBeTruthy();
+    });
+
     it("refetches when an imported file changes, and recompiles without touching the entry", async () => {
-      render(<ServeModeApp />);
+      renderServe();
       await screen.findByText("/serve/index.krs");
       const revision = Number(screen.getByTestId("revision").textContent);
       shell.recompile.mockClear();
@@ -247,7 +271,7 @@ describe("ServeModeApp", () => {
     });
 
     it("updates the entry's text in place when the entry itself changes", async () => {
-      render(<ServeModeApp />);
+      renderServe();
       await screen.findByText("/serve/index.krs");
       ctx.dispatch.mockClear();
 
@@ -262,7 +286,7 @@ describe("ServeModeApp", () => {
     });
 
     it("removes a file from the mirror when it is deleted, so its import reports File not found", async () => {
-      render(<ServeModeApp />);
+      renderServe();
       await screen.findByText("/serve/index.krs");
 
       project = MULTI_FILE.filter((f) => f.path !== "reader.krs");
@@ -274,7 +298,7 @@ describe("ServeModeApp", () => {
     });
 
     it("refetches on a reconnect, but not on the first open", async () => {
-      render(<ServeModeApp />);
+      renderServe();
       await screen.findByText("/serve/index.krs");
       const afterLoad = projectFetches;
 

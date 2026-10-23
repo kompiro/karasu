@@ -82,6 +82,8 @@ export const ja: Partial<Translations> = {
   "project.error.openExample": ({ detail }) => `⚠ example を開けませんでした: ${detail}`,
   "project.error.snapshot": ({ detail }) => `⚠ スナップショットの取得に失敗しました: ${detail}`,
   "project.error.dismiss": "✕ 閉じる",
+  "serve.error.fileNotFound": ({ file }) => `ファイルが見つかりません: ${file}`,
+  "serve.error.loadFailed": "karasu serve からファイルを読み込めませんでした",
 
   // File tree: the inline name input for New File / New Folder / Rename
   "fileTree.inlineInput.ariaLabel": "名前",
