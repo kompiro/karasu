@@ -47,7 +47,7 @@
 
   > ✅ Automated — `packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts` › `TC-01: shows the hint text on the root view`（ExTester は build した `.vsix` を入れて動かす）／ `packages/vscode/src/marketplace-manifest.test.ts` › `builds and stages the preview bundle, and fails the build without it` ／ `packages/vscode/scripts/stage-webview.test.ts` › `copies the webview bundle into the staged directory`
 
-- [x] AT-J: webview からの読み出しは、実パス（symlink を辿った先）が `.krs` / `.krs.style` のファイルなら場所を問わず中身と存在に答える（ワークスペースの外を import するモデルも描ける）。ディレクトリの一覧はワークスペース（entry が外にあればその directory）の中に限り、外のものの存在には `false` を返す。`..`・符号化した区切り・NUL を含む要求と、名前だけ `.krs` で実体が別のファイルは拒否する
+- [x] AT-J: webview からの読み出しは、実パス（symlink を辿った先）が `.krs` / `.krs.style` のファイルなら場所を問わず中身と存在に答える（ワークスペースの外を import するモデルも描ける）。ディレクトリの一覧はワークスペース（entry が外にあればその directory）の中に限り、外のものの存在には `false` を返す。`..` を含む要求は正規化した後のパスで判定し、符号化した区切り・NUL を含む要求と、名前だけ `.krs` で実体が別のファイルは拒否する
 
   > ✅ Automated — `packages/vscode/src/host-files.test.ts` › `refuses a .krs name whose real file is something else` ／ `reads a model file outside the workspace, which a model may import` ／ `answers false, not a refusal, for what lies outside the roots` ／ `judges the extension case-insensitively where the file system is` ／ `refuses %s` ／ `packages/vscode/src/message-validation.test.ts` › `refuses %s`
 

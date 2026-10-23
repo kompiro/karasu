@@ -105,8 +105,8 @@ type: product
 [`packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts`](../../packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts)
 under the WebView E2E harness (see [AT-0039](0039-vscode-detail-panel.md)).
 
-The harness job is gated on the `vscode-webview-e2e` PR label and is **not**
-a required check.
+The harness job runs on pull requests that touch the extension or what it
+bundles (path filter, ADR-1742), skips draft PRs, and is **not** a required check.
 
 ## 手動確認
 
