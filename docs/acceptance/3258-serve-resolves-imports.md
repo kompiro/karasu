@@ -25,7 +25,7 @@ type: product
   >
   > ✅ Automated — `packages/cli/src/serve.test.ts` › `collectProjectFiles` › `leaves out every other extension`
 
-- [x] AT-B: 配信ディレクトリの中に、外を指す symlink（file と directory の両方）があっても、その中身を返さない。walk の後に file や directory が symlink に差し替えられても、その先を読まない
+- [x] AT-B: 配信ディレクトリの中に、外を指す symlink（file と directory の両方）があっても、その中身を返さない。walk で一覧した後、読む前の確認より先に file や directory が symlink に差し替えられた場合も、その先を読まない（親ディレクトリを確認してから file を開くまでの間の差し替えは、Node に `openat` が無いため塞いでいない）
 
   > ✅ Automated — `packages/cli/src/serve.test.ts` › `collectProjectFiles` › `does not follow a symlinked file or directory out of the served directory`
   >
