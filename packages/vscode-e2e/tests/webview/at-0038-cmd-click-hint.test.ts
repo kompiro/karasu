@@ -475,8 +475,11 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
         `the new sheet's buffer should hold the direction rule; saw: ${styleText}`,
       );
     } finally {
+      // Revert the .krs first, by name: the check above left the new sheet
+      // as the active editor, and Revert File acts on the active one.
+      await new EditorView().openEditor(FIXTURE_NAME, 0);
       await new Workbench().executeCommand("File: Revert File");
-      // The new sheet may have opened in a tab of its own; revert it too, so
+      // The new sheet has a tab of its own by now; revert it too, so
       // `after()` closes the editors without a save prompt.
       const titles = await new EditorView().getOpenEditorTitles();
       for (const title of titles.filter((t) => t.endsWith(".krs.style"))) {
