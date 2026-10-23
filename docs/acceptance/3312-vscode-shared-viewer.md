@@ -47,9 +47,9 @@
 
   > ✅ Automated — `packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts` › `TC-01: shows the hint text on the root view`（ExTester は build した `.vsix` を入れて動かす）／ `packages/vscode/src/marketplace-manifest.test.ts` › `builds and stages the preview bundle, and fails the build without it` ／ `packages/vscode/scripts/stage-webview.test.ts` › `copies the webview bundle into the staged directory`
 
-- [x] AT-J: webview からの読み出しは、ワークスペース（entry が外にあればその directory）の中の `.krs` / `.krs.style` だけに答える。`..`・符号化した区切り・NUL・外を指す symlink は拒否し、許可ルートの中の絶対パスは受ける
+- [x] AT-J: webview からの読み出しは、実パス（symlink を辿った先）が `.krs` / `.krs.style` のファイルなら場所を問わず中身と存在に答える（ワークスペースの外を import するモデルも描ける）。ディレクトリの一覧はワークスペース（entry が外にあればその directory）の中に限り、外のものの存在には `false` を返す。`..`・符号化した区切り・NUL を含む要求と、名前だけ `.krs` で実体が別のファイルは拒否する
 
-  > ✅ Automated — `packages/vscode/src/host-files.test.ts` › `refuses %s` ／ `refuses a symlink inside the root that points outside it` ／ `adds the entry's directory when the entry lies outside every folder` ／ `packages/vscode/src/message-validation.test.ts` › `refuses %s`
+  > ✅ Automated — `packages/vscode/src/host-files.test.ts` › `refuses a .krs name whose real file is something else` ／ `reads a model file outside the workspace, which a model may import` ／ `answers false, not a refusal, for what lies outside the roots` ／ `judges the extension case-insensitively where the file system is` ／ `refuses %s` ／ `packages/vscode/src/message-validation.test.ts` › `refuses %s`
 
 - [x] AT-K: 変更の通知や entry の切替の後に届いた古い読み出しの応答はキャッシュに入らず、閉じた後の応答は何も更新しない
 
@@ -59,10 +59,19 @@
 
   > ✅ Automated — `packages/vscode/src/webview-html.test.ts` › `denies by default and reaches nothing outside the extension` ／ `runs no inline script`
 
+- [x] AT-M: preview にフォーカスがあるとき、app のキーボードショートカットは動かない（VS Code が同じキー入力を自分のキーバインドとしても扱うので、両方が動いてしまう）
+
+  > ✅ Automated — `packages/app/src/viewer/mount-viewer.test.tsx` › `leaves the shortcuts out when the host turns them off` ／ `answers the app's keyboard shortcuts by default`
+
+- [x] AT-N: webview の準備ができる前に届いた変更は、種類ごとに 1 つへ畳んで待たせる（読み込まれないページに打鍵の数だけ溜めない）。再読み込みしたページは、前のページ宛ての応答を自分のものとして受けない
+
+  > ✅ Automated — `packages/vscode/src/message-queue.test.ts` › `stays bounded however many keystrokes arrive before the page loads` ／ `packages/app/src/viewer/vscode/host-fs.test.ts` › `numbers its requests from a random start`
+
 ## 手動確認
 
 拡張を手元の checkout から起動して（F5、または `pnpm --filter karasu-vscode run package` で作った `.vsix`）確かめる。
 
 - [ ] アクティブな `.krs` エディタを別のファイルに切り替えると、preview がそのファイルの図に変わる
 - [ ] 別ファイルに定義されたノード（`import` したもの）を Cmd/Ctrl+クリックすると、そのファイルが開いて定義の行に移り、preview はもとの図のまま
+- [ ] ワークスペースの外にあるファイルを import するモデルが描ける。その import 先を別のエディタやディスク上で書き換えてから entry のエディタに戻ると、図が新しい内容になる
 - [ ] VS Code の配色テーマを light / dark で切り替えると、図とツールバーが追従する。表示言語を日本語にして再読み込みすると、ツールバーと詳細パネルの文言が日本語になる

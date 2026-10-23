@@ -50,6 +50,12 @@ interface ViewerCommonOptions {
   onOpenExternal?: (url: string) => void;
   /** The host cannot write files yet: GUI writes (edge direction) are not offered. */
   readOnly?: boolean;
+  /**
+   * Whether the app's keyboard shortcuts are live. Default true. The VS Code
+   * webview turns them off: VS Code also acts on every keydown in a webview,
+   * so a chord would do two things at once (#3312).
+   */
+  keyboardShortcuts?: boolean;
 }
 
 /**
@@ -197,13 +203,14 @@ function HostThemeAndLocale({ controller }: { controller: ViewerController }) {
 interface ViewerProps extends ViewerProjectProps {
   fs: FileSystemProvider;
   toolbar: PreviewToolbarSlot;
+  keyboardShortcuts: boolean;
 }
 
-function Viewer({ fs, toolbar, ...project }: ViewerProps) {
+function Viewer({ fs, toolbar, keyboardShortcuts, ...project }: ViewerProps) {
   return (
     <AppProvider fs={fs}>
       <CommandProvider>
-        <KeyboardShortcutDispatcher />
+        {keyboardShortcuts && <KeyboardShortcutDispatcher />}
         <TranslateProvider>
           <PreviewToolbarSlotContext.Provider value={toolbar}>
             <ViewerProject {...project} />
@@ -273,6 +280,7 @@ export function mountViewer(container: HTMLElement, options: ViewerOptions): Vie
                 toolbar={options.toolbar ?? DEFAULT_TOOLBAR}
                 onRevealNode={options.onRevealNode}
                 readOnly={options.readOnly}
+                keyboardShortcuts={options.keyboardShortcuts ?? true}
               />
             </ExternalLinkBoundary>
           </TooltipProvider>

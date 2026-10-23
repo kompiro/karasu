@@ -123,7 +123,11 @@ export function activate(context: vscode.ExtensionContext): void {
       previewPanel = PreviewPanel.create(
         {
           extensionUri: context.extensionUri,
-          onRevealNode: (nodeId, filePath) => void revealNode(nodeId, filePath),
+          onRevealNode: (nodeId, filePath) => {
+            // A file deleted since it was drawn, or an LSP that is not up:
+            // the jump does nothing rather than leave a rejection unhandled.
+            revealNode(nodeId, filePath).catch(() => undefined);
+          },
           onDispose: () => {
             previewPanel = undefined;
           },

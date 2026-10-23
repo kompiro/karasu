@@ -35,7 +35,9 @@ export class HostFsError extends Error {
  */
 export class HostFileSystem implements FileSystemProvider {
   private generation = 0;
-  private nextId = 1;
+  // A random start, so the replies the host still owes a previous load of
+  // this page ("Reload Webviews") cannot match this page's requests.
+  private nextId = 1 + Math.floor(Math.random() * 2 ** 40);
   private disposed = false;
   private readonly pending = new Map<number, Pending>();
   private readonly files = new Map<string, string>();

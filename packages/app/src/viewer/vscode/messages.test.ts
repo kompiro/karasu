@@ -40,7 +40,7 @@ describe("readWebviewInit (#3312)", () => {
 });
 
 describe("isHostMessage (#3312)", () => {
-  it.each(["fsResult", "setEntry", "filesChanged", "setTheme", "highlight"])(
+  it.each(["fsResult", "setEntry", "refresh", "filesChanged", "setTheme", "highlight"])(
     "accepts %s",
     (type) => {
       expect(isHostMessage({ type })).toBe(true);

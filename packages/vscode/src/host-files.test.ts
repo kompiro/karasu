@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   allowedRoots,
   checkRequestedPath,
+  decideExists,
+  decideFileRead,
   isKarasuSourcePath,
   isRealPathWithinRoots,
   isWithinRoots,
@@ -132,5 +134,71 @@ describe("isKarasuSourcePath (#3312)", () => {
 
   it.each(["/p/notes.md", "/p/index.krs.bak", "/p/.krs/x.json"])("refuses %s", (p) => {
     expect(isKarasuSourcePath(p)).toBe(false);
+  });
+});
+
+// The read policy (#3312): a model file is readable wherever it lies, judged by
+// its real path; anything else only inside the listable roots.
+describe("decideFileRead / decideExists (#3312, TPL-168)", () => {
+  const files: Record<string, string> = {
+    [`${ROOT}/index.krs`]: `${ROOT}/index.krs`,
+    "/shared/common.krs": "/shared/common.krs",
+    [`${ROOT}/notes.krs`]: `${ROOT}/.env`,
+    [`${ROOT}/alias`]: `${ROOT}/index.krs`,
+    [`${ROOT}/styles`]: `${ROOT}/styles`,
+    "/etc": "/etc",
+    "/shared/Theme.KRS": "/shared/Theme.KRS",
+  };
+  const deps = (open: string[] = [], platform: NodeJS.Platform = "linux") => ({
+    realpath: async (p: string) => {
+      const real = files[p];
+      if (!real) throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      return real;
+    },
+    hasBuffer: (p: string) => open.includes(p),
+    platform,
+  });
+
+  it("reads a model file inside the workspace from its real path", async () => {
+    expect(await decideFileRead(`${ROOT}/index.krs`, deps())).toEqual({
+      kind: "read",
+      path: `${ROOT}/index.krs`,
+      diskPath: `${ROOT}/index.krs`,
+    });
+  });
+
+  it("reads a model file outside the workspace, which a model may import", async () => {
+    expect((await decideFileRead("/shared/common.krs", deps())).kind).toBe("read");
+  });
+
+  it("refuses a .krs name whose real file is something else", async () => {
+    expect((await decideFileRead(`${ROOT}/notes.krs`, deps())).kind).toBe("refused");
+  });
+
+  it("follows a link whose real file is a model file", async () => {
+    expect(await decideFileRead(`${ROOT}/alias`, deps())).toMatchObject({
+      kind: "read",
+      diskPath: `${ROOT}/index.krs`,
+    });
+  });
+
+  it("judges the extension case-insensitively where the file system is", async () => {
+    expect((await decideFileRead("/shared/Theme.KRS", deps([], "darwin"))).kind).toBe("read");
+    expect((await decideFileRead("/shared/Theme.KRS", deps([], "linux"))).kind).toBe("refused");
+  });
+
+  it("reads an open buffer that is not on disk yet, and reports anything else missing", async () => {
+    expect((await decideFileRead(`${ROOT}/new.krs`, deps([`${ROOT}/new.krs`]))).kind).toBe("read");
+    expect((await decideFileRead(`${ROOT}/gone.krs`, deps())).kind).toBe("notFound");
+  });
+
+  it("answers existence for model files anywhere and for anything inside the roots", async () => {
+    expect(await decideExists("/shared/common.krs", [ROOT], deps())).toBe(true);
+    expect(await decideExists(`${ROOT}/styles`, [ROOT], deps())).toBe(true);
+    expect(await decideExists(`${ROOT}/gone.krs`, [ROOT], deps())).toBe(false);
+  });
+
+  it("answers false, not a refusal, for what lies outside the roots", async () => {
+    expect(await decideExists("/etc", [ROOT], deps())).toBe(false);
   });
 });

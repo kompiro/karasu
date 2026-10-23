@@ -54,6 +54,8 @@ export type HostMessage =
   | { type: "fsResult"; id: number; ok: false; notFound: boolean; error: string }
   /** The active `.krs` editor changed: open this one instead. */
   | { type: "setEntry"; path: string }
+  /** Read everything again, keeping the view (the entry's editor came back into focus). */
+  | { type: "refresh" }
   /** These files changed (an edit, a save, or a change on disk). */
   | { type: "filesChanged"; paths: string[] }
   | { type: "setTheme"; theme: "light" | "dark" }

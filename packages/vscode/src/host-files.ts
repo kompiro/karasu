@@ -3,10 +3,15 @@
  * a file (#3312).
  *
  * The webview is a trust boundary (TPL-168): a path it posts is tainted. Every
- * request goes through `checkRequestedPath` (shape and encoding), then
- * `isWithinRoots` (string containment after normalization), then the same
- * containment on the real path, so a symlink inside the workspace that points
- * out of it is refused. Writes will pass the same checks (slice C, #3313).
+ * request goes through `checkRequestedPath` (shape and encoding) and then one
+ * of the decisions below, which judge the *real* path, after symlinks:
+ *
+ * - file contents and existence: any `.krs` / `.krs.style` on disk, wherever
+ *   it lies, so a model that imports from outside the workspace folder still
+ *   previews (the old preview and the LSP read them too). Only model files are
+ *   exposed, and a symlink named `.krs` that points at another file is refused.
+ * - directory listings (directory imports): inside the workspace folders only,
+ *   plus the entry's directory when the entry lies outside them.
  *
  * Kept free of any `vscode` import so it can be unit-tested without the
  * extension host, like `message-validation.ts`.
@@ -84,7 +89,63 @@ export async function readThroughBuffers(
   return buffer !== undefined ? buffer : readDisk(path);
 }
 
-/** Whether a path names a model or style file, the only files the preview has reason to open. */
-export function isKarasuSourcePath(path: string): boolean {
-  return path.endsWith(".krs") || path.endsWith(".krs.style");
+/**
+ * Whether a path names a model or style file, the only files the preview has
+ * reason to open. Case-insensitive where the file system is, so `.KRS` is a
+ * model file on Windows and macOS (and a case trick cannot dodge the check).
+ */
+export function isKarasuSourcePath(
+  path: string,
+  platform: NodeJS.Platform = process.platform,
+): boolean {
+  const name = platform === "win32" || platform === "darwin" ? path.toLowerCase() : path;
+  return name.endsWith(".krs") || name.endsWith(".krs.style");
+}
+
+/** What the host needs to judge a request. `realpath` rejects for a missing path. */
+export interface HostFileDeps {
+  realpath: (path: string) => Promise<string>;
+  /** Whether an editor holds the file at this path (its text may not be on disk yet). */
+  hasBuffer: (path: string) => boolean;
+  platform?: NodeJS.Platform;
+}
+
+export type FileReadDecision =
+  /** Read the buffer at `path` if one is open, else the disk at `diskPath`. */
+  | { kind: "read"; path: string; diskPath: string }
+  | { kind: "notFound" }
+  | { kind: "refused"; reason: string };
+
+/** Whether the file a checked path names may be read, and from where. */
+export async function decideFileRead(path: string, deps: HostFileDeps): Promise<FileReadDecision> {
+  const real = await deps.realpath(path).catch(() => null);
+  if (real === null) {
+    // Not on disk: only an open editor can hold it, and then its own name is
+    // all there is to judge.
+    if (deps.hasBuffer(path) && isKarasuSourcePath(path, deps.platform)) {
+      return { kind: "read", path, diskPath: path };
+    }
+    return { kind: "notFound" };
+  }
+  if (!isKarasuSourcePath(real, deps.platform)) {
+    return { kind: "refused", reason: "Only .krs and .krs.style files are read." };
+  }
+  return { kind: "read", path, diskPath: real };
+}
+
+/**
+ * Whether a checked path exists, as far as the preview may know: a model file
+ * anywhere, or anything inside the readable roots. Everything else answers
+ * `false`, so a refusal does not reveal what lies outside.
+ */
+export async function decideExists(
+  path: string,
+  roots: readonly string[],
+  deps: HostFileDeps,
+): Promise<boolean> {
+  if (deps.hasBuffer(path) && isKarasuSourcePath(path, deps.platform)) return true;
+  const real = await deps.realpath(path).catch(() => null);
+  if (real === null) return false;
+  if (isKarasuSourcePath(real, deps.platform)) return true;
+  return isRealPathWithinRoots(path, roots, deps.realpath);
 }

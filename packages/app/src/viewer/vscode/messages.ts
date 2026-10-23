@@ -21,6 +21,7 @@ export function readWebviewInit(doc: Document): WebviewInit {
 const HOST_MESSAGE_TYPES = new Set<HostMessage["type"]>([
   "fsResult",
   "setEntry",
+  "refresh",
   "filesChanged",
   "setTheme",
   "highlight",

@@ -19,7 +19,9 @@ describe("HostFileSystem (#3312)", () => {
   it("asks the host once per path and answers later reads from the cache", async () => {
     const { fs, requests, answer } = setup();
     const first = fs.readFile("/p/index.krs");
-    expect(requests).toEqual([{ type: "fs", id: 1, op: "readFile", path: "/p/index.krs" }]);
+    expect(requests).toEqual([
+      { type: "fs", id: requests[0].id, op: "readFile", path: "/p/index.krs" },
+    ]);
     answer(requests[0], "system A {}");
     expect(await first).toBe("system A {}");
     expect(await fs.readFile("/p/index.krs")).toBe("system A {}");
@@ -85,6 +87,18 @@ describe("HostFileSystem (#3312)", () => {
     expect(() => answer(requests[0], "late")).not.toThrow();
     await expect(fs.readFile("/p/other.krs")).rejects.toBeInstanceOf(HostFsError);
     expect(requests).toHaveLength(1);
+  });
+
+  // A reload of the page must not take the replies the host still owes the
+  // previous load as its own (both would otherwise number from 1).
+  it("numbers its requests from a random start", () => {
+    const starts = Array.from({ length: 4 }, () => {
+      const { fs, requests } = setup();
+      void fs.readFile("/p/a.krs");
+      return requests[0].id;
+    });
+    expect(new Set(starts).size).toBeGreaterThan(1);
+    for (const id of starts) expect(Number.isSafeInteger(id) && id > 0).toBe(true);
   });
 
   it("refuses to write until the preview can (slice C, #3313)", async () => {

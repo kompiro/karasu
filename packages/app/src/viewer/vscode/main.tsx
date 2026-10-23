@@ -25,6 +25,8 @@ const vscode = acquireVsCodeApi();
 const post = (message: WebviewMessage) => vscode.postMessage(message);
 const init = readWebviewInit(document);
 const fs = new HostFileSystem(post);
+// The entry the viewer shows, so a refresh can name it as changed.
+let entryPath = init.entryPath;
 
 const viewer = mountViewer(document.getElementById("root")!, {
   fs,
@@ -34,6 +36,9 @@ const viewer = mountViewer(document.getElementById("root")!, {
   toolbar: VSCODE_TOOLBAR,
   // Writes go through the host as a WorkspaceEdit in slice C (#3313).
   readOnly: true,
+  // VS Code reads every keydown in a webview as its own keybinding too, so
+  // the app's chords (mod+1..4, mod+shift+f, mod+shift+p) would fire twice.
+  keyboardShortcuts: false,
   onRevealNode: (nodeId, filePath) => post({ type: "revealNode", nodeId, filePath }),
   onOpenExternal: (url) => post({ type: "openExternal", url }),
 });
@@ -47,7 +52,14 @@ window.addEventListener("message", (event: MessageEvent<unknown>) => {
       break;
     case "setEntry":
       fs.reset();
+      entryPath = message.path;
       viewer.setEntry(message.path);
+      break;
+    case "refresh":
+      // Anything may have changed unseen (a file outside the watched folders):
+      // forget it all and compile again, keeping the view.
+      fs.reset();
+      viewer.filesChanged([entryPath]);
       break;
     case "filesChanged":
       // The cache forgets first, so the recompile the viewer starts reads anew.

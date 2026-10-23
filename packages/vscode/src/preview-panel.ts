@@ -10,12 +10,15 @@ import type {
 import {
   allowedRoots,
   checkRequestedPath,
-  isKarasuSourcePath,
+  decideExists,
+  decideFileRead,
   isRealPathWithinRoots,
   isWithinRoots,
   readThroughBuffers,
+  type HostFileDeps,
 } from "./host-files.js";
 import { isAllowedExternalUrl, parseWebviewMessage } from "./message-validation.js";
+import { coalesce } from "./message-queue.js";
 import { diagramThemeFromColorTheme } from "./theme-mapping.js";
 import { WEBVIEW_DIR, WEBVIEW_SCRIPT, WEBVIEW_STYLESHEET } from "./webview-assets.js";
 import { buildWebviewHtml, generateNonce } from "./webview-html.js";
@@ -115,10 +118,18 @@ export class PreviewPanel {
     return this._disposed;
   }
 
-  /** Show `document`'s model. The view starts over when the file is a different one. */
+  /**
+   * Show `document`'s model. The view starts over when the file is a
+   * different one; for the same file the preview reads everything again,
+   * keeping the view, since a file outside the watched folders may have
+   * changed unseen.
+   */
   showEntry(document: vscode.TextDocument): void {
     const path = document.uri.fsPath;
-    if (path === this._entryPath) return;
+    if (path === this._entryPath) {
+      this._post({ type: "refresh" });
+      return;
+    }
     this._entryPath = path;
     this._post({ type: "setEntry", path });
   }
@@ -137,10 +148,11 @@ export class PreviewPanel {
   }
 
   /**
-   * Where the preview may read (#3312): the workspace folders, plus the
-   * entry's directory when the entry lies outside all of them.
+   * Where the preview may list directories (#3312): the workspace folders,
+   * plus the entry's directory when the entry lies outside all of them. File
+   * contents are not bound to these (`decideFileRead`).
    */
-  readableRoots(): string[] {
+  listableRoots(): string[] {
     const folders = (vscode.workspace.workspaceFolders ?? [])
       .filter((folder) => folder.uri.scheme === "file")
       .map((folder) => folder.uri.fsPath);
@@ -148,15 +160,14 @@ export class PreviewPanel {
   }
 
   /**
-   * The checked path of a `.krs` / `.krs.style` the preview may read, or `null`.
-   * Shared by file reads and jump targets, so both draw the same line.
+   * The checked path of a `.krs` / `.krs.style` the preview may read, or
+   * `null`. Shared by file reads and jump targets, so both draw the same line.
    */
   async readableSourcePath(value: unknown): Promise<string | null> {
     const path = checkRequestedPath(value);
-    if (!path || !isKarasuSourcePath(path)) return null;
-    const roots = this.readableRoots();
-    if (!isWithinRoots(path, roots)) return null;
-    return (await isRealPathWithinRoots(path, roots, nodeFs.realpath)) ? path : null;
+    if (!path) return null;
+    const decision = await decideFileRead(path, HOST_FILE_DEPS);
+    return decision.kind === "read" ? path : null;
   }
 
   reveal(): void {
@@ -166,7 +177,7 @@ export class PreviewPanel {
   private _post(message: HostMessage): void {
     if (this._disposed) return;
     if (this._queue) {
-      this._queue.push(message);
+      this._queue = coalesce(this._queue, message);
       return;
     }
     void this._panel.webview.postMessage(message);
@@ -209,27 +220,38 @@ export class PreviewPanel {
 
   private async _answer(request: FsRequest): Promise<void> {
     const { id } = request;
-    const refuse = (error: string) =>
-      this._post({ type: "fsResult", id, ok: false, notFound: false, error });
-    const path = checkRequestedPath(request.path);
-    if (!path) return refuse("Not a plain absolute path.");
-    const roots = this.readableRoots();
-    if (!isWithinRoots(path, roots)) return refuse("Outside the workspace.");
-    // Directories and existence are needed to resolve imports; file contents
-    // only for the model and its styles, so the webview cannot read others.
-    if (request.op === "readFile" && !isKarasuSourcePath(path)) {
-      return refuse("Only .krs and .krs.style files are read.");
-    }
-    if (!(await isRealPathWithinRoots(path, roots, nodeFs.realpath))) {
-      return refuse("Resolves outside the workspace.");
-    }
-    try {
-      const value = await readForPreview(request.op, path);
+    const reply = (value: string | boolean | DirEntryValue[]) =>
       this._post({ type: "fsResult", id, ok: true, value });
+    const fail = (error: string, notFound = false) =>
+      this._post({ type: "fsResult", id, ok: false, notFound, error });
+    const path = checkRequestedPath(request.path);
+    if (!path) return fail("Not a plain absolute path.");
+    try {
+      switch (request.op) {
+        case "readFile": {
+          const decision = await decideFileRead(path, HOST_FILE_DEPS);
+          if (decision.kind === "notFound") return fail(`No such file: ${path}`, true);
+          if (decision.kind === "refused") return fail(decision.reason);
+          return reply(
+            await readThroughBuffers(decision.path, openBuffer, () => readDisk(decision.diskPath)),
+          );
+        }
+        case "exists":
+          return reply(await decideExists(path, this.listableRoots(), HOST_FILE_DEPS));
+        case "readDir": {
+          const roots = this.listableRoots();
+          if (
+            !isWithinRoots(path, roots) ||
+            !(await isRealPathWithinRoots(path, roots, nodeFs.realpath))
+          ) {
+            return fail("Directories are listed only inside the workspace.");
+          }
+          return reply(await listDirectory(path));
+        }
+      }
     } catch (err) {
       const notFound = err instanceof vscode.FileSystemError && err.code === "FileNotFound";
-      const error = err instanceof Error ? err.message : String(err);
-      this._post({ type: "fsResult", id, ok: false, notFound, error });
+      fail(err instanceof Error ? err.message : String(err), notFound);
     }
   }
 
@@ -243,6 +265,8 @@ export class PreviewPanel {
   }
 }
 
+type DirEntryValue = { name: string; kind: "file" | "directory" };
+
 /** The text of an open editor for `path`, or `undefined` when it is not open (TPL-2996). */
 function openBuffer(path: string): string | undefined {
   const target = nodePath.resolve(path);
@@ -251,32 +275,20 @@ function openBuffer(path: string): string | undefined {
     ?.getText();
 }
 
+const HOST_FILE_DEPS: HostFileDeps = {
+  realpath: (path) => nodeFs.realpath(path),
+  hasBuffer: (path) => openBuffer(path) !== undefined,
+};
+
 async function readDisk(path: string): Promise<string> {
   const bytes = await vscode.workspace.fs.readFile(vscode.Uri.file(path));
   return Buffer.from(bytes).toString("utf-8");
 }
 
-async function readForPreview(
-  op: FsRequest["op"],
-  path: string,
-): Promise<string | boolean | { name: string; kind: "file" | "directory" }[]> {
-  switch (op) {
-    case "readFile":
-      return readThroughBuffers(path, openBuffer, readDisk);
-    case "readDir": {
-      const entries = await vscode.workspace.fs.readDirectory(vscode.Uri.file(path));
-      return entries.map(([name, type]) => ({
-        name,
-        kind: type === vscode.FileType.Directory ? ("directory" as const) : ("file" as const),
-      }));
-    }
-    case "exists":
-      if (openBuffer(path) !== undefined) return true;
-      try {
-        await vscode.workspace.fs.stat(vscode.Uri.file(path));
-        return true;
-      } catch {
-        return false;
-      }
-  }
+async function listDirectory(path: string): Promise<DirEntryValue[]> {
+  const entries = await vscode.workspace.fs.readDirectory(vscode.Uri.file(path));
+  return entries.map(([name, type]) => ({
+    name,
+    kind: type === vscode.FileType.Directory ? ("directory" as const) : ("file" as const),
+  }));
 }
