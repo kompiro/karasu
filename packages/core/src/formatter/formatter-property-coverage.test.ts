@@ -83,15 +83,15 @@ describe("formatter node-property comment placement", () => {
       const out = format(annotated).trimEnd().split("\n");
 
       lines.forEach((line, i) => {
-        const keyword = firstWord(line);
+        const expected = head(line);
         const beside = out.filter((l) => l.endsWith(`// beside ${i}`));
         expect(beside, `beside ${i}`).toHaveLength(1);
-        expect(firstWord(beside[0]), `beside ${i}`).toBe(keyword);
+        expect(head(beside[0]), `beside ${i}`).toBe(expected);
 
         const above = out.findIndex((l) => l.trim() === `// above ${i}`);
         expect(above, `above ${i}`).toBeGreaterThanOrEqual(0);
         const next = out.slice(above + 1).find((l) => !l.trim().startsWith("//"));
-        expect(next && firstWord(next), `above ${i}`).toBe(keyword);
+        expect(next && head(next), `above ${i}`).toBe(expected);
       });
 
       expect(format(format(annotated))).toBe(format(annotated));
@@ -99,8 +99,18 @@ describe("formatter node-property comment placement", () => {
   }
 });
 
-function firstWord(line: string): string {
-  return line.trim().split(/\s/, 1)[0];
+/**
+ * Keyword and first argument of a line, without its `// beside i` marker, so
+ * a comment that moved to a sibling with the same keyword (the second `link`)
+ * does not pass.
+ */
+function head(line: string): string {
+  return line
+    .replace(/\s*\/\/ beside \d+$/, "")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .join(" ");
 }
 
 /**
