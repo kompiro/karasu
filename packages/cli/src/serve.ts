@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
-import { existsSync, readFileSync } from "node:fs";
-import { readFile, readdir, stat } from "node:fs/promises";
-import { join, resolve, extname, relative, sep } from "node:path";
+import { constants, existsSync, readFileSync } from "node:fs";
+import { open, readFile, readdir, realpath, stat } from "node:fs/promises";
+import { dirname, join, resolve, extname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isSafeRelativePath } from "@karasu-tools/core";
 import { FileWatcher } from "./watcher.js";
@@ -64,27 +64,76 @@ export function missingAppMessage(lookup: { inMonorepo: boolean; tried: string[]
         `Reinstall karasu (npm i -g karasu@latest) or run: npx --yes karasu@latest serve\n`;
 }
 
+function isGone(err: unknown): boolean {
+  return (err as NodeJS.ErrnoException).code === "ENOENT";
+}
+
+/** Whether `path`, with every link resolved, is `root` (a real path) or inside it. */
+async function resolvesInside(root: string, path: string): Promise<boolean> {
+  const real = await realpath(path);
+  return real === root || real.startsWith(root + sep);
+}
+
 /**
  * Every regular file under `dir` whose name passes `accept`, as `/`-separated
- * paths relative to `dir`. Symlinks are skipped: `Dirent.isDirectory()` and
- * `isFile()` do not follow them, so a link is neither walked into nor read,
- * and nothing outside `dir` can come back through one (TPL-168).
+ * paths relative to `dir`. Nothing outside `dir` comes back through a symlink
+ * (TPL-168): `Dirent.isDirectory()` and `isFile()` do not follow links, so a
+ * link present at listing time is neither walked into nor listed, and each
+ * directory is checked to still resolve inside `dir` before it is read, in
+ * case it was swapped for a link after its parent was listed. A directory
+ * removed mid-walk is skipped.
  */
 async function walkFiles(dir: string, accept: (name: string) => boolean): Promise<string[]> {
+  const root = await realpath(dir);
   const paths: string[] = [];
   async function walk(current: string): Promise<void> {
-    const entries = await readdir(current, { withFileTypes: true });
+    let entries;
+    try {
+      if (!(await resolvesInside(root, current))) return;
+      entries = await readdir(current, { withFileTypes: true });
+    } catch (err) {
+      if (current !== root && isGone(err)) return;
+      throw err;
+    }
     for (const entry of entries) {
       const fullPath = join(current, entry.name);
       if (entry.isDirectory()) {
         await walk(fullPath);
       } else if (entry.isFile() && accept(entry.name)) {
-        paths.push(relative(dir, fullPath).split(sep).join("/"));
+        paths.push(relative(root, fullPath).split(sep).join("/"));
       }
     }
   }
-  await walk(dir);
+  await walk(root);
   return paths.sort();
+}
+
+/**
+ * Read a walked file, or null when it is gone or no longer a plain file
+ * inside `root`. Between the walk and this read the file may have been
+ * swapped for a symlink (`O_NOFOLLOW` refuses to open it, `ELOOP`), or a
+ * directory on its path may have (checked with `realpath` first). Node has no
+ * `openat`, so a swap between that check and the open stays possible; it
+ * needs write access to the served directory and exact timing. Windows has no
+ * `O_NOFOLLOW`, so there the parent-directory check is all there is.
+ */
+async function readFileInside(root: string, path: string): Promise<string | null> {
+  const full = join(root, path);
+  try {
+    if (!(await resolvesInside(root, dirname(full)))) return null;
+    const handle = await open(full, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+    try {
+      return await handle.readFile("utf-8");
+    } finally {
+      await handle.close();
+    }
+  } catch (err) {
+    // Gone since the walk: an editor's atomic save (temp file, then rename)
+    // or a delete. Leave it out rather than fail the snapshot; its own watch
+    // event brings the next one.
+    if (isGone(err) || (err as NodeJS.ErrnoException).code === "ELOOP") return null;
+    throw err;
+  }
 }
 
 export async function collectKrsFiles(dir: string): Promise<string[]> {
@@ -110,17 +159,11 @@ export async function collectProjectFiles(dir: string): Promise<ProjectFile[]> {
     dir,
     (name) => name.endsWith(".krs") || name.endsWith(".krs.style"),
   );
+  const root = await realpath(dir);
   const files = await Promise.all(
     paths.map(async (path): Promise<ProjectFile | null> => {
-      try {
-        return { path, content: await readFile(join(dir, path), "utf-8") };
-      } catch (err) {
-        // Gone since the walk: an editor's atomic save (temp file, then
-        // rename) or a delete. Leave it out rather than fail the snapshot;
-        // its own watch event brings the next one.
-        if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
-        throw err;
-      }
+      const content = await readFileInside(root, path);
+      return content === null ? null : { path, content };
     }),
   );
   return files.filter((f): f is ProjectFile => f !== null);

@@ -1,15 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { mkdtemp, writeFile, mkdir, readFile, rm, symlink } from "node:fs/promises";
+import { mkdtemp, writeFile, mkdir, open, readdir, rm, symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { AddressInfo } from "node:net";
 import type { ServerResponse, Server } from "node:http";
 import * as http from "node:http";
 
-// Pass-through, so a test can make one read fail as a file vanishing would.
+// Pass-through, so a test can stand in for the directory changing between
+// the walk and the read: a file vanishing, or a path swapped for a symlink.
 vi.mock("node:fs/promises", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:fs/promises")>();
-  return { ...actual, readFile: vi.fn<typeof actual.readFile>(actual.readFile) };
+  return {
+    ...actual,
+    open: vi.fn<typeof actual.open>(actual.open),
+    readdir: vi.fn<typeof actual.readdir>(actual.readdir),
+  };
 });
 
 vi.mock("chokidar", () => ({
@@ -126,21 +131,61 @@ describe("collectProjectFiles", () => {
   it("leaves out a file that disappears between the walk and the read", async () => {
     await writeFile(join(tmpDir, "index.krs"), "system A {}");
     await writeFile(join(tmpDir, "saving.krs"), "");
-    const actual = vi.mocked(readFile).getMockImplementation();
-    vi.mocked(readFile).mockImplementation(((path: string, options: unknown) =>
+    const actual = vi.mocked(open).getMockImplementation() as typeof open;
+    vi.mocked(open).mockImplementation(((path: string, ...rest: [never]) =>
       String(path).endsWith("saving.krs")
         ? Promise.reject(Object.assign(new Error("gone"), { code: "ENOENT" }))
-        : (actual as (p: string, o: unknown) => Promise<string>)(
-            path,
-            options,
-          )) as typeof readFile);
+        : actual(path, ...rest)) as typeof open);
     try {
       expect(await collectProjectFiles(tmpDir)).toEqual([
         { path: "index.krs", content: "system A {}" },
       ]);
     } finally {
-      vi.mocked(readFile).mockImplementation(actual as typeof readFile);
+      vi.mocked(open).mockImplementation(actual);
     }
+  });
+
+  // TPL-168, #3327 review: the listing saw a plain file or directory, and by
+  // the time it is read the entry is a link out of the served directory.
+  describe("an entry swapped for a symlink after it was listed", () => {
+    let actualReaddir: typeof readdir;
+
+    beforeEach(async () => {
+      await writeFile(join(outside, "secret.krs"), "system Secret {}");
+      await writeFile(join(tmpDir, "index.krs"), "");
+      await symlink(join(outside, "secret.krs"), join(tmpDir, "linked.krs"));
+      await symlink(outside, join(tmpDir, "linked-dir"));
+      actualReaddir = vi.mocked(readdir).getMockImplementation() as typeof readdir;
+      // List each link as what it was before the swap.
+      vi.mocked(readdir).mockImplementation((async (path: string, options: never) => {
+        const entries = (await actualReaddir(path, options)) as unknown as {
+          name: string;
+          isFile(): boolean;
+          isDirectory(): boolean;
+        }[];
+        return entries.map((entry) =>
+          entry.name === "linked.krs"
+            ? { name: entry.name, isFile: () => true, isDirectory: () => false }
+            : entry.name === "linked-dir"
+              ? { name: entry.name, isFile: () => false, isDirectory: () => true }
+              : entry,
+        );
+      }) as typeof readdir);
+    });
+
+    afterEach(() => {
+      vi.mocked(readdir).mockImplementation(actualReaddir);
+    });
+
+    it("does not read through either link", async () => {
+      const files = await collectProjectFiles(tmpDir);
+      expect(files.map((f) => f.path)).toEqual(["index.krs"]);
+      expect(JSON.stringify(files)).not.toContain("Secret");
+    });
+
+    it("does not list the swapped directory's files in /api/files either", async () => {
+      expect(await collectKrsFiles(tmpDir)).not.toContain("linked-dir/secret");
+    });
   });
 
   // TPL-168: a link inside the served directory must not read what lies outside it.

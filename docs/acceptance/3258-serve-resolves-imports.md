@@ -25,9 +25,11 @@ type: product
   >
   > ✅ Automated — `packages/cli/src/serve.test.ts` › `collectProjectFiles` › `leaves out every other extension`
 
-- [x] AT-B: 配信ディレクトリの中に、外を指す symlink（file と directory の両方）があっても、その中身を返さない
+- [x] AT-B: 配信ディレクトリの中に、外を指す symlink（file と directory の両方）があっても、その中身を返さない。walk の後に file や directory が symlink に差し替えられても、その先を読まない
 
   > ✅ Automated — `packages/cli/src/serve.test.ts` › `collectProjectFiles` › `does not follow a symlinked file or directory out of the served directory`
+  >
+  > ✅ Automated — `packages/cli/src/serve.test.ts` › `collectProjectFiles` › `an entry swapped for a symlink after it was listed` › `does not read through either link`
 
 ### AC-2: 開いたファイルの import が `karasu render` と同じく解決される
 
@@ -43,9 +45,11 @@ type: product
   >
   > ✅ Automated — `packages/e2e/tests/at-3258-serve-import-resolution.spec.ts` › `AT-3258: karasu serve resolves imports` › `TC-02: a file in a subdirectory resolves its relative imports from its own folder`
 
-- [x] AT-E: 配信ディレクトリに無いファイルを開くと、今までどおり `File not found: <name>.krs` を出す
+- [x] AT-E: 配信ディレクトリに無いファイルを開くと、今までどおり `File not found: <name>.krs` を出す。文言は表示中の locale に従う
 
   > ✅ Automated — `packages/app/src/ServeModeApp.test.tsx` › `ServeModeApp` › `import resolution (#3258)` › `shows File not found when the opened file is not in the directory`
+  >
+  > ✅ Automated — `packages/app/src/ServeModeApp.test.tsx` › `ServeModeApp` › `import resolution (#3258)` › `says File not found in the active locale`
   >
   > ✅ Automated — `packages/e2e/tests/at-0032-cli-serve-mode.spec.ts` › `AT-0032: CLI serve mode` › `TC-06: a missing file shows File not found`
 
