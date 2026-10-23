@@ -81,17 +81,19 @@ describe("formatter node-property comment placement", () => {
         })
         .join("\n");
       const out = format(annotated).trimEnd().split("\n");
+      const outIdentity = identities(out);
+      const srcIdentity = identities(lines);
 
-      lines.forEach((line, i) => {
-        const expected = head(line);
-        const beside = out.filter((l) => l.endsWith(`// beside ${i}`));
+      lines.forEach((_line, i) => {
+        const expected = srcIdentity[i];
+        const beside = out.flatMap((l, at) => (l.endsWith(`// beside ${i}`) ? [at] : []));
         expect(beside, `beside ${i}`).toHaveLength(1);
-        expect(head(beside[0]), `beside ${i}`).toBe(expected);
+        expect(outIdentity[beside[0]], `beside ${i}`).toBe(expected);
 
         const above = out.findIndex((l) => l.trim() === `// above ${i}`);
         expect(above, `above ${i}`).toBeGreaterThanOrEqual(0);
-        const next = out.slice(above + 1).find((l) => !l.trim().startsWith("//"));
-        expect(next && head(next), `above ${i}`).toBe(expected);
+        const next = out.findIndex((l, at) => at > above && !isCommentLine(l));
+        expect(outIdentity[next], `above ${i}`).toBe(expected);
       });
 
       expect(format(format(annotated))).toBe(format(annotated));
@@ -100,17 +102,30 @@ describe("formatter node-property comment placement", () => {
 });
 
 /**
- * Keyword and first argument of a line, without its `// beside i` marker, so
- * a comment that moved to a sibling with the same keyword (the second `link`)
- * does not pass.
+ * Which statement each line is: its keyword and first argument (without the
+ * `// beside i` marker), numbered among the lines that share them. The number
+ * tells two `}` apart, and the second `link` from the first, so a comment that
+ * moved to a sibling does not pass. Lines that share a head keep their order
+ * through formatting, so the numbering is the same on both sides.
  */
-function head(line: string): string {
-  return line
-    .replace(/\s*\/\/ beside \d+$/, "")
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .join(" ");
+function identities(lines: readonly string[]): string[] {
+  const seen = new Map<string, number>();
+  return lines.map((line) => {
+    if (isCommentLine(line)) return "";
+    const head = line
+      .replace(/\s*\/\/ beside \d+$/, "")
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .join(" ");
+    const nth = seen.get(head) ?? 0;
+    seen.set(head, nth + 1);
+    return `${head} #${nth}`;
+  });
+}
+
+function isCommentLine(line: string): boolean {
+  return line.trim().startsWith("//");
 }
 
 /**
