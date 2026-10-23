@@ -101,9 +101,55 @@ describe("HostFileSystem (#3312)", () => {
     for (const id of starts) expect(Number.isSafeInteger(id) && id > 0).toBe(true);
   });
 
-  it("refuses to write until the preview can (slice C, #3313)", async () => {
+  // #3313: a write carries the text the viewer last read, so the host can
+  // refuse it when the user has edited the file since.
+  it("writes with the last-read text as base, then serves the written text", async () => {
+    const { fs, requests, answer } = setup();
+    const read = fs.readFile("/p/app.krs.style");
+    answer(requests[0], "service {}");
+    await read;
+
+    const write = fs.writeFile("/p/app.krs.style", "service {}\nedge#a { direction: down; }");
+    expect(requests[1]).toMatchObject({
+      type: "fs",
+      op: "writeFile",
+      path: "/p/app.krs.style",
+      content: "service {}\nedge#a { direction: down; }",
+      base: "service {}",
+    });
+    answer(requests[1], true);
+    await write;
+    expect(await fs.readFile("/p/app.krs.style")).toBe("service {}\nedge#a { direction: down; }");
+    expect(requests).toHaveLength(2);
+  });
+
+  it("sends no base for a file it never read (a new style sheet)", async () => {
+    const { fs, requests, answer } = setup();
+    const write = fs.writeFile("/p/new.krs.style", "edge#a { direction: down; }");
+    expect(requests[0]).toMatchObject({ op: "writeFile", base: undefined });
+    answer(requests[0], true);
+    await write;
+  });
+
+  it("keeps the cache as it was when the host refuses the write", async () => {
+    const { fs, requests, answer } = setup();
+    const read = fs.readFile("/p/a.krs");
+    answer(requests[0], "before");
+    await read;
+    const write = fs.writeFile("/p/a.krs", "after");
+    fs.handleResult({
+      type: "fsResult",
+      id: requests[1].id,
+      ok: false,
+      notFound: false,
+      error: "The file changed since it was read.",
+    });
+    await expect(write).rejects.toBeInstanceOf(HostFsError);
+    expect(await fs.readFile("/p/a.krs")).toBe("before");
+  });
+
+  it("refuses to delete files or create directories", async () => {
     const { fs, requests } = setup();
-    await expect(fs.writeFile()).rejects.toBeInstanceOf(HostFsError);
     await expect(fs.delete()).rejects.toBeInstanceOf(HostFsError);
     await expect(fs.mkdir()).rejects.toBeInstanceOf(HostFsError);
     expect(requests).toHaveLength(0);

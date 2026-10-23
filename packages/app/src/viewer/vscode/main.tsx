@@ -34,8 +34,8 @@ const viewer = mountViewer(document.getElementById("root")!, {
   initialTheme: init.theme,
   initialLocale: init.locale,
   toolbar: VSCODE_TOOLBAR,
-  // Writes go through the host as a WorkspaceEdit in slice C (#3313).
-  readOnly: true,
+  // Writes (the edge direction) go to the host, which applies them to the
+  // editor's buffer as a WorkspaceEdit (#3313).
   // VS Code reads every keydown in a webview as its own keybinding too, so
   // the app's chords (mod+1..4, mod+shift+f, mod+shift+p) would fire twice.
   keyboardShortcuts: false,

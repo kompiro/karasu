@@ -26,6 +26,9 @@ export interface WebviewInit {
 /** The file reads the viewer asks the host for. */
 export type HostFsOp = "readFile" | "readDir" | "exists";
 
+/** The most text one write may carry; a model file is far smaller. */
+export const MAX_WRITE_LENGTH = 5_000_000;
+
 /** Which SVG attribute a highlight names (#2818). */
 export type WebviewHighlightAttribute = "data-node-id" | "data-realized-node-id";
 
@@ -35,6 +38,13 @@ export type WebviewMessage =
   | { type: "ready" }
   /** A file read. Answered by exactly one `fsResult` with the same `id`. */
   | { type: "fs"; id: number; op: HostFsOp; path: string }
+  /**
+   * A file write (#3313), applied to the editor's buffer and left unsaved.
+   * `base` is the text the viewer last read for the file: when the buffer no
+   * longer holds it (the user typed meanwhile), the host refuses rather than
+   * overwrite the user's edit. Answered by one `fsResult` with `value: true`.
+   */
+  | { type: "fs"; id: number; op: "writeFile"; path: string; content: string; base?: string }
   /** Jump the editor to `nodeId` in `filePath` (ADR-177). */
   | { type: "revealNode"; nodeId: string; filePath: string }
   /** Open a link the user clicked, outside VS Code. */

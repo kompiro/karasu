@@ -26,6 +26,9 @@ live SVG preview you can drill into.
 - **Standard editor smarts** — hover and go-to-definition over your model.
 - **Node and edge detail panels** — inspect a node or an edge and jump across
   diagrams.
+- **Edge direction from the preview** — right-click an edge to set its
+  direction; the rule is written into the style sheet's editor (an `@import` is
+  added when there is none), unsaved, so the editor's undo takes it back.
 
 ## Screenshots
 

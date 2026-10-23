@@ -14,7 +14,11 @@
  */
 
 import { isSafeLinkUrl } from "@karasu-tools/core";
-import type { HostFsOp, WebviewMessage } from "@karasu-tools/app/vscode-webview-protocol";
+import {
+  MAX_WRITE_LENGTH,
+  type HostFsOp,
+  type WebviewMessage,
+} from "@karasu-tools/app/vscode-webview-protocol";
 
 const FS_OPS: readonly HostFsOp[] = ["readFile", "readDir", "exists"];
 
@@ -45,6 +49,10 @@ function isRequestId(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 }
 
+function isBoundedString(value: unknown): value is string {
+  return typeof value === "string" && value.length <= MAX_WRITE_LENGTH;
+}
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
@@ -61,9 +69,22 @@ export function parseWebviewMessage(data: unknown): WebviewMessage | null {
     case "ready":
       return { type: "ready" };
     case "fs":
-      if (!isRequestId(m.id) || !FS_OPS.includes(m.op as HostFsOp) || !isNonEmptyString(m.path)) {
-        return null;
+      if (!isRequestId(m.id) || !isNonEmptyString(m.path)) return null;
+      if (m.op === "writeFile") {
+        // A write carries the whole new text; bound it, and the base it was
+        // computed from, so a hostile page cannot hand the host gigabytes.
+        if (!isBoundedString(m.content)) return null;
+        if (m.base !== undefined && !isBoundedString(m.base)) return null;
+        return {
+          type: "fs",
+          id: m.id,
+          op: "writeFile",
+          path: m.path,
+          content: m.content,
+          base: m.base,
+        };
       }
+      if (!FS_OPS.includes(m.op as HostFsOp)) return null;
       return { type: "fs", id: m.id, op: m.op as HostFsOp, path: m.path };
     case "revealNode":
       if (!isNodeId(m.nodeId) || !isNonEmptyString(m.filePath)) return null;

@@ -147,7 +147,7 @@ viewer をそのまま webview で動かす。viewer の `FileSystemProvider` �
 5. **エディタとの連携。** アクティブな `.krs` エディタが変わったら `setEntry`。どこかの `.krs` / `.krs.style` のバッファが変わるか保存されたら、そのパスを `filesChanged` で送る（300ms debounce は viewer 側の既存の debounce に任せる）。カーソル → highlight は今の LSP 経路のままハンドルの `highlight` に渡す。ジャンプは viewer が `nodeFileIndex` から引いたファイルを開き（表示されていなければ開く）、そのファイルに LSP `PositionOfNodeRequest` を送る。これで別ファイルへのジャンプと、切替後に古いファイルを引く問題が直る。
 6. **テーマと言語。** `activeColorTheme.kind` を今の `theme-mapping.ts` で light / dark に写して初期値と `setTheme` に渡す。言語は `vscode.env.language` を `resolveLocaleTag` に通して渡す（TPL-2536）。viewer のテーマ / 言語の切替ボタンは出さない。VS Code の設定に従うのが期待であり、webview の中で別の値を持つと次の起動で食い違う。
 7. **ツールバー。** VS Code 用のツールバーの差し込みには Icon Mode のトグルを置く（ADR-299 / ADR-2906）。隠すのは共有・書き出し（SVG / draw.io）・全層表示（`blob:` の新しいウィンドウ）・Docs / Reference。どれも webview では動かないか、別ウィンドウを前提にしている。現行の preview に無いので、隠しても後退にはならない。書き出しを保存ダイアログにつなぐのは別 Issue にする。
-8. **書き込み。** CRUD 行列と edge の向きの書き込みは、ホスト FS の書き込みを通して `WorkspaceEdit` で適用する。これはスライス C で入れ、それまでは `readOnly` で書き込みの操作を隠す。
+8. **書き込み。** edge の向きの書き込み（CRUD 行列は書き込みを持たない）は、ホスト FS の書き込みを通して `WorkspaceEdit` で適用し、保存しない。スライス B では `readOnly` で書き込みの操作を隠し、スライス C（#3313）で外した。置き換えるのは前後の共通部分を除いた範囲だけで、書き込みには viewer が最後に読んだ本文を `base` として添え、バッファがそれと違えば（利用者が間で編集していれば）ホストは書かずに断る。まだ無いスタイルファイルは `createFile` で作る
 9. **e2e。** `packages/vscode-e2e/tests/webview` を新しい DOM に合わせて書き直す。`data-node-id` / `data-node-path` / `data-realized-node-id` は core の SVG が付けるので残る。ツールバーの選択状態は inline style ではなく app のツールバーの属性で読む（ADR-1014 が harness に書いた inline style への依存は、このとき置き換える）。ホスト側を偽装しない ADR-1014 の方針は変えない。
 
 ### 現行機能の対応表

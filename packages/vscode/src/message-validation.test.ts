@@ -88,6 +88,8 @@ describe("parseWebviewMessage (#3312, TPL-168)", () => {
     [{ type: "fs", id: 9, op: "exists", path: "/p/a.krs.style" }],
     [{ type: "revealNode", nodeId: "Api", filePath: "/p/index.krs" }],
     [{ type: "openExternal", url: "https://example.com/" }],
+    [{ type: "fs", id: 3, op: "writeFile", path: "/p/a.krs.style", content: "edge#a {}" }],
+    [{ type: "fs", id: 4, op: "writeFile", path: "/p/a.krs", content: "x", base: "y" }],
   ])("accepts %o", (message) => {
     expect(parseWebviewMessage(message)).toEqual(message);
   });
@@ -105,7 +107,16 @@ describe("parseWebviewMessage (#3312, TPL-168)", () => {
     ["no object", "ready"],
     ["null", null],
     ["an unknown type", { type: "switchView", viewType: "system" }],
-    ["a write the preview cannot do yet", { type: "fs", id: 1, op: "writeFile", path: "/p/a.krs" }],
+    ["a write without its text", { type: "fs", id: 1, op: "writeFile", path: "/p/a.krs" }],
+    [
+      "a write whose base is not text",
+      { type: "fs", id: 1, op: "writeFile", path: "/p/a.krs", content: "x", base: 3 },
+    ],
+    [
+      "a write over the size bound",
+      { type: "fs", id: 1, op: "writeFile", path: "/p/a.krs", content: "x".repeat(5_000_001) },
+    ],
+    ["a delete", { type: "fs", id: 1, op: "delete", path: "/p/a.krs" }],
     ["a fractional id", { type: "fs", id: 1.5, op: "readFile", path: "/p/a.krs" }],
     ["a negative id", { type: "fs", id: -1, op: "readFile", path: "/p/a.krs" }],
     ["a string id", { type: "fs", id: "1", op: "readFile", path: "/p/a.krs" }],

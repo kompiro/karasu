@@ -149,3 +149,41 @@ export async function decideExists(
   if (isKarasuSourcePath(real, deps.platform)) return true;
   return isRealPathWithinRoots(path, roots, deps.realpath);
 }
+
+export type FileWriteDecision =
+  /** Apply the write to `path`; `exists` says whether the file is there to edit. */
+  { kind: "write"; path: string; exists: boolean } | { kind: "refused"; reason: string };
+
+/**
+ * Whether the preview may write a checked path (#3313). Narrower than a read:
+ * the file must be a `.krs` / `.krs.style` and lie inside the writable roots
+ * (the workspace folders, plus an outside entry's directory), both judged on
+ * the real path. A file that does not exist yet (a new style sheet) is judged
+ * by its parent directory's real path and its own name.
+ */
+export async function decideFileWrite(
+  path: string,
+  roots: readonly string[],
+  deps: HostFileDeps,
+): Promise<FileWriteDecision> {
+  const refused = (reason: string): FileWriteDecision => ({ kind: "refused", reason });
+  const realRoots = await Promise.all(roots.map((root) => deps.realpath(root).catch(() => root)));
+  const real = await deps.realpath(path).catch(() => null);
+  if (real !== null) {
+    if (!isKarasuSourcePath(real, deps.platform)) {
+      return refused("Only .krs and .krs.style files are written.");
+    }
+    if (!isWithinRoots(real, realRoots))
+      return refused("Files are written only inside the workspace.");
+    return { kind: "write", path, exists: true };
+  }
+  if (!isKarasuSourcePath(path, deps.platform)) {
+    return refused("Only .krs and .krs.style files are written.");
+  }
+  const realParent = await deps.realpath(nodePath.dirname(path)).catch(() => null);
+  if (realParent === null) return refused("The directory to write into does not exist.");
+  if (!isWithinRoots(realParent, realRoots)) {
+    return refused("Files are written only inside the workspace.");
+  }
+  return { kind: "write", path, exists: false };
+}

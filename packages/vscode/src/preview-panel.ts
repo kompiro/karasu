@@ -12,6 +12,7 @@ import {
   checkRequestedPath,
   decideExists,
   decideFileRead,
+  decideFileWrite,
   isRealPathWithinRoots,
   isWithinRoots,
   readThroughBuffers,
@@ -19,6 +20,7 @@ import {
 } from "./host-files.js";
 import { isAllowedExternalUrl, parseWebviewMessage } from "./message-validation.js";
 import { coalesce } from "./message-queue.js";
+import { minimalEdit } from "./text-edit.js";
 import { diagramThemeFromColorTheme } from "./theme-mapping.js";
 import { WEBVIEW_DIR, WEBVIEW_SCRIPT, WEBVIEW_STYLESHEET } from "./webview-assets.js";
 import { buildWebviewHtml, generateNonce } from "./webview-html.js";
@@ -238,6 +240,12 @@ export class PreviewPanel {
         }
         case "exists":
           return reply(await decideExists(path, this.listableRoots(), HOST_FILE_DEPS));
+        case "writeFile": {
+          const decision = await decideFileWrite(path, this.listableRoots(), HOST_FILE_DEPS);
+          if (decision.kind === "refused") return fail(decision.reason);
+          await applyPreviewWrite(path, request.content, request.base, decision.exists);
+          return reply(true);
+        }
         case "readDir": {
           const roots = this.listableRoots();
           if (
@@ -283,6 +291,44 @@ const HOST_FILE_DEPS: HostFileDeps = {
 async function readDisk(path: string): Promise<string> {
   const bytes = await vscode.workspace.fs.readFile(vscode.Uri.file(path));
   return Buffer.from(bytes).toString("utf-8");
+}
+
+/**
+ * Apply a preview write to the editor's buffer as a `WorkspaceEdit` (#3313):
+ * it is not saved, so the document turns dirty and the editor's undo takes it
+ * back, and the text stays the one source of truth (TPL-1207). Only the span
+ * that changed is replaced. When the buffer no longer holds the text the
+ * viewer computed the write from (the user typed meanwhile), nothing is
+ * written. A file that does not exist yet (a new style sheet) is created.
+ */
+async function applyPreviewWrite(
+  path: string,
+  content: string,
+  base: string | undefined,
+  exists: boolean,
+): Promise<void> {
+  const uri = vscode.Uri.file(path);
+  const edit = new vscode.WorkspaceEdit();
+  if (!exists && openBuffer(path) === undefined) {
+    edit.createFile(uri, { ignoreIfExists: true });
+    edit.insert(uri, new vscode.Position(0, 0), content);
+  } else {
+    const document = await vscode.workspace.openTextDocument(uri);
+    const current = document.getText();
+    if (base !== undefined && current !== base) {
+      throw new Error("The file changed since the preview read it; nothing was written.");
+    }
+    const span = minimalEdit(current, content);
+    if (!span) return;
+    edit.replace(
+      uri,
+      new vscode.Range(document.positionAt(span.start), document.positionAt(span.end)),
+      span.text,
+    );
+  }
+  if (!(await vscode.workspace.applyEdit(edit))) {
+    throw new Error("VS Code did not apply the edit.");
+  }
 }
 
 async function listDirectory(path: string): Promise<DirEntryValue[]> {
