@@ -164,7 +164,9 @@ export type Translations = {
   "nodeDetail.links.title": string;
   "nodeDetail.openDeployView": string;
   "nodeDetail.jumpToEditor": string;
-  "vscodePreview.blockedByErrors": (params: { count: number }) => string;
+  "vscodePreview.iconMode.label": string;
+  "vscodePreview.iconMode.ariaLabel": string;
+  "vscodePreview.jumpHint": string;
   "nodeDetail.annotationDiff.title": string;
   "nodeDetail.resources.title": string;
   "nodeDetail.capabilities.title": string;

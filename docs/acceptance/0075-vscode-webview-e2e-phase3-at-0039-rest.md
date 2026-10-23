@@ -66,22 +66,21 @@ OrderManagement と Inventory を追加（OrderService が drill 可能になる
 ### AC-1: AT-0039 TC-01..TC-04, TC-06, TC-08 が PASS する
 
 - [x] TC-01: 葉ノードクリックで detail panel が開く
-> ✅ Automated — `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-01: clicking a leaf node (Customer) opens the detail panel` (CI は `vscode-webview-e2e` ラベル opt-in、xvfb 必要のため required check には昇格しない)
+> ✅ Automated — `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-01: clicking a leaf node (Customer) opens the detail panel` (CI は拡張か同梱物に触れた PR で path filter により起動。xvfb が要るため required check には昇格しない)
 
 - [x] TC-02: panel に description (Markdown) / links / team が表示される
-> ✅ Automated — `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-02: detail panel shows description / links / properties (OrderService via ⓘ)` (CI は `vscode-webview-e2e` ラベル opt-in、xvfb 必要のため required check には昇格しない)
+> ✅ Automated — `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-02: detail panel shows description / links / properties (OrderService via ⓘ)` (CI は拡張か同梱物に触れた PR で path filter により起動。xvfb が要るため required check には昇格しない)
 
 - [x] TC-03: Jump to editor ボタンで cursor が移動 + panel は開いたまま
-> ✅ Automated — `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-03: Jump to editor button moves the .krs editor cursor and leaves the panel open` (CI は `vscode-webview-e2e` ラベル opt-in、xvfb 必要のため required check には昇格しない)
+> ✅ Automated — `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-03: Jump to editor button moves the .krs editor cursor and leaves the panel open` (CI は拡張か同梱物に触れた PR で path filter により起動。xvfb が要るため required check には昇格しない)
 
 - [x] TC-04: × ボタンと click-outside で panel が閉じる
-> ✅ Automated — `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-04: × close button dismisses the panel; click-outside also dismisses it` (CI は `vscode-webview-e2e` ラベル opt-in、xvfb 必要のため required check には昇格しない)
+> ✅ Automated — `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-04: × close button dismisses the panel; click-outside also dismisses it` (CI は拡張か同梱物に触れた PR で path filter により起動。xvfb が要るため required check には昇格しない)
 
 - [x] TC-06: parent への ⓘ click は drill しない
-> ✅ Automated — `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-06: ⓘ info button on a parent does not drill the preview` (CI は `vscode-webview-e2e` ラベル opt-in、xvfb 必要のため required check には昇格しない)
+> ✅ Automated — `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-06: ⓘ info button on a parent does not drill the preview` (CI は拡張か同梱物に触れた PR で path filter により起動。xvfb が要るため required check には昇格しない)
 
-- [x] TC-08: panel 開いている間 tooltip 抑制
-> ✅ Automated — `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-08: tooltip is suppressed while the detail panel is open` (CI は `vscode-webview-e2e` ラベル opt-in、xvfb 必要のため required check には昇格しない)
+- TC-08（引退）: panel 開いている間 tooltip 抑制（#3312 で引退。preview が app の viewer になり hover の説明自体が無い。app に入れるかは #3325）
 
 ### AC-2: AT-0039 doc の Coverage policy が更新される
 
@@ -94,7 +93,7 @@ OrderManagement と Inventory を追加（OrderService が drill 可能になる
 ## 自動化された検証
 
 - `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` —
-  6 つの `it()`。CI は `vscode-webview-e2e` ラベルでオプトイン。
+  6 つの `it()`。CI は path filter で起動する（ADR-1742）。
 
 ## 手動確認項目
 

@@ -15,7 +15,7 @@ type: product
   - `packages/app/src/components/PreviewPane.tsx`（click delegation と `highlightAttribute`）
   - `packages/app/src/components/PreviewColumn.tsx`（deploy ペインにだけ `data-realized-node-id` を渡す）
   - `packages/app/src/hooks/useCrossNavigation.ts`（`handleContainerClick(realizedNodeId | null)`）
-  - `packages/vscode/src/preview-panel.ts` / `packages/vscode/src/webview-content.ts`（highlight message の属性）
+  - `packages/vscode/src/preview-panel.ts` / `packages/app/src/viewer/vscode/main.tsx`（highlight message の属性。#3312 以降 VS Code の preview は app の viewer）
 
 > deploy ↔ system のクロスナビゲーションは、1 つの文字列を `data-node-id` と `data-container-id` に順に当てて突き合わせていた。コンテナの id は identity で、修飾（#2549）や引用符（#2714）でノードの id 空間に無い綴りになるため、そうしたコンテナは両方向ともビューが切り替わるだけで何も光らなかった。ADR-2714 が core に置いた `DeployContainer.nodeId` をコンテナ要素に `data-realized-node-id` として載せ、両方向ともノード id を手渡し、受け手はビューごとに 1 つの属性だけを引く。
 
@@ -91,9 +91,9 @@ type: product
 
 ### AC-6: VS Code webview
 
-- [x] AT-N: highlight message は属性名を運び、webview はその 1 属性で引く。既定は `data-node-id`（カーソル追従）、deploy への `switchViewAndHighlight` は `data-realized-node-id`
+- [x] AT-N: highlight message は属性名を運び、preview はその 1 属性で引く。既定は `data-node-id`（カーソル追従）、deploy への手渡しは `data-realized-node-id`
 
-  > ✅ Automated — `packages/vscode/src/webview-content.test.ts` › buildPreviewHtml › lets a highlight message pick data-realized-node-id, defaulting to data-node-id
+  > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › highlightedNodeId › matches only data-realized-node-id when the pane is told to (#2818) ／ `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › AT-0042-2: clicking the deploy nav button switches the preview to the Deploy diagram
 
 - [x] AT-O: 詳細パネルの「deploy ビューを開く」で、realize したコンテナが光る
 
@@ -105,8 +105,8 @@ type: product
 [`packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts`](../../packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts)
 under the WebView E2E harness (see [AT-0039](0039-vscode-detail-panel.md)).
 
-The harness job is gated on the `vscode-webview-e2e` PR label and is **not**
-a required check.
+The harness job runs on pull requests that touch the extension or what it
+bundles (path filter, ADR-1742), skips draft PRs, and is **not** a required check.
 
 ## 手動確認
 

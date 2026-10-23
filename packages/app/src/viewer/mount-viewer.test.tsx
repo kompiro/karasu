@@ -180,6 +180,30 @@ describe("mountViewer — host file system", () => {
     );
   });
 
+  // mod+2 is the app's Deploy view shortcut. The VS Code webview turns the
+  // shortcuts off, because VS Code acts on the same keydown too (#3312).
+  const pressModTwo = () =>
+    fireEvent.keyDown(document, { key: "2", code: "Digit2", ctrlKey: true, metaKey: true });
+  const deployTabSelected = () =>
+    screen.getByRole("tab", { name: /Deploy/ }).getAttribute("aria-selected") === "true";
+
+  it("answers the app's keyboard shortcuts by default", async () => {
+    const fs = await projectFs();
+    const el = mount({ fs, entryPath: ENTRY });
+    await shows(el, "Api");
+    pressModTwo();
+    await waitFor(() => expect(deployTabSelected()).toBe(true));
+  });
+
+  it("leaves the shortcuts out when the host turns them off", async () => {
+    const fs = await projectFs();
+    const el = mount({ fs, entryPath: ENTRY, keyboardShortcuts: false });
+    await shows(el, "Api");
+    pressModTwo();
+    await new Promise((r) => setTimeout(r, 100));
+    expect(deployTabSelected()).toBe(false);
+  });
+
   it("highlights the node the host names, and again after a clear", async () => {
     const fs = await projectFs();
     const el = mount({ fs, entryPath: ENTRY });

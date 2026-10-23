@@ -32,21 +32,21 @@
   "main": "./out/extension.js",
   "scripts": {
     "prebuild": "tsx ../../scripts/ci/generate-third-party-notices.ts .",
-    "build": "pnpm --filter @karasu-tools/lsp run build && esbuild src/extension.ts --bundle --platform=node --format=cjs --outfile=out/extension.js --external:vscode && node -e \"require('node:fs').cpSync('../lsp/out/server.js', 'out/server.js')\"",
-    "postbuild": "node scripts/assert-server-bundled.mjs",
+    "build": "pnpm --filter @karasu-tools/lsp run build && pnpm --filter @karasu-tools/app run build:vscode-webview && esbuild src/extension.ts --bundle --platform=node --format=cjs --outfile=out/extension.js --external:vscode && node -e \"require('node:fs').cpSync('../lsp/out/server.js', 'out/server.js')\" && tsx scripts/stage-webview.ts",
+    "postbuild": "node scripts/assert-server-bundled.mjs && node scripts/assert-webview-staged.mjs",
     "package": "pnpm run build && vsce package --no-dependencies",
     "publish": "pnpm run build && vsce publish --no-dependencies",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts"
   },
   "dependencies": {
     "@karasu-tools/core": "workspace:*",
     "@karasu-tools/i18n": "workspace:*",
     "@karasu-tools/lsp": "workspace:*",
-    "marked": "^18.1.1",
     "vscode-languageclient": "^10.1.2"
   },
   "devDependencies": {
+    "@karasu-tools/app": "workspace:*",
     "@types/node": "^26.6.5",
     "@types/vscode": "^1.140.0",
     "@vscode/vsce": "^4.0.0",

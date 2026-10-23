@@ -7,6 +7,7 @@
   - 本件で閉じる Issue: [#3252](https://github.com/kompiro/karasu/issues/3252)（webview の edge に hover が無い）
   - 関連 ADR: [ADR-176](../adr/176-vscode-phase3-webview-architecture.md)（独立 HTML webview。本件で supersede する）, [ADR-9014](../adr/9014-vscode-extension-lsp-first.md)（LSP first。未決事項に「Vite でビルドした静的ファイルを拡張に同梱する」）, [ADR-2993](../adr/2993-gallery-client-side-rendering.md)（viewer のビルド。`mountViewer()` は VS Code からの再利用を見越した形）, [ADR-177](../adr/177-node-click-ux.md)（クリック = drill / 詳細、Cmd/Ctrl+クリック = エディタへジャンプ）, [ADR-218](../adr/218-vscode-phase3-5-drilldown.md)（drill-down）, [ADR-299](../adr/299-vscode-icon-mode-toggle.md) と [ADR-2906](../adr/2906-icon-mode-removal-release-undecided.md)（VS Code の Icon Mode トグルは据え置き）, [ADR-1014](../adr/1014-vscode-webview-e2e-automated.md)（webview の DOM テストは ExTester）, [ADR-2677](../adr/2677-language-v2-act.md)（エラー中は新しい図を出さない）, [ADR-2818](../adr/2818-cross-navigation-highlight-id-space.md) / [ADR-2917](../adr/2917-multi-system-root-same-id-nodes.md)（highlight と drill の id 空間）
   - 関連 TPL: [TPL-2996](../test-perspectives/TPL-2996-preview-reads-editor-buffers.md)（本 PR で起こす）, [TPL-1024](../test-perspectives/TPL-1024-dev-vs-packaged-mode-parity.md)（dev と `.vsix` の配置の差）, [TPL-3137](../test-perspectives/TPL-3137-bundled-notices-cover-workspace-deps.md)（同梱物の notices）, [TPL-168](../test-perspectives/TPL-168-trust-boundary-input-validation.md)（webview からのメッセージは信頼境界の入力）, [TPL-1207](../test-perspectives/TPL-1207-text-as-single-source-of-truth.md)（書き込みは `.krs` テキストに収束させる）, [TPL-2536](../test-perspectives/TPL-2536-locale-source-chain-completeness.md)（locale の情報源の鎖）
+  <!-- absent-path-next-line: the hand-written webview slice B (#3312) removed, named as the starting point -->
   - コード: `packages/vscode/src/preview-panel.ts`, `packages/vscode/src/webview-content.ts`, `packages/app/src/viewer/mount-viewer.tsx`, `packages/app/vite.viewer.config.ts`
 
 ## 背景・課題
@@ -141,7 +142,7 @@ viewer をそのまま webview で動かす。viewer の `FileSystemProvider` �
    - `onRevealNode` を渡したときは、詳細パネルの「Jump to editor」を出し、Cmd/Ctrl+クリックをジャンプにする（ADR-177）。app でエディタがあるときの `onJumpToEditor` も同じ条件で Cmd/Ctrl+クリックに乗せるかは、スライス A で決める
    - スタイルファイルだけの編集でも図が更新されるようにする。`useStyleSource` は今、entry の import の並びが変わったときだけ読み直す
 4. **ホスト FS とメッセージ。** 読み出しは要求 id 付きの往復にする（`readFile` / `readDir` / `exists`）。webview から来るメッセージはすべて今の `message-validation.ts` と同じく形を検査する（TPL-168）。
-   - **読める範囲と書ける範囲。** 許可ルートはワークスペースフォルダ（ワークスペースが無いときは entry のディレクトリ）とする。ホストは受けたパスを正規化して `..`・符号化した区切り・NUL を落とし、許可ルート + 区切りの前方一致で範囲を確かめる。`file` スキームでは `realpath` を取ってもう一度確かめ、symlink が許可ルートの外を指していれば拒否する（書き込みでファイルがまだ無いときは親ディレクトリの `realpath` で見る）。書き込みはこれに加えて `.krs` / `.krs.style` だけを受け、検査を通った URI にだけ `WorkspaceEdit` を適用する。読み出しと書き込みは同じ検査関数を通す
+   - **読める範囲と書ける範囲。** ホストは受けたパスを正規化して `..`・符号化した区切り・NUL を落とし、`realpath` で実体を取ってから判定する。ファイルの中身と存在は、実体が `.krs` / `.krs.style` なら場所を問わず答える（ワークスペースフォルダの外を import するモデルも描けるように。旧 preview と LSP もそこを読む。#3312 の実装時に決めた）。名前だけ `.krs` で実体が別のファイルは拒否し、拡張子の判定は Windows と macOS で大文字小文字を区別しない。ディレクトリの一覧（ディレクトリ import）はワークスペースフォルダ（entry がどのフォルダにも無いときは entry のディレクトリも）の中に限り、外のものの存在には `false` を返す。書き込みはこれに加えて `.krs` / `.krs.style` だけを受け、実体が許可ルートの中にある URI にだけ `WorkspaceEdit` を適用する（スライス C）
    - **古い応答を捨てる。** viewer 側のホスト FS は世代番号を持ち、`filesChanged`・`setEntry` のたびに進める。要求には出したときの世代を付け、応答の世代が今と違えばキャッシュに入れない。応答そのものは要求したコンパイルに返してよい。そのコンパイルは `useDebouncedCompile` が古い結果として捨てる（#1534）。世代をまたいで同じパスの要求を相乗りさせない。`unmount` では待っている要求をすべて reject し、後から届いた応答は無視する
 5. **エディタとの連携。** アクティブな `.krs` エディタが変わったら `setEntry`。どこかの `.krs` / `.krs.style` のバッファが変わるか保存されたら、そのパスを `filesChanged` で送る（300ms debounce は viewer 側の既存の debounce に任せる）。カーソル → highlight は今の LSP 経路のままハンドルの `highlight` に渡す。ジャンプは viewer が `nodeFileIndex` から引いたファイルを開き（表示されていなければ開く）、そのファイルに LSP `PositionOfNodeRequest` を送る。これで別ファイルへのジャンプと、切替後に古いファイルを引く問題が直る。
 6. **テーマと言語。** `activeColorTheme.kind` を今の `theme-mapping.ts` で light / dark に写して初期値と `setTheme` に渡す。言語は `vscode.env.language` を `resolveLocaleTag` に通して渡す（TPL-2536）。viewer のテーマ / 言語の切替ボタンは出さない。VS Code の設定に従うのが期待であり、webview の中で別の値を持つと次の起動で食い違う。
@@ -209,7 +210,7 @@ viewer をそのまま webview で動かす。viewer の `FileSystemProvider` �
 
 ## 未解決の問い / 決めないこと
 
-- **webview のキーボードショートカット。** viewer は app のショートカット（`KeyboardShortcutDispatcher`）を持ち込む。webview に focus があるときに VS Code のキーバインドとぶつかるものがないかは、スライス B で確かめる。ぶつかるものはショートカットの登録から外す
+- **webview のキーボードショートカット。** スライス B で決めた: VS Code は webview の中の keydown も自分のキーバインドとして扱う（`mod+1` でエディタグループ、`mod+shift+f` で検索、`mod+shift+p` でコマンドパレット）ので、VS Code の webview では app のショートカットを登録しない（`mountViewer` の `keyboardShortcuts: false`）。キャンバス内の Tab / Enter など要素自身のキー操作は残る
 - **`.vsix` のサイズ。** Chat（Anthropic SDK）と `@monaco-editor/react` が `EditPane` 経由でバンドルに入る。ギャラリーにも効くので、別 Issue で遅延 import に分ける
 - **書き出し。** SVG / draw.io の書き出しを VS Code の保存ダイアログにつなぐかは、別 Issue で決める
 - **大きなモデルの速度。** webview の main thread でコンパイルするのは app と同じ。ホスト FS の往復が効くかは、スライス B で Dify 規模の reverse を開いて測る
