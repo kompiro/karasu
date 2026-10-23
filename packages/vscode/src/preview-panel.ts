@@ -310,7 +310,9 @@ async function applyPreviewWrite(
   const uri = vscode.Uri.file(path);
   const edit = new vscode.WorkspaceEdit();
   if (!exists && openBuffer(path) === undefined) {
-    edit.createFile(uri, { ignoreIfExists: true });
+    // Not `ignoreIfExists`: a file that appeared since the check would get
+    // the text inserted at its top; failing the edit is the safe outcome.
+    edit.createFile(uri, { overwrite: false, ignoreIfExists: false });
     edit.insert(uri, new vscode.Position(0, 0), content);
   } else {
     const document = await vscode.workspace.openTextDocument(uri);
