@@ -145,6 +145,34 @@ describe("collectProjectFiles", () => {
     }
   });
 
+  it("holds a bounded number of files open at once, and keeps their order", async () => {
+    const names = Array.from({ length: 100 }, (_, i) => `f${String(i).padStart(3, "0")}.krs`);
+    await Promise.all(names.map((name) => writeFile(join(tmpDir, name), name)));
+    const actual = vi.mocked(open).getMockImplementation() as typeof open;
+    let inFlight = 0;
+    let peak = 0;
+    vi.mocked(open).mockImplementation((async (...args: Parameters<typeof open>) => {
+      inFlight++;
+      peak = Math.max(peak, inFlight);
+      try {
+        // Hold each open long enough for the others to pile up if unbounded.
+        await new Promise((r) => setTimeout(r, 1));
+        return await actual(...args);
+      } finally {
+        inFlight--;
+      }
+    }) as typeof open);
+    try {
+      const files = await collectProjectFiles(tmpDir);
+      expect(files.map((f) => f.path)).toEqual(names);
+      expect(files.every((f) => f.content === f.path)).toBe(true);
+      expect(peak).toBeGreaterThan(1);
+      expect(peak).toBeLessThanOrEqual(32);
+    } finally {
+      vi.mocked(open).mockImplementation(actual);
+    }
+  });
+
   // TPL-168, #3327 review: the listing saw a plain file or directory, and by
   // the time it is read the entry is a link out of the served directory.
   describe("an entry swapped for a symlink after it was listed", () => {

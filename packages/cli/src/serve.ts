@@ -136,6 +136,31 @@ async function readFileInside(root: string, path: string): Promise<string | null
   }
 }
 
+/**
+ * How many project files `/api/project` holds open at once. Reading them all
+ * together can run out of file descriptors (macOS allows 256 per process by
+ * default) once a directory holds a few hundred `.krs` files.
+ */
+const PROJECT_READ_CONCURRENCY = 32;
+
+/** `items.map(fn)`, with at most `limit` calls of `fn` in flight. Keeps the order. */
+async function mapWithLimit<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array<R>(items.length);
+  let next = 0;
+  async function worker(): Promise<void> {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i] as T);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 export async function collectKrsFiles(dir: string): Promise<string[]> {
   const paths = await walkFiles(dir, (name) => name.endsWith(".krs"));
   return paths.map((path) => path.replace(/\.krs$/, ""));
@@ -160,11 +185,13 @@ export async function collectProjectFiles(dir: string): Promise<ProjectFile[]> {
     (name) => name.endsWith(".krs") || name.endsWith(".krs.style"),
   );
   const root = await realpath(dir);
-  const files = await Promise.all(
-    paths.map(async (path): Promise<ProjectFile | null> => {
+  const files = await mapWithLimit(
+    paths,
+    PROJECT_READ_CONCURRENCY,
+    async (path): Promise<ProjectFile | null> => {
       const content = await readFileInside(root, path);
       return content === null ? null : { path, content };
-    }),
+    },
   );
   return files.filter((f): f is ProjectFile => f !== null);
 }
