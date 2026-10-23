@@ -4,8 +4,10 @@ description: >
   Drive an open PR's CodeRabbit rounds to approval without a human relaying them: wait for
   CodeRabbit (including its rate limit), read and act on the review threads, push once per
   round, and notify the maintainer only when the PR is ready for them or needs their judgment.
-  Run it after /engineering:code-review and one CodeRabbit CLI run have been applied to the branch
-  diff against its base and the PR was taken out of draft (gh pr ready), or when resuming a PR that is still in CodeRabbit rounds.
+  Run it after /engineering:code-review has been applied to the branch diff against its base and
+  the PR was taken out of draft (gh pr ready), or when resuming a PR that is still in CodeRabbit rounds.
+  One CodeRabbit CLI run before ready is expected when the CLI is available, but a PR without it
+  still starts here.
   Trigger when the user says: "CodeRabbit を収束させて", "CodeRabbit のラウンドを回して",
   "CodeRabbit の approve まで", "coderabbit converge", "drive coderabbit to approval",
   or similar phrases.
