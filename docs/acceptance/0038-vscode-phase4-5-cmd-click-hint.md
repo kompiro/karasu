@@ -16,8 +16,8 @@ case is already automated by
 [AT-0039 TC-01](./0039-vscode-phase6-detail-panel.md) and TC-05 below
 has been rewritten to match.
 
-The harness job runs on pull requests that touch the extension or what it
-bundles (path filter, [ADR-1742](../adr/1742-vscode-e2e-path-filter-trigger.md))
+The harness job runs on pull requests that touch the extension or core / i18n /
+lsp, not on a change to the app alone (path filter, [ADR-1742](../adr/1742-vscode-e2e-path-filter-trigger.md))
 and is **not** a required check. Since #3312 the preview is the app's viewer,
 and the hint is part of the VS Code toolbar the extension adds to it.
 

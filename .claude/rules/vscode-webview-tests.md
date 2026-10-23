@@ -27,7 +27,9 @@ unit test / Playwright が正本で、VS Code 側でしか起きないこと（�
 
    `pnpm --filter @karasu-tools/vscode-e2e run test:webview` でローカル実行
    できる（devcontainer の arm64 では ChromeDriver が動かないので CI で見る）。
-   CI は拡張か同梱物に触れた PR で path filter により起動し（ADR-1742）、
+   CI は拡張か core / i18n / lsp に触れた PR で path filter により起動し（ADR-1742。
+   app だけの変更では起動しないので、viewer の変更が VS Code で壊れていないかは
+   その後の拡張側の PR か手元で見る）、
    required check には昇格しない。draft の PR では走らない。
 
    既存の `@vscode/test-cli` ベース smoke は LSP / コマンド層など拡張ホスト
