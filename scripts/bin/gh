@@ -13,15 +13,19 @@ set -u
 
 self_dir=$(cd "$(dirname "$0")" && pwd -P)
 
-# The real gh: the first `gh` on PATH that is not this wrapper.
+# The real gh: the first `gh` on PATH that is not this wrapper. The real gh
+# runs with this directory removed from PATH, so a gh it calls in turn (a shim
+# that searches PATH again, an alias or extension running `gh ...`) reaches the
+# real one directly instead of looping back here or being gated twice.
 real=""
+rest_path=""
 IFS=: read -r -a entries <<<"${PATH:-}"
 for entry in "${entries[@]}"; do
   [ -n "$entry" ] || continue
   [ "$(cd "$entry" 2>/dev/null && pwd -P)" = "$self_dir" ] && continue
-  if [ -x "$entry/gh" ] && [ ! -d "$entry/gh" ]; then
+  rest_path=${rest_path:+$rest_path:}$entry
+  if [ -z "$real" ] && [ -x "$entry/gh" ] && [ ! -d "$entry/gh" ]; then
     real="$entry/gh"
-    break
   fi
 done
 if [ -z "$real" ]; then
@@ -37,4 +41,4 @@ if [ "${1:-}" = "pr" ] && { [ "${2:-}" = "ready" ] || [ "${2:-}" = "create" ]; }
   fi
 fi
 
-exec "$real" "$@"
+PATH=$rest_path exec "$real" "$@"

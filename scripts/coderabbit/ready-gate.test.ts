@@ -143,12 +143,27 @@ describe("gh wrapper: everything else", () => {
     expect(calls(gh)).toEqual(["issue list --limit 1"]);
   });
 
+  it("runs the real gh with the wrapper removed from PATH, so a nested gh does not loop back", () => {
+    const gh = fakeGh(DRAFT);
+    writeFileSync(join(gh.dir, "gh"), '#!/usr/bin/env bash\necho "PATH=$PATH"\n');
+    const result = run("gh --version", gh, reviews());
+    expect(result.status).toBe(0);
+    const path = result.stdout
+      .trim()
+      .replace(/^PATH=/, "")
+      .split(":");
+    expect(path).not.toContain(WRAPPER_DIR);
+    expect(path).toContain(gh.dir);
+  });
+
   it("fails with 127 when no real gh is on PATH", () => {
     // A PATH with what the wrapper itself needs (bash, dirname) and no gh.
     const tools = fresh("tools");
     mkdirSync(tools);
     for (const tool of ["bash", "dirname"]) {
-      const target = execFileSync("bash", ["-c", `command -v ${tool}`], { encoding: "utf8" }).trim();
+      const target = execFileSync("bash", ["-c", `command -v ${tool}`], {
+        encoding: "utf8",
+      }).trim();
       symlinkSync(target, join(tools, tool));
     }
     const result = spawnSync(join(tools, "bash"), ["-c", "gh --version"], {
