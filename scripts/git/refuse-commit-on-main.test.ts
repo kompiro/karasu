@@ -10,10 +10,17 @@ const repo = mkdtempSync(join(tmpdir(), "refuse-main-"));
 
 afterAll(() => rmSync(repo, { recursive: true, force: true }));
 
-// Read no global or system git config, so a developer's settings (commit.gpgsign,
-// core.hooksPath, init.templateDir, ...) cannot reject or alter the fixture
-// commits. Identity is then the only thing to supply.
-const isolated = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" };
+// Isolate the fixture from the caller's git:
+// - drop every inherited GIT_* variable. Run from inside a git hook, GIT_DIR /
+//   GIT_INDEX_FILE / GIT_WORK_TREE would point the fixture at the real repository
+// - read no global or system config, so settings such as commit.gpgsign,
+//   core.hooksPath or init.templateDir cannot reject or alter the fixture commits.
+// Identity is then the only thing to supply.
+const isolated = {
+  ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_"))),
+  GIT_CONFIG_GLOBAL: "/dev/null",
+  GIT_CONFIG_NOSYSTEM: "1",
+};
 
 const git = (...args: string[]) =>
   execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.com", ...args], {
