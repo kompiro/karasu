@@ -44,7 +44,11 @@ describe("refuse-commit-on-main", () => {
     const config = readFileSync(join(REPO_ROOT, "lefthook.yml"), "utf8");
     for (const hook of ["pre-commit", "pre-merge-commit"]) {
       const section = config.split(new RegExp(`^${hook}:\\n`, "m"))[1]?.split(/^\S/m)[0] ?? "";
-      expect(section, hook).toContain("scripts/git/refuse-commit-on-main.sh");
+      // The hook name is in the compared value so a failure says which hook lost the wiring.
+      expect({ hook, wired: section.includes("scripts/git/refuse-commit-on-main.sh") }).toEqual({
+        hook,
+        wired: true,
+      });
     }
   });
 });
