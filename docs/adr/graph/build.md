@@ -129,6 +129,7 @@ flowchart TD
     ADR_3271["ADR-3271<br/>PR と Issue はマージで同時に閉じ、マージ後にしか確かめられない項目は別の Issue..."]
     ADR_3304["ADR-3304<br/>Dependabot トリアージ 2026-10-19：npm 11 件をそのまま採用し、gh..."]
     ADR_3326["ADR-3326<br/>draft を外す前に CodeRabbit CLI を base ブランチとの差分へ 1 回..."]
+    ADR_3333["ADR-3333<br/>Claude が gh pr ready を実行した直後に、PostToolUse フックで ..."]
     ADR_3335["ADR-3335<br/>main へのコミットは lefthook の pre-commit / pre-merge-..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
@@ -310,6 +311,7 @@ flowchart TD
   class ADR_3271 accepted
   class ADR_3304 accepted
   class ADR_3326 accepted
+  class ADR_3333 accepted
   class ADR_3335 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
