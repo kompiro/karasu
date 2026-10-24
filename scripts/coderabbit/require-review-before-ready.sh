@@ -21,12 +21,15 @@
 # - anything cannot be determined (gh fails, --repo, unknown CLI record format).
 #   The gate must never block work because of its own failure.
 #
+# Which gh pr command the line runs (if any) comes from gh-pr-command.mts, a
+# small shell tokenizer: a text search would be fooled by heredoc bodies,
+# quoted strings and comments.
+#
 # Input: the hook JSON on stdin (.tool_input.command, .cwd).
 # Output: nothing, or a PreToolUse deny JSON on stdout.
 # Overrides for tests: READY_GATE_GH (gh binary), CODERABBIT_REVIEWS_DIR.
 
 set -u
-set -f # words of the command are split below; never glob them
 
 input=$(cat)
 command=$(jq -r '.tool_input.command // empty' <<<"$input" 2>/dev/null) || exit 0
@@ -41,75 +44,37 @@ deny() {
   exit 0
 }
 
-dir=$(jq -r '.cwd // empty' <<<"$input" 2>/dev/null)
-[ -n "$dir" ] || dir=$PWD
+cwd=$(jq -r '.cwd // empty' <<<"$input" 2>/dev/null)
+[ -n "$cwd" ] || cwd=$PWD
 
-# Walk the command's simple commands in order. Heredoc bodies are text, not
-# commands, so everything from the first `<<` on is ignored.
-text=${command%%<<*}
-action=""
-args=""
-skipped=0
-while IFS= read -r segment; do
-  segment="${segment#"${segment%%[![:space:]]*}"}"
-  if [[ $segment =~ ^cd[[:space:]]+([^[:space:]]+) ]]; then
-    target=${BASH_REMATCH[1]//\"/}
-    target=${target//\'/}
-    case "$target" in
-      /*) dir=$target ;;
-      *) dir=$dir/$target ;;
-    esac
-    continue
-  fi
-  while [[ $segment =~ ^([A-Za-z_][A-Za-z0-9_]*)=[^[:space:]]*[[:space:]]+(.*)$ ]]; do
-    [ "${BASH_REMATCH[1]}" = "KARASU_LOCAL_REVIEW_SKIPPED" ] && skipped=1
-    segment=${BASH_REMATCH[2]}
-  done
-  if [[ $segment =~ ^gh[[:space:]]+pr[[:space:]]+(ready|create)([[:space:]]+(.*))?$ ]]; then
-    action=${BASH_REMATCH[1]}
-    args=${BASH_REMATCH[3]}
-    break
-  fi
-done < <(tr ';&|()' '\n' <<<"$text") # tr pads the second set with its last character
+# Which gh pr command the line would actually run is a shell-parsing question
+# (quotes, $(...), heredoc bodies, comments), answered by gh-pr-command.mts.
+# If node or the parser fails, let the call through.
+parsed=$(node "$(dirname "$0")/gh-pr-command.mts" "$cwd" <<<"$command" 2>/dev/null) || exit 0
+[ -n "$parsed" ] && [ "$parsed" != "null" ] || exit 0
+field() { jq -r ".$1" <<<"$parsed"; }
 
-[ -n "$action" ] || exit 0
-
-if [ "$action" = "create" ]; then
-  # Search the whole command, not just the words before the first `<<`: a body
-  # passed as --body "$(cat <<'EOF' ... EOF)" often puts --draft after it.
-  # Text inside the body that says --draft lets the call through; refusing a
-  # real draft would be the worse mistake.
-  if [[ $command =~ (^|[[:space:]])(--draft|--draft=true|-d)([[:space:]]|$) ]]; then
-    exit 0
-  fi
+if [ "$(field action)" = "create" ]; then
+  [ "$(field draft)" = "true" ] && exit 0
   deny "gh pr create was refused: create the PR as a draft (gh pr create --draft). \
 Run /engineering:code-review on the branch diff and one CodeRabbit CLI review before taking it out of \
 draft with gh pr ready (docs/process.md PR workflow)."
 fi
 
 # action = ready
-selector=""
-for word in $args; do
-  case "$word" in
-    --undo | -R | --repo | --repo=*) exit 0 ;;
-    -*) ;;
-    *) [ -z "$selector" ] && selector=$word ;;
-  esac
-done
-case "$selector" in
-  *'$'* | *'`'*) selector="" ;; # a shell variable: fall back to the current branch's PR
-esac
-selector=${selector//\"/}
-selector=${selector//\'/}
+[ "$(field undo)" = "true" ] && exit 0
+[ "$(field repoFlag)" = "true" ] && exit 0
+[ "$(field skipped)" = "true" ] && exit 0
+dir=$(field dir)
+selector=()
+[ "$(field selector)" = "null" ] || selector=("$(field selector)")
 
-[ "$skipped" -eq 1 ] && exit 0
 cd "$dir" 2>/dev/null || exit 0
 
 gh_bin=${READY_GATE_GH:-gh}
 limit=()
 command -v timeout >/dev/null 2>&1 && limit=(timeout 15)
-# shellcheck disable=SC2086 # an empty selector must expand to no argument
-view=$("${limit[@]}" "$gh_bin" pr view $selector \
+view=$("${limit[@]}" "$gh_bin" pr view "${selector[@]}" \
   --json number,isDraft,labels,body,headRefOid,baseRefName 2>/dev/null) || exit 0
 
 [ "$(jq -r '.isDraft' <<<"$view")" = "true" ] || exit 0
@@ -129,7 +94,6 @@ git rev-parse --verify --quiet "$base_ref^{commit}" >/dev/null || exit 0
 
 reviews=${CODERABBIT_REVIEWS_DIR:-$HOME/.coderabbit/reviews}
 records=0
-set +f
 for record in "$reviews"/*/*/reviews/*/; do
   [ -f "$record/git.json" ] || continue
   reviewed=$(jq -r '.head // empty' "$record/git.json" 2>/dev/null)
@@ -141,7 +105,6 @@ for record in "$reviews"/*/*/reviews/*/; do
   git merge-base --is-ancestor "$reviewed" "$base_ref" 2>/dev/null && continue
   exit 0
 done
-set -f
 
 # Records exist but none could be read: the CLI's format changed. Fail open.
 if [ "$records" -eq 0 ] && [ -n "$(ls -A "$reviews" 2>/dev/null)" ]; then

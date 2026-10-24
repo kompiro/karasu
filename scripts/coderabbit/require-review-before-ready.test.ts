@@ -227,4 +227,25 @@ describe("require-review-before-ready: gh pr create", () => {
     );
     expect(reason).toContain("gh pr create --draft");
   });
+
+  it.each([
+    [
+      "cat > b.md <<'EOF'\nSummary\nEOF\ngh pr create --title x --body-file b.md",
+      "after a heredoc",
+    ],
+    [
+      'gh pr create --title x --body "Please use --draft next time"',
+      "with --draft only in the body",
+    ],
+    ["gh pr create --title x # --draft", "with --draft only in a comment"],
+  ])("refuses a ready PR created %s", (command) => {
+    expect(denial(runHook(command, stubGh(DRAFT), reviews()))).toContain("gh pr create --draft");
+  });
+});
+
+describe("require-review-before-ready: commands that write a file first", () => {
+  it("still gates a ready that follows a heredoc in the same call", () => {
+    const command = "cat > notes.md <<'EOF'\nready soon\nEOF\ngh pr ready 12";
+    expect(denial(runHook(command, stubGh(DRAFT), reviews()))).toContain("PR #12");
+  });
 });

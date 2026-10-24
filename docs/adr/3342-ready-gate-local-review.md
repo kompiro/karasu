@@ -50,10 +50,16 @@ CodeRabbit CLI のローカルレビューが無いあいだは `gh pr ready` �
 
 ## 仕組み
 
-- `scripts/coderabbit/require-review-before-ready.sh` は、コマンドの先頭位置にある
-  `gh pr ready` / `gh pr create` だけを見る。heredoc の本文（最初の `<<` から後）と、
-  引用の中に書かれた文字列は対象外にする。ready の前に止めるため、#3334 のように gh の出力は
-  使えず、コマンド文字列から読む
+- `scripts/coderabbit/require-review-before-ready.sh` は、コマンドに `pr ready` / `pr create` を
+  含まないときはすぐ終わる。含むときは、そのコマンド行が実際に実行する `gh pr ready` /
+  `gh pr create` を `scripts/coderabbit/gh-pr-command.mts` に判定させる。ready の前に止めるため、
+  ADR-3333 のように gh の出力は使えず、コマンド文字列から読むしかない
+- **判定は小さなシェルのトークナイザで行う。** 文字列の検索では、heredoc の本文・引用・コメントの
+  中の `gh pr ready` や `--draft` に騙される。また、同じ呼び出しで heredoc を書いてから `gh` を
+  実行する形（PR の本文をファイルに書いてから `gh pr create --body-file`）では、heredoc の後ろの
+  コマンドを見落とす。トークナイザは引用・`$(...)`・バッククォート・heredoc（本文を飛ばして
+  終端の後ろから続ける）・コメント・リダイレクト（`2>&1`）を解釈し、展開はしない。`--draft` は
+  `gh pr create` の引数の中にあるときだけ数える
 - **「済んでいる」の判定**: CLI はローカルのレビューごとに `~/.coderabbit/reviews/` の下へ
   1 ディレクトリを残し、レビューしたコミットを `git.json` の `head` に、完了の状態を
   `.session-complete-v2` の `state` に持つ。完了したレビューのうち、レビューしたコミットが
