@@ -10,19 +10,22 @@ const repo = mkdtempSync(join(tmpdir(), "refuse-main-"));
 
 afterAll(() => rmSync(repo, { recursive: true, force: true }));
 
-// Pin identity and signing so a developer's global git config (commit.gpgsign)
-// cannot make the fixture commit fail.
+// Read no global or system git config, so a developer's settings (commit.gpgsign,
+// core.hooksPath, init.templateDir, ...) cannot reject or alter the fixture
+// commits. Identity is then the only thing to supply.
+const isolated = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" };
+
 const git = (...args: string[]) =>
-  execFileSync(
-    "git",
-    ["-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false", ...args],
-    { cwd: repo, encoding: "utf8" },
-  );
+  execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.com", ...args], {
+    cwd: repo,
+    encoding: "utf8",
+    env: isolated,
+  });
 
 git("init", "-q", "-b", "main");
 git("commit", "-q", "--allow-empty", "-m", "root");
 
-const runCheck = () => spawnSync("bash", [SCRIPT], { cwd: repo, encoding: "utf8" });
+const runCheck = () => spawnSync("bash", [SCRIPT], { cwd: repo, encoding: "utf8", env: isolated });
 
 describe("refuse-commit-on-main", () => {
   it("refuses on main and points at a worktree branch", () => {
