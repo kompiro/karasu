@@ -274,6 +274,8 @@ describe("gh wrapper: gh pr ready", () => {
     "gh pr ready 12 --undo",
     "gh pr ready 12 --repo kompiro/other",
     "gh pr ready -R kompiro/other 12",
+    "gh pr ready -R=kompiro/other 12",
+    "gh pr ready -Rkompiro/other 12",
   ])("runs `%s` without consulting the PR", (line) => {
     const gh = fakeGh(DRAFT);
     expect(run(line, gh, reviews()).status).toBe(0);
@@ -293,14 +295,17 @@ describe("gh wrapper: gh pr ready", () => {
 });
 
 describe("gh wrapper: gh pr create", () => {
-  it.each(["gh pr create --draft --title x --body-file b.md", "gh pr create -d --fill"])(
-    "runs a draft create: %s",
-    (line) => {
-      const gh = fakeGh(DRAFT);
-      expect(run(line, gh, reviews()).status).toBe(0);
-      expect(calls(gh)).toHaveLength(1);
-    },
-  );
+  it.each([
+    "gh pr create --draft --title x --body-file b.md",
+    "gh pr create -d --fill",
+    "gh pr create -dw",
+    "gh pr create -tTitle -d",
+    "gh pr create --draft=true --title x",
+  ])("runs a draft create: %s", (line) => {
+    const gh = fakeGh(DRAFT);
+    expect(run(line, gh, reviews()).status).toBe(0);
+    expect(calls(gh)).toHaveLength(1);
+  });
 
   it.each([
     ["gh pr create --title x --body-file b.md", "without --draft"],
@@ -309,6 +314,10 @@ describe("gh wrapper: gh pr create", () => {
       "with --draft only in the body",
     ],
     ['cmd="gh pr cre""ate --title x"; eval "$cmd"', "built by eval"],
+    ["gh pr create --body --draft --title x", "where --draft is the value of --body"],
+    ["gh pr create -t -d", "where -d is the value of -t"],
+    ["gh pr create --draft=false --title x", "with --draft=false"],
+    ["gh pr create --title x -- --draft", "with --draft after --"],
   ])("refuses a create %s", (line) => {
     const gh = fakeGh(DRAFT);
     const result = run(line, gh, reviews());

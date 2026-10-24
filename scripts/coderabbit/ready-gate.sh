@@ -32,11 +32,50 @@ action=${2:-}
 shift 2 2>/dev/null || exit 0
 
 if [ "$action" = "create" ]; then
+  # Read the arguments the way gh (pflag) does, so that an option's value is
+  # never taken for --draft (`--body --draft` passes "--draft" as the body).
+  # Options of `gh pr create` that take a value, from `gh pr create --help`:
+  value_short="aBbFHlmprTtR"
+  draft=false
+  expect_value=false
   for arg in "$@"; do
+    if [ "$expect_value" = true ]; then
+      expect_value=false
+      continue
+    fi
     case "$arg" in
-      --draft | -d | --draft=true) exit 0 ;;
+      --) break ;;
+      --draft) draft=true ;;
+      --draft=*)
+        case "${arg#--draft=}" in
+          1 | t | T | true | TRUE | True) draft=true ;;
+          *) draft=false ;;
+        esac
+        ;;
+      --assignee | --attach | --base | --body | --body-file | --head | --label | --milestone | \
+        --project | --recover | --reviewer | --template | --title | --repo)
+        expect_value=true
+        ;;
+      --*) ;;
+      -?*)
+        # A cluster of short options, such as -dw or -tTitle: booleans up to
+        # the first option that takes a value, which consumes the rest of the
+        # word or, when nothing is left, the next argument.
+        cluster=${arg#-}
+        while [ -n "$cluster" ]; do
+          letter=${cluster:0:1}
+          cluster=${cluster:1}
+          if [ "$letter" = "d" ]; then
+            draft=true
+          elif [ "${value_short#*"$letter"}" != "$value_short" ]; then
+            [ -z "$cluster" ] && expect_value=true
+            break
+          fi
+        done
+        ;;
     esac
   done
+  [ "$draft" = true ] && exit 0
   echo "gh pr create was refused: create the PR as a draft (gh pr create --draft). Run \
 /engineering:code-review on the branch diff and one CodeRabbit CLI review before taking it out of draft \
 with gh pr ready (docs/process.md PR workflow)."
@@ -50,7 +89,8 @@ reason=${KARASU_LOCAL_REVIEW_SKIPPED:-}
 selector=""
 for arg in "$@"; do
   case "$arg" in
-    --undo | -R | --repo | --repo=*) exit 0 ;;
+    # -R also comes attached (-Rowner/repo, -R=owner/repo).
+    --undo | -R* | --repo | --repo=*) exit 0 ;;
     -*) ;;
     *) [ -z "$selector" ] && selector=$arg ;;
   esac
