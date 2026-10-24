@@ -94,3 +94,16 @@ Stop フックの経緯は ADR に無く、commit にだけ残っていた。
 
 Claude がプロジェクトルートに未コミットの変更を置いたまま終わったとき、それを知らせる仕組みは
 無くなる。コミットしようとした時点で止まるので `main` はずれないが、変更はルートに残る。
+
+## 止められないもの
+
+使い捨ての clone で確かめた（2026-10-24）。変更をステージした `git commit`（過去の事故の形）と、
+`main` の上のマージコミットは止まる。次は止まらない。
+
+- `git cherry-pick`: git の仕様で `pre-commit` を通らない
+- ステージした変更が無いコミット（`--allow-empty`、`commit --amend` だけ）: lefthook はステージした
+  ファイルが無いと `pre-commit` のコマンドを skip する
+- `--no-verify`: フックを明示的に飛ばす。process.md はフックの回避を認めていない
+
+これらまで塞ぐなら、`reference-transaction` フックで `refs/heads/main` の更新そのものを見る形になる。
+fast-forward の `git pull` を通す判定（新しい値が `origin/main` から辿れるか）が要り、今回は見送った。
