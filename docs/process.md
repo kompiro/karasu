@@ -41,6 +41,7 @@
 ### ブランチ戦略
 
 - `main` への直接コミット・push は禁止 — PR 経由でマージする
+  - `main` の上で変更をステージしたコミットと、マージコミットは git のフックで拒否される。フックはすべての worktree で共有されるので、プロジェクトルートでも同じく止まる。止まったら、変更を worktree のブランチに移してからコミットする。仕組みと、止まらないケースは ADR-3335
 - 機能開発は `git worktree add` により worktree を作成して行う
 - worktree の作成先は必ず `.claude/worktrees/<branch-name>` とする（例: `git worktree add .claude/worktrees/feat/my-feature feat/my-feature`）
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `spike/` + kebab-case

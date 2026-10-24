@@ -13,16 +13,6 @@
     ]
   },
   "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "ROOT=$(cat | jq -r '.cwd'); ROOT=$(git -C \"$ROOT\" worktree list --porcelain 2>/dev/null | awk 'NR==1{print $2}'); if [ -n \"$ROOT\" ] && git -C \"$ROOT\" status --short | grep -qE '^[ MADRCU?][MADRCU?]|^[MADRCU][MADRCU ]'; then echo '{\"decision\": \"block\", \"reason\": \"Uncommitted changes in the main checkout. Move them into a .claude/worktrees/ branch — main takes no direct commits.\"}'; else echo '{}'; fi"
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
