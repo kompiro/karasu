@@ -284,6 +284,45 @@ function simpleCommands(tokens: Token[]): string[][] {
   return commands;
 }
 
+/** Shell keywords that can stand in front of a command in a compound command. */
+const KEYWORDS = new Set(["if", "then", "else", "elif", "while", "until", "do", "!", "{", "time"]);
+/** Wrappers that run the rest of the words as the command, with no argument of their own. */
+const PLAIN_WRAPPERS = new Set(["command", "exec", "nohup", "builtin"]);
+/** Wrappers whose own arguments come first: options, and for timeout the duration. */
+const ARG_WRAPPERS = new Set(["env", "nice", "timeout"]);
+
+/**
+ * Removes everything that can stand in front of the command word, in any order
+ * and any number: compound-command keywords (`then`, `do`, ...), wrappers
+ * (`env`, `command`, `timeout 30`, ...) and variable assignments. The skip
+ * marker counts only with a non-empty reason.
+ */
+function stripPrefixes(words: string[]): { rest: string[]; skipped: boolean } {
+  let rest = words;
+  let skipped = false;
+  for (;;) {
+    const word = rest[0];
+    if (word === undefined) break;
+    const assignment = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/s.exec(word);
+    if (assignment !== null) {
+      if (assignment[1] === SKIP_VARIABLE && assignment[2].trim() !== "") skipped = true;
+      rest = rest.slice(1);
+    } else if (KEYWORDS.has(word) || PLAIN_WRAPPERS.has(word)) {
+      rest = rest.slice(1);
+    } else if (ARG_WRAPPERS.has(word)) {
+      rest = rest.slice(1);
+      while (rest[0]?.startsWith("-")) {
+        // `nice -n 5`: an option that takes a separate value.
+        rest = rest.slice(rest[0] === "-n" && word === "nice" ? 2 : 1);
+      }
+      if (word === "timeout" && rest[0] !== undefined && /^\d/.test(rest[0])) rest = rest.slice(1);
+    } else {
+      break;
+    }
+  }
+  return { rest, skipped };
+}
+
 function resolveDir(base: string, target: string): string {
   if (target.startsWith("/")) return target;
   return `${base.replace(/\/+$/, "")}/${target}`;
@@ -298,13 +337,7 @@ export function parseGhPrCommands(command: string, cwd: string): GhPrCommand[] {
   const found: GhPrCommand[] = [];
   let dir = cwd;
   for (const words of simpleCommands(tokenize(command))) {
-    let skipped = false;
-    let rest = words;
-    if (rest[0] === "env" || rest[0] === "command") rest = rest.slice(1);
-    while (rest.length > 0 && /^[A-Za-z_][A-Za-z0-9_]*=/.test(rest[0])) {
-      if (rest[0].startsWith(`${SKIP_VARIABLE}=`)) skipped = true;
-      rest = rest.slice(1);
-    }
+    const { rest, skipped } = stripPrefixes(words);
     if (rest[0] === "cd") {
       const target = rest[1];
       if (

@@ -112,4 +112,31 @@ describe("parseGhPrCommands", () => {
   ])("recognizes the ready written with %s", (command) => {
     expect(parse(command)).toMatchObject({ action: "ready", selector: "12" });
   });
+
+  it.each([
+    ["FOO=1 env gh pr ready 12", "a wrapper after an assignment"],
+    ["if true; then gh pr ready 12; fi", "then"],
+    ["for n in 1; do gh pr ready 12; done", "do"],
+    ["while false; do :; done; until true; do :; done; gh pr ready 12", "after loops"],
+    ["{ gh pr ready 12; }", "a brace group"],
+    ["! gh pr ready 12", "negation"],
+    ["time gh pr ready 12", "time"],
+    ["timeout 30 gh pr ready 12", "timeout with a duration"],
+    ["nice -n 5 command gh pr ready 12", "nested wrappers with options"],
+  ])("finds the ready behind %s (%s)", (command) => {
+    expect(all(command).filter((c) => c.action === "ready")).toMatchObject([{ selector: "12" }]);
+  });
+
+  it.each([
+    "KARASU_LOCAL_REVIEW_SKIPPED= gh pr ready 12",
+    'KARASU_LOCAL_REVIEW_SKIPPED="  " gh pr ready 12',
+  ])("does not count a skip without a reason: %s", (command) => {
+    expect(parse(command)?.skipped).toBe(false);
+  });
+
+  it("counts the skip after keywords and wrappers too", () => {
+    expect(
+      parse("if true; then KARASU_LOCAL_REVIEW_SKIPPED=cli-down env gh pr ready 12; fi")?.skipped,
+    ).toBe(true);
+  });
 });

@@ -250,6 +250,9 @@ describe("require-review-before-ready: every gh pr command in the line", () => {
     ["gh pr ready 13 --undo; gh pr ready 12", "after an allowed --undo"],
     ["gh pr  ready 12", "with doubled spaces"],
     ["/usr/bin/gh pr ready 12", "with gh called by path"],
+    ["if true; then gh pr ready 12; fi", "inside if/then"],
+    ["FOO=1 env gh pr ready 12", "behind an assignment and env"],
+    ["KARASU_LOCAL_REVIEW_SKIPPED= gh pr ready 12", "with an empty skip reason"],
   ])("gates a ready %s", (command) => {
     expect(denial(runHook(command, stubGh(DRAFT), reviews()))).toContain("PR #12");
   });
