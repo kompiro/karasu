@@ -31,7 +31,10 @@ export class HostFsError extends Error {
  * stale anyway), but never stored, so it cannot outlive the change. Requests
  * are not shared across generations for the same reason.
  *
- * The preview cannot write yet (slice C, #3313), so the write operations throw.
+ * A write (#3313) is sent with the text the viewer last read for the file as
+ * its `base`, so the host can refuse it when the user has edited the file
+ * since; on success the cache holds the written text. Deleting and creating
+ * directories are not something the preview does, so those throw.
  */
 export class HostFileSystem implements FileSystemProvider {
   private generation = 0;
@@ -96,8 +99,14 @@ export class HostFileSystem implements FileSystemProvider {
     return this.cached(this.existence, "exists", path);
   }
 
-  writeFile(): Promise<void> {
-    return Promise.reject(new HostFsError("The VS Code preview cannot write files yet.", false));
+  async writeFile(path: string, content: string): Promise<void> {
+    const base = this.files.get(path);
+    await this.send({ type: "fs", id: 0, op: "writeFile", path, content, base });
+    // A read made before this write must not overwrite the written text.
+    this.generation++;
+    this.files.set(path, content);
+    this.dirs.clear();
+    this.existence.clear();
   }
 
   delete(): Promise<void> {
@@ -122,13 +131,18 @@ export class HostFileSystem implements FileSystemProvider {
   }
 
   private request(op: HostFsOp, path: string): Promise<HostFsValue[HostFsOp]> {
+    return this.send({ type: "fs", id: 0, op, path });
+  }
+
+  /** Post `message` under a fresh id and wait for the host's one answer to it. */
+  private send(message: Extract<WebviewMessage, { type: "fs" }>): Promise<HostFsValue[HostFsOp]> {
     if (this.disposed) {
       return Promise.reject(new HostFsError("The preview was closed.", false));
     }
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
-      this.post({ type: "fs", id, op, path });
+      this.post({ ...message, id });
     });
   }
 }

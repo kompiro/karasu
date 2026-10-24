@@ -1,4 +1,6 @@
 import * as assert from "node:assert";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import {
   By,
   EditorView,
@@ -15,6 +17,7 @@ import {
   dispatchClick,
   ensureWebViewFrame,
   leaveWebViewFrame,
+  openFileWithRetry,
   openFixtureAndPreview,
   reacquireFrame,
   readBreadcrumb,
@@ -42,6 +45,9 @@ import {
  *              through Selenium coordinates is not worth the flake.
  *   TPL-2996:  an edit made without saving reaches the preview, and the
  *              drilled view is kept.
+ *   #3313:     an edge direction picked in the preview is written to the
+ *              editor's buffer (the fixture has no style sheet yet, so the
+ *              `.krs` gains an `@import`), left unsaved, not on disk.
  *
  * AT-0037-9 is colocated here (rather than its own file) on purpose:
  * the WebView ExTester harness's "File: Open File..." simple-dialog
@@ -397,6 +403,89 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
       await leaveWebViewFrame(ctx);
       await new EditorView().openEditor(FIXTURE_NAME, 0);
       await new Workbench().executeCommand("File: Revert File");
+    }
+  });
+
+  // #3313: the preview writes through the host as a WorkspaceEdit. The fixture
+  // imports no style sheet, so the pick takes the bootstrap path: the `.krs`
+  // gains `@import "at-0038.krs.style"` and the new sheet holds the rule. Both
+  // stay in buffers; the disk keeps what it had. Runs last and reverts.
+  it("#3313: an edge direction picked in the preview lands in the buffer, unsaved", async () => {
+    const fixturePath = process.env.KARASU_E2E_FIXTURE_KRS_AT0038!;
+    const stylePath = path.join(path.dirname(fixturePath), "at-0038.krs.style");
+    const diskBefore = fs.readFileSync(fixturePath, "utf8");
+
+    // Back to the root view, where the fixture's one edge is drawn.
+    await dispatchClick(driver, "nav.breadcrumb .breadcrumb-link");
+    const edgeSelector = ".preview-container [data-edge-canonical-id]";
+    await driver.wait(until.elementLocated(By.css(edgeSelector)), ELEMENT_TIMEOUT_MS);
+    await driver.executeScript(
+      `const edge = document.querySelector(${JSON.stringify(edgeSelector)});` +
+        "edge.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2, clientX: 40, clientY: 40 }));",
+    );
+    const downItem =
+      "Array.from(document.querySelectorAll('.edge-context-menu [role=\"menuitem\"]')).find(i => (i.textContent || '').includes('Down'))";
+    await driver.wait(
+      async () => (await driver.executeScript(`return !!${downItem};`)) === true,
+      ELEMENT_TIMEOUT_MS,
+      "the edge direction menu did not open (is the preview still read-only?)",
+    );
+    await driver.executeScript(`${downItem}.click();`);
+
+    await leaveWebViewFrame(ctx, { swallowErrors: false });
+    const editor = (await new EditorView().openEditor(FIXTURE_NAME, 0)) as TextEditor;
+    try {
+      let firstLine = "";
+      await driver.wait(
+        async () => {
+          firstLine = await editor.getTextAtLine(1);
+          return firstLine.includes("@import");
+        },
+        ELEMENT_TIMEOUT_MS,
+        "the .krs buffer never gained the style @import",
+      );
+      assert.ok(
+        firstLine.includes('"at-0038.krs.style"'),
+        `the @import should name the new sheet; saw: ${firstLine}`,
+      );
+      assert.strictEqual(await editor.isDirty(), true, "the write should leave the .krs unsaved");
+      assert.strictEqual(
+        fs.readFileSync(fixturePath, "utf8"),
+        diskBefore,
+        "the .krs on disk must not change: the write goes to the buffer",
+      );
+      const styleOnDisk = fs.existsSync(stylePath) ? fs.readFileSync(stylePath, "utf8") : "";
+      assert.ok(
+        !styleOnDisk.includes("direction"),
+        `the rule must stay in the buffer, not on disk; the sheet on disk holds: ${styleOnDisk}`,
+      );
+
+      // The rule itself is in the new sheet's buffer. The edit may not have
+      // opened a tab for it, so open the file (its dirty buffer is what shows).
+      const styleName = path.basename(stylePath);
+      const editorView = new EditorView();
+      if (!(await editorView.getOpenEditorTitles()).some((t) => t.includes(styleName))) {
+        await openFileWithRetry(driver, new Workbench(), editorView, stylePath, styleName);
+      }
+      const styleEditor = (await editorView.openEditor(styleName)) as TextEditor;
+      const styleText = await styleEditor.getText();
+      assert.match(
+        styleText,
+        /edge#\S+\s*\{[^}]*direction:\s*down;/,
+        `the new sheet's buffer should hold the direction rule; saw: ${styleText}`,
+      );
+    } finally {
+      // Revert the .krs first, by name: the check above left the new sheet
+      // as the active editor, and Revert File acts on the active one.
+      await new EditorView().openEditor(FIXTURE_NAME, 0);
+      await new Workbench().executeCommand("File: Revert File");
+      // The new sheet has a tab of its own by now; revert it too, so
+      // `after()` closes the editors without a save prompt.
+      const titles = await new EditorView().getOpenEditorTitles();
+      for (const title of titles.filter((t) => t.endsWith(".krs.style"))) {
+        await new EditorView().openEditor(title);
+        await new Workbench().executeCommand("File: Revert File");
+      }
     }
   });
 });

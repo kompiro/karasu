@@ -4,6 +4,7 @@ import {
   checkRequestedPath,
   decideExists,
   decideFileRead,
+  decideFileWrite,
   isKarasuSourcePath,
   isRealPathWithinRoots,
   isWithinRoots,
@@ -200,5 +201,76 @@ describe("decideFileRead / decideExists (#3312, TPL-168)", () => {
 
   it("answers false, not a refusal, for what lies outside the roots", async () => {
     expect(await decideExists("/etc", [ROOT], deps())).toBe(false);
+  });
+});
+
+// #3313: a write is narrower than a read: a model file inside the writable
+// roots only, judged on the real path, or on the parent's for a new file.
+describe("decideFileWrite (#3313, TPL-168)", () => {
+  const files: Record<string, string> = {
+    [ROOT]: ROOT,
+    [`${ROOT}/index.krs`]: `${ROOT}/index.krs`,
+    [`${ROOT}/styles`]: `${ROOT}/styles`,
+    [`${ROOT}/notes.krs`]: `${ROOT}/.env`,
+    [`${ROOT}/escape.krs`]: "/etc/hosts.krs",
+    [`${ROOT}/linked`]: "/outside",
+    "/outside": "/outside",
+    "/shared/common.krs": "/shared/common.krs",
+  };
+  const deps = {
+    realpath: async (p: string) => {
+      const real = files[p];
+      if (!real) throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      return real;
+    },
+    hasBuffer: () => false,
+    platform: "linux" as const,
+  };
+
+  it("writes a model file inside the workspace", async () => {
+    expect(await decideFileWrite(`${ROOT}/index.krs`, [ROOT], deps)).toEqual({
+      kind: "write",
+      path: `${ROOT}/index.krs`,
+      exists: true,
+    });
+  });
+
+  it("creates a new style sheet in a directory inside the workspace", async () => {
+    expect(await decideFileWrite(`${ROOT}/styles/app.krs.style`, [ROOT], deps)).toEqual({
+      kind: "write",
+      path: `${ROOT}/styles/app.krs.style`,
+      exists: false,
+    });
+  });
+
+  it("refuses a model file outside the workspace, though the preview may read it", async () => {
+    expect((await decideFileWrite("/shared/common.krs", [ROOT], deps)).kind).toBe("refused");
+  });
+
+  it("refuses a .krs name whose real file is something else", async () => {
+    expect((await decideFileWrite(`${ROOT}/notes.krs`, [ROOT], deps)).kind).toBe("refused");
+  });
+
+  it("refuses a symlink inside the workspace that points out of it", async () => {
+    expect((await decideFileWrite(`${ROOT}/escape.krs`, [ROOT], deps)).kind).toBe("refused");
+  });
+
+  it("refuses a new file under a directory link that points out of the workspace", async () => {
+    expect((await decideFileWrite(`${ROOT}/linked/new.krs.style`, [ROOT], deps)).kind).toBe(
+      "refused",
+    );
+  });
+
+  it.each([`${ROOT}/notes.md`, `${ROOT}/styles/app.css`])(
+    "refuses another extension: %s",
+    async (p) => {
+      expect((await decideFileWrite(p, [ROOT], deps)).kind).toBe("refused");
+    },
+  );
+
+  it("refuses a new file in a directory that does not exist", async () => {
+    expect((await decideFileWrite(`${ROOT}/missing/app.krs.style`, [ROOT], deps)).kind).toBe(
+      "refused",
+    );
   });
 });
