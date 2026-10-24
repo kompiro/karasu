@@ -54,15 +54,20 @@ converge に触れない。process.md の手順は、`gh pr ready` を打つ時�
 
 ## 仕組み
 
-- `scripts/coderabbit/converge-after-ready.sh` が、フックの入力（`tool_input.command`）に
-  `gh pr ready` を含むときだけ動く。含まないコマンドではすぐ終わる
-- `gh pr view` で PR を読み、draft でないこと（ready が実際に成功したこと）と、CodeRabbit を
-  外していないことを確かめてから、`hookSpecificOutput.additionalContext` を出す。
-  `gh pr ready` が失敗したときに PostToolUse が呼ばれるかは公式ドキュメントで確定できないので、
-  呼ばれても PR の状態で判定する
-- `--undo` は対象外。セレクタがシェル変数のときは、作業ディレクトリのブランチの PR を読む
-- PR を読めないとき（ネットワークなど）は、外す条件を添えた汎用の文を出す
+- `scripts/coderabbit/converge-after-ready.sh` は、コマンドに `pr ready` を含まないときは
+  すぐ終わる（約 40ms）
+- **対象の PR はコマンド文字列ではなく、gh 自身の成功メッセージから読む。** `gh pr ready` は
+  draft を外すと stderr に `Pull request <owner>/<repo>#<n> is marked as "ready for review"` を出す。
+  フックはツールの出力（`tool_response.stdout` / `stderr`）からこの行を探す。
+  `grep "gh pr ready"` や heredoc のように文字列として含むだけのコマンドではこの行が出ないので
+  反応しない。別の checkout で実行したときや `--repo` 付きでも、行に repo 名が入っているので
+  取り違えない。すでに ready だった PR（`is already "ready for review"`）と `--undo` も対象外になる
+- `gh pr view` で PR を読み、draft でないことと CodeRabbit を外していないことを確かめてから
+  `hookSpecificOutput.additionalContext` を出す。PR を読めないときは何も出さない。直前の
+  `gh pr ready` が GitHub に届いているので、読めないのは例外的な状態であり、推測で促さない
 - どの失敗でも exit 0 で何も出さずに終わる。フックが Bash の呼び出しを壊さないことを優先する
+- 却下: コマンド文字列から PR 番号を切り出す形。文字列として含むだけのコマンドで誤って反応し、
+  別の repo の PR を karasu の同じ番号の PR と取り違える
 - 差し込む文は「`CI green, status: in-review` で止まるスキルよりこちらを優先する」と明示する
 
 ## 理由
