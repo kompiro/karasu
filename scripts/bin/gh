@@ -20,7 +20,7 @@ self_dir=$(cd "$(dirname "$0")" && pwd -P)
 real=""
 rest_path=""
 IFS=: read -r -a entries <<<"${PATH:-}"
-for entry in "${entries[@]}"; do
+for entry in ${entries[@]+"${entries[@]}"}; do
   [ -n "$entry" ] || continue
   [ "$(cd "$entry" 2>/dev/null && pwd -P)" = "$self_dir" ] && continue
   rest_path=${rest_path:+$rest_path:}$entry

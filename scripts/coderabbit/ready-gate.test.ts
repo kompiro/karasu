@@ -318,6 +318,23 @@ describe("gh wrapper: gh pr create", () => {
   });
 });
 
+describe("bash 3.2 compatibility", () => {
+  // macOS ships bash 3.2, where expanding an empty array under `set -u` fails
+  // with "unbound variable". In these scripts that failure lands in an
+  // `|| exit 0`, which would silently switch the gate off.
+  it.each(["../bin/gh", "ready-gate.sh", "session-path.sh", "converge-after-ready.sh"])(
+    "%s expands no array in a way that fails on an empty one",
+    (file) => {
+      const source = readFileSync(resolve(import.meta.dirname, file), "utf8");
+      const unsafe = source
+        .split("\n")
+        .filter((line) => /(?<!\+)"\$\{\w+\[@\]\}"|\$\{#\w+\[@\]\}/.test(line))
+        .filter((line) => !/\$\{\w+\[@\]\+"\$\{\w+\[@\]\}"\}/.test(line));
+      expect(unsafe).toEqual([]);
+    },
+  );
+});
+
 describe("session-path.sh", () => {
   it("puts the wrapper first on PATH once, however often SessionStart runs", () => {
     const envFile = fresh("envfile");

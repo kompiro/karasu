@@ -47,19 +47,19 @@ fi
 reason=${KARASU_LOCAL_REVIEW_SKIPPED:-}
 [ -n "${reason//[[:space:]]/}" ] && exit 0
 
-selector=()
+selector=""
 for arg in "$@"; do
   case "$arg" in
     --undo | -R | --repo | --repo=*) exit 0 ;;
     -*) ;;
-    *) [ ${#selector[@]} -eq 0 ] && selector=("$arg") ;;
+    *) [ -z "$selector" ] && selector=$arg ;;
   esac
 done
 
 gh_bin=${READY_GATE_GH:-gh}
 limit=()
 command -v timeout >/dev/null 2>&1 && limit=(timeout 15)
-view=$("${limit[@]}" "$gh_bin" pr view "${selector[@]}" \
+view=$(${limit[@]+"${limit[@]}"} "$gh_bin" pr view ${selector:+"$selector"} \
   --json number,isDraft,labels,body,headRefOid,baseRefName 2>/dev/null) || exit 0
 
 [ "$(jq -r '.isDraft' <<<"$view")" = "true" ] || exit 0
