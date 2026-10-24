@@ -1,3 +1,18 @@
+pre-commit:
+  commands:
+    refuse-commit-on-main:
+      # main takes no direct commits. A commit in the main checkout lands on
+      # local main and diverges it from origin/main; git hooks are shared by
+      # every worktree, so this stops it whoever commits (#3335, ADR-3335).
+      run: bash scripts/git/refuse-commit-on-main.sh
+
+pre-merge-commit:
+  commands:
+    refuse-commit-on-main:
+      # A non-fast-forward `git pull` on main creates a merge commit, which
+      # skips pre-commit and runs this hook instead.
+      run: bash scripts/git/refuse-commit-on-main.sh
+
 pre-push:
   parallel: true
   commands:
