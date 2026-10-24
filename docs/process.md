@@ -41,7 +41,7 @@
 ### ブランチ戦略
 
 - `main` への直接コミット・push は禁止 — PR 経由でマージする
-  - `main` の上でのコミットとマージコミットは、lefthook の `pre-commit` / `pre-merge-commit` が拒否する（`scripts/git/refuse-commit-on-main.sh`、ADR-3335）。git のフックはすべての worktree で共有されるので、プロジェクトルートでも同じく止まる。止まったら、変更を worktree のブランチに移してからコミットする
+  - `main` の上で変更をステージしたコミットと、マージコミットは、lefthook の `pre-commit` / `pre-merge-commit` が拒否する（`scripts/git/refuse-commit-on-main.sh`）。git のフックはすべての worktree で共有されるので、プロジェクトルートでも同じく止まる。止まったら、変更を worktree のブランチに移してからコミットする。`git cherry-pick`・ステージした変更の無いコミット・`--no-verify` は止まらない（ADR-3335「止められないもの」）
 - 機能開発は `git worktree add` により worktree を作成して行う
 - worktree の作成先は必ず `.claude/worktrees/<branch-name>` とする（例: `git worktree add .claude/worktrees/feat/my-feature feat/my-feature`）
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `spike/` + kebab-case
