@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# gh wrapper for Claude Code sessions in this repository (#3342, ADR-3342).
+#
+# The SessionStart hook puts this directory first on the Bash tool's PATH, so
+# every `gh` a session runs passes through here, however the command line was
+# built (eval, scripts, wrappers, xargs). Only `gh pr ready` and
+# `gh pr create` are checked, by scripts/coderabbit/ready-gate.sh. Everything
+# else, and every allowed call, goes to the real gh unchanged.
+#
+# The user's own terminal does not use this wrapper.
+
+set -u
+
+self_dir=$(cd "$(dirname "$0")" && pwd -P)
+
+# The real gh: the first `gh` on PATH that is not this wrapper.
+real=""
+IFS=: read -r -a entries <<<"${PATH:-}"
+for entry in "${entries[@]}"; do
+  [ -n "$entry" ] || continue
+  [ "$(cd "$entry" 2>/dev/null && pwd -P)" = "$self_dir" ] && continue
+  if [ -x "$entry/gh" ] && [ ! -d "$entry/gh" ]; then
+    real="$entry/gh"
+    break
+  fi
+done
+if [ -z "$real" ]; then
+  echo "gh: not found on PATH (outside the karasu wrapper in $self_dir)" >&2
+  exit 127
+fi
+
+if [ "${1:-}" = "pr" ] && { [ "${2:-}" = "ready" ] || [ "${2:-}" = "create" ]; }; then
+  refusal=$(READY_GATE_GH=$real "$self_dir/../coderabbit/ready-gate.sh" "$@" 2>/dev/null) || refusal=""
+  if [ -n "$refusal" ]; then
+    echo "$refusal" >&2
+    exit 1
+  fi
+fi
+
+exec "$real" "$@"
