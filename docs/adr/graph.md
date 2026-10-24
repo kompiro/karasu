@@ -189,6 +189,7 @@ flowchart TD
     ADR_3257["ADR-3257<br/>app の E2E suite の step 境界を 25 分、job 予算を 45 分に上げる"]
     ADR_3271["ADR-3271<br/>PR と Issue はマージで同時に閉じ、マージ後にしか確かめられない項目は別の Issue..."]
     ADR_3304["ADR-3304<br/>Dependabot トリアージ 2026-10-19：npm 11 件をそのまま採用し、gh..."]
+    ADR_3333["ADR-3333<br/>Claude が gh pr ready を実行した直後に、PostToolUse フックで ..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -1080,6 +1081,7 @@ flowchart TD
   class ADR_3257 accepted
   class ADR_3271 accepted
   class ADR_3304 accepted
+  class ADR_3333 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
