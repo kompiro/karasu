@@ -184,6 +184,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3257](3257-e2e-step-bound-follows-suite-growth.md) — app の E2E suite の step 境界を 25 分、job 予算を 45 分に上げる
 - [ADR-3271](3271-close-issue-with-pr.md) — PR と Issue はマージで同時に閉じ、マージ後にしか確かめられない項目は別の Issue にする
 - [ADR-3304](3304-dependabot-triage-2026-10-19.md) — Dependabot トリアージ 2026-10-19：npm 11 件をそのまま採用し、gh-aw-actions は却下する。lefthook 2.2.2 の手動 publish は採用可と判断する
+- [ADR-3326](3326-coderabbit-cli-once-before-ready.md) — draft を外す前に CodeRabbit CLI を base ブランチとの差分へ 1 回だけ当て、指摘 0 件までは回さない
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
