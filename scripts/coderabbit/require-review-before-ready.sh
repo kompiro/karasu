@@ -33,87 +33,103 @@ set -u
 
 input=$(cat)
 command=$(jq -r '.tool_input.command // empty' <<<"$input" 2>/dev/null) || exit 0
+# A cheap prefilter only; whether and how the line runs gh is the parser's call.
+# Every form the parser recognizes (any spacing, tabs, line continuations, a
+# quoted "ready", gh called by path) still contains these substrings. Only a
+# deliberately split word such as "rea"dy slips past, and the gate is not meant
+# to stop deliberate evasion.
 case "$command" in
-  *"pr ready"* | *"pr create"*) ;;
+  *gh*ready* | *gh*create*) ;;
   *) exit 0 ;;
 esac
 
-deny() {
+refusal() {
   jq -n --arg reason "$1" \
     '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}'
-  exit 0
 }
 
-cwd=$(jq -r '.cwd // empty' <<<"$input" 2>/dev/null)
-[ -n "$cwd" ] || cwd=$PWD
+# Prints a refusal for `gh pr ready` run in $1 with selector $2 (empty: the
+# current branch's PR), or nothing when the ready may go ahead.
+check_ready() {
+  local dir=$1 selector=()
+  [ -n "$2" ] && selector=("$2")
+  cd "$dir" 2>/dev/null || return 0
 
-# Which gh pr command the line would actually run is a shell-parsing question
-# (quotes, $(...), heredoc bodies, comments), answered by gh-pr-command.mts.
-# If node or the parser fails, let the call through.
-parsed=$(node "$(dirname "$0")/gh-pr-command.mts" "$cwd" <<<"$command" 2>/dev/null) || exit 0
-[ -n "$parsed" ] && [ "$parsed" != "null" ] || exit 0
-field() { jq -r ".$1" <<<"$parsed"; }
+  local gh_bin=${READY_GATE_GH:-gh} limit=() view
+  command -v timeout >/dev/null 2>&1 && limit=(timeout 15)
+  view=$("${limit[@]}" "$gh_bin" pr view "${selector[@]}" \
+    --json number,isDraft,labels,body,headRefOid,baseRefName 2>/dev/null) || return 0
 
-if [ "$(field action)" = "create" ]; then
-  [ "$(field draft)" = "true" ] && exit 0
-  deny "gh pr create was refused: create the PR as a draft (gh pr create --draft). \
-Run /engineering:code-review on the branch diff and one CodeRabbit CLI review before taking it out of \
-draft with gh pr ready (docs/process.md PR workflow)."
-fi
+  [ "$(jq -r '.isDraft' <<<"$view")" = "true" ] || return 0
+  local opted_out
+  opted_out=$(jq -r '
+    ([.labels[].name] | any(. == "skip-coderabbit" or . == "adr-auto-merge"))
+    or ((.body // "") | contains("@coderabbitai ignore"))
+  ' <<<"$view")
+  [ "$opted_out" = "true" ] && return 0
 
-# action = ready
-[ "$(field undo)" = "true" ] && exit 0
-[ "$(field repoFlag)" = "true" ] && exit 0
-[ "$(field skipped)" = "true" ] && exit 0
-dir=$(field dir)
-selector=()
-[ "$(field selector)" = "null" ] || selector=("$(field selector)")
+  local number head base base_ref
+  number=$(jq -r '.number' <<<"$view")
+  head=$(jq -r '.headRefOid' <<<"$view")
+  base=$(jq -r '.baseRefName' <<<"$view")
+  git cat-file -e "$head^{commit}" 2>/dev/null || return 0
+  base_ref=origin/$base
+  git rev-parse --verify --quiet "$base_ref^{commit}" >/dev/null || base_ref=$base
+  git rev-parse --verify --quiet "$base_ref^{commit}" >/dev/null || return 0
 
-cd "$dir" 2>/dev/null || exit 0
+  local reviews=${CODERABBIT_REVIEWS_DIR:-$HOME/.coderabbit/reviews} records=0 record reviewed
+  for record in "$reviews"/*/*/reviews/*/; do
+    [ -f "$record/git.json" ] || continue
+    reviewed=$(jq -r '.head // empty' "$record/git.json" 2>/dev/null)
+    [ -n "$reviewed" ] || continue
+    records=$((records + 1))
+    [ "$(jq -r '.state // empty' "$record/.session-complete-v2" 2>/dev/null)" = "complete" ] || continue
+    git cat-file -e "$reviewed^{commit}" 2>/dev/null || continue
+    git merge-base --is-ancestor "$reviewed" "$head" 2>/dev/null || continue
+    git merge-base --is-ancestor "$reviewed" "$base_ref" 2>/dev/null && continue
+    return 0
+  done
 
-gh_bin=${READY_GATE_GH:-gh}
-limit=()
-command -v timeout >/dev/null 2>&1 && limit=(timeout 15)
-view=$("${limit[@]}" "$gh_bin" pr view "${selector[@]}" \
-  --json number,isDraft,labels,body,headRefOid,baseRefName 2>/dev/null) || exit 0
+  # Records exist but none could be read: the CLI's format changed. Fail open.
+  if [ "$records" -eq 0 ] && [ -n "$(ls -A "$reviews" 2>/dev/null)" ]; then
+    return 0
+  fi
 
-[ "$(jq -r '.isDraft' <<<"$view")" = "true" ] || exit 0
-opted_out=$(jq -r '
-  ([.labels[].name] | any(. == "skip-coderabbit" or . == "adr-auto-merge"))
-  or ((.body // "") | contains("@coderabbitai ignore"))
-' <<<"$view")
-[ "$opted_out" = "true" ] && exit 0
-
-number=$(jq -r '.number' <<<"$view")
-head=$(jq -r '.headRefOid' <<<"$view")
-base=$(jq -r '.baseRefName' <<<"$view")
-git cat-file -e "$head^{commit}" 2>/dev/null || exit 0
-base_ref=origin/$base
-git rev-parse --verify --quiet "$base_ref^{commit}" >/dev/null || base_ref=$base
-git rev-parse --verify --quiet "$base_ref^{commit}" >/dev/null || exit 0
-
-reviews=${CODERABBIT_REVIEWS_DIR:-$HOME/.coderabbit/reviews}
-records=0
-for record in "$reviews"/*/*/reviews/*/; do
-  [ -f "$record/git.json" ] || continue
-  reviewed=$(jq -r '.head // empty' "$record/git.json" 2>/dev/null)
-  [ -n "$reviewed" ] || continue
-  records=$((records + 1))
-  [ "$(jq -r '.state // empty' "$record/.session-complete-v2" 2>/dev/null)" = "complete" ] || continue
-  git cat-file -e "$reviewed^{commit}" 2>/dev/null || continue
-  git merge-base --is-ancestor "$reviewed" "$head" 2>/dev/null || continue
-  git merge-base --is-ancestor "$reviewed" "$base_ref" 2>/dev/null && continue
-  exit 0
-done
-
-# Records exist but none could be read: the CLI's format changed. Fail open.
-if [ "$records" -eq 0 ] && [ -n "$(ls -A "$reviews" 2>/dev/null)" ]; then
-  exit 0
-fi
-
-deny "gh pr ready was refused: no completed local CodeRabbit CLI review covers PR #$number's branch \
+  refusal "gh pr ready was refused: no completed local CodeRabbit CLI review covers PR #$number's branch \
 (head ${head:0:7}). Before taking a PR out of draft (docs/process.md PR workflow): run \
 /engineering:code-review on git diff $base_ref...HEAD, then run the CLI once \
 (coderabbit review --agent --deep --base $base_ref --committed), commit and push the fixes, and run \
 gh pr ready again. If the CLI cannot run here (not installed, not authenticated, out of quota), tell \
 the user, then rerun as KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr ready $number."
+}
+
+cwd=$(jq -r '.cwd // empty' <<<"$input" 2>/dev/null)
+[ -n "$cwd" ] || cwd=$PWD
+
+# Which gh pr commands the line would actually run is a shell-parsing question
+# (quotes, $(...), heredoc bodies, comments), answered by gh-pr-command.mts.
+# Every one is checked: an allowed draft create must not hide a later ready.
+# If node or the parser fails, let the call through.
+parsed=$(node "$(dirname "$0")/gh-pr-command.mts" "$cwd" <<<"$command" 2>/dev/null) || exit 0
+
+while IFS= read -r entry; do
+  [ -n "$entry" ] || continue
+  get() { jq -r ".$1" <<<"$entry"; }
+  if [ "$(get action)" = "create" ]; then
+    [ "$(get draft)" = "true" ] && continue
+    refusal "gh pr create was refused: create the PR as a draft (gh pr create --draft). \
+Run /engineering:code-review on the branch diff and one CodeRabbit CLI review before taking it out of \
+draft with gh pr ready (docs/process.md PR workflow)."
+    exit 0
+  fi
+  [ "$(get undo)" = "true" ] && continue
+  [ "$(get repoFlag)" = "true" ] && continue
+  [ "$(get skipped)" = "true" ] && continue
+  pr=$(get selector)
+  [ "$pr" = "null" ] && pr=""
+  out=$(check_ready "$(get dir)" "$pr")
+  if [ -n "$out" ]; then
+    printf '%s\n' "$out"
+    exit 0
+  fi
+done < <(jq -c '.[]?' <<<"$parsed" 2>/dev/null)

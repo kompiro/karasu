@@ -243,9 +243,14 @@ describe("require-review-before-ready: gh pr create", () => {
   });
 });
 
-describe("require-review-before-ready: commands that write a file first", () => {
-  it("still gates a ready that follows a heredoc in the same call", () => {
-    const command = "cat > notes.md <<'EOF'\nready soon\nEOF\ngh pr ready 12";
+describe("require-review-before-ready: every gh pr command in the line", () => {
+  it.each([
+    ["cat > notes.md <<'EOF'\nready soon\nEOF\ngh pr ready 12", "after a heredoc"],
+    ["gh pr create --draft --body-file b.md && gh pr ready 12", "after an allowed draft create"],
+    ["gh pr ready 13 --undo; gh pr ready 12", "after an allowed --undo"],
+    ["gh pr  ready 12", "with doubled spaces"],
+    ["/usr/bin/gh pr ready 12", "with gh called by path"],
+  ])("gates a ready %s", (command) => {
     expect(denial(runHook(command, stubGh(DRAFT), reviews()))).toContain("PR #12");
   });
 });

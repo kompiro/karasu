@@ -1,5 +1,5 @@
 /**
- * Finds the first `gh pr ready` / `gh pr create` that a Bash command line would
+ * Finds every `gh pr ready` / `gh pr create` that a Bash command line would
  * actually run, for the PreToolUse gate in require-review-before-ready.sh
  * (#3342, ADR-3342).
  *
@@ -11,8 +11,8 @@
  * parsing resumes after the terminator), comments, redirections and the list
  * operators. It does not expand anything.
  *
- * Run directly, it reads the command on stdin and prints the result as JSON
- * (`null` when the command runs neither).
+ * Run directly, it reads the command on stdin and prints the result as a JSON
+ * array (empty when the command runs neither).
  */
 
 export interface GhPrCommand {
@@ -289,7 +289,13 @@ function resolveDir(base: string, target: string): string {
   return `${base.replace(/\/+$/, "")}/${target}`;
 }
 
-export function parseGhPrCommand(command: string, cwd: string): GhPrCommand | null {
+/**
+ * Every `gh pr ready` / `gh pr create` the line would run, in order. All of them
+ * matter: an allowed draft `create` must not hide a later `ready` in the same
+ * call (`gh pr create --draft ... && gh pr ready 12`).
+ */
+export function parseGhPrCommands(command: string, cwd: string): GhPrCommand[] {
+  const found: GhPrCommand[] = [];
   let dir = cwd;
   for (const words of simpleCommands(tokenize(command))) {
     let skipped = false;
@@ -311,13 +317,14 @@ export function parseGhPrCommand(command: string, cwd: string): GhPrCommand | nu
       }
       continue;
     }
-    if (rest[0] !== "gh" || rest[1] !== "pr") continue;
+    // gh may be called by path (/usr/bin/gh, ./gh).
+    if (rest[0] === undefined || !/(^|\/)gh$/.test(rest[0]) || rest[1] !== "pr") continue;
     const action = rest[2];
     if (action !== "ready" && action !== "create") continue;
     const args = rest.slice(3);
     const positional = args.filter((arg) => !arg.startsWith("-"));
     const literal = positional[0];
-    return {
+    found.push({
       action,
       dir,
       skipped,
@@ -325,9 +332,9 @@ export function parseGhPrCommand(command: string, cwd: string): GhPrCommand | nu
       undo: args.includes("--undo"),
       repoFlag: args.some((arg) => arg === "-R" || arg === "--repo" || arg.startsWith("--repo=")),
       selector: literal === undefined || /[$`]/.test(literal) ? null : literal,
-    };
+    });
   }
-  return null;
+  return found;
 }
 
 if (import.meta.main) {
@@ -335,6 +342,6 @@ if (import.meta.main) {
   for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
   const command = Buffer.concat(chunks).toString("utf8");
   process.stdout.write(
-    `${JSON.stringify(parseGhPrCommand(command, process.argv[2] ?? process.cwd()))}\n`,
+    `${JSON.stringify(parseGhPrCommands(command, process.argv[2] ?? process.cwd()))}\n`,
   );
 }

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { parseGhPrCommand } from "./gh-pr-command.mts";
+import { parseGhPrCommands } from "./gh-pr-command.mts";
 
 const CWD = "/work";
-const parse = (command: string) => parseGhPrCommand(command, CWD);
+const all = (command: string) => parseGhPrCommands(command, CWD);
+/** The first gh pr command the line runs, or undefined. */
+const parse = (command: string) => all(command)[0];
 
-describe("parseGhPrCommand", () => {
+describe("parseGhPrCommands", () => {
   it("reads a plain ready with its selector", () => {
     expect(parse("gh pr ready 12")).toEqual({
       action: "ready",
@@ -57,7 +59,7 @@ describe("parseGhPrCommand", () => {
     ["gh pr view 12 --json isDraft", "another subcommand"],
     ["gh issue create --title 'gh pr create'", "another gh command"],
   ])("finds nothing in %s (%s)", (command) => {
-    expect(parse(command)).toBeNull();
+    expect(all(command)).toEqual([]);
   });
 
   it("follows a leading cd, absolute or relative", () => {
@@ -91,5 +93,23 @@ describe("parseGhPrCommand", () => {
     expect(parse("gh pr ready 12 --undo")?.undo).toBe(true);
     expect(parse("gh pr ready 12 --repo o/r")?.repoFlag).toBe(true);
     expect(parse("gh pr ready -R o/r 12")?.repoFlag).toBe(true);
+  });
+
+  it("returns every gh pr command, so an allowed draft create does not hide a later ready", () => {
+    const found = all("gh pr create --draft --body-file b.md && gh pr ready 12");
+    expect(found.map((c) => [c.action, c.draft, c.selector])).toEqual([
+      ["create", true, "b.md"],
+      ["ready", false, "12"],
+    ]);
+  });
+
+  it.each([
+    ["gh pr  ready 12", "doubled spaces"],
+    ["gh\tpr\tready 12", "tabs"],
+    ["gh pr \\\n  ready 12", "a line continuation"],
+    ['gh pr "ready" 12', "a quoted subcommand"],
+    ["/usr/bin/gh pr ready 12", "gh called by path"],
+  ])("recognizes the ready written with %s", (command) => {
+    expect(parse(command)).toMatchObject({ action: "ready", selector: "12" });
   });
 });
