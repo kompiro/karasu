@@ -79,6 +79,12 @@ interface AppShellProps {
    * the imported style sheets are read again (#3311).
    */
   sourceRevision?: number;
+  /**
+   * The directory diagnostics show other files relative to, for a host that
+   * mounts a whole directory without a project (serve, #3258). Without it,
+   * the project root, else the entry's directory.
+   */
+  displayRoot?: string;
 }
 
 /**
@@ -106,6 +112,7 @@ export function AppShell({
   onRevealNode,
   readOnly,
   sourceRevision,
+  displayRoot: hostDisplayRoot,
 }: AppShellProps) {
   const { state, dispatch, fs } = useAppContext();
   const {
@@ -358,7 +365,7 @@ export function AppShell({
   }, [entryPath, fs, fileContentRef]);
   const hasKrsSource = fileContent.trim() !== "";
 
-  const displayRoot = displayRootFor(projectRoot, entryPath);
+  const displayRoot = hostDisplayRoot ?? displayRootFor(projectRoot, entryPath);
 
   const previewContextValue = usePreviewContextValue({
     activeView,

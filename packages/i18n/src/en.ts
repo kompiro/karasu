@@ -82,6 +82,8 @@ export const en: Translations = {
   "project.error.openExample": ({ detail }) => `⚠ Could not open the example: ${detail}`,
   "project.error.snapshot": ({ detail }) => `⚠ Failed to capture snapshot: ${detail}`,
   "project.error.dismiss": "✕ Dismiss",
+  "serve.error.fileNotFound": ({ file }) => `File not found: ${file}`,
+  "serve.error.loadFailed": "Could not load files from karasu serve",
 
   // File tree: the inline name input for New File / New Folder / Rename
   "fileTree.inlineInput.ariaLabel": "Name",

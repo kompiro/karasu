@@ -1,0 +1,7 @@
+// Imported by directory from ../index.krs, and opened on its own by AT-3258
+// TC-02 to check that its relative import resolves from its own folder.
+import "../shared.krs"
+
+system Imports {
+  service Moderation { label "Moderation Web" }
+}

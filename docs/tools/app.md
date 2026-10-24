@@ -32,22 +32,23 @@ karasu serve
   Directory : /path/to/architecture
   Preview   : http://localhost:3000
 
-Watching for .krs file changes...
+Watching for .krs and .krs.style file changes...
 ```
 
 Open the printed URL (default **http://localhost:3000**). The page resolves which
 file to show from the URL path:
 
-| URL        | File shown                                                 |
-| ---------- | ---------------------------------------------------------- |
-| `/`        | `index.krs` (or the only `.krs` file if there is just one) |
-| `/payment` | `payment.krs`                                              |
-| `/org`     | `org.krs`                                                  |
+| URL               | File shown                                                 |
+| ----------------- | ---------------------------------------------------------- |
+| `/`               | `index.krs` (or the only `.krs` file if there is just one) |
+| `/payment`        | `payment.krs`                                              |
+| `/services/order` | `services/order.krs`                                       |
 
 `serve` is **preview-only** — it does not embed an editor. The workflow is a tight
 loop:
 
-1. Edit a `.krs` file in your usual editor (or the [VS Code extension](../guide/02-onboarding.md)).
+1. Edit a `.krs` file in your usual editor (or the [VS Code extension](../guide/02-onboarding.md)):
+   the open file, any file it imports, or a `.krs.style` sheet it `@import`s.
 2. Save.
 3. The server detects the change and pushes it to the browser, which re-renders
    the diagram automatically. No manual refresh.
