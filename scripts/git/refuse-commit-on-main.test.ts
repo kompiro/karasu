@@ -10,11 +10,14 @@ const repo = mkdtempSync(join(tmpdir(), "refuse-main-"));
 
 afterAll(() => rmSync(repo, { recursive: true, force: true }));
 
+// Pin identity and signing so a developer's global git config (commit.gpgsign)
+// cannot make the fixture commit fail.
 const git = (...args: string[]) =>
-  execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.com", ...args], {
-    cwd: repo,
-    encoding: "utf8",
-  });
+  execFileSync(
+    "git",
+    ["-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false", ...args],
+    { cwd: repo, encoding: "utf8" },
+  );
 
 git("init", "-q", "-b", "main");
 git("commit", "-q", "--allow-empty", "-m", "root");
@@ -31,7 +34,8 @@ describe("refuse-commit-on-main", () => {
   });
 
   it("allows a feature branch", () => {
-    git("switch", "-q", "-c", "chore/3335-example");
+    // -C: each test sets its own HEAD, so the cases do not depend on run order.
+    git("switch", "-q", "-C", "chore/3335-example", "main");
     expect(runCheck().status).toBe(0);
   });
 
