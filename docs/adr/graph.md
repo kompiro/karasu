@@ -221,6 +221,7 @@ flowchart TD
     ADR_1062["ADR-1062<br/>CRUD マトリクスビュー（usecase × resource）を派生プロジェクションとして..."]
     ADR_1104["ADR-1104<br/>translate adapter で usecase → resource バインディング ..."]
     ADR_1935["ADR-1935<br/>--from wrangler translate adapter と「adapter を採る基準」"]
+    ADR_3258["ADR-3258<br/>karasu serve は配信ディレクトリをまるごとブラウザのメモリに写して import ..."]
     ADR_9013["ADR-9013<br/>CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
   end
   subgraph core-concepts["core-concepts"]
@@ -1087,6 +1088,7 @@ flowchart TD
   class ADR_3242 accepted
   class ADR_3246 accepted
   class ADR_3257 accepted
+  class ADR_3258 accepted
   class ADR_3271 accepted
   class ADR_3304 accepted
   class ADR_3326 accepted

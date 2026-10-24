@@ -218,6 +218,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1062](1062-crud-matrix-view.md) — CRUD マトリクスビュー（usecase × resource）を派生プロジェクションとして提供する
 - [ADR-1104](1104-translate-crud-bindings.md) — translate adapter で usecase → resource バインディング + 任意 CRUD 装飾を emit する
 - [ADR-1935](1935-wrangler-translate-adapter.md) — --from wrangler translate adapter と「adapter を採る基準」
+- [ADR-3258](3258-serve-import-resolution.md) — karasu serve は配信ディレクトリをまるごとブラウザのメモリに写して import を解決する
 - [ADR-9013](9013-cli-serve-mode.md) — CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー
 
 ## core-concepts
