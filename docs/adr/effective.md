@@ -187,7 +187,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3326](3326-coderabbit-cli-once-before-ready.md) — draft を外す前に CodeRabbit CLI を base ブランチとの差分へ 1 回だけ当て、指摘 0 件までは回さない
 - [ADR-3333](3333-converge-after-ready-hook.md) — Claude が gh pr ready を実行した直後に、PostToolUse フックで /coderabbit-converge へ引き継ぐ
 - [ADR-3335](3335-refuse-commits-on-main.md) — main へのコミットは lefthook の pre-commit / pre-merge-commit で拒否し、main checkout の未コミット変更を見る Stop フックは廃止する
-- [ADR-3342](3342-ready-gate-local-review.md) — ブランチでローカルの CLI レビューが済むまで、PreToolUse フックで gh pr ready を止める
+- [ADR-3342](3342-ready-gate-local-review.md) — ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh pr ready を拒否する
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
