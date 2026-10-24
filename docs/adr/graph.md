@@ -192,6 +192,7 @@ flowchart TD
     ADR_3326["ADR-3326<br/>draft を外す前に CodeRabbit CLI を base ブランチとの差分へ 1 回..."]
     ADR_3333["ADR-3333<br/>Claude が gh pr ready を実行した直後に、PostToolUse フックで ..."]
     ADR_3335["ADR-3335<br/>main へのコミットは lefthook の pre-commit / pre-merge-..."]
+    ADR_3342["ADR-3342<br/>ブランチでローカルの CLI レビューが済むまで、PreToolUse フックで gh pr ..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -635,6 +636,7 @@ flowchart TD
   ADR_3020 --> ADR_2578
   ADR_3020 --> ADR_2969
   ADR_3326 --> ADR_3052
+  ADR_3342 --> ADR_3326
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -1095,6 +1097,7 @@ flowchart TD
   class ADR_3326 accepted
   class ADR_3333 accepted
   class ADR_3335 accepted
+  class ADR_3342 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
