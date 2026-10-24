@@ -50,7 +50,7 @@ for ref in $readied; do
   number=${ref##*#}
   # gh just reached GitHub to mark the PR ready, so a failed read here is not a
   # reason to guess: skip the reminder.
-  view=$("${limit[@]}" "$gh_bin" pr view "$number" --repo "$repo" \
+  view=$(${limit[@]+"${limit[@]}"} "$gh_bin" pr view "$number" --repo "$repo" \
     --json isDraft,labels,body,baseRefName 2>/dev/null) || continue
 
   [ "$(jq -r '.isDraft' <<<"$view")" = "false" ] || continue
@@ -64,7 +64,7 @@ for ref in $readied; do
 
   # Without base_branches in .coderabbit.yaml, CodeRabbit reviews only PRs into
   # the default branch. A stack's upper PR has nothing to converge on.
-  default_branch=$("${limit[@]}" "$gh_bin" repo view "$repo" --json defaultBranchRef \
+  default_branch=$(${limit[@]+"${limit[@]}"} "$gh_bin" repo view "$repo" --json defaultBranchRef \
     --jq .defaultBranchRef.name 2>/dev/null) || continue
   [ "$(jq -r '.baseRefName' <<<"$view")" = "$default_branch" ] || continue
 
