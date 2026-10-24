@@ -213,12 +213,13 @@ describe("require-review-before-ready: gh pr ready", () => {
 });
 
 describe("require-review-before-ready: gh pr create", () => {
-  it.each(["gh pr create --draft --title x --body-file b.md", "gh pr create -d --fill"])(
-    "lets a draft through: %s",
-    (command) => {
-      expect(runHook(command, stubGh(DRAFT), reviews())).toBe("");
-    },
-  );
+  it.each([
+    "gh pr create --draft --title x --body-file b.md",
+    "gh pr create -d --fill",
+    `gh pr create --title x --body "$(cat <<'EOF'\nSummary\nEOF\n)" --draft`,
+  ])("lets a draft through: %s", (command) => {
+    expect(runHook(command, stubGh(DRAFT), reviews())).toBe("");
+  });
 
   it("refuses a PR created ready, since it would skip the gate", () => {
     const reason = denial(

@@ -75,11 +75,13 @@ done < <(tr ';&|()' '\n' <<<"$text") # tr pads the second set with its last char
 [ -n "$action" ] || exit 0
 
 if [ "$action" = "create" ]; then
-  for word in $args; do
-    case "$word" in
-      --draft | -d | --draft=true) exit 0 ;;
-    esac
-  done
+  # Search the whole command, not just the words before the first `<<`: a body
+  # passed as --body "$(cat <<'EOF' ... EOF)" often puts --draft after it.
+  # Text inside the body that says --draft lets the call through; refusing a
+  # real draft would be the worse mistake.
+  if [[ $command =~ (^|[[:space:]])(--draft|--draft=true|-d)([[:space:]]|$) ]]; then
+    exit 0
+  fi
   deny "gh pr create was refused: create the PR as a draft (gh pr create --draft). \
 Run /engineering:code-review on the branch diff and one CodeRabbit CLI review before taking it out of \
 draft with gh pr ready (docs/process.md PR workflow)."
