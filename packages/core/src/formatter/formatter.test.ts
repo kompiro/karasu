@@ -494,6 +494,224 @@ describe("format()", () => {
     expectIdempotent(result);
   });
 
+  // #3263: property lines are printed without a position from the AST, so
+  // their comments used to fall through to the end of the file.
+  it("keeps comments on and above property lines in place (#3263)", () => {
+    const src = [
+      `system S {`,
+      `  client C [web] {`,
+      `    // about the label`,
+      `    label "C" // trailing on label`,
+      `    capability camera // trailing on camera`,
+      `  }`,
+      `  service A {`,
+      `    // about the link`,
+      `    link "https://e.com" // trailing on link`,
+      `  }`,
+      `}`,
+    ].join("\n");
+    expect(fmt(src)).toBe(
+      [
+        `system S {`,
+        `  client C [web] {`,
+        `    // about the label`,
+        `    label "C" // trailing on label`,
+        `    capability camera // trailing on camera`,
+        `  }`,
+        ``,
+        `  service A {`,
+        `    // about the link`,
+        `    link "https://e.com" // trailing on link`,
+        `  }`,
+        `}`,
+      ].join("\n"),
+    );
+    expectIdempotent(src);
+  });
+
+  it("moves a property's comments with it when the canonical order reorders it", () => {
+    // `link` prints before the edge and `description` before `link`, whatever
+    // order the source used.
+    const src = [
+      `system S {`,
+      `  service A {`,
+      `    -> B`,
+      `    // about the link`,
+      `    link "https://e.com" // trailing on link`,
+      `    // about the description`,
+      `    description "d" // trailing on description`,
+      `  }`,
+      `  service B {}`,
+      `}`,
+    ].join("\n");
+    const result = fmt(src);
+    expect(result).toContain(
+      [
+        `    // about the description`,
+        `    description "d" // trailing on description`,
+        `    // about the link`,
+        `    link "https://e.com" // trailing on link`,
+        ``,
+        `    -> B`,
+      ].join("\n"),
+    );
+    expectIdempotent(src);
+    expectAstRoundTrip(src);
+  });
+
+  it("keeps a comment after a multi-line description after its closing quotes", () => {
+    const src = `system S {\n  service A {\n    description """\n      one\n      two\n      """ // after\n  }\n}`;
+    const result = fmt(src);
+    expect(result).toContain(`      """ // after\n  }`);
+    expectIdempotent(src);
+  });
+
+  it("gives a merged property the comments of every line it came from", () => {
+    const src = [
+      `facet pci {}`,
+      `facet gdpr {}`,
+      `system S {`,
+      `  service A {`,
+      `    // first`,
+      `    facets pci // one`,
+      `    facets gdpr // two`,
+      `  }`,
+      `}`,
+    ].join("\n");
+    const result = fmt(src);
+    expect(result).toContain(`    // first\n    // two\n    facets pci, gdpr // one\n  }`);
+    expectIdempotent(src);
+  });
+
+  it("keeps comments at the end of a block body and after its closing brace", () => {
+    const src = `system S {\n  service A {\n    label "A"\n    // end of A\n  } // closes A\n}`;
+    const result = fmt(src);
+    expect(result).toBe(
+      `system S {\n  service A {\n    label "A"\n    // end of A\n  } // closes A\n}`,
+    );
+    expectIdempotent(src);
+  });
+
+  it("keeps a comment after the closing brace of an empty body", () => {
+    const src = `system S {\n  service A {\n  } // closes A\n}`;
+    expect(fmt(src)).toBe(src);
+    expectIdempotent(src);
+  });
+
+  it("keeps each realizes line's comment when an earlier line is a comma list", () => {
+    // `realizes S.A, S.B` prints as two lines; the next statement's comment
+    // still belongs to its own target, not to the second line of the split.
+    const src = [
+      `system S {`,
+      `  service A {}`,
+      `  service B {}`,
+      `  service C {}`,
+      `}`,
+      `deploy D {`,
+      `  oci X {`,
+      `    realizes S.A, S.B // ab`,
+      `    // about C`,
+      `    realizes S.C // c`,
+      `  }`,
+      `}`,
+    ].join("\n");
+    expect(fmt(src)).toContain(
+      `    realizes S.A // ab\n    realizes S.B\n    // about C\n    realizes S.C // c\n  }`,
+    );
+    expectIdempotent(src);
+  });
+
+  it.each([
+    ["after the dot", "realizes S.\n      A // target"],
+    ["before the dot", "realizes S\n      .A // target"],
+  ])("keeps the comment of a reference path continued %s on the next line", (_where, line) => {
+    // The parser reads the two lines as one path, so they are one statement.
+    const src = `system S {\n  service A {}\n}\ndeploy D {\n  oci X {\n    ${line}\n  }\n}`;
+    expect(fmt(src)).toContain(`    realizes S.A // target\n  }`);
+    expectIdempotent(src);
+  });
+
+  it("keeps an empty body open when a comment is written inside it", () => {
+    const src = `system S {\n  service A {\n    // todo\n  }\n}`;
+    expect(fmt(src)).toBe(src);
+    expectIdempotent(src);
+  });
+
+  it("keeps comments inside an edge block, and above a block that folds to the shorthand", () => {
+    const src = [
+      `system S {`,
+      `  service A {`,
+      `    -> B {`,
+      `      // why`,
+      `      description "d" // what`,
+      `    }`,
+      `    -> C {`,
+      `      // folds`,
+      `      label "x"`,
+      `    }`,
+      `  }`,
+      `  service B {}`,
+      `  service C {}`,
+      `}`,
+    ].join("\n");
+    const result = fmt(src);
+    expect(result).toContain(`    -> B {\n      // why\n      description "d" // what\n    }`);
+    expect(result).toContain(`    // folds\n    -> C "x"`);
+    expectIdempotent(src);
+  });
+
+  it("keeps property comments in deploy, organization, boundary, facet and legend blocks", () => {
+    const src = [
+      `system S {`,
+      `  service A {}`,
+      `}`,
+      `deploy D {`,
+      `  // env`,
+      `  label "Prod" // prod`,
+      `  oci X {`,
+      `    // rt`,
+      `    runtime "node" // node`,
+      `    realizes S.A // realizes`,
+      `  }`,
+      `}`,
+      `organization O {`,
+      `  label "O" // org`,
+      `  team T {`,
+      `    owns S.A // owns`,
+      `    member M {`,
+      `      github "m" // gh`,
+      `    }`,
+      `  }`,
+      `}`,
+      `boundary G {`,
+      `  contains S.A // contains`,
+      `}`,
+      `facet F {`,
+      `  description "f" // facet`,
+      `}`,
+      `legend {`,
+      `  swatch #ff0000 "Red" // red`,
+      `}`,
+    ].join("\n");
+    const result = fmt(src);
+    for (const line of [
+      `  // env\n  label "Prod" // prod`,
+      `    // rt\n    runtime "node" // node`,
+      `    realizes S.A // realizes`,
+      `  label "O" // org`,
+      `    owns S.A // owns`,
+      `      github "m" // gh`,
+      `  contains S.A // contains`,
+      `  description "f" // facet`,
+      `  swatch #ff0000 "Red" // red`,
+    ]) {
+      expect(result).toContain(line);
+    }
+    // Nothing fell through to the end of the file.
+    expect(result.endsWith(`  swatch #ff0000 "Red" // red\n}`)).toBe(true);
+    expectIdempotent(src);
+  });
+
   // ── Normalisation ────────────────────────────────────────────────────────
 
   it("normalises extra blank lines between top-level blocks to exactly one", () => {
