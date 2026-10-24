@@ -34,7 +34,7 @@ if [ -z "$real" ]; then
 fi
 
 if [ "${1:-}" = "pr" ] && { [ "${2:-}" = "ready" ] || [ "${2:-}" = "create" ]; }; then
-  refusal=$(READY_GATE_GH=$real "$self_dir/../coderabbit/ready-gate.sh" "$@" 2>/dev/null) || refusal=""
+  refusal=$(PATH=$rest_path READY_GATE_GH=$real "$self_dir/../coderabbit/ready-gate.sh" "$@" 2>/dev/null) || refusal=""
   if [ -n "$refusal" ]; then
     echo "$refusal" >&2
     exit 1
