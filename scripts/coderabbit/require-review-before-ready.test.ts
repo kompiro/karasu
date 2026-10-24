@@ -137,18 +137,18 @@ describe("require-review-before-ready: gh pr ready", () => {
 
   it("refuses when the only review covers a commit already on the base branch", () => {
     const store = reviews({ head: BASE, state: "complete" });
-    denial(runHook("gh pr ready 12", stubGh(DRAFT), store));
+    expect(denial(runHook("gh pr ready 12", stubGh(DRAFT), store))).toContain("PR #12");
   });
 
   it("refuses when the review did not complete", () => {
     const store = reviews({ head: WORK, state: "running" }, { head: HEAD });
-    denial(runHook("gh pr ready 12", stubGh(DRAFT), store));
+    expect(denial(runHook("gh pr ready 12", stubGh(DRAFT), store))).toContain("PR #12");
   });
 
   it("refuses when the reviewed commit is not on the PR's head", () => {
     const other = git("commit-tree", "-p", BASE, "-m", "elsewhere", `${BASE}^{tree}`);
     const store = reviews({ head: other, state: "complete" });
-    denial(runHook("gh pr ready 12", stubGh(DRAFT), store));
+    expect(denial(runHook("gh pr ready 12", stubGh(DRAFT), store))).toContain("PR #12");
   });
 
   it("reads the PR of the directory a leading cd moves into", () => {
