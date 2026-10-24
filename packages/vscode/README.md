@@ -36,8 +36,8 @@ Edit `.krs` on the left, explore the live preview on the right:
 
 ![Editing a .krs model beside the live System preview](https://raw.githubusercontent.com/kompiro/karasu/main/packages/vscode/images/screenshots/01-system-view.png)
 
-karasu separates a system into three faces — switch between them from the
-preview toolbar:
+karasu separates a system into three faces — switch between them with the
+preview's tabs:
 
 ![Deploy view — physical units that realize the logical services](https://raw.githubusercontent.com/kompiro/karasu/main/packages/vscode/images/screenshots/02-deploy-view.png)
 
