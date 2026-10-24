@@ -17,6 +17,7 @@ scope:
 assumptions:
   - "file: scripts/coderabbit/converge-after-ready.sh"
   - "grep: .claude/settings.json :: scripts/coderabbit/converge-after-ready.sh"
+  - "grep: .claude/settings.json :: \"PostToolUseFailure\""
 ---
 
 # ADR-3333: Claude が gh pr ready を実行した直後に、PostToolUse フックで /coderabbit-converge へ引き継ぐ
@@ -47,10 +48,11 @@ converge に触れない。process.md の手順は、`gh pr ready` を打つ時�
 
 ## 決定
 
-**`.claude/settings.json` に PostToolUse フック（matcher `Bash`）を置き、Claude が
-`gh pr ready <n>` で PR を draft から外した直後に、その PR で `/coderabbit-converge` を
-始めるよう文脈へ差し込む。CodeRabbit を外した PR（`skip-coderabbit` / `adr-auto-merge`
-ラベル、または本文の ignore コマンド）では何も差し込まない。**
+**`.claude/settings.json` に PostToolUse と PostToolUseFailure のフック（matcher `Bash`）を
+置き、Claude が `gh pr ready <n>` で PR を draft から外した直後に、その PR で
+`/coderabbit-converge` を始めるよう文脈へ差し込む。CodeRabbit が自動レビューしない PR
+（`skip-coderabbit` / `adr-auto-merge` ラベル、本文の ignore コマンド、base が default branch
+でない PR）では何も差し込まない。**
 
 ## 仕組み
 
@@ -62,8 +64,17 @@ converge に触れない。process.md の手順は、`gh pr ready` を打つ時�
   `grep "gh pr ready"` や heredoc のように文字列として含むだけのコマンドではこの行が出ないので
   反応しない。別の checkout で実行したときや `--repo` 付きでも、行に repo 名が入っているので
   取り違えない。すでに ready だった PR（`is already "ready for review"`）と `--undo` も対象外になる
-- `gh pr view` で PR を読み、draft でないことと CodeRabbit を外していないことを確かめてから
-  `hookSpecificOutput.additionalContext` を出す。PR を読めないときは何も出さない。直前の
+- **同じ Bash 呼び出しの後ろのコマンドが失敗しても動く。** `gh pr ready 12 && gh pr checks 12`
+  は CI が pending だと exit 8 で終わり、PostToolUse ではなく PostToolUseFailure が呼ばれる。
+  ready 自体は済んでいるので、同じスクリプトを PostToolUseFailure にも登録し、出力は
+  `error`（stdout と stderr が混ざった本文）から読む。ユーザーが中断した呼び出し
+  （`is_interrupt`）では何も出さない
+- `gh pr view` で PR を読み、draft でないこと・CodeRabbit を外していないこと・base が
+  repo の default branch であることを確かめてから `hookSpecificOutput.additionalContext` を
+  出す。ignore コマンドは本文のどこにあっても外した扱いにする（CodeRabbit は引用も区別しない。
+  `docs/process.md`）。`.coderabbit.yaml` に `base_branches` が無いので、default branch 以外へ
+  向いた PR（stack の上の層）は自動レビューされず、収束させるラウンドが無い。
+  PR を読めないときは何も出さない。直前の
   `gh pr ready` が GitHub に届いているので、読めないのは例外的な状態であり、推測で促さない
 - どの失敗でも exit 0 で何も出さずに終わる。フックが Bash の呼び出しを壊さないことを優先する
 - 却下: コマンド文字列から PR 番号を切り出す形。文字列として含むだけのコマンドで誤って反応し、
