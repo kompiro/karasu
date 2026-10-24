@@ -464,12 +464,10 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 
 ## vscode
 
-- [ADR-176](176-vscode-phase3-webview-architecture.md) — VSCode Phase 3 — 独立 HTML Webview アーキテクチャ
-- [ADR-218](218-vscode-phase3-5-drilldown.md) — VSCode Phase 3.5 — Webview ドリルダウンナビゲーション
-- [ADR-299](299-vscode-icon-mode-toggle.md) — VSCode プレビュー Icon Mode トグル — Extension Host 管理 + postMessage
 - [ADR-863](863-vscode-extension-host-harness.md) — VS Code 拡張ホスト向け smoke test harness
 - [ADR-1316](1316-vscode-marketplace-publish.md) — VS Code 拡張を Entra ID + GitHub OIDC（managed identity）で Marketplace に publish する
 - [ADR-1417](1417-lsp-cli-i18n.md) — LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n の切り出し
 - [ADR-2456](2456-lsp-custom-request-duplicate-jsonrpc.md) — LSP の position drift は position encoding ではなく vscode-jsonrpc の二重コピーだった
 - [ADR-2782](2782-vscode-floor-capped-by-extester.md) — VS Code の floor を 1.137 に上げ、ExTester の vscode-max を上限として機械チェックする
+- [ADR-2996](2996-vscode-shared-viewer.md) — VS Code 拡張の preview は app の viewer を webview で動かし、ファイルはホストへの要求で読み書きする
 - [ADR-9014](9014-vscode-extension-lsp-first.md) — VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画
