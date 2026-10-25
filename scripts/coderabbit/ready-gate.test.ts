@@ -301,6 +301,8 @@ describe("gh wrapper: gh pr create", () => {
     "gh pr create -dw",
     "gh pr create -tTitle -d",
     "gh pr create --draft=true --title x",
+    "gh pr create -d=true --title x",
+    "gh pr create -d=false -d",
   ])("runs a draft create: %s", (line) => {
     const gh = fakeGh(DRAFT);
     expect(run(line, gh, reviews()).status).toBe(0);
@@ -318,6 +320,10 @@ describe("gh wrapper: gh pr create", () => {
     ["gh pr create -t -d", "where -d is the value of -t"],
     ["gh pr create --draft=false --title x", "with --draft=false"],
     ["gh pr create --title x -- --draft", "with --draft after --"],
+    ["gh pr create -d=false --title x", "with -d=false"],
+    ["gh pr create -wd=false", "with -d=false at the end of a cluster"],
+    ["gh pr create -d -d=false", "where a later -d=false wins"],
+    ["gh pr create -t=-d", "where -d is the attached value of -t"],
   ])("refuses a create %s", (line) => {
     const gh = fakeGh(DRAFT);
     const result = run(line, gh, reviews());

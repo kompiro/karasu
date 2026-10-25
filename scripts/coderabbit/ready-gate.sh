@@ -36,6 +36,13 @@ if [ "$action" = "create" ]; then
   # never taken for --draft (`--body --draft` passes "--draft" as the body).
   # Options of `gh pr create` that take a value, from `gh pr create --help`:
   value_short="aBbFHlmprTtR"
+  # pflag's boolean values; anything it would not accept is not a draft.
+  as_bool() {
+    case "$1" in
+      1 | t | T | true | TRUE | True) echo true ;;
+      *) echo false ;;
+    esac
+  }
   draft=false
   expect_value=false
   for arg in "$@"; do
@@ -46,31 +53,31 @@ if [ "$action" = "create" ]; then
     case "$arg" in
       --) break ;;
       --draft) draft=true ;;
-      --draft=*)
-        case "${arg#--draft=}" in
-          1 | t | T | true | TRUE | True) draft=true ;;
-          *) draft=false ;;
-        esac
-        ;;
+      --draft=*) draft=$(as_bool "${arg#--draft=}") ;;
       --assignee | --attach | --base | --body | --body-file | --head | --label | --milestone | \
         --project | --recover | --reviewer | --template | --title | --repo)
         expect_value=true
         ;;
       --*) ;;
       -?*)
-        # A cluster of short options, such as -dw or -tTitle: booleans up to
-        # the first option that takes a value, which consumes the rest of the
-        # word or, when nothing is left, the next argument.
+        # A cluster of short options, read by pflag's grammar: each boolean
+        # letter is on unless `=<value>` follows it, which ends the cluster; the
+        # first letter that takes a value consumes the rest of the word (minus a
+        # leading `=`) or, when nothing is left, the next argument. Examples:
+        # -dw, -d=false, -tTitle, -t=Title, -t Title.
         cluster=${arg#-}
         while [ -n "$cluster" ]; do
           letter=${cluster:0:1}
           cluster=${cluster:1}
-          if [ "$letter" = "d" ]; then
-            draft=true
-          elif [ "${value_short#*"$letter"}" != "$value_short" ]; then
+          if [ "${value_short#*"$letter"}" != "$value_short" ]; then
             [ -z "$cluster" ] && expect_value=true
             break
           fi
+          if [ "${cluster:0:1}" = "=" ]; then
+            [ "$letter" = "d" ] && draft=$(as_bool "${cluster:1}")
+            break
+          fi
+          [ "$letter" = "d" ] && draft=true
         done
         ;;
     esac
