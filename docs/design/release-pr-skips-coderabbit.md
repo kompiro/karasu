@@ -115,7 +115,7 @@ ADR-2949 と ADR-3117 が却下した形そのもの。タイトルは場所で�
 チェックそのものは PR から書き換えられない revision で走らせる。PR の head にある判定のコードを使うと、リリースブランチに足したコミットが `scripts/release/train.mts` を弱めて、生成物でない差分を通せてしまう。
 
 - trigger は `pull_request_target` にする。GitHub は workflow の定義を base ブランチから読むので、PR が workflow を書き換えてもその PR のチェックには効かない。
-- 判定のスクリプト（`scripts/release/train.mts`）は `pull_request.base.sha` を checkout して使う。PR の head は `git fetch` で取り込み、差分と `package.json` の前後の中身をデータとして読むだけにする。head のコードは実行しない（`pull_request_target` で head を checkout して実行しない、という GitHub の注意に沿う）。依存のインストールも要らない（`train.mts` は Node の type stripping で動き、node の builtin だけを import する）。
+- 判定のスクリプト（`scripts/release/train.mts`）は `pull_request.base.sha` を checkout して使う。PR の head は `git fetch` で取り込み、差分と `package.json` の前後の中身をデータとして読むだけにする。head のコードは実行しない（`pull_request_target` で head を checkout して実行しない、という GitHub の注意に沿う）。依存のインストールも要らない（`train.mts` は Node の type stripping で動き、node の builtin だけを import する）。Node は `release-prepare.yml` と同じく `actions/setup-node` で `node-version: "24"` に固定する。type stripping はフラグなしで有効になる版なので、`--experimental-strip-types` は付けない。
 - head のリポジトリが base と同じであることも 2 の条件に含める。fork の PR はブランチ名を `chore/release-*` にでき、本文に ignore コマンドの行も書けるので、レビューから外れている fork の PR はブランチ名にかかわらず失敗させる。
 - workflow と `scripts/release/` の変更そのものは、通常の PR として CodeRabbit とメンテナのレビューを通る（それらはリリース PR の生成物ではないので、リリース PR に入れば 2 で失敗する）。CODEOWNERS は置いていない（メンテナが 1 人で全てのマージを見る）。
 
