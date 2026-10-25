@@ -14,7 +14,7 @@
 
 月次トレインのリリース PR（head `chore/release-YYYY-MM-DD`）にも CodeRabbit の自動レビューが走る。ところがリリース PR の差分には、CodeRabbit が見るべきものがない。
 
-- 差分は `changeset version` が作ったもの（版の更新、`CHANGELOG.md` の追記、消費した `.changeset/*.md` の削除、lockfile）だけである。
+- 差分は `pnpm version-packages`（`changeset version` と `pnpm install --lockfile-only`）が作ったもの（版の更新、`CHANGELOG.md` の追記、消費した `.changeset/*.md` の削除）だけである。lockfile も更新の対象だが、直近 5 本のリリース PR（#3349・#3239・#2981・#2921・#1781）では一度も変わっていない。
 - `CHANGELOG.md` の各項目は、その changeset を足した PR ですでにレビューを通っている。
 - リリース PR のレビューは、人が版と CHANGELOG を読んでからマージすること（ADR-1370）で、自動レビューではない。
 
@@ -102,12 +102,15 @@ ADR-2949 と ADR-3117 が却下した形そのもの。タイトルは場所で�
 
 ### 最終の差分を確かめる（TPL-3286）
 
-外す根拠は「差分が `changeset version` の生成物だけ」なので、それをマージの直前まで確かめる。チェックの対象は、レビューから外れている PR（本文に ignore コマンドの行があるか、`release-pr` ラベルが付いている）のうち、head が `chore/release-*` のもの。`origin/main...HEAD` の差分が次の規則にすべて当たらなければ失敗させる。どの規則にも当たらない変更は失敗に倒す（TPL-3286）。
+外す根拠は「差分が `changeset version` の生成物だけ」なので、それをマージの直前まで確かめる。チェックは全ての PR で走り、次の 2 つで失敗させる。それ以外の PR では何もせずに通す。
+
+1. `release-pr` ラベルが付いているのに、head が `chore/release-*` でない。ラベルはリリース PR を外した記録なので、別の PR に付けば、最終差分のチェックを通らないまま外れてしまう。本文の ignore コマンドの行だけではここで失敗させない。`adr-auto-merge` と `skip-coderabbit` の PR も同じ行を持ち、それぞれの判定（ADR-2331・ADR-3011）で外しているため。
+2. head が `chore/release-*` で、レビューから外れている（本文に ignore コマンドの行があるか、`release-pr` ラベルが付いている）のに、`origin/main...HEAD` の差分が次の規則にすべて当たらない。どの規則にも当たらない変更は失敗に倒す（TPL-3286）。
 
 - `.changeset/*.md` の削除
 - `packages/*/CHANGELOG.md` の追加・変更
 - `packages/*/package.json` の変更のうち、`version` と、workspace 内のパッケージへの依存（`dependencies` などの値）の版だけが変わったもの。前後の JSON を比べ、キーの追加・削除や、それ以外のフィールドの変更は失敗にする（`scripts` や `exports`、外部の依存の追加を見逃さないため）
-- `pnpm-lock.yaml` は変わらないこと。workspace 内の依存は `link:` で解決されるので、`changeset version` の後の `pnpm install --lockfile-only` で lockfile は通常変わらない。変わった場合は失敗にして、正当な変化なら規則を広げる
+- `pnpm-lock.yaml` は変わらないこと。workspace 内の依存は `link:` で解決されるので、`changeset version` の後の `pnpm install --lockfile-only` で lockfile は通常変わらない（背景に挙げた 5 本でも変わっていない）。変わった場合は失敗にして、失敗のメッセージで「正当な変化なら、変わった範囲を確かめて規則を広げる」と案内する。規則に当たらない入力を通す側に倒さないため（TPL-3286）
 
 失敗したときのメッセージで、本文の行とラベルを外して通常のレビューに戻す手順（本文の行とラベルを残したまま full review を頼み、届いてから外す。docs/process.md の「CodeRabbit を外す小さな PR」と同じ）を案内する。外した後はチェックの対象から外れるので通る。
 
