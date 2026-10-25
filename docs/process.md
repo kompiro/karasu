@@ -133,7 +133,8 @@ PR への push は、自動レビューが走るたびに CodeRabbit の review 
 同じ種類の指摘で PR のラウンドを使わずに済む。指摘が 0 件になるまで回し直すことはしない。
 1 回に数分かかり、同じ差分でも実行ごとに違う指摘が出るので、回し続けると PR のラウンドと
 同じ待ちが ready の前に移るだけになる。CLI の後にも PR の初回レビューは走る。
-`/coderabbit-converge` のラウンド中も CLI は回さない。CLI が使えない環境（未インストール・
+`/coderabbit-converge` のラウンドでは、push の前にそのラウンドの修正分だけへ 1 回当てる
+（ADR-3340）。CLI が使えない環境（未インストール・
 未認証・枠切れ）では手順 9 を飛ばし、手順 11 の ready を `KARASU_LOCAL_REVIEW_SKIPPED=<理由> gh pr ready <n>`
 で実行する（理由を付けない ready は拒否される）。決定は
 [ADR-3326](adr/3326-coderabbit-cli-once-before-ready.md) と ADR-3342。
