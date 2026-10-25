@@ -54,7 +54,11 @@ export function composeVideo(opts: {
   cardSeconds?: number;
 }): void {
   const card = opts.cardSeconds ?? 4;
-  const fadeOutAt = Math.max(0, duration(opts.raw) - 0.5).toFixed(2);
+  const rawSeconds = duration(opts.raw);
+  if (!Number.isFinite(rawSeconds) || rawSeconds <= 0) {
+    throw new Error(`${opts.raw} has no readable duration`);
+  }
+  const fadeOutAt = Math.max(0, rawSeconds - 0.5).toFixed(2);
   const size = `${SCREEN.width}:${SCREEN.height}`;
   execFileSync("ffmpeg", [
     "-y",

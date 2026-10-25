@@ -85,6 +85,14 @@ const T = {
   },
 } as const;
 
+async function answers(): Promise<boolean> {
+  try {
+    return (await fetch(BASE)).ok;
+  } catch {
+    return false;
+  }
+}
+
 /** Resolves once serve answers on PORT; rejects if it exits first (e.g. the port is taken). */
 async function waitForServe(serve: ChildProcess): Promise<void> {
   let exited = false;
@@ -93,11 +101,7 @@ async function waitForServe(serve: ChildProcess): Promise<void> {
   });
   for (let i = 0; i < 100; i++) {
     if (exited) throw new Error(`karasu serve exited before answering (is port ${PORT} taken?)`);
-    try {
-      if ((await fetch(BASE)).ok) return;
-    } catch {
-      // not listening yet
-    }
+    if (await answers()) return;
     await sleep(100);
   }
   throw new Error(`karasu serve did not answer on ${BASE}`);
@@ -130,6 +134,8 @@ const scenario: Scenario = {
 
   async run(ctx) {
     const t = T[ctx.lang];
+    // Anything already answering on PORT would be recorded instead of this run's model.
+    if (await answers()) throw new Error(`port ${PORT} is already in use; stop that server first`);
     const serve = spawn(
       "node",
       [join(ctx.repo, "packages/cli/dist/index.js"), "serve", "-p", String(PORT), ctx.model],
