@@ -8,11 +8,11 @@
 // Edits are written to disk by the script (serve watches the directory); the code panel
 // shows each edit as a diff so the viewer can see what was saved.
 
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { launchAppBrowser, screenCenter } from "../lib/browser.mts";
-import { clickAt, parkPointer, sleep, wheelAt } from "../lib/display.mts";
+import { clickAt, parkPointer, registerCleanup, sleep, wheelAt } from "../lib/display.mts";
 import { caption, codePanel } from "../lib/overlay.mts";
 import type { Scenario } from "../lib/scenario.mts";
 
@@ -85,6 +85,24 @@ const T = {
   },
 } as const;
 
+/** Resolves once serve answers on PORT; rejects if it exits first (e.g. the port is taken). */
+async function waitForServe(serve: ChildProcess): Promise<void> {
+  let exited = false;
+  serve.once("exit", () => {
+    exited = true;
+  });
+  for (let i = 0; i < 100; i++) {
+    if (exited) throw new Error(`karasu serve exited before answering (is port ${PORT} taken?)`);
+    try {
+      if ((await fetch(BASE)).ok) return;
+    } catch {
+      // not listening yet
+    }
+    await sleep(100);
+  }
+  throw new Error(`karasu serve did not answer on ${BASE}`);
+}
+
 const scenario: Scenario = {
   requires: [
     { path: "packages/cli/dist/index.js", build: "pnpm --filter karasu run build" },
@@ -117,11 +135,13 @@ const scenario: Scenario = {
       [join(ctx.repo, "packages/cli/dist/index.js"), "serve", "-p", String(PORT), ctx.model],
       { stdio: "ignore" },
     );
-    const app = await launchAppBrowser(join(ctx.work, "chrome-profile"), ctx.lang);
-    const p = app.page;
+    const unregister = registerCleanup(() => serve.kill());
+    let app: Awaited<ReturnType<typeof launchAppBrowser>> | undefined;
     try {
+      await waitForServe(serve);
+      app = await launchAppBrowser(join(ctx.work, "chrome-profile"), ctx.lang);
+      const p = app.page;
       parkPointer();
-      await sleep(1500);
       await p.goto(`${BASE}/`);
       await sleep(2500);
       ctx.startRecording();
@@ -255,8 +275,10 @@ const scenario: Scenario = {
       await caption(p, t.shared, link.split("#")[0]);
       parkPointer();
       await sleep(5000);
+      await ctx.stopRecording();
     } finally {
-      await app.close();
+      await app?.close();
+      unregister();
       serve.kill();
     }
   },

@@ -4,11 +4,11 @@
 
 import { type Browser, chromium, type Frame, type Locator, type Page } from "@playwright/test";
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
-import { cpSync, mkdirSync, openSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, cpSync, mkdirSync, openSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { DISPLAY, type Point, SCREEN, sleep } from "./display.mts";
+import { DISPLAY, type Point, registerCleanup, SCREEN, sleep } from "./display.mts";
 
 const CDP_PORT = 9333;
 
@@ -88,6 +88,14 @@ export async function launchCode(opts: {
       ([k]) => !k.startsWith("ELECTRON_") && !k.startsWith("VSCODE_"),
     ),
   );
+  // A VS Code left over from an earlier run would answer on the CDP port and be driven
+  // (and resized) instead of the one launched here.
+  try {
+    await (await chromium.connectOverCDP(`http://127.0.0.1:${CDP_PORT}`)).close();
+    throw new Error(`port ${CDP_PORT} is taken (a VS Code left from an earlier run?)`);
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith(`port ${CDP_PORT}`)) throw e;
+  }
   const logFd = openSync(opts.log ?? "/dev/null", "w");
   const proc: ChildProcess = spawn(
     opts.executable,
@@ -109,51 +117,70 @@ export async function launchCode(opts: {
     ],
     { env, stdio: ["ignore", logFd, logFd] },
   );
+  const stop = () => {
+    proc.kill();
+    closeSync(logFd);
+  };
+  const unregister = registerCleanup(stop);
 
   let browser: Browser | undefined;
-  for (let i = 0; i < 60 && !browser; i++) {
-    try {
-      browser = await chromium.connectOverCDP(`http://127.0.0.1:${CDP_PORT}`);
-    } catch {
-      await sleep(500);
+  try {
+    for (let i = 0; i < 60 && !browser; i++) {
+      try {
+        browser = await chromium.connectOverCDP(`http://127.0.0.1:${CDP_PORT}`);
+      } catch {
+        await sleep(500);
+      }
     }
-  }
-  if (!browser) throw new Error("VS Code did not open its CDP port");
-  let win: Page | undefined;
-  for (let i = 0; i < 120 && !win; i++) {
-    win = browser
-      .contexts()
-      .flatMap((c) => c.pages())
-      .find((p) => p.url().includes("workbench.html"));
-    if (!win) await sleep(500);
-  }
-  if (!win) throw new Error("VS Code workbench window did not appear");
-  await win.waitForSelector(".monaco-workbench");
+    if (!browser) throw new Error("VS Code did not open its CDP port");
+    let win: Page | undefined;
+    for (let i = 0; i < 120 && !win; i++) {
+      win = browser
+        .contexts()
+        .flatMap((c) => c.pages())
+        .find((p) => p.url().includes("workbench.html"));
+      if (!win) await sleep(500);
+    }
+    if (!win) throw new Error("VS Code workbench window did not appear");
+    await win.waitForSelector(".monaco-workbench");
 
-  // CDP's Browser.setWindowBounds does not exist in Electron; resize the X window.
-  const xenv = { ...process.env, DISPLAY };
-  const ids = execFileSync("xdotool", ["search", "--onlyvisible", "--name", "Visual Studio Code"], {
-    env: xenv,
-  })
-    .toString()
-    .trim()
-    .split("\n");
-  for (const id of ids) {
-    execFileSync(
+    // CDP's Browser.setWindowBounds does not exist in Electron; resize the X window.
+    const xenv = { ...process.env, DISPLAY };
+    const ids = execFileSync(
       "xdotool",
-      ["windowmove", id, "0", "0", "windowsize", id, String(SCREEN.width), String(SCREEN.height)],
-      { env: xenv },
-    );
+      ["search", "--onlyvisible", "--name", "Visual Studio Code"],
+      {
+        env: xenv,
+      },
+    )
+      .toString()
+      .trim()
+      .split("\n");
+    for (const id of ids) {
+      execFileSync(
+        "xdotool",
+        ["windowmove", id, "0", "0", "windowsize", id, String(SCREEN.width), String(SCREEN.height)],
+        { env: xenv },
+      );
+    }
+    await sleep(1500);
+    const connected = browser;
+    return {
+      win,
+      browser: connected,
+      // Kill the process instead of closing through CDP: a CDP close asks VS Code to
+      // close the window, which raises "save changes?" for the unsaved demo edits.
+      close: async () => {
+        unregister();
+        stop();
+        await sleep(1000);
+      },
+    };
+  } catch (e) {
+    unregister();
+    stop();
+    throw e;
   }
-  await sleep(1500);
-  return {
-    win,
-    browser,
-    close: async () => {
-      proc.kill();
-      await sleep(1000);
-    },
-  };
 }
 
 /** Copies a fixture to a fresh workspace dir. */

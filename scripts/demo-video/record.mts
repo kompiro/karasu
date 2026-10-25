@@ -20,7 +20,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { composeVideo, contactSheet, renderCards } from "./lib/compose.mts";
-import { ensureDisplay, type Recording, startRecording } from "./lib/display.mts";
+import { ensureDisplay, type Recording, runCleanups, startRecording } from "./lib/display.mts";
 import type { Lang, Scenario } from "./lib/scenario.mts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -46,7 +46,11 @@ if (!name || !scenarios.includes(name)) {
   );
   process.exit(1);
 }
-const lang: Lang = args.lang === "ja" ? "ja" : "en";
+if (args.lang !== "en" && args.lang !== "ja") {
+  console.error(`--lang must be en or ja, not ${args.lang}`);
+  process.exit(1);
+}
+const lang: Lang = args.lang;
 const out = resolve(args.out);
 
 const scenario = (
@@ -64,7 +68,12 @@ for (const tool of ["ffmpeg", "ffprobe", "Xvfb", "xdotool"]) {
     missing.push(`${tool}: sudo apt-get install -y ffmpeg xvfb xdotool`);
   }
 }
-const fonts = execFileSync("fc-list").toString();
+let fonts = "";
+try {
+  fonts = execFileSync("fc-list").toString();
+} catch {
+  missing.push("fc-list: sudo apt-get install -y fontconfig");
+}
 if (!/Noto Sans CJK/.test(fonts)) missing.push("CJK font: sudo apt-get install -y fonts-noto-cjk");
 if (!/Noto Color Emoji/.test(fonts)) {
   missing.push("emoji font (toolbar icons): sudo apt-get install -y fonts-noto-color-emoji");
@@ -86,6 +95,15 @@ const model = join(work, scenario.fixture);
 cpSync(join(here, "fixtures", scenario.fixture, lang), model, { recursive: true });
 const raw = join(work, "raw.mp4");
 
+// An interrupted run (Ctrl+C, a tool timeout) must not leave Xvfb, ffmpeg, VS Code or
+// karasu serve running on the shared display and ports.
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.on(signal, () => {
+    runCleanups();
+    process.exit(130);
+  });
+}
+
 const stopDisplay = await ensureDisplay();
 let recording: Recording | undefined;
 let failed = false;
@@ -97,6 +115,9 @@ try {
     model,
     startRecording() {
       recording ??= startRecording(raw);
+    },
+    async stopRecording() {
+      await recording?.stop();
     },
   });
 } catch (e) {
@@ -112,8 +133,12 @@ if (!recording) {
 }
 if (failed) {
   console.error(`partial recording kept for inspection: ${raw}`);
-  contactSheet(raw, join(work, "raw.contact.png"));
-  console.error(`contact sheet: ${join(work, "raw.contact.png")}`);
+  try {
+    contactSheet(raw, join(work, "raw.contact.png"));
+    console.error(`contact sheet: ${join(work, "raw.contact.png")}`);
+  } catch {
+    console.error("(the partial recording is too short for a contact sheet)");
+  }
   process.exit(1);
 }
 

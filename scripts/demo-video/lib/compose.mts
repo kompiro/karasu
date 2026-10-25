@@ -77,7 +77,9 @@ export function composeVideo(opts: {
 
 /** A grid of frames every `every` seconds, for reviewing a recording at a glance. */
 export function contactSheet(video: string, out: string, every = 3, cols = 4): void {
-  const rows = Math.ceil(duration(video) / every / cols);
+  const seconds = duration(video);
+  if (!Number.isFinite(seconds) || seconds <= 0) throw new Error(`${video} has no duration`);
+  const rows = Math.max(1, Math.ceil(seconds / every / cols));
   execFileSync("ffmpeg", [
     "-y",
     "-loglevel",

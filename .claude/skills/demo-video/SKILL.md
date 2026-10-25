@@ -87,7 +87,9 @@ pnpm demo-video:record <scenario> --lang ja
 ```
 
 場面ごとに `HH:MM:SS caption: …` が出る。どこまで進んだかはこの行で分かる。
-録画は Xvfb の `:99` を使うので、2 本を同時に録らない（順に実行する）。
+録画は Xvfb の `:99`、VS Code の CDP ポート 9333、serve のポート 3456 を使うので、2 本を同時に
+録らない（順に実行する）。`serve-import` の Share の場面は公開アプリ karasu.kompiro.dev を開くので、
+ネットワークが要り、映るのはローカルのビルドではなく公開中の版になる。
 
 ### 4. 見る
 
@@ -98,7 +100,7 @@ pnpm demo-video:record <scenario> --lang ja
 - クリックやジャンプが狙った要素に当たっている（違う要素の右クリックメニューが出ていない）
 - 図が画面からはみ出していない（はみ出すならホイールでズームアウトする手順を足す）
 
-失敗して止まったときは、一時ディレクトリ（`$TMPDIR/karasu-demo-video/<scenario>.<lang>/`）に
+失敗して止まったときは、OS の一時ディレクトリ（通常 `/tmp/karasu-demo-video/<scenario>.<lang>/`）に
 途中までの `raw.mp4` とその `raw.contact.png`、VS Code なら `vscode.log` が残る。
 
 ## 落とし穴
@@ -121,6 +123,7 @@ pnpm demo-video:record <scenario> --lang ja
 | ポインタが止まったままクリックが起きる | Playwright の mouse は X のカーソルを動かさない | xdotool で動かしてクリックする（`clickAt`） |
 | 翻訳バーが出る | `--disable-features=Translate` では消えない | プロファイルの Preferences で翻訳を切る |
 | ウィンドウが画面からはみ出す | Chromium の `--window-size` は DIP 単位 | 画面サイズを倍率で割る |
+| 動画の末尾に「変更を保存しますか？」が映る | 未保存のデモ編集を残したまま VS Code を閉じた（SIGTERM でも CDP の close でも出る） | 最後の場面のあとに `ctx.stopRecording()` を呼んでから閉じる |
 | 録画ファイルが `moov atom not found` で開けない | 強制終了で MP4 が閉じられなかった | 録画中は fragmented MP4 で書き、仕上げで `+faststart` に直す |
 | `pkill -f <パターン>` でシェルごと落ちる（exit 144） | 同じコマンド行にそのパターン文字列が含まれていた | `pkill -f "[v]scode-linux"` のように先頭を `[]` で囲み、pkill は単独のコマンドで実行する |
 | `downloadAndUnzipVSCode` が `ENOENT: mkdir` | キャッシュの親ディレクトリを作らない | 先に `mkdirSync(..., { recursive: true })` |

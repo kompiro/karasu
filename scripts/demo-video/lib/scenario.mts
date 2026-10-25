@@ -17,6 +17,12 @@ export interface ScenarioContext {
    * (window open, file loaded); record.mts stops it when `run` returns or throws.
    */
   startRecording(): void;
+  /**
+   * Stops the recording. Call it after the last scene, before closing the app: closing
+   * VS Code with unsaved demo edits raises a "save changes?" dialog that must not end up
+   * in the video. record.mts also stops it if `run` returns without calling this.
+   */
+  stopRecording(): Promise<void>;
 }
 
 export interface Scenario {

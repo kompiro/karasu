@@ -11,6 +11,31 @@ const XENV = { ...process.env, DISPLAY };
 
 export const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+// ---- cleanup ----
+// Every child a run starts (Xvfb, ffmpeg, VS Code, karasu serve) registers how to stop
+// it here, so record.mts can stop them all when the run is interrupted (SIGINT /
+// SIGTERM, e.g. a tool timeout) instead of leaving them on the shared display and ports.
+
+const cleanups = new Set<() => void>();
+
+/** Registers a synchronous stop action. Returns a function that unregisters it. */
+export function registerCleanup(fn: () => void): () => void {
+  cleanups.add(fn);
+  return () => cleanups.delete(fn);
+}
+
+/** Runs every registered stop action, newest first. */
+export function runCleanups(): void {
+  for (const fn of [...cleanups].reverse()) {
+    try {
+      fn();
+    } catch {
+      // keep stopping the rest
+    }
+  }
+  cleanups.clear();
+}
+
 function displayIsUp(): boolean {
   try {
     execFileSync("xdotool", ["getmouselocation"], { env: XENV, stdio: "ignore" });
@@ -20,17 +45,38 @@ function displayIsUp(): boolean {
   }
 }
 
-/** Starts Xvfb on DISPLAY unless one is already serving it. Returns a stop function. */
+/**
+ * Starts Xvfb on DISPLAY unless one is already serving it, and checks the display has
+ * the size the recorder grabs. Returns a stop function. Only one run may use the
+ * display at a time: two runs would also share the CDP and serve ports.
+ */
 export async function ensureDisplay(): Promise<() => void> {
-  if (displayIsUp()) return () => {};
-  const xvfb = spawn(
-    "Xvfb",
-    [DISPLAY, "-screen", "0", `${SCREEN.width}x${SCREEN.height}x24`, "-nolisten", "tcp"],
-    { stdio: "ignore" },
-  );
-  for (let i = 0; i < 50 && !displayIsUp(); i++) await sleep(100);
-  if (!displayIsUp()) throw new Error(`Xvfb did not come up on ${DISPLAY}`);
-  return () => xvfb.kill();
+  let stop = () => {};
+  if (!displayIsUp()) {
+    const xvfb = spawn(
+      "Xvfb",
+      [DISPLAY, "-screen", "0", `${SCREEN.width}x${SCREEN.height}x24`, "-nolisten", "tcp"],
+      { stdio: "ignore" },
+    );
+    const unregister = registerCleanup(() => xvfb.kill());
+    stop = () => {
+      unregister();
+      xvfb.kill();
+    };
+    for (let i = 0; i < 50 && !displayIsUp(); i++) await sleep(100);
+    if (!displayIsUp()) {
+      stop();
+      throw new Error(`Xvfb did not come up on ${DISPLAY}`);
+    }
+  }
+  const geometry = execFileSync("xdotool", ["getdisplaygeometry"], { env: XENV }).toString().trim();
+  if (geometry !== `${SCREEN.width} ${SCREEN.height}`) {
+    stop();
+    throw new Error(
+      `${DISPLAY} is ${geometry.replace(" ", "x")}, not ${SCREEN.width}x${SCREEN.height}: stop that X server first`,
+    );
+  }
+  return stop;
 }
 
 export interface Recording {
@@ -75,10 +121,26 @@ export function startRecording(out: string, fps = 30): Recording {
     // caller's `| tail` waiting after the scenario has exited.
     { stdio: ["pipe", "ignore", "ignore"] },
   );
+  // A dead ffmpeg (bad display, full disk) must not crash the run on EPIPE.
+  ffmpeg.on("error", () => {});
+  ffmpeg.stdin?.on("error", () => {});
+  const unregister = registerCleanup(() => ffmpeg.kill("SIGINT"));
   return {
     stop: () =>
       new Promise<void>((resolve) => {
-        ffmpeg.on("exit", () => resolve());
+        unregister();
+        if (ffmpeg.exitCode !== null || ffmpeg.signalCode !== null) {
+          resolve();
+          return;
+        }
+        // "q" lets ffmpeg finish the file; SIGINT and then SIGKILL if it does not exit.
+        const interrupt = setTimeout(() => ffmpeg.kill("SIGINT"), 10_000);
+        const kill = setTimeout(() => ffmpeg.kill("SIGKILL"), 20_000);
+        ffmpeg.on("exit", () => {
+          clearTimeout(interrupt);
+          clearTimeout(kill);
+          resolve();
+        });
         ffmpeg.stdin?.write("q");
         ffmpeg.stdin?.end();
       }),
@@ -142,10 +204,14 @@ export async function clickAt(p: Point, { button = 1, ms = 600 } = {}): Promise<
 /** Ctrl+click at the pointer's current position. */
 export async function ctrlClick(): Promise<void> {
   xdo("keydown", "ctrl");
-  await sleep(150);
-  xdo("click", 1);
-  await sleep(150);
-  xdo("keyup", "ctrl");
+  try {
+    await sleep(150);
+    xdo("click", 1);
+    await sleep(150);
+  } finally {
+    // A held Ctrl would leak into every later run on the shared display.
+    xdo("keyup", "ctrl");
+  }
 }
 
 /** Wheel steps over a point. In the karasu preview the wheel zooms: "down" zooms out. */

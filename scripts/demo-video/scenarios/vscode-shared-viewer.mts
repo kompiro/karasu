@@ -217,6 +217,7 @@ const scenario: Scenario = {
       await sleep(4000);
       parkPointer();
       await sleep(500);
+      await ctx.stopRecording();
     } finally {
       await code.close();
     }
