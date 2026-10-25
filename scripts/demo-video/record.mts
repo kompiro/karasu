@@ -134,7 +134,7 @@ if (!recording) {
 if (failed) {
   console.error(`partial recording kept for inspection: ${raw}`);
   try {
-    contactSheet(raw, join(work, "raw.contact.png"));
+    await contactSheet(raw, join(work, "raw.contact.png"));
     console.error(`contact sheet: ${join(work, "raw.contact.png")}`);
   } catch {
     console.error("(the partial recording is too short for a contact sheet)");
@@ -152,7 +152,7 @@ await renderCards([
 ]);
 mkdirSync(out, { recursive: true });
 const video = join(out, `${name}.${lang}.mp4`);
-composeVideo({ intro, raw, outro, out: video });
+await composeVideo({ intro, raw, outro, out: video });
 const sheet = join(out, `${name}.${lang}.contact.png`);
-contactSheet(video, sheet);
+await contactSheet(video, sheet);
 console.log(`video: ${video}\ncontact sheet: ${sheet}`);

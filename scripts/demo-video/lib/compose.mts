@@ -1,9 +1,9 @@
 // Title cards and the final MP4: intro card, the recording, outro card, with fades.
 
 import { chromium } from "@playwright/test";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { BROWSER_SCALE } from "./browser.mts";
-import { SCREEN } from "./display.mts";
+import { registerCleanup, SCREEN } from "./display.mts";
 import { titleCard } from "./overlay.mts";
 
 export interface Card {
@@ -15,20 +15,47 @@ export interface Card {
 /** Renders each card to a 1920x1080 PNG with a headless browser. */
 export async function renderCards(cards: ReadonlyArray<[Card, string]>): Promise<void> {
   const browser = await chromium.launch();
-  const page = await browser.newPage({
-    viewport: {
-      width: Math.round(SCREEN.width / BROWSER_SCALE),
-      height: Math.round(SCREEN.height / BROWSER_SCALE),
-    },
-    deviceScaleFactor: BROWSER_SCALE,
-  });
-  for (const [card, out] of cards) {
-    await page.setContent("<html><body style='margin:0'></body></html>");
-    await titleCard(page, card.kicker, card.title, card.sub);
-    await page.waitForTimeout(500);
-    await page.screenshot({ path: out });
+  try {
+    const page = await browser.newPage({
+      viewport: {
+        width: Math.round(SCREEN.width / BROWSER_SCALE),
+        height: Math.round(SCREEN.height / BROWSER_SCALE),
+      },
+      deviceScaleFactor: BROWSER_SCALE,
+    });
+    for (const [card, out] of cards) {
+      await page.setContent("<html><body style='margin:0'></body></html>");
+      await titleCard(page, card.kicker, card.title, card.sub);
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: out });
+    }
+  } finally {
+    await browser.close();
   }
-  await browser.close();
+}
+
+/**
+ * Runs ffmpeg without blocking the event loop, so record.mts's SIGINT / SIGTERM
+ * handler can still run during a long encode, and registers it for that cleanup.
+ */
+function ffmpeg(args: readonly string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", "pipe"] });
+    const unregister = registerCleanup(() => child.kill("SIGKILL"));
+    let stderr = "";
+    child.stderr?.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+    child.on("error", (e) => {
+      unregister();
+      reject(e);
+    });
+    child.on("exit", (code, signal) => {
+      unregister();
+      if (code === 0) resolve();
+      else reject(new Error(`ffmpeg failed (${signal ?? code}): ${stderr.trim()}`));
+    });
+  });
 }
 
 function duration(file: string): number {
@@ -46,13 +73,13 @@ function duration(file: string): number {
 }
 
 /** intro (still) + recording + outro (still), each joined with a short fade. */
-export function composeVideo(opts: {
+export async function composeVideo(opts: {
   intro: string;
   raw: string;
   outro: string;
   out: string;
   cardSeconds?: number;
-}): void {
+}): Promise<void> {
   const card = opts.cardSeconds ?? 4;
   const rawSeconds = duration(opts.raw);
   if (!Number.isFinite(rawSeconds) || rawSeconds <= 0) {
@@ -60,7 +87,7 @@ export function composeVideo(opts: {
   }
   const fadeOutAt = Math.max(0, rawSeconds - 0.5).toFixed(2);
   const size = `${SCREEN.width}:${SCREEN.height}`;
-  execFileSync("ffmpeg", [
+  await ffmpeg([
     "-y",
     "-loglevel",
     "error",
@@ -80,11 +107,11 @@ export function composeVideo(opts: {
 }
 
 /** A grid of frames every `every` seconds, for reviewing a recording at a glance. */
-export function contactSheet(video: string, out: string, every = 3, cols = 4): void {
+export async function contactSheet(video: string, out: string, every = 3, cols = 4): Promise<void> {
   const seconds = duration(video);
   if (!Number.isFinite(seconds) || seconds <= 0) throw new Error(`${video} has no duration`);
   const rows = Math.max(1, Math.ceil(seconds / every / cols));
-  execFileSync("ffmpeg", [
+  await ffmpeg([
     "-y",
     "-loglevel",
     "error",
