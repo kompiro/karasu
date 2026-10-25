@@ -119,6 +119,9 @@ X への approve を H にも有効とみなす。
 3. 各マージ M について、`git merge-tree --write-tree <M の 1 番目の親> <M の 2 番目の親>` が返す自動マージの
    結果の tree と M の tree の差分が、生成物のパスだけにある。conflict したファイルも生成物だけである
 4. H で生成物を作り直すと、差分が出ない（`pnpm adr:regenerate` と TPL の索引の生成で `git status` が clean）
+5. X への approve が取り消されている（`DISMISSED`）なら、取り消しは push による stale の取り消しである。
+   PR の timeline の `ReviewDismissedEvent` で、取り消しが X から H までのどれかの push の時刻と一致し、
+   人の手による取り消し（理由のメッセージ付き）でないことを確かめる。確かめられなければ持ち越さない（fail closed）
 
 生成物のパスは、それを作る生成器と一緒に 1 か所に定義し、判定と再生成の両方がそこを参照する。
 
@@ -126,6 +129,10 @@ X への approve を H にも有効とみなす。
 
 判定・設定・文言は互いに依存するので、Issue を分けずに 1 本の PR で入れる。
 
+0. **CodeRabbit の挙動を確かめる（実装の前提）**: `auto_incremental_review: false` を入れた 1 本の PR で、
+   (a) draft から ready にした時点で初回レビューが自動で走るか、(b) 修正の push の後に `@coderabbitai review` を
+   投げるとレビューが走るかを確かめ、結果をこの Doc に書く。(b) が成り立たなければ案 A は採れないので、
+   選択肢に戻る。(a) が成り立たないだけなら、converge の開始時に `@coderabbitai review` を投げて補う
 1. **判定**: `review-state.ts` に「取り込みだけ」の判定と、`DISMISSED` になった X の approve を数える処理を足す。
    `classify` は X が approve され、X..H が取り込みだけなら `approved` を返す。git を使う部分は注入できる形にし、
    一時 repo の fixture でテストする
@@ -142,10 +149,7 @@ X への approve を H にも有効とみなす。
 
 ## 未解決の問い / 決めないこと
 
-- **初回レビューは ready で走るか（要確認）**: `auto_incremental_review: false` でも、draft から ready に
-  変えた時点の初回レビューが自動で走ることを、スライス 2 の前に 1 本の PR で確かめる。走らない場合は、
-  converge の開始時に `@coderabbitai review` を投げる
-- **`@coderabbitai review` が受け付けられるか（要確認）**: これまでの応答は「This command is applicable only
-  when automatic reviews are paused」だった。`auto_incremental_review: false` の PR でこのコマンドが
-  レビューを走らせることを、同じ PR で確かめる。走らない場合は案 A が成り立たないので、この Doc に戻る
+- **CodeRabbit の挙動（実装の手順 0 で確かめる）**: ready での初回レビューと、`@coderabbitai review` の
+  受け付けの 2 つ。後者はこれまで「This command is applicable only when automatic reviews are paused」と
+  応答していたので、incremental を切った PR で受け付けられるかが案 A の成否を決める
 - **決めないこと**: 生成物を conflict しにくくする工夫（案 C や行の並べ方）は別の Issue にする
