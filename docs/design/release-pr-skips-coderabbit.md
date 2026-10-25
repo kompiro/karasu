@@ -92,8 +92,8 @@ ADR-2949 と ADR-3117 が却下した形そのもの。タイトルは場所で�
 
 ## Related TPLs
 
-- [TPL-3286](../test-perspectives/TPL-3286-merge-eligibility-judged-on-final-diff.md): 外す判定はリンクを作った時点の差分で決まり、そのあとのコミットを見ない。リリースブランチに生成物以外のコミットが足されたら外れたままになる。下の「最終の差分を確かめる」で扱う。
-- [TPL-2643](../test-perspectives/TPL-2643-skip-reports-success-without-running.md): rate limit のときの「走らずに pass」の形。リリース PR では外すことで起きなくなる。
+- [TPL-3286](../test-perspectives/TPL-3286-merge-eligibility-judged-on-final-diff.md): 外す判定はリンクを作った時点の差分で決まり、そのあとのコミットを見ない。リリースブランチに生成物以外のコミットが足されたら外れたままになる。下の「最終の差分を確かめる」で、マージ直前の差分を required なチェックで確かめ、どの規則にも当たらない変更を失敗に倒す。
+- [TPL-2643](../test-perspectives/TPL-2643-skip-reports-success-without-running.md): rate limit のときの「走らずに pass」の形。リリース PR では外すことで起きなくなる。また、外した状態を解いた（ラベルや本文の行を外した）ときに最終差分のチェックが再実行されるよう、workflow の types に `labeled` / `unlabeled` / `edited` を入れる。
 
 ## 現時点の方針
 
@@ -101,14 +101,16 @@ ADR-2949 と ADR-3117 が却下した形そのもの。タイトルは場所で�
 
 ### 最終の差分を確かめる（TPL-3286）
 
-外す根拠は「差分が `changeset version` の生成物だけ」なので、それをマージの直前まで確かめる。CI に、head が `chore/release-*` の PR だけで走るチェックを足す。`git diff --name-status origin/main...HEAD` の全行が次のどれかでなければ失敗させる。
+外す根拠は「差分が `changeset version` の生成物だけ」なので、それをマージの直前まで確かめる。チェックの対象は、レビューから外れている PR（本文に ignore コマンドの行があるか、`release-pr` ラベルが付いている）のうち、head が `chore/release-*` のもの。`origin/main...HEAD` の差分が次の規則にすべて当たらなければ失敗させる。どの規則にも当たらない変更は失敗に倒す（TPL-3286）。
 
 - `.changeset/*.md` の削除
 - `packages/*/CHANGELOG.md` の追加・変更
-- `packages/*/package.json` の変更
-- `pnpm-lock.yaml` の変更
+- `packages/*/package.json` の変更のうち、`version` と、workspace 内のパッケージへの依存（`dependencies` などの値）の版だけが変わったもの。前後の JSON を比べ、キーの追加・削除や、それ以外のフィールドの変更は失敗にする（`scripts` や `exports`、外部の依存の追加を見逃さないため）
+- `pnpm-lock.yaml` は変わらないこと。workspace 内の依存は `link:` で解決されるので、`changeset version` の後の `pnpm install --lockfile-only` で lockfile は通常変わらない。変わった場合は失敗にして、正当な変化なら規則を広げる
 
-失敗したときのメッセージで、本文の行とラベルを残したまま full review を頼む手順（docs/process.md の「CodeRabbit を外す小さな PR」と同じ）を案内する。`package.json` は version 以外の行も変えうるが、ファイル単位で見る。`changeset version` が package.json で変えるのは version と内部依存の版だけで、行単位の判定は過剰と判断した。
+失敗したときのメッセージで、本文の行とラベルを外して通常のレビューに戻す手順（本文の行とラベルを残したまま full review を頼み、届いてから外す。docs/process.md の「CodeRabbit を外す小さな PR」と同じ）を案内する。外した後はチェックの対象から外れるので通る。
+
+このチェックは required にする。失敗してもマージできるなら、外したまま生成物でない変更がマージされうるからである。required の status は全ての PR で報告される必要があるので、専用の軽い workflow にして全ての PR で走らせ、対象でない PR では何もせずに通す。既存の required な `Check`（`ci.yml`）に入れない理由は 2 つある。`ci.yml` は md だけの PR では動かない（`paths-ignore`）。そして types に `labeled` / `unlabeled` / `edited` が無いので、ラベルや本文の行を外しても再実行されず、失敗が残る（TPL-2643）。専用の workflow の types には `opened` / `synchronize` / `reopened` / `edited` / `labeled` / `unlabeled` を入れる。
 
 ### 実装の指針
 
@@ -118,7 +120,7 @@ ADR-2949 と ADR-3117 が却下した形そのもの。タイトルは場所で�
    - 生成物かどうかを判定する純粋関数（`isReleaseArtifactChange` など）を足し、上のチェックから呼ぶ。
    - `scripts/release/train.test.ts` で、リンクのパラメータと判定を固める。
 2. `.github/workflows/release-prepare.yml`: Issue を作ったあと、番号を入れた本文で `gh issue edit` する。
-3. 最終の差分のチェック: `ci.yml` に、head が `chore/release-*` のときだけ走るジョブを足す（required にはしない）。
+3. 最終の差分のチェック: 専用の workflow（例 `release-pr-scope.yml`）を足し、全ての PR で走らせる。判定は `scripts/release/train.mts` の純粋関数で行う。workflow のマージ後に、main ruleset の required status checks へ足す（先に足すと、この workflow が無い PR がマージできなくなる。順序は #1866 の E2E の required 化と同じ）。
 4. `.coderabbit.yaml`: `auto_review.labels` に `!release-pr` を足し、コメントで理由と ADR を指す。
 5. `release-pr` ラベルを作る（`gh label create release-pr`）。
 6. ドキュメント:
