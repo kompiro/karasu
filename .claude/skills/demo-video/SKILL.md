@@ -75,7 +75,7 @@ README 冒頭の GIF は別の仕組み（`scripts/readme-demo/`）で、こち�
 シナリオの `requires` に並んだ成果物を作る。worktree で作業しているならその worktree で。
 
 ```bash
-pnpm --filter karasu run build && pnpm --filter karasu run build:app   # serve の場面
+pnpm --filter ./packages/cli run build && pnpm --filter ./packages/cli run build:app   # serve の場面
 pnpm --filter karasu-vscode run build                                 # VS Code の場面
 ```
 

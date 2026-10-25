@@ -109,8 +109,11 @@ async function waitForServe(serve: ChildProcess): Promise<void> {
 
 const scenario: Scenario = {
   requires: [
-    { path: "packages/cli/dist/index.js", build: "pnpm --filter karasu run build" },
-    { path: "packages/cli/dist/app/index.html", build: "pnpm --filter karasu run build:app" },
+    { path: "packages/cli/dist/index.js", build: "pnpm --filter ./packages/cli run build" },
+    {
+      path: "packages/cli/dist/app/index.html",
+      build: "pnpm --filter ./packages/cli run build:app",
+    },
   ],
   fixture: "shop",
   cards: {
