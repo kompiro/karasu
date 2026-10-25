@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#3350](https://github.com/kompiro/karasu/issues/3350)
+  - PR: [#3354](https://github.com/kompiro/karasu/pull/3354)
   - 観測した PR: [#3349](https://github.com/kompiro/karasu/pull/3349)（2026-10-25 のトレイン。rate limit でレビューされず、`CodeRabbit` のステータスは pass）
   - 関連 ADR: [ADR-2922](../adr/2922-monthly-release-train.md)（月次トレイン）、[ADR-1370](../adr/1370-release-flow-actions-driven.md)（リリース PR は人が開き、CHANGELOG を読んでマージする）、[ADR-3117](../adr/3117-coderabbit-ignore-command-for-skip.md)（外すのは本文の ignore コマンド、理由はラベルで記録）、[ADR-3011](../adr/3011-skip-coderabbit-label.md)（`skip-coderabbit` の判定基準）、[ADR-2949](../adr/2949-coderabbit-skips-adr-auto-merge.md)（`adr-auto-merge` で外す）、[ADR-2640](../adr/2640-coderabbit-pr-review.md)（`ignore_usernames` で bot の PR を外す）
   - 関連 TPL: [TPL-3286](../test-perspectives/TPL-3286-merge-eligibility-judged-on-final-diff.md)（レビューを省く判定は最終の差分で行う）、[TPL-2643](../test-perspectives/TPL-2643-skip-reports-success-without-running.md)（走らずに success を報告する gate）
