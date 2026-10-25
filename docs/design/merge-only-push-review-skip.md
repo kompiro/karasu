@@ -145,4 +145,7 @@ X への approve を H にも有効とみなす。
 - **初回レビューは ready で走るか（要確認）**: `auto_incremental_review: false` でも、draft から ready に
   変えた時点の初回レビューが自動で走ることを、スライス 2 の前に 1 本の PR で確かめる。走らない場合は、
   converge の開始時に `@coderabbitai review` を投げる
+- **`@coderabbitai review` が受け付けられるか（要確認）**: これまでの応答は「This command is applicable only
+  when automatic reviews are paused」だった。`auto_incremental_review: false` の PR でこのコマンドが
+  レビューを走らせることを、同じ PR で確かめる。走らない場合は案 A が成り立たないので、この Doc に戻る
 - **決めないこと**: 生成物を conflict しにくくする工夫（案 C や行の並べ方）は別の Issue にする
