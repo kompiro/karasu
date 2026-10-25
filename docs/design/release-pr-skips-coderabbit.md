@@ -105,7 +105,7 @@ ADR-2949 と ADR-3117 が却下した形そのもの。タイトルは場所で�
 外す根拠は「差分が `changeset version` の生成物だけ」なので、それをマージの直前まで確かめる。チェックは全ての PR で走り、次の 2 つで失敗させる。それ以外の PR では何もせずに通す。
 
 1. `release-pr` ラベルが付いているのに、head が `chore/release-*` でない。ラベルはリリース PR を外した記録なので、別の PR に付けば、最終差分のチェックを通らないまま外れてしまう。本文の ignore コマンドの行だけではここで失敗させない。`adr-auto-merge` と `skip-coderabbit` の PR も同じ行を持ち、それぞれの判定（ADR-2331・ADR-3011）で外しているため。
-2. head が `chore/release-*` で、レビューから外れている（本文に ignore コマンドの行があるか、`release-pr` ラベルが付いている）のに、`origin/main...HEAD` の差分が次の規則にすべて当たらない。どの規則にも当たらない変更は失敗に倒す（TPL-3286）。
+2. head が `chore/release-*` で、レビューから外れている（本文に ignore コマンドの行があるか、`release-pr` ラベルが付いている）のに、PR の差分が次の規則にすべて当たらない。差分は、イベントの `pull_request.base.sha` と `pull_request.head.sha` の両コミットを fetch したうえで、その merge-base と head の差分（三点の `base...head`。GitHub の PR の差分と同じ範囲）で取る。checkout の既定の浅い履歴や、ローカルの `origin/main` には頼らない。どの規則にも当たらない変更は失敗に倒す（TPL-3286）。
 
 - `.changeset/*.md` の削除
 - `packages/*/CHANGELOG.md` の追加・変更
