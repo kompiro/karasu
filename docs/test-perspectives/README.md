@@ -587,3 +587,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-3197](TPL-3197-removed-card-reads-every-per-node-value-from-before-by-path.md) | compare モードで削除されたカードを描くのに引く per-node の値は、すべて before 側から自分の path で補う。1 つでも補い漏れると、その値だけが別の枠の同名カードのものになる | renderer | #3197 |
 | [TPL-3282](TPL-3282-every-pass-skips-quoted-text-alike.md) | 同じテキストを複数の手書きスキャナで読むなら、どのスキャナも引用符の中を同じ規則で飛ばす。1 段だけが引用符を知らないと、引用符の中の `)` や `,` で読み終わり位置がずれ、次の段が引用符の中から読み始めて文字列の中の文を実行する | cli | #3282 |
 | [TPL-3286](TPL-3286-merge-eligibility-judged-on-final-diff.md) | 人間を通らないマージを許す判定は、最終の差分で行い、どの規則にも当たらない入力を厳しい側に倒す。PR 作成時の 1 回だけの判定は後のコミットで外れ、規則に当たらないパスが軽い側に倒れると誰も読まないコードが入る | build | #3286, ADR-2331 |
+| [TPL-3341](TPL-3341-carried-approval-needs-proof-nothing-new-to-review.md) | 前のリビジョンへの承認を後のリビジョンに持ち越すなら、後で足されたものにレビューの要る変更が無いことを機械で示す。マージかどうかで判断すると、conflict を手で解消した変更が素通りする。自動マージの結果との差分が、作り直すと同じ中身になる生成物だけにあることを確かめる | project | #3341, ADR-2716 |
