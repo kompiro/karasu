@@ -72,6 +72,11 @@ release train（#3239）、依存の override の変更（#3204）が含まれ�
   実際に行われたことを check は確かめない（確かめるのは、CLI について ADR-3342 のゲートだけ）。それでも、
   指摘を放置したまま、または記録より後のコミットを確かめないままマージすることは機械で止まり、人間は
   何が指摘されどう扱われたかを PR 本文で読める
+- **指摘への対応を重大度で分ける。** すべての指摘の解消をゲートにすると、ラウンドの大半を Minor に使う。
+  初回で拾えなかった 10 件はすべて Minor だった。そこで、必ず対応する（直すか理由を返す）のは Critical と
+  Major だけにし、Minor を直すかどうかは Claude が決める。再レビューを頼むのも、Critical / Major を直した
+  ラウンドだけにする（「指摘の重大度と対応」）。対応を「必ず直す」にしないのは、重大度の判定が外れることが
+  あるからである。本 PR の 2 ラウンド目に届いた Major 3 件のうち 1 件は、理由を返すと CodeRabbit が取り下げた
 
 ## 現状（インベントリ）
 
@@ -232,7 +237,7 @@ CodeRabbit の approve を待たずに人間に渡す。実測で、Design と M
   `.claude/settings.json`、`.claude/skills/**`、`.github/PULL_REQUEST_TEMPLATE.md` である。required check は
   `pull_request` で PR 側の分類器を実行する。そのため、分類器を軽い側に書き換える PR は、自分自身を軽く判定できる。
   案1 ではそうした PR も CodeRabbit を通ったが、案5 の Medium は通らない。High に入れれば、
-  CodeRabbit の approve と、人間が差分を読むことを通る（workflow はもともと High である）
+  CodeRabbit のラウンドと、人間が差分を読むことを通る（workflow はもともと High である）
 - **ADR の昇格の差分は Low にする。** ADR-2331 の適用条件を分類器の規則にする。昇格の PR は
   `docs/design/**` の削除（Design）を含み、`docs/acceptance/**` などのリンクの張り替え（Medium）を含みうる。
   パスだけで判定すると Low にならない。そこで、**同じ PR で `docs/adr/` に新しい ADR のファイルを足しているときに限り**、
@@ -250,7 +255,7 @@ CodeRabbit の approve を待たずに人間に渡す。実測で、Design と M
 
 | 段階 | PR での CodeRabbit | 通す条件 |
 | --- | --- | --- |
-| High | approve まで回す。再レビューは 3 回まで（案1 と同じ） | CodeRabbit の approve と、人間が差分を読むこと |
+| High | Critical / Major の未対応が無くなるまで回す。再レビューは 3 回まで（案1 と同じ） | Critical / Major の未対応が 0 件であることと、人間が差分を読むこと |
 | Design | ready の直後に 1 回だけ回す。ゲートにしない | ローカルレビューの記録と、人間のレビュー |
 | Medium | 回さない | ローカルレビューの記録と、サマリー・証拠・preview を見た人間の判断 |
 | Low | 回さない | ローカルレビューの記録と CI が通れば auto-merge |
@@ -285,11 +290,31 @@ ready の直後のフック（ADR-3333）はコメントを投げない。High �
 - 人間は、CodeRabbit のレビューが届くのを待たずに読み始めてよい
 - required check は CodeRabbit の状態を見ない
 
-届いた指摘は、Claude が直すか理由を返す。対応はローカルレビューの記録の表に、レビュアーを CodeRabbit として
+届いた指摘には、Claude が下の「指摘の重大度と対応」のとおり対応する。対応はローカルレビューの記録の表に、レビュアーを CodeRabbit として
 残す。check はこの行を判定に入れない。入れると、レビューが届く前は check が通り、届いた後に落ちる、という
 逆転が起きるからである。指摘への修正をコミットすれば記録の `head` が古くなるので、下の確認をやり直すことになる。
 消費する枠は小さい。直近にマージした 100 本（2026-10-14〜10-25）のうち、`docs/design/` を含み、それ以外は
 `docs/test-perspectives/` しか触らない PR は 7 本だった。
+
+#### 指摘の重大度と対応
+
+**到達状態**: Critical と Major の指摘はすべて、直したか、理由を返して却下したか、差分の外として Issue に回してある。
+Minor と Trivial の指摘にも、直したかどうかにかかわらず対応が書かれている。CodeRabbit の指摘にもローカルレビューの
+指摘にも、どの段階でも同じ規則を使う。
+
+- **重大度はレビュアーが付けたものを使う。** CodeRabbit は指摘ごとに Critical / Major / Minor / Trivial を付ける。
+  ローカルレビュー（`/engineering:code-review` と CLI）の指摘は、出力の重大度を記録の `Sev` 列にそのまま写し、
+  Claude が付け替えない。重大度が無い、または 4 つのどれでもない指摘は Major として扱う（TPL-3286 の、
+  規則に当たらない入力を厳しい側に倒す）
+- **Critical / Major は必ず対応する。** 対応は直すことに限らない。指摘が誤っていれば、理由を返して却下する
+- **Minor / Trivial は、直すかどうかを Claude が決める。** 同じ push で直せるなら直す。直さないなら
+  `declined: <理由>` と書いて閉じ、議論は続けない
+- **再レビューを頼むのは、Critical / Major を直したラウンドだけにする。** 背景の観測では、再レビューで出た指摘は
+  すべて修正で触れたファイルにあった。重い指摘への修正は、それ自体が新しい問題を持ち込みうるので CodeRabbit に
+  見せる。Minor だけを直したラウンドは、修正で触れたファイルへのローカルの確認（「ローカルレビューの記録」）で足りる。
+  理由を返して却下しただけのラウンドは、コードが変わらないので頼まない
+
+重大度を記録に写すのは Claude で、check は写しが正しいかを確かめない。記録が自己申告であるのと同じ限界である。
 
 #### ローカルレビューの記録
 
@@ -321,8 +346,8 @@ Verification: pass 1 at <40-hex>, files touched by fix commits, 0 new findings
   この 2 段階については改める
 - **対応は 3 種類のどれかで書く。**
   - `fixed in <sha>`
-  - `declined: <理由>`（Low では使わない。直さない判断は人間が読む段階で行う。Low の PR で指摘を却下するなら、
-    ラベルを `risk: medium` に上げる）
+  - `declined: <理由>`（Low では Critical / Major に使わない。重い指摘を直さない判断は人間が読む段階で行う。
+    Low の PR で Critical / Major を却下するなら、ラベルを `risk: medium` に上げる。Minor / Trivial の却下は Low でも使える）
   - `→ #<Issue>`: PR の差分の外への指摘。判定は「段階ごとの流れ」の「指摘された行が PR の差分の hunk に含まれるか」を使う
 - **修正したら、修正で触れたファイル全体を確かめる。** 修正コミットが触れたファイル全体に、
   `/engineering:code-review` を当てる。これを確認と呼ぶ。背景の観測では、再レビューで出た指摘は 10 件すべて、
@@ -361,16 +386,18 @@ GitHub の review は、作成者が自分の PR を approve できないので�
 - **段階が Low でないのに auto-merge が有効なら失敗する。** Low 以外を auto-merge しないことを、手順ではなく check で止める
   （`types:` に `auto_merge_enabled` を入れ、`pull_request.auto_merge` を見る）
 - **段階が Low / Design / Medium のときだけ、記録を検査する。** High は記録を見ない。High には、信頼リストに
-  いない作成者や bot の PR が入り、そうした PR は記録を作れない。High は CodeRabbit の approve と、人間が差分を
-  読むことで通す
+  いない作成者や bot の PR が入り、そうした PR は記録を作れない。High は CodeRabbit のラウンド（Critical / Major の
+  未対応が 0 件）と、人間が差分を読むことで通す
 - **記録の `base` が、PR の base ブランチと HEAD の merge-base と一致すること。** HEAD が同じでも、PR の base を
   付け替えると（stack の積み替えなど）PR の差分が変わる。一致しなければ、記録はその差分をレビューしていないので失敗する。
   ただし、`base` が変わった理由が下の main の取り込みだけなら、その判定に任せる
 - **記録の `head` が PR の HEAD と一致すること。** 一致しない場合でも、`head` から HEAD までの push がすべて
   main の取り込みで、PR の差分の追加行と削除行の集合が同じなら、一致とみなす（「main の取り込みは再レビューしない」の判定）
 - すべての指摘に対応が書かれていること。`fixed in <sha>` の sha が `head` の祖先であること
-- `waived`、`declined`、CLI を飛ばした記録は、Design / Medium では通し、Low では通さない（Low でこれらが要るなら、
-  ラベルを上げる）。Low で人間を通らずにマージされるのは、指摘をすべて直したか、差分の外として Issue に回した PR だけになる
+- `Sev` 列が Critical / Major / Minor / Trivial のどれでもない指摘は、Major として判定する
+- `waived`、Critical / Major の `declined`、CLI を飛ばした記録は、Design / Medium では通し、Low では通さない（Low でこれらが要るなら、
+  ラベルを上げる）。Minor / Trivial の `declined` は Low でも通す。Low で人間を通らずにマージされるのは、Critical / Major を
+  すべて直したか、差分の外として Issue に回した PR だけになる
 - 記録の節が無い、または読めないときは失敗させる（TPL-3286）
 
 案1 では、Medium の PR は check で落ちることがなかった。案5 では、記録の無い Medium の PR はマージできない。
@@ -384,7 +411,7 @@ auto-merge を、base 側の分類器が Low と出したときにしか有効�
 **メリット**
 
 - PR で CodeRabbit を回すのが High と Design だけになる。rate limit の主な原因だった全 PR の確認の再レビューは、
-  High にだけ残る
+  High にだけ残り、High でも Critical / Major を直したラウンドに限られる
 - Low の auto-merge の条件が、手順で待つ CodeRabbit の approve から、required check が検査する記録に変わる。
   auto-merge は GitHub が check を待つので、手順を飛ばしても通らない
 - 人間が読む前に、指摘と対応の一覧が PR 本文に揃う。CodeRabbit のスレッドを辿るより短い
@@ -395,6 +422,8 @@ auto-merge を、base 側の分類器が Low と出したときにしか有効�
 - 自分で書いたコードを自分でレビューする構図が残る。新しい subagent と CLI で文脈を分けるが、独立したレビュアーではない
 - Medium 以下では、初回で拾えなかった Minor の指摘（背景の実測で 37 本中 10 件）を拾わないことがある。
   修正で触れたファイルの確認で一部は拾えるが、保証はない
+- High でも、Minor だけを直したラウンドには CodeRabbit の再レビューが入らない。その修正が持ち込んだ問題は、
+  ローカルの確認でしか拾わない。CodeRabbit の state は `CHANGES_REQUESTED` のまま残ることがある（ruleset は止めない）
 - 記録を書く手間が増え、記録を読むスクリプトも必要になる
 - Medium の PR でも、記録が無ければ check が落ちる
 
@@ -404,7 +433,7 @@ auto-merge を、base 側の分類器が Low と出したときにしか有効�
 | --- | --- | --- | --- | --- | --- |
 | 減る再レビュー（37 本の実測から） | 4 回 + approve 後の取り込みの分 + 見積もれない分（ローカルでの修正確認） | 約 20 回（うち 10 回は High に当たる PR） | 4 回 | 約 29 回 | High 以外のすべて（初回レビューも Medium・Low では走らない） |
 | 人間を通らずにマージされる PR | CodeRabbit が approve した docs とテスト | workflow・依存・release を含みうる | 増えない | 初回レビューだけを通った docs とテスト | ローカルレビューの記録が check を通った docs とテスト |
-| 初回で拾えない指摘 | approve までで拾う | 拾わない | approve までで拾う | 拾わない | High は approve までで拾う。それ以外は修正で触れたファイルのローカルの確認で一部を拾う |
+| 初回で拾えない指摘 | approve までで拾う | 拾わない | approve までで拾う | 拾わない | High は Critical / Major を直したラウンドの再レビューで拾う。それ以外（High の Minor だけのラウンドを含む）は修正で触れたファイルのローカルの確認で一部を拾う |
 | 判定の根拠 | パス（repo の中で検証できる） | 外部サービスの見積もり | なし | パス | パスと、PR 本文の記録（どちらも repo と PR の中で検証できる） |
 
 ## Related TPLs
@@ -423,8 +452,9 @@ auto-merge を、base 側の分類器が Low と出したときにしか有効�
 
 ## 現時点の方針
 
-**案5 を採用する（2026-10-25 改訂。初版は案1）。** PR の CodeRabbit は、approve を承認の条件に使う
-High と、人間が読む前の照合に使う Design に絞る。それ以外の段階では、ローカルレビューの指摘と対応を
+**案5 を採用する（2026-10-25 改訂。初版は案1）。** PR の CodeRabbit は、ラウンドを承認の目安に使う
+High と、人間が読む前の照合に使う Design に絞る。どの段階でも、必ず対応するのは Critical / Major の指摘で、
+再レビューは Critical / Major を直したラウンドにだけ頼む。それ以外の段階では、ローカルレビューの指摘と対応を
 PR 本文に記録し、required check がそれを検査する。段階は変更そのもの（パス）から決め、人間を通らない
 経路は docs とテストに限る。この 2 点は案1 から変えない。
 
@@ -453,13 +483,15 @@ PR 本文に記録し、required check がそれを検査する。段階は変�
 
 **ready の後**
 
-- **High**：converge が approve までラウンドを回す。指摘をすべて直すか理由を返し、まとめて 1 回 push して、
-  `@coderabbitai review` で再レビューを頼む。**再レビューが 3 回に達しても approve されなければ止め、**
-  残っている指摘と取りうる進め方を人間に渡す。approve の後、人間が差分を読む。3 回で止めた PR は、人間が
-  残りの指摘を読んだうえで、approve が無いままマージしてよい。approve は CodeRabbit が承認役を務める目安で、
-  required check にはしない（ADR-2716）。マージの判断は人間が持つ
+- **High**：converge がラウンドを回す。指摘に「指摘の重大度と対応」のとおり対応し、まとめて 1 回 push する。
+  そのラウンドで Critical / Major を直したときだけ、`@coderabbitai review` で再レビューを頼む。Minor だけを直した
+  ラウンドでは頼まず、修正で触れたファイルにローカルの確認を当てて終わる。**Critical / Major の未対応が 0 件で、
+  最後のレビューより後に Critical / Major の修正が入っていなければ、converge は終わり、人間が差分を読む。**
+  CodeRabbit の approve は待たない。再レビューが 3 回に達しても Critical / Major が残れば止め、残っている指摘と
+  取りうる進め方を人間に渡す。人間は残りの指摘を読んだうえでマージしてよい。CodeRabbit の state は
+  required check にしない（ADR-2716）。マージの判断は人間が持つ
 - **Design**：CodeRabbit の 1 回のレビューを待たずに、人間がレビューする。レビューが届いたら、Claude が
-  直すか理由を返し、記録の表に足す。直した場合は手順 2 の確認をやり直して、記録の `head` を進める
+  「指摘の重大度と対応」のとおり対応し、記録の表に足す。直した場合は手順 2 の確認をやり直して、記録の `head` を進める
 - **Medium**：人間が、記録・サマリー・証拠・preview を見て判断する
 - **Low**：required check「Review tier」が段階と記録を検査し、通れば auto-merge する
   （`gh pr merge --auto --squash --delete-branch` は ready の直後に実行してよい。GitHub が check を待つ）
@@ -486,14 +518,15 @@ push の差分の外で、PR の差分の外とは限らない。本 PR でも�
 CodeRabbit の分類にかかわらず、この PR の範囲として直すか理由を返して却下する。
 
 **人間のレビューの後**：人間が修正を頼み、その修正を push する。High では CodeRabbit に再レビューを頼み、
-再レビュー 3 回の上限はここから数え直す。人間の指摘への修正は CodeRabbit の approve より後に入るコードなので、
-確かめずに残さない。一方で、人間がすでに PR を読んでいるので、それまでのラウンドの回数で止めることはしない。
+再レビュー 3 回の上限はここから数え直す。人間の指摘には重大度が付かないので、Minor だけのラウンドの扱いは当てはめない。
+人間の指摘への修正は CodeRabbit が最後にレビューした後に入るコードなので、確かめずに残さない。一方で、人間がすでに PR を読んでいるので、それまでのラウンドの回数で止めることはしない。
 Design と Medium では、修正で触れたファイルに確認を当てて記録を更新する。記録の `head` が HEAD に
 追いつくまで check は通らないので、確かめずに残すことは機械で止まる。
 
 **外部からの PR**：作成者が信頼リスト（現状 `kompiro` だけ）にいなければ、段階は High になる。
 bot の PR（Dependabot など）も同じく High になる。release train の PR は、パス（`CHANGELOG.md` と `version`）でも
 High に当たる。release train の PR で CodeRabbit を回さない扱いは [#3350](https://github.com/kompiro/karasu/issues/3350) が別に決める。
+自動レビューを止めるので、外し方は本文の ignore コマンドやラベルではなく、分類器の規則（ADR の昇格と同じ形）になる。
 
 **ADR-only の auto-merge（ADR-2331）** は Low の 1 つとして扱い、ローカルレビューの記録を求める。
 Low の auto-merge は記録を検査する check を通るので、ラベルを付けるだけで検査を飛ばせる経路は残さない
@@ -509,6 +542,8 @@ High の PR を外す基準は、もともと ADR-3011 に無い。
 案5 では、この節の判定は 2 か所で使う。1 つは High での CodeRabbit の approve の有効性で、
 初版から変わらない。もう 1 つは、ローカルレビューの記録の `head` を HEAD と同じとみなしてよいかの判定である。
 以下の説明は CodeRabbit の approve を例にするが、記録の `head` にもそのまま当てはまる。
+High の終わりは approve ではなく「Critical / Major の未対応が 0 件」で決める（「指摘の重大度と対応」）ので、
+この節の「approve したコミット」は「CodeRabbit が最後にレビューしたコミット」と読み替える。
 
 CodeRabbit の approve の後に main を取り込んでコンフリクトを解消しても、PR が変える中身が
 同じなら再レビューは何も足さない。並行する PR が同じ一覧表（`docs/test-perspectives/README.md`
@@ -603,8 +638,8 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
    記録の節を本文に書き出す処理も同じファイルに置き、書く側と読む側で形式を二重に持たない。
    テストでは、`head` の一致、main の取り込みだけの push を一致とみなすこと、対応の無い指摘、
    `fixed in <sha>` の sha が `head` の祖先でないこと、`base` が PR の base と HEAD の merge-base と一致しないこと、
-   Low の `waived` / `declined` / CLI を飛ばした記録、
-   読めない記録の失敗を固める
+   Low の `waived` / Critical と Major の `declined` / CLI を飛ばした記録、
+   読めない記録の失敗と、Low でも Minor の `declined` は通ること、`Sev` 列が読めない指摘を Major として判定することを固める
 2. required check の workflow `review-tier.yml` を足す。パスフィルタは付けない（TPL-1725）ので、
    skip stub は要らない。draft では動かさない（ADR-2643）。`types:` を書くと既定のイベントが置き換わるので、
    すべてを明示する。
@@ -637,16 +672,19 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
    どの段階でも CLI の記録を求める形に直す。案5 の Medium と Low では、CLI が CodeRabbit の唯一の目になるからである
 6. `/coderabbit-converge` を変える。対象を High の PR に限る。上限を「`changes` への対応 5 ラウンド」から
    「再レビュー 3 回」にする。修正を push する前に、同じパターンの箇所の検索と、修正で触れたファイル全体への
-   `/engineering:code-review` を入れる。再レビューは push の後に converge が明示的に頼む。
+   `/engineering:code-review` を入れる。再レビューは push の後に converge が明示的に頼み、頼むのは
+   そのラウンドで Critical / Major を直したときだけにする。到達状態は「approve されている」から
+   「Critical / Major の未対応が 0 件で、最後のレビューより後に Critical / Major の修正が無い」に変える。
    人間のレビューの後の修正では再レビューを頼み、上限を数え直す。
    指摘を分ける最初の段で、指摘された行が PR の差分の hunk に含まれるかを判定し、含まれなければ
    直さずに Issue を起こして閉じる（重複を検索してから。Issue は英語で、指摘の要旨と PR へのリンクを書く）。
    ファイルと行を持たない指摘など、含まれるかを判定できない指摘は Issue に回さず、PR の範囲として扱う。
    この判定は 1 のスクリプトに置く。
-   ラウンド中は main を取り込まず、approve の後に取り込む（「main の取り込みは再レビューしない」）。
+   ラウンド中は main を取り込まず、converge が終わった後に取り込む（「main の取り込みは再レビューしない」）。
    main を取り込んだ push は、1 の判定で再レビューを頼むかを決める。converge の到達状態と
    `docs/process.md`「人間のレビューは CodeRabbit が approve してから始める」の判定は、HEAD に対する
-   最新レビューの state ではなく、「approve したコミットと HEAD とで追加行と削除行の集合が同じか」で決める。
+   最新レビューの state ではなく、「最後にレビューされたコミットと HEAD との間に、main の取り込み（追加行と削除行の集合が同じ）と
+   Minor だけの修正しかないか」で決める。
    取り込みの push で dismiss された approve の commit は、timeline の `review_dismissed` イベント
    （`dismissed_review.state` が `approved`）から引ける。この判定は `scripts/coderabbit/review-state.ts` に置き、
    converge が使う（案5 の Low は CodeRabbit を通らないので、approve の判定を使わない）。required check「Review tier」は approve を見ない
@@ -655,7 +693,8 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
    「How to revert」を足す。ローカルレビューの記録の節は、1 のスクリプトが書き出す
 8. `docs/process.md` の PR ワークフローに段階ごとの流れを書き、「PR のマージはユーザー確認を経る」
    の例外として Low の auto-merge を明記する。「CodeRabbit を外す小さな PR」の節は、役目を終えたことを
-   書いて畳む。「人間のレビューは CodeRabbit が approve してから始める」は High の話に絞る。
+   書いて畳む。「人間のレビューは CodeRabbit が approve してから始める」は High の話に絞り、
+   「Critical / Major の未対応が 0 件になってから始める」に書き換える。指摘の重大度と対応の規則も書く。
    `.claude/rules/adr.md` の auto-merge 節は、Low の 1 つとして記録を求める形に直し、本文の ignore コマンドの
    手順を外す（自動レビューを止めたので要らない）
 9. マージ後に ruleset の required checks へ「Review tier」を足す（先に足すと、この workflow を
@@ -669,7 +708,7 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
     - `supersedes`：ADR-3117。外す仕組みが役目を終える（ADR-3011 はすでに ADR-3117 に supersede されている）
     - `related_to` と本文で変える点を書くもの：
       - ADR-2716 の 2 点：「マージ判断は人間が持つ」と「人間のレビューは CodeRabbit の approve の後に始める」
-        （後者は High にだけ残る）
+        （後者は High にだけ残り、approve ではなく Critical / Major の未対応が 0 件になった後に変わる）
       - ADR-2331 の判定：分類器の規則に移る
       - ADR-3326 の「CLI は PR レビューの代わりではない」：Medium と Low については改める
       - ADR-3333 と ADR-3342：フックと ready-gate を変える
@@ -688,16 +727,18 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
 - 計測: 導入後 1 か月で次を見る。基準は本 Design Doc の 37 本・80 回・再レビュー 43 回と、
   [#3129](https://github.com/kompiro/karasu/issues/3129) の rate limit で弾かれた割合（Team の期間で 39%）
   - CodeRabbit のレビュー回数（High と Design に分けて）と、High の 1 本あたりの再レビュー回数
-  - rate limit で弾かれた割合と、High の PR の ready から approve までの時間
+  - rate limit で弾かれた割合と、High の PR の ready から converge の終了までの時間
   - Medium と Low の revert 数と、マージ後 1 週間以内に同じ箇所を直した fix PR。増えたら、そのパスを
     High に移すか、下の再生の計測を行う
   - 記録の `waived` の数と理由
+  - High で Minor だけのラウンドとして再レビューを頼まなかった回数と、その PR のマージ後 1 週間以内に、
+    そのラウンドの修正箇所を直した fix PR。増えたら、Minor だけのラウンドでも再レビューを頼む形に戻す
 
 ## 決めないこと
 
 - `engineering:code-review` と組み込みの `/code-review high` の比較（制約・前提の out of scope）
 - 過去の PR の初回の差分に `/engineering:code-review` を当て直し、CodeRabbit の指摘をどれだけ先に拾えるかを
-  重篤度別に数える再生の計測。案5 の判断は、背景の実測（初回で拾えなかった指摘はすべて Minor）と CLI が
+  重大度別に数える再生の計測。案5 の判断は、背景の実測（初回で拾えなかった指摘はすべて Minor）と CLI が
   前段に残ることに頼り、この計測を前提にしない。導入後の計測で Medium と Low の fix PR が増えたときに行う
 - CodeRabbit のプランを下げるか。PR のレビュー回数が減れば選択肢になるが、#3129 の判断ルールで別に扱う
 - Low の範囲を広げること（例: `packages/e2e/**` のヘルパーまで含めるか）。過去の 37 本では、テストの PR も
