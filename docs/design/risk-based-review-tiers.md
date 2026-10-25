@@ -235,11 +235,18 @@ CodeRabbit の approve を待たずに人間に渡す。実測で、Design と M
   CodeRabbit の approve と、人間が差分を読むことを通る（workflow はもともと High である）
 - **ADR の昇格の差分は Low にする。** ADR-2331 の適用条件を分類器の規則にする。昇格の PR は
   `docs/design/**` の削除（Design）を含み、`docs/acceptance/**` などのリンクの張り替え（Medium）を含みうる。
-  パスだけで判定すると Low にならない。そこで次の 2 つを Low に数える。
+  パスだけで判定すると Low にならない。そこで、**同じ PR で `docs/adr/` に新しい ADR のファイルを足しているときに限り**、
+  次の 2 つを Low に数える。新しい ADR が無ければ、どちらも通常のパスの規則で判定する。
   - `docs/design/**` のファイルの削除
   - 変更行の組が、削除した Design Doc へのリンクを新しい ADR へのリンクに置き換えただけのもの
   
-  ADR-2331 が未決にしていた機械の検査を、この規則で兼ねる
+  ADR-2331 が未決にしていた機械の検査を、この規則で兼ねる。ADR の frontmatter と関係の整合は、今ある
+  required check の Validate（`pnpm adr:validate`）が見るので、分類器では重ねて検査しない
+- **既存の ADR の本文を変える差分は Low にしない。** 案1 の表は `docs/adr/**` をまとめて Low にしていた。
+  案5 では、`docs/adr/**` で Low に数えるのは、新しい ADR の追加、`pnpm adr:regenerate` の生成物、既存の ADR の
+  frontmatter、supersede の body ステータス行（`.claude/rules/adr.md`「既存 ADR を覆すとき」が許す範囲）だけにする。
+  それ以外の既存 ADR の行の変更は、どの規則にも当たらない入力として Medium に倒す（TPL-3286）。
+  ADR の本文は書き換えない規則（ADR-2687）なので、ふだんは現れない差分で、現れたら人間が読む
 
 | 段階 | PR での CodeRabbit | 通す条件 |
 | --- | --- | --- |
@@ -356,6 +363,9 @@ GitHub の review は、作成者が自分の PR を approve できないので�
 - **段階が Low / Design / Medium のときだけ、記録を検査する。** High は記録を見ない。High には、信頼リストに
   いない作成者や bot の PR が入り、そうした PR は記録を作れない。High は CodeRabbit の approve と、人間が差分を
   読むことで通す
+- **記録の `base` が、PR の base ブランチと HEAD の merge-base と一致すること。** HEAD が同じでも、PR の base を
+  付け替えると（stack の積み替えなど）PR の差分が変わる。一致しなければ、記録はその差分をレビューしていないので失敗する。
+  ただし、`base` が変わった理由が下の main の取り込みだけなら、その判定に任せる
 - **記録の `head` が PR の HEAD と一致すること。** 一致しない場合でも、`head` から HEAD までの push がすべて
   main の取り込みで、PR の差分の追加行と削除行の集合が同じなら、一致とみなす（「main の取り込みは再レビューしない」の判定）
 - すべての指摘に対応が書かれていること。`fixed in <sha>` の sha が `head` の祖先であること
@@ -445,7 +455,9 @@ PR 本文に記録し、required check がそれを検査する。段階は変�
 
 - **High**：converge が approve までラウンドを回す。指摘をすべて直すか理由を返し、まとめて 1 回 push して、
   `@coderabbitai review` で再レビューを頼む。**再レビューが 3 回に達しても approve されなければ止め、**
-  残っている指摘と取りうる進め方を人間に渡す。approve の後、人間が差分を読む
+  残っている指摘と取りうる進め方を人間に渡す。approve の後、人間が差分を読む。3 回で止めた PR は、人間が
+  残りの指摘を読んだうえで、approve が無いままマージしてよい。approve は CodeRabbit が承認役を務める目安で、
+  required check にはしない（ADR-2716）。マージの判断は人間が持つ
 - **Design**：CodeRabbit の 1 回のレビューを待たずに、人間がレビューする。レビューが届いたら、Claude が
   直すか理由を返し、記録の表に足す。直した場合は手順 2 の確認をやり直して、記録の `head` を進める
 - **Medium**：人間が、記録・サマリー・証拠・preview を見て判断する
@@ -504,6 +516,9 @@ CodeRabbit の approve の後に main を取り込んでコンフリクトを解
 
 判定は 1 つ、**取り込みの前と後で、PR の差分（`git diff -U0 origin/main...HEAD`）の追加行と
 削除行の集合が同じかどうか**。hunk の位置や前後の文脈が変わっても、集合が同じなら同じとみなす。
+集合の要素は「ファイルのパス・追加か削除か・行の内容」の組とし、同じ組が何回現れるかも数える（多重集合として比べる）。
+パスを要素に入れないと、ある行を別のファイルへ移した差分が同じとみなされる。回数を数えないと、同じ内容の行を
+1 行増やしたり減らしたりした差分が同じとみなされる。
 比べるのは、`.coderabbit.yaml` の `path_filters` で除外していないファイルの行だけにする。CodeRabbit が
 読まないファイル（`pnpm-lock.yaml`、`pnpm adr:regenerate` が出す `docs/adr/effective.md` や graph、
 `pnpm gen:guide-diagrams` が出す guide の図）は、取り込みの後に作り直して行が変わっても再レビューを起こさない。
@@ -569,7 +584,9 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
    テストでは各段階の代表パス、最大値の取り方、どれにも当たらないパスが Medium になること、
    `package.json` の scripts だけの変更は依存の変更に数えないことを固める。
    案5 で足す 2 つの規則（段階を決める仕組みそのものを High に入れること、ADR の昇格の差分を Low に数えること）も
-   テストで固める。昇格のテストでは、リンクの張り替え以外の変更が同じ行に混ざると Low にならないことも確かめる。
+   テストで固める。昇格のテストでは、リンクの張り替え以外の変更が同じ行に混ざると Low にならないこと、
+   新しい ADR を足さない Design Doc の削除が Low にならないこと、既存の ADR の本文の変更が Medium になることも確かめる。
+   main の取り込みの判定のテストには、別ファイルへの行の移動と、同じ内容の行の増減を「同じ」とみなさない例を入れる。
    main の取り込みの前後で追加行と削除行の集合を比べる判定も同じスクリプトに置く。比較から外すファイルは
    `.coderabbit.yaml` の `path_filters` から読み、一覧を二重に持たない。
    ローカルレビューの記録を読み、検査する処理は
@@ -577,7 +594,8 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
    `scripts/review/local-review-record.ts` に置く。
    記録の節を本文に書き出す処理も同じファイルに置き、書く側と読む側で形式を二重に持たない。
    テストでは、`head` の一致、main の取り込みだけの push を一致とみなすこと、対応の無い指摘、
-   `fixed in <sha>` の sha が `head` の祖先でないこと、Low の `waived` / `declined` / CLI を飛ばした記録、
+   `fixed in <sha>` の sha が `head` の祖先でないこと、`base` が PR の base と HEAD の merge-base と一致しないこと、
+   Low の `waived` / `declined` / CLI を飛ばした記録、
    読めない記録の失敗を固める
 2. required check の workflow `review-tier.yml` を足す。パスフィルタは付けない（TPL-1725）ので、
    skip stub は要らない。draft では動かさない（ADR-2643）。`types:` を書くと既定のイベントが置き換わるので、
@@ -637,14 +655,16 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
 10. AT は作らない。利用者に見える振る舞いは変わらず、段階の判定と記録の検査はスクリプトのテストで、
     required check とフックの挙動は導入 PR 自身で確かめる
 11. ADR 昇格: 実装完了後、`docs/adr/3286-risk-based-review-tiers.md` として昇格し、
-    本 Design Doc は同 PR で削除する。supersede するのは次のとおり。
-    - ADR-2716 の 2 点：「マージ判断は人間が持つ」と「人間のレビューは CodeRabbit の approve の後に始める」
-      （後者は High にだけ残る）
-    - ADR-3117：外す仕組みが役目を終える（ADR-3011 はすでに ADR-3117 に supersede されている）
-    - ADR-2331 の判定：分類器の規則に移る
-    - ADR-3326 の「CLI は PR レビューの代わりではない」：Medium と Low については改める
-
-    ADR-3333 と ADR-3342 には、フックと ready-gate を変えるので `related_to` で参照を張る
+    本 Design Doc は同 PR で削除する。ADR 全体を置き換えるものだけを `supersedes` にし、一部だけを
+    変えるものは `related_to` にして、変える点を新しい ADR の本文に書く。`supersedes` にすると旧 ADR 全体が
+    `effective.md` から消え、変えない決定（CodeRabbit を required check にしない、など）まで見えなくなるからである。
+    - `supersedes`：ADR-3117。外す仕組みが役目を終える（ADR-3011 はすでに ADR-3117 に supersede されている）
+    - `related_to` と本文で変える点を書くもの：
+      - ADR-2716 の 2 点：「マージ判断は人間が持つ」と「人間のレビューは CodeRabbit の approve の後に始める」
+        （後者は High にだけ残る）
+      - ADR-2331 の判定：分類器の規則に移る
+      - ADR-3326 の「CLI は PR レビューの代わりではない」：Medium と Low については改める
+      - ADR-3333 と ADR-3342：フックと ready-gate を変える
 
 初版の方針で進んでいた実装のうち、段階の判定・再レビュー 3 回の上限・main の取り込みの判定は、
 案5 でもそのまま使える。書き直しや追加が要るのは、1（High の追加と ADR の昇格の規則、記録の処理）、
