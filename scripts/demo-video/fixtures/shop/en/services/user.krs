@@ -1,0 +1,8 @@
+system Shop {
+  service UserService {
+    label "Member Service"
+    domain Auth {
+      usecase "Sign in" {}
+    }
+  }
+}
