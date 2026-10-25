@@ -130,6 +130,9 @@ X への approve を H にも有効とみなす。
    これで人の手による取り消しと区別する。時刻の一致や理由のメッセージの有無では判定しない。対応するイベントが
    無い・`pullRequestCommit` が無い・一致しないときは持ち越さない（fail closed）
 
+   確かめた事実（#3336、2026-10-24）: push による 4 件の取り消しは、どれも `pullRequestCommit` に push した
+   コミットを持ち、`dismissalMessage` は null だった。メッセージの有無では手動と区別できない
+
 生成物のパスは、それを作る生成器と一緒に 1 か所に定義し、判定と再生成の両方がそこを参照する。
 
 ### 実装の手順（1 本の PR）
@@ -138,7 +141,8 @@ X への approve を H にも有効とみなす。
 
 0. **CodeRabbit の挙動を確かめる（実装の前提）**: `auto_incremental_review: false` を入れた 1 本の PR で、
    (a) draft から ready にした時点で初回レビューが自動で走るか、(b) 修正の push の後に `@coderabbitai review` を
-   投げるとレビューが走るかを確かめ、結果をこの Doc に書く。(b) が成り立たなければ案 A は採れないので、
+   投げるとレビューが走るか、(c) 人の手で approve を取り消したとき `ReviewDismissedEvent.pullRequestCommit` が
+   空になるかを確かめ、結果をこの Doc に書く。(c) が成り立たなければ条件 5 は持ち越しを常に拒否する形に倒す。(b) が成り立たなければ案 A は採れないので、
    選択肢に戻る。(a) が成り立たないだけなら、converge の開始時に `@coderabbitai review` を投げて補う
 1. **判定**: `review-state.ts` に「取り込みだけ」の判定と、`DISMISSED` になった X の approve を数える処理を足す。
    `classify` は X が approve され、X..H が取り込みだけなら `approved` を返す。git を使う部分は注入できる形にし、
