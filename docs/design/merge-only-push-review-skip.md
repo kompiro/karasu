@@ -115,13 +115,18 @@ X への approve を H にも有効とみなす。
 
 1. X は H の祖先で、X から H までの非マージのコミットが 1 つも無い（first-parent で辿ったコミットが
    すべて 2 親のマージ）
-2. 各マージ M の 2 番目の親は base ブランチ（`origin/main`）の祖先である（main の取り込みである）
+2. 各マージ M の 2 番目の親は base ブランチ（`origin/main`）の祖先である（main の取り込みである）。
+   これは取り込んだ相手が base ブランチであることを確かめるためで、main 側の変更がレビュー済みだと
+   主張するものではない。CodeRabbit がレビューするのは PR 自身の差分（`base...HEAD`）で、取り込んだ
+   main 側の変更はこの差分に入らない。持ち越しで問われるのは PR 自身の差分に新しく入ったものだけで、
+   それを条件 3 が押さえる
 3. 各マージ M について、`git merge-tree --write-tree <M の 1 番目の親> <M の 2 番目の親>` が返す自動マージの
    結果の tree と M の tree の差分が、生成物のパスだけにある。conflict したファイルも生成物だけである
 4. H で生成物を作り直すと、差分が出ない（`pnpm adr:regenerate` と TPL の索引の生成で `git status` が clean）
 5. X への approve が取り消されている（`DISMISSED`）なら、取り消しは push による stale の取り消しである。
-   PR の timeline の `ReviewDismissedEvent` で、取り消しが X から H までのどれかの push の時刻と一致し、
-   人の手による取り消し（理由のメッセージ付き）でないことを確かめる。確かめられなければ持ち越さない（fail closed）
+   PR の timeline の `ReviewDismissedEvent` が返す `pullRequestCommit`（取り消しの原因になったコミット）の
+   SHA が X から H までのコミットのどれかと一致し、人の手による取り消し（理由のメッセージ付き）でないことを
+   確かめる。時刻の一致では判定しない。値が無い・一致しないときは持ち越さない（fail closed）
 
 生成物のパスは、それを作る生成器と一緒に 1 か所に定義し、判定と再生成の両方がそこを参照する。
 
