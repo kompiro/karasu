@@ -7,6 +7,7 @@ topic: vscode
 related_to:
   - ADR-1315
   - ADR-9014
+  - ADR-2922
 scope:
   packages:
     - vscode
