@@ -1,0 +1,14 @@
+import "user.krs"
+
+system Shop {
+  service OrderService {
+    label "Order Service"
+    domain Ordering {
+      usecase "Accept an order" {}
+    }
+    domain Payment {
+      usecase "Capture the payment" {}
+    }
+  }
+  OrderService -> UserService "verifies the customer"
+}

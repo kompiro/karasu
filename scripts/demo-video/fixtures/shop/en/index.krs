@@ -1,0 +1,20 @@
+@import "theme.krs.style"
+
+import "services/order.krs"
+import "services/catalog.krs"
+
+system Shop {
+  label "Shop"
+
+  user Customer [human] {
+    label "Customer"
+  }
+  client Storefront {
+    label "Storefront"
+  }
+
+  Customer -> Storefront "browses and buys"
+  Storefront -> CatalogService "searches products"
+  Storefront -> OrderService "places orders"
+  Storefront -> UserService "signs in"
+}
