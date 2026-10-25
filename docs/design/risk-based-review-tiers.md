@@ -5,7 +5,7 @@
 - **PR**: #3287（初版）、改訂の PR
 - **関連**:
   - 引き金 Issue: [#3286](https://github.com/kompiro/karasu/issues/3286)
-  - 関連 ADR: [ADR-2716](../adr/2716-coderabbit-request-changes-workflow.md)（CodeRabbit の approve はマージ許可ではない）、[ADR-2331](../adr/2331-adr-automerge-scope.md)（ADR-only PR の auto-merge）、[ADR-3011](../adr/3011-skip-coderabbit-label.md) / [ADR-3117](../adr/3117-coderabbit-ignore-command-for-skip.md)（CodeRabbit から外す PR）、[ADR-3052](../adr/3052-review-branch-diff-before-draft-pr.md)（PR 前の `/engineering:code-review`）、[ADR-3326](../adr/3326-coderabbit-cli-once-before-ready.md)（ready の前に CLI を 1 回）、[ADR-3333](../adr/3333-converge-after-ready-hook.md)（ready の直後に converge へ引き継ぐフック）、[ADR-3342](../adr/3342-ready-gate-local-review.md)（CLI が済むまで ready を拒否する）、[ADR-2643](../adr/2643-stacked-pr-workflow.md)（draft では分単位の CI を止める）
+  - 関連 ADR: [ADR-2716](../adr/2716-coderabbit-request-changes-workflow.md)（CodeRabbit の request changes workflow。本設計で supersede する）、[ADR-2331](../adr/2331-adr-automerge-scope.md)（ADR-only PR の auto-merge）、[ADR-3011](../adr/3011-skip-coderabbit-label.md) / [ADR-3117](../adr/3117-coderabbit-ignore-command-for-skip.md)（CodeRabbit から外す PR）、[ADR-3052](../adr/3052-review-branch-diff-before-draft-pr.md)（PR 前の `/engineering:code-review`）、[ADR-3326](../adr/3326-coderabbit-cli-once-before-ready.md)（ready の前に CLI を 1 回）、[ADR-3333](../adr/3333-converge-after-ready-hook.md)（ready の直後に converge へ引き継ぐフック）、[ADR-3342](../adr/3342-ready-gate-local-review.md)（CLI が済むまで ready を拒否する）、[ADR-2643](../adr/2643-stacked-pr-workflow.md)（draft では分単位の CI を止める）
   - 関連 TPL: [TPL-1725](../test-perspectives/TPL-1725-gated-test-suite-detection-gap.md)、[TPL-3286](../test-perspectives/TPL-3286-merge-eligibility-judged-on-final-diff.md)（初版で起こした proactive TPL。改訂でローカルレビューの記録の観点を足す）
   - コード: `.coderabbit.yaml`、`.claude/skills/coderabbit-converge/SKILL.md`、`.github/PULL_REQUEST_TEMPLATE.md`、`scripts/coderabbit/converge-after-ready.sh`
 
@@ -77,13 +77,17 @@ release train（#3239）、依存の override の変更（#3204）が含まれ�
   Major だけにし、Minor を直すかどうかは Claude が決める。再レビューを頼むのも、Critical / Major を直した
   ラウンドだけにする（「指摘の重大度と対応」）。対応を「必ず直す」にしないのは、重大度の判定が外れることが
   あるからである。本 PR の 2 ラウンド目に届いた Major 3 件のうち 1 件は、理由を返すと CodeRabbit が取り下げた
+- **CodeRabbit に approve と changes-requested を出させない。** ADR-2716 は `request_changes_workflow: true` にして、
+  自動レビューが収束したかを PR の state に出した。重大度で対応を分けると、Minor を残して終えた PR に
+  changes-requested が残り、state が実態と食い違う。収束したかどうかは、指摘と対応を並べたローカルレビューの
+  記録が示す（「CodeRabbit の state を使わない」）
 
 ## 現状（インベントリ）
 
 | 層 | karasu の現状 |
 | --- | --- |
 | PR 前の検証 | base との差分に `/engineering:code-review`（ADR-3052）と CodeRabbit CLI を 1 回（ADR-3326。済むまで `gh pr ready` を拒否する、ADR-3342）、qa agent、lefthook。指摘と対応の記録は残らない |
-| AI レビュー | 全 PR に CodeRabbit（`profile: chill`）。push のたびに自動で再レビューする。`/coderabbit-converge` は `changes` への対応が 5 ラウンドに達したら止まる |
+| AI レビュー | 全 PR に CodeRabbit（`profile: chill`）。push のたびに自動で再レビューする。指摘が残るあいだ changes-requested、無くなると approve を出す（`request_changes_workflow: true`、ADR-2716）。`/coderabbit-converge` は `changes` への対応が 5 ラウンドに達したら止まる |
 | セキュリティレビュー | 差分を見るものはない。secret-scan と依存の alert sweep だけ |
 | 必須 CI | Check / Validate / Reference docs / Playwright |
 | 軽い経路 | `adr-auto-merge`（ADR-2331。CodeRabbit も人間も通らない）と `skip-coderabbit`（ADR-3011 / ADR-3117。CodeRabbit を通らず人間が見る）の 2 つ |
@@ -97,12 +101,13 @@ release train（#3239）、依存の override の変更（#3204）が含まれ�
 - **PR の作成者は自分の PR を approve できない。** Claude が作る PR も作成者は kompiro なので、
   ruleset の `required_approving_review_count` を 1 以上にすると全 PR がマージできなくなる。
   段階の強制は承認ではなく、ラベルと required check と auto-merge の条件で行う。
-- **ADR-2716 は「マージ判断は引き続き人間が持つ」と決めている。** Low の auto-merge はこの
-  一点を覆すので、昇格時の ADR で ADR-2716 のこの部分を supersede する。CodeRabbit を
+- **ADR-2716 は `request_changes_workflow: true` にし、「マージ判断は引き続き人間が持つ」と決めている。**
+  案5 は前者を `false` に戻し（「CodeRabbit の state を使わない」）、Low の auto-merge で後者の一点を覆す。
+  そのため昇格時の ADR で ADR-2716 全体を supersede し、変えない決定は新しい ADR に引き継ぎ直す。CodeRabbit を
   required check にしない、は変えない。案1 では、Low は CodeRabbit の approve を auto-merge を有効にする
   条件として手順で待つが、ruleset は待たない。CodeRabbit が止まっても PR はマージ不能にならず、
   auto-merge されずに人間の手に戻るだけである。案5 では Low は PR の CodeRabbit を通らず、
-  CodeRabbit の approve は check の外に置いたままにする。check は、差分から出した段階・ラベル・
+  CodeRabbit は approve を出さないので、check が CodeRabbit の state を見ることはない。check は、差分から出した段階・ラベル・
   ローカルレビューの記録（`head` の一致、修正コミットの祖先関係、`declined` / `waived` の扱い）を検査する。
 - **ADR-2716 が却下した `required_review_thread_resolution: true` は使わない。** 指摘への対応は
   ruleset ではなく converge で求める。
@@ -316,6 +321,23 @@ Minor と Trivial の指摘にも、直したかどうかにかかわらず対�
 
 重大度を記録に写すのは Claude で、check は写しが正しいかを確かめない。記録が自己申告であるのと同じ限界である。
 
+#### CodeRabbit の state を使わない
+
+**到達状態**: `.coderabbit.yaml` の `reviews.request_changes_workflow` が `false` で、CodeRabbit のレビューは
+どれも `COMMENTED` になる。converge・required check・人間のレビューを始める判定のどれも、CodeRabbit の
+approve / changes-requested を見ない。
+
+- **ADR-2716 がこの設定を `true` にしたのは、自動レビューが収束したかを PR の state に出すためだった。**
+  案5 では収束の条件が「Critical / Major の未対応が 0 件」になり、Minor を残して終えた PR も収束している。
+  `true` のままでは、その PR に changes-requested が残る。approve を取るために Minor を直す動機も戻る
+  （ADR-2716 自身が「approve を取ることを目的に指摘へ従うのは誤用」と書いた形である）
+- **収束したかどうかは、ローカルレビューの記録の表で見る。** High と Design では、CodeRabbit の指摘と対応も
+  同じ表に足す（High は converge、Design は Claude が足す）。人間は PR の state の代わりにこの表を読む
+- **却下した指摘のスレッドは、これまでどおり理由を返して `@coderabbitai resolve` で閉じる。** 未解決の
+  スレッドは、converge が未対応の Critical / Major を数える入力に使う
+- **approve が出なくなるので、main の取り込みの push で approve が dismiss される問題も起きない。**
+  最後にレビューされたコミットは、最新の CodeRabbit レビューの `commit_id` から引く
+
 #### ローカルレビューの記録
 
 **到達状態**: PR 本文に記録の節が 1 つある。その `head` は PR の HEAD で、すべての指摘に対応が書かれている。
@@ -423,7 +445,8 @@ auto-merge を、base 側の分類器が Low と出したときにしか有効�
 - Medium 以下では、初回で拾えなかった Minor の指摘（背景の実測で 37 本中 10 件）を拾わないことがある。
   修正で触れたファイルの確認で一部は拾えるが、保証はない
 - High でも、Minor だけを直したラウンドには CodeRabbit の再レビューが入らない。その修正が持ち込んだ問題は、
-  ローカルの確認でしか拾わない。CodeRabbit の state は `CHANGES_REQUESTED` のまま残ることがある（ruleset は止めない）
+  ローカルの確認でしか拾わない
+- PR の一覧で、CodeRabbit の state から収束したかを読めなくなる。記録の表を開いて確かめることになる
 - 記録を書く手間が増え、記録を読むスクリプトも必要になる
 - Medium の PR でも、記録が無ければ check が落ちる
 
@@ -454,7 +477,8 @@ auto-merge を、base 側の分類器が Low と出したときにしか有効�
 
 **案5 を採用する（2026-10-25 改訂。初版は案1）。** PR の CodeRabbit は、ラウンドを承認の目安に使う
 High と、人間が読む前の照合に使う Design に絞る。どの段階でも、必ず対応するのは Critical / Major の指摘で、
-再レビューは Critical / Major を直したラウンドにだけ頼む。それ以外の段階では、ローカルレビューの指摘と対応を
+再レビューは Critical / Major を直したラウンドにだけ頼む。CodeRabbit には approve / changes-requested を出させず、
+収束はローカルレビューの記録で示す。それ以外の段階では、ローカルレビューの指摘と対応を
 PR 本文に記録し、required check がそれを検査する。段階は変更そのもの（パス）から決め、人間を通らない
 経路は docs とテストに限る。この 2 点は案1 から変えない。
 
@@ -487,9 +511,9 @@ PR 本文に記録し、required check がそれを検査する。段階は変�
   そのラウンドで Critical / Major を直したときだけ、`@coderabbitai review` で再レビューを頼む。Minor だけを直した
   ラウンドでは頼まず、修正で触れたファイルにローカルの確認を当てて終わる。**Critical / Major の未対応が 0 件で、
   最後のレビューより後に Critical / Major の修正が入っていなければ、converge は終わり、人間が差分を読む。**
-  CodeRabbit の approve は待たない。再レビューが 3 回に達しても Critical / Major が残れば止め、残っている指摘と
-  取りうる進め方を人間に渡す。人間は残りの指摘を読んだうえでマージしてよい。CodeRabbit の state は
-  required check にしない（ADR-2716）。マージの判断は人間が持つ
+  CodeRabbit は approve を出さない（「CodeRabbit の state を使わない」）。再レビューが 3 回に達しても Critical / Major が
+  残れば止め、残っている指摘と取りうる進め方を人間に渡す。人間は残りの指摘を読んだうえでマージしてよい。
+  CodeRabbit は required check にしない（ADR-2716 から引き継ぐ）。マージの判断は人間が持つ
 - **Design**：CodeRabbit の 1 回のレビューを待たずに、人間がレビューする。レビューが届いたら、Claude が
   「指摘の重大度と対応」のとおり対応し、記録の表に足す。直した場合は手順 2 の確認をやり直して、記録の `head` を進める
 - **Medium**：人間が、記録・サマリー・証拠・preview を見て判断する
@@ -544,6 +568,8 @@ High の PR を外す基準は、もともと ADR-3011 に無い。
 以下の説明は CodeRabbit の approve を例にするが、記録の `head` にもそのまま当てはまる。
 High の終わりは approve ではなく「Critical / Major の未対応が 0 件」で決める（「指摘の重大度と対応」）ので、
 この節の「approve したコミット」は「CodeRabbit が最後にレビューしたコミット」と読み替える。
+`request_changes_workflow: false` で CodeRabbit は approve を出さなくなるので、下の「approve は取り込みの push で
+取り消される」は、初版を書いたときの観測として残す。
 
 CodeRabbit の approve の後に main を取り込んでコンフリクトを解消しても、PR が変える中身が
 同じなら再レビューは何も足さない。並行する PR が同じ一覧表（`docs/test-perspectives/README.md`
@@ -655,6 +681,8 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
    経てマージできる。read-only の `GITHUB_TOKEN` で動くので、fork からの PR でも同じに動く
 3. ラベル `risk: low` / `risk: design` / `risk: medium` / `risk: high` を作る
 4. `.coderabbit.yaml` を変える。`reviews.auto_review.enabled: false` にして、自動レビューを止める。
+   `reviews.request_changes_workflow: false` にして、approve と changes-requested を止める（設定の上のコメントも、
+   ADR-2716 の説明から本設計の説明に書き換える）。
    レビューは `@coderabbitai full review` / `@coderabbitai review` を投げたときだけ走る。同じ種類の問題は
    すべての箇所を 1 つの指摘にまとめるよう指示を足す。`profile` は `chill` のまま
    （`assertive` は初回の指摘を増やすが nitpick も全 PR に増え、それを直すラウンドが増える）。
@@ -685,16 +713,20 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
    `docs/process.md`「人間のレビューは CodeRabbit が approve してから始める」の判定は、HEAD に対する
    最新レビューの state ではなく、「最後にレビューされたコミットと HEAD との間に、main の取り込み（追加行と削除行の集合が同じ）と
    Minor だけの修正しかないか」で決める。
-   取り込みの push で dismiss された approve の commit は、timeline の `review_dismissed` イベント
-   （`dismissed_review.state` が `approved`）から引ける。この判定は `scripts/coderabbit/review-state.ts` に置き、
-   converge が使う（案5 の Low は CodeRabbit を通らないので、approve の判定を使わない）。required check「Review tier」は approve を見ない
-   （CodeRabbit を required check にしない、という ADR-2716 の決定を保つ）
+   最後にレビューされたコミットは、最新の CodeRabbit レビューの `commit_id` から引く。approve が出ないので、
+   dismiss された approve を timeline の `review_dismissed` から探す処理は要らない。この判定は
+   `scripts/coderabbit/review-state.ts` に置き、converge が使う。required check「Review tier」は CodeRabbit の state を見ない
+   （CodeRabbit を required check にしない、という ADR-2716 の決定を引き継ぐ）。
+   skill の到達状態とトリガーの文言から `APPROVED` / 「approve まで」を外し、CodeRabbit の指摘と対応を
+   記録の表に足す手順を入れる
 7. `.github/PULL_REQUEST_TEMPLATE.md` に「Risk」（段階と、その段階になった理由）と
    「How to revert」を足す。ローカルレビューの記録の節は、1 のスクリプトが書き出す
 8. `docs/process.md` の PR ワークフローに段階ごとの流れを書き、「PR のマージはユーザー確認を経る」
    の例外として Low の auto-merge を明記する。「CodeRabbit を外す小さな PR」の節は、役目を終えたことを
    書いて畳む。「人間のレビューは CodeRabbit が approve してから始める」は High の話に絞り、
    「Critical / Major の未対応が 0 件になってから始める」に書き換える。指摘の重大度と対応の規則も書く。
+   CodeRabbit の changes-requested と approve を説明している箇所（`docs/process.md` と `CONTRIBUTING.md` の
+   PR の流れ）は、記録の表で収束を見る形に書き換える。
    `.claude/rules/adr.md` の auto-merge 節は、Low の 1 つとして記録を求める形に直し、本文の ignore コマンドの
    手順を外す（自動レビューを止めたので要らない）
 9. マージ後に ruleset の required checks へ「Review tier」を足す（先に足すと、この workflow を
@@ -705,10 +737,15 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
     本 Design Doc は同 PR で削除する。ADR 全体を置き換えるものだけを `supersedes` にし、一部だけを
     変えるものは `related_to` にして、変える点を新しい ADR の本文に書く。`supersedes` にすると旧 ADR 全体が
     `effective.md` から消え、変えない決定（CodeRabbit を required check にしない、など）まで見えなくなるからである。
-    - `supersedes`：ADR-3117。外す仕組みが役目を終える（ADR-3011 はすでに ADR-3117 に supersede されている）
+    - `supersedes`：
+      - ADR-3117。外す仕組みが役目を終える（ADR-3011 はすでに ADR-3117 に supersede されている）
+      - ADR-2716。決定の中心（`request_changes_workflow: true`）を `false` に戻し、「マージ判断は人間が持つ」も
+        Low で覆し、「人間のレビューは CodeRabbit の approve の後に始める」も Critical / Major の未対応が 0 件に
+        なった後に変える。ADR-2716 が持っていた決定のうち変えないものは、新しい ADR の本文に引き継ぎ直す。
+        CodeRabbit を required status check にしないこと、`required_review_thread_resolution` を使わないこと、
+        ADR-2640 から引き継いだ決定（設定は `.coderabbit.yaml` で管理、`language: en-US`、bot と draft の PR を除く、
+        規約は `path_instructions` に書く）である。引き継がないと、ADR-2716 と一緒に `effective.md` から消える
     - `related_to` と本文で変える点を書くもの：
-      - ADR-2716 の 2 点：「マージ判断は人間が持つ」と「人間のレビューは CodeRabbit の approve の後に始める」
-        （後者は High にだけ残り、approve ではなく Critical / Major の未対応が 0 件になった後に変わる）
       - ADR-2331 の判定：分類器の規則に移る
       - ADR-3326 の「CLI は PR レビューの代わりではない」：Medium と Low については改める
       - ADR-3333 と ADR-3342：フックと ready-gate を変える
@@ -721,7 +758,7 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
 ### 影響範囲・マイグレーション
 
 - 既存ユーザーへの影響: なし（開発プロセスだけの変更）
-- ドキュメント更新: `docs/process.md`、`.claude/rules/adr.md`、`.github/PULL_REQUEST_TEMPLATE.md`、
+- ドキュメント更新: `docs/process.md`、`CONTRIBUTING.md`、`.claude/rules/adr.md`、`.github/PULL_REQUEST_TEMPLATE.md`、
   `.claude/skills/coderabbit-converge/SKILL.md`、`.coderabbit.yaml`、`scripts/coderabbit/converge-after-ready.sh`、
   `scripts/coderabbit/ready-gate.sh`
 - 計測: 導入後 1 か月で次を見る。基準は本 Design Doc の 37 本・80 回・再レビュー 43 回と、
