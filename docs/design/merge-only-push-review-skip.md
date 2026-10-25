@@ -124,9 +124,11 @@ X への approve を H にも有効とみなす。
    結果の tree と M の tree の差分が、生成物のパスだけにある。conflict したファイルも生成物だけである
 4. H で生成物を作り直すと、差分が出ない（`pnpm adr:regenerate` と TPL の索引の生成で `git status` が clean）
 5. X への approve が取り消されている（`DISMISSED`）なら、取り消しは push による stale の取り消しである。
-   PR の timeline の `ReviewDismissedEvent` が返す `pullRequestCommit`（取り消しの原因になったコミット）の
-   SHA が X から H までのコミットのどれかと一致し、人の手による取り消し（理由のメッセージ付き）でないことを
-   確かめる。時刻の一致では判定しない。値が無い・一致しないときは持ち越さない（fail closed）
+   PR の timeline の `ReviewDismissedEvent` のうち、`review` が X への approve と一致するものを取り、その
+   `pullRequestCommit`（レビューを stale にした原因のコミット）があって、X から H までのコミットのどれかと
+   SHA が一致することを確かめる。`pullRequestCommit` は push による stale の取り消しにしか付かないので、
+   これで人の手による取り消しと区別する。時刻の一致や理由のメッセージの有無では判定しない。対応するイベントが
+   無い・`pullRequestCommit` が無い・一致しないときは持ち越さない（fail closed）
 
 生成物のパスは、それを作る生成器と一緒に 1 か所に定義し、判定と再生成の両方がそこを参照する。
 
