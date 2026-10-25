@@ -112,6 +112,13 @@ ADR-2949 と ADR-3117 が却下した形そのもの。タイトルは場所で�
 - `packages/*/package.json` の変更のうち、`version` と、workspace 内のパッケージへの依存（`dependencies` などの値）の版だけが変わったもの。前後の JSON を比べ、キーの追加・削除や、それ以外のフィールドの変更は失敗にする（`scripts` や `exports`、外部の依存の追加を見逃さないため）
 - `pnpm-lock.yaml` は変わらないこと。workspace 内の依存は `link:` で解決されるので、`changeset version` の後の `pnpm install --lockfile-only` で lockfile は通常変わらない（背景に挙げた 5 本でも変わっていない）。変わった場合は失敗にして、失敗のメッセージで「正当な変化なら、変わった範囲を確かめて規則を広げる」と案内する。規則に当たらない入力を通す側に倒さないため（TPL-3286）
 
+チェックそのものは PR から書き換えられない revision で走らせる。PR の head にある判定のコードを使うと、リリースブランチに足したコミットが `scripts/release/train.mts` を弱めて、生成物でない差分を通せてしまう。
+
+- trigger は `pull_request_target` にする。GitHub は workflow の定義を base ブランチから読むので、PR が workflow を書き換えてもその PR のチェックには効かない。
+- 判定のスクリプト（`scripts/release/train.mts`）は `pull_request.base.sha` を checkout して使う。PR の head は `git fetch` で取り込み、差分と `package.json` の前後の中身をデータとして読むだけにする。head のコードは実行しない（`pull_request_target` で head を checkout して実行しない、という GitHub の注意に沿う）。依存のインストールも要らない（`train.mts` は Node の type stripping で動き、node の builtin だけを import する）。
+- head のリポジトリが base と同じであることも 2 の条件に含める。fork の PR はブランチ名を `chore/release-*` にでき、本文に ignore コマンドの行も書けるので、レビューから外れている fork の PR はブランチ名にかかわらず失敗させる。
+- workflow と `scripts/release/` の変更そのものは、通常の PR として CodeRabbit とメンテナのレビューを通る（それらはリリース PR の生成物ではないので、リリース PR に入れば 2 で失敗する）。CODEOWNERS は置いていない（メンテナが 1 人で全てのマージを見る）。
+
 失敗したときのメッセージで、本文の行とラベルを外して通常のレビューに戻す手順（本文の行とラベルを残したまま full review を頼み、届いてから外す。docs/process.md の「CodeRabbit を外す小さな PR」と同じ）を案内する。外した後はチェックの対象から外れるので通る。
 
 このチェックは required にする。失敗してもマージできるなら、外したまま生成物でない変更がマージされうるからである。required の status は全ての PR で報告される必要があるので、専用の軽い workflow にして全ての PR で走らせ、対象でない PR では何もせずに通す。既存の required な `Check`（`ci.yml`）に入れない理由は 2 つある。`ci.yml` は md だけの PR では動かない（`paths-ignore`）。そして types に `labeled` / `unlabeled` / `edited` が無いので、ラベルや本文の行を外しても再実行されず、失敗が残る（TPL-2643）。専用の workflow の types には `opened` / `synchronize` / `reopened` / `edited` / `labeled` / `unlabeled` を入れる。
@@ -124,7 +131,7 @@ ADR-2949 と ADR-3117 が却下した形そのもの。タイトルは場所で�
    - 生成物かどうかを判定する純粋関数（`isReleaseArtifactChange` など）を足し、上のチェックから呼ぶ。
    - `scripts/release/train.test.ts` で、リンクのパラメータと判定を固める。
 2. `.github/workflows/release-prepare.yml`: Issue を作ったあと、番号を入れた本文で `gh issue edit` する。
-3. 最終の差分のチェック: 専用の workflow（例 `release-pr-scope.yml`）を足し、全ての PR で走らせる。判定は `scripts/release/train.mts` の純粋関数で行う。workflow のマージ後に、main ruleset の required status checks へ足す（先に足すと、この workflow が無い PR がマージできなくなる。順序は #1866 の E2E の required 化と同じ）。
+3. 最終の差分のチェック: 専用の workflow（例 `release-pr-scope.yml`、`pull_request_target`）を足し、全ての PR で走らせる。判定は `scripts/release/train.mts` の純粋関数で行う。workflow のマージ後に、main ruleset の required status checks へ足す（先に足すと、この workflow が無い PR がマージできなくなる。順序は #1866 の E2E の required 化と同じ）。
 4. `.coderabbit.yaml`: `auto_review.labels` に `!release-pr` を足し、コメントで理由と ADR を指す。
 5. `release-pr` ラベルを作る（`gh label create release-pr`）。
 6. ドキュメント:
