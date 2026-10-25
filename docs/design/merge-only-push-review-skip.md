@@ -2,7 +2,7 @@
 
 - **日付**: 2026-10-25
 - **ステータス**: 検討中
-- **PR**: #（作成後に記入）
+- **PR**: #3353
 - **関連**:
   - 引き金 Issue: [#3341](https://github.com/kompiro/karasu/issues/3341)
   - 関連 ADR: [ADR-2898](../adr/2898-draft-first-code-review.md)（`auto_incremental_review: false` を一度却下している）、
