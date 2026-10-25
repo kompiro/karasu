@@ -81,6 +81,9 @@ pnpm --filter karasu-vscode run build                                 # VS Code 
 
 ### 3. 録る
 
+新しいシナリオの構図（図が収まるか、キャプションが要点を隠さないか）は、録画の前に
+`lib/display.mts` の `grab(<png>)` で表示中の画面を 1 枚撮って確かめられる。
+
 ```bash
 pnpm demo-video:record <scenario> --lang en
 pnpm demo-video:record <scenario> --lang ja

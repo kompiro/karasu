@@ -9,6 +9,7 @@
 // The preview follows the active .krs editor, so the imported-file scene edits
 // order.krs and then switches back to index.krs to show the unsaved edit there.
 
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { clickAt, ctrlClick, moveTo, parkPointer, sleep, wheelAt } from "../lib/display.mts";
 import { caption } from "../lib/overlay.mts";
@@ -90,6 +91,18 @@ const T = {
   },
 } as const;
 
+/**
+ * 1-based number of the line in `file` that contains `needle`, so the typing scenes
+ * follow the fixture instead of hard-coding line numbers that drift when it changes.
+ */
+function lineOf(file: string, needle: string): number {
+  const index = readFileSync(file, "utf8")
+    .split("\n")
+    .findIndex((line) => line.includes(needle));
+  if (index < 0) throw new Error(`${file} has no line containing ${needle}`);
+  return index + 1;
+}
+
 const scenario: Scenario = {
   requires: [
     { path: "packages/vscode/out/extension.js", build: "pnpm --filter karasu-vscode run build" },
@@ -166,7 +179,8 @@ const scenario: Scenario = {
       // 3. an unsaved edit in the open file
       await caption(win, t.typing);
       parkPointer();
-      await keys.lineEnd(19);
+      // The new edge goes right after the last edge of the system body.
+      await keys.lineEnd(lineOf(join(ctx.model, "index.krs"), "Storefront -> UserService"));
       await keys.typeLine(t.newEdge, 70);
       await sleep(3500);
 
@@ -174,7 +188,9 @@ const scenario: Scenario = {
       await caption(win, t.importEdit);
       await keys.quickOpen("order.krs");
       await sleep(1200);
-      await keys.lineEnd(13);
+      await keys.lineEnd(
+        lineOf(join(ctx.model, "services/order.krs"), "OrderService -> UserService"),
+      );
       for (const line of t.dbLines) await keys.typeLine(line, 60);
       await sleep(2500);
       await keys.quickOpen("index.krs");

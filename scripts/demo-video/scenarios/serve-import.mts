@@ -87,7 +87,8 @@ const T = {
 
 async function answers(): Promise<boolean> {
   try {
-    return (await fetch(BASE)).ok;
+    // A server that accepts but never answers must not hang the run.
+    return (await fetch(BASE, { signal: AbortSignal.timeout(1000) })).ok;
   } catch {
     return false;
   }

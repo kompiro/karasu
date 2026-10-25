@@ -4,7 +4,7 @@
 
 import { type Browser, chromium, type Frame, type Locator, type Page } from "@playwright/test";
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
-import { closeSync, cpSync, mkdirSync, openSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -62,8 +62,20 @@ export async function vscodeExecutable(repo: string): Promise<string> {
 
 export interface CodeWindow {
   win: Page;
-  browser: Browser;
   close(): Promise<void>;
+}
+
+/** Whether something already answers CDP on the port. A plain HTTP probe: connecting
+ * over CDP and closing would ask a leftover VS Code to close its window. */
+async function cdpPortTaken(): Promise<boolean> {
+  try {
+    const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/version`, {
+      signal: AbortSignal.timeout(1000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -90,11 +102,8 @@ export async function launchCode(opts: {
   );
   // A VS Code left over from an earlier run would answer on the CDP port and be driven
   // (and resized) instead of the one launched here.
-  try {
-    await (await chromium.connectOverCDP(`http://127.0.0.1:${CDP_PORT}`)).close();
+  if (await cdpPortTaken()) {
     throw new Error(`port ${CDP_PORT} is taken (a VS Code left from an earlier run?)`);
-  } catch (e) {
-    if (e instanceof Error && e.message.startsWith(`port ${CDP_PORT}`)) throw e;
   }
   const logFd = openSync(opts.log ?? "/dev/null", "w");
   const proc: ChildProcess = spawn(
@@ -120,6 +129,15 @@ export async function launchCode(opts: {
   const stop = () => {
     proc.kill();
     closeSync(logFd);
+  };
+  // SIGTERM makes VS Code ask "save changes?" for the unsaved demo edits, and it can sit
+  // on that dialog; force it after a grace period so the next run finds the port free.
+  const stopAndWait = async () => {
+    stop();
+    for (let i = 0; i < 50 && proc.exitCode === null && proc.signalCode === null; i++) {
+      await sleep(100);
+    }
+    if (proc.exitCode === null && proc.signalCode === null) proc.kill("SIGKILL");
   };
   const unregister = registerCleanup(stop);
 
@@ -164,30 +182,20 @@ export async function launchCode(opts: {
       );
     }
     await sleep(1500);
-    const connected = browser;
     return {
       win,
-      browser: connected,
       // Kill the process instead of closing through CDP: a CDP close asks VS Code to
       // close the window, which raises "save changes?" for the unsaved demo edits.
       close: async () => {
         unregister();
-        stop();
-        await sleep(1000);
+        await stopAndWait();
       },
     };
   } catch (e) {
     unregister();
-    stop();
+    await stopAndWait();
     throw e;
   }
-}
-
-/** Copies a fixture to a fresh workspace dir. */
-export function freshWorkspace(fixture: string, dir: string): string {
-  rmSync(dir, { recursive: true, force: true });
-  cpSync(fixture, dir, { recursive: true });
-  return dir;
 }
 
 /**
