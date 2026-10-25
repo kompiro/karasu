@@ -120,7 +120,9 @@ rate limit 中に push したいコミットができたら、push は `limit_el
 3. コミットがあれば、push の前に**このラウンドの修正分だけへ CodeRabbit CLI を 1 回当てる**
    （`coderabbit review --agent --deep --base-commit <このラウンドの修正を始める前の HEAD> --committed`）。
    出た指摘は 2 と同じ判定で直してコミットし、CLI は回し直さない。CLI が使えないときは飛ばす。
-   CLI の枠は PR の review 枠とは別なので、ここで拾えば PR のラウンドを 1 回使わずに済む
+   CLI の枠は PR の review 枠とは別なので、ここで拾えば PR のラウンドを 1 回使わずに済む。
+   main の取り込みが要るラウンドでは、取り込みは CLI の後に行う（先に取り込むと、CLI が main 側の
+   変更までレビューする）
 4. 返信を先に済ませ、コミットがあれば最後に**このラウンドの修正をまとめて 1 回だけ push する**
    （pre-push hook は回避しない）。自動レビューが走る push は 1 回ごとに review 枠を 1 回使う。main の取り込みが要るときも
    単独では push せず、このラウンドの修正と一緒にこの 1 回に含める
