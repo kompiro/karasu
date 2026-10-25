@@ -111,7 +111,7 @@ ready → implementing → in-review → (close)
 8. base ブランチとの差分（git diff origin/main...HEAD）に /engineering:code-review を当て、対応すると決めた修正をコミットし、lint / test を再確認する。PR はまだ作らない
 9. 同じ差分に CodeRabbit CLI を 1 回だけ当てる（coderabbit review --agent --deep --base origin/main --committed）。指摘の対応可否を手順 8 と同じ基準で決め、対応すると決めた修正をコミットし、lint / test を再確認する。修正後に CLI を回し直さない
 10. PR を draft で作成する（gh pr create --draft、Closes #N で Issue と紐付ける。Design Doc の PR は Refs #N にして Issue を残す。ADR-3271）。draft には CodeRabbit も分単位の CI も走らない
-11. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の、本文に ignore コマンドが無く、`adr-auto-merge` / `skip-coderabbit` ラベルの無い PR）では初回レビューもここで走る
+11. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の、本文に ignore コマンドが無く、`adr-auto-merge` / `skip-coderabbit` ラベルの無い PR）では初回レビューもここで走る。Claude のセッションでは、手順 9 の CLI のレビューがこのブランチで済んでいないと gh pr ready は拒否され、--draft の無い gh pr create も拒否される（仕組みと、拒否しない場合は ADR-3342）
 12. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 13. Issue ラベルを status: in-review に更新する
 14. 手動検証チェックリストを実施する
@@ -134,8 +134,9 @@ PR への push は、自動レビューが走るたびに CodeRabbit の review 
 1 回に数分かかり、同じ差分でも実行ごとに違う指摘が出るので、回し続けると PR のラウンドと
 同じ待ちが ready の前に移るだけになる。CLI の後にも PR の初回レビューは走る。
 `/coderabbit-converge` のラウンド中も CLI は回さない。CLI が使えない環境（未インストール・
-未認証・枠切れ）では手順 9 を飛ばして手順 10 に進む。決定は
-[ADR-3326](adr/3326-coderabbit-cli-once-before-ready.md)。
+未認証・枠切れ）では手順 9 を飛ばし、手順 11 の ready を `KARASU_LOCAL_REVIEW_SKIPPED=<理由> gh pr ready <n>`
+で実行する（理由を付けない ready は拒否される）。決定は
+[ADR-3326](adr/3326-coderabbit-cli-once-before-ready.md) と ADR-3342。
 
 詳細な手順は `/hane:start-dev` スキル（[`kompiro/hane`](https://github.com/kompiro/hane) plugin）を参照。
 
@@ -351,7 +352,7 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 | # | すること |
 | --- | --- |
 | 0 | 最下層以外を draft にする（`gh pr ready <n> --undo`） |
-| 1 | 最下層が draft のうちに、最下層のブランチで base（`main`）との差分（`git diff origin/main...HEAD`）に `/engineering:code-review` を当て、続けて同じ差分に CodeRabbit CLI を 1 回だけ当てる（`coderabbit review --agent --deep --base origin/main --committed`。CLI が使えない環境では飛ばす） |
+| 1 | 最下層が draft のうちに、最下層のブランチで base（`main`）との差分（`git diff origin/main...HEAD`）に `/engineering:code-review` を当て、続けて同じ差分に CodeRabbit CLI を 1 回だけ当てる（`coderabbit review --agent --deep --base origin/main --committed`。CLI が使えない環境では飛ばし、3 の ready に `KARASU_LOCAL_REVIEW_SKIPPED=<理由>` を付ける） |
 | 2 | `/engineering:code-review` と CLI の指摘の対応可否を決め、対応すると決めたものを直して push する（記録済みの決定を変えるものだけ人に確認する）。draft への push は CodeRabbit の review 枠を使わない |
 | 3 | 最下層の draft を外す（`gh pr ready <n>`）。CodeRabbit と分単位の CI はここで動き出す |
 | 4 | `/coderabbit-converge` で CodeRabbit のラウンドを回す（判定基準は 2 と同じ） |
