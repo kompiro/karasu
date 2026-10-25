@@ -7,7 +7,7 @@
   - PR: [#3354](https://github.com/kompiro/karasu/pull/3354)
   - 観測した PR: [#3349](https://github.com/kompiro/karasu/pull/3349)（2026-10-25 のトレイン。rate limit でレビューされず、`CodeRabbit` のステータスは pass）
   - 関連 ADR: [ADR-2922](../adr/2922-monthly-release-train.md)（月次トレイン）、[ADR-1370](../adr/1370-release-flow-actions-driven.md)（リリース PR は人が開き、CHANGELOG を読んでマージする）、[ADR-3117](../adr/3117-coderabbit-ignore-command-for-skip.md)（外すのは本文の ignore コマンド、理由はラベルで記録）、[ADR-3011](../adr/3011-skip-coderabbit-label.md)（`skip-coderabbit` の判定基準）、[ADR-2949](../adr/2949-coderabbit-skips-adr-auto-merge.md)（`adr-auto-merge` で外す）、[ADR-2640](../adr/2640-coderabbit-pr-review.md)（`ignore_usernames` で bot の PR を外す）
-  - 関連 TPL: [TPL-3286](../test-perspectives/TPL-3286-merge-eligibility-judged-on-final-diff.md)（レビューを省く判定は最終の差分で行う）、[TPL-2643](../test-perspectives/TPL-2643-skip-reports-success-without-running.md)（走らずに success を報告する gate）
+  - 関連 TPL: [TPL-3286](../test-perspectives/TPL-3286-merge-eligibility-judged-on-final-diff.md)（レビューを省く判定は最終の差分で行う）、[TPL-2643](../test-perspectives/TPL-2643-skip-reports-success-without-running.md)（走らずに success を報告する gate）、[TPL-2786](../test-perspectives/TPL-2786-guard-failure-must-fail-the-run.md)（判定できないときは通過ではなく失敗にする）
   - コード: `scripts/release/train.mts`, `.github/workflows/release-prepare.yml`, `.coderabbit.yaml`
 
 ## 背景・課題
@@ -94,6 +94,7 @@ ADR-2949 と ADR-3117 が却下した形そのもの。タイトルは場所で�
 ## Related TPLs
 
 - [TPL-3286](../test-perspectives/TPL-3286-merge-eligibility-judged-on-final-diff.md): 外す判定はリンクを作った時点の差分で決まり、そのあとのコミットを見ない。リリースブランチに生成物以外のコミットが足されたら外れたままになる。下の「最終の差分を確かめる」で、マージ直前の差分を required なチェックで確かめ、どの規則にも当たらない変更を失敗に倒す。
+- [TPL-2786](../test-perspectives/TPL-2786-guard-failure-must-fail-the-run.md): チェックの job が途中で落ちたら commit status が `pending` のまま残ってマージが止まるようにする。Prepare が Issue の本文を更新できなかったときもジョブを失敗させる。
 - [TPL-2643](../test-perspectives/TPL-2643-skip-reports-success-without-running.md): rate limit のときの「走らずに pass」の形。リリース PR では外すことで起きなくなる。また、外した状態を解いた（ラベルや本文の行を外した）ときに最終差分のチェックが再実行されるよう、workflow の types に `labeled` / `unlabeled` / `edited` を入れる。
 
 ## 現時点の方針
@@ -104,18 +105,24 @@ ADR-2949 と ADR-3117 が却下した形そのもの。タイトルは場所で�
 
 外す根拠は「差分が `changeset version` の生成物だけ」なので、それをマージの直前まで確かめる。チェックは全ての PR で走り、次の 2 つで失敗させる。それ以外の PR では何もせずに通す。
 
-1. `release-pr` ラベルが付いているのに、head が `chore/release-*` でない。ラベルはリリース PR を外した記録なので、別の PR に付けば、最終差分のチェックを通らないまま外れてしまう。本文の ignore コマンドの行だけではここで失敗させない。`adr-auto-merge` と `skip-coderabbit` の PR も同じ行を持ち、それぞれの判定（ADR-2331・ADR-3011）で外しているため。
-2. head が `chore/release-*` で、レビューから外れている（本文に ignore コマンドの行があるか、`release-pr` ラベルが付いている）のに、PR の差分が次の規則にすべて当たらない。差分は、イベントの `pull_request.base.sha` と `pull_request.head.sha` の merge-base と head の差分（三点の `base...head`。GitHub の PR の差分と同じ範囲）で取る。checkout は `fetch-depth: 0` にして、merge-base の計算に要る祖先の履歴をすべて取る。既定の浅い checkout では共通の祖先が無く、`git merge-base` が判定の前に失敗するため。全履歴を取るのは 2 の対象の PR だけで、対象かどうか（ラベル・本文・head のブランチ名）はイベントの payload だけで先に決めるので、ほかの PR では checkout もしない。ローカルの `origin/main` には頼らない。どの規則にも当たらない変更は失敗に倒す（TPL-3286）。
+1. `release-pr` ラベルが付いているのに、head が `chore/release-*` でない。ラベルはリリース PR を外した記録なので、別の PR に付けば、最終差分のチェックを通らないまま外れてしまう。本文に ignore コマンドの文字列を含むだけではここで失敗させない。`adr-auto-merge` と `skip-coderabbit` の PR も同じ行を持ち、それぞれの判定（ADR-2331・ADR-3011）で外しているため。
+2. head が `chore/release-*` で、レビューから外れている（本文のどこかに ignore コマンドの文字列を含むか、`release-pr` ラベルが付いている）のに、PR の差分が次の規則にすべて当たらない。差分は、イベントの `pull_request.base.sha` と `pull_request.head.sha` の merge-base と head の差分（三点の `base...head`。GitHub の PR の差分と同じ範囲）で取る。checkout は `fetch-depth: 0` にして、merge-base の計算に要る祖先の履歴をすべて取る。既定の浅い checkout では共通の祖先が無く、`git merge-base` が判定の前に失敗するため。全履歴を取るのは 2 の対象の PR だけで、対象かどうか（ラベル・本文・head のブランチ名）はイベントの payload だけで先に決めるので、ほかの PR では checkout もしない。ローカルの `origin/main` には頼らない。どの規則にも当たらない変更は失敗に倒す（TPL-3286）。
 
-- `.changeset/*.md` の削除
-- `packages/*/CHANGELOG.md` の追加・変更
-- `packages/*/package.json` の変更のうち、`version` と、workspace 内のパッケージへの依存（`dependencies` などの値）の版だけが変わったもの。前後の JSON を比べ、キーの追加・削除や、それ以外のフィールドの変更は失敗にする（`scripts` や `exports`、外部の依存の追加を見逃さないため）
-- `pnpm-lock.yaml` は変わらないこと。workspace 内の依存は `link:` で解決されるので、`changeset version` の後の `pnpm install --lockfile-only` で lockfile は通常変わらない（背景に挙げた 5 本でも変わっていない）。変わった場合は失敗にして、失敗のメッセージで「正当な変化なら、変わった範囲を確かめて規則を広げる」と案内する。規則に当たらない入力を通す側に倒さないため（TPL-3286）
+本文は「最後の行が ignore コマンドか」ではなく「本文のどこかにその文字列を含むか」で判定する。CodeRabbit は文脈を区別せず、引用や説明として書かれた文字列でも PR を外す（#3012）。行で判定すると、行の途中に書かれた PR はレビューから外れたままチェックの対象にならない。
+
+差分は `git diff --name-status` の種類（追加 `A`・変更 `M`・削除 `D`）ごとに、次の規則のどれかに当たるかを見る。rename・copy・type change（`R` / `C` / `T`）は、どの規則にも当たらないので失敗にする。
+
+- `.changeset/<name>.md` の削除（`D`）。`.changeset/README.md` は除く。`.changeset/config.json` と `.changeset/changelog.cjs` の変更も規則に当たらないので失敗にする
+- `packages/*/CHANGELOG.md` の追加・変更（`A` / `M`）
+- `packages/*/package.json` の変更（`M`）のうち、`version` の値だけが変わったもの。前後の JSON を比べ、ほかのキーの値の変更や、キーの追加・削除は失敗にする（`scripts` や `exports`、依存の追加を見逃さないため）。workspace 内の依存はすべて `workspace:*` で書いてあり、`changeset version` は書き換えない（#3349 の差分でも、package.json で変わったのは `version` だけだった）
+- `pnpm-lock.yaml` は変わらないこと（どの種類の差分も失敗）。workspace 内の依存は `link:` で解決されるので、`changeset version` の後の `pnpm install --lockfile-only` で lockfile は通常変わらない（背景に挙げた 5 本でも変わっていない）。変わった場合は失敗にして、失敗のメッセージで「正当な変化なら、変わった範囲を確かめて規則を広げる」と案内する。規則に当たらない入力を通す側に倒さないため（TPL-3286）
 
 チェックそのものは PR から書き換えられない revision で走らせる。PR の head にある判定のコードを使うと、リリースブランチに足したコミットが `scripts/release/train.mts` を弱めて、生成物でない差分を通せてしまう。
 
 - trigger は `pull_request_target` にする。GitHub は workflow の定義を base ブランチから読むので、PR が workflow を書き換えてもその PR のチェックには効かない。
-- 判定のスクリプト（`scripts/release/train.mts`）は `pull_request.base.sha` を checkout して使う。PR の head は `git fetch` で取り込み、差分と `package.json` の前後の中身をデータとして読むだけにする。head のコードは実行しない（`pull_request_target` で head を checkout して実行しない、という GitHub の注意に沿う）。依存のインストールも要らない（`train.mts` は Node の type stripping で動き、node の builtin だけを import する）。Node は `release-prepare.yml` と同じく `actions/setup-node` で `node-version: "24"` に固定する。type stripping はフラグなしで有効になる版なので、`--experimental-strip-types` は付けない。
+- 結果は、PR の head のコミット（`pull_request.head.sha`）に commit status として付ける。`pull_request_target` の run は base ブランチのコミットで走るので、job の check run が head のコミットに付く保証が無く、required として満たされないおそれがある（このリポジトリに前例が無く、確証が取れなかった）。job の最初に status を `pending` で付け、判定のあとで `success` か `failure` に更新する。job が途中で落ちたときは `pending` が残り、マージは止まる側に倒れる（TPL-2786）。required にするのはこの status の context（例 `Release PR scope`）で、名前は固定する。
+- `permissions` は `contents: read`・`pull-requests: read`・`statuses: write` だけにし、secret は使わない。
+- 判定のスクリプト（`scripts/release/train.mts`）は `pull_request.base.sha` を checkout して使う。PR の head は `git fetch origin refs/pull/<n>/head` で取り込み（fork の PR でも同じ ref で取れる）、差分と `package.json` の前後の中身をデータとして読むだけにする。head のコードは実行しない（`pull_request_target` で head を checkout して実行しない、という GitHub の注意に沿う）。依存のインストールも要らない（`train.mts` は Node の type stripping で動き、node の builtin だけを import する）。Node は `release-prepare.yml` と同じく `actions/setup-node` で `node-version: "24"` に固定する。type stripping はフラグなしで有効になる版なので、`--experimental-strip-types` は付けない。
 - head のリポジトリが base と同じであることも 2 の条件に含める。fork の PR はブランチ名を `chore/release-*` にでき、本文に ignore コマンドの行も書けるので、レビューから外れている fork の PR はブランチ名にかかわらず失敗させる。
 - workflow と `scripts/release/` の変更そのものは、通常の PR として CodeRabbit とメンテナのレビューを通る（それらはリリース PR の生成物ではないので、リリース PR に入れば 2 で失敗する）。CODEOWNERS は置いていない（メンテナが 1 人で全てのマージを見る）。
 
@@ -126,12 +133,12 @@ ADR-2949 と ADR-3117 が却下した形そのもの。タイトルは場所で�
 ### 実装の指針
 
 1. `scripts/release/train.mts`
-   - `composeReleasePrBody({ issue, bumps, date })` を足す。最後の行が ignore コマンドの本文を返す。
-   - `composeTrainIssueBody` が compare リンクに `title` / `body` / `labels` を URL エンコードして付ける。Issue 番号を受け取る引数を足す。
+   - `composeReleasePrBody({ issue, bumps, date })` を足す。最後の行を ignore コマンドにした本文を返す。
+   - `composeTrainIssueBody` が compare リンクに `title` / `body` / `labels` を付ける。エンコードは `encodeURIComponent` で行う（`URLSearchParams` は空白を `+` にし、本文の `+` と区別できない）。Issue 番号を受け取る引数を足す。
    - 生成物かどうかを判定する純粋関数（`isReleaseArtifactChange` など）を足し、上のチェックから呼ぶ。
    - `scripts/release/train.test.ts` で、リンクのパラメータと判定を固める。
-2. `.github/workflows/release-prepare.yml`: Issue を作ったあと、番号を入れた本文で `gh issue edit` する。
-3. 最終の差分のチェック: 専用の workflow（例 `release-pr-scope.yml`、`pull_request_target`）を足し、全ての PR で走らせる。判定は `scripts/release/train.mts` の純粋関数で行う。workflow のマージ後に、main ruleset の required status checks へ足す（先に足すと、この workflow が無い PR がマージできなくなる。順序は #1866 の E2E の required 化と同じ）。
+2. `.github/workflows/release-prepare.yml`: Issue を作ったあと、番号を入れた本文で `gh issue edit` する。本文の更新に失敗したら、リンクの無い Issue が残るのでジョブを失敗させる（TPL-2786）。
+3. 最終の差分のチェック: 専用の workflow（例 `release-pr-scope.yml`、`pull_request_target`）を足し、全ての PR で走らせる。判定は `scripts/release/train.mts` の純粋関数で行う。workflow のマージ後に、main ruleset の required status checks へ足す（先に足すと、この workflow が無い PR がマージできなくなる。順序は #1866 の E2E の required 化と同じ）。足す前に、試しの PR で status が head のコミットに付き、PR の checks に出ることを確かめる。
 4. `.coderabbit.yaml`: `auto_review.labels` に `!release-pr` を足し、コメントで理由と ADR を指す。
 5. `release-pr` ラベルを作る（`gh label create release-pr`）。
 6. ドキュメント:
