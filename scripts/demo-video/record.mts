@@ -125,6 +125,7 @@ await renderCards([
   [cards.intro, intro],
   [{ ...cards.intro, sub: cards.outroSub }, outro],
 ]);
+mkdirSync(out, { recursive: true });
 const video = join(out, `${name}.${lang}.mp4`);
 composeVideo({ intro, raw, outro, out: video });
 const sheet = join(out, `${name}.${lang}.contact.png`);
