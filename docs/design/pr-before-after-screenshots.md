@@ -132,6 +132,7 @@ before と after の差が、そのブランチの変更だけで決まること
 
 ### 実装の指針
 
+<!-- absent-path-next-line: a file this design creates (#3359) -->
 1. **`pnpm pr:shots`**（`scripts/report/pr-shots.ts`、`scripts/report/` の API を使う）
    - base は `origin/main` との merge-base。`--base <ref>` で変えられる
    - 一時 worktree を `.claude/worktrees/pr-shots-base-<sha>` に detached で作り、install して、終了時（失敗時も）に消す
