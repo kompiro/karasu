@@ -141,6 +141,7 @@ pnpm demo-video:record <scenario> --lang ja
 | ポインタが止まったままクリックが起きる | Playwright の mouse は X のカーソルを動かさない | xdotool で動かしてクリックする（`clickAt`） |
 | 翻訳バーが出る | `--disable-features=Translate` では消えない | プロファイルの Preferences で翻訳を切る |
 | ウィンドウが画面からはみ出す | Chromium の `--window-size` は DIP 単位 | 画面サイズを倍率で割る |
+| `keyboard.press: Target crashed`、`vscode.log` に `renderer process gone (reason: killed, code: 9)` | ホストのメモリ不足で VS Code のレンダラーが OOM で落ちた | `free -m` で available が数 GB あることを確かめてから録り直す（他の重い処理と並べない） |
 | 動画の末尾に「変更を保存しますか？」が映る | 未保存のデモ編集を残したまま VS Code を閉じた（SIGTERM でも CDP の close でも出る） | 最後の場面のあとに `ctx.stopRecording()` を呼んでから閉じる |
 | 録画ファイルが `moov atom not found` で開けない | 強制終了で MP4 が閉じられなかった | 録画中は fragmented MP4 で書き、仕上げで `+faststart` に直す |
 | `pkill -f <パターン>` でシェルごと落ちる（exit 144） | 同じコマンド行にそのパターン文字列が含まれていた | `pkill -f "[v]scode-linux"` のように先頭を `[]` で囲み、pkill は単独のコマンドで実行する |
