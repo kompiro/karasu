@@ -176,8 +176,9 @@ is required to contribute: a plain `git` / `pnpm` / `gh` workflow works.
    Link to the Issue with `Closes #N` (a design-doc PR uses `Refs #N`, since the
    Issue stays open for the implementation). Write the description in English.
 4. Wait for CI. The required checks for merge are visible on the PR.
-5. A contributor's PR is labeled `risk: high`, and CodeRabbit posts an
-   automated review. It neither approves nor requests changes: each finding
+5. A PR from an author outside the maintainers is always High (the
+   classifier does not give lighter tiers to outside authors), so it is
+   labeled `risk: high`, and CodeRabbit posts an automated review. It neither approves nor requests changes: each finding
    carries a severity. Fix or answer every Critical and Major finding; a
    Minor or Trivial one you may decline with a short reason. You are welcome
    to disagree with any finding. Reply with your reasoning on the thread and

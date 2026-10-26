@@ -187,13 +187,21 @@ describe("classifyChange", () => {
       added: addedLines,
     });
 
-    it("is Low for a test change that only adds tests", () => {
-      expect(tierOf(modified(T, { hunks: [hunk([], ["it('y', () => {", "});"])] }))).toBe("low");
+    it("is Low only for a new test file", () => {
       expect(tierOf(added(T))).toBe("low");
     });
 
-    it("is Medium for any test change that removes or rewrites a line (TPL-3286)", () => {
-      // A weakened assertion, an early return, it.fails: no pattern list catches them all.
+    it("is Medium for any change to an existing test file (TPL-3286)", () => {
+      // Add-only hunks can still disable tests: an early return, a comment or
+      // template literal opened around tests, a skip or fixme modifier.
+      for (const lines of [
+        ["it('y', () => {", "});"],
+        ["  if (!process.env.CI) return;"],
+        ["/*"],
+        ["test.fixme('x', () => {"],
+      ]) {
+        expect(tierOf(modified(T, { hunks: [hunk([], lines)] }))).toBe("medium");
+      }
       expect(
         tierOf(
           modified(T, {
@@ -201,12 +209,6 @@ describe("classifyChange", () => {
           }),
         ),
       ).toBe("medium");
-      expect(tierOf(modified(T, { hunks: [hunk(["a", "b", "c"], [""])] }))).toBe("medium");
-      // Add-only hunks that stop a test from running or failing.
-      expect(tierOf(modified(T, { hunks: [hunk([], ["  return;"])] }))).toBe("medium");
-      expect(tierOf(modified(T, { hunks: [hunk([], ["const { skip: it2 } = it;"])] }))).toBe(
-        "medium",
-      );
     });
 
     it("is Medium when a change takes coverage away (TPL-3286)", () => {

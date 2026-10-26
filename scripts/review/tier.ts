@@ -457,26 +457,14 @@ function adrFileTier(f: ChangedFile): Tier {
 
 const TEST_GLOBS: readonly string[] = ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"];
 /**
- * An added line that can stop tests from running or failing: a skip, todo, only
- * or fails modifier (also when destructured or aliased), or a bare `return` that
- * ends a test early. Add-only test hunks with such a line are not Low.
+ * A test file is Low only when it is new. A new file adds tests and can take no
+ * existing coverage away. Any change to an existing test file can (a deleted
+ * case, a weakened assertion, an early return, a comment or template literal
+ * opened around tests, a skip modifier), and two review rounds showed that no
+ * pattern list catches every way, so such a change is Medium and a human reads
+ * it (TPL-3286).
  */
-const SKIPS_A_TEST =
-  /\.(?:skip|todo|only|fails|skipIf|runIf)\b|\b(?:skip|todo|only|fails)\s*:|\bx(?:it|describe)\(|^\s*return\s*;?\s*$/;
-
-/**
- * A test change is Low only when it adds tests: a new file, or hunks that only
- * add lines, none of which skips or narrows a test. Removing or rewriting a
- * line can take coverage away (a deleted case, a weakened assertion, an early
- * return), and no pattern list catches every way, so any such change is Medium
- * and a human reads it (TPL-3286).
- */
-function onlyAddsTests(f: ChangedFile): boolean {
-  if (f.status === "deleted") return false;
-  return f.hunks.every(
-    (h) => h.removed.length === 0 && !h.added.some((line) => SKIPS_A_TEST.test(line)),
-  );
-}
+const isNewFile = (f: ChangedFile): boolean => f.status === "added";
 
 function fileTier(
   f: ChangedFile,
@@ -491,7 +479,7 @@ function fileTier(
   // Nothing below lowers a High path: the review machinery, rules and specs are
   // read by a human however small the change is.
   if (byPath === "high") return "high";
-  if (byPath === "low" && matchesAny(f.path, TEST_GLOBS) && !onlyAddsTests(f)) return "medium";
+  if (byPath === "low" && matchesAny(f.path, TEST_GLOBS) && !isNewFile(f)) return "medium";
   // ADR promotion (ADR-2331): only in a PR that adds an ADR record.
   if (promotion.newAdrs.length > 0) {
     if (f.status === "deleted" && DESIGN_DOC.test(f.path)) return "low";

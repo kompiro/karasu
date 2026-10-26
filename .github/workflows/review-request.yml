@@ -29,9 +29,10 @@ jobs:
     name: Label untiered PRs High
     # A draft gets its tier label from its author before it leaves draft, and
     # `gh pr create --draft --label` adds the label in a call after the PR is
-    # opened: labelling a draft on `opened` would race it. Drafts are labelled on
-    # `ready_for_review` instead, if they still have no tier label then.
-    if: github.event.action != 'opened' || github.event.pull_request.draft == false
+    # opened: labelling a draft on `opened` or `reopened` would race it or
+    # pre-empt it. Drafts are labelled on `ready_for_review` instead, if they
+    # still have no tier label then.
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

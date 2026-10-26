@@ -97,7 +97,7 @@ scope:
 ## 関連テスト
 
 - `scripts/review/tier.test.ts`：どの規則にも当たらないパスが Medium になること、レビューの仕組みのパスが High に
-  なること、`package.json` の依存と scripts の区別、ADR の昇格とリンクの張り替えだけが Low になること（張り替え以外の
+  なること、既存のテストファイルの変更が Medium になること、`package.json` の依存と scripts の区別、ADR の昇格とリンクの張り替えだけが Low になること（張り替え以外の
   変更が混ざる・新しい ADR が無い・Markdown 以外は Low にならない）、既存 ADR の本文の変更が Medium になること、
   main の取り込みの判定（`diffFingerprint`）が行の移動・増減・入れ替え・モードやバイナリだけの変更を「同じ」と
   みなさないこと
