@@ -1,7 +1,8 @@
 ---
 id: ADR-2716
 title: CodeRabbit のレビューを request changes workflow に移す
-status: accepted
+status: superseded
+superseded_by: ADR-3286
 date: 2026-09-05
 topic: build
 authors: [kompiro]
@@ -25,7 +26,7 @@ assumptions:
 # ADR-2716: CodeRabbit のレビューを request changes workflow に移す
 
 - **日付**: 2026-09-05
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by [ADR-3286](3286-risk-based-review-tiers.md)（request_changes_workflow を false に戻した。required check にしない・thread の解決を求めない・ADR-2640 の設定は引き継がれている）
 - **関連**:
   - Issue [#2716](https://github.com/kompiro/karasu/issues/2716)
   - [ADR-2640](2640-coderabbit-pr-review.md) — **本 ADR が supersede する** CodeRabbit 導入（advisory 固定）。導入そのもの・設定の置き場・除外対象・運用ルールは下記「ADR-2640 から引き継ぐ決定」で引き継ぐ
