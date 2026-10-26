@@ -2,10 +2,12 @@
 # Claude Code PostToolUse / PostToolUseFailure hook (matcher: Bash), wired in
 # .claude/settings.json.
 #
-# After Claude takes a PR out of draft with `gh pr ready`, tell it in the same
-# turn to start /coderabbit-converge on that PR. /hane:start-dev and /hane:ship
-# end at "CI green, status: in-review" and never hand over to converge, so
-# without this note the rounds wait for a human (#3333, ADR-3333).
+# After Claude takes a High PR out of draft with `gh pr ready`, tell it in the
+# same turn to start /coderabbit-converge on that PR. /hane:start-dev and
+# /hane:ship end at "CI green, status: in-review" and never hand over to
+# converge, so without this note the rounds wait for a human (#3333, ADR-3333).
+# Only High PRs have CodeRabbit rounds (docs/process.md "リスク段階", #3286):
+# Design gets one advisory review and nothing below it gets CodeRabbit at all.
 #
 # The PR is taken from gh's own status line in the tool output
 # (`Pull request <owner>/<repo>#<n> is marked as "ready for review"`), not from
@@ -51,16 +53,16 @@ for ref in $readied; do
   # gh just reached GitHub to mark the PR ready, so a failed read here is not a
   # reason to guess: skip the reminder.
   view=$(${limit[@]+"${limit[@]}"} "$gh_bin" pr view "$number" --repo "$repo" \
-    --json isDraft,labels,body,baseRefName 2>/dev/null) || continue
+    --json isDraft,labels,baseRefName 2>/dev/null) || continue
 
   [ "$(jq -r '.isDraft' <<<"$view")" = "false" ] || continue
-  # CodeRabbit skips the PR when the body holds the ignore command anywhere, even
-  # quoted (docs/process.md), and the labels are the .coderabbit.yaml fallback.
-  opted_out=$(jq -r '
-    ([.labels[].name] | any(. == "skip-coderabbit" or . == "adr-auto-merge"))
-    or ((.body // "") | contains("@coderabbitai ignore"))
+  # High is the `risk: high` label, or no tier label at all (an unlabeled PR is
+  # High, and the Review request workflow labels it so).
+  high=$(jq -r '
+    [.labels[].name | select(startswith("risk: "))]
+    | length == 0 or any(. == "risk: high")
   ' <<<"$view")
-  [ "$opted_out" = "true" ] && continue
+  [ "$high" = "true" ] || continue
 
   # Without base_branches in .coderabbit.yaml, CodeRabbit reviews only PRs into
   # the default branch. A stack's upper PR has nothing to converge on.
@@ -69,8 +71,8 @@ for ref in $readied; do
   [ "$(jq -r '.baseRefName' <<<"$view")" = "$default_branch" ] || continue
 
   jq -n --arg ctx "PR $ref is out of draft. Next, run /coderabbit-converge on it now (the converge \
-step of the docs/process.md PR workflow, from that PR's worktree) and keep driving it until CodeRabbit \
-approves or a human decision is needed. This takes precedence over a skill that stops at \
+step of the docs/process.md PR workflow, from that PR's worktree) and keep driving it until no Critical \
+or Major finding is open or a human decision is needed. This takes precedence over a skill that stops at \
 \"CI green, status: in-review\" (such as /hane:start-dev or /hane:ship)." --arg event "$event" \
     '{hookSpecificOutput: {hookEventName: $event, additionalContext: $ctx}}'
   # One PR per Bash call is the workflow (stacked PRs leave draft one at a time).

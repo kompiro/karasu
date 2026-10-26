@@ -10,6 +10,7 @@ import {
   bodyFindingIds,
   classify,
   type CodeRabbitComment,
+  findingSeverity,
   type CodeRabbitReview,
   type ReviewState,
   type ReviewThread,
@@ -33,7 +34,7 @@ import {
 // waits on the author, whatever the outcome (#2954); `threadReplyUrls` links each
 // answer.
 // `bodyFindings` counts the findings that live only in a review body (outside the
-// diff, nitpicks) and have not been answered: no thread tracks them, so `approved`
+// diff, nitpicks) and have not been answered: no thread tracks them, so `converged`
 // does not mean they were read. `bodyFindingIds` names them, and a comment on the
 // PR quoting an id retires it. A count above `bodyFindingIds.length` means a review
 // declared a finding it filed no id for, which only a human can clear.
@@ -88,6 +89,7 @@ interface ThreadPage {
         reviewThreads: {
           nodes: {
             isResolved: boolean;
+            opening: { nodes: { author: { login: string } | null; body: string }[] };
             comments: {
               totalCount: number;
               nodes: { author: { login: string } | null; createdAt: string; url: string }[];
@@ -105,6 +107,7 @@ const THREADS_QUERY = `query($owner: String!, $name: String!, $pr: Int!, $endCur
       reviewThreads(first: 100, after: $endCursor) {
         nodes {
           isResolved
+          opening: comments(first: 1) { nodes { author { login } body } }
           comments(last: 1) { totalCount nodes { author { login } createdAt url } }
         }
         pageInfo { hasNextPage endCursor }
@@ -170,8 +173,10 @@ function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
   ]).flatMap((page) =>
     page.data.repository.pullRequest.reviewThreads.nodes.map((t) => {
       const last = t.comments.nodes.at(-1);
+      const opening = t.opening.nodes[0];
       return {
         isResolved: t.isResolved,
+        severity: byCodeRabbit(opening?.author?.login) ? findingSeverity(opening.body) : undefined,
         lastCommentAt: last?.createdAt ?? new Date(0).toISOString(),
         lastCommentByCodeRabbit: byCodeRabbit(last?.author?.login),
         commentCount: t.comments.totalCount,
