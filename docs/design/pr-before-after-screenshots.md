@@ -140,6 +140,7 @@ before と after の差が、そのブランチの変更だけで決まること
    - 同じディレクトリに `body.md` を書く。before | after の表で `![…](./reports/pr-shots/…png)` を参照し、そのまま使える `gh pr edit <n> --body-file … --attach …` の例を出力する
    - 変わった組が 0 なら「examples の描画に変化なし」と出力して終了コード 0 で終わる
    - `--url <path>` では、本番のアプリ（`https://karasu.pages.dev<path>`）と、手元で起動した `pnpm dev`（`--after-origin` で変えられる）を同じパスで撮る。dev server の管理はしない（`scripts/report/screenshot.ts` と同じ方針）
+   <!-- absent-path-next-line: a file this design creates (#3359) -->
 2. **フック**（`scripts/report/pr-shots-reminder.sh`、`.claude/settings.json` の PostToolUse / PostToolUseFailure の Bash に足す）
    - `gh pr create` の出力にある PR の URL から PR を特定する（ADR-3333 と同じく、コマンド文字列ではなく出力を見る）
    - `gh pr diff --name-only` に `packages/core/src/` か `packages/app/src/` のテスト以外のファイルがあり、本文に `user-attachments` が無いときだけ、additionalContext を返す
