@@ -78,7 +78,9 @@ export type FindingSeverity = "critical" | "major" | "minor" | "trivial";
  * so the first severity word is the label. `undefined` when there is none.
  */
 export function findingSeverity(body: string): FindingSeverity | undefined {
-  const m = /(?<![A-Za-z])(Critical|Major|Minor|Trivial|Nitpick)(?![A-Za-z])/.exec(body.slice(0, 600));
+  const m = /(?<![A-Za-z])(Critical|Major|Minor|Trivial|Nitpick)(?![A-Za-z])/.exec(
+    body.slice(0, 600),
+  );
   if (!m) return undefined;
   return m[1] === "Nitpick" ? "trivial" : (m[1].toLowerCase() as FindingSeverity);
 }
