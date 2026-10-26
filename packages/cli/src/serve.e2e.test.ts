@@ -90,7 +90,61 @@ describe("AT-0032 karasu serve — integration (real watcher)", () => {
 
     expect(events).toMatch(/^data:/m);
   });
+
+  // #3258: the preview refetches the whole directory on any event, so an
+  // imported file or a style sheet changing must both reach the stream, and
+  // the refetch must see the new text.
+  it.each([
+    ["an imported .krs", "reader.krs", "system Reader {}", "system ReaderUpdated {}"],
+    ["a .krs.style", "theme.krs.style", "service { color: red }", "service { color: blue }"],
+  ])(
+    "emits an SSE event for %s and /api/project returns its new text",
+    async (_label, file, before, after) => {
+      writeFileSync(join(tmpDir, file), before);
+      const event = await waitForEvent(port, () => writeFileSync(join(tmpDir, file), after));
+      expect(JSON.parse(event)).toMatchObject({ path: file });
+
+      const { status, body } = await get(port, "/api/project");
+      expect(status).toBe(200);
+      const files = (JSON.parse(body) as { files: { path: string; content: string }[] }).files;
+      expect(files.find((f) => f.path === file)?.content).toBe(after);
+    },
+  );
 });
+
+/**
+ * Subscribe to /api/watch, run `mutate`, and resolve with the first `change`
+ * event's JSON payload. Waiting for `change` skips the seed write's `add`.
+ */
+function waitForEvent(port: number, mutate: () => void): Promise<string> {
+  return new Promise<string>((resolvePromise, reject) => {
+    const timer = setTimeout(() => {
+      req.destroy();
+      reject(new Error("Did not receive an event within 5s"));
+    }, 5000);
+
+    let buffer = "";
+    const req = http.request({ host: "localhost", port, path: "/api/watch" }, (res) => {
+      res.on("data", (chunk: Buffer) => {
+        buffer += chunk.toString();
+        const match = /^event: change\ndata: (.*)$/m.exec(buffer);
+        if (match?.[1] !== undefined) {
+          clearTimeout(timer);
+          req.destroy();
+          resolvePromise(match[1]);
+        }
+      });
+      res.on("error", () => {
+        // ECONNRESET on destroy is expected.
+      });
+    });
+    req.on("error", (err) => {
+      if ((err as NodeJS.ErrnoException).code !== "ECONNRESET") reject(err);
+    });
+    req.end();
+    setTimeout(mutate, 300);
+  });
+}
 
 describe("AT-0032 karasu serve — default file fallback (TC-05)", () => {
   let tmpDir: string;

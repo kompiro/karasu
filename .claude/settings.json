@@ -13,12 +13,12 @@
     ]
   },
   "hooks": {
-    "Stop": [
+    "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "ROOT=$(cat | jq -r '.cwd'); ROOT=$(git -C \"$ROOT\" worktree list --porcelain 2>/dev/null | awk 'NR==1{print $2}'); if [ -n \"$ROOT\" ] && git -C \"$ROOT\" status --short | grep -qE '^[ MADRCU?][MADRCU?]|^[MADRCU][MADRCU ]'; then echo '{\"decision\": \"block\", \"reason\": \"Uncommitted changes in the main checkout. Move them into a .claude/worktrees/ branch — main takes no direct commits.\"}'; else echo '{}'; fi"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/coderabbit/session-path.sh"
           }
         ]
       }
@@ -30,6 +30,28 @@
           {
             "type": "command",
             "command": "FILE=$(jq -r '.tool_input.file_path'); case \"$FILE\" in *.ts|*.tsx) cd /workspaces/karasu && npx oxfmt --write \"$FILE\" 2>&1 && npx oxlint \"$FILE\" 2>&1 ;; esac"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/coderabbit/converge-after-ready.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/coderabbit/converge-after-ready.sh",
+            "timeout": 30
           }
         ]
       }

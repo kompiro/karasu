@@ -35,8 +35,9 @@ CI では予期せぬ変化を避けるためバージョンを固定（`karasu@
 
 ## `karasu serve` — ライブプレビュー
 
-`serve` はディレクトリ内の `.krs` ファイルを監視し、保存のたびにブラウザで
-再描画します。編集は普段使いのエディタで続けたまま、プレビューだけが追従します。
+`serve` はディレクトリ内の `.krs` と `.krs.style` を監視し、保存のたびにブラウザで
+再描画します。import は `karasu render` と同じく解決され、開いているファイルが
+import するファイルを保存しても再描画します。編集は普段使いのエディタで続けたまま、プレビューだけが追従します。
 **ローカルでの編集**時に使います。
 
 ```bash
@@ -52,7 +53,7 @@ karasu serve
   Directory : /path/to/architecture
   Preview   : http://localhost:3000
 
-Watching for .krs file changes...
+Watching for .krs and .krs.style file changes...
 ```
 
 | 引数 / オプション | 既定値 | 意味 |

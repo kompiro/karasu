@@ -18,6 +18,7 @@ discovered_from:
   - issue: "#2650"
   - issue: "#2707"
   - issue: "#3101"
+  - issue: "#3263"
   - root_cause_file: "packages/core/src/formatter/formatter.ts:203"
   - root_cause_file: "packages/core/src/types/ast.ts :: KrsEdge.to"
   - root_cause_file: "packages/core/src/formatter/quote-id.ts:14"
@@ -108,12 +109,29 @@ round-trip を AST 等価だけで測ると、**書き換えても AST が変わ
 pin する**。とくにドット記法・引用符・省略形のように「複数の綴りが同じ AST に
 なる」箇所は、AST 比較が構造的に見えない領域である。
 
+### コメントは AST に無いので、AST 比較では見えない（#3263）
+
+コメントは AST に入らない（ADR-438 のトークン列ベース方針）。したがって AST 比較の
+round-trip テストは、コメントがどこに出ても、あるいは消えても落ちない。#3263 では
+プロパティ行（`label` / `link` / `capability` など）の上と行末のコメントが**すべて
+ファイル末尾に寄っていた**。プロパティは AST に行位置を持たないので、formatter が
+どのコメントをどの行に付ければよいかを知らず、回収されなかったコメントが最後の
+`remainingComments()` でまとめて出力されていた。消えはしないので idempotency も
+保たれ、どのテストも落ちなかった。
+
+対処は、コメントの置き場所をテキストで pin するテストを、AST の網羅性ガードと
+**同じ fixture 表から導出する**こと。`formatter-property-coverage.test.ts` は
+各 fixture の全行の上と行末にコメントを入れ、同じキーワードの行の上か行末に
+戻ることを確かめる。プロパティを足して fixture を足せば、コメントの置き場所も
+同時に検査される。
+
 ## 想定される失敗モード
 
 - **AST は等価なのに綴りが変わる**（#2650。`fmt` をかけた PR の diff に、author が
   書いていない行が出る。AST 比較のテストでは原理的に捕まらない）
 - **parser が受理する構文が出力に現れず、`fmt` が黙って削除する**（#2076。`--write` / pre-commit hook 経由だと author が気づく機会がない）
 - `karasu fmt` を実行するたびに少しずつ AST が変質し、最終的に意味が変わる
+- **コメントが書いた行から離れる**（#3263。AST にコメントが無いので AST 比較では捕まらず、消えないので idempotency でも捕まらない）
 - `--check` モードで idempotent でない（2回 format すると差分が出る）
 - ユーザーが手書きで採用していた構文 variation（dot-notation / quoted / bare）が形を変えて出力され、PR diff が爆発する
 - 変換結果は parse は通るが、resolver / renderer での挙動が変わる（最も発見が遅れる）
@@ -126,6 +144,7 @@ pin する**。とくにドット記法・引用符・省略形のように「�
 - [ ] AST に複数の表現フィールドがある場合（例: `resource` の `ref.parent` / `ref.child` と `id`）、formatter は適切なフィールドを参照しているか
 - [ ] **同じ AST になる綴りが複数あるとき、出力テキストの綴りを pin したか**（#2650。AST 等価のテストはこの領域を見ない。前提として、その綴りを復元できる情報が AST に残っている必要がある — 上記「AST 等価は綴りの保存を意味しない」節）
 - [ ] `--check` / dry-run モードで idempotent か（同じ入力に 2 回かけて差分が出ないか）
+- [ ] **新しく出力する行のコメントが、その行の上か行末に残るか**（#3263）。AST に位置が無い行は、トークン列から位置を引かないとコメントを付けられない
 - [ ] 元のコードで使われていた構文の variations すべてに対して動作するか（quoted ID / bare ID / dot-notation / 特殊文字を含む ID / 予約語と衝突する ID）
 - [ ] **parser が受理する構文を漏れなく出力するか**。変換層が AST のプロパティを手で列挙している箇所（`printFile` の top-level リストなど）は、期待集合を型・スキーマから導出したテストで網羅性を固定したか（#2076）
 - [ ] **ネストされた構文も、それを描く emit 経路すべてで round-trip するか**。`KrsFile` の top-level 配列から導出したガードは**ノード内の構文を守らない**。スコープ内 `boundary`（#2036 slice A で `fmt` が黙って削除した実例）や `annotationParams`（#2571）のように per-node に持つ構文は、ネスト位置ごとに round-trip テストを用意し、1 プロパティに複数の emit 経路があるとき（`renderNode` / `renderTeam` など）は fixture を経路ごとに回す。#2571 は片方がパラメータのみ、もう片方がアノテーション丸ごとを落としていた
@@ -155,7 +174,7 @@ pin する**。とくにドット記法・引用符・省略形のように「�
 
 - `packages/core/src/formatter/formatter.test.ts`
 - `packages/core/src/formatter/formatter-top-level-coverage.test.ts`（top-level 構文の網羅性ガード）
-- `packages/core/src/formatter/formatter-property-coverage.test.ts`（ノードのプロパティの網羅性ガード。#3101）
+- `packages/core/src/formatter/formatter-property-coverage.test.ts`（ノードのプロパティの網羅性ガード。#3101。同じ fixture でコメントの置き場所も検査する。#3263）
 - `packages/core/src/formatter/quote-id.test.ts`
 - `packages/core/src/formatter/quote-string.test.ts`（値のエスケープ規則 + 生補間の構造ガード）
 - `packages/core/src/formatter/escape-round-trip.test.ts`（各構文の hostile value round-trip）

@@ -1,5 +1,19 @@
 # karasu-vscode
 
+## 0.5.0
+
+### Minor Changes
+
+- b2bfd66: Right-click an edge in the preview to set its direction, as in the web app (#3313). The rule is written into the style sheet's editor, adding the `@import` and the sheet when there is none; nothing is saved, so the editor's undo takes it back, and a write never overwrites what you typed in the meantime.
+- 45e217d: The preview is now the same preview as the web app (#3312, slice B of #2996): pan and zoom, the CRUD view, facets, collapsing, the edge detail panel, and hovering an edge to trace it all work in VS Code. Unsaved edits show up as you type, in the open file and in the files it imports. Cmd/Ctrl+click jumps to a node's definition even when it lives in an imported file, and a drill or a view switch is kept while you edit. The preview follows VS Code's theme and display language; the Icon Mode toggle stays on its toolbar.
+
+### Patch Changes
+
+- Updated dependencies:
+  - @karasu-tools/core@0.4.1
+  - @karasu-tools/i18n@0.0.1
+  - @karasu-tools/lsp@0.1.0
+
 ## 0.4.0
 
 ### Minor Changes

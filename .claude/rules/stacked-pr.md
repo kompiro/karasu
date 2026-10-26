@@ -40,7 +40,9 @@ gh stack view --json | jq -r '.branches[] | select(.pr.state == "OPEN") | .pr.nu
 
 マージ後の順序は `gh stack merge <PR番号> --yes --squash` → `gh stack sync --prune`
 → 新しい最下層のブランチで `main` との差分（`git diff origin/main...HEAD`）に `/engineering:code-review`
-を当てて修正を push → `gh pr ready <新しい最下層>`。
+を当て、続けて同じ差分に CodeRabbit CLI を 1 回だけ当てて（`coderabbit review --agent --deep --base origin/main --committed`）
+修正を push → `gh pr ready <新しい最下層>`。CLI は修正後に回し直さず、CLI が使えない環境（未インストール・未認証・枠切れ）では飛ばし、
+`KARASU_LOCAL_REVIEW_SKIPPED=<理由> gh pr ready <n>` で ready にする（[ADR-3326](../../docs/adr/3326-coderabbit-cli-once-before-ready.md)、[ADR-3342](../../docs/adr/3342-ready-gate-local-review.md)）。
 `/engineering:code-review` を ready の後に回すと、CodeRabbit の review 枠を直す前と直した後で 2 回使う
 （[ADR-2898](../../docs/adr/2898-draft-first-code-review.md)、[ADR-3052](../../docs/adr/3052-review-branch-diff-before-draft-pr.md)）。sync より先に ready を打つと、
 直後の force-push が走り出した CI を cancel する。sync を先に置けば CodeRabbit も main 取り込み後の diff を読む。

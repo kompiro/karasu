@@ -130,18 +130,22 @@ function cmpEdgeId(a: LayoutEdge, b: LayoutEdge): number {
 }
 
 /**
- * Content bounds (leftmost / rightmost x over every card and frame). The gutter
- * and trunk/single lane x's are all derived from these, so the three routing
- * passes MUST agree on the basis for their lane numbering to align — hence one
- * shared helper rather than three inline copies.
+ * Content bounds (leftmost / rightmost x over every card inside `limits` and
+ * every frame). The gutter and trunk/single lane x's are all derived from
+ * these, so the four routing passes MUST agree on the basis for their lane
+ * numbering to align — hence one shared helper rather than inline copies.
  */
-function contentBounds(
+export function contentBounds(
   nodes: LayoutNode[],
   frames: ContainerRect[],
+  limits: ChannelLimits,
 ): { minLeft: number; maxRight: number } {
   let minLeft = Infinity;
   let maxRight = -Infinity;
   for (const n of nodes) {
+    // Inside a drill-down frame the gutters belong to the frame (#3154): a
+    // ghost card placed beside it would otherwise push lane 0 past the border.
+    if (!insideLimits(n, limits)) continue;
     minLeft = Math.min(minLeft, n.x);
     maxRight = Math.max(maxRight, n.x + n.width);
   }
@@ -154,6 +158,16 @@ function contentBounds(
     }
   }
   return { minLeft, maxRight };
+}
+
+/** Whether a card lies within the enclosing frame (always, without one). */
+function insideLimits(n: LayoutNode, limits: ChannelLimits): boolean {
+  return (
+    n.x >= limits.left &&
+    n.x + n.width <= limits.right &&
+    n.y >= limits.ceiling &&
+    n.y + n.height <= limits.floor
+  );
 }
 
 export function routeGroupedEdges(
@@ -191,7 +205,7 @@ export function routeGroupedEdges(
   const boxOf = resolveGroupBoxes(layoutNodes, expandedFrames);
 
   // Content bounds → gutter x on each side, outside every frame and card.
-  const { minLeft, maxRight } = contentBounds(nodes, frames);
+  const { minLeft, maxRight } = contentBounds(nodes, frames, limits);
   const rightGutter: Gutter = { x: maxRight + GUTTER_GAP, side: "right" };
   const leftGutter: Gutter = { x: minLeft - GUTTER_GAP, side: "left" };
   // Corridors handed out so far on each side (#2610). The ones a candidate
@@ -1471,11 +1485,13 @@ export function aggregateGroupTrunks(
   /** The chain's shared obstacle index (#2790). */
   obstacleIndex: ObstacleIndex,
   expandedFrames?: Map<string, ContainerRect>,
+  /** The enclosing frame, which the gutters are measured inside (#3154). */
+  limits: ChannelLimits = NO_CHANNEL_LIMITS,
 ): void {
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
 
-  const { maxRight } = contentBounds(nodes, frames);
+  const { maxRight } = contentBounds(nodes, frames, limits);
 
   const boxOf = resolveGroupBoxes(layoutNodes, expandedFrames);
 
@@ -1569,11 +1585,13 @@ export function aggregateGroupSourceTrunks(
   /** The chain's shared obstacle index (#2790). */
   obstacleIndex: ObstacleIndex,
   expandedFrames?: Map<string, ContainerRect>,
+  /** The enclosing frame, which the gutters are measured inside (#3154). */
+  limits: ChannelLimits = NO_CHANNEL_LIMITS,
 ): void {
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
 
-  const { maxRight } = contentBounds(nodes, frames);
+  const { maxRight } = contentBounds(nodes, frames, limits);
   const boxOf = resolveGroupBoxes(layoutNodes, expandedFrames);
 
   const bySource = new Map<string, LayoutEdge[]>();
@@ -1691,11 +1709,13 @@ export function distributeGutterLanes(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
   frames: ContainerRect[],
+  /** The enclosing frame, which the gutters are measured inside (#3154). */
+  limits: ChannelLimits = NO_CHANNEL_LIMITS,
 ): void {
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
 
-  const { minLeft, maxRight } = contentBounds(nodes, frames);
+  const { minLeft, maxRight } = contentBounds(nodes, frames, limits);
   const rightBase = maxRight + GUTTER_GAP;
   const leftBase = minLeft - GUTTER_GAP;
 

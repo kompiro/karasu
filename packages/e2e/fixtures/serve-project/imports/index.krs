@@ -1,0 +1,9 @@
+// AT-3258: an entry whose content comes from every kind of import.
+@import "theme.krs.style"
+import "reader.krs"
+import { Imports.Editor } from "editor.krs"
+import "services/"
+
+system Imports {
+  label "Serve Imports"
+}

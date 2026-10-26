@@ -164,6 +164,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2836](2836-dependabot-triage-2026-09-14.md) — Dependabot トリアージ 2026-09-14：vitest 5 の major は ADR の assumption が捕まえ、差し替え PR で入れる
 - [ADR-2839](2839-pause-dependabot-triage-schedule.md) — dependabot-triage workflow の週次 cron を止め、dispatch で運用する
 - [ADR-2877](2877-dependabot-triage-2026-09-22.md) — Dependabot トリアージ 2026-09-22：changesets 3 は CI が回さない release flow を壊すので差し替え PR で入れ、gh-aw は再生成で上げる
+- [ADR-2922](2922-monthly-release-train.md) — 毎月の最終日曜に Release — Prepare を自動で走らせ、VS Code 拡張も同じトレインで公開する
 - [ADR-2939](2939-release-record-tags-and-github-release.md) — リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の GitHub Release を 1 つ作る
 - [ADR-2983](2983-dependabot-triage-2026-09-29.md) — Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upstream の regression なので差し替えず 30.1.1 の bot 提案を待ち、@types/vscode 1.138 は ExTester の上限まで保留する
 - [ADR-2985](2985-dependabot-security-2026-09-29.md) — Dependabot security alert 2026-09-29（`undici` の override floor が脆弱範囲の内側だったので `^7.29.1` に上げた）
@@ -182,7 +183,13 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3242](3242-dependabot-triage-2026-10-15.md) — Dependabot トリアージ 2026-10-15：npm 5 件をそのまま採用し、vite（override の floor 引き上げ）・knip（entry 修正）・vsce（利用元のいない override の削除）は差し替え PR で入れ、gh-aw-actions は却下する
 - [ADR-3246](3246-drop-overrides-left-by-vsce-4.md) — `@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast-uri` / `form-data` / `linkify-it` / `markdown-it`）を外す
 - [ADR-3257](3257-e2e-step-bound-follows-suite-growth.md) — app の E2E suite の step 境界を 25 分、job 予算を 45 分に上げる
+- [ADR-3271](3271-close-issue-with-pr.md) — PR と Issue はマージで同時に閉じ、マージ後にしか確かめられない項目は別の Issue にする
 - [ADR-3304](3304-dependabot-triage-2026-10-19.md) — Dependabot トリアージ 2026-10-19：npm 11 件をそのまま採用し、gh-aw-actions は却下する。lefthook 2.2.2 の手動 publish は採用可と判断する
+- [ADR-3326](3326-coderabbit-cli-once-before-ready.md) — draft を外す前に CodeRabbit CLI を base ブランチとの差分へ 1 回だけ当て、指摘 0 件までは回さない
+- [ADR-3333](3333-converge-after-ready-hook.md) — Claude が gh pr ready を実行した直後に、PostToolUse フックで /coderabbit-converge へ引き継ぐ
+- [ADR-3335](3335-refuse-commits-on-main.md) — main へのコミットは lefthook の pre-commit / pre-merge-commit で拒否し、main checkout の未コミット変更を見る Stop フックは廃止する
+- [ADR-3340](3340-converge-fix-the-class.md) — converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけへ CLI を 1 回当てる
+- [ADR-3342](3342-ready-gate-local-review.md) — ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh pr ready を拒否する
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -215,6 +222,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1062](1062-crud-matrix-view.md) — CRUD マトリクスビュー（usecase × resource）を派生プロジェクションとして提供する
 - [ADR-1104](1104-translate-crud-bindings.md) — translate adapter で usecase → resource バインディング + 任意 CRUD 装飾を emit する
 - [ADR-1935](1935-wrangler-translate-adapter.md) — --from wrangler translate adapter と「adapter を採る基準」
+- [ADR-3258](3258-serve-import-resolution.md) — karasu serve は配信ディレクトリをまるごとブラウザのメモリに写して import を解決する
 - [ADR-9013](9013-cli-serve-mode.md) — CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー
 
 ## core-concepts
@@ -408,6 +416,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3132](3132-frame-bounded-channels.md) — ドリルダウンの最上段の上と最下段の下のチャネルを、枠の内側で測る
 - [ADR-3133](3133-side-column-last-resort-corridor.md) — 側面列の端点へのエッジは、どの候補も成立しないとき、端点の間の空き列で通す
 - [ADR-3134](3134-same-channel-fold.md) — 同じ行間チャネルに降りる corridor / mixed route を、チャネルの中で 1 本の run につなぐ
+- [ADR-3154](3154-frame-bounded-gutters.md) — ドリルダウンのガターは枠の内側のカードで測り、足りない幅を枠の側面に予約する
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
 - [ADR-9015](9015-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG（buildAllViewsSvg）
@@ -461,12 +470,10 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 
 ## vscode
 
-- [ADR-176](176-vscode-phase3-webview-architecture.md) — VSCode Phase 3 — 独立 HTML Webview アーキテクチャ
-- [ADR-218](218-vscode-phase3-5-drilldown.md) — VSCode Phase 3.5 — Webview ドリルダウンナビゲーション
-- [ADR-299](299-vscode-icon-mode-toggle.md) — VSCode プレビュー Icon Mode トグル — Extension Host 管理 + postMessage
 - [ADR-863](863-vscode-extension-host-harness.md) — VS Code 拡張ホスト向け smoke test harness
 - [ADR-1316](1316-vscode-marketplace-publish.md) — VS Code 拡張を Entra ID + GitHub OIDC（managed identity）で Marketplace に publish する
 - [ADR-1417](1417-lsp-cli-i18n.md) — LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n の切り出し
 - [ADR-2456](2456-lsp-custom-request-duplicate-jsonrpc.md) — LSP の position drift は position encoding ではなく vscode-jsonrpc の二重コピーだった
 - [ADR-2782](2782-vscode-floor-capped-by-extester.md) — VS Code の floor を 1.137 に上げ、ExTester の vscode-max を上限として機械チェックする
+- [ADR-2996](2996-vscode-shared-viewer.md) — VS Code 拡張の preview は app の viewer を webview で動かし、ファイルはホストへの要求で読み書きする
 - [ADR-9014](9014-vscode-extension-lsp-first.md) — VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画

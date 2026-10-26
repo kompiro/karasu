@@ -1,5 +1,5 @@
-import { readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { test as base } from "./network.js";
 import { SERVE_FIXTURE_DIR, SERVE_SCRATCH_DIR } from "./serve-env.js";
 
@@ -24,24 +24,40 @@ export interface ServeProjectFixture {
    * a reused local server starts the next run from the fixture.
    */
   write(name: string, content: string): Promise<void>;
+  /**
+   * Overwrite any file in the served directory, `.krs.style` included.
+   * `path` is relative to the directory, extension included. Put back after
+   * the test like `write`.
+   */
+  writeFile(path: string, content: string): Promise<void>;
+  /** Delete a file from the served directory. Put back after the test. */
+  remove(path: string): Promise<void>;
 }
 
 export const test = base.extend<{ serveProject: ServeProjectFixture }>({
   serveProject: async ({ page }, use) => {
     const touched = new Set<string>();
+    const writeFileAt = async (path: string, content: string) => {
+      touched.add(path);
+      await mkdir(dirname(join(SERVE_SCRATCH_DIR, path)), { recursive: true });
+      await writeFile(join(SERVE_SCRATCH_DIR, path), content);
+    };
     await use({
       dir: SERVE_SCRATCH_DIR,
       async open(path = "/") {
         await page.goto(path);
       },
-      async write(name, content) {
-        touched.add(name);
-        await writeFile(join(SERVE_SCRATCH_DIR, `${name}.krs`), content);
+      write: (name, content) => writeFileAt(`${name}.krs`, content),
+      writeFile: writeFileAt,
+      async remove(path) {
+        touched.add(path);
+        await rm(join(SERVE_SCRATCH_DIR, path), { force: true });
       },
     });
-    for (const name of touched) {
-      const original = await readFile(join(SERVE_FIXTURE_DIR, `${name}.krs`), "utf8");
-      await writeFile(join(SERVE_SCRATCH_DIR, `${name}.krs`), original);
+    for (const path of touched) {
+      const original = await readFile(join(SERVE_FIXTURE_DIR, path), "utf8");
+      await mkdir(dirname(join(SERVE_SCRATCH_DIR, path)), { recursive: true });
+      await writeFile(join(SERVE_SCRATCH_DIR, path), original);
     }
   },
 });

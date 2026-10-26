@@ -167,6 +167,7 @@ flowchart TD
     ADR_2839["ADR-2839<br/>dependabot-triage workflow の週次 cron を止め、dispatc..."]
     ADR_2877["ADR-2877<br/>Dependabot トリアージ 2026-09-22：changesets 3 は CI が..."]
     ADR_2898["ADR-2898<br/>/code-review は draft PR に当て、CodeRabbit の初回レビューは..."]
+    ADR_2922["ADR-2922<br/>毎月の最終日曜に Release — Prepare を自動で走らせ、VS Code 拡張も同..."]
     ADR_2939["ADR-2939<br/>リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の Gi..."]
     ADR_2949["ADR-2949<br/>auto-merge する ADR-only PR は CodeRabbit の自動レビュー対..."]
     ADR_2983["ADR-2983<br/>Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upst..."]
@@ -187,7 +188,13 @@ flowchart TD
     ADR_3242["ADR-3242<br/>Dependabot トリアージ 2026-10-15：npm 5 件をそのまま採用し、vit..."]
     ADR_3246["ADR-3246<br/>`@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast..."]
     ADR_3257["ADR-3257<br/>app の E2E suite の step 境界を 25 分、job 予算を 45 分に上げる"]
+    ADR_3271["ADR-3271<br/>PR と Issue はマージで同時に閉じ、マージ後にしか確かめられない項目は別の Issue..."]
     ADR_3304["ADR-3304<br/>Dependabot トリアージ 2026-10-19：npm 11 件をそのまま採用し、gh..."]
+    ADR_3326["ADR-3326<br/>draft を外す前に CodeRabbit CLI を base ブランチとの差分へ 1 回..."]
+    ADR_3333["ADR-3333<br/>Claude が gh pr ready を実行した直後に、PostToolUse フックで ..."]
+    ADR_3335["ADR-3335<br/>main へのコミットは lefthook の pre-commit / pre-merge-..."]
+    ADR_3340["ADR-3340<br/>converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけ..."]
+    ADR_3342["ADR-3342<br/>ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -218,6 +225,7 @@ flowchart TD
     ADR_1062["ADR-1062<br/>CRUD マトリクスビュー（usecase × resource）を派生プロジェクションとして..."]
     ADR_1104["ADR-1104<br/>translate adapter で usecase → resource バインディング ..."]
     ADR_1935["ADR-1935<br/>--from wrangler translate adapter と「adapter を採る基準」"]
+    ADR_3258["ADR-3258<br/>karasu serve は配信ディレクトリをまるごとブラウザのメモリに写して import ..."]
     ADR_9013["ADR-9013<br/>CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
   end
   subgraph core-concepts["core-concepts"]
@@ -411,6 +419,7 @@ flowchart TD
     ADR_3132["ADR-3132<br/>ドリルダウンの最上段の上と最下段の下のチャネルを、枠の内側で測る"]
     ADR_3133["ADR-3133<br/>側面列の端点へのエッジは、どの候補も成立しないとき、端点の間の空き列で通す"]
     ADR_3134["ADR-3134<br/>同じ行間チャネルに降りる corridor / mixed route を、チャネルの中で 1..."]
+    ADR_3154["ADR-3154<br/>ドリルダウンのガターは枠の内側のカードで測り、足りない幅を枠の側面に予約する"]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -471,6 +480,7 @@ flowchart TD
     ADR_1417["ADR-1417<br/>LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
     ADR_2456["ADR-2456<br/>LSP の position drift は position encoding ではなく v..."]
     ADR_2782["ADR-2782<br/>VS Code の floor を 1.137 に上げ、ExTester の vscode-m..."]
+    ADR_2996["ADR-2996<br/>VS Code 拡張の preview は app の viewer を webview で動..."]
     ADR_9014["ADR-9014<br/>VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画"]
   end
   ADR_14 --> ADR_9003
@@ -486,7 +496,7 @@ flowchart TD
   ADR_131 --> ADR_22
   ADR_176 --> ADR_9014
   ADR_177 --> ADR_9007
-  ADR_177 --> ADR_218
+  ADR_177 --> ADR_2996
   ADR_218 --> ADR_176
   ADR_218 --> ADR_9007
   ADR_237 --> ADR_9003
@@ -613,6 +623,7 @@ flowchart TD
   ADR_2901 --> ADR_1758
   ADR_2917 --> ADR_1884
   ADR_2917 --> ADR_2714
+  ADR_2922 --> ADR_2939
   ADR_2934 --> ADR_2917
   ADR_2934 --> ADR_2550
   ADR_2958 --> ADR_2631
@@ -622,10 +633,13 @@ flowchart TD
   ADR_2995 --> ADR_2592
   ADR_2995 --> ADR_3020
   ADR_2995 --> ADR_1805
+  ADR_2996 --> ADR_2993
   ADR_3000 --> ADR_2578
   ADR_3000 --> ADR_2969
   ADR_3020 --> ADR_2578
   ADR_3020 --> ADR_2969
+  ADR_3326 --> ADR_3052
+  ADR_3342 --> ADR_3326
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -644,6 +658,9 @@ flowchart TD
   ADR_2716 -.supersedes.-> ADR_2640
   ADR_2807 -.supersedes.-> ADR_2805
   ADR_2906 -.supersedes.-> ADR_2376
+  ADR_2996 -.supersedes.-> ADR_176
+  ADR_2996 -.supersedes.-> ADR_218
+  ADR_2996 -.supersedes.-> ADR_299
   ADR_3052 -.supersedes.-> ADR_2898
   ADR_3117 -.supersedes.-> ADR_3011
   ADR_3117 -.supersedes.-> ADR_2949
@@ -680,12 +697,12 @@ flowchart TD
   class ADR_158 accepted
   class ADR_164 accepted
   class ADR_165 accepted
-  class ADR_176 accepted
+  class ADR_176 superseded
   class ADR_177 accepted
   class ADR_199 accepted
   class ADR_209 accepted
   class ADR_211 accepted
-  class ADR_218 accepted
+  class ADR_218 superseded
   class ADR_226 accepted
   class ADR_237 accepted
   class ADR_278 accepted
@@ -694,7 +711,7 @@ flowchart TD
   class ADR_285 accepted
   class ADR_287 accepted
   class ADR_292 accepted
-  class ADR_299 accepted
+  class ADR_299 superseded
   class ADR_307 accepted
   class ADR_308 accepted
   class ADR_309 accepted
@@ -1039,6 +1056,7 @@ flowchart TD
   class ADR_2901 accepted
   class ADR_2906 accepted
   class ADR_2917 accepted
+  class ADR_2922 accepted
   class ADR_2934 accepted
   class ADR_2939 accepted
   class ADR_2949 superseded
@@ -1049,6 +1067,7 @@ flowchart TD
   class ADR_2985 accepted
   class ADR_2993 accepted
   class ADR_2995 accepted
+  class ADR_2996 accepted
   class ADR_3000 accepted
   class ADR_3002 accepted
   class ADR_3011 superseded
@@ -1068,6 +1087,7 @@ flowchart TD
   class ADR_3133 accepted
   class ADR_3134 accepted
   class ADR_3138 accepted
+  class ADR_3154 accepted
   class ADR_3162 accepted
   class ADR_3169 accepted
   class ADR_3196 accepted
@@ -1075,7 +1095,14 @@ flowchart TD
   class ADR_3242 accepted
   class ADR_3246 accepted
   class ADR_3257 accepted
+  class ADR_3258 accepted
+  class ADR_3271 accepted
   class ADR_3304 accepted
+  class ADR_3326 accepted
+  class ADR_3333 accepted
+  class ADR_3335 accepted
+  class ADR_3340 accepted
+  class ADR_3342 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

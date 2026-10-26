@@ -4,11 +4,15 @@
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
+  "exports": {
+    "./vscode-webview-protocol": "./src/viewer/vscode/protocol.ts"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "build:viewer": "vite build --config vite.viewer.config.ts",
     "build:serve": "vite build --config vite.serve.config.ts",
+    "build:vscode-webview": "vite build --config vite.vscode-webview.config.ts",
     "preview": "vite preview",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
