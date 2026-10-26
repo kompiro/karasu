@@ -12,11 +12,9 @@ scope:
   concerns:
     - ci
 assumptions:
-  - "grep: .coderabbit.yaml :: !skip-coderabbit"
-  - "grep: .coderabbit.yaml :: !adr-auto-merge"
+  - ".coderabbit.yaml の !skip-coderabbit / !adr-auto-merge はこの ADR の時点の設定。#3286 が auto_review.labels を risk: high / risk: design に替えたので現在の設定とは一致しない"
   - "grep: docs/process.md :: skip-coderabbit"
-  - "grep: docs/process.md :: @coderabbitai ignore"
-  - "grep: .claude/rules/adr.md :: @coderabbitai ignore"
+  - "docs/process.md と .claude/rules/adr.md の ignore コマンドの手順はこの ADR の時点のもの。#3286 で Medium 以下に CodeRabbit が走らなくなり、手順を外したので現在の記述とは一致しない"
 ---
 
 # ADR-3117: CodeRabbit から外す PR は PR 本文の ignore コマンドで外し、ラベルは外した PR の記録として残す

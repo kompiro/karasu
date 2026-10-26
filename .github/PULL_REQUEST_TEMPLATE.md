@@ -18,9 +18,24 @@
 <!--
 The review tier from `node scripts/review/tier.ts classify`, matching the PR's
 `risk: *` label (docs/process.md "リスク段階"), and what made it that tier.
+CodeRabbit reviews only `risk: high` and `risk: design` PRs; a PR without a
+tier label is High.
 Add "+ security review" when the classifier asks for one (packages/nest or
 .github/workflows), with what /security-review found.
 e.g. "Medium: packages/core/src/parser.ts" / "High: .github/workflows/ci.yml + security review (no findings)"
+-->
+
+## Local review
+
+<!--
+Below High, the required check "Review tier" reads the local review record
+from this body (docs/process.md "ローカルレビューの記録"): what
+/engineering:code-review and the CodeRabbit CLI found on the branch diff, and
+the disposition of each finding (fixed in <sha> / declined: <reason> /
+→ #<issue>). Write it with
+  node scripts/review/local-review-record.ts render --findings <file.json> --into <body file>
+which replaces this section's record or appends one. On High it is optional,
+but Claude's PRs keep it.
 -->
 
 ## How to revert

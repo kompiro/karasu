@@ -19,7 +19,7 @@ scope:
 assumptions:
   - "file: .coderabbit.yaml"
   - "grep: .coderabbit.yaml :: language: en-US"
-  - "grep: .coderabbit.yaml :: request_changes_workflow: true"
+  - "request_changes_workflow はこの ADR の時点では true だった。#3286 が false に変えたので現在の設定とは一致しない"
 ---
 
 # ADR-2716: CodeRabbit のレビューを request changes workflow に移す
