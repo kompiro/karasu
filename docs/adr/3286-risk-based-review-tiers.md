@@ -71,7 +71,7 @@ CodeRabbit の rate limit が、PR が人間に届くまでの速さの上限に
 | --- | --- | --- | --- |
 | Low | 新しいテストファイル、`docs/test-perspectives/**`、`docs/guide/**`、新しい ADR、ADR の昇格（Design Doc の削除とリンクの張り替え）、既存 ADR の frontmatter | 回さない | 記録と CI が通れば auto-merge |
 | Design | `docs/design/**` | draft を外れたときに 1 回だけ。ゲートにしない | 記録と人間のレビュー |
-| Medium | 上と下に当たらないもの（`packages/*`、`docs/acceptance/**`、`examples/**`、既存のテストファイルの変更、既存 ADR の本文など） | 回さない | 記録と、サマリー・証拠・preview を見た人間の判断 |
+| Medium | 上と下に当たらないもの（`packages/*`、`docs/acceptance/**`、`examples/**`、既存のテストファイルの変更など。既存 ADR の本文の変更もここに落ちるが、ADR-2687 が本文を書き換えないと決めているので、ふだんは現れない） | 回さない | 記録と、サマリー・証拠・preview を見た人間の判断 |
 | High | workflow・actions、release（`CHANGELOG.md`、`package.json` の `version` と publish 関連のフィールド）、依存（`package.json` の依存・lifecycle scripts と追加・削除、lockfile、`pnpm-workspace.yaml`、`.npmrc`、`dependabot.yml`）、`docs/spec/**`、`docs/concepts*.md`、`docs/process.md`、`.claude/rules/**`、`.coderabbit.yaml`、`lefthook.yml`、`scripts/lint/**`、`scripts/ci/**`、レビューの仕組みそのもの（`scripts/review/**`、`scripts/coderabbit/**`、`scripts/bin/**`、`.claude/settings.json`、`.claude/skills/**`、`.claude/agents/**`、PR テンプレート） | Critical / Major の未対応が無くなるまで回す。再レビューは 3 回まで | 人間が差分を読む |
 
 ### 段階の決め方
