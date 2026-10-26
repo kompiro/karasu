@@ -80,7 +80,9 @@ esbuild では `--external:chokidar` なので、利用者の環境に入るの�
 
 **推奨は保留**（bot PR は open のまま残す）。6.0.x の修正版が cooldown を越えて Dependabot が PR を更新したときに、
 ADR-2472 の commander 15 と同じ形で採用する: Node 下限を `>=22.22` に上げる sweep（`packages/core` / `packages/cli` の `engines`、
-esbuild `--target` 2 箇所、policy test の `ENGINES_FLOOR`、ADR-2397 の assumption）を bump と同じ PR に入れる差し替え PR にする。
+esbuild `--target` 2 箇所、policy test の `ENGINES_FLOOR`、assumption で現在の下限を grep している ADR-2397（`packages/core/package.json`）と
+ADR-2472（`ENGINES_FLOOR = "22.12"`）の frontmatter）を bump と同じ PR に入れる差し替え PR にする。sweep の取りこぼしは
+`node-version-policy.test.ts` と `pnpm adr:check-assumptions` が検出する。
 22.22 は Node 22（maintenance LTS、2027-04 まで）の中での絞り込みなので、ADR-2397 の「EOL したラインだけを落とす」原則には反しない。
 
 代案:
@@ -106,8 +108,13 @@ ADR-3304 が「wrapper が手動 publish でも、実行される binary が pro
   `os` / `cpu` 付きで列挙するが、インストールされるのは一致する 1 つだけ。手元（linux arm64、main の 2.2.1）の `node_modules/.pnpm` に
   ある lefthook の binary は `lefthook-linux-arm64` だけで、oxlint / oxfmt の binding も linux-arm64-gnu の 1 つずつだった
 
-実行されうる binary の出所はすべて provenance で確認でき、provenance を持たない新規パッケージは karasu の開発環境・CI では
-インストールされない。ADR-3304 の条件は成り立つので採用でよい。
+この判断の対象 platform は、karasu の開発と CI が動く linux（devcontainer と GitHub Actions の runner）・macOS・Windows に限る。
+Android arm64 はそのどれにも当たらない（lefthook は root の devDependency で公開物にも入らないので、利用者の環境にも届かない）。
+この範囲では、実行されうる binary の出所はすべて provenance で確認でき、provenance を持たない新規パッケージはインストールされない。
+ADR-3304 の条件は成り立つので採用でよい。
+
+ADR-3304 は覆さない。ADR 化するときは、上の platform の範囲を明記した限定的な判断として `related_to: ADR-3304` で記録する。
+将来 Android（Termux など）で開発する人が出たら、そのときは provenance のない binary が実行される環境になるので、改めて判断する。
 
 ### #3377 @anthropic-ai/sdk 0.133.0 → 0.135.0（採用）
 
