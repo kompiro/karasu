@@ -357,15 +357,36 @@ function frontmatterRange(text: string): [number, number] | null {
 }
 
 const STATUS_LINE = /^- \*\*ステータス\*\*[:：]/;
-// "Superseded by ADR-<n>" or, as most ADRs write it, "Superseded by [ADR-<n>](<file>)".
+/**
+ * The superseded status line: "Superseded by ADR-<n>" or, as most ADRs write it,
+ * "Superseded by [ADR-<n>](<n>-<name>.md)", optionally followed by a （…） note
+ * and nothing else. The ADR number is captured (group 1 or 2).
+ */
 const SUPERSEDED_STATUS =
-  /^- \*\*ステータス\*\*[:：]\s*Superseded by (?:ADR-\d+|\[ADR-\d+\]\(\d+-[^)\s]+\.md\))/;
+  /^- \*\*ステータス\*\*[:：]\s*Superseded by (?:ADR-(\d+)|\[ADR-(\d+)\]\(\2-[^)\s/]+\.md\))(?:（[^）]*）)?\s*$/;
+
+/** The ADR number a superseded status line names, or null when `line` is not one. */
+function supersededBy(line: string): string | null {
+  const m = SUPERSEDED_STATUS.exec(line);
+  return m === null ? null : (m[1] ?? m[2]);
+}
+
+/** Whether the frontmatter lines record the ADR as superseded by `adr`. */
+function frontmatterSupersededBy(text: string, range: [number, number], adr: string): boolean {
+  const lines = text.split("\n").slice(range[0] - 1, range[1]);
+  return (
+    lines.some((l) => /^status:\s*superseded\s*$/.test(l)) &&
+    lines.some((l) => new RegExp(`^superseded_by:.*\\bADR-${adr}\\b`).test(l))
+  );
+}
 
 /**
  * An edit to an existing ADR is Low only when it stays where `.claude/rules/adr.md`
- * allows edits: the frontmatter, and the body status line turning into
- * "Superseded by ADR-<n>". Any other line is prose, which ADR-2687 keeps
- * immutable, so it is Medium: a human reads the rare diff that breaks that rule.
+ * allows edits: the frontmatter, and the body status line replaced, in place, by
+ * the superseded status line naming the ADR the frontmatter says supersedes it.
+ * Any other body change (prose, an inserted or deleted status line, a status line
+ * whose frontmatter does not agree) is Medium: a human reads the rare diff that
+ * breaks that rule (ADR-2687).
  */
 export function adrEditIsRecordOnly(
   before: string,
@@ -374,13 +395,26 @@ export function adrEditIsRecordOnly(
 ): boolean {
   const oldFm = frontmatterRange(before);
   const newFm = frontmatterRange(after);
-  const inside = (range: [number, number] | null, n: number) =>
-    range !== null && n >= range[0] && n <= range[1];
-  return hunks.every(
-    (h) =>
-      h.removed.every((line, i) => inside(oldFm, h.oldStart + i) || STATUS_LINE.test(line)) &&
-      h.added.every((line, i) => inside(newFm, h.newStart + i) || SUPERSEDED_STATUS.test(line)),
-  );
+  if (oldFm === null || newFm === null) return false;
+  const inside = (range: [number, number], n: number) => n >= range[0] && n <= range[1];
+  let statusSwaps = 0;
+  for (const h of hunks) {
+    const removed = h.removed.flatMap((line, i) =>
+      inside(oldFm, h.oldStart + i) ? [] : [{ line, i }],
+    );
+    const added = h.added.flatMap((line, i) =>
+      inside(newFm, h.newStart + i) ? [] : [{ line, i }],
+    );
+    if (removed.length === 0 && added.length === 0) continue;
+    // The only body change allowed: one status line replaced by the superseded
+    // one, at the same position in the hunk.
+    if (removed.length !== 1 || added.length !== 1 || removed[0].i !== added[0].i) return false;
+    if (!STATUS_LINE.test(removed[0].line)) return false;
+    const adr = supersededBy(added[0].line);
+    if (adr === null || !frontmatterSupersededBy(after, newFm, adr)) return false;
+    statusSwaps += 1;
+  }
+  return statusSwaps <= 1;
 }
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

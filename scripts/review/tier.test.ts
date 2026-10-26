@@ -273,32 +273,63 @@ describe("classifyChange", () => {
       expect(tierOf(modified(ADR, { before, after, hunks }))).toBe("low");
     });
 
+    const OLD_STATUS = "- **ステータス**: 決定済み";
+    /** An existing ADR whose status line becomes `line`, with or without the frontmatter saying so. */
+    const supersede = (
+      line: string,
+      frontmatter = "status: superseded\nsuperseded_by: ADR-3286",
+    ) => {
+      const fmAdded = frontmatter.split("\n");
+      const after = before.replace("status: accepted", frontmatter).replace(OLD_STATUS, line);
+      const shift = fmAdded.length - 1;
+      return modified(ADR, {
+        before,
+        after,
+        hunks: [
+          { oldStart: 3, removed: ["status: accepted"], newStart: 3, added: fmAdded },
+          { oldStart: 8, removed: [OLD_STATUS], newStart: 8 + shift, added: [line] },
+        ],
+      });
+    };
+    const LINKED = "- **ステータス**: Superseded by [ADR-3286](3286-risk-based-review-tiers.md)";
+
     it("is Low when the superseded status line links the new ADR, as most ADRs write it", () => {
-      const line =
-        "- **ステータス**: Superseded by [ADR-3286](3286-risk-based-review-tiers.md)（note）";
-      const after = before.replace("- **ステータス**: 決定済み", line);
-      const hunks = [
-        { oldStart: 8, removed: ["- **ステータス**: 決定済み"], newStart: 8, added: [line] },
-      ];
-      expect(tierOf(modified(ADR, { before, after, hunks }))).toBe("low");
-      // A link to something other than an ADR file is not the superseded form.
-      const elsewhere = "- **ステータス**: Superseded by [ADR-3286](https://example.com/x)";
+      expect(tierOf(supersede(LINKED))).toBe("low");
+      expect(tierOf(supersede(`${LINKED}（決定 2 は引き継がれている）`))).toBe("low");
+    });
+
+    it("is Medium when the frontmatter does not record the supersession by the same ADR", () => {
+      expect(tierOf(supersede(LINKED, "status: accepted"))).toBe("medium");
+      expect(tierOf(supersede(LINKED, "status: superseded\nsuperseded_by: ADR-9999"))).toBe(
+        "medium",
+      );
+    });
+
+    it("is Medium when the status line carries prose or points somewhere else", () => {
+      expect(tierOf(supersede(`${LINKED}. The decision above is reversed.`))).toBe("medium");
       expect(
-        tierOf(
-          modified(ADR, {
-            before,
-            after: before.replace("- **ステータス**: 決定済み", elsewhere),
-            hunks: [
-              {
-                oldStart: 8,
-                removed: ["- **ステータス**: 決定済み"],
-                newStart: 8,
-                added: [elsewhere],
-              },
-            ],
-          }),
-        ),
+        tierOf(supersede("- **ステータス**: Superseded by [ADR-3286](https://example.com/x)")),
       ).toBe("medium");
+      expect(tierOf(supersede("- **ステータス**: Superseded by [ADR-3286](1-unrelated.md)"))).toBe(
+        "medium",
+      );
+    });
+
+    it("is Medium when a status line is only inserted or only deleted", () => {
+      const fm = {
+        oldStart: 3,
+        removed: ["status: accepted"],
+        newStart: 3,
+        added: ["status: superseded", "superseded_by: ADR-3286"],
+      };
+      const after = before.replace(
+        "status: accepted",
+        "status: superseded\nsuperseded_by: ADR-3286",
+      );
+      const inserted = { oldStart: 10, removed: [], newStart: 12, added: [LINKED] };
+      const statusDeleted = { oldStart: 8, removed: [OLD_STATUS], newStart: 8, added: [] };
+      expect(tierOf(modified(ADR, { before, after, hunks: [fm, inserted] }))).toBe("medium");
+      expect(tierOf(modified(ADR, { before, after, hunks: [fm, statusDeleted] }))).toBe("medium");
     });
 
     it("is Medium when an existing ADR's prose changes (ADR-2687 keeps it immutable)", () => {
