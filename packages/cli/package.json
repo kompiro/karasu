@@ -34,7 +34,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "chokidar": "^5.0.0",
+    "chokidar": "^6.0.0",
     "commander": "^15.0.0",
     "karasu-skills": "workspace:*",
     "yaml": "^2.9.1"
