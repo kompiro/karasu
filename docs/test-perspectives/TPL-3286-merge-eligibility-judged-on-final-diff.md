@@ -90,12 +90,8 @@ scope:
   差分が決定の記録とリンクの張り替えだけかどうかで判定している。ただし判定は PR を作る前の 1 回で、
   後から差分を足すときは auto-merge を解いて判定をやり直す手順で担保している（機械の検査ではない）
 - **既定値を厳しい側に置く**：段階の分類で、どの規則にも当たらないパスを中間の段階（人間が見る段階）にする
-  （`scripts/review/tier.ts` の `pathTier`）
-- **最終の差分を required check で判定し直す**：`Review tier` は push・ラベルの付け替え・CodeRabbit のレビューの
-  たびに走り、パスフィルタを持たない（`.github/workflows/review-tier.yml`）
 
 ## 関連テスト
 
-- `scripts/review/tier.test.ts`（`pathTier` の「規則に当たらないパスは Medium」、`packageJsonTier` の依存と
-  scripts の区別、`classifyChange` の作成者と effort による引き上げ、`changedLines` / `sameLines` の最終差分での比較）
-- `scripts/coderabbit/review-state.test.ts`（main の取り込みで dismiss された approve を、行が変わっていないときだけ有効とみなす）
+- まだない。[#3286](https://github.com/kompiro/karasu/issues/3286) の実装 PR で、段階判定のスクリプトのテストとして足し、
+  ここに名前を書く（どの規則にも当たらないパスが Medium になること、`package.json` の依存と scripts を分けることを assert する）

@@ -25,15 +25,15 @@ import { type GitFacts, parseRecord, verifyRecord } from "./local-review-record.
 
 export type Tier = "low" | "design" | "medium" | "high";
 
-export const TIERS: readonly Tier[] = ["low", "design", "medium", "high"];
+const TIERS: readonly Tier[] = ["low", "design", "medium", "high"];
 const rank = (t: Tier): number => TIERS.indexOf(t);
-export const stricter = (a: Tier, b: Tier): Tier => (rank(a) >= rank(b) ? a : b);
+const stricter = (a: Tier, b: Tier): Tier => (rank(a) >= rank(b) ? a : b);
 
 /** Authors whose PRs may take the lighter tiers. Everyone else is High. */
-export const TRUSTED_AUTHORS: ReadonlySet<string> = new Set(["kompiro"]);
+const TRUSTED_AUTHORS: ReadonlySet<string> = new Set(["kompiro"]);
 
 /** Checked first: a High path wins over a Low pattern it also matches. */
-export const HIGH_GLOBS: readonly string[] = [
+const HIGH_GLOBS: readonly string[] = [
   ".github/workflows/**",
   ".github/actions/**",
   "**/CHANGELOG.md",
@@ -55,10 +55,10 @@ export const HIGH_GLOBS: readonly string[] = [
   ".github/PULL_REQUEST_TEMPLATE.md",
 ];
 
-export const DESIGN_GLOBS: readonly string[] = ["docs/design/**"];
+const DESIGN_GLOBS: readonly string[] = ["docs/design/**"];
 
 /** `docs/adr/**` is not here: its Low cases are read from the diff ({@link adrFileTier}). */
-export const LOW_GLOBS: readonly string[] = [
+const LOW_GLOBS: readonly string[] = [
   "docs/test-perspectives/**",
   "docs/guide/**",
   "**/*.test.ts",
@@ -78,7 +78,7 @@ const ADR_RECORD = /^docs\/adr\/\d+-[^/]+\.md$/;
 const DESIGN_DOC = /^docs\/design\/[^/]+\.md$/;
 
 /** A diff touching these also gets `/security-review`, whatever its tier. */
-export const SECURITY_GLOBS: readonly string[] = ["packages/nest/**", ".github/workflows/**"];
+const SECURITY_GLOBS: readonly string[] = ["packages/nest/**", ".github/workflows/**"];
 
 /**
  * The `package.json` fields whose change is a dependency or release change. The
@@ -132,7 +132,7 @@ export function packageJsonTier(before: string | null, after: string | null): Ti
 // ---------------------------------------------------------------------------
 // Diff parsing
 
-export type FileStatus = "added" | "deleted" | "modified";
+type FileStatus = "added" | "deleted" | "modified";
 
 /** One `-U0` hunk: the lines it removes from the old side and adds on the new side. */
 export interface Hunk {
@@ -519,15 +519,20 @@ export function lineInDiff(
 
 const REPO = "kompiro/karasu";
 
-function run(cmd: string, args: string[]): string {
-  return execFileSync(cmd, args, { encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
+function run(cmd: string, args: string[], quiet = false): string {
+  return execFileSync(cmd, args, {
+    encoding: "utf-8",
+    maxBuffer: 64 * 1024 * 1024,
+    // A missing side of a file is an expected answer, not something to print.
+    stdio: quiet ? ["ignore", "pipe", "ignore"] : undefined,
+  });
 }
 
 const git = (...args: string[]): string => run("git", args);
 
 function gitShow(rev: string, path: string): string | null {
   try {
-    return git("show", `${rev}:${path}`);
+    return run("git", ["show", `${rev}:${path}`], true);
   } catch {
     return null;
   }
@@ -542,7 +547,7 @@ function prDiff(base: string, head: string): string {
 }
 
 /** The files a PR changes, with the sides the rules read. */
-export function changedFiles(base: string, head: string): ChangedFile[] {
+function changedFiles(base: string, head: string): ChangedFile[] {
   const mergeBase = mergeBaseOf(base, head);
   return parseDiff(prDiff(base, head)).map((d) => {
     const f: ChangedFile = { path: d.path, status: d.status, hunks: d.hunks };
@@ -563,13 +568,13 @@ function readExcluded(): string[] {
 }
 
 /** Whether `a` and `b` change the same thing relative to `base` ({@link diffFingerprint}). */
-export function sameChange(base: string, a: string, b: string): boolean {
+function sameChange(base: string, a: string, b: string): boolean {
   const excluded = readExcluded();
   return diffFingerprint(prDiff(base, a), excluded) === diffFingerprint(prDiff(base, b), excluded);
 }
 
 /** Git answers for {@link verifyRecord}, read from the checkout the CLI runs in. */
-export function gitFacts(baseRef: string, headSha: string): GitFacts {
+function gitFacts(baseRef: string, headSha: string): GitFacts {
   const resolve = (rev: string): string | null => {
     try {
       return git("rev-parse", "--verify", "--quiet", `${rev}^{commit}`).trim();
@@ -620,7 +625,7 @@ interface PrView {
  * The `Review tier` check. Returns the errors that fail it, and logs the
  * classification. A tier below High also needs a valid local review record.
  */
-export function checkPr(pr: string): string[] {
+function checkPr(pr: string): string[] {
   const view = JSON.parse(
     run("gh", [
       "pr",
