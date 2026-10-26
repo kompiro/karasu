@@ -8,7 +8,7 @@
 // display while the scenario drives the app or VS Code, then wraps the recording in
 // intro / outro title cards. Writes, under <out>:
 //   <scenario>.<lang>.mp4            the video
-//   <scenario>.<lang>.thumbnail.png  a frame the scenario marked, with the title over it
+//   <scenario>.<lang>.thumbnail.png  the title beside a frame the scenario marked
 //   <scenario>.<lang>.contact.png    a grid of frames, for reviewing the video
 // <out> defaults to dist/demo-video/ of the main checkout (gitignored), also when run
 // from a worktree, so the videos outlive the worktree. Scratch files go to the OS temp dir.
@@ -165,7 +165,11 @@ if (failed) {
 const cards = scenario.cards[lang];
 const intro = join(work, "intro.png");
 const outro = join(work, "outro.png");
-if (!thumbnailMarked) await extractFrame(raw, duration(raw) / 2, thumbFrame);
+if (!thumbnailMarked) {
+  // composeVideo below reports an unreadable duration; take the first frame meanwhile.
+  const seconds = duration(raw);
+  await extractFrame(raw, Number.isFinite(seconds) ? seconds / 2 : 0, thumbFrame);
+}
 mkdirSync(out, { recursive: true });
 const thumbnail = join(out, `${name}.${lang}.thumbnail.png`);
 await renderCards([
