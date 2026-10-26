@@ -1,18 +1,19 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 // Decides a PR's review tier from the change itself (Issue #3286).
 //
-// `docs/process.md` "リスク段階" sets how far a PR's review goes from the paths
-// it changes, never from who wrote it or how big it is: Low merges on its own
-// once CodeRabbit approves, Design and Medium go to the maintainer, High has the
-// maintainer read the diff. This module is the deterministic half of that rule,
-// plus the two diff questions the review rounds ask:
+// `docs/process.md` "リスク段階" sets how a PR is reviewed from what it changes,
+// never from how big it is: High gets CodeRabbit rounds and a human reading the
+// diff, Design one advisory CodeRabbit pass and a human, Medium a human, and Low
+// merges on its own. Below High, the gate is the local review record in the PR
+// body (`local-review-record.ts`). This module is the deterministic half of that
+// rule, plus the two diff questions the review rounds ask:
 //
-// - did merging main leave the PR's own lines alone? (`changedLines`)
+// - did merging main leave the PR's own change alone? (`diffFingerprint`)
 // - does a finding sit inside the PR's diff? (`lineInDiff`)
 //
 // The functions are pure and take text; the CLI at the bottom reads git and gh.
 // Every input that no rule names falls to the stricter side (TPL-3286): an
-// unknown path is Medium, an unreadable effort estimate keeps a PR out of Low.
+// unknown path is Medium, a missing label is High.
 //
 // Dependency-free on purpose: the `Review tier` workflow runs this file with
 // plain `node` (type stripping), so the check needs no `pnpm install`.
@@ -20,12 +21,13 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { matchesGlob } from "node:path";
-import { CODERABBIT_LOGINS } from "../coderabbit/review-state.ts";
+import { type GitFacts, parseRecord, verifyRecord } from "./local-review-record.ts";
 
 export type Tier = "low" | "design" | "medium" | "high";
 
-const ORDER: readonly Tier[] = ["low", "design", "medium", "high"];
-const stricter = (a: Tier, b: Tier): Tier => (ORDER.indexOf(a) >= ORDER.indexOf(b) ? a : b);
+export const TIERS: readonly Tier[] = ["low", "design", "medium", "high"];
+const rank = (t: Tier): number => TIERS.indexOf(t);
+export const stricter = (a: Tier, b: Tier): Tier => (rank(a) >= rank(b) ? a : b);
 
 /** Authors whose PRs may take the lighter tiers. Everyone else is High. */
 export const TRUSTED_AUTHORS: ReadonlySet<string> = new Set(["kompiro"]);
@@ -43,22 +45,37 @@ export const HIGH_GLOBS: readonly string[] = [
   ".coderabbit.yaml",
   "lefthook.yml",
   "scripts/lint/**",
-  // The review machinery itself: a change here decides how every later PR is read.
+  // The review machinery itself. A PR that edits it must not be able to read
+  // itself as lighter: Medium and Low get no CodeRabbit review (TPL-3286).
   "scripts/review/**",
   "scripts/coderabbit/**",
-  ".claude/skills/coderabbit-converge/**",
+  "scripts/bin/**",
+  ".claude/settings.json",
+  ".claude/skills/**",
+  ".github/PULL_REQUEST_TEMPLATE.md",
 ];
 
 export const DESIGN_GLOBS: readonly string[] = ["docs/design/**"];
 
+/** `docs/adr/**` is not here: its Low cases are read from the diff ({@link adrFileTier}). */
 export const LOW_GLOBS: readonly string[] = [
-  "docs/adr/**",
   "docs/test-perspectives/**",
   "docs/guide/**",
   "**/*.test.ts",
   "**/*.test.tsx",
   "**/*.spec.ts",
 ];
+
+/** `pnpm adr:regenerate` output. */
+const ADR_GENERATED_GLOBS: readonly string[] = [
+  "docs/adr/effective.md",
+  "docs/adr/graph.md",
+  "docs/adr/graph/**",
+];
+
+/** An ADR record, `docs/adr/<n>-<name>.md` (not README or TEMPLATE). */
+const ADR_RECORD = /^docs\/adr\/\d+-[^/]+\.md$/;
+const DESIGN_DOC = /^docs\/design\/[^/]+\.md$/;
 
 /** A diff touching these also gets `/security-review`, whatever its tier. */
 export const SECURITY_GLOBS: readonly string[] = ["packages/nest/**", ".github/workflows/**"];
@@ -77,16 +94,13 @@ const HIGH_PACKAGE_FIELDS = [
   "pnpm",
 ] as const;
 
-/** CodeRabbit's effort estimate at or above this keeps a PR out of Low. */
-export const EFFORT_RAISES_LOW_AT = 4;
-
 const matchesAny = (path: string, globs: readonly string[]): boolean =>
   globs.some((g) => matchesGlob(path, g));
 
 const isPackageJson = (path: string): boolean =>
   path === "package.json" || path.endsWith("/package.json");
 
-/** The tier one path asks for. A `package.json` is judged by {@link packageJsonTier}. */
+/** The tier one path asks for by its location alone. */
 export function pathTier(path: string): Tier {
   if (matchesAny(path, HIGH_GLOBS)) return "high";
   if (matchesAny(path, DESIGN_GLOBS)) return "design";
@@ -115,18 +129,118 @@ export function packageJsonTier(before: string | null, after: string | null): Ti
   return moved ? "high" : "medium";
 }
 
-export interface ChangedFile {
+// ---------------------------------------------------------------------------
+// Diff parsing
+
+export type FileStatus = "added" | "deleted" | "modified";
+
+/** One `-U0` hunk: the lines it removes from the old side and adds on the new side. */
+export interface Hunk {
+  oldStart: number;
+  removed: string[];
+  newStart: number;
+  added: string[];
+}
+
+/** One file of `git diff --no-renames --full-index -U0`. */
+export interface FileDiff {
   path: string;
-  /** Both sides of a `package.json`; `null` where the file does not exist. */
-  packageJson?: { before: string | null; after: string | null };
+  status: FileStatus;
+  oldMode: string | null;
+  newMode: string | null;
+  oldBlob: string | null;
+  newBlob: string | null;
+  binary: boolean;
+  hunks: Hunk[];
+}
+
+const HUNK_HEADER = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
+
+/** `a/P b/P` (renames are off, so both halves name the same path) → `P`. */
+function pathFromDiffGit(rest: string): string | null {
+  const length = (rest.length - 5) / 2;
+  if (!Number.isInteger(length) || length <= 0) return null;
+  const path = rest.slice(2, 2 + length);
+  return rest === `a/${path} b/${path}` ? path : null;
 }
 
 /**
- * CodeRabbit's estimate for the PR. Absent when CodeRabbit has not written its
- * summary (or is down): the paths alone decide. `"unreadable"` when the summary
- * is there but the estimate does not parse as 1..5.
+ * Splits a unified diff into files. `--- ` / `+++ ` are headers only before a
+ * section's first hunk; inside a hunk the same prefix is content (removing a SQL
+ * comment `-- x` prints `--- x`).
  */
-export type Effort = number | "unreadable" | undefined;
+export function parseDiff(diff: string): FileDiff[] {
+  const files: FileDiff[] = [];
+  let cur: FileDiff | null = null;
+  let hunk: Hunk | null = null;
+  let inHeader = false;
+  for (const line of diff.split("\n")) {
+    if (line.startsWith("diff --git ")) {
+      cur = {
+        path: pathFromDiffGit(line.slice("diff --git ".length)) ?? "",
+        status: "modified",
+        oldMode: null,
+        newMode: null,
+        oldBlob: null,
+        newBlob: null,
+        binary: false,
+        hunks: [],
+      };
+      files.push(cur);
+      hunk = null;
+      inHeader = true;
+      continue;
+    }
+    if (cur === null) continue;
+    if (inHeader) {
+      let m: RegExpExecArray | null;
+      if ((m = /^new file mode (\d+)$/.exec(line))) {
+        cur.status = "added";
+        cur.newMode = m[1];
+      } else if ((m = /^deleted file mode (\d+)$/.exec(line))) {
+        cur.status = "deleted";
+        cur.oldMode = m[1];
+      } else if ((m = /^old mode (\d+)$/.exec(line))) cur.oldMode = m[1];
+      else if ((m = /^new mode (\d+)$/.exec(line))) cur.newMode = m[1];
+      else if ((m = /^index ([0-9a-f]+)\.\.([0-9a-f]+)(?: (\d+))?$/.exec(line))) {
+        cur.oldBlob = m[1];
+        cur.newBlob = m[2];
+        if (m[3] !== undefined) {
+          cur.oldMode ??= m[3];
+          cur.newMode ??= m[3];
+        }
+      } else if (line.startsWith("Binary files ")) cur.binary = true;
+      else if (line.startsWith("--- ") && cur.path === "") {
+        if (line !== "--- /dev/null") cur.path = line.slice(4).replace(/^a\//, "");
+      } else if (line.startsWith("+++ ")) {
+        if (line !== "+++ /dev/null") cur.path = line.slice(4).replace(/^b\//, "");
+      }
+    }
+    const h = HUNK_HEADER.exec(line);
+    if (h) {
+      inHeader = false;
+      hunk = { oldStart: Number(h[1]), removed: [], newStart: Number(h[2]), added: [] };
+      cur.hunks.push(hunk);
+    } else if (!inHeader && hunk !== null) {
+      if (line.startsWith("-")) hunk.removed.push(line.slice(1));
+      else if (line.startsWith("+")) hunk.added.push(line.slice(1));
+    }
+  }
+  return files.filter((f) => f.path !== "");
+}
+
+// ---------------------------------------------------------------------------
+// Classification
+
+/** One changed file, with what the rules below need to read beyond its path. */
+export interface ChangedFile {
+  path: string;
+  status: FileStatus;
+  hunks: Hunk[];
+  /** Both sides, for `package.json` and existing ADRs; `null` where the file does not exist. */
+  before?: string | null;
+  after?: string | null;
+}
 
 export interface Classification {
   tier: Tier;
@@ -136,32 +250,144 @@ export interface Classification {
   reasons: string[];
 }
 
+/** 1-based inclusive line range of the YAML frontmatter, or null when there is none. */
+function frontmatterRange(text: string): [number, number] | null {
+  const lines = text.split("\n");
+  if (lines[0] !== "---") return null;
+  const end = lines.indexOf("---", 1);
+  return end < 0 ? null : [1, end + 1];
+}
+
+const STATUS_LINE = /^- \*\*ステータス\*\*[:：]/;
+const SUPERSEDED_STATUS = /^- \*\*ステータス\*\*[:：]\s*Superseded by ADR-\d+/;
+
+/**
+ * An edit to an existing ADR is Low only when it stays where `.claude/rules/adr.md`
+ * allows edits: the frontmatter, and the body status line turning into
+ * "Superseded by ADR-<n>". Any other line is prose, which ADR-2687 keeps
+ * immutable, so it is Medium: a human reads the rare diff that breaks that rule.
+ */
+export function adrEditIsRecordOnly(
+  before: string,
+  after: string,
+  hunks: readonly Hunk[],
+): boolean {
+  const oldFm = frontmatterRange(before);
+  const newFm = frontmatterRange(after);
+  const inside = (range: [number, number] | null, n: number) =>
+    range !== null && n >= range[0] && n <= range[1];
+  return hunks.every(
+    (h) =>
+      h.removed.every((line, i) => inside(oldFm, h.oldStart + i) || STATUS_LINE.test(line)) &&
+      h.added.every((line, i) => inside(newFm, h.newStart + i) || SUPERSEDED_STATUS.test(line)),
+  );
+}
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** A reference to one of `paths`, as a relative or repo path with an optional anchor. */
+function referenceRe(paths: readonly string[]): RegExp | null {
+  if (paths.length === 0) return null;
+  const alts = paths.map((p) => {
+    const [dir, file] = [p.split("/").at(-2) ?? "", p.split("/").at(-1) ?? ""];
+    return `(?:\\.\\.?/)*(?:docs/)?${escapeRe(dir)}/${escapeRe(file)}(?:#[^\\s)\\]]*)?`;
+  });
+  return new RegExp(alts.join("|"), "g");
+}
+
+/**
+ * Whether one changed line pair only swaps a link to a deleted Design Doc for a
+ * link to the ADR that replaced it (ADR-2331's "張り替え"). Markdown links that
+ * point at either side become one placeholder, link text included; bare path
+ * mentions too. The pair qualifies when the old line pointed at a deleted Design
+ * Doc, the new line points at a new ADR, and nothing else differs.
+ */
+export function isLinkSwap(
+  removed: string,
+  added: string,
+  deletedDesigns: readonly string[],
+  newAdrs: readonly string[],
+): boolean {
+  const oldRef = referenceRe(deletedDesigns);
+  const newRef = referenceRe(newAdrs);
+  if (oldRef === null || newRef === null) return false;
+  if (!new RegExp(oldRef.source).test(removed) || !new RegExp(newRef.source).test(added)) {
+    return false;
+  }
+  const either = new RegExp(`${oldRef.source}|${newRef.source}`);
+  const normalize = (line: string) =>
+    line
+      .replace(/\[[^\]]*\]\(([^)\s]+)\)/g, (link, target: string) =>
+        either.test(target) ? "⟦ref⟧" : link,
+      )
+      .replace(new RegExp(either.source, "g"), "⟦ref⟧");
+  return normalize(removed) === normalize(added);
+}
+
+/**
+ * The tier of a file under `docs/adr/`. Low: a new ADR record, the generated
+ * graph files, and record-only edits to an existing ADR. Anything else there
+ * (README, TEMPLATE, a deleted ADR, prose edits) is Medium.
+ */
+function adrFileTier(f: ChangedFile): Tier {
+  if (matchesAny(f.path, ADR_GENERATED_GLOBS)) return "low";
+  if (!ADR_RECORD.test(f.path)) return "medium";
+  if (f.status === "added") return "low";
+  if (f.status === "deleted") return "medium";
+  if (typeof f.before !== "string" || typeof f.after !== "string") return "medium";
+  return adrEditIsRecordOnly(f.before, f.after, f.hunks) ? "low" : "medium";
+}
+
+function fileTier(
+  f: ChangedFile,
+  promotion: { deletedDesigns: string[]; newAdrs: string[] },
+): Tier {
+  if (isPackageJson(f.path)) return packageJsonTier(f.before ?? null, f.after ?? null);
+  if (f.path.startsWith("docs/adr/")) return adrFileTier(f);
+  // ADR promotion (ADR-2331): only in a PR that adds an ADR record.
+  if (promotion.newAdrs.length > 0) {
+    if (f.status === "deleted" && DESIGN_DOC.test(f.path)) return "low";
+    if (
+      f.status === "modified" &&
+      f.path.endsWith(".md") &&
+      f.hunks.length > 0 &&
+      f.hunks.every(
+        (h) =>
+          h.removed.length > 0 &&
+          h.removed.length === h.added.length &&
+          h.removed.every((line, i) =>
+            isLinkSwap(line, h.added[i], promotion.deletedDesigns, promotion.newAdrs),
+          ),
+      )
+    ) {
+      return "low";
+    }
+  }
+  return pathTier(f.path);
+}
+
 export function classifyChange(input: {
   files: readonly ChangedFile[];
   author: string;
-  effort?: Effort;
 }): Classification {
   const reasons: string[] = [];
   // No change at all is not a reason to skip the human: treat it as Medium.
   let tier: Tier = input.files.length === 0 ? "medium" : "low";
   if (input.files.length === 0) reasons.push("no changed files");
 
-  for (const f of input.files) {
-    const t = isPackageJson(f.path)
-      ? packageJsonTier(f.packageJson?.before ?? null, f.packageJson?.after ?? null)
-      : pathTier(f.path);
-    if (ORDER.indexOf(t) > ORDER.indexOf("low")) reasons.push(`${f.path}: ${t}`);
-    tier = stricter(tier, t);
-  }
+  const promotion = {
+    newAdrs: input.files
+      .filter((f) => f.status === "added" && ADR_RECORD.test(f.path))
+      .map((f) => f.path),
+    deletedDesigns: input.files
+      .filter((f) => f.status === "deleted" && DESIGN_DOC.test(f.path))
+      .map((f) => f.path),
+  };
 
-  if (tier === "low" && input.effort !== undefined) {
-    if (input.effort === "unreadable") {
-      tier = "medium";
-      reasons.push("CodeRabbit's effort estimate is unreadable: not Low");
-    } else if (input.effort >= EFFORT_RAISES_LOW_AT) {
-      tier = "medium";
-      reasons.push(`CodeRabbit's effort estimate ${input.effort} raises Low to Medium`);
-    }
+  for (const f of input.files) {
+    const t = fileTier(f, promotion);
+    if (rank(t) > rank("low")) reasons.push(`${f.path}: ${t}`);
+    tier = stricter(tier, t);
   }
 
   if (!TRUSTED_AUTHORS.has(input.author)) {
@@ -176,32 +402,18 @@ export function classifyChange(input: {
   };
 }
 
-const EFFORT_MARKER = "Estimated code review effort";
-
-/** Reads the estimate out of a CodeRabbit summary comment. */
-export function parseEffort(summary: string): Effort {
-  const at = summary.indexOf(EFFORT_MARKER);
-  if (at < 0) return undefined;
-  const m = /^[^0-9\n]*?([0-9]+)/.exec(summary.slice(at + EFFORT_MARKER.length));
-  if (!m) return "unreadable";
-  const n = Number(m[1]);
-  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : "unreadable";
+/** The tier a set of `risk: *` labels asks for (the strictest), or null when none is set. */
+export function labelTier(labels: readonly string[]): Tier | null {
+  let tier: Tier | null = null;
+  for (const name of labels) {
+    const m = /^risk: (low|design|medium|high)$/.exec(name);
+    if (m) tier = tier === null ? (m[1] as Tier) : stricter(tier, m[1] as Tier);
+  }
+  return tier;
 }
 
-/**
- * The estimate from comments on a PR, read only from CodeRabbit's own: anyone can
- * comment on a public repository's PR, and a pasted estimate must not count.
- * CodeRabbit rewrites one summary comment on each review, so the newest one wins.
- */
-export function effortFromComments(
-  comments: readonly { login: string; body: string; updatedAt: string }[],
-): Effort {
-  const summaries = comments
-    .filter((c) => CODERABBIT_LOGINS.has(c.login) && c.body.includes(EFFORT_MARKER))
-    .sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt));
-  const latest = summaries.at(-1);
-  return latest === undefined ? undefined : parseEffort(latest.body);
-}
+// ---------------------------------------------------------------------------
+// Diff equality
 
 /**
  * The `!`-prefixed globs under `reviews.path_filters` in `.coderabbit.yaml`: the
@@ -224,46 +436,35 @@ export function excludedPathFilters(coderabbitYaml: string): string[] {
   return globs;
 }
 
-/** The file a diff section is about, from its `+++` / `---` headers. */
-function diffFile(minus: string | null, plus: string): string | null {
-  const strip = (h: string) => h.replace(/^[ab]\//, "");
-  if (plus !== "/dev/null") return strip(plus);
-  return minus !== null && minus !== "/dev/null" ? strip(minus) : null;
-}
-
 /**
- * Every added and removed line of a unified diff as `<file>\t<sign><text>`,
- * sorted, leaving out files CodeRabbit does not read. Two diffs of the same PR
- * compare equal when they change the same lines, wherever the hunks sit: what a
- * merge of main does to hunk positions and context is not a change to the PR.
+ * What a PR's diff changes, without where its hunks sit: per file, the kind of
+ * change, the modes, the added lines in order and the removed lines in order.
+ * A file whose change shows no text line (binary, empty, mode-only) also keeps
+ * its blob ids. Two diffs of the same PR are the same change when their
+ * fingerprints are equal: a merge of main moves hunks and context, which is not
+ * a change to the PR. A move between files, a change in how many times a line
+ * occurs, a reorder inside a file, and a mode or binary change all differ
+ * (TPL-3286). Files CodeRabbit does not read are left out.
  */
-export function changedLines(diff: string, excluded: readonly string[] = []): string[] {
-  const out: string[] = [];
-  let minus: string | null = null;
-  let file: string | null = null;
-  // `---` / `+++` are headers only before a section's first hunk. Inside a hunk the
-  // same prefix is content: removing a SQL comment `-- x` prints `--- x`.
-  let inHeader = false;
-  for (const line of diff.split("\n")) {
-    if (line.startsWith("diff --git ")) {
-      minus = null;
-      file = null;
-      inHeader = true;
-    } else if (inHeader && line.startsWith("--- ")) {
-      minus = line.slice(4);
-    } else if (inHeader && line.startsWith("+++ ")) {
-      file = diffFile(minus, line.slice(4));
-    } else if (line.startsWith("@@")) {
-      inHeader = false;
-    } else if (!inHeader && file !== null && (line.startsWith("+") || line.startsWith("-"))) {
-      if (!matchesAny(file, excluded)) out.push(`${file}\t${line}`);
-    }
-  }
-  return out.sort();
+export function diffFingerprint(diff: string, excluded: readonly string[] = []): string {
+  const files = parseDiff(diff)
+    .filter((f) => !matchesAny(f.path, excluded))
+    .map((f) => {
+      const removed = f.hunks.flatMap((h) => h.removed);
+      const added = f.hunks.flatMap((h) => h.added);
+      const noText = removed.length === 0 && added.length === 0;
+      return {
+        path: f.path,
+        status: f.status,
+        modes: [f.oldMode, f.newMode],
+        blobs: noText || f.binary ? [f.oldBlob, f.newBlob] : null,
+        removed,
+        added,
+      };
+    })
+    .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  return JSON.stringify(files);
 }
-
-export const sameLines = (a: readonly string[], b: readonly string[]): boolean =>
-  a.length === b.length && a.every((line, i) => line === b[i]);
 
 export type DiffPlacement = "inside" | "outside" | "unknown";
 
@@ -292,7 +493,14 @@ export function lineInDiff(
     } else if (inHeader && line.startsWith("--- ")) {
       minus = line.slice(4);
     } else if (inHeader && line.startsWith("+++ ")) {
-      file = diffFile(minus, line.slice(4));
+      const plus = line.slice(4);
+      const strip = (h: string) => h.replace(/^[ab]\//, "");
+      file =
+        plus !== "/dev/null"
+          ? strip(plus)
+          : minus !== null && minus !== "/dev/null"
+            ? strip(minus)
+            : null;
     } else if (line.startsWith("@@")) {
       inHeader = false;
       if (file !== path) continue;
@@ -325,24 +533,25 @@ function gitShow(rev: string, path: string): string | null {
   }
 }
 
-/** The PR's own diff: from where it left `base` to `head`. */
-function prDiff(base: string, head: string, unified0 = true): string {
-  const mergeBase = git("merge-base", base, head).trim();
-  // `--no-renames`: a rename shows as a delete plus an add, so the old path counts too.
-  return git("diff", "--no-renames", ...(unified0 ? ["-U0"] : []), mergeBase, head);
+const mergeBaseOf = (base: string, head: string): string => git("merge-base", base, head).trim();
+
+/** The PR's own diff: from where it left `base` to `head`, renames off. */
+function prDiff(base: string, head: string): string {
+  // `--no-renames`: moving a High file under a Low directory must not read as a Low change.
+  return git("diff", "--no-renames", "--full-index", "-U0", mergeBaseOf(base, head), head);
 }
 
-function changedFiles(base: string, head: string): ChangedFile[] {
-  const mergeBase = git("merge-base", base, head).trim();
-  // `--no-renames`: moving a High file under docs/adr/ must not read as a Low change.
-  return git("diff", "--name-only", "--no-renames", mergeBase, head)
-    .split("\n")
-    .filter((p) => p !== "")
-    .map((path) =>
-      isPackageJson(path)
-        ? { path, packageJson: { before: gitShow(mergeBase, path), after: gitShow(head, path) } }
-        : { path },
-    );
+/** The files a PR changes, with the sides the rules read. */
+export function changedFiles(base: string, head: string): ChangedFile[] {
+  const mergeBase = mergeBaseOf(base, head);
+  return parseDiff(prDiff(base, head)).map((d) => {
+    const f: ChangedFile = { path: d.path, status: d.status, hunks: d.hunks };
+    if (isPackageJson(d.path) || ADR_RECORD.test(d.path)) {
+      f.before = gitShow(mergeBase, d.path);
+      f.after = gitShow(head, d.path);
+    }
+    return f;
+  });
 }
 
 function readExcluded(): string[] {
@@ -351,6 +560,46 @@ function readExcluded(): string[] {
   } catch {
     return [];
   }
+}
+
+/** Whether `a` and `b` change the same thing relative to `base` ({@link diffFingerprint}). */
+export function sameChange(base: string, a: string, b: string): boolean {
+  const excluded = readExcluded();
+  return diffFingerprint(prDiff(base, a), excluded) === diffFingerprint(prDiff(base, b), excluded);
+}
+
+/** Git answers for {@link verifyRecord}, read from the checkout the CLI runs in. */
+export function gitFacts(baseRef: string, headSha: string): GitFacts {
+  const resolve = (rev: string): string | null => {
+    try {
+      return git("rev-parse", "--verify", "--quiet", `${rev}^{commit}`).trim();
+    } catch {
+      return null;
+    }
+  };
+  const isAncestor = (a: string, b: string): boolean => {
+    try {
+      git("merge-base", "--is-ancestor", a, b);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  return {
+    headSha,
+    mergeBase: (rev) => mergeBaseOf(baseRef, rev),
+    resolve,
+    isAncestor,
+    onlyBaseMerges: (from, to) =>
+      git("rev-list", "--first-parent", "--parents", `${from}..${to}`)
+        .split("\n")
+        .filter((l) => l !== "")
+        .every((l) => {
+          const [, , ...merged] = l.split(" ");
+          return merged.length > 0 && merged.every((p) => isAncestor(p, baseRef));
+        }),
+    sameChange: (a, b) => sameChange(baseRef, a, b),
+  };
 }
 
 function flag(argv: string[], name: string): string | undefined {
@@ -363,29 +612,63 @@ interface PrView {
   labels: { name: string }[];
   headRefOid: string;
   baseRefName: string;
-}
-
-interface RestComment {
-  user: { login: string } | null;
   body: string;
-  updated_at: string;
+  autoMergeRequest: unknown;
 }
 
-function prEffort(pr: string): Effort {
-  const pages = JSON.parse(
-    run("gh", ["api", "--paginate", "--slurp", `repos/${REPO}/issues/${pr}/comments`]),
-  ) as RestComment[][];
-  return effortFromComments(
-    pages
-      .flat()
-      .map((c) => ({ login: c.user?.login ?? "", body: c.body, updatedAt: c.updated_at })),
+/**
+ * The `Review tier` check. Returns the errors that fail it, and logs the
+ * classification. A tier below High also needs a valid local review record.
+ */
+export function checkPr(pr: string): string[] {
+  const view = JSON.parse(
+    run("gh", [
+      "pr",
+      "view",
+      pr,
+      "--repo",
+      REPO,
+      "--json",
+      "author,labels,headRefOid,baseRefName,body,autoMergeRequest",
+    ]),
+  ) as PrView;
+  const baseRef = `origin/${view.baseRefName}`;
+  const result = classifyChange({
+    files: changedFiles(baseRef, view.headRefOid),
+    author: view.author.login,
+  });
+  const labeled = labelTier(view.labels.map((l) => l.name));
+  // No label is High: an outside author or a bot cannot add one, and a forgotten
+  // label must fall to the heavier side.
+  const tier = labeled === null ? "high" : stricter(labeled, result.tier);
+  console.log(
+    JSON.stringify({ pr: Number(pr), label: labeled, effective: tier, ...result }, null, 2),
   );
+
+  const errors: string[] = [];
+  if (labeled !== null && rank(labeled) < rank(result.tier)) {
+    errors.push(
+      `PR #${pr} is labeled "risk: ${labeled}" but its change is ${result.tier}. ` +
+        `Replace the label with "risk: ${result.tier}" (docs/process.md "リスク段階").`,
+    );
+  }
+  if (view.autoMergeRequest !== null && tier !== "low") {
+    errors.push(
+      `PR #${pr} has auto-merge enabled but its tier is ${tier}; only Low merges on its own. ` +
+        `Disable it with gh pr merge ${pr} --disable-auto.`,
+    );
+  }
+  if (tier !== "high") {
+    const record = parseRecord(view.body ?? "");
+    errors.push(...verifyRecord(record, tier, gitFacts(baseRef, view.headRefOid)));
+  }
+  return errors;
 }
 
 const USAGE = `usage:
-  tier.ts classify [--base <ref>] [--author <login>] [--pr <n>]
+  tier.ts classify [--base <ref>] [--head <rev>] [--author <login>]
   tier.ts check --pr <n>
-  tier.ts same-lines --approved <sha> [--base <ref>]
+  tier.ts same-change --from <rev> [--to <rev>] [--base <ref>]
   tier.ts in-diff <path> <line>[-<end>] [--base <ref>]`;
 
 function main(argv: string[]): number {
@@ -393,12 +676,10 @@ function main(argv: string[]): number {
   const base = flag(rest, "--base") ?? "origin/main";
 
   if (cmd === "classify") {
-    const pr = flag(rest, "--pr");
     const author = flag(rest, "--author") ?? run("gh", ["api", "user", "--jq", ".login"]).trim();
     const result = classifyChange({
-      files: changedFiles(base, "HEAD"),
+      files: changedFiles(base, flag(rest, "--head") ?? "HEAD"),
       author,
-      effort: pr === undefined ? undefined : prEffort(pr),
     });
     console.log(JSON.stringify(result, null, 2));
     return 0;
@@ -407,43 +688,16 @@ function main(argv: string[]): number {
   if (cmd === "check") {
     const pr = flag(rest, "--pr");
     if (pr === undefined) throw new Error(USAGE);
-    const view = JSON.parse(
-      run("gh", [
-        "pr",
-        "view",
-        pr,
-        "--repo",
-        REPO,
-        "--json",
-        "author,labels,headRefOid,baseRefName",
-      ]),
-    ) as PrView;
-    const result = classifyChange({
-      files: changedFiles(`origin/${view.baseRefName}`, view.headRefOid),
-      author: view.author.login,
-      effort: prEffort(pr),
-    });
-    const labeledLow = view.labels.some((l) => l.name === "risk: low");
-    console.log(JSON.stringify({ pr: Number(pr), labeledLow, ...result }, null, 2));
-    if (labeledLow && result.tier !== "low") {
-      console.error(
-        `::error::PR #${pr} is labeled "risk: low" but its tier is ${result.tier}. ` +
-          `Replace the label with "risk: ${result.tier}" (docs/process.md "リスク段階").`,
-      );
-      return 1;
-    }
-    return 0;
+    const errors = checkPr(pr);
+    for (const e of errors) console.error(`::error::${e}`);
+    return errors.length > 0 ? 1 : 0;
   }
 
-  if (cmd === "same-lines") {
-    const approved = flag(rest, "--approved");
-    if (approved === undefined) throw new Error(USAGE);
-    const excluded = readExcluded();
-    const same = sameLines(
-      changedLines(prDiff(base, approved), excluded),
-      changedLines(prDiff(base, "HEAD"), excluded),
-    );
-    console.log(JSON.stringify({ approved, same }));
+  if (cmd === "same-change") {
+    const from = flag(rest, "--from");
+    if (from === undefined) throw new Error(USAGE);
+    const to = flag(rest, "--to") ?? "HEAD";
+    console.log(JSON.stringify({ from, to, same: sameChange(base, from, to) }));
     return 0;
   }
 
@@ -451,7 +705,7 @@ function main(argv: string[]): number {
     const [path, range] = rest.filter((a, i) => !a.startsWith("--") && rest[i - 1] !== "--base");
     const m = /^(\d+)(?:-(\d+))?$/.exec(range ?? "");
     const placement = lineInDiff(
-      prDiff(base, "HEAD"),
+      git("diff", "-U0", mergeBaseOf(base, "HEAD"), "HEAD"),
       path,
       m ? Number(m[1]) : undefined,
       m?.[2] === undefined ? undefined : Number(m[2]),
