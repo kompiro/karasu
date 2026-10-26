@@ -18,10 +18,11 @@ npm 13 件は CI green、gh-aw の 1 件は `gh-aw-lock-consistency.test.ts` で
 
 **供給側（配布主体・改ざん）の懸念は見つからなかった。** 確認したこと:
 
-- **publisher / provenance**: to 版の publisher の種類は from 版と同じ。GitHub Actions OIDC + SLSA provenance でないのは
-  `knip`（`webpro`）と、その部分木の `unbash` 6.0.0（`webpro`）、jsdom の部分木の `@asamuzakjp/dom-selector` 10.0.4（`asamuzakjp`）、
-  `lefthook` 2.2.2 の wrapper（`mrexox`、ADR-3304 で判断済み）で、いずれも過去の版から同じ。
-  ただし lefthook 2.2.2 で**新しく加わったパッケージ**が 1 つあり、これは provenance を持たない（後述 #3376）
+- **publisher / provenance**: lefthook を除き、to 版の publisher の種類は from 版と同じ。GitHub Actions OIDC + SLSA provenance
+  でないのは `knip`（`webpro`）と、その部分木の `unbash` 6.0.0（`webpro`）、jsdom の部分木の `@asamuzakjp/dom-selector` 10.0.4
+  （`asamuzakjp`）で、いずれも過去の版から同じ。`lefthook` 2.2.2 の wrapper だけは 2.2.1（GitHub Actions OIDC + provenance）から
+  `mrexox` の手動 publish（provenance なし）に変わっているが、これは ADR-3304 が採用可と判断した版そのもの。
+  加えて lefthook 2.2.2 で**新しく加わったパッケージ**が 1 つあり、これも provenance を持たない（後述 #3376）
 - **lifecycle script**: to 版で追加・変更されたものはゼロ。既存は `lefthook` の `postinstall: node postinstall.js`（前後で不変）だけ。
   jsdom の `prepare`（wireit）は registry install では走らない。新しく入る transitive パッケージにも install 系 script は無い
 - **コード差分**: `npm diff` で from…to の tarball を比べ、追加行を `child_process` / `eval` / `new Function` / `process.env` /
@@ -32,7 +33,7 @@ npm 13 件は CI green、gh-aw の 1 件は `gh-aw-lock-consistency.test.ts` で
 - **既知 advisory**: to 版すべてと、新しく入る transitive の版すべてで該当ゼロ（GitHub Advisory API の `affects=`。
   クエリが効いていることは `undici@7.30.0` で 3 件返ることで確かめた）
 - **公開からの経過**: すべての to 版と、transitive で新しく入る版が起票時点で cooldown 7 日を越えていた。
-  最も新しいのは `chokidar` 6.0.0（10-19 20:52、7 日 1 時間）、`knip` 6.42.1 / `oxfmt` 0.74.0 / `oxlint` 1.89.0 / `astro` 7.4.1（いずれも 10-19）
+  最も新しいのは `chokidar` 6.0.0（10-19 20:52 公開、起票まで 7 日と 56 分）、`knip` 6.42.1 / `oxfmt` 0.74.0 / `oxlint` 1.89.0 / `astro` 7.4.1（いずれも 10-19）
 - **依存エッジ**: lock の snapshot を peer suffix を落として merge-base（`a250c9da`）と各 PR ヘッドで突き合わせた
   （`security-alert` skill の edges 手順）。main の lock に無いパッケージ名が新しく入るのは 3 PR の 4 件だけ:
   #3376 の `lefthook-android-arm64`、#3377 の `@opentelemetry/api`、#3375 の `tinyps` と `fnv1a-64`。
@@ -101,8 +102,9 @@ ADR-3304 が「wrapper が手動 publish でも、実行される binary が pro
 - upstream の経緯は説明がつく: lefthook PR #1591「packaging: add support for android」と、リリースコミット
   「2.2.2: … release android NPM package」。npm の trusted publishing は既存パッケージにしか設定できないので、
   新規パッケージの初回は手で publish するしかない（karasu も adr-tools の OIDC 移行で同じ初回 bootstrap を経験した）
-- `os: android` / `cpu: arm64` なので、pnpm は linux / macOS / Windows では取得もしない。手元（linux arm64）の
-  `node_modules/.pnpm` に入っている lefthook の binary は `lefthook-linux-arm64` だけで、他の platform の binary は 1 つも無い
+- `os: android` / `cpu: arm64` なので、pnpm は linux / macOS / Windows では取得もしない。lock は全 platform の binary を
+  `os` / `cpu` 付きで列挙するが、インストールされるのは一致する 1 つだけ。手元（linux arm64、main の 2.2.1）の `node_modules/.pnpm` に
+  ある lefthook の binary は `lefthook-linux-arm64` だけで、oxlint / oxfmt の binding も linux-arm64-gnu の 1 つずつだった
 
 実行されうる binary の出所はすべて provenance で確認でき、provenance を持たない新規パッケージは karasu の開発環境・CI では
 インストールされない。ADR-3304 の条件は成り立つので採用でよい。
@@ -158,16 +160,17 @@ bot は 2 つの `.lock.yml` の `uses:` 行だけを書き換えるので `gh-a
 加えて 0.92.5 は github/gh-aw の prerelease。`@dependabot ignore` は付けずに close する。
 
 再生成は ADR-3242 から 2 回持ち越している。起票時点で cooldown を越えた非 prerelease の最新は **v0.92.0**（10-15 公開）で、
-次の v0.93.0（10-21 公開）は 10-28 に越える。方針は次のどちらか:
+次の v0.93.0（10-21 23:24 UTC 公開）は 10-28 23:24 UTC に越える。方針は次のどちらか:
 
 - **v0.92.0 で今すぐ再生成する**（別 PR）。持ち越しを止められる
-- **10-28 以降に v0.93.x で再生成する**。今週 v0.93.0〜v0.93.5 と非 prerelease が続いているので、1 回で新しい方に寄せられる
+- **10-28 以降に v0.93.x で再生成する**。v0.93 系は 10-21〜10-25 に非 prerelease が 5 版（v0.93.0 / .2 / .3 / .4 / .5）出ているので、
+  待てば 1 回で新しい方に寄せられる
 
 推奨は前者（持ち越しの回数を増やさない。v0.93 は次の週次で同じ手順で上げればよい）。
 
 ## マージの進め方
 
-すべての PR が `pnpm-lock.yaml` を書き換えるので、1 本マージするたびに残りは `@dependabot rebase` → CI green を待ってから進める
+採用する npm の PR はすべて `pnpm-lock.yaml` を書き換えるので、1 本マージするたびに残りは `@dependabot rebase` → CI green を待ってから進める
 （ADR-3304 と同じ）。マージ前に毎回、PR タイトルの版と、rebase 後の lock の依存エッジを main と比べる。
 
 rebase で版が上がりうるもの（マージ時点で cooldown を越える新しい版）は事前に確認しておいた:
@@ -188,7 +191,8 @@ open alert #101（`undici` GHSA-xjj6-f33q-929c、脆弱範囲 `>= 7.18.0, < 7.30
 
 さらに、この override は名前だけで全 undici に掛かるので、`undici` ^8 を要求する依存まで 7 系に押し戻している
 （main の lock で `jsdom@30.1.2 -> undici 7.30.0`。jsdom 30.1.3 は `^8.12.1`、astro 7.4.1 で入る `unifont@1.0.3` は `^8.0.0` を宣言するが、
-解決はどちらも 7.30.x）。今回の PR はこの状態を作ったものでも直すものでもないので、`/hane:security-alert` で別に扱う。
+解決はどちらも 7.x）。#3375 をマージすると `unifont` は `undici@7.30.1`（patched）に解決されるが、jsdom は 7.30.0 のまま残る。
+今回の PR はこの状態を作ったものでも直すものでもないので、`/hane:security-alert` で別に扱う。
 open alert はほかに `launch-editor`（#94–#96）、`zod`（#97）、`serialize-javascript`（#98）、`@azure/msal-node`（#102）がある。
 
 ## 現時点の方針
