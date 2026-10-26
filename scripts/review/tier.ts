@@ -39,8 +39,8 @@ const HIGH_GLOBS: readonly string[] = [
   "**/CHANGELOG.md",
   "pnpm-workspace.yaml",
   "pnpm-lock.yaml",
-  ".npmrc",
-  ".github/dependabot.yml",
+  "**/.npmrc",
+  ".github/dependabot.y*ml",
   "docs/spec/**",
   "docs/concepts*.md",
   "docs/process.md",
@@ -118,6 +118,18 @@ const HIGH_PACKAGE_FIELDS = [
   "types",
 ] as const;
 
+/** `scripts` entries that npm and pnpm run on install or publish. */
+const LIFECYCLE_SCRIPTS = [
+  "preinstall",
+  "install",
+  "postinstall",
+  "prepare",
+  "prepublish",
+  "prepublishOnly",
+  "prepack",
+  "postpack",
+] as const;
+
 const matchesAny = (path: string, globs: readonly string[]): boolean =>
   globs.some((g) => matchesGlob(path, g));
 
@@ -150,7 +162,16 @@ export function packageJsonTier(before: string | null, after: string | null): Ti
   const moved = HIGH_PACKAGE_FIELDS.some(
     (field) => JSON.stringify(a[field]) !== JSON.stringify(b[field]),
   );
-  return moved ? "high" : "medium";
+  // Other scripts are ordinary, but these run on install and publish.
+  const scripts = (o: Record<string, unknown>) =>
+    (typeof o.scripts === "object" && o.scripts !== null ? o.scripts : {}) as Record<
+      string,
+      unknown
+    >;
+  const lifecycleMoved = LIFECYCLE_SCRIPTS.some(
+    (key) => JSON.stringify(scripts(a)[key]) !== JSON.stringify(scripts(b)[key]),
+  );
+  return moved || lifecycleMoved ? "high" : "medium";
 }
 
 // ---------------------------------------------------------------------------
@@ -388,7 +409,9 @@ export function isLinkSwap(
   const oldRef = referenceSource(deletedDesigns);
   const newRef = referenceSource(newAdrs);
   if (oldRef === null || newRef === null) return false;
-  const bare = (ref: string) => new RegExp(`(?<![\\w./:-])${ref}(?![\\w.-])`, "g");
+  // A trailing period ends a sentence; it continues the name only when a name
+  // character follows it.
+  const bare = (ref: string) => new RegExp(`(?<![\\w./:-])${ref}(?![\\w-]|\\.[\\w-])`, "g");
   const target = (ref: string) => new RegExp(`^${ref}$`);
   const mentions = (line: string, ref: string) =>
     bare(ref).test(line) ||
@@ -433,20 +456,25 @@ function adrFileTier(f: ChangedFile): Tier {
 }
 
 const TEST_GLOBS: readonly string[] = ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"];
+/**
+ * An added line that can stop tests from running or failing: a skip, todo, only
+ * or fails modifier (also when destructured or aliased), or a bare `return` that
+ * ends a test early. Add-only test hunks with such a line are not Low.
+ */
 const SKIPS_A_TEST =
-  /\b(?:describe|it|test|suite)\.(?:skip|todo|only|skipIf|runIf)\b|\bx(?:it|describe)\(/;
+  /\.(?:skip|todo|only|fails|skipIf|runIf)\b|\b(?:skip|todo|only|fails)\s*:|\bx(?:it|describe)\(|^\s*return\s*;?\s*$/;
 
 /**
- * A test change that takes coverage away: the file deleted, a hunk that only
- * removes lines, or a line that skips or narrows tests. It is Medium, so a
- * human reads it, rather than Low with the tests it weakens (TPL-3286).
+ * A test change is Low only when it adds tests: a new file, or hunks that only
+ * add lines, none of which skips or narrows a test. Removing or rewriting a
+ * line can take coverage away (a deleted case, a weakened assertion, an early
+ * return), and no pattern list catches every way, so any such change is Medium
+ * and a human reads it (TPL-3286).
  */
-function weakensTests(f: ChangedFile): boolean {
-  if (f.status === "deleted") return true;
-  return f.hunks.some(
-    (h) =>
-      (h.removed.length > 0 && h.added.length === 0) ||
-      h.added.some((line) => SKIPS_A_TEST.test(line)),
+function onlyAddsTests(f: ChangedFile): boolean {
+  if (f.status === "deleted") return false;
+  return f.hunks.every(
+    (h) => h.removed.length === 0 && !h.added.some((line) => SKIPS_A_TEST.test(line)),
   );
 }
 
@@ -455,13 +483,15 @@ function fileTier(
   promotion: { deletedDesigns: string[]; newAdrs: string[] },
 ): Tier {
   if (f.path === UNREADABLE_PATH) return "high";
-  if (isPackageJson(f.path)) return packageJsonTier(f.before ?? null, f.after ?? null);
+  if (isPackageJson(f.path)) {
+    return stricter(pathTier(f.path), packageJsonTier(f.before ?? null, f.after ?? null));
+  }
   if (f.path.startsWith("docs/adr/")) return adrFileTier(f);
   const byPath = pathTier(f.path);
   // Nothing below lowers a High path: the review machinery, rules and specs are
   // read by a human however small the change is.
   if (byPath === "high") return "high";
-  if (byPath === "low" && matchesAny(f.path, TEST_GLOBS) && weakensTests(f)) return "medium";
+  if (byPath === "low" && matchesAny(f.path, TEST_GLOBS) && !onlyAddsTests(f)) return "medium";
   // ADR promotion (ADR-2331): only in a PR that adds an ADR record.
   if (promotion.newAdrs.length > 0) {
     if (f.status === "deleted" && DESIGN_DOC.test(f.path)) return "low";
@@ -517,7 +547,9 @@ export function classifyChange(input: {
 
   return {
     tier,
-    securityReview: input.files.some((f) => matchesAny(f.path, SECURITY_GLOBS)),
+    securityReview: input.files.some(
+      (f) => f.path === UNREADABLE_PATH || matchesAny(f.path, SECURITY_GLOBS),
+    ),
     reasons,
   };
 }

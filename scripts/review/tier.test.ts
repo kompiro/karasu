@@ -58,7 +58,9 @@ describe("pathTier", () => {
     ["scripts/ci/workflow-draft-gate.test.ts", "high"],
     ["pnpm-lock.yaml", "high"],
     [".npmrc", "high"],
+    ["packages/cli/.npmrc", "high"],
     [".github/dependabot.yml", "high"],
+    [".github/dependabot.yaml", "high"],
   ])("%s is %s", (path, tier) => {
     expect(pathTier(path)).toBe(tier);
   });
@@ -98,6 +100,15 @@ describe("packageJsonTier", () => {
     ["files", { files: ["dist"] }, { files: ["dist", "src"] }],
   ])("is High when %s changes (install or release)", (_field, before, after) => {
     expect(packageJsonTier(pkg(before), pkg(after))).toBe("high");
+  });
+
+  it("is High when a script npm runs on install or publish changes", () => {
+    expect(
+      packageJsonTier(
+        pkg({ scripts: { test: "x" } }),
+        pkg({ scripts: { test: "x", postinstall: "y" } }),
+      ),
+    ).toBe("high");
   });
 
   it("is High when the file is added, removed or unparseable", () => {
@@ -150,8 +161,21 @@ describe("classifyChange", () => {
     expect(tierOf()).toBe("medium");
   });
 
-  it("is High for a diff section whose path could not be read", () => {
-    expect(tierOf(modified(UNREADABLE_PATH))).toBe("high");
+  it("is High, with a security review, for a diff section whose path could not be read", () => {
+    expect(classifyChange({ files: [modified(UNREADABLE_PATH)], author: "kompiro" })).toMatchObject(
+      {
+        tier: "high",
+        securityReview: true,
+      },
+    );
+  });
+
+  it("keeps a package.json under a High directory High, even for a scripts-only change", () => {
+    const scriptsOnly = modified("scripts/review/package.json", {
+      before: pkg({ scripts: {} }),
+      after: pkg({ scripts: { a: "b" } }),
+    });
+    expect(tierOf(scriptsOnly)).toBe("high");
   });
 
   describe("test files", () => {
@@ -163,9 +187,26 @@ describe("classifyChange", () => {
       added: addedLines,
     });
 
-    it("is Low for a test that adds or rewrites cases", () => {
-      expect(tierOf(modified(T, { hunks: [hunk(["a"], ["b"])] }))).toBe("low");
+    it("is Low for a test change that only adds tests", () => {
+      expect(tierOf(modified(T, { hunks: [hunk([], ["it('y', () => {", "});"])] }))).toBe("low");
       expect(tierOf(added(T))).toBe("low");
+    });
+
+    it("is Medium for any test change that removes or rewrites a line (TPL-3286)", () => {
+      // A weakened assertion, an early return, it.fails: no pattern list catches them all.
+      expect(
+        tierOf(
+          modified(T, {
+            hunks: [hunk(["expect(drift()).toEqual([])"], ["expect(true).toBe(true)"])],
+          }),
+        ),
+      ).toBe("medium");
+      expect(tierOf(modified(T, { hunks: [hunk(["a", "b", "c"], [""])] }))).toBe("medium");
+      // Add-only hunks that stop a test from running or failing.
+      expect(tierOf(modified(T, { hunks: [hunk([], ["  return;"])] }))).toBe("medium");
+      expect(tierOf(modified(T, { hunks: [hunk([], ["const { skip: it2 } = it;"])] }))).toBe(
+        "medium",
+      );
     });
 
     it("is Medium when a change takes coverage away (TPL-3286)", () => {
@@ -342,6 +383,10 @@ describe("isLinkSwap", () => {
     expect(isLinkSwap("see [x](../design/x.md)", "see [x](../adr/12-x.md)", D, A)).toBe(true);
     expect(isLinkSwap("`docs/design/x.md`", "`docs/adr/12-x.md`", D, A)).toBe(true);
     expect(isLinkSwap("[x](../design/x.md#a)", "[x](../adr/12-x.md#b)", D, A)).toBe(true);
+  });
+
+  it("accepts a bare path that ends a sentence", () => {
+    expect(isLinkSwap("See docs/design/x.md.", "See docs/adr/12-x.md.", D, A)).toBe(true);
   });
 
   it("rejects a swap that changes the link text", () => {
