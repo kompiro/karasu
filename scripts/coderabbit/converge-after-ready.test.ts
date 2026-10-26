@@ -167,6 +167,13 @@ describe("converge-after-ready hook", () => {
     );
   });
 
+  it("hands over a PR whose only risk label names no tier, which is High", () => {
+    const gh = stubGh({ ...READY, labels: [{ name: "risk: experimental" }] });
+    expect(context(runHook("gh pr ready 12", readyIn("kompiro/karasu#12"), gh))).toContain(
+      "/coderabbit-converge",
+    );
+  });
+
   it.each(["risk: design", "risk: medium", "risk: low"])(
     "stays silent for a PR labelled %s, which has no CodeRabbit rounds",
     (label) => {

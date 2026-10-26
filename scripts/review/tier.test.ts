@@ -9,6 +9,7 @@ import {
   excludedPathFilters,
   isLinkSwap,
   labelTier,
+  unknownRiskLabels,
   lineInDiff,
   packageJsonTier,
   parseDiff,
@@ -410,6 +411,15 @@ describe("isLinkSwap", () => {
   it("rejects a line that dropped the link or pointed elsewhere", () => {
     expect(isLinkSwap("see [x](../design/x.md)", "see ADR-12", D, A)).toBe(false);
     expect(isLinkSwap("see [x](../design/y.md)", "see [x](../adr/12-x.md)", D, A)).toBe(false);
+  });
+});
+
+describe("unknownRiskLabels", () => {
+  it("names risk labels that are not one of the four tiers", () => {
+    expect(unknownRiskLabels(["risk: high", "risk: experimental", "risk:low", "bug"])).toEqual([
+      "risk: experimental",
+      "risk:low",
+    ]);
   });
 });
 

@@ -42,8 +42,9 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
+          # Only the four tier labels count; a misspelled `risk: *` label is no tier.
           tiers=$(gh pr view "$PR" --repo "$REPO" --json labels \
-            --jq '[.labels[].name | select(startswith("risk: "))] | length')
+            --jq '[.labels[].name | select(test("^risk: (low|design|medium|high)$"))] | length')
           if [ "$tiers" = "0" ]; then
             gh pr edit "$PR" --repo "$REPO" --add-label "risk: high"
           fi

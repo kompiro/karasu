@@ -59,7 +59,7 @@ for ref in $readied; do
   # High is the `risk: high` label, or no tier label at all (an unlabeled PR is
   # High, and the Review request workflow labels it so).
   high=$(jq -r '
-    [.labels[].name | select(startswith("risk: "))]
+    [.labels[].name | select(test("^risk: (low|design|medium|high)$"))]
     | length == 0 or any(. == "risk: high")
   ' <<<"$view")
   [ "$high" = "true" ] || continue

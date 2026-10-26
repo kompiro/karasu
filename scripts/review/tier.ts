@@ -542,6 +542,15 @@ export function classifyChange(input: {
   };
 }
 
+/**
+ * `risk: *` labels that name no tier (a misspelling, a made-up tier). They count
+ * as no label, which is High, but the check fails on them so the label is fixed:
+ * CodeRabbit and the Review request workflow read only the four real ones.
+ */
+export function unknownRiskLabels(labels: readonly string[]): string[] {
+  return labels.filter((l) => l.startsWith("risk:") && !/^risk: (low|design|medium|high)$/.test(l));
+}
+
 /** The tier a set of `risk: *` labels asks for (the strictest), or null when none is set. */
 export function labelTier(labels: readonly string[]): Tier | null {
   let tier: Tier | null = null;
@@ -785,6 +794,12 @@ function checkPr(pr: string): string[] {
   );
 
   const errors: string[] = [];
+  for (const label of unknownRiskLabels(view.labels.map((l) => l.name))) {
+    errors.push(
+      `PR #${pr} has the label "${label}", which names no tier. Use one of "risk: low", ` +
+        `"risk: design", "risk: medium" or "risk: high".`,
+    );
+  }
   if (labeled !== null && rank(labeled) < rank(result.tier)) {
     errors.push(
       `PR #${pr} is labeled "risk: ${labeled}" but its change is ${result.tier}. ` +
