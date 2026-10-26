@@ -138,7 +138,7 @@ before と after の差が、そのブランチの変更だけで決まること
    - base は `origin/main` との merge-base。`--base <ref>` で変えられる
    - 一時 worktree を `.claude/worktrees/pr-shots-base-<sha>` に detached で作り、install して、終了時（失敗時も）に消す。ブランチを持たない一時の checkout なので、`git worktree list` に残さない
    - `examples/` のエントリになる `.krs` を `system` / `deploy` / `org` で描画し、base と HEAD の SVG を比べる。`--file <path.krs>` で入力を足せる。base 側の描画が例外で失敗したら、その組を「before を描画できない」として報告し、画像は出さない
-   - 変わった組だけ PNG にして `reports/pr-shots/<branch の / を - にした名前>/` に `<name>.before.png` / `<name>.after.png` として書く。既定では最初の 3 組だけを画像にし、残りは名前だけを一覧にする
+   - 変わった組だけ PNG にして `reports/pr-shots/<branch の / を - にした名前>/` に `<name>.before.png` / `<name>.after.png` として書く。既定では最初の 3 組だけを画像にし、残りは名前だけを一覧にする。light で撮るので、描画には `theme: "light"` を、`capture` には `colorScheme: "light"` を明示して渡す（`capture` の既定は dark）
    - 同じディレクトリに `body.md` を書く。before | after の表で `![…](./reports/pr-shots/…png)` を参照し、そのまま使える `gh pr edit <n> --body-file … --attach …` の例を出力する
    - 変わった組が 0 なら「examples の描画に変化なし」と出力して終了コード 0 で終わる
    - `--url <path>` では、本番のアプリ（`https://karasu.kompiro.dev<path>`）と、手元で起動した `pnpm dev`（`--after-origin` で変えられる）を同じパスで撮る。dev server の管理はしない（`scripts/report/screenshot.ts` と同じ方針）
@@ -166,7 +166,7 @@ before と after の差が、そのブランチの変更だけで決まること
 
 ## 未解決の問い / 決めないこと
 
-- **light と dark のどちらで撮るか**: まず light だけにする。テーマに関わる変更で必要なら `--theme` を足す
+- **light と dark のどちらで撮るか**: まず light だけにする（描画の `theme` と `capture` の `colorScheme` の両方）。テーマに関わる変更で必要なら `--theme` を足す
 - **drill-down の階層**: 各ビューのルートだけを撮る。深い階層の変化は `--file` と専用の `.krs` で撮る
 - **動画**: 操作の変化（hover、ナビゲーション）を見せたい場合は #3355 のレコーダーを使う。この設計には入れない
 - **CI での撮影**: App のトークンで添付できることが確かめられたら（cli/cli#14309 の解決後）、改めて検討する
