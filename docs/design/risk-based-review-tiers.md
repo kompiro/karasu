@@ -265,24 +265,27 @@ CodeRabbit の approve を待たずに人間に渡す。実測で、Design と M
 | Medium | 回さない | ローカルレビューの記録と、サマリー・証拠・preview を見た人間の判断 |
 | Low | 回さない | ローカルレビューの記録と CI が通れば auto-merge |
 
-**CodeRabbit の起動は明示的な依頼で行い、依頼は GitHub Actions から出す。** `.coderabbit.yaml` の
-`reviews.auto_review.enabled` を `false` にして、自動レビューを止める。依頼の workflow は次のように動く。
+**CodeRabbit を起動するのは段階のラベルである。** `.coderabbit.yaml` の `reviews.auto_review.labels` を
+`risk: high` と `risk: design` にして、自動レビューをこの 2 つのラベルの PR に限る。`auto_incremental_review: false` で、
+push による再レビューも止める。CodeRabbit が自分で走るのは、ラベルの付いた PR が draft を外れたときの 1 回だけになる。
 
-- **起動するイベント**: `pull_request_target` の `opened`（draft でないもの）、`ready_for_review`、`labeled`
-- **依頼の条件**: 段階が High か Design なら、`@coderabbitai full review` をコメントする。同じ head コミットに
-  依頼済みなら投げない
-- **段階の出し方**: base 側の分類器で出す。PR のコードは checkout せず、差分は API で読む。
-  `pull_request_target` を使うのは 2 つの理由による。1 つは、fork からの PR でもコメントを書ける権限を得るため。
-  もう 1 つは、PR が書き換えた分類器で判定させないため（上の、仕組みそのものを High に入れる理由と同じ）
+- **Claude の PR**: draft のうちに段階のラベルを付けるので、ready の時点で High と Design だけがレビューされる
+- **ラベルの無い PR**（外部の作成者、GitHub の UI で開いた PR）: workflow `Review request` が `pull_request_target` の
+  `opened` / `reopened` / `ready_for_review` で `risk: high` を付ける。PR のコードは checkout せず、ラベルを読んで足すだけである。
+  `pull_request_target` を使うのは、fork からの PR にもラベルを付ける権限を得るためである
 
-Claude のセッションの外で ready にした PR も、これで同じに扱える。外部からの PR、GitHub の UI で ready にした PR、
-draft を経ずに開いた PR、ready の後に `risk: high` へ上げた PR がこれに当たる。
+当初は、workflow が `@coderabbitai full review` をコメントする方式にしていた。実装の前の確認（#3286 の
+2026-10-26 のコメント）で、CodeRabbit は `github-actions[bot]` が投げたコマンドに応じないと分かった
+（同じ `@coderabbitai help` に、maintainer の投稿には 24 秒で返信し、bot の投稿には 7 分半返信しなかった）。
+そこで、手順 4 に書いておいたラベルの方式に切り替えた。ready の後にラベルを `risk: high` へ上げた PR で
+レビューが始まるかは、まだ確かめていない。始まらなければ、`@coderabbitai full review` を手で投げる。
 
 ready の直後のフック（ADR-3333）はコメントを投げない。High のときに、セッションへ `/coderabbit-converge` を
 促すだけにする。Design とそれ以外では何も差し込まない。
 
-ラベルで外す方式は、PR を開いた時点の 1 回を止められなかった（ADR-3117）。依頼したときだけ走る方式では、
-この問題がそもそも起きない。
+ラベルで外す方式（ADR-3117）は、PR を開いた時点の 1 回を止められなかった。それは除外のラベルで、ラベルを
+付ける前に開いた PR がレビューされたからである。対象を含めるラベルに限る方式では、ラベルの無い PR はそもそも
+レビューされないので、この問題は起きない。
 
 **Design で 1 回だけ回すのは、人間が読む前に照合を済ませておくためである。** 設計ドキュメントは、
 既存の ADR やコードについての主張である。周辺と照合して初めて正否が決まり、それは CodeRabbit の
@@ -645,7 +648,6 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
 ### 実装の指針
 
 1. 段階判定のスクリプトとそのテストを書く。
-   <!-- absent-path-next-line: files this design creates (#3286) -->
    置き場は `scripts/review/tier.ts` と `scripts/review/tier.test.ts`。
    入力は変更ファイルの一覧と（あれば）`package.json` の差分、出力は段階とセキュリティレビューの要否。
    テストでは各段階の代表パス、最大値の取り方、どれにも当たらないパスが Medium になること、
@@ -659,7 +661,6 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
    main の取り込みの前後で追加行と削除行の集合を比べる判定も同じスクリプトに置く。比較から外すファイルは
    `.coderabbit.yaml` の `path_filters` から読み、一覧を二重に持たない。
    ローカルレビューの記録を読み、検査する処理は
-   <!-- absent-path-next-line: files this design creates (#3286) -->
    `scripts/review/local-review-record.ts` に置く。
    記録の節を本文に書き出す処理も同じファイルに置き、書く側と読む側で形式を二重に持たない。
    テストでは、`head` の一致、main の取り込みだけの push を一致とみなすこと、対応の無い指摘、
@@ -667,33 +668,30 @@ ruleset の `dismiss_stale_reviews_on_push` は外さない。外すと、修正
    Low の `waived` / Critical と Major の `declined` / CLI を飛ばした記録、
    読めない記録の失敗と、Low でも Minor の `declined` は通ること、`Sev` 列が読めない指摘を Major として判定することを固める
 2. required check の workflow `review-tier.yml` を足す。パスフィルタは付けない（TPL-1725）ので、
-   skip stub は要らない。draft では動かさない（ADR-2643）。`types:` を書くと既定のイベントが置き換わるので、
-   すべてを明示する。
-   - `opened` / `synchronize` / `reopened`: push のたびに判定する
-   - `ready_for_review`: `if` で飛ばした job は required check に success を返すので、draft を外したときに判定し直す
+   skip stub は要らない。draft でも動かす。ADR-2643 が draft で止めるのは分単位の job で、この check は
+   install なしで数秒で終わる。記録は draft を開く前に書くので、draft の時点で落ちる理由も無い。
+   `types:` を書くと既定のイベントが置き換わるので、すべてを明示する。
+   - `opened` / `synchronize` / `reopened` / `ready_for_review`: push のたびと、draft を外したときに判定する
    - `labeled` / `unlabeled`: ラベルの付け替えで判定し直す
    - `edited`: 記録の更新で判定し直す
-   - `auto_merge_enabled`: Low 以外の auto-merge を落とす
+   - `auto_merge_enabled` / `auto_merge_disabled`: Low 以外の auto-merge を落とし、外したら判定し直す
 
    分類器は base のコミットから取り出して実行する（案5 の「段階は base 側の分類器で出す」）。
    最終の差分と作成者から段階を出し、案5 の「required check『Review tier』が足す判定」を行う。
    作成者が信頼リストにいない PR とラベルの無い PR は段階が High になり、記録を求めないので、人間のレビューを
    経てマージできる。read-only の `GITHUB_TOKEN` で動くので、fork からの PR でも同じに動く
 3. ラベル `risk: low` / `risk: design` / `risk: medium` / `risk: high` を作る
-4. `.coderabbit.yaml` を変える。`reviews.auto_review.enabled: false` にして、自動レビューを止める。
+4. `.coderabbit.yaml` を変える。`reviews.auto_review.labels` を `risk: high` と `risk: design` にし、
+   `auto_incremental_review: false` にする（「CodeRabbit を起動するのは段階のラベルである」）。
    `reviews.request_changes_workflow: false` にして、approve と changes-requested を止める（設定の上のコメントも、
    ADR-2716 の説明から本設計の説明に書き換える）。
-   レビューは `@coderabbitai full review` / `@coderabbitai review` を投げたときだけ走る。同じ種類の問題は
+   2 回目からのレビューは `@coderabbitai review` を投げたときだけ走る。同じ種類の問題は
    すべての箇所を 1 つの指摘にまとめるよう指示を足す。`profile` は `chill` のまま
    （`assertive` は初回の指摘を増やすが nitpick も全 PR に増え、それを直すラウンドが増える）。
-   **変える前に、次の 2 つを確かめる。**
-   - 自動レビューを止めた状態でも、手動の依頼でレビューが走り、`path_instructions` が効くこと
-   - `github-actions[bot]` が投げた依頼を CodeRabbit が受け付けること
-
-   後者が駄目なら、`auto_review.labels` に `risk: high` と `risk: design` を置き、workflow がラベルを付ける形で
-   代える。どちらも成り立たなければ案5 は成り立たないので、本 Design Doc に戻る
-5. CodeRabbit を依頼する workflow を足す（案5 の「CodeRabbit の起動は明示的な依頼で行い、依頼は GitHub Actions から出す」）。
-   PR のコードは checkout せず、base 側の分類器とラベルの高いほうで段階を出す。ready の直後のフック
+   `github-actions[bot]` の依頼を CodeRabbit が受け付けるかは、実装の前に確かめた（受け付けない。上の節）。
+   ラベルの方式で、ラベルの付いた PR が ready でレビューされ、`path_instructions` が効くことは、導入 PR 自身で確かめる
+5. ラベルの無い PR に `risk: high` を付ける workflow `Review request` を足す（「CodeRabbit を起動するのは段階のラベルである」）。
+   PR のコードは checkout しない。ready の直後のフック
    （`scripts/coderabbit/converge-after-ready.sh`、ADR-3333）は、High のときだけ converge を促す形に変える。
    テストは今の `converge-after-ready.test.ts` に段階ごとの分岐を足す。`scripts/coderabbit/ready-gate.sh`（ADR-3342）は、
    `skip-coderabbit` / `adr-auto-merge` / ignore コマンドの PR を拒否の対象から外している。これを外し、

@@ -1,0 +1,40 @@
+name: Review request
+
+# CodeRabbit reviews only PRs labeled `risk: high` or `risk: design`
+# (.coderabbit.yaml `auto_review.labels`, Issue #3286). Claude labels its PRs
+# while they are drafts; this labels every other PR that arrives without a tier
+# label `risk: high`, so an outside author's PR, or one opened from the GitHub UI,
+# still gets CodeRabbit and a human reading the diff. The `Review tier` check
+# treats a missing label as High too; this makes the label say so.
+#
+# A comment would not do: CodeRabbit does not act on a command posted by
+# github-actions[bot] (checked on #3286).
+#
+# `pull_request_target` gives the token write access to label a PR from a fork.
+# Nothing from the PR is checked out or run: the job reads the PR's labels
+# through the API and adds one.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  label:
+    name: Label untiered PRs High
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Add risk:high when no tier label is set
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          tiers=$(gh pr view "$PR" --repo "$REPO" --json labels \
+            --jq '[.labels[].name | select(startswith("risk: "))] | length')
+          if [ "$tiers" = "0" ]; then
+            gh pr edit "$PR" --repo "$REPO" --add-label "risk: high"
+          fi
