@@ -12,11 +12,10 @@ afterAll(() => rmSync(work, { recursive: true, force: true }));
 interface PrView {
   isDraft: boolean;
   labels: { name: string }[];
-  body: string;
   baseRefName: string;
 }
 
-const READY: PrView = { isDraft: false, labels: [], body: "Closes #11", baseRefName: "main" };
+const READY: PrView = { isDraft: false, labels: [], baseRefName: "main" };
 
 /** What gh prints to stderr when `gh pr ready` takes the PR out of draft. */
 const marked = (ref: string) => `✓ Pull request ${ref} is marked as "ready for review"\n`;
@@ -97,7 +96,7 @@ describe("converge-after-ready hook", () => {
     expect(ctx).toContain("/coderabbit-converge");
     expect(ctx).toContain("takes precedence");
     expect(ghCalls(gh)[0]).toBe(
-      "pr view 12 --repo kompiro/karasu --json isDraft,labels,body,baseRefName",
+      "pr view 12 --repo kompiro/karasu --json isDraft,labels,baseRefName",
     );
   });
 
@@ -112,7 +111,7 @@ describe("converge-after-ready hook", () => {
     );
     expect(ctx).toContain("PR kompiro/tpl-tools#28");
     expect(ghCalls(gh)).toEqual([
-      "pr view 28 --repo kompiro/tpl-tools --json isDraft,labels,body,baseRefName",
+      "pr view 28 --repo kompiro/tpl-tools --json isDraft,labels,baseRefName",
       "repo view kompiro/tpl-tools --json defaultBranchRef --jq .defaultBranchRef.name",
     ]);
   });
@@ -161,19 +160,27 @@ describe("converge-after-ready hook", () => {
     expect(runHook("gh pr ready 12", readyIn("kompiro/karasu#12"), gh)).toBe("");
   });
 
-  it.each(["skip-coderabbit", "adr-auto-merge"])("stays silent for a PR labelled %s", (label) => {
-    const gh = stubGh({ ...READY, labels: [{ name: "bug" }, { name: label }] });
-    expect(runHook("gh pr ready 12", readyIn("kompiro/karasu#12"), gh)).toBe("");
+  it("hands over a PR labelled risk: high, among other labels (#3286)", () => {
+    const gh = stubGh({ ...READY, labels: [{ name: "bug" }, { name: "risk: high" }] });
+    expect(context(runHook("gh pr ready 12", readyIn("kompiro/karasu#12"), gh))).toContain(
+      "/coderabbit-converge",
+    );
   });
 
-  it.each([
-    ["on its own line", "Fix a typo.\n\n@coderabbitai ignore\n"],
-    ["quoted mid-sentence", "Do not use `@coderabbitai ignore` here."],
-  ])("stays silent when the body holds the ignore command %s", (_where, body) => {
-    // CodeRabbit skips the PR wherever the command appears (docs/process.md).
-    const gh = stubGh({ ...READY, body });
-    expect(runHook("gh pr ready 12", readyIn("kompiro/karasu#12"), gh)).toBe("");
+  it("hands over a PR whose only risk label names no tier, which is High", () => {
+    const gh = stubGh({ ...READY, labels: [{ name: "risk: experimental" }] });
+    expect(context(runHook("gh pr ready 12", readyIn("kompiro/karasu#12"), gh))).toContain(
+      "/coderabbit-converge",
+    );
   });
+
+  it.each(["risk: design", "risk: medium", "risk: low"])(
+    "stays silent for a PR labelled %s, which has no CodeRabbit rounds",
+    (label) => {
+      const gh = stubGh({ ...READY, labels: [{ name: "bug" }, { name: label }] });
+      expect(runHook("gh pr ready 12", readyIn("kompiro/karasu#12"), gh)).toBe("");
+    },
+  );
 
   it("stays silent for a PR whose base is not the default branch (an upper stack layer)", () => {
     const gh = stubGh({ ...READY, baseRefName: "feat/3000-slice-1" });
