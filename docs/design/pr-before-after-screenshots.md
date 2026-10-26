@@ -25,7 +25,7 @@
 | --- | --- |
 | 描画 | `renderKrs(source, { diagramType, theme, styleSource })` が単一ファイルの `.krs` を SVG にする。複数ファイルのモデルは `compileProject` を直接使う。`diagramType` は `system` / `deploy` / `org` |
 | 画像化 | `capture([{ html }], { colorScheme })` が SVG を包んだ HTML を Chromium で PNG にする。Chromium は `packages/e2e` の Playwright のものを共有する |
-| 入力の候補 | `examples/` に `.krs` が 85 ファイル、エントリになる `index.krs` が 15 個（en / ja） |
+| 入力の候補 | `examples/` に `.krs` が 85 ファイル。複数ファイルのモデルは `index.krs` がエントリ（15 個、en / ja）で、`examples/en/feature-samples/` は単独で描画できるファイルが並ぶ |
 | 添付 | `--attach` は OAuth トークンか PAT が必要。GitHub App のトークン（Actions の `GITHUB_TOKEN` を含む）は拒否される（cli/cli#14309）。対象 repo への write 権限も必要 |
 | PR の流れ | `docs/process.md` の手順 7 で `origin/main` を merge してから draft で PR を作る。draft の PR には `preview.yml` が走らない（ADR-2643） |
 | フック | `gh` はラッパー（ADR-3342）を通る。`gh pr ready` の後は PostToolUse フックが次の手順を促す（ADR-3333） |
@@ -43,16 +43,17 @@
 
 #### 案 1-A: merge-base の一時 worktree で描画する
 
-`git worktree add --detach` で merge-base を checkout し、`pnpm install --frozen-lockfile --offline` を実行する。HEAD 側のスクリプトから、その worktree の `packages/core/src/index.ts` を動的に import して描画する。終わったら worktree を消す。
+`git worktree add --detach` で merge-base を checkout し、`pnpm install --frozen-lockfile --prefer-offline` を実行する。HEAD 側のスクリプトから、その worktree の `packages/core/src/index.ts` を動的に import して描画する。終わったら worktree を消す。
 
 **メリット**
 
 - before と after の違いが、そのブランチの変更だけになる
-- 既存の `renderKrs` / `capture` をそのまま使える
+- 既存の `capture` をそのまま使える。描画は 1 プロセスの中で済む
 
 **デメリット**
 
 - install の分だけ時間がかかる（pnpm の store が温まっていれば数秒）
+- before 側でも、HEAD 側のスクリプトが知っている `compile` / `compileProject` の呼び方で base の core を呼ぶ。PR がこのシグネチャを変えると before が描画できない。その場合は黙って誤った画像を出さず、失敗として報告する。公開 API のシグネチャを変える PR はまれなので、これを受け入れる。CLI（`karasu render`）を base 側で呼べばこの問題は無いが、ファイルとビューごとにプロセスを起こすことになり、`examples/` 全体では数分かかる
 
 #### 案 1-B: 公開済みの `karasu` CLI で描画する
 
@@ -78,7 +79,7 @@
 
 #### 案 2-B: `examples/` を全部描画して、SVG が変わったものを撮る
 
-`examples/` の各 `index.krs` を、`system` / `deploy` / `org` のビューごとに base と HEAD で描画し、SVG の文字列が違う組だけを撮る。エージェントが回帰用の `.krs` を別に指定することもできる。
+`examples/` のエントリになる `.krs`（同じディレクトリのどの `.krs` からも `@import` されていないファイル）を、`system` / `deploy` / `org` のビューごとに base と HEAD で描画し、SVG の文字列が違う組だけを撮る。エージェントが回帰用の `.krs` を別に指定することもできる。
 
 **メリット**
 
@@ -133,16 +134,16 @@ before と after の差が、そのブランチの変更だけで決まること
 ### 実装の指針
 
 <!-- absent-path-next-line: a file this design creates (#3359) -->
-1. **`pnpm pr:shots`**（`scripts/report/pr-shots.ts`、`scripts/report/` の API を使う）
+1. **`pnpm pr:shots`**（`scripts/pr-shots/shots.ts`。PoC 用の `scripts/report/` とは分け、その `capture` を import して使う）
    - base は `origin/main` との merge-base。`--base <ref>` で変えられる
-   - 一時 worktree を `.claude/worktrees/pr-shots-base-<sha>` に detached で作り、install して、終了時（失敗時も）に消す
-   - `examples/` の各 `index.krs` を `system` / `deploy` / `org` で描画し、base と HEAD の SVG を比べる。`--file <path.krs>` で入力を足せる
-   - 変わった組だけ PNG にして `reports/pr-shots/<branch>/` に `<name>.before.png` / `<name>.after.png` として書く。既定では最初の 3 組だけを画像にし、残りは名前だけを一覧にする
+   - 一時 worktree を `.claude/worktrees/pr-shots-base-<sha>` に detached で作り、install して、終了時（失敗時も）に消す。ブランチを持たない一時の checkout なので、`git worktree list` に残さない
+   - `examples/` のエントリになる `.krs` を `system` / `deploy` / `org` で描画し、base と HEAD の SVG を比べる。`--file <path.krs>` で入力を足せる。base 側の描画が例外で失敗したら、その組を「before を描画できない」として報告し、画像は出さない
+   - 変わった組だけ PNG にして `reports/pr-shots/<branch の / を - にした名前>/` に `<name>.before.png` / `<name>.after.png` として書く。既定では最初の 3 組だけを画像にし、残りは名前だけを一覧にする
    - 同じディレクトリに `body.md` を書く。before | after の表で `![…](./reports/pr-shots/…png)` を参照し、そのまま使える `gh pr edit <n> --body-file … --attach …` の例を出力する
    - 変わった組が 0 なら「examples の描画に変化なし」と出力して終了コード 0 で終わる
-   - `--url <path>` では、本番のアプリ（`https://karasu.pages.dev<path>`）と、手元で起動した `pnpm dev`（`--after-origin` で変えられる）を同じパスで撮る。dev server の管理はしない（`scripts/report/screenshot.ts` と同じ方針）
+   - `--url <path>` では、本番のアプリ（`https://karasu.kompiro.dev<path>`）と、手元で起動した `pnpm dev`（`--after-origin` で変えられる）を同じパスで撮る。dev server の管理はしない（`scripts/report/screenshot.ts` と同じ方針）
    <!-- absent-path-next-line: a file this design creates (#3359) -->
-2. **フック**（`scripts/report/pr-shots-reminder.sh`、`.claude/settings.json` の PostToolUse / PostToolUseFailure の Bash に足す）
+2. **フック**（`scripts/pr-shots/reminder.sh`、`.claude/settings.json` の PostToolUse / PostToolUseFailure の Bash に足す）
    - `gh pr create` の出力にある PR の URL から PR を特定する（ADR-3333 と同じく、コマンド文字列ではなく出力を見る）
    - `gh pr diff --name-only` に `packages/core/src/` か `packages/app/src/` のテスト以外のファイルがあり、本文に `user-attachments` が無いときだけ、additionalContext を返す
    - 分からないときは何も出さない。Bash の呼び出しを壊さない
