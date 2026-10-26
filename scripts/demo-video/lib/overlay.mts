@@ -166,7 +166,12 @@ export async function thumbnailCard(
 ): Promise<void> {
   await ensureStyle(target);
   await target.evaluate(
-    ([language, url, k, t, s]) => {
+    async ([language, url, k, t, s]) => {
+      // Decode the frame first: a background set but not yet decoded screenshots as the
+      // .shot element's white fallback.
+      const img = new Image();
+      img.src = url;
+      await img.decode();
       const el = document.createElement("div");
       el.id = "krs-demo-thumb";
       // word-break: auto-phrase only breaks at Japanese phrase boundaries under lang="ja";
@@ -190,6 +195,7 @@ export async function thumbnailCard(
       }
       el.append(band, shot);
       document.body.appendChild(el);
+      await document.fonts.ready;
     },
     [lang, frameUrl, kicker, title, sub] as const,
   );
@@ -204,7 +210,7 @@ export async function titleCard(
 ): Promise<void> {
   await ensureStyle(target);
   await target.evaluate(
-    ([k, t, s]) => {
+    async ([k, t, s]) => {
       const el = document.createElement("div");
       el.id = "krs-demo-title";
       for (const [cls, value] of [
@@ -219,6 +225,7 @@ export async function titleCard(
         el.appendChild(d);
       }
       document.body.appendChild(el);
+      await document.fonts.ready;
     },
     [kicker, title, sub] as const,
   );
