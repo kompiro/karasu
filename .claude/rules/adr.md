@@ -199,7 +199,9 @@ Low でなければ、出た段階のラベルを付けて draft で作り、`gh
      （`docs/adr/**` を除く任意のディレクトリ — `docs/acceptance/` /
      `docs/spec/` / `docs/test-perspectives/` / `docs/prd/` / `docs/roadmap.md`
      のいずれでもよい。削除でリンク切れになるものを繋ぎ直すのは昇格の一部で
-     あって、別の判断ではない）
+     あって、別の判断ではない）。変えてよいのはリンク先と、リンクの文字列のうち
+     ファイル名・パス・`ADR-<n>` の言い換えだけ。High のパス（`docs/spec/**` など）は
+     張り替えだけでも High のままで、人間がレビューする
 
    **Design Doc からの新規昇格はこの 4 種で閉じるので、auto-merge してよい** —
    新 ADR を足し、生成物を再生成し、元の Design Doc を消し、他の記録の参照を
@@ -237,7 +239,8 @@ Low でなければ、出た段階のラベルを付けて draft で作り、`gh
     （`gh pr merge <N> --auto --squash --delete-branch`）。draft のままではマージされない
   - Low でないとき: ラベルを出た段階に付け替えて `gh pr ready <N>` で draft を外し、通常の PR として扱う。
     `risk: high` / `risk: design` なら、CodeRabbit のレビューはこのときに走る
-- Low でない段階のまま auto-merge を有効にすると、Review tier が落とす
+- Low でない段階では auto-merge を有効にしない。CI の途中で有効にすれば Review tier が落とすが、
+  CI が通った後に有効にした PR はそのままマージされ、check では止められない
 - `--auto` を使うので CI 完走前にコマンド発行して構わない（GitHub 側が
   required check 通過を待つ）
 - リポジトリ設定で `allow_auto_merge=true` 済み

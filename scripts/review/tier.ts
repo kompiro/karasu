@@ -38,6 +38,9 @@ const HIGH_GLOBS: readonly string[] = [
   ".github/actions/**",
   "**/CHANGELOG.md",
   "pnpm-workspace.yaml",
+  "pnpm-lock.yaml",
+  ".npmrc",
+  ".github/dependabot.yml",
   "docs/spec/**",
   "docs/concepts*.md",
   "docs/process.md",
@@ -45,6 +48,9 @@ const HIGH_GLOBS: readonly string[] = [
   ".coderabbit.yaml",
   "lefthook.yml",
   "scripts/lint/**",
+  // The CI policy and drift guards (workflow safety, draft gate, timeouts):
+  // weakening one of these tests must not read as a Low test change.
+  "scripts/ci/**",
   // The review machinery itself. A PR that edits it must not be able to read
   // itself as lighter: Medium and Low get no CodeRabbit review (TPL-3286).
   "scripts/review/**",
@@ -52,6 +58,7 @@ const HIGH_GLOBS: readonly string[] = [
   "scripts/bin/**",
   ".claude/settings.json",
   ".claude/skills/**",
+  ".claude/agents/**",
   ".github/PULL_REQUEST_TEMPLATE.md",
 ];
 
@@ -78,7 +85,11 @@ const ADR_RECORD = /^docs\/adr\/\d+-[^/]+\.md$/;
 const DESIGN_DOC = /^docs\/design\/[^/]+\.md$/;
 
 /** A diff touching these also gets `/security-review`, whatever its tier. */
-const SECURITY_GLOBS: readonly string[] = ["packages/nest/**", ".github/workflows/**"];
+const SECURITY_GLOBS: readonly string[] = [
+  "packages/nest/**",
+  ".github/workflows/**",
+  ".github/actions/**",
+];
 
 /**
  * The `package.json` fields whose change is a dependency or release change. The
@@ -92,6 +103,19 @@ const HIGH_PACKAGE_FIELDS = [
   "optionalDependencies",
   "version",
   "pnpm",
+  "packageManager",
+  "overrides",
+  "resolutions",
+  "engines",
+  // What a published package ships and how it is reached.
+  "private",
+  "publishConfig",
+  "files",
+  "exports",
+  "bin",
+  "main",
+  "module",
+  "types",
 ] as const;
 
 const matchesAny = (path: string, globs: readonly string[]): boolean =>
@@ -156,13 +180,66 @@ export interface FileDiff {
 
 const HUNK_HEADER = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
 
-/** `a/P b/P` (renames are off, so both halves name the same path) → `P`. */
+/**
+ * Undoes git's C-style path quoting (`"a/d\303\251.md"` → `a/dé.md`): what git
+ * prints for a path with `"`, `\`, control characters, and, unless
+ * `core.quotePath` is off, any non-ASCII byte. Null when `quoted` is not one.
+ */
+export function unquoteGitPath(quoted: string): string | null {
+  if (!quoted.startsWith('"') || !quoted.endsWith('"') || quoted.length < 2) return null;
+  const bytes: number[] = [];
+  const body = quoted.slice(1, -1);
+  const escapes: Record<string, number> = { n: 10, t: 9, r: 13, a: 7, b: 8, f: 12, v: 11 };
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i];
+    if (c !== "\\") {
+      bytes.push(...Buffer.from(c, "utf-8"));
+      continue;
+    }
+    const next = body[++i];
+    if (next === undefined) return null;
+    if (/[0-7]/.test(next)) {
+      const oct = body.slice(i, i + 3);
+      if (!/^[0-7]{3}$/.test(oct)) return null;
+      bytes.push(parseInt(oct, 8));
+      i += 2;
+    } else if (next in escapes) bytes.push(escapes[next]);
+    else bytes.push(...Buffer.from(next, "utf-8"));
+  }
+  return Buffer.from(bytes).toString("utf-8");
+}
+
+/**
+ * The path of a `diff --git` header. Renames are off, so both halves name the
+ * same path: `a/P b/P`, or each half quoted. Null when it cannot be read.
+ */
 function pathFromDiffGit(rest: string): string | null {
+  if (rest.startsWith('"')) {
+    const m = /^("(?:[^"\\]|\\.)*") ("(?:[^"\\]|\\.)*")$/.exec(rest);
+    const a = m ? unquoteGitPath(m[1]) : null;
+    const b = m ? unquoteGitPath(m[2]) : null;
+    return a !== null && b !== null && a.startsWith("a/") && b === `b/${a.slice(2)}`
+      ? a.slice(2)
+      : null;
+  }
   const length = (rest.length - 5) / 2;
   if (!Number.isInteger(length) || length <= 0) return null;
   const path = rest.slice(2, 2 + length);
   return rest === `a/${path} b/${path}` ? path : null;
 }
+
+/** A `--- ` / `+++ ` header's path without its `a/` / `b/` prefix, unquoted when quoted. */
+function headerPath(raw: string, prefix: "a/" | "b/"): string {
+  const unquoted = raw.startsWith('"') ? unquoteGitPath(raw) : raw;
+  return unquoted !== null && unquoted.startsWith(prefix) ? unquoted.slice(2) : "";
+}
+
+/**
+ * The path given to a diff section whose path could not be read. It matches no
+ * rule's glob, and {@link classifyChange} classifies it High: a file the
+ * classifier cannot name must not be dropped or read as light (TPL-3286).
+ */
+export const UNREADABLE_PATH = "\u0000unreadable";
 
 /**
  * Splits a unified diff into files. `--- ` / `+++ ` are headers only before a
@@ -177,7 +254,7 @@ export function parseDiff(diff: string): FileDiff[] {
   for (const line of diff.split("\n")) {
     if (line.startsWith("diff --git ")) {
       cur = {
-        path: pathFromDiffGit(line.slice("diff --git ".length)) ?? "",
+        path: pathFromDiffGit(line.slice("diff --git ".length)) ?? UNREADABLE_PATH,
         status: "modified",
         oldMode: null,
         newMode: null,
@@ -210,10 +287,10 @@ export function parseDiff(diff: string): FileDiff[] {
           cur.newMode ??= m[3];
         }
       } else if (line.startsWith("Binary files ")) cur.binary = true;
-      else if (line.startsWith("--- ") && cur.path === "") {
-        if (line !== "--- /dev/null") cur.path = line.slice(4).replace(/^a\//, "");
-      } else if (line.startsWith("+++ ")) {
-        if (line !== "+++ /dev/null") cur.path = line.slice(4).replace(/^b\//, "");
+      else if (line.startsWith("--- ") && cur.path === UNREADABLE_PATH) {
+        if (line !== "--- /dev/null") cur.path = headerPath(line.slice(4), "a/") || UNREADABLE_PATH;
+      } else if (line.startsWith("+++ ") && cur.path === UNREADABLE_PATH) {
+        if (line !== "+++ /dev/null") cur.path = headerPath(line.slice(4), "b/") || UNREADABLE_PATH;
       }
     }
     const h = HUNK_HEADER.exec(line);
@@ -226,7 +303,7 @@ export function parseDiff(diff: string): FileDiff[] {
       else if (line.startsWith("+")) hunk.added.push(line.slice(1));
     }
   }
-  return files.filter((f) => f.path !== "");
+  return files;
 }
 
 // ---------------------------------------------------------------------------
@@ -285,22 +362,22 @@ export function adrEditIsRecordOnly(
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** A reference to one of `paths`, as a relative or repo path with an optional anchor. */
-function referenceRe(paths: readonly string[]): RegExp | null {
+/** A reference to one of `paths`: a relative or repo path, with an optional anchor. */
+function referenceSource(paths: readonly string[]): string | null {
   if (paths.length === 0) return null;
   const alts = paths.map((p) => {
     const [dir, file] = [p.split("/").at(-2) ?? "", p.split("/").at(-1) ?? ""];
-    return `(?:\\.\\.?/)*(?:docs/)?${escapeRe(dir)}/${escapeRe(file)}(?:#[^\\s)\\]]*)?`;
+    return `(?:\\.\\.?/)*(?:docs/)?${escapeRe(dir)}/${escapeRe(file)}(?:#[\\w-]*)?`;
   });
-  return new RegExp(alts.join("|"), "g");
+  return `(?:${alts.join("|")})`;
 }
 
 /**
- * Whether one changed line pair only swaps a link to a deleted Design Doc for a
- * link to the ADR that replaced it (ADR-2331's "張り替え"). Markdown links that
- * point at either side become one placeholder, link text included; bare path
- * mentions too. The pair qualifies when the old line pointed at a deleted Design
- * Doc, the new line points at a new ADR, and nothing else differs.
+ * Whether one changed line pair only swaps a reference to a deleted Design Doc for
+ * a reference to the ADR that replaced it (ADR-2331's "張り替え"). Only the
+ * reference itself may change: a markdown link's target, whole, or a bare path
+ * that stands on its own (not inside a URL or a longer name). Link text and
+ * every other character must stay as they were.
  */
 export function isLinkSwap(
   removed: string,
@@ -308,19 +385,34 @@ export function isLinkSwap(
   deletedDesigns: readonly string[],
   newAdrs: readonly string[],
 ): boolean {
-  const oldRef = referenceRe(deletedDesigns);
-  const newRef = referenceRe(newAdrs);
+  const oldRef = referenceSource(deletedDesigns);
+  const newRef = referenceSource(newAdrs);
   if (oldRef === null || newRef === null) return false;
-  if (!new RegExp(oldRef.source).test(removed) || !new RegExp(newRef.source).test(added)) {
-    return false;
+  const bare = (ref: string) => new RegExp(`(?<![\\w./:-])${ref}(?![\\w.-])`, "g");
+  const target = (ref: string) => new RegExp(`^${ref}$`);
+  const mentions = (line: string, ref: string) =>
+    bare(ref).test(line) ||
+    [...line.matchAll(/\]\(([^)\s]+)\)/g)].some((m) => target(ref).test(m[1]));
+  if (!mentions(removed, oldRef) || !mentions(added, newRef)) return false;
+  const either = `(?:${oldRef}|${newRef})`;
+  // A link's text may change only from one name of what it points at to another:
+  // the file name or path (in backticks or not), or the ADR's number.
+  const names = new Set(
+    [...deletedDesigns, ...newAdrs].flatMap((p) => [p, p.split("/").at(-1) ?? p]),
+  );
+  for (const p of newAdrs) {
+    const n = /^docs\/adr\/(\d+)-/.exec(p)?.[1];
+    if (n !== undefined) names.add(`ADR-${n}`);
   }
-  const either = new RegExp(`${oldRef.source}|${newRef.source}`);
+  const isName = (text: string) => names.has(text.trim().replace(/^`(.*)`$/, "$1"));
   const normalize = (line: string) =>
     line
-      .replace(/\[[^\]]*\]\(([^)\s]+)\)/g, (link, target: string) =>
-        either.test(target) ? "⟦ref⟧" : link,
+      .replace(/\[([^\]]*)\]\(([^)\s]+)\)/g, (link, text: string, t: string) =>
+        target(either).test(t)
+          ? `[${isName(text) ? "\u27E6name\u27E7" : text}](\u27E6ref\u27E7)`
+          : link,
       )
-      .replace(new RegExp(either.source, "g"), "⟦ref⟧");
+      .replace(bare(either), "\u27E6ref\u27E7");
   return normalize(removed) === normalize(added);
 }
 
@@ -334,16 +426,42 @@ function adrFileTier(f: ChangedFile): Tier {
   if (!ADR_RECORD.test(f.path)) return "medium";
   if (f.status === "added") return "low";
   if (f.status === "deleted") return "medium";
+  // No hunks (a binary or mode-only change) leaves nothing to prove record-only.
+  if (f.hunks.length === 0) return "medium";
   if (typeof f.before !== "string" || typeof f.after !== "string") return "medium";
   return adrEditIsRecordOnly(f.before, f.after, f.hunks) ? "low" : "medium";
+}
+
+const TEST_GLOBS: readonly string[] = ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"];
+const SKIPS_A_TEST =
+  /\b(?:describe|it|test|suite)\.(?:skip|todo|only|skipIf|runIf)\b|\bx(?:it|describe)\(/;
+
+/**
+ * A test change that takes coverage away: the file deleted, a hunk that only
+ * removes lines, or a line that skips or narrows tests. It is Medium, so a
+ * human reads it, rather than Low with the tests it weakens (TPL-3286).
+ */
+function weakensTests(f: ChangedFile): boolean {
+  if (f.status === "deleted") return true;
+  return f.hunks.some(
+    (h) =>
+      (h.removed.length > 0 && h.added.length === 0) ||
+      h.added.some((line) => SKIPS_A_TEST.test(line)),
+  );
 }
 
 function fileTier(
   f: ChangedFile,
   promotion: { deletedDesigns: string[]; newAdrs: string[] },
 ): Tier {
+  if (f.path === UNREADABLE_PATH) return "high";
   if (isPackageJson(f.path)) return packageJsonTier(f.before ?? null, f.after ?? null);
   if (f.path.startsWith("docs/adr/")) return adrFileTier(f);
+  const byPath = pathTier(f.path);
+  // Nothing below lowers a High path: the review machinery, rules and specs are
+  // read by a human however small the change is.
+  if (byPath === "high") return "high";
+  if (byPath === "low" && matchesAny(f.path, TEST_GLOBS) && weakensTests(f)) return "medium";
   // ADR promotion (ADR-2331): only in a PR that adds an ADR record.
   if (promotion.newAdrs.length > 0) {
     if (f.status === "deleted" && DESIGN_DOC.test(f.path)) return "low";
@@ -363,7 +481,7 @@ function fileTier(
       return "low";
     }
   }
-  return pathTier(f.path);
+  return byPath;
 }
 
 export function classifyChange(input: {
@@ -386,7 +504,9 @@ export function classifyChange(input: {
 
   for (const f of input.files) {
     const t = fileTier(f, promotion);
-    if (rank(t) > rank("low")) reasons.push(`${f.path}: ${t}`);
+    const name =
+      f.path === UNREADABLE_PATH ? "(a diff section whose path could not be read)" : f.path;
+    if (rank(t) > rank("low")) reasons.push(`${name}: ${t}`);
     tier = stricter(tier, t);
   }
 
@@ -482,36 +602,14 @@ export function lineInDiff(
 ): DiffPlacement {
   if (path === undefined || start === undefined || !Number.isInteger(start)) return "unknown";
   const last = end !== undefined && Number.isInteger(end) && end >= start ? end : start;
-  let minus: string | null = null;
-  let file: string | null = null;
-  let inHeader = false;
-  for (const line of diff.split("\n")) {
-    if (line.startsWith("diff --git ")) {
-      minus = null;
-      file = null;
-      inHeader = true;
-    } else if (inHeader && line.startsWith("--- ")) {
-      minus = line.slice(4);
-    } else if (inHeader && line.startsWith("+++ ")) {
-      const plus = line.slice(4);
-      const strip = (h: string) => h.replace(/^[ab]\//, "");
-      file =
-        plus !== "/dev/null"
-          ? strip(plus)
-          : minus !== null && minus !== "/dev/null"
-            ? strip(minus)
-            : null;
-    } else if (line.startsWith("@@")) {
-      inHeader = false;
-      if (file !== path) continue;
-      const m = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(line);
-      if (!m) continue;
-      const from = Number(m[1]);
-      const count = m[2] === undefined ? 1 : Number(m[2]);
-      if (count > 0 && from <= last && start <= from + count - 1) return "inside";
-    }
-  }
-  return "outside";
+  const inside = parseDiff(diff)
+    .filter((f) => f.path === path)
+    .some((f) =>
+      f.hunks.some(
+        (h) => h.added.length > 0 && h.newStart <= last && start <= h.newStart + h.added.length - 1,
+      ),
+    );
+  return inside ? "inside" : "outside";
 }
 
 // ---------------------------------------------------------------------------
@@ -530,6 +628,22 @@ function run(cmd: string, args: string[], quiet = false): string {
 
 const git = (...args: string[]): string => run("git", args);
 
+/**
+ * `git diff` with its output pinned, so a local config (color, mnemonic prefixes,
+ * an external diff driver, path quoting) cannot change what the parser reads.
+ */
+const gitDiff = (...args: string[]): string =>
+  run("git", [
+    "-c",
+    "core.quotePath=false",
+    "diff",
+    "--no-color",
+    "--no-ext-diff",
+    "--src-prefix=a/",
+    "--dst-prefix=b/",
+    ...args,
+  ]);
+
 function gitShow(rev: string, path: string): string | null {
   try {
     return run("git", ["show", `${rev}:${path}`], true);
@@ -543,7 +657,7 @@ const mergeBaseOf = (base: string, head: string): string => git("merge-base", ba
 /** The PR's own diff: from where it left `base` to `head`, renames off. */
 function prDiff(base: string, head: string): string {
   // `--no-renames`: moving a High file under a Low directory must not read as a Low change.
-  return git("diff", "--no-renames", "--full-index", "-U0", mergeBaseOf(base, head), head);
+  return gitDiff("--no-renames", "--full-index", "-U0", mergeBaseOf(base, head), head);
 }
 
 /** The files a PR changes, with the sides the rules read. */
@@ -710,7 +824,7 @@ function main(argv: string[]): number {
     const [path, range] = rest.filter((a, i) => !a.startsWith("--") && rest[i - 1] !== "--base");
     const m = /^(\d+)(?:-(\d+))?$/.exec(range ?? "");
     const placement = lineInDiff(
-      git("diff", "-U0", mergeBaseOf(base, "HEAD"), "HEAD"),
+      gitDiff("--no-renames", "-U0", mergeBaseOf(base, "HEAD"), "HEAD"),
       path,
       m ? Number(m[1]) : undefined,
       m?.[2] === undefined ? undefined : Number(m[2]),

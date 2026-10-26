@@ -63,7 +63,11 @@ const isHeavy = (sev: string): boolean => {
   return s === "critical" || s === "major";
 };
 
-/** CodeRabbit's own rows (Design: its one advisory review) do not count for the check. */
+/**
+ * CodeRabbit's own rows. On Design they record its one advisory review, which may
+ * arrive after the check ran, so the check leaves them out there; on Low and
+ * Medium no PR review runs, so such a row is checked like any other.
+ */
 const isCodeRabbitRow = (f: Finding): boolean => /^coderabbit$/i.test(f.reviewer.trim());
 
 /** Splits a markdown table row on pipes that are not escaped. */
@@ -205,7 +209,7 @@ export function verifyRecord(
   }
 
   for (const [i, f] of r.findings.entries()) {
-    if (isCodeRabbitRow(f)) continue;
+    if (tier === "design" && isCodeRabbitRow(f)) continue;
     const n = i + 1;
     const d = f.disposition.trim();
     const fixed = FIXED.exec(d);
@@ -213,6 +217,10 @@ export function verifyRecord(
       const sha = git.resolve(fixed[1]);
       if (sha === null || head === null || !git.isAncestor(sha, head)) {
         errors.push(`finding ${n}: ${fixed[1]} is not a commit in the record's head`);
+      } else if (git.isAncestor(sha, r.base)) {
+        errors.push(
+          `finding ${n}: ${fixed[1]} is already on the base branch, not a fix in this PR`,
+        );
       }
     } else if (DECLINED.test(d)) {
       if (tier === "low" && isHeavy(f.sev)) {

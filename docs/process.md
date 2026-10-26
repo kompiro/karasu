@@ -170,7 +170,9 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
   外れたときにレビューする。ラベルを上げるのはよい（人間が CodeRabbit に見せたいと判断した PR など）。ready の後に
   `risk: high` へ上げた PR でレビューが始まらなければ、`@coderabbitai full review` を投げる
 - **Low の auto-merge は「PR のマージはユーザー確認を経る」という既定運用への例外である。** 条件は Review tier を含む
-  CI が通ること。有効にした後に変更を足すなら、先に `gh pr merge <n> --disable-auto` で解く
+  CI が通ること。有効にした後に変更を足すなら、先に `gh pr merge <n> --disable-auto` で解く。Low 以外では auto-merge を
+  使わない。CI の途中で有効にすれば Review tier が落とすが、CI が通った後に有効にした PR はそのままマージされ、check では
+  止められない
 - `skip-coderabbit` ラベルと本文の ignore コマンドは使わない。Medium 以下には CodeRabbit が走らないので、外す必要がない
 - 仕組みと却下した案は [Design Doc](design/risk-based-review-tiers.md)
 
@@ -200,8 +202,9 @@ gh pr edit <n> --body-file <本文ファイル>
 ```
 
 `<findings.json>` は `{reviewer, sev, where, finding, disposition}` の配列で、対応は `fixed in <sha>`・
-`declined: <理由>`・`→ #<Issue>` のどれかで書く。Design での CodeRabbit の 1 回の指摘も、レビュアーを
-`coderabbit` として同じ表に足す（check はこの行を判定に入れない）。
+`declined: <理由>`・`→ #<Issue>` のどれかで書く。レビュアーは `engineering`（/engineering:code-review）、`cli`
+（CodeRabbit CLI）、`coderabbit`（PR での CodeRabbit のレビュー）と書く。Design での CodeRabbit の 1 回の指摘も同じ表に
+足し、check は Design の `coderabbit` の行だけを判定から外す（レビューが届く前と後で結果が変わらないように）。
 
 - **記録の後にコミットを足したら、そのコミットにも手順 8 の確認を当てて記録を作り直す。** `head` から HEAD までが
   main の取り込みだけで、PR の変更が変わっていなければそのままでよい

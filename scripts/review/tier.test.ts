@@ -13,6 +13,8 @@ import {
   packageJsonTier,
   parseDiff,
   pathTier,
+  UNREADABLE_PATH,
+  unquoteGitPath,
 } from "./tier.ts";
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
@@ -50,6 +52,13 @@ describe("pathTier", () => {
     [".claude/skills/coderabbit-converge/SKILL.md", "high"],
     [".claude/skills/demo-video/SKILL.md", "high"],
     [".github/PULL_REQUEST_TEMPLATE.md", "high"],
+    [".claude/agents/qa.md", "high"],
+    // CI policy tests and drift guards are not Low test files.
+    ["scripts/ci/agentic-workflow-safety.test.ts", "high"],
+    ["scripts/ci/workflow-draft-gate.test.ts", "high"],
+    ["pnpm-lock.yaml", "high"],
+    [".npmrc", "high"],
+    [".github/dependabot.yml", "high"],
   ])("%s is %s", (path, tier) => {
     expect(pathTier(path)).toBe(tier);
   });
@@ -79,6 +88,15 @@ describe("packageJsonTier", () => {
     ["version", { version: "1.0.0" }, { version: "1.1.0" }],
     ["pnpm.overrides", { pnpm: { overrides: {} } }, { pnpm: { overrides: { c: "1" } } }],
   ])("is High when %s changes", (_field, before, after) => {
+    expect(packageJsonTier(pkg(before), pkg(after))).toBe("high");
+  });
+
+  it.each([
+    ["packageManager", { packageManager: "pnpm@11.0.0" }, { packageManager: "pnpm@11.1.0" }],
+    ["engines", { engines: { node: ">=22" } }, { engines: { node: ">=24" } }],
+    ["exports", { exports: "./a.js" }, { exports: "./b.js" }],
+    ["files", { files: ["dist"] }, { files: ["dist", "src"] }],
+  ])("is High when %s changes (install or release)", (_field, before, after) => {
     expect(packageJsonTier(pkg(before), pkg(after))).toBe("high");
   });
 
@@ -130,6 +148,36 @@ describe("classifyChange", () => {
 
   it("treats an empty change as Medium", () => {
     expect(tierOf()).toBe("medium");
+  });
+
+  it("is High for a diff section whose path could not be read", () => {
+    expect(tierOf(modified(UNREADABLE_PATH))).toBe("high");
+  });
+
+  describe("test files", () => {
+    const T = "packages/core/src/a.test.ts";
+    const hunk = (removed: string[], addedLines: string[]) => ({
+      oldStart: 1,
+      removed,
+      newStart: 1,
+      added: addedLines,
+    });
+
+    it("is Low for a test that adds or rewrites cases", () => {
+      expect(tierOf(modified(T, { hunks: [hunk(["a"], ["b"])] }))).toBe("low");
+      expect(tierOf(added(T))).toBe("low");
+    });
+
+    it("is Medium when a change takes coverage away (TPL-3286)", () => {
+      expect(tierOf(deleted(T))).toBe("medium");
+      expect(tierOf(modified(T, { hunks: [hunk(["it('x', ...)"], [])] }))).toBe("medium");
+      expect(
+        tierOf(modified(T, { hunks: [hunk(["it('x', () => {"], ["it.skip('x', () => {"])] })),
+      ).toBe("medium");
+      expect(tierOf(modified(T, { hunks: [hunk([], ["describe.only('y', () => {"])] }))).toBe(
+        "medium",
+      );
+    });
   });
 
   describe("docs/adr/", () => {
@@ -206,6 +254,10 @@ describe("classifyChange", () => {
     it("is Medium when the before or after side could not be read", () => {
       expect(tierOf(modified(ADR, { hunks: [] }))).toBe("medium");
     });
+
+    it("is Medium for an existing ADR changed with no text hunk (binary, mode-only)", () => {
+      expect(tierOf(modified(ADR, { before, after: before, hunks: [] }))).toBe("medium");
+    });
   });
 
   describe("ADR promotion (ADR-2331)", () => {
@@ -245,6 +297,24 @@ describe("classifyChange", () => {
       expect(tierOf(added(NEW_ADR), deleted(DESIGN), extra)).toBe("medium");
     });
 
+    it("never lowers a High path through a link swap", () => {
+      const swapIn = (path: string) =>
+        modified(path, {
+          hunks: [
+            {
+              oldStart: 5,
+              removed: ["See [the design](../design/risk-based-review-tiers.md)."],
+              newStart: 5,
+              added: ["See [the design](../adr/3286-risk-based-review-tiers.md)."],
+            },
+          ],
+        });
+      expect(tierOf(added(NEW_ADR), deleted(DESIGN), swapIn(".claude/skills/x/SKILL.md"))).toBe(
+        "high",
+      );
+      expect(tierOf(added(NEW_ADR), deleted(DESIGN), swapIn("docs/spec/syntax.md"))).toBe("high");
+    });
+
     it("does not lower a non-markdown file through a link swap", () => {
       const code = modified("packages/core/src/a.ts", {
         hunks: [
@@ -266,9 +336,28 @@ describe("isLinkSwap", () => {
   const A = ["docs/adr/12-x.md"];
 
   it("accepts a link, a bare path and an anchor", () => {
-    expect(isLinkSwap("see [x](../design/x.md)", "see [ADR-12](../adr/12-x.md)", D, A)).toBe(true);
+    expect(isLinkSwap("see [x.md](../design/x.md)", "see [ADR-12](../adr/12-x.md)", D, A)).toBe(
+      true,
+    );
+    expect(isLinkSwap("see [x](../design/x.md)", "see [x](../adr/12-x.md)", D, A)).toBe(true);
     expect(isLinkSwap("`docs/design/x.md`", "`docs/adr/12-x.md`", D, A)).toBe(true);
     expect(isLinkSwap("[x](../design/x.md#a)", "[x](../adr/12-x.md#b)", D, A)).toBe(true);
+  });
+
+  it("rejects a swap that changes the link text", () => {
+    expect(isLinkSwap("see [x](../design/x.md)", "see [run this](../adr/12-x.md)", D, A)).toBe(
+      false,
+    );
+  });
+
+  it("rejects a target that only contains the ADR path (a URL, a longer name)", () => {
+    expect(
+      isLinkSwap("see [x](../design/x.md)", "see [x](https://evil.example/adr/12-x.md)", D, A),
+    ).toBe(false);
+    expect(isLinkSwap("see [x](../design/x.md)", "see [x](../adr/12-x.md.evil)", D, A)).toBe(false);
+    expect(isLinkSwap("`docs/design/x.md`", "`https://e.example/docs/adr/12-x.md`", D, A)).toBe(
+      false,
+    );
   });
 
   it("rejects a line that dropped the link or pointed elsewhere", () => {
@@ -382,7 +471,49 @@ describe("diffFingerprint", () => {
   });
 });
 
+describe("unquoteGitPath", () => {
+  it("decodes git's C-style quoting, octal UTF-8 bytes included", () => {
+    expect(unquoteGitPath('"a/d\\303\\251.md"')).toBe("a/dé.md");
+    expect(unquoteGitPath('"b/say \\"hi\\".md"')).toBe('b/say "hi".md');
+    expect(unquoteGitPath("a/plain.md")).toBeNull();
+  });
+});
+
 describe("parseDiff", () => {
+  it("reads quoted paths, and paths of sections with no ---/+++ lines", () => {
+    const files = parseDiff(
+      [
+        'diff --git "a/.github/workflows/d\\303\\251.yml" "b/.github/workflows/d\\303\\251.yml"',
+        "new file mode 100644",
+        "--- /dev/null",
+        '+++ "b/.github/workflows/d\\303\\251.yml"',
+        "@@ -0,0 +1 @@",
+        "+on: push",
+        'diff --git "a/scripts/bin/\\303\\274" "b/scripts/bin/\\303\\274"',
+        "new file mode 100755",
+        `index ${"0".repeat(40)}..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391`,
+        "diff --git a/i.png b/i.png",
+        "Binary files a/i.png and b/i.png differ",
+      ].join("\n"),
+    );
+    expect(files.map((f) => f.path)).toEqual([
+      ".github/workflows/dé.yml",
+      "scripts/bin/ü",
+      "i.png",
+    ]);
+    expect(
+      classifyChange({
+        files: files.map((f) => ({ path: f.path, status: f.status, hunks: f.hunks })),
+        author: "kompiro",
+      }),
+    ).toMatchObject({ tier: "high", securityReview: true });
+  });
+
+  it("keeps a section whose path it cannot read, under a path that classifies High", () => {
+    const [f] = parseDiff(["diff --git x y", "Binary files x and y differ"].join("\n"));
+    expect(f.path).toBe(UNREADABLE_PATH);
+  });
+
   it("reads a removed `-- x` or an added `++ x` as content, not as a file header", () => {
     // Inside a hunk, git prints them as `--- x` and `+++ x`.
     const [f] = parseDiff(diffOf("db/schema.sql", "@@ -3 +3 @@", "--- old comment", "+++ new"));

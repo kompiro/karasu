@@ -141,10 +141,27 @@ describe("verifyRecord", () => {
       expect(check(body([finding({ disposition: "-> #3360" })]))).toEqual([]);
     });
 
-    it("ignores CodeRabbit's own rows (Design's advisory review)", () => {
+    it("ignores CodeRabbit's own rows on Design (its advisory review)", () => {
       expect(check(body([finding({ reviewer: "CodeRabbit", disposition: "" })]), "design")).toEqual(
         [],
       );
+    });
+
+    it("checks CodeRabbit rows like any other on Low and Medium", () => {
+      const declined = finding({
+        reviewer: "CodeRabbit",
+        sev: "Critical",
+        disposition: "declined: nah",
+      });
+      expect(check(body([declined]))).toHaveLength(1);
+      expect(
+        check(body([finding({ reviewer: "coderabbit", disposition: "" })]), "medium"),
+      ).toHaveLength(1);
+    });
+
+    it("fails a fix commit that is already on the base branch", () => {
+      const onBase = facts({ isAncestor: (a, b) => a === FIX && (b === HEAD || b === BASE) });
+      expect(check(body([finding({})]), "medium", onBase)).toHaveLength(1);
     });
   });
 

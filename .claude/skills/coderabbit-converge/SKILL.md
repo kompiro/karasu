@@ -186,7 +186,7 @@ node scripts/review/tier.ts same-change --from <最後にレビューされた�
 ## 終わり方
 
 PR 本文のローカルレビューの記録に、このラウンドまでの CodeRabbit の指摘と対応を足す（レビュアーは
-`coderabbit`。`docs/process.md`「ローカルレビューの記録」）。PushNotification ツールが使えれば 1 行で通知し、
+`coderabbit`、ラウンドの CLI の指摘は `cli`。`docs/process.md`「ローカルレビューの記録」）。PushNotification ツールが使えれば 1 行で通知し、
 最後のメッセージに次をまとめる。
 
 - 結果（`converged` / Minor だけのラウンドで終えた / 止まった理由）と PR の URL

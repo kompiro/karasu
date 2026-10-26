@@ -184,7 +184,9 @@ is required to contribute: a plain `git` / `pnpm` / `gh` workflow works.
    resolve it. What we ask you not to do is resolve a comment silently.
    CodeRabbit does not re-review on every push; once you have fixed a
    Critical or Major finding, post `@coderabbitai review` as a **top-level
-   PR comment** (it is ignored inside a thread reply).
+   PR comment** (it is ignored inside a thread reply). If no CodeRabbit
+   review appears a few minutes after the label is added, post
+   `@coderabbitai full review` the same way.
 6. Bring that round to a close before asking for human review: the
    maintainer reviews once no Critical or Major finding is left open, so
    their time goes to a converged diff. If a finding would change something
