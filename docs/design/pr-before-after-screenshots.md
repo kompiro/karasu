@@ -12,7 +12,7 @@
 
 この repo の PR はほとんどをコーディングエージェントが `gh` で作る。図の描画やアプリの UI が変わる PR では、差分のコードを読んでも見た目がどう変わったかは分からない。レビューする人は Cloudflare の preview を開くか、ブランチを手元に持ってくる必要がある。PR 本文に before/after の画像が 1 組あれば、変化をその場で判断できる。
 
-`gh` は 2.102 から `gh pr create` / `gh pr edit` に `--attach` を持つ。画像や動画を GitHub の添付ストレージにアップロードし、本文に書いた `![alt](./before.png)` をアップロード先の URL に書き換える。ブラウザでの操作は要らない。#3359 では、devcontainer の `gh auth login` で得た OAuth トークンで `gh issue comment --attach` を実行し、アップロードされた画像が repo のロゴとバイト単位で一致することを確かめた。
+`gh` は 2.99 から `gh pr create` / `gh pr edit` に `--attach` を持つ。画像や動画を GitHub の添付ストレージにアップロードし、本文に書いた `![alt](./before.png)` をアップロード先の URL に書き換える。ブラウザでの操作は要らない。#3359 では、devcontainer の `gh auth login` で得た OAuth トークンで `gh issue comment --attach` を実行し、アップロードされた画像が repo のロゴとバイト単位で一致することを確かめた。
 
 足りないのは 2 つ。
 
@@ -26,14 +26,14 @@
 | 描画 | `renderKrs(source, { diagramType, theme, styleSource })` が単一ファイルの `.krs` を SVG にする。複数ファイルのモデルは `compileProject` を直接使う。`diagramType` は `system` / `deploy` / `org` |
 | 画像化 | `capture([{ html }], { colorScheme })` が SVG を包んだ HTML を Chromium で PNG にする。Chromium は `packages/e2e` の Playwright のものを共有する |
 | 入力の候補 | `examples/` に `.krs` が 85 ファイル。複数ファイルのモデルは `index.krs` がエントリ（15 個、en / ja）で、`examples/en/feature-samples/` は単独で描画できるファイルが並ぶ |
-| 添付 | `--attach` は OAuth トークンか PAT が必要。GitHub App のトークン（Actions の `GITHUB_TOKEN` を含む）は拒否される（cli/cli#14309）。対象 repo への write 権限も必要 |
+| 添付 | OAuth トークンと PAT で添付できる。対象 repo への write 権限が必要。GitHub App のトークン（Actions の `GITHUB_TOKEN` を含む）は、`gh` 2.103.2 から CLI が一律には拒否せず、アップロード先が可否を決める。ただしアップロード先が App のトークンに 404 を返すという報告（cli/cli#14309）はまだ open で、この repo でも試していない |
 | PR の流れ | `docs/process.md` の手順 7 で `origin/main` を merge してから draft で PR を作る。draft の PR には `preview.yml` が走らない（ADR-2643） |
 | フック | `gh` はラッパー（ADR-3342）を通る。`gh pr ready` の後は PostToolUse フックが次の手順を促す（ADR-3333） |
 
 ## 制約・前提
 
 - 画像は repo にコミットしない。証拠は `reports/` に置き、main に入れない（ADR-2419）
-- 撮影と添付はローカルのセッションで行う。CI のトークンでは添付できない
+- 撮影と添付はローカルのセッションで行う。CI のトークンで添付できるかは確かめておらず、この設計の対象外とする
 - 画像の有無で PR を止めない。描画が変わらない PR や、描画の変化が要点でない PR にまで手間を足さない
 - **対象外**: VS Code の webview（ExTester が arm64 で動かない。必要なら #3355 のレコーダーを使う）、動画、ピクセル単位の比較（ADR-529 が見送った）
 
@@ -106,7 +106,7 @@
 
 #### 案 3-C: `gh pr create` の後に PostToolUse フックで促す
 
-`gh pr create` が PR の URL を出力したら、フックがブランチの差分を見る。`packages/core/src/` か `packages/app/src/` のテスト以外のファイルが変わっていて、本文に添付が無ければ、`pnpm pr:shots` を実行して `gh pr edit --attach` で添付するよう促す。止めはしない。
+`gh pr create` が PR の URL を出力したら、フックがブランチの差分を見る。`packages/core/src/` か `packages/app/src/` のテスト以外のファイル、または `examples/` が変わっていて、本文の `## Before / after` 節が埋まっていなければ、`pnpm pr:shots` を実行して `gh pr edit --attach` で添付するよう促す。止めはしない。
 
 **メリット**
 
@@ -145,7 +145,7 @@ before と after の差が、そのブランチの変更だけで決まること
    <!-- absent-path-next-line: a file this design creates (#3359) -->
 2. **フック**（`scripts/pr-shots/reminder.sh`、`.claude/settings.json` の PostToolUse / PostToolUseFailure の Bash に足す）
    - `gh pr create` の出力にある PR の URL から PR を特定する（ADR-3333 と同じく、コマンド文字列ではなく出力を見る）
-   - `gh pr diff --name-only` に `packages/core/src/` か `packages/app/src/` のテスト以外のファイルがあり、本文に `user-attachments` が無いときだけ、additionalContext を返す
+   - `gh pr diff --name-only` に `packages/core/src/` か `packages/app/src/` のテスト以外のファイル、または `examples/` のファイルがある。かつ、本文の `## Before / after` 節が埋まっていない。この 2 つがそろったときだけ、additionalContext を返す。「埋まっている」は、節の中に `user-attachments` の画像か、`pr:shots` が出力する「描画に変化なし」の 1 行があること。本文の別の場所にある無関係な画像では、促すのをやめない
    - 分からないときは何も出さない。Bash の呼び出しを壊さない
 3. **文書**
    - `docs/process.md` の PR ワークフロー手順 10 に 1 行足す。「描画や UI が変わる PR は、本文に before/after を添付する。フックが促す。仕組みは ADR-3359」の形にし、スクリプトのパスは書かない
@@ -169,4 +169,4 @@ before と after の差が、そのブランチの変更だけで決まること
 - **light と dark のどちらで撮るか**: まず light だけにする。テーマに関わる変更で必要なら `--theme` を足す
 - **drill-down の階層**: 各ビューのルートだけを撮る。深い階層の変化は `--file` と専用の `.krs` で撮る
 - **動画**: 操作の変化（hover、ナビゲーション）を見せたい場合は #3355 のレコーダーを使う。この設計には入れない
-- **CI での撮影**: cli/cli#14309 が解決して App のトークンでも添付できるようになったら、改めて検討する
+- **CI での撮影**: App のトークンで添付できることが確かめられたら（cli/cli#14309 の解決後）、改めて検討する
