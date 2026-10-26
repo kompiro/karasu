@@ -273,6 +273,34 @@ describe("classifyChange", () => {
       expect(tierOf(modified(ADR, { before, after, hunks }))).toBe("low");
     });
 
+    it("is Low when the superseded status line links the new ADR, as most ADRs write it", () => {
+      const line =
+        "- **ステータス**: Superseded by [ADR-3286](3286-risk-based-review-tiers.md)（note）";
+      const after = before.replace("- **ステータス**: 決定済み", line);
+      const hunks = [
+        { oldStart: 8, removed: ["- **ステータス**: 決定済み"], newStart: 8, added: [line] },
+      ];
+      expect(tierOf(modified(ADR, { before, after, hunks }))).toBe("low");
+      // A link to something other than an ADR file is not the superseded form.
+      const elsewhere = "- **ステータス**: Superseded by [ADR-3286](https://example.com/x)";
+      expect(
+        tierOf(
+          modified(ADR, {
+            before,
+            after: before.replace("- **ステータス**: 決定済み", elsewhere),
+            hunks: [
+              {
+                oldStart: 8,
+                removed: ["- **ステータス**: 決定済み"],
+                newStart: 8,
+                added: [elsewhere],
+              },
+            ],
+          }),
+        ),
+      ).toBe("medium");
+    });
+
     it("is Medium when an existing ADR's prose changes (ADR-2687 keeps it immutable)", () => {
       const after = before.replace("Body prose.", "Rewritten prose.");
       const hunks = [

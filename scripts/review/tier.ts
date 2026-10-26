@@ -357,7 +357,9 @@ function frontmatterRange(text: string): [number, number] | null {
 }
 
 const STATUS_LINE = /^- \*\*ステータス\*\*[:：]/;
-const SUPERSEDED_STATUS = /^- \*\*ステータス\*\*[:：]\s*Superseded by ADR-\d+/;
+// "Superseded by ADR-<n>" or, as most ADRs write it, "Superseded by [ADR-<n>](<file>)".
+const SUPERSEDED_STATUS =
+  /^- \*\*ステータス\*\*[:：]\s*Superseded by (?:ADR-\d+|\[ADR-\d+\]\(\d+-[^)\s]+\.md\))/;
 
 /**
  * An edit to an existing ADR is Low only when it stays where `.claude/rules/adr.md`
