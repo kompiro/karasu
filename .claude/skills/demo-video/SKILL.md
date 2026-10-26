@@ -16,22 +16,23 @@ description: >
 
 終わったとき、次が成り立っている。
 
-- 頼まれたハイライトと言語の組ごとに、メインのチェックアウトの `dist/<scenario>.<lang>.mp4`
-  （1920×1080、H.264、30fps、音声なし）がある。冒頭と末尾にタイトルカード、各場面に
-  キャプションが付いている
-- 同じ場所の `dist/<scenario>.<lang>.contact.png`（3 秒ごとのコマ割り）を自分の目で見て、
-  各場面が意図どおりに映っていることを確かめた。確かめた結果（直したこと・残した違和感）を
-  ユーザーに伝えた
+- 頼まれたハイライトと言語の組ごとに、メインのチェックアウトの `dist/demo-video/` に次の 3 つがある
+  - `<scenario>.<lang>.mp4`：1920×1080、H.264、30fps、音声なし。冒頭と末尾にタイトルカード、
+    各場面にキャプションが付いている
+  - `<scenario>.<lang>.thumbnail.png`：1920×1080。左にタイトル、右に画面の 1 コマ
+  - `<scenario>.<lang>.contact.png`：3 秒ごとのコマ割り（確認用）
+- contact sheet とサムネイルを自分の目で見て、各場面が意図どおりに映っていることを確かめた。
+  確かめた結果（直したこと・残した違和感）をユーザーに伝えた
 - 新しく書いたシナリオは `scripts/demo-video/scenarios/` に入り、PR に乗っている
 
 確かめ方:
 
 ```bash
-ls -la "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/dist/"*.mp4
+ls -la "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/dist/demo-video/"
 ffprobe -v error -show_entries format=duration:stream=codec_name,width,height -of csv=p=0 <mp4>
 ```
 
-contact sheet は Read で画像として開いて見る。動画の中身を見ないまま「できた」と報告しない。
+contact sheet とサムネイルは Read で画像として開いて見る。動画の中身を見ないまま「できた」と報告しない。
 
 ## 仕組み
 
@@ -42,7 +43,10 @@ contact sheet は Read で画像として開いて見る。動画の中身を見
 2. `fixtures/<fixture>/<lang>/` のモデルを一時ディレクトリにコピーする
 3. Xvfb（`:99`、1920×1080）を立て、シナリオが app か VS Code を実際に操作するあいだ、
    ffmpeg の x11grab で画面全体を録る。ポインタは xdotool で本物を動かす
-4. タイトルカードを PNG にして、録画の前後に fade でつなぎ、`dist/` に書く
+4. タイトルカードを PNG にして、録画の前後に fade でつなぎ、`dist/demo-video/` に書く
+5. シナリオが `ctx.markThumbnail(page)` で撮った 1 コマ（キャプションとコードパネルは
+   その撮影のときだけ隠すので、動画には影響しない）にタイトルを添えてサムネイルにする。
+   呼ばなければ録画の中ほどのコマを使う（キャプション入り）
 
 | ファイル | 役割 |
 | --- | --- |
@@ -50,7 +54,7 @@ contact sheet は Read で画像として開いて見る。動画の中身を見
 | `lib/overlay.mts` | キャプション（左下）と編集内容を見せるコードパネル（右上） |
 | `lib/browser.mts` | 画面いっぱいのキオスク Chromium（app 用）と画面座標の変換 |
 | `lib/vscode.mts` | VS Code の入手・CDP での起動・webview 内の座標変換・エディタ操作 |
-| `lib/compose.mts` | タイトルカード・最終 MP4・contact sheet |
+| `lib/compose.mts` | タイトルカード・サムネイル・最終 MP4・contact sheet |
 | `scenarios/*.mts` | 1 ハイライト = 1 ファイル。言語別キャプションをファイル内の `T` に持つ |
 | `fixtures/<name>/{en,ja}/` | デモ用モデル。言語ごとにラベルを訳したもの |
 
@@ -70,14 +74,22 @@ README 冒頭の GIF は別の仕組み（`scripts/readme-demo/`）で、こち�
 コピーして書き換える。モデルが要るなら `fixtures/` に en と ja の両方を足し、
 `node packages/cli/dist/index.js check <file>` が通ることを確かめる。
 
+機能が一番よく伝わる場面で `await ctx.markThumbnail(<page>)` を 1 回呼ぶ（serve なら app の
+page、VS Code ならワークベンチの window）。撮る前にポインタを画面の隅へ退避させるので、
+ポインタで要素を強調している最中には呼ばない。
+
 ### 2. ビルドする
 
 シナリオの `requires` に並んだ成果物を作る。worktree で作業しているならその worktree で。
 
 ```bash
 pnpm --filter ./packages/cli run build && pnpm --filter ./packages/cli run build:app   # serve の場面
-pnpm --filter karasu-vscode run build                                 # VS Code の場面
+pnpm --filter @karasu-tools/core run build && pnpm --filter @karasu-tools/i18n run build \
+  && pnpm --filter karasu-vscode run build                                           # VS Code の場面
 ```
+
+作ったばかりの worktree では core と i18n のビルド成果物がまだ無く、VS Code 拡張のビルドが
+`Could not resolve "@karasu-tools/core"` で止まる。そのため先に core と i18n をビルドする。
 
 ### 3. 録る
 
@@ -96,12 +108,15 @@ pnpm demo-video:record <scenario> --lang ja
 
 ### 4. 見る
 
-`dist/<scenario>.<lang>.contact.png` を開き、各コマについて次を見る。気になるコマは
+`dist/demo-video/<scenario>.<lang>.contact.png` を開き、各コマについて次を見る。気になるコマは
 `ffmpeg -ss <秒> -i <mp4> -frames:v 1 <png>` で原寸を取り出して見る。
 
 - キャプションやコードパネルが図の要点を隠していない
 - クリックやジャンプが狙った要素に当たっている（違う要素の右クリックメニューが出ていない）
 - 図が画面からはみ出していない（はみ出すならホイールでズームアウトする手順を足す）
+
+サムネイル（`<scenario>.<lang>.thumbnail.png`）も開き、右の画面が機能を表していること、
+左のタイトルが折り返しで崩れていないことを見る。
 
 失敗して止まったときは、OS の一時ディレクトリ（通常 `/tmp/karasu-demo-video/<scenario>.<lang>/`）に
 途中までの `raw.mp4` とその `raw.contact.png`、VS Code なら `vscode.log` が残る。
@@ -137,6 +152,6 @@ VS Code の操作に ExTester を使わないのは、arm64 の devcontainer で
 
 ## 渡し方
 
-最終メッセージに、言語ごとの MP4 の絶対パス・長さ・サイズを表で示す。あわせて、
+最終メッセージに、言語ごとの MP4 とサムネイルの絶対パス、MP4 の長さ・サイズを表で示す。あわせて、
 contact sheet を見て気づいた点（UI の言語が混ざる、開発用ホストの表示など）を書く。
 動画を外部へアップロードするのはユーザーが決めることなので、こちらからは行わない。

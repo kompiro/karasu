@@ -32,6 +32,16 @@ export const OVERLAY_CSS = `
 #krs-demo-title .k{font-size:22px;letter-spacing:.3em;opacity:.7;margin-bottom:18px}
 #krs-demo-title .t{font-size:48px;font-weight:800;text-align:center;line-height:1.35;max-width:90%}
 #krs-demo-title .s{font-size:24px;opacity:.85;margin-top:22px;text-align:center;line-height:1.6;max-width:85%}
+#krs-demo-thumb{position:fixed;inset:0;z-index:2147483647;background:linear-gradient(135deg,#0f172a,#1e3a8a);
+ font-family:"Noto Sans","Noto Sans CJK JP",sans-serif;color:#fff}
+#krs-demo-thumb .text{position:absolute;left:56px;top:50%;transform:translateY(-50%);width:33%}
+#krs-demo-thumb .shot{position:absolute;right:48px;top:50%;transform:translateY(-50%);width:60%;aspect-ratio:16/9;
+ background:#fff center/cover no-repeat;border-radius:14px;border:1px solid rgba(255,255,255,.18);
+ box-shadow:0 24px 60px rgba(0,0,0,.45)}
+#krs-demo-thumb .k{font-size:18px;letter-spacing:.3em;opacity:.75;margin-bottom:14px}
+#krs-demo-thumb .t{font-size:46px;font-weight:800;line-height:1.25}
+#krs-demo-thumb .s{font-size:20px;opacity:.85;margin-top:18px;line-height:1.5}
+#krs-demo-thumb .t,#krs-demo-thumb .s{text-wrap:balance;word-break:auto-phrase}
 `;
 
 async function ensureStyle(target: Target): Promise<void> {
@@ -135,6 +145,53 @@ export async function codePanel(
       el.style.opacity = "1";
     },
     [file, lines, note] as const,
+  );
+}
+
+/** Hides the caption and code panel; passed as the `style` of a thumbnail screenshot. */
+export const HIDE_OVERLAYS_CSS = "#krs-demo-cap,#krs-demo-code{visibility:hidden !important}";
+
+/**
+ * Fills the page with a thumbnail: the card's text on the left and `frameUrl` (a data
+ * URL of a frame) as a framed screenshot on the right, so the text covers none of the
+ * screen. Used by compose.mts on a blank page.
+ */
+export async function thumbnailCard(
+  target: Target,
+  lang: string,
+  frameUrl: string,
+  kicker: string,
+  title: string,
+  sub: string,
+): Promise<void> {
+  await ensureStyle(target);
+  await target.evaluate(
+    ([language, url, k, t, s]) => {
+      const el = document.createElement("div");
+      el.id = "krs-demo-thumb";
+      // word-break: auto-phrase only breaks at Japanese phrase boundaries under lang="ja";
+      // without it the narrow title column splits words mid-phrase.
+      el.lang = language;
+      const band = document.createElement("div");
+      band.className = "text";
+      const shot = document.createElement("div");
+      shot.className = "shot";
+      shot.style.backgroundImage = `url("${url}")`;
+      for (const [cls, value] of [
+        ["k", k],
+        ["t", t],
+        ["s", s],
+      ] as const) {
+        if (!value) continue;
+        const d = document.createElement("div");
+        d.className = cls;
+        d.textContent = value;
+        band.appendChild(d);
+      }
+      el.append(band, shot);
+      document.body.appendChild(el);
+    },
+    [lang, frameUrl, kicker, title, sub] as const,
   );
 }
 
