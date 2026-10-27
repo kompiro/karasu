@@ -82,9 +82,9 @@
 
 候補を次の順に並べ、`system` / `deploy` / `org` のビューごとに base と HEAD で描画し、SVG の文字列が違う組を集める。
 
-1. PR の差分に含まれる `docs/acceptance/*.md` の ` ```krs ` fence（` ```krs fragment ` / ` ```krs invalid ` は除く）
-2. `examples/` のエントリになる `.krs`（同じディレクトリのどの `.krs` からも `@import` されていないファイル）
-3. エージェントが `--file` で指定した `.krs`
+1. エージェントが `--file` で指定した `.krs`（明示した入力を自動の候補より先にする）
+2. PR の差分に含まれる `docs/acceptance/*.md` の ` ```krs ` fence（` ```krs fragment ` / ` ```krs invalid ` は除く）
+3. `examples/` のエントリになる `.krs`（同じディレクトリのどの `.krs` からも `@import` されていないファイル。HEAD に無いファイルは候補にしない）
 
 画像にするのは、この順で最初に見つかった 2 組だけにする。残りの組は名前だけを本文に一覧にする。候補はすべて最後まで描画する（描画は安いので途中で止める必要がない）。
 
@@ -98,7 +98,7 @@
 **デメリット**
 
 - 描画が非決定的だと、変わっていない図まで撮ってしまう。実装時に、同じコミットを 2 回描画して一致することを確かめる
-- `examples/` に現れない描画の変化は拾えない。その場合は `.krs` を指定する
+- 受け入れテストの fence にも `examples/` にも現れない描画の変化は拾えない。その場合は `--file` で `.krs` を指定する
 
 ### 論点 3: どうやって撮らせるか
 
@@ -146,7 +146,7 @@ before と after の差が、そのブランチの変更だけで決まること
 1. **`pnpm pr:shots`**（`scripts/pr-shots/shots.ts`。PoC 用の `scripts/report/` とは分け、その `capture` を import して使う）
    - base は `origin/main` との merge-base。`--base <ref>` で変えられる
    - 一時 worktree を `.claude/worktrees/pr-shots-base-<sha>` に detached で作り、install して、終了時（失敗時も）に消す。ブランチを持たない一時の checkout なので、`git worktree list` に残さない
-   - 候補（受け入れテストの fence → `examples/` のエントリ → `--file`）を `system` / `deploy` / `org` で描画し、base と HEAD の SVG を比べる
+   - 候補（`--file` → 受け入れテストの fence → `examples/` のエントリ）を `system` / `deploy` / `org` で描画し、base と HEAD の SVG を比べる
    - 入力の文字列: 受け入れテストの fence と `--file` は、HEAD 側の文字列を両側で使い、描画するコードだけを替える。`examples/` はそれぞれの側のファイルを使う（PR が example 自体を変えた場合も、その変化が見える）
    - base 側の描画が例外か error の診断で失敗したら（新しい構文の fence など）、その組は after だけを画像にし、「before は描画できない」と添える。黙って誤った画像は出さない
    - 変わった組のうち、候補の順で最初の 2 組を PNG にして `reports/pr-shots/<branch の / を - にした名前>/` に `<name>.before.png` / `<name>.after.png` として書く。残りの組は名前だけを一覧にする。light で撮るので、描画には `theme: "light"` を、`capture` には `colorScheme: "light"` を明示して渡す（`capture` の既定は dark）
@@ -164,7 +164,7 @@ before と after の差が、そのブランチの変更だけで決まること
    - `reports/README.md`「Capturing a real "before"」に `pnpm pr:shots` を足す
 4. **テスト**
    - `pr-shots` の比較と出力（一時 repo と小さな `.krs` で、変化あり・なしの両方）
-   - 候補の順序と上限（受け入れテストの fence が examples より先に選ばれる。3 組以上変わっても画像は 2 組で、残りは一覧に出る。`fragment` / `invalid` の fence は候補にならない。base で描画できない fence は after だけになる）
+   - 候補の順序と上限（`--file`、受け入れテストの fence、examples の順に選ばれる。3 組以上変わっても画像は 2 組で、残りは一覧に出る。`fragment` / `invalid` の fence は候補にならない。base で描画できない fence は after だけになる）
    - 同じコミットを 2 回描画して SVG が一致すること（非決定性があれば先に直すか、比較の前に正規化する）
    - フック（`converge-after-ready.test.ts` と同じく、偽の gh で、促す・促さないの両方）
 5. AT: 新規。人間の確認が必要な項目は「描画が変わる実 PR で、本文の before/after が GitHub 上で表示される」の 1 件だけで、PR の checklist で確かめる
