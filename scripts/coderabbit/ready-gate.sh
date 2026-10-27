@@ -16,8 +16,7 @@
 # Lets the call through when:
 # - KARASU_LOCAL_REVIEW_SKIPPED holds a non-empty reason, the deliberate skip
 #   for when the CLI cannot run here;
-# - the PR opted out of CodeRabbit (skip-coderabbit / adr-auto-merge label, or
-#   the ignore command in its body), or is not a draft;
+# - the PR is not a draft (every tier records the CLI run, #3286);
 # - --undo, or --repo / -R (the local checkout may not hold that repository);
 # - anything cannot be determined (gh fails, unknown CLI record format). The
 #   gate must never block work because of its own failure.
@@ -107,14 +106,9 @@ gh_bin=${READY_GATE_GH:-gh}
 limit=()
 command -v timeout >/dev/null 2>&1 && limit=(timeout 15)
 view=$(${limit[@]+"${limit[@]}"} "$gh_bin" pr view ${selector:+"$selector"} \
-  --json number,isDraft,labels,body,headRefOid,baseRefName 2>/dev/null) || exit 0
+  --json number,isDraft,headRefOid,baseRefName 2>/dev/null) || exit 0
 
 [ "$(jq -r '.isDraft' <<<"$view")" = "true" ] || exit 0
-opted_out=$(jq -r '
-  ([.labels[].name] | any(. == "skip-coderabbit" or . == "adr-auto-merge"))
-  or ((.body // "") | contains("@coderabbitai ignore"))
-' <<<"$view")
-[ "$opted_out" = "true" ] && exit 0
 
 number=$(jq -r '.number' <<<"$view")
 head=$(jq -r '.headRefOid' <<<"$view")

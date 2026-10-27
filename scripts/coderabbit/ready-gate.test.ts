@@ -237,16 +237,14 @@ describe("gh wrapper: gh pr ready", () => {
     expect(reachedRealGh(gh, "pr ready 12")).toBe(false);
   });
 
-  it.each(["skip-coderabbit", "adr-auto-merge"])("runs the ready for a PR labelled %s", (label) => {
-    const gh = fakeGh({ ...DRAFT, labels: [{ name: label }] });
-    expect(run("gh pr ready 12", gh, reviews()).status).toBe(0);
-    expect(reachedRealGh(gh, "pr ready 12")).toBe(true);
-  });
-
-  it("runs the ready for a PR whose body holds the ignore command", () => {
-    const gh = fakeGh({ ...DRAFT, body: "Typo.\n\n@coderabbitai ignore\n" });
-    expect(run("gh pr ready 12", gh, reviews()).status).toBe(0);
-  });
+  it.each(["skip-coderabbit", "adr-auto-merge", "risk: low"])(
+    "refuses a PR labelled %s too: every tier records the CLI run (#3286)",
+    (label) => {
+      const gh = fakeGh({ ...DRAFT, labels: [{ name: label }] });
+      expect(run("gh pr ready 12", gh, reviews()).stderr).toContain("gh pr ready was refused");
+      expect(reachedRealGh(gh, "pr ready 12")).toBe(false);
+    },
+  );
 
   it("runs the ready for a PR that is not a draft", () => {
     expect(run("gh pr ready 12", fakeGh({ ...DRAFT, isDraft: false }), reviews()).status).toBe(0);

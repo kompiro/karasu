@@ -8,7 +8,7 @@ topic: build
 authors: [kompiro]
 related_to: [ADR-2949, ADR-2898, ADR-2716]
 assumptions:
-  - "grep: .coderabbit.yaml :: !skip-coderabbit"
+  - ".coderabbit.yaml の !skip-coderabbit はこの ADR の時点の設定。#3286 が auto_review.labels を risk: high / risk: design に替えたので現在の設定とは一致しない"
   - "grep: docs/process.md :: skip-coderabbit"
 ---
 
