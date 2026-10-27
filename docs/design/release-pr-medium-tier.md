@@ -6,7 +6,7 @@
   - 引き金 Issue: [#3350](https://github.com/kompiro/karasu/issues/3350)
   - PR: [#3354](https://github.com/kompiro/karasu/pull/3354)
   - 観測した PR: [#3349](https://github.com/kompiro/karasu/pull/3349)（2026-10-25 のトレイン。rate limit でレビューされず、`CodeRabbit` のステータスは pass）
-  - リスク段階: ADR-3286（昇格 PR [#3383](https://github.com/kompiro/karasu/pull/3383)。規則の要約は [docs/process.md「リスク段階」](../process.md)。本設計はその分類器に規則を 1 つ足す）
+  - リスク段階: [ADR-3286](../adr/3286-risk-based-review-tiers.md)（本設計はその分類器に規則を 1 つ足す）
   - 関連 ADR: [ADR-2922](../adr/2922-monthly-release-train.md)（月次トレイン）、[ADR-1370](../adr/1370-release-flow-actions-driven.md)（リリース PR は人が開き、CHANGELOG を読んでマージする）、[ADR-2331](../adr/2331-adr-automerge-scope.md)（差分の性質で判定する）
   - 関連 TPL: [TPL-3286](../test-perspectives/TPL-3286-merge-eligibility-judged-on-final-diff.md)（判定は最終の差分で行い、規則に当たらない入力を厳しい側に倒す）、[TPL-2786](../test-perspectives/TPL-2786-guard-failure-must-fail-the-run.md)（判定できないときは通過ではなく失敗にする）
   - コード: `scripts/review/tier.ts`, `scripts/release/train.mts`, `.github/workflows/release-prepare.yml`
