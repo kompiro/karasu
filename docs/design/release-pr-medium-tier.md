@@ -54,11 +54,11 @@ ADR-3286（2026-10-27）で前提が変わった。
 2. `.changeset/*.md` の削除が 1 つ以上ある
 3. `CHANGELOG.md` の hunk はすべて行を足すだけ（消す行が無い）。`changeset version` は既存の項目を書き換えない
 4. `CHANGELOG.md` が変わったパッケージの集合と、`version` が変わったパッケージの集合が一致する
-5. `CHANGELOG.md` に足した行が、削除した changeset から作られる行**だけ**でできていて、過不足が無い。削除した changeset の中身は、分類器が merge-base 側から読む
-   - 足してよい行は、版の見出し（`## <その package.json の新しい version>`）、種類の見出し（`### Major Changes` / `### Minor Changes` / `### Patch Changes`）、空行、そして項目の行だけ
+5. 削除した各 changeset が frontmatter で少なくとも 1 つのパッケージを挙げ、`CHANGELOG.md` に足した行が、`changeset version` の出力**だけ**でできていて、過不足が無い。削除した changeset の中身は、分類器が merge-base 側から読む
+   - 足してよい行は、版の見出し（`## <その package.json の新しい version>`）、種類の見出し（`### Major Changes` / `### Minor Changes` / `### Patch Changes`）、空行、changeset の項目の行、依存の更新の行だけ
    - 項目は `.changeset/changelog.cjs` の形（`- <7〜40 桁の hex>: <要約の 1 行目>` と、要約の続きの行を 2 文字字下げしたもの）で、要約は changeset の本文と一字一句一致する
    - 各 changeset の項目は、その changeset が frontmatter で挙げたパッケージの `CHANGELOG.md` にだけ、ちょうど 1 回ずつ現れる。項目の数は「changeset と、それが挙げたパッケージ」の組の数と一致する。手で足した項目や、別のパッケージの CHANGELOG に入った項目があれば、規則は効かない
-   - `changeset version` が workspace 内の依存の更新で足す行（`Updated dependencies`）は、依存がすべて `workspace:*` なので現れない。現れたら規則に当たらない入力として High に倒す（TPL-3286）
+   - 依存の更新の行は、`.changeset/config.json` の `updateInternalDependencies: "patch"` によって、版が上がった workspace 内のパッケージに依存するパッケージの CHANGELOG に足される（#3349 では `karasu-skills@0.2.1` や `@karasu-tools/core@0.4.1` が並んだ）。形は `- Updated dependencies:` の行と、それに続く `  - <name>@<version>` の行（`changelog.cjs` の `getDependencyReleaseLine`）。各 `<name>` は、その CHANGELOG のパッケージが `package.json` で依存している workspace 内のパッケージで、`<version>` は head 側のそのパッケージの `version` と一致すること。依存の更新だけで版が上がったパッケージ（changeset の項目を持たない）も、版の見出しと依存の更新の行だけなら規則に当たる
 6. どのファイルにもモードの変更とバイナリの変更が無い
 7. 作成者が信頼リストにいる（いなければ従来どおり High）
 
@@ -107,7 +107,8 @@ Low ではなく Medium にするのは、ADR-1370 のとおり人が版と CHAN
 - [TPL-3286](../test-perspectives/TPL-3286-merge-eligibility-judged-on-final-diff.md): 規則は最終の差分にだけ効き、規則に当たらない変更が混ざれば通常の段階（High）に戻る。テストで、生成物だけの差分が Medium になることと、次のどれもが Medium にならないことを固める
   - `version` 以外のキーの変更、lockfile の変更、`.changeset/config.json` の変更、ほかのファイルが混ざった差分
   - changeset の削除が無い差分、CHANGELOG の行を消す・書き換える差分、削除した changeset の要約が CHANGELOG に無い差分
-  - 正しい項目に加えて手で書いた項目を足した差分、項目が別のパッケージの CHANGELOG に入った差分、同じ項目が 2 回入った差分
+  - 正しい項目に加えて手で書いた項目を足した差分、項目が別のパッケージの CHANGELOG に入った差分、同じ項目が 2 回入った差分、パッケージを挙げない changeset の削除
+  - 依存の更新の行で、依存していないパッケージや head 側の `version` と違う版を挙げた差分（逆に、#3349 のような正しい依存の更新の行は Medium のまま）
   - `version` だけが変わって CHANGELOG が変わらないパッケージ（またはその逆）がある差分
   - モードの変更・バイナリの変更がある差分
 - [TPL-2786](../test-perspectives/TPL-2786-guard-failure-must-fail-the-run.md): Prepare が Issue の本文を書き直せなかったら、リンクの無い Issue が残るのでジョブを失敗させる
