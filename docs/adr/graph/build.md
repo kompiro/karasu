@@ -128,6 +128,7 @@ flowchart TD
     ADR_3246["ADR-3246<br/>`@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast..."]
     ADR_3257["ADR-3257<br/>app の E2E suite の step 境界を 25 分、job 予算を 45 分に上げる"]
     ADR_3271["ADR-3271<br/>PR と Issue はマージで同時に閉じ、マージ後にしか確かめられない項目は別の Issue..."]
+    ADR_3286["ADR-3286<br/>PR のレビューの深さとマージの経路を、変更から決めたリスク段階で変える"]
     ADR_3304["ADR-3304<br/>Dependabot トリアージ 2026-10-19：npm 11 件をそのまま採用し、gh..."]
     ADR_3326["ADR-3326<br/>draft を外す前に CodeRabbit CLI を base ブランチとの差分へ 1 回..."]
     ADR_3333["ADR-3333<br/>Claude が gh pr ready を実行した直後に、PostToolUse フックで ..."]
@@ -186,6 +187,8 @@ flowchart TD
   ADR_3117 -.supersedes.-> ADR_2949
   ADR_3246 -.supersedes.-> ADR_1338
   ADR_3257 -.supersedes.-> ADR_2807
+  ADR_3286 -.supersedes.-> ADR_2716
+  ADR_3286 -.supersedes.-> ADR_3117
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -281,7 +284,7 @@ flowchart TD
   class ADR_2658 accepted
   class ADR_2671 accepted
   class ADR_2693 accepted
-  class ADR_2716 accepted
+  class ADR_2716 superseded
   class ADR_2753 accepted
   class ADR_2773 accepted
   class ADR_2786 accepted
@@ -306,7 +309,7 @@ flowchart TD
   class ADR_3052 accepted
   class ADR_3069 accepted
   class ADR_3077 accepted
-  class ADR_3117 accepted
+  class ADR_3117 superseded
   class ADR_3138 accepted
   class ADR_3162 accepted
   class ADR_3196 accepted
@@ -315,6 +318,7 @@ flowchart TD
   class ADR_3246 accepted
   class ADR_3257 accepted
   class ADR_3271 accepted
+  class ADR_3286 accepted
   class ADR_3304 accepted
   class ADR_3326 accepted
   class ADR_3333 accepted

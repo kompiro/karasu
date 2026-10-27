@@ -174,7 +174,7 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
   使わない。CI の途中で有効にすれば Review tier が落とすが、CI が通った後に有効にした PR はそのままマージされ、check では
   止められない
 - `skip-coderabbit` ラベルと本文の ignore コマンドは使わない。Medium 以下には CodeRabbit が走らないので、外す必要がない
-- 仕組みと却下した案は [Design Doc](design/risk-based-review-tiers.md)
+- 仕組みと却下した案は [ADR-3286](adr/3286-risk-based-review-tiers.md)
 
 #### 指摘の重大度と対応
 

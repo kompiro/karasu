@@ -220,7 +220,10 @@ const scenario: Scenario = {
         join(ctx.model, "theme.krs.style"),
         "service {\n  background-color: #047857;\n  color: #D1FAE5;\n}\n",
       );
-      await sleep(4500);
+      await sleep(2500);
+      // Thumbnail: the root view with the imported services, the new DB and the new colors.
+      await ctx.markThumbnail(p);
+      await sleep(2000);
 
       // 4. drill down, then edit the import: the view stays
       await codePanel(p, "");

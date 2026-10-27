@@ -1,5 +1,6 @@
 // What a scenario file exports, and what record.mts hands it.
 
+import type { Page } from "@playwright/test";
 import type { Card } from "./compose.mts";
 
 export type Lang = "en" | "ja";
@@ -23,6 +24,14 @@ export interface ScenarioContext {
    * in the video. record.mts also stops it if `run` returns without calling this.
    */
   stopRecording(): Promise<void>;
+  /**
+   * Captures the thumbnail frame from `page` now: the app or VS Code window as it is,
+   * without the caption and code panel overlays (hidden for the screenshot only, so
+   * the video is unaffected). It parks the pointer first, which the video does show.
+   * Call it once, on the scene that best shows the feature.
+   * Without a call, the middle frame of the recording is used, overlays included.
+   */
+  markThumbnail(page: Page): Promise<void>;
 }
 
 export interface Scenario {

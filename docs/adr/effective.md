@@ -155,7 +155,6 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2658](2658-gh-aw-dependency-automation.md) — 依存更新トリアージの下ごしらえを gh-aw の scheduled workflow に任せる
 - [ADR-2671](2671-dependabot-triage-2026-08-31.md) — Dependabot トリアージ 2026-08-31 — exact peer は枠ではなく group で結ぶ
 - [ADR-2693](2693-dependabot-security-2026-09-03.md) — Dependabot security alert 2026-09-03（`fast-uri` / `qs` の override floor が脆弱範囲の内側だった。floor は「選ばれない」ではなく「届かない」を作る道具である）
-- [ADR-2716](2716-coderabbit-request-changes-workflow.md) — CodeRabbit のレビューを request changes workflow に移す
 - [ADR-2753](2753-dependabot-triage-2026-09-07.md) — Dependabot トリアージ 2026-09-07 — 生成物への部分編集は却下し、再生成に畳む
 - [ADR-2773](2773-dependabot-triage-2026-09-08.md) — Dependabot トリアージ 2026-09-08 — repo 側の宣言が bot の届かない所にある 2 件
 - [ADR-2786](2786-threat-detection-fail-closed.md) — 安全網が結論を出せない回は run ごと失敗させ、detection のモデルを pin する
@@ -175,7 +174,6 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3052](3052-review-branch-diff-before-draft-pr.md) — /engineering:code-review は draft PR を作る前に base ブランチとの差分へ当て、CodeRabbit の初回レビューは ready にした時点の 1 回にする
 - [ADR-3069](3069-dependabot-triage-2026-10-05.md) — Dependabot トリアージ 2026-10-05：mocha 12 を含む 8 件を採用し、gh-aw は正式版 v0.89.21 で再生成し、@types/vscode は追随方針の見直し（#3070）に回して close する
 - [ADR-3077](3077-dependabot-security-2026-10-06.md) — Dependabot security alert 2026-10-06（transitive 5 件を override で解消し、修正版の無い v6 系 postcss-selector-parser は postcss-nested を 7 に上げて逃がす）
-- [ADR-3117](3117-coderabbit-ignore-command-for-skip.md) — CodeRabbit から外す PR は PR 本文の ignore コマンドで外し、ラベルは外した PR の記録として残す
 - [ADR-3138](3138-serve-app-without-monaco.md) — `karasu serve` の app build は専用 entry から始め、Monaco を含めない
 - [ADR-3162](3162-serve-share-hosted-links.md) — karasu serve の Share は、公開版 app を指すリンクで出す
 - [ADR-3196](3196-dependabot-triage-2026-10-14.md) — Dependabot トリアージ 2026-10-14：npm 6 件を採用し、Radix は 4 件を揃える差し替え PR、actions/* は gh-aw の生成物を除く差し替え PR で入れ、download-artifact と gh-aw-actions は却下する
@@ -184,6 +182,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3246](3246-drop-overrides-left-by-vsce-4.md) — `@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast-uri` / `form-data` / `linkify-it` / `markdown-it`）を外す
 - [ADR-3257](3257-e2e-step-bound-follows-suite-growth.md) — app の E2E suite の step 境界を 25 分、job 予算を 45 分に上げる
 - [ADR-3271](3271-close-issue-with-pr.md) — PR と Issue はマージで同時に閉じ、マージ後にしか確かめられない項目は別の Issue にする
+- [ADR-3286](3286-risk-based-review-tiers.md) — PR のレビューの深さとマージの経路を、変更から決めたリスク段階で変える
 - [ADR-3304](3304-dependabot-triage-2026-10-19.md) — Dependabot トリアージ 2026-10-19：npm 11 件をそのまま採用し、gh-aw-actions は却下する。lefthook 2.2.2 の手動 publish は採用可と判断する
 - [ADR-3326](3326-coderabbit-cli-once-before-ready.md) — draft を外す前に CodeRabbit CLI を base ブランチとの差分へ 1 回だけ当て、指摘 0 件までは回さない
 - [ADR-3333](3333-converge-after-ready-hook.md) — Claude が gh pr ready を実行した直後に、PostToolUse フックで /coderabbit-converge へ引き継ぐ

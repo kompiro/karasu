@@ -1,7 +1,8 @@
 ---
 id: ADR-3117
 title: CodeRabbit から外す PR は PR 本文の ignore コマンドで外し、ラベルは外した PR の記録として残す
-status: accepted
+status: superseded
+superseded_by: ADR-3286
 date: 2026-10-11
 topic: build
 authors: [kompiro]
@@ -20,7 +21,7 @@ assumptions:
 # ADR-3117: CodeRabbit から外す PR は PR 本文の ignore コマンドで外し、ラベルは外した PR の記録として残す
 
 - **日付**: 2026-10-11
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by [ADR-3286](3286-risk-based-review-tiers.md)（Medium 以下には CodeRabbit が走らなくなり、外す仕組みが要らなくなった）
 - **関連**:
   - Issue [#3117](https://github.com/kompiro/karasu/issues/3117)
   - [ADR-3011](3011-skip-coderabbit-label.md)（小さな PR をラベルで外す。判定基準と人間の承認は本 ADR に引き継ぐ）

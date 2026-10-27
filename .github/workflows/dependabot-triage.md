@@ -35,10 +35,13 @@ network:
     - defaults
     - node
 
+# No `web-fetch:`. The copilot engine runs its CLI in offline BYOK mode, which
+# disables the CLI's web tools, so the tool never reached the agent
+# (github/gh-aw#65043); gh-aw v0.92.0 refuses to compile it. Giving the agent a
+# fetch path to the registry again belongs to #2838.
 tools:
   github:
     toolsets: [context, repos, pull_requests]
-  web-fetch:
 
 # No merge, no close, no push. The verdict vocabulary (採用 / 保留 / 却下) is the
 # maintainer's, so the agent supplies evidence and stops there.
