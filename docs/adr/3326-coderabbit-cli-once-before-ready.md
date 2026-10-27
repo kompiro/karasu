@@ -10,13 +10,14 @@ depends_on:
 related_to:
   - ADR-2716
   - ADR-2643
+  - ADR-3340
 scope:
   packages: []
   concerns:
     - ci
 assumptions:
   - "grep: docs/process.md :: coderabbit review --agent --deep --base origin/main --committed"
-  - "grep: .claude/skills/coderabbit-converge/SKILL.md :: ラウンド中に CLI は回さない"
+  - "grep: .claude/skills/coderabbit-converge/SKILL.md :: 同じ差分へ 1 回だけ当ててある"
 ---
 
 # ADR-3326: draft を外す前に CodeRabbit CLI を base ブランチとの差分へ 1 回だけ当て、指摘 0 件までは回さない

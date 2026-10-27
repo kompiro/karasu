@@ -60,7 +60,8 @@
     "report:demo": "tsx scripts/report/demo.ts",
     "bench:render": "tsx scripts/bench/render.ts",
     "readme-demo:record": "tsx scripts/readme-demo/record.mts",
-    "readme-demo:gif": "tsx scripts/readme-demo/make-gif.mts"
+    "readme-demo:gif": "tsx scripts/readme-demo/make-gif.mts",
+    "demo-video:record": "tsx scripts/demo-video/record.mts"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
