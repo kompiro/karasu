@@ -54,7 +54,11 @@ ADR-3286（2026-10-27）で前提が変わった。
 2. `.changeset/*.md` の削除が 1 つ以上ある
 3. `CHANGELOG.md` の hunk はすべて行を足すだけ（消す行が無い）。`changeset version` は既存の項目を書き換えない
 4. `CHANGELOG.md` が変わったパッケージの集合と、`version` が変わったパッケージの集合が一致する
-5. 削除した各 changeset の要約（frontmatter の後の最初の行）が、いずれかの `CHANGELOG.md` の足した行に現れる。`.changeset/changelog.cjs` は各項目を `- <sha7>: <要約の 1 行目>` の形で書く。削除した changeset の中身は、分類器が merge-base 側から読む
+5. `CHANGELOG.md` に足した行が、削除した changeset から作られる行**だけ**でできていて、過不足が無い。削除した changeset の中身は、分類器が merge-base 側から読む
+   - 足してよい行は、版の見出し（`## <その package.json の新しい version>`）、種類の見出し（`### Major Changes` / `### Minor Changes` / `### Patch Changes`）、空行、そして項目の行だけ
+   - 項目は `.changeset/changelog.cjs` の形（`- <7〜40 桁の hex>: <要約の 1 行目>` と、要約の続きの行を 2 文字字下げしたもの）で、要約は changeset の本文と一字一句一致する
+   - 各 changeset の項目は、その changeset が frontmatter で挙げたパッケージの `CHANGELOG.md` にだけ、ちょうど 1 回ずつ現れる。項目の数は「changeset と、それが挙げたパッケージ」の組の数と一致する。手で足した項目や、別のパッケージの CHANGELOG に入った項目があれば、規則は効かない
+   - `changeset version` が workspace 内の依存の更新で足す行（`Updated dependencies`）は、依存がすべて `workspace:*` なので現れない。現れたら規則に当たらない入力として High に倒す（TPL-3286）
 6. どのファイルにもモードの変更とバイナリの変更が無い
 7. 作成者が信頼リストにいる（いなければ従来どおり High）
 
@@ -78,7 +82,7 @@ Low ではなく Medium にするのは、ADR-1370 のとおり人が版と CHAN
 
 開き方は 2 通りあり、どちらも同じ下書きを使う。
 
-- **メンテナが GitHub の画面から開く**: トラッキング Issue の compare リンク。GitHub の compare ページは `title` / `body` / `labels` のクエリを作成フォームの初期値にする。エンコードは `encodeURIComponent`
+- **メンテナが GitHub の画面から開く**: トラッキング Issue の compare リンク。`quick_pull=1` を付けると PR 作成のページが開き、`title` / `body` / `labels` のクエリが作成フォームの初期値になる。エンコードは `encodeURIComponent`。本文は版の表（4 行ほど）と記録（600 字ほど）で、エンコード後も 2〜3 KB に収まる。Prepare はリンクの長さが 8 KB を超えたら `body` を付けず、Issue に「`pr-body` で本文を作る」と書く（URL の長さの上限で画面が開けなくなるのを避ける）
 - **Claude が開く**（#3239・#3349 はこちらだった）: `node scripts/release/train.mts pr-body --issue <n>` が同じ本文を出す。`gh pr create --draft --label "risk: medium" --title … --body-file <本文>` で draft として作り、`gh pr ready` で外す。draft で作るのは、ラベルが PR の作成の後に付くため。draft なら Review request は `opened` でラベルを付けず、ready の時点では `risk: medium` が付いている
 
 リンクも `pr-body` も使わずにラベル無しで開いた場合も壊れない。Review request が `risk: high` を付け、CodeRabbit のレビューが走る見込みで（後から付いたラベルで始まるかは #3364 で確かめる。始まらなければ `@coderabbitai full review`）、High は記録を求めない。損をするのは CodeRabbit の枠 1 回である。
@@ -103,6 +107,7 @@ Low ではなく Medium にするのは、ADR-1370 のとおり人が版と CHAN
 - [TPL-3286](../test-perspectives/TPL-3286-merge-eligibility-judged-on-final-diff.md): 規則は最終の差分にだけ効き、規則に当たらない変更が混ざれば通常の段階（High）に戻る。テストで、生成物だけの差分が Medium になることと、次のどれもが Medium にならないことを固める
   - `version` 以外のキーの変更、lockfile の変更、`.changeset/config.json` の変更、ほかのファイルが混ざった差分
   - changeset の削除が無い差分、CHANGELOG の行を消す・書き換える差分、削除した changeset の要約が CHANGELOG に無い差分
+  - 正しい項目に加えて手で書いた項目を足した差分、項目が別のパッケージの CHANGELOG に入った差分、同じ項目が 2 回入った差分
   - `version` だけが変わって CHANGELOG が変わらないパッケージ（またはその逆）がある差分
   - モードの変更・バイナリの変更がある差分
 - [TPL-2786](../test-perspectives/TPL-2786-guard-failure-must-fail-the-run.md): Prepare が Issue の本文を書き直せなかったら、リンクの無い Issue が残るのでジョブを失敗させる
@@ -110,7 +115,7 @@ Low ではなく Medium にするのは、ADR-1370 のとおり人が版と CHAN
 ## 実装の指針
 
 1. `scripts/review/tier.ts`: `classifyChange` に規則を足す。`package.json` の前後と削除した changeset の中身は、`changedFiles` が merge-base と head から読む。`scripts/review/tier.test.ts` で上の Related TPLs の例と、直近 5 本のリリース PR の差分を固める
-2. `scripts/release/train.mts`: `composeReleasePrBody({ issue, bumps, date, base, head })` と `pr-body --issue <n>` サブコマンドを足し、`composeTrainIssueBody` が compare リンクに `title` / `body` / `labels` を付ける。エンコードは `encodeURIComponent`（`URLSearchParams` は空白を `+` にする）。`scripts/release/train.test.ts` で、リンクのパラメータと、Issue の行でリンク全体が autolink になること（本文の `(ADR-1370)` の括弧）を固める
+2. `scripts/release/train.mts`: `composeReleasePrBody({ issue, bumps, date, base, head })` と `pr-body --issue <n>` サブコマンドを足し、`composeTrainIssueBody` が compare リンクに `quick_pull=1`・`title`・`body`・`labels` を付ける（長さが 8 KB を超えたら `body` を外す）。エンコードは `encodeURIComponent`（`URLSearchParams` は空白を `+` にする）。`scripts/release/train.test.ts` で、リンクのパラメータと、Issue の行でリンク全体が autolink になること（本文の `(ADR-1370)` の括弧）を固める
 3. `.github/workflows/release-prepare.yml`: リリースブランチへのコミットの後に記録の `base` / `head` を取り、Issue を作ったあと、番号を入れた本文で `gh issue edit` する。失敗したらジョブを失敗させる（TPL-2786）
 4. `docs/release.md`「リリースの流れ」: Issue のリンク、または `pr-body` と `gh pr create --draft --label "risk: medium"` で開くと、記録が入り CodeRabbit は走らない。リリースブランチに手でコミットを足したら、ラベルを `risk: high` に上げる
 5. マージ後の確認は別 Issue にする（ADR-3271）: 2026-11-29 のトレインで、開いた PR が Medium と判定され、CodeRabbit が走らず、Review tier が通ること。画面から開く場合は、compare フォームの `labels=` が `opened` の時点で付いていて、Review request が `risk: high` を足さないこと
