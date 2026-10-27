@@ -5,7 +5,7 @@
 - **関連**:
   - 引き金 Issue: [#3359](https://github.com/kompiro/karasu/issues/3359)
   - 関連 ADR: [ADR-2419](../adr/2419-poc-report-directory.md)（`reports/` と `scripts/report/`）、[ADR-529](../adr/529-playwright-with-ai-visual-review.md)（スクリーンショットを Claude が読む）、[ADR-3342](../adr/3342-ready-gate-local-review.md)（gh ラッパー）、[ADR-3333](../adr/3333-converge-after-ready-hook.md)（`gh pr ready` 後の PostToolUse フック）
-  - 関連 TPL: [TPL-2446](../test-perspectives/TPL-2446-gate-side-check-runs-over-the-whole-set.md)（対象を列挙せず全走査で回す）
+  - 関連 TPL: [TPL-2446](../test-perspectives/TPL-2446-gate-side-check-runs-over-the-whole-set.md)（対象を列挙せず全走査で回す）、[TPL-2047](../test-perspectives/TPL-2047-doc-embedded-krs-is-parsed-not-prose.md)（受け入れテストの fence は parse されるモデル）
   - コード: `scripts/report/`、`scripts/bin/gh`、`scripts/coderabbit/converge-after-ready.sh`、`.claude/settings.json`
 
 ## 背景・課題
@@ -25,7 +25,8 @@
 | --- | --- |
 | 描画 | `renderKrs(source, { diagramType, theme, styleSource })` が単一ファイルの `.krs` を SVG にする。複数ファイルのモデルは `compileProject` を直接使う。`diagramType` は `system` / `deploy` / `org` |
 | 画像化 | `capture([{ html }], { colorScheme })` が SVG を包んだ HTML を Chromium で PNG にする。Chromium は `packages/e2e` の Playwright のものを共有する |
-| 入力の候補 | `examples/` に `.krs` が 85 ファイル。複数ファイルのモデルは `index.krs` がエントリ（15 個、en / ja）で、`examples/en/feature-samples/` は単独で描画できるファイルが並ぶ |
+| 入力の候補 | `examples/` に `.krs` が 85 ファイル。複数ファイルのモデルは `index.krs` がエントリ（15 個、en / ja）で、`examples/en/feature-samples/` は単独で描画できるファイルが並ぶ。受け入れテストは 376 件中 83 件が ` ```krs ` の fence を持ち、`pnpm lint:krs-fences` がその fence を現行文法で通る完全なモデルとして parse する（TPL-2047） |
+| 描画のコスト | 2026-10-27 の実測で、`examples/` の全 85 ファイルを `system` / `deploy` / `org` で `compile` すると 255 回で合計 0.3 秒（最も重いファイルで 25 ms）。ルートのビューだけで、`@import` は解決していない。時間がかかるのは描画ではなく、before 用 worktree の install と、組の数に比例する Chromium での PNG 化 |
 | 添付 | OAuth トークンと PAT で添付できる。対象 repo への write 権限が必要。GitHub App のトークン（Actions の `GITHUB_TOKEN` を含む）は、`gh` 2.103.2 から CLI が一律には拒否せず、アップロード先が可否を決める。ただしアップロード先が App のトークンに 404 を返すという報告（cli/cli#14309）はまだ open で、この repo でも試していない |
 | PR の流れ | `docs/process.md` の手順 7 で `origin/main` を merge してから draft で PR を作る。draft の PR には `preview.yml` が走らない（ADR-2643） |
 | フック | `gh` はラッパー（ADR-3342）を通る。`gh pr ready` の後は PostToolUse フックが次の手順を促す（ADR-3333） |
@@ -77,14 +78,22 @@
 - リファクタのように描画が変わらない変更でも撮ることになる
 - 何を撮るかは別に決める必要がある
 
-#### 案 2-B: `examples/` を全部描画して、SVG が変わったものを撮る
+#### 案 2-B: 受け入れテストの fence と `examples/` を描画して、SVG が変わったものから 2 組を撮る
 
-`examples/` のエントリになる `.krs`（同じディレクトリのどの `.krs` からも `@import` されていないファイル）を、`system` / `deploy` / `org` のビューごとに base と HEAD で描画し、SVG の文字列が違う組だけを撮る。エージェントが回帰用の `.krs` を別に指定することもできる。
+候補を次の順に並べ、`system` / `deploy` / `org` のビューごとに base と HEAD で描画し、SVG の文字列が違う組を集める。
+
+1. PR の差分に含まれる `docs/acceptance/*.md` の ` ```krs ` fence（` ```krs fragment ` / ` ```krs invalid ` は除く）
+2. `examples/` のエントリになる `.krs`（同じディレクトリのどの `.krs` からも `@import` されていないファイル）
+3. エージェントが `--file` で指定した `.krs`
+
+画像にするのは、この順で最初に見つかった 2 組だけにする。残りの組は名前だけを本文に一覧にする。候補はすべて最後まで描画する（描画は安いので途中で止める必要がない）。
 
 **メリット**
 
 - 「撮る必要があるか」と「何を撮るか」が、1 つの観測できる事実（SVG が変わったか）で決まる
 - パスの一覧を持たない
+- その PR が足した、または変えた受け入れテストの fence は、その変更を見せるために書かれたモデルなので、examples の図より的が絞れた before/after になる
+- 画像を 2 組に絞るので、本文が画像で埋まらない。他にも変わった図があることは一覧で見える
 
 **デメリット**
 
@@ -137,10 +146,12 @@ before と after の差が、そのブランチの変更だけで決まること
 1. **`pnpm pr:shots`**（`scripts/pr-shots/shots.ts`。PoC 用の `scripts/report/` とは分け、その `capture` を import して使う）
    - base は `origin/main` との merge-base。`--base <ref>` で変えられる
    - 一時 worktree を `.claude/worktrees/pr-shots-base-<sha>` に detached で作り、install して、終了時（失敗時も）に消す。ブランチを持たない一時の checkout なので、`git worktree list` に残さない
-   - `examples/` のエントリになる `.krs` を `system` / `deploy` / `org` で描画し、base と HEAD の SVG を比べる。`--file <path.krs>` で入力を足せる。base 側の描画が例外で失敗したら、その組を「before を描画できない」として報告し、画像は出さない
-   - 変わった組だけ PNG にして `reports/pr-shots/<branch の / を - にした名前>/` に `<name>.before.png` / `<name>.after.png` として書く。既定では最初の 3 組だけを画像にし、残りは名前だけを一覧にする。light で撮るので、描画には `theme: "light"` を、`capture` には `colorScheme: "light"` を明示して渡す（`capture` の既定は dark）
+   - 候補（受け入れテストの fence → `examples/` のエントリ → `--file`）を `system` / `deploy` / `org` で描画し、base と HEAD の SVG を比べる
+   - 入力の文字列: 受け入れテストの fence と `--file` は、HEAD 側の文字列を両側で使い、描画するコードだけを替える。`examples/` はそれぞれの側のファイルを使う（PR が example 自体を変えた場合も、その変化が見える）
+   - base 側の描画が例外か error の診断で失敗したら（新しい構文の fence など）、その組は after だけを画像にし、「before は描画できない」と添える。黙って誤った画像は出さない
+   - 変わった組のうち、候補の順で最初の 2 組を PNG にして `reports/pr-shots/<branch の / を - にした名前>/` に `<name>.before.png` / `<name>.after.png` として書く。残りの組は名前だけを一覧にする。light で撮るので、描画には `theme: "light"` を、`capture` には `colorScheme: "light"` を明示して渡す（`capture` の既定は dark）
    - 同じディレクトリに `body.md` を書く。before | after の表で `![…](./reports/pr-shots/…png)` を参照し、そのまま使える `gh pr edit <n> --body-file … --attach …` の例を出力する
-   - 変わった組が 0 なら「examples の描画に変化なし」と出力して終了コード 0 で終わる
+   - 変わった組が 0 なら「描画に変化なし（受け入れテストの fence N 件、examples M ファイル）」と出力して終了コード 0 で終わる
    - `--url <path>` では、本番のアプリ（`https://karasu.kompiro.dev<path>`）と、手元で起動した `pnpm dev`（`--after-origin` で変えられる）を同じパスで撮る。dev server の管理はしない（`scripts/report/screenshot.ts` と同じ方針）
    <!-- absent-path-next-line: a file this design creates (#3359) -->
 2. **フック**（`scripts/pr-shots/reminder.sh`、`.claude/settings.json` の PostToolUse / PostToolUseFailure の Bash に足す）
@@ -153,6 +164,7 @@ before と after の差が、そのブランチの変更だけで決まること
    - `reports/README.md`「Capturing a real "before"」に `pnpm pr:shots` を足す
 4. **テスト**
    - `pr-shots` の比較と出力（一時 repo と小さな `.krs` で、変化あり・なしの両方）
+   - 候補の順序と上限（受け入れテストの fence が examples より先に選ばれる。3 組以上変わっても画像は 2 組で、残りは一覧に出る。`fragment` / `invalid` の fence は候補にならない。base で描画できない fence は after だけになる）
    - 同じコミットを 2 回描画して SVG が一致すること（非決定性があれば先に直すか、比較の前に正規化する）
    - フック（`converge-after-ready.test.ts` と同じく、偽の gh で、促す・促さないの両方）
 5. AT: 新規。人間の確認が必要な項目は「描画が変わる実 PR で、本文の before/after が GitHub 上で表示される」の 1 件だけで、PR の checklist で確かめる
