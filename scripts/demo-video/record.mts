@@ -6,10 +6,12 @@
 // <scenario> is a file name under scenarios/ without its extension. The run copies the
 // scenario's fixture model for the language to a scratch dir, records the virtual
 // display while the scenario drives the app or VS Code, then wraps the recording in
-// intro / outro title cards. Writes <out>/<scenario>.<lang>.mp4 and a contact sheet
-// <out>/<scenario>.<lang>.contact.png for reviewing the frames. <out> defaults to the
-// gitignored dist/ of the main checkout, also when run from a worktree, so the videos
-// outlive the worktree. Scratch files go to the OS temp dir.
+// intro / outro title cards. Writes, under <out>:
+//   <scenario>.<lang>.mp4            the video
+//   <scenario>.<lang>.thumbnail.png  the title beside a frame the scenario marked
+//   <scenario>.<lang>.contact.png    a grid of frames, for reviewing the video
+// <out> defaults to dist/demo-video/ of the main checkout (gitignored), also when run
+// from a worktree, so the videos outlive the worktree. Scratch files go to the OS temp dir.
 //
 // The workflow, the prerequisites and the pitfalls are in .claude/skills/demo-video/SKILL.md.
 
@@ -19,8 +21,16 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-import { composeVideo, contactSheet, renderCards } from "./lib/compose.mts";
-import { ensureDisplay, type Recording, runCleanups, startRecording } from "./lib/display.mts";
+import { composeVideo, contactSheet, duration, extractFrame, renderCards } from "./lib/compose.mts";
+import {
+  ensureDisplay,
+  parkPointer,
+  type Recording,
+  runCleanups,
+  sleep,
+  startRecording,
+} from "./lib/display.mts";
+import { HIDE_OVERLAYS_CSS } from "./lib/overlay.mts";
 import type { Lang, Scenario } from "./lib/scenario.mts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -35,7 +45,7 @@ const { values: args, positionals } = parseArgs({
   allowPositionals: true,
   options: {
     lang: { type: "string", default: "en" },
-    out: { type: "string", default: join(mainCheckout, "dist") },
+    out: { type: "string", default: join(mainCheckout, "dist", "demo-video") },
   },
 });
 const scenarios = readdirSync(join(here, "scenarios")).map((f) => f.replace(/\.mts$/, ""));
@@ -94,6 +104,7 @@ mkdirSync(work, { recursive: true });
 const model = join(work, scenario.fixture);
 cpSync(join(here, "fixtures", scenario.fixture, lang), model, { recursive: true });
 const raw = join(work, "raw.mp4");
+const thumbFrame = join(work, "thumbnail-frame.png");
 
 // An interrupted run (Ctrl+C, a tool timeout) must not leave Xvfb, ffmpeg, VS Code or
 // karasu serve running on the shared display and ports.
@@ -106,6 +117,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
 
 const stopDisplay = await ensureDisplay();
 let recording: Recording | undefined;
+let thumbnailMarked = false;
 let failed = false;
 try {
   await scenario.run({
@@ -118,6 +130,13 @@ try {
     },
     async stopRecording() {
       await recording?.stop();
+    },
+    async markThumbnail(page) {
+      // A pointer resting on an edge highlights it and dims the rest of the diagram.
+      parkPointer();
+      await sleep(300);
+      await page.screenshot({ path: thumbFrame, style: HIDE_OVERLAYS_CSS });
+      thumbnailMarked = true;
     },
   });
 } catch (e) {
@@ -146,13 +165,20 @@ if (failed) {
 const cards = scenario.cards[lang];
 const intro = join(work, "intro.png");
 const outro = join(work, "outro.png");
-await renderCards([
-  [cards.intro, intro],
-  [{ ...cards.intro, sub: cards.outroSub }, outro],
-]);
+if (!thumbnailMarked) {
+  // composeVideo below reports an unreadable duration; take the first frame meanwhile.
+  const seconds = duration(raw);
+  await extractFrame(raw, Number.isFinite(seconds) ? seconds / 2 : 0, thumbFrame);
+}
 mkdirSync(out, { recursive: true });
+const thumbnail = join(out, `${name}.${lang}.thumbnail.png`);
+await renderCards([
+  { card: cards.intro, out: intro },
+  { card: { ...cards.intro, sub: cards.outroSub }, out: outro },
+  { card: cards.intro, out: thumbnail, frame: thumbFrame, lang },
+]);
 const video = join(out, `${name}.${lang}.mp4`);
 await composeVideo({ intro, raw, outro, out: video });
 const sheet = join(out, `${name}.${lang}.contact.png`);
 await contactSheet(video, sheet);
-console.log(`video: ${video}\ncontact sheet: ${sheet}`);
+console.log(`video: ${video}\nthumbnail: ${thumbnail}\ncontact sheet: ${sheet}`);

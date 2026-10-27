@@ -1,10 +1,12 @@
-// Title cards and the final MP4: intro card, the recording, outro card, with fades.
+// Title cards, the thumbnail, and the final MP4: intro card, the recording, outro card,
+// with fades.
 
 import { chromium } from "@playwright/test";
 import { execFileSync, spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { BROWSER_SCALE } from "./browser.mts";
 import { registerCleanup, SCREEN } from "./display.mts";
-import { titleCard } from "./overlay.mts";
+import { thumbnailCard, titleCard } from "./overlay.mts";
 
 export interface Card {
   kicker: string;
@@ -12,8 +14,17 @@ export interface Card {
   sub: string;
 }
 
+/** A card to render: a title card, or a thumbnail when `frame` (a PNG path) is given. */
+export interface CardImage {
+  card: Card;
+  out: string;
+  frame?: string;
+  /** Language of the card text ("en" / "ja"), for line breaking in the thumbnail. */
+  lang?: string;
+}
+
 /** Renders each card to a 1920x1080 PNG with a headless browser. */
-export async function renderCards(cards: ReadonlyArray<[Card, string]>): Promise<void> {
+export async function renderCards(images: readonly CardImage[]): Promise<void> {
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage({
@@ -23,9 +34,15 @@ export async function renderCards(cards: ReadonlyArray<[Card, string]>): Promise
       },
       deviceScaleFactor: BROWSER_SCALE,
     });
-    for (const [card, out] of cards) {
+    for (const { card, out, frame, lang } of images) {
       await page.setContent("<html><body style='margin:0'></body></html>");
-      await titleCard(page, card.kicker, card.title, card.sub);
+      if (frame) {
+        // A data URL: the blank page cannot load file:// images.
+        const url = `data:image/png;base64,${readFileSync(frame).toString("base64")}`;
+        await thumbnailCard(page, lang ?? "en", url, card.kicker, card.title, card.sub);
+      } else {
+        await titleCard(page, card.kicker, card.title, card.sub);
+      }
       await page.waitForTimeout(500);
       await page.screenshot({ path: out });
     }
@@ -58,7 +75,8 @@ function ffmpeg(args: readonly string[]): Promise<void> {
   });
 }
 
-function duration(file: string): number {
+/** Seconds of video in `file` (NaN when ffprobe cannot tell). */
+export function duration(file: string): number {
   return Number(
     execFileSync("ffprobe", [
       "-v",
@@ -70,6 +88,22 @@ function duration(file: string): number {
       file,
     ]).toString(),
   );
+}
+
+/** One frame of `video` at `seconds`, as a PNG. */
+export async function extractFrame(video: string, seconds: number, out: string): Promise<void> {
+  await ffmpeg([
+    "-y",
+    "-loglevel",
+    "error",
+    "-ss",
+    seconds.toFixed(2),
+    "-i",
+    video,
+    "-frames:v",
+    "1",
+    out,
+  ]);
 }
 
 /** intro (still) + recording + outro (still), each joined with a short fade. */

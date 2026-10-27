@@ -23,6 +23,10 @@ import {
   vscodeExecutable,
 } from "../lib/vscode.mts";
 
+// A fresh worktree has no core / i18n build yet, and the extension build resolves them.
+const VSCODE_BUILD =
+  "pnpm --filter @karasu-tools/core run build && pnpm --filter @karasu-tools/i18n run build && pnpm --filter karasu-vscode run build";
+
 const T = {
   en: {
     newEdge: 'Customer -> UserService "signs up"',
@@ -105,8 +109,8 @@ function lineOf(file: string, needle: string): number {
 
 const scenario: Scenario = {
   requires: [
-    { path: "packages/vscode/out/extension.js", build: "pnpm --filter karasu-vscode run build" },
-    { path: "packages/vscode/out/webview", build: "pnpm --filter karasu-vscode run build" },
+    { path: "packages/vscode/out/extension.js", build: VSCODE_BUILD },
+    { path: "packages/vscode/out/webview", build: VSCODE_BUILD },
   ],
   fixture: "shop",
   cards: {
@@ -195,7 +199,10 @@ const scenario: Scenario = {
       await sleep(2500);
       await keys.quickOpen("index.krs");
       await caption(win, t.backToIndex);
-      await sleep(4500);
+      await sleep(2000);
+      // Thumbnail: the editor and the shared viewer side by side, unsaved edits drawn.
+      await ctx.markThumbnail(win);
+      await sleep(2500);
 
       // 5. write back from the preview, then undo in the editor.
       // 0.3 along the edge stays clear of the edges the earlier scenes added.
