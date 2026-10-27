@@ -303,6 +303,10 @@ describe("classifyChange", () => {
       expect(tierOf(supersede(LINKED, "status: superseded\nsuperseded_by: ADR-9999"))).toBe(
         "medium",
       );
+      // The value counts, not a mention of the ADR elsewhere on the line.
+      expect(
+        tierOf(supersede(LINKED, "status: superseded\nsuperseded_by: ADR-9999 # ADR-3286")),
+      ).toBe("medium");
     });
 
     it("is Medium when the status line carries prose or points somewhere else", () => {
