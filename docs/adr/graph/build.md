@@ -135,6 +135,7 @@ flowchart TD
     ADR_3335["ADR-3335<br/>main へのコミットは lefthook の pre-commit / pre-merge-..."]
     ADR_3340["ADR-3340<br/>converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけ..."]
     ADR_3342["ADR-3342<br/>ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh..."]
+    ADR_3381["ADR-3381<br/>Dependabot トリアージ 2026-10-26：npm 12 件をそのまま採用し、ch..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -325,6 +326,7 @@ flowchart TD
   class ADR_3335 accepted
   class ADR_3340 accepted
   class ADR_3342 accepted
+  class ADR_3381 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost
