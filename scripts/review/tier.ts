@@ -376,7 +376,8 @@ function frontmatterSupersededBy(text: string, range: [number, number], adr: str
   const lines = text.split("\n").slice(range[0] - 1, range[1]);
   return (
     lines.some((l) => /^status:\s*superseded\s*$/.test(l)) &&
-    lines.some((l) => new RegExp(`^superseded_by:.*\\bADR-${adr}\\b`).test(l))
+    // The value itself, not a mention elsewhere on the line (a comment).
+    lines.some((l) => /^superseded_by:\s*["']?ADR-(\d+)["']?\s*$/.exec(l)?.[1] === adr)
   );
 }
 
