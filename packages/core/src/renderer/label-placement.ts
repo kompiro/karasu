@@ -174,7 +174,8 @@ function leavesFrameSide(box: Rect, frame: NearFrame): boolean {
  * Count of labels whose final box crosses a frame border or ended on the other
  * side of one than its default box (#3155). Counted per label, like the other
  * guards. A default box that already straddles a border counts until the label
- * is moved off it.
+ * is moved off it. Pass only labels the pass may move: an author-positioned
+ * label (ADR-1184) stays where the author put it, border or not.
  */
 export function countLabelFrameCrossings(
   labels: { defaultBox: Rect; box: Rect }[],
@@ -198,17 +199,20 @@ export function countLabelFrameCrossings(
  * The frames a label's bounded search can be affected by, each with the side
  * the default box is on. Every candidate's centre lies within `maxShift·√2` of
  * the default centre, so a candidate can reach the border's stroke only when
- * the border lies within that plus the box's half-diagonal, and it can change
- * side only by crossing the border on the way. A frame farther than that is
- * one the label is on the right side of at every candidate. The prune is
- * exact, not close.
+ * the border's centreline lies within that plus the half-diagonal of the box
+ * grown by half the stroke (the stroke test grows the box that much), and it
+ * can change side only by crossing the border on the way. A frame farther
+ * than that is one the label is on the right side of at every candidate. The
+ * prune is exact, not close: measured with the bare half-diagonal it would
+ * drop a border a box corner reaches by less than the stroke.
  */
 function reachableFrames(frames: FrameBorder[], box: Rect, maxShift: number): NearFrame[] {
   if (frames.length === 0) return [];
   const centre = boxCentre(box);
-  const reach = maxShift * Math.SQRT2 + Math.hypot(box.width, box.height) / 2;
   const out: NearFrame[] = [];
   for (const border of frames) {
+    const h = border.line.halfStroke;
+    const reach = maxShift * Math.SQRT2 + Math.hypot(box.width / 2 + h, box.height / 2 + h);
     if (pointToRectDistance(centre, border.line.bounds) > reach) continue;
     if (pointToPolylineDistance(centre, border.line) > reach) continue;
     out.push({ border, inside: insideFrame(centre, border.pieces) });

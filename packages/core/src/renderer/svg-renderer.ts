@@ -24,7 +24,12 @@ import { renderShape } from "./shapes.js";
 import { rectUnionOutline } from "./frame-geometry.js";
 import { getShapeContentInset, type ShapeInsets } from "../shapes/shape-registry.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
-import { resolveLabelPlacements, buildLabelInputs, frameBorder } from "./label-placement.js";
+import {
+  resolveLabelPlacements,
+  buildLabelInputs,
+  frameBorder,
+  type FrameBorder,
+} from "./label-placement.js";
 import { HOP_RADIUS, JUNCTION_CHIP_RADIUS, trunkBandHalfWidth } from "./crossing-marks.js";
 import { layoutDegradedTabs } from "./degraded-tabs.js";
 import {
@@ -635,9 +640,7 @@ export function renderFromLayout(
     nodeRects,
     edgeLines,
   } = buildLabelInputs(layoutResult.edges, layoutResult.nodes, edgeStyleFor);
-  const frameBorders = layoutResult.containers.map((container) =>
-    frameBorder(container, containerStrokeWidth(container, styles, palette)),
-  );
+  const frameBorders = frameBordersOf(layoutResult, styles, palette);
   const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects, edgeLines, frameBorders);
   // Labels the pass could not seat clear under `label-display: auto` (#3022).
   // The pass reports them on its inputs; `renderEdge` leaves them off the canvas.
@@ -1726,6 +1729,21 @@ function frameStrokeWidth(
   paint: FramePaint | undefined,
 ): number {
   return container.expanded === true ? 2 : (paint?.strokeWidth ?? style.borderWidth);
+}
+
+/**
+ * Every frame the canvas draws, as label placement obstacles (#3155): each at
+ * the stroke width `renderContainer` draws it with. Exported so the tests'
+ * fences measure the same stroke the canvas paints, not a fixed width.
+ */
+export function frameBordersOf(
+  layoutResult: LayoutResult,
+  styles: ResolvedStyles,
+  palette: DiagramPalette,
+): FrameBorder[] {
+  return layoutResult.containers.map((container) =>
+    frameBorder(container, containerStrokeWidth(container, styles, palette)),
+  );
 }
 
 /**

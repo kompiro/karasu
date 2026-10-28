@@ -22,7 +22,8 @@ import type { ContainerRect, LayoutEdge } from "./layout-types.js";
 import { rectUnionOutline } from "./frame-geometry.js";
 import type { EdgeDirection } from "../types/style.js";
 import { layout } from "./layout.js";
-import { renderFromLayout } from "./svg-renderer.js";
+import { frameBordersOf, renderFromLayout } from "./svg-renderer.js";
+import { resolvePalette } from "./palette.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { edgeStyleKey } from "../resolver/style-resolver.js";
 import { extractView } from "../view/view-extract.js";
@@ -615,9 +616,9 @@ function sampleInputs(relPath: string, viewPath: string[] = [], groupBy?: "team"
     styles.edges.get(edgeStyleKey(edge.from, edge.to, edge.kind)) ??
     styles.edges.get(`${edge.from}->${edge.to}`) ??
     styles.defaultEdgeStyle;
-  // 2px: the widest stroke a frame takes without an author sheet (the
-  // drill-down frame), so a fence measured here is never laxer than the canvas.
-  const frames = layoutResult.containers.map((c) => frameBorder(c, 2));
+  // The stroke widths the canvas draws the frames with, so the fence and the
+  // canvas cannot drift apart.
+  const frames = frameBordersOf(layoutResult, styles, resolvePalette());
   return {
     ...buildLabelInputs(layoutResult.edges, layoutResult.nodes, styleFor),
     frames,
@@ -626,13 +627,17 @@ function sampleInputs(relPath: string, viewPath: string[] = [], groupBy?: "team"
   };
 }
 
-/** Default and final box of every label the pass drew: what the frame measure compares. */
+/**
+ * Default and final box of every label the pass drew and may move: what the
+ * frame measure compares. An author-positioned label (ADR-1184) stays where the
+ * author put it, so it is left out of the count.
+ */
 function framedBoxesAfter(
   inputs: LabelInput[],
   placements: Map<number, { x: number; y: number }>,
 ): { defaultBox: Rect; box: Rect }[] {
   return inputs
-    .filter((i) => i.deferred !== true)
+    .filter((i) => i.eligible && i.deferred !== true)
     .map((i) => ({
       defaultBox: labelBox(i.anchor, i.width, i.fontSize),
       box: labelBox(placements.get(i.index) ?? i.anchor, i.width, i.fontSize),
@@ -1349,6 +1354,55 @@ describe("frame borders as placement obstacles (#3155)", () => {
     const overrides = resolveLabelPlacements(inputs, [], [], [box]);
     expect(overrides.get(0)!.y).toBeLessThan(105);
     expect(countLabelFrameCrossings(framedBoxesAfter(inputs, overrides), [box])).toBe(0);
+  });
+
+  it("treats a default box centred exactly on the border as inside, and moves it in", () => {
+    // Box y 92.5..107.5, centre y 100: on the frame's bottom border. Rects are
+    // closed, so the default side is inside; up and down are tried in turn at
+    // each distance, and only the upward candidates stay on that side.
+    const inputs = [label(0, { x: 200, y: 109.5 }, 80)];
+    const onLine = labelBox(inputs[0].anchor, 80, 11);
+    expect(onLine.y + onLine.height / 2).toBe(100);
+    const below = labelBox({ x: 200, y: 129.5 }, 80, 11);
+    expect(countLabelFrameCrossings([{ defaultBox: onLine, box: below }], [box])).toBe(1);
+
+    const overrides = resolveLabelPlacements(inputs, [], [], [box]);
+    expect(overrides.get(0)!.y).toBeLessThan(109.5);
+    expect(countLabelFrameCrossings(framedBoxesAfter(inputs, overrides), [box])).toBe(0);
+  });
+
+  it("leaves an author-positioned label on a border where the author put it", () => {
+    const pinned: LabelInput = { ...label(0, { x: 200, y: 105 }, 80), eligible: false };
+    expect(resolveLabelPlacements([pinned], [], [], [box]).size).toBe(0);
+    expect(countLabelFrameCrossings(framedBoxesAfter([pinned], new Map()), [box])).toBe(0);
+  });
+
+  it("reaches a thick border that only a diagonal candidate's grown corner touches", () => {
+    // maxSteps 1, step 15: the nine candidates sit on a 15px grid. Two cards
+    // block all of them but (+1, +1), whose box is x 105..125, y 98..113.
+    const cards: Rect[] = [
+      { x: 60, y: 50, width: 44, height: 80 },
+      { x: 60, y: 50, width: 80, height: 47 },
+    ];
+    // A frame corner 46.4px from the default centre (100, 90.5): past the
+    // half-diagonal of the bare box (21.2 + 12.5) but within that of the box
+    // grown by the 10px half stroke (21.2 + 26.6), and inside the grown
+    // corner of the (+1, +1) candidate.
+    const thick = frameBorder(frame({ x: 134, y: 122, width: 100, height: 100 }), 20);
+    const corner = labelBox({ x: 115, y: 115 }, 16, 11);
+    expect(countLabelFrameCrossings([{ defaultBox: corner, box: corner }], [thick])).toBe(1);
+
+    const unframed = { ...label(0, { x: 100, y: 100 }, 16), deferrable: true };
+    // Precondition: without the border the diagonal is the one clear seat.
+    expect(resolveLabelPlacements([unframed], cards, [], [], { maxSteps: 1 }).get(0)).toEqual({
+      x: 115,
+      y: 115,
+    });
+
+    const framed = { ...label(0, { x: 100, y: 100 }, 16), deferrable: true };
+    const overrides = resolveLabelPlacements([framed], cards, [], [thick], { maxSteps: 1 });
+    expect(framed.deferred).toBe(true);
+    expect(overrides.has(0)).toBe(false);
   });
 
   it("keeps a label that starts outside a frame outside it", () => {
