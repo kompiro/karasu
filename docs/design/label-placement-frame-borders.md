@@ -4,7 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#3155](https://github.com/kompiro/karasu/issues/3155)（#3132 の検証中に発見）
-  - 関連 ADR: [ADR-2048](../adr/2048-edge-label-collision-avoidance.md)（ラベルの衝突回避）、[ADR-2360](../adr/2360-label-placement-line-obstacles.md)（障害物にエッジの線を足した決定。「枠の線を線障害物として別扱いする案は本 ADR では扱わない」とスコープ外にした）、[ADR-3022](../adr/3022-edge-label-disclosure.md)（`label-display: auto` で置けないラベルを外す）、[ADR-3132](../adr/3132-frame-bounded-channels.md) / [ADR-3154](../adr/3154-frame-bounded-gutters.md)（run を枠の内側に収めた決定）、[ADR-968](../adr/968-orthogonal-edge-routing-skip-layer.md)
+  - 関連 ADR: [ADR-2048](../adr/2048-edge-label-collision-avoidance.md)（ラベルの衝突回避）、[ADR-2360](../adr/2360-label-placement-line-obstacles.md)（障害物にエッジの線を足した決定。「枠の線を線障害物として別扱いする案は本 ADR では扱わない」とスコープ外にした）、[ADR-3022](../adr/3022-edge-label-disclosure.md)（`label-display: auto` で置けないラベルを外す）、[ADR-3132](../adr/3132-frame-bounded-channels.md) / [ADR-3154](../adr/3154-frame-bounded-gutters.md)（run を枠の内側に収めた決定）、[ADR-1184](../adr/1184-edge-label-position-offset.md)（作者が置いたラベルは動かさない）
   - 関連 TPL: [TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md)（実装 PR で計測軸を 1 つ足す）、[TPL-3132](../test-perspectives/TPL-3132-resource-inside-a-frame-measured-against-the-frame.md)、[TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md)、[TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)
   - コード: `packages/core/src/renderer/label-placement.ts`、`packages/core/src/renderer/frame-geometry.ts`、`packages/core/src/renderer/svg-renderer.ts`
 
@@ -14,15 +14,15 @@
 
 Issue の再現（Umami の `UmamiApp` ドリルダウン）では、`Administration -> Teams` のラベル "lists all teams via queries/prisma/team getTeams" が、隣のラベルを避けて約 35px 下へずらされ、枠の下端の線をまたいで描かれる。#3132 / #3154 で run は枠の内側に収まったが、ラベルは別のパスなので残った。
 
-4 つの逆生成モデル（umami / dify / twenty / wordpress）と `examples/en` の全ビュー × グルーピング（none / team / boundary）、計 4,626 ビューで `main`（206441c2）を測った。
+4 つの逆生成モデル（umami / dify / twenty / wordpress、4,626 ビュー）と `examples/en`（435 ビュー）の全ビュー × グルーピング（none / team / boundary）、計 5,061 ビューで `main`（206441c2）を測った。
 
 | 指標 | 件数 |
 | --- | --- |
 | 描かれたラベル | 22,270 |
 | 箱に枠の線が掛かるラベル | 132（うち 114 件はずらした結果） |
-| 既定位置と反対の側（枠の内↔外）へずらされたラベル | 57 |
+| 既定位置と反対の側（枠の内↔外）へずらされたラベル | 57（すべて上の 132 件に含まれる） |
 
-計測は `reports/3155-label-frame-borders/`（gitignore）の `measure.mts`。
+枠の線の太さは renderer が描く太さ（`renderContainer` と同じ求め方。この計測では 1 と 2）で測った。計測は `reports/3155-label-frame-borders/`（gitignore）の `measure2.mts`。
 
 ## 現状（インベントリ）
 
@@ -36,7 +36,7 @@ Issue の再現（Umami の `UmamiApp` ドリルダウン）では、`Administra
 
 ## 制約・前提
 
-- **衝突の無い図は変えない**（TPL-2048 の byte-stability）。枠の線に掛かる・枠を越える候補を選んでいたラベルが無いビューは 1px も動かさない
+- **枠の規則を破るラベルが無いビューは変えない**（TPL-2048 の byte-stability）。枠を渡さない pass で、どのラベルも枠の線に掛からず、既定位置と同じ側にあるビューは 1px も動かさない
 - **枠の面は障害物にしない**（ADR-2048 の判断を維持）
 - 曖昧さの項は「どのエッジのラベルに見えるか」の判定なので、エッジでないものを入れない
 - 決定論・探索範囲の prune が厳密であること（ADR-2360）
@@ -73,18 +73,21 @@ Issue の再現（Umami の `UmamiApp` ドリルダウン）では、`Administra
 
 枠ごとに、ラベルの**既定位置の箱の中心**がその枠の内か外かを求める。候補は、(a) 枠の外形の線が箱に掛からず、(b) 箱の中心が既定位置と同じ側にあるときだけ、その枠について clear とする。破れば衝突（コスト 2）。
 
-内外の判定では、枠が覆う矩形を境界込み（閉じた矩形）で扱う。中心がちょうど枠の線上にある点は**内側**とする。この取り決めが効くのは既定位置の側だけである。候補の中心が線上にあれば、その候補の箱には必ず線が掛かり (a) で衝突になるので、候補の側の判定は結果を変えない。既定位置の中心が線上にあるラベルは、線に掛からない内側の候補へ動く（`label-display: auto` で内側に空きが無ければ外す）。
+内外の判定は、枠が覆う矩形の集まり（`coverage` の各矩形。外形を 1 つの多角形として辿れず本体の矩形に戻した枠では本体の矩形 1 つ）に対して行い、外接矩形は使わない。L 字の枠の欠けた角は外側である。各矩形は境界込み（閉じた矩形）で扱う。中心がちょうど枠の線上にある点は**内側**とする。この取り決めが効くのは既定位置の側だけである。候補の中心が線上にあれば、その候補の箱には必ず線が掛かり (a) で衝突になるので、候補の側の判定は結果を変えない。既定位置の中心が線上にあるラベルは、線に掛からない内側の候補へ動く（`label-display: auto` で内側に空きが無ければ外す）。
 
 **メリット**
 
 - 1 つの規則で、線の上（案1 の範囲）と、跳び越え（案1 の穴）と、枠の外への持ち出し（案2 の範囲）を同時に防ぐ
 - 既定位置が枠の外にあるラベル（自分の線が外を通る）は外に留まり、自分の線から引き離さない（案2 の欠点が無い）
 - 両端を囲まない枠も同じ規則で扱える。枠の数え分けが要らない
-- 探索が届く範囲（実装の指針 2 の prune）に枠の線が無いラベルは、どの候補でも側が変わらないので、そのラベル自身のコストは変わらない。ただしラベルは順に確定し、確定した箱が後続の障害物になる。先に確定したラベルが枠のコストで動くと後続の空きが変わり、後続も連鎖して動きうる。保証できるのは「枠のコストで動くラベルが 1 件も無いビューは 1px も変わらない」までである（byte-stability。連鎖の実測は「実測（試作）」）
+- 探索が届く範囲（実装の指針 2 の prune）に枠の線が無いラベルは、どの候補でも側が変わらないので、そのラベル自身のコストは変わらない。ただしラベルは順に確定し、確定した箱が後続の障害物になる。先に確定したラベルが枠のコストで動くと後続の空きが変わり、後続も連鎖して動きうる。保証できるのは「枠の規則を破るラベルが無いビューは変わらない」（制約・前提の 1 つ目）までである。枠のコストは候補のコストを増やすだけで、`main` で選ばれていた候補が規則を破らなければそのコストは変わらないので、ラベルを順に見ていけば同じ候補が選ばれ続ける（連鎖の実測は「実測（試作）」）
 
 **デメリット**
 
 - 既定位置で箱が枠の線に掛かっているラベルは、新しく衝突扱いになり動く（`main` で 18 件）。これは読めなさの解消なので許容する（ADR-2360 で線に乗っていたラベルを動かしたのと同じ）
+- 規則を破る枠は、カードやラベルとの衝突と同じ 1 件の衝突（コスト 2）として数え、優先はしない。clear な候補が無いラベルだけが、衝突の合計が最も小さい候補に置かれる。そのため、枠の向こう側で他に何とも衝突しない候補が、同じ側で 2 件以上衝突する候補に勝つことがある。文字が重なって読めなくなるより、枠の外で読めるほうがよいと判断した。`label-display: auto` ではどちらの場合もラベルを外すので、この比較は起きない
+
+作者が `label-position` / `label-offset` で置いたラベル（ADR-1184）は、これまでどおり動かさない。枠の線上にあってもそのまま残り、ほかのラベルにとっての障害物として働く。計測ヘルパーと柵は動かせるラベルだけを数える。数えると、作者の指定だけで柵が落ちるため。
 
 ### 案4: 枠の面を障害物にする
 
@@ -96,16 +99,16 @@ Issue の再現（Umami の `UmamiApp` ドリルダウン）では、`Administra
 
 ### 実装の指針
 
-1. `frame-geometry.ts` に `drawnFrame(frame)`（描かれる外形を閉じた polyline で、その外形が囲む矩形と一緒に返す。外形を 1 つの多角形として辿れない `coverage` は renderer と同じく本体の矩形に戻す）を足し、`rectUnionPath` の slab 走査を `rectUnionOutline` として移す。renderer の `<path>` と障害物が同じ角の列を使う
+1. `frame-geometry.ts` に `drawnFrame(frame)`（描かれる外形を閉じた polyline で、その外形が囲む矩形の集まりと一緒に返す。外形を 1 つの多角形として辿れない `coverage` は renderer と同じく本体の矩形に戻す）を足し、`rectUnionPath` の slab 走査を `rectUnionOutline` として移す。renderer の `<path>` と障害物が同じ角の列を使う
 2. `label-placement.ts`
-   - `FrameBorder`（外形を `EdgeLine` として包んだもの + 外形が囲む矩形）と `frameBorder(frame, strokeWidth)` を足す。`EdgeLine` の `index` は `-1` で、どのラベルの自分の線にもならない
-   - `resolveLabelPlacements(labels, nodeRects, edgeLines, frames, options)`。ラベルごとに、既定位置の箱から探索が届く枠だけを、既定位置の側と一緒に取り出す（候補の中心は既定位置から `maxShift·√2` 以内なので、外形がそれ + 箱の半対角より遠い枠はどの候補でも結果が同じ。prune は厳密）
+   - `FrameBorder`（外形を `EdgeLine` として包んだもの + 外形が囲む矩形の集まり。内外の判定はこれで行う）と `frameBorder(frame, strokeWidth)` を足す。`EdgeLine` の `index` は `-1` で、どのラベルの自分の線にもならない
+   - `resolveLabelPlacements(labels, nodeRects, edgeLines, frames, options)`。ラベルごとに、既定位置の箱から探索が届く枠だけを、既定位置の側と一緒に取り出す（候補の中心は既定位置から `maxShift·√2` 以内にある。線の判定は箱を線の太さの半分 `h` だけ広げて中心線と比べるので、届く距離は `maxShift·√2` に、広げた箱の半対角 `hypot(w/2 + h, H/2 + h)` を足したものになる（`w` / `H` はラベルの箱の幅と高さ）。中心線がそれより遠い枠は、どの候補でも結果が同じなので外す。prune は厳密。半対角を広げない箱で測ると、箱の角の近くでは線の太さの分だけ届かない枠を落としうる）
    - 候補のコストに、規則を破る枠 1 つにつき衝突 2 を足す。枠の線は曖昧さの判定に入れない
    - 計測ヘルパー `countLabelFrameCrossings({ defaultBox, box }[], frames)` を足す（ラベル単位）
 3. `svg-renderer.ts`: `layoutResult.containers` の全枠（ghost の祖先枠を含む）を、`renderContainer` が描く線の太さで `frameBorder` にして渡す。線の太さは `renderContainer` と同じ関数で求める
 4. テスト（`label-placement.test.ts`）
-   - 合成: 線の向こうが最寄りの空きでも内側に留まる / 外から始まるラベルは外に留まる / 既定位置で線に掛かるラベルは外される / 既定位置の箱の中心がちょうど枠の線上にあるラベルは内側として扱われ、内側の候補へ動く / 線から離れたラベルは動かない / `auto` で同じ側に空きが無ければ外す / L 字の枠は外形で測る / 枠の線は曖昧さに入らない（枠を曖昧さに入れると落ちることを確認する）
-   - 実サンプル柵: hr-tool の `Auth` ドリルダウン、team-ownership の team グルーピング。枠を渡さない pass では枠を越えるラベルが出ること（柵が vacuous でない）、渡すと 0 で、カード・ラベル・線との衝突も 0（TPL-2048 の全軸同時）
+   - 合成: 線の向こうが最寄りの空きでも内側に留まる / 外から始まるラベルは外に留まる / 既定位置で線に掛かるラベルは線に掛からない側（中心のある側）へ動く / 既定位置の箱の中心がちょうど枠の線上にあるラベルは内側として扱われ、内側の候補へ動く / 線から離れたラベルは動かない / `auto` で同じ側に空きが無ければ外す / L 字の枠は外形で測り、欠けた角は外側として扱う / 枠の線は曖昧さに入らない（枠を曖昧さに入れると落ちることを確認する）
+   - 実サンプル柵: hr-tool の `Auth` ドリルダウン、team-ownership の team グルーピング。枠の線の太さは renderer と同じ関数で求め、固定値にしない（柵と canvas の線の太さがずれないように）。枠を渡さない pass では枠を越えるラベルが出ること（柵が vacuous でない）、渡すと 0 で、カード・ラベル・線との衝突も 0（TPL-2048 の全軸同時）
    - renderer の配線: 同じビューを `renderFromLayout` で描き、枠で位置が変わったラベルがその位置に描かれる（renderer が枠を渡さないと落ちることを確認する）
 5. TPL-2048 に 4 本目の計測軸（label↔枠の線）と失敗モード（障害物集合の取りこぼし、面を障害物にする誤り）を足す
 6. ADR-2360 の `assumptions` の grep（`resolveLabelPlacements\(labelInputs, nodeRects, edgeLines\)`）は引数が増えるので、枠を渡す呼び出しそのもの（`resolveLabelPlacements\(labelInputs, nodeRects, edgeLines, frameBorders\)`）に更新する。`edgeLines` までの前方一致に緩めると、枠を渡し忘れた呼び出しも通ってしまう（frontmatter のみ）
@@ -114,7 +117,7 @@ Issue の再現（Umami の `UmamiApp` ドリルダウン）では、`Administra
 
 ### 実測（試作）
 
-案3 を実装したブランチ（`fix/3155-label-placement-frame-borders`）で同じ 4,626 ビューを測った。
+案3 を実装したブランチ（`fix/3155-label-placement-frame-borders`）で同じ 5,061 ビューを測った。同じレイアウトに対して、枠を渡さない pass（`main` と同じ）と枠を渡す pass を比べた。
 
 | 指標 | `main` | 案3 |
 | --- | --- | --- |
@@ -125,11 +128,13 @@ Issue の再現（Umami の `UmamiApp` ドリルダウン）では、`Administra
 | core の既存テスト・スナップショット | （基準） | 無変更で通る |
 | ラベル配置 pass の時間（twenty 1,521 ケース / wordpress 3,096 ケース） | 728 / 470 ms | 719 / 522 ms |
 
-位置が変わった 137 件のうち 45 件は、boundary グルーピングの `WordPressApp` 1 ビュー（ラベル 171、`main` で 40 件が枠の線上）で、1 件の移動が後続のラベルの空きを変える連鎖による。
+位置が変わった 137 件のうち 132 件は、`main` で枠の規則を破っていたラベルそのものである。残る 5 件は連鎖による（先に確定したラベルが動いて、後続の空きが変わった）。5 件とも boundary グルーピングの `WordPressApp` 1 ビューにある。このビューでは 45 件が変わり、うち 40 件が `main` で枠の線上にあった。位置が変わった 54 ビューは、どれも `main` で枠の規則を破るラベルを含んでいた。
+
+時間の差は、1 ケースあたり 0.02 ms 未満で、twenty では短くなっている。測定のばらつきの範囲とみて、許容する。
 
 ### 影響範囲・マイグレーション
 
-- 既存ユーザーへの影響: 枠のあるビューで、枠の線上・枠の外にずらされていたラベルが枠の内側へ動くか、`label-display: auto` なら外れる。それ以外のラベルは、同じビューで先に確定したラベルが動いて空きが変わったときだけ連鎖で動く（試作では 137 件中 45 件が `WordPressApp` 1 ビューの連鎖）。枠のコストで動くラベルが無いビューは変わらない
+- 既存ユーザーへの影響: 枠のあるビューで、枠の線上・枠の外にずらされていたラベルが枠の内側へ動くか、`label-display: auto` なら外れる。それ以外のラベルは、同じビューで先に確定したラベルが動いて空きが変わったときだけ連鎖で動く（試作では 137 件中 5 件）。枠の規則を破るラベルが無いビューは変わらない
 - ドキュメント更新: TPL-2048、ADR-2360 の frontmatter（assumptions）
 - テスト・examples への影響: 既存スナップショットは変わらない
 
