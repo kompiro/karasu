@@ -18,6 +18,7 @@ related_to:
   - ADR-3011
   - ADR-128
   - ADR-953
+  - ADR-3350
 scope:
   packages: []
   concerns: [ci, security]
