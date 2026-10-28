@@ -42,9 +42,9 @@
   > ✅ Automated — `packages/core/src/translate/openapi.test.ts` › `parses with no errors at %s granularity`
   > ✅ Automated — `packages/core/src/translate/bindings.test.ts` › `AT-8: emitted output parses without errors`
 
-- [x] AT-H: VS Code のプレビューは error のある間、回復した部分モデルを描かず、同じ対象の直前の有効な図を保つ
-  > ✅ Automated — `packages/vscode/src/render-gate.test.ts` › `never draws the partial model core recovered`
-  > ✅ Automated — `packages/vscode/src/render-gate.test.ts` › `keeps the last valid render while the compile target is unchanged`
+- [x] AT-H: VS Code のプレビューは error のある間、回復した部分モデルを描かず、同じ対象の直前の有効な図を保つ（#3312 以降プレビューは app の viewer なので、app と同じ compile の経路で守られる）
+  > ✅ Automated — `packages/app/src/hooks/useSystemView.test.tsx` › `shows empty svg when navigating to a different viewPath while errors exist`
+  > ✅ Automated — `packages/app/src/hooks/useSystemView.test.tsx` › `retains previous valid svg when updated source has errors`
 
 - [x] AT-I: Reference データで `facet` が experimental として扱われない
   > ✅ Automated — `packages/core/src/builtins/reference-top-level-coverage.test.ts` › `flags boundary experimental and facet no longer (facet is core from language v2.0, #2677)`

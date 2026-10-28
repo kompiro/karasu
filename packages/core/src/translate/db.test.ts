@@ -632,6 +632,44 @@ INSERT INTO b (note) VALUES ('ALTER TABLE a RENAME TO c'), ("RENAME TABLE b TO d
       expect(tableIds(out)).toEqual(["ATable", "BTable"]);
     });
 
+    // #3282: a ')' inside a literal ended the CREATE TABLE body early, and the
+    // scanner resumed inside the literal.
+    it("reads a CREATE TABLE body to its own ')', past parentheses in quoted text", async () => {
+      const out = await flat(`
+CREATE TABLE a (note text DEFAULT ') DROP TABLE a', id int PRIMARY KEY);
+CREATE TABLE b (id int PRIMARY KEY, "odd)name" text DEFAULT 'it'')s', \`x)\` int, a_id int);
+`);
+      expect(tableIds(out)).toEqual(["ATable", "BTable"]);
+      // b's body reached a_id, so its Soft FK is there.
+      expect(out).toContain("BTable -> ATable [inferred]");
+    });
+
+    it("splits columns only at commas outside quoted text", async () => {
+      const out = await flat(`
+CREATE TABLE customers (id int PRIMARY KEY);
+CREATE TABLE orders (id int PRIMARY KEY, note text DEFAULT 'x, customer_id int', "a,b" text, \`c, customer_code\` text);
+`);
+      expect(tableIds(out)).toEqual(["CustomersTable", "OrdersTable"]);
+      expect(out).not.toContain("OrdersTable -> CustomersTable");
+    });
+
+    it("reads no key or reference from a column's string literal", async () => {
+      const out = await flat(`
+CREATE TABLE customers (id int PRIMARY KEY);
+CREATE TABLE orders (id int, note text DEFAULT 'PRIMARY KEY REFERENCES customers(id)');
+`);
+      expect(out).not.toContain("OrdersTable -> CustomersTable");
+    });
+
+    it("keeps a key and a reference written after a string literal", async () => {
+      const out = await flat(`
+CREATE TABLE customers (id int PRIMARY KEY);
+CREATE TABLE orders (id int PRIMARY KEY, buyer int DEFAULT 'x' REFERENCES "customers"(id));
+`);
+      expect(out).toContain("OrdersTable -> CustomersTable");
+      expect(out).not.toContain("OrdersTable -> CustomersTable [inferred]");
+    });
+
     it("keeps a table whose rename changes only the letter case", async () => {
       const out = await flat(`
 CREATE TABLE orders (id int PRIMARY KEY);

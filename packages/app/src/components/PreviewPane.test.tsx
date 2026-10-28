@@ -331,6 +331,100 @@ describe("PreviewPane", () => {
 
       expect(onJumpToEditor).toHaveBeenCalledWith("leaf-svc");
     });
+
+    // ADR-177 / #3311: Cmd/Ctrl+click is the jump, on any node. A drillable
+    // node must jump instead of drilling, or the modifier would be dead there.
+    function modifierClick(
+      container: HTMLElement,
+      getTarget: () => Element,
+      modifier: "metaKey" | "ctrlKey",
+    ) {
+      fireEvent.mouseDown(container, { button: 0, clientX: 10, clientY: 10 });
+      fireEvent.mouseUp(getTarget(), { button: 0, clientX: 10, clientY: 10, [modifier]: true });
+    }
+
+    it.each(["metaKey", "ctrlKey"] as const)(
+      "jumps on %s+click of a drillable node instead of drilling",
+      (modifier) => {
+        const onJumpToEditor = vi.fn<(id: string) => void>();
+        const onDrillDown = vi.fn<(path: string[]) => void>();
+        const svg = `<div data-node-id="parent-svc" data-has-children="true"></div>`;
+        const { container } = render(
+          <PreviewPane
+            {...baseProps()}
+            svg={svg}
+            onDrillDown={onDrillDown}
+            onJumpToEditor={onJumpToEditor}
+          />,
+        );
+        const previewContainer = container.querySelector(".preview-container") as HTMLElement;
+        modifierClick(
+          previewContainer,
+          () => container.querySelector("[data-node-id='parent-svc']")!,
+          modifier,
+        );
+        expect(onJumpToEditor).toHaveBeenCalledWith("parent-svc");
+        expect(onDrillDown).not.toHaveBeenCalled();
+      },
+    );
+
+    it("jumps to the node a deploy card realizes, not its composite key", () => {
+      const onJumpToEditor = vi.fn<(id: string) => void>();
+      const svg = `<div data-container-id="Api" data-realized-node-id="Api"><div data-node-id="Api::api-pod"></div></div><div data-container-id="__unclassified__"><div data-node-id="__unclassified__::job"></div></div>`;
+      const { container } = render(
+        <PreviewPane {...baseProps()} svg={svg} onJumpToEditor={onJumpToEditor} />,
+      );
+      const previewContainer = container.querySelector(".preview-container") as HTMLElement;
+      modifierClick(
+        previewContainer,
+        () => container.querySelector("[data-node-id='Api::api-pod']")!,
+        "metaKey",
+      );
+      expect(onJumpToEditor).toHaveBeenCalledWith("Api");
+
+      modifierClick(
+        previewContainer,
+        () => container.querySelector("[data-node-id='__unclassified__::job']")!,
+        "metaKey",
+      );
+      expect(onJumpToEditor).toHaveBeenCalledTimes(1);
+    });
+
+    it("drills on Cmd+click when the host offers no jump", () => {
+      const onDrillDown = vi.fn<(path: string[]) => void>();
+      const svg = `<div data-node-id="parent-svc" data-has-children="true"></div>`;
+      const { container } = render(
+        <PreviewPane {...baseProps()} svg={svg} onDrillDown={onDrillDown} />,
+      );
+      const previewContainer = container.querySelector(".preview-container") as HTMLElement;
+      modifierClick(
+        previewContainer,
+        () => container.querySelector("[data-node-id='parent-svc']")!,
+        "metaKey",
+      );
+      expect(onDrillDown).toHaveBeenCalledWith(["parent-svc"]);
+    });
+
+    it("offers no 'Jump to editor' when the host offers no jump", () => {
+      const svg = `<div data-node-id="leaf-svc" data-has-children="false"></div>`;
+      const metadata: NodeMetadata = {
+        kind: "service",
+        label: "Leaf Service",
+        description: "",
+        links: [],
+        tags: [],
+        annotations: [],
+        hasChildren: false,
+      };
+      const { container, queryByText, getByText } = render(
+        <PreviewPane {...baseProps()} svg={svg} nodeMetadata={new Map([["leaf-svc", metadata]])} />,
+      );
+      click(container.querySelector(".preview-container") as HTMLElement, () =>
+        container.querySelector("[data-node-id='leaf-svc']")!,
+      );
+      expect(getByText("Leaf Service")).toBeTruthy();
+      expect(queryByText(/Jump to editor/)).toBeNull();
+    });
   });
 
   describe("edge detail panel", () => {
@@ -690,6 +784,18 @@ describe("PreviewPane", () => {
       fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
       expect(queryMenu()).not.toBeNull();
       expect(document.querySelector(".context-menu-header__label")).toBeNull();
+    });
+
+    // #3311: every item in the menu is a write, so a host that cannot write
+    // (the VS Code webview before #3313) gets no menu at all.
+    it("does not open the menu when the host is read-only", () => {
+      const svg = `<div data-edge-from="A" data-edge-to="B" data-edge-kind="sync" data-edge-canonical-id="A->B"></div>`;
+      const { container } = render(
+        <PreviewPane {...baseProps()} svg={svg} styleTargetPath="/style.krs.style" readOnly />,
+      );
+      const edge = container.querySelector("[data-edge-canonical-id]")!;
+      expect(fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 })).toBe(true);
+      expect(queryMenu()).toBeNull();
     });
 
     it("does not open the menu on right-click outside an edge", () => {

@@ -4,6 +4,8 @@ dist/
 dist-viewer/
 # The `karasu serve` build (packages/app, `pnpm build:serve`), staged into the CLI's dist/app/ (#3017).
 dist-serve/
+# The VS Code preview build (packages/app, `pnpm build:vscode-webview`), staged into packages/vscode/out/webview/ (#3312).
+dist-vscode-webview/
 # The same build staged for karasu-nest's static assets (#2998).
 viewer-assets/
 .DS_Store

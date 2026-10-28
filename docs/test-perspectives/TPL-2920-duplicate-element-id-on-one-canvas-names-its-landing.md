@@ -118,8 +118,8 @@ bare id の key で片方が上書きされ、1 つしか描かれない）、�
   right two cards（bare id で引く内部 lookup を system の次元で分けた fence）
 - `packages/app/src/components/PreviewPane.test.tsx` › data-node-path resolves the clicked card
   (#2917)（ドリルと詳細パネルが DOM 順や index の勝者ではなく、クリックしたカードの path に着く）
-- `packages/vscode/src/drilldown-state.test.ts` › drillDown with the card's own path (#2917) ／
-  `packages/vscode/src/webview-content.test.ts` › data-node-path in the webview (#2917)
+- `packages/vscode-e2e/tests/webview/at-2917-same-id-drill.test.ts` › AT-N-2 ／ AT-N-3（VS Code
+  の preview は #3312 以降 app の viewer で、上の `PreviewPane` の path 解決をそのまま使う）
 - `packages/core/src/renderer/static-bundle-same-id.test.ts` › … one level per anchor id (#2933) ›
   shows the node the SPA resolves the same anchor to, for every anchor ／ links and back buttons
   around a same-id node (#2933) › links only the card whose own level the anchor names（静的

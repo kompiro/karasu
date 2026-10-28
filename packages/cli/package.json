@@ -1,6 +1,6 @@
 {
   "name": "karasu",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "karasu CLI — serve and build .krs architecture diagrams",
   "homepage": "https://github.com/kompiro/karasu#readme",
   "license": "Apache-2.0",
@@ -43,11 +43,11 @@
     "@karasu-tools/core": "workspace:*",
     "@karasu-tools/i18n": "workspace:*",
     "@types/node": "^26.6.5",
-    "@vitest/coverage-v8": "^5.0.4",
+    "@vitest/coverage-v8": "^5.0.5",
     "esbuild": "^0.28.2",
     "svgo": "^4.1.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.4"
+    "vitest": "^5.0.5"
   },
   "engines": {
     "node": ">=22.12"

@@ -1,0 +1,8 @@
+system Shop {
+  service UserService {
+    label "会員サービス"
+    domain 認証 {
+      usecase "ログインする" {}
+    }
+  }
+}

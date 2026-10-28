@@ -119,9 +119,10 @@ id をビューをまたいで手渡す導線を足す / 触るとき:
   修飾コンテナと絞り込み参照は切替のみ。素の id の導線は
   `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `Clicking a deploy
 container switches to System with the realizes target highlighted`
-- `packages/vscode/src/webview-content.test.ts` › `lets a highlight message pick
-data-realized-node-id` と `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` ›
-  `AT-0042-2` — 同じ導線を持つもう 1 つの表示面（チェックリスト 5）
+- `packages/app/src/components/PreviewPane.test.tsx` › `matches only data-realized-node-id when
+the pane is told to (#2818)` と `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` ›
+  `AT-0042-2` — 同じ導線を持つもう 1 つの表示面（チェックリスト 5）。VS Code の preview は
+  #3312 以降 app の viewer なので、受け手の属性の扱いは app と同じ実装になる
 - `packages/app/src/state/app-reducer.test.ts` › `carries highlightAttribute with the highlight`、
   `packages/app/src/hooks/useHistoryNavigation.test.ts` › `restores a deploy hash highlight on
 data-realized-node-id` — 属性は手渡す側が id と一緒に state に載せる（受け手のペインの
