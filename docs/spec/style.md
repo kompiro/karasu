@@ -789,7 +789,7 @@ Whether the canvas draws the label at all. Default `auto`.
 
 | Value | The canvas draws the label |
 | --- | --- |
-| `auto` | only where it can be seated clear of node cards, other labels and other edges' lines |
+| `auto` | only where it can be seated clear of node cards, other labels and other edges' lines, off every frame border and on the same side of each frame as its default position |
 | `always` | wherever it lands, even into a collision |
 | `hover` | never; the viewer shows it on hover |
 

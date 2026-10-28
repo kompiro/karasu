@@ -734,7 +734,7 @@ canvas に label を描くかどうか。デフォルトは `auto`。
 
 | 値 | canvas が label を描く条件 |
 | --- | --- |
-| `auto` | node card・他の label・他の edge の線に重ならずに置けるときだけ |
+| `auto` | node card・他の label・他の edge の線に重ならず、枠の線にも掛からず、どの枠についても既定位置と同じ側（内か外か）に置けるときだけ |
 | `always` | 常に。重なる位置でも描く |
 | `hover` | 描かない。viewer が hover で出す |
 

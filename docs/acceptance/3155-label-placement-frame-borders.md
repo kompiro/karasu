@@ -24,9 +24,11 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › `frame borders as placement obstacles (#3155)` › `keeps a label that starts outside a frame outside it`
 
-- [x] AT-C: 既定位置で枠の線に掛かっているラベルは、箱の大半がある側へ線から外される
+- [x] AT-C: 既定位置で枠の線に掛かっているラベルは、箱の中心がある側へ線から外される。中心がちょうど枠の線上にあるときは内側として扱う
 
   > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › `frame borders as placement obstacles (#3155)` › `moves a label whose default box straddles a border off it, to the side most of it is on`
+  >
+  > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › `frame borders as placement obstacles (#3155)` › `treats a default box centred exactly on the border as inside, and moves it in`
 
 - [x] AT-D: `label-display: auto` で、同じ側に空きが無いラベルは canvas から外される（枠の外には描かない）
 
@@ -35,6 +37,14 @@ type: product
 - [x] AT-E: 広げた枠（L 字の boundary 枠）は描かれた外形で測り、外接矩形の欠けた部分は枠の外として扱う
 
   > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › `frame borders as placement obstacles (#3155)` › `frameBorder traces the widened outline and reads its pieces, not the bounding box`
+
+- [x] AT-J: 作者が `label-position` / `label-offset` で置いたラベルは、枠の線上にあっても動かさず、枠を越えるラベルの数にも入れない
+
+  > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › `frame borders as placement obstacles (#3155)` › `leaves an author-positioned label on a border where the author put it`
+
+- [x] AT-K: 太い枠の線は、探索の端の候補の角にしか届かない場合でも避ける
+
+  > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › `frame borders as placement obstacles (#3155)` › `reaches a thick border that only a diagonal candidate's grown corner touches`
 
 ### AC-2: 他の衝突と交換しない・衝突の無い図は変わらない
 
@@ -54,7 +64,7 @@ type: product
   >
   > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › `frame borders as placement obstacles (#3155)` › `never takes a frame border for the edge a label belongs to (ambiguity reads edges only)`
 
-- [x] AT-I: 既存の renderer スナップショットと label placement の柵が無変更で通る
+- [x] AT-I: core の既存テスト（SVG 文字列の検証と label placement の柵を含む）が期待値を変えずに通る
 
   > ✅ Automated — `pnpm --filter @karasu-tools/core test`
 
