@@ -14,7 +14,7 @@ related_to:
   - ADR-2474
   - ADR-784
 scope:
-  packages: [app, cli, docs-site]
+  packages: [app, cli, docs-site, e2e]
   concerns: [ci, dependencies, security]
 ---
 
@@ -34,7 +34,8 @@ scope:
 ## 背景
 
 2026-10-26（月）21:45–21:51 UTC に週次の Dependabot PR が 14 件起票された（github-actions 1 件、npm 13 件）。
-security update ではない（`security` ラベル無し。open な Dependabot alert は 7 件あったが、どれも今回の PR の対象パッケージではなかった）。
+security update ではない（`security` ラベル無し。open な Dependabot alert は 10 件（#86、#94–#102）あったが、どれも今回の PR が bump するパッケージではなかった。
+うち #86 / #97 / #99–#101 は部分木の版の付け替えでマージ後に fixed になった。後述「対象外の観測」）。
 npm 13 件は CI green、gh-aw の 1 件は `gh-aw-lock-consistency.test.ts` で Check が落ちていた。
 `[dep-triage]` の Issue や workflow の所見コメントは無かった。
 
@@ -56,7 +57,7 @@ npm 13 件は CI green、gh-aw の 1 件は `gh-aw-lock-consistency.test.ts` で
   クエリが効いていることは `undici@7.30.0` で 3 件返ることで確かめた）
 - **公開からの経過**: すべての to 版と、transitive で新しく入る版が起票時点で cooldown 7 日を越えていた。
   最も新しいのは `chokidar` 6.0.0（10-19 20:52 公開、起票まで 7 日と 56 分）
-- **依存エッジ**: lock の snapshot を peer suffix を落として merge-base と各 PR ヘッドで突き合わせた
+- **依存エッジ**: lock の snapshot を peer suffix を落として merge-base（`a250c9da`）と各 PR ヘッドで突き合わせた
   （`security-alert` skill の edges 手順）。main の lock に無いパッケージ名が新しく入るのは 3 PR の 4 件だけ:
   #3376 の `lefthook-android-arm64`、#3377 の `@opentelemetry/api`、#3375 の `tinyps` と `fnv1a-64`
 
@@ -92,7 +93,7 @@ npm 13 件は CI green、gh-aw の 1 件は `gh-aw-lock-consistency.test.ts` で
 1. **Node の下限が食い違う。** chokidar 6.0.0 は `engines.node: ">= 22.22"` を宣言する（5.0.0 は `>= 20.19.0`）。karasu の公開パッケージは
    `engines.node: ">=22.12"`（ADR-2397 / ADR-2472、`scripts/ci/node-version-policy.test.ts` が全 workspace で一致を検査する）。
    bot PR のままマージすると、22.12〜22.21 の利用者に「動く」と約束しながら依存側は対象外と言っている状態になる。CI は Node 24 で
-   回るので、この食い違いは green のまま残る
+   回り、policy test は依存の `engines` までは見ないので、この食い違いは green のまま残る
 2. **6.0.0 は監視部分の書き直しで、公開から 1 週間で regression 報告が出ている。** 10-22 に v6 起因の Issue が 3 件立ち（upstream
    #1496 / #1497 / #1498）、修正 PR が open のまま 6.0.1 は未公開だった。karasu の使い方に直接当たるものは無いが、#1498 は Windows の
    初回スキャンの `add` に関わる
@@ -140,7 +141,7 @@ github/gh-aw の prerelease。`@dependabot ignore` は付けずに close した�
 - 12 件とも upstream の変更が修正・追加中心で、karasu の使い方に当たる破壊的変更が無かった:
   - `@anthropic-ai/sdk` 0.134 / 0.135: OpenTelemetry tracing の native 対応で `dependencies` に `@opentelemetry/api`（1.9.1、open-telemetry
     公式、OIDC + provenance）が加わる。SDK が span を作るのはアプリがグローバルな tracer provider を登録したときだけで、karasu の app は
-    登録していない（no-op）。karasu が SDK で使うのは `client.messages.create` と `APIError` だけ
+    登録していない（no-op）。不要なら `openTelemetry: false` か `ANTHROPIC_OPEN_TELEMETRY=false` で止められる。karasu が SDK で使うのは `client.messages.create` と `APIError` だけ
   - `astro` 7.4.1: 部分木の動きが最も大きい（`unifont` 0.7.5 → 1.0.3、`devalue` 5 → 6、`rolldown` 1.2.14 など）。新しく入る
     `tinyps`（tinylibs）と `fnv1a-64`（`danielroe`）はどちらも OIDC + provenance、install script なし。CI は docs-site をビルドしないので、
     merge-base と PR ヘッドの両方でローカルにビルドし、ハッシュ・版文字列・scope class を正規化して比べた。73 ページの HTML がすべて
@@ -159,9 +160,11 @@ github/gh-aw の prerelease。`@dependabot ignore` は付けずに close した�
 ユーザー判断（2026-10-27）: Design Doc の推奨をすべて採用（npm 12 件をそのまま採用、#3373 保留、#3366 却下して v0.92.0 で今すぐ再生成）。
 
 - npm 12 件を 10-27 12:25〜15:56 UTC に squash merge した。最初の #3379 は rebase せずにマージし、残りは 1 本ずつ `@dependabot rebase` →
-  CI green → マージ前に PR タイトルの版と rebase 後の lock の依存エッジを main と比べる、の順で進めた（#3378 → #3377 → #3376 → #3375 →
-  #3374 → #3372 → #3371 → #3370 → #3369）。#3367 と #3368 は並行して maintainer がマージした（13:35 / 14:54）。どちらも版は分析どおりで、
-  main の lock に新しいパッケージ名を足していない
+  CI green → マージ前に PR タイトルの版と rebase 後の lock の依存エッジを main と比べる、の順で進めた（マージ順は #3378 → #3377 → #3367 →
+  #3376 → #3375 → #3374 → #3368 → #3372 → #3371 → #3370 → #3369）。作業は 2 つの Claude セッションが同じ一覧を並行して進めており、
+  #3367 / #3368 など一部は相手側のセッションがマージした。どのマージも版は分析どおり、または下に挙げた確認済みの版だった
+- 例外が 1 件ある。#3368 と #3372 はどちらも #3374 の後の main に rebase され、#3368 が 14:54:20、#3372 が 10 秒後に再 rebase なしで
+  マージされた。#3372 の CI とエッジ比較は #3368 の lock を含まない状態で行われたことになる。マージ後の main（`5248631d`）の CI は green だった
 - rebase で解決が変わり、トリアージ時に見ていない版が入ったものは、マージ前に同じ確認をした:
   - #3369: `lucide-react` 1.60.0（事前に確認済みの版。OIDC + provenance、`dependencies` なし）
   - #3375: `@shikijs/vscode-textmate` 10.0.2 → 10.1.0（shiki 経由）。10-20 公開で cooldown を越えている。publisher は 10.0.2 と同じ
@@ -169,14 +172,18 @@ github/gh-aw の prerelease。`@dependabot ignore` は付けずに close した�
     build 出力の変化（class field 宣言の追加、型 export の分離）だけ
   - #3372: `unbash` 6.0.0 → 6.0.1。10-20 公開、publisher は同じ `webpro`、install script なし。差分は bash の `$'\xHH'` / `$'\NNN'` を
     byte 列として UTF-8 で復号する修正と README の badge だけ
-  - #3374 / #3371: `undici` 7.30.1、`rolldown` 1.2.14、`@astrojs/compiler-rs` 0.5.2 への付け替え。いずれも先にマージした #3375 が
-    main の lock に入れていた版
+  - #3374: `jsdom → undici` 7.30.0 → 7.30.1、`vite → rolldown` 1.2.13 → 1.2.14（vite の宣言は `~1.2.12`）。
+    #3371: oxfmt の optional peer `@astrojs/compiler-rs` 0.5.1 → 0.5.2。#3368: `@astrojs/mdx → es-module-lexer` 3.0.3 → 3.0.4。
+    いずれも先にマージした #3375 が main の lock に入れていた版への付け替え
   - #3377 は rebase 時点で `@anthropic-ai/sdk` 0.136.0 が cooldown を越えておらず、0.135.0 のまま入った
 - #3373 は open のまま残した
 - #3366 を close し（ignore なし）、#3384 で v0.92.0 に再生成した（10-27 12:48 UTC マージ）
 
 ## 運用上の学び
 
+- **同じトリアージの反映を 2 つのセッションが並行して進めると、1 本ずつの順序が崩れる。** 今回はマージだけでなく ADR 昇格の
+  commit も同じ worktree に並んだ。`gh pr merge` が「already merged」を返したら、相手のセッションが先にマージしたことを疑う。
+  反映を始める前に open PR と worktree を確かめ、担当を 1 つに決める
 - **`@dependabot rebase` に Dependabot が応答しないことがある。** #3376 は 1 回目の依頼から 20 分間 head が変わらず（PR は main より
   4 commit 遅れていたが conflict は無かった）、2 回目の依頼で rebase された。待ち時間に上限を置き、超えたら依頼し直す
 - **`gh extension install --force --pin <v>` は既に入っている extension では pin を無視して最新に upgrade する。** v0.92.0 を指定して
@@ -205,7 +212,7 @@ v0.93 系は 10-21〜10-25 に非 prerelease が出ているので、待てば 1
 
 ## 対象外の観測（別の作業で扱う）
 
-トリアージ時、open alert #101（`undici`、脆弱範囲 `>= 7.18.0, < 7.30.1`）が lock の `undici@7.30.0` に当たっていた。今回のマージで
+トリアージ時、open alert #99 / #100 / #101（`undici`、脆弱範囲はいずれも上限 `< 7.30.1`）が lock の `undici@7.30.0` に当たっていた。今回のマージで
 #3375 が `undici@7.30.1` を lock に入れ、#3374 で jsdom もそちらに解決されたので、lock から `undici@7.30.0` が消え、#99 / #100 / #101 は
 10-27 14:36 UTC に fixed になった。同じく `zod`（#97）と `http-cache-semantics`（#86）も #3375 のマージで fixed になった。
 
