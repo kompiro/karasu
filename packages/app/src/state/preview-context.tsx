@@ -172,7 +172,7 @@ export interface PreviewContextValue {
 
   previewFocused: boolean;
   onPreviewFocusToggle: () => void;
-  /** Called when user clicks "Jump to editor" in the detail panel */
+  /** "Jump to editor" in the detail panel and Cmd/Ctrl+click on a node (ADR-177). */
   onJumpToEditor?: (nodeId: string) => void;
 
   isOrgTreeViewOpen: boolean;
@@ -219,6 +219,8 @@ export interface PreviewContextValue {
    * GUI style writes.
    */
   onPickEdgeDirection?: (canonicalId: string, direction: EdgeDirection) => void;
+  /** The host cannot write files: the edge context menu does not open (#3311). */
+  readOnly?: boolean;
 
   /**
    * The document open in the editor, and the directory other files are shown

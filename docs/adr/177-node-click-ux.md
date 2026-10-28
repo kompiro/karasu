@@ -6,9 +6,10 @@ date: 2026-04-01
 topic: navigation
 depends_on:
   - ADR-9007
-  - ADR-218
+  - ADR-2996
 related_to:
   - ADR-9014
+  - ADR-218
 scope:
   packages:
     - app

@@ -45,12 +45,33 @@ interface Table {
   foreignKeys: ForeignKey[];
 }
 
+function isQuote(ch: string): boolean {
+  return ch === "'" || ch === '"' || ch === "`";
+}
+
+/**
+ * The index just past the quoted text (`'…'`, `"…"`, `` `…` ``) that opens at
+ * `sql[i]`, or `sql.length` when it is never closed. A doubled quote inside
+ * the text closes and reopens it: same result.
+ */
+function quotedEnd(sql: string, i: number): number {
+  const close = sql.indexOf(sql[i], i + 1);
+  return close === -1 ? sql.length : close + 1;
+}
+
 function splitTopLevelCommas(body: string): string[] {
   const parts: string[] = [];
   let depth = 0;
   let buf = "";
-  for (let i = 0; i < body.length; i++) {
+  let i = 0;
+  while (i < body.length) {
     const ch = body[i];
+    if (isQuote(ch)) {
+      const end = quotedEnd(body, i);
+      buf += body.slice(i, end);
+      i = end;
+      continue;
+    }
     if (ch === "(") depth++;
     else if (ch === ")") depth--;
     if (ch === "," && depth === 0) {
@@ -59,16 +80,22 @@ function splitTopLevelCommas(body: string): string[] {
     } else {
       buf += ch;
     }
+    i++;
   }
   if (buf.trim().length > 0) parts.push(buf);
   return parts;
 }
 
+/** The text between `sql[openIdx]` and its matching `)`; parentheses in quoted text do not count. */
 function extractParenBody(sql: string, openIdx: number): { body: string; end: number } | null {
   if (sql[openIdx] !== "(") return null;
   let depth = 0;
   for (let i = openIdx; i < sql.length; i++) {
     const ch = sql[i];
+    if (isQuote(ch)) {
+      i = quotedEnd(sql, i) - 1;
+      continue;
+    }
     if (ch === "(") depth++;
     else if (ch === ")") {
       depth--;
@@ -128,11 +155,15 @@ function parseTable(name: string, body: string): Table {
     const colName = colMatch[1];
     columns.push(colName);
 
-    if (/\bPRIMARY\s+KEY\b/i.test(part)) {
+    // A string literal (`DEFAULT 'PRIMARY KEY'`) declares nothing. Only `'…'`
+    // is one: `"…"` and `` `…` `` are identifiers (`REFERENCES "users"`).
+    const definition = part.replace(/'(?:''|[^'])*'/g, "''");
+
+    if (/\bPRIMARY\s+KEY\b/i.test(definition)) {
       primaryKey.push(colName);
     }
 
-    const inlineRef = part.match(/\bREFERENCES\s+(?:["'`]?\w+["'`]?\.)?["'`]?(\w+)["'`]?/i);
+    const inlineRef = definition.match(/\bREFERENCES\s+(?:["'`]?\w+["'`]?\.)?["'`]?(\w+)["'`]?/i);
     if (inlineRef) {
       foreignKeys.push({
         column: colName,
@@ -208,10 +239,8 @@ function blankComments(sql: string): string {
   let i = 0;
   while (i < sql.length) {
     const ch = sql[i];
-    if (ch === "'" || ch === '"' || ch === "`") {
-      // A doubled quote inside the text closes and reopens it: same result.
-      const close = sql.indexOf(ch, i + 1);
-      const end = close === -1 ? sql.length : close + 1;
+    if (isQuote(ch)) {
+      const end = quotedEnd(sql, i);
       out += sql.slice(i, end);
       i = end;
     } else if (ch === "-" && sql[i + 1] === "-") {

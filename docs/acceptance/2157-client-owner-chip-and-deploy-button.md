@@ -4,7 +4,7 @@
 - **関連 Issue**: [#2157](https://github.com/kompiro/karasu/issues/2157)
 - **関連 AT**: [AT-1720](1720-client-realize-owns.md)（解決側。本 AT はその system view 提示側）
 - **関連 TPL**: [TPL-2157](../test-perspectives/TPL-2157-resolved-relation-rendered-for-every-kind.md)
-- **対象ファイル**: `packages/core/src/renderer/layout.ts`, `packages/core/src/renderer/svg-renderer.ts`, `packages/core/src/compile/compile.ts`, `packages/core/src/types/ast.ts`, `packages/app/src/components/NodeDetailPanel.tsx`, `packages/vscode/src/webview-content.ts`
+- **対象ファイル**: `packages/core/src/renderer/layout.ts`, `packages/core/src/renderer/svg-renderer.ts`, `packages/core/src/compile/compile.ts`, `packages/core/src/types/ast.ts`, `packages/app/src/components/NodeDetailPanel.tsx`（VS Code の preview も #3312 以降これを使う）
 
 ## 受け入れ条件
 
@@ -56,7 +56,7 @@
 
 - [x] app / VS Code の detail panel は label を表示し、org view への遷移は team id で行う
 
-  > ✅ Automated — `packages/app/src/components/NodeDetailPanel.test.tsx` › `shows the team label but navigates by the team id (#2157)` / `packages/vscode/src/webview-content.test.ts` › `detail panel labels the org-jump button with teamLabel, keeping the id as the target`
+  > ✅ Automated — `packages/app/src/components/NodeDetailPanel.test.tsx` › `shows the team label but navigates by the team id (#2157)`（VS Code の preview は #3312 以降この panel そのもの）
 
 ### 手動確認
 

@@ -50,5 +50,7 @@ entry のファイルだけをバッファから読むのでは足りない。`@
 
 ## 関連テスト
 
-- `packages/lsp/src/definition-imports.test.ts` — import 先をたどる定義ジャンプの fence。今はディスク上のファイルだけを読む前提で、import 先のバッファを優先する項目はまだ無い（チェックリストの 1・2 が未検証）
-- VS Code の preview 側には、この観点を見るテストがまだ無い（proactive TPL）。#2996 のスライス B で、ホスト FS の unit test と、保存せずに編集した内容が preview に出ることを見る webview e2e を足し、ここにパスを書く
+- `packages/vscode/src/host-files.test.ts` › `readThroughBuffers (#3312, TPL-2996)` — 開いている文書はバッファ（未保存の編集を含む）、開いていない文書はディスクから読む。空のバッファを「無い」と取り違えない（チェックリストの 1）
+- `packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts` › `TPL-2996: an unsaved edit reaches the preview and keeps the drilled view` — 保存しない操作だけで、編集が VS Code の preview に出ることを実 webview で見る（チェックリストの 4）
+- `packages/app/src/viewer/mount-viewer.test.tsx` › `redraws on a style-only edit` — import 先のスタイルだけを変えても図が描き直される（チェックリストの 2、viewer 側）
+- `packages/lsp/src/definition-imports.test.ts` — import 先をたどる定義ジャンプの fence。今はディスク上のファイルだけを読む前提で、import 先のバッファを優先する項目はまだ無い（LSP の consumer は未対応）

@@ -1,7 +1,8 @@
 ---
 id: ADR-176
 title: VSCode Phase 3 — 独立 HTML Webview アーキテクチャ
-status: accepted
+status: superseded
+superseded_by: ADR-2996
 date: 2026-04-01
 topic: vscode
 depends_on:
@@ -14,7 +15,7 @@ scope:
 # ADR-176: VSCode Phase 3 — 独立 HTML Webview アーキテクチャ
 
 - **日付**: 2026-04-01
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by ADR-2996
 - **関連**: Issue #176, [ADR-9014](9014-vscode-extension-lsp-first.md)
 
 ## 背景

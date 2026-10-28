@@ -1,0 +1,14 @@
+import "user.krs"
+
+system Shop {
+  service OrderService {
+    label "注文サービス"
+    domain 受注 {
+      usecase "注文を受け付ける" {}
+    }
+    domain 決済 {
+      usecase "支払いを確定する" {}
+    }
+  }
+  OrderService -> UserService "購入者を確かめる"
+}

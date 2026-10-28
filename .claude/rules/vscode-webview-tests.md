@@ -2,14 +2,23 @@
 paths:
   - "packages/vscode-e2e/**"
   - "packages/vscode/src/preview-panel.ts"
+  - "packages/app/src/viewer/vscode/**"
   - "docs/acceptance/*-vscode-*.md"
 ---
 
 # VS Code WebView Test Rules
 
-VS Code 拡張のプレビュー（`packages/vscode/src/preview-panel.ts`）は WebView
-として実装されている。WebView 系テストの方針は **ADR-1014** で
-更新済み（旧 ADR-926 を supersede）。
+VS Code 拡張のプレビュー（`packages/vscode/src/preview-panel.ts`）は、app の
+viewer（`packages/app/src/viewer/vscode/main.tsx`）を WebView で動かしている
+（#3312）。DOM は app のもの（`.node-detail-panel`、`DiagramTabBar` の
+`role="tab"`、`nav.breadcrumb`）で、ページは 1 度だけ書かれ、drill や view の
+切替はその場で起きる。WebView 系テストの方針は **ADR-1014** で更新済み
+（旧 ADR-926 を supersede）。
+
+**どこに書くか**: viewer の挙動（drill、パネル、ツールバー、highlight）は app の
+unit test / Playwright が正本で、VS Code 側でしか起きないこと（エディタとの往復、
+ホストの読み出し、`.vsix` での起動）を ExTester で見る。viewer の挙動を ExTester で
+重ねて網羅しない。
 
 ## ルール
 
@@ -17,8 +26,11 @@ VS Code 拡張のプレビュー（`packages/vscode/src/preview-panel.ts`）は 
    `packages/vscode-e2e/tests/webview/` 配下の ExTester ハーネスで自動化する。**
 
    `pnpm --filter @karasu-tools/vscode-e2e run test:webview` でローカル実行
-   できる。CI は `vscode-webview-e2e` ラベル opt-in（required check には
-   昇格しない）。
+   できる（devcontainer の arm64 では ChromeDriver が動かないので CI で見る）。
+   CI は拡張か core / i18n / lsp に触れた PR で path filter により起動し（ADR-1742。
+   app だけの変更では起動しないので、viewer の変更が VS Code で壊れていないかは
+   その後の拡張側の PR か手元で見る）、
+   required check には昇格しない。draft の PR では走らない。
 
    既存の `@vscode/test-cli` ベース smoke は LSP / コマンド層など拡張ホスト
    側で完結するテスト用に残す（ADR-863）。
@@ -43,17 +55,24 @@ VS Code 拡張のプレビュー（`packages/vscode/src/preview-panel.ts`）は 
    実 WebView に対してテストを書く。
 
 4. **WebView 操作の確立済みパターン**:
-   - **Click**: `MouseEvent` を `dispatchEvent` で element に直接送る
-     （Selenium の coordinate-based click が nested SVG group を取り違える
-     のを回避）。modifier-click は `{ ctrlKey: true, metaKey: true }` を
-     synthesize して xvfb の OS keyboard を使わない。
-   - **Drill-down / view switch 後の frame 再取得**: 拡張ホストが
-     `webview.html` を再代入するため iframe context が無効化される。
-     `webview.switchBack()` → `driver.sleep(800)` → `webview.switchToFrame()`
-     で再取得する。
+   - **Click**: harness の `dispatchClick` で `mousedown` → `mouseup` →
+     `click` を element に直接送る（Selenium の coordinate-based click が
+     nested SVG group を取り違えるのを回避）。viewer は diagram 上の押下を
+     mousedown と mouseup の組で読み、tab は mousedown で切り替わるので、
+     `click` だけでは何も起きない。modifier-click は
+     `{ ctrlKey: true, metaKey: true }` を synthesize して xvfb の OS keyboard
+     を使わない。
+   - **Drill-down / view switch の後**: ページは作り直されないが、viewer は
+     300ms の debounce の後に描くので、結果は poll して読む
+     （`reacquireFrame` の settle か `driver.wait`）。
+   - **CSS の `:hover`**: synthetic event では発火しない。規則が webview に
+     届いていることを `document.styleSheets` で確かめ、hover の見た目は app の
+     Playwright に任せる（#3252）。
    - **Editor cursor の検証**: `webview.switchBack()` → `EditorView.openEditor(...)`
-     → `TextEditor.getCoordinates()`。エディタを focus すると preview が
-     再 render されるので、panel state は focus 前に assert しておく。
+     → `TextEditor.getCoordinates()`。
+   - **保存しない編集**: `TextEditor.setTextAtLine` で編集し、終わったら
+     `File: Revert File` で戻す。dirty のまま `closeAllEditors` すると保存の
+     確認で止まる。
 
 5. **マニュアル QA で残す TC**（自動化が原理的に困難なケース）:
    - **AT-0039 TC-07**: Links link → 外部ブラウザで開く挙動。
@@ -74,8 +93,8 @@ VS Code 拡張のプレビュー（`packages/vscode/src/preview-panel.ts`）は 
 [`packages/vscode-e2e/tests/webview/<file>.test.ts`](...)
 under the WebView E2E harness (see [AT-XXXX](...)).
 
-The harness job is gated on the `vscode-webview-e2e` PR label and is **not**
-a required check.
+The harness job runs on pull requests that touch the extension (path filter,
+ADR-1742) and is **not** a required check.
 ```
 
 manual 残置 TC がある場合は同節内で「TC-XX stays manual」と理由付きで

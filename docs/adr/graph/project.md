@@ -30,6 +30,7 @@ flowchart TD
   ADR_357["ADR-357<br/>[app-ui] ProjectSelector の Rename 操作 — インライン入力欄パターン"]
   ADR_650["ADR-650<br/>[app-ui] グラフィカル diff ビューア"]
   ADR_1805["ADR-1805<br/>[renderer] karasu-nest の PNG ラスタライズに resvg-wasm を採用する"]
+  ADR_2996["ADR-2996<br/>[vscode] VS Code 拡張の preview は app の viewer を webview で動..."]
   ADR_3000["ADR-3000<br/>[build] karasu-nest を main への push で自動 deploy し、対象 path..."]
   ADR_3020["ADR-3020<br/>[build] karasu-nest を karasu-nest.kompiro.dev カスタムドメインだ..."]
   ADR_9013["ADR-9013<br/>[cli] CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
@@ -51,6 +52,7 @@ flowchart TD
   ADR_2995 --> ADR_3020
   ADR_2995 --> ADR_1805
   ADR_357 --> ADR_9006
+  ADR_2996 --> ADR_2993
   ADR_3000 --> ADR_2578
   ADR_3000 --> ADR_2969
   ADR_3020 --> ADR_2578
@@ -89,6 +91,7 @@ flowchart TD
   class ADR_357 ghost
   class ADR_650 ghost
   class ADR_1805 ghost
+  class ADR_2996 ghost
   class ADR_3000 ghost
   class ADR_3020 ghost
   class ADR_9013 ghost

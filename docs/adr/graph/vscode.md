@@ -14,6 +14,7 @@ flowchart TD
     ADR_1417["ADR-1417<br/>LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
     ADR_2456["ADR-2456<br/>LSP の position drift は position encoding ではなく v..."]
     ADR_2782["ADR-2782<br/>VS Code の floor を 1.137 に上げ、ExTester の vscode-m..."]
+    ADR_2996["ADR-2996<br/>VS Code 拡張の preview は app の viewer を webview で動..."]
     ADR_9014["ADR-9014<br/>VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画"]
   end
   ADR_30["ADR-30<br/>[renderer] アイコンモード — SVG アイコンによるノード表示切り替え"]
@@ -21,6 +22,7 @@ flowchart TD
   ADR_177["ADR-177<br/>[navigation] ノードクリック UX — ドリルダウンと Cmd/Ctrl+Click エディタジャンプ"]
   ADR_2535["ADR-2535<br/>[app-ui] 日本語判定は主要サブタグの完全一致で行い、Windows の言語名だけを明示的に許す"]
   ADR_2562["ADR-2562<br/>[build] Dependabot トリアージ 2026-08-17（@types/vscode と eng..."]
+  ADR_2993["ADR-2993<br/>[project] ギャラリーの投稿ページを origin を持たない sandbox の viewer として配..."]
   ADR_9007["ADR-9007<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
   ADR_176 --> ADR_9014
   ADR_218 --> ADR_176
@@ -29,9 +31,13 @@ flowchart TD
   ADR_299 --> ADR_9014
   ADR_1417 --> ADR_34
   ADR_2782 --> ADR_2562
+  ADR_2996 --> ADR_2993
   ADR_177 --> ADR_9007
-  ADR_177 --> ADR_218
+  ADR_177 --> ADR_2996
   ADR_2535 --> ADR_1417
+  ADR_2996 -.supersedes.-> ADR_176
+  ADR_2996 -.supersedes.-> ADR_218
+  ADR_2996 -.supersedes.-> ADR_299
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -39,19 +45,21 @@ flowchart TD
   classDef superseded fill:#e2e3e5,stroke:#6c757d,color:#383d41
   classDef not_adopted fill:#e2e3e5,stroke:#6c757d,color:#383d41,stroke-dasharray:3 3
   classDef ghost fill:#f5f5f5,stroke:#adb5bd,color:#6c757d,stroke-dasharray:2 2
-  class ADR_176 accepted
-  class ADR_218 accepted
-  class ADR_299 accepted
+  class ADR_176 superseded
+  class ADR_218 superseded
+  class ADR_299 superseded
   class ADR_863 accepted
   class ADR_1316 accepted
   class ADR_1417 accepted
   class ADR_2456 accepted
   class ADR_2782 accepted
+  class ADR_2996 accepted
   class ADR_9014 accepted
   class ADR_30 ghost
   class ADR_34 ghost
   class ADR_177 ghost
   class ADR_2535 ghost
   class ADR_2562 ghost
+  class ADR_2993 ghost
   class ADR_9007 ghost
 ```

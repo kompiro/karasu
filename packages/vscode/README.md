@@ -14,12 +14,21 @@ live SVG preview you can drill into.
 - **Syntax highlighting** for `.krs` and `.krs.style` files.
 - **Inline diagnostics** — errors and warnings from the karasu language server,
   shown as you type.
-- **Live SVG preview** — open a diagram beside your source and navigate it by
-  drilling down into containers and nodes.
-- **Bidirectional jump** — `Cmd`/`Ctrl`+Click in the preview to jump to the
-  source, and open the preview from the editor title bar.
+- **Live preview** — the same preview as the
+  [web app](https://karasu.kompiro.dev/), beside your source: drill into
+  containers, pan and zoom, switch between the System, Deploy, Org and CRUD
+  views, highlight facets, collapse groups, and hover an edge to trace it.
+  Unsaved edits show up as you type, in the open file and in the files it
+  imports.
+- **Bidirectional jump** — `Cmd`/`Ctrl`+Click a node in the preview to jump to
+  its definition, even in another file; the cursor in the editor highlights
+  the node it is on.
 - **Standard editor smarts** — hover and go-to-definition over your model.
-- **Node detail panel** — inspect a node and jump across diagrams.
+- **Node and edge detail panels** — inspect a node or an edge and jump across
+  diagrams.
+- **Edge direction from the preview** — right-click an edge to set its
+  direction; the rule is written into the style sheet's editor (an `@import` is
+  added when there is none), unsaved, so the editor's undo takes it back.
 
 ## Screenshots
 
@@ -27,8 +36,8 @@ Edit `.krs` on the left, explore the live preview on the right:
 
 ![Editing a .krs model beside the live System preview](https://raw.githubusercontent.com/kompiro/karasu/main/packages/vscode/images/screenshots/01-system-view.png)
 
-karasu separates a system into three faces — switch between them from the
-preview toolbar:
+karasu separates a system into three faces — switch between them with the
+preview's tabs:
 
 ![Deploy view — physical units that realize the logical services](https://raw.githubusercontent.com/kompiro/karasu/main/packages/vscode/images/screenshots/02-deploy-view.png)
 
