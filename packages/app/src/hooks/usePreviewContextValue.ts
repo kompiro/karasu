@@ -94,6 +94,7 @@ interface UsePreviewContextValueArgs {
 
   styleTargetPath?: string;
   onPickEdgeDirection?: (canonicalId: string, direction: EdgeDirection) => void;
+  readOnly?: boolean;
 
   onExportSvg: (svg: string, filename: string) => void;
   /** Already built by the host (undefined when no project is available). */
@@ -151,6 +152,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
     hasEntityView,
     styleTargetPath,
     onPickEdgeDirection,
+    readOnly,
     onExportSvg,
     onExportDrawio,
     hasKrsSource,
@@ -250,6 +252,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       hasEntityView,
       styleTargetPath,
       onPickEdgeDirection,
+      readOnly,
       hasKrsSource,
       getShareBundle,
       currentFilePath,
@@ -324,6 +327,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       hasEntityView,
       styleTargetPath,
       onPickEdgeDirection,
+      readOnly,
       onExportSvg,
       onExportDrawio,
       hasKrsSource,

@@ -37,5 +37,5 @@
 ## 範囲外（follow-up）
 
 - **`boundary` の label 位置**: parser は header 位置（`boundary g "G" {`）とプロパティ位置（`label "G"`）の両方を受理するが、formatter は後者に正規化する。AST は同一なので round-trip は保たれるが、header 位置で書いた author の diff は 1 行動く。header 位置を保持するには AST に記法の別を持たせる必要があり、本 Issue の範囲外。
-- **`boundary` / `legend` ブロック内のコメント保持**: entry 間（`contains` 行の間、legend の `swatch` / `ref` 行の間）に置かれた leading comment は、**ファイル末尾に寄る**。`renderBoundaryBlock` / `renderLegendBlock` が entry 単位で `extractLeading` を呼ばないため、未回収のコメントが `remainingComments()` で最後にまとめて出力されるため。既存の `organization` / `team` の `owns` 行間でも同じ挙動になる先行の制限（ADR-438「プロパティ位置は AST に保持されない」）であり、本 PR で新たに生じたものではない。round-trip（構造等価）と idempotency は保たれる。
+- ~~**`boundary` / `legend` ブロック内のコメント保持**~~: entry 間のコメントがファイル末尾に寄る制限は [#3263](https://github.com/kompiro/karasu/issues/3263) で解消した（[AT-3263](3263-fmt-property-comments.md)）。プロパティ行のコメントは、ブロックの種類によらずその行の上か行末に残る。
 - **string value のエスケープ**: `label` / `description` / legend title 等の値に埋め込まれた `"` / `\` は emit 時にエスケープされず、round-trip が壊れる。既存の全 renderer に共通する先行バグで、本 PR の新 renderer も同じ pattern を踏襲している。[#2087](https://github.com/kompiro/karasu/issues/2087) で一括対応する。

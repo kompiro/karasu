@@ -1,0 +1,8 @@
+system Shop {
+  service CatalogService {
+    label "Catalog"
+    domain Products {
+      usecase "Search products" {}
+    }
+  }
+}

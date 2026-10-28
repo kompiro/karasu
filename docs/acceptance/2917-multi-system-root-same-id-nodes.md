@@ -15,7 +15,7 @@ type: product
   - `packages/core/src/parser/node-path.ts`（`parseNodePathRefId`）
   - `packages/core/src/compile/compile.ts`（`nodeMetadataByPath`）
   - `packages/app/src/components/PreviewPane.tsx`（click delegation が path で引く）
-  - `packages/vscode/src/preview-panel.ts` / `packages/vscode/src/webview-content.ts` / `packages/vscode/src/drilldown-state.ts`（`drillDown` message の `nodePath`、詳細パネルと hover の path lookup）
+  - `packages/app/src/viewer/vscode/main.tsx`（#3312 以降 VS Code の preview は app の viewer。drill と詳細パネルの path lookup は `PreviewPane` が持つ）
 
 > 2 つの system が同じ bare id の service を持つと、ルートビューは後の system のカードで前の system のカードを上書きし、枠が空になっていた。merge の key を (system, id) にして両方描く。要素の id（`data-node-id`）は bare id のまま、各カードに `data-node-path`（`Shop.Api`、ADR-2714 の `nodePathRefId` 形）を足し、app と VS Code のドリルと詳細パネルはそれで自分のノードに着く。bare id だけを運ぶ hand-over（ハイライト・アウトライン・permalink）の着地は変えず、仕様として書く（#2935 で path 化）。
 
@@ -91,9 +91,9 @@ type: product
 
   > ✅ Automated — `packages/vscode-e2e/tests/webview/at-2917-same-id-drill.test.ts` › AT-2917 (WebView) — same-id cards drill and describe their own node › AT-N-1: the root draws two Api cards, each with its own data-node-path ／ … › AT-N-2: clicking the Admin.Api card drills into Admin, not into Shop ／ … › AT-N-3: clicking Admin's leaf opens the panel with Admin's description
 
-- [x] AT-Q: host 側の純関数と webview の生成物。`drillDown(state, id, meta, nodePath)` は decode した path を優先し、`isOptionalNodePath` は空文字と非文字列を弾き、生成される webview script は `drillDown` message に `nodePath` を載せ、詳細パネルと hover を path map から先に引く
+- [x] AT-Q: VS Code の preview は app の viewer（#3312）で、card の `data-node-path` で drill し、詳細パネルを path map から先に引く。host 側の drill 計算と webview script はもう無い
 
-  > ✅ Automated — `packages/vscode/src/drilldown-state.test.ts` › drillDown with the card's own path (#2917) › drills to the decoded data-node-path over the metadata's index-resolved viewPath ／ `packages/vscode/src/webview-content.test.ts` › data-node-path in the webview (#2917) › posts the card's data-node-path with the drillDown message and reads the panel by it ／ `packages/vscode/src/message-validation.test.ts` › isOptionalNodePath (#2917) › accepts undefined and a non-empty string, rejects everything else
+  > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › data-node-path resolves the clicked card (#2917) › drills into the clicked card's own path, not the bare-id index winner ／ opens the detail panel with the clicked card's own metadata ／ `packages/vscode-e2e/tests/webview/at-2917-same-id-drill.test.ts` › AT-N-2: clicking the Admin.Api card drills into Admin, not into Shop
 
 ### AC-8: bare id だけを運ぶ hand-over の着地（仕様）
 

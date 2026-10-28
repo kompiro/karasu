@@ -1249,8 +1249,9 @@ describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
 const EMPTY_SLOT: PreviewToolbarSlot = {};
 const HOST_SLOT: PreviewToolbarSlot = {
   extras: <button type="button">Host extra</button>,
-  hideShare: true,
+  hide: ["share"],
 };
+const WEBVIEW_SLOT: PreviewToolbarSlot = { hide: ["export", "allLayers", "docs"] };
 
 describe("PreviewColumn — toolbar slot (#2997)", () => {
   const toolbarButtons = (container: HTMLElement) =>
@@ -1291,6 +1292,27 @@ describe("PreviewColumn — toolbar slot (#2997)", () => {
     expect(screen.queryByRole("button", { name: /Share/ })).toBeNull();
     const buttons = toolbarButtons(container);
     expect(buttons.at(-1)).toBe("Host extra");
+  });
+
+  // #3311: the VS Code webview leaves out export, the all-layers view and Docs.
+  // Each name removes its own control and nothing else.
+  it("omits exactly the controls a host lists in hide", () => {
+    const props = makeProps({ hasKrsSource: true, getShareBundle: async () => ({ krs: "" }) });
+    const names = ["Export SVG", "Export options", "Toggle all layers", "Documentation links"];
+    renderPreview(props);
+    for (const name of names) expect(screen.getByRole("button", { name })).toBeTruthy();
+    cleanup();
+
+    render(
+      <PreviewToolbarSlotContext.Provider value={WEBVIEW_SLOT}>
+        <PreviewProvider value={props}>
+          <PreviewColumn />
+        </PreviewProvider>
+      </PreviewToolbarSlotContext.Provider>,
+    );
+    for (const name of names) expect(screen.queryByRole("button", { name })).toBeNull();
+    expect(screen.getByRole("button", { name: /Share/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Enter focus mode" })).toBeTruthy();
   });
 });
 

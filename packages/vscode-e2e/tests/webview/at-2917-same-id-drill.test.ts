@@ -19,26 +19,25 @@ import {
  *
  * Two systems both declare `service Api`. The root canvas carries two
  * `data-node-id="Api"` cards, one per system frame, each with its own
- * `data-node-path`. The webview posts that path with the `drillDown`
- * message and reads the detail panel / tooltip through the path-keyed
- * metadata map, so:
+ * `data-node-path`. The viewer (the app's, since #3312) drills by that path
+ * and reads the detail panel through the path-keyed metadata map, so:
  *   AT-N-1: the root shows two `Api` cards with distinct `data-node-path`.
  *   AT-N-2: clicking the `Admin.Api` card drills into Admin (breadcrumb
- *           "Root › Admin › Api", Admin's domain drawn, Shop's not).
+ *           "Admin › Api", Admin's domain drawn, Shop's not).
  *   AT-N-3: clicking Admin's leaf `Ops` opens the panel with Admin's
  *           description, not Shop's same-named leaf's.
  *
  * Selectors address a card by `data-node-path` (TPL-2920): `[data-node-id="Api"]`
- * matches two elements on purpose. Drill rebuilds `webview.html`, so the
- * frame is re-acquired after the click (same dance as AT-0038 TC-02). The
+ * matches two elements on purpose. The drill happens in place; a settle
+ * after the click gives the viewer's compile time to draw. The
  * "File: Open File..." simple-dialog stalls intermittently under xvfb; the
  * shared `openFixtureAndPreview` carries the 3-attempt retry.
  */
 
 const FIXTURE_NAME = "at-2917.krs";
 
-// Drill rebuilds more of the SVG than a view switch; give it the same settle
-// AT-0038 uses.
+// Settle after the drill click for the viewer's debounced compile (300ms),
+// with room to spare on a slow CI runner.
 const DRILL_REACQUIRE_SLEEP_MS = 1500;
 
 describe("AT-2917 (WebView) — same-id cards drill and describe their own node", function () {
@@ -66,7 +65,7 @@ describe("AT-2917 (WebView) — same-id cards drill and describe their own node"
 
   it("AT-N-1: the root draws two Api cards, each with its own data-node-path", async () => {
     const paths = (await driver.executeScript(
-      "return Array.from(document.querySelectorAll('#preview [data-node-id=\"Api\"]'))" +
+      "return Array.from(document.querySelectorAll('.preview-container [data-node-id=\"Api\"]'))" +
         ".map(el => el.getAttribute('data-node-path')).sort();",
     )) as string[];
     assert.deepStrictEqual(
@@ -77,14 +76,14 @@ describe("AT-2917 (WebView) — same-id cards drill and describe their own node"
   });
 
   it("AT-N-3: clicking Admin's leaf opens the panel with Admin's description", async () => {
-    await dispatchClick(driver, '#preview [data-node-path="Admin.Ops"]');
+    await dispatchClick(driver, '.preview-container [data-node-path="Admin.Ops"]');
 
     let lastBody = "";
     try {
       await driver.wait(
         async () => {
           lastBody = (await driver.executeScript(
-            "const p = document.getElementById('detail-panel'); return p ? p.textContent : '';",
+            "const p = document.querySelector('.node-detail-panel'); return p ? p.textContent : '';",
           )) as string;
           return lastBody.includes("Admin operations");
         },
@@ -102,13 +101,13 @@ describe("AT-2917 (WebView) — same-id cards drill and describe their own node"
       `detail panel should not show Shop's same-named leaf; saw: ${lastBody}`,
     );
     // Close the panel so the drill test below starts from a clean root.
-    await dispatchClick(driver, "#dp-close-btn");
+    await dispatchClick(driver, ".node-detail-panel .node-detail-close");
   });
 
   it("AT-N-2: clicking the Admin.Api card drills into Admin, not into Shop", async () => {
-    await dispatchClick(driver, '#preview [data-node-path="Admin.Api"]');
+    await dispatchClick(driver, '.preview-container [data-node-path="Admin.Api"]');
 
-    // Drill rebuilds webview.html — re-acquire the frame.
+    // The drill happens in place; settle for the viewer's compile.
     await reacquireFrame(ctx, DRILL_REACQUIRE_SLEEP_MS);
 
     let lastBreadcrumb = "";
@@ -119,11 +118,11 @@ describe("AT-2917 (WebView) — same-id cards drill and describe their own node"
           return breadcrumbSegments(lastBreadcrumb).length > 1;
         },
         ELEMENT_TIMEOUT_MS,
-        "breadcrumb did not advance past Root after the drill click",
+        "breadcrumb did not advance past the root after the drill click",
       );
     } catch (err) {
       throw new Error(
-        `breadcrumb did not advance past Root after the drill click; last seen: "${lastBreadcrumb}". Original: ${(err as Error).message}`,
+        `breadcrumb did not advance past the root after the drill click; last seen: "${lastBreadcrumb}". Original: ${(err as Error).message}`,
         { cause: err },
       );
     }
@@ -134,7 +133,7 @@ describe("AT-2917 (WebView) — same-id cards drill and describe their own node"
     );
 
     const drawn = (await driver.executeScript(
-      "return Array.from(document.querySelectorAll('#preview [data-node-id]'))" +
+      "return Array.from(document.querySelectorAll('.preview-container [data-node-id]'))" +
         ".map(el => el.getAttribute('data-node-id'));",
     )) as string[];
     assert.ok(

@@ -218,6 +218,10 @@ const PARSE_DISPATCHERS = {
   },
 } satisfies Record<ActiveView, (base: string) => ParseResult | null>;
 
+function samePath(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((segment, i) => segment === b[i]);
+}
+
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function useHistoryNavigation({
@@ -295,12 +299,22 @@ export function useHistoryNavigation({
   // every restored field needs the deferral, not only the node). `system` is
   // what the reset leaves, so it has nothing to restore.
   const pendingActiveViewRestoreRef = useRef<ActiveView | null>(null);
-  // The view effect ② re-applied, until it commits. Effect ③ may write the
-  // reset `system` state before then; every write until the restored view
-  // lands replaces the entry instead of pushing one, so the deep link stays a
-  // single history entry and Back does not land on the reset System hash
-  // (#3208).
-  const restoringViewRef = useRef<ActiveView | null>(null);
+  // A cold boot on a deep link is one history entry (#3208, #3284). Until
+  // every field the hash names has been re-applied and committed, the state
+  // effect ③ sees is a pre-restore one: the mount's initial `system` root, the
+  // seed's reset, or the commit right before effect ②'s dispatches land. Each
+  // of those writes replaces the entry; pushing them left `#krs-system-root`
+  // (and the reset tab) behind the deep link, so Back went through them.
+  // Set on mount when the hash parses; cleared by effect ③ once nothing is
+  // pending and the state holds the values in `restoreTargetRef`.
+  const restoringDeepLinkRef = useRef(false);
+  // The values effect ② dispatched, which the state must hold before the
+  // restoration counts as committed. A field absent here is not waited on.
+  const restoreTargetRef = useRef<{
+    activeView?: ActiveView;
+    viewPath?: string[];
+    highlightedNodeId?: string;
+  }>({});
 
   // Stable ref for onFileChange — referenced inside long-lived effects without re-running them.
   const onFileChangeRef = useLatestRef(onFileChange);
@@ -316,6 +330,7 @@ export function useHistoryNavigation({
   // ① Parse initial hash on mount and set pending resolution if needed
   useEffect(() => {
     const parsed = parseHash(location.hash);
+    restoringDeepLinkRef.current = parsed !== null;
     if (!parsed) {
       history.replaceState(
         null,
@@ -394,7 +409,7 @@ export function useHistoryNavigation({
       if (!indexReady) return;
       const view = pendingActiveViewRestoreRef.current;
       pendingActiveViewRestoreRef.current = null;
-      restoringViewRef.current = view;
+      restoreTargetRef.current.activeView = view;
       dispatch({
         type: "SET_ACTIVE_VIEW",
         activeView: view,
@@ -411,6 +426,7 @@ export function useHistoryNavigation({
       if (!index || index.size === 0) return;
       const resolvedPath = index.get(nodeId) ?? [];
       pendingNodeIdRef.current = null;
+      restoreTargetRef.current.viewPath = resolvedPath;
       dispatch({ type: "SET_VIEW_PATH", path: resolvedPath });
     }
 
@@ -424,6 +440,7 @@ export function useHistoryNavigation({
       if (!indexReady) return;
       const highlight = pendingHighlightRef.current;
       pendingHighlightRef.current = null;
+      restoreTargetRef.current.highlightedNodeId = highlight;
       dispatch({
         type: "SET_HIGHLIGHTED_NODE",
         nodeId: highlight,
@@ -465,16 +482,33 @@ export function useHistoryNavigation({
       highlight: highlightedNodeId,
       file: currentFilePath,
     });
-    const restoring = restoringViewRef.current;
     if (location.hash !== newHash) {
       const isInitialLoad = prev === null && currentFilePath !== null;
-      if (isInitialLoad || restoring !== null) {
+      if (isInitialLoad || restoringDeepLinkRef.current) {
         history.replaceState(null, "", newHash);
       } else {
         history.pushState(null, "", newHash);
       }
     }
-    if (restoring === activeView) restoringViewRef.current = null;
+    if (restoringDeepLinkRef.current) {
+      // Effect ② runs before this one in the same commit, so a dispatch it
+      // just made is not in this run's state yet: the targets are compared,
+      // not only the pending refs, and the next commit's write is replaced
+      // too. A target already equal to the state matches here and now.
+      const target = restoreTargetRef.current;
+      const pending =
+        pendingActiveViewRestoreRef.current !== null ||
+        pendingNodeIdRef.current !== null ||
+        pendingHighlightRef.current !== null;
+      const landed =
+        (target.activeView === undefined || target.activeView === activeView) &&
+        (target.viewPath === undefined || samePath(target.viewPath, viewPath)) &&
+        (target.highlightedNodeId === undefined || target.highlightedNodeId === highlightedNodeId);
+      if (currentFilePath !== null && !pending && landed) {
+        restoringDeepLinkRef.current = false;
+        restoreTargetRef.current = {};
+      }
+    }
     prevFilePathRef.current = currentFilePath;
   }, [activeView, viewPath, isOrgTreeView, isEntityView, highlightedNodeId, currentFilePath]);
 

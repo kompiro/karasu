@@ -64,7 +64,9 @@ function startServe(bundle: string, dir: string, listenPort: number): Promise<Ch
     });
     child.stdout.on("data", (chunk: Buffer) => {
       stdout += chunk.toString();
-      if (stdout.includes("Watching for .krs file changes")) {
+      // The banner's last line; matched on its start so rewording what is
+      // watched (#3258 added .krs.style) does not read as a failed start.
+      if (stdout.includes("Watching for ")) {
         clearTimeout(timer);
         // `serve` warns right after the banner when it found no app; an
         // unrelated runtime warning on stderr is not this test's concern.
@@ -171,5 +173,14 @@ describe("karasu serve from the tarball (#3017)", () => {
     const { status, body } = await get("/api/files");
     expect(status).toBe(200);
     expect(JSON.parse(body)).toEqual({ files: ["index"] });
+  });
+
+  // The packaged app reads the whole directory from here to resolve imports (#3258).
+  it("hands the app the project's files with their content", async () => {
+    const { status, body } = await get("/api/project");
+    expect(status).toBe(200);
+    expect(JSON.parse(body)).toEqual({
+      files: [{ path: "index.krs", content: "system A { service B {} }\n" }],
+    });
   });
 });

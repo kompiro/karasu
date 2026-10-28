@@ -79,4 +79,4 @@ kind gate を扱う。
 
 - `packages/core/src/renderer/owner-affordance-kinds.test.ts`（kind 網羅・除外 kind・label 表示・measure 予約）
 - `packages/app/src/components/NodeDetailPanel.test.tsx`（`teamLabel` を表示し `team` で遷移する）
-- `packages/vscode/src/webview-content.test.ts`（webview の org ジャンプボタン）
+- `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `TC-02`（VS Code の preview は #3312 以降 app の `NodeDetailPanel` そのもので、team の label を org ジャンプボタンに出す）

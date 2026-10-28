@@ -54,9 +54,9 @@ type: product
 
   > ✅ Automated — `packages/cli/src/render.e2e.test.ts` › karasu render: diagnostic locations name their file (#2715) › built-in icons resolve in karasu render (#2802) › draws `shape: url("database")` as the built-in database icon
 
-- [x] TC-8: VS Code 拡張ホストの `compileProject` 経路で `url("database")` と icon mode がアイコンを描く
+- [x] TC-8: VS Code の preview でも `url("database")` と icon mode がアイコンを描く。#3312 以降 preview は webview の中で app の viewer が compile するので、拡張ホストは compile せず、host が何も登録しない core の経路がそのまま効く
 
-  > ✅ Automated — `packages/vscode/src/builtin-icons-extension-host.test.ts` › built-in icons in the extension host's compile path (#2802) › draws `shape: url("database")` without the extension registering anything
+  > ✅ Automated — `packages/core/src/shapes/builtin-icons.test.ts` › draws `shape: url("database")` as the database icon with no host registration ／ draws icon display mode with the built-in icons, with no host registration
 
 ### AC-4: 未登録の名前は宣言位置で warning になり、描画は `box` に落ちる
 
@@ -78,7 +78,7 @@ type: product
 
 - [x] TC-13: `compile()` の warning が値の位置（`loc`）を保ち、app の警告パネルが行を示せる
 
-  > ✅ Automated — `packages/vscode/src/builtin-icons-extension-host.test.ts` › built-in icons in the extension host's compile path (#2802) › surfaces a style-unknown-icon warning for a typo, anchored on the sheet
+  > ✅ Automated — `packages/core/src/compile/all-views-project-styles.test.ts` › validates the imported sheet, placing each finding in the style file
 
 ### 手動確認
 

@@ -22,8 +22,8 @@ assumptions:
   - "grep: packages/app/src/state/app-reducer.ts :: highlightAttribute: action\\.highlightAttribute \\?\\? \"data-node-id\""
   - "symbol: packages/app/src/hooks/useHistoryNavigation.ts :: hashHighlightAttribute"
   - "grep: packages/app/src/components/PreviewPane.tsx :: data-realized-node-id"
-  - "grep: packages/vscode/src/preview-panel.ts :: data-realized-node-id"
-  - "grep: packages/vscode/src/webview-content.ts :: msg\\.attribute"
+  - "grep: packages/app/src/viewer/vscode/protocol.ts :: data-realized-node-id"
+  - "grep: packages/app/src/viewer/vscode/main.tsx :: message\\.attribute"
   - "file: docs/acceptance/2818-cross-navigation-highlight-id-space.md"
   - "file: docs/test-perspectives/TPL-2818-cross-view-handover-carries-receiver-id-space.md"
 ---
