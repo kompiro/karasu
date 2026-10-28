@@ -54,9 +54,11 @@ type: product
   >
   > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › `real sample fence: frames (#3155)` › `team-ownership top view grouped by team: labels stay off the team frames`
 
-- [x] AT-G: renderer は枠を考慮した位置にラベルを描く
+- [x] AT-G: renderer は枠を考慮した位置にラベルを描き、配置 pass は canvas が描く線の太さ（ghost の祖先枠・group 枠・展開した枠）で枠を測る
 
   > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › `real sample fence: frames (#3155)` › `the renderer draws the labels where the frame-aware pass put them`
+  >
+  > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › `real sample fence: frames (#3155)` › `measures every frame at the stroke width the canvas paints it with`
 
 - [x] AT-H: 枠の線から離れたラベルは動かない。枠の線は「どのエッジのラベルか」の判定（曖昧さ）に使わない
 

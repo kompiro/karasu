@@ -28,6 +28,7 @@ import { resolveStyles } from "../resolver/style-resolver.js";
 import { edgeStyleKey } from "../resolver/style-resolver.js";
 import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
+import { StyleParser } from "../parser/style-parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -597,10 +598,17 @@ describe("buildLabelInputs", () => {
  * names a drill-down) and build the placement inputs from it, plus the frames
  * the canvas draws as placement obstacles.
  */
-function sampleInputs(relPath: string, viewPath: string[] = [], groupBy?: "team" | "boundary") {
+function sampleInputs(
+  relPath: string,
+  viewPath: string[] = [],
+  groupBy?: "team" | "boundary",
+  sheet?: string,
+) {
   const src = readFileSync(resolve(__dirname, "../../../../", relPath), "utf8");
   const parsed = Parser.parse(src);
-  const styles = resolveStyles(parsed.value.systems, [getBuiltinStyleSheet()]);
+  const sheets = [getBuiltinStyleSheet()];
+  if (sheet !== undefined) sheets.push(StyleParser.parse(sheet, "sheet").value);
+  const styles = resolveStyles(parsed.value.systems, sheets);
   const viewSlice = extractView(parsed.value.systems, viewPath);
   const edgeDirections = new Map<string, EdgeDirection>();
   for (const [key, e] of styles.edges) {
@@ -1284,7 +1292,7 @@ function frame(rect: Rect): ContainerRect {
 }
 
 describe("frame borders as placement obstacles (#3155)", () => {
-  /** Frame 0..400 x 0..100. A label anchored at y 90 sits inside, its box spanning y 73..87. */
+  /** Frame 0..400 x 0..100. A label anchored at y 90 sits inside, its box spanning y 73..88. */
   const box: FrameBorder = frameBorder(frame({ x: 0, y: 0, width: 400, height: 100 }), HAIRLINE);
 
   it("frameBorder traces the widened outline and reads its pieces, not the bounding box", () => {
@@ -1348,7 +1356,7 @@ describe("frame borders as placement obstacles (#3155)", () => {
   });
 
   it("moves a label whose default box straddles a border off it, to the side most of it is on", () => {
-    // Box y 88..102 across the bottom border at 100; its centre (95) is inside.
+    // Box y 88..103 across the bottom border at 100; its centre (95.5) is inside.
     const inputs = [label(0, { x: 200, y: 105 }, 80)];
     expect(countLabelFrameCrossings(framedBoxesAfter(inputs, new Map()), [box])).toBe(1);
     const overrides = resolveLabelPlacements(inputs, [], [], [box]);
@@ -1495,6 +1503,54 @@ describe("real sample fence: frames (#3155)", () => {
     for (const [, a] of changed) {
       // `renderEdge` puts the text baseline 6px above the anchor.
       expect(svg).toContain(`x="${a.x}" y="${a.y - 6}" text-anchor="middle"`);
+    }
+  });
+
+  it("measures every frame at the stroke width the canvas paints it with", () => {
+    // Ghost ancestors, group frames and an in-place expansion each take their
+    // width down a different path; the label pass must read the same one the
+    // canvas draws, or a label can sit on a stroke it thinks is thinner.
+    const drill = sampleInputs("examples/en/hr-tool/system.krs", ["HRTool", "Auth"]);
+    // A team sheet widens the team frames to 5, which the expansion ignores (2).
+    const grouped = sampleInputs(
+      "examples/en/feature-samples/team-ownership.krs",
+      [],
+      "team",
+      "team { border-width: 5; }",
+    );
+    const [first, ...rest] = grouped.layoutResult.containers;
+    const expanded = {
+      ...grouped.layoutResult,
+      containers: [{ ...first, expanded: true }, ...rest],
+    };
+    const views = [
+      { layoutResult: drill.layoutResult, styles: drill.styles },
+      { layoutResult: expanded, styles: grouped.styles },
+    ];
+    const all = views.flatMap((v) => v.layoutResult.containers);
+    // Precondition: all three kinds are present.
+    expect(all.some((c) => c.ghost)).toBe(true);
+    expect(all.some((c) => c.group === true && !c.expanded)).toBe(true);
+    expect(all.some((c) => c.expanded === true)).toBe(true);
+    const widths = views.flatMap((v) =>
+      frameBordersOf(v.layoutResult, v.styles, resolvePalette()).map((b) => b.line.halfStroke * 2),
+    );
+    // Precondition: the paths give different widths, so a mix-up shows.
+    expect(new Set(widths).size).toBeGreaterThan(1);
+
+    for (const { layoutResult, styles } of views) {
+      const svg = renderFromLayout(layoutResult, styles);
+      const painted = new Map<string, number>();
+      for (const m of svg.matchAll(
+        /data-container-id="([^"]+)"[^>]*>\s*<(?:rect|path)\b[^>]*?stroke-width="([^"]+)"/g,
+      )) {
+        painted.set(m[1], Number(m[2]));
+      }
+      const borders = frameBordersOf(layoutResult, styles, resolvePalette());
+      const measured = new Map(
+        layoutResult.containers.map((c, i) => [c.id, borders[i].line.halfStroke * 2]),
+      );
+      expect(measured).toEqual(painted);
     }
   });
 

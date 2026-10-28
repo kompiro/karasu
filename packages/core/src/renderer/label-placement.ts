@@ -24,9 +24,11 @@
  * card was never examined at all. An edge's *own* polyline is exempt: a label is
  * supposed to sit on the line it names.
  *
- * Frame borders joined in #3155: a nudge never carries a label across the
- * border of a frame (a group frame, the drill-down frame), neither onto the
- * stroke nor to its other side. The frame's *area* is still not an obstacle
+ * Frame borders joined in #3155: a nudged label ends off the border of every
+ * frame (a group frame, the drill-down frame) and on the same side of it as
+ * its default. The rule reads where the label lands, not the path to it, so a
+ * long nudge may still hop a narrow frame or a notch of an L-shaped one and
+ * land on the right side. The frame's *area* is still not an obstacle
  * (labels legitimately live inside it), so what is tested is the border line
  * and which side of it the label is on, measured against the label's default
  * box. A label whose default already sits outside a frame (its own run left
@@ -213,8 +215,11 @@ function reachableFrames(frames: FrameBorder[], box: Rect, maxShift: number): Ne
   for (const border of frames) {
     const h = border.line.halfStroke;
     const reach = maxShift * Math.SQRT2 + Math.hypot(box.width / 2 + h, box.height / 2 + h);
-    if (pointToRectDistance(centre, border.line.bounds) > reach) continue;
-    if (pointToPolylineDistance(centre, border.line) > reach) continue;
+    // Both distances are to the stroke's edge (the bounds are grown by `h`,
+    // and the polyline distance takes `h` off), so the centreline bound
+    // `reach` is `reach - h` here.
+    if (pointToRectDistance(centre, border.line.bounds) > reach - h) continue;
+    if (pointToPolylineDistance(centre, border.line) > reach - h) continue;
     out.push({ border, inside: insideFrame(centre, border.pieces) });
   }
   return out;
