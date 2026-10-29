@@ -39,7 +39,7 @@
 
 | 観点 | 現状 |
 | --- | --- |
-| 値の型 | parser が宣言ごとに `properties`（文字列）と `valueNodes`（`ValueNode`）の両方を持つ（ADR-1178 の二重表現）。カンマの無い複数の値は `buildValueNode` が値ノードを作らず、認識できないトークンも黙って落とす |
+| 値の型 | parser が宣言ごとに `properties`（文字列）と `valueNodes`（`ValueNode`）の両方を持つ（ADR-1178 の二重表現）。カンマの無い複数の値は `buildValueNode` が値ノードを作らない。`Unknown` トークンは `style-token-type-mismatch` を出して宣言を拒否するが、それ以外の未分類トークンは文字列にだけ残る |
 | builtin シート | `builtins/default-style.ts` は長さを単位なしで書く（`border-width: 2;`、`font-size: 13;` など 80 以上）。validator は `sheets[0]` を信頼して検査しない（ADR-1178、`collectModelWarnings`） |
 | validator | `validateStyleValues` が `PROPERTY_SCHEMAS` に照らして宣言ごとに `Diagnostic` を出す。LSP・`karasu lint-style`・`collectModelWarnings`（app / `karasu render`）が同じ関数を呼ぶ |
 | cascade | `flattenSheetsInCascadeOrder` が全シートを 1 列に並べる。tool vocabulary 外のタグ・アノテーションを名指すルールはここで外す（#2677）。node / edge / frame の解決と legend の色解決が同じ関数を読む |
@@ -117,16 +117,51 @@ resolver が各値を parse する前に `satisfiesPropertySchema` を呼ぶ。
 1. **範囲外の値は捨てる（clamp しない）。** 警告文はすでに全プロパティで「— ignored」と言っており、clamp していたのは `label-position` だけだった。規則を 1 つにし、`docs/spec/style.md` の冒頭の値の節に「スキーマを満たさない宣言は書かれなかったものとして扱う」と書く。各プロパティの節の個別規則（clamp、「既定が残る」）はこの 1 文への参照に置き換える
 2. **union は数値に対して数値を読む枝の診断を出す。** 値が数値で、number / length の枝があれば、その枝の失敗（`style-out-of-range`、`min` / `max` 付き）を報告する。それ以外は従来どおり最初の枝。キーワードを一般にキーワードの枝へ回す案は採らない: `color: primary` が CSS の named color 148 個を並べる診断になり、現在の hex の診断より読めなくなる
 3. **整数のプロパティはスキーマが整数を要求する。** `grid-columns` と `label-max-chars` の number spec に `integer: true` を足す。整数でない値は `style-invalid-enum-value` で、`<number>` を要求する既存の診断と同じ形にする。許容には union の全枝を並べる（`label-max-chars: 2.5` は `none / <integer>`。`<integer>` だけだと有効なキーワード `none` が診断から消える）。新しい診断コードは足さない
-4. **builtin / icon theme のシートからは捨てない。** 検査の境界は validator と同じ `sheets[0]`（ADR-1178）で、builtin が単位なしで書く長さはそのまま効く。builtin を px に書き換えて検査対象に入れる案は採らない: 80 以上の宣言の書き換えに対して、著者から見える効果が無い
+4. **builtin / icon theme のシートからは捨てない。** ADR-1178 の信頼境界をシートの位置ではなく各ルールの `sheetId` で判定し、`BUILTIN_SHEET_ID` / `ICON_THEME_SHEET_ID` を宣言のフィルタ対象から外す。builtin が単位なしで書く長さはそのまま効く。builtin を px に書き換えて検査対象に入れる案は採らない: 80 以上の宣言の書き換えに対して、著者から見える効果が無い
 5. **単位の無い `0` は長さとして有効にする。** CSS と同じで、`border-width: 0` は `0px` と同じ意味に読む。`0` 以外の単位の無い数値・許されない単位・不正な hex・`url()` で包まないアイコン名は、警告文どおり捨てる（「— ignored」を本当にする）
-6. **parser が値ノードを作れない宣言も、validator が報告して cascade が捨てる。** parser はカンマの無い複数の値を空白区切りの列（`sequence`）として値ノードにし、スキーマが受けるかを決める。列を受けるのは `label-offset`（長さ 1 つか 2 つ）と、`font-family` の各項目（引用符の無い複数語の名前。CSS と同じ）だけで、ほかのプロパティでは列は型の不一致として既存の診断（数値のプロパティなら `style-invalid-enum-value`、許容 `<number>`）で報告する。認識できないトークンを含む値も値ノードを作らずに黙って落とすのをやめ、同じ経路で報告する。cascade は、`valueNodes` を持つルールで値ノードの無い宣言も捨てる。報告せずに捨てる経路を作らない（#3130 の、負の opacity でノードが消えて何も言わなかった形を繰り返さない）
+6. **値を分類できない宣言も、報告元を決めてから捨てる。** parser はカンマの無い複数の値を空白区切りの列（`sequence`）として値ノードにし、スキーマが受けるかを決める。列を受けるのは `label-offset`（長さ 1 つか 2 つ）と、`font-family` の各項目（引用符の無い複数語の名前。CSS と同じ）だけで、ほかのプロパティでは列は型の不一致として既存の診断（数値のプロパティなら `style-invalid-enum-value`、許容 `<number>`）で報告する。`Unknown` トークンの報告と拒否は既存の parser の経路を維持し、ほかの未分類トークンにも広げる。既知のプロパティで値ノードの無い宣言が残った場合は validator が報告し、cascade が外す。各経路の契約は下記 2〜4 とする。報告せずに捨てる経路を作らない（#3130 の、負の opacity でノードが消えて何も言わなかった形を繰り返さない）
 
 ### 実装の指針
 
-1. `property-schema.ts`: number spec に `integer?: boolean`。`grid-columns` / `label-max-chars` に付ける。length spec は単位の無い `0` を受ける。`label-offset` を「長さ 1 つか 2 つの列」にし、`font-family` の項目に識別子の列を許す。範囲がこの表だけにあることを冒頭のコメントに書く。`label-offset` の既存コメント（「2 つの長さはリストとして parse される」）はカンマの無い `4px 8px` について誤りなので直す
-2. `style-parser.ts`: `buildValueNode` がカンマの無い複数の値を `sequence` ノードにする。カンマ区切りの各項目が複数の値を持つときも、先頭の値で代用せず `sequence` にする。認識できないトークンは値ノードを作らず、validator が報告できる印を残す
-3. `value-validator.ts`: `satisfiesPropertySchema(property, node)` を公開する（未知のプロパティは `true`）。union の報告規則（上記 2）。整数判定（許容の並べ方は上記 3）。`sequence` と値ノードの無い宣言の報告（上記 6）
-4. `cascade.ts`: `flattenSheetsInCascadeOrder` で、ユーザーのシート（`sheets[1..]`）の `valueNodes` を持つルールから、スキーマを満たさない宣言と値ノードの無い宣言を外す。builtin / icon theme のシートと、`valueNodes` の無いルール（テストで手組みしたもの）はそのまま残す。今の `{ ...rule }` は `properties` をキャッシュした builtin シートと共有しているので、宣言を外すルールは `properties` / `declarationLocs` / `valueNodes` を新しいオブジェクトに写してから外す
+1. `property-schema.ts`: number spec に `integer?: boolean`。`grid-columns` / `label-max-chars` に付ける。length spec は単位の無い `0` を受ける。`ValueSpec` に次の 2 種を追加し、`label-offset` と `font-family` を定義する:
+
+   ```ts
+   // ValueSpec に追加
+   | { kind: "ident" }
+   | { kind: "sequence-of"; item: ValueSpec; minItems: number; maxItems?: number }
+
+   // PROPERTY_SCHEMAS の項目
+   "label-offset": { kind: "sequence-of", item: LENGTH_PX_SPEC, minItems: 1, maxItems: 2 },
+   "font-family": {
+     kind: "list-of",
+     item: {
+       kind: "union",
+       specs: [
+         { kind: "string" },
+         { kind: "sequence-of", item: { kind: "ident" }, minItems: 1 },
+       ],
+     },
+   },
+   ```
+
+   `ident` は任意の識別子を受ける（引用符の無いフォント名用）。`sequence-of` は単一の atom を 1 項目として、`sequence` をその全項目として検査し、`list` は受けない。項目数を `minItems` / `maxItems` で検査してから全項目を `item` で検査する。`label-offset` は 3 項目以上を `style-invalid-enum-value`（許容 `<length> / <length> <length>`）で拒否し、先頭 2 項目だけを使わない。範囲がこの表だけにあることを冒頭のコメントに書く。`label-offset` の既存コメント（「2 つの長さはリストとして parse される」）も直す。
+2. `types/value-node.ts` / `style-parser.ts`: 既存の `list`（カンマ区切り）を残し、空白区切り専用の `ValueNode` を追加する:
+
+   ```ts
+   | { kind: "sequence"; items: [ValueNode, ValueNode, ...ValueNode[]]; loc: SourceRange }
+   ```
+
+   `buildValueNode` は関数・引用文字列の外のカンマで項目を分ける。カンマが無いとき、atom が 1 つならその atom、2 つ以上なら全 atom を順に持つ `sequence` とする。カンマがあるときは `list` を作り、各項目を同じ規則で atom / `sequence` にする（`Noto Sans, serif` の先頭項目を `Noto` だけで代用しない）。`sequence.loc` は最初の atom の先頭から最後の atom の末尾までで、`file` も引き継ぐ。文字列・`url(...)` の内部は分割しない。
+
+   拒否の印は既存の `parseValue` の戻り値の `refused: boolean` とし、AST に別の印は追加しない。`Unknown` は現在も `reportUnknownValueToken` が `style-token-type-mismatch` を出して `refused = true` にし、`parseDeclaration` が `properties` / `valueNodes` への格納を見送っている。この経路を維持し、ほかの未分類トークン、空の値、空のカンマ項目も同じコードの parser 診断（問題のトークンの `loc` 付き）で拒否する。parser が診断を返す時点で報告は完了しており、cascade の呼び出し前に拒否された宣言は除かれている。各 surface は既存どおり parser 診断を結果に含め、validator は重ねて報告しない。
+3. `value-validator.ts`: `satisfiesPropertySchema(property, node)` を公開する（未知のプロパティは `true`）。union の報告規則（上記 2）と整数判定（許容の並べ方は上記 3）を実装する。
+
+   `collectMismatch` の `ValueSpec.kind` の switch に `ident` / `sequence-of` を加える。`ident` の型不一致は `style-invalid-enum-value`（許容 `<identifier>`）。`sequence-of` の型・項目数不一致も同じコードで要求する列の形を示し、項目の不一致は `item` の診断を使う。`list-of` はカンマ区切りだけを展開し、単一値として渡された `sequence` は分割せず `item` に照合する。したがって `font-family` は識別子だけの列を受け、数値などを混ぜた列は拒否する。ほかの既存スカラー spec は `sequence` を型不一致として扱う。
+
+   `stringifyValueNode` の `node.kind` の switch は `ident` / `hex` / `number` / `length` / `string` / `function` の全既存 case を維持する。`list` は再帰して `", "` で結合し、新しい `sequence` は再帰して `" "` で結合する。`default` の `never` による網羅検査も維持する。`specAcceptsUrl` の spec switch も `sequence-of` では `list-of` と同じく `item` を再帰し、`ident` は `false` とする。
+
+   `validateStyleValues` はフィルタ前の元のシートを検査する。未知のプロパティの warning を先に判定し、既知のプロパティで `valueNodes` のあるルールに値ノードだけが無いときは、`properties[property]` の文字列とスキーマの許容形を使い `style-invalid-enum-value` を `declarationLocs[property]` の位置で 1 件返す。これで parser が拒否せず残した宣言にも報告元がある。`valueNodes` 自体の無い手組みルールは従来どおり検査しない。
+4. `cascade.ts`: `flattenSheetsInCascadeOrder` は各ルールの `sheetId` を調べ、`BUILTIN_SHEET_ID`（`builtins/default-style.ts`）/ `ICON_THEME_SHEET_ID`（`builtins/icon-theme.ts`）以外を宣言フィルタの対象にする。配列内の位置や省略可能な `StyleSheet.sheetId` には依存しない。対象ルールに `valueNodes` があるとき、既知のプロパティについてスキーマを満たさない宣言と値ノードの無い宣言を外す。未知のプロパティは warning のみで残す。builtin / icon theme の宣言と、`valueNodes` の無いルール（テストで手組みしたもの）はそのまま残す。今の `{ ...rule }` は `properties` をキャッシュした builtin シートと共有しているので、宣言を外すルールは `properties` / `declarationLocs` / `valueNodes` を新しいオブジェクトに写してから外す。既存のセレクタによるルール除外と `sourceIndex` の採番は維持する
 5. `style-resolver.ts`: 範囲のガードを外し、parse（有限値かどうか）だけを残す。`label-position` の clamp を外す。`finalizeLayoutHints` から `style-column-invalid-value` / `style-grid-columns-invalid-value` を外す。builtin の単位なしの長さを読む parse は残す
 6. 警告 2 種の廃止: `types/warnings.ts`、`types/style.ts`（`ResolvedStyleWarning` の kind）、`compile/model-warnings.ts` のコメント、`packages/i18n`（en / ja / `render-warning.ts`）、`docs/spec/diagnostics{,.ja}.md`、`docs/spec/style{,.ja}.md`、skills の `reference/diagnostics.md` と `packages/skills/skills/{karasu-author,reverse-architecture}/reference/diagnostics.md`（`lint:skill-reference-bundle-sync`）、既存テスト（`resolver/warnings.test.ts`、`compile/all-views-project-styles.test.ts`、`compile-diff-warnings.test.ts`、app の `WarningPanel.test.tsx` など。`grep -rln "style-column-invalid-value\|style-grid-columns-invalid-value"` で全件を拾う）
 7. 既存 AT の更新: AT-0969 / AT-1737 / AT-2879 / AT-3097 のうち、廃止する 2 種の警告を判定に使っている項目を、validator の診断で判定する形に書き換える。単位の無い長さに頼る項目（AT-0045 の `stroke-width: 4;`、AT-1061 AT-I）は `px` を付ける。AT-2696 AT-M の `border-width: 0;` は上記 5 で有効のまま
@@ -138,9 +173,26 @@ resolver が各値を parse する前に `satisfiesPropertySchema` を呼ぶ。
    - `color: primary` は従来どおり hex の診断になる
    - `stroke-width: 4` は報告されて描かれず、`border-width: 0` は報告されずに枠が消える
    - `opacity: -0.5 0.2` は報告されて描かれず、`label-offset: 0 8px` と `font-family: Noto Sans` は報告されずに効く
+   - `label-offset` は長さ 1 つ・2 つなら効き、3 つ以上なら 1 件の診断で宣言全体が外れる（先頭 2 つだけを使わず、弱いルールの値が効く）
    - ユーザーのスタイルが無いモデルの描画が変わらない（builtin の単位なしの長さが効いている）
 10. changeset: `@karasu-tools/core` と `karasu` に patch（診断の変更と挙動の変更）。skills の diagnostics reference を変えるので `karasu-skills` も入れる（`.claude/rules/changesets.md`）
 11. ADR 昇格: 実装完了後、`docs/adr/3141-style-value-bounds-single-source.md` に昇格する。覆すのは各 ADR の一部（ADR-969 / ADR-1737 は警告、ADR-1184 は `label-position` の clamp）なので、`supersedes` ではなく `refines: [ADR-969, ADR-1737, ADR-1184]` で指し、どの部分を変えたかを本文に書く。ADR-1178 の「builtin は検査しない」は維持し、cascade で捨てる範囲も同じ境界にしたことを書く（`related_to`）。旧 ADR の本文は変えない
+
+### 実装時に追加・更新するテスト
+
+以下は実装 PR の検証項目であり、現行実装の結果を示す表ではない。
+
+| 対象 | 入力・条件 | 期待結果 |
+| --- | --- | --- |
+| `style-parser.test.ts` / `value-validator.test.ts` | `label-offset: 8px` / `label-offset: 4px 8px`（`0 8px` も確認） | それぞれ単一 atom / 2 項目の `sequence`。診断なし、schema 判定も `true`。解決結果はそれぞれ `(0, 8)` / `(4, 8)` |
+| 同上 / cascade・resolver のテスト | `label-offset: 4px 8px 12px`（4 項目以上も確認） | 全項目を持つ `sequence`。schema 判定は `false`、`style-invalid-enum-value` が 1 件。宣言全体が外れ、弱いルールの有効な値が効く |
+| `style-parser.test.ts` | `Noto Sans, serif`、`"Noto Sans", serif`、`url("a b")` | それぞれ `list([sequence([ident, ident]), ident])`、`list([string, ident])`、単一の `function`。項目・順序・`loc` / `file`・canonical な `properties` を保持 |
+| `value-validator.test.ts` | `font-family: Noto Sans, serif` / `font-family: Noto 12px`、`label-offset: 4px, 8px` | 識別子の列だけのフォント名は受理。数値を混ぜた名前とカンマ区切りの offset は拒否。`list-of` と `sequence-of` の区別を確認 |
+| `value-validator.test.ts` | 既存の全スカラー kind の診断と、`opacity: -0.5 0.2`、不正なフォント名のリスト | `stringifyValueNode` の既存 case を維持し、`sequence` の診断値は空白区切り、`list` はカンマ区切り。数値 spec への列は `style-invalid-enum-value`（許容 `<number>`） |
+| parser・validator・cascade のテスト | `label-offset: - 20px`、未分類トークン、空の値・カンマ項目 | parser 診断の `style-token-type-mismatch` と位置を確認。拒否された宣言は parser の結果に無く、validator は重複報告しない。各 surface の結果に parser 診断が残る |
+| validator・cascade のテスト | `valueNodes: {}` を持つ手組みルールに既知の宣言がある | validator は宣言位置に 1 件報告し、cascade が除外。元のシートの各 map は変化しない。未知のプロパティなら warning のみで宣言を保持 |
+| `cascade.test.ts` | builtin / icon theme を先頭以外に置く。ユーザーのシートを先頭に置く | 両 sentinel の `rule.sheetId` だけを宣言フィルタから除外し、ユーザーの無効な宣言は位置に関係なく外す。省略・不一致のある envelope の `sheetId` に影響されない |
+| `cascade.test.ts` | `valueNodes` の無いルール、無効な強い宣言と有効な弱い宣言、tool vocabulary 外のセレクタ | 手組みルールを保持し、弱い有効値へ戻る。既存のセレクタ除外と全体の `sourceIndex`、元のシートの非破壊性を維持 |
 
 ### 影響範囲・マイグレーション
 
