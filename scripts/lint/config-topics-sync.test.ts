@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ADR_CONFIG, check, TPL_CONFIG } from "./config-topics-sync.ts";
+import { ADR_CONFIG, check, checkLabels, TPL_CONFIG } from "./config-topics-sync.ts";
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 
@@ -81,6 +81,53 @@ describe("check", () => {
     writeFileSync(join(tmp, ADR_CONFIG), JSON.stringify({ topics: "parser" }));
     writeFileSync(join(tmp, TPL_CONFIG), JSON.stringify({ topics: ["parser"] }));
     expect(() => check(tmp)).toThrow(/must be an array of strings/);
+  });
+});
+
+describe("checkLabels", () => {
+  it("passes when every topic has its label and nothing else looks like one", () => {
+    expect(checkLabels(["parser", "cli"], ["topic: cli", "bug", "topic: parser"])).toEqual({
+      missingLabels: [],
+      strayLabels: [],
+    });
+  });
+
+  it("flags a topic added to adr.config.json without its label", () => {
+    expect(checkLabels(["parser", "brand-new"], ["topic: parser"])).toEqual({
+      missingLabels: ["topic: brand-new"],
+      strayLabels: [],
+    });
+  });
+
+  it("flags a topic: label with no matching topic", () => {
+    expect(checkLabels(["parser"], ["topic: parser", "topic: obsolete"])).toEqual({
+      missingLabels: [],
+      strayLabels: ["topic: obsolete"],
+    });
+  });
+
+  it("reports a rename done on one side only as both directions", () => {
+    // adr.config.json renamed `app` to `app-ui`, the label still has the old name.
+    expect(checkLabels(["app-ui"], ["topic: app"])).toEqual({
+      missingLabels: ["topic: app-ui"],
+      strayLabels: ["topic: app"],
+    });
+  });
+
+  it("treats a label without the space after the colon as stray", () => {
+    expect(checkLabels(["cli"], ["topic: cli", "topic:cli"])).toEqual({
+      missingLabels: [],
+      strayLabels: ["topic:cli"],
+    });
+  });
+
+  it("ignores labels that do not start with topic:", () => {
+    expect(
+      checkLabels(["cli"], ["topic: cli", "status: ready", "topics", "epic: boundary"]),
+    ).toEqual({
+      missingLabels: [],
+      strayLabels: [],
+    });
   });
 });
 

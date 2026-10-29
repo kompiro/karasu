@@ -16,6 +16,8 @@ on:
     paths-ignore:
       - "docs/adr/**"
       - "adr.config.json"
+      - "tpl.config.json"
+      - "scripts/lint/config-topics-sync.ts"
       - ".github/workflows/adr-validate.yml"
 
 concurrency:

@@ -8,6 +8,10 @@ name: ADR validate
 # Keep the `paths:` list below in sync with `adr-validate-skip.yml`'s
 # `paths-ignore:`. If you add a new ADR-related path here, mirror it
 # under `paths-ignore:` in the skip workflow.
+#
+# The `label` trigger is the other side of the topic: label check (Issue
+# #3314, TPL-1480): labels change on GitHub, not in a PR, so creating,
+# renaming or deleting a label runs the same check against main.
 
 on:
   pull_request:
@@ -15,20 +19,28 @@ on:
     paths:
       - "docs/adr/**"
       - "adr.config.json"
+      - "tpl.config.json"
+      - "scripts/lint/config-topics-sync.ts"
       - ".github/workflows/adr-validate.yml"
   push:
     branches: [main]
     paths:
       - "docs/adr/**"
       - "adr.config.json"
+      - "tpl.config.json"
+      - "scripts/lint/config-topics-sync.ts"
       - ".github/workflows/adr-validate.yml"
+  label:
+    types: [created, edited, deleted]
 
 concurrency:
-  group: adr-validate-${{ github.ref }}
+  # A label event runs on main's ref; keep it from cancelling a push run there.
+  group: adr-validate-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
+  issues: read # read the repo's labels for the topic: label check
 
 jobs:
   validate:
@@ -57,3 +69,8 @@ jobs:
 
       - name: Check ADR assumptions against the working tree
         run: pnpm exec adr check-assumptions --quiet
+
+      - name: Check topic labels against adr.config.json topics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: pnpm run lint:config-topics-sync:labels
