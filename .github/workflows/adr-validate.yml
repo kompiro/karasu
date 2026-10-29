@@ -29,10 +29,11 @@ on:
       - ".github/workflows/adr-validate.yml"
 
 concurrency:
-  group: adr-validate-${{ github.ref }}
-  # Never cancel a run on main: a later push would replace it with a run whose
-  # HEAD^1 diff no longer holds the topics change, and the label check for
-  # that change would be lost.
+  # A PR's runs share a group and cancel each other. Each main push gets its
+  # own group: a later push must not cancel or replace (while pending) the run
+  # whose HEAD^1 diff holds a topics change, or that change's label check is
+  # lost.
+  group: adr-validate-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:

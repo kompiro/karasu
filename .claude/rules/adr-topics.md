@@ -30,6 +30,6 @@ push の後に操作したら `gh run rerun --failed <run-id>` で再実行す�
   合意したら、`gh issue list --state all --limit 1000 --label "topic: <old>"` の Issue をそれぞれ別の topic へ付け替え、
   同じコマンドが空を返すことを確かめてから `gh label delete "topic: <old>"` を実行し、`Validate` を再実行する
 
-改名・削除では、マージまでのあいだラベルが main の `topics` より先に進む。その間は、照合が走る別の PR
+追加・改名・削除のどれでも、マージまでのあいだラベルが main の `topics` より先に進む。その間は、照合が走る別の PR
 （`adr.config.json`・`tpl.config.json`・`scripts/lint/config-topics-sync.ts` を変える PR）も `Validate` で落ちるので、
 そうした PR は 1 本ずつ通す。仕組みと却下した案は [#3314](https://github.com/kompiro/karasu/issues/3314)。
