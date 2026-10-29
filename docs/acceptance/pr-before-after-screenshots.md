@@ -6,6 +6,7 @@ type: tooling
 
 - **日付**: 2026-10-29
 - **関連 Issue**: [#3359](https://github.com/kompiro/karasu/issues/3359)
+- **設計 (ADR)**: [ADR-3359](../adr/3359-pr-before-after-screenshots.md)
 - **Related TPLs**: [TPL-2446](../test-perspectives/TPL-2446-gate-side-check-runs-over-the-whole-set.md)（撮るかどうかはパスの一覧でなく全候補の SVG 比較で決める。パスの一覧は促すきっかけにだけ使う）、[TPL-2047](../test-perspectives/TPL-2047-doc-embedded-krs-is-parsed-not-prose.md)（`krs fragment` / `krs invalid` の fence は候補にしない）
 - **対象ファイル**:
   - `scripts/pr-shots/shots.ts`（`pnpm pr:shots`）

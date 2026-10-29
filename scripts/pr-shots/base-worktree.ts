@@ -1,4 +1,4 @@
-// The "before" checkout (Issue #3359, design "案 1-A"): a detached worktree at
+// The "before" checkout (Issue #3359, ADR-3359): a detached worktree at
 // the merge base, installed just enough to load its `packages/core`, and
 // removed when the run ends, failed or interrupted. It has no branch, so a
 // leftover would sit in `git worktree list` looking like someone's work.
@@ -74,7 +74,7 @@ function isAlive(pid: number): boolean {
 
 /**
  * Installs only core and what it depends on. `--ignore-scripts` keeps the
- * root `prepare` (lefthook) from rewiring the repository's hooks to a
+ * lefthook package's `postinstall` from rewiring the repository's hooks to a
  * checkout that is about to disappear.
  */
 function installCore(dir: string): void {

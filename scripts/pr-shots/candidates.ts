@@ -1,5 +1,5 @@
 // What `pnpm pr:shots` renders on both sides of a PR (Issue #3359,
-// docs/design/pr-before-after-screenshots.md "論点 2"). The candidates come in
+// ADR-3359 "何を撮るか"). The candidates come in
 // one ordered list, and the order is the point: only the first two pairs that
 // changed become images, so the input the agent named outranks the models the
 // PR wrote to show its change, which outrank the examples that merely happen
