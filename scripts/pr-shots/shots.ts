@@ -43,7 +43,10 @@ function currentBranch(): string {
   return result.stdout.trim() || "detached";
 }
 
-/** reports/pr-shots/<branch with / made ->/, emptied so stale shots never get attached. */
+/**
+ * reports/pr-shots/<branch with / made ->/, emptied before anything else runs
+ * so a failed run never leaves the previous run's shots to be attached.
+ */
 function freshOutDir(): string {
   const dir = join("reports/pr-shots", currentBranch().replaceAll("/", "-"));
   rmSync(dir, { recursive: true, force: true });
@@ -68,6 +71,7 @@ function printAttach(dir: string, files: readonly string[]): void {
 }
 
 async function shootRendered(options: { base: string; files: string[] }): Promise<void> {
+  const dir = freshOutDir();
   const cwd = process.cwd();
   const baseSha = mergeBase(cwd, options.base);
   const head = headSha(cwd);
@@ -90,7 +94,6 @@ async function shootRendered(options: { base: string; files: string[] }): Promis
     ),
   );
 
-  const dir = freshOutDir();
   const shown = comparison.changed.slice(0, IMAGE_LIMIT);
   const shots: Shot[] = [];
   const specs: { html: string; selector: string }[] = [];
@@ -100,10 +103,10 @@ async function shootRendered(options: { base: string; files: string[] }): Promis
     const shot: Shot = { pair, after: `./${join(dir, `${stem}.after.png`)}` };
     if (pair.before.ok) {
       shot.before = `./${join(dir, `${stem}.before.png`)}`;
-      specs.push({ html: svgDocument(pair.before.svg), selector: "svg" });
+      specs.push({ html: svgDocument(pair.before.svg), selector: "body > svg" });
       files.push(join(dir, `${stem}.before.png`));
     }
-    specs.push({ html: svgDocument(pair.after.svg), selector: "svg" });
+    specs.push({ html: svgDocument(pair.after.svg), selector: "body > svg" });
     files.push(join(dir, `${stem}.after.png`));
     shots.push(shot);
   }
@@ -119,13 +122,21 @@ async function shootRendered(options: { base: string; files: string[] }): Promis
   for (const failure of comparison.headFailures) {
     console.log(`FAILED  ${pairLabel(failure)} at HEAD: ${failure.reason}`);
   }
-  if (comparison.changed.length === 0) console.log("No rendering change.");
+  if (comparison.changed.length === 0 && comparison.headFailures.length === 0) {
+    console.log("No rendering change.");
+  }
   printAttach(dir, files);
+  // A model this branch can no longer render is a regression to fix, not a
+  // section to paste.
+  if (comparison.headFailures.length > 0) process.exitCode = 1;
 }
 
 async function shootApp(options: { path: string; afterOrigin: string }): Promise<void> {
-  const path = options.path.startsWith("/") ? options.path : `/${options.path}`;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(options.path)) {
+    throw new Error(`pr:shots: --url takes a path such as '/?file=index.krs', not ${options.path}`);
+  }
   const dir = freshOutDir();
+  const path = options.path.startsWith("/") ? options.path : `/${options.path}`;
   const files = [join(dir, "app.before.png"), join(dir, "app.after.png")];
   const pngs = await capture(
     [{ url: `${PRODUCTION_ORIGIN}${path}` }, { url: `${options.afterOrigin}${path}` }],

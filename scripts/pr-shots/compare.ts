@@ -94,6 +94,11 @@ export interface BodyOptions {
   headSha: string;
 }
 
+/** Keeps a reason from splitting its table row. */
+function cell(text: string): string {
+  return text.replaceAll("|", "\\|");
+}
+
 function countsLine(counts: Comparison["counts"]): string {
   const parts = [
     `${counts.fences} acceptance-test fence${counts.fences === 1 ? "" : "s"}`,
@@ -110,8 +115,16 @@ function countsLine(counts: Comparison["counts"]): string {
 export function renderBody(comparison: Comparison, shots: readonly Shot[], opts: BodyOptions) {
   const lines = [SECTION_HEADING, ""];
   const short = (sha: string) => sha.slice(0, 7);
-  if (comparison.changed.length === 0) {
+  const failures = comparison.headFailures.length;
+  if (comparison.changed.length === 0 && failures === 0) {
     lines.push(`${NO_CHANGE_MARKER} (${countsLine(comparison.counts)})`);
+  } else if (comparison.changed.length === 0) {
+    // Never the no-change line here: the reminder hook would read it as a
+    // filled section and stay quiet about exactly this regression.
+    lines.push(
+      `Nothing renders differently, but ${failures} pair${failures === 1 ? "" : "s"} that ` +
+        `rendered at the merge base failed on this branch (checked ${countsLine(comparison.counts)}).`,
+    );
   } else {
     lines.push(
       `Rendered with \`pnpm pr:shots\` at the merge base (\`${short(opts.baseSha)}\`) and on this ` +
@@ -122,7 +135,7 @@ export function renderBody(comparison: Comparison, shots: readonly Shot[], opts:
       const label = pairLabel(shot.pair);
       const before =
         shot.before === undefined
-          ? `_Could not be rendered at the base: ${shot.pair.before.ok ? "" : shot.pair.before.reason}_`
+          ? `_Could not be rendered at the base: ${cell(shot.pair.before.ok ? "" : shot.pair.before.reason)}_`
           : `![before: ${label}](${shot.before})`;
       lines.push("", `### ${label}`, "", "| Before | After |", "| --- | --- |");
       lines.push(`| ${before} | ![after: ${label}](${shot.after}) |`);

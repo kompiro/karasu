@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -49,10 +49,11 @@ describe("base worktree", () => {
     }
   });
 
-  it("places the checkout under .claude/worktrees of the main checkout", () => {
-    expect(baseWorktreePath(repo, BASE)).toMatch(
-      new RegExp(`/\\.claude/worktrees/pr-shots-base-${BASE.slice(0, 12)}$`),
+  it("places the checkout under .claude/worktrees of the main checkout, per run", () => {
+    expect(baseWorktreePath(repo, BASE, 4242)).toMatch(
+      new RegExp(`/\\.claude/worktrees/pr-shots-base-${BASE.slice(0, 12)}-4242$`),
     );
+    expect(baseWorktreePath(repo, BASE)).toMatch(new RegExp(`-${process.pid}$`));
   });
 
   it("checks out the base, installs it, and removes it afterwards", async () => {
@@ -86,17 +87,27 @@ describe("base worktree", () => {
     expect(worktrees()).not.toContain("pr-shots-base");
   });
 
-  it("replaces a checkout a killed run left behind", async () => {
-    const dir = baseWorktreePath(repo, BASE);
-    git("worktree", "add", "--detach", dir, BASE);
-    writeFileSync(join(dir, "half-installed"), "");
-    const leftover = await withBaseWorktree(
-      repo,
-      BASE,
-      async (fresh) => existsSync(join(fresh, "half-installed")),
-      { install: () => {} },
-    );
-    expect(leftover).toBe(false);
+  it("removes what a killed run left behind, and keeps a live run's checkout", async () => {
+    const deadPid = spawnSync("true").pid ?? 0;
+    const dead = baseWorktreePath(repo, BASE, deadPid);
+    const live = baseWorktreePath(repo, BASE, process.ppid);
+    git("worktree", "add", "--detach", dead, BASE);
+    git("worktree", "add", "--detach", live, BASE);
+    try {
+      await withBaseWorktree(repo, BASE, async () => undefined, { install: () => {} });
+      expect(existsSync(dead)).toBe(false);
+      expect(existsSync(live)).toBe(true);
+    } finally {
+      git("worktree", "remove", "--force", live);
+    }
     expect(worktrees()).not.toContain("pr-shots-base");
+  });
+
+  it("replaces a directory git no longer tracks", async () => {
+    const dead = baseWorktreePath(repo, BASE, spawnSync("true").pid ?? 0);
+    mkdirSync(dead, { recursive: true });
+    writeFileSync(join(dead, "half-installed"), "");
+    await withBaseWorktree(repo, BASE, async () => undefined, { install: () => {} });
+    expect(existsSync(dead)).toBe(false);
   });
 });

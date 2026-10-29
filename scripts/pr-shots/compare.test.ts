@@ -118,6 +118,32 @@ describe("renderBody", () => {
   });
 });
 
+describe("renderBody with failures at HEAD", () => {
+  it("does not claim no change when pairs that drew at the base fail on the branch", async () => {
+    const result = await compareSides(
+      [example("a")],
+      SYSTEM,
+      side({}),
+      side({ "a/system": fail("threw: boom") }),
+    );
+    const body = renderBody(result, [], SHAS);
+    expect(body).not.toContain(NO_CHANGE_MARKER);
+    expect(body).toContain("1 pair that rendered at the merge base failed on this branch");
+    expect(body).toContain("- a — system view: threw: boom");
+  });
+
+  it("keeps a reason with a pipe inside its table cell", async () => {
+    const result = await compareSides(
+      [fence("f")],
+      SYSTEM,
+      side({ "f/system": fail("threw: a | b") }),
+      side({ "f/system": svg("new") }),
+    );
+    const shots: Shot[] = [{ pair: result.changed[0], after: "./a.png" }];
+    expect(renderBody(result, shots, SHAS)).toContain("base: threw: a \\| b_ |");
+  });
+});
+
 describe("pairStem", () => {
   it("makes a file-name-safe stem from the candidate and the view", () => {
     expect(pairStem({ candidate: fence("docs/acceptance/x y.md#L3"), view: "org" })).toBe(

@@ -86,7 +86,7 @@ export interface CandidateInputs {
   headRoot: string;
   /** `--file` arguments, relative to `headRoot` or absolute. */
   files: readonly string[];
-  /** Repo-relative paths in `git diff --name-only <base>...HEAD`. */
+  /** Repo-relative paths that differ from the merge base (see `changedFiles`). */
   changedFiles: readonly string[];
 }
 
@@ -98,10 +98,10 @@ export function collectCandidates({ headRoot, files, changedFiles }: CandidateIn
     const rel = relative(headRoot, path);
     return { kind: "file", name: rel.startsWith("..") ? basename(path) : rel, path };
   });
-  const examples: Candidate[] = exampleEntries(headRoot).map((relPath) => ({
-    kind: "example",
-    name: relPath,
-    relPath,
-  }));
+  // A model named with --file is not shot a second time as an example.
+  const namedPaths = new Set(named.map((c) => (c.kind === "file" ? c.path : "")));
+  const examples: Candidate[] = exampleEntries(headRoot)
+    .filter((relPath) => !namedPaths.has(resolve(headRoot, relPath)))
+    .map((relPath) => ({ kind: "example", name: relPath, relPath }));
   return [...named, ...fenceCandidates(headRoot, changedFiles), ...examples];
 }

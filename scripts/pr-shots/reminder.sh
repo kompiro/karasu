@@ -41,9 +41,13 @@ number=${url##*/}
 
 gh_bin=${PR_SHOTS_HOOK_GH:-gh}
 limit=()
-command -v timeout >/dev/null 2>&1 && limit=(timeout 15)
+# Two gh calls must finish inside the hook's 30 s timeout (.claude/settings.json).
+command -v timeout >/dev/null 2>&1 && limit=(timeout 10)
 
-files=$(${limit[@]+"${limit[@]}"} "$gh_bin" pr diff "$number" --repo "$repo" --name-only 2>/dev/null) || exit 0
+# GitHub refuses the diff of a very large PR; the file list still answers.
+files=$(${limit[@]+"${limit[@]}"} "$gh_bin" pr diff "$number" --repo "$repo" --name-only 2>/dev/null) \
+  || files=$(${limit[@]+"${limit[@]}"} "$gh_bin" pr view "$number" --repo "$repo" --json files \
+    --jq '.files[].path' 2>/dev/null) || exit 0
 # Source that draws (core's renderer and layout, the app UI) or a model that is
 # drawn (examples/). Tests change nothing a user sees.
 visible=$(grep -E '^(packages/(core|app)/src/|examples/)' <<<"$files" \
@@ -58,13 +62,13 @@ body=$(jq -r '.body // "" | gsub("<!--[\\s\\S]*?-->"; "")' <<<"$view" 2>/dev/nul
 # The section runs from its heading to the next level-2 heading. An image
 # elsewhere in the body says nothing about before/after.
 section=$(awk '/^## /{inside = ($0 ~ /^## Before \/ after[[:space:]]*$/); next} inside' <<<"$body")
-grep -qE 'user-attachments|No rendering change' <<<"$section" && exit 0
+grep -qE 'user-attachments/assets/|No rendering change' <<<"$section" && exit 0
 
 jq -n --arg ctx "PR $repo#$number changes $visible (and maybe more) but its \"## Before / after\" \
 section has no screenshot. Run \`pnpm pr:shots\` from this PR's worktree: it renders the acceptance-test \
 fences in the diff and the examples at the merge base and here, and writes the changed pairs (or a \
 \"No rendering change\" line) to reports/pr-shots/. Put its section into the PR body and upload the \
-images with \`gh pr edit $number --body-file <file> --attach <png> ...\` as it prints. For an app UI \
+images with \`gh pr edit $number --repo $repo --body-file <file> --attach <png> ...\` as it prints. For an app UI \
 change, use \`pnpm pr:shots --url <path>\` against \`pnpm dev\`. Editing the body does not push, so it \
 costs no review round." --arg event "$event" \
   '{hookSpecificOutput: {hookEventName: $event, additionalContext: $ctx}}'

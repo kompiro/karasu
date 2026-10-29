@@ -4,14 +4,20 @@
 // leftover would sit in `git worktree list` looking like someone's work.
 //
 // It lives where every worktree here lives, `.claude/worktrees/` of the main
-// checkout (CLAUDE.md), not inside the worktree the script runs from.
+// checkout (CLAUDE.md), not inside the worktree the script runs from. The
+// path carries the run's pid: parallel sessions on branches forked from the
+// same main commit would otherwise share it and delete each other's checkout.
 
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 function git(cwd: string, args: readonly string[]): string {
-  const result = spawnSync("git", args, { cwd, encoding: "utf8" });
+  // quotePath off: a non-ASCII path would otherwise come back quoted and escaped.
+  const result = spawnSync("git", ["-c", "core.quotePath=false", ...args], {
+    cwd,
+    encoding: "utf8",
+  });
   if (result.status !== 0) {
     throw new Error(`git ${args.join(" ")} failed: ${result.stderr.trim()}`);
   }
@@ -39,10 +45,26 @@ export function changedFiles(cwd: string, base: string): string[] {
   return [...new Set([...tracked, ...untracked].filter(Boolean))];
 }
 
-/** `.claude/worktrees/pr-shots-base-<sha12>` under the main checkout. */
-export function baseWorktreePath(cwd: string, sha: string): string {
+function worktreesDir(cwd: string): string {
   const commonDir = resolve(cwd, git(cwd, ["rev-parse", "--git-common-dir"]));
-  return join(dirname(commonDir), ".claude/worktrees", `pr-shots-base-${sha.slice(0, 12)}`);
+  return join(dirname(commonDir), ".claude/worktrees");
+}
+
+/** `.claude/worktrees/pr-shots-base-<sha12>-<pid>` under the main checkout. */
+export function baseWorktreePath(cwd: string, sha: string, pid = process.pid): string {
+  return join(worktreesDir(cwd), `pr-shots-base-${sha.slice(0, 12)}-${pid}`);
+}
+
+const LEFTOVER_RE = /^pr-shots-base-[0-9a-f]{12}-(\d+)$/;
+
+function isAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM: the process exists but belongs to someone else.
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
 }
 
 /**
@@ -67,7 +89,20 @@ function installCore(dir: string): void {
 
 function removeWorktree(cwd: string, dir: string): void {
   spawnSync("git", ["worktree", "remove", "--force", dir], { cwd });
+  // A directory git no longer tracks (a prune ran, a removal stopped halfway)
+  // survives `worktree remove`, and would make the next `worktree add` fail.
+  if (existsSync(dir)) rmSync(dir, { recursive: true, force: true });
   spawnSync("git", ["worktree", "prune"], { cwd });
+}
+
+/** Removes the checkouts of runs that were killed: their pid is gone. */
+function removeLeftovers(cwd: string): void {
+  const dir = worktreesDir(cwd);
+  if (!existsSync(dir)) return;
+  for (const name of readdirSync(dir)) {
+    const pid = LEFTOVER_RE.exec(name)?.[1];
+    if (pid !== undefined && !isAlive(Number(pid))) removeWorktree(cwd, join(dir, name));
+  }
 }
 
 export interface BaseWorktreeOptions {
@@ -76,8 +111,8 @@ export interface BaseWorktreeOptions {
 }
 
 /**
- * Runs `fn` with a detached checkout of `sha`, then removes it. A checkout
- * left at the same path by a killed run is replaced, not reused: its install
+ * Runs `fn` with a detached checkout of `sha`, then removes it. Checkouts
+ * that killed runs left behind are removed first, not reused: their install
  * may be half done.
  */
 export async function withBaseWorktree<T>(
@@ -86,8 +121,8 @@ export async function withBaseWorktree<T>(
   fn: (dir: string) => Promise<T>,
   { install = installCore }: BaseWorktreeOptions = {},
 ): Promise<T> {
+  removeLeftovers(cwd);
   const dir = baseWorktreePath(cwd, sha);
-  if (existsSync(dir)) removeWorktree(cwd, dir);
 
   const cleanup = () => removeWorktree(cwd, dir);
   const onSignal = (signal: NodeJS.Signals) => {

@@ -22,7 +22,11 @@ let stubCount = 0;
  * A fake gh that logs each argv. `pr diff` prints `files` (or fails when
  * null); `pr view` prints `prBody` as `--json body` does.
  */
-function stubGh(files: string[] | null, prBody: string): { bin: string; argsFile: string } {
+function stubGh(
+  files: string[] | null,
+  prBody: string,
+  diffRefused = false,
+): { bin: string; argsFile: string } {
   stubCount += 1;
   const bin = join(work, `gh-${stubCount}`);
   const argsFile = join(work, `gh-${stubCount}.args`);
@@ -36,8 +40,11 @@ function stubGh(files: string[] | null, prBody: string): { bin: string; argsFile
       "#!/usr/bin/env bash",
       `printf '%s\\n' "$*" >> '${argsFile}'`,
       `case "$1 $2" in`,
-      `  "pr diff") ${files === null ? "exit 1" : `cat '${filesFile}'`} ;;`,
-      `  "pr view") cat '${bodyFile}' ;;`,
+      `  "pr diff") ${files === null || diffRefused ? "exit 1" : `cat '${filesFile}'`} ;;`,
+      `  "pr view") case "$*" in`,
+      `    *--json\\ files*) ${files === null ? "exit 1" : `cat '${filesFile}'`} ;;`,
+      `    *) cat '${bodyFile}' ;;`,
+      "  esac ;;",
       "  *) exit 1 ;;",
       "esac",
       "",
@@ -84,7 +91,7 @@ describe("pr-shots reminder hook", () => {
     expect(ctx).toContain("PR kompiro/karasu#42");
     expect(ctx).toContain("packages/core/src/renderer/svg-renderer.ts");
     expect(ctx).toContain("pnpm pr:shots");
-    expect(ctx).toContain("gh pr edit 42");
+    expect(ctx).toContain("gh pr edit 42 --repo kompiro/karasu");
   });
 
   it.each([
@@ -117,6 +124,18 @@ describe("pr-shots reminder hook", () => {
     expect(context(runHook(`${CREATE} && false`, event, gh), "PostToolUseFailure")).toContain(
       "PR kompiro/karasu#42",
     );
+  });
+
+  it("falls back to the PR's file list when GitHub refuses the diff of a large PR", () => {
+    const gh = stubGh(["packages/core/src/layout/layout.ts"], body(TEMPLATE_SECTION), true);
+    expect(context(runHook(CREATE, created(), gh))).toContain("packages/core/src/layout/layout.ts");
+  });
+
+  it("does not count an attached file that is not an image", () => {
+    const section =
+      "## Before / after\n\n[log.txt](https://github.com/user-attachments/files/1/log.txt)\n";
+    const gh = stubGh(["packages/core/src/layout/layout.ts"], body(section));
+    expect(context(runHook(CREATE, created(), gh))).toContain("pnpm pr:shots");
   });
 
   it.each([

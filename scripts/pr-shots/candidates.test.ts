@@ -87,6 +87,16 @@ describe("collectCandidates", () => {
     ]);
   });
 
+  it("does not shoot a --file model a second time as an example", () => {
+    const candidates = collectCandidates({
+      headRoot: root,
+      files: ["examples/en/single/system.krs"],
+      changedFiles: [],
+    });
+    expect(candidates.filter((c) => c.name === "examples/en/single/system.krs")).toHaveLength(1);
+    expect(candidates[0].kind).toBe("file");
+  });
+
   it("refuses a --file that does not exist", () => {
     expect(() =>
       collectCandidates({ headRoot: root, files: ["nope.krs"], changedFiles: [] }),

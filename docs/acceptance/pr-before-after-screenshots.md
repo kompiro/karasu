@@ -19,9 +19,9 @@ type: tooling
 
 ### AC-1: before と after の差が、そのブランチの変更だけで決まる
 
-- [x] AT-A: before は merge-base の一時 worktree で描画される。worktree は、正常に終わったときも失敗したときも消え、前回の実行が残したものは作り直される
+- [x] AT-A: before は merge-base の一時 worktree で描画される。worktree は実行ごとに別の場所に作られ（並行するセッションが互いの checkout を消さない）、正常に終わったときも失敗したときも消える。強制終了した実行が残したものは次の実行が消す
 
-  > ✅ Automated — `scripts/pr-shots/base-worktree.test.ts` › base worktree › checks out the base, installs it, and removes it afterwards ／ removes the checkout when the work fails ／ replaces a checkout a killed run left behind
+  > ✅ Automated — `scripts/pr-shots/base-worktree.test.ts` › base worktree › places the checkout under .claude/worktrees of the main checkout, per run ／ checks out the base, installs it, and removes it afterwards ／ removes the checkout when the work fails ／ removes what a killed run left behind, and keeps a live run's checkout ／ replaces a directory git no longer tracks
 
 - [x] AT-B: 候補を選ぶ差分は merge-base から作業ツリーまでで、main が後から進めたコミットは入らない
 
@@ -35,15 +35,15 @@ type: tooling
 
 - [x] AT-D: 候補は `--file` → 差分の受け入れテストの `krs` fence → `examples/` のエントリの順に並ぶ。`fragment` / `invalid` の fence と、同じディレクトリから import されているファイルは候補にならない
 
-  > ✅ Automated — `scripts/pr-shots/candidates.test.ts` › collectCandidates › orders --file, then the diff's fences, then the examples ／ fenceCandidates › takes only the plain krs fences of the acceptance records in the diff ／ exampleEntries › keeps the files no sibling imports, whatever the import form
+  > ✅ Automated — `scripts/pr-shots/candidates.test.ts` › collectCandidates › orders --file, then the diff's fences, then the examples ／ does not shoot a --file model a second time as an example ／ fenceCandidates › takes only the plain krs fences of the acceptance records in the diff ／ exampleEntries › keeps the files no sibling imports, whatever the import form
 
 - [x] AT-E: SVG が変わった組だけを集め、画像にするのは最初の 2 組で、残りは名前で一覧にする
 
   > ✅ Automated — `scripts/pr-shots/compare.test.ts` › compareSides › collects the pairs whose SVG differs, in candidate then view order ／ renderBody › shows the shot pairs and lists the rest by name
 
-- [x] AT-F: base で描画できない組は after だけになり、理由を添える。HEAD で描画できなくなった組は別に一覧にする。黙って誤った画像は出さない
+- [x] AT-F: base で描画できない組は after だけになり、理由を添える。HEAD で描画できなくなった組は別に一覧にし、そのときは「No rendering change」と書かない（フックを黙らせない）。黙って誤った画像は出さない
 
-  > ✅ Automated — `scripts/pr-shots/compare.test.ts` › compareSides › keeps a pair the base cannot render, as after-only ／ reports a pair that rendered at the base but fails at HEAD ／ `scripts/pr-shots/render-side.test.ts` › coreSide › fails, rather than drawing, a model with error diagnostics ／ reports a core that throws as a failure
+  > ✅ Automated — `scripts/pr-shots/compare.test.ts` › compareSides › keeps a pair the base cannot render, as after-only ／ reports a pair that rendered at the base but fails at HEAD ／ renderBody with failures at HEAD › does not claim no change when pairs that drew at the base fail on the branch ／ `scripts/pr-shots/render-side.test.ts` › coreSide › fails, rather than drawing, a model with error diagnostics ／ reports a core that throws as a failure
 
 - [x] AT-G: 描く中身の無いビュー（deploy や organization を持たないモデルの deploy / org ビュー）は比較の対象にならない
 
@@ -57,7 +57,7 @@ type: tooling
 
 - [x] AT-I: `gh pr create` の出力にある PR の差分が、`packages/core/src/` か `packages/app/src/` のテスト以外のファイル、または `examples/` に触れていて、`## Before / after` 節が空のときに、フックが `pnpm pr:shots` を促す（テンプレートのコメントだけの節は空とみなす）
 
-  > ✅ Automated — `scripts/pr-shots/reminder.test.ts` › pr-shots reminder hook › reminds when core rendering code changed and the section is still the template ／ reminds when an example changed ／ reminds when app UI source changed ／ reminds when the section is missing altogether ／ still reminds when the only image is outside the section ／ reminds on PostToolUseFailure, when a later command in the call failed
+  > ✅ Automated — `scripts/pr-shots/reminder.test.ts` › pr-shots reminder hook › reminds when core rendering code changed and the section is still the template ／ reminds when an example changed ／ reminds when app UI source changed ／ reminds when the section is missing altogether ／ still reminds when the only image is outside the section ／ reminds on PostToolUseFailure, when a later command in the call failed ／ falls back to the PR's file list when GitHub refuses the diff of a large PR ／ does not count an attached file that is not an image
 
 - [x] AT-J: テスト・docs・ほかのパッケージだけの PR、節に添付画像か「No rendering change」の行がある PR、`gh pr create` を実行していない Bash の呼び出しでは、フックは何も出さない
 
