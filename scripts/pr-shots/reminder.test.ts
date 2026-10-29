@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -41,10 +41,8 @@ function stubGh(
       `printf '%s\\n' "$*" >> '${argsFile}'`,
       `case "$1 $2" in`,
       `  "pr diff") ${files === null || diffRefused ? "exit 1" : `cat '${filesFile}'`} ;;`,
-      `  "pr view") case "$*" in`,
-      `    *--json\\ files*) ${files === null ? "exit 1" : `cat '${filesFile}'`} ;;`,
-      `    *) cat '${bodyFile}' ;;`,
-      "  esac ;;",
+      `  "pr view") cat '${bodyFile}' ;;`,
+      `  "api repos/kompiro/karasu/pulls/42/files") ${files === null ? "exit 1" : `cat '${filesFile}'`} ;;`,
       "  *) exit 1 ;;",
       "esac",
       "",
@@ -81,6 +79,8 @@ function context(stdout: string, eventName = "PostToolUse"): string {
   expect(parsed.hookSpecificOutput.hookEventName).toBe(eventName);
   return parsed.hookSpecificOutput.additionalContext;
 }
+
+const ghCalls = (gh: { argsFile: string }) => readFileSync(gh.argsFile, "utf8").trim().split("\n");
 
 const CREATE = "gh pr create --draft --label 'risk: high' --body-file /tmp/body.md";
 
@@ -129,6 +129,9 @@ describe("pr-shots reminder hook", () => {
   it("falls back to the PR's file list when GitHub refuses the diff of a large PR", () => {
     const gh = stubGh(["packages/core/src/layout/layout.ts"], body(TEMPLATE_SECTION), true);
     expect(context(runHook(CREATE, created(), gh))).toContain("packages/core/src/layout/layout.ts");
+    expect(ghCalls(gh)[1]).toBe(
+      "api repos/kompiro/karasu/pulls/42/files --paginate --jq .[].filename",
+    );
   });
 
   it("does not count an attached file that is not an image", () => {

@@ -5,11 +5,14 @@
 //
 // It lives where every worktree here lives, `.claude/worktrees/` of the main
 // checkout (CLAUDE.md), not inside the worktree the script runs from. The
-// path carries the run's pid: parallel sessions on branches forked from the
-// same main commit would otherwise share it and delete each other's checkout.
+// path carries the run's host and pid: parallel sessions on branches forked
+// from the same main commit would otherwise share it and delete each other's
+// checkout, and a pid means nothing outside its own host (two containers can
+// mount the same checkout).
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, rmSync } from "node:fs";
+import { hostname } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 function git(cwd: string, args: readonly string[]): string {
@@ -50,12 +53,14 @@ function worktreesDir(cwd: string): string {
   return join(dirname(commonDir), ".claude/worktrees");
 }
 
-/** `.claude/worktrees/pr-shots-base-<sha12>-<pid>` under the main checkout. */
+const HOST = hostname().replace(/[^A-Za-z0-9.-]+/g, "-") || "host";
+
+/** `.claude/worktrees/pr-shots-base-<sha12>-<host>-<pid>` under the main checkout. */
 export function baseWorktreePath(cwd: string, sha: string, pid = process.pid): string {
-  return join(worktreesDir(cwd), `pr-shots-base-${sha.slice(0, 12)}-${pid}`);
+  return join(worktreesDir(cwd), `pr-shots-base-${sha.slice(0, 12)}-${HOST}-${pid}`);
 }
 
-const LEFTOVER_RE = /^pr-shots-base-[0-9a-f]{12}-(\d+)$/;
+const LEFTOVER_RE = /^pr-shots-base-[0-9a-f]{12}-(.+)-(\d+)$/;
 
 function isAlive(pid: number): boolean {
   try {
@@ -95,13 +100,20 @@ function removeWorktree(cwd: string, dir: string): void {
   spawnSync("git", ["worktree", "prune"], { cwd });
 }
 
-/** Removes the checkouts of runs that were killed: their pid is gone. */
+/**
+ * Removes the checkouts that killed runs on this host left behind: their pid
+ * is gone, or is this run's own (a pid reused after a restart; nothing this
+ * run owns exists yet). Another host's checkouts are never touched, since
+ * their pids cannot be checked from here.
+ */
 function removeLeftovers(cwd: string): void {
   const dir = worktreesDir(cwd);
   if (!existsSync(dir)) return;
   for (const name of readdirSync(dir)) {
-    const pid = LEFTOVER_RE.exec(name)?.[1];
-    if (pid !== undefined && !isAlive(Number(pid))) removeWorktree(cwd, join(dir, name));
+    const match = LEFTOVER_RE.exec(name);
+    if (match === null || match[1] !== HOST) continue;
+    const pid = Number(match[2]);
+    if (pid === process.pid || !isAlive(pid)) removeWorktree(cwd, join(dir, name));
   }
 }
 

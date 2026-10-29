@@ -41,13 +41,19 @@ number=${url##*/}
 
 gh_bin=${PR_SHOTS_HOOK_GH:-gh}
 limit=()
-# Two gh calls must finish inside the hook's 30 s timeout (.claude/settings.json).
+# At most three gh calls, 10 s each, inside the hook's 30 s timeout
+# (.claude/settings.json); a timed-out call ends the hook instead of falling back.
 command -v timeout >/dev/null 2>&1 && limit=(timeout 10)
 
-# GitHub refuses the diff of a very large PR; the file list still answers.
-files=$(${limit[@]+"${limit[@]}"} "$gh_bin" pr diff "$number" --repo "$repo" --name-only 2>/dev/null) \
-  || files=$(${limit[@]+"${limit[@]}"} "$gh_bin" pr view "$number" --repo "$repo" --json files \
-    --jq '.files[].path' 2>/dev/null) || exit 0
+# GitHub refuses the diff of a very large PR. The paginated file list still
+# answers (up to GitHub's 3000 files), where `gh pr view --json files` stops at 100.
+files=$(${limit[@]+"${limit[@]}"} "$gh_bin" pr diff "$number" --repo "$repo" --name-only 2>/dev/null)
+status=$?
+if [ "$status" -ne 0 ]; then
+  [ "$status" -eq 124 ] && exit 0
+  files=$(${limit[@]+"${limit[@]}"} "$gh_bin" api "repos/$repo/pulls/$number/files" --paginate \
+    --jq '.[].filename' 2>/dev/null) || exit 0
+fi
 # Source that draws (core's renderer and layout, the app UI) or a model that is
 # drawn (examples/). Tests change nothing a user sees.
 visible=$(grep -E '^(packages/(core|app)/src/|examples/)' <<<"$files" \

@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { baseWorktreePath, changedFiles, mergeBase, withBaseWorktree } from "./base-worktree.ts";
 
@@ -51,7 +51,7 @@ describe("base worktree", () => {
 
   it("places the checkout under .claude/worktrees of the main checkout, per run", () => {
     expect(baseWorktreePath(repo, BASE, 4242)).toMatch(
-      new RegExp(`/\\.claude/worktrees/pr-shots-base-${BASE.slice(0, 12)}-4242$`),
+      new RegExp(`/\\.claude/worktrees/pr-shots-base-${BASE.slice(0, 12)}-[A-Za-z0-9.-]+-4242$`),
     );
     expect(baseWorktreePath(repo, BASE)).toMatch(new RegExp(`-${process.pid}$`));
   });
@@ -101,6 +101,34 @@ describe("base worktree", () => {
       git("worktree", "remove", "--force", live);
     }
     expect(worktrees()).not.toContain("pr-shots-base");
+  });
+
+  it("removes a leftover carrying this run's own pid, reused after a restart", async () => {
+    const own = baseWorktreePath(repo, BASE);
+    git("worktree", "add", "--detach", own, BASE);
+    writeFileSync(join(own, "half-installed"), "");
+    const leftover = await withBaseWorktree(
+      repo,
+      BASE,
+      async (dir) => existsSync(join(dir, "half-installed")),
+      { install: () => {} },
+    );
+    expect(leftover).toBe(false);
+    expect(worktrees()).not.toContain("pr-shots-base");
+  });
+
+  it("never touches another host's checkout, whose pid it cannot check", async () => {
+    const other = join(
+      dirname(baseWorktreePath(repo, BASE)),
+      `pr-shots-base-${BASE.slice(0, 12)}-another-host-${spawnSync("true").pid ?? 0}`,
+    );
+    mkdirSync(other, { recursive: true });
+    try {
+      await withBaseWorktree(repo, BASE, async () => undefined, { install: () => {} });
+      expect(existsSync(other)).toBe(true);
+    } finally {
+      rmSync(other, { recursive: true, force: true });
+    }
   });
 
   it("replaces a directory git no longer tracks", async () => {

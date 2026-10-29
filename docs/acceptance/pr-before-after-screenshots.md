@@ -19,9 +19,9 @@ type: tooling
 
 ### AC-1: before と after の差が、そのブランチの変更だけで決まる
 
-- [x] AT-A: before は merge-base の一時 worktree で描画される。worktree は実行ごとに別の場所に作られ（並行するセッションが互いの checkout を消さない）、正常に終わったときも失敗したときも消える。強制終了した実行が残したものは次の実行が消す
+- [x] AT-A: before は merge-base の一時 worktree で描画される。worktree は実行ごとに別の場所（ホスト名と pid を含む）に作られ（並行するセッションが互いの checkout を消さない）、正常に終わったときも失敗したときも消える。同じホストで強制終了した実行が残したものは次の実行が消し、別のホストの checkout には触れない
 
-  > ✅ Automated — `scripts/pr-shots/base-worktree.test.ts` › base worktree › places the checkout under .claude/worktrees of the main checkout, per run ／ checks out the base, installs it, and removes it afterwards ／ removes the checkout when the work fails ／ removes what a killed run left behind, and keeps a live run's checkout ／ replaces a directory git no longer tracks
+  > ✅ Automated — `scripts/pr-shots/base-worktree.test.ts` › base worktree › places the checkout under .claude/worktrees of the main checkout, per run ／ checks out the base, installs it, and removes it afterwards ／ removes the checkout when the work fails ／ removes what a killed run left behind, and keeps a live run's checkout ／ removes a leftover carrying this run's own pid, reused after a restart ／ never touches another host's checkout, whose pid it cannot check ／ replaces a directory git no longer tracks
 
 - [x] AT-B: 候補を選ぶ差分は merge-base から作業ツリーまでで、main が後から進めたコミットは入らない
 
