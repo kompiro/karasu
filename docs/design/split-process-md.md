@@ -132,17 +132,18 @@ CodeRabbit のラウンドは `/coderabbit-converge` の本文へ、stacked PR �
 **`docs/process.md` は 16,384 バイト以下にする**（今の約 3 分の 1）。分割後の核と索引は約 13 KB の見込みで、先に入る #3359 と #3389 の追記と、通常の追記の余地を残す。
 
 <!-- absent-path-next-line: the lint this design proposes; created by the implementation PR (#3337) -->
-ADR-2351 が書いたとおり、process.md は追記でしか育たない。上限を検査に置けば、超えたときに「どれを発火時層へ出すか」を決める機会になる。次の 4 つを落とす `pnpm lint:process-index`（`scripts/lint/process-index.ts` とテスト）を足す。
+ADR-2351 が書いたとおり、process.md は追記でしか育たない。上限を検査に置けば、超えたときに「どれを発火時層へ出すか」を決める機会になる。次の 5 つを落とす `pnpm lint:process-index`（`scripts/lint/process-index.ts` とテスト）を足す。
 
 1. `docs/process/*.md` のうち、process.md の索引からリンクされていないファイルがある
 2. 索引のリンク先のファイルが無い
 3. `docs/process.md` と `docs/process/*.md` の相対リンクのうち、指し先のファイルが無いものがある（移動で `../` を足し忘れたリンクを拾う）
-4. `docs/process.md` が上限を超えている
+4. 索引の行のうち、読む手がかり（「発火条件」の列）が空のものがある
+5. `docs/process.md` が上限を超えている
 
 <!-- absent-path-next-line: the lint this design proposes; created by the implementation PR (#3337) -->
 lefthook の pre-push で走らせる。CI では `ci.yml` が `docs/**` を無視するので、docs の検査がすでに置かれている `reference-docs-check.yml`（と対になる `-skip` 側。対の同期は `docs-site-ci-paths-sync` が検査する）の `pull_request` と `push` の両方の `paths:` に `docs/process.md`、`docs/process/**`、`scripts/lint/process-index.ts` を足し、`lint:process-index` と `adr check-assumptions` を走らせる。後者は、トピックファイルの見出しを変える PR を CI でも落とすため。両ファイルの冒頭コメントと skip 側の echo も合わせて直す。
 
-1〜3 は「分けたトピックに読む手がかりがあり、リンクが切れていない」ことを機械で見る。手がかりが正しい時点を書いているかは人が読む。
+1〜4 は「索引の各行と分けたトピックに読む手がかりがあり、リンクが切れていない」ことを機械で見る。lint は列を見出し「発火条件」で探すので、索引の列名も変えない。手がかりが観測できる事実で書かれ、正しい時点を指しているかは人が読む。
 
 ### 実装の指針
 
