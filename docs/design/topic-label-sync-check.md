@@ -37,7 +37,7 @@ topics を変える PR の `Validate` で、config とラベルを突き合わ�
 
 **デメリット**
 
-- 改名・削除では、PR がマージされるまでのあいだ、ラベルが main の config より先に進む。その間に照合が走る別の PR（topics かチェッカーのスクリプトを変える PR）も落ちる。そうした PR は 1 本ずつ通すことになる（頻度は低い）
+- 追加・改名・削除のどれでも、PR がマージされるまでのあいだ、ラベルが main の config より先に進む。その間に照合が走る別の PR（topics かチェッカーのスクリプトを変える PR）も落ちる。そうした PR は 1 本ずつ通すことになる（頻度は低い）
 - ラベルを操作しても PR の `Validate` は再実行されない。ラベル操作を push の前に済ませるか、後から run を再実行する
 - PR を取り下げたら、ラベル操作を手で戻す（改名は名前を戻す。削除は戻せないので、削除はレビューで合意してから行う。そのため削除の PR は、合意するまで `Validate` が赤い）
 
@@ -73,20 +73,20 @@ main への push と週 1 回の schedule で突き合わせ、ずれていれ�
 
 **案1 を採用する。** ずれはマージ前に止めるのがこの repo のほかの drift ガードと同じ形で、topics を変える頻度が低いので、マージ前のラベル操作で起きる不便は小さい。
 
-**照合するのは、そのコミットで `adr.config.json`・`tpl.config.json`・チェッカーのスクリプトが変わったときだけにする。** `Validate` は ADR を触る PR すべてで走る。案1 ではマージ前にラベルが main の config より先に進むので、無条件に照合すると、そのあいだ topics と関係のない ADR の PR（昇格 PR など）まで落ちる。topics を変える PR のマージ後には、main への push で同じ照合が走り、main の config がラベルに追いついたことを確かめる。main の run は後続の push に cancel させない（cancel されると、後続の run の差分には topics の変更が無く、照合が失われる）。
+**照合するのは、そのコミットで `adr.config.json`・`tpl.config.json`・チェッカーのスクリプトが変わったときだけにする。** `Validate` は ADR を触る PR すべてで走る。案1 ではマージ前にラベルが main の config より先に進むので、無条件に照合すると、そのあいだ topics と関係のない ADR の PR（昇格 PR など）まで落ちる。topics を変える PR のマージ後には、main への push で同じ照合が走り、main の config がラベルに追いついたことを確かめる。main の run は push ごとに concurrency group を分け、後続の push に cancel も置き換えもさせない（されると、後続の run の差分には topics の変更が無く、照合が失われる）。
 
 **ラベルの側の変更（GitHub の画面での作成・改名・削除）では起動しない。** TPL-1480 は両側の変更で起動することを求めるが、`label` イベントの run は main の config と照合する。案1 の正しい手順（マージ前のラベル操作）でも必ず落ち、本物のずれと区別できない。画面で作られた余計な `topic:` ラベルは、次に topics を変える PR の `Validate` で止まる。ラベルを付けた Issue の側は、`docs/process.md`「Issue トピックラベル」の確認で見つかる。
 
 ### 実装の指針
 
-1. `scripts/lint/config-topics-sync.ts` に `--labels` を足す。付けたときは、今の config 同士の比較に加えて、`gh api --paginate 'repos/{owner}/{repo}/labels?per_page=100' --jq '.[].name'` でラベル名を読み、`topic: ` で始まるものと `adr.config.json` の topics を和集合で突き合わせる（TPL-1415）。どちら向きのずれも 1 件ずつ出し、直し方（`gh label create` / `gh label edit` / `gh label delete`）を添える
+1. `scripts/lint/config-topics-sync.ts` に `--labels` を足す。付けたときは、今の config 同士の比較に加えて、`gh api --paginate 'repos/{owner}/{repo}/labels?per_page=100' --jq '.[].name'` でラベル名を読み、大文字小文字を区別せず `topic:` で始まるもの（空白の有無を問わない）と `adr.config.json` の topics を和集合で突き合わせる（TPL-1415）。どちら向きのずれも 1 件ずつ出し、直し方（`gh label create` / `gh label edit` / `gh label delete`）を添える
 2. `package.json` に `lint:config-topics-sync:labels` を足す。`pnpm run lint:config-topics-sync -- --labels` の形にしない（TPL-2046）
-3. 比較は純粋関数にして、ラベル名の配列を引数で受け取る。CLI の入口も、ラベルの読み元を差し替えられる形にする。テストは API を呼ばずに、比較と終了コード（どちらかがずれたら 1、`--labels` が無ければ API を呼ばない）を検証する。ラベル名は大文字小文字を区別しないので、`Topic: x` も topics に無いラベルとして報告する
+3. 比較は純粋関数にして、ラベル名の配列を引数で受け取る。CLI の入口も、ラベルの読み元を差し替えられる形にする。テストは API を呼ばずに、比較と終了コード（どちらかがずれたら 1、`--labels` が無ければ API を呼ばない）を検証する。ラベル名は大文字小文字を区別しないので、`Topic: x` や空白の無い `topic:x` も topics に無いラベルとして報告する
 4. `adr-validate.yml`:
    - paths に `tpl.config.json` と `scripts/lint/config-topics-sync.ts` を足し、`adr-validate-skip.yml` の `paths-ignore` にも同じものを足す（TPL-1480）
    - checkout を `fetch-depth: 2` にし、`git diff --name-only HEAD^1 HEAD` に `adr.config.json`・`tpl.config.json`・`scripts/lint/config-topics-sync.ts` のどれかがあるときだけ照合する（PR の merge commit でも main の squash commit でも、親 1 が base になる。main は squash merge だけを受け付ける）。スクリプトを含めるのは、照合を変える PR 自身の CI で照合が走るようにするため。`adr-validate.yml` は含めない（Dependabot が action の pin を上げる PR まで巻き込むため）
    - 差分は先に変数へ取り、`git diff` の失敗をステップの失敗にする（パイプのまま grep に渡すと、失敗が「topics の変更なし」と読まれる）
-   - `concurrency` の `cancel-in-progress` を PR の run だけにする
+   - `concurrency` は、PR の run は今どおり ref で group を作って cancel し合い、main の push は commit ごとに group を分けて cancel しない（pending の run も後続に置き換えられない）
    - ステップ「Check topic labels against adr.config.json topics」を足し、`GH_TOKEN: ${{ github.token }}` で `pnpm run lint:config-topics-sync:labels` を実行する。`permissions` に `issues: read` を足す。fork からの PR でも、`GITHUB_TOKEN` は読み取り専用のまま `issues: read` を持つので、public repo のラベルは読める
    - API の一時的なエラーで落ちたら再実行する。落ちるのは照合が走る PR（topics かチェッカーのスクリプトを変える PR）だけなので、ADR の PR 全般は止まらない
 5. `.claude/rules/adr-topics.md`:
