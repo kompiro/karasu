@@ -8,10 +8,6 @@ name: ADR validate
 # Keep the `paths:` list below in sync with `adr-validate-skip.yml`'s
 # `paths-ignore:`. If you add a new ADR-related path here, mirror it
 # under `paths-ignore:` in the skip workflow.
-#
-# The `label` trigger is the other side of the topic: label check (Issue
-# #3314, TPL-1480): labels change on GitHub, not in a PR, so creating,
-# renaming or deleting a label runs the same check against main.
 
 on:
   pull_request:
@@ -30,12 +26,9 @@ on:
       - "tpl.config.json"
       - "scripts/lint/config-topics-sync.ts"
       - ".github/workflows/adr-validate.yml"
-  label:
-    types: [created, edited, deleted]
 
 concurrency:
-  # A label event runs on main's ref; keep it from cancelling a push run there.
-  group: adr-validate-${{ github.event_name }}-${{ github.ref }}
+  group: adr-validate-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -48,6 +41,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The topic label step diffs HEAD against its first parent: the base
+          # branch for a PR's merge commit, the previous main for a push.
+          fetch-depth: 2
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
@@ -70,7 +67,17 @@ jobs:
       - name: Check ADR assumptions against the working tree
         run: pnpm exec adr check-assumptions --quiet
 
+      # Only when this commit changes topics or the check itself (Issue #3314).
+      # Label operations happen before the topics PR merges, so for a while the
+      # labels run ahead of main's config; checking on every ADR PR would fail
+      # the unrelated ones in that window. The push run after the merge
+      # confirms the labels caught up.
       - name: Check topic labels against adr.config.json topics
         env:
           GH_TOKEN: ${{ github.token }}
-        run: pnpm run lint:config-topics-sync:labels
+        run: |
+          if git diff --name-only HEAD^1 HEAD | grep -qxE '(adr|tpl)\.config\.json|scripts/lint/config-topics-sync\.ts|\.github/workflows/adr-validate\.yml'; then
+            pnpm run lint:config-topics-sync:labels
+          else
+            echo "This commit changes neither topics nor the check; the topic label check is skipped."
+          fi

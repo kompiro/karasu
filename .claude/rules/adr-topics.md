@@ -18,8 +18,9 @@ paths:
    topics を変える PR では、同じチェックが required check の `Validate` で走り、ずれていれば落ちる
 5. 改名・削除した topic の旧ラベルを持つ Issue が無い（`gh issue list --state all --label "topic: <old>"` が空）
 
-ラベル操作（4 と 5）は、**どの変更でも PR のマージ前に行う**。`Validate` が config とラベルを突き合わせるので、
-ラベルが追いついていない PR は通らない。
+ラベル操作（4 と 5）は、**どの変更でも topics の変更を push する前に行う**。`Validate` が config とラベルを
+突き合わせるので、ラベルが追いついていない PR は通らない。ラベルを操作しても `Validate` は再実行されないので、
+push の後に操作したら `gh run rerun --failed <run-id>` で再実行する。
 
 - **追加**: `gh label create "topic: <name>"`。PR を取り下げたらラベルを消す
 - **改名**: `gh label edit "topic: <old>" --name "topic: <new>"`。付いている Issue はそのまま新しい名前に移る。

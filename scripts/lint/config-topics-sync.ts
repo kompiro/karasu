@@ -26,8 +26,8 @@ import { join } from "node:path";
 // The repo's `topic: <name>` Issue labels are a third copy of the same
 // vocabulary (Issue #3314). They live on GitHub, so `--labels` compares them
 // too, through the API; without the flag the check stays offline for the
-// pre-commit hook. CI runs the flag on the PRs that change topics and when a
-// label is created, renamed or deleted (.github/workflows/adr-validate.yml).
+// pre-commit hook. CI runs the flag on the PRs and main pushes that change
+// topics (.github/workflows/adr-validate.yml).
 
 export const ADR_CONFIG = "adr.config.json";
 export const TPL_CONFIG = "tpl.config.json";
