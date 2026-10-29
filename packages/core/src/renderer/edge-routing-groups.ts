@@ -398,8 +398,9 @@ export function routeGroupedEdges(
       // already claimed by the routes dropping into the same channel, though
       // the path itself was clear. Asked again with the stubs free to take any
       // lane pitch across their cards. Where a card side carries other ports
-      // too, `fanOutGutterPorts` spreads them afterwards; a side with only this
-      // port keeps the seat taken here.
+      // too, `fanOutGutterPorts` spreads them afterwards; on a side with only
+      // this port the seat stays, short of `seatPortsOnOutline`'s nudge onto
+      // the outline.
       if (frames.length === 0 && innerBottom < innerTop) {
         trySameRowChannelRoute(
           edge,
@@ -716,9 +717,10 @@ function channelStub(
   // that x over the same band; then it steps sideways by whole lane pitches,
   // staying on the card so the port remains attachable (#2611). Without this,
   // a channel stub and an interior corridor that share a gap draw one line.
-  // With `whole-side` the steps go on across the card (#3309). The seat is
-  // final when this is the only port on the card's side: `fanOutGutterPorts`
-  // respreads a side only when it carries two or more.
+  // With `whole-side` the steps go on across the card (#3309). When this is
+  // the only port on the card's side, `fanOutGutterPorts` leaves the seat
+  // alone (it respreads a side only when it carries two or more); only
+  // `seatPortsOnOutline` may still nudge it onto the outline.
   const centre = box.x + box.width / 2;
   const lo = Math.min(portY, channelY);
   const hi = Math.max(portY, channelY);
