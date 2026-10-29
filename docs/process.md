@@ -74,8 +74,8 @@ Issue には `topic: <name>` ラベルを 1 つ付ける。`<name>` は
 [`adr.config.json`](../adr.config.json) の `topics` のいずれかで、ADR の `topic` と同じ語彙である。
 
 - 対象は open の Issue すべて（`bug` / `test-infra` / それ以外の種別を問わない）。起票時に付ける
-- 規則より前に起票された open Issue のうち、未付与のものは `status:` ラベルを付け替えるときに付ける。
-  一括での遡及はしない
+- 規則より前に起票された open Issue にも 2026-10-29 に付け終えた（#3389）。`topic:` の無い open Issue は
+  付け忘れなので、見つけた人がその場で付ける
 - closed の Issue には遡って付けない（topic 別の判断の履歴は ADR の `topic` が持つ）
 - 各 topic が何を含むかは [`docs/adr/README.md`](adr/README.md)「トピック別」の見出しで判断する
 - 迷ったら、似た内容の既存 ADR で最も多い `topic` に合わせる:
