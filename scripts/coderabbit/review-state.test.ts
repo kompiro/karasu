@@ -53,6 +53,33 @@ function limitNotice(updatedAt: string, minutes: number, head = HEAD): CodeRabbi
   };
 }
 
+/**
+ * The summary comment after a review that filed nothing, trimmed from #3384
+ * (#3385). Since #3365 this is the only trace such a round leaves.
+ */
+function cleanSummary(
+  updatedAt: string,
+  head = HEAD,
+  verdict = "No actionable comments were generated in the recent review.",
+): CodeRabbitComment {
+  return {
+    createdAt: "2026-09-15T12:56:11Z",
+    updatedAt,
+    body: [
+      "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->",
+      "<!-- recent_review_start -->",
+      "",
+      verdict,
+      "",
+      "<details>",
+      "<summary><strong>Commits</strong></summary>",
+      `Reviewing files that changed from the base of the PR and between 762d7acf27310987374c27493a731afa00d15587 and ${head}.`,
+      "</details>",
+      "<!-- recent_review_end -->",
+    ].join("\n"),
+  };
+}
+
 /** Reply to `@coderabbitai review`, as CodeRabbit edits it in place (#2798). */
 function commandReply(at: string, outcome: "limited" | "finished" | "running"): CodeRabbitComment {
   const details = {
@@ -296,6 +323,70 @@ describe("classify", () => {
       }),
     );
     expect(state).toEqual({ kind: "waiting" });
+  });
+
+  describe("a round that filed nothing (#3385)", () => {
+    it("is converged when the summary says the review of the head found nothing", () => {
+      expect(classify(snapshot({ comments: [cleanSummary("2026-09-15T14:05:00Z")] }))).toEqual({
+        kind: "converged",
+      });
+    });
+
+    it("waits when the summary describes a commit pushed over since", () => {
+      const state = classify(snapshot({ comments: [cleanSummary("2026-09-15T14:05:00Z", OLD)] }));
+      expect(state).toEqual({ kind: "waiting" });
+    });
+
+    it("waits when the summary was written before the last action", () => {
+      const state = classify(snapshot({ comments: [cleanSummary("2026-09-15T13:55:00Z")] }));
+      expect(state).toEqual({ kind: "waiting" });
+    });
+
+    it("waits when the summary of the head is not a clean one", () => {
+      const state = classify(
+        snapshot({
+          comments: [cleanSummary("2026-09-15T14:05:00Z", HEAD, "Actionable comments posted: 1")],
+        }),
+      );
+      expect(state).toEqual({ kind: "waiting" });
+    });
+
+    it("waits for the burst to go quiet like any other answer", () => {
+      const state = classify(
+        snapshot({ comments: [cleanSummary("2026-09-15T14:05:00Z")], now: "2026-09-15T14:05:30Z" }),
+      );
+      expect(state).toEqual({ kind: "in_progress" });
+    });
+
+    it("lets the clean summary supersede an earlier rate-limited re-request", () => {
+      const state = classify(
+        snapshot({
+          comments: [
+            commandReply("2026-09-15T14:01:00Z", "limited"),
+            cleanSummary("2026-09-15T14:20:00Z"),
+          ],
+        }),
+      );
+      expect(state).toEqual({ kind: "converged" });
+    });
+
+    it("reads a thread answer once the head was reviewed clean", () => {
+      // Clean review of the head, then the author replied in an old thread
+      // (`since`) and CodeRabbit answered there.
+      const state = classify(
+        snapshot({
+          comments: [cleanSummary("2026-09-15T13:50:00Z")],
+          threads: [
+            {
+              isResolved: false,
+              lastCommentAt: "2026-09-15T14:05:00Z",
+              lastCommentByCodeRabbit: true,
+            },
+          ],
+        }),
+      );
+      expect(state).toEqual({ kind: "changes", unresolved: 1, heavy: 1 });
+    });
   });
 
   describe("rate limit", () => {
