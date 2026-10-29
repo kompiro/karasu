@@ -40,7 +40,10 @@ pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --once
 従う。本 skill はそこに書かれたラウンドを、取り次ぎなしで回し続けるための手順だけを持つ。
 
 CodeRabbit は approve も changes-requested も出さない（`request_changes_workflow: false`）。収束は
-レビューの state ではなく、未解決の thread と本文の指摘で決まる。
+レビューの state ではなく、未解決の thread と本文の指摘で決まる。指摘が無い回は review も thread も残らず、
+要約コメントの `recent_review` 欄が「No actionable comments were generated」に書き換わるだけになる。
+スクリプトはその欄が HEAD を対象に挙げていれば HEAD への答えとして読む。ほかの答えと同じく CodeRabbit が
+90 秒静かになるまでは `in_progress` で、その後、未解決の thread が無ければ `converged` を返す（#3385）。
 
 ## 前提
 
@@ -103,7 +106,7 @@ stdout の JSON の `outcome` で分岐する。**`outcome` が何であって�
 | `converged` | `bodyFindings` と `threadReplies` が 0 なら、記録の表を更新して終了し、通知する（下の「終わり方」） |
 | `changes` | 3 へ。`state.heavy` は未解決のうち Critical / Major（と重大度の無いもの）の件数 |
 | `limit_elapsed` | `gh pr comment <pr> --body "@coderabbitai review"` を **1 回だけ**投げ、その直前の時刻を `since` にして 1 へ |
-| `timeout` | CodeRabbit が反応していない。状態を添えて通知して終了 |
+| `timeout` | 待ち時間の予算が尽きるまでに、ラウンドの答えが読めなかった。多くは HEAD への review も、HEAD を挙げた指摘ゼロの要約も届いていない。答えが届いた直後の 90 秒の静かな時間に予算が尽きたときもここに来るので、記録した `since` のまま `--once --since <since>` で読み直してから判断する。状態を添えて通知して終了 |
 | `limit_budget_exceeded` | 状態を添えて通知して終了 |
 
 `@coderabbitai review` を投げてよいのは、`limit_elapsed` のときと、3 で Critical / Major を直した
