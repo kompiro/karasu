@@ -27,11 +27,39 @@ import {
  * `out/capture/*.capture.js` and supplies the fixture + output dir via env.
  *
  * Reuses the shared WebView harness (`../webview/harness`): the 3-attempt
- * `File: Open File...` retry, preview-frame entry, and the `[data-view]`
- * toolbar switch with its frame re-acquire.
+ * `File: Open File...` retry, preview-frame entry, and the view switch through
+ * the viewer's tabs (the preview is the app's viewer since #3312).
+ *
+ * The viewer opens a diagram centred at full size, so a tall one runs past the
+ * panel at both ends. Before each shot the capture zooms out until the diagram
+ * fits, and moves focus off the tab it clicked, so the listing shows the whole
+ * diagram and no focus ring.
  */
 
 const FIXTURE_NAME = "karasu-showcase.krs";
+
+/** Wheel steps tried before giving up on fitting (each is a 10% zoom-out). */
+const MAX_FIT_STEPS = 15;
+
+/**
+ * Zoom the preview out with the viewer's own wheel zoom until the diagram
+ * fits its container with a small margin. Must be called inside the frame.
+ */
+async function fitDiagram(driver: WebDriver): Promise<void> {
+  for (let step = 0; step < MAX_FIT_STEPS; step++) {
+    const fits = (await driver.executeScript(
+      "const box = document.querySelector('.preview-container');" +
+        "const svg = box && box.querySelector('svg');" +
+        "if (!box || !svg) return true;" +
+        "const b = box.getBoundingClientRect(), s = svg.getBoundingClientRect();" +
+        "if (s.height <= b.height * 0.92 && s.width <= b.width * 0.95) return true;" +
+        "box.dispatchEvent(new WheelEvent('wheel', { deltaY: 100, bubbles: true, cancelable: true }));" +
+        "return false;",
+    )) as boolean;
+    if (fits) return;
+    await driver.sleep(120);
+  }
+}
 
 const SHOTS: ReadonlyArray<{ view: PreviewView; file: string }> = [
   // The System shot shows the .krs editor beside the logical view — it is the
@@ -78,6 +106,11 @@ describe("karasu Marketplace screenshots (capture)", function () {
   for (const { view, file } of SHOTS) {
     it(`captures the ${view} view → ${file}`, async () => {
       await switchToView(ctx, view);
+      await driver.wait(until.elementLocated(By.css(".preview-container svg")), ELEMENT_TIMEOUT_MS);
+      await fitDiagram(driver);
+      await driver.executeScript(
+        "if (document.activeElement instanceof HTMLElement) document.activeElement.blur();",
+      );
       // takeScreenshot captures the whole VS Code window regardless of frame
       // context; leave the frame so a stray focus ring inside the iframe does
       // not show, and give the layout a beat to settle.

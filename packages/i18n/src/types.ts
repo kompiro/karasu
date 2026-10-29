@@ -84,6 +84,10 @@ export type Translations = {
   "project.error.snapshot": (params: { detail: string }) => string;
   "project.error.dismiss": string;
 
+  // Serve mode (`karasu serve`): what the preview shows instead of a diagram
+  "serve.error.fileNotFound": (params: { file: string }) => string;
+  "serve.error.loadFailed": string;
+
   // File tree: the inline name input for New File / New Folder / Rename
   "fileTree.inlineInput.ariaLabel": string;
 
@@ -164,7 +168,9 @@ export type Translations = {
   "nodeDetail.links.title": string;
   "nodeDetail.openDeployView": string;
   "nodeDetail.jumpToEditor": string;
-  "vscodePreview.blockedByErrors": (params: { count: number }) => string;
+  "vscodePreview.iconMode.label": string;
+  "vscodePreview.iconMode.ariaLabel": string;
+  "vscodePreview.jumpHint": string;
   "nodeDetail.annotationDiff.title": string;
   "nodeDetail.resources.title": string;
   "nodeDetail.capabilities.title": string;

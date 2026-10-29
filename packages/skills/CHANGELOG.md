@@ -1,5 +1,12 @@
 # karasu-skills
 
+## 0.2.1
+
+### Patch Changes
+
+- bbf8fa3: `[inferred]` edges now draw in a warm grey (`#A8A29E` dark / `#78716C` light) instead of the default edge colour, so a relation `translate --from db` guessed from a naming convention can be told apart from a confirmed one (#3115).
+- 14e6b42: Links in the reference docs bundled with the skills now resolve where the skill is installed: a link to another bundled doc points at that copy, and every other link points at the file on GitHub (#3103). They used to point at repository paths the package does not ship.
+
 ## 0.2.0
 
 ### Minor Changes

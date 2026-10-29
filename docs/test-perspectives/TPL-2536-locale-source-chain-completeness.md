@@ -124,3 +124,6 @@ locale（あるいは同種の「複数情報源 + 優先順位」設定）の�
 - [docs/spec/i18n.md 「翻訳テーブル（`@karasu-tools/i18n`）」](../spec/i18n.md#翻訳テーブルkarasu-toolsi18n) —
   「正規化は `resolveLocaleTag` の単独所有、取り出しは consumer ごと」という分割と、
   取り出し側が優先順位の鎖を全部辿る規定
+- [docs/spec/i18n.md 「CLI / lsp / vscode」](../spec/i18n.md#cli--lsp--vscode) —
+  VS Code のプレビューは `vscode.env.language` を `resolveLocaleTag` に通して viewer に渡す
+  consumer の 1 つ（#3312）

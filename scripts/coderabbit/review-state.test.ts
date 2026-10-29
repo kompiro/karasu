@@ -4,6 +4,7 @@ import {
   bodyFindingCount,
   bodyFindingIds,
   classify,
+  findingSeverity,
   parseAnnouncedWaitMs,
   parseNoticeHeadSha,
   threadsAwaitingReply,
@@ -66,8 +67,40 @@ function commandReply(at: string, outcome: "limited" | "finished" | "running"): 
   };
 }
 
+describe("findingSeverity", () => {
+  it("reads the label at the head of a finding, in both formats CodeRabbit uses", () => {
+    expect(findingSeverity("_⚠️ Potential issue_ | _🟠 Major_\n\n**Title**")).toBe("major");
+    expect(
+      findingSeverity('**<picture><img alt=""></picture> Minor** · **Functional Correctness**'),
+    ).toBe("minor");
+    expect(findingSeverity("_🧹 Nitpick_ | _🔵 Trivial_")).toBe("trivial");
+  });
+
+  it("is undefined for a body without a label", () => {
+    expect(findingSeverity("Please rename this.")).toBeUndefined();
+  });
+});
+
 describe("classify", () => {
-  it("is approved when the latest review approves the head and nothing is open", () => {
+  it("counts only Critical, Major and unlabeled open threads as heavy (#3286)", () => {
+    const thread = (severity?: "critical" | "major" | "minor" | "trivial") => ({
+      isResolved: false,
+      lastCommentAt: "2026-09-15T14:05:00Z",
+      lastCommentByCodeRabbit: true,
+      severity,
+    });
+    const state = classify(
+      snapshot({
+        reviews: [
+          { state: "COMMENTED", commitId: HEAD, submittedAt: "2026-09-15T14:05:00Z", body: "x" },
+        ],
+        threads: [thread("minor"), thread("trivial"), thread("major"), thread()],
+      }),
+    );
+    expect(state).toEqual({ kind: "changes", unresolved: 4, heavy: 2 });
+  });
+
+  it("is converged when the latest review approves the head and nothing is open", () => {
     const state = classify(
       snapshot({
         reviews: [
@@ -82,10 +115,10 @@ describe("classify", () => {
         ],
       }),
     );
-    expect(state).toEqual({ kind: "approved" });
+    expect(state).toEqual({ kind: "converged" });
   });
 
-  it("does not call an approval of an older commit approved", () => {
+  it("does not read an approval of an older commit as converged", () => {
     const state = classify(
       snapshot({
         reviews: [
@@ -123,6 +156,7 @@ describe("classify", () => {
     expect(classify({ ...burst, now: "2026-09-15T14:20:00Z" })).toEqual({
       kind: "changes",
       unresolved: 1,
+      heavy: 1,
     });
   });
 
@@ -156,7 +190,7 @@ describe("classify", () => {
         ],
       }),
     );
-    expect(state).toEqual({ kind: "changes", unresolved: 2 });
+    expect(state).toEqual({ kind: "changes", unresolved: 2, heavy: 2 });
   });
 
   it("counts a CodeRabbit answer inside a thread as a response to a reply-only round", () => {
@@ -179,7 +213,7 @@ describe("classify", () => {
         ],
       }),
     );
-    expect(state).toEqual({ kind: "changes", unresolved: 1 });
+    expect(state).toEqual({ kind: "changes", unresolved: 1, heavy: 1 });
   });
 
   it("is waiting when the only CodeRabbit output predates the last action", () => {
@@ -205,7 +239,7 @@ describe("classify", () => {
     expect(state).toEqual({ kind: "waiting" });
   });
 
-  it("is stalled when CodeRabbit answered, nothing is open, but it did not approve", () => {
+  it("is converged when CodeRabbit answered and nothing is open, without an approval (#3286)", () => {
     const state = classify(
       snapshot({
         reviews: [
@@ -225,10 +259,10 @@ describe("classify", () => {
         ],
       }),
     );
-    expect(state).toEqual({ kind: "stalled" });
+    expect(state).toEqual({ kind: "converged" });
   });
 
-  it("stays approved when CodeRabbit answers a thread after approving", () => {
+  it("stays converged when CodeRabbit answers a thread after approving", () => {
     const state = classify(
       snapshot({
         reviews: [
@@ -237,7 +271,7 @@ describe("classify", () => {
         ],
       }),
     );
-    expect(state).toEqual({ kind: "approved" });
+    expect(state).toEqual({ kind: "converged" });
   });
 
   it("does not read a thread answer as the review of a push that has none yet", () => {
@@ -370,7 +404,7 @@ describe("classify", () => {
         ],
         now: "2026-09-15T15:20:00Z",
       });
-      expect(state).toEqual({ kind: "approved" });
+      expect(state).toEqual({ kind: "converged" });
     });
   });
 });
@@ -421,7 +455,7 @@ describe("bodyFindingCount", () => {
     expect(bodyFindingCount(s)).toBe(3);
     // The findings ride along an approval, which is why the count is reported
     // beside the outcome rather than gating it.
-    expect(classify({ ...s, now: "2026-09-15T16:20:00Z" })).toEqual({ kind: "approved" });
+    expect(classify({ ...s, now: "2026-09-15T16:20:00Z" })).toEqual({ kind: "converged" });
   });
 
   it("keeps a finding once the push it was filed against stops being the head (#2909)", () => {

@@ -6,7 +6,14 @@ name: VS Code E2E
 # changing a surface these suites assert on but missing the label could merge
 # with stale assertions undetected. Both jobs share the same build chain
 # (core / i18n / lsp / vscode), so a single workflow-level `paths` union is
-# precise. nightly (e2e-nightly.yml) remains the final safety net.
+# precise.
+#
+# `packages/app/**` is left out on purpose, although the preview is the app's
+# viewer since #3312 and the extension ships its build: app PRs are frequent
+# and this job is long and not required, so they do not start it. The cost is
+# the blind spot TPL-1725 names, for the app alone: an app change that breaks
+# the VS Code preview surfaces at the next PR that touches the extension (or
+# core / i18n / lsp), not on the app PR itself.
 on:
   pull_request:
     branches: [main]

@@ -8,7 +8,7 @@
  *   - app: `localStorage` + `navigator.language` (`packages/app/src/i18n/locale.ts`)
  *   - lsp: the `initialize` request's `locale` param
  *   - cli: the `LC_ALL` / `LC_MESSAGES` / `LANG` environment variables
- *   - vscode: `vscode.env.language` (`packages/vscode/src/webview-i18n.ts`)
+ *   - vscode: `vscode.env.language` (`packages/vscode/src/preview-panel.ts`)
  */
 
 export type Locale = "en" | "ja";
