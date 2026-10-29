@@ -5,7 +5,7 @@
 - **関連**:
   - 引き金 Issue: [#3337](https://github.com/kompiro/karasu/issues/3337)
   - 関連 ADR: [ADR-2356](../adr/2356-doc-placement-by-read-timing.md)（読まれる時点で置き場を決める 3 層。本設計はその「発火時」層を広げる）、[ADR-2351](../adr/2351-process-md-holds-instructions.md)（process.md は「今どうするか」だけを持つ）、[ADR-2687](../adr/2687-adr-body-is-immutable.md)（ADR 本文は書き換えない）、[ADR-3286](../adr/3286-risk-based-review-tiers.md)（リスク段階）
-  - 関連 TPL: [TPL-2254](../test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)（記録は記録より長生きするアドレスを指す）
+  - 関連 TPL: [TPL-2254](../test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)（記録は記録より長生きするアドレスを指す）、[TPL-2253](../test-perspectives/TPL-2253-removal-sweep-needs-a-search-not-a-file-list.md)（取り除いた名前の掃除はファイル一覧ではなく検索で行う）
   - コード: `scripts/review/tier.ts`、`.coderabbit.yaml`、`.claude/skills/coderabbit-converge/SKILL.md`、`.claude/rules/stacked-pr.md`
 
 ## 背景・課題
@@ -31,11 +31,12 @@ ADR-2356（2026-08-05）は規約を読まれる時点で 3 層に分け、proce
 | ドキュメントのライフサイクル、各ディレクトリの役割 | 1,378 | 常時 |
 | ブランチ戦略、Issue・PR 記述ルール | 1,915 | 常時 |
 | Issue 種別 / トピック / ステータスラベル | 3,247 | Issue を起票する・status を付け替えるとき（ほぼ毎セッション） |
-| PR ワークフロー（番号付き手順） | 3,400 | PR を作るとき（ほぼ毎セッション） |
-| PR ワークフロー直後の 2 段落（CodeRabbit の初回レビュー、CLI を ready の前に 1 回） | 2,317 | 手順 8〜11 |
+| PR ワークフロー（番号付き手順と、`/hane:start-dev` への 1 行） | 3,606 | PR を作るとき（ほぼ毎セッション） |
+| PR ワークフロー直後の 2 段落（CodeRabbit の初回レビュー、CLI を ready の前に 1 回） | 2,111 | 手順 8〜11 |
 | リスク段階、指摘の重大度と対応、ローカルレビューの記録 | 6,422 | 手順 8〜11 |
 | High の PR の収束、人間に確認する指摘の判定、ラウンドの回し方 | 9,211 | High の PR で CodeRabbit のラウンドを回すとき |
-| Stacked PR の進め方、draft PR では分単位のジョブが走らない | 4,365 | `gh stack` を打つとき、workflow の draft 判定を編集するとき |
+| Stacked PR の進め方 | 3,477 | `gh stack` を打つとき |
+| draft PR では分単位のジョブが走らない | 888 | workflow の draft 判定を編集するとき。`.claude/rules/stacked-pr.md`「workflow を触るとき」と同じ内容 |
 | docs サイトの変更は PR 上でレンダリング結果を読む | 1,197 | サイトが公開する doc を変える PR |
 | spike の名前と寿命、spike preview、`reports/` | 6,341 | `spike/` ブランチを切るとき、PoC のレポートを出すとき |
 | Claude Code plugin のセットアップ、Sibling repo の clone | 1,917 | 環境を作るとき、隣の repo を編集するとき |
@@ -50,8 +51,9 @@ process.md を名指しする参照は、`docs/process.md` 以外の追跡ファ
   - ADR-3011、ADR-3117（superseded）: `skip-coderabbit`（リスク段階の箇条書き）
   - ADR-2859: `### spike の名前と寿命`
 - **ADR 本文**: 書き換えない（ADR-2687）。本文の dead path は `record-source-paths.ts` も追わない。
-- **ポインタ**: `CLAUDE.md`、`.claude/rules/{stacked-pr,adr,acceptance}.md`、`.claude/skills/coderabbit-converge/SKILL.md`、`.claude/agents/qa.md`、スクリプトのコメントとエラーメッセージ（`scripts/review/`、`scripts/coderabbit/`、`scripts/ci/workflow-draft-gate.test.ts`）、`.github/PULL_REQUEST_TEMPLATE.md`、`.github/workflows/{review-request,review-tier}.yml`、`.coderabbit.yaml`、`docs/acceptance/` の 2 件、`reports/README.md`、`CONTRIBUTING.md`。リンクを機械で検査する仕組みは無い
+- **ポインタ**: `CLAUDE.md`、`.claude/rules/{stacked-pr,adr,acceptance}.md`、`.claude/skills/coderabbit-converge/SKILL.md`、`.claude/agents/qa.md`、スクリプトのコメントとエラーメッセージ（`scripts/review/`、`scripts/coderabbit/`、`scripts/ci/workflow-draft-gate.test.ts`）、`.github/PULL_REQUEST_TEMPLATE.md`、`.github/workflows/{review-request,review-tier}.yml`、`.coderabbit.yaml`、`docs/acceptance/` の 2 件、`docs/design/TEMPLATE.md`、`reports/README.md`、`CONTRIBUTING.md`。ほかに、パスを書かず節名（「指摘の重大度と対応」など）だけで指す参照が process.md の中と外にある。リンクを機械で検査する仕組みは無い
 - **段階の分類**: `scripts/review/tier.ts` の `HIGH_GLOBS` は `docs/process.md` だけを High にする。`docs/process/` に新しいファイルを置くと、どの規則にも当たらず Medium（CodeRabbit が走らない）になる。`.coderabbit.yaml` の `knowledge_base.code_guidelines.filePatterns` も `docs/process.md` だけを持つ
+- **CI**: `adr check-assumptions` が CI で走るのは `ci.yml`（`docs/**` を無視する）と `adr-validate.yml`（`docs/adr/**` だけで発火する）だけ。process.md だけを変える PR では CI で走らず、lefthook の pre-push だけが見ている
 - **docs サイト**: process.md は公開対象（`PUBLISHED_EN_FILES`）に入っていない。サイトのビルドは影響を受けない
 
 ## 制約・前提
@@ -59,14 +61,17 @@ process.md を名指しする参照は、`docs/process.md` 以外の追跡ファ
 - `CLAUDE.md` の「作業開始時は必ず `docs/process.md` を読む」は残す（ADR-2351 と ADR-2356 が外す案を却下している）
 - 分けたトピックは、読むべき時点に読む手がかりを持つ。手がかりの無いファイルは誰にも読まれない
 - ADR は frontmatter だけを直す
-- 移す文章は書き換えない。分割 PR のレビューを「どこに置いたか」に絞るため。表現の手直しは別 PR
-- **対象外**: `docs/release.md` の置き場（参照が多く、分割と独立に判断できる）、`CLAUDE.md` と process.md の重複の整理（ADR-2356 の未決 1 番目）
+- **移す文章の規則は変えない。** 分割 PR のレビューを「どこに置いたか」に絞るため。変えてよいのは次の 3 種だけで、表現の手直しは別 PR にする
+  - 指し先: 相対リンクのパス、節名だけで別ファイルの節を指す参照へのファイル名の追加、`docs/process.md` を指すポインタの張り替え
+  - 分割そのものに伴う記述: 索引、手順 8・15 の読む指示、リスク段階の表の High の行への `docs/process/**` の追加、各トピックファイル冒頭の注記
+  - 廃止済みのものの削除: QA チェックリストの節と、plugin の表の `/hane:qa` の行。同じ内容が `.claude/rules/stacked-pr.md` にある「draft PR では分単位のジョブが走らない」
+- **対象外**: `docs/release.md` の置き場（参照が多く、分割と独立に判断できる）、`CLAUDE.md` と process.md の重複の整理（ADR-2356 の未決 1 番目）、`/hane:qa` の受け入れテスト `docs/acceptance/0007-qa-skill.md` と `.gitignore` の `docs/qa/`（hane 側の廃止に合わせて別に扱う）
 
 ## 検討した選択肢
 
 ### 案1: `docs/process/<topic>.md` に分け、process.md の索引から引く
 
-核は process.md に残し、作業を始めたときに要る節を `docs/process/` 配下のトピックファイルへ移す。process.md の「規約の所在」を索引にし、各トピックを読む時点を観測できる事実で書く。編集時に要るものは ADR-2356 どおり `.claude/rules/` に置く。
+核は process.md に残し、作業を始めたときに要る節を `docs/process/` 配下のトピックファイルへ移す。process.md の「規約の所在」を索引にし、各トピックを読む時点を観測できる事実で書く。編集時に要るものは ADR-2356 どおり `.claude/rules/` に置き、ツールが既に伝えているものはツールに任せる。
 
 **メリット**
 
@@ -109,12 +114,16 @@ CodeRabbit のラウンドは `/coderabbit-converge` の本文へ、stacked PR �
 | 規約の所在 | `docs/process.md` に残し、索引にする。見出しの名前は変えない（ADR-2356 が grep する） | 常時 |
 | リスク段階、指摘の重大度と対応、ローカルレビューの記録、手順直後の 2 段落 | `docs/process/review.md` | PR ワークフローの手順 8 に「手順 8〜11 の前に読む」と書く |
 | High の PR の収束、人間に確認する指摘の判定、ラウンドの回し方 | `docs/process/coderabbit-rounds.md` | 手順 15、`/coderabbit-converge`（判定基準をすでに process.md に委ねている）、`gh pr ready` の後に動くフックのメッセージ |
-| Stacked PR の進め方、draft PR では分単位のジョブが走らない | `docs/process/stacked-pr.md` | `.claude/rules/stacked-pr.md`（`gh stack` を打つ前に読めと冒頭に書いてあり、workflow の編集でも発火する） |
-| spike の名前と寿命、spike preview、`reports/` | `docs/process/spike.md` | `spike/` ブランチを切るとき（`CLAUDE.md` の spike の 2 行が指す）、`reports/README.md` |
+| Stacked PR の進め方 | `docs/process/stacked-pr.md` | `.claude/rules/stacked-pr.md`（`gh stack` を打つ前に読めと冒頭に書いてある）。索引ではこのファイルを手順の正本、ルールを入口と書く。今の索引はルールを正本と書き、ルールは process.md を正本と書いていて食い違っている |
+| draft PR では分単位のジョブが走らない | 削除し、`.claude/rules/stacked-pr.md`「workflow を触るとき」を唯一の置き場にする | workflow の編集（ルールの `paths:`） |
+| spike の名前と寿命、spike preview、`reports/` | `docs/process/spike.md` | `spike/` で始まるブランチを切るとき、`reports/` の下に書くとき、`pnpm report:*` を走らせるとき（索引に書き、`CLAUDE.md` の spike の 2 行もここを指す） |
 | docs サイトの preview | `.claude/rules/docs-site-preview.md`（`paths:` は `docs-preview.yml` の `paths:` と同じ） | 公開対象の doc の編集。編集時に発火して PR 時の行動を求める形は `changesets.md` と同じ |
-| Claude Code plugin のセットアップ、Sibling repo の clone | `docs/process/environment.md` | hane のスキルが見つからないとき、隣の repo を編集するとき |
-| 循環依存チェック、Barrel import 禁止 | `docs/process/code-checks.md` | `pnpm check:cycles` か oxlint の `no-restricted-imports` が落ちたとき |
+| Claude Code plugin のセットアップ、Sibling repo の clone | `docs/process/environment.md` | hane のスキルが見つからないとき、`/workspaces` の隣の repo を編集するとき |
+| 循環依存チェック | 削除し、`pnpm check:cycles` が落ちたときの出力に助言を出す（`import type` も循環に数える、共有の型は leaf module に分ける） | `check:cycles` の失敗そのもの |
+| Barrel import 禁止 | 削除する。oxlint の `no-restricted-imports` の `message`（`.oxlintrc.json`）が同じことを言う | oxlint の失敗そのもの |
 | QA チェックリスト | 削除する。plugin の表から `/hane:qa` の行も消す | `/hane:qa` は廃止され、`qa` エージェントと `/hane:acceptance-test` が後を継いだ |
+
+各トピックファイルの冒頭には、process.md 冒頭と同じ「今どうするか」だけを書くという注記を置く（ADR-2351。`docs/release.md` も同じ注記を持つ）。分けたファイルにも経緯を溜めない。
 
 トピックファイルの見出しは今の深さ（`###` / `####`）を保つ。ADR の `grep:` の正規表現は見出しの `#` を含むので、深さを変えるなら frontmatter の正規表現も合わせて直す。
 
@@ -122,42 +131,47 @@ CodeRabbit のラウンドは `/coderabbit-converge` の本文へ、stacked PR �
 
 **`docs/process.md` は 16,384 バイト以下にする**（今の約 3 分の 1）。分割後の核と索引は約 13 KB の見込みで、先に入る #3359 と #3389 の追記と、通常の追記の余地を残す。
 
-ADR-2351 が書いたとおり、process.md は追記でしか育たない。上限を検査に置けば、超えたときに「どれを発火時層へ出すか」を決める機会になる。次の 3 つを落とす `scripts/lint/process-index.ts`（とテスト）を足す。
+ADR-2351 が書いたとおり、process.md は追記でしか育たない。上限を検査に置けば、超えたときに「どれを発火時層へ出すか」を決める機会になる。次の 4 つを落とす `pnpm lint:process-index`（`scripts/lint/process-index.ts` とテスト）を足す。
 
 1. `docs/process/*.md` のうち、process.md の索引からリンクされていないファイルがある
 2. 索引のリンク先のファイルが無い
-3. `docs/process.md` が上限を超えている
+3. `docs/process.md` と `docs/process/*.md` の相対リンクのうち、指し先のファイルが無いものがある（移動で `../` を足し忘れたリンクを拾う）
+4. `docs/process.md` が上限を超えている
 
-lefthook の pre-push で走らせる。CI では `ci.yml` が `docs/**` を無視するので、docs の検査がすでに置かれている `reference-docs-check.yml`（と対になる `-skip` 側）の `paths:` に `docs/process.md` と `docs/process/**` を足して走らせる。
+lefthook の pre-push で走らせる。CI では `ci.yml` が `docs/**` を無視するので、docs の検査がすでに置かれている `reference-docs-check.yml`（と対になる `-skip` 側。対の同期は `docs-site-ci-paths-sync` が検査する）の `paths:` に `docs/process.md` と `docs/process/**` を足し、`lint:process-index` と `adr check-assumptions` を走らせる。後者は、トピックファイルの見出しを変える PR を CI でも落とすため。両ファイルの冒頭コメントと skip 側の echo も合わせて直す。
 
-1 と 2 は「分けたトピックに読む手がかりがある」ことの最低限を機械で見る。手がかりが正しい時点を書いているかは人が読む。
+1〜3 は「分けたトピックに読む手がかりがあり、リンクが切れていない」ことを機械で見る。手がかりが正しい時点を書いているかは人が読む。
 
 ### 実装の指針
 
-1 PR で行う。途中の状態で分けると `adr:check-assumptions` が落ちる。
+実装は 1 PR で行う。途中の状態で分けると `adr:check-assumptions` が落ちる。
 
-1. 節を移す。文章は変えない。相対リンク（`adr/…`、`test-perspectives/…`、`../.claude/…`、`../reports/…`、`../adr.config.json`）は `../` を 1 つ足す
-2. process.md に索引と、手順 8・15 からの読む指示を書く
-3. 段階と CodeRabbit の対象を広げる: `scripts/review/tier.ts` の `HIGH_GLOBS` に `docs/process/**`（`tier.test.ts` に例を足す）、`.coderabbit.yaml` の `filePatterns`、process.md の High の行
+1. 節を移す。文章は「制約・前提」の 3 種の変更だけにとどめる
+2. process.md に索引と、手順 8・15 からの読む指示を書く。トピックファイルの冒頭に注記を置く
+3. 段階と CodeRabbit の対象を広げる: `scripts/review/tier.ts` の `HIGH_GLOBS` に `docs/process/**`（`tier.test.ts` に例を足す）、`.coderabbit.yaml` の `filePatterns`、`docs/process/review.md` に移ったリスク段階の表の High の行
 4. ADR frontmatter の 5 件の `grep:` を移した先のファイルに向ける（ADR-3286、ADR-3011、ADR-3117、ADR-2859）
-5. ポインタを張り替える（上のインベントリの一覧）。`/coderabbit-converge` の「`docs/process.md` の手順 1・2」は PR ワークフローの手順と紛らわしいので、移した先の節名で書く
-6. 同じ種類の古いポインタも直す。すでに process.md から出た節を指しているもの（`scripts/acceptance/design-refs.ts`、`CONTRIBUTING.md`、`.github/workflows/release.yml`、`.github/workflows/vscode-release.yml`）。ADR 本文は直さない
-7. `scripts/lint/process-index.ts` とテストを足し、lefthook と `reference-docs-check.yml` に配線する
-8. `CLAUDE.md` のドキュメント表に `docs/process/` の行を足す
-9. ADR 昇格: 実装の後、`docs/adr/3337-split-process-md.md`（`refines: [ADR-2356]`）として昇格し、本 Design Doc を同じ PR で削除する
+5. ポインタを張り替える。インベントリの一覧から始めるが、取りこぼしは一覧ではなく検索で拾う（TPL-2253）。検索するのは `process.md` と、移した節の見出し名の両方。`/coderabbit-converge` の「`docs/process.md` の手順 1・2」は PR ワークフローの手順と紛らわしいので、移した先の節名で書く
+6. 同じ種類の古いポインタも直す。すでに process.md から出た節を指しているもの（`scripts/acceptance/design-refs.ts`、`CONTRIBUTING.md`、`.github/workflows/release.yml`、`.github/workflows/vscode-release.yml`、`docs/design/TEMPLATE.md` のスライス表の置き場）。ADR 本文は直さない
+7. `check:cycles` が落ちたときに助言を出す（`package.json` の script を失敗時に 1 段落を表示する形にする）
+8. `lint:process-index` とテストを足し、lefthook と `reference-docs-check.yml` に配線する
+9. `CLAUDE.md` のドキュメント表に `docs/process/` の行を足す
 
-受け入れテストは作らない。到達状態はすべて機械で確かめられ、人が画面で見るものが無い。
+実装の PR がマージされた後、別の `docs(adr):` PR で `docs/adr/3337-split-process-md.md`（`refines: [ADR-2356]`）として昇格し、本 Design Doc を同じ PR で削除する。
+
+受け入れテストは作らない。リンクとファイルの到達は機械で確かめられ、手がかりの妥当性は PR のレビューで読む。人が画面で見るものは無い。
 
 ```
 wc -c docs/process.md                       # 16384 以下
-node scripts/lint/process-index.ts
+pnpm lint:process-index
 pnpm adr:check-assumptions && pnpm adr:validate
 git grep -n 'process\.md' -- ':!docs/adr/*.md'   # 核に残った節だけを指している
+git grep -n -e 'リスク段階' -e '指摘の重大度と対応' -e 'ローカルレビューの記録' -e 'ラウンドの回し方' \
+  -e 'Stacked PR の進め方' -e 'spike の名前と寿命' -- ':!docs/adr/*.md'   # 節名だけの参照が移した先を指している
 ```
 
 ### 影響範囲・マイグレーション
 
-- 毎セッションのコンテキストが約 30 KB 減る
+- 毎セッション読まれる量が約 30 KB 減る。PR を作るセッションは手順 8 で `review.md`（約 8.5 KB）も読むので、その場合の削減は約 22 KB
 - `docs/process/` の変更は process.md と同じく High になる
 - 着手順: #3389 と #3359 の実装が process.md を先に直す。分割はその後に、両者の最終的な文章を移す
 
