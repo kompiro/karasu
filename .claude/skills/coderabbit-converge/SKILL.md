@@ -106,7 +106,7 @@ stdout の JSON の `outcome` で分岐する。**`outcome` が何であって�
 | `converged` | `bodyFindings` と `threadReplies` が 0 なら、記録の表を更新して終了し、通知する（下の「終わり方」） |
 | `changes` | 3 へ。`state.heavy` は未解決のうち Critical / Major（と重大度の無いもの）の件数 |
 | `limit_elapsed` | `gh pr comment <pr> --body "@coderabbitai review"` を **1 回だけ**投げ、その直前の時刻を `since` にして 1 へ |
-| `timeout` | 待ち時間の予算が尽きるまでに、ラウンドの答えが読めなかった。多くは HEAD への review も、HEAD を挙げた指摘ゼロの要約も届いていない。答えが届いた直後の 90 秒の静かな時間に予算が尽きたときもここに来るので、`--once` で読み直してから判断する。状態を添えて通知して終了 |
+| `timeout` | 待ち時間の予算が尽きるまでに、ラウンドの答えが読めなかった。多くは HEAD への review も、HEAD を挙げた指摘ゼロの要約も届いていない。答えが届いた直後の 90 秒の静かな時間に予算が尽きたときもここに来るので、記録した `since` のまま `--once --since <since>` で読み直してから判断する。状態を添えて通知して終了 |
 | `limit_budget_exceeded` | 状態を添えて通知して終了 |
 
 `@coderabbitai review` を投げてよいのは、`limit_elapsed` のときと、3 で Critical / Major を直した
