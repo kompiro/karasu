@@ -5,7 +5,7 @@ status: accepted
 date: 2026-10-29
 topic: renderer
 refines: [ADR-3026]
-related_to: [ADR-2330, ADR-2598, ADR-2611, ADR-3133]
+related_to: [ADR-2330, ADR-2598, ADR-2611, ADR-3132, ADR-3133, ADR-3154]
 scope:
   packages:
     - core
@@ -26,7 +26,7 @@ assumptions:
 - **ステータス**: 決定済み
 - **関連**:
   - Issue #3309（起点。#3154 の計測中に見つかった）、Design Doc PR #3322、実装 PR #3324
-  - [ADR-3026](3026-same-row-channel-route.md)（同じ行の候補。本 ADR はその stub の席の探索範囲を最後の候補でだけ広げる）、[ADR-3133](3133-side-column-last-resort-corridor.md)（最後の候補を置く先例。呼び出し側が引数で範囲を選ぶ形も同じ）、[ADR-2611](2611-layer-spanning-edge-columns.md)（`channelStub` と縦線の claim）、[ADR-2598](2598-edge-routing-channel-capacity.md)（never worse と「上限は明示する」）、[ADR-2330](2330-ungrouped-routing-parity.md)（計測柵で保証する）
+  - [ADR-3026](3026-same-row-channel-route.md)（同じ行の候補。本 ADR はその stub の席の探索範囲を最後の候補でだけ広げる）、[ADR-3133](3133-side-column-last-resort-corridor.md)（最後の候補を置く先例。呼び出し側が引数で範囲を選ぶ形も同じ）、[ADR-2611](2611-layer-spanning-edge-columns.md)（`channelStub` と縦線の claim）、[ADR-2598](2598-edge-routing-channel-capacity.md)（行間の予約と 2 回目の配置。U 字が 1 本増えると同じビューの座標が動く理由）、[ADR-2330](2330-ungrouped-routing-parity.md)（計測柵で保証する）
   - TPL: [TPL-3026](../test-perspectives/TPL-3026-candidate-chain-covers-every-endpoint-relation.md)（本件の失敗モードと対処パターンを追記した）、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)、[TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)、[TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)
   - AT: `docs/acceptance/3309-same-row-whole-side-stubs.md`
   - コード: `packages/core/src/renderer/edge-routing-groups.ts`（`routeGroupedEdges` の最後の候補、`trySameRowChannelRoute`、`channelStub` / `StubSeats`）
@@ -57,8 +57,8 @@ Issue は「同じ行の候補が上下とも塞がれたら、ガター経路�
 ## 理由
 
 - **原因は候補の欠落ではなく、ある候補の資源の探索範囲だった。** 位置関係の表の上では候補があるので、新しい候補の形は要らない。範囲を広げれば既存の U 字のまま成立し、レーン分け・容量予約・ポートの配り直しがそのまま効く（TPL-1954）。
-- **最後に置くので、候補の選択が変わるのは直線のまま残っていたエッジだけになる。** 4 つの逆生成モデル（umami / dify / twenty / wordpress、4,626 ビュー × グルーピング none / team / boundary）で、変わるのは `Twenty.TwentyServer` の 1 ビュー × 3 グルーピングだけだった。このビューの子には team も boundary も無いので、3 つとも枠の無いキャンバスになる。貫通は 4 → 1、交差は 592,701 → 592,320（−381）、collinear overlap は縦横とも 0 のまま、`examples/en` は変化なし。
-- **ただし同じビューのほかのエッジの座標は変わりうる。** U 字の経路が 1 本増えると行間の予約が変わり、2 回目の配置でカードが動く。`TwentyServer` では 284 本中 254 本の座標が動き、キャンバスは 2608×2233 → 2584×2247 になった。「動かさない」のは候補の選択であって、最終座標ではない。
+- **最後に置くので、候補の選択が変わるのは直線のまま残っていたエッジだけになる。** 4 つの逆生成モデル（umami / dify / twenty / wordpress、4,626 ビュー × グルーピング none / team / boundary。基準の `main` は bb6da78c）で、変わるのは `Twenty.TwentyServer` の 1 ビュー × 3 グルーピングだけだった。このビューの子には team も boundary も無いので、3 つとも枠の無いキャンバスになる。貫通は 4 → 1、交差は 592,701 → 592,320（−381）、collinear overlap は縦横とも 0 のまま、`examples/en` は変化なし。
+- **ただし同じビューのほかのエッジの座標は変わりうる。** U 字の経路が 1 本増えると行間の予約が変わり、2 回目の配置でカードが動く。`TwentyServer` では 284 本中 254 本の座標が動き（3 グルーピングの合計で 762 本。却下案の本数と同じ数え方）、キャンバスは 2608×2233 → 2584×2247 になった。「動かさない」のは候補の選択であって、最終座標ではない。
 - **中央から離れた席の多くは、後で配り直される。** 同じ辺にほかのポートもあれば、`fanOutGutterPorts` が辺の全体（attachable span）に配り直すので、描かれる位置は同じ辺の他のポートと並ぶ。辺にこのポートだけなら `fanOutGutterPorts` は手を出さず（2 本以上の辺だけを配り直す）、席はそのまま残る。そのときは `seatPortsOnOutline` が外形へ寄せるだけになる。この区別は実装 PR のレビューで見つかり、コメントと TPL-3026 に反映した。
 
 ### 柵
@@ -68,13 +68,13 @@ Issue は「同じ行の候補が上下とも塞がれたら、ガター経路�
 
 ### 既知の限界
 
-席がカードの幅いっぱいまで埋まった組は、本件の後もなお直線のまま残る（ADR-2598 の「上限は明示する」）。TPL-3026 の失敗モードにも同じ限界を書いた。grouped キャンバスの同じ行の組（wordpress の `WordPressApp` の boundary グルーピングの `Database → Taxonomy` で 1 件）は、同じ行の候補自体が使われないので対象外のまま残る（ADR-3026 決定 2）。
+席がカードの幅いっぱいまで埋まった組は、本件の後もなお直線のまま残る。この上限は既知の限界としてここに明示する。TPL-3026 の失敗モードにも同じ限界を書いた。grouped キャンバスの同じ行の組（wordpress の `WordPressApp` の boundary グルーピングの `Database → Taxonomy` で 1 件）は、同じ行の候補自体が使われないので対象外のまま残る（ADR-3026 決定 2）。
 
 ## 却下した案
 
 ### `channelStub` の席を、全経路でカードの幅いっぱいまで広げる
 
-規則が 1 つのまま上限が無くなる。ただし mixed route と corridor も同じ関数を使うので、今は後ろの候補（ガターなど）で成立しているエッジが前の候補で成立するようになり、経路が変わる。4 モデルで 180 ビュー・18,267 本が変わり、交差は 592,701 → 609,644（+16,943）になった。貫通は同じく 4 → 1 で、得るものが同じなので採らなかった。
+規則が 1 つのまま上限が無くなる。ただし mixed route と corridor も同じ関数を使うので、今は後ろの候補（ガターなど）で成立しているエッジが前の候補で成立するようになり、経路が変わる。4 モデルで 180 ビュー・18,267 本が変わり、交差は 592,701 → 609,644（+16,943）になった。貫通は同じく 4 → 1 で、得るものが同じなので採らなかった（この案では `examples/en` は計測していない）。
 
 ### Issue の示唆どおり、ガター経路や列の corridor へ fallback する
 
@@ -88,4 +88,5 @@ Issue は「同じ行の候補が上下とも塞がれたら、ガター経路�
 
 - 既存ユーザー: Group by を使っていないキャンバスで、同じ行の組が間のカードを貫通していたビューだけ、その組の経路が U 字に変わる。同じビューの他のエッジは、2 回目の配置で座標が変わりうる。それ以外のビューは変わらない。`.krs` の構文は変えない。
 - stub の席の配り方そのもの（`fanOutGutterPorts` の配り直しを含む）を見直すなら、全経路で席を広げる案と合わせて別に扱う。
-- grouped キャンバスの同じ行の組は、#3132 / #3154 で枠の内側の境界ができたので、同じ行の候補を grouped で使えるかは別 Issue で検討する。
+- 既存のスナップショットと routing の柵は変わらない。
+- grouped キャンバスの同じ行の組は、ADR-3132 / ADR-3154 で枠の内側の境界ができたので、同じ行の候補を grouped で使えるかは別 Issue で検討する。
