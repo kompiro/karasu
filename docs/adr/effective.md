@@ -417,6 +417,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3133](3133-side-column-last-resort-corridor.md) — 側面列の端点へのエッジは、どの候補も成立しないとき、端点の間の空き列で通す
 - [ADR-3134](3134-same-channel-fold.md) — 同じ行間チャネルに降りる corridor / mixed route を、チャネルの中で 1 本の run につなぐ
 - [ADR-3154](3154-frame-bounded-gutters.md) — ドリルダウンのガターは枠の内側のカードで測り、足りない幅を枠の側面に予約する
+- [ADR-3155](3155-label-placement-frame-borders.md) — ずらしたエッジラベルは既定位置と同じ側に留め、枠の線に掛けない
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
 - [ADR-9015](9015-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG（buildAllViewsSvg）
