@@ -217,9 +217,10 @@ function cleanSummaryOfHead(s: Snapshot): number | null {
 }
 
 /**
- * `notAfter`: the latest answer about the head (a commit review, or a clean summary). A notice older than that was
- * followed by the review it announced, and a notice older than `since` was
- * answered by the author's re-request; neither describes the PR any more.
+ * `notAfter`: the latest answer about the head (a commit review, or a clean
+ * summary). A notice older than that was followed by the review it announced,
+ * and a notice older than `since` was answered by the author's re-request;
+ * neither describes the PR any more.
  */
 function rateLimitReadyAt(s: Snapshot, opts: ClassifyOptions, notAfter: number): number | null {
   const since = ms(s.since);
