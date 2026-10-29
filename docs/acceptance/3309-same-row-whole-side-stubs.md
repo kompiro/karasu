@@ -24,7 +24,7 @@ type: product
 
 - [x] AT-B: 中央付近に空いた席がある組は、従来どおり中央に近い順で最初に空いた席を使う
 
-  > ✅ Automated — `packages/core/src/renderer/edge-routing-same-row.test.ts` › `same-row route when the seats beside each card's centre are taken (#3309)` › `keeps the near seats for a pair that has one free, so no route that cleared before moves`
+  > ✅ Automated — `packages/core/src/renderer/edge-routing-same-row.test.ts` › `same-row route when the seats beside each card's centre are taken (#3309)` › `takes the first free near seat, in the order it always has, when one is free`
 
 - [x] AT-C: `examples/` の全モデルと既存の routing fence・スナップショットが無変更で通る
 

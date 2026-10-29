@@ -146,9 +146,12 @@ describe("same-row route when the seats beside each card's centre are taken (#33
     expect(tgtStub.x).toBeLessThan(a.x + a.width);
   });
 
-  it("keeps the near seats for a pair that has one free, so no route that cleared before moves", () => {
+  it("takes the first free near seat, in the order it always has, when one is free", () => {
     // Only the centre of each card is taken: the first free near seat, one
     // lane pitch to the left, is the one `channelStub` has always picked.
+    // This pins the seat order, not the range: whole-side starts with the same
+    // five seats, so both modes agree here. That other candidates keep the
+    // near range was measured on the reverse-generated models (#3309).
     const edge = leftward(c, a);
     const centres = (cardBox: LayoutNode) => [cardBox.x + cardBox.width / 2];
     routeAmong(
