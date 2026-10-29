@@ -142,7 +142,6 @@ before と after の差が、そのブランチの変更だけで決まること
 
 ### 実装の指針
 
-<!-- absent-path-next-line: a file this design creates (#3359) -->
 1. **`pnpm pr:shots`**（`scripts/pr-shots/shots.ts`。PoC 用の `scripts/report/` とは分け、その `capture` を import して使う）
    - base は `origin/main` との merge-base。`--base <ref>` で変えられる
    - 一時 worktree を `.claude/worktrees/pr-shots-base-<sha>` に detached で作り、install して、終了時（失敗時も）に消す。ブランチを持たない一時の checkout なので、`git worktree list` に残さない
@@ -153,7 +152,6 @@ before と after の差が、そのブランチの変更だけで決まること
    - 同じディレクトリに `body.md` を書く。before | after の表で `![…](./reports/pr-shots/…png)` を参照し、そのまま使える `gh pr edit <n> --body-file … --attach …` の例を出力する
    - 変わった組が 0 なら「描画に変化なし（受け入れテストの fence N 件、examples M ファイル）」と出力して終了コード 0 で終わる
    - `--url <path>` では、本番のアプリ（`https://karasu.kompiro.dev<path>`）と、手元で起動した `pnpm dev`（`--after-origin` で変えられる）を同じパスで撮る。dev server の管理はしない（`scripts/report/screenshot.ts` と同じ方針）
-   <!-- absent-path-next-line: a file this design creates (#3359) -->
 2. **フック**（`scripts/pr-shots/reminder.sh`、`.claude/settings.json` の PostToolUse / PostToolUseFailure の Bash に足す）
    - `gh pr create` の出力にある PR の URL から PR を特定する（ADR-3333 と同じく、コマンド文字列ではなく出力を見る）
    - `gh pr diff --name-only` に `packages/core/src/` か `packages/app/src/` のテスト以外のファイル、または `examples/` のファイルがある。かつ、本文の `## Before / after` 節が埋まっていない。この 2 つがそろったときだけ、additionalContext を返す。「埋まっている」は、節の中に `user-attachments` の画像か、`pr:shots` が出力する「描画に変化なし」の 1 行があること。本文の別の場所にある無関係な画像では、促すのをやめない
