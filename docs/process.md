@@ -79,8 +79,13 @@ Issue には `topic: <name>` ラベルを 1 つ付ける。`<name>` は
   付けるようにするのは #3390）。次のコマンドが何も出力しなければ成り立っている:
 
   ```bash
-  gh issue list --state open --limit 500 --json number,labels \
-    --jq '.[] | select([.labels[].name | select(startswith("topic: "))] | length != 1) | .number'
+  gh api --paginate 'repos/{owner}/{repo}/issues?state=open&per_page=100' \
+    | jq --slurpfile config adr.config.json '
+        ($config[0].topics | map("topic: " + .)) as $valid_topics
+        | .[] | select(has("pull_request") | not)
+        | [.labels[].name | select(startswith("topic: "))] as $topics
+        | select(($topics | length) != 1 or ($valid_topics | index($topics[0])) == null)
+        | .number'
   ```
 
 - closed の Issue には遡って付けない（topic 別の判断の履歴は ADR の `topic` が持つ）
