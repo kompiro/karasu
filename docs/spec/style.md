@@ -791,7 +791,7 @@ Whether the canvas draws the label at all. Default `auto`.
 
 | Value | The canvas draws the label |
 | --- | --- |
-| `auto` | only where it can be seated clear of node cards, other labels and other edges' lines, off every frame border and on the same side of each frame as its default position |
+| `auto` | only where it can be seated clear of node cards, other labels and other edges' lines, with no stroked frame border crossing the label box and on the same side of each frame as its default position |
 | `always` | wherever it lands, even into a collision |
 | `hover` | never; the viewer shows it on hover |
 
@@ -802,9 +802,9 @@ edge[async] { label-display: hover; }      /* keep these quiet until hovered */
 
 Under `auto`, the automatic placement (see `label-position` above) first
 tries to move the label to a clear position: one where it overlaps no
-card, no other label and no other edge's line, touches no frame border,
+card, no other label and no other edge's line, has no stroked frame border crossing the label box,
 and is on the same side of each frame (inside or outside) as its default
-position. If no position within
+position. A frame stroke merely touching the box edge is allowed. If no position within
 its reach is clear, the label is left off the canvas instead of being
 drawn there, and the labels placed after it may use the room. A canvas whose labels all find a clear
 position is identical under `auto` and `always`.

@@ -68,7 +68,9 @@ type: product
 
 - [x] AT-I: core の既存テスト（SVG 文字列の検証と label placement の柵を含む）が期待値を変えずに通る
 
-  > ✅ Automated — `pnpm --filter @karasu-tools/core test`
+  > ✅ Automated — `packages/core/src/renderer/svg-renderer.test.ts` › `SVG Renderer`
+  >
+  > ✅ Automated — `packages/core/src/renderer/label-placement.test.ts` › `resolveLabelPlacements`
 
 ## 手動確認
 
