@@ -75,7 +75,8 @@ Issue には `topic: <name>` ラベルを 1 つ付ける。`<name>` は
 
 - 対象は open の Issue すべて（`bug` / `test-infra` / それ以外の種別を問わない）。起票時に付ける
 - 到達状態: open の Issue はすべて `topic:` ラベルをちょうど 1 つ持つ。外れた Issue（無い・2 つ以上ある）は
-  付け忘れなので、見つけたらその場で直す。次のコマンドが何も出力しなければ成り立っている:
+  見つけたらその場で 1 つに直す。workflow が起票した Issue も同じ扱いにする（リリーストレインや TPL の定期見直しなど、
+  `topic:` を付けずに起票する workflow がある）。次のコマンドが何も出力しなければ成り立っている:
 
   ```bash
   gh issue list --state open --limit 500 --json number,labels \
