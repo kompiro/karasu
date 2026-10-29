@@ -73,9 +73,16 @@ Issue が表面化した「失敗の種類」によってラベルを使い分�
 Issue には `topic: <name>` ラベルを 1 つ付ける。`<name>` は
 [`adr.config.json`](../adr.config.json) の `topics` のいずれかで、ADR の `topic` と同じ語彙である。
 
-- 対象は open の Issue すべて（`bug` / `test-infra` / それ以外の種別を問わない）。起票時に付ける
-- 規則より前に起票された open Issue のうち、未付与のものは `status:` ラベルを付け替えるときに付ける。
-  一括での遡及はしない
+- 到達状態: open の Issue は種別（`bug` / `test-infra` / それ以外）を問わず、すべて `topic:` ラベルを
+  ちょうど 1 つ持つ。起票時に付け、ラベルが無い・2 つ以上ある Issue は見つけたらその場で 1 つに直す
+  （残す 1 つは下の「迷ったら」で決める）。workflow が起票した Issue も同じ扱いにする（workflow が起票時に
+  付けるようにするのは #3390）。次のコマンドが何も出力しなければ成り立っている:
+
+  ```bash
+  gh api --paginate 'repos/{owner}/{repo}/issues?state=open&per_page=100' \
+    --jq '.[] | select(.pull_request == null) | select([.labels[].name | select(startswith("topic: "))] | length != 1) | .number'
+  ```
+
 - closed の Issue には遡って付けない（topic 別の判断の履歴は ADR の `topic` が持つ）
 - 各 topic が何を含むかは [`docs/adr/README.md`](adr/README.md)「トピック別」の見出しで判断する
 - 迷ったら、似た内容の既存 ADR で最も多い `topic` に合わせる:
