@@ -26,7 +26,7 @@ import { join } from "node:path";
 // The repo's `topic: <name>` Issue labels are a third copy of the same
 // vocabulary (Issue #3314). They live on GitHub, so `--labels` compares them
 // too, through the API; without the flag the check stays offline for the
-// pre-commit hook. CI runs the flag on the PRs and main pushes that change
+// pre-push hook. CI runs the flag on the PRs and main pushes that change
 // topics (.github/workflows/adr-validate.yml).
 
 export const ADR_CONFIG = "adr.config.json";
@@ -84,12 +84,14 @@ export function check(root: string): TopicsDrift {
 /**
  * Compares the union of both sides (TPL-1415): every topic needs its label,
  * and every label that looks like a topic label needs its topic. A label
- * spelled `topic:x` (no space) cannot be a configured topic's label, so it
- * reports as stray rather than slipping past the prefix match.
+ * spelled `topic:x` (no space) or `Topic: x` cannot be a configured topic's
+ * label, so it reports as stray rather than slipping past the prefix match
+ * (GitHub label names are case-insensitive).
  */
 export function checkLabels(topics: string[], labelNames: string[]): LabelsDrift {
   const expected = new Set(topics.map((t) => LABEL_PREFIX + t));
-  const topicLabels = labelNames.filter((n) => n.startsWith(LABEL_PREFIX.trimEnd()));
+  const prefix = LABEL_PREFIX.trimEnd();
+  const topicLabels = labelNames.filter((n) => n.toLowerCase().startsWith(prefix));
   const present = new Set(topicLabels);
   return {
     missingLabels: [...expected].filter((l) => !present.has(l)).sort(),
@@ -97,6 +99,7 @@ export function checkLabels(topics: string[], labelNames: string[]): LabelsDrift
   };
 }
 
+// `{owner}/{repo}` resolves from the checkout's remote, or from GH_REPO when set.
 function readRepoLabels(): string[] {
   const out = execFileSync(
     "gh",
@@ -106,11 +109,8 @@ function readRepoLabels(): string[] {
   return out.split("\n").filter((l) => l !== "");
 }
 
-function reportLabels(): boolean {
-  const { missingLabels, strayLabels } = checkLabels(
-    readTopics(process.cwd(), ADR_CONFIG),
-    readRepoLabels(),
-  );
+function reportLabels(root: string, labelNames: string[]): boolean {
+  const { missingLabels, strayLabels } = checkLabels(readTopics(root, ADR_CONFIG), labelNames);
   if (missingLabels.length === 0 && strayLabels.length === 0) {
     console.log(`config-topics-sync: ok (topic: labels match ${ADR_CONFIG} topics)`);
     return true;
@@ -130,8 +130,8 @@ function reportLabels(): boolean {
   return false;
 }
 
-function reportConfigs(): boolean {
-  const { missingFromTpl, missingFromAdr, orderDiffers } = check(process.cwd());
+function reportConfigs(root: string): boolean {
+  const { missingFromTpl, missingFromAdr, orderDiffers } = check(root);
 
   if (missingFromTpl.length === 0 && missingFromAdr.length === 0 && !orderDiffers) {
     console.log("config-topics-sync: ok (adr.config.json and tpl.config.json agree on topics)");
@@ -155,10 +155,23 @@ function reportConfigs(): boolean {
   return false;
 }
 
+/**
+ * Returns the exit code. The label source is injectable so the contract the
+ * required check depends on (any drift exits 1; no `--labels`, no API call)
+ * is testable without GitHub.
+ */
+export function run(
+  argv: string[],
+  root: string,
+  readLabels: () => string[] = readRepoLabels,
+): number {
+  const configsOk = reportConfigs(root);
+  const labelsOk = argv.includes("--labels") ? reportLabels(root, readLabels()) : true;
+  return configsOk && labelsOk ? 0 : 1;
+}
+
 function main(): void {
-  const configsOk = reportConfigs();
-  const labelsOk = process.argv.includes("--labels") ? reportLabels() : true;
-  if (!configsOk || !labelsOk) process.exit(1);
+  process.exitCode = run(process.argv.slice(2), process.cwd());
 }
 
 const invokedDirectly =

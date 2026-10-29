@@ -1,8 +1,8 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ADR_CONFIG, check, checkLabels, TPL_CONFIG } from "./config-topics-sync.ts";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ADR_CONFIG, check, checkLabels, run, TPL_CONFIG } from "./config-topics-sync.ts";
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 
@@ -121,6 +121,13 @@ describe("checkLabels", () => {
     });
   });
 
+  it("treats a label with different case as stray (GitHub label names are case-insensitive)", () => {
+    expect(checkLabels(["cli"], ["topic: cli", "Topic: cli", "TOPIC: foo"])).toEqual({
+      missingLabels: [],
+      strayLabels: ["TOPIC: foo", "Topic: cli"],
+    });
+  });
+
   it("ignores labels that do not start with topic:", () => {
     expect(
       checkLabels(["cli"], ["topic: cli", "status: ready", "topics", "epic: boundary"]),
@@ -128,6 +135,44 @@ describe("checkLabels", () => {
       missingLabels: [],
       strayLabels: [],
     });
+  });
+});
+
+describe("run", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("exits 0 when the configs agree and the labels match", () => {
+    write(["cli"], ["cli"]);
+    expect(run(["--labels"], tmp, () => ["topic: cli", "bug"])).toBe(0);
+  });
+
+  it("exits 1 on label drift even when the configs agree", () => {
+    write(["cli"], ["cli"]);
+    expect(run(["--labels"], tmp, () => ["topic: cli", "topic: obsolete"])).toBe(1);
+  });
+
+  it("exits 1 on config drift with --labels even when the labels match", () => {
+    write(["cli"], ["cli", "tpl-only"]);
+    expect(run(["--labels"], tmp, () => ["topic: cli"])).toBe(1);
+  });
+
+  it("never reads labels without --labels", () => {
+    write(["cli"], ["cli"]);
+    const readLabels = vi.fn<() => string[]>(() => ["topic: obsolete"]);
+    expect(run([], tmp, readLabels)).toBe(0);
+    expect(readLabels).not.toHaveBeenCalled();
+  });
+
+  it("still exits 1 on config drift without --labels", () => {
+    write(["cli"], ["parser"]);
+    expect(run([], tmp, () => [])).toBe(1);
   });
 });
 

@@ -38,5 +38,6 @@ jobs:
       - name: Non-ADR change — skip Validate
         run: |
           echo "PR does not touch ADR paths. Validation is skipped."
-          echo "If your change touches docs/adr/**, scripts/adr/**, or"
-          echo ".github/workflows/adr-validate.yml, the real Validate runs."
+          echo "If your change touches docs/adr/**, adr.config.json, tpl.config.json,"
+          echo "scripts/lint/config-topics-sync.ts or .github/workflows/adr-validate.yml,"
+          echo "the real Validate runs."
