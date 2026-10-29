@@ -36,7 +36,7 @@ ADR-2356（2026-08-05）は規約を読まれる時点で 3 層に分け、proce
 | リスク段階、指摘の重大度と対応、ローカルレビューの記録 | 6,422 | 手順 8〜11 |
 | High の PR の収束、人間に確認する指摘の判定、ラウンドの回し方 | 9,211 | High の PR で CodeRabbit のラウンドを回すとき |
 | Stacked PR の進め方 | 3,477 | `gh stack` を打つとき |
-| draft PR では分単位のジョブが走らない | 888 | スタックの上位層を待つとき、workflow の draft 判定を編集するとき。job 一覧は `.claude/rules/stacked-pr.md` と `scripts/ci/workflow-draft-gate.test.ts` がこの節を指す。draft には分単位の CI が走らないこと自体は手順 10 にもある |
+| draft PR では分単位のジョブが走らない | 888 | スタックの上位層を待つとき、workflow の draft 判定を編集するとき。job 一覧の更新先として `.claude/rules/stacked-pr.md` がこの節を指す（`scripts/ci/workflow-draft-gate.test.ts` のコメントは親の「Stacked PR の進め方」を指す）。draft には分単位の CI が走らないこと自体は手順 10 にもある |
 | docs サイトの変更は PR 上でレンダリング結果を読む | 1,197 | サイトが公開する doc を変える PR |
 | spike の名前と寿命、spike preview、`reports/` | 6,341 | `spike/` ブランチを切るとき、PoC のレポートを出すとき |
 | Claude Code plugin のセットアップ、Sibling repo の clone | 1,917 | 環境を作るとき、隣の repo を編集するとき |
@@ -62,8 +62,8 @@ process.md を名指しする参照は、`docs/process.md` 以外の追跡ファ
 - 分けたトピックは、読むべき時点に読む手がかりを持つ。手がかりの無いファイルは誰にも読まれない
 - ADR は frontmatter だけを直す
 - **移す文章の規則は変えない。** 分割 PR のレビューを「どこに置いたか」に絞るため。変えてよいのは次の 4 種だけで、表現の手直しは別 PR にする
-  - 指し先: 相対リンクのパス、節名だけで別ファイルの節を指す参照へのファイル名の追加、`docs/process.md` を指すポインタの張り替え
-  - 分割そのものに伴う記述: 索引、手順 8・15 の読む指示、リスク段階の表の High の行への `docs/process/**` の追加、各トピックファイル冒頭の注記、docs サイトの preview の節をルールにするときの frontmatter（`paths:`）と到達状態の 1 行
+  - 指し先: 相対リンクのパス、節名や手順の番号（「手順 9」など）だけで別ファイルの節を指す参照へのファイル名の追加、`docs/process.md` を指すポインタの張り替え
+  - 分割そのものに伴う記述: 索引、手順 8・15 の読む指示、リスク段階の表の High の行への `docs/process/**` の追加、各トピックファイル冒頭の注記、docs サイトの preview の節をルールにするときの frontmatter（`paths:`）とタイトルの見出し、`.claude/rules/stacked-pr.md` から `gh stack` の入口の宣言と `docs/process/stacked-pr.md` と重複する手順を除くこと
   - 廃止済みのものの削除: QA チェックリストの節と、plugin の表の `/hane:qa` の行
   - ツールが失敗時に伝えている節の削除: 循環依存チェックと Barrel import 禁止。代わりにツールの出力を直す（`check:cycles` の失敗時の助言、oxlint の `message`）
 - **対象外**: `docs/release.md` の置き場（参照が多く、分割と独立に判断できる）、`CLAUDE.md` と process.md の重複の整理（ADR-2356 の未決 1 番目）、`/hane:qa` の受け入れテスト `docs/acceptance/0007-qa-skill.md` と `.gitignore` の `docs/qa/`（hane 側の廃止に合わせて別に扱う）
@@ -115,7 +115,7 @@ CodeRabbit のラウンドは `/coderabbit-converge` の本文へ、stacked PR �
 | 規約の所在 | `docs/process.md` に残し、索引にする。見出しの名前は変えない（ADR-2356 が grep する） | 常時 |
 | リスク段階、指摘の重大度と対応、ローカルレビューの記録、手順直後の 2 段落 | `docs/process/review.md` | PR ワークフローの手順 8 に「手順 8〜11 の前に読む」と書く |
 | High の PR の収束、人間に確認する指摘の判定、ラウンドの回し方 | `docs/process/coderabbit-rounds.md` | 手順 15、`/coderabbit-converge`（判定基準をすでに process.md に委ねている）、`gh pr ready` の後に動くフックのメッセージ |
-| Stacked PR の進め方、draft PR では分単位のジョブが走らない | `docs/process/stacked-pr.md` | 索引の行に「`gh stack` を打つ前に読む」と書く。`.claude/rules/stacked-pr.md` は workflow の編集で読み込まれ、job 一覧の更新先としてこのファイルを指す。ルールの冒頭の「`gh stack` の前に読む」はルール自身が読まれないと届かないので、`gh stack` の手がかりは索引が持つ。索引ではこのファイルを手順の正本、ルールを workflow 編集時の規則と書く（今の索引はルールを正本と書き、ルールは process.md を正本と書いていて食い違っている） |
+| Stacked PR の進め方、draft PR では分単位のジョブが走らない | `docs/process/stacked-pr.md` | 索引の行に「`gh stack` を打つ前に読む」と書く。`.claude/rules/stacked-pr.md` は workflow の編集で読み込まれ、job 一覧の更新先としてこのファイルを指す。ルールの冒頭の「`gh stack` の前に読む」はルール自身が読まれないと届かないので、`gh stack` の手がかりは索引に移し、ルールからは入口の宣言と重複する手順を除いて workflow 編集時の規則だけを残す。索引ではこのファイルを手順の正本、ルールを workflow 編集時の規則と書く（今の索引はルールを正本と書き、ルールは process.md を正本と書いていて食い違っている） |
 | spike の名前と寿命、spike preview、`reports/` | `docs/process/spike.md` | `spike/` で始まるブランチを切るとき、`reports/` の下に書くとき、`pnpm report:*` を走らせるとき（索引に書き、`CLAUDE.md` の spike の 2 行もここを指す） |
 | docs サイトの preview | `.claude/rules/docs-site-preview.md`（`paths:` は `docs-preview.yml` の `paths:` と同じ）。索引に行を足す | 公開対象の doc の編集。編集時に発火して PR 時の行動を求める形は `changesets.md` と同じ |
 | Claude Code plugin のセットアップ、Sibling repo の clone | `docs/process/environment.md` | hane のスキルが見つからないとき、`/workspaces` の隣の repo を編集するとき |
@@ -147,12 +147,12 @@ lefthook の pre-push で走らせる。CI では `ci.yml` が `docs/**` を無�
 実装は 1 PR で行う。途中の状態で分けると `adr:check-assumptions` が落ちる。
 
 1. 節を移す。文章は「制約・前提」の 4 種の変更だけにとどめる
-2. process.md に索引と、手順 8・15 からの読む指示を書く。索引には `docs/process/*.md` のほかに `.claude/rules/docs-site-preview.md` の行と、`gh stack` を打つ前に `docs/process/stacked-pr.md` を読む行を置く。トピックファイルの冒頭に注記を置く
+2. process.md に索引と、手順 8・15 からの読む指示を書く。索引には `docs/process/*.md` の各行（`stacked-pr.md` の行が「`gh stack` を打つ前に読む」という手がかりを持つ）と、`.claude/rules/docs-site-preview.md` の行を置く。トピックファイルの冒頭に注記を置く
 3. 段階と CodeRabbit の対象を広げる: `scripts/review/tier.ts` の `HIGH_GLOBS` に `docs/process/**`（`tier.test.ts` に例を足す）、`.coderabbit.yaml` の `filePatterns`、`docs/process/review.md` に移ったリスク段階の表の High の行
 4. ADR frontmatter の 5 件の `grep:` を移した先のファイルに向ける（ADR-3286、ADR-3011、ADR-3117、ADR-2859）
 5. ポインタを張り替える。インベントリの一覧から始めるが、取りこぼしは一覧ではなく検索で拾う（TPL-2253）。検索するのは `process.md` と、移した節の見出し名の両方。`/coderabbit-converge` の「`docs/process.md` の手順 1・2」は PR ワークフローの手順と紛らわしいので、移した先の節名で書く
 6. 同じ種類の古いポインタも直す。すでに process.md から出た節を指しているもの（`scripts/acceptance/design-refs.ts`、`CONTRIBUTING.md`、`.github/workflows/release.yml`、`.github/workflows/vscode-release.yml`、`docs/design/TEMPLATE.md` のスライス表の置き場）。ADR 本文は直さない
-7. ツールの出力を直す: `check:cycles` が落ちたときに助言を出す（`package.json` の script を失敗時に 1 段落を表示する形にする）。oxlint の `no-restricted-imports` の `message` を直す。`.claude/rules/stacked-pr.md` と `workflow-draft-gate.test.ts` のコメントの job 一覧の指し先を `docs/process/stacked-pr.md` に張り替える
+7. ツールの出力を直す: `check:cycles` が落ちたときに助言を出す（`package.json` の script を失敗時に 1 段落を表示する形にする）。oxlint の `no-restricted-imports` の `message` を直す。`.claude/rules/stacked-pr.md` の job 一覧の指し先と `workflow-draft-gate.test.ts` のコメントの指し先を `docs/process/stacked-pr.md` に張り替え、ルールから `gh stack` の入口の宣言と重複する手順を除く
 8. `lint:process-index` とテストを足し、lefthook と `reference-docs-check.yml` に配線する
 9. `CLAUDE.md` のドキュメント表に `docs/process/` の行を足す
 
@@ -165,13 +165,15 @@ wc -c docs/process.md                       # 16384 以下
 pnpm lint:process-index
 pnpm adr:check-assumptions && pnpm adr:validate
 git grep -n 'process\.md' -- ':!docs/adr/*.md'   # 核に残った節だけを指している
-git grep -n -e 'リスク段階' -e '指摘の重大度と対応' -e 'ローカルレビューの記録' -e 'ラウンドの回し方' \
-  -e 'Stacked PR の進め方' -e 'spike の名前と寿命' -- ':!docs/adr/*.md'   # 節名だけの参照が移した先を指している
+# 移した節の見出し名すべてについて、節名だけの参照が移した先を指している
+grep -h '^###* ' docs/process/*.md | sed 's/^#* //' | while read -r h; do
+  git grep -n -F "$h" -- ':!docs/adr/*.md' ':!docs/process/'
+done
 ```
 
 ### 影響範囲・マイグレーション
 
-- 毎セッション読まれる量が約 33 KB 減る（索引の増分を除く）。PR を作るセッションは手順 8 で `review.md`（約 8.5 KB）も読むので、その場合の削減は約 24 KB
+- 毎セッション読まれる量が約 33 KB 減る（索引の増分を除く）。PR を作るセッションは手順 8 で `review.md`（約 8.5 KB）も読むので、その場合の削減は約 25 KB。High の PR でラウンドを回すセッションは手順 15 で `coderabbit-rounds.md`（約 9.2 KB）も読むので約 16 KB
 - `docs/process/` の変更は process.md と同じく High になる
 - 着手順: #3389 と #3359 の実装が process.md を先に直す。分割はその後に、両者の最終的な文章を移す
 
