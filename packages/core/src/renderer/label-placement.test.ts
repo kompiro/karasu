@@ -1509,7 +1509,10 @@ describe("real sample fence: frames (#3155)", () => {
   it("measures every frame at the stroke width the canvas paints it with", () => {
     // Ghost ancestors, group frames and an in-place expansion each take their
     // width down a different path; the label pass must read the same one the
-    // canvas draws, or a label can sit on a stroke it thinks is thinner.
+    // canvas draws, or a label can sit on a stroke it thinks is thinner. The
+    // team sheet and the expansion give different widths, so a mix-up between
+    // those two paths shows. A ghost here is only checked to match: without a
+    // group axis its paint resolves the same down either path.
     const drill = sampleInputs("examples/en/hr-tool/system.krs", ["HRTool", "Auth"]);
     // A team sheet widens the team frames to 5, which the expansion ignores (2).
     const grouped = sampleInputs(
@@ -1535,7 +1538,7 @@ describe("real sample fence: frames (#3155)", () => {
     const widths = views.flatMap((v) =>
       frameBordersOf(v.layoutResult, v.styles, resolvePalette()).map((b) => b.line.halfStroke * 2),
     );
-    // Precondition: the paths give different widths, so a mix-up shows.
+    // Precondition: the team-sheet and expansion paths give different widths.
     expect(new Set(widths).size).toBeGreaterThan(1);
 
     for (const { layoutResult, styles } of views) {

@@ -215,9 +215,10 @@ function reachableFrames(frames: FrameBorder[], box: Rect, maxShift: number): Ne
   for (const border of frames) {
     const h = border.line.halfStroke;
     const reach = maxShift * Math.SQRT2 + Math.hypot(box.width / 2 + h, box.height / 2 + h);
-    // Both distances are to the stroke's edge (the bounds are grown by `h`,
-    // and the polyline distance takes `h` off), so the centreline bound
-    // `reach` is `reach - h` here.
+    // The polyline distance is to the stroke's edge (it takes `h` off), so the
+    // centreline bound `reach` is `reach - h` here. The bounds are grown by `h`
+    // as a square, so their distance is never more than the polyline's and the
+    // cheap reject stays safe against the same bound.
     if (pointToRectDistance(centre, border.line.bounds) > reach - h) continue;
     if (pointToPolylineDistance(centre, border.line) > reach - h) continue;
     out.push({ border, inside: insideFrame(centre, border.pieces) });

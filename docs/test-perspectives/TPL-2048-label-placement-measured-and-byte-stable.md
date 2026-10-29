@@ -63,7 +63,7 @@ scope:
 - [ ] label↔node 貫通数・label↔label オーバーラップ数・label↔line 貫通数を**数値で測るヘルパー**（`countLabelPenetrations` / `countLabelOverlaps` / `countLabelLinePenetrations`）を用意し、本体と test が**同じ箱推定**と**同じ strict-interior 線分判定**（`segmentCrossesRect`）を共有する。
 - [ ] 衝突する合成 fixture で pass 後に該当計測が **0（または削減）** になることを assert した。
 - [ ] **自分のエッジの線の上に居るだけのラベルは動かない**（override が空）ことを assert した。
-- [ ] 実サンプルの柵で **全軸（4 軸）を同時に 0** と assert した（1 つの読めなさを別の読めなさと交換していないことの担保）。
+- [ ] 実サンプルの柵で **全軸を同時に 0** と assert した（1 つの読めなさを別の読めなさと交換していないことの担保）。
 - [ ] **動かしたラベルが自分のエッジを最寄りに保つ**ことを assert した（誤帰属の柵）。逃がし先の良し悪しを「衝突数」だけで決めていないこと。
 - [ ] 線との判定が **`strokeWidth` を織り込んでいる**（centreline ではなく塗られた幅）ことを assert した。
 - [ ] 枠のあるビュー（ドリルダウン、group 枠）で、**ずらしたラベルが枠の線に掛からず、既定位置と同じ側に留まる**ことを assert した（`countLabelFrameCrossings`）。L 字に広げた枠は外接矩形ではなく描かれた外形で測った。
