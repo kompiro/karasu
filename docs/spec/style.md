@@ -721,8 +721,10 @@ back to `middle`. Fractional values outside `[0, 1]` are clamped.
 
 **Auto placement vs. author intent.** When the author leaves both
 `label-position` and `label-offset` at their defaults, the renderer may
-automatically nudge a label off a collision with a node card or another
-label (edge-label collision-avoidance, [ADR-2048](../adr/2048-edge-label-collision-avoidance.md)).
+automatically nudge a label off a collision with a node card, another
+label, another edge's line or a frame border (edge-label collision-avoidance,
+[ADR-2048](../adr/2048-edge-label-collision-avoidance.md),
+[ADR-2360](../adr/2360-label-placement-line-obstacles.md)).
 This auto pass fires
 **only** on default-positioned labels; setting either property opts the
 label out of auto placement, so an explicit `label-position` /
