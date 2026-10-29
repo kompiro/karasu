@@ -11,6 +11,8 @@ import { usePreview } from "../state/preview-context.js";
 import { useActiveViewData } from "../state/active-view-data.js";
 import { useTranslation } from "../i18n/index.js";
 import { availableGroupByAxes, isGroupByMode } from "./preview-group-by.js";
+import { useContext } from "react";
+import { PreviewToolbarSlotContext } from "./preview-toolbar-slot.js";
 
 /**
  * The controls that change the drawn diagram, sharing the drill path's row
@@ -57,6 +59,9 @@ export function PreviewViewControls({
   } = usePreview();
   const view = useActiveViewData();
   const { t } = useTranslation();
+  // A host can leave the ⊞ toggle out like a toolbar control (#3311); the
+  // VS Code webview does (#2996).
+  const { hide } = useContext(PreviewToolbarSlotContext);
   const groupByAxes = availableGroupByAxes(view);
   // Built on demand once the panel opens (#2758), so the toggle asks whether a
   // bundle *can* be built, not whether one already exists.
@@ -183,15 +188,17 @@ export function PreviewViewControls({
           ◇ {t("preview.entities.label")}
         </Button>
       )}
-      <Button
-        variant="actionable"
-        aria-pressed={isAllLayersOpen}
-        onClick={onAllLayersToggle}
-        aria-label={t("preview.allLayers.ariaLabel")}
-        disabled={!allLayersAvailable}
-      >
-        ⊞ {t("preview.allLayers.label")}
-      </Button>
+      {!hide?.includes("allLayers") && (
+        <Button
+          variant="actionable"
+          aria-pressed={isAllLayersOpen}
+          onClick={onAllLayersToggle}
+          aria-label={t("preview.allLayers.ariaLabel")}
+          disabled={!allLayersAvailable}
+        >
+          ⊞ {t("preview.allLayers.label")}
+        </Button>
+      )}
       {activeView === "system" && view.expansionOverload && (
         <span role="status" className="preview-expansion-hint text-[11px] text-amber-500/90">
           ⚠ {t("preview.expansion.overloadHint")}

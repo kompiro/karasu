@@ -29,7 +29,7 @@ assumptions:
   - "symbol: packages/core/src/builtins/tool-vocabulary.ts :: selectorUsesToolVocabularyOnly"
   - "symbol: packages/core/src/builtins/tool-vocabulary.ts :: nearestToolAnnotation"
   - "symbol: packages/core/src/style/cascade.ts :: flattenSheetsInCascadeOrder"
-  - "symbol: packages/vscode/src/render-gate.ts :: gateRender"
+  - "grep: packages/app/src/hooks/useDebouncedCompile.ts :: lastValidSvg"
   - "file: packages/core/src/builtins/tool-vocabulary.test.ts"
   - "file: docs/acceptance/2677-language-v2.md"
 ---

@@ -32,22 +32,23 @@ karasu serve
   Directory : /path/to/architecture
   Preview   : http://localhost:3000
 
-Watching for .krs file changes...
+Watching for .krs and .krs.style file changes...
 ```
 
 Open the printed URL (default **http://localhost:3000**). The page resolves which
 file to show from the URL path:
 
-| URL        | File shown                                                 |
-| ---------- | ---------------------------------------------------------- |
-| `/`        | `index.krs` (or the only `.krs` file if there is just one) |
-| `/payment` | `payment.krs`                                              |
-| `/org`     | `org.krs`                                                  |
+| URL               | File shown                                                 |
+| ----------------- | ---------------------------------------------------------- |
+| `/`               | `index.krs` (or the only `.krs` file if there is just one) |
+| `/payment`        | `payment.krs`                                              |
+| `/services/order` | `services/order.krs`                                       |
 
 `serve` is **preview-only** — it does not embed an editor. The workflow is a tight
 loop:
 
-1. Edit a `.krs` file in your usual editor (or the [VS Code extension](../guide/02-onboarding.md)).
+1. Edit a `.krs` file in your usual editor (or the [VS Code extension](../guide/02-onboarding.md)):
+   the open file, any file it imports, or a `.krs.style` sheet it `@import`s.
 2. Save.
 3. The server detects the change and pushes it to the browser, which re-renders
    the diagram automatically. No manual refresh.
@@ -100,6 +101,10 @@ The three dimensions behind System / Deploy / Org are explained in
   breadcrumb tracks your depth.
 - **Node details** — click a leaf node (or its info button) to open a side panel
   with the node's id, description, tags, and related connections.
+- **Jump to the definition** — Cmd/Ctrl+click a node to move the editor to the
+  line that defines it, opening the file it is defined in if that is another
+  one. Drillable nodes jump too instead of drilling. The detail panel's
+  **↗ Jump to editor** does the same.
 - **Edge in focus** — click an edge to open a second canvas over the preview with
   its two nodes and every edge between them, labels in full. A dense diagram
   shortens long labels and leaves off the ones that would overlap; this is where

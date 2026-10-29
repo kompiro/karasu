@@ -10,8 +10,7 @@
  *
  * The check pairs the two facts that must move together: a source file that
  * handles a button click, and the same package asking for the button. It lives
- * here rather than in `packages/vscode` because that package's tests cannot
- * load `vscode` to instantiate the panel.
+ * here, where every surface's source can be read side by side.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -19,15 +18,9 @@ import { describe, expect, it } from "vitest";
 
 const root = join(import.meta.dirname, "../..");
 
+// The VS Code preview runs the app's viewer since #3312, so the app's entry
+// below covers it; it no longer has a handler or a compile call of its own.
 const SURFACES = [
-  {
-    name: "VS Code preview panel",
-    handler: "packages/vscode/src/webview-content.ts",
-    caller: "packages/vscode/src/preview-panel.ts",
-    // The webview routes only the ⓘ; a click on the D falls through to the
-    // node handler, which opens the panel carrying "Open Deploy View".
-    handles: ["data-info-button"],
-  },
   {
     name: "app system view",
     handler: "packages/app/src/components/PreviewPane.tsx",

@@ -82,6 +82,8 @@ export const ja: Partial<Translations> = {
   "project.error.openExample": ({ detail }) => `⚠ example を開けませんでした: ${detail}`,
   "project.error.snapshot": ({ detail }) => `⚠ スナップショットの取得に失敗しました: ${detail}`,
   "project.error.dismiss": "✕ 閉じる",
+  "serve.error.fileNotFound": ({ file }) => `ファイルが見つかりません: ${file}`,
+  "serve.error.loadFailed": "karasu serve からファイルを読み込めませんでした",
 
   // File tree: the inline name input for New File / New Folder / Rename
   "fileTree.inlineInput.ariaLabel": "名前",
@@ -165,8 +167,9 @@ export const ja: Partial<Translations> = {
   "nodeDetail.links.title": "🔗 リンク",
   "nodeDetail.openDeployView": "🚀 Deploy 図で確認 →",
   "nodeDetail.jumpToEditor": "↗ エディタへジャンプ",
-  "vscodePreview.blockedByErrors": ({ count }) =>
-    `モデルに ${count} 件の error があります。直すとプレビューが再び描画されます（Problems パネルを参照）。`,
+  "vscodePreview.iconMode.label": "◇ アイコン表示",
+  "vscodePreview.iconMode.ariaLabel": "アイコンカードの表示を切り替える",
+  "vscodePreview.jumpHint": "ⓘ で詳細 · Cmd/Ctrl+クリックでジャンプ",
   "nodeDetail.annotationDiff.title": "⇄ アノテーション差分",
   "nodeDetail.resources.title": "📦 ストレージリソース",
   "nodeDetail.capabilities.title": "🔐 ケイパビリティ",

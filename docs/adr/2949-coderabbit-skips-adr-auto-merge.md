@@ -7,8 +7,8 @@ date: 2026-09-27
 topic: build
 related_to: [ADR-2716, ADR-2331, ADR-2898]
 assumptions:
-  - "grep: .coderabbit.yaml :: !adr-auto-merge"
-  - "grep: .claude/rules/adr.md :: adr-auto-merge"
+  - ".coderabbit.yaml の !adr-auto-merge はこの ADR の時点の設定。#3286 が auto_review.labels を risk: high / risk: design に替えたので現在の設定とは一致しない"
+  - ".claude/rules/adr.md の adr-auto-merge ラベルの手順はこの ADR の時点のもの。#3286 が risk: low の auto-merge に替えたので現在の rules とは一致しない"
 ---
 
 # ADR-2949: auto-merge する ADR-only PR は CodeRabbit の自動レビュー対象から外す

@@ -1,0 +1,20 @@
+@import "theme.krs.style"
+
+import "services/order.krs"
+import "services/catalog.krs"
+
+system Shop {
+  label "ショップ"
+
+  user Customer [human] {
+    label "購入者"
+  }
+  client Storefront {
+    label "ストアフロント"
+  }
+
+  Customer -> Storefront "商品を探して買う"
+  Storefront -> CatalogService "商品を探す"
+  Storefront -> OrderService "注文を送る"
+  Storefront -> UserService "ログインする"
+}

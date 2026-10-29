@@ -43,7 +43,7 @@ const appServer: WebServer = {
 // when it cannot start (packages/cli is outside its path filter).
 // `start-serve.ts` builds and stages the serve build the npm package ships
 // (#3303), so this project does not depend on the first entry's app build.
-const SERVE_SPECS = /at-0032-/;
+const SERVE_SPECS = /at-(0032|3258)-/;
 const serveEnabled = process.env.E2E_SERVE === "1";
 const SERVE_URL = `http://localhost:${SERVE_PORT}`;
 

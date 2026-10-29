@@ -1,7 +1,8 @@
 ---
 id: ADR-299
 title: VSCode プレビュー Icon Mode トグル — Extension Host 管理 + postMessage
-status: accepted
+status: superseded
+superseded_by: ADR-2996
 date: 2026-04-04
 topic: vscode
 depends_on:
@@ -15,7 +16,7 @@ scope:
 # ADR-299: VSCode プレビュー Icon Mode トグル — Extension Host 管理 + postMessage
 
 - **日付**: 2026-04-04
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by ADR-2996
 - **関連**: Issue #299, Issue #173, [ADR-30](30-icon-mode.md), [ADR-9014](9014-vscode-extension-lsp-first.md)
 
 ## 背景

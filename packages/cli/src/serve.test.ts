@@ -1,10 +1,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { mkdtemp, writeFile, mkdir, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, mkdir, open, readdir, rm, symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { AddressInfo } from "node:net";
 import type { ServerResponse, Server } from "node:http";
 import * as http from "node:http";
+
+// Pass-through, so a test can stand in for the directory changing between
+// the walk and the read: a file vanishing, or a path swapped for a symlink.
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...actual,
+    open: vi.fn<typeof actual.open>(actual.open),
+    readdir: vi.fn<typeof actual.readdir>(actual.readdir),
+  };
+});
 
 vi.mock("chokidar", () => ({
   watch: vi.fn<() => object>(() => ({ on: vi.fn<() => void>().mockReturnThis() })),
@@ -12,6 +23,7 @@ vi.mock("chokidar", () => ({
 
 import {
   collectKrsFiles,
+  collectProjectFiles,
   findAppDistDir,
   missingAppMessage,
   resolveDefaultFile,
@@ -77,6 +89,144 @@ describe("collectKrsFiles", () => {
     await writeFile(join(tmpDir, "services", "api.krs"), "");
     await writeFile(join(tmpDir, "index.krs"), "");
     expect(await collectKrsFiles(tmpDir)).toEqual(["index", "services/api"]);
+  });
+});
+
+// ── collectProjectFiles (#3258) ───────────────────────────────────────────────
+
+describe("collectProjectFiles", () => {
+  let tmpDir: string;
+  let outside: string;
+
+  beforeEach(async () => {
+    tmpDir = await makeTmpDir();
+    outside = await makeTmpDir();
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true });
+    await rm(outside, { recursive: true });
+  });
+
+  it("returns every .krs and .krs.style with its nested path and content", async () => {
+    await mkdir(join(tmpDir, "services", "billing"), { recursive: true });
+    await writeFile(join(tmpDir, "index.krs"), 'import "services/"');
+    await writeFile(join(tmpDir, "theme.krs.style"), "service { color: red }");
+    await writeFile(join(tmpDir, "services", "billing", "api.krs"), "system Billing {}");
+    expect(await collectProjectFiles(tmpDir)).toEqual([
+      { path: "index.krs", content: 'import "services/"' },
+      { path: "services/billing/api.krs", content: "system Billing {}" },
+      { path: "theme.krs.style", content: "service { color: red }" },
+    ]);
+  });
+
+  it("leaves out every other extension", async () => {
+    await writeFile(join(tmpDir, "index.krs"), "");
+    await writeFile(join(tmpDir, "notes.md"), "");
+    await writeFile(join(tmpDir, "theme.style"), "");
+    await writeFile(join(tmpDir, "old.krs.bak"), "");
+    expect((await collectProjectFiles(tmpDir)).map((f) => f.path)).toEqual(["index.krs"]);
+  });
+
+  it("leaves out a file that disappears between the walk and the read", async () => {
+    await writeFile(join(tmpDir, "index.krs"), "system A {}");
+    await writeFile(join(tmpDir, "saving.krs"), "");
+    const actual = vi.mocked(open).getMockImplementation() as typeof open;
+    vi.mocked(open).mockImplementation(((path: string, ...rest: [never]) =>
+      String(path).endsWith("saving.krs")
+        ? Promise.reject(Object.assign(new Error("gone"), { code: "ENOENT" }))
+        : actual(path, ...rest)) as typeof open);
+    try {
+      expect(await collectProjectFiles(tmpDir)).toEqual([
+        { path: "index.krs", content: "system A {}" },
+      ]);
+    } finally {
+      vi.mocked(open).mockImplementation(actual);
+    }
+  });
+
+  it("holds a bounded number of files open at once, and keeps their order", async () => {
+    const names = Array.from({ length: 100 }, (_, i) => `f${String(i).padStart(3, "0")}.krs`);
+    await Promise.all(names.map((name) => writeFile(join(tmpDir, name), name)));
+    const actual = vi.mocked(open).getMockImplementation() as typeof open;
+    let inFlight = 0;
+    let peak = 0;
+    vi.mocked(open).mockImplementation((async (...args: Parameters<typeof open>) => {
+      inFlight++;
+      peak = Math.max(peak, inFlight);
+      try {
+        // Hold each open long enough for the others to pile up if unbounded.
+        await new Promise((r) => setTimeout(r, 1));
+        return await actual(...args);
+      } finally {
+        inFlight--;
+      }
+    }) as typeof open);
+    try {
+      const files = await collectProjectFiles(tmpDir);
+      expect(files.map((f) => f.path)).toEqual(names);
+      expect(files.every((f) => f.content === f.path)).toBe(true);
+      expect(peak).toBeGreaterThan(1);
+      expect(peak).toBeLessThanOrEqual(32);
+    } finally {
+      vi.mocked(open).mockImplementation(actual);
+    }
+  });
+
+  // TPL-168, #3327 review: the listing saw a plain file or directory, and by
+  // the time it is read the entry is a link out of the served directory.
+  describe("an entry swapped for a symlink after it was listed", () => {
+    let actualReaddir: typeof readdir;
+
+    beforeEach(async () => {
+      await writeFile(join(outside, "secret.krs"), "system Secret {}");
+      await writeFile(join(tmpDir, "index.krs"), "");
+      await symlink(join(outside, "secret.krs"), join(tmpDir, "linked.krs"));
+      await symlink(outside, join(tmpDir, "linked-dir"));
+      actualReaddir = vi.mocked(readdir).getMockImplementation() as typeof readdir;
+      // List each link as what it was before the swap.
+      vi.mocked(readdir).mockImplementation((async (path: string, options: never) => {
+        const entries = (await actualReaddir(path, options)) as unknown as {
+          name: string;
+          isFile(): boolean;
+          isDirectory(): boolean;
+        }[];
+        return entries.map((entry) =>
+          entry.name === "linked.krs"
+            ? { name: entry.name, isFile: () => true, isDirectory: () => false }
+            : entry.name === "linked-dir"
+              ? { name: entry.name, isFile: () => false, isDirectory: () => true }
+              : entry,
+        );
+      }) as typeof readdir);
+    });
+
+    afterEach(() => {
+      vi.mocked(readdir).mockImplementation(actualReaddir);
+    });
+
+    it("does not read through either link", async () => {
+      const files = await collectProjectFiles(tmpDir);
+      expect(files.map((f) => f.path)).toEqual(["index.krs"]);
+      expect(JSON.stringify(files)).not.toContain("Secret");
+    });
+
+    it("does not list the swapped directory's files in /api/files either", async () => {
+      expect(await collectKrsFiles(tmpDir)).not.toContain("linked-dir/secret");
+    });
+  });
+
+  // TPL-168: a link inside the served directory must not read what lies outside it.
+  it("does not follow a symlinked file or directory out of the served directory", async () => {
+    await writeFile(join(outside, "secret.krs"), "system Secret {}");
+    await writeFile(join(outside, "secret.krs.style"), "service { color: red }");
+    await writeFile(join(tmpDir, "index.krs"), "");
+    await symlink(join(outside, "secret.krs"), join(tmpDir, "linked.krs"));
+    await symlink(join(outside, "secret.krs.style"), join(tmpDir, "linked.krs.style"));
+    await symlink(outside, join(tmpDir, "linked-dir"));
+    const files = await collectProjectFiles(tmpDir);
+    expect(files.map((f) => f.path)).toEqual(["index.krs"]);
+    expect(JSON.stringify(files)).not.toContain("Secret");
   });
 });
 
@@ -270,6 +420,32 @@ describe("HTTP server", () => {
     it("returns 400 when the file name is empty", async () => {
       const { status } = await get(port, "/api/file/");
       expect(status).toBe(400);
+    });
+  });
+
+  describe("GET /api/project (#3258)", () => {
+    it("returns the .krs and .krs.style files with their paths and content", async () => {
+      await mkdir(join(tmpDir, "services"));
+      await writeFile(join(tmpDir, "index.krs"), '@import "theme.krs.style"');
+      await writeFile(join(tmpDir, "theme.krs.style"), "service { color: red }");
+      await writeFile(join(tmpDir, "services", "api.krs"), "system Api {}");
+      await writeFile(join(tmpDir, "readme.md"), "# readme");
+      const { status, body, headers } = await get(port, "/api/project");
+      expect(status).toBe(200);
+      expect(headers["content-type"]).toBe("application/json");
+      expect(JSON.parse(body)).toEqual({
+        files: [
+          { path: "index.krs", content: '@import "theme.krs.style"' },
+          { path: "services/api.krs", content: "system Api {}" },
+          { path: "theme.krs.style", content: "service { color: red }" },
+        ],
+      });
+    });
+
+    it("returns an empty list for an empty directory", async () => {
+      const { status, body } = await get(port, "/api/project");
+      expect(status).toBe(200);
+      expect(JSON.parse(body)).toEqual({ files: [] });
     });
   });
 
