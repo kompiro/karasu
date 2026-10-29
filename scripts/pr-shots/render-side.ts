@@ -58,7 +58,7 @@ function isEmpty(view: View, output: CompileOutput): boolean {
 /**
  * A side backed by `core`. Fences and `--file` inputs are HEAD's text on both
  * sides; an example is read from `root`, so a PR that edits an example shows
- * that edit too. Light theme only (the design's open question settles on it).
+ * that edit too. Light theme only (ADR-3359 "結果・影響").
  */
 export function coreSide(core: CoreModule, root: string): Side {
   const fs = new NodeFileSystemProvider();

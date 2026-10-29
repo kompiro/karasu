@@ -5,7 +5,7 @@
 # After Claude opens a PR with `gh pr create`, remind it in the same turn to
 # attach before/after screenshots when the PR touches code or models that can
 # change what users see and its `## Before / after` section is still empty
-# (#3359, docs/design/pr-before-after-screenshots.md "案 3-C"). Written in
+# (#3359, ADR-3359 "フック"). Written in
 # docs/process.md alone, the step would happen only when asked.
 #
 # The path test decides only whether to remind. Whether anything was drawn

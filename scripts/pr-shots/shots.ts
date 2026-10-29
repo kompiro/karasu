@@ -1,6 +1,6 @@
 /* eslint-disable no-console -- CLI entry point; telling the agent what to attach is the job */
 // Before/after screenshots for a PR that changes rendered output (Issue #3359,
-// docs/design/pr-before-after-screenshots.md):
+// ADR-3359):
 //
 //   pnpm pr:shots                      # merge base with origin/main vs HEAD
 //   pnpm pr:shots --base <ref>         # another base
