@@ -152,33 +152,35 @@ Issue が無ければ **その ADR を書いた PR の番号**を使う（[#2083
 ## ADR PR の auto-merge
 
 実装と切り離して ADR のみを記録する PR（昇格 PR・新規 ADR 追記 PR の
-どちらも含む）は、下の適用条件を満たせば auto-merge を有効化する。
+どちらも含む）は、下の適用条件を満たせば段階が Low になり、auto-merge を有効化する。
 
-**到達状態**: 適用条件を満たす PR は、本文の最後の行が `@coderabbitai ignore` で
-`adr-auto-merge` ラベルを持ち、CodeRabbit の review 枠を 1 度も使わずに auto-merge
-待ちになっている。満たさない `docs(adr):` PR は本文の行もラベルも持たず、通常どおり
-レビューされる。
+**到達状態**: 適用条件を満たす PR は `risk: low` ラベルとローカルレビューの記録を持ち、required check
+「Review tier」を含む CI を待って auto-merge される。CodeRabbit の review 枠は使わない（Low には CodeRabbit が
+走らない）。満たさない `docs(adr):` PR は、分類器が出した段階のラベルで通常どおり扱う
+（`docs/process.md`「リスク段階」）。
+
+```
+node scripts/review/tier.ts classify   # "tier": "low" なら適用条件を満たしている
+```
 
 > この節は「PR のマージはユーザー確認を経る」という本リポジトリの既定運用に
 > **優先する明示的な例外**。例外が成立するのは下の適用条件をすべて満たす
-> 場合のみで、判定はすべて PR タイトルと diff という観測可能な事実で行う。
+> 場合のみで、判定は分類器が差分という観測可能な事実で行う。
+> 下の適用条件は分類器の規則を読める形にしたもので、食い違えば分類器が正しい。
 
-手順は次の順で行う。**適用条件は PR を作る前にブランチの差分で判定する。**
-CodeRabbit を外すのは本文の ignore コマンドで、ラベルだけでは PR を開いた時点の
-1 回を止められない（ADR-3117）。ラベルは auto-merge で外した PR を一覧するための記録で、
-`.coderabbit.yaml` のラベル除外は本文の行を書き忘れたときの後ろ盾である。
+手順は次の順で行う。**段階は PR を作る前にブランチの差分で判定する。**
 
 ```
 git fetch origin main
-git diff --stat origin/main...HEAD; git diff origin/main...HEAD   # 1. 適用条件を確認
-# 2. 満たすときだけ、本文の最後の行を @coderabbitai ignore にしてラベル付きで作る
-gh pr create --draft --label adr-auto-merge --title "docs(adr): ..." --body-file <本文>
+git diff --stat origin/main...HEAD; git diff origin/main...HEAD   # 差分を読む
+node scripts/review/tier.ts classify                    # 1. Low であることを確認
+# 2. /engineering:code-review と CLI の指摘をローカルレビューの記録として本文に書く
+gh pr create --draft --label "risk: low" --title "docs(adr): ..." --body-file <本文>
 gh pr ready <N>
 gh pr merge <N> --auto --squash --delete-branch
 ```
 
-適用条件を満たさなければ、本文に行を入れずラベルも付けずに draft で作り、
-`gh pr ready <N>` だけ実行して通常の PR として扱う（CodeRabbit のレビューとユーザー確認を経る）。
+Low でなければ、出た段階のラベルを付けて draft で作り、`gh pr ready <N>` だけ実行して通常の PR として扱う。
 
 ### 適用条件（すべて満たすこと）
 
@@ -189,23 +191,24 @@ gh pr merge <N> --auto --squash --delete-branch
      生成物（`pnpm adr:regenerate` の出力）
    - **既存 ADR の frontmatter**、および supersede の body ステータス行
      （「既存 ADR を覆すとき」が許す範囲ちょうど。**本文の散文は入らない**）
-   - 昇格対象 `docs/design/<name>.md` の **削除** または **更新**:
-     - 削除 — Design Doc 全体を ADR に昇格させて元ファイルを消すケース
-     - 更新 — 部分昇格（複数フェーズの一部だけ ADR 化し、残りを Design Doc
-       に保持するケース。例: ADR-1168）
+   - 昇格対象 `docs/design/<name>.md` の **削除**（Design Doc 全体を ADR に昇格させて
+     元ファイルを消すケース）。部分昇格（複数フェーズの一部だけ ADR 化し、残りを
+     Design Doc に保持するケース。例: ADR-1168）は Design Doc の更新を含むので段階が
+     Design になり、auto-merge せずに人間がレビューする
    - **その Design Doc を指していた参照を、新 ADR に張り替える差分**
      （`docs/adr/**` を除く任意のディレクトリ — `docs/acceptance/` /
      `docs/spec/` / `docs/test-perspectives/` / `docs/prd/` / `docs/roadmap.md`
      のいずれでもよい。削除でリンク切れになるものを繋ぎ直すのは昇格の一部で
-     あって、別の判断ではない）
+     あって、別の判断ではない）。変えてよいのはリンク先と、リンクの文字列のうち
+     ファイル名・パス・`ADR-<n>` の言い換えだけ。High のパス（`docs/spec/**` など）は
+     張り替えだけでも High のままで、人間がレビューする
 
    **Design Doc からの新規昇格はこの 4 種で閉じるので、auto-merge してよい** —
    新 ADR を足し、生成物を再生成し、元の Design Doc を消し、他の記録の参照を
    張り替える、で全部である。外れるのは**既存 ADR の本文を触ったとき**だけで、
    それは「既存 ADR を覆すとき」が禁じているので、そもそも書かれない差分である。
-3. `origin/main` を fetch した直後のブランチの差分（`git diff origin/main...HEAD`）と、
-   これから付ける PR タイトルで 1〜2 を確認し、その直後に PR の作成から auto-merge までを
-   実行する
+3. `origin/main` を fetch した直後のブランチの差分で 1〜2 を確認し（分類器が `low` を出す）、
+   その直後に PR の作成から auto-merge までを実行する
 
 ### 補足
 
@@ -226,23 +229,18 @@ gh pr merge <N> --auto --squash --delete-branch
 - 適用条件のいずれかが満たされない場合（例: `packages/**` のファイルが 1 つでも
   差分に含まれる場合）も同様に例外を適用せず、通常通りユーザー確認を経る
 - PR を作った後に差分を足すときは、**push の前に** auto-merge を解いて draft に戻す。
-  push した瞬間に auto-merge が確認前の差分をマージしうるからである。本文の行とラベルは
-  この時点では残す（残っていれば push で自動レビューは走らない）。
+  push した瞬間に auto-merge が確認前の差分をマージしうるからである。
   ```
   gh pr merge <N> --disable-auto
   gh pr ready <N> --undo
   ```
-  push 後は手順 1（適用条件の確認）からやり直す。
-  - 満たすとき: `gh pr ready <N>` で draft を外してから auto-merge を戻す
+  push 後は手順 1（段階の判定）からやり直し、足したコミットの指摘と対応で記録を作り直す。
+  - Low のとき: `gh pr ready <N>` で draft を外してから auto-merge を戻す
     （`gh pr merge <N> --auto --squash --delete-branch`）。draft のままではマージされない
-  - 満たさないとき: `gh pr ready <N>` で draft を外し、本文の行とラベルを残したまま
-    `@coderabbitai full review` を投げる。それまでのコミットは一度もレビューされていないので、
-    差分レビューでは足りない。full review が届いたら、新しいコミットを足さずに本文の行と
-    ラベルを外し、通常の PR として扱う。先に外すと ready や次の push で自動レビューが走り、
-    full review と二重に review 枠を使う
-
-  本文の行とラベルは「この差分で条件を満たした」という判定の記録で、CodeRabbit の
-  レビューを外すのはその判定だけが根拠になる
+  - Low でないとき: ラベルを出た段階に付け替えて `gh pr ready <N>` で draft を外し、通常の PR として扱う。
+    `risk: high` / `risk: design` なら、CodeRabbit のレビューはこのときに走る
+- Low でない段階では auto-merge を有効にしない。CI の途中で有効にすれば Review tier が落とすが、
+  CI が通った後に有効にした PR はそのままマージされ、check では止められない
 - `--auto` を使うので CI 完走前にコマンド発行して構わない（GitHub 側が
   required check 通過を待つ）
 - リポジトリ設定で `allow_auto_merge=true` 済み

@@ -14,7 +14,7 @@ import { openReferenceWindow } from "../utils/open-reference-window.js";
 // live in one module.
 import { docsSiteUrl } from "../utils/docs-site-links.js";
 import { useContext } from "react";
-import { PreviewToolbarSlotContext } from "./preview-toolbar-slot.js";
+import { PreviewToolbarSlotContext, type PreviewToolbarAction } from "./preview-toolbar-slot.js";
 
 export interface PreviewToolbarProps {
   exportAvailable: boolean;
@@ -56,7 +56,8 @@ export function PreviewToolbar({
 }: PreviewToolbarProps) {
   const { activeView, previewFocused, onPreviewFocusToggle, onExportDrawio: drawio } = usePreview();
   const { t, locale } = useTranslation();
-  const { extras, hideShare } = useContext(PreviewToolbarSlotContext);
+  const { extras, hide } = useContext(PreviewToolbarSlotContext);
+  const shown = (action: PreviewToolbarAction) => !hide?.includes(action);
 
   return (
     <>
@@ -64,54 +65,56 @@ export function PreviewToolbar({
           rest of the ways to write it out. "Open All Views" is in here rather
           than beside it because it produces the same artifact (every view in
           one document), just opened instead of downloaded. */}
-      <div className="toolbar-btn-group">
-        <Button
-          variant="actionable"
-          className="rounded-r-none border-r-0"
-          onClick={onExport}
-          aria-label={t("preview.export.svg.ariaLabel")}
-          disabled={!exportAvailable}
-        >
-          {t("preview.export.svg.label")}
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="actionable"
-              className="rounded-l-none px-1.5"
-              aria-label={t("preview.export.options.ariaLabel")}
-              disabled={!exportAvailable}
-            >
-              ▾
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={onExportDrillDown} disabled={!drillDownAvailable}>
-              {t("preview.export.drillDown.label")}
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={onExportAllDiagrams} disabled={!allViewsAvailable}>
-              {t("preview.export.allDiagrams.label")}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={onExportDrawio}
-              disabled={!drawio}
-              title={t("preview.export.drawio.title")}
-            >
-              {t("preview.export.drawio.label")}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={onOpenAllViews}
-              disabled={!allViewsAvailable}
-              aria-label={t("preview.openAllViews.ariaLabel")}
-            >
-              ⊟ {t("preview.openAllViews.label")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      {shown("export") && (
+        <div className="toolbar-btn-group">
+          <Button
+            variant="actionable"
+            className="rounded-r-none border-r-0"
+            onClick={onExport}
+            aria-label={t("preview.export.svg.ariaLabel")}
+            disabled={!exportAvailable}
+          >
+            {t("preview.export.svg.label")}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="actionable"
+                className="rounded-l-none px-1.5"
+                aria-label={t("preview.export.options.ariaLabel")}
+                disabled={!exportAvailable}
+              >
+                ▾
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={onExportDrillDown} disabled={!drillDownAvailable}>
+                {t("preview.export.drillDown.label")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={onExportAllDiagrams} disabled={!allViewsAvailable}>
+                {t("preview.export.allDiagrams.label")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={onExportDrawio}
+                disabled={!drawio}
+                title={t("preview.export.drawio.title")}
+              >
+                {t("preview.export.drawio.label")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={onOpenAllViews}
+                disabled={!allViewsAvailable}
+                aria-label={t("preview.openAllViews.ariaLabel")}
+              >
+                ⊟ {t("preview.openAllViews.label")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
 
-      {!hideShare && (
+      {shown("share") && (
         <Button
           variant="actionable"
           onClick={onShare}
@@ -124,28 +127,30 @@ export function PreviewToolbar({
 
       {/* Documentation links: the in-app Reference pop-out and the external
           docs site, grouped since both point at documentation. */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="actionable" aria-label={t("preview.docs.ariaLabel")}>
-            {t("preview.docs.label")} ▾
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => openReferenceWindow(activeView)}>
-            {t("preview.docs.reference.label")}
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <a
-              href={docsSiteUrl(locale)}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={t("preview.docs.site.ariaLabel")}
-            >
-              {t("preview.docs.site.label")}
-            </a>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {shown("docs") && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="actionable" aria-label={t("preview.docs.ariaLabel")}>
+              {t("preview.docs.label")} ▾
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => openReferenceWindow(activeView)}>
+              {t("preview.docs.reference.label")}
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a
+                href={docsSiteUrl(locale)}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t("preview.docs.site.ariaLabel")}
+              >
+                {t("preview.docs.site.label")}
+              </a>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       <Button
         variant="actionable"

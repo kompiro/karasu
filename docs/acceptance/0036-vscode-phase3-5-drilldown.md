@@ -2,21 +2,26 @@
 
 ## Coverage policy
 
-**State logic (TC-01/02/03/04/05/06 path & label math)** — the drill-down
-path/label transitions were extracted from `preview-panel.ts` into
-[`packages/vscode/src/drilldown-state.ts`](../../packages/vscode/src/drilldown-state.ts)
-and are unit-fenced (required-tier `vitest`) in
-[`packages/vscode/src/drilldown-state.test.ts`](../../packages/vscode/src/drilldown-state.test.ts)
-(#2002):
+**State logic (TC-01/02/03/04/05/06 path & label math)** — since #3312 the
+VS Code preview is the app's viewer, so the drill path and its breadcrumb are
+the app's, unit-fenced (required-tier `vitest`) in
+[`packages/app/src/hooks/useBreadcrumbs.test.ts`](../../packages/app/src/hooks/useBreadcrumbs.test.ts)
+and
+[`packages/app/src/components/Breadcrumb.test.tsx`](../../packages/app/src/components/Breadcrumb.test.tsx).
+The extension's own drill-state module (`drilldown-state.ts`, #2002) was
+removed with the hand-written webview. The root crumb is the system's label,
+not "Root":
 
-- TC-01: `buildBreadcrumbHtml` › `renders only a non-clickable Root at the top level`
-- TC-02/03: `drillDown` › `appends nodeId and resolves the last label` /
-  `uses meta.viewPath prefix when present`
-- TC-04: `navigateTo` › `index 0 (Root crumb) resets to the empty path`
-- TC-05: `drillDown` › `does not mutate the previous state` (an edit-triggered
-  re-render reads the state without rebuilding it, so purity is the state half
-  of "preserved on edit")
-- TC-06: `emptyDrilldownState` › `switchView / switchViewAndHighlight reset to it`
+- TC-01: `useBreadcrumbs` › `returns a single non-clickable item at root`
+- TC-02/03: `useBreadcrumbs` › `builds clickable items with explicit navigatePath when drilled in`
+- TC-04: `Breadcrumb` › `clicking the first item calls onNavigate([])`
+- TC-05: an edit keeps the drilled view —
+  [`packages/app/src/viewer/mount-viewer.test.tsx`](../../packages/app/src/viewer/mount-viewer.test.tsx)
+  › `re-reads a changed file and keeps the drill position`, and in VS Code
+  `at-0038-cmd-click-hint.test.ts` › `TPL-2996: an unsaved edit reaches the preview and keeps the drilled view`
+- TC-06: a view switch starts the path over —
+  [`packages/app/src/state/app-reducer.test.ts`](../../packages/app/src/state/app-reducer.test.ts)
+  › `SET_ACTIVE_VIEW` › `resets viewPath to []`
 
 **WebView interaction** — automated in the WebView E2E harness
 (ADR-1014; the ExTester job is **not** a required check):
@@ -24,9 +29,9 @@ and are unit-fenced (required-tier `vitest`) in
 - TC-01/02:
   [`packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts`](../../packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts)
   › `TC-03: Cmd/Ctrl+Click on a parent node moves the editor cursor without drilling`
-  asserts the root view starts with a `Root`-only breadcrumb, and
+  asserts the root view starts with a one-segment breadcrumb, and
   › `TC-02: keeps the hint visible after plain-clicking a parent node to drill in`
-  asserts a plain click on a parent advances the breadcrumb past `Root`.
+  asserts a plain click on a parent advances the breadcrumb past the root.
 - TC-07: same file › `TC-03` / `TC-04` (Cmd/Ctrl+Click on a parent / leaf moves
   the editor cursor without changing the preview).
 - TC-08:

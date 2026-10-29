@@ -135,6 +135,39 @@ describe("FileWatcher", () => {
     });
   });
 
+  // #3258: the preview refetches on any file it reads, style sheets included.
+  describe(".krs.style events", () => {
+    it.each(["change", "add", "unlink"])(
+      "broadcasts %s for a .krs.style with its path",
+      (event) => {
+        const client = makeMockClient();
+        watcher.addClient(client as unknown as ServerResponse);
+
+        mockFsWatcher.emit(event, "/test/dir/styles/theme.krs.style");
+
+        const payload = client.write.mock.calls[0][0] as string;
+        expect(payload).toContain(`event: ${event}`);
+        const data = JSON.parse(payload.split("data: ")[1] ?? "") as Record<string, unknown>;
+        expect(data.path).toBe("styles/theme.krs.style");
+        // `file` names a .krs for /api/file/:name; a style sheet has no such name.
+        expect(data).not.toHaveProperty("file");
+      },
+    );
+  });
+
+  describe("path field", () => {
+    it("carries the .krs path with its extension next to the extensionless file", () => {
+      const client = makeMockClient();
+      watcher.addClient(client as unknown as ServerResponse);
+
+      mockFsWatcher.emit("change", "/test/dir/services/api.krs");
+
+      const payload = client.write.mock.calls[0][0] as string;
+      const data = JSON.parse(payload.split("data: ")[1] ?? "") as Record<string, unknown>;
+      expect(data).toEqual({ path: "services/api.krs", file: "services/api" });
+    });
+  });
+
   describe("pathToName", () => {
     it("strips dir prefix and .krs extension", () => {
       const client = makeMockClient();

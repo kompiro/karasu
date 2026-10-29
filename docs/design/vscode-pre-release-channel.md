@@ -4,7 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#2940](https://github.com/kompiro/karasu/issues/2940)（[#2922](https://github.com/kompiro/karasu/issues/2922) から分離）
-  - 関連 Design Doc: [monthly-release-train.md](monthly-release-train.md)（月次トレイン。ADR 昇格待ち）
+  - 関連 ADR: [ADR-2922](../adr/2922-monthly-release-train.md)（月次トレイン）
   - 関連 ADR: [ADR-1316](../adr/1316-vscode-marketplace-publish.md)（Marketplace publish と Entra ID 認証）、[ADR-1758](../adr/1758-vscode-changeset-versioning.md)（拡張の版は changesets が持つ）、[ADR-2939](../adr/2939-release-record-tags-and-github-release.md)（パッケージのタグと GitHub Release。pre-release のタグは #2940 に委ねた）
   - 関連 TPL: [TPL-2786](../test-perspectives/TPL-2786-guard-failure-must-fail-the-run.md)（判定不能は失敗として扱う）、[TPL-2804](../test-perspectives/TPL-2804-guard-scan-set-fails-loud-on-the-unknown.md)（走査集合は未知の要素が大声で落ちる側に定義する）
   - コード: `.github/workflows/vscode-release.yml`, `scripts/release/train.mts`, `scripts/release/github-release.mts`

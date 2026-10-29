@@ -50,6 +50,7 @@ export function PreviewColumn() {
     getAllViewsSvg,
     exportBundlesAvailable,
     onJumpToEditor,
+    readOnly,
     isOrgTreeViewOpen,
     orgTreeSvg,
     onTeamToggle,
@@ -433,6 +434,7 @@ export function PreviewColumn() {
           nodeDiffByPath={view.nodeDiffByPath}
           styleTargetPath={view.styleTargetPath}
           onPickEdgeDirection={view.onPickEdgeDirection}
+          readOnly={readOnly}
           currentFilePath={currentFilePath}
           displayRoot={displayRoot}
         />

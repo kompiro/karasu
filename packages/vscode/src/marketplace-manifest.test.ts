@@ -80,6 +80,18 @@ describe(".vscodeignore (packaged/installed parity — TPL-1024)", () => {
     );
     expect(ignoresRuntime).toBe(false);
   });
+
+  // #3312: the preview is the app's viewer, staged into out/webview/ by the
+  // build. A .vsix built without that step shows a blank panel once installed,
+  // while the dev tree still works if an earlier build left the files behind.
+  it("builds and stages the preview bundle, and fails the build without it", () => {
+    expect(manifest.scripts.build).toContain(
+      "pnpm --filter @karasu-tools/app run build:vscode-webview",
+    );
+    expect(manifest.scripts.build).toContain("tsx scripts/stage-webview.ts");
+    expect(manifest.scripts.postbuild).toContain("node scripts/assert-webview-staged.mjs");
+    expect(ignorePatterns.some((p) => p.startsWith("out/webview"))).toBe(false);
+  });
 });
 
 describe("vscode-release workflow (TPL-1480)", () => {

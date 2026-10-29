@@ -1,5 +1,28 @@
 # karasu
 
+## 0.10.0
+
+### Minor Changes
+
+- 58e7b06: Commands no longer crash or print "File not found" when given a directory (#3106). `karasu fmt`, `tidy-style` and `lint-style` now work on every matching file under a directory argument, and `karasu diff` reads each directory's `index.krs`, as `render` does. `remove`, `insert`, `apply`, `append` and `translate` say the path is a directory and ask for a file.
+- 0fe96f9: `karasu serve` shows Share again. Its links point at the public app (https://karasu.kompiro.dev) instead of the local server, so whoever you send them to can open the diagram without running karasu (#3162).
+
+### Patch Changes
+
+- 9a47c5b: Crossing marks (hops, merge count chips, trunk bands) now dim with their edges under the facet overlay and in compare mode: a mark is dimmed when every edge it belongs to is (in compare mode, when they are all unchanged), and stays bright while it carries one highlighted or changed edge (#3157).
+- efdd43d: `karasu translate --from db` now replays a migration history in order: `DROP TABLE` removes a table and `ALTER TABLE … RENAME TO` or MySQL's `RENAME TABLE` renames it (foreign keys follow), statements inside comments or string literals are skipped, so dropped tables and the temporaries of a table rebuild are no longer emitted (#3182).
+- 2d3ada8: `karasu translate --from db` no longer reads quoted text as part of a table definition: a `)` or `,` inside it (`DEFAULT ')'`, `DEFAULT 'a, b'`) no longer cuts a `CREATE TABLE` short, invents columns, or replays a statement written inside the literal, and `PRIMARY KEY` / `REFERENCES` inside a string literal no longer declare a key or a foreign key (#3282).
+- f68ad09: `karasu fmt` and format-on-save no longer delete a client's `resource` and `capability` lines. Both forms of `capability` (bare, and the block with `label` / `description`) are kept (#3101).
+- 9e54dd6: `karasu fmt` and format-on-save keep a comment next to the property line it annotates (`label`, `link`, `description`, `capability`, `runtime`, `owns`, …) instead of moving it to the end of the file. Comments at the end of a block body, after a closing brace, and inside an empty block also stay where they were written (#3263).
+- 9458515: Drill-down gutter lanes stay inside the frame: the frame widens on the side that needs more lanes, and a ghost card beside the frame no longer pushes the first lane outside it (#3154).
+- bbf8fa3: `[inferred]` edges now draw in a warm grey (`#A8A29E` dark / `#78716C` light) instead of the default edge colour, so a relation `translate --from db` guessed from a naming convention can be told apart from a confirmed one (#3115).
+- b99daf5: In compare mode, a removed card is drawn with the style it had, looked up by its own path, instead of the style of a card with the same id in another system frame (#3197).
+- 56fb479: `karasu serve` now resolves imports. The preview mirrors every `.krs` and `.krs.style` in the served directory at its real path, so whole-file, named, directory and `@import` style imports work as they do in `karasu render`, files in subdirectories resolve relative imports from their own folder, and saving any imported file or style sheet redraws the preview (#3258).
+- f58e1d3: `.krs.style` sheets now read names with the same characters as `.krs` files, so a selector for a non-ASCII id, tag or facet (`#注文`, `[facets=個人情報]`) matches. A `-` that starts no number or arrow, or a non-ASCII character that starts no name, is now reported instead of being dropped, so `label-offset: - 20px` is refused rather than applied as `20px` (#3140).
+- 6a2d3c5: `karasu translate --from wrangler` no longer hides a Durable Object's class name when it matches the Worker's name: the service is declared as `<Class>Object` with `label "<Class> (Durable Object)"` instead of `<Class>2` (#3183).
+- Updated dependencies:
+  - karasu-skills@0.2.1
+
 ## 0.9.0
 
 ### Minor Changes

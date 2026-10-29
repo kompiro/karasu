@@ -1,7 +1,9 @@
 // Classifies where a PR stands in its CodeRabbit rounds (Issue #2846).
 //
-// `docs/process.md` has the PR author run CodeRabbit's rounds until it approves.
-// The rounds are driven by `.claude/skills/coderabbit-converge`; this module is
+// `docs/process.md` has the author of a High PR run CodeRabbit's rounds until no
+// Critical or Major finding is open (#3286). CodeRabbit no longer approves
+// (`request_changes_workflow: false`), so the rounds end on what is open, not on a
+// review state. The rounds are driven by `.claude/skills/coderabbit-converge`; this module is
 // the deterministic half of that loop: given a snapshot of what CodeRabbit has
 // posted, it says whether the author has something to act on yet. It never
 // reads a comment body as an instruction — bodies are only matched against the
@@ -67,8 +69,29 @@ export interface AuthorComment {
   createdAt: string;
 }
 
+/** The severity CodeRabbit gives a finding. */
+export type FindingSeverity = "critical" | "major" | "minor" | "trivial";
+
+/**
+ * The severity label CodeRabbit puts at the head of a finding ("_🟠 Major_", or
+ * an icon followed by "Major **·**"). The label comes before the finding's text,
+ * so the first severity word is the label. `undefined` when there is none.
+ */
+export function findingSeverity(body: string): FindingSeverity | undefined {
+  const m = /(?<![A-Za-z])(Critical|Major|Minor|Trivial|Nitpick)(?![A-Za-z])/.exec(
+    body.slice(0, 600),
+  );
+  if (!m) return undefined;
+  return m[1] === "Nitpick" ? "trivial" : (m[1].toLowerCase() as FindingSeverity);
+}
+
 export interface ReviewThread {
   isResolved: boolean;
+  /**
+   * The severity of the finding that opened the thread, when CodeRabbit opened it.
+   * A thread without one (a human's, or an unlabeled finding) counts as heavy.
+   */
+  severity?: FindingSeverity;
   /** Newest comment in the thread, used to see CodeRabbit answering in it. */
   lastCommentAt: string;
   lastCommentByCodeRabbit: boolean;
@@ -118,12 +141,18 @@ export const DEFAULT_CLASSIFY_OPTIONS: ClassifyOptions = {
 };
 
 export type ReviewState =
-  /** Latest CodeRabbit review approves the head commit and no thread is open. */
-  | { kind: "approved" }
-  /** CodeRabbit answered the last action and threads are open: read and act. */
-  | { kind: "changes"; unresolved: number }
-  /** CodeRabbit answered, nothing is open, but it has not approved. */
-  | { kind: "stalled" }
+  /**
+   * CodeRabbit answered the last action and no thread is open: the rounds are
+   * done. An `APPROVED` review of the head (from before CodeRabbit stopped
+   * approving) also lands here.
+   */
+  | { kind: "converged" }
+  /**
+   * CodeRabbit answered the last action and threads are open: read and act.
+   * `heavy` counts the open ones that are Critical, Major or unlabeled; only a
+   * round that fixes one of those asks CodeRabbit for another review.
+   */
+  | { kind: "changes"; unresolved: number; heavy: number }
   /** Rate limited; the announced ready time has passed: re-request once. */
   | { kind: "limit_elapsed"; readyAt: string }
   /** Rate limited; wait until `readyAt`. */
@@ -135,9 +164,8 @@ export type ReviewState =
 
 /** States the author acts on; `await-review.ts` stops polling at these. */
 export const ACTIONABLE_KINDS: ReadonlySet<ReviewState["kind"]> = new Set([
-  "approved",
+  "converged",
   "changes",
-  "stalled",
   "limit_elapsed",
 ]);
 
@@ -205,7 +233,7 @@ function reviewRunning(s: Snapshot): boolean {
 
 /**
  * Findings CodeRabbit can only put in a review body: those outside the diff, and
- * nitpicks. No review thread carries them, and CodeRabbit approves regardless
+ * nitpicks. No review thread carries them, and CodeRabbit ends the round regardless
  * (#2847: "Outside diff range comments (2)" five seconds before APPROVED), so the
  * thread count alone would end a round with them unread.
  *
@@ -302,14 +330,16 @@ export function classify(
 ): ReviewState {
   const since = ms(s.since);
   const now = ms(s.now);
-  const unresolved = s.threads.filter((t) => !t.isResolved).length;
+  const open = s.threads.filter((t) => !t.isResolved);
+  const unresolved = open.length;
+  const heavy = open.filter((t) => t.severity !== "minor" && t.severity !== "trivial").length;
   const reviews = [...s.reviews].sort((a, b) => ms(a.submittedAt) - ms(b.submittedAt));
   const onHead = (r: CodeRabbitReview) => r.commitId === s.headSha;
   const commitReviews = reviews.filter(isCommitReview);
   const latest = commitReviews.at(-1);
 
   if (latest && onHead(latest) && latest.state === "APPROVED" && unresolved === 0) {
-    return { kind: "approved" };
+    return { kind: "converged" };
   }
 
   const headReviews = commitReviews.filter(onHead);
@@ -342,7 +372,7 @@ export function classify(
   );
   if (now - lastActivity < opts.quietMs) return { kind: "in_progress" };
 
-  return unresolved > 0 ? { kind: "changes", unresolved } : { kind: "stalled" };
+  return unresolved > 0 ? { kind: "changes", unresolved, heavy } : { kind: "converged" };
 }
 
 /**

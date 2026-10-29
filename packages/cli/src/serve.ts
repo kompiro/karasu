@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
-import { existsSync, readFileSync } from "node:fs";
-import { readFile, readdir, stat } from "node:fs/promises";
-import { join, resolve, extname, relative, sep } from "node:path";
+import { constants, existsSync, readFileSync } from "node:fs";
+import { open, readFile, readdir, realpath, stat } from "node:fs/promises";
+import { dirname, join, resolve, extname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isSafeRelativePath } from "@karasu-tools/core";
 import { FileWatcher } from "./watcher.js";
@@ -64,22 +64,136 @@ export function missingAppMessage(lookup: { inMonorepo: boolean; tried: string[]
         `Reinstall karasu (npm i -g karasu@latest) or run: npx --yes karasu@latest serve\n`;
 }
 
-export async function collectKrsFiles(dir: string): Promise<string[]> {
-  const names: string[] = [];
+function isGone(err: unknown): boolean {
+  return (err as NodeJS.ErrnoException).code === "ENOENT";
+}
+
+/** Whether `path`, with every link resolved, is `root` (a real path) or inside it. */
+async function resolvesInside(root: string, path: string): Promise<boolean> {
+  const real = await realpath(path);
+  return real === root || real.startsWith(root + sep);
+}
+
+/**
+ * Every regular file under `dir` whose name passes `accept`, as `/`-separated
+ * paths relative to `dir`. Nothing outside `dir` comes back through a symlink
+ * (TPL-168): `Dirent.isDirectory()` and `isFile()` do not follow links, so a
+ * link present at listing time is neither walked into nor listed, and each
+ * directory is checked to still resolve inside `dir` before it is read, in
+ * case it was swapped for a link after its parent was listed. A directory
+ * removed mid-walk is skipped.
+ */
+async function walkFiles(dir: string, accept: (name: string) => boolean): Promise<string[]> {
+  const root = await realpath(dir);
+  const paths: string[] = [];
   async function walk(current: string): Promise<void> {
-    const entries = await readdir(current, { withFileTypes: true });
+    let entries;
+    try {
+      if (!(await resolvesInside(root, current))) return;
+      entries = await readdir(current, { withFileTypes: true });
+    } catch (err) {
+      if (current !== root && isGone(err)) return;
+      throw err;
+    }
     for (const entry of entries) {
       const fullPath = join(current, entry.name);
       if (entry.isDirectory()) {
         await walk(fullPath);
-      } else if (entry.isFile() && entry.name.endsWith(".krs")) {
-        const rel = relative(dir, fullPath);
-        names.push(rel.replace(/\.krs$/, ""));
+      } else if (entry.isFile() && accept(entry.name)) {
+        paths.push(relative(root, fullPath).split(sep).join("/"));
       }
     }
   }
-  await walk(dir);
-  return names.sort();
+  await walk(root);
+  return paths.sort();
+}
+
+/**
+ * Read a walked file, or null when it is gone or no longer a plain file
+ * inside `root`. Between the walk and this read the file may have been
+ * swapped for a symlink (`O_NOFOLLOW` refuses to open it, `ELOOP`), or a
+ * directory on its path may have (checked with `realpath` first). Node has no
+ * `openat`, so a swap between that check and the open stays possible; it
+ * needs write access to the served directory and exact timing. Windows has no
+ * `O_NOFOLLOW`, so there the parent-directory check is all there is.
+ */
+async function readFileInside(root: string, path: string): Promise<string | null> {
+  const full = join(root, path);
+  try {
+    if (!(await resolvesInside(root, dirname(full)))) return null;
+    const handle = await open(full, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+    try {
+      return await handle.readFile("utf-8");
+    } finally {
+      await handle.close();
+    }
+  } catch (err) {
+    // Gone since the walk: an editor's atomic save (temp file, then rename)
+    // or a delete. Leave it out rather than fail the snapshot; its own watch
+    // event brings the next one.
+    if (isGone(err) || (err as NodeJS.ErrnoException).code === "ELOOP") return null;
+    throw err;
+  }
+}
+
+/**
+ * How many project files `/api/project` holds open at once. Reading them all
+ * together can run out of file descriptors (macOS allows 256 per process by
+ * default) once a directory holds a few hundred `.krs` files.
+ */
+const PROJECT_READ_CONCURRENCY = 32;
+
+/** `items.map(fn)`, with at most `limit` calls of `fn` in flight. Keeps the order. */
+async function mapWithLimit<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array<R>(items.length);
+  let next = 0;
+  async function worker(): Promise<void> {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i] as T);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+export async function collectKrsFiles(dir: string): Promise<string[]> {
+  const paths = await walkFiles(dir, (name) => name.endsWith(".krs"));
+  return paths.map((path) => path.replace(/\.krs$/, ""));
+}
+
+export interface ProjectFile {
+  /** `/`-separated, relative to the served directory, extension included. */
+  path: string;
+  content: string;
+}
+
+/**
+ * The whole served directory as the preview needs it to resolve imports
+ * (#3258): every `.krs` and `.krs.style`, at its real relative path. The app
+ * writes these into its in-memory fs and compiles the entry from there, so
+ * whole-file, named, directory and style imports all find their targets.
+ * Paths come from the walk, never from the request.
+ */
+export async function collectProjectFiles(dir: string): Promise<ProjectFile[]> {
+  const paths = await walkFiles(
+    dir,
+    (name) => name.endsWith(".krs") || name.endsWith(".krs.style"),
+  );
+  const root = await realpath(dir);
+  const files = await mapWithLimit(
+    paths,
+    PROJECT_READ_CONCURRENCY,
+    async (path): Promise<ProjectFile | null> => {
+      const content = await readFileInside(root, path);
+      return content === null ? null : { path, content };
+    },
+  );
+  return files.filter((f): f is ProjectFile => f !== null);
 }
 
 export async function resolveKrsFile(dir: string, name: string): Promise<string | null> {
@@ -178,6 +292,19 @@ export function serve(dir: string, port: number, appDistDir?: string): Server {
       return;
     }
 
+    // 配信ディレクトリの .krs / .krs.style すべて（import の解決用、#3258）
+    if (pathname === "/api/project") {
+      try {
+        const files = await collectProjectFiles(absDir);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ files }));
+      } catch {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: "Failed to read project" }));
+      }
+      return;
+    }
+
     // .krs ファイル内容
     if (pathname.startsWith("/api/file/")) {
       const name = pathname.slice("/api/file/".length);
@@ -232,7 +359,7 @@ export function serve(dir: string, port: number, appDistDir?: string): Server {
     process.stdout.write(`karasu serve\n`);
     process.stdout.write(`  Directory : ${absDir}\n`);
     process.stdout.write(`  Preview   : http://localhost:${port}\n`);
-    process.stdout.write(`\nWatching for .krs file changes...\n`);
+    process.stdout.write(`\nWatching for .krs and .krs.style file changes...\n`);
     if (missingApp !== null) process.stderr.write(`\nWarning: ${missingApp}`);
   });
   return server;
