@@ -74,8 +74,14 @@ Issue には `topic: <name>` ラベルを 1 つ付ける。`<name>` は
 [`adr.config.json`](../adr.config.json) の `topics` のいずれかで、ADR の `topic` と同じ語彙である。
 
 - 対象は open の Issue すべて（`bug` / `test-infra` / それ以外の種別を問わない）。起票時に付ける
-- 規則より前に起票された open Issue にも 2026-10-29 に付け終えた（#3389）。`topic:` の無い open Issue は
-  付け忘れなので、見つけた人がその場で付ける
+- 到達状態: open の Issue はすべて `topic:` ラベルをちょうど 1 つ持つ。外れた Issue（無い・2 つ以上ある）は
+  付け忘れなので、見つけたらその場で直す。次のコマンドが何も出力しなければ成り立っている:
+
+  ```bash
+  gh issue list --state open --limit 500 --json number,labels \
+    --jq '.[] | select([.labels[].name | select(startswith("topic: "))] | length != 1) | .number'
+  ```
+
 - closed の Issue には遡って付けない（topic 別の判断の履歴は ADR の `topic` が持つ）
 - 各 topic が何を含むかは [`docs/adr/README.md`](adr/README.md)「トピック別」の見出しで判断する
 - 迷ったら、似た内容の既存 ADR で最も多い `topic` に合わせる:
