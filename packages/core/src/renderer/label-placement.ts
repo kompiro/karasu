@@ -24,19 +24,30 @@
  * card was never examined at all. An edge's *own* polyline is exempt: a label is
  * supposed to sit on the line it names.
  *
+ * Frame borders joined in #3155: a nudged label ends off the border of every
+ * frame (a group frame, the drill-down frame) and on the same side of it as
+ * its default. The rule reads where the label lands, not the path to it, so a
+ * long nudge may still hop a narrow frame or a notch of an L-shaped one and
+ * land on the right side. The frame's *area* is still not an obstacle
+ * (labels legitimately live inside it), so what is tested is the border line
+ * and which side of it the label is on, measured against the label's default
+ * box. A label whose default already sits outside a frame (its own run left
+ * the frame) stays outside; one whose default is inside stays inside.
+ *
  * Overlap is *measured*, not eyeballed: `countLabelPenetrations` /
- * `countLabelOverlaps` / `countLabelLinePenetrations` give the numeric guards
- * the tests assert on (TPL-1927, the label analogue of the edge-routing
- * penetration guards).
+ * `countLabelOverlaps` / `countLabelLinePenetrations` /
+ * `countLabelFrameCrossings` give the numeric guards the tests assert on
+ * (TPL-1927, the label analogue of the edge-routing penetration guards).
  */
 import type { Point, Rect } from "./edge-geometry.js";
-import type { LayoutEdge, LayoutNode } from "./layout-types.js";
+import type { ContainerRect, LayoutEdge, LayoutNode } from "./layout-types.js";
 import type { ResolvedEdgeStyle } from "../types/style.js";
 import { estimateTextWidth } from "./rendering-constants.js";
 import { labelAnchorWithSegment, ownLabelSegment, resolveLabelPosition } from "./edge-routing.js";
 import { segmentCrossesRect } from "./edge-geometry.js";
 import { BoxGrid, chooseCellSize } from "./spatial-grid.js";
 import { canvasLabel } from "./edge-label-disclosure.js";
+import { drawnFrame } from "./frame-geometry.js";
 
 /**
  * One edge label offered to the placement pass. `anchor` is the label's default
@@ -101,6 +112,118 @@ export interface EdgeLine {
    * cannot possibly touch.
    */
   bounds: Rect;
+}
+
+/**
+ * One frame's border offered to the placement pass as an obstacle (#3155).
+ * Built only by `frameBorder`, so the renderer and the tests measure the same
+ * outline.
+ */
+export interface FrameBorder {
+  /**
+   * The stroked outline as a closed polyline, packaged like an edge line so the
+   * label box is tested against the painted stroke with the same
+   * strict-interior segment test (TPL-1927). Its `index` is `-1`, which no
+   * label carries, so it is never mistaken for a label's own line.
+   */
+  line: EdgeLine;
+  /** The rects the frame covers: what "inside the frame" means for the side test. */
+  pieces: readonly Rect[];
+}
+
+/**
+ * Package a frame as a placement obstacle: the outline the canvas strokes and
+ * the stroke's width, plus the rects the frame covers.
+ */
+export function frameBorder(frame: ContainerRect, strokeWidth: number): FrameBorder {
+  const { outline, pieces } = drawnFrame(frame);
+  return { line: edgeLine(-1, outline, strokeWidth), pieces };
+}
+
+/** True if `p` lies in one of the frame's rects (border included). */
+function insideFrame(p: Point, pieces: readonly Rect[]): boolean {
+  return pieces.some(
+    (r) => p.x >= r.x && p.x <= r.x + r.width && p.y >= r.y && p.y <= r.y + r.height,
+  );
+}
+
+function boxCentre(box: Rect): Point {
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+/**
+ * A frame border as one label sees it: the border, and which side of it the
+ * label's default box is on (by its centre). Every candidate has to stay on
+ * that side without touching the stroke.
+ */
+interface NearFrame {
+  border: FrameBorder;
+  inside: boolean;
+}
+
+/**
+ * True if a label box placed at `box` breaks the frame rule against `frame`:
+ * the border's stroke runs through it, or it sits on the other side of the
+ * border than the label's default. Once the stroke is clear the box lies
+ * wholly on one side, so its centre answers for all of it.
+ */
+function leavesFrameSide(box: Rect, frame: NearFrame): boolean {
+  if (boxCrossedByLine(box, frame.border.line)) return true;
+  return insideFrame(boxCentre(box), frame.border.pieces) !== frame.inside;
+}
+
+/**
+ * Count of labels whose final box crosses a frame border or ended on the other
+ * side of one than its default box (#3155). Counted per label, like the other
+ * guards. A default box that already straddles a border counts until the label
+ * is moved off it. Pass only labels the pass may move: an author-positioned
+ * label (ADR-1184) stays where the author put it, border or not.
+ */
+export function countLabelFrameCrossings(
+  labels: { defaultBox: Rect; box: Rect }[],
+  frames: FrameBorder[],
+): number {
+  let n = 0;
+  for (const { defaultBox, box } of labels) {
+    const side = boxCentre(defaultBox);
+    if (
+      frames.some((border) =>
+        leavesFrameSide(box, { border, inside: insideFrame(side, border.pieces) }),
+      )
+    ) {
+      n++;
+    }
+  }
+  return n;
+}
+
+/**
+ * The frames a label's bounded search can be affected by, each with the side
+ * the default box is on. Every candidate's centre lies within `maxShift·√2` of
+ * the default centre, so a candidate can reach the border's stroke only when
+ * the border's centreline lies within that plus the half-diagonal of the box
+ * grown by half the stroke (the stroke test grows the box that much), and it
+ * can change side only by crossing the border on the way. A frame farther
+ * than that is one the label is on the right side of at every candidate. The
+ * prune is exact, not close: measured with the bare half-diagonal it would
+ * drop a border a box corner reaches by less than the stroke.
+ */
+function reachableFrames(frames: FrameBorder[], box: Rect, maxShift: number): NearFrame[] {
+  if (frames.length === 0) return [];
+  const centre = boxCentre(box);
+  const out: NearFrame[] = [];
+  for (const border of frames) {
+    const h = border.line.halfStroke;
+    const reach = maxShift * Math.SQRT2 + Math.hypot(box.width / 2 + h, box.height / 2 + h);
+    // The polyline distance is to the stroke's edge (it takes `h` off), so the
+    // centreline bound `reach` is `reach - h` here. The bounds are grown by `h`
+    // as a square, so their distance is never more than the polyline's and the
+    // cheap reject stays safe against the same bound.
+    if (pointToRectDistance(centre, border.line.bounds) > reach - h) continue;
+    if (pointToPolylineDistance(centre, border.line) > reach - h) continue;
+    out.push({ border, inside: insideFrame(centre, border.pieces) });
+  }
+  return out;
 }
 
 interface LabelPlacementOptions {
@@ -428,7 +551,8 @@ function reachableLines(edgeLines: EdgeLine[], label: LabelInput, maxShift: numb
 
 /**
  * What a candidate placement costs, in units where a **collision** (node card,
- * committed label, or foreign stroke through the text) is 2 and **ambiguity**
+ * committed label, foreign stroke through the text, or a frame border crossed,
+ * #3155) is 2 and **ambiguity**
  * (some other edge's line is nearer than the one this label names) is 1.
  *
  * The two are weighted rather than summed flat because they are different kinds
@@ -463,6 +587,7 @@ function candidateCost(
   lines: LineIndex,
   reachable: EdgeLine[],
   ownLine: EdgeLine | undefined,
+  frames: NearFrame[],
   cap: number,
 ): number {
   // Both obstacle sets are queried through a spatial index (#2760), so only the
@@ -476,6 +601,15 @@ function candidateCost(
   let cost = 0;
   for (const rect of obstacles.near(box)) {
     if (rectsOverlap(box, rect)) {
+      cost += COLLISION_COST;
+      if (cost >= cap) return cost;
+    }
+  }
+  // A frame border is not an edge: it costs a collision when the label would
+  // land on it or across it, and never takes part in the ambiguity term below,
+  // which asks which *edge* the text reads as belonging to.
+  for (const frame of frames) {
+    if (leavesFrameSide(box, frame)) {
       cost += COLLISION_COST;
       if (cost >= cap) return cost;
     }
@@ -713,11 +847,16 @@ function perpendicular(dir: Point): Point {
  * **only** labels that were nudged off their default; edges absent from the map
  * keep their default anchor (byte-stable). Deterministic: candidates are tried
  * in a fixed order and labels processed by ascending index.
+ *
+ * `frames` are the borders of the frames drawn on the canvas (#3155). A label
+ * already clear of every border keeps its default; one whose default box
+ * straddles a border is moved off it like any other collision.
  */
 export function resolveLabelPlacements(
   labels: LabelInput[],
   nodeRects: Rect[],
   edgeLines: EdgeLine[] = [],
+  frames: FrameBorder[] = [],
   options: LabelPlacementOptions = {},
 ): Map<number, Point> {
   const maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
@@ -769,9 +908,11 @@ export function resolveLabelPlacements(
     // quadratic in edge count on a dense graph. See `searchReach`.
     const reachable = reachableLines(edgeLines, label, maxSteps * step);
     lines.restrictTo(reachable);
+    const defaultBox = labelBox(label.anchor, label.width, label.fontSize);
+    const nearFrames = reachableFrames(frames, defaultBox, maxSteps * step);
 
     let bestAnchor = label.anchor;
-    let bestBox = labelBox(label.anchor, label.width, label.fontSize);
+    let bestBox = defaultBox;
     let bestCost = Number.POSITIVE_INFINITY;
     let bestDist = 0;
     for (const [i, j] of candidates) {
@@ -790,6 +931,7 @@ export function resolveLabelPlacements(
         lines,
         reachable,
         ownLine,
+        nearFrames,
         bestCost,
       );
       if (cost === 0) {

@@ -8,6 +8,7 @@
  * router needs the index, so keeping them in `edge-routing-groups.ts` would
  * close a cycle between the two.
  */
+import type { Point } from "./edge-geometry.js";
 import type { ContainerRect, LayoutNode, Rect } from "./layout-types.js";
 
 /**
@@ -18,6 +19,101 @@ import type { ContainerRect, LayoutNode, Rect } from "./layout-types.js";
  */
 export function framePieces(frame: ContainerRect): readonly Rect[] {
   return frame.coverage ?? [frame];
+}
+
+/**
+ * The frame as the renderer draws it: the border it is stroked along, as a
+ * closed polyline (the first corner repeated last), and the rects that border
+ * encloses. A widened frame whose {@link framePieces} trace one polygon is
+ * drawn as that outline (a `<path>` from {@link rectUnionOutline}); any other
+ * frame is drawn as its plain `<rect>`, and then encloses only that rect. One
+ * decision answers both, so a pass that avoids this line and tests "inside"
+ * against these rects agrees with what the canvas shows.
+ */
+export function drawnFrame(frame: ContainerRect): { outline: Point[]; pieces: readonly Rect[] } {
+  const corners = frame.coverage ? rectUnionOutline(frame.coverage) : null;
+  if (corners !== null) return { outline: [...corners, corners[0]], pieces: framePieces(frame) };
+  const { x, y, width, height } = frame;
+  return {
+    outline: [
+      { x, y },
+      { x: x + width, y },
+      { x: x + width, y: y + height },
+      { x, y: y + height },
+      { x, y },
+    ],
+    pieces: [{ x, y, width, height }],
+  };
+}
+
+/**
+ * The corners of the outline of a union of axis-aligned rects (#2179), in
+ * drawing order: the tops left-to-right, then the bottoms right-to-left.
+ *
+ * A frame that reaches an out-of-band member is a rectilinear polygon, not a
+ * rect. The union is built by **vertical slabs**: every distinct x becomes a
+ * boundary, and each slab's vertical extent is the min/max over the rects
+ * covering it. That is exact for the shapes `buildGroupFrames` produces, where
+ * every strip shares an edge with the band body so each slab's coverage is one
+ * contiguous interval — and it stays readable for any number of strips on either
+ * side, which a hand-rolled L/T case analysis does not.
+ *
+ * Returns `null` for a single rect (nothing to union) and for a slab set that is
+ * not contiguous, so the caller falls back to the plain rect rather than
+ * tracing an outline that claims rows it does not cover.
+ */
+export function rectUnionOutline(rects: readonly Rect[]): Point[] | null {
+  if (rects.length < 2) return null;
+  const xs = [...new Set(rects.flatMap((r) => [r.x, r.x + r.width]))].sort((a, b) => a - b);
+  const slabs: { x1: number; x2: number; top: number; bottom: number }[] = [];
+  for (let i = 0; i < xs.length - 1; i++) {
+    const x1 = xs[i];
+    const x2 = xs[i + 1];
+    const mid = (x1 + x2) / 2;
+    const covering = rects.filter((r) => r.x <= mid && mid <= r.x + r.width);
+    if (covering.length === 0) return null; // a gap along x — not one polygon
+    const top = Math.min(...covering.map((r) => r.y));
+    const bottom = Math.max(...covering.map((r) => r.y + r.height));
+    // Contiguity: the covering rects must form one interval, or the outline
+    // would fill a hole the frame does not actually cover.
+    const sorted = [...covering].sort((a, b) => a.y - b.y);
+    let reach = sorted[0].y + sorted[0].height;
+    for (const r of sorted.slice(1)) {
+      if (r.y > reach) return null;
+      reach = Math.max(reach, r.y + r.height);
+    }
+    const prev = slabs[slabs.length - 1];
+    if (prev && prev.x2 === x1 && prev.top === top && prev.bottom === bottom) prev.x2 = x2;
+    else slabs.push({ x1, x2, top, bottom });
+  }
+  const points: Point[] = [];
+  const push = (x: number, y: number): void => {
+    const last = points[points.length - 1];
+    // Adjacent slabs meet at a shared x, so the naive walk repeats the corner…
+    if (last && last.x === x && last.y === y) return;
+    // …and slabs that differ on only one side leave collinear points along the
+    // other. Fold them so the outline lists corners, which is what a reader
+    // diffing a snapshot of the drawn path wants to compare.
+    const prev = points[points.length - 2];
+    if (
+      last &&
+      prev &&
+      ((prev.x === last.x && last.x === x) || (prev.y === last.y && last.y === y))
+    ) {
+      points[points.length - 1] = { x, y };
+      return;
+    }
+    points.push({ x, y });
+  };
+  for (const s of slabs) {
+    push(s.x1, s.top);
+    push(s.x2, s.top);
+  }
+  for (const s of [...slabs].reverse()) {
+    push(s.x2, s.bottom);
+    push(s.x1, s.bottom);
+  }
+  return points;
 }
 
 /**
