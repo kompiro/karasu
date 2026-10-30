@@ -27,7 +27,7 @@ assumptions:
 
 ## 背景
 
-workflow の `uses:` はすべて `owner/repo@<sha> # vX.Y.Z` の形で commit SHA に固定していた。これは直接の依存しか守らない。
+remote の action を指す workflow の `uses:` は、すべて `owner/repo@<sha> # vX.Y.Z` の形で commit SHA に固定していた。これは直接の依存しか守らない。
 固定した composite action が内部で `some/action@v1` を使っていれば、その `v1` が付け替えられたときに
 付け替え後のコードが job で動く（2026-03 の `aquasecurity/trivy-action` から `setup-trivy` への事例）。
 
@@ -43,8 +43,10 @@ workflow が使う action は、直接・推移的なものを含めて `actions
 
 ## 理由
 
-- **推移的な依存まで固定できる。** 移行で `actions/upload-pages-artifact@v5.0.0` が内部で使う
-  `actions/upload-artifact@v7.0.0` が新たに固定された。inline の SHA 固定ではこれを固定する手段がない
+- **推移的な依存まで固定できる。** inline の SHA 固定では、action が内部で使う action を固定する手段がない。
+  lockfile はそれも commit と owner / repository の ID で記録する。移行時点で推移的な依存は
+  `actions/upload-pages-artifact@v5.0.0` が使う `actions/upload-artifact@bbbca2d…`（v7.0.0）の 1 つで、これは upstream が
+  既に SHA で固定していた。lockfile が足したのは、その記録と ID の照合、upstream がタグに替えたときの保護である
 - **固定先は変わっていない。** 13 個の action すべてで、lockfile が記録した commit は移行前の inline の SHA と一致した。
   移行は版を動かさず、守る範囲だけを広げた
 - **lockfile に載らない workflow はタグをそのまま解決する。** runner が照合するのは lockfile に載った workflow だけで、
@@ -62,7 +64,7 @@ workflow が使う action は、直接・推移的なものを含めて `actions
 - workflow を追加・削除・改名したとき、または `uses:` を手で変えたときは、リポジトリのルートで `gh actions-lock` を
   実行して lockfile を commit する。手順は `docs/release.md`「GitHub Actions の依存（actions.lock）」
 - `./.github/actions/purge-preview-deployments` は `run:` ステップしか持たないので、lockfile の対象外で警告だけが出る。
-  remote の action を使い始めたら `--verify` がエラーにするので、そのときに `$/` への移行か除外を決める
+  remote の action を使い始めたら `--verify` がエラーにするので、そのときに `--migrate-local-actions`（`./…` を同じリポジトリの `$/…` に書き換えて lockfile の対象にする）か `--ignore-local-actions` を決める
 - 個人のグローバル gitignore が `*.lock` を無視していても lockfile が `git status` に出るよう、`.gitignore` に
   `!.github/workflows/actions.lock` を置く
 
@@ -71,15 +73,19 @@ workflow が使う action は、直接・推移的なものを含めて `actions
 `gh actions-lock` は gh-aw の `.lock.yml` の `uses:` もタグに書き換える。`gh aw compile` は常に `@<sha> # vX` を出力する
 ので、2 つのツールが同じ行で食い違う。恒久的な扱いは #3415 で決め、それまでは次のとおりにする。
 
-- 再生成は `gh aw compile` の後に `gh actions-lock` を実行する 2 段にする（`.claude/rules/dependabot.md`）
+- 再生成は `gh aw compile` の後に `gh actions-lock` を実行する 2 段にする（`.claude/rules/dependabot.md`）。
+  この間、commit した `.lock.yml` は `gh aw compile` の出力と一致しない。ADR-2753 の「再コンパイルしても差分が出ない」
+  ことは、`gh actions-lock` を当てる前の出力に対してだけ確かめる。これは #3415 が解くまで受け入れる代償である
 - `scripts/ci/gh-aw-lock-consistency.test.ts` は、`actions.lock` が固定しているタグを SHA 固定の代わりとして通す。
-  タグ形の setup の `uses:` も `compiler_version` と照合し、`actions.lock` と `.github/aw/actions-lock.json` が
-  同じ SHA を記録していることも確かめる。ADR-2753 の「`uses:` だけを上げた bot PR を落とす」性質はこれで保つ
+  `.github/aw/actions-lock.json` に載っていない action（compiler が既定で使う `actions/*`）も、40 桁の SHA か
+  `actions.lock` が固定するタグでなければ落とす。載っている action は、manifest コメントの SHA と版が
+  `actions-lock.json` の項目と一致しなければ落とす。タグ形の setup の `uses:` も `compiler_version` と照合し、`actions.lock` と `.github/aw/actions-lock.json` が
+  同じ SHA を記録していることも確かめる。ADR-2753 で却下した形（`uses:` だけを上げた bot PR）をこのテストが落とす性質は、これで保つ
 
 ## 却下した案
 
 - **inline の SHA 固定を続ける。** 推移的な依存が守れないという、移行の理由そのものが残る
-- **lockfile を入れつつ `uses:` は SHA のまま残す。** `gh actions-lock` は fix の実行のたびに SHA をタグへ書き換え、
+- **lockfile を入れつつ `uses:` は SHA のまま残す。** `gh actions-lock` は実行するたびに SHA をタグへ書き換え、
   lockfile を手で書くことは前提にない。gh-aw の 2 ファイルだけ SHA に戻す案も同じ理由で成り立たなかった
 - **`paths:` を残して paired stub を足す。** 数秒の job のために workflow を 1 本増やす理由がない
 - **Actions 設定の「Require actions to be pinned to a full-length commit SHA」を有効にする。** GitHub の文書では、
