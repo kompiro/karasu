@@ -692,6 +692,14 @@ describe("StyleParser ValueNode AST (Phase 3 / step 1)", () => {
       expect(diags.map((d) => d.code)).toEqual(["style-token-type-mismatch"]);
     });
 
+    it("does not report a declaration twice after reading its comma as a semicolon", () => {
+      const result = StyleParser.parse(`service { color: , font-size: 12px; }`);
+      expect(result.diagnostics.map((d) => d.code)).toEqual([
+        "expected-semicolon-between-properties",
+      ]);
+      expect(result.value.rules[0].properties).toEqual({ "font-size": "12px" });
+    });
+
     it("refuses an empty comma item, in the middle or at the end", () => {
       expect(refused(`service { font-family: a, , b; }`, "font-family")).toHaveLength(1);
       expect(refused(`service { font-family: serif,; }`, "font-family")).toHaveLength(1);

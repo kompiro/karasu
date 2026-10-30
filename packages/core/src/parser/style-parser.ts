@@ -406,6 +406,7 @@ export class StyleParser {
     const atoms: ValueNode[] = [];
     const segmentStarts: number[] = [0]; // indices into `atoms` where each comma-separated segment starts
     let lastComma: Token | null = null;
+    let recovered = false;
 
     while (
       this.peek().type !== TokenType.Semicolon &&
@@ -468,6 +469,7 @@ export class StyleParser {
             loc: this.rangeBetween(token, token),
           });
           this.advance(); // consume the comma — treat as `;`
+          recovered = true;
           break;
         }
         // Legitimate comma — start a new segment for the list builder. An
@@ -501,8 +503,9 @@ export class StyleParser {
 
     if (!refused) {
       if (atoms.length === 0) {
-        // `color: ;` — nothing to apply.
-        refused = this.refuse(this.peek(), refused);
+        // `color: ;` — nothing to apply. After `color: , font-size: …` the
+        // comma recovery has already reported the declaration.
+        refused = this.refuse(this.peek(), recovered);
       } else if (lastComma && atoms.length === segmentStarts[segmentStarts.length - 1]) {
         // `font-family: serif,` — the last item is empty.
         refused = this.refuse(lastComma, refused);

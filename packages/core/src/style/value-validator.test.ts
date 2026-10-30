@@ -217,10 +217,11 @@ describe("validateStyleValues — list-of (font-family)", () => {
     expect(validate(`service { font-family: Noto Sans; }`)).toEqual([]);
   });
 
-  it("rejects a name that mixes a number into its words", () => {
+  it("rejects a name that mixes a number into its words, naming both accepted forms", () => {
     const diags = validate(`service { font-family: Noto 12px; }`);
     expect(diags).toHaveLength(1);
     expect(diags[0].code).toBe("style-invalid-enum-value");
+    expect(diags[0].params).toMatchObject({ allowed: ["<string>", "<identifier> …"] });
   });
 });
 
@@ -290,6 +291,18 @@ describe("validateStyleValues — values the schema reads one way (#3141)", () =
       value: "2.5",
       allowed: ["none", "<integer>"],
     });
+  });
+
+  it("names every accepted form when a union's value has the wrong type", () => {
+    const diags = validate(`edge { label-max-chars: 5px; }`);
+    expect(diags.map((d) => d.params)).toEqual([
+      { property: "label-max-chars", value: "5px", allowed: ["none", "<integer>"] },
+    ]);
+  });
+
+  it("reports a declaration under a grouped selector once", () => {
+    const diags = validate(`service, database { opacity: 2; }`);
+    expect(diags.map((d) => d.code)).toEqual(["style-out-of-range"]);
   });
 
   it("asks for an integer where only an integer will do", () => {

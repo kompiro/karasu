@@ -668,7 +668,7 @@ edge#criticalWrite { direction: down; }
 
 詳細は [`docs/adr/9019-edge-direction-style.md`](../adr/9019-edge-direction-style.md)。
 
-不正値は黙って破棄され、`direction` は `auto` にフォールバックする。
+不正な値は報告され、ほかの不正な値と同じく破棄される（[プロパティ一覧](#プロパティ一覧)）: 弱いルールの `direction` が効き、どのルールも書いていなければ `auto` になる。
 
 ### `label-position` — `start | middle | end | <0.0..1.0>`
 

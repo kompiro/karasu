@@ -34,11 +34,11 @@
 
 - [x] `grid-columns` の不正値（0 / 負 / 非整数）は validator が宣言ごとに 1 回報告し（`style-out-of-range` / `style-invalid-enum-value`）、cascade が破棄して自動バランスにフォールバックする（ノードごとの `style-grid-columns-invalid-value` は #3141 で廃止）
 
-  > ✅ Automated — `style-resolver.test.ts` › `grid-columns layout hint (#1737)` › `skips the hint for non-positive / non-integer values, with no per-node warning (#3141)`
+  > ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `grid-columns layout hint (#1737)` › `skips the hint for non-positive / non-integer values, with no per-node warning (#3141)`
 
 - [x] `grid-columns` は org の team ノード（member grid の列数）でも有効
 
-  > ✅ Automated — `style-resolver.test.ts` › `grid-columns layout hint (#1737)` › `is honored on an org team node (member-grid override)`
+  > ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `grid-columns layout hint (#1737)` › `is honored on an org team node (member-grid override)`
 
 - [x] 出力は決定的（同じ入力で同じ座標）
 

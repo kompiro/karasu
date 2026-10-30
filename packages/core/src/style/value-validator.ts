@@ -39,13 +39,22 @@ export function validateStyleValues(
 ): Diagnostic[] {
   const isRegisteredShape = options.isRegisteredShape ?? hasShape;
   const out: Diagnostic[] = [];
+  // A grouped selector (`service, store { … }`) becomes one rule per
+  // selector, all sharing the declaration as written; report it once.
+  const reported = new Set<string>();
+  const push = (d: Diagnostic) => {
+    const key = `${d.code}|${d.loc?.file ?? ""}|${d.loc?.start.offset ?? ""}|${JSON.stringify(d.params)}`;
+    if (d.loc && reported.has(key)) return;
+    reported.add(key);
+    out.push(d);
+  };
   for (const rule of sheet.rules) {
     const valueNodes = rule.valueNodes;
     if (!valueNodes) continue;
     for (const property of Object.keys(rule.properties)) {
       const declLoc = rule.declarationLocs[property];
       if (!isKnownProperty(property)) {
-        out.push({
+        push({
           severity: "warning",
           code: "style-unknown-property",
           params: { property },
@@ -59,7 +68,7 @@ export function validateStyleValues(
         // The parser gives every value it keeps a node, so this is a rule
         // assembled elsewhere. The cascade drops the declaration (#3141);
         // say so here rather than let it vanish.
-        out.push({
+        push({
           severity: "error",
           code: "style-invalid-enum-value",
           params: { property, value: rule.properties[property], allowed: allowedForms(schema) },
@@ -83,7 +92,7 @@ export function validateStyleValues(
       // Use the value node's loc when available (more precise than the
       // whole declaration); fall back to the declaration loc.
       for (const d of diags) {
-        out.push({ ...d, loc: node.loc ?? declLoc });
+        push({ ...d, loc: node.loc ?? declLoc });
       }
     }
   }
@@ -328,16 +337,14 @@ function collectMismatch(node: ValueNode, spec: ValueSpec, property: string): Di
           numericFailure = branchDiags;
         }
       }
-      if (numericFailure !== null) {
-        // A number that is not an integer reads "not one of <integer>"; name
-        // the keywords too, or `label-max-chars: 2.5` hides `none`.
-        return numericFailure.map((d) =>
-          d.code === "style-invalid-enum-value"
-            ? { ...d, params: { ...d.params, allowed: allowedForms(spec) } }
-            : d,
-        );
-      }
-      return firstFailure ?? [];
+      // A "not one of …" report names every form the union accepts, or
+      // `label-max-chars: 2.5` hides `none` and `font-family: Noto 12px`
+      // hides unquoted names.
+      return (numericFailure ?? firstFailure ?? []).map((d) =>
+        d.code === "style-invalid-enum-value"
+          ? { ...d, params: { ...d.params, allowed: allowedForms(spec) } }
+          : d,
+      );
     }
     default: {
       const _exhaustive: never = spec;

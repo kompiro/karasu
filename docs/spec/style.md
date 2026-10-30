@@ -710,7 +710,7 @@ cases:
 See [`docs/adr/9019-edge-direction-style.md`](../adr/9019-edge-direction-style.md)
 for the rationale.
 
-Invalid values are silently dropped and `direction` falls back to `auto`.
+An invalid value is reported and dropped, as every invalid value is (see [Property list](#property-list)): a weaker rule's `direction` applies, or `auto` when no rule sets one.
 
 ### `label-position` — `start | middle | end | <0.0..1.0>`
 

@@ -266,3 +266,18 @@ describe("tidyStyleSheet — edge endpoint selectors round-trip (#1755)", () => 
     expect(out).toContain("edge[from=B]");
   });
 });
+
+// #3141: the parser does not store a declaration it refuses, so rebuilding the
+// text from the parsed rules would delete it, with its comment.
+describe("tidyStyleSheet — sheets with a parse error", () => {
+  it.each([
+    "service {\n  /* keep */\n  color: ;\n  opacity: 0.5;\n}\n",
+    'service {\n  font-family: "A", , serif;\n  opacity: 0.5;\n}\n',
+    "service {\n  label-offset: - 20px;\n}\n",
+  ])("leaves the sheet as written: %j", (input) => {
+    const result = tidyStyleSheet(input);
+    expect(result.output).toBe(input);
+    expect(result.changed).toBe(false);
+    expect(result.diagnostics.some((d) => d.severity === "error")).toBe(true);
+  });
+});

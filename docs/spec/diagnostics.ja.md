@@ -248,14 +248,14 @@ annotation 語彙（`.krs language v2.0` はツール語彙のみを受理する
 | `style-invalid-length-unit` | error | スタイルの length が許可されない単位を使う。 |
 | `style-missing-length-unit` | error | スタイルの length に必要な単位が無い。 |
 | `style-out-of-range` | error | スタイルの数値が min / max の範囲外。 |
-| `style-token-type-mismatch` | error | スタイル値に値として持てない token がある、または値が空。宣言は無視される。 |
+| `style-token-type-mismatch` | error | スタイルの token が期待された型と一致しない。値の中（値として持てない token、空の値、空のカンマ項目）なら宣言は無視される。 |
 | `expected-style-property-name` | error | スタイルパーサがプロパティ名を期待した。 |
 | `expected-semicolon-between-properties` | error | スタイルパーサがプロパティ間の `;` を期待した。 |
 | `unknown-edge-selector-attribute` | error | セレクタが `from` / `to` / `facets` 以外の属性を使っている（例: `edge[source=X]`）。コード名は `facets` より前からあるもので、`facets` は `edge` 限定ではなくノードセレクタでも受理される。 |
 | `style-conflict` | warning | セレクタが複数のユーザースタイルシートで定義される。 |
 | `style-column-ignored-non-system-view` | warning | `column` ヒントが deploy / org ビューに適用される（無視）。 |
 
-> Related TPLs: [TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)（`style-unknown-icon` が引くシェイプレジストリの組み込みの中身は core 自身が埋めるので、判定はどの描画面でも同じになる）, [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（パーサが受理する値は効果か診断を持ち、黙って無視されることはない）。
+> Related TPLs: [TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)（`style-unknown-icon` が引くシェイプレジストリの組み込みの中身は core 自身が埋めるので、判定はどの描画面でも同じになる）, [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（パーサが受理する値は効果か診断を持ち、黙って無視されることはない）, [TPL-3141](../test-perspectives/TPL-3141-style-diagnostic-describes-drawing.md)（値の範囲はスキーマ 1 か所にだけ置き、拒否した宣言は 1 回だけ外すので、診断が描画を説明する）。
 
 ### client・capability
 

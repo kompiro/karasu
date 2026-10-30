@@ -43,6 +43,13 @@ export interface TidyResult {
 export function tidyStyleSheet(input: string, options: TidyOptions = {}): TidyResult {
   const merge = options.merge ?? true;
   const parsed = StyleParser.parse(input);
+  // A sheet with a parse error is left as it is. The parser does not store a
+  // declaration it refused (#3140, #3141), so rebuilding the text from the
+  // parsed rules would delete what the author wrote, with its comments, as
+  // `format()` refuses to do for a `.krs` with errors.
+  if (parsed.diagnostics.some((d) => d.severity === "error")) {
+    return { output: input, changed: false, diagnostics: parsed.diagnostics };
+  }
   let sheet: StyleSheet = parsed.value;
 
   if (merge) {
