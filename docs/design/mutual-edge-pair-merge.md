@@ -212,11 +212,19 @@ domain canvas では採らず、#2728 に渡す。
    直前に置く。`markParallelBundles` は `layoutInner` の中で走り、その結果は channel / column の予約と幅の
    探索に入るので、そこに置くと card が動きうる。探索の後に置けば card は動かない。multi-system の root では
    system ごとに組を探す（`markParallelBundles` が #2917 で system ごとになったのと同じ理由）。
-   分け目を決めるには他の edge の経路と、hop ごとの最終的な幅が要る。hop の幅は `computeCrossingMarks` の中で
-   決まり、近い交差がまとまると広がり、trunk の band の分も足される。そこで、捨てる経路を除いた折れ線（共有の線は分ける前の 1 本のまま）で
-   `computeCrossingMarks` を 1 回走らせ、その `halfWidth` を分け目の離れの基準に使う。共有の線を分けても線の
-   和は変わらないので、交差の位置と hop の幅は置き換えの前後で同じである。置き換えた後にもう 1 回走らせ、
-   hop の持ち主を半分の edge に付け替える。
+   分け目を決めるには、他の edge の経路と hop ごとの最終的な幅が要る。hop の幅は `computeCrossingMarks` の
+   中で決まり、近い交差がまとまると広がり、trunk の band の分も足される。そこで次を繰り返す。
+   1. 1 本にする候補の組について捨てる経路を除き（共有の線は分ける前の 1 本のまま）、`computeCrossingMarks` を走らせる
+   2. その hop の `halfWidth` を離れの基準にして、各組の分け目を選ぶ
+   3. 分け目が見つからない組は 2 本に戻し、捨てる経路を元に戻す。戻した組が 1 つでもあれば 1 に戻る
+
+   戻した経路は交差を足し、近くの hop を広げうるので、選び直す。組は減る一方なので繰り返しは終わる。
+   最後の 1 の結果を描画に使い、hop の持ち主だけを、その hop が乗る側の半分の edge に付け替える。分け目は
+   どの hop の隙間の外にもあるので、hop が 2 つの半分にまたがることはなく、付け替えだけで済む
+   （置き換えた後にもう 1 回走らせると、同じ ux の交差で持ち主の選び方が変わりうる）。
+   `computeCrossingMarks` が余分に走るのは候補の組が 1 つでもある canvas で、戻した組がある回だけである。
+   密な fixture で時間を測る（#2761 は 1 描画 1 回に減らした）。
+
 5. **置き換えた折れ線を読む処理。** 置き換えた後の `fromPoint` は source の port ではなく分け目になる。
    パスより後でこの折れ線を読むのは、`computeCrossingMarks`、ラベルの配置（`buildLabelInputs` /
    `resolveLabelPlacements` の線と anchor）、`renderEdge`（hit-line、`gappedStrokePath`、ラベル、矢印）である。
@@ -252,6 +260,8 @@ domain canvas では採らず、#2728 に渡す。
     - 両方向の組が無い `examples/` の SVG が byte-stable であること
     - 分け目が、他の edge との交差から hop の幅より離れ、角の上に無いこと。そういう点が無い組は 2 本で描くこと
     - 近い交差がまとまって広がった hop と、trunk の band を越える hop でも、分け目がその隙間の外にあること
+    - 2 本に戻した組の経路が、別の組の分け目の近くで交差するとき、その組の分け目が選び直されること
+    - 描いた hop の位置と幅が、最後の前処理の hop と一致し、持ち主だけが半分の edge に替わっていること
     - 組の 2 つのラベルが分け目の脇に乗らず、重ならないこと（fixture で数える）
     - 分け目をずらして短くなった半分のラベルで、保留されるラベルが今日より増えないこと（fixture で、canvas に描かれるラベルの数を今日と比べる）
     - `label-offset` を全体に書いた canvas でも組が 1 本で描かれること
