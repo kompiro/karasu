@@ -212,7 +212,11 @@ domain canvas では採らず、#2728 に渡す。
    直前に置く。`markParallelBundles` は `layoutInner` の中で走り、その結果は channel / column の予約と幅の
    探索に入るので、そこに置くと card が動きうる。探索の後に置けば card は動かない。multi-system の root では
    system ごとに組を探す（`markParallelBundles` が #2917 で system ごとになったのと同じ理由）。
-   分け目を決めるには他の edge の経路が要るので、組の判定は全 edge の経路が出揃ってから行う。
+   分け目を決めるには他の edge の経路と、hop ごとの最終的な幅が要る。hop の幅は `computeCrossingMarks` の中で
+   決まり、近い交差がまとまると広がり、trunk の band の分も足される。そこで、置き換える前の折れ線で
+   `computeCrossingMarks` を 1 回走らせ、その `halfWidth` を分け目の離れの基準に使う。共有の線を分けても線の
+   和は変わらないので、交差の位置と hop の幅は置き換えの前後で同じである。置き換えた後にもう 1 回走らせ、
+   hop の持ち主を半分の edge に付け替える。
 5. **置き換えた折れ線を読む処理。** 置き換えた後の `fromPoint` は source の port ではなく分け目になる。
    パスより後でこの折れ線を読むのは、`computeCrossingMarks`、ラベルの配置（`buildLabelInputs` /
    `resolveLabelPlacements` の線と anchor）、`renderEdge`（hit-line、`gappedStrokePath`、ラベル、矢印）である。
@@ -247,6 +251,7 @@ domain canvas では採らず、#2728 に渡す。
     - style の callback を渡さない `layout()` の出力が今日と同じであること
     - 両方向の組が無い `examples/` の SVG が byte-stable であること
     - 分け目が、他の edge との交差から hop の幅より離れ、角の上に無いこと。そういう点が無い組は 2 本で描くこと
+    - 近い交差がまとまって広がった hop と、trunk の band を越える hop でも、分け目がその隙間の外にあること
     - 組の 2 つのラベルが分け目の脇に乗らず、重ならないこと（fixture で数える）
     - 分け目をずらして短くなった半分のラベルで、保留されるラベルが今日より増えないこと（fixture で、canvas に描かれるラベルの数を今日と比べる）
     - `label-offset` を全体に書いた canvas でも組が 1 本で描かれること
@@ -264,7 +269,7 @@ domain canvas では採らず、#2728 に渡す。
 ### 影響範囲・マイグレーション
 
 - 既存ユーザーへの影響: 同じ種別・同じ style の両方向の組を持つ図では、組の 2 本が 1 本の線になる。`.krs` の解釈は変わらない。
-- ドキュメント更新: `docs/concepts.ja.md`（と英語版）の「集約」節に、両方向の組は両端に矢印のある 1 本の線で描かれることを 1 文足す。
+- ドキュメント更新: `docs/concepts.ja.md`（と英語版）の「集約」節に、両方向の組は両端に矢印のある 1 本の線で描かれることを 1 文足す。同じ PR で、その節の `> Related TPLs:` に TPL-3027 を足し、TPL-3027 に `## 派生元 spec` を置いて双方向に結ぶ（`.claude/rules/spec-audit.md`）。
 - テスト・examples への影響: `examples/` の最大 4 ファイル（6 組）の図が変わる（除外条件で減りうる）。snapshot の更新が要る。
 - Group-by の canvas: 別の band にある組は、片方が `groupBackward` になるので 2 本のまま残る。1 本になるのは同じ band の中の組だけで、trunk に入った組はそこからも外れる。仕様であって不具合ではない。
 

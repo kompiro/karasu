@@ -12,7 +12,6 @@ known_consumers:
   - crossing-marks
 discovered_from:
   - issue: "#3027"
-  - root_cause_file: "docs/concepts.ja.md"
   - root_cause_adr: "ADR-2958"
 related_to:
   - TPL-1352
@@ -41,6 +40,7 @@ scope:
 
 `docs/concepts.ja.md` は sync と async の区別を「視覚的装飾ではなく構造の意味論」とし、
 ADR-2958 は種別の違う edge を同じ束に入れない。この観点はそれを、まとめる変換一般に広げる。
+（`docs/concepts.ja.md` の該当節との双方向のリンクは、#3027 の実装 PR がその節を書き換えるときに張る。）
 
 ## 想定される失敗モード
 
