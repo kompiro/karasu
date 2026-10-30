@@ -2,10 +2,12 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// Fences the three places a gh-aw version is written down so they cannot drift
-// apart: `.github/aw/actions-lock.json`, the `uses:` pins inside each compiled
-// `.github/workflows/*.lock.yml`, and the `compiler_version` baked into that
-// file's `gh-aw-metadata`.
+// Fences the places a gh-aw version is written down so they cannot drift
+// apart: `.github/aw/actions-lock.json`, the pins inside each compiled
+// `.github/workflows/*.lock.yml` (the manifest comment's `@<sha> # vX`, and the
+// `uses:` lines, which `gh actions-lock` rewrites to `@vX` with the sha moved
+// into `.github/workflows/actions.lock`), and the `compiler_version` baked into
+// that file's `gh-aw-metadata`.
 //
 // The failure this exists for is not hypothetical. Dependabot reads a
 // `.lock.yml` as an ordinary workflow and bumps its `uses:` lines, which is
@@ -25,12 +27,20 @@ const WORKFLOW_LOCKFILE = join(WORKFLOW_DIR, "actions.lock");
 /** The `gh aw compile` pin whose version is also the compiler's own version. */
 const SETUP_REPO = "github/gh-aw-actions/setup";
 
-type LockEntry = { readonly repo: string; readonly version: string; readonly sha: string };
+type LockEntry = {
+  readonly repo: string;
+  readonly version: string;
+  readonly sha: string;
+};
 
 type LockFile = { readonly entries: Record<string, LockEntry> };
 
 /** A single `owner/repo@sha # version` pin found in a compiled workflow. */
-type Pin = { readonly workflow: string; readonly sha: string; readonly version: string };
+type Pin = {
+  readonly workflow: string;
+  readonly sha: string;
+  readonly version: string;
+};
 
 const lock: LockFile = JSON.parse(readFileSync(ACTIONS_LOCK, "utf8"));
 
@@ -56,9 +66,11 @@ const workflows = workflowFiles.map((name) => ({
 }));
 
 /**
- * Every pin of `repo` in the compiled workflows, from both shapes the compiler
- * emits: the `uses:` steps and the "Custom actions used:" manifest comment.
- * Both carry the sha with the human-readable version in a trailing comment, and
+ * Every `@<sha> # vX` pin of `repo` in the compiled workflows, from both shapes
+ * the compiler emits: the `uses:` steps and the "Custom actions used:" manifest
+ * comment. After `gh actions-lock` the `uses:` steps carry a bare tag instead,
+ * so only the manifest comment matches here; the tag form is checked through
+ * `workflowLockKeys` and `compiler_version` below. With both shapes present,
  * a partial rewrite that updates one shape and not the other is the drift this
  * file is looking for.
  */
@@ -79,10 +91,19 @@ function pinsOf(repo: string): Pin[] {
  * to `@vX` and moves the sha here, so an exact tag with an entry is as fixed
  * as a sha pin (#3412; the lasting arrangement for gh-aw is #3415).
  */
+const workflowLockText = readFileSync(WORKFLOW_LOCKFILE, "utf8");
+
 const workflowLockKeys = new Set(
-  [...readFileSync(WORKFLOW_LOCKFILE, "utf8").matchAll(/^ {4}'([^']+@[^']+)':$/gm)].map(
-    (match) => match[1],
-  ),
+  [...workflowLockText.matchAll(/^ {4}'([^']+@[^']+)':$/gm)].map((match) => match[1]),
+);
+
+/** The commit `actions.lock` records for each `owner/repo@ref` key. */
+const workflowLockCommits = new Map(
+  [
+    ...workflowLockText.matchAll(
+      /^ {4}'([^']+@[^']+)':\n(?: {8}.*\n)*? {8}commit: 'sha1-([0-9a-f]{40})'$/gm,
+    ),
+  ].map((match) => [match[1], match[2]]),
 );
 
 /** `owner/repo/path@ref` → `owner/repo@ref`, the shape `actions.lock` keys by. */
@@ -123,6 +144,25 @@ describe("gh-aw lock files", () => {
     // sha and version pair is in no entry, because nothing wrote one. The fix
     // is to regenerate, never to edit either side by hand.
     expect(unlocked).toEqual([]);
+  });
+
+  it("locks every gh-aw entry in actions.lock at the sha gh-aw resolved", () => {
+    // The runner executes the commit `actions.lock` records, not the manifest
+    // comment. A re-pointed tag accepted with `--accept-moved`, or a hand edit,
+    // would run a setup gh-aw never compiled against while every other check
+    // stays green.
+    // Guards the commit regex: a format change would otherwise leave keys
+    // without a commit and make the comparison below skip them silently.
+    expect(workflowLockCommits.size).toBe(workflowLockKeys.size);
+    const mismatches = lockEntries.flatMap((entry) => {
+      const key = lockKeyOf(`${entry.repo}@${entry.version}`);
+      if (!workflowLockKeys.has(key)) return [];
+      const locked = workflowLockCommits.get(key) ?? "(no commit)";
+      return locked === entry.sha
+        ? []
+        : [`${key}: actions.lock=${locked}, actions-lock.json=${entry.sha}`];
+    });
+    expect(mismatches).toEqual([]);
   });
 
   it("pins every action to a commit sha or a tag locked in actions.lock", () => {
