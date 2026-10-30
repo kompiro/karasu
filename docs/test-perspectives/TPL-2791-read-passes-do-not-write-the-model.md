@@ -44,7 +44,7 @@ scope:
 
 - **呼んだ順で描画が変わる。** 解析パスが edge にフラグを立てると、そのパスより後に描いた図だけがフラグを反映する。同じモデル・同じ builder で出力が変わり、診断も出ない。
   **実例**（#2791）: `analyze()` が循環に入る edge に `edge.cyclic = true` を立てていた（ADR-287）。`buildDrillDownSvg(file)` は analyze の前に呼ぶと循環を普通の edge で、後に呼ぶと赤い循環 edge で描いた。
-- **entry point によって描き分けが生まれる。** 「描く前に解析する」entry point と「解析しない」entry point で、同じモデルの描き方が揃わない。#2791 では app のライブ表示（`compile`）が循環を赤く描き、app の SVG 書き出し（`buildDrillDownSvg`）は普通の edge で描いていた（[[TPL-219]]）。
+- **entry point によって描き分けが生まれる。** 「描く前に解析する」entry point と「解析しない」entry point で、同じモデルの描き方が揃わない。#2791 では app のライブ表示（`compileProject`）が循環を赤く描き、All-layers パネル（`buildAllLayersSvg`）と drill-down の書き出し（`buildDrillDownSvg`）は普通の edge で描いていた（[[TPL-219]]）。
 - **モデルの使い回しが壊れる。** parse 結果を memoize する、bundle の全 level で抽出コンテキストを共有する（#2759）といった最適化は「使っている間モデルは変わらない」ことを前提にしている。書き込むパスが 1 つあると、この前提が黙って崩れ、キャッシュが古い値を返すのと同じ形の不具合になる（[[TPL-1032]]）。
 - **今は表に出ない。** 毎回 parse し直す entry point しか無いあいだは、書き込みは観測されない。使い回しを入れた最初の PR で、原因から遠い場所に描画の不具合として現れる。
 
@@ -57,8 +57,8 @@ scope:
 
 ## 既知の対処パターン
 
-- **派生事実はモデル構築時に求める。** `KrsEdge.cyclic` は #2791 で、`analyze()` の副作用から Parser と ImportResolver の後処理に移した。読む側（`edge[cyclic]` の style、layout、routing、draw.io）は変えずに済んだ。
-- **求める処理は純粋関数にして、警告を出す側と構築する側で共有する。** `findCyclicDependencies(file)` は循環に入る edge の集合と警告を返し、モデルには書き込まない。構築側はその集合から edge にフラグを立て、`analyze()` は警告だけを使う。
+- **派生事実はモデル構築時に求める。** 先例は `boundaryMembership` と `nodePathIndex`（Parser の後処理で求め、ImportResolver がマージ後のモデルで求め直す）。#2791 は `KrsEdge.cyclic` を `analyze()` の副作用からこの形に移す計画で、読む側（`edge[cyclic]` の style、layout、routing、draw.io）は変えない（Design Doc `docs/design/cyclic-flag-at-model-construction.md`、検討中）。
+- **求める処理は純粋関数にして、警告を出す側と構築する側で共有する。** #2791 の計画では、循環に入る edge の集合と警告を返す純粋関数を 1 つ置き、構築側はその集合から edge にフラグを立て、`analyze()` は警告だけを使う。
 
 ## 関連テスト
 

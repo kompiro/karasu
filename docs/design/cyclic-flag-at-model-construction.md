@@ -22,31 +22,33 @@ const after = buildDrillDownSvg(file).svg;     // 2289 bytes
 
 今は表に出ていない。どの entry point も「毎回 parse し直す」か「描く前に analyze する」かのどちらかだからである。ただし #2757 の perf 作業は parse 済みモデルを使い回す方向に進んでいて、#2759 は bundle の全 level で抽出コンテキストを共有し、その安全性を「使っている間はモデルが変わらない」ことに置いている。読むだけのはずのパスがモデルに書き込むと、この前提が成り立たない。
 
-使い回しをしていない今でも、entry point によって循環の描き方が揃っていない（下表）。app のライブ表示では赤い循環 edge が、app の SVG 書き出しでは普通の edge になる。
+使い回しをしていない今でも、entry point によって循環の描き方が揃っていない（下表）。app のライブ表示と all-views の書き出しでは赤い循環 edge になり、All-layers パネル・ライブの entity view・drill-down の書き出しでは普通の edge になる。
 
 ## 現状（インベントリ）
 
-`cyclic` を立てる場所は `detectCyclicDependencies`（`resolver/warnings.ts`）の 1 か所だけ。読む側は 3 層に分かれる。
+`cyclic` を立てる場所は `detectCyclicDependencies`（`resolver/warnings.ts`）の 1 か所だけ。AST（slice）の edge から直接読むのは style 解決と layout の 2 か所で、それより後ろは layout が作った `LayoutEdge.cyclic` を読む。
 
-| 層 | 読む場所 | 何を読むか |
-| --- | --- | --- |
-| style 解決 | `style-resolver.ts` `edgeSelectorMatches` | `edge.cyclic` を仮想タグ `cyclic` として `edge[cyclic]` に当てる |
-| layout | `layout-edges.ts` | slice の edge から `LayoutEdge.cyclic` に写す |
-| routing ほか | `edge-routing-*.ts`、`port-frame.ts`、`crossing-marks.ts`、`label-placement.ts`、`layout.ts` | `LayoutEdge.cyclic`（layout が作った派生物。AST ではない） |
-| draw.io | `drawio-exporter.ts` | slice の edge の `cyclic` |
+| 読む場所 | 何を読むか |
+| --- | --- |
+| `style-resolver.ts` `edgeSelectorMatches` | slice の `edge.cyclic` を仮想タグ `cyclic` として `edge[cyclic]` に当てる |
+| `layout-edges.ts` | slice の `edge.cyclic` を `LayoutEdge.cyclic` に写す |
+| `edge-routing.ts`（`krs-edge--cyclic` class）、`edge-routing-*.ts`、`port-frame.ts`、`crossing-marks.ts`、`label-placement.ts`、`layout.ts` | `LayoutEdge.cyclic`（layout が作った派生物。AST ではない） |
+| `drawio-exporter.ts` | `page.layout.edges` の `LayoutEdge.cyclic` |
 
-slice の edge は AST の edge そのものか、`{ ...edge, from, to }` で作ったコピー（implicit edge・集約 edge・collapse の stub・projected edge など、`view-extract.ts` だけで 7 か所）である。コピーは `cyclic` を引き継ぐ。
+slice の edge は AST の edge そのものか、`{ ...edge, from, to }` で作ったコピーである。コピーは `view-extract.ts` に 8 か所（implicit edge・集約 edge・projected edge・entity の ghost edge など）、renderer 側に collapse の stub が 2 か所（`group-collapse.ts`・`category-collapse.ts`）あり、どれも `cyclic` を引き継ぐ。集約した implicit edge は、束ねた domain edge のうち 1 本の `cyclic` だけを引き継ぐ（今の挙動。本 Design Doc では変えない）。
 
 entry point ごとの現状（「循環が赤く描かれるか」）:
 
 | entry point | 描く前に analyze するか | 循環の描画 |
 | --- | --- | --- |
 | `compile` / `compileProject`（app のライブ表示、CLI `render --view`） | する（`collectModelWarnings` が先） | 赤 |
-| `buildAllViewsSvg` / `buildAllViewsSvgProject`（CLI `render`、nest） | する（関数の先頭） | 赤 |
+| `buildAllViewsSvg` / `buildAllViewsSvgProject`（CLI `render`、nest、app の all-views 書き出しと share） | する（関数の先頭） | 赤 |
 | `buildDrawioProject` | する（warnings を先に集める） | 赤 |
-| `buildDrillDownSvg` / `buildAllLayersSvg` / `renderEntityView`（app の SVG 書き出し） | しない | 普通の edge |
+| `buildDrillDownSvg`（app の drill-down 書き出し）/ `buildAllLayersSvg`（app の All-layers パネル）/ `renderEntityView`（app のライブ entity view） | しない | 普通の edge |
 | `buildDrawio(krsFile)` | しない | 普通の edge |
 | `compile*Diff` / `buildAllViewsSvgDiffProject` | 描いた後に after 側だけ | 普通の edge |
+
+diff は before と after の slice を `diffEdgeArray`（`diff/view-diff.ts`）で 1 つにまとめる。removed の edge は before 側の edge オブジェクトがそのまま入る。
 
 実測（2026-10-30、main `c17b473c`）:
 
@@ -72,17 +74,18 @@ entry point ごとの現状（「循環が赤く描かれるか」）:
 - `Parser.parse` の後処理（`buildBoundaryMembership` などを呼んでいる箇所）で集合を求め、該当 edge に `cyclic = true` を立てる。自分が作っている最中の AST に書くので、渡されたモデルを書き換えることにはならない。
 - `ImportResolver.resolve` は、マージ後のモデルで全 edge の `cyclic` を一度落としてから同じ関数で立て直す。ファイルをまたぐ循環もここで立つ（`boundaryMembership` の再構築と同じ位置）。
 - `analyze()` は同じ関数を呼んで警告だけを返す。モデルには書き込まない。
+- diff は cyclic の描き方を使わない。`diffEdgeArray` が slice に入れる edge を `cyclic` を外したコピーにする（モデルには書き込まない）。理由は 2 つある。removed の edge が before 側の判定を持ち込むのに、diff の警告は after 側しか出さないので、図と警告が食い違う。そして builtin の `edge[cyclic]` の色 `#EF4444` は diff の removed の線の色 `#ef4444` と同じで、unchanged の循環 edge が removed に見える。diff は「何が変わったか」を描く面なので、変化の色を優先する。今の diff は循環を描いていないので、出力は変わらない。
 
 **メリット**
 
 - 渡されたモデルに書き込むパスが無くなる。`KrsFile` は parse（または resolve）が返した時点で確定し、どの builder・どの順で呼んでも同じ描画になる。
-- 読む側（style・layout・draw.io・routing）は一切変わらない。ADR-287 が `edge[tag]` の仕組みに載せた利点（render のシグネチャ不変、利用者が `.krs.style` で `edge[cyclic]` を上書きできる）をそのまま保つ。
-- entry point による描き分けが無くなる。app の SVG 書き出しも diff も、ライブ表示と同じく循環を赤く描く（TPL-219）。
+- 読む側（style・layout・draw.io・routing）は変わらない。ADR-287 が `edge[tag]` の仕組みに載せた利点（render のシグネチャ不変、利用者が `.krs.style` で `edge[cyclic]` を上書きできる）をそのまま保つ。
+- 単一ファイルのモデルについては、entry point による描き分けが無くなる。All-layers パネル・ライブの entity view・drill-down の書き出しも、ライブ表示と同じく循環を赤く描く（TPL-219）。ファイルをまたぐ循環は、source 文字列を 1 ファイル分だけ parse する builder（`buildDrillDownSvg` などの公開版）からは見えないので、`compileProject` との差が残る。これは今もある差で、本 Design Doc では扱わない。
 
 **デメリット**
 
 - 今 analyze しない entry point の出力が、**循環を含むモデルに限って**変わる（普通の edge → 赤い循環 edge）。Issue の受け入れ条件 2「今のすべての entry point でバイト同一」を文字どおりには満たさない（後述「受け入れ条件の読み替え」）。
-- 循環の DFS が parse ごとに 1 回増える（analyze 側でも警告のために 1 回回す）。edge 数に線形で、per-keystroke の parse でも無視できる大きさと見込む。実装 PR で計測する。
+- 循環の DFS を回す回数が増える。単一ファイルでは parse と analyze で 2 回、project mode ではファイルごとの parse・マージ後・analyze で回る。今の DFS は edge 数に線形ではない。後退辺ごとに循環の各区間で `syncEdges.filter` を回し（循環の長さ × edge 数）、DFS の各フレームで path を複製する。実装 PR では、循環を多く含むモデルを入れて parse の時間を main と比べる。
 
 ### 案2: 循環 edge の集合を render の引数で渡す（Issue の提案）
 
@@ -113,8 +116,8 @@ renderer が描く level の edge 集合で DFS する。
 | 渡されたモデルに書き込むか | 書き込まない | 書き込まない | 書き込まない |
 | 読む側の変更 | なし | style・layout・draw.io に配線 | renderer 内に DFS |
 | 今 analyze する entry point の出力 | 不変 | 不変 | 変わりうる |
-| 今 analyze しない entry point の出力 | 循環を含むモデルだけ赤くなる | 不変 | 変わる |
-| entry point 間の一貫性 | 揃う | 描き分けが残る | 揃うが警告と食い違う |
+| 今 analyze しない entry point の出力 | 循環を含むモデルだけ赤くなる（diff は不変） | 不変 | 変わる |
+| entry point 間の一貫性 | 単一ファイルでは揃う | 描き分けが残る | 揃うが警告と食い違う |
 | ファイルをまたぐ循環 | merge 後に再導出（TPL-2221） | analyze が merge 後に走る限り可 | slice 次第 |
 
 ## 現時点の方針
@@ -125,30 +128,34 @@ renderer が描く level の edge 集合で DFS する。
 
 Issue の受け入れ条件 2 は「循環 edge の描画は、今のすべての entry point で今と同じ。examples と Dify でバイト同一」である。案1 では次のように読み替える。
 
-- **今 analyze してから描く entry point**（`compile`・`compileProject`・`buildAllViewsSvg*`・`buildDrawioProject`）: examples 全件と Dify でバイト同一。
-- **今 analyze しない entry point**（`buildDrillDownSvg`・`buildAllLayersSvg`・`renderEntityView`・`buildDrawio`・diff 系）: examples 全件でバイト同一（循環が 0 件のため）。循環を含むモデル（Dify）では、循環 edge が `compile` と同じ描き方に変わる。これは描き分けの解消であり、changeset（core と `karasu` の patch）で利用者に知らせる。
+- **今 analyze してから描く entry point**（`compile`・`compileProject`・`buildAllViewsSvg*`・`buildDrawioProject`）と **diff 系**: examples 全件と Dify でバイト同一。
+- **今 analyze しない、diff 以外の entry point**（`buildDrillDownSvg`・`buildAllLayersSvg`・`renderEntityView`・`buildDrawio`）: examples 全件でバイト同一（循環が 0 件のため）。循環を含むモデル（Dify）では、循環 edge が `compile` と同じ描き方に変わる。これは描き分けの解消であり、changeset（core と `karasu` の patch）で利用者に知らせる。
 
 ### 実装の指針
 
-1. `resolver/warnings.ts` の `detectCyclicDependencies` を純粋関数 `findCyclicDependencies(file): { cyclicEdges: Set<KrsEdge>; warnings: Warning[] }` に書き換え、新しいモジュール（`resolver/cyclic-dependencies.ts`）に移す。走査範囲（`file.systems` とその子孫、entity は除外）と DFS は今のまま。
+1. `resolver/warnings.ts` の `detectCyclicDependencies` を純粋関数 `findCyclicDependencies(file): { cyclicEdges: Set<KrsEdge>; warnings: Warning[] }` に書き換え、`parser/` の下の新しいモジュールに移す。Parser と ImportResolver が呼ぶので、置き場所は `parser/` にする（今の依存は `resolver/ → parser/` の一方向だけで、`parser/` から `resolver/` を import する箇所は無い。TPL-2221 の対処パターンも共有する導出を `parser/` に置いている）。`resolver/warnings.ts` はそれを import する。走査範囲（`file.systems` とその子孫、entity は除外）と DFS は今のまま。
 2. 同じモジュールに `markCyclicEdges(file)` を置く。全スコープの edge の `cyclic` を落としてから、集合に入る edge に立てる。呼び出し元はモデルを作る 2 か所だけ:
    - `Parser.parse` の後処理（`buildBoundaryMembership` の隣）
-   - `ImportResolver.resolve` のマージ後（`buildBoundaryMembership` の再構築の隣）
+   - `ImportResolver.resolve` のマージ後（`buildBoundaryMembership` の再構築の隣）。マージ後のモデルの edge はファイルごとの parse 結果の edge オブジェクトそのものなので、落としてから立て直せば、ファイルごとに立てたフラグが古いまま残ることはない。
 3. `analyze()` は `findCyclicDependencies(file).warnings` を返すだけにする。
-4. テスト:
+4. `diffEdgeArray` は、slice に入れる edge を `cyclic` を外したコピーにする（上の「diff は cyclic の描き方を使わない」）。
+5. テスト:
    - 受け入れ条件 1: 同じ `KrsFile` を `buildDrillDownSvg` で 2 回描き、間に `analyze()` を挟んでも同じ SVG（循環を含むモデル）。
    - 受け入れ条件 3（機械検査）: examples 全件と循環を含む fixture で、parse 結果の `structuredClone` を取り、`analyze` / `collectModelWarnings` / 各 builder を通した後も deep-equal であること。新しいパスを足したときにこの表へ足す形にする（TPL-2791）。
-   - 受け入れ条件 2: 今 analyze する entry point について、循環を含む fixture で `compile` の出力が変わらないこと（既存の cyclic のテストが通ること）。加えて `buildDrillDownSvg` が `compile` と同じく `krs-edge--cyclic` を出すこと。examples と Dify のバイト同一は実装 PR で main との比較を測って本文に記す。
+   - 受け入れ条件 2: 今 analyze する entry point と diff について、examples 全件と Dify で main とのバイト同一を測って実装 PR の本文に記す。テストでは、循環を含む fixture で `buildDrillDownSvg` が `compile` と同じく `krs-edge--cyclic` を出すこと、diff の SVG に `krs-edge--cyclic` が出ないことを固定する。
    - TPL-2221: `system S` を 2 ファイルで reopen して循環を分けたとき、`compileProject` で両 edge が `cyclic` になり、警告が 1 件であること。単一ファイルの `compile` でも 1 件であること。
-5. AT は追加しない。確かめる項目はすべて自動テストで固定できる。
-6. ADR 昇格: 実装完了後、`docs/adr/2791-cyclic-flag-at-model-construction.md` として昇格する。ADR-287 の「`analyze()` が `resolveStyles()` より前に呼ばれることが保証されており」という理由は成り立たなくなるので、新 ADR は ADR-287 のフラグを立てる場所の決定を置き換える（`.claude/rules/adr.md` の supersede の書き方に従う）。
+   - 旧い契約を固定しているテストを書き換える。`resolver/warnings.test.ts` と `renderer/svg-renderer.test.ts` には `Parser.parse` → `analyze` → `edge.cyclic` を確かめるテストがあり、変更後は parse がフラグを立てるので何も確かめずに通ってしまう。`Parser.parse` と `compileProject` がフラグを立てること、`analyze` がフラグを変えないことを確かめる形にする。
+   - analyze を通さずに相互の sync edge を parse している renderer の fixture（`renderer/layout.test.ts` など）は、変更後は edge が `cyclic` になり routing から外れる。期待値が変わるものは、循環を確かめたいテストかどうかを見て、fixture を async にするか期待値を直す。
+6. ドキュメント: `docs/spec/tags-annotations.md` は `[cyclic]` を「resolver が描画時に付与する」と書いている（`.ja.md` は「描画時に付与」）。`.krs` に現れない仮想タグであることは変わらないが、付与する時点は parse / resolve に移るので、この 2 か所を直す。spec を触るので実装 PR は High になる。reverse-architecture スキルの同梱コピーも `lint:skill-reference-bundle-sync --write` で揃える。
+7. AT は追加しない。確かめる項目はすべて自動テストで固定できる。
+8. ADR 昇格: 実装完了後、`docs/adr/2791-cyclic-flag-at-model-construction.md` として昇格し、ADR-287 を supersede する。ADR-287 の「`analyze()` は `resolveStyles()` より前に呼ばれることが保証されており」という理由が成り立たなくなるので、`refines` で ADR-287 を有効のまま残すことはしない。ADR-287 の検出規則（sync のみ、スコープごとの DFS、自己参照、entity の関係 edge は除外、スコープをまたぐ循環は対象外）は新 ADR の決定に書き直して引き継ぐ。
 
 ### 影響範囲・マイグレーション
 
-- 既存ユーザーへの影響: 循環を含むモデルで、app の SVG 書き出し・diff・`buildDrawio` の循環 edge が、ライブ表示や `karasu render` と同じ赤い描き方になる。それ以外は変わらない。
+- 既存ユーザーへの影響: 循環を含むモデルで、app の All-layers パネル・ライブの entity view・drill-down の書き出し・`buildDrawio` の循環 edge が、ライブ表示や `karasu render` と同じ赤い描き方になる。diff を含め、それ以外は変わらない。
 - 公開 API: `KrsEdge.cyclic` は残る。立つ時点が「analyze の後」から「parse / resolve の直後」に早まるだけで、型は変わらない。
-- ドキュメント更新: `docs/spec/tags-annotations*.md` の `[cyclic]` は「描画時に付与」のまま正しい（`.krs` には現れない仮想タグ）。変更なし。
-- テスト・examples への影響: examples に循環は無いので、snapshot は変わらない見込み。
+- ドキュメント更新: `docs/spec/tags-annotations.md` / `.ja.md` の `[cyclic]` を付与する時点の記述（実装の指針 6）。
+- テスト・examples への影響: examples に循環は無いので、examples の出力は変わらない見込み。旧い契約を固定しているテストと、相互の sync edge を持つ renderer の fixture は書き換える（実装の指針 5）。
 
 ## 未解決の問い / 決めないこと
 
