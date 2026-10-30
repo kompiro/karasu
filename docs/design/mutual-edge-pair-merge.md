@@ -213,7 +213,7 @@ domain canvas では採らず、#2728 に渡す。
    探索に入るので、そこに置くと card が動きうる。探索の後に置けば card は動かない。multi-system の root では
    system ごとに組を探す（`markParallelBundles` が #2917 で system ごとになったのと同じ理由）。
    分け目を決めるには他の edge の経路と、hop ごとの最終的な幅が要る。hop の幅は `computeCrossingMarks` の中で
-   決まり、近い交差がまとまると広がり、trunk の band の分も足される。そこで、置き換える前の折れ線で
+   決まり、近い交差がまとまると広がり、trunk の band の分も足される。そこで、捨てる経路を除いた折れ線（共有の線は分ける前の 1 本のまま）で
    `computeCrossingMarks` を 1 回走らせ、その `halfWidth` を分け目の離れの基準に使う。共有の線を分けても線の
    和は変わらないので、交差の位置と hop の幅は置き換えの前後で同じである。置き換えた後にもう 1 回走らせ、
    hop の持ち主を半分の edge に付け替える。
