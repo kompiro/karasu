@@ -24,17 +24,17 @@ ADR の PR は、`pnpm adr:regenerate` が書く `docs/adr/effective.md`・`docs
 
 ## 現状（インベントリ）
 
-| 観点               | 現状                                                                                                                                                                                                                                                                            |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 生成物             | `effective.md`（484 行）、`graph.md`（1162 行）、`graph/<topic>.md`（topic ごと）。出力先は `adr.config.json` の `paths.outputs`                                                                                                                                                |
-| 読み手             | `CLAUDE.md` が「有効な決定一覧」として `effective.md` を第一参照に挙げる（ADR-788）。GitHub のファイル表示で人も読む。docs-site は ADR を載せていない                                                                                                                           |
-| PR 側の検査        | `adr-validate.yml`（required check `Validate`、paths は `docs/adr/**` など。それ以外の PR には `adr-validate-skip.yml` が no-op の `Validate` を返す）が `adr regenerate --check` を実行する。pre-push の `adr-regenerate-check`（glob `docs/adr/**`, `adr.config.json`）も同じ |
-| main 側の検査      | 同じ `adr-validate.yml` が `main` への push でも `--check` を実行する                                                                                                                                                                                                           |
-| 抜けている検査     | `@kompiro/adr-tools` の版を上げる PR（`package.json` / lockfile だけの差分）では `adr-validate.yml` が走らない。生成器の出力が変わっても、次の ADR PR まで気づかない（TPL-1480 の形）                                                                                           |
-| main の保護        | ruleset `protect default branch`。削除・non-fast-forward・作成の禁止、PR 必須（squash のみ）、required check（`Check`・`Validate`・`Reference docs`・`Playwright`）。bypass actor は 0 件                                                                                       |
-| Actions の PR 作成 | repo 設定「Actions に PR の作成・承認を許可」は OFF（#1370 で OFF のまま進めると決めた。ADR-1370）。`GITHUB_TOKEN` で作った PR では required check を出す workflow も起動しない                                                                                                 |
-| 分類器             | `scripts/review/tier.ts` は生成物のパス（`ADR_GENERATED_GLOBS`）を Low に数える。生成物だけの PR は Low になる                                                                                                                                                                  |
-| Claude の routine  | Claude Code の scheduled agent（routine）を、この repo の作業の予約にすでに使っている（例: #3399 の 2 本目の PR）。routine はユーザーの GitHub の名義で PR を作る                                                                                                               |
+| 観点               | 現状                                                                                                                                                                                                                                                                                                        |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 生成物             | `effective.md`（484 行）、`graph.md`（1162 行）、`graph/<topic>.md`（topic ごと）。出力先は `adr.config.json` の `paths.outputs`                                                                                                                                                                            |
+| 読み手             | `CLAUDE.md` が「有効な決定一覧」として `effective.md` を第一参照に挙げる（ADR-788）。GitHub のファイル表示で人も読む。docs-site は ADR を載せていない                                                                                                                                                       |
+| PR 側の検査        | `adr-validate.yml`（required check `Validate`、paths は `docs/adr/**` など。それ以外の PR には `adr-validate-skip.yml` が no-op の `Validate` を返す）が `adr regenerate --check` を実行する。pre-push の `adr-regenerate-check`（glob `docs/adr/**`, `adr.config.json`）も同じ                             |
+| main 側の検査      | 同じ `adr-validate.yml` が `main` への push でも `--check` を実行する                                                                                                                                                                                                                                       |
+| 抜けている検査     | `@kompiro/adr-tools` の版を上げる PR（`package.json` / lockfile だけの差分）では `adr-validate.yml` が走らない。生成器の出力が変わっても、次の ADR PR まで気づかない（TPL-1480 の形）                                                                                                                       |
+| main の保護        | ruleset `protect default branch`。削除・non-fast-forward・作成の禁止、PR 必須（squash のみ）、required check（`Check`・`Validate`・`Reference docs`・`Playwright`・`verify`）。bypass actor は 0 件。docs/process/review.md は Review tier も required と書くが、ruleset の required check には入っていない |
+| Actions の PR 作成 | repo 設定「Actions に PR の作成・承認を許可」は OFF（#1370 で OFF のまま進めると決めた。ADR-1370）。`GITHUB_TOKEN` で作った PR では required check を出す workflow も起動しない                                                                                                                             |
+| 分類器             | `scripts/review/tier.ts` は生成物のパス（`ADR_GENERATED_GLOBS`）を Low に数える。生成物だけの PR は Low になる                                                                                                                                                                                              |
+| Claude の routine  | Claude Code の scheduled agent（routine）を、この repo の作業の予約にすでに使っている（例: #3399 の 2 本目の PR）。routine はユーザーの GitHub の名義で PR を作る                                                                                                                                           |
 
 ## 制約・前提
 
@@ -96,7 +96,7 @@ routine の仕事は repo のスクリプト 1 本を実行して結果を報告
 - 無関係な ADR PR 同士は衝突しなくなる。再生成の PR も生成物しか触らず、ほかの PR は生成物を触れないので、衝突しない。
 - ruleset・repo の Actions 設定・secret のどれも変えない。新しい鍵が無い。
 - 生成物は今までどおり repo にあり、GitHub でも clone 直後でも読める。
-- 生成器の版上げも翌日には反映される（今は抜けている TPL-1480 の穴が閉じる）。
+- 生成器の版上げも翌日の再生成の PR で `main` に反映される（今は抜けている TPL-1480 の穴が閉じる）。
 - routine が止まっても何も壊れない。生成物が古くなるだけで、同じスクリプトを手元で実行すれば同じ PR ができる。
 
 **デメリット**
@@ -104,6 +104,7 @@ routine の仕事は repo のスクリプト 1 本を実行して結果を報告
 - `main` の生成物は最大 1 日古い。急ぐときは routine を手で起動するか、スクリプトを手元で実行する。
 - 生成物の更新が Claude の routine という repo の外の仕組みに依存する。止まったことに気づく仕組みが別に要る（下の「鮮度の見張り」）。
 - 再生成の PR が 1 日最大 1 本増える（ADR をマージしなかった日は 0 本）。
+- 人ではない動き手が増える。routine はユーザーの GitHub の名義で、人が見ていないときに PR を作り auto-merge を有効にする。手元の Claude のセッションが今できることと同じで新しい権限ではないが、無人で毎日動く。auto-merge で入るものは `Validate` の検査で生成物だけに限る。
 
 ### 却下: merge queue
 
@@ -120,7 +121,7 @@ routine の仕事は repo のスクリプト 1 本を実行して結果を報告
 | 無関係な PR 同士の衝突   | 無くなる                                                  | 残る（手元では自動で解ける）               | 無くなる                                              | 無くなる                                            |
 | Low の auto-merge の停止 | 無くなる                                                  | 残る                                       | 無くなる                                              | 無くなる                                            |
 | 生成物の読みやすさ       | 今と同じ                                                  | 今と同じ                                   | GitHub から消える、手元は古くなりうる                 | 今と同じ                                            |
-| 新しい鍵・例外           | deploy key と ruleset の bypass                           | なし                                       | なし                                                  | なし                                                |
+| 新しい鍵・例外           | deploy key と ruleset の bypass                           | なし                                       | なし                                                  | なし（routine がユーザーの名義で動く）              |
 | `main` の生成物の古さ    | 1〜2 分                                                   | なし                                       | 該当しない                                            | 最大 1 日                                           |
 | 生成器の版上げの反映     | `main` で自動                                             | 次の ADR PR まで抜ける                     | 手元で自動                                            | 翌日の PR で自動                                    |
 | 変える場所               | workflow 1 本、ruleset、各 workflow の paths、PR 側の検査 | `.gitattributes`、フック、clone ごとの登録 | `.gitignore`、フック、docs-site、`CLAUDE.md`、ADR-788 | スクリプト 1 本、routine、PR 側の検査、鮮度の見張り |
@@ -129,43 +130,50 @@ routine の仕事は repo のスクリプト 1 本を実行して結果を報告
 
 **案4 を採用する。** 衝突と auto-merge の停止を両方無くし、`effective.md` を repo に置いたまま保てるのは案1 と案4 で、案4 は鍵も ruleset の例外も足さない。代償は `main` の生成物が最大 1 日古いことだが、`effective.md` は有効な決定の一覧であって、その日にマージした ADR は ADR 本体を読めば分かる。案1 が要した柵（鍵の隔離・artifact の検査・ruleset の分割）は、どれも鍵があるから要ったもので、案4 には要らない。
 
-auto-merge の安全は routine の prompt ではなく、required check の `Validate` が差分で保証する（TPL-2658）。`Validate` は次の 2 種類の PR だけを通す。
+auto-merge の安全は routine の prompt ではなく、required check の `Validate` が差分で保証する（TPL-2658、TPL-3286）。生成物のパスの集合 G を、PR の base と head それぞれの `adr.config.json` の `paths.outputs` の和集合とする。`Validate` は次の 2 種類の PR だけを通す。
 
-- 生成物を 1 つも変えない PR（ふつうの PR）
-- 生成物だけを変え、その中身が PR の head で生成し直した結果と一致する PR（再生成の PR）
+- **ふつうの PR**: G のパスを 1 つも変えない。例外は、`paths.outputs` から外れた古い出力（base にだけある出力先）の削除だけ。
+- **再生成の PR**: G の外を 1 つも変えず、base と head の `paths.outputs` が同じで、head の生成物の木（追加・削除・変更をすべて含むファイルの集合と中身）が head で生成し直した結果とちょうど一致する。
 
-両方を混ぜた PR は落ちる。これで、誰が作った PR でも、生成物以外の変更が「生成物の更新」として auto-merge に紛れ込むことはない。
+それ以外（両方を混ぜた PR、生成物を古い中身や手で書き換えた中身にした PR、生成物の出力先に余分なファイルを足した PR）は落ちる。これで、誰が作った PR でも、生成物以外の変更が「生成物の更新」として auto-merge に紛れ込むことはない。
+
+差分は `git diff --no-renames --name-status base...head` で取る。rename 検出を切らないと、ADR を `graph/` の下へ移す変更が移動先（生成物のパス）だけに見える。検査は PR の merge ref ではなく `head.sha` を checkout して行う。merge ref で生成し直すと、PR の後に `main` に入った ADR の分だけ一致しなくなる。
+
+再生成の PR が古い `main` から作られ、その後に別の ADR がマージされた場合、マージした再生成の PR は時刻 T の生成結果を `main` に置く。生成物を触るのは再生成の PR だけなので何も巻き戻らず、`main` は翌日の再生成まで古いままになる。
 
 ### 実装の指針
 
 1. **再生成の PR を作るスクリプトを足す**（`pnpm adr:regenerate-pr`）。routine も人も同じものを実行する。
-   - `origin/main` を fetch し、そこから固定のブランチ `chore/adr-regenerate` を作り直して `adr regenerate` を実行する。差分が無ければ何もせず終える（開いている再生成の PR があれば閉じる）。
-   - 差分があれば生成物だけを commit し、そのブランチに push する（このブランチは生成物しか持たないので、作り直して上書きしてよい）。
-   - 開いている再生成の PR があれば、それを更新する。無ければ `chore(adr): regenerate the ADR index` の PR を `risk: low` で作り、ローカルレビューの記録を `--waived`（生成物だけで、正しさは `Validate` の再生成で確かめる）で書き、ready にして auto-merge を有効にする。
+   - `origin/main` を fetch し、そこから固定のブランチ `chore/adr-regenerate` を作り直して `adr regenerate` を実行する。出力先のディレクトリ（`graph/`）は生成結果で置き換え、生成されなくなったファイルを消す。
+   - 差分が無ければ、開いている再生成の PR を閉じてブランチを消し、終える。
+   - 差分があれば生成物だけを commit する。開いている再生成の PR があれば、`gh pr merge --disable-auto` で auto-merge を外してからブランチを上書きで push し、auto-merge を戻す（`.claude/rules/adr.md` の「push の前に auto-merge を解く」と同じ順）。無ければ push して `chore(adr): regenerate the ADR index` の PR を `risk: low` で作り、ready にして `gh pr merge --auto --squash --delete-branch` を有効にする。
    - どの段階の失敗でも非 0 で終わる（TPL-2786）。
-2. **routine を登録する。** 1 日 1 回、`pnpm adr:regenerate-pr` を実行し、作った・更新した・何もしなかった、のどれかと PR の URL を報告する。prompt はスクリプトの実行と報告だけを書き、ほかの変更をしないよう求める（ただし安全はこの文言ではなく 3 の検査で守る）。
-3. **`Validate` の検査を入れ替える**（`adr-validate.yml`）。
-   - `adr regenerate --check` を外し、上の 2 種類だけを通す検査に替える。差分は merge-base との差分（`base...head`）で見る。生成物のパスは PR が持つ `adr.config.json` の `paths.outputs` から導く。
-   - どの PR でも `adr regenerate` を出力を捨てて実行し、生成器が失敗しないことを確かめる（生成器を壊す PR がマージの後まで分からない状態を作らない）。
+2. **Review tier に、生成物だけの PR の扱いを足す**（`scripts/review/**` を変えるので、この PR は High）。今の Review tier は Low の PR にローカルレビューの記録と CodeRabbit CLI の実行を求め、`Waived:` の記録を Low では落とす。生成物だけの PR は、上の「再生成の PR」の条件を `Validate` が確かめるので、記録を求めない。判定は `Validate` と同じ G と同じ差分の取り方で行い、2 つの検査がずれないようにする。
+3. **routine を登録する。** 1 日 1 回、`pnpm adr:regenerate-pr` を実行し、作った・更新した・閉じた・何もしなかった、のどれかと PR の URL を報告する。prompt はスクリプトの実行と報告だけを書き、ほかの変更をしないよう求める（ただし安全はこの文言ではなく `Validate` で守る）。
+4. **`Validate` の検査を入れ替える**（`adr-validate.yml`）。
+   - `adr regenerate --check` を外し、上の 2 種類だけを通す検査（`scripts/` の新しいスクリプト）に替える。
+   - 生成器が失敗しないことを、`adr regenerate` を出力を捨てて実行して確かめる。生成器の版上げ（`package.json` / `pnpm-lock.yaml` だけの PR）でもこれが走るよう、`adr-validate.yml` の `paths` と `adr-validate-skip.yml` の `paths-ignore` に `package.json`・`pnpm-lock.yaml`・新しい検査のスクリプトを足す。
    - `main` への push では `--check` を実行しない（ADR のマージから再生成の PR が入るまで、`main` の生成物は古くて正しいため）。
-   - pre-push の `adr-regenerate-check` も同じ検査に替える。
-4. **鮮度の見張り**（TPL-2786）。読み取りだけの scheduled workflow を足し、routine の予定時刻から数時間後に `main` で `adr regenerate --check` を実行する。古く、かつ開いている再生成の PR も無ければ失敗させる（routine が止まったことを赤い run で知らせる）。開いている再生成の PR があるのに古いまま 2 日たったときも失敗させる（PR の CI が落ちている）。
-5. **分類器を確かめる。** 生成物だけの PR が Low になること（`ADR_GENERATED_GLOBS`）をテストで固定する。ADR PR が生成物を含まなくなっても Low の判定が変わらないこと（ADR の追加・Design Doc の削除・リンクの張り替えと追加）を確かめる。
-6. **ルールと記録を直す。** `.claude/rules/adr.md` の「編集後のチェック」（再生成してコミットする手順）と auto-merge の適用条件の生成物の項、`docs/process/review.md` の Low の行。
-7. AT: `docs/acceptance/3416-regenerate-adr-index-daily-pr.md`。TC は:
+   - pre-push の `adr-regenerate-check` も同じ検査に替える。base は手元の `origin/main` との merge-base で取る（PR の流れの手順 7 で fetch 済み）。`origin/main` が無ければ検査を飛ばすと表示し、CI に任せる。
+5. **鮮度の見張り**（TPL-2786）。読み取りだけの scheduled workflow を 1 日 1 回、routine の予定時刻から数時間後に動かす。`main` の生成物に反映されていない変更のうち最も古いものが 26 時間より前に `main` に入っていたら失敗させる（routine が止まった、または再生成の PR の CI が落ち続けている）。ADR のマージから次の routine までの通常の遅れでは失敗しない。
+6. **分類器を設定に揃える。** `scripts/review/tier.ts` の `ADR_GENERATED_GLOBS` が `adr.config.json` の `paths.outputs` と一致することをテストで固定する。生成物だけの PR が Low になること、ADR PR が生成物を含まなくなっても Low の判定が変わらないこと（ADR の追加・Design Doc の削除・リンクの張り替えと追加）を確かめる。
+7. **ルールと記録を直す。** `.claude/rules/adr.md` の「編集後のチェック」（再生成してコミットする手順）と auto-merge の適用条件の生成物の項、`docs/process/review.md` の Low の行とローカルレビューの記録の節。
+8. AT: `docs/acceptance/3416-regenerate-adr-index-daily-pr.md`。TC は:
    - 無関係な ADR を足す PR を 2 本同時に開き、片方をマージした後も、もう片方が `main` を取り込まずにマージできる。
-   - `pnpm adr:regenerate-pr` を実行すると、生成物だけを変える PR が `risk: low` と auto-merge で作られ、マージ後の `main` で `adr regenerate --check` が通る。
-   - 差分が無い日に実行すると、PR を作らない。開いている再生成の PR があれば、作り直さずに更新する。
-   - 生成物と ADR を両方変える PR、生成物を古い中身や手で書き換えた中身に変える PR は、`Validate` が落ちる。生成器を壊す PR も `Validate` が落ちる。
+   - `pnpm adr:regenerate-pr` を実行すると、生成物だけを変える PR が `risk: low` と auto-merge で作られ、Review tier と `Validate` が通ってマージされ、マージ後の `main` で `adr regenerate --check` が通る。
+   - 差分が無い日に実行すると、PR を作らない（開いている再生成の PR があれば閉じる）。差分があり、auto-merge が有効な再生成の PR が開いていれば、auto-merge を外してから更新し、戻す。
+   - `main` が進んだ後の再生成の PR でも、`Validate` は head で判定して通る。
+   - `Validate` が落ちる PR: 生成物と ADR を両方変える、生成物を古い中身や手で書き換えた中身にする、`graph/` に余分なファイルを足す、生成物を消す、ADR を `graph/` の下へ rename する、生成器を壊す（`package.json` だけの版上げを含む）。
+   - `paths.outputs` を変える PR は、古い出力の削除だけを含めて通り、その後の再生成の PR が新しい出力先を作って通る。
    - `@kompiro/adr-tools` の版上げで出力が変わると、次の再生成の PR で `main` の生成物が更新される。
-   - 鮮度の見張りは、`main` が古く再生成の PR が無いときに失敗する。
-8. ADR 昇格: 実装完了後、`docs/adr/3416-regenerate-adr-index-daily-pr.md` として昇格し、本 Design Doc は同 PR で削除する。ADR-788 と ADR-2331 は `related_to` で結ぶ（変わるのは「生成物は ADR の PR が運ぶ」という前提で、両者の決定の中心ではない）。
+   - 鮮度の見張りは、反映されていない変更が 26 時間を超えたときだけ失敗し、ADR のマージから routine までのあいだは失敗しない。
+9. ADR 昇格: 実装完了後、`docs/adr/3416-regenerate-adr-index-daily-pr.md` として昇格し、本 Design Doc は同 PR で削除する。ADR-788 と ADR-2331 は `related_to` で結ぶ（変わるのは「生成物は ADR の PR が運ぶ」という前提で、両者の決定の中心ではない）。
 
 ### 影響範囲・マイグレーション
 
 - 既存ユーザーへの影響: なし（repo の運用だけ）。
 - ADR を書く人の手順: `pnpm adr:regenerate` をコミットしなくなる。手元で確かめるために実行してよいが、生成物の差分はコミットせず捨てる（混ぜると `Validate` と pre-push が止める）。
-- 出力先の変更: `paths.outputs` を変える PR は、新しい設定で生成物だけの PR か、生成物を触らない PR のどちらかになる。古い出力の削除は、次の再生成の PR が鏡写しで行う（スクリプトは出力先のディレクトリを生成結果で置き換える）。
+- 出力先の変更: `paths.outputs` を変える PR は、古い出力の削除だけを含め、新しい出力先には書かない。新しい出力先は次の再生成の PR が作る。
 - 開いている ADR PR: 切り替えの PR がマージされた後、生成物の差分を取り除くまで新しい検査で落ちる。切り替えは開いている ADR PR が少ないときに入れる。
 - ドキュメント更新: `.claude/rules/adr.md`、`docs/process/review.md`。
 
