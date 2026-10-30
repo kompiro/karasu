@@ -1,3 +1,4 @@
+import { pairLabelSegment } from "./mutual-pair-halves.js";
 import type { ResolvedEdgeStyle } from "../types/style.js";
 import type { HopMark, LayoutEdge } from "./layout-types.js";
 import { el, escapeXml } from "./svg-builder.js";
@@ -273,7 +274,7 @@ export function renderEdge(
       ? undefined
       : labelHidden
         ? "deferred"
-        : drawn.text !== edge.label
+        : drawn.text !== (edge.pairGlyph ? `${edge.pairGlyph} ${edge.label}` : edge.label)
           ? "truncated"
           : undefined;
   // Withheld text must stay reachable on this very surface (TPL-3022). The
@@ -469,6 +470,7 @@ export function labelAnchorWithSegment(
 export function ownLabelSegment(edge: LayoutEdge): number | undefined {
   // The route is `fromPoint, ...waypoints, toPoint`: waypoint `j` is point
   // `j + 1`, so segment `j` arrives at it and segment `j + 1` leaves it.
+  if (edge.pairHalf) return pairLabelSegment(edge);
   if (edge.trunkId !== undefined) return edge.trunkJoin ?? 0;
   // Without `trunkJoin` the elbow is the last waypoint, `waypoints.length - 1`.
   if (edge.outTrunkId !== undefined) {

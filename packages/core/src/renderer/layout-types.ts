@@ -200,6 +200,10 @@ export interface LayoutEdge {
    * waypoint (fan-out).
    */
   trunkJoin?: number;
+  /** SPIKE #3027: this edge draws one half of a mutual pair's shared line. */
+  pairHalf?: boolean;
+  /** SPIKE #3027: arrow glyph prefixed to the canvas label (`?pairCue=arrow`). */
+  pairGlyph?: string;
 }
 
 /** Axis-aligned box. The unit `ContainerRect.coverage` is built from. */

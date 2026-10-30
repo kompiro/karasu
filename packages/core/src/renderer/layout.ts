@@ -65,6 +65,7 @@ import { nodePathIdentityKey, nodePathRefId } from "../parser/node-path.js";
 import type { ResolvedLayoutHints } from "../types/style.js";
 import { edgeKey } from "../diff/view-diff.js";
 import { computeCrossingMarks } from "./crossing-marks.js";
+import { applyMutualPairHalves } from "./mutual-pair-halves.js";
 import type {
   LayoutNode,
   LayoutEdge,
@@ -143,6 +144,8 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // nor the reservation, so only the surviving placement pays for them. A
   // search that evaluated four candidates and re-placed once used to compute
   // them five times for one drawing (#2761).
+  // SPIKE #3027: mutual pairs as one line split in halves, before the crossing marks.
+  applyMutualPairHalves(result.edges);
   if (run.crossingMarksPending) result.crossingMarks = computeCrossingMarks(result.edges);
   result.widthBudget = found.budget;
   result.placementPasses = reserved ? 2 : 1;

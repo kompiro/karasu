@@ -1,0 +1,16 @@
+system Shop {
+  service ShopApp {
+    domain Orders {
+      label "Orders"
+      -> Payments "charges the order total"
+    }
+    domain Payments {
+      label "Payments"
+      -> Orders "reports settlement"
+    }
+    domain Catalog {
+      label "Catalog"
+      -> Orders "publishes price changes"
+    }
+  }
+}

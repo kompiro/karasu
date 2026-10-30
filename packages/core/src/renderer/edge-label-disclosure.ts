@@ -94,12 +94,14 @@ export interface CanvasLabel {
  *   invisible control.
  */
 export function canvasLabel(
-  edge: Pick<LayoutEdge, "label" | "syntheticLabel" | "domainEdges">,
+  edge: Pick<LayoutEdge, "label" | "syntheticLabel" | "domainEdges" | "pairGlyph">,
   style: Pick<ResolvedEdgeStyle, "labelMaxChars" | "labelDisplay">,
 ): CanvasLabel | undefined {
   if (!edge.label) return undefined;
   if (edge.syntheticLabel) return { text: edge.label, display: "always" };
-  const text = displayEdgeLabel(edge.label, style.labelMaxChars);
+  const shown = displayEdgeLabel(edge.label, style.labelMaxChars);
+  // SPIKE #3027: the direction glyph of a paired half, measured and drawn with the label.
+  const text = edge.pairGlyph ? `${edge.pairGlyph} ${shown}` : shown;
   const isControl = edge.domainEdges !== undefined && edge.domainEdges.length > 0;
   return { text, display: isControl ? "always" : style.labelDisplay };
 }
