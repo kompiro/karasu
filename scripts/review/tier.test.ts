@@ -7,6 +7,7 @@ import {
   classifyChange,
   diffFingerprint,
   excludedPathFilters,
+  isLinkInsert,
   isLinkSwap,
   labelTier,
   unknownRiskLabels,
@@ -423,6 +424,48 @@ describe("classifyChange", () => {
       expect(tierOf(added(NEW_ADR), deleted(DESIGN), swapIn("docs/spec/syntax.md"))).toBe("high");
     });
 
+    it("is Low when the AT gains a link to the new ADR it never had (#3405)", () => {
+      // ATs point at their Issue (ADR-2348), so there is no Design Doc link to swap.
+      const insert = modified("docs/acceptance/x.md", {
+        hunks: [
+          {
+            oldStart: 9,
+            removed: ["- **関連 ADR**: [ADR-3026](../adr/3026-same-row-channel-route.md)"],
+            newStart: 9,
+            added: [
+              "- **関連 ADR**: [ADR-3286](../adr/3286-risk-based-review-tiers.md)、[ADR-3026](../adr/3026-same-row-channel-route.md)",
+            ],
+          },
+          {
+            oldStart: 12,
+            removed: [],
+            newStart: 13,
+            added: ["- **設計 (ADR)**: [ADR-3286](../adr/3286-risk-based-review-tiers.md)"],
+          },
+        ],
+      });
+      expect(tierOf(added(NEW_ADR), deleted(DESIGN), insert)).toBe("low");
+      // A promotion whose Design Doc is deleted elsewhere, or not at all, still adds the ADR.
+      expect(tierOf(added(NEW_ADR), insert)).toBe("low");
+    });
+
+    it("keeps an AT edit beside the inserted link at its path's tier (#3405)", () => {
+      const withCheckbox = modified("docs/acceptance/x.md", {
+        hunks: [
+          {
+            oldStart: 12,
+            removed: ["- [ ] AT-A: 手で確かめる"],
+            newStart: 12,
+            added: [
+              "- **設計 (ADR)**: [ADR-3286](../adr/3286-risk-based-review-tiers.md)",
+              "- [x] AT-A: 手で確かめる",
+            ],
+          },
+        ],
+      });
+      expect(tierOf(added(NEW_ADR), deleted(DESIGN), withCheckbox)).toBe("medium");
+    });
+
     it("does not lower a non-markdown file through a link swap", () => {
       const code = modified("packages/core/src/a.ts", {
         hunks: [
@@ -475,6 +518,47 @@ describe("isLinkSwap", () => {
   it("rejects a line that dropped the link or pointed elsewhere", () => {
     expect(isLinkSwap("see [x](../design/x.md)", "see ADR-12", D, A)).toBe(false);
     expect(isLinkSwap("see [x](../design/y.md)", "see [x](../adr/12-x.md)", D, A)).toBe(false);
+  });
+});
+
+describe("isLinkInsert", () => {
+  const A = ["docs/adr/12-x.md"];
+  const L = "[ADR-12](../adr/12-x.md)";
+
+  it("accepts a link inserted at the start, middle or end of a list, or a run of them", () => {
+    expect(isLinkInsert(["- 関連: [a](a.md)"], [`- 関連: ${L}、[a](a.md)`], A)).toBe(true);
+    expect(
+      isLinkInsert(["- 関連: [a](a.md)、[b](b.md)"], [`- 関連: [a](a.md)、${L}、[b](b.md)`], A),
+    ).toBe(true);
+    expect(isLinkInsert(["- 関連: [a](a.md)"], [`- 関連: [a](a.md), ${L}`], A)).toBe(true);
+    expect(isLinkInsert(["- 関連: [a](a.md)"], [`- 関連: [a](a.md)、${L}、${L}`], A)).toBe(true);
+  });
+
+  it("accepts a new line that holds only a label and the link", () => {
+    expect(isLinkInsert([], [`- **設計 (ADR)**: ${L}`], A)).toBe(true);
+    expect(isLinkInsert([], [`- **設計 (ADR)**：[12-x.md](../adr/12-x.md)`], A)).toBe(true);
+  });
+
+  it("rejects a hunk that inserts no link to the new ADR", () => {
+    expect(isLinkInsert([], ["- **設計 (ADR)**:"], A)).toBe(false);
+    expect(isLinkInsert(["a"], ["a"], A)).toBe(false);
+    expect(isLinkInsert([], ["- **設計 (ADR)**: [ADR-7](../adr/7-y.md)"], A)).toBe(false);
+  });
+
+  it("rejects a link whose text is not a name of the ADR", () => {
+    expect(isLinkInsert([], ["- **設計 (ADR)**: [run this](../adr/12-x.md)"], A)).toBe(false);
+  });
+
+  it("rejects a target that only contains the ADR path", () => {
+    expect(
+      isLinkInsert([], ["- **設計 (ADR)**: [ADR-12](https://evil.example/adr/12-x.md)"], A),
+    ).toBe(false);
+  });
+
+  it("rejects any other change on the line or in the hunk", () => {
+    expect(isLinkInsert(["- 関連: [a](a.md)"], [`- 関連（完了）: [a](a.md)、${L}`], A)).toBe(false);
+    expect(isLinkInsert([], [`- **設計 (ADR)**: ${L}`, "- **手動確認**:"], A)).toBe(false);
+    expect(isLinkInsert([], [`see ${L} now`], A)).toBe(false);
   });
 });
 

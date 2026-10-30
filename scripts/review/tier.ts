@@ -431,6 +431,19 @@ function referenceSource(paths: readonly string[]): string | null {
   return `(?:${alts.join("|")})`;
 }
 
+/** The text a link to one of `paths` may carry: its path or file name, or `ADR-<n>`. */
+function namesOf(paths: readonly string[]): Set<string> {
+  const names = new Set(paths.flatMap((p) => [p, p.split("/").at(-1) ?? p]));
+  for (const p of paths) {
+    const n = /^docs\/adr\/(\d+)-/.exec(p)?.[1];
+    if (n !== undefined) names.add(`ADR-${n}`);
+  }
+  return names;
+}
+
+const isNameIn = (names: ReadonlySet<string>, text: string): boolean =>
+  names.has(text.trim().replace(/^`(.*)`$/, "$1"));
+
 /**
  * Whether one changed line pair only swaps a reference to a deleted Design Doc for
  * a reference to the ADR that replaced it (ADR-2331's "張り替え"). Only the
@@ -458,14 +471,8 @@ export function isLinkSwap(
   const either = `(?:${oldRef}|${newRef})`;
   // A link's text may change only from one name of what it points at to another:
   // the file name or path (in backticks or not), or the ADR's number.
-  const names = new Set(
-    [...deletedDesigns, ...newAdrs].flatMap((p) => [p, p.split("/").at(-1) ?? p]),
-  );
-  for (const p of newAdrs) {
-    const n = /^docs\/adr\/(\d+)-/.exec(p)?.[1];
-    if (n !== undefined) names.add(`ADR-${n}`);
-  }
-  const isName = (text: string) => names.has(text.trim().replace(/^`(.*)`$/, "$1"));
+  const names = namesOf([...deletedDesigns, ...newAdrs]);
+  const isName = (text: string) => isNameIn(names, text);
   const normalize = (line: string) =>
     line
       .replace(/\[([^\]]*)\]\(([^)\s]+)\)/g, (link, text: string, t: string) =>
@@ -475,6 +482,58 @@ export function isLinkSwap(
       )
       .replace(bare(either), "\u27E6ref\u27E7");
   return normalize(removed) === normalize(added);
+}
+
+/** A list item that is only a bold label, such as `- **設計 (ADR)**:`. */
+const LABEL_ONLY = /^\s*[-*]\s+\*\*[^*]+\*\*\s*[:：]\s*$/;
+/** What joins two links in a list of them. */
+const LINK_SEPARATOR = "\\s*[、,，]\\s*";
+
+/**
+ * Whether one hunk only inserts links to an ADR added in the same PR (#3405).
+ * An AT record points at its Issue, never at a Design Doc (ADR-2348), so its
+ * promotion PR adds the ADR link rather than swapping one (ADR-2331). Deleting
+ * every inserted link, with the separator that joined it to a neighbour, must
+ * leave exactly the removed lines. A line that held such a link and is left
+ * with only its list label (`- **設計 (ADR)**: [ADR-12](../adr/12-x.md)`) was
+ * added whole and counts as nothing. The link text must be a name of the ADR,
+ * as in a swap.
+ */
+export function isLinkInsert(
+  removed: readonly string[],
+  added: readonly string[],
+  newAdrs: readonly string[],
+): boolean {
+  const ref = referenceSource(newAdrs);
+  if (ref === null) return false;
+  const names = namesOf(newAdrs);
+  const link = new RegExp(`\\[([^\\]]*)\\]\\(${ref}\\)`, "g");
+  // Each inserted link becomes a mark first, so a run of them is removed in one
+  // go: with the separator before each mark, then a leading mark with the
+  // separator after it.
+  const MARK = "⟦adr⟧";
+  const afterNeighbour = new RegExp(`(?:${LINK_SEPARATOR}${MARK})+`, "g");
+  const leading = new RegExp(`${MARK}(?:${LINK_SEPARATOR})?`, "g");
+  let inserted = 0;
+  const left: string[] = [];
+  for (const line of added) {
+    if (line.includes(MARK)) return false;
+    let stripped = false;
+    const rest = line
+      .replace(link, (m, text: string) => {
+        if (!isNameIn(names, text)) return m;
+        stripped = true;
+        inserted++;
+        return MARK;
+      })
+      .replace(afterNeighbour, "")
+      .replace(leading, "");
+    if (stripped && LABEL_ONLY.test(rest)) continue;
+    left.push(rest);
+  }
+  return (
+    inserted > 0 && left.length === removed.length && left.every((line, i) => line === removed[i])
+  );
 }
 
 /**
@@ -518,21 +577,21 @@ function fileTier(
   // read by a human however small the change is.
   if (byPath === "high") return "high";
   if (byPath === "low" && matchesAny(f.path, TEST_GLOBS) && !isNewFile(f)) return "medium";
-  // ADR promotion (ADR-2331): only in a PR that adds an ADR record.
+  // ADR promotion (ADR-2331): only in a PR that adds an ADR record. A hunk
+  // either swaps Design Doc links for the ADR or inserts links to it (#3405).
   if (promotion.newAdrs.length > 0) {
     if (f.status === "deleted" && DESIGN_DOC.test(f.path)) return "low";
+    const isSwap = (h: Hunk) =>
+      h.removed.length > 0 &&
+      h.removed.length === h.added.length &&
+      h.removed.every((line, i) =>
+        isLinkSwap(line, h.added[i], promotion.deletedDesigns, promotion.newAdrs),
+      );
     if (
       f.status === "modified" &&
       f.path.endsWith(".md") &&
       f.hunks.length > 0 &&
-      f.hunks.every(
-        (h) =>
-          h.removed.length > 0 &&
-          h.removed.length === h.added.length &&
-          h.removed.every((line, i) =>
-            isLinkSwap(line, h.added[i], promotion.deletedDesigns, promotion.newAdrs),
-          ),
-      )
+      f.hunks.every((h) => isSwap(h) || isLinkInsert(h.removed, h.added, promotion.newAdrs))
     ) {
       return "low";
     }

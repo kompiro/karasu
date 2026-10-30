@@ -14,6 +14,7 @@ known_consumers:
   - local-review-record
 discovered_from:
   - issue: "#3286"
+  - issue: "#3405"
   - root_cause_adr: ADR-2331
 related_to:
   - TPL-1725
@@ -58,6 +59,9 @@ scope:
 - 検査が PR 側の分類器を実行するため、分類器を軽い側に書き換えた PR が、その分類器で自分を軽く判定して通る
 - 重い指摘の却下を許さない段階で、重大度の列が空・未知の値・表記ゆれ（`major` / `High` など）の指摘を軽い側として扱い、
   却下したまま通る
+- 差分を作る側の書き方の規則が変わり、例外が前提にしていた差分の形が現れなくなる。判定は厳しい側に倒れたままなので
+  誤ってマージされることはないが、例外が意図した PR に届かない。AT が Design Doc ではなく Issue を指すようになって
+  （ADR-2348）張り替える行が無くなり、AT に ADR へのリンクを足す昇格 PR がすべて Medium になった（#3405）
 
 ## チェックリスト
 
@@ -83,12 +87,15 @@ scope:
       （Minor / Trivial の却下は通す）
 - [ ] 重大度が Critical / Major / Minor / Trivial のどれでもない指摘を、Major として判定するか
 - [ ] 記録が前提にする base（merge-base）が、いまの PR の base と HEAD の merge-base と一致するかを見ているか
+- [ ] 例外の規則が前提にする差分の形を、その差分を作る側の書き方の規則（`.claude/rules/acceptance.md` など）が
+      求める形と突き合わせたか。実際の PR の差分を分類器に通し、意図した段階になることを確かめたか
 
 ## 既知の対処パターン
 
 - **差分の性質で判定する**（ADR-2331）：ADR-only の auto-merge は、変更ファイルの場所ではなく
-  差分が決定の記録とリンクの張り替えだけかどうかで判定する。#3286 でこの判定は分類器の規則になり、
-  PR を作る前の 1 回の手順から、push のたびに走る required check に移った
+  差分が決定の記録とリンクの整合だけかどうかで判定する。#3286 でこの判定は分類器の規則になり、
+  PR を作る前の 1 回の手順から、push のたびに走る required check に移った。#3405 で、張り替えに加えて
+  新しい ADR へのリンクを足すだけの差分も同じ扱いになった（ADR-3405）
 - **既定値を厳しい側に置く**：段階の分類で、どの規則にも当たらないパスを中間の段階（人間が見る段階）にし、
   ラベルの無い PR と重大度の無い指摘を重い側（High・Major）に倒す
 - **判定する仕組みを base 側から動かす**：required check は base ブランチの分類器を実行し、仕組みそのものの
@@ -98,7 +105,8 @@ scope:
 
 - `scripts/review/tier.test.ts`：どの規則にも当たらないパスが Medium になること、レビューの仕組みのパスが High に
   なること、既存のテストファイルの変更が Medium になること、`package.json` の依存と scripts の区別、ADR の昇格とリンクの張り替えだけが Low になること（張り替え以外の
-  変更が混ざる・新しい ADR が無い・Markdown 以外は Low にならない）、既存 ADR の本文の変更が Medium になること、
+  変更が混ざる・新しい ADR が無い・Markdown 以外は Low にならない）、新しい ADR へのリンクを足すだけの差分が Low になること
+  （`isLinkInsert`。名前でないリンク文字列・URL の中の ADR のパス・同じ hunk のほかの変更は Low にならない）、既存 ADR の本文の変更が Medium になること、
   main の取り込みの判定（`diffFingerprint`）が行の移動・増減・入れ替え・モードやバイナリだけの変更を「同じ」と
   みなさないこと
 - `scripts/review/local-review-record.test.ts`：記録の無い PR、古い `head`、base の食い違い、main の取り込み以外の
