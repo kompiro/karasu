@@ -8,7 +8,7 @@ name: Review request
 # check treats a missing label as High too; this makes the label say so. Whether
 # CodeRabbit starts a review when the label arrives after the PR was opened is
 # not verified (#3286); if it does not, the PR gets `@coderabbitai full review`
-# by hand (docs/process.md "リスク段階").
+# by hand (docs/process/review.md "リスク段階").
 #
 # A comment would not do: CodeRabbit does not act on a command posted by
 # github-actions[bot] (checked on #3286).

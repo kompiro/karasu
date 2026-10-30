@@ -28,7 +28,7 @@ Write "N/A" for a PR that touches neither rendering code nor examples.
 
 <!--
 The review tier from `node scripts/review/tier.ts classify`, matching the PR's
-`risk: *` label (docs/process.md "リスク段階"), and what made it that tier.
+`risk: *` label (docs/process/review.md "リスク段階"), and what made it that tier.
 CodeRabbit reviews only `risk: high` and `risk: design` PRs; a PR without a
 tier label is High.
 Add "+ security review" when the classifier asks for one (packages/nest or
@@ -40,7 +40,7 @@ e.g. "Medium: packages/core/src/parser.ts" / "High: .github/workflows/ci.yml + s
 
 <!--
 Below High, the required check "Review tier" reads the local review record
-from this body (docs/process.md "ローカルレビューの記録"): what
+from this body (docs/process/review.md "ローカルレビューの記録"): what
 /engineering:code-review and the CodeRabbit CLI found on the branch diff, and
 the disposition of each finding (fixed in <sha> / declined: <reason> /
 → #<issue>). Write it with

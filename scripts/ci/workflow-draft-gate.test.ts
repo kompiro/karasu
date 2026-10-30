@@ -128,7 +128,7 @@ describe("draft gate on expensive workflows (ADR-2643)", () => {
       .map((job) => job.key)
       .sort();
     // Adding or removing an entry here is a policy change: say so in ADR-2643
-    // and in the `docs/process.md` stacked-PR section in the same PR.
+    // and in the `docs/process/stacked-pr.md` "draft PR では分単位のジョブが走らない" section in the same PR.
     expect(gated).toEqual([...DRAFT_GATED_JOBS].sort());
   });
 

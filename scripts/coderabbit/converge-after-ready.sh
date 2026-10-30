@@ -6,7 +6,7 @@
 # same turn to start /coderabbit-converge on that PR. /hane:start-dev and
 # /hane:ship end at "CI green, status: in-review" and never hand over to
 # converge, so without this note the rounds wait for a human (#3333, ADR-3333).
-# Only High PRs have CodeRabbit rounds (docs/process.md "リスク段階", #3286):
+# Only High PRs have CodeRabbit rounds (docs/process/review.md "リスク段階", #3286):
 # Design gets one advisory review and nothing below it gets CodeRabbit at all.
 #
 # The PR is taken from gh's own status line in the tool output
@@ -71,7 +71,8 @@ for ref in $readied; do
   [ "$(jq -r '.baseRefName' <<<"$view")" = "$default_branch" ] || continue
 
   jq -n --arg ctx "PR $ref is out of draft. Next, run /coderabbit-converge on it now (the converge \
-step of the docs/process.md PR workflow, from that PR's worktree) and keep driving it until no Critical \
+step of the docs/process.md PR workflow, whose rules are in docs/process/coderabbit-rounds.md; \
+run it from that PR's worktree) and keep driving it until no Critical \
 or Major finding is open or a human decision is needed. This takes precedence over a skill that stops at \
 \"CI green, status: in-review\" (such as /hane:start-dev or /hane:ship)." --arg event "$event" \
     '{hookSpecificOutput: {hookEventName: $event, additionalContext: $ctx}}'

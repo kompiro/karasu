@@ -1,5 +1,5 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
-// The local review record in a PR body (Issue #3286, docs/process.md "ローカルレビューの記録").
+// The local review record in a PR body (Issue #3286, docs/process/review.md "ローカルレビューの記録").
 //
 // Below High, a PR gets no CodeRabbit rounds, so what the local reviews found and
 // what was done about each finding is written into the PR body, and the
@@ -155,7 +155,7 @@ export function verifyRecord(
 ): string[] {
   if ("error" in parsed) {
     return [
-      `${parsed.error}. A ${tier} PR needs one (docs/process.md "ローカルレビューの記録"; ` +
+      `${parsed.error}. A ${tier} PR needs one (docs/process/review.md "ローカルレビューの記録"; ` +
         `write it with node scripts/review/local-review-record.ts render).`,
     ];
   }

@@ -1,7 +1,7 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 // Decides a PR's review tier from the change itself (Issue #3286).
 //
-// `docs/process.md` "リスク段階" sets how a PR is reviewed from what it changes,
+// `docs/process/review.md` "リスク段階" sets how a PR is reviewed from what it changes,
 // never from how big it is: High gets CodeRabbit rounds and a human reading the
 // diff, Design one advisory CodeRabbit pass and a human, Medium a human, and Low
 // merges on its own. Below High, the gate is the local review record in the PR
@@ -44,6 +44,7 @@ const HIGH_GLOBS: readonly string[] = [
   "docs/spec/**",
   "docs/concepts*.md",
   "docs/process.md",
+  "docs/process/**",
   ".claude/rules/**",
   ".coderabbit.yaml",
   "lefthook.yml",
@@ -840,7 +841,7 @@ function checkPr(pr: string): string[] {
   if (labeled !== null && rank(labeled) < rank(result.tier)) {
     errors.push(
       `PR #${pr} is labeled "risk: ${labeled}" but its change is ${result.tier}. ` +
-        `Replace the label with "risk: ${result.tier}" (docs/process.md "リスク段階").`,
+        `Replace the label with "risk: ${result.tier}" (docs/process/review.md "リスク段階").`,
     );
   }
   if (view.autoMergeRequest !== null && tier !== "low") {

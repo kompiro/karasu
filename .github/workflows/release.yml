@@ -24,7 +24,7 @@ name: Release
 # Provenance is generated automatically
 # under trusted publishing — no `--provenance` flag / `NPM_CONFIG_PROVENANCE`
 # needed. See ADR-9020 (OIDC migration; follows up the token-based
-# auth of ADR-1315) and docs/process.md "リリース運用".
+# auth of ADR-1315) and docs/release.md "リリース運用".
 #
 # Public packages: `karasu` (CLI), `@karasu-tools/core` and `karasu-skills` (the
 # Claude Code plugin with the agent skills, #2932). `@karasu-tools/*`

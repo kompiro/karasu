@@ -17,7 +17,7 @@ name: VS Code Extension Release
 # `record` job then tags it `karasu-vscode@<version>` and adds it to that
 # commit's GitHub Release `release-YYYY-MM-DD` (#2939).
 # See docs/design/vscode-changeset-versioning.md (refines ADR-1315),
-# Issue #1316, and docs/process.md "VS Code 拡張のリリース".
+# Issue #1316, and docs/release.md "VS Code 拡張のリリース".
 #
 # Auth: Microsoft Entra ID via GitHub OIDC (no stored secret, nothing to expire
 # — Azure DevOps long-lived PATs retire 2026-12-01). `azure/login` exchanges the

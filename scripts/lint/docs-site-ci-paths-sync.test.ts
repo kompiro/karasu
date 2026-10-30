@@ -8,6 +8,7 @@ import {
   globMatches,
   parsePublishedFiles,
   parseWorkflowPaths,
+  PREVIEW_RULE,
   PREVIEW_WORKFLOW,
   SKIP_WORKFLOW,
 } from "./docs-site-ci-paths-sync.ts";
@@ -131,6 +132,28 @@ describe("check", () => {
     expect(problems).toEqual([]);
   });
 
+  it("holds the preview rule's paths to exactly the preview workflow's", () => {
+    const paths = ["docs/concepts.md"];
+    const withRule = (rule: string[]) => [
+      { file: CHECK_WORKFLOW, paths },
+      { file: PREVIEW_WORKFLOW, paths: ["docs/concepts.md", "examples/**"] },
+      { file: PREVIEW_RULE, paths: rule },
+    ];
+    expect(check(["concepts.md"], withRule(["docs/concepts.md", "examples/**"]), paths)).toEqual(
+      [],
+    );
+    const missing = check(["concepts.md"], withRule(["docs/concepts.md"]), paths);
+    expect(missing.map((p) => p.message)).toEqual([
+      expect.stringContaining("`examples/**` deploys a preview"),
+    ]);
+    const extra = check(
+      ["concepts.md"],
+      withRule(["docs/concepts.md", "examples/**", "docs/x.md"]),
+      paths,
+    );
+    expect(extra.map((p) => p.message)).toEqual([expect.stringContaining("deploys no preview")]);
+  });
+
   it("reports an unreadable published list instead of silently passing", () => {
     const problems = check([], guard(["docs/**"]), ["docs/**"]);
     expect(problems).toHaveLength(1);
@@ -143,7 +166,7 @@ describe("the committed workflows", () => {
     parsePublishedFiles(read("packages/docs-site/scripts/lib/site-map.ts")),
     (docsRelative) => existsSync(join(REPO_ROOT, "docs", docsRelative)),
   );
-  const workflows = [CHECK_WORKFLOW, PREVIEW_WORKFLOW].map((file) => ({
+  const workflows = [CHECK_WORKFLOW, PREVIEW_WORKFLOW, PREVIEW_RULE].map((file) => ({
     file,
     paths: parseWorkflowPaths(read(file), "paths"),
   }));

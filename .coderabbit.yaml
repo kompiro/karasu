@@ -3,7 +3,7 @@
 # CodeRabbit: the automated first-pass review of High and Design PRs.
 #
 # Which PRs it reviews and how its findings are handled are set by the PR's risk
-# tier (docs/process.md "リスク段階", Issue #3286): it reviews only High and
+# tier (docs/process/review.md "リスク段階", Issue #3286): it reviews only High and
 # Design PRs, and below High the gate is the local review record in the PR body.
 # It is not a required check, and it neither approves nor requests changes.
 # The mechanical layer (lint / format / typecheck / knip / check:cycles / the drift
@@ -330,4 +330,5 @@ knowledge_base:
       - "CLAUDE.md"
       - "CONTRIBUTING.md"
       - "docs/process.md"
+      - "docs/process/*.md"
       - ".claude/rules/*.md"

@@ -1,6 +1,6 @@
 name: Review tier
 
-# Holds a PR to the review its change calls for (Issue #3286, docs/process.md
+# Holds a PR to the review its change calls for (Issue #3286, docs/process/review.md
 # "リスク段階"). The check fails when:
 # - the PR's `risk: *` label is lower than the tier its diff and author give;
 # - auto-merge is on for a PR that is not Low;

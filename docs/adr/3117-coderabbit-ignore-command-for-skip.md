@@ -14,7 +14,7 @@ scope:
     - ci
 assumptions:
   - ".coderabbit.yaml の !skip-coderabbit / !adr-auto-merge はこの ADR の時点の設定。#3286 が auto_review.labels を risk: high / risk: design に替えたので現在の設定とは一致しない"
-  - "grep: docs/process.md :: skip-coderabbit"
+  - "grep: docs/process/review.md :: skip-coderabbit"
   - "docs/process.md と .claude/rules/adr.md の ignore コマンドの手順はこの ADR の時点のもの。#3286 で Medium 以下に CodeRabbit が走らなくなり、手順を外したので現在の記述とは一致しない"
 ---
 

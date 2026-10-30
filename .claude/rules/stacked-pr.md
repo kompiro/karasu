@@ -5,55 +5,20 @@ paths:
 
 # Stacked PR の運用ルール
 
-**到達状態**: レビュー中のスタックで、draft でない PR が最下層の 1 本だけ。判定は
-スタック内の PR に限って行う（`gh pr list` はスタック外の単独 PR も返すので使わない）。
+**到達状態**: draft PR で skip する job が、`scripts/ci/workflow-draft-gate.test.ts` の
+`DRAFT_GATED_JOBS`、ADR-2643、`docs/process/stacked-pr.md` の job 一覧で一致し、その job を持つ
+workflow の `types:` に `ready_for_review` がある。
 
-```
-gh stack view --json | jq -r '.branches[] | select(.pr.state == "OPEN") | .pr.number' \
-  | xargs -I{} gh pr view {} --json number,isDraft,baseRefName \
-      --jq '"\(.number) draft=\(.isDraft) base=\(.baseRefName)"'
-```
-
-`draft=false` が base `main` の 1 本だけになっている。
-
-このファイルには 2 つの入口がある:
-
-- **workflow 編集時** — frontmatter の `paths:` にマッチして自動で読み込まれる
-- **スタックを作る・レビューを進める・マージ後に sync するとき** — ファイル編集を
-  伴わないので自動では読み込まれない。`gh stack` を打とうとしたら、その時点で
-  本ファイルを明示的に読む
-
-手順の正本は `docs/process.md`「Stacked PR の進め方」、決定の経緯は
+このファイルは workflow の編集で読み込まれ、workflow を編集するときの規則を持つ。
+スタックを作る・進める手順の正本は [docs/process/stacked-pr.md](../../docs/process/stacked-pr.md)
+（`gh stack` を打つ前に読む。`docs/process.md`「規約の所在」から引く）、決定の経緯は
 [ADR-2643](../../docs/adr/2643-stacked-pr-workflow.md)。ここには機械が検出できない
 （自分で守るしかない）ものだけを置く。
-
-## スタックを進めるとき
-
-**draft を外すのは `gh pr ready <番号>` で 1 本ずつ行う。** `gh stack submit --auto
---open` は新規 PR だけでなく既存 PR も ready にするので、スタック全体が一度に
-レビュー対象になり到達状態が壊れる。新しいスタックを push するときも `--open` は
-付けない（`submit --auto` は既定で draft を作る）。
-
-`gh stack sync` はマージ直後にだけ打つ。sync は上位ブランチを force-push するので、
-最下層で走っている required E2E を cancel する。レビュー指摘への修正 push と同じ
-タイミングで sync しない。
-
-マージ後の順序は `gh stack merge <PR番号> --yes --squash` → `gh stack sync --prune`
-→ 新しい最下層のブランチで `main` との差分（`git diff origin/main...HEAD`）に `/engineering:code-review`
-を当て、続けて同じ差分に CodeRabbit CLI を 1 回だけ当てて（`coderabbit review --agent --deep --base origin/main --committed`）
-修正を push → `gh pr ready <新しい最下層>`。CLI は修正後に回し直さず、CLI が使えない環境（未インストール・未認証・枠切れ）では飛ばし、
-`KARASU_LOCAL_REVIEW_SKIPPED=<理由> gh pr ready <n>` で ready にする（[ADR-3326](../../docs/adr/3326-coderabbit-cli-once-before-ready.md)、[ADR-3342](../../docs/adr/3342-ready-gate-local-review.md)）。
-`/engineering:code-review` を ready の後に回すと、CodeRabbit の review 枠を直す前と直した後で 2 回使う
-（[ADR-2898](../../docs/adr/2898-draft-first-code-review.md)、[ADR-3052](../../docs/adr/3052-review-branch-diff-before-draft-pr.md)）。sync より先に ready を打つと、
-直後の force-push が走り出した CI を cancel する。sync を先に置けば CodeRabbit も main 取り込み後の diff を読む。
-
-マージは `gh pr merge` では通らない。PR 番号を渡した `gh stack merge` は、その PR
-まで（スタック全体ではなく）をマージする。
 
 ## workflow を触るとき
 
 draft PR で skip する job を増減したら、`scripts/ci/workflow-draft-gate.test.ts` の
-`DRAFT_GATED_JOBS`、ADR-2643、`docs/process.md`「draft PR では分単位のジョブが
+`DRAFT_GATED_JOBS`、ADR-2643、`docs/process/stacked-pr.md`「draft PR では分単位のジョブが
 走らない」の job 一覧を同じ PR で更新する。テストは job 一覧の drift を落とすが、
 散文側が古くなったことは落とせない。
 

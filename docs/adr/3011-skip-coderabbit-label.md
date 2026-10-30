@@ -9,7 +9,7 @@ authors: [kompiro]
 related_to: [ADR-2949, ADR-2898, ADR-2716]
 assumptions:
   - ".coderabbit.yaml の !skip-coderabbit はこの ADR の時点の設定。#3286 が auto_review.labels を risk: high / risk: design に替えたので現在の設定とは一致しない"
-  - "grep: docs/process.md :: skip-coderabbit"
+  - "grep: docs/process/review.md :: skip-coderabbit"
 ---
 
 # ADR-3011: 正否が差分だけで決まる小さな PR は、人間の承認を得て skip-coderabbit ラベルで CodeRabbit から外す

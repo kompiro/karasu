@@ -1,6 +1,6 @@
 // Classifies where a PR stands in its CodeRabbit rounds (Issue #2846).
 //
-// `docs/process.md` has the author of a High PR run CodeRabbit's rounds until no
+// `docs/process/coderabbit-rounds.md` has the author of a High PR run CodeRabbit's rounds until no
 // Critical or Major finding is open (#3286). CodeRabbit no longer approves
 // (`request_changes_workflow: false`), so the rounds end on what is open, not on a
 // review state. The rounds are driven by `.claude/skills/coderabbit-converge`; this module is
