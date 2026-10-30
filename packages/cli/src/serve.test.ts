@@ -342,6 +342,19 @@ describe("resolveDefaultFile", () => {
   it("returns null when no .krs files exist", async () => {
     expect(await resolveDefaultFile(tmpDir)).toBeNull();
   });
+
+  // #3283: /api/file/index would answer 404, so the single plain file wins.
+  it("skips an index.krs that links out of the directory", async () => {
+    const outside = await makeTmpDir();
+    try {
+      await writeFile(join(outside, "secret.krs"), "");
+      await symlink(join(outside, "secret.krs"), join(tmpDir, "index.krs"));
+      await writeFile(join(tmpDir, "system.krs"), "");
+      expect(await resolveDefaultFile(tmpDir)).toBe("system");
+    } finally {
+      await rm(outside, { recursive: true });
+    }
+  });
 });
 
 // ── serveStaticFile ───────────────────────────────────────────────────────────
@@ -470,6 +483,17 @@ describe("HTTP server", () => {
       } finally {
         await rm(outside, { recursive: true });
       }
+    });
+
+    // The file was checked, then swapped for a link before it was opened:
+    // O_NOFOLLOW refuses it with ELOOP.
+    it("returns 404 when the file became a symlink after the check", async () => {
+      await writeFile(join(tmpDir, "index.krs"), "system App {}");
+      vi.mocked(open).mockRejectedValueOnce(
+        Object.assign(new Error("too many symbolic links"), { code: "ELOOP" }),
+      );
+      const { status } = await get(port, "/api/file/index");
+      expect(status).toBe(404);
     });
 
     it("sends no CORS header", async () => {

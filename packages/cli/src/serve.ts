@@ -226,15 +226,11 @@ export async function resolveKrsFile(dir: string, name: string): Promise<string 
 }
 
 export async function resolveDefaultFile(dir: string): Promise<string | null> {
-  const indexPath = join(dir, "index.krs");
-  try {
-    await stat(indexPath);
-    return "index";
-  } catch {
-    // index.krs が存在しない場合は .krs が1つだけなら自動選択
-    const files = await collectKrsFiles(dir);
-    return files.length === 1 ? (files[0] ?? null) : null;
-  }
+  // /api/file/index が返せるときだけ index を選ぶ（外を指す symlink は選ばない、#3283）
+  if ((await resolveKrsFile(dir, "index")) !== null) return "index";
+  // index.krs が存在しない場合は .krs が1つだけなら自動選択
+  const files = await collectKrsFiles(dir);
+  return files.length === 1 ? (files[0] ?? null) : null;
 }
 
 export async function serveStaticFile(filePath: string, res: ServerResponse): Promise<boolean> {
