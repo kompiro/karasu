@@ -6,7 +6,9 @@ import { resolve } from "node:path";
 // (packages/docs-site/scripts/lib/site-map.ts). Two workflows are triggered by
 // that same set through hand-written `paths:` lists: `reference-docs-check.yml`
 // runs the site's guards on a PR (Issue #2257), and `docs-preview.yml` deploys
-// the PR's preview (Issue #2260).
+// the PR's preview (Issue #2260). The rule `.claude/rules/docs-site-preview.md`
+// carries the same set in its frontmatter `paths:`, which decides when the
+// reminder to read that preview loads (Issue #3337); it is checked the same way.
 // Hand-written lists describing one set drift, and the drift is silent: a doc
 // added to the published set but not to `paths:` simply stops triggering the
 // workflow, and the PR that adds it is green (TPL-2253 — a removal or a trigger
@@ -135,7 +137,7 @@ export function check(
       if (!workflow.paths.some((glob) => globMatches(glob, docPath))) {
         problems.push({
           kind: "error",
-          message: `${docPath} is published by the docs site but no \`paths:\` entry in ${workflow.file} matches it, so editing it does not trigger that workflow.`,
+          message: `${docPath} is published by the docs site but no \`paths:\` entry in ${workflow.file} matches it, so editing it does not trigger ${workflow.file}.`,
         });
       }
     }
@@ -193,7 +195,7 @@ function main(): void {
     process.exit(1);
   }
   console.log(
-    `docs-site-ci-paths-sync: ok (${published.length} published doc(s) covered by ${workflows.length} workflow(s))`,
+    `docs-site-ci-paths-sync: ok (${published.length} published doc(s) covered by ${workflows.length} trigger list(s))`,
   );
 }
 

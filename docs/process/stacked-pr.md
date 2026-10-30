@@ -39,7 +39,8 @@ gh stack view --json | jq -r '.branches[] | select(.pr.state == "OPEN") | .pr.nu
 
 - **`gh stack submit --auto --open` は使わない。** `--open` は新規 PR だけでなく
   既存 PR も ready にするので、スタック全体が一度にレビュー対象になりステップ 0 が
-  壊れる。draft を外すのは常に `gh pr ready <番号>` で 1 本ずつ（`submit --auto` は既定で draft を作る）
+  壊れる。新しいスタックを push するときも `--open` は付けない（`submit --auto` は既定で
+  draft を作る）。draft を外すのは常に `gh pr ready <番号>` で 1 本ずつ
 - `gh stack sync` はマージ直後にだけ実行する。sync は上位ブランチを force-push し、
   走っている required E2E を cancel する。レビュー対応の push と混ぜない
 - ステップ 7 → 1 → 3 の順序は sync が先、ready が後。逆にすると ready で走り出した CI を

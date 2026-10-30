@@ -53,6 +53,7 @@ on:
       - "docs/process.md"
       - "docs/process/**"
       - "scripts/lint/process-index.ts"
+      - ".claude/rules/docs-site-preview.md"
       - ".github/workflows/reference-docs-check.yml"
   push:
     branches: [main]
@@ -78,6 +79,7 @@ on:
       - "docs/process.md"
       - "docs/process/**"
       - "scripts/lint/process-index.ts"
+      - ".claude/rules/docs-site-preview.md"
       - ".github/workflows/reference-docs-check.yml"
 
 concurrency:

@@ -116,15 +116,15 @@ export function relativeLinks(markdown: string): { line: number; target: string 
   return links;
 }
 
-/**
- * Repository-relative paths an index cell points at: Markdown links resolve
- * from docs/, backticked paths from the repository root.
- */
 /** The repository-relative path a link in the document at `from` points at. */
 export function resolveLink(from: string, target: string): string {
   return normalize(target.startsWith("/") ? target.slice(1) : join(dirname(from), target));
 }
 
+/**
+ * Repository-relative paths an index cell points at: Markdown links resolve
+ * from docs/, backticked paths from the repository root.
+ */
 export function cellTargets(cell: string): string[] {
   const targets = relativeLinks(cell).map(({ target }) => resolveLink(PROCESS_MD, target));
   for (const match of cell.matchAll(/`([^`\s]+\.md)`/g)) targets.push(normalize(match[1]));
