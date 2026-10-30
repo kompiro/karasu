@@ -44,7 +44,7 @@
             "patterns": [
               {
                 "group": ["**/index.js", "**/index"],
-                "message": "Do not import a barrel (any index.js, nested ones included) inside packages/core/src: import the module by its own path (e.g. ./parser/parser.js), since a barrel import creates runtime cycles. Test files (*.test.ts, *.spec.ts) may import ../index.js."
+                "message": "Do not import a barrel (any index.js or extensionless index, nested ones included) inside packages/core/src: import the module by its own path (e.g. ./parser/parser.js), since a barrel import creates runtime cycles. Test files (*.test.ts, *.spec.ts) may import ../index.js."
               }
             ]
           }
