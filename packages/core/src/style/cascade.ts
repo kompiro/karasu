@@ -1,5 +1,7 @@
 import type { StyleRule, StyleSheet } from "../types/style.js";
 import { selectorUsesToolVocabularyOnly } from "../builtins/tool-vocabulary.js";
+import { NON_AUTHOR_SHEET_IDS } from "../builtins/non-author-sheets.js";
+import { isKnownProperty } from "./property-schema.js";
 import { satisfiesPropertySchema } from "./value-validator.js";
 
 /**
@@ -32,13 +34,15 @@ import { satisfiesPropertySchema } from "./value-validator.js";
  * surface that reads the cascade. Its `sourceIndex` is still consumed, so the
  * declaration order of the rules that remain is unchanged.
  *
- * A declaration whose value fails its property's schema (`PROPERTY_SCHEMAS`)
- * is left out the same way (#3141): the cascade continues as if it had not
- * been written, so a weaker rule's value for that property applies, or the
- * default when none sets it. The validator reports it once, where it was
- * written. Doing it here, once, is what keeps the bounds in one table: the
- * resolver never reads a value the validator rejected, so it needs no guard
- * of its own that could disagree with the diagnostic.
+ * A declaration in an author sheet whose value fails its property's schema
+ * (`PROPERTY_SCHEMAS`) is left out the same way (#3141): the cascade continues
+ * as if it had not been written, so a weaker rule's value for that property
+ * applies, or the default when none sets it. The validator reports it once,
+ * where it was written. Doing it here, once, is what keeps the bounds in one
+ * table: the resolver never reads a value the validator rejected, so it needs
+ * no guard of its own that could disagree with the diagnostic. The sheets
+ * karasu ships are trusted and not checked (ADR-1178): the builtin theme
+ * writes its lengths without a unit.
  */
 export function flattenSheetsInCascadeOrder(sheets: StyleSheet[]): StyleRule[] {
   let globalIndex = 0;
@@ -54,22 +58,33 @@ export function flattenSheetsInCascadeOrder(sheets: StyleSheet[]): StyleRule[] {
 }
 
 /**
- * `rule` without the declarations whose value fails its schema. A rule built
- * without value nodes (hand-built in a test) has nothing to check against and
- * is returned as it is, and so is a declaration whose value the parser could
- * not classify (the parser already reported it).
+ * `rule` without the author declarations the validator rejects: a known
+ * property whose value fails its schema, or has no value node at all. A rule
+ * from a sheet karasu ships, and a rule built without value nodes (hand-built
+ * in a test), have nothing to check and are returned as they are. An unknown
+ * property is kept (forward compat; the validator warns).
+ *
+ * The maps are copied before anything is removed: a spread rule still shares
+ * them with the sheet it came from, which may be cached.
  */
 function withoutInvalidDeclarations(rule: StyleRule): StyleRule {
   const nodes = rule.valueNodes;
-  if (!nodes) return rule;
+  if (!nodes || NON_AUTHOR_SHEET_IDS.has(rule.sheetId)) return rule;
   const invalid = Object.keys(rule.properties).filter((property) => {
+    if (!isKnownProperty(property)) return false;
     const node = nodes[property];
-    return node !== undefined && !satisfiesPropertySchema(property, node);
+    return node === undefined || !satisfiesPropertySchema(property, node);
   });
   if (invalid.length === 0) return rule;
   const properties = { ...rule.properties };
-  for (const property of invalid) delete properties[property];
-  return { ...rule, properties };
+  const declarationLocs = { ...rule.declarationLocs };
+  const valueNodes = { ...nodes };
+  for (const property of invalid) {
+    delete properties[property];
+    delete declarationLocs[property];
+    delete valueNodes[property];
+  }
+  return { ...rule, properties, declarationLocs, valueNodes };
 }
 
 /**

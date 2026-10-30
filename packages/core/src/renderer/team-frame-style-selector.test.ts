@@ -226,7 +226,7 @@ describe("each property lands on the part of the frame it paints on the card (#2
   });
 
   it("keeps the title muted when the sheet named no colour for it", () => {
-    const frame = frameOf(systemSvg("#payments { border-width: 4; }"), "payments");
+    const frame = frameOf(systemSvg("#payments { border-width: 4px; }"), "payments");
     expect(frame).toContain('stroke-width="4"');
     expect(frame).toContain('opacity="0.7"');
   });

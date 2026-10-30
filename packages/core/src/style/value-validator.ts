@@ -53,9 +53,20 @@ export function validateStyleValues(
         });
         continue;
       }
-      const node = valueNodes[property];
-      if (!node) continue; // value classification failed in parser; skip
       const schema = PROPERTY_SCHEMAS[property];
+      const node = valueNodes[property];
+      if (!node) {
+        // The parser gives every value it keeps a node, so this is a rule
+        // assembled elsewhere. The cascade drops the declaration (#3141);
+        // say so here rather than let it vanish.
+        out.push({
+          severity: "error",
+          code: "style-invalid-enum-value",
+          params: { property, value: rule.properties[property], allowed: allowedForms(schema) },
+          ...(declLoc ? { loc: declLoc } : {}),
+        });
+        continue;
+      }
       const diags: Diagnostic[] = [];
       validateAgainstSpec(node, schema, property, diags);
       if (diags.length === 0) {
@@ -84,7 +95,8 @@ export function validateStyleValues(
  * the schema does not know is kept: it is forward-compatible and the resolver
  * ignores what it does not read. `flattenSheetsInCascadeOrder` drops a
  * declaration this rejects, so the resolver never sees a value the validator
- * reports (#3141).
+ * reports (#3141). `validateStyleValues` reports exactly the declarations
+ * this rejects, so the two cannot disagree.
  */
 export function satisfiesPropertySchema(property: string, node: ValueNode): boolean {
   if (!isKnownProperty(property)) return true;
@@ -128,6 +140,15 @@ function collectMismatch(node: ValueNode, spec: ValueSpec, property: string): Di
             value: stringifyValueNode(node),
             allowed: [...spec.values],
           },
+        },
+      ];
+    case "ident":
+      if (node.kind === "ident") return [];
+      return [
+        {
+          severity: "error",
+          code: "style-invalid-enum-value",
+          params: { property, value: stringifyValueNode(node), allowed: ["<identifier>"] },
         },
       ];
     case "hex":
@@ -177,6 +198,8 @@ function collectMismatch(node: ValueNode, spec: ValueSpec, property: string): Di
       }
       return [];
     case "length":
+      // A unitless `0` is the same length in every unit, as in CSS.
+      if (node.kind === "number" && node.value === 0) return [];
       if (node.kind === "number") {
         return [
           {
@@ -255,7 +278,8 @@ function collectMismatch(node: ValueNode, spec: ValueSpec, property: string): Di
       ];
     case "list-of":
       if (node.kind !== "list") {
-        // Single value still acceptable as a one-item list.
+        // Single value (an atom or a `sequence`) still acceptable as a
+        // one-item list.
         return collectMismatch(node, spec.item, property);
       }
       for (const item of node.items) {
@@ -263,6 +287,28 @@ function collectMismatch(node: ValueNode, spec: ValueSpec, property: string): Di
         if (itemDiags.length > 0) return itemDiags;
       }
       return [];
+    case "sequence-of": {
+      // Spaces separate the items; a comma list is a different shape.
+      const items = node.kind === "sequence" ? node.items : node.kind === "list" ? null : [node];
+      if (
+        items === null ||
+        items.length < spec.minItems ||
+        (spec.maxItems !== undefined && items.length > spec.maxItems)
+      ) {
+        return [
+          {
+            severity: "error",
+            code: "style-invalid-enum-value",
+            params: { property, value: stringifyValueNode(node), allowed: allowedForms(spec) },
+          },
+        ];
+      }
+      for (const item of items) {
+        const itemDiags = collectMismatch(item, spec.item, property);
+        if (itemDiags.length > 0) return itemDiags;
+      }
+      return [];
+    }
     case "union": {
       // Try each branch. If any matches, the whole union matches with
       // no diagnostics. Otherwise report one branch's failure: a number
@@ -282,7 +328,16 @@ function collectMismatch(node: ValueNode, spec: ValueSpec, property: string): Di
           numericFailure = branchDiags;
         }
       }
-      return numericFailure ?? firstFailure ?? [];
+      if (numericFailure !== null) {
+        // A number that is not an integer reads "not one of <integer>"; name
+        // the keywords too, or `label-max-chars: 2.5` hides `none`.
+        return numericFailure.map((d) =>
+          d.code === "style-invalid-enum-value"
+            ? { ...d, params: { ...d.params, allowed: allowedForms(spec) } }
+            : d,
+        );
+      }
+      return firstFailure ?? [];
     }
     default: {
       const _exhaustive: never = spec;
@@ -312,6 +367,45 @@ function readsNumbers(spec: ValueSpec): boolean {
   return spec.kind === "number" || spec.kind === "length";
 }
 
+/** The forms `spec` accepts, as `style-invalid-enum-value` lists them. */
+function allowedForms(spec: ValueSpec): string[] {
+  switch (spec.kind) {
+    case "any":
+      return ["<any>"];
+    case "ident-of":
+      return [...spec.values];
+    case "ident":
+      return ["<identifier>"];
+    case "hex":
+      return ["<hex>"];
+    case "number":
+      return [spec.integer ? "<integer>" : "<number>"];
+    case "length":
+      return spec.allowedUnits.map((u) => `<number>${u}`);
+    case "string":
+      return ["<string>"];
+    case "url":
+      return ["url(...)"];
+    case "list-of":
+      return allowedForms(spec.item).map((f) => `${f}, …`);
+    case "sequence-of": {
+      const item = allowedForms(spec.item).join(" | ");
+      if (spec.maxItems === undefined) return [`${item} …`];
+      const forms: string[] = [];
+      for (let n = Math.max(spec.minItems, 1); n <= spec.maxItems; n++) {
+        forms.push(Array.from({ length: n }, () => item).join(" "));
+      }
+      return forms;
+    }
+    case "union":
+      return spec.specs.flatMap(allowedForms);
+    default: {
+      const _exhaustive: never = spec;
+      throw new Error(`Unhandled ValueSpec kind: ${JSON.stringify(_exhaustive)}`);
+    }
+  }
+}
+
 function specAcceptsUrl(spec: ValueSpec): boolean {
   switch (spec.kind) {
     case "url":
@@ -319,6 +413,7 @@ function specAcceptsUrl(spec: ValueSpec): boolean {
     case "union":
       return spec.specs.some(specAcceptsUrl);
     case "list-of":
+    case "sequence-of":
       return specAcceptsUrl(spec.item);
     default:
       return false;
@@ -351,6 +446,8 @@ function stringifyValueNode(node: ValueNode): string {
       return `${node.name}("${node.argRaw}")`;
     case "list":
       return node.items.map(stringifyValueNode).join(", ");
+    case "sequence":
+      return node.items.map(stringifyValueNode).join(" ");
     default: {
       const _exhaustive: never = node;
       return JSON.stringify(_exhaustive);

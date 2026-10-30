@@ -428,14 +428,9 @@ export type Translations = {
     target: string;
     legendTitle?: string;
   }) => string;
-  "warning.styleColumnInvalidValue.message": (params: { nodeId: string; value: string }) => string;
   "warning.styleColumnIgnoredNonSystemView.message": (params: {
     nodeId: string;
     viewType: "deploy" | "org";
-  }) => string;
-  "warning.styleGridColumnsInvalidValue.message": (params: {
-    nodeId: string;
-    value: string;
   }) => string;
   // Value-level validator (Phase 3)
   "warning.styleInvalidEnumValue.message": (params: {

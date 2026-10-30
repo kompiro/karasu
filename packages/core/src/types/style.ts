@@ -399,11 +399,8 @@ export interface ResolvedStyles {
 /** Plain warning objects emitted by the resolver, kept structural to avoid
  * circular imports with the `Warning` discriminated union. The compile
  * pipeline widens these into the canonical `Warning` shape. */
-export type ResolvedStyleWarning =
-  | { kind: "style-column-invalid-value"; nodeId: string; value: string }
-  | {
-      kind: "style-column-ignored-non-system-view";
-      nodeId: string;
-      viewType: "deploy" | "org";
-    }
-  | { kind: "style-grid-columns-invalid-value"; nodeId: string; value: string };
+export type ResolvedStyleWarning = {
+  kind: "style-column-ignored-non-system-view";
+  nodeId: string;
+  viewType: "deploy" | "org";
+};

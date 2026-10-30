@@ -146,17 +146,9 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "legend-ref-unresolved",
     params: { target: "@missing", legendTitle: "Tags" },
   },
-  "style-column-invalid-value": {
-    kind: "style-column-invalid-value",
-    params: { nodeId: "OrderService", value: "centre" },
-  },
   "style-column-ignored-non-system-view": {
     kind: "style-column-ignored-non-system-view",
     params: { nodeId: "OrderUnit", viewType: "deploy" },
-  },
-  "style-grid-columns-invalid-value": {
-    kind: "style-grid-columns-invalid-value",
-    params: { nodeId: "OrderService", value: "0" },
   },
   "style-invalid-enum-value": {
     kind: "style-invalid-enum-value",
@@ -224,9 +216,7 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "style-annotation-selector-not-builtin": ["service@canary", "canary"],
   "facet-not-declared": ["Order", "pcl"],
   "legend-ref-unresolved": ["@missing"],
-  "style-column-invalid-value": ["OrderService", "centre"],
   "style-column-ignored-non-system-view": ["OrderUnit"],
-  "style-grid-columns-invalid-value": ["OrderService", "0"],
   "style-invalid-enum-value": ["direction", "dwon"],
   "style-invalid-hex-color": ["color", "#zzzz"],
   "style-missing-length-unit": ["stroke-width", "1.5"],

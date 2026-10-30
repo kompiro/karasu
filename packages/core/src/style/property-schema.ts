@@ -12,19 +12,27 @@ import { CSS_NAMED_COLORS } from "./css-named-colors.js";
  * in order and treats the first match as a success.
  *
  * This table is the only place a value's bounds are written (#3141). A
- * declaration whose value fails its spec is dropped from the cascade
- * (`flattenSheetsInCascadeOrder`) and reported once by the validator; the
- * resolver reads only declarations that passed, so it states no bound of its
- * own.
+ * declaration in an author sheet whose value fails its spec is dropped from
+ * the cascade (`flattenSheetsInCascadeOrder`) and reported once by the
+ * validator; the resolver reads only declarations that passed, so it states
+ * no bound of its own.
+ *
+ * A comma separates `list-of` items; spaces separate `sequence-of` items. The
+ * two never stand in for each other: `label-offset: 4px, 8px` is not an offset.
  */
 export type ValueSpec =
   | { kind: "ident-of"; values: readonly string[] }
+  /** Any identifier — an unquoted font name word. */
+  | { kind: "ident" }
   | { kind: "hex" }
   | { kind: "number"; min?: number; max?: number; integer?: boolean }
+  /** A number with one of `allowedUnits`, or a unitless `0` (as in CSS). */
   | { kind: "length"; allowedUnits: readonly string[]; min?: number }
   | { kind: "string" }
   | { kind: "url" }
   | { kind: "list-of"; item: ValueSpec }
+  /** One atom, or a space-separated `sequence`, of `minItems`..`maxItems` items. */
+  | { kind: "sequence-of"; item: ValueSpec; minItems: number; maxItems?: number }
   | { kind: "union"; specs: readonly ValueSpec[] }
   | { kind: "any" };
 
@@ -39,9 +47,11 @@ const NON_NEGATIVE_LENGTH_PX_SPEC: ValueSpec = { kind: "length", allowedUnits: [
 
 const SHAPE_KIND_VALUES = ["box", "user", "cylinder", "queue", "hexagon", "cloud"] as const;
 
+// A quoted name, or an unquoted one of one or more words (`Noto Sans`), as in
+// CSS. The generic families (`sans-serif`, …) are such words too.
 const FONT_FAMILY_ITEM_SPEC: ValueSpec = {
   kind: "union",
-  specs: [{ kind: "string" }, { kind: "ident-of", values: ["sans-serif", "serif", "monospace"] }],
+  specs: [{ kind: "string" }, { kind: "sequence-of", item: { kind: "ident" }, minItems: 1 }],
 };
 
 /**
@@ -79,10 +89,9 @@ export const PROPERTY_SCHEMAS: Record<string, ValueSpec> = {
       { kind: "number", min: 0, max: 1 },
     ],
   },
-  // `<dy>px` or `<dx>px <dy>px`. The two-length form parses as a list,
-  // a single length parses as a bare length — the validator's
-  // `list-of` case accepts both.
-  "label-offset": { kind: "list-of", item: LENGTH_PX_SPEC },
+  // `<dy>px` or `<dx>px <dy>px` (ADR-1184). A third length is rejected rather
+  // than ignored.
+  "label-offset": { kind: "sequence-of", item: LENGTH_PX_SPEC, minItems: 1, maxItems: 2 },
   // The canvas tier of edge-label disclosure (#3022).
   "label-max-chars": {
     kind: "union",

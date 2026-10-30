@@ -819,7 +819,7 @@ system Test {
   }
 }
       `,
-      `service { shape: url("service-icon"); background-color: #123456; border-color: #ABCDEF; border-width: 3; }`,
+      `service { shape: url("service-icon"); background-color: #123456; border-color: #ABCDEF; border-width: 3px; }`,
       undefined,
       "icon",
     );
@@ -837,7 +837,7 @@ system Test {
   }
 }
       `,
-      `service { shape: url("service-icon"); border-radius: 12; }`,
+      `service { shape: url("service-icon"); border-radius: 12px; }`,
       undefined,
       "icon",
     );
