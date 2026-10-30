@@ -17,7 +17,7 @@
 
 workflow が使う action は、直接・推移的なものを含めて `.github/workflows/actions.lock` に commit SHA で固定する（[#3412](https://github.com/kompiro/karasu/issues/3412)）。workflow 側の `uses:` は `owner/repo@vX.Y.Z` の完全なタグで書き、SHA は lockfile が持つ。
 
-- workflow を追加・削除・改名したとき、または `uses:` を手で変えたときは、リポジトリのルートで `gh actions-lock` を実行して lockfile を commit する。`uses:` を持たない workflow も lockfile に載る必要がある。拡張は CI と同じ版を入れる（`gh extension install github/gh-actions-lock --pin v0.4.0`）。
+- workflow を追加・削除・改名したとき、または `uses:` を手で変えたときは、リポジトリのルートで `gh actions-lock` を実行して lockfile を commit する。`uses:` を持たない workflow も lockfile に載る必要がある。拡張は CI と同じ版を入れる（`gh extension install github/gh-actions-lock --pin v0.4.0`）。既に入っている版を替えるときは、`gh extension remove gh-actions-lock` を先に実行する（入っている拡張に `install` を重ねると失敗する）。版は `gh extension list` で確かめる。
 - Dependabot の `github-actions` PR は、lockfile の差分が同じ PR に含まれているかを確かめる。含まれていなければ、その PR のブランチで `gh actions-lock` を実行して commit する。
 - lockfile は手で編集しない。ずれていると `verify-lockfile.yml`（`gh actions-lock --verify`）が落ち、runner も job 開始時に `Invalid lockfile` で止まる。`verify-lockfile.yml` は PR ごとと週次で走る。lockfile に載っていない workflow はタグをそのまま解決するので、PR で落ちたまま main に入れない。
 - 更新先のタグは、リリースノートと公開からの日数（cooldown と同じ 7 日）を確認してから採る。
