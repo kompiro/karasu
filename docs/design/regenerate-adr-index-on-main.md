@@ -24,21 +24,22 @@ ADR の PR は、`pnpm adr:regenerate` が書く `docs/adr/effective.md`・`docs
 
 ## 現状（インベントリ）
 
-| 観点           | 現状                                                                                                                                                                                                                                                                            |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 生成物         | `effective.md`（484 行）、`graph.md`（1162 行）、`graph/<topic>.md`（topic ごと）。出力先は `adr.config.json` の `paths.outputs`                                                                                                                                                |
-| 読み手         | `CLAUDE.md` が「有効な決定一覧」として `effective.md` を第一参照に挙げる（ADR-788）。GitHub のファイル表示で人も読む。docs-site は ADR を載せていない                                                                                                                           |
-| PR 側の検査    | `adr-validate.yml`（required check `Validate`、paths は `docs/adr/**` など。それ以外の PR には `adr-validate-skip.yml` が no-op の `Validate` を返す）が `adr regenerate --check` を実行する。pre-push の `adr-regenerate-check`（glob `docs/adr/**`, `adr.config.json`）も同じ |
-| main 側の検査  | 同じ `adr-validate.yml` が `main` への push でも `--check` を実行する                                                                                                                                                                                                           |
-| 抜けている検査 | `@kompiro/adr-tools` の版を上げる PR（`package.json` / lockfile だけの差分）では `adr-validate.yml` が走らない。生成器の出力が変わっても、次の ADR PR まで気づかない（TPL-1480 の形）                                                                                           |
-| main の保護    | ruleset `protect default branch`。PR 必須（squash のみ）、required check は `Check`・`Validate`・`Reference docs`・`Playwright`、bypass actor は 0 件                                                                                                                           |
-| repo           | user 所有の public repo。merge queue は organization 所有の repo（と Enterprise Cloud）にしか無い                                                                                                                                                                               |
-| 分類器         | `scripts/review/tier.ts` が生成物のパスを知っており、ADR PR の生成物の差分を Low に数える                                                                                                                                                                                       |
+| 観点               | 現状                                                                                                                                                                                                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 生成物             | `effective.md`（484 行）、`graph.md`（1162 行）、`graph/<topic>.md`（topic ごと）。出力先は `adr.config.json` の `paths.outputs`                                                                                                                                                |
+| 読み手             | `CLAUDE.md` が「有効な決定一覧」として `effective.md` を第一参照に挙げる（ADR-788）。GitHub のファイル表示で人も読む。docs-site は ADR を載せていない                                                                                                                           |
+| PR 側の検査        | `adr-validate.yml`（required check `Validate`、paths は `docs/adr/**` など。それ以外の PR には `adr-validate-skip.yml` が no-op の `Validate` を返す）が `adr regenerate --check` を実行する。pre-push の `adr-regenerate-check`（glob `docs/adr/**`, `adr.config.json`）も同じ |
+| main 側の検査      | 同じ `adr-validate.yml` が `main` への push でも `--check` を実行する                                                                                                                                                                                                           |
+| 抜けている検査     | `@kompiro/adr-tools` の版を上げる PR（`package.json` / lockfile だけの差分）では `adr-validate.yml` が走らない。生成器の出力が変わっても、次の ADR PR まで気づかない（TPL-1480 の形）                                                                                           |
+| main の保護        | ruleset `protect default branch` 1 本が、削除の禁止・non-fast-forward の禁止・PR 必須（squash のみ）・required check（`Check`・`Validate`・`Reference docs`・`Playwright`）をまとめて持つ。bypass actor は 0 件                                                                 |
+| repo               | user 所有の public repo。merge queue は organization 所有の public repo と、Enterprise Cloud の organization の private repo にしか無い                                                                                                                                         |
+| Actions の PR 作成 | repo 設定「Actions に PR の作成・承認を許可」は意図して OFF にしてある（#1370、ADR-1370）                                                                                                                                                                                       |
+| 分類器             | `scripts/review/tier.ts` が生成物のパスを知っており、ADR PR の生成物の差分を Low に数える                                                                                                                                                                                       |
 
 ## 制約・前提
 
 - `main` への直接 push は人もエージェントもしない（CLAUDE.md、ADR-3335）。自動化が `main` に書くなら、それは ruleset の例外として明示的に決める。
-- `GITHUB_TOKEN` は ruleset の bypass actor にできない。bypass にできるのは repo の役割・team・deploy key・GitHub App で、bypass は ruleset 全体に効く（パスで絞れない）。
+- `GITHUB_TOKEN` は ruleset の bypass actor にできない。user 所有の repo で bypass にできるのは repo の役割・deploy key・GitHub App で（team は organization だけ）、bypass はその ruleset の規則すべてに効く（パスで絞れない）。
 - `GITHUB_TOKEN` による push や PR の作成は、他の workflow を起動しない（ADR-1370 が同じ制約を扱った）。したがって「bot が再生成の PR を開いて auto-merge する」形は、required check が走らずに止まる。
 - `effective.md` は AI が文脈に入れる第一参照なので、clone した直後から最新であってほしい（ADR-788）。
 - out of scope: 生成物の中身や形式（adr-tools 側）、ADR 以外の生成物（`gen:reference` の表など、PR 単位で衝突しないもの）。TPL の索引は #3289 が入ったら同じ仕組みに載せる（「未解決の問い」）。
@@ -49,14 +50,17 @@ ADR の PR は、`pnpm adr:regenerate` が書く `docs/adr/effective.md`・`docs
 
 PR は生成物をコミットしない。`main` に push があるたびに workflow が `adr regenerate` を実行し、差分があれば生成物だけの commit を `main` に push する。
 
-ruleset の bypass には **deploy key** を使う。GitHub App より準備が少なく（鍵 1 組と secret 1 つ）、deploy key の push は他の workflow を起動する（`GITHUB_TOKEN` だけが起動しない）。
+ruleset の bypass には **deploy key** を使う。GitHub App より準備が少ない（鍵 1 組と secret 1 つ）。
 
-bypass は ruleset 全体に効くので、鍵が漏れれば `main` に何でも書ける。そこで鍵とサードパーティのコードを同じ job に置かない。
+bypass はその ruleset の規則すべてに効くので、鍵が漏れれば `main` に何でも書ける。そこで 3 つの柵で範囲を絞る。
 
-1. **生成 job**（鍵なし、`contents: read`）: checkout → `pnpm install --frozen-lockfile` → `adr regenerate` → 生成物のパスだけを artifact に上げる。
-2. **commit job**（鍵あり）: `actions/checkout` を deploy key で実行し、artifact を展開し、変わったパスが生成物のパスの内側だけであることを確かめてから commit して push する。`pnpm` も `npx` もサードパーティの action も実行しない。鍵は `main` だけが使える environment の secret に置き、PR や他のブランチの job からは読めないようにする。
+- **ruleset を分ける。** 削除の禁止と non-fast-forward の禁止を、bypass actor を持たない別の ruleset に移す。deploy key を bypass に足すのは PR 必須と required check の ruleset だけにする。鍵が漏れても、`main` の force-push や削除はできない。
+- **鍵とサードパーティのコードを同じ job に置かない。**
+  1. **生成 job**（鍵なし、`contents: read`）: checkout → `pnpm install --frozen-lockfile` → `adr regenerate` → 生成物のパスだけを artifact に上げる。
+  2. **commit job**（鍵あり）: artifact を checkout の外（`$RUNNER_TEMP`）に展開し、どのエントリも `paths.outputs` の内側の通常ファイルであること（symlink・`..`・`.git/` を含まない）を確かめてから、作業ツリーに写す。commit と push は `git -c core.hooksPath=/dev/null` で行い、`git add` は生成物のパスだけを名指しする。`pnpm` も `npx` もサードパーティの action も実行しない。
+- **鍵を読める job を 1 つにする。** 鍵は environment `adr-regenerate` の secret に置き、deployment branch を `main` に制限する。`main` で動く job（`pull_request_target` や `workflow_dispatch` を含む）は environment を名指しすれば読めるので、名指ししてよいのは `main` への push だけで起動する commit job 1 つ、とテストで固定する。
 
-生成 job が乗っ取られても、commit job が書くのは生成物のパスだけなので、最悪の結果は生成物の中身が壊れることに留まる。
+artifact の検査を作業ツリーの外で行うのは、乗っ取られた生成 job が artifact API を直接呼んで `.git/hooks/*` や `.git/config` に落ちるエントリを作れるからである。`git status` で「変わったパス」を見る検査は `.git/` の中を見ないので、それでは防げない。この形なら、生成 job が乗っ取られても commit job が書けるのは生成物の中身だけに留まる。
 
 **メリット**
 
@@ -66,10 +70,10 @@ bypass は ruleset 全体に効くので、鍵が漏れれば `main` に何で�
 
 **デメリット**
 
-- ruleset に初めて bypass actor を足す。範囲は仕組み（job の分離・パスの検査・environment）で絞るが、ruleset 上は全体の bypass である。
+- ruleset に初めて bypass actor を足す。範囲は上の柵で絞るが、PR 必須と required check については全体の bypass である。
 - マージから再生成の commit までの 1〜2 分、`main` の生成物が古い。
-- ADR をマージするたびに `main` の commit が 1 つ増える（月 40 程度）。
-- bypass actor の push が required status checks に止められるかを、実際に確かめる必要がある（コミュニティの報告では止められた例がある）。
+- ADR をマージするたびに `main` の commit が 1 つ増える（月 40 程度）。deploy key の push は他の workflow を起動するので、何もしなければ `main` への push で動く workflow（`ci.yml`・`deploy.yml`・`pages.yml`・`nest-deploy.yml`・`release.yml`・`adr-validate.yml`）も月 40 回ずつ余分に走る。再生成の commit のメッセージに `[skip ci]` を付けて止める（生成物だけの commit なので、CI で確かめることが無い）。
+- bypass actor の push が required status checks に止められないことを、実際に確かめる必要がある。旧来の branch protection では、PR 必須を bypass できる actor の直接 push も required status checks で止められた（[community discussion #43460](https://github.com/orgs/community/discussions/43460)）。ruleset では bypass actor がその ruleset の規則すべてを越えるはずだが、まだ確かめていない。
 
 ### 案2: 手元の merge driver で衝突を自動で解く
 
@@ -105,7 +109,10 @@ bypass は ruleset 全体に効くので、鍵が漏れれば `main` に何で�
 
 ### 却下: bot が再生成の PR を開いて auto-merge する
 
-bypass は不要になるが、`GITHUB_TOKEN` が作った PR では required check が走らず、マージできない。GitHub App の token を使えば走るが、そのときは App という鍵を足すことになり、案1 より手数が多い。
+bypass は不要になるが、2 つの理由で採らない。
+
+- repo 設定「Actions に PR の作成・承認を許可」を OFF にしてある（#1370、ADR-1370）。この案はそれを ON に戻すことになる。
+- ON に戻しても、`GITHUB_TOKEN` が作った PR では required check が走らない。`GITHUB_TOKEN` で `workflow_dispatch` を起動して check を走らせる手はあるが、required check を出す 4 つの workflow すべてに dispatch の入口と、PR の head に結果を付ける仕組みを足すことになる。GitHub App の token を使えば普通に走るが、そのときは App という鍵を足すことになり、案1 より手数が多い。
 
 ## 比較
 
@@ -121,34 +128,46 @@ bypass は不要になるが、`GITHUB_TOKEN` が作った PR では required ch
 
 ## 現時点の方針
 
-**案1 を採用する。** 衝突と auto-merge の停止を両方無くせるのは案1 と案3 で、そのうち `effective.md` を「clone した直後から最新の第一参照」として保てるのは案1 だけである（ADR-788）。案1 の代償は bypass の鍵だが、鍵を持つ job でサードパーティのコードを動かさず、書けるパスを機械で検査することで、漏れたときの被害を生成物の中身に閉じ込められる。ADR-1370 が鍵を足さなかったのは、リリースが人の判断を挟むべき操作だからで、ここで自動化するのは生成器の出力という、判断の無い決定的な操作である。
+**案1 を採用する。** 衝突と auto-merge の停止を両方無くせるのは案1 と案3 で、そのうち `effective.md` を「clone した直後から最新の第一参照」として保てるのは案1 だけである（ADR-788）。案1 の代償は bypass の鍵だが、force-push と削除は bypass の無い ruleset に残し、鍵を持つ job でサードパーティのコードを動かさず、書けるパスを作業ツリーの外で機械的に検査することで、生成 job が乗っ取られたときの被害を生成物の中身に閉じ込められる。ADR-1370 が鍵を足さなかったのは、リリースが人の判断を挟むべき操作だからで、ここで自動化するのは生成器の出力という、判断の無い決定的な操作である。
 
 ### 実装の指針
 
-1. **spike で bypass を確かめる。** deploy key を ruleset の bypass に足し、required status checks がある `main` に deploy key で push できることを、使い捨てのブランチ用 ruleset で確かめる（`spike/3416-deploy-key-bypass`）。push が止められるなら案1 は成立しないので、ここで Design Doc に戻る。
+1. **spike で bypass を確かめる。** 使い捨てのブランチと、それだけを対象にした ruleset（PR 必須と required check、bypass に deploy key、`bypass_mode: always`）を作り、deploy key でそのブランチに直接 push できることを確かめる（`spike/3416-deploy-key-bypass`）。push が止められるなら案1 は成立しないので、ここで Design Doc に戻る。確かめたら、spike の ruleset・deploy key・ブランチを消す。
 2. **workflow `adr-regenerate.yml` を足す。** 起動は `main` への push すべて（paths で絞らない。生成器の版上げや `adr.config.json` の変更も拾う。TPL-1480）。`concurrency: adr-regenerate`、`cancel-in-progress: true`（新しい run が新しい `main` から生成し直すので、古い run は捨ててよい）。
-   - 生成 job と commit job を分ける（案1 の 1・2）。
-   - commit job は push の前に `origin/main` が生成 job の見た commit から動いていないか確かめ、動いていれば何もせず終える（後続の run が引き継ぐ）。
-   - 生成物の commit がまた push を起こすが、2 回目の run は差分が無いので何もしない。
-   - 生成や push が失敗したら job を失敗させる（TPL-2786）。
-3. **鍵の置き場所。** deploy key（write）を足し、その秘密鍵を environment `adr-regenerate`（deployment branch を `main` だけに制限）の secret にする。ruleset の bypass actor にその deploy key を足す。
+   - 生成 job と commit job を分ける（案1 の柵）。
+   - 再生成の commit は `[skip ci]` を付けるので、この workflow を含め `main` への push で動く workflow を起動しない（再生成の繰り返しも起きない）。
+   - push は force しない。non-fast-forward で拒否されたら、`origin/main` が生成 job の見た commit の子孫であることを確かめて成功で終える（後の run が新しい `main` から生成し直す）。それ以外の失敗と、生成の失敗は job を失敗させる（TPL-2786）。
+   - 既存の policy テスト（`workflow-timeout-policy.test.ts`・`workflow-runner-policy.test.ts`・`workflow-draft-gate.test.ts`）を通す。
+3. **ruleset と鍵。**
+   - 削除の禁止と non-fast-forward の禁止を、bypass actor を持たない新しい ruleset に移す。
+   - deploy key（write）を足し、PR 必須と required check の ruleset の bypass actor に `bypass_mode: always` で足す。
+   - 秘密鍵は environment `adr-regenerate`（deployment branch を `main` だけに制限）の secret にする。
 4. **PR 側の検査を入れ替える。**
-   - `adr-validate.yml` の `adr regenerate --check` を外し、代わりに「PR が生成物のパスを変えていない」検査を置く。手元で再生成した生成物をうっかりコミットすると衝突が戻るので、検査で止める。
+   - `adr-validate.yml` の `adr regenerate --check` を外し、代わりに「PR が生成物のパスを変えていない」検査を置く。比べるのは merge-base との差分（`base...head`）で、PR が持つ `adr.config.json` の `paths.outputs` を見る。現在の `main` との差分で比べると、古いブランチが再生成の commit を戻すように見えて落ちる。手元で再生成した生成物をうっかりコミットすると衝突が戻るので、検査で止める。
+   - PR では `adr regenerate` を出力を捨てて実行し、生成が失敗しないことだけを確かめる。外すと、生成器を壊す PR がマージの後にしか分からない。
    - `main` への push では `--check` を実行しない（再生成の commit が来るまで赤くなるため）。`main` の生成物が最新であることは、`adr-regenerate.yml` の成功で示す。
    - pre-push の `adr-regenerate-check` を同じ「生成物を変えていない」検査に替える。
-5. **自動化の書き込み範囲をテストで固定する**（TPL-2658、TPL-3416）。`scripts/ci/` に新しいテストを足し（`agentic-workflow-safety.test.ts` と同じ形）、commit job が deploy key を使う唯一の job であること、その job が `pnpm` も `npx` も実行せず、`actions/checkout` と `actions/download-artifact` 以外の action を使わないこと、許可するパスの一覧が `adr.config.json` の `paths.outputs` と一致することを確かめる。
+5. **自動化の書き込み範囲をテストで固定する**（TPL-2658、TPL-3416）。`scripts/ci/` に新しいテストを足し（`agentic-workflow-safety.test.ts` と同じ形）、次を確かめる。
+   - environment `adr-regenerate` を名指しする job が全 workflow で 1 つだけで、その workflow の起動が `push: branches: [main]` だけであること。
+   - その job が `pnpm` も `npx` も実行せず、`actions/checkout` と `actions/download-artifact` 以外の action を使わないこと。
+   - その job が artifact を checkout の外に展開し、git を `core.hooksPath=/dev/null` で実行すること。
+   - 許可するパスの一覧が `adr.config.json` の `paths.outputs` から導かれること。
 6. **ルールと記録を直す。** `.claude/rules/adr.md` の「編集後のチェック」（再生成してコミットする手順）と auto-merge の適用条件の生成物の項、`scripts/review/tier.ts` の生成物のパス（PR に現れなくなるので、許す差分から外して衝突の再発を Medium で知らせる）、`docs/process/review.md` の Low の行。
 7. AT: `docs/acceptance/3416-regenerate-adr-index-on-main.md`。TC は:
    - 無関係な ADR を足す PR を 2 本同時に開き、片方をマージした後も、もう片方が `main` を取り込まずにマージできる。
    - マージ後、`main` の生成物が `pnpm adr:regenerate` の出力と一致する（`adr regenerate --check` が通る）。
-   - PR が生成物を変えると `Validate` が落ちる。
+   - 続けて 2 本マージしても、`main` の生成物は最後の状態に収束し、失敗した run が残らない。
+   - 再生成の commit は他の workflow を起動しない。
+   - PR が生成物を変えると `Validate` が落ちる。生成器を壊す PR も `Validate` が落ちる。
    - `@kompiro/adr-tools` の版上げで出力が変わると、マージ後に `main` の生成物が更新される。
+   - commit job の検査は、`paths.outputs` の外のパス・symlink・`.git/` を含む artifact を拒否して失敗する（検査のスクリプトを細工した artifact で単体テストする）。
 8. ADR 昇格: 実装完了後、`docs/adr/3416-regenerate-adr-index-on-main.md` として昇格し、本 Design Doc は同 PR で削除する。ADR-788 と ADR-2331 は `related_to` で結ぶ（覆すのは「生成物は PR が運ぶ」という前提で、両者の決定の中心ではない）。
 
 ### 影響範囲・マイグレーション
 
 - 既存ユーザーへの影響: なし（repo の運用だけ）。
 - ADR を書く人の手順: `pnpm adr:regenerate` をコミットしなくなる。手元で確かめるために実行してよいが、生成物の差分はコミットせず捨てる。
+- 出力先の変更: `paths.outputs` を変える PR は、古い出力の削除を自分で含める。commit job は新しい出力先にしか書けず、PR 側の検査は PR が持つ `paths.outputs` だけを見るので、古いパスの削除は通る。
 - 開いている ADR PR: 切り替えの PR がマージされた後、生成物の差分を取り除くまで新しい検査で落ちる。切り替えは開いている ADR PR が少ないときに入れる。
 - ドキュメント更新: `.claude/rules/adr.md`、`docs/process/review.md`、ruleset の変更を ADR に記録する。
 
@@ -157,3 +176,4 @@ bypass は不要になるが、`GITHUB_TOKEN` が作った PR では required ch
 - **TPL の索引（#3289）を同じ workflow に載せるか。** 載せる前提で、許可するパスの一覧を生成器ごとに持てる形にしておく。実際に載せるのは #3289 が入ってから決める。
 - **deploy key か GitHub App か。** 本 Design Doc は deploy key を推す（準備が少ない）。spike で deploy key が required status checks に止められ、App なら通る場合は App に替える。
 - **鍵の更新周期。** deploy key には期限が無い。定期的に作り直すかは決めない（漏れたと分かれば鍵を消し、ruleset から外せば止まる）。
+- **鍵が漏れたときに残る被害。** force-push と削除は防げるが、PR を通らない commit を `main` に足すことはできる。それは commit の履歴に残り、revert で戻せる。これ以上絞る手段（鍵ごとにパスを制限する仕組み）は本 Design Doc では探さない。
