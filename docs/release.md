@@ -104,11 +104,25 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 
 `karasu-vscode` の**版 bump と `CHANGELOG.md` は上記 changesets フローで自動**化される（`changeset version` が `packages/vscode/package.json` の version を更新）。`private: true` なので `changeset publish`（`release.yml`）は npm へ publish しない。**Marketplace への公開は手動**で、版が bump された後に行う:
 
-1. リリース PR のマージで走る `release.yml` が、npm の公開のあとに **"VS Code Extension Release"**（`vscode-release.yml`）を `workflow_call` で呼ぶ。手動で出すときは Actions タブから `workflow_dispatch` で起動する（pre-release チャネルは `pre_release` input で選択。週次の pre-release は [#2940](https://github.com/kompiro/karasu/issues/2940)）。
+1. リリース PR のマージで走る `release.yml` が、npm の公開のあとに **"VS Code Extension Release"**（`vscode-release.yml`）を `workflow_call` で呼ぶ。手動で出すときは Actions タブから `workflow_dispatch` で起動する（`pre_release` input を付けると下の pre-release になる）。
 2. `package.json` の version が **Marketplace に stable として既にあれば公開しない**（`vsce show` で確認）。拡張の版が上がらなかった月のトレインでは何も起きない。同じ版が pre-release にしか無ければ stable として出せないので失敗する。`vsce show` 自体が失敗したときも失敗する。
 3. 認証は **Microsoft Entra ID via GitHub OIDC**（`AZURE_CLIENT_ID` / `AZURE_TENANT_ID` 変数。未設定時は build + package のみで publish はスキップ）。
 4. ビルドは main の先頭ではなく、**拡張の現在の版を設定したコミット（リリース PR のマージコミット）** から行う。リリース後に main へ入った次回分の変更を拡張に混ぜないため。
-5. Marketplace への公開が成功したら、`record` ジョブがそのコミットに `karasu-vscode@X.Y.Z` を打ち、同じコミットの GitHub Release に拡張の節を加える（Release が無ければ作る）。公開に失敗した版と pre-release にはタグを打たない（[#2939](https://github.com/kompiro/karasu/issues/2939)）。
+5. Marketplace への公開が成功したら、`record` ジョブがそのコミットに `karasu-vscode@X.Y.Z` を打ち、同じコミットの GitHub Release に拡張の節を加える（Release が無ければ作る）。公開に失敗した版にはタグを打たない（[#2939](https://github.com/kompiro/karasu/issues/2939)）。
+
+#### 週次の pre-release
+
+stable とは別に、`main` の先頭を Marketplace の pre-release チャネルへ毎週出す（[#2940](https://github.com/kompiro/karasu/issues/2940)）。メンテナの作業は無い。
+
+1. **起動**: `vscode-release.yml` が毎週水曜 00:00 UTC（09:00 JST）に走る。臨時に出すときは `workflow_dispatch` を `pre_release` 付きで起動する。`main` 以外の ref では失敗する。
+2. **変更が無い週は出さない**: ビルドした `.vsix` の `extension/` 配下を、Marketplace で一番高い版（チャネルを問わない）の `.vsix` と比べる。`package.json` の `version` 以外が全部同じなら公開を飛ばす（notice が出る。ジョブは成功）。`.vsix` を取得・展開・比較できなかったときは失敗する。
+3. **版**: `<main の stable の major>.<minor>.<YYYYMMDDNN>`（例: `0.5.0` の 2026-11-04 は `0.5.2026110401`）。`NN` はその日の通し番号で、Marketplace の版一覧から決める。版は runner の作業ツリーにだけ書き、`main` にはコミットしない。changeset も消費しない。
+   - stable の patch（`0.5.1`）は pre-release（`0.5.2026...`）より低いので、pre-release の利用者には翌週の pre-release で届く。stable の minor が上がると（`0.6.0`）、pre-release の利用者も stable に移り、次の pre-release は `0.6.<日付>` から始まる。
+   - Marketplace は既存の pre-release より低い版の stable を受け付ける（Python・Jupyter・rust-analyzer で観測）。この方式はその挙動を前提にする。
+4. **タグ**: 公開に成功したら、ビルド元のコミットに `karasu-vscode-pre/<版>` を打つ。名前に `@` を含めないので、stable のタグ収集と `release-YYYY-MM-DD` の GitHub Release には入らない。pre-release の GitHub Release は作らない。
+5. **利用者の切り替え**: Extensions ビューで拡張のページを開き「Switch to Pre-Release Version」を選ぶ。
+
+> 比較はビルドが決定的であることに依存する。2026-10-30 に、0.5.0 のリリースコミットを手元で `vsce package` した `.vsix` と Marketplace の 0.5.0 を比べたところ、違いは `THIRD_PARTY_NOTICES.md` に載るプラットフォーム別バイナリ（`@esbuild/linux-arm64` と `linux-x64` など）だけだった。CI の runner 同士ではこの差も出ない。runner のアーキテクチャを変えた最初の週は「変更あり」として公開される。
 
 > **`packages/vscode/README.md` の画像は絶対 URL で書く**（`https://raw.githubusercontent.com/kompiro/karasu/main/packages/vscode/images/...`）。`vsce` は相対画像パスを repository-**root** の raw URL に書き換えるが `repository.directory` を考慮しないため、monorepo では Marketplace 上で 404 になる。
 
