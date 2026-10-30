@@ -6,7 +6,7 @@ type: product
 
 - **日付**: 2026-10-22
 - **関連 Issue**: [#3309](https://github.com/kompiro/karasu/issues/3309)
-- **関連 ADR**: [ADR-3026](../adr/3026-same-row-channel-route.md)、[ADR-3133](../adr/3133-side-column-last-resort-corridor.md)、[ADR-2611](../adr/2611-layer-spanning-edge-columns.md)
+- **関連 ADR**: [ADR-3309](../adr/3309-same-row-whole-side-stubs.md)、[ADR-3026](../adr/3026-same-row-channel-route.md)、[ADR-3133](../adr/3133-side-column-last-resort-corridor.md)、[ADR-2611](../adr/2611-layer-spanning-edge-columns.md)
 - **Related TPLs**: [TPL-3026](../test-perspectives/TPL-3026-candidate-chain-covers-every-endpoint-relation.md), [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)
 - **対象ファイル**: `packages/core/src/renderer/edge-routing-groups.ts`（`routeGroupedEdges` の最後の候補、`trySameRowChannelRoute`、`channelStub` / `StubSeats`）
 
