@@ -54,11 +54,11 @@ ruleset の bypass には **deploy key** を使う。GitHub App より準備が�
 
 bypass はその ruleset の規則すべてに効くので、鍵が漏れれば `main` に何でも書ける。そこで 3 つの柵で範囲を絞る。
 
-- **ruleset を分ける。** 削除の禁止と non-fast-forward の禁止を、bypass actor を持たない別の ruleset に移す。deploy key を bypass に足すのは PR 必須と required check の ruleset だけにする。鍵が漏れても、`main` の force-push や削除はできない。
+- **ruleset を分ける。** 削除の禁止・non-fast-forward の禁止・作成の禁止を、bypass actor を持たない別の ruleset に移す。deploy key を bypass に足すのは PR 必須と required check の ruleset だけにする。鍵が漏れても、`main` の force-push や削除はできない。
 - **鍵とサードパーティのコードを同じ job に置かない。**
   1. **生成 job**（鍵なし、`contents: read`）: checkout → `pnpm install --frozen-lockfile` → `adr regenerate` → 生成物のパスだけを artifact に上げる。
-  2. **commit job**（鍵あり）: artifact を checkout の外（`$RUNNER_TEMP`）に展開し、どのエントリも `paths.outputs` の内側の通常ファイルであること（symlink・`..`・`.git/` を含まない）を確かめてから、作業ツリーに写す。commit と push は `git -c core.hooksPath=/dev/null` で行い、`git add` は生成物のパスだけを名指しする。`pnpm` も `npx` もサードパーティの action も実行しない。
-- **鍵を読める job を 1 つにする。** 鍵は environment `adr-regenerate` の secret に置き、deployment branch を `main` に制限する。`main` で動く job（`pull_request_target` や `workflow_dispatch` を含む）は environment を名指しすれば読めるので、名指ししてよいのは `main` への push だけで起動する commit job 1 つ、とテストで固定する。
+  2. **commit job**（鍵あり）: 許可するパスを、checkout した commit の `adr.config.json` から `paths.outputs` として読み、そのどれもが `adrDir` の内側にあることを確かめる（設定の変更で `.github/workflows/` などを指せないようにする。artifact からは読まない）。artifact を checkout の外（`$RUNNER_TEMP`）に、SHA で pin した `actions/download-artifact`（展開先から抜け出す穴 CVE-2024-42471 を直した 4.1.7 以降）で展開し、空でないこと、どのエントリも許可するパスの内側の通常ファイルであること（symlink・`..`・`.git/` を含まない）を確かめてから、作業ツリーに写す。出力先がディレクトリ（`graph/`）なら、artifact に無いファイルは消して鏡写しにする（topic を消したときの古い `graph/<topic>.md` を残さない）。commit と push は `git -c core.hooksPath=/dev/null` で行い、`git add` は許可するパスだけを名指しする。`pnpm` も `npx` もサードパーティの action も実行しない。
+- **鍵を読める job を 1 つにする。** 鍵は environment `adr-regenerate` の secret に置き、deployment branch を `main` に制限する。`main` で動く job（`pull_request_target` や `workflow_dispatch` を含む）は environment を名指しすれば読めるので、名指ししてよいのは `main` への push と `schedule` だけで起動する commit job 1 つ、とテストで固定する。
 
 artifact の検査を作業ツリーの外で行うのは、乗っ取られた生成 job が artifact API を直接呼んで `.git/hooks/*` や `.git/config` に落ちるエントリを作れるからである。`git status` で「変わったパス」を見る検査は `.git/` の中を見ないので、それでは防げない。この形なら、生成 job が乗っ取られても commit job が書けるのは生成物の中身だけに留まる。
 
@@ -72,7 +72,7 @@ artifact の検査を作業ツリーの外で行うのは、乗っ取られた�
 
 - ruleset に初めて bypass actor を足す。範囲は上の柵で絞るが、PR 必須と required check については全体の bypass である。
 - マージから再生成の commit までの 1〜2 分、`main` の生成物が古い。
-- ADR をマージするたびに `main` の commit が 1 つ増える（月 40 程度）。deploy key の push は他の workflow を起動するので、何もしなければ `main` への push で動く workflow（`ci.yml`・`deploy.yml`・`pages.yml`・`nest-deploy.yml`・`release.yml`・`adr-validate.yml`）も月 40 回ずつ余分に走る。再生成の commit のメッセージに `[skip ci]` を付けて止める（生成物だけの commit なので、CI で確かめることが無い）。
+- ADR をマージするたびに `main` の commit が 1 つ増える（月 40 程度）。deploy key の push は他の workflow を起動するので、何もしなければ、生成物だけの commit でも `main` への push で動く workflow（paths の無い `ci.yml`・`deploy.yml`・`secret-scan.yml`、paths に掛かる `pages.yml`・`adr-validate.yml`）が月 40 回ずつ余分に走る。`ci.yml`・`deploy.yml` には `paths-ignore`、`pages.yml`・`adr-validate.yml` には paths の否定（`!docs/adr/effective.md` など）で生成物を外して止める。`secret-scan.yml` は安いので、鍵で入る commit も検査するよう残す。commit メッセージの `[skip ci]` は使わない。この repo の squash の本文は PR の commit メッセージを並べる設定（`COMMIT_MESSAGES`）なので、その印を書いた commit を含む PR がマージされると、`main` への push の workflow がすべて止まってしまう。
 - bypass actor の push が required status checks に止められないことを、実際に確かめる必要がある。旧来の branch protection では、PR 必須を bypass できる actor の直接 push も required status checks で止められた（[community discussion #43460](https://github.com/orgs/community/discussions/43460)）。ruleset では bypass actor がその ruleset の規則すべてを越えるはずだが、まだ確かめていない。
 
 ### 案2: 手元の merge driver で衝突を自動で解く
@@ -133,10 +133,11 @@ bypass は不要になるが、2 つの理由で採らない。
 ### 実装の指針
 
 1. **spike で bypass を確かめる。** 使い捨てのブランチと、それだけを対象にした ruleset（PR 必須と required check、bypass に deploy key、`bypass_mode: always`）を作り、deploy key でそのブランチに直接 push できることを確かめる（`spike/3416-deploy-key-bypass`）。push が止められるなら案1 は成立しないので、ここで Design Doc に戻る。確かめたら、spike の ruleset・deploy key・ブランチを消す。
-2. **workflow `adr-regenerate.yml` を足す。** 起動は `main` への push すべて（paths で絞らない。生成器の版上げや `adr.config.json` の変更も拾う。TPL-1480）。`concurrency: adr-regenerate`、`cancel-in-progress: true`（新しい run が新しい `main` から生成し直すので、古い run は捨ててよい）。
+2. **workflow `adr-regenerate.yml` を足す。** 起動は `main` への push（生成物だけの push は `paths-ignore` で外す。それ以外は paths で絞らず、生成器の版上げや `adr.config.json` の変更も拾う。TPL-1480）と、1 日 1 回の `schedule`。`concurrency: adr-regenerate`、`cancel-in-progress: true`（新しい run が新しい `main` から生成し直すので、古い run は捨ててよい）。
    - 生成 job と commit job を分ける（案1 の柵）。
-   - 再生成の commit は `[skip ci]` を付けるので、この workflow を含め `main` への push で動く workflow を起動しない（再生成の繰り返しも起きない）。
-   - push は force しない。non-fast-forward で拒否されたら、`origin/main` が生成 job の見た commit の子孫であることを確かめて成功で終える（後の run が新しい `main` から生成し直す）。それ以外の失敗と、生成の失敗は job を失敗させる（TPL-2786）。
+   - 再生成の commit は生成物だけなので `paths-ignore` に掛かり、この workflow を起動しない（再生成は繰り返さない）。
+   - push は force しない。non-fast-forward で拒否されたら、`origin/main` が生成 job の見た commit の子孫であることを確かめて成功で終える（新しい `main` を作った push が自分の run を起こす）。それ以外の失敗と、生成の失敗は job を失敗させる（TPL-2786）。
+   - push の run が何かの理由で起きなかったとき（PR の commit メッセージにあった `[skip ci]` が squash の本文に入った場合など）は、`schedule` の run が取り戻す。`schedule` は default ブランチの workflow だけを動かすので、鍵を読める起動に足してよい。
    - 既存の policy テスト（`workflow-timeout-policy.test.ts`・`workflow-runner-policy.test.ts`・`workflow-draft-gate.test.ts`）を通す。
 3. **ruleset と鍵。**
    - 削除の禁止と non-fast-forward の禁止を、bypass actor を持たない新しい ruleset に移す。
@@ -148,19 +149,22 @@ bypass は不要になるが、2 つの理由で採らない。
    - `main` への push では `--check` を実行しない（再生成の commit が来るまで赤くなるため）。`main` の生成物が最新であることは、`adr-regenerate.yml` の成功で示す。
    - pre-push の `adr-regenerate-check` を同じ「生成物を変えていない」検査に替える。
 5. **自動化の書き込み範囲をテストで固定する**（TPL-2658、TPL-3416）。`scripts/ci/` に新しいテストを足し（`agentic-workflow-safety.test.ts` と同じ形）、次を確かめる。
-   - environment `adr-regenerate` を名指しする job が全 workflow で 1 つだけで、その workflow の起動が `push: branches: [main]` だけであること。
-   - その job が `pnpm` も `npx` も実行せず、`actions/checkout` と `actions/download-artifact` 以外の action を使わないこと。
+   - environment `adr-regenerate` を名指しする job が全 workflow で 1 つだけで、その workflow の起動が `push: branches: [main]` と `schedule` だけであること。
+   - その job が `pnpm` も `npx` も実行せず、SHA で pin した `actions/checkout` と `actions/download-artifact`（4.1.7 以降）以外の action を使わないこと。
    - その job が artifact を checkout の外に展開し、git を `core.hooksPath=/dev/null` で実行すること。
-   - 許可するパスの一覧が `adr.config.json` の `paths.outputs` から導かれること。
+   - 許可するパスの一覧が checkout した commit の `paths.outputs` から導かれ、`adrDir` の外を指す設定なら job が失敗すること。
+   - 生成物を外す `paths-ignore` と paths の否定が、`paths.outputs` と一致していること。
 6. **ルールと記録を直す。** `.claude/rules/adr.md` の「編集後のチェック」（再生成してコミットする手順）と auto-merge の適用条件の生成物の項、`scripts/review/tier.ts` の生成物のパス（PR に現れなくなるので、許す差分から外して衝突の再発を Medium で知らせる）、`docs/process/review.md` の Low の行。
 7. AT: `docs/acceptance/3416-regenerate-adr-index-on-main.md`。TC は:
    - 無関係な ADR を足す PR を 2 本同時に開き、片方をマージした後も、もう片方が `main` を取り込まずにマージできる。
    - マージ後、`main` の生成物が `pnpm adr:regenerate` の出力と一致する（`adr regenerate --check` が通る）。
-   - 続けて 2 本マージしても、`main` の生成物は最後の状態に収束し、失敗した run が残らない。
+   - 続けて 2 本マージしても、`main` の生成物は最後の状態に収束する。最後の run が成功し、それより前の run は cancelled か成功で終わる。
+   - 再生成の commit では `adr-regenerate.yml`・`ci.yml`・`deploy.yml`・`pages.yml`・`adr-validate.yml` が起動しない。
    - 再生成の commit は他の workflow を起動しない。
    - PR が生成物を変えると `Validate` が落ちる。生成器を壊す PR も `Validate` が落ちる。
    - `@kompiro/adr-tools` の版上げで出力が変わると、マージ後に `main` の生成物が更新される。
-   - commit job の検査は、`paths.outputs` の外のパス・symlink・`.git/` を含む artifact を拒否して失敗する（検査のスクリプトを細工した artifact で単体テストする）。
+   - commit job の検査は、`paths.outputs` の外のパス・symlink・`.git/` を含む artifact と空の artifact を拒否して失敗し、`adrDir` の外を指す `paths.outputs` も拒否する（検査のスクリプトを細工した入力で単体テストする）。
+   - topic を消すと、`main` の `graph/<topic>.md` も消える。
 8. ADR 昇格: 実装完了後、`docs/adr/3416-regenerate-adr-index-on-main.md` として昇格し、本 Design Doc は同 PR で削除する。ADR-788 と ADR-2331 は `related_to` で結ぶ（覆すのは「生成物は PR が運ぶ」という前提で、両者の決定の中心ではない）。
 
 ### 影響範囲・マイグレーション
@@ -168,6 +172,7 @@ bypass は不要になるが、2 つの理由で採らない。
 - 既存ユーザーへの影響: なし（repo の運用だけ）。
 - ADR を書く人の手順: `pnpm adr:regenerate` をコミットしなくなる。手元で確かめるために実行してよいが、生成物の差分はコミットせず捨てる。
 - 出力先の変更: `paths.outputs` を変える PR は、古い出力の削除を自分で含める。commit job は新しい出力先にしか書けず、PR 側の検査は PR が持つ `paths.outputs` だけを見るので、古いパスの削除は通る。
+- `adr-validate.yml` のコメント「`main` は squash だけなので 1 push は 1 PR」は、鍵の push が加わるので正しくなくなる。再生成の commit は topics を変えず、この workflow も起動しないので、`HEAD^1` との差分を見る処理はそのまま成り立つ。コメントだけ直す。
 - 開いている ADR PR: 切り替えの PR がマージされた後、生成物の差分を取り除くまで新しい検査で落ちる。切り替えは開いている ADR PR が少ないときに入れる。
 - ドキュメント更新: `.claude/rules/adr.md`、`docs/process/review.md`、ruleset の変更を ADR に記録する。
 
