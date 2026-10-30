@@ -22,6 +22,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2628](2628-adr-assumption-version-policy.md) — ADR の assumptions に caret レンジの完全な版を書かない（機械チェックで落とす）
 - [ADR-2687](2687-adr-body-is-immutable.md) — ADR 本文は不変 — リンクの張り替えも本文編集として禁じる
 - [ADR-3314](3314-topic-label-sync-check.md) — topic: ラベルと topics の一致を、topics を変える PR の Validate で確かめる
+- [ADR-3405](3405-promotion-adds-adr-link.md) — ADR の昇格で、新しい ADR へのリンクを足すだけの差分も張り替えと同じく Low に数える
 
 ## app-ui
 
