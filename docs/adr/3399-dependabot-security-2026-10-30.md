@@ -22,7 +22,7 @@ assumptions:
 - **ステータス**: 決定済み
 - **関連**:
   - トラッキング Issue: [#3399](https://github.com/kompiro/karasu/issues/3399)
-  - 修正 PR（qs / serialize-javascript / launch-editor）: 本 ADR を同梱する PR
+  - 修正 PR（qs / serialize-javascript / launch-editor）: [#3401](https://github.com/kompiro/karasu/pull/3401)（本 ADR を同梱）
   - 前回の security alert 対応: [ADR-3203](3203-dependabot-security-2026-10-14.md)
   - override のスコープ規則: [ADR-2115](2115-dependabot-security-2026-07-22-second-batch.md)
   - override の置き場と `minimumReleaseAge`: [ADR-2401](2401-pnpm-11-migration.md)、assumptions の書き方: [ADR-2628](2628-adr-assumption-version-policy.md)
