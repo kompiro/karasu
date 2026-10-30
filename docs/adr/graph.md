@@ -17,6 +17,7 @@ flowchart TD
     ADR_2331["ADR-2331<br/>ADR PR の auto-merge 例外は、変更の場所ではなく差分の性質で判定する"]
     ADR_2628["ADR-2628<br/>ADR の assumptions に caret レンジの完全な版を書かない（機械チェックで..."]
     ADR_2687["ADR-2687<br/>ADR 本文は不変 — リンクの張り替えも本文編集として禁じる"]
+    ADR_3314["ADR-3314<br/>topic: ラベルと topics の一致を、topics を変える PR の Valida..."]
   end
   subgraph app-ui["app-ui"]
     ADR_104["ADR-104<br/>system セレクタUIを採用しない"]
@@ -1105,6 +1106,7 @@ flowchart TD
   class ADR_3271 accepted
   class ADR_3286 accepted
   class ADR_3304 accepted
+  class ADR_3314 accepted
   class ADR_3326 accepted
   class ADR_3333 accepted
   class ADR_3335 accepted

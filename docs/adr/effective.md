@@ -21,6 +21,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2331](2331-adr-automerge-scope.md) — ADR PR の auto-merge 例外は、変更の場所ではなく差分の性質で判定する
 - [ADR-2628](2628-adr-assumption-version-policy.md) — ADR の assumptions に caret レンジの完全な版を書かない（機械チェックで落とす）
 - [ADR-2687](2687-adr-body-is-immutable.md) — ADR 本文は不変 — リンクの張り替えも本文編集として禁じる
+- [ADR-3314](3314-topic-label-sync-check.md) — topic: ラベルと topics の一致を、topics を変える PR の Validate で確かめる
 
 ## app-ui
 
