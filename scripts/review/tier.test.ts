@@ -154,6 +154,11 @@ const AT_DOC = [
   "```",
   "",
   "- [ ] AT-A: 確かめる",
+  "",
+  "### AC-1",
+  "",
+  "- **手順**: run",
+  "- **期待**: ok",
 ];
 
 /**
@@ -642,12 +647,48 @@ describe("isLinkInsert", () => {
     expect(judge(insertAt(13, `- **関連 ADR**: ${L}`))).toBe(false); // inside a table
     expect(judge(insertAt(17, `- **関連 ADR**: ${L}`))).toBe(false); // in a code fence
     expect(judge(editAt(16, `- **関連 ADR**: ${OLD}、${L}`))).toBe(false); // edited in a fence
+    // In the body, the same line is no metadata.
+    expect(judge(insertAt(24, `- **関連 ADR**: ${L}`))).toBe(false); // between 手順 and 期待
+    expect(judge(editAt(24, `- **関連 ADR**: ${L}`, "- **期待**: ok"))).toBe(false);
     // A link put in front of structure would break it.
     expect(judge(editAt(19, `${L}, - [ ] AT-A: 確かめる`))).toBe(false);
     expect(judge(editAt(10, `${L}、## 受け入れ条件`))).toBe(false);
   });
 
+  it("rejects a new line that would take over what follows the item above", () => {
+    const withSubList = [
+      "# AT: x",
+      "",
+      "- **対象ファイル**:",
+      "  - `a.ts`",
+      "- **関連 ADR**: [ADR-7](../adr/7-y.md)",
+    ];
+    const at = (i: number, doc: string[]) => [
+      ...doc.slice(0, i),
+      `- **設計 (ADR)**: ${L}`,
+      ...doc.slice(i),
+    ];
+    const judgeDoc = (before: string[], after: string[]) => {
+      const { hunk, after: text } = hunkBetween(before, after);
+      return isLinkInsert(hunk, text, A);
+    };
+    expect(judgeDoc(withSubList, at(3, withSubList))).toBe(false); // the sub-list would follow it
+    const lazy = [
+      "# AT: x",
+      "",
+      "- **期待**:",
+      "結果が出る",
+      "- **関連 ADR**: [ADR-7](../adr/7-y.md)",
+    ];
+    expect(judgeDoc(lazy, at(3, lazy))).toBe(false); // a lazy continuation would follow it
+    expect(judgeDoc(withSubList, at(5, withSubList))).toBe(true); // the end of the list
+  });
+
   it("rejects any other change on the ADR line or in the hunk", () => {
+    expect(
+      judge(editAt(8, "- **関連 ADR**: [ADR-6](../adr/6-z.md)、" + `${L}、[ADR-7](../adr/7-y.md)`)),
+    ).toBe(false); // the middle of the value
+
     expect(judge(editAt(8, `- **関連 ADR（完了）**: ${OLD}、${L}`))).toBe(false);
     expect(judge(editAt(8, `- **関連 ADR**:  ${OLD}、${L}`))).toBe(false);
     expect(judge(editAt(8, `- **関連 ADR**: ${OLD}、${L}  `))).toBe(false);

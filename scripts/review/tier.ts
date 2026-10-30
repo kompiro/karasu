@@ -492,8 +492,11 @@ export function isLinkSwap(
 const ADR_LINE_LABEL = /^(?:設計 ?[(（]ADR[)）]|関連 ?ADR|ADR)$/;
 /** A labelled list item: the label, the colon, and the value after it. */
 const LABELLED_ITEM = /^- \*\*([^*]+)\*\*([:：])( ?)(.*)$/;
-/** The line that opens or closes a fenced code block. */
+/** A line that may open or close a fenced code block. */
 const FENCE = /^\s*(?:```|~~~)/;
+/** The record's title, and any heading after it. */
+const TITLE = /^# /;
+const HEADING = /^ {0,3}#{1,6}(?:\s|$)/;
 /** What joins two links in a list of them. */
 const LINK_SEPARATOR = /^\s*[、,，]\s*/;
 const TRAILING_SEPARATOR = /\s*[、,，]\s*$/;
@@ -533,22 +536,32 @@ const spacedAfter = (m: RegExpExecArray): boolean => m[3] === " " || (m[2] === "
 
 /**
  * Whether line `index` (0-based) of `lines` sits in the record's metadata list,
- * where an ADR line belongs: outside the frontmatter and every code fence, and,
- * for a line added whole, right after another labelled item, so the list goes
- * on and no heading, table or block around it changes.
+ * where an ADR line belongs: after the title (`# `) and before any other
+ * heading or fence line, outside the frontmatter. A line added whole must also
+ * stand between items of that list: right after another labelled item, and
+ * followed by another one, a blank line or nothing, so it takes over no
+ * continuation or sub-list of the item above and no heading, table or block
+ * around it changes.
  */
 function inMetadataList(lines: readonly string[], index: number, whole: boolean): boolean {
   if (index <= 0 || index >= lines.length) return false;
   let start = 0;
   if (lines[0] === "---") {
     const end = lines.indexOf("---", 1);
-    if (end < 0 || index <= end) return false;
+    if (end < 0) return false;
     start = end + 1;
   }
-  let fenced = false;
-  for (let i = start; i < index; i++) if (FENCE.test(lines[i])) fenced = !fenced;
-  if (fenced) return false;
-  return !whole || LABELLED_ITEM.test(lines[index - 1]);
+  const title = lines.findIndex((line, i) => i >= start && TITLE.test(line));
+  if (title < 0 || index <= title) return false;
+  for (let i = title + 1; i < index; i++) {
+    if (HEADING.test(lines[i]) || FENCE.test(lines[i])) return false;
+  }
+  if (!whole) return true;
+  const next = lines[index + 1];
+  return (
+    LABELLED_ITEM.test(lines[index - 1]) &&
+    (next === undefined || next.trim() === "" || LABELLED_ITEM.test(next))
+  );
 }
 
 /**
