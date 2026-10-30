@@ -20,7 +20,7 @@ generated analysis never lands in a mainline PR. Two things follow.
 
 Durable conclusions do not belong here. A report is the evidence; the conclusion goes to
 the design doc, the ADR, or the issue, which outlive the branch. Do not link to a file
-under `reports/` from `docs/` — treat a report the way `docs/process.md` treats a spike
+under `reports/` from `docs/` — treat a report the way `docs/process/spike.md` treats a spike
 preview URL: fine to share while the work is live, never a documented destination.
 
 ## Layout

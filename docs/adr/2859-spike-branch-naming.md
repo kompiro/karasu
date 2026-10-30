@@ -7,7 +7,7 @@ topic: project
 related_to: [ADR-2419]
 assumptions:
   - "file: .github/workflows/spike-preview.yml"
-  - "grep: docs/process.md :: ### spike の名前と寿命"
+  - "grep: docs/process/spike.md :: ### spike の名前と寿命"
 ---
 
 # ADR-2859: spike ブランチは答える Issue 番号で名付け、その Issue が open なあいだ残す

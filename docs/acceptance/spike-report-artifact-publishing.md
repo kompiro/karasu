@@ -11,7 +11,7 @@ type: tooling
 - **対象ファイル**:
   - `scripts/report/html.ts`（`reportFragment` / `reportContent`）
   - `scripts/report/demo.ts`（`index.html` と `artifact.html` を両方書く）
-  - `reports/README.md` / `docs/process.md`（レポートの読み方）
+  - `reports/README.md` / `docs/process/spike.md`（レポートの読み方）
 
 > spike のレポートは preview URL からも CI からも取り出せず、読むには当人が checkout するしかなかった。読み手は回した本人ひとりなので、配信経路を repo の恒久設定や CI に作らず、publish 用の形（document の骨格を持たない HTML）を生成器が書き、それを private な Artifact として読む。
 

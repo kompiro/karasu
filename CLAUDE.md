@@ -22,6 +22,7 @@ C4 Modelに触発されつつも独自の語彙を持ち、論理構造と物理
 | 受け入れテスト基準                                  | `docs/acceptance/`              |
 | テスト観点ライブラリ（過去 bug から抽出した再発防止観点） | `docs/test-perspectives/`       |
 | 開発プロセス（ドキュメントライフサイクル・PR フロー） | `docs/process.md`               |
+| 開発プロセスのトピック（作業を始めたときに読む。どれをいつ読むかは `docs/process.md`「規約の所在」） | `docs/process/` |
 | リリース・依存更新の運用（リリース時・Dependabot 処理時に読む） | `docs/release.md`               |
 | ロードマップ（全体方針 — 現在と次の一手のみ、完了内容は pruning）— living | `docs/roadmap.md`               |
 | サンプル `.krs` ファイル（チュートリアル・AT用）     | `examples/`                     |
@@ -73,8 +74,8 @@ karasu/
 - `main` への直接コミット・push は禁止 — 必ずブランチ + PR 経由でマージする
 - worktree の作成先は必ず `.claude/worktrees/<branch-name>` とする（例: `git worktree add .claude/worktrees/feat/my-feature feat/my-feature`）
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `spike/` + kebab-case
-- `spike/` はマージを前提としない PoC 用。push すると PR なしで Cloudflare preview にデプロイされる（`docs/process.md`「spike を PR なしで preview で動かす」）
-- spike は `spike/<issue>-<何を測ったか>` と名付け、**その Issue が open なあいだは push して残す**（閉じたら削除）。日付・通し番号・セッション名は入れない（`docs/process.md`「spike の名前と寿命」、[ADR-2859](docs/adr/2859-spike-branch-naming.md)）
+- `spike/` はマージを前提としない PoC 用。push すると PR なしで Cloudflare preview にデプロイされる（`docs/process/spike.md`「spike を PR なしで preview で動かす」）
+- spike は `spike/<issue>-<何を測ったか>` と名付け、**その Issue が open なあいだは push して残す**（閉じたら削除）。日付・通し番号・セッション名は入れない（`docs/process/spike.md`「spike の名前と寿命」、[ADR-2859](docs/adr/2859-spike-branch-naming.md)）
 
 ### Issue・PR 記述ルール
 

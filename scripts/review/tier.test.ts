@@ -40,6 +40,7 @@ describe("pathTier", () => {
     ["docs/spec/syntax.md", "high"],
     ["docs/concepts.ja.md", "high"],
     ["docs/process.md", "high"],
+    ["docs/process/review.md", "high"],
     [".claude/rules/adr.md", "high"],
     [".coderabbit.yaml", "high"],
     ["lefthook.yml", "high"],

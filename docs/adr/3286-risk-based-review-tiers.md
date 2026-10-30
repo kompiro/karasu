@@ -34,8 +34,8 @@ assumptions:
   - "grep: .coderabbit.yaml :: auto_incremental_review: false"
   - "grep: .coderabbit.yaml :: - \"risk: high\""
   - "grep: .coderabbit.yaml :: language: en-US"
-  - "grep: docs/process.md :: ### リスク段階"
-  - "grep: docs/process.md :: #### 指摘の重大度と対応"
+  - "grep: docs/process/review.md :: ### リスク段階"
+  - "grep: docs/process/review.md :: #### 指摘の重大度と対応"
 ---
 
 # ADR-3286: PR のレビューの深さとマージの経路を、変更から決めたリスク段階で変える

@@ -157,7 +157,7 @@ Issue が無ければ **その ADR を書いた PR の番号**を使う（[#2083
 **到達状態**: 適用条件を満たす PR は `risk: low` ラベルとローカルレビューの記録を持ち、required check
 「Review tier」を含む CI を待って auto-merge される。CodeRabbit の review 枠は使わない（Low には CodeRabbit が
 走らない）。満たさない `docs(adr):` PR は、分類器が出した段階のラベルで通常どおり扱う
-（`docs/process.md`「リスク段階」）。
+（`docs/process/review.md`「リスク段階」）。
 
 ```
 node scripts/review/tier.ts classify   # "tier": "low" なら適用条件を満たしている

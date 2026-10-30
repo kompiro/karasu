@@ -105,7 +105,7 @@
 
      ここに書くのは **なぜその切り方にしたか** — スライス間の依存と、各スライスを
      独立に出荷できると判断した根拠。**到達点の一覧（できること / できないこと）は
-     ここではなく親 Issue の `## Slice status` 表に置く**（`docs/process.md`
+     ここではなく親 Issue の `## Slice status` 表に置く**（
      `.claude/rules/program-slices.md`）。Design Doc は ADR 昇格時に削除されるので、
      一覧をここに置くとプログラムが完成した瞬間に失われる。
 
