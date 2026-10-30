@@ -48,6 +48,9 @@ describe("vscode-release.yml pre-release path", () => {
   });
 
   it("queues every waiting run, so a pre-release never replaces the train's pending call", () => {
-    expect(workflow).toMatch(/^concurrency:\n  group: vscode-release\n[^]*?  queue: max\n/m);
+    const start = workflow.indexOf("\nconcurrency:\n");
+    const block = workflow.slice(start, workflow.indexOf("\npermissions:\n", start));
+    expect(block).toContain("  group: vscode-release\n");
+    expect(block).toContain("\n  queue: max\n");
   });
 });
