@@ -45,6 +45,7 @@ export function compareVersions(a: string, b: string): number {
 export function highestVersion(show: VsceShow): string {
   const versions = (show.versions ?? []).map((v) => v.version);
   if (versions.length === 0) throw new Error("the Marketplace lists no version of the extension");
+  versions.forEach(parseVersion); // a single listed version is never compared
   return versions.reduce((a, b) => (compareVersions(a, b) >= 0 ? a : b));
 }
 

@@ -35,6 +35,19 @@ describe("vscode-release.yml pre-release path", () => {
     const version = workflow.indexOf("- name: Set the pre-release version");
     expect(compare).toBeGreaterThan(-1);
     expect(version).toBeGreaterThan(compare);
-    expect(workflow.slice(version)).toContain("if: steps.compare.outputs.publish == 'true'");
+    const versionStep = workflow.slice(version, workflow.indexOf("- name:", version + 1));
+    expect(versionStep).toContain("if: steps.compare.outputs.publish == 'true'");
+  });
+
+  it("fails on a comparison result that is neither `same` nor `changed`", () => {
+    const compare = workflow.indexOf("- name: Compare with the highest version on the Marketplace");
+    const compareStep = workflow.slice(compare, workflow.indexOf("- name:", compare + 1));
+    expect(compareStep).toMatch(/same\)\n[^]*publish=false/);
+    expect(compareStep).toMatch(/changed\)\n[^]*publish=true/);
+    expect(compareStep).toMatch(/\*\)\n[^]*exit 1/);
+  });
+
+  it("queues every waiting run, so a pre-release never replaces the train's pending call", () => {
+    expect(workflow).toMatch(/^concurrency:\n  group: vscode-release\n[^]*?  queue: max\n/m);
   });
 });

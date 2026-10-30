@@ -119,7 +119,7 @@ stable とは別に、`main` の先頭を Marketplace の pre-release チャネ�
 3. **版**: `<main の stable の major>.<minor>.<YYYYMMDDNN>`（例: `0.5.0` の 2026-11-04 は `0.5.2026110401`）。`NN` はその日の通し番号で、Marketplace の版一覧から決める。版は runner の作業ツリーにだけ書き、`main` にはコミットしない。changeset も消費しない。
    - stable の patch（`0.5.1`）は pre-release（`0.5.2026...`）より低いので、pre-release の利用者には翌週の pre-release で届く。stable の minor が上がると（`0.6.0`）、pre-release の利用者も stable に移り、次の pre-release は `0.6.<日付>` から始まる。
    - Marketplace は既存の pre-release より低い版の stable を受け付ける（Python・Jupyter・rust-analyzer で観測）。この方式はその挙動を前提にする。
-4. **タグ**: 公開に成功したら、ビルド元のコミットに `karasu-vscode-pre/<版>` を打つ。名前に `@` を含めないので、stable のタグ収集と `release-YYYY-MM-DD` の GitHub Release には入らない。pre-release の GitHub Release は作らない。
+4. **タグ**: 公開に成功したら、ビルド元のコミットに `karasu-vscode-pre/<版>` を打つ。名前に `@` を含めないので、stable のタグ収集と `release-YYYY-MM-DD` の GitHub Release には入らない。pre-release の GitHub Release は作らない。タグの push だけが失敗したときは「Re-run failed jobs」でやり直す。「Re-run all jobs」は公開したばかりの版と比べて「変更なし」で止まり、タグを打たない。
 5. **利用者の切り替え**: Extensions ビューで拡張のページを開き「Switch to Pre-Release Version」を選ぶ。
 
 > 比較はビルドが決定的であることに依存する。2026-10-30 に、0.5.0 のリリースコミットを手元で `vsce package` した `.vsix` と Marketplace の 0.5.0 を比べたところ、違いは `THIRD_PARTY_NOTICES.md` に載るプラットフォーム別バイナリ（`@esbuild/linux-arm64` と `linux-x64` など）だけだった。CI の runner 同士ではこの差も出ない。runner のアーキテクチャを変えた最初の週は「変更あり」として公開される。

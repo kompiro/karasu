@@ -63,9 +63,13 @@ on:
         type: boolean
         default: false
 
+# Stable and pre-release runs go one at a time. `queue: max` keeps every
+# waiting run: without it a third arrival (the weekly cron, a dispatch) would
+# replace a pending one, which can be the train's stable call (#2940).
 concurrency:
   group: vscode-release
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
@@ -215,12 +219,19 @@ jobs:
           unzip -q "$RUNNER_TEMP/highest.vsix" -d "$RUNNER_TEMP/highest"
           unzip -q "$VSIX" -d "$RUNNER_TEMP/current"
           result=$(node "$RUNNER_TEMP/release-scripts/pre-release.mts" diff --a "$RUNNER_TEMP/highest" --b "$RUNNER_TEMP/current")
-          if [ "$result" = "same" ]; then
-            echo "::notice::The extension built from main has the same files as ${HIGHEST} on the Marketplace: no pre-release this week."
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          fi
+          case "$result" in
+            same)
+              echo "::notice::The extension built from main has the same files as ${HIGHEST} on the Marketplace: no pre-release this week."
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              ;;
+            changed)
+              echo "publish=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Unexpected comparison result: '${result}'."
+              exit 1
+              ;;
+          esac
 
       # `<stable major>.<stable minor>.<YYYYMMDDNN>`, above every version on the
       # Marketplace. Written in the runner's working tree only: main keeps the

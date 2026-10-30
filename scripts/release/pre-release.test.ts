@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -6,6 +6,7 @@ import {
   compareVersions,
   diffExtensionDirs,
   highestVersion,
+  main,
   nextPreReleaseVersion,
   preReleaseVersion,
 } from "./pre-release.mts";
@@ -44,6 +45,10 @@ describe("highestVersion", () => {
   it("fails when the Marketplace lists nothing to compare with", () => {
     expect(() => highestVersion({})).toThrow(/no version/);
     expect(() => highestVersion({ versions: [] })).toThrow(/no version/);
+  });
+
+  it("fails on a listed version it cannot order, even when it is the only one", () => {
+    expect(() => highestVersion(show("0.5.0-next.1"))).toThrow(/major.minor.patch/);
   });
 });
 
@@ -140,6 +145,19 @@ describe("diffExtensionDirs", () => {
     expect(diffExtensionDirs(added, extension("0.5.0"))).toEqual(["out/webview/main.js"]);
   });
 
+  it("ignores how package.json is formatted", () => {
+    // jq re-serialises the pre-release's package.json; the next week compares with it.
+    const reformatted = unzipped({
+      "extension/package.json": JSON.stringify(
+        { name: "karasu-vscode", version: "0.5.2026110401", main: "out" },
+        null,
+        2,
+      ),
+      "extension/out/extension.js": "console.log(1);",
+    });
+    expect(diffExtensionDirs(reformatted, extension("0.5.0"))).toEqual([]);
+  });
+
   it("compares the rest of package.json", () => {
     const other = unzipped({
       "extension/package.json": JSON.stringify({ name: "karasu-vscode", version: "1", main: "x" }),
@@ -155,5 +173,45 @@ describe("diffExtensionDirs", () => {
       /no extension\/ directory/,
     );
     expect(() => diffExtensionDirs(extension("0.5.0"), empty)).toThrow(/is empty/);
+  });
+});
+
+describe("main diff", () => {
+  // The workflow matches these two words; anything else fails the run there.
+  const roots: string[] = [];
+  afterEach(() => {
+    vi.restoreAllMocks();
+    for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+  });
+
+  const withExtensionJs = (content: string): string => {
+    const root = mkdtempSync(join(tmpdir(), "vsix-"));
+    roots.push(root);
+    mkdirSync(join(root, "extension"));
+    writeFileSync(join(root, "extension/extension.js"), content);
+    return root;
+  };
+
+  const run = (a: string, b: string) => {
+    const out = vi.spyOn(console, "log").mockImplementation(() => {});
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    main(["diff", "--a", a, "--b", b]);
+    return { out: out.mock.calls.flat(), err: err.mock.calls.flat() };
+  };
+
+  it("prints `same` when nothing differs", () => {
+    expect(run(withExtensionJs("1"), withExtensionJs("1"))).toEqual({ out: ["same"], err: [] });
+  });
+
+  it("prints `changed` and names each differing file on stderr", () => {
+    expect(run(withExtensionJs("1"), withExtensionJs("2"))).toEqual({
+      out: ["changed"],
+      err: ["changed: extension/extension.js"],
+    });
+  });
+
+  it("requires both directories", () => {
+    expect(() => main(["diff", "--a", "x"])).toThrow(/--b is required/);
+    expect(() => main(["nope"])).toThrow(/unknown command/);
   });
 });
