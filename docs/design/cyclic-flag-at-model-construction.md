@@ -26,11 +26,11 @@ const after = buildDrillDownSvg(file).svg;     // 2289 bytes
 
 ## 現状（インベントリ）
 
-`cyclic` を立てる場所は `detectCyclicDependencies`（`resolver/warnings.ts`）の 1 か所だけ。AST（slice）の edge から直接読むのは style 解決と layout の 2 か所で、それより後ろは layout が作った `LayoutEdge.cyclic` を読む。
+`cyclic` を立てる場所は `detectCyclicDependencies`（`resolver/warnings.ts`）の 1 か所だけ。`KrsEdge.cyclic` を直接読むのは style 解決と layout の 2 か所で、それより後ろは layout が作った `LayoutEdge.cyclic` を読む。style 解決が読むのは slice ではなく AST の edge である点に注意する。
 
 | 読む場所 | 何を読むか |
 | --- | --- |
-| `style-resolver.ts` `edgeSelectorMatches` | slice の `edge.cyclic` を仮想タグ `cyclic` として `edge[cyclic]` に当てる |
+| `style-resolver.ts` `resolveStyles` → `edgeSelectorMatches` | 渡された system の **AST の edge** を走査し、`edge.cyclic` を仮想タグ `cyclic` として `edge[cyclic]` に当てる。結果は from / to / kind を鍵にした map で、renderer は layout edge の from / to / kind で引く。slice の edge を見るのは、この map に無い鍵を補う `addMissingEdgeStyles` だけ |
 | `layout-edges.ts` | slice の `edge.cyclic` を `LayoutEdge.cyclic` に写す |
 | `edge-routing.ts`（`krs-edge--cyclic` class）、`edge-routing-*.ts`、`port-frame.ts`、`crossing-marks.ts`、`label-placement.ts`、`layout.ts` | `LayoutEdge.cyclic`（layout が作った派生物。AST ではない） |
 | `drawio-exporter.ts` | `page.layout.edges` の `LayoutEdge.cyclic` |
@@ -74,7 +74,7 @@ diff は before と after の slice を `diffEdgeArray`（`diff/view-diff.ts`）
 - `Parser.parse` の後処理（`buildBoundaryMembership` などを呼んでいる箇所）で集合を求め、該当 edge に `cyclic = true` を立てる。自分が作っている最中の AST に書くので、渡されたモデルを書き換えることにはならない。
 - `ImportResolver.resolve` は、マージ後のモデルで全 edge の `cyclic` を一度落としてから同じ関数で立て直す。ファイルをまたぐ循環もここで立つ（`boundaryMembership` の再構築と同じ位置）。
 - `analyze()` は同じ関数を呼んで警告だけを返す。モデルには書き込まない。
-- diff は cyclic の描き方を使わない。`diffEdgeArray` が slice に入れる edge を `cyclic` を外したコピーにする（モデルには書き込まない）。理由は 2 つある。removed の edge が before 側の判定を持ち込むのに、diff の警告は after 側しか出さないので、図と警告が食い違う。そして builtin の `edge[cyclic]` の色 `#EF4444` は diff の removed の線の色 `#ef4444` と同じで、unchanged の循環 edge が removed に見える。diff は「何が変わったか」を描く面なので、変化の色を優先する。今の diff は循環を描いていないので、出力は変わらない。
+- diff は cyclic の描き方を使わない。止める場所は 2 つで、どちらもモデルには書き込まない。1 つは style 解決で、diff が `resolveStyles` を呼ぶときは `cyclic` の仮想タグを付けない指定を渡す（色と線幅は AST の edge から解決されるので、slice 側で外すだけでは赤い線が残る）。もう 1 つは `diffEdgeArray` で、`cyclic` が立っている edge だけを、`cyclic` を外したコピーにして slice に入れる（class と routing の除外を止める）。立っていない edge はコピーしない。layout は cross-system edge の出どころを edge オブジェクトの同一性で引いており（`layout.ts` の `crossSystemSource`）、全 edge をコピーするとこの lookup が外れて、同じ素の id を畳む複数 system の diff で出力が変わるためである。理由は 2 つある。removed の edge が before 側の判定を持ち込むのに、diff の警告は after 側しか出さないので、図と警告が食い違う。そして builtin の `edge[cyclic]` の色 `#EF4444` は diff の removed の線の色 `#ef4444` と同じで、unchanged の循環 edge が removed に見える。diff は「何が変わったか」を描く面なので、変化の色を優先する。今の diff は循環を描いていないので、出力は変わらない。
 
 **メリット**
 
@@ -138,11 +138,11 @@ Issue の受け入れ条件 2 は「循環 edge の描画は、今のすべて�
    - `Parser.parse` の後処理（`buildBoundaryMembership` の隣）
    - `ImportResolver.resolve` のマージ後（`buildBoundaryMembership` の再構築の隣）。マージ後のモデルの edge はファイルごとの parse 結果の edge オブジェクトそのものなので、落としてから立て直せば、ファイルごとに立てたフラグが古いまま残ることはない。
 3. `analyze()` は `findCyclicDependencies(file).warnings` を返すだけにする。
-4. `diffEdgeArray` は、slice に入れる edge を `cyclic` を外したコピーにする（上の「diff は cyclic の描き方を使わない」）。
+4. diff で cyclic の描き方を止める（上の「diff は cyclic の描き方を使わない」）。`resolveStyles` に `cyclic` の仮想タグを付けない指定を足して diff の呼び出しから渡し、`diffEdgeArray` は `cyclic` が立っている edge だけをコピーして外す。指定の形（引数か options か）は実装 PR で決める。
 5. テスト:
    - 受け入れ条件 1: 同じ `KrsFile` を `buildDrillDownSvg` で 2 回描き、間に `analyze()` を挟んでも同じ SVG（循環を含むモデル）。
    - 受け入れ条件 3（機械検査）: examples 全件と循環を含む fixture で、parse 結果の `structuredClone` を取り、`analyze` / `collectModelWarnings` / 各 builder を通した後も deep-equal であること。新しいパスを足したときにこの表へ足す形にする（TPL-2791）。
-   - 受け入れ条件 2: 今 analyze する entry point と diff について、examples 全件と Dify で main とのバイト同一を測って実装 PR の本文に記す。テストでは、循環を含む fixture で `buildDrillDownSvg` が `compile` と同じく `krs-edge--cyclic` を出すこと、diff の SVG に `krs-edge--cyclic` が出ないことを固定する。
+   - 受け入れ条件 2: 今 analyze する entry point と diff について、examples 全件と Dify で main とのバイト同一を測って実装 PR の本文に記す。テストでは、循環を含む fixture で `buildDrillDownSvg` が `compile` と同じく `krs-edge--cyclic` を出すこと、diff の SVG で循環 edge が class（`krs-edge--cyclic`）も stroke の色と線幅も循環の描き方にならず、routing からも外れないことを固定する（class だけを見ると、AST から解決される色の漏れを見逃す）。multi-system の diff で cross-system edge の出力が変わらないことも、既存の diff テストで確かめる。
    - TPL-2221: `system S` を 2 ファイルで reopen して循環を分けたとき、`compileProject` で両 edge が `cyclic` になり、警告が 1 件であること。単一ファイルの `compile` でも 1 件であること。
    - 旧い契約を固定しているテストを書き換える。`resolver/warnings.test.ts` と `renderer/svg-renderer.test.ts` には `Parser.parse` → `analyze` → `edge.cyclic` を確かめるテストがあり、変更後は parse がフラグを立てるので何も確かめずに通ってしまう。`Parser.parse` と `compileProject` がフラグを立てること、`analyze` がフラグを変えないことを確かめる形にする。
    - analyze を通さずに相互の sync edge を parse している renderer の fixture（`renderer/layout.test.ts` など）は、変更後は edge が `cyclic` になり routing から外れる。期待値が変わるものは、循環を確かめたいテストかどうかを見て、fixture を async にするか期待値を直す。
