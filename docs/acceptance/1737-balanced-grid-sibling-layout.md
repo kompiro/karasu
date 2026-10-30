@@ -32,9 +32,9 @@
 
   > ✅ Automated — `layout.test.ts` › `balanced grid wrapping (#1737)` › `honors a grid-columns hint on the container, overriding the auto count`; `packages/core/src/resolver/style-resolver.test.ts` › `grid-columns layout hint (#1737)` › `populates layoutHints.gridColumns for a positive integer`
 
-- [x] `grid-columns` の不正値（0 / 負 / 非整数）は `style-grid-columns-invalid-value` warning を出して破棄し、自動バランスにフォールバックする
+- [x] `grid-columns` の不正値（0 / 負 / 非整数）は validator が宣言ごとに 1 回報告し（`style-out-of-range` / `style-invalid-enum-value`）、cascade が破棄して自動バランスにフォールバックする（ノードごとの `style-grid-columns-invalid-value` は #3141 で廃止）
 
-  > ✅ Automated — `style-resolver.test.ts` › `grid-columns layout hint (#1737)` › `emits style-grid-columns-invalid-value and skips the hint for non-positive / non-integer`
+  > ✅ Automated — `style-resolver.test.ts` › `grid-columns layout hint (#1737)` › `skips the hint for non-positive / non-integer values, with no per-node warning (#3141)`
 
 - [x] `grid-columns` は org の team ノード（member grid の列数）でも有効
 

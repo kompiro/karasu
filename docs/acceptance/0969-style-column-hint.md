@@ -18,8 +18,8 @@
 - [x] `column: left | center | right` が `.krs.style` から解決され、`ResolvedStyles.layoutHints` に格納される
   > ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `populates layoutHints for valid values`
 
-- [x] 不正な値（`column: middle` など）は捨てられ `style-column-invalid-value` 警告が出る
-  > ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `emits style-column-invalid-value and skips the hint when the value is unknown`
+- [x] 不正な値（`column: middle` など）は捨てられ、validator が宣言の位置で `style-invalid-enum-value` を 1 回出す（ノードごとの `style-column-invalid-value` は #3141 で廃止）
+  > ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `skips the hint without a resolver warning when the value is unknown (the validator reports it, #3141)`
 
 - [x] cascade は通常スタイルと同じ規則 — id selector が kind selector を上書きする
   > ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `honors cascade: id selector overrides kind selector`

@@ -237,7 +237,7 @@ annotation 語彙（`.krs language v2.0` はツール語彙のみを受理する
 
 ### スタイル検証
 
-`.krs.style` のプロパティ名と値を検証する。
+`.krs.style` のプロパティ名と値を検証する。著者のシートで下の error に当たる宣言は効かない: cascade がその宣言を外すので、弱いルールがそのプロパティに書いた値が効き、どのルールも書いていなければ既定が残る（[#3141](https://github.com/kompiro/karasu/issues/3141)）。karasu が同梱するシートは検証しない。
 
 | Code | Severity | 発火条件 |
 | --- | --- | --- |
@@ -248,14 +248,12 @@ annotation 語彙（`.krs language v2.0` はツール語彙のみを受理する
 | `style-invalid-length-unit` | error | スタイルの length が許可されない単位を使う。 |
 | `style-missing-length-unit` | error | スタイルの length に必要な単位が無い。 |
 | `style-out-of-range` | error | スタイルの数値が min / max の範囲外。 |
-| `style-token-type-mismatch` | error | スタイルの token が期待された型と一致しない。 |
+| `style-token-type-mismatch` | error | スタイル値に値として持てない token がある、または値が空。宣言は無視される。 |
 | `expected-style-property-name` | error | スタイルパーサがプロパティ名を期待した。 |
 | `expected-semicolon-between-properties` | error | スタイルパーサがプロパティ間の `;` を期待した。 |
 | `unknown-edge-selector-attribute` | error | セレクタが `from` / `to` / `facets` 以外の属性を使っている（例: `edge[source=X]`）。コード名は `facets` より前からあるもので、`facets` は `edge` 限定ではなくノードセレクタでも受理される。 |
 | `style-conflict` | warning | セレクタが複数のユーザースタイルシートで定義される。 |
-| `style-column-invalid-value` | warning | スタイル `column` 値が `left` / `center` / `right` でない。 |
 | `style-column-ignored-non-system-view` | warning | `column` ヒントが deploy / org ビューに適用される（無視）。 |
-| `style-grid-columns-invalid-value` | warning | スタイル `grid-columns` 値が正の整数でない（ヒントは破棄され、レイアウトは自動バランスにフォールバック）。 |
 
 > Related TPLs: [TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)（`style-unknown-icon` が引くシェイプレジストリの組み込みの中身は core 自身が埋めるので、判定はどの描画面でも同じになる）, [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（パーサが受理する値は効果か診断を持ち、黙って無視されることはない）。
 
