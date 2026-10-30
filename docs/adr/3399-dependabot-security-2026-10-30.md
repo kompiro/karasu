@@ -37,7 +37,7 @@ Dependabot の security update PR は 1 件も起票されていない。
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | #103 | `qs` | medium | GHSA-6pq8-jhm2-2vcw / CVE-2026-110816 | runtime | `>= 6.7.0, <= 6.16.0` | 6.16.1 | 6.16.0 | `@vscode/vsce` → `typed-rest-client` |
 | #102 | `@azure/msal-node` | high | GHSA-xcx6-jx8p-x3h5 / CVE-2026-109461 | runtime | `>= 5.0.0-beta.0, < 7.1.0` | 7.1.0 | 6.0.1 | `@vscode/vsce` / `astro`（`unstorage`）→ `@azure/identity@4.13.3`（`^6.0.0`） |
-| #98 | `serialize-javascript` | low | GHSA-m5mm-p8h7-m29v / CVE-2026-115897 | runtime | `< 7.1.3` | 7.1.3 | 7.1.2 | `mocha` 11 / 12（vscode-e2e） |
+| #98 | `serialize-javascript` | low | GHSA-m5mm-p8h7-m29v / CVE-2026-115897 | runtime | `< 7.1.3` | 7.1.3 | 7.1.2 | vscode-e2e の `mocha` 11（`@vscode/test-cli`）/ 12（ExTester と直接の devDependency） |
 | #96 | `launch-editor` | medium | GHSA-r825-w8mm-5pxw / CVE-2026-112944 | development | `<= 2.14.1` | 2.14.2 | 2.14.1 | `@changesets/cli`（`^2.14.1`） |
 | #95 | `launch-editor` | high | GHSA-587h-7wmj-h5pm / CVE-2026-112942 | development | `<= 2.14.1` | 2.14.2 | 2.14.1 | 同上 |
 | #94 | `launch-editor` | medium | GHSA-698v-4r3x-3vcv / CVE-2026-112943 | development | `<= 2.14.1` | 2.14.2 | 2.14.1 | 同上 |
@@ -67,7 +67,8 @@ Dependabot の security update PR は 1 件も起票されていない。
   `@changesets/cli → launch-editor` と、それぞれの子のエッジだけ。副次的な移動は無い
 - `pnpm build` / `pnpm test` が通る。qs を実際に通る経路として `vsce package` と `vsce show karasu-tools.karasu-vscode`（typed-rest-client で
   Marketplace に問い合わせる）を手元で実行し、どちらも成功した。`pnpm changeset status` も通る（launch-editor の利用元）
-- serialize-javascript の利用元 mocha は ExTester の vscode-e2e で、devcontainer（arm64）では走らないので CI で確認する
+- serialize-javascript の利用元は vscode-e2e の mocha 2 系統で、mocha 11 は `@vscode/test-cli`（`pnpm --filter @karasu-tools/vscode-e2e test`）、
+  mocha 12 は ExTester（`test:webview`）が使う。どちらも devcontainer（arm64）では走らないので、`vscode-e2e.yml` の 2 つの job で確認する
 
 ## 理由
 
@@ -81,6 +82,10 @@ brace-expansion / sharp（ADR-3203）に続く、`.claude/rules/dependabot.md` �
   `minimumReleaseAge`（1 日）を満たす。利用元は vsce の typed-rest-client だけで、ビルド出力にも利用者に届く成果物にも出ない
 - serialize-javascript は 7.1.4 に解決する。7.1.3 は advisory の修正に加えて `ignoreFunction` の挙動を変え、7.1.4 は nested function を含む
   method の serialize を直した。publisher は前後とも GitHub Actions + SLSA provenance、install script なし。利用元は mocha（テストランナー）だけ
+- `mocha@11.8.0` は `serialize-javascript: ^6.0.2` を宣言しており、無印キーの override は 7 系をメジャー越えで押し込む。これは main の
+  `^7.0.5` の時点で既にそうなっていて、本 PR で増えたものではない。advisory の脆弱範囲 `< 7.1.3` は 6.x をすべて含み、6 系に修正版は無いので、
+  mocha 11 の下でもメジャーをまたぐ以外に脆弱版を外す手段が無い。mocha 11 を使う `vscode-test` の job が 7 系で通っていることが、この組み合わせの
+  検証になる。#102 で msal-node のメジャー越えを却下したのとは条件が違う（そちらは宣言レンジ内の修正版が 1 日で使えるようになる）
 
 ### #94〜#96 launch-editor: 無印キーで override する
 
