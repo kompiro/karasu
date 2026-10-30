@@ -20,6 +20,7 @@ import { describe, expect, it } from "vitest";
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 const WORKFLOW_DIR = join(REPO_ROOT, ".github/workflows");
 const ACTIONS_LOCK = join(REPO_ROOT, ".github/aw/actions-lock.json");
+const WORKFLOW_LOCKFILE = join(WORKFLOW_DIR, "actions.lock");
 
 /** The `gh aw compile` pin whose version is also the compiler's own version. */
 const SETUP_REPO = "github/gh-aw-actions/setup";
@@ -72,6 +73,24 @@ function pinsOf(repo: string): Pin[] {
   );
 }
 
+/**
+ * `owner/repo@ref` keys of `.github/workflows/actions.lock`'s `dependencies`.
+ * `gh actions-lock` rewrites a compiled workflow's `uses:` from `@<sha> # vX`
+ * to `@vX` and moves the sha here, so an exact tag with an entry is as fixed
+ * as a sha pin (#3412; the lasting arrangement for gh-aw is #3415).
+ */
+const workflowLockKeys = new Set(
+  [...readFileSync(WORKFLOW_LOCKFILE, "utf8").matchAll(/^ {4}'([^']+@[^']+)':$/gm)].map(
+    (match) => match[1],
+  ),
+);
+
+/** `owner/repo/path@ref` → `owner/repo@ref`, the shape `actions.lock` keys by. */
+function lockKeyOf(ref: string): string {
+  const [path, version] = ref.split("@");
+  return `${path.split("/").slice(0, 2).join("/")}@${version}`;
+}
+
 /** The `compiler_version` baked into the workflow's `gh-aw-metadata` blob. */
 function compilerVersion(text: string): string | undefined {
   return /"compiler_version":"([^"]*)"/.exec(text)?.[1];
@@ -106,17 +125,20 @@ describe("gh-aw lock files", () => {
     expect(unlocked).toEqual([]);
   });
 
-  it("pins every action to a commit sha, lock entry or not", () => {
+  it("pins every action to a commit sha or a tag locked in actions.lock", () => {
     // `actions-lock.json` records only the actions gh-aw resolved for this
     // repository; the `actions/*` steps come from the compiler's own defaults
     // and have no entry here by design. So "has a lock entry" cannot be the
     // rule for every pin. What does hold for all of them is the pin itself:
     // a compiled workflow never carries a floating tag, whoever wrote the line.
+    // A tag counts as pinned only when `.github/workflows/actions.lock` locks
+    // that exact `owner/repo@tag`.
     const floating = workflows.flatMap((workflow) =>
       usesRefs(workflow.text)
         // Local actions (`./.github/actions/...`) are the repository's own
         // tree and are not pinned by sha.
         .filter((ref) => !ref.startsWith("./") && !/@[0-9a-f]{40}$/.test(ref))
+        .filter((ref) => !workflowLockKeys.has(lockKeyOf(ref)))
         .map((ref) => `${workflow.name}: ${ref}`),
     );
     expect(floating).toEqual([]);

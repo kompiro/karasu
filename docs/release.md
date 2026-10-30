@@ -20,7 +20,7 @@ workflow が使う action は、直接・推移的なものを含めて `.github
 - `uses:` を変えたら（Dependabot の `github-actions` PR を含む）、リポジトリのルートで `gh actions-lock` を実行して lockfile を commit する。拡張は `gh extension install github/gh-actions-lock`。
 - lockfile は手で編集しない。ずれていると `verify-lockfile.yml`（`gh actions-lock --verify`）が落ち、runner も job 開始時に `Invalid lockfile` で止まる。
 - 更新先のタグは、リリースノートと公開からの日数（cooldown と同じ 7 日）を確認してから採る。
-- gh-aw の `.lock.yml` は `gh aw compile` の生成物で、`uses:` は `@<sha> # vX` のまま残す（`scripts/ci/gh-aw-lock-consistency.test.ts`）。
+- gh-aw の `.lock.yml` も対象に含まれる。`gh aw compile` は `uses:` を `@<sha> # vX` で出力するので、再生成したら続けて `gh actions-lock` を実行し、タグに戻して lockfile を合わせる。`scripts/ci/gh-aw-lock-consistency.test.ts` は、`actions.lock` が固定しているタグなら SHA の代わりとして通す。この 2 段の手順は暫定で、恒久的な扱いは [#3415](https://github.com/kompiro/karasu/issues/3415) で決める。
 
 ### Security update（GHSA 起因の即時 PR）
 
