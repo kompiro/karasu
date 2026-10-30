@@ -2,10 +2,12 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// Fences the three places a gh-aw version is written down so they cannot drift
-// apart: `.github/aw/actions-lock.json`, the `uses:` pins inside each compiled
-// `.github/workflows/*.lock.yml`, and the `compiler_version` baked into that
-// file's `gh-aw-metadata`.
+// Fences the places a gh-aw version is written down so they cannot drift
+// apart: `.github/aw/actions-lock.json`, the pins inside each compiled
+// `.github/workflows/*.lock.yml` (the manifest comment's `@<sha> # vX`, and the
+// `uses:` lines, which `gh actions-lock` rewrites to `@vX` with the sha moved
+// into `.github/workflows/actions.lock`), and the `compiler_version` baked into
+// that file's `gh-aw-metadata`.
 //
 // The failure this exists for is not hypothetical. Dependabot reads a
 // `.lock.yml` as an ordinary workflow and bumps its `uses:` lines, which is
@@ -20,16 +22,25 @@ import { describe, expect, it } from "vitest";
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 const WORKFLOW_DIR = join(REPO_ROOT, ".github/workflows");
 const ACTIONS_LOCK = join(REPO_ROOT, ".github/aw/actions-lock.json");
+const WORKFLOW_LOCKFILE = join(WORKFLOW_DIR, "actions.lock");
 
 /** The `gh aw compile` pin whose version is also the compiler's own version. */
 const SETUP_REPO = "github/gh-aw-actions/setup";
 
-type LockEntry = { readonly repo: string; readonly version: string; readonly sha: string };
+type LockEntry = {
+  readonly repo: string;
+  readonly version: string;
+  readonly sha: string;
+};
 
 type LockFile = { readonly entries: Record<string, LockEntry> };
 
 /** A single `owner/repo@sha # version` pin found in a compiled workflow. */
-type Pin = { readonly workflow: string; readonly sha: string; readonly version: string };
+type Pin = {
+  readonly workflow: string;
+  readonly sha: string;
+  readonly version: string;
+};
 
 const lock: LockFile = JSON.parse(readFileSync(ACTIONS_LOCK, "utf8"));
 
@@ -55,9 +66,11 @@ const workflows = workflowFiles.map((name) => ({
 }));
 
 /**
- * Every pin of `repo` in the compiled workflows, from both shapes the compiler
- * emits: the `uses:` steps and the "Custom actions used:" manifest comment.
- * Both carry the sha with the human-readable version in a trailing comment, and
+ * Every `@<sha> # vX` pin of `repo` in the compiled workflows, from both shapes
+ * the compiler emits: the `uses:` steps and the "Custom actions used:" manifest
+ * comment. After `gh actions-lock` the `uses:` steps carry a bare tag instead,
+ * so only the manifest comment matches here; the tag form is checked through
+ * `workflowLockKeys` and `compiler_version` below. With both shapes present,
  * a partial rewrite that updates one shape and not the other is the drift this
  * file is looking for.
  */
@@ -70,6 +83,33 @@ function pinsOf(repo: string): Pin[] {
       version: match[2],
     })),
   );
+}
+
+/**
+ * `owner/repo@ref` keys of `.github/workflows/actions.lock`'s `dependencies`.
+ * `gh actions-lock` rewrites a compiled workflow's `uses:` from `@<sha> # vX`
+ * to `@vX` and moves the sha here, so an exact tag with an entry is as fixed
+ * as a sha pin (#3412; the lasting arrangement for gh-aw is #3415).
+ */
+const workflowLockText = readFileSync(WORKFLOW_LOCKFILE, "utf8");
+
+const workflowLockKeys = new Set(
+  [...workflowLockText.matchAll(/^ {4}'([^']+@[^']+)':$/gm)].map((match) => match[1]),
+);
+
+/** The commit `actions.lock` records for each `owner/repo@ref` key. */
+const workflowLockCommits = new Map(
+  [
+    ...workflowLockText.matchAll(
+      /^ {4}'([^']+@[^']+)':\n(?: {8}.*\n)*? {8}commit: 'sha1-([0-9a-f]{40})'$/gm,
+    ),
+  ].map((match) => [match[1], match[2]]),
+);
+
+/** `owner/repo/path@ref` → `owner/repo@ref`, the shape `actions.lock` keys by. */
+function lockKeyOf(ref: string): string {
+  const [path, version] = ref.split("@");
+  return `${path.split("/").slice(0, 2).join("/")}@${version}`;
 }
 
 /** The `compiler_version` baked into the workflow's `gh-aw-metadata` blob. */
@@ -106,17 +146,39 @@ describe("gh-aw lock files", () => {
     expect(unlocked).toEqual([]);
   });
 
-  it("pins every action to a commit sha, lock entry or not", () => {
+  it("locks every gh-aw entry in actions.lock at the sha gh-aw resolved", () => {
+    // The runner executes the commit `actions.lock` records, not the manifest
+    // comment. A re-pointed tag accepted with `--accept-moved`, or a hand edit,
+    // would run a setup gh-aw never compiled against while every other check
+    // stays green.
+    // Guards the commit regex: a format change would otherwise leave keys
+    // without a commit and make the comparison below skip them silently.
+    expect(workflowLockCommits.size).toBe(workflowLockKeys.size);
+    const mismatches = lockEntries.flatMap((entry) => {
+      const key = lockKeyOf(`${entry.repo}@${entry.version}`);
+      if (!workflowLockKeys.has(key)) return [];
+      const locked = workflowLockCommits.get(key) ?? "(no commit)";
+      return locked === entry.sha
+        ? []
+        : [`${key}: actions.lock=${locked}, actions-lock.json=${entry.sha}`];
+    });
+    expect(mismatches).toEqual([]);
+  });
+
+  it("pins every action to a commit sha or a tag locked in actions.lock", () => {
     // `actions-lock.json` records only the actions gh-aw resolved for this
     // repository; the `actions/*` steps come from the compiler's own defaults
     // and have no entry here by design. So "has a lock entry" cannot be the
     // rule for every pin. What does hold for all of them is the pin itself:
     // a compiled workflow never carries a floating tag, whoever wrote the line.
+    // A tag counts as pinned only when `.github/workflows/actions.lock` locks
+    // that exact `owner/repo@tag`.
     const floating = workflows.flatMap((workflow) =>
       usesRefs(workflow.text)
         // Local actions (`./.github/actions/...`) are the repository's own
         // tree and are not pinned by sha.
         .filter((ref) => !ref.startsWith("./") && !/@[0-9a-f]{40}$/.test(ref))
+        .filter((ref) => !workflowLockKeys.has(lockKeyOf(ref)))
         .map((ref) => `${workflow.name}: ${ref}`),
     );
     expect(floating).toEqual([]);
@@ -137,14 +199,19 @@ describe("gh-aw lock files", () => {
     // its own version here, so this is what says the compiler that wrote the
     // file and the setup action it installs are one release. Comparing against
     // a single lock entry would go wrong the moment the lock carries two.
+    // Tag-form `uses:` (rewritten by `gh actions-lock`) count too: a bot bump of
+    // that line alone moves the setup the workflow runs, not the manifest.
     const mismatches = workflows.flatMap((workflow) => {
       const compiled = compilerVersion(workflow.text) ?? "(absent)";
       const pinned = [
-        ...new Set(
-          pinsOf(SETUP_REPO)
+        ...new Set([
+          ...pinsOf(SETUP_REPO)
             .filter((pin) => pin.workflow === workflow.name)
             .map((pin) => pin.version),
-        ),
+          ...usesRefs(workflow.text)
+            .filter((ref) => ref.startsWith(`${SETUP_REPO}@`) && !/@[0-9a-f]{40}$/.test(ref))
+            .map((ref) => ref.slice(SETUP_REPO.length + 1)),
+        ]),
       ];
       return pinned.every((version) => version === compiled)
         ? []

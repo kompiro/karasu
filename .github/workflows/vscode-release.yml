@@ -65,7 +65,7 @@ jobs:
       version: ${{ steps.source.outputs.version }}
       published: ${{ steps.publish.outcome == 'success' && inputs.pre_release != true }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -92,9 +92,9 @@ jobs:
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "::notice::Building karasu-vscode ${version} from ${commit}."
 
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: pnpm/action-setup@v6.1.0
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: "24"
           cache: "pnpm"
@@ -169,7 +169,7 @@ jobs:
       # allow-no-subscriptions.
       - name: Azure login (Entra ID via OIDC)
         if: steps.prereqs.outputs.can_publish == 'true'
-        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        uses: azure/login@v3.1.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
@@ -209,12 +209,12 @@ jobs:
     permissions:
       contents: write # push the tag and create or edit the GitHub Release
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0 # the script reads existing release-* tags
 
       # Node 24 runs the .mts script through type stripping; no install needed.
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: "24"
 
