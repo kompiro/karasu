@@ -195,6 +195,7 @@ flowchart TD
     ADR_3326["ADR-3326<br/>draft を外す前に CodeRabbit CLI を base ブランチとの差分へ 1 回..."]
     ADR_3333["ADR-3333<br/>Claude が gh pr ready を実行した直後に、PostToolUse フックで ..."]
     ADR_3335["ADR-3335<br/>main へのコミットは lefthook の pre-commit / pre-merge-..."]
+    ADR_3337["ADR-3337<br/>docs/process.md を常時読む核と、作業を始めたときに読むトピックに分ける"]
     ADR_3340["ADR-3340<br/>converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけ..."]
     ADR_3342["ADR-3342<br/>ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh..."]
     ADR_3350["ADR-3350<br/>リリーストレインの PR の段階を、差分が changeset version の出力だけなら..."]
@@ -1115,6 +1116,7 @@ flowchart TD
   class ADR_3326 accepted
   class ADR_3333 accepted
   class ADR_3335 accepted
+  class ADR_3337 accepted
   class ADR_3340 accepted
   class ADR_3342 accepted
   class ADR_3350 not_adopted
