@@ -5,6 +5,7 @@ import {
   check,
   type Input,
   parseIndex,
+  resolveLink,
   readInput,
   relativeLinks,
   SIZE_BUDGET,
@@ -71,6 +72,13 @@ describe("parseIndex", () => {
   });
 });
 
+describe("resolveLink", () => {
+  it("resolves relative targets from the document and root-absolute ones from the repository", () => {
+    expect(resolveLink("docs/process/review.md", "../adr/1.md")).toBe("docs/adr/1.md");
+    expect(resolveLink("docs/process/review.md", "/docs/adr/1.md")).toBe("docs/adr/1.md");
+  });
+});
+
 describe("cellTargets", () => {
   it("resolves links from docs/ and backticked paths from the root", () => {
     expect(cellTargets("[a](process/review.md)")).toEqual(["docs/process/review.md"]);
@@ -80,6 +88,12 @@ describe("cellTargets", () => {
 });
 
 describe("relativeLinks", () => {
+  it("skips links shown inside inline code", () => {
+    expect(relativeLinks("write `[x](y.md)` like this, see [z](z.md)")).toEqual([
+      { line: 1, target: "z.md" },
+    ]);
+  });
+
   it("skips external links, bare anchors, and fenced code", () => {
     const md = [
       "[x](https://example.com)",
@@ -122,6 +136,11 @@ describe("check", () => {
       expect.stringContaining("index row points at docs/process/review.md, which does not exist"),
       expect.stringContaining("resolves to docs/process/review.md, which does not exist"),
     ]);
+  });
+
+  it("fails an index row that names no file", () => {
+    const row = "| PR のレビュー | review を読む | PR ワークフローの手順 8 に入る前 |";
+    expect(check(input(core([row])))).toEqual([expect.stringContaining('names no file in "正本"')]);
   });
 
   it("fails an index row with an empty trigger", () => {

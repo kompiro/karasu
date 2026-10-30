@@ -93,7 +93,11 @@ export function parseIndex(processMd: string): { rows: IndexRow[] } | { error: s
   return { rows };
 }
 
-/** Relative Markdown link targets outside fenced code, with the anchor dropped. */
+/**
+ * Relative Markdown link targets outside fenced code and inline code spans,
+ * with the anchor dropped. A root-absolute target (`/docs/x.md`) is kept with
+ * its slash; callers resolve it from the repository root.
+ */
 export function relativeLinks(markdown: string): { line: number; target: string }[] {
   const links: { line: number; target: string }[] = [];
   let fenced = false;
@@ -103,9 +107,9 @@ export function relativeLinks(markdown: string): { line: number; target: string 
       return;
     }
     if (fenced) return;
-    for (const match of text.matchAll(/\]\(([^)\s]+)\)/g)) {
+    for (const match of text.replace(/`[^`]*`/g, "").matchAll(/\]\(([^)\s]+)\)/g)) {
       const target = match[1].split("#")[0];
-      if (target === "" || /^[a-z][a-z0-9+.-]*:/i.test(target)) continue;
+      if (target === "" || target.startsWith("//") || /^[a-z][a-z0-9+.-]*:/i.test(target)) continue;
       links.push({ line: i + 1, target });
     }
   });
@@ -116,10 +120,13 @@ export function relativeLinks(markdown: string): { line: number; target: string 
  * Repository-relative paths an index cell points at: Markdown links resolve
  * from docs/, backticked paths from the repository root.
  */
+/** The repository-relative path a link in the document at `from` points at. */
+export function resolveLink(from: string, target: string): string {
+  return normalize(target.startsWith("/") ? target.slice(1) : join(dirname(from), target));
+}
+
 export function cellTargets(cell: string): string[] {
-  const targets = relativeLinks(cell).map(({ target }) =>
-    normalize(join(dirname(PROCESS_MD), target)),
-  );
+  const targets = relativeLinks(cell).map(({ target }) => resolveLink(PROCESS_MD, target));
   for (const match of cell.matchAll(/`([^`\s]+\.md)`/g)) targets.push(normalize(match[1]));
   return targets;
 }
@@ -175,7 +182,7 @@ export function check(input: Input): string[] {
   const documents = new Map([[PROCESS_MD, input.processMd], ...input.topics]);
   for (const [path, text] of documents) {
     for (const { line, target } of relativeLinks(text)) {
-      const resolved = normalize(join(dirname(path), target));
+      const resolved = resolveLink(path, target);
       if (!input.exists(resolved)) {
         problems.push(
           `${path}:${line}: link to ${target} resolves to ${resolved}, which does not exist`,
@@ -192,7 +199,9 @@ export function readInput(root: string): Input {
   const topicDir = join(root, TOPIC_DIR);
   const topics = new Map<string, string>();
   if (existsSync(topicDir)) {
-    for (const name of readdirSync(topicDir).sort()) {
+    // Recursive, to match the `docs/process/**` that the review tier and the
+    // CI path filter use: a nested topic file is held to the index too.
+    for (const name of readdirSync(topicDir, { recursive: true, encoding: "utf8" }).sort()) {
       if (name.endsWith(".md")) {
         topics.set(`${TOPIC_DIR}/${name}`, readFileSync(join(topicDir, name), "utf8"));
       }

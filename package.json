@@ -19,7 +19,7 @@
     "changeset": "changeset",
     "version-packages": "changeset version && pnpm install --lockfile-only",
     "release": "pnpm build && changeset publish",
-    "check:cycles": "madge --circular --extensions ts,tsx packages/core/src packages/i18n/src packages/app/src packages/cli/src packages/lsp/src packages/nest/src packages/vscode/src || { echo 'check:cycles: madge also counts `import type` as a cycle. Move the shared types to a leaf module that imports neither side (e.g. packages/core/src/renderer/layout-types.ts).' >&2; exit 1; }",
+    "check:cycles": "madge --circular --extensions ts,tsx packages/core/src packages/i18n/src packages/app/src packages/cli/src packages/lsp/src packages/nest/src packages/vscode/src || { echo 'check:cycles failed. If madge listed a circular dependency: it also counts `import type`, so move the shared types to a leaf module that imports neither side (e.g. packages/core/src/renderer/layout-types.ts).' >&2; exit 1; }",
     "check:licenses": "tsx scripts/ci/check-license-allowlist.ts",
     "gen:notices": "tsx scripts/ci/generate-third-party-notices.ts packages/cli packages/vscode",
     "adr:init": "adr init",

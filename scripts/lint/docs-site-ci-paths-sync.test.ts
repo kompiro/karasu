@@ -8,6 +8,7 @@ import {
   globMatches,
   parsePublishedFiles,
   parseWorkflowPaths,
+  PREVIEW_RULE,
   PREVIEW_WORKFLOW,
   SKIP_WORKFLOW,
 } from "./docs-site-ci-paths-sync.ts";
@@ -143,7 +144,7 @@ describe("the committed workflows", () => {
     parsePublishedFiles(read("packages/docs-site/scripts/lib/site-map.ts")),
     (docsRelative) => existsSync(join(REPO_ROOT, "docs", docsRelative)),
   );
-  const workflows = [CHECK_WORKFLOW, PREVIEW_WORKFLOW].map((file) => ({
+  const workflows = [CHECK_WORKFLOW, PREVIEW_WORKFLOW, PREVIEW_RULE].map((file) => ({
     file,
     paths: parseWorkflowPaths(read(file), "paths"),
   }));

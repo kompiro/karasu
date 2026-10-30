@@ -15,6 +15,17 @@
 **レビュー対象はスタック最下層（base が `main`）の 1 本だけで、残りは draft のまま
 置く。** 検証もレビューも最下層でだけ起きる。
 
+**到達状態**: レビュー中のスタックで、draft でない PR が最下層の 1 本だけ。判定は
+スタック内の PR に限って行う（`gh pr list` はスタック外の単独 PR も返すので使わない）。
+
+```
+gh stack view --json | jq -r '.branches[] | select(.pr.state == "OPEN") | .pr.number' \
+  | xargs -I{} gh pr view {} --json number,isDraft,baseRefName \
+      --jq '"\(.number) draft=\(.isDraft) base=\(.baseRefName)"'
+```
+
+`draft=false` が base `main` の 1 本だけになっている。
+
 | # | すること |
 | --- | --- |
 | 0 | 最下層以外を draft にする（`gh pr ready <n> --undo`） |
@@ -28,7 +39,7 @@
 
 - **`gh stack submit --auto --open` は使わない。** `--open` は新規 PR だけでなく
   既存 PR も ready にするので、スタック全体が一度にレビュー対象になりステップ 0 が
-  壊れる。draft を外すのは常に `gh pr ready <番号>` で 1 本ずつ
+  壊れる。draft を外すのは常に `gh pr ready <番号>` で 1 本ずつ（`submit --auto` は既定で draft を作る）
 - `gh stack sync` はマージ直後にだけ実行する。sync は上位ブランチを force-push し、
   走っている required E2E を cancel する。レビュー対応の push と混ぜない
 - ステップ 7 → 1 → 3 の順序は sync が先、ready が後。逆にすると ready で走り出した CI を

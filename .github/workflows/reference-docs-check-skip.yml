@@ -57,5 +57,5 @@ jobs:
           echo "PR does not touch reference single-source paths. Check is skipped."
           echo "If your change touches docs/spec/**,"
           echo "packages/core/src/builtins/reference-data.ts, scripts/reference/**,"
-          echo "docs/process.md, docs/process/**,"
+          echo "docs/process.md, docs/process/**, scripts/lint/process-index.ts,"
           echo "or .github/workflows/reference-docs-check.yml, the real check runs."

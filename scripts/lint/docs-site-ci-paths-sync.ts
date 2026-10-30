@@ -33,6 +33,9 @@ const SITE_MAP_PATH = "packages/docs-site/scripts/lib/site-map.ts";
 export const CHECK_WORKFLOW = ".github/workflows/reference-docs-check.yml";
 export const SKIP_WORKFLOW = ".github/workflows/reference-docs-check-skip.yml";
 export const PREVIEW_WORKFLOW = ".github/workflows/docs-preview.yml";
+// The edit-time rule that asks for the preview carries the same `paths:` in its
+// frontmatter (Issue #3337): a published doc it misses edits without the reminder.
+export const PREVIEW_RULE = ".claude/rules/docs-site-preview.md";
 
 /**
  * Pull the string literals out of the `PUBLISHED_EN_FILES` array.
@@ -176,10 +179,12 @@ function main(): void {
   const published = expandLocaleSiblings(parsePublishedFiles(read(SITE_MAP_PATH)), (docsRelative) =>
     existsSync(resolve(root, "docs", docsRelative)),
   );
-  const workflows: TriggeredWorkflow[] = [CHECK_WORKFLOW, PREVIEW_WORKFLOW].map((file) => ({
-    file,
-    paths: parseWorkflowPaths(read(file), "paths"),
-  }));
+  const workflows: TriggeredWorkflow[] = [CHECK_WORKFLOW, PREVIEW_WORKFLOW, PREVIEW_RULE].map(
+    (file) => ({
+      file,
+      paths: parseWorkflowPaths(read(file), "paths"),
+    }),
+  );
   const skipPaths = parseWorkflowPaths(read(SKIP_WORKFLOW), "paths-ignore");
 
   const problems = check(published, workflows, skipPaths);

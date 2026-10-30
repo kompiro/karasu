@@ -5,16 +5,9 @@ paths:
 
 # Stacked PR の運用ルール
 
-**到達状態**: レビュー中のスタックで、draft でない PR が最下層の 1 本だけ。判定は
-スタック内の PR に限って行う（`gh pr list` はスタック外の単独 PR も返すので使わない）。
-
-```
-gh stack view --json | jq -r '.branches[] | select(.pr.state == "OPEN") | .pr.number' \
-  | xargs -I{} gh pr view {} --json number,isDraft,baseRefName \
-      --jq '"\(.number) draft=\(.isDraft) base=\(.baseRefName)"'
-```
-
-`draft=false` が base `main` の 1 本だけになっている。
+**到達状態**: draft PR で skip する job が、`scripts/ci/workflow-draft-gate.test.ts` の
+`DRAFT_GATED_JOBS`、ADR-2643、`docs/process/stacked-pr.md` の job 一覧で一致し、その job を持つ
+workflow の `types:` に `ready_for_review` がある。
 
 このファイルは workflow の編集で読み込まれ、workflow を編集するときの規則を持つ。
 スタックを作る・進める手順の正本は [docs/process/stacked-pr.md](../../docs/process/stacked-pr.md)
