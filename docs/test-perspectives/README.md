@@ -588,4 +588,3 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-3282](TPL-3282-every-pass-skips-quoted-text-alike.md) | 同じテキストを複数の手書きスキャナで読むなら、どのスキャナも引用符の中を同じ規則で飛ばす。1 段だけが引用符を知らないと、引用符の中の `)` や `,` で読み終わり位置がずれ、次の段が引用符の中から読み始めて文字列の中の文を実行する | cli | #3282 |
 | [TPL-3286](TPL-3286-merge-eligibility-judged-on-final-diff.md) | 人間を通らないマージを許す判定は、最終の差分で行い、どの規則にも当たらない入力を厳しい側に倒す。PR 作成時の 1 回だけの判定は後のコミットで外れ、規則に当たらないパスが軽い側に倒れると誰も読まないコードが入る | build | #3286, ADR-2331 |
 | [TPL-3385](TPL-3385-consumer-of-a-signal-the-producer-stops-emitting.md) | 外部サービスの出力を変える設定変更では、その出力を待つ側の判定を新しい形の fixture で確かめる。止めた出力を答えとして待つ処理はエラーにならず時間切れまで待ち、古い形の fixture のテストは通り続ける | project | #3385, #3365 |
-| [TPL-3416](TPL-3416-bypass-credential-never-meets-third-party-code.md) | ブランチ保護を越えられる鍵を持つ job では、依存の install やサードパーティの action を動かさず、push の前に変わったパスが許可の一覧の内側にあることを確かめる。bypass はパスで絞れないので、鍵の届く範囲で動くコードがそのまま書き込み範囲になる | build | #3416 |
