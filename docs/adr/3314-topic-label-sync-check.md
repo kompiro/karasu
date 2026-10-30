@@ -16,6 +16,9 @@ assumptions:
   - "grep: package.json :: lint:config-topics-sync:labels"
   - "grep: .github/workflows/adr-validate.yml :: lint:config-topics-sync:labels"
   - "grep: .github/workflows/adr-validate-skip.yml :: scripts/lint/config-topics-sync.ts"
+  - "grep: .github/workflows/adr-validate.yml :: github\\.sha"
+  - "grep: .github/workflows/adr-validate.yml :: issues: read"
+  - "grep: .github/workflows/adr-validate.yml :: fetch-depth: 2"
   - "grep: .claude/rules/adr-topics.md :: lint:config-topics-sync:labels"
 ---
 
@@ -52,9 +55,12 @@ topics を変える PR の required check `Validate` で、config と `topic:` �
   対象にし、`topic: <name>` とちょうど一致しないものは topics に無いラベルとして報告する。ずれは 1 件ずつ、
   `gh label create` / `edit` / `delete` の直し方を添えて出す。ラベルを自動では直さない
 - **フラグ無しはオフライン**: `--labels` が無ければ API を呼ばず、pre-push の config 比較は今の速さのまま
-- **いつ照合するか**: `adr-validate.yml` の最後のステップで、そのコミット（`git diff HEAD^1 HEAD`。PR の merge
-  commit でも main の squash commit でも親 1 が base になる）が `adr.config.json`・`tpl.config.json`・
-  `scripts/lint/config-topics-sync.ts` のどれかを変えたときだけ照合する。paths にこの 2 ファイルを足し、
+- **いつ照合するか**: `adr-validate.yml` の最後のステップで、そのコミット（`git diff HEAD^1 HEAD`）が
+  `adr.config.json`・`tpl.config.json`・`scripts/lint/config-topics-sync.ts` のどれかを変えたときだけ照合する。
+  checkout は `fetch-depth: 2` にする。PR の merge commit でも main の squash commit でも親 1 が base になるのは、
+  main が squash merge だけを受け付けるからで、rebase merge を許すと main では PR の最後のコミットしか見なくなる。
+  差分は先に変数へ取り、`git diff` の失敗をステップの失敗にする（パイプのまま grep に渡すと、失敗が「topics の
+  変更なし」と読まれる）。paths には、まだ無かった `tpl.config.json` とチェッカーのスクリプトを足し、
   `adr-validate-skip.yml` の `paths-ignore` も揃える（ADR-953、TPL-1480）
 - **main の concurrency**: PR の run は ref ごとの group で cancel し合い、main の push は commit ごとに group を
   分けて cancel も置き換えもしない
@@ -62,6 +68,10 @@ topics を変える PR の required check `Validate` で、config と `topic:` �
 - **ルール**: `.claude/rules/adr-topics.md` の到達状態 4 を `lint:config-topics-sync:labels` に替え、ラベル操作は
   topics の変更を push する前に行う、push の後に操作したら `gh run rerun --failed` で `Validate` を再実行する、
   照合が走る PR は 1 本ずつ通す、と書く
+- **テスト**: 比較（`checkLabels`）は純粋関数にし、CLI の入口（`run`）はラベルの読み元を差し替えられる形にする。
+  単体テストは API を呼ばずに、比較と終了コード（どちらかがずれたら 1、`--labels` が無ければ API を呼ばない）を
+  確かめる。受け入れテストは作らない。開発プロセスだけの変更で、ずれの無い状態で `Validate` が通ることは PR の CI が
+  確かめる
 
 ## 理由
 
@@ -101,5 +111,6 @@ topics を変える PR の required check `Validate` で、config と `topic:` �
 - 追加・改名・削除のどれでも、マージまでのあいだラベルが main の topics より先に進む。その間、照合が走る別の PR
   （config かチェッカーを変える PR）も落ちるので、1 本ずつ通す
 - ラベルを操作しても `Validate` は再実行されない。push の後に操作したら run を再実行する
+- PR を取り下げたら、マージ前に行ったラベル操作を手で戻す（足したラベルを消し、改名は名前を戻す）
 - API の一時的なエラーで落ちたら再実行する。落ちるのは照合が走る PR だけ
 - 画面で作られた余計なラベルを、作られた時点では止めない
