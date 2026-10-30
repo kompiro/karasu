@@ -208,8 +208,8 @@ domain canvas では採らず、#2728 に渡す。
    2 分の 1（1/4 から 3/4）では 13 組で 28 本・66 か所、中央の 3 分の 1 では 11 組で 30 本・76 か所だった
    （試作は hop の幅を一定の 14 px として扱い、角から 10 px 離した。実装では hop ごとの隙間の半分、すなわち `HOP_RADIUS` を含む幅と 14 px の大きい方を使い、数を測り直す）。
 
-4. **パスの位置。** 配置と幅の探索と再配置が終わった後、`computeCrossingMarks`（`layout.ts` の `layout()` の中）の
-   直前に置く。`markParallelBundles` は `layoutInner` の中で走り、その結果は channel / column の予約と幅の
+4. **パスの位置。** 配置と幅の探索と再配置が終わった後、`layout()` が `computeCrossingMarks` を呼ぶ位置（`layout.ts`）に
+   置き、その呼び出しをこのパスの中に取り込む。`markParallelBundles` は `layoutInner` の中で走り、その結果は channel / column の予約と幅の
    探索に入るので、そこに置くと card が動きうる。探索の後に置けば card は動かない。multi-system の root では
    system ごとに組を探す（`markParallelBundles` が #2917 で system ごとになったのと同じ理由）。
    分け目を決めるには、他の edge の経路と hop ごとの最終的な幅が要る。hop の幅は `computeCrossingMarks` の
@@ -226,10 +226,10 @@ domain canvas では採らず、#2728 に渡す。
    密な fixture で時間を測る（#2761 は 1 描画 1 回に減らした）。
 
 5. **置き換えた折れ線を読む処理。** 置き換えた後の `fromPoint` は source の port ではなく分け目になる。
-   パスより後でこの折れ線を読むのは、`computeCrossingMarks`、ラベルの配置（`buildLabelInputs` /
+   パスより後でこの折れ線を読むのは、ラベルの配置（`buildLabelInputs` /
    `resolveLabelPlacements` の線と anchor）、`renderEdge`（hit-line、`gappedStrokePath`、ラベル、矢印）である。
-   port の分散はパスより前に終わり、drill-down と all-layers は SVG の transform で階層を重ねるだけで、
-   focus canvas は SVG の `data-edge-*` と線の属性しか読まない。実装 PR でこの 4 つを確かめる。
+   hop はパスの中で前処理の結果から付け替える。port の分散はパスより前に終わり、drill-down と all-layers は SVG の transform で階層を重ねるだけで、
+   focus canvas は SVG の `data-edge-*` と線の属性しか読まない。実装 PR でこれらを確かめる。
 6. **描画。** 各 edge の `<g>` は今日どおり出る。それぞれが自分の半分と、自分の target 側の矢印を描く。
    `marker-start` は使わない。組を表す属性は足さない（今は読む側が無い。テストは `LayoutEdge` で組を確かめる）。
 7. **ラベル。** 組の edge は、既定のラベル位置の決め方を変える。今の既定（ADR-1184 の、最も長い区間の中点）を
