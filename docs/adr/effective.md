@@ -188,6 +188,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3326](3326-coderabbit-cli-once-before-ready.md) — draft を外す前に CodeRabbit CLI を base ブランチとの差分へ 1 回だけ当て、指摘 0 件までは回さない
 - [ADR-3333](3333-converge-after-ready-hook.md) — Claude が gh pr ready を実行した直後に、PostToolUse フックで /coderabbit-converge へ引き継ぐ
 - [ADR-3335](3335-refuse-commits-on-main.md) — main へのコミットは lefthook の pre-commit / pre-merge-commit で拒否し、main checkout の未コミット変更を見る Stop フックは廃止する
+- [ADR-3337](3337-split-process-md.md) — docs/process.md を常時読む核と、作業を始めたときに読むトピックに分ける
 - [ADR-3340](3340-converge-fix-the-class.md) — converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけへ CLI を 1 回当てる
 - [ADR-3342](3342-ready-gate-local-review.md) — ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh pr ready を拒否する
 - [ADR-3359](3359-pr-before-after-screenshots.md) — 描画が変わる PR に、merge-base と比べた before/after の画像を添付する
