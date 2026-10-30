@@ -14,7 +14,7 @@ const CORNER_CLEAR = 10;
 const SPLIT_WINDOW = 1 / 3;
 const ARROWS = ["→", "↘", "↓", "↙", "←", "↖", "↑", "↗"];
 
-export function pairCue(): PairCue {
+function pairCue(): PairCue {
   const v = (globalThis as { __karasuPairCue?: string }).__karasuPairCue;
   // Off unless a host opts in, so the existing tests and outputs stay as they are.
   return v === "position" || v === "arrow" ? v : "off";
