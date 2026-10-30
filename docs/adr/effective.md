@@ -421,6 +421,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3134](3134-same-channel-fold.md) — 同じ行間チャネルに降りる corridor / mixed route を、チャネルの中で 1 本の run につなぐ
 - [ADR-3154](3154-frame-bounded-gutters.md) — ドリルダウンのガターは枠の内側のカードで測り、足りない幅を枠の側面に予約する
 - [ADR-3155](3155-label-placement-frame-borders.md) — ずらしたエッジラベルは既定位置と同じ側に留め、枠の線に掛けない
+- [ADR-3309](3309-same-row-whole-side-stubs.md) — 同じ行の経路が stub の席の取り合いで拒否されたとき、最後の候補で席をカードの幅いっぱいまで広げて試す
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
 - [ADR-9015](9015-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG（buildAllViewsSvg）
