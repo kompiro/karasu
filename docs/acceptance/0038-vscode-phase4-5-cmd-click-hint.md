@@ -16,8 +16,10 @@ case is already automated by
 [AT-0039 TC-01](./0039-vscode-phase6-detail-panel.md) and TC-05 below
 has been rewritten to match.
 
-The harness job is gated on the `vscode-webview-e2e` PR label and is **not**
-a required check.
+The harness job runs on pull requests that touch the extension or core / i18n /
+lsp, not on a change to the app alone (path filter, [ADR-1742](../adr/1742-vscode-e2e-path-filter-trigger.md))
+and is **not** a required check. Since #3312 the preview is the app's viewer,
+and the hint is part of the VS Code toolbar the extension adds to it.
 
 ## Summary
 
@@ -53,8 +55,10 @@ system ECommerce {
 
 1. Open the Webview (`karasu: Open Preview`)
 2. Look at the right end of the toolbar
-3. **Expected**: The text `Cmd/Ctrl+Click to jump to definition` is visible, styled
-   in a muted (description) color
+3. **Expected**: The text `ⓘ for details · Cmd/Ctrl+Click to jump` is visible, styled
+   in a muted color (in Japanese when VS Code's display language is Japanese)
+
+> ✅ Automated — `packages/app/src/viewer/vscode/VscodeToolbarExtras.test.tsx` › `shows the Cmd/Ctrl+click hint, in the display language`
 
 ---
 

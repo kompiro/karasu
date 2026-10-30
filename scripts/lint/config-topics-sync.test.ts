@@ -1,8 +1,8 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ADR_CONFIG, check, TPL_CONFIG } from "./config-topics-sync.ts";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ADR_CONFIG, check, checkLabels, run, TPL_CONFIG } from "./config-topics-sync.ts";
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 
@@ -81,6 +81,98 @@ describe("check", () => {
     writeFileSync(join(tmp, ADR_CONFIG), JSON.stringify({ topics: "parser" }));
     writeFileSync(join(tmp, TPL_CONFIG), JSON.stringify({ topics: ["parser"] }));
     expect(() => check(tmp)).toThrow(/must be an array of strings/);
+  });
+});
+
+describe("checkLabels", () => {
+  it("passes when every topic has its label and nothing else looks like one", () => {
+    expect(checkLabels(["parser", "cli"], ["topic: cli", "bug", "topic: parser"])).toEqual({
+      missingLabels: [],
+      strayLabels: [],
+    });
+  });
+
+  it("flags a topic added to adr.config.json without its label", () => {
+    expect(checkLabels(["parser", "brand-new"], ["topic: parser"])).toEqual({
+      missingLabels: ["topic: brand-new"],
+      strayLabels: [],
+    });
+  });
+
+  it("flags a topic: label with no matching topic", () => {
+    expect(checkLabels(["parser"], ["topic: parser", "topic: obsolete"])).toEqual({
+      missingLabels: [],
+      strayLabels: ["topic: obsolete"],
+    });
+  });
+
+  it("reports a rename done on one side only as both directions", () => {
+    // adr.config.json renamed `app` to `app-ui`, the label still has the old name.
+    expect(checkLabels(["app-ui"], ["topic: app"])).toEqual({
+      missingLabels: ["topic: app-ui"],
+      strayLabels: ["topic: app"],
+    });
+  });
+
+  it("treats a label without the space after the colon as stray", () => {
+    expect(checkLabels(["cli"], ["topic: cli", "topic:cli"])).toEqual({
+      missingLabels: [],
+      strayLabels: ["topic:cli"],
+    });
+  });
+
+  it("treats a label with different case as stray (GitHub label names are case-insensitive)", () => {
+    expect(checkLabels(["cli"], ["topic: cli", "Topic: cli", "TOPIC: foo"])).toEqual({
+      missingLabels: [],
+      strayLabels: ["TOPIC: foo", "Topic: cli"],
+    });
+  });
+
+  it("ignores labels that do not start with topic:", () => {
+    expect(
+      checkLabels(["cli"], ["topic: cli", "status: ready", "topics", "epic: boundary"]),
+    ).toEqual({
+      missingLabels: [],
+      strayLabels: [],
+    });
+  });
+});
+
+describe("run", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("exits 0 when the configs agree and the labels match", () => {
+    write(["cli"], ["cli"]);
+    expect(run(["--labels"], tmp, () => ["topic: cli", "bug"])).toBe(0);
+  });
+
+  it("exits 1 on label drift even when the configs agree", () => {
+    write(["cli"], ["cli"]);
+    expect(run(["--labels"], tmp, () => ["topic: cli", "topic: obsolete"])).toBe(1);
+  });
+
+  it("exits 1 on config drift with --labels even when the labels match", () => {
+    write(["cli"], ["cli", "tpl-only"]);
+    expect(run(["--labels"], tmp, () => ["topic: cli"])).toBe(1);
+  });
+
+  it("never reads labels without --labels", () => {
+    write(["cli"], ["cli"]);
+    const readLabels = vi.fn<() => string[]>(() => ["topic: obsolete"]);
+    expect(run([], tmp, readLabels)).toBe(0);
+    expect(readLabels).not.toHaveBeenCalled();
+  });
+
+  it("still exits 1 on config drift without --labels", () => {
+    write(["cli"], ["parser"]);
+    expect(run([], tmp, () => [])).toBe(1);
   });
 });
 

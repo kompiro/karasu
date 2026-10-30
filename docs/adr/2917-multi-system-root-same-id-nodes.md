@@ -22,7 +22,7 @@ assumptions:
   - "symbol: packages/core/src/parser/node-path.ts :: parseNodePathRefId"
   - "symbol: packages/core/src/compile/compile.ts :: nodeMetadataByPath"
   - "grep: packages/app/src/components/PreviewPane.tsx :: data-node-path"
-  - "symbol: packages/vscode/src/message-validation.ts :: isOptionalNodePath"
+  - "grep: packages/app/src/components/PreviewPane.tsx :: parseNodePathRefId"
   - "file: packages/vscode-e2e/tests/webview/at-2917-same-id-drill.test.ts"
   - "file: docs/acceptance/2917-multi-system-root-same-id-nodes.md"
   - "file: docs/test-perspectives/TPL-2920-duplicate-element-id-on-one-canvas-names-its-landing.md"

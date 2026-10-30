@@ -1,0 +1,72 @@
+name: Review tier
+
+# Holds a PR to the review its change calls for (Issue #3286, docs/process/review.md
+# "リスク段階"). The check fails when:
+# - the PR's `risk: *` label is lower than the tier its diff and author give;
+# - auto-merge is on for a PR that is not Low;
+# - a Low, Design or Medium PR has no valid local review record in its body
+#   (scripts/review/local-review-record.ts). High reads no record: CodeRabbit's
+#   rounds and a human reading the diff carry it.
+# A PR with no tier label is High.
+#
+# No path filter and no skip stub: docs-only PRs are exactly the ones that can be
+# Low, and a filter that skipped them would drop the check where it matters
+# (TPL-1725, TPL-3286). It runs on drafts too: the script needs no install and
+# finishes in seconds, unlike the minute-scale jobs ADR-2643 keeps off drafts,
+# and the record is written before the draft is opened.
+#
+# The classifier that judges a PR is the one on the base branch, not the PR's own
+# copy: a PR that edits scripts/review/ must not be the one deciding its own tier.
+# Only while the base has no classifier yet (the PR that introduces it) does the
+# head's copy run.
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      # A label change can raise or lower the tier.
+      - labeled
+      - unlabeled
+      # The record lives in the body.
+      - edited
+      - auto_merge_enabled
+      - auto_merge_disabled
+
+concurrency:
+  group: review-tier-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  review-tier:
+    name: Review tier
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Check the tier label and the local review record
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          dir=scripts/review
+          if git cat-file -e "origin/$BASE:$dir/tier.ts" 2>/dev/null; then
+            git worktree add --detach "$RUNNER_TEMP/base" "origin/$BASE"
+            dir="$RUNNER_TEMP/base/$dir"
+          fi
+          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$dir/tier.ts" check --pr "$PR"

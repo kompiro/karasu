@@ -41,13 +41,14 @@
 ### ブランチ戦略
 
 - `main` への直接コミット・push は禁止 — PR 経由でマージする
+  - `main` の上で変更をステージしたコミットと、マージコミットは git のフックで拒否される。フックはすべての worktree で共有されるので、プロジェクトルートでも同じく止まる。止まったら、変更を worktree のブランチに移してからコミットする。仕組みと、止まらないケースは ADR-3335
 - 機能開発は `git worktree add` により worktree を作成して行う
 - worktree の作成先は必ず `.claude/worktrees/<branch-name>` とする（例: `git worktree add .claude/worktrees/feat/my-feature feat/my-feature`）
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `spike/` + kebab-case
-- `spike/` はマージを前提としない PoC 用。この prefix だけは CI 上の意味を持ち、push で preview がデプロイされる（「spike を PR なしで preview で動かす」節）
-- spike は `spike/<issue>-<何を測ったか>` と名付け、その Issue が open なあいだは push して残す（「spike の名前と寿命」節）
+- `spike/` はマージを前提としない PoC 用。この prefix だけは CI 上の意味を持ち、push で preview がデプロイされる（[docs/process/spike.md](process/spike.md)「spike を PR なしで preview で動かす」節）
+- spike は `spike/<issue>-<何を測ったか>` と名付け、その Issue が open なあいだは push して残す（[docs/process/spike.md](process/spike.md)「spike の名前と寿命」節）
 - **PR を出す前に main を取り込む — `rebase` は使わない。** `git fetch origin main` してから `git merge --no-edit origin/main`。rebase は他 PR のマージ済み成果を巻き添えで revert しうる。
-- **例外: stack 内のブランチは `gh stack sync` の rebase で `main` を取り込む。** スタックは各 PR の base を積み替える構造で、merge では表現できない。この 1 行は直上の rebase 禁止に優先する（「Stacked PR の進め方」）
+- **例外: stack 内のブランチは `gh stack sync` の rebase で `main` を取り込む。** スタックは各 PR の base を積み替える構造で、merge では表現できない。この 1 行は直上の rebase 禁止に優先する（[docs/process/stacked-pr.md](process/stacked-pr.md)「Stacked PR の進め方」）
 
 ### Issue・PR 記述ルール
 
@@ -66,6 +67,32 @@ Issue が表面化した「失敗の種類」によってラベルを使い分�
 
 - `bug` と `test-infra` は **mutually exclusive**（同時に付けない）
 - 3-Yes ルールの起動トリガーは双方
+
+### Issue トピックラベル（ADR の topic で分類する）
+
+Issue には `topic: <name>` ラベルを 1 つ付ける。`<name>` は
+[`adr.config.json`](../adr.config.json) の `topics` のいずれかで、ADR の `topic` と同じ語彙である。
+
+- 到達状態: open の Issue は種別（`bug` / `test-infra` / それ以外）を問わず、すべて `topic:` ラベルを
+  ちょうど 1 つ持つ。起票時に付け、ラベルが無い・2 つ以上ある Issue は見つけたらその場で 1 つに直す
+  （残す 1 つは下の「迷ったら」で決める）。workflow が起票した Issue も同じ扱いにする（workflow が起票時に
+  付けるようにするのは #3390）。次のコマンドが何も出力しなければ成り立っている:
+
+  ```bash
+  gh api --paginate 'repos/{owner}/{repo}/issues?state=open&per_page=100' \
+    --jq '.[] | select(.pull_request == null) | select([.labels[].name | select(startswith("topic: "))] | length != 1) | .number'
+  ```
+
+- closed の Issue には遡って付けない（topic 別の判断の履歴は ADR の `topic` が持つ）
+- 各 topic が何を含むかは [`docs/adr/README.md`](adr/README.md)「トピック別」の見出しで判断する
+- 迷ったら、似た内容の既存 ADR で最も多い `topic` に合わせる:
+
+  ```bash
+  grep -il <キーワード> docs/adr/*.md | xargs grep -h '^topic:' | sort | uniq -c | sort -rn
+  ```
+
+- topics の追加・改名・削除は、ラベルの作成・`gh label edit`・付け替えを伴う。手順と到達状態は
+  `.claude/rules/adr-topics.md`（`adr.config.json` / `tpl.config.json` の編集時に読み込まれる）
 
 ### Issue ステータスラベル
 
@@ -90,7 +117,7 @@ ready → implementing → designing → designed → implementing → in-review
 ready → implementing → in-review → (close)
 ```
 
-> 実装 PR の `close` は、PR に `Closes #N` を記載することで GitHub が自動で行う（Design Doc の PR は `Refs #N`。下の PR ワークフローの手順 9）。
+> 実装 PR の `close` は、PR に `Closes #N` を記載することで GitHub が自動で行う（Design Doc の PR は `Refs #N`。下の PR ワークフローの手順 10）。
 >
 > マージ後にしか確かめられない項目（次のリリース、本番にしか現れない設定、`main` でのバックフィルなど）は、PR を作る前に別の Issue に起こし、PR 本文から番号を示す。元の Issue は `Closes #N` のまま PR と一緒に閉じる。ADR への昇格などこの文書が手順として持つ後工程は書かない（ADR-3271）。
 
@@ -107,470 +134,42 @@ ready → implementing → in-review → (close)
 5. 実装する
 6. /hane:commit でコミットする（Conventional Commits 形式）
 7. PR 前に main を取り込む — git fetch origin main && git merge --no-edit origin/main（rebase は使わない。「ブランチ戦略」参照）。コンフリクトを解消し、lint / test を再確認する
-8. base ブランチとの差分（git diff origin/main...HEAD）に /engineering:code-review を当て、対応すると決めた修正をコミットし、lint / test を再確認する。PR はまだ作らない
-9. PR を draft で作成する（gh pr create --draft、Closes #N で Issue と紐付ける。Design Doc の PR は Refs #N にして Issue を残す。ADR-3271）。draft には CodeRabbit も分単位の CI も走らない
-10. gh pr ready <PR番号> で draft を外す。CI はここで走り、CodeRabbit の自動レビュー対象の PR（`.coderabbit.yaml` で除外した bot 以外が作った、base が `main` の、本文に ignore コマンドが無く、`adr-auto-merge` / `skip-coderabbit` ラベルの無い PR）では初回レビューもここで走る
-11. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
-12. Issue ラベルを status: in-review に更新する
-13. 手動検証チェックリストを実施する
-14. CodeRabbit のレビューを収束させる（`/coderabbit-converge` で approve まで回す。記録済みの決定を変える指摘だけ人間に確認する）
-15. 人間のレビュー → マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
+8. 手順 8〜11 に入る前に docs/process/review.md を読む。base ブランチとの差分（git diff origin/main...HEAD）に、実装の文脈を持たない新しい subagent で /engineering:code-review を当てる。指摘は review.md「指摘の重大度と対応」に従って扱い、直したら修正で触れたファイル全体にもう一度当てる（3 回まで）。lint / test を再確認する。PR はまだ作らない
+9. 同じ差分に CodeRabbit CLI を 1 回だけ当てる（coderabbit review --agent --deep --base origin/main --committed）。指摘は手順 8 と同じ基準で扱い、lint / test を再確認する。修正後に CLI を回し直さない
+10. 段階を判定し（node scripts/review/tier.ts classify。`securityReview` が true なら /security-review も当てる）、手順 8・9 の指摘と対応をローカルレビューの記録として本文に書いて、PR を draft で作成する（gh pr create --draft --label "risk: <段階>"、Closes #N で Issue と紐付ける。Design Doc の PR は Refs #N にして Issue を残す。ADR-3271）。draft には CodeRabbit も分単位の CI も走らない。描画や UI が変わる PR は、本文の `## Before / after` 節に before/after の画像を添付する（Claude が gh pr create を実行すると、フックが促す。仕組みは ADR-3359）
+11. gh pr ready <PR番号> で draft を外す。CI はここで走り、`risk: high` と `risk: design` の PR では CodeRabbit の初回レビューもここで走る（`.coderabbit.yaml` で除外した bot の PR と、base が `main` でない PR を除く）。Claude のセッションでは、手順 9 の CLI のレビューがこのブランチで済んでいないと gh pr ready は拒否され、--draft の無い gh pr create も拒否される（仕組みと、拒否しない場合は ADR-3342）
+12. CI（test / lint / format / typecheck / knip / check:cycles / build、それに段階と記録を検査する Review tier）が通過することを確認する
+13. Issue ラベルを status: in-review に更新する
+14. 手動検証チェックリストを実施する
+15. 段階に従って進める（review.md「リスク段階」）。High は CodeRabbit のラウンドを収束させる（ラウンドを始める前に docs/process/coderabbit-rounds.md を読む。`/coderabbit-converge` で Critical / Major の未対応が無くなるまで回す。記録済みの決定を変える指摘だけ人間に確認する。Claude が `gh pr ready` で draft を外すと、Claude Code のフックがこの手順を始めるよう促す。仕組みは ADR-3333）。Low は auto-merge を有効にする（gh pr merge <PR番号> --auto --squash --delete-branch）
+16. 人間のレビュー → マージ（Low は auto-merge）→ git worktree remove .claude/worktrees/<branch> でクリーンアップ
 ```
-
-**CodeRabbit の初回レビューは `/engineering:code-review` の修正を反映したコードに当てる。** ready の
-PR への push は、自動レビューが走るたびに CodeRabbit の review 枠を 1 回使い（rate limit で
-弾かれた push は使わない）、枠の補充レートは直近 7 日の
-利用量が増えるほど下がる。PR を ready で開いてから `/engineering:code-review` を当てると、直す前の
-コードと直した後のコードで 2 回使う。レビューは PR を作る前に base ブランチとの差分へ当てるので、
-修正は PR の最初の push に含まれる。順序の決定と計測値は
-[ADR-2898](adr/2898-draft-first-code-review.md)、レビュー対象を base との差分にした決定は
-[ADR-3052](adr/3052-review-branch-diff-before-draft-pr.md)。
 
 詳細な手順は `/hane:start-dev` スキル（[`kompiro/hane`](https://github.com/kompiro/hane) plugin）を参照。
 
-### CodeRabbit を外す小さな PR（ignore コマンドと `skip-coderabbit` ラベル）
-
-**到達状態**: 本文に `@coderabbitai ignore` の行を持ち `skip-coderabbit` ラベルの付いた PR は、
-下の判定基準を満たすと人間が承認したものだけで、CodeRabbit の review 枠を 1 回も使わずに
-人間のレビューへ進んでいる。外した PR は `gh pr list --label skip-coderabbit --state all`
-で一覧できる。
-
-レビューから外すのは本文の行で、ラベルは外した PR を一覧するための記録である。ラベルだけ
-では CodeRabbit が PR を開いた時点の 1 回を止められない（#3003）。`.coderabbit.yaml` の
-ラベル除外は、本文に行を書き忘れたときの後ろ盾として残している。
-
-判定基準は 1 つ、**差分が正しいかどうかが、差分そのものと外部の事実（リンク先・画像・
-綴り）だけで決まり、周辺のコードや規約を読まずに判断できるか**。行数は問わない。
-実行時の振る舞い（コードの経路・ルーティング・CI の動き）を変える差分は、この基準を
-満たさない。差分の一部でも満たさなければ、PR 全体を外さない。
-
-| 差分 | 外すか | 理由 |
-| --- | --- | --- |
-| README のリンク切れ修正 | 外す | リンク先を開けば正否が決まる |
-| nest に favicon を静的アセットと `<link rel="icon">` で足す | 外す | 画像とその参照だけ |
-| 同じ favicon を Worker の新しいルートで返す | 外さない | ルーティングという振る舞いが変わる |
-| i18n テーブルにある UI 文言の typo 修正 | 外す | 綴りで決まる。表示文字列の修正は振る舞いの変更に数えない |
-| `examples/` の .krs の typo 修正（`examples.ts` のミラー同期を含む） | 外す | 綴りで決まり、ミラーの一致は drift ガードが見る |
-| コードコメント・JSDoc の修正 | 外さない | コードについての主張なので、コードとの照合が要る |
-| `docs/process.md` の 1 行修正 | 外さない | 運用についての主張なので、規約との照合が要る |
-| テストだけの追加 | 外さない | 何を検証すべきかの判断が要る |
-| `.github/workflows` の action バージョン更新 | 外さない | CI の振る舞いが変わる |
-| core の 1 行のバグ修正 | 外さない | 振る舞いが変わる |
-
-**外すかどうかは PR を作る前に Claude が提案し、人間が承認する。** Claude は判定基準を
-満たすと考えたら、表のどの行に当たるかを添えて外してよいか尋ねる。承認を得るまでは
-通常の手順で進める。承認後は、本文の最後に `@coderabbitai ignore` だけの行を置き、
-ラベルと一緒に draft で作ってから ready にする。
-
-```
-gh pr create --draft --label skip-coderabbit --body-file <本文>   # 本文の最後の行が @coderabbitai ignore
-gh pr ready <N>
-```
-
-- **PR を作ってから外すと決めた場合**は、draft のうちに本文へ行を足し
-  （`gh pr edit <N> --body-file <本文>`）、ラベルを付ける。ready の後に足した場合、
-  それ以降の push の自動レビューは止まるが、既に付いたレビューとその changes-requested は
-  残る。changes-requested はマージを止めないので、そのまま人間のレビューに進んでよい
-- 外した PR では `/coderabbit-converge` を回さず、次節の到達状態
-  （CodeRabbit の approve）も求めない。CI が通れば人間のレビューに渡す
-- 外した後に判定基準を満たさない差分を足すなら、本文の行とラベルを残したまま push し、
-  `@coderabbitai full review` を投げる。それまでのコミットは一度もレビューされていないので、
-  差分だけを見る `@coderabbitai review` では足りない。full review が届いたら、新しいコミットを
-  足さずに本文の行とラベルの両方を外し（`gh pr edit <N> --body-file <本文> --remove-label skip-coderabbit`）、
-  通常の手順に戻る。先に外すと、その push で自動レビューが走って full review と二重になる
-- **外すと決めた PR 以外の本文に `@coderabbitai ignore` という文字列を書かない。**
-  CodeRabbit は文脈を区別せず、引用や却下した案の説明として書いただけでもその PR を
-  レビューから外す。外れたときのステータスは理由の付かない `Review skipped` で、
-  ラベルや draft による除外と見分けられる（#3012 で起きた）。コマンドに触れるときは
-  「the ignore command」のように `@coderabbitai` を付けずに書く
-- 判定の経緯と却下した案は [ADR-3117](adr/3117-coderabbit-ignore-command-for-skip.md)
-  （外す手段）と [ADR-3011](adr/3011-skip-coderabbit-label.md)（判定基準）
-
-### 人間のレビューは CodeRabbit が approve してから始める
-
-**到達状態**: 人間がレビューを開いた時点で、CodeRabbit の最新レビューが `APPROVED`、
-未解決の review thread が 0、そして人間の判断が要る論点は PR 上で質問済みになっている。
-
-2 本目は **`--paginate` で全ページ数える**。`reviewThreads` を 1 ページだけ読むと、
-古い未解決 thread が範囲外に落ちて `0` が返る。`--slurp` は `--jq` と併用できないので
-`jq` に繋ぐ。
-
-```
-gh pr view <n> --json reviews \
-  --jq '[.reviews[] | select(.author.login == "coderabbitai")] | last | .state'
-# => APPROVED
-
-gh api graphql --paginate --slurp -F n=<n> -f query='query($n: Int!, $endCursor: String) {
-  repository(owner: "kompiro", name: "karasu") {
-    pullRequest(number: $n) {
-      reviewThreads(first: 100, after: $endCursor) {
-        nodes { isResolved }
-        pageInfo { hasNextPage endCursor }
-      }
-    }
-  }
-}' | jq '[.[].data.repository.pullRequest.reviewThreads.nodes[]
-          | select(.isResolved == false)] | length'
-# => 0
-```
-
-CodeRabbit は actionable な指摘があるあいだ changes-requested を出し、未対応が
-なくなると approve する（`request_changes_workflow`、
-[ADR-2716](adr/2716-coderabbit-request-changes-workflow.md)）。
-**この approve は「自動レビューが収束した」印であって、マージ許可ではない。**
-required check ではなく、default branch の ruleset は approving review を要求しない
-ので、changes-requested はマージを止めず approve はマージを許可しない。マージ判断は
-人間が持つ。
-
-**PR を出した側が approve までのラウンドを回しきってから人間に渡す。** 人間の
-レビューを CodeRabbit のラウンドと並走させない。並走させると収束途中の差分を人間が
-読むことになり、次のラウンドで消える指摘に人間の時間を使う。
-ラウンドは `/coderabbit-converge` で回す。CodeRabbit の応答を待つ・rate limit 明けに
-再依頼する・指摘に対応して push する、を人間の取り次ぎなしで繰り返し、人間に渡せる
-状態か人間の判断が要る状態になったら通知して止まる。
-
-#### 人間に確認する指摘の判定
-
-判断基準は 1 つ、**その指摘に従うと記録済みの決定が変わるかどうか**。記録済みの決定とは
-Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`、`.claude/rules/`、
-およびその PR で人間が明示した方針を指す。
-
-| 指摘 | どうするか |
-| --- | --- |
-| 記録済みの決定を変えない（実装の誤り・記述の同期漏れ・誤検知・好みの範囲） | 対応可否を自分で決めて、直すか却下して解決する |
-| 記録済みの決定を変える（スコープの拡縮、ADR / spec / rules の書き換え、別 ADR との衝突） | **直さずに人間へ確認する。** 指摘・該当する記録・取りうる選択肢を並べて聞く |
-
-確認が要る論点が出ても、**それ以外の指摘は先に収束させる**。人間を待つあいだ手を止めない。
-人間に渡すときは、残っている質問と、却下した指摘およびその理由をまとめて 1 回で伝える。
-
-#### ラウンドの回し方
-
-- 対象外は draft PR と `dependabot[bot]` / `renovate[bot]` の PR（依存更新は
-  `/hane:dependabot` が別途トリアージ）。`ignore_usernames` は完全一致なので、
-  他の bot を除外するには login を `.coderabbit.yaml` に足す
-- 本文の ignore コマンドと `adr-auto-merge` ラベルで外した ADR-only PR も対象外。
-  auto-merge の適用条件を満たすと PR を作る前にブランチの差分で確認した PR にだけ、
-  作成時に入れる（`.claude/rules/adr.md`「ADR PR の auto-merge」、ADR-3117）
-- 本文の ignore コマンドと `skip-coderabbit` ラベルで外した PR も対象外（「CodeRabbit を外す小さな PR」）
-- 採用しない指摘は**返信で理由を書いてから閉じる**。approve は指摘に従わなくても
-  到達できる。**approve を取ることを目的に指摘へ従わない**。従うべきか迷うものは、
-  上の表に従って人間へ回す
-- **閉じるのは読んだ thread だけ。** 判断基準はこの 1 つで、閉じ方はそれを守れる方を
-  選ぶ。thread を名指しできるのは GraphQL の `resolveReviewThread` で、
-  `@coderabbitai resolve` は開いている thread を**全部**閉じる（名指しできない）。
-  **一覧と本文読みは分ける** — 一覧に本文を混ぜると、`comments` を何件で切っても
-  その先を読まずに閉じられる形になる。一覧は件数だけ持たせ、本文は thread ごとに
-  全ページ読む
-
-  ```
-  # 1. 未解決 thread の索引（id・場所・コメント件数だけ）
-  gh api graphql --paginate --slurp -F n=<n> -f query='query($n: Int!, $endCursor: String) {
-    repository(owner: "kompiro", name: "karasu") {
-      pullRequest(number: $n) {
-        reviewThreads(first: 100, after: $endCursor) {
-          nodes { id isResolved path line comments { totalCount } }
-          pageInfo { hasNextPage endCursor }
-        }
-      }
-    }
-  }' | jq -r '.[].data.repository.pullRequest.reviewThreads.nodes[]
-              | select(.isResolved == false)
-              | "\(.id) \(.path):\(.line) comments=\(.comments.totalCount)"'
-
-  # 2. その thread を全件読む（totalCount と出力行数が一致することを確かめる）
-  gh api graphql --paginate --slurp -F id=<thread-id> -f query='query($id: ID!, $endCursor: String) {
-    node(id: $id) {
-      ... on PullRequestReviewThread {
-        comments(first: 100, after: $endCursor) {
-          nodes { author { login } body }
-          pageInfo { hasNextPage endCursor }
-        }
-      }
-    }
-  }' | jq -r '.[].data.node.comments.nodes[] | "[\(.author.login)] \(.body)"'
-
-  # 3. 読んで対応を決めた thread だけを閉じる
-  gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "<id>"}) { thread { isResolved } } }'
-  ```
-
-- **一括の `@coderabbitai resolve` を使うなら、投げる前に未解決 thread を全件読む。**
-  投げてから処理されるまでに数分あり、**その間に届いたレビューの指摘も一緒に閉じられる**。
-  投げたあとは、resolve コメントより後に届いたレビューがないか確かめる。あれば、その
-  指摘は未読のまま閉じられている
-
-  ```
-  gh pr view <n> --json reviews \
-    --jq '[.reviews[] | select(.author.login == "coderabbitai")] | last | .submittedAt'
-  # resolve コメントの投稿時刻より後なら、その回の指摘を読み直す
-  ```
-
-- **`@coderabbitai resolve` は PR の top-level コメントとして投げる。** review thread
-  への返信の中に書いても効かない（CodeRabbit が「Post it as a new top-level PR
-  comment」と返して終わる）
-- 返信が learnings になるのは `Learnings Added` が返ったときだけで、再発防止は
-  次の 2 項で担保する
-- 同じ規約違反を繰り返し指摘されるなら、`scripts/lint/` + lefthook の drift ガードに
-  落とす合図として扱う
-- 同じ**誤検知**を繰り返されるなら、`path_instructions` が規約の実態とずれている合図
-  として扱う。返信で毎回閉じるのではなく、glob を実際の適用範囲まで絞るか、例外を
-  instruction に書く
-- **review 枠は開発者単位で他のリポジトリとも共有され、補充レートは直近 7 日の利用量が
-  増えるほど下がる**（適応型の制限が掛かるプランでは最後は 1 回/時まで落ちる。段階はプランや契約ごとに違い、
-  [rate limits](https://docs.coderabbit.ai/management/rate-limits) にある）。ready の PR への push は
-  自動レビューが走るたびに枠を 1 回使う（rate limit で弾かれた push は使わない）ので、
-  main の取り込みを単独で push しない。取り込みが要るときは
-  そのラウンドの修正と一緒に 1 回の push にする。上限に当たると
-  サマリーコメントに「Next included review available in N minutes」が出るが、
-  **CodeRabbit は明けても自分では再レビューしない。** 告知時刻を過ぎてから
-  `@coderabbitai review` を 1 回投げる。それより前に投げても「Review rate limited.」で
-  弾かれ、枠の試行回数を増やすだけになる。1 ラウンドの修正はまとめて 1 回の push にする。
-  状態の判定は `pnpm exec tsx scripts/coderabbit/await-review.ts <n> --once`
-- 設定は `.coderabbit.yaml`（レビュー言語・除外パス・path ごとの規約）
-
-### Stacked PR の進め方
-
-1 つの仕事を依存順のブランチ列に割り、各層を 1 PR にする運用（`gh stack`）。
-コマンドの詳細は `/gh-stack` スキル、作業中に守るルールは
-[.claude/rules/stacked-pr.md](../.claude/rules/stacked-pr.md)、決定の経緯は
-[ADR-2643](adr/2643-stacked-pr-workflow.md) を参照。
-
-**レビュー対象はスタック最下層（base が `main`）の 1 本だけで、残りは draft のまま
-置く。** 検証もレビューも最下層でだけ起きる。
-
-| # | すること |
-| --- | --- |
-| 0 | 最下層以外を draft にする（`gh pr ready <n> --undo`） |
-| 1 | 最下層が draft のうちに、最下層のブランチで base（`main`）との差分（`git diff origin/main...HEAD`）に `/engineering:code-review` を当てる |
-| 2 | `/engineering:code-review` の指摘の対応可否を決め、対応すると決めたものを直して push する（記録済みの決定を変えるものだけ人に確認する）。draft への push は CodeRabbit の review 枠を使わない |
-| 3 | 最下層の draft を外す（`gh pr ready <n>`）。CodeRabbit と分単位の CI はここで動き出す |
-| 4 | `/coderabbit-converge` で CodeRabbit のラウンドを回す（判定基準は 2 と同じ） |
-| 5 | CodeRabbit が approve するか、人の判断待ちで止まるまで 4 が繰り返す |
-| 6 | CodeRabbit の approve が付いたら、そのスライスで観測できることを人が確認し、マージ可否を決める |
-| 7 | `gh stack merge <n> --yes --squash` → `gh stack sync --prune` → 新しい最下層で 1 に戻る |
-
-- **`gh stack submit --auto --open` は使わない。** `--open` は新規 PR だけでなく
-  既存 PR も ready にするので、スタック全体が一度にレビュー対象になりステップ 0 が
-  壊れる。draft を外すのは常に `gh pr ready <番号>` で 1 本ずつ
-- `gh stack sync` はマージ直後にだけ実行する。sync は上位ブランチを force-push し、
-  走っている required E2E を cancel する。レビュー対応の push と混ぜない
-- ステップ 7 → 1 → 3 の順序は sync が先、ready が後。逆にすると ready で走り出した CI を
-  直後の force-push が cancel する。sync を先に置けば CodeRabbit も main 取り込み後の
-  diff を読む
-- マージは `gh stack merge <PR番号>`。`gh pr merge` はスタックでは通らない。PR 番号を
-  渡すと、スタック全体ではなくその PR までがマージ対象になる
-- Issue の status ラベルは、draft のあいだ `status: implementing`、draft を外したら
-  `status: in-review`。親 Issue の `## Slice status` 表に draft / ready は書かない
-  （[.claude/rules/program-slices.md](../.claude/rules/program-slices.md) の二重管理禁止）
-- 受け入れテストは、そのスライスが観測可能にしたものだけを対象にする。内部だけの
-  スライスは AT なしでマージしてよい
-
-#### draft PR では分単位のジョブが走らない
-
-`Check` / `Playwright` / VS Code E2E / preview・docs preview のデプロイは、draft の
-あいだ skip される（[ADR-2643](adr/2643-stacked-pr-workflow.md)）。上位層は最下層に
-降りてきて draft を外した時点で、初めて本番の CI を通る。秒で終わる validator
-（ADR / TPL / reference docs / AT coverage）と gitleaks は draft でも走り続ける。
-
-skip は workflow ごと止めるのではなく job の `if:` で行う。**job-level の `if:` で
-skip されたジョブは Required check に success を報告する**ので、`types:` の
-`ready_for_review` と必ず対で置く。片方だけだと、draft を外した瞬間に「一度も
-走っていない green」でマージできてしまう。両者のズレは
-`scripts/ci/workflow-draft-gate.test.ts` が落とす。
-
-### docs サイトの変更は PR 上でレンダリング結果を読む
-
-**到達状態**: サイトが公開する doc を触る PR に、レンダリング済みの docs サイトが
-デプロイされている。URL は Actions の "Docs preview deployed" 表に出る。
-
-`.github/workflows/docs-preview.yml` が `karasu-docs` プロジェクトへデプロイする。
-app の preview と違い **URL は 1 階層深い** — サイトは本番と同じ `base: "/karasu/"`
-で提供されるので、到達先は `https://<alias>.karasu-docs.pages.dev/karasu/`。
-bare host はそこへリダイレクトされる。
-
-- **URL は run summary に出たものを読む**（ブランチ alias は slug 化 + 切り詰めが入る）。
-  PR 本文の `## Preview URL` 欄に貼る。
-- **AT には書かない。** マージで消えるアドレスなので、手動確認の到達先は公開サイト
-  （`https://kompiro.github.io/karasu/`）のまま — `.claude/rules/acceptance.md`。
-- 発火条件はサイトが公開する doc（`PUBLISHED_EN_FILES`）と `packages/docs-site/**`。
-  公開集合と `paths:` の drift は `pnpm run lint:docs-site-ci-paths-sync` が落とす。
-
-### spike の名前と寿命
-
-**到達状態**: `git ls-remote --heads origin 'spike/*'` に並ぶ各ブランチについて、
-先頭の番号が open な Issue を指している。番号の Issue が閉じた spike はそこに無い。
-
-```
-git switch -c spike/<issue>-<何を測ったか> origin/main
-```
-
-判断基準は 1 つ、**その spike が答える問いの Issue がまだ open か**。
-
-- **open な Issue の spike は push して残す。** 証拠（`reports/` 配下の計測結果・
-  スクリーンショット）がブランチにしか無い状態を作らない。preview が触れるまま
-  なのは副作用ではなく目的で、Issue を読む人が実物を触れる。
-- **Issue が閉じたら削除する。** `git push origin --delete spike/<name>` が preview の
-  後始末も兼ねる（「spike を PR なしで preview で動かす」節）。
-- **スラッグは「何を変えたか」ではなく「何を測ったか」を名乗る。** 同じ Issue に
-  2 本目を立てるのは別の問いを測るときなので、スラッグは自然に違う。同じ問いの
-  再測定なら同じブランチを使い回す。
-
-```
-spike/2632-deploy-edge-hover        # #2632: hover affordance の 3 つの関門を測る
-spike/2761-width-budget-ladder      # #2761: ladder を短くすると読み手が何を失うか
-```
-
-日付・通し番号・セッション名は名前に入れない。**記録は記録より長生きするアドレスを
-指す**（[TPL-2254](test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)）
-— セッションは数時間で消えるので半年後の読み手には意味を持たず、日付は git が既に
-持っている。Issue 番号と問いの名前だけが、ブランチと同じ寿命を持つ。
-
-決定の経緯は [ADR-2859](adr/2859-spike-branch-naming.md)。
-
-### spike を PR なしで preview で動かす
-
-**到達状態**: `spike/` ブランチを push すると、PR を作らずに
-`https://<slug>.karasu.pages.dev` で実物を触れる。実 URL は Actions の該当 run の
-Summary（"Spike preview deployed" 表）に出る。
-
-```
-git switch -c spike/<name> origin/main
-# 実装して commit
-git push -u origin spike/<name>
-gh run list --workflow=spike-preview.yml --branch=spike/<name>   # run id を得る
-gh run view <run-id>                                             # Summary に Preview URL
-```
-
-`.github/workflows/spike-preview.yml` が `push: branches: [spike/**]` で発火する。
-判断基準は 1 つ、**ブランチ名が `spike/` で始まるかどうか**だけ。PR preview
-（`preview.yml`）とは別ワークフローで、PR 側の発火条件・後始末は spike の都合で変えない。
-
-- **URL は Summary に出たものを読む。** Cloudflare のブランチ alias は slug 化 +
-  長さ切り詰めが入るため、ブランチ名から組み立てると外れる。
-- **後始末はブランチ削除。** `git push origin --delete spike/<name>` で `delete`
-  イベントが走り、そのブランチの preview デプロイが消える。消す契機は
-  **その spike が答える Issue が閉じたとき**で、open な間は preview が残るのが
-  正しい（「spike の名前と寿命」節）。
-- **この URL を記録に残さない。** Issue が閉じてブランチを消した時点で 404 になるので、
-  AT やドキュメントの到達先には書かない（`.claude/rules/acceptance.md`「手動項目には入力と期待結果を書き、URL は書かない」節）。
-  open な Issue のコメントに貼るのはよい — そのコメントは Issue が閉じるまでしか
-  参照されない。
-
-> `push` イベントで使われるワークフロー定義は push されたブランチ自身のものなので、
-> `spike-preview.yml` が main に入るより前に切ったブランチでは発火しない（エラーも
-> 出ずに無反応になる）。上のコマンドのように `origin/main` から切る。
-
-### PoC のレポートは `reports/` に生成する
-
-**到達状態**: PoC が生成した before/after 比較や計測結果が `reports/<topic>/` に
-あり、`git status` は clean のまま（`reports/*` は gitignore、追跡されるのは
-`reports/README.md` だけ）。規約と API の詳細は
-[`reports/README.md`](../reports/README.md)、決定の経緯は
-[ADR-2419](adr/2419-poc-report-directory.md)。
-
-```
-pnpm report:demo   # reports/demo/index.html — 新規レポートはこれをコピーして始める
-```
-
-判断基準は 1 つ、**その成果物が結論そのものか、結論を支える証拠か**。結論は
-design doc / ADR / Issue に書く（ブランチより長生きする）。証拠は `reports/` に
-置き、`docs/` からは参照しない — spike preview URL と同じ扱いで、作業中に共有する
-のはよいが、ドキュメントの到達先にはしない。
-
-- **共通のスキャフォールディングは `scripts/report/`。** HTML シェル・before/after
-  ペア・`.krs` → SVG・Chromium スクリーンショットは実装済みなので、PoC ごとに
-  書き直さない（`reports/` 配下はライブラリを置けない — gitignore されるため）。
-- **`spike/` ブランチでは `git add -f reports/<topic>` してよい。** spike はマージ
-  されないので main には届かず、レポートが spike ブランチと一緒に生き死にする。
-  だからこそ **open な Issue の spike は push する** — 証拠がローカルの 1 本にしか
-  無い状態を作らない（「spike の名前と寿命」節）。
-- **読むときは `artifact.html` を private な Claude Artifact として publish する**
-  （[Issue #2436](https://github.com/kompiro/karasu/issues/2436)）。生成器は
-  `index.html`（file:// で開く用）と `artifact.html`（publish 用、document の骨格を
-  持たない形）を毎回そろって書く。spike のレポートの読み手は回した本人ひとりなので、
-  preview URL の配下に置いたり CI に運ばせたりはしない。**spike を畳むときは Artifact も
-  消す**（期限で自動的に消える仕掛けは無い）。Artifact URL も `reports/` と同じ扱いで、
-  `docs/` からは参照しない。
-
-### Claude Code plugin のセットアップ
-
-karasu のワークフローを Claude Code 上で再現するには、portable な skill 群を提供する `kompiro/hane` plugin をインストールする。
-
-```
-/plugin marketplace add kompiro/hane
-/plugin install hane@kompiro-hane
-```
-
-plugin にバンドルされる skill とその karasu 内での主な用途:
-
-| Skill | 用途 |
-|---|---|
-| `/hane:start-dev` | Issue → worktree → 計画 → 実装 → コミット → PR の全体フロー |
-| `/hane:commit` | Conventional Commits でコミット |
-| `/hane:ship` | push → PR → CI → クリーンアップ |
-| `/hane:design-doc` | `docs/design/` への設計検討記録の作成 |
-| `/hane:acceptance-test` | `docs/acceptance/NNNN-*.md` の受け入れテスト記録作成 |
-| `/hane:qa` | `docs/qa/YYYY-MM-DD-checklist.md` 生成 |
-| `/hane:review-docs` | リンク切れ・ドキュメント整合性レビュー |
-| `/hane:sync-docs` | コード現状に合わせてリファレンス系ドキュメントを更新 |
-
-karasu 専用の skill（`/svg-icon`, `/update-examples`, `/coderabbit-converge`）は `.claude/skills/` 配下にローカル定義されている（plugin 化対象外）。
-
-### Sibling repo の clone（`adr-tools`, `tpl-tools`, `hane` 等）
-
-devcontainer の `/workspaces` は `node` ユーザー所有に設定されており、karasu の隣に関連リポジトリを clone できる。Claude Code の sandbox にも `/workspaces` を `additionalDirectories` で追加済みのため、セッションを離れずに sibling repo の更新作業ができる。
-
-```
-git clone https://github.com/kompiro/adr-tools.git /workspaces/adr-tools
-git clone https://github.com/kompiro/tpl-tools.git /workspaces/tpl-tools
-git clone https://github.com/kompiro/hane.git     /workspaces/hane
-```
-
-karasu 側のセッション内で編集・コミット・PR 作成ができる。
-
-### 循環依存チェック
-
-`pnpm check:cycles` で `madge --circular` を 7 つのプロダクションパッケージ（core / i18n / app / cli / lsp / nest / vscode）の `src/` に対して実行し、モジュール間の循環依存を検出する。
-
-- pre-push の lefthook と CI の `Check` ジョブで自動実行されるため、ローカル / PR どちらでも循環導入時にブロックされる
-- 型のみの import (`import type`) でも madge は循環として検出する。共有契約は専用の leaf module（例: `renderer/layout-types.ts`）に分離して回避する
-- e2e パッケージ（`packages/e2e`, `packages/vscode-e2e`）はテスト専用で意図的にスキャン対象外
-
-### Barrel import 禁止（core 内部）
-
-`packages/core/src/` 配下のプロダクションコードから `**/index.js` への import を `no-restricted-imports` で禁止している（`.oxlintrc.json` の overrides）。内部から barrel を経由すると runtime 循環依存に直結するため。
-
-- 内部モジュールは直接 deep path（例: `from "./parser/parser.js"`）で import する
-- テストファイル（`*.test.ts`, `*.spec.ts`）は引き続き `from "../index.js"` を許可（公開 API としての smoke test を兼ねるため）
-
 ### 規約の所在
 
-編集行為に直結する規約は、その編集をしているときに自動で読み込まれる
-`.claude/rules/*.md` が正本。本ファイルは置き場と流れだけを持つ。
+本ファイルは常時要る流れだけを持つ。それ以外の規約は、読む時点が来たときに読む場所に分けてある。
+作業を始めたときに要る手順は `docs/process/` のトピックファイル、編集行為に直結する規約はその編集を
+しているときに自動で読み込まれる `.claude/rules/*.md` が正本。下の表の「発火条件」が成り立ったら、
+その行の正本を読んでから進める。
 
-| 何を書くとき | 正本 | 発火条件 |
+| 何をするとき | 正本 | 発火条件 |
 | --- | --- | --- |
+| PR のレビュー（レビューの順序・リスク段階・指摘の重大度と対応・ローカルレビューの記録） | [docs/process/review.md](process/review.md) | PR ワークフローの手順 8 に入る前 |
+| High の PR で CodeRabbit のラウンドを回す（収束の判定・人間に確認する指摘・ラウンドの回し方） | [docs/process/coderabbit-rounds.md](process/coderabbit-rounds.md) | 手順 15 で High の PR のラウンドを始める前、`/coderabbit-converge` を回すとき |
+| stacked PR の進め方（draft の置き方・sync の順序・draft で skip される job） | [docs/process/stacked-pr.md](process/stacked-pr.md) | `gh stack` を打つ前 |
+| spike と PoC のレポート（名前と寿命・preview・`reports/`） | [docs/process/spike.md](process/spike.md) | `spike/` で始まるブランチを切るとき、`reports/` の下に書くとき、`pnpm report:*` を走らせるとき |
+| 開発環境（Claude Code plugin・sibling repo の clone） | [docs/process/environment.md](process/environment.md) | hane のスキルが見つからないとき、`/workspaces` の隣の repo を編集するとき |
 | 受け入れテスト（アノテーション書式・到達先） | `.claude/rules/acceptance.md` | `docs/acceptance/**` の編集 |
 | ドキュメントに埋める `.krs`（fence の主張宣言） | `.claude/rules/krs-fences.md` | `docs/{acceptance,spec,guide}/**` `docs/concepts*.md` の編集 |
 | ADR / Design Doc（昇格・supersede・permalink・auto-merge） | `.claude/rules/adr.md` | `docs/adr/**` `docs/design/**` の編集 |
 | spec / concepts（proactive TPL 同梱・適合性監査） | `.claude/rules/spec-audit.md` | `docs/spec/**` `docs/concepts*.md` の編集 |
 | 複数スライスに分けた仕事の追跡 | `.claude/rules/program-slices.md` | Design Doc に `### スライス` を書いたとき |
 | changeset の要否と名指し | `.claude/rules/changesets.md` | 公開対象パッケージの編集 |
-| stacked PR の進め方（draft の置き方・sync の順序） | `.claude/rules/stacked-pr.md` | workflow の編集、および `gh stack` を打つとき |
+| workflow の draft 判定（skip する job と `ready_for_review` の対） | `.claude/rules/stacked-pr.md` | workflow の編集 |
+| docs サイトの preview（レンダリング結果を PR 上で読む） | `.claude/rules/docs-site-preview.md` | サイトが公開する doc か `packages/docs-site/**` の編集 |
 | リリース・依存更新の手順 | `docs/release.md` | リリース時・Dependabot PR 処理時 |
 
-一覧と authoring 規約は `.claude/rules/README.md`。
-
-### QA チェックリスト
-
-`/hane:qa` スキルはリリース前や任意のタイミングで実行できる。
-
-```
-/hane:qa を実行
-  → docs/acceptance/*.md を読み込む
-  → bash コマンドを自動実行（build / test / lint 等）
-  → 手動確認が必要な - [ ] 項目を収集
-  → docs/qa/YYYY-MM-DD-checklist.md を生成
-```
-
-- 生成ファイルは git にコミットしない（`.gitignore` 対象）
-- 自動化（`packages/e2e/` の Playwright）は手動 QA を置き換えず補完する
+一覧と authoring 規約は `.claude/rules/README.md`。`docs/process/` の各ファイルが索引に載っていることと
+本ファイルの大きさ（16,384 バイト以下）は `pnpm lint:process-index` が検査する。

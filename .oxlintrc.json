@@ -44,7 +44,7 @@
             "patterns": [
               {
                 "group": ["**/index.js", "**/index"],
-                "message": "Do not import from core/index.ts inside core/. Use direct module paths to avoid barrel-induced cycles."
+                "message": "Do not import a barrel (any index.js or extensionless index, nested ones included) inside packages/core/src: import the module by its own path (e.g. ./parser/parser.js), since a barrel import creates runtime cycles. Test files (*.test.ts, *.spec.ts) may import ../index.js."
               }
             ]
           }
@@ -63,5 +63,5 @@
       "version": "19"
     }
   },
-  "ignorePatterns": ["dist", "dist-viewer", "dist-serve", "viewer-assets", "out", "node_modules", "*.d.ts"]
+  "ignorePatterns": ["dist", "dist-viewer", "dist-serve", "dist-vscode-webview", "viewer-assets", "out", "node_modules", "*.d.ts"]
 }

@@ -1,7 +1,8 @@
 ---
 id: ADR-218
 title: VSCode Phase 3.5 — Webview ドリルダウンナビゲーション
-status: accepted
+status: superseded
+superseded_by: ADR-2996
 date: 2026-04-01
 topic: vscode
 depends_on:
@@ -15,7 +16,7 @@ scope:
 # ADR-218: VSCode Phase 3.5 — Webview ドリルダウンナビゲーション
 
 - **日付**: 2026-04-01
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by ADR-2996
 - **関連**: Issue #218, [ADR-176](176-vscode-phase3-webview-architecture.md), [ADR-9007](9007-interactive-svg-rendering.md)
 
 ## 背景

@@ -5,7 +5,7 @@
 - **対象ファイル**:
   - `.github/actions/purge-preview-deployments/action.yml`（cleanup 実体 — `preview.yml` と共有）
   - `.github/workflows/spike-preview.yml`（新規 — `push: spike/**` / `delete` トリガー、Preview URL の Summary 出力、ページング付きクリーンアップ）
-  - `docs/process.md`（「spike を PR なしで preview で動かす」節）
+  - `docs/process/spike.md`（「spike を PR なしで preview で動かす」節）
   - `CLAUDE.md`（ブランチ命名規則に `spike/` を追加）
 - **非対象**: `.github/workflows/preview.yml`（PR preview は無変更）
 

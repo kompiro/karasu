@@ -155,7 +155,7 @@ examples/ja/getting-started/index.krs` works as a smoke test after `pnpm build`.
   user-visible behaviour, run `pnpm changeset` and commit the generated
   `.changeset/*.md` file. Internal refactors, test-only changes, and
   documentation don't need a changeset. The release flow itself is
-  documented in [`docs/process.md`](docs/process.md) ("リリース運用") and
+  documented in [`docs/release.md`](docs/release.md) ("リリース運用") and
   recorded in [ADR-1315](docs/adr/1315-release-automation-changesets.md).
 
 The full development workflow — worktree setup, the `status: *` issue
@@ -176,21 +176,23 @@ is required to contribute: a plain `git` / `pnpm` / `gh` workflow works.
    Link to the Issue with `Closes #N` (a design-doc PR uses `Refs #N`, since the
    Issue stays open for the implementation). Write the description in English.
 4. Wait for CI. The required checks for merge are visible on the PR.
-5. CodeRabbit posts an automated review. It requests changes while
-   actionable findings are open, and approves once they are all resolved.
-   That approval is not a merge gate: it says the automated pass converged,
-   and the maintainer still decides. You are welcome to disagree with a
-   finding. Reply with your reasoning on the thread, then post
-   `@coderabbitai resolve` as a **top-level PR comment** (it is ignored
-   inside a thread reply). That reaches approval without complying. What we
-   ask you not to do is resolve a comment silently.
+5. A PR from an author outside the maintainers is always High (the
+   classifier does not give lighter tiers to outside authors), so it is
+   labeled `risk: high`, and CodeRabbit posts an automated review. It neither approves nor requests changes: each finding
+   carries a severity. Fix or answer every Critical and Major finding; a
+   Minor or Trivial one you may decline with a short reason. You are welcome
+   to disagree with any finding. Reply with your reasoning on the thread and
+   resolve it. What we ask you not to do is resolve a comment silently.
+   CodeRabbit does not re-review on every push; once you have fixed a
+   Critical or Major finding, post `@coderabbitai review` as a **top-level
+   PR comment** (it is ignored inside a thread reply). If no CodeRabbit
+   review appears a few minutes after the label is added, post
+   `@coderabbitai full review` the same way.
 6. Bring that round to a close before asking for human review: the
-   maintainer reviews once CodeRabbit approves, so their time goes to a
-   converged diff. If a finding would change something already decided (the
-   Issue's scope, an accepted ADR, `docs/spec/`, `.claude/rules/`), do not
-   just apply it. Ask in the PR instead. Only resolve a thread you have
-   read: `@coderabbitai resolve` closes every open thread at once, including
-   findings posted while it was queued.
+   maintainer reviews once no Critical or Major finding is left open, so
+   their time goes to a converged diff. If a finding would change something
+   already decided (the Issue's scope, an accepted ADR, `docs/spec/`,
+   `.claude/rules/`), do not just apply it. Ask in the PR instead.
 7. The maintainer reviews and merges. The squash subject is taken from
    the PR title — please make it a good Conventional Commit subject.
 

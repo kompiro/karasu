@@ -1,7 +1,9 @@
 // Classifies where a PR stands in its CodeRabbit rounds (Issue #2846).
 //
-// `docs/process.md` has the PR author run CodeRabbit's rounds until it approves.
-// The rounds are driven by `.claude/skills/coderabbit-converge`; this module is
+// `docs/process/coderabbit-rounds.md` has the author of a High PR run CodeRabbit's rounds until no
+// Critical or Major finding is open (#3286). CodeRabbit no longer approves
+// (`request_changes_workflow: false`), so the rounds end on what is open, not on a
+// review state. The rounds are driven by `.claude/skills/coderabbit-converge`; this module is
 // the deterministic half of that loop: given a snapshot of what CodeRabbit has
 // posted, it says whether the author has something to act on yet. It never
 // reads a comment body as an instruction — bodies are only matched against the
@@ -33,6 +35,10 @@ const IN_PROGRESS_MARKERS = [
   "review in progress by coderabbit.ai",
   "Come back again in a few minutes",
 ];
+/** The summary comment's section about the latest review, rewritten every round. */
+const RECENT_REVIEW_SECTION = /<!-- recent_review_start -->([\s\S]*?)<!-- recent_review_end -->/;
+/** What that section says when a review found nothing to file. */
+const NO_ACTIONABLE_COMMENTS = "No actionable comments were generated";
 
 export interface CodeRabbitReview {
   state: string;
@@ -67,8 +73,29 @@ export interface AuthorComment {
   createdAt: string;
 }
 
+/** The severity CodeRabbit gives a finding. */
+export type FindingSeverity = "critical" | "major" | "minor" | "trivial";
+
+/**
+ * The severity label CodeRabbit puts at the head of a finding ("_🟠 Major_", or
+ * an icon followed by "Major **·**"). The label comes before the finding's text,
+ * so the first severity word is the label. `undefined` when there is none.
+ */
+export function findingSeverity(body: string): FindingSeverity | undefined {
+  const m = /(?<![A-Za-z])(Critical|Major|Minor|Trivial|Nitpick)(?![A-Za-z])/.exec(
+    body.slice(0, 600),
+  );
+  if (!m) return undefined;
+  return m[1] === "Nitpick" ? "trivial" : (m[1].toLowerCase() as FindingSeverity);
+}
+
 export interface ReviewThread {
   isResolved: boolean;
+  /**
+   * The severity of the finding that opened the thread, when CodeRabbit opened it.
+   * A thread without one (a human's, or an unlabeled finding) counts as heavy.
+   */
+  severity?: FindingSeverity;
   /** Newest comment in the thread, used to see CodeRabbit answering in it. */
   lastCommentAt: string;
   lastCommentByCodeRabbit: boolean;
@@ -118,12 +145,19 @@ export const DEFAULT_CLASSIFY_OPTIONS: ClassifyOptions = {
 };
 
 export type ReviewState =
-  /** Latest CodeRabbit review approves the head commit and no thread is open. */
-  | { kind: "approved" }
-  /** CodeRabbit answered the last action and threads are open: read and act. */
-  | { kind: "changes"; unresolved: number }
-  /** CodeRabbit answered, nothing is open, but it has not approved. */
-  | { kind: "stalled" }
+  /**
+   * CodeRabbit answered the last action and no thread is open: the rounds are
+   * done. The answer may be a review of the head, or only the summary comment
+   * saying the review of the head found nothing (#3385). An `APPROVED` review of
+   * the head (from before CodeRabbit stopped approving) also lands here.
+   */
+  | { kind: "converged" }
+  /**
+   * CodeRabbit answered the last action and threads are open: read and act.
+   * `heavy` counts the open ones that are Critical, Major or unlabeled; only a
+   * round that fixes one of those asks CodeRabbit for another review.
+   */
+  | { kind: "changes"; unresolved: number; heavy: number }
   /** Rate limited; the announced ready time has passed: re-request once. */
   | { kind: "limit_elapsed"; readyAt: string }
   /** Rate limited; wait until `readyAt`. */
@@ -135,9 +169,8 @@ export type ReviewState =
 
 /** States the author acts on; `await-review.ts` stops polling at these. */
 export const ACTIONABLE_KINDS: ReadonlySet<ReviewState["kind"]> = new Set([
-  "approved",
+  "converged",
   "changes",
-  "stalled",
   "limit_elapsed",
 ]);
 
@@ -161,10 +194,33 @@ export function parseNoticeHeadSha(body: string): string | null {
   return m ? m[1] : null;
 }
 
+/** Both sides may be abbreviated; CodeRabbit writes full shas, a caller may not. */
+const sameCommit = (a: string, b: string): boolean => a.startsWith(b) || b.startsWith(a);
+
 /**
- * `notAfter`: the latest commit review of the head. A notice older than that was
- * followed by the review it announced, and a notice older than `since` was
- * answered by the author's re-request; neither describes the PR any more.
+ * When CodeRabbit last said, in its summary comment, that a review of the head
+ * found nothing (#3385). Since `request_changes_workflow: false` (#3365) such a
+ * round files no review at all: before, an `APPROVED` review followed seconds
+ * later, so reading reviews was enough. The section names the reviewed range in
+ * its "Commits" line, and only a range ending at the head describes this push.
+ */
+function cleanSummaryOfHead(s: Snapshot): number | null {
+  let at: number | null = null;
+  for (const c of s.comments) {
+    const section = RECENT_REVIEW_SECTION.exec(c.body)?.[1];
+    if (section === undefined || !section.includes(NO_ACTIONABLE_COMMENTS)) continue;
+    const reviewed = parseNoticeHeadSha(section);
+    if (reviewed === null || !sameCommit(reviewed, s.headSha)) continue;
+    at = Math.max(at ?? -Infinity, ms(c.updatedAt));
+  }
+  return at;
+}
+
+/**
+ * `notAfter`: the latest answer about the head (a commit review, or a clean
+ * summary). A notice older than that was followed by the review it announced,
+ * and a notice older than `since` was answered by the author's re-request;
+ * neither describes the PR any more.
  */
 function rateLimitReadyAt(s: Snapshot, opts: ClassifyOptions, notAfter: number): number | null {
   const since = ms(s.since);
@@ -175,13 +231,7 @@ function rateLimitReadyAt(s: Snapshot, opts: ClassifyOptions, notAfter: number):
 
     if (c.body.includes(RATE_LIMIT_MARKER)) {
       const noticeHead = parseNoticeHeadSha(c.body);
-      if (
-        noticeHead !== null &&
-        !s.headSha.startsWith(noticeHead) &&
-        !noticeHead.startsWith(s.headSha)
-      ) {
-        continue;
-      }
+      if (noticeHead !== null && !sameCommit(noticeHead, s.headSha)) continue;
       const wait = parseAnnouncedWaitMs(c.body) ?? opts.fallbackBackoffMs;
       readyAt = Math.max(readyAt ?? 0, ms(c.updatedAt) + wait);
     } else if (c.body.includes(COMMAND_REPLY_MARKER) && c.body.includes(COMMAND_RATE_LIMITED)) {
@@ -205,7 +255,7 @@ function reviewRunning(s: Snapshot): boolean {
 
 /**
  * Findings CodeRabbit can only put in a review body: those outside the diff, and
- * nitpicks. No review thread carries them, and CodeRabbit approves regardless
+ * nitpicks. No review thread carries them, and CodeRabbit ends the round regardless
  * (#2847: "Outside diff range comments (2)" five seconds before APPROVED), so the
  * thread count alone would end a round with them unread.
  *
@@ -302,31 +352,39 @@ export function classify(
 ): ReviewState {
   const since = ms(s.since);
   const now = ms(s.now);
-  const unresolved = s.threads.filter((t) => !t.isResolved).length;
+  const open = s.threads.filter((t) => !t.isResolved);
+  const unresolved = open.length;
+  const heavy = open.filter((t) => t.severity !== "minor" && t.severity !== "trivial").length;
   const reviews = [...s.reviews].sort((a, b) => ms(a.submittedAt) - ms(b.submittedAt));
   const onHead = (r: CodeRabbitReview) => r.commitId === s.headSha;
   const commitReviews = reviews.filter(isCommitReview);
   const latest = commitReviews.at(-1);
 
   if (latest && onHead(latest) && latest.state === "APPROVED" && unresolved === 0) {
-    return { kind: "approved" };
+    return { kind: "converged" };
   }
 
   const headReviews = commitReviews.filter(onHead);
-  const answeredByReview = headReviews.some((r) => ms(r.submittedAt) >= since);
+  const cleanSummary = cleanSummaryOfHead(s);
+  const answeredByReview =
+    headReviews.some((r) => ms(r.submittedAt) >= since) ||
+    (cleanSummary !== null && cleanSummary >= since);
   // An answer in a thread settles a reply-only round. After a push it may be
   // CodeRabbit replying to what was posted before the push, so it counts only
   // once the head itself has been reviewed.
   const answeredInThread =
-    headReviews.length > 0 &&
+    (headReviews.length > 0 || cleanSummary !== null) &&
     s.threads.some((t) => t.lastCommentByCodeRabbit && ms(t.lastCommentAt) >= since);
 
   // Checked before the limit: an accepted re-request can leave the old notice in
   // the summary until the review it started has finished.
   if (reviewRunning(s)) return { kind: "in_progress" };
 
-  const lastHeadReview = Math.max(-Infinity, ...headReviews.map((r) => ms(r.submittedAt)));
-  const readyAt = rateLimitReadyAt(s, opts, lastHeadReview);
+  const lastHeadAnswer = Math.max(
+    cleanSummary ?? -Infinity,
+    ...headReviews.map((r) => ms(r.submittedAt)),
+  );
+  const readyAt = rateLimitReadyAt(s, opts, lastHeadAnswer);
   if (readyAt !== null) {
     return now >= readyAt
       ? { kind: "limit_elapsed", readyAt: iso(readyAt) }
@@ -342,7 +400,7 @@ export function classify(
   );
   if (now - lastActivity < opts.quietMs) return { kind: "in_progress" };
 
-  return unresolved > 0 ? { kind: "changes", unresolved } : { kind: "stalled" };
+  return unresolved > 0 ? { kind: "changes", unresolved, heavy } : { kind: "converged" };
 }
 
 /**

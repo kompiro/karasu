@@ -66,6 +66,68 @@ describe("formatter node-property coverage", () => {
   }
 });
 
+// Comments are not in the AST, so the round trip above cannot see them
+// (#3263): a comment on a property line went to the end of the file. Each
+// fixture is run again with a comment above and beside every line, and every
+// comment has to come back next to the same statement.
+describe("formatter node-property comment placement", () => {
+  for (const [key, src] of Object.entries(FIXTURES)) {
+    it(`keeps comments next to the ${key} property lines`, () => {
+      const lines = src.trimEnd().split("\n");
+      const annotated = lines
+        .flatMap((line, i) => {
+          const indent = line.match(/^\s*/)?.[0] ?? "";
+          return [`${indent}// above ${i}`, `${line} // beside ${i}`];
+        })
+        .join("\n");
+      const out = format(annotated).trimEnd().split("\n");
+      const outIdentity = identities(out);
+      const srcIdentity = identities(lines);
+
+      lines.forEach((_line, i) => {
+        const expected = srcIdentity[i];
+        const beside = out.flatMap((l, at) => (l.endsWith(`// beside ${i}`) ? [at] : []));
+        expect(beside, `beside ${i}`).toHaveLength(1);
+        expect(outIdentity[beside[0]], `beside ${i}`).toBe(expected);
+
+        const above = out.findIndex((l) => l.trim() === `// above ${i}`);
+        expect(above, `above ${i}`).toBeGreaterThanOrEqual(0);
+        const next = out.findIndex((l, at) => at > above && !isCommentLine(l));
+        expect(outIdentity[next], `above ${i}`).toBe(expected);
+      });
+
+      expect(format(format(annotated))).toBe(format(annotated));
+    });
+  }
+});
+
+/**
+ * Which statement each line is: its keyword and first argument (without the
+ * `// beside i` marker), numbered among the lines that share them. The number
+ * tells two `}` apart, and the second `link` from the first, so a comment that
+ * moved to a sibling does not pass. Lines that share a head keep their order
+ * through formatting, so the numbering is the same on both sides.
+ */
+function identities(lines: readonly string[]): string[] {
+  const seen = new Map<string, number>();
+  return lines.map((line) => {
+    if (isCommentLine(line)) return "";
+    const head = line
+      .replace(/\s*\/\/ beside \d+$/, "")
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .join(" ");
+    const nth = seen.get(head) ?? 0;
+    seen.set(head, nth + 1);
+    return `${head} #${nth}`;
+  });
+}
+
+function isCommentLine(line: string): boolean {
+  return line.trim().startsWith("//");
+}
+
 /**
  * How many entries `key` holds across every node with a `properties` object:
  * the array length for list-valued keys, 1 for a set scalar.

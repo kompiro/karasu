@@ -24,12 +24,12 @@ flowchart TD
     ADR_3113["ADR-3113<br/>system の段のない path は、トップレベルのノードとして先に解決する"]
   end
   ADR_211["ADR-211<br/>[parser] `compile()` API 統一 — Discriminated Union による戻り値型"]
-  ADR_218["ADR-218<br/>[vscode] VSCode Phase 3.5 — Webview ドリルダウンナビゲーション"]
   ADR_412["ADR-412<br/>[parser] トップレベル service の Named Import — スタブ補完 + エッジ参照によ..."]
   ADR_2714["ADR-2714<br/>[renderer] deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
+  ADR_2996["ADR-2996<br/>[vscode] VS Code 拡張の preview は app の viewer を webview で動..."]
   ADR_9007["ADR-9007<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
   ADR_177 --> ADR_9007
-  ADR_177 --> ADR_218
+  ADR_177 --> ADR_2996
   ADR_278 --> ADR_110
   ADR_321 --> ADR_278
   ADR_321 --> ADR_110
@@ -40,7 +40,6 @@ flowchart TD
   ADR_429 --> ADR_211
   ADR_1828 --> ADR_1827
   ADR_2818 --> ADR_2714
-  ADR_218 --> ADR_9007
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -65,8 +64,8 @@ flowchart TD
   class ADR_2818 accepted
   class ADR_3113 accepted
   class ADR_211 ghost
-  class ADR_218 ghost
   class ADR_412 ghost
   class ADR_2714 ghost
+  class ADR_2996 ghost
   class ADR_9007 ghost
 ```

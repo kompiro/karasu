@@ -13,6 +13,50 @@
 
 -
 
+## Before / after
+
+<!--
+For a PR that changes what users see (the rendered diagram, the app UI),
+before/after screenshots taken locally with `pnpm pr:shots` and uploaded with
+`gh pr edit <n> --body-file <file> --attach <png>` (docs/process.md PR workflow
+step 10). `pnpm pr:shots` writes this section to reports/pr-shots/<branch>/body.md;
+when it finds no rendering change, paste its "No rendering change" line.
+Write "N/A" for a PR that touches neither rendering code nor examples.
+-->
+
+## Risk
+
+<!--
+The review tier from `node scripts/review/tier.ts classify`, matching the PR's
+`risk: *` label (docs/process/review.md "リスク段階"), and what made it that tier.
+CodeRabbit reviews only `risk: high` and `risk: design` PRs; a PR without a
+tier label is High.
+Add "+ security review" when the classifier asks for one (packages/nest or
+.github/workflows), with what /security-review found.
+e.g. "Medium: packages/core/src/parser.ts" / "High: .github/workflows/ci.yml + security review (no findings)"
+-->
+
+## Local review
+
+<!--
+Below High, the required check "Review tier" reads the local review record
+from this body (docs/process/review.md "ローカルレビューの記録"): what
+/engineering:code-review and the CodeRabbit CLI found on the branch diff, and
+the disposition of each finding (fixed in <sha> / declined: <reason> /
+→ #<issue>). Write it with
+  node scripts/review/local-review-record.ts render --findings <file.json> --into <body file>
+which replaces this section's record or appends one. On High it is optional,
+but Claude's PRs keep it.
+-->
+
+## How to revert
+
+<!--
+How to undo this change if it misbehaves after merge: usually "revert the
+squash commit". Say what else a revert must touch when it is not enough on its
+own (a ruleset or label change, a published package, a migration, a deploy).
+-->
+
 ## Preview URL
 
 <!-- Cloudflare Pages preview URL (generated automatically by the Preview workflow) -->

@@ -721,8 +721,10 @@ back to `middle`. Fractional values outside `[0, 1]` are clamped.
 
 **Auto placement vs. author intent.** When the author leaves both
 `label-position` and `label-offset` at their defaults, the renderer may
-automatically nudge a label off a collision with a node card or another
-label (edge-label collision-avoidance, [ADR-2048](../adr/2048-edge-label-collision-avoidance.md)).
+automatically nudge a label off a collision with a node card, another
+label, another edge's line or a frame border (edge-label collision-avoidance,
+[ADR-2048](../adr/2048-edge-label-collision-avoidance.md),
+[ADR-2360](../adr/2360-label-placement-line-obstacles.md)).
 This auto pass fires
 **only** on default-positioned labels; setting either property opts the
 label out of auto placement, so an explicit `label-position` /
@@ -789,7 +791,7 @@ Whether the canvas draws the label at all. Default `auto`.
 
 | Value | The canvas draws the label |
 | --- | --- |
-| `auto` | only where it can be seated clear of node cards, other labels and other edges' lines |
+| `auto` | only where it can be seated clear of node cards, other labels and other edges' lines, with no stroked frame border crossing the label box and on the same side of each frame as its default position |
 | `always` | wherever it lands, even into a collision |
 | `hover` | never; the viewer shows it on hover |
 
@@ -800,7 +802,9 @@ edge[async] { label-display: hover; }      /* keep these quiet until hovered */
 
 Under `auto`, the automatic placement (see `label-position` above) first
 tries to move the label to a clear position: one where it overlaps no
-card, no other label and no other edge's line. If no position within
+card, no other label and no other edge's line, has no stroked frame border crossing the label box,
+and is on the same side of each frame (inside or outside) as its default
+position. A frame stroke merely touching the box edge is allowed. If no position within
 its reach is clear, the label is left off the canvas instead of being
 drawn there, and the labels placed after it may use the room. A canvas whose labels all find a clear
 position is identical under `auto` and `always`.

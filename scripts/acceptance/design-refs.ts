@@ -5,7 +5,7 @@ import { join } from "node:path";
  * Guard: an AT record must not point at `docs/design/`.
  *
  * A Design Doc is deleted when it is promoted to an ADR (`docs/process.md`
- * 「設計判断を ADR に残すタイミング」), so an AT record that cites one is
+ * 「ドキュメントのライフサイクル」), so an AT record that cites one is
  * pointing at an address the process guarantees will die. That is TPL-2254 —
  * a record must point at something that outlives it.
  *

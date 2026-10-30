@@ -6,7 +6,9 @@ import { resolve } from "node:path";
 // (packages/docs-site/scripts/lib/site-map.ts). Two workflows are triggered by
 // that same set through hand-written `paths:` lists: `reference-docs-check.yml`
 // runs the site's guards on a PR (Issue #2257), and `docs-preview.yml` deploys
-// the PR's preview (Issue #2260).
+// the PR's preview (Issue #2260). The rule `.claude/rules/docs-site-preview.md`
+// carries the same set in its frontmatter `paths:`, which decides when the
+// reminder to read that preview loads (Issue #3337); it is checked the same way.
 // Hand-written lists describing one set drift, and the drift is silent: a doc
 // added to the published set but not to `paths:` simply stops triggering the
 // workflow, and the PR that adds it is green (TPL-2253 — a removal or a trigger
@@ -33,6 +35,9 @@ const SITE_MAP_PATH = "packages/docs-site/scripts/lib/site-map.ts";
 export const CHECK_WORKFLOW = ".github/workflows/reference-docs-check.yml";
 export const SKIP_WORKFLOW = ".github/workflows/reference-docs-check-skip.yml";
 export const PREVIEW_WORKFLOW = ".github/workflows/docs-preview.yml";
+// The edit-time rule that asks for the preview carries the same `paths:` in its
+// frontmatter (Issue #3337): a published doc it misses edits without the reminder.
+export const PREVIEW_RULE = ".claude/rules/docs-site-preview.md";
 
 /**
  * Pull the string literals out of the `PUBLISHED_EN_FILES` array.
@@ -132,7 +137,7 @@ export function check(
       if (!workflow.paths.some((glob) => globMatches(glob, docPath))) {
         problems.push({
           kind: "error",
-          message: `${docPath} is published by the docs site but no \`paths:\` entry in ${workflow.file} matches it, so editing it does not trigger that workflow.`,
+          message: `${docPath} is published by the docs site but no \`paths:\` entry in ${workflow.file} matches it, so editing it does not trigger ${workflow.file}.`,
         });
       }
     }
@@ -156,6 +161,26 @@ export function check(
     });
   }
 
+  // The preview rule asks for the preview that the preview workflow deploys, so
+  // it must load for exactly the paths that deploy one: covering the published
+  // docs is not enough, since `examples/**` and `packages/docs-site/**` deploy too.
+  const previewPaths = workflows.find((w) => w.file === PREVIEW_WORKFLOW)?.paths;
+  const rulePaths = workflows.find((w) => w.file === PREVIEW_RULE)?.paths;
+  if (previewPaths && rulePaths) {
+    for (const p of previewPaths.filter((path) => !rulePaths.includes(path))) {
+      problems.push({
+        kind: "error",
+        message: `\`${p}\` deploys a preview (${PREVIEW_WORKFLOW}) but is not in ${PREVIEW_RULE}'s \`paths:\`, so editing it does not load the reminder to read that preview.`,
+      });
+    }
+    for (const p of rulePaths.filter((path) => !previewPaths.includes(path))) {
+      problems.push({
+        kind: "error",
+        message: `\`${p}\` is in ${PREVIEW_RULE}'s \`paths:\` but deploys no preview (${PREVIEW_WORKFLOW}), so the rule asks for a preview that never comes.`,
+      });
+    }
+  }
+
   return problems;
 }
 
@@ -176,10 +201,12 @@ function main(): void {
   const published = expandLocaleSiblings(parsePublishedFiles(read(SITE_MAP_PATH)), (docsRelative) =>
     existsSync(resolve(root, "docs", docsRelative)),
   );
-  const workflows: TriggeredWorkflow[] = [CHECK_WORKFLOW, PREVIEW_WORKFLOW].map((file) => ({
-    file,
-    paths: parseWorkflowPaths(read(file), "paths"),
-  }));
+  const workflows: TriggeredWorkflow[] = [CHECK_WORKFLOW, PREVIEW_WORKFLOW, PREVIEW_RULE].map(
+    (file) => ({
+      file,
+      paths: parseWorkflowPaths(read(file), "paths"),
+    }),
+  );
   const skipPaths = parseWorkflowPaths(read(SKIP_WORKFLOW), "paths-ignore");
 
   const problems = check(published, workflows, skipPaths);
@@ -188,7 +215,7 @@ function main(): void {
     process.exit(1);
   }
   console.log(
-    `docs-site-ci-paths-sync: ok (${published.length} published doc(s) covered by ${workflows.length} workflow(s))`,
+    `docs-site-ci-paths-sync: ok (${published.length} published doc(s) covered by ${workflows.length} trigger list(s))`,
   );
 }
 

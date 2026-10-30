@@ -106,6 +106,7 @@ flowchart TD
     ADR_2839["ADR-2839<br/>dependabot-triage workflow の週次 cron を止め、dispatc..."]
     ADR_2877["ADR-2877<br/>Dependabot トリアージ 2026-09-22：changesets 3 は CI が..."]
     ADR_2898["ADR-2898<br/>/code-review は draft PR に当て、CodeRabbit の初回レビューは..."]
+    ADR_2922["ADR-2922<br/>毎月の最終日曜に Release — Prepare を自動で走らせ、VS Code 拡張も同..."]
     ADR_2939["ADR-2939<br/>リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の Gi..."]
     ADR_2949["ADR-2949<br/>auto-merge する ADR-only PR は CodeRabbit の自動レビュー対..."]
     ADR_2983["ADR-2983<br/>Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upst..."]
@@ -127,7 +128,18 @@ flowchart TD
     ADR_3246["ADR-3246<br/>`@vscode/vsce` 4.0.0 で利用元がいなくなった override（`fast..."]
     ADR_3257["ADR-3257<br/>app の E2E suite の step 境界を 25 分、job 予算を 45 分に上げる"]
     ADR_3271["ADR-3271<br/>PR と Issue はマージで同時に閉じ、マージ後にしか確かめられない項目は別の Issue..."]
+    ADR_3286["ADR-3286<br/>PR のレビューの深さとマージの経路を、変更から決めたリスク段階で変える"]
     ADR_3304["ADR-3304<br/>Dependabot トリアージ 2026-10-19：npm 11 件をそのまま採用し、gh..."]
+    ADR_3326["ADR-3326<br/>draft を外す前に CodeRabbit CLI を base ブランチとの差分へ 1 回..."]
+    ADR_3333["ADR-3333<br/>Claude が gh pr ready を実行した直後に、PostToolUse フックで ..."]
+    ADR_3335["ADR-3335<br/>main へのコミットは lefthook の pre-commit / pre-merge-..."]
+    ADR_3337["ADR-3337<br/>docs/process.md を常時読む核と、作業を始めたときに読むトピックに分ける"]
+    ADR_3340["ADR-3340<br/>converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけ..."]
+    ADR_3342["ADR-3342<br/>ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh..."]
+    ADR_3350["ADR-3350<br/>リリーストレインの PR の段階を、差分が changeset version の出力だけなら..."]
+    ADR_3359["ADR-3359<br/>描画が変わる PR に、merge-base と比べた before/after の画像を添付する"]
+    ADR_3381["ADR-3381<br/>Dependabot トリアージ 2026-10-26：npm 12 件をそのまま採用し、ch..."]
+    ADR_3399["ADR-3399<br/>Dependabot security alert 2026-10-30（qs と seria..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -149,10 +161,13 @@ flowchart TD
   ADR_1820 --> ADR_1314
   ADR_2124 --> ADR_1314
   ADR_2436 --> ADR_2419
+  ADR_2922 --> ADR_2939
   ADR_3000 --> ADR_2578
   ADR_3000 --> ADR_2969
   ADR_3020 --> ADR_2578
   ADR_3020 --> ADR_2969
+  ADR_3326 --> ADR_3052
+  ADR_3342 --> ADR_3326
   ADR_1974 --> ADR_1820
   ADR_2065 --> ADR_1314
   ADR_2065 --> ADR_1820
@@ -177,6 +192,8 @@ flowchart TD
   ADR_3117 -.supersedes.-> ADR_2949
   ADR_3246 -.supersedes.-> ADR_1338
   ADR_3257 -.supersedes.-> ADR_2807
+  ADR_3286 -.supersedes.-> ADR_2716
+  ADR_3286 -.supersedes.-> ADR_3117
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -272,7 +289,7 @@ flowchart TD
   class ADR_2658 accepted
   class ADR_2671 accepted
   class ADR_2693 accepted
-  class ADR_2716 accepted
+  class ADR_2716 superseded
   class ADR_2753 accepted
   class ADR_2773 accepted
   class ADR_2786 accepted
@@ -284,6 +301,7 @@ flowchart TD
   class ADR_2839 accepted
   class ADR_2877 accepted
   class ADR_2898 superseded
+  class ADR_2922 accepted
   class ADR_2939 accepted
   class ADR_2949 superseded
   class ADR_2983 accepted
@@ -296,7 +314,7 @@ flowchart TD
   class ADR_3052 accepted
   class ADR_3069 accepted
   class ADR_3077 accepted
-  class ADR_3117 accepted
+  class ADR_3117 superseded
   class ADR_3138 accepted
   class ADR_3162 accepted
   class ADR_3196 accepted
@@ -305,7 +323,18 @@ flowchart TD
   class ADR_3246 accepted
   class ADR_3257 accepted
   class ADR_3271 accepted
+  class ADR_3286 accepted
   class ADR_3304 accepted
+  class ADR_3326 accepted
+  class ADR_3333 accepted
+  class ADR_3335 accepted
+  class ADR_3337 accepted
+  class ADR_3340 accepted
+  class ADR_3342 accepted
+  class ADR_3350 not_adopted
+  class ADR_3359 accepted
+  class ADR_3381 accepted
+  class ADR_3399 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost

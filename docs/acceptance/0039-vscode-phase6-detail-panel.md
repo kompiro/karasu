@@ -2,7 +2,7 @@
 
 ## Coverage policy
 
-**Partial automation** — TC-01..TC-04, TC-06, TC-08 are automated in
+**Partial automation** — TC-01..TC-04, TC-06 are automated in
 [`packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts`](../../packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts)
 under the WebView E2E harness
 ([`docs/adr/1014-vscode-webview-e2e-automated.md`](../adr/1014-vscode-webview-e2e-automated.md)
@@ -21,8 +21,8 @@ without test-only seams in production code (see
 [ADR-926](../adr/926-vscode-webview-manual-tests.md)
 "no extension-host stubs" rule).
 
-The harness job is gated on the `vscode-webview-e2e` PR label and is **not**
-a required check.
+The harness job runs on pull requests that touch the extension or core / i18n /
+lsp, not on a change to the app alone (path filter, ADR-1742), skips draft PRs, and is **not** a required check.
 
 Issue #2068 (icon-mapping and section parity with the app's
 `NodeDetailPanel`) added three more cases to the same test file: a `store`
@@ -185,7 +185,12 @@ organization Corp {
 
 ---
 
-### TC-08: Tooltip is suppressed while detail panel is open
+### TC-08 (retired): Tooltip is suppressed while detail panel is open
+
+> Retired by #3312. The preview is the app's viewer since then, which shows a
+> node's description in the detail panel only, with no hover tooltip to
+> suppress. Whether the app should show one is #3325; if it does, this case
+> comes back for both surfaces.
 
 1. Open the detail panel for a node that has a description
 2. Hover over another node that also has a description

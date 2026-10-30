@@ -1,3 +1,18 @@
+pre-commit:
+  commands:
+    refuse-commit-on-main:
+      # main takes no direct commits. A commit in the main checkout lands on
+      # local main and diverges it from origin/main; git hooks are shared by
+      # every worktree, so this stops it whoever commits (#3335, ADR-3335).
+      run: bash scripts/git/refuse-commit-on-main.sh
+
+pre-merge-commit:
+  commands:
+    refuse-commit-on-main:
+      # A non-fast-forward `git pull` on main creates a merge commit, which
+      # skips pre-commit and runs this hook instead.
+      run: bash scripts/git/refuse-commit-on-main.sh
+
 pre-push:
   parallel: true
   commands:
@@ -182,7 +197,7 @@ pre-push:
       # `docs/**` is in scope because the expected set is a fact about the tree,
       # not just about the lists: adding a `.ja.md` sibling publishes a page and
       # so demands a matching `paths:` entry.
-      glob: "{docs/**,packages/docs-site/scripts/lib/site-map.ts,.github/workflows/reference-docs-check*.yml,.github/workflows/docs-preview.yml,scripts/lint/docs-site-ci-paths-sync.ts}"
+      glob: "{docs/**,packages/docs-site/scripts/lib/site-map.ts,.github/workflows/reference-docs-check*.yml,.github/workflows/docs-preview.yml,.claude/rules/docs-site-preview.md,scripts/lint/docs-site-ci-paths-sync.ts}"
       run: pnpm run lint:docs-site-ci-paths-sync
     devcontainer-variants-sync:
       # The local and cloud dev container configs describe the same project and
@@ -195,6 +210,16 @@ pre-push:
       # arm64 and would have failed on the first amd64 build.
       glob: "{.devcontainer/**,scripts/lint/devcontainer-variants-sync.ts}"
       run: pnpm run lint:devcontainer-variants-sync
+    process-index:
+      # docs/process.md is read in full by every session, so it stays a core
+      # with an index of docs/process/<topic>.md files (Issue #3337). Fails when a
+      # topic file is not in the index, an index row has no trigger or points at
+      # a missing file, a relative link in docs/process* is broken, or the core
+      # is over its byte budget. The index names .claude/rules/** and
+      # docs/release.md, so those trigger it too. `reference-docs-check.yml`
+      # runs it in CI.
+      glob: "{docs/process.md,docs/process/**,.claude/rules/**,docs/release.md,scripts/lint/process-index.ts}"
+      run: pnpm run lint:process-index
     roadmap-issue-state:
       # docs/roadmap.md tracks not-yet-issued work in watch ledgers ("子 Issue は
       # 起こさず本表で追跡し、trigger を満たしたら Issue を起こす"), and nothing

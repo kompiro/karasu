@@ -35,8 +35,9 @@ follows your editor, see [Using the App](app.md).
 
 ## `karasu serve` — live preview
 
-`serve` watches the `.krs` files in a directory and re-renders them in your
-browser every time you save. You keep editing in your own editor; the preview
+`serve` watches the `.krs` and `.krs.style` files in a directory and re-renders
+them in your browser every time you save. Imports resolve as they do in
+`karasu render`, so saving a file the open one imports redraws it too. You keep editing in your own editor; the preview
 follows along. Reach for it during **local authoring**.
 
 ```bash
@@ -52,7 +53,7 @@ karasu serve
   Directory : /path/to/architecture
   Preview   : http://localhost:3000
 
-Watching for .krs file changes...
+Watching for .krs and .krs.style file changes...
 ```
 
 | Argument / option | Default | Meaning |
