@@ -21,8 +21,8 @@ name: VS Code Extension Release
 # `.changeset/config.json` `ignore`): `changeset version` bumps
 # `packages/vscode/package.json` + writes its CHANGELOG. But `karasu-vscode` is
 # `private: true`, so `changeset publish` (release.yml) never publishes it to
-# npm — Marketplace publish stays here, run manually after the version is
-# bumped. The stable version published is whatever is in
+# npm — the Marketplace publish stays here, called by release.yml after the
+# version is bumped. The stable version published is whatever is in
 # `packages/vscode/package.json`, built from the commit that set that version
 # (not the tip of main), and the `record` job then tags it
 # `karasu-vscode@<version>` and adds it to that commit's GitHub Release
