@@ -290,10 +290,15 @@ describe("tidyStyleSheet — rules holding a dropped declaration", () => {
     expect(tidyStyleSheet(input).output).toBe(input);
   });
 
-  it("lets later rules merge into it, keeping the order that takes effect", () => {
-    const input = `service { opacity: 0.5; }\nservice { opacity: 2; }\nservice { color: red; }\n`;
+  it("does not merge a later rule into it, so its value and diagnostic stay", () => {
+    const input = `service {\n  opacity: 2;\n}\n\nservice {\n  opacity: 0.5;\n}\n`;
+    expect(tidyStyleSheet(input).output).toBe(input);
+  });
+
+  it("keeps merging the rules around it, in order", () => {
+    const input = `service { color: red; }\nservice { opacity: 2; }\nservice { color: blue; }\nservice { shape: user; }\n`;
     expect(tidyStyleSheet(input).output).toBe(
-      `service {\n  opacity: 0.5;\n}\n\nservice {\n  opacity: 2;\n  color: red;\n}\n`,
+      `service {\n  color: red;\n}\n\nservice {\n  opacity: 2;\n}\n\nservice {\n  color: blue;\n  shape: user;\n}\n`,
     );
   });
 });

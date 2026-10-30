@@ -74,11 +74,12 @@ export function tidyStyleSheet(input: string, options: TidyOptions = {}): TidyRe
  * present in both keeps the first occurrence's `leading` and accumulates
  * `trailing` from later occurrences.
  *
- * A rule holding a declaration the cascade would drop (#3141) is not merged
- * into an earlier one: cascade-tail-wins would let its invalid value replace
- * a valid one there, and the cascade would then fall to the default instead
- * of that valid value. It starts a new group, so later rules merge into it
- * and the order of the declarations that take effect is unchanged.
+ * A rule holding a declaration the cascade would drop (#3141) takes no part
+ * in merging, as the incoming rule or as the target. Merged in, its invalid
+ * value would replace a valid one and the cascade would fall to the default;
+ * merged into, its invalid value would be overwritten and vanish with the
+ * diagnostic that tells the author about it. It stays where it was written,
+ * and the rules around it keep their order.
  */
 function mergeDuplicateRules(sheet: StyleSheet): StyleSheet {
   const seen = new Map<string, number>(); // signature → index in `merged`
@@ -88,7 +89,11 @@ function mergeDuplicateRules(sheet: StyleSheet): StyleSheet {
     const sig = selectorSignature(rule);
     const existingIdx = seen.get(sig);
 
-    if (existingIdx === undefined || holdsDroppedDeclaration(rule)) {
+    if (
+      existingIdx === undefined ||
+      holdsDroppedDeclaration(rule) ||
+      holdsDroppedDeclaration(merged[existingIdx])
+    ) {
       seen.set(sig, merged.length);
       merged.push({ ...rule, properties: { ...rule.properties } });
       continue;
