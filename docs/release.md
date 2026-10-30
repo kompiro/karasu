@@ -13,6 +13,15 @@
 - スケジュールは weekly / Monday、cooldown は全 semver レベル 7 日（`.github/dependabot.yml`）。
 - 月曜のバッチ起票後にレビュー → マージする。バッチ単位で取り込み判断を ADR に残すことがある。
 
+### GitHub Actions の依存（actions.lock）
+
+workflow が使う action は、直接・推移的なものを含めて `.github/workflows/actions.lock` に commit SHA で固定する（[#3412](https://github.com/kompiro/karasu/issues/3412)）。workflow 側の `uses:` は `owner/repo@vX.Y.Z` の完全なタグで書き、SHA は lockfile が持つ。
+
+- `uses:` を変えたら（Dependabot の `github-actions` PR を含む）、リポジトリのルートで `gh actions-lock` を実行して lockfile を commit する。拡張は `gh extension install github/gh-actions-lock`。
+- lockfile は手で編集しない。ずれていると `verify-lockfile.yml`（`gh actions-lock --verify`）が落ち、runner も job 開始時に `Invalid lockfile` で止まる。
+- 更新先のタグは、リリースノートと公開からの日数（cooldown と同じ 7 日）を確認してから採る。
+- gh-aw の `.lock.yml` は `gh aw compile` の生成物で、`uses:` は `@<sha> # vX` のまま残す（`scripts/ci/gh-aw-lock-consistency.test.ts`）。
+
 ### Security update（GHSA 起因の即時 PR）
 
 Dependabot security update は alert 検知時に即時起票され、`schedule` も `cooldown` も `updates:` の設定も参照しない。月曜以外に Dependabot PR が出ていたら、まず security update かどうかを確認する。
