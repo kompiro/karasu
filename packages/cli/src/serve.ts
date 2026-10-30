@@ -196,6 +196,12 @@ export async function collectProjectFiles(dir: string): Promise<ProjectFile[]> {
   return files.filter((f): f is ProjectFile => f !== null);
 }
 
+/**
+ * The real path of `<name>.krs` under `dir`, or null when it is missing, not
+ * a regular file, or resolves outside `dir`. A symlink is followed only as far
+ * as it stays inside (TPL-168, #3283): `notes.krs -> ~/.ssh/id_rsa` and a
+ * linked directory that leads out both come back null.
+ */
 export async function resolveKrsFile(dir: string, name: string): Promise<string | null> {
   // Shared trust-boundary segment check (TPL-168): rejects absolute
   // paths, backslashes and ".." segments before any path is assembled.
@@ -204,16 +210,16 @@ export async function resolveKrsFile(dir: string, name: string): Promise<string 
   }
   // Normalise dir so a trailing sep never causes startsWith to fail. Kept as
   // OS-level defense in depth on top of the segment check above.
-  // Note: this guard is a string-level check and does not resolve symlinks;
-  // a symlink inside dir that points outside would bypass it.
   const safeDir = resolve(dir);
   const filePath = join(safeDir, `${name}.krs`);
   if (!filePath.startsWith(safeDir + sep)) {
     return null;
   }
   try {
-    await stat(filePath);
-    return filePath;
+    const root = await realpath(safeDir);
+    const real = await realpath(filePath);
+    if (!real.startsWith(root + sep)) return null;
+    return (await stat(real)).isFile() ? real : null;
   } catch {
     return null;
   }
@@ -266,13 +272,12 @@ export function serve(dir: string, port: number, appDistDir?: string): Server {
       return;
     }
 
-    // SSE — ファイル変更通知
+    // SSE — ファイル変更通知。/api/* は同一オリジンの app だけが呼ぶので CORS ヘッダは付けない（#3283）
     if (pathname === "/api/watch") {
       res.writeHead(200, {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
-        "Access-Control-Allow-Origin": "*",
       });
       res.write(": connected\n\n");
       watcher.addClient(res);
@@ -320,7 +325,15 @@ export function serve(dir: string, port: number, appDistDir?: string): Server {
         return;
       }
       try {
-        const content = await readFile(filePath, "utf-8");
+        // Read the resolved path without following links again, so a swap
+        // after the check above is refused rather than read.
+        const root = await realpath(absDir);
+        const content = await readFileInside(root, relative(root, filePath));
+        if (content === null) {
+          res.writeHead(404);
+          res.end(JSON.stringify({ error: "File not found" }));
+          return;
+        }
         res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
         res.end(content);
       } catch {
