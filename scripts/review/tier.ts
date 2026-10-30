@@ -84,6 +84,8 @@ const ADR_GENERATED_GLOBS: readonly string[] = [
 /** An ADR record, `docs/adr/<n>-<name>.md` (not README or TEMPLATE). */
 const ADR_RECORD = /^docs\/adr\/\d+-[^/]+\.md$/;
 const DESIGN_DOC = /^docs\/design\/[^/]+\.md$/;
+/** An acceptance-test record: the only file whose ADR line a promotion may extend (#3405). */
+const AT_RECORD = /^docs\/acceptance\/[^/]+\.md$/;
 /** A new ADR whose path may stand as a link target in a promotion's link rules. */
 const LINKABLE_ADR = /^docs\/adr\/\d+-[a-z0-9-]+\.md$/;
 
@@ -338,7 +340,7 @@ export interface ChangedFile {
   path: string;
   status: FileStatus;
   hunks: Hunk[];
-  /** Both sides, for `package.json` and existing ADRs; `null` where the file does not exist. */
+  /** Both sides, for `package.json`, ADRs and AT records; `null` where the file does not exist. */
   before?: string | null;
   after?: string | null;
 }
@@ -489,7 +491,9 @@ export function isLinkSwap(
 /** The labels of an ADR line in a record: `- **設計 (ADR)**:`, `- **関連 ADR**:` and their spellings. */
 const ADR_LINE_LABEL = /^(?:設計 ?[(（]ADR[)）]|関連 ?ADR|ADR)$/;
 /** A labelled list item: the label, the colon, and the value after it. */
-const LABELLED_ITEM = /^- \*\*([^*]+)\*\*([:：])(\s*)(.*?)\s*$/;
+const LABELLED_ITEM = /^- \*\*([^*]+)\*\*([:：])( ?)(.*)$/;
+/** The line that opens or closes a fenced code block. */
+const FENCE = /^\s*(?:```|~~~)/;
 /** What joins two links in a list of them. */
 const LINK_SEPARATOR = /^\s*[、,，]\s*/;
 const TRAILING_SEPARATOR = /\s*[、,，]\s*$/;
@@ -504,7 +508,9 @@ function adrLinksOnly(value: string, adrs: readonly string[]): number {
   let count = 0;
   for (;;) {
     const m = /^\[([^\]]*)\]\(([^)\s]+)\)/.exec(rest);
-    if (!m) return 0;
+    // No anchor: an inserted link points at the ADR itself, and an anchor is
+    // text the diff carries that the rendered page does not show.
+    if (!m || m[2].includes("#")) return 0;
     const adr = adrs.find((p) => new RegExp(`^${referenceSource([p])}$`).test(m[2]));
     if (adr === undefined || !isNameIn(namesOf([adr]), m[1])) return 0;
     count++;
@@ -519,7 +525,30 @@ function adrLinksOnly(value: string, adrs: readonly string[]): number {
 /** An ADR line added whole: its value is only links to the new ADRs. */
 function isNewAdrLine(line: string, adrs: readonly string[]): boolean {
   const m = LABELLED_ITEM.exec(line);
-  return m !== null && ADR_LINE_LABEL.test(m[1]) && adrLinksOnly(m[4], adrs) > 0;
+  return m !== null && ADR_LINE_LABEL.test(m[1]) && spacedAfter(m) && adrLinksOnly(m[4], adrs) > 0;
+}
+
+/** One space after `:`, as the records write it; none or one after the full-width `：`. */
+const spacedAfter = (m: RegExpExecArray): boolean => m[3] === " " || (m[2] === "：" && m[3] === "");
+
+/**
+ * Whether line `index` (0-based) of `lines` sits in the record's metadata list,
+ * where an ADR line belongs: outside the frontmatter and every code fence, and,
+ * for a line added whole, right after another labelled item, so the list goes
+ * on and no heading, table or block around it changes.
+ */
+function inMetadataList(lines: readonly string[], index: number, whole: boolean): boolean {
+  if (index <= 0 || index >= lines.length) return false;
+  let start = 0;
+  if (lines[0] === "---") {
+    const end = lines.indexOf("---", 1);
+    if (end < 0 || index <= end) return false;
+    start = end + 1;
+  }
+  let fenced = false;
+  for (let i = start; i < index; i++) if (FENCE.test(lines[i])) fenced = !fenced;
+  if (fenced) return false;
+  return !whole || LABELLED_ITEM.test(lines[index - 1]);
 }
 
 /**
@@ -533,7 +562,8 @@ function gainedAdrLinks(removed: string, added: string, adrs: readonly string[])
   if (before === null || after === null || !ADR_LINE_LABEL.test(before[1])) return false;
   if (before[1] !== after[1] || before[2] !== after[2]) return false;
   const [old, now] = [before[4], after[4]];
-  if (old === "") return adrLinksOnly(now, adrs) > 0;
+  if (old === "") return spacedAfter(after) && adrLinksOnly(now, adrs) > 0;
+  if (before[3] !== after[3]) return false;
   if (now.endsWith(old)) {
     const head = now.slice(0, now.length - old.length);
     const sep = TRAILING_SEPARATOR.exec(head);
@@ -548,24 +578,34 @@ function gainedAdrLinks(removed: string, added: string, adrs: readonly string[])
 }
 
 /**
- * Whether one hunk only adds links to ADRs added in the same PR (#3405). An AT
- * record points at its Issue, never at a Design Doc (ADR-2348), so its
+ * Whether one hunk of an AT record only adds links to ADRs added in the same PR
+ * (#3405). An AT points at its Issue, never at a Design Doc (ADR-2348), so its
  * promotion PR adds the ADR link rather than swapping one (ADR-2331). Only an
- * ADR line of a record (`- **設計 (ADR)**:`, `- **関連 ADR**:`) may change: a
- * new one whose value is only links to the new ADRs, or an existing one that
- * gains such links at the start or end of its value. Every removed line must
- * be one of those existing lines, in order.
+ * ADR line of the metadata list (`- **設計 (ADR)**:`, `- **関連 ADR**:`) may
+ * change: a new one, right after another labelled item, whose value is only
+ * links to the new ADRs, or an existing one that gains such links at the start
+ * or end of its value. Every removed line must be one of those existing lines,
+ * in order. `after` is the record as the PR leaves it, which places the hunk;
+ * without it nothing is accepted.
  */
 export function isLinkInsert(
-  removed: readonly string[],
-  added: readonly string[],
+  hunk: Hunk,
+  after: string | null | undefined,
   newAdrs: readonly string[],
 ): boolean {
-  if (newAdrs.length === 0 || added.length === 0) return false;
+  const { removed, added } = hunk;
+  if (newAdrs.length === 0 || added.length === 0 || typeof after !== "string") return false;
+  const lines = after.split("\n");
   let i = 0;
-  for (const line of added) {
-    if (i < removed.length && gainedAdrLinks(removed[i], line, newAdrs)) i++;
-    else if (!isNewAdrLine(line, newAdrs)) return false;
+  for (const [j, line] of added.entries()) {
+    const at = hunk.newStart - 1 + j;
+    if (lines[at] !== line) return false;
+    if (i < removed.length && gainedAdrLinks(removed[i], line, newAdrs)) {
+      if (!inMetadataList(lines, at, false)) return false;
+      i++;
+    } else if (!isNewAdrLine(line, newAdrs) || !inMetadataList(lines, at, true)) {
+      return false;
+    }
   }
   return i === removed.length;
 }
@@ -625,7 +665,9 @@ function fileTier(
       f.status === "modified" &&
       f.path.endsWith(".md") &&
       f.hunks.length > 0 &&
-      f.hunks.every((h) => isSwap(h) || isLinkInsert(h.removed, h.added, promotion.newAdrs))
+      f.hunks.every(
+        (h) => isSwap(h) || (AT_RECORD.test(f.path) && isLinkInsert(h, f.after, promotion.newAdrs)),
+      )
     ) {
       return "low";
     }
@@ -827,7 +869,7 @@ function changedFiles(base: string, head: string): ChangedFile[] {
   const mergeBase = mergeBaseOf(base, head);
   return parseDiff(prDiff(base, head)).map((d) => {
     const f: ChangedFile = { path: d.path, status: d.status, hunks: d.hunks };
-    if (isPackageJson(d.path) || ADR_RECORD.test(d.path)) {
+    if (isPackageJson(d.path) || ADR_RECORD.test(d.path) || AT_RECORD.test(d.path)) {
       f.before = gitShow(mergeBase, d.path);
       f.after = gitShow(head, d.path);
     }
