@@ -47,6 +47,7 @@
     "lint:record-source-paths": "tsx scripts/lint/record-source-paths.ts",
     "lint:reference-docs-links": "tsx scripts/lint/reference-docs-links.ts",
     "lint:no-nul-bytes": "tsx scripts/lint/no-nul-bytes.ts",
+    "lint:process-index": "tsx scripts/lint/process-index.ts",
     "program:slices": "tsx scripts/program-slices.ts",
     "census:vocabulary": "tsx scripts/census/vocabulary.ts",
     "tpl:validate": "tpl validate --config tpl.config.json --packages-root packages --source-prefix packages --source-prefix scripts",

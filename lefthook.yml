@@ -210,6 +210,14 @@ pre-push:
       # arm64 and would have failed on the first amd64 build.
       glob: "{.devcontainer/**,scripts/lint/devcontainer-variants-sync.ts}"
       run: pnpm run lint:devcontainer-variants-sync
+    process-index:
+      # docs/process.md is read in full by every session, so it stays a core
+      # with an index of docs/process/<topic>.md files (Issue #3337). Fails when a
+      # topic file is not in the index, an index row has no trigger or points at
+      # a missing file, a relative link in docs/process* is broken, or the core
+      # is over its byte budget. `reference-docs-check.yml` runs it in CI.
+      glob: "{docs/process.md,docs/process/**,scripts/lint/process-index.ts}"
+      run: pnpm run lint:process-index
     roadmap-issue-state:
       # docs/roadmap.md tracks not-yet-issued work in watch ledgers ("子 Issue は
       # 起こさず本表で追跡し、trigger を満たしたら Issue を起こす"), and nothing

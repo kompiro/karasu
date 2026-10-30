@@ -6,8 +6,10 @@ name: Reference docs check
 # diagram drift guard (`gen-guide-diagrams.ts --check`, Issue #1574) plus the
 # roadmap ledger guard (`roadmap-issue-state.ts`, Issue #2245) plus the
 # embedded-snippet parse guard (`krs-fences.ts`, Issue #2415) plus the skill
-# guards (`skill-reference-bundle-sync.ts`, `skill-cli-refs.ts`) on PRs
-# that touch the reference single-source / guide / roadmap paths. The skip workflow emits a no-op
+# guards (`skill-reference-bundle-sync.ts`, `skill-cli-refs.ts`) plus the
+# docs/process.md index guard (`process-index.ts`, Issue #3337) and the ADR
+# assumption check on PRs that touch the reference single-source / guide /
+# roadmap / process paths. The skip workflow emits a no-op
 # `Reference docs` job for all other PRs so a Required status named
 # `Reference docs` stays green repository-wide.
 #
@@ -24,7 +26,7 @@ name: Reference docs check
 #
 # Keep the `paths:` list below in sync with `reference-docs-check-skip.yml`'s
 # `paths-ignore:` and with lefthook's `reference-docs-check` /
-# `guide-diagrams-check` / `roadmap-issue-state` globs.
+# `guide-diagrams-check` / `roadmap-issue-state` / `process-index` globs.
 
 on:
   pull_request:
@@ -48,6 +50,9 @@ on:
       - "scripts/lint/docs-site-ci-paths-sync.ts"
       - "packages/skills/**"
       - "scripts/lint/skill-reference-bundle-sync.ts"
+      - "docs/process.md"
+      - "docs/process/**"
+      - "scripts/lint/process-index.ts"
       - ".github/workflows/reference-docs-check.yml"
   push:
     branches: [main]
@@ -70,6 +75,9 @@ on:
       - "scripts/lint/docs-site-ci-paths-sync.ts"
       - "packages/skills/**"
       - "scripts/lint/skill-reference-bundle-sync.ts"
+      - "docs/process.md"
+      - "docs/process/**"
+      - "scripts/lint/process-index.ts"
       - ".github/workflows/reference-docs-check.yml"
 
 concurrency:
@@ -151,6 +159,16 @@ jobs:
       # guard runs here, where `docs/guide/**` is already a trigger.
       - name: Reference signpost links resolve
         run: pnpm run lint:reference-docs-links
+
+      # docs/process.md stays a core with an index of docs/process/<topic>.md
+      # (Issue #3337). ADR assumptions grep headings in those topic files, and
+      # the only other CI home of `adr check-assumptions` is `ci.yml`, which
+      # `paths-ignore: docs/**` skips for exactly the PR that renames one.
+      - name: docs/process.md index, links, and size budget
+        run: pnpm run lint:process-index
+
+      - name: ADR assumptions hold
+        run: pnpm run adr:check-assumptions
 
       - name: docs-site content in sync
         run: pnpm --filter @karasu-tools/docs-site run sync
