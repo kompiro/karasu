@@ -20,7 +20,7 @@ scope:
 
 ## 観点
 
-ruleset の bypass はパスで絞れず、ruleset 全体に効く。bypass actor の鍵を持つ job は、PR 必須も required check も越えて保護されたブランチに何でも書ける。したがって「その自動化が何を書くか」は、workflow の目的の説明ではなく、**鍵が届く範囲で実際に動くコード**で決まる。
+ruleset の bypass はパスで絞れず、その ruleset の規則すべてに効く。PR 必須と required check を越えて保護されたブランチに書けることを実際の ruleset と鍵で確かめたなら、その鍵を持つ job は保護されたブランチに何でも書ける。したがって「その自動化が何を書くか」は、workflow の目的の説明ではなく、**鍵が届く範囲で実際に動くコード**で決まる。
 
 鍵と同じ job で `pnpm install` や `npx` を実行すると、依存のどれか 1 つの install script が鍵を読めるので、その鍵の権限は依存ツリー全体に渡る。生成と commit を別の job に分け、鍵を持つ job では first-party の最小限の action と shell だけを動かし、生成側から受け取ったものを checkout の外で検査して、許可の一覧の内側の通常ファイルだけを作業ツリーに写す。許可の一覧そのものも、鍵の権限で書いてよい範囲（生成物のディレクトリ）の内側に収める。こうすれば生成側が乗っ取られても、書けるのは許可したパスの中身だけになる。
 
@@ -32,7 +32,7 @@ ruleset の bypass はパスで絞れず、ruleset 全体に効く。bypass acto
 - 乗っ取られた生成側が、artifact に `.git/hooks/*` や `.git/config` に落ちるエントリを入れる。commit job が checkout の中に展開すると、鍵を持った `git commit` / `git push` がその hook や設定を実行する。`git status` で変わったパスを見る検査は `.git/` を見ないので気づかない
 - bypass を、削除や non-fast-forward の禁止と同じ ruleset に足す。鍵が漏れると、余分な commit ではなく履歴の消失になる
 - 許可するパスの一覧を workflow に直書きし、生成器の出力先（設定ファイル）が変わってもずれたままになる
-- 逆に許可の一覧を設定ファイルから読むだけで上限を置かず、設定を `.github/workflows/` などに向ける変更が通ると、乗っ取られた生成側が鍵の権限で workflow を書き換えられる
+- 逆に許可の一覧を設定ファイルから読むだけで上限を置かず、設定を `.github/workflows/` などに向ける変更が通ると、乗っ取られた生成側が鍵の権限で workflow を書き換えられる。上限も同じ設定ファイルから読む（`adrDir` など）と、上限と出力先を同じ変更で広げられるので防げない
 - 展開の action に展開先から抜け出す穴がある古い版を使い、検査の前に checkout の中へ書かれる
 - push が拒否されたり生成が失敗したりしても job が成功で終わり、保護されたブランチの生成物が古いまま誰も気づかない（TPL-2786）
 
@@ -45,9 +45,10 @@ ruleset の bypass はパスで絞れず、ruleset 全体に効く。bypass acto
 - [ ] 生成側から受け取るものは checkout の外に展開し、許可の一覧の内側の通常ファイル（symlink・`..`・`.git/` を含まない）だけを作業ツリーに写す。外れたら失敗する
 - [ ] 鍵を持つ git の操作は hook を無効にして実行し（`core.hooksPath=/dev/null`）、`git add` は許可したパスだけを名指しする
 - [ ] bypass を足す ruleset には、削除と non-fast-forward の禁止を入れていない（それらは bypass の無い別の ruleset に置く）
-- [ ] 許可の一覧は生成器の設定（出力先）から導くか、設定との一致をテストが確認している。設定から導くときは、生成物のディレクトリの外を指す設定で job が失敗する
+- [ ] 許可の一覧は生成器の設定（出力先）から導くか、設定との一致をテストが確認している。設定から導くときは、workflow に固定で書いた生成物のディレクトリの外を指す設定（絶対パス・`..`・symlink の経由を含む）で job が失敗する
 - [ ] 使う action は SHA で pin し、展開の action は既知の穴を直した版以降である
 - [ ] 生成・検査・push のどれかが失敗したら job が失敗する
+- [ ] 鍵の bypass が実際に PR 必須と required check を越えることを、使う ruleset と鍵で確かめてから運用に入れた（越えられないなら、この自動化は成り立たない）
 
 ## 既知の対処パターン
 
@@ -58,4 +59,3 @@ workflow の宣言を読むテストは `scripts/ci/agentic-workflow-safety.test
 ## 関連テスト
 
 - `scripts/ci/agentic-workflow-safety.test.ts`（自動化の書き込み範囲を宣言で検証する前例）
-- #3416 の実装 PR で、ADR の生成物を `main` に commit する workflow の宣言を読むテストを `scripts/ci/` に足す

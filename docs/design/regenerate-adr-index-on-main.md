@@ -57,8 +57,9 @@ bypass はその ruleset の規則すべてに効くので、鍵が漏れれば 
 - **ruleset を分ける。** 削除の禁止・non-fast-forward の禁止・作成の禁止を、bypass actor を持たない別の ruleset に移す。deploy key を bypass に足すのは PR 必須と required check の ruleset だけにする。鍵が漏れても、`main` の force-push や削除はできない。
 - **鍵とサードパーティのコードを同じ job に置かない。**
   1. **生成 job**（鍵なし、`contents: read`）: checkout → `pnpm install --frozen-lockfile` → `adr regenerate` → 生成物のパスだけを artifact に上げる。
-  2. **commit job**（鍵あり）: 許可するパスを、checkout した commit の `adr.config.json` から `paths.outputs` として読み、そのどれもが `adrDir` の内側にあることを確かめる（設定の変更で `.github/workflows/` などを指せないようにする。artifact からは読まない）。artifact を checkout の外（`$RUNNER_TEMP`）に、SHA で pin した `actions/download-artifact`（展開先から抜け出す穴 CVE-2024-42471 を直した 4.1.7 以降）で展開し、空でないこと、どのエントリも許可するパスの内側の通常ファイルであること（symlink・`..`・`.git/` を含まない）を確かめてから、作業ツリーに写す。出力先がディレクトリ（`graph/`）なら、artifact に無いファイルは消して鏡写しにする（topic を消したときの古い `graph/<topic>.md` を残さない）。commit と push は `git -c core.hooksPath=/dev/null` で行い、`git add` は許可するパスだけを名指しする。`pnpm` も `npx` もサードパーティの action も実行しない。
+  2. **commit job**（鍵あり）: 許可するパスを、checkout した commit の `adr.config.json` から `paths.outputs` として読み（artifact からは読まない）、正規化したうえで、どれもが workflow に固定で書いた `docs/adr` の内側にあることを確かめる。上限は設定の `adrDir` ではなく workflow の固定値で置く。`adrDir` も同じ設定ファイルにあるので、`adrDir: "."` と `.github/workflows/` を指す出力を同じ変更で書けば、`adrDir` を上限にしても防げない。絶対パス・`..`・symlink を経由するパスも拒否する。artifact を checkout の外（`$RUNNER_TEMP`）に、SHA で pin した `actions/download-artifact`（展開先から抜け出す穴 CVE-2024-42471 を直した 4.1.7 以降）で展開し、空でないこと、どのエントリも許可するパスの内側の通常ファイルであること（symlink・`..`・`.git/` を含まない）を確かめてから、作業ツリーに写す。出力先がディレクトリ（`graph/`）なら、artifact に無いファイルは消して鏡写しにする（topic を消したときの古い `graph/<topic>.md` を残さない）。commit と push は `git -c core.hooksPath=/dev/null` で行い、`git add` は許可するパスだけを名指しする。`pnpm` も `npx` もサードパーティの action も実行しない。
 - **鍵を読める job を 1 つにする。** 鍵は environment `adr-regenerate` の secret に置き、deployment branch を `main` に制限する。`main` で動く job（`pull_request_target` や `workflow_dispatch` を含む）は environment を名指しすれば読めるので、名指ししてよいのは `main` への push と `schedule` だけで起動する commit job 1 つ、とテストで固定する。
+- **柵そのものの変更は人が読む。** commit job の workflow（`.github/workflows/**`）と、それを固定するテスト（`scripts/ci/**`）を変える PR は、分類器が High に数える。High は auto-merge されず、人がレビューしてマージする（ADR-3286）。マージした後の workflow は誰でも書き換えられるわけではなく、この 2 つのパスを通る。maintainer が 1 人の repo なので、CODEOWNERS を足しても読む人は変わらない。
 
 artifact の検査を作業ツリーの外で行うのは、乗っ取られた生成 job が artifact API を直接呼んで `.git/hooks/*` や `.git/config` に落ちるエントリを作れるからである。`git status` で「変わったパス」を見る検査は `.git/` の中を見ないので、それでは防げない。この形なら、生成 job が乗っ取られても commit job が書けるのは生成物の中身だけに留まる。
 
@@ -152,7 +153,7 @@ bypass は不要になるが、2 つの理由で採らない。
    - environment `adr-regenerate` を名指しする job が全 workflow で 1 つだけで、その workflow の起動が `push: branches: [main]` と `schedule` だけであること。
    - その job が `pnpm` も `npx` も実行せず、SHA で pin した `actions/checkout`・`actions/download-artifact`（4.1.7 以降）・`actions/setup-node`（検査のスクリプトを動かす Node のため）以外の action を使わないこと。
    - その job が artifact を checkout の外に展開し、git を `core.hooksPath=/dev/null` で実行すること。
-   - 許可するパスの一覧が checkout した commit の `paths.outputs` から導かれ、`adrDir` の外を指す設定なら job が失敗すること。
+   - 許可するパスの一覧が checkout した commit の `paths.outputs` から導かれ、workflow に固定した `docs/adr` の外を指す設定（`adrDir` を書き換えた場合を含む）、絶対パス・`..`・symlink を経由するパスなら job が失敗すること。
    - 生成物を外す `paths-ignore` と paths の否定が、`paths.outputs` と一致していること。
 6. **ルールと記録を直す。** `.claude/rules/adr.md` の「編集後のチェック」（再生成してコミットする手順）と auto-merge の適用条件の生成物の項、`scripts/review/tier.ts` の生成物のパス（PR に現れなくなるので、許す差分から外して衝突の再発を Medium で知らせる）、`docs/process/review.md` の Low の行。
 7. AT: `docs/acceptance/3416-regenerate-adr-index-on-main.md`。TC は:
@@ -163,7 +164,7 @@ bypass は不要になるが、2 つの理由で採らない。
    - 再生成の commit で起動するのは `secret-scan.yml` だけである。
    - PR が生成物を変えると `Validate` が落ちる。生成器を壊す PR も `Validate` が落ちる。
    - `@kompiro/adr-tools` の版上げで出力が変わると、マージ後に `main` の生成物が更新される。
-   - commit job の検査は、`paths.outputs` の外のパス・symlink・`.git/` を含む artifact と空の artifact を拒否して失敗し、`adrDir` の外を指す `paths.outputs` も拒否する（検査のスクリプトを細工した入力で単体テストする）。
+   - commit job の検査は、`paths.outputs` の外のパス・symlink・`.git/` を含む artifact と空の artifact を拒否して失敗し、`docs/adr` の外を指す `paths.outputs`（`adrDir` を `.` にした設定を含む）も拒否する（検査のスクリプトを細工した入力で単体テストする）。
    - topic を消すと、`main` の `graph/<topic>.md` も消える。
 8. ADR 昇格: 実装完了後、`docs/adr/3416-regenerate-adr-index-on-main.md` として昇格し、本 Design Doc は同 PR で削除する。ADR-788 と ADR-2331 は `related_to` で結ぶ（覆すのは「生成物は PR が運ぶ」という前提で、両者の決定の中心ではない）。
 
