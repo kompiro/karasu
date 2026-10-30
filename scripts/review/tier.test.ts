@@ -597,7 +597,7 @@ describe("isLinkInsert", () => {
   const L = "[ADR-12](../adr/12-x.md)";
   const judge = (lines: string[], adrs: readonly string[] = A) => {
     const { hunk, after } = hunkBetween(AT_DOC, lines);
-    return isLinkInsert(hunk, after, adrs);
+    return isLinkInsert(hunk, after, adrs, "docs/acceptance/x.md");
   };
   const OLD = "[ADR-7](../adr/7-y.md)";
 
@@ -612,7 +612,7 @@ describe("isLinkInsert", () => {
     expect(judge(insertAt(8, "- **設計 (ADR)**：[12-x.md](../adr/12-x.md)"))).toBe(true);
     const empty = insertAt(9, "- **設計 (ADR)**:");
     const { hunk, after } = hunkBetween(empty, insertAt(9, `- **設計 (ADR)**: ${L}`));
-    expect(isLinkInsert(hunk, after, A)).toBe(true);
+    expect(isLinkInsert(hunk, after, A, "docs/acceptance/x.md")).toBe(true);
   });
 
   it("rejects a hunk that adds no link to a new ADR, or has no record to place it in", () => {
@@ -620,8 +620,10 @@ describe("isLinkInsert", () => {
     expect(judge(insertAt(9, "- **設計 (ADR)**: [ADR-7](../adr/7-y.md)"))).toBe(false);
     expect(judge(insertAt(9, `- **設計 (ADR)**: ${L}`), [])).toBe(false);
     const { hunk } = hunkBetween(AT_DOC, insertAt(9, `- **設計 (ADR)**: ${L}`));
-    expect(isLinkInsert(hunk, null, A)).toBe(false);
-    expect(isLinkInsert({ ...hunk, newStart: 2 }, AT_DOC.join("\n"), A)).toBe(false);
+    expect(isLinkInsert(hunk, null, A, "docs/acceptance/x.md")).toBe(false);
+    expect(
+      isLinkInsert({ ...hunk, newStart: 2 }, AT_DOC.join("\n"), A, "docs/acceptance/x.md"),
+    ).toBe(false);
   });
 
   it("rejects a link whose text names another ADR, no ADR, or carries an anchor", () => {
@@ -634,6 +636,10 @@ describe("isLinkInsert", () => {
     expect(judge(insertAt(9, "- **設計 (ADR)**: [ADR-12](../adr/12-x.md#no-manual-check)"))).toBe(
       false,
     );
+    // Resolved from the AT, these do not reach docs/adr/12-x.md.
+    expect(judge(insertAt(9, "- **設計 (ADR)**: [ADR-12](adr/12-x.md)"))).toBe(false);
+    expect(judge(insertAt(9, "- **設計 (ADR)**: [ADR-12](../../docs/adr/12-x.md)"))).toBe(true);
+    expect(judge(insertAt(9, "- **設計 (ADR)**: [ADR-12](/docs/adr/12-x.md)"))).toBe(false);
   });
 
   it("rejects a line that is not an ADR line of the metadata list", () => {
@@ -670,7 +676,7 @@ describe("isLinkInsert", () => {
     ];
     const judgeDoc = (before: string[], after: string[]) => {
       const { hunk, after: text } = hunkBetween(before, after);
-      return isLinkInsert(hunk, text, A);
+      return isLinkInsert(hunk, text, A, "docs/acceptance/x.md");
     };
     expect(judgeDoc(withSubList, at(3, withSubList))).toBe(false); // the sub-list would follow it
     const lazy = [
@@ -683,6 +689,10 @@ describe("isLinkInsert", () => {
     expect(judgeDoc(lazy, at(3, lazy))).toBe(false); // a lazy continuation would follow it
     expect(judgeDoc(withSubList, at(5, withSubList))).toBe(true); // the end of the list
     expect(judgeDoc(withSubList, at(4, withSubList))).toBe(true); // after the sub-list
+    const blankThenSub = ["# AT: x", "", "- **対象ファイル**:", "", "  - `a.ts`", ""];
+    expect(judgeDoc(blankThenSub, at(3, blankThenSub))).toBe(false); // the sub-list after the blank
+    const blankThenText = ["# AT: x", "", "- **日付**: 2026-10-30", "", "本文", ""];
+    expect(judgeDoc(blankThenText, at(3, blankThenText))).toBe(true); // the list ends there
     const quoted = ["# AT: x", "", "- **日付**: 2026-10-30", "", "> 説明", "> 続き", ""];
     expect(judgeDoc(quoted, at(6, quoted))).toBe(false); // after a blockquote, not the list
   });

@@ -20,7 +20,7 @@
 
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { matchesGlob } from "node:path";
+import { matchesGlob, posix } from "node:path";
 import { type GitFacts, parseRecord, verifyRecord } from "./local-review-record.ts";
 
 export type Tier = "low" | "design" | "medium" | "high";
@@ -503,20 +503,21 @@ const QUOTE_OR_TABLE = /^\s*[>|]/;
 const LINK_SEPARATOR = /^\s*[、,，]\s*/;
 const TRAILING_SEPARATOR = /\s*[、,，]\s*$/;
 
+/** The new ADR a link target resolves to from the record, if it is one. */
+type LinkTarget = (href: string) => string | undefined;
+
 /**
- * How many links a value is, when it is nothing but links to `adrs` joined by
- * separators; 0 otherwise. Each link must point at one ADR and carry a name of
- * that same ADR as its text.
+ * How many links a value is, when it is nothing but links to the new ADRs
+ * joined by separators; 0 otherwise. Each link must resolve to one new ADR and
+ * carry a name of that same ADR as its text.
  */
-function adrLinksOnly(value: string, adrs: readonly string[]): number {
+function adrLinksOnly(value: string, target: LinkTarget): number {
   let rest = value;
   let count = 0;
   for (;;) {
     const m = /^\[([^\]]*)\]\(([^)\s]+)\)/.exec(rest);
-    // No anchor: an inserted link points at the ADR itself, and an anchor is
-    // text the diff carries that the rendered page does not show.
-    if (!m || m[2].includes("#")) return 0;
-    const adr = adrs.find((p) => new RegExp(`^${referenceSource([p])}$`).test(m[2]));
+    if (!m) return 0;
+    const adr = target(m[2]);
     if (adr === undefined || !isNameIn(namesOf([adr]), m[1])) return 0;
     count++;
     rest = rest.slice(m[0].length);
@@ -528,9 +529,11 @@ function adrLinksOnly(value: string, adrs: readonly string[]): number {
 }
 
 /** An ADR line added whole: its value is only links to the new ADRs. */
-function isNewAdrLine(line: string, adrs: readonly string[]): boolean {
+function isNewAdrLine(line: string, target: LinkTarget): boolean {
   const m = LABELLED_ITEM.exec(line);
-  return m !== null && ADR_LINE_LABEL.test(m[1]) && spacedAfter(m) && adrLinksOnly(m[4], adrs) > 0;
+  return (
+    m !== null && ADR_LINE_LABEL.test(m[1]) && spacedAfter(m) && adrLinksOnly(m[4], target) > 0
+  );
 }
 
 /** One space after `:`, as the records write it; none or one after the full-width `：`. */
@@ -570,10 +573,17 @@ function inMetadataList(lines: readonly string[], index: number, whole: boolean)
     !QUOTE_OR_TABLE.test(lines[item])
   )
     item--;
+  // Below: another item, or the end of the list. A blank line ends it only when
+  // what follows is not indented: an indented block after a blank line would
+  // still belong to the new item, taking it from the item above.
   const next = lines[index + 1];
+  let block = index + 1;
+  while (block < lines.length && lines[block].trim() === "") block++;
   return (
     LABELLED_ITEM.test(lines[item]) &&
-    (next === undefined || next.trim() === "" || LABELLED_ITEM.test(next))
+    (next === undefined ||
+      LABELLED_ITEM.test(next) ||
+      (next.trim() === "" && (block >= lines.length || !/^\s/.test(lines[block]))))
   );
 }
 
@@ -582,23 +592,23 @@ function inMetadataList(lines: readonly string[], index: number, whole: boolean)
  * empty, or extended at its start or its end. The label, the colon and the
  * existing value stay as they were.
  */
-function gainedAdrLinks(removed: string, added: string, adrs: readonly string[]): boolean {
+function gainedAdrLinks(removed: string, added: string, target: LinkTarget): boolean {
   const before = LABELLED_ITEM.exec(removed);
   const after = LABELLED_ITEM.exec(added);
   if (before === null || after === null || !ADR_LINE_LABEL.test(before[1])) return false;
   if (before[1] !== after[1] || before[2] !== after[2]) return false;
   const [old, now] = [before[4], after[4]];
-  if (old === "") return spacedAfter(after) && adrLinksOnly(now, adrs) > 0;
+  if (old === "") return spacedAfter(after) && adrLinksOnly(now, target) > 0;
   if (before[3] !== after[3]) return false;
   if (now.endsWith(old)) {
     const head = now.slice(0, now.length - old.length);
     const sep = TRAILING_SEPARATOR.exec(head);
-    if (sep && adrLinksOnly(head.slice(0, sep.index), adrs) > 0) return true;
+    if (sep && adrLinksOnly(head.slice(0, sep.index), target) > 0) return true;
   }
   if (now.startsWith(old)) {
     const tail = now.slice(old.length);
     const sep = LINK_SEPARATOR.exec(tail);
-    if (sep && adrLinksOnly(tail.slice(sep[0].length), adrs) > 0) return true;
+    if (sep && adrLinksOnly(tail.slice(sep[0].length), target) > 0) return true;
   }
   return false;
 }
@@ -618,18 +628,27 @@ export function isLinkInsert(
   hunk: Hunk,
   after: string | null | undefined,
   newAdrs: readonly string[],
+  recordPath: string,
 ): boolean {
   const { removed, added } = hunk;
   if (newAdrs.length === 0 || added.length === 0 || typeof after !== "string") return false;
+  // Resolved from the record, as a renderer does: `adr/12-x.md` beside an AT
+  // is not the ADR. No scheme, root-relative path, anchor or query.
+  const dir = posix.dirname(recordPath);
+  const target: LinkTarget = (href) => {
+    if (/^[a-z][a-z0-9+.-]*:|^\/|[#?]/i.test(href)) return undefined;
+    const resolved = posix.normalize(posix.join(dir, href));
+    return newAdrs.includes(resolved) ? resolved : undefined;
+  };
   const lines = after.split("\n");
   let i = 0;
   for (const [j, line] of added.entries()) {
     const at = hunk.newStart - 1 + j;
     if (lines[at] !== line) return false;
-    if (i < removed.length && gainedAdrLinks(removed[i], line, newAdrs)) {
+    if (i < removed.length && gainedAdrLinks(removed[i], line, target)) {
       if (!inMetadataList(lines, at, false)) return false;
       i++;
-    } else if (!isNewAdrLine(line, newAdrs) || !inMetadataList(lines, at, true)) {
+    } else if (!isNewAdrLine(line, target) || !inMetadataList(lines, at, true)) {
       return false;
     }
   }
@@ -692,7 +711,9 @@ function fileTier(
       f.path.endsWith(".md") &&
       f.hunks.length > 0 &&
       f.hunks.every(
-        (h) => isSwap(h) || (AT_RECORD.test(f.path) && isLinkInsert(h, f.after, promotion.newAdrs)),
+        (h) =>
+          isSwap(h) ||
+          (AT_RECORD.test(f.path) && isLinkInsert(h, f.after, promotion.newAdrs, f.path)),
       )
     ) {
       return "low";
