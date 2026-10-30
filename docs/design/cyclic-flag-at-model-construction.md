@@ -63,6 +63,7 @@ diff は before と after の slice を `diffEdgeArray`（`diff/view-diff.ts`）
 - `edge[cyclic]` の style、`krs-edge--cyclic` class、routing が cyclic edge を除外する挙動は変えない。
 - 循環は**ファイルをまたいで成立しうる**事実である（`system S` を 2 ファイルで reopen し、`A -> B` と `B -> A` を別ファイルに書く）。TPL-2221 に従い、project mode ではマージ後のモデルで判定する。
 - render の公開 API のシグネチャは変えない。
+- builder が受け取る `KrsFile` は `Parser.parse` か `ImportResolver.resolve` が作ったものに限る。`boundaryMembership`・`nodePathIndex`・`ownerIndex` などの派生事実も同じ前提で、`createEmptyKrsFile()` から手で組み立てたモデルにはどれも載らない。`cyclic` もこの前提に揃え、手で組み立てたモデル向けに導出を公開する関数は足さない（要る呼び出し元が現れたら、派生事実をまとめて載せる関数として別に検討する）。
 
 ## 検討した選択肢
 
