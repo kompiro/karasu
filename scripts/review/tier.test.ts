@@ -689,7 +689,7 @@ describe("isLinkInsert", () => {
 
   it("rejects any other change on the ADR line or in the hunk", () => {
     expect(
-      judge(editAt(8, "- **関連 ADR**: [ADR-6](../adr/6-z.md)、" + `${L}、[ADR-7](../adr/7-y.md)`)),
+      judge(editAt(8, `- **関連 ADR**: [ADR-6](../adr/6-z.md)、${L}、[ADR-7](../adr/7-y.md)`)),
     ).toBe(false); // the middle of the value
 
     expect(judge(editAt(8, `- **関連 ADR（完了）**: ${OLD}、${L}`))).toBe(false);
