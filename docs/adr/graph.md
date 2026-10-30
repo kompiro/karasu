@@ -17,6 +17,7 @@ flowchart TD
     ADR_2331["ADR-2331<br/>ADR PR の auto-merge 例外は、変更の場所ではなく差分の性質で判定する"]
     ADR_2628["ADR-2628<br/>ADR の assumptions に caret レンジの完全な版を書かない（機械チェックで..."]
     ADR_2687["ADR-2687<br/>ADR 本文は不変 — リンクの張り替えも本文編集として禁じる"]
+    ADR_3314["ADR-3314<br/>topic: ラベルと topics の一致を、topics を変える PR の Valida..."]
   end
   subgraph app-ui["app-ui"]
     ADR_104["ADR-104<br/>system セレクタUIを採用しない"]
@@ -197,7 +198,9 @@ flowchart TD
     ADR_3340["ADR-3340<br/>converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけ..."]
     ADR_3342["ADR-3342<br/>ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh..."]
     ADR_3350["ADR-3350<br/>リリーストレインの PR の段階を、差分が changeset version の出力だけなら..."]
+    ADR_3359["ADR-3359<br/>描画が変わる PR に、merge-base と比べた before/after の画像を添付する"]
     ADR_3381["ADR-3381<br/>Dependabot トリアージ 2026-10-26：npm 12 件をそのまま採用し、ch..."]
+    ADR_3399["ADR-3399<br/>Dependabot security alert 2026-10-30（qs と seria..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -423,6 +426,7 @@ flowchart TD
     ADR_3133["ADR-3133<br/>側面列の端点へのエッジは、どの候補も成立しないとき、端点の間の空き列で通す"]
     ADR_3134["ADR-3134<br/>同じ行間チャネルに降りる corridor / mixed route を、チャネルの中で 1..."]
     ADR_3154["ADR-3154<br/>ドリルダウンのガターは枠の内側のカードで測り、足りない幅を枠の側面に予約する"]
+    ADR_3155["ADR-3155<br/>ずらしたエッジラベルは既定位置と同じ側に留め、枠の線に掛けない"]
     ADR_3309["ADR-3309<br/>同じ行の経路が stub の席の取り合いで拒否されたとき、最後の候補で席をカードの幅いっぱいま..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
@@ -1094,6 +1098,7 @@ flowchart TD
   class ADR_3134 accepted
   class ADR_3138 accepted
   class ADR_3154 accepted
+  class ADR_3155 accepted
   class ADR_3162 accepted
   class ADR_3169 accepted
   class ADR_3196 accepted
@@ -1106,13 +1111,16 @@ flowchart TD
   class ADR_3286 accepted
   class ADR_3304 accepted
   class ADR_3309 accepted
+  class ADR_3314 accepted
   class ADR_3326 accepted
   class ADR_3333 accepted
   class ADR_3335 accepted
   class ADR_3340 accepted
   class ADR_3342 accepted
   class ADR_3350 not_adopted
+  class ADR_3359 accepted
   class ADR_3381 accepted
+  class ADR_3399 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

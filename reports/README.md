@@ -129,3 +129,10 @@ git worktree add .claude/worktrees/baseline main
 ```
 
 Both SVGs are then just strings handed to `pair()`.
+
+For the before/after a PR body carries, `pnpm pr:shots` does this for you: it checks out
+the merge base in a temporary worktree, renders the acceptance-test fences in the diff and
+the `examples/` entries on both sides, and writes the changed pairs to
+`reports/pr-shots/<branch>/` with a `## Before / after` section to paste. The worktree is
+removed when it finishes. Its modules under `scripts/pr-shots/` are a starting point when a
+PoC needs a real before too.

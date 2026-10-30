@@ -21,9 +21,15 @@ import type {
   TrunkBand,
 } from "./layout-types.js";
 import { renderShape } from "./shapes.js";
+import { rectUnionOutline } from "./frame-geometry.js";
 import { getShapeContentInset, type ShapeInsets } from "../shapes/shape-registry.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
-import { resolveLabelPlacements, buildLabelInputs } from "./label-placement.js";
+import {
+  resolveLabelPlacements,
+  buildLabelInputs,
+  frameBorder,
+  type FrameBorder,
+} from "./label-placement.js";
 import { HOP_RADIUS, JUNCTION_CHIP_RADIUS, trunkBandHalfWidth } from "./crossing-marks.js";
 import { layoutDegradedTabs } from "./degraded-tabs.js";
 import {
@@ -627,13 +633,15 @@ export function renderFromLayout(
   // default midpoint. A label's own edge line is exempt — that is where it
   // belongs. Author-positioned labels (non-default label-position/label-offset)
   // are excluded from moving but still act as obstacles, so author intent wins
-  // (ADR-1184 precedence).
+  // (ADR-1184 precedence). A nudge never carries a label onto or across the
+  // border of a frame drawn above (#3155), measured on the stroke drawn there.
   const {
     inputs: labelInputs,
     nodeRects,
     edgeLines,
   } = buildLabelInputs(layoutResult.edges, layoutResult.nodes, edgeStyleFor);
-  const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects, edgeLines);
+  const frameBorders = frameBordersOf(layoutResult, styles, palette);
+  const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects, edgeLines, frameBorders);
   // Labels the pass could not seat clear under `label-display: auto` (#3022).
   // The pass reports them on its inputs; `renderEdge` leaves them off the canvas.
   const deferredLabels = new Set(labelInputs.filter((l) => l.deferred).map((l) => l.index));
@@ -1461,73 +1469,17 @@ function renderExpandControls(layoutResult: LayoutResult, palette: DiagramPalett
 
 /**
  * The outline of a union of axis-aligned rects, as an SVG path `d` (#2179).
+ * The corners come from {@link rectUnionOutline}, which the label placement
+ * pass also reads, so a label avoids exactly the border the canvas strokes.
  *
- * A frame that reaches an out-of-band member is a rectilinear polygon, not a
- * rect. The union is built by **vertical slabs**: every distinct x becomes a
- * boundary, and each slab's vertical extent is the min/max over the rects
- * covering it. That is exact for the shapes `buildGroupFrames` produces, where
- * every strip shares an edge with the band body so each slab's coverage is one
- * contiguous interval — and it stays readable for any number of strips on either
- * side, which a hand-rolled L/T case analysis does not.
- *
- * Returns `null` for a single rect (nothing to union) and for a slab set that is
- * not contiguous, so the caller falls back to the plain `<rect>` rather than
- * drawing an outline that claims rows it does not cover.
+ * Returns `null` for a single rect and for a set that is not one polygon, so the
+ * caller falls back to the plain `<rect>`.
  */
 export function rectUnionPath(rects: readonly Rect[]): string | null {
-  if (rects.length < 2) return null;
-  const xs = [...new Set(rects.flatMap((r) => [r.x, r.x + r.width]))].sort((a, b) => a - b);
-  const slabs: { x1: number; x2: number; top: number; bottom: number }[] = [];
-  for (let i = 0; i < xs.length - 1; i++) {
-    const x1 = xs[i];
-    const x2 = xs[i + 1];
-    const mid = (x1 + x2) / 2;
-    const covering = rects.filter((r) => r.x <= mid && mid <= r.x + r.width);
-    if (covering.length === 0) return null; // a gap along x — not one polygon
-    const top = Math.min(...covering.map((r) => r.y));
-    const bottom = Math.max(...covering.map((r) => r.y + r.height));
-    // Contiguity: the covering rects must form one interval, or the outline
-    // would fill a hole the frame does not actually cover.
-    const sorted = [...covering].sort((a, b) => a.y - b.y);
-    let reach = sorted[0].y + sorted[0].height;
-    for (const r of sorted.slice(1)) {
-      if (r.y > reach) return null;
-      reach = Math.max(reach, r.y + r.height);
-    }
-    const prev = slabs[slabs.length - 1];
-    if (prev && prev.x2 === x1 && prev.top === top && prev.bottom === bottom) prev.x2 = x2;
-    else slabs.push({ x1, x2, top, bottom });
-  }
+  const corners = rectUnionOutline(rects);
+  if (corners === null) return null;
   const round = (v: number): number => Math.round(v * 100) / 100;
-  // Walk the tops left-to-right, then the bottoms right-to-left.
-  const points: [number, number][] = [];
-  const push = (x: number, y: number): void => {
-    const last = points[points.length - 1];
-    // Adjacent slabs meet at a shared x, so the naive walk repeats the corner…
-    if (last && last[0] === x && last[1] === y) return;
-    // …and slabs that differ on only one side leave collinear points along the
-    // other. Fold them so the `d` lists corners, which is what a reader diffing
-    // a snapshot wants to compare.
-    const prev = points[points.length - 2];
-    if (
-      last &&
-      prev &&
-      ((prev[0] === last[0] && last[0] === x) || (prev[1] === last[1] && last[1] === y))
-    ) {
-      points[points.length - 1] = [x, y];
-      return;
-    }
-    points.push([x, y]);
-  };
-  for (const s of slabs) {
-    push(s.x1, s.top);
-    push(s.x2, s.top);
-  }
-  for (const s of [...slabs].reverse()) {
-    push(s.x2, s.bottom);
-    push(s.x1, s.bottom);
-  }
-  return `M ${points.map(([x, y]) => `${round(x)} ${round(y)}`).join(" L ")} Z`;
+  return `M ${corners.map(({ x, y }) => `${round(x)} ${round(y)}`).join(" L ")} Z`;
 }
 
 /** Frame tint opacity — low enough that two overlapping fills stay distinguishable. */
@@ -1767,6 +1719,51 @@ function containerStyleOf(
   };
 }
 
+/**
+ * The width a frame is stroked at: 2 for an in-place expansion, else the
+ * width its paint or its style names.
+ */
+function frameStrokeWidth(
+  container: ContainerRect,
+  style: ResolvedNodeStyle,
+  paint: FramePaint | undefined,
+): number {
+  return container.expanded === true ? 2 : (paint?.strokeWidth ?? style.borderWidth);
+}
+
+/**
+ * Every frame the canvas draws, as label placement obstacles (#3155): each at
+ * the stroke width `renderContainer` draws it with. Exported so the tests'
+ * fences measure the same stroke the canvas paints, not a fixed width.
+ */
+export function frameBordersOf(
+  layoutResult: LayoutResult,
+  styles: ResolvedStyles,
+  palette: DiagramPalette,
+): FrameBorder[] {
+  return layoutResult.containers.map((container) =>
+    frameBorder(container, containerStrokeWidth(container, styles, palette)),
+  );
+}
+
+/**
+ * The stroke width `renderContainer` draws `container`'s frame at, resolved
+ * with the arguments the container loops pass it: a ghost frame without the
+ * palette or the frame sheets, every other frame with them. The label pass
+ * avoids the stroke this reports (#3155).
+ */
+function containerStrokeWidth(
+  container: ContainerRect,
+  styles: ResolvedStyles,
+  palette: DiagramPalette,
+): number {
+  const style = containerStyleOf(styles, container, palette);
+  const paint = container.ghost
+    ? resolveFramePaint(container, style, undefined, undefined, undefined)
+    : resolveFramePaint(container, style, palette, styles.boundaryFrames, styles.teamFrames);
+  return frameStrokeWidth(container, style, paint);
+}
+
 function renderContainer(
   container: ContainerRect,
   style: ResolvedNodeStyle,
@@ -1799,7 +1796,7 @@ function renderContainer(
     fill: expanded && accent ? accent : (paint?.fill ?? "transparent"),
     "fill-opacity": expanded && accent ? "0.06" : paint?.fillOpacity,
     stroke: expanded && accent ? accent : (paint?.stroke ?? style.borderColor),
-    "stroke-width": expanded ? 2 : (paint?.strokeWidth ?? style.borderWidth),
+    "stroke-width": frameStrokeWidth(container, style, paint),
     "stroke-dasharray": expanded ? undefined : dashArray,
   };
   children.push(

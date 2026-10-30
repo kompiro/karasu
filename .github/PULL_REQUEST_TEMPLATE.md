@@ -13,6 +13,17 @@
 
 -
 
+## Before / after
+
+<!--
+For a PR that changes what users see (the rendered diagram, the app UI),
+before/after screenshots taken locally with `pnpm pr:shots` and uploaded with
+`gh pr edit <n> --body-file <file> --attach <png>` (docs/process.md PR workflow
+step 10). `pnpm pr:shots` writes this section to reports/pr-shots/<branch>/body.md;
+when it finds no rendering change, paste its "No rendering change" line.
+Write "N/A" for a PR that touches neither rendering code nor examples.
+-->
+
 ## Risk
 
 <!--

@@ -17,7 +17,7 @@ assumptions:
   - "symbol: packages/core/src/renderer/label-placement.ts :: countLabelLinePenetrations"
   - "symbol: packages/core/src/renderer/label-placement.ts :: edgeLine"
   - "file: packages/core/src/renderer/label-placement.test.ts"
-  - "grep: packages/core/src/renderer/svg-renderer.ts :: resolveLabelPlacements\\(labelInputs, nodeRects, edgeLines\\)"
+  - "grep: packages/core/src/renderer/svg-renderer.ts :: resolveLabelPlacements\\(labelInputs, nodeRects, edgeLines, frameBorders\\)"
 ---
 
 # ADR-2360: label placement の障害物にエッジ polyline を加える — 自分の線だけ除外する

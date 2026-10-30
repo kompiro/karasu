@@ -21,6 +21,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2331](2331-adr-automerge-scope.md) — ADR PR の auto-merge 例外は、変更の場所ではなく差分の性質で判定する
 - [ADR-2628](2628-adr-assumption-version-policy.md) — ADR の assumptions に caret レンジの完全な版を書かない（機械チェックで落とす）
 - [ADR-2687](2687-adr-body-is-immutable.md) — ADR 本文は不変 — リンクの張り替えも本文編集として禁じる
+- [ADR-3314](3314-topic-label-sync-check.md) — topic: ラベルと topics の一致を、topics を変える PR の Validate で確かめる
 
 ## app-ui
 
@@ -189,7 +190,9 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3335](3335-refuse-commits-on-main.md) — main へのコミットは lefthook の pre-commit / pre-merge-commit で拒否し、main checkout の未コミット変更を見る Stop フックは廃止する
 - [ADR-3340](3340-converge-fix-the-class.md) — converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけへ CLI を 1 回当てる
 - [ADR-3342](3342-ready-gate-local-review.md) — ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh pr ready を拒否する
+- [ADR-3359](3359-pr-before-after-screenshots.md) — 描画が変わる PR に、merge-base と比べた before/after の画像を添付する
 - [ADR-3381](3381-dependabot-triage-2026-10-26.md) — Dependabot トリアージ 2026-10-26：npm 12 件をそのまま採用し、chokidar 6 は Node 下限の引き上げと同梱する前提で保留、gh-aw-actions は却下して v0.92.0 で再生成する
+- [ADR-3399](3399-dependabot-security-2026-10-30.md) — Dependabot security alert 2026-10-30（qs と serialize-javascript の override floor を修正版へ上げ、launch-editor を override し、@azure/msal-node は @azure/identity 4.14.1 が公開から 1 日経ってから lock 更新で上げる）
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -417,6 +420,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3133](3133-side-column-last-resort-corridor.md) — 側面列の端点へのエッジは、どの候補も成立しないとき、端点の間の空き列で通す
 - [ADR-3134](3134-same-channel-fold.md) — 同じ行間チャネルに降りる corridor / mixed route を、チャネルの中で 1 本の run につなぐ
 - [ADR-3154](3154-frame-bounded-gutters.md) — ドリルダウンのガターは枠の内側のカードで測り、足りない幅を枠の側面に予約する
+- [ADR-3155](3155-label-placement-frame-borders.md) — ずらしたエッジラベルは既定位置と同じ側に留め、枠の線に掛けない
 - [ADR-3309](3309-same-row-whole-side-stubs.md) — 同じ行の経路が stub の席の取り合いで拒否されたとき、最後の候補で席をカードの幅いっぱいまで広げて試す
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel

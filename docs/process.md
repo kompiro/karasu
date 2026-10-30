@@ -73,9 +73,16 @@ Issue が表面化した「失敗の種類」によってラベルを使い分�
 Issue には `topic: <name>` ラベルを 1 つ付ける。`<name>` は
 [`adr.config.json`](../adr.config.json) の `topics` のいずれかで、ADR の `topic` と同じ語彙である。
 
-- 対象は open の Issue すべて（`bug` / `test-infra` / それ以外の種別を問わない）。起票時に付ける
-- 規則より前に起票された open Issue のうち、未付与のものは `status:` ラベルを付け替えるときに付ける。
-  一括での遡及はしない
+- 到達状態: open の Issue は種別（`bug` / `test-infra` / それ以外）を問わず、すべて `topic:` ラベルを
+  ちょうど 1 つ持つ。起票時に付け、ラベルが無い・2 つ以上ある Issue は見つけたらその場で 1 つに直す
+  （残す 1 つは下の「迷ったら」で決める）。workflow が起票した Issue も同じ扱いにする（workflow が起票時に
+  付けるようにするのは #3390）。次のコマンドが何も出力しなければ成り立っている:
+
+  ```bash
+  gh api --paginate 'repos/{owner}/{repo}/issues?state=open&per_page=100' \
+    --jq '.[] | select(.pull_request == null) | select([.labels[].name | select(startswith("topic: "))] | length != 1) | .number'
+  ```
+
 - closed の Issue には遡って付けない（topic 別の判断の履歴は ADR の `topic` が持つ）
 - 各 topic が何を含むかは [`docs/adr/README.md`](adr/README.md)「トピック別」の見出しで判断する
 - 迷ったら、似た内容の既存 ADR で最も多い `topic` に合わせる:
@@ -129,7 +136,7 @@ ready → implementing → in-review → (close)
 7. PR 前に main を取り込む — git fetch origin main && git merge --no-edit origin/main（rebase は使わない。「ブランチ戦略」参照）。コンフリクトを解消し、lint / test を再確認する
 8. base ブランチとの差分（git diff origin/main...HEAD）に、実装の文脈を持たない新しい subagent で /engineering:code-review を当てる。指摘は「指摘の重大度と対応」に従って扱い、直したら修正で触れたファイル全体にもう一度当てる（3 回まで）。lint / test を再確認する。PR はまだ作らない
 9. 同じ差分に CodeRabbit CLI を 1 回だけ当てる（coderabbit review --agent --deep --base origin/main --committed）。指摘は手順 8 と同じ基準で扱い、lint / test を再確認する。修正後に CLI を回し直さない
-10. 段階を判定し（node scripts/review/tier.ts classify。`securityReview` が true なら /security-review も当てる）、手順 8・9 の指摘と対応をローカルレビューの記録として本文に書いて、PR を draft で作成する（gh pr create --draft --label "risk: <段階>"、Closes #N で Issue と紐付ける。Design Doc の PR は Refs #N にして Issue を残す。ADR-3271）。draft には CodeRabbit も分単位の CI も走らない
+10. 段階を判定し（node scripts/review/tier.ts classify。`securityReview` が true なら /security-review も当てる）、手順 8・9 の指摘と対応をローカルレビューの記録として本文に書いて、PR を draft で作成する（gh pr create --draft --label "risk: <段階>"、Closes #N で Issue と紐付ける。Design Doc の PR は Refs #N にして Issue を残す。ADR-3271）。draft には CodeRabbit も分単位の CI も走らない。描画や UI が変わる PR は、本文の `## Before / after` 節に before/after の画像を添付する（Claude が gh pr create を実行すると、フックが促す。仕組みは ADR-3359）
 11. gh pr ready <PR番号> で draft を外す。CI はここで走り、`risk: high` と `risk: design` の PR では CodeRabbit の初回レビューもここで走る（`.coderabbit.yaml` で除外した bot の PR と、base が `main` でない PR を除く）。Claude のセッションでは、手順 9 の CLI のレビューがこのブランチで済んでいないと gh pr ready は拒否され、--draft の無い gh pr create も拒否される（仕組みと、拒否しない場合は ADR-3342）
 12. CI（test / lint / format / typecheck / knip / check:cycles / build、それに段階と記録を検査する Review tier）が通過することを確認する
 13. Issue ラベルを status: in-review に更新する

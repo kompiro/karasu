@@ -11,17 +11,24 @@ import {
   countLabelPenetrations,
   countLabelOverlaps,
   countLabelLinePenetrations,
+  countLabelFrameCrossings,
+  frameBorder,
   type EdgeLine,
+  type FrameBorder,
   type LabelInput,
 } from "./label-placement.js";
 import { segmentCrossesRect, type Rect } from "./edge-geometry.js";
-import type { LayoutEdge } from "./layout-types.js";
+import type { ContainerRect, LayoutEdge } from "./layout-types.js";
+import { rectUnionOutline } from "./frame-geometry.js";
 import type { EdgeDirection } from "../types/style.js";
 import { layout } from "./layout.js";
+import { frameBordersOf, renderFromLayout } from "./svg-renderer.js";
+import { resolvePalette } from "./palette.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { edgeStyleKey } from "../resolver/style-resolver.js";
 import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
+import { StyleParser } from "../parser/style-parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -586,12 +593,23 @@ describe("buildLabelInputs", () => {
   });
 });
 
-/** Lay out a real `examples/` model's system top view and build the placement inputs from it. */
-function sampleInputs(relPath: string) {
+/**
+ * Lay out a real `examples/` model's view (the system top view unless `viewPath`
+ * names a drill-down) and build the placement inputs from it, plus the frames
+ * the canvas draws as placement obstacles.
+ */
+function sampleInputs(
+  relPath: string,
+  viewPath: string[] = [],
+  groupBy?: "team" | "boundary",
+  sheet?: string,
+) {
   const src = readFileSync(resolve(__dirname, "../../../../", relPath), "utf8");
   const parsed = Parser.parse(src);
-  const styles = resolveStyles(parsed.value.systems, [getBuiltinStyleSheet()]);
-  const viewSlice = extractView(parsed.value.systems, []);
+  const sheets = [getBuiltinStyleSheet()];
+  if (sheet !== undefined) sheets.push(StyleParser.parse(sheet, "sheet").value);
+  const styles = resolveStyles(parsed.value.systems, sheets);
+  const viewSlice = extractView(parsed.value.systems, viewPath);
   const edgeDirections = new Map<string, EdgeDirection>();
   for (const [key, e] of styles.edges) {
     if (e.direction !== "auto") edgeDirections.set(key, e.direction);
@@ -600,12 +618,38 @@ function sampleInputs(relPath: string) {
     ownerIndex: parsed.value.ownerIndex,
     layoutHints: styles.layoutHints,
     edgeDirections,
+    groupBy,
   });
   const styleFor = (edge: LayoutEdge) =>
     styles.edges.get(edgeStyleKey(edge.from, edge.to, edge.kind)) ??
     styles.edges.get(`${edge.from}->${edge.to}`) ??
     styles.defaultEdgeStyle;
-  return buildLabelInputs(layoutResult.edges, layoutResult.nodes, styleFor);
+  // The stroke widths the canvas draws the frames with, so the fence and the
+  // canvas cannot drift apart.
+  const frames = frameBordersOf(layoutResult, styles, resolvePalette());
+  return {
+    ...buildLabelInputs(layoutResult.edges, layoutResult.nodes, styleFor),
+    frames,
+    layoutResult,
+    styles,
+  };
+}
+
+/**
+ * Default and final box of every label the pass drew and may move: what the
+ * frame measure compares. An author-positioned label (ADR-1184) stays where the
+ * author put it, so it is left out of the count.
+ */
+function framedBoxesAfter(
+  inputs: LabelInput[],
+  placements: Map<number, { x: number; y: number }>,
+): { defaultBox: Rect; box: Rect }[] {
+  return inputs
+    .filter((i) => i.eligible && i.deferred !== true)
+    .map((i) => ({
+      defaultBox: labelBox(i.anchor, i.width, i.fontSize),
+      box: labelBox(placements.get(i.index) ?? i.anchor, i.width, i.fontSize),
+    }));
 }
 
 describe("real sample fence — ec-platform system top view (#2048)", () => {
@@ -954,7 +998,7 @@ describe("resolveLabelPlacements spatial prefilter parity (#2760)", () => {
     const CASES = 300;
     for (let seed = 1; seed <= CASES; seed++) {
       const { labels, nodeRects, edgeLines, maxSteps } = randomScene(mulberry32(seed));
-      const actual = resolveLabelPlacements(labels, nodeRects, edgeLines, { maxSteps });
+      const actual = resolveLabelPlacements(labels, nodeRects, edgeLines, [], { maxSteps });
       const expected = referenceResolveLabelPlacements(labels, nodeRects, edgeLines, maxSteps);
       expect([...actual.entries()], `seed ${seed}`).toStrictEqual([...expected.entries()]);
     }
@@ -1234,5 +1278,286 @@ describe("dense canvas fence — 41 labelled domain edges over 10 domains (#3022
     // `always` they would be drawn into whatever they land on.
     expect(edges.some((e) => e.ghost)).toBe(true);
     expect(denseCanvasInputs("always", Infinity).inputs.length).toBeLessThan(41);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Frame borders (#3155). A nudge never carries a label onto or across the
+// border of a frame: it stays on the side its default box is on.
+// ---------------------------------------------------------------------------
+
+/** A plain frame rect, as `layout` records a drill-down or group frame. */
+function frame(rect: Rect): ContainerRect {
+  return { id: "F", label: "F", ...rect, ghost: false };
+}
+
+describe("frame borders as placement obstacles (#3155)", () => {
+  /** Frame 0..400 x 0..100. A label anchored at y 90 sits inside, its box spanning y 73..88. */
+  const box: FrameBorder = frameBorder(frame({ x: 0, y: 0, width: 400, height: 100 }), HAIRLINE);
+
+  it("frameBorder traces the widened outline and reads its pieces, not the bounding box", () => {
+    const body: Rect = { x: 0, y: 0, width: 200, height: 100 };
+    const strip: Rect = { x: 200, y: 50, width: 100, height: 50 };
+    const widened: ContainerRect = { ...frame(body), coverage: [body, strip] };
+    const border = frameBorder(widened, 2);
+    const corners = rectUnionOutline([body, strip])!;
+    expect(border.line.points).toEqual([...corners, corners[0]]);
+    expect(border.line.halfStroke).toBe(1);
+    // The notch above the strip is inside the bounding box but outside the
+    // frame: a label moved there from the body has crossed to the other side.
+    const inBody = labelBox({ x: 100, y: 40 }, 40, 11);
+    const inNotch = labelBox({ x: 250, y: 30 }, 40, 11);
+    expect(countLabelFrameCrossings([{ defaultBox: inBody, box: inBody }], [border])).toBe(0);
+    expect(countLabelFrameCrossings([{ defaultBox: inBody, box: inNotch }], [border])).toBe(1);
+  });
+
+  it("frameBorder falls back to the body rect when the coverage is not one polygon, as the canvas does", () => {
+    // A strip with a gap along x: `rectUnionPath` refuses it and the renderer
+    // draws the body `<rect>`, so the island is outside the drawn frame.
+    const body: Rect = { x: 0, y: 0, width: 200, height: 100 };
+    const island: Rect = { x: 300, y: 0, width: 100, height: 100 };
+    const border = frameBorder({ ...frame(body), coverage: [body, island] }, 2);
+    expect(rectUnionOutline([body, island])).toBeNull();
+    expect(border.pieces).toEqual([body]);
+    const inBody = labelBox({ x: 100, y: 60 }, 40, 11);
+    const onIsland = labelBox({ x: 350, y: 60 }, 40, 11);
+    expect(countLabelFrameCrossings([{ defaultBox: inBody, box: onIsland }], [border])).toBe(1);
+  });
+
+  it("countLabelFrameCrossings counts a box on the stroke and a box on the other side", () => {
+    const inside = labelBox({ x: 200, y: 90 }, 80, 11);
+    const onBorder = labelBox({ x: 200, y: 105 }, 80, 11);
+    const outside = labelBox({ x: 200, y: 130 }, 80, 11);
+    expect(countLabelFrameCrossings([{ defaultBox: inside, box: inside }], [box])).toBe(0);
+    expect(countLabelFrameCrossings([{ defaultBox: inside, box: onBorder }], [box])).toBe(1);
+    expect(countLabelFrameCrossings([{ defaultBox: inside, box: outside }], [box])).toBe(1);
+    // Outside is the right side for a label that started outside.
+    expect(countLabelFrameCrossings([{ defaultBox: outside, box: outside }], [box])).toBe(0);
+  });
+
+  it("leaves a label clear of every border where it is (byte-stable)", () => {
+    const inputs = [label(0, { x: 200, y: 90 }, 80)];
+    expect(resolveLabelPlacements(inputs, [], [], [box]).size).toBe(0);
+  });
+
+  it("keeps a nudged label inside the frame it starts in", () => {
+    // A card above the label: the nearest clear spot is one step down, across
+    // the frame's bottom border. The next one inside is four steps up.
+    const card: Rect = { x: 100, y: 40, width: 200, height: 46 };
+    const inputs = [label(0, { x: 200, y: 90 }, 80)];
+    const unframed = resolveLabelPlacements(inputs, [card]);
+    // Precondition: without the border the pass does carry it out (#3155).
+    expect(countLabelFrameCrossings(framedBoxesAfter(inputs, unframed), [box])).toBe(1);
+
+    const overrides = resolveLabelPlacements(inputs, [card], [], [box]);
+    expect(overrides.has(0)).toBe(true);
+    expect(countLabelFrameCrossings(framedBoxesAfter(inputs, overrides), [box])).toBe(0);
+    expect(countLabelPenetrations(boxesAfter(inputs, overrides), [card])).toBe(0);
+  });
+
+  it("moves a label whose default box straddles a border off it, to the side most of it is on", () => {
+    // Box y 88..103 across the bottom border at 100; its centre (95.5) is inside.
+    const inputs = [label(0, { x: 200, y: 105 }, 80)];
+    expect(countLabelFrameCrossings(framedBoxesAfter(inputs, new Map()), [box])).toBe(1);
+    const overrides = resolveLabelPlacements(inputs, [], [], [box]);
+    expect(overrides.get(0)!.y).toBeLessThan(105);
+    expect(countLabelFrameCrossings(framedBoxesAfter(inputs, overrides), [box])).toBe(0);
+  });
+
+  it("treats a default box centred exactly on the border as inside, and moves it in", () => {
+    // Box y 92.5..107.5, centre y 100: on the frame's bottom border. Rects are
+    // closed, so the default side is inside; up and down are tried in turn at
+    // each distance, and only the upward candidates stay on that side.
+    const inputs = [label(0, { x: 200, y: 109.5 }, 80)];
+    const onLine = labelBox(inputs[0].anchor, 80, 11);
+    expect(onLine.y + onLine.height / 2).toBe(100);
+    const below = labelBox({ x: 200, y: 129.5 }, 80, 11);
+    expect(countLabelFrameCrossings([{ defaultBox: onLine, box: below }], [box])).toBe(1);
+
+    const overrides = resolveLabelPlacements(inputs, [], [], [box]);
+    expect(overrides.get(0)!.y).toBeLessThan(109.5);
+    expect(countLabelFrameCrossings(framedBoxesAfter(inputs, overrides), [box])).toBe(0);
+  });
+
+  it("leaves an author-positioned label on a border where the author put it", () => {
+    const pinned: LabelInput = { ...label(0, { x: 200, y: 105 }, 80), eligible: false };
+    expect(resolveLabelPlacements([pinned], [], [], [box]).size).toBe(0);
+    expect(countLabelFrameCrossings(framedBoxesAfter([pinned], new Map()), [box])).toBe(0);
+  });
+
+  it("reaches a thick border that only a diagonal candidate's grown corner touches", () => {
+    // maxSteps 1, step 15: the nine candidates sit on a 15px grid. Two cards
+    // block all of them but (+1, +1), whose box is x 105..125, y 98..113.
+    const cards: Rect[] = [
+      { x: 60, y: 50, width: 44, height: 80 },
+      { x: 60, y: 50, width: 80, height: 47 },
+    ];
+    // A frame corner 46.4px from the default centre (100, 90.5): past the
+    // half-diagonal of the bare box (21.2 + 12.5) but within that of the box
+    // grown by the 10px half stroke (21.2 + 26.6), and inside the grown
+    // corner of the (+1, +1) candidate.
+    const thick = frameBorder(frame({ x: 134, y: 122, width: 100, height: 100 }), 20);
+    const corner = labelBox({ x: 115, y: 115 }, 16, 11);
+    expect(countLabelFrameCrossings([{ defaultBox: corner, box: corner }], [thick])).toBe(1);
+
+    const unframed = { ...label(0, { x: 100, y: 100 }, 16), deferrable: true };
+    // Precondition: without the border the diagonal is the one clear seat.
+    expect(resolveLabelPlacements([unframed], cards, [], [], { maxSteps: 1 }).get(0)).toEqual({
+      x: 115,
+      y: 115,
+    });
+
+    const framed = { ...label(0, { x: 100, y: 100 }, 16), deferrable: true };
+    const overrides = resolveLabelPlacements([framed], cards, [], [thick], { maxSteps: 1 });
+    expect(framed.deferred).toBe(true);
+    expect(overrides.has(0)).toBe(false);
+  });
+
+  it("keeps a label that starts outside a frame outside it", () => {
+    // Below the frame, a card on the label: two steps up would be clear but
+    // inside the frame; the pass goes down past the card instead.
+    const card: Rect = { x: 100, y: 110, width: 200, height: 50 };
+    const inputs = [label(0, { x: 200, y: 130 }, 80)];
+    const unframed = resolveLabelPlacements(inputs, [card]);
+    expect(countLabelFrameCrossings(framedBoxesAfter(inputs, unframed), [box])).toBe(1);
+
+    const overrides = resolveLabelPlacements(inputs, [card], [], [box]);
+    expect(overrides.get(0)!.y).toBeGreaterThan(130);
+    expect(countLabelFrameCrossings(framedBoxesAfter(inputs, overrides), [box])).toBe(0);
+    expect(countLabelPenetrations(boxesAfter(inputs, overrides), [card])).toBe(0);
+  });
+
+  it("under `auto`, defers a label whose only clear seat is across the border", () => {
+    // A card filling the frame above the label: inside, nothing is clear.
+    const card: Rect = { x: 0, y: 0, width: 400, height: 86 };
+    const unframed = { ...label(0, { x: 200, y: 90 }, 80), deferrable: true };
+    resolveLabelPlacements([unframed], [card]);
+    expect(unframed.deferred).toBeUndefined();
+
+    const framed = { ...label(0, { x: 200, y: 90 }, 80), deferrable: true };
+    const overrides = resolveLabelPlacements([framed], [card], [], [box]);
+    expect(framed.deferred).toBe(true);
+    expect(overrides.has(0)).toBe(false);
+  });
+
+  it("never takes a frame border for the edge a label belongs to (ambiguity reads edges only)", () => {
+    // A card blocks the label from 3 steps up to 4 steps down. The first clear
+    // seat is 4 steps up (y 30): 25px under the frame's top border, 60px from
+    // its own line. Counted as a line, the border would make that seat
+    // ambiguous and send the label on to the next clear one, 5 steps down.
+    const tall: FrameBorder = frameBorder(frame({ x: 0, y: 5, width: 400, height: 400 }), HAIRLINE);
+    const own = edgeLine(
+      0,
+      [
+        { x: 0, y: 90 },
+        { x: 400, y: 90 },
+      ],
+      HAIRLINE,
+    );
+    const card: Rect = { x: 100, y: 35, width: 200, height: 105 };
+    const inputs = [label(0, { x: 200, y: 90 }, 80)];
+    const overrides = resolveLabelPlacements(inputs, [card], [own], [tall]);
+    expect(overrides.get(0)).toEqual({ x: 200, y: 30 });
+  });
+});
+
+describe("real sample fence: frames (#3155)", () => {
+  /**
+   * Every label the pass drew is on the side of every frame its default box is
+   * on and off every border, and the other three measures stay zero: clearing
+   * frames must not trade it for a card, a label or a line (TPL-2048).
+   */
+  function expectFramesClear(relPath: string, viewPath: string[], groupBy?: "team" | "boundary") {
+    const { inputs, nodeRects, edgeLines, frames } = sampleInputs(relPath, viewPath, groupBy);
+    // Precondition: without the borders the pass does put labels on or across
+    // them in this view, so the fence is not vacuous (TPL-1954).
+    const unframed = resolveLabelPlacements(inputs, nodeRects, edgeLines);
+    expect(countLabelFrameCrossings(framedBoxesAfter(inputs, unframed), frames)).toBeGreaterThan(0);
+
+    const overrides = resolveLabelPlacements(inputs, nodeRects, edgeLines, frames);
+    expect(countLabelFrameCrossings(framedBoxesAfter(inputs, overrides), frames)).toBe(0);
+    const after = boxesAfter(inputs, overrides);
+    expect(countLabelPenetrations(after, nodeRects)).toBe(0);
+    expect(countLabelOverlaps(after)).toBe(0);
+    expect(countLabelLinePenetrations(ownedBoxesAfter(inputs, overrides), edgeLines)).toBe(0);
+  }
+
+  it("hr-tool Auth drill-down: labels stay inside the drill-down frame", () => {
+    expectFramesClear("examples/en/hr-tool/system.krs", ["HRTool", "Auth"]);
+  });
+
+  it("the renderer draws the labels where the frame-aware pass put them", () => {
+    const { inputs, nodeRects, edgeLines, frames, layoutResult, styles } = sampleInputs(
+      "examples/en/hr-tool/system.krs",
+      ["HRTool", "Auth"],
+    );
+    const unframed = resolveLabelPlacements(inputs, nodeRects, edgeLines);
+    const framed = resolveLabelPlacements(inputs, nodeRects, edgeLines, frames);
+    const changed = [...framed].filter(([i, a]) => {
+      const b = unframed.get(i);
+      return b === undefined || b.x !== a.x || b.y !== a.y;
+    });
+    // Precondition: the frames move at least one label in this view.
+    expect(changed.length).toBeGreaterThan(0);
+    const svg = renderFromLayout(layoutResult, styles);
+    for (const [, a] of changed) {
+      // `renderEdge` puts the text baseline 6px above the anchor.
+      expect(svg).toContain(`x="${a.x}" y="${a.y - 6}" text-anchor="middle"`);
+    }
+  });
+
+  it("measures every frame at the stroke width the canvas paints it with", () => {
+    // Ghost ancestors, group frames and an in-place expansion each take their
+    // width down a different path; the label pass must read the same one the
+    // canvas draws, or a label can sit on a stroke it thinks is thinner. The
+    // team sheet and the expansion give different widths, so a mix-up between
+    // those two paths shows. A ghost here is only checked to match: without a
+    // group axis its paint resolves the same down either path.
+    const drill = sampleInputs("examples/en/hr-tool/system.krs", ["HRTool", "Auth"]);
+    // A team sheet widens the team frames to 5, which the expansion ignores (2).
+    const grouped = sampleInputs(
+      "examples/en/feature-samples/team-ownership.krs",
+      [],
+      "team",
+      "team { border-width: 5; }",
+    );
+    const [first, ...rest] = grouped.layoutResult.containers;
+    const expanded = {
+      ...grouped.layoutResult,
+      containers: [{ ...first, expanded: true }, ...rest],
+    };
+    const views = [
+      { layoutResult: drill.layoutResult, styles: drill.styles },
+      { layoutResult: expanded, styles: grouped.styles },
+    ];
+    const all = views.flatMap((v) => v.layoutResult.containers);
+    // Precondition: all three kinds are present.
+    expect(all.some((c) => c.ghost)).toBe(true);
+    expect(all.some((c) => c.group === true && !c.expanded)).toBe(true);
+    expect(all.some((c) => c.expanded === true)).toBe(true);
+    const widths = views.flatMap((v) =>
+      frameBordersOf(v.layoutResult, v.styles, resolvePalette()).map((b) => b.line.halfStroke * 2),
+    );
+    // Precondition: the team-sheet and expansion paths give different widths.
+    expect(new Set(widths).size).toBeGreaterThan(1);
+
+    for (const { layoutResult, styles } of views) {
+      const svg = renderFromLayout(layoutResult, styles);
+      const painted = new Map<string, number>();
+      for (const m of svg.matchAll(
+        /data-container-id="([^"]+)"[^>]*>\s*<(?:rect|path)\b[^>]*?stroke-width="([^"]+)"/g,
+      )) {
+        painted.set(m[1], Number(m[2]));
+      }
+      const borders = frameBordersOf(layoutResult, styles, resolvePalette());
+      const measured = new Map(
+        layoutResult.containers.map((c, i) => [c.id, borders[i].line.halfStroke * 2]),
+      );
+      expect(measured).toEqual(painted);
+    }
+  });
+
+  it("team-ownership top view grouped by team: labels stay off the team frames", () => {
+    expectFramesClear("examples/en/feature-samples/team-ownership.krs", [], "team");
   });
 });

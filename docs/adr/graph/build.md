@@ -136,7 +136,9 @@ flowchart TD
     ADR_3340["ADR-3340<br/>converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけ..."]
     ADR_3342["ADR-3342<br/>ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh..."]
     ADR_3350["ADR-3350<br/>リリーストレインの PR の段階を、差分が changeset version の出力だけなら..."]
+    ADR_3359["ADR-3359<br/>描画が変わる PR に、merge-base と比べた before/after の画像を添付する"]
     ADR_3381["ADR-3381<br/>Dependabot トリアージ 2026-10-26：npm 12 件をそのまま採用し、ch..."]
+    ADR_3399["ADR-3399<br/>Dependabot security alert 2026-10-30（qs と seria..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -328,7 +330,9 @@ flowchart TD
   class ADR_3340 accepted
   class ADR_3342 accepted
   class ADR_3350 not_adopted
+  class ADR_3359 accepted
   class ADR_3381 accepted
+  class ADR_3399 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost
