@@ -26,6 +26,8 @@ assumptions:
   - "grep: docs/process.md :: 発火条件"
   - "symbol: scripts/lint/process-index.ts :: SIZE_BUDGET"
   - "grep: package.json :: \"lint:process-index\""
+  - "grep: lefthook.yml :: lint:process-index"
+  - "grep: .coderabbit.yaml :: docs/process/\\*\\.md"
   - "grep: .github/workflows/reference-docs-check.yml :: lint:process-index"
   - "grep: .github/workflows/reference-docs-check.yml :: adr:check-assumptions"
   - "grep: scripts/review/tier.ts :: \"docs/process/\\*\\*\""
@@ -90,19 +92,19 @@ ADR-2356（2026-08-05）は規約を読まれる時点で 3 層（常時 / 発�
 
 `pnpm lint:process-index`（`scripts/lint/process-index.ts`）は次のときに落ちる。
 
-1. `docs/process/**/*.md` のうち、索引からリンクされていないファイルがある
+1. `docs/process/**/*.md` のうち、索引の行が名指ししていない（リンクもバッククォートのパスも無い）ファイルがある
 2. 索引の行がファイルを名指ししていない、または指し先が無い
 3. `docs/process.md` と `docs/process/**` の相対リンクの指し先が無い（移動で `../` を足し忘れたリンクを拾う）
-4. 索引の行の「発火条件」が空（列は見出しの名前で探すので、列名を変えない）
+4. 索引の行の「発火条件」が空（列は見出しの名前「正本」「発火条件」で探すので、列名を変えない）
 5. `docs/process.md` が 16,384 バイトを超える
 
 lefthook の pre-push と `reference-docs-check.yml` で走る。`ci.yml` は `docs/**` を無視するので、process だけを
 変える PR は `reference-docs-check.yml` が拾う。この workflow は索引が名指す `.claude/rules/**` と
-`docs/release.md` でも発火し、`adr check-assumptions` も走らせる（トピックファイルの見出しを変える PR を
+`docs/release.md` でも発火し、`pnpm adr:check-assumptions` も走らせる（トピックファイルの見出しを変える PR を
 CI で落とすため）。`docs-site-ci-paths-sync` は `.claude/rules/docs-site-preview.md` の `paths:` が
 `docs-preview.yml` の `paths:` と一致することも検査する。
 
-`scripts/review/tier.ts` の `HIGH_GLOBS` と `.coderabbit.yaml` の規約のパターンは `docs/process/**` を含む。
+`scripts/review/tier.ts` の `HIGH_GLOBS` は `docs/process/**`、`.coderabbit.yaml` の規約のパターンは `docs/process/*.md` を含む。
 process のトピックの変更は process.md と同じく High になる。
 
 ### 移した文章の扱い
