@@ -105,6 +105,7 @@ routine の仕事は repo のスクリプト 1 本を実行して結果を報告
 - 生成物の更新が Claude の routine という repo の外の仕組みに依存する。止まったことに気づく仕組みが別に要る（下の「鮮度の見張り」）。
 - 再生成の PR が 1 日最大 1 本増える（ADR をマージしなかった日は 0 本）。
 - 人ではない動き手が増える。routine はユーザーの GitHub の名義で、人が見ていないときに PR を作り auto-merge を有効にする。手元の Claude のセッションが今できることと同じで新しい権限ではないが、無人で毎日動く。auto-merge で入るものは `Validate` の検査で生成物だけに限る。
+- routine は依存を install して生成器を動かすので、その同じ実行の中にユーザーの GitHub の書き込み権限がある。依存の 1 つが乗っ取られればその権限を使える。これは手元の Claude のセッションや人が `pnpm install` を実行するときと同じ露出で、routine だけが持つ新しい穴ではないが、無人で毎日走るぶん機会は増える。lockfile の固定（`--frozen-lockfile`）と、Dependabot の cooldown・`minimumReleaseAge` による新しい版の待ちで減らす。権限を生成から切り離す仕組みは、routine の実行環境が提供しないので作らない（「未解決の問い」）。
 
 ### 却下: merge queue
 
@@ -146,6 +147,7 @@ auto-merge の安全は routine の prompt ではなく、required check の `Va
 1. **再生成の PR を作るスクリプトを足す**（`pnpm adr:regenerate-pr`）。routine も人も同じものを実行する。
    - `origin/main` を fetch し、そこから固定のブランチ `chore/adr-regenerate` を作り直して `adr regenerate` を実行する。出力先のディレクトリ（`graph/`）は生成結果で置き換え、生成されなくなったファイルを消す。
    - 差分が無ければ、開いている再生成の PR を閉じてブランチを消し、終える。
+   - routine と人が同時に実行しても互いを壊さない。再生成の PR は本文に印（`<!-- adr-regenerate -->`）を持ち、スクリプトは印とブランチ名の両方が合う PR だけを更新・クローズする（合わなければ何もせず失敗する）。ブランチの上書きは `--force-with-lease=chore/adr-regenerate:<開始時に見た SHA>` で行い、間に別の実行が push していれば失敗する。auto-merge を戻すのは、PR の head が自分の push した commit であることを確かめてから。
    - 差分があれば生成物だけを commit する。開いている再生成の PR があれば、`gh pr merge --disable-auto` で auto-merge を外してからブランチを上書きで push し、auto-merge を戻す（`.claude/rules/adr.md` の「push の前に auto-merge を解く」と同じ順）。無ければ push して `chore(adr): regenerate the ADR index` の PR を `risk: low` で作り、ready にして `gh pr merge --auto --squash --delete-branch` を有効にする。
    - どの段階の失敗でも非 0 で終わる（TPL-2786）。
 2. **Review tier に、生成物だけの PR の扱いを足す**（`scripts/review/**` を変えるので、この PR は High）。今の Review tier は Low の PR にローカルレビューの記録と CodeRabbit CLI の実行を求め、`Waived:` の記録を Low では落とす。生成物だけの PR は、上の「再生成の PR」の条件を `Validate` が確かめるので、記録を求めない。判定は `Validate` と同じ G と同じ差分の取り方で行い、2 つの検査がずれないようにする。
@@ -163,6 +165,7 @@ auto-merge の安全は routine の prompt ではなく、required check の `Va
    - `pnpm adr:regenerate-pr` を実行すると、生成物だけを変える PR が `risk: low` と auto-merge で作られ、Review tier と `Validate` が通ってマージされ、マージ後の `main` で `adr regenerate --check` が通る。
    - 差分が無い日に実行すると、PR を作らない（開いている再生成の PR があれば閉じる）。差分があり、auto-merge が有効な再生成の PR が開いていれば、auto-merge を外してから更新し、戻す。
    - `main` が進んだ後の再生成の PR でも、`Validate` は head で判定して通る。
+   - スクリプトを 2 つ同時に実行すると、片方は lease か PR の head の確認で失敗し、もう片方の結果だけが PR に残る。印の無い PR（同じブランチ名で人が開いた PR など）は更新もクローズもしない。
    - `Validate` が落ちる PR: 生成物と ADR を両方変える、生成物を古い中身や手で書き換えた中身にする、`graph/` に余分なファイルを足す、生成物を消す、ADR を `graph/` の下へ rename する、生成器を壊す（`package.json` だけの版上げを含む）。
    - `paths.outputs` を変える PR は、古い出力の削除だけを含めて通り、その後の再生成の PR が新しい出力先を作って通る。
    - `@kompiro/adr-tools` の版上げで出力が変わると、次の再生成の PR で `main` の生成物が更新される。
@@ -181,4 +184,5 @@ auto-merge の安全は routine の prompt ではなく、required check の `Va
 
 - **TPL の索引（#3289）を同じスクリプトに載せるか。** 載せる前提で、生成器と出力先の組をスクリプトが一覧で持てる形にしておく。実際に載せるのは #3289 が入ってから決める。
 - **routine の時刻。** ADR のマージが多い時間帯の後に置く。具体的な時刻は実装で決める。
+- **書き込み権限を生成から切り離すか。** 生成を権限の無い環境で行い、生成物だけを権限のある短いスクリプトに渡せば、依存の乗っ取りで権限を使われる穴は閉じる。routine の実行環境はこの分離を提供しないので、今は lockfile と版の待ちで減らすに留める。分離できる実行環境が使えるようになったら見直す。
 - **routine 以外の起動。** ADR のマージ直後に再生成したい場面が増えたら、マージをきっかけに routine を起動する形を検討する。いまは 1 日 1 回と手動で足りると見る。
