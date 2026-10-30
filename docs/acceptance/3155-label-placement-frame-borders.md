@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-10-22
 - **関連 Issue**: [#3155](https://github.com/kompiro/karasu/issues/3155)
+- **設計 (ADR)**: [ADR-3155](../adr/3155-label-placement-frame-borders.md)
 - **関連 ADR**: [ADR-2048](../adr/2048-edge-label-collision-avoidance.md)、[ADR-2360](../adr/2360-label-placement-line-obstacles.md)、[ADR-3022](../adr/3022-edge-label-disclosure.md)、[ADR-3132](../adr/3132-frame-bounded-channels.md)、[ADR-3154](../adr/3154-frame-bounded-gutters.md)、[ADR-1184](../adr/1184-edge-label-position-offset.md)
 - **Related TPLs**: [TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md), [TPL-3132](../test-perspectives/TPL-3132-resource-inside-a-frame-measured-against-the-frame.md), [TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md), [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)
 - **対象ファイル**: `packages/core/src/renderer/label-placement.ts`（`frameBorder` / `countLabelFrameCrossings` / `resolveLabelPlacements`）、`packages/core/src/renderer/frame-geometry.ts`（`drawnFrame` / `rectUnionOutline`）、`packages/core/src/renderer/svg-renderer.ts`
