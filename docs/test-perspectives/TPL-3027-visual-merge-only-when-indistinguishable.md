@@ -69,4 +69,5 @@ ADR-2958 は種別の違う edge を同じ束に入れない。この観点は�
 
 ## 関連テスト
 
-（未確立。#3027 の実装 PR で、条件を 1 つずつ外した組のテストを足す）
+- `packages/core/src/renderer/edge-routing-lane-bundles.test.ts`「never bundles a sync edge with an async one (#2490)」: 種別の違う edge を同じ lane の束にまとめない
+- #3027 の実装 PR で、条件を 1 つずつ外した両方向の組のテストを足す
