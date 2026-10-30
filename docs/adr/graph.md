@@ -195,6 +195,7 @@ flowchart TD
     ADR_3326["ADR-3326<br/>draft を外す前に CodeRabbit CLI を base ブランチとの差分へ 1 回..."]
     ADR_3333["ADR-3333<br/>Claude が gh pr ready を実行した直後に、PostToolUse フックで ..."]
     ADR_3335["ADR-3335<br/>main へのコミットは lefthook の pre-commit / pre-merge-..."]
+    ADR_3337["ADR-3337<br/>docs/process.md を常時読む核と、作業を始めたときに読むトピックに分ける"]
     ADR_3340["ADR-3340<br/>converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけ..."]
     ADR_3342["ADR-3342<br/>ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh..."]
     ADR_3350["ADR-3350<br/>リリーストレインの PR の段階を、差分が changeset version の出力だけなら..."]
@@ -427,6 +428,7 @@ flowchart TD
     ADR_3134["ADR-3134<br/>同じ行間チャネルに降りる corridor / mixed route を、チャネルの中で 1..."]
     ADR_3154["ADR-3154<br/>ドリルダウンのガターは枠の内側のカードで測り、足りない幅を枠の側面に予約する"]
     ADR_3155["ADR-3155<br/>ずらしたエッジラベルは既定位置と同じ側に留め、枠の線に掛けない"]
+    ADR_3309["ADR-3309<br/>同じ行の経路が stub の席の取り合いで拒否されたとき、最後の候補で席をカードの幅いっぱいま..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -1109,10 +1111,12 @@ flowchart TD
   class ADR_3271 accepted
   class ADR_3286 accepted
   class ADR_3304 accepted
+  class ADR_3309 accepted
   class ADR_3314 accepted
   class ADR_3326 accepted
   class ADR_3333 accepted
   class ADR_3335 accepted
+  class ADR_3337 accepted
   class ADR_3340 accepted
   class ADR_3342 accepted
   class ADR_3350 not_adopted
