@@ -30,8 +30,8 @@
 - [x] deploy / org view が無視する `column` の warning は、それぞれの view の compile と同じものが出る。
   > ✅ Automated — `packages/core/src/compile/all-views-project-styles.test.ts` › `reports what the deploy and org views ignore, as their own compiles do`
 
-- [x] 2 つのノードが同じ id を持つとき、per-view の compile と同じく finding はノードごとに出る。
-  > ✅ Automated — `packages/core/src/compile/all-views-project-styles.test.ts` › `keeps a finding per node when two nodes share an id, as the per-view compile does`
+- [x] 2 つのノードが同じ id を持つとき、共有された宣言の不正な値の finding は、per-view の compile と同じく 1 件だけ出る（#3141 でノードごとの警告を廃止）。
+  > ✅ Automated — `packages/core/src/compile/all-views-project-styles.test.ts` › `reports a declaration once when two nodes share an id, as the per-view compile does`
 
 - [x] deploy block が複数あるとき、bundle が描く block（per-view の deploy view と同じ先頭の block）のノードについてだけ報告する。
   > ✅ Automated — `packages/core/src/compile/all-views-project-styles.test.ts` › `reports only the deploy block the bundle draws`

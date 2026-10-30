@@ -1,6 +1,7 @@
 import type { Diagnostic } from "../types/ast.js";
 import type { DeclarationTrivia, StyleRule, StyleSheet } from "../types/style.js";
 import { StyleParser } from "../parser/style-parser.js";
+import { satisfiesPropertySchema } from "./value-validator.js";
 import { axisOfProperty, AXIS_ORDER } from "./property-axes.js";
 import { formatSelector, serializeStyleSheet } from "./serialize.js";
 
@@ -72,6 +73,12 @@ export function tidyStyleSheet(input: string, options: TidyOptions = {}): TidyRe
  * survivor in original source order; declaration trivia of properties
  * present in both keeps the first occurrence's `leading` and accumulates
  * `trailing` from later occurrences.
+ *
+ * A rule holding a declaration the cascade would drop (#3141) is not merged
+ * into an earlier one: cascade-tail-wins would let its invalid value replace
+ * a valid one there, and the cascade would then fall to the default instead
+ * of that valid value. It starts a new group, so later rules merge into it
+ * and the order of the declarations that take effect is unchanged.
  */
 function mergeDuplicateRules(sheet: StyleSheet): StyleSheet {
   const seen = new Map<string, number>(); // signature → index in `merged`
@@ -81,7 +88,7 @@ function mergeDuplicateRules(sheet: StyleSheet): StyleSheet {
     const sig = selectorSignature(rule);
     const existingIdx = seen.get(sig);
 
-    if (existingIdx === undefined) {
+    if (existingIdx === undefined || holdsDroppedDeclaration(rule)) {
       seen.set(sig, merged.length);
       merged.push({ ...rule, properties: { ...rule.properties } });
       continue;
@@ -93,6 +100,15 @@ function mergeDuplicateRules(sheet: StyleSheet): StyleSheet {
   }
 
   return { ...sheet, rules: merged };
+}
+
+function holdsDroppedDeclaration(rule: StyleRule): boolean {
+  const nodes = rule.valueNodes;
+  if (!nodes) return false;
+  return Object.keys(rule.properties).some((property) => {
+    const node = nodes[property];
+    return node !== undefined && !satisfiesPropertySchema(property, node);
+  });
 }
 
 function selectorSignature(rule: StyleRule): string {

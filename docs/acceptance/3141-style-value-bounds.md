@@ -23,7 +23,9 @@ type: product
 
 - [x] AT-B: `grid-columns` の範囲外・非整数は、ノードの数によらず宣言ごとに 1 件だけ報告される
 
-  > ✅ Automated — `packages/core/src/compile/all-views-project-styles.test.ts` › `reports a declaration once when two nodes share an id, as the per-view compile does`
+  > ✅ Automated — `packages/core/src/style/schema-bounds.test.ts` › `TPL-3141: every bound in PROPERTY_SCHEMAS drops an out-of-range value once` › `%s: %s`
+  >
+  > ✅ Automated — `packages/core/src/style/value-validator.test.ts` › `validateStyleValues — values the schema reads one way (#3141)` › `reports grid-columns: %s once, as out of range`
   >
   > ✅ Automated — `packages/core/src/style/value-validator.test.ts` › `validateStyleValues — values the schema reads one way (#3141)` › `asks for an integer where only an integer will do`
 

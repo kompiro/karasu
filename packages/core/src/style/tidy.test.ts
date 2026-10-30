@@ -281,3 +281,19 @@ describe("tidyStyleSheet — sheets with a parse error", () => {
     expect(result.diagnostics.some((d) => d.severity === "error")).toBe(true);
   });
 });
+
+// #3141: cascade-tail-wins merging would let a value the cascade drops replace
+// a valid one, and the cascade would fall to the default instead.
+describe("tidyStyleSheet — rules holding a dropped declaration", () => {
+  it("does not merge such a rule into an earlier one", () => {
+    const input = `service {\n  opacity: 0.5;\n}\n\nservice {\n  opacity: 2;\n}\n`;
+    expect(tidyStyleSheet(input).output).toBe(input);
+  });
+
+  it("lets later rules merge into it, keeping the order that takes effect", () => {
+    const input = `service { opacity: 0.5; }\nservice { opacity: 2; }\nservice { color: red; }\n`;
+    expect(tidyStyleSheet(input).output).toBe(
+      `service {\n  opacity: 0.5;\n}\n\nservice {\n  opacity: 2;\n  color: red;\n}\n`,
+    );
+  });
+});

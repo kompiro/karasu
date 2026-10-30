@@ -305,6 +305,12 @@ describe("validateStyleValues — values the schema reads one way (#3141)", () =
     expect(diags.map((d) => d.code)).toEqual(["style-out-of-range"]);
   });
 
+  it.each(["0", "-2"])("reports grid-columns: %s once, as out of range", (value) => {
+    const diags = validate(`system { grid-columns: ${value}; }`);
+    expect(diags.map((d) => d.code)).toEqual(["style-out-of-range"]);
+    expect(diags[0].params).toMatchObject({ property: "grid-columns", min: 1 });
+  });
+
   it("asks for an integer where only an integer will do", () => {
     const diags = validate(`system { grid-columns: 2.5; }`);
     expect(diags.map((d) => d.params)).toEqual([
