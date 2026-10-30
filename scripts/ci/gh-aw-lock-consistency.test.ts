@@ -159,14 +159,19 @@ describe("gh-aw lock files", () => {
     // its own version here, so this is what says the compiler that wrote the
     // file and the setup action it installs are one release. Comparing against
     // a single lock entry would go wrong the moment the lock carries two.
+    // Tag-form `uses:` (rewritten by `gh actions-lock`) count too: a bot bump of
+    // that line alone moves the setup the workflow runs, not the manifest.
     const mismatches = workflows.flatMap((workflow) => {
       const compiled = compilerVersion(workflow.text) ?? "(absent)";
       const pinned = [
-        ...new Set(
-          pinsOf(SETUP_REPO)
+        ...new Set([
+          ...pinsOf(SETUP_REPO)
             .filter((pin) => pin.workflow === workflow.name)
             .map((pin) => pin.version),
-        ),
+          ...usesRefs(workflow.text)
+            .filter((ref) => ref.startsWith(`${SETUP_REPO}@`) && !/@[0-9a-f]{40}$/.test(ref))
+            .map((ref) => ref.slice(SETUP_REPO.length + 1)),
+        ]),
       ];
       return pinned.every((version) => version === compiled)
         ? []
