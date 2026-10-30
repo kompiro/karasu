@@ -84,6 +84,8 @@ const ADR_GENERATED_GLOBS: readonly string[] = [
 /** An ADR record, `docs/adr/<n>-<name>.md` (not README or TEMPLATE). */
 const ADR_RECORD = /^docs\/adr\/\d+-[^/]+\.md$/;
 const DESIGN_DOC = /^docs\/design\/[^/]+\.md$/;
+/** A new ADR whose path may stand as a link target in a promotion's link rules. */
+const LINKABLE_ADR = /^docs\/adr\/\d+-[a-z0-9-]+\.md$/;
 
 /** A diff touching these also gets `/security-review`, whatever its tier. */
 const SECURITY_GLOBS: readonly string[] = [
@@ -484,56 +486,88 @@ export function isLinkSwap(
   return normalize(removed) === normalize(added);
 }
 
-/** A list item that is only a bold label, such as `- **設計 (ADR)**:`. */
-const LABEL_ONLY = /^\s*[-*]\s+\*\*[^*]+\*\*\s*[:：]\s*$/;
+/** The labels of an ADR line in a record: `- **設計 (ADR)**:`, `- **関連 ADR**:` and their spellings. */
+const ADR_LINE_LABEL = /^(?:設計 ?[(（]ADR[)）]|関連 ?ADR|ADR)$/;
+/** A labelled list item: the label, the colon, and the value after it. */
+const LABELLED_ITEM = /^- \*\*([^*]+)\*\*([:：])(\s*)(.*?)\s*$/;
 /** What joins two links in a list of them. */
-const LINK_SEPARATOR = "\\s*[、,，]\\s*";
+const LINK_SEPARATOR = /^\s*[、,，]\s*/;
+const TRAILING_SEPARATOR = /\s*[、,，]\s*$/;
 
 /**
- * Whether one hunk only inserts links to an ADR added in the same PR (#3405).
- * An AT record points at its Issue, never at a Design Doc (ADR-2348), so its
- * promotion PR adds the ADR link rather than swapping one (ADR-2331). Deleting
- * every inserted link, with the separator that joined it to a neighbour, must
- * leave exactly the removed lines. A line that held such a link and is left
- * with only its list label (`- **設計 (ADR)**: [ADR-12](../adr/12-x.md)`) was
- * added whole and counts as nothing. The link text must be a name of the ADR,
- * as in a swap.
+ * How many links a value is, when it is nothing but links to `adrs` joined by
+ * separators; 0 otherwise. Each link must point at one ADR and carry a name of
+ * that same ADR as its text.
+ */
+function adrLinksOnly(value: string, adrs: readonly string[]): number {
+  let rest = value;
+  let count = 0;
+  for (;;) {
+    const m = /^\[([^\]]*)\]\(([^)\s]+)\)/.exec(rest);
+    if (!m) return 0;
+    const adr = adrs.find((p) => new RegExp(`^${referenceSource([p])}$`).test(m[2]));
+    if (adr === undefined || !isNameIn(namesOf([adr]), m[1])) return 0;
+    count++;
+    rest = rest.slice(m[0].length);
+    if (rest === "") return count;
+    const sep = LINK_SEPARATOR.exec(rest);
+    if (!sep) return 0;
+    rest = rest.slice(sep[0].length);
+  }
+}
+
+/** An ADR line added whole: its value is only links to the new ADRs. */
+function isNewAdrLine(line: string, adrs: readonly string[]): boolean {
+  const m = LABELLED_ITEM.exec(line);
+  return m !== null && ADR_LINE_LABEL.test(m[1]) && adrLinksOnly(m[4], adrs) > 0;
+}
+
+/**
+ * An ADR line whose value only gained links to the new ADRs: filled when it was
+ * empty, or extended at its start or its end. The label, the colon and the
+ * existing value stay as they were.
+ */
+function gainedAdrLinks(removed: string, added: string, adrs: readonly string[]): boolean {
+  const before = LABELLED_ITEM.exec(removed);
+  const after = LABELLED_ITEM.exec(added);
+  if (before === null || after === null || !ADR_LINE_LABEL.test(before[1])) return false;
+  if (before[1] !== after[1] || before[2] !== after[2]) return false;
+  const [old, now] = [before[4], after[4]];
+  if (old === "") return adrLinksOnly(now, adrs) > 0;
+  if (now.endsWith(old)) {
+    const head = now.slice(0, now.length - old.length);
+    const sep = TRAILING_SEPARATOR.exec(head);
+    if (sep && adrLinksOnly(head.slice(0, sep.index), adrs) > 0) return true;
+  }
+  if (now.startsWith(old)) {
+    const tail = now.slice(old.length);
+    const sep = LINK_SEPARATOR.exec(tail);
+    if (sep && adrLinksOnly(tail.slice(sep[0].length), adrs) > 0) return true;
+  }
+  return false;
+}
+
+/**
+ * Whether one hunk only adds links to ADRs added in the same PR (#3405). An AT
+ * record points at its Issue, never at a Design Doc (ADR-2348), so its
+ * promotion PR adds the ADR link rather than swapping one (ADR-2331). Only an
+ * ADR line of a record (`- **設計 (ADR)**:`, `- **関連 ADR**:`) may change: a
+ * new one whose value is only links to the new ADRs, or an existing one that
+ * gains such links at the start or end of its value. Every removed line must
+ * be one of those existing lines, in order.
  */
 export function isLinkInsert(
   removed: readonly string[],
   added: readonly string[],
   newAdrs: readonly string[],
 ): boolean {
-  const ref = referenceSource(newAdrs);
-  if (ref === null) return false;
-  const names = namesOf(newAdrs);
-  const link = new RegExp(`\\[([^\\]]*)\\]\\(${ref}\\)`, "g");
-  // Each inserted link becomes a mark first, so a run of them is removed in one
-  // go: with the separator before each mark, then a leading mark with the
-  // separator after it.
-  const MARK = "⟦adr⟧";
-  const afterNeighbour = new RegExp(`(?:${LINK_SEPARATOR}${MARK})+`, "g");
-  const leading = new RegExp(`${MARK}(?:${LINK_SEPARATOR})?`, "g");
-  let inserted = 0;
-  const left: string[] = [];
+  if (newAdrs.length === 0 || added.length === 0) return false;
+  let i = 0;
   for (const line of added) {
-    if (line.includes(MARK)) return false;
-    let stripped = false;
-    const rest = line
-      .replace(link, (m, text: string) => {
-        if (!isNameIn(names, text)) return m;
-        stripped = true;
-        inserted++;
-        return MARK;
-      })
-      .replace(afterNeighbour, "")
-      .replace(leading, "");
-    if (stripped && LABEL_ONLY.test(rest)) continue;
-    left.push(rest);
+    if (i < removed.length && gainedAdrLinks(removed[i], line, newAdrs)) i++;
+    else if (!isNewAdrLine(line, newAdrs)) return false;
   }
-  return (
-    inserted > 0 && left.length === removed.length && left.every((line, i) => line === removed[i])
-  );
+  return i === removed.length;
 }
 
 /**
@@ -609,8 +643,10 @@ export function classifyChange(input: {
   if (input.files.length === 0) reasons.push("no changed files");
 
   const promotion = {
+    // A file name outside this shape is not used as a link target: its text is
+    // matched against links, so `)` or `]` in it could carry prose (#3405).
     newAdrs: input.files
-      .filter((f) => f.status === "added" && ADR_RECORD.test(f.path))
+      .filter((f) => f.status === "added" && LINKABLE_ADR.test(f.path))
       .map((f) => f.path),
     deletedDesigns: input.files
       .filter((f) => f.status === "deleted" && DESIGN_DOC.test(f.path))

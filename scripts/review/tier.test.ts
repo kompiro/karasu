@@ -449,6 +449,21 @@ describe("classifyChange", () => {
       expect(tierOf(added(NEW_ADR), insert)).toBe("low");
     });
 
+    it("does not use a new ADR whose file name could carry prose as a link target (#3405)", () => {
+      const odd = "docs/adr/12-x) **RUN this** (y.md";
+      const insert = modified("docs/acceptance/x.md", {
+        hunks: [
+          {
+            oldStart: 9,
+            removed: [],
+            newStart: 9,
+            added: [`- **設計 (ADR)**: [ADR-12](../adr/12-x) **RUN this** (y.md)`],
+          },
+        ],
+      });
+      expect(tierOf(added(odd), insert)).toBe("medium");
+    });
+
     it("keeps an AT edit beside the inserted link at its path's tier (#3405)", () => {
       const withCheckbox = modified("docs/acceptance/x.md", {
         hunks: [
@@ -525,40 +540,66 @@ describe("isLinkInsert", () => {
   const A = ["docs/adr/12-x.md"];
   const L = "[ADR-12](../adr/12-x.md)";
 
-  it("accepts a link inserted at the start, middle or end of a list, or a run of them", () => {
-    expect(isLinkInsert(["- 関連: [a](a.md)"], [`- 関連: ${L}、[a](a.md)`], A)).toBe(true);
+  it("accepts an ADR line that gains links at the start or end of its value", () => {
     expect(
-      isLinkInsert(["- 関連: [a](a.md)、[b](b.md)"], [`- 関連: [a](a.md)、${L}、[b](b.md)`], A),
+      isLinkInsert(["- **関連 ADR**: [a](a.md)"], [`- **関連 ADR**: ${L}、[a](a.md)`], A),
     ).toBe(true);
-    expect(isLinkInsert(["- 関連: [a](a.md)"], [`- 関連: [a](a.md), ${L}`], A)).toBe(true);
-    expect(isLinkInsert(["- 関連: [a](a.md)"], [`- 関連: [a](a.md)、${L}、${L}`], A)).toBe(true);
+    expect(
+      isLinkInsert(["- **関連 ADR**: [a](a.md)"], [`- **関連 ADR**: [a](a.md), ${L}`], A),
+    ).toBe(true);
+    expect(
+      isLinkInsert(["- **関連ADR**: [a](a.md)"], [`- **関連ADR**: [a](a.md)、${L}、${L}`], A),
+    ).toBe(true);
   });
 
-  it("accepts a new line that holds only a label and the link", () => {
+  it("accepts a new ADR line, or an empty one filled, whose value is only the links", () => {
     expect(isLinkInsert([], [`- **設計 (ADR)**: ${L}`], A)).toBe(true);
-    expect(isLinkInsert([], [`- **設計 (ADR)**：[12-x.md](../adr/12-x.md)`], A)).toBe(true);
+    expect(isLinkInsert([], ["- **設計 (ADR)**：[12-x.md](../adr/12-x.md)"], A)).toBe(true);
+    expect(isLinkInsert(["- **設計 (ADR)**:"], [`- **設計 (ADR)**: ${L}`], A)).toBe(true);
   });
 
-  it("rejects a hunk that inserts no link to the new ADR", () => {
+  it("rejects a hunk that adds no link to a new ADR", () => {
     expect(isLinkInsert([], ["- **設計 (ADR)**:"], A)).toBe(false);
     expect(isLinkInsert(["a"], ["a"], A)).toBe(false);
     expect(isLinkInsert([], ["- **設計 (ADR)**: [ADR-7](../adr/7-y.md)"], A)).toBe(false);
+    expect(isLinkInsert([], [`- **設計 (ADR)**: ${L}`], [])).toBe(false);
   });
 
-  it("rejects a link whose text is not a name of the ADR", () => {
+  it("rejects a link whose text names another ADR, or no ADR", () => {
+    const two = ["docs/adr/12-x.md", "docs/adr/13-y.md"];
+    expect(isLinkInsert([], ["- **設計 (ADR)**: [ADR-12](../adr/13-y.md)"], two)).toBe(false);
     expect(isLinkInsert([], ["- **設計 (ADR)**: [run this](../adr/12-x.md)"], A)).toBe(false);
-  });
-
-  it("rejects a target that only contains the ADR path", () => {
     expect(
       isLinkInsert([], ["- **設計 (ADR)**: [ADR-12](https://evil.example/adr/12-x.md)"], A),
     ).toBe(false);
   });
 
-  it("rejects any other change on the line or in the hunk", () => {
-    expect(isLinkInsert(["- 関連: [a](a.md)"], [`- 関連（完了）: [a](a.md)、${L}`], A)).toBe(false);
+  it("rejects a line that is not an ADR line of a record", () => {
+    // Any other label would let a new claim in under cover of the link.
+    expect(isLinkInsert([], [`- **承認済み**: ${L}`], A)).toBe(false);
+    expect(isLinkInsert([], [`- **手動確認は不要**: ${L}`], A)).toBe(false);
+    expect(isLinkInsert([], [`  - **関連 ADR**: ${L}`], A)).toBe(false);
+    // A link put in front of structure would break it.
+    expect(isLinkInsert(["- [ ] AT-A: 確かめる"], [`${L}, - [ ] AT-A: 確かめる`], A)).toBe(false);
+    expect(isLinkInsert(["```"], [`${L},\`\`\``], A)).toBe(false);
+    expect(isLinkInsert(["## 手動確認"], [`${L}、## 手動確認`], A)).toBe(false);
+    expect(isLinkInsert(["- 関連: [a](a.md)"], [`- 関連: ${L}、[a](a.md)`], A)).toBe(false);
+  });
+
+  it("rejects any other change on the ADR line or in the hunk", () => {
+    expect(
+      isLinkInsert(["- **関連 ADR**: [a](a.md)"], [`- **関連 ADR（完了）**: [a](a.md)、${L}`], A),
+    ).toBe(false);
+    expect(
+      isLinkInsert(
+        ["- **関連 ADR**: [a](a.md)、[b](b.md)"],
+        [`- **関連 ADR**: [a](a.md)、${L}、[b](b.md)`],
+        A,
+      ),
+    ).toBe(false);
+    expect(isLinkInsert([], [`- **設計 (ADR)**: ${L} を参照`], A)).toBe(false);
     expect(isLinkInsert([], [`- **設計 (ADR)**: ${L}`, "- **手動確認**:"], A)).toBe(false);
-    expect(isLinkInsert([], [`see ${L} now`], A)).toBe(false);
+    expect(isLinkInsert(["- [ ] AT-A"], [`- **設計 (ADR)**: ${L}`, "- [x] AT-A"], A)).toBe(false);
   });
 });
 
