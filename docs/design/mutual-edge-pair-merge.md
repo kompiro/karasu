@@ -70,7 +70,7 @@ node focus（ADR-3022 の段 1）は hover した card の edge だけを残す�
 - Umami: 41 本 → 27 本、交差 157 → 61 か所。
 - card が動かない。既存の図で変わるのは両方向の組の線だけ。
 - edge の `<g>` は 2 つのまま残る。canonical id・style・`direction`・diff state・hit-line は edge ごとに残る。ADR-1185 が却下した論理統合ではない。
-- 線は重ならない。edge ごとの装飾（hover の強調、diff の色や透明度、facet の casing、hop の隙間）は、その edge の半分にだけ掛かるので、どちらの向きの装飾かが見て分かる。
+- 線は重ならない。edge ごとの装飾（hover の強調、diff の色や透明度、facet の casing、hop の隙間）は、その edge の半分にだけ掛かるので、どちらの向きの装飾かが見て分かる（分け目は交差と角から離して置く。「実装の指針」の 3）。
 - 両方向の依存（循環）が、両端に矢印のある線としてかえって目に付く。
 
 **デメリット**
@@ -112,7 +112,7 @@ node focus で戻す。
 **メリット**
 
 - 「ほかの 3/4 以上が依存する node」を hub とすると、Umami では `TrackedEntities` と `Identity` が該当する。
-  案1 と併せると、濃く描かれる線は 16 本、その間の交差は 24 か所になる。
+  案3 だけなら、濃く描かれる線は 24 本、その間の交差は 56 か所になる。案1 と併せると 16 本、24 か所。
 
 **デメリット**
 
@@ -149,7 +149,7 @@ ADR-3022 の node focus と focus canvas だけで読む。
 
 `examples/` の 85 ファイルのうち、両方向の組を描くのは 6 ファイル・8 組。そのうち 2 組は sync と
 async の組なので、案1 でも 2 本のまま残る（`getting-started/index.krs` の en / ja。どちらもこの 1 組だけ）。
-重なるのは 4 ファイルの 6 組である。
+1 本で描くのは 4 ファイルの 6 組である（下の「実装の指針」の除外条件を足す前の数。実装 PR で測り直す）。
 
 ## 現時点の方針
 
@@ -184,64 +184,83 @@ domain canvas では採らず、#2728 に渡す。
    - どちらも ghost でも cyclic でも `groupBackward` でもない（どれも layout が描き方を変える印で、style の鍵には現れない）
    - どちらも trunk の束（`trunkId` / `outTrunkId`。ADR-2958 の gutter lane の束もこの 2 つを立てる）に入っていない
    - どちらの向きにも同じ `(from, to)` の並列 edge が無い（ADR-1185 の束と混ぜない）
-   - どちらも `label-position` / `label-offset` を書いていない（author の指定は全長の線を前提にしている）
+   - どちらも category collapse の stub ではない（端点を付け替え、diff state と facet を畳んだ edge なので、本件では扱わない）
+
+   集約した `N domain edges` の service 間 edge は対象に入る。条件は畳んだ後の diff state と解決済みの style で
+   判定し、内訳パネルを開くクリックの的は、自分の半分のラベルの位置に置く（ADR-463）。
+
 2. **style の判定をどこでするか。** edge の style は `layout()` ではなく svg-renderer で解決されるので、
    `layout()` は style を知らない。`LayoutOptions` に「この edge の線の見た目を表す鍵」を返す callback を
    足し（`chipZoneFor` と同じ注入の形）、renderer の呼び出しが解決済みの style から鍵を作って渡す。
    callback を渡さない呼び出し（draw.io exporter など）では 1 本にしない。今日の出力のまま残る。
    facet の overlay は鍵に入れない。overlay は配置に影響しない約束なので（TPL-2174）、overlay の選択で
    線の本数を変えない。半分ずつ描くので、facet の casing と減光はその edge の半分にだけ掛かる。
-3. **共有の線と半分。** 入力順（AST の出現順）で先の edge の経路を共有の線にし、後の edge の経路は捨てる。
-   共有の線を長さの中点で分け、各 edge の折れ線を「中点から自分の target まで」に置き換える。決定的で、
-   snapshot が安定する。
+3. **共有の線と分け目。** 入力順（AST の出現順）で先の edge の経路を共有の線にし、後の edge の経路は捨てる。
+   共有の線を分け目で 2 つに分け、各 edge の折れ線を「分け目から自分の target まで」に置き換える。
+   分け目は長さの中点から始め、次の両方を満たす最も近い点へ線に沿ってずらす。
+   - 他の edge との交差から、hop の幅（`HOP_RADIUS` を含む隙間の半分）より離れている。交差が分け目の上や近くに
+     あると、hop の隙間が片方の半分にしか空かず、相手の半分が hop を貫いて接続に見える
+   - 折れ線の角（waypoint）から離れている。角で分けると、butt cap の 2 本の端が角の外側に欠けを作る
+
+   共有の線の中央の 3 分の 1 にそういう点が無ければ、その組は 2 本で描く。決定的で、snapshot が安定する。
+
 4. **パスの位置。** 配置と幅の探索と再配置が終わった後、`computeCrossingMarks`（`layout.ts` の `layout()` の中）の
    直前に置く。`markParallelBundles` は `layoutInner` の中で走り、その結果は channel / column の予約と幅の
    探索に入るので、そこに置くと card が動きうる。探索の後に置けば card は動かない。multi-system の root では
-   system ごとに組を探す（`markParallelBundles` が #2917 で system ごとになったのと同じ理由）。後のパスが
-   半分の端点を動かさないことを測る（TPL-2958）。
-5. **折れ線の始点を読む処理。** 置き換えた後の `fromPoint` は source の port ではなく中点になる。
-   `fromPoint` を source の card の上の点として読む処理（port の分散、ラベルの障害物、drill-down の
-   座標変換、focus canvas が SVG から読む座標など）を実装 PR で洗い出し、組の edge では中点として
-   扱ってよいかを 1 つずつ確かめる。
+   system ごとに組を探す（`markParallelBundles` が #2917 で system ごとになったのと同じ理由）。
+   分け目を決めるには他の edge の経路が要るので、組の判定は全 edge の経路が出揃ってから行う。
+5. **置き換えた折れ線を読む処理。** 置き換えた後の `fromPoint` は source の port ではなく分け目になる。
+   パスより後でこの折れ線を読むのは、`computeCrossingMarks`、ラベルの配置（`buildLabelInputs` /
+   `resolveLabelPlacements` の線と anchor）、`renderEdge`（hit-line、`gappedStrokePath`、ラベル、矢印）である。
+   port の分散はパスより前に終わり、drill-down と all-layers は SVG の transform で階層を重ねるだけで、
+   focus canvas は SVG の `data-edge-*` と線の属性しか読まない。実装 PR でこの 4 つを確かめる。
 6. **描画。** 各 edge の `<g>` は今日どおり出る。それぞれが自分の半分と、自分の target 側の矢印を描く。
-   `marker-start` は使わない。1 本で描いた組の 2 つの `<g>` には同じ値の `data-edge-pair="<n>"`（SVG の中で
-   一意な組の番号）を付け、組でない edge には何も付けない（TPL-2174）。from / to を入れ替えた照合では
-   multi-system の root で相手が一意に決まらないので、番号で結ぶ。
-7. **ラベル。** 各 edge のラベルは、自分の半分の中点（全長で見ると自分の target から 4 分の 1）を既定の
-   位置にする。矢印のすぐ手前、その向きの線の上に乗る。ADR-1185 の束の欄（`bundleIndex` / `bundleSize`）は
-   使わない。その後は ADR-3022 の配置と保留に通す。相手の半分は自分の線と同じ直線の続きなので、
-   障害物から外す。
+   `marker-start` は使わない。組を表す属性は足さない（今は読む側が無い。テストは `LayoutEdge` で組を確かめる）。
+7. **ラベル。** 組の edge は、既定のラベル位置の決め方を変える。今の既定（ADR-1184 の、最も長い区間の中点）を
+   半分にそのまま使うと、分け目に接する区間が最長になったとき、ラベルが分け目の脇に乗り、どちらの向きの
+   ラベルか分からなくなる。組の edge では、自分の半分の区間のうち分け目に接しない最も長い区間の中点を既定に
+   する。半分が 1 区間だけなら、その区間の長さの中点（全長で見ると自分の target から 4 分の 1）にする。
+   author の `label-position` / `label-offset` は自分の半分の上で解釈する（`label-position` の `t` は半分の
+   長さで測る）。指定を書いた組も 1 本で描くので、`edge { label-offset: ... }` のような全体の規則で canvas
+   全体の組が 2 本に戻ることはない。その後は ADR-3022 の配置と保留に通す。相手の半分は今日どおり
+   障害物に入れる（#2360）。外すと、長いラベルが相手の半分に乗って逆向きのラベルに読める。
 8. **hover と hit。** 各 edge の hit-line は自分の半分だけを覆う。hover の強調は今日どおり `.krs-edge` に
    掛かり（TPL-2632）、強調されるのはその edge の半分と矢印である。保留したラベルの `<title>` には、
    その半分への hover で届く（TPL-3022）。クリックは今日どおり focus canvas を開き、そこには両方向が
    1 本 1 行で出る。
 9. **交差マーク。** `computeCrossingMarks` は置き換えた後の折れ線に対して走るので、hop はそれが乗る
-   半分の edge が持ち主になり、その半分に隙間が空く。中点での 2 つの半分の接点は交差として数えない
-   （端点どうしの接触なので、今日の判定でも交差にならないことを実装 PR で確かめる）。
+   半分の edge が持ち主になり、その半分に隙間が空く。分け目は 3 で交差から離してあるので、1 つの hop の
+   隙間が 2 つの半分にまたがることはない。分け目での 2 つの半分の接点は端点どうしの接触なので、交差と
+   して数えない。
 10. **surface。** パスは `layout()` にあるので、system・drill-down・all-layers・all-views・静的出力・
-    VS Code preview に同じく効く（TPL-219）。deploy の edge は ghost なので対象外。
+    VS Code preview に同じく効く（TPL-219）。deploy view は `layoutDeploy` で配置し `layout()` を通らないので、
+    このパスは掛からない。
 11. **テスト。**
     - fixture で 41 本 → 27 本の線、交差 157 → 61 か所以下を数値で固定する
-    - 1 本にしない条件を 1 つずつ外した組（sync / async、色違い、diff state 違い、cyclic、`groupBackward`、並列あり、`label-position` あり、system 間）で 2 本のまま残ることを確かめる
+    - 1 本にしない条件を 1 つずつ外した組（sync / async、色違い、太さ違い、diff state 違い、cyclic、`groupBackward`、並列あり、system 間、collapse の stub）で 2 本のまま残ることを確かめる
     - multi-system の root で、別の system にある `A -> B` と `B -> A` を組にしないこと
     - style の callback を渡さない `layout()` の出力が今日と同じであること
     - 両方向の組が無い `examples/` の SVG が byte-stable であること
-    - 組の 2 つのラベルが重ならず、相手の半分との衝突で保留されないこと（fixture で数える）
+    - 分け目が、他の edge との交差から hop の幅より離れ、角の上に無いこと。そういう点が無い組は 2 本で描くこと
+    - 組の 2 つのラベルが分け目の脇に乗らず、重ならないこと（fixture で数える）
+    - `label-offset` を全体に書いた canvas でも組が 1 本で描かれること
     - 組の各 hit-line に pointer が届くこと。保留したラベルは、その `<title>` に届くこと（静的 SVG）
-    - 2 つの半分が中点で同じ座標を共有していること
+    - 2 つの半分が分け目で同じ座標を共有していること
 12. **AT。** 実装 PR で `docs/acceptance/3027-mutual-edge-pair-merge.md` を作る。TC:
     - Umami fixture の drill-down で、両方向の組が両端に矢印のある 1 本の線で描かれる
     - 線の半分に hover すると、その半分の矢印が指す向きの edge が強調される。ラベルが保留されていれば、tooltip にその向きのラベルが出る
     - 線のクリックで focus canvas が開き、両方向が 1 行ずつ出る
     - sync と async の組（`examples/en/getting-started/index.krs`）は 2 本のまま
     - diff 表示で片方だけが変わった組は 2 本のまま、それぞれの diff state で描かれる
+    - Group-by で別の band にある組は 2 本のまま（片方が流れに逆らって破線になるため）
 13. ADR 昇格: 実装完了後、`docs/adr/3027-mutual-edge-pair-merge.md` として昇格し、本 Design Doc は同 PR で削除する。
 
 ### 影響範囲・マイグレーション
 
 - 既存ユーザーへの影響: 同じ種別・同じ style の両方向の組を持つ図では、組の 2 本が 1 本の線になる。`.krs` の解釈は変わらない。
 - ドキュメント更新: `docs/concepts.ja.md`（と英語版）の「集約」節に、両方向の組は両端に矢印のある 1 本の線で描かれることを 1 文足す。
-- テスト・examples への影響: `examples/` の 4 ファイル（6 組）の図が変わる。snapshot の更新が要る。
+- テスト・examples への影響: `examples/` の最大 4 ファイル（6 組）の図が変わる（除外条件で減りうる）。snapshot の更新が要る。
+- Group-by の canvas: 別の band にある組は、片方が `groupBackward` になるので 2 本のまま残る。1 本になるのは同じ band の中の組だけで、trunk に入った組はそこからも外れる。仕様であって不具合ではない。
 
 ## 未解決の問い / 決めないこと
 
