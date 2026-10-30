@@ -8,13 +8,11 @@ applicable_to:
   - "重ねるかどうかを、要素の属性の一部だけで判定するコード"
 known_consumers:
   - mutual-edge-pair-merge
-  - edge-routing-bundles
   - gutter-lane-bundling
 discovered_from:
   - issue: "#3027"
   - root_cause_file: "docs/concepts.ja.md"
   - root_cause_adr: "ADR-2958"
-  - root_cause_adr: "ADR-1185"
 related_to:
   - TPL-1352
   - TPL-1886
@@ -62,8 +60,9 @@ ADR-2958 は種別の違う edge を同じ束に入れない。この観点は�
 
 ## 既知の対処パターン
 
-- ADR-2958: 種別の違う edge は同じ gutter lane の束に入れない
-- 重ねても `<g>` を要素ごとに残し、同じ座標を共有させるだけにする（ADR-1185、ADR-2958）。重ねる条件から外れたら、共有させないだけで今日の描画に戻る
+- ADR-2958: 種別の違う edge は同じ gutter lane の束に入れない。束の中でも edge は 1 本ずつ `<g>` を持つ
+- 重ねても `<g>` を要素ごとに残し、同じ座標を共有させるだけにする。重ねる条件から外れたら、共有させないだけで今日の描画に戻る
+- 対象外: ADR-1185 の並列 edge の束は、重ねるのではなく同じ `(from, to)` の線を離して描くので、この観点の対象ではない
 
 ## 関連テスト
 
