@@ -132,6 +132,28 @@ describe("check", () => {
     expect(problems).toEqual([]);
   });
 
+  it("holds the preview rule's paths to exactly the preview workflow's", () => {
+    const paths = ["docs/concepts.md"];
+    const withRule = (rule: string[]) => [
+      { file: CHECK_WORKFLOW, paths },
+      { file: PREVIEW_WORKFLOW, paths: ["docs/concepts.md", "examples/**"] },
+      { file: PREVIEW_RULE, paths: rule },
+    ];
+    expect(check(["concepts.md"], withRule(["docs/concepts.md", "examples/**"]), paths)).toEqual(
+      [],
+    );
+    const missing = check(["concepts.md"], withRule(["docs/concepts.md"]), paths);
+    expect(missing.map((p) => p.message)).toEqual([
+      expect.stringContaining("`examples/**` deploys a preview"),
+    ]);
+    const extra = check(
+      ["concepts.md"],
+      withRule(["docs/concepts.md", "examples/**", "docs/x.md"]),
+      paths,
+    );
+    expect(extra.map((p) => p.message)).toEqual([expect.stringContaining("deploys no preview")]);
+  });
+
   it("reports an unreadable published list instead of silently passing", () => {
     const problems = check([], guard(["docs/**"]), ["docs/**"]);
     expect(problems).toHaveLength(1);

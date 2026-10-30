@@ -215,8 +215,10 @@ pre-push:
       # with an index of docs/process/<topic>.md files (Issue #3337). Fails when a
       # topic file is not in the index, an index row has no trigger or points at
       # a missing file, a relative link in docs/process* is broken, or the core
-      # is over its byte budget. `reference-docs-check.yml` runs it in CI.
-      glob: "{docs/process.md,docs/process/**,scripts/lint/process-index.ts}"
+      # is over its byte budget. The index names .claude/rules/** and
+      # docs/release.md, so those trigger it too. `reference-docs-check.yml`
+      # runs it in CI.
+      glob: "{docs/process.md,docs/process/**,.claude/rules/**,docs/release.md,scripts/lint/process-index.ts}"
       run: pnpm run lint:process-index
     roadmap-issue-state:
       # docs/roadmap.md tracks not-yet-issued work in watch ledgers ("子 Issue は

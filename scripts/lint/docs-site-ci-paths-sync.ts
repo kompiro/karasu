@@ -161,6 +161,26 @@ export function check(
     });
   }
 
+  // The preview rule asks for the preview that the preview workflow deploys, so
+  // it must load for exactly the paths that deploy one: covering the published
+  // docs is not enough, since `examples/**` and `packages/docs-site/**` deploy too.
+  const previewPaths = workflows.find((w) => w.file === PREVIEW_WORKFLOW)?.paths;
+  const rulePaths = workflows.find((w) => w.file === PREVIEW_RULE)?.paths;
+  if (previewPaths && rulePaths) {
+    for (const p of previewPaths.filter((path) => !rulePaths.includes(path))) {
+      problems.push({
+        kind: "error",
+        message: `\`${p}\` deploys a preview (${PREVIEW_WORKFLOW}) but is not in ${PREVIEW_RULE}'s \`paths:\`, so editing it does not load the reminder to read that preview.`,
+      });
+    }
+    for (const p of rulePaths.filter((path) => !previewPaths.includes(path))) {
+      problems.push({
+        kind: "error",
+        message: `\`${p}\` is in ${PREVIEW_RULE}'s \`paths:\` but deploys no preview (${PREVIEW_WORKFLOW}), so the rule asks for a preview that never comes.`,
+      });
+    }
+  }
+
   return problems;
 }
 

@@ -35,7 +35,8 @@ on:
       - "docs/process.md"
       - "docs/process/**"
       - "scripts/lint/process-index.ts"
-      - ".claude/rules/docs-site-preview.md"
+      - ".claude/rules/**"
+      - "docs/release.md"
       - ".github/workflows/reference-docs-check.yml"
 
 concurrency:

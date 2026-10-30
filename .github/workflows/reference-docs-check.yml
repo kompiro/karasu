@@ -53,7 +53,8 @@ on:
       - "docs/process.md"
       - "docs/process/**"
       - "scripts/lint/process-index.ts"
-      - ".claude/rules/docs-site-preview.md"
+      - ".claude/rules/**"
+      - "docs/release.md"
       - ".github/workflows/reference-docs-check.yml"
   push:
     branches: [main]
@@ -79,7 +80,8 @@ on:
       - "docs/process.md"
       - "docs/process/**"
       - "scripts/lint/process-index.ts"
-      - ".claude/rules/docs-site-preview.md"
+      - ".claude/rules/**"
+      - "docs/release.md"
       - ".github/workflows/reference-docs-check.yml"
 
 concurrency:
@@ -163,7 +165,8 @@ jobs:
         run: pnpm run lint:reference-docs-links
 
       # docs/process.md stays a core with an index of docs/process/<topic>.md
-      # (Issue #3337). ADR assumptions grep headings in those topic files, and
+      # (Issue #3337). The index also names .claude/rules/** and docs/release.md,
+      # so deleting one of those triggers this job too. ADR assumptions grep headings in those topic files, and
       # the only other CI home of `adr check-assumptions` is `ci.yml`, which
       # `paths-ignore: docs/**` skips for exactly the PR that renames one.
       - name: docs/process.md index, links, and size budget
