@@ -31,7 +31,7 @@ ADR の PR は、`pnpm adr:regenerate` が書く `docs/adr/effective.md`・`docs
 | PR 側の検査        | `adr-validate.yml`（required check `Validate`、paths は `docs/adr/**` など。それ以外の PR には `adr-validate-skip.yml` が no-op の `Validate` を返す）が `adr regenerate --check` を実行する。pre-push の `adr-regenerate-check`（glob `docs/adr/**`, `adr.config.json`）も同じ |
 | main 側の検査      | 同じ `adr-validate.yml` が `main` への push でも `--check` を実行する                                                                                                                                                                                                           |
 | 抜けている検査     | `@kompiro/adr-tools` の版を上げる PR（`package.json` / lockfile だけの差分）では `adr-validate.yml` が走らない。生成器の出力が変わっても、次の ADR PR まで気づかない（TPL-1480 の形）                                                                                           |
-| main の保護        | ruleset `protect default branch` 1 本が、削除の禁止・non-fast-forward の禁止・PR 必須（squash のみ）・required check（`Check`・`Validate`・`Reference docs`・`Playwright`）をまとめて持つ。bypass actor は 0 件                                                                 |
+| main の保護        | ruleset `protect default branch` 1 本が、削除の禁止・non-fast-forward の禁止・作成の禁止・PR 必須（squash のみ）・required check（`Check`・`Validate`・`Reference docs`・`Playwright`）をまとめて持つ。bypass actor は 0 件                                                     |
 | repo               | user 所有の public repo。merge queue は organization 所有の public repo と、Enterprise Cloud の organization の private repo にしか無い                                                                                                                                         |
 | Actions の PR 作成 | repo 設定「Actions に PR の作成・承認を許可」は意図して OFF にしてある（#1370、ADR-1370）                                                                                                                                                                                       |
 | 分類器             | `scripts/review/tier.ts` が生成物のパスを知っており、ADR PR の生成物の差分を Low に数える                                                                                                                                                                                       |
@@ -140,7 +140,7 @@ bypass は不要になるが、2 つの理由で採らない。
    - push の run が何かの理由で起きなかったとき（PR の commit メッセージにあった `[skip ci]` が squash の本文に入った場合など）は、`schedule` の run が取り戻す。`schedule` は default ブランチの workflow だけを動かすので、鍵を読める起動に足してよい。
    - 既存の policy テスト（`workflow-timeout-policy.test.ts`・`workflow-runner-policy.test.ts`・`workflow-draft-gate.test.ts`）を通す。
 3. **ruleset と鍵。**
-   - 削除の禁止と non-fast-forward の禁止を、bypass actor を持たない新しい ruleset に移す。
+   - 削除の禁止・non-fast-forward の禁止・作成の禁止を、bypass actor を持たない新しい ruleset に移す。
    - deploy key（write）を足し、PR 必須と required check の ruleset の bypass actor に `bypass_mode: always` で足す。
    - 秘密鍵は environment `adr-regenerate`（deployment branch を `main` だけに制限）の secret にする。
 4. **PR 側の検査を入れ替える。**
@@ -150,7 +150,7 @@ bypass は不要になるが、2 つの理由で採らない。
    - pre-push の `adr-regenerate-check` を同じ「生成物を変えていない」検査に替える。
 5. **自動化の書き込み範囲をテストで固定する**（TPL-2658、TPL-3416）。`scripts/ci/` に新しいテストを足し（`agentic-workflow-safety.test.ts` と同じ形）、次を確かめる。
    - environment `adr-regenerate` を名指しする job が全 workflow で 1 つだけで、その workflow の起動が `push: branches: [main]` と `schedule` だけであること。
-   - その job が `pnpm` も `npx` も実行せず、SHA で pin した `actions/checkout` と `actions/download-artifact`（4.1.7 以降）以外の action を使わないこと。
+   - その job が `pnpm` も `npx` も実行せず、SHA で pin した `actions/checkout`・`actions/download-artifact`（4.1.7 以降）・`actions/setup-node`（検査のスクリプトを動かす Node のため）以外の action を使わないこと。
    - その job が artifact を checkout の外に展開し、git を `core.hooksPath=/dev/null` で実行すること。
    - 許可するパスの一覧が checkout した commit の `paths.outputs` から導かれ、`adrDir` の外を指す設定なら job が失敗すること。
    - 生成物を外す `paths-ignore` と paths の否定が、`paths.outputs` と一致していること。
@@ -160,7 +160,7 @@ bypass は不要になるが、2 つの理由で採らない。
    - マージ後、`main` の生成物が `pnpm adr:regenerate` の出力と一致する（`adr regenerate --check` が通る）。
    - 続けて 2 本マージしても、`main` の生成物は最後の状態に収束する。最後の run が成功し、それより前の run は cancelled か成功で終わる。
    - 再生成の commit では `adr-regenerate.yml`・`ci.yml`・`deploy.yml`・`pages.yml`・`adr-validate.yml` が起動しない。
-   - 再生成の commit は他の workflow を起動しない。
+   - 再生成の commit で起動するのは `secret-scan.yml` だけである。
    - PR が生成物を変えると `Validate` が落ちる。生成器を壊す PR も `Validate` が落ちる。
    - `@kompiro/adr-tools` の版上げで出力が変わると、マージ後に `main` の生成物が更新される。
    - commit job の検査は、`paths.outputs` の外のパス・symlink・`.git/` を含む artifact と空の artifact を拒否して失敗し、`adrDir` の外を指す `paths.outputs` も拒否する（検査のスクリプトを細工した入力で単体テストする）。
