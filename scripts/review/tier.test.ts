@@ -682,6 +682,9 @@ describe("isLinkInsert", () => {
     ];
     expect(judgeDoc(lazy, at(3, lazy))).toBe(false); // a lazy continuation would follow it
     expect(judgeDoc(withSubList, at(5, withSubList))).toBe(true); // the end of the list
+    expect(judgeDoc(withSubList, at(4, withSubList))).toBe(true); // after the sub-list
+    const quoted = ["# AT: x", "", "- **日付**: 2026-10-30", "", "> 説明", "> 続き", ""];
+    expect(judgeDoc(quoted, at(6, quoted))).toBe(false); // after a blockquote, not the list
   });
 
   it("rejects any other change on the ADR line or in the hunk", () => {

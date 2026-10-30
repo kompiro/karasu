@@ -497,6 +497,8 @@ const FENCE = /^\s*(?:```|~~~)/;
 /** The record's title, and any heading after it. */
 const TITLE = /^# /;
 const HEADING = /^ {0,3}#{1,6}(?:\s|$)/;
+/** A blockquote or table line, which ends the metadata list above it. */
+const QUOTE_OR_TABLE = /^\s*[>|]/;
 /** What joins two links in a list of them. */
 const LINK_SEPARATOR = /^\s*[、,，]\s*/;
 const TRAILING_SEPARATOR = /\s*[、,，]\s*$/;
@@ -538,10 +540,11 @@ const spacedAfter = (m: RegExpExecArray): boolean => m[3] === " " || (m[2] === "
  * Whether line `index` (0-based) of `lines` sits in the record's metadata list,
  * where an ADR line belongs: after the title (`# `) and before any other
  * heading or fence line, outside the frontmatter. A line added whole must also
- * stand between items of that list: right after another labelled item, and
+ * stand between items of that list: after the lines of another labelled item, and
  * followed by another one, a blank line or nothing, so it takes over no
  * continuation or sub-list of the item above and no heading, table or block
- * around it changes.
+ * around it changes. The line above may be the last line of an item's
+ * continuation or sub-list: the new item starts after it.
  */
 function inMetadataList(lines: readonly string[], index: number, whole: boolean): boolean {
   if (index <= 0 || index >= lines.length) return false;
@@ -557,9 +560,19 @@ function inMetadataList(lines: readonly string[], index: number, whole: boolean)
     if (HEADING.test(lines[i]) || FENCE.test(lines[i])) return false;
   }
   if (!whole) return true;
+  // Upward, without a blank line, to the labelled item whose lines it follows;
+  // its continuation and sub-list stay its own.
+  let item = index - 1;
+  while (
+    item > title &&
+    lines[item].trim() !== "" &&
+    !LABELLED_ITEM.test(lines[item]) &&
+    !QUOTE_OR_TABLE.test(lines[item])
+  )
+    item--;
   const next = lines[index + 1];
   return (
-    LABELLED_ITEM.test(lines[index - 1]) &&
+    LABELLED_ITEM.test(lines[item]) &&
     (next === undefined || next.trim() === "" || LABELLED_ITEM.test(next))
   );
 }
