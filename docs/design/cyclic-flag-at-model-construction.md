@@ -79,7 +79,7 @@ diff は before と after の slice を `diffEdgeArray`（`diff/view-diff.ts`）
 **メリット**
 
 - 渡されたモデルに書き込むパスが無くなる。`KrsFile` は parse（または resolve）が返した時点で確定し、どの builder・どの順で呼んでも同じ描画になる。
-- 読む側（style・layout・draw.io・routing）は変わらない。ADR-287 が `edge[tag]` の仕組みに載せた利点（render のシグネチャ不変、利用者が `.krs.style` で `edge[cyclic]` を上書きできる）をそのまま保つ。
+- 読む側（style・layout・draw.io・routing）は、diff だけを外す指定を除いて変わらない。ADR-287 が `edge[tag]` の仕組みに載せた利点（render のシグネチャ不変、利用者が `.krs.style` で `edge[cyclic]` を上書きできる）をそのまま保つ。
 - 単一ファイルのモデルについては、entry point による描き分けが無くなる。All-layers パネル・ライブの entity view・drill-down の書き出しも、ライブ表示と同じく循環を赤く描く（TPL-219）。ファイルをまたぐ循環は、source 文字列を 1 ファイル分だけ parse する builder（`buildDrillDownSvg` などの公開版）からは見えないので、`compileProject` との差が残る。これは今もある差で、本 Design Doc では扱わない。
 
 **デメリット**
@@ -114,7 +114,7 @@ renderer が描く level の edge 集合で DFS する。
 | 観点 | 案1 構築時に導出 | 案2 引数で渡す | 案3 描画時に求める |
 | --- | --- | --- | --- |
 | 渡されたモデルに書き込むか | 書き込まない | 書き込まない | 書き込まない |
-| 読む側の変更 | なし | style・layout・draw.io に配線 | renderer 内に DFS |
+| 読む側の変更 | diff を外す指定だけ | style・layout・draw.io に配線 | renderer 内に DFS |
 | 今 analyze する entry point の出力 | 不変 | 不変 | 変わりうる |
 | 今 analyze しない entry point の出力 | 循環を含むモデルだけ赤くなる（diff は不変） | 不変 | 変わる |
 | entry point 間の一貫性 | 単一ファイルでは揃う | 描き分けが残る | 揃うが警告と食い違う |
@@ -122,7 +122,7 @@ renderer が描く level の edge 集合で DFS する。
 
 ## 現時点の方針
 
-**案1 を採用する。** `cyclic` は「循環という、モデルについての事実」であり、`boundaryMembership` と同じくモデルを作った時点で確定させるのが自然である。読む側を一切変えずに、渡されたモデルを書き換えるパスを無くせる。案2 は ADR-287 が却下した理由（配線の波及）がそのまま残り、加えてコピーされた edge の同一性という新しい問題を持ち込む。
+**案1 を採用する。** `cyclic` は「循環という、モデルについての事実」であり、`boundaryMembership` と同じくモデルを作った時点で確定させるのが自然である。読む側は diff を外す指定だけで済み、渡されたモデルを書き換えるパスを無くせる。案2 は ADR-287 が却下した理由（配線の波及）がそのまま残り、加えてコピーされた edge の同一性という問題をすべての描画面に持ち込む。案1 でも diff ではこの問題に触れるが、コピーするのは `cyclic` が立った edge だけに限られる。
 
 ### 受け入れ条件の読み替え
 

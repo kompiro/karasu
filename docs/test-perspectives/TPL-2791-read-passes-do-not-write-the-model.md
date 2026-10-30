@@ -57,7 +57,7 @@ scope:
 
 ## 既知の対処パターン
 
-- **派生事実はモデル構築時に求める。** 先例は `boundaryMembership` と `nodePathIndex`（Parser の後処理で求め、ImportResolver がマージ後のモデルで求め直す）。#2791 は `KrsEdge.cyclic` を `analyze()` の副作用からこの形に移す計画で、読む側（`edge[cyclic]` の style、layout、routing、draw.io）は変えない（Design Doc `docs/design/cyclic-flag-at-model-construction.md`、検討中）。
+- **派生事実はモデル構築時に求める。** 先例は `boundaryMembership` と `nodePathIndex`（Parser の後処理で求め、ImportResolver がマージ後のモデルで求め直す）。#2791 は `KrsEdge.cyclic` を `analyze()` の副作用からこの形に移す計画で、読む側（`edge[cyclic]` の style、layout、routing、draw.io）は diff を外す指定のほかは変えない（Design Doc `docs/design/cyclic-flag-at-model-construction.md`、検討中）。
 - **求める処理は純粋関数にして、警告を出す側と構築する側で共有する。** #2791 の計画では、循環に入る edge の集合と警告を返す純粋関数を 1 つ置き、構築側はその集合から edge にフラグを立て、`analyze()` は警告だけを使う。
 
 ## 関連テスト
