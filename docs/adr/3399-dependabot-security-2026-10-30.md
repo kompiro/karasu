@@ -83,7 +83,7 @@ brace-expansion / sharp（ADR-3203）に続く、`.claude/rules/dependabot.md` �
   method の serialize を直した。publisher は前後とも GitHub Actions + SLSA provenance、install script なし。利用元は mocha（テストランナー）だけ
 - `mocha@11.8.0` は `serialize-javascript: ^6.0.2` を宣言しており、無印キーの override は 7 系をメジャー越えで押し込む。これは main の
   `^7.0.5` の時点で既にそうなっていて、本 PR で増えたものではない。advisory の脆弱範囲 `< 7.1.3` は 6.x をすべて含み、6 系に修正版は無いので、
-  mocha 11 の下でもメジャーをまたぐ以外に脆弱版を外す手段が無い。mocha 11 を使う `vscode-test` の job が 7 系で通っていることが、この組み合わせの
+  mocha 11 の下でもメジャーをまたぐ以外に脆弱版を外す手段が無い。mocha 11 を使う `vscode-e2e` job（VS Code extension host）が 7 系で通っていることが、この組み合わせの
   検証になる。#102 で msal-node のメジャー越えを却下したのとは条件が違う（そちらは宣言レンジ内の修正版が 1 日で使えるようになる）
 
 ### #94〜#96 launch-editor: 無印キーで override する
@@ -104,8 +104,9 @@ msal-node `^7.1.0` を要求する最初の `@azure/identity` は 4.14.1 で、4
 足す理由は無い。待つあいだの露出は低い:
 
 - advisory が指すのは authorization code flow で、パラメータが攻撃者の endpoint に漏れうるという内容である
-- 当方で msal-node に届くのは `vsce publish --azure-credential`（VS Code 拡張のリリース workflow）と、docs site のビルドで astro が読み込む
-  `unstorage` の optional peer だけ。vsce が使うのは Azure CLI の credential で、authorization code flow を通らない
+- 当方で msal-node のコードが実際に走るのは `vsce publish --azure-credential`（VS Code 拡張のリリース workflow）だけ。docs site 側の
+  `@azure/identity` は astro が使う `unstorage` の optional peer として lock に解決されているだけで、Azure の storage driver を設定しない
+  かぎり読み込まれない。vsce が使うのは Azure CLI の credential で、authorization code flow を通らない
 - 次の VS Code 拡張のリリースまでに 2 本目の PR を入れれば、該当の workflow がこの版で走ることも無い
 
 ## 却下した案
@@ -113,7 +114,7 @@ msal-node `^7.1.0` を要求する最初の `@azure/identity` は 4.14.1 で、4
 ### `@azure/msal-node: ^7.1.0` を今 override する
 
 alert はその日のうちに閉じるが、`^6.0.0` を宣言している identity 4.13.3 の下に msal-node 7 を押し込むことになる。メジャーをまたぐ組み合わせで
-upstream が出していないもので、しかも使われるのは Marketplace への publish というリリース時にしか走らない経路である。壊れていても
+upstream が出していないもので、しかも実際に msal-node のコードが走るのは Marketplace への publish というリリース時にしか走らない経路だけである。壊れていても
 リリースのときまで気づけない。待つのは 1 日で済む。
 
 ### 4 パッケージを 1 本の PR にまとめて、4.14.1 が使えるまで待つ
