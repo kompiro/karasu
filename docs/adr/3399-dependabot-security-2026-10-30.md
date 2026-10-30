@@ -13,7 +13,6 @@ assumptions:
   - "grep: pnpm-workspace.yaml :: qs: \\^6\\."
   - "grep: pnpm-workspace.yaml :: serialize-javascript: \\^7\\."
   - "grep: pnpm-workspace.yaml :: launch-editor: \\^2\\."
-  - "grep: pnpm-workspace.yaml :: minimumReleaseAge: 1440"
 ---
 
 # ADR-3399: Dependabot security alert 2026-10-30（qs と serialize-javascript の override floor を修正版へ上げ、launch-editor を override し、@azure/msal-node は @azure/identity 4.14.1 が公開から 1 日経ってから lock 更新で上げる）
