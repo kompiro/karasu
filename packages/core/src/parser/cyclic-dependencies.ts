@@ -32,11 +32,19 @@ export function findCyclicDependencies(
     const syncEdges = edges.filter((e) => e.kind === "sync");
     if (syncEdges.length === 0) return;
 
-    // Build adjacency map: node -> outgoing sync edges
+    // Build adjacency map: node -> outgoing sync edges, and the parallel sync
+    // edges of each (from, to) pair, so marking a hop touches only its own
+    // edges instead of the whole outgoing list of a node with many callees.
     const adj = new Map<string, KrsEdge[]>();
+    const parallel = new Map<string, Map<string, KrsEdge[]>>();
     for (const edge of syncEdges) {
       if (!adj.has(edge.from)) adj.set(edge.from, []);
       adj.get(edge.from)!.push(edge);
+      let byTo = parallel.get(edge.from);
+      if (!byTo) parallel.set(edge.from, (byTo = new Map()));
+      const same = byTo.get(edge.to);
+      if (same) same.push(edge);
+      else byTo.set(edge.to, [edge]);
     }
 
     const WHITE = 0,
@@ -114,16 +122,14 @@ export function findCyclicDependencies(
           cyclicEdges.add(edge);
           const cycleStartIdx = depthOf.get(neighbor)!;
 
-          // Every parallel sync edge on each hop still unmarked, read off the
-          // hop's own outgoing edges rather than a scan of the whole scope.
+          // Every parallel sync edge on each hop still unmarked.
           for (
             let h = unmarkedAtOrBelow(path.length - 2);
             h >= cycleStartIdx;
             h = unmarkedAtOrBelow(h - 1)
           ) {
-            const to = path[h + 1];
-            for (const cycleEdge of adj.get(path[h]) ?? []) {
-              if (cycleEdge.to === to) cyclicEdges.add(cycleEdge);
+            for (const cycleEdge of parallel.get(path[h])!.get(path[h + 1])!) {
+              cyclicEdges.add(cycleEdge);
             }
             hopSkip[h] = h - 1;
           }
