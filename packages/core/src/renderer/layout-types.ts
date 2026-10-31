@@ -200,6 +200,13 @@ export interface LayoutEdge {
    * waypoint (fan-out).
    */
   trunkJoin?: number;
+  /**
+   * Set when this edge is one half of a mutual pair drawn as one line (#3027,
+   * `applyMutualPairs`). The route then runs from the split, not from the
+   * source card, to this edge's own target, and its label sits on its own half
+   * (`pairLabelSegment`) behind an arrow showing which way the half runs.
+   */
+  pairHalf?: boolean;
 }
 
 /** Axis-aligned box. The unit `ContainerRect.coverage` is built from. */
@@ -503,6 +510,15 @@ export interface LayoutOptions {
    * renderer supplies it, and callers without styles simply get no keep-out.
    */
   chipZoneFor?: (node: LayoutNode) => Rect | undefined;
+  /**
+   * What an edge's line looks like once drawn (#3027): a key over its resolved
+   * colour, width, stroke style and diff state, which the layout cannot resolve
+   * itself. A mutual pair is drawn as one line only when both edges return the
+   * same key, so a pair the reader could tell apart stays two lines (TPL-3027).
+   * Omitted (the draw.io exporter, bare-layout tests) → no pair is merged and
+   * the output is what it was before.
+   */
+  edgeLineKey?: (edge: LayoutEdge) => string | undefined;
   /**
    * Team id → declared `label`, from `buildTeamLabelIndex`. Supplies the chip's
    * display string on every axis (the group-frame titles get theirs from

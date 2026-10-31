@@ -1,5 +1,6 @@
 import type {
   EdgeDirection,
+  ResolvedEdgeStyle,
   ResolvedBoundaryFrames,
   ResolvedTeamFrames,
   ResolvedNodeStyle,
@@ -15,6 +16,7 @@ import type {
   CrossingMarks,
   DisplayMode,
   HopMark,
+  LayoutEdge,
   LayoutNode,
   LayoutResult,
   Rect,
@@ -340,6 +342,40 @@ export function legendScopeForLogicalSlice(slice: ViewSlice): LegendViewScope | 
   return undefined;
 }
 
+/**
+ * The resolved style an edge is drawn with. Prefers the kind-qualified entry so
+ * parallel sync/async edges between the same pair keep their own stroke style;
+ * falls back to the bare key for synthetic layout edges (delivers, owns, ghosts,
+ * aggregated domain edges).
+ */
+function resolvedEdgeStyle(
+  styles: ResolvedStyles,
+  edge: Pick<LayoutEdge, "from" | "to" | "kind">,
+): ResolvedEdgeStyle {
+  return (
+    styles.edges.get(edgeStyleKey(edge.from, edge.to, edge.kind)) ??
+    styles.edges.get(edgeStyleKey(edge.from, edge.to, undefined)) ??
+    styles.defaultEdgeStyle
+  );
+}
+
+/**
+ * What each edge's line will look like once drawn (#3027), for
+ * `LayoutOptions.edgeLineKey`: the layout draws a mutual pair as one line only
+ * when the reader could not tell the two apart. The same style and diff-state
+ * lookups the render loop draws with.
+ */
+export function edgeLineKeyOf(
+  styles: ResolvedStyles,
+  edgeDiffState: ReadonlyMap<string, string> | undefined,
+): (edge: LayoutEdge) => string {
+  return (edge) => {
+    const style = resolvedEdgeStyle(styles, edge);
+    const diffState = edge.diffState ?? edgeDiffState?.get(edgeKey(edge)) ?? "";
+    return `${style.color}|${style.strokeWidth}|${style.strokeStyle}|${diffState}`;
+  };
+}
+
 export function render(
   viewSlice: ViewSlice,
   styles: ResolvedStyles,
@@ -373,10 +409,12 @@ export function render(
     // The layout is about to apply the shape insets it was given the hook for,
     // so the lane is measured the way `renderNode` will draw it.
     chipZoneOf(node, node.id, styles, palette, displayMode !== "icon", serviceIdsWithDeploy);
+  const edgeLineKey = edgeLineKeyOf(styles, options?.edgeDiffState);
   const layoutResult = layout(viewSlice, {
     ownerIndex,
     shapeForNode,
     chipZoneFor,
+    edgeLineKey,
     teamLabels: options?.teamLabels,
     boundaryMembership: options?.boundaryMembership,
     scopedBoundaryMembership: options?.scopedBoundaryMembership,
@@ -617,16 +655,8 @@ export function renderFromLayout(
   }
   // Resolve the edge style once per edge (reused by both the label-placement
   // pre-pass and the render loop below).
-  const edgeStyleFor = (edgeLayout: LayoutResult["edges"][number]) => {
-    // Prefer the kind-qualified style entry so parallel sync/async edges between
-    // the same pair keep their own stroke style; fall back to the bare key for
-    // synthetic layout edges (delivers, owns, ghosts, aggregated domain edges).
-    return (
-      styles.edges.get(edgeStyleKey(edgeLayout.from, edgeLayout.to, edgeLayout.kind)) ??
-      styles.edges.get(edgeStyleKey(edgeLayout.from, edgeLayout.to, undefined)) ??
-      styles.defaultEdgeStyle
-    );
-  };
+  const edgeStyleFor = (edgeLayout: LayoutResult["edges"][number]) =>
+    resolvedEdgeStyle(styles, edgeLayout);
 
   // Auto label collision-avoidance (#2048): nudge labels that collide with node
   // cards, with each other, or with another edge's polyline (#2360) off their

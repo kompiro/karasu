@@ -72,7 +72,7 @@ describe("the focus canvas in the preview", () => {
 
   it("opens on an edge click, with its two cards and every edge between them", () => {
     const { container: root } = render(pane());
-    click(root, edgeGroup(root, edge.from, edge.to).querySelector("path")!);
+    click(root, edgeGroup(root, edge.from, edge.to).querySelector(".krs-edge__hitline")!);
 
     expect(canvas(root)).not.toBeNull();
     expect(title(root)).toBe("Analytics → Identity & access");
@@ -89,7 +89,7 @@ describe("the focus canvas in the preview", () => {
   it("does not open at the end of a pan", () => {
     const { container: root } = render(pane());
     fireEvent.mouseDown(container(root), { button: 0, clientX: 10, clientY: 10 });
-    fireEvent.mouseUp(edgeGroup(root, edge.from, edge.to).querySelector("path")!, {
+    fireEvent.mouseUp(edgeGroup(root, edge.from, edge.to).querySelector(".krs-edge__hitline")!, {
       button: 0,
       clientX: 60,
       clientY: 10,
@@ -169,7 +169,7 @@ describe("the focus canvas in the preview", () => {
       `.preview-container svg .krs-edge.krs-edge--interactive[data-edge-index]`,
     )!;
     const index = group.getAttribute("data-edge-index")!;
-    fireEvent.mouseOver(group.querySelector("path")!);
+    fireEvent.mouseOver(group.querySelector(".krs-edge__hitline")!);
     const dimmed = dimmedBy();
     const all = marks(root);
     const own = all.filter((m) => edgesOfMark(m).includes(index));
@@ -224,7 +224,7 @@ describe("the focus canvas in the preview", () => {
   it("closes from Close, Esc and the backdrop", async () => {
     const { container: root } = render(pane());
     const user = userEvent.setup();
-    const open = () => click(root, edgeGroup(root, edge.from, edge.to).querySelector("path")!);
+    const open = () => click(root, edgeGroup(root, edge.from, edge.to).querySelector(".krs-edge__hitline")!);
 
     open();
     await user.click(root.querySelector(".focus-canvas__close")!);
@@ -337,7 +337,7 @@ describe("the focus canvas in the preview", () => {
         {pane()}
       </>,
     );
-    click(root, edgeGroup(root, edge.from, edge.to).querySelector("path")!);
+    click(root, edgeGroup(root, edge.from, edge.to).querySelector(".krs-edge__hitline")!);
     fireEvent.keyDown(root.querySelector("textarea")!, { key: "Escape" });
     expect(canvas(root)).not.toBeNull();
   });
@@ -352,7 +352,7 @@ describe("the focus canvas in the preview", () => {
 
   it("keeps a press on the canvas from reaching the diagram under it", async () => {
     const { container: root } = render(pane());
-    click(root, edgeGroup(root, edge.from, edge.to).querySelector("path")!);
+    click(root, edgeGroup(root, edge.from, edge.to).querySelector(".krs-edge__hitline")!);
     // A click on a card in the focus canvas refocuses; it does not drill down
     // or open the node detail panel underneath.
     await userEvent
@@ -364,7 +364,7 @@ describe("the focus canvas in the preview", () => {
 
   it("follows the diagram, and closes when an edit removes what it shows", () => {
     const { container: root, rerender } = render(pane());
-    click(root, edgeGroup(root, edge.from, edge.to).querySelector("path")!);
+    click(root, edgeGroup(root, edge.from, edge.to).querySelector(".krs-edge__hitline")!);
 
     const relabelled = compile(dense.replace(edge.label, "authorizes requests"), {
       viewPath: ["Umami", "UmamiApp"],
@@ -649,7 +649,7 @@ describe("keyboard and touch routes into the focus canvas (#3057)", () => {
 
   it("makes no lane a button on an edge's canvas, where a lane leads nowhere", () => {
     const { container: root } = render(pane());
-    click(root, edgeGroup(root, "Analytics", "Identity").querySelector("path")!);
+    click(root, edgeGroup(root, "Analytics", "Identity").querySelector(".krs-edge__hitline")!);
     for (const lane of root.querySelectorAll(".focus-canvas .focus-canvas__lane")) {
       expect(lane.hasAttribute("tabindex")).toBe(false);
     }
