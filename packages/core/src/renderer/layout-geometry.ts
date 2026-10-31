@@ -223,10 +223,11 @@ export function buildContainersForEmpty(viewSlice: ViewSlice): ContainerRect[] {
 
 /**
  * The drill-down frames around a placed canvas (#3440): the focused container
- * and its ghost ancestors, outermost first. Shifts the cards in `layoutNodes`
- * in place to make room for the nesting and for the frame-side reservations
- * in `extraFrameSides` (#3132). `childMaxWidth` / `childMaxHeight` are the
- * placed content's extent before that shift.
+ * and its ghost ancestors, built innermost first and returned outermost first.
+ * Shifts the cards in `layoutNodes` in place to make room for the nesting and
+ * for the frame-side reservations in `extraFrameSides` (#3154).
+ * `childMaxWidth` / `childMaxHeight` are the placed content's extent before
+ * that shift.
  */
 export function nestContainers(
   viewSlice: ViewSlice,
