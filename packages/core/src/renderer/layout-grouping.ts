@@ -16,6 +16,7 @@ import {
   type GroupBand,
 } from "./group-layout.js";
 import { systemTier } from "./layer-assignment.js";
+import type { ResolvedLayoutHints } from "../types/style.js";
 import type { LayoutOptions } from "./layout-types.js";
 
 /** Grouped-layer computation shared by {@link collapseAndAssignGroupLayers}. */
@@ -387,4 +388,56 @@ export function groupStartLayersOf(groupBands: Map<string, GroupBand> | null): M
     for (const [gid, band] of groupBands) groupStartLayer.set(band.min, gid);
   }
   return groupStartLayer;
+}
+
+/**
+ * The layout hints one canvas places its cards by, keyed by the bare ids the
+ * placement helpers look up (`bucketByColumn`, `placeExternalServicesOnSides`).
+ *
+ * A card's own entry in `layoutHintsByPath` replaces the bare one, so of two
+ * nodes sharing an id only the one a `column` rule matched is moved (#2934).
+ * An empty own entry removes the bare one: the card has no hint, and the bare
+ * entry belongs to its namesake. A path the style pass never recorded keeps the
+ * bare entry, as before. `cards` are the canvas's real nodes, whose paths
+ * `pathOf` knows; ghosts and stubs stay on the bare map.
+ */
+export function canvasLayoutHints(
+  options: Pick<LayoutOptions, "layoutHints" | "layoutHintsByPath">,
+  cards: readonly { id: string }[],
+  pathOf: (id: string) => readonly string[],
+): Map<string, ResolvedLayoutHints> | undefined {
+  const { layoutHints, layoutHintsByPath } = options;
+  if (layoutHintsByPath === undefined || layoutHintsByPath.size === 0) return layoutHints;
+  const local = new Map(layoutHints);
+  for (const { id } of cards) {
+    const own = layoutHintsByPath.get(nodePathRefId(pathOf(id)));
+    if (own === undefined) continue;
+    if (Object.keys(own).length > 0) local.set(id, own);
+    else local.delete(id);
+  }
+  return local;
+}
+
+/**
+ * A canvas card's own selected facets, by its full path when the overlay has
+ * the path-keyed membership (#2934), so a stub folds what its members declared.
+ * `undefined` when no overlay is active.
+ */
+export function canvasFacetMembership(
+  options: Pick<LayoutOptions, "facetMembership" | "facetMembershipByPath">,
+  pathOf: (id: string) => readonly string[],
+): ((id: string) => readonly string[] | undefined) | undefined {
+  const { facetMembership, facetMembershipByPath } = options;
+  if (facetMembership === undefined) return undefined;
+  if (facetMembershipByPath === undefined) return (id) => facetMembership.get(id);
+  return (id) => facetMembershipByPath.get(nodePathRefId(pathOf(id)));
+}
+
+/** One container's hints (`grid-columns`) by its full path, else by its bare id (#2934). */
+export function containerLayoutHints(
+  options: Pick<LayoutOptions, "layoutHints" | "layoutHintsByPath">,
+  id: string,
+  path: readonly string[],
+): ResolvedLayoutHints | undefined {
+  return options.layoutHintsByPath?.get(nodePathRefId(path)) ?? options.layoutHints?.get(id);
 }
