@@ -121,8 +121,8 @@ export class Parser {
 
   /**
    * The parser's primitives as one object, for the parsing functions that live
-   * in other modules (kebab-name.ts, node-path.ts, legend-parser.ts). Built
-   * once here rather than per call: the LSP re-parses on every keystroke.
+   * in other modules (see parse-context.ts). Built once here rather than per
+   * call: the LSP re-parses on every keystroke.
    */
   private readonly ctx: ParseContext = {
     peek: () => this.peek(),
