@@ -7,7 +7,7 @@ type: product
 - **日付**: 2026-05-05
 - **関連 Issue**: [#1124](https://github.com/kompiro/karasu/issues/1124)（親 #1076）
 - **対象ファイル**:
-  - `packages/core/src/renderer/layout.ts`（`buildGraph` / `hasCycle` / `layout` / `layoutMultipleSystems`）
+  - `packages/core/src/renderer/layout.ts`（`buildGraph` / `hasCycle` / `layout`）、`packages/core/src/renderer/layout-multi-system.ts`（`layoutMultipleSystems`）
   - `packages/core/src/renderer/svg-renderer.ts`（`render` で `edgeDirections` map を組み立てて伝搬）
   - `packages/core/src/renderer/layout.test.ts`、`packages/core/src/index.test.ts`
   - `docs/spec/style.md`、`docs/spec/style.ja.md`
