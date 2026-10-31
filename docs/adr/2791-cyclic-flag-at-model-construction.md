@@ -31,7 +31,7 @@ assumptions:
   - Issue #2791（起点）、Design Doc PR #3406、実装 PR #3422
   - [ADR-287](287-cyclic-dependency-detection.md)（`KrsEdge.cyclic` の導入。本 ADR が supersede する。検出規則は下の「決定」に引き継ぐ）
   - 関連 Issue: #2757（parse 済みモデルの使い回しへ向かう perf 作業）、#2759（bundle の全 level で抽出コンテキストを共有）
-  - TPL: [TPL-2791](../test-perspectives/TPL-2791-read-passes-do-not-write-the-model.md)（本件で proactive に起こした）、[TPL-2221](../test-perspectives/TPL-2221-merge-only-facts-decided-on-merged-model.md)（循環はファイルをまたいで成立しうる）、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（entry point 間で同じものを描く）
+  - TPL: [TPL-2791](../test-perspectives/TPL-2791-read-passes-do-not-write-the-model.md)（本件で proactive に起こした）、[TPL-2221](../test-perspectives/TPL-2221-merge-only-facts-decided-on-merged-model.md)（循環はファイルをまたいで成立しうる）、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（entry point 間で同じものを描く）、[TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md)（派生状態が古いまま残る）
   - コード: `packages/core/src/parser/cyclic-dependencies.ts`、`packages/core/src/parser/parser.ts`、`packages/core/src/fs/import-resolver.ts`、`packages/core/src/resolver/warnings.ts`、`packages/core/src/resolver/style-resolver.ts`、`packages/core/src/compile/compile-diff.ts`、`packages/core/src/diff/view-diff.ts`
 
 ## 背景
@@ -44,7 +44,7 @@ ADR-287 は、`analyze()` が循環を見つけたとき、その edge オブジ
 - entry point によって循環の描き方が揃っていなかった。`compile` / `compileProject`（app のライブ表示、CLI）、`buildAllViewsSvg*`、`buildDrawioProject` は描く前に analyze するので赤く描く。`buildDrillDownSvg`（drill-down の書き出し）、`buildAllLayersSvg`（All-layers パネル）、`renderEntityView`（ライブの entity view）、`buildDrawio` は analyze しないので普通の edge で描く。
 - #2757 の perf 作業は parse 済みモデルを使い回す方向に進み、#2759 は「使っている間はモデルが変わらない」ことを共有の安全性の根拠にしている。読むだけのはずのパスが書き込むと、この根拠が成り立たない。
 
-examples 85 件と Dify のモデルで、parse 結果を `structuredClone` した写しと比べたところ、モデルを書き換えるのは `analyze` と、内部で `analyze` を呼ぶ `buildAllViewsSvg` だけで、書き込む中身は `cyclic` だけだった。
+examples 85 件と Dify のモデルで、parse 結果を `structuredClone` した写しと、`analyze` / `buildDrillDownSvg` / `buildAllLayersSvg` / `buildAllViewsSvg` / `buildDrawio` を通した後のモデルを比べたところ、モデルを書き換えるのは `analyze` と、内部で `analyze` を呼ぶ `buildAllViewsSvg` だけで、書き込む中身は `cyclic` だけだった。
 
 ## 決定
 
@@ -58,7 +58,7 @@ examples 85 件と Dify のモデルで、parse 結果を `structuredClone` し�
    - entity の関係 edge は対象外（自己参照や相互参照は ER の普通の形）。
    - スコープをまたぐ循環は検出しない（ADR-287 の残課題のまま）。
    - すべて warning で、error にしない。
-3. **フラグを立てるのは `markCyclicEdges(file)` だけ**: 全スコープの edge の `cyclic` を落としてから、集合に入る edge に立てる。呼ぶのは `Parser.parse`（`buildBoundaryMembership` の隣）と `ImportResolver.resolve` のマージ後の 2 か所。マージ後に落としてから立て直すので、ファイルをまたぐ循環はマージ後のモデルで立ち、ファイル単位で立てたフラグが古いまま残らない（TPL-2221）。
+3. **フラグを立てるのは `markCyclicEdges(file)` だけ**: 全スコープの edge の `cyclic` を落としてから、集合に入る edge に立てる。呼ぶのは `Parser.parse`（`buildBoundaryMembership` の隣）と `ImportResolver.resolve` のマージ後の 2 か所。マージ後に落としてから立て直すので、ファイルをまたぐ循環はマージ後のモデルで立ち、ファイル単位で立てたフラグが古いまま残らない（TPL-2221）。builder が受け取る `KrsFile` は、`boundaryMembership` や `nodePathIndex` と同じく、この 2 か所が作ったものに限る。`createEmptyKrsFile()` から手で組み立てたモデル向けに `cyclic` を導出する公開関数は足さない（要る呼び出し元が現れたら、派生事実をまとめて載せる関数として別に検討する）。
 4. **`analyze()` は `findCyclicDependencies(file).warnings` を返すだけ**にする。警告の件数・`cyclePath`・`loc` は ADR-287 のときと同じ。
 5. **diff は循環を描かない**: diff の `resolveStyles` はすべて `cyclicTag: false`（`NO_CYCLIC_TAG`）を渡し、`edge[cyclic]` が当たらない。`diffEdgeArray` は `cyclic` が立った edge だけを、フラグを外したコピーにして slice に入れる（class と routing の除外を止める）。立っていない edge はコピーしない。
 6. **読む側は変えない**: `edge[cyclic]` の builtin style、利用者の `.krs.style` での上書き、`krs-edge--cyclic` class、routing が cyclic edge を除外する挙動、draw.io の書き出しは ADR-287 のまま。
@@ -91,4 +91,4 @@ slice の edge は implicit edge や集約 edge を含み、スコープの edge
 ## 残課題
 
 - ファイルをまたぐ循環は、source 文字列を 1 ファイル分だけ parse する builder（`buildDrillDownSvg` などの公開版）からは見えないので、`compileProject` との差が残る（この ADR の前からある差）。
-- 1 回のキー入力で検出が 2 回（parse と `analyze`）回る。測った範囲では parse 時間への影響は小さい。
+- 検出を回す回数が増えた。単一ファイルでは 1 回のキー入力で 2 回（parse と `analyze`）、project mode ではファイルごとの parse・マージ後・`analyze` で回る。測った範囲では parse 時間への影響は小さい。
