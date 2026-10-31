@@ -8,7 +8,8 @@ type: product
 - **関連 Issue**: [#1908](https://github.com/kompiro/karasu/issues/1908)（Sub-task of [#1870](https://github.com/kompiro/karasu/issues/1870)）
 - **対象ファイル**:
   - `packages/core/src/resolver/resource-entity.ts`（新規 — 解決ヘルパ）
-  - `packages/core/src/view/view-extract.ts`（推移的導出・二重計上排除・R/W 合成）
+  - `packages/core/src/view/derived-edges.ts`（推移的導出・二重計上排除）
+  - `packages/core/src/view/view-extract.ts`（R/W 合成）
   - `packages/core/src/resolver/warnings.ts`（`detectUnassignedResources` / `detectSharedInfraFanIn` の entity 対応）
   - `packages/core/src/parser/parser.ts`（`unassigned-resource` を parser から除去）
   - `packages/core/src/types/{ast,warnings}.ts`

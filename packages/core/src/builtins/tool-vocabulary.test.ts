@@ -80,7 +80,7 @@ describe("what the tool stamps and styles is in its own vocabulary (#2677)", () 
   });
 
   it("every tag literal the source stamps on an element is a tool tag", () => {
-    // `delivers` was missing from the system-assigned tags: view-extract stamps
+    // `delivers` was missing from the system-assigned tags: derived-edges stamps
     // it and the builtin theme styles it, and the closure would have silently
     // unstyled every delivers edge. Scan the source so the next such tag fails.
     const here = dirname(fileURLToPath(import.meta.url));

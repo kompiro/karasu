@@ -121,7 +121,7 @@ describe("collapseGroups", () => {
     // Membership unions because it is a set; prose does not, because a
     // `description` describes one edge. Keeping the first constituent's would
     // open EdgeDetailPanel on a bundle showing one member's runbook as if it
-    // covered all of them (`view-extract.ts` deletes them for the same reason).
+    // covered all of them (`derived-edges.ts` deletes them for the same reason).
     const withProse = (from: string, to: string, description: string): KrsEdge => ({
       ...edge(from, to),
       description,

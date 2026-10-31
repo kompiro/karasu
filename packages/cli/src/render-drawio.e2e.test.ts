@@ -122,7 +122,7 @@ describe("AT-0057 karasu render --format drawio — integration with real exampl
 
   it("drawio cells carry data-karasu-* attributes (id / kind, aggregated on aggregated edges)", async () => {
     // Two cross-service domain edges between the same service pair aggregate
-    // into a single "2 domain edges" implicit edge (view-extract), which the
+    // into a single "2 domain edges" implicit edge (derived-edges), which the
     // exporter must annotate with data-karasu-aggregated.
     const krsPath = join(tmpDir, "index.krs");
     writeFileSync(
