@@ -1,7 +1,8 @@
 ---
 id: ADR-2658
 title: 依存更新トリアージの下ごしらえを gh-aw の scheduled workflow に任せる
-status: accepted
+status: superseded
+superseded_by: ADR-3421
 date: 2026-09-10
 topic: build
 related_to:
@@ -15,17 +16,12 @@ related_to:
   - ADR-2839
 scope:
   concerns: [ci, dependencies, security]
-assumptions:
-  - "file: .github/workflows/dependabot-triage.md"
-  - "file: .github/workflows/security-alert-sweep.md"
-  - "file: scripts/ci/agentic-workflow-safety.test.ts"
-  - "grep: .github/workflows/security-alert-sweep.md :: #\\s+- cron:"
 ---
 
 # ADR-2658: 依存更新トリアージの下ごしらえを gh-aw の scheduled workflow に任せる
 
 - **日付**: 2026-09-10
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by [ADR-3421](3421-remove-copilot-gh-aw-workflows.md)（推論の利用料が雇用先の組織の Copilot seat に付くため、workflow ごと外した）
 - **関連**:
   - Issue [#2658](https://github.com/kompiro/karasu/issues/2658)（引き金）、実装 PR [#2661](https://github.com/kompiro/karasu/pull/2661)
   - 実行後に残った Issue: [#2690](https://github.com/kompiro/karasu/issues/2690)（W2 が alert を読めない）、

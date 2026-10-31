@@ -58,7 +58,7 @@ describe("pathTier", () => {
     [".github/PULL_REQUEST_TEMPLATE.md", "high"],
     [".claude/agents/qa.md", "high"],
     // CI policy tests and drift guards are not Low test files.
-    ["scripts/ci/agentic-workflow-safety.test.ts", "high"],
+    ["scripts/ci/copilot-inference-policy.test.ts", "high"],
     ["scripts/ci/workflow-draft-gate.test.ts", "high"],
     ["pnpm-lock.yaml", "high"],
     [".npmrc", "high"],

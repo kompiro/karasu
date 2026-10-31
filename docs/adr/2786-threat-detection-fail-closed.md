@@ -1,7 +1,8 @@
 ---
 id: ADR-2786
 title: 安全網が結論を出せない回は run ごと失敗させ、detection のモデルを pin する
-status: accepted
+status: superseded
+superseded_by: ADR-3421
 date: 2026-09-21
 topic: build
 refines:
@@ -11,18 +12,12 @@ related_to:
   - ADR-2687
 scope:
   concerns: [ci, security]
-assumptions:
-  - "file: .github/workflows/dependabot-triage.md"
-  - "file: .github/workflows/security-alert-sweep.md"
-  - "file: scripts/ci/agentic-workflow-safety.test.ts"
-  - "grep: .github/workflows/dependabot-triage.md :: continue-on-error: false"
-  - "grep: .github/workflows/security-alert-sweep.md :: continue-on-error: false"
 ---
 
 # ADR-2786: 安全網が結論を出せない回は run ごと失敗させ、detection のモデルを pin する
 
 - **日付**: 2026-09-21
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by [ADR-3421](3421-remove-copilot-gh-aw-workflows.md)（推論の利用料が雇用先の組織の Copilot seat に付くため、workflow ごと外した）
 - **関連**:
   - Issue [#2786](https://github.com/kompiro/karasu/issues/2786)（threat detection が結論を出さない）
   - gh-aw の 2 本を入れた ADR: [ADR-2658](2658-gh-aw-dependency-automation.md)
