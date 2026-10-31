@@ -37,16 +37,17 @@ pnpm run build --workspace=packages/core
 - [x] `compile(src, { diagramType: "org" })` → `result.diagramType === "org"` かつ `nodePathIndex` が存在する
 > ✅ Automated — `packages/core/src/index.test.ts`（unit）
 
-- [x] `compileProject(entry, fs, { diagramType: "org", orgPath: [], displayMode: "icon" })` が正常に SVG を返す
+- [x] `compileProject(entry, fs, { diagramType: "org", viewPath: [], displayMode: "icon" })` が正常に SVG を返す
 > ✅ Automated — `packages/core/src/index.test.ts`（unit）
 
 - [x] org モードで style-conflict 警告が出ない（builtin + icon theme の組み合わせ）
 > ✅ Automated — `packages/core/src/index.test.ts`（unit）
 
-### AC-2: 後方互換 — deprecated API
+### AC-2: 後方互換 — deprecated API（#3346 で撤去）
 
-- [x] `compileProjectOrgView(entry, fs, [], "icon")` が引き続き動作し、`diagramType: "org"` フィールドを含む `OrgCompileResult` を返す
-> ✅ Automated — `packages/core/src/index.test.ts`（unit）
+deprecated だった `compileOrgView` / `compileProjectOrgView` / `compile()`・`compileProject()` の
+positional オーバーロードは [#3346](https://github.com/kompiro/karasu/issues/3346) で削除した。
+org view は AC-1 の `compileProject(entry, fs, { diagramType: "org", ... })` が受け持つ。
 
 ## Manual Verification Checklist
 

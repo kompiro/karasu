@@ -38,6 +38,13 @@ export type ValueNode =
   | { kind: "function"; name: string; argRaw: string; loc: SourceRange }
   /**
    * Comma-separated list — e.g. `"Noto Sans JP", sans-serif`. Each
-   * `item` is a fully parsed ValueNode itself.
+   * `item` is an atom or a `sequence`.
    */
-  | { kind: "list"; items: ValueNode[]; loc: SourceRange };
+  | { kind: "list"; items: ValueNode[]; loc: SourceRange }
+  /**
+   * Space-separated atoms with no comma between them — e.g. `4px 8px`
+   * (`label-offset`) or `Noto Sans` (an unquoted `font-family` name).
+   * Whether a property accepts one is the schema's call (#3141); the
+   * parser only keeps every atom, in order, instead of dropping the value.
+   */
+  | { kind: "sequence"; items: [ValueNode, ValueNode, ...ValueNode[]]; loc: SourceRange };

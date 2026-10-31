@@ -32,13 +32,19 @@
 
   > ✅ Automated — `layout.test.ts` › `balanced grid wrapping (#1737)` › `honors a grid-columns hint on the container, overriding the auto count`; `packages/core/src/resolver/style-resolver.test.ts` › `grid-columns layout hint (#1737)` › `populates layoutHints.gridColumns for a positive integer`
 
-- [x] `grid-columns` の不正値（0 / 負 / 非整数）は `style-grid-columns-invalid-value` warning を出して破棄し、自動バランスにフォールバックする
+- [x] `grid-columns` の不正値（0 / 負 / 非整数）は validator が宣言ごとに 1 回報告し（`style-out-of-range` / `style-invalid-enum-value`）、cascade が破棄する。弱いルールに有効な `grid-columns` があればそれが効き、無ければ既定に戻る（コンテナは自動バランス、org のメンバーグリッドは既定の 3 列）（ノードごとの `style-grid-columns-invalid-value` は #3141 で廃止）
 
-  > ✅ Automated — `style-resolver.test.ts` › `grid-columns layout hint (#1737)` › `emits style-grid-columns-invalid-value and skips the hint for non-positive / non-integer`
+  > ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `grid-columns layout hint (#1737)` › `skips the hint for non-positive / non-integer values, with no per-node warning (#3141)`
+  >
+  > ✅ Automated — `packages/core/src/style/value-validator.test.ts` › `validateStyleValues — values the schema reads one way (#3141)` › `reports grid-columns: %s once, as out of range`
+  >
+  > ✅ Automated — `packages/core/src/style/value-validator.test.ts` › `validateStyleValues — values the schema reads one way (#3141)` › `asks for an integer where only an integer will do`
+  >
+  > ✅ Automated — `packages/core/src/style/cascade.test.ts` › `flattenSheetsInCascadeOrder — invalid declarations (#3141)` › `falls back to a weaker rule's valid value, not to the default`
 
 - [x] `grid-columns` は org の team ノード（member grid の列数）でも有効
 
-  > ✅ Automated — `style-resolver.test.ts` › `grid-columns layout hint (#1737)` › `is honored on an org team node (member-grid override)`
+  > ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `grid-columns layout hint (#1737)` › `is honored on an org team node (member-grid override)`
 
 - [x] 出力は決定的（同じ入力で同じ座標）
 

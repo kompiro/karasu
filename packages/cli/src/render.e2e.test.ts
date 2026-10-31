@@ -442,9 +442,11 @@ describe("default karasu render applies the imported style sheets (#3097)", () =
 
     await render(entry, { output: join(tmpDir, "b.svg"), view: "system" });
     const perView = warningLines();
-    // One finding placed in the sheet, one from resolving it against `Api`.
+    // One finding, placed in the sheet where `column: middle` was written; the
+    // resolver no longer restates it per node (#3141).
+    expect(perView.filter((l) => l.includes("column"))).toHaveLength(1);
     expect(perView.some((l) => l.includes("after.krs.style:1:"))).toBe(true);
-    expect(perView.some((l) => l.includes("on #Api"))).toBe(true);
+    expect(perView.some((l) => l.includes("on #Api"))).toBe(false);
 
     streams.restore();
     streams = captureStreams();

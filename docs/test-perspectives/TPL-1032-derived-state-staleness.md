@@ -14,7 +14,7 @@ known_consumers:
 discovered_from:
   - issue: "#1032"
   - issue: "#891"
-  - root_cause_file: "packages/core/src/index.ts:664"
+  - root_cause_file: "packages/core/src/compile/compile.ts:buildNodeMetadata"
   - root_cause_file: "packages/app/src/hooks/useSystemView.ts"
 related_to: []
 topic: app-ui

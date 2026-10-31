@@ -62,9 +62,7 @@ const unassignedDomains = (warnings: Warning[]): string[] =>
  * already reports them with one), so parity is checked without them.
  */
 const RESOLVED_STYLE_RESTATEMENTS = new Set<Warning["kind"]>([
-  "style-column-invalid-value",
   "style-column-ignored-non-system-view",
-  "style-grid-columns-invalid-value",
 ]);
 
 describe("diff warnings come from the after model only (#2879)", () => {

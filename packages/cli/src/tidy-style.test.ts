@@ -126,6 +126,28 @@ describe("tidyStyle() --check mode", () => {
   });
 });
 
+// #3141: tidying a sheet with a parse error would delete the declarations the
+// parser refused, so the file is left as written and its errors are reported.
+describe("tidyStyle() on a sheet with a parse error", () => {
+  const BROKEN = `service {\n  color: ;\n  shape: user;\n}\n`;
+
+  it.each([[{}], [{ check: true }]])(
+    "leaves the file as written, reports the error and exits 1 (%j)",
+    async (options) => {
+      const file = await writeStyle("broken.krs.style", BROKEN);
+      const exit = mockExit();
+      const stderr = captureStderr();
+      captureStdout();
+
+      await expect(tidyStyle([file], options)).rejects.toThrow("process.exit(1)");
+
+      expect(readFileSync(file, "utf8")).toBe(BROKEN);
+      expect(stderr.join("")).toContain(`${file}:2:`);
+      expect(exit).toHaveBeenCalledWith(1);
+    },
+  );
+});
+
 describe("tidyStyle() --stdin mode", () => {
   it("reads stdin and writes tidied output to stdout", async () => {
     const src = `service { shape: user; color: red; }\n`;

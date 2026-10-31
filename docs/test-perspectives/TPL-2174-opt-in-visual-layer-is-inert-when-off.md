@@ -89,7 +89,7 @@ opt-in な視覚レイヤを足す / 触る PR で:
 
 ## 派生元 spec
 
-- `docs/spec/syntax.md` §*Cross-cutting membership (`facet`) — experimental* /
-  `docs/spec/syntax.ja.md` §*横断的な所属（`facet`）— experimental* —
+- `docs/spec/syntax.md` §*Cross-cutting membership (`facet`)* /
+  `docs/spec/syntax.ja.md` §*横断的な所属（`facet`）*（言語 v2.0 で core になり、見出しの「— experimental」が外れた。#2677）—
   「選択はビューア側の状態であり、モデルには書かない」「同じ `.krs` は誰かが選択する
   まで同じように描画される」と規定している節。本 TPL はその後半を機械で縛る。

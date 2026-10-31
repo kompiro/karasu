@@ -30,6 +30,7 @@ import {
   buildScopedBoundaryMembership,
   buildNodePathIndex,
 } from "../parser/reference-validation.js";
+import { markCyclicEdges } from "../parser/cyclic-dependencies.js";
 import { resolvePath } from "./path-utils.js";
 import {
   ambiguousNodePathCandidates,
@@ -286,6 +287,11 @@ export class ImportResolver {
     // blocks from two files, `duplicate-boundary-id` (#2246).
     const mergedMembership = buildBoundaryMembership(krsFile);
     krsFile.boundaryMembership = mergedMembership.membership;
+    // Cycles are re-derived on the merged model like the membership above: two
+    // files reopening one scope can each hold half of a cycle, and neither
+    // per-file parse saw it (TPL-2221). The merged edges are the per-file edge
+    // objects, so clearing and re-marking leaves no stale per-file flag (#2791).
+    markCyclicEdges(krsFile);
     const mergedScoped = buildScopedBoundaryMembership([
       ...krsFile.systems,
       ...krsFile.services,

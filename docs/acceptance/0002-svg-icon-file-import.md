@@ -35,6 +35,6 @@ npx vitest run       # 全テスト通過（83テスト、svg-icon-loader.test.t
 2. app で以下の `.krs.style` を使用し、database シェイプが描画されることを確認：
    ```css
    service {
-     shape: database;
+     shape: url("database");
    }
    ```

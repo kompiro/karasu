@@ -66,6 +66,6 @@ karasu の根幹原則は **`.krs` テキストが single source of truth (SoT)*
 
 ## 関連テスト
 
-- `packages/core/src/index.ts` — compile pipeline 入口（すべての機能はここを通るべき）
+- `packages/core/src/compile/compile.ts` — compile pipeline 入口（すべての機能はここを通るべき）
 - `packages/app/src/hooks/` — view hooks（state を React に閉じ込めず `.krs` から派生させる）
 - `docs/concepts.ja.md` 「目標 → karasu はアーキテクチャをテキストで記述する」

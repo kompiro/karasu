@@ -34,9 +34,7 @@ export type WarningKind =
   | "facet-not-declared"
   | "entity-anchor-collision"
   | "legend-ref-unresolved"
-  | "style-column-invalid-value"
   | "style-column-ignored-non-system-view"
-  | "style-grid-columns-invalid-value"
   | "style-invalid-enum-value"
   | "style-invalid-hex-color"
   | "style-missing-length-unit"
@@ -384,18 +382,6 @@ export interface WarningParamsByKind {
     legendTitle?: string;
   };
   /**
-   * A `.krs.style` rule declared `column: <foo>` with a value that is not
-   * one of `left` / `center` / `right`. The resolver discards the
-   * declaration; the surface is informational so the author can fix the
-   * typo.
-   */
-  "style-column-invalid-value": {
-    /** id of the node whose hint was rejected */
-    nodeId: string;
-    /** The invalid value as written in the source. */
-    value: string;
-  };
-  /**
    * A `column` hint was resolved for a node, but the current view is not
    * `system`. Layout hints only apply to system view; the renderer
    * surfaces this so authors who target a deploy / org node by id are
@@ -405,17 +391,6 @@ export interface WarningParamsByKind {
     nodeId: string;
     /** "deploy" or "org" */
     viewType: "deploy" | "org";
-  };
-  /**
-   * A `grid-columns` hint resolved to something that is not a positive
-   * integer (e.g. `grid-columns: 0`, `grid-columns: 2.5`). The hint is
-   * dropped and the layout auto-balances instead.
-   */
-  "style-grid-columns-invalid-value": {
-    /** id of the node whose hint was rejected */
-    nodeId: string;
-    /** The invalid value as written in the source. */
-    value: string;
   };
   /**
    * Value-level diagnostics produced by `validateStyleValues` (Phase 3).

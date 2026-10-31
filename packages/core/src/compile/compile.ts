@@ -67,7 +67,7 @@ import type { FacetOverviewEntry } from "../renderer/facet-overview.js";
 import { renderDeploy } from "../renderer/deploy-renderer.js";
 import { extractView, type ViewPath } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
-import { extractOrgView, type OrgViewPath } from "../view/org-view-extract.js";
+import { extractOrgView } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
 import {
   extractTeamDependencies,
@@ -645,34 +645,8 @@ async function _compileProjectCore(
  * @param krsSource - The raw .krs diagram source
  * @param options   - Compile options (diagramType, styleSource, viewPath, etc.)
  */
-export function compile(krsSource: string, options?: CompileOptions): CompileResult;
-/**
- * @deprecated Use `compile(krsSource, options)` instead.
- *
- * When `displayMode === "icon"`, the icon theme stylesheet is automatically injected.
- * Callers must NOT pre-concatenate `ICON_THEME_STYLE_SOURCE` into `styleSource`.
- */
-export function compile(
-  krsSource: string,
-  styleSource?: string,
-  viewPath?: ViewPath,
-  diagramType?: "system" | "deploy",
-  selectedDeployId?: string,
-  displayMode?: DisplayMode,
-): SystemCompileResult | DeployCompileResult;
-export function compile(
-  krsSource: string,
-  optionsOrStyle?: CompileOptions | string,
-  viewPath?: ViewPath,
-  diagramType?: "system" | "deploy",
-  selectedDeployId?: string,
-  displayMode?: DisplayMode,
-): CompileResult {
-  const opts: CompileOptions =
-    typeof optionsOrStyle === "object" || optionsOrStyle === undefined
-      ? (optionsOrStyle ?? {})
-      : { styleSource: optionsOrStyle, viewPath, diagramType, selectedDeployId, displayMode };
-  return _compileCore(krsSource, opts);
+export function compile(krsSource: string, options: CompileOptions = {}): CompileResult {
+  return _compileCore(krsSource, options);
 }
 
 /**
@@ -686,68 +660,9 @@ export function compile(
 export function compileProject(
   entryPath: string,
   fs: FileSystemProvider,
-  options?: CompileOptions,
-): Promise<CompileResult>;
-/**
- * @deprecated Use `compileProject(entryPath, fs, options)` instead.
- */
-export function compileProject(
-  entryPath: string,
-  fs: FileSystemProvider,
-  viewPath?: ViewPath,
-  diagramType?: "system" | "deploy",
-  selectedDeployId?: string,
-  displayMode?: DisplayMode,
-): Promise<SystemCompileResult | DeployCompileResult>;
-export async function compileProject(
-  entryPath: string,
-  fs: FileSystemProvider,
-  optionsOrViewPath?: CompileOptions | ViewPath,
-  diagramType?: "system" | "deploy",
-  selectedDeployId?: string,
-  displayMode?: DisplayMode,
+  options: CompileOptions = {},
 ): Promise<CompileResult> {
-  const opts: CompileOptions =
-    Array.isArray(optionsOrViewPath) || optionsOrViewPath === undefined
-      ? {
-          viewPath: optionsOrViewPath as ViewPath | undefined,
-          diagramType,
-          selectedDeployId,
-          displayMode,
-        }
-      : optionsOrViewPath;
-  return _compileProjectCore(entryPath, fs, opts);
-}
-
-/**
- * @deprecated Use `compile(krsSource, { diagramType: "org", styleSource, viewPath })` instead.
- */
-export function compileOrgView(
-  krsSource: string,
-  styleSource?: string,
-  orgPath?: OrgViewPath,
-): OrgCompileResult {
-  return _compileCore(krsSource, {
-    diagramType: "org",
-    styleSource,
-    viewPath: orgPath,
-  }) as OrgCompileResult;
-}
-
-/**
- * @deprecated Use `compileProject(entryPath, fs, { diagramType: "org", viewPath, displayMode })` instead.
- */
-export async function compileProjectOrgView(
-  entryPath: string,
-  fs: FileSystemProvider,
-  orgPath?: OrgViewPath,
-  displayMode?: DisplayMode,
-): Promise<OrgCompileResult> {
-  return _compileProjectCore(entryPath, fs, {
-    diagramType: "org",
-    viewPath: orgPath,
-    displayMode,
-  }) as Promise<OrgCompileResult>;
+  return _compileProjectCore(entryPath, fs, options);
 }
 
 // ---------------------------------------------------------------------------

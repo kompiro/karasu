@@ -108,6 +108,7 @@ flowchart TD
     ADR_2898["ADR-2898<br/>/code-review は draft PR に当て、CodeRabbit の初回レビューは..."]
     ADR_2922["ADR-2922<br/>毎月の最終日曜に Release — Prepare を自動で走らせ、VS Code 拡張も同..."]
     ADR_2939["ADR-2939<br/>リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の Gi..."]
+    ADR_2940["ADR-2940<br/>VS Code 拡張の main を毎週 Marketplace の pre-release ..."]
     ADR_2949["ADR-2949<br/>auto-merge する ADR-only PR は CodeRabbit の自動レビュー対..."]
     ADR_2983["ADR-2983<br/>Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upst..."]
     ADR_2985["ADR-2985<br/>Dependabot security alert 2026-09-29（`undici` の..."]
@@ -136,6 +137,7 @@ flowchart TD
     ADR_3337["ADR-3337<br/>docs/process.md を常時読む核と、作業を始めたときに読むトピックに分ける"]
     ADR_3340["ADR-3340<br/>converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけ..."]
     ADR_3342["ADR-3342<br/>ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh..."]
+    ADR_3344["ADR-3344<br/>ソースファイルに行数予算を設け、超えているファイルは現在の行数で pin する"]
     ADR_3350["ADR-3350<br/>リリーストレインの PR の段階を、差分が changeset version の出力だけなら..."]
     ADR_3359["ADR-3359<br/>描画が変わる PR に、merge-base と比べた before/after の画像を添付する"]
     ADR_3381["ADR-3381<br/>Dependabot トリアージ 2026-10-26：npm 12 件をそのまま採用し、ch..."]
@@ -308,6 +310,7 @@ flowchart TD
   class ADR_2898 superseded
   class ADR_2922 accepted
   class ADR_2939 accepted
+  class ADR_2940 accepted
   class ADR_2949 superseded
   class ADR_2983 accepted
   class ADR_2985 accepted
@@ -336,6 +339,7 @@ flowchart TD
   class ADR_3337 accepted
   class ADR_3340 accepted
   class ADR_3342 accepted
+  class ADR_3344 accepted
   class ADR_3350 not_adopted
   class ADR_3359 accepted
   class ADR_3381 accepted

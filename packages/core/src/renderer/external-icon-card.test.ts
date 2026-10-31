@@ -161,8 +161,8 @@ describe("external icon card (#2696)", () => {
     shape: url("card-icon");
     background-color: #123456;
     border-color: #ABCDEF;
-    border-width: 3;
-    border-radius: 12;
+    border-width: 3px;
+    border-radius: 12px;
   }`;
 
   /** The same declared frame on the slot-less icon, whose body is fitted. */

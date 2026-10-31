@@ -234,7 +234,7 @@ system S {
   service A "Service A" {}
 }
 `;
-    const result = compile(krs, undefined, [], "system", undefined, "icon");
+    const result = compile(krs, { viewPath: [], diagramType: "system", displayMode: "icon" });
     expect(result.warnings.filter((w) => w.kind === "style-conflict")).toHaveLength(0);
   });
 
@@ -247,7 +247,12 @@ system S {
 }
 `;
     const userStyle = `service { color: #FF0000; }`;
-    const result = compile(krs, userStyle, [], "system", undefined, "icon");
+    const result = compile(krs, {
+      styleSource: userStyle,
+      viewPath: [],
+      diagramType: "system",
+      displayMode: "icon",
+    });
     expect(result.warnings.filter((w) => w.kind === "style-conflict")).toHaveLength(0);
   });
 
@@ -2811,7 +2816,7 @@ system S {
     expect(w.params.cyclePath).toEqual(["A", "A"]);
   });
 
-  it("marks self-reference edge as cyclic", () => {
+  it("parse marks a self-reference edge as cyclic (#2791)", () => {
     const krs = `
 system S {
   service A {}
@@ -2819,7 +2824,6 @@ system S {
 }
 `;
     const file = Parser.parse(krs).value;
-    analyze(file, []);
     const edge = file.systems[0].edges[0];
     expect(edge.cyclic).toBe(true);
   });
@@ -2843,7 +2847,7 @@ system S {
     expect(w.params.cyclePath).toContain("B");
   });
 
-  it("marks both edges in a direct cycle as cyclic", () => {
+  it("parse marks both edges in a direct cycle as cyclic (#2791)", () => {
     const krs = `
 system S {
   service A {}
@@ -2853,7 +2857,6 @@ system S {
 }
 `;
     const file = Parser.parse(krs).value;
-    analyze(file, []);
     const edges = file.systems[0].edges;
     expect(edges.every((e) => e.cyclic)).toBe(true);
   });
@@ -2880,7 +2883,7 @@ system S {
     expect(w.params.cyclePath).toContain("C");
   });
 
-  it("marks all three edges in an indirect cycle as cyclic", () => {
+  it("parse marks all three edges in an indirect cycle as cyclic (#2791)", () => {
     const krs = `
 system S {
   service A {}
@@ -2892,7 +2895,6 @@ system S {
 }
 `;
     const file = Parser.parse(krs).value;
-    analyze(file, []);
     const edges = file.systems[0].edges;
     expect(edges.every((e) => e.cyclic)).toBe(true);
   });
@@ -2928,7 +2930,7 @@ system S {
     expect(warnings.filter((w) => w.kind === "cyclic-dependency")).toHaveLength(0);
   });
 
-  it("does not flag cyclic edges when cycle is non-cyclic side edge exists", () => {
+  it("parse does not mark a side edge that feeds a cycle (#2791)", () => {
     const krs = `
 system S {
   service A {}
@@ -2940,7 +2942,6 @@ system S {
 }
 `;
     const file = Parser.parse(krs).value;
-    analyze(file, []);
     const edges = file.systems[0].edges;
     const ab = edges.find((e) => e.from === "A" && e.to === "B");
     const ba = edges.find((e) => e.from === "B" && e.to === "A");
@@ -2948,6 +2949,25 @@ system S {
     expect(ab?.cyclic).toBe(true);
     expect(ba?.cyclic).toBe(true);
     expect(db?.cyclic).toBeFalsy();
+  });
+
+  it("analyze() reports the cycle and leaves the flags as parse set them (#2791)", () => {
+    const krs = `
+system S {
+  service A {}
+  service B {}
+  service D {}
+  A -> B
+  B -> A
+  D -> B
+}
+`;
+    const file = Parser.parse(krs).value;
+    const before = file.systems[0].edges.map((e) => e.cyclic);
+    expect(before).toEqual([true, true, undefined]);
+    const warnings = analyze(file, []);
+    expect(warnings.filter((w) => w.kind === "cyclic-dependency")).toHaveLength(1);
+    expect(file.systems[0].edges.map((e) => e.cyclic)).toEqual(before);
   });
 });
 
@@ -3303,9 +3323,7 @@ describe("warningSeverity — exhaustive register map", () => {
     "delivers-target-not-client": "warning",
     "client-capability-duplicate": "warning",
     "legend-ref-unresolved": "warning",
-    "style-column-invalid-value": "warning",
     "style-column-ignored-non-system-view": "warning",
-    "style-grid-columns-invalid-value": "warning",
     "style-invalid-enum-value": "warning",
     "style-invalid-hex-color": "warning",
     "style-missing-length-unit": "warning",

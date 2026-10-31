@@ -44,15 +44,19 @@ prompt は助言であって境界ではない。「マージしてはいけな�
 - [ ] 宣言から生成物を作る仕組みなら、宣言と生成物の一致をテストが確認している（再生成忘れの検出）
 - [ ] 生成物が既存のポリシーガード（ランナーラベル・言語バージョン pin 等）に与える影響を確認した
 
+## 由来
+
+本 TPL の consumer だった gh-aw の 2 本のワークフローと、それを検査した `agentic-workflow-safety.test.ts` は #3423（ADR-3421）で外れた。外した理由はエンジンの課金で、観点が成り立たなくなったからではない。個人の課金で推論できるエンジンが使えるようになったら #3421 で戻すので、そのときと、次にエージェントに書き込ませる自動化を設計するときのための観点として `active` のまま残す（2026-10 のレビュー、#3357）。下の「既知の対処パターン」と「関連テスト」は外す前の形を記録している。
+
 ## 既知の対処パターン
 
-<!-- absent-path-next-line: deleted with the gh-aw workflows in #3421 (ADR-3421), named as history -->
-`scripts/ci/agentic-workflow-safety.test.ts` が 4 点を機械検査する: 宣言された safe outputs が allowlist の内側にあること、permission がすべて read であること、宣言が lock ファイルにコンパイル済みであること、そして走査対象が空でないこと（パーサ健全性）。
+<!-- absent-path-next-line: deleted with the gh-aw workflows in #3423 (ADR-3421), named as history -->
+`scripts/ci/agentic-workflow-safety.test.ts` が 4 点を機械検査していた: 宣言された safe outputs が allowlist の内側にあること、permission がすべて read であること、宣言が lock ファイルにコンパイル済みであること、そして走査対象が空でないこと（パーサ健全性）。
 
 allowlist は「人間の判断を奪わない出力」で引いている。コメントと Issue 起票は判断材料を人の隣に置くだけで、マージ・push・close・dispatch はリポジトリまたはレビュー状態そのものを動かす。
 
 ## 関連テスト
 
-<!-- absent-path-next-line: deleted with the gh-aw workflows in #3421 (ADR-3421), named as history -->
+<!-- absent-path-next-line: deleted with the gh-aw workflows in #3423 (ADR-3421), named as history -->
 - `scripts/ci/agentic-workflow-safety.test.ts`
 - `scripts/ci/workflow-runner-policy.test.ts`（生成されたジョブがランナーポリシーの内側にあること）

@@ -164,6 +164,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2877](2877-dependabot-triage-2026-09-22.md) — Dependabot トリアージ 2026-09-22：changesets 3 は CI が回さない release flow を壊すので差し替え PR で入れ、gh-aw は再生成で上げる
 - [ADR-2922](2922-monthly-release-train.md) — 毎月の最終日曜に Release — Prepare を自動で走らせ、VS Code 拡張も同じトレインで公開する
 - [ADR-2939](2939-release-record-tags-and-github-release.md) — リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の GitHub Release を 1 つ作る
+- [ADR-2940](2940-vscode-pre-release-channel.md) — VS Code 拡張の main を毎週 Marketplace の pre-release チャネルに出す
 - [ADR-2983](2983-dependabot-triage-2026-09-29.md) — Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upstream の regression なので差し替えず 30.1.1 の bot 提案を待ち、@types/vscode 1.138 は ExTester の上限まで保留する
 - [ADR-2985](2985-dependabot-security-2026-09-29.md) — Dependabot security alert 2026-09-29（`undici` の override floor が脆弱範囲の内側だったので `^7.29.1` に上げた）
 - [ADR-3000](3000-nest-deploys-on-main.md) — karasu-nest を main への push で自動 deploy し、対象 path は nest の workspace 依存から機械的に決める
@@ -189,6 +190,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3337](3337-split-process-md.md) — docs/process.md を常時読む核と、作業を始めたときに読むトピックに分ける
 - [ADR-3340](3340-converge-fix-the-class.md) — converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけへ CLI を 1 回当てる
 - [ADR-3342](3342-ready-gate-local-review.md) — ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh pr ready を拒否する
+- [ADR-3344](3344-source-line-budget.md) — ソースファイルに行数予算を設け、超えているファイルは現在の行数で pin する
 - [ADR-3359](3359-pr-before-after-screenshots.md) — 描画が変わる PR に、merge-base と比べた before/after の画像を添付する
 - [ADR-3381](3381-dependabot-triage-2026-10-26.md) — Dependabot トリアージ 2026-10-26：npm 12 件をそのまま採用し、chokidar 6 は Node 下限の引き上げと同梱する前提で保留、gh-aw-actions は却下して v0.92.0 で再生成する
 - [ADR-3399](3399-dependabot-security-2026-10-30.md) — Dependabot security alert 2026-10-30（qs と serialize-javascript の override floor を修正版へ上げ、launch-editor を override し、@azure/msal-node は @azure/identity 4.14.1 が公開から 1 日経ってから lock 更新で上げる）
@@ -430,7 +432,6 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 ## resolver
 
 - [ADR-237](237-domain-drift-detection.md) — Domain Drift Detection — 検出スコープと検出キー
-- [ADR-287](287-cyclic-dependency-detection.md) — 循環依存の検出と `KrsEdge.cyclic` フラグによる視覚化
 - [ADR-316](316-database-as-first-class-node.md) — `database` / `queue` / `storage` を system 直下のファーストクラスノードに昇格
 - [ADR-477](477-deprecated-domain-migration-coexistence.md) — 移行期における重複ドメイン ID の共存を `@deprecated` + `@migration_target` で許容する
 - [ADR-1381](1381-multi-file-import-semantics.md) — マルチファイル import の意味論 — whole-file import / system 再オープン / DAG 再到達
@@ -441,6 +442,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2410](2410-import-coupled-diagnostics-decline-and-invalid-owns-kind-only.md) — import 結合の存在検査は未解決 import が残る file では判定しない（invalid-owns は kind 専任にする）
 - [ADR-2442](2442-owns-existence-any-declared-node.md) — owns の存在検査は kind を問わない（system は kind 拒否として報告し、invalid-owns は拒否した kind を名指す）
 - [ADR-2596](2596-node-path-index-merged-model.md) — nodePathIndex はマージ後のモデルで再構築し、多重判定は宣言単位で行う
+- [ADR-2791](2791-cyclic-flag-at-model-construction.md) — `KrsEdge.cyclic` をモデル構築時に導出し、`analyze()` を読むだけのパスにする
 
 ## styling
 
@@ -455,6 +457,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2234](2234-boundary-style-selector.md) — boundary フレーム色の style セレクタ — `boundary` / `boundary#<id>`
 - [ADR-2269](2269-team-frame-style-selector.md) — team フレームの色は team カードと同じセレクタで指定する — `team` / `#<id>` / `team#<id>`
 - [ADR-2482](2482-themed-badge-color-single-source.md) — バッジ色はテーマ別の対で持ち、テーマ非依存の値を掴めなくする
+- [ADR-3141](3141-style-value-bounds-single-source.md) — スタイル値の範囲はスキーマ 1 か所に置き、スキーマを満たさない著者の宣言は cascade で 1 回捨てる
 - [ADR-9004](9004-css-inspired-styling.md) — CSSインスパイアのスタイリングシステム
 
 ## testing

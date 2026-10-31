@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { resolveStyles, nodeStyleKey } from "./style-resolver.js";
 import { analyze } from "./warnings.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
+import { StyleParser } from "../parser/style-parser.js";
 import type {
   KrsNode,
   KrsFile,
@@ -118,8 +119,8 @@ describe("resolveStyles", () => {
   });
 
   // #3032: once the lexer kept the sign, a negative width, radius or size
-  // reached the resolver. It is dropped and the default stands, as the
-  // validator's `style-out-of-range` says.
+  // reached the resolver. The cascade drops it and the default stands, as the
+  // validator's `style-out-of-range` says (#3141).
   it("drops a negative border-width, border-radius or font-size", () => {
     const system = makeNode({
       kind: "system",
@@ -127,15 +128,9 @@ describe("resolveStyles", () => {
       children: [makeNode({ kind: "service", id: "Svc", label: "Service" })],
     });
     const defaults = resolveStyles([system], []).nodes.get("Svc")!;
-    const sheet: StyleSheet = {
-      rules: [
-        makeRule(
-          { nodeType: "service", tags: [], annotations: [] },
-          { "border-width": "-2px", "border-radius": "-4px", "font-size": "-12px" },
-          1,
-        ),
-      ],
-    };
+    const sheet = StyleParser.parse(
+      "service { border-width: -2px; border-radius: -4px; font-size: -12px; }",
+    ).value;
     const style = resolveStyles([system], [sheet]).nodes.get("Svc")!;
     expect(style.borderWidth).toBe(defaults.borderWidth);
     expect(style.borderRadius).toBe(defaults.borderRadius);
@@ -149,15 +144,7 @@ describe("resolveStyles", () => {
       children: [makeNode({ kind: "service", id: "Svc", label: "Service" })],
     });
     const defaults = resolveStyles([system], []).nodes.get("Svc")!;
-    const sheet: StyleSheet = {
-      rules: [
-        makeRule(
-          { nodeType: "service", tags: [], annotations: [] },
-          { opacity: "-0.5", "border-width": "1e999px" },
-          1,
-        ),
-      ],
-    };
+    const sheet = StyleParser.parse("service { opacity: -0.5; border-width: 1e999px; }").value;
     const style = resolveStyles([system], [sheet]).nodes.get("Svc")!;
     expect(style.opacity).toBe(defaults.opacity);
     expect(style.borderWidth).toBe(defaults.borderWidth);
@@ -885,19 +872,13 @@ describe("resolveStyles", () => {
       expect(result.edges.get("A->B")!.labelPosition).toBe(0.25);
     });
 
-    it("clamps fractional values outside [0, 1]", () => {
-      const sheet: StyleSheet = {
-        rules: [
-          makeRule(
-            { nodeType: "edge", tags: [], annotations: [] },
-            { "label-position": "1.5" },
-            1,
-            0,
-          ),
-        ],
-      };
+    it("drops a fractional value outside [0, 1] instead of clamping it (#3141)", () => {
+      const sheet = StyleParser.parse("edge { label-position: 1.5; }").value;
       const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
-      expect(result.edges.get("A->B")!.labelPosition).toBe(1);
+      const defaults = resolveStyles([], [], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelPosition).toBe(
+        defaults.edges.get("A->B")!.labelPosition,
+      );
     });
 
     it("falls back to the default for unrecognised keywords / non-numeric values", () => {
@@ -1578,7 +1559,13 @@ describe("resource tag auto-inference in resolveStyles", () => {
         makeNode({
           kind: "service",
           id: "Svc",
-          children: [makeNode({ kind: "usecase", id: "UC", children: [resource] })],
+          children: [
+            makeNode({
+              kind: "domain",
+              id: "D",
+              children: [makeNode({ kind: "usecase", id: "UC", children: [resource] })],
+            }),
+          ],
         }),
       ],
     );
@@ -1722,13 +1709,12 @@ describe("resolveStyles — column layout hint (#969)", () => {
     }
   });
 
-  it("emits style-column-invalid-value and skips the hint when the value is unknown", () => {
-    const { system, sheet } = nodeWithColumn("middle");
+  it("skips the hint without a resolver warning when the value is unknown (the validator reports it, #3141)", () => {
+    const { system } = nodeWithColumn("middle");
+    const sheet = StyleParser.parse("#Admin { column: middle; }").value;
     const result = resolveStyles([system], [sheet]);
     expect(result.layoutHints.has("Admin")).toBe(false);
-    expect(result.warnings).toEqual([
-      { kind: "style-column-invalid-value", nodeId: "Admin", value: "middle" },
-    ]);
+    expect(result.warnings).toEqual([]);
   });
 
   it("honors cascade: id selector overrides kind selector", () => {
@@ -1784,7 +1770,7 @@ describe("resolveStyles — column layout hint (#969)", () => {
     });
   });
 
-  it("emits style-column-invalid-value for invalid values on deploy nodes (not silently dropped)", () => {
+  it("drops an invalid value on a deploy node in the cascade, so no ignored-hint warning fires (#3141)", () => {
     const system = makeNode({ kind: "system", id: "S", children: [] });
     const deployUnit: DeployNode = {
       kind: "oci",
@@ -1793,17 +1779,9 @@ describe("resolveStyles — column layout hint (#969)", () => {
       properties: { runtime: "GKE", realizes: [] },
       loc: dummyLoc,
     };
-    const sheet: StyleSheet = {
-      rules: [
-        makeRule({ id: "ecommerceApp", tags: [], annotations: [] }, { column: "middel" }, 100),
-      ],
-    };
+    const sheet = StyleParser.parse("#ecommerceApp { column: middel; }").value;
     const result = resolveStyles([system], [sheet], [deployUnit]);
-    expect(result.warnings).toContainEqual({
-      kind: "style-column-invalid-value",
-      nodeId: "ecommerceApp",
-      value: "middel",
-    });
+    expect(result.warnings).toEqual([]);
   });
 
   it("warns when a column hint resolves on an org team node", () => {
@@ -1852,16 +1830,13 @@ describe("resolveStyles — grid-columns layout hint (#1737)", () => {
     expect(result.warnings).toEqual([]);
   });
 
-  it("emits style-grid-columns-invalid-value and skips the hint for non-positive / non-integer", () => {
+  it("skips the hint for non-positive / non-integer values, with no per-node warning (#3141)", () => {
     for (const value of ["0", "-2", "2.5", "abc"]) {
-      const { system, sheet } = systemWithGridColumns(value);
+      const { system } = systemWithGridColumns(value);
+      const sheet = StyleParser.parse(`#S { grid-columns: ${value}; }`).value;
       const result = resolveStyles([system], [sheet]);
       expect(result.layoutHints.has("S")).toBe(false);
-      expect(result.warnings).toContainEqual({
-        kind: "style-grid-columns-invalid-value",
-        nodeId: "S",
-        value,
-      });
+      expect(result.warnings).toEqual([]);
     }
   });
 
@@ -1983,8 +1958,10 @@ describe("label-max-chars / label-display properties (#3022)", () => {
   });
 
   it("keeps the default for a value that is not a positive whole number", () => {
-    for (const bad of ["0", "2.5", "12px", "banana", ""]) {
-      expect(styleWith({ "label-max-chars": bad }).labelMaxChars).toBe(48);
+    for (const bad of ["0", "2.5", "12px", "banana"]) {
+      const sheet = StyleParser.parse(`edge { label-max-chars: ${bad}; }`).value;
+      const style = resolveStyles([], [sheet], undefined, undefined, undefined, edge());
+      expect(style.edges.get("A->B")!.labelMaxChars).toBe(48);
     }
   });
 

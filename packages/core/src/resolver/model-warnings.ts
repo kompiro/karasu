@@ -27,8 +27,8 @@ export function collectModelWarnings(krsFile: KrsFile, sheets: StyleSheet[]): Wa
   const warnings = analyze(krsFile, sheets, systemSheetCount);
 
   // Phase 3 value-level validator. Translate the validator's parser-shaped
-  // Diagnostics into Warnings so the App's WarningPanel displays them next to
-  // the existing `style-column-invalid-value` entry. LSP / CLI invoke
+  // Diagnostics into Warnings so the App's WarningPanel displays them with
+  // the resolver's own warnings. LSP / CLI invoke
   // `validateStyleValues` directly, so this translation is only for the
   // App / compile-pipeline path.
   for (let i = 1; i < sheets.length; i++) {
@@ -84,27 +84,10 @@ function diagnosticToWarning(d: Diagnostic): Warning | null {
  * `Warning` union; every surface that resolves styles reports through here.
  */
 export function resolvedStyleWarningToWarning(w: ResolvedStyleWarning): Warning {
-  switch (w.kind) {
-    case "style-column-invalid-value":
-      return {
-        kind: "style-column-invalid-value",
-        params: { nodeId: w.nodeId, value: w.value },
-      };
-    case "style-column-ignored-non-system-view":
-      return {
-        kind: "style-column-ignored-non-system-view",
-        params: { nodeId: w.nodeId, viewType: w.viewType },
-      };
-    case "style-grid-columns-invalid-value":
-      return {
-        kind: "style-grid-columns-invalid-value",
-        params: { nodeId: w.nodeId, value: w.value },
-      };
-    default: {
-      // Exhaustiveness guard — adding a new ResolvedStyleWarning variant
-      // without updating this switch will fail the build.
-      const _exhaustive: never = w;
-      throw new Error(`Unhandled ResolvedStyleWarning kind: ${JSON.stringify(_exhaustive)}`);
-    }
-  }
+  // One variant today. A second one stops this from type-checking (its params
+  // differ) until it is mapped here.
+  return {
+    kind: "style-column-ignored-non-system-view",
+    params: { nodeId: w.nodeId, viewType: w.viewType },
+  };
 }

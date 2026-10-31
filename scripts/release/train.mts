@@ -97,7 +97,7 @@ export function composeTrainIssueBody(opts: {
 
 export type MarketplaceStatus = "stable" | "prerelease-only" | "absent";
 
-type VsceShow = {
+export type VsceShow = {
   versions?: { version: string; properties?: { key: string; value: string }[] }[];
 };
 
