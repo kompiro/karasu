@@ -16,7 +16,7 @@ assumptions:
   # (#2161), and only this code pointer is retargeted.
   - "symbol: packages/core/src/parser/parser.ts :: buildBoundaryMembership"
   - "symbol: packages/core/src/types/ast.ts :: BoundaryBlock"
-  - "symbol: packages/core/src/renderer/layout.ts :: groupIdOf"
+  - "symbol: packages/core/src/renderer/canvas-grouping.ts :: groupIdOf"
   - "file: packages/core/src/renderer/group-by-boundary-render.test.ts"
 ---
 
