@@ -11,8 +11,8 @@ scope:
     - core
 assumptions:
   - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: contentBounds"
-  - "symbol: packages/core/src/renderer/layout.ts :: gutterReservations"
-  - "grep: packages/core/src/renderer/layout.ts :: const FRAME_SIDE_MARGIN = 12"
+  - "symbol: packages/core/src/renderer/layout-reservations.ts :: gutterReservations"
+  - "grep: packages/core/src/renderer/layout-reservations.ts :: const FRAME_SIDE_MARGIN = 12"
   - "grep: packages/core/src/renderer/edge-routing-lanes.ts :: right: frame.x \\+ frame.width"
   - "grep: packages/core/src/renderer/routing-parity.test.ts :: drill-down gutters stay inside the frame"
   - "file: packages/core/src/renderer/edge-routing-frame-sides.test.ts"

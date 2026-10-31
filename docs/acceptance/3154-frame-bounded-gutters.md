@@ -9,7 +9,7 @@ type: product
 - **設計 (ADR)**: [ADR-3154](../adr/3154-frame-bounded-gutters.md)
 - **関連 ADR**: [ADR-3132](../adr/3132-frame-bounded-channels.md)、[ADR-2598](../adr/2598-edge-routing-channel-capacity.md)
 - **Related TPLs**: [TPL-3132](../test-perspectives/TPL-3132-resource-inside-a-frame-measured-against-the-frame.md), [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md), [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)
-- **対象ファイル**: `packages/core/src/renderer/edge-routing-lanes.ts`（`ChannelLimits` / `channelLimitsOf`）、`packages/core/src/renderer/edge-routing-groups.ts`（`contentBounds` とガターの 4 つのパス）、`packages/core/src/renderer/layout-edges.ts`（`runRoutingChain`）、`packages/core/src/renderer/layout.ts`（`gutterReservations` / `layoutInner`）
+- **対象ファイル**: `packages/core/src/renderer/edge-routing-lanes.ts`（`ChannelLimits` / `channelLimitsOf`）、`packages/core/src/renderer/edge-routing-groups.ts`（`contentBounds` とガターの 4 つのパス）、`packages/core/src/renderer/layout-edges.ts`（`runRoutingChain`）、`packages/core/src/renderer/layout-reservations.ts`（`gutterReservations`）、`packages/core/src/renderer/layout.ts`（`layoutInner`）
 
 > ドリルダウンのガターのレーンは、内容の端から外へ 24px ずつ積まれ、枠の左右の余白（40px）を見なかった。2 本目から枠の線に載るか枠の外に出て、枠の横に ghost カードがあると 1 本目から外に出た。ガターの基準を枠の内側のカードで測り、足りない幅は 2 回目の配置で枠の側面に予約する。
 
