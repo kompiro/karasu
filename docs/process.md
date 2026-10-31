@@ -168,6 +168,7 @@ ready → implementing → in-review → (close)
 | 複数スライスに分けた仕事の追跡 | `.claude/rules/program-slices.md` | Design Doc に `### スライス` を書いたとき |
 | changeset の要否と名指し | `.claude/rules/changesets.md` | 公開対象パッケージの編集 |
 | workflow の draft 判定（skip する job と `ready_for_review` の対） | `.claude/rules/stacked-pr.md` | workflow の編集 |
+| ソースの行数予算（pin を上げる・下げる） | `.claude/rules/line-budget.md` | `.oxlintrc.json` の編集 |
 | docs サイトの preview（レンダリング結果を PR 上で読む） | `.claude/rules/docs-site-preview.md` | サイトが公開する doc か `packages/docs-site/**` の編集 |
 | リリース・依存更新の手順 | `docs/release.md` | リリース時・Dependabot PR 処理時 |
 
