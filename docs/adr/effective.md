@@ -190,6 +190,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3337](3337-split-process-md.md) — docs/process.md を常時読む核と、作業を始めたときに読むトピックに分ける
 - [ADR-3340](3340-converge-fix-the-class.md) — converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけへ CLI を 1 回当てる
 - [ADR-3342](3342-ready-gate-local-review.md) — ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh pr ready を拒否する
+- [ADR-3344](3344-source-line-budget.md) — ソースファイルに行数予算を設け、超えているファイルは現在の行数で pin する
 - [ADR-3359](3359-pr-before-after-screenshots.md) — 描画が変わる PR に、merge-base と比べた before/after の画像を添付する
 - [ADR-3381](3381-dependabot-triage-2026-10-26.md) — Dependabot トリアージ 2026-10-26：npm 12 件をそのまま採用し、chokidar 6 は Node 下限の引き上げと同梱する前提で保留、gh-aw-actions は却下して v0.92.0 で再生成する
 - [ADR-3399](3399-dependabot-security-2026-10-30.md) — Dependabot security alert 2026-10-30（qs と serialize-javascript の override floor を修正版へ上げ、launch-editor を override し、@azure/msal-node は @azure/identity 4.14.1 が公開から 1 日経ってから lock 更新で上げる）
