@@ -183,8 +183,8 @@ alert の突き合わせを先に走らせていることがある。どちら�
 `.github/aw/actions-lock.json` を据え置くため、生成物とコンパイラのバージョンが
 食い違ったままマージされる（`ADR-2753`、再生成は `#2762`）。
 
-到達状態は「3 つの版が揃い、再コンパイルしても差分が出ない」こと。版が揃ったかの
-判定は目視ではなく `scripts/ci/gh-aw-lock-consistency.test.ts` で行う（`uses:` の
+到達状態は「3 つの版が揃い、`gh actions-lock` を当てる前の出力は再コンパイルしても差分が出ない」こと（`gh actions-lock` は `uses:` をタグに書き換えるので、commit した後のファイルは compile の出力と一致しない。暫定、#3415）。版が揃ったかの
+判定は目視ではなく `scripts/ci/gh-aw-lock-consistency.test.ts` で行う（manifest コメントの
 sha / 版コメント / `compiler_version` を `actions-lock.json` と突き合わせて不一致で
 落ちる。`pnpm test` 経由で CI も回す）。
 
@@ -198,6 +198,10 @@ gh aw compile
 git add .github                   # 1 回目の出力を index に固定する
 gh aw compile
 git diff --quiet -- .github && echo "idempotent" || echo "NOT idempotent: 2 回目で差分"
+
+# compile は uses: を @<sha> # vX に戻すので、actions.lock に合わせ直す（暫定、#3415）
+gh actions-lock
+gh actions-lock --verify
 
 # 3 つの版が揃っていること / 宣言された write scope が広がっていないこと
 npx vitest run --config scripts/vitest.config.ts ci/gh-aw-lock-consistency.test.ts ci/agentic-workflow-safety.test.ts

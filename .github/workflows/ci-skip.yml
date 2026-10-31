@@ -51,9 +51,9 @@ jobs:
       # job needs no `pnpm install`, the cost ADR-953 rejected always-on CI for.
       # `scripts/lint/no-nul-bytes.test.ts` fails if either side loses the step
       # or this job starts installing dependencies.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: "24"
 

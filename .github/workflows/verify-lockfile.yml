@@ -1,0 +1,42 @@
+name: Verify Actions Lockfile
+
+# Fails when `.github/workflows/actions.lock` is out of sync with the
+# workflows, or a locked pin no longer verifies upstream (Issue #3412).
+#
+# A workflow missing from the lockfile resolves its tags live, so this runs on
+# every PR (no `paths:` filter, so it can be a required check without a skip
+# stub) and weekly, to catch an upstream tag that moved between workflow edits.
+#
+# After adding, removing or renaming a workflow, or changing `uses:` by hand,
+# run `gh actions-lock` at the repo root and commit the updated lockfile.
+# See docs/release.md「GitHub Actions の依存（actions.lock）」.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  merge_group:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: verify-lockfile-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - run: gh extension install github/gh-actions-lock --pin v0.4.0
+      - run: gh actions-lock --verify
