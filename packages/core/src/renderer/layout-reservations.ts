@@ -1,5 +1,5 @@
 /**
- * Capacity reservations for the second placement pass (#2512, #3440): the
+ * Capacity reservations for the second placement pass (#3440): the
  * room `layout()` measures on the first placement and asks `layoutInner` to
  * open on the next one. Inter-row channels (#2608), columns through rows
  * (#2611) and the drill-down frame's sides (#3154) are each read from the
