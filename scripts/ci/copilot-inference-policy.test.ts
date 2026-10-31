@@ -15,19 +15,30 @@ const WORKFLOW_DIR = ".github/workflows";
 const SCANNED_DIRS = [WORKFLOW_DIR, ".github/actions"];
 
 /**
- * Words that route inference to a Copilot seat, matched anywhere outside comment
- * lines. They are matched as bare words rather than as `key: value` pairs, so no
- * YAML spelling hides them: flow style, quotes, anchors (`&all write-all`), a
- * value on the next line or after a comment all still contain the word. The
- * words have no other use in a workflow, so a hit in a string or a trailing
- * comment fails the guard rather than slipping past it. `write-all` grants
- * `copilot-requests` along with every other scope.
+ * Words that route inference to a Copilot seat, matched case-insensitively
+ * anywhere outside lines that start with `#`. They are matched as bare words
+ * rather than as `key: value` pairs, so no YAML spelling hides them: flow style,
+ * quotes, anchors (`&all write-all`), a value on the next line or after a
+ * comment all still contain the word. The words have no other use in a
+ * workflow, so a hit in a string or a trailing comment fails the guard rather
+ * than slipping past it.
+ *
+ * - `copilot-requests` / `write-all`: let `GITHUB_TOKEN` pay for inference
+ *   (`write-all` grants every scope). The repository default token is read-only,
+ *   so a job without a `permissions:` block cannot get it.
+ * - `COPILOT_GITHUB_TOKEN`: the secret gh-aw hands its copilot engine.
+ * - `@github/copilot` / `gh copilot`: the Copilot CLI run as a step.
+ *
+ * A token for another route has to be added as a repository secret first,
+ * which only the maintainer can do; this guard fences the routes a pull
+ * request can open on its own.
  */
 const COPILOT_INFERENCE = [
-  /\bcopilot-requests\b/g,
-  /\bwrite-all\b/g,
-  /COPILOT_GITHUB_TOKEN/g,
-  /\bengine["']?\s*:\s*["']?copilot\b/g,
+  /\bcopilot-requests\b/gi,
+  /\bwrite-all\b/gi,
+  /\bCOPILOT_GITHUB_TOKEN\b/gi,
+  /@github\/copilot\b/gi,
+  /\bgh\s+copilot\b/gi,
 ];
 
 function listFiles(dir: string): string[] {
@@ -53,20 +64,21 @@ describe("Copilot inference policy (ADR-3421)", () => {
   });
 
   it("has no gh-aw workflow source", () => {
-    // A gh-aw source (`.github/workflows/*.md`) defaults to the copilot engine
-    // when it names none, or names it in the object form (`engine:` / `id:`),
-    // which the line match below does not read. The safety tests that fenced
+    // A gh-aw source (`.github/workflows/**/*.md`, imports included) defaults to
+    // the copilot engine when it names none, and names it as `engine: copilot`
+    // or in the object form, none of which the word match below reads. The safety tests that fenced
     // these sources left with them (ADR-3421), so any source is out until the
     // restore in #3421 brings both back.
     const sources = files.filter(
-      (file) => file.startsWith(`${WORKFLOW_DIR}/`) && file.endsWith(".md"),
+      (file) => file.startsWith(`${WORKFLOW_DIR}/`) && file.toLowerCase().endsWith(".md"),
     );
     expect(sources).toEqual([]);
   });
 
   it("has no workflow that bills inference to a Copilot seat", () => {
     const hits = files.flatMap((file) => {
-      // Comment lines are blanked rather than dropped, so offsets keep their line numbers.
+      // Lines starting with `#` are blanked rather than dropped, so offsets keep
+      // their line numbers.
       const lines = readFileSync(join(REPO_ROOT, file), "utf8")
         .split("\n")
         .map((line) => (/^\s*#/.test(line) ? "" : line));

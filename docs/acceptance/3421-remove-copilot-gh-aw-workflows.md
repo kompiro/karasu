@@ -14,9 +14,9 @@
 
 ## 受け入れ条件
 
-- [x] AT-A: どの workflow にも、コメント行以外に `copilot-requests`・`write-all`・`COPILOT_GITHUB_TOKEN` の語と `engine: copilot` が無い（語として照合するので、YAML の書き方を問わない）
+- [x] AT-A: `.github/workflows/` と `.github/actions/` のどのファイルにも、`#` で始まる行以外に `copilot-requests`・`write-all`・`COPILOT_GITHUB_TOKEN`・`@github/copilot`・`gh copilot` の語が無い（大文字小文字を問わず語として照合するので、YAML の書き方を問わない）
   > ✅ Automated — `scripts/ci/copilot-inference-policy.test.ts` › `Copilot inference policy (ADR-3421)` › `has no workflow that bills inference to a Copilot seat`
-- [x] AT-B: gh-aw の source（`.github/workflows/*.md`）が無い（`engine:` を省いた source も copilot で動くため、source があること自体を落とす）
+- [x] AT-B: gh-aw の source（`.github/workflows/**/*.md`。import 用の下位ディレクトリも含む）が無い（`engine:` を省いた source も copilot で動くため、source があること自体を落とす）
   > ✅ Automated — `scripts/ci/copilot-inference-policy.test.ts` › `Copilot inference policy (ADR-3421)` › `has no gh-aw workflow source`
 - [x] AT-C: 検査が空振りしていない（`.github/workflows/` の `.yml` を 1 つ以上読んでいる）
   > ✅ Automated — `scripts/ci/copilot-inference-policy.test.ts` › `Copilot inference policy (ADR-3421)` › `scans the workflow directory`

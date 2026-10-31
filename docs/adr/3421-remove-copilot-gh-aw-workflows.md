@@ -45,8 +45,8 @@ security alert sweep には元から cron が無いが、dispatch すれば今�
 
 Copilot で推論する workflow をリポジトリに置かない。gh-aw の 2 本（`.md` と `.lock.yml`）、
 `.github/aw/`、それらを検査する CI テスト（`gh-aw-lock-consistency.test.ts`・`agentic-workflow-safety.test.ts`）を外し、
-`scripts/ci/copilot-inference-policy.test.ts` が workflow の `copilot-requests`・`write-all`・
-`COPILOT_GITHUB_TOKEN` の語と `engine: copilot`、それに gh-aw の source（`.github/workflows/*.md`）を落とす。個人の課金で推論できるエンジンが使えるようになったら、#3421 で戻す。
+`scripts/ci/copilot-inference-policy.test.ts` が、workflow と action に `copilot-requests`・`write-all`・
+`COPILOT_GITHUB_TOKEN`・`@github/copilot`・`gh copilot` の語があるもの、それに gh-aw の source（`.github/workflows/**/*.md`）を落とす。個人の課金で推論できるエンジンが使えるようになったら、#3421 で戻す。
 
 ## 理由
 
@@ -56,8 +56,13 @@ Copilot で推論する workflow をリポジトリに置かない。gh-aw の 2
   threat detection（#2786）も解けていなかった。トリアージは手元の `/hane:dependabot` と
   `/hane:security-alert` で回している
 - **ガードをテストに置く。** workflow を足す PR は誰でも出せるので、宣言を検査するテストで止める。
-  コメント行は数えない（実行に効かないので、無効にした設定を残しておける）。gh-aw の source は `engine:` を省くと copilot になり、行の照合では
-  読めない書き方もあるので、source があること自体を落とす
+  照合は `key: value` の形ではなく語で、大文字小文字を問わない。YAML の書き方（アンカー、引用符、値の改行、
+  間に挟んだコメント）で宣言を隠せないようにするためで、文字列や行末のコメントに語があれば誤って落ちる側に倒す。
+  `#` で始まる行だけは数えない（無効にした設定を残しておける）。gh-aw の source は `engine:` を省くと copilot に
+  なるので、source があること自体を落とす
+- **ガードが塞ぐのは、PR だけで開ける経路である。** `GITHUB_TOKEN` に推論を払わせるには `copilot-requests`
+  （または `write-all`）の宣言が要る。リポジトリ既定のトークン権限は read なので、`permissions:` を書かない job には
+  付かない。個人の PAT など別のトークンで払わせるには、先に maintainer が secret を足す必要があり、このガードの範囲外にする
 - **#3415 の問いは戻すときに決める。** 生成物が無ければ `gh aw compile` と `gh actions-lock` は食い違わない。
   戻す時点の gh-aw と gh-actions-lock の機能で決めるほうが、今決めるより正確である
 
