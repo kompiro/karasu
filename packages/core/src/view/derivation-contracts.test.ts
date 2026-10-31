@@ -25,8 +25,8 @@
  *
  * The test asserts the observed record matches the union of `preserves`
  * and `transforms`. Removing a preserved attribute from any derivation
- * (e.g. dropping `...edge` from the implicit-edge spread at
- * `view-extract.ts:158`) flips the corresponding row red — verified by
+ * (e.g. dropping `...edge` from the implicit-edge spread in `derived-edges.ts`
+ * `deriveImplicitServiceEdges`) flips the corresponding row red — verified by
  * hand-rehearsing that exact regression before landing this file.
  *
  * **When you add a new derivation / aggregation / synthesis function**

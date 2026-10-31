@@ -11,6 +11,7 @@ known_consumers:
   - parser
   - resolver
   - view-extract
+  - derived-edges
   - renderer
   - chat-panel
 related_to:
