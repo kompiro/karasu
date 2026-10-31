@@ -12,7 +12,7 @@ scope:
 assumptions:
   - "symbol: packages/core/src/resolver/style-resolver.ts :: resolveTeamFrames"
   - "symbol: packages/core/src/types/style.ts :: ResolvedTeamFrames"
-  - "symbol: packages/core/src/renderer/svg-renderer.ts :: resolveTeamFramePaint"
+  - "symbol: packages/core/src/renderer/container-frame.ts :: resolveTeamFramePaint"
   - "symbol: packages/core/src/renderer/layout-types.ts :: ContainerRect"
   - "symbol: packages/core/src/builtins/reference-data.ts :: SELECTOR_SPECIFICITY"
   - "file: packages/core/src/renderer/team-frame-style-selector.test.ts"

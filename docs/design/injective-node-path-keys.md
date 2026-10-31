@@ -104,7 +104,7 @@ Issue 本文は「`->` を含む id は quote なしで書ける」としてい�
 - **out of scope**:
   - `ghost-layout.ts` の ghost ノード id（`layoutNodes` のキー）。Issue で到達するモデルを作れなかったもの。ただし同じファイルの owner 解決は索引を引くので、site 1 として変える
   - `styles.edges` の `${from}->${to}` style キー。`.krs.style` のセレクタとの契約で、diff キーとは別物
-  - diff キー以外の `${from}->${to}` join。`implicitEdgeDetails` の `${from}->${to}#${kind}`（`view-extract.ts` / `layout.ts`）、`layer-assignment.ts` / `layer-layout-logics.ts` の `edgeDirections`、`edge-routing-bundles.ts` のバンドルキー、`view-extract.ts` の dedup キーなど。同じ形の join だが、quoted id で衝突に到達するかを本 Issue では確かめていない。実装 PR で follow-up Issue を起こし、本 Design Doc の対象は **diff キー**（compare モードで要素の状態を突き合わせるキー）に限る
+  - diff キー以外の `${from}->${to}` join。`implicitEdgeDetails` の `${from}->${to}#${kind}`（`derived-edges.ts` / `layout.ts`）、`layer-assignment.ts` / `layer-layout-logics.ts` の `edgeDirections`、`edge-routing-bundles.ts` のバンドルキー、`view-extract.ts` の dedup キーなど。同じ形の join だが、quoted id で衝突に到達するかを本 Issue では確かめていない。実装 PR で follow-up Issue を起こし、本 Design Doc の対象は **diff キー**（compare モードで要素の状態を突き合わせるキー）に限る
   - 診断の params（`duplicate-owner-assignment` の `nodeId` など）。メッセージ用の text で、identity ではない
   - `owns Shop.Api` のような修飾参照の遷移を、`nodePathIndex` の勝者以外まで正しく解決すること（下の「現時点の方針」の遷移規則で、勝者が一致する場合だけ改善する）
 

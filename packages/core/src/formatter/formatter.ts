@@ -1,7 +1,7 @@
-import { Parser, annotationParamKind } from "../parser/parser.js";
+import { Parser } from "../parser/parser.js";
+import { annotationParamKind } from "../parser/parser-keywords.js";
 import { Lexer } from "../lexer/lexer.js";
-import { TokenType } from "../types/tokens.js";
-import type { SourceRange, Token } from "../types/tokens.js";
+import { TokenType, type SourceRange, type Token } from "../types/tokens.js";
 import { quoteId } from "./quote-id.js";
 import { quoteString, emitDescription } from "./quote-string.js";
 import type {

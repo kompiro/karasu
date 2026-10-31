@@ -1,5 +1,5 @@
 import type { OrganizationBlock, TeamNode } from "../types/ast.js";
-import type { ViewPath } from "./view-extract.js";
+import type { ViewPath } from "./view-slice.js";
 
 /** @deprecated Use `ViewPath` instead. */
 export type OrgViewPath = ViewPath;

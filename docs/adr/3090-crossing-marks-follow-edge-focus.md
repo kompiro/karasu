@@ -11,11 +11,11 @@ scope:
     - core
     - app
 assumptions:
-  - "symbol: packages/core/src/renderer/svg-renderer.ts :: continuesHopRun"
-  - "symbol: packages/core/src/renderer/svg-renderer.ts :: renderTrunkBands"
-  - "grep: packages/core/src/renderer/svg-renderer.ts :: data-edges"
-  - "grep: packages/core/src/renderer/svg-renderer.ts :: data-edge-index"
-  - "grep: packages/core/src/renderer/svg-renderer.ts :: stroke-opacity"
+  - "symbol: packages/core/src/renderer/crossing-marks-svg.ts :: continuesHopRun"
+  - "symbol: packages/core/src/renderer/crossing-marks-svg.ts :: renderTrunkBands"
+  - "grep: packages/core/src/renderer/crossing-marks-svg.ts :: data-edges"
+  - "grep: packages/core/src/renderer/edge-routing.ts :: data-edge-index"
+  - "grep: packages/core/src/renderer/crossing-marks-svg.ts :: stroke-opacity"
   - "symbol: packages/app/src/components/focus-canvas/node-focus.ts :: EDGE_HOVER_TRIGGER"
   - "grep: packages/app/src/styles/components/preview.css :: EDGE_HOVER_TRIGGER"
   - "file: packages/e2e/tests/at-3090-crossing-marks-follow-edge-focus.spec.ts"
@@ -35,7 +35,7 @@ assumptions:
   - AT: `docs/acceptance/3090-crossing-marks-follow-edge-focus.md`
   - spike: `spike/3090-mark-edge-tag-size`（core 側の試作と Dify での計測。マージしない。最終 commit は `2823ff81cff8c3264185a22280a1738954bc633d`）
   - 後続 Issue: #3157（facet overlay と diff モードの減光が交差マークを沈めない）
-  - コード: `packages/core/src/renderer/svg-renderer.ts`（`renderCrossingMarks` / `continuesHopRun` / `renderTrunkBands`）、`packages/core/src/renderer/crossing-marks.ts`、`packages/app/src/components/focus-canvas/node-focus.ts`（`EDGE_HOVER_TRIGGER`）、`packages/app/src/styles/components/preview.css`
+  - コード: `packages/core/src/renderer/crossing-marks-svg.ts`（`renderCrossingMarks` / `continuesHopRun` / `renderTrunkBands`）、`packages/core/src/renderer/crossing-marks.ts`、`packages/app/src/components/focus-canvas/node-focus.ts`（`EDGE_HOVER_TRIGGER`）、`packages/app/src/styles/components/preview.css`
 
 ## 背景
 

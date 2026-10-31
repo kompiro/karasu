@@ -12,7 +12,7 @@
   - `.github/workflows/dependabot-triage.md`（週次。ただし cron は ADR-2839 で停止中で、現在は dispatch のみ。再開の条件は [#2839](https://github.com/kompiro/karasu/issues/2839) で追う。open な Dependabot PR を upstream まで遡って所見コメントを書く）
   - `.github/workflows/security-alert-sweep.md`（dispatch のみ。alert を掃いてトラッキング Issue を起票する）
   - `.github/workflows/*.lock.yml`（`gh aw compile` の生成物。実行されるのはこちら）
-  <!-- absent-path-next-line: deleted with the gh-aw workflows in #3421 (ADR-3421), named as history -->
+  <!-- absent-path-next-line: deleted with the gh-aw workflows in #3423 (ADR-3421), named as history -->
   - `scripts/ci/agentic-workflow-safety.test.ts`（書き込み範囲とコンパイル済みかのガード）
   - `scripts/ci/workflow-runner-policy.test.ts`（生成ジョブのランナーラベル）
 

@@ -5,7 +5,7 @@
 - **関連 ADR**: [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)（交差マークの導入）、[ADR-3022](../adr/3022-edge-label-disclosure.md)（node focus の減光）
 - **Related TPLs**: [TPL-3090](../test-perspectives/TPL-3090-edge-decoration-follows-edge-emphasis.md)（本件で起こした retrospective TPL）、[TPL-2956](../test-perspectives/TPL-2956-regrouping-svg-elements-keeps-paint-order.md)（描画順を保つ）
 - **対象ファイル**:
-  - `packages/core/src/renderer/svg-renderer.ts`（`renderCrossingMarks` / `renderTrunkBands` / `continuesHopRun`）
+  - `packages/core/src/renderer/crossing-marks-svg.ts`（`renderCrossingMarks` / `renderTrunkBands` / `continuesHopRun`）
   - `packages/core/src/renderer/crossing-marks.ts`（chip と band が運ぶエッジ）
   - `packages/app/src/components/focus-canvas/node-focus.ts`（node focus と edge hover の規則）
 

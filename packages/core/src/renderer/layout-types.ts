@@ -6,7 +6,7 @@ import type {
   ClientCapability,
   LinkEntry,
 } from "../types/ast.js";
-import type { DomainEdgeDetail } from "../view/view-extract.js";
+import type { DomainEdgeDetail } from "../view/view-slice.js";
 import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import type { CategoryId } from "./category-collapse.js";
 import type { GroupLabelIndex } from "./group-labels.js";

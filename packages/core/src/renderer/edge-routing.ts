@@ -3,13 +3,12 @@ import type { HopMark, LayoutEdge } from "./layout-types.js";
 import { el, escapeXml } from "./svg-builder.js";
 import { canvasLabel, type LabelWithheld } from "./edge-label-disclosure.js";
 import { pairLabelSegment } from "./mutual-pair.js";
+import { round2 } from "./svg-number.js";
 
 interface Point {
   x: number;
   y: number;
 }
-
-const round2 = (n: number): number => Number(n.toFixed(2));
 
 /**
  * The segment index of `points` whose line the hop's centre lies on, or -1.

@@ -9,7 +9,8 @@ type: product
 - **設計 (ADR)**: [ADR-2501](../adr/2501-errored-edge-declaration-renders-nowhere.md)
 - **Related TPLs**: [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md)（parse を通った構造は描画されるか診断されるかのちょうど一方）
 - **対象ファイル**:
-  - `packages/core/src/view/view-extract.ts`（`isAnchoredAt` / `isLiftableToPeerCanvas` / `collectAnchoredPeerEdges` / `extractEntityView`）
+  - `packages/core/src/view/anchored-edges.ts`（`isAnchoredAt` / `isLiftableToPeerCanvas` / `collectAnchoredPeerEdges`）
+  - `packages/core/src/view/entity-relations.ts`（`extractEntityView`）
   - `docs/spec/syntax.md` / `syntax.ja.md`（§ Edge declaration — Edge origin scope）
 
 > `service S1 { S2 -> S3 }` は起点スコープ規則が禁じる綴りで、parser は `edge-source-mismatch`（error）で弾く。それでも error recovery で AST に残った宣言を描画側が拾い、診断されているのに矢印も描かれていた。[AT-2223](service-anchored-edge-render.md) が開いた描画経路は**宣言元ブロックを起点とするエッジだけ**に限る。判定は `isAnchoredAt` 1 つに集約し、描画経路 3 か所（親の canvas・system スコープ機構・entity ビュー）が共有する。

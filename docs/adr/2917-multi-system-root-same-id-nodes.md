@@ -17,7 +17,7 @@ scope:
   packages: [core, app, vscode]
 assumptions:
   - "symbol: packages/core/src/renderer/layout-types.ts :: nodeIdentity"
-  - "grep: packages/core/src/renderer/layout.ts :: allLayoutNodes\\.set\\(nodePathIdentityKey\\(\\[sys\\.id, id\\]\\), node\\)"
+  - "grep: packages/core/src/renderer/layout-multi-system.ts :: allLayoutNodes\\.set\\(nodePathIdentityKey\\(\\[sys\\.id, id\\]\\), node\\)"
   - "grep: packages/core/src/renderer/svg-renderer.ts :: data-node-path"
   - "symbol: packages/core/src/parser/node-path.ts :: parseNodePathRefId"
   - "symbol: packages/core/src/compile/compile.ts :: nodeMetadataByPath"

@@ -9,7 +9,8 @@ type: product
 - **設計 (ADR)**: [ADR-2585](../adr/2585-store-scoped-er-view.md)
 - **Related TPLs**: [TPL-2585](../test-perspectives/TPL-2585-partial-mapping-view-states-its-denominator.md)（部分的な写像を通した派生ビューは写らなかった分母を示す）, [TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md)（派生タグは kind 次元と直交させる）, [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md)（cross-domain の entity 参照は限定子付き）
 - **対象ファイル**:
-  - `packages/core/src/view/view-extract.ts`（`projectStoreRelations` / `containerCanvasEdges`）
+  - `packages/core/src/view/entity-relations.ts`（`projectStoreRelations`）
+  - `packages/core/src/view/anchored-edges.ts`（`containerCanvasEdges`）
   - `packages/core/src/builtins/default-style.ts`（`edge[projected]`）
   - `packages/core/src/resolver/style-resolver.ts`（静的バンドルで派生エッジにスタイルを当てる `styleDerivedEdges`）
   - `docs/spec/syntax.md` / `syntax.ja.md`（§ Store-scoped ER view）、`docs/spec/tags-annotations.md` / `.ja.md`（`[projected]`）

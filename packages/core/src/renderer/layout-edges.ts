@@ -5,7 +5,7 @@
  * pipelines run (TPL-219).
  */
 import type { KrsEdge } from "../types/ast.js";
-import type { ViewSlice } from "../view/view-extract.js";
+import type { ViewSlice } from "../view/view-slice.js";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
 import {
   routeGroupedEdges,

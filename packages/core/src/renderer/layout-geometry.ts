@@ -1,11 +1,17 @@
 /**
  * Canvas geometry for the layout pipelines (#2512): quadrant normalization,
- * row centering, total-dimension computation, and the empty-canvas container
- * fallback.
+ * row centering, total-dimension computation, the drill-down container
+ * nesting, and the empty-canvas container fallback.
  */
-import type { ViewSlice } from "../view/view-extract.js";
+import type { ViewSlice } from "../view/view-slice.js";
 import type { LayoutNode, LayoutEdge, ContainerRect, DisplayMode } from "./layout-types.js";
-import { CONTAINER_PADDING, GHOST_MARGIN, getLayoutConstants } from "./layout-constants.js";
+import {
+  CONTAINER_PADDING,
+  CONTAINER_LABEL_HEIGHT,
+  GHOST_MARGIN,
+  getLayoutConstants,
+} from "./layout-constants.js";
+import type { FrameSides } from "./layout-reservations.js";
 
 /**
  * Move every edge point by (dx, dy) in place, each point object once. Trunk
@@ -213,4 +219,105 @@ export function buildContainersForEmpty(viewSlice: ViewSlice): ContainerRect[] {
 
   containers.reverse();
   return containers;
+}
+
+/**
+ * The drill-down frames around a placed canvas (#3440): the focused container
+ * and its ghost ancestors, built innermost first and returned outermost first.
+ * Shifts the cards in `layoutNodes` in place to make room for the nesting and
+ * for the frame-side reservations in `extraFrameSides` (#3154).
+ * `childMaxWidth` / `childMaxHeight` are the placed content's extent before
+ * that shift.
+ */
+export function nestContainers(
+  viewSlice: ViewSlice,
+  layoutNodes: Map<string, LayoutNode>,
+  childMaxWidth: number,
+  childMaxHeight: number,
+  scopePath: readonly string[],
+  extraFrameSides: FrameSides | undefined,
+): { containers: ContainerRect[]; focusFrame: ContainerRect | undefined } {
+  // Build containers (innermost first: focused container, then ancestors)
+  const hasContainer =
+    viewSlice.ancestorChain.length > 0 || viewSlice.containerNode?.kind !== "system";
+
+  // Calculate the offset needed for nesting
+  const containerCount = viewSlice.ancestorChain.length + (hasContainer ? 1 : 0);
+  const totalNestOffset =
+    containerCount * GHOST_MARGIN + (hasContainer ? CONTAINER_LABEL_HEIGHT : 0);
+
+  // Offset all child nodes for nesting
+  if (totalNestOffset > 0) {
+    for (const [, node] of layoutNodes) {
+      node.x += totalNestOffset;
+      node.y += totalNestOffset;
+    }
+    childMaxWidth += totalNestOffset;
+    childMaxHeight += totalNestOffset;
+  }
+  if (extraFrameSides && hasContainer && viewSlice.containerNode) {
+    for (const [, node] of layoutNodes) node.x += extraFrameSides.left;
+    childMaxWidth += extraFrameSides.left + extraFrameSides.right;
+  }
+
+  // Build container rects
+  const containers: ContainerRect[] = [];
+  /** The drill-down frame around the canvas's cards, when there is one (#3132). */
+  let focusFrame: ContainerRect | undefined;
+
+  if (hasContainer && viewSlice.containerNode) {
+    // Focused container wraps child nodes
+    const containerX = totalNestOffset - CONTAINER_PADDING;
+    const containerY = totalNestOffset - CONTAINER_LABEL_HEIGHT - CONTAINER_PADDING / 2;
+    const containerW = childMaxWidth - totalNestOffset + CONTAINER_PADDING * 2;
+    const containerH =
+      childMaxHeight - totalNestOffset + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING;
+    focusFrame = {
+      id: viewSlice.containerNode.id,
+      label: viewSlice.containerNode.label ?? viewSlice.containerNode.id,
+      x: containerX,
+      y: containerY,
+      width: Math.max(containerW, 200),
+      height: Math.max(containerH, 100),
+      ghost: false,
+      path: scopePath,
+    };
+    containers.push(focusFrame);
+  }
+
+  // Ghost ancestor containers (inner to outer)
+  for (let i = viewSlice.ancestorChain.length - 1; i >= 0; i--) {
+    const ancestor = viewSlice.ancestorChain[i];
+    const depth = viewSlice.ancestorChain.length - i; // 1 for immediate parent
+    const margin = depth * GHOST_MARGIN;
+    const innerContainer = containers.length > 0 ? containers[containers.length - 1] : null;
+
+    let gx: number, gy: number, gw: number, gh: number;
+    if (innerContainer) {
+      gx = innerContainer.x - GHOST_MARGIN;
+      gy = innerContainer.y - GHOST_MARGIN;
+      gw = innerContainer.width + GHOST_MARGIN * 2;
+      gh = innerContainer.height + GHOST_MARGIN * 2;
+    } else {
+      gx = margin;
+      gy = margin;
+      gw = childMaxWidth + CONTAINER_PADDING;
+      gh = childMaxHeight + CONTAINER_PADDING;
+    }
+
+    containers.push({
+      id: ancestor.id,
+      label: ancestor.label ?? ancestor.id,
+      x: gx,
+      y: gy,
+      width: gw,
+      height: gh,
+      ghost: true,
+      path: viewSlice.ancestorChain.slice(0, i + 1).map((n) => n.id),
+    });
+  }
+
+  // Reverse so outermost is first
+  containers.reverse();
+  return { containers, focusFrame };
 }

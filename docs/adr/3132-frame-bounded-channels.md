@@ -16,7 +16,7 @@ assumptions:
   - "symbol: packages/core/src/renderer/edge-routing-lanes.ts :: collectChannels"
   - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: channelBelow"
   - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: channelAbove"
-  - "symbol: packages/core/src/renderer/layout.ts :: channelReservations"
+  - "symbol: packages/core/src/renderer/layout-reservations.ts :: channelReservations"
   - "grep: packages/core/src/renderer/layout-edges.ts :: enclosure: Rect \\| undefined"
   - "grep: packages/core/src/renderer/routing-parity.test.ts :: drill-down channels end at the frame"
   - "file: docs/test-perspectives/TPL-3132-resource-inside-a-frame-measured-against-the-frame.md"

@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { Parser } from "../parser/parser.js";
 import { withUnassignedSystem } from "./unassigned-system.js";
-import { createViewExtractor, extractView, type ViewPath } from "./view-extract.js";
+import { createViewExtractor, extractView } from "./view-extract.js";
+import type { ViewPath } from "./view-slice.js";
 import { buildGhostEndpointResolver } from "../resolver/edge-endpoint.js";
 import { buildEntityResolver } from "../resolver/resource-entity.js";
 import type { KrsNode } from "../types/ast.js";

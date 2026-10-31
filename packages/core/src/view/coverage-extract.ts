@@ -9,7 +9,8 @@ import type {
 import { INFRA_KIND_SET } from "../types/ast.js";
 import { indexDeclaredInfra, infraLeafKey } from "../spec/infra-index.js";
 import { buildEntityResolver } from "../resolver/resource-entity.js";
-import { containerCanvasEdges, projectStoreRelations } from "./view-extract.js";
+import { containerCanvasEdges } from "./anchored-edges.js";
+import { projectStoreRelations } from "./entity-relations.js";
 
 /**
  * Per-domain density metrics over a resolved logical model. Used by the

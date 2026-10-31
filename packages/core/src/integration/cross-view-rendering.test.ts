@@ -6,7 +6,7 @@ import { extractView } from "../view/view-extract.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { render } from "../renderer/svg-renderer.js";
 import { renderOrgView } from "../renderer/org-renderer.js";
-import type { ViewPath } from "../view/view-extract.js";
+import type { ViewPath } from "../view/view-slice.js";
 
 /**
  * Cross-layer integration coverage for the two "writer writes one coarse line

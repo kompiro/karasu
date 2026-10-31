@@ -11,7 +11,7 @@ assumptions:
   - "symbol: packages/core/src/renderer/edge-routing-lanes.ts :: collectChannels"
   - "symbol: packages/core/src/renderer/edge-routing-lanes.ts :: distributeChannelLanes"
   - "symbol: packages/core/src/renderer/edge-routing-lanes.ts :: LANE_PITCH"
-  - "symbol: packages/core/src/renderer/layout.ts :: channelReservations"
+  - "symbol: packages/core/src/renderer/layout-reservations.ts :: channelReservations"
   - "symbol: packages/core/src/renderer/layout-types.ts :: placementPasses"
   - "symbol: packages/core/src/renderer/layer-layout-logics.ts :: extraGapBeforeRow"
   - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: cheapestSide"

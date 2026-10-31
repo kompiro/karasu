@@ -10,7 +10,7 @@ type: product
 - **Related TPLs**: [TPL-2611](../test-perspectives/TPL-2611-feedback-key-survives-the-next-pass.md)（フィードバックの鍵は次のパスで動かない構造キーで持つ）, [TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md)（新しい経路形が重なり回避に参加する）, [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（交差と貫通を両方測る）, [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)（柵の corpus は限界に達していること）, [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（同じ規則を 2 箇所に書き分けない）
 - **対象ファイル**:
   - `packages/core/src/renderer/edge-routing-groups.ts`（回廊への進入 / staircase / 資源キーの claim / fan-out の裁定）
-  - `packages/core/src/renderer/layout.ts`（`columnReservations`）
+  - `packages/core/src/renderer/layout-reservations.ts`（`columnReservations`）
   - `packages/core/src/renderer/layer-layout-logics.ts`（`extraGapBeforeCard` / `ROW_END_COLUMN`）
   - `packages/core/src/renderer/layout-geometry.ts`（予約した gap を保つ中央寄せ）
 

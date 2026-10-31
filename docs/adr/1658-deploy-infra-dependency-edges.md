@@ -10,7 +10,7 @@ scope:
   packages: [core]
 assumptions:
   - "file: docs/spec/syntax.md"
-  - "symbol: packages/core/src/view/view-extract.ts :: deriveInfraEdges"
+  - "symbol: packages/core/src/view/derived-edges.ts :: deriveInfraEdges"
   - "grep: packages/core/src/view/deploy-view-extract.ts :: deriveInfraEdges"
 ---
 

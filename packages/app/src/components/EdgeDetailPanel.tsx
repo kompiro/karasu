@@ -65,7 +65,7 @@ export function EdgeDetailPanel(props: EdgeDetailPanelProps) {
           <div className="node-detail-header">
             <span className="node-detail-icon">↔</span>
             {/* The stub edge's own SVG label is authored in core
-                (`view-extract.ts`), which must not import the translation table,
+                (`derived-edges.ts`), which must not import the translation table,
                 so it stays English until a label is injected the way
                 `emptyStateLabels` is (docs/spec/i18n.md § core). The panel is on
                 the app side of that line and is translated. */}

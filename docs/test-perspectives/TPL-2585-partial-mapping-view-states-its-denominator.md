@@ -9,6 +9,7 @@ applicable_to:
   - "既存の完成された図法（ER 図・クラス図・シーケンス図）に見た目が似る新しいビュー"
 known_consumers:
   - view-extract
+  - entity-relations
   - coverage-extract
   - renderer
 discovered_from:

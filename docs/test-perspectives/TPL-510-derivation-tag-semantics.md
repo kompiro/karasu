@@ -8,6 +8,7 @@ applicable_to:
   - "派生時に自動でタグや属性を付与し、それがスタイル resolver の入力になる経路"
 known_consumers:
   - view-extract
+  - derived-edges
   - style-resolver
 discovered_from:
   - issue: "#510"
@@ -35,7 +36,7 @@ karasu には、ある粒度（domain edge）を別の粒度（service edge）�
 - グルーピングのキーが semantic 区別を含んでいないと、`sync` と `async` が 1 本のエッジに集約されてしまう
 - スタイル定義が「派生由来であること」を表すタグ（`[implicit]`）と「semantic 区別」（`[async]` / `[sync]` / `kind`）の両方を独立にハンドルできるか
 
-#510 では `[implicit]` タグだけが残り `kind` 由来の sync/async 区別が style 上で消えていた。修正は **グルーピングキーに `kind` を含める + 派生エッジで `kind` をスプレッドで保持する** という形で、semantic 情報を派生後にも残すアプローチが採られた（`view-extract.ts:111` 周辺）。
+#510 では `[implicit]` タグだけが残り `kind` 由来の sync/async 区別が style 上で消えていた。修正は **グルーピングキーに `kind` を含める + 派生エッジで `kind` をスプレッドで保持する** という形で、semantic 情報を派生後にも残すアプローチが採られた（現在は `derived-edges.ts` の `deriveImplicitServiceEdges`）。
 
 ## 想定される失敗モード
 
@@ -54,7 +55,7 @@ karasu には、ある粒度（domain edge）を別の粒度（service edge）�
 
 ## 既知の対処パターン
 
-- 派生エッジを生成するとき、元 edge を **スプレッド (`...edge`)** で展開してから必要な fields だけ上書きする。これによって `kind` などの保持忘れを防ぐ（`view-extract.ts:158` のパターン）
+- 派生エッジを生成するとき、元 edge を **スプレッド (`...edge`)** で展開してから必要な fields だけ上書きする。これによって `kind` などの保持忘れを防ぐ（`derived-edges.ts` の `deriveImplicitServiceEdges` のパターン）
 - グルーピングキーに `kind` を含める（`${pairKey}#${edge.kind}`）ことで semantic 区別を保ったまま集約できる
 - スタイル定義側では、派生由来タグと semantic タグを **直交した次元** として扱う（例: `edge[implicit]` で色だけ、`edge.async` で線種だけ。両方が同時にマッチしても破綻しない）
 

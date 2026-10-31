@@ -67,13 +67,11 @@ export { tidyStyleSheet, type TidyOptions, type TidyResult } from "./style/tidy.
 export { serializeStyleSheet } from "./style/serialize.js";
 export { validateStyleValues } from "./style/value-validator.js";
 
-export type {
-  ViewPath,
-  ViewSlice,
-  DomainEdgeDetail,
-  ResolvedContainerChain,
-} from "./view/view-extract.js";
-export { extractView, extractEntityView, resolveContainerChain } from "./view/view-extract.js";
+export type { ViewPath, ViewSlice, DomainEdgeDetail } from "./view/view-slice.js";
+export type { ResolvedContainerChain } from "./view/view-path.js";
+export { resolveContainerChain } from "./view/view-path.js";
+export { extractEntityView } from "./view/entity-relations.js";
+export { extractView } from "./view/view-extract.js";
 export type {
   CrudMatrix,
   CrudMatrixRow,

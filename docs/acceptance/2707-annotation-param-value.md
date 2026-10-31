@@ -9,7 +9,7 @@ type: product
 - **Related TPLs**: [TPL-2707](../test-perspectives/TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md)（lexer は parser が拒否すべき入力を黙って捨ててはならない）、[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（round-trip 保証）、[TPL-2509](../test-perspectives/TPL-2509-kebab-name-positions-share-one-lexical-rule.md)（kebab 名ポジションは縫合を共有する）
 - **対象ファイル**:
   - `packages/core/src/lexer/lexer.ts`（数字始まりの語を `Number` トークンにする、`isBareWord`）
-  - `packages/core/src/parser/parser.ts`（`parseAnnotations` / `readAnnotationParamValue`）
+  - `packages/core/src/parser/annotation-parser.ts`（`parseAnnotations` / `readAnnotationParamValue`）
   - `packages/core/src/parser/kebab-name.ts`（`Number` を先頭以外の断片として縫合する）
   - `docs/spec/tags-annotations.md` / `.ja.md`、`docs/spec/diagnostics.md` / `.ja.md`
 

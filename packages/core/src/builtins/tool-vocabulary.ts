@@ -22,7 +22,7 @@ import { REFERENCE_DATA } from "./reference-data.js";
  * Every tag the tool stamps on an element has to be listed here or in the
  * builtin table, or the builtin theme's own rule for it stops matching once
  * arbitrary-name selectors are disabled. `delivers` is the edge
- * `view-extract.ts` derives from a service's `delivers` property.
+ * `derived-edges.ts` derives from a service's `delivers` property.
  */
 export const SYSTEM_ASSIGNED_TAGS: readonly string[] = [
   "implicit",

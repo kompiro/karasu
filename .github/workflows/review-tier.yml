@@ -6,7 +6,9 @@ name: Review tier
 # - auto-merge is on for a PR that is not Low;
 # - a Low, Design or Medium PR has no valid local review record in its body
 #   (scripts/review/local-review-record.ts). High reads no record: CodeRabbit's
-#   rounds and a human reading the diff carry it.
+#   rounds and a human reading the diff carry it. Neither does a Low PR that
+#   changes only the generated ADR index (Issue #3416): `Validate` holds it to an
+#   exact regeneration.
 # A PR with no tier label is High.
 #
 # No path filter and no skip stub: docs-only PRs are exactly the ones that can be
