@@ -13,7 +13,15 @@ import type { Warning } from "../types/warnings.js";
  * renderers read is written by `markCyclicEdges`, which only the two places
  * that build a model call; `analyze()` takes just the warnings.
  */
-export function findCyclicDependencies(file: KrsFile): {
+export function findCyclicDependencies(
+  file: KrsFile,
+  /**
+   * `false` skips building the warnings (and the cycle path each one carries),
+   * which is all `markCyclicEdges` needs. Their total size can grow with the
+   * square of the chain length, and marking runs on every parse.
+   */
+  { withWarnings = true }: { withWarnings?: boolean } = {},
+): {
   cyclicEdges: Set<KrsEdge>;
   warnings: Warning[];
 } {
@@ -42,13 +50,36 @@ export function findCyclicDependencies(file: KrsFile): {
     // recursive one's: a node's edges are taken in declaration order, and a
     // WHITE neighbour is finished before the next edge is looked at. `path`
     // is the GRAY chain from the walk's root to the current node.
+    //
+    // Hop `h` is the step from `path[h]` to `path[h + 1]`. Marking a cycle marks
+    // every parallel sync edge on each of its hops, and a hop marked once has
+    // nothing left to add, so `hopSkip` lets later cycles jump over the hops
+    // already marked (a union-find over path depths, pointing only downward).
+    // Without it, a chain whose every node also calls the root re-walked the
+    // whole chain per back edge, which is quadratic on every parse.
     function dfs(root: string): void {
       const path: string[] = [];
+      const depthOf = new Map<string, number>();
+      const hopSkip: number[] = [];
       const stack: { node: string; next: number }[] = [];
       const enter = (node: string): void => {
         color.set(node, GRAY);
+        depthOf.set(node, path.length);
+        // The hop into this node is new, whatever stood at this depth before.
+        if (path.length > 0) hopSkip[path.length - 1] = path.length - 1;
         path.push(node);
         stack.push({ node, next: 0 });
+      };
+      // The highest unmarked hop at or below `h`, or -1.
+      const unmarkedAtOrBelow = (h: number): number => {
+        let top = h;
+        while (top >= 0 && hopSkip[top] !== top) top = hopSkip[top];
+        while (h > top) {
+          const below = hopSkip[h];
+          hopSkip[h] = top;
+          h = below;
+        }
+        return top;
       };
       enter(root);
       while (stack.length > 0) {
@@ -56,6 +87,7 @@ export function findCyclicDependencies(file: KrsFile): {
         const out = adj.get(frame.node) ?? [];
         if (frame.next >= out.length) {
           color.set(frame.node, BLACK);
+          depthOf.delete(frame.node);
           path.pop();
           stack.pop();
           continue;
@@ -67,11 +99,12 @@ export function findCyclicDependencies(file: KrsFile): {
         // Self-reference
         if (neighbor === node) {
           cyclicEdges.add(edge);
-          warnings.push({
-            kind: "cyclic-dependency",
-            params: { cyclePath: [node, node] },
-            loc: edge.loc,
-          });
+          if (withWarnings)
+            warnings.push({
+              kind: "cyclic-dependency",
+              params: { cyclePath: [node, node] },
+              loc: edge.loc,
+            });
           continue;
         }
 
@@ -79,23 +112,29 @@ export function findCyclicDependencies(file: KrsFile): {
         if (neighborColor === GRAY) {
           // Back edge found — this edge and every edge along the cycle
           cyclicEdges.add(edge);
-          const cycleStartIdx = path.indexOf(neighbor);
-          const cyclePath = [...path.slice(cycleStartIdx), neighbor];
+          const cycleStartIdx = depthOf.get(neighbor)!;
 
-          // Every parallel sync edge on each hop, read off the hop's own
-          // outgoing edges rather than a scan of the whole scope.
-          for (let i = 0; i < cyclePath.length - 1; i++) {
-            const to = cyclePath[i + 1];
-            for (const cycleEdge of adj.get(cyclePath[i]) ?? []) {
+          // Every parallel sync edge on each hop still unmarked, read off the
+          // hop's own outgoing edges rather than a scan of the whole scope.
+          for (
+            let h = unmarkedAtOrBelow(path.length - 2);
+            h >= cycleStartIdx;
+            h = unmarkedAtOrBelow(h - 1)
+          ) {
+            const to = path[h + 1];
+            for (const cycleEdge of adj.get(path[h]) ?? []) {
               if (cycleEdge.to === to) cyclicEdges.add(cycleEdge);
             }
+            hopSkip[h] = h - 1;
           }
 
-          warnings.push({
-            kind: "cyclic-dependency",
-            params: { cyclePath },
-            loc: edge.loc,
-          });
+          if (withWarnings) {
+            warnings.push({
+              kind: "cyclic-dependency",
+              params: { cyclePath: [...path.slice(cycleStartIdx), neighbor] },
+              loc: edge.loc,
+            });
+          }
         } else if (neighborColor === WHITE) {
           enter(neighbor);
         }
@@ -140,7 +179,7 @@ export function findCyclicDependencies(file: KrsFile): {
  * a finished model calls it (TPL-2791).
  */
 export function markCyclicEdges(file: KrsFile): void {
-  const { cyclicEdges } = findCyclicDependencies(file);
+  const { cyclicEdges } = findCyclicDependencies(file, { withWarnings: false });
   const visit = (edges: KrsEdge[]): void => {
     for (const edge of edges) {
       if (cyclicEdges.has(edge)) edge.cyclic = true;
