@@ -64,7 +64,9 @@ export function checkGenerated(input: CheckInput): { kind: string; errors: strin
   try {
     regenerated = input.regenerate();
   } catch (e) {
-    const detail = String((e as { stderr?: unknown }).stderr ?? (e as Error).message ?? e).trim();
+    // An empty stderr (the generator died silently) falls back to the error message.
+    const stderr = String((e as { stderr?: unknown }).stderr ?? "").trim();
+    const detail = stderr || String((e as Error).message ?? e).trim();
     return {
       kind: verdict.kind,
       errors: [...verdict.reasons, `adr regenerate failed on the head's inputs: ${detail}`],

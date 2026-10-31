@@ -137,7 +137,14 @@ pnpm adr:check-assumptions # 本文の参照ファイル / 識別子の存在確
 止める。急いで `main` の生成物を更新したいときは、PR の外で `pnpm adr:regenerate-pr` を実行する。
 
 `adr.config.json` の `paths.outputs`（出力先）を変える PR は、古い出力の削除だけを含め、
-新しい出力先には書かない。新しい出力先は次の再生成 PR が作る。
+新しい出力先には書かない。新しい出力先は次の再生成 PR が作る（上のコマンドは今の出力先しか
+戻さないので、新しい出力先に生成したファイルは自分で消す）。
+
+**到達状態**: コミットした ADR の変更で次が通る。生成物を混ぜていれば、出力先がどこでも落ちる。
+
+```
+pnpm exec tsx scripts/adr/check-generated.ts --base origin/main
+```
 
 ## Design Doc → ADR への昇格
 

@@ -58,6 +58,8 @@ ADR の PR は、`pnpm adr:regenerate` が書く `docs/adr/effective.md`・`docs
 - ruleset の `pull_request` ルールにある `require_extra_approval_for_unattributed_changes: true` が、routine が push した commit の REST マージに approval を求めないか。求めるなら、この設計は人の approval 無しには動かない。
 - setup script が `gitleaks` の release を取得できるか。release の asset は `github.com` から `*.githubusercontent.com` へ redirect する。届かなければ、環境の allowlist に足すか別の取得元を使う。
 
+追記（2026-10-31）: 実装の手順 0 の spike で 3 点とも成り立つことを確かめた。routine から proxy を通した lease 付きの push、REST の PR 作成・ラベル・`sha` 付きマージ（違う `sha` は 409）が通り、approval は求められず、setup script で入れた `gitleaks` で pre-push が通った。commit の author と committer は `Claude <noreply@anthropic.com>` だった（#3416 のコメント）。
+
 ## 制約・前提
 
 - `main` への直接 push は人もエージェントもしない（CLAUDE.md、ADR-3335）。ruleset に bypass actor を足すのは、この repo で初めての判断になる。

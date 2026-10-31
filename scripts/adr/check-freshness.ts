@@ -108,7 +108,10 @@ function main(): number {
       let regenerated: Tree;
       try {
         regenerated = regenerateAt(sha, adrPathsAt(sha), adr);
-      } catch {
+      } catch (e) {
+        // A generator that fails on every candidate also ends as "stale"; say why.
+        const stderr = String((e as { stderr?: unknown }).stderr ?? "").trim();
+        console.error(`regenerating ${sha} failed: ${stderr || (e as Error).message}`);
         return false;
       }
       return compareTrees(regenerated, committed).length === 0;
