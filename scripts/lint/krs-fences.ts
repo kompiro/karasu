@@ -1,11 +1,11 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { Parser } from "../../packages/core/src/parser/parser.ts";
 import {
-  Parser,
   LOGICAL_KEYWORDS,
   DEPLOY_KEYWORDS,
-} from "../../packages/core/src/parser/parser.ts";
+} from "../../packages/core/src/parser/parser-keywords.ts";
 
 /**
  * Parse guard for the `.krs` snippets embedded in the documentation corpus.

@@ -9,8 +9,8 @@ related_to: [ADR-438, ADR-1568, ADR-1583, ADR-1990, ADR-1995, ADR-2076, ADR-2087
 scope:
   packages: [core, cli]
 assumptions:
-  - "symbol: packages/core/src/parser/parser.ts :: annotationParamKind"
-  - "grep: packages/core/src/parser/parser.ts :: migration_target: { from: \"ref\" }"
+  - "symbol: packages/core/src/parser/parser-keywords.ts :: annotationParamKind"
+  - "grep: packages/core/src/parser/parser-keywords.ts :: migration_target: { from: \"ref\" }"
   - "grep: packages/core/src/formatter/formatter.ts :: function renderAnnotations"
   - "file: packages/core/src/formatter/annotation-params-round-trip.test.ts"
   - "file: packages/core/src/parser/annotation-params.test.ts"

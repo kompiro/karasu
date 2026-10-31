@@ -9,7 +9,7 @@ related_to:
 scope:
   packages: [core, i18n]
 assumptions:
-  - "grep: packages/core/src/parser/parser.ts :: ANNOTATION_PARAM_KEYS"
+  - "grep: packages/core/src/parser/parser-keywords.ts :: ANNOTATION_PARAM_KEYS"
   - "symbol: packages/core/src/types/ast.ts :: BaseNodeFields"
   - "grep: packages/i18n/src/en.ts :: annotationParamUnsupported"
 ---
