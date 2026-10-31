@@ -8,7 +8,10 @@ import {
   DECLARATION_KEYWORDS,
   DEFAULT_DOC_ROOTS,
 } from "./krs-fences.ts";
-import { LOGICAL_KEYWORDS, DEPLOY_KEYWORDS } from "../../packages/core/src/parser/parser.ts";
+import {
+  LOGICAL_KEYWORDS,
+  DEPLOY_KEYWORDS,
+} from "../../packages/core/src/parser/parser-keywords.ts";
 
 const REPO_ROOT = resolve(__dirname, "..", "..");
 
