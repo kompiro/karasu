@@ -4449,3 +4449,100 @@ describe("Parser source file identity", () => {
     expect(stray?.loc && Object.keys(stray.loc)).toEqual(["start", "end"]);
   });
 });
+
+// An error is syntax karasu does not accept: the rejected construct is kept out
+// of the model, and the unit removed is exactly that construct (ADR-2677
+// decision 9, #3072). So a source with the mistake must parse to the same model
+// as the source with the construct blanked out, and the mistake raises one
+// error. Blanking (spaces, newlines kept) rather than deleting keeps every
+// later location where it was, so the two models compare whole.
+describe("a rejected construct is dropped whole (#3072)", () => {
+  const blankOut = (source: string, construct: string): string => {
+    expect(source).toContain(construct);
+    return source.replace(construct, construct.replace(/[^\n]/g, " "));
+  };
+
+  const expectDroppedWhole = (source: string, construct: string, code: string) => {
+    const result = Parser.parse(source);
+    expect(result.diagnostics.map((d) => d.code)).toEqual([code]);
+    const start = source.indexOf(construct);
+    const startLine = source.slice(0, start).split("\n").length;
+    expect(result.diagnostics[0].loc?.start.line).toBe(startLine);
+    expect(result.diagnostics[0].loc?.end.line).toBe(startLine + construct.split("\n").length - 1);
+    const blanked = Parser.parse(blankOut(source, construct));
+    expect(blanked.diagnostics).toEqual([]);
+    expect(result.value).toEqual(blanked.value);
+  };
+
+  describe("infra-not-in-context", () => {
+    it("drops a database inside a service with its body, and the blocks after it stay in place", () => {
+      const construct = `database OrderDB {
+      table orders { label "Orders" }
+      table lines
+    }`;
+      expectDroppedWhole(
+        `
+system S {
+  service A {
+    ${construct}
+    domain Ordering {
+      usecase PlaceOrder
+    }
+  }
+  service B
+}
+`,
+        construct,
+        "infra-not-in-context",
+      );
+    });
+
+    it.each([
+      [
+        "a queue inside a domain",
+        `queue EventBus {\n        queue OrderCreated\n      }`,
+        (c: string) => `service A {\n    domain X {\n      ${c}\n      usecase U\n    }\n  }`,
+      ],
+      [
+        "a storage inside a usecase",
+        `storage Media {\n          bucket images\n        }`,
+        (c: string) =>
+          `service A {\n    domain X {\n      usecase U {\n        ${c}\n        label "after"\n      }\n    }\n  }`,
+      ],
+      [
+        "a bodiless database inside a client",
+        `database DB [rdb]`,
+        (c: string) => `client Web [web] {\n    ${c}\n    label "after"\n  }`,
+      ],
+    ])("drops %s", (_name, construct, wrap) => {
+      expectDroppedWhole(
+        `\nsystem S {\n  ${wrap(construct)}\n  service B\n}\n`,
+        construct,
+        "infra-not-in-context",
+      );
+    });
+  });
+
+  describe("property-not-for-node-kind", () => {
+    it.each([
+      ["role", `service A {\n    role "operator"\n    label "after"\n  }`, `role "operator"`],
+      [
+        "handles",
+        `user U [human] {\n    handles Order.Line, Catalog\n    label "after"\n  }`,
+        `handles Order.Line, Catalog`,
+      ],
+      [
+        "delivers",
+        `client Web [web] {\n    delivers Admin, Mobile\n    label "after"\n  }`,
+        `delivers Admin, Mobile`,
+      ],
+      [
+        "operations",
+        `service A {\n    domain X {\n      usecase U {\n        operations list:read, create\n        label "after"\n      }\n    }\n  }`,
+        `operations list:read, create`,
+      ],
+    ])("drops %s with its value", (_property, block, construct) => {
+      expectDroppedWhole(`\nsystem S {\n  ${block}\n}\n`, construct, "property-not-for-node-kind");
+    });
+  });
+});

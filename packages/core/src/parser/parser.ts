@@ -38,6 +38,7 @@ import type {
   StorageNode,
 } from "../types/ast.js";
 import { INFRA_KIND_SET, createEmptyKrsFile } from "../types/ast.js";
+import { rejectConstruct, rejectProperty } from "./rejected-construct.js";
 import { LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
 import { Lexer } from "../lexer/lexer.js";
 import { isRecognizedResourceOperation, type CrudVerb } from "../spec/operations.js";
@@ -568,8 +569,7 @@ export class Parser {
             this.error("expected-string-after", { property: "role" });
           }
         } else {
-          this.error("property-not-for-node-kind", { property: "role", nodeKind: kind });
-          this.advance();
+          rejectProperty(this.ctx, "role", kind, () => this.match(TokenType.StringLiteral));
         }
         continue;
       }
@@ -583,8 +583,7 @@ export class Parser {
             properties.handles.push(...ids);
           }
         } else {
-          this.error("property-not-for-node-kind", { property: "handles", nodeKind: kind });
-          this.advance();
+          rejectProperty(this.ctx, "handles", kind, (keyword) => this.parseHandlesList(keyword));
         }
         continue;
       }
@@ -601,8 +600,9 @@ export class Parser {
             properties.operations.push(...ops);
           }
         } else {
-          this.error("property-not-for-node-kind", { property: "operations", nodeKind: kind });
-          this.advance();
+          rejectProperty(this.ctx, "operations", kind, (keyword) =>
+            this.parseOperationsList(keyword),
+          );
         }
         continue;
       }
@@ -678,8 +678,9 @@ export class Parser {
             (properties.delivers ??= []).push(client.value);
           }
         } else {
-          this.error("property-not-for-node-kind", { property: "delivers", nodeKind: kind });
-          this.advance();
+          rejectProperty(this.ctx, "delivers", kind, (keyword) => [
+            ...this.commaSeparatedValues(keyword, "delivers"),
+          ]);
         }
         continue;
       }
@@ -727,26 +728,20 @@ export class Parser {
       }
 
       // Check for logical node
-      // Infra block kinds (database/queue/storage) are only valid as direct children of system.
       if (this.isLogicalKeyword(token)) {
+        // Infra block kinds (database/queue/storage) are only valid as direct
+        // children of system. Consume the whole block for clean error
+        // recovery, then drop it (same shape as `entity` below).
         if (INFRA_KIND_SET.has(token.value) && kind !== "system") {
-          this.error("infra-not-in-context", {
-            infraKind: token.value,
-            parentKind: kind,
-          });
-          this.advance();
+          const params = { infraKind: token.value, parentKind: kind };
+          rejectConstruct(this.ctx, this.parseNodeDecl().loc, "infra-not-in-context", params);
           continue;
         }
         // `entity` is only valid as a `domain` child. Consume the full
         // declaration for clean error recovery, then drop it.
         if (token.value === "entity" && kind !== "domain") {
           const node = this.parseNodeDecl();
-          this.diagnostics.push({
-            severity: "error",
-            code: "entity-not-in-domain",
-            params: { parentKind: kind },
-            loc: node.loc,
-          });
+          rejectConstruct(this.ctx, node.loc, "entity-not-in-domain", { parentKind: kind });
           continue;
         }
         // An `entity` block accepts no node children — only relations, a
@@ -755,12 +750,8 @@ export class Parser {
         // node (usecase / resource / …) instead of silently attaching it.
         if (kind === "entity") {
           const node = this.parseNodeDecl();
-          this.diagnostics.push({
-            severity: "error",
-            code: "unexpected-token-in-block",
-            params: { blockKind: "entity", tokenType: String(token.type), value: token.value },
-            loc: node.loc,
-          });
+          const params = { blockKind: "entity", tokenType: String(token.type), value: token.value };
+          rejectConstruct(this.ctx, node.loc, "unexpected-token-in-block", params);
           continue;
         }
         const child = this.parseNodeDecl();
@@ -773,12 +764,8 @@ export class Parser {
         // parses, and a reference to it falls to the unresolved-reference
         // warnings (spec §S6) rather than to a second error.
         if (!LOGICAL_CONTAINMENT.get(kind)?.has(child.kind)) {
-          this.diagnostics.push({
-            severity: "error",
-            code: "node-not-in-context",
-            params: { childKind: child.kind, parentKind: kind },
-            loc: child.loc,
-          });
+          const params = { childKind: child.kind, parentKind: kind };
+          rejectConstruct(this.ctx, child.loc, "node-not-in-context", params);
           continue;
         }
         children.push(child);
@@ -803,12 +790,7 @@ export class Parser {
         if (BOUNDARY_HOST_KIND[kind] && boundaries) {
           boundaries.push(block);
         } else {
-          this.diagnostics.push({
-            severity: "error",
-            code: "boundary-not-in-context",
-            params: { parentKind: kind },
-            loc: block.loc,
-          });
+          rejectConstruct(this.ctx, block.loc, "boundary-not-in-context", { parentKind: kind });
         }
         continue;
       }
