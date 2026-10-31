@@ -13,7 +13,7 @@ known_consumers:
   - docs-guide
 discovered_from:
   - issue: "#2200"
-  - root_cause_file: "docs/spec/syntax.md:128"
+  - root_cause_file: "docs/spec/syntax.md#infra-layer-shared-data-stores--rendered-on-the-system-view"
 related_to:
   - TPL-2075
   - TPL-1223

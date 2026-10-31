@@ -14,7 +14,7 @@ known_consumers:
 discovered_from:
   - issue: "#2715"
   - root_cause_adr: "ADR-2596"
-  - root_cause_file: "packages/cli/src/compile-system-view.ts:20"
+  - root_cause_file: "packages/cli/src/compile-system-view.ts:diagLocFormatter"
 related_to:
   - TPL-2221
   - TPL-1032

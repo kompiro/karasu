@@ -11,7 +11,7 @@ known_consumers:
   - facet-overview-panel
 discovered_from:
   - issue: "#2492"
-  - root_cause_file: "packages/app/src/styles/components/panels.css:659"
+  - root_cause_file: "packages/app/src/styles/components/panels.css :: .facet-overview-panel"
 related_to:
   - TPL-1468
 topic: app-ui

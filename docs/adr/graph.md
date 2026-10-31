@@ -171,6 +171,7 @@ flowchart TD
     ADR_2898["ADR-2898<br/>/code-review は draft PR に当て、CodeRabbit の初回レビューは..."]
     ADR_2922["ADR-2922<br/>毎月の最終日曜に Release — Prepare を自動で走らせ、VS Code 拡張も同..."]
     ADR_2939["ADR-2939<br/>リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の Gi..."]
+    ADR_2940["ADR-2940<br/>VS Code 拡張の main を毎週 Marketplace の pre-release ..."]
     ADR_2949["ADR-2949<br/>auto-merge する ADR-only PR は CodeRabbit の自動レビュー対..."]
     ADR_2983["ADR-2983<br/>Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upst..."]
     ADR_2985["ADR-2985<br/>Dependabot security alert 2026-09-29（`undici` の..."]
@@ -451,6 +452,7 @@ flowchart TD
     ADR_2410["ADR-2410<br/>import 結合の存在検査は未解決 import が残る file では判定しない（inva..."]
     ADR_2442["ADR-2442<br/>owns の存在検査は kind を問わない（system は kind 拒否として報告し、i..."]
     ADR_2596["ADR-2596<br/>nodePathIndex はマージ後のモデルで再構築し、多重判定は宣言単位で行う"]
+    ADR_2791["ADR-2791<br/>`KrsEdge.cyclic` をモデル構築時に導出し、`analyze()` を読むだけの..."]
   end
   subgraph styling["styling"]
     ADR_8["ADR-8<br/>ビルトインスタイルの一元化と構造化リファレンス"]
@@ -670,6 +672,7 @@ flowchart TD
   ADR_2578 -.supersedes.-> ADR_1990
   ADR_2578 -.supersedes.-> ADR_1994
   ADR_2716 -.supersedes.-> ADR_2640
+  ADR_2791 -.supersedes.-> ADR_287
   ADR_2807 -.supersedes.-> ADR_2805
   ADR_2906 -.supersedes.-> ADR_2376
   ADR_2996 -.supersedes.-> ADR_176
@@ -728,7 +731,7 @@ flowchart TD
   class ADR_281 accepted
   class ADR_284 not_adopted
   class ADR_285 accepted
-  class ADR_287 accepted
+  class ADR_287 superseded
   class ADR_292 accepted
   class ADR_299 superseded
   class ADR_307 accepted
@@ -1059,6 +1062,7 @@ flowchart TD
   class ADR_2773 accepted
   class ADR_2782 accepted
   class ADR_2786 superseded
+  class ADR_2791 accepted
   class ADR_2802 accepted
   class ADR_2803 accepted
   class ADR_2804 accepted
@@ -1078,6 +1082,7 @@ flowchart TD
   class ADR_2922 accepted
   class ADR_2934 accepted
   class ADR_2939 accepted
+  class ADR_2940 accepted
   class ADR_2949 superseded
   class ADR_2956 accepted
   class ADR_2958 accepted

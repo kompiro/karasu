@@ -16,7 +16,6 @@ known_consumers:
 discovered_from:
   - issue: "#2791"
   - root_cause_adr: "ADR-287"
-  - root_cause_file: "packages/core/src/resolver/warnings.ts:detectCyclicDependencies"
 related_to:
   - TPL-1032
   - TPL-2221
@@ -67,4 +66,4 @@ scope:
 
 ## 派生元 spec
 
-- 決定: [ADR-287](../adr/287-cyclic-dependency-detection.md)（`KrsEdge.cyclic` の導入。立てる場所は #2791 の Design Doc `docs/design/cyclic-flag-at-model-construction.md` で変える）
+- 決定: [ADR-287](../adr/287-cyclic-dependency-detection.md)（`KrsEdge.cyclic` の導入。立てる場所は [ADR-2791](../adr/2791-cyclic-flag-at-model-construction.md) で変える）

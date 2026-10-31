@@ -1,7 +1,8 @@
 ---
 id: ADR-287
 title: "循環依存の検出と `KrsEdge.cyclic` フラグによる視覚化"
-status: accepted
+status: superseded
+superseded_by: ADR-2791
 date: 2026-04-05
 topic: resolver
 scope:
@@ -12,7 +13,7 @@ scope:
 # ADR-287: 循環依存の検出と `KrsEdge.cyclic` フラグによる視覚化
 
 - **日付**: 2026-04-05
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by ADR-2791
 - **関連**: Issue #287
 
 ## 背景

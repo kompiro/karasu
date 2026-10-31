@@ -15,8 +15,7 @@ related_to:
 discovered_from:
   - issue: "#239"
   - issue: "#507"
-  - root_cause_file: "packages/vscode/src/preview-panel.ts:143"
-  - root_cause_file: "packages/cli/src/index.ts:442"
+  - root_cause_file: "packages/cli/src/index.ts :: program.parseAsync"
 topic: cli
 scope:
   packages:
@@ -68,6 +67,7 @@ consumer 境界（拡張 / CLI / IPC / package public API）で karasu core を�
 
 - `packages/cli/src/index.test.ts` — `program.parseAsync` 経由で CLI エントリの async handler 境界を exercise（#507）
 - `packages/cli/src/render-endpoint.test.ts` — `compileProject` による multi-file 解決の principled 境界を exercise（#239 系）
+- `packages/app/src/viewer/mount-viewer.test.tsx` › `hands the host the node and the file that defines it` — VS Code の preview が使う viewer を、`import` を含む fixture で動かす（#239 の consumer の今の柵）
 
 <!-- absent-path-next-line: deleted test, named as history -->
-> 旧 `packages/vscode/test/preview-panel.test.ts` は削除済み。`packages/vscode/src/preview-panel.ts` は現在 principled な `compileProject` を使っており（修正済み）、専用の unit test は持たない — vscode 境界の regression fence は未整備（coverage gap）。
+> 旧 `packages/vscode/test/preview-panel.test.ts` は削除済み。#3312（ADR-2996）以降、拡張ホストの `packages/vscode/src/preview-panel.ts` は compile しない。webview の中で app の viewer が `useSystemView` 経由で `compileProject` を呼ぶので、#239 の consumer は app と同じ経路になり、上の `mount-viewer.test.tsx` が柵になる。frontmatter の `preview-panel.ts:143` の引用は、その行が無くなったので 2026-10 のレビュー（#3357）で外した。
