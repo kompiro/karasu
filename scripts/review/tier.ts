@@ -20,7 +20,7 @@
 
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { matchesGlob } from "node:path";
+import { matchesGlob, posix } from "node:path";
 import { type GitFacts, parseRecord, verifyRecord } from "./local-review-record.ts";
 
 export type Tier = "low" | "design" | "medium" | "high";
@@ -84,6 +84,10 @@ const ADR_GENERATED_GLOBS: readonly string[] = [
 /** An ADR record, `docs/adr/<n>-<name>.md` (not README or TEMPLATE). */
 const ADR_RECORD = /^docs\/adr\/\d+-[^/]+\.md$/;
 const DESIGN_DOC = /^docs\/design\/[^/]+\.md$/;
+/** An acceptance-test record: the only file whose ADR line a promotion may extend (#3405). */
+const AT_RECORD = /^docs\/acceptance\/[^/]+\.md$/;
+/** A new ADR whose path may stand as a link target in a promotion's link rules. */
+const LINKABLE_ADR = /^docs\/adr\/\d+-[a-z0-9-]+\.md$/;
 
 /** A diff touching these also gets `/security-review`, whatever its tier. */
 const SECURITY_GLOBS: readonly string[] = [
@@ -336,7 +340,7 @@ export interface ChangedFile {
   path: string;
   status: FileStatus;
   hunks: Hunk[];
-  /** Both sides, for `package.json` and existing ADRs; `null` where the file does not exist. */
+  /** Both sides, for `package.json`, ADRs and AT records; `null` where the file does not exist. */
   before?: string | null;
   after?: string | null;
 }
@@ -431,6 +435,19 @@ function referenceSource(paths: readonly string[]): string | null {
   return `(?:${alts.join("|")})`;
 }
 
+/** The text a link to one of `paths` may carry: its path or file name, or `ADR-<n>`. */
+function namesOf(paths: readonly string[]): Set<string> {
+  const names = new Set(paths.flatMap((p) => [p, p.split("/").at(-1) ?? p]));
+  for (const p of paths) {
+    const n = /^docs\/adr\/(\d+)-/.exec(p)?.[1];
+    if (n !== undefined) names.add(`ADR-${n}`);
+  }
+  return names;
+}
+
+const isNameIn = (names: ReadonlySet<string>, text: string): boolean =>
+  names.has(text.trim().replace(/^`(.*)`$/, "$1"));
+
 /**
  * Whether one changed line pair only swaps a reference to a deleted Design Doc for
  * a reference to the ADR that replaced it (ADR-2331's "張り替え"). Only the
@@ -458,14 +475,8 @@ export function isLinkSwap(
   const either = `(?:${oldRef}|${newRef})`;
   // A link's text may change only from one name of what it points at to another:
   // the file name or path (in backticks or not), or the ADR's number.
-  const names = new Set(
-    [...deletedDesigns, ...newAdrs].flatMap((p) => [p, p.split("/").at(-1) ?? p]),
-  );
-  for (const p of newAdrs) {
-    const n = /^docs\/adr\/(\d+)-/.exec(p)?.[1];
-    if (n !== undefined) names.add(`ADR-${n}`);
-  }
-  const isName = (text: string) => names.has(text.trim().replace(/^`(.*)`$/, "$1"));
+  const names = namesOf([...deletedDesigns, ...newAdrs]);
+  const isName = (text: string) => isNameIn(names, text);
   const normalize = (line: string) =>
     line
       .replace(/\[([^\]]*)\]\(([^)\s]+)\)/g, (link, text: string, t: string) =>
@@ -475,6 +486,173 @@ export function isLinkSwap(
       )
       .replace(bare(either), "\u27E6ref\u27E7");
   return normalize(removed) === normalize(added);
+}
+
+/** The labels of an ADR line in a record: `- **設計 (ADR)**:`, `- **関連 ADR**:` and their spellings. */
+const ADR_LINE_LABEL = /^(?:設計 ?[(（]ADR[)）]|関連 ?ADR|ADR)$/;
+/** A labelled list item: the label, the colon, and the value after it. */
+const LABELLED_ITEM = /^- \*\*([^*]+)\*\*([:：])( ?)(.*)$/;
+/** A line that may open or close a fenced code block. */
+const FENCE = /^\s*(?:```|~~~)/;
+/** The record's title, and any heading after it. */
+const TITLE = /^# /;
+const HEADING = /^ {0,3}#{1,6}(?:\s|$)/;
+/** A blockquote or table line, which ends the metadata list above it. */
+const QUOTE_OR_TABLE = /^\s*[>|]/;
+/** What joins two links in a list of them. */
+const LINK_SEPARATOR = /^\s*[、,，]\s*/;
+const TRAILING_SEPARATOR = /\s*[、,，]\s*$/;
+
+/** The new ADR a link target resolves to from the record, if it is one. */
+type LinkTarget = (href: string) => string | undefined;
+
+/**
+ * How many links a value is, when it is nothing but links to the new ADRs
+ * joined by separators; 0 otherwise. Each link must resolve to one new ADR and
+ * carry a name of that same ADR as its text.
+ */
+function adrLinksOnly(value: string, target: LinkTarget): number {
+  let rest = value;
+  let count = 0;
+  for (;;) {
+    const m = /^\[([^\]]*)\]\(([^)\s]+)\)/.exec(rest);
+    if (!m) return 0;
+    const adr = target(m[2]);
+    if (adr === undefined || !isNameIn(namesOf([adr]), m[1])) return 0;
+    count++;
+    rest = rest.slice(m[0].length);
+    if (rest === "") return count;
+    const sep = LINK_SEPARATOR.exec(rest);
+    if (!sep) return 0;
+    rest = rest.slice(sep[0].length);
+  }
+}
+
+/** An ADR line added whole: its value is only links to the new ADRs. */
+function isNewAdrLine(line: string, target: LinkTarget): boolean {
+  const m = LABELLED_ITEM.exec(line);
+  return (
+    m !== null && ADR_LINE_LABEL.test(m[1]) && spacedAfter(m) && adrLinksOnly(m[4], target) > 0
+  );
+}
+
+/** One space after `:`, as the records write it; none or one after the full-width `：`. */
+const spacedAfter = (m: RegExpExecArray): boolean => m[3] === " " || (m[2] === "：" && m[3] === "");
+
+/**
+ * Whether line `index` (0-based) of `lines` sits in the record's metadata list,
+ * where an ADR line belongs: after the title (`# `) and before any other
+ * heading or fence line, outside the frontmatter. A line added whole must also
+ * stand between items of that list: after the lines of another labelled item, and
+ * followed by another one, a blank line or nothing, so it takes over no
+ * continuation or sub-list of the item above and no heading, table or block
+ * around it changes. The line above may be the last line of an item's
+ * continuation or sub-list: the new item starts after it.
+ */
+function inMetadataList(lines: readonly string[], index: number, whole: boolean): boolean {
+  if (index <= 0 || index >= lines.length) return false;
+  let start = 0;
+  if (lines[0] === "---") {
+    const end = lines.indexOf("---", 1);
+    if (end < 0) return false;
+    start = end + 1;
+  }
+  const title = lines.findIndex((line, i) => i >= start && TITLE.test(line));
+  if (title < 0 || index <= title) return false;
+  for (let i = title + 1; i < index; i++) {
+    if (HEADING.test(lines[i]) || FENCE.test(lines[i])) return false;
+  }
+  if (!whole) return true;
+  // Upward, without a blank line, to the labelled item whose lines it follows;
+  // its continuation and sub-list stay its own.
+  let item = index - 1;
+  while (
+    item > title &&
+    lines[item].trim() !== "" &&
+    !LABELLED_ITEM.test(lines[item]) &&
+    !QUOTE_OR_TABLE.test(lines[item])
+  )
+    item--;
+  // Below: another item, or the end of the list. A blank line ends it only when
+  // what follows is not indented: an indented block after a blank line would
+  // still belong to the new item, taking it from the item above.
+  const next = lines[index + 1];
+  let block = index + 1;
+  while (block < lines.length && lines[block].trim() === "") block++;
+  return (
+    LABELLED_ITEM.test(lines[item]) &&
+    (next === undefined ||
+      LABELLED_ITEM.test(next) ||
+      (next.trim() === "" && (block >= lines.length || !/^\s/.test(lines[block]))))
+  );
+}
+
+/**
+ * An ADR line whose value only gained links to the new ADRs: filled when it was
+ * empty, or extended at its start or its end. The label, the colon and the
+ * existing value stay as they were.
+ */
+function gainedAdrLinks(removed: string, added: string, target: LinkTarget): boolean {
+  const before = LABELLED_ITEM.exec(removed);
+  const after = LABELLED_ITEM.exec(added);
+  if (before === null || after === null || !ADR_LINE_LABEL.test(before[1])) return false;
+  if (before[1] !== after[1] || before[2] !== after[2]) return false;
+  const [old, now] = [before[4], after[4]];
+  if (old === "") return spacedAfter(after) && adrLinksOnly(now, target) > 0;
+  if (before[3] !== after[3]) return false;
+  if (now.endsWith(old)) {
+    const head = now.slice(0, now.length - old.length);
+    const sep = TRAILING_SEPARATOR.exec(head);
+    if (sep && adrLinksOnly(head.slice(0, sep.index), target) > 0) return true;
+  }
+  if (now.startsWith(old)) {
+    const tail = now.slice(old.length);
+    const sep = LINK_SEPARATOR.exec(tail);
+    if (sep && adrLinksOnly(tail.slice(sep[0].length), target) > 0) return true;
+  }
+  return false;
+}
+
+/**
+ * Whether one hunk of an AT record only adds links to ADRs added in the same PR
+ * (#3405). An AT points at its Issue, never at a Design Doc (ADR-2348), so its
+ * promotion PR adds the ADR link rather than swapping one (ADR-2331). Only an
+ * ADR line of the metadata list (`- **設計 (ADR)**:`, `- **関連 ADR**:`) may
+ * change: a new one, right after another labelled item, whose value is only
+ * links to the new ADRs, or an existing one that gains such links at the start
+ * or end of its value. Every removed line must be one of those existing lines,
+ * in order. `after` is the record as the PR leaves it, which places the hunk;
+ * without it nothing is accepted.
+ */
+export function isLinkInsert(
+  hunk: Hunk,
+  after: string | null | undefined,
+  newAdrs: readonly string[],
+  recordPath: string,
+): boolean {
+  const { removed, added } = hunk;
+  if (newAdrs.length === 0 || added.length === 0 || typeof after !== "string") return false;
+  // Resolved from the record, as a renderer does: `adr/12-x.md` beside an AT
+  // is not the ADR. No scheme, root-relative path, anchor or query.
+  const dir = posix.dirname(recordPath);
+  const target: LinkTarget = (href) => {
+    if (/^[a-z][a-z0-9+.-]*:|^\/|[#?]/i.test(href)) return undefined;
+    const resolved = posix.normalize(posix.join(dir, href));
+    return newAdrs.includes(resolved) ? resolved : undefined;
+  };
+  const lines = after.split("\n");
+  let i = 0;
+  for (const [j, line] of added.entries()) {
+    const at = hunk.newStart - 1 + j;
+    if (lines[at] !== line) return false;
+    if (i < removed.length && gainedAdrLinks(removed[i], line, target)) {
+      if (!inMetadataList(lines, at, false)) return false;
+      i++;
+    } else if (!isNewAdrLine(line, target) || !inMetadataList(lines, at, true)) {
+      return false;
+    }
+  }
+  return i === removed.length;
 }
 
 /**
@@ -518,20 +696,24 @@ function fileTier(
   // read by a human however small the change is.
   if (byPath === "high") return "high";
   if (byPath === "low" && matchesAny(f.path, TEST_GLOBS) && !isNewFile(f)) return "medium";
-  // ADR promotion (ADR-2331): only in a PR that adds an ADR record.
+  // ADR promotion (ADR-2331): only in a PR that adds an ADR record. A hunk
+  // either swaps Design Doc links for the ADR or inserts links to it (#3405).
   if (promotion.newAdrs.length > 0) {
     if (f.status === "deleted" && DESIGN_DOC.test(f.path)) return "low";
+    const isSwap = (h: Hunk) =>
+      h.removed.length > 0 &&
+      h.removed.length === h.added.length &&
+      h.removed.every((line, i) =>
+        isLinkSwap(line, h.added[i], promotion.deletedDesigns, promotion.newAdrs),
+      );
     if (
       f.status === "modified" &&
       f.path.endsWith(".md") &&
       f.hunks.length > 0 &&
       f.hunks.every(
         (h) =>
-          h.removed.length > 0 &&
-          h.removed.length === h.added.length &&
-          h.removed.every((line, i) =>
-            isLinkSwap(line, h.added[i], promotion.deletedDesigns, promotion.newAdrs),
-          ),
+          isSwap(h) ||
+          (AT_RECORD.test(f.path) && isLinkInsert(h, f.after, promotion.newAdrs, f.path)),
       )
     ) {
       return "low";
@@ -550,8 +732,10 @@ export function classifyChange(input: {
   if (input.files.length === 0) reasons.push("no changed files");
 
   const promotion = {
+    // A file name outside this shape is not used as a link target: its text is
+    // matched against links, so `)` or `]` in it could carry prose (#3405).
     newAdrs: input.files
-      .filter((f) => f.status === "added" && ADR_RECORD.test(f.path))
+      .filter((f) => f.status === "added" && LINKABLE_ADR.test(f.path))
       .map((f) => f.path),
     deletedDesigns: input.files
       .filter((f) => f.status === "deleted" && DESIGN_DOC.test(f.path))
@@ -732,7 +916,7 @@ function changedFiles(base: string, head: string): ChangedFile[] {
   const mergeBase = mergeBaseOf(base, head);
   return parseDiff(prDiff(base, head)).map((d) => {
     const f: ChangedFile = { path: d.path, status: d.status, hunks: d.hunks };
-    if (isPackageJson(d.path) || ADR_RECORD.test(d.path)) {
+    if (isPackageJson(d.path) || ADR_RECORD.test(d.path) || AT_RECORD.test(d.path)) {
       f.before = gitShow(mergeBase, d.path);
       f.after = gitShow(head, d.path);
     }

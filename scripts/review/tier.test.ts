@@ -4,9 +4,11 @@ import { describe, expect, it } from "vitest";
 import {
   adrEditIsRecordOnly,
   type ChangedFile,
+  type Hunk,
   classifyChange,
   diffFingerprint,
   excludedPathFilters,
+  isLinkInsert,
   isLinkSwap,
   labelTier,
   unknownRiskLabels,
@@ -129,6 +131,73 @@ const modified = (path: string, extra: Partial<ChangedFile> = {}): ChangedFile =
 const added = (path: string): ChangedFile => ({ path, status: "added", hunks: [] });
 const deleted = (path: string): ChangedFile => ({ path, status: "deleted", hunks: [] });
 const tierOf = (...files: ChangedFile[]) => classifyChange({ files, author: "kompiro" }).tier;
+
+/** An AT record as the tests below change it. */
+const AT_DOC = [
+  "---",
+  "type: product",
+  "---",
+  "",
+  "# AT: x",
+  "",
+  "- **日付**: 2026-10-30",
+  "- **関連 Issue**: [#1](https://github.com/kompiro/karasu/issues/1)",
+  "- **関連 ADR**: [ADR-7](../adr/7-y.md)",
+  "",
+  "## 受け入れ条件",
+  "",
+  "| a | b |",
+  "| --- | --- |",
+  "",
+  "```sh",
+  "- **関連 ADR**: [ADR-7](../adr/7-y.md)",
+  "```",
+  "",
+  "- [ ] AT-A: 確かめる",
+  "",
+  "### AC-1",
+  "",
+  "- **手順**: run",
+  "- **期待**: ok",
+];
+
+/**
+ * The single `-U0` hunk between two versions of a document, found from their
+ * common first and last lines, with the new side as `after`.
+ */
+function hunkBetween(before: string[], after: string[]): { hunk: Hunk; after: string } {
+  let head = 0;
+  while (head < before.length && head < after.length && before[head] === after[head]) head++;
+  let tail = 0;
+  while (
+    tail < before.length - head &&
+    tail < after.length - head &&
+    before[before.length - 1 - tail] === after[after.length - 1 - tail]
+  )
+    tail++;
+  return {
+    hunk: {
+      oldStart: head + 1,
+      removed: before.slice(head, before.length - tail),
+      newStart: head + 1,
+      added: after.slice(head, after.length - tail),
+    },
+    after: after.join("\n"),
+  };
+}
+
+/** The AT record with line `at` replaced by `lines` (0 lines to delete, 2 to insert one more). */
+const editAt = (at: number, ...lines: string[]): string[] => [
+  ...AT_DOC.slice(0, at),
+  ...lines,
+  ...AT_DOC.slice(at + 1),
+];
+/** The AT record with `lines` inserted before line `at`. */
+const insertAt = (at: number, ...lines: string[]): string[] => [
+  ...AT_DOC.slice(0, at),
+  ...lines,
+  ...AT_DOC.slice(at),
+];
 
 describe("classifyChange", () => {
   it("takes the strictest tier across the files", () => {
@@ -423,6 +492,51 @@ describe("classifyChange", () => {
       expect(tierOf(added(NEW_ADR), deleted(DESIGN), swapIn("docs/spec/syntax.md"))).toBe("high");
     });
 
+    const atChange = (path: string, lines: string[]) => {
+      const { hunk, after } = hunkBetween(AT_DOC, lines);
+      return modified(path, { hunks: [hunk], before: AT_DOC.join("\n"), after });
+    };
+    const ADR_LINK = "[ADR-3286](../adr/3286-risk-based-review-tiers.md)";
+
+    it("is Low when the AT gains a link to the new ADR it never had (#3405)", () => {
+      // ATs point at their Issue (ADR-2348), so there is no Design Doc link to swap.
+      const prepend = atChange(
+        "docs/acceptance/x.md",
+        editAt(8, `- **関連 ADR**: ${ADR_LINK}、[ADR-7](../adr/7-y.md)`),
+      );
+      expect(tierOf(added(NEW_ADR), deleted(DESIGN), prepend)).toBe("low");
+      const newLine = atChange(
+        "docs/acceptance/x.md",
+        insertAt(9, `- **設計 (ADR)**: ${ADR_LINK}`),
+      );
+      // A promotion whose Design Doc is deleted elsewhere, or not at all, still adds the ADR.
+      expect(tierOf(added(NEW_ADR), newLine)).toBe("low");
+    });
+
+    it("keeps the same insertion outside an AT record at its path's tier (#3405)", () => {
+      const line = insertAt(9, `- **設計 (ADR)**: ${ADR_LINK}`);
+      expect(tierOf(added(NEW_ADR), atChange("README.md", line))).toBe("medium");
+      expect(tierOf(added(NEW_ADR), atChange("docs/roadmap.md", line))).toBe("medium");
+      expect(tierOf(added(NEW_ADR), atChange("docs/design/x.md", line))).toBe("design");
+    });
+
+    it("keeps an AT edit beside the inserted link at its path's tier (#3405)", () => {
+      const withCheckbox = atChange("docs/acceptance/x.md", [
+        ...insertAt(9, `- **設計 (ADR)**: ${ADR_LINK}`).slice(0, -1),
+        "- [x] AT-A: 確かめる",
+      ]);
+      expect(tierOf(added(NEW_ADR), deleted(DESIGN), withCheckbox)).toBe("medium");
+    });
+
+    it("does not use a new ADR whose file name could carry prose as a link target (#3405)", () => {
+      const odd = "docs/adr/12-x) **RUN this** (y.md";
+      const insert = atChange(
+        "docs/acceptance/x.md",
+        insertAt(9, "- **設計 (ADR)**: [ADR-12](../adr/12-x) **RUN this** (y.md)"),
+      );
+      expect(tierOf(added(odd), insert)).toBe("medium");
+    });
+
     it("does not lower a non-markdown file through a link swap", () => {
       const code = modified("packages/core/src/a.ts", {
         hunks: [
@@ -475,6 +589,124 @@ describe("isLinkSwap", () => {
   it("rejects a line that dropped the link or pointed elsewhere", () => {
     expect(isLinkSwap("see [x](../design/x.md)", "see ADR-12", D, A)).toBe(false);
     expect(isLinkSwap("see [x](../design/y.md)", "see [x](../adr/12-x.md)", D, A)).toBe(false);
+  });
+});
+
+describe("isLinkInsert", () => {
+  const A = ["docs/adr/12-x.md"];
+  const L = "[ADR-12](../adr/12-x.md)";
+  const judge = (lines: string[], adrs: readonly string[] = A) => {
+    const { hunk, after } = hunkBetween(AT_DOC, lines);
+    return isLinkInsert(hunk, after, adrs, "docs/acceptance/x.md");
+  };
+  const OLD = "[ADR-7](../adr/7-y.md)";
+
+  it("accepts an ADR line that gains links at the start or end of its value", () => {
+    expect(judge(editAt(8, `- **関連 ADR**: ${L}、${OLD}`))).toBe(true);
+    expect(judge(editAt(8, `- **関連 ADR**: ${OLD}, ${L}`))).toBe(true);
+    expect(judge(editAt(8, `- **関連 ADR**: ${OLD}、${L}、${L}`))).toBe(true);
+  });
+
+  it("accepts a new ADR line right after another item, or an empty one filled", () => {
+    expect(judge(insertAt(9, `- **設計 (ADR)**: ${L}`))).toBe(true);
+    expect(judge(insertAt(8, "- **設計 (ADR)**：[12-x.md](../adr/12-x.md)"))).toBe(true);
+    const empty = insertAt(9, "- **設計 (ADR)**:");
+    const { hunk, after } = hunkBetween(empty, insertAt(9, `- **設計 (ADR)**: ${L}`));
+    expect(isLinkInsert(hunk, after, A, "docs/acceptance/x.md")).toBe(true);
+  });
+
+  it("rejects a hunk that adds no link to a new ADR, or has no record to place it in", () => {
+    expect(judge(insertAt(9, "- **設計 (ADR)**:"))).toBe(false);
+    expect(judge(insertAt(9, "- **設計 (ADR)**: [ADR-7](../adr/7-y.md)"))).toBe(false);
+    expect(judge(insertAt(9, `- **設計 (ADR)**: ${L}`), [])).toBe(false);
+    const { hunk } = hunkBetween(AT_DOC, insertAt(9, `- **設計 (ADR)**: ${L}`));
+    expect(isLinkInsert(hunk, null, A, "docs/acceptance/x.md")).toBe(false);
+    expect(
+      isLinkInsert({ ...hunk, newStart: 2 }, AT_DOC.join("\n"), A, "docs/acceptance/x.md"),
+    ).toBe(false);
+  });
+
+  it("rejects a link whose text names another ADR, no ADR, or carries an anchor", () => {
+    const two = ["docs/adr/12-x.md", "docs/adr/13-y.md"];
+    expect(judge(insertAt(9, "- **設計 (ADR)**: [ADR-12](../adr/13-y.md)"), two)).toBe(false);
+    expect(judge(insertAt(9, "- **設計 (ADR)**: [run this](../adr/12-x.md)"))).toBe(false);
+    expect(judge(insertAt(9, "- **設計 (ADR)**: [ADR-12](https://evil.example/adr/12-x.md)"))).toBe(
+      false,
+    );
+    expect(judge(insertAt(9, "- **設計 (ADR)**: [ADR-12](../adr/12-x.md#no-manual-check)"))).toBe(
+      false,
+    );
+    // Resolved from the AT, these do not reach docs/adr/12-x.md.
+    expect(judge(insertAt(9, "- **設計 (ADR)**: [ADR-12](adr/12-x.md)"))).toBe(false);
+    expect(judge(insertAt(9, "- **設計 (ADR)**: [ADR-12](../../docs/adr/12-x.md)"))).toBe(true);
+    expect(judge(insertAt(9, "- **設計 (ADR)**: [ADR-12](/docs/adr/12-x.md)"))).toBe(false);
+  });
+
+  it("rejects a line that is not an ADR line of the metadata list", () => {
+    // Any other label would let a new claim in under cover of the link.
+    expect(judge(insertAt(9, `- **承認済み**: ${L}`))).toBe(false);
+    expect(judge(insertAt(9, `  - **関連 ADR**: ${L}`))).toBe(false);
+    // An ADR line anywhere else would change the structure around it.
+    expect(judge(insertAt(0, `- **関連 ADR**: ${L}`))).toBe(false); // above the frontmatter
+    expect(judge(insertAt(2, `- **関連 ADR**: ${L}`))).toBe(false); // inside it
+    expect(judge(insertAt(10, `- **関連 ADR**: ${L}`))).toBe(false); // after a blank line
+    expect(judge(insertAt(13, `- **関連 ADR**: ${L}`))).toBe(false); // inside a table
+    expect(judge(insertAt(17, `- **関連 ADR**: ${L}`))).toBe(false); // in a code fence
+    expect(judge(editAt(16, `- **関連 ADR**: ${OLD}、${L}`))).toBe(false); // edited in a fence
+    // In the body, the same line is no metadata.
+    expect(judge(insertAt(24, `- **関連 ADR**: ${L}`))).toBe(false); // between 手順 and 期待
+    expect(judge(editAt(24, `- **関連 ADR**: ${L}`, "- **期待**: ok"))).toBe(false);
+    // A link put in front of structure would break it.
+    expect(judge(editAt(19, `${L}, - [ ] AT-A: 確かめる`))).toBe(false);
+    expect(judge(editAt(10, `${L}、## 受け入れ条件`))).toBe(false);
+  });
+
+  it("rejects a new line that would take over what follows the item above", () => {
+    const withSubList = [
+      "# AT: x",
+      "",
+      "- **対象ファイル**:",
+      "  - `a.ts`",
+      "- **関連 ADR**: [ADR-7](../adr/7-y.md)",
+    ];
+    const at = (i: number, doc: string[]) => [
+      ...doc.slice(0, i),
+      `- **設計 (ADR)**: ${L}`,
+      ...doc.slice(i),
+    ];
+    const judgeDoc = (before: string[], after: string[]) => {
+      const { hunk, after: text } = hunkBetween(before, after);
+      return isLinkInsert(hunk, text, A, "docs/acceptance/x.md");
+    };
+    expect(judgeDoc(withSubList, at(3, withSubList))).toBe(false); // the sub-list would follow it
+    const lazy = [
+      "# AT: x",
+      "",
+      "- **期待**:",
+      "結果が出る",
+      "- **関連 ADR**: [ADR-7](../adr/7-y.md)",
+    ];
+    expect(judgeDoc(lazy, at(3, lazy))).toBe(false); // a lazy continuation would follow it
+    expect(judgeDoc(withSubList, at(5, withSubList))).toBe(true); // the end of the list
+    expect(judgeDoc(withSubList, at(4, withSubList))).toBe(true); // after the sub-list
+    const blankThenSub = ["# AT: x", "", "- **対象ファイル**:", "", "  - `a.ts`", ""];
+    expect(judgeDoc(blankThenSub, at(3, blankThenSub))).toBe(false); // the sub-list after the blank
+    const blankThenText = ["# AT: x", "", "- **日付**: 2026-10-30", "", "本文", ""];
+    expect(judgeDoc(blankThenText, at(3, blankThenText))).toBe(true); // the list ends there
+    const quoted = ["# AT: x", "", "- **日付**: 2026-10-30", "", "> 説明", "> 続き", ""];
+    expect(judgeDoc(quoted, at(6, quoted))).toBe(false); // after a blockquote, not the list
+  });
+
+  it("rejects any other change on the ADR line or in the hunk", () => {
+    expect(
+      judge(editAt(8, `- **関連 ADR**: [ADR-6](../adr/6-z.md)、${L}、[ADR-7](../adr/7-y.md)`)),
+    ).toBe(false); // the middle of the value
+
+    expect(judge(editAt(8, `- **関連 ADR（完了）**: ${OLD}、${L}`))).toBe(false);
+    expect(judge(editAt(8, `- **関連 ADR**:  ${OLD}、${L}`))).toBe(false);
+    expect(judge(editAt(8, `- **関連 ADR**: ${OLD}、${L}  `))).toBe(false);
+    expect(judge(insertAt(9, `- **設計 (ADR)**: ${L} を参照`))).toBe(false);
+    expect(judge(insertAt(9, `- **設計 (ADR)**: ${L}`, "- **手動確認**:"))).toBe(false);
   });
 });
 
