@@ -7,7 +7,7 @@ type: product
 - **日付**: 2026-10-18
 - **関連 Issue**: [#3157](https://github.com/kompiro/karasu/issues/3157)
 - **Related TPLs**: [TPL-3090](../test-perspectives/TPL-3090-edge-decoration-follows-edge-emphasis.md)
-- **対象ファイル**: `packages/core/src/renderer/svg-renderer.ts`（`followEdges` / `markDiffState`）
+- **対象ファイル**: `packages/core/src/renderer/crossing-marks-svg.ts`（`followEdges` / `markDiffState`）
 
 > facet overlay と diff モードはエッジを薄くするが、エッジに属する交差のマーク（hop・合流のチップ・トランク帯）は明るいまま残っていた。マークは、名指すエッジがすべて薄いときだけ一緒に薄くなる（#3090 の hover と同じ規則）。
 

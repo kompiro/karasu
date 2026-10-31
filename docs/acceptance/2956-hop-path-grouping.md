@@ -6,7 +6,7 @@
 - **関連 ADR**: [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)（交差マークの導入）
 - **Related TPLs**: [TPL-2956](../test-perspectives/TPL-2956-regrouping-svg-elements-keeps-paint-order.md)（まとめ直しても描画順を保つ）、[TPL-2631](../test-perspectives/TPL-2631-decoration-must-not-hide-a-crossing-mark.md)
 - **対象ファイル**:
-  - `packages/core/src/renderer/svg-renderer.ts`（`renderCrossingMarks` / `continuesHopRun`）
+  - `packages/core/src/renderer/crossing-marks-svg.ts`（`renderCrossingMarks` / `continuesHopRun`）
 
 > ホップを 1 個ずつの `<path>` で出していたのを、元の順番のまま stroke（色と線幅）が同じホップが連続する区間ごとに 1 本の `<path>` にまとめ、各ホップをそのサブパスにする。ホップの幾何と描画順は変えない。
 

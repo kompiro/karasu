@@ -5,7 +5,7 @@
 - **PR**: (#1939-A — generalise computeCrossingMarks)
 - **設計**: [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)
 - **Related TPLs**: [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（交差数と貫通数を両方測る／交差は「全交差 marked」を assert）
-- **対象**: `packages/core/src/renderer/crossing-marks.ts`（`computeCrossingMarks` を一般線分交差へ拡張・`HopMark.angle` 追加） / `layout-types.ts` / `svg-renderer.ts`（`renderCrossingMarks` を回転アーク対応）
+- **対象**: `packages/core/src/renderer/crossing-marks.ts`（`computeCrossingMarks` を一般線分交差へ拡張・`HopMark.angle` 追加） / `layout-types.ts` / `crossing-marks-svg.ts`（`renderCrossingMarks` を回転アーク対応）
 
 ## 概要
 
