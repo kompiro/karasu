@@ -18,6 +18,7 @@ flowchart TD
     ADR_2628["ADR-2628<br/>ADR の assumptions に caret レンジの完全な版を書かない（機械チェックで..."]
     ADR_2687["ADR-2687<br/>ADR 本文は不変 — リンクの張り替えも本文編集として禁じる"]
     ADR_3314["ADR-3314<br/>topic: ラベルと topics の一致を、topics を変える PR の Valida..."]
+    ADR_3405["ADR-3405<br/>ADR の昇格で、新しい ADR へのリンクを足すだけの差分も張り替えと同じく Low に数える"]
   end
   subgraph app-ui["app-ui"]
     ADR_104["ADR-104<br/>system セレクタUIを採用しない"]
@@ -202,6 +203,7 @@ flowchart TD
     ADR_3359["ADR-3359<br/>描画が変わる PR に、merge-base と比べた before/after の画像を添付する"]
     ADR_3381["ADR-3381<br/>Dependabot トリアージ 2026-10-26：npm 12 件をそのまま採用し、ch..."]
     ADR_3399["ADR-3399<br/>Dependabot security alert 2026-10-30（qs と seria..."]
+    ADR_3412["ADR-3412<br/>GitHub Actions の依存を actions.lock で固定し、検証を requi..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -421,6 +423,7 @@ flowchart TD
     ADR_2958["ADR-2958<br/>ガターを通るエッジを、共有する端ごとに 1 レーンへ束ねる"]
     ADR_3022["ADR-3022<br/>edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は foc..."]
     ADR_3026["ADR-3026<br/>同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す"]
+    ADR_3034["ADR-3034<br/>エッジラベルの探索範囲は約 90px のまま広げない"]
     ADR_3088["ADR-3088<br/>行間チャネルのレーンを、run がつながる縦線の向きで並べる"]
     ADR_3090["ADR-3090<br/>交差マーク（ホップ・junction chip・trunk band）をエッジの減光に追随させる"]
     ADR_3132["ADR-3132<br/>ドリルダウンの最上段の上と最下段の下のチャネルを、枠の内側で測る"]
@@ -1086,6 +1089,7 @@ flowchart TD
   class ADR_3020 accepted
   class ADR_3022 accepted
   class ADR_3026 accepted
+  class ADR_3034 not_adopted
   class ADR_3052 accepted
   class ADR_3069 accepted
   class ADR_3077 accepted
@@ -1123,6 +1127,8 @@ flowchart TD
   class ADR_3359 accepted
   class ADR_3381 accepted
   class ADR_3399 accepted
+  class ADR_3405 accepted
+  class ADR_3412 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

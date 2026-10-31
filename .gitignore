@@ -51,3 +51,6 @@ packages/docs-site/preview-dist/
 # reports/README.md.
 reports/*
 !reports/README.md
+
+# The workflow lockfile must be tracked even when a global gitignore matches *.lock (#3412)
+!.github/workflows/actions.lock
