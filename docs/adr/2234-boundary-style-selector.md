@@ -12,7 +12,7 @@ scope:
 assumptions:
   - "symbol: packages/core/src/types/style.ts :: boundaryId"
   - "symbol: packages/core/src/types/style.ts :: ResolvedBoundaryFrames"
-  - "symbol: packages/core/src/renderer/svg-renderer.ts :: resolveBoundaryPaint"
+  - "symbol: packages/core/src/renderer/container-frame.ts :: resolveBoundaryPaint"
   - "symbol: packages/core/src/builtins/reference-data.ts :: SELECTOR_SPECIFICITY"
   - "file: packages/core/src/renderer/boundary-style-selector.test.ts"
   - "grep: docs/spec/style.md :: Boundary frame selectors"

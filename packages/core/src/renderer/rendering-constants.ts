@@ -65,6 +65,9 @@ export const DESC_MAX_LINES = 2;
  */
 export const CHROME_FONT_STACK = "system-ui, -apple-system, 'Segoe UI', sans-serif";
 
+/** Opacity of the ghost layer: context edges, nodes and frames drawn behind the view. */
+export const GHOST_OPACITY = 0.3;
+
 /** Gap between a meta glyph box and its text, px. */
 export const META_GLYPH_GAP = 3;
 
