@@ -34,13 +34,29 @@ ADR の PR は、`pnpm adr:regenerate` が書く `docs/adr/effective.md`・`docs
 | main の保護        | ruleset `protect default branch`。削除・non-fast-forward・作成の禁止、PR 必須（squash のみ）、required check（`Check`・`Validate`・`Reference docs`・`Playwright`・`verify`）。bypass actor は 0 件。docs/process/review.md は Review tier も required と書くが、ruleset の required check には入っていない |
 | Actions の PR 作成 | repo 設定「Actions に PR の作成・承認を許可」は OFF（#1370 で OFF のまま進めると決めた。ADR-1370）。`GITHUB_TOKEN` で作った PR では required check を出す workflow も起動しない                                                                                                                             |
 | 分類器             | `scripts/review/tier.ts` は生成物のパス（`ADR_GENERATED_GLOBS`）を Low に数える。生成物だけの PR は Low になる                                                                                                                                                                                              |
-| Claude の routine  | Claude Code の scheduled agent（routine）を、この repo の作業の予約にすでに使っている（例: #3399 の 2 本目の PR）。routine はユーザーの GitHub の名義で PR を作る                                                                                                                                           |
+| Claude の routine  | Claude Code の scheduled agent（routine）を、この repo の作業の予約にすでに使っている（例: #3399 の 2 本目の PR）。実行環境は下の節                                                                                                                                                                         |
+
+### routine の実行環境
+
+2026-10-31 に、公式ドキュメント（[routines](https://code.claude.com/docs/en/routines.md)、[cloud environments](https://code.claude.com/docs/en/cloud-environments.md)、[Claude Code on the web](https://code.claude.com/docs/en/claude-code-on-the-web.md)）と、#3399 の routine の実行記録（2026-10-30T22:30Z）で確かめた。routine は research preview なので、実装の前にもう一度確かめる。
+
+| 観点          | 事実                                                                                                                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 実行場所      | Anthropic のクラウドのサンドボックス。実行ごとに repo を新しく clone し、終われば捨てる                                                                                              |
+| 名義          | commit と PR はユーザーの GitHub ユーザーになる。PR は bot 作ではないので required check が走る                                                                                      |
+| GitHub の認証 | 認証情報はサンドボックスの外にあり、proxy が GitHub への通信に付け足す。中の `GH_TOKEN` は使えない仮の値。proxy が通すのは routine に付けた repo（karasu）だけ                       |
+| GraphQL       | proxy が 403 で拒否する。`gh pr` 系のコマンドも同じ。auto-merge の有効化（`enablePullRequestAutoMerge`）は GraphQL にしか無いので使えない。PR の作成・ラベル・マージは REST でできる |
+| push          | proxy はブランチを制限しない（拒否するのはブランチの削除と tag の push）。`main` への push は ruleset が止める                                                                       |
+| ネットワーク  | 既定の allowlist に npm registry と github.com がある。`pnpm install --frozen-lockfile` は通った（pnpm 11.20.0）                                                                     |
+| 道具          | Node・pnpm・`gh` はある。`gitleaks` が無く、pre-push フックが push を止めた（フックを飛ばす操作は拒否された）                                                                        |
+| 時間          | 1 コマンドは最長 10 分、background に回せばさらに 30 分。実行全体の上限は書かれていない                                                                                              |
+| 失敗の通知    | 履歴に Error と出るだけで、通知の仕組みは書かれていない                                                                                                                              |
 
 ## 制約・前提
 
 - `main` への直接 push は人もエージェントもしない（CLAUDE.md、ADR-3335）。ruleset に bypass actor を足すのは、この repo で初めての判断になる。
 - `effective.md` は AI が文脈に入れる第一参照なので、clone した直後から（ほぼ）最新であってほしい（ADR-788）。
-- auto-merge の可否は、PR を誰が作ったかや prompt の約束ではなく、差分という観測可能な事実で機械的に判定する（ADR-2331、TPL-2658、TPL-3286）。
+- 人のレビューを通さないマージの可否は、PR を誰が作ったかや prompt の約束ではなく、差分という観測可能な事実で機械的に判定する（ADR-2331、TPL-2658、TPL-3286）。
 - out of scope: 生成物の中身や形式（adr-tools 側）、ADR 以外の生成物（`gen:reference` の表など、PR 単位で衝突しないもの）。TPL の索引は #3289 が入ったら同じ仕組みに載せる（「未解決の問い」）。
 
 ## 検討した選択肢
@@ -85,11 +101,11 @@ PR は生成物をコミットしない。`main` への push ごとに workflow 
 
 - GitHub のファイル表示から消える。クラウドのエージェントや install していない clone では `CLAUDE.md` の第一参照が無い。ADR-788 が決めた読み方が崩れる。
 
-### 案4: 毎日 1 回、Claude の routine が再生成の PR を出して auto-merge する
+### 案4: 毎日 1 回、Claude の routine が再生成の PR を出してマージする
 
-PR は生成物をコミットしない。毎日 1 回、Claude の routine が `main` から生成し直し、差分があれば生成物だけを変える PR を作って auto-merge を有効にする。PR はユーザーの名義で作られるので、required check はふつうに走る。
+PR は生成物をコミットしない。毎日 1 回、Claude の routine が `main` から生成し直し、差分があれば生成物だけを変える PR を作り、required check が通るのを待って REST でマージする。PR はユーザーの名義で作られるので、required check はふつうに走る。routine の環境では GraphQL が使えず auto-merge を有効にできないので、待ってからマージする（「routine の実行環境」）。
 
-routine の仕事は repo のスクリプト 1 本を実行して結果を報告することだけにし、エージェントの判断に頼らない。auto-merge してよいかは CI（`Validate`）が差分で判定する。
+routine の仕事は repo のスクリプト 1 本を実行して結果を報告することだけにし、エージェントの判断に頼らない。マージしてよいかは CI（`Validate`）が差分で判定する。
 
 **メリット**
 
@@ -104,8 +120,10 @@ routine の仕事は repo のスクリプト 1 本を実行して結果を報告
 - `main` の生成物は最大 1 日古い。急ぐときは routine を手で起動するか、スクリプトを手元で実行する。
 - 生成物の更新が Claude の routine という repo の外の仕組みに依存する。止まったことに気づく仕組みが別に要る（下の「鮮度の見張り」）。
 - 再生成の PR が 1 日最大 1 本増える（ADR をマージしなかった日は 0 本）。
-- 人ではない動き手が増える。routine はユーザーの GitHub の名義で、人が見ていないときに PR を作り auto-merge を有効にする。手元の Claude のセッションが今できることと同じで新しい権限ではないが、無人で毎日動く。auto-merge で入るものは `Validate` の検査で生成物だけに限る。
-- routine は依存を install して生成器を動かすので、その同じ実行の中にユーザーの GitHub の書き込み権限がある。依存の 1 つが乗っ取られればその権限を使える。これは手元の Claude のセッションや人が `pnpm install` を実行するときと同じ露出で、routine だけが持つ新しい穴ではないが、無人で毎日走るぶん機会は増える。lockfile の固定（`--frozen-lockfile`）と、Dependabot の cooldown・`minimumReleaseAge` による新しい版の待ちで減らす。権限を生成から切り離す仕組みは、routine の実行環境が提供しないので作らない（「未解決の問い」）。
+- 人ではない動き手が増える。routine はユーザーの GitHub の名義で、人が見ていないときに PR を作りマージする。手元の Claude のセッションが今できることと同じで新しい権限ではないが、無人で毎日動く。マージで入るものは `Validate` の検査で生成物だけに限る。
+- routine は依存を install して生成器を動かす。依存の 1 つが乗っ取られれば、そのコードは proxy を通して karasu にユーザーの名義で書き込める。token そのものはサンドボックスの外にあるので読めず、届くのは karasu だけで、`main` への直接の push は ruleset が止める。手元で `pnpm install` するとき（`gh` の token で全 repo に届く）より狭いが、無人で毎日走るぶん機会は増える。lockfile の固定（`--frozen-lockfile`）と、Dependabot の cooldown・`minimumReleaseAge` による新しい版の待ちで減らす（「未解決の問い」）。
+- routine は CI を待つあいだも動き続け、その時間も利用量に数える。生成物だけの PR では Playwright が skip されるので、数分の見込み。待ちきれなければ PR を残し、翌日の実行がマージする。
+- routine の環境に `gitleaks` を入れる setup script が要る。pre-push フックはそのまま走らせる。
 
 ### 却下: merge queue
 
@@ -114,6 +132,10 @@ routine の仕事は repo のスクリプト 1 本を実行して結果を報告
 ### 却下: GitHub Actions が再生成の PR を作る
 
 案4 と同じ形を Actions で行う案。Actions の PR 作成は OFF にしてあり（ADR-1370）、ON に戻しても `GITHUB_TOKEN` で作った PR では required check が走らない。走らせるには、required check を出す 4 つの workflow すべてに `workflow_dispatch` の入口を足してブランチに起動するか、GitHub App の鍵を足すことになる。案4 はどちらも要らない。
+
+### 却下: routine が作った PR の auto-merge を Actions が有効にする
+
+routine は PR を作るだけにし、再生成のブランチの PR に対して workflow が `GITHUB_TOKEN` で `gh pr merge --auto` を実行する案。routine が CI を待たずに済むが、マージが `GITHUB_TOKEN` の名義になり、その回の `main` への push で workflow（`deploy.yml`・`pages.yml` など）が起動しない。workflow も 1 本増える。案4 は routine が待ってユーザーの名義でマージするので、どちらも起きない。
 
 ## 比較
 
@@ -131,12 +153,12 @@ routine の仕事は repo のスクリプト 1 本を実行して結果を報告
 
 **案4 を採用する。** 衝突と auto-merge の停止を両方無くし、`effective.md` を repo に置いたまま保てるのは案1 と案4 で、案4 は鍵も ruleset の例外も足さない。代償は `main` の生成物が最大 1 日古いことだが、`effective.md` は有効な決定の一覧であって、その日にマージした ADR は ADR 本体を読めば分かる。案1 が要した柵（鍵の隔離・artifact の検査・ruleset の分割）は、どれも鍵があるから要ったもので、案4 には要らない。
 
-auto-merge の安全は routine の prompt ではなく、required check の `Validate` が差分で保証する（TPL-2658、TPL-3286）。生成物のパスの集合 G を、PR の base と head それぞれの `adr.config.json` の `paths.outputs` の和集合とする。`Validate` は次の 2 種類の PR だけを通す。
+マージの安全は routine の prompt ではなく、required check の `Validate` が差分で保証する（TPL-2658、TPL-3286）。スクリプトは REST でマージするが、ruleset が required check の通過を求めるので、`Validate` を通らない PR はマージできない。生成物のパスの集合 G を、PR の base と head それぞれの `adr.config.json` の `paths.outputs` の和集合とする。`Validate` は次の 2 種類の PR だけを通す。
 
 - **ふつうの PR**: G のパスを 1 つも変えない。例外は、`paths.outputs` から外れた古い出力（base にだけある出力先）の削除だけ。
 - **再生成の PR**: G の外を 1 つも変えず、base と head の `paths.outputs` が同じで、head の生成物の木（追加・削除・変更をすべて含むファイルの集合と中身）が head で生成し直した結果とちょうど一致する。
 
-それ以外（両方を混ぜた PR、生成物を古い中身や手で書き換えた中身にした PR、生成物の出力先に余分なファイルを足した PR）は落ちる。これで、誰が作った PR でも、生成物以外の変更が「生成物の更新」として auto-merge に紛れ込むことはない。
+それ以外（両方を混ぜた PR、生成物を古い中身や手で書き換えた中身にした PR、生成物の出力先に余分なファイルを足した PR）は落ちる。これで、誰が作った PR でも、生成物以外の変更が「生成物の更新」として人のレビューなしのマージに紛れ込むことはない。
 
 差分は `git diff --no-renames --name-status base...head` で取る。rename 検出を切らないと、ADR を `graph/` の下へ移す変更が移動先（生成物のパス）だけに見える。検査は PR の merge ref ではなく `head.sha` を checkout して行う。merge ref で生成し直すと、PR の後に `main` に入った ADR の分だけ一致しなくなる。
 
@@ -146,13 +168,18 @@ auto-merge の安全は routine の prompt ではなく、required check の `Va
 
 1. **再生成の PR を作るスクリプトを足す**（`pnpm adr:regenerate-pr`）。routine も人も同じものを実行する。
    - 呼び出し元の作業ディレクトリには触れない。`origin/main` から専用の worktree（`.claude/worktrees/chore/adr-regenerate`）を作り、install・生成・commit・push をすべてその中で行い、成否にかかわらず最後に消す。手元で実行したとき、未コミットの変更や checkout 中のブランチが PR に入ることも、作業中のツリーが切り替わることもない。この worktree が既にあれば、別の実行が進行中か前回の残りなので、何もせず失敗する。
+   - GitHub の操作はすべて REST（`gh api repos/kompiro/karasu/...`）で行う。routine の環境では GraphQL が拒否されるので、`gh pr` 系のコマンドは使わない。手元でも同じコードが動く。
+   - 最初に、開いている再生成の PR があり、その head で下の「待つ check」がすべて成功していれば、それをマージする（前日に待ちきれなかった PR の拾い直し）。マージの後で `origin/main` を fetch し直す。
    - `origin/main` を fetch し、そこから固定のブランチ `chore/adr-regenerate` を作り直して `adr regenerate` を実行する。出力先のディレクトリ（`graph/`）は生成結果で置き換え、生成されなくなったファイルを消す。
-   - 差分が無ければ、開いている再生成の PR を閉じてブランチを消し、終える。
-   - routine と人が同時に実行しても互いを壊さない。再生成の PR は本文に印（`<!-- adr-regenerate -->`）を持ち、スクリプトは印とブランチ名の両方が合う PR だけを更新・クローズする（合わなければ何もせず失敗する）。ブランチの上書きは `--force-with-lease=chore/adr-regenerate:<開始時に見た SHA>` で行い、間に別の実行が push していれば失敗する。auto-merge を戻すのは、PR の head が自分の push した commit であることを確かめてから。
-   - 差分があれば生成物だけを commit する。開いている再生成の PR があれば、`gh pr merge --disable-auto` で auto-merge を外してからブランチを上書きで push し、auto-merge を戻す（`.claude/rules/adr.md` の「push の前に auto-merge を解く」と同じ順）。無ければ push して `chore(adr): regenerate the ADR index` の PR を `risk: low` で作り、ready にして `gh pr merge --auto --squash --delete-branch` を有効にする。
+   - 差分が無ければ、開いている再生成の PR を閉じて終える。ブランチは消さない（routine の環境はブランチの削除を拒否する）。残ったブランチは次の実行が上書きし、マージ時は repo 設定の `delete_branch_on_merge` が消す。
+   - routine と人が同時に実行しても互いを壊さない。再生成の PR は本文に印（`<!-- adr-regenerate -->`）を持ち、スクリプトは印とブランチ名の両方が合う PR だけを更新・クローズ・マージする（合わなければ何もせず失敗する）。ブランチの上書きは `--force-with-lease=chore/adr-regenerate:<開始時に見た SHA>` で行い、間に別の実行が push していれば失敗する。マージは REST の `sha` に自分が確かめた head を渡し、その後に別の push があればマージ自体が失敗する。
+   - 差分があれば生成物だけを commit する。開いている再生成の PR があればブランチを上書きで push する。無ければ push して `chore(adr): regenerate the ADR index` の PR を作り、`risk: low` のラベルを付ける。
+   - push した head で、待つ check（ruleset の required check を REST の `GET /repos/kompiro/karasu/rules/branches/main` から読んだものと、Review tier）が終わるまで待つ（上限 25 分。routine の background の上限 30 分に収める）。preview の deploy のような required でない check は待たない。すべて成功なら `PUT /pulls/{n}/merge`（`merge_method=squash`、`sha` は push した commit）でマージする。どれかが失敗すれば PR を残して失敗で終える。上限までに終わらなければ PR を残し、「待ちきれなかった」と区別できる終了コードで終える（翌日の最初の手順が拾う）。
    - どの段階の失敗でも非 0 で終わる（TPL-2786）。
 2. **Review tier に、生成物だけの PR の扱いを足す**（`scripts/review/**` を変えるので、この PR は High）。今の Review tier は Low の PR にローカルレビューの記録と CodeRabbit CLI の実行を求め、`Waived:` の記録を Low では落とす。生成物だけの PR は、上の「再生成の PR」の条件を `Validate` が確かめるので、記録を求めない。判定は `Validate` と同じ G と同じ差分の取り方で行い、2 つの検査がずれないようにする。
-3. **routine を登録する。** 1 日 1 回、`pnpm adr:regenerate-pr` を実行し、作った・更新した・閉じた・何もしなかった、のどれかと PR の URL を報告する。prompt はスクリプトの実行と報告だけを書き、ほかの変更をしないよう求める（ただし安全はこの文言ではなく `Validate` で守る）。
+3. **routine を登録する。** 1 日 1 回、`pnpm adr:regenerate-pr` を実行し、マージした・待ちきれず残した・閉じた・何もしなかった・失敗した、のどれかと PR の URL を報告する。prompt はスクリプトの実行と報告だけを書き、ほかの変更をしないよう求める（ただし安全はこの文言ではなく `Validate` で守る）。
+   - 環境の setup script で、版を固定した `gitleaks` を checksum を確かめて入れる。pre-push フックは飛ばさない。setup script には secret を書かない（環境を使う人が読める）。
+   - 時刻はちょうどの時刻を避ける（ちょうどの時刻は数分遅れて始まることがある）。
 4. **`Validate` の検査を入れ替える**（`adr-validate.yml`）。
    - `adr regenerate --check` を外し、上の 2 種類だけを通す検査（`scripts/` の新しいスクリプト）に替える。
    - 生成器が失敗しないことを、`adr regenerate` を出力を捨てて実行して確かめる。生成器の版上げ（`package.json` / `pnpm-lock.yaml` だけの PR）でもこれが走るよう、`adr-validate.yml` の `paths` と `adr-validate-skip.yml` の `paths-ignore` に `package.json`・`pnpm-lock.yaml`・新しい検査のスクリプトを足す。
@@ -163,11 +190,12 @@ auto-merge の安全は routine の prompt ではなく、required check の `Va
 7. **ルールと記録を直す。** `.claude/rules/adr.md` の「編集後のチェック」（再生成してコミットする手順）と auto-merge の適用条件の生成物の項、`docs/process/review.md` の Low の行とローカルレビューの記録の節。
 8. AT: `docs/acceptance/3416-regenerate-adr-index-daily-pr.md`。TC は:
    - 無関係な ADR を足す PR を 2 本同時に開き、片方をマージした後も、もう片方が `main` を取り込まずにマージできる。
-   - `pnpm adr:regenerate-pr` を実行すると、生成物だけを変える PR が `risk: low` と auto-merge で作られ、Review tier と `Validate` が通ってマージされ、マージ後の `main` で `adr regenerate --check` が通る。
+   - routine から `pnpm adr:regenerate-pr` を実行すると、生成物だけを変える PR が `risk: low` で作られ、Review tier と `Validate` が通るのを待ってユーザーの名義でマージされ、マージ後の `main` で `adr regenerate --check` が通る。マージで `main` への push の workflow が起動する。
+   - check が待ち時間の上限までに終わらないと、PR を残して「待ちきれなかった」と報告する。翌日の実行は最初にその PR をマージしてから生成し直す。check が失敗した PR はマージしない。
    - 未コミットの変更と別のブランチを checkout した作業ディレクトリから実行しても、PR には生成物だけが入り、実行後の作業ディレクトリ（ブランチ・変更・未追跡ファイル）は実行前と同じで、専用の worktree は残らない。
-   - 差分が無い日に実行すると、PR を作らない（開いている再生成の PR があれば閉じる）。差分があり、auto-merge が有効な再生成の PR が開いていれば、auto-merge を外してから更新し、戻す。
+   - 差分が無い日に実行すると、PR を作らない（開いている再生成の PR があれば閉じる）。
    - `main` が進んだ後の再生成の PR でも、`Validate` は head で判定して通る。
-   - スクリプトを 2 つ同時に実行すると、片方は lease か PR の head の確認で失敗し、もう片方の結果だけが PR に残る。印の無い PR（同じブランチ名で人が開いた PR など）は更新もクローズもしない。
+   - スクリプトを 2 つ同時に実行すると、片方は lease かマージ時の `sha` の確認で失敗し、もう片方の結果だけが PR に残る。印の無い PR（同じブランチ名で人が開いた PR など）は更新もクローズもマージもしない。
    - `Validate` が落ちる PR: 生成物と ADR を両方変える、生成物を古い中身や手で書き換えた中身にする、`graph/` に余分なファイルを足す、生成物を消す、ADR を `graph/` の下へ rename する、生成器を壊す（`package.json` だけの版上げを含む）。
    - `paths.outputs` を変える PR は、古い出力の削除だけを含めて通り、その後の再生成の PR が新しい出力先を作って通る。
    - `@kompiro/adr-tools` の版上げで出力が変わると、次の再生成の PR で `main` の生成物が更新される。
@@ -186,5 +214,5 @@ auto-merge の安全は routine の prompt ではなく、required check の `Va
 
 - **TPL の索引（#3289）を同じスクリプトに載せるか。** 載せる前提で、生成器と出力先の組をスクリプトが一覧で持てる形にしておく。実際に載せるのは #3289 が入ってから決める。
 - **routine の時刻。** ADR のマージが多い時間帯の後に置く。具体的な時刻は実装で決める。
-- **書き込み権限を生成から切り離すか。** 生成を権限の無い環境で行い、生成物だけを権限のある短いスクリプトに渡せば、依存の乗っ取りで権限を使われる穴は閉じる。routine の実行環境はこの分離を提供しないので、今は lockfile と版の待ちで減らすに留める。分離できる実行環境が使えるようになったら見直す。
+- **書き込み権限を生成から切り離すか。** routine の token はサンドボックスの外にあり、届くのは karasu だけなので、依存が乗っ取られても被害は karasu への書き込みに限られ、`main` は ruleset が守る。それでも、生成を GitHub に届かない環境で行い、生成物だけを権限のある短いスクリプトに渡せば、この穴も閉じる。routine の実行環境は 1 回の実行の中でこの分離を提供しないので、今は lockfile と版の待ちで減らすに留める。分離できる実行環境が使えるようになったら見直す。
 - **routine 以外の起動。** ADR のマージ直後に再生成したい場面が増えたら、マージをきっかけに routine を起動する形を検討する。いまは 1 日 1 回と手動で足りると見る。
