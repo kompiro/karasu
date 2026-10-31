@@ -455,6 +455,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2234](2234-boundary-style-selector.md) — boundary フレーム色の style セレクタ — `boundary` / `boundary#<id>`
 - [ADR-2269](2269-team-frame-style-selector.md) — team フレームの色は team カードと同じセレクタで指定する — `team` / `#<id>` / `team#<id>`
 - [ADR-2482](2482-themed-badge-color-single-source.md) — バッジ色はテーマ別の対で持ち、テーマ非依存の値を掴めなくする
+- [ADR-3141](3141-style-value-bounds-single-source.md) — スタイル値の範囲はスキーマ 1 か所に置き、スキーマを満たさない著者の宣言は cascade で 1 回捨てる
 - [ADR-9004](9004-css-inspired-styling.md) — CSSインスパイアのスタイリングシステム
 
 ## testing

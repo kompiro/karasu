@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-10-30
 - **関連 Issue**: [#3141](https://github.com/kompiro/karasu/issues/3141)
+- **関連 ADR**: [ADR-3141](../adr/3141-style-value-bounds-single-source.md)
 - **Related TPLs**: [TPL-3141](../test-perspectives/TPL-3141-style-diagnostic-describes-drawing.md), [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)
 - **対象ファイル**: `packages/core/src/style/property-schema.ts`、`packages/core/src/style/value-validator.ts`、`packages/core/src/style/cascade.ts`、`packages/core/src/parser/style-parser.ts`、`packages/core/src/resolver/style-resolver.ts`
 
