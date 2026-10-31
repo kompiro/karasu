@@ -171,6 +171,7 @@ flowchart TD
     ADR_2898["ADR-2898<br/>/code-review は draft PR に当て、CodeRabbit の初回レビューは..."]
     ADR_2922["ADR-2922<br/>毎月の最終日曜に Release — Prepare を自動で走らせ、VS Code 拡張も同..."]
     ADR_2939["ADR-2939<br/>リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の Gi..."]
+    ADR_2940["ADR-2940<br/>VS Code 拡張の main を毎週 Marketplace の pre-release ..."]
     ADR_2949["ADR-2949<br/>auto-merge する ADR-only PR は CodeRabbit の自動レビュー対..."]
     ADR_2983["ADR-2983<br/>Dependabot トリアージ 2026-09-29：jsdom 30.1.0 は upst..."]
     ADR_2985["ADR-2985<br/>Dependabot security alert 2026-09-29（`undici` の..."]
@@ -1077,6 +1078,7 @@ flowchart TD
   class ADR_2922 accepted
   class ADR_2934 accepted
   class ADR_2939 accepted
+  class ADR_2940 accepted
   class ADR_2949 superseded
   class ADR_2956 accepted
   class ADR_2958 accepted
