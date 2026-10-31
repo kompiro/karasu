@@ -65,8 +65,8 @@ function isLiftableToPeerCanvas(child: KrsNode, edge: KrsEdge): boolean {
  * spans both stages rather than this detector alone (TPL-2075).
  *
  * `entity` children are excluded: their relations render in the (separate)
- * entity view via `extractEntityView` (`view-extract.ts`), and the entities
- * themselves are filtered out of this canvas's nodes.
+ * entity view via `extractEntityView` (`entity-relations.ts`), and the
+ * entities themselves are filtered out of this canvas's nodes.
  *
  * `drawnKeys` is read **and extended**, so callers can chain this after the
  * container's own edges and let those win on a duplicate spelling.

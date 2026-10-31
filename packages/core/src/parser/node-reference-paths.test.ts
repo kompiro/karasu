@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { Parser } from "./parser.js";
 import { boundaryScopeKey } from "../types/ast.js";
-import { extractView, extractEntityView } from "../view/view-extract.js";
+import { extractEntityView } from "../view/entity-relations.js";
+import { extractView } from "../view/view-extract.js";
 import { layout } from "../renderer/layout.js";
 import { ImportResolver } from "../fs/import-resolver.js";
 import { InMemoryFileSystemProvider } from "../fs/in-memory-provider.js";

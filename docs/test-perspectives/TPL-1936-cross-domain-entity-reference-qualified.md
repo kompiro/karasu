@@ -9,6 +9,7 @@ applicable_to:
   - "entity 関連の解決規則（bare id / 限定子付き）に関わる spec を改訂するとき"
 known_consumers:
   - view-extract
+  - entity-relations
   - layout
 discovered_from:
   - root_cause_file: "docs/spec/syntax.md"
