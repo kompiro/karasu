@@ -24,8 +24,8 @@ cross-origin で API を読むことは止まった。残っている経路は 3
 - **`/render` 経由の SSRF**: `/render?src=` は redirect を検査せずに辿り、`isSafeUrl()` は hostname の文字列しか見ない。
   外部 URL から `http://127.0.0.1:<port>/api/file/...` へ redirect させると、karasu が自分の `/api/*` を取りに行く。
   この request は IP literal の `Host` を持つので bind でも `Host` 検査でも止まらず、`/render` の応答には
-  `Access-Control-Allow-Origin: *` が付いているので任意のページから読める（loopback に解決される名前を `src` に直接渡す形は、
-  `Host` がその名前になるので `Host` 検査で止まる）。これは #3426 で直し、本 Design Doc の実装より先に入れる。
+  `Access-Control-Allow-Origin: *` が付いているので任意のページから読める。loopback に解決される名前を `src` に直接渡す形も、
+  `localhost.` や `*.localhost`、`--allowed-host` の名前なら `Host` 検査を通る。これは #3426 で直し、本 Design Doc の実装より先に入れる。
   #3426 は loopback / private だけでなく、このマシン自身のアドレス（`os.networkInterfaces()`。`--host 0.0.0.0` のときの
   public IP や CGNAT の `100.64.0.0/10` を含む）への fetch も拒否する必要がある。
 
@@ -94,7 +94,7 @@ HTTP server を 2 つ立て、同じ handler を渡す。
 
 - `::1` が無い環境（IPv6 を切った container など）で `EADDRNOTAVAIL` を握りつぶす分岐が要る
 - `serve()` が `Server` を 1 つ返す今の API（テストが `listening` と `address()` を使う）を変える必要がある
-- 得るものは案A のフォールバック 1 回分と、表示 URL で避けられる shadowing だけ
+- 得るものは案A のフォールバック 1 回分と、起動時の検査で警告できる shadowing だけ
 
 **案A を採る。** どちらの URL でも開け、listen が 1 つのままで済む。案B は環境によって片方の URL が開けなくなり、
 案C は得るものに比べて API と分岐が増える。既定は CLI だけでなく `serve()` 自身に持たせ、host を渡さない呼び出し
@@ -114,11 +114,14 @@ HTTP server を 2 つ立て、同じ handler を渡す。
   `localStorage` に持ち、origin が変わると引き継がれないので、既定の URL は変えない。それ以外は `server.address()` から作り、
   IPv6 は `[...]` で囲む。`0.0.0.0` / `::` のときは `Preview : http://localhost:<port>` に `Listening : 0.0.0.0:<port>`
   （`::` なら `[::]:<port>`）の行を足す
-- 既定の bind のとき、listen の後に `[::1]:<port>` へ接続を試す。繋がったら、`http://localhost:<port>` が別のプロセスを
-  開きうることと、`http://127.0.0.1:<port>` を使うか port を変えることを stderr に警告する（案A の port shadowing）
+- `Preview : http://localhost:<port>` を表示し、かつ listen したのが IPv4 のアドレス（`127.0.0.1`、`0.0.0.0`）のとき、
+  listen の後に `[::1]:<port>` へ接続を試す。繋がったら、`http://localhost:<port>` が別のプロセスを開きうることと、
+  `http://127.0.0.1:<port>` を使うか port を変えることを stderr に警告する（案A の port shadowing。`0.0.0.0` も
+  `[::1]:<port>` が使われていても bind に成功する）。判定は `server.address()` で行い、既定かどうかは見ない
 - listen の失敗（`EADDRINUSE`、存在しないアドレスの `EADDRNOTAVAIL`、解決できない名前の `ENOTFOUND` など）は、
   今は未処理の `error` で落ちる。`--host` で起きやすくなるので、CLI がメッセージを出して exit 1 にする。`serve()` は
-  テストからプロセス内で呼ばれるので、`process.exit` は `serve()` ではなく `index.ts` に置き、`serve()` は error を返すだけにする
+  テストからプロセス内で呼ばれるので、`process.exit` は `serve()` ではなく `index.ts` に置く。`serve()` は今どおり `Server` を
+  同期的に返し、listen の失敗はその `Server` の `error` event に出る。`index.ts` がその listener を付けて exit 1 にする
 - `--host` は listen 先だけを決め、`Host` の許可には関わらない。名前を渡しても、その名前が解決される 1 アドレスで
   listen するだけで、`localhost` からは届かなくなる。ローカルでない名前を許すのは `--allowed-host`（決めること 3）
 
@@ -159,9 +162,10 @@ Chrome と Firefox は名前解決せずに loopback に向けるが、RFC は S
   `GET //localhost/api/files`）になり、検査が黙って素通しになる
 - 検査するかどうかは router と同じ `url.pathname` で決める。`req.url` の文字列の prefix で決めると、`//x/api/files` のように
   router が `/api/files` として答える request を見落とす
-- `new URL("http://" + host)` を try/catch で包んで hostname を取り、解析できない値は拒否する。URL は path・query・fragment・
-  userinfo を持つ値（`localhost/evil`、`localhost#x`）や percent-encoding（`l%6fcalhost`）からも hostname を取り出すので、
-  `host` に `/`・`?`・`#`・`@`・`%` が含まれる値は解析の前に拒否する。hostname は URL が小文字にする。末尾の `.` は 1 つだけ外す
+- `Host` の形を先に allowlist で確かめる: 名前か IPv4（英数字・`-`・`.`）、または `[...]` で囲んだ IPv6 に、任意の `:<数字>` が
+  続くものだけを受け、それ以外は拒否する。`new URL("http://" + host)` は path・query・fragment・userinfo を持つ値
+  （`localhost/evil`、`localhost#x`、`evil@localhost`）や percent-encoding（`l%6fcalhost`）、`\` や TAB を含む値からも
+  `localhost` を取り出すので、文字の denylist では漏れる。形を通った値から hostname を取り、小文字にし、末尾の `.` を 1 つだけ外す
   （`localhost.`、`app.localhost.`）。IPv6 は `[...]` を外してから `node:net` の `isIP` で判定する
 - `Host` が無いか空の request は拒否する。`Host` の無い HTTP/1.1 は Node が先に 400 を返すので、handler の 403 に届くのは
   `Host` の無い HTTP/1.0 と、空の `Host:` である
@@ -197,7 +201,8 @@ Codespaces の port forwarding（`*.app.github.dev`）や ngrok のように、�
 ## 現時点の方針
 
 既定の bind を `127.0.0.1` にし（案A）、`--host <addr>` で変えられるようにする。既定のときに表示する URL は
-今と同じ `http://localhost:<port>` で、それ以外は実際に listen したアドレスから作る。`/api/*` は `Host` が IP literal、`localhost` / `*.localhost`、`--allowed-host` の名前のどれかのときだけ答え、
+今と同じ `http://localhost:<port>` で、それ以外は実際に listen したアドレスから作る。
+`/api/*` は `Host` が IP literal、`localhost` / `*.localhost`、`--allowed-host` の名前のどれかのときだけ答え、
 それ以外は 403。`/render` の公開ホスト用のモードは足さず、loopback 以外で listen したときに警告する。
 `/render` 経由で `/api/*` に届く経路は #3426 で先に塞ぐ（このマシン自身のアドレスへの fetch の拒否を含む）。
 
@@ -209,8 +214,8 @@ Codespaces の port forwarding（`*.app.github.dev`）や ngrok のように、�
    - `isAllowedHost(hostHeader, allowedHosts)` を export して単体テストできる形にする（上の「`Host` の読み方」）
    - router と同じ `url.pathname` が `/api/` で始まる request について、分岐の前で `req.headers.host` を検査し、外れたら
      `403` と `text/plain` の短いメッセージ
-   - listen の失敗は `serve()` の呼び出し側に返す（`process.exit` は `index.ts`）
-   - loopback 以外のときの警告、表示 URL、既定の bind のときの `[::1]:<port>` の shadowing 検査
+   - listen の失敗は返した `Server` の `error` event に出す（`process.exit` は `index.ts`）
+   - loopback 以外のときの警告、表示 URL、IPv4 で listen して `localhost` を表示するときの `[::1]:<port>` の shadowing 検査
 2. `index.ts`: `--host <addr>`（既定 `127.0.0.1`）と、繰り返し指定できる `--allowed-host <name>`（既存の `collect` を使い、
    小文字化・末尾 `.` の除去・port などを含む値のエラー）。listen の失敗でメッセージと exit 1。`agent-surface.json` を更新し、
    help text のテストを通す
@@ -226,8 +231,9 @@ Codespaces の port forwarding（`*.app.github.dev`）や ngrok のように、�
      `badexample.com` が `.example.com` に一致しないこと
    - `Host` なしの HTTP/1.0 request と、空の `Host:` の HTTP/1.1 request が 403
    - 表示 URL: 既定で `http://localhost:<port>`。`--host ::1` で `http://[::1]:<port>`（`::1` で listen できない環境では skip）。
-     `--host 0.0.0.0` で警告と `Listening` 行。`--host ::ffff:127.0.0.1` で警告が出ない
-   - 既定の bind で `[::1]:<port>` に別の server がいると警告が出る（`::1` で listen できない環境では skip）
+     `--host 0.0.0.0` で警告と `Listening` 行。`--host ::ffff:127.0.0.1` で警告が出ない（IPv6 socket を作れない環境では skip）
+   - `127.0.0.1` と `0.0.0.0` で、`[::1]:<port>` に別の server がいると shadowing の警告が出る（`::1` で listen できない環境では skip）
+   - `isAllowedHost` の表に、形の allowlist で落ちる `localhost\evil` と TAB を含む値も足す
    - CLI: 使用中の port への listen がメッセージと exit 1 になる。port を含む `--allowed-host` がエラーになる
    - 既存の e2e（`localhost` で到達し、表示 URL に `http://localhost:` を期待する）がそのまま通ること
 4. docs: `docs/tools/cli.md` / `cli.ja.md` の options 表に `--host` と `--allowed-host`、全インターフェースで
