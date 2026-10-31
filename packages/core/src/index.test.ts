@@ -413,6 +413,7 @@ system ECPlatform {
 }`;
     const result = compile(src);
     if (result.diagramType !== "system") throw new Error("expected system result");
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
     expect(result.svg).not.toContain("No diagram");
     expect(result.svg).not.toContain("No nodes to render");
     expect(result.svg).toContain("Unassigned");
