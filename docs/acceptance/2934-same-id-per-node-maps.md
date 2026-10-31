@@ -14,7 +14,7 @@ type: product
   - `packages/core/src/compile/compile.ts`（`buildNodeMetadata`）
   - `packages/core/src/fs/import-resolver.ts`（`nodeFileIndexByPath`）
   - `packages/core/src/resolver/style-resolver.ts`（`nodesByPath` / `layoutHintsByPath` / `paintedColorsByPath`）
-  - `packages/core/src/renderer/svg-renderer.ts` / `layout.ts` / `facet-overlay.ts`（カードと枠を path で引く）
+  - `packages/core/src/renderer/svg-renderer.ts` / `node-style.ts` / `layout.ts` / `facet-overlay.ts`（カードと枠を path で引く）
   - `packages/core/src/diff/view-diff.ts` / `packages/core/src/compile/compile-diff.ts`（`nodeDiffByPath`）
   - `packages/core/src/exporter/drawio/drawio-exporter.ts` / `build-drawio-project.ts`（ルートページの cell id）
 

@@ -5,7 +5,7 @@
 - **設計 (ADR)**: [ADR-2473](../adr/2473-dy-instead-of-dominant-baseline.md)
 - **関連 ADR**: [ADR-22](../adr/22-svg-export-two-phase.md)（エクスポート SVG の到達先）、[ADR-1805](../adr/1805-resvg-wasm-png-rasterization.md)（PNG 経路と同梱フォント）
 - **Related TPLs**: [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)（surface 間の一貫性 — 配置方式を 1 系統に保つ）
-- **対象**: `packages/core/src/renderer/svg-builder.ts`、`badge.ts`、`corner-lane.ts`、`multi-level-svg.ts`、`svg-renderer.ts`
+- **対象**: `packages/core/src/renderer/svg-builder.ts`、`badge.ts`、`corner-lane.ts`、`multi-level-svg.ts`、`svg-renderer.ts`、`node-text.ts`
 
 ## 概要
 

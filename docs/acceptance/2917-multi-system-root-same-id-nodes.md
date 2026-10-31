@@ -11,7 +11,7 @@ type: product
 - **対象ファイル**:
   - `packages/core/src/renderer/layout-multi-system.ts`（`layoutMultipleSystems` の merge key・ループ内 lookup・束ね）、`packages/core/src/renderer/cross-system-edges.ts`（cross-system 端点）
   - `packages/core/src/renderer/layout-types.ts`（`LayoutNode.path`・`LayoutResult.nodeIdentity`）
-  - `packages/core/src/renderer/svg-renderer.ts`（要素 id の取り方と `data-node-path`）
+  - `packages/core/src/renderer/svg-renderer.ts`（要素 id の取り方）/ `node-card.ts`（`data-node-path`）
   - `packages/core/src/parser/node-path.ts`（`parseNodePathRefId`）
   - `packages/core/src/compile/compile.ts`（`nodeMetadataByPath`）
   - `packages/app/src/components/PreviewPane.tsx`（click delegation が path で引く）
