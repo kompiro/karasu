@@ -36,11 +36,32 @@ export function findCyclicDependencies(file: KrsFile): {
       BLACK = 2;
     const color = new Map<string, number>();
 
-    function dfs(node: string, path: string[]): void {
-      color.set(node, GRAY);
-      const currentPath = [...path, node];
-
-      for (const edge of adj.get(node) ?? []) {
+    // Explicit-stack depth-first walk. A recursive one ran out of call stack on
+    // a long sync chain, and the walk now runs inside `Parser.parse`, where a
+    // throw would refuse a well-formed document (#2791). The visit order is the
+    // recursive one's: a node's edges are taken in declaration order, and a
+    // WHITE neighbour is finished before the next edge is looked at. `path`
+    // is the GRAY chain from the walk's root to the current node.
+    function dfs(root: string): void {
+      const path: string[] = [];
+      const stack: { node: string; next: number }[] = [];
+      const enter = (node: string): void => {
+        color.set(node, GRAY);
+        path.push(node);
+        stack.push({ node, next: 0 });
+      };
+      enter(root);
+      while (stack.length > 0) {
+        const frame = stack[stack.length - 1];
+        const out = adj.get(frame.node) ?? [];
+        if (frame.next >= out.length) {
+          color.set(frame.node, BLACK);
+          path.pop();
+          stack.pop();
+          continue;
+        }
+        const edge = out[frame.next++];
+        const node = frame.node;
         const neighbor = edge.to;
 
         // Self-reference
@@ -58,12 +79,11 @@ export function findCyclicDependencies(file: KrsFile): {
         if (neighborColor === GRAY) {
           // Back edge found — this edge and every edge along the cycle
           cyclicEdges.add(edge);
-          const cycleStartIdx = currentPath.indexOf(neighbor);
-          const cyclePath = [...currentPath.slice(cycleStartIdx), neighbor];
+          const cycleStartIdx = path.indexOf(neighbor);
+          const cyclePath = [...path.slice(cycleStartIdx), neighbor];
 
           // Every parallel sync edge on each hop, read off the hop's own
-          // outgoing edges rather than a scan of the whole scope: this runs on
-          // every parse now, not just in `analyze()` (#2791).
+          // outgoing edges rather than a scan of the whole scope.
           for (let i = 0; i < cyclePath.length - 1; i++) {
             const to = cyclePath[i + 1];
             for (const cycleEdge of adj.get(cyclePath[i]) ?? []) {
@@ -77,11 +97,9 @@ export function findCyclicDependencies(file: KrsFile): {
             loc: edge.loc,
           });
         } else if (neighborColor === WHITE) {
-          dfs(neighbor, currentPath);
+          enter(neighbor);
         }
       }
-
-      color.set(node, BLACK);
     }
 
     // Collect all nodes that appear in sync edges
@@ -93,7 +111,7 @@ export function findCyclicDependencies(file: KrsFile): {
 
     for (const node of nodes) {
       if ((color.get(node) ?? WHITE) === WHITE) {
-        dfs(node, []);
+        dfs(node);
       }
     }
   }

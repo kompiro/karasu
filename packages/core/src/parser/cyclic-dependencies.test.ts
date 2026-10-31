@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Parser } from "./parser.js";
 import { findCyclicDependencies } from "./cyclic-dependencies.js";
 import { InMemoryFileSystemProvider } from "../fs/in-memory-provider.js";
+import { ImportResolver } from "../fs/import-resolver.js";
 import { compile, compileProject } from "../compile/compile.js";
 import { compileDeployDiff, compileSystemDiff } from "../compile/compile-diff.js";
 import { diffSystemViewSlices } from "../diff/view-diff.js";
@@ -28,6 +29,18 @@ describe("findCyclicDependencies (#2791)", () => {
     expect(cyclicEdges.size).toBe(2);
     expect(warnings.filter((w) => w.kind === "cyclic-dependency")).toHaveLength(1);
     expect(file.systems[0].edges.map((e) => e.cyclic)).toEqual([undefined, undefined]);
+  });
+
+  it("parse survives a sync chain deeper than the call stack", () => {
+    // The walk runs inside Parser.parse, so a recursive one threw RangeError
+    // here and turned a well-formed document into a parse failure.
+    const n = 20000;
+    let src = "system S {\n";
+    for (let i = 0; i < n; i++) src += `  service s${i} {}\n`;
+    for (let i = 0; i < n - 1; i++) src += `  s${i} -> s${i + 1}\n`;
+    src += `  s${n - 1} -> s0\n}\n`;
+    const file = Parser.parse(src).value;
+    expect(file.systems[0].edges.every((e) => e.cyclic === true)).toBe(true);
   });
 });
 
@@ -59,6 +72,39 @@ system S {
     const result = await compileProject("/p/index.krs", fs, { diagramType: "system" });
     expect(result.warnings.filter((w) => w.kind === "cyclic-dependency")).toHaveLength(1);
     expect(result.svg).toContain('class="krs-edge--cyclic"');
+  });
+
+  it("a flag the per-file parse set is cleared when the merged model decides otherwise", async () => {
+    // Which edges of a cycle the walk flags depends on the visit order, so an
+    // edge back.krs flags on its own can be unflagged on the merged model.
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile(
+      "/m/index.krs",
+      `import "./back.krs"
+system S {
+  service A {}
+  service B {}
+  service C {}
+  A -> B
+  B -> C
+}
+`,
+    );
+    await fs.writeFile("/m/back.krs", `system S {\n  A -> C\n  C -> A\n}\n`);
+    expect(
+      Parser.parse(`system S {\n  A -> C\n  C -> A\n}\n`).value.systems[0].edges.map(
+        (e) => e.cyclic,
+      ),
+    ).toEqual([true, true]);
+    const merged = (await new ImportResolver(fs).resolve("/m/index.krs")).krsFile;
+    const flag = (from: string, to: string) =>
+      merged.systems[0].edges.find((e) => e.from === from && e.to === to)?.cyclic;
+    expect([flag("A", "B"), flag("B", "C"), flag("A", "C"), flag("C", "A")]).toEqual([
+      true,
+      true,
+      undefined,
+      true,
+    ]);
   });
 
   it("neither file is cyclic on its own", () => {
