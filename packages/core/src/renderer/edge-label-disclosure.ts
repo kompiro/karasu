@@ -76,6 +76,12 @@ export interface CanvasLabel {
    * the direction arrow on a paired half (#3027).
    */
   text: string;
+  /**
+   * The direction arrow and its space at the start of `text`, on a paired half
+   * (#3027). Drawn as its own `<tspan>` so a reader of the drawn text (the
+   * focus canvas, for a synthetic label) can leave it out.
+   */
+  cue?: string;
   /** Set when `text` cut the authored label short to `label-max-chars`. */
   truncated?: true;
   /**
@@ -106,14 +112,15 @@ export function canvasLabel(
   segDir?: Point,
 ): CanvasLabel | undefined {
   if (!edge.label) return undefined;
-  const cue = edge.pairHalf && segDir ? `${directionArrow(segDir)} ` : "";
-  if (edge.syntheticLabel) return { text: cue + edge.label, display: "always" };
+  const cue = edge.pairHalf && segDir ? { cue: `${directionArrow(segDir)} ` } : {};
+  const prefix = cue.cue ?? "";
+  if (edge.syntheticLabel) return { text: prefix + edge.label, display: "always", ...cue };
   const shown = displayEdgeLabel(edge.label, style.labelMaxChars);
   const isControl = edge.domainEdges !== undefined && edge.domainEdges.length > 0;
   const display = isControl ? "always" : style.labelDisplay;
   return shown === edge.label
-    ? { text: cue + shown, display }
-    : { text: cue + shown, display, truncated: true };
+    ? { text: prefix + shown, display, ...cue }
+    : { text: prefix + shown, display, ...cue, truncated: true };
 }
 
 const ARROWS = ["→", "↘", "↓", "↙", "←", "↖", "↑", "↗"];

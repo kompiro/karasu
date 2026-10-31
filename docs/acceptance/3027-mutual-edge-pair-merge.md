@@ -22,11 +22,11 @@ type: product
 
 - [x] AT-B: 組の 2 つの半分は分け目で同じ座標を共有し、それぞれ自分の target で終わる。分け目は角と、その線の hop の隙間から離れている
 
-  > ✅ Automated — `packages/core/src/renderer/mutual-pair.test.ts` › `the dense domain canvas (Umami fixture)` › `joins the two halves of each pair at one shared point, each ending at its own target`、`keeps every split clear of corners and of the hops on its line`、`puts each hop on the half it lies on`
+  > ✅ Automated — `packages/core/src/renderer/mutual-pair.test.ts` › `the dense domain canvas (Umami fixture)` › `joins the two halves of each pair at one shared point, each ending at its own target`、`keeps every split clear of corners, crossings and every hop over its line`、`puts each hop on the half it lies on`
 
-- [x] AT-C: 組の各ラベルは、自分の半分の上で分け目に接しない区間に乗り、先頭にその半分の向きの矢印が付く。`data-edge-label` は書いたラベルのまま。組でない edge のラベルに矢印は付かない
+- [x] AT-C: 組の 2 つのラベルは重ならず、どちらも分け目の上に乗らない。各ラベルは先頭にその半分の向きの矢印が付く。`data-edge-label` は書いたラベルのまま。組でない edge のラベルに矢印は付かない
 
-  > ✅ Automated — `packages/core/src/renderer/mutual-pair.test.ts` › `labels` › `draws each label behind the arrow of its own half and keeps the authored text`。`the dense domain canvas (Umami fixture)` › `seats each label of a pair on its own half, away from the split`
+  > ✅ Automated — `packages/core/src/renderer/mutual-pair.test.ts` › `labels` › `draws each label behind the arrow of its own half and keeps the authored text`。`the dense domain canvas (Umami fixture)` › `seats the two labels of a pair apart, neither over the split`
 
 - [x] AT-D: 1 本にしても、canvas に描かれずに保留されるラベルは 2 本のときより増えない
 
@@ -40,11 +40,11 @@ type: product
 
 - [x] AT-F: 保留したラベルは、その半分の `<title>` で全文に届く。各半分は自分の hit-line を持つ
 
-  > ✅ Automated — `packages/core/src/renderer/mutual-pair.test.ts` › `labels` › `keeps a withheld label's full text reachable on its half`、`gives each half its own hit-line`
+  > ✅ Automated — `packages/core/src/renderer/mutual-pair.test.ts` › `labels` › `keeps a withheld label's full text reachable on its half`、`gives each half its own hit-line, both starting at the split`
 
-- [x] AT-G: 線のクリックで focus canvas が開き、両方向が 1 本ずつの lane で出る
+- [x] AT-G: 線のクリックで focus canvas が開き、両方向が 1 本ずつの lane で出る。focus canvas のラベルに main canvas の向きの矢印は入らない
 
-  > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › `the focus canvas in the preview` › `opens on an edge click, with its two cards and every edge between them`。`packages/app/src/components/focus-canvas/build.test.ts` › `buildFocusCanvas on the dense canvas` › `draws every pair with nothing colliding, both directions on lanes of their own`
+  > ✅ Automated — `packages/app/src/components/focus-canvas/FocusCanvas.test.tsx` › `the focus canvas in the preview` › `opens on an edge click, with its two cards and every edge between them`。`packages/app/src/components/focus-canvas/build.test.ts` › `buildFocusCanvas on the dense canvas` › `draws every pair with nothing colliding, both directions on lanes of their own`、`reads a paired half's synthetic label without its direction arrow (#3027)`
 
 ### AC-3: 読む人が区別できる組は 2 本のまま
 

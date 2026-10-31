@@ -309,7 +309,10 @@ export function renderEdge(
         "font-size": `${style.fontSize}px`,
         "font-family": "sans-serif",
       },
-      escapeXml(drawn.text),
+      drawn.cue
+        ? el("tspan", { class: "krs-edge__cue" }, escapeXml(drawn.cue)) +
+            escapeXml(drawn.text.slice(drawn.cue.length))
+        : escapeXml(drawn.text),
     );
 
     if (edge.domainEdges && edge.domainEdges.length > 0) {

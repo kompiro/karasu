@@ -330,8 +330,10 @@ export function readFocusSource(svgMarkup: string): FocusSource {
       from: g.getAttribute("data-edge-from") ?? "",
       to: g.getAttribute("data-edge-to") ?? "",
       // A synthetic label (`W`, `N domain edges`) is not on the group as an
-      // attribute (ADR-1554); what the canvas drew is all there is.
-      label: g.getAttribute("data-edge-label") ?? text?.textContent ?? "",
+      // attribute (ADR-1554); what the canvas drew is all there is, less the
+      // direction arrow a paired half draws before it (#3027): that arrow
+      // follows the main canvas's line, not the one drawn here.
+      label: g.getAttribute("data-edge-label") ?? (text ? drawnLabel(text) : ""),
       stroke,
       dash: line?.getAttribute("stroke-dasharray") ?? null,
       textFill: text?.getAttribute("fill") ?? stroke,
@@ -340,6 +342,14 @@ export function readFocusSource(svgMarkup: string): FocusSource {
 
   const background = root.querySelector(":scope > rect")?.getAttribute("fill") ?? null;
   return { cards, edges, background };
+}
+
+/** The text a label element draws, without the direction arrow of a paired half. */
+function drawnLabel(text: Element): string {
+  return [...text.childNodes]
+    .filter((n) => !(n.nodeType === 1 && (n as Element).classList.contains("krs-edge__cue")))
+    .map((n) => n.textContent ?? "")
+    .join("");
 }
 
 /** Whether `focus` can be drawn from `source`: every card it needs is there. */

@@ -315,13 +315,13 @@ export function applyMutualPairs(
  * The segment a paired half's label sits on by default: the longest one that
  * does not touch the split (segment 0 starts there). A label beside the split
  * would sit between the two arrows and read as either edge's. `undefined` for a
- * one-segment half, whose default anchor is already that segment's midpoint.
+ * one-segment half, whose default anchor is already that segment's midpoint,
+ * and for a half whose other segments have no length (no direction to show).
  */
 export function pairLabelSegment(edge: LayoutEdge): number | undefined {
   const line = lineOf(edge);
-  if (line.length <= 2) return undefined;
-  let best = 1;
-  let bestLen = -1;
+  let best: number | undefined;
+  let bestLen = EPS;
   for (let i = 1; i + 1 < line.length; i++) {
     const len = dist(line[i], line[i + 1]);
     if (len > bestLen + EPS) {
