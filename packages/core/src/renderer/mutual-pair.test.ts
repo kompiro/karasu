@@ -316,7 +316,7 @@ describe("mutual pair drawn as one line (#3027)", () => {
 
     it.each([
       ["colour", "edge[from=Orders] { color: #ff0000; }"],
-      ["width", "edge[from=Orders] { stroke-width: 3; }"],
+      ["width", "edge[from=Orders] { stroke-width: 3px; }"],
       ["stroke style", "edge[from=Orders] { stroke-style: dotted; }"],
     ])("keeps a pair whose %s differs as two lines", (_, style) => {
       expect(halves(laidOut(PAIR, PAIR_PATH, { style }))).toHaveLength(0);
