@@ -442,9 +442,10 @@ function layoutInner(
       // An expanding canvas frames containers, not teams or boundaries: its
       // group ids come from `expandGroupIdOf`, so neither axis's id space
       // applies and no style override may be looked up against them (#2269).
-      // `expandMembership` is only filled when `groupBy` is unset, so today this
-      // is always `groupBy`; it stays written out because the invariant lives
-      // there and not here, and the two are allowed to grow apart.
+      // `expandMembership` (`canvas-grouping.ts`) is only filled when `groupBy`
+      // is unset, so today this is always `groupBy`; it stays written out because
+      // the invariant lives there and not here, and the two are allowed to grow
+      // apart.
       isExpanding ? undefined : groupBy,
     );
     markDegradedMemberships(

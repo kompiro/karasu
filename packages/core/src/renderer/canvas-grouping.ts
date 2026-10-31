@@ -3,8 +3,8 @@
  * category collapse (#1821), the grouping axis (#1858, #1822), the per-group
  * collapse (#1858 slice B) and the in-place expansion band (#1921), run in that
  * order before the layers are computed. `layoutInner` reads what they leave
- * through {@link CanvasGrouping}; the multi-system root runs its own per-frame
- * copy in `layout-multi-system.ts`.
+ * through {@link CanvasGrouping}. The multi-system root runs the first three
+ * per system frame in `layout-multi-system.ts`, and has no expansion band.
  */
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import type { ViewSlice } from "../view/view-slice.js";
@@ -85,7 +85,8 @@ export function prepareCanvasGrouping(
   // order-independent in practice; identity outside collapse.
   let remapGhostEndpoint: (id: string) => string = collapsedCat.remapEndpoint;
   // Diff state re-keyed onto collapsed-group stub edges (#1886). Empty unless a
-  // team collapses in compare/diff mode; merged into the render lookup below.
+  // team collapses in compare/diff mode; `layoutInner` merges it into the
+  // render lookup.
   let foldedEdgeDiffState = new Map<string, string>();
   // System-view grouping (#1858, P2a): when the viewer picks "Group by: team",
   // bucket nodes into their owning team instead of the kind tiers, stacking each
