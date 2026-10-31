@@ -157,7 +157,7 @@ round-trip テストは、コメントがどこに出ても、あるいは消え
 
 ## 既知の対処パターン
 
-- formatter の判定ルールを parser のレキサ仕様と **同じ正規表現定数** から導出する、もしくはレキサが直接公開する判定関数を呼ぶ。`needsQuotes` はかつて語の形とキーワード集合を手で写した `BARE_ID_PATTERN` を持ち、写しが `boundary` などのキーワードを欠いていた。#2707 でレキサの `isBareWord` と `KRS_KEYWORD_NAMES` を呼ぶ形にした
+- formatter の判定ルールを parser のレキサ仕様と **同じ正規表現定数** から導出する、もしくはレキサが直接公開する判定関数を呼ぶ。`needsQuotes` はかつて語の形を写した `BARE_ID_PATTERN` と、キーワード集合を手で写した `RESERVED_KEYWORDS` を持ち、写しが `boundary` などを欠いていた。#2707 でレキサの `isBareWord` と `KRS_KEYWORD_NAMES` を呼ぶ形にした
 - ドット記法のような構造を持つ ID は AST 上で分解して保持し（例: `resource` の `ref.parent` / `ref.child`）、formatter は分解された各セグメントを個別に `quoteId()` してから join する（`formatter.ts:203` 周辺の現在の実装）
 - round-trip テストを golden 形式ではなく AST 構造比較で書く（テキスト比較だと表記揺れで誤検知する）
 - **網羅性は列挙せず導出する**。「構文 → fixture」の対応表を持ち、その **キー集合が型・スキーマ側と一致すること自体をアサートする**。#2076 の対処では

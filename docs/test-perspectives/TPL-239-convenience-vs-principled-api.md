@@ -15,7 +15,7 @@ related_to:
 discovered_from:
   - issue: "#239"
   - issue: "#507"
-  - root_cause_file: "packages/cli/src/index.ts:442"
+  - root_cause_file: "packages/cli/src/index.ts :: program.parseAsync"
 topic: cli
 scope:
   packages:

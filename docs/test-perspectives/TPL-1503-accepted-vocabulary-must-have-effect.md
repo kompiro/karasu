@@ -112,7 +112,7 @@ scope:
   `boundary` は parse-and-vanish せず、`groupBy: "boundary"` で必ず境界フレームを生む — その
   end-to-end 効果を `packages/core/src/renderer/group-by-boundary-render.test.ts` が柵にする）
 - `docs/spec/syntax.md` — Cross-cutting membership (`facet`)（#2173、tags-and-facets Part B
-  slice 1、言語 v2.0 で core — #2677）。slice 1 の時点では宣言された facet は描画に効果を
+  slice 1、言語 v2.0 で core、#2677）。slice 1 の時点では宣言された facet は描画に効果を
   持たず、その暫定状態を spec に明示していた（「本スライスの時点で描画には影響しない」）。
   いまは読み手が選ぶ overlay と `[facets=<id>]` セレクタが効果を持つ。宣言の誤りの側は
   `facet-not-declared` 警告が担う。受理・無効果・記述なしの第 4 状態には落とさない。
