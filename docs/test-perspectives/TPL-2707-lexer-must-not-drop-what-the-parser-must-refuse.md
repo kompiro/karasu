@@ -18,7 +18,7 @@ discovered_from:
   - issue: "#3032"
   - issue: "#3140"
   - root_cause_file: "packages/core/src/lexer/lexer.ts :: readToken"
-  - root_cause_file: "packages/core/src/parser/parser.ts :: parseAnnotations"
+  - root_cause_file: "packages/core/src/parser/annotation-parser.ts :: parseAnnotations"
   - root_cause_file: "packages/core/src/lexer/style-lexer.ts :: readToken"
 related_to:
   - TPL-1101
