@@ -5,7 +5,7 @@
 - **PR**: feat/expand-multi-container
 - **設計**: [ADR-1815](../adr/1815-expand-container-in-place.md)
 - **Related TPLs**: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md)（scoped glance を first-class に保つ）, [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（再配置時の端点保持）, [TPL-1736](../test-perspectives/TPL-1736-tier-split-no-edge-penetration.md)（段跨ぎ edge のフレーム貫通）
-- **対象**: `packages/core/src/renderer/edge-routing-groups.ts` / `layout.ts`、`packages/app`（`useSystemView` / `useCollapsibleSet` / `PreviewColumn`）、`packages/i18n`
+- **対象**: `packages/core/src/renderer/edge-routing-groups.ts` / `layout.ts` / `canvas-grouping.ts`、`packages/app`（`useSystemView` / `useCollapsibleSet` / `PreviewColumn`）、`packages/i18n`
 
 ## 概要
 
