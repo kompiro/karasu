@@ -9,6 +9,8 @@ applicable_to:
   - "同じ関係を複数の綴りで書ける構文に、正準形（canonical form）を定めるとき"
 known_consumers:
   - view-extract
+  - anchored-edges
+  - entity-relations
   - resolver-warnings
 discovered_from:
   - issue: "#2075"
