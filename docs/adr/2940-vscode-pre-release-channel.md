@@ -9,7 +9,6 @@ related_to:
   - ADR-1758
   - ADR-2922
   - ADR-2939
-  - ADR-2786
 scope:
   packages: [vscode]
   concerns: [ci, deployment]
@@ -18,7 +17,8 @@ assumptions:
   - "symbol: scripts/release/pre-release.mts :: preReleaseVersion"
   - "symbol: scripts/release/pre-release.mts :: diffExtensionDirs"
   - "grep: .github/workflows/vscode-release.yml :: karasu-vscode-pre/"
-  - "grep: .github/workflows/vscode-release.yml :: queue: max"
+  - "grep: .github/workflows/vscode-release.yml :: cron: \"0 0 \\* \\* 3\""
+  - "grep: .github/workflows/vscode-release.yml :: cancel-in-progress: false\\n  queue: max"
 ---
 
 # ADR-2940: VS Code 拡張の main を毎週 Marketplace の pre-release チャネルに出す
@@ -69,7 +69,7 @@ Marketplace は既にある pre-release より低い版の stable を受け付�
 - 比べるのは出来上がった `.vsix` で、相手は Marketplace で一番高い版（pre-release を選んだ利用者が今使っている版）。Marketplace の公開 API から `.vsix` を取得して展開し、`extension/` 配下のファイルを比べる。`extension/package.json` は `version` を除いた JSON として比べる（書式の違いも無視する。前の週の pre-release の `package.json` は `jq` で書き直されている）。`.vsix` の manifest は `package.json` から作られて版を含むので比べない。
 - 「拡張に関係するパス」の集合を持たない。拡張が新しいワークスペースパッケージや依存を取り込んでも、出来上がるファイルが変われば公開される（TPL-2804）。
 - `.vsix` を取得できない、展開できない、比較の結果が `same` / `changed` のどちらでもない、のいずれでも失敗させる（TPL-2786）。取得には接続と転送の時間の上限を付け、Marketplace が応答しないときに実行が `vscode-release` グループを握り続けないようにした。
-- ビルドが非決定的だと毎週「変更あり」になる。誤るのは公開しすぎる側で、利用者に変更が届かない側ではない。0.5.0 のリリースコミットを手元で `vsce package` した `.vsix` は Marketplace の 0.5.0 と一致した。違ったのは `THIRD_PARTY_NOTICES.md` だけで、arm64 と x64 の platform バイナリの差である（CI は毎回同じ platform で作る）。
+- ビルドが非決定的だと毎週「変更あり」になる。誤るのは公開しすぎる側で、利用者に変更が届かない側ではない。0.5.0 のリリースコミットを手元で `vsce package` した `.vsix` は、`THIRD_PARTY_NOTICES.md` を除いて Marketplace の 0.5.0 と一致した（違いは arm64 と x64 の platform バイナリの差で、CI は毎回同じ platform で作る）。
 
 ### タグと GitHub Release
 
@@ -79,6 +79,7 @@ Marketplace は既にある pre-release より低い版の stable を受け付�
 
 ### ワークフローの形
 
+- 起動は毎週水曜 00:00 UTC（09:00 JST）。月次トレインの Prepare（日曜 00:00 UTC）と曜日を分け、週末の作業を数日 `main` で寝かせてから出す。`workflow_dispatch` からも同じ経路で臨時の pre-release を出せる。
 - `vscode-release.yml` に `schedule` を足し、pre-release で動くかを 1 か所（「Choose the channel」ステップ）で決める。条件は `schedule` で起動したか、`inputs.pre_release` が真か。
 - ADR-1316 の `inputs.pre_release` の意味を「pre-release の版を付けて `main` の先頭から出す」に変えた。リリースコミットを stable の版番号で出す経路はなくした。
 - `schedule` はこのファイル自身の cron で起動したときだけ数える（`github.workflow_ref` が `vscode-release.yml` を指すとき）。`workflow_call` で呼ばれた側は呼んだ側の `event_name` を見るので、将来スケジュールで動く workflow が呼んでも pre-release にならない。
