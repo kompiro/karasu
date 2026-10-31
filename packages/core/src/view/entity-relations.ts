@@ -5,17 +5,6 @@ import { isAnchoredAt, nodeId } from "./anchored-edges.js";
 import { resolveContainerChain } from "./view-path.js";
 import { emptySlice, type GhostEntity, type ViewPath, type ViewSlice } from "./view-slice.js";
 
-/**
- * Extract the **entity view** of a domain: its `entity` children and the
- * relation edges between them — an alternative drill-down to the domain's
- * usecase view. Returns an empty slice when the path does not resolve to a
- * domain or the domain owns no entities.
- *
- * v1 scope: relations whose target is not a local entity (cross-domain
- * relations) are dropped; surfacing the foreign entity as a ghost lands with
- * the interactive toggle, which wires the ghost through the renderer's
- * `layoutNode.ghost` muting mechanism.
- */
 interface DomainEntityEntry {
   domain: KrsNode;
   /** The domain's full path within its system (`[systemId, …, domainId]`), for suffix resolution (#2088). */
