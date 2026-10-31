@@ -45,8 +45,8 @@ security alert sweep には元から cron が無いが、dispatch すれば今�
 
 Copilot で推論する workflow をリポジトリに置かない。gh-aw の 2 本（`.md` と `.lock.yml`）、
 `.github/aw/`、それらを検査する CI テスト（`gh-aw-lock-consistency.test.ts`・`agentic-workflow-safety.test.ts`）を外し、
-`scripts/ci/copilot-inference-policy.test.ts` が workflow の `copilot-requests:`・`permissions: write-all`・
-`engine: copilot`・`COPILOT_GITHUB_TOKEN` と、gh-aw の source（`.github/workflows/*.md`）を落とす。個人の課金で推論できるエンジンが使えるようになったら、#3421 で戻す。
+`scripts/ci/copilot-inference-policy.test.ts` が workflow の `copilot-requests`・`write-all`・
+`COPILOT_GITHUB_TOKEN` の語と `engine: copilot`、それに gh-aw の source（`.github/workflows/*.md`）を落とす。個人の課金で推論できるエンジンが使えるようになったら、#3421 で戻す。
 
 ## 理由
 

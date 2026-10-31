@@ -14,7 +14,7 @@
 
 ## 受け入れ条件
 
-- [x] AT-A: どの workflow も `copilot-requests:` の permission、`permissions: write-all`、`engine: copilot`、`COPILOT_GITHUB_TOKEN` を宣言していない（キーと値の引用符は問わず、コメント行は数えない）
+- [x] AT-A: どの workflow にも、コメント行以外に `copilot-requests`・`write-all`・`COPILOT_GITHUB_TOKEN` の語と `engine: copilot` が無い（語として照合するので、YAML の書き方を問わない）
   > ✅ Automated — `scripts/ci/copilot-inference-policy.test.ts` › `Copilot inference policy (ADR-3421)` › `has no workflow that bills inference to a Copilot seat`
 - [x] AT-B: gh-aw の source（`.github/workflows/*.md`）が無い（`engine:` を省いた source も copilot で動くため、source があること自体を落とす）
   > ✅ Automated — `scripts/ci/copilot-inference-policy.test.ts` › `Copilot inference policy (ADR-3421)` › `has no gh-aw workflow source`

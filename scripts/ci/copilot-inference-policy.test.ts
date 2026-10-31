@@ -15,17 +15,19 @@ const WORKFLOW_DIR = ".github/workflows";
 const SCANNED_DIRS = [WORKFLOW_DIR, ".github/actions"];
 
 /**
- * Lines that route inference to a Copilot seat, matched outside comments. Not
- * anchored to the line start, so a flow-style `permissions: { …, copilot-requests:
- * write }` is caught too, and quoted keys and values are accepted. `write-all`
- * grants `copilot-requests` along with every other scope. The patterns run over
- * the whole file, so `\s*` also spans a value written on the next line.
+ * Words that route inference to a Copilot seat, matched anywhere outside comment
+ * lines. They are matched as bare words rather than as `key: value` pairs, so no
+ * YAML spelling hides them: flow style, quotes, anchors (`&all write-all`), a
+ * value on the next line or after a comment all still contain the word. The
+ * words have no other use in a workflow, so a hit in a string or a trailing
+ * comment fails the guard rather than slipping past it. `write-all` grants
+ * `copilot-requests` along with every other scope.
  */
 const COPILOT_INFERENCE = [
-  /\bcopilot-requests["']?\s*:/g,
-  /\bengine["']?\s*:\s*["']?copilot\b/g,
+  /\bcopilot-requests\b/g,
+  /\bwrite-all\b/g,
   /COPILOT_GITHUB_TOKEN/g,
-  /\bpermissions["']?\s*:\s*["']?write-all\b/g,
+  /\bengine["']?\s*:\s*["']?copilot\b/g,
 ];
 
 function listFiles(dir: string): string[] {
