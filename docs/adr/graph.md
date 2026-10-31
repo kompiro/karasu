@@ -203,6 +203,7 @@ flowchart TD
     ADR_3359["ADR-3359<br/>描画が変わる PR に、merge-base と比べた before/after の画像を添付する"]
     ADR_3381["ADR-3381<br/>Dependabot トリアージ 2026-10-26：npm 12 件をそのまま採用し、ch..."]
     ADR_3399["ADR-3399<br/>Dependabot security alert 2026-10-30（qs と seria..."]
+    ADR_3412["ADR-3412<br/>GitHub Actions の依存を actions.lock で固定し、検証を requi..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -1127,6 +1128,7 @@ flowchart TD
   class ADR_3381 accepted
   class ADR_3399 accepted
   class ADR_3405 accepted
+  class ADR_3412 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
