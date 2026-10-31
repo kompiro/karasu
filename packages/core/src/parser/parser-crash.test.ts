@@ -41,13 +41,13 @@ describe("Incomplete import - Parser", () => {
 
 describe("Incomplete import - compile", () => {
   it("should not crash on 'import'", () => {
-    expect(() => compile("import", "")).not.toThrow();
+    expect(() => compile("import", { styleSource: "" })).not.toThrow();
   });
   it("should not crash on 'import {'", () => {
-    expect(() => compile("import {", "")).not.toThrow();
+    expect(() => compile("import {", { styleSource: "" })).not.toThrow();
   });
   it("should not crash on 'import { Foo } from'", () => {
-    expect(() => compile("import { Foo } from", "")).not.toThrow();
+    expect(() => compile("import { Foo } from", { styleSource: "" })).not.toThrow();
   });
 });
 

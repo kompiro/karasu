@@ -351,8 +351,6 @@ export type {
 export {
   compile,
   compileProject,
-  compileOrgView,
-  compileProjectOrgView,
   buildDrillDownSvg,
   renderEntityView,
   buildAllLayersSvg,

@@ -4,13 +4,13 @@ title: "並列に存在する関数ファミリは parameter parity を保つ"
 status: active
 date: 2026-05-10
 applicable_to:
-  - "ビュー種別ごとに複製される関数群（compileProject vs compileProjectOrgView, drill-down vs multi-level, system view vs deploy view vs org view ...）"
+  - "ビュー種別ごとに複製される関数群（per-view compile vs all-views bundle, drill-down vs multi-level, system view vs deploy view vs org view ...）"
   - "API 対称性のために宣言した optional parameter が、各関数で実際に挙動に反映されているか"
 known_consumers:
   - drill-down-svg
   - multi-level-svg
   - compile-project
-  - compile-project-org-view
+  - build-all-views-svg-project
   - org-tree-renderer
   - layout-single-vs-multi-system
 related_to:
@@ -44,13 +44,13 @@ scope:
 
 karasu には「ビューごとに分かれた似た形の関数群」が複数ある。例:
 
-- `compileProject` / `compileProjectOrgView`（system view と org view の compile pipeline）
+- `compileProject` / `buildAllViewsSvgProject`（per-view の compile pipeline と all-views bundle の pipeline）
 - `buildDrillDownSvg` / `buildFullViewSvg` / `buildExportSvg` / それぞれの `*Org` 版
 - `useSystemView` / `useDeployView` / `useOrgView` の hook 群
 
 これらは **シグネチャが似ているが内部実装は独立している** ことが多い。片方の関数に新しい parameter（`displayMode`, `styleSource`, `systemSheetCount` など）を渡せるよう拡張したとき、**もう一方は古いまま** になりがち。型として optional なら呼び出し側はコンパイルが通るので、**「渡しているのに無視されている」** タイプの silent failure になる。
 
-#219 では `buildDrillDownSvg` 系が `styleSource` を受け取りつつ内部で使っていなかった（API 対称性のためだけに宣言）。#160 では `compileProjectOrgView` が `analyze()` に `systemSheetCount` を渡し忘れていた（system view の compile では渡している）。どちらも同じ「parallel implementation の drift」パターン。
+#219 では `buildDrillDownSvg` 系が `styleSource` を受け取りつつ内部で使っていなかった（API 対称性のためだけに宣言）。#160 では `compileProjectOrgView` が `analyze()` に `systemSheetCount` を渡し忘れていた（system view の compile では渡している）。どちらも同じ「parallel implementation の drift」パターン。`compileProjectOrgView` は #3346 で削除し、org view も `compileProject(entry, fs, { diagramType: "org" })` の 1 本に畳んだ。
 
 ## 想定される失敗モード
 
@@ -88,5 +88,5 @@ karasu には「ビューごとに分かれた似た形の関数群」が複数�
 
 - `packages/core/src/renderer/drill-down-svg.test.ts`
 - `packages/core/src/renderer/multi-level-svg.test.ts`
-- `packages/core/src/index.test.ts` — `compileProject` / `compileProjectOrgView` 周辺
+- `packages/core/src/index.test.ts` — `compileProject` の `diagramType` ごとの経路
 - `packages/core/src/svg-builder-family-parity.test.ts` — SVG builder family の family-wide parity meta-test。`SVG_BUILDER_FAMILY` に登録された全 builder を共通 fixture + 共通 styleSource / displayMode で呼び出し、出力に probe color が現れること（styleSource threading）と icon ↔ shape の出力が異なること（displayMode threading）を assert する（gap GB11-1 / #1273）
