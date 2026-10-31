@@ -1,7 +1,8 @@
 ---
 id: ADR-2839
 title: dependabot-triage workflow の週次 cron を止め、dispatch で運用する
-status: accepted
+status: superseded
+superseded_by: ADR-3421
 date: 2026-09-15
 topic: build
 refines:
@@ -11,15 +12,12 @@ related_to:
   - ADR-2687
 scope:
   concerns: [ci, dependencies]
-assumptions:
-  - "file: .github/workflows/dependabot-triage.md"
-  - "grep: .github/workflows/dependabot-triage.md :: #\\s+- cron:"
 ---
 
 # ADR-2839: dependabot-triage workflow の週次 cron を止め、dispatch で運用する
 
 - **日付**: 2026-09-15
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by [ADR-3421](3421-remove-copilot-gh-aw-workflows.md)（推論の利用料が雇用先の組織の Copilot seat に付くため、workflow ごと外した）
 - **関連**:
   - 再開の条件を追う Issue: [#2839](https://github.com/kompiro/karasu/issues/2839)
   - 所見の不足: [#2838](https://github.com/kompiro/karasu/issues/2838)

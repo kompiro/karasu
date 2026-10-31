@@ -9,6 +9,7 @@ related_to:
   - ADR-2753
   - ADR-2474
   - ADR-784
+  - ADR-3421
 scope:
   packages: [app, core, docs-site, vscode]
   concerns: [ci, dependencies, security]

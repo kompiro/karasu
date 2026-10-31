@@ -11,6 +11,7 @@ related_to:
   - ADR-2474
   - ADR-784
   - ADR-2839
+  - ADR-3421
 scope:
   packages: [app, cli, core, docs-site, e2e, i18n, lsp, nest, vscode, vscode-e2e]
   concerns: [ci, dependencies, security]

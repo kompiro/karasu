@@ -154,16 +154,13 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2564](2564-dependabot-security-2026-08-18.md) — Dependabot security alert 2026-08-18（auto-dismiss された 2 件が脆弱版のままだった。floor を上げ、収集クエリの前提を改める）
 - [ADR-2623](2623-dependabot-triage-2026-08-25.md) — Dependabot トリアージ 2026-08-25 — ADR の assumptions に書いたリテラル依存版を緩める
 - [ADR-2643](2643-stacked-pr-workflow.md) — stacked PR は最下層 1 本だけをレビュー対象にし、draft では分単位の CI を止める
-- [ADR-2658](2658-gh-aw-dependency-automation.md) — 依存更新トリアージの下ごしらえを gh-aw の scheduled workflow に任せる
 - [ADR-2671](2671-dependabot-triage-2026-08-31.md) — Dependabot トリアージ 2026-08-31 — exact peer は枠ではなく group で結ぶ
 - [ADR-2693](2693-dependabot-security-2026-09-03.md) — Dependabot security alert 2026-09-03（`fast-uri` / `qs` の override floor が脆弱範囲の内側だった。floor は「選ばれない」ではなく「届かない」を作る道具である）
 - [ADR-2753](2753-dependabot-triage-2026-09-07.md) — Dependabot トリアージ 2026-09-07 — 生成物への部分編集は却下し、再生成に畳む
 - [ADR-2773](2773-dependabot-triage-2026-09-08.md) — Dependabot トリアージ 2026-09-08 — repo 側の宣言が bot の届かない所にある 2 件
-- [ADR-2786](2786-threat-detection-fail-closed.md) — 安全網が結論を出せない回は run ごと失敗させ、detection のモデルを pin する
 - [ADR-2804](2804-no-nul-bytes-guard.md) — raw NUL byte を含む tracked file を除外リスト方式の全走査で検出し、Required な Check の両側で走らせる
 - [ADR-2813](2813-dependabot-security-2026-09-12.md) — Dependabot security alert 2026-09-12（`js-yaml` の floor が 2 度続けて脆弱範囲の内側だった。同じ key での再発は「その時点の patched 版」を書く運用の帰結である）
 - [ADR-2836](2836-dependabot-triage-2026-09-14.md) — Dependabot トリアージ 2026-09-14：vitest 5 の major は ADR の assumption が捕まえ、差し替え PR で入れる
-- [ADR-2839](2839-pause-dependabot-triage-schedule.md) — dependabot-triage workflow の週次 cron を止め、dispatch で運用する
 - [ADR-2877](2877-dependabot-triage-2026-09-22.md) — Dependabot トリアージ 2026-09-22：changesets 3 は CI が回さない release flow を壊すので差し替え PR で入れ、gh-aw は再生成で上げる
 - [ADR-2922](2922-monthly-release-train.md) — 毎月の最終日曜に Release — Prepare を自動で走らせ、VS Code 拡張も同じトレインで公開する
 - [ADR-2939](2939-release-record-tags-and-github-release.md) — リリースごとにパッケージのタグを push し、release-YYYY-MM-DD の GitHub Release を 1 つ作る
@@ -196,6 +193,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3381](3381-dependabot-triage-2026-10-26.md) — Dependabot トリアージ 2026-10-26：npm 12 件をそのまま採用し、chokidar 6 は Node 下限の引き上げと同梱する前提で保留、gh-aw-actions は却下して v0.92.0 で再生成する
 - [ADR-3399](3399-dependabot-security-2026-10-30.md) — Dependabot security alert 2026-10-30（qs と serialize-javascript の override floor を修正版へ上げ、launch-editor を override し、@azure/msal-node は @azure/identity 4.14.1 が公開から 1 日経ってから lock 更新で上げる）
 - [ADR-3412](3412-workflow-actions-lockfile.md) — GitHub Actions の依存を actions.lock で固定し、検証を required check にする
+- [ADR-3421](3421-remove-copilot-gh-aw-workflows.md) — Copilot で推論する gh-aw の workflow を外し、個人の課金で動かせるまで戻さない
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 

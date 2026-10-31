@@ -21,7 +21,6 @@ workflow が使う action は、直接・推移的なものを含めて `.github
 - Dependabot の `github-actions` PR は、lockfile の差分が同じ PR に含まれているかを確かめる。含まれていなければ、その PR のブランチで `gh actions-lock` を実行して commit する。
 - lockfile は手で編集しない。ずれていると `verify-lockfile.yml`（`gh actions-lock --verify`）が落ち、runner も job 開始時に `Invalid lockfile` で止まる。`verify-lockfile.yml` は PR ごとと週次で走る。lockfile に載っていない workflow はタグをそのまま解決するので、PR で落ちたまま main に入れない。
 - 更新先のタグは、リリースノートと公開からの日数（cooldown と同じ 7 日）を確認してから採る。
-- gh-aw の `.lock.yml` も対象に含まれる。`gh aw compile` は `uses:` を `@<sha> # vX` で出力するので、再生成したら続けて `gh actions-lock` を実行し、タグに戻して lockfile を合わせる。`scripts/ci/gh-aw-lock-consistency.test.ts` は、`actions.lock` が固定しているタグなら SHA の代わりとして通す。この 2 段の手順は暫定で、恒久的な扱いは [#3415](https://github.com/kompiro/karasu/issues/3415) で決める。
 
 ### Security update（GHSA 起因の即時 PR）
 
@@ -36,14 +35,9 @@ Dependabot security update は alert 検知時に即時起票され、`schedule`
 
 ### エージェントによる下ごしらえ
 
-トリアージの下ごしらえは 2 本の agentic workflow（gh-aw）が回す。どちらも所見を書くだけで、マージ・close・push はしない。
+いまは無い。Dependabot PR と security alert のトリアージは、手元で `/hane:dependabot` と `/hane:security-alert` を使って行う。
 
-| workflow | 起動 | 出力 |
-| --- | --- | --- |
-| `.github/workflows/dependabot-triage.md` | dispatch のみ（週次の cron は停止中、[ADR-2839](adr/2839-pause-dependabot-triage-schedule.md)） | 各 PR への upstream 追跡コメント（1 実行あたり 10 件まで）と、バッチのサマリ Issue |
-| `.github/workflows/security-alert-sweep.md` | dispatch のみ（cron はコメントアウト） | `[security-alert]` のトラッキング Issue |
-
-判定（採用 / 保留 / 却下）とマージは人が行う（[ADR-2658](adr/2658-gh-aw-dependency-automation.md)）。security alert sweep に cron が無いのは、gh-aw の MCP gateway が Dependabot alert を private 扱いにし、public リポジトリの safe output へ流さないためである。frontmatter を編集したら `gh aw compile` で `.lock.yml` を再生成する（本文だけの編集なら再生成は要らない。実行時に読み込まれる）。
+以前は 2 本の agentic workflow（gh-aw の `dependabot-triage` と `security-alert-sweep`）が下ごしらえをしていたが、どちらも Copilot で推論し、その利用料が雇用先の組織が用意した Copilot seat に付くため外した（[ADR-3421](adr/3421-remove-copilot-gh-aw-workflows.md)）。Copilot で推論する workflow は `scripts/ci/copilot-inference-policy.test.ts` が落とす。個人の課金で動かせるようになったら戻す（[#3421](https://github.com/kompiro/karasu/issues/3421)）。
 
 ## リリース運用
 

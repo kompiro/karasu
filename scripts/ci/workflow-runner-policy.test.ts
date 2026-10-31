@@ -16,17 +16,6 @@ const WORKFLOW_DIR = join(REPO_ROOT, ".github/workflows");
 const UBICLOUD = "ubicloud-standard-4-ubuntu-2404";
 const GITHUB_HOSTED = "ubuntu-latest";
 
-/**
- * The agentic workflows (`gh aw compile` output, `*.lock.yml`) put their
- * scaffolding jobs on the slim GitHub-hosted image. Those jobs only talk to the
- * GitHub API, so the label is on the same side of ADR-1890 as `ubuntu-latest`:
- * GitHub-hosted, not Ubicloud. It is accepted in generated files only, so a
- * hand-written workflow still cannot drift onto a third label — the drift this
- * guard exists to catch.
- */
-const GITHUB_HOSTED_SLIM = "ubuntu-slim";
-const isGenerated = (key: string): boolean => key.split("#")[0].endsWith(".lock.yml");
-
 /** Jobs intentionally on Ubicloud: compute-bound, no publish credentials. */
 const UBICLOUD_JOBS = [
   "ci.yml#check",
@@ -93,9 +82,7 @@ describe("GitHub Actions runner policy (ADR-1890)", () => {
 
   it("uses only the sanctioned runner labels", () => {
     const isSanctioned = (job: JobRunner): boolean =>
-      job.runsOn === UBICLOUD ||
-      job.runsOn === GITHUB_HOSTED ||
-      (job.runsOn === GITHUB_HOSTED_SLIM && isGenerated(job.key));
+      job.runsOn === UBICLOUD || job.runsOn === GITHUB_HOSTED;
     const unexpected = allJobs
       .filter((job) => !isSanctioned(job))
       .map((job) => `${job.key} → ${job.runsOn}`);

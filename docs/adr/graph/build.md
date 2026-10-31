@@ -141,6 +141,7 @@ flowchart TD
     ADR_3381["ADR-3381<br/>Dependabot トリアージ 2026-10-26：npm 12 件をそのまま採用し、ch..."]
     ADR_3399["ADR-3399<br/>Dependabot security alert 2026-10-30（qs と seria..."]
     ADR_3412["ADR-3412<br/>GitHub Actions の依存を actions.lock で固定し、検証を requi..."]
+    ADR_3421["ADR-3421<br/>Copilot で推論する gh-aw の workflow を外し、個人の課金で動かせるまで..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -195,6 +196,9 @@ flowchart TD
   ADR_3257 -.supersedes.-> ADR_2807
   ADR_3286 -.supersedes.-> ADR_2716
   ADR_3286 -.supersedes.-> ADR_3117
+  ADR_3421 -.supersedes.-> ADR_2658
+  ADR_3421 -.supersedes.-> ADR_2786
+  ADR_3421 -.supersedes.-> ADR_2839
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -287,19 +291,19 @@ flowchart TD
   class ADR_2623 accepted
   class ADR_2640 superseded
   class ADR_2643 accepted
-  class ADR_2658 accepted
+  class ADR_2658 superseded
   class ADR_2671 accepted
   class ADR_2693 accepted
   class ADR_2716 superseded
   class ADR_2753 accepted
   class ADR_2773 accepted
-  class ADR_2786 accepted
+  class ADR_2786 superseded
   class ADR_2804 accepted
   class ADR_2805 superseded
   class ADR_2807 superseded
   class ADR_2813 accepted
   class ADR_2836 accepted
-  class ADR_2839 accepted
+  class ADR_2839 superseded
   class ADR_2877 accepted
   class ADR_2898 superseded
   class ADR_2922 accepted
@@ -337,6 +341,7 @@ flowchart TD
   class ADR_3381 accepted
   class ADR_3399 accepted
   class ADR_3412 accepted
+  class ADR_3421 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost
