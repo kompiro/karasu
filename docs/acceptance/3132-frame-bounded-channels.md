@@ -9,7 +9,7 @@ type: product
 - **設計 (ADR)**: [ADR-3132](../adr/3132-frame-bounded-channels.md)
 - **関連 ADR**: [ADR-2598](../adr/2598-edge-routing-channel-capacity.md)、[ADR-3026](../adr/3026-same-row-channel-route.md)
 - **Related TPLs**: [TPL-3132](../test-perspectives/TPL-3132-resource-inside-a-frame-measured-against-the-frame.md), [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md), [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)
-- **対象ファイル**: `packages/core/src/renderer/edge-routing-lanes.ts`（`ChannelLimits` / `collectChannels`）、`packages/core/src/renderer/edge-routing-groups.ts`（`channelBelow` / `channelAbove`）、`packages/core/src/renderer/layout.ts`（`channelReservations`）、`packages/core/src/renderer/layer-layout-logics.ts`（`placeNodesInLayers`）
+- **対象ファイル**: `packages/core/src/renderer/edge-routing-lanes.ts`（`ChannelLimits` / `collectChannels`）、`packages/core/src/renderer/edge-routing-groups.ts`（`channelBelow` / `channelAbove`）、`packages/core/src/renderer/layout-reservations.ts`（`channelReservations`）、`packages/core/src/renderer/layer-layout-logics.ts`（`placeNodesInLayers`）
 
 > ドリルダウンの最上段の上と最下段の下のチャネルは、カードを囲む枠を見ずに測られていた。最下段の下は枠の外の ghost カードまでの帯として測られ、片側に何も無いときはレーンが外へ積まれて、どちらでもレーンとラベルが枠の線に載るか枠の外に出た。枠のタイトル帯の下端と下端をチャネルの境界に加え、足りなければ枠を広げる。
 

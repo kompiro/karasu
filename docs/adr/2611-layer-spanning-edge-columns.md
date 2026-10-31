@@ -12,7 +12,7 @@ assumptions:
   - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: mixedEnd"
   - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: tryCorridorRoute"
   - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: corridorCandidates"
-  - "symbol: packages/core/src/renderer/layout.ts :: columnReservations"
+  - "symbol: packages/core/src/renderer/layout-reservations.ts :: columnReservations"
   - "symbol: packages/core/src/renderer/layer-layout-logics.ts :: extraGapBeforeCard"
   - "file: docs/acceptance/layer-spanning-edge-columns.md"
   - "file: docs/test-perspectives/TPL-2611-feedback-key-survives-the-next-pass.md"
