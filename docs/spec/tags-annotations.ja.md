@@ -357,7 +357,7 @@ register を分ける理由は、所属のセマンティクスがアーキタ�
 >
 > `[write]` / `[read]` は usecase→resource の合成エッジに対してのみ自動付与される。**明示的なエッジに手で書かないこと** — 構文上はパーサが受け付けるが、意味（対象 resource の `operations` を write-dominates 分類した結果）は合成エッジに対してしか成立しない。線幅の階層は意図的に `read (1.5) < write (2) < cyclic (2.5)` の順で、循環依存が最も目立つ軸として残るようにしている。
 >
-> `[inferred]` はこの表の他のタグと性質が異なる。`[implicit]` / `[read]` / `[write]` / `[cyclic]` / `[projected]` は描画時に付与され **`.krs` には現れない**が、`[inferred]` は `translate --from db` が**出力ソースに書き込み**、そのまま残る。関連が実在すると確認できたら `[inferred]` を 1 つ消せば確認済みのエッジになる。
+> `[inferred]` はこの表の他のタグと性質が異なる。`[implicit]` / `[read]` / `[write]` / `[projected]` は描画時に、`[cyclic]` はモデルを読み込んだ時点で同期エッジの循環から付与され、どれも **`.krs` には現れない**が、`[inferred]` は `translate --from db` が**出力ソースに書き込み**、そのまま残る。関連が実在すると確認できたら `[inferred]` を 1 つ消せば確認済みのエッジになる。
 >
 > `[projected]` は `[implicit]` と同じ register（描画時付与）で、その鏡像である。`[implicit]` が domain エッジを service 水準へ畳み**上げる**のに対し、`[projected]` は entity 関連を対応先の `table` leaf へ畳み**下げる**。同じキャンバス上の無タグのエッジは `.krs` に記録されたもの（手書き、または宣言 FK からの出力）なので、無タグ = **確認済み**、`[projected]` = **entity 層の断定**と読む。軸は「誰が確認したか」であって「どのツールが書いたか」ではない。
 
