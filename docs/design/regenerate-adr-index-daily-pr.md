@@ -32,7 +32,7 @@ ADR の PR は、`pnpm adr:regenerate` が書く `docs/adr/effective.md`・`docs
 | main 側の検査      | 同じ `adr-validate.yml` が `main` への push でも `--check` を実行する                                                                                                                                                                                                                                       |
 | 抜けている検査     | `@kompiro/adr-tools` の版を上げる PR（`package.json` / lockfile だけの差分）では `adr-validate.yml` が走らない。生成器の出力が変わっても、次の ADR PR まで気づかない（TPL-1480 の形）                                                                                                                       |
 | main の保護        | ruleset `protect default branch`。削除・non-fast-forward・作成の禁止、PR 必須（squash のみ）、required check（`Check`・`Validate`・`Reference docs`・`Playwright`・`verify`）。bypass actor は 0 件。docs/process/review.md は Review tier も required と書くが、ruleset の required check には入っていない |
-| Actions の PR 作成 | repo 設定「Actions に PR の作成・承認を許可」は OFF（#1370 で OFF のまま進めると決めた。ADR-1370）。`GITHUB_TOKEN` で作った PR では required check を出す workflow も起動しない                                                                                                                             |
+| Actions の PR 作成 | repo 設定「Actions に PR の作成・承認を許可」は OFF（#1370 で OFF のまま進めると決めた。ADR-1370）。`GITHUB_TOKEN` で作った・push した PR（`opened`・`synchronize`・`reopened`）の `pull_request` の run は承認待ちの状態で作られ、書き込み権限を持つ人が承認するまで required check を満たさない           |
 | 分類器             | `scripts/review/tier.ts` は生成物のパス（`ADR_GENERATED_GLOBS`）を Low に数える。生成物だけの PR は Low になる                                                                                                                                                                                              |
 | Claude の routine  | Claude Code の scheduled agent（routine）を、この repo の作業の予約にすでに使っている（例: #3399 の 2 本目の PR）。実行環境は下の節                                                                                                                                                                         |
 
@@ -137,7 +137,7 @@ routine の仕事は repo のスクリプト 1 本を実行して結果を報告
 
 ### 却下: GitHub Actions が再生成の PR を作る
 
-案4 と同じ形を Actions で行う案。Actions の PR 作成は OFF にしてあり（ADR-1370）、ON に戻しても `GITHUB_TOKEN` で作った PR では required check が走らない。走らせるには、required check を出す 4 つの workflow すべてに `workflow_dispatch` の入口を足してブランチに起動するか、GitHub App の鍵を足すことになる。案4 はどちらも要らない。
+案4 と同じ形を Actions で行う案。Actions の PR 作成は OFF にしてあり（ADR-1370）、ON に戻しても `GITHUB_TOKEN` で作った PR の run は承認待ちで作られ、人が承認しないと required check が通らない。無人で通すには、required check を出す 4 つの workflow すべてに `workflow_dispatch` の入口を足してブランチに起動するか、GitHub App の鍵を足すことになる。案4 はどちらも要らない。
 
 ### 却下: routine が作った PR の auto-merge を Actions が有効にする
 
@@ -159,7 +159,7 @@ routine は PR を作るだけにし、再生成のブランチの PR に対し�
 
 **案4 を採用する。** 衝突と auto-merge の停止を両方無くし、`effective.md` を repo に置いたまま保てるのは案1 と案4 で、案4 は鍵も ruleset の例外も足さない。代償は `main` の生成物がふつう 1 日（最大 2 日）古いことだが、`effective.md` は有効な決定の一覧であって、その日にマージした ADR は ADR 本体を読めば分かる。案1 が要した柵（鍵の隔離・artifact の検査・ruleset の分割）は、どれも鍵があるから要ったもので、案4 には要らない。
 
-マージの安全は routine の prompt ではなく、required check の `Validate` が差分で保証する（TPL-2658、TPL-3286）。スクリプトは REST でマージするが、ruleset が required check の通過を求めるので、`Validate` を通らない PR はマージできない。生成物のパスの集合 G を、PR の base と head それぞれの `adr.config.json` の `paths.outputs` の和集合とする。`Validate` は次の 2 種類の PR だけを通す。
+マージの安全は routine の prompt ではなく、required check の `Validate` が差分で保証する（TPL-2658、TPL-3286）。スクリプトは REST でマージするが、ruleset が required check の通過を求めるので、`Validate` を通らない PR はマージできない。生成物のパスの集合 G を、PR の base と head それぞれの `adr.config.json` の `paths.outputs` の和集合とする。`paths.outputs` は `paths.adrDir` からの相対パスなので、各出力を `adrDir` に繋いで repo からの相対パスにし、ディレクトリの出力（末尾が `/` の `graph/`）はその下全体（`docs/adr/graph/**`）にしてから `git diff` のパスと比べる（`scripts/review/tier.ts` の `ADR_GENERATED_GLOBS` と同じ形）。`Validate` は次の 2 種類の PR だけを通す。
 
 - **ふつうの PR**: G のパスを 1 つも変えない。例外は、`paths.outputs` から外れた古い出力（base にだけある出力先）の削除だけ。
 - **再生成の PR**: G の外を 1 つも変えず、base と head の `paths.outputs` が同じで、head の生成物の木（追加・削除・変更をすべて含むファイルの集合と中身）が head で生成し直した結果とちょうど一致する。
@@ -180,7 +180,7 @@ routine は PR を作るだけにし、再生成のブランチの PR に対し�
    - 最初に、前日に待ちきれなかった再生成の PR を拾い直す。対象は下の「再生成の PR の見分け方」に合う開いた PR で、今の `origin/main` の `paths.outputs` がその PR の head と同じで（違えば出力先が変わったので拾わず、作り直す）、下の「マージの条件」をすべて満たせば head の SHA を `sha` に渡してマージする。マージが失敗したら（後から入った変更との衝突など）、失敗で終えずに次の手順に進み、上書きの push で head を入れ替える。マージした後は、`delete_branch_on_merge` がブランチを消し終わる（`GET /repos/kompiro/karasu/git/ref/heads/chore/adr-regenerate` が 404 になる）まで待ってから、`origin/main` を fetch し直す。
    - `origin/main` を fetch し、そこから固定のブランチ `chore/adr-regenerate` を作り直して `adr regenerate` を実行する。出力先のディレクトリ（`graph/`）は生成結果で置き換え、生成されなくなったファイルを消す。
    - 差分が無ければ、開いている再生成の PR を閉じて終える。ブランチは消さない（routine の環境はブランチの削除を拒否する）。残ったブランチは次の実行が上書きし、マージ時は repo 設定の `delete_branch_on_merge` が消す。
-   - routine と人が同時に実行しても互いを壊さない。**再生成の PR の見分け方**は、本文の印（`<!-- adr-regenerate -->`）、head のブランチ名 `chore/adr-regenerate`、head の repo が `kompiro/karasu`（fork ではない）、base が `main`、の 4 つがすべて合うこと。スクリプトはこれに合う PR だけを更新・クローズ・マージし、マージの直前にもう一度確かめる。同じブランチ名で合わない PR があれば、何もせず失敗する。ブランチの上書きは `--force-with-lease=chore/adr-regenerate:<拾い直しの後に見た SHA>` で行い、ブランチが無ければ空の期待値（`--force-with-lease=chore/adr-regenerate:`）で無いことを条件にする。間に別の実行が push していれば失敗する。マージは REST の `sha` に自分が確かめた head を渡し、その後に別の push があればマージ自体が失敗する（409）。
+   - routine と人が同時に実行しても互いを壊さない。**再生成の PR の見分け方**は、本文の印（`<!-- adr-regenerate -->`）、head のブランチ名 `chore/adr-regenerate`、head の repo が `kompiro/karasu`（fork ではない）、base が `main`、の 4 つがすべて合うこと。スクリプトはこれに合う PR だけを更新・クローズ・マージし、マージの直前にもう一度確かめる。同じブランチ名で合わない PR があれば、何もせず失敗する。ブランチの上書きの lease は、拾い直しの後に `GET /repos/kompiro/karasu/git/ref/heads/chore/adr-regenerate` でブランチの今の SHA を読んで決める。ブランチがあれば（開いた PR の head でも、差分の無い日に閉じた PR が残したブランチでも）`--force-with-lease=chore/adr-regenerate:<読んだ SHA>`、404 なら空の期待値（`--force-with-lease=chore/adr-regenerate:`）で無いことを条件にする。間に別の実行が push していれば失敗する。マージは REST の `sha` に自分が確かめた head を渡し、その後に別の push があればマージ自体が失敗する（409）。
    - 差分があれば生成物だけを commit する。開いている再生成の PR があればブランチを上書きで push する。無ければ push して `chore(adr): regenerate the ADR index` の PR を REST で作る。REST では draft を外せないので、PR は draft でなく開かれる。どちらの場合も、続けてラベルをちょうど `risk: low` にする（ほかの段階のラベルは外す）。
    - **マージの条件**（拾い直しと通常のマージで共通）。1 つでも欠ければマージしない。
      - PR の base から head への差分が G のパスだけである（`Validate` と同じ判定を、スクリプト自身も行う）。
@@ -208,7 +208,7 @@ routine は PR を作るだけにし、再生成のブランチの PR に対し�
    - 前日の PR の check が通っていてもマージできない（衝突する）とき、翌日の実行はそこで止まらず、生成し直して head を入れ替え、マージする。
    - 再生成の PR に `risk: low` 以外の段階のラベルがある、または段階のラベルが無いと、スクリプトはマージしない。`review-request.yml` は再生成の PR に `risk: high` を付けず、CodeRabbit のレビューも始まらない。
    - 未コミットの変更と別のブランチを checkout した作業ディレクトリから実行しても、PR には生成物だけが入り、実行後の作業ディレクトリ（ブランチ・変更・未追跡ファイル）は実行前と同じで、専用の worktree は残らない。
-   - 差分が無い日に実行すると、PR を作らない（開いている再生成の PR があれば閉じる）。
+   - 差分が無い日に実行すると、PR を作らない（開いている再生成の PR があれば閉じる）。閉じた PR のブランチが残ったまま次に差分が出た日は、lease で失敗せずにそのブランチを上書きして新しい PR を作る。
    - `main` が進んだ後の再生成の PR でも、`Validate` は head で判定して通る。
    - 別々の clone（routine と手元など）からスクリプトを同時に実行すると、片方は lease かマージ時の `sha` の確認で失敗し、もう片方の結果だけが PR に残る。見分け方の 4 つのどれかが合わない PR（印の無い PR、base が `main` でない PR、fork から来た PR）は更新もクローズもマージもしない。`paths.outputs` が変わった後は、前日の PR を拾わずに作り直す。
    - `Validate` が落ちる PR: 生成物と ADR を両方変える、生成物を古い中身や手で書き換えた中身にする、`graph/` に余分なファイルを足す、生成物を消す、ADR を `graph/` の下へ rename する、生成器を壊す（`package.json` だけの版上げを含む）。
