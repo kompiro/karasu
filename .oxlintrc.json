@@ -76,7 +76,7 @@
     { "files": ["packages/core/src/builtins/default-style.ts"], "rules": { "max-lines": ["error", { "max": 711 }] } },
     { "files": ["packages/core/src/builtins/reference-data.ts"], "rules": { "max-lines": ["error", { "max": 1282 }] } },
     { "files": ["packages/core/src/compile/compile-diff.ts"], "rules": { "max-lines": ["error", { "max": 913 }] } },
-    { "files": ["packages/core/src/compile/compile.ts"], "rules": { "max-lines": ["error", { "max": 1172 }] } },
+    { "files": ["packages/core/src/compile/compile.ts"], "rules": { "max-lines": ["error", { "max": 1087 }] } },
     { "files": ["packages/core/src/formatter/formatter.ts"], "rules": { "max-lines": ["error", { "max": 1045 }] } },
     { "files": ["packages/core/src/fs/import-resolver.ts"], "rules": { "max-lines": ["error", { "max": 1397 }] } },
     { "files": ["packages/core/src/parser/parser.ts"], "rules": { "max-lines": ["error", { "max": 3066 }] } },
