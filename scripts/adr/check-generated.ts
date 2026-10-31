@@ -15,8 +15,10 @@
 // upgrade (a `package.json` / lockfile PR) that breaks it fails here.
 //
 // The diff is `--no-renames` from the merge base to the head, and the
-// regeneration reads the head commit, not the merge ref: main moving on after
-// the PR was made must not make it fail.
+// regeneration reads the head commit's inputs, not the merge ref's: ADRs merged
+// to main after the PR was made must not make it fail. The generator is the one
+// installed in the checkout (in CI, the merge ref's), so a generator upgrade
+// already on main judges the PR.
 //
 //   check-generated.ts --base <rev> [--head <rev>]
 //

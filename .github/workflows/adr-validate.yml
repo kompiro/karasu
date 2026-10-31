@@ -79,8 +79,11 @@ jobs:
       # PRs no longer carry the generated index; the daily regeneration PR does
       # (Issue #3416). A PR either leaves the generated files alone or changes
       # only them, as an exact regeneration of its head; the generator must run
-      # either way. It judges the PR head, not the merge ref: ADRs merged to
-      # main after the PR was made must not fail it. On a push to main the base
+      # either way. The inputs come from the PR head, not the merge ref: ADRs
+      # merged to main after the PR was made must not fail it. The generator is
+      # the merge ref's, so an upgrade already on main judges the PR; a
+      # regeneration PR made before that upgrade fails until the next run
+      # regenerates it. On a push to main the base
       # is the pushed commit itself, so only the generator runs: main's index
       # lags until the next regeneration PR.
       - name: Check the generated ADR index (effective.md, graph.md, graph/*.md)

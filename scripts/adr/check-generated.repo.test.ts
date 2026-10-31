@@ -167,7 +167,10 @@ describe("check-generated.ts on a real repository", { timeout: 60_000 }, () => {
   it("fails an ADR moved under the generated directory", () => {
     git(["checkout", "-q", "-B", "move", base]);
     git(["mv", "docs/adr/1-sample.md", "docs/adr/graph/1-sample.md"]);
-    expect(check(base, commit("move")).code).toBe(1);
+    const result = check(base, commit("move"));
+    expect(result.code).toBe(1);
+    // Seen as a deletion plus an addition, not as a rename the parser refuses.
+    expect(result.out).toMatch(/together with other files/);
   });
 
   it("passes an outputs change that only deletes the old output, then its regeneration", () => {
@@ -203,6 +206,17 @@ describe("check-freshness.ts on a real repository", { timeout: 60_000 }, () => {
     const result = freshness();
     expect(result.code).toBe(1);
     expect(result.out).toMatch(/last 50 hours/);
+  });
+
+  it("skips the judgement when the generator version changed inside the window", () => {
+    commit("current index", 100);
+    write("docs/adr/2-sample.md", adrText(2));
+    commit("ADR merged 60 hours ago", 60);
+    write("pnpm-lock.yaml", "packages:\n\n  '@kompiro/adr-tools@0.0.14':\n");
+    commit("generator upgrade 10 hours ago", 10);
+    const result = freshness();
+    expect(result.code).toBe(0);
+    expect(result.out).toMatch(/Freshness not judged/);
   });
 
   it("passes again after the regeneration merges", () => {

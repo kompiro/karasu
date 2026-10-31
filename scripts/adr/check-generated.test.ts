@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { checkGenerated } from "./check-generated.ts";
 import { type Commit, judgeFreshness, WINDOW_HOURS, windowCommits } from "./check-freshness.ts";
-import { compareTrees, type Tree } from "./regenerate-at.ts";
+import { compareTrees, generatorVersionAt, type Tree } from "./regenerate-at.ts";
 
 const CONFIG = readFileSync(resolve(__dirname, "../../adr.config.json"), "utf-8");
 const tree = (entries: Record<string, string>): Tree => new Map(Object.entries(entries));
@@ -148,5 +148,11 @@ describe("judgeFreshness", () => {
         generatorChanged: true,
       }).state,
     ).toBe("skipped");
+  });
+});
+
+describe("generatorVersionAt", () => {
+  it("reads the @kompiro/adr-tools version from the repo's lockfile", () => {
+    expect(generatorVersionAt("HEAD")).toMatch(/^\d+\.\d+\.\d+/);
   });
 });
