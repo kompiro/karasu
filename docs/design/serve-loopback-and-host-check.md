@@ -42,13 +42,14 @@ cross-origin で API を読むことは止まった。残っている経路は 3
 | handler の URL     | `new URL(req.url, \`http://localhost:${port}\`)`。`url.hostname` は base の `localhost` か、request target が決める値（absolute-form や `//x/api/files`）で、どちらも `Host` ヘッダの代わりにはならない。router は `url.pathname` で分岐する（`//x/api/files` の pathname は `/api/files`） |
 | 呼び出し側         | `serve.e2e.test.ts` は `http.request({ host: "localhost" })`、Playwright の serve project は `http://localhost:<port>` で到達する                                                                                                                                                           |
 | Node               | `engines.node >= 22.12`。Node 20 以降の HTTP client は `autoSelectFamily` が既定で、`localhost` の IPv6 / IPv4 を両方試す。HTTP server は `requireHostHeader: true` が既定で、`Host` の無い HTTP/1.1 request に 400 を返す（空の `Host:` は handler に届く）                                |
-| app の保存値       | theme、locale、パネル幅、API key（`packages/app/src/utils/api-key-storage.ts`）を `localStorage` に持つ。origin ごとなので、`localhost:<port>` と `127.0.0.1:<port>` では別になる                                                                                                           |
+| app の保存値       | theme、locale、パネル幅を `localStorage` に持つ。API key（`packages/app/src/utils/api-key-storage.ts`）は既定で `sessionStorage` に、ユーザーが `local` を選んだときだけ `localStorage` に持つ。どちらも origin ごとなので、`localhost:<port>` と `127.0.0.1:<port>` では別になる           |
 
 ## 制約・前提
 
 - 既定でローカル開発者が困らないこと。表示される URL と、手で打つ `http://localhost:<port>` の両方が開けること
 - `docker run -p` や LAN 共有のように、全インターフェースで listen したい使い方は明示のオプションで残す
-- Codespaces の port forwarding や reverse proxy のように、ローカルでない名前で届く使い方も明示のオプションで残す
+- Codespaces の port forwarding や reverse proxy のように、ローカルでない名前で届く使い方も明示のオプションで残す。
+  そのときのアクセス制御は forwarding / proxy 側の責任とする（下の「検査の範囲」）
 - CLI は `0.10.0`（1.0 前）。既定の bind を変えるのは `minor` の挙動変更として扱う
 - `/render` の SSRF 対策そのもの（#3426）と、公開ホストの運用（レート制限、render 専用デプロイ）は範囲外
 
@@ -110,8 +111,9 @@ HTTP server を 2 つ立て、同じ handler を渡す。
 - loopback 以外で listen したときは、起動時に stderr へ警告を出す: 配信ディレクトリの `.krs` / `.krs.style` が、
   このアドレスに届く誰からでも読めること。loopback の判定は listen した後の `server.address()` で行い、
   `127.0.0.0/8`、`::1`、IPv4-mapped の `::ffff:127.0.0.0/104` を loopback とする
-- 表示する URL: `127.0.0.1` で listen したとき（既定）は今と同じ `Preview : http://localhost:<port>`。app は theme や API key を
-  `localStorage` に持ち、origin が変わると引き継がれないので、既定の URL は変えない。それ以外は `server.address()` から作り、
+- 表示する URL: `127.0.0.1` で listen したとき（既定）は今と同じ `Preview : http://localhost:<port>`。app は theme などを
+  `localStorage` に、API key を既定で `sessionStorage`（`local` を選んだときは `localStorage`）に持つ。どちらも origin が
+  変わると引き継がれないので、既定の URL は変えない。それ以外は `server.address()` から作り、
   IPv6 は `[...]` で囲む。`0.0.0.0` / `::` のときは `Preview : http://localhost:<port>` に `Listening : 0.0.0.0:<port>`
   （`::` なら `[::]:<port>`）の行を足す
 - `Preview : http://localhost:<port>` を表示し、かつ listen したのが IPv4 のアドレス（`127.0.0.1`、`0.0.0.0`）のとき、
@@ -122,8 +124,9 @@ HTTP server を 2 つ立て、同じ handler を渡す。
   今は未処理の `error` で落ちる。`--host` で起きやすくなるので、CLI がメッセージを出して exit 1 にする。`serve()` は
   テストからプロセス内で呼ばれるので、`process.exit` は `serve()` ではなく `index.ts` に置く。`serve()` は今どおり `Server` を
   同期的に返し、listen の失敗はその `Server` の `error` event に出る。`index.ts` がその listener を付けて exit 1 にする
-- `--host` は listen 先だけを決め、`Host` の許可には関わらない。名前を渡しても、その名前が解決される 1 アドレスで
-  listen するだけで、`localhost` からは届かなくなる。ローカルでない名前を許すのは `--allowed-host`（決めること 3）
+- `--host` は listen 先だけを決め、`Host` の許可には関わらない。名前を渡すと、その名前が解決される 1 アドレスで
+  listen する。`localhost` から届くかはそのアドレスで決まり、`--host localhost` や `127.0.0.1` に解決される名前なら届くが、
+  LAN のアドレスに解決される名前では届かない。ローカルでない名前を許すのは `--allowed-host`（決めること 3）
 
 ## 決めること 3: `Host` ヘッダの検査
 
@@ -131,6 +134,14 @@ HTTP server を 2 つ立て、同じ handler を渡す。
 
 `Host` 検査が止めるのは **ブラウザ経由の DNS rebinding だけ** である。ローカルのプロセスが自分に送る request
 （`/render` の fetch など）は loopback の `Host` を持つので通る。その経路は #3426 が `/render` 側で塞ぐ。
+
+`Host` 検査はアクセス制御ではない。`Host` を送るのは request を作った側で、ブラウザ以外は好きな値を送れる。
+reverse proxy や port forwarding 越しに開く場合、karasu から見える接続は loopback から来て、`Host` は proxy が決める。
+nginx の既定のように upstream のアドレス（`127.0.0.1:3000`）に書き換える proxy なら `--allowed-host` 無しでも通り、
+外から来た `Host` をそのまま渡す proxy でも、外から `Host: localhost` を送れば通りうる。どちらの場合も、proxy に届く誰でも `/api/*` で
+配信ディレクトリを読める。だから proxy や forwarding で開くときは、誰が届くかを proxy 側の認証・認可で決めることを前提にする
+（Codespaces の port を private のままにする、ngrok に認証を付ける、など）。`--allowed-host` は、その名前で開いた
+ブラウザの request を rebinding と区別して通すためのもので、proxy 越しのアクセス制御にはならない。
 
 ### 許可する `Host`
 
@@ -184,7 +195,7 @@ app の静的ファイルや `/render` を rebinding で読まれても、公開
 
 ### 却下: `--host` に渡した名前を許可する名前として兼ねる
 
-`--host` は listen 先で、名前を渡すとその名前が解決されるアドレスだけで listen する（`localhost` からは届かなくなる）。
+`--host` は listen 先で、名前を渡すとその名前が解決される 1 アドレスだけで listen する。
 Codespaces の port forwarding（`*.app.github.dev`）や ngrok のように、ローカルのアドレスに解決されない名前は listen できず
 （`EADDRNOTAVAIL`）、`/api/*` に届く手段が無くなる。listen 先と許可する名前は別の問いなので、オプションも分ける。
 
@@ -251,9 +262,10 @@ Codespaces の port forwarding（`*.app.github.dev`）や ngrok のように、�
 
 - 既存ユーザーへの影響: LAN の別マシンや container の外から `karasu serve` を開いていた人は `--host 0.0.0.0` を、
   Codespaces の forwarded URL や reverse proxy 越しに開いていた人は `--allowed-host <name>` を足す必要がある。
-  changeset の本文と CLI docs に書く
+  changeset の本文と CLI docs に書く。CLI docs には、proxy や forwarding で開くときのアクセス制御は proxy 側で行うこと
+  （`--allowed-host` はアクセス制御ではないこと）も書く
 - `localhost` / `127.0.0.1` で開いている人（大多数）には変化が無い。表示 URL も origin も変わらないので、app の `localStorage`
-  （theme、API key など）もそのまま使える
+  （theme、locale、パネル幅）と、API key の `sessionStorage`（`local` を選んだときは `localStorage`）もそのまま使える
 - `[::1]:<port>` で別の server が動いている人には、起動時に shadowing の警告が出る
 - VS Code 拡張は `serve` を使わない（webview に直接描画する）ので影響なし
 - karasu-author skill は `karasu serve .` を案内するだけで、bind や URL に触れないので変更なし
