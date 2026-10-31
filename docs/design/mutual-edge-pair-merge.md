@@ -253,6 +253,7 @@ domain canvas では採らず、#2728 に渡す。
    手がかりは spike（`spike/3027-pair-label-direction`）で 3 つを比べて決めた。A は位置だけ、B は位置に矢印を
    足す形、C は hover で半分を強調する形で、C は A・B のどちらにも元から効く。A と B を Umami fixture と小さな例で
    並べ、B を採った。
+
 8. **hover と hit。** 各 edge の hit-line は自分の半分だけを覆う。hover の強調は今日どおり `.krs-edge` に
    掛かり（TPL-2632）、強調されるのはその edge の半分と矢印である。保留したラベルの `<title>` には、
    その半分への hover で届く（TPL-3022）。クリックは今日どおり focus canvas を開き、そこには両方向が

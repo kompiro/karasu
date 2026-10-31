@@ -224,7 +224,8 @@ describe("the focus canvas in the preview", () => {
   it("closes from Close, Esc and the backdrop", async () => {
     const { container: root } = render(pane());
     const user = userEvent.setup();
-    const open = () => click(root, edgeGroup(root, edge.from, edge.to).querySelector(".krs-edge__hitline")!);
+    const open = () =>
+      click(root, edgeGroup(root, edge.from, edge.to).querySelector(".krs-edge__hitline")!);
 
     open();
     await user.click(root.querySelector(".focus-canvas__close")!);
