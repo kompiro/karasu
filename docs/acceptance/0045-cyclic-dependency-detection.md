@@ -88,7 +88,7 @@ Setup: `.krs.style` に以下を追加:
 ```krs.style
 edge[cyclic] {
   color: #F97316;
-  stroke-width: 4;
+  stroke-width: 4px;
 }
 ```
 

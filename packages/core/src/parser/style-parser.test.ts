@@ -616,6 +616,95 @@ describe("StyleParser ValueNode AST (Phase 3 / step 1)", () => {
     expect(rule.properties["font-family"]).toBe('"Noto" , sans-serif');
     expect(rule.properties.opacity).toBe("0.6");
   });
+
+  // #3141: every atom the author wrote reaches the validator, so a value the
+  // schema does not accept cannot slip past it as "unclassified".
+  describe("space-separated values (#3141)", () => {
+    it("keeps a single atom as itself", () => {
+      const result = StyleParser.parse(`edge { label-offset: 8px; }`);
+      expectKind(result.value.rules[0].valueNodes!["label-offset"], "length");
+    });
+
+    it("keeps two atoms with no comma as a sequence, spanning both", () => {
+      const result = StyleParser.parse(`edge { label-offset: 4px 8px; }`, "a", "a.krs.style");
+      const node = expectKind(result.value.rules[0].valueNodes!["label-offset"], "sequence");
+      expect(node.items.map((i) => i.kind)).toEqual(["length", "length"]);
+      const [first, second] = node.items;
+      expect(node.loc.start).toEqual(first.loc.start);
+      expect(node.loc.end).toEqual(second.loc.end);
+      expect(node.loc.file).toBe("a.krs.style");
+    });
+
+    it("keeps every atom of a longer sequence, in order", () => {
+      const result = StyleParser.parse(`edge { label-offset: 4px 8px 12px; }`);
+      const node = expectKind(result.value.rules[0].valueNodes!["label-offset"], "sequence");
+      expect(node.items.map((i) => (i.kind === "length" ? i.value : null))).toEqual([4, 8, 12]);
+    });
+
+    it("makes a multi-word list item a sequence instead of its first word", () => {
+      const result = StyleParser.parse(`service { font-family: Noto Sans, serif; }`);
+      const list = expectKind(result.value.rules[0].valueNodes!["font-family"], "list");
+      const name = expectKind(list.items[0], "sequence");
+      expect(name.items.map((i) => (i.kind === "ident" ? i.value : null))).toEqual([
+        "Noto",
+        "Sans",
+      ]);
+      expectKind(list.items[1], "ident");
+      expect(result.value.rules[0].properties["font-family"]).toBe("Noto Sans , serif");
+    });
+
+    it("does not split a quoted name or a url() argument", () => {
+      const quoted = StyleParser.parse(`service { font-family: "Noto Sans", serif; }`);
+      const list = expectKind(quoted.value.rules[0].valueNodes!["font-family"], "list");
+      expect(list.items.map((i) => i.kind)).toEqual(["string", "ident"]);
+      const url = StyleParser.parse(`service { shape: url("a b"); }`);
+      expect(expectKind(url.value.rules[0].valueNodes!.shape, "function").argRaw).toBe("a b");
+    });
+
+    it("keeps a malformed hex as one hex atom, so the color is what gets reported", () => {
+      const result = StyleParser.parse(`service { color: #zzzz; }`);
+      expect(result.diagnostics).toEqual([]);
+      expect(expectKind(result.value.rules[0].valueNodes!.color, "hex").value).toBe("#zzzz");
+    });
+  });
+
+  describe("refused values (#3141)", () => {
+    function refused(src: string, property: string) {
+      const result = StyleParser.parse(src);
+      const rule = result.value.rules[0];
+      expect(rule.properties[property]).toBeUndefined();
+      expect(rule.valueNodes![property]).toBeUndefined();
+      return result.diagnostics;
+    }
+
+    it("refuses a token no value can hold, with its position", () => {
+      const diags = refused(`service { color: red [x]; }`, "color");
+      expect(diags).toHaveLength(1);
+      expect(diags[0]).toMatchObject({
+        code: "style-token-type-mismatch",
+        params: { got: "LeftBracket", value: "[" },
+      });
+      expect(diags[0].loc?.start.column).toBe(22);
+    });
+
+    it("refuses an empty value", () => {
+      const diags = refused(`service { color: ; opacity: 0.5; }`, "color");
+      expect(diags.map((d) => d.code)).toEqual(["style-token-type-mismatch"]);
+    });
+
+    it("does not report a declaration twice after reading its comma as a semicolon", () => {
+      const result = StyleParser.parse(`service { color: , font-size: 12px; }`);
+      expect(result.diagnostics.map((d) => d.code)).toEqual([
+        "expected-semicolon-between-properties",
+      ]);
+      expect(result.value.rules[0].properties).toEqual({ "font-size": "12px" });
+    });
+
+    it("refuses an empty comma item, in the middle or at the end", () => {
+      expect(refused(`service { font-family: a, , b; }`, "font-family")).toHaveLength(1);
+      expect(refused(`service { font-family: serif,; }`, "font-family")).toHaveLength(1);
+    });
+  });
 });
 
 // #2715: the parse diagnostics used to carry no position at all, so a sheet's

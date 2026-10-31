@@ -1,6 +1,7 @@
 import type { Diagnostic } from "../types/ast.js";
 import type { DeclarationTrivia, StyleRule, StyleSheet } from "../types/style.js";
 import { StyleParser } from "../parser/style-parser.js";
+import { satisfiesPropertySchema } from "./value-validator.js";
 import { axisOfProperty, AXIS_ORDER } from "./property-axes.js";
 import { formatSelector, serializeStyleSheet } from "./serialize.js";
 
@@ -43,6 +44,13 @@ export interface TidyResult {
 export function tidyStyleSheet(input: string, options: TidyOptions = {}): TidyResult {
   const merge = options.merge ?? true;
   const parsed = StyleParser.parse(input);
+  // A sheet with a parse error is left as it is. The parser does not store a
+  // declaration it refused (#3140, #3141), so rebuilding the text from the
+  // parsed rules would delete what the author wrote, with its comments, as
+  // `format()` refuses to do for a `.krs` with errors.
+  if (parsed.diagnostics.some((d) => d.severity === "error")) {
+    return { output: input, changed: false, diagnostics: parsed.diagnostics };
+  }
   let sheet: StyleSheet = parsed.value;
 
   if (merge) {
@@ -65,6 +73,13 @@ export function tidyStyleSheet(input: string, options: TidyOptions = {}): TidyRe
  * survivor in original source order; declaration trivia of properties
  * present in both keeps the first occurrence's `leading` and accumulates
  * `trailing` from later occurrences.
+ *
+ * A rule holding a declaration the cascade would drop (#3141) takes no part
+ * in merging, as the incoming rule or as the target. Merged in, its invalid
+ * value would replace a valid one and the cascade would fall to the default;
+ * merged into, its invalid value would be overwritten and vanish with the
+ * diagnostic that tells the author about it. It stays where it was written,
+ * and the rules around it keep their order.
  */
 function mergeDuplicateRules(sheet: StyleSheet): StyleSheet {
   const seen = new Map<string, number>(); // signature → index in `merged`
@@ -74,7 +89,11 @@ function mergeDuplicateRules(sheet: StyleSheet): StyleSheet {
     const sig = selectorSignature(rule);
     const existingIdx = seen.get(sig);
 
-    if (existingIdx === undefined) {
+    if (
+      existingIdx === undefined ||
+      holdsDroppedDeclaration(rule) ||
+      holdsDroppedDeclaration(merged[existingIdx])
+    ) {
       seen.set(sig, merged.length);
       merged.push({ ...rule, properties: { ...rule.properties } });
       continue;
@@ -86,6 +105,15 @@ function mergeDuplicateRules(sheet: StyleSheet): StyleSheet {
   }
 
   return { ...sheet, rules: merged };
+}
+
+function holdsDroppedDeclaration(rule: StyleRule): boolean {
+  const nodes = rule.valueNodes;
+  if (!nodes) return false;
+  return Object.keys(rule.properties).some((property) => {
+    const node = nodes[property];
+    return node !== undefined && !satisfiesPropertySchema(property, node);
+  });
 }
 
 function selectorSignature(rule: StyleRule): string {

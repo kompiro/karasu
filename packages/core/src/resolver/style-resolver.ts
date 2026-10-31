@@ -12,12 +12,8 @@ import { UNASSIGNED_SYSTEM_ID } from "../view/unassigned-system.js";
 import { hasShape } from "../shapes/shape-registry.js";
 // `hasShape` answers for the built-in icons only once they are registered (#2802).
 import "../shapes/builtin-icons.js";
-import {
-  CLIENT_SUBTYPE_TAGS,
-  ICON_THEME_SHEET_ID,
-  type ClientSubtypeTag,
-} from "../builtins/icon-theme.js";
-import { BUILTIN_SHEET_ID } from "../builtins/default-style.js";
+import { CLIENT_SUBTYPE_TAGS, type ClientSubtypeTag } from "../builtins/icon-theme.js";
+import { NON_AUTHOR_SHEET_IDS } from "../builtins/non-author-sheets.js";
 import { flattenSheetsInCascadeOrder, mergeInCascadeOrder } from "../style/cascade.js";
 import type {
   StyleSheet,
@@ -187,7 +183,7 @@ export function resolveStyles(
         resolvedNode = { ...resolvedNode, annotations: parentAnnotations };
       }
       const merged = mergeMatchingProperties(resolvedNode, allRules);
-      const hints = finalizeLayoutHints(resolvedNode.id, merged, resolvedStyleWarnings);
+      const hints = finalizeLayoutHints(merged);
       // applyClientSubtypeFirstMatch mutates `merged` (shape-related only — does
       // not touch `column`), so it must run after the layout-hint read.
       applyClientSubtypeFirstMatch(resolvedNode, merged);
@@ -259,7 +255,7 @@ export function resolveStyles(
       // than vanishing). The deploy view groups containers by `realizes`
       // target, so there is no container node a `grid-columns` hint could
       // attach to — the deploy grid auto-balances and is not author-overridable.
-      const hint = finalizeLayoutHints(unit.id, merged, resolvedStyleWarnings);
+      const hint = finalizeLayoutHints(merged);
       if (hint?.column) {
         resolvedStyleWarnings.push({
           kind: "style-column-ignored-non-system-view",
@@ -275,7 +271,7 @@ export function resolveStyles(
   if (organizations) {
     for (const node of collectOrgNodes(organizations)) {
       const merged = mergeMatchingPropertiesForOrg(node, allRules);
-      const hint = finalizeLayoutHints(node.id, merged, resolvedStyleWarnings);
+      const hint = finalizeLayoutHints(merged);
       if (hint?.column) {
         resolvedStyleWarnings.push({
           kind: "style-column-ignored-non-system-view",
@@ -312,39 +308,30 @@ export function resolveStyles(
 }
 
 /**
- * Read `column` (and any future layout hint) from a merged property map and
- * return the resolved hint, or `null` when no hint resolved. Invalid values
- * (`column: foo`) push a `style-column-invalid-value` warning and produce
- * `null` so the caller can skip storing an empty map entry. Unknown hint
- * properties are ignored to stay forward-compatible.
+ * Read `column` and `grid-columns` from a merged property map and return the
+ * resolved hint, or `null` when no hint resolved so the caller can skip
+ * storing an empty map entry. Unknown hint properties are ignored to stay
+ * forward-compatible.
+ *
+ * An invalid value never gets here: the cascade drops it and the validator
+ * reports it once, where it was written (#3141). The checks below only narrow
+ * the string for a rule built without value nodes.
  *
  * Callers are expected to share `merged` with the visual-style resolver so
  * the cascade runs once per node.
  */
-function finalizeLayoutHints(
-  nodeId: string,
-  merged: Record<string, string>,
-  warnings: ResolvedStyleWarning[],
-): ResolvedLayoutHints | null {
+function finalizeLayoutHints(merged: Record<string, string>): ResolvedLayoutHints | null {
   const hints: ResolvedLayoutHints = {};
 
   const rawColumn = merged["column"];
-  if (rawColumn !== undefined) {
-    if (VALID_COLUMN_VALUES.has(rawColumn)) {
-      hints.column = rawColumn as LayoutColumn;
-    } else {
-      warnings.push({ kind: "style-column-invalid-value", nodeId, value: rawColumn });
-    }
+  if (rawColumn !== undefined && VALID_COLUMN_VALUES.has(rawColumn)) {
+    hints.column = rawColumn as LayoutColumn;
   }
 
   const rawGrid = merged["grid-columns"];
   if (rawGrid !== undefined) {
     const n = Number(rawGrid);
-    if (Number.isInteger(n) && n > 0) {
-      hints.gridColumns = n;
-    } else {
-      warnings.push({ kind: "style-grid-columns-invalid-value", nodeId, value: rawGrid });
-    }
+    if (Number.isFinite(n)) hints.gridColumns = n;
   }
 
   return hints.column === undefined && hints.gridColumns === undefined ? null : hints;
@@ -453,16 +440,6 @@ function resolveFrames(
 }
 
 /**
- * Sheets karasu ships rather than the author writing them. Their `StyleRule.sheetId`
- * is a sentinel, never a `.krs.style` path.
- *
- * Imported from where each sheet is parsed rather than spelled out again here:
- * a third copy of the strings would let a rename at the producer silently
- * re-open the leak this set exists to close, with nothing failing to say so.
- */
-const NON_AUTHOR_SHEET_IDS: ReadonlySet<string> = new Set([BUILTIN_SHEET_ID, ICON_THEME_SHEET_ID]);
-
-/**
  * Team frame styles from `team` / `#<id>` / `team#<id>` rules (#2269).
  *
  * A team is one entity with two renderings — the card in the org tree view and
@@ -524,9 +501,8 @@ function toResolvedFrameStyle(props: Record<string, string>): ResolvedFrameStyle
   if (props["background-color"]) style.backgroundColor = props["background-color"];
   if (props["color"]) style.color = props["color"];
   // A non-numeric value would otherwise reach the SVG as `stroke-width="NaN"`,
-  // which renderers and the drawio exporter disagree about. Drop it, and a
-  // negative one, and let the frame keep its own width instead.
-  const width = nonNegativeLength(props["border-width"]);
+  // which renderers and the drawio exporter disagree about.
+  const width = finiteNumber(props["border-width"]);
   if (width !== undefined) style.borderWidth = width;
   if (props["border-style"]) {
     style.borderStyle = props["border-style"] as "solid" | "dashed" | "dotted";
@@ -683,14 +659,16 @@ function edgeSelectorMatches(edge: KrsEdge, selector: StyleSelector): boolean {
 }
 
 /**
- * A width, a radius or a size. A negative one is dropped and the default
- * stands, as the validator's `style-out-of-range` says (#3032), and so is one
- * that is not a finite number.
+ * A number, read from the start of the value so a length's unit falls away
+ * (the builtin theme writes lengths without one). Bounds are not checked
+ * here: the cascade already dropped an author value outside them, and the
+ * validator reported it (#3141). A value that is not a finite number is still
+ * dropped, so a hand-built rule cannot reach the SVG as `NaN`.
  */
-function nonNegativeLength(raw: string | undefined): number | undefined {
+function finiteNumber(raw: string | undefined): number | undefined {
   if (!raw) return undefined;
   const n = parseFloat(raw);
-  return Number.isFinite(n) && n >= 0 ? n : undefined;
+  return Number.isFinite(n) ? n : undefined;
 }
 
 function toResolvedNodeStyle(props: Record<string, string>): ResolvedNodeStyle {
@@ -699,21 +677,18 @@ function toResolvedNodeStyle(props: Record<string, string>): ResolvedNodeStyle {
   if (props["background-color"]) style.backgroundColor = props["background-color"];
   if (props["color"]) style.color = props["color"];
   if (props["border-color"]) style.borderColor = props["border-color"];
-  const borderWidth = nonNegativeLength(props["border-width"]);
+  const borderWidth = finiteNumber(props["border-width"]);
   if (borderWidth !== undefined) style.borderWidth = borderWidth;
   if (props["border-style"])
     style.borderStyle = props["border-style"] as "solid" | "dashed" | "dotted";
-  const borderRadius = nonNegativeLength(props["border-radius"]);
+  const borderRadius = finiteNumber(props["border-radius"]);
   if (borderRadius !== undefined) style.borderRadius = borderRadius;
-  const fontSize = nonNegativeLength(props["font-size"]);
+  const fontSize = finiteNumber(props["font-size"]);
   if (fontSize !== undefined) style.fontSize = fontSize;
   if (props["font-weight"]) style.fontWeight = props["font-weight"] as "normal" | "bold";
   if (props["font-family"]) style.fontFamily = props["font-family"];
-  if (props["opacity"]) {
-    // Outside `[0, 1]` is `style-out-of-range` and the default stands (#3032).
-    const opacity = parseFloat(props["opacity"]);
-    if (opacity >= 0 && opacity <= 1) style.opacity = opacity;
-  }
+  const opacity = finiteNumber(props["opacity"]);
+  if (opacity !== undefined) style.opacity = opacity;
   if (props["shape"]) {
     const shapeVal = props["shape"];
     if (shapeVal.startsWith("url(")) {
@@ -738,9 +713,9 @@ function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
   const style = { ...DEFAULT_EDGE_STYLE };
 
   if (props["color"]) style.color = props["color"];
-  const strokeWidth = nonNegativeLength(props["stroke-width"]);
+  const strokeWidth = finiteNumber(props["stroke-width"]);
   if (strokeWidth !== undefined) style.strokeWidth = strokeWidth;
-  const fontSize = nonNegativeLength(props["font-size"]);
+  const fontSize = finiteNumber(props["font-size"]);
   if (fontSize !== undefined) style.fontSize = fontSize;
   if (props["border-style"]) {
     const value = props["border-style"] as ResolvedEdgeStyle["strokeStyle"];
@@ -764,10 +739,8 @@ function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
     if (raw in LABEL_POSITION_KEYWORDS) {
       style.labelPosition = LABEL_POSITION_KEYWORDS[raw];
     } else {
-      const numeric = parseFloat(raw);
-      if (Number.isFinite(numeric)) {
-        style.labelPosition = Math.min(1, Math.max(0, numeric));
-      }
+      const numeric = finiteNumber(raw);
+      if (numeric !== undefined) style.labelPosition = numeric;
     }
   }
   if (props["label-offset"]) {
@@ -784,7 +757,7 @@ function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
         style.labelOffsetX = 0;
         style.labelOffsetY = dy;
       }
-    } else if (tokens.length >= 2) {
+    } else if (tokens.length === 2) {
       const dx = parseFloat(tokens[0]);
       const dy = parseFloat(tokens[1]);
       if (Number.isFinite(dx) && Number.isFinite(dy)) {
@@ -793,15 +766,14 @@ function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
       }
     }
   }
-  // The canvas tier of edge-label disclosure (#3022). Like `label-position`,
-  // an invalid value is dropped and the default stands.
+  // The canvas tier of edge-label disclosure (#3022).
   if (props["label-max-chars"]) {
     const raw = props["label-max-chars"].trim();
     if (raw === "none") {
       style.labelMaxChars = Infinity;
     } else {
       const n = Number(raw);
-      if (Number.isInteger(n) && n >= 1) style.labelMaxChars = n;
+      if (Number.isFinite(n)) style.labelMaxChars = n;
     }
   }
   if (props["label-display"]) {
