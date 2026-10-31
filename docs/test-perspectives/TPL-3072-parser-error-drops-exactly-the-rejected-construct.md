@@ -7,7 +7,7 @@ applicable_to:
   - "parser が構文の置き場所や種類を理由に拒否する分岐（配置制限・kind ごとのプロパティ制限）を追加・変更するとき"
   - "拒否した構文の後ろにある宣言を、拒否が無かったときと同じに読む必要がある回復処理"
 known_consumers:
-  - parser-block-contents
+  - parser
 discovered_from:
   - issue: "#3072"
 related_to:
@@ -37,7 +37,8 @@ scope:
 検証の形は 1 つに畳める: 誤りのある source と、拒否された構文を同じ長さの空白
 （改行は残す）で塗りつぶした source をそれぞれ parse し、
 
-1. 前者の診断がその規則の error ちょうど 1 件で、範囲が構文の先頭行から末尾行までを覆う
+1. 前者の診断がその規則の error ちょうど 1 件で、範囲が構文の先頭から始まり、末尾まで覆う
+   （プロパティは値の終わりまで。node は他の node の `loc` と同じく最後のトークンの先頭まで）
 2. 後者の診断が 0 件
 3. 2 つのモデルが（位置情報まで含めて）一致する
 
@@ -56,7 +57,7 @@ scope:
 ## チェックリスト
 
 - [ ] 拒否する分岐は、受理する分岐と同じ reader（`parseNodeDecl` / プロパティごとの値 reader）で構文を読み切ってから診断を出しているか
-- [ ] 診断の範囲は、除いた構文の先頭から末尾までを覆っているか（キーワードの 1 トークンだけを指していないか）
+- [ ] 診断の範囲は、除いた構文の先頭から末尾までを覆っているか（キーワードの 1 トークンだけを指していないか。終わりを最後のトークンの `loc`（先頭）で取ると値が範囲から外れるので、`end` を使っているか）
 - [ ] テストは「誤りのある source」と「その構文を空白で塗りつぶした source」が同じモデルになることを比べているか（error の件数が 0 より多い、だけで止めていないか）
 - [ ] 後ろに兄弟の宣言とプロパティを置き、それが拒否の前と同じ親に付くことまで確かめているか
 
@@ -66,7 +67,10 @@ scope:
   `packages/core/src/parser/rejected-construct.ts` の `rejectConstruct`（読み終えた構文の
   範囲で error を出す）と `rejectProperty`（プロパティの値をそのプロパティの reader で読んで
   から、キーワードから値の末尾までで error を出す）にまとめてある
-- **構文の本体の誤りは別の誤りとして残す**: 置き場所を誤った `database` の本体に別の誤りが
+- **拒否したプロパティの値への指摘は捨てる**: 書けない場所のプロパティに値が欠けていても、
+  直すべきはプロパティの置き場所であって値ではない。`rejectProperty` は値の reader が出した
+  診断を `discardDiagnostics` で捨てる（入れ子の `facet` ブロックの拒否と同じ扱い）
+- **node の本体の誤りは別の誤りとして残す**: 置き場所を誤った `database` の本体に別の誤りが
   あれば、それは別の error として報告してよい（`entity-not-in-domain` と同じ扱い）。1 件に
   畳むのは、置き場所の誤りが本体を崩して生む連鎖のほう
 
@@ -74,5 +78,6 @@ scope:
 
 - `packages/core/src/parser/parser.test.ts` — 「a rejected construct is dropped whole (#3072)」:
   `infra-not-in-context`（本体あり・本体なし、service / domain / usecase / client の中）と
-  `property-not-for-node-kind`（`role` / `handles` / `delivers` / `operations`）を、空白で
-  塗りつぶした source との比較で縛る
+  `property-not-for-node-kind`（`role` / `handles` / `delivers` / `operations`、値の欠けた
+  `handles`、末尾カンマの `delivers`、`}` 直前の 1 行書き）を、空白で塗りつぶした source との
+  比較で縛る。範囲は offset で比べる
