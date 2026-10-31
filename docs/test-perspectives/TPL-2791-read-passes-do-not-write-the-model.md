@@ -16,7 +16,6 @@ known_consumers:
 discovered_from:
   - issue: "#2791"
   - root_cause_adr: "ADR-287"
-  - root_cause_file: "packages/core/src/resolver/warnings.ts:detectCyclicDependencies"
 related_to:
   - TPL-1032
   - TPL-2221
