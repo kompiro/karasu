@@ -31,10 +31,10 @@ assumptions:
 
 ## 決定
 
-`packages/*/src` のソース（`.ts` / `.tsx` / `.mts` / `.cts`）に、oxlint の `max-lines` で 600 行の既定予算を設ける。
-すでに超えている 33 ファイルは、`.oxlintrc.json` に 1 ファイル 1 override で現在の行数を pin する。
-`scripts/lint/line-budget.test.ts` が、pin が常にファイルの現在の行数と等しいことを検査する。
+`packages/*/src` のソースに oxlint の `max-lines` で 600 行の既定予算を設け、すでに超えているファイルは現在の行数で pin して、その pin を ratchet テストで現在の行数に保つ。
 
+- 対象は `.ts` / `.tsx` / `.mts` / `.cts`。すでに超えている 33 ファイルは、`.oxlintrc.json` に 1 ファイル 1 override で pin する
+- `scripts/lint/line-budget.test.ts` が、pin が常にファイルの現在の行数と等しいことを検査する
 - 対象外: テスト（`*.{test,spec}.{ts,tsx,mts,cts}`）、`*.d.ts`（`ignorePatterns` で oxlint が読まない）、
   `*.generated.ts`、`packages/core/src/builtins/examples.ts`（ロジックではなくデータ）
 - pin のあるファイルは増やせない。行数が要る変更は、先にコードを外へ移すか、理由を PR 本文に書いて pin を上げる
