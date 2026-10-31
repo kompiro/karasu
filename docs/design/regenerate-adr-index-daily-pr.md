@@ -177,10 +177,10 @@ routine は PR を作るだけにし、再生成のブランチの PR に対し�
    - 呼び出し元の作業ディレクトリには触れない。`origin/main` から専用の worktree（`.claude/worktrees/chore/adr-regenerate`）を作り、install・生成・commit・push をすべてその中で行い、成否にかかわらず最後に消す。手元で実行したとき、未コミットの変更や checkout 中のブランチが PR に入ることも、作業中のツリーが切り替わることもない。この worktree が既にあれば、別の実行が進行中か前回の残りなので、何もせず失敗する。
    - GitHub の操作はすべて REST（`gh api repos/kompiro/karasu/...`）で行う。routine の環境では GraphQL が拒否されるので、`gh pr` 系のコマンドは使わない。手元でも同じコードが動く。
    - 開始時刻を記録する。下の待ち時間の上限は、push からではなくこの時刻から数える。
-   - 最初に、前日に待ちきれなかった再生成の PR を拾い直す。対象は印とブランチ名が合う開いた PR で、下の「マージの条件」をすべて満たせば head の SHA を `sha` に渡してマージする。マージが失敗したら（後から入った変更との衝突など）、失敗で終えずに次の手順に進み、上書きの push で head を入れ替える。マージした後は、`delete_branch_on_merge` がブランチを消し終わる（`GET /repos/kompiro/karasu/git/ref/heads/chore/adr-regenerate` が 404 になる）まで待ってから、`origin/main` を fetch し直す。
+   - 最初に、前日に待ちきれなかった再生成の PR を拾い直す。対象は下の「再生成の PR の見分け方」に合う開いた PR で、今の `origin/main` の `paths.outputs` がその PR の head と同じで（違えば出力先が変わったので拾わず、作り直す）、下の「マージの条件」をすべて満たせば head の SHA を `sha` に渡してマージする。マージが失敗したら（後から入った変更との衝突など）、失敗で終えずに次の手順に進み、上書きの push で head を入れ替える。マージした後は、`delete_branch_on_merge` がブランチを消し終わる（`GET /repos/kompiro/karasu/git/ref/heads/chore/adr-regenerate` が 404 になる）まで待ってから、`origin/main` を fetch し直す。
    - `origin/main` を fetch し、そこから固定のブランチ `chore/adr-regenerate` を作り直して `adr regenerate` を実行する。出力先のディレクトリ（`graph/`）は生成結果で置き換え、生成されなくなったファイルを消す。
    - 差分が無ければ、開いている再生成の PR を閉じて終える。ブランチは消さない（routine の環境はブランチの削除を拒否する）。残ったブランチは次の実行が上書きし、マージ時は repo 設定の `delete_branch_on_merge` が消す。
-   - routine と人が同時に実行しても互いを壊さない。再生成の PR は本文に印（`<!-- adr-regenerate -->`）を持ち、スクリプトは印とブランチ名の両方が合う PR だけを更新・クローズ・マージする（合わなければ何もせず失敗する）。ブランチの上書きは `--force-with-lease=chore/adr-regenerate:<拾い直しの後に見た SHA>` で行い、ブランチが無ければ空の期待値（`--force-with-lease=chore/adr-regenerate:`）で無いことを条件にする。間に別の実行が push していれば失敗する。マージは REST の `sha` に自分が確かめた head を渡し、その後に別の push があればマージ自体が失敗する（409）。
+   - routine と人が同時に実行しても互いを壊さない。**再生成の PR の見分け方**は、本文の印（`<!-- adr-regenerate -->`）、head のブランチ名 `chore/adr-regenerate`、head の repo が `kompiro/karasu`（fork ではない）、base が `main`、の 4 つがすべて合うこと。スクリプトはこれに合う PR だけを更新・クローズ・マージし、マージの直前にもう一度確かめる。同じブランチ名で合わない PR があれば、何もせず失敗する。ブランチの上書きは `--force-with-lease=chore/adr-regenerate:<拾い直しの後に見た SHA>` で行い、ブランチが無ければ空の期待値（`--force-with-lease=chore/adr-regenerate:`）で無いことを条件にする。間に別の実行が push していれば失敗する。マージは REST の `sha` に自分が確かめた head を渡し、その後に別の push があればマージ自体が失敗する（409）。
    - 差分があれば生成物だけを commit する。開いている再生成の PR があればブランチを上書きで push する。無ければ push して `chore(adr): regenerate the ADR index` の PR を REST で作る。REST では draft を外せないので、PR は draft でなく開かれる。どちらの場合も、続けてラベルをちょうど `risk: low` にする（ほかの段階のラベルは外す）。
    - **マージの条件**（拾い直しと通常のマージで共通）。1 つでも欠ければマージしない。
      - PR の base から head への差分が G のパスだけである（`Validate` と同じ判定を、スクリプト自身も行う）。
@@ -210,7 +210,7 @@ routine は PR を作るだけにし、再生成のブランチの PR に対し�
    - 未コミットの変更と別のブランチを checkout した作業ディレクトリから実行しても、PR には生成物だけが入り、実行後の作業ディレクトリ（ブランチ・変更・未追跡ファイル）は実行前と同じで、専用の worktree は残らない。
    - 差分が無い日に実行すると、PR を作らない（開いている再生成の PR があれば閉じる）。
    - `main` が進んだ後の再生成の PR でも、`Validate` は head で判定して通る。
-   - 別々の clone（routine と手元など）からスクリプトを同時に実行すると、片方は lease かマージ時の `sha` の確認で失敗し、もう片方の結果だけが PR に残る。印の無い PR（同じブランチ名で人が開いた PR など）は更新もクローズもマージもしない。
+   - 別々の clone（routine と手元など）からスクリプトを同時に実行すると、片方は lease かマージ時の `sha` の確認で失敗し、もう片方の結果だけが PR に残る。見分け方の 4 つのどれかが合わない PR（印の無い PR、base が `main` でない PR、fork から来た PR）は更新もクローズもマージもしない。`paths.outputs` が変わった後は、前日の PR を拾わずに作り直す。
    - `Validate` が落ちる PR: 生成物と ADR を両方変える、生成物を古い中身や手で書き換えた中身にする、`graph/` に余分なファイルを足す、生成物を消す、ADR を `graph/` の下へ rename する、生成器を壊す（`package.json` だけの版上げを含む）。
    - `paths.outputs` を変える PR は、古い出力の削除だけを含めて通り、その後の再生成の PR が新しい出力先を作って通る。
    - `@kompiro/adr-tools` の版上げで出力が変わると、次の再生成の PR で `main` の生成物が更新される。
