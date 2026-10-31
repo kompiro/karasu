@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { mkdtemp, writeFile, mkdir, open, readdir, rm, symlink } from "node:fs/promises";
+import { mkdtemp, writeFile, mkdir, open, readdir, realpath, rm, symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { AddressInfo } from "node:net";
@@ -243,10 +243,46 @@ describe("resolveKrsFile", () => {
     await rm(tmpDir, { recursive: true });
   });
 
-  it("returns the full path when the file exists", async () => {
+  it("returns the real path when the file exists", async () => {
     await writeFile(join(tmpDir, "index.krs"), "");
     const result = await resolveKrsFile(tmpDir, "index");
-    expect(result).toBe(join(tmpDir, "index.krs"));
+    expect(result).toBe(join(await realpath(tmpDir), "index.krs"));
+  });
+
+  it("returns null for a directory named like a .krs file", async () => {
+    await mkdir(join(tmpDir, "folder.krs"));
+    expect(await resolveKrsFile(tmpDir, "folder")).toBeNull();
+  });
+
+  // TPL-168, #3283: the string check alone let a link inside the directory
+  // hand out whatever it pointed at.
+  describe("symlinks", () => {
+    let outside: string;
+
+    beforeEach(async () => {
+      outside = await makeTmpDir();
+      await writeFile(join(outside, "secret.krs"), "system Secret {}");
+    });
+
+    afterEach(async () => {
+      await rm(outside, { recursive: true });
+    });
+
+    it("returns null for a linked file that points outside", async () => {
+      await symlink(join(outside, "secret.krs"), join(tmpDir, "notes.krs"));
+      expect(await resolveKrsFile(tmpDir, "notes")).toBeNull();
+    });
+
+    it("returns null for a file under a linked directory that points outside", async () => {
+      await symlink(outside, join(tmpDir, "linked-dir"));
+      expect(await resolveKrsFile(tmpDir, "linked-dir/secret")).toBeNull();
+    });
+
+    it("follows a link that stays inside the directory", async () => {
+      await writeFile(join(tmpDir, "main.krs"), "");
+      await symlink(join(tmpDir, "main.krs"), join(tmpDir, "index.krs"));
+      expect(await resolveKrsFile(tmpDir, "index")).toBe(join(await realpath(tmpDir), "main.krs"));
+    });
   });
 
   it("returns null when the file does not exist", async () => {
@@ -305,6 +341,19 @@ describe("resolveDefaultFile", () => {
 
   it("returns null when no .krs files exist", async () => {
     expect(await resolveDefaultFile(tmpDir)).toBeNull();
+  });
+
+  // #3283: /api/file/index would answer 404, so the single plain file wins.
+  it("skips an index.krs that links out of the directory", async () => {
+    const outside = await makeTmpDir();
+    try {
+      await writeFile(join(outside, "secret.krs"), "");
+      await symlink(join(outside, "secret.krs"), join(tmpDir, "index.krs"));
+      await writeFile(join(tmpDir, "system.krs"), "");
+      expect(await resolveDefaultFile(tmpDir)).toBe("system");
+    } finally {
+      await rm(outside, { recursive: true });
+    }
   });
 });
 
@@ -421,6 +470,37 @@ describe("HTTP server", () => {
       const { status } = await get(port, "/api/file/");
       expect(status).toBe(400);
     });
+
+    // TPL-168, #3283
+    it("returns 404 for a symlink that points out of the served directory", async () => {
+      const outside = await makeTmpDir();
+      try {
+        await writeFile(join(outside, "id_rsa"), "PRIVATE KEY");
+        await symlink(join(outside, "id_rsa"), join(tmpDir, "notes.krs"));
+        const { status, body } = await get(port, "/api/file/notes");
+        expect(status).toBe(404);
+        expect(body).not.toContain("PRIVATE KEY");
+      } finally {
+        await rm(outside, { recursive: true });
+      }
+    });
+
+    // The file was checked, then swapped for a link before it was opened:
+    // O_NOFOLLOW refuses it with ELOOP.
+    it("returns 404 when the file became a symlink after the check", async () => {
+      await writeFile(join(tmpDir, "index.krs"), "system App {}");
+      vi.mocked(open).mockRejectedValueOnce(
+        Object.assign(new Error("too many symbolic links"), { code: "ELOOP" }),
+      );
+      const { status } = await get(port, "/api/file/index");
+      expect(status).toBe(404);
+    });
+
+    it("sends no CORS header", async () => {
+      await writeFile(join(tmpDir, "index.krs"), "system App {}");
+      const { headers } = await get(port, "/api/file/index");
+      expect(headers["access-control-allow-origin"]).toBeUndefined();
+    });
   });
 
   describe("GET /api/project (#3258)", () => {
@@ -470,6 +550,8 @@ describe("HTTP server", () => {
         const req = http.request({ host: "localhost", port, path: "/api/watch" }, (res) => {
           expect(res.statusCode).toBe(200);
           expect(res.headers["content-type"]).toBe("text/event-stream");
+          // Only the same-origin app listens; other pages get no access (#3283).
+          expect(res.headers["access-control-allow-origin"]).toBeUndefined();
 
           res.once("data", (chunk: Buffer) => {
             expect(chunk.toString()).toContain(": connected");
