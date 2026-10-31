@@ -14,6 +14,7 @@ related_to:
   - ADR-2786
   - ADR-784
   - ADR-2839
+  - ADR-3421
 scope:
   packages: [app, cli, core, vscode, vscode-e2e]
   concerns: [ci, dependencies]
@@ -22,7 +23,6 @@ assumptions:
   - "grep: .changeset/config.json :: \"privatePackages\""
   - "grep: .github/workflows/release-prepare.yml :: find .changeset -maxdepth 1 -name '\\*.md' ! -name README.md"
   - "grep: package.json :: \"@changesets/cli\": \"\\^3\\."
-  - "file: scripts/ci/gh-aw-lock-consistency.test.ts"
 ---
 
 # ADR-2877: Dependabot トリアージ 2026-09-22：changesets 3 は CI が回さない release flow を壊すので差し替え PR で入れ、gh-aw は再生成で上げる

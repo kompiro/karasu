@@ -6,7 +6,7 @@ date: 2026-10-30
 topic: build
 scope:
   concerns: [ci, security, dependencies]
-related_to: [ADR-128, ADR-1866, ADR-2658, ADR-2753]
+related_to: [ADR-128, ADR-1866, ADR-2658, ADR-2753, ADR-3421]
 assumptions:
   - "file: .github/workflows/actions.lock"
   - "grep: .github/workflows/verify-lockfile.yml :: gh actions-lock --verify"

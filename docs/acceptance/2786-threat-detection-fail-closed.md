@@ -1,5 +1,10 @@
 # AT: threat detection が結論を出せない回は run ごと失敗させる
 
+> **⚠️ Retired (2026-10-31)** — 対象の gh-aw workflow と、自動化の根拠にしていたガードのテスト（agentic-workflow-safety）は
+> 削除した（推論の利用料が雇用先の組織の Copilot seat に付くため）。以下の受け入れ条件はもう適用されない。
+> 決定は [ADR-3421](../adr/3421-remove-copilot-gh-aw-workflows.md)、戻すときの作業は
+> [#3421](https://github.com/kompiro/karasu/issues/3421)。記録として残す。
+
 - **日付**: 2026-09-21
 - **関連 Issue**: [#2786](https://github.com/kompiro/karasu/issues/2786)（threat detection returns parse_error on every run, so safe outputs ship unchecked）
 - **設計 (ADR)**: [ADR-2786](../adr/2786-threat-detection-fail-closed.md)
@@ -7,6 +12,7 @@
 - **対象ファイル**:
   - `.github/workflows/dependabot-triage.md` / `.github/workflows/security-alert-sweep.md`（宣言）
   - `.github/workflows/*.lock.yml`（`gh aw compile` の生成物。実行されるのはこちら）
+  <!-- absent-path-next-line: deleted with the gh-aw workflows in #3421 (ADR-3421), named as history -->
   - `scripts/ci/agentic-workflow-safety.test.ts`（posture と再生成忘れのガード）
 
 > 安全網が働いていることを保証しているのは、detection job が `success` を返したという事実ではない。
@@ -18,7 +24,7 @@
 
 - [x] AT-A: detection が結論を出せない回に宣言済み safe outputs が公開されない。両 workflow が `safe-outputs.threat-detection.continue-on-error: false` を宣言し、生成された lock が `GH_AW_DETECTION_CONTINUE_ON_ERROR: "false"` を持ち（欠落も finding）、`Conclude threat detection` ステップに `continue-on-error` が付いておらず、`safe_outputs` job の条件が承認済みの式と完全一致する（部分一致にすると `|| true` を含む式を通すため）
 
-  > ✅ Automated — `scripts/ci/agentic-workflow-safety.test.ts` › `agentic workflow write scope` › `fails the run when threat detection cannot conclude`
+  > ✅ Automated — scripts/ci/agentic-workflow-safety.test.ts（削除済み） › `agentic workflow write scope` › `fails the run when threat detection cannot conclude`
   >
   > 「公開されない」を成立させているのは detection job の失敗そのものではなく、`continue-on-error` の不在と
   > `safe_outputs` の gate の組である。実行を観測せずこの 2 つを検査するのは、宣言だけが実行系の境界だという
@@ -29,11 +35,11 @@
 
 - [x] AT-B: frontmatter で pin した detection のモデルが lock に焼かれている（`gh aw compile` 忘れの検出）
 
-  > ✅ Automated — `scripts/ci/agentic-workflow-safety.test.ts` › `agentic workflow write scope` › `compiles the declared detection model into its lock file`
+  > ✅ Automated — scripts/ci/agentic-workflow-safety.test.ts（削除済み） › `agentic workflow write scope` › `compiles the declared detection model into its lock file`
 
 - [x] AT-C: `threat-detection` は safe output として数えられず、既存の safe output 検査（allowlist・コンパイル済み）を 誤って落としも通しもしない
 
-  > ✅ Automated — `scripts/ci/agentic-workflow-safety.test.ts` › `agentic workflow write scope` › `declares only safe outputs that leave the decision with a human` および `compiles every declared safe output into its lock file`
+  > ✅ Automated — scripts/ci/agentic-workflow-safety.test.ts（削除済み） › `agentic workflow write scope` › `declares only safe outputs that leave the decision with a human` および `compiles every declared safe output into its lock file`
 
 - [ ] AT-D（manual）: `Dependabot weekly triage` を `workflow_dispatch` で実行すると detection job が結論を出し （`detection_conclusion` が success）、safe outputs が従来どおり公開される
 
