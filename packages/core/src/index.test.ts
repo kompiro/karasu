@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  compile,
-  compileProject,
-  compileProjectOrgView,
-  buildAllViewsSvgDiffProject,
-} from "./index.js";
+import { compile, compileProject, buildAllViewsSvgDiffProject } from "./index.js";
 import { InMemoryFileSystemProvider } from "./fs/in-memory-provider.js";
 import { resolveStyles } from "./resolver/style-resolver.js";
 import { StyleParser } from "./parser/style-parser.js";
@@ -40,7 +35,8 @@ describe("compileProject — diagramType org with displayMode", () => {
     });
     expect(result.svg).toBeTruthy();
     expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
-    expect(result.diagramType).toBe("org");
+    if (result.diagramType !== "org") throw new Error("expected org result");
+    expect(result.nodePathIndex).toBeDefined();
   });
 });
 
@@ -415,17 +411,6 @@ system ECPlatform {
     expect(result.svg).not.toContain("No nodes to render");
     expect(result.svg).toContain("Unassigned");
     expect(result.svg).toContain("ECommerce");
-  });
-});
-
-describe("deprecated compileProjectOrgView — backward compatibility", () => {
-  it("still works and returns OrgCompileResult shape", async () => {
-    const fs = new InMemoryFileSystemProvider();
-    await fs.writeFile("/index.krs", ORG_KRS_DISPLAY_MODE);
-    const result = await compileProjectOrgView("/index.krs", fs, [], "icon");
-    expect(result.svg).toBeTruthy();
-    expect(result.diagramType).toBe("org");
-    expect(result.nodePathIndex).toBeDefined();
   });
 });
 

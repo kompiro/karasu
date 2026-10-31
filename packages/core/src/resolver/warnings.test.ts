@@ -234,7 +234,7 @@ system S {
   service A "Service A" {}
 }
 `;
-    const result = compile(krs, undefined, [], "system", undefined, "icon");
+    const result = compile(krs, { viewPath: [], diagramType: "system", displayMode: "icon" });
     expect(result.warnings.filter((w) => w.kind === "style-conflict")).toHaveLength(0);
   });
 
@@ -247,7 +247,12 @@ system S {
 }
 `;
     const userStyle = `service { color: #FF0000; }`;
-    const result = compile(krs, userStyle, [], "system", undefined, "icon");
+    const result = compile(krs, {
+      styleSource: userStyle,
+      viewPath: [],
+      diagramType: "system",
+      displayMode: "icon",
+    });
     expect(result.warnings.filter((w) => w.kind === "style-conflict")).toHaveLength(0);
   });
 
