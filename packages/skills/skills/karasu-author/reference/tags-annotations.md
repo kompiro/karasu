@@ -344,7 +344,7 @@ They can be referenced and overridden via tag selectors in `.krs.style`.
 | `[implicit]` | An implicit service-level edge derived from domain edges | Amber (`#F59E0B`). Line style follows the `kind` of the source domain edge (`[async]` = dashed, `[sync]` = solid) |
 | `[async]` | An edge declared with `-->` | Dashed |
 | `[sync]` | An edge declared with `->` | Solid |
-| `[cyclic]` | Detected as part of a cyclic dependency | Red (`#EF4444`) solid |
+| `[cyclic]` | Detected as part of a cyclic dependency | Red (`#EF4444`) solid. Not assigned in diff views (`karasu diff`, the app's diff mode), which draw what changed: there an `edge[cyclic]` rule matches nothing, and the cycle is reported as a warning only |
 | `[write]` | A synthesized usecase→resource edge whose target resource declares any of `create` / `update` / `delete` in its `operations` | `stroke-width: 2`, label `"W"` |
 | `[read]` | A synthesized usecase→resource edge classified as read-only (no write verbs, or `operations` omitted) | `stroke-width: 1.5`, label `"R"` |
 | `[inferred]` | An entity relation, or a `table` → `table` edge (#2722), that `translate --from db` derived from a **Soft FK** (a `<stem>_id` / `<stem>_code` column with no declared `REFERENCES` / `FOREIGN KEY`). Relations from an explicit FK are left untagged (confirmed) | Warm grey (`#A8A29E` dark / `#78716C` light): the default edge colour's lightness in another hue, so it reads apart from an untagged (confirmed) edge without looking more important (#3115). **Colour only** — line style stays owned by `[sync]` / `[async]`, so an inferred async relation still reads as dashed |

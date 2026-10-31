@@ -345,7 +345,7 @@ register を分ける理由は、所属のセマンティクスがアーキタ�
 | `[implicit]` | domain エッジから派生した暗黙のサービス間エッジ | アンバー（`#F59E0B`）。線種は元のドメインエッジの `kind` に従う（`[async]` で破線、`[sync]` で実線） |
 | `[async]` | `-->` で宣言されたエッジ | 破線 |
 | `[sync]` | `->` で宣言されたエッジ | 実線 |
-| `[cyclic]` | 循環依存検出時 | 赤（`#EF4444`）実線 |
+| `[cyclic]` | 循環依存検出時 | 赤（`#EF4444`）実線。差分のビュー（`karasu diff`、app の差分モード）では付与しない。差分は変わったものを描く面なので、そこでは `edge[cyclic]` のルールはどれにも当たらず、循環は警告でだけ知らせる |
 | `[write]` | usecase→resource の合成エッジで、対象 resource の `operations` に `create` / `update` / `delete` が含まれる場合 | `stroke-width: 2`、ラベル `"W"` |
 | `[read]` | usecase→resource の合成エッジで read-only と分類される場合（write 動詞なし、または `operations` 省略） | `stroke-width: 1.5`、ラベル `"R"` |
 | `[inferred]` | `translate --from db` が **Soft FK**（`REFERENCES` / `FOREIGN KEY` 宣言の無い `<stem>_id` / `<stem>_code` 列）から導いた entity 関連、または `table` → `table` エッジ（#2722）。明示 FK 由来の関連は無タグ（確認済み） | 暖色寄りのグレー（dark `#A8A29E` / light `#78716C`）。エッジの既定色と同じ明るさで色味だけを変え、無タグ（確認済み）のエッジと見分けられるが、より重要には見えない（#3115）。**色のみ** — 線種は `[sync]` / `[async]` が所有する |
