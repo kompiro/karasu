@@ -11,6 +11,7 @@ applicable_to:
 known_consumers:
   - layout-single-vs-multi-system
   - view-extract
+  - derived-edges
   - layout-edges
   - view-diff
   - style-resolver

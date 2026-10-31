@@ -8,6 +8,7 @@ applicable_to:
   - "派生時に自動でタグや属性を付与し、それがスタイル resolver の入力になる経路"
 known_consumers:
   - view-extract
+  - derived-edges
   - style-resolver
 discovered_from:
   - issue: "#510"
