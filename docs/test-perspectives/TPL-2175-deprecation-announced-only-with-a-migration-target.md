@@ -97,6 +97,6 @@ deprecation 診断を追加する PR で確認する:
 
 ## 派生元 spec
 
-- `docs/spec/style.md` / `style.ja.md` §「Facet selectors (`[facets=<id>]`) — experimental」
+- `docs/spec/style.md` / `style.ja.md` §「Facet selectors (`[facets=<id>]`)」（言語 v2.0 で core になり、見出しの「— experimental」が外れた。#2677）
   の「Migrating an arbitrary-name tag or annotation selector」節
 - `docs/spec/tags-annotations.md` / `.ja.md` §「Non-builtin tag names have no effect」（言語 v2.0 で「… are deprecated (v1.x)」から改題、#2677）

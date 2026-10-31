@@ -27,7 +27,7 @@ discovered_from:
   - issue: "#2879"
   - issue: "#3097"
   - root_cause_file: "packages/core/src/renderer/drill-down-svg.ts"
-  - root_cause_file: "packages/core/src/index.ts:480"
+  - root_cause_file: "packages/core/src/compile/compile.ts:_compileFromPreparedInput"
   - root_cause_file: "packages/core/src/renderer/org-tree-renderer.ts:544"
   - root_cause_file: "packages/core/src/renderer/layout.ts"
   - root_cause_file: "packages/app/src/components/AppShell.tsx:228"

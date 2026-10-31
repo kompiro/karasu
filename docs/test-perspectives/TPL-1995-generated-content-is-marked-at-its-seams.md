@@ -60,7 +60,7 @@ scope:
 ## 既知の対処パターン
 
 - **要素ごとの annotation + 省略可能な水準**: karasu の `@draft` / `@draft(confidence: "low")`。裸の `@draft` で完結し、水準は refinement。消すのは 1 トークン
-- **未知の値は opaque で受理**: `until`（[ADR-1568](../adr/1568-migration-intent-annotation-params.md)）と同じ degradation。機械可読な 3 水準の外は display-only にして、人の注記を追い出さない
+- **未知の値は opaque で受理**: `until`（[ADR-1568](../adr/1568-migration-intent-fields.md)）と同じ degradation。機械可読な 3 水準の外は display-only にして、人の注記を追い出さない
 - **印に罰を与えない**: 既定描画は badge だけ。診断も filter の既定除外も付けない。読み手が自分で filter するのは自由だが、ツールが先回りしない
 - **消すことをラチェットの単位にする**: 人が `@draft` を消した PR がそのままレビュー済みの記録になる（karasu-nest の PR 還元 — [#2289](https://github.com/kompiro/karasu/issues/2289) / [#2228](https://github.com/kompiro/karasu/issues/2228)）
 

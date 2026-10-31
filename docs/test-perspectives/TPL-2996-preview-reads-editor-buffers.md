@@ -11,7 +11,6 @@ known_consumers:
   - lsp-definition-imports
 discovered_from:
   - issue: "#2996"
-  - root_cause_file: "packages/vscode/src/vscode-fs-provider.ts"
 related_to:
   - TPL-1207
   - TPL-1024
@@ -47,6 +46,11 @@ entry のファイルだけをバッファから読むのでは足りない。`@
 ## 既知の対処パターン
 
 - 読み出しの口を 1 つにし、`uri` で開いている文書を引いて `getText()`、無ければディスクを読む overlay の `FileSystemProvider` にする（#2996 の Design Doc で、VS Code の preview のホスト FS をこの形にすると決めた）
+
+## 由来
+
+<!-- absent-path-next-line: deleted by #3312 (ADR-2996), named as history -->
+#2996 の調査で読んだ root cause は `packages/vscode/src/vscode-fs-provider.ts`（拡張ホストで `vscode.workspace.fs` だけを読む `FileSystemProvider`）だった。このファイルは #3312（ADR-2996）で消え、読み出しの口は `packages/vscode/src/host-files.ts` の `readThroughBuffers` に移った。frontmatter の引用は 2026-10 のレビュー（#3357）で外した。LSP の定義ジャンプ（`definition-imports.ts`）は今も import 先をディスクから読むので、本 TPL の consumer は残っている。
 
 ## 関連テスト
 

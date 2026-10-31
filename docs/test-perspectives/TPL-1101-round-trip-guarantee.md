@@ -21,7 +21,7 @@ discovered_from:
   - issue: "#3263"
   - root_cause_file: "packages/core/src/formatter/formatter.ts:203"
   - root_cause_file: "packages/core/src/types/ast.ts :: KrsEdge.to"
-  - root_cause_file: "packages/core/src/formatter/quote-id.ts:14"
+  - root_cause_file: "packages/core/src/formatter/quote-id.ts:needsQuotes"
   - root_cause_file: "packages/core/src/formatter/formatter.ts:124"
 related_to: []
 topic: parser
@@ -37,7 +37,7 @@ scope:
 
 `.krs` テキストを書き換える機能（formatter / translator / refactoring など）は、変換前後で AST のセマンティクスを保存しなければならない。**「テキストとして整形した結果を再度 parse したとき、元の AST と構造的に等価になる」**ことを round-trip 保証と呼ぶ。
 
-formatter が引用符の有無を判定する `BARE_ID_PATTERN`（`packages/core/src/formatter/quote-id.ts:14`）のような **トークン化に関わるルール** は、parser のレキサ仕様と完全に一致していなければならない。レキサが受理する形と formatter が「裸で出してよい」と判断する形がズレると、round-trip が破れる。
+formatter が引用符の有無を判定する `needsQuotes`（`packages/core/src/formatter/quote-id.ts`）のような **トークン化に関わるルール** は、parser のレキサ仕様と完全に一致していなければならない。レキサが受理する形と formatter が「裸で出してよい」と判断する形がズレると、round-trip が破れる。
 
 #1101 では `resource ECommerce.ProductDB` のようなドット記法 ID が formatter によって `resource "ECommerce.ProductDB"` に引用符化され、parse 後のセマンティクス（dot-notation の親子参照）が変わってしまった。#1058 ではスペースや特殊文字を含む ID で逆方向の崩壊が起きた。
 
@@ -157,7 +157,7 @@ round-trip テストは、コメントがどこに出ても、あるいは消え
 
 ## 既知の対処パターン
 
-- formatter の判定ルール（例: `BARE_ID_PATTERN`）を parser のレキサ仕様と **同じ正規表現定数** から導出する、もしくはレキサが直接公開する判定関数を呼ぶ
+- formatter の判定ルールを parser のレキサ仕様と **同じ正規表現定数** から導出する、もしくはレキサが直接公開する判定関数を呼ぶ。`needsQuotes` はかつて語の形とキーワード集合を手で写した `BARE_ID_PATTERN` を持ち、写しが `boundary` などのキーワードを欠いていた。#2707 でレキサの `isBareWord` と `KRS_KEYWORD_NAMES` を呼ぶ形にした
 - ドット記法のような構造を持つ ID は AST 上で分解して保持し（例: `resource` の `ref.parent` / `ref.child`）、formatter は分解された各セグメントを個別に `quoteId()` してから join する（`formatter.ts:203` 周辺の現在の実装）
 - round-trip テストを golden 形式ではなく AST 構造比較で書く（テキスト比較だと表記揺れで誤検知する）
 - **網羅性は列挙せず導出する**。「構文 → fixture」の対応表を持ち、その **キー集合が型・スキーマ側と一致すること自体をアサートする**。#2076 の対処では
