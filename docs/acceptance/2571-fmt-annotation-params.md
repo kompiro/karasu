@@ -9,7 +9,7 @@ type: product
 - **Related TPLs**: [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（round-trip 保証。「AST 比較のヘルパがあっても fixture が通らない枝は守られない」節を本件で追加）
 - **対象ファイル**:
   - `packages/core/src/formatter/formatter.ts`（`renderAnnotations` と 2 つの呼び出し元）
-  - `packages/core/src/parser/parser.ts`（`ANNOTATION_PARAM_KEYS` を値種つきで export、`annotationParamKind` が唯一の読み手）
+  - `packages/core/src/parser/parser-keywords.ts`（`ANNOTATION_PARAM_KEYS` を値種つきで export、`annotationParamKind` が唯一の読み手）
   - `docs/spec/tags-annotations.md` / `.ja.md`（正準形の規定と `team` 例の更新）
 
 > `karasu fmt` の契約は「整形するが何も変えない」だが、アノテーションのパラメータを無言で捨てていた。`@draft(confidence: "low")` は `@draft` になり、組織軸ではアノテーションが丸ごと消えていた（`renderTeam` がアノテーションを 1 つも出力していなかった）。parser は受理し compiler は消費するのに formatter だけが読まない、ADR-2076 と同じ「parse できるのに `fmt` が黙って消す」クラス。

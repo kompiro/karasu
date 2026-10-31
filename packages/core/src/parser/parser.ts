@@ -1,6 +1,6 @@
 import { TokenType, type Token, type SourceRange, type SourceLocation } from "../types/tokens.js";
 import { ALLOWED_LINK_SCHEMES, parseUrlScheme } from "./link-url.js";
-import { stitchKebabTail, type TokenCursor } from "./kebab-name.js";
+import { stitchKebabTail } from "./kebab-name.js";
 import { readNodeIdPathTail } from "./node-path.js";
 import type {
   KrsFile,
@@ -36,10 +36,6 @@ import type {
   DatabaseNode,
   QueueGroupNode,
   StorageNode,
-  LegendBlock,
-  LegendEntry,
-  LegendRefTarget,
-  LegendViewScope,
 } from "../types/ast.js";
 import { INFRA_KIND_SET, createEmptyKrsFile } from "../types/ast.js";
 import { LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
@@ -63,6 +59,9 @@ import {
   buildNodePathIndex,
 } from "./reference-validation.js";
 import { markCyclicEdges } from "./cyclic-dependencies.js";
+import { LOGICAL_KEYWORDS, DEPLOY_KEYWORDS, annotationParamKind } from "./parser-keywords.js";
+import { handleNestedLegend, parseLegendBlock } from "./legend-parser.js";
+import type { ParseContext } from "./parse-context.js";
 
 /**
  * Which kinds may host a scoped `boundary` block (#2036).
@@ -107,79 +106,6 @@ interface ParsedOperation {
   decorationLoc: SourceLocation | undefined;
 }
 
-/**
- * The block keywords the parser accepts as logical node declarations.
- *
- * Exported so the hand-maintained Reference catalog can be fenced against the
- * parser instead of against a doc table generated from that same catalog —
- * see `builtins/reference-parser-sync.test.ts` (#2158, TPL-2158).
- */
-export const LOGICAL_KEYWORDS = new Set<string>([
-  "system",
-  "service",
-  "domain",
-  "usecase",
-  "entity",
-  "resource",
-  "user",
-  "client",
-  "database",
-  "queue",
-  "storage",
-]);
-
-// Infra block kinds that can appear as system-level children
-
-/**
- * How a recognized parameter value is spelled, which decides how the formatter
- * quotes it on the way back out (#2571).
- *
- * - `"string"`: an opaque, display-only value (`until` / `confidence`). Kept
- *   verbatim per ADR-1568 / ADR-1995, so it emits quoted like any string value.
- * - `"ref"`: a node reference (`from`). It emits through `quoteId`, the rule
- *   every other reference in the language follows.
- */
-export type AnnotationParamKind = "string" | "ref";
-
-/**
- * Recognized parameter keys per builtin lifecycle annotation (#1568). A param
- * on any other annotation, or with another key, is dropped with an
- * `annotation-param-unsupported` warning. Custom annotations stay param-less.
- *
- * Exported for the same reason as `DEPLOY_KEYWORDS`: the formatter has to emit
- * these params back (#2571) and needs each value's kind to quote it. A
- * hand-copied table there would silently stop matching whichever key was added
- * last (TPL-1720), and the formatter dropping a param is exactly the
- * round-trip break TPL-1101 forbids.
- */
-export const ANNOTATION_PARAM_KEYS = {
-  deprecated: { until: "string" },
-  experimental: { until: "string" },
-  migration_target: { from: "ref" },
-  draft: { confidence: "string" },
-} as const satisfies Record<string, Record<string, AnnotationParamKind>>;
-
-/**
- * The kind recorded for one annotation parameter, or `undefined` when the
- * parser does not recognize the pair.
- *
- * The single reader of `ANNOTATION_PARAM_KEYS`. The parser asks it whether a
- * key has an effect and the formatter asks it how to quote the value; letting
- * each index the table itself would put the lookup rule in two places, which
- * is the drift the table is exported to avoid. `Object.hasOwn` keeps a
- * prototype-named annotation (`__proto__`, `constructor`) from resolving
- * through `Object.prototype` and reporting inherited members as recognized.
- */
-export function annotationParamKind(
-  annotation: string,
-  key: string,
-): AnnotationParamKind | undefined {
-  const table: Record<string, Record<string, AnnotationParamKind>> = ANNOTATION_PARAM_KEYS;
-  if (!Object.hasOwn(table, annotation)) return undefined;
-  const keys = table[annotation];
-  return Object.hasOwn(keys, key) ? keys[key] : undefined;
-}
-
 /** Where the parameter list stops being read: its `)`, EOF, or a brace that shows the `)` is missing. */
 function isAnnotationParamListEnd(token: Token): boolean {
   return token.type !== TokenType.Comma && isAnnotationParamBoundary(token);
@@ -211,26 +137,6 @@ function isAnnotationParamBoundary(token: Token): boolean {
   );
 }
 
-/**
- * The block keywords the parser accepts as deploy-unit declarations.
- *
- * Exported for the same reason as `LOGICAL_KEYWORDS`: the docs fence guard
- * (`scripts/lint/krs-fences.ts`) recognizes a bare ``` fence as `.krs` by its
- * declaration lines, and a hand-copied subset there would silently stop
- * recognizing whichever kind was added last (TPL-1720).
- */
-export const DEPLOY_KEYWORDS = new Set<string>([
-  "war",
-  "jar",
-  "oci",
-  "lambda",
-  "function",
-  "assets",
-  "job",
-  "artifact",
-  "store",
-]);
-
 const DEPLOY_PROPERTY_KEYWORDS = new Set<string>([
   "runtime",
   "realizes",
@@ -244,11 +150,21 @@ export class Parser {
   private pos = 0;
   private diagnostics: Diagnostic[] = [];
 
-  /** Cursor view over the token stream for shared helpers (kebab-name.ts). */
-  private readonly cursor: TokenCursor = {
+  /**
+   * The parser's primitives as one object, for the parsing functions that live
+   * in other modules (kebab-name.ts, node-path.ts, legend-parser.ts). Built
+   * once here rather than per call: the LSP re-parses on every keystroke.
+   */
+  private readonly ctx: ParseContext = {
     peek: () => this.peek(),
     peekAt: (offset) => this.peekAt(offset),
     advance: () => this.advance(),
+    expect: (type) => this.expect(type),
+    match: (type) => this.match(type),
+    error: (code, params) => this.error(code, params),
+    range: (start, end) => this.range(start, end),
+    pushDiagnostic: (diagnostic) => this.diagnostics.push(diagnostic),
+    previous: () => this.tokens[this.pos - 1],
   };
 
   /**
@@ -396,7 +312,7 @@ export class Parser {
           file.facets.push(this.parseFacetBlock());
           break;
         case TokenType.Legend:
-          file.legends.push(this.parseLegendBlock());
+          file.legends.push(parseLegendBlock(this.ctx));
           break;
         case TokenType.User:
           // A `user` is only valid inside a `system`. Report it with a
@@ -575,7 +491,7 @@ export class Parser {
       if (this.peek().type === TokenType.Identifier) {
         // Read one path: Identifier (Dot Identifier)*
         const first = this.advance();
-        const tail = readNodeIdPathTail(first, this.cursor);
+        const tail = readNodeIdPathTail(first, this.ctx);
         if (tail.dangling) {
           // dot without trailing identifier — record error and stop reading
           // segments for this entry; skip the bad token to make progress.
@@ -737,7 +653,7 @@ export class Parser {
           const isId = (t: TokenType) =>
             t === TokenType.Identifier || t === TokenType.StringLiteral;
           if (isId(this.peek().type)) {
-            const tail = readNodeIdPathTail(this.advance(), this.cursor, {
+            const tail = readNodeIdPathTail(this.advance(), this.ctx, {
               maxSegments: 2,
               acceptStringSegments: true,
             });
@@ -901,7 +817,7 @@ export class Parser {
       }
 
       if (token.type === TokenType.Legend) {
-        this.handleNestedLegend(kind);
+        handleNestedLegend(this.ctx, kind);
         continue;
       }
 
@@ -977,7 +893,7 @@ export class Parser {
     // Capability identifiers are kebab-case by convention (e.g. screen-wake-lock,
     // face-id). Stitch the `<word> - <word>` token run back into one name —
     // shared with tags / annotations / legend refs (#2509, kebab-name.ts).
-    const stitched = stitchKebabTail(nameToken, this.cursor);
+    const stitched = stitchKebabTail(nameToken, this.ctx);
     const name = stitched.name;
     let end: Token = stitched.end;
     let label: string | undefined;
@@ -1152,7 +1068,7 @@ export class Parser {
     first: Token,
     property: string,
   ): { path: NodeIdPath; loc: SourceRange } | undefined {
-    const tail = readNodeIdPathTail(first, this.cursor, { acceptStringSegments: true });
+    const tail = readNodeIdPathTail(first, this.ctx, { acceptStringSegments: true });
     if (tail.dangling) {
       const stop = tail.danglingDot ?? tail.end;
       this.diagnostics.push({
@@ -1476,7 +1392,7 @@ export class Parser {
     // Check for dot-notation: resource OrderDB.C
     let ref: { parent: string; child: string } | undefined;
     if (this.peek().type === TokenType.Dot) {
-      const tail = readNodeIdPathTail(idToken, this.cursor, {
+      const tail = readNodeIdPathTail(idToken, this.ctx, {
         maxSegments: 2,
         acceptStringSegments: true,
       });
@@ -1714,7 +1630,7 @@ export class Parser {
       }
 
       if (token.type === TokenType.Legend) {
-        this.handleNestedLegend(parentKind);
+        handleNestedLegend(this.ctx, parentKind);
         continue;
       }
 
@@ -1909,7 +1825,7 @@ export class Parser {
       // (the lexer emits `-` as its own token) — stitch it back into one tag
       // (#2509) so `[my-team-internal-tag]` is one tag, not seven.
       const first = this.advance();
-      tags.push(stitchKebabTail(first, this.cursor).name);
+      tags.push(stitchKebabTail(first, this.ctx).name);
     }
     this.expect(TokenType.RightBracket);
     return tags;
@@ -1927,7 +1843,7 @@ export class Parser {
       // Kebab-case annotation names (`@my-team-mark`) arrive as a
       // `<word> - <word>` token run — stitch, same as tags (#2509).
       const nameToken = this.advance();
-      const { name, end: nameEnd } = stitchKebabTail(nameToken, this.cursor);
+      const { name, end: nameEnd } = stitchKebabTail(nameToken, this.ctx);
       // A near-miss of a builtin name is rejected (`.krs language v2.0`, #2677):
       // the author meant the builtin, and keeping the misspelling would silently
       // drop its effect. It stays out of the model, parameters included.
@@ -2103,7 +2019,7 @@ export class Parser {
     let toPath: NodeIdPath | undefined;
     let toEnd = toToken.loc;
     if (this.peek().type === TokenType.Dot) {
-      const tail = readNodeIdPathTail(toToken, this.cursor, {
+      const tail = readNodeIdPathTail(toToken, this.ctx, {
         acceptStringSegments: true,
       });
       // On a dangling dot, keep this site's historical recovery: report, leave
@@ -2278,7 +2194,7 @@ export class Parser {
       } else if (DEPLOY_KEYWORDS.has(this.peek().value)) {
         nodes.push(this.parseDeployNode());
       } else if (this.peek().type === TokenType.Legend) {
-        this.handleNestedLegend("deploy");
+        handleNestedLegend(this.ctx, "deploy");
       } else {
         this.error("unexpected-token-in-block", {
           blockKind: "deploy",
@@ -2338,7 +2254,7 @@ export class Parser {
           this.error("expected-property-value", { propName });
         }
       } else if (this.peek().type === TokenType.Legend) {
-        this.handleNestedLegend(kind);
+        handleNestedLegend(this.ctx, kind);
       } else {
         this.error("unexpected-token-in-block", {
           blockKind: "deploy node",
@@ -2421,7 +2337,7 @@ export class Parser {
       } else if (token.type === TokenType.Team) {
         teams.push(this.parseTeamBlock());
       } else if (token.type === TokenType.Legend) {
-        this.handleNestedLegend("organization");
+        handleNestedLegend(this.ctx, "organization");
       } else {
         this.error("unexpected-token-in-block", {
           blockKind: "organization",
@@ -2508,7 +2424,7 @@ export class Parser {
           this.peek().type === TokenType.Identifier ||
           this.peek().type === TokenType.StringLiteral
         ) {
-          const tail = readNodeIdPathTail(this.advance(), this.cursor, {
+          const tail = readNodeIdPathTail(this.advance(), this.ctx, {
             acceptStringSegments: true,
           });
           if (tail.dangling) {
@@ -2690,7 +2606,7 @@ export class Parser {
           this.peek().type === TokenType.Identifier ||
           this.peek().type === TokenType.StringLiteral
         ) {
-          const tail = readNodeIdPathTail(this.advance(), this.cursor, {
+          const tail = readNodeIdPathTail(this.advance(), this.ctx, {
             acceptStringSegments: true,
           });
           if (tail.dangling) {
@@ -2708,7 +2624,7 @@ export class Parser {
       } else if (token.type === TokenType.Team) {
         children.push(this.parseTeamBlock());
       } else if (token.type === TokenType.Legend) {
-        this.handleNestedLegend("team");
+        handleNestedLegend(this.ctx, "team");
       } else {
         this.error("unexpected-token-in-block", {
           blockKind: "team",
@@ -2771,7 +2687,7 @@ export class Parser {
           this.error("expected-string-after", { property: "github" });
         }
       } else if (token.type === TokenType.Legend) {
-        this.handleNestedLegend("member");
+        handleNestedLegend(this.ctx, "member");
       } else {
         this.error("unexpected-token-in-block", {
           blockKind: "member",
@@ -2855,212 +2771,4 @@ export class Parser {
       }
     }
   }
-
-  // ─── Legend block ────────────────────────────────────────────────────────
-  // Grammar: `legend <view-scope>? <title?> { (swatch | ref)* }`
-  //   view-scope ::= "system" | "deploy" | "org"
-  //   swatch     ::= "swatch" "#" hex-id <string>
-  //   ref        ::= "ref" ("@" id | "[" id "]" | "." id | "#" id | id) <string>
-  //
-  // Reference: docs/design/diagram-legend.md.
-
-  /**
-   * `legend` is only valid at the top level of a file (docs/spec/syntax.md
-   * § Legend). When it appears inside a block, emit a single dedicated
-   * diagnostic and skip the whole legend block so its contents do not
-   * cascade into per-token `unexpected-token-in-block` errors.
-   */
-  private handleNestedLegend(parentKind: string): void {
-    this.error("legend-not-top-level", { parentKind });
-    this.advance(); // legend
-
-    // Skip the optional view scope / title up to the legend's opening brace.
-    // Stop early at `}` / EOF so a malformed legend (no body) does not eat
-    // the enclosing block's closing brace.
-    while (
-      this.peek().type !== TokenType.LeftBrace &&
-      this.peek().type !== TokenType.RightBrace &&
-      this.peek().type !== TokenType.EOF
-    ) {
-      this.advance();
-    }
-    if (this.peek().type !== TokenType.LeftBrace) return;
-
-    let depth = 0;
-    while (this.peek().type !== TokenType.EOF) {
-      const t = this.advance();
-      if (t.type === TokenType.LeftBrace) depth++;
-      else if (t.type === TokenType.RightBrace && --depth === 0) break;
-    }
-  }
-
-  private parseLegendBlock(): LegendBlock {
-    const start = this.advance(); // legend
-
-    const scope = this.parseLegendScope();
-
-    let title: string | undefined;
-    if (this.peek().type === TokenType.StringLiteral) {
-      title = this.advance().value;
-    }
-
-    this.expect(TokenType.LeftBrace);
-
-    const entries: LegendEntry[] = [];
-    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      const token = this.peek();
-      if (token.type === TokenType.Swatch) {
-        const entry = this.parseLegendSwatch();
-        if (entry) entries.push(entry);
-      } else if (token.type === TokenType.Ref) {
-        const entry = this.parseLegendRef();
-        if (entry) entries.push(entry);
-      } else {
-        this.error("unexpected-token-in-block", {
-          blockKind: "legend",
-          tokenType: String(token.type),
-          value: token.value,
-        });
-        this.advance();
-      }
-    }
-
-    const end = this.expect(TokenType.RightBrace);
-
-    return {
-      scope,
-      title,
-      entries,
-      loc: this.range(start.loc, end.loc),
-    };
-  }
-
-  private parseLegendScope(): LegendViewScope | undefined {
-    const next = this.peek();
-    if (next.type === TokenType.System) {
-      this.advance();
-      return "system";
-    }
-    if (next.type === TokenType.Service) {
-      this.advance();
-      return "service";
-    }
-    if (next.type === TokenType.Domain) {
-      this.advance();
-      return "domain";
-    }
-    if (next.type === TokenType.Deploy) {
-      this.advance();
-      return "deploy";
-    }
-    // "org" is intentionally not a reserved keyword (the block keyword is
-    // "organization"). Match it contextually as an identifier here.
-    if (next.type === TokenType.Identifier && next.value === "org") {
-      this.advance();
-      return "org";
-    }
-    return undefined;
-  }
-
-  private parseLegendSwatch(): LegendEntry | null {
-    const start = this.advance(); // swatch
-    // The lexer emits `#xxx` as a single Identifier token (see lexer's
-    // readHashToken). The parser stores the value verbatim and lets the
-    // resolver / renderer validate the hex shape.
-    const colorTok = this.expect(TokenType.Identifier);
-    const labelTok = this.expect(TokenType.StringLiteral);
-    return {
-      kind: "swatch",
-      color: colorTok.value,
-      label: labelTok.value,
-      loc: this.range(start.loc, labelTok.loc),
-    };
-  }
-
-  private parseLegendRef(): LegendEntry | null {
-    const start = this.advance(); // ref
-    const target = this.parseLegendRefTarget();
-    if (!target) {
-      // Skip until label or end of entry to recover.
-      if (this.peek().type === TokenType.StringLiteral) this.advance();
-      return null;
-    }
-    const labelTok = this.expect(TokenType.StringLiteral);
-    return {
-      kind: "ref",
-      target,
-      label: labelTok.value,
-      loc: this.range(start.loc, labelTok.loc),
-    };
-  }
-
-  private parseLegendRefTarget(): LegendRefTarget | null {
-    const tok = this.peek();
-    switch (tok.type) {
-      case TokenType.At: {
-        this.advance();
-        const first = this.expect(TokenType.Identifier);
-        // Legend refs name the same vocabulary the model writes — stitch
-        // kebab-case runs so `[my-team]` / `@my-mark` stay referenceable
-        // (#2509).
-        const { name } = stitchKebabTail(first, this.cursor);
-        return { kind: "annotation", name };
-      }
-      case TokenType.LeftBracket: {
-        this.advance();
-        const first = this.expect(TokenType.Identifier);
-        const { name } = stitchKebabTail(first, this.cursor);
-        this.expect(TokenType.RightBracket);
-        return { kind: "tag", name };
-      }
-      case TokenType.Dot: {
-        this.advance();
-        const name = this.expect(TokenType.Identifier);
-        return { kind: "selector", selector: `.${name.value}` };
-      }
-      case TokenType.Identifier: {
-        // `#xxx` is lexed as a single Identifier with the leading `#`
-        // (see lexer's readHashToken). All other identifiers are bare type
-        // selectors (e.g. unknown custom kinds).
-        const name = this.advance();
-        return { kind: "selector", selector: name.value };
-      }
-      default:
-        // Accept node-kind keywords as type selectors (e.g. `service`,
-        // `domain`, `client`). The lexer reserves these as keywords for
-        // block parsing; here they are valid `.krs.style` selector names.
-        if (isTypeSelectorKeyword(tok.type)) {
-          const name = this.advance();
-          return { kind: "selector", selector: name.value };
-        }
-        this.error("expected-identifier", {
-          got: String(tok.type),
-          value: tok.value,
-        });
-        this.advance();
-        return null;
-    }
-  }
-}
-
-const TYPE_SELECTOR_KEYWORDS = new Set<TokenType>([
-  TokenType.System,
-  TokenType.Service,
-  TokenType.Domain,
-  TokenType.Usecase,
-  TokenType.Resource,
-  TokenType.User,
-  TokenType.Client,
-  TokenType.Database,
-  TokenType.Queue,
-  TokenType.Storage,
-  TokenType.Table,
-  TokenType.Bucket,
-  TokenType.Team,
-  TokenType.Member,
-  TokenType.Organization,
-]);
-
-function isTypeSelectorKeyword(type: TokenType): boolean {
-  return TYPE_SELECTOR_KEYWORDS.has(type);
 }
