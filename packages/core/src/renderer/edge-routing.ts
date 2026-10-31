@@ -2,6 +2,7 @@ import type { ResolvedEdgeStyle } from "../types/style.js";
 import type { HopMark, LayoutEdge } from "./layout-types.js";
 import { el, escapeXml } from "./svg-builder.js";
 import { canvasLabel, type LabelWithheld } from "./edge-label-disclosure.js";
+import { pairLabelSegment } from "./mutual-pair.js";
 
 interface Point {
   x: number;
@@ -266,14 +267,24 @@ export function renderEdge(
   // canvas shows of the label; `labelWithheld` says whether that is less than
   // the author wrote, and is set only then, so an edge with nothing withheld
   // is emitted exactly as before (TPL-2174).
-  const drawn = canvasLabel(edge, style);
+  // The default anchor and the segment it lies on: the segment's direction is
+  // the arrow a paired half's label carries (#3027), so the anchor is found
+  // before the text, the same order the placement pass measures in.
+  const defaultAnchor = labelAnchorWithSegment(
+    points,
+    resolveLabelPosition(edge, style),
+    style.labelOffsetX,
+    style.labelOffsetY,
+    ownLabelSegment(edge),
+  );
+  const drawn = canvasLabel(edge, style, defaultAnchor.segDir);
   const labelHidden = drawn !== undefined && (drawn.display === "hover" || labelDeferred);
   const labelWithheld: LabelWithheld | undefined =
     drawn === undefined
       ? undefined
       : labelHidden
         ? "deferred"
-        : drawn.text !== edge.label
+        : drawn.truncated
           ? "truncated"
           : undefined;
   // Withheld text must stay reachable on this very surface (TPL-3022). The
@@ -287,15 +298,7 @@ export function renderEdge(
     // Default anchor (parallel-bundle slide applied, ADR-1185). When the
     // auto label-placement pass (#2048) has nudged this label off a collision,
     // it hands the resolved anchor in via `labelAnchorOverride`, which wins.
-    const { x: midX, y: midY } =
-      labelAnchorOverride ??
-      labelAnchor(
-        points,
-        resolveLabelPosition(edge, style),
-        style.labelOffsetX,
-        style.labelOffsetY,
-        ownLabelSegment(edge),
-      );
+    const { x: midX, y: midY } = labelAnchorOverride ?? defaultAnchor.anchor;
     const labelText = el(
       "text",
       {
@@ -306,7 +309,10 @@ export function renderEdge(
         "font-size": `${style.fontSize}px`,
         "font-family": "sans-serif",
       },
-      escapeXml(drawn.text),
+      drawn.cue
+        ? el("tspan", { class: "krs-edge__cue" }, escapeXml(drawn.cue)) +
+            escapeXml(drawn.text.slice(drawn.cue.length))
+        : escapeXml(drawn.text),
     );
 
     if (edge.domainEdges && edge.domainEdges.length > 0) {
@@ -399,24 +405,13 @@ export function resolveLabelPosition(edge: LayoutEdge, style: ResolvedEdgeStyle)
  *
  * `ownSegment` narrows the default for a route whose longest segment is shared
  * with other edges — see {@link ownLabelSegment}.
- */
-function labelAnchor(
-  points: Point[],
-  position: number,
-  offsetX: number,
-  offsetY: number,
-  ownSegment?: number,
-): Point {
-  return labelAnchorWithSegment(points, position, offsetX, offsetY, ownSegment).anchor;
-}
-
-/**
- * As {@link labelAnchor}, but also returns `segDir` — the direction vector of
- * the polyline segment the anchor lies on (the longest one for the default
- * heuristic, or the one the fractional position falls in). The auto placement
- * pass (#2048) nudges *perpendicular* to this local segment, not the overall
- * `from → to` chord, so the lift stays square to the line the label is drawn on
- * for bent / waypoint routes.
+ *
+ * Also returns `segDir`: the direction vector of the polyline segment the
+ * anchor lies on (the longest one for the default heuristic, or the one the
+ * fractional position falls in). The auto placement pass (#2048) nudges
+ * *perpendicular* to this local segment, not the overall `from → to` chord, so
+ * the lift stays square to the line the label is drawn on for bent / waypoint
+ * routes; a paired half's label takes its arrow from it (#3027).
  */
 export function labelAnchorWithSegment(
   points: Point[],
@@ -463,10 +458,15 @@ export function labelAnchorWithSegment(
  * the one arriving at it (fan-in) or the one leaving it (fan-out). On a
  * 2-waypoint route those are the first and the last segment.
  *
+ * A mutual pair's half (#3027) owns the segments away from the split, see
+ * {@link pairLabelSegment}.
+ *
  * `undefined` for every other edge, which keeps ADR-1184's default anchor and
  * the byte-stability it was chosen for.
  */
 export function ownLabelSegment(edge: LayoutEdge): number | undefined {
+  // A paired half (#3027) starts at the split, beside its partner's half.
+  if (edge.pairHalf) return pairLabelSegment(edge);
   // The route is `fromPoint, ...waypoints, toPoint`: waypoint `j` is point
   // `j + 1`, so segment `j` arrives at it and segment `j + 1` leaves it.
   if (edge.trunkId !== undefined) return edge.trunkJoin ?? 0;

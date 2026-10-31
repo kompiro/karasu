@@ -64,7 +64,7 @@ import {
 import { nodePathIdentityKey, nodePathRefId } from "../parser/node-path.js";
 import type { ResolvedLayoutHints } from "../types/style.js";
 import { edgeKey } from "../diff/view-diff.js";
-import { computeCrossingMarks } from "./crossing-marks.js";
+import { applyMutualPairs } from "./mutual-pair.js";
 import type {
   LayoutNode,
   LayoutEdge,
@@ -140,10 +140,10 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     : found.result;
   const result = run.result;
   // Crossing marks decorate the routed edges and change neither the canvas
-  // nor the reservation, so only the surviving placement pays for them. A
-  // search that evaluated four candidates and re-placed once used to compute
-  // them five times for one drawing (#2761).
-  if (run.crossingMarksPending) result.crossingMarks = computeCrossingMarks(result.edges);
+  // nor the reservation, so only the surviving placement pays for them (#2761
+  // once found them computed five times for one drawing). Mutual pairs become
+  // one line here too (#3027): their split has to clear the final hops.
+  if (run.crossingMarksPending) result.crossingMarks = applyMutualPairs(result.edges, options);
   result.widthBudget = found.budget;
   result.placementPasses = reserved ? 2 : 1;
   result.shapeInsetsApplied = !!options.shapeForNode && options.displayMode !== "icon";

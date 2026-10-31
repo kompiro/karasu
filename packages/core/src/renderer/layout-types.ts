@@ -200,6 +200,11 @@ export interface LayoutEdge {
    * waypoint (fan-out).
    */
   trunkJoin?: number;
+  /**
+   * One half of a mutual pair drawn as one line (#3027, `mutual-pair.ts`): the
+   * route runs from the split, not the source card, to this edge's own target.
+   */
+  pairHalf?: boolean;
 }
 
 /** Axis-aligned box. The unit `ContainerRect.coverage` is built from. */
@@ -503,6 +508,12 @@ export interface LayoutOptions {
    * renderer supplies it, and callers without styles simply get no keep-out.
    */
   chipZoneFor?: (node: LayoutNode) => Rect | undefined;
+  /**
+   * A key over how an edge's line is drawn (colour, width, stroke style, diff
+   * state), which only the renderer resolves (#3027). A mutual pair with equal
+   * keys is drawn as one line (TPL-3027); omitted (draw.io, bare layout), none is.
+   */
+  edgeLineKey?: (edge: LayoutEdge) => string | undefined;
   /**
    * Team id → declared `label`, from `buildTeamLabelIndex`. Supplies the chip's
    * display string on every axis (the group-frame titles get theirs from

@@ -24,6 +24,7 @@ import { renderShape } from "./shapes.js";
 import { rectUnionOutline } from "./frame-geometry.js";
 import { getShapeContentInset, type ShapeInsets } from "../shapes/shape-registry.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
+import { edgeLineKeyOf, resolvedEdgeStyle } from "./edge-line-key.js";
 import {
   resolveLabelPlacements,
   buildLabelInputs,
@@ -74,7 +75,7 @@ import {
   DESC_MAX_LINES,
   META_GLYPH_GAP,
 } from "./rendering-constants.js";
-import { edgeStyleKey, nodeStyleKey } from "../resolver/style-resolver.js";
+import { nodeStyleKey } from "../resolver/style-resolver.js";
 import { edgeKey, type NodeDiffMeta } from "../diff/view-diff.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 import { DEPLOY_AFFORDANCE_KIND_SET, displayGroupId } from "../types/ast.js";
@@ -373,10 +374,12 @@ export function render(
     // The layout is about to apply the shape insets it was given the hook for,
     // so the lane is measured the way `renderNode` will draw it.
     chipZoneOf(node, node.id, styles, palette, displayMode !== "icon", serviceIdsWithDeploy);
+  const edgeLineKey = edgeLineKeyOf(styles, options?.edgeDiffState);
   const layoutResult = layout(viewSlice, {
     ownerIndex,
     shapeForNode,
     chipZoneFor,
+    edgeLineKey,
     teamLabels: options?.teamLabels,
     boundaryMembership: options?.boundaryMembership,
     scopedBoundaryMembership: options?.scopedBoundaryMembership,
@@ -617,16 +620,8 @@ export function renderFromLayout(
   }
   // Resolve the edge style once per edge (reused by both the label-placement
   // pre-pass and the render loop below).
-  const edgeStyleFor = (edgeLayout: LayoutResult["edges"][number]) => {
-    // Prefer the kind-qualified style entry so parallel sync/async edges between
-    // the same pair keep their own stroke style; fall back to the bare key for
-    // synthetic layout edges (delivers, owns, ghosts, aggregated domain edges).
-    return (
-      styles.edges.get(edgeStyleKey(edgeLayout.from, edgeLayout.to, edgeLayout.kind)) ??
-      styles.edges.get(edgeStyleKey(edgeLayout.from, edgeLayout.to, undefined)) ??
-      styles.defaultEdgeStyle
-    );
-  };
+  const edgeStyleFor = (edgeLayout: LayoutResult["edges"][number]) =>
+    resolvedEdgeStyle(styles, edgeLayout);
 
   // Auto label collision-avoidance (#2048): nudge labels that collide with node
   // cards, with each other, or with another edge's polyline (#2360) off their

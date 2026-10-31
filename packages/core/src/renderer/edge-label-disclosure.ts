@@ -15,6 +15,7 @@
  */
 
 import type { ResolvedEdgeStyle } from "../types/style.js";
+import type { Point } from "./edge-geometry.js";
 import type { LayoutEdge } from "./layout-types.js";
 
 const ELLIPSIS = "…";
@@ -70,8 +71,19 @@ export function displayEdgeLabel(label: string, maxChars: number | undefined): s
 
 /** What the canvas does with one edge's label. */
 export interface CanvasLabel {
-  /** The text the canvas draws: the authored label, or its truncation. */
+  /**
+   * The text the canvas draws: the authored label, or its truncation, behind
+   * the direction arrow on a paired half (#3027).
+   */
   text: string;
+  /**
+   * The direction arrow and its space at the start of `text`, on a paired half
+   * (#3027). Drawn as its own `<tspan>` so a reader of the drawn text (the
+   * focus canvas, for a synthetic label) can leave it out.
+   */
+  cue?: string;
+  /** Set when `text` cut the authored label short to `label-max-chars`. */
+  truncated?: true;
   /**
    * `always`: drawn wherever it lands. `auto`: drawn only if the placement
    * pass seats it clear. `hover`: never drawn.
@@ -94,12 +106,32 @@ export interface CanvasLabel {
  *   invisible control.
  */
 export function canvasLabel(
-  edge: Pick<LayoutEdge, "label" | "syntheticLabel" | "domainEdges">,
+  edge: Pick<LayoutEdge, "label" | "syntheticLabel" | "domainEdges" | "pairHalf">,
   style: Pick<ResolvedEdgeStyle, "labelMaxChars" | "labelDisplay">,
+  /** Direction of the segment the label sits on; read only on a paired half. */
+  segDir?: Point,
 ): CanvasLabel | undefined {
   if (!edge.label) return undefined;
-  if (edge.syntheticLabel) return { text: edge.label, display: "always" };
-  const text = displayEdgeLabel(edge.label, style.labelMaxChars);
+  const cue = edge.pairHalf && segDir ? { cue: `${directionArrow(segDir)} ` } : {};
+  const prefix = cue.cue ?? "";
+  if (edge.syntheticLabel) return { text: prefix + edge.label, display: "always", ...cue };
+  const shown = displayEdgeLabel(edge.label, style.labelMaxChars);
   const isControl = edge.domainEdges !== undefined && edge.domainEdges.length > 0;
-  return { text, display: isControl ? "always" : style.labelDisplay };
+  const display = isControl ? "always" : style.labelDisplay;
+  return shown === edge.label
+    ? { text: prefix + shown, display, ...cue }
+    : { text: prefix + shown, display, ...cue, truncated: true };
+}
+
+const ARROWS = ["→", "↘", "↓", "↙", "←", "↖", "↑", "↗"];
+
+/**
+ * The arrow for a label on one half of a mutual pair drawn as one line (#3027):
+ * the way that half runs, toward its own target, to the nearest eighth of a
+ * turn. Both labels of the pair sit on the same line, so their position alone
+ * says which is which only to a reader who traces the line to an arrowhead.
+ */
+export function directionArrow(segDir: Point): string {
+  const deg = (Math.atan2(segDir.y, segDir.x) * 180) / Math.PI;
+  return ARROWS[((Math.round(deg / 45) % 8) + 8) % 8];
 }
