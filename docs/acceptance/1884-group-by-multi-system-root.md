@@ -8,7 +8,7 @@
 - **Related TPLs**:
   - [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（並列関数ファミリは parameter parity を保つ — 本 bug の直接の失敗クラス）
   - [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（全域性・端点保持）
-- **対象**: `packages/core/src/renderer/layout.ts`（`layout` multi-system 分岐 + `layoutMultipleSystems`）
+- **対象**: `packages/core/src/renderer/layout.ts`（`layout` multi-system 分岐）、`packages/core/src/renderer/layout-multi-system.ts`（`layoutMultipleSystems`）
 
 ## 概要
 

@@ -8,7 +8,7 @@ related_to: [ADR-460]
 assumptions:
   - "file: packages/core/src/renderer/edge-routing-channels.ts"
   - "symbol: packages/core/src/renderer/edge-routing-channels.ts :: routeOrthogonalEdges"
-  - "grep: packages/core/src/renderer/layout.ts :: waypoints"
+  - "grep: packages/core/src/renderer/layout-types.ts :: waypoints"
 ---
 
 # ADR-968: Skip-layer エッジの直交チャネルルーティング
