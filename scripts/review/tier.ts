@@ -21,6 +21,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { matchesGlob, posix } from "node:path";
+import { classifyGeneratedDiff, parseNameStatus, readAdrPaths } from "../adr/generated.ts";
 import { type GitFacts, parseRecord, verifyRecord } from "./local-review-record.ts";
 
 export type Tier = "low" | "design" | "medium" | "high";
@@ -74,8 +75,11 @@ const LOW_GLOBS: readonly string[] = [
   "**/*.spec.ts",
 ];
 
-/** `pnpm adr:regenerate` output. */
-const ADR_GENERATED_GLOBS: readonly string[] = [
+/**
+ * `pnpm adr:regenerate` output. Pinned to `adr.config.json` `paths.outputs` by a
+ * test, so the classifier and the `Validate` check own the same paths.
+ */
+export const ADR_GENERATED_GLOBS: readonly string[] = [
   "docs/adr/effective.md",
   "docs/adr/graph.md",
   "docs/adr/graph/**",
@@ -765,6 +769,36 @@ export function classifyChange(input: {
 }
 
 /**
+ * Whether a PR's local review record is waived because the PR is the daily
+ * regeneration of the ADR index (Issue #3416): a Low PR whose diff changes only
+ * generated files, with the same outputs on both sides. `Validate` holds such a
+ * PR to an exact regeneration, so a reviewer would have nothing to read. The
+ * kind comes from the same module and the same diff (`--no-renames`, merge base
+ * to head) that `Validate` uses, so the two checks cannot disagree on it. An
+ * unreadable config on either side keeps the record required.
+ */
+export function regenerationWaivesRecord(input: {
+  tier: Tier;
+  baseConfig: string | null;
+  headConfig: string | null;
+  /** `git diff --no-renames --name-status -z <merge-base> <head>`. */
+  nameStatus: string;
+}): boolean {
+  if (input.tier !== "low" || input.baseConfig === null || input.headConfig === null) return false;
+  try {
+    return (
+      classifyGeneratedDiff({
+        base: readAdrPaths(input.baseConfig),
+        head: readAdrPaths(input.headConfig),
+        files: parseNameStatus(input.nameStatus),
+      }).kind === "regeneration"
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
  * `risk: *` labels that name no tier (a misspelling, a made-up tier). They count
  * as no label, which is High, but the check fails on them so the label is fixed:
  * CodeRabbit and the Review request workflow read only the four real ones.
@@ -1035,8 +1069,28 @@ function checkPr(pr: string): string[] {
     );
   }
   if (tier !== "high") {
-    const record = parseRecord(view.body ?? "");
-    errors.push(...verifyRecord(record, tier, gitFacts(baseRef, view.headRefOid)));
+    const mergeBase = mergeBaseOf(baseRef, view.headRefOid);
+    const waived = regenerationWaivesRecord({
+      tier,
+      baseConfig: gitShow(mergeBase, "adr.config.json"),
+      headConfig: gitShow(view.headRefOid, "adr.config.json"),
+      nameStatus: run("git", [
+        "diff",
+        "--no-renames",
+        "--name-status",
+        "-z",
+        mergeBase,
+        view.headRefOid,
+      ]),
+    });
+    if (waived) {
+      console.log(
+        "ADR index regeneration: no local review record is required (Validate checks it).",
+      );
+    } else {
+      const record = parseRecord(view.body ?? "");
+      errors.push(...verifyRecord(record, tier, gitFacts(baseRef, view.headRefOid)));
+    }
   }
   return errors;
 }
