@@ -13,7 +13,7 @@ assumptions:
   - "symbol: packages/core/src/view/anchored-edges.ts :: isAnchoredAt"
   - "symbol: packages/core/src/view/anchored-edges.ts :: isLiftableToPeerCanvas"
   - "symbol: packages/core/src/view/anchored-edges.ts :: collectAnchoredPeerEdges"
-  - "symbol: packages/core/src/view/view-extract.ts :: extractEntityView"
+  - "symbol: packages/core/src/view/entity-relations.ts :: extractEntityView"
   - "symbol: packages/core/src/view/anchored-edges.ts :: withChildAnchoredEdges"
   - "grep: packages/core/src/parser/parser.ts :: edge-source-mismatch"
   - "grep: docs/spec/syntax.md :: Edge origin scope"

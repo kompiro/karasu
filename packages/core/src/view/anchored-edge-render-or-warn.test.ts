@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { extractView, extractEntityView } from "./view-extract.js";
+import { extractEntityView } from "./entity-relations.js";
+import { extractView } from "./view-extract.js";
 import { withUnassignedSystem } from "./unassigned-system.js";
 import { layout } from "../renderer/layout.js";
 import { Parser } from "../parser/parser.js";

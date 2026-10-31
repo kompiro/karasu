@@ -18,7 +18,7 @@ scope:
     - core
     - cli
 assumptions:
-  - "symbol: packages/core/src/view/view-extract.ts :: projectStoreRelations"
+  - "symbol: packages/core/src/view/entity-relations.ts :: projectStoreRelations"
   - "symbol: packages/core/src/view/anchored-edges.ts :: containerCanvasEdges"
   - "symbol: packages/core/src/view/coverage-extract.ts :: diffStoreRelations"
   - "symbol: packages/core/src/translate/db.ts :: collectRootRelations"

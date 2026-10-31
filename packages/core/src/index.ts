@@ -70,7 +70,8 @@ export { validateStyleValues } from "./style/value-validator.js";
 export type { ViewPath, ViewSlice, DomainEdgeDetail } from "./view/view-slice.js";
 export type { ResolvedContainerChain } from "./view/view-path.js";
 export { resolveContainerChain } from "./view/view-path.js";
-export { extractView, extractEntityView } from "./view/view-extract.js";
+export { extractEntityView } from "./view/entity-relations.js";
+export { extractView } from "./view/view-extract.js";
 export type {
   CrudMatrix,
   CrudMatrixRow,
