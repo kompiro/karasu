@@ -89,7 +89,6 @@
     { "files": ["packages/core/src/renderer/group-layout.ts"], "rules": { "max-lines": ["error", { "max": 611 }] } },
     { "files": ["packages/core/src/renderer/label-placement.ts"], "rules": { "max-lines": ["error", { "max": 1012 }] } },
     { "files": ["packages/core/src/renderer/layout-types.ts"], "rules": { "max-lines": ["error", { "max": 604 }] } },
-    { "files": ["packages/core/src/renderer/layout.ts"], "rules": { "max-lines": ["error", { "max": 703 }] } },
     { "files": ["packages/core/src/renderer/org-renderer.ts"], "rules": { "max-lines": ["error", { "max": 768 }] } },
     { "files": ["packages/core/src/renderer/org-tree-renderer.ts"], "rules": { "max-lines": ["error", { "max": 676 }] } },
     { "files": ["packages/core/src/renderer/svg-renderer.ts"], "rules": { "max-lines": ["error", { "max": 1092 }] } },
