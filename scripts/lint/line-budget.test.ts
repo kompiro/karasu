@@ -36,12 +36,16 @@ const budget =
     ? undefined
     : (config.overrides[budgetIndex].rules["max-lines"] as MaxLinesRule)[1].max;
 
-// Every other `max-lines` override is a pin, whatever its shape, so a pin
-// written with a glob or several files is rejected rather than skipped.
+// Every other override that sets `max-lines`, under any key oxlint reads as
+// that rule (`eslint/max-lines` too), is a pin, whatever its shape. A pin
+// written with a glob, several files, another key or another severity is then
+// rejected rather than skipped.
 const pins = config.overrides.flatMap((o, index) =>
-  index !== budgetIndex && "max-lines" in o.rules
-    ? [{ files: o.files, max: (o.rules["max-lines"] as MaxLinesRule)[1].max, index }]
-    : [],
+  index === budgetIndex
+    ? []
+    : Object.entries(o.rules)
+        .filter(([key]) => /(?:^|\/)max-lines$/.test(key))
+        .map(([key, value]) => ({ files: o.files, key, value, index })),
 );
 
 // Counted the way oxlint's `max-lines` counts: a trailing newline does not
@@ -78,7 +82,10 @@ function budgetedSources(): string[] {
 // Directives that switch `max-lines` off for the whole file: a block or line
 // `eslint-disable` / `oxlint-disable` (not `-line` / `-next-line`) whose rule
 // list is empty (every rule) or names `max-lines`. The list may span lines and
-// ends at a `--` description.
+// ends at a `--` description. The scan reads raw text, not comments, so a
+// directive inside a string or one undone by `eslint-enable` is flagged too:
+// deliberately conservative, since a false alarm costs a reword and a miss
+// costs the budget.
 const DISABLE_DIRECTIVE =
   /\/\*\s*(?:eslint|oxlint)-disable(?![-\w])([\s\S]*?)\*\/|\/\/\s*(?:eslint|oxlint)-disable(?![-\w])([^\n]*)/g;
 
@@ -102,10 +109,16 @@ describe("source line budget in .oxlintrc.json", () => {
     for (const pin of pins) expect(pin.index).toBeGreaterThan(budgetIndex);
   });
 
-  it.each(pins)("pins $files at its current size", ({ files, max }) => {
+  it.each(pins)("pins $files at its current size", ({ files, key, value }) => {
     expect(files, "a pin names exactly one file, without a glob").toHaveLength(1);
     const [path] = files;
     expect(path, "a pin names exactly one file, without a glob").not.toMatch(/[*?{[]/);
+    expect(key, `the pin for ${path} is written as "max-lines"`).toBe("max-lines");
+    expect(value, `the pin for ${path} is ["error", { "max": <lines> }]`).toEqual([
+      "error",
+      { max: expect.any(Number) },
+    ]);
+    const max = (value as MaxLinesRule)[1].max;
     expect(existsSync(resolve(REPO_ROOT, path)), `${path} no longer exists: remove its pin`).toBe(
       true,
     );

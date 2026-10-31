@@ -29,4 +29,5 @@ pnpm vitest run --config scripts/vitest.config.ts scripts/lint/line-budget.test.
 - pin のあるファイルが縮んだら、同じ PR で pin を新しい行数に下げる。既定予算以下になったら
   pin の override ごと消す。ratchet テストが失敗メッセージで設定すべき値を示す。
 - pin の override は既定予算の override より後ろに置く（oxlint は後ろの override を優先する）。
-- 既定予算の値を変えるのは #3344 の決定を変えることなので、先に Issue を起こす。
+- 既定予算の値を変えること、既定予算の override の `excludeFiles` にパスを足すことは #3344 の
+  決定を変えることなので、先に Issue を起こす。
