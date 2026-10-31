@@ -18,7 +18,7 @@ assumptions:
   - "grep: .github/workflows/adr-validate-skip.yml :: scripts/lint/config-topics-sync.ts"
   - "grep: .github/workflows/adr-validate.yml :: github\\.sha"
   - "grep: .github/workflows/adr-validate.yml :: issues: read"
-  - "grep: .github/workflows/adr-validate.yml :: fetch-depth: 2"
+  - "grep: .github/workflows/adr-validate.yml :: fetch-depth: [02]"
   - "grep: .claude/rules/adr-topics.md :: lint:config-topics-sync:labels"
 ---
 
