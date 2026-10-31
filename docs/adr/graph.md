@@ -464,6 +464,7 @@ flowchart TD
     ADR_2234["ADR-2234<br/>boundary フレーム色の style セレクタ — `boundary` / `boun..."]
     ADR_2269["ADR-2269<br/>team フレームの色は team カードと同じセレクタで指定する — `team` / `#..."]
     ADR_2482["ADR-2482<br/>バッジ色はテーマ別の対で持ち、テーマ非依存の値を掴めなくする"]
+    ADR_3141["ADR-3141<br/>スタイル値の範囲はスキーマ 1 か所に置き、スキーマを満たさない著者の宣言は cascade ..."]
     ADR_9004["ADR-9004<br/>CSSインスパイアのスタイリングシステム"]
   end
   subgraph testing["testing"]
@@ -1106,6 +1107,7 @@ flowchart TD
   class ADR_3133 accepted
   class ADR_3134 accepted
   class ADR_3138 accepted
+  class ADR_3141 accepted
   class ADR_3154 accepted
   class ADR_3155 accepted
   class ADR_3162 accepted
