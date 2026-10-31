@@ -47,6 +47,13 @@ describe("vscode-release.yml pre-release path", () => {
     expect(compareStep).toMatch(/\*\)\n[^]*exit 1/);
   });
 
+  it("bounds the Marketplace download, so a stalled transfer cannot hold the release group", () => {
+    const compare = workflow.indexOf("- name: Compare with the highest version on the Marketplace");
+    const compareStep = workflow.slice(compare, workflow.indexOf("- name:", compare + 1));
+    expect(compareStep).toMatch(/curl [^\n]*--max-time \d+/);
+    expect(compareStep).toMatch(/curl [^\n]*--retry-max-time \d+/);
+  });
+
   it("queues every waiting run, so a pre-release never replaces the train's pending call", () => {
     const start = workflow.indexOf("\nconcurrency:\n");
     const block = workflow.slice(start, workflow.indexOf("\npermissions:\n", start));

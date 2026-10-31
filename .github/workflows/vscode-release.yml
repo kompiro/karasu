@@ -206,7 +206,9 @@ jobs:
       # highest version on the Marketplace — the one a pre-release user has —
       # so no list of source paths has to name every input of the extension
       # (TPL-2804). A download or comparison that fails stops the run instead
-      # of publishing or skipping (TPL-2786).
+      # of publishing or skipping (TPL-2786). The download is bounded in time so
+      # a stalled Marketplace cannot hold the `vscode-release` group that a
+      # stable release may be queued behind.
       - name: Compare with the highest version on the Marketplace
         id: compare
         if: steps.channel.outputs.pre_release == 'true'
@@ -214,7 +216,7 @@ jobs:
           HIGHEST: ${{ steps.marketplace.outputs.highest }}
           VSIX: packages/vscode/karasu-vscode-${{ steps.source.outputs.version }}.vsix
         run: |
-          curl -sSfL --compressed --retry 3 -o "$RUNNER_TEMP/highest.vsix" \
+          curl -sSfL --compressed --connect-timeout 30 --max-time 300 --retry 3 --retry-max-time 900 -o "$RUNNER_TEMP/highest.vsix" \
             "https://marketplace.visualstudio.com/_apis/public/gallery/publishers/karasu-tools/vsextensions/karasu-vscode/${HIGHEST}/vspackage"
           unzip -q "$RUNNER_TEMP/highest.vsix" -d "$RUNNER_TEMP/highest"
           unzip -q "$VSIX" -d "$RUNNER_TEMP/current"
