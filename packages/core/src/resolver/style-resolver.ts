@@ -114,7 +114,18 @@ export function resolveStyles(
    * nodes share an id (#2934). Without it a shared id falls to path text order.
    */
   nodePathRanking?: ReadonlyMap<string, readonly (readonly string[])[]>,
+  options: {
+    /**
+     * `false` leaves the `cyclic` virtual tag off every edge, so `edge[cyclic]`
+     * matches nothing. A diff passes it: diff draws what changed, and the
+     * cyclic red is the diff's "removed" red (#2791). Edge colour resolves from
+     * the model edges here, so dropping the flag on the slice alone would not
+     * keep the red out.
+     */
+    cyclicTag?: boolean;
+  } = {},
 ): ResolvedStyles {
+  const cyclicTag = options.cyclicTag ?? true;
   const allRules = flattenSheetsInCascadeOrder(sheets);
   const nodeStyles = new Map<string, ResolvedNodeStyle>();
   const edgeStyles = new Map<string, ResolvedEdgeStyle>();
@@ -223,7 +234,7 @@ export function resolveStyles(
   for (const system of systems) {
     processNodes([system], [], []);
     for (const edge of collectEdges(system)) {
-      const style = resolveEdgeStyle(edge, allRules);
+      const style = resolveEdgeStyle(edge, allRules, cyclicTag);
       // Kind-qualified key (preferred by the renderer) so parallel sync/async
       // edges keep distinct styles; bare key as a fallback for synthetic edges.
       edgeStyles.set(edgeStyleKey(edge.from, edge.to, edge.kind), style);
@@ -245,7 +256,7 @@ export function resolveStyles(
     if (Object.keys(hints).length > 0) layoutHints.set(id, hints);
   }
 
-  if (extraEdges) addMissingEdgeStyles(edgeStyles, allRules, extraEdges);
+  if (extraEdges) addMissingEdgeStyles(edgeStyles, allRules, extraEdges, cyclicTag);
 
   if (deployNodes) {
     for (const unit of deployNodes) {
@@ -544,8 +555,8 @@ function applyClientSubtypeFirstMatch(node: KrsNode, merged: Record<string, stri
   merged["shape"] = `url("client-${subtypes[0]}")`;
 }
 
-function resolveEdgeStyle(edge: KrsEdge, rules: StyleRule[]): ResolvedEdgeStyle {
-  const matching = rules.filter((rule) => edgeSelectorMatches(edge, rule.selector));
+function resolveEdgeStyle(edge: KrsEdge, rules: StyleRule[], cyclicTag = true): ResolvedEdgeStyle {
+  const matching = rules.filter((rule) => edgeSelectorMatches(edge, rule.selector, cyclicTag));
   return toResolvedEdgeStyle(mergeInCascadeOrder(matching));
 }
 
@@ -626,7 +637,7 @@ function nodeSelectorMatches(node: KrsNode, selector: StyleSelector): boolean {
   return true;
 }
 
-function edgeSelectorMatches(edge: KrsEdge, selector: StyleSelector): boolean {
+function edgeSelectorMatches(edge: KrsEdge, selector: StyleSelector, cyclicTag: boolean): boolean {
   // Edge selectors require the explicit `edge` type; tag-only selectors
   // (nodeType === undefined) never match edges.
   if (selector.nodeType !== "edge") return false;
@@ -652,7 +663,7 @@ function edgeSelectorMatches(edge: KrsEdge, selector: StyleSelector): boolean {
     const edgeTags = [...edge.tags];
     if (edge.kind === "async") edgeTags.push("async");
     if (edge.kind === "sync") edgeTags.push("sync");
-    if (edge.cyclic) edgeTags.push("cyclic");
+    if (cyclicTag && edge.cyclic) edgeTags.push("cyclic");
     if (!selector.tags.every((t) => edgeTags.includes(t))) return false;
   }
   return true;
@@ -815,11 +826,12 @@ function addMissingEdgeStyles(
   edgeStyles: Map<string, ResolvedEdgeStyle>,
   rules: StyleRule[],
   edges: readonly KrsEdge[],
+  cyclicTag = true,
 ): void {
   for (const edge of edges) {
     const qualifiedKey = edgeStyleKey(edge.from, edge.to, edge.kind);
     if (edgeStyles.has(qualifiedKey)) continue;
-    const style = resolveEdgeStyle(edge, rules);
+    const style = resolveEdgeStyle(edge, rules, cyclicTag);
     edgeStyles.set(qualifiedKey, style);
     if (!edgeStyles.has(`${edge.from}->${edge.to}`)) {
       edgeStyles.set(`${edge.from}->${edge.to}`, style);

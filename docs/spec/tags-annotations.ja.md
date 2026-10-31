@@ -345,7 +345,7 @@ register を分ける理由は、所属のセマンティクスがアーキタ�
 | `[implicit]` | domain エッジから派生した暗黙のサービス間エッジ | アンバー（`#F59E0B`）。線種は元のドメインエッジの `kind` に従う（`[async]` で破線、`[sync]` で実線） |
 | `[async]` | `-->` で宣言されたエッジ | 破線 |
 | `[sync]` | `->` で宣言されたエッジ | 実線 |
-| `[cyclic]` | 循環依存検出時 | 赤（`#EF4444`）実線 |
+| `[cyclic]` | 循環依存検出時 | 赤（`#EF4444`）実線。差分のビュー（`karasu diff`、app の差分モード）では付与しない。差分は変わったものを描く面なので、そこでは `edge[cyclic]` のルールはどれにも当たらず、循環は警告でだけ知らせる |
 | `[write]` | usecase→resource の合成エッジで、対象 resource の `operations` に `create` / `update` / `delete` が含まれる場合 | `stroke-width: 2`、ラベル `"W"` |
 | `[read]` | usecase→resource の合成エッジで read-only と分類される場合（write 動詞なし、または `operations` 省略） | `stroke-width: 1.5`、ラベル `"R"` |
 | `[inferred]` | `translate --from db` が **Soft FK**（`REFERENCES` / `FOREIGN KEY` 宣言の無い `<stem>_id` / `<stem>_code` 列）から導いた entity 関連、または `table` → `table` エッジ（#2722）。明示 FK 由来の関連は無タグ（確認済み） | 暖色寄りのグレー（dark `#A8A29E` / light `#78716C`）。エッジの既定色と同じ明るさで色味だけを変え、無タグ（確認済み）のエッジと見分けられるが、より重要には見えない（#3115）。**色のみ** — 線種は `[sync]` / `[async]` が所有する |
@@ -357,7 +357,7 @@ register を分ける理由は、所属のセマンティクスがアーキタ�
 >
 > `[write]` / `[read]` は usecase→resource の合成エッジに対してのみ自動付与される。**明示的なエッジに手で書かないこと** — 構文上はパーサが受け付けるが、意味（対象 resource の `operations` を write-dominates 分類した結果）は合成エッジに対してしか成立しない。線幅の階層は意図的に `read (1.5) < write (2) < cyclic (2.5)` の順で、循環依存が最も目立つ軸として残るようにしている。
 >
-> `[inferred]` はこの表の他のタグと性質が異なる。`[implicit]` / `[read]` / `[write]` / `[cyclic]` / `[projected]` は描画時に付与され **`.krs` には現れない**が、`[inferred]` は `translate --from db` が**出力ソースに書き込み**、そのまま残る。関連が実在すると確認できたら `[inferred]` を 1 つ消せば確認済みのエッジになる。
+> `[inferred]` はこの表の他のタグと性質が異なる。`[implicit]` / `[read]` / `[write]` / `[projected]` は描画時に、`[cyclic]` はモデルを読み込んだ時点で同期エッジの循環から付与され、どれも **`.krs` には現れない**が、`[inferred]` は `translate --from db` が**出力ソースに書き込み**、そのまま残る。関連が実在すると確認できたら `[inferred]` を 1 つ消せば確認済みのエッジになる。
 >
 > `[projected]` は `[implicit]` と同じ register（描画時付与）で、その鏡像である。`[implicit]` が domain エッジを service 水準へ畳み**上げる**のに対し、`[projected]` は entity 関連を対応先の `table` leaf へ畳み**下げる**。同じキャンバス上の無タグのエッジは `.krs` に記録されたもの（手書き、または宣言 FK からの出力）なので、無タグ = **確認済み**、`[projected]` = **entity 層の断定**と読む。軸は「誰が確認したか」であって「どのツールが書いたか」ではない。
 

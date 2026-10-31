@@ -57,12 +57,13 @@ scope:
 
 ## 既知の対処パターン
 
-- **派生事実はモデル構築時に求める。** 先例は `boundaryMembership` と `nodePathIndex`（Parser の後処理で求め、ImportResolver がマージ後のモデルで求め直す）。#2791 は `KrsEdge.cyclic` を `analyze()` の副作用からこの形に移す計画で、読む側（`edge[cyclic]` の style、layout、routing、draw.io）は diff を外す指定のほかは変えない（Design Doc `docs/design/cyclic-flag-at-model-construction.md`、検討中）。
-- **求める処理は純粋関数にして、警告を出す側と構築する側で共有する。** #2791 の計画では、循環に入る edge の集合と警告を返す純粋関数を 1 つ置き、構築側はその集合から edge にフラグを立て、`analyze()` は警告だけを使う。
+- **派生事実はモデル構築時に求める。** 先例は `boundaryMembership` と `nodePathIndex`（Parser の後処理で求め、ImportResolver がマージ後のモデルで求め直す）。`KrsEdge.cyclic` は #2791 で `analyze()` の副作用からこの形に移した。読む側（`edge[cyclic]` の style、layout、routing、draw.io）は diff を外す指定のほかは変えていない。
+- **求める処理は純粋関数にして、警告を出す側と構築する側で共有する。** `findCyclicDependencies(file)`（`packages/core/src/parser/cyclic-dependencies.ts`）は循環に入る edge の集合と警告を返し、モデルには書き込まない。構築側の `markCyclicEdges` はその集合から edge にフラグを立て、`analyze()` は警告だけを使う。
 
 ## 関連テスト
 
-- （#2791 の実装 PR で追加し、ここにパスを書く）examples 全件と循環を含む fixture で、`analyze` と各 builder を通した後もモデルが parse 直後と deep-equal であることを検査するテスト。新しいパスはこのテストの表に足す。
+- `packages/core/src/resolver/model-immutability.test.ts`: examples 全件と循環を含む fixture で、`analyze` / `collectModelWarnings` / 各 builder を通した後もモデルが parse 直後の `structuredClone` と deep-equal であること。同じ `KrsFile` を `analyze()` の前後で描いても同じ SVG になること。新しいパスはこのテストの `PASSES` 表に足す。
+- `packages/core/src/parser/cyclic-dependencies.test.ts`: 循環を求める関数がモデルに書き込まないこと、ファイルをまたぐ循環がマージ後のモデルで立つこと、diff（system・deploy）が循環の描き方を使わないこと。
 
 ## 派生元 spec
 
