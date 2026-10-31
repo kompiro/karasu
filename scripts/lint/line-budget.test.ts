@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { matchesGlob, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -16,7 +16,6 @@ import { describe, expect, it } from "vitest";
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 const BUDGET_GLOB = "packages/*/src/**/*.{ts,tsx,mts,cts}";
-const SOURCE_EXTENSION = /\.(ts|tsx|mts|cts)$/;
 
 type MaxLinesRule = ["error", { max: number }];
 type Override = {
@@ -53,7 +52,11 @@ function countLines(path: string): number {
   return text.endsWith("\n") ? lines - 1 : lines;
 }
 
+// The files the budget override applies to: its glob minus its `excludeFiles`,
+// and minus `*.d.ts`, which the top-level `ignorePatterns` keeps oxlint from
+// visiting at all.
 function budgetedSources(): string[] {
+  const excluded = budgetIndex < 0 ? [] : (config.overrides[budgetIndex].excludeFiles ?? []);
   return readdirSync(resolve(REPO_ROOT, "packages"), { withFileTypes: true })
     .filter(
       (entry) =>
@@ -62,8 +65,31 @@ function budgetedSources(): string[] {
     .flatMap((entry) =>
       readdirSync(resolve(REPO_ROOT, "packages", entry.name, "src"), { recursive: true })
         .map((path) => `packages/${entry.name}/src/${String(path)}`)
-        .filter((path) => SOURCE_EXTENSION.test(path) && !path.includes("node_modules")),
+        .filter(
+          (path) =>
+            matchesGlob(path, BUDGET_GLOB) &&
+            !path.endsWith(".d.ts") &&
+            !path.includes("node_modules") &&
+            !excluded.some((glob) => matchesGlob(path, glob)),
+        ),
     );
+}
+
+// Directives that switch `max-lines` off for the whole file: a block or line
+// `eslint-disable` / `oxlint-disable` (not `-line` / `-next-line`) whose rule
+// list is empty (every rule) or names `max-lines`. The list may span lines and
+// ends at a `--` description.
+const DISABLE_DIRECTIVE =
+  /\/\*\s*(?:eslint|oxlint)-disable(?![-\w])([\s\S]*?)\*\/|\/\/\s*(?:eslint|oxlint)-disable(?![-\w])([^\n]*)/g;
+
+function disablesMaxLines(text: string): boolean {
+  return [...text.matchAll(DISABLE_DIRECTIVE)].some((match) => {
+    const rules = (match[1] ?? match[2])
+      .split("--")[0]
+      .split(/[\s,]+/)
+      .filter(Boolean);
+    return rules.length === 0 || rules.some((rule) => /(?:^|\/)max-lines$/.test(rule));
+  });
 }
 
 describe("source line budget in .oxlintrc.json", () => {
@@ -96,9 +122,7 @@ describe("source line budget in .oxlintrc.json", () => {
 
   it("is not switched off by a disable comment in a source file", () => {
     const disabled = budgetedSources().filter((path) =>
-      /(?:eslint|oxlint)-disable[^\n]*max-lines/.test(
-        readFileSync(resolve(REPO_ROOT, path), "utf8"),
-      ),
+      disablesMaxLines(readFileSync(resolve(REPO_ROOT, path), "utf8")),
     );
     expect(
       disabled,

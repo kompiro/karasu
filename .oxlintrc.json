@@ -60,10 +60,7 @@
     {
       "files": ["packages/*/src/**/*.{ts,tsx,mts,cts}"],
       "excludeFiles": [
-        "**/*.test.ts",
-        "**/*.test.tsx",
-        "**/*.spec.ts",
-        "**/*.spec.tsx",
+        "**/*.{test,spec}.{ts,tsx,mts,cts}",
         "**/*.generated.ts",
         "packages/core/src/builtins/examples.ts"
       ],
