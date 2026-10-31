@@ -9,3 +9,5 @@ Remove the deprecated compile entry points from `@karasu-tools/core` (#3346). `c
 - `compileProject(entryPath, fs, viewPath?, diagramType?, selectedDeployId?, displayMode?)` → `compileProject(entryPath, fs, { viewPath, diagramType, selectedDeployId, displayMode })`
 - `compileOrgView(krsSource, styleSource?, orgPath?)` → `compile(krsSource, { diagramType: "org", styleSource, viewPath: orgPath })`
 - `compileProjectOrgView(entryPath, fs, orgPath?, displayMode?)` → `compileProject(entryPath, fs, { diagramType: "org", viewPath: orgPath, displayMode })`
+
+The replacements return the full `CompileResult` union rather than `OrgCompileResult` or `SystemCompileResult | DeployCompileResult`, so narrow on `result.diagramType` before reading view-specific fields such as `nodePathIndex`.

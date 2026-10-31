@@ -37,7 +37,7 @@ pnpm run build --workspace=packages/core
 - [x] `compile(src, { diagramType: "org" })` → `result.diagramType === "org"` かつ `nodePathIndex` が存在する
 > ✅ Automated — `packages/core/src/index.test.ts`（unit）
 
-- [x] `compileProject(entry, fs, { diagramType: "org", orgPath: [], displayMode: "icon" })` が正常に SVG を返す
+- [x] `compileProject(entry, fs, { diagramType: "org", viewPath: [], displayMode: "icon" })` が正常に SVG を返す
 > ✅ Automated — `packages/core/src/index.test.ts`（unit）
 
 - [x] org モードで style-conflict 警告が出ない（builtin + icon theme の組み合わせ）

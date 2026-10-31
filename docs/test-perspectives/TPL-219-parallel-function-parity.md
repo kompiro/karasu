@@ -50,7 +50,7 @@ karasu には「ビューごとに分かれた似た形の関数群」が複数�
 
 これらは **シグネチャが似ているが内部実装は独立している** ことが多い。片方の関数に新しい parameter（`displayMode`, `styleSource`, `systemSheetCount` など）を渡せるよう拡張したとき、**もう一方は古いまま** になりがち。型として optional なら呼び出し側はコンパイルが通るので、**「渡しているのに無視されている」** タイプの silent failure になる。
 
-#219 では `buildDrillDownSvg` 系が `styleSource` を受け取りつつ内部で使っていなかった（API 対称性のためだけに宣言）。#160 では `compileProjectOrgView` が `analyze()` に `systemSheetCount` を渡し忘れていた（system view の compile では渡している）。この並列 entry point は #3346 で削除し、org view も `compileProject(entry, fs, { diagramType: "org" })` の 1 本に畳んだ。どちらも同じ「parallel implementation の drift」パターン。
+#219 では `buildDrillDownSvg` 系が `styleSource` を受け取りつつ内部で使っていなかった（API 対称性のためだけに宣言）。#160 では `compileProjectOrgView` が `analyze()` に `systemSheetCount` を渡し忘れていた（system view の compile では渡している）。どちらも同じ「parallel implementation の drift」パターン。`compileProjectOrgView` は #3346 で削除し、org view も `compileProject(entry, fs, { diagramType: "org" })` の 1 本に畳んだ。
 
 ## 想定される失敗モード
 
