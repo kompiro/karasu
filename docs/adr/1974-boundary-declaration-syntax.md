@@ -10,7 +10,7 @@ scope:
   packages: [core, app]
   concerns: []
 assumptions:
-  - "symbol: packages/core/src/parser/parser.ts :: parseBoundaryBlock"
+  - "symbol: packages/core/src/parser/org-parser.ts :: parseBoundaryBlock"
   # Renamed by #2178: the index became 1:N (`buildBoundaryMembership`). The
   # decision text below is left as written — the refine is recorded separately
   # (#2161), and only this code pointer is retargeted.
