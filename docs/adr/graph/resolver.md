@@ -19,6 +19,7 @@ flowchart TD
     ADR_2410["ADR-2410<br/>import 結合の存在検査は未解決 import が残る file では判定しない（inva..."]
     ADR_2442["ADR-2442<br/>owns の存在検査は kind を問わない（system は kind 拒否として報告し、i..."]
     ADR_2596["ADR-2596<br/>nodePathIndex はマージ後のモデルで再構築し、多重判定は宣言単位で行う"]
+    ADR_2791["ADR-2791<br/>`KrsEdge.cyclic` をモデル構築時に導出し、`analyze()` を読むだけの..."]
   end
   ADR_351["ADR-351<br/>[renderer] resource shape 自動推論とインフラノード Icon Mode 対応"]
   ADR_496["ADR-496<br/>[parser] ブロック内エッジの暗黙 source 簡略記法"]
@@ -45,6 +46,7 @@ flowchart TD
   ADR_517 --> ADR_477
   ADR_702 --> ADR_316
   ADR_2165 --> ADR_1314
+  ADR_2791 -.supersedes.-> ADR_287
   ADR_2088 -.supersedes.-> ADR_2075
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
@@ -54,7 +56,7 @@ flowchart TD
   classDef not_adopted fill:#e2e3e5,stroke:#6c757d,color:#383d41,stroke-dasharray:3 3
   classDef ghost fill:#f5f5f5,stroke:#adb5bd,color:#6c757d,stroke-dasharray:2 2
   class ADR_237 accepted
-  class ADR_287 accepted
+  class ADR_287 superseded
   class ADR_316 accepted
   class ADR_477 accepted
   class ADR_1381 accepted
@@ -66,6 +68,7 @@ flowchart TD
   class ADR_2410 accepted
   class ADR_2442 accepted
   class ADR_2596 accepted
+  class ADR_2791 accepted
   class ADR_351 ghost
   class ADR_496 ghost
   class ADR_517 ghost
