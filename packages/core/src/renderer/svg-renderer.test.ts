@@ -15,7 +15,6 @@ import { assignEdgeCanonicalIds } from "../resolver/canonical-id.js";
 import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
-import { analyze } from "../resolver/warnings.js";
 import { loadAndRegisterIcon } from "./svg-icon-loader.js";
 import type { DisplayMode } from "./layout.js";
 import { resetRegistryToBuiltins } from "./shapes.js";
@@ -942,10 +941,10 @@ system Test {
 });
 
 describe("cyclic edge rendering", () => {
-  function renderWithAnalysis(krs: string): string {
+  // Parse marks the cycle (#2791); no `analyze()` call is needed before rendering.
+  function renderParsed(krs: string): string {
     const parseResult = Parser.parse(krs);
     const sheets = [getBuiltinStyleSheet()];
-    analyze(parseResult.value, sheets);
     const styles = resolveStyles(parseResult.value.systems, sheets);
     const viewSlice = extractView(parseResult.value.systems, []);
     return render(viewSlice, styles);
@@ -960,7 +959,7 @@ system S {
   B -> A
 }
 `;
-    const svg = renderWithAnalysis(krs);
+    const svg = renderParsed(krs);
     expect(svg).toContain('class="krs-edge--cyclic"');
   });
 
@@ -972,7 +971,7 @@ system S {
   A -> B
 }
 `;
-    const svg = renderWithAnalysis(krs);
+    const svg = renderParsed(krs);
     expect(svg).not.toContain('class="krs-edge--cyclic"');
   });
 
@@ -985,7 +984,7 @@ system S {
   B -> A
 }
 `;
-    const svg = renderWithAnalysis(krs);
+    const svg = renderParsed(krs);
     expect(svg).toContain("#EF4444");
   });
 

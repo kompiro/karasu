@@ -101,6 +101,16 @@ function assembleDiffSheets(
 }
 
 /**
+ * Every style resolution a diff makes leaves the `cyclic` virtual tag off
+ * (#2791). Diff draws what changed: a removed edge would bring the before
+ * side's cycle verdict while diff reports only the after side's warnings, and
+ * the builtin cyclic red is the diff's "removed" red, so an unchanged cyclic
+ * edge would read as removed. `diffEdgeArray` drops the flag from the slice for
+ * the same reason; this covers the colour, which resolves from model edges.
+ */
+const NO_CYCLIC_TAG = { cyclicTag: false } as const;
+
+/**
  * The warnings a diff reports: the after model's, collected once from the
  * model rather than per rendered view (#2879). Before is the side being
  * replaced, so its warnings are not reported; this is the set
@@ -318,6 +328,7 @@ export async function compileSystemDiff(
     undefined,
     diffed.slice.childEdges,
     afterResolved.krsFile.nodePathRanking,
+    NO_CYCLIC_TAG,
   );
 
   // A removed card is drawn with the style it had, by its own path (#3197).
@@ -334,6 +345,7 @@ export async function compileSystemDiff(
     undefined,
     undefined,
     beforeResolved.krsFile.nodePathRanking,
+    NO_CYCLIC_TAG,
   );
   for (const [key, meta] of diffed.nodesByPath) {
     if (meta.state !== "removed" || styles.nodesByPath.has(key)) continue;
@@ -663,6 +675,9 @@ export async function compileDeployDiff(
     [...afterResolved.krsFile.services, ...afterResolved.krsFile.domains],
     undefined,
     afterResolved.krsFile.nodePathRanking,
+    // The deploy canvas draws its unit-to-unit edges with the style of the
+    // service edge they stand for, looked up by from / to / kind (#2791).
+    NO_CYCLIC_TAG,
   );
 
   const { nodeDiffState, edgeDiffState } = toDiffStateMaps(diffed);
@@ -750,6 +765,10 @@ export async function compileOrgDiff(
     resolveSheets,
     undefined,
     afterResolved.krsFile.organizations,
+    undefined,
+    undefined,
+    undefined,
+    NO_CYCLIC_TAG,
   );
 
   const { nodeDiffState, edgeDiffState } = toDiffStateMaps(diffed);

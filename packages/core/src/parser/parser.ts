@@ -62,6 +62,7 @@ import {
   buildScopedBoundaryMembership,
   buildNodePathIndex,
 } from "./reference-validation.js";
+import { markCyclicEdges } from "./cyclic-dependencies.js";
 
 /**
  * Which kinds may host a scoped `boundary` block (#2036).
@@ -439,6 +440,12 @@ export class Parser {
     const topLevelMembership = buildBoundaryMembership(file);
     file.boundaryMembership = topLevelMembership.membership;
     this.diagnostics.push(...topLevelMembership.diagnostics);
+    // A sync dependency cycle is a fact about the model, so it is derived here
+    // with the other indexes rather than stamped later by `analyze()`: a read
+    // pass that wrote the flag made the same `KrsFile` render differently
+    // before and after it ran (#2791, TPL-2791). The ImportResolver re-derives
+    // it on the merged model, where a cycle split across files appears.
+    markCyclicEdges(file);
     const scopedMembership = buildScopedBoundaryMembership([
       ...file.systems,
       ...file.services,
