@@ -5,7 +5,7 @@
 - **PR**: (P2b-B — axis wiring)
 - **設計 (ADR)**: [ADR-1974](../adr/1974-boundary-declaration-syntax.md)（P2b `boundary` 宣言構文）
 - **Related TPLs**: [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（新 group-by 軸を全 `groupBy` call site へ通す — 一つでも漏れると軸が黙って落ちる）, [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（全要素ちょうど一度配置 + 参照エッジ端点保持）
-- **対象**: `packages/core/src/renderer/layout.ts` / `svg-renderer.ts` / `index.ts` / `all-layers-svg.ts` / `drill-down-svg.ts`、`packages/app`（`useSystemView` / `useAppViews` / `PreviewColumn` / preview-context 配線）
+- **対象**: `packages/core/src/renderer/layout.ts` / `canvas-grouping.ts` / `svg-renderer.ts` / `index.ts` / `all-layers-svg.ts` / `drill-down-svg.ts`、`packages/app`（`useSystemView` / `useAppViews` / `PreviewColumn` / preview-context 配線）
 
 ## 概要
 

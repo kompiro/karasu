@@ -10,7 +10,7 @@ scope:
 assumptions:
   - "symbol: packages/core/src/renderer/category-collapse.ts :: collapseCategories"
   - "symbol: packages/core/src/renderer/group-collapse.ts :: collapseGroups"
-  - "file: packages/core/src/renderer/layout.ts"
+  - "file: packages/core/src/renderer/canvas-grouping.ts"
 ---
 
 # ADR-1872: category collapse は境界エッジを drop せず stub に re-target する
