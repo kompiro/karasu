@@ -407,10 +407,13 @@ system ECPlatform {
 
   it("wraps orphans in an Unassigned frame even when no real system is present", () => {
     const src = `service ECommerce {
-  usecase ManageOrders { label "注文管理" }
+  domain Orders {
+    usecase ManageOrders { label "注文管理" }
+  }
 }`;
     const result = compile(src);
     if (result.diagramType !== "system") throw new Error("expected system result");
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
     expect(result.svg).not.toContain("No diagram");
     expect(result.svg).not.toContain("No nodes to render");
     expect(result.svg).toContain("Unassigned");
