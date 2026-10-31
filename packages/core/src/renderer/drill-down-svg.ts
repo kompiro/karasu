@@ -9,13 +9,8 @@ import { withUnassignedSystem, withoutUnassignedSegment } from "../view/unassign
 import { nodePathRefId } from "../parser/node-path.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
-import {
-  render,
-  sanitizeId,
-  anchorId,
-  cardLinkKey,
-  legendScopeForLogicalSlice,
-} from "./svg-renderer.js";
+import { render, sanitizeId, anchorId, legendScopeForLogicalSlice } from "./svg-renderer.js";
+import { cardLinkKey } from "./node-card.js";
 import {
   buildGroupLabelIndex,
   buildTeamLabelIndex,
