@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { generatedGlobs, readAdrPaths } from "../adr/generated.ts";
 import {
+  ADR_GENERATED_GLOBS,
   adrEditIsRecordOnly,
   type ChangedFile,
   type Hunk,
@@ -16,6 +18,7 @@ import {
   packageJsonTier,
   parseDiff,
   pathTier,
+  regenerationWaivesRecord,
   UNREADABLE_PATH,
   unquoteGitPath,
 } from "./tier.ts";
@@ -300,6 +303,20 @@ describe("classifyChange", () => {
     it("is Low for a new ADR and the generated files", () => {
       expect(tierOf(added(ADR), modified("docs/adr/effective.md"))).toBe("low");
       expect(tierOf(added(ADR), modified("docs/adr/graph/build.md"))).toBe("low");
+    });
+
+    it("is Low for a PR that changes only the generated files (Issue #3416)", () => {
+      expect(
+        tierOf(
+          modified("docs/adr/effective.md"),
+          added("docs/adr/graph/new-topic.md"),
+          deleted("docs/adr/graph/old-topic.md"),
+        ),
+      ).toBe("low");
+    });
+
+    it("stays Low for a new ADR once ADR PRs stop carrying the generated files", () => {
+      expect(tierOf(added(ADR))).toBe("low");
     });
 
     it("is Medium for README, TEMPLATE and a deleted ADR", () => {
@@ -707,6 +724,57 @@ describe("isLinkInsert", () => {
     expect(judge(editAt(8, `- **関連 ADR**: ${OLD}、${L}  `))).toBe(false);
     expect(judge(insertAt(9, `- **設計 (ADR)**: ${L} を参照`))).toBe(false);
     expect(judge(insertAt(9, `- **設計 (ADR)**: ${L}`, "- **手動確認**:"))).toBe(false);
+  });
+});
+
+describe("ADR_GENERATED_GLOBS", () => {
+  it("names the same paths as adr.config.json paths.outputs", () => {
+    const config = readAdrPaths(readFileSync(resolve(REPO_ROOT, "adr.config.json"), "utf-8"));
+    expect([...ADR_GENERATED_GLOBS].sort()).toEqual(generatedGlobs(config));
+  });
+});
+
+describe("regenerationWaivesRecord", () => {
+  const config = readFileSync(resolve(REPO_ROOT, "adr.config.json"), "utf-8");
+  const waives = (
+    nameStatus: string,
+    extra: Partial<Parameters<typeof regenerationWaivesRecord>[0]> = {},
+  ) =>
+    regenerationWaivesRecord({
+      tier: "low",
+      baseConfig: config,
+      headConfig: config,
+      nameStatus,
+      ...extra,
+    });
+  const regeneration = "M\0docs/adr/effective.md\0A\0docs/adr/graph/x.md\0";
+
+  it("waives the record for a Low PR that changes only generated files", () => {
+    expect(waives(regeneration)).toBe(true);
+  });
+
+  it("keeps the record for a PR that also changes an ADR", () => {
+    expect(waives(`${regeneration}A\0docs/adr/3416-x.md\0`)).toBe(false);
+  });
+
+  it("keeps the record for a PR that changes no generated file", () => {
+    expect(waives("A\0docs/adr/3416-x.md\0")).toBe(false);
+  });
+
+  it("keeps the record above Low", () => {
+    expect(waives(regeneration, { tier: "medium" })).toBe(false);
+  });
+
+  it("keeps the record when either config is missing or unreadable", () => {
+    expect(waives(regeneration, { baseConfig: null })).toBe(false);
+    expect(waives(regeneration, { headConfig: "{" })).toBe(false);
+  });
+
+  it("keeps the record when the outputs differ between base and head", () => {
+    const moved = JSON.stringify({
+      paths: { adrDir: "docs/adr", outputs: { effective: "effective.md" } },
+    });
+    expect(waives(regeneration, { headConfig: moved })).toBe(false);
   });
 });
 

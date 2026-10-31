@@ -27,6 +27,7 @@
     "adr:extract": "adr extract",
     "adr:visualize": "adr visualize",
     "adr:regenerate": "adr regenerate",
+    "adr:regenerate-pr": "tsx scripts/adr/regenerate-pr.ts",
     "adr:check-assumptions": "adr check-assumptions",
     "adr:check-permalinks": "adr check-permalinks",
     "lint:e2e-page-goto": "tsx scripts/lint/no-direct-page-goto.ts",
