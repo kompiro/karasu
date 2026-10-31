@@ -73,6 +73,11 @@ From the Extensions view, search for **karasu**, or from the command line:
 code --install-extension karasu-tools.karasu-vscode
 ```
 
+Stable versions ship once a month. To get changes every week before they
+reach stable, choose **Switch to Pre-Release Version** on the extension's page
+in the Extensions view. Pre-releases are built from `main` and carry the build
+date in their version (for example `0.5.2026110401`).
+
 > The Marketplace listing goes live with the karasu launch — if the link or
 > command above is not yet available, the extension is still being published.
 
