@@ -135,6 +135,12 @@ export class Parser {
     range: (start, end) => this.range(start, end),
     pushDiagnostic: (diagnostic) => this.diagnostics.push(diagnostic),
     previous: () => this.tokens[this.pos - 1],
+    discardDiagnostics: (parse) => {
+      const before = this.diagnostics.length;
+      const result = parse();
+      this.diagnostics.length = before;
+      return result;
+    },
   };
 
   /**

@@ -79,7 +79,7 @@
     { "files": ["packages/core/src/compile/compile.ts"], "rules": { "max-lines": ["error", { "max": 1087 }] } },
     { "files": ["packages/core/src/formatter/formatter.ts"], "rules": { "max-lines": ["error", { "max": 1045 }] } },
     { "files": ["packages/core/src/fs/import-resolver.ts"], "rules": { "max-lines": ["error", { "max": 1397 }] } },
-    { "files": ["packages/core/src/parser/parser.ts"], "rules": { "max-lines": ["error", { "max": 2540 }] } },
+    { "files": ["packages/core/src/parser/parser.ts"], "rules": { "max-lines": ["error", { "max": 2546 }] } },
     { "files": ["packages/core/src/parser/reference-validation.ts"], "rules": { "max-lines": ["error", { "max": 1082 }] } },
     { "files": ["packages/core/src/parser/style-parser.ts"], "rules": { "max-lines": ["error", { "max": 732 }] } },
     { "files": ["packages/core/src/renderer/crossing-marks.ts"], "rules": { "max-lines": ["error", { "max": 717 }] } },

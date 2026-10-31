@@ -25,4 +25,9 @@ export interface ParseContext extends TokenCursor {
   pushDiagnostic(diagnostic: Diagnostic): void;
   /** The token consumed last. */
   previous(): Token;
+  /**
+   * Run `parse` and drop every diagnostic it pushed, for recovery that consumes
+   * input whose complaints would point at the wrong fix.
+   */
+  discardDiagnostics<T>(parse: () => T): T;
 }

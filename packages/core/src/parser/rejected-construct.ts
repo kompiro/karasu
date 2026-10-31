@@ -27,7 +27,9 @@ export function rejectConstruct<K extends DiagnosticCode>(
 /**
  * Reject a property written on a kind that does not take it. `readValue` is
  * the property's own value reader, so the value is consumed as an accepting
- * kind would consume it and the diagnostic spans keyword through value.
+ * kind would consume it, and the diagnostic spans the keyword through the end
+ * of the value. What the reader reports about the value is dropped: a value
+ * for a property that cannot be written here has nothing to fix.
  */
 export function rejectProperty(
   ctx: ParseContext,
@@ -36,9 +38,8 @@ export function rejectProperty(
   readValue: (keyword: Token) => unknown,
 ): void {
   const keyword = ctx.advance();
-  readValue(keyword);
-  rejectConstruct(ctx, ctx.range(keyword.loc, ctx.previous().loc), "property-not-for-node-kind", {
-    property,
-    nodeKind,
-  });
+  ctx.discardDiagnostics(() => readValue(keyword));
+  const last = ctx.previous() ?? keyword;
+  const loc = ctx.range(keyword.loc, last.end ?? last.loc);
+  rejectConstruct(ctx, loc, "property-not-for-node-kind", { property, nodeKind });
 }
