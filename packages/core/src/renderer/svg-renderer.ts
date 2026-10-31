@@ -244,7 +244,7 @@ export function render(
   ownerIndex?: Map<string, string>,
   displayMode?: DisplayMode,
   /**
-   * Card → anchor of the level it drills to. Keyed by {@link cardLinkKey} for a
+   * Card → anchor of the level it drills to. Keyed by `cardLinkKey` (node-card.ts) for a
    * card with a node path, by bare id otherwise (#2933).
    */
   childLevelLinks?: Map<string, string>,
