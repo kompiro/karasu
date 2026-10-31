@@ -14,7 +14,7 @@ assumptions:
   - "symbol: packages/core/src/lexer/lexer.ts :: readNumber"
   - "symbol: packages/core/src/lexer/lexer.ts :: isBareWord"
   - "symbol: packages/core/src/parser/kebab-name.ts :: isWordToken"
-  - "symbol: packages/core/src/parser/parser.ts :: readAnnotationParamValue"
+  - "symbol: packages/core/src/parser/annotation-parser.ts :: readAnnotationParamValue"
   - "symbol: packages/core/src/formatter/formatter.ts :: FORMAT_BLOCKING_CODES"
   - "grep: packages/core/src/formatter/formatter.ts :: \"annotation-param-value-unreadable\""
   - "grep: packages/core/src/formatter/formatter.ts :: \"annotation-param-conflict\""
