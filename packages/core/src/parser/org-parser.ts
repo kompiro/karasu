@@ -22,8 +22,9 @@ import type { ParseContext } from "./parse-context.js";
 
 // ─── Organization ──────────────────────────────────────────────────────────
 // The organization view's blocks (organization, team, member), plus the two
-// cross-cutting groupings declared alongside it (boundary, facet). Free
-// functions over the parse context (#3441).
+// groupings that cut across views: `boundary` (top level, or scoped inside a
+// block) and `facet` (top level only). Free functions over the parse context
+// (#3441).
 
 export function parseOrganizationBlock(ctx: ParseContext): OrganizationBlock {
   const start = ctx.advance(); // organization
