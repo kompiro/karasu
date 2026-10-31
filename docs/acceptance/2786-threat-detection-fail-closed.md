@@ -12,7 +12,7 @@
 - **対象ファイル**:
   - `.github/workflows/dependabot-triage.md` / `.github/workflows/security-alert-sweep.md`（宣言）
   - `.github/workflows/*.lock.yml`（`gh aw compile` の生成物。実行されるのはこちら）
-  <!-- absent-path-next-line: deleted with the gh-aw workflows in #3421 (ADR-3421), named as history -->
+  <!-- absent-path-next-line: deleted with the gh-aw workflows in #3423 (ADR-3421), named as history -->
   - `scripts/ci/agentic-workflow-safety.test.ts`（posture と再生成忘れのガード）
 
 > 安全網が働いていることを保証しているのは、detection job が `success` を返したという事実ではない。
