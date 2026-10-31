@@ -9,6 +9,7 @@ applicable_to:
   - "path の形に省略（system の段・擬似 system の段・in-place 展開の親）を入れる・変えるとき"
 known_consumers:
   - view-extract
+  - view-path
   - compile-node-metadata
   - app-breadcrumbs
   - chat-drill-level

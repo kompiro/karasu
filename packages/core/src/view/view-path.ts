@@ -15,10 +15,10 @@ export interface ResolvedContainerChain {
  * Walk `path` to its container node, returning the ancestor chain (the
  * container is the last element) or `null` when the path does not resolve.
  *
- * This is the one reader of a {@link ViewPath} (#3113): `extractView` and
- * `extractEntityView` (both in `view-extract.ts`) and the app's breadcrumb and
- * chat-level lookups all call it, so a path lands on the same node whichever of
- * them reads it.
+ * This is the one reader of a {@link ViewPath} (#3113): `extractView`
+ * (`view-extract.ts`), `extractEntityView` (`entity-relations.ts`) and the app's
+ * breadcrumb and chat-level lookups all call it, so a path lands on the same
+ * node whichever of them reads it.
  *
  * A path with no system segment names a top-level node first, because that is
  * the only node the writers (`nodePathIndex`, the root canvas's

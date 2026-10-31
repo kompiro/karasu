@@ -4,7 +4,7 @@
 - **関連 Issue**: [#1513](https://github.com/kompiro/karasu/issues/1513)
 - **関連 ADR**: [ADR-1513](../adr/1513-legend-drill-down-scope.md)
 - **関連 TPL**: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md), [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)
-- **対象ファイル**: `packages/core/src/parser/parser.ts`,
+- **対象ファイル**: `packages/core/src/parser/legend-parser.ts`,
   `packages/core/src/types/ast.ts`, `packages/core/src/renderer/svg-builder.ts`,
   `packages/core/src/renderer/{svg-renderer,drill-down-svg,all-layers-svg}.ts`,
   `packages/core/src/index.ts`

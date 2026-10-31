@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { Parser, LOGICAL_KEYWORDS } from "../parser/parser.js";
+import { Parser } from "../parser/parser.js";
+import { LOGICAL_KEYWORDS } from "../parser/parser-keywords.js";
 import { KRS_KEYWORD_NAMES } from "../lexer/lexer.js";
 import { REFERENCE_DATA } from "./reference-data.js";
 

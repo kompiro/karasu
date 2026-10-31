@@ -227,9 +227,9 @@ export interface SystemFrameEdges {
 /**
  * Build an empty {@link ViewSlice}. Callers that already resolved the
  * model-level resource maps pass them in; the rest default to empty maps.
- * Single-sources the empty-slice shape shared by `extractView` and
- * `extractEntityView` (`view-extract.ts`) so a new field cannot be forgotten
- * in one of them.
+ * Single-sources the empty-slice shape shared by `extractView`
+ * (`view-extract.ts`) and `extractEntityView` (`entity-relations.ts`) so a new
+ * field cannot be forgotten in one of them.
  */
 export function emptySlice(
   resourceLabelMap: ReadonlyMap<string, string> = new Map(),

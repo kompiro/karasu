@@ -9,7 +9,7 @@ type: product
 - **設計 (ADR)**: ADR-2917（[#2917](https://github.com/kompiro/karasu/issues/2917) の Design Doc PR #2920 から、実装マージ後に昇格する）
 - **Related TPLs**: [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md)（区別に要る次元を Map の key に含める。AC-1・AC-4・AC-5）、[TPL-2920](../test-perspectives/TPL-2920-duplicate-element-id-on-one-canvas-names-its-landing.md)（同じ要素 id が 2 つ描かれる面では着地点を決めて記録し、1 ノードを指す消費側には path を渡す。AC-2・AC-6・AC-7）、[TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md)（勝者規則は変えない。AC-7）、[TPL-2818](../test-perspectives/TPL-2818-cross-view-handover-carries-receiver-id-space.md)（`data-node-path` は全論理ビューで同じ形。AC-6）
 - **対象ファイル**:
-  - `packages/core/src/renderer/layout.ts`（`layoutMultipleSystems` の merge key・ループ内 lookup・束ね・cross-system 端点）
+  - `packages/core/src/renderer/layout-multi-system.ts`（`layoutMultipleSystems` の merge key・ループ内 lookup・束ね）、`packages/core/src/renderer/cross-system-edges.ts`（cross-system 端点）
   - `packages/core/src/renderer/layout-types.ts`（`LayoutNode.path`・`LayoutResult.nodeIdentity`）
   - `packages/core/src/renderer/svg-renderer.ts`（要素 id の取り方と `data-node-path`）
   - `packages/core/src/parser/node-path.ts`（`parseNodePathRefId`）
