@@ -11,7 +11,7 @@ scope:
     - core
     - app
 assumptions:
-  - "symbol: packages/core/src/view/view-extract.ts :: resolveContainerChain"
+  - "symbol: packages/core/src/view/view-path.ts :: resolveContainerChain"
   - "symbol: packages/core/src/view/unassigned-system.ts :: isUnassignedSystem"
   - "symbol: packages/core/src/index.ts :: resolveContainerChain"
   - "symbol: packages/app/src/hooks/useBreadcrumbs.ts :: resolveContainerChain"

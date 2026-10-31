@@ -3,7 +3,7 @@
  * row centering, total-dimension computation, and the empty-canvas container
  * fallback.
  */
-import type { ViewSlice } from "../view/view-extract.js";
+import type { ViewSlice } from "../view/view-slice.js";
 import type { LayoutNode, LayoutEdge, ContainerRect, DisplayMode } from "./layout-types.js";
 import { CONTAINER_PADDING, GHOST_MARGIN, getLayoutConstants } from "./layout-constants.js";
 

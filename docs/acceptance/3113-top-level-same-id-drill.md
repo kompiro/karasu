@@ -9,7 +9,7 @@ type: product
 - **設計 (ADR)**: [ADR-3113](../adr/3113-top-level-same-id-drill.md)
 - **Related TPLs**: [TPL-3113](../test-perspectives/TPL-3113-written-path-resolves-to-its-node.md)（書いた path が同じノードに戻る。AC-1〜AC-4）、[TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md)（静的 SVG と SPA で同じ anchor が同じノードに着く。AC-2）、[TPL-1160](../test-perspectives/TPL-1160-top-level-orphans.md)（トップレベルの宣言を全消費側で扱う。AC-3）、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（並行する読み手を 1 つにする。AC-3）
 - **対象ファイル**:
-  - `packages/core/src/view/view-extract.ts`（`resolveContainerChain`）
+  - `packages/core/src/view/view-path.ts`（`resolveContainerChain`）
   - `packages/core/src/view/unassigned-system.ts`（`isUnassignedSystem`）
   - `packages/app/src/hooks/useBreadcrumbs.ts`
   - `packages/app/src/hooks/useChatSession/prompt.ts`（`detectDrillDownLevel`）

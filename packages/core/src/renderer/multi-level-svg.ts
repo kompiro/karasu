@@ -1,5 +1,5 @@
 import type { KrsNode } from "../types/ast.js";
-import type { ViewPath } from "../view/view-extract.js";
+import type { ViewPath } from "../view/view-slice.js";
 import { DY_CENTER, el, escapeXml } from "./svg-builder.js";
 import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palette.js";
 

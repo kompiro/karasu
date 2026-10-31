@@ -31,7 +31,8 @@ import type { DisplayMode } from "../renderer/layout.js";
 import { type DiagramTheme, resolvePalette } from "../renderer/palette.js";
 import { renderOrgView as _renderOrgView } from "../renderer/org-renderer.js";
 import { renderDeploy } from "../renderer/deploy-renderer.js";
-import { extractView, type ViewPath } from "../view/view-extract.js";
+import { extractView } from "../view/view-extract.js";
+import type { ViewPath } from "../view/view-slice.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
@@ -40,10 +41,9 @@ import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "../builtins/de
 import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
 import type { EmptyStateLabels } from "../renderer/empty-state-labels.js";
 
-import { diffSystemViewSlices } from "../diff/view-diff.js";
+import { diffSystemViewSlices, type EdgeDiffMeta, type NodeDiffMeta } from "../diff/view-diff.js";
 import { diffDeployViewSlices } from "../diff/deploy-view-diff.js";
 import { diffOrgViewSlices } from "../diff/org-view-diff.js";
-import type { NodeDiffMeta, EdgeDiffMeta } from "../diff/view-diff.js";
 import { injectDiffStyle } from "../diff/diff-style.js";
 import { nodePathRefId, parseNodePathRefId } from "../parser/node-path.js";
 import { collectModelWarnings } from "../resolver/model-warnings.js";

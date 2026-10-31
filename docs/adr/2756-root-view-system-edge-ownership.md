@@ -10,7 +10,7 @@ scope:
     - core
 assumptions:
   - "symbol: packages/core/src/view/view-extract.ts :: deriveCanvasEdges"
-  - "symbol: packages/core/src/view/view-extract.ts :: SystemFrameEdges"
+  - "symbol: packages/core/src/view/view-slice.ts :: SystemFrameEdges"
   - "symbol: packages/core/src/diff/view-diff.ts :: diffSystemFrames"
   - "grep: packages/core/src/renderer/svg-renderer.ts :: edgeLayout\\.diffState"
 ---

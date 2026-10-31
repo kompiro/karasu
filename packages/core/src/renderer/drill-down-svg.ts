@@ -3,7 +3,7 @@ import type { ResolvedStyleWarning, StyleSheet } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import type { DisplayMode } from "./layout-types.js";
 import { createViewExtractor, extractEntityView } from "../view/view-extract.js";
-import type { ViewPath } from "../view/view-extract.js";
+import type { ViewPath } from "../view/view-slice.js";
 import { withUnassignedSystem, withoutUnassignedSegment } from "../view/unassigned-system.js";
 import { nodePathRefId } from "../parser/node-path.js";
 import { extractOrgView } from "../view/org-view-extract.js";

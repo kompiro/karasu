@@ -62,10 +62,10 @@ import { type DiagramTheme } from "../renderer/palette.js";
 import { renderOrgView as _renderOrgView } from "../renderer/org-renderer.js";
 import { collectLegendUsage } from "../legend/usage.js";
 import { resolveFacetOverlay, knownFacetIds } from "../renderer/facet-overlay.js";
-import { buildFacetOverview } from "../renderer/facet-overview.js";
-import type { FacetOverviewEntry } from "../renderer/facet-overview.js";
+import { buildFacetOverview, type FacetOverviewEntry } from "../renderer/facet-overview.js";
 import { renderDeploy } from "../renderer/deploy-renderer.js";
-import { extractView, type ViewPath } from "../view/view-extract.js";
+import { extractView } from "../view/view-extract.js";
+import type { ViewPath, ViewSlice } from "../view/view-slice.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
@@ -670,7 +670,7 @@ export function compileProject(
 // ---------------------------------------------------------------------------
 
 function buildNodeMetadata(
-  viewSlice: import("../view/view-extract.js").ViewSlice,
+  viewSlice: ViewSlice,
   serviceIdsWithDeploy?: Set<string>,
   ownerIndex?: Map<string, string>,
   teamLabels?: ReadonlyMap<string, string>,

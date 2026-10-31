@@ -19,7 +19,7 @@ scope:
     - cli
 assumptions:
   - "symbol: packages/core/src/view/view-extract.ts :: projectStoreRelations"
-  - "symbol: packages/core/src/view/view-extract.ts :: containerCanvasEdges"
+  - "symbol: packages/core/src/view/anchored-edges.ts :: containerCanvasEdges"
   - "symbol: packages/core/src/view/coverage-extract.ts :: diffStoreRelations"
   - "symbol: packages/core/src/translate/db.ts :: collectRootRelations"
   - "grep: packages/core/src/builtins/default-style.ts :: edge\\[projected\\]"

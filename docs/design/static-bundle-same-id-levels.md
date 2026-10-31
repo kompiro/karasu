@@ -7,7 +7,7 @@
   - 関連 ADR: [ADR-2917](../adr/2917-multi-system-root-same-id-nodes.md)（同名ノードを両方描き、要素の id は bare id のまま、1 ノードを指す消費側は path を持つ。anchor 文法を path にする案 B は先送り）, [ADR-1827](../adr/1827-permalink-deep-element.md)（anchor 文法は `anchorId` 1 つ。静的 SVG と SPA の parity）, [ADR-2088](../adr/2088-node-reference-path-notation.md)（bare id は集合を指す）, [ADR-110](../adr/110-permanent-link.md)（`nodePathIndex` が bare id を path に解決する）
   - 関連 spec: `docs/spec/permalink.md`（2 つの面が同じ anchor を解決する）, `docs/spec/diagnostics.md`（`node-id-multiple-locations` の勝者規則）
   - 関連 TPL: [TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md), [TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md), [TPL-2920](../test-perspectives/TPL-2920-duplicate-element-id-on-one-canvas-names-its-landing.md), [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)
-  - コード: `packages/core/src/renderer/drill-down-svg.ts`, `packages/core/src/renderer/all-layers-svg.ts`, `packages/core/src/renderer/svg-renderer.ts`, `packages/core/src/view/view-extract.ts`（`resolveContainerChain`）
+  - コード: `packages/core/src/renderer/drill-down-svg.ts`, `packages/core/src/renderer/all-layers-svg.ts`, `packages/core/src/renderer/svg-renderer.ts`, `packages/core/src/view/view-path.ts`（`resolveContainerChain`）
 
 ## 背景・課題
 
