@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -15,6 +15,8 @@ import { describe, expect, it } from "vitest";
  */
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
+const BUDGET_GLOB = "packages/*/src/**/*.{ts,tsx,mts,cts}";
+const SOURCE_EXTENSION = /\.(ts|tsx|mts|cts)$/;
 
 type MaxLinesRule = ["error", { max: number }];
 type Override = {
@@ -28,13 +30,18 @@ const config = JSON.parse(readFileSync(resolve(REPO_ROOT, ".oxlintrc.json"), "ut
 };
 
 const budgetIndex = config.overrides.findIndex(
-  (o) => o.files.some((f) => f.includes("*")) && "max-lines" in o.rules,
+  (o) => o.files.length === 1 && o.files[0] === BUDGET_GLOB && "max-lines" in o.rules,
 );
-const budget = (config.overrides[budgetIndex].rules["max-lines"] as MaxLinesRule)[1].max;
+const budget =
+  budgetIndex < 0
+    ? undefined
+    : (config.overrides[budgetIndex].rules["max-lines"] as MaxLinesRule)[1].max;
 
+// Every other `max-lines` override is a pin, whatever its shape, so a pin
+// written with a glob or several files is rejected rather than skipped.
 const pins = config.overrides.flatMap((o, index) =>
-  o.files.length === 1 && !o.files[0].includes("*") && "max-lines" in o.rules
-    ? [{ path: o.files[0], max: (o.rules["max-lines"] as MaxLinesRule)[1].max, index }]
+  index !== budgetIndex && "max-lines" in o.rules
+    ? [{ files: o.files, max: (o.rules["max-lines"] as MaxLinesRule)[1].max, index }]
     : [],
 );
 
@@ -46,14 +53,33 @@ function countLines(path: string): number {
   return text.endsWith("\n") ? lines - 1 : lines;
 }
 
+function budgetedSources(): string[] {
+  return readdirSync(resolve(REPO_ROOT, "packages"), { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isDirectory() && existsSync(resolve(REPO_ROOT, "packages", entry.name, "src")),
+    )
+    .flatMap((entry) =>
+      readdirSync(resolve(REPO_ROOT, "packages", entry.name, "src"), { recursive: true })
+        .map((path) => `packages/${entry.name}/src/${String(path)}`)
+        .filter((path) => SOURCE_EXTENSION.test(path) && !path.includes("node_modules")),
+    );
+}
+
 describe("source line budget in .oxlintrc.json", () => {
-  it("has one default budget, declared before the pins so the pins override it", () => {
-    expect(budgetIndex).toBeGreaterThanOrEqual(0);
+  it(`has one default budget for ${BUDGET_GLOB}, declared before the pins so the pins override it`, () => {
+    expect(
+      budgetIndex,
+      `no override with files ["${BUDGET_GLOB}"] sets max-lines`,
+    ).toBeGreaterThanOrEqual(0);
     expect(pins.length).toBeGreaterThan(0);
     for (const pin of pins) expect(pin.index).toBeGreaterThan(budgetIndex);
   });
 
-  it.each(pins)("pins $path at its current size", ({ path, max }) => {
+  it.each(pins)("pins $files at its current size", ({ files, max }) => {
+    expect(files, "a pin names exactly one file, without a glob").toHaveLength(1);
+    const [path] = files;
+    expect(path, "a pin names exactly one file, without a glob").not.toMatch(/[*?{[]/);
     expect(existsSync(resolve(REPO_ROOT, path)), `${path} no longer exists: remove its pin`).toBe(
       true,
     );
@@ -61,10 +87,22 @@ describe("source line budget in .oxlintrc.json", () => {
     expect(
       lines,
       `${path} is within the default budget of ${budget} lines: remove its pin`,
-    ).toBeGreaterThan(budget);
+    ).toBeGreaterThan(budget ?? Number.POSITIVE_INFINITY);
     expect(
       max,
       `${path} has ${lines} lines but is pinned at ${max}: set the pin to ${lines} in this PR`,
     ).toBe(lines);
+  });
+
+  it("is not switched off by a disable comment in a source file", () => {
+    const disabled = budgetedSources().filter((path) =>
+      /(?:eslint|oxlint)-disable[^\n]*max-lines/.test(
+        readFileSync(resolve(REPO_ROOT, path), "utf8"),
+      ),
+    );
+    expect(
+      disabled,
+      "move code out of the file, or raise its pin in .oxlintrc.json with the reason in the PR description",
+    ).toEqual([]);
   });
 });

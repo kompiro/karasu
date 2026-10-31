@@ -58,7 +58,7 @@
       }
     },
     {
-      "files": ["packages/*/src/**/*.{ts,tsx}"],
+      "files": ["packages/*/src/**/*.{ts,tsx,mts,cts}"],
       "excludeFiles": [
         "**/*.test.ts",
         "**/*.test.tsx",
