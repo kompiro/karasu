@@ -25,7 +25,7 @@ assumptions:
   - 設計（本 ADR に集約し削除）: `docs/design/root-view-system-edge-ownership.md`
   - [ADR-2521](2521-multi-system-pipeline-convergence.md)（multi は single の計算に合わせる）、[ADR-2223](2223-service-anchored-edge-renders-on-parent-canvas.md)（同じ罠を「実装上の落とし穴」として記録済み）、[ADR-681](681-top-level-service-rendering.md)（`__unassigned__` 擬似 system）、[ADR-1884](1884-group-by-team-multi-system-root-per-system-frames.md)（per-system フレーム）、[ADR-463](463-implicit-edge-detail-panel.md)（集約エッジの詳細パネル）
   - [TPL-2756](../test-perspectives/TPL-2756-downstream-consumes-what-upstream-assembled.md)（本 Issue から起こした観点）、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)、[TPL-1666](../test-perspectives/TPL-1666-style-lookup-matches-layout-id-form.md)
-  - コード: `packages/core/src/view/view-extract.ts`、`packages/core/src/view/view-slice.ts`、`packages/core/src/renderer/layout.ts`、`packages/core/src/diff/view-diff.ts`、`packages/core/src/renderer/svg-renderer.ts`
+  - コード: `packages/core/src/view/view-extract.ts`、`packages/core/src/renderer/layout.ts`、`packages/core/src/diff/view-diff.ts`、`packages/core/src/renderer/svg-renderer.ts`
 
 ## 背景
 

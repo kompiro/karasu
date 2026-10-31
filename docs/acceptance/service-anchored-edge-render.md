@@ -8,7 +8,7 @@ type: product
 - **関連 Issue**: [#2223](https://github.com/kompiro/karasu/issues/2223)
 - **Related TPLs**: [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md)（parse を通った構造は描画されるか診断される）, [TPL-2184](../test-perspectives/TPL-2184-equivalent-placements-share-one-diagnostic.md)（同じ状態を表す配置は同じ扱いを受ける）
 - **対象ファイル**:
-  - `packages/core/src/view/view-extract.ts`（`collectAnchoredPeerEdges` / `withChildAnchoredEdges`）
+  - `packages/core/src/view/anchored-edges.ts`（`collectAnchoredPeerEdges` / `withChildAnchoredEdges`）
   - `packages/core/src/resolver/warnings.ts`（`detectEdgeEndpointsNotAtScope` の `peersOf`）
   - `docs/spec/syntax.md` / `syntax.ja.md`（§ Edges inside a service block / §service ブロック内のエッジ）
 
