@@ -430,7 +430,6 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 ## resolver
 
 - [ADR-237](237-domain-drift-detection.md) — Domain Drift Detection — 検出スコープと検出キー
-- [ADR-287](287-cyclic-dependency-detection.md) — 循環依存の検出と `KrsEdge.cyclic` フラグによる視覚化
 - [ADR-316](316-database-as-first-class-node.md) — `database` / `queue` / `storage` を system 直下のファーストクラスノードに昇格
 - [ADR-477](477-deprecated-domain-migration-coexistence.md) — 移行期における重複ドメイン ID の共存を `@deprecated` + `@migration_target` で許容する
 - [ADR-1381](1381-multi-file-import-semantics.md) — マルチファイル import の意味論 — whole-file import / system 再オープン / DAG 再到達
@@ -441,6 +440,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2410](2410-import-coupled-diagnostics-decline-and-invalid-owns-kind-only.md) — import 結合の存在検査は未解決 import が残る file では判定しない（invalid-owns は kind 専任にする）
 - [ADR-2442](2442-owns-existence-any-declared-node.md) — owns の存在検査は kind を問わない（system は kind 拒否として報告し、invalid-owns は拒否した kind を名指す）
 - [ADR-2596](2596-node-path-index-merged-model.md) — nodePathIndex はマージ後のモデルで再構築し、多重判定は宣言単位で行う
+- [ADR-2791](2791-cyclic-flag-at-model-construction.md) — `KrsEdge.cyclic` をモデル構築時に導出し、`analyze()` を読むだけのパスにする
 
 ## styling
 
