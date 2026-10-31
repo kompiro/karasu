@@ -7,7 +7,7 @@ topic: styling
 refines: [ADR-969, ADR-1737, ADR-1184]
 related_to: [ADR-1178, ADR-3022]
 scope:
-  packages: [core, i18n]
+  packages: [core, i18n, cli]
 assumptions:
   - "symbol: packages/core/src/style/value-validator.ts :: satisfiesPropertySchema"
   - "symbol: packages/core/src/style/cascade.ts :: flattenSheetsInCascadeOrder"
@@ -66,23 +66,29 @@ assumptions:
 1. **範囲外の値は捨てる（clamp しない）。** `label-position` の clamp をやめ、全プロパティで警告文の「— ignored」を本当にする。弱いルールに同じプロパティの有効な値があればそれが効く（CSS と同じ）。`docs/spec/style.md` は値の節の 1 文にまとめ、プロパティごとの個別規則はそこへの参照にした
 2. **union は数値に対して数値を読む枝の診断を出す。** 値が数値で number / length の枝があれば、その枝の失敗（`style-out-of-range`、`min` / `max` 付き）を報告する。許容には union の全枝を並べる
 3. **整数のプロパティはスキーマが整数を要求する。** `grid-columns` と `label-max-chars` の number spec に `integer: true` を付ける。整数でない値は `style-invalid-enum-value` で報告し、新しい診断コードは足さない
-4. **karasu が同梱するシートからは捨てない。** ADR-1178 の信頼境界を、シートの位置ではなく各ルールの `sheetId` で判定する。`BUILTIN_SHEET_ID` / `ICON_THEME_SHEET_ID` は `builtins/non-author-sheets.ts` の `NON_AUTHOR_SHEET_IDS` に置き、resolver と cascade が同じ集合を読む。icon theme は著者のシートの後に足されるので、位置では判定できない。builtin が単位なしで書く長さはそのまま効く
+4. **karasu が同梱するシートからは捨てない。** cascade は ADR-1178 の信頼境界を、シートの位置ではなく各ルールの `sheetId` で判定する（validator の側は従来どおり `sheets[0]` を検査しない。icon theme は validator に渡らない）。`BUILTIN_SHEET_ID` / `ICON_THEME_SHEET_ID` は `builtins/non-author-sheets.ts` の `NON_AUTHOR_SHEET_IDS` に置き、resolver と cascade が同じ集合を読む。icon theme は著者のシートの後に足されるので、位置では判定できない。builtin が単位なしで書く長さはそのまま効く
 5. **単位の無い `0` は長さとして有効にする。** CSS と同じく `border-width: 0` は `0px` と読む。それ以外の単位の無い数値・許されない単位・不正な hex・`url()` で包まないアイコン名は捨てる
 6. **値を分類できない宣言も、報告元を決めてから捨てる。** parser は空白区切りの複数の値を `sequence` の値ノードにし（カンマ区切りの各項目の中でも同じ）、スキーマに `ident` と `sequence-of` を足した。列を受けるのは `label-offset`（長さ 1 つか 2 つ。3 つ以上は宣言全体を拒否し、先頭 2 つだけを使わない）と `font-family` の各項目（引用符の無い複数語の名前）だけで、ほかのプロパティでは型の不一致として報告する。値として持てないトークン・空の値・空のカンマ項目は parser が `style-token-type-mismatch` で拒否する。既知のプロパティで値ノードの無い宣言が残れば validator が報告し、cascade が外す。報告せずに捨てる経路は作らない
 7. **`style-column-invalid-value` と `style-grid-columns-invalid-value` を廃止する。** 不正な `column` / `grid-columns` は validator の診断（`style-invalid-enum-value` / `style-out-of-range`）が宣言の位置で 1 件出し、resolver はノードごとの警告を出さない。ADR-969 / ADR-1737 のうち、この 2 つの警告を決めた部分だけを変える
-8. **resolver は範囲を持たない。** 範囲のガードと `label-position` の clamp を外し、有限の数値かどうかの parse だけを残す（builtin の単位なしの長さを読むため）
+8. **resolver は範囲を持たない。** 範囲のガードと `label-position` の clamp を外し、数値については有限かどうかの parse だけを残す（builtin の単位なしの長さを読むため）。キーワードや shape の照合（`column`、`direction`、`shape` など）は resolver に残る
+
+捨てる対象は、既知のプロパティで値がスキーマを満たさない宣言に限る。次は捨てない。
+
+- **未知のプロパティ**: 警告だけで宣言は残す（ADR-1178 の forward compat）。`satisfiesPropertySchema` は未知のプロパティに `true` を返す
+- **未登録のアイコン名を包んだ `url("<name>")`**: 値としては構造上正しいので、`style-unknown-icon` の警告だけで残し、描画は `box` に落ちる
+- **値は正しいがビューで効かない宣言**（`style-column-ignored-non-system-view`）とセレクタの照合: 本件の対象外
 
 ### 実装で設計に足したこと
 
 実装 PR #3409 のレビューで、次を足した。
 
-- **Tidy は parse エラーのあるシートを書き換えない。** parser が拒否した宣言を消さないように、Tidy はそのシートをそのまま返し、`tidy-style` は parse エラーを報告して終了コード 1 を返す。重複ルールのマージでも、捨てられた宣言を持つルールに有効な値を混ぜない
+- **Tidy は parse エラーのあるシートを書き換えない。** parser が拒否した宣言を消さないように、Tidy はそのシートをそのまま返し、`tidy-style` は parse エラーを報告して終了コード 1 を返す。重複ルールのマージでも、捨てられた宣言を持つルールはマージの対象から外す（ほかのルールを取り込まず、ほかのルールにも取り込まれない）
 - **不正な hex（`#zzzz`）は hex の atom のまま残す。** 未分類トークンとして拒否せず、色の診断として報告するため
 - **グループセレクタの宣言は 1 回だけ報告する。** セレクタごとにルールが作られても、同じ位置の同じ宣言は 1 件にする
 
 ### 挙動の変化
 
-診断は以前から出ていた値（error severity）が、本当に描かれなくなる。範囲外の `label-position` は端に寄らず既定（`middle`）に戻る。`0` 以外の単位の無い長さ、許されない単位、不正な hex、`url()` で包まないアイコン名、大文字小文字の違う色名（`White`）は描かれない。`border-width: 0` は逆に診断が消える。新たに、parser が値として持てない宣言（`color: ;` など）は error になるので、`karasu render` は非ゼロで終了する（#3140 の余分な `-` と同じ）。builtin テーマの描画は変わらない（examples 65 ファイルで描画差分なし）。
+診断は以前から出ていた値（error severity）が、本当に描かれなくなる。範囲外の `label-position` は端に寄らず既定（`middle`）に戻る。`0` 以外の単位の無い長さ、許されない単位、不正な hex、`url()` で包まないアイコン名、大文字小文字の違う色名（`White`）は描かれない。`border-width: 0` は逆に診断が消える。新たに、parser が値として持てない宣言（`color: ;` など）は error になるので、`karasu render` は非ゼロで終了する（#3140 の余分な `-` と同じ）。builtin テーマの描画は変わらない（実装 PR の `pr:shots` で examples と AT の描画差分なし）。
 
 ## 理由
 
