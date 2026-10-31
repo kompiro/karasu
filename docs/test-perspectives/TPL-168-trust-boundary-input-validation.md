@@ -23,6 +23,8 @@ discovered_from:
   - root_cause_file: "packages/app/src/utils/import-project-zip.ts"
   - issue: "#1525"
   - root_cause_file: "packages/core/src/parser/parser.ts"
+  - issue: "#3283"
+  - root_cause_file: "packages/cli/src/serve.ts"
 topic: cli
 scope:
   packages:
@@ -41,7 +43,9 @@ karasu の `karasu serve` のような HTTP API、VS Code 拡張の message hand
 
 「内部実装の都合上 path がそのまま使える形になっている」「`.krs` 拡張子を後付けするから traversal は限定的」のような **副次的緩和** を理由に validation を省くと、後で実装が変わったときに脆弱性が顕在化する。**validation は payload の意味（path らしい / id らしい）に依らず、trust boundary を越える時点で機械的に行う** のが原則。
 
-#168 では `GET /api/file/:name` の `name` が `join(dir, name + ".krs")` にそのまま渡され、`../../etc/passwd` のような入力が外側のディレクトリに resolve できる構造になっていた。`.krs` 拡張子付与により実害は限定的だったが、validation の不在自体が security smell。修正は `resolve` してから `startsWith(safeDir + sep)` で外に出ないことを確認する形（`packages/cli/src/serve.ts:41` の現在の実装）。
+#168 では `GET /api/file/:name` の `name` が `join(dir, name + ".krs")` にそのまま渡され、`../../etc/passwd` のような入力が外側のディレクトリに resolve できる構造になっていた。`.krs` 拡張子付与により実害は限定的だったが、validation の不在自体が security smell。修正は `resolve` してから `startsWith(safeDir + sep)` で外に出ないことを確認する形だった。
+
+#3283 で同じ endpoint の symlink 経由の突破が再観測された。この string-level の確認は symlink を解決しないので、配信ディレクトリ内の `notes.krs -> ~/.ssh/id_rsa` が `/api/file/notes` でそのまま返っていた。全インターフェースで listen し、`Access-Control-Allow-Origin: *` も付いていたため、同じネットワークの誰でも、ブラウザで開いている任意のページからでも読めた。修正は `realpath` を取った実パスで包含を確かめ直し、読むときは `O_NOFOLLOW` で開く形（`resolveKrsFile` / `readFileInside`）。`/api/*` の CORS ヘッダも外した。
 
 #1526 / #1527 で同じ観点が **app の ZIP インポート** で再観測された。アップロードされた `.zip` も trust boundary の外の input である。エントリ名（`../../x.krs` / 絶対パス / バックスラッシュ）を `/projects/<id>/<path>` にそのまま書くと、in-memory provider の `normalizePath` が `..` を畳んでプロジェクト外へ脱出する（zip-slip）。さらに **アーカイブは「巨大入力」の一形態**であり、`unzipSync` が全エントリをメモリ展開する前に **エントリ名のサニタイズ** と **解凍前のサイズ/件数キャップ**（解凍爆弾対策）を境界で機械的に行う必要がある（`packages/app/src/utils/import-project-zip.ts`）。
 
