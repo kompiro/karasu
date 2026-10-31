@@ -9,7 +9,7 @@ import {
 import { Parser } from "../parser/parser.js";
 import { extractView } from "../view/view-extract.js";
 import { layout } from "./layout.js";
-import { rectUnionPath } from "./svg-renderer.js";
+import { rectUnionPath } from "./container-frame.js";
 import { buildGroupLabelIndex, declaredGroupOrderOf } from "./group-labels.js";
 import { darkPalette, lightPalette } from "./palette.js";
 import type { LayoutResult } from "./layout-types.js";
