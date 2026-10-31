@@ -2,7 +2,7 @@ import type { KrsEdge, KrsNode } from "../types/ast.js";
 import { quotedIdLiteral } from "../formatter/quote-id.js";
 import { bareIdView, nodePathRefId } from "../parser/node-path.js";
 import { UNASSIGNED_SYSTEM_ID } from "../view/unassigned-system.js";
-import type { DomainEdgeDetail, SystemFrameEdges, ViewSlice } from "../view/view-extract.js";
+import type { DomainEdgeDetail, SystemFrameEdges, ViewSlice } from "../view/view-slice.js";
 
 export type DiffState = "unchanged" | "added" | "removed" | "changed";
 

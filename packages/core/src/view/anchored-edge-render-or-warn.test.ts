@@ -10,7 +10,7 @@ import type { KrsFile, KrsNode, ParseResult } from "../types/ast.js";
  * TPL-2075 in executable form: an edge the parser accepts is either drawn on
  * some view or reported — never silently dropped, and never both.
  *
- * The view side (`collectAnchoredPeerEdges` in `view-extract.ts`) and the
+ * The view side (`collectAnchoredPeerEdges` in `anchored-edges.ts`) and the
  * diagnostic side (`peersOf` in `resolver/warnings.ts`) implement the same peer
  * rule from opposite directions, so this table is what stops one of them from
  * being changed alone (#2075 gave the rule its diagnostic, #2223 gave the

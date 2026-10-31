@@ -43,7 +43,8 @@ import {
 } from "../../packages/core/src/resolver/style-resolver.ts";
 import type { KrsFile, KrsNode } from "../../packages/core/src/types/ast.ts";
 import { withUnassignedSystem } from "../../packages/core/src/view/unassigned-system.ts";
-import { createViewExtractor, type ViewSlice } from "../../packages/core/src/view/view-extract.ts";
+import { createViewExtractor } from "../../packages/core/src/view/view-extract.ts";
+import type { ViewSlice } from "../../packages/core/src/view/view-slice.ts";
 
 const DEFAULT_FILE = "examples/en/getting-started/index.krs";
 const DEFAULT_RUNS = 5;

@@ -4,7 +4,7 @@
  * system frames with their visible services.
  */
 import type { KrsNode } from "../types/ast.js";
-import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
+import type { ViewSlice, GhostSystem } from "../view/view-slice.js";
 import type { LayoutNode, ContainerRect } from "./layout-types.js";
 import { nodePathKey, nodePathRefId } from "../parser/node-path.js";
 import {

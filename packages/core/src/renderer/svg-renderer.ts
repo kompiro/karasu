@@ -5,7 +5,7 @@ import type {
   ResolvedNodeStyle,
   ResolvedStyles,
 } from "../types/style.js";
-import type { ViewSlice } from "../view/view-extract.js";
+import type { ViewSlice } from "../view/view-slice.js";
 import { withoutUnassignedSegment } from "../view/unassigned-system.js";
 import { layout } from "./layout.js";
 import type { GroupLabelIndex } from "./group-labels.js";

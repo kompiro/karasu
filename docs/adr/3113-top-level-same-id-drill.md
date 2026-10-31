@@ -11,7 +11,7 @@ scope:
     - core
     - app
 assumptions:
-  - "symbol: packages/core/src/view/view-extract.ts :: resolveContainerChain"
+  - "symbol: packages/core/src/view/view-path.ts :: resolveContainerChain"
   - "symbol: packages/core/src/view/unassigned-system.ts :: isUnassignedSystem"
   - "symbol: packages/core/src/index.ts :: resolveContainerChain"
   - "symbol: packages/app/src/hooks/useBreadcrumbs.ts :: resolveContainerChain"
@@ -30,7 +30,7 @@ assumptions:
   - 同じ根の静的バンドル側: #2933（PR #3125）
   - TPL: [TPL-3113](../test-perspectives/TPL-3113-written-path-resolves-to-its-node.md)（実装 PR で起こした retrospective TPL）、[TPL-1160](../test-perspectives/TPL-1160-top-level-orphans.md)、[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md)、[TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md)、[TPL-2920](../test-perspectives/TPL-2920-duplicate-element-id-on-one-canvas-names-its-landing.md)、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)、[TPL-2756](../test-perspectives/TPL-2756-downstream-consumes-what-upstream-assembled.md)
   - AT: `docs/acceptance/3113-top-level-same-id-drill.md`
-  - コード: `packages/core/src/view/view-extract.ts`（`resolveContainerChain`）、`packages/core/src/view/unassigned-system.ts`（`isUnassignedSystem`）、`packages/app/src/hooks/useBreadcrumbs.ts`、`packages/app/src/hooks/useChatSession/prompt.ts`（`detectDrillDownLevel`）
+  - コード: `packages/core/src/view/view-path.ts`（`resolveContainerChain`）、`packages/core/src/view/unassigned-system.ts`（`isUnassignedSystem`）、`packages/app/src/hooks/useBreadcrumbs.ts`、`packages/app/src/hooks/useChatSession/prompt.ts`（`detectDrillDownLevel`）
 
 ## 背景
 

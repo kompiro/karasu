@@ -10,8 +10,8 @@ scope:
   packages:
     - core
 assumptions:
-  - "symbol: packages/core/src/view/view-extract.ts :: collectAnchoredPeerEdges"
-  - "symbol: packages/core/src/view/view-extract.ts :: withChildAnchoredEdges"
+  - "symbol: packages/core/src/view/anchored-edges.ts :: collectAnchoredPeerEdges"
+  - "symbol: packages/core/src/view/anchored-edges.ts :: withChildAnchoredEdges"
   - "symbol: packages/core/src/resolver/warnings.ts :: detectEdgeEndpointsNotAtScope"
   - "grep: packages/core/src/renderer/layout.ts :: withChildAnchoredEdges"
   - "grep: docs/spec/syntax.md :: Edges inside a service block"

@@ -19,7 +19,7 @@ scope:
     - cli
 assumptions:
   - "symbol: packages/core/src/view/view-extract.ts :: projectStoreRelations"
-  - "symbol: packages/core/src/view/view-extract.ts :: containerCanvasEdges"
+  - "symbol: packages/core/src/view/anchored-edges.ts :: containerCanvasEdges"
   - "symbol: packages/core/src/view/coverage-extract.ts :: diffStoreRelations"
   - "symbol: packages/core/src/translate/db.ts :: collectRootRelations"
   - "grep: packages/core/src/builtins/default-style.ts :: edge\\[projected\\]"
@@ -37,7 +37,7 @@ assumptions:
   - [ADR-316](316-database-as-first-class-node.md)（`database` first-class ノード）、[ADR-1911](1911-cross-domain-ghost-entities.md)（cross-domain ghost）、[ADR-1995](1995-draft-confidence-annotation.md)（`@draft` = 断定であって確認済みではない）、[ADR-1820](1820-notation-promotion-gate.md)（notation promotion gate）、[ADR-2172](2172-builtin-vocabulary-expansion.md)（builtin 語彙追加の 3 問）
   - TPL: [TPL-2585](../test-perspectives/TPL-2585-partial-mapping-view-states-its-denominator.md)（本設計で起こした proactive TPL）、[TPL-1944](../test-perspectives/TPL-1944-inferred-tag-only-soft-fk.md)、[TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md)、[TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md)、[TPL-1882](../test-perspectives/TPL-1882-entity-carries-no-attributes.md)、[TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md)
   - 仕様: `docs/spec/syntax.md` § Store-scoped ER view、`docs/spec/tags-annotations.md` §『[projected]』、`docs/concepts.md` DB スキーマ非目標
-  - コード: `packages/core/src/view/view-extract.ts`、`packages/core/src/view/coverage-extract.ts`、`packages/core/src/translate/db.ts`、`packages/core/src/builtins/default-style.ts`
+  - コード: `packages/core/src/view/view-extract.ts`、`packages/core/src/view/anchored-edges.ts`、`packages/core/src/view/coverage-extract.ts`、`packages/core/src/translate/db.ts`、`packages/core/src/builtins/default-style.ts`
   - AT: `docs/acceptance/store-scoped-er-view.md`
 
 ## 背景

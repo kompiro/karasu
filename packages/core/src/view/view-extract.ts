@@ -8,25 +8,26 @@ import {
 } from "../resolver/edge-endpoint.js";
 import { isWriteOperation } from "../spec/operations.js";
 import { buildEntityResolver, type EntityResolver } from "../resolver/resource-entity.js";
-import { isUnassignedSystem } from "./unassigned-system.js";
-
-/**
- * A single constituent domain edge that was aggregated into an implicit service edge.
- * Used to populate the detail panel when the user clicks "N domain edges".
- */
-export interface DomainEdgeDetail {
-  fromDomainId: string;
-  fromDomainLabel: string;
-  toDomainId: string;
-  toDomainLabel: string;
-  label?: string;
-  /**
-   * Set only in diff mode: indicates whether this constituent edge was
-   * added, removed, or unchanged between before/after. Consumed by
-   * EdgeDetailPanel to render +/- markers.
-   */
-  diffState?: "unchanged" | "added" | "removed";
-}
+import {
+  collectAnchoredPeerEdges,
+  containerCanvasEdges,
+  drawnEdgeKey,
+  isAnchoredAt,
+  nodeId,
+  withChildAnchoredEdges,
+} from "./anchored-edges.js";
+import { resolveContainerChain } from "./view-path.js";
+import {
+  emptySlice,
+  type DomainEdgeDetail,
+  type ExpandedFrame,
+  type GhostDomain,
+  type GhostEntity,
+  type GhostSystem,
+  type SystemFrameEdges,
+  type ViewPath,
+  type ViewSlice,
+} from "./view-slice.js";
 
 /** Walk service→domain→usecase→resource chain and return every resource node. */
 function collectResources(node: KrsNode): ResourceNode[] {
@@ -336,322 +337,6 @@ function deriveDeliversEdges(children: KrsNode[]): KrsEdge[] {
     }
   }
   return edges;
-}
-
-/**
- * ViewPath identifies the drill-down position in the hierarchy.
- * [] = root system view (shows systems[0])
- * ["ECPlatform", "ECommerce"] = ECommerce service inside ECPlatform system
- * ["ECPlatform", "ECommerce", "Order"] = Order domain inside ECommerce
- *
- * path[0] is the system ID when it matches a known system. A path with no
- * system segment names a top-level (Unassigned) node, e.g. ["Payment"], and
- * falls back to a real system's child only when no top-level node walks it
- * ({@link resolveContainerChain}, #3113).
- */
-export type ViewPath = string[];
-
-/**
- * An external system referenced via a cross-system edge, along with the specific
- * services inside it that are referenced.
- */
-/**
- * One node drawn inside a ghost system frame. Before #2577 this was the
- * `KrsNode` alone, because a ghost was always a system's *direct* child and
- * `SystemId.ChildId` reconstructed its path. Deep qualifiers (`Shop.Checkout.Payment`)
- * break that arithmetic, so the resolved path travels with the node.
- */
-interface GhostService {
-  node: KrsNode;
-  /** Full path rooted at the frame's system id — the layout key (#2548). */
-  path: NodeIdPath;
-  /**
-   * Labels of the nodes between the frame and this one, joined with ` › `, shown
-   * muted under the card. Absent for a direct child, which is every ghost that
-   * existed before deep qualifiers — so existing frames are unchanged.
-   */
-  subLabel?: string;
-}
-
-export interface GhostSystem {
-  systemNode: KrsNode;
-  visibleServices: GhostService[];
-}
-
-interface GhostDomain {
-  node: KrsNode;
-  /** Label of the service that owns this domain — shown as sub-label on the ghost node. */
-  parentServiceLabel: string;
-}
-
-interface GhostEntity {
-  /** The foreign entity node (its `id` is the bare entity id). */
-  node: KrsNode;
-  /** Label of the domain that owns this entity — shown as sub-label on the ghost node. */
-  parentDomainLabel: string;
-  /**
-   * Qualified `<domainId>.<entityId>` key. Ghost entities are keyed and laid out
-   * by this (not the bare id) because entity ids are only warning-level unique
-   * (`entity-anchor-collision`), so two foreign entities could share a bare id.
-   */
-  key: string;
-}
-
-export interface ViewSlice {
-  containerNode: KrsNode | null;
-  childNodes: KrsNode[];
-  childEdges: KrsEdge[];
-  ancestorChain: KrsNode[];
-  ghostUsers: KrsNode[];
-  ghostUserEdges: KrsEdge[];
-  /** Root view only: all systems for parallel display. Empty at other levels. */
-  systems: KrsNode[];
-  /** Root view only: edges with qualified targets (SystemId.ServiceId) between systems. */
-  crossSystemEdges: KrsEdge[];
-  /**
-   * For each qualified `to` in {@link crossSystemEdges}, the full path it
-   * resolved to (#2577). The root canvas draws only a system's direct
-   * children, so the renderer anchors the edge on `path[1]` — for the
-   * two-segment `Sys.Svc` that is the same `Svc` the first-dot split used to
-   * produce, and for a deeper target it is the service that contains it.
-   * Resolving once here keeps the renderer from re-parsing the string with an
-   * arity assumption of its own.
-   */
-  crossSystemTargets: Map<string, NodeIdPath>;
-  /** Service view only: external systems referenced via cross-system edges (outgoing). */
-  ghostSystems: GhostSystem[];
-  /** Service view only: the cross-system edges targeting ghost systems (outgoing). */
-  ghostSystemEdges: KrsEdge[];
-  /** Service view only: external systems that call into this service (incoming). */
-  callerGhostSystems: GhostSystem[];
-  /**
-   * Service view only: incoming cross-system edges from caller ghost systems.
-   * Edge format: from = "CallerSystemId.CallerServiceId", to = containerId.
-   */
-  callerGhostSystemEdges: KrsEdge[];
-  /**
-   * Service view only: domains in other services connected via cross-service domain edges.
-   * Each entry pairs the foreign domain node with its parent service label for display.
-   */
-  ghostDomains: GhostDomain[];
-  /**
-   * Service view only: cross-service domain edges connecting this service's domains
-   * to ghost domains in other services (both outgoing and incoming).
-   */
-  ghostDomainEdges: KrsEdge[];
-  /**
-   * Entity view only: entities in other domains connected to this domain's
-   * entities via a cross-domain relation (both outgoing and incoming), rendered
-   * as muted ghosts. Cross-domain relations use qualified `DomainId.EntityId`
-   * targets (bare ids are intra-domain only).
-   */
-  ghostEntities: GhostEntity[];
-  /**
-   * Entity view only: the cross-domain relation edges to/from ghost entities.
-   * Endpoints are normalized so the foreign endpoint is the qualified
-   * `DomainId.EntityId` key and the local endpoint is the bare local entity id,
-   * matching how {@link GhostEntity} and local child nodes are keyed in layout.
-   */
-  ghostEntityEdges: KrsEdge[];
-  /**
-   * Maps dot-notation resource node IDs (e.g. "OrderDB.OrderTable") to the
-   * resolved label of the referenced infra sub-resource (e.g. "注文テーブル").
-   * Used to display the infra-defined label instead of the raw ID.
-   */
-  resourceLabelMap: ReadonlyMap<string, string>;
-  /**
-   * Maps dot-notation resource node IDs (e.g. "OrderDB.OrderTable") to the
-   * inferred style tag (e.g. "table", "queue", "storage").
-   * Used to automatically apply resource[table]/resource[queue]/resource[storage]
-   * style rules to dot-notation resource nodes that have no explicit tags.
-   */
-  resourceInferredTagsMap: ReadonlyMap<string, string>;
-  /**
-   * Maps "fromServiceId->toServiceId" to the list of constituent domain edges
-   * that were aggregated into a single "N domain edges" implicit service edge.
-   * Only populated for pairs with 2 or more domain edges.
-   */
-  implicitEdgeDetails: Map<string, DomainEdgeDetail[]>;
-  /**
-   * Root view only: per-system-frame edge sets, keyed by system id (#2756).
-   *
-   * The multi-system / `__unassigned__` root lays each system out in its own
-   * frame and reads its entry here; {@link childEdges} is the union over all of
-   * them, for the consumers that want the whole canvas (style resolution,
-   * canonical edge ids, the compare-mode merge) rather than one frame.
-   *
-   * Absent on every other view, and a missing entry makes the layout fall back to
-   * {@link withChildAnchoredEdges} — so a hand-built slice keeps working.
-   */
-  systemEdges?: ReadonlyMap<string, SystemFrameEdges>;
-  /**
-   * Containers expanded in place (#1921): each entry names a service whose
-   * domain children were spliced into `childNodes` as a boundary-frame band.
-   * The layout bands the members contiguously and draws a titled frame; empty
-   * on every view except the root system view with expansion active.
-   */
-  expandedFrames: ExpandedFrame[];
-}
-
-/**
- * One container expanded in place in the system view (#1921). Its `memberIds`
- * are the domain child ids spliced into the sibling grid; `label` titles the
- * boundary frame the layout draws around that contiguous band.
- */
-interface ExpandedFrame {
-  containerId: string;
-  label: string;
-  memberIds: string[];
-}
-
-function nodeId(node: KrsNode): string {
-  return node.id;
-}
-
-/**
- * Identity of a drawn edge: the endpoint pair **and** the arrow kind, so a
- * sync and an async edge between the same pair stay two edges. Suppression of
- * *derived* edges keys on the bare pair instead — see `explicitKeys`.
- */
-function drawnEdgeKey(edge: KrsEdge): string {
-  return `${edge.from}-${edge.kind}->${edge.to}`;
-}
-
-/**
- * Does this edge start at the block that declares it? The **edge origin scope**
- * rule (spec § Edge declaration), stated once for every consumer: the parser
- * rejects a mismatch with `edge-source-mismatch` but keeps the declaration for
- * recovery, so the render side has to ask the same question again (#2501).
- *
- * Kept as one definition because the answer feeds three separate paths — the
- * peer canvas, the system-scope machinery, and the entity view — and a rule
- * spelled three times is a rule that drifts.
- */
-function isAnchoredAt(child: KrsNode, edge: KrsEdge): boolean {
-  return edge.from === nodeId(child);
-}
-
-/**
- * The block kinds the parser binds to their own id, mirroring the `parentId`
- * it passes in `parser.ts` (`kind === "service" || "domain" || "entity"`). Only
- * these raise `edge-source-mismatch`, so only these have a diagnostic to carry
- * the signal when the render side drops an edge.
- */
-const ORIGIN_SCOPED_KINDS: ReadonlySet<KrsNode["kind"]> = new Set(["service", "domain", "entity"]);
-
-/**
- * May the parent canvas lift this edge off `child`? Anchored edges always may.
- * An edge in a block with **no** origin-scope rule may too, exactly as written:
- * `client W { S1 -> S2 }` parses clean and is reported by nothing, so guarding
- * it would drop it with no signal anywhere — the silent drop TPL-2075 forbids.
- * That placement is outside the spec either way; this keeps it as it was rather
- * than making it newly renderable or newly invisible.
- */
-function isLiftableToPeerCanvas(child: KrsNode, edge: KrsEdge): boolean {
-  return !ORIGIN_SCOPED_KINDS.has(child.kind) || isAnchoredAt(child, edge);
-}
-
-/**
- * Child-anchored edges (#2223). An edge declared inside a `service` / `domain`
- * block originates from that block (spec § Edge origin scope), so the canvas
- * that can draw it is the **parent's** — the one where the declaring block
- * itself is a node. Collecting them here is what gives `service S1 { S1 -> S2 }`
- * a rendering path at all; without it the edge sits on `S1.edges`, is only ever
- * consulted while drawing S1's own canvas, and can never satisfy that canvas's
- * "both endpoints are children of S1" filter.
- *
- * The peer set is the drawn siblings' ids, which is exactly the `peersOf` set
- * `detectEdgeEndpointsNotAtScope` uses (`resolver/warnings.ts`). Peer-ness is
- * not the whole keep condition, though: the edge must also be
- * {@link isLiftableToPeerCanvas}, which sends a source-mismatched declaration
- * to the **parser's** `edge-source-mismatch` instead (#2501). So an edge is
- * still drawn here or reported somewhere and never both, but "reported" now
- * spans both stages rather than this detector alone (TPL-2075).
- *
- * `entity` children are excluded: their relations render in the (separate)
- * entity view via {@link extractEntityView}, and the entities themselves are
- * filtered out of this canvas's nodes.
- *
- * `drawnKeys` is read **and extended**, so callers can chain this after the
- * container's own edges and let those win on a duplicate spelling.
- */
-function collectAnchoredPeerEdges(children: KrsNode[], drawnKeys: Set<string>): KrsEdge[] {
-  const renderable = children.filter((c) => c.kind !== "entity");
-  const peerIds = new Set(renderable.map(nodeId));
-  const anchored: KrsEdge[] = [];
-  for (const child of renderable) {
-    for (const edge of child.edges) {
-      if (!isLiftableToPeerCanvas(child, edge)) continue;
-      if (!peerIds.has(edge.from) || !peerIds.has(edge.to)) continue;
-      const key = drawnEdgeKey(edge);
-      if (drawnKeys.has(key)) continue;
-      anchored.push(edge);
-      drawnKeys.add(key);
-    }
-  }
-  return anchored;
-}
-
-/**
- * A system's edges plus every edge anchored inside one of its child blocks
- * (#2223) — `service S { S -> Other.Svc }` is the service-scope spelling of
- * `system T { S -> Other.Svc }`, so it must feed the same system-scope
- * machinery: ghost systems, caller ghost systems, cross-system edges and
- * ghost users. Only {@link isAnchoredAt} edges are lifted, and the premise is
- * why: an edge is the child-scope spelling of a system-scope one *because* it
- * starts at the child. An edge that does not — `client W { S1 -> S2 }` — is no
- * such spelling, and feeding it here would attribute cross-system calls and
- * caller ghosts to a service that never declared them, and (this list carrying
- * no dedup of its own) draw a second parallel arrow beside the system-scope
- * edge it duplicates. Unlike {@link collectAnchoredPeerEdges}, this is not a
- * canvas keep-filter, so the extra allowance made there does not apply here.
- *
- * Exported for `renderer/layout.ts`: the multi-system / `__unassigned__` root
- * lays each system out from `sys.edges` rather than from `ViewSlice.childEdges`,
- * so it has to lift the anchored ones itself or the edge is dropped again
- * between extraction and layout.
- */
-export function withChildAnchoredEdges(system: KrsNode): KrsEdge[] {
-  const anchored = system.children.flatMap((child) =>
-    child.edges.filter((e) => isAnchoredAt(child, e)),
-  );
-  return anchored.length > 0 ? [...system.edges, ...anchored] : system.edges;
-}
-
-/**
- * Build an empty {@link ViewSlice}. Callers that already resolved the
- * model-level resource maps pass them in; the rest default to empty maps.
- * Single-sources the empty-slice shape shared by {@link extractView} and
- * {@link extractEntityView} so a new field cannot be forgotten in one of them.
- */
-function emptySlice(
-  resourceLabelMap: ReadonlyMap<string, string> = new Map(),
-  resourceInferredTagsMap: ReadonlyMap<string, string> = new Map(),
-): ViewSlice {
-  return {
-    containerNode: null,
-    childNodes: [],
-    childEdges: [],
-    ancestorChain: [],
-    ghostUsers: [],
-    ghostUserEdges: [],
-    systems: [],
-    crossSystemEdges: [],
-    crossSystemTargets: new Map(),
-    ghostSystems: [],
-    ghostSystemEdges: [],
-    callerGhostSystems: [],
-    callerGhostSystemEdges: [],
-    ghostDomains: [],
-    ghostDomainEdges: [],
-    ghostEntities: [],
-    ghostEntityEdges: [],
-    resourceLabelMap,
-    resourceInferredTagsMap,
-    implicitEdgeDetails: new Map(),
-    systemEdges: new Map(),
-    expandedFrames: [],
-  };
 }
 
 /** Maps infra sub-resource kind to the style tag used in resource[tag] rules. */
@@ -1167,44 +852,6 @@ function extractOrphanView(orphans: KrsNode[], path: ViewPath, ctx: ViewExtractC
 }
 
 /**
- * One root-view system frame's edge set, derived by {@link deriveCanvasEdges}.
- *
- * The root view is N frames, each drawing one system's direct children, and each
- * frame owns the edges derived from *its own* node set. Keeping the sets apart is
- * not tidiness: the root view's node map is keyed by bare id, so two systems may
- * each hold an `Api` and a `Store`, and a single flat edge list would let
- * Alpha's `Api->Store` pass Beta's id filter and draw a dependency Beta never
- * declared (#2756).
- */
-export interface SystemFrameEdges {
-  /**
-   * The frame's edges in `childEdges` order: system-scope explicit, child-anchored
-   * (#2223), infra-derived, implicit service, expanded-internal, `delivers`.
-   */
-  edges: KrsEdge[];
-  /**
-   * The constituent domain edges behind this frame's aggregated implicit service
-   * edges (ADR-463's detail panel), keyed by the bare
-   * `` `${from}->${to}#${kind}` `` the layout builds from the edge it is drawing.
-   *
-   * Scoped to the frame rather than merged into {@link ViewSlice.implicitEdgeDetails}:
-   * the key carries no system, so merging would make two systems that each
-   * aggregate an `Api`→`Store` pair collide, and the last one extracted would
-   * supply the details for both frames' lines. A per-frame map answers "whose
-   * constituents are these" by construction instead of by key discipline.
-   */
-  implicitEdgeDetails: Map<string, DomainEdgeDetail[]>;
-  /**
-   * Compare mode only: this frame's edge diff states, keyed by the kind-less
-   * `edgeKey` (#2756). Set by `diffSystemViewSlices`, never by
-   * extraction, and scoped to the frame for the same reason the details are:
-   * the key does not carry a system, so one shared map would let a change in
-   * one system decide the state of an identically named edge in another.
-   */
-  edgeDiffState?: ReadonlyMap<string, string>;
-}
-
-/**
  * Derive every edge family one root-view frame draws, from the nodes that frame
  * places. The single source of truth for "what edges does this canvas have":
  * called once per system by {@link extractRootSystemView}, so a family added
@@ -1606,93 +1253,6 @@ export function extractView(
   );
 }
 
-/** A {@link ViewPath} resolved to its nodes; see {@link resolveContainerChain}. */
-export interface ResolvedContainerChain {
-  /** `[system, …, container]`: the owning system (the `__unassigned__` pseudo-system for a top-level node) first, the container last. */
-  ancestorChain: KrsNode[];
-  /** Index of the first path segment below the system: 1 when `path[0]` is the system id, 0 when the path has no system segment. */
-  startIndex: number;
-}
-
-/**
- * Walk `path` to its container node, returning the ancestor chain (the
- * container is the last element) or `null` when the path does not resolve.
- *
- * This is the one reader of a {@link ViewPath} (#3113): {@link extractView},
- * {@link extractEntityView} and the app's breadcrumb and chat-level lookups all
- * call it, so a path lands on the same node whichever of them reads it.
- *
- * A path with no system segment names a top-level node first, because that is
- * the only node the writers (`nodePathIndex`, the root canvas's
- * `data-node-path`) leave the segment off for. It is walked from the
- * `__unassigned__` pseudo-system, then from the top-level services / domains a
- * caller without the pseudo-system passes separately, then from each real
- * system that owns the first segment, and the first walk that reaches the end
- * of the path wins. The real-system fallback keeps a path that omits its
- * system id resolving as it did, as long as no top-level node walks it too.
- */
-export function resolveContainerChain(
-  systems: readonly KrsNode[],
-  path: ViewPath,
-  unassignedServices: readonly KrsNode[] = [],
-  unassignedDomains: readonly KrsNode[] = [],
-): ResolvedContainerChain | null {
-  if (systems.length === 0 || path.length === 0) return null;
-  // A caller without the pseudo-system passes top-level nodes separately and
-  // draws them in the first system's frame, so one may follow a system id too.
-  const orphanAt = (i: number): KrsNode | undefined =>
-    unassignedServices.find((c) => nodeId(c) === path[i]) ??
-    unassignedDomains.find((c) => nodeId(c) === path[i]);
-
-  const systemNode = systems.find((s) => s.id === path[0]);
-  if (systemNode) {
-    const resolved = walkContainerChain([systemNode], path, 1);
-    if (resolved) return resolved;
-    const orphan = orphanAt(1);
-    return orphan ? walkContainerChain([systemNode, orphan], path, 2, 1) : null;
-  }
-
-  const unassigned = systems.find(isUnassignedSystem);
-  if (unassigned) {
-    const resolved = walkContainerChain([unassigned], path, 0);
-    if (resolved) return resolved;
-  }
-  const orphan = orphanAt(0);
-  if (orphan) {
-    // Seeded with `systems[0]`, the frame these callers draw top-level nodes in.
-    const resolved = walkContainerChain([systems[0], orphan], path, 1, 0);
-    if (resolved) return resolved;
-  }
-  for (const system of systems) {
-    if (system === unassigned || !system.children.some((c) => c.id === path[0])) continue;
-    const resolved = walkContainerChain([system], path, 0);
-    if (resolved) return resolved;
-  }
-  return null;
-}
-
-/**
- * Walk `path[from…]` down from the last node of `seed`. `startIndex` is the
- * index of the first segment below the system, which differs from `from` only
- * when the seed already holds a top-level node.
- */
-function walkContainerChain(
-  seed: KrsNode[],
-  path: ViewPath,
-  from: number,
-  startIndex: number = from,
-): ResolvedContainerChain | null {
-  const ancestorChain = [...seed];
-  let current = ancestorChain[ancestorChain.length - 1];
-  for (let i = from; i < path.length; i++) {
-    const child = current.children.find((c) => nodeId(c) === path[i]);
-    if (!child) return null;
-    ancestorChain.push(child);
-    current = child;
-  }
-  return { ancestorChain, startIndex };
-}
-
 /**
  * Extract the **entity view** of a domain: its `entity` children and the
  * relation edges between them — an alternative drill-down to the domain's
@@ -1883,21 +1443,6 @@ export function projectStoreRelations(store: KrsNode, systems: readonly KrsNode[
     }
   }
   return projected;
-}
-
-/**
- * The edges a container's own canvas draws between its children before any
- * derivation: the edges declared at the container's scope whose endpoints are
- * both children, plus the edges anchored inside a child block that the parent
- * canvas may lift (#2223). For a `database` this is the **recorded** side of
- * the store's ER view — hand-written `table` edges and the foreign keys
- * `translate --from db` emitted — which is why `coverage` reads it (#2723).
- */
-export function containerCanvasEdges(container: KrsNode): KrsEdge[] {
-  const childIds = new Set(container.children.map(nodeId));
-  const ownEdges = container.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
-  const drawnKeys = new Set(ownEdges.map(drawnEdgeKey));
-  return [...ownEdges, ...collectAnchoredPeerEdges(container.children, drawnKeys)];
 }
 
 /**
