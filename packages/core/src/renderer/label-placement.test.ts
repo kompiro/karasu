@@ -1519,7 +1519,7 @@ describe("real sample fence: frames (#3155)", () => {
       "examples/en/feature-samples/team-ownership.krs",
       [],
       "team",
-      "team { border-width: 5; }",
+      "team { border-width: 5px; }",
     );
     const [first, ...rest] = grouped.layoutResult.containers;
     const expanded = {

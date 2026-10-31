@@ -390,9 +390,11 @@ export class StyleParser {
    * the validator pass added in Phase 3 / PR-B). Both consume the same
    * tokens, so they are produced together to avoid re-parsing.
    *
-   * Returns `node: undefined` when the value is empty (no atoms before
-   * `;` / `}`) or every atom failed to classify; in that case only the
-   * joined string is meaningful and the validator pass will skip it.
+   * A value the parser cannot hold whole is refused (`refused: true`) and
+   * reported here, once, as `style-token-type-mismatch`: a token no value
+   * can contain, an empty value, or an empty comma item. The caller then
+   * stores nothing, so no later pass sees a value with a piece missing
+   * (#3140, #3141). Every value that is not refused has a `node`.
    */
   private parseValue(propertyName: string): {
     text: string;
@@ -403,6 +405,8 @@ export class StyleParser {
     let refused = false;
     const atoms: ValueNode[] = [];
     const segmentStarts: number[] = [0]; // indices into `atoms` where each comma-separated segment starts
+    let lastComma: Token | null = null;
+    let recovered = false;
 
     while (
       this.peek().type !== TokenType.Semicolon &&
@@ -428,8 +432,7 @@ export class StyleParser {
           while (this.peek().type !== TokenType.RightParen && this.peek().type !== TokenType.EOF) {
             if (this.peek().type === TokenType.Unknown) {
               // `url(😀A)`: refused like an Unknown token outside the parens.
-              this.reportUnknownValueToken(this.peek());
-              refused = true;
+              refused = this.refuse(this.peek(), refused);
               arg += this.advance().value;
             } else if (this.peek().type === TokenType.StringLiteral) {
               arg = this.advance().value;
@@ -466,27 +469,68 @@ export class StyleParser {
             loc: this.rangeBetween(token, token),
           });
           this.advance(); // consume the comma — treat as `;`
+          recovered = true;
           break;
         }
-        // Legitimate comma — start a new segment for the list builder.
+        // Legitimate comma — start a new segment for the list builder. An
+        // item with nothing in it (`a, , b`, `, a`) is refused: there is no
+        // value to put in its place.
+        if (atoms.length === segmentStarts[segmentStarts.length - 1]) {
+          refused = this.refuse(token, refused);
+        }
+        lastComma = token;
         parts.push(this.advance().value);
         segmentStarts.push(atoms.length);
-      } else if (token.type === TokenType.Unknown) {
-        // A character no value can hold (a stray `-`, an emoji): refuse the
-        // declaration. Keeping the rest would apply `- 20px` as `20px` (#3140).
-        this.reportUnknownValueToken(token);
-        refused = true;
-        parts.push(this.advance().value);
+      } else if (token.type === TokenType.Hash && this.isAdjacentIdentifier(token)) {
+        // `#zzzz`: the lexer reads only a well-formed hex as one token, so a
+        // malformed color arrives as `#` + identifier. Keep it as the hex
+        // atom the author meant, so the validator reports the color
+        // (`style-invalid-hex-color`) rather than a stray `#`.
+        this.advance();
+        const t = this.advance();
+        const value = `#${t.value}`;
+        parts.push(value);
+        atoms.push({ kind: "hex", value, loc: rangeBetweenTokens(token, t, this.filePath) });
       } else {
-        // Unknown / unhandled token — keep it in the joined string but
-        // do not attempt to classify into a ValueNode.
+        // A token no value can hold (a stray `-`, an emoji, a bracket):
+        // refuse the declaration. Keeping the rest would apply `- 20px` as
+        // `20px` (#3140), or let a value the validator never saw reach the
+        // resolver (#3141).
+        refused = this.refuse(token, refused);
         parts.push(this.advance().value);
       }
     }
 
+    if (!refused) {
+      if (atoms.length === 0) {
+        // `color: ;` — nothing to apply. After `color: , font-size: …` the
+        // comma recovery has already reported the declaration.
+        refused = this.refuse(this.peek(), recovered);
+      } else if (lastComma && atoms.length === segmentStarts[segmentStarts.length - 1]) {
+        // `font-family: serif,` — the last item is empty.
+        refused = this.refuse(lastComma, refused);
+      }
+    }
+
     const text = parts.join(" ").trim();
-    const node = buildValueNode(atoms, segmentStarts);
+    const node = refused ? undefined : buildValueNode(atoms, segmentStarts);
     return { text, node, refused };
+  }
+
+  /** Whether `hash` is immediately followed, with no space, by an identifier. */
+  private isAdjacentIdentifier(hash: Token): boolean {
+    const next = this.peekAt(1);
+    return next.type === TokenType.Identifier && next.loc.offset === hash.loc.offset + 1;
+  }
+
+  /**
+   * Refuse the declaration at `token`, reporting only the first reason: one
+   * declaration that takes no effect is one finding, however many stray
+   * tokens it holds. Returns the new `refused` state, always `true`.
+   */
+  private refuse(token: Token, alreadyRefused: boolean): true {
+    if (!alreadyRefused) this.reportUnknownValueToken(token);
+    return true;
   }
 
   /** A token no value can hold; the caller refuses the whole declaration. */
@@ -533,39 +577,40 @@ function classifyIdentAtom(value: string, token: Token, file: string | undefined
   return { kind: "ident", value, loc: tokenLoc(token, file) };
 }
 
-function buildValueNode(atoms: ValueNode[], segmentStarts: number[]): ValueNode | undefined {
-  if (atoms.length === 0) return undefined;
-  if (segmentStarts.length <= 1) {
-    // No commas — single segment. If exactly one atom, return it; if
-    // multiple atoms (e.g. a sequence the parser does not recognize),
-    // leave node undefined for now and let the validator skip.
-    return atoms.length === 1 ? atoms[0] : undefined;
-  }
-  // Comma-separated list. Each segment becomes one item: a single atom
-  // when the segment has exactly one, and `undefined` (skipped) otherwise.
+/**
+ * The value node for a declaration's atoms. Commas split items; within an
+ * item, one atom stands for itself and several make a `sequence` (#3141), so
+ * every atom the author wrote reaches the validator. The caller has already
+ * refused an empty value or an empty item, so every segment has an atom.
+ */
+function buildValueNode(atoms: ValueNode[], segmentStarts: number[]): ValueNode {
   const items: ValueNode[] = [];
   for (let i = 0; i < segmentStarts.length; i++) {
-    const start = segmentStarts[i];
     const end = i + 1 < segmentStarts.length ? segmentStarts[i + 1] : atoms.length;
-    if (end - start === 1) {
-      items.push(atoms[start]);
-    } else if (end - start > 1) {
-      // Multi-atom segment — fold by using the first atom's loc as a
-      // placeholder. The validator can still report on the segment but
-      // cannot zoom into a sub-atom.
-      items.push(atoms[start]);
-    }
+    items.push(segmentNode(atoms.slice(segmentStarts[i], end)));
   }
-  if (items.length === 0) return undefined;
+  if (items.length === 1) return items[0];
   return {
     kind: "list",
     items,
-    // The items are atoms of one declaration, so they share its file.
-    loc: inFile(
-      { start: items[0].loc.start, end: items[items.length - 1].loc.end },
-      items[0].loc.file,
-    ),
+    loc: spanOf(items),
   };
+}
+
+/** One comma item: a single atom, or a `sequence` of its space-separated atoms. */
+function segmentNode(atoms: ValueNode[]): ValueNode {
+  const [first, second, ...rest] = atoms;
+  if (second === undefined) return first;
+  return { kind: "sequence", items: [first, second, ...rest], loc: spanOf(atoms) };
+}
+
+/** From the first node's start to the last one's end. */
+function spanOf(nodes: ValueNode[]): SourceRange {
+  // The nodes are atoms of one declaration, so they share its file.
+  return inFile(
+    { start: nodes[0].loc.start, end: nodes[nodes.length - 1].loc.end },
+    nodes[0].loc.file,
+  );
 }
 
 /**

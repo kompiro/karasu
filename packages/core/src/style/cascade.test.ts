@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { flattenSheetsInCascadeOrder, mergeInCascadeOrder } from "./cascade.js";
 import type { StyleRule, StyleSheet } from "../types/style.js";
+import { StyleParser } from "../parser/style-parser.js";
+import { BUILTIN_SHEET_ID } from "../builtins/default-style.js";
+import { ICON_THEME_SHEET_ID } from "../builtins/icon-theme.js";
 
 const ZERO_RANGE = {
   start: { line: 0, column: 0, offset: 0 },
@@ -85,5 +88,74 @@ describe("mergeInCascadeOrder", () => {
     const rules = [makeRule({}, 1, 5), makeRule({}, 1, 1)];
     mergeInCascadeOrder(rules);
     expect(rules.map((r) => r.sourceIndex)).toEqual([5, 1]);
+  });
+});
+
+// #3141: a declaration the validator rejects is left out of the cascade, so
+// the resolver never reads a value the diagnostic says was ignored.
+describe("flattenSheetsInCascadeOrder — invalid declarations (#3141)", () => {
+  const parse = (src: string, sheetId = "user.krs.style") => StyleParser.parse(src, sheetId).value;
+  const merged = (sheets: StyleSheet[]) => mergeInCascadeOrder(flattenSheetsInCascadeOrder(sheets));
+
+  it("drops an author declaration that fails its schema and keeps the rest", () => {
+    const sheet = parse("service { opacity: 2; border-width: 3px; }");
+    expect(merged([sheet])).toEqual({ "border-width": "3px" });
+  });
+
+  it("falls back to a weaker rule's valid value, not to the default", () => {
+    const sheet = parse("service { opacity: 0.5; } #A { opacity: 2; }");
+    const rules = flattenSheetsInCascadeOrder([sheet]);
+    expect(mergeInCascadeOrder(rules)).toEqual({ opacity: "0.5" });
+  });
+
+  it("drops a known declaration whose rule carries no value node for it", () => {
+    const sheet = parse("service { opacity: 0.5; }");
+    const bare = { ...sheet, rules: [{ ...sheet.rules[0], valueNodes: {} }] };
+    expect(merged([bare])).toEqual({});
+  });
+
+  it("keeps an unknown property, which the validator only warns about", () => {
+    expect(merged([parse("service { colour: red; }")])).toEqual({ colour: "red" });
+  });
+
+  it("keeps a rule built without value nodes as it is", () => {
+    const rule = makeRule({ opacity: "2" }, 1, 0);
+    expect(merged([makeSheet("user", [rule])])).toEqual({ opacity: "2" });
+  });
+
+  it("checks the sheets karasu ships by their rules' sheetId, wherever they sit", () => {
+    // The builtin writes lengths without a unit, which an author sheet may not.
+    const builtin = parse("service { border-width: 2; }", BUILTIN_SHEET_ID);
+    const iconTheme = parse("service { font-size: 13; }", ICON_THEME_SHEET_ID);
+    const user = parse("service { stroke-width: 4; }");
+    // The envelope's sheetId is not what decides: only the rules' is.
+    const mislabelled = { ...iconTheme, sheetId: "user.krs.style" };
+    expect(merged([user, builtin, mislabelled])).toEqual({
+      "border-width": "2",
+      "font-size": "13",
+    });
+  });
+
+  it("leaves the parsed sheet untouched, so a cached sheet is not edited", () => {
+    const sheet = parse("service { opacity: 2; color: red; }");
+    const rule = sheet.rules[0];
+    const before = structuredClone({
+      properties: rule.properties,
+      declarationLocs: rule.declarationLocs,
+      valueNodes: rule.valueNodes,
+    });
+    flattenSheetsInCascadeOrder([sheet]);
+    expect({
+      properties: rule.properties,
+      declarationLocs: rule.declarationLocs,
+      valueNodes: rule.valueNodes,
+    }).toEqual(before);
+  });
+
+  it("still numbers sourceIndex across every rule, including dropped selectors", () => {
+    const sheet = parse(
+      "service { opacity: 2; } [made-up-tag] { color: red; } service { color: blue; }",
+    );
+    expect(flattenSheetsInCascadeOrder([sheet]).map((r) => r.sourceIndex)).toEqual([0, 2]);
   });
 });

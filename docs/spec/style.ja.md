@@ -292,11 +292,21 @@ badge-icon:       "⚠";
 badge-label:      "非推奨";
 ```
 
+**プロパティに合わない値を持つ宣言は、書かれなかったものとして扱う。** 値は書かれた
+位置で 1 回報告され、cascade はその宣言抜きで進む: 弱いルールが同じプロパティに書いた
+値が効き、どのルールも書いていなければ既定が残る（CSS と同じ）。範囲外・未知の
+キーワード・単位の欠落や誤り・不正な色のどれで拒否されても、どのプロパティでも同じで
+ある。karasu が同梱するシートは検査しない（[#3141](https://github.com/kompiro/karasu/issues/3141)）。
+
 数値と長さには符号を付けられる（`label-offset: -8px` は label を上へ動かす）。
 `border-width` / `border-radius` / `font-size` / `stroke-width` は負にできず、
-`opacity` は `[0, 1]` に収まる。範囲外の値は `style-out-of-range` として報告され、
-既定値が使われる。範囲を持つほかのプロパティ（`label-position` / `grid-columns` /
-`label-max-chars`）は、後述の各節にそれぞれの規定がある。
+`opacity` は `[0, 1]` に収まる（外れれば `style-out-of-range`）。長さには `px` が
+要る。ただし `0` はどの単位でも同じなので単位なしでよい（`border-width: 0`）。カンマの
+無いまま複数の部分を持つ値（`opacity: 0.5 0.2`）は拒否する。例外は 2 つの部分を取る
+プロパティ（`label-offset`）と、複数語のフォント名（`font-family: Noto Sans,
+sans-serif`）だけである。
+
+> Related TPLs: [TPL-3141](../test-perspectives/TPL-3141-style-diagnostic-describes-drawing.md) — 値の範囲はスキーマ 1 か所にだけ置き、無効な宣言は cascade で 1 回だけ外すので、診断が描画を説明する。
 
 ---
 
@@ -559,8 +569,8 @@ external サービスの `column: center` / 未指定は、サイドを自動割
 | `deploy` | 無視。解決時に `style-column-ignored-non-system-view` 警告が出る。 |
 | `org`    | 同上。 |
 
-`left` / `center` / `right` 以外の値は `style-column-invalid-value`
-警告とともに破棄されます。
+それ以外の値は `style-invalid-enum-value` として報告され、ほかの不正な値と同じく
+破棄されます（[プロパティ一覧](#プロパティ一覧)）。
 
 ### `grid-columns` — 正の整数
 
@@ -592,8 +602,9 @@ drill-down ビューおよび org の member grid で有効です。deploy ビ�
 ただしコンテナを `realizes` 先でグループ化する都合上コンテナノードが無く、
 v1 では `grid-columns` による上書きはできません。
 
-正の整数でない値（`0` や `2.5` など）は `style-grid-columns-invalid-value` 警告とともに
-破棄され、レイアウトは自動バランスにフォールバックします。
+正の整数でない値（`0` や `2.5` など）は 1 回だけ報告され（`style-out-of-range` /
+`style-invalid-enum-value`）、ほかの不正な値と同じく破棄されます。ほかのルールの値が
+なければ、レイアウトは自動バランスになります。
 
 > Related TPLs: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md) — 一度に見せる範囲を限定し、単一ビューが一目で把握できる解像度を保つ（バランス grid は視覚密度を一定に保つ）。[TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md) — view ごとの行幅予算は探索で決まるため、決定的・floor-first・単調でなければ本節が約束する「同じ入力 → 同じ SVG」が破れる。
 
@@ -657,7 +668,7 @@ edge#criticalWrite { direction: down; }
 
 詳細は [`docs/adr/9019-edge-direction-style.md`](../adr/9019-edge-direction-style.md)。
 
-不正値は黙って破棄され、`direction` は `auto` にフォールバックする。
+不正な値は報告され、ほかの不正な値と同じく破棄される（[プロパティ一覧](#プロパティ一覧)）: 弱いルールの `direction` が効き、どのルールも書いていなければ `auto` になる。
 
 ### `label-position` — `start | middle | end | <0.0..1.0>`
 
@@ -675,8 +686,9 @@ edge#criticalWrite { label-position: 0.25; }
 著者がいずれかを設定した時点で、polyline 全長を辿って `position ×
 totalLength` の点をアンカーにする経路に切り替わる。
 
-不正値（未知のキーワード、数値でない文字列）は `middle` にフォールバック。
-`[0, 1]` 範囲外の小数値はクランプ。
+不正な値（未知のキーワード、`[0, 1]` の外の数値）は報告され、ほかの不正な値と同じく
+破棄される: label は宣言が無いときの位置、つまり弱いルールの指定が無ければ `middle`
+に描かれる。範囲外の数値を近い端へクランプはしない。
 
 ### `label-offset` — `<dy>px` または `<dx>px <dy>px`
 
@@ -686,6 +698,9 @@ label アンカーを画面の x/y 軸方向にずらす値（pixel）。CSS sho
 - **1 値** (`label-offset: 8px`) → `dx = 0`, `dy = 8`。最頻出の
   「label を下方向にずらす」ケース
 - **2 値** (`label-offset: 4px 8px`) → `dx = 4`, `dy = 8`
+
+値は空白で区切る。3 つ目の値やカンマ（`4px, 8px`）があると宣言は不正になり、先頭の
+2 値として読むことはしない。
 
 ```css
 edge { label-offset: 0 8px; }    /* 全 label を anchor から 8px 下に */
@@ -723,7 +738,7 @@ edge#criticalWrite { label-max-chars: none; }   /* この 1 本は常に全文�
 同じ出力になる。
 
 文字数は code point で数え、描画幅では数えない。正の整数でない値は
-無視され、デフォルトが使われる。
+報告され、ほかの不正な値と同じく破棄される。
 
 機械生成の label（usecase → resource edge の `W` / `R`、集約 edge の
 `N domain edges`）は省略しない。

@@ -282,27 +282,11 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         }),
         details: [],
       };
-    case "style-column-invalid-value":
-      return {
-        message: t("warning.styleColumnInvalidValue.message", {
-          nodeId: w.params.nodeId,
-          value: w.params.value,
-        }),
-        details: [],
-      };
     case "style-column-ignored-non-system-view":
       return {
         message: t("warning.styleColumnIgnoredNonSystemView.message", {
           nodeId: w.params.nodeId,
           viewType: w.params.viewType,
-        }),
-        details: [],
-      };
-    case "style-grid-columns-invalid-value":
-      return {
-        message: t("warning.styleGridColumnsInvalidValue.message", {
-          nodeId: w.params.nodeId,
-          value: w.params.value,
         }),
         details: [],
       };

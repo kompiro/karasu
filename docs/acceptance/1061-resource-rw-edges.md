@@ -44,7 +44,7 @@ type: product
 - [ ] AT-H（manual）: Preview で `RegisterProduct`（write 中心）と `SearchProducts`（read 中心）の usecase view を比較し、レイアウト崩れ・ラベル重なりが許容範囲内であることを目視確認する
   > 🧑 Manual — 1 usecase あたり 2〜4 resource の典型的シーンでラベルが他の要素と重ならないことを確認
 
-- [ ] AT-I（manual）: ユーザー `.krs.style` で `edge[write] { stroke-width: 4; color: #f87171; }` のような上書きが効くことを確認（カスケードに乗っている確証）
+- [ ] AT-I（manual）: ユーザー `.krs.style` で `edge[write] { stroke-width: 4px; color: #f87171; }` のような上書きが効くことを確認（カスケードに乗っている確証）
   > 🧑 Manual — Preview に追加スタイルを差し込んで上書きが反映される様子を観察。仮の `.krs.style` で 1 度確認できれば十分
 
 ## 補足

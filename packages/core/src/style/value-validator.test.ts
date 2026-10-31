@@ -210,6 +210,137 @@ describe("validateStyleValues — list-of (font-family)", () => {
   it("accepts a single string value (not in a list)", () => {
     expect(validate(`service { font-family: "Noto"; }`)).toEqual([]);
   });
+
+  // #3141: an unquoted name may span words, as in CSS.
+  it("accepts an unquoted multi-word name, alone or in a list", () => {
+    expect(validate(`service { font-family: Noto Sans, serif; }`)).toEqual([]);
+    expect(validate(`service { font-family: Noto Sans; }`)).toEqual([]);
+  });
+
+  it("rejects a name that mixes a number into its words, naming both accepted forms", () => {
+    const diags = validate(`service { font-family: Noto 12px; }`);
+    expect(diags).toHaveLength(1);
+    expect(diags[0].code).toBe("style-invalid-enum-value");
+    expect(diags[0].params).toMatchObject({ allowed: ["<string>", "<identifier> …"] });
+  });
+});
+
+// #3141: spaces separate `label-offset`'s two lengths; nothing else does.
+describe("validateStyleValues — sequence-of (label-offset)", () => {
+  it.each(["8px", "4px 8px", "0 8px"])("accepts %s", (value) => {
+    expect(validate(`edge { label-offset: ${value}; }`)).toEqual([]);
+  });
+
+  it.each(["4px 8px 12px", "1px 2px 3px 4px"])(
+    "rejects %s with one diagnostic naming both accepted forms",
+    (value) => {
+      const diags = validate(`edge { label-offset: ${value}; }`);
+      expect(diags).toHaveLength(1);
+      expect(diags[0].code).toBe("style-invalid-enum-value");
+      expect(diags[0].params).toEqual({
+        property: "label-offset",
+        value,
+        allowed: ["<number>px", "<number>px <number>px"],
+      });
+    },
+  );
+
+  it("rejects a comma between the lengths: a list is not a sequence", () => {
+    const diags = validate(`edge { label-offset: 4px, 8px; }`);
+    expect(diags).toHaveLength(1);
+    expect(diags[0].params).toMatchObject({ value: "4px, 8px" });
+  });
+
+  it("reports a bad item with that item's diagnostic", () => {
+    const diags = validate(`edge { label-offset: 4px 8em; }`);
+    expect(diags.map((d) => d.code)).toEqual(["style-invalid-length-unit"]);
+  });
+});
+
+describe("validateStyleValues — values the schema reads one way (#3141)", () => {
+  it("rejects several parts where a number is expected, shown with spaces", () => {
+    const diags = validate(`service { opacity: -0.5 0.2; }`);
+    expect(diags).toHaveLength(1);
+    expect(diags[0].code).toBe("style-invalid-enum-value");
+    expect(diags[0].params).toEqual({
+      property: "opacity",
+      value: "-0.5 0.2",
+      allowed: ["<number>"],
+    });
+  });
+
+  it("accepts a unitless 0 as a length, and no other unitless number", () => {
+    expect(validate(`service { border-width: 0; }`)).toEqual([]);
+    expect(validate(`service { border-width: 4; }`).map((d) => d.code)).toEqual([
+      "style-missing-length-unit",
+    ]);
+  });
+
+  it("reports a number outside a union's numeric range against that range", () => {
+    const diags = validate(`edge { label-position: -0.5; }`);
+    expect(diags).toHaveLength(1);
+    expect(diags[0].code).toBe("style-out-of-range");
+    expect(diags[0].params).toMatchObject({ property: "label-position", min: 0, max: 1 });
+  });
+
+  it("names the keyword too when a union's number is not an integer", () => {
+    const diags = validate(`edge { label-max-chars: 2.5; }`);
+    expect(diags).toHaveLength(1);
+    expect(diags[0].params).toEqual({
+      property: "label-max-chars",
+      value: "2.5",
+      allowed: ["none", "<integer>"],
+    });
+  });
+
+  it("names every accepted form when a union's value has the wrong type", () => {
+    const diags = validate(`edge { label-max-chars: 5px; }`);
+    expect(diags.map((d) => d.params)).toEqual([
+      { property: "label-max-chars", value: "5px", allowed: ["none", "<integer>"] },
+    ]);
+  });
+
+  it("reports a declaration under a grouped selector once", () => {
+    const diags = validate(`service, database { opacity: 2; }`);
+    expect(diags.map((d) => d.code)).toEqual(["style-out-of-range"]);
+  });
+
+  it.each(["0", "-2"])("reports grid-columns: %s once, as out of range", (value) => {
+    const diags = validate(`system { grid-columns: ${value}; }`);
+    expect(diags.map((d) => d.code)).toEqual(["style-out-of-range"]);
+    expect(diags[0].params).toMatchObject({ property: "grid-columns", min: 1 });
+  });
+
+  it("asks for an integer where only an integer will do", () => {
+    const diags = validate(`system { grid-columns: 2.5; }`);
+    expect(diags.map((d) => d.params)).toEqual([
+      { property: "grid-columns", value: "2.5", allowed: ["<integer>"] },
+    ]);
+  });
+
+  it("keeps a keyword's report on the first branch, so color stays readable", () => {
+    expect(validate(`service { color: primary; }`).map((d) => d.code)).toEqual([
+      "style-invalid-hex-color",
+    ]);
+  });
+
+  it("reports a malformed hex as a color", () => {
+    expect(validate(`service { color: #zzzz; }`).map((d) => d.code)).toEqual([
+      "style-invalid-hex-color",
+    ]);
+  });
+
+  it("reports a known declaration a rule carries without its value node", () => {
+    const sheet = StyleParser.parse(`service { opacity: 0.5; color2: x; }`).value;
+    const rule = sheet.rules[0];
+    const bare = { ...sheet, rules: [{ ...rule, valueNodes: {} }] };
+    const diags = validateStyleValues(bare);
+    expect(diags.map((d) => d.code)).toEqual([
+      "style-invalid-enum-value",
+      "style-unknown-property",
+    ]);
+    expect(diags[0].loc).toEqual(rule.declarationLocs.opacity);
+  });
 });
 
 describe("validateStyleValues — unknown property", () => {

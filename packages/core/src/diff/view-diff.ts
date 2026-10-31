@@ -192,16 +192,29 @@ function diffEdgeArray(
   for (const edge of after) {
     const key = edgeKey(edge);
     diff.set(key, { state: beforeByKey.has(key) ? "unchanged" : "added" });
-    merged.push(edge);
+    merged.push(withoutCyclic(edge));
     seen.add(key);
   }
   for (const edge of before) {
     const key = edgeKey(edge);
     if (seen.has(key)) continue;
     diff.set(key, { state: "removed" });
-    merged.push(edge);
+    merged.push(withoutCyclic(edge));
   }
   return merged;
+}
+
+/**
+ * A diff does not draw cycles (#2791): a removed edge would bring the before
+ * side's verdict while diff reports only the after side's warnings, and the
+ * cyclic red is the "removed" red. Only a flagged edge is copied. Layout looks
+ * cross-system edges up by object identity (`crossSystemSource`), so copying
+ * every edge would send them all to the unscoped fallback.
+ */
+function withoutCyclic(edge: KrsEdge): KrsEdge {
+  if (!edge.cyclic) return edge;
+  const { cyclic: _cyclic, ...rest } = edge;
+  return rest;
 }
 
 /**

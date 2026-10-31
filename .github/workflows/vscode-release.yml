@@ -3,21 +3,33 @@ name: VS Code Extension Release
 # Publishes the `packages/vscode` extension to the VS Code Marketplace under
 # publisher `karasu-tools` (extension id `karasu-tools.karasu-vscode`).
 #
-# Runs as part of the monthly release train: release.yml calls it
-# (`workflow_call`) after the npm publish, and it publishes only when the
-# Marketplace does not have the version yet (#2922). `workflow_dispatch` stays
-# for a manual publish or a re-run.
+# Two channels share this file (the build, auth and publish steps):
+#
+# - Stable: the monthly release train. release.yml calls it (`workflow_call`)
+#   after the npm publish, and it publishes only when the Marketplace does not
+#   have the version yet (#2922). `workflow_dispatch` stays for a manual
+#   publish or a re-run.
+# - Pre-release: every Wednesday 00:00 UTC (`schedule`), or `workflow_dispatch`
+#   with `pre_release`, it builds the tip of main and publishes it to the
+#   pre-release channel as `<stable major>.<stable minor>.<YYYYMMDDNN>`, unless
+#   the packaged files equal those of the highest version on the Marketplace
+#   (#2940). The version is written only in the runner's working tree, no
+#   changeset is consumed, and the `record-pre-release` job tags the commit
+#   `karasu-vscode-pre/<version>` (no `@`, so the release tag collectors and
+#   GitHub Releases never pick it up).
 # Versioning IS managed by changesets (`karasu-vscode` was removed from
 # `.changeset/config.json` `ignore`): `changeset version` bumps
 # `packages/vscode/package.json` + writes its CHANGELOG. But `karasu-vscode` is
 # `private: true`, so `changeset publish` (release.yml) never publishes it to
-# npm — Marketplace publish stays here, run manually after the version is
-# bumped. The version published is whatever is in `packages/vscode/package.json`,
-# built from the commit that set that version (not the tip of main), and the
-# `record` job then tags it `karasu-vscode@<version>` and adds it to that
-# commit's GitHub Release `release-YYYY-MM-DD` (#2939).
+# npm — the Marketplace publish stays here, called by release.yml after the
+# version is bumped. The stable version published is whatever is in
+# `packages/vscode/package.json`, built from the commit that set that version
+# (not the tip of main), and the `record` job then tags it
+# `karasu-vscode@<version>` and adds it to that commit's GitHub Release
+# `release-YYYY-MM-DD` (#2939).
 # See docs/design/vscode-changeset-versioning.md (refines ADR-1315),
-# Issue #1316, and docs/release.md "VS Code 拡張のリリース".
+# Issue #1316, docs/design/vscode-pre-release-channel.md (#2940), and
+# docs/release.md "VS Code 拡張のリリース".
 #
 # Auth: Microsoft Entra ID via GitHub OIDC (no stored secret, nothing to expire
 # — Azure DevOps long-lived PATs retire 2026-12-01). `azure/login` exchanges the
@@ -36,21 +48,28 @@ on:
   workflow_dispatch:
     inputs:
       pre_release:
-        description: "Publish to the VS Code pre-release channel"
+        description: "Publish the tip of main to the pre-release channel under a date version (#2940)"
         type: boolean
         default: false
+  # The weekly pre-release (#2940): Wednesday, away from the train's Sunday.
+  schedule:
+    - cron: "0 0 * * 3"
   # The monthly release train (#2922): release.yml calls this after the npm
   # publish, so the extension ships with every release its version moved in.
   workflow_call:
     inputs:
       pre_release:
-        description: "Publish to the VS Code pre-release channel"
+        description: "Publish the tip of main to the pre-release channel under a date version (#2940)"
         type: boolean
         default: false
 
+# Stable and pre-release runs go one at a time. `queue: max` keeps every
+# waiting run: without it a third arrival (the weekly cron, a dispatch) would
+# replace a pending one, which can be the train's stable call (#2940).
 concurrency:
   group: vscode-release
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
@@ -63,21 +82,50 @@ jobs:
     outputs:
       commit: ${{ steps.source.outputs.commit }}
       version: ${{ steps.source.outputs.version }}
-      published: ${{ steps.publish.outcome == 'success' && inputs.pre_release != true }}
+      published: ${{ steps.publish.outcome == 'success' && steps.channel.outputs.pre_release != 'true' }}
+      pre_release_version: ${{ steps.pre_release_version.outputs.version }}
+      pre_released: ${{ steps.publish.outcome == 'success' && steps.channel.outputs.pre_release == 'true' }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
-      # Build from the commit that set the extension's current version — the
-      # release commit whose CHANGELOG was reviewed — not from the tip of main,
-      # which may already carry changes that belong to the next release. The
-      # tag below is put on the same commit, so the tag names exactly the source
-      # that was published (#2939).
+      # The channel is decided here once. A called workflow sees its caller's
+      # event, so `schedule` counts only when this file's own cron fired (the
+      # workflow_ref names this file), not a future scheduled caller. The
+      # Entra federated credential trusts refs/heads/main only, and the
+      # pre-release is meant to carry main, so another ref fails here instead
+      # of at the login.
+      - name: Choose the channel
+        id: channel
+        env:
+          PRE_RELEASE: ${{ (github.event_name == 'schedule' && contains(github.workflow_ref, '/vscode-release.yml@')) || inputs.pre_release == true }}
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$PRE_RELEASE" = "true" ] && [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::A pre-release is built from main; this run is on ${REF}."
+            exit 1
+          fi
+          echo "pre_release=${PRE_RELEASE}" >> "$GITHUB_OUTPUT"
+
+      # Stable builds from the commit that set the extension's current version
+      # — the release commit whose CHANGELOG was reviewed — not from the tip of
+      # main, which may already carry changes that belong to the next release.
+      # The tag below is put on the same commit, so the tag names exactly the
+      # source that was published (#2939). A pre-release builds the tip of main
+      # (the commit this run started on): carrying what the next stable will
+      # ship is its purpose (#2940). `version` is then the stable version on
+      # main, which the pre-release version is derived from.
       - name: Check out the release commit
         id: source
+        env:
+          PRE_RELEASE: ${{ steps.channel.outputs.pre_release }}
         run: |
-          commit=$(git log -1 --format=%H -G'"version":' -- packages/vscode/package.json)
+          if [ "$PRE_RELEASE" = "true" ]; then
+            commit=$(git rev-parse HEAD)
+          else
+            commit=$(git log -1 --format=%H -G'"version":' -- packages/vscode/package.json)
+          fi
           if [ -z "$commit" ]; then
             echo "::error::No commit sets the version of packages/vscode/package.json."
             exit 1
@@ -108,18 +156,21 @@ jobs:
       # only as a pre-release cannot be published as stable (the Marketplace
       # takes a version number once across channels) and fails, as does a
       # `vsce show` that cannot answer (TPL-2786).
+      # A pre-release only reads the highest version here (either channel):
+      # whether to publish is decided after packaging, by comparing with it.
       - name: Check the Marketplace
         id: marketplace
         working-directory: packages/vscode
         env:
           VERSION: ${{ steps.source.outputs.version }}
-          PRE_RELEASE: ${{ inputs.pre_release }}
+          PRE_RELEASE: ${{ steps.channel.outputs.pre_release }}
         run: |
+          pnpm exec vsce show karasu-tools.karasu-vscode --json > "$RUNNER_TEMP/vsce-show.json"
           if [ "$PRE_RELEASE" = "true" ]; then
-            echo "publish=true" >> "$GITHUB_OUTPUT"
+            highest=$(node "$RUNNER_TEMP/release-scripts/pre-release.mts" highest < "$RUNNER_TEMP/vsce-show.json")
+            echo "highest=${highest}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          pnpm exec vsce show karasu-tools.karasu-vscode --json > "$RUNNER_TEMP/vsce-show.json"
           status=$(node "$RUNNER_TEMP/release-scripts/train.mts" marketplace-status --version "$VERSION" < "$RUNNER_TEMP/vsce-show.json")
           case "$status" in
             absent)
@@ -150,9 +201,59 @@ jobs:
       - name: Package extension
         run: pnpm --filter karasu-vscode run package
 
+      # A week without a change to what the extension ships publishes nothing.
+      # The files of the package just built are compared with those of the
+      # highest version on the Marketplace — the one a pre-release user has —
+      # so no list of source paths has to name every input of the extension
+      # (TPL-2804). A download or comparison that fails stops the run instead
+      # of publishing or skipping (TPL-2786). The download is bounded in time so
+      # a stalled Marketplace cannot hold the `vscode-release` group that a
+      # stable release may be queued behind.
+      - name: Compare with the highest version on the Marketplace
+        id: compare
+        if: steps.channel.outputs.pre_release == 'true'
+        env:
+          HIGHEST: ${{ steps.marketplace.outputs.highest }}
+          VSIX: packages/vscode/karasu-vscode-${{ steps.source.outputs.version }}.vsix
+        run: |
+          curl -sSfL --compressed --connect-timeout 30 --max-time 300 --retry 3 --retry-max-time 900 -o "$RUNNER_TEMP/highest.vsix" \
+            "https://marketplace.visualstudio.com/_apis/public/gallery/publishers/karasu-tools/vsextensions/karasu-vscode/${HIGHEST}/vspackage"
+          unzip -q "$RUNNER_TEMP/highest.vsix" -d "$RUNNER_TEMP/highest"
+          unzip -q "$VSIX" -d "$RUNNER_TEMP/current"
+          result=$(node "$RUNNER_TEMP/release-scripts/pre-release.mts" diff --a "$RUNNER_TEMP/highest" --b "$RUNNER_TEMP/current")
+          case "$result" in
+            same)
+              echo "::notice::The extension built from main has the same files as ${HIGHEST} on the Marketplace: no pre-release this week."
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              ;;
+            changed)
+              echo "publish=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Unexpected comparison result: '${result}'."
+              exit 1
+              ;;
+          esac
+
+      # `<stable major>.<stable minor>.<YYYYMMDDNN>`, above every version on the
+      # Marketplace. Written in the runner's working tree only: main keeps the
+      # stable version changesets owns, and `vsce publish` packages from here.
+      - name: Set the pre-release version
+        id: pre_release_version
+        if: steps.compare.outputs.publish == 'true'
+        working-directory: packages/vscode
+        env:
+          STABLE: ${{ steps.source.outputs.version }}
+        run: |
+          version=$(node "$RUNNER_TEMP/release-scripts/pre-release.mts" version --stable "$STABLE" < "$RUNNER_TEMP/vsce-show.json")
+          jq --arg version "$version" '.version = $version' package.json > "$RUNNER_TEMP/package.json"
+          mv "$RUNNER_TEMP/package.json" package.json
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "::notice::Publishing karasu-vscode ${version} to the pre-release channel."
+
       - name: Check publish prerequisites
         id: prereqs
-        if: steps.marketplace.outputs.publish == 'true'
+        if: steps.marketplace.outputs.publish == 'true' || steps.compare.outputs.publish == 'true'
         env:
           AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
         run: |
@@ -182,8 +283,10 @@ jobs:
         id: publish
         if: steps.prereqs.outputs.can_publish == 'true'
         working-directory: packages/vscode
+        env:
+          PRE_RELEASE: ${{ steps.channel.outputs.pre_release }}
         run: |
-          if [ "${{ inputs.pre_release }}" = "true" ]; then
+          if [ "$PRE_RELEASE" = "true" ]; then
             pnpm exec vsce publish --azure-credential --no-dependencies --pre-release
           else
             pnpm exec vsce publish --azure-credential --no-dependencies
@@ -193,7 +296,7 @@ jobs:
   # GitHub Release (created by release.yml for the npm packages, or created
   # here when only the extension shipped). Runs only after a successful stable
   # Marketplace publish, so a version that failed to publish never gets a tag
-  # (#2939). Pre-release builds are not tagged (#2940).
+  # (#2939). A pre-release is tagged by `record-pre-release` instead (#2940).
   record:
     name: Record release
     needs: release
@@ -239,3 +342,37 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMMIT: ${{ needs.release.outputs.commit }}
         run: node scripts/release/github-release.mts --commit "$COMMIT"
+
+  # Tags the commit a pre-release was built from, so a report against a
+  # pre-release version leads back to its source (#2940). Only after a
+  # successful publish. No `@` in the name: release.yml collects the `@` tags
+  # of a merge commit and github-release.mts reads `<package>@<version>` as a
+  # stable release, so a pre-release never lands in a `release-YYYY-MM-DD`
+  # Release. No GitHub Release either: a pre-release has no CHANGELOG section.
+  record-pre-release:
+    name: Record pre-release
+    needs: release
+    if: needs.release.outputs.pre_released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the tag
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0 # the commit and the existing tags
+
+      - name: Push the pre-release tag
+        env:
+          COMMIT: ${{ needs.release.outputs.commit }}
+          TAG: karasu-vscode-pre/${{ needs.release.outputs.pre_release_version }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            if [ "$(git rev-list -n1 "refs/tags/${TAG}")" != "$COMMIT" ]; then
+              echo "::error::${TAG} already exists on another commit."
+              exit 1
+            fi
+            echo "${TAG} already points at ${COMMIT}."
+          else
+            git tag "$TAG" "$COMMIT"
+            git push origin "refs/tags/${TAG}"
+          fi

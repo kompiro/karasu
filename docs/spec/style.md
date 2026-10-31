@@ -308,12 +308,24 @@ badge-icon:       "⚠";
 badge-label:      "Deprecated";
 ```
 
+**A declaration whose value does not fit its property is treated as if it
+were not written.** The value is reported once, where it was written, and the
+cascade goes on without it: a weaker rule's value for the same property
+applies, or the default when no rule sets one (CSS does the same). This holds
+for every property and every reason a value is rejected: out of range, an
+unknown keyword, a missing or wrong unit, a malformed color. The sheets karasu
+ships are not checked ([#3141](https://github.com/kompiro/karasu/issues/3141)).
+
 A number or a length may carry a sign: `label-offset: -8px` moves the label
 up. `border-width`, `border-radius`, `font-size` and `stroke-width` cannot be
-negative, and `opacity` lies in `[0, 1]`. A value outside is reported as
-`style-out-of-range` and the default stands. The other bounded properties
-(`label-position`, `grid-columns`, `label-max-chars`) give their own rule in
-their sections below.
+negative, and `opacity` lies in `[0, 1]` (`style-out-of-range` otherwise). A
+length needs its `px`, except `0`, which is the same in every unit
+(`border-width: 0`). A whole value that holds more than one part without a
+comma (`opacity: 0.5 0.2`) is rejected, except where a property takes two
+parts (`label-offset`) or a font name of several words (`font-family: Noto
+Sans, sans-serif`).
+
+> Related TPLs: [TPL-3141](../test-perspectives/TPL-3141-style-diagnostic-describes-drawing.md) — a value's bounds live in the schema only and an invalid declaration is dropped once, in the cascade, so the diagnostic describes what is drawn.
 
 ---
 
@@ -587,8 +599,8 @@ bottom row regardless of any `[external]` tag; see Tags.)
 | `deploy` | Ignored. A `style-column-ignored-non-system-view` warning is emitted on resolution. |
 | `org`    | Ignored. Same warning. |
 
-Invalid values (anything other than `left` / `center` / `right`) emit a
-`style-column-invalid-value` warning and are dropped.
+Any other value is reported as `style-invalid-enum-value` and dropped, as
+every invalid value is (see [Property list](#property-list)).
 
 ### `grid-columns` — positive integer
 
@@ -626,9 +638,9 @@ holding more than three units wraps them into a grid too rather than stacking
 them in one column. It groups containers by `realizes` target rather than by a
 container node, so it has no per-container `grid-columns` override in v1.
 
-Invalid values (anything that is not a positive integer, e.g. `0` or `2.5`) emit
-a `style-grid-columns-invalid-value` warning and are dropped; the layout
-auto-balances instead.
+A value that is not a positive integer (e.g. `0` or `2.5`) is reported once
+(`style-out-of-range` / `style-invalid-enum-value`) and dropped, as every
+invalid value is; without another rule's value, the layout auto-balances.
 
 > Related TPLs: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md) — limit how much is shown at once; a single view keeps a graspable resolution (the balanced grid keeps visual density bounded). [TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md) — the per-view row-width budget is chosen by a search, which has to stay deterministic, floor-first and monotone or this section's "same input, same SVG" promise breaks.
 
@@ -698,7 +710,7 @@ cases:
 See [`docs/adr/9019-edge-direction-style.md`](../adr/9019-edge-direction-style.md)
 for the rationale.
 
-Invalid values are silently dropped and `direction` falls back to `auto`.
+An invalid value is reported and dropped, as every invalid value is (see [Property list](#property-list)): a weaker rule's `direction` applies, or `auto` when no rule sets one.
 
 ### `label-position` — `start | middle | end | <0.0..1.0>`
 
@@ -716,8 +728,10 @@ existing diagrams stay byte-stable. As soon as the author sets either
 property, the anchor is computed by walking the edge polyline and
 landing at `position × totalLength`.
 
-Invalid values (unknown keywords, non-numeric strings) silently fall
-back to `middle`. Fractional values outside `[0, 1]` are clamped.
+An invalid value (an unknown keyword, a number outside `[0, 1]`) is reported
+and dropped, as every invalid value is: the label is drawn where it would be
+without the declaration, at `middle` unless a weaker rule says otherwise. A
+number outside the range is not clamped to the nearer end.
 
 **Auto placement vs. author intent.** When the author leaves both
 `label-position` and `label-offset` at their defaults, the renderer may
@@ -740,6 +754,10 @@ pixels. CSS-shorthand parsing:
 - **One value** (`label-offset: 8px`) → `dx = 0`, `dy = 8`. The most
   common "shift labels downward" case
 - **Two values** (`label-offset: 4px 8px`) → `dx = 4`, `dy = 8`
+
+The values are separated by a space. A third value, or a comma
+(`4px, 8px`), makes the declaration invalid; it is not read as its first
+two values.
 
 ```css
 edge { label-offset: 0 8px; }    /* every label drops 8px below its anchor */
@@ -779,7 +797,8 @@ hover, a static SVG opened in a browser included. The edge is marked
 emitted exactly as it was before this property existed.
 
 Characters are counted as code points, not as rendered width. A value
-that is not a positive whole number is ignored, and the default stands.
+that is not a positive whole number is reported and dropped, as every
+invalid value is.
 
 Machine-generated labels (the `W` / `R` markers on usecase → resource
 edges, the `N domain edges` count on an aggregated edge) are never

@@ -266,3 +266,39 @@ describe("tidyStyleSheet — edge endpoint selectors round-trip (#1755)", () => 
     expect(out).toContain("edge[from=B]");
   });
 });
+
+// #3141: the parser does not store a declaration it refuses, so rebuilding the
+// text from the parsed rules would delete it, with its comment.
+describe("tidyStyleSheet — sheets with a parse error", () => {
+  it.each([
+    "service {\n  /* keep */\n  color: ;\n  opacity: 0.5;\n}\n",
+    'service {\n  font-family: "A", , serif;\n  opacity: 0.5;\n}\n',
+    "service {\n  label-offset: - 20px;\n}\n",
+  ])("leaves the sheet as written: %j", (input) => {
+    const result = tidyStyleSheet(input);
+    expect(result.output).toBe(input);
+    expect(result.changed).toBe(false);
+    expect(result.diagnostics.some((d) => d.severity === "error")).toBe(true);
+  });
+});
+
+// #3141: cascade-tail-wins merging would let a value the cascade drops replace
+// a valid one, and the cascade would fall to the default instead.
+describe("tidyStyleSheet — rules holding a dropped declaration", () => {
+  it("does not merge such a rule into an earlier one", () => {
+    const input = `service {\n  opacity: 0.5;\n}\n\nservice {\n  opacity: 2;\n}\n`;
+    expect(tidyStyleSheet(input).output).toBe(input);
+  });
+
+  it("does not merge a later rule into it, so its value and diagnostic stay", () => {
+    const input = `service {\n  opacity: 2;\n}\n\nservice {\n  opacity: 0.5;\n}\n`;
+    expect(tidyStyleSheet(input).output).toBe(input);
+  });
+
+  it("keeps merging the rules around it, in order", () => {
+    const input = `service { color: red; }\nservice { opacity: 2; }\nservice { color: blue; }\nservice { shape: user; }\n`;
+    expect(tidyStyleSheet(input).output).toBe(
+      `service {\n  color: red;\n}\n\nservice {\n  opacity: 2;\n}\n\nservice {\n  color: blue;\n  shape: user;\n}\n`,
+    );
+  });
+});

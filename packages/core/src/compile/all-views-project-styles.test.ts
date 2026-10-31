@@ -85,13 +85,15 @@ describe("buildAllViewsSvgProject applies the project's imported style sheets (#
     expect(styleWarnings(bundle.warnings)).toEqual(styleWarnings(perView.warnings));
   });
 
-  it("reports a style-resolution finding once, although every view resolves the node", async () => {
+  it("reports an invalid declaration once, although every view resolves the node", async () => {
     const fs = await project("#Api { column: middle; }\n");
     const result = await buildAllViewsSvgProject(ENTRY_PATH, fs);
-    const columnInvalid = result.warnings.filter((w) => w.kind === "style-column-invalid-value");
-    expect(columnInvalid).toEqual([
-      { kind: "style-column-invalid-value", params: { nodeId: "Api", value: "middle" } },
-    ]);
+    const columnInvalid = result.warnings.filter((w) => w.kind === "style-invalid-enum-value");
+    expect(columnInvalid).toHaveLength(1);
+    expect(columnInvalid[0]).toMatchObject({
+      kind: "style-invalid-enum-value",
+      params: { property: "column", value: "middle" },
+    });
   });
 
   it("reports what the deploy and org views ignore, as their own compiles do", async () => {
@@ -118,7 +120,7 @@ describe("buildAllViewsSvgProject applies the project's imported style sheets (#
     expect(styleWarnings(icon.warnings)).toEqual(styleWarnings(shape.warnings));
   });
 
-  it("keeps a finding per node when two nodes share an id, as the per-view compile does", async () => {
+  it("reports a declaration once when two nodes share an id, as the per-view compile does", async () => {
     const model = `@import "./index.krs.style"
 system Shop {
   service Api {}
@@ -130,9 +132,11 @@ system Ops {
     const fs = await project("service { column: middle; }\n", model);
     const bundle = await buildAllViewsSvgProject(ENTRY_PATH, fs);
     const perView = await compileProject(ENTRY_PATH, fs, { diagramType: "system" });
+    // One declaration, one finding (#3141): the validator reports where the
+    // value was written, not once per node it would have applied to.
     const columnInvalid = (ws: readonly Warning[]) =>
-      ws.filter((w) => w.kind === "style-column-invalid-value");
-    expect(columnInvalid(perView.warnings)).toHaveLength(2);
+      ws.filter((w) => w.kind === "style-invalid-enum-value");
+    expect(columnInvalid(perView.warnings)).toHaveLength(1);
     expect(columnInvalid(bundle.warnings)).toEqual(columnInvalid(perView.warnings));
   });
 
