@@ -145,6 +145,7 @@ auto-merge の安全は routine の prompt ではなく、required check の `Va
 ### 実装の指針
 
 1. **再生成の PR を作るスクリプトを足す**（`pnpm adr:regenerate-pr`）。routine も人も同じものを実行する。
+   - 呼び出し元の作業ディレクトリには触れない。`origin/main` から専用の worktree（`.claude/worktrees/chore/adr-regenerate`）を作り、install・生成・commit・push をすべてその中で行い、成否にかかわらず最後に消す。手元で実行したとき、未コミットの変更や checkout 中のブランチが PR に入ることも、作業中のツリーが切り替わることもない。この worktree が既にあれば、別の実行が進行中か前回の残りなので、何もせず失敗する。
    - `origin/main` を fetch し、そこから固定のブランチ `chore/adr-regenerate` を作り直して `adr regenerate` を実行する。出力先のディレクトリ（`graph/`）は生成結果で置き換え、生成されなくなったファイルを消す。
    - 差分が無ければ、開いている再生成の PR を閉じてブランチを消し、終える。
    - routine と人が同時に実行しても互いを壊さない。再生成の PR は本文に印（`<!-- adr-regenerate -->`）を持ち、スクリプトは印とブランチ名の両方が合う PR だけを更新・クローズする（合わなければ何もせず失敗する）。ブランチの上書きは `--force-with-lease=chore/adr-regenerate:<開始時に見た SHA>` で行い、間に別の実行が push していれば失敗する。auto-merge を戻すのは、PR の head が自分の push した commit であることを確かめてから。
@@ -163,6 +164,7 @@ auto-merge の安全は routine の prompt ではなく、required check の `Va
 8. AT: `docs/acceptance/3416-regenerate-adr-index-daily-pr.md`。TC は:
    - 無関係な ADR を足す PR を 2 本同時に開き、片方をマージした後も、もう片方が `main` を取り込まずにマージできる。
    - `pnpm adr:regenerate-pr` を実行すると、生成物だけを変える PR が `risk: low` と auto-merge で作られ、Review tier と `Validate` が通ってマージされ、マージ後の `main` で `adr regenerate --check` が通る。
+   - 未コミットの変更と別のブランチを checkout した作業ディレクトリから実行しても、PR には生成物だけが入り、実行後の作業ディレクトリ（ブランチ・変更・未追跡ファイル）は実行前と同じで、専用の worktree は残らない。
    - 差分が無い日に実行すると、PR を作らない（開いている再生成の PR があれば閉じる）。差分があり、auto-merge が有効な再生成の PR が開いていれば、auto-merge を外してから更新し、戻す。
    - `main` が進んだ後の再生成の PR でも、`Validate` は head で判定して通る。
    - スクリプトを 2 つ同時に実行すると、片方は lease か PR の head の確認で失敗し、もう片方の結果だけが PR に残る。印の無い PR（同じブランチ名で人が開いた PR など）は更新もクローズもしない。
