@@ -286,6 +286,30 @@ describe("regeneratePr", () => {
     });
   });
 
+  it("waits while GitHub still reports the old head right after the push", () => {
+    let polls = 0;
+    const gh = fakeGitHub({ pulls: [pull({ number: 7, labels: [] })], branch: "old-head" });
+    const pullOf = gh.github.pull;
+    gh.github.pull = (n) => {
+      const p = pullOf(n);
+      // The reads right after the push (reuse, labels, two polls) still show yesterday's head.
+      if (p.head.sha === "new-head" && ++polls <= 4) p.head.sha = "old-head";
+      return p;
+    };
+    const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
+    expect(go(gh, ws)).toMatchObject({ outcome: "merged", pr: expect.stringContaining("/pull/7") });
+    expect(polls).toBeGreaterThan(4);
+  });
+
+  it("fails when the head stays on another commit after the lag window", () => {
+    const gh = fakeGitHub({ pulls: [pull({ number: 7, labels: [] })], branch: "old-head" });
+    const ws = fakeWorkspace({ commit: "new-head" }); // the push never reaches the PR
+    expect(go(gh, ws)).toMatchObject({
+      outcome: "failed",
+      message: expect.stringMatching(/head is/),
+    });
+  });
+
   it("merges yesterday's ready PR first, waits for its branch to go, then regenerates", () => {
     const gh = fakeGitHub({ pulls: [pull({ number: 7 })], branch: "old-head" });
     const ws = fakeWorkspace({ commit: null });
@@ -351,6 +375,17 @@ describe("regeneratePr", () => {
     });
     expect(go(gh, ws).outcome).toBe("failed");
     expect(ws.calls).not.toContainEqual(expect.stringMatching(/^push/));
+  });
+
+  it("refuses to merge when the ruleset names no required checks", () => {
+    const gh = fakeGitHub({});
+    gh.github.requiredChecks = () => [];
+    const ws = fakeWorkspace({ commit: "new-head", onPush: (_, c) => gh.setBranch(c) });
+    expect(go(gh, ws)).toMatchObject({
+      outcome: "failed",
+      message: expect.stringMatching(/ruleset/),
+    });
+    expect(gh.calls.some((c) => c.startsWith("merge"))).toBe(false);
   });
 
   it("stops within the deadline", () => {

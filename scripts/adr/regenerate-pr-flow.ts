@@ -39,6 +39,8 @@ export const DEADLINE_MS = 25 * 60 * 1000;
 const POLL_MS = 30 * 1000;
 /** How long to wait for `delete_branch_on_merge` after merging yesterday's PR. */
 const BRANCH_GONE_MS = 2 * 60 * 1000;
+/** How long GitHub may keep reporting the old head of a PR after a push. */
+const HEAD_LAG_MS = 2 * 60 * 1000;
 /** Not a ruleset check, but a PR that fails it is not ready to merge. */
 const REVIEW_TIER = "Review tier";
 const ACTIONS_APP = "github-actions";
@@ -268,14 +270,19 @@ export function regeneratePr(deps: Deps): Result {
     });
   };
 
-  /** The merge conditions, read fresh from GitHub for the head this run expects. */
-  const readiness = (n: number, sha: string): Readiness => {
+  /**
+   * The merge conditions, read fresh from GitHub for the head this run expects.
+   * `headMayLag`: the run pushed `sha` moments ago, so a PR still reporting the
+   * old head is waited for instead of read as someone else's push.
+   */
+  const readiness = (n: number, sha: string, headMayLag = false): Readiness => {
     const pr = github.pull(n);
     if (pr.state !== "open" || !isRegenerationPr(pr)) {
       return { state: "fail", why: `PR #${n} is no longer an open regeneration PR` };
     }
     if (pr.head.sha !== sha) {
-      return { state: "fail", why: `PR #${n} head moved to ${pr.head.sha} (expected ${sha})` };
+      const why = `PR #${n} head is ${pr.head.sha} (expected ${sha})`;
+      return headMayLag ? { state: "pending", why } : { state: "fail", why };
     }
     if (!labelsAreLow(pr.labels.map((l) => l.name))) {
       return { state: "fail", why: `PR #${n} tier labels are not exactly "${LOW_LABEL}"` };
@@ -287,7 +294,14 @@ export function regeneratePr(deps: Deps): Result {
         why: `PR #${n} is not a generated-only diff: ${kind.reasons.join("; ") || kind.kind}`,
       };
     }
-    const checks = judgeChecks([...github.requiredChecks(), REVIEW_TIER], github.checkRuns(sha));
+    const required = github.requiredChecks();
+    if (required.length === 0) {
+      return {
+        state: "fail",
+        why: "the ruleset on main names no required checks; refusing to merge",
+      };
+    }
+    const checks = judgeChecks([...required, REVIEW_TIER], github.checkRuns(sha));
     if (checks.state === "fail") {
       return { state: "fail", why: `checks failed on PR #${n}: ${checks.failed.join(", ")}` };
     }
@@ -381,6 +395,7 @@ export function regeneratePr(deps: Deps): Result {
 
     // 3. Push with a lease read just now, then open or reuse the PR.
     workspace.push(github.branchSha());
+    const pushedAt = clock.now();
     if (pr !== null) {
       const current = github.pull(pr.number);
       if (current.state !== "open" || !isRegenerationPr(current)) pr = null;
@@ -397,7 +412,7 @@ export function regeneratePr(deps: Deps): Result {
 
     // 4. Wait for the checks, then merge with the head pinned.
     for (;;) {
-      const ready = readiness(pr.number, commit);
+      const ready = readiness(pr.number, commit, clock.now() < pushedAt + HEAD_LAG_MS);
       if (ready.state === "fail") {
         return { outcome: "failed", pr: pr.html_url, pickedUp, message: ready.why };
       }
