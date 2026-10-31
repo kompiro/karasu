@@ -201,10 +201,8 @@ export interface LayoutEdge {
    */
   trunkJoin?: number;
   /**
-   * Set when this edge is one half of a mutual pair drawn as one line (#3027,
-   * `applyMutualPairs`). The route then runs from the split, not from the
-   * source card, to this edge's own target, and its label sits on its own half
-   * (`pairLabelSegment`) behind an arrow showing which way the half runs.
+   * One half of a mutual pair drawn as one line (#3027, `mutual-pair.ts`): the
+   * route runs from the split, not the source card, to this edge's own target.
    */
   pairHalf?: boolean;
 }
@@ -511,12 +509,9 @@ export interface LayoutOptions {
    */
   chipZoneFor?: (node: LayoutNode) => Rect | undefined;
   /**
-   * What an edge's line looks like once drawn (#3027): a key over its resolved
-   * colour, width, stroke style and diff state, which the layout cannot resolve
-   * itself. A mutual pair is drawn as one line only when both edges return the
-   * same key, so a pair the reader could tell apart stays two lines (TPL-3027).
-   * Omitted (the draw.io exporter, bare-layout tests) → no pair is merged and
-   * the output is what it was before.
+   * A key over how an edge's line is drawn (colour, width, stroke style, diff
+   * state), which only the renderer resolves (#3027). A mutual pair with equal
+   * keys is drawn as one line (TPL-3027); omitted (draw.io, bare layout), none is.
    */
   edgeLineKey?: (edge: LayoutEdge) => string | undefined;
   /**

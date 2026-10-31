@@ -26,7 +26,7 @@
 
 import { computeCrossingMarks } from "./crossing-marks.js";
 import type { Point } from "./edge-geometry.js";
-import type { CrossingMarks, LayoutEdge } from "./layout-types.js";
+import type { CrossingMarks, LayoutEdge, LayoutOptions } from "./layout-types.js";
 
 /**
  * How far the split stays from a crossing on the shared line (px), at least.
@@ -272,9 +272,9 @@ function remapMarks(marks: CrossingMarks, kept: readonly number[]): CrossingMark
  */
 export function applyMutualPairs(
   edges: LayoutEdge[],
-  lineKey: ((edge: LayoutEdge) => string | undefined) | undefined,
+  { edgeLineKey }: Pick<LayoutOptions, "edgeLineKey">,
 ): CrossingMarks {
-  let pairs = lineKey ? findMutualPairs(edges, lineKey) : [];
+  let pairs = edgeLineKey ? findMutualPairs(edges, edgeLineKey) : [];
   for (;;) {
     const dropped = new Set(pairs.map(([, j]) => j));
     const kept = edges.map((_, k) => k).filter((k) => !dropped.has(k));

@@ -299,10 +299,9 @@ export function buildLabelInputs(
   edges.forEach((edge, index) => {
     const style = styleFor(edge, index);
     const points: Point[] = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
-    // The same anchor `renderEdge` will draw, override included: if the two
-    // disagreed, the pass would push the label off a collision it is not at.
-    // Found before the text because a paired half's label carries the
-    // direction of the segment it sits on (#3027).
+    // The same anchor `renderEdge` will draw, override included (were they to
+    // disagree, the pass would nudge a label off a collision it is not at). Found
+    // before the text: a paired half's label carries its segment's direction (#3027).
     const { anchor, segDir } = labelAnchorWithSegment(
       points,
       resolveLabelPosition(edge, style),

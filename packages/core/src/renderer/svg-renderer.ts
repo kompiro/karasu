@@ -1,6 +1,5 @@
 import type {
   EdgeDirection,
-  ResolvedEdgeStyle,
   ResolvedBoundaryFrames,
   ResolvedTeamFrames,
   ResolvedNodeStyle,
@@ -16,7 +15,6 @@ import type {
   CrossingMarks,
   DisplayMode,
   HopMark,
-  LayoutEdge,
   LayoutNode,
   LayoutResult,
   Rect,
@@ -26,6 +24,7 @@ import { renderShape } from "./shapes.js";
 import { rectUnionOutline } from "./frame-geometry.js";
 import { getShapeContentInset, type ShapeInsets } from "../shapes/shape-registry.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
+import { edgeLineKeyOf, resolvedEdgeStyle } from "./edge-line-key.js";
 import {
   resolveLabelPlacements,
   buildLabelInputs,
@@ -76,7 +75,7 @@ import {
   DESC_MAX_LINES,
   META_GLYPH_GAP,
 } from "./rendering-constants.js";
-import { edgeStyleKey, nodeStyleKey } from "../resolver/style-resolver.js";
+import { nodeStyleKey } from "../resolver/style-resolver.js";
 import { edgeKey, type NodeDiffMeta } from "../diff/view-diff.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 import { DEPLOY_AFFORDANCE_KIND_SET, displayGroupId } from "../types/ast.js";
@@ -340,40 +339,6 @@ export function legendScopeForLogicalSlice(slice: ViewSlice): LegendViewScope | 
   if (kind === "service") return "service";
   if (kind === "domain") return "domain";
   return undefined;
-}
-
-/**
- * The resolved style an edge is drawn with. Prefers the kind-qualified entry so
- * parallel sync/async edges between the same pair keep their own stroke style;
- * falls back to the bare key for synthetic layout edges (delivers, owns, ghosts,
- * aggregated domain edges).
- */
-function resolvedEdgeStyle(
-  styles: ResolvedStyles,
-  edge: Pick<LayoutEdge, "from" | "to" | "kind">,
-): ResolvedEdgeStyle {
-  return (
-    styles.edges.get(edgeStyleKey(edge.from, edge.to, edge.kind)) ??
-    styles.edges.get(edgeStyleKey(edge.from, edge.to, undefined)) ??
-    styles.defaultEdgeStyle
-  );
-}
-
-/**
- * What each edge's line will look like once drawn (#3027), for
- * `LayoutOptions.edgeLineKey`: the layout draws a mutual pair as one line only
- * when the reader could not tell the two apart. The same style and diff-state
- * lookups the render loop draws with.
- */
-export function edgeLineKeyOf(
-  styles: ResolvedStyles,
-  edgeDiffState: ReadonlyMap<string, string> | undefined,
-): (edge: LayoutEdge) => string {
-  return (edge) => {
-    const style = resolvedEdgeStyle(styles, edge);
-    const diffState = edge.diffState ?? edgeDiffState?.get(edgeKey(edge)) ?? "";
-    return `${style.color}|${style.strokeWidth}|${style.strokeStyle}|${diffState}`;
-  };
 }
 
 export function render(

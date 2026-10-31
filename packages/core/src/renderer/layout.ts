@@ -140,14 +140,10 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     : found.result;
   const result = run.result;
   // Crossing marks decorate the routed edges and change neither the canvas
-  // nor the reservation, so only the surviving placement pays for them. A
-  // search that evaluated four candidates and re-placed once used to compute
-  // them five times for one drawing (#2761). The same spot draws each mutual
-  // pair as one line (#3027): the split has to clear the final hops, and the
-  // cards must already be where they stay.
-  if (run.crossingMarksPending) {
-    result.crossingMarks = applyMutualPairs(result.edges, options.edgeLineKey);
-  }
+  // nor the reservation, so only the surviving placement pays for them (#2761
+  // once found them computed five times for one drawing). Mutual pairs become
+  // one line here too (#3027): their split has to clear the final hops.
+  if (run.crossingMarksPending) result.crossingMarks = applyMutualPairs(result.edges, options);
   result.widthBudget = found.budget;
   result.placementPasses = reserved ? 2 : 1;
   result.shapeInsetsApplied = !!options.shapeForNode && options.displayMode !== "icon";

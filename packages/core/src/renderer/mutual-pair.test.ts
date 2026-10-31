@@ -11,7 +11,7 @@ import { extractView } from "../view/view-extract.js";
 import { compile } from "../compile/compile.js";
 import { edgeKey } from "../diff/view-diff.js";
 import { layout } from "./layout.js";
-import { edgeLineKeyOf } from "./svg-renderer.js";
+import { edgeLineKeyOf } from "./edge-line-key.js";
 import { applyMutualPairs, chooseSplit, findMutualPairs, pairLabelSegment } from "./mutual-pair.js";
 import { HOP_RADIUS } from "./crossing-marks.js";
 import { buildLabelInputs, labelBox, resolveLabelPlacements } from "./label-placement.js";
@@ -511,7 +511,7 @@ system Two {
           { x: 101, y: 50 },
         ]),
       ];
-      applyMutualPairs(edges, ANY_KEY);
+      applyMutualPairs(edges, { edgeLineKey: ANY_KEY });
       expect(edges[0].pairHalf).toBeUndefined();
       expect(edges[1].pairHalf).toBeUndefined();
       expect(edges[2].pairHalf).toBe(true);
@@ -537,7 +537,7 @@ system Two {
           { x: 20, y: 40 },
         ]),
       ];
-      const marks = applyMutualPairs(edges, ANY_KEY);
+      const marks = applyMutualPairs(edges, { edgeLineKey: ANY_KEY });
       expect(edges[0].pairHalf).toBe(true);
       expect(marks.hops).toHaveLength(1);
       expect(marks.hops[0].edge).toBe(2);
@@ -558,7 +558,7 @@ system Two {
           { x: 40, y: 20 },
         ]),
       ];
-      const marks = applyMutualPairs(edges, ANY_KEY);
+      const marks = applyMutualPairs(edges, { edgeLineKey: ANY_KEY });
       expect(marks.hops).toHaveLength(1);
       // At x=40, before the split at 100: the half that runs back to A.
       expect(marks.hops[0].edge).toBe(1);
