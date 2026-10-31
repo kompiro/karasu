@@ -17,12 +17,14 @@ const SCANNED_DIRS = [WORKFLOW_DIR, ".github/actions"];
 /**
  * Lines that route inference to a Copilot seat, matched outside comments. Not
  * anchored to the line start, so a flow-style `permissions: { …, copilot-requests:
- * write }` is caught too.
+ * write }` is caught too, and quoted keys and values are accepted. `write-all`
+ * grants `copilot-requests` along with every other scope.
  */
 const COPILOT_INFERENCE = [
-  /\bcopilot-requests\s*:/,
-  /\bengine\s*:\s*copilot\b/,
+  /\bcopilot-requests["']?\s*:/,
+  /\bengine["']?\s*:\s*["']?copilot\b/,
   /COPILOT_GITHUB_TOKEN/,
+  /\bpermissions["']?\s*:\s*["']?write-all\b/,
 ];
 
 function listFiles(dir: string): string[] {
@@ -38,7 +40,10 @@ describe("Copilot inference policy (ADR-3421)", () => {
 
   it("scans the workflow directory", () => {
     // Parser sanity: an empty scan would make the assertions below pass vacuously.
-    expect(files.filter((file) => file.endsWith(".yml")).length).toBeGreaterThan(0);
+    const workflows = files.filter(
+      (file) => file.startsWith(`${WORKFLOW_DIR}/`) && file.endsWith(".yml"),
+    );
+    expect(workflows.length).toBeGreaterThan(0);
   });
 
   it("has no gh-aw workflow source", () => {
