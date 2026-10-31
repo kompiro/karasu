@@ -50,13 +50,13 @@ prompt は助言であって境界ではない。「マージしてはいけな�
 
 ## 既知の対処パターン
 
-<!-- absent-path-next-line: deleted with the gh-aw workflows in #3421 (ADR-3421), named as history -->
+<!-- absent-path-next-line: deleted with the gh-aw workflows in #3423 (ADR-3421), named as history -->
 `scripts/ci/agentic-workflow-safety.test.ts` が 4 点を機械検査していた: 宣言された safe outputs が allowlist の内側にあること、permission がすべて read であること、宣言が lock ファイルにコンパイル済みであること、そして走査対象が空でないこと（パーサ健全性）。
 
 allowlist は「人間の判断を奪わない出力」で引いている。コメントと Issue 起票は判断材料を人の隣に置くだけで、マージ・push・close・dispatch はリポジトリまたはレビュー状態そのものを動かす。
 
 ## 関連テスト
 
-<!-- absent-path-next-line: deleted with the gh-aw workflows in #3421 (ADR-3421), named as history -->
+<!-- absent-path-next-line: deleted with the gh-aw workflows in #3423 (ADR-3421), named as history -->
 - `scripts/ci/agentic-workflow-safety.test.ts`
 - `scripts/ci/workflow-runner-policy.test.ts`（生成されたジョブがランナーポリシーの内側にあること）

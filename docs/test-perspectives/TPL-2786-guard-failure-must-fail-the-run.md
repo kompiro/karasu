@@ -60,7 +60,7 @@ scope:
 
 ## 既知の対処パターン
 
-<!-- absent-path-next-line: deleted with the gh-aw workflows in #3421 (ADR-3421), named as history -->
+<!-- absent-path-next-line: deleted with the gh-aw workflows in #3423 (ADR-3421), named as history -->
 `scripts/ci/agentic-workflow-safety.test.ts` が gh-aw の threat detection について 4 点を機械検査していた:
 frontmatter が `continue-on-error: false` を宣言していること、lock に
 `GH_AW_DETECTION_CONTINUE_ON_ERROR: "false"` が焼かれていること、`Conclude threat detection` ステップに
@@ -74,7 +74,7 @@ frontmatter が `continue-on-error: false` を宣言していること、lock �
 
 ## 関連テスト
 
-<!-- absent-path-next-line: deleted with the gh-aw workflows in #3421 (ADR-3421), named as history -->
+<!-- absent-path-next-line: deleted with the gh-aw workflows in #3423 (ADR-3421), named as history -->
 - `scripts/ci/agentic-workflow-safety.test.ts`
 
 ## 派生元 spec
