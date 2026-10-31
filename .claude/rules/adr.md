@@ -131,8 +131,9 @@ pnpm adr:check-assumptions # 本文の参照ファイル / 識別子の存在確
 **生成物（`docs/adr/effective.md`・`graph.md`・`graph/*.md`）は ADR の PR に含めない。**
 毎日の routine が `pnpm adr:regenerate-pr` で生成物だけを変える PR を作ってマージする
 （[#3416](https://github.com/kompiro/karasu/issues/3416)）。表示を確かめるために
-`pnpm adr:regenerate` を手元で実行してよいが、生成物の差分は `git restore docs/adr` で捨ててから
-コミットする。混ぜた PR は pre-push の `adr-generated-check` と required check の `Validate` が
+`pnpm adr:regenerate` を手元で実行してよいが、生成物の差分は捨ててからコミットする
+（`git restore -- docs/adr/effective.md docs/adr/graph.md docs/adr/graph && git clean -fdq -- docs/adr/graph`。
+`git restore docs/adr` は未コミットの ADR 本体の編集まで戻すので使わない）。混ぜた PR は pre-push の `adr-generated-check` と required check の `Validate` が
 止める。急いで `main` の生成物を更新したいときは、PR の外で `pnpm adr:regenerate-pr` を実行する。
 
 `adr.config.json` の `paths.outputs`（出力先）を変える PR は、古い出力の削除だけを含め、
