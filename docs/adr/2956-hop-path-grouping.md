@@ -11,8 +11,8 @@ scope:
   concerns:
     - performance
 assumptions:
-  - "symbol: packages/core/src/renderer/svg-renderer.ts :: renderCrossingMarks"
-  - "symbol: packages/core/src/renderer/svg-renderer.ts :: continuesHopRun"
+  - "symbol: packages/core/src/renderer/crossing-marks-svg.ts :: renderCrossingMarks"
+  - "symbol: packages/core/src/renderer/crossing-marks-svg.ts :: continuesHopRun"
   - "file: docs/acceptance/2956-hop-path-grouping.md"
   - "file: docs/test-perspectives/TPL-2956-regrouping-svg-elements-keeps-paint-order.md"
 ---
@@ -27,7 +27,7 @@ assumptions:
   - TPL: [TPL-2956](../test-perspectives/TPL-2956-regrouping-svg-elements-keeps-paint-order.md)（設計 PR で起こした proactive TPL）、[TPL-2631](../test-perspectives/TPL-2631-decoration-must-not-hide-a-crossing-mark.md)、[TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)
   - AT: `docs/acceptance/2956-hop-path-grouping.md`
   - spike: `spike/2956-hop-path-per-stroke`（`KRS_HOP_GROUP` で 4 通りのまとめ方を切り替える計測用。マージしない）
-  - コード: `packages/core/src/renderer/svg-renderer.ts`（`renderCrossingMarks` / `continuesHopRun`）
+  - コード: `packages/core/src/renderer/crossing-marks-svg.ts`（`renderCrossingMarks` / `continuesHopRun`）
 
 ## 背景
 
