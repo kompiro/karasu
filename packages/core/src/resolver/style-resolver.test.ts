@@ -1559,7 +1559,13 @@ describe("resource tag auto-inference in resolveStyles", () => {
         makeNode({
           kind: "service",
           id: "Svc",
-          children: [makeNode({ kind: "usecase", id: "UC", children: [resource] })],
+          children: [
+            makeNode({
+              kind: "domain",
+              id: "D",
+              children: [makeNode({ kind: "usecase", id: "UC", children: [resource] })],
+            }),
+          ],
         }),
       ],
     );
