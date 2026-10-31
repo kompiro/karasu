@@ -77,7 +77,7 @@ scope:
 
 - resolver が「どのプロパティを適用したか」を解決済み style と別に持ち
   （#2662: `ResolvedStyles.paintedColors`）、renderer はそれが無いときだけ palette の
-  role に落ちる（`containerStyleOf` in `svg-renderer.ts`）。合成 id で lookup が外れる
+  role に落ちる（`containerStyleOf` in `container-frame.ts`）。合成 id で lookup が外れる
   経路と実 id でベース値が残る経路の両方を、明示指定を潰さずに拾える。built-in シート
   も「塗った」に数える。問いは誰が塗ったかではなく塗られたかなので。
 - role は、その surface と同じ役割に対して chrome palette が既に持っているものを取る

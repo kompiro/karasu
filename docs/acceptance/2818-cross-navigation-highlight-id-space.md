@@ -11,7 +11,7 @@ type: product
 - **対象ファイル**:
   - `packages/core/src/renderer/layout-types.ts`（`ContainerRect.realizedNodeId`）
   - `packages/core/src/renderer/deploy-layout.ts`（`DeployContainer.nodeId` を通す）
-  - `packages/core/src/renderer/svg-renderer.ts`（コンテナ `<g>` の `data-realized-node-id`）
+  - `packages/core/src/renderer/container-frame.ts`（コンテナ `<g>` の `data-realized-node-id`）
   - `packages/app/src/components/PreviewPane.tsx`（click delegation と `highlightAttribute`）
   - `packages/app/src/components/PreviewColumn.tsx`（deploy ペインにだけ `data-realized-node-id` を渡す）
   - `packages/app/src/hooks/useCrossNavigation.ts`（`handleContainerClick(realizedNodeId | null)`）

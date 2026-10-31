@@ -7,7 +7,7 @@ import {
   WCAG_AA_LARGE_TEXT,
   WCAG_AA_NORMAL_TEXT,
 } from "../renderer/contrast.js";
-import { BOUNDARY_TINT_ALPHA, MUTED_FRAME_TITLE_OPACITY } from "../renderer/svg-renderer.js";
+import { BOUNDARY_TINT_ALPHA, MUTED_FRAME_TITLE_OPACITY } from "../renderer/container-frame.js";
 import { chipInk } from "../renderer/corner-lane.js";
 import type { StyleRule } from "../types/style.js";
 

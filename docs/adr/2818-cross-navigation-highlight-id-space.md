@@ -16,7 +16,7 @@ scope:
   packages: [core, app, vscode]
 assumptions:
   - "symbol: packages/core/src/renderer/layout-types.ts :: realizedNodeId"
-  - "grep: packages/core/src/renderer/svg-renderer.ts :: data-realized-node-id"
+  - "grep: packages/core/src/renderer/container-frame.ts :: data-realized-node-id"
   - "grep: packages/core/src/renderer/deploy-layout.ts :: realizedNodeId: c\\.nodeId"
   - "symbol: packages/app/src/state/app-reducer.ts :: HighlightAttribute"
   - "grep: packages/app/src/state/app-reducer.ts :: highlightAttribute: action\\.highlightAttribute \\?\\? \"data-node-id\""
