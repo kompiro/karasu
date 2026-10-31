@@ -46,7 +46,7 @@ security alert sweep には元から cron が無いが、dispatch すれば今�
 Copilot で推論する workflow をリポジトリに置かない。gh-aw の 2 本（`.md` と `.lock.yml`）、
 `.github/aw/`、それらを検査する CI テスト（`gh-aw-lock-consistency.test.ts`・`agentic-workflow-safety.test.ts`）を外し、
 `scripts/ci/copilot-inference-policy.test.ts` が workflow の `copilot-requests:`・`engine: copilot`・
-`COPILOT_GITHUB_TOKEN` を落とす。個人の課金で推論できるエンジンが使えるようになったら、#3421 で戻す。
+`COPILOT_GITHUB_TOKEN` と、gh-aw の source（`.github/workflows/*.md`）を落とす。個人の課金で推論できるエンジンが使えるようになったら、#3421 で戻す。
 
 ## 理由
 
@@ -56,14 +56,18 @@ Copilot で推論する workflow をリポジトリに置かない。gh-aw の 2
   threat detection（#2786）も解けていなかった。トリアージは手元の `/hane:dependabot` と
   `/hane:security-alert` で回している
 - **ガードをテストに置く。** workflow を足す PR は誰でも出せるので、宣言を検査するテストで止める。
-  コメント行は数えない（実行に効かないので、無効にした設定を残しておける）
+  コメント行は数えない（実行に効かないので、無効にした設定を残しておける）。gh-aw の source は `engine:` を省くと copilot になり、行の照合では
+  読めない書き方もあるので、source があること自体を落とす
 - **#3415 の問いは戻すときに決める。** 生成物が無ければ `gh aw compile` と `gh actions-lock` は食い違わない。
   戻す時点の gh-aw と gh-actions-lock の機能で決めるほうが、今決めるより正確である
 
 ### 戻すとき
 
-- 削除した commit の親から 2 本の workflow・`.github/aw/`・2 本のテスト・`docs/release.md` と
-  `.claude/rules/dependabot.md` の該当節を戻し、その時点の gh-aw で `gh aw compile` をやり直す
+- 削除した commit の親から、この PR が外したものを戻す: 2 本の workflow・`.github/aw/`・2 本のテスト・
+  `.gitattributes`（`*.lock.yml` を linguist-generated にする 1 行）・`workflow-runner-policy.test.ts` の
+  生成ジョブにだけ許した `ubuntu-slim` の例外・`docs/release.md` と `.claude/rules/dependabot.md` の該当節。
+  `tier.test.ts` の例に使ったテストのパスも戻してよい
+- その時点の gh-aw で `gh aw compile` をやり直し、`gh actions-lock` で `actions.lock` を作り直す
 - `copilot-inference-policy.test.ts` は、戻すエンジンの課金先に合わせて同じ PR で書き換える
 - gh-aw の生成物と `actions.lock` の扱い（#3415 の問い）を決めて ADR に残す。この ADR は supersede される
 

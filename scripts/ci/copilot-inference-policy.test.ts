@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -11,16 +11,22 @@ import { describe, expect, it } from "vitest";
 // #3421, and doing so replaces this guard in the same PR.
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
-const SCANNED_DIRS = [".github/workflows", ".github/actions"];
+const WORKFLOW_DIR = ".github/workflows";
+const SCANNED_DIRS = [WORKFLOW_DIR, ".github/actions"];
 
-/** Lines that route inference to a Copilot seat, matched outside comments. */
+/**
+ * Lines that route inference to a Copilot seat, matched outside comments. Not
+ * anchored to the line start, so a flow-style `permissions: { …, copilot-requests:
+ * write }` is caught too.
+ */
 const COPILOT_INFERENCE = [
-  /^\s*copilot-requests\s*:/,
-  /^\s*engine\s*:\s*copilot\b/,
+  /\bcopilot-requests\s*:/,
+  /\bengine\s*:\s*copilot\b/,
   /COPILOT_GITHUB_TOKEN/,
 ];
 
 function listFiles(dir: string): string[] {
+  if (!existsSync(join(REPO_ROOT, dir))) return [];
   return readdirSync(join(REPO_ROOT, dir), { withFileTypes: true, recursive: true })
     .filter((entry) => entry.isFile())
     .map((entry) => relative(REPO_ROOT, join(entry.parentPath, entry.name)))
@@ -31,8 +37,20 @@ describe("Copilot inference policy (ADR-3421)", () => {
   const files = SCANNED_DIRS.flatMap(listFiles);
 
   it("scans the workflow directory", () => {
-    // Parser sanity: an empty scan would make the assertion below pass vacuously.
+    // Parser sanity: an empty scan would make the assertions below pass vacuously.
     expect(files.filter((file) => file.endsWith(".yml")).length).toBeGreaterThan(0);
+  });
+
+  it("has no gh-aw workflow source", () => {
+    // A gh-aw source (`.github/workflows/*.md`) defaults to the copilot engine
+    // when it names none, or names it in the object form (`engine:` / `id:`),
+    // which the line match below does not read. The safety tests that fenced
+    // these sources left with them (ADR-3421), so any source is out until the
+    // restore in #3421 brings both back.
+    const sources = files.filter(
+      (file) => file.startsWith(`${WORKFLOW_DIR}/`) && file.endsWith(".md"),
+    );
+    expect(sources).toEqual([]);
   });
 
   it("has no workflow that bills inference to a Copilot seat", () => {

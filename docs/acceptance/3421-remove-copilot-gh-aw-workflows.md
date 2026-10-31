@@ -16,9 +16,11 @@
 
 - [x] AT-A: どの workflow も `copilot-requests:` の permission、`engine: copilot`、`COPILOT_GITHUB_TOKEN` を宣言していない（コメント行は数えない）
   > ✅ Automated — `scripts/ci/copilot-inference-policy.test.ts` › `Copilot inference policy (ADR-3421)` › `has no workflow that bills inference to a Copilot seat`
-- [x] AT-B: 検査が空振りしていない（`.github/workflows/` の `.yml` を 1 つ以上読んでいる）
+- [x] AT-B: gh-aw の source（`.github/workflows/*.md`）が無い（`engine:` を省いた source も copilot で動くため、source があること自体を落とす）
+  > ✅ Automated — `scripts/ci/copilot-inference-policy.test.ts` › `Copilot inference policy (ADR-3421)` › `has no gh-aw workflow source`
+- [x] AT-C: 検査が空振りしていない（`.github/workflows/` の `.yml` を 1 つ以上読んでいる）
   > ✅ Automated — `scripts/ci/copilot-inference-policy.test.ts` › `Copilot inference policy (ADR-3421)` › `scans the workflow directory`
-- [x] AT-C: `actions.lock` が削除後の workflow の集合と一致している
+- [x] AT-D: `actions.lock` が削除後の workflow の集合と一致している
   > ✅ Automated — `.github/workflows/verify-lockfile.yml` の `gh actions-lock --verify`（required check `verify`）
 
 ## 手動確認
