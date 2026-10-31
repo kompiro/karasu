@@ -33,7 +33,7 @@ const MARKER_CODEPOINTS: ReadonlyArray<{ cp: number; label: string }> = [
   { cp: 0x270e, label: "✎ draft badge" },
   { cp: 0x2212, label: "− removed-annotation ghost badge" },
   // ◇ marks a boundary membership the banded view could not draw as a frame
-  // (#2179, svg-renderer.ts `renderDegradedTabs`). The first candidate ⧉ (U+29C9)
+  // (#2179, container-frame.ts `renderDegradedTabs`). The first candidate ⧉ (U+29C9)
   // is outside the bundled fonts and rasterised as tofu — this line is why the
   // notation changed.
   { cp: 0x25c7, label: "◇ degraded boundary membership tab" },

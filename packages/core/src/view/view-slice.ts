@@ -187,7 +187,7 @@ export interface ExpandedFrame {
 
 /**
  * One root-view system frame's edge set, derived by `deriveCanvasEdges` in
- * `view-extract.ts`.
+ * `derived-edges.ts`.
  *
  * The root view is N frames, each drawing one system's direct children, and each
  * frame owns the edges derived from *its own* node set. Keeping the sets apart is

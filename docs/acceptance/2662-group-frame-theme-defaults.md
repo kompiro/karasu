@@ -8,7 +8,7 @@ type: product
 - **関連 Issue**: [#2662](https://github.com/kompiro/karasu/issues/2662)（[#2660](https://github.com/kompiro/karasu/pull/2660) / ADR-2269 のレビューで発見）
 - **Related TPLs**: [TPL-2662](../test-perspectives/TPL-2662-themed-surface-fallback-comes-from-palette.md)（本 Issue から抽出）、[TPL-2366](../test-perspectives/TPL-2366-badge-color-canvas-contrast.md)（canvas 上の文字色をテーマごとに機械検証）、[TPL-1666](../test-perspectives/TPL-1666-style-lookup-matches-layout-id-form.md)（`?? default` の silent fallback）
 - **対象ファイル**:
-  - `packages/core/src/renderer/svg-renderer.ts`（`containerStyleOf`）
+  - `packages/core/src/renderer/container-frame.ts`（`containerStyleOf`）
   - `packages/core/src/renderer/palette.ts`（`textPrimary` / `mutedBorder` の role 定義）
 
 > どのルールも塗らなかったコンテナ枠は、カスケードのベース style（`DEFAULT_NODE_STYLE`）から色を取っていた。これは「暗い塗りの上の明るいラベル」というカード用の既定であり、dark palette 固定でもある。塗りの無いフレームにその前提は成立せず、light テーマでは白 canvas 上にほぼ白のタイトル（`#F9FAFB`、合成後 1.03:1）を描いていた。枠の色は chrome palette の role（`textPrimary` / `mutedBorder`）から取る。フレームは chrome であり、built-in シートは意図的にそこへ届かない（ADR-2269 / `docs/spec/style.md` § Team frames「各レンダリングは自分の既定を持つ」）ため、既定はノードのカスケードではなく chrome 側にある。同じ 2 つの role は `org-tree-renderer.ts` の `treeDefaults` が同じ用途に名指ししており、新しい組み合わせではない。

@@ -155,7 +155,7 @@ export function collapseCategories(
     // describes one of them survives: the label goes, and so do the property
     // block's `description` / `link`, which would otherwise put the first
     // constituent's prose on a bundle it does not describe. The aggregated
-    // "N domain edges" drops them for the same reason (`view-extract.ts`).
+    // "N domain edges" drops them for the same reason (`derived-edges.ts`).
     // The sync/async kind is a property of the bundle, so it stays.
     const stub: KrsEdge = { ...edge, from, to, label: undefined };
     delete stub.description;

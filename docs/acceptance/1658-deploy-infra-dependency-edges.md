@@ -3,7 +3,7 @@
 - **日付**: 2026-06-16
 - **関連 Issue**: [#1658](https://github.com/kompiro/karasu/issues/1658)
 - **関連 ADR**: [ADR-1658](../adr/1658-deploy-infra-dependency-edges.md)
-- **対象ファイル**: `packages/core/src/view/deploy-view-extract.ts`, `packages/core/src/view/view-extract.ts`
+- **対象ファイル**: `packages/core/src/view/deploy-view-extract.ts`, `packages/core/src/view/derived-edges.ts`
 
 ## 受け入れ条件
 
@@ -21,7 +21,7 @@
 
 - [x] service→infra 依存の導出は system view と deploy view で同一のヘルパー（`deriveInfraEdges`）を使い、依存集合が一致する（drift しない）
 
-  > ✅ Automated（構造的保証）— 両 view が `packages/core/src/view/view-extract.ts` の export された `deriveInfraEdges` を呼ぶ単一情報源。別実装が無いため drift は構造的に発生しない（[TPL-1415]）。
+  > ✅ Automated（構造的保証）— 両 view が `packages/core/src/view/derived-edges.ts` の export された `deriveInfraEdges` を呼ぶ単一情報源。別実装が無いため drift は構造的に発生しない（[TPL-1415]）。
 
 - [x] infra を realize しない既存ファイルの deploy view 描画は不変（前方互換）
 

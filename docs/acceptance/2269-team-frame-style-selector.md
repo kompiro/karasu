@@ -15,7 +15,7 @@ type: product
 - **対象ファイル**:
   - `packages/core/src/parser/style-parser.ts`（`team#<id>`）
   - `packages/core/src/resolver/style-resolver.ts`（`resolveTeamFrames` と 3 つのノードマッチャ）
-  - `packages/core/src/renderer/svg-renderer.ts`（`resolveTeamFramePaint` / `resolveFramePaint`）
+  - `packages/core/src/renderer/container-frame.ts`（`resolveTeamFramePaint` / `resolveFramePaint`）
   - `packages/core/src/style/serialize.ts`（`formatSelector`）
   - `packages/core/src/builtins/reference-data.ts`（specificity 行）
 

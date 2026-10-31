@@ -2,7 +2,7 @@ import type { DeployBlock, DeployNode, NodeIdPath, SystemNode } from "../types/a
 import type { EdgeKind } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
 import { buildEntityResolver } from "../resolver/resource-entity.js";
-import { deriveInfraEdges } from "./view-extract.js";
+import { deriveInfraEdges } from "./derived-edges.js";
 import {
   nodePathIdentityKey,
   nodePathRefId,
