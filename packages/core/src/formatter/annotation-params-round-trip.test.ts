@@ -21,7 +21,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { format, FormatError, FORMAT_BLOCKING_CODES } from "./formatter.js";
-import { Parser, ANNOTATION_PARAM_KEYS } from "../parser/parser.js";
+import { Parser } from "../parser/parser.js";
+import { ANNOTATION_PARAM_KEYS } from "../parser/parser-keywords.js";
 import { KRS_KEYWORD_NAMES } from "../lexer/lexer.js";
 
 function stripLocations<T>(node: T): T {
