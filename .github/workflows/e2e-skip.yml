@@ -19,6 +19,7 @@ on:
       - "packages/app/**"
       - "packages/core/**"
       - "packages/e2e/**"
+      - "packages/i18n/**"
       - "pnpm-lock.yaml"
       - "package.json"
       - ".github/workflows/e2e.yml"

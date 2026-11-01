@@ -45,7 +45,7 @@ scope:
 UI / surface を変える PR（特にリファクタ・リネーム・control 削除）で、以下を確認する:
 
 - [ ] 変更する surface を assert している gated スイートが無いか確認する（削除・改名する control のラベル / role / セレクタを e2e specs に grep する。例: `grep -rn "Open reference" packages/e2e`）。
-- [ ] 該当スイートがあれば、その PR に起動条件を満たさせる（karasu の e2e なら `e2e` ラベルを付けてマージ前に green を確認する）。
+- [ ] 該当スイートがあれば、PR の変更ファイルがそのスイートの `paths` に一致し、`paths` が検証対象の依存するパッケージをすべて覆っていることを確かめる（karasu の app E2E なら、`.github/workflows/e2e.yml` の `paths` が `packages/app/package.json` の workspace 依存を含む）。そのうえでマージ前に green を確認する。
 - [ ] 削除・改名で stale 化するアサーションは、同じ PR でテスト側も更新する（テストを後追いの別 PR に先送りしない）。
 - [ ] 起動できない事情があるなら、対象スイート名と「次にどこで検証されるか（nightly 日時など）」を PR に明記して検出遅延を可視化する。
 

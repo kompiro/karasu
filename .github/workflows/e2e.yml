@@ -11,6 +11,11 @@ name: E2E
 # `e2e-skip.yml` reports it on PRs that don't match the `paths` below, so they
 # don't stay permanently pending. Keep `e2e-skip.yml`'s `paths-ignore` in exact
 # sync with the `paths` list here (TPL-1480).
+#
+# The list covers every workspace package the app under test depends on
+# (`packages/app/package.json`: core and i18n; i18n depends on core). The
+# specs assert on UI strings the app takes from i18n, so a change there alone
+# must start the suite too.
 on:
   pull_request:
     branches: [main]
@@ -19,6 +24,7 @@ on:
       - "packages/app/**"
       - "packages/core/**"
       - "packages/e2e/**"
+      - "packages/i18n/**"
       - "pnpm-lock.yaml"
       - "package.json"
       - ".github/workflows/e2e.yml"
