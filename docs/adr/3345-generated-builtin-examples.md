@@ -58,9 +58,9 @@ ProjectMode の初回 seed（app の `useProjectInitialization.ts`）と Referen
 - **flat**（12 個）はディレクトリ直下の `.krs` / `.krs.style` をすべて同梱する。ファイルを足しても登録表は変えない
 - **staged**（`ec-platform/` の ja/en）は直下の `.krs` とサブディレクトリが 1 つずつのプロジェクトになり、
   サブディレクトリの入口（`system.krs` か `main.krs` のちょうど 1 つ）を `index.krs` に改名する
-- **想定外の形は生成を失敗させ、黙って捨てない**（TPL-2804）。対象は、flat の入れ子、flat に `index.krs` が無い、
-  staged の段に入口が無い・2 つある・入口と `index.krs` が並ぶ、段のファイルが入口を元の名前で `@import` する、
-  staged の直下に `.krs.style` がある、の 7 通り
+- **想定外の形は生成を失敗させ、黙って捨てない**（TPL-2804）。対象は、同梱するファイルが無いディレクトリ、flat の入れ子、
+  flat に `index.krs` が無い、staged の段に入口が無い・2 つある・入口と `index.krs` が並ぶ、段のファイルが入口を元の名前で
+  `@import` する、staged の直下に `.krs.style` がある
 - **中身は byte 単位でそのまま書く**。テンプレートリテラルで書き出し（`\`・`` ` ``・`${` をエスケープ）、
   入口への `@import` を書き換えるより生成を失敗させる方を選んだ
 - **順序**: staged のプロジェクトは名前の code point 順、プロジェクト内のファイルは `index.krs` を先頭に残りを code point 順
