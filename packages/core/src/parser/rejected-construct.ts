@@ -1,5 +1,6 @@
 import type { Token, SourceRange } from "../types/tokens.js";
-import type { Diagnostic, DiagnosticCode, DiagnosticParamsByCode } from "../types/ast.js";
+import type { Diagnostic, DiagnosticCode, DiagnosticParamsByCode, KrsNode } from "../types/ast.js";
+import { INFRA_KIND_SET } from "../types/ast.js";
 import type { ParseContext } from "./parse-context.js";
 
 /**
@@ -25,11 +26,25 @@ export function rejectConstruct<K extends DiagnosticCode>(
 }
 
 /**
+ * Consume a rejected keyword and the value `readValue` reads after it, and
+ * return the range from the keyword through the end of the value. What the
+ * reader reports about the value is dropped: a value for a keyword that cannot
+ * be written here has nothing to fix.
+ */
+export function consumeRejected(
+  ctx: ParseContext,
+  readValue: (keyword: Token) => unknown,
+): SourceRange {
+  const keyword = ctx.advance();
+  ctx.discardDiagnostics(() => readValue(keyword));
+  const last = ctx.previous() ?? keyword;
+  return ctx.range(keyword.loc, last.end ?? last.loc);
+}
+
+/**
  * Reject a property written on a kind that does not take it. `readValue` is
  * the property's own value reader, so the value is consumed as an accepting
- * kind would consume it, and the diagnostic spans the keyword through the end
- * of the value. What the reader reports about the value is dropped: a value
- * for a property that cannot be written here has nothing to fix.
+ * kind would consume it.
  */
 export function rejectProperty(
   ctx: ParseContext,
@@ -37,9 +52,25 @@ export function rejectProperty(
   nodeKind: string,
   readValue: (keyword: Token) => unknown,
 ): void {
-  const keyword = ctx.advance();
-  ctx.discardDiagnostics(() => readValue(keyword));
-  const last = ctx.previous() ?? keyword;
-  const loc = ctx.range(keyword.loc, last.end ?? last.loc);
+  const loc = consumeRejected(ctx, readValue);
   rejectConstruct(ctx, loc, "property-not-for-node-kind", { property, nodeKind });
+}
+
+/**
+ * Reject a node declared where its kind cannot be placed, after it was parsed
+ * whole. The code says which placement rule it broke: an infra block belongs
+ * directly under `system`, an `entity` under a `domain`, and every other kind
+ * where the containment table lists it. Its body's own mistakes stay reported,
+ * because the node is valid once moved.
+ */
+export function rejectNode(ctx: ParseContext, node: KrsNode, parentKind: string): void {
+  if (INFRA_KIND_SET.has(node.kind)) {
+    const params = { infraKind: node.kind, parentKind };
+    rejectConstruct(ctx, node.loc, "infra-not-in-context", params);
+  } else if (node.kind === "entity") {
+    rejectConstruct(ctx, node.loc, "entity-not-in-domain", { parentKind });
+  } else {
+    const params = { childKind: node.kind, parentKind };
+    rejectConstruct(ctx, node.loc, "node-not-in-context", params);
+  }
 }

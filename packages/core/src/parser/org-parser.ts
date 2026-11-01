@@ -12,6 +12,7 @@ import type {
 import { readNodeIdPathTail } from "./node-path.js";
 import { parseAnnotations } from "./annotation-parser.js";
 import { handleNestedLegend } from "./legend-parser.js";
+import { rejectConstruct, rejectNode } from "./rejected-construct.js";
 import {
   parseDescriptionValue,
   parseLink,
@@ -149,13 +150,26 @@ export function parseBoundaryBlock(ctx: ParseContext): BoundaryBlock {
       } else {
         ctx.error("expected-id-after", { property: "contains" });
       }
+    } else if (token.type === TokenType.Boundary) {
+      // Read a nested boundary whole and report it once, so its `}` does not
+      // close this one (#3463).
+      const inner = parseBoundaryBlock(ctx);
+      const params = { blockKind: "boundary", tokenType: String(token.type), value: token.value };
+      rejectConstruct(ctx, inner.loc, "unexpected-token-in-block", params);
     } else {
-      ctx.error("unexpected-token-in-block", {
-        blockKind: "boundary",
-        tokenType: String(token.type),
-        value: token.value,
-      });
-      ctx.advance();
+      // A boundary names its members with `contains`, so a node declared in it
+      // is no member: read it whole and drop it with one error (#3463).
+      const node = ctx.tryParseNodeDecl();
+      if (node) {
+        rejectNode(ctx, node, "boundary");
+      } else {
+        ctx.error("unexpected-token-in-block", {
+          blockKind: "boundary",
+          tokenType: String(token.type),
+          value: token.value,
+        });
+        ctx.advance();
+      }
     }
   }
 

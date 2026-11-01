@@ -1,5 +1,5 @@
 import type { Token, TokenType, SourceRange } from "../types/tokens.js";
-import type { Diagnostic, DiagnosticCode, DiagnosticParamsByCode } from "../types/ast.js";
+import type { Diagnostic, DiagnosticCode, DiagnosticParamsByCode, KrsNode } from "../types/ast.js";
 import type { TokenCursor } from "./kebab-name.js";
 
 /**
@@ -33,4 +33,9 @@ export interface ParseContext extends TokenCursor {
    * input whose complaints would point at the wrong fix.
    */
   discardDiagnostics<T>(parse: () => T): T;
+  /**
+   * Parse a node declaration when the next token opens one, for a block that
+   * does not take nodes but must still read a misplaced one whole (#3463).
+   */
+  tryParseNodeDecl(): KrsNode | undefined;
 }
