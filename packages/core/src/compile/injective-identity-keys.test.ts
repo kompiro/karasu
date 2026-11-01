@@ -150,3 +150,103 @@ deploy P {
     expect(edgeStates(svg)).toEqual(["a | b-&gt;c | removed", "a-&gt;b | c | added"]);
   });
 });
+
+/**
+ * #3111: the joins #2819 left alone, each reached by a model. Quoted ids that
+ * carry `->` (or a dot) made two elements answer to one view-extract key.
+ */
+describe("separator-joined keys left after #2819 (#3111)", () => {
+  /** `from | to | label` of each drawn edge. */
+  function drawnEdges(svg: string): string[] {
+    return [...svg.matchAll(/<g data-edge-from="([^"]*)" data-edge-to="([^"]*)"([^>]*)>/g)]
+      .map(([, from, to, rest]) => {
+        const label = /data-edge-label="([^"]*)"/.exec(rest)?.[1] ?? "-";
+        return `${from} | ${to} | ${label}`;
+      })
+      .sort();
+  }
+
+  const NODES = `
+  service "b->c" {
+    domain e1 {}
+  }
+  service c {
+    domain e2 {}
+  }
+`;
+
+  it("keeps two implicit edges apart when their endpoints join to one string", () => {
+    const { svg } = compile(`system S {${NODES}
+  service a {
+    domain d1 {
+      d1 -> e1 "one"
+    }
+  }
+  service "a->b" {
+    domain d2 {
+      d2 -> e2 "two"
+    }
+  }
+}
+`);
+    // Both grouped under `a->b->c#sync`: one edge drawn, `"a->b"`→`c` gone.
+    expect(drawnEdges(svg)).toEqual(["a | b-&gt;c | one", "a-&gt;b | c | two"]);
+  });
+
+  it("does not let an explicit edge suppress a different implicit one", () => {
+    const { svg } = compile(`system S {${NODES}
+  service a {}
+  service "a->b" {
+    domain d2 {
+      d2 -> e2 "two"
+    }
+  }
+  a -> "b->c"
+}
+`);
+    // The authored `a -> "b->c"` read as "a->b"→c already being authored.
+    expect(drawnEdges(svg)).toEqual(["a | b-&gt;c | -", "a-&gt;b | c | two"]);
+  });
+
+  it("draws a caller ghost only on the container its reference resolves to", () => {
+    const src = (target: string) => `
+system S {
+  service "a.b" {}
+  service a {
+    domain b {}
+  }
+  service ab {}
+}
+system X {
+  service x {}
+  x -> ${target}
+}
+`;
+    // `S.a.b` splits to the domain `b` in service `a`; its dotted join equalled
+    // the container `["S", "a.b"]`, so the caller was drawn on that drill-down.
+    expect(compile(src("S.a.b"), { viewPath: ["S", "a.b"] }).svg).not.toContain(
+      'data-edge-from="X.x"',
+    );
+    // Control: a reference that does resolve to the container still draws it.
+    expect(compile(src("S.ab"), { viewPath: ["S", "ab"] }).svg).toContain('data-edge-from="X.x"');
+  });
+
+  it("keeps two same-id nodes whose paths join to one string as separate candidates", () => {
+    const { diagnostics } = compile(`
+system Shop {
+  service "x.y" {
+    domain z {}
+  }
+}
+system "Shop.x" {
+  service y {
+    domain z {}
+  }
+}
+service z {}
+`);
+    // Three logical `z`, so the two non-winners each draw a warning. The
+    // dotted join folded `Shop."x.y".z` and `"Shop.x".y.z` into one candidate.
+    expect(diagnostics.filter((d) => d.code === "node-id-multiple-locations")).toHaveLength(2);
+  });
+});

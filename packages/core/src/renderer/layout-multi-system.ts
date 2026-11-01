@@ -52,6 +52,7 @@ import {
 } from "./layout-measure.js";
 import { nodePathIdentityKey, nodePathRefId } from "../parser/node-path.js";
 import { edgeKey } from "../diff/view-diff.js";
+import { edgeKindKey } from "../view/edge-key.js";
 import {
   createCrossSystemRemap,
   layoutCrossSystemEdges,
@@ -425,9 +426,7 @@ export function layoutMultipleSystems(
           // on every line the root view newly draws. Reading a per-frame map
           // rather than the slice-wide one is what keeps two systems that both
           // aggregate an `Api`→`Store` pair from showing each other's rows.
-          const domainEdges = systemFrame?.implicitEdgeDetails.get(
-            `${edge.from}->${edge.to}#${edge.kind}`,
-          );
+          const domainEdges = systemFrame?.implicitEdgeDetails.get(edgeKindKey(edge));
           if (domainEdges) le.domainEdges = domainEdges;
           // Stamp the frame's own compare-mode state onto the edge, for the same
           // reason as the details above: `edgeKey` is not unique across

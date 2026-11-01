@@ -6,6 +6,7 @@
  */
 import type { KrsEdge } from "../types/ast.js";
 import type { ViewSlice } from "../view/view-slice.js";
+import { edgeKindKey } from "../view/edge-key.js";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
 import {
   routeGroupedEdges,
@@ -50,8 +51,7 @@ export function computeLayoutEdges(
   for (const edge of allEdges) {
     const le = computeEdgePoints(edge, layoutNodes, layers, sideExternals, expandedFrames);
     if (!le) continue;
-    const edgeKey = `${edge.from}->${edge.to}#${edge.kind}`;
-    const domainEdges = viewSlice.implicitEdgeDetails.get(edgeKey);
+    const domainEdges = viewSlice.implicitEdgeDetails.get(edgeKindKey(edge));
     if (domainEdges) {
       le.domainEdges = domainEdges;
     }
