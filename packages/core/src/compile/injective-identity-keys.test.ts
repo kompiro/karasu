@@ -208,6 +208,47 @@ describe("separator-joined keys left after #2819 (#3111)", () => {
     expect(drawnEdges(svg)).toEqual(["a | b-&gt;c | -", "a-&gt;b | c | two"]);
   });
 
+  describe("keeps an aggregated edge's domain rows when an endpoint carries `->`", () => {
+    const SERVICES = `
+  service "b->c" {
+    domain e1 {}
+    domain e3 {}
+  }
+  service a {
+    domain d1 {
+      d1 -> e1 "one"
+      d1 -> e3 "three"
+    }
+  }
+`;
+    /** The domain rows (`from->to`) the `a` → `b->c` edge carries for its detail panel. */
+    function domainRows(svg: string): string[] {
+      // The rows sit on the label group nested inside the edge's own `<g>`.
+      const attr =
+        /<g data-edge-from="a" data-edge-to="b-&gt;c"[^>]*>[^]*?data-domain-edges="([^"]*)"/.exec(
+          svg,
+        )?.[1];
+      if (attr === undefined) return [];
+      const rows = JSON.parse(attr.replaceAll("&quot;", '"').replaceAll("&gt;", ">")) as {
+        fromDomainId: string;
+        toDomainId: string;
+      }[];
+      return rows.map((r) => `${r.fromDomainId}->${r.toDomainId}`).sort();
+    }
+
+    // The layout looked the details up by a `${from}->${to}#${kind}` it built
+    // itself, which missed the injective key the extraction wrote them under.
+    it("on a single-system canvas", () => {
+      const { svg } = compile(`system S {${SERVICES}}\n`);
+      expect(domainRows(svg)).toEqual(["d1->e1", "d1->e3"]);
+    });
+
+    it("in a system frame of the root view", () => {
+      const { svg } = compile(`system S {${SERVICES}}\nsystem T {\n  service t {}\n}\n`);
+      expect(domainRows(svg)).toEqual(["d1->e1", "d1->e3"]);
+    });
+  });
+
   it("draws a caller ghost only on the container its reference resolves to", () => {
     const src = (target: string) => `
 system S {

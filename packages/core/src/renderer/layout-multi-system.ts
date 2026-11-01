@@ -51,8 +51,7 @@ import {
   type OwnerResolver,
 } from "./layout-measure.js";
 import { nodePathIdentityKey, nodePathRefId } from "../parser/node-path.js";
-import { edgeKey } from "../diff/view-diff.js";
-import { edgeKindKey } from "../view/edge-key.js";
+import { edgeKey, edgeKindKey } from "../view/edge-key.js";
 import {
   createCrossSystemRemap,
   layoutCrossSystemEdges,

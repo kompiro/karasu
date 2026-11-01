@@ -224,8 +224,9 @@ function diffImplicitEdgeDetails(
   const merged = new Map<string, DomainEdgeDetail[]>();
   const keys = new Set<string>([...before.keys(), ...after.keys()]);
   // The details map is keyed `edgeKindKey` (derived-edges' `groupKey`). Its
-  // diff state lives under `edgeKey` of the same edge, so map one to the other through the edges themselves: cutting the detail key at
-  // its first `#` misreads an endpoint that carries `#` or `->` (#2819).
+  // diff state lives under `edgeKey` of the same edge, so map one to the other
+  // through the edges themselves: cutting the detail key at its first `#`
+  // misreads an endpoint that carries `#` or `->` (#2819).
   const edgeDiffKeyOf = new Map<string, string>();
   for (const edge of edges) {
     edgeDiffKeyOf.set(edgeKindKey(edge), edgeKey(edge));
