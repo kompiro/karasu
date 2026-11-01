@@ -8,7 +8,7 @@
 - **対象ファイル**:
   - `packages/app/src/components/PreviewColumn.tsx`（`--preview-toolbar-bottom` の publish）
   - `packages/app/src/styles/components/panels.css`（`.facet-overview-panel` の `top` と `z-index`）
-  - `packages/app/src/styles/tokens.css`（`--z-panel`）
+  - `packages/app/src/styles/tokens.css`（`--z-floating-panel`）
 
 ## 概要
 
@@ -44,7 +44,7 @@
 - [x] facet を宣言したモデルで「ファセット → 所属一覧」を開くと、パネルの上端がツールバーの下端以下にあり、ツールバーのボタンを覆わない。パネルは facet ごとに所属要素を並べ、閉じるボタンで閉じる
   > ✅ Automated — `packages/e2e/tests/at-2492-facet-overview-panel.spec.ts` › `Membership overview opens below the toolbar, lists each facet's members and closes`
 
-### AC-4: 重なり順がスケールの panel 層にある（#3482）
+### AC-4: 重なり順がスケールの floating-panel 層にある（#3482）
 
 - [x] パネルはダイアグラムの上に描かれ、ツールバーのメニュー（portal される shadcn の DropdownMenu）が重なる位置ではメニューが手前に来る。判定は `elementFromPoint` で computed stacking を読む（TPL-1468 (4)）
   > ✅ Automated — `packages/e2e/tests/at-2492-facet-overview-panel.spec.ts` › `The panel sits above the diagram and below the toolbar's menus`
