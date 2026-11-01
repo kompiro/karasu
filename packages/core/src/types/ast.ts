@@ -306,7 +306,7 @@ export interface ResourceNode extends BaseNodeFields {
    * Optional author-supplied identifier for the synthesized usecase->resource
    * edge, written as `resource <ref> #<id> { ... }`. Propagates to the
    * generated KrsEdge as `authorId`. Used by the canonical-id pass and the
-   * `edge#<id>` style selector. See `docs/design/edge-id-selector.md`.
+   * `edge#<id>` style selector. See ADR-1096.
    */
   authorId?: string;
 }
@@ -375,7 +375,7 @@ export interface ClientResource {
 /**
  * Device / browser capability declared on a client (camera, geolocation,
  * notification, etc.). Identifier set is intentionally open — see
- * `docs/design/client-capability-modeling.md`. Recommended names live in
+ * ADR-837. Recommended names live in
  * `docs/spec/tags-annotations.md`.
  */
 export interface ClientCapability {
@@ -480,7 +480,7 @@ export interface KrsEdge {
   /**
    * Author-supplied identifier from `from -> to "label" #<id>` (or, for
    * synthesized usecase->resource edges, from `resource <ref> #<id>`).
-   * See `docs/design/edge-id-selector.md`.
+   * See ADR-1096.
    */
   authorId?: string;
   /**
@@ -562,7 +562,7 @@ export interface OrganizationBlock {
 // containment ではなく参照（id 参照でファイル横断可）で、`boundaryMembership`
 // （node id → 宣言されたすべての boundary id、1:N）を成す。team（`ownerIndex`）
 // と直交する第二の Group-by 軸になる。言語 v2.0 で core に昇格（#2678）。
-// 設計: docs/design/system-view-grouping.md「P2b 詳細設計」、
+// 設計: ADR-1974、
 // docs/adr/2161-boundary-membership-1n.md（1:N 化、#2178）。
 export interface BoundaryBlock {
   kind: "boundary";
@@ -1012,7 +1012,7 @@ export type DiagnosticSeverity = "error" | "warning" | "info";
  * from `@karasu-tools/i18n`; the structured `Diagnostic` stays
  * language-neutral.
  *
- * See `docs/design/i18n-support.md`.
+ * See ADR-34.
  */
 export interface DiagnosticParamsByCode {
   // ── Token / parse structure ─────────────────────────────────────────────
@@ -1228,7 +1228,7 @@ export type DiagnosticCode = keyof DiagnosticParamsByCode;
  * to the right shape automatically.
  *
  * Prior shape carried `message: string` — removed in Phase B.2 of the i18n
- * rollout (see `docs/design/i18n-support.md`).
+ * rollout (see ADR-34).
  */
 export type Diagnostic = {
   [K in DiagnosticCode]: {

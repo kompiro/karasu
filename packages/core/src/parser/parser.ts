@@ -589,7 +589,7 @@ export class Parser {
       }
 
       // Client-only: `capability <name>` or `capability <name> { label "..." description "..." }`.
-      // Identifier set is open by design — see docs/design/client-capability-modeling.md.
+      // Identifier set is open by design — see ADR-837.
       if (kind === "client" && token.type === TokenType.Capability) {
         properties.capabilities ??= [];
         properties.capabilities.push(this.parseClientCapability());

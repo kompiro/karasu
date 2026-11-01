@@ -96,7 +96,7 @@ function decodeXmlEntities(s: string): string {
  * #1921/#1923) — the renderer emits it only in the single-system, ungrouped view
  * (both on a collapsed `⊕` box and an expanded `⊖` frame), so this is the full
  * set the bulk "Expand all" acts on and is naturally empty under Group-by team /
- * multi-system. See `docs/design/expand-all-services-in-place.md` (#1955).
+ * multi-system. See ADR-1955 (#1955).
  */
 function extractCollapsibles(svg: string): {
   groupIds: string[];

@@ -23,7 +23,7 @@
  * endpoints, not interior — is correctly NOT a hop. Marks are derived from final
  * coordinates only, so they are deterministic and snapshot-stable.
  *
- * See docs/design/system-view-grouping.md § "P2c-C 詳細設計" / "P2c カバレッジ拡張（#1939）".
+ * See ADR-1859 and #1939.
  */
 
 import type {

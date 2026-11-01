@@ -62,7 +62,7 @@ export type { LayoutNode, LayoutEdge, LayoutResult, DisplayMode } from "./layout
 
 /**
  * Lay out a view, choosing the row-width budget whose canvas holds the least
- * empty space (Issue #2593, `docs/design/canvas-space-objective.md`).
+ * empty space (Issue #2593, ADR-2593).
  *
  * `MAX_LAYER_WIDTH` is a constant, so a view whose cards are a hair too wide
  * for three-per-row wraps to two-per-row and then only grows downward —
@@ -563,7 +563,7 @@ function layoutInner(
   // from final coordinates for every single-system layout, grouped or not — hop
   // arcs neutralise crossings ("not connected") so the default view's crossings
   // read unambiguously too. Junction dots stay grouped-only (the ungrouped view
-  // has no aggregation trunks). See docs/design/system-view-grouping.md.
+  // has no aggregation trunks). See ADR-1859.
   return {
     result: {
       nodes: layoutNodes,

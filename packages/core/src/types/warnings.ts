@@ -418,7 +418,7 @@ export interface WarningParamsByKind {
  * each warning variant.
  *
  * Prior shape carried `message: string` + `details: string[]` — both removed
- * as part of the Phase B refactor. See `docs/design/i18n-support.md`.
+ * as part of the Phase B refactor. See ADR-34.
  */
 export type Warning = {
   [K in WarningKind]: {

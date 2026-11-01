@@ -9,7 +9,7 @@ import { decodeShare } from "../utils/inline-share.js";
 
 /**
  * Static render endpoint for karasu-nest (design:
- * docs/design/karasu-nest-hosted-preview.md, "static SVG endpoint").
+ * ADR-1783, "static SVG endpoint").
  *
  * Turns a share payload (`?s=<encoded {krs, style}>`, the same bundle the Share
  * button produces) into a standalone SVG for README embedding / OGP. Unlike the

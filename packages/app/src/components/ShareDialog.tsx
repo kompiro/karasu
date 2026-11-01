@@ -44,9 +44,8 @@ interface ShareDialogProps {
 }
 
 /**
- * Share dialog for karasu-nest inline sharing (design:
- * docs/design/karasu-nest-ogp-share-page.md → ADR follow-up of
- * ADR-1783, Issue #1801).
+ * Share dialog for karasu-nest inline sharing (ADR-1801, a follow-up of
+ * ADR-1783; Issue #1801).
  *
  * Offers two links and spells out the trade-off so the user chooses
  * deliberately:

@@ -12,7 +12,7 @@ import {
 } from "./pre-release.mts";
 
 // Fences the weekly VS Code pre-release decided in #2940
-// (docs/design/vscode-pre-release-channel.md).
+// (ADR-2940).
 
 const PRE = { key: "Microsoft.VisualStudio.Code.PreRelease", value: "true" };
 const show = (...versions: string[]) => ({ versions: versions.map((version) => ({ version })) });
