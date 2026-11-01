@@ -27,9 +27,9 @@
 // which is what TPL-2075 forbids. Both are reported instead.
 //
 // Callers: `resolver/warnings.ts` (the scope / ambiguity / cross-system
-// diagnostics) and `view/view-extract.ts` (ghost systems and cross-system
-// edges), which used to split on the first dot and anchor `[systemId,
-// directChild]` — the assumption this module retires.
+// diagnostics), `view/view-extract.ts` (cross-system edges) and
+// `view/ghost-synthesis.ts` (ghost systems), which used to split on the first
+// dot and anchor `[systemId, directChild]` — the assumption this module retires.
 // ---------------------------------------------------------------------------
 
 import type { KrsFile, KrsNode, NodeIdPath } from "../types/ast.js";

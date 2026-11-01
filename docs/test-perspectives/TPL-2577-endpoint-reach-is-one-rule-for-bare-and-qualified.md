@@ -9,6 +9,7 @@ applicable_to:
   - "「dot が付いていれば検査しない」形のガードを書く・見つけたとき"
 known_consumers:
   - edge-endpoint
+  - ghost-synthesis
   - contains
   - import-path
 discovered_from:
