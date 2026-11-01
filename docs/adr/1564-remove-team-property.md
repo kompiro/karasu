@@ -11,7 +11,7 @@ related_to:
 scope:
   packages: [core, i18n, app, vscode]
 assumptions:
-  - "grep: packages/core/src/parser/parser.ts :: team-property-removed"
+  - "grep: packages/core/src/parser/block-contents.ts :: team-property-removed"
   - "grep: packages/i18n/src/en.ts :: teamPropertyRemoved"
 ---
 

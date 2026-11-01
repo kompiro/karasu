@@ -11,9 +11,10 @@ import { dirname, posix, resolve } from "node:path";
 // luck — when the agent happened to be running inside a karasu checkout. The
 // bundle makes the skill self-contained; this guard is the price of the copy.
 //
-// The precedent is `examples.test.ts` (examples/ ↔ examples.ts): a copy that
-// nothing verifies is a copy that silently goes stale, and a stale grammar is
-// worse than an absent one — the agent writes confidently against a syntax that
+// The precedent was the byte-equality guard in `examples.test.ts` (examples/ ↔
+// examples.ts, since replaced by codegen in #3345): a copy that nothing
+// verifies is a copy that silently goes stale, and a stale grammar is worse
+// than an absent one — the agent writes confidently against a syntax that
 // no longer parses. Same reasoning as `skill-cli-refs`, one register down: that
 // guard checks the skill's claims ABOUT the CLI, this one checks the skill's
 // copy OF the spec.

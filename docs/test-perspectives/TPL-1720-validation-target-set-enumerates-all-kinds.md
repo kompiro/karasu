@@ -69,7 +69,7 @@ valid-target set を構築・変更するとき、以下を確認する:
 
 ## 既知の対処パターン
 
-- 新しい論理ノード kind を first-class node にする PR では、`grep -n "service" packages/core/src/resolver/warnings.ts packages/core/src/parser/parser.ts` 等で **既存 kind が列挙されている全箇所**を洗い出し、同じ場所すべてに新 kind を加える
+- 新しい論理ノード kind を first-class node にする PR では、`grep -n "service" packages/core/src/resolver/warnings.ts packages/core/src/parser/*.ts` 等で **既存 kind が列挙されている全箇所**を洗い出し、同じ場所すべてに新 kind を加える
 - 将来的には valid-target kind の列挙を `LOGICAL_REALIZE_TARGET_KINDS` のような共通定数に集約し、parser / resolver が同じ定数を参照する形にすると同期忘れを構造的に防げる
 - 回帰テストは kind を網羅する（service だけでなく client / domain / infra それぞれの positive ケース）
 

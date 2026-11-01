@@ -8,6 +8,7 @@ depends_on:
   - ADR-8
 related_to:
   - ADR-316
+  - ADR-3345
 scope:
   packages:
     - core

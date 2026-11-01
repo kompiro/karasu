@@ -11,6 +11,7 @@ import { indexDeclaredInfra, infraLeafKey } from "../spec/infra-index.js";
 import { buildEntityResolver } from "../resolver/resource-entity.js";
 import { containerCanvasEdges } from "./anchored-edges.js";
 import { projectStoreRelations } from "./entity-relations.js";
+import { edgeKey } from "./edge-key.js";
 
 /**
  * Per-domain density metrics over a resolved logical model. Used by the
@@ -337,7 +338,7 @@ function diffStoreRelations(
     kindMismatch: [],
   };
   if (stores.length === 0) return diff;
-  const key = (from: string, to: string): string => `${from}->${to}`;
+  const key = (from: string, to: string): string => edgeKey({ from, to });
   const recorded = new Map<string, { from: string; to: string; kind: EdgeKind }>();
   const projected = new Map<string, { from: string; to: string; kind: EdgeKind }>();
   for (const store of stores) {

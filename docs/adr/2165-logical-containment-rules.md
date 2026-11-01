@@ -20,7 +20,7 @@ scope:
     - i18n
 assumptions:
   - "symbol: packages/core/src/builtins/reference-data.ts :: LOGICAL_CONTAINMENT"
-  - "grep: packages/core/src/parser/parser.ts :: node-not-in-context"
+  - "grep: packages/core/src/parser/block-contents.ts :: node-not-in-context"
   - "grep: packages/core/src/types/ast.ts :: \"node-not-in-context\""
   - "file: packages/core/src/builtins/reference-parser-sync.test.ts"
   - "grep: docs/spec/syntax.md :: Nesting placement"
