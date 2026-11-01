@@ -595,3 +595,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-3470](TPL-3470-timestamp-order-needs-a-tie-break.md) | 時刻で並べる一覧は、同じ時刻の項目にも本当の順序を与える tie-break を持つ。ミリ秒精度の時刻は普通に衝突し、比較が 0 を返すと順序はソート前の並びで決まる。順序のテストは sleep で時刻を進めず `Date` を固定する | project | #3470 |
 | [TPL-3494](TPL-3494-edge-never-crosses-its-own-endpoint-cards.md) | エッジは自分の端点のカードの内側も通らない。障害物の検査は端点を除外するので、線が自分のカードを突っ切っても貫通 0 のまま通り、終点のカードが矢印を隠す。端点の辺は layer の番号ではなく描画上の位置で決め、端点カードとの交差を別に測る | renderer | #3494 |
 | [TPL-3437](TPL-3437-tap-target-needs-its-own-pressability-cue.md) | 押せる要素は、ブラウザから見ても押せる要素であること。Chrome はタッチを面として扱い、近くの「押せる」要素（自身のリスナー・フォーカス・`:hover` を持つもの）へタップを寄せるので、クリックを祖先に委譲した小さなボタンへのタップが横の edge に移る | app-ui | #3027 |
+| [TPL-3240](TPL-3240-exact-pinned-dependency-installable-after-its-target.md) | 完全一致で依存するパッケージは、依存先がインストールできるようになってからインストールできるようにする。順序は手で並べず、pack した tarball の `dependencies` から導き、依存元だけがインストールできる状態を検出する | build | #3240, ADR-2939, packages/cli/package.json |
