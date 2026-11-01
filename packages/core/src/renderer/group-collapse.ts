@@ -56,7 +56,7 @@ interface GroupCollapseResult {
   remapEndpoint: (id: string) => string;
   /**
    * Diff state re-keyed onto the re-targeted stub edges, keyed by `edgeKey`,
-   * the render lookup form (kind-less, matching `svg-renderer.ts`). A stub
+   * the render lookup form (kind-less, matching `edge-layer.ts`). A stub
    * edge aggregates one-or-more original cross-group edges; its state is the
    * single original state when unambiguous, else `changed` (#1886, decision 2).
    * Only populated when a diff-state map is supplied AND something collapses;
@@ -162,7 +162,7 @@ export function collapseGroups(
   const stubEdges = new Map<string, KrsEdge>();
   // Accumulate the original diff states that fold onto each stub edge, keyed by
   // `edgeKey`, the render lookup form (kind-less — the render diff lookup in
-  // `svg-renderer.ts` and the `diffed.edges` key both drop `#kind`, so a
+  // `edge-layer.ts` and the `diffed.edges` key both drop `#kind`, so a
   // sync+async stub-edge pair shares one slot and folds together). #1886.
   const foldAccum = new Map<string, string[]>();
   for (const edge of edges) {

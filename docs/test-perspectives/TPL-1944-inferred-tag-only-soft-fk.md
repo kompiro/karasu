@@ -53,7 +53,7 @@ scope:
 5. **線種で区別して `[async]` と衝突** — `[inferred]` を dashed にすると、推論由来の
    async 関連が「二重に dashed」で kind の区別が消える（[TPL-510](TPL-510-derivation-tag-semantics.md)）。既定スタイルは色のみにする。
 
-## 検証の指針
+## チェックリスト
 
 - Explicit FK（`REFERENCES`）由来の関連 → `A -> B` に `[inferred]` が **付かない**。
 - Soft FK（列名規約・`REFERENCES` 無し）由来の関連 → `A -> B [inferred]`。

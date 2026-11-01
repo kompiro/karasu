@@ -3,7 +3,7 @@ import { quotedIdLiteral } from "../formatter/quote-id.js";
 
 /**
  * Identity of an edge by its endpoint pair: the key every diff map is written
- * under and every renderer reads back (`svg-renderer.ts`, `group-collapse.ts`,
+ * under and every renderer reads back (`edge-layer.ts`, `group-collapse.ts`,
  * the root view's per-frame lookup in `layout.ts`, the deploy ghost-edge diff),
  * and the key every view-extract dedup and suppression set compares on. Build
  * it here and nowhere else, so the writers and readers cannot drift apart

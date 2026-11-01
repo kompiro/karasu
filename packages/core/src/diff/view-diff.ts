@@ -48,7 +48,7 @@ export interface DiffedView {
   nodesByPath: Map<string, NodeDiffMeta>;
   /**
    * Diff state keyed by {@link edgeKey}.
-   * Matches the LayoutEdge identification used by svg-renderer; sync/async
+   * Matches the LayoutEdge identification used by edge-layer; sync/async
    * pairs that share endpoints are treated as a single edge for diff purposes.
    */
   edges: Map<string, EdgeDiffMeta>;

@@ -4,6 +4,7 @@ import { isRecognizedResourceOperation } from "../spec/operations.js";
 import { ALLOWED_LINK_SCHEMES, parseUrlScheme } from "./link-url.js";
 import { readNodeIdPathTail } from "./node-path.js";
 import type { ParseContext } from "./parse-context.js";
+import { rejectConstruct, rejectProperty } from "./rejected-construct.js";
 
 // The readers for the values properties take, shared by every block parser:
 // descriptions, links, ids, and the comma-separated lists behind `handles`,
@@ -270,4 +271,103 @@ export function parseIdOrString(ctx: ParseContext, context: string): Token {
   }
   ctx.error("expected-id-or-string", { context });
   return ctx.peek();
+}
+
+/**
+ * Read the `<InfraId>.<subId>` an entity's `table` property maps to, after the
+ * keyword. Both sides are required, so a malformed mapping (`table .orders`,
+ * `table OrderDB.`, `table orders`) yields `undefined`, raises exactly one
+ * diagnostic, and never consumes a stray token (`.`, `}`) as an id. The id
+ * must start on the keyword's line: one on the next line opens the next
+ * statement (an edge `X -> B`), as it does after a comma list (#3463).
+ */
+export function readTableRef(
+  ctx: ParseContext,
+  keyword: Token,
+): { parent: string; child: string } | undefined {
+  if (isIdOrString(ctx.peek()) && ctx.peek().loc.line !== keyword.loc.line) {
+    const loc = ctx.range(keyword.loc, keyword.end);
+    ctx.pushDiagnostic({
+      severity: "error",
+      code: "expected-id-after",
+      params: { property: "table" },
+      loc,
+    });
+    return undefined;
+  }
+  if (isIdOrString(ctx.peek())) {
+    const tail = readNodeIdPathTail(ctx.advance(), ctx, {
+      maxSegments: 2,
+      acceptStringSegments: true,
+    });
+    if (tail.segments.length === 2) return { parent: tail.segments[0], child: tail.segments[1] };
+    // Missing dot, or missing sub-id after the dot: leave the following token
+    // (`}`, etc.) for the block.
+    ctx.error("expected-id-after", { property: "table" });
+    return undefined;
+  }
+  ctx.error("expected-id-or-string", { context: "entity table infra id" });
+  // Consume a stray `.<id>` so we recover in one diagnostic, not three.
+  if (ctx.peek().type === TokenType.Dot) {
+    ctx.advance();
+    if (isIdOrString(ctx.peek())) ctx.advance();
+  }
+  return undefined;
+}
+
+/**
+ * Read the client ids after `delivers`. A client is named by its bare id, so a
+ * dotted path is read whole as one element and reported once instead of
+ * leaving `.B` for the block loop to report token by token (#3463). The
+ * element is left out of the list: keeping `A` from `A.B` would point the
+ * edge at a node the author did not write.
+ */
+export function parseDeliversList(ctx: ParseContext, keyword: Token, blockKind: string): string[] {
+  const clients: string[] = [];
+  for (const first of commaSeparatedValues(ctx, keyword, "delivers")) {
+    const dot = ctx.peek();
+    if (dot.type !== TokenType.Dot) {
+      clients.push(first.value);
+      continue;
+    }
+    readNodeIdPathTail(first, ctx, { acceptStringSegments: true });
+    const last = ctx.previous() ?? first;
+    const params = { blockKind, tokenType: String(dot.type), value: dot.value };
+    const loc = ctx.range(first.loc, last.end ?? last.loc);
+    rejectConstruct(ctx, loc, "unexpected-token-in-block", params);
+  }
+  return clients;
+}
+
+/**
+ * Reject a `role` / `handles` / `operations` / `delivers` written on
+ * `nodeKind`, which does not take it, reading the value with the property's
+ * own reader so it is dropped with the keyword (#3072). Returns false, and
+ * consumes nothing, when the next token is none of them.
+ */
+export function rejectMisplacedProperty(ctx: ParseContext, nodeKind: string): boolean {
+  switch (ctx.peek().type) {
+    case TokenType.Role:
+      // A bare `role` must not take the source of an edge on the next line;
+      // a string on its own line is still its value (`role "A" -> B`).
+      rejectProperty(ctx, "role", nodeKind, (keyword) => {
+        const arrow = ctx.peekAt(1).type;
+        const edgeStart = arrow === TokenType.Arrow || arrow === TokenType.DashedArrow;
+        const nextLine = ctx.peek().loc.line !== keyword.loc.line;
+        if (!(nextLine && isIdOrString(ctx.peek()) && edgeStart))
+          ctx.match(TokenType.StringLiteral);
+      });
+      return true;
+    case TokenType.Handles:
+      rejectProperty(ctx, "handles", nodeKind, (kw) => parseHandlesList(ctx, kw));
+      return true;
+    case TokenType.Operations:
+      rejectProperty(ctx, "operations", nodeKind, (kw) => parseOperationsList(ctx, kw));
+      return true;
+    case TokenType.Delivers:
+      rejectProperty(ctx, "delivers", nodeKind, (kw) => parseDeliversList(ctx, kw, nodeKind));
+      return true;
+    default:
+      return false;
+  }
 }

@@ -6,7 +6,7 @@
  * preview built as a standalone viewer (#2997), with the submission embedded,
  * served as a page-level CSP sandbox without `allow-same-origin`. The script
  * therefore runs in an opaque origin and never with the session this origin
- * holds (TPL-2993; `docs/design/gallery-client-side-rendering.md`, option D4).
+ * holds (TPL-2993, ADR-2993).
  * The Worker no longer draws SVG for the page, only for `?format=svg`.
  *
  * [#2378](https://github.com/kompiro/karasu/pull/2378) found three problems

@@ -14,7 +14,7 @@ type: product
   - `packages/core/src/types/ast.ts`（`KrsEdge.facets` / `unionEdgeFacets`）
   - `packages/core/src/parser/parser.ts`（`parseEdgeBlock`）・`formatter/formatter.ts`（`renderEdge`）
   - `packages/core/src/resolver/warnings.ts`（`detectFacetsNotDeclared`）・`resolver/style-resolver.ts`（`edgeSelectorMatches`）
-  - `packages/core/src/renderer/facet-overlay.ts`（`knownFacetIds` / `edgeFacetIds`）・`facet-overview.ts`・`edge-routing.ts`・`svg-renderer.ts`・`layout-edges.ts`
+  - `packages/core/src/renderer/facet-overlay.ts`（`knownFacetIds` / `edgeFacetIds`）・`facet-overview.ts`・`edge-routing.ts`・`edge-layer.ts`・`layout-edges.ts`
   - `packages/core/src/view/derived-edges.ts`・`renderer/category-collapse.ts`・`renderer/group-collapse.ts`（和集合の導出）
 
 > PII を運ぶデータフローや PCI スコープ内の呼び出しは**そのエッジについての事実**なのに、
