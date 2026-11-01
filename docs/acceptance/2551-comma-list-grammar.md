@@ -10,7 +10,9 @@ type: product
 - **関連 spec**: [`docs/spec/syntax.md`](../spec/syntax.md) §Comma-separated value lists（+ja）/ [`docs/spec/diagnostics.md`](../spec/diagnostics.md)（+ja）
 - **関連 TPL**: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md)
 - **対象ファイル**:
-  - `packages/core/src/parser/parser.ts`（`commaSeparatedValues` / `readReferencePathElement` と、それに載せ替えた `parseFacetsList` / `delivers` / `parseHandlesList` / `parseOperationsList` / `parseRealizesList`）
+  - `packages/core/src/parser/property-readers.ts`（`commaSeparatedValues` / `readReferencePathElement` と、それに載せ替えた `parseHandlesList` / `parseOperationsList`）
+  - `packages/core/src/parser/org-parser.ts`（同じく載せ替えた `parseFacetsList`）
+  - `packages/core/src/parser/parser.ts`（同じく載せ替えた `delivers` / `parseRealizesList`）
 
 > 同じ書き間違い（`delivers A,` と `realizes A,`）が、プロパティごとに別の診断コード・
 > 別のアンカー位置・別の行またぎ挙動になっていた。5 つの手書きリーダが独立に育った

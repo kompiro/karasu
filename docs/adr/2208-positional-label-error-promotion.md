@@ -11,7 +11,7 @@ scope:
     - core
 assumptions:
   - "file: packages/core/src/parser/parser.ts"
-  - "symbol: packages/core/src/parser/parser.ts :: parseRetiredPositionalLabel"
+  - "symbol: packages/core/src/parser/org-parser.ts :: parseRetiredPositionalLabel"
   - "file: scripts/lint/krs-fences.ts"
   - "file: packages/core/src/types/diagnostics-catalog.test.ts"
 ---

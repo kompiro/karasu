@@ -11,6 +11,7 @@ known_consumers:
   - view-extract
   - anchored-edges
   - entity-relations
+  - ghost-synthesis
   - resolver-warnings
 discovered_from:
   - issue: "#2075"

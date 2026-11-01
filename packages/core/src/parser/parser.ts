@@ -1,5 +1,4 @@
 import { TokenType, type Token, type SourceRange, type SourceLocation } from "../types/tokens.js";
-import { ALLOWED_LINK_SCHEMES, parseUrlScheme } from "./link-url.js";
 import { stitchKebabTail } from "./kebab-name.js";
 import { readNodeIdPathTail } from "./node-path.js";
 import type {
@@ -24,12 +23,7 @@ import type {
   ServiceNode,
   ClientNode,
   CommonProperties,
-  OrganizationBlock,
   BoundaryBlock,
-  FacetBlock,
-  TeamNode,
-  MemberNode,
-  OrgNode,
   TableNode,
   QueueItemNode,
   BucketNode,
@@ -61,6 +55,23 @@ import { markCyclicEdges } from "./cyclic-dependencies.js";
 import { LOGICAL_KEYWORDS, DEPLOY_KEYWORDS } from "./parser-keywords.js";
 import { handleNestedLegend, parseLegendBlock } from "./legend-parser.js";
 import { parseTags, parseAnnotations } from "./annotation-parser.js";
+import {
+  parseDescriptionValue,
+  parseLink,
+  parseIdOrString,
+  commaSeparatedValues,
+  readReferencePathElement,
+  parseOperationsList,
+  parseHandlesList,
+  type ParsedOperation,
+} from "./property-readers.js";
+import {
+  parseOrganizationBlock,
+  parseBoundaryBlock,
+  parseFacetBlock,
+  parseFacetsList,
+  rejectNestedFacetBlock,
+} from "./org-parser.js";
 import type { ParseContext } from "./parse-context.js";
 
 /**
@@ -92,20 +103,6 @@ const BOUNDARY_HOST_KIND = {
   bucket: false,
 } as const satisfies Record<LogicalNodeKind, boolean>;
 
-/** Intermediate shape returned by `parseOperationsList` before per-resource validation. */
-interface ParsedOperation {
-  verb: string;
-  /**
-   * Decorated CRUD candidates. `undefined` = no `:` decoration was present
-   * (bare verb). `[]` = `:` was present but RHS was empty (will produce
-   * `empty-crud-decoration`). Otherwise each entry's `recognized` flag tells
-   * the resource builder whether to count it or emit `invalid-crud-decoration`.
-   */
-  decoration: { value: string; recognized: boolean }[] | undefined;
-  /** Loc of the verb token (for diagnostic positioning). */
-  decorationLoc: SourceLocation | undefined;
-}
-
 const DEPLOY_PROPERTY_KEYWORDS = new Set<string>([
   "runtime",
   "realizes",
@@ -134,6 +131,12 @@ export class Parser {
     range: (start, end) => this.range(start, end),
     pushDiagnostic: (diagnostic) => this.diagnostics.push(diagnostic),
     previous: () => this.tokens[this.pos - 1],
+    discardDiagnostics: (parse) => {
+      const before = this.diagnostics.length;
+      const result = parse();
+      this.diagnostics.length = before;
+      return result;
+    },
   };
 
   /**
@@ -272,13 +275,13 @@ export class Parser {
           file.deploys.push(this.parseDeployBlock());
           break;
         case TokenType.Organization:
-          file.organizations.push(this.parseOrganizationBlock());
+          file.organizations.push(parseOrganizationBlock(this.ctx));
           break;
         case TokenType.Boundary:
-          file.boundaries.push(this.parseBoundaryBlock());
+          file.boundaries.push(parseBoundaryBlock(this.ctx));
           break;
         case TokenType.Facet:
-          file.facets.push(this.parseFacetBlock());
+          file.facets.push(parseFacetBlock(this.ctx));
           break;
         case TokenType.Legend:
           file.legends.push(parseLegendBlock(this.ctx));
@@ -536,14 +539,14 @@ export class Parser {
       // Property: description
       if (token.type === TokenType.Description) {
         this.advance();
-        properties.description = this.parseDescriptionValue();
+        properties.description = parseDescriptionValue(this.ctx);
         continue;
       }
 
       // Property: link
       if (token.type === TokenType.Link) {
         this.advance();
-        properties.links.push(this.parseLink());
+        properties.links.push(parseLink(this.ctx));
         continue;
       }
 
@@ -554,7 +557,7 @@ export class Parser {
       if (token.type === TokenType.Facets) {
         const keyword = this.advance();
         properties.facets ??= [];
-        this.parseFacetsList(keyword, properties.facets);
+        parseFacetsList(this.ctx, keyword, properties.facets);
         continue;
       }
 
@@ -577,7 +580,7 @@ export class Parser {
       // Property: handles (client and service) — domain ids exposed to callers
       if (token.type === TokenType.Handles) {
         if (kind === "client" || kind === "service") {
-          const ids = this.parseHandlesList(this.advance());
+          const ids = parseHandlesList(this.ctx, this.advance());
           if (ids.length > 0) {
             if (!properties.handles) properties.handles = [];
             properties.handles.push(...ids);
@@ -595,7 +598,7 @@ export class Parser {
       // a non-CRUD verb to its CRUD intent (`list:read`, `replace:create,delete`).
       if (token.type === TokenType.Operations) {
         if (kind === "resource") {
-          const ops = this.parseOperationsList(this.advance());
+          const ops = parseOperationsList(this.ctx, this.advance());
           if (ops.length > 0) {
             if (!properties.operations) properties.operations = [];
             properties.operations.push(...ops);
@@ -674,7 +677,7 @@ export class Parser {
       if (token.type === TokenType.Delivers) {
         if (kind === "service") {
           const keyword = this.advance();
-          for (const client of this.commaSeparatedValues(keyword, "delivers")) {
+          for (const client of commaSeparatedValues(this.ctx, keyword, "delivers")) {
             (properties.delivers ??= []).push(client.value);
           }
         } else {
@@ -791,7 +794,7 @@ export class Parser {
       }
 
       if (token.type === TokenType.Facet) {
-        this.rejectNestedFacetBlock(kind);
+        rejectNestedFacetBlock(this.ctx, kind);
         continue;
       }
 
@@ -799,7 +802,7 @@ export class Parser {
       // either way, so a misplaced one is consumed whole and recovery is clean
       // (same shape as the `entity-not-in-domain` branch above).
       if (token.type === TokenType.Boundary) {
-        const block = this.parseBoundaryBlock();
+        const block = parseBoundaryBlock(this.ctx);
         if (BOUNDARY_HOST_KIND[kind] && boundaries) {
           boundaries.push(block);
         } else {
@@ -820,17 +823,6 @@ export class Parser {
       });
       this.advance();
     }
-  }
-
-  private parseDescriptionValue(): string {
-    if (this.peek().type === TokenType.TripleQuote) {
-      return this.advance().value;
-    }
-    if (this.peek().type === TokenType.StringLiteral) {
-      return this.advance().value;
-    }
-    this.error("expected-string-after", { property: "description" });
-    return "";
   }
 
   private parseClientResource(): import("../types/ast.js").ClientResource {
@@ -883,7 +875,7 @@ export class Parser {
         }
         if (inner.type === TokenType.Description) {
           this.advance();
-          description = this.parseDescriptionValue();
+          description = parseDescriptionValue(this.ctx);
           continue;
         }
         this.error("unexpected-token-in-block", {
@@ -902,229 +894,6 @@ export class Parser {
       ...(description !== undefined ? { description } : {}),
       loc: this.range(start.loc, end.loc),
     };
-  }
-
-  private parseLink(): LinkEntry {
-    const start = this.peek().loc;
-    const url = this.expect(TokenType.StringLiteral);
-    let label: string | undefined;
-    let end = url.loc;
-    if (this.peek().type === TokenType.StringLiteral) {
-      const labelToken = this.advance();
-      label = labelToken.value;
-      end = labelToken.loc;
-    }
-    const loc = this.range(start, end);
-    // Trust-boundary scheme allowlist (#1525 / TPL-168): link URLs are
-    // untrusted .krs content rendered as <a href> in the app and the VS Code
-    // webview, where a javascript: URL executes in the app origin. We WARN here
-    // (validate once at the boundary) but keep the link in the AST so Format /
-    // round-trip never silently deletes the user's source. The href-rendering
-    // surfaces filter with isSafeLinkUrl before creating an anchor. The WHATWG
-    // URL parser matches browser href semantics (case folding, tab/newline
-    // stripping), so tricks like "JaVaScRiPt:" normalize before the check;
-    // anything unparseable (incl. relative paths) is reported too.
-    const scheme = parseUrlScheme(url.value);
-    if (scheme === null || !ALLOWED_LINK_SCHEMES.has(scheme)) {
-      this.diagnostics.push({
-        severity: "warning",
-        code: "link-url-scheme-not-allowed",
-        params: { url: url.value, scheme: scheme ?? "" },
-        loc,
-      });
-    }
-    return { url: url.value, label, loc };
-  }
-
-  /**
-   * Walk the comma-separated value list a property keyword introduces, yielding
-   * the token that opens each element. The caller consumes whatever else its
-   * element spans (a reference path's dotted tail, an `operations` decoration)
-   * before the generator resumes, so one grammar serves elements of any shape.
-   * Callers must drain the generator: breaking out of the loop early leaves the
-   * rest of the list for the enclosing block to misread.
-   *
-   * The four decisions the property readers used to hold their own copies of
-   * live here instead (#2551):
-   *
-   * - **A list never jumps a line on its own.** Every separator, and every
-   *   element after one, sits on the line where the previous element ended, so
-   *   neither a trailing comma nor a comma opening the next line extends the
-   *   list across a break, and the same intent is not silently accepted in one
-   *   direction and reported in the other (#2167). An element that spans lines
-   *   itself carries the list with it: the rule bounds separators and element
-   *   starts, not the characters of one element.
-   * - **A separator with no element is one `expected-id-after`**, anchored on
-   *   the offending comma in either direction, or on the keyword when the value
-   *   is missing outright. `this.error` anchors on whatever comes next, which
-   *   for a trailing comma is the following (correct) line.
-   * - **Stray separators are swallowed and the list resumes**, so `facets ,pii`
-   *   still records `pii` and the block loop never reports the same comma twice.
-   * - **Elements are yielded as tokens**, so element-precise ranges are there
-   *   for the taking rather than re-derived per property.
-   */
-  private *commaSeparatedValues(keyword: Token, property: string): Generator<Token> {
-    // The line the list is currently on. It starts at the keyword and moves with
-    // an element that spans lines of its own, so the list never jumps a line by
-    // itself and never truncates an element that legitimately crosses one.
-    let line = keyword.loc.line;
-    const onListLine = (token: Token): boolean => token.loc.line === line;
-    const atElement = (): boolean => this.isIdOrString(this.peek()) && onListLine(this.peek());
-
-    // The separator the parser is standing after, for the diagnostic below.
-    // Undefined while reading the first element, which the keyword introduces.
-    let afterComma: Token | undefined;
-
-    for (;;) {
-      if (atElement()) {
-        yield this.advance();
-        // The caller may have consumed more than the token yielded above, and a
-        // reference path's dots carry one element across a line break. The
-        // separator that follows therefore sits where the element ended, not
-        // where the keyword did, so `handles Order` with `.Line, Catalog` on the
-        // next line still reads `Catalog` instead of dropping it.
-        line = (this.tokens[this.pos - 1] ?? keyword).loc.line;
-        // Without a comma the list is done; with one, another element is due.
-        // A malformed element takes the same exit as a good one, so the trailing
-        // comma of `handles A.,` is reported where the trailing comma of
-        // `handles A,` is. Swallowing it here would make the same mistake
-        // silent in one spelling and reported in the other.
-        if (this.peek().type !== TokenType.Comma || !onListLine(this.peek())) return;
-        afterComma = this.advance();
-        continue;
-      }
-      // No element where one is required: a bare keyword, a leading comma
-      // (`facets ,b`), or the trailing comma of `facets a,`. Report it once
-      // rather than letting the comma fall through to the block loop's generic
-      // `unexpected-token-in-block`, and anchor it on the character at fault:
-      // the separator when one is written, the keyword only when the value is
-      // missing outright. A leading comma is still ahead of the cursor while a
-      // trailing one has been consumed, so the anchor is read from whichever
-      // side holds it; both land on the comma the author actually typed.
-      const leading = this.peek();
-      const anchor =
-        afterComma ?? (leading.type === TokenType.Comma && onListLine(leading) ? leading : keyword);
-      this.diagnostics.push({
-        severity: "error",
-        code: "expected-id-after",
-        params: { property },
-        loc: this.range(anchor.loc, anchor.end),
-      });
-      // Swallow the stray separators so the same commas are not reported again,
-      // then resume if that leaves an element to read. Reaching here without a
-      // comma to consume means the line holds nothing more to say, so stop
-      // rather than report twice.
-      let swallowed = false;
-      while (this.peek().type === TokenType.Comma && onListLine(this.peek())) {
-        afterComma = this.advance();
-        swallowed = true;
-      }
-      if (!swallowed || !atElement()) return;
-    }
-  }
-
-  /**
-   * Read the dotted tail of a reference-path element (#2088) whose opening token
-   * has already been consumed, or `undefined` when the path is malformed.
-   *
-   * A dangling dot is reported once and records nothing: recording the segments
-   * read so far would put `handles Backend` in the model next to an error about
-   * `handles Backend.`. The range runs to the dot itself, so the squiggle covers
-   * the character at fault instead of stopping at the identifier that was
-   * spelled correctly.
-   */
-  private readReferencePathElement(
-    first: Token,
-    property: string,
-  ): { path: NodeIdPath; loc: SourceRange } | undefined {
-    const tail = readNodeIdPathTail(first, this.ctx, { acceptStringSegments: true });
-    if (tail.dangling) {
-      const stop = tail.danglingDot ?? tail.end;
-      this.diagnostics.push({
-        severity: "error",
-        code: "expected-id-after",
-        params: { property },
-        loc: this.range(first.loc, stop.end ?? stop.loc),
-      });
-      return undefined;
-    }
-    return {
-      path: tail.segments,
-      loc: this.range(first.loc, tail.end.end ?? tail.end.loc),
-    };
-  }
-
-  /**
-   * Parse the right-hand side of an `operations` property. Each entry is
-   * either a bare verb (`create`, `list`) or a decorated verb (`list:read`,
-   * `replace:create,delete`). Comma-separated; the comma after a decoration
-   * RHS is recognised as a verb separator only when the next identifier is
-   * followed by `:` — otherwise the bare identifier becomes a CRUD-RHS
-   * continuation that the per-verb validator will accept (recognised CRUD)
-   * or flag with `invalid-crud-decoration` (anything else).
-   *
-   * Diagnostics are *deferred* to the resource builder so the resourceId is
-   * available; we return raw entries plus malformed-flag info here.
-   */
-  private parseOperationsList(keyword: Token): ParsedOperation[] {
-    const out: ParsedOperation[] = [];
-    for (const verbToken of this.commaSeparatedValues(keyword, "operations")) {
-      out.push(this.parseOneOperation(verbToken));
-    }
-    return out;
-  }
-
-  private parseOneOperation(verbToken: Token): ParsedOperation {
-    const verb = verbToken.value;
-    if (this.peek().type !== TokenType.Colon) {
-      return { verb, decoration: undefined, decorationLoc: undefined };
-    }
-    this.advance(); // consume `:`
-    if (!this.isIdOrString(this.peek())) {
-      // Empty RHS. `empty-crud-decoration` is raised later by the resource
-      // builder, which has the resourceId the message needs.
-      return { verb, decoration: [], decorationLoc: verbToken.loc };
-    }
-    const decoration = [this.consumeDecorationItem()];
-    // A comma continues the RHS only while the identifier after it is not itself
-    // a decorated verb (ADR-1046's 1:N rule). Every other comma is left for the
-    // enclosing list, so the trailing separator of `operations list:read,` is
-    // reported by the one rule that owns separators.
-    //
-    // The list's line rule deliberately does not reach in here: a decoration is
-    // part of one element, and the rule bounds separators and element starts,
-    // not the characters of a single element.
-    while (
-      this.peek().type === TokenType.Comma &&
-      this.isIdOrString(this.peekAt(1)) &&
-      this.peekAt(2).type !== TokenType.Colon
-    ) {
-      this.advance(); // consume `,`
-      decoration.push(this.consumeDecorationItem());
-    }
-    return { verb, decoration, decorationLoc: verbToken.loc };
-  }
-
-  private consumeDecorationItem(): { value: string; recognized: boolean } {
-    const tok = this.advance();
-    return { value: tok.value, recognized: isRecognizedResourceOperation(tok.value) };
-  }
-
-  /** Accepts an identifier or a string literal wherever an id may be written. */
-  private isIdOrString(token: Token): boolean {
-    return token.type === TokenType.Identifier || token.type === TokenType.StringLiteral;
-  }
-
-  private parseHandlesList(keyword: Token): HandlesTarget[] {
-    const refs: HandlesTarget[] = [];
-    for (const first of this.commaSeparatedValues(keyword, "handles")) {
-      // A malformed ref does not end the list: `handles A., B` has to record
-      // `B` the same way `realizes` does. Dropping out here would lose every
-      // later target and leave the comma for the block loop to report again.
-      const target = this.readReferencePathElement(first, "handles");
-      if (target) refs.push(target);
-    }
-    return refs;
   }
 
   private isLogicalKeyword(token: Token): boolean {
@@ -1156,15 +925,6 @@ export class Parser {
       type === TokenType.Queue ||
       type === TokenType.Storage
     );
-  }
-
-  /** Accept either an identifier or a string literal as an id/reference token. */
-  private parseIdOrString(context: string): Token {
-    if (this.peek().type === TokenType.Identifier || this.peek().type === TokenType.StringLiteral) {
-      return this.advance();
-    }
-    this.error("expected-id-or-string", { context });
-    return this.peek();
   }
 
   private parseNodeDecl(): KrsNode {
@@ -1575,13 +1335,13 @@ export class Parser {
 
       if (token.type === TokenType.Description) {
         this.advance();
-        properties.description = this.parseDescriptionValue();
+        properties.description = parseDescriptionValue(this.ctx);
         continue;
       }
 
       if (token.type === TokenType.Link) {
         this.advance();
-        properties.links.push(this.parseLink());
+        properties.links.push(parseLink(this.ctx));
         continue;
       }
 
@@ -1606,19 +1366,19 @@ export class Parser {
       // Infra blocks draw a drill-down canvas of their leaf children, so they
       // host boundaries like any other container kind (#2036).
       if (token.type === TokenType.Boundary) {
-        boundaries.push(this.parseBoundaryBlock());
+        boundaries.push(parseBoundaryBlock(this.ctx));
         continue;
       }
 
       if (token.type === TokenType.Facets) {
         const keyword = this.advance();
         properties.facets ??= [];
-        this.parseFacetsList(keyword, properties.facets);
+        parseFacetsList(this.ctx, keyword, properties.facets);
         continue;
       }
 
       if (token.type === TokenType.Facet) {
-        this.rejectNestedFacetBlock(parentKind);
+        rejectNestedFacetBlock(this.ctx, parentKind);
         continue;
       }
 
@@ -1659,13 +1419,13 @@ export class Parser {
 
       if (token.type === TokenType.Description) {
         this.advance();
-        properties.description = this.parseDescriptionValue();
+        properties.description = parseDescriptionValue(this.ctx);
         continue;
       }
 
       if (token.type === TokenType.Link) {
         this.advance();
-        properties.links.push(this.parseLink());
+        properties.links.push(parseLink(this.ctx));
         continue;
       }
 
@@ -1680,12 +1440,12 @@ export class Parser {
       if (token.type === TokenType.Facets) {
         const keyword = this.advance();
         properties.facets ??= [];
-        this.parseFacetsList(keyword, properties.facets);
+        parseFacetsList(this.ctx, keyword, properties.facets);
         continue;
       }
 
       if (token.type === TokenType.Facet) {
-        this.rejectNestedFacetBlock(kind);
+        rejectNestedFacetBlock(this.ctx, kind);
         continue;
       }
 
@@ -1693,7 +1453,7 @@ export class Parser {
       // Named explicitly rather than falling through to unexpected-token, which
       // would not say why (#2036).
       if (token.type === TokenType.Boundary) {
-        const block = this.parseBoundaryBlock();
+        const block = parseBoundaryBlock(this.ctx);
         this.diagnostics.push({
           severity: "error",
           code: "boundary-not-in-context",
@@ -1792,7 +1552,7 @@ export class Parser {
       startLoc = fromToken.loc;
     }
     const arrowToken = this.advance(); // -> or -->
-    const toToken = this.parseIdOrString("edge target");
+    const toToken = parseIdOrString(this.ctx, "edge target");
 
     // Support qualified references at any depth: `Sys.Svc`, `Sys.Svc.Domain`, …
     // The two-segment cap lifted with slice E (#2577), together with the
@@ -1898,13 +1658,13 @@ export class Parser {
 
       if (token.type === TokenType.Description) {
         this.advance();
-        description = this.parseDescriptionValue();
+        description = parseDescriptionValue(this.ctx);
         continue;
       }
 
       if (token.type === TokenType.Link) {
         this.advance();
-        (links ??= []).push(this.parseLink());
+        (links ??= []).push(parseLink(this.ctx));
         continue;
       }
 
@@ -1914,7 +1674,7 @@ export class Parser {
       if (token.type === TokenType.Facets) {
         const keyword = this.advance();
         facets ??= [];
-        this.parseFacetsList(keyword, facets);
+        parseFacetsList(this.ctx, keyword, facets);
         continue;
       }
 
@@ -2071,8 +1831,8 @@ export class Parser {
    * dots continue the one ref even across a line break.
    */
   private parseRealizesList(keyword: Token, properties: DeployNodeProperties): void {
-    for (const first of this.commaSeparatedValues(keyword, "realizes")) {
-      const target = this.readReferencePathElement(first, "realizes");
+    for (const first of commaSeparatedValues(this.ctx, keyword, "realizes")) {
+      const target = readReferencePathElement(this.ctx, first, "realizes");
       if (!target) continue;
       // Naming the same target twice declares one relation, not two (#2552).
       // The repeat is dropped wherever it sits — later in this list or on a
@@ -2089,427 +1849,6 @@ export class Parser {
           t.path.length === target.path.length && t.path.every((seg, i) => seg === target.path[i]),
       );
       if (!already) targets.push(target);
-    }
-  }
-
-  // ─── Organization ──────────────────────────────────────────────────────────
-
-  private parseOrganizationBlock(): OrganizationBlock {
-    const start = this.advance(); // organization
-    const idToken = this.parseIdOrString("organization");
-    let label = this.parseRetiredPositionalLabel("organization");
-    this.expect(TokenType.LeftBrace);
-
-    const properties: CommonProperties = { links: [] };
-    const teams: TeamNode[] = [];
-
-    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      const token = this.peek();
-      if (token.type === TokenType.Label) {
-        this.advance();
-        if (this.peek().type === TokenType.StringLiteral) {
-          label = this.advance().value;
-        } else {
-          this.error("expected-string-after", { property: "label" });
-        }
-      } else if (token.type === TokenType.Description) {
-        this.advance();
-        properties.description = this.parseDescriptionValue();
-      } else if (token.type === TokenType.Link) {
-        this.advance();
-        properties.links.push(this.parseLink());
-      } else if (token.type === TokenType.Team) {
-        teams.push(this.parseTeamBlock());
-      } else if (token.type === TokenType.Legend) {
-        handleNestedLegend(this.ctx, "organization");
-      } else {
-        this.error("unexpected-token-in-block", {
-          blockKind: "organization",
-          tokenType: String(token.type),
-          value: token.value,
-        });
-        this.advance();
-      }
-    }
-
-    const end = this.expect(TokenType.RightBrace);
-
-    // Validate duplicate team IDs within this organization
-    const seen = new Set<string>();
-    this.collectTeamIds(teams, seen);
-
-    return {
-      id: idToken.value,
-      label,
-      properties,
-      teams,
-      loc: this.range(start.loc, end.loc),
-    };
-  }
-
-  /**
-   * The positional `<kw> <id> "<label>"` form on organization / team / member.
-   * ADR-19 made `label` a property; these constructs kept the positional read as
-   * undocumented leniency, deprecated in #2133 and removed in #2208.
-   *
-   * Unlike boundary / facet below, the value is **kept**. That is a fidelity
-   * choice, not a rescue: recovery reads the string the author wrote rather
-   * than discarding it, so `Parser.parse` callers that inspect the AST past the
-   * diagnostic still see the name. It does not keep any drawing alive — every
-   * render path refuses to draw while an error stands (the app republishes the
-   * last valid SVG, `karasu render` and `karasu subtree` exit 1), and
-   * `format()` refuses the source too, so `karasu fmt` can no longer rewrite
-   * the form once it errors.
-   */
-  private parseRetiredPositionalLabel(construct: string): string | undefined {
-    if (this.peek().type !== TokenType.StringLiteral) return undefined;
-    this.error("positional-label-removed", { construct });
-    return this.advance().value;
-  }
-
-  // Grammar: `boundary <id> { (label | description | link | contains)* }`
-  // Mirrors parseOrganizationBlock; `contains <id>` reuses the one-target-per-line
-  // shape of `owns` (parseTeamBlock). See docs/design/system-view-grouping.md
-  // 「P2b 詳細設計」.
-  private parseBoundaryBlock(): BoundaryBlock {
-    const start = this.advance(); // boundary
-    const idToken = this.parseIdOrString("boundary");
-    let label: string | undefined;
-    // The positional label form is removed on boundary (ADR-19 / #2133;
-    // experimental construct, so no deprecation window). Consume the stray
-    // string so parsing resumes cleanly at `{`.
-    if (this.peek().type === TokenType.StringLiteral) {
-      this.error("positional-label-removed", { construct: "boundary" });
-      this.advance();
-    }
-    this.expect(TokenType.LeftBrace);
-
-    const properties: CommonProperties = { links: [] };
-    const contains: NodeIdPath[] = [];
-
-    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      const token = this.peek();
-      if (token.type === TokenType.Label) {
-        this.advance();
-        if (this.peek().type === TokenType.StringLiteral) {
-          label = this.advance().value;
-        } else {
-          this.error("expected-string-after", { property: "label" });
-        }
-      } else if (token.type === TokenType.Description) {
-        this.advance();
-        properties.description = this.parseDescriptionValue();
-      } else if (token.type === TokenType.Link) {
-        this.advance();
-        properties.links.push(this.parseLink());
-      } else if (token.type === TokenType.Contains) {
-        this.advance();
-        if (
-          this.peek().type === TokenType.Identifier ||
-          this.peek().type === TokenType.StringLiteral
-        ) {
-          const tail = readNodeIdPathTail(this.advance(), this.ctx, {
-            acceptStringSegments: true,
-          });
-          if (tail.dangling) {
-            // Dangling dot: report once and record nothing (#2088), matching
-            // the `owns` reader in parseTeamBlock.
-            this.error("expected-id-after", { property: "contains" });
-          } else {
-            contains.push(tail.segments);
-          }
-        } else {
-          this.error("expected-id-after", { property: "contains" });
-        }
-      } else {
-        this.error("unexpected-token-in-block", {
-          blockKind: "boundary",
-          tokenType: String(token.type),
-          value: token.value,
-        });
-        this.advance();
-      }
-    }
-
-    const end = this.expect(TokenType.RightBrace);
-
-    return {
-      kind: "boundary" as const,
-      id: idToken.value,
-      label,
-      properties,
-      contains,
-      loc: this.range(start.loc, end.loc),
-    };
-  }
-
-  // Grammar: `facet <id> { (label | description | link)* }` (#2065 Part B).
-  //
-  // Deliberately **not** `parseBoundaryBlock` with one more property: a facet
-  // declaration has no membership list and no value language at all. `contains`
-  // is rejected here like any other unexpected token, and that rejection is the
-  // structural half of ADR-832's fence — the metadata home stays prose + link,
-  // so there is no gradient from "declare a scope" to "declare a rule".
-  private parseFacetBlock(): FacetBlock {
-    const start = this.advance(); // facet
-    const idToken = this.parseIdOrString("facet");
-    let label: string | undefined;
-    // Positional label is not part of the grammar (ADR-19 / #2133). `facet` is
-    // new, so there is nothing to deprecate — reject and consume, as `boundary`
-    // does, so parsing resumes cleanly at `{`.
-    if (this.peek().type === TokenType.StringLiteral) {
-      this.error("positional-label-removed", { construct: "facet" });
-      this.advance();
-    }
-    this.expect(TokenType.LeftBrace);
-
-    const properties: CommonProperties = { links: [] };
-
-    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      const token = this.peek();
-      if (token.type === TokenType.Label) {
-        this.advance();
-        if (this.peek().type === TokenType.StringLiteral) {
-          label = this.advance().value;
-        } else {
-          this.error("expected-string-after", { property: "label" });
-        }
-      } else if (token.type === TokenType.Description) {
-        this.advance();
-        properties.description = this.parseDescriptionValue();
-      } else if (token.type === TokenType.Link) {
-        this.advance();
-        properties.links.push(this.parseLink());
-      } else {
-        this.error("unexpected-token-in-block", {
-          blockKind: "facet",
-          tokenType: String(token.type),
-          value: token.value,
-        });
-        // Skip the whole offending clause, not just its first token. The
-        // closed grammar makes this safe and worthwhile: the rejected forms are
-        // the value-carrying ones (`contains Order`, `requires plan in [...]`),
-        // and reporting each of their tokens separately would turn one authoring
-        // mistake into a pile of diagnostics. Always advances at least once, so
-        // the loop cannot stall.
-        do {
-          this.advance();
-        } while (!this.isFacetPropertyStart(this.peek().type));
-      }
-    }
-
-    const end = this.expect(TokenType.RightBrace);
-
-    return {
-      kind: "facet" as const,
-      id: idToken.value,
-      label,
-      properties,
-      loc: this.range(start.loc, end.loc),
-    };
-  }
-
-  /** Tokens that begin a legal `facet` body entry, or end the block. */
-  private isFacetPropertyStart(type: TokenType): boolean {
-    return (
-      type === TokenType.Label ||
-      type === TokenType.Description ||
-      type === TokenType.Link ||
-      type === TokenType.RightBrace ||
-      type === TokenType.EOF
-    );
-  }
-
-  /**
-   * Parse the value of a `facets` property: `<id>[, <id>]*`.
-   *
-   * Reads on the list grammar every reference list shares (#2551). Ids are
-   * appended to `existing` rather than returned fresh so repeated `facets`
-   * lines accumulate, and a duplicate id (within one line or across lines)
-   * collapses — membership is a set, and saying it twice is not a mistake
-   * worth a diagnostic.
-   */
-  private parseFacetsList(keyword: Token, existing: string[]): void {
-    for (const facet of this.commaSeparatedValues(keyword, "facets")) {
-      if (!existing.includes(facet.value)) existing.push(facet.value);
-    }
-  }
-
-  /**
-   * A `facet` block written inside a node block. Declarations are top-level only
-   * — a facet is a model-wide name, not a per-node one — so consume the whole
-   * block and report it once, instead of letting its body cascade into a dozen
-   * unexpected-token errors.
-   */
-  private rejectNestedFacetBlock(blockKind: string): void {
-    const token = this.peek();
-    // Diagnostics raised while consuming the misplaced block are dropped: the
-    // author's mistake is the placement, and complaints about the body of a
-    // block that has no business being here are noise pointing at the wrong
-    // fix. Truncating rather than not-parsing keeps the recovery — the block is
-    // still consumed whole, so the enclosing block resumes cleanly.
-    const before = this.diagnostics.length;
-    const block = this.parseFacetBlock();
-    this.diagnostics.length = before;
-    this.diagnostics.push({
-      severity: "error",
-      code: "unexpected-token-in-block",
-      params: { blockKind, tokenType: String(token.type), value: token.value },
-      loc: block.loc,
-    });
-  }
-
-  private parseTeamBlock(): TeamNode {
-    const start = this.advance(); // team
-    const idToken = this.parseIdOrString("team");
-    let label = this.parseRetiredPositionalLabel("team");
-    const { names: annotations, params: annotationParams } = parseAnnotations(this.ctx);
-    this.expect(TokenType.LeftBrace);
-
-    const properties: CommonProperties & { owns: NodeIdPath[] } = { links: [], owns: [] };
-    const children: OrgNode[] = [];
-
-    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      const token = this.peek();
-      if (token.type === TokenType.Label) {
-        this.advance();
-        if (this.peek().type === TokenType.StringLiteral) {
-          label = this.advance().value;
-        } else {
-          this.error("expected-string-after", { property: "label" });
-        }
-      } else if (token.type === TokenType.Description) {
-        this.advance();
-        properties.description = this.parseDescriptionValue();
-      } else if (token.type === TokenType.Link) {
-        this.advance();
-        properties.links.push(this.parseLink());
-      } else if (token.type === TokenType.Owns) {
-        this.advance();
-        if (
-          this.peek().type === TokenType.Identifier ||
-          this.peek().type === TokenType.StringLiteral
-        ) {
-          const tail = readNodeIdPathTail(this.advance(), this.ctx, {
-            acceptStringSegments: true,
-          });
-          if (tail.dangling) {
-            // Dangling dot: report once and record nothing — recording the
-            // read segments would put a wrong model next to the error (#2088).
-            this.error("expected-id-after", { property: "owns" });
-          } else {
-            properties.owns.push(tail.segments);
-          }
-        } else {
-          this.error("expected-id-after", { property: "owns" });
-        }
-      } else if (token.type === TokenType.Member) {
-        children.push(this.parseMemberBlock());
-      } else if (token.type === TokenType.Team) {
-        children.push(this.parseTeamBlock());
-      } else if (token.type === TokenType.Legend) {
-        handleNestedLegend(this.ctx, "team");
-      } else {
-        this.error("unexpected-token-in-block", {
-          blockKind: "team",
-          tokenType: String(token.type),
-          value: token.value,
-        });
-        this.advance();
-      }
-    }
-
-    const end = this.expect(TokenType.RightBrace);
-
-    return {
-      kind: "team" as const,
-      id: idToken.value,
-      label,
-      annotations,
-      ...(Object.keys(annotationParams).length > 0 ? { annotationParams } : {}),
-      properties,
-      children,
-      loc: this.range(start.loc, end.loc),
-    };
-  }
-
-  private parseMemberBlock(): MemberNode {
-    const start = this.advance(); // member
-    const idToken = this.parseIdOrString("member");
-    let label = this.parseRetiredPositionalLabel("member");
-    this.expect(TokenType.LeftBrace);
-
-    const properties: CommonProperties & { slack?: string; github?: string } = { links: [] };
-
-    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      const token = this.peek();
-      if (token.type === TokenType.Label) {
-        this.advance();
-        if (this.peek().type === TokenType.StringLiteral) {
-          label = this.advance().value;
-        } else {
-          this.error("expected-string-after", { property: "label" });
-        }
-      } else if (token.type === TokenType.Description) {
-        this.advance();
-        properties.description = this.parseDescriptionValue();
-      } else if (token.type === TokenType.Link) {
-        this.advance();
-        properties.links.push(this.parseLink());
-      } else if (token.type === TokenType.Slack) {
-        this.advance();
-        if (this.peek().type === TokenType.StringLiteral) {
-          properties.slack = this.advance().value;
-        } else {
-          this.error("expected-string-after", { property: "slack" });
-        }
-      } else if (token.type === TokenType.Github) {
-        this.advance();
-        if (this.peek().type === TokenType.StringLiteral) {
-          properties.github = this.advance().value;
-        } else {
-          this.error("expected-string-after", { property: "github" });
-        }
-      } else if (token.type === TokenType.Legend) {
-        handleNestedLegend(this.ctx, "member");
-      } else {
-        this.error("unexpected-token-in-block", {
-          blockKind: "member",
-          tokenType: String(token.type),
-          value: token.value,
-        });
-        this.advance();
-      }
-    }
-
-    const end = this.expect(TokenType.RightBrace);
-
-    return {
-      kind: "member" as const,
-      id: idToken.value,
-      label,
-      properties,
-      children: [] as const,
-      loc: this.range(start.loc, end.loc),
-    };
-  }
-
-  private collectTeamIds(teams: TeamNode[], seen: Set<string>): void {
-    for (const team of teams) {
-      if (seen.has(team.id)) {
-        this.diagnostics.push({
-          severity: "error",
-          code: "duplicate-team-id",
-          params: { teamId: team.id },
-          loc: team.loc,
-        });
-      } else {
-        seen.add(team.id);
-      }
-      this.collectTeamIds(
-        team.children.filter((c): c is TeamNode => c.kind === "team"),
-        seen,
-      );
     }
   }
 
