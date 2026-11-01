@@ -8,7 +8,7 @@ import {
   shouldDepart,
 } from "./train.mts";
 
-// Fences the monthly release train decided in #2922 (docs/design/monthly-release-train.md).
+// Fences the monthly release train decided in #2922 (ADR-2922).
 
 describe("shouldDepart", () => {
   it("departs on the last Sunday of the month", () => {

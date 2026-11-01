@@ -153,14 +153,14 @@ export interface LayoutEdge {
    * Optional intermediate points for orthogonal routing (skip-layer edges).
    * When set, the edge renders as a polyline `fromPoint → ...waypoints → toPoint`.
    * When unset/empty, renders as a straight line `fromPoint → toPoint`.
-   * See docs/design/auto-layout-edge-routing-orthogonal.md.
+   * See ADR-968.
    */
   waypoints?: { x: number; y: number }[];
   /**
    * 0-based index inside a parallel-edge bundle (edges sharing `(from, to)`).
    * Set together with `bundleSize` only when `bundleSize >= 2`. Used by the
    * renderer to slide labels along the edge so parallel labels don't stack.
-   * See docs/design/parallel-edge-bundling.md.
+   * See ADR-1185.
    */
   bundleIndex?: number;
   /** Total number of edges in this edge's parallel bundle; ≥ 2 when set. */
@@ -170,7 +170,7 @@ export interface LayoutEdge {
    * against the top-to-bottom group flow (its target band sits above its source
    * band). The renderer dashes such edges — unless the author set an explicit
    * `stroke-style` — so backward inter-group dependencies stand out (a Conway
-   * observation). See docs/design/system-view-grouping.md § "P2c 実装設計".
+   * observation). See ADR-1859.
    */
   groupBackward?: boolean;
   /**
@@ -378,7 +378,7 @@ export interface LayoutResult {
    * in both modes.
    * Multi-system (`layoutMultipleSystems`) leaves it unset (straight-line edges,
    * out of scope). The renderer emits a `crossing-marks` layer on top of the edges
-   * when present. See docs/design/system-view-grouping.md § "P2c-C 詳細設計".
+   * when present. See ADR-1859.
    */
   crossingMarks?: CrossingMarks;
   /**

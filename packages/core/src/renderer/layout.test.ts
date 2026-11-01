@@ -333,7 +333,7 @@ system S {
     expect(node.height).toBe(56);
   });
 
-  // Gap tuning for icon mode (see docs/design/icon-mode-layout-tuning.md).
+  // Gap tuning for icon mode (see ADR-1000).
   // Shape uses LAYER_GAP=120 / NODE_GAP=60 / MAX_LAYER_WIDTH=1200.
   // Icon uses LAYER_GAP=80 / NODE_GAP=36 / MAX_LAYER_WIDTH=1040.
   it("uses ICON_NODE_GAP (36) between sibling nodes within the same layer", () => {
