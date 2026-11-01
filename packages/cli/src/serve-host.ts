@@ -5,12 +5,13 @@ export const DEFAULT_HOST = "127.0.0.1";
 
 /**
  * The `Host` header shape `serve` reads at all: a name or IPv4 address
- * (letters, digits, `-`, `.`) or a bracketed IPv6 address, then an optional
+ * (letters, digits, `-`, `_`, `.`; `_` for docker compose service names a
+ * proxy passes on) or a bracketed IPv6 address, then an optional
  * `:<port>`. Anything else (a path, query, fragment, userinfo, percent
  * escape, `\`, whitespace) is refused before a hostname is taken from it, so
  * `localhost/evil` or `evil@localhost` never reads as `localhost` (#3418).
  */
-const HOST_SHAPE = /^(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:.]+\])(?::\d+)?$/;
+const HOST_SHAPE = /^(?:[A-Za-z0-9._-]+|\[[0-9A-Fa-f:.]+\])(?::\d+)?$/;
 
 /** A host name lowercased, with one trailing `.` dropped (`localhost.` is `localhost`). */
 function canonicalName(name: string): string {
@@ -39,8 +40,13 @@ export function isAllowedHost(host: string | undefined, allowedHosts: readonly s
   );
 }
 
-/** An `--allowed-host` value: a host name, or `.name` for the name and its subdomains. */
-const ALLOWED_HOST_SHAPE = /^\.?[a-z0-9-]+(?:\.[a-z0-9-]+)*$/;
+/**
+ * An `--allowed-host` value: a host name, or `.name` for the name and its
+ * subdomains. The `.name` form needs two labels, so `.dev` cannot let in
+ * every domain under a public suffix.
+ */
+const ALLOWED_HOST_SHAPE = /^(?:[a-z0-9_-]+|\.[a-z0-9_-]+)(?:\.[a-z0-9_-]+)*$/;
+const SUFFIX_NEEDS_TWO_LABELS = /^\.[^.]+$/;
 
 /**
  * Normalize an `--allowed-host` value the way `isAllowedHost` reads `Host`:
@@ -51,7 +57,13 @@ export function normalizeAllowedHost(value: string): string {
   const name = canonicalName(value);
   if (!ALLOWED_HOST_SHAPE.test(name)) {
     throw new Error(
-      `expected a host name without port, scheme or path (e.g. foo.app.github.dev or .example.com): ${value}`,
+      "expected a host name of letters, digits, '-', '_' and '.', without port, scheme or path " +
+        `(e.g. foo.app.github.dev or .example.com): ${value}`,
+    );
+  }
+  if (SUFFIX_NEEDS_TWO_LABELS.test(name)) {
+    throw new Error(
+      `a leading '.' needs at least two labels (e.g. .example.com, not .com): ${value}`,
     );
   }
   return name;

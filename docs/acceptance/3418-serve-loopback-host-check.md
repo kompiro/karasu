@@ -56,6 +56,8 @@ type: product
 
   > ✅ Automated — `packages/cli/src/serve.test.ts` › `serve listen address and banner (#3418)` › `emits a failed listen as the server's error event`
   >
+  > ✅ Automated — `packages/cli/src/serve.e2e.test.ts` › `karasu serve — listen failure (#3418)` › `exits 1 with a message when the port is taken`
+  >
   > ✅ Automated — `packages/cli/src/index.test.ts` › `CLI program` › `serve exits 1 with a message when the server cannot listen`
 
 ### AC-3: `/api/*` はローカルでない `Host` を 403 で拒否する
@@ -92,11 +94,13 @@ type: product
   >
   > ✅ Automated — `packages/cli/src/serve.test.ts` › `HTTP server` › `Host check on /api/* (#3418)` › `answers a name passed as --allowed-host`
 
-- [x] AT-L: port・scheme・path を含む `--allowed-host` はエラーで exit 1 になる
+- [x] AT-L: port・scheme・path を含む `--allowed-host` と、`.com` のように 1 ラベルしかない `.` 始まりの値はエラーで exit 1 になる
 
   > ✅ Automated — `packages/cli/src/index.test.ts` › `CLI program` › `serve rejects --allowed-host "foo.app.github.dev:443" with exit 1`
   >
   > ✅ Automated — `packages/cli/src/serve-host.test.ts` › `normalizeAllowedHost` › `rejects "foo.app.github.dev:443"`
+  >
+  > ✅ Automated — `packages/cli/src/serve-host.test.ts` › `normalizeAllowedHost` › `rejects the single-label suffix ".com"`
 
 ## 手動確認
 

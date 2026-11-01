@@ -40,7 +40,9 @@ async function get(
   headers: http.OutgoingHttpHeaders = {},
 ): Promise<{ status: number; body: string; headers: http.IncomingHttpHeaders }> {
   return new Promise((resolve, reject) => {
-    const req = http.request({ host: "localhost", port, path, headers }, (res) => {
+    // 127.0.0.1, not localhost: another process on [::1] with the same port
+    // would otherwise answer first (#3418).
+    const req = http.request({ host: "127.0.0.1", port, path, headers }, (res) => {
       let body = "";
       res.on("data", (chunk: Buffer) => {
         body += chunk.toString();
@@ -588,7 +590,7 @@ describe("HTTP server", () => {
   describe("GET /api/watch (SSE)", () => {
     it("responds with SSE headers and initial keep-alive comment", async () => {
       await new Promise<void>((resolve, reject) => {
-        const req = http.request({ host: "localhost", port, path: "/api/watch" }, (res) => {
+        const req = http.request({ host: "127.0.0.1", port, path: "/api/watch" }, (res) => {
           expect(res.statusCode).toBe(200);
           expect(res.headers["content-type"]).toBe("text/event-stream");
           // Only the same-origin app listens; other pages get no access (#3283).
@@ -786,8 +788,11 @@ describe("serve listen address and banner (#3418)", () => {
 
   async function start(port: number, host?: string): Promise<AddressInfo> {
     const server = serve(tmpDir, port, { host, appDistDir: "/nonexistent-dist" });
+    await new Promise<void>((resolve, reject) => {
+      server.once("listening", resolve);
+      server.once("error", reject);
+    });
     started.push(server);
-    await new Promise<void>((resolve) => server.once("listening", resolve));
     return server.address() as AddressInfo;
   }
 
@@ -825,10 +830,19 @@ describe("serve listen address and banner (#3418)", () => {
   it.skipIf(!canListenIpv6Loopback).each(["127.0.0.1", "0.0.0.0"])(
     "warns when [::1] on the same port is taken while listening on %s",
     async (host) => {
-      const shadow = await occupy("::1");
-      held.push(shadow);
-      const { port } = shadow.address() as AddressInfo;
-      await start(port, host);
+      // The port is free on [::1] but may be taken on IPv4; try another then.
+      let port = 0;
+      for (let attempt = 0; port === 0; attempt++) {
+        const shadow = await occupy("::1");
+        held.push(shadow);
+        const candidate = (shadow.address() as AddressInfo).port;
+        try {
+          await start(candidate, host);
+          port = candidate;
+        } catch (err) {
+          if ((err as NodeJS.ErrnoException).code !== "EADDRINUSE" || attempt === 4) throw err;
+        }
+      }
       await vi.waitFor(() =>
         expect(stderr.join("")).toContain(`another process is listening on [::1]:${port}`),
       );

@@ -60,6 +60,12 @@ describe("isAllowedHost", () => {
     expect(isAllowedHost("x.foo.app.github.dev", allowed)).toBe(false);
   });
 
+  // A docker compose service name a proxy passes on as Host.
+  it("passes an --allowed-host name with an underscore, and only when allowed", () => {
+    expect(isAllowedHost("karasu_preview:3000", ["karasu_preview"])).toBe(true);
+    expect(isAllowedHost("karasu_preview:3000", [])).toBe(false);
+  });
+
   it("passes a .name entry's own name and its subdomains, but not a lookalike", () => {
     const allowed = [".example.com"];
     expect(isAllowedHost("example.com", allowed)).toBe(true);
@@ -76,8 +82,14 @@ describe("normalizeAllowedHost", () => {
     ["foo.app.github.dev.", "foo.app.github.dev"],
     [".Example.com", ".example.com"],
     ["karasu", "karasu"],
+    ["Karasu_Preview", "karasu_preview"],
   ])("normalizes %j to %j", (value, expected) => {
     expect(normalizeAllowedHost(value)).toBe(expected);
+  });
+
+  // `.dev` would let in every domain an attacker can register under it.
+  it.each([".com", ".dev", ".localhost"])("rejects the single-label suffix %j", (value) => {
+    expect(() => normalizeAllowedHost(value)).toThrow(/at least two labels/);
   });
 
   // These would silently never match a Host, so they are refused up front.

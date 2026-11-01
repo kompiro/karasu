@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import { InvalidArgumentError, type Command } from "commander";
 import { serve } from "./serve.js";
 import { DEFAULT_HOST, normalizeAllowedHost } from "./serve-host.js";
@@ -37,12 +38,13 @@ export function configureServeCommand(command: Command): void {
           host: options.host,
           allowedHosts: options.allowedHost ?? [],
         });
-        server.once("error", (err) => {
-          process.stderr.write(
-            `karasu serve: cannot listen on ${options.host}:${port}: ${err.message}\n`,
-          );
+        const onListenError = (err: Error): void => {
+          const host = isIP(options.host) === 6 ? `[${options.host}]` : options.host;
+          process.stderr.write(`karasu serve: cannot listen on ${host}:${port}: ${err.message}\n`);
           process.exit(1);
-        });
+        };
+        server.once("error", onListenError);
+        server.once("listening", () => server.off("error", onListenError));
       },
     );
 }

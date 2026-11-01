@@ -281,7 +281,6 @@ export function serve(dir: string, port: number, options: ServeOptions = {}): Se
   }
   const appDir = appDistDir ?? null;
   const watcher = new FileWatcher(absDir);
-  watcher.start();
 
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     // karasu の /render が送った request。経路（hairpin NAT・転送）によらず自分を読ませないため、
@@ -411,6 +410,8 @@ export function serve(dir: string, port: number, options: ServeOptions = {}): Se
   });
 
   server.listen(port, host, () => {
+    // Only once listening, so a failed listen leaves no watcher running.
+    watcher.start();
     const address = server.address() as AddressInfo;
     const banner = listenBanner(address);
     process.stdout.write(`karasu serve\n`);
