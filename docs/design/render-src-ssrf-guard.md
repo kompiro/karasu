@@ -201,9 +201,7 @@ hairpin NAT と転送の経路は、karasu から見えるのが public アド�
 
 ### 実装の指針
 
-<!-- absent-path-next-line: new file this design intends to create (#3426) -->
-
-1. `packages/cli/src/render-fetch.ts`（新規）:
+1. 新規ファイル `render-fetch.ts`（`packages/cli/src/` に置く）:
    - `normalizeAddress(address)`: 括弧を外し、IPv4-mapped を IPv4 に直す。単体で export してテストする
    - `isBlockedAddress(address)`: `normalizeAddress` の後で `net.isIP` が 0 なら禁止。family を明示して、
      `net.BlockList` の禁止範囲と、`os.networkInterfaces()` のアドレスを同じ正規化で `addAddress` した `BlockList` で判定する
