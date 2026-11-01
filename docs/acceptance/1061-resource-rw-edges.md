@@ -49,4 +49,4 @@ type: product
 
 ## 補足
 
-`[write]` / `[read]` は **synthesized usecase→resource edge にのみ付く pseudo-tag** で、ユーザーが explicit edge に書くものではない（`docs/spec/tags-annotations.md` §Automatic tags on edges に明記）。renderer は `edge.tags` と `edge.label` を見るだけの純粋な責務分離を維持し、判定ロジックは `view-extract.ts` で集約されている。
+`[write]` / `[read]` は **synthesized usecase→resource edge にのみ付く pseudo-tag** で、ユーザーが explicit edge に書くものではない（`docs/spec/tags-annotations.md` §Automatic tags on edges に明記）。renderer は `edge.tags` と `edge.label` を見るだけの純粋な責務分離を維持し、判定ロジックは `resource-promotion.ts`（`deriveUsecaseResourceNodes`）で集約されている。
