@@ -23,6 +23,11 @@ export interface ParseContext extends TokenCursor {
   range(start: Token["loc"], end?: Token["loc"]): SourceRange;
   /** Append a diagnostic built by the caller (a warning, or one anchored elsewhere). */
   pushDiagnostic(diagnostic: Diagnostic): void;
-  /** The token consumed last. */
-  previous(): Token;
+  /** The token consumed last, or `undefined` before the first one is consumed. */
+  previous(): Token | undefined;
+  /**
+   * Run `parse` and drop every diagnostic it pushed, for recovery that consumes
+   * input whose complaints would point at the wrong fix.
+   */
+  discardDiagnostics<T>(parse: () => T): T;
 }
