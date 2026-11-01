@@ -17,7 +17,7 @@
  * segment, rather than as a fresh `Rect[]` per edge walked in full. The exact
  * clip is unchanged, so the routes are.
  *
- * See docs/design/auto-layout-edge-routing-orthogonal.md for the full design
+ * See ADR-968 for the full design
  * (Phase 2). Phase 3 — port distribution and lane allocation when many edges
  * share a side or channel, plus column-shifting when stubs are blocked — is
  * out of scope here.

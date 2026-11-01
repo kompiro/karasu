@@ -3,7 +3,7 @@ import { makeStubNode } from "./collapse-stub.js";
 
 /**
  * Collapsible node categories on the system view (Issue #1821, design
- * `docs/design/layer-toggles.md`). A category groups the dependency-tier nodes
+ * ADR-1821). A category groups the dependency-tier nodes
  * a reader may want to fold away to cut horizontal density:
  *
  * - `infra` — shared infra blocks (`database` / `queue` / `storage`)

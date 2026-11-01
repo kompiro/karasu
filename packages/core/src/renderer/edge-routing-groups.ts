@@ -1,9 +1,8 @@
 /**
  * Group-aware orthogonal routing for the system-view "Group by" mode
- * (Issue #1859, P2c slice A; design `docs/design/system-view-grouping.md`
- * § "P2c 実装設計"). Runs *instead of* `routeOrthogonalEdges` when the viewer
- * has Group by: team active, so the ungrouped pipeline stays byte-identical
- * (AC-5).
+ * (Issue #1859, P2c slice A; ADR-1859). Runs *instead of*
+ * `routeOrthogonalEdges` when the viewer has Group by: team active, so the
+ * ungrouped pipeline stays byte-identical (AC-5).
  *
  * The two-level grouped layout (P2a) stacks each team as a boundary-framed row
  * band. A straight service→infra edge then pierces every intermediate team

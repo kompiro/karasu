@@ -168,7 +168,7 @@ export function layoutMultipleSystems(
     // Group-by-team (#1884): apply the P2a grouping *inside this system's frame*
     // (per-(system, team) frames — a team that owns members in two systems shows
     // one frame in each; cross-system spanning frames stay out of scope, see
-    // docs/design/system-view-grouping.md). Reuses the single-system machinery:
+    // ADR-1884). Reuses the single-system machinery:
     // fold collapsed teams to `<Team> (N)` stubs, then band nodes by team via
     // `assignGroupedLayers`. Gated on group-by so ungrouped output is unchanged.
     let workNodes = rawNodes;

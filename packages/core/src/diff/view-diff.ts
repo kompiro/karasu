@@ -368,7 +368,7 @@ function diffSystemFrames(
  *
  * Aggregated implicit edges, ghost domains/systems, and resource label maps
  * are taken from `after` for now — refining their diff semantics is tracked
- * separately (see `docs/design/graphical-diff-viewer.md`).
+ * separately (see ADR-650).
  */
 export function diffSystemViewSlices(
   before: ViewSlice,

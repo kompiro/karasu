@@ -369,7 +369,7 @@ export async function compileSystemDiff(
   // that merely lost its `owns` (kept, now unowned) must NOT inherit its stale
   // before team — that is why this backfills off the removed diff state rather
   // than blindly unioning the two maps. See #1886 and
-  // docs/design/system-view-grouping.md § "差分モードの grouping".
+  // ADR-1886.
   // ownerIndex / boundaryMembership are path-keyed (#2548), and so is the card
   // diff: each removed card is backfilled under its own path, the one it is drawn
   // and grouped by. On the multi-system root that is the card's own system frame

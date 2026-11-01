@@ -175,7 +175,7 @@ export interface CompileOptions {
    * System-view node categories the viewer has collapsed (Issue #1821). Each
    * collapsed category (`"infra"` / `"external"`) is folded to a single ⊕ stub
    * before layout so the diagram reflows. Omit for the default fully-expanded
-   * render. System view only; see `docs/design/layer-toggles.md`.
+   * render. System view only; see ADR-1821.
    */
   collapsedCategories?: ReadonlySet<CategoryId>;
   /**
@@ -196,7 +196,7 @@ export interface CompileOptions {
    * owning team (resolved via the `organization`/`owns` block) as a
    * dependency-ordered band with a boundary frame. Omit for the default
    * un-grouped kind-tier layout. System view only; see
-   * `docs/design/system-view-grouping.md`.
+   * ADR-1858.
    */
   groupBy?: "team" | "boundary";
   /**
