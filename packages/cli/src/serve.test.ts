@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mkdtemp, writeFile, mkdir, open, readdir, realpath, rm, symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import type { AddressInfo } from "node:net";
+import { connect, createServer as createNetServer, type AddressInfo } from "node:net";
 import type { ServerResponse, Server } from "node:http";
 import * as http from "node:http";
 
@@ -40,7 +40,9 @@ async function get(
   headers: http.OutgoingHttpHeaders = {},
 ): Promise<{ status: number; body: string; headers: http.IncomingHttpHeaders }> {
   return new Promise((resolve, reject) => {
-    const req = http.request({ host: "localhost", port, path, headers }, (res) => {
+    // 127.0.0.1, not localhost: another process on [::1] with the same port
+    // would otherwise answer first (#3418).
+    const req = http.request({ host: "127.0.0.1", port, path, headers }, (res) => {
       let body = "";
       res.on("data", (chunk: Buffer) => {
         body += chunk.toString();
@@ -51,6 +53,46 @@ async function get(
     req.end();
   });
 }
+
+/**
+ * Send `request` as raw bytes and resolve with the response's status. For
+ * what `http.request` will not send: an absolute-form or `//` target, no
+ * `Host`, an empty `Host`.
+ */
+function rawStatus(port: number, request: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const socket = connect({ host: "127.0.0.1", port });
+    let data = "";
+    socket.on("data", (chunk: Buffer) => {
+      data += chunk.toString();
+    });
+    socket.on("end", () => resolve(Number(/^HTTP\/1\.[01] (\d{3})/.exec(data)?.[1] ?? 0)));
+    socket.on("error", reject);
+    socket.write(request);
+  });
+}
+
+/** Whether a socket can listen on `host` here (IPv6 is off in some containers). */
+function canListen(host: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const probe = createNetServer();
+    probe.once("error", () => resolve(false));
+    probe.listen(0, host, () => probe.close(() => resolve(true)));
+  });
+}
+
+/** A TCP server holding `port` (0: any) on `host`, for occupying an address. */
+async function occupy(host: string, port = 0): Promise<import("node:net").Server> {
+  const holder = createNetServer((socket) => socket.destroy());
+  await new Promise<void>((resolve, reject) => {
+    holder.once("error", reject);
+    holder.listen(port, host, resolve);
+  });
+  return holder;
+}
+
+const canListenIpv6Loopback = await canListen("::1");
+const canListenIpv4Mapped = await canListen("::ffff:127.0.0.1");
 
 async function makeTmpDir(): Promise<string> {
   return mkdtemp(join(tmpdir(), "karasu-test-"));
@@ -548,7 +590,7 @@ describe("HTTP server", () => {
   describe("GET /api/watch (SSE)", () => {
     it("responds with SSE headers and initial keep-alive comment", async () => {
       await new Promise<void>((resolve, reject) => {
-        const req = http.request({ host: "localhost", port, path: "/api/watch" }, (res) => {
+        const req = http.request({ host: "127.0.0.1", port, path: "/api/watch" }, (res) => {
           expect(res.statusCode).toBe(200);
           expect(res.headers["content-type"]).toBe("text/event-stream");
           // Only the same-origin app listens; other pages get no access (#3283).
@@ -570,12 +612,84 @@ describe("HTTP server", () => {
     });
   });
 
+  // DNS rebinding (#3418, TPL-168): a rebound page sends its own domain as
+  // Host. /api/* refuses it; the app's public files and /render do not.
+  describe("Host check on /api/* (#3418)", () => {
+    const evil = { Host: "evil.example" };
+
+    it("listens on 127.0.0.1 when no host is given", () => {
+      expect((server.address() as AddressInfo).address).toBe("127.0.0.1");
+    });
+
+    it.each(["/api/files", "/api/file/index", "/api/project", "/api/default", "/api/watch"])(
+      "refuses %s with 403 for another domain's Host",
+      async (path) => {
+        await writeFile(join(tmpDir, "index.krs"), "system App {}");
+        const { status, body, headers } = await get(port, path, {
+          Host: `evil.example:${port}`,
+        });
+        expect(status).toBe(403);
+        expect(headers["content-type"]).toBe("text/plain; charset=utf-8");
+        expect(body).not.toContain("system App");
+      },
+    );
+
+    it.each(["/", `/render?code=${Buffer.from("system App {}").toString("base64")}`])(
+      "does not refuse %s",
+      async (path) => {
+        expect((await get(port, path, evil)).status).not.toBe(403);
+      },
+    );
+
+    it.each(["localhost", "127.0.0.1:3000", "[::1]", "app.localhost"])(
+      "answers /api/files for Host %s",
+      async (host) => {
+        expect((await get(port, "/api/files", { Host: host })).status).toBe(200);
+      },
+    );
+
+    // The request target must not stand in for the Host header.
+    it.each([
+      ["an absolute-form target", (p: number) => `http://localhost:${p}/api/files`],
+      ["a // target", () => "//x/api/files"],
+      ["a // target naming localhost", () => "//localhost/api/files"],
+    ])("refuses %s with another domain's Host", async (_label, target) => {
+      const request = `GET ${target(port)} HTTP/1.1\r\nHost: evil.example\r\nConnection: close\r\n\r\n`;
+      expect(await rawStatus(port, request)).toBe(403);
+    });
+
+    it("answers an absolute-form target whose Host is local", async () => {
+      const request = `GET http://localhost:${port}/api/files HTTP/1.1\r\nHost: localhost:${port}\r\nConnection: close\r\n\r\n`;
+      expect(await rawStatus(port, request)).toBe(200);
+    });
+
+    it("refuses an HTTP/1.0 request without Host, and an empty Host", async () => {
+      expect(await rawStatus(port, "GET /api/files HTTP/1.0\r\n\r\n")).toBe(403);
+      expect(
+        await rawStatus(port, "GET /api/files HTTP/1.1\r\nHost:\r\nConnection: close\r\n\r\n"),
+      ).toBe(403);
+    });
+
+    it("answers a name passed as --allowed-host", async () => {
+      const allowing = serve(tmpDir, 0, { allowedHosts: ["foo.app.github.dev"] });
+      try {
+        await new Promise<void>((resolve) => allowing.once("listening", resolve));
+        const allowingPort = (allowing.address() as AddressInfo).port;
+        const named = { Host: "foo.app.github.dev:443" };
+        expect((await get(allowingPort, "/api/files", named)).status).toBe(200);
+        expect((await get(allowingPort, "/api/files", evil)).status).toBe(403);
+      } finally {
+        await new Promise<void>((resolve) => allowing.close(() => resolve()));
+      }
+    });
+  });
+
   describe("SPA fallback", () => {
     let spaServer: Server;
     let spaPort: number;
 
     beforeEach(async () => {
-      spaServer = serve(tmpDir, 0, "/nonexistent-dist");
+      spaServer = serve(tmpDir, 0, { appDistDir: "/nonexistent-dist" });
       await new Promise<void>((resolve) => spaServer.once("listening", resolve));
       spaPort = (spaServer.address() as AddressInfo).port;
     });
@@ -609,7 +723,7 @@ describe("HTTP server", () => {
       appDir = await makeTmpDir();
       await writeFile(join(appDir, "index.html"), "<div id=root></div>");
       await writeFile(join(appDir, "app.js"), "console.log(1)");
-      appServer = serve(tmpDir, 0, appDir);
+      appServer = serve(tmpDir, 0, { appDistDir: appDir });
       await new Promise<void>((resolve) => appServer.once("listening", resolve));
       appPort = (appServer.address() as AddressInfo).port;
     });
@@ -639,6 +753,112 @@ describe("HTTP server", () => {
         expect((await get(appPort, path)).status).toBe(200);
       },
     );
+  });
+});
+
+// ── listen address and startup banner (#3418) ───────────────────────────────
+
+describe("serve listen address and banner (#3418)", () => {
+  let tmpDir: string;
+  let stdout: string[];
+  let stderr: string[];
+  const started: Server[] = [];
+  const held: import("node:net").Server[] = [];
+
+  beforeEach(async () => {
+    tmpDir = await makeTmpDir();
+    stdout = [];
+    stderr = [];
+    vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      stdout.push(String(chunk));
+      return true;
+    });
+    vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+      stderr.push(String(chunk));
+      return true;
+    });
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await Promise.all(started.splice(0).map((s) => new Promise((r) => s.close(r))));
+    await Promise.all(held.splice(0).map((s) => new Promise((r) => s.close(r))));
+    await rm(tmpDir, { recursive: true });
+  });
+
+  async function start(port: number, host?: string): Promise<AddressInfo> {
+    const server = serve(tmpDir, port, { host, appDistDir: "/nonexistent-dist" });
+    await new Promise<void>((resolve, reject) => {
+      server.once("listening", resolve);
+      server.once("error", reject);
+    });
+    started.push(server);
+    return server.address() as AddressInfo;
+  }
+
+  it("prints http://localhost and warns about nothing by default", async () => {
+    const { port } = await start(0);
+    expect(stdout.join("")).toContain(`Preview   : http://localhost:${port}\n`);
+    expect(stdout.join("")).not.toContain("Listening");
+    expect(stderr.join("")).not.toContain("not loopback");
+  });
+
+  it("warns that the directory is readable when listening on 0.0.0.0", async () => {
+    const { port } = await start(0, "0.0.0.0");
+    expect(stdout.join("")).toContain(`Preview   : http://localhost:${port}\n`);
+    expect(stdout.join("")).toContain(`Listening : 0.0.0.0:${port}\n`);
+    expect(stderr.join("")).toContain("not loopback");
+    expect(stderr.join("")).toContain(tmpDir);
+  });
+
+  it.skipIf(!canListenIpv6Loopback)("prints http://[::1] when listening on ::1", async () => {
+    const { port } = await start(0, "::1");
+    expect(stdout.join("")).toContain(`Preview   : http://[::1]:${port}\n`);
+    expect(stderr.join("")).not.toContain("not loopback");
+  });
+
+  it.skipIf(!canListenIpv4Mapped)(
+    "treats the IPv4-mapped ::ffff:127.0.0.1 as loopback",
+    async () => {
+      await start(0, "::ffff:127.0.0.1");
+      expect(stderr.join("")).not.toContain("not loopback");
+    },
+  );
+
+  // Another process on [::1]:<port> is what http://localhost:<port> opens
+  // first, and an IPv4 listen does not collide with it.
+  it.skipIf(!canListenIpv6Loopback).each(["127.0.0.1", "0.0.0.0"])(
+    "warns when [::1] on the same port is taken while listening on %s",
+    async (host) => {
+      // The port is free on [::1] but may be taken on IPv4; try another then.
+      let port = 0;
+      for (let attempt = 0; port === 0; attempt++) {
+        const shadow = await occupy("::1");
+        held.push(shadow);
+        const candidate = (shadow.address() as AddressInfo).port;
+        try {
+          await start(candidate, host);
+          port = candidate;
+        } catch (err) {
+          if ((err as NodeJS.ErrnoException).code !== "EADDRINUSE" || attempt === 4) throw err;
+        }
+      }
+      await vi.waitFor(() =>
+        expect(stderr.join("")).toContain(`another process is listening on [::1]:${port}`),
+      );
+    },
+  );
+
+  it("emits a failed listen as the server's error event", async () => {
+    const taken = await occupy("127.0.0.1");
+    held.push(taken);
+    const server = serve(tmpDir, (taken.address() as AddressInfo).port, {
+      appDistDir: "/nonexistent-dist",
+    });
+    const err = await new Promise<NodeJS.ErrnoException>((resolve) =>
+      server.once("error", resolve),
+    );
+    expect(err.code).toBe("EADDRINUSE");
   });
 });
 

@@ -135,3 +135,12 @@ describe("karasu skill --help (#2912)", () => {
     },
   );
 });
+
+describe("karasu serve --help (#3418)", () => {
+  it("lists --host with its loopback default and --allowed-host", () => {
+    const help = helpTextOf("serve");
+    expect(help).toContain("--host <addr>");
+    expect(help).toContain('(default: "127.0.0.1")');
+    expect(help).toContain("--allowed-host <name>");
+  });
+});

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createServer as createNetServer } from "node:net";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -190,6 +191,38 @@ describe("AT-0032 karasu serve — startup banner (TC-01)", () => {
     } finally {
       spy.mockRestore();
       await new Promise<void>((r) => server.close(() => r()));
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+/**
+ * The real `serve()` behind the real CLI action (#3418): a failed listen has
+ * to reach the listener `serve-command.ts` attaches, and end in exit 1 with
+ * a message. Vitest fails the run on an uncaught error, so an `error` event
+ * that slipped past the listener would not pass as green.
+ */
+describe("karasu serve — listen failure (#3418)", () => {
+  it("exits 1 with a message when the port is taken", async () => {
+    const { program } = await import("./index.js");
+    const taken = createNetServer();
+    await new Promise<void>((r) => taken.listen(0, "127.0.0.1", r));
+    const tmpDir = mkdtempSync(join(tmpdir(), "karasu-serve-taken-"));
+    const stderr: string[] = [];
+    vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+      stderr.push(String(chunk));
+      return true;
+    });
+    const exit = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
+    try {
+      const port = (taken.address() as AddressInfo).port;
+      await program.parseAsync(["node", "karasu", "serve", tmpDir, "-p", String(port)]);
+      await vi.waitFor(() => expect(exit).toHaveBeenCalledWith(1));
+      expect(stderr.join("")).toContain(`karasu serve: cannot listen on 127.0.0.1:${port}`);
+      expect(stderr.join("")).toContain("EADDRINUSE");
+    } finally {
+      vi.restoreAllMocks();
+      await new Promise<void>((r) => taken.close(() => r()));
       rmSync(tmpDir, { recursive: true, force: true });
     }
   });
