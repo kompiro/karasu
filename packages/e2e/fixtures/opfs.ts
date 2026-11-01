@@ -98,10 +98,21 @@ export const test = base.extend<{ opfs: OpfsFixture }>({
     // #3237 this booted the app in memory mode, a full app load that
     // `gotoApp()` then repeats; the static file costs ~20ms instead of
     // ~800ms, and no app is running while the fixture writes.
+    //
+    // The response must be the file itself. If it went missing, the server's
+    // SPA fallback would answer with `index.html` and boot the app in project
+    // mode, which then reads OPFS while the fixture wipes it.
     const ensureOrigin = async () => {
       if (originReady) return;
       const url = new URL(ORIGIN_DOCUMENT, baseURL);
-      await page.goto(url.toString());
+      const response = await page.goto(url.toString());
+      const type = response?.headers()["content-type"] ?? "";
+      if (!response?.ok() || !type.includes("svg")) {
+        throw new Error(
+          `opfs fixture: ${url} answered ${response?.status()} ${type}, not the static ` +
+            `file; keep ORIGIN_DOCUMENT pointing at a file in packages/app/public`,
+        );
+      }
       originReady = true;
     };
 
