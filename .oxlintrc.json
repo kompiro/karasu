@@ -91,7 +91,7 @@
     { "files": ["packages/core/src/renderer/layout-types.ts"], "rules": { "max-lines": ["error", { "max": 604 }] } },
     { "files": ["packages/core/src/renderer/org-renderer.ts"], "rules": { "max-lines": ["error", { "max": 768 }] } },
     { "files": ["packages/core/src/renderer/org-tree-renderer.ts"], "rules": { "max-lines": ["error", { "max": 676 }] } },
-    { "files": ["packages/core/src/renderer/svg-renderer.ts"], "rules": { "max-lines": ["error", { "max": 1092 }] } },
+    { "files": ["packages/core/src/renderer/svg-renderer.ts"], "rules": { "max-lines": ["error", { "max": 785 }] } },
     { "files": ["packages/core/src/resolver/style-resolver.ts"], "rules": { "max-lines": ["error", { "max": 886 }] } },
     { "files": ["packages/core/src/resolver/warnings.ts"], "rules": { "max-lines": ["error", { "max": 1703 }] } },
     { "files": ["packages/core/src/translate/db.ts"], "rules": { "max-lines": ["error", { "max": 718 }] } },
