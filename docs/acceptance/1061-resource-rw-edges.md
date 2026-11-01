@@ -33,7 +33,7 @@ type: product
   > ✅ Automated — `packages/core/src/builtins/default-style.test.ts` の既存スタイル解決スモーク + `view-extract.test.ts` の AT-B/C で生成タグを検証
 
 - [x] AT-E: `examples/ja/getting-started/index.krs` および `examples/en/getting-started/index.krs` が diagnostics ゼロで parse でき、bundled `examples.ts` の内容と一致している
-  > 🟡 Partially automated — `packages/core/src/examples.test.ts` › `getting-started: column hint affects rendered x positions (#969)`（en 側 index.krs の parse + compile を end-to-end で検証。ja 側の parse と bundled `examples.ts` の byte 一致は現状テストが無く手動確認）
+  > 🟡 Partially automated — `packages/core/src/examples.test.ts` › `getting-started: column hint affects rendered x positions (#969)`（en 側 index.krs の parse + compile を end-to-end で検証。ja 側の parse は現状テストが無く手動確認。bundled `examples.ts` との一致は #3345 以降 `scripts/examples/gen-builtin-examples.test.ts` の drift テストが担う）
 
 - [x] AT-F: `examples/en/feature-samples/resource-operations.krs` が write / read / 多行 operations / `[external]` 併用 / 省略形 の各ケースを含み、diagnostics ゼロで parse できる
   > ✅ Automated — `packages/core/src/examples.test.ts` › `feature-samples: all files parse without errors`

@@ -25,7 +25,7 @@
 
 - [x] examples の `multi-file-system/infra.krs`（en/ja）の `SearchIndex` が `[index]` で印付けされ、`examples.ts` と byte 一致する
 
-  > ✅ Automated — `packages/core/src/examples.test.ts`（byte 一致ガード）
+  > ✅ Automated — `scripts/examples/gen-builtin-examples.test.ts` › `built-in examples codegen (#3345)` › `the committed module matches a fresh render of examples/`
 
 - [ ] App で `database [index]` を含む `.krs` を開くと、system 図上で当該 database ノードに `index` バッジが表示され、正本 database と視覚的に区別できる（dark / light 両テーマ）
 

@@ -11,7 +11,7 @@ scope:
 related_to:
   - ADR-9018
 assumptions:
-  - "grep: packages/core/src/builtins/examples.ts :: export const FEATURE_SAMPLES_PROJECT"
+  - "grep: packages/core/src/builtins/examples.generated.ts :: export const FEATURE_SAMPLES_PROJECT"
   - "grep: packages/app/src/hooks/useProjectInitialization.ts :: FEATURE_SAMPLES_PROJECT"
   - "grep: .claude/rules/examples-sync.md :: feature-samples/"
 ---
