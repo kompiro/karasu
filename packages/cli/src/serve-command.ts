@@ -44,7 +44,14 @@ export function configureServeCommand(command: Command): void {
           process.exit(1);
         };
         server.once("error", onListenError);
-        server.once("listening", () => server.off("error", onListenError));
+        // Past this point an error (EMFILE on accept, ...) is not a failed listen.
+        server.once("listening", () => {
+          server.off("error", onListenError);
+          server.on("error", (err) => {
+            process.stderr.write(`karasu serve: ${err.message}\n`);
+            process.exit(1);
+          });
+        });
       },
     );
 }

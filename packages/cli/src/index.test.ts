@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { EventEmitter } from "node:events";
 
 const mockServe = vi.fn<(...args: unknown[]) => EventEmitter>();
@@ -84,30 +84,42 @@ describe("CLI program", () => {
     }
   });
 
-  it("serve brackets an IPv6 --host in the listen error, and stops listening for it once up", async () => {
-    const server = new EventEmitter();
-    mockServe.mockImplementation(() => server);
-    const stderr: string[] = [];
-    vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
-      stderr.push(String(chunk));
-      return true;
+  describe("serve error messages (#3418)", () => {
+    let stderr: string[];
+    let exit: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      stderr = [];
+      vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+        stderr.push(String(chunk));
+        return true;
+      });
+      exit = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
     });
-    vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
-    try {
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("brackets an IPv6 --host in the listen error", async () => {
+      const server = new EventEmitter();
+      mockServe.mockImplementation(() => server);
       await program.parseAsync(["node", "karasu", "serve", "--host", "::1", "-p", "3000"]);
       server.emit("error", new Error("listen EADDRNOTAVAIL"));
-      expect(stderr.join("")).toContain("cannot listen on [::1]:3000");
+      expect(stderr.join("")).toContain("cannot listen on [::1]:3000: listen EADDRNOTAVAIL");
+      expect(exit).toHaveBeenCalledWith(1);
+    });
 
-      const up = new EventEmitter();
-      mockServe.mockImplementation(() => up);
-      await program.parseAsync(["node", "karasu", "serve", "--host", "127.0.0.1", "-p", "3000"]);
-      expect(up.listenerCount("error")).toBe(1);
-      up.emit("listening");
-      // A later server error is not a failed listen, so it is not reported as one.
-      expect(up.listenerCount("error")).toBe(0);
-    } finally {
-      vi.restoreAllMocks();
-    }
+    it("does not report an error after listening as a failed listen", async () => {
+      const server = new EventEmitter();
+      mockServe.mockImplementation(() => server);
+      await program.parseAsync(["node", "karasu", "serve", "-p", "3000"]);
+      server.emit("listening");
+      server.emit("error", new Error("accept EMFILE"));
+      expect(stderr.join("")).toContain("karasu serve: accept EMFILE");
+      expect(stderr.join("")).not.toContain("cannot listen");
+      expect(exit).toHaveBeenCalledWith(1);
+    });
   });
 
   it.each(["foo.app.github.dev:443", "https://foo.app.github.dev", "foo/bar", ""])(

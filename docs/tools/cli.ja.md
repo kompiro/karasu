@@ -96,6 +96,7 @@ karasu serve --allowed-host my-codespace-3000.app.github.dev
 ```
 
 `--allowed-host` にはホスト名だけを渡します。port・scheme・path は付けません。
+`.` で始まる値は 2 ラベル以上にします（`.com` ではなく `.example.com`）。
 `--allowed-host` はアクセス制御ではありません。proxy や forwarded port に届く人は誰でも、そこを通して配信
 ディレクトリを読めます。届く人はそちらで絞ってください（Codespaces の port を private のままにする、
 proxy の前に認証を置く、など）。

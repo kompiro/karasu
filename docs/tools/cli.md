@@ -98,7 +98,8 @@ name, add that name:
 karasu serve --allowed-host my-codespace-3000.app.github.dev
 ```
 
-`--allowed-host` takes a bare host name: no port, scheme or path.
+`--allowed-host` takes a bare host name: no port, scheme or path. A value
+starting with `.` needs at least two labels (`.example.com`, not `.com`).
 It is not access control. Anyone who can reach the proxy or the forwarded port
 can read the served directory through it, so restrict who reaches it there
 (keep the Codespaces port private, put authentication in front of the proxy).

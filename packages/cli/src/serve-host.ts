@@ -42,8 +42,9 @@ export function isAllowedHost(host: string | undefined, allowedHosts: readonly s
 
 /**
  * An `--allowed-host` value: a host name, or `.name` for the name and its
- * subdomains. The `.name` form needs two labels, so `.dev` cannot let in
- * every domain under a public suffix.
+ * subdomains. The `.name` form needs two labels, which refuses the obvious
+ * mistake of a whole TLD (`.dev`). A wider suffix such as `.co.uk` still
+ * passes: which names to trust stays the user's call.
  */
 const ALLOWED_HOST_SHAPE = /^(?:[a-z0-9_-]+|\.[a-z0-9_-]+)(?:\.[a-z0-9_-]+)*$/;
 const SUFFIX_NEEDS_TWO_LABELS = /^\.[^.]+$/;
