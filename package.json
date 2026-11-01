@@ -64,6 +64,7 @@
     "gen:guide-diagrams": "tsx scripts/guide/gen-guide-diagrams.ts",
     "report:demo": "tsx scripts/report/demo.ts",
     "pr:shots": "tsx scripts/pr-shots/shots.ts",
+    "render:equivalence": "tsx scripts/render-equivalence/run.ts",
     "bench:render": "tsx scripts/bench/render.ts",
     "readme-demo:record": "tsx scripts/readme-demo/record.mts",
     "readme-demo:gif": "tsx scripts/readme-demo/make-gif.mts",
