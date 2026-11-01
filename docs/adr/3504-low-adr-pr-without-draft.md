@@ -5,8 +5,9 @@ status: accepted
 date: 2026-11-02
 topic: build
 authors: [kompiro]
-depends_on:
+refines:
   - ADR-3342
+depends_on:
   - ADR-3286
 related_to:
   - ADR-2331
@@ -20,8 +21,9 @@ scope:
 assumptions:
   - "file: .github/workflows/review-request.yml"
   - "file: scripts/coderabbit/ready-gate.sh"
-  - "grep: .github/workflows/review-request.yml :: ready_for_review"
-  - "grep: scripts/coderabbit/ready-gate.sh :: higher=true"
+  - "grep: .github/workflows/review-request.yml :: sleep 30"
+  - "grep: scripts/coderabbit/ready-gate.sh :: a Low PR needs the CLI review"
+  - "grep: scripts/coderabbit/ready-gate.sh :: a Low PR without --draft is created from the checked-out branch"
   - "grep: .claude/rules/adr.md :: gh pr create --label \"risk: low\""
 ---
 
@@ -31,7 +33,9 @@ assumptions:
 - **ステータス**: 決定済み
 - **関連**:
   - Issue [#3504](https://github.com/kompiro/karasu/issues/3504)、PR [#3515](https://github.com/kompiro/karasu/pull/3515)
-  - [ADR-3342](3342-ready-gate-local-review.md): ローカルの CLI レビューが済むまで `gh pr ready` と `--draft` の無い `gh pr create` を拒否するゲート。本 ADR は create の拒否に Low の例外を 1 つ足す
+  - [ADR-3342](3342-ready-gate-local-review.md): ローカルの CLI レビューが済むまで `gh pr ready` と `--draft` の無い `gh pr create` を拒否するゲート。本 ADR は create の拒否に Low の例外を 1 つ足して、その決定を狭める
+  - [ADR-3326](3326-coderabbit-cli-once-before-ready.md): CLI を 1 回だけ当てる。ゲートが「対象コミットが HEAD の祖先で base に無い」で判定するのはこのため
+  - [ADR-3429](3429-synthetic-edge-style-fixtures.md): draft のまま止まった ADR の PR（#3497）
   - [ADR-3286](3286-risk-based-review-tiers.md): 段階のラベルと Review tier。Low は CodeRabbit を回さず auto-merge する
   - [ADR-2331](2331-adr-automerge-scope.md): ADR の PR を auto-merge してよい差分の範囲
   - [ADR-3333](3333-converge-after-ready-hook.md): `gh pr ready` の後に converge を促すフック
@@ -65,8 +69,9 @@ gh がチェックアウト中のブランチを origin の repo へ push する
   - `--head`・`--repo` / `-R`・`GH_REPO` / `GH_HOST`・origin 以外を選ぶ `gh repo set-default` のどれも無い
   - base（`--base`、ブランチの `gh-merge-base`、origin の既定ブランチの順）が origin にある。ローカルの
     同名ブランチでは判定しない
-- **ゲートが拒否するもの**: 上に当てはまらない create はすべて拒否し、`--draft` で作るよう案内する。
-  `--draft` はどの場合も使えるので、拒否しても作業は止まらない
+- **ゲートが拒否するもの**: 上に当てはまらない create はすべて拒否する。CLI のレビューが無いときは、レビューを
+  済ませて作り直すよう案内し、それ以外は `--draft` で作るよう案内する。`--draft` はどの場合も使えるので、
+  拒否しても作業は止まらない
 - **CLI を飛ばす指定（`KARASU_LOCAL_REVIEW_SKIPPED`）は Low の create では受け付けない**。Review tier は CLI を
   飛ばした Low の記録を通さないので、受け付けると auto-merge できない PR ができる。CLI が使えない環境では
   `risk: medium` に上げて draft から作る
@@ -79,8 +84,8 @@ gh がチェックアウト中のブランチを origin の repo へ push する
 
 ## 理由
 
-- **draft が守っていたのはラベルの競合だけだった。** Low には CodeRabbit が走らず、ローカルレビューの確認は
-  ゲートが create の時点で行い、マージは Review tier を含む required check を待つ。競合をワークフローの側で
+- **draft が守っていたのはラベルの競合だけだった。** Low には CodeRabbit が走らず、CLI のレビューはゲートが
+  create の時点で確かめ、ローカルレビューの記録は Review tier が確かめ、マージは Review tier を含む required check を待つ。競合をワークフローの側で
   消せば、draft の段階は何も守らなくなる
 - **ゲートの目的は保たれる。** ADR-3342 のゲートは「ローカルの CLI レビューを済ませてから CodeRabbit の段階へ
   進む」ためのもので、draft という形そのものが目的ではない。draft でない create にも同じ条件を課せば、目的は
@@ -98,6 +103,9 @@ gh がチェックアウト中のブランチを origin の repo へ push する
 
 - **draft を残し、手順の文言で「止まらない」を強める**: 手順は以前から作成・ready・auto-merge を続けて行うと
   書いていた。止まったのは文言ではなく、余分な段階があったためである
+- **CLI のレビューが済めば、段階を問わず draft なしの create を通す**: High・Design・Medium の PR が
+  `gh pr ready` と、その後に converge を促すフック（ADR-3333）を飛ばす。draft を省いてよいのは、ready の後に
+  何も続かない Low だけである
 - **gh のラッパーで、draft でない create を draft の作成と ready に置き換える**: draft を隠すだけで競合は残り、
   Claude のセッション以外には効かない
 - **maintainer の PR にはラベルを付けない**: GitHub の UI から開いた maintainer 自身の PR を High として扱う、
@@ -108,6 +116,9 @@ gh がチェックアウト中のブランチを origin の repo へ push する
   Low でない変更に付いた `risk: low` はそこで落ちる。本当に Low の変更なら、draft は何も守らない。ゲートで
   タイトルを見るのは、分類器より弱い判定を二重に持つことになる
 - **遅れて付いたラベルを `labeled` で直す**: 30 秒より遅れて `risk: low` が届くと、`risk: high` と両方が残る。
-  ワークフロー自身が付けた `risk: high` と人が付けたものを区別できないので、自動では外せない。両方が残った PR は
-  Review tier が厳しい方の High として扱い auto-merge を止めるので、安全側に倒れる。そのときは
+  ワークフロー自身が付けた `risk: high` と人が付けたものを区別できないので、自動では外せない。両方が残った PR は、
+  その後に人が起こすイベント（`risk: low` の付与や auto-merge の有効化）で走る Review tier が厳しい方の High として
+  扱い、auto-merge を止める。ワークフローが `GITHUB_TOKEN` で付けたラベルは Review tier を走らせないので、最後の
+  Review tier がそのラベルより先にラベルを読んでいれば止まらない。それでも差分は Low なので、失うのは CodeRabbit の
+  レビュー 1 回分で済む。そのときは
   `gh pr edit <N> --remove-label "risk: high"` で外す（`.claude/rules/adr.md` にも同じ手順を書いた）
