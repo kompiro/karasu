@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { constants, existsSync, readFileSync } from "node:fs";
 import { open, readFile, readdir, realpath, stat } from "node:fs/promises";
 import { dirname, join, resolve, extname, relative, sep } from "node:path";
@@ -7,6 +8,13 @@ import { isSafeRelativePath } from "@karasu-tools/core";
 import { FileWatcher } from "./watcher.js";
 import { handleRender } from "./render-endpoint.js";
 import { RENDER_MARKER_HEADER } from "./render-fetch.js";
+import {
+  DEFAULT_HOST,
+  ipv6LoopbackAnswers,
+  isAllowedHost,
+  isLoopbackAddress,
+  listenBanner,
+} from "./serve-host.js";
 
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -247,7 +255,23 @@ export async function serveStaticFile(filePath: string, res: ServerResponse): Pr
   }
 }
 
-export function serve(dir: string, port: number, appDistDir?: string): Server {
+export interface ServeOptions {
+  /** Address to listen on (default `DEFAULT_HOST`). */
+  host?: string;
+  /** Extra `Host` names `/api/*` answers to, normalized by `normalizeAllowedHost`. */
+  allowedHosts?: readonly string[];
+  /** The preview app build; looked up beside the bundle when omitted. */
+  appDistDir?: string;
+}
+
+/**
+ * Start the preview server. Returns at once; a failed listen (`EADDRINUSE`,
+ * `EADDRNOTAVAIL`, ...) comes out as the returned server's `error` event,
+ * and the CLI turns it into exit 1.
+ */
+export function serve(dir: string, port: number, options: ServeOptions = {}): Server {
+  const { host = DEFAULT_HOST, allowedHosts = [] } = options;
+  let { appDistDir } = options;
   const absDir = resolve(dir);
   let missingApp: string | null = null;
   if (appDistDir === undefined) {
@@ -270,6 +294,19 @@ export function serve(dir: string, port: number, appDistDir?: string): Server {
 
     const url = new URL(req.url ?? "/", `http://localhost:${port}`);
     const pathname = url.pathname;
+
+    // DNS rebinding: a page whose domain now points at this machine is
+    // same-origin to the browser, but still sends its own domain as Host.
+    // Read the header itself, not url.hostname (the base or the request
+    // target decides that one), and decide by the pathname the router uses.
+    if (pathname.startsWith("/api/") && !isAllowedHost(req.headers.host, allowedHosts)) {
+      res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end(
+        "This Host is not served. Open the preview through localhost or an IP address, " +
+          "or start karasu serve with --allowed-host <name>.\n",
+      );
+      return;
+    }
 
     // SVG rendering endpoint (mermaid.ink pattern)
     if (pathname === "/render") {
@@ -373,12 +410,35 @@ export function serve(dir: string, port: number, appDistDir?: string): Server {
     res.end(missingApp ?? `The preview app is not at ${appDir}.\n`);
   });
 
-  server.listen(port, () => {
+  server.listen(port, host, () => {
+    const address = server.address() as AddressInfo;
+    const banner = listenBanner(address);
     process.stdout.write(`karasu serve\n`);
     process.stdout.write(`  Directory : ${absDir}\n`);
-    process.stdout.write(`  Preview   : http://localhost:${port}\n`);
+    process.stdout.write(`  Preview   : ${banner.preview}\n`);
+    if (banner.listening !== null) process.stdout.write(`  Listening : ${banner.listening}\n`);
     process.stdout.write(`\nWatching for .krs and .krs.style file changes...\n`);
     if (missingApp !== null) process.stderr.write(`\nWarning: ${missingApp}`);
+    if (!isLoopbackAddress(address.address)) {
+      process.stderr.write(
+        `\nWarning: listening on ${banner.listening ?? address.address}, not loopback. ` +
+          `Anyone who can reach this address can read the .krs and .krs.style files in ${absDir}.\n`,
+      );
+    }
+    if (banner.probeIpv6) void warnIfIpv6Shadowed(address.port);
   });
   return server;
+}
+
+/**
+ * Listening on IPv4 succeeds even when another process holds `[::1]:<port>`,
+ * and `http://localhost:<port>` may then open that process, since clients
+ * try `::1` first.
+ */
+async function warnIfIpv6Shadowed(port: number): Promise<void> {
+  if (!(await ipv6LoopbackAnswers(port))) return;
+  process.stderr.write(
+    `\nWarning: another process is listening on [::1]:${port}, so http://localhost:${port} ` +
+      `may open it instead of karasu serve. Use http://127.0.0.1:${port}, or pick another port with --port.\n`,
+  );
 }

@@ -71,7 +71,7 @@
     { "files": ["packages/app/src/components/focus-canvas/build.ts"], "rules": { "max-lines": ["error", { "max": 859 }] } },
     { "files": ["packages/app/src/hooks/useChatSession.ts"], "rules": { "max-lines": ["error", { "max": 626 }] } },
     { "files": ["packages/app/src/hooks/useChatSession/prompt.ts"], "rules": { "max-lines": ["error", { "max": 610 }] } },
-    { "files": ["packages/cli/src/index.ts"], "rules": { "max-lines": ["error", { "max": 686 }] } },
+    { "files": ["packages/cli/src/index.ts"], "rules": { "max-lines": ["error", { "max": 678 }] } },
     { "files": ["packages/core/src/builtins/default-style.ts"], "rules": { "max-lines": ["error", { "max": 711 }] } },
     { "files": ["packages/core/src/builtins/reference-data.ts"], "rules": { "max-lines": ["error", { "max": 1282 }] } },
     { "files": ["packages/core/src/compile/compile-diff.ts"], "rules": { "max-lines": ["error", { "max": 913 }] } },
