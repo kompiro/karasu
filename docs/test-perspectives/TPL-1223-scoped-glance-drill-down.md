@@ -70,6 +70,8 @@ karasu の認知モデルは **scoped glance + drill-down**（`docs/concepts.ja.
 
 - `packages/core/src/renderer/` — drill-down 描画（ghost を含む scoped 描画の中核）
 - `packages/app/src/` — view 構成（scope 境界の UI 表現）
+- `packages/core/src/renderer/group-by-drilldown-render.test.ts` — `ghosts stay out of drill grouping (rule 4)`：drill した level で ghost として描かれる外部ノードは、grouping の frame や collapse の fold に巻き込まれても消えずに残ることを固定する（drill-down 時の外部境界の保持。チェックリスト項目 3）
+- `packages/app/src/hooks/useSystemView.test.tsx` — `expands several containers at once and Collapse all clears them (#1923)`：同時展開が閾値に達すると `expansionOverload` が立って Collapse all を促し、Collapse all で scoped な overview へ 1 操作で戻れることを固定する（チェックリスト項目 1 と 4）
 - `docs/concepts.ja.md` 「ドリルダウン型アーキテクチャ把握」節
 - TPL-510（書き手と読み手の非対称性をエッジ層で具現化する観点 — scoped glance のエッジ側の現れ）
 

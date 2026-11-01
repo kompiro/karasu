@@ -62,3 +62,4 @@ surface は 2 つに分かれ、扱う道具が違う:
 ## 関連テスト
 
 - `scripts/lint/app-shortcut-docs-sync.test.ts`（`chordToDisplay` / `collectChords` の単体 + 実 doc が同期している統合アサーション）
+- `packages/cli/src/compat.test.ts`（`deprecation table` › `formats the notice so the pattern docs/tools/cli.md gives agents matches it`: CLI の deprecation 通知の形式が `docs/tools/cli.md` と `cli.ja.md` の両方に書かれたパターンと一致することを固定する。CLI ページ全体の同期ではなく、通知形式の一点のみ）

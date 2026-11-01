@@ -57,3 +57,7 @@ light theme の deploy ラベルが白で潰れていた。logical kind は `col
 - `packages/core/src/renderer/deploy-renderer.test.ts` — 「light theme renders dark,
   readable node text (not the white default)」。light の `oci` unit ラベルが
   `#1E3A8A`（白 `#F9FAFB` ではない）ことを assert する。
+- `packages/core/src/builtins/default-style-contrast.test.ts` — `builtin kind colors (%s theme)`
+  を dark / light の両テーマで回し、`background-color` を持つ全 kind ルールが text `color` を
+  対で持つこと（`%s pairs its fill with a text color (TPL-1697)`）と、その色が自分の fill の上で
+  AA を満たすことを assert する。kind ルール数を 21 に固定し、片方のテーマから kind が抜けると落ちる。

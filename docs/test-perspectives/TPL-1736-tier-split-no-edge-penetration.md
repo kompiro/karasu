@@ -63,6 +63,7 @@ system-view の forced layout は、ノードを kind/タグで複数のティ�
   - `does not add an empty infra band when a model has only external deps (#1724)`
   - `pulls a dep used only by an upper service up to one row below its consumer (Issue #974)`（既存 pull-up が温存されていることの回帰ガード）
 - `packages/core/src/renderer/edge-routing-channels.test.ts`（skip-layer 直交ルーティング）
+- `packages/core/src/renderer/routing-parity.test.ts`（`shared routing chain — ungrouped fences (#2362, TPL-1927)` › `%s: no edge pierces a node card`: ティア構造を含む実サンプル群で、段を跨ぐエッジがノードカードを貫通しないことを assert する）
 
 ## 派生元 spec / ADR
 

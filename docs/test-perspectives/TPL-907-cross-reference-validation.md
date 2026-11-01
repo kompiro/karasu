@@ -57,6 +57,9 @@ karasu には既に `unresolved-handles`（`warnings.ts:402`）と `unresolved-r
 
 - `packages/core/src/resolver/warnings.test.ts`（`unresolved-handles`, `unresolved-realizes` の test）
 - `docs/spec/syntax.md` — 新しい参照プロパティの仕様記述
+- `packages/core/src/types/diagnostics-catalog.test.ts`（`diagnostics catalog completeness (TPL-1623)`：`WarningKind` / `DiagnosticParamsByCode` に新しい kind を足すと、`docs/spec/diagnostics.md` と `.ja.md` の両方に記載が無い限り fail する。新しい `unresolved-*` warning の文書化漏れを検出する）
+- `packages/core/src/parser/physical-ref-validation.test.ts`（`physical reference existence`：resource / entity の infra 参照が未宣言の block・leaf を指すと報告し、完全に配線されたモデルでは黙る。import をまたぐ参照はマージ後のモデルで解決する: `resolves across an import once the project is merged`）
+- `packages/core/src/fs/import-resolver.test.ts`（`cross-file reference-existence diagnostics (#2032)`：boundary の member や team の owns が別ファイル・named import 経由で宣言されていても warning を出さず、実在しない参照には引き続き出すことを固定する）
 
 ## 派生元 spec
 

@@ -183,6 +183,7 @@ path は segment の区切りを保つ injective な形に揃えること（call
 - `packages/core/src/compile/injective-identity-keys.test.ts` — "separator-joined keys left after #2819 (#3111)"
 - `packages/core/src/view/edge-key.test.ts` — "edgeKindKey (#3111)"
 - `packages/core/src/renderer/static-bundle-same-id.test.ts` — "one level per anchor id (#2933) › draws the later system's subtree from its own nodes"
+- `packages/core/src/renderer/facet-overview.test.ts` — "buildFacetOverview › keeps two same-named nodes in different scopes apart (TPL-1352)" / "keeps two same-arrow edges in different scopes apart (TPL-1352)"
 
 ## 派生元 spec
 

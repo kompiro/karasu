@@ -96,3 +96,14 @@ karasu のキーボードショートカット基盤（`packages/app/src/keyboar
   （実ブラウザで Monaco にフォーカスして keydown を撃つ。#3207）
 - `packages/app/src/components/EditArea.test.tsx` — `mod+B` がエディタ
   フォーカス中は発火しないこと
+- `packages/app/src/components/DiagramViewShortcuts.test.tsx` — `skip` 方針の
+  view 切替ショートカットがテキスト入力フォーカス下で発火しないこと
+  （`ignores the shortcuts while a text input is focused (TPL-1419)`）と、
+  アンマウント後に解決されなくなること
+- `packages/app/src/components/EditTabShortcuts.test.tsx` — `allow` 方針の
+  タブ切替ショートカットがテキスト入力フォーカス下でも発火すること
+  （`fires the shortcuts even while a text input is focused (TPL-1419)`）と、
+  アンマウント後に解決されなくなること
+- `packages/app/src/keyboard/command-context.test.tsx` — `CommandRegistry.getCommands`
+  › `drops a command once its component unmounts`：登録したコンポーネントの
+  アンマウントでコマンドが登録解除されること

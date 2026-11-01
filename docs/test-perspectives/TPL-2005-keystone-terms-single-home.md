@@ -90,6 +90,10 @@ keystone / permalink の用語を扱う doc を変更するときに確認する
 - [ ] 新規 published ページを足したなら PUBLISHED_EN_FILES + astro.config.mjs sidebar +
       `.ja.md` sibling が揃っているか。
 
+## 関連テスト
+
+- `packages/docs-site/scripts/lib/site-map.test.ts` › `published pages` — `spec/glossary.md` が公開対象に含まれること、`PUBLISHED_EN_FILES` に登録した全ページが disk に存在し route と content path に解決されることを PR 時点で固定する（sidebar と `.ja.md` sibling の揃いは見ない）
+
 ## 派生元
 
 - 恒久的な定義場所の原則: [`docs/glossary.md`](../glossary.md)（本 TPL が守らせる正典）。

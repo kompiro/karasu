@@ -139,3 +139,6 @@ id でノードを指す構文を新設・変更するとき:
   「record-nothing recovery belongs to the four new sites, not to import」が
   この非対称を pin する — spec の記述が全サイト一律に読める形に戻るのを防ぐ
 - 解決側の統一（D1 #2575 / D2 #2576 / E #2577）が同ファイルにテストを足していく
+- `packages/core/src/formatter/edge-endpoint-path-round-trip.test.ts` — `karasu fmt — qualified edge endpoint (#2650)`。
+  修飾付きエッジ端点を `karasu fmt` に通しても著者の綴り（裸のパス、セグメント単位の quote）のまま
+  書き戻されることを、AST 一致だけでなく出力テキストで assert する

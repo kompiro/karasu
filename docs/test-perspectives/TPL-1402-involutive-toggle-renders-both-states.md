@@ -73,3 +73,5 @@ involutive な toggle を実装 / 変更するときに確認する:
 - `packages/app/src/hooks/useAppViews.test.tsx` — snapshot compare source で
   swap した後、diff が overlay FS で再コンパイルされエラーにならないことを assert
 - `docs/acceptance/0062-diff-swap-button.md` TC-4 — snapshot 源での swap の手動検証
+- `packages/app/src/hooks/useSystemView.test.tsx` — `recompiles the overlay when a facet is toggled (#2174)`：実 hook を回して facet を on にすると SVG に `data-facet-ring` が現れ、off に戻すと消えることを両状態の描画出力で固定する
+- `packages/app/src/components/EditArea.test.tsx` — `collapses and re-expands the sidebar when the active view button is re-clicked` / `toggles the sidebar with the mod+B shortcut`：sidebar の toggle をボタンとショートカットの両方で往復させ、折り畳み・再展開の各状態の描画を確かめる

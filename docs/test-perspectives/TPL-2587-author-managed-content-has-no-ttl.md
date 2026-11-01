@@ -65,6 +65,7 @@ scope:
 - `packages/nest/src/store/accounts.test.ts` › `stores no expiry, so an account cannot outlive itself`
 - `packages/nest/src/store/sessions.test.ts` › `expires, unlike everything else the gallery stores`（資格情報側の裏返し）
 - `scripts/lint/nest-retention-policy-sync.test.ts`（ポリシー文書と実装の突き合わせ）
+- `packages/nest/src/store/gallery-purge-coverage.test.ts` › `leaves nothing behind when an account is deleted`（無期限にしたぶんの削除経路。account の削除で全 prefix が消える。[TPL-2226](TPL-2226-every-key-prefix-must-be-purgeable.md)）
 
 ## 由来
 

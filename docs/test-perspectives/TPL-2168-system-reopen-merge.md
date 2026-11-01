@@ -58,7 +58,17 @@ container 系ブロックの再オープン / merge を実装 / 変更すると�
 
 ## 関連テスト
 
-未確立（spec PR 後の実装 PR で追加予定）。
+- `packages/core/src/fs/import-resolver.test.ts` — `multi-file import semantics (#1381)` の S3 / S4。
+  「S3: reopened `system` merges children and root entry wins for `label`」は children の union、entry 側の
+  `label` 採用、`system-property-conflict` の params（`chosen` / `ignored`）を、「S3: importer with no `label`
+  adopts the imported file's value silently」は衝突しない場合に警告が出ないことを、「S4: same-id `deploy` and
+  `organization` blocks merge across files」は deploy / organization の子（deploy node と team）が union されることを
+  固定する（entry 側の値の採用と `system-property-conflict` を deploy / organization で assert するテストは無く、
+  チェックリスト 5 項目目は union の部分だけを覆う）
+- 同じファイルの `wildcard import` の「merges edges from same-named system across files」（edges の union）と
+  「reports error for duplicate node ID in same-named system」（重複 id は `duplicate-node-in-system`）
+
+entry と sub-import を入れ替えたとき採用値が変わること（チェックリスト 4 項目目）を assert するテストはまだ無い。
 
 ## 派生元 spec
 

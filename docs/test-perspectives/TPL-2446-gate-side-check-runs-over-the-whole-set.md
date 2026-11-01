@@ -69,6 +69,7 @@ CI ステップを足す / 直す、または workspace にパッケージを足
 - `scripts/ci/typecheck-coverage-policy.test.ts`（本観点の機械チェック — 全パッケージの `typecheck` script、root script の再帰性、`ci.yml` の非列挙）
 - `.github/workflows/ci.yml`（`Typecheck` ステップ — gate 側の全走査）
 - `lefthook.yml`（pre-push の `typecheck` — CI と同一コマンド）
+- `scripts/lint/no-nul-bytes.test.ts`（`wiring: the scan reaches every PR (TPL-2446)`: NUL バイト検査が package script であり、pre-push で glob なしに全ファイルへ走り、コード変更の Check（`ci.yml`）と docs-only の Check（`ci-skip.yml`）の両方で走ること）
 
 [TPL-1480]: TPL-1480-consistency-check-triggers-on-both-sides.md
 [TPL-1725]: TPL-1725-gated-test-suite-detection-gap.md

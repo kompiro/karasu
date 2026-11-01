@@ -67,3 +67,5 @@ watch + write するストア / 非同期選択を実装・修正するとき:
 - `packages/app/src/hooks/useSerializedFileWrite.test.ts`（直列化・自己 write 追跡・bounded 退避・ファイル切替でのクリア）
 - `packages/app/src/hooks/useEditorExternalRefresh.test.ts`（中間自己 write の抑止 / 外部 write は反映）
 - `packages/app/src/hooks/useFileSelection.test.ts`（out-of-order read で最新が勝つ / exists+read失敗で空上書きしない）
+- `packages/app/src/fs/observable-provider.test.ts`（`update (serialized read-modify-write)` › `serializes concurrent updates to the same path (no lost update)` / `serializes a writeFile against an update on the same path`: 同一 path への並行 write が直列化され、古い値で終わらない）
+- `packages/app/src/lib/append-style-rule.test.ts`（`upsertEdgeDirectionRule` › `does not clobber a concurrent editor save when run through the serialized provider`: スタイル追記とエディタ保存が同じストアに並行 write しても上書き消失しない）

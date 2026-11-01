@@ -182,6 +182,7 @@ round-trip テストは、コメントがどこに出ても、あるいは消え
 - `packages/core/src/translate/escape-hostile-input.test.ts`（translate の外部入力 round-trip）
 - `packages/cli/src/fmt.test.ts`（`--write` がファイルを破壊しないこと）
 - `packages/core/src/formatter/edge-endpoint-path-round-trip.test.ts`（修飾された edge endpoint の綴り。AST 等価では見えない領域をテキストで pin する — #2650）
+- `packages/core/src/formatter/scoped-boundary-round-trip.test.ts`（ノード内に置いたスコープ内 `boundary` の round-trip。top-level 網羅性ガードが見ないネスト位置を、system と infra block の両 parse 経路・複数の深さで固定し、idempotent であることも確かめる — #2036）
 
 ## 派生元 spec
 

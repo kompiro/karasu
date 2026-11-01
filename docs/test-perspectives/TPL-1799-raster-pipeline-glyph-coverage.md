@@ -60,3 +60,7 @@ scope:
 
 - `docs/acceptance/karasu-nest-render-png.md` — AT-C4（絵文字マーカーが豆腐にならない）/ AT-C5（Node 事前確認）
 - `packages/app/src/render/share-render.test.ts` — SVG 経路の生成（ラスタ前段）
+- `packages/app/src/render/png-font-coverage.test.ts` — `PNG raster font coverage (TPL-1799, #1799)`。
+  同梱フォントの cmap の和集合がレンダラーの出す非 ASCII マーカー（バッジ・ghost バッジ・縮退タブ）を
+  すべてカバーすることと、`BUNDLED_FONTS` が `functions/render.ts` の読み込むフォント集合と一致することを
+  assert する。マーカーの列挙はテスト内の手書きリストなので、新グリフを足すときはここへの追加が要る

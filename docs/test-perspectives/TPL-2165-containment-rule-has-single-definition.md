@@ -101,6 +101,14 @@ pnpm gen:reference --check
   warning ゼロを assert する。規則を厳しくしたとき、自分のサンプルが最初の
   被害者になるのを防ぐ。
 
+## 関連テスト
+
+- `packages/core/src/builtins/reference-parser-sync.test.ts` — `REFERENCE_DATA.nodeKinds ↔ parser` の
+  「canContain matches exactly the children the parser accepts without `node-not-in-context`」。全
+  (parent, child) 組み合わせで表と parser を双方向に突き合わせる
+- `packages/core/src/examples.test.ts` — `examples: every shipped .krs is free of node-not-in-context warnings`。
+  `examples/**/*.krs` 全件を parse して `node-not-in-context` がゼロであること（出荷資産の regression fence）
+
 ## 派生元 spec
 
 - `docs/spec/syntax.md` / `syntax.ja.md` §「Nesting placement」/「入れ子の配置」（#2165 で新設）

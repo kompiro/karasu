@@ -109,6 +109,17 @@ karasu の boundary 多重包含（#2179）では次の 3 つが同時に成り�
       広げた分は新しい障害物ジオメトリであり、貫通・共線オーバーラップの数値は
       前回の計測から持ち越せない。
 
+## 関連テスト
+
+- `packages/core/src/renderer/boundary-multi-containment.test.ts` — `multi-containment geometry (#2179)`。
+  広げた分が `coverage` にだけ載り記録矩形は帯の本体に留まること、回廊に非メンバーがいれば広げずに縮退表示へ
+  落ちること、「never records coverage that rectUnionPath would refuse to trace」（述語の合否と描画可能性の一致）。
+  縮退表示は同じファイルの `縮退 tab rendering (#2179)`、輪郭の生成は `rectUnionPath (#2179)` が見ている
+- `packages/core/src/renderer/routing-parity.test.ts` — フレームを bbox ではなく `coverage` の矩形集合として測る
+  `framesOf` を使い、`boundary-multi-membership.krs` を含む grouped モデルで貫通 0・共線オーバーラップ 0 を固定する
+  （`shared routing chain — grouped output is unchanged`）。障害物 index も同じ集合で測ることを
+  `the obstacle index measures what the fences measure (#2790, TPL-1927)` が見ている
+
 ## 派生元 spec
 
 - `docs/spec/syntax.md` § [Grouping the system view (`boundary`)](../spec/syntax.md#grouping-the-system-view-boundary)
