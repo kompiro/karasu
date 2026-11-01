@@ -696,7 +696,11 @@
      (#2492). */
   top: calc(var(--preview-toolbar-bottom, 82px) + 8px);
   right: 16px;
-  z-index: 100;
+  /* Floating-panel layer (TPL-1468), shared with the node and edge detail
+     panels: above the diagram, below the focus canvas and its pill, context
+     menus, dialogs and portalled menus. It comes before the preview in the DOM,
+     so a detail panel opened over it still wins the tie. */
+  z-index: var(--z-floating-panel);
   width: 360px;
   max-width: calc(100% - 32px);
   max-height: 60%;
