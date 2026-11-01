@@ -111,8 +111,10 @@ TPL ごとに「どこまで機械が守っているか」を持たせ、それ�
   チェックリスト節の中に `### 本観点の範囲外` を持ち、その下のリストはチェック項目ではない
 - 項目が 1 つも無いチェックリストは finding にする（D3 の `judgment` が空虚に成り立つのを防ぐ）
 - 状態を導出する `regenerate` と `related --status` は、書式の誤った印を unguarded として
-  数える（守られていない側に倒す）。誤った印を finding にするのは `validate` だけで、CI で
-  `validate` が落とすので、誤った印が main に残ることはない
+  数える（守られていない側に倒す）。この 2 つのコマンドは `--source-prefix` を受けないので、
+  ここで言う「誤った印」は書式の規則（位置・後ろの句読点・パスの無い `[guard: ]`）だけで、
+  `candidatePath` とファイルであることの検査は `validate` だけが行う。誤った印を finding に
+  するのも `validate` だけで、CI で `validate` が落とすので、誤った印が main に残ることはない
 
 利点: 人も LLM も、項目を読んだその場で「これは機械が守っている / 自分が確かめる」が分かる。
 欠点: チェックリストの見た目が少し重くなる。
@@ -149,7 +151,9 @@ TPL ごとに「どこまで機械が守っているか」を持たせ、それ�
   「Related TPLs」節に貼る形なので、そこに状態を混ぜると、導出値の写しが Design Doc に入り、
   昇格後は本文を変えない ADR（ADR-2687）に固まる。これは 2-B で避ける二重管理と同じ形になる
 - 印ごとの一覧（どの TPL のどの項目が unguarded か）を出す手段を tpl-tools に足す
-  （コマンド名は tpl-tools 側で決める）。スライス 4 の backlog はこの一覧から起こす
+  （コマンド名は tpl-tools 側で決める）。印はガードがあるかどうかしか持たず、どんな
+  ガードを作ればよいかは持たないので、スライス 4 の backlog は分類の提案から起こし、
+  この一覧はどの項目がまだ unguarded かを確かめるのに使う
 
 karasu はまだ生成索引を採用していない（#3289 は tpl-tools v0.0.11 の release 待ちで
 `status: blocked`、`tpl.config.json` に `indexFile` が無く、README の一覧表は手書き）。
@@ -206,9 +210,11 @@ registry の列挙、型レベルの網羅、閉じたクラスをテストが�
   ガードになる（型、表とコードの突き合わせ、表がコードから導出されている）。
   `derivation-contracts.test.ts` のように、表に入れ忘れた箇所が CI を通る形は instance-only
 
-**ガードの参照先は、チェックを実行するこの repo のファイルにする。** テストファイル、
-`scripts/` の lint、外部ツール（`adr validate` など）を起動する workflow のどれかである。
-設定データ（`adr.config.json`）や外部パッケージの中身（`node_modules/@kompiro/adr-tools`）は
+**ガードの参照先は、CI の step から辿った呼び出しの終点にある、この repo のファイルにする。**
+テストファイルか、`scripts/` や `packages/*/scripts/` のスクリプトが典型である（TPL-2005 (5) は
+`packages/docs-site/scripts/check-links.ts`、TPL-2165 (4) は `scripts/reference/gen-docs.ts`）。
+終点が外部の実行ファイル（`adr validate` など）のときだけ、その step を持つ workflow を
+ガードにし、項目の本文で呼ばれるコマンド（`pnpm adr:validate` など）を名指しする。設定データ（`adr.config.json`）や外部パッケージの中身（`node_modules/@kompiro/adr-tools`）は
 ガードではない。そのため karasu の `pnpm tpl:validate` に `--source-prefix .github` を足す。
 分類で mechanized とした項目のうち 9 件（TPL-1829 (1)〜(4)、TPL-2005 (5)、TPL-2165 (4)、
 TPL-2188 (2)(3)、TPL-2446 (5)）は、根拠が `.github/workflows/*.yml`・`adr.config.json`・
@@ -218,26 +224,29 @@ TPL-2188 (2)(3)、TPL-2446 (5)）は、根拠が `.github/workflows/*.yml`・`ad
 
 workflow のファイルは多くの step を持つので、ファイル名だけではどの step が項目を守るのかが
 分からない（TPL-1829 (2)(4)、TPL-2188 (3)、TPL-2446 (5) の根拠は `ci.yml` の行番号だけ）。
-step が `scripts/` のスクリプトを呼ぶなら、workflow ではなくそのスクリプトをガードにする。
-step が外部ツールを直接呼ぶときだけ workflow をガードにし、項目の本文で呼ばれるコマンド
-（`pnpm adr:validate` など）を名指しする。`packages/` の下にあっても設定データは同じ扱いで、
+上の規則により、step がこの repo のスクリプトを呼ぶならそのスクリプトがガードになり、
+workflow が参照先になるのは外部の実行ファイルを呼ぶ step だけになる。`packages/` の下にあっても設定データは同じ扱いで、
 TPL-1171 (5)（`playwright.config.ts`）と TPL-2167 (4)（`packages/core/package.json`）は、
 その設定を読んで検査するものを探してガードにするか、見つからなければ印なしにする。
 
 README「横断観察 A」は、curated table を meta-check の既定の選択肢とし、その採用理由に
-「新エントリ追加時に table 編集を強制できる」を挙げている。この理由は成り立たない。表は、
-新しい箇所が追加されても編集を強制しない。観察 A が挙げる実例の 1 つ
+「新エントリ追加時に table 編集を強制できる」を挙げている。この理由は実例の一部にしか
+成り立たない。表そのものは、新しい箇所が追加されても編集を強制しない。強制が働くのは
+表とは別の仕組みがあるときで、実例の #1233（`packages/core/src/parser/base-node-fields-coverage.test.ts`）は
+型の契約で全 kind の登録を強制しているので mechanized になる。一方、実例の #1249
 `derivation-contracts.test.ts` は、冒頭のコメントで「新しいエントリの登録を忘れると
 このテストをすり抜ける」と自ら書いている。分類でも、ガードが無い項目に提案された手段で最も
 多いのは「全箇所の表を回す meta-test」（212 項目。うち 206 項目には箇所を固定するテストが
 既にある）で、表の形そのものは有効でも、登録を強制する仕組みが無いことが欠けている。
 そこで、採用理由を「表への登録を型・突き合わせ・導出のどれかで強制したときに限り、
 explicit な表は review で auditable なガードになる」に書き直す（注記を足すだけでは、
-成り立たない理由が本文に残る）。
+一部にしか成り立たない理由が本文に残る）。
 
 **ガードの一般性はプログラムでは判定できない**（制約・前提）。実在は validator が見て、
-一般性は TPL を変える PR のレビューが見る。分類で mechanized とした 117 項目は全件を
-人が読んで確かめているので、初回のバックフィルではそれを根拠に使える。
+一般性は TPL を変える PR のレビューが見る。分類で mechanized とした 117 項目は、判定を
+全件人が読んでいる（ガードの中身まで開いたのは 3 件）ので、初回のバックフィルの出発点には
+使える。ただし根拠のファイルは分類後に消えたものがあり（#3423 の gh-aw 削除で、TPL-2658 (1)(3)(4)・
+TPL-2786 (4)(5) の根拠 6 ファイル）、スライス 3 で今の tree に照らして確かめ直す。
 
 ### D5: 変更ファイルから TPL を引く仕組み（Issue の提案 6）は別 Issue に分ける
 
@@ -264,7 +273,7 @@ judgment 項目に対して決定論的にできるのは判定ではなく「�
 - [TPL-2287](../test-perspectives/TPL-2287-detector-near-misses-are-the-spec.md): 印の検出器は、項目の文中に出る「judgment」「guard」を印と読まないことを near-miss 事例として tpl-tools のテストに持つ
 - [TPL-2254](../test-perspectives/TPL-2254-durable-record-points-at-durable-address.md): ガードの参照はパスで書き、既存の実在検査に乗せる（記録より長生きするアドレスを指す）
 - [TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md): 状態を frontmatter に持たない理由（導出できる値を二重に持たない）
-- [TPL-2810](../test-perspectives/TPL-2810-two-implementations-agree-only-when-measured.md): バックフィル後は分類 CSV を退役させ、印を唯一の記録にする。CSV と印を並べて保守しない
+- [TPL-2810](../test-perspectives/TPL-2810-two-implementations-agree-only-when-measured.md): スライス 4 の起票を終えたら分類 CSV を退役させ、印を唯一の記録にする。CSV と印を並べて保守しない
 
 proactive TPL は起こさない。本設計が破りうる原則として「実在を検査された参照は、参照先が
 主張どおりの役割を果たすことまでは保証しない」（D4 の、ガードの一般性を機械で見られない点）を
@@ -324,10 +333,12 @@ sub-issue にする。tpl-tools の repo の Issue を sub-issue にできなけ
      （渡さないと、月次レビューの Issue は黙って今の 3 つの問いのままになる）
    - 同じ PR で `docs/test-perspectives/README.md`（本文セクション・Validator の検査内容・
      定期レビューの問い・横断観察 A の採用理由）と `TEMPLATE.md` を更新する
-   - バックフィル後、分類 CSV は使わない
-4. **karasu: ガードの backlog を形ごとに起票**。スライス 2 で足した印ごとの一覧から、
-   最多の形（全箇所の表を回し、表への登録を導出か突き合わせで強制する meta-test。分類での
-   提案は 212 項目）を topic ごとに 1 Issue で起こす
+   - mechanized の根拠ファイルが今も実在するかを確かめる（消えたものはガードにしない）
+4. **karasu: ガードの backlog を形ごとに起票**。どんなガードを作るかは印に無く分類の
+   `mechanism` 列にしか無いので、backlog は分類から起こす。最多の形（全箇所の表を回し、
+   表への登録を導出か突き合わせで強制する meta-test。分類での提案は 212 項目）を topic ごとに
+   1 Issue で起こし、起こす前にスライス 2 の一覧でその項目がまだ unguarded かを確かめる。
+   起票し終えたら分類 CSV は使わない
 
 スライスとは別に、Issue が挙げた次の項目は本設計に依存しないので、この Design Doc の
 マージを待たずに起票する。
