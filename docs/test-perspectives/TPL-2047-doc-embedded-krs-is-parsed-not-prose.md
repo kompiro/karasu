@@ -149,7 +149,7 @@ pnpm run lint:krs-fences   # docs/{acceptance,spec,guide}/** と docs/concepts*.
 
 ## 関連テスト
 
-- `scripts/lint/krs-fences.test.ts` — `analyzeKrsFencesIn` で無印 / `fragment` / `invalid` の扱いと未知 marker の報告、`` analyzeKrsFencesIn — bare fences holding `.krs` `` で `.krs` を入れた裸 fence の検出（擬似文法は裸のまま許す）、`analyzeKrsFences over the real corpus` で acceptance・spec・guide・concepts の全 fence が parse できることを固定する
+- `scripts/lint/krs-fences.test.ts` — `analyzeKrsFencesIn` で無印 / `fragment` / `invalid` の扱いと未知 marker の報告、`` analyzeKrsFencesIn — bare fences holding `.krs` `` で `.krs` を入れた裸 fence の検出（擬似文法は裸のまま許す）、`analyzeKrsFences over the real corpus` で acceptance・spec・guide・concepts・`packages/skills/skills` の全 fence が parse できることを固定する
 
 ## 派生元
 
