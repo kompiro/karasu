@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { InMemoryFileSystemProvider } from "@karasu-tools/core";
 import { SnapshotManager, __testing } from "./snapshot-manager";
 
@@ -10,6 +10,14 @@ describe("SnapshotManager", () => {
   beforeEach(() => {
     fs = new InMemoryFileSystemProvider();
     sm = new SnapshotManager(fs, projectRoot);
+    // Only `Date` is faked: tests pin `createdAt` instead of sleeping, since a
+    // timer delay does not guarantee the wall clock advances (#3470).
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-01T00:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   // #1531 (review): auto-capture (debounce + beforeunload) can race a manual
@@ -64,11 +72,23 @@ describe("SnapshotManager", () => {
 
     it("lists snapshots newest first", async () => {
       const first = await sm.capture("index.krs", "v1", { trigger: "manual" });
-      await new Promise((r) => setTimeout(r, 5));
+      vi.setSystemTime(new Date("2026-11-01T00:00:00.005Z"));
       const second = await sm.capture("index.krs", "v2", { trigger: "manual" });
 
       const list = await sm.list("index.krs");
       expect(list.map((r) => r.id)).toEqual([second!.id, first!.id]);
+    });
+
+    // #3470: `createdAt` has millisecond resolution, so an auto capture racing a
+    // manual one can share it. The later capture must still come first.
+    it("lists snapshots captured in the same millisecond newest first", async () => {
+      const first = await sm.capture("index.krs", "v1", { trigger: "auto" });
+      const second = await sm.capture("index.krs", "v2", { trigger: "manual" });
+      const third = await sm.capture("index.krs", "v3", { trigger: "manual" });
+      expect(new Set([first, second, third].map((r) => r!.createdAt)).size).toBe(1);
+
+      const list = await sm.list("index.krs");
+      expect(list.map((r) => r.id)).toEqual([third!.id, second!.id, first!.id]);
     });
 
     it("skips auto snapshot when content matches the most recent record", async () => {
@@ -115,13 +135,14 @@ describe("SnapshotManager", () => {
   });
 
   describe("gc", () => {
+    // Every capture shares one frozen `createdAt`, so "oldest" is decided by
+    // capture order alone (#3470).
     it("drops the oldest auto snapshots once cap is exceeded", async () => {
       const cap = __testing.AUTO_RETENTION_CAP;
       const ids: string[] = [];
       for (let i = 0; i < cap + 3; i++) {
         const r = await sm.capture("index.krs", `v${i}`, { trigger: "auto" });
         ids.push(r!.id);
-        await new Promise((res) => setTimeout(res, 2));
       }
 
       const list = await sm.list("index.krs");
@@ -141,7 +162,6 @@ describe("SnapshotManager", () => {
       });
       for (let i = 0; i < cap + 5; i++) {
         await sm.capture("index.krs", `v${i}`, { trigger: "auto" });
-        await new Promise((res) => setTimeout(res, 2));
       }
 
       const list = await sm.list("index.krs");
