@@ -50,7 +50,7 @@ domain id の error 級一意性とは異なる）。bare id では foreign enti
 4. **resource dot-notation を誤って ghost 化** — `Order -> OrderDB.orders`（infra 参照）の
    `OrderDB` を domain と誤解して ghost 化する。domain index で解決できないものはドロップする。
 
-## 検証の指針
+## チェックリスト
 
 - outgoing `D1 の entity -> D2.Foreign` → Foreign が `ghostEntities`（キー `D2.Foreign`）、
   `childNodes` に無い、edge が `ghostEntityEdges` に正規化されて入る。

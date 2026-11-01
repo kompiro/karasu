@@ -640,7 +640,7 @@ export function buildNodePathIndex(
   // The occurrence's priority MUST be computed in-walk: a domain with no
   // annotations of its own inherits its parent service's annotations
   // (consistent with the rendering inheritance — see
-  // docs/design/inherit-service-annotations.md), and that context is
+  // ADR-517), and that context is
   // unrecoverable after the walk. This makes
   // `service Legacy @deprecated { domain Order {} }` and
   // `service NewSvc @migration_target { domain Order {} }` a legal

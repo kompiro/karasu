@@ -107,7 +107,7 @@ export function wrapLayerIntoRows<T>(
 /**
  * Bucket items by their resolved `column` hint (`left` / unspecified-or-center / `right`),
  * preserving the relative input order within each bucket. Used to honor the
- * `.krs.style` `column` property in system view (see `docs/design/auto-layout-style-hints.md`).
+ * `.krs.style` `column` property in system view (see ADR-969).
  *
  * The middle bucket merges unspecified nodes and `column: center` nodes so
  * authors can pin only the extremes (`left` / `right`) and let the rest
@@ -138,7 +138,7 @@ function bucketByColumn<T extends { id: string }>(
  * Apply per-edge `direction: left` / `direction: right` hints as a final
  * within-layer reordering pass. Runs after `bucketByColumn` and overrides
  * its placement for the involved source endpoint (per-edge hint > node
- * `column` hint, see docs/design/edge-direction-horizontal.md).
+ * `column` hint, see ADR-1135).
  *
  * For each hinted edge whose `from` and `to` end up in the same layer,
  * the source is moved adjacent to the target — directly to the right
