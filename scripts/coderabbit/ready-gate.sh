@@ -22,9 +22,10 @@
 #   since --draft is always a way through.
 #
 # Lets the call through when:
-# - KARASU_LOCAL_REVIEW_SKIPPED holds a non-empty reason, the deliberate skip
-#   for when the CLI cannot run here (a create still needs --draft or
-#   "risk: low");
+# - a ready, and KARASU_LOCAL_REVIEW_SKIPPED holds a non-empty reason, the
+#   deliberate skip for when the CLI cannot run here. A Low create does not
+#   take it: Review tier refuses a Low PR whose record skipped the CLI, so such
+#   a PR is raised to Medium and goes through a draft;
 # - a create passes --draft;
 # - the PR is not a draft (every tier records the CLI run, #3286);
 # - a ready with --undo, or --repo / -R (the local checkout may not hold that
@@ -50,11 +51,11 @@ base_ref_of() {
 }
 
 # Succeeds when a completed CLI review covers the branch that ends at $1: its
-# reviewed commit is an ancestor of $1 and not on $2 (the base ref). Also
-# succeeds when records exist but none can be read (the CLI's format changed),
-# so the gate fails open.
+# reviewed commit is an ancestor of $1 and not on $2 (the base ref). Unless $3
+# is "strict", also succeeds when the store is not empty but holds no readable
+# record (the CLI's format changed), so the gate fails open.
 reviewed_branch() {
-  local head=$1 base_ref=$2 reviews records=0 record reviewed
+  local head=$1 base_ref=$2 mode=${3:-} reviews records=0 record reviewed
   reviews=${CODERABBIT_REVIEWS_DIR:-$HOME/.coderabbit/reviews}
   for record in "$reviews"/*/*/reviews/*/; do
     [ -f "$record/git.json" ] || continue
@@ -67,7 +68,7 @@ reviewed_branch() {
     git merge-base --is-ancestor "$reviewed" "$base_ref" 2>/dev/null && continue
     return 0
   done
-  [ "$records" -eq 0 ] && [ -n "$(ls -A "$reviews" 2>/dev/null)" ]
+  [ "$mode" != strict ] && [ "$records" -eq 0 ] && [ -n "$(ls -A "$reviews" 2>/dev/null)" ]
 }
 
 skipped() {
@@ -176,7 +177,12 @@ with gh pr ready (docs/process.md PR workflow). Only a Low PR (--label \"risk: l
 .claude/rules/adr.md) is created without --draft."
     exit 0
   fi
-  skipped && exit 0
+  if skipped; then
+    echo "gh pr create was refused: a Low PR needs the CLI review, and Review tier refuses a Low record \
+that skipped it. Label the PR risk: medium, create it as a draft (gh pr create --draft), and take it out of \
+draft with KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr ready (docs/process/review.md)."
+    exit 0
+  fi
   # From here on the gate reads what the PR will be. Whatever it cannot read is
   # refused rather than let through: --draft is always a way to open the PR.
   unverifiable() {
@@ -212,11 +218,15 @@ draft (gh pr create --draft) and take it out of draft with gh pr ready (docs/pro
     head_ref=HEAD
     head=$(git rev-parse --verify --quiet "HEAD^{commit}") || unverifiable "HEAD is not a commit"
   fi
-  # The base gh picks: --base, then the branch's gh-merge-base, then the
+  # The base gh picks: --base, then the head branch's gh-merge-base, then the
   # repository's default branch (origin/HEAD here).
   if [ -z "$base_name" ]; then
-    branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null) &&
-      base_name=$(git config --get "branch.$branch.gh-merge-base" 2>/dev/null)
+    if [ -n "$head_name" ]; then
+      branch=${head_name#*:}
+    else
+      branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null)
+    fi
+    [ -n "$branch" ] && base_name=$(git config --get "branch.$branch.gh-merge-base" 2>/dev/null)
   fi
   if [ -z "$base_name" ]; then
     base_name=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null) ||
@@ -224,14 +234,14 @@ draft (gh pr create --draft) and take it out of draft with gh pr ready (docs/pro
     base_name=${base_name#origin/}
   fi
   base_ref=$(base_ref_of "$base_name") || unverifiable "the base branch $base_name is not here"
-  reviewed_branch "$head" "$base_ref" && exit 0
+  reviewed_branch "$head" "$base_ref" strict && exit 0
   echo "gh pr create was refused: no completed local CodeRabbit CLI review covers this branch \
 (${head_ref} at ${head:0:7}). A Low PR is created without --draft only after its local review \
 (.claude/rules/adr.md): check out that branch, run /engineering:code-review on git diff $base_ref...HEAD, \
 then run the CLI once \
 (coderabbit review --agent --deep --base $base_ref --committed), then create it again. If the CLI cannot run \
-here (not installed, not authenticated, out of quota), tell the user, then rerun as \
-KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr create ..."
+here (not installed, not authenticated, out of quota), tell the user, label the PR risk: medium and create it \
+as a draft: Review tier refuses a Low record that skipped the CLI."
   exit 0
 fi
 

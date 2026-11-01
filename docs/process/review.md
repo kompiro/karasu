@@ -23,8 +23,8 @@ Medium と Low では CLI が CodeRabbit の唯一の目になる。
 `/coderabbit-converge` のラウンドでは、push の前にそのラウンドの修正分だけへ 1 回当てる
 （ADR-3340）。CLI が使えない環境（未インストール・
 未認証・枠切れ）では `docs/process.md` の手順 9 を飛ばし、手順 11 の ready を `KARASU_LOCAL_REVIEW_SKIPPED=<理由> gh pr ready <n>`
-で実行する（理由を付けない ready は拒否される）。draft を経ずに作る Low の ADR の PR では、同じ変数を付けて
-`gh pr create` を実行する。決定は
+で実行する（理由を付けない ready は拒否される）。Low の PR は CLI を飛ばせない（下の「リスク段階」）ので、
+draft を経ずに作る Low の ADR の PR でも CLI が使えなければ、`risk: medium` に上げて draft で作る。決定は
 [ADR-3326](../adr/3326-coderabbit-cli-once-before-ready.md) と ADR-3342。
 
 ### リスク段階

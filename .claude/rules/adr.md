@@ -208,7 +208,8 @@ High として扱い auto-merge を止める。そのときは `gh pr edit <N> -
 
 Claude のセッションの gh は、`--draft` の無い `gh pr create` を `risk: low` のときだけ、このブランチの CLI の
 レビューが済んでいれば通す（ADR-3342 のゲート）。ゲートが PR の head や base を読めないとき（`--head` が origin に
-無いブランチを指すなど）は拒否するので、そのときは draft で作って `gh pr ready` で外す。
+無いブランチを指すなど）は拒否するので、そのときは draft で作って `gh pr ready` で外す。CLI が使えない環境では
+Low にならない（Review tier が CLI を飛ばした Low の記録を通さない）ので、`risk: medium` で draft から作る。
 
 Low でなければ、出た段階のラベルを付けて draft で作り、`gh pr ready <N>` だけ実行して通常の PR として扱う。
 

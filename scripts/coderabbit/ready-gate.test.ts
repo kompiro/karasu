@@ -56,6 +56,9 @@ git("update-ref", "refs/remotes/origin/chore/1-example", HEAD);
 const AHEAD = git("commit-tree", "-p", HEAD, "-m", "not pushed", `${HEAD}^{tree}`);
 git("update-ref", "refs/heads/chore/3-ahead", AHEAD);
 git("update-ref", "refs/remotes/origin/chore/3-ahead", BASE);
+// Another pushed branch at HEAD, whose gh-merge-base a test sets.
+git("update-ref", "refs/heads/chore/4-other", HEAD);
+git("update-ref", "refs/remotes/origin/chore/4-other", HEAD);
 
 interface PrView {
   number: number;
@@ -374,12 +377,32 @@ describe("gh wrapper: gh pr create", () => {
     expect(calls(gh)).toEqual([]);
   });
 
-  it("names the CLI review and the skip when it refuses a Low create", () => {
+  it("names the CLI review, and Medium for when it cannot run, when it refuses a Low create", () => {
     const result = run(`gh pr create ${LOW} --title x`, fakeGh(DRAFT), reviews());
     expect(result.stderr).toContain(
       "coderabbit review --agent --deep --base origin/main --committed",
     );
-    expect(result.stderr).toContain("KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr create");
+    expect(result.stderr).toContain("risk: medium");
+    expect(result.stderr).not.toContain("KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr create");
+  });
+
+  it("refuses a Low create when the review store holds no readable record", () => {
+    const store = reviews({ head: "", state: "complete", gitJson: '{"reviewedCommit": "abc"}' });
+    const gh = fakeGh(DRAFT);
+    expect(run(`gh pr create ${LOW} --title x`, gh, store).status).toBe(1);
+    expect(calls(gh)).toEqual([]);
+  });
+
+  it("takes the base from the --head branch's gh-merge-base, not the checked-out one", () => {
+    git("config", "branch.chore/4-other.gh-merge-base", "chore/1-example");
+    try {
+      const gh = fakeGh(DRAFT);
+      const line = `gh pr create ${LOW} --head chore/4-other --title x`;
+      expect(run(line, gh, reviewedWork()).status).toBe(1);
+      expect(calls(gh)).toEqual([]);
+    } finally {
+      git("config", "--unset", "branch.chore/4-other.gh-merge-base");
+    }
   });
 
   // WORK is the reviewed commit. Naming the branch itself as the base puts WORK
@@ -468,11 +491,16 @@ describe("gh wrapper: gh pr create", () => {
     }
   });
 
-  it("runs a Low create without --draft on a deliberate skip that names a reason", () => {
+  // Review tier refuses a Low record that skipped the CLI, so the skip would
+  // open a PR that can never auto-merge.
+  it("refuses a Low create on a deliberate skip, naming the Medium draft route", () => {
     const gh = fakeGh(DRAFT);
     const line = `KARASU_LOCAL_REVIEW_SKIPPED=cli-out-of-quota gh pr create ${LOW} --title x`;
-    expect(run(line, gh, reviews()).status).toBe(0);
-    expect(calls(gh)).toEqual(["pr create --label risk: low --title x"]);
+    // Even with a review on the branch: the skip itself is the refusal.
+    const result = run(line, gh, reviewedWork());
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("risk: medium");
+    expect(calls(gh)).toEqual([]);
   });
 
   it.each([
