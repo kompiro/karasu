@@ -1,6 +1,6 @@
 /**
  * Group-aware layer assignment for the system view "Group by" mode (Issue
- * #1858, design `docs/design/system-view-grouping.md`). Phase P2a, slice A.
+ * #1858, ADR-1858). Phase P2a, slice A.
  *
  * The default system layout (`assignForcedSystemLayers` in `layer-assignment.ts`) buckets
  * nodes into kind tiers. Group-by mode instead buckets nodes into their **group**

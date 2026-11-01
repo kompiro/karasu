@@ -12,7 +12,7 @@ import type { Translator, TranslatorContext } from "./translator.js";
  * self-contained model: a `system { ... }` wrapping the Worker `service`, the
  * binding-derived infra blocks and edges, followed by a top-level `deploy`
  * where the concrete Cloudflare technology lands in `store { type ... }` —
- * never in a logical `label`. See docs/design/wrangler-translate-adapter.md.
+ * never in a logical `label`. See ADR-1935.
  *
  * Pure: no fs / process access, so it runs unchanged in the CLI and the App.
  */

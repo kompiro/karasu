@@ -16,7 +16,7 @@ export function edgeBaseId(edge: KrsEdge): string {
  * Assign `canonicalId` to each edge in place and return any diagnostics
  * raised during disambiguation.
  *
- * Rules (see `docs/design/edge-id-selector.md`):
+ * Rules (see ADR-1096):
  *  - If `authorId` is set, it becomes `canonicalId`.
  *  - Otherwise the base `<from><arrow><to>` is used.
  *  - Multiple edges sharing the same computed base with no `authorId` →

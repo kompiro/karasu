@@ -3,7 +3,7 @@
 // automatically bundles them: ports spread along the node sides (via the
 // existing port-distribution pass), and labels slide along the edge so
 // "create" and "update" do not stack on top of each other.
-// See docs/design/parallel-edge-bundling.md and Issue #1185.
+// See ADR-1185 and Issue #1185.
 
 system ParallelEdges {
   label "Parallel Edges"

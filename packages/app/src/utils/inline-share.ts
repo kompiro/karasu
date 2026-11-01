@@ -38,7 +38,7 @@ function sanitizeTarget(value: unknown): ShareTarget | undefined {
 }
 
 /**
- * Inline share encoding for karasu-nest (design: docs/design/karasu-nest-hosted-preview.md).
+ * Inline share encoding for karasu-nest (design: ADR-1783).
  *
  * A share payload — a flattened `.krs` plus its optional merged `.krs.style` —
  * is JSON-serialized, deflate-compressed, and base64url-encoded into the URL

@@ -5,6 +5,7 @@ import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import { StyleParser } from "../parser/style-parser.js";
 import type {
   KrsNode,
+  KrsEdge,
   KrsFile,
   DeployNode,
   OrganizationBlock,
@@ -945,44 +946,28 @@ describe("resolveStyles", () => {
     });
   });
 
+  // A read / write edge is the synthetic usecase→resource edge a domain
+  // drill-down derives. It is never in a node's `edges`; the compile path hands
+  // it to `resolveStyles` as `extraEdges`, so these tests do the same.
+  // `integration/read-write-edge-width.test.ts` covers the same widths from
+  // `.krs` source through the SVG.
+  function accessEdge(from: string, to: string, access: "read" | "write"): KrsEdge {
+    return {
+      from,
+      to,
+      label: access === "write" ? "W" : "R",
+      kind: "sync",
+      tags: [access],
+      syntheticLabel: true,
+      loc: dummyLoc,
+    };
+  }
+
   it("resolves [write] edge to stroke-width 2 via builtin stylesheet (read < write < cyclic)", () => {
-    const writeSystem = makeNode({
-      kind: "system",
-      id: "WriteSys",
-      children: [
-        makeNode({ kind: "usecase", id: "WU", label: "WU" }),
-        makeNode({ kind: "resource", id: "WR", label: "WR" }),
-      ],
-      edges: [
-        {
-          from: "WU",
-          to: "WR",
-          label: "W",
-          kind: "sync",
-          tags: ["write"],
-          loc: dummyLoc,
-        },
-      ],
-    });
-    const readSystem = makeNode({
-      kind: "system",
-      id: "ReadSys",
-      children: [
-        makeNode({ kind: "usecase", id: "RU", label: "RU" }),
-        makeNode({ kind: "resource", id: "RR", label: "RR" }),
-      ],
-      edges: [
-        {
-          from: "RU",
-          to: "RR",
-          label: "R",
-          kind: "sync",
-          tags: ["read"],
-          loc: dummyLoc,
-        },
-      ],
-    });
-    const result = resolveStyles([writeSystem, readSystem], [getBuiltinStyleSheet()]);
+    const result = resolveStyles([], [getBuiltinStyleSheet()], undefined, undefined, undefined, [
+      accessEdge("WU", "WR", "write"),
+      accessEdge("RU", "RR", "read"),
+    ]);
     const writeStyle = result.edges.get("WU->WR")!;
     const readStyle = result.edges.get("RU->RR")!;
     // edge[write] from default-style picks up stroke-width: 2.
@@ -995,19 +980,6 @@ describe("resolveStyles", () => {
   });
 
   it("keeps read < write hierarchy when a user theme overrides the global edge width", () => {
-    const system = makeNode({
-      kind: "system",
-      id: "Sys",
-      children: [
-        makeNode({ kind: "usecase", id: "U", label: "U" }),
-        makeNode({ kind: "resource", id: "RR", label: "RR" }),
-        makeNode({ kind: "resource", id: "WR", label: "WR" }),
-      ],
-      edges: [
-        { from: "U", to: "RR", label: "R", kind: "sync", tags: ["read"], loc: dummyLoc },
-        { from: "U", to: "WR", label: "W", kind: "sync", tags: ["write"], loc: dummyLoc },
-      ],
-    });
     // A plain `edge { stroke-width: 3; }` user rule (specificity 1) must not
     // outrank the builtin tag rules (specificity 10); without an explicit
     // edge[read] rule the hierarchy would invert (read → 3 while write stays 2).
@@ -1016,7 +988,14 @@ describe("resolveStyles", () => {
         makeRule({ nodeType: "edge", tags: [], annotations: [] }, { "stroke-width": "3" }, 1, 0),
       ],
     };
-    const result = resolveStyles([system], [getBuiltinStyleSheet(), userSheet]);
+    const result = resolveStyles(
+      [],
+      [getBuiltinStyleSheet(), userSheet],
+      undefined,
+      undefined,
+      undefined,
+      [accessEdge("U", "RR", "read"), accessEdge("U", "WR", "write")],
+    );
     const readStyle = result.edges.get("U->RR")!;
     const writeStyle = result.edges.get("U->WR")!;
     expect(readStyle.strokeWidth).toBe(1.5);
@@ -1066,7 +1045,25 @@ describe("resolveStyles", () => {
     const system = makeNode({
       kind: "system",
       id: "Test",
-      children: [makeNode({ kind: "resource", id: "DB", label: "DB" })],
+      children: [
+        makeNode({
+          kind: "service",
+          id: "Svc",
+          children: [
+            makeNode({
+              kind: "domain",
+              id: "D",
+              children: [
+                makeNode({
+                  kind: "usecase",
+                  id: "UC",
+                  children: [makeNode({ kind: "resource", id: "DB", label: "DB" })],
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
     });
     const userSheet: StyleSheet = {
       rules: [
@@ -1643,7 +1640,19 @@ describe("resource tag auto-inference in resolveStyles", () => {
     };
     const system = makeSystem(
       [db],
-      [makeNode({ kind: "service", id: "Svc", children: [resource] })],
+      [
+        makeNode({
+          kind: "service",
+          id: "Svc",
+          children: [
+            makeNode({
+              kind: "domain",
+              id: "D",
+              children: [makeNode({ kind: "usecase", id: "UC", children: [resource] })],
+            }),
+          ],
+        }),
+      ],
     );
     const sheet: StyleSheet = {
       rules: [
