@@ -47,3 +47,4 @@ scope:
 ## 関連テスト
 
 - `packages/core/src/renderer/layout-edges.test.ts` — `anchors between cards of one layer on different rows (#3494, TPL-3494)`: Umami の `UmamiApp` で、自分の端点カードの内側を通るエッジが無いこと、矢印が終点カードの外にあること、同じ行のカードは左右の辺のままであること。修正前のツリーで前の 2 件が落ちる
+- `packages/core/src/renderer/layout-edges.test.ts` — `computeEdgePoints anchors by row, not by layer (#3494, TPL-3494)`: 手で置いた同じ layer の 3 枚で、同じ行は左右の辺、後の行へは下から上、前の行へは上から下。実モデルの折り返しに頼らないので、幅の上限が変わって Umami が折り返さなくなっても柵が残る。修正前のツリーで後の 2 件が落ちる

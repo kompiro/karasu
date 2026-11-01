@@ -13,8 +13,9 @@
  * These drive `runRoutingChain` on hand-placed cards, because the overlap only
  * appears once the lane pass has run, and because placement keeps a two-way
  * pair next to each other: no laid-out model in `routing-parity.test.ts`
- * reaches this (TPL-2598). The cards are one layer wrapped into rows, as a
- * drill-down's are, so the endpoints face each other side to side.
+ * reaches this (TPL-2598). The endpoints face each other side to side across
+ * two rows. `computeEdgePoints` anchored one layer wrapped into rows that way
+ * until #3494; here it is a hand-built input for the router.
  */
 import { describe, it, expect } from "vitest";
 import { runRoutingChain } from "./layout-edges.js";
@@ -37,7 +38,7 @@ function card(id: string, x: number, y: number, width = 160, height = 66): Layou
   } as LayoutNode;
 }
 
-/** An edge between two cards of one layer: anchored mid-height on the facing sides. */
+/** An edge anchored mid-height on the two cards' facing sides. */
 function sideToSide(from: LayoutNode, to: LayoutNode): LayoutEdge {
   const right = to.x > from.x;
   return {
