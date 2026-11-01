@@ -23,7 +23,6 @@
    * Local intra-component stacking contexts (e.g. a sticky table header)
    * keep a literal `z-index: 1` — they are not part of this scale. */
   --z-handle: 50; /* split / sidebar drag handles */
-  --z-dropdown: 100; /* inline toolbar dropdown menu (export mode) */
   --z-floating-panel: 100; /* panels floating over the diagram: facet overview, node and edge detail panels.
                               Below --z-panel, so the focus canvas and its pill cover them */
   --z-panel: 200; /* slide-in panels and the node focus pill and focus canvas over the preview */

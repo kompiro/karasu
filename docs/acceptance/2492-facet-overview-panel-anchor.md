@@ -46,8 +46,8 @@
 
 ### AC-4: 重なり順がスケールの floating-panel 層にある（#3482）
 
-- [x] パネルはダイアグラムの上に描かれ、ツールバーのメニュー（portal される shadcn の DropdownMenu）が重なる位置ではメニューが手前に来る。判定は `elementFromPoint` で computed stacking を読む（TPL-1468 (4)）
-  > ✅ Automated — `packages/e2e/tests/at-2492-facet-overview-panel.spec.ts` › `The panel sits above the diagram and below the toolbar's menus`
+- [x] パネルはダイアグラムの上に描かれ、ツールバーのメニュー（portal される shadcn の DropdownMenu）が重なる位置ではメニューが手前に来る。フォーカスキャンバスを開くと、パネルの位置でもキャンバスが手前に来る。判定は `elementFromPoint` で computed stacking を読む（TPL-1468 (4)）
+  > ✅ Automated — `packages/e2e/tests/at-2492-facet-overview-panel.spec.ts` › `The panel sits above the diagram, below the toolbar's menus and below the focus canvas`
 
 ## 手動確認
 

@@ -10,7 +10,7 @@ import { bootMemoryApp } from "../fixtures/boot.js";
  *
  * Coverage map (test name → AT bullet):
  *  - "Membership overview opens below the toolbar, lists each facet's members and closes" → AC-3
- *  - "The panel sits above the diagram and below the toolbar's menus" → AC-4
+ *  - "The panel sits above the diagram, below the toolbar's menus and below the focus canvas" → AC-4
  */
 
 const KRS = `facet pii { label "Personal data" }
@@ -60,7 +60,10 @@ test.describe("AT-2492 facet overview panel", () => {
 
   // TPL-1468 (4): the stacking order is a computed fact, so it is read back with
   // `elementFromPoint` rather than from the panel's `z-index` rule.
-  test("The panel sits above the diagram and below the toolbar's menus", async ({ page, opfs }) => {
+  test("The panel sits above the diagram, below the toolbar's menus and below the focus canvas", async ({
+    page,
+    opfs,
+  }) => {
     await bootMemoryApp(page, opfs, KRS);
 
     await page.getByRole("button", { name: /Facets/ }).click();
@@ -105,5 +108,17 @@ test.describe("AT-2492 facet overview panel", () => {
     expect(await topmostIsInside("[role='menu']", (left + right) / 2, (top + bottom) / 2)).toBe(
       true,
     );
+
+    // Below the focus canvas: it covers the whole preview from the layer above
+    // (--z-panel), so the panel's centre belongs to the canvas once it opens.
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await page.locator('.preview-container svg [data-node-id="Billing"]').first().hover();
+    await page.locator(".node-focus-pill").click();
+    await expect(page.locator(".focus-canvas")).toBeVisible();
+    await expect(panel).toBeVisible();
+    expect(
+      await topmostIsInside(".focus-canvas", box.x + box.width / 2, box.y + box.height / 2),
+    ).toBe(true);
   });
 });
