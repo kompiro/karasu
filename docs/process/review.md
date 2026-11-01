@@ -44,7 +44,7 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 
 | 段階 | 変更したもの | PR での CodeRabbit | 通す条件 |
 | --- | --- | --- | --- |
-| Low | `docs/test-perspectives/**`・`docs/guide/**`・新しいテストファイル（既存のテストファイルの変更は Medium）、新しい ADR、ADR の昇格（Design Doc の削除、リンクの張り替え、ADR へのリンクの追加）、既存 ADR の frontmatter | 回さない | 記録と CI が通れば auto-merge |
+| Low | `docs/test-perspectives/**`・`docs/guide/**`・新しいテストファイル（既存のテストファイルの変更は Medium）、新しい ADR、ADR の昇格（Design Doc の削除、リンクの張り替え、ADR へのリンクの追加）、既存 ADR の frontmatter、ADR の生成物だけを変える再生成 PR | 回さない | 記録と CI が通れば auto-merge（再生成 PR は記録なしで、スクリプトが REST でマージする） |
 | Design | `docs/design/**` | ready の直後に 1 回だけ。ゲートにしない | 記録と人間のレビュー |
 | Medium | ほかのすべて（`packages/*`・`docs/acceptance/**`・`examples/**`・既存 ADR の本文など） | 回さない | 記録と、サマリー・証拠・preview を見た人間の判断 |
 | High | workflow・release・依存の変更・`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`docs/process/**`・`.claude/rules/**`・`.coderabbit.yaml`・レビューの仕組み（`scripts/review/**`・`scripts/coderabbit/**`・`.claude/skills/**` など） | Critical / Major の未対応が無くなるまで回す（再レビューは 3 回まで） | 人間が差分を読む |
@@ -79,6 +79,8 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 
 **到達状態**: PR 本文に記録の節が 1 つあり、その `head` が PR の HEAD で、すべての指摘に対応が書かれている。
 High 以外では Review tier がこれを検査する。High でも、Claude が作る PR では同じ形で残す。
+例外は ADR の生成物だけを変える Low の再生成 PR（`pnpm adr:regenerate-pr`、#3416）で、記録を求めない。
+生成物が head から生成し直した結果とちょうど一致することを `Validate` が確かめるので、読む差分が無い。
 
 ```
 node scripts/review/local-review-record.ts render --findings <findings.json> --into <本文ファイル>
