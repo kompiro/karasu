@@ -4791,6 +4791,14 @@ system S {
       expectDroppedWhole(inEntity(construct), construct, "infra-path-too-long", "value");
     });
 
+    // The id after the trailing dot opens the next edge, so the entity keeps
+    // that relation instead of reading `-> F` as an implicit edge.
+    it("leaves an edge on the next line after a trailing dot to the block", () => {
+      const construct = `table DB.orders.`;
+      const source = `\nsystem S {\n  service A {\n    domain D {\n      entity E {\n        ${construct}\n        E -> F\n      }\n      entity F\n    }\n  }\n}\n`;
+      expectDroppedWhole(source, construct, "infra-path-too-long", "value");
+    });
+
     // A resource is a node, so the path's error keeps it with the two segments
     // it read, as the site's dangling-dot recovery does; the block after it
     // still parses.
@@ -4810,6 +4818,17 @@ system S {
       assert(resource.kind === "resource");
       expect(resource.ref).toEqual({ parent: "DB", child: "C" });
       expect(resource.id).toBe("DB.C");
+    });
+
+    it("leaves an edge on the next line after a resource's trailing dot to the block", () => {
+      const source = `system S {\n  database DB { table C }\n  service A {\n    domain D {\n      usecase U {\n        resource DB.C.\n        X -> Y\n      }\n    }\n  }\n}\n`;
+      const result = Parser.parse(source);
+      expect(result.diagnostics.map((d) => d.code)).toEqual(["infra-path-too-long"]);
+      const usecase = result.value.systems[0].children[1].children[0].children[0];
+      expect(usecase.edges.map((e) => [e.from, e.to])).toEqual([["X", "Y"]]);
+      const resource = usecase.children[0];
+      assert(resource.kind === "resource");
+      expect(resource.ref).toEqual({ parent: "DB", child: "C" });
     });
   });
 });
