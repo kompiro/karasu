@@ -141,5 +141,5 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DATE: ${{ steps.version.outputs.date }}
         run: |
-          url=$(gh issue create --title "Release train ${DATE}" --label release --body-file "$RUNNER_TEMP/issue.md")
+          url=$(gh issue create --title "Release train ${DATE}" --label release --label "topic: build" --body-file "$RUNNER_TEMP/issue.md")
           echo "::notice::Tracking Issue: ${url}"
