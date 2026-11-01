@@ -16,9 +16,9 @@ type: product
 
 ### AC-1: 両方向の組は 1 本の線になり、ラベルが向きを示す
 
-- [x] AT-A: Umami fixture（`packages/core/src/renderer/fixtures/dense-domain-canvas.krs`）の `UmamiApp` drill-down で、41 本の edge が 27 本の線で描かれ、交差は 157 か所から 61 か所以下に減る。card は動かない
+- [x] AT-A: Umami fixture（`packages/core/src/renderer/fixtures/dense-domain-canvas.krs`）の `UmamiApp` drill-down で、41 本の edge が 27 本の線で描かれ、交差は 134 か所から 58 か所以下に減る。card は動かない
 
-  > ✅ Automated — `packages/core/src/renderer/mutual-pair.test.ts` › `the dense domain canvas (Umami fixture)` › `draws 27 lines instead of 41, with every authored edge still its own LayoutEdge`、`crosses 61 times or fewer instead of 157`、`moves no card`
+  > ✅ Automated — `packages/core/src/renderer/mutual-pair.test.ts` › `the dense domain canvas (Umami fixture)` › `draws 27 lines instead of 41, with every authored edge still its own LayoutEdge`、`crosses 58 times or fewer instead of 134`、`moves no card`
 
 - [x] AT-B: 組の 2 つの半分は分け目で同じ座標を共有し、それぞれ自分の target で終わる。分け目は角と、その線の hop の隙間から離れている
 

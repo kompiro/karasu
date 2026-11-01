@@ -21,7 +21,7 @@
  * that passes no `edgeLineKey` (the draw.io exporter), computes the marks once,
  * exactly as before (TPL-2174).
  *
- * See docs/design/mutual-edge-pair-merge.md.
+ * Design: #3027.
  */
 
 import { computeCrossingMarks } from "./crossing-marks.js";
