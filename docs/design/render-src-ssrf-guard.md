@@ -44,7 +44,8 @@ loopback の `Host` を持つので、#3418 の bind と `Host` 検査ではこ�
 
 ## 制約・前提
 
-- ADR-123 の契約（`src` は任意の公開 URL、400 / 502 / 422 の使い分け、`code` と `view`）は変えない
+- ADR-123 の契約（`src` は任意の公開 URL、400 / 502 / 422 の使い分け、`code` と `view`）は保ったまま拡張する。足すのは
+  userinfo を持つ URL の拒否と、同時実行の上限を超えたときの 503 の 2 つで、changeset と昇格する ADR に書く
 - CLI に production 依存を足さない。足すなら Dependency & license impact と bundling の判断が要る
 - `https:` の証明書検証と SNI は、URL の hostname のまま行われること
 - 公開ホストの運用（レート制限、キャッシュ）と、`src` の Content-Type 検証（ADR-123 の残課題）は範囲外
@@ -64,7 +65,9 @@ fetch すると、接続のときにもう一度引かれ、その間に答え�
 宛先が IP literal のとき `lookup` は呼ばれないので、hop ごとに URL の hostname が IP literal なら同じ禁止範囲で直接確かめる。
 `url.hostname` は IPv6 を `[::ffff:7f00:1]` のように括弧付きで持ち、`net.isIP("[::1]")` は 0 を返すので、判定の前に括弧を外す。
 外し忘れると family が `"ipv4"` に落ち、`BlockList.check` は読めない値に `false` を返すので、検査が素通りする（fail open）。
-そこで判定は、IP として読めない値を禁止として扱う（fail closed）。
+そこで判定は、IP として読めない値を禁止として扱う（fail closed）。hop を IP literal と名前のどちらとして扱うかの分岐も、
+括弧の扱いで割れないようにする。`[` で始まる hostname は無条件に IP literal の側に回す。名前の側に回すと、`http.request` が
+自分で括弧を外して `lookup` を呼ばずに接続するので、検査が丸ごと飛ぶ。
 
 `request` には **`agent: false`** を渡し、hop ごとに新しい socket を張る。共有の `http.globalAgent` を使うと、keep-alive で
 再利用した socket には `lookup` が呼ばれず、`NODE_USE_ENV_PROXY=1` の環境では request が proxy に送られて `lookup` が一度も
@@ -172,22 +175,26 @@ hairpin NAT と転送の経路は、karasu から見えるのが public アド�
   桁が離れすぎない値にする
 - **時間:** 今と同じ 10 秒を、全 hop で 1 つの `AbortSignal` で持つ。ただし `dns.lookup` は libuv の threadpool（既定 4 本）で
   `getaddrinfo` を走らせ、中断できない。signal が切れても応答を返すだけで、遅い DNS の問い合わせは thread を握ったまま残る
-- **同時実行:** そのため、同時に処理する `src` の fetch を 4 件までにし、超えた request は 503 にする。攻撃者のページが
-  応答の遅い名前を大量に `src` に渡しても、threadpool を使う `serve` の `fs`（`realpath`、`readFile`、chokidar）が止まらない。
-  `?code=` は fetch しないので数えない
+- **同時実行:** そのため、同時に処理する `src` の fetch を 2 件までにし、超えた request は 503 にする。上限を threadpool の
+  本数（4）と同じにすると、遅い問い合わせ 4 件で thread が埋まる（Node 24.18 で threadpool の 4 本を `pbkdf2` で塞ぐと `fs.stat` が約 230 ms 待ち、3 本までなら待たなかった）。
+  2 件なら、攻撃者のページが応答の遅い名前を大量に `src` に渡しても、threadpool を使う `serve` の `fs`（`realpath`、`readFile`、
+  chokidar）に thread が 2 本残る。枠は応答を返したときではなく、**応答を返し、かつ進行中の `dns.lookup` の callback が返った
+  とき** に空ける。応答だけで空けると、10 秒で切った後も問い合わせが thread を握ったまま次の枠が埋まり、上限が thread の数を
+  縛らない。`?code=` は fetch しないので数えない
 
 ## 現時点の方針
 
 案A を採る。`/render` の `src` は、`node:http` / `node:https` の `request` に禁止範囲を確かめる `lookup` を渡して取りに行く。
 リダイレクトは手で最大 5 回まで追い、hop ごとに同じ検査をする。IP として読めない値は禁止として扱う。本文は 256 KiB、
-同時実行は 4 件までにする。禁止範囲は loopback・private・link-local・CGNAT・予約範囲と、
+同時実行は 2 件までにし、枠は DNS の問い合わせが返るまで空けない。禁止範囲は loopback・private・link-local・CGNAT・予約範囲と、
 このマシン自身のアドレスである。共有の agent は使わず（`agent: false`）、proxy の環境変数と keep-alive の socket を通さない。
 さらに外向きの request に `X-Karasu-Render: 1` を付け、`serve` はそれを持つ request を path によらず拒否する。
 
 ### 実装の指針
 
 1. `packages/cli/src/render-fetch.ts`（新規）:
-   - `isBlockedAddress(address)`: 括弧を外し、`net.isIP` が 0 なら禁止。IPv4-mapped を IPv4 に直し、family を明示して、
+   - `normalizeAddress(address)`: 括弧を外し、IPv4-mapped を IPv4 に直す。単体で export してテストする
+   - `isBlockedAddress(address)`: `normalizeAddress` の後で `net.isIP` が 0 なら禁止。family を明示して、
      `net.BlockList` の禁止範囲と、`os.networkInterfaces()` のアドレスを同じ正規化で `addAddress` した `BlockList` で判定する
    - `guardedLookup`: `dns.lookup(hostname, { ...options, all: true })` の結果を全部確かめ、1 つでも禁止なら error、
      通れば呼び出し側の `options.all` に合わせて返す
@@ -195,7 +202,9 @@ hairpin NAT と転送の経路は、karasu から見えるのが public アド�
      `request`、リダイレクトの追跡（最大 5）、256 KiB の上限、`User-Agent`・`Accept-Encoding: identity`・`X-Karasu-Render: 1` の付与。
      結果は `{ ok: true, text } | { ok: false, status, reason, message }`。status は決めること 2 の線で 400 か 502、`reason` は
      `"blocked-address"`、`"too-many-redirects"`、`"too-large"` などの機械で見分けられる値で、テストはこれで拒否の理由を確かめる
-   - 同時実行の上限（4 件、超えたら 503）は `handleRender` の `src` の分岐に置く
+   - 同時実行の上限（2 件、超えたら 503）。枠を取るのは `handleRender` の `src` の分岐で、空けるのは応答を返したことと、
+     `guardedLookup` が呼んだ `dns.lookup` の callback が返ったことの両方が揃ったとき。`fetchSrc` は進行中の lookup の
+     完了を知らせる Promise を返し、`handleRender` はそれを待ってから枠を空ける
    - テストのために resolver（`dns.lookup` の代わり）、interface の一覧、禁止範囲の判定を差し替えられるようにする
 2. `render-endpoint.ts`: `fetch` を `fetchSrc` に替える。`isSafeUrl` は userinfo を拒否し、IP literal を `isBlockedAddress` で
    判定し、`localhost` / `*.localhost`（末尾の `.` をすべて外す）を拒否する形にする
@@ -206,21 +215,29 @@ hairpin NAT と転送の経路は、karasu から見えるのが public アド�
    - 拒否を確かめる宛先には、届いた request を数える server を `127.0.0.2` に立てて向け、request が 0 件であることと
      `reason: "blocked-address"` の両方を確かめる。`127.0.0.2` に listen できない環境（macOS など）では `reason` だけを確かめる。
      到達できないアドレス（`10.0.0.1` など）だけで確かめると、接続を試みて失敗しても 502 になり、検査が壊れていても通ってしまう
+   - 「このマシン自身のアドレス」の判定を確かめるときは、差し替える interface のアドレスを **どの禁止範囲にも入らない値**
+     （`198.51.100.7` など。TEST-NET-2 は表に無い）にする。`127.0.0.2` や private のアドレスを使うと範囲の判定で先に落ち、
+     interface の判定を消してもテストが通る。対照として、同じアドレスを interface の一覧から外すと `reason` が
+     `"blocked-address"` でなくなる（接続の失敗になる）ことも確かめる
 
    ケース:
    - `isBlockedAddress` の表: 上の各範囲の境界の内と外、`::1` と `fd00::1`（family を明示しないと素通りする形）、
      `[::1]` と `[::ffff:7f00:1]`（括弧付き）、`not-an-ip` と `127.0.0.1.`（読めない値は禁止）、
-     `::ffff:127.0.0.1`、`::ffff:7f00:1`、interface のアドレスとその IPv4-mapped の形、省略しない IPv6 の書き方
+     `::ffff:127.0.0.1`、`::ffff:7f00:1`、interface のアドレス（`198.51.100.7`）とその IPv4-mapped の形、省略しない IPv6 の書き方
+   - `normalizeAddress` の表: `[::1]` → `::1`、`::ffff:7f00:1` → `127.0.0.1`、`::ffff:127.0.0.1` → `127.0.0.1`。Node 24 の
+     `BlockList` は IPv4-mapped を自分で判定するので、CI（Node 24）では `isBlockedAddress` の表だけでは正規化の欠落を検出できない
    - `isSafeUrl`: `localhost.`、`localhost..`、`app.localhost`、`0x7f.1`、`2130706433`、`[::ffff:127.0.0.1]`、`[fc00::1]`、`[fe80::1]`、
      `100.64.0.1`、`http://user:pass@example.com/`
    - loopback に解決される名前（実際の判定のまま、resolver で `127.0.0.1` を返す）が接続前に 400 で拒否され、server に
      request が届かないこと。resolver が公開アドレスと private アドレスを混ぜて返したときも拒否されること
-   - `src` そのものがこのマシン自身のアドレス（差し替えた interface のアドレス）のとき 400
-   - 公開に見せた server が、`127.0.0.2` に解決される名前、`[::ffff:127.0.0.2]`、差し替えた interface のアドレス
-     （このマシン自身）へ 302 すると 502 と `reason: "blocked-address"` で拒否され、数える server に request が届かないこと
+   - `src` そのものがこのマシン自身のアドレス（interface に差し替えた `198.51.100.7`）のとき 400 と `reason: "blocked-address"`
+   - 公開に見せた server が、`127.0.0.2` に解決される名前と `[::ffff:127.0.0.2]` へ 302 すると 502 と
+     `reason: "blocked-address"` で拒否され、数える server に request が届かないこと。`198.51.100.7`（このマシン自身）への 302 も
+     同じ `reason` の 502
    - 5 回のリダイレクトは通り、6 回目で 502。`Location` の無い 3xx、`file:` への 3xx、userinfo を持つ URL への 3xx も 502
    - 256 KiB を超える本文が 502
-   - 同時に 5 件目の `src` が来たら 503（resolver を止めて 4 件を抱えさせる）
+   - 同時に 3 件目の `src` が来たら 503（resolver を止めて 2 件を抱えさせる）。止めた resolver の request が 10 秒の上限で
+     502 を返した後も、resolver が返るまでは 3 件目が 503 のままであること（枠が応答だけで空かない）。時間はテストの中で短く差し替える
    - proxy: 子プロセスを `NODE_USE_ENV_PROXY=1` と、数える proxy を指す `HTTP_PROXY` 付きで起こし、`fetchSrc` を読み込む
      小さな fixture（`tsx` で TS のまま読む）から private に解決される名前を取りに行かせる。proxy に request が届かず拒否されること。
      `NODE_USE_ENV_PROXY` が無い Node（22 の初期の版）では意味が無いので、`process.allowedNodeEnvironmentFlags.has("--use-env-proxy")`
