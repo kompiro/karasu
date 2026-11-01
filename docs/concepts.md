@@ -163,10 +163,12 @@ karasu collapses these into **a single implicit edge per sync/async kind**, and 
 This is a direct embodiment of the **"limit how much is shown at once"** principle from the "Goals and non-goals" section:
 aggregate when viewed from above; delegate the details to drill-down and the detail panel.
 Aggregation is done separately for sync and async, so if a pair has both kinds of dependencies, two edges are drawn.
+A two-way pair of the same kind and look (`A -> B` and `B -> A`) is drawn as one line with an arrow at each end.
+Both edges remain: each draws the half on its own target's side, and its label starts with an arrow showing its direction (ADR-3027 to come, #3027).
 
 References: ADR-445, ADR-510, PR #607.
 
-> Related TPLs: [TPL-3022](test-perspectives/TPL-3022-withheld-content-stays-reachable.md) — authored content the canvas truncates or withholds stays reachable in full on the same surface.
+> Related TPLs: [TPL-3022](test-perspectives/TPL-3022-withheld-content-stays-reachable.md) — authored content the canvas truncates or withholds stays reachable in full on the same surface. [TPL-3027](test-perspectives/TPL-3027-visual-merge-only-when-indistinguishable.md) — two edges are drawn as one line only when the reader could not tell them apart.
 
 ### Ghost — keep boundaries visible even as the field narrows under drill-down
 

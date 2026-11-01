@@ -298,9 +298,19 @@ export function buildLabelInputs(
   const cyclicLines: EdgeLine[] = [];
   edges.forEach((edge, index) => {
     const style = styleFor(edge, index);
-    const drawn = canvasLabel(edge, style);
+    const points: Point[] = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
+    // The same anchor `renderEdge` will draw, override included (were they to
+    // disagree, the pass would nudge a label off a collision it is not at). Found
+    // before the text: a paired half's label carries its segment's direction (#3027).
+    const { anchor, segDir } = labelAnchorWithSegment(
+      points,
+      resolveLabelPosition(edge, style),
+      style.labelOffsetX,
+      style.labelOffsetY,
+      ownLabelSegment(edge),
+    );
+    const drawn = canvasLabel(edge, style, segDir);
     if (edge.cyclic === true && edge.ghost !== true) {
-      const points: Point[] = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
       cyclicLines.push(edgeLine(index, points, style.strokeWidth));
     }
     // Ghost/cyclic edges are peripheral (dimmed / back-arc styled) and sit
@@ -312,21 +322,11 @@ export function buildLabelInputs(
     // at is drawn into whatever it lands on.
     const peripheral = edge.ghost === true || edge.cyclic === true;
     if (peripheral && drawn?.display !== "auto") return;
-    const points: Point[] = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
     // A dimmed ghost line never displaces a real label, in any mode (#2360).
     // A cyclic line is added below, once for the whole canvas.
     if (!edge.ghost && !edge.cyclic) edgeLines.push(edgeLine(index, points, style.strokeWidth));
     // Nothing to place: no label, or one the canvas never draws.
     if (drawn === undefined || drawn.display === "hover") return;
-    // The same anchor `renderEdge` will draw, override included: if the two
-    // disagreed, the pass would push the label off a collision it is not at.
-    const { anchor, segDir } = labelAnchorWithSegment(
-      points,
-      resolveLabelPosition(edge, style),
-      style.labelOffsetX,
-      style.labelOffsetY,
-      ownLabelSegment(edge),
-    );
     inputs.push({
       index,
       anchor,

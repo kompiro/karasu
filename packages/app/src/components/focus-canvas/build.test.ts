@@ -92,6 +92,16 @@ describe("readFocusSource", () => {
     expect(card.box.width).toBeGreaterThan(0);
   });
 
+  it("reads a paired half's synthetic label without its direction arrow (#3027)", () => {
+    // A synthetic label (the `W` marker here) has no `data-edge-label`, so the
+    // drawn text is read; the arrow before it follows the main canvas's line.
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg">
+<g data-edge-from="Api" data-edge-to="Store" class="krs-edge">
+<line x1="0" y1="0" x2="10" y2="0" stroke="#94A3B8"/>
+<text fill="#94A3B8"><tspan class="krs-edge__cue">→ </tspan>W</text></g></svg>`;
+    expect(readFocusSource(svg).edges.map((e) => e.label)).toEqual(["W"]);
+  });
+
   it("returns an empty source for markup that is not a diagram", () => {
     expect(readFocusSource("").cards.size).toBe(0);
     expect(readFocusSource("<div>no diagram</div>").edges).toEqual([]);
