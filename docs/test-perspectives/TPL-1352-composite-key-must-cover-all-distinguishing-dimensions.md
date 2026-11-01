@@ -165,8 +165,9 @@ path」が次元を落とした例で、#2817 と同じく、集めた時点で�
   候補が消えた
 
 直し方は、edge の組は `edgeKey`、種別込みは `edgeKindKey`（`view/edge-key.ts`）、
-path は `nodePathIdentityKey` に揃えること。書き込みと読み取りが同じヘルパーを通る点は
-#2819 と同じである。
+path は segment の区切りを保つ injective な形に揃えること（caller ghost の判定は
+`nodePathIdentityKey`、`buildNodePathIndex` の同 path 畳みは既に import 済みの `nodePathRefId`）。
+書き込みと読み取りが同じヘルパーを通る点は #2819 と同じである。
 
 ## 関連テスト
 
