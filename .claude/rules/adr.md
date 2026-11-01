@@ -208,8 +208,8 @@ High として扱い auto-merge を止める。そのときは `gh pr edit <N> -
 
 Claude のセッションの gh は、`--draft` の無い `gh pr create` を `risk: low` のときだけ、このブランチの CLI の
 レビューが済んでいれば通す（ADR-3342 のゲート）。通すのは、gh がチェックアウト中のブランチを origin の repo へ push する
-形だけで、`--head`・`--repo`・`GH_REPO` / `GH_HOST`・origin 以外への `gh repo set-default`、origin に無い base の
-どれかがあれば拒否する。そのときは draft で作って `gh pr ready` で外す。CLI が使えない環境では
+形だけで、`--head`・`--repo`・`GH_REPO` / `GH_HOST`・origin 以外への `gh repo set-default`、origin に無い base、
+分からない origin の既定ブランチ、`risk: low` 以外の段階のラベルのどれかがあれば拒否する。そのときは draft で作って `gh pr ready` で外す。CLI が使えない環境では
 Low にならない（Review tier が CLI を飛ばした Low の記録を通さない）ので、`risk: medium` で draft から作る。
 
 Low でなければ、出た段階のラベルを付けて draft で作り、`gh pr ready <N>` だけ実行して通常の PR として扱う。

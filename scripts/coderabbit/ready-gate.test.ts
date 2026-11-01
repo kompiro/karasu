@@ -359,6 +359,11 @@ describe("gh wrapper: gh pr create", () => {
     ["with another tier", 'gh pr create --label "risk: high" --title x'],
     ["with risk: low only in the body", 'gh pr create --body "risk: low" --title x'],
     ["with a label that only contains risk: low", 'gh pr create --label "risk: lower" --title x'],
+    ["with risk: low next to a higher tier", 'gh pr create -l "risk: low,risk: high" --title x'],
+    [
+      "with risk: low and a second --label for Design",
+      `gh pr create ${LOW} -l "risk: design" --title x`,
+    ],
   ])("refuses a create without --draft %s, even once the CLI reviewed the branch", (_why, line) => {
     const gh = fakeGh(DRAFT);
     const result = run(line, gh, reviewedWork());
@@ -402,6 +407,8 @@ describe("gh wrapper: gh pr create", () => {
     const line = `gh pr create ${LOW} ${args}`;
     const result = run(line, gh, reviews({ head: reviewed, state: "complete" }));
     expect(result.status).toBe(1);
+    // Refused for the review, not because a misread base could not be found.
+    expect(result.stderr).toContain("no completed local CodeRabbit CLI review");
     expect(calls(gh)).toEqual([]);
   });
 
@@ -499,10 +506,13 @@ describe("gh wrapper: gh pr create", () => {
     expect(calls(gh)).toEqual([]);
   });
 
-  it.each([
-    ["without a reason", `KARASU_LOCAL_REVIEW_SKIPPED= gh pr create ${LOW} --title x`],
-    ["for a create that is not Low", "KARASU_LOCAL_REVIEW_SKIPPED=quota gh pr create --title x"],
-  ])("does not count a skip %s", (_why, line) => {
+  it("ignores a skip without a reason on a Low create: the review decides", () => {
+    const line = `KARASU_LOCAL_REVIEW_SKIPPED= gh pr create ${LOW} --title x`;
+    expect(run(line, fakeGh(DRAFT), reviewedWork()).status).toBe(0);
+  });
+
+  it("does not count a skip for a create that is not Low", () => {
+    const line = "KARASU_LOCAL_REVIEW_SKIPPED=quota gh pr create --title x";
     expect(run(line, fakeGh(DRAFT), reviews()).status).toBe(1);
   });
 });

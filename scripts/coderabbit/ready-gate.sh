@@ -12,7 +12,9 @@
 #   .session-complete-v2 (.state). /engineering:code-review leaves no record,
 #   so only the CLI run is checked; the refusal names both steps.
 # - `gh pr create` must pass --draft, except for a Low PR (--label "risk: low"):
-#   a Low ADR PR opens without a draft (#3504). Such a create skips
+#   a Low ADR PR opens without a draft (#3504). "risk: low" must be the only
+#   tier label: Review tier takes the strictest, so another one makes the PR
+#   that tier, which goes through a draft. Such a create skips
 #   `gh pr ready`, so it needs the same review, of HEAD against the base gh
 #   picks (--base, the branch's gh-merge-base, or origin's default branch, read
 #   from origin only). A higher tier still goes through a draft, so the ready
@@ -101,6 +103,7 @@ if [ "$action" = "create" ]; then
   base_name=""
   head_name=""
   low=false
+  higher=false
   repo_name=""
   take_value() {
     local name
@@ -112,7 +115,10 @@ if [ "$action" = "create" ]; then
         while IFS= read -r -d , name; do
           name=${name#"${name%%[![:space:]]*}"}
           name=${name%"${name##*[![:space:]]}"}
-          [ "$name" = "risk: low" ] && low=true
+          case "$name" in
+            "risk: low") low=true ;;
+            "risk: design" | "risk: medium" | "risk: high") higher=true ;;
+          esac
         done <<<"$2,"
         ;;
       repo) repo_name=$2 ;;
@@ -176,10 +182,10 @@ if [ "$action" = "create" ]; then
     esac
   done
   [ "$draft" = true ] && exit 0
-  if [ "$low" != true ]; then
+  if [ "$low" != true ] || [ "$higher" = true ]; then
     echo "gh pr create was refused: create the PR as a draft (gh pr create --draft). Run \
 /engineering:code-review on the branch diff and one CodeRabbit CLI review before taking it out of draft \
-with gh pr ready (docs/process.md PR workflow). Only a Low PR (--label \"risk: low\", a Low ADR PR in \
+with gh pr ready (docs/process.md PR workflow). Only a Low PR (--label \"risk: low\" and no other tier label, a Low ADR PR in \
 .claude/rules/adr.md) is created without --draft."
     exit 0
   fi
