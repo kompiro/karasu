@@ -290,16 +290,16 @@ git cat-file -e "$head^{commit}" 2>/dev/null || exit 0
 # The PR's own base commit, which also holds for a fork's PR. When it is not
 # here (origin fetched before the base moved), fall back to the base by name.
 base_ref=$(jq -r '.baseRefOid // empty' <<<"$view")
+base_flag=--base-commit
 if [ -z "$base_ref" ] || ! git cat-file -e "$base_ref^{commit}" 2>/dev/null; then
   base_ref=$(base_ref_of "$base") || exit 0
+  base_flag=--base
 fi
 reviewed_branch "$head" "$base_ref" && exit 0
-# The commands below name the base branch, which the CLI takes.
-shown=$(base_ref_of "$base") || shown=$base_ref
 
 echo "gh pr ready was refused: no completed local CodeRabbit CLI review covers PR #$number's branch \
 (head ${head:0:7}). Before taking a PR out of draft (docs/process.md PR workflow): run \
-/engineering:code-review on git diff $shown...HEAD, then run the CLI once \
-(coderabbit review --agent --deep --base $shown --committed), commit and push the fixes, and run \
+/engineering:code-review on git diff $base_ref...HEAD, then run the CLI once \
+(coderabbit review --agent --deep $base_flag $base_ref --committed), commit and push the fixes, and run \
 gh pr ready again. If the CLI cannot run here (not installed, not authenticated, out of quota), tell \
 the user, then rerun as KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr ready ${selector:-$number}${repo:+ --repo $repo}."

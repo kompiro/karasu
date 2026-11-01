@@ -312,9 +312,10 @@ describe("gh wrapper: gh pr ready", () => {
     const gh = fakeGh({ ...DRAFT, baseRefOid: HEAD });
     const result = run("gh pr ready 12", gh, reviewedWork());
     expect(result.status).toBe(1);
-    // The commands it suggests still name the base branch, which the CLI takes.
+    // The commands it suggests compare against the same base commit.
+    expect(result.stderr).toContain(`git diff ${HEAD}...HEAD`);
     expect(result.stderr).toContain(
-      "coderabbit review --agent --deep --base origin/main --committed",
+      `coderabbit review --agent --deep --base-commit ${HEAD} --committed`,
     );
   });
 
