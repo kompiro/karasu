@@ -147,10 +147,10 @@ pnpm run lint:krs-fences   # docs/{acceptance,spec,guide}/** と docs/concepts*.
     だったが、#2415 で `lint:krs-fences` に統合して削除した — 同じファイルに規約が 2 つ
     あると、緩い方（暗黙の `system` ラップ）が主張を曖昧にする。
 
+## 関連テスト
+
+- `scripts/lint/krs-fences.test.ts` — `analyzeKrsFencesIn` で無印 / `fragment` / `invalid` の扱いと未知 marker の報告、`` analyzeKrsFencesIn — bare fences holding `.krs` `` で `.krs` を入れた裸 fence の検出（擬似文法は裸のまま許す）、`analyzeKrsFences over the real corpus` で acceptance・spec・guide・concepts の全 fence が parse できることを固定する
+
 ## 派生元
 
 - `.claude/rules/acceptance.md` §「埋める `.krs` スニペットは fence で主張を宣言する」
-
-## 関連テスト
-
-- `scripts/lint/krs-fences.test.ts` — `analyzeKrsFencesIn` で無印 / `fragment` / `invalid` の扱いと未知 marker の報告、`bare fences holding .krs` で `.krs` を入れた裸 fence の検出（擬似文法は裸のまま許す）、`analyzeKrsFences over the real corpus` で acceptance・spec・guide・concepts の全 fence が parse できることを固定する

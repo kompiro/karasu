@@ -64,11 +64,11 @@ scope:
 - **印に罰を与えない**: 既定描画は badge だけ。診断も filter の既定除外も付けない。読み手が自分で filter するのは自由だが、ツールが先回りしない
 - **消すことをラチェットの単位にする**: 人が `@draft` を消した PR がそのままレビュー済みの記録になる（karasu-nest の PR 還元 — [#2289](https://github.com/kompiro/karasu/issues/2289) / [#2228](https://github.com/kompiro/karasu/issues/2228)）
 
-## 派生元 spec
-
-- [`docs/spec/tags-annotations.md` § `@draft` — asserted, not confirmed](../spec/tags-annotations.md#draft--asserted-not-confirmed)
-
 ## 関連テスト
 
 - `packages/core/src/annotations/draft-confidence.test.ts` — `interpretConfidence` › `keeps an unknown value verbatim instead of erroring`（既知の水準の外側を display-only で受理）、`@draft end to end` › `does not warn about @draft or its confidence parameter`（印による警告がない）と `renders the draft badge in preference to another annotation on the same node`（既定の描画効果）
 - `packages/core/src/builtins/default-style.test.ts` › `getBuiltinStyleSheet — annotation badge labels (#1508)` — `@draft` を含む全 builtin annotation が dark / light の両テーマで既定のバッジ（label / icon / color）を持つことを固定する
+
+## 派生元 spec
+
+- [`docs/spec/tags-annotations.md` § `@draft` — asserted, not confirmed](../spec/tags-annotations.md#draft--asserted-not-confirmed)

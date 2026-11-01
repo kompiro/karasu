@@ -60,12 +60,12 @@ domain id の error 級一意性とは異なる）。bare id では foreign enti
 - 限定子付きでも resource / 未定義ターゲット → ドロップ。
 - 限定子付きの自ドメイン参照（`Order -> ThisDomain.LocalEntity`）→ intra として bare に正規化。
 
+## 関連テスト
+
+- `packages/core/src/view/view-extract.test.ts` › `cross-domain ghost entities (#1911)` — チェックリストの各ケース（outgoing / incoming の ghost 化とキー `DomainId.EntityId`、両方向参照の dedup、resource・未定義ターゲットのドロップ、自ドメイン限定子の intra 正規化）を 1 件ずつ固定する。bare な cross-domain 参照のドロップは同ファイルの `drops a bare cross-domain relation (only qualified DomainId.EntityId is a ghost)`
+
 ## 派生元 spec
 
 - [`docs/spec/syntax.md`](../spec/syntax.md) § `entity` declaration →「Intra- vs
   cross-domain targets — bare id vs `DomainId.EntityId`」節（本 TPL への back-ref あり）。
 - 設計経緯: [ADR-1911](../adr/1911-cross-domain-ghost-entities.md)。
-
-## 関連テスト
-
-- `packages/core/src/view/view-extract.test.ts` › `cross-domain ghost entities (#1911)` — チェックリストの各ケース（outgoing / incoming の ghost 化とキー `DomainId.EntityId`、両方向参照の dedup、resource・未定義ターゲットのドロップ、自ドメイン限定子の intra 正規化）を 1 件ずつ固定する。bare な cross-domain 参照のドロップは同ファイルの `drops a bare cross-domain relation (only qualified DomainId.EntityId is a ghost)`

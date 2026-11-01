@@ -74,12 +74,12 @@ catch-all ルート、または「どのリクエストがアプリに届くか�
 
 karasu での route 形の決定は [ADR-1828](../adr/1828-repo-backed-ref-pinned-permalink.md)（`/r/` prefix）と #1961（bare 形）にある。
 
-## 派生元 spec
-
-- `docs/spec/permalink.md` / `docs/spec/permalink.ja.md` — 「Route forms that carry an anchor」。bare 形は root catch-all なので、spec が定める「SPA と兄弟 Function が持つ経路には手を出さない」が破られたときに検出する proactive TPL。
-
 ## 関連テスト
 
 - `packages/app/src/render/bare-route.test.ts` — `matchBarePermalink` › `declines every reserved top-level segment`（予約リストの全セグメントと SPA の project route を catch-all が辞退する）、`decodePathname`（percent-decode 後に判定する）、`classifyResolveOutcome` › `never signposts a transient failure (%i)`（5xx を差し戻さない）
 - `packages/app/src/routes-config.test.ts` — `_routes.json` が SPA route と静的ディレクトリを除外し、除外がルート表の知っている path だけであること。`SPA project route` で SPA の URL と予約セグメントが同じ定数から作られていることを固定する
 - `packages/nest/src/router.test.ts` — specificity ranking（`prefers the literal route even when it was registered last` / `ranks by capture count, not by segment count`）と、`does not let a capture answer for a path a literal route owns`（`POST /webhooks/github` だけを登録して `GET` すると catch-all ではなく 405）
+
+## 派生元 spec
+
+- `docs/spec/permalink.md` / `docs/spec/permalink.ja.md` — 「Route forms that carry an anchor」。bare 形は root catch-all なので、spec が定める「SPA と兄弟 Function が持つ経路には手を出さない」が破られたときに検出する proactive TPL。

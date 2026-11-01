@@ -71,11 +71,11 @@ PR で確認する:
 - [ ] `docs/spec/i18n.md` の key naming 規約と実際の命名が一致しているか
       （spec を読まずに直感で命名していないか）。
 
+## 関連テスト
+
+- `packages/i18n/src/catalog.test.ts` › `key naming — max 4 dot-segments (docs/spec/i18n.md)` — en catalog の全 key が 4 dot-segment 以下であることを機械的に検査する（sub-feature を導入する判断はレビュー時のチェックリストに残る）
+
 ## 派生元 spec
 
 - [`docs/spec/i18n.md`「key naming 規約」](../spec/i18n.md#key-naming-規約)
   （本 TPL が守らせる正典。2026-07-18 に 3→4 段へ改訂、#2019 Point 6）
-
-## 関連テスト
-
-- `packages/i18n/src/catalog.test.ts` › `key naming — max 4 dot-segments (docs/spec/i18n.md)` — en catalog の全 key が 4 dot-segment 以下であることを機械的に検査する（sub-feature を導入する判断はレビュー時のチェックリストに残る）
