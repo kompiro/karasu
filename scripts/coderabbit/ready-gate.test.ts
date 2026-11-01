@@ -278,13 +278,38 @@ describe("gh wrapper: gh pr ready", () => {
   it.each([
     "gh pr ready 12 --undo",
     "gh pr ready 12 --repo kompiro/other",
+    "gh pr ready 12 --repo=kompiro/other",
     "gh pr ready -R kompiro/other 12",
     "gh pr ready -R=kompiro/other 12",
     "gh pr ready -Rkompiro/other 12",
+    "gh pr ready -R github.example.com/kompiro/karasu 12",
   ])("runs `%s` without consulting the PR", (line) => {
     const gh = fakeGh(DRAFT);
     expect(run(line, gh, reviews()).status).toBe(0);
     expect(calls(gh).some((c) => c.startsWith("pr view"))).toBe(false);
+  });
+
+  // --repo naming origin itself is the same PR as without it, so the check runs
+  // (#3514). The value is not taken for the PR selector.
+  it.each([
+    "gh pr ready 12 --repo kompiro/karasu",
+    "gh pr ready 12 --repo=Kompiro/Karasu",
+    "gh pr ready -R kompiro/karasu 12",
+    "gh pr ready -R=github.com/kompiro/karasu 12",
+    "gh pr ready -Rhttps://github.com/kompiro/karasu.git 12",
+  ])("refuses `%s` without a CLI review, as it does without --repo", (line) => {
+    const gh = fakeGh(DRAFT);
+    const result = run(line, gh, reviews());
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("PR #12");
+    expect(calls(gh).find((c) => c.startsWith("pr view"))).toMatch(/^pr view 12 --json/);
+    expect(calls(gh).some((c) => c.startsWith("pr ready"))).toBe(false);
+  });
+
+  it("runs `gh pr ready -R kompiro/karasu 12` once the CLI reviewed the branch", () => {
+    const gh = fakeGh(DRAFT);
+    expect(run("gh pr ready -R kompiro/karasu 12", gh, reviewedWork()).status).toBe(0);
+    expect(reachedRealGh(gh, "pr ready -R kompiro/karasu 12")).toBe(true);
   });
 
   it("fails open when gh cannot read the PR", () => {

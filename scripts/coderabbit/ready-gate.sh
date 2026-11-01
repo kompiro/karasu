@@ -32,8 +32,9 @@
 #   a PR is raised to Medium and goes through a draft;
 # - a create passes --draft;
 # - the PR is not a draft (every tier records the CLI run, #3286);
-# - a ready with --undo, or --repo / -R (the local checkout may not hold that
-#   repository);
+# - a ready with --undo, or with --repo / -R naming a repository other than
+#   origin (the local checkout may not hold it). Naming origin itself changes
+#   nothing, so the check still runs (#3514);
 # - anything about a ready cannot be determined (gh fails, unknown CLI record
 #   format). The gate must never block work because of its own failure.
 #
@@ -238,15 +239,45 @@ fi
 [ "$action" = "ready" ] || exit 0
 skipped && exit 0
 
+# host/owner/repo, lowercased, of a GitHub URL or of [HOST/]OWNER/REPO (gh's
+# default host is github.com).
+repo_id() {
+  local s=${1%/}
+  s=${s%.git}
+  s=${s#*://}
+  s=${s#*@}
+  s=$(printf '%s' "${s//://}" | tr '[:upper:]' '[:lower:]')
+  case "$s" in
+    */*/*) ;;
+    *) s=github.com/$s ;;
+  esac
+  echo "$s"
+}
+
 selector=""
+repo=""
+expect_repo=false
 for arg in "$@"; do
+  if [ "$expect_repo" = true ]; then
+    repo=$arg
+    expect_repo=false
+    continue
+  fi
   case "$arg" in
+    --undo) exit 0 ;;
+    -R | --repo) expect_repo=true ;;
     # -R also comes attached (-Rowner/repo, -R=owner/repo).
-    --undo | -R* | --repo | --repo=*) exit 0 ;;
+    -R=*) repo=${arg#-R=} ;;
+    -R*) repo=${arg#-R} ;;
+    --repo=*) repo=${arg#--repo=} ;;
     -*) ;;
     *) [ -z "$selector" ] && selector=$arg ;;
   esac
 done
+if [ -n "$repo" ]; then
+  origin=$(git remote get-url origin 2>/dev/null) || exit 0
+  [ "$(repo_id "$repo")" = "$(repo_id "$origin")" ] || exit 0
+fi
 
 gh_bin=${READY_GATE_GH:-gh}
 limit=()
