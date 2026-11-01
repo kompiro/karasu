@@ -17,7 +17,7 @@ scope:
 assumptions:
   - "symbol: packages/core/src/shapes/shape-registry.ts :: pictogramGroup"
   - "symbol: packages/core/src/shapes/shape-registry.ts :: PICTOGRAM_OFFSET"
-  - "grep: packages/core/src/renderer/svg-renderer.ts :: displayMode === \"icon\" && iconDef\\?\\.labelSlot"
+  - "grep: packages/core/src/renderer/node-card.ts :: displayMode === \"icon\" && iconDef\\?\\.labelSlot"
   - "file: packages/core/src/renderer/external-icon-card.test.ts"
   - "file: docs/acceptance/2803-slotted-icon-card-text.md"
   - "file: docs/test-perspectives/TPL-2803-measured-lines-are-drawn-lines.md"

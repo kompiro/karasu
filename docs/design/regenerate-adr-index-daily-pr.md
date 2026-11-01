@@ -43,7 +43,7 @@ ADR の PR は、`pnpm adr:regenerate` が書く `docs/adr/effective.md`・`docs
 | 観点          | 確かめたこと（出典）                                                                                                                                                                          |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 実行場所      | Anthropic のクラウドのサンドボックス。実行ごとに repo を新しく clone し、終われば捨てる（ドキュメント、実行記録）                                                                             |
-| 名義          | commit と PR はユーザーの GitHub ユーザーになる（ドキュメント）。PR は bot 作ではないので required check が走る                                                                               |
+| 名義          | PR の作成とマージはユーザーの GitHub ユーザーになる。PR は bot 作ではないので required check が走る。commit の author と committer は `Claude <noreply@anthropic.com>`（署名は verified）で、ユーザーではない（step 0 の spike、#3416 のコメント） |
 | GitHub の認証 | 認証情報はサンドボックスの外にあり、proxy が GitHub への通信に付け足す。中の `GH_TOKEN` は使えない仮の値。proxy が通すのは routine に付けた repo（karasu）だけ（ドキュメント）                |
 | GraphQL       | proxy が 403 で拒否する。`gh pr` 系のコマンドも同じ（ドキュメント、実行記録）。auto-merge の有効化と draft の解除は GraphQL にしか無いので使えない                                            |
 | push          | proxy はブランチを制限しない。拒否するのはブランチの削除と tag の push（ドキュメント）                                                                                                        |
@@ -57,6 +57,8 @@ ADR の PR は、`pnpm adr:regenerate` が書く `docs/adr/effective.md`・`docs
 - proxy を通した `--force-with-lease` の push（non-fast-forward）と、REST の PR 作成・ラベル・`PUT /pulls/{n}/merge`。
 - ruleset の `pull_request` ルールにある `require_extra_approval_for_unattributed_changes: true` が、routine が push した commit の REST マージに approval を求めないか。求めるなら、この設計は人の approval 無しには動かない。
 - setup script が `gitleaks` の release を取得できるか。release の asset は `github.com` から `*.githubusercontent.com` へ redirect する。届かなければ、環境の allowlist に足すか別の取得元を使う。
+
+追記（2026-10-31）: 実装の手順 0 の spike で 3 点とも成り立つことを確かめた。routine から proxy を通した lease 付きの push、REST の PR 作成・ラベル・`sha` 付きマージ（違う `sha` は 409）が通り、approval は求められず、setup script で入れた `gitleaks` で pre-push が通った。commit の author と committer は `Claude <noreply@anthropic.com>` だった（#3416 のコメント）。
 
 ## 制約・前提
 

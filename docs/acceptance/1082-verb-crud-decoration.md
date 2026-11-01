@@ -8,7 +8,8 @@ type: product
 - **関連 Issue**: [#1082](https://github.com/kompiro/karasu/issues/1082)
 - **対象ファイル**:
   - `packages/core/src/lexer/lexer.ts` (`:` を Colon トークンとして emit)
-  - `packages/core/src/parser/parser.ts` (`parseOperationsList` / `parseOneOperation` / 装飾 RHS バリデーション)
+  - `packages/core/src/parser/property-readers.ts` (`parseOperationsList` / `parseOneOperation`)
+  - `packages/core/src/parser/parser.ts` (装飾 RHS バリデーション)
   - `packages/core/src/parser/parser.test.ts`
   - `packages/core/src/spec/operations.ts` (`ResourceOperation` 型 + `isWriteOperation` 改訂)
   - `packages/core/src/spec/operations.test.ts`

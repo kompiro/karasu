@@ -52,8 +52,8 @@ ADR の必須要素は `docs/adr/TEMPLATE.md` を参照。frontmatter スキー�
 `pnpm adr:validate` が frontmatter 側と対で検査する。
 
 **現在の参照は frontmatter が持つ。** 後継 ADR へ導きたいなら `related_to` /
-`superseded_by` に足す。`pnpm adr:regenerate` が `graph.md` と `effective.md` に
-反映するので、本文を書き換えなくても読者は辿り着ける。
+`superseded_by` に足す。毎日の再生成 PR（`pnpm adr:regenerate-pr`）が `graph.md` と
+`effective.md` に反映するので、本文を書き換えなくても読者は辿り着ける。
 
 本文に残った dead path を CI は追いかけない。`scripts/lint/record-source-paths.ts` が
 `docs/adr/**` を走査対象から外しており、その理由（本文は当時の記録、現在の指し先は
@@ -126,11 +126,25 @@ caret は「後ろは動いてよい」という宣言なので、その後ろ�
 ```
 pnpm adr:validate          # スキーマ・関係性整合
 pnpm adr:check-assumptions # 本文の参照ファイル / 識別子の存在確認
-pnpm adr:regenerate        # docs/adr/effective.md, graph/*.md を再生成
 ```
 
-`adr:regenerate` は派生ファイルの差分を生むので、ADR 本体と一緒にコミット
-すること（pre-push の `adr-regenerate-check` がドリフトを検出する）。
+**生成物（`docs/adr/effective.md`・`graph.md`・`graph/*.md`）は ADR の PR に含めない。**
+毎日の routine が `pnpm adr:regenerate-pr` で生成物だけを変える PR を作ってマージする
+（[#3416](https://github.com/kompiro/karasu/issues/3416)）。表示を確かめるために
+`pnpm adr:regenerate` を手元で実行してよいが、生成物の差分は捨ててからコミットする
+（`git restore --source=HEAD --staged --worktree -- docs/adr/effective.md docs/adr/graph.md docs/adr/graph && git clean -fdq -- docs/adr/graph`。stage 済みの生成物も戻る。
+`git restore docs/adr` は未コミットの ADR 本体の編集まで戻すので使わない）。混ぜた PR は pre-push の `adr-generated-check` と required check の `Validate` が
+止める。急いで `main` の生成物を更新したいときは、PR の外で `pnpm adr:regenerate-pr` を実行する。
+
+`adr.config.json` の `paths.outputs`（出力先）を変える PR は、古い出力の削除だけを含め、
+新しい出力先には書かない。新しい出力先は次の再生成 PR が作る（上のコマンドは今の出力先しか
+戻さないので、新しい出力先に生成したファイルは自分で消す）。
+
+**到達状態**: コミットした ADR の変更で次が通る。生成物を混ぜていれば、出力先がどこでも落ちる。
+
+```
+pnpm exec tsx scripts/adr/check-generated.ts --base origin/main
+```
 
 ## Design Doc → ADR への昇格
 
@@ -187,8 +201,8 @@ Low でなければ、出た段階のラベルを付けて draft で作り、`gh
 1. PR タイトルが `docs(adr): ` で始まる
 2. **差分が「決定の記録」と「その記録に伴うリンクの整合」だけで構成されている**。
    具体的には次の 5 種以外の差分が 1 行もない:
-   - **新しい ADR の追加**と、`effective.md` / `graph.md` / `graph/*.md` などの
-     生成物（`pnpm adr:regenerate` の出力）
+   - **新しい ADR の追加**（生成物の `effective.md` / `graph.md` / `graph/*.md` は
+     含めない。上の「編集後のチェック」）
    - **既存 ADR の frontmatter**、および supersede の body ステータス行
      （「既存 ADR を覆すとき」が許す範囲ちょうど。**本文の散文は入らない**）
    - 昇格対象 `docs/design/<name>.md` の **削除**（Design Doc 全体を ADR に昇格させて
@@ -217,7 +231,7 @@ Low でなければ、出た段階のラベルを付けて draft で作り、`gh
      ほかの変更（手動項目のチェックなど）は外れる。AT 以外のファイルには使えない
 
    **Design Doc からの新規昇格はこの 5 種で閉じるので、auto-merge してよい** —
-   新 ADR を足し、生成物を再生成し、元の Design Doc を消し、他の記録の参照を
+   新 ADR を足し、元の Design Doc を消し、他の記録の参照を
    張り替えるか ADR へのリンクを足す、で全部である。外れるのは**既存 ADR の本文を触ったとき**だけで、
    それは「既存 ADR を覆すとき」が禁じているので、そもそも書かれない差分である。
 3. `origin/main` を fetch した直後のブランチの差分で 1〜2 を確認し（分類器が `low` を出す）、

@@ -65,7 +65,7 @@ describe("SVG baseline portability", () => {
     // Reached only through an SVG icon that declares a description slot, which
     // a plain compile has no way to register — so this holds the call site
     // rather than the output.
-    const source = readFileSync(join(RENDERER_DIR, "svg-renderer.ts"), "utf8");
+    const source = readFileSync(join(RENDERER_DIR, "node-text.ts"), "utf8");
     expect(source).toContain("dy: DY_HANGING");
     expect(DY_HANGING).not.toBe(DY_CENTER);
   });
