@@ -96,12 +96,12 @@ base form の各端点を、`.krs.style` の識別子 1 つとして読み戻せ
 端点を囲まずに出す条件は 3 つで、1 つでも満たさなければ囲む。
 
 1. `StyleLexer` で端点だけを tokenize して、ちょうど 1 つの `Identifier` が端点と同じ値で返る。lexer の規則（`-`・`.`・非 ASCII・数値・黙って捨てる記号）を別に書き写さないので、lexer が変わっても判定がずれない
-2. 末尾が `-` でない。端点を単独で読ませると `a-` は識別子 1 つだが、矢印の手前に置くと `a-->c` になり、`-` が矢印に吸われる
+2. 末尾が `-` でない。端点を単独で読ませると `a-` は識別子 1 つだが、矢印の手前に置くと `a-->c` になり、`-` が矢印に吸われる。from と to のどちらに置くかをヘルパーが知らなくて済むよう、to の端点にも同じ条件を当てる（`a -> "b-"` → `a->"b-"`）
 3. 先頭が `#` でない。`#abc` は単独なら色トークン（値が `#abc` の `Identifier`）として条件 1 を通るが、それは色であって識別子ではない。#3520 で selector 位置の `#` + hex を id として読むようになると、`edge##abc->c` の読み方が変わる
 
-端点の側で拾う文脈依存はこの 2 つ（矢印の手前の `-`、`#` で始まる値）である。`edge#` の直後の hex（`face`・`Feed.Items`）は端点の形ではなく `edge#` の読み方の問題なので、端点を囲まずに #3520 で直す。#3520 が入るまでは、作者は `edge#"face"->db` と書けば当てられる（parser が `face->db` に正規化する）。
+端点を単独で読ませた判定で拾えないのはこの 2 つである。条件 2 は位置による読み方の違い（矢印の手前の `-`）、条件 3 はトークンの種類の取り違え（色トークンが `Identifier` として返る）による。`edge#` の直後の hex（`face`・`Feed.Items`）は端点の形ではなく `edge#` の読み方の問題なので、端点を囲まずに #3520 で直す。#3520 が入るまでは、作者は `edge#"face"->db` と書けば当てられる（parser が `face->db` に正規化する）。
 
-単独での判定は位置による読み方の違いを見落としうる（実際に条件 2 と #3520 はその見落としだった）。そのため、判定の正しさは位置に埋めた往復テストで押さえる。生成した base form を `edge#<base>` に埋めて `StyleParser` で parse し、同じ `edgeId` が返ることを、生成した文字列の集合（末尾 `-`、hex 形（単独 / `.`・`-` が続く）、先頭が数字・`-` + 数字、`#`、`"`、`\`、空白、非 ASCII、dotted）で確かめる。
+単独での判定は位置による読み方の違いを見落としうる（実際に条件 2 と #3520 はその見落としだった）。そのため、判定の正しさは位置に埋めた往復テストで押さえる。生成した base form を `edge#<base>` に埋めて `StyleParser` で parse し、同じ `edgeId` が返ることを、生成した文字列の集合（末尾 `-`、hex 形（単独 / `.`・`-` が続く）、先頭が数字・`-` + 数字、`#` で始まる値、`"`、`\`、空白、非 ASCII、dotted）で確かめる。
 
 injective である理由: 囲まない端点は `.krs.style` の識別子 1 つで、`#` で始まらず、`"` を含まず、`->` を含まず（`readIdentifier` は `->` / `-->` の手前で止まる）、`-` で終わらない。したがって base form の先頭が `"` なら from はリテラルの閉じ引用符で終わり、そうでなければ from は最初の `-` のうち矢印を始めるものの手前で終わる。矢印（`->` / `-->`）の種類もその位置で 1 通りに決まり、残りが to になる。
 
@@ -182,7 +182,7 @@ base の衝突のうち、端点が違うものは別の文言にする。
 7. **escape**: `.krs` と `.krs.style` の `\n` の読み方の違いは #3523 で扱う。`quotedIdLiteral` は改行をそのまま出し、`.krs.style` の `readString` も改行をそのまま読むので、GUI が書く rule の往復には影響しない
 8. **app**: 書き込み側は変更なし（`edge#${canonicalId}` が parse できるようになる）。`EdgeContextMenu` の `edge#<code>{canonicalId}</code>` 表示も同じ文字列なので変更なし。既存 rule の走査（`blockRe`）は引用符を見ないので、端点に `{` / `}` を含む edge では方向を選ぶたびに rule が追記される。本設計では直さず、その挙動をテストで固定する（直すのは #3524）
 9. **テスト**:
-   - core: 問題 1〜3 のモデルで、canonical id が別々になり、GUI と同じ形で書いた rule がその edge だけに当たる（compile 経由）。普通の id の base form が今と同じ文字列であること。`styleEndpointLiteral` の判定（空白・`->`・`"`・`\`・末尾 `-`・非 ASCII 識別子・dotted endpoint）
+   - core: 問題 1〜3 のモデルで、canonical id が別々になり、GUI と同じ形で書いた rule がその edge だけに当たる（compile 経由）。普通の id の base form が今と同じ文字列であること。`styleEndpointLiteral` の判定（空白・`->`・`"`・`\`・末尾 `-`・`#` で始まる値（`#abc`）・先頭が数字や `-` + 数字・hex 形・非 ASCII 識別子・dotted endpoint）
    - core（往復の性質テスト）: 生成した端点の組（末尾 `-`、hex 形（単独 / `.`・`-` が続く）、先頭が数字や `-` + 数字、`#` で始まる値、`"`、`\`、空白、非 ASCII、dotted）について、`StyleParser.parse("edge#" + base + " {}")` の `edgeId` が `base` と一致し、別々の組が別々の base になる
    - core: facet 監査行の id と `facet-not-declared` の subject が、引用符付きの端点で `edge#` に書ける形になる
    - style parser: `edge#"a b"->c`・`edge#a->"b->c"`・`edge#"a"->c`（正規化）・`edge[from="a b"]` と、`serialize` の往復（`karasu fmt` の parse(format(x)) ≡ parse(x)）。矢印の無い `edge#"a b"`（著者 id の位置に文字列）はエラーのまま。to 側の条件 2（`a -> "b-"` → `a->"b-"`）。`edge#a- -> c`（空白入り）は正規化で `"a-"->c` に当たることを固定する
@@ -196,10 +196,12 @@ base の衝突のうち、端点が違うものは別の文言にする。
 ### 影響範囲・マイグレーション
 
 - 端点がすべて識別子として読めるモデル: canonical id・`data-edge-canonical-id`・既存の `.krs.style` は変わらない
-- 識別子として読めない端点を持つ edge: canonical id に引用符が付く。現在その edge を指す `edge#` rule は parse できないので、壊れる既存 rule は無い。例外は末尾 `-` の端点で、`"a-" -> c` を `edge#a-->c` で指していた rule は今後 `a --> c`（async）だけに当たる。その base は今も async の edge と重なって ambiguous になるため、実際に効いていた rule は無い
+- 識別子として読めない端点を持つ edge: canonical id に引用符が付く。現在その edge を指す `edge#` rule は parse できないので、壊れる既存 rule は無い。例外は 2 つある
+  - 末尾 `-` の端点: `"a-" -> c` を `edge#a-->c` で指していた rule は今後 `a --> c`（async）だけに当たる。その base は今も async の edge と重なって ambiguous になるため、実際に効いていた rule は無い。空白入りの `edge#a- -> c` は今 `a-->c` と読まれ、`"a-"` の edge が無ければ async の `a --> c` に当たっている。正規化の後は `"a-"->c` になり、sync の `"a-" -> c` に当たるか、どれにも当たらなくなる。changeset に書く
+  - `#` で始まる端点: `edge##abc->c` / `edge#a->#abc` は今 parse でき（`#abc` が色トークンとして `Identifier` になる）、`"#abc" -> c` / `a -> "#abc"` に当たっている。正規化で `"#abc"->c` / `a->"#abc"` になるので当たり続ける。#3520 が selector 位置の `#` + hex から `#` を外す際、`edge#` や矢印の後で既に `#` で始まっている `Identifier` からもう一度 `#` を外すと `abc->c` に当て先が変わるので、#3520 のテストで固定する
 - 誤った `ambiguous-edge-base` が消え、右クリックの方向指定がそれらの edge で使えるようになる
 - ドキュメント: `docs/spec/style.md` / `style.ja.md`、`docs/spec/diagnostics.md`（`ambiguous-edge-base` の説明に base の表示形を足すなら）
-- changeset: core / karasu の patch（バグ修正。`.krs.style` の受理形は広がるが、既存の書き方は変わらない）。`edgeBaseId` の出力、facet 監査行の id、`facet-not-declared` の subject が、識別子でない端点で引用符付きになることを書く
+- changeset: core / karasu の patch（バグ修正。`.krs.style` の受理形は広がるが、既存の書き方は変わらない）。`edgeBaseId` の出力、facet 監査行の id、`facet-not-declared` の subject が、識別子でない端点で引用符付きになることと、空白入りの `edge#a- -> c` の当て先が変わることを書く
 - examples: 識別子でない端点の edge は無い想定（実装時に `pnpm pr:shots` で確かめる）
 
 ## 未解決の問い / 決めないこと
