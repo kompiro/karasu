@@ -50,3 +50,5 @@ cross-cutting なチェック（整合性チェック・drift guard）を CI wor
 - `.github/workflows/ci.yml` の `Check ADR assumptions against the working tree` step（コード PR 側のゲート）
 - `.github/workflows/adr-validate.yml` の同名 step（`docs/adr/**`-only PR 側のゲート）
 - `lefthook.yml` の `adr-check-assumptions` フック（pre-push、glob なし）
+- `scripts/lint/docs-site-ci-paths-sync.ts`（docs サイトの公開ファイル集合が、それを起動条件とする各 workflow の `paths:` のどれかの glob に必ず含まれること、skip 側 workflow の `paths-ignore:` が guard 側の `paths:` と鏡像であることを検査する。発火条件の片側漏れの機械チェック）
+- `scripts/lint/no-nul-bytes.test.ts` の `wiring: the scan reaches every PR (TPL-2446)`（NUL バイト検査が `ci.yml` と `ci-skip.yml` の両方で走り、lefthook の pre-push は glob なしで走ることを固定する。コード PR でも docs-only PR でも実チェックが走る経路の担保）

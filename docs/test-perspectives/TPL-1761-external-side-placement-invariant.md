@@ -102,6 +102,7 @@ kind 別の帯へノードを動かす配置 post-pass を追加・変更する�
   - `moves external to a side column even without user/client (#1728)`
   - `keeps a database [external] on the infra row, not the external row (kind wins over tag) (#1724)`（境界ルール回帰ガード）
   - `propagates infra pull-up through a dep-on-dep chain … (Issue #974)`（pull-up 回帰ガード）
+- `packages/core/src/renderer/routing-parity.test.ts`（`shared routing chain — ungrouped-only affordances survive (#2362)` › `keeps [external] services in side columns (ADR-1728 / TPL-1761)`: 共有ルーティング chain を通しても external がサイド列に残る）
 
 ## 派生元 spec / ADR
 

@@ -66,3 +66,10 @@ scope:
   review thread の `resolveReviewThread` と同じ役割を、carrier を持たない側に与えている
 - id を持たない項目は `unmarkedBodyFindings` として別に数え、閉じる手段がないので通知して止まる。
   静かに 0 にする代わりに大きく失敗させる
+
+## 関連テスト
+
+- `scripts/coderabbit/review-state.test.ts` — `bodyFindingCount`。review 本文の指摘を各項目の id で数え、指摘が出された push が head
+  でなくなっても残ること（「keeps a finding once the push it was filed against stops being the head (#2909)」、窓で絞り込む実装に
+  戻すと落ちるラウンド跨ぎの fixture）、id を書いた回答だけがその指摘を処理済みにすること、回答の後に再提出された指摘が未処理に
+  戻ること、id を持たない指摘を 0 にせず数え続けること（「still counts a declared finding that carries no id, which no comment can retire」）

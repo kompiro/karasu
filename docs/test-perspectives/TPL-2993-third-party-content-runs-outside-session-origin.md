@@ -61,6 +61,9 @@ opaque origin で動かす場合、script が出す fetch には `SameSite=Lax` 
 - 同じファイルの "serves the viewer as a sandbox without an origin (TPL-2993)": 本観点の中心。投稿ページの CSP に `sandbox` があり `allow-same-origin` が無いことを、匿名と所有者の両方の閲覧で検査する（#2998）
 - 同じファイルの "puts no form on the page, not even for the owner" と "serves the viewer with the submission embedded, not a server-drawn diagram": ページに form を置かないこと、描画に要る本文がページに埋め込まれていること（viewer が本文を取りに行く必要が無い）。viewer が実際に通信しないこと自体は自動テストでは確かめておらず、受け入れテストの手動項目 AT-M2 で確かめる（スタイルシートが外部 URL を読まないことだけは `packages/app/src/viewer/build-config.test.ts` が検査する）
 - `scripts/ci/nest-viewer-assets.test.ts`: `/viewer.html` をセッションの origin でページとして開かせないこと。`packages/nest/wrangler.toml` の `run_worker_first` が `/assets/*` 以外をすべて Worker に通す設定であることを検査する（#2998）。実際に 404 になることは受け入れテストの手動項目 AT-M3 で確かめる
+- `packages/nest/src/routes/submit.test.ts` の "refuses a request from another origin": 投稿の `POST /api/submissions` が `Origin` 検査を持つこと
+- `packages/nest/src/routes/console.test.ts` の各 describe にある "refuses a cross-origin form and ..." / "refuses a cross-origin request and deletes nothing": コンソールで状態を変える `POST`（投稿・公開範囲の変更・差し替え・1 件の削除・アカウント削除）がすべて `Origin` 検査を持ち、別 origin からは何も変えないこと
+- `packages/nest/src/routes/auth.test.ts` の `POST /auth/logout` の "refuses a request from another origin" と、`GET /auth/callback` の "refuses a state that does not match the cookie" / "refuses a callback with no state cookie at all": 状態を変える `POST` の `Origin` 検査と、状態を変える `GET` が持つ固有の検査（OAuth の state の二重送信）
 
 ## 派生元 spec
 

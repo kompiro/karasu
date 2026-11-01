@@ -71,6 +71,7 @@ karasu には「同じ仕様を 2 箇所で手書きしている」構造があ�
 - `packages/core/src/builtins/reference-spec-sync.test.ts` — spec doc ↔ `getReference()` の片方向 subset チェック（本 TPL の主たる担保）。`PROPERTY_SCHEMAS ⊆ spec doc` の逆向き subset チェック（#1492）も同ファイル
 - `scripts/lint/krs-fences.ts` — ドキュメントに埋まった `krs` fence ↔ parser（#1251 / #2415 / TPL-74 item 5）
 - `packages/core/src/builtins/reference.test.ts` — `getReference()` のノード種別 / タグ / sampleKrs の内容チェック
+- `packages/core/src/builtins/reference-data.test.ts` — `REFERENCE_DATA`：各カテゴリ（ノード種別 / タグ / アノテーション / style プロパティ / shape など）の全エントリが en と ja の両方で空でない description を持つことを固定する（片方の locale が黙って `undefined` になる失敗モード。チェックリスト項目 3）
 
 ## 派生元 spec
 

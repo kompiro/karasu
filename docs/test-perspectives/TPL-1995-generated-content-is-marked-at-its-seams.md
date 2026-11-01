@@ -67,3 +67,8 @@ scope:
 ## 派生元 spec
 
 - [`docs/spec/tags-annotations.md` § `@draft` — asserted, not confirmed](../spec/tags-annotations.md#draft--asserted-not-confirmed)
+
+## 関連テスト
+
+- `packages/core/src/annotations/draft-confidence.test.ts` — `interpretConfidence` › `keeps an unknown value verbatim instead of erroring`（既知の水準の外側を display-only で受理）、`@draft end to end` › `does not warn about @draft or its confidence parameter`（印による警告がない）と `renders the draft badge in preference to another annotation on the same node`（既定の描画効果）
+- `packages/core/src/builtins/default-style.test.ts` › `getBuiltinStyleSheet — annotation badge labels (#1508)` — `@draft` を含む全 builtin annotation が dark / light の両テーマで既定のバッジ（label / icon / color）を持つことを固定する

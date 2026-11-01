@@ -68,6 +68,7 @@ scope:
 
 - `packages/core/src/renderer/edge-routing-groups.test.ts`（`SYS`/`TRUNKS` = 旧 2-waypoint 形の回帰柵、`examples/en/getting-started` = mixed route を生む実サンプルで貫通・overlap ゼロを assert）
 - `packages/core/src/renderer/routing-parity.test.ts`（#2362 — 共有候補列が生む全 route 形について、実サンプルで貫通ゼロ・共線オーバーラップゼロを assert）
+- `packages/core/src/renderer/edge-routing-lanes.test.ts`（`distributeChannelLanes` › `enrols a mixed route's channel run alongside the interior L (TPL-1954)` / `enrols a route shape the chain does not produce today (TPL-1954)`: レーン分離の gate が waypoint 数ではなく帯間チャネルを走るかで判定し、新しい route 形も参加させる）
 - `packages/e2e/tests/at-0006-builtin-style.spec.ts` / `at-0058-diff-colors.spec.ts`（#2362 — エッジを引くセレクタが `line, polyline, path` を揃える）
 - `packages/core/src/renderer/layout.expand.test.ts` / `edge-routing-bundles.test.ts`（#2477 — frame アンカーの並列エッジが分離すること、および分散済みエッジが動かないこと）
 

@@ -62,6 +62,14 @@ scope:
 - **near-miss を `it.each` の表にする**: 表そのものが仕様として読める。規則を足す人は表に行を足すことになる
 - **完全一致で書く**: `expect(result.text).toBe(...)` と `expect(result.findings).toEqual([...])`。書くのは少し面倒だが、これが「規則が意図どおり狭いか」を担保する唯一の形
 
+## 関連テスト
+
+- `packages/nest/src/redact/redact.test.ts` — `redact` の「redacts a %s and nothing around it」は規則ごとに置換後の文字列と
+  finding（ラベル・件数・長さ）を完全一致で検証し、`what it must leave alone` は commit SHA・UUID・`tokenizer`・env 参照などの
+  near-miss 表で無変更を完全一致で検証する。`what the review found leaking` が規則の相互作用（「keeps a specific finding rather than
+  letting a generic rule overwrite it」）、自分の placeholder を再検出しないこと（「does not refuse a document that quotes its own
+  placeholder」）、bcrypt hash の除外、敵対的入力での実行時間（「scans a pathological near-miss input in bounded time」）を固定する
+
 ## 由来
 
 karasu-nest の secret redaction（[#2287](https://github.com/kompiro/karasu/issues/2287)、[ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md) 決定 2）。レビューが実測で 5 件を出した: 部分文字列置換による位置取り違えで**本物の値が素通り**、`$` 先頭判定による bcrypt hash の全見逃し、引用符必須による `.env` / `.npmrc` / YAML / JSON の取りこぼし、汎用規則による個別 finding の上書き（および自分の置換マーカーの再検出で出力を拒否）、そして 240 KB 入力での約 4 秒の二次挙動。

@@ -58,6 +58,16 @@ scope:
 - **戻り値をカテゴリ別にする**。`{accounts, sessions, submissions}`。合計 1 個の数値だと、どのカテゴリが 0 なのかを誰も見ない
 - **削除の約束を書いた ADR から鍵 layout を参照する**。新しいストアを書く人が最初に読む場所に「ここに足したら purge も」と置く
 
+## 関連テスト
+
+- `packages/nest/src/store/gallery-purge-coverage.test.ts` — `account purge coverage`。`SEEDERS` の全 prefix に書いて
+  `GalleryStore.purgeAccount` を通すとストアが空になること（ファサード経由の網羅テスト）と、戻り値が全カテゴリの件数を持つこと
+- `packages/nest/src/store/gallery-keys.test.ts` — `key layout` の「puts the account outermost in every prefix, so one sweep reaches it all」。
+  どの prefix も account を最外に置き、account 単位の 1 回の sweep で届くこと
+- `scripts/lint/nest-retention-policy-sync.test.ts` — 「names each prefix the purge is wired for (not that the list is complete)」。
+  `gallery-store.ts` が各ストアの `purgeAccount` を呼ぶことと、データ取り扱い文書が各 prefix を名指していること。
+  テスト名のとおり、新しい prefix が足されたことはこのテストでは検出しない
+
 ## 由来
 
 karasu-nest のメトリクス（[#2226](https://github.com/kompiro/karasu/issues/2226)）は `metrics/` と `reads/` の 2 つの prefix を足した。`metrics/` は `NestStore` の purge に配線され、その配線の理由（「本文に repo の内容が無くても鍵に名前がある」）はコード中に長いコメントで書かれていた。**同じ PR で足された `reads/` には、その議論が持ち越されなかった。** `ReadCounter.purgeInstallation` は書かれていたが、テスト以外から呼ばれていなかった。

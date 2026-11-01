@@ -61,6 +61,8 @@ infra block (`database` / `queue` / `storage`) が複数ファイルで宣言さ
 
 - `packages/core/src/fs/import-resolver.test.ts` の "S4.5: same-id infra reopen ..." 系ケース
 - 同ファイルの "keeps ... differ in kind or label (#2780)" 2 件（system reopen / named import 経路のエッジ identity）
+- `packages/i18n/src/render-diagnostic.test.ts` の `renderDiagnostic — i18n coverage for every DiagnosticCode`：`infra-redeclared-across-files` / `infra-leaf-redeclared-silently` を含む全コードの en / ja 文言が空でなく、kind と id（`database` / `OrderDB` など）を本文に出すことを固定する（診断の文言）
+- `packages/lsp/src/diagnostics.test.ts` の `computeDiagnostics — resolver warnings (.krs)`：info register の診断が LSP に `Information` severity で届き、warning 系は `Warning` のままであることを固定する（例は単一文書で出せる `domain-dispersal` / `shared-infra-fan-in`。複数ファイルを要する `infra-redeclared-across-files` そのものは LSP 側では検査していない）
 
 ## 派生元 spec
 

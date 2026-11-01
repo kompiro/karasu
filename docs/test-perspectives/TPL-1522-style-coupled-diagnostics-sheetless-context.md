@@ -111,3 +111,5 @@ stylesheet を入力に取る diagnostic を追加・変更するとき:
 - `packages/lsp/src/diagnostics.test.ts` — LSP 文脈（シートなし）での診断出力
 - `packages/lsp/src/diagnostics.test.ts`（`surfaces annotation-possible-typo as an error`）—
   言語 v2.0 で抑制が消え、LSP と app の診断が一致することの確認
+- `packages/core/src/resolver/facet-style-selector.test.ts`（`arbitrary-name selector deprecation (#2175)` › `emits nothing when there are no sheets — the LSP's single-document case`）—
+  style 依存型の `style-*` 診断が `analyze(file, [])`（シートなし）で出ないことを単体テストで固定する

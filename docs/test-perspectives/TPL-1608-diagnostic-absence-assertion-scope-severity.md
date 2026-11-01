@@ -77,3 +77,4 @@ store を共有して `shared-infra-fan-in` を出す）も、fixture を書き�
 
 - `packages/e2e/tests/at-0047-infra-nodes-system-diagram.spec.ts`
 - `packages/app/src/components/WarningPanel.test.tsx`（severity 別 class の検証）
+- `packages/core/src/parser/parser.test.ts`（`boundary declarations` › `stays silent for members that render only on drill levels — no warning of any kind (#1983)` が全件・全 severity の不在を意図として明示する例。`parses sampleKrs from getReference() without errors` などは `d.severity === "warning"` で絞ってから件数を見る）

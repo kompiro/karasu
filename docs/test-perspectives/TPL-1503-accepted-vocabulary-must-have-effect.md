@@ -81,6 +81,8 @@ scope:
   （ghost 検出の subset チェックは未整備 — 本 TPL 起点の追加候補）
 - `packages/core/src/resolver/warnings.test.ts`（`annotation-possible-typo error (#2677)`）—
   組み込み名近傍の名前を拒否する距離規則（言語 v1.x では info ヒント、#1499）
+- `packages/core/src/builtins/reference-spec-sync.test.ts`（`style.md: every PROPERTY_SCHEMAS entry is documented in the spec (#1492)`）—
+  `PROPERTY_SCHEMAS` の全エントリが `docs/spec/style.md` に記載されていることを固定する（チェックリスト項目 2。consumer の有無までは見ない）
 
 ## 派生元 spec
 

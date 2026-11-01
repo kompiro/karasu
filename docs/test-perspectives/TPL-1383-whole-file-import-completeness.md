@@ -51,7 +51,8 @@ scope:
 
 ## 関連テスト
 
-未確立（spec PR 後の実装 PR で追加予定）。
+- `packages/core/src/fs/import-resolver.test.ts` — `multi-file import semantics (#1381)` の S2 / S4：named import が先に同じファイルへ到達した後でも whole-file import が top-level と入れ子の全ノードを merged に流すこと（`S2: whole-file import preserves all top-level + nested nodes after a named import preceded it`。再到達時に memo が空の KrsFile を返した #1381 の失敗モード）、`deploy` / `organization` も merge されること（`` S4: same-id `deploy` and `organization` blocks merge across files ``）、`examples/ja/multi-file-system` の実ファイルで system の children・database・deploy・organization がすべて揃うこと（`S2 + S4: end-to-end on the examples/ja/multi-file-system fixture`）を固定する
+- `packages/core/src/fs/import-resolver.test.ts` — `style imports` › `resolves @import for style files`：`@import` で参照したスタイルシートが `styleSheets` に入ることを固定する（チェックリスト項目 4）
 
 ## 派生元 spec
 

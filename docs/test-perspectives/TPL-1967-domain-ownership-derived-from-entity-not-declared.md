@@ -86,3 +86,7 @@ infra leaf の「所有ドメイン」は **論理層（`entity` の親 domain�
 - 診断カタログ: [`docs/spec/diagnostics.md`](../spec/diagnostics.md) `cross-domain-store-access`。
 - 設計経緯: [ADR-1819](../adr/1819-domain-store-ownership-diagnostic.md)
   （ADR 昇格予定）、土台は [ADR-1870](../adr/1870-domain-entity-modeling.md)。
+
+## 関連テスト
+
+- `packages/core/src/resolver/warnings.test.ts` › `cross-domain-store-access warning (#1819)` — チェックリストの各ケース（別ドメイン所有 leaf へのアクセス、intra の沈黙、leaf 粒度の兄弟テーブル、co-owned、`[external]` / `[index]` の沈黙、entity マッピングなしの沈黙、cross-system の沈黙、read+write の集約、`shared-infra-fan-in` との独立発火）を 1 件ずつ固定する

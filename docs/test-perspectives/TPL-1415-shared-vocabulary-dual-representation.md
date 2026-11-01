@@ -88,6 +88,15 @@ CSS だけに新 variant を足すと Outline view が古いアイコンを出�
   は `KNOWN_PANEL_GAPS` allowlist に明示したものだけ許容し、新規の片側追加
   （panel-only / renderer-only いずれも）を落とす（#1856 で intersection-only
   から union へ是正）。
+- `packages/core/src/resolver/warnings.test.ts` — `tag-not-builtin` /
+  `annotation-not-builtin` の register と `REFERENCE_DATA` の parity。
+  `stays silent for every builtin annotation` は `REFERENCE_DATA.annotations`
+  から入力を生成して builtin 追加時の取りこぼしを落とし、
+  `allows every tag in the spec's System-assigned tags table (dual-representation guard, TPL-1415)`
+  は spec の System-assigned tags 表と register を突き合わせる。
+- `packages/core/src/builtins/reference-spec-sync.test.ts` — `docs/spec/*.md`
+  の表と `REFERENCE_DATA` という同一語彙の 2 表現を突き合わせる parity テスト
+  （spec → reference の片方向 subset。向きの選択は TPL-1296）。
 
 ## 派生元 spec
 

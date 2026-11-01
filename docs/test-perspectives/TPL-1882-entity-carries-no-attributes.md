@@ -77,3 +77,10 @@ label / description** のみである。**属性（カラム・型・インデ�
 
 - [`docs/spec/syntax.md`](../spec/syntax.md) — 「`entity` 宣言 — conceptual domain entities」節（entity が持てるものを名前・関連・物理対応に限定し、属性を明示的に排除する規定）。破られたとき、本 TPL のチェックリストとパーサテストが検出する。
 - [`docs/concepts.md`](../concepts.md) — 非目標「物理データベーススキーマのモデリングはしない（概念エンティティは目標内）」節（線引きの理由の層）。
+
+## 関連テスト
+
+- `packages/core/src/parser/parser.test.ts` › `entity declarations (#1870)` — 属性なしの entity がパースされること、`table <Infra>.<sub>` が `tableRef` に入ること、entity 内の論理ノード子が拒否されること
+- `packages/core/src/builtins/reference-parser-sync.test.ts` › `REFERENCE_DATA.nodeKinds ↔ parser` — `entity` を含む各 kind について、Reference が載せる property とパーサが受理する property が双方向に一致する（属性的 property を黙って受理し始めると落ちる）
+- `packages/core/src/parser/physical-ref-validation.test.ts` — entity の `table` 物理対応が infra サブリソースへの参照として解決されること（未宣言の block / leaf は `unresolved-table-ref`、`table` なしの entity は沈黙）
+- `packages/core/src/translate/db.test.ts` › `entity scaffold (aggregate granularity)` — `translate --from db` の entity 出力が名前・`table` 物理対応・関連 edge の形で出ることを固定する（カラムが混ざらないことを直接 assert するケースは無い）

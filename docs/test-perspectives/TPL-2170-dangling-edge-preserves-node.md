@@ -56,7 +56,12 @@ cross-reference を持つ宣言の検証 / resolver 経路を実装 / 変更す�
 
 ## 関連テスト
 
-未確立（spec PR 後の実装 PR で追加予定）。`examples/ja/multi-file-system/` を使った AT でも「全ノードが現れること」を assert する。
+- `packages/core/src/resolver/warnings.test.ts` — `unresolved-edge-endpoint warning`。未解決の endpoint で
+  warning が出て params に `from` / `to` / `unresolvedId` が載ること、両 endpoint が解決できれば出ないこと。
+  他の cross-reference は同じファイルの `unresolved-realizes warning` と `unresolved-handles warning` が見ている
+
+解決できた側のノードが残ることを直接 assert するテスト（チェックリスト 2 項目目）と、1 つの import 漏れで消える
+ノード数の上限を抑えるテスト（3 項目目）はまだ無い。
 
 ## 派生元 spec
 

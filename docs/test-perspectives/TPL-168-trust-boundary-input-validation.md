@@ -96,3 +96,5 @@ karasu の `karasu serve` のような HTTP API、VS Code 拡張の message hand
 - `packages/cli/src/render-fetch.test.ts`（解決後のアドレス・リダイレクトの各ホップ・proxy・本文の上限の negative test — #3426）
 - `packages/app/src/utils/import-project-zip.test.ts`（zip-slip / 解凍爆弾・エントリ数キャップの negative test を含む — #1526 / #1527）
 - `packages/core/src/parser/parser.test.ts`（link URL scheme allowlist の negative test — #1525）
+- `packages/core/src/fs/path-utils.test.ts`（`isSafeRelativePath` の negative test：絶対パス・`..` セグメント・backslash 区切りを拒否し、セグメント名中の `..` は誤拒否しない）
+- `packages/cli/src/cli-arg-validation.test.ts`（CLI の入口で未知の `--format` / `--theme` / `--view` を exit 1 で拒否し、コマンド本体を呼ばない：拒否時に副作用を起こさないことの固定。AT-0057 §7）

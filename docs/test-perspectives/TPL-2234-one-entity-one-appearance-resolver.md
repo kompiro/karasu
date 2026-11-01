@@ -100,6 +100,14 @@ karasu の boundary で実際にこうなった:
       `border-color` だけの指定で塗りとタイトルも追従する）。「指定されなかったものは
       既定値」で済ませると、1 エンティティ 2 色が仕様として固定される。
 
+## 関連テスト
+
+- `packages/core/src/renderer/team-frame-style-selector.test.ts` — `team frame colour from a style sheet (#2269)` の
+  「paints the card and the frame from one declaration (one entity, one appearance)」。1 つの宣言が team のカードと
+  フレームの両方に届くこと
+- `packages/core/src/renderer/legend-footer.test.ts` — 「lets a user rule outrank the builtin at equal specificity (Issue #2445)」と、
+  その tag ref / annotation ref 版。凡例 swatch がカードと同じカスケード（シート横断の宣言順）で解決されること
+
 ## 派生元 spec
 
 - `docs/spec/style.md` § [Boundary frame selectors](../spec/style.md#boundary-frame-selectors-boundary--boundaryid)

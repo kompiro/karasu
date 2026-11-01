@@ -97,3 +97,7 @@ keystone / permalink の用語を扱う doc を変更するときに確認する
 - 用語の初出: PRD [`docs/prd/keystone-primary-path.md`](../prd/keystone-primary-path.md)。
 - permalink 機構の正典: [`docs/spec/permalink.md`](../spec/permalink.md) /
   [ADR-1829](../adr/1829-adr-permalink-convention.md)。
+
+## 関連テスト
+
+- `packages/docs-site/scripts/lib/site-map.test.ts` › `published pages` — `spec/glossary.md` が公開対象に含まれること、`PUBLISHED_EN_FILES` に登録した全ページが disk に存在し route と content path に解決されることを PR 時点で固定する（sidebar と `.ja.md` sibling の揃いは見ない）
