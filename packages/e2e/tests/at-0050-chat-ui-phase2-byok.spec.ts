@@ -32,11 +32,11 @@ const PROJECT_OPTIONS = {
   lastProjectId: PROJECT_ID,
 };
 
-// Run AT-0050 cases serially. Each test boots `ProjectModeApp` against the
-// same Vite preview origin and seeds OPFS / `localStorage`; running them
-// in parallel under one origin produced flake on the OPFS handles. The
-// trade-off is acceptable — the file is 15 cases.
-test.describe.configure({ mode: "serial" });
+// The cases run in parallel like every other `opfs` spec: each test gets its
+// own browser context, and with it its own OPFS and `localStorage`, even at
+// the same origin. The file ran `serial` until #3236 over an OPFS-handle
+// flake seen in local runs; serial pinned all 15 cases to one worker, which
+// put the file at 55-64s under `workers: 2`.
 
 test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
   // ── AC-1〜AC-5: Settings + ApiKeySetup (no scripted turns needed) ─────────
