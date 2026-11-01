@@ -25,6 +25,8 @@ discovered_from:
   - root_cause_file: "packages/core/src/parser/parser.ts"
   - issue: "#3283"
   - root_cause_file: "packages/cli/src/serve.ts"
+  - issue: "#3426"
+  - root_cause_file: "packages/cli/src/render-endpoint.ts"
 topic: cli
 scope:
   packages:
@@ -57,6 +59,8 @@ karasu の `karasu serve` のような HTTP API、VS Code 拡張の message hand
 - Symlink 経由の境界突破（string-level の `startsWith` チェックは symlink を解決しないので、symlink 越しに外を指される）
 - shell / SQL injection（`exec(\`cmd ${userInput}\`)` 系）
 - SSRF（`fetch(userProvidedUrl)` の host 検証なし）
+  - リダイレクト先と解決後のアドレスを確かめない（書かれた hostname の文字列だけを見ると、loopback に解決される名前・IPv4-mapped の IPv6・リダイレクト先を素通りする。#3426）
+  - 自分自身への fetch（このマシンの public アドレスや hairpin NAT を経て、自分の API を読ませる。アドレスでは見分けられない経路があるので、外向きの request に印を付けて受け側で拒否する。#3426）
 - prototype pollution / deserialization 攻撃（`JSON.parse` した object をそのまま deep-merge する等）
 
 これらは **「機能が壊れる」形では観測されない**。攻撃者が見つけるか、security review で見つけるしか発見経路がない。
@@ -89,5 +93,6 @@ karasu の `karasu serve` のような HTTP API、VS Code 拡張の message hand
 ## 関連テスト
 
 - `packages/cli/src/serve.test.ts`（path traversal の negative test を含む）
+- `packages/cli/src/render-fetch.test.ts`（解決後のアドレス・リダイレクトの各ホップ・proxy・本文の上限の negative test — #3426）
 - `packages/app/src/utils/import-project-zip.test.ts`（zip-slip / 解凍爆弾・エントリ数キャップの negative test を含む — #1526 / #1527）
 - `packages/core/src/parser/parser.test.ts`（link URL scheme allowlist の negative test — #1525）
