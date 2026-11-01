@@ -12,7 +12,7 @@ known_consumers:
   - nest-submissions
 discovered_from:
   - issue: "#3470"
-  - root_cause_file: "packages/app/src/fs/snapshot-manager.ts:89"
+  - root_cause_file: "packages/app/src/fs/snapshot-manager.ts:100"
 related_to:
   - TPL-2048
 topic: project
@@ -32,12 +32,13 @@ scope:
 並びがキーの辞書順やランダムな slug なら、順序そのものが意味を失う。
 
 時刻が同じときに本当の作成順を知っている情報（直列化された追記の位置、単調増加の連番）を
-tie-break に使う。その情報が無いなら、少なくとも決定的な第 2 キーを置き、同じ入力から同じ順序が
-出るようにする。
+tie-break に使う。追記の位置なら、安定ソートで昇順に並べて反転すれば足りる。降順の比較関数で
+並べると、同じ時刻の項目は追記順（古い順）のまま残る。作成順を知る情報が無いなら、少なくとも
+決定的な第 2 キーを置き、同じ入力から同じ順序が出るようにする。
 
-テスト側も同じ構造で壊れる。sleep を挟めば時刻が進むという前提は成り立たない。タイマーは
-単調時計、`Date` は壁時計で動くので、負荷の高い CI では待った後でも同じミリ秒が返る。
-順序を検証するテストは時刻を固定し、同じ時刻のケースを明示的に作る。
+テスト側も同じ構造で壊れる。sleep を挟めば `Date` が進むという前提は成り立たない。負荷の高い
+CI では、数ミリ秒待った後でも同じミリ秒が返ることがある（#3470）。順序を検証するテストは時刻を
+固定し、同じ時刻のケースを明示的に作る。
 
 ## 想定される失敗モード
 
@@ -48,19 +49,20 @@ tie-break に使う。その情報が無いなら、少なくとも決定的な�
 
 ## チェックリスト
 
-- [ ] 時刻で並べる比較関数に、時刻が等しいときの第 2 キーがあるか。それは本当の作成順を表すか
-- [ ] 第 2 キーが本当の作成順を表すと言える根拠（直列化された追記、連番）がコードかコメントにあるか
-- [ ] 最古を選んで消す処理も、一覧と同じ順序の定義を使っているか
+- [ ] 時刻が等しいときの順序（安定ソートの追記順、または第 2 キー）が本当の作成順を表すか
+- [ ] それが本当の作成順を表すと言える根拠（直列化された追記、連番）がコードかコメントにあるか
+- [ ] 最古を選んで消す処理や最新を選ぶ処理も、一覧と同じ順序の定義を使っているか
 - [ ] 順序のテストは `Date` を固定し、sleep に頼っていないか
-- [ ] 全件が同じ時刻のケースのテストがあり、tie-break を外すと落ちるか
+- [ ] 全件が同じ時刻のケースで、新しい順の一覧が作成順の逆になることを確かめるテストがあるか
 
 ## 既知の対処パターン
 
-- `SnapshotManager`（`packages/app/src/fs/snapshot-manager.ts`）は `inCaptureOrder` で
-  `createdAt` の後に index 上の位置を比べる。記録は `SerialQueue` の中で追記されるので、位置が
-  作成順になる。`list` はその逆順、`gcIfNeeded` はその先頭から消す
+- `SnapshotManager`（`packages/app/src/fs/snapshot-manager.ts`）の `inCaptureOrder` は `createdAt`
+  の昇順に安定ソートし、同じ時刻は index 上の位置の順に残す。記録は `SerialQueue` の中で追記される
+  ので、位置が作成順になる。`list` はその反転、`gcIfNeeded` はその先頭から消し、自動保存の重複判定は
+  その末尾を最新として見る
 - テストは `vi.useFakeTimers({ toFake: ["Date"] })` と `vi.setSystemTime` で時刻を固定する。
-  `Date` だけを偽装するので、`SerialQueue` の Promise やタイマーには影響しない
+  `Date` だけを偽装するので、`SerialQueue` の Promise チェーンや他のタイマーには影響しない
 - `nest` の `SubmissionStore.list`（`packages/nest/src/store/submissions.ts`）は `submittedAt` だけで
   並べ、同じ時刻なら KV のキー順（ランダムな slug）になる。1 人の利用者が同じミリ秒に 2 回投稿する
   経路は現状ないので未対応だが、一括投入の経路を作るなら tie-break が要る

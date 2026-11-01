@@ -43,14 +43,13 @@ function fnv1a(input: string): string {
 
 /**
  * Records oldest first. `createdAt` has millisecond resolution, so two captures
- * can share it (#3470); ties fall back to index position, which is capture order
- * because records are appended inside the serialized capture.
+ * can share it (#3470); the sort is stable, so ties keep index order, which is
+ * capture order because records are appended inside the serialized capture.
+ * Newest first is this reversed, not a descending comparator, which would keep
+ * tied records oldest first.
  */
 function inCaptureOrder(records: SnapshotRecord[]): SnapshotRecord[] {
-  return records
-    .map((record, position) => ({ record, position }))
-    .sort((a, b) => a.record.createdAt.localeCompare(b.record.createdAt) || a.position - b.position)
-    .map(({ record }) => record);
+  return [...records].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
 export class SnapshotManager {
@@ -122,7 +121,7 @@ export class SnapshotManager {
       const index = await this.readIndex(relPath);
 
       if (opts.trigger === "auto" && index.records.length > 0) {
-        const latest = index.records.reduce((a, b) => (a.createdAt > b.createdAt ? a : b));
+        const latest = inCaptureOrder(index.records).at(-1)!;
         if (latest.contentHash === contentHash) return null;
       }
 
