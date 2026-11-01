@@ -58,7 +58,7 @@ diff モードの Group by: team は grouping 軸に **after 側だけの `owner
 > ✅ Automated by `packages/core/src/renderer/group-by-diff.test.ts` (suite-wide) — "does not draw frames when groupBy is omitted"; plus the core snapshot suite (byte-identical non-collapse output)
 
 - [x] `groupBy` 未指定・collapse なしの diff 出力は従来どおり（`foldedEdgeDiffState` は空で
-      `svg-renderer` の diff lookup は byte-identical）
+      `edge-layer` の diff lookup は byte-identical）
 
 ### AC-5: 手動（描画の目視確認）
 

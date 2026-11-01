@@ -181,8 +181,8 @@ export function renderEdgeLayer(
 
   // Crossing marks on top of the edges (#1859 P2c-C): hop arcs neutralise
   // right-angle crossings and the merge mark carries the count a trunk goes on
-  // to hold. Present only in the Group-by view (ungrouped leaves
-  // `crossingMarks` undefined — AC-5).
+  // to hold. Set by every single-system layout, grouped and (since #1956)
+  // ungrouped; the multi-system root leaves `crossingMarks` undefined.
   if (layoutResult.crossingMarks) {
     const { hops, junctions } = layoutResult.crossingMarks;
     if (hops.length > 0 || junctions.length > 0) {
