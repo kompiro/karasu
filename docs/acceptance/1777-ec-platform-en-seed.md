@@ -26,7 +26,7 @@ ID は不変・構造は ja と同一に保ち、`label` / `description` / コ�
 
 ### AC-2: 同梱内容が on-disk と byte 一致する（ja / en 両ロケール）
 
-> ✅ Automated by `packages/core/src/examples.test.ts` (suite-wide) — `ec-platform (ja|en): bundled content matches its on-disk examples/ source`
+> ✅ Automated by `scripts/examples/gen-builtin-examples.test.ts` (suite-wide) — 同梱内容は `examples/` から生成される（#3345）。`the committed module matches a fresh render of examples/` が生成物の鮮度を、`keeps the ec-platform stages in tutorial order, entries renamed to index.krs` が段の並びと入口の改名を検証する
 
 - [x] `EC_PLATFORM_PROJECTS`（ja）が `examples/ja/ec-platform/` と byte 一致
 - [x] `EC_PLATFORM_PROJECTS_EN`（en）が `examples/en/ec-platform/` と byte 一致

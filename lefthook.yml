@@ -175,6 +175,14 @@ pre-push:
       # `pnpm gen:icons`. The vitest mirror in scripts/icons runs it in CI.
       glob: "{packages/core/icons/**,packages/core/src/shapes/builtin-icons.generated.ts,scripts/icons/**}"
       run: pnpm gen:icons --check
+    examples-generated-check:
+      # packages/core/src/builtins/examples.generated.ts is generated from the
+      # directories under examples/ registered in the generator (Issue #3345).
+      # Fail if an example changed without `pnpm gen:examples`. The glob covers
+      # the examples, the generator and the output (TPL-1480); the vitest
+      # mirror in scripts/examples runs the same check in CI.
+      glob: "{examples/**,scripts/examples/**,packages/core/src/builtins/examples*.ts}"
+      run: pnpm gen:examples --check
     reference-docs-check:
       # The machine-derived tables in docs/spec/*.md (and the .ja.md
       # counterparts) are generated from reference-data.ts — fail if a hand
