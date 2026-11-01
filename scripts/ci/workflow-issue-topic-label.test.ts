@@ -33,7 +33,9 @@ function ghIssueCreateSites(file: string, lines: readonly string[]): IssueSite[]
       command += `\n${lines[j + 1]}`;
     }
     // `--label a,b` adds both, so a value is split on commas.
-    const labels = [...command.matchAll(/(?:--label[=\s]|-l\s)\s*(?:"([^"]*)"|'([^']*)'|(\S+))/g)]
+    const labels = [
+      ...command.matchAll(/(?:--label[=\s]|-l\s)\s*(?:"([^"]*)"|'([^']*)'|([^\s)\\]+))/g),
+    ]
       .flatMap((m) => (m[1] ?? m[2] ?? m[3]).split(","))
       .map((label) => label.trim());
     sites.push({ where: `${file}:${i + 1}`, labels });
@@ -41,25 +43,41 @@ function ghIssueCreateSites(file: string, lines: readonly string[]): IssueSite[]
   return sites;
 }
 
-/** The string literals in the `labels:` array of each `issues.create(...)`. */
-function issuesCreateSites(file: string, lines: readonly string[]): IssueSite[] {
-  const sites: IssueSite[] = [];
-  lines.forEach((line, i) => {
-    if (!/\.issues\.create\(/.test(line)) return;
-    const end = lines.findIndex((l, j) => j > i && /^\s*\}\);/.test(l));
-    const call = lines.slice(i, end === -1 ? undefined : end + 1).join("\n");
-    const array = call.match(/labels:\s*\[([^\]]*)\]/)?.[1] ?? "";
-    const labels = [...array.matchAll(/"([^"]*)"|'([^']*)'/g)].map((m) => m[1] ?? m[2]);
-    sites.push({ where: `${file}:${i + 1}`, labels });
+/** The text between the parenthesis at `open` and the one that closes it. */
+function callArguments(text: string, open: number): string {
+  let depth = 0;
+  for (let i = open; i < text.length; i++) {
+    if (text[i] === "(") depth++;
+    else if (text[i] === ")" && --depth === 0) return text.slice(open + 1, i);
+  }
+  return text.slice(open + 1);
+}
+
+/**
+ * The string literals in the `labels:` array of each `issues.create(...)`. A
+ * call with no `labels:` or more than one (a nested object's) yields no
+ * labels, so it fails rather than borrowing a label it may not own.
+ */
+function issuesCreateSites(file: string, text: string): IssueSite[] {
+  return [...text.matchAll(/\.issues\.create\(/g)].flatMap((m) => {
+    const lineStart = text.lastIndexOf("\n", m.index) + 1;
+    if (/^\s*(?:#|\/\/)/.test(text.slice(lineStart, m.index))) return [];
+    const args = callArguments(text, m.index + m[0].length - 1);
+    const arrays = [...args.matchAll(/labels:\s*\[([^\]]*)\]/g)];
+    const labels =
+      arrays.length === 1
+        ? [...arrays[0][1].matchAll(/"([^"]*)"|'([^']*)'/g)].map((l) => l[1] ?? l[2])
+        : [];
+    const line = text.slice(0, m.index).split("\n").length;
+    return [{ where: `${file}:${line}`, labels }];
   });
-  return sites;
 }
 
 const sites = readdirSync(WORKFLOW_DIR)
   .filter((file) => /\.ya?ml$/.test(file))
   .flatMap((file) => {
-    const lines = readFileSync(join(WORKFLOW_DIR, file), "utf8").split("\n");
-    return [...ghIssueCreateSites(file, lines), ...issuesCreateSites(file, lines)];
+    const text = readFileSync(join(WORKFLOW_DIR, file), "utf8");
+    return [...ghIssueCreateSites(file, text.split("\n")), ...issuesCreateSites(file, text)];
   });
 
 describe("workflows that file an Issue give it a topic: label", () => {

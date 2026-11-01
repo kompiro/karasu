@@ -77,7 +77,8 @@ Issue には `topic: <name>` ラベルを 1 つ付ける。`<name>` は
 - 到達状態: open の Issue は種別（`bug` / `test-infra` / それ以外）を問わず、すべて `topic:` ラベルを
   ちょうど 1 つ持つ。起票時に付け、ラベルが無い・2 つ以上ある Issue は見つけたらその場で 1 つに直す
   （残す 1 つは下の「迷ったら」で決める）。Issue を起票する workflow も起票時に付ける。workflow ファイルの
-  `gh issue create` / `issues.create` での付け忘れは CI の検査が落とす（#3390）。次のコマンドが何も出力しなければ成り立っている:
+  `gh issue create` / `issues.create` に `topic:` ラベルがちょうど 1 つ無ければ CI の検査が落とす（#3390）。
+  次のコマンドが何も出力しなければ成り立っている:
 
   ```bash
   gh api --paginate 'repos/{owner}/{repo}/issues?state=open&per_page=100' \
