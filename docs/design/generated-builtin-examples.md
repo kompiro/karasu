@@ -24,7 +24,7 @@ drift テスト（`examples.test.ts`）が片側だけの編集を落とすの�
 | 登録済みディレクトリ | 14 個。一覧は `examples-sync.md` の表と `examples.ts` の定数の 2 か所にある |
 | 公開している名前 | `ExampleProject` 型と 14 個の定数（`GETTING_STARTED_PROJECT` / `_EN`、`EC_PLATFORM_PROJECTS` / `_EN`、`FEATURE_SAMPLES_PROJECT` ほか）。`packages/core/src/index.ts` が再 export する |
 | 利用側 | app の `useProjectInitialization.ts`（ProjectMode の初回 seed）、core の `reference.ts`（Reference の Samples タブ） |
-| ディレクトリの形 | 13 個は「ディレクトリ直下の `.krs` / `.krs.style` = 1 プロジェクトのファイル」。`ec-platform/` だけは段階構成で、直下の `NN-*.krs` が単一ファイルのプロジェクト、サブディレクトリが複数ファイルのプロジェクトになる。どちらも入口ファイルは同梱時に `index.krs` へ改名される（`system.krs` / `main.krs` → `index.krs`、#1777） |
+| ディレクトリの形 | 12 個は「ディレクトリ直下の `.krs` / `.krs.style` = 1 プロジェクトのファイル」。`ec-platform/`（ja・en の 2 個）だけは段階構成で、直下の `NN-*.krs` が単一ファイルのプロジェクト、サブディレクトリが複数ファイルのプロジェクトになる。どちらも入口ファイルは同梱時に `index.krs` へ改名される（`system.krs` / `main.krs` → `index.krs`、#1777） |
 | drift ガード | `examples.test.ts` に byte 一致の検査が 5 系統ある。`getting-started`（ja/en）と `client-mcp` には検査がない（2026-11-01 時点では disk と一致している） |
 | ファイル順 | `feature-samples` は手で足した順（アルファベット順ではない）。app の OPFS provider は `readdir` を名前順に並べるので、配列の順は表示に影響しない |
 | 行数予算 | `.oxlintrc.json` と `.claude/rules/line-budget.md` が `examples.ts` を名指しで対象外にしている。`*.generated.ts` も対象外 |
@@ -51,10 +51,12 @@ drift テスト（`examples.test.ts`）が片側だけの編集を落とすの�
 - 手書きの部分（`ExampleProject` 型の説明、各定数の由来コメント）をスクリプトの文字列に移すことになり、読みにくい
 - `examples.ts` を行数予算の対象外に名指しする特例が残る
 
-### 案2: データを `examples.generated.ts` に生成し、`examples.ts` は型と再 export だけにする
+### 案2: データを `examples.generated.ts` に生成し、`examples.ts` は再 export だけにする
 
-スクリプトがデータの定数だけを `packages/core/src/builtins/examples.generated.ts` に書き出す。
-`examples.ts` は `ExampleProject` 型を持ち、生成モジュールの定数を再 export する薄いモジュールになる。
+スクリプトが `ExampleProject` 型と 14 個の定数を `packages/core/src/builtins/examples.generated.ts` に書き出す。
+`examples.ts` は生成モジュールを再 export する薄いモジュールになる。
+型を生成側に置くのは、`examples.ts` が型を持って生成側がそれを `import type` すると循環になり、
+`check:cycles`（madge）が `import type` も数えて落とすため（`gen:icons` も `BuiltinIconSource` を生成モジュールに書き出している）。
 
 **メリット**
 
@@ -90,7 +92,7 @@ drift テスト（`examples.test.ts`）が片側だけの編集を落とすの�
 ジェネレータ `scripts/examples/gen-builtin-examples.ts` が登録表を持ち、これが登録済みディレクトリの唯一の一覧になる。
 登録表の 1 行は「定数名・`examples/` からのディレクトリ・形（flat / staged）・定数に付ける説明」である。
 
-- **flat**（13 個）: ディレクトリ直下の `.krs` と `.krs.style` をすべて同梱する。ファイルを列挙しない
+- **flat**（12 個）: ディレクトリ直下の `.krs` と `.krs.style` をすべて同梱する。ファイルを列挙しない
   （TPL-2804。新しいサンプルを足しても登録表は変えなくてよい）。サブディレクトリがあれば生成を失敗させる
   （flat のディレクトリに入れ子を作った意図が分からないため、黙って捨てない）
 - **staged**（`ec-platform/` の ja/en）: 直下の `.krs` は 1 ファイルずつ `index.krs` 1 つのプロジェクトになる。
@@ -108,7 +110,7 @@ drift テスト（`examples.test.ts`）が片側だけの編集を落とすの�
 
 1. `scripts/examples/gen-builtin-examples.ts` を作る。構成は `scripts/icons/gen-builtin-icons.ts` に揃える
    （純関数の `renderModule`、`regenerate({ root, check })`、`--check` で非ゼロ終了）。`package.json` に `gen:examples` を足す
-2. `pnpm gen:examples` で `packages/core/src/builtins/examples.generated.ts` を書き出し、`examples.ts` を型と再 export に縮める
+2. `pnpm gen:examples` で `packages/core/src/builtins/examples.generated.ts` を書き出し、`examples.ts` を再 export に縮める
 3. 切り替えの検証: 切り替え前の `examples.ts` の定数と生成後の定数を比べ、各プロジェクトの名前と `path → content` の対応が一致することを確かめる
    （差はファイル順だけのはず）。この比較は移行時の一回限りで、テストには残さない
 4. drift ガードを置き換える
@@ -127,16 +129,27 @@ drift テスト（`examples.test.ts`）が片側だけの編集を落とすの�
    人が判断するもの（feature-samples の `index.krs` カタログへの追記、facet-styling は `.krs` とシートが対で意味を持つこと、en/ja を揃えること）は残す。
    新しいディレクトリを登録する手順は「登録表に 1 行足す」になる
 7. `/update-examples` スキルを同じ手順に縮める（登録済みかの判定も生成スクリプトに任せる）
-8. `scripts/lint/skill-reference-bundle-sync.ts` のコメントが `examples.test.ts` の drift ガードを先例として挙げているので、指し先を直す
-9. AT: 追加しない。生成物の中身は手順 3 で切り替え前と一致することを確かめ、以後は drift テストが守る。人が目で確かめる項目はない
-10. ADR 昇格: 実装完了後、`docs/adr/3345-generated-builtin-examples.md` として昇格し、本 Design Doc は同 PR で削除する
+8. 消える drift ガードを指している記述を直す。ファイルの一覧ではなく検索で掃く
+   （`grep -rn "examples\.test\.ts\|examples\.ts\|examples-sync" docs/acceptance .claude scripts packages/*/src`）。2026-11-01 時点で見つかっているもの:
+   - AT の自動化マーカーが消える describe 名を引用している: `docs/acceptance/edge-property-block.md`、`edge-facets.md`、`1777-ec-platform-en-seed.md`、
+     `1046-resource-operations.md`（散文で「byte 一致 drift guard」に言及）。引用先を `scripts/examples/gen-builtin-examples.test.ts` に張り替える
+   - `.claude/rules/README.md` が `examples-sync.md`（`examples.test.ts` の drift ガード）を「到達状態 + 機械検証」の参考実装に挙げている
+   - `scripts/lint/skill-reference-bundle-sync.ts` のコメントが `examples.test.ts` を先例に挙げている
+9. ADR-1344 の frontmatter の `assumptions` に `grep: packages/core/src/builtins/examples.ts :: export const FEATURE_SAMPLES_PROJECT` がある。
+   定数の定義が生成モジュールへ移ると `adr check-assumptions`（CI の Check job）が落ちるので、指し先を `examples.generated.ts` に直す
+   （frontmatter の変更なので ADR 本文の不変規則に触れない）。同じ ADR の `grep: .claude/rules/examples-sync.md :: feature-samples/` は、
+   書き換え後のルールにも feature-samples のカタログの注意点が残るので成り立つ
+10. AT: 追加しない。生成物の中身は手順 3 で切り替え前と一致することを確かめ、以後は drift テストが守る。人が目で確かめる項目はない
+11. ADR 昇格: 実装完了後、`docs/adr/3345-generated-builtin-examples.md` として昇格し、本 Design Doc は同 PR で削除する
 
 ### 影響範囲・マイグレーション
 
 - 既存ユーザーへの影響: なし。同梱される中身は変わらない（changeset 不要）
-- ドキュメント更新: `.claude/rules/examples-sync.md`、`.claude/rules/line-budget.md`、`.claude/skills/update-examples/SKILL.md`
+- ドキュメント更新: `.claude/rules/examples-sync.md`、`.claude/rules/line-budget.md`、`.claude/rules/README.md`、`.claude/skills/update-examples/SKILL.md`、
+  手順 8 の AT
 - 既存 ADR: ADR-9018 / ADR-1344 / ADR-1296 は「`examples.ts` に同梱し、`examples-sync.md` で同期する」と書いている。
-  同梱の決定は変えず、同期の手段だけを変えるので supersede しない。新 ADR の `related_to` で結ぶ
+  同梱の決定は変えず、同期の手段だけを変えるので supersede しない。新 ADR の `related_to` で結ぶ。
+  ADR-1344 は frontmatter の `assumptions` だけを直す（手順 9）
 - 進行中の作業: `examples/` と `examples.ts` を両方触っているブランチは、main を取り込むときに `examples.ts` が衝突する。
   `examples/` 側を残して `pnpm gen:examples` を実行し直せば解ける
 
