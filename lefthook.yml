@@ -109,6 +109,13 @@ pre-push:
       # takes about 20ms. CI runs it from both jobs that report `Check`:
       # `ci.yml` and the docs-only stub `ci-skip.yml`.
       run: pnpm run lint:no-nul-bytes
+    design-doc-refs:
+      # Nothing outside docs/ may cite a docs/design/<name>.md: a Design Doc is
+      # deleted on promotion, so the citation dies or the promotion PR has to
+      # edit code (Issue #3471, ADR-3471). No `glob` on purpose: code, config,
+      # workflows and rules can all gain one. CI runs it from both jobs that
+      # report `Check`: `ci.yml` and the docs-only stub `ci-skip.yml`.
+      run: pnpm run lint:design-doc-refs
     at-check-coverage:
       # Also globs packages/e2e/tests/** so the exact e2e linkage guards
       # (orphan-spec / stale-spec-ref, Issue #1680) fire when a spec is added
@@ -168,6 +175,14 @@ pre-push:
       # `pnpm gen:icons`. The vitest mirror in scripts/icons runs it in CI.
       glob: "{packages/core/icons/**,packages/core/src/shapes/builtin-icons.generated.ts,scripts/icons/**}"
       run: pnpm gen:icons --check
+    examples-generated-check:
+      # packages/core/src/builtins/examples.generated.ts is generated from the
+      # directories under examples/ registered in the generator (Issue #3345).
+      # Fail if an example changed without `pnpm gen:examples`. The glob covers
+      # the examples, the generator and the output (TPL-1480); the vitest
+      # mirror in scripts/examples runs the same check in CI.
+      glob: "{examples/**,scripts/examples/**,packages/core/src/builtins/examples*.ts}"
+      run: pnpm gen:examples --check
     reference-docs-check:
       # The machine-derived tables in docs/spec/*.md (and the .ja.md
       # counterparts) are generated from reference-data.ts — fail if a hand

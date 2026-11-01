@@ -37,17 +37,6 @@ positional label（`<kw> <id> "<label>"`）を受理し続け、約 4 ヶ月間�
 かった。受理される形は [[TPL-1503]]（受理された語彙は効果を持つ）を
 パスしてしまうため、「効果があるか」の検査では捕まらない。
 
-チェックの仕方（構造的な守り）:
-
-- 新しい受理形を parser に足す PR は、同じ PR で spec（`docs/spec/syntax.md` +
-  `.ja.md`）に当該形を記載する。記載しない受理形は追加しない。
-- construct の受理形を横並びで確認するときは、spec の記述ではなく**実測**
-  （最小 `.krs` を `Parser.parse` に通して diagnostics を見る）を根拠にする。
-  #2133 の発見も実測による（issue 本文の測定表）。
-- 決定（ADR）で「form X はやめて form Y にする」と決めたら、既存 construct に
-  form X の残党がないかを keyword 単位で grep + 実測で棚卸しする。ADR-19 は
-  node kinds だけ直して org 系 4 construct を取り残した。
-
 ## 想定される失敗モード
 
 - ADR で廃止された記法が一部 construct にだけ残り、ユーザーがそれを見て
@@ -57,6 +46,17 @@ positional label（`<kw> <id> "<label>"`）を受理し続け、約 4 ヶ月間�
   なる（v1.0 凍結後は特に）。
 - 受理形の追加が spec 改訂を伴わず、`docs/spec/` を根拠にした judgement
   （レビュー・LLM プロンプト・ガイド作成）が実装と食い違う。
+
+## チェックリスト
+
+- [ ] parser に新しい受理形を足す PR で、同じ PR の spec（`docs/spec/syntax.md` と
+      `.ja.md`）にその形を記載したか。記載しない受理形を足していないか
+- [ ] construct の受理形を横並びで確かめるとき、spec の記述ではなく**実測**
+      （最小 `.krs` を `Parser.parse` に通して diagnostics を見る）を根拠にしたか。
+      #2133 の発見も実測による（issue 本文の測定表）
+- [ ] 決定（ADR）で「form X はやめて form Y にする」と決めたとき、既存 construct に
+      form X の残党がないかを keyword 単位の grep と実測で棚卸ししたか。ADR-19 は
+      node kinds だけ直して org 系 4 construct を取り残した
 
 ## 派生元 spec
 

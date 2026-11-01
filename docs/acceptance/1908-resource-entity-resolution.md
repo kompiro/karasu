@@ -11,7 +11,7 @@ type: product
   - `packages/core/src/view/derived-edges.ts`（推移的導出・二重計上排除）
   - `packages/core/src/view/resource-promotion.ts`（R/W 合成）
   - `packages/core/src/resolver/warnings.ts`（`detectUnassignedResources` / `detectSharedInfraFanIn` の entity 対応）
-  - `packages/core/src/parser/parser.ts`（`unassigned-resource` を parser から除去）
+  - `packages/core/src/parser/node-parser.ts`（`unassigned-resource` を parser から除去）
   - `packages/core/src/types/{ast,warnings}.ts`
   - `packages/i18n/src/{types,en,ja,render-warning,render-diagnostic}.ts`
   - `docs/spec/{syntax,syntax.ja,diagnostics,diagnostics.ja}.md`

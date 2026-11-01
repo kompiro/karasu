@@ -4,7 +4,7 @@
 - **関連 Issue**: [#837](https://github.com/kompiro/karasu/issues/837)
 - **対象ファイル**:
   - `packages/core/src/lexer/lexer.ts`
-  - `packages/core/src/parser/parser.ts`
+  - `packages/core/src/parser/block-contents.ts`（`parseClientCapability`）
   - `packages/core/src/types/ast.ts`
   - `packages/core/src/resolver/warnings.ts`
   - `packages/core/src/renderer/node-text.ts`

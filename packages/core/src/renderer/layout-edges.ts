@@ -6,6 +6,7 @@
  */
 import type { KrsEdge } from "../types/ast.js";
 import type { ViewSlice } from "../view/view-slice.js";
+import { edgeKindKey } from "../view/edge-key.js";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
 import {
   routeGroupedEdges,
@@ -50,8 +51,7 @@ export function computeLayoutEdges(
   for (const edge of allEdges) {
     const le = computeEdgePoints(edge, layoutNodes, layers, sideExternals, expandedFrames);
     if (!le) continue;
-    const edgeKey = `${edge.from}->${edge.to}#${edge.kind}`;
-    const domainEdges = viewSlice.implicitEdgeDetails.get(edgeKey);
+    const domainEdges = viewSlice.implicitEdgeDetails.get(edgeKindKey(edge));
     if (domainEdges) {
       le.domainEdges = domainEdges;
     }
@@ -317,8 +317,14 @@ export function computeEdgePoints(
   } else {
     const fromLayer = layers.get(edge.from) ?? 0;
     const toLayer = layers.get(edge.to) ?? 0;
-    if (fromLayer === toLayer) {
-      // Same layer: horizontal edge
+    // A layer the width budget wrapped onto several rows (#3494) has cards of
+    // one layer on different rows. Those are anchored top and bottom like an
+    // edge between layers: side anchors would run the straight line through
+    // both of its own cards, and the target card would hide the arrowhead.
+    const sameRow =
+      fromNode.y < toNode.y + toNode.height && toNode.y < fromNode.y + fromNode.height;
+    if (fromLayer === toLayer && sameRow) {
+      // Same row: horizontal edge
       if (fromNode.x < toNode.x) {
         fromPoint.x = fromNode.x + fromNode.width;
         fromPoint.y = fromNode.y + fromNode.height / 2;
@@ -330,8 +336,8 @@ export function computeEdgePoints(
         toPoint.x = toNode.x + toNode.width;
         toPoint.y = toNode.y + toNode.height / 2;
       }
-    } else if (fromLayer > toLayer) {
-      // Reverse edge
+    } else if (fromLayer > toLayer || (fromLayer === toLayer && fromNode.y > toNode.y)) {
+      // Reverse edge, or up to a card of the same layer on an earlier row
       fromPoint.y = fromNode.y;
       toPoint.y = toNode.y + toNode.height;
     }

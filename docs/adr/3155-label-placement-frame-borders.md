@@ -16,7 +16,7 @@ assumptions:
   - "symbol: packages/core/src/renderer/label-placement.ts :: countLabelFrameCrossings"
   - "symbol: packages/core/src/renderer/container-frame.ts :: frameBordersOf"
   - "grep: packages/core/src/renderer/container-frame.ts :: \"stroke-width\": frameStrokeWidth\\("
-  - "grep: packages/core/src/renderer/svg-renderer.ts :: resolveLabelPlacements\\(labelInputs, nodeRects, edgeLines, frameBorders\\)"
+  - "grep: packages/core/src/renderer/edge-layer.ts :: resolveLabelPlacements\\(labelInputs, nodeRects, edgeLines, frameBorders\\)"
   - "grep: packages/core/src/renderer/label-placement.test.ts :: frame borders as placement obstacles \\(#3155\\)"
   - "grep: packages/core/src/renderer/label-placement.test.ts :: real sample fence: frames \\(#3155\\)"
   - "file: docs/test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md"

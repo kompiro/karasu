@@ -8,7 +8,7 @@ type: product
 - **関連 Issue**: [#2543](https://github.com/kompiro/karasu/issues/2543)
 - **設計 (ADR)**: [ADR-2209](../adr/2209-edge-property-block.md)
 - **対象ファイル**:
-  - `packages/core/src/parser/parser.ts`（`parseEdge` / `parseEdgeBlock`）
+  - `packages/core/src/parser/edge-parser.ts`（`parseEdge` / `parseEdgeBlock`）
   - `packages/core/src/formatter/formatter.ts`（`renderEdge`）
   - `packages/core/src/renderer/edge-routing.ts`（`data-edge-description` / `data-edge-links`）
   - `packages/app/src/components/PreviewPane.tsx` / `EdgeDetailPanel.tsx`
@@ -100,7 +100,7 @@ type: product
 
 - [x] AT-O: ブロック形を足した `edges.krs` が `examples.ts` の bundled content と byte 一致する
 
-  > ✅ Automated — `packages/core/src/examples.test.ts` › `feature-samples: bundled examples.ts content matches examples/en/feature-samples/` › `registers index.krs plus every .krs / .krs.style file in the directory, and nothing else`
+  > ✅ Automated — `scripts/examples/gen-builtin-examples.test.ts` › `built-in examples codegen (#3345)` › `the committed module matches a fresh render of examples/`
 
 - [x] AT-P: spec / guide に埋めた `.krs` fence が現行文法で通り、`krs invalid` と印を付けた二重 label の例が今も error を出す（parser が受理し始めたら落ちる）
 

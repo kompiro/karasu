@@ -12,9 +12,9 @@ type: product
 - **関連 TPL**: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)、[TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md)、[TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md)、[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md)、[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)、[TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md)
 - **対象ファイル**:
   - `packages/core/src/types/ast.ts`（`KrsEdge.facets` / `unionEdgeFacets`）
-  - `packages/core/src/parser/parser.ts`（`parseEdgeBlock`）・`formatter/formatter.ts`（`renderEdge`）
+  - `packages/core/src/parser/edge-parser.ts`（`parseEdgeBlock`）・`formatter/formatter.ts`（`renderEdge`）
   - `packages/core/src/resolver/warnings.ts`（`detectFacetsNotDeclared`）・`resolver/style-resolver.ts`（`edgeSelectorMatches`）
-  - `packages/core/src/renderer/facet-overlay.ts`（`knownFacetIds` / `edgeFacetIds`）・`facet-overview.ts`・`edge-routing.ts`・`svg-renderer.ts`・`layout-edges.ts`
+  - `packages/core/src/renderer/facet-overlay.ts`（`knownFacetIds` / `edgeFacetIds`）・`facet-overview.ts`・`edge-routing.ts`・`edge-layer.ts`・`layout-edges.ts`
   - `packages/core/src/view/derived-edges.ts`・`renderer/category-collapse.ts`・`renderer/group-collapse.ts`（和集合の導出）
 
 > PII を運ぶデータフローや PCI スコープ内の呼び出しは**そのエッジについての事実**なのに、
@@ -111,7 +111,7 @@ type: product
 
 - [x] AT-O: エッジの `facets` を実演する `examples/en/feature-samples/tag-facet-registers.krs` と対の `.krs.style` が parse し、`examples.ts` の bundled content と byte 一致する
 
-  > ✅ Automated — `packages/core/src/examples.test.ts` › `feature-samples: all files parse without errors` ／ `feature-samples: bundled examples.ts content matches examples/en/feature-samples/`
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `feature-samples: all files parse without errors` ／ `scripts/examples/gen-builtin-examples.test.ts` › `built-in examples codegen (#3345)` › `the committed module matches a fresh render of examples/`
 
 ## 意図的に対象外
 

@@ -1,9 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
-import { expect, test } from "../fixtures/opfs.js";
-import { bootMemoryApp } from "../fixtures/boot.js";
-import { openViewTab } from "../fixtures/tabs.js";
+import { expect, test, type OpfsFixture } from "../fixtures/opfs.js";
 
 /**
  * The focus canvas (#3031, docs/acceptance/edge-label-focus-canvas.md): on a
@@ -21,10 +19,16 @@ const DENSE = readFileSync(
   "utf8",
 );
 
-async function openDenseCanvas(page: Page, opfs: Parameters<typeof bootMemoryApp>[1]) {
-  await bootMemoryApp(page, opfs, DENSE);
-  await openViewTab(page, "System");
-  await page.locator('.preview-container svg [data-node-id="UmamiApp"]').click();
+/**
+ * Boot on Umami app's level through its hash, so the dense canvas is laid out
+ * once instead of after the system root it would be drilled from (#3237).
+ */
+async function openDenseCanvas(page: Page, opfs: OpfsFixture) {
+  await opfs.seed({
+    projects: [{ id: "dense", name: "Dense", files: { "index.krs": DENSE } }],
+    lastProjectId: "dense",
+  });
+  await opfs.gotoApp("/#krs-system-UmamiApp");
   await expect(page.locator(".breadcrumb-current")).toHaveText("Umami app");
   await expect(page.locator(".preview-container svg .krs-edge[data-edge-from]")).toHaveCount(41);
 }
@@ -169,15 +173,51 @@ test.describe("AT-3031 focus canvas", () => {
       type: "unreachable by click",
       description: unreachable.join(", ") || "none",
     });
-    const nodes = [...new Set(edges.flatMap((e) => [e.from, e.to]))];
-    for (const id of nodes) {
-      await openRelations(page, id);
+    // The first node opens by its Relations pill; each next one by its card on
+    // the open canvas where one is on screen, else by its pill again. The pill
+    // and a card open the same `{ kind: "node", id }` focus. Closing and
+    // hovering for every node re-dims the dense canvas twice each time, which
+    // made this the slowest test in the suite (#3237).
+    const card = (id: string) => page.locator(`.focus-canvas [data-focus-node="${id}"]`).first();
+    const pending = [...new Set(edges.flatMap((e) => [e.from, e.to]))];
+    while (pending.length > 0) {
+      let next = -1;
+      if ((await page.locator(".focus-canvas").count()) > 0) {
+        for (let i = 0; i < pending.length && next < 0; i++) {
+          if ((await card(pending[i]).count()) > 0) next = i;
+        }
+      }
+      const id = pending.splice(Math.max(next, 0), 1)[0];
+      if (next >= 0) {
+        await card(id).click();
+      } else {
+        if ((await page.locator(".focus-canvas").count()) > 0) {
+          await page.locator(".focus-canvas__close").click();
+          await expect(page.locator(".focus-canvas")).toHaveCount(0);
+        }
+        await openRelations(page, id);
+      }
+      // Every lane touches `id` once the canvas is on it, not on the last node.
+      await expect
+        .poll(() =>
+          page
+            .locator(".focus-canvas .focus-canvas__lane")
+            .evaluateAll(
+              (lanes, n) =>
+                lanes.length > 0 &&
+                lanes.every(
+                  (l) =>
+                    l.getAttribute("data-focus-from") === n ||
+                    l.getAttribute("data-focus-to") === n,
+                ),
+              id,
+            ),
+        )
+        .toBe(true);
       const lanes = await laneLabels(page);
       for (const e of edges.filter((x) => x.from === id || x.to === id)) {
         expect(lanes).toContain(e.label.split(/\s+/).join(" "));
       }
-      await page.locator(".focus-canvas__close").click();
-      await expect(page.locator(".focus-canvas")).toHaveCount(0);
     }
   });
 

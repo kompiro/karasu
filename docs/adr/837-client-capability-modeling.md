@@ -13,7 +13,7 @@ scope:
 assumptions:
   - "grep: packages/core/src/types/ast.ts :: ClientCapability"
   - "grep: packages/core/src/lexer/lexer.ts :: capability"
-  - "grep: packages/core/src/parser/parser.ts :: parseClientCapability"
+  - "grep: packages/core/src/parser/block-contents.ts :: parseClientCapability"
   - "grep: packages/core/src/resolver/warnings.ts :: detectDuplicateClientCapabilities"
   - "file: docs/spec/syntax.md"
   - "file: docs/spec/tags-annotations.md"

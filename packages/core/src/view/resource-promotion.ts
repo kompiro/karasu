@@ -2,6 +2,7 @@ import type { KrsNode, KrsEdge, ResourceNode } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
 import { isWriteOperation } from "../spec/operations.js";
 import type { EntityResolver } from "../resolver/resource-entity.js";
+import { edgeKey } from "./edge-key.js";
 
 /**
  * At domain level: collect resource nodes with dot-notation refs from each usecase child,
@@ -34,7 +35,7 @@ function deriveUsecaseResourceNodes(
       if (!resourceMap.has(resource.id)) {
         resourceMap.set(resource.id, applyInferredTagsDeep(resource, tagMap));
       }
-      const key = `${usecase.id}->${resource.id}`;
+      const key = edgeKey({ from: usecase.id, to: resource.id });
       const isWrite = isWriteOperation(resNode.properties.operations);
       edgeMap.set(key, {
         from: usecase.id,
