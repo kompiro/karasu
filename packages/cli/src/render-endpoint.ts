@@ -171,11 +171,13 @@ export async function handleRender(
     return;
   }
   const fetchSrc = deps.fetchSrc ?? defaultFetchSrc;
-  const fetching = fetchSrc(params.src, {
-    ...deps.fetchOptions,
-    signal: AbortSignal.timeout(deps.timeoutMs ?? 10_000),
-  });
+  let lookupsSettled: Promise<void> = Promise.resolve();
   try {
+    const fetching = fetchSrc(params.src, {
+      ...deps.fetchOptions,
+      signal: AbortSignal.timeout(deps.timeoutMs ?? 10_000),
+    });
+    lookupsSettled = fetching.lookupsSettled;
     const result = await fetching.result;
     if (!result.ok) {
       const prefix = result.status === 400 ? "Invalid src URL" : "Failed to fetch src";
@@ -184,7 +186,7 @@ export async function handleRender(
     }
     respondWithSvg(res, result.text, params.view);
   } finally {
-    void fetching.lookupsSettled.then(release);
+    void lookupsSettled.then(release, release);
   }
 }
 

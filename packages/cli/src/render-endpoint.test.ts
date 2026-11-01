@@ -460,22 +460,23 @@ describe("handleRender src fetching", () => {
   });
 
   describe("concurrency", () => {
-    function stalledResolver(): Resolver & { finishAll(): void } {
+    /** Holds every lookup until finishAll; the 8.8.8.8 default is never connected to. */
+    function stalledResolver(address = "8.8.8.8"): Resolver & { finishAll(): void } {
       const pending: Array<() => void> = [];
       const resolver: Resolver = (_hostname, _options, callback) => {
-        pending.push(() => callback(null, [{ address: "8.8.8.8", family: 4 }]));
+        pending.push(() => callback(null, [{ address, family: 4 }]));
       };
       return Object.assign(resolver, {
         finishAll: () => pending.splice(0).forEach((finish) => finish()),
       });
     }
 
-    async function render(deps: RenderDeps): Promise<number> {
+    async function render(deps: RenderDeps, src = "http://slow.test/x.krs"): Promise<number> {
       const res = makeRes();
       await handleRender(
         makeReq(),
         res as unknown as ServerResponse,
-        new URLSearchParams({ src: "http://slow.test/x.krs" }),
+        new URLSearchParams({ src }),
         deps,
       );
       return res.writeHead.mock.calls[0][0] as number;
@@ -497,9 +498,10 @@ describe("handleRender src fetching", () => {
     });
 
     it("keeps the slot until the lookup returns, not just until the response", async () => {
-      const resolver = stalledResolver();
+      await start();
+      const resolver = stalledResolver("127.0.0.1");
       const deps: RenderDeps = {
-        fetchOptions: { resolver },
+        fetchOptions: { resolver, isBlocked: loopbackIsPublic },
         limiter: new SrcFetchLimiter(),
         timeoutMs: 50,
       };
@@ -509,7 +511,7 @@ describe("handleRender src fetching", () => {
 
       resolver.finishAll();
       await new Promise((resolve) => setTimeout(resolve, 0));
-      const next = render(deps);
+      const next = render(deps, `http://slow.test:${port}/x.krs`);
       resolver.finishAll();
       expect(await next).not.toBe(503);
     });

@@ -11,6 +11,8 @@ import * as zlib from "node:zlib";
 import {
   MAX_BODY_BYTES,
   fetchSrc,
+  guardedLookup,
+  interfaceAddresses,
   isBlockedAddress,
   normalizeAddress,
   type FetchResult,
@@ -82,6 +84,7 @@ let publicServer: TestServer;
 // platform cannot listen there (macOS); those tests then check the reason only.
 let internalServer: TestServer | null;
 let resolver: ReturnType<typeof tableResolver>;
+let streamingClosed = false;
 
 function publicUrl(path: string): string {
   return `http://public.test:${publicServer.port}${path}`;
@@ -132,6 +135,27 @@ beforeAll(async () => {
           .writeHead(200, { "Content-Encoding": "gzip" })
           .end(zlib.gzipSync(Buffer.alloc(4 * 1024 * 1024)));
         return;
+      case "/empty-gzip-members": {
+        // Decompresses to nothing, so only a cap on the raw bytes stops it.
+        const member = zlib.gzipSync("");
+        res.writeHead(200, { "Content-Encoding": "gzip" });
+        res.end(
+          Buffer.concat(
+            Array.from({ length: Math.ceil((MAX_BODY_BYTES * 2) / member.length) }, () => member),
+          ),
+        );
+        return;
+      }
+      case "/redirect-streaming": {
+        // A redirect whose body never ends, to a target that fails at once.
+        res.writeHead(302, { Location: "file:///etc/passwd" });
+        const timer = setInterval(() => res.write(Buffer.alloc(64 * 1024)), 5);
+        res.on("close", () => {
+          clearInterval(timer);
+          streamingClosed = true;
+        });
+        return;
+      }
       case "/compress":
         res.writeHead(200, { "Content-Encoding": "compress" }).end(KRS);
         return;
@@ -165,6 +189,13 @@ function fetchWith(
     resolver,
     isBlocked: options.isBlocked ?? testIsBlocked(),
   }).result;
+}
+
+async function until(condition: () => boolean, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!condition() && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
 }
 
 function expectNoInternalRequest(): void {
@@ -266,6 +297,31 @@ describe("isBlockedAddress", () => {
     expect(blocked(address)).toBe(false);
   });
 
+  it("lists IPv4 interfaces by address and IPv6 ones by their on-link prefix", () => {
+    const info = { netmask: "", mac: "00:00:00:00:00:00", internal: false };
+    expect(
+      interfaceAddresses({
+        eth0: [
+          { ...info, address: OWN, family: "IPv4", cidr: `${OWN}/24` },
+          {
+            ...info,
+            address: "2001:db8:1::5",
+            family: "IPv6",
+            cidr: "2001:db8:1::5/64",
+            scopeid: 0,
+          },
+        ],
+      }),
+    ).toEqual([OWN, "2001:db8:1::5/64"]);
+  });
+
+  it("blocks the on-link prefix of a global IPv6 interface address", () => {
+    const own = ["2001:db8:1::5/64"];
+    expect(isBlockedAddress("2001:db8:1::1", own)).toBe(true);
+    expect(isBlockedAddress("2001:db8:1:0:ffff::1", own)).toBe(true);
+    expect(isBlockedAddress("2001:db8:2::1", own)).toBe(false);
+  });
+
   it("reads this machine's interfaces when none are given", () => {
     // `lo` is always there, and 127.0.0.1 is blocked by range anyway; this
     // only shows the default path runs without being handed a list.
@@ -303,6 +359,14 @@ describe("fetchSrc", () => {
     const result = await fetchWith(`http://mixed.test:${publicServer.port}/ok`);
     expect(result).toMatchObject({ ok: false, status: 400, reason: "blocked-address" });
     expect(publicServer.requests).toHaveLength(before);
+  });
+
+  it("does not tell the client which address a name resolved to", async () => {
+    // The message reaches the /render client; naming the address would turn
+    // /render into a resolver for the server's internal DNS.
+    const result = await fetchWith(`http://mixed.test:${publicServer.port}/ok`);
+    expect(result).toMatchObject({ reason: "blocked-address", message: expect.any(String) });
+    expect(JSON.stringify(result)).not.toContain("10.0.0.1");
   });
 
   it("refuses this machine's own address as src (400)", async () => {
@@ -363,6 +427,15 @@ describe("fetchSrc", () => {
     });
   });
 
+  it("drops the connection of a redirect instead of reading its body", async () => {
+    streamingClosed = false;
+    const result = await fetchWith(publicUrl("/redirect-streaming"), { timeoutMs: 5_000 });
+    expect(result).toMatchObject({ ok: false, status: 502, reason: "unsupported-scheme" });
+    // Reading the body (resume) would keep the socket until the 5 s timeout.
+    await until(() => streamingClosed, 500);
+    expect(streamingClosed).toBe(true);
+  });
+
   it("answers a non-2xx response with 502", async () => {
     expect(await fetchWith(publicUrl("/missing"))).toMatchObject({
       ok: false,
@@ -385,6 +458,14 @@ describe("fetchSrc", () => {
 
   it("stops decompressing at the limit (zip bomb)", async () => {
     expect(await fetchWith(publicUrl("/bomb"))).toMatchObject({
+      ok: false,
+      status: 502,
+      reason: "too-large",
+    });
+  });
+
+  it("caps the compressed bytes too (empty gzip members)", async () => {
+    expect(await fetchWith(publicUrl("/empty-gzip-members"))).toMatchObject({
       ok: false,
       status: 502,
       reason: "too-large",
@@ -440,6 +521,34 @@ describe("fetchSrc", () => {
     finish?.();
     await handle.lookupsSettled;
     expect(settled).toBe(true);
+  });
+});
+
+describe("guardedLookup", () => {
+  function lookupWith(all: boolean): Promise<unknown[]> {
+    const lookup = guardedLookup(
+      tableResolver({ "public.test": ["8.8.8.8", "8.8.4.4"] }),
+      testIsBlocked(),
+      () => {},
+    );
+    return new Promise((resolve) => {
+      lookup("public.test", { all }, (err, address, family) => resolve([err, address, family]));
+    });
+  }
+
+  it("answers with every address when the caller asks for all", async () => {
+    expect(await lookupWith(true)).toEqual([
+      null,
+      [
+        { address: "8.8.8.8", family: 4 },
+        { address: "8.8.4.4", family: 4 },
+      ],
+      undefined,
+    ]);
+  });
+
+  it("answers with the first address and its family otherwise", async () => {
+    expect(await lookupWith(false)).toEqual([null, "8.8.8.8", 4]);
   });
 });
 

@@ -84,16 +84,25 @@ export function normalizeAddress(address: string): string {
   return [high >> 8, high & 0xff, low >> 8, low & 0xff].join(".");
 }
 
-/** Every address on this machine's interfaces, read now. */
-export function interfaceAddresses(): string[] {
-  return Object.values(os.networkInterfaces()).flatMap((list) =>
-    (list ?? []).map((info) => info.address),
+/**
+ * Every address on this machine's interfaces, read now. A global IPv6 address
+ * comes as its on-link prefix (`2001:db8:1::5/64`): LAN devices hold global
+ * IPv6 addresses in the same prefix, outside every blocked range.
+ */
+export function interfaceAddresses(
+  interfaces: NodeJS.Dict<os.NetworkInterfaceInfo[]> = os.networkInterfaces(),
+): string[] {
+  return Object.values(interfaces).flatMap((list) =>
+    (list ?? []).map((info) =>
+      info.family === "IPv6" && info.cidr !== null ? info.cidr : info.address,
+    ),
   );
 }
 
 /**
  * True when `/render` must not connect to `address`: a value that is not an
- * IP, an address in a blocked range, or one of this machine's own addresses.
+ * IP, an address in a blocked range, or one of this machine's own addresses
+ * (an IPv6 entry may be a prefix, `address/length`).
  * The family is passed explicitly because `BlockList.check` assumes IPv4 and
  * answers false for an IPv6 address otherwise.
  */
@@ -107,9 +116,16 @@ export function isBlockedAddress(
   if (blockedRanges.check(normalized, family)) return true;
   const own = new net.BlockList();
   for (const raw of ownAddresses) {
-    const ownAddress = normalizeAddress(raw);
+    const [addressPart, prefixPart] = raw.split("/");
+    const ownAddress = normalizeAddress(addressPart);
     const ownFamily = familyOf(ownAddress);
-    if (ownFamily !== null) own.addAddress(ownAddress, ownFamily);
+    if (ownFamily === null) continue;
+    const prefix = Number(prefixPart);
+    if (ownFamily === "ipv6" && prefixPart !== undefined && Number.isInteger(prefix)) {
+      own.addSubnet(ownAddress, prefix, ownFamily);
+    } else {
+      own.addAddress(ownAddress, ownFamily);
+    }
   }
   return own.check(normalized, family);
 }
@@ -137,8 +153,10 @@ const systemResolver: Resolver = (hostname, options, callback) => {
 
 class BlockedAddressError extends Error {
   readonly code = "EKARASU_BLOCKED";
-  constructor(hostname: string, address: string) {
-    super(`${hostname} resolves to a blocked address (${address})`);
+  constructor(hostname: string) {
+    // The message reaches the HTTP client, so it names the host but not the
+    // address: otherwise /render resolves internal names for anyone who asks.
+    super(`${hostname} resolves to a blocked address`);
   }
 }
 
@@ -178,7 +196,7 @@ export function guardedLookup(
           }
           const blocked = addresses.find((entry) => isBlocked(entry.address));
           if (blocked !== undefined) {
-            callback(new BlockedAddressError(hostname, blocked.address), []);
+            callback(new BlockedAddressError(hostname), []);
             return;
           }
           if (options.all) callback(null, addresses);
@@ -262,7 +280,9 @@ export function fetchSrc(src: string, options: FetchSrcOptions): FetchHandle {
         const url = checkHop(target, base, isBlocked);
         const response = await send(url, lookup, options.signal);
         if (REDIRECT_STATUSES.has(response.statusCode ?? 0)) {
-          response.resume();
+          // Drop the socket: with `agent: false` there is nothing to keep, and
+          // resume() would read the body until the timeout after the slot is free.
+          response.destroy();
           const location = response.headers.location;
           if (location === undefined) {
             throw new HopFailure(
@@ -280,7 +300,7 @@ export function fetchSrc(src: string, options: FetchSrcOptions): FetchHandle {
         }
         const status = response.statusCode ?? 0;
         if (status < 200 || status >= 300) {
-          response.resume();
+          response.destroy();
           throw new HopFailure("http-status", `HTTP ${status}`);
         }
         return { ok: true, text: await readBody(response) };
@@ -362,11 +382,16 @@ function decoderFor(
   return "unsupported";
 }
 
-/** Reads the body, decompressing it, and stops at the limit after decompression. */
+/**
+ * Reads the body, decompressing it. The limit applies both before and after
+ * decompression: after, against zip bombs; before, against a stream that
+ * decompresses to nothing (empty gzip members) and would otherwise be read
+ * until the timeout.
+ */
 function readBody(response: http.IncomingMessage): Promise<string> {
   const decoder = decoderFor(response.headers["content-encoding"]);
   if (decoder === "unsupported") {
-    response.resume();
+    response.destroy();
     return Promise.reject(
       new HopFailure(
         "unsupported-encoding",
@@ -393,7 +418,16 @@ function readBody(response: http.IncomingMessage): Promise<string> {
     });
     body.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
     body.on("error", fail);
-    if (decoder !== null) response.on("error", fail);
+    if (decoder !== null) {
+      let received = 0;
+      response.on("data", (chunk: Buffer) => {
+        received += chunk.length;
+        if (received > MAX_BODY_BYTES) {
+          fail(new HopFailure("too-large", `body is larger than ${MAX_BODY_BYTES} bytes`));
+        }
+      });
+      response.on("error", fail);
+    }
   });
 }
 
