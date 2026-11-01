@@ -12,7 +12,7 @@ import type {
 import { readNodeIdPathTail } from "./node-path.js";
 import { parseAnnotations } from "./annotation-parser.js";
 import { handleNestedLegend } from "./legend-parser.js";
-import { rejectConstruct, rejectNode } from "./rejected-construct.js";
+import { rejectConstruct, rejectEdge, rejectNode } from "./rejected-construct.js";
 import {
   parseDescriptionValue,
   parseLink,
@@ -56,7 +56,7 @@ export function parseOrganizationBlock(ctx: ParseContext): OrganizationBlock {
       teams.push(parseTeamBlock(ctx));
     } else if (token.type === TokenType.Legend) {
       handleNestedLegend(ctx, "organization");
-    } else {
+    } else if (!rejectEdge(ctx, "organization")) {
       ctx.error("unexpected-token-in-block", {
         blockKind: "organization",
         tokenType: String(token.type),
@@ -163,7 +163,7 @@ export function parseBoundaryBlock(ctx: ParseContext): BoundaryBlock {
       const node = ctx.tryParseNodeDecl();
       if (node) {
         rejectNode(ctx, node, "boundary");
-      } else if (!rejectMisplacedProperty(ctx, "boundary")) {
+      } else if (!rejectMisplacedProperty(ctx, "boundary") && !rejectEdge(ctx, "boundary")) {
         ctx.error("unexpected-token-in-block", {
           blockKind: "boundary",
           tokenType: String(token.type),
@@ -223,7 +223,7 @@ export function parseFacetBlock(ctx: ParseContext): FacetBlock {
     } else if (token.type === TokenType.Link) {
       ctx.advance();
       properties.links.push(parseLink(ctx));
-    } else {
+    } else if (!rejectEdge(ctx, "facet")) {
       ctx.error("unexpected-token-in-block", {
         blockKind: "facet",
         tokenType: String(token.type),
@@ -347,7 +347,7 @@ function parseTeamBlock(ctx: ParseContext): TeamNode {
       children.push(parseTeamBlock(ctx));
     } else if (token.type === TokenType.Legend) {
       handleNestedLegend(ctx, "team");
-    } else {
+    } else if (!rejectEdge(ctx, "team")) {
       ctx.error("unexpected-token-in-block", {
         blockKind: "team",
         tokenType: String(token.type),
@@ -410,7 +410,7 @@ function parseMemberBlock(ctx: ParseContext): MemberNode {
       }
     } else if (token.type === TokenType.Legend) {
       handleNestedLegend(ctx, "member");
-    } else {
+    } else if (!rejectEdge(ctx, "member")) {
       ctx.error("unexpected-token-in-block", {
         blockKind: "member",
         tokenType: String(token.type),

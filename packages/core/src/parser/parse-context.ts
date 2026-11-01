@@ -1,5 +1,11 @@
 import type { Token, TokenType, SourceRange } from "../types/tokens.js";
-import type { Diagnostic, DiagnosticCode, DiagnosticParamsByCode, KrsNode } from "../types/ast.js";
+import type {
+  Diagnostic,
+  DiagnosticCode,
+  DiagnosticParamsByCode,
+  KrsEdge,
+  KrsNode,
+} from "../types/ast.js";
 import type { TokenCursor } from "./kebab-name.js";
 
 /**
@@ -40,4 +46,10 @@ export interface ParseContext extends TokenCursor {
    * takes no nodes must still read whole (#3463).
    */
   tryParseNodeDecl(): KrsNode | undefined;
+  /**
+   * Parse an edge when the next token opens one, for a block that takes no
+   * edges but must still read a misplaced one whole (#3499). The org parsers
+   * reach `parseEdge` only through this, since edge-parser.ts imports them.
+   */
+  tryParseEdge(): KrsEdge | undefined;
 }

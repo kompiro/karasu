@@ -796,7 +796,8 @@ service OrderService {
 sub-resource with dot notation (`table OrderDB.orders`). The mapping is optional
 — an entity with no mapping is the legitimate forward-design / bottom-up state.
 Only the dot form is accepted in v1; a bare `table orders` raises
-`expected-id-after`.
+`expected-id-after`, and a path that goes past the leaf (`table OrderDB.orders.extra`,
+or a dot after `orders`) raises `infra-path-too-long`. Either way no mapping is recorded.
 
 **Relations — one association, one edge.** Relations between entities use the
 existing edge syntax (`->` sync, `-->` async) declared inside the
@@ -1432,6 +1433,15 @@ shape and one resolution rule (#2088):
   edge endpoint keep their pre-#2088 recovery, reporting and still recording
   the segments they read. What the nine sites share is the notation and the
   suffix rule, not what a malformed reference leaves in the model.
+- **The two-segment sites read the whole path.** `resource` and the entity
+  `table` mapping name an infra block and one of its leaves, so a third
+  segment (`resource OrderDB.Orders.Extra`) or a dot after the leaf is read
+  with the rest and reported once as `infra-path-too-long` (#3499). `table`
+  then records no mapping; `resource` keeps its first two segments, as it does
+  after a dangling dot.
+- **A dot does not take the next statement's edge source.** At every site, an
+  id after a dot that sits on a later line and is followed by `->` / `-->` is
+  left for the block as the source of that edge (#3499).
 
 > Related TPLs: [TPL-2088](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md) — ノード id を指す記法はサイト間で 1 つの規則を共有し、受理側と解決側が同じヘルパーを引く。[TPL-1352](https://github.com/kompiro/karasu/blob/main/docs/test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — path を受理する参照は path をキーに持つ索引を要求する（`ownerIndex` / `boundaryMembership` は full path キー）。
 

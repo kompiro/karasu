@@ -92,10 +92,10 @@
     { "files": ["packages/core/src/resolver/style-resolver.ts"], "rules": { "max-lines": ["error", { "max": 886 }] } },
     { "files": ["packages/core/src/resolver/warnings.ts"], "rules": { "max-lines": ["error", { "max": 1703 }] } },
     { "files": ["packages/core/src/translate/db.ts"], "rules": { "max-lines": ["error", { "max": 718 }] } },
-    { "files": ["packages/core/src/types/ast.ts"], "rules": { "max-lines": ["error", { "max": 1245 }] } },
-    { "files": ["packages/i18n/src/en.ts"], "rules": { "max-lines": ["error", { "max": 631 }] } },
-    { "files": ["packages/i18n/src/ja.ts"], "rules": { "max-lines": ["error", { "max": 630 }] } },
-    { "files": ["packages/i18n/src/types.ts"], "rules": { "max-lines": ["error", { "max": 722 }] } }
+    { "files": ["packages/core/src/types/ast.ts"], "rules": { "max-lines": ["error", { "max": 1246 }] } },
+    { "files": ["packages/i18n/src/en.ts"], "rules": { "max-lines": ["error", { "max": 633 }] } },
+    { "files": ["packages/i18n/src/ja.ts"], "rules": { "max-lines": ["error", { "max": 632 }] } },
+    { "files": ["packages/i18n/src/types.ts"], "rules": { "max-lines": ["error", { "max": 723 }] } }
   ],
   "settings": {
     "react": {

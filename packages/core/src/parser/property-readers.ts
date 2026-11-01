@@ -2,7 +2,7 @@ import { TokenType, type Token, type SourceRange, type SourceLocation } from "..
 import type { LinkEntry, NodeIdPath, HandlesTarget } from "../types/ast.js";
 import { isRecognizedResourceOperation } from "../spec/operations.js";
 import { ALLOWED_LINK_SCHEMES, parseUrlScheme } from "./link-url.js";
-import { readNodeIdPathTail } from "./node-path.js";
+import { readNodeIdPathTail, pathPastLeaf } from "./node-path.js";
 import type { ParseContext } from "./parse-context.js";
 import { rejectConstruct, rejectProperty } from "./rejected-construct.js";
 
@@ -296,10 +296,19 @@ export function readTableRef(
     return undefined;
   }
   if (isIdOrString(ctx.peek())) {
-    const tail = readNodeIdPathTail(ctx.advance(), ctx, {
-      maxSegments: 2,
-      acceptStringSegments: true,
-    });
+    // The whole path is read, so a segment past the leaf is reported once
+    // instead of being left for the block to report token by token (#3499).
+    const tail = readNodeIdPathTail(ctx.advance(), ctx, { acceptStringSegments: true });
+    if (pathPastLeaf(tail)) {
+      const last = tail.danglingDot ?? tail.end;
+      ctx.pushDiagnostic({
+        severity: "error",
+        code: "infra-path-too-long",
+        params: { property: "table" },
+        loc: ctx.range(keyword.loc, last.end ?? last.loc),
+      });
+      return undefined;
+    }
     if (tail.segments.length === 2) return { parent: tail.segments[0], child: tail.segments[1] };
     // Missing dot, or missing sub-id after the dot: leave the following token
     // (`}`, etc.) for the block.
