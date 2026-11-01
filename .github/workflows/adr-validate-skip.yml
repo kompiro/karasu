@@ -18,6 +18,9 @@ on:
       - "adr.config.json"
       - "tpl.config.json"
       - "scripts/lint/config-topics-sync.ts"
+      - "scripts/adr/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
       - ".github/workflows/adr-validate.yml"
 
 concurrency:
