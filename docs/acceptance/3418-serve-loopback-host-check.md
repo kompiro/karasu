@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-11-01
 - **関連 Issue**: [#3418](https://github.com/kompiro/karasu/issues/3418)
+- **設計 (ADR)**: [ADR-3418](../adr/3418-serve-loopback-and-host-check.md)
 - **Related TPLs**: [TPL-168](../test-perspectives/TPL-168-trust-boundary-input-validation.md)
 - **対象ファイル**: `packages/cli/src/serve.ts`、`packages/cli/src/serve-host.ts`、`packages/cli/src/serve-command.ts`
 
