@@ -223,7 +223,7 @@ TPL ごとに `paths:` のルールファイルを生成して、編集時に読
 `gh pr create` の後に走るフック（ADR-3359 の before/after と同じく PostToolUse と
 PostToolUseFailure の両方）が、PR の変更ファイルから上位 10 件を引き、「当てた TPL を本文の
 `## TPL impact` で引用する」よう促す。人の作成者には同じ一覧を出す `pnpm tpl:changed`
-（中身は `tpl related --base origin/main`）を用意し、`docs/process.md` の手順 10 と PR テンプレートの
+（中身は `tpl related --base <ref>`。既定は `origin/main` で、stacked PR では PR の base を渡す）を用意し、`docs/process.md` の手順 10 と PR テンプレートの
 `## TPL impact` の案内に 1 行足す。
 
 - 一覧は Claude の文脈に同じターンで入る。作成者が読みに行く手順が要らない
@@ -276,7 +276,8 @@ tpl-tools の変更、karasu での採用、取りこぼしの補完の順に進
 2. **karasu で採用する**
    - tpl-tools を上げ、`tpl.config.json` に接頭辞 `packages` `scripts` `.github` を書く。
      `package.json` の `tpl:validate` からフラグを外す
-   - `pnpm tpl:changed`（`tpl related --base origin/main`）を足す
+   - `pnpm tpl:changed` を足す。中身は `tpl related --base <ref>` で、`<ref>` の既定は `origin/main`。
+     stacked PR では PR の base（`pnpm tpl:changed --base origin/<baseRefName>`）を渡し、フックと同じ一覧になる
    <!-- absent-path-next-line: the hook script this design creates (#3486) -->
    - `scripts/tpl/changed-files-reminder.sh`（仮）を PostToolUse / PostToolUseFailure のフックに足す。
      `gh pr create` の出力の PR URL から PR を取り（ADR-3359 のフックと同じ）、`gh pr view` の
