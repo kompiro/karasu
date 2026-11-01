@@ -171,6 +171,7 @@ base の衝突のうち、端点が違うものは別の文言にする。
 
 ### 実装の指針
 
+<!-- absent-path-next-line: new file this design intends to create (#3480) -->
 1. **ヘルパー**: `packages/core/src/style/edge-endpoint-literal.ts`（名前は実装時に決める）に 2 つ置く
    - `styleEndpointLiteral(endpoint)`: 案A の 3 条件（`StyleLexer` で `Identifier` 1 つが同じ値で返る、末尾が `-` でない、先頭が `#` でない）を満たせばそのまま、そうでなければ `quotedIdLiteral(endpoint)` を返す。`.krs` の bare word（`isBareWord`）は 3 条件を必ず満たすので lexer を通さずに済ませてよい（ほとんどの id がこの経路）
    - `edgeBaseForm(from, arrow, to)`: `${styleEndpointLiteral(from)}${arrow}${styleEndpointLiteral(to)}`
