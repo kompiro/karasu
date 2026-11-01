@@ -144,9 +144,10 @@ TPL ごとに「どこまで機械が守っているか」を持たせ、それ�
 
 - `tpl regenerate` が生成する索引（tpl-tools ADR-27）の各行に状態と数を出す
   （例: `- [TPL-2019](…) — <title> (#2019) · guarded 2/2, judgment 2`）。索引は生成物で、
-  CI の `tpl regenerate --check` が古い索引を落とすので、「状態の変化が PR の diff に見え、
-  しかも drift しない」は索引が持つ。`tpl validate` は索引のリンクの網羅しか見ず、行の中身は
-  比べない（ADR-27）ので、この保証は `--check` を CI で回して初めて成り立つ
+  毎日の再生成 PR がちょうど生成器の出力であることを `Validate` が比べるので、drift しない
+  （#3289 の設計 `tpl-index-daily-regeneration.md`。当初は各 PR が索引を運び CI の
+  `tpl regenerate --check` で鮮度を見る前提だったが、ADR-3416 に合わせて変えた）。状態の変化は
+  索引としては PR の diff に現れないが、状態を決める印の変更は TPL のファイルの diff として見える
 - `tpl related` は `--status` を付けたときだけ各行に状態を出す。既定の出力は Design Doc の
   「Related TPLs」節に貼る形なので、そこに状態を混ぜると、導出値の写しが Design Doc に入り、
   昇格後は本文を変えない ADR（ADR-2687）に固まる。これは 2-B で避ける二重管理と同じ形になる
@@ -155,8 +156,8 @@ TPL ごとに「どこまで機械が守っているか」を持たせ、それ�
   ガードを作ればよいかは持たないので、スライス 4 の backlog は分類の提案から起こし、
   この一覧はどの項目がまだ unguarded かを確かめるのに使う
 
-karasu はまだ生成索引を採用していない（#3289 は tpl-tools v0.0.11 の release 待ちで
-`status: blocked`、`tpl.config.json` に `indexFile` が無く、README の一覧表は手書き）。
+karasu はまだ生成索引を採用していない（#3289 は設計中で、`tpl.config.json` に `indexFile` が
+無く、README の一覧表は手書き）。
 #3289 が入るまでは、状態は `tpl related <topic> --status` でしか見えない。
 
 #### 案 2-B: frontmatter に `enforcement` を宣言させ、導出値と照合する（Issue の提案。却下）
@@ -291,7 +292,7 @@ proactive TPL は起こさない。本設計が破りうる原則として「実
 スライス 1 と 2 は互いに独立で、どちらもスライス 3 の前提になる。見出しが必須になるのは
 karasu がスライス 3 で見出しのキーを設定したときなので、スライス 1 は tpl-tools の版を
 待たずに入れられ、スライス 2 も karasu の本文を待たない。スライス 3 の索引への表示だけは
-#3289（生成索引の採用と CI での `regenerate --check`）にも依存する。スライス 4 はスライス 3 を
+#3289（生成索引の採用と毎日の再生成 PR への組み込み）にも依存する。スライス 4 はスライス 3 を
 待つ。印を付ける前に印ごとの一覧を出すと、judgment の項目も含めて全項目が unguarded と出るため。
 各スライスでできること・
 その時点でできないことは #3038 の `## Slice status` 表に置き、スライスの Issue は #3038 の
