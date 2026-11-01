@@ -13,6 +13,7 @@ system S {
     domain Orders {
       usecase PlaceOrder {
         resource OrderDB.Orders { operations insert:create }
+        PlaceOrder -> ListOrders
       }
       usecase ListOrders {
         resource OrderDB.Items { operations select:read }
@@ -67,6 +68,8 @@ describe("read / write edges derived in a domain drill-down (#3429)", () => {
     // `edge[write]` rules, so it must not flatten the two widths into one.
     const { svg, errors } = render("edge { stroke-width: 3px; }");
     expect(errors).toEqual([]);
+    // The plain usecase edge takes the user width, so the sheet did apply.
+    expect(edgeWidth(svg, "PlaceOrder", "ListOrders")).toBe(3);
     expect(edgeWidth(svg, "PlaceOrder", "OrderDB.Orders")).toBe(2);
     expect(edgeWidth(svg, "ListOrders", "OrderDB.Items")).toBe(1.5);
   });
