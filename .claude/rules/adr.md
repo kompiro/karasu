@@ -189,16 +189,28 @@ node scripts/review/tier.ts classify   # "tier": "low" なら適用条件を満�
 > 下の適用条件は分類器の規則を読める形にしたもので、食い違えば分類器が正しい。
 
 手順は次の順で行う。**段階は PR を作る前にブランチの差分で判定する。**
+Low の PR は draft を経ずに作り、そのまま auto-merge を有効にする。これは `docs/process.md`
+手順 10・11（draft で作り、`gh pr ready` で外す）に優先する。
 
 ```
 git fetch origin main
 git diff --stat origin/main...HEAD; git diff origin/main...HEAD   # 差分を読む
 node scripts/review/tier.ts classify                    # 1. Low であることを確認
 # 2. /engineering:code-review と CLI の指摘をローカルレビューの記録として本文に書く
-gh pr create --draft --label "risk: low" --title "docs(adr): ..." --body-file <本文>
-gh pr ready <N>
+gh pr create --label "risk: low" --title "docs(adr): ..." --body-file <本文>
 gh pr merge <N> --auto --squash --delete-branch
 ```
+
+`gh pr create --label` はラベルを PR を開いた後に付けるが、ラベルの無い PR に `risk: high` を付ける
+「Label untiered PRs High」（`.github/workflows/review-request.yml`）は、開いた PR では 30 秒待ってから
+ラベルを読むので、`risk: low` が先に届く（#3504）。それより遅れて `risk: high` も付いたら、Review tier は厳しい方の
+High として扱い auto-merge を止める。そのときは `gh pr edit <N> --remove-label "risk: high"` で外す。
+
+Claude のセッションの gh は、`--draft` の無い `gh pr create` を `risk: low` のときだけ、このブランチの CLI の
+レビューが済んでいれば通す（ADR-3342 のゲート）。通すのは、gh がチェックアウト中のブランチを origin の repo へ push する
+形だけで、`--head`・`--repo`・`GH_REPO` / `GH_HOST`・origin 以外への `gh repo set-default`、origin に無い base、
+分からない origin の既定ブランチ、`risk: low` 以外の段階のラベルのどれかがあれば拒否する。そのときは draft で作って `gh pr ready` で外す。CLI が使えない環境では
+Low にならない（Review tier が CLI を飛ばした Low の記録を通さない）ので、`risk: medium` で draft から作る。
 
 Low でなければ、出た段階のラベルを付けて draft で作り、`gh pr ready <N>` だけ実行して通常の PR として扱う。
 

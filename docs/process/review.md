@@ -23,7 +23,8 @@ Medium と Low では CLI が CodeRabbit の唯一の目になる。
 `/coderabbit-converge` のラウンドでは、push の前にそのラウンドの修正分だけへ 1 回当てる
 （ADR-3340）。CLI が使えない環境（未インストール・
 未認証・枠切れ）では `docs/process.md` の手順 9 を飛ばし、手順 11 の ready を `KARASU_LOCAL_REVIEW_SKIPPED=<理由> gh pr ready <n>`
-で実行する（理由を付けない ready は拒否される）。決定は
+で実行する（理由を付けない ready は拒否される）。Low の PR は CLI を飛ばせない（下の「リスク段階」）ので、
+draft を経ずに作る Low の ADR の PR でも CLI が使えなければ、`risk: medium` に上げて draft で作る。決定は
 [ADR-3326](../adr/3326-coderabbit-cli-once-before-ready.md) と ADR-3342。
 
 ### リスク段階
@@ -52,7 +53,8 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 - **差分が `packages/nest/**` か `.github/workflows/**` に触れる PR は、段階とは別に `/security-review` を当てる**
 - **段階のラベルは draft のうちに付ける。** CodeRabbit は `risk: high` / `risk: design` の付いた PR だけを、draft を
   外れたときにレビューする。ラベルを上げるのはよい（人間が CodeRabbit に見せたいと判断した PR など）。ready の後に
-  `risk: high` へ上げた PR でレビューが始まらなければ、`@coderabbitai full review` を投げる
+  `risk: high` へ上げた PR でレビューが始まらなければ、`@coderabbitai full review` を投げる。Low の ADR の PR だけは
+  draft を経ずに作るので、`gh pr create --label` で付ける（`.claude/rules/adr.md`「ADR PR の auto-merge」）
 - **Low の auto-merge は「PR のマージはユーザー確認を経る」という既定運用への例外である。** 条件は Review tier を含む
   CI が通ること。有効にした後に変更を足すなら、先に `gh pr merge <n> --disable-auto` で解く。Low 以外では auto-merge を
   使わない。CI の途中で有効にすれば Review tier が落とすが、CI が通った後に有効にした PR はそのままマージされ、check では

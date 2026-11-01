@@ -2,7 +2,8 @@ name: Review request
 
 # CodeRabbit reviews only PRs labeled `risk: high` or `risk: design`
 # (.coderabbit.yaml `auto_review.labels`, Issue #3286). Claude labels its PRs
-# while they are drafts; this labels every other PR that arrives without a tier
+# while they are drafts, or at `gh pr create` for a Low ADR PR that is not
+# opened as a draft (Issue #3504); this labels every other PR that arrives without a tier
 # label `risk: high`, so an outside author's PR, or one opened from the GitHub UI,
 # is treated as High: CodeRabbit and a human reading the diff. The `Review tier`
 # check treats a missing label as High too; this makes the label say so. Whether
@@ -39,6 +40,11 @@ jobs:
     # opened: labelling a draft on `opened` or `reopened` would race it or
     # pre-empt it. Drafts are labelled on `ready_for_review` instead, if they
     # still have no tier label then.
+    #
+    # A PR opened as non-draft has the same race: a Low ADR PR is opened with
+    # `gh pr create --label "risk: low"` and no draft (`.claude/rules/adr.md`,
+    # Issue #3504), so on `opened` and `reopened` the step waits for that second
+    # call before it reads the labels.
     if: >-
       github.event.pull_request.draft == false &&
       !(github.event.pull_request.head.repo.full_name == github.repository &&
@@ -51,7 +57,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
+          ACTION: ${{ github.event.action }}
         run: |
+          # A draft got its label while it was a draft; a PR that opens as
+          # non-draft may still be getting its label from `gh pr create --label`.
+          if [ "$ACTION" != "ready_for_review" ]; then
+            sleep 30
+          fi
           # Only the four tier labels count; a misspelled `risk: *` label is no tier.
           tiers=$(gh pr view "$PR" --repo "$REPO" --json labels \
             --jq '[.labels[].name | select(test("^risk: (low|design|medium|high)$"))] | length')
