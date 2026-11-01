@@ -329,6 +329,53 @@ describe("gh wrapper: gh pr create", () => {
     expect(result.stderr).toContain("gh pr create --draft");
     expect(calls(gh)).toEqual([]);
   });
+
+  // A create without --draft skips gh pr ready, so it is held to the same
+  // review: a Low ADR PR is opened this way (#3504).
+  it.each([
+    'gh pr create --label "risk: low" --title x --body-file b.md',
+    "gh pr create --base main --title x",
+    "gh pr create --base=main --title x",
+    "gh pr create -B main --title x",
+    "gh pr create -Bmain --title x",
+    "gh pr create --head chore/1-example --title x",
+  ])("runs a create without --draft once the CLI reviewed the branch: %s", (line) => {
+    const gh = fakeGh(DRAFT);
+    expect(run(line, gh, reviewedWork()).status).toBe(0);
+    expect(calls(gh)).toHaveLength(1);
+  });
+
+  it("names the CLI review and the skip when it refuses a create without --draft", () => {
+    const result = run("gh pr create --title x", fakeGh(DRAFT), reviews());
+    expect(result.stderr).toContain(
+      "coderabbit review --agent --deep --base origin/main --committed",
+    );
+    expect(result.stderr).toContain("KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr create");
+  });
+
+  it.each([
+    ["the review only covers the base branch", "gh pr create --title x", BASE],
+    ["--head names a branch the review is not on", "gh pr create --head main --title x", WORK],
+    ["-H names a branch the review is not on", "gh pr create -Hmain --title x", WORK],
+  ])("refuses a create without --draft when %s", (_why, line, reviewed) => {
+    const gh = fakeGh(DRAFT);
+    const result = run(line, gh, reviews({ head: reviewed, state: "complete" }));
+    expect(result.status).toBe(1);
+    expect(calls(gh)).toEqual([]);
+  });
+
+  it("runs a create without --draft on a deliberate skip that names a reason", () => {
+    const gh = fakeGh(DRAFT);
+    const line = "KARASU_LOCAL_REVIEW_SKIPPED=cli-out-of-quota gh pr create --title x";
+    expect(run(line, gh, reviews()).status).toBe(0);
+    expect(calls(gh)).toEqual(["pr create --title x"]);
+  });
+
+  it("does not count a skip without a reason for a create", () => {
+    expect(
+      run("KARASU_LOCAL_REVIEW_SKIPPED= gh pr create --title x", fakeGh(DRAFT), reviews()).status,
+    ).toBe(1);
+  });
 });
 
 describe("bash 3.2 compatibility", () => {
