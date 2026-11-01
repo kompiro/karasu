@@ -10,7 +10,7 @@
   - [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md)（全 surface parity）
   - [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（parse-and-vanish の禁止）
   - [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（ネスト構文の fmt round-trip）
-- **対象**: `packages/core/src/parser/parser.ts`（配置受理 + `scopedBoundaryIndex`）、`packages/core/src/renderer/layout.ts`（`boundaryAxisFor` / scope-qualified group id）、`packages/core/src/renderer/group-labels.ts`
+- **対象**: `packages/core/src/parser/parser.ts`（配置受理）、`packages/core/src/parser/finalize-file.ts`（`scopedBoundaryMembership` の構築）、`packages/core/src/renderer/layout.ts`（`boundaryAxisFor` / scope-qualified group id）、`packages/core/src/renderer/group-labels.ts`
 
 ## 概要
 
