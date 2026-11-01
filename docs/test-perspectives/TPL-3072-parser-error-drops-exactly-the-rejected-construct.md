@@ -67,7 +67,9 @@ scope:
   その `}` が外側のブロックを閉じる（#3499。`boundary` の中の `A -> B { label "x" }` は
   error 7 件だった）
 - 段数の決まったパスの reader が上限で読むのをやめ、残りの段をブロックに流す
-  （#3499。`table DB.orders.extra` の `.extra`、`resource DB.C.X` の `.X`）
+  （#3499。`table DB.orders.extra` の `.extra`、`resource DB.C.X` の `.X`）。逆に最後まで
+  読む側では、末尾のドットが次の行の edge の source を段として取り込み、残った `-> B` が
+  暗黙の source の edge として読まれる（`readNodeIdPathTail` は後の行で矢印の続く id を取り込まない）
 
 ## チェックリスト
 
