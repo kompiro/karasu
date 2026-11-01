@@ -187,6 +187,10 @@ function readFlat(absDir: string, dir: string): ExampleProject {
     .filter((e) => e.isFile() && isBundled(e.name))
     .map((e) => ({ path: e.name, content: readFileSync(resolve(absDir, e.name), "utf8") }));
   if (files.length === 0) throw new Error(`examples/${dir} has no .krs files to bundle.`);
+  if (!files.some((f) => f.path === "index.krs")) {
+    // The app and the reference payload open a seeded project at `index.krs`.
+    throw new Error(`examples/${dir} has no index.krs entry file.`);
+  }
   return { name: dir.split("/").at(-1)!, files: sortFiles(files) };
 }
 
@@ -216,6 +220,16 @@ function readStage(absDir: string, dir: string, stage: string): ExampleProject {
     path: n === found[0] ? "index.krs" : n,
     content: readFileSync(resolve(absDir, stage, n), "utf8"),
   }));
+  // Content is bundled verbatim, so an `@import` of the entry by its on-disk
+  // name would point at a file the bundle no longer has. Fail rather than
+  // rewrite the example.
+  const entryImport = new RegExp(`@import\\s+"(?:\\./)?${found[0]!.replace(".", "\\.")}"`);
+  const importer = files.find((f) => entryImport.test(f.content));
+  if (importer) {
+    throw new Error(
+      `examples/${dir}/${stage}: ${importer.path} imports ${found[0]}, which is bundled as index.krs.`,
+    );
+  }
   return { name: stage, files: sortFiles(files) };
 }
 

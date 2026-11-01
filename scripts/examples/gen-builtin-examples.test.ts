@@ -107,6 +107,21 @@ describe("built-in examples reader", () => {
     expect(() => readRegisteredExamples(root, [staged])).toThrow(/both system\.krs and index\.krs/);
   });
 
+  it("fails on a flat directory without an index.krs entry", () => {
+    write({ "en/x/other.krs": "" });
+    expect(() => readRegisteredExamples(root, [flat])).toThrow(/no index\.krs entry/);
+  });
+
+  it("fails when a stage file imports the entry by its on-disk name", () => {
+    write({
+      "en/s/01-a/system.krs": "",
+      "en/s/01-a/payment.krs": '@import "./system.krs"\n',
+    });
+    expect(() => readRegisteredExamples(root, [staged])).toThrow(
+      /payment\.krs imports system\.krs/,
+    );
+  });
+
   it("fails on a sheet at the top of a staged directory, outside any stage", () => {
     write({ "en/s/01-a.krs": "", "en/s/stray.krs.style": "" });
     expect(() => readRegisteredExamples(root, [staged])).toThrow(/only inside a stage/);
