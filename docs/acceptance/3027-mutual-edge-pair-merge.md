@@ -6,7 +6,7 @@ type: product
 
 - **日付**: 2026-10-31
 - **関連 Issue**: [#3027](https://github.com/kompiro/karasu/issues/3027)
-- **関連 ADR**: [ADR-3022](../adr/3022-edge-label-disclosure.md)、[ADR-1185](../adr/1185-parallel-edge-bundling.md)、[ADR-2958](../adr/2958-gutter-lane-bundling.md)、[ADR-2632](../adr/2632-edge-hover-affordance.md)
+- **関連 ADR**: [ADR-3022](../adr/3022-edge-label-disclosure.md)、[ADR-1185](../adr/1185-parallel-edge-bundling.md)、[ADR-2958](../adr/2958-gutter-lane-bundling.md)、[ADR-2632](../adr/2632-edge-hover-affordance.md)、[ADR-3027](../adr/3027-mutual-edge-pair-merge.md)
 - **Related TPLs**: [TPL-3027](../test-perspectives/TPL-3027-visual-merge-only-when-indistinguishable.md), [TPL-3022](../test-perspectives/TPL-3022-withheld-content-stays-reachable.md), [TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md), [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md)
 - **対象ファイル**: `packages/core/src/renderer/mutual-pair.ts`（`applyMutualPairs`）、`layout.ts`、`svg-renderer.ts`（`edgeLineKeyOf`）、`edge-label-disclosure.ts`（`canvasLabel` / `directionArrow`）、`edge-routing.ts`（`ownLabelSegment`）、`label-placement.ts`
 
