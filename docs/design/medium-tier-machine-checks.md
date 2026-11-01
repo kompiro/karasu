@@ -51,7 +51,7 @@ ADR-3286 で、`risk: medium` の PR には CodeRabbit が回らなくなった�
 - **Review tier は install しない。** 描画の比較は base と head の両方で core を動かすので数分かかり、Review tier に入れると「draft でも走る、数秒の check」という性質が崩れる
 - **判定に使うコードは base 側のものにする**（TPL-3286）。PR が書き換えた比較のスクリプトで、その PR 自身を判定しない
 - **PR のコードを動かす job には書き込みのトークンを持たせない。** 描画の比較は head の core を実行する
-- **想定する相手**：信頼リストにいない作成者の PR は、分類器が常に High にする。`refactor` の例外も `rendering-change` のラベルも、効くのは信頼リストの作成者（メンテナと Claude のセッション）の PR だけである。比較の偽装で守るべきなのは悪意ではなく事故（head のコードが比較を壊すこと）だが、外部の PR で artifact やラベルを書き換えられないことは、それとは別に守る
+- **想定する相手**：信頼リストにいない作成者の PR は、分類器が常に High にする。`refactor` の例外も `rendering-change` のラベルも、効くのは信頼リストの作成者（メンテナと Claude のセッション）の PR だけである。比較の偽装で守るべきなのは悪意ではなく事故（head のコードが比較を壊すこと）である。外部の PR は自分の artifact の中身を決められるが、ほかの PR のラベルを変えられないことは守る（3）
 - **作成者が書く宣言（タイトルの型、本文の理由の行）で検査が軽くなる規則は、宣言が偽りでも厳しい側に倒れる形にする。** ADR-3011 は、判断を含む基準を Claude の判断だけで適用することを却下している。宣言で軽くなる場合は、機械の検査がその宣言を裏付けるときだけにする。例外は本文の理由の行（`No test:` / `Test change:`）で、裏付ける検査は無い。メンテナが理由の行で通すと決めたので受け入れ、check の summary に一覧を出して人間に見えるようにする
 - **描画の比較は、パッケージに触れる PR だけで走らせる**（メンテナの決定）。required にするので paired stub を置き、フィルタの一覧を両側でそろえる
 - **対象外**：PNG のピクセル比較（ADR-529 で見送り）、drill-down の 2 段目より深い view、VS Code の webview、本番でしか起きない描画の差
@@ -120,17 +120,19 @@ ADR-3286 で、`risk: medium` の PR には CodeRabbit が回らなくなった�
 
 ### 1. 段階の規則
 
-分類器に 2 つのパスの一覧を足す。テストファイル（`*.test.ts(x)`・`*.spec.ts`）はこの 2 つの規則から外し、
+分類器に下の表の規則を足す。テストファイル（`*.test.ts(x)`・`*.spec.ts`）は表のすべての規則から外し、
 従来どおり新しいファイルなら Low、既存のファイルの変更なら Medium にする。テストを足すだけで High になる形を避けるためで、
 既存のテストの変更は 4 で検査する。ただし、セキュリティの境界のテストファイル（下の一覧のディレクトリやファイル名に対応するテストファイル）で
 既存の行を消す変更は High にする。SSRF や symlink の回帰のテストを、理由の行だけで消せないようにするため
 
-| 規則               | パス                                                                                                                                                                                                                                                                                                                                                                | 段階                                             |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| セキュリティの境界 | `packages/nest/**`、`packages/cli/src/{serve,render-*,node-fs,path-arg,watcher}*`、`packages/core/src/fs/**`、`packages/vscode/src/{message-validation,webview-html,host-files}*`、`packages/core/src/renderer/svg-builder.ts`（SVG のテキストと属性のエスケープ。app は出力を `dangerouslySetInnerHTML` で差し込み、nest と webview は信頼できない `.krs` を描く） | 常に High                                        |
-| 言語の挙動         | `packages/core/src/{lexer,parser,resolver,spec,style,formatter}/**`、`packages/core/src/language-version.ts`                                                                                                                                                                                                                                                        | High。PR のタイトルの型が `refactor` なら Medium |
-| 言語の挙動（LSP）  | `packages/lsp/src/diagnostics*`                                                                                                                                                                                                                                                                                                                                     | 常に High（比較が LSP の変換を見ないため）       |
+| 規則               | パス                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | 段階                                             |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| セキュリティの境界 | `packages/nest/**`、`packages/cli/src/{serve,render-*,node-fs,path-arg,watcher}*`、`packages/core/src/fs/**`、`packages/vscode/src/{message-validation,webview-html,host-files}*`、`packages/vscode/src/preview-panel.ts`（`openExternal`）、`packages/core/src/renderer/svg-builder.ts`（SVG のテキストと属性のエスケープ。app は出力を `dangerouslySetInnerHTML` で差し込み、nest と webview は信頼できない `.krs` を描く）、`packages/app/src/utils/inline-share.ts`（URL の payload を復号する）、`packages/app/src/components/{ChatPane,NodeDetailPanel,EdgeDetailPanel}.tsx`（DOMPurify と `dangerouslySetInnerHTML`） | 常に High                                        |
+| 言語の挙動         | `packages/core/src/{lexer,parser,resolver,spec,style,formatter,annotations}/**`、`packages/core/src/language-version.ts`、`packages/core/src/builtins/default-style.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                      | High。PR のタイトルの型が `refactor` なら Medium |
+| 言語の挙動（LSP）  | `packages/lsp/src/diagnostics*`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | 常に High（比較が LSP の変換を見ないため）       |
 
+- **`refactor` の例外は、そのパスのすべての出力を 2 の比較が見る場合に限る。** `style/` の `tidy-style` の出力と、`spec/operations.ts` が効く matrix view は、2 の比較に足す。比較が見ない出力を持つパスは例外から外す（LSP の行がその例）
+- **パスの一覧に加えて、差分の中身でもセキュリティの境界を判定する。** 足した行か消した行に `dangerouslySetInnerHTML`、`innerHTML`、`DOMPurify`、`openExternal`、`eval(`、`new Function` を含む PR は High にする。一覧に無い新しいファイルに危ない出口を足しても、一覧の更新を待たずに拾える（TPL-2446）
 - `securityReview` の対象にも、セキュリティの境界の一覧を足す
 - タイトルは Review tier の `edited` で読み直すので、タイトルを `refactor` から変えれば段階も変わる
 - 比較のスクリプト（`scripts/pr-shots/**` と新しい比較のディレクトリ）を、レビューの仕組みとして High の一覧に足す
@@ -141,8 +143,8 @@ base と head で、次の範囲を描画して比べる。
 
 - **入力**：`examples/` の全エントリと、全 AT の `krs` fence（変わった fence だけではない）
 - **view**：root（system / deploy / org）、各 system、system の下の 1 段の drill-down。それぞれを ungrouped と、team と boundary の group-by で描く（#3502 で手作業で比べた範囲）
-- **比べるもの**：SVG の文字列、ファイルごとの診断（code・位置・メッセージ）の一覧、`karasu fmt` と同じ整形の出力。parser の refactor は描画を変えずに warning だけを変えうる。`formatter/` を `refactor` の例外に入れるので、整形の出力も比べる
-- **入力は両側とも head のもの**を使う（`pr:shots` は各側のファイルを読むが、ここでは比べたいのがコードの差だけなので揃える）。examples に触れる refactor でも落ちない
+- **比べるもの**：SVG の文字列、ファイルごとの診断（code・位置・メッセージ）の一覧、`karasu fmt` と同じ整形の出力。parser の refactor は描画を変えずに warning だけを変えうる。`formatter/` を `refactor` の例外に入れるので、整形の出力も比べる。`.krs.style` の入力には `tidy-style` の出力を、`usecase` を持つ入力には matrix view を足す
+- **入力は merge-base と head の和集合**にし、各入力は両側とも同じ中身を使う（head にあれば head の中身、head で消えていれば merge-base の中身）。`pr:shots` は各側のファイルを読むが、ここで比べたいのはコードの差だけなので揃える。examples に触れる refactor でも落ちず、example を消した refactor でもその入力の比較は残る
 
 判定は次のとおりとする。
 
@@ -154,8 +156,10 @@ base と head で、次の範囲を描画して比べる。
 
 「差」は結果の違いで数える。両側が同じ SVG、または両側が同じ診断で描画に失敗したなら差は無い。片側だけ失敗した、失敗の診断が違う、SVG・診断・整形の出力のどれかが違う、のどれかなら差がある。AT の fence には、単独では解決できない `import` を持つもの（AT-0068、AT-0069、AT-1580）があり、両側で同じく失敗するのでこれで差にならない。ラベル（3）も同じ「差」で付ける
 
+比較そのものが失敗したとき（install、worktree の用意、スクリプトのエラー）は、タイトルの型が `refactor` なら check を落とし、それ以外の PR では check を通して「比較できなかった」を artifact に書く。3 はこれを差があるものとして扱い、ラベルを付ける
+
 - **比べる両側は、PR の head のコミットと、head と base の merge-base** にする（`pr:shots` と同じ）。base の先端と比べると、main が進んだだけで refactor の PR が落ちる
-- **比較を動かすスクリプトは base 側のもの**にする。base を checkout して比較のスクリプトを取り、両側の core を**それぞれ別の子プロセス**で動かし、直列化した結果を base 側の親プロセスが比べる（`pr:shots` の `base-worktree.ts` / `render-side.ts` を流用する）。同じプロセスで head の core を import すると、head のコードがグローバルや `fs`・`process.exit` を書き換えて判定を変えられる。base にまだスクリプトが無いあいだ（このスクリプトを足す PR）だけ head のものを使う（`review-tier.yml` と同じ扱い）
+- **比較を動かすスクリプトは base 側のもの**にする。base を checkout して比較のスクリプトを取り、両側の core を**それぞれ別の子プロセス**で動かし、直列化した結果を base 側の親プロセスが比べる（`pr:shots` の `base-worktree.ts` / `render-side.ts` を流用する）。同じプロセスで head の core を import すると、head のコードがグローバルや `fs`・`process.exit` を書き換えて判定を変えられる。子プロセスには `GITHUB_ENV`・`GITHUB_OUTPUT`・`GITHUB_STEP_SUMMARY` などを渡さず、判定は親プロセスの終了コードで決める。base にまだスクリプトが無いあいだ（このスクリプトを足す PR）だけ head のものを使う（`review-tier.yml` と同じ扱い）
 - **起動の条件**：`packages/**`、`pnpm-lock.yaml`、ルートの `package.json`、比較のスクリプト、この workflow 自身に触れる PR。外れた PR には skip stub（`render-equivalence-skip.yml`）が成功を報告する。フィルタの一覧は両方の workflow でそろえ、ずれをテストで検出する（TPL-1480）
 - **draft では skip** し、`ready_for_review` で走らせる。`scripts/ci/workflow-draft-gate.test.ts` の `DRAFT_GATED_JOBS` と `docs/process/stacked-pr.md` の一覧を同じ PR で更新する。`.claude/rules/stacked-pr.md` は ADR-2643 の更新も求めるが、ADR の本文は書き換えない（ADR-2687）。job は ADR-3505 に記録し、ルールとの食い違いは [#3517](https://github.com/kompiro/karasu/issues/3517) で直す
 - **タイトルの変更（`edited`）でも走らせる。** 判定がタイトルの型に依るので、`feat` で ready にして成功を得た後に `refactor` へ書き換えると、前の成功が残る（TPL-3286 に足した観点）。`edited` は本文の変更（記録の更新）でも起きるが、job-level の `if:` で本文だけの変更を skip しない。skip した run は同じ SHA の成功として前の失敗を上書きする（TPL-2643）。本文の変更のたびに数分の比較が走るのは受け入れ、`concurrency` で同じ PR の古い run を取り消す
@@ -166,8 +170,10 @@ base と head で、次の範囲を描画して比べる。
 
 - `workflow_run`（`Render equivalence` の完了）で起動する workflow が、artifact の JSON を読む。差が 1 つ以上あれば `rendering-change` を付け、無ければ外す。PR のコードは checkout しない
 - 権限は `actions: read`（artifact を読む）と `pull-requests: write`（ラベル）だけにする
+- `workflow_run` は workflow の名前で起動するので、PR が同じ名前の workflow を足しても起動する。`workflow_run.path` が `.github/workflows/render-equivalence.yml` で、`workflow_run.event` が `pull_request` のときだけ動く
 - artifact は起動した run（`workflow_run.id`）のものだけを読み、数値と固定の形の文字列だけを取り出して、ほかの値は捨てる。ラベル以外の操作はしない
-- artifact が無い（draft で skip した run など）、2 つ以上ある、形が崩れている、PR を引けない、いまの head と一致しない、のどれかなら、ラベルは変えない
+- PR を引けない、いまの head と一致しない、run が skip された（draft）、のどれかなら、ラベルは変えない
+- skip されずに終わった run で、artifact が無い・2 つ以上ある・形が崩れている、のどれかなら、比較できなかったものとしてラベルを付ける（軽い側に倒さない）
 - **PR の番号は artifact から読まない。** artifact は PR のコード（head の core）を動かした job が書くので、作成者が中身を決められる。PR は `workflow_run.head_sha`（と head のリポジトリ・ブランチ）から引き、その PR のいまの head が `workflow_run.head_sha` と一致するときだけラベルを変える。fork の PR では `workflow_run.pull_requests` が空になるので、この引き方が要る。古いコミットの run が遅れて終わっても、ラベルを古い結果に戻さない
 - マージは止めない。メンテナはこのラベルの PR を必ずレビューし、preview で動作を確かめる
 - パッケージに触れない PR（examples や AT だけの変更）は比較が走らないのでラベルが付かない。この場合は従来どおり `pr:shots` のフックが before/after を促す
@@ -179,14 +185,14 @@ base と head で、次の範囲を描画して比べる。
 **fix のテスト**：次のどちらかに当たる PR は、テストケースの追加を求める。
 
 - タイトルの型が `fix`
-- `closingIssuesReferences`（GraphQL）に `bug` ラベルの Issue がある。読むために workflow の権限に `issues: read` を足す
+- `closingIssuesReferences`（GraphQL）か、本文の `Closes #N` / `Fixes #N` に `bug` ラベルの Issue がある。base が `main` でない stacked PR では `closingIssuesReferences` が空になるので、本文も読む。読むために workflow の権限に `issues: read` を足す。Issue に後から `bug` を付けても Review tier は走り直さない。PR 側のイベント（push・本文の編集）で次に走ったときに効く
 
-テストケースの追加とは、新しいテストファイル、既存のテストファイルに足した `it(` / `test(`（`.each` を含む）の行、または既存の `.each([...])` の表に足した行を指す。
+テストケースの追加とは、新しいテストファイル、既存のテストファイルに足した `it(` / `test(`（`.each` を含む）の行、既存の `.each([...])` の表に足した行、またはディレクトリを読むテストが拾う入力の追加（`examples/` の新しいエントリ、renderer の fixture、AT の新しい `krs` fence）を指す。
 テストを書く面が無い修正（lint や CI の修正など）は、本文の `No test: <理由>` の行で通す。どの段階の PR にも適用する。
 
 **既存のテストを変える変更**：base にあるテストファイルの変更を、assert のパターンを数えずに判定する。パターンの一覧では、整形で別の行に折り返した matcher（`).toBe(` だけの行）や、同じ内容で何度も現れる assert の移動を見分けられない（`tier.ts` も、既存のテストファイルへの追加だけを Low にする案を同じ理由で却下している）。
 
-- **タイトルの型が `refactor` の PR**：既存のテストファイルで許す変更は、import の文（複数行にまたがる `import { … } from` を 1 つの文として読む）の追加・削除・書き換えと、消した行と足した行が同じ位置で対になり、モジュールのパスやファイル名の文字列（import の specifier と、`.ts` / `.tsx` / `.js` で終わる文字列）だけが違うものに限る。それ以外の変更と、テストファイルの削除は落とす。分割の refactor で起きるのは import とパスの張り替えで（#3462 の `baseline-portability.test.ts` など）、これは通る
+- **タイトルの型が `refactor` の PR**：既存のテストファイルで許す変更は、import の文（複数行にまたがる `import { … } from` を 1 つの文として読む）の追加・削除・書き換えと、消した行と足した行が同じ位置で対になり、コメントか、モジュールのパスやファイル名の文字列（import の specifier と、`.ts` / `.tsx` / `.js` で終わる文字列）だけが違うものに限る（#3451 はコメントの中のファイル名を張り替えた）。それ以外の変更と、テストファイルの削除は落とす。分割の refactor で起きるのは import とパスの張り替えで（#3462 の `baseline-portability.test.ts` など）、これは通る
 - **それ以外の PR**：既存のテストファイルで import 以外の行を 1 行でも消した、テストファイルを削除した、または `.skip` / `.fixme` / `.todo` / `.only` / `skipIf` / `runIf` や単独の `return` の行を足したなら、本文の `Test change: <理由>` の行を求める。新しいテストケースを足すだけの変更は追加だけなので、理由は要らない
 
 `No test:` と `Test change:` の行で通した PR は、check の summary に理由と一緒に一覧を出す。
