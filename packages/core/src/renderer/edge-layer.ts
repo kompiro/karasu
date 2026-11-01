@@ -1,8 +1,8 @@
 import type { ResolvedStyles } from "../types/style.js";
-import { edgeStyleKey } from "../resolver/style-resolver.js";
 import { edgeKey } from "../diff/view-diff.js";
 import type { HopMark, LayoutResult } from "./layout-types.js";
 import { renderEdge } from "./edge-routing.js";
+import { resolvedEdgeStyle } from "./edge-line-key.js";
 import { resolveLabelPlacements, buildLabelInputs } from "./label-placement.js";
 import {
   edgesWithMarks,
@@ -78,16 +78,8 @@ export function renderEdgeLayer(
   }
   // Resolve the edge style once per edge (reused by both the label-placement
   // pre-pass and the render loop below).
-  const edgeStyleFor = (edgeLayout: LayoutResult["edges"][number]) => {
-    // Prefer the kind-qualified style entry so parallel sync/async edges between
-    // the same pair keep their own stroke style; fall back to the bare key for
-    // synthetic layout edges (delivers, owns, ghosts, aggregated domain edges).
-    return (
-      styles.edges.get(edgeStyleKey(edgeLayout.from, edgeLayout.to, edgeLayout.kind)) ??
-      styles.edges.get(edgeStyleKey(edgeLayout.from, edgeLayout.to, undefined)) ??
-      styles.defaultEdgeStyle
-    );
-  };
+  const edgeStyleFor = (edgeLayout: LayoutResult["edges"][number]) =>
+    resolvedEdgeStyle(styles, edgeLayout);
 
   // Auto label collision-avoidance (#2048): nudge labels that collide with node
   // cards, with each other, or with another edge's polyline (#2360) off their
