@@ -8,7 +8,7 @@
 - **Related TPLs**:
   - [TPL-1886](../test-perspectives/TPL-1886-rekey-transform-preserves-per-element-decoration.md)（id を書き換える集約変換は元 id にキーされた装飾を再導出する）
   - [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（全域性・端点保持）
-- **対象**: `packages/core/src/index.ts`（`compileSystemDiff`）/ `packages/core/src/renderer/group-collapse.ts` / `layout.ts` / `canvas-grouping.ts` / `svg-renderer.ts`
+- **対象**: `packages/core/src/index.ts`（`compileSystemDiff`）/ `packages/core/src/renderer/group-collapse.ts` / `layout.ts` / `canvas-grouping.ts` / `edge-layer.ts`
 
 ## 概要
 

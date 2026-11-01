@@ -6,7 +6,7 @@
 - **対象ファイル**:
   - `packages/core/src/renderer/label-placement.ts`（`EdgeLine` / `edgeLine` / `countLabelLinePenetrations` を追加、障害物集合と cost を拡張）
   - `packages/core/src/renderer/label-placement.test.ts`
-  - `packages/core/src/renderer/svg-renderer.ts`（`edgeLines` を pass に配線）
+  - `packages/core/src/renderer/edge-layer.ts`（`edgeLines` を pass に配線）
 - **関連**: [ADR-2048](../adr/2048-edge-label-collision-avoidance.md)（本 ADR が障害物集合を広げる元の決定）、[ADR-1184](../adr/1184-edge-label-position-offset.md)（手動 `label-position` / `label-offset` lever）、[TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md)（本 PR で label↔line 軸を追加）、[TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)
 
 ## 受け入れ条件

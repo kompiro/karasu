@@ -10,7 +10,7 @@ type: product
 - **Related TPLs**: [TPL-2631](../test-perspectives/TPL-2631-decoration-must-not-hide-a-crossing-mark.md)（装飾がマークを覆わないことを寸法で測る。assert は描画から読む）, [TPL-2803](../test-perspectives/TPL-2803-measured-lines-are-drawn-lines.md)（測った値と描いた値は同じもの）, [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)（計測柵は資源の限界に達する入力を持って初めて柵になる）, [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（貫通と重なりを同じテストで測る）
 - **対象ファイル**:
   - `packages/core/src/renderer/crossing-marks.ts`（`HOP_RADIUS` 4 → 6、上限とその根拠）
-  - `packages/core/src/renderer/svg-renderer.ts`（アーチの `ry` に `HopMark.ry` を使う）
+  - `packages/core/src/renderer/crossing-marks-svg.ts`（アーチの `ry` に `HopMark.ry` を使う）
   - `docs/guide/diagrams/01-services.svg` / `.ja.svg`（`pnpm gen:guide-diagrams` の再生成物）
 
 > アーチは「交差＝接続ではない」を言うために存在する（ADR-1859）。半径 4px は他に競合が無かった時期に決めた値で、実モデルを 6 倍に拡大すると線の欠けにしか見えない。半径は 4 から 9 まで振って 3 つの破綻（隣の平行線に届く / 端点でないカードに重なる / host 線のギャップが接続点まで届く）を数え、グループ化ビューが 9px で崩れる（隣接 0 → 36）ことから **6px** を上限として採った。拘束するのは `LANE_PITCH` ではなく `fanOutGutterPorts` がカード 1 辺に並べるポートの間隔である。
