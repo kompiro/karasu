@@ -1,4 +1,4 @@
-// License allowlist for production dependencies — see ADR-1320
+// License allowlist for production dependencies — see `docs/design/license-compliance-automation.md`
 // and `CONTRIBUTING.md` ("License compliance"). Changing this list requires an ADR.
 
 export const LICENSE_ALLOWLIST: readonly string[] = [

@@ -85,7 +85,7 @@
     { "files": ["packages/core/src/renderer/crossing-marks.ts"], "rules": { "max-lines": ["error", { "max": 717 }] } },
     { "files": ["packages/core/src/renderer/deploy-layout.ts"], "rules": { "max-lines": ["error", { "max": 683 }] } },
     { "files": ["packages/core/src/renderer/drill-down-svg.ts"], "rules": { "max-lines": ["error", { "max": 918 }] } },
-    { "files": ["packages/core/src/renderer/edge-routing-groups.ts"], "rules": { "max-lines": ["error", { "max": 2438 }] } },
+    { "files": ["packages/core/src/renderer/edge-routing-groups.ts"], "rules": { "max-lines": ["error", { "max": 2437 }] } },
     { "files": ["packages/core/src/renderer/group-layout.ts"], "rules": { "max-lines": ["error", { "max": 611 }] } },
     { "files": ["packages/core/src/renderer/label-placement.ts"], "rules": { "max-lines": ["error", { "max": 1012 }] } },
     { "files": ["packages/core/src/renderer/layout-types.ts"], "rules": { "max-lines": ["error", { "max": 604 }] } },
