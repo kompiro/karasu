@@ -8,7 +8,7 @@ import { test as opfsTest, expect } from "./opfs.js";
  * responses, so AT-0050 (BYOK Chat UI) can run deterministically without a
  * real API key.
  *
- * Design rationale: see `docs/design/chat-anthropic-mock-fixture.md`.
+ * Design rationale: see ADR-864.
  *
  * Composes with the `opfs` fixture so a single test can seed both the
  * filesystem and the API key:

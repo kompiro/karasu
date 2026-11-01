@@ -4,8 +4,7 @@ VS Code extension host smoke tests for the karasu extension. Provides the
 harness used by AT-0037ff (LSP features, Cmd/Ctrl+Click hint, detail panel,
 cross-diagram navigation).
 
-See `docs/design/vscode-extension-host-harness.md` (and the resulting ADR) for
-the design rationale.
+See ADR-863 for the design rationale.
 
 ## Local run
 

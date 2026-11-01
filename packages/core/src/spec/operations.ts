@@ -12,7 +12,7 @@
  * `execute`, …). Authors can annotate such verbs with their CRUD intent
  * via the verb-decoration syntax — `operations list:read, replace:create,delete` —
  * to feed the matrix view and write-dominates classifier without rewriting
- * domain language. See `docs/design/verb-crud-decoration.md`.
+ * domain language. See ADR-1082.
  *
  * See `docs/spec/syntax.md` §"Resource operations".
  */

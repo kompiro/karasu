@@ -69,7 +69,7 @@ export interface SharePayload {
  *
  * Used by karasu-nest inline sharing — the result encodes into a URL that opens
  * as a standalone in-memory project (design:
- * docs/design/karasu-nest-hosted-preview.md).
+ * ADR-1783).
  */
 export async function synthesizeSharePayload(
   entryPath: string,

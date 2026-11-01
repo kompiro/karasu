@@ -28,7 +28,7 @@
  * every alternate rendering path (drill-down, all-layers, bundled
  * all-views, diff bundles).
  *
- * See Issue #1479, docs/design/svg-diagram-theming.md and
+ * See Issue #1479, ADR-1479 and
  * TPL-1001.
  */
 import { describe, it, expect } from "vitest";

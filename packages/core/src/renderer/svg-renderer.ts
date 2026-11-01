@@ -126,7 +126,7 @@ export interface RenderOptions {
    * Each collapsed category's nodes are replaced by a single ⊕ stub before
    * layout, so the diagram reflows and edges to the hidden nodes drop. Omit
    * (or empty) for the default fully-expanded render. Only meaningful on the
-   * system view; see `docs/design/layer-toggles.md`.
+   * system view; see ADR-1821.
    */
   collapsedCategories?: ReadonlySet<CategoryId>;
   /**

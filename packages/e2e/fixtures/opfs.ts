@@ -4,7 +4,7 @@ import { test as base } from "./network.js";
 /**
  * OPFS fixture for Playwright tests.
  *
- * See ADR-862 (docs/adr/862-opfs-fixture-helper.md) for the design rationale.
+ * See ADR-862 for the design rationale.
  *
  * Usage:
  *

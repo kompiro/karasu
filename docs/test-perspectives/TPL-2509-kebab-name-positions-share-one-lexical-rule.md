@@ -63,7 +63,7 @@ kebab-case 名は `<word> - <word>` のトークン列として parser に届く
   出た。テストは先頭が英字の断片（`team-1`）に加え、先頭が数字の断片
   （`3d-secure`, `2026-q3`）も両面で通す。
 
-## テストの書き方
+## チェックリスト
 
 - parser test: 対象ポジションに `my-team-internal-tag` 形の名前を与え、
   **1 つの名前**として AST に載ることを assert する。keyword 断片

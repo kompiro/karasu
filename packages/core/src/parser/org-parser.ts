@@ -101,8 +101,7 @@ function parseRetiredPositionalLabel(ctx: ParseContext, construct: string): stri
 
 // Grammar: `boundary <id> { (label | description | link | contains)* }`
 // Mirrors parseOrganizationBlock; `contains <id>` reuses the one-target-per-line
-// shape of `owns` (parseTeamBlock). See docs/design/system-view-grouping.md
-// 「P2b 詳細設計」.
+// shape of `owns` (parseTeamBlock). See ADR-1974.
 export function parseBoundaryBlock(ctx: ParseContext): BoundaryBlock {
   const start = ctx.advance(); // boundary
   const idToken = parseIdOrString(ctx, "boundary");
