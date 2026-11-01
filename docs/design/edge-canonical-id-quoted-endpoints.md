@@ -5,7 +5,7 @@
 - **関連**:
   - 引き金 Issue: [#3480](https://github.com/kompiro/karasu/issues/3480)（#3111 から分離）
   - 関連 ADR: [ADR-1096](../adr/1096-edge-id-selector.md)（`edge#<id>` セレクタと base form の決定。本設計はその base form の書き方を補う）, [ADR-1142](../adr/1142-gui-style-inplace-update.md)（GUI が `.krs.style` に rule を書き戻す経路）, [ADR-2714](../adr/2714-deploy-container-id-injective.md)（曖昧にする部分だけ引用符で囲む前例）
-  - 前提 Issue: [#3520](https://github.com/kompiro/karasu/issues/3520)（hex 形の selector id が色として読まれる。`face -> db` のような普通の id でも `edge#face->db` が parse できない）
+  - 前提 Issue: [#3520](https://github.com/kompiro/karasu/issues/3520)（hex 形の selector id が色として読まれる。`face -> db` や `Feed.Items -> x` のような普通の id でも `edge#` の rule が parse できない）
   - 関連 TPL: [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md), [TPL-1755](../test-perspectives/TPL-1755-edge-endpoint-selector-id-form.md)。proactive TPL として TPL-3480 を本 PR で起こす
   - コード: `packages/core/src/resolver/canonical-id.ts`, `packages/core/src/renderer/facet-overview.ts`, `packages/core/src/resolver/warnings.ts`, `packages/core/src/parser/style-parser.ts`, `packages/core/src/lexer/style-lexer.ts`, `packages/app/src/lib/append-style-rule.ts`
 
@@ -60,17 +60,17 @@ system S {
 | セレクタの parse | `parser/style-parser.ts`（`edge#`） | 端点は `Identifier` トークンのみ。`edgeId = first + arrow + second` |
 | セレクタの照合 | `resolver/style-resolver.ts` | `edge.canonicalId === selector.edgeId`（文字列一致） |
 | セレクタの出力 | `style/serialize.ts` | `#${selector.edgeId}` をそのまま出す |
-| style の識別子 | `lexer/style-lexer.ts` の `readIdentifier` | `.krs` の識別子文字 + `-`（`->` / `-->` の手前で止まる。末尾の `-` は含む）+ 識別子の前の `.`。`readValue` は `-1`・`3d`・`1.5` も `Identifier` にする。上記以外の ASCII 記号は黙って捨てる（`a!` は `a`） |
-| `#` の後の hex | 同 `isHexColor` | `#` + hex 3/4/6/8 桁は色として 1 トークン（値が `#` で始まる `Identifier`）。`edge#face->db`・`edge#feed`・`#face` が id として読めない（#3520） |
+| style の識別子 | `lexer/style-lexer.ts` の `readIdentifier` | `.krs` の識別子文字 + `-`（`->` / `-->` の手前で止まる。末尾の `-` は含む）+ セグメントの間の `.`（直後が識別子の先頭のとき。先頭の `.` は捨てる）。`readValue` は `-1`・`3d`・`1.5` も `Identifier` にする。上記以外の ASCII 記号は黙って捨てる（`a!` は `a`） |
+| `#` の後の hex | 同 `isHexColor` | `#` + hex 3/4/6/8 桁は色として 1 トークン（値が `#` で始まる `Identifier`）。続きが単語文字か `-<単語>` のときだけ id として読む。`edge#face->db`・`edge#feed`・`#face` に加え、`edge#Feed.Items->x`（`.` が捨てられる）・`edge#abc--d->c` も id として読めない（#3520） |
 | GUI の書き込み | app `append-style-rule.ts` の `upsertEdgeDirectionRule` | `edge#${canonicalId}`。既存 rule の検出は selector テキストの完全一致（`isExactSelector`） |
 | 端点セレクタ | `parser/style-parser.ts`（`[from=]` / `[to=]`） | 値は `Identifier` トークンのみ |
 | 警告の文言 | i18n `diagnostic.ambiguousEdgeBase.message` | `fromId` / `arrow` / `toId` を素で繋いで表示 |
 | base form の他の利用者 | `renderer/facet-overview.ts:111`（facet 監査行の id）、`resolver/warnings.ts:484`（`facet-not-declared` の subject） | `edgeBaseId(edge)`。どちらも「`edge#<id>` で指せる文字列」を表示する |
 | 公開 API | `core/src/index.ts` | `edgeBaseId` を export している |
 
-`.krs.style` の lexer は `"..."` を `StringLiteral` として読み、`\` の次の 1 文字をそのまま取る（`readString`）。`.krs` の `quotedIdLiteral` は `\` → `\\`、`"` → `\"` と escape するので、この 2 つは往復する。ただし `.krs` の lexer は `\n` を改行として読み、`.krs.style` の lexer は `n` として読む。`quotedIdLiteral` は改行をそのまま出すので往復は崩れないが、作者が `.krs` の `"a\nb"` を `.krs.style` に写すと別の値になる。
+`.krs.style` の lexer は `"..."` を `StringLiteral` として読み、`\` の次の 1 文字をそのまま取る（`readString`）。`.krs` の `quotedIdLiteral` は `\` → `\\`、`"` → `\"` と escape するので、この 2 つは往復する。ただし `.krs` の lexer は `\n` を改行として読み、`.krs.style` の lexer は `n` として読む。`quotedIdLiteral` は改行をそのまま出すので GUI が書く rule の往復は崩れないが、作者が `.krs` の `"a\nb"` を `.krs.style` に写すと別の値になる（#3523。style の文字列値すべてに効くので本設計からは外す）。
 
-app の `append-style-rule.ts` は既存 rule を `/([^{}]*)\{([^{}]*)\}/g` で走査する。引用符を見ないので、端点に `{` / `}` を含む rule は既存 rule として見つからない。
+app の `append-style-rule.ts` は既存 rule を `/([^{}]*)\{([^{}]*)\}/g` で走査する。引用符を見ないので、端点に `{` / `}` を含む rule は既存 rule として見つからない（#3524）。
 
 ## 制約・前提
 
@@ -93,14 +93,17 @@ base form の各端点を、`.krs.style` の識別子 1 つとして読み戻せ
 - `"a-" -> c` → `"a-"->c`（`a-->c` と重ならない）
 - `PlaceOrder -> OrderDB.OrderTable` → 今と同じ
 
-端点を囲まずに出す条件は 2 つで、どちらかを満たさなければ囲む。
+端点を囲まずに出す条件は 3 つで、1 つでも満たさなければ囲む。
 
 1. `StyleLexer` で端点だけを tokenize して、ちょうど 1 つの `Identifier` が端点と同じ値で返る。lexer の規則（`-`・`.`・非 ASCII・数値・黙って捨てる記号）を別に書き写さないので、lexer が変わっても判定がずれない
-2. 末尾が `-` でない。端点を単独で読ませると `a-` は識別子 1 つだが、矢印の手前に置くと `a-->c` になり、`-` が矢印に吸われる。lexer の文脈依存のうち、端点の判定で拾えないのはこの 1 つである（`#` の後の hex は端点ではなく `edge#` の読み方の問題で、#3520 で直す）
+2. 末尾が `-` でない。端点を単独で読ませると `a-` は識別子 1 つだが、矢印の手前に置くと `a-->c` になり、`-` が矢印に吸われる
+3. 先頭が `#` でない。`#abc` は単独なら色トークン（値が `#abc` の `Identifier`）として条件 1 を通るが、それは色であって識別子ではない。#3520 で selector 位置の `#` + hex を id として読むようになると、`edge##abc->c` の読み方が変わる
 
-単独での判定は位置による読み方の違いを見落としうる（実際に条件 2 と #3520 はその見落としだった）。そのため、判定の正しさは位置に埋めた往復テストで押さえる。生成した base form を `edge#<base>` に埋めて `StyleParser` で parse し、同じ `edgeId` が返ることを、生成した文字列の集合（末尾 `-`、hex 形、先頭が数字・`-` + 数字、`#`、`"`、`\`、空白、非 ASCII、dotted）で確かめる。
+端点の側で拾う文脈依存はこの 2 つ（矢印の手前の `-`、`#` で始まる値）である。`edge#` の直後の hex（`face`・`Feed.Items`）は端点の形ではなく `edge#` の読み方の問題なので、端点を囲まずに #3520 で直す。#3520 が入るまでは、作者は `edge#"face"->db` と書けば当てられる（parser が `face->db` に正規化する）。
 
-injective である理由: 囲まない端点は `.krs.style` の識別子 1 つで、`"` を含まず、`->` を含まず（`readIdentifier` は `->` / `-->` の手前で止まる）、`-` で終わらない。したがって base form の先頭が `"` なら from はリテラルの閉じ引用符で終わり、そうでなければ from は最初の `-` のうち矢印を始めるものの手前で終わる。矢印（`->` / `-->`）の種類もその位置で 1 通りに決まり、残りが to になる。
+単独での判定は位置による読み方の違いを見落としうる（実際に条件 2 と #3520 はその見落としだった）。そのため、判定の正しさは位置に埋めた往復テストで押さえる。生成した base form を `edge#<base>` に埋めて `StyleParser` で parse し、同じ `edgeId` が返ることを、生成した文字列の集合（末尾 `-`、hex 形（単独 / `.`・`-` が続く）、先頭が数字・`-` + 数字、`#`、`"`、`\`、空白、非 ASCII、dotted）で確かめる。
+
+injective である理由: 囲まない端点は `.krs.style` の識別子 1 つで、`#` で始まらず、`"` を含まず、`->` を含まず（`readIdentifier` は `->` / `-->` の手前で止まる）、`-` で終わらない。したがって base form の先頭が `"` なら from はリテラルの閉じ引用符で終わり、そうでなければ from は最初の `-` のうち矢印を始めるものの手前で終わる。矢印（`->` / `-->`）の種類もその位置で 1 通りに決まり、残りが to になる。
 
 **メリット**
 
@@ -112,7 +115,7 @@ injective である理由: 囲まない端点は `.krs.style` の識別子 1 つ
 **デメリット**
 
 - `.krs.style` の文法に、`edge#` の端点として文字列リテラルを足す（spec の変更）
-- hex 形の端点（`face -> db`）は #3520 を直すまで `edge#face->db` が parse できない。base form はそのままで正しく（`face` は識別子として読める）、直すのはセレクタの読み方なので、#3520 を先に入れる
+- hex 形の端点（`face -> db`、`Feed.Items -> x`）は #3520 を直すまで `edge#` の rule が parse できない。base form はそのままで正しく（`face` も `Feed.Items` も識別子として読める）、直すのは `edge#` の直後の読み方なので、#3520 を先に入れる
 - `isExactSelector` はテキスト比較なので、作者が不要な引用符を付けた rule（`edge#"a"->c`）は GUI の上書き対象として検出されず、GUI は正規形の rule を別に追記する。照合結果は同じなので害は小さい
 
 ### 案B: `edgeKey` と同じ規則で囲む
@@ -169,20 +172,20 @@ base の衝突のうち、端点が違うものは別の文言にする。
 ### 実装の指針
 
 1. **ヘルパー**: `packages/core/src/style/edge-endpoint-literal.ts`（名前は実装時に決める）に 2 つ置く
-   - `styleEndpointLiteral(endpoint)`: 案A の 2 条件（`StyleLexer` で `Identifier` 1 つが同じ値で返る、末尾が `-` でない）を満たせばそのまま、そうでなければ `quotedIdLiteral(endpoint)` を返す。`.krs` の bare word（`isBareWord`）で末尾が `-` でないものは lexer を通さずに済ませてよい（ほとんどの id がこの経路）
+   - `styleEndpointLiteral(endpoint)`: 案A の 3 条件（`StyleLexer` で `Identifier` 1 つが同じ値で返る、末尾が `-` でない、先頭が `#` でない）を満たせばそのまま、そうでなければ `quotedIdLiteral(endpoint)` を返す。`.krs` の bare word（`isBareWord`）は 3 条件を必ず満たすので lexer を通さずに済ませてよい（ほとんどの id がこの経路）
    - `edgeBaseForm(from, arrow, to)`: `${styleEndpointLiteral(from)}${arrow}${styleEndpointLiteral(to)}`
 2. **canonical id**: `canonical-id.ts` の `edgeBaseId` を `edgeBaseForm` に通す。衝突判定はそのまま（端点が違う edge はもう同じ base にならない）。`edgeBaseId` は公開 API で、`facet-overview.ts`（facet 監査行の id）と `warnings.ts`（`facet-not-declared` の subject）も同じ関数を使うので、どちらも引用符付きの形を出すようになる。表示は「`edge#<id>` で指せる文字列」なので、それで正しい
 3. **セレクタの parse**: `style-parser.ts` の `edge#` で、端点に `Identifier` か `StringLiteral` を受け付ける。どちらも端点の値（`StringLiteral` は lexer が escape を外した値）を取り出し、`edgeBaseForm` で `edgeId` を組む。著者 id（矢印の無い 1 トークン）は今のまま `Identifier` だけを受け付ける
 4. **端点セレクタ**: `[from=]` / `[to=]` の値に `StringLiteral` を受け付け、`edgeFrom` / `edgeTo` には引用符を外した値を入れる。`serialize.ts` は `styleEndpointLiteral` を通して出す（`karasu fmt` の往復、TPL「parse(format(x)) ≡ parse(x)」）
 5. **serialize**: `edgeId` は正規形なので今のまま出せばよい。往復テストを足す
 6. **警告の文言**: `ambiguous-edge-base` の params に `base`（`edgeBaseForm` の結果）を足し、i18n（en / ja）の文言はそれを表示する。作者が `.krs.style` に書く形と同じ文字列を見せる。`fromId` / `toId` / `arrow` は残す。params の型（core `types/ast.ts` の `DiagnosticParams["ambiguous-edge-base"]`、i18n `types.ts`）も足す
-7. **escape を揃える**: `.krs.style` の `readString` が `.krs` の `readString` と同じ escape（`\n` → 改行）を読むようにする。`.krs` の quoted id をそのまま `.krs.style` に写して同じ値になる
-8. **app**: 書き込み側は変更なし（`edge#${canonicalId}` が parse できるようになる）。`EdgeContextMenu` の `edge#<code>{canonicalId}</code>` 表示も同じ文字列なので変更なし。既存 rule の走査（`blockRe`）は引用符を見ないので、端点に `{` / `}` を含む edge では方向を選ぶたびに rule が追記される。本設計では直さず、その挙動をテストで固定して別 Issue にする
+7. **escape**: `.krs` と `.krs.style` の `\n` の読み方の違いは #3523 で扱う。`quotedIdLiteral` は改行をそのまま出し、`.krs.style` の `readString` も改行をそのまま読むので、GUI が書く rule の往復には影響しない
+8. **app**: 書き込み側は変更なし（`edge#${canonicalId}` が parse できるようになる）。`EdgeContextMenu` の `edge#<code>{canonicalId}</code>` 表示も同じ文字列なので変更なし。既存 rule の走査（`blockRe`）は引用符を見ないので、端点に `{` / `}` を含む edge では方向を選ぶたびに rule が追記される。本設計では直さず、その挙動をテストで固定する（直すのは #3524）
 9. **テスト**:
    - core: 問題 1〜3 のモデルで、canonical id が別々になり、GUI と同じ形で書いた rule がその edge だけに当たる（compile 経由）。普通の id の base form が今と同じ文字列であること。`styleEndpointLiteral` の判定（空白・`->`・`"`・`\`・末尾 `-`・非 ASCII 識別子・dotted endpoint）
-   - core（往復の性質テスト）: 生成した端点の組（末尾 `-`、hex 形、先頭が数字や `-` + 数字、`#`、`"`、`\`、空白、非 ASCII、dotted）について、`StyleParser.parse("edge#" + base + " {}")` の `edgeId` が `base` と一致し、別々の組が別々の base になる
+   - core（往復の性質テスト）: 生成した端点の組（末尾 `-`、hex 形（単独 / `.`・`-` が続く）、先頭が数字や `-` + 数字、`#` で始まる値、`"`、`\`、空白、非 ASCII、dotted）について、`StyleParser.parse("edge#" + base + " {}")` の `edgeId` が `base` と一致し、別々の組が別々の base になる
    - core: facet 監査行の id と `facet-not-declared` の subject が、引用符付きの端点で `edge#` に書ける形になる
-   - style parser: `edge#"a b"->c`・`edge#a->"b->c"`・`edge#"a"->c`（正規化）・`edge[from="a b"]` と、`serialize` の往復（`karasu fmt` の parse(format(x)) ≡ parse(x)）
+   - style parser: `edge#"a b"->c`・`edge#a->"b->c"`・`edge#"a"->c`（正規化）・`edge[from="a b"]` と、`serialize` の往復（`karasu fmt` の parse(format(x)) ≡ parse(x)）。矢印の無い `edge#"a b"`（著者 id の位置に文字列）はエラーのまま。to 側の条件 2（`a -> "b-"` → `a->"b-"`）。`edge#a- -> c`（空白入り）は正規化で `"a-"->c` に当たることを固定する
    - app: `upsertEdgeDirectionRule` に quoted な canonical id を渡した結果の `.krs.style` を `StyleParser` で parse し、エラーが無く `edgeId` が元の canonical id と一致する。同じ id で 2 回呼ぶと rule は 1 つのまま（`{` / `}` を含む端点は上の既知の挙動として固定）
 10. **spec**: `docs/spec/style.md` / `style.ja.md` の「Edge ID selector」と「edge[from] / edge[to]」に、識別子で書けない端点は `.krs` と同じ文字列リテラルで書くこと、base form ではそうした端点が囲まれることを足す。fence の例も足す
 11. **TPL**: proactive TPL-3480「別の文法に書き出す id は、その文法の lexer で読み戻して同じ値になる形で出す」を起こし、spec の該当節に `> Related TPLs:` で back-ref する。TPL-1352 / TPL-1755 から related_to で繋ぐ
@@ -201,8 +204,8 @@ base の衝突のうち、端点が違うものは別の文言にする。
 
 ## 未解決の問い / 決めないこと
 
-- hex 形の selector id（#3520）は本設計の前提として別 Issue で直す。node の `#face` も同じ原因で黙って外れているため、edge だけの話ではない
-- app の rule 走査が引用符を見ない件（端点に `{` / `}`）は、挙動をテストで固定したうえで別 Issue にする
-
+- hex 形の selector id（#3520）は本設計の前提として別 Issue で直す。node の `#face`・`#Feed.Items` も同じ原因で外れているため、edge だけの話ではない
+- app の rule 走査が引用符を見ない件（端点に `{` / `}`）は、挙動をテストで固定したうえで #3524 で直す
+- `.krs` と `.krs.style` の文字列 escape の違い（`\n`）は #3523 で扱う
 - `isExactSelector` を構造比較（parse して `edgeId` で比べる）にして、不要な引用符付きの rule も GUI の上書き対象にするか。照合結果は同じなので本設計では変えず、必要になったら別 Issue にする
 - `.krs` 側の edge 端点で dotted な quoted id を区別すること（ADR-2088 slice E の quirk）は扱わない
