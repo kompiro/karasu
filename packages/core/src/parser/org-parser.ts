@@ -18,6 +18,7 @@ import {
   parseLink,
   parseIdOrString,
   commaSeparatedValues,
+  rejectMisplacedProperty,
 } from "./property-readers.js";
 import type { ParseContext } from "./parse-context.js";
 
@@ -162,7 +163,7 @@ export function parseBoundaryBlock(ctx: ParseContext): BoundaryBlock {
       const node = ctx.tryParseNodeDecl();
       if (node) {
         rejectNode(ctx, node, "boundary");
-      } else {
+      } else if (!rejectMisplacedProperty(ctx, "boundary")) {
         ctx.error("unexpected-token-in-block", {
           blockKind: "boundary",
           tokenType: String(token.type),

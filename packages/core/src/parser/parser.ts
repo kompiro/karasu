@@ -485,12 +485,11 @@ export class Parser {
       // collides with infra-block parsing.
       if (token.type === TokenType.Table) {
         if (kind === "entity") {
-          this.advance();
-          const tableRef = readTableRef(this.ctx);
+          const tableRef = readTableRef(this.ctx, this.advance());
           if (tableRef) properties.tableRef = tableRef;
         } else {
           // Read the mapping whole so its `.` and ids are not reported again (#3463).
-          const loc = consumeRejected(this.ctx, () => readTableRef(this.ctx));
+          const loc = consumeRejected(this.ctx, (kw) => readTableRef(this.ctx, kw));
           const params = { blockKind: kind, tokenType: String(token.type), value: token.value };
           rejectConstruct(this.ctx, loc, "unexpected-token-in-block", params);
         }
@@ -1196,6 +1195,7 @@ export class Parser {
       }
 
       if (rejectMisplacedProperty(this.ctx, parentKind)) continue;
+      if (this.rejectMisplacedDecl(parentKind, parentKind)) continue;
 
       this.error("unexpected-token-in-block", {
         blockKind: parentKind,
@@ -1279,6 +1279,7 @@ export class Parser {
       }
 
       if (rejectMisplacedProperty(this.ctx, kind)) continue;
+      if (this.rejectMisplacedDecl(kind, "sub-resource")) continue;
 
       this.error("unexpected-token-in-block", {
         blockKind: "sub-resource",
@@ -1307,6 +1308,31 @@ export class Parser {
   }
 
   /** Parse a sub-resource node (table, queue-item, bucket). */
+  /**
+   * Read a declaration an infra or sub-resource body does not take whole and
+   * report it once (#3463): a node by its placement rule, and a `table` or
+   * `bucket` the parent kind does not hold as an unexpected token over the
+   * whole declaration. Returns false when the next token opens neither.
+   */
+  private rejectMisplacedDecl(parentKind: string, blockKind: string): boolean {
+    const token = this.peek();
+    const node = this.ctx.tryParseNodeDecl();
+    if (node) {
+      rejectNode(this.ctx, node, parentKind);
+      return true;
+    }
+    const sub =
+      token.type === TokenType.Table
+        ? "table"
+        : token.type === TokenType.Bucket
+          ? "bucket"
+          : undefined;
+    if (!sub) return false;
+    const params = { blockKind, tokenType: String(token.type), value: token.value };
+    rejectConstruct(this.ctx, this.parseInfraSubNode(sub).loc, "unexpected-token-in-block", params);
+    return true;
+  }
+
   private parseInfraSubNode(kind: "table" | "queue-item" | "bucket"): KrsNode {
     const start = this.advance(); // keyword token (table / queue / bucket)
 

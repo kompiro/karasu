@@ -277,9 +277,24 @@ export function parseIdOrString(ctx: ParseContext, context: string): Token {
  * Read the `<InfraId>.<subId>` an entity's `table` property maps to, after the
  * keyword. Both sides are required, so a malformed mapping (`table .orders`,
  * `table OrderDB.`, `table orders`) yields `undefined`, raises exactly one
- * diagnostic, and never consumes a stray token (`.`, `}`) as an id.
+ * diagnostic, and never consumes a stray token (`.`, `}`) as an id. The id
+ * must start on the keyword's line: one on the next line opens the next
+ * statement (an edge `X -> B`), as it does after a comma list (#3463).
  */
-export function readTableRef(ctx: ParseContext): { parent: string; child: string } | undefined {
+export function readTableRef(
+  ctx: ParseContext,
+  keyword: Token,
+): { parent: string; child: string } | undefined {
+  if (isIdOrString(ctx.peek()) && ctx.peek().loc.line !== keyword.loc.line) {
+    const loc = ctx.range(keyword.loc, keyword.end);
+    ctx.pushDiagnostic({
+      severity: "error",
+      code: "expected-id-after",
+      params: { property: "table" },
+      loc,
+    });
+    return undefined;
+  }
   if (isIdOrString(ctx.peek())) {
     const tail = readNodeIdPathTail(ctx.advance(), ctx, {
       maxSegments: 2,
@@ -333,11 +348,14 @@ export function parseDeliversList(ctx: ParseContext, keyword: Token, blockKind: 
 export function rejectMisplacedProperty(ctx: ParseContext, nodeKind: string): boolean {
   switch (ctx.peek().type) {
     case TokenType.Role:
-      // A bare `role` must not take the source of an edge on the next line.
-      rejectProperty(ctx, "role", nodeKind, () => {
+      // A bare `role` must not take the source of an edge on the next line;
+      // a string on its own line is still its value (`role "A" -> B`).
+      rejectProperty(ctx, "role", nodeKind, (keyword) => {
         const arrow = ctx.peekAt(1).type;
         const edgeStart = arrow === TokenType.Arrow || arrow === TokenType.DashedArrow;
-        if (!(isIdOrString(ctx.peek()) && edgeStart)) ctx.match(TokenType.StringLiteral);
+        const nextLine = ctx.peek().loc.line !== keyword.loc.line;
+        if (!(nextLine && isIdOrString(ctx.peek()) && edgeStart))
+          ctx.match(TokenType.StringLiteral);
       });
       return true;
     case TokenType.Handles:
