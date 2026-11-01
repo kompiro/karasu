@@ -8,7 +8,7 @@ type: product
 - **関連 Issue**: [#2713](https://github.com/kompiro/karasu/issues/2713)（[#2552](https://github.com/kompiro/karasu/issues/2552) のレビューで発見）
 - **Related TPLs**: [TPL-2552](../test-perspectives/TPL-2552-repeated-relation-is-idempotent-across-counting-and-keyed-consumers.md)（件数を数える消費側と id で畳む消費側を一致させる — 本 Issue は同観点の 2 例目）
 - **対象ファイル**:
-  - `packages/core/src/parser/parser.ts`（`collectDeployNodeIds`）
+  - `packages/core/src/parser/finalize-file.ts`（`collectDeployNodeIds`）
   - `packages/core/src/fs/import-resolver.ts`（`pushDeployNode` — wildcard / named 両経路の共通ガード）
   - `packages/core/src/renderer/deploy-layout.ts`（`placeGroupBlock` の `nodeKeyOf`）
 

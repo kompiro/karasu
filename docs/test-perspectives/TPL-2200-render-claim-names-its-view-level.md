@@ -9,6 +9,7 @@ applicable_to:
   - "ある要素が描かれないことを assert するテストを書くとき"
 known_consumers:
   - view-extract
+  - resource-promotion
   - docs-spec
   - docs-guide
 discovered_from:

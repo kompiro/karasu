@@ -10,7 +10,7 @@ scope:
 assumptions:
   - "file: packages/core/src/renderer/category-collapse.ts"
   - "symbol: packages/core/src/renderer/category-collapse.ts :: categoryOf"
-  - "symbol: packages/core/src/renderer/svg-renderer.ts :: renderCategoryControls"
+  - "symbol: packages/core/src/renderer/canvas-controls.ts :: renderCategoryControls"
   - "file: packages/app/src/hooks/useSystemView.ts"
   - "file: packages/app/src/utils/download-svg.ts"
 ---

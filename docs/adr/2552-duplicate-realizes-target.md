@@ -11,7 +11,7 @@ related_to:
 scope:
   packages: [core]
 assumptions:
-  - "symbol: packages/core/src/parser/parser.ts :: parseRealizesList"
+  - "symbol: packages/core/src/parser/deploy-parser.ts :: parseRealizesList"
   - "grep: packages/core/src/view/deploy-view-extract.ts :: seenMembership"
   - "grep: packages/core/src/renderer/deploy-layout.ts :: placeGroupBlock"
   - "file: docs/test-perspectives/TPL-2552-repeated-relation-is-idempotent-across-counting-and-keyed-consumers.md"

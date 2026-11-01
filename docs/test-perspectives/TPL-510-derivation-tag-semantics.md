@@ -9,6 +9,7 @@ applicable_to:
 known_consumers:
   - view-extract
   - derived-edges
+  - resource-promotion
   - style-resolver
 discovered_from:
   - issue: "#510"

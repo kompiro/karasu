@@ -1616,7 +1616,7 @@ function detectEdgeEndpointsNotAtScope(
 
   // `peers(C)` — and the orphan-frame reasoning behind it — moved to
   // `edge-endpoint.ts` with slice E (#2577), so this detector and the ghost
-  // resolution in `view-extract.ts` read one definition. The bare set is
+  // resolution in `view-extract.ts` / `ghost-synthesis.ts` read one definition. The bare set is
   // unchanged; what the qualified branch below adds is a second condition of
   // its own, root-anchoring, which does not consult the container at all.
   const check = (container: KrsNode): void => {

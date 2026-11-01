@@ -5,7 +5,7 @@
 - **設計**: [#2417](https://github.com/kompiro/karasu/pull/2417) の node chrome design（H-1 案A。ADR 昇格は 3 スライス完了後）
 - **関連 ADR**: [ADR-1821](../adr/1821-layer-toggles.md)（対話クロームは `interactive` のときだけ描く）、[ADR-650](../adr/650-graphical-diff-viewer.md)（`data-node-badge` / `data-diff-state` の diff 契約）
 - **Related TPLs**: [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)（surface 間の一貫性。export SVG も静的レンダと一致させる）、[TPL-2366](../test-perspectives/TPL-2366-badge-color-canvas-contrast.md)（バッジ色のコントラスト機械検証）、[TPL-2044](../test-perspectives/TPL-2044-svg-interactive-control-paints-last.md)
-- **対象**: `packages/core/src/renderer/corner-lane.ts`、`packages/core/src/renderer/svg-renderer.ts`、`packages/app/src/utils/download-svg.ts`、`packages/vscode/src/preview-panel.ts`
+- **対象**: `packages/core/src/renderer/corner-lane.ts`、`packages/core/src/renderer/svg-renderer.ts`、`packages/core/src/renderer/node-card.ts`、`packages/app/src/utils/download-svg.ts`、`packages/vscode/src/preview-panel.ts`
 
 ## 概要
 

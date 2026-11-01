@@ -1,8 +1,9 @@
 name: ADR validate
 
 # Companion of `adr-validate-skip.yml`. This workflow runs the real ADR
-# validator on PRs that touch ADR paths, the topics configs or the topic label
-# checker. The skip workflow emits a no-op
+# validator on PRs that touch ADR paths, the topics configs, the topic label
+# checker, the generated-index check or the dependencies (a generator upgrade
+# must still run, Issue #3416). The skip workflow emits a no-op
 # `Validate` job for all other PRs so the Required status named
 # `Validate` stays green repository-wide.
 #
@@ -18,6 +19,9 @@ on:
       - "adr.config.json"
       - "tpl.config.json"
       - "scripts/lint/config-topics-sync.ts"
+      - "scripts/adr/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
       - ".github/workflows/adr-validate.yml"
   push:
     branches: [main]
@@ -26,6 +30,9 @@ on:
       - "adr.config.json"
       - "tpl.config.json"
       - "scripts/lint/config-topics-sync.ts"
+      - "scripts/adr/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
       - ".github/workflows/adr-validate.yml"
 
 concurrency:
@@ -49,8 +56,10 @@ jobs:
         with:
           # The topic label step diffs HEAD against its first parent: the base
           # branch for a PR's merge commit, the previous main for a push (main
-          # takes squash merges only, so one push is one PR).
-          fetch-depth: 2
+          # takes squash merges only, so one push is one PR). The generated-index
+          # check needs the merge base of the PR's base and head, so the whole
+          # history is fetched.
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v6.1.0
 
@@ -67,8 +76,21 @@ jobs:
       - name: Run validator tests
         run: pnpm run test:scripts
 
-      - name: Check generated ADR files (effective.md, graph.md, graph/*.md)
-        run: pnpm exec adr regenerate --check
+      # PRs no longer carry the generated index; the daily regeneration PR does
+      # (Issue #3416). A PR either leaves the generated files alone or changes
+      # only them, as an exact regeneration of its head; the generator must run
+      # either way. The inputs come from the PR head, not the merge ref: ADRs
+      # merged to main after the PR was made must not fail it. The generator is
+      # the merge ref's, so an upgrade already on main judges the PR; a
+      # regeneration PR made before that upgrade fails until the next run
+      # regenerates it. On a push to main the base
+      # is the pushed commit itself, so only the generator runs: main's index
+      # lags until the next regeneration PR.
+      - name: Check the generated ADR index (effective.md, graph.md, graph/*.md)
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: pnpm exec tsx scripts/adr/check-generated.ts --base "$BASE" --head "$HEAD_SHA"
 
       - name: Check ADR assumptions against the working tree
         run: pnpm exec adr check-assumptions --quiet

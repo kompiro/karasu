@@ -46,9 +46,18 @@ pre-push:
     adr-validate:
       glob: "docs/adr/*.md"
       run: pnpm run adr:validate
-    adr-regenerate-check:
-      glob: "{docs/adr/**,adr.config.json}"
-      run: pnpm exec adr regenerate --check
+    adr-generated-check:
+      # Same check as the Validate step in adr-validate.yml (Issue #3416): the
+      # pushed change either leaves the generated ADR index alone or is an exact
+      # regeneration. The base is the merge base with origin/main, fetched in
+      # step 7 of the PR workflow; without origin/main, CI checks it.
+      glob: "{docs/adr/**,adr.config.json,scripts/adr/**,package.json,pnpm-lock.yaml}"
+      run: |
+        if git rev-parse --quiet --verify origin/main >/dev/null; then
+          pnpm exec tsx scripts/adr/check-generated.ts --base origin/main
+        else
+          echo "lefthook(pre-push): origin/main not found; the generated ADR index check is left to CI (Validate)."
+        fi
     adr-check-assumptions:
       # No `glob` on purpose: a code change can invalidate an ADR
       # `assumptions:` entry without touching `docs/adr/**`, so gating this

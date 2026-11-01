@@ -12,7 +12,7 @@ assumptions:
   - "file: docs/spec/syntax.md"
   - "grep: packages/core/src/resolver/warnings.ts :: detectUnresolvedRealizes"
   - "grep: packages/core/src/resolver/warnings.ts :: detectInvalidOwns"
-  - "grep: packages/core/src/parser/parser.ts :: buildNodePathIndex"
+  - "grep: packages/core/src/parser/finalize-file.ts :: buildNodePathIndex"
 ---
 
 # ADR-1720: client は realizes / owns の対象になれる（valid-target に client kind を追加）

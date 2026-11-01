@@ -85,7 +85,7 @@ scope:
   （`parser.test.ts` の "parses a comma-separated list into the same array as repeated lines"）。
   `loc` を含めたくない場合は formatter テストの `expectAstRoundTrip` が使う loc 除去ヘルパーを流用する
 - **リストは 1 行に閉じる**: 区切り記号も要素も、プロパティ名が現れた行にあることを要求する
-  （`parser.ts` の `parseRealizesList`）。「区切りの次の要素だけ」を見る実装は片方向にしか効かず、
+  （`property-readers.ts` の `commaSeparatedValues`。`parseRealizesList` ほか全リストが共有する）。「区切りの次の要素だけ」を見る実装は片方向にしか効かず、
   次行頭の区切りを通してしまう。キーワード名の列挙でガードする案は語彙が増えるたびに漏れるうえ、
   karasu では property 名がそれぞれ専用のトークン型を持つため元々要素にはなりえない —
   行の判定なら語彙に依存せず、実際に危ういケース（次行の裸の識別子）だけを止める

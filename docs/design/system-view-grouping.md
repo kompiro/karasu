@@ -10,7 +10,7 @@
   - notation promotion gate: [#1820](https://github.com/kompiro/karasu/issues/1820)
   - 関連 TPL: [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)
   - 関連 ADR: [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（`.krs` / `.krs.style` v1.0 凍結）
-  - コード: `packages/core/src/renderer/category-collapse.ts`, `packages/core/src/renderer/layout.ts`, `packages/core/src/renderer/svg-renderer.ts`
+  - コード: `packages/core/src/renderer/category-collapse.ts`, `packages/core/src/renderer/layout.ts`, `packages/core/src/renderer/svg-renderer.ts`, `packages/core/src/renderer/canvas-controls.ts`
 
 > 本 Doc は「semantic clusters の構文をどう綴るか」から始めた初版を差し替えたもの。
 > 初版の案を却下するのではなく、**「いま何を優先すべきか」** の軸で作業順序を組み替える。
@@ -90,7 +90,7 @@ system view を**所有チーム単位**で囲み、開閉する。
 - **単一値** — `ownerIndex` が 1:1 なので、フレームの不変条件を最初から満たす。
 - **意味がある** — Conway の法則により、チーム境界はしばしば実際に意味的なまとまりである。合成タグではなく実データで仮説を検証できる。
 
-> **三面分離について（当初の懸念は誤りだった）**: 「論理ビューに組織境界を描くのは面をまたぐ」と当初考えたが、**karasu は既に system view の全 service カードに所有チーム名を描画している** — `ownerIndex` → `LayoutNodeProperties.team`（`layout.ts:871, 1117`）→ meta row（`svg-renderer.ts:916-931`）。組織情報は既に論理ビューに出荷済みであり、境界フレームは**新たな越境ではなく既存情報の強い視覚化**にすぎない。
+> **三面分離について（当初の懸念は誤りだった）**: 「論理ビューに組織境界を描くのは面をまたぐ」と当初考えたが、**karasu は既に system view の全 service カードに所有チーム名を描画している** — `ownerIndex` → `LayoutNodeProperties.team`（`layout.ts:871, 1117`）→ meta row（`node-text.ts` の `renderMetaRow`）。組織情報は既に論理ビューに出荷済みであり、境界フレームは**新たな越境ではなく既存情報の強い視覚化**にすぎない。
 
 ### 被験体
 

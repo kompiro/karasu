@@ -1,5 +1,5 @@
 // Which paths `adr regenerate` owns, and what kind of PR a diff over them is
-// (Issue #3416, docs/design/regenerate-adr-index-daily-pr.md "現時点の方針").
+// (Issue #3416, docs/adr/3416-regenerate-adr-index-daily-pr.md "仕組み").
 //
 // PRs no longer carry the generated ADR index. A daily routine opens a PR that
 // changes only the generated files, and every other PR leaves them alone. This

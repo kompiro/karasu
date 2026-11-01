@@ -12,7 +12,7 @@ assumptions:
   - "file: packages/core/src/parser/cyclic-dependencies.ts"
   - "symbol: packages/core/src/parser/cyclic-dependencies.ts :: findCyclicDependencies"
   - "symbol: packages/core/src/parser/cyclic-dependencies.ts :: markCyclicEdges"
-  - "symbol: packages/core/src/parser/parser.ts :: markCyclicEdges"
+  - "symbol: packages/core/src/parser/finalize-file.ts :: markCyclicEdges"
   - "symbol: packages/core/src/fs/import-resolver.ts :: markCyclicEdges"
   - "symbol: packages/core/src/resolver/warnings.ts :: findCyclicDependencies"
   - "symbol: packages/core/src/compile/compile-diff.ts :: NO_CYCLIC_TAG"
