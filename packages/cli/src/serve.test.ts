@@ -37,9 +37,10 @@ import {
 async function get(
   port: number,
   path: string,
+  headers: http.OutgoingHttpHeaders = {},
 ): Promise<{ status: number; body: string; headers: http.IncomingHttpHeaders }> {
   return new Promise((resolve, reject) => {
-    const req = http.request({ host: "localhost", port, path }, (res) => {
+    const req = http.request({ host: "localhost", port, path, headers }, (res) => {
       let body = "";
       res.on("data", (chunk: Buffer) => {
         body += chunk.toString();
@@ -593,6 +594,51 @@ describe("HTTP server", () => {
       const { status } = await get(spaPort, "/assets/unknown.js");
       expect(status).toBe(503);
     });
+  });
+
+  // karasu's own /render marks its outgoing requests; serve must not answer
+  // them on any path, whatever route (hairpin NAT, forwarding) they took.
+  describe("requests marked by /render (#3426)", () => {
+    const marker = { "X-Karasu-Render": "1" };
+    let appDir: string;
+    let appServer: Server;
+    let appPort: number;
+
+    beforeEach(async () => {
+      await writeFile(join(tmpDir, "index.krs"), "system App {}");
+      appDir = await makeTmpDir();
+      await writeFile(join(appDir, "index.html"), "<div id=root></div>");
+      await writeFile(join(appDir, "app.js"), "console.log(1)");
+      appServer = serve(tmpDir, 0, appDir);
+      await new Promise<void>((resolve) => appServer.once("listening", resolve));
+      appPort = (appServer.address() as AddressInfo).port;
+    });
+
+    afterEach(async () => {
+      await new Promise<void>((resolve) => appServer.close(() => resolve()));
+      await rm(appDir, { recursive: true });
+    });
+
+    const code = Buffer.from("system App {}").toString("base64");
+
+    it.each([
+      "/api/files",
+      // The router reads this as /api/files; a prefix check on req.url would not.
+      "//x/api/files",
+      "/api/file/index",
+      `/render?code=${code}`,
+      "/app.js",
+      "/",
+    ])("refuses %s with 403", async (path) => {
+      expect((await get(appPort, path, marker)).status).toBe(403);
+    });
+
+    it.each(["/api/files", "//x/api/files", `/render?code=${code}`, "/app.js"])(
+      "still answers %s without the marker",
+      async (path) => {
+        expect((await get(appPort, path)).status).toBe(200);
+      },
+    );
   });
 });
 

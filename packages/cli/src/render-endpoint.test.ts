@@ -1,6 +1,20 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import * as http from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { isSafeUrl, parseRenderParams, handleRender } from "./render-endpoint.js";
+import type { AddressInfo } from "node:net";
+import {
+  isSafeUrl,
+  parseRenderParams,
+  handleRender,
+  SrcFetchLimiter,
+  type RenderDeps,
+} from "./render-endpoint.js";
+import {
+  isBlockedAddress,
+  type FetchHandle,
+  type FetchResult,
+  type Resolver,
+} from "./render-fetch.js";
 
 // ---------------------------------------------------------------------------
 // isSafeUrl
@@ -54,6 +68,38 @@ describe("isSafeUrl", () => {
   it("returns false for malformed URLs", () => {
     expect(isSafeUrl("not-a-url")).toBe(false);
     expect(isSafeUrl("")).toBe(false);
+  });
+
+  // #3426: spellings the string check used to let through.
+  it.each([
+    "http://localhost./file.krs",
+    "http://localhost../file.krs",
+    "http://app.localhost/file.krs",
+    "http://APP.LOCALHOST./file.krs",
+    "http://0x7f.1/file.krs",
+    "http://2130706433/file.krs",
+    "http://127.1/file.krs",
+    "http://[::ffff:127.0.0.1]/file.krs",
+    "http://[0:0:0:0:0:0:0:1]/file.krs",
+    "http://[fc00::1]/file.krs",
+    "http://[fd00::1]/file.krs",
+    "http://[fe80::1]/file.krs",
+    "http://100.64.0.1/file.krs",
+    "http://user:pass@example.com/file.krs",
+    "http://user@example.com/file.krs",
+  ])("blocks %s", (url) => {
+    expect(isSafeUrl(url)).toBe(false);
+  });
+
+  it("blocks an IP literal that is one of this machine's addresses", () => {
+    const own = (address: string): boolean => isBlockedAddress(address, ["198.51.100.7"]);
+    expect(isSafeUrl("http://198.51.100.7/file.krs", own)).toBe(false);
+    expect(isSafeUrl("http://198.51.100.8/file.krs", own)).toBe(true);
+  });
+
+  it("leaves names other than localhost to the resolved-address check", () => {
+    expect(isSafeUrl("http://127.0.0.1.nip.io/file.krs")).toBe(true);
+    expect(isSafeUrl("http://localhost.example.com/file.krs")).toBe(true);
   });
 });
 
@@ -135,6 +181,16 @@ function makeReq(): IncomingMessage {
   return {} as IncomingMessage;
 }
 
+function fakeFetch(result: FetchResult): RenderDeps {
+  return {
+    fetchSrc: (): FetchHandle => ({
+      result: Promise.resolve(result),
+      lookupsSettled: Promise.resolve(),
+    }),
+    limiter: new SrcFetchLimiter(),
+  };
+}
+
 describe("handleRender", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -186,46 +242,47 @@ describe("handleRender", () => {
   });
 
   it("returns 502 when src fetch fails", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn<() => Promise<unknown>>().mockRejectedValue(new Error("Network error")),
-    );
     const res = makeRes();
     await handleRender(
       makeReq(),
       res as unknown as ServerResponse,
       new URLSearchParams({ src: "https://example.com/missing.krs" }),
+      fakeFetch({ ok: false, status: 502, reason: "network", message: "Network error" }),
     );
     expect(res.writeHead).toHaveBeenCalledWith(502, expect.any(Object));
   });
 
   it("returns 502 when src returns non-OK status", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn<() => Promise<unknown>>()
-        .mockResolvedValue({ ok: false, status: 404, text: async () => "Not Found" }),
-    );
     const res = makeRes();
     await handleRender(
       makeReq(),
       res as unknown as ServerResponse,
       new URLSearchParams({ src: "https://example.com/missing.krs" }),
+      fakeFetch({ ok: false, status: 502, reason: "http-status", message: "HTTP 404" }),
     );
     expect(res.writeHead).toHaveBeenCalledWith(502, expect.any(Object));
   });
 
+  it("returns 400 when fetchSrc refuses the src itself", async () => {
+    const res = makeRes();
+    await handleRender(
+      makeReq(),
+      res as unknown as ServerResponse,
+      new URLSearchParams({ src: "https://example.com/system.krs" }),
+      fakeFetch({ ok: false, status: 400, reason: "blocked-address", message: "blocked" }),
+    );
+    expect(res.writeHead).toHaveBeenCalledWith(400, expect.any(Object));
+    expect(res.end.mock.calls[0][0]).toContain("Invalid src URL");
+  });
+
   it("returns 200 SVG when src fetch succeeds", async () => {
     const source = `system App { service Frontend { label "Web" } }`;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn<() => Promise<unknown>>().mockResolvedValue({ ok: true, text: async () => source }),
-    );
     const res = makeRes();
     await handleRender(
       makeReq(),
       res as unknown as ServerResponse,
       new URLSearchParams({ src: "https://example.com/system.krs", view: "system" }),
+      fakeFetch({ ok: true, text: source }),
     );
     expect(res.writeHead).toHaveBeenCalledWith(
       200,
@@ -338,5 +395,135 @@ organization AppOrg {
     );
     const body: string = res.end.mock.calls[0][0];
     expect(body).toContain("<svg");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// handleRender against a real server (#3426)
+// ---------------------------------------------------------------------------
+
+describe("handleRender src fetching", () => {
+  const KRS = `system App { service Web { label "Web" } }`;
+  let server: http.Server;
+  let port: number;
+  let hits: number;
+
+  async function start(): Promise<void> {
+    hits = 0;
+    server = http.createServer((_req, res) => {
+      hits += 1;
+      res.end(KRS);
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    port = (server.address() as AddressInfo).port;
+  }
+
+  afterEach(async () => {
+    if (server?.listening) await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+
+  const toLoopback: Resolver = (_hostname, _options, callback) =>
+    callback(null, [{ address: "127.0.0.1", family: 4 }]);
+
+  /** 127.0.0.1 counts as public, so the local server can play the public host. */
+  const loopbackIsPublic = (address: string): boolean =>
+    address !== "127.0.0.1" && isBlockedAddress(address, []);
+
+  it("renders a src that resolves to an allowed address", async () => {
+    await start();
+    const res = makeRes();
+    await handleRender(
+      makeReq(),
+      res as unknown as ServerResponse,
+      new URLSearchParams({ src: `http://public.test:${port}/x.krs`, view: "system" }),
+      {
+        fetchOptions: { resolver: toLoopback, isBlocked: loopbackIsPublic },
+        limiter: new SrcFetchLimiter(),
+      },
+    );
+    expect(res.writeHead).toHaveBeenCalledWith(200, expect.any(Object));
+    expect(hits).toBe(1);
+  });
+
+  it("answers 400 for a name that resolves to loopback, without connecting", async () => {
+    await start();
+    const res = makeRes();
+    await handleRender(
+      makeReq(),
+      res as unknown as ServerResponse,
+      new URLSearchParams({ src: `http://public.test:${port}/x.krs` }),
+      // The real check: 127.0.0.1 is blocked.
+      { fetchOptions: { resolver: toLoopback }, limiter: new SrcFetchLimiter() },
+    );
+    expect(res.writeHead).toHaveBeenCalledWith(400, expect.any(Object));
+    expect(hits).toBe(0);
+  });
+
+  describe("concurrency", () => {
+    function stalledResolver(): Resolver & { finishAll(): void } {
+      const pending: Array<() => void> = [];
+      const resolver: Resolver = (_hostname, _options, callback) => {
+        pending.push(() => callback(null, [{ address: "8.8.8.8", family: 4 }]));
+      };
+      return Object.assign(resolver, {
+        finishAll: () => pending.splice(0).forEach((finish) => finish()),
+      });
+    }
+
+    async function render(deps: RenderDeps): Promise<number> {
+      const res = makeRes();
+      await handleRender(
+        makeReq(),
+        res as unknown as ServerResponse,
+        new URLSearchParams({ src: "http://slow.test/x.krs" }),
+        deps,
+      );
+      return res.writeHead.mock.calls[0][0] as number;
+    }
+
+    it("answers 503 to a third src while two are in flight", async () => {
+      const resolver = stalledResolver();
+      const deps: RenderDeps = {
+        fetchOptions: { resolver },
+        limiter: new SrcFetchLimiter(),
+        timeoutMs: 100,
+      };
+      const first = render(deps);
+      const second = render(deps);
+      expect(await render(deps)).toBe(503);
+      expect(await first).toBe(502);
+      expect(await second).toBe(502);
+      resolver.finishAll();
+    });
+
+    it("keeps the slot until the lookup returns, not just until the response", async () => {
+      const resolver = stalledResolver();
+      const deps: RenderDeps = {
+        fetchOptions: { resolver },
+        limiter: new SrcFetchLimiter(),
+        timeoutMs: 50,
+      };
+      // Both time out and answer 502 while their lookups still hold threads.
+      expect(await Promise.all([render(deps), render(deps)])).toEqual([502, 502]);
+      expect(await render(deps)).toBe(503);
+
+      resolver.finishAll();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const next = render(deps);
+      resolver.finishAll();
+      expect(await next).not.toBe(503);
+    });
+
+    it("does not count ?code= against the limit", async () => {
+      const limiter = new SrcFetchLimiter(0);
+      const res = makeRes();
+      await handleRender(
+        makeReq(),
+        res as unknown as ServerResponse,
+        new URLSearchParams({ code: Buffer.from(KRS).toString("base64"), view: "system" }),
+        { limiter },
+      );
+      expect(res.writeHead).toHaveBeenCalledWith(200, expect.any(Object));
+    });
   });
 });
