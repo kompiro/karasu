@@ -23,6 +23,8 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2687](2687-adr-body-is-immutable.md) — ADR 本文は不変 — リンクの張り替えも本文編集として禁じる
 - [ADR-3314](3314-topic-label-sync-check.md) — topic: ラベルと topics の一致を、topics を変える PR の Validate で確かめる
 - [ADR-3405](3405-promotion-adds-adr-link.md) — ADR の昇格で、新しい ADR へのリンクを足すだけの差分も張り替えと同じく Low に数える
+- [ADR-3416](3416-regenerate-adr-index-daily-pr.md) — ADR の生成物は PR に含めず、毎日の routine が出す再生成の PR でだけ更新する
+- [ADR-3471](3471-code-cites-issue-not-design-doc.md) — docs/ の外からは Design Doc ではなく ADR か Issue を指す
 
 ## app-ui
 
@@ -191,6 +193,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3340](3340-converge-fix-the-class.md) — converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけへ CLI を 1 回当てる
 - [ADR-3342](3342-ready-gate-local-review.md) — ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh pr ready を拒否する
 - [ADR-3344](3344-source-line-budget.md) — ソースファイルに行数予算を設け、超えているファイルは現在の行数で pin する
+- [ADR-3345](3345-generated-builtin-examples.md) — 組み込み examples は `examples/` から生成し、`examples.ts` は再 export にする
 - [ADR-3359](3359-pr-before-after-screenshots.md) — 描画が変わる PR に、merge-base と比べた before/after の画像を添付する
 - [ADR-3381](3381-dependabot-triage-2026-10-26.md) — Dependabot トリアージ 2026-10-26：npm 12 件をそのまま採用し、chokidar 6 は Node 下限の引き上げと同梱する前提で保留、gh-aw-actions は却下して v0.92.0 で再生成する
 - [ADR-3399](3399-dependabot-security-2026-10-30.md) — Dependabot security alert 2026-10-30（qs と serialize-javascript の override floor を修正版へ上げ、launch-editor を override し、@azure/msal-node は @azure/identity 4.14.1 が公開から 1 日経ってから lock 更新で上げる）
@@ -229,6 +232,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1104](1104-translate-crud-bindings.md) — translate adapter で usecase → resource バインディング + 任意 CRUD 装飾を emit する
 - [ADR-1935](1935-wrangler-translate-adapter.md) — --from wrangler translate adapter と「adapter を採る基準」
 - [ADR-3258](3258-serve-import-resolution.md) — karasu serve は配信ディレクトリをまるごとブラウザのメモリに写して import を解決する
+- [ADR-3426](3426-render-src-ssrf-guard.md) — `/render?src=` の SSRF 対策を、解決後のアドレスとリダイレクトの各ホップで行う
 - [ADR-9013](9013-cli-serve-mode.md) — CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー
 
 ## core-concepts
@@ -475,6 +479,8 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2648](2648-record-source-path-guard.md) — 記録が名指すソースパスを機械で照合し、不在が正しい場合は宣言させる
 - [ADR-2810](2810-tpl-source-path-check-ownership.md) — TPL 本文のソースパス照合を `@kompiro/tpl-tools` へ移し、Required な `Check` から走らせる
 - [ADR-3169](3169-at-manual-items-before-merge.md) — 受け入れテストの手動項目は、マージ前に確かめられるものに限る
+- [ADR-3237](3237-opfs-fixture-origin-from-static-file.md) — OPFS fixture の origin は app の起動ではなく static file で得る
+- [ADR-3429](3429-synthetic-edge-style-fixtures.md) — 合成エッジのスタイル解決テストは、本物の受け渡しと同じ `extraEdges` で渡し、`.krs` から SVG までの柵と組にする
 - [ADR-9012](9012-app-testing-strategy.md) — `packages/app` のテスト戦略 — `@testing-library/react` + renderHook + ARIA
 
 ## vscode

@@ -19,6 +19,8 @@ flowchart TD
     ADR_2687["ADR-2687<br/>ADR 本文は不変 — リンクの張り替えも本文編集として禁じる"]
     ADR_3314["ADR-3314<br/>topic: ラベルと topics の一致を、topics を変える PR の Valida..."]
     ADR_3405["ADR-3405<br/>ADR の昇格で、新しい ADR へのリンクを足すだけの差分も張り替えと同じく Low に数える"]
+    ADR_3416["ADR-3416<br/>ADR の生成物は PR に含めず、毎日の routine が出す再生成の PR でだけ更新する"]
+    ADR_3471["ADR-3471<br/>docs/ の外からは Design Doc ではなく ADR か Issue を指す"]
   end
   subgraph app-ui["app-ui"]
     ADR_104["ADR-104<br/>system セレクタUIを採用しない"]
@@ -201,6 +203,7 @@ flowchart TD
     ADR_3340["ADR-3340<br/>converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけ..."]
     ADR_3342["ADR-3342<br/>ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh..."]
     ADR_3344["ADR-3344<br/>ソースファイルに行数予算を設け、超えているファイルは現在の行数で pin する"]
+    ADR_3345["ADR-3345<br/>組み込み examples は `examples/` から生成し、`examples.ts`..."]
     ADR_3350["ADR-3350<br/>リリーストレインの PR の段階を、差分が changeset version の出力だけなら..."]
     ADR_3359["ADR-3359<br/>描画が変わる PR に、merge-base と比べた before/after の画像を添付する"]
     ADR_3381["ADR-3381<br/>Dependabot トリアージ 2026-10-26：npm 12 件をそのまま採用し、ch..."]
@@ -238,6 +241,7 @@ flowchart TD
     ADR_1104["ADR-1104<br/>translate adapter で usecase → resource バインディング ..."]
     ADR_1935["ADR-1935<br/>--from wrangler translate adapter と「adapter を採る基準」"]
     ADR_3258["ADR-3258<br/>karasu serve は配信ディレクトリをまるごとブラウザのメモリに写して import ..."]
+    ADR_3426["ADR-3426<br/>`/render?src=` の SSRF 対策を、解決後のアドレスとリダイレクトの各ホップで行う"]
     ADR_9013["ADR-9013<br/>CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
   end
   subgraph core-concepts["core-concepts"]
@@ -486,6 +490,8 @@ flowchart TD
     ADR_2648["ADR-2648<br/>記録が名指すソースパスを機械で照合し、不在が正しい場合は宣言させる"]
     ADR_2810["ADR-2810<br/>TPL 本文のソースパス照合を `@kompiro/tpl-tools` へ移し、Requir..."]
     ADR_3169["ADR-3169<br/>受け入れテストの手動項目は、マージ前に確かめられるものに限る"]
+    ADR_3237["ADR-3237<br/>OPFS fixture の origin は app の起動ではなく static file..."]
+    ADR_3429["ADR-3429<br/>合成エッジのスタイル解決テストは、本物の受け渡しと同じ `extraEdges` で渡し、`...."]
     ADR_9012["ADR-9012<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
   end
   subgraph vscode["vscode"]
@@ -1120,6 +1126,7 @@ flowchart TD
   class ADR_3169 accepted
   class ADR_3196 accepted
   class ADR_3203 accepted
+  class ADR_3237 accepted
   class ADR_3242 accepted
   class ADR_3246 accepted
   class ADR_3257 accepted
@@ -1136,13 +1143,18 @@ flowchart TD
   class ADR_3340 accepted
   class ADR_3342 accepted
   class ADR_3344 accepted
+  class ADR_3345 accepted
   class ADR_3350 not_adopted
   class ADR_3359 accepted
   class ADR_3381 accepted
   class ADR_3399 accepted
   class ADR_3405 accepted
   class ADR_3412 accepted
+  class ADR_3416 accepted
   class ADR_3421 accepted
+  class ADR_3426 accepted
+  class ADR_3429 accepted
+  class ADR_3471 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
