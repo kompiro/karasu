@@ -20,6 +20,7 @@ import {
 } from "./derived-edges.js";
 import { projectStoreRelations, unionProjectedRelations } from "./entity-relations.js";
 import { emptyGhostSynthesis, synthesizeGhosts } from "./ghost-synthesis.js";
+import { edgeKey } from "./edge-key.js";
 import {
   applyInferredTags,
   buildResourceInferredTagsMap,
@@ -131,7 +132,7 @@ function extractOrphanView(orphans: KrsNode[], path: ViewPath, ctx: ViewExtractC
     const { edges: implicitServiceEdges, details: implicitEdgeDetails } =
       deriveImplicitServiceEdges(
         orphans.filter((c) => c.kind === "service"),
-        new Set(anchoredEdges.map((e) => `${e.from}->${e.to}`)),
+        new Set(anchoredEdges.map(edgeKey)),
       );
     const derivedEdges = deriveInfraEdges(orphans, entityResolver);
     const deliversEdges = deriveDeliversEdges(orphans);

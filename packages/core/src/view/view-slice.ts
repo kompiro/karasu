@@ -147,7 +147,7 @@ export interface ViewSlice {
    */
   resourceInferredTagsMap: ReadonlyMap<string, string>;
   /**
-   * Maps "fromServiceId->toServiceId" to the list of constituent domain edges
+   * Maps `edgeKindKey` of an implicit service edge to the list of constituent domain edges
    * that were aggregated into a single "N domain edges" implicit service edge.
    * Only populated for pairs with 2 or more domain edges.
    */
@@ -204,8 +204,8 @@ export interface SystemFrameEdges {
   edges: KrsEdge[];
   /**
    * The constituent domain edges behind this frame's aggregated implicit service
-   * edges (ADR-463's detail panel), keyed by the bare
-   * `` `${from}->${to}#${kind}` `` the layout builds from the edge it is drawing.
+   * edges (ADR-463's detail panel), keyed by `edgeKindKey` of the edge the
+   * layout is drawing.
    *
    * Scoped to the frame rather than merged into {@link ViewSlice.implicitEdgeDetails}:
    * the key carries no system, so merging would make two systems that each

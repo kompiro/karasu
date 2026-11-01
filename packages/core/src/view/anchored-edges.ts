@@ -1,4 +1,5 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
+import { edgeKindKey } from "./edge-key.js";
 
 export function nodeId(node: KrsNode): string {
   return node.id;
@@ -7,10 +8,12 @@ export function nodeId(node: KrsNode): string {
 /**
  * Identity of a drawn edge: the endpoint pair **and** the arrow kind, so a
  * sync and an async edge between the same pair stay two edges. Suppression of
- * *derived* edges keys on the bare pair instead — see `explicitKeys`.
+ * *derived* edges keys on the bare pair instead — see `explicitKeys`. Built by
+ * {@link edgeKindKey}, so an endpoint carrying `->` cannot pose as another
+ * pair (#3111).
  */
 export function drawnEdgeKey(edge: KrsEdge): string {
-  return `${edge.from}-${edge.kind}->${edge.to}`;
+  return edgeKindKey(edge);
 }
 
 /**
