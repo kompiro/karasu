@@ -8,7 +8,7 @@
 - **Related TPLs**:
   - [TPL-1886](../test-perspectives/TPL-1886-rekey-transform-preserves-per-element-decoration.md)（id を書き換える集約変換は元 id にキーされた装飾を再導出する）
   - [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（全域性・端点保持）
-- **対象**: `packages/core/src/index.ts`（`compileSystemDiff`）/ `packages/core/src/renderer/group-collapse.ts` / `layout.ts` / `canvas-grouping.ts` / `svg-renderer.ts`
+- **対象**: `packages/core/src/index.ts`（`compileSystemDiff`）/ `packages/core/src/renderer/group-collapse.ts` / `layout.ts` / `canvas-grouping.ts` / `edge-layer.ts`
 
 ## 概要
 
@@ -58,7 +58,7 @@ diff モードの Group by: team は grouping 軸に **after 側だけの `owner
 > ✅ Automated by `packages/core/src/renderer/group-by-diff.test.ts` (suite-wide) — "does not draw frames when groupBy is omitted"; plus the core snapshot suite (byte-identical non-collapse output)
 
 - [x] `groupBy` 未指定・collapse なしの diff 出力は従来どおり（`foldedEdgeDiffState` は空で
-      `svg-renderer` の diff lookup は byte-identical）
+      `edge-layer` の diff lookup は byte-identical）
 
 ### AC-5: 手動（描画の目視確認）
 

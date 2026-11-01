@@ -54,7 +54,7 @@ main での実測で、org SVG に `data-owned-service-button="Shop.Api"` を持
 
 Issue 本文は「`->` を含む id は quote なしで書ける」としているが、lexer の識別子は `[\p{L}\p{N}_]` なので `->` を含む id は quoted id でしか書けない。ただし quoted id は受理済みの構文で、`service "b->c"` は `.`・`"`・`\` を含まないので deploy コンテナ id も `b->c` のまま出る（ADR-2714 の規則）。上流で防ぐものはなく、症状には到達できる。
 
-さらに、このキーは deploy 専用ではない。system ビューの diff（`view-diff.ts` の `edgeKey`）も同じ `${from}->${to}` を使い、`svg-renderer.ts` の `edgeDiffState` 参照・`group-collapse.ts`・`layout.ts` の frame 参照がこの形を組み立てて引く。system ビューでも quoted id で同じ衝突に到達する。
+さらに、このキーは deploy 専用ではない。system ビューの diff（`view-diff.ts` の `edgeKey`）も同じ `${from}->${to}` を使い、`edge-layer.ts` の `edgeDiffState` 参照・`group-collapse.ts`・`layout.ts` の frame 参照がこの形を組み立てて引く。system ビューでも quoted id で同じ衝突に到達する。
 
 ### 記録されたトレードオフの前提が変わった
 
@@ -93,9 +93,9 @@ Issue 本文は「`->` を含む id は quote なしで書ける」としてい�
 | 役割     | 場所                                                                                                                                                                       |
 | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 書き込み | `view-diff.ts` の `edgeKey`、`deploy-view-diff.ts` の `diffGhostEdges`                                                                                                     |
-| 読み取り | `svg-renderer.ts` の `effectiveEdgeDiffState.get(edgeKey)`、`group-collapse.ts` の `renderKey` と `edgeDiffState.get`、`layout.ts:1372` の `systemFrame.edgeDiffState.get` |
+| 読み取り | `edge-layer.ts` の `effectiveEdgeDiffState.get(edgeKey)`、`group-collapse.ts` の `renderKey` と `edgeDiffState.get`、`layout.ts:1372` の `systemFrame.edgeDiffState.get` |
 
-`svg-renderer.ts` の同じ `` `${from}->${to}` `` は `styles.edges` の参照にも使われている。こちらは `.krs.style` の edge セレクタが作る style キーで、diff キーとは別の契約である。
+`edge-layer.ts` の同じ `` `${from}->${to}` `` は `styles.edges` の参照にも使われている。こちらは `.krs.style` の edge セレクタが作る style キーで、diff キーとは別の契約である。
 
 ## 制約・前提
 
@@ -212,7 +212,7 @@ team id が `#`・`"`・`\` を含むときだけリテラル形で囲めば inj
    - `nodePathKey` の docstring から索引の話を外し、「text 専用。identity には `nodePathRefId` か `nodePathIdentityKey`」に書き換える
 2. **owns ボタン**: `org-renderer.ts` / `org-tree-renderer.ts` の属性値と表示テキストを `nodePathRefId(ref)` にする（表示は `→ Shop.Api` と `→ "Shop.Api"` になり、作者の書いた形に近くなる）。`org-view-diff.ts` の `ownsEdgeKey` と `diffOwns` の集合も同じキーにする
 3. **app の遷移**: `handleOwnedServiceClick` は属性値を `parseNodePathRefId` で segments に戻す。highlight の id は最後の segment、遷移先は `nodePathIndex.get(最後の segment)` が segments を接尾辞として満たすとき（`nodePathMatchesSuffix`。core の index から export されていなければ足す）だけ使う。bare id 1 つの参照は今と同じ動きになり、`owns Shop.Api` は勝者が `Shop.Api` のとき新たに遷移できる
-4. **edge の diff キー**: `view-diff.ts` の `edgeKey` を案D の形に差し替え（名前と signature は公開 API なので保つ）、`deploy-view-diff.ts`・`group-collapse.ts`・`svg-renderer.ts` の diff 参照（style 参照は除く）・`layout.ts:1372` をすべて通す。`DiffedDeployView.edges` などの docstring の「keyed `${from}->${to}`」も直す。同じ `view-diff.ts` の `detailKey`（`${from}->${to}#${label}`。集約 edge の構成 domain edge を before / after で突き合わせる diff キー）も対象に含める。こちらは関数内でしか使わず外へ出ないので、`nodePathIdentityKey` と同じく JSON（`JSON.stringify([from, to, label])`）でよい
+4. **edge の diff キー**: `view-diff.ts` の `edgeKey` を案D の形に差し替え（名前と signature は公開 API なので保つ）、`deploy-view-diff.ts`・`group-collapse.ts`・`edge-layer.ts` の diff 参照（style 参照は除く）・`layout.ts:1372` をすべて通す。`DiffedDeployView.edges` などの docstring の「keyed `${from}->${to}`」も直す。同じ `view-diff.ts` の `detailKey`（`${from}->${to}#${label}`。集約 edge の構成 domain edge を before / after で突き合わせる diff キー）も対象に含める。こちらは関数内でしか使わず外へ出ないので、`nodePathIdentityKey` と同じく JSON（`JSON.stringify([from, to, label])`）でよい
 5. **テスト**: Issue の 3 つのモデルと、`projectPathIndexOntoCanvas` が `system Shop { service "a.b" {} }` の `a.b` を `Shop` の canvas の grouping に入れることを regression test にする。root canvas のトップレベル dotted id も同じ経路を通るなら、そのテストも足す。`edgeKey` と `ownsEdgeKey` は injectivity（境界をずらした 2 組が別キーになる）と、普通の id で今と同じ文字列になることをテストする
 6. **TPL-1352**: 「キーを分解する読み手はエンコーダの逆関数を使う（文字列の prefix 一致や `includes(".")` で割らない）」をチェックリストに足し、本 Issue を `discovered_from` に追記する
 7. **AT**: `docs/acceptance/` に新規ファイル。人手で確かめる項目は 1 つ:
