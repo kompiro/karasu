@@ -275,36 +275,42 @@ describe("gh wrapper: gh pr ready", () => {
     expect(run(line, fakeGh(DRAFT), reviews()).status).toBe(1);
   });
 
-  it.each([
-    "gh pr ready 12 --undo",
-    "gh pr ready 12 --repo kompiro/other",
-    "gh pr ready 12 --repo=kompiro/other",
-    "gh pr ready -R kompiro/other 12",
-    "gh pr ready -R=kompiro/other 12",
-    "gh pr ready -Rkompiro/other 12",
-    "gh pr ready -R github.example.com/kompiro/karasu 12",
-  ])("runs `%s` without consulting the PR", (line) => {
+  it("runs `gh pr ready 12 --undo` without consulting the PR", () => {
     const gh = fakeGh(DRAFT);
-    expect(run(line, gh, reviews()).status).toBe(0);
+    expect(run("gh pr ready 12 --undo", gh, reviews()).status).toBe(0);
     expect(calls(gh).some((c) => c.startsWith("pr view"))).toBe(false);
   });
 
-  // --repo naming origin itself is the same PR as without it, so the check runs
-  // (#3514). The value is not taken for the PR selector.
+  // The gate reads the PR gh pr ready acts on: it passes --repo on to its own
+  // gh pr view (#3514). The value is not taken for the PR selector.
   it.each([
-    "gh pr ready 12 --repo kompiro/karasu",
-    "gh pr ready 12 --repo=Kompiro/Karasu",
-    "gh pr ready -R kompiro/karasu 12",
-    "gh pr ready -R=github.com/kompiro/karasu 12",
-    "gh pr ready -Rhttps://github.com/kompiro/karasu.git 12",
-  ])("refuses `%s` without a CLI review, as it does without --repo", (line) => {
+    ["gh pr ready 12 --repo kompiro/karasu", "kompiro/karasu"],
+    ["gh pr ready 12 --repo=Kompiro/Karasu", "Kompiro/Karasu"],
+    ["gh pr ready -R kompiro/karasu 12", "kompiro/karasu"],
+    ["gh pr ready -R=github.com/kompiro/karasu 12", "github.com/kompiro/karasu"],
+    ["gh pr ready -Rkompiro/karasu 12", "kompiro/karasu"],
+  ])("checks `%s` like a ready without --repo, reading the same PR", (line, named) => {
     const gh = fakeGh(DRAFT);
     const result = run(line, gh, reviews());
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("PR #12");
-    expect(calls(gh).find((c) => c.startsWith("pr view"))).toMatch(/^pr view 12 --json/);
+    expect(calls(gh).find((c) => c.startsWith("pr view"))).toMatch(
+      new RegExp(`^pr view 12 --repo ${named} --json`),
+    );
     expect(calls(gh).some((c) => c.startsWith("pr ready"))).toBe(false);
   });
+
+  // Another repository's PR has a head that is not a commit here: fail open.
+  it.each(["gh pr ready 12 --repo kompiro/other", "gh pr ready -R kompiro/other 12"])(
+    "runs `%s`, whose PR head is not a commit here",
+    (line) => {
+      const gh = fakeGh({ ...DRAFT, headRefOid: "f".repeat(40) });
+      expect(run(line, gh, reviews()).status).toBe(0);
+      expect(calls(gh).find((c) => c.startsWith("pr view"))).toMatch(
+        /^pr view 12 --repo kompiro\/other --json/,
+      );
+    },
+  );
 
   it("runs `gh pr ready -R kompiro/karasu 12` once the CLI reviewed the branch", () => {
     const gh = fakeGh(DRAFT);
