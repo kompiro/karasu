@@ -65,7 +65,7 @@ infra leaf の「所有ドメイン」は **論理層（`entity` の親 domain�
 6. **entity 未導入モデルで誤発火** — leaf を誰の entity もマッピングしていないとき所有は不明。
    発火させてはならない（ボトムアップの正当な中間状態。entity を足せば zero-edit で有効化）。
 
-## 検証の指針
+## チェックリスト
 
 - 別ドメイン所有の leaf への read/write → 1 件発火、`accessingDomain` / `owningDomains` /
   `infraId` / `tableId` / `mode` が正しい。
