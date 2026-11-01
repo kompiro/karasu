@@ -28,6 +28,7 @@ import type {
   StorageNode,
 } from "../types/ast.js";
 import { INFRA_KIND_SET, createEmptyKrsFile } from "../types/ast.js";
+import { consumeRejected, rejectConstruct, rejectNode } from "./rejected-construct.js";
 import { LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
 import { Lexer } from "../lexer/lexer.js";
 import { isRecognizedResourceOperation, type CrudVerb } from "../spec/operations.js";
@@ -39,9 +40,11 @@ import {
   parseDescriptionValue,
   parseLink,
   parseIdOrString,
-  commaSeparatedValues,
   parseOperationsList,
   parseHandlesList,
+  parseDeliversList,
+  readTableRef,
+  rejectMisplacedProperty,
   type ParsedOperation,
 } from "./property-readers.js";
 import {
@@ -104,6 +107,7 @@ export class Parser {
     range: (start, end) => this.range(start, end),
     pushDiagnostic: (...diagnostics) => this.diagnostics.push(...diagnostics),
     previous: () => this.tokens[this.pos - 1],
+    tryParseNodeDecl: () => (this.isLogicalKeyword(this.peek()) ? this.parseNodeDecl() : undefined),
     discardDiagnostics: (parse) => {
       const before = this.diagnostics.length;
       const result = parse();
@@ -438,8 +442,7 @@ export class Parser {
             this.error("expected-string-after", { property: "role" });
           }
         } else {
-          this.error("property-not-for-node-kind", { property: "role", nodeKind: kind });
-          this.advance();
+          rejectMisplacedProperty(this.ctx, kind);
         }
         continue;
       }
@@ -453,8 +456,7 @@ export class Parser {
             properties.handles.push(...ids);
           }
         } else {
-          this.error("property-not-for-node-kind", { property: "handles", nodeKind: kind });
-          this.advance();
+          rejectMisplacedProperty(this.ctx, kind);
         }
         continue;
       }
@@ -471,8 +473,7 @@ export class Parser {
             properties.operations.push(...ops);
           }
         } else {
-          this.error("property-not-for-node-kind", { property: "operations", nodeKind: kind });
-          this.advance();
+          rejectMisplacedProperty(this.ctx, kind);
         }
         continue;
       }
@@ -484,40 +485,13 @@ export class Parser {
       // collides with infra-block parsing.
       if (token.type === TokenType.Table) {
         if (kind === "entity") {
-          this.advance();
-          // Require the full `<InfraId>.<subId>` form. Guard BOTH sides so a
-          // malformed mapping (`table .orders`, `table OrderDB.`, `table orders`)
-          // leaves tableRef undefined, emits exactly one diagnostic, and never
-          // consumes a stray token (`.`, `}`) as an id.
-          const isId = (t: TokenType) =>
-            t === TokenType.Identifier || t === TokenType.StringLiteral;
-          if (isId(this.peek().type)) {
-            const tail = readNodeIdPathTail(this.advance(), this.ctx, {
-              maxSegments: 2,
-              acceptStringSegments: true,
-            });
-            if (tail.segments.length === 2) {
-              properties.tableRef = { parent: tail.segments[0], child: tail.segments[1] };
-            } else {
-              // Missing dot, or missing sub-id after the dot — do NOT consume
-              // the following token (`}`, etc.).
-              this.error("expected-id-after", { property: "table" });
-            }
-          } else {
-            this.error("expected-id-or-string", { context: "entity table infra id" });
-            // Consume a stray `.<id>` so we recover in one diagnostic, not three.
-            if (this.peek().type === TokenType.Dot) {
-              this.advance();
-              if (isId(this.peek().type)) this.advance();
-            }
-          }
+          const tableRef = readTableRef(this.ctx, this.advance());
+          if (tableRef) properties.tableRef = tableRef;
         } else {
-          this.error("unexpected-token-in-block", {
-            blockKind: kind,
-            tokenType: String(token.type),
-            value: token.value,
-          });
-          this.advance();
+          // Read the mapping whole so its `.` and ids are not reported again (#3463).
+          const loc = consumeRejected(this.ctx, (kw) => readTableRef(this.ctx, kw));
+          const params = { blockKind: kind, tokenType: String(token.type), value: token.value };
+          rejectConstruct(this.ctx, loc, "unexpected-token-in-block", params);
         }
         continue;
       }
@@ -543,13 +517,10 @@ export class Parser {
       // Property: delivers (service only). Comma-separated list of client ids.
       if (token.type === TokenType.Delivers) {
         if (kind === "service") {
-          const keyword = this.advance();
-          for (const client of commaSeparatedValues(this.ctx, keyword, "delivers")) {
-            (properties.delivers ??= []).push(client.value);
-          }
+          const clients = parseDeliversList(this.ctx, this.advance(), kind);
+          (properties.delivers ??= []).push(...clients);
         } else {
-          this.error("property-not-for-node-kind", { property: "delivers", nodeKind: kind });
-          this.advance();
+          rejectMisplacedProperty(this.ctx, kind);
         }
         continue;
       }
@@ -589,7 +560,7 @@ export class Parser {
       }
 
       // Client-only: `capability <name>` or `capability <name> { label "..." description "..." }`.
-      // Identifier set is open by design — see docs/design/client-capability-modeling.md.
+      // Identifier set is open by design — see ADR-837.
       if (kind === "client" && token.type === TokenType.Capability) {
         properties.capabilities ??= [];
         properties.capabilities.push(this.parseClientCapability());
@@ -597,26 +568,13 @@ export class Parser {
       }
 
       // Check for logical node
-      // Infra block kinds (database/queue/storage) are only valid as direct children of system.
       if (this.isLogicalKeyword(token)) {
-        if (INFRA_KIND_SET.has(token.value) && kind !== "system") {
-          this.error("infra-not-in-context", {
-            infraKind: token.value,
-            parentKind: kind,
-          });
-          this.advance();
-          continue;
-        }
-        // `entity` is only valid as a `domain` child. Consume the full
-        // declaration for clean error recovery, then drop it.
-        if (token.value === "entity" && kind !== "domain") {
-          const node = this.parseNodeDecl();
-          this.diagnostics.push({
-            severity: "error",
-            code: "entity-not-in-domain",
-            params: { parentKind: kind },
-            loc: node.loc,
-          });
+        // Infra block kinds (database/queue/storage) are only valid as direct
+        // children of system, and `entity` only as a `domain` child. Consume
+        // the whole declaration for clean error recovery, then drop it.
+        const infra = INFRA_KIND_SET.has(token.value);
+        if ((infra && kind !== "system") || (token.value === "entity" && kind !== "domain")) {
+          rejectNode(this.ctx, this.parseNodeDecl(), kind);
           continue;
         }
         // An `entity` block accepts no node children — only relations, a
@@ -625,12 +583,8 @@ export class Parser {
         // node (usecase / resource / …) instead of silently attaching it.
         if (kind === "entity") {
           const node = this.parseNodeDecl();
-          this.diagnostics.push({
-            severity: "error",
-            code: "unexpected-token-in-block",
-            params: { blockKind: "entity", tokenType: String(token.type), value: token.value },
-            loc: node.loc,
-          });
+          const params = { blockKind: "entity", tokenType: String(token.type), value: token.value };
+          rejectConstruct(this.ctx, node.loc, "unexpected-token-in-block", params);
           continue;
         }
         const child = this.parseNodeDecl();
@@ -643,12 +597,8 @@ export class Parser {
         // parses, and a reference to it falls to the unresolved-reference
         // warnings (spec §S6) rather than to a second error.
         if (!LOGICAL_CONTAINMENT.get(kind)?.has(child.kind)) {
-          this.diagnostics.push({
-            severity: "error",
-            code: "node-not-in-context",
-            params: { childKind: child.kind, parentKind: kind },
-            loc: child.loc,
-          });
+          const params = { childKind: child.kind, parentKind: kind };
+          rejectConstruct(this.ctx, child.loc, "node-not-in-context", params);
           continue;
         }
         children.push(child);
@@ -673,12 +623,7 @@ export class Parser {
         if (BOUNDARY_HOST_KIND[kind] && boundaries) {
           boundaries.push(block);
         } else {
-          this.diagnostics.push({
-            severity: "error",
-            code: "boundary-not-in-context",
-            params: { parentKind: kind },
-            loc: block.loc,
-          });
+          rejectConstruct(this.ctx, block.loc, "boundary-not-in-context", { parentKind: kind });
         }
         continue;
       }
@@ -1249,6 +1194,9 @@ export class Parser {
         continue;
       }
 
+      if (rejectMisplacedProperty(this.ctx, parentKind)) continue;
+      if (this.rejectMisplacedDecl(parentKind, parentKind)) continue;
+
       this.error("unexpected-token-in-block", {
         blockKind: parentKind,
         tokenType: String(token.type),
@@ -1330,6 +1278,9 @@ export class Parser {
         continue;
       }
 
+      if (rejectMisplacedProperty(this.ctx, kind)) continue;
+      if (this.rejectMisplacedDecl(kind, "sub-resource")) continue;
+
       this.error("unexpected-token-in-block", {
         blockKind: "sub-resource",
         tokenType: String(token.type),
@@ -1357,6 +1308,31 @@ export class Parser {
   }
 
   /** Parse a sub-resource node (table, queue-item, bucket). */
+  /**
+   * Read a declaration an infra or sub-resource body does not take whole and
+   * report it once (#3463): a node by its placement rule, and a `table` or
+   * `bucket` the parent kind does not hold as an unexpected token over the
+   * whole declaration. Returns false when the next token opens neither.
+   */
+  private rejectMisplacedDecl(parentKind: string, blockKind: string): boolean {
+    const token = this.peek();
+    const node = this.ctx.tryParseNodeDecl();
+    if (node) {
+      rejectNode(this.ctx, node, parentKind);
+      return true;
+    }
+    const sub =
+      token.type === TokenType.Table
+        ? "table"
+        : token.type === TokenType.Bucket
+          ? "bucket"
+          : undefined;
+    if (!sub) return false;
+    const params = { blockKind, tokenType: String(token.type), value: token.value };
+    rejectConstruct(this.ctx, this.parseInfraSubNode(sub).loc, "unexpected-token-in-block", params);
+    return true;
+  }
+
   private parseInfraSubNode(kind: "table" | "queue-item" | "bucket"): KrsNode {
     const start = this.advance(); // keyword token (table / queue / bucket)
 

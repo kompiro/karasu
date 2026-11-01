@@ -10,7 +10,7 @@ type: product
 - **Related TPLs**: [TPL-2631](../test-perspectives/TPL-2631-decoration-must-not-hide-a-crossing-mark.md)（装飾を足したら、それが覆うマークがまだ読めることを寸法で測る）, [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)（計測柵は資源の限界に達する入力を持って初めて柵になる）, [TPL-2385](../test-perspectives/TPL-2385-attachment-follows-drawn-outline.md)（端点は描かれた輪郭に載る）, [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（貫通と重なりを同じテストで測る）
 - **対象ファイル**:
   - `packages/core/src/renderer/crossing-marks.ts`（検出と帯の分離、合流マークの本数、帯、帯に載るマークの退避）
-  - `packages/core/src/renderer/svg-renderer.ts`（本数チップ、エッジの下に敷く帯）
+  - `packages/core/src/renderer/crossing-marks-svg.ts`（本数チップ、帯の描画）/ `edge-layer.ts`（帯をエッジの下に敷く）
   - `packages/core/src/renderer/edge-routing.ts`（`ownLabelSegment`: 共有 spine ではなく自分の stub にラベルを置く）
   - `packages/core/src/renderer/label-placement.ts`（衝突回避パスが同じアンカーを見る）
   - `packages/core/src/renderer/layout-types.ts`（`JunctionMark.count` / `TrunkBand` / `HopMark.ry`）

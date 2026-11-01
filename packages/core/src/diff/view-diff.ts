@@ -48,7 +48,7 @@ export interface DiffedView {
   nodesByPath: Map<string, NodeDiffMeta>;
   /**
    * Diff state keyed by {@link edgeKey}.
-   * Matches the LayoutEdge identification used by svg-renderer; sync/async
+   * Matches the LayoutEdge identification used by edge-layer; sync/async
    * pairs that share endpoints are treated as a single edge for diff purposes.
    */
   edges: Map<string, EdgeDiffMeta>;
@@ -56,7 +56,7 @@ export interface DiffedView {
 
 /**
  * Compare-mode identity of an edge: the key every diff map is written under
- * and every renderer reads back (`svg-renderer.ts`, `group-collapse.ts`, the
+ * and every renderer reads back (`edge-layer.ts`, `group-collapse.ts`, the
  * root view's per-frame lookup in `layout.ts`, the deploy ghost-edge diff).
  * Build it here and nowhere else, so the writers and readers cannot drift
  * apart (TPL-1352).
@@ -386,7 +386,7 @@ function diffSystemFrames(
  *
  * Aggregated implicit edges, ghost domains/systems, and resource label maps
  * are taken from `after` for now — refining their diff semantics is tracked
- * separately (see `docs/design/graphical-diff-viewer.md`).
+ * separately (see ADR-650).
  */
 export function diffSystemViewSlices(
   before: ViewSlice,

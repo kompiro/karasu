@@ -23,7 +23,7 @@ export interface StyleSelector {
    * Edge canonical id targeted by an `edge#<id>` selector. Compared against
    * `KrsEdge.canonicalId` (set by the canonical-id pass after view extract).
    * Either an author-supplied identifier (`#criticalWrite`) or a base form
-   * (`#A->B` / `#A-->B`). See `docs/design/edge-id-selector.md`.
+   * (`#A->B` / `#A-->B`). See ADR-1096.
    */
   edgeId?: string;
   /**
@@ -99,7 +99,7 @@ export interface StyleRule {
   declarationTrivia?: Record<string, DeclarationTrivia>;
   /**
    * Structured value AST keyed by property name. Phase 3 of
-   * `docs/design/style-value-diagnostics.md`. Optional so consumers that
+   * ADR-1178. Optional so consumers that
    * build rules in code (test fixtures, builtin sheets) can omit it; the
    * parser always sets it. The string value in `properties` remains
    * canonical for resolver / Tidy / svg-builder.
@@ -154,7 +154,7 @@ export interface ResolvedNodeStyle {
  * NOTE: in the current MVP the value is parsed and surfaces in
  * `ResolvedEdgeStyle.direction`, but the karasu layout engine does not
  * yet bias routing on it. Tracked separately — see
- * `docs/design/edge-direction-style.md`.
+ * ADR-9019.
  */
 export type EdgeDirection = "auto" | "up" | "down" | "left" | "right";
 

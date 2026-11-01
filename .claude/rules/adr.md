@@ -161,6 +161,12 @@ Issue が無ければ **その ADR を書いた PR の番号**を使う（[#2083
 
 新規 Design Doc の雛形は `docs/design/TEMPLATE.md` を参照。
 
+昇格 PR は `docs/` の外に触れない。`docs/` の外（コード・設定・workflow・`.claude/rules/`）は
+Design Doc を指さず、ADR か Issue を指しているので、張り替える参照がそもそも無い。
+Design Doc を書いている最中に実装のコメントへ設計の根拠を書きたくなったら、`docs/design/<name>.md`
+ではなく Issue 番号（`#N`）を書く。検査: `pnpm lint:design-doc-refs`（pre-push と CI の Check、
+[ADR-3471](../../docs/adr/3471-code-cites-issue-not-design-doc.md)）。
+
 昇格フローの位置づけは `/start-dev` スキルのステップ 9.5 を参照。
 
 ## ADR PR の auto-merge

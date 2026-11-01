@@ -2,9 +2,9 @@
  * Axis classification for `.krs.style` properties used by the Tidy
  * formatter to group declarations within a rule.
  *
- * Order of axes follows the `docs/design/tidy-style-and-trivia.md`
- * decision: visual → typography → layout → karasu. Properties whose
- * names are not in any explicit list fall into `karasu` so that
+ * Order of axes follows the ADR-1177 decision: visual → typography →
+ * layout → karasu. Properties whose names are not in any explicit list
+ * fall into `karasu` so that
  * forward-compatible properties land at the end of the rule.
  */
 type PropertyAxis = "visual" | "typography" | "layout" | "karasu";

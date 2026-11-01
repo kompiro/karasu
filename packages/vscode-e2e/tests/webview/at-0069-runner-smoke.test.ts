@@ -15,7 +15,7 @@ import { ExtensionsViewItem, VSBrowser, Workbench } from "vscode-extension-teste
  * `packages/vscode-e2e/tests/suite/00-activation.test.ts` (smoke runner) —
  * duplicating it here would bring no extra signal.
  *
- * Phase 1 success criterion (per `docs/design/vscode-webview-e2e-harness.md`):
+ * Phase 1 success criterion (per ADR-1014):
  * the runner choice (vscode-extension-tester) is wired correctly and the
  * extension is recognised by VS Code.
  */

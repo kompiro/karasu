@@ -4,8 +4,8 @@
  * For an edge whose straight-line segment would visually cross an unrelated
  * node card, replace it with an L-shape that descends in src's column,
  * traverses an inter-row channel just above the target row, and drops into
- * the target's column. Same-layer and adjacent-row edges keep their straight
- * lines (set no waypoints).
+ * the target's column. Edges that cross no card keep their straight lines
+ * (set no waypoints).
  *
  * The candidate polyline is verified against obstacles before being applied:
  * if any of its three segments still crosses a node (e.g. when src.x or to.x
@@ -17,7 +17,7 @@
  * segment, rather than as a fresh `Rect[]` per edge walked in full. The exact
  * clip is unchanged, so the routes are.
  *
- * See docs/design/auto-layout-edge-routing-orthogonal.md for the full design
+ * See ADR-968 for the full design
  * (Phase 2). Phase 3 — port distribution and lane allocation when many edges
  * share a side or channel, plus column-shifting when stubs are blocked — is
  * out of scope here.
@@ -54,8 +54,8 @@ export function routeOrthogonalEdges(
     const to = layoutNodes.get(edge.to);
     if (!from || !to) continue;
 
-    // Only consider top-to-bottom (downward) edges. Same-layer and reverse
-    // edges already use side anchors via computeEdgePoints.
+    // Only consider top-to-bottom (downward) edges, judged by geometry: an
+    // edge to a card of the same layer on a later row (#3494) is one.
     if (!isDownwardEdge(edge.fromPoint, edge.toPoint, from, to)) continue;
 
     const obstacles = obstaclesFor(edge);

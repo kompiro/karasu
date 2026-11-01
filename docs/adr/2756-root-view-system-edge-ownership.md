@@ -12,7 +12,7 @@ assumptions:
   - "symbol: packages/core/src/view/derived-edges.ts :: deriveCanvasEdges"
   - "symbol: packages/core/src/view/view-slice.ts :: SystemFrameEdges"
   - "symbol: packages/core/src/diff/view-diff.ts :: diffSystemFrames"
-  - "grep: packages/core/src/renderer/svg-renderer.ts :: edgeLayout\\.diffState"
+  - "grep: packages/core/src/renderer/edge-layer.ts :: edgeLayout\\.diffState"
 ---
 
 # ADR-2756: root view の各 system フレームは自分の子から導出したエッジ集合を持つ
