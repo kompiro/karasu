@@ -594,3 +594,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-3385](TPL-3385-consumer-of-a-signal-the-producer-stops-emitting.md) | 外部サービスの出力を変える設定変更では、その出力を待つ側の判定を新しい形の fixture で確かめる。止めた出力を答えとして待つ処理はエラーにならず時間切れまで待ち、古い形の fixture のテストは通り続ける | project | #3385, #3365 |
 | [TPL-3470](TPL-3470-timestamp-order-needs-a-tie-break.md) | 時刻で並べる一覧は、同じ時刻の項目にも本当の順序を与える tie-break を持つ。ミリ秒精度の時刻は普通に衝突し、比較が 0 を返すと順序はソート前の並びで決まる。順序のテストは sleep で時刻を進めず `Date` を固定する | project | #3470 |
 | [TPL-3494](TPL-3494-edge-never-crosses-its-own-endpoint-cards.md) | エッジは自分の端点のカードの内側も通らない。障害物の検査は端点を除外するので、線が自分のカードを突っ切っても貫通 0 のまま通り、終点のカードが矢印を隠す。端点の辺は layer の番号ではなく描画上の位置で決め、端点カードとの交差を別に測る | renderer | #3494 |
+| [TPL-3437](TPL-3437-tap-target-needs-its-own-pressability-cue.md) | 押せる要素は、ブラウザから見ても押せる要素であること。Chrome はタッチを面として扱い、近くの「押せる」要素（自身のリスナー・フォーカス・`:hover` を持つもの）へタップを寄せるので、クリックを祖先に委譲した小さなボタンへのタップが横の edge に移る | app-ui | #3027 |

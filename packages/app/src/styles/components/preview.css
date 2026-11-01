@@ -183,7 +183,8 @@
    like an edge does. Beyond the feedback, this is what makes Chrome count
    them as tap targets: it moves a touch to the nearby element it judges
    tappable, and an element with a :hover style is one. Without it a tap on
-   a small button went to an edge's hit-line passing beside it (#3027). */
+   a small button went to an edge's hit-line passing beside it (#3027,
+   TPL-3437). */
 .preview-container svg .krs-node-controls:hover {
   filter: brightness(1.4);
 }
