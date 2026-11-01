@@ -6,6 +6,7 @@ type: tooling
 
 - **日付**: 2026-10-31
 - **関連 Issue**: [#3416](https://github.com/kompiro/karasu/issues/3416)
+- **設計 (ADR)**: [ADR-3416](../adr/3416-regenerate-adr-index-daily-pr.md)
 - **Related TPLs**: [TPL-3286](../test-perspectives/TPL-3286-merge-eligibility-judged-on-final-diff.md)（人を通らないマージを許す判定は最終の差分で行い、読めない設定や再生成でない差分は記録の免除に当たらない）、[TPL-2786](../test-perspectives/TPL-2786-guard-failure-must-fail-the-run.md)（生成器が動かない、再生成が止まった、を通過ではなく失敗にする）、[TPL-1725](../test-perspectives/TPL-1725-gated-test-suite-detection-gap.md)（生成器の版上げの PR でも `Validate` の本体を起動させる）
 - **対象ファイル**:
   - `scripts/adr/generated.ts`（生成物のパスの集合と、差分の種類の判定）
