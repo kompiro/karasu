@@ -5,7 +5,7 @@
 - **PR**: feat/expand-container-in-frame
 - **設計**: [ADR-1815](../adr/1815-expand-container-in-place.md)
 - **Related TPLs**: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md)（scoped glance を first-class に保つ）, [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（要素を再配置しても全要素ちょうど一度配置 + 端点保持）, [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（`.krs` 不変）
-- **対象**: `packages/core/src/view/view-extract.ts` / `renderer/layout.ts` / `renderer/canvas-grouping.ts` / `renderer/svg-renderer.ts`、`packages/app`（`useSystemView` / `useCollapsibleSet` / `PreviewPane` ほか）
+- **対象**: `packages/core/src/view/view-extract.ts` / `renderer/layout.ts` / `renderer/canvas-grouping.ts` / `renderer/svg-renderer.ts` / `renderer/canvas-controls.ts`、`packages/app`（`useSystemView` / `useCollapsibleSet` / `PreviewPane` ほか）
 
 ## 概要
 
