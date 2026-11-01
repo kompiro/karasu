@@ -82,8 +82,10 @@ fetch すると、接続のときにもう一度引かれ、その間に答え�
 **デメリット**
 
 - `fetch` が持っていたもの（リダイレクト、圧縮の展開、`AbortSignal`、本文の読み出し）を自分で書く。リダイレクトは
-  どのみち手で追う必要があり（決めること 2）、圧縮は展開しない。`Accept-Encoding: identity` を送り、それでも圧縮して返す
-  server の本文は `.krs` として読めないので 422 になる（害は無い）
+  どのみち手で追う必要があり（決めること 2）、圧縮は今の `fetch` が展開しているので互換のために残す。`Accept-Encoding` は
+  `gzip, deflate, br` を送り、応答の `Content-Encoding` が `gzip` / `deflate` / `br` なら `node:zlib` で展開する。上限
+  （決めること 5）は **展開した後** の大きさにかけ、超えた時点で展開を止める（zip bomb で上限をすり抜けさせない）。それ以外の
+  `Content-Encoding` は 502
 - proxy の環境変数を見ない。proxy を通らないと外に出られない環境では `src` が使えなくなる（`?code=` は使える）。proxy 越しに
   させると解決後のアドレスを確かめられないので、これは意図した縮退とする
 
@@ -159,9 +161,16 @@ interface には無い）へ接続し、ルーターがそれを karasu 自身�
 問題にしない。
 
 残る経路として受け入れるもの: hairpin NAT はルーター自身の WAN 側の管理画面や、port forward した LAN の別サービスにも届く。
-ルーターが送信元を LAN のアドレスに書き換えることも多く、アドレスの禁止も印も効かない。ただし `/render` が応答を返すのは
-`.krs` として描けた 200 のときだけで、422 / 502 には `Access-Control-Allow-Origin` が付かないので、攻撃者のページは中身を
-読めない（request を送らせるだけの blind SSRF）。これは本件の範囲外として受け入れる。
+ルーターが送信元を LAN のアドレスに書き換えることも多く、アドレスの禁止も効かない。攻撃者のページが中身を読めるのは、
+`/render` が `Access-Control-Allow-Origin: *` 付きの 200 を返すとき、つまり届いた本文がエラー無く `.krs` として compile
+できたときだけである。422 / 502 にはこのヘッダが付かない。HTML・JSON・`KEY=value` のような本文は compile のエラーになって 422 を
+返し、SVG にも中身は出ない（Node 24.18 で、HTML の管理画面・JSON・テキストに埋めた文字列が `buildAllViewsSvg` / `compile` の
+SVG に出ないことを確認）。
+
+したがって、読めるのは「hairpin NAT の port forward の先で、`.krs` を返すサービス」に限られる。karasu の `serve` は、この版から
+印を持つ request を拒否するので、自分自身も同じ LAN の別の `serve` も読めない。残るのは、`.krs` を配る別のサービス
+（git の web UI、ファイル共有など）を router が port forward していて、そのサービスが印を見ない場合で、これを本件で受け入れる
+残りの危険とする。それ以外（管理画面などへ request を送らせるだけの blind SSRF）も、アドレスで止められないので受け入れる。
 
 ### 却下: 印を付けず、アドレスの禁止だけで済ませる
 
@@ -199,7 +208,7 @@ hairpin NAT と転送の経路は、karasu から見えるのが public アド�
    - `guardedLookup`: `dns.lookup(hostname, { ...options, all: true })` の結果を全部確かめ、1 つでも禁止なら error、
      通れば呼び出し側の `options.all` に合わせて返す
    - `fetchSrc(url, { signal })`: hop のループ。scheme と userinfo の拒否、IP literal の判定、`agent: false` と `lookup` 付きの
-     `request`、リダイレクトの追跡（最大 5）、256 KiB の上限、`User-Agent`・`Accept-Encoding: identity`・`X-Karasu-Render: 1` の付与。
+     `request`、リダイレクトの追跡（最大 5）、256 KiB の上限、`User-Agent`・`Accept-Encoding: gzip, deflate, br`・`X-Karasu-Render: 1` の付与、`Content-Encoding` の展開（上限は展開後）。
      結果は `{ ok: true, text } | { ok: false, status, reason, message }`。status は決めること 2 の線で 400 か 502、`reason` は
      `"blocked-address"`、`"too-many-redirects"`、`"too-large"` などの機械で見分けられる値で、テストはこれで拒否の理由を確かめる
    - 同時実行の上限（2 件、超えたら 503）。枠を取るのは `handleRender` の `src` の分岐で、空けるのは応答を返したことと、
@@ -235,7 +244,8 @@ hairpin NAT と転送の経路は、karasu から見えるのが public アド�
      `reason: "blocked-address"` で拒否され、数える server に request が届かないこと。`198.51.100.7`（このマシン自身）への 302 も
      同じ `reason` の 502
    - 5 回のリダイレクトは通り、6 回目で 502。`Location` の無い 3xx、`file:` への 3xx、userinfo を持つ URL への 3xx も 502
-   - 256 KiB を超える本文が 502
+   - 256 KiB を超える本文が 502（`reason: "too-large"`）。gzip と br で圧縮した `.krs` は展開して 200、展開すると 256 KiB を超える
+     小さな gzip（zip bomb）は展開を途中で止めて 502、`Content-Encoding: compress` は 502
    - 同時に 3 件目の `src` が来たら 503（resolver を止めて 2 件を抱えさせる）。止めた resolver の request が 10 秒の上限で
      502 を返した後も、resolver が返るまでは 3 件目が 503 のままであること（枠が応答だけで空かない）。時間はテストの中で短く差し替える
    - proxy: 子プロセスを `NODE_USE_ENV_PROXY=1` と、数える proxy を指す `HTTP_PROXY` 付きで起こし、`fetchSrc` を読み込む
