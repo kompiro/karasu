@@ -32,15 +32,15 @@ loopback の `Host` を持つので、#3418 の bind と `Host` 検査ではこ�
 
 ## 現状（インベントリ）
 
-| 観点       | 現状                                                                                                                                                                                                                                                   |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 入口の検査 | `parseRenderParams` が `isSafeUrl(src)` を呼び、落ちたら 400。scheme は `http:` / `https:` のみ。`localhost`、`::1`、IPv4 の `127/8`、`10/8`、`172.16/12`、`192.168/16`、`169.254/16`、`0/8` を文字列で拒否する                                        |
-| fetch      | global `fetch`（Node 内蔵の undici）。`redirect: "follow"`、`AbortSignal.timeout(10_000)`、`User-Agent: karasu-render/1.0`。本文の大きさに上限は無い                                                                                                   |
-| 失敗時     | fetch の例外と non-2xx は 502                                                                                                                                                                                                                          |
-| 応答       | 200 で `image/svg+xml`、`Access-Control-Allow-Origin: *`、`Cache-Control: public, max-age=60`                                                                                                                                                          |
-| 依存       | CLI の `dependencies` は `chokidar`、`commander`、`karasu-skills`、`yaml`。`undici` は jsdom 経由の dev の間接依存で、CLI は持たない                                                                                                                   |
-| Node       | `engines.node >= 22.12`。`http.request` の `lookup` option は `autoSelectFamily` の既定で `{ all: true }` 付きで呼ばれ、宛先が IP literal のときは呼ばれない。`net.BlockList` は IPv4 の subnet を IPv4-mapped の IPv6 にも当てる（Node 24.18 で確認） |
-| テスト     | `render-endpoint.test.ts` が `isSafeUrl` の表と、`fetch` を `vi.stubGlobal` で差し替えた `handleRender` を持つ                                                                                                                                         |
+| 観点       | 現状                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 入口の検査 | `parseRenderParams` が `isSafeUrl(src)` を呼び、落ちたら 400。scheme は `http:` / `https:` のみ。`localhost`、`::1`、IPv4 の `127/8`、`10/8`、`172.16/12`、`192.168/16`、`169.254/16`、`0/8` を文字列で拒否する                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| fetch      | global `fetch`（Node 内蔵の undici）。`redirect: "follow"`、`AbortSignal.timeout(10_000)`、`User-Agent: karasu-render/1.0`。本文の大きさに上限は無い                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 失敗時     | fetch の例外と non-2xx は 502                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 応答       | 200 で `image/svg+xml`、`Access-Control-Allow-Origin: *`、`Cache-Control: public, max-age=60`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 依存       | CLI の `dependencies` は `chokidar`、`commander`、`karasu-skills`、`yaml`。`undici` は jsdom 経由の dev の間接依存で、CLI は持たない                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Node       | `engines.node >= 22.12`。`http.request` の `lookup` option は `autoSelectFamily` の既定で `{ all: true }` 付きで呼ばれ、宛先が IP literal のときは呼ばれない。`net.BlockList` は IPv4 の subnet を IPv4-mapped の IPv6 にも当てる（Node 24.18 で確認。CI は Node 24 だけで走り、22.x では確かめていない）。`BlockList.check(addr)` の family の既定は `"ipv4"` で、IPv6 を渡すと例外を出さずに `false` を返す。`http.globalAgent` は `keepAlive: true` で、再利用した socket には `lookup` が呼ばれない。`NODE_USE_ENV_PROXY=1`（または `--use-env-proxy`）のとき、`globalAgent` 経由の `http.request` は `HTTP_PROXY` の proxy に送られ、`lookup` は呼ばれない。`agent: false` ならどちらも起きない（3 つとも Node 24.18 で確認） |
+| テスト     | `render-endpoint.test.ts` が `isSafeUrl` の表と、`fetch` を `vi.stubGlobal` で差し替えた `handleRender` を持つ                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 ## 制約・前提
 
@@ -63,6 +63,11 @@ fetch すると、接続のときにもう一度引かれ、その間に答え�
 
 宛先が IP literal のとき `lookup` は呼ばれないので、hop ごとに URL の hostname が IP literal なら同じ禁止範囲で直接確かめる。
 
+`request` には **`agent: false`** を渡し、hop ごとに新しい socket を張る。共有の `http.globalAgent` を使うと、keep-alive で
+再利用した socket には `lookup` が呼ばれず、`NODE_USE_ENV_PROXY=1` の環境では request が proxy に送られて `lookup` が一度も
+呼ばれない（proxy が内向きの名前を解決して取りに行く）。`agent: false` はどちらも起こさないので、「すべての hop で、接続する
+アドレスを確かめる」が文字どおり成り立つ。
+
 **メリット**
 
 - 依存を足さない。Node の標準 API だけで、確認と接続が同じアドレスになる
@@ -71,7 +76,10 @@ fetch すると、接続のときにもう一度引かれ、その間に答え�
 **デメリット**
 
 - `fetch` が持っていたもの（リダイレクト、圧縮の展開、`AbortSignal`、本文の読み出し）を自分で書く。リダイレクトは
-  どのみち手で追う必要があり（決めること 2）、圧縮は `Accept-Encoding` を送らなければ identity で返る
+  どのみち手で追う必要があり（決めること 2）、圧縮は展開しない。`Accept-Encoding: identity` を送り、それでも圧縮して返す
+  server の本文は `.krs` として読めないので 422 になる（害は無い）
+- proxy の環境変数を見ない。proxy を通らないと外に出られない環境では `src` が使えなくなる（`?code=` は使える）。proxy 越しに
+  させると解決後のアドレスを確かめられないので、これは意図した縮退とする
 
 ### 案B: `undici` を依存に足し、`Agent({ connect: { lookup } })` を `fetch` の `dispatcher` に渡す（却下）
 
@@ -90,14 +98,22 @@ request はもう送られている。読み出しを捨てても、内向きの
 ## 決めること 2: リダイレクトを手で追う
 
 `redirect` を自分で扱う。3xx（301、302、303、307、308）で `Location` があれば、現在の URL を base に解決し、次の hop として
-入口と同じ検査（scheme、IP literal、`lookup`）を通してから接続する。hop は最大 5 回（ADR-123 §3）で、超えたら 502。
+入口と同じ検査（scheme、userinfo、IP literal、`lookup`）を通してから接続する。hop は最大 5 回（ADR-123 §3）で、超えたら 502。
 `Location` が無い 3xx、`http:` / `https:` 以外への 3xx も 502。
 
-method は常に `GET` で、送るヘッダは `User-Agent` と後述の印だけなので、hop をまたいで落とすべき認証情報は無い。
+URL に userinfo（`http://user:pass@host/`）があると `http.request` は `Authorization: Basic` を送るので、どの hop でも
+`username` か `password` を持つ URL は拒否する。これで method は常に `GET`、送るヘッダは `User-Agent`、`Accept-Encoding` と
+後述の印だけになり、hop をまたいで落とすべき認証情報は無い。
+
+**状態コード:** 呼び出し側が渡した `src` そのものが通らないとき（scheme、userinfo、IP literal、最初の hop の解決後のアドレス）は
+400 にする。リダイレクトの後で起きた失敗（リダイレクト先が禁止範囲、hop の上限、`Location` の無い 3xx、本文の上限）は upstream の
+振る舞いなので 502 にする。ADR-123 の「パラメータの誤りは 400、fetch の失敗は 502」をこの線で読む。
 
 ## 決めること 3: 禁止するアドレス
 
-`net.BlockList` に次の範囲を入れる。IPv4-mapped の IPv6（`::ffff:0:0/96`）は IPv4 の規則で判定される。
+`net.BlockList` に次の範囲を入れる。判定の前に、IPv4-mapped の IPv6（`::ffff:0:0/96`。`::ffff:7f00:1` のような 16 進の形も）を
+IPv4 に直してから、`check(addr, net.isIP(addr) === 6 ? "ipv6" : "ipv4")` で family を明示して確かめる。IPv4-mapped を
+`BlockList` 自身に任せないのは、その挙動を確かめたのが Node 24 だけで、`engines` が許す 22.x を CI が走らせないからである。
 
 | 範囲                                            | 理由                                                          |
 | ----------------------------------------------- | ------------------------------------------------------------- |
@@ -111,7 +127,8 @@ method は常に `GET` で、送るヘッダは `User-Agent` と後述の印だ�
 | `224.0.0.0/4`、`240.0.0.0/4`、`ff00::/8`        | multicast、reserved、broadcast                                |
 
 加えて、**このマシンが今持つアドレス**（`os.networkInterfaces()` の全アドレス）を禁止する。interface は起動後に変わりうるので、
-hop ごとに読む。これで `--host 0.0.0.0` のときの public アドレス経由の自己 fetch を止める。
+hop ごとに読む。文字列で比べると `::ffff:192.168.1.5` や省略しない IPv6 の書き方が一致しないので、同じ正規化をしてから
+hop ごとに作る `BlockList` に `addAddress` で入れて判定する。これで `--host 0.0.0.0` のときの public アドレス経由の自己 fetch を止める。
 
 入口の `isSafeUrl()` は、同期で落とせるものを先に 400 にするために残す。IP literal は同じ禁止範囲で判定し、名前は
 `localhost` と `*.localhost`（末尾の `.` を外して）を拒否する。それ以外の名前は解決しないと分からないので、hop の検査に任せる。
@@ -122,9 +139,14 @@ hop ごとに読む。これで `--host 0.0.0.0` のときの public アドレ�
 interface には無い）へ接続し、ルーターがそれを karasu 自身へ転送する。別のマシンの reverse proxy が karasu へ転送する場合も
 同じである。
 
-そこで `/render` の外向きの request に印のヘッダ（`X-Karasu-Render: 1`）を付け、`serve` は `/api/*` への request がこの
-ヘッダを持っていたら 403 を返す。印を付けるのは karasu で、`src` やリダイレクト先を書いた攻撃者は外せない。アドレスの禁止と
+そこで `/render` の外向きの request に印のヘッダ（`X-Karasu-Render: 1`）を付け、`serve` はこのヘッダを持つ request を
+**path によらず** 403 にする。印を付けるのは karasu で、`src` やリダイレクト先を書いた攻撃者は外せない。アドレスの禁止と
 独立に効くので、hairpin NAT や転送のように経路が見えないときも、karasu が自分の `/api/*` を読む経路が閉じる。
+
+全 path にかけるのは、`/api/*` だけに絞ると 2 つの穴が残るからである。1 つは判定の仕方で、`req.url` の文字列の prefix で
+`/api/` を見ると、`//x/api/file/index` のように router が `/api/file/index` として答える request を見落とす。もう 1 つは
+`/render` 自身で、`src` に karasu 自身の `/render?src=...` を書くと、1 段ごとに最大 10 秒 request を抱えたまま入れ子にできる。
+このヘッダを正当に送るものは無いので、全 path で拒否すれば判定の仕方を気にする必要もなくなる。
 
 外の server にこのヘッダが見えるのは、`User-Agent: karasu-render/1.0` で karasu だと既に分かるのと同じ程度の情報なので
 問題にしない。
@@ -143,32 +165,42 @@ hairpin NAT と転送の経路は、karasu から見えるのが public アド�
 
 案A を採る。`/render` の `src` は、`node:http` / `node:https` の `request` に禁止範囲を確かめる `lookup` を渡して取りに行く。
 リダイレクトは手で最大 5 回まで追い、hop ごとに同じ検査をする。禁止範囲は loopback・private・link-local・CGNAT・予約範囲と、
-このマシン自身のアドレスである。さらに外向きの request に `X-Karasu-Render: 1` を付け、`/api/*` はそれを持つ request を拒否する。
+このマシン自身のアドレスである。共有の agent は使わず（`agent: false`）、proxy の環境変数と keep-alive の socket を通さない。
+さらに外向きの request に `X-Karasu-Render: 1` を付け、`serve` はそれを持つ request を path によらず拒否する。
 
 ### 実装の指針
 
 1. `packages/cli/src/render-fetch.ts`（新規）:
-   - `isBlockedAddress(address)`: `net.BlockList` の禁止範囲と `os.networkInterfaces()` のアドレスで判定する
+   - `isBlockedAddress(address)`: IPv4-mapped を IPv4 に直し、family を明示して、`net.BlockList` の禁止範囲と、
+     `os.networkInterfaces()` のアドレスを同じ正規化で `addAddress` した `BlockList` で判定する
    - `guardedLookup`: `dns.lookup(hostname, { ...options, all: true })` の結果を全部確かめ、1 つでも禁止なら error、
-     通れば呼び出し側の `options.all` に合わせて返す
-   - `fetchSrc(url, { signal })`: hop のループ。IP literal の判定、`lookup` 付きの `request`、3xx の追跡（最大 5）、
-     1 MiB の上限、`X-Karasu-Render: 1` と `User-Agent` の付与。結果は `{ ok: true, text } | { ok: false, status, message }`
+     通れば呼び出し側の `options.all` に合わせて返す。error には独自の `code` を付け、`request` の `error` で見分ける
+   - `fetchSrc(url, { signal })`: hop のループ。scheme と userinfo の拒否、IP literal の判定、`agent: false` と `lookup` 付きの
+     `request`、3xx の追跡（最大 5）、1 MiB の上限、`User-Agent`・`Accept-Encoding: identity`・`X-Karasu-Render: 1` の付与。
+     結果は `{ ok: true, text } | { ok: false, status, message }` で、status は決めること 2 の線で 400 か 502
    - テストのために resolver（`dns.lookup` の代わり）、interface の一覧、禁止範囲の判定を差し替えられるようにする。
-     テストの server は `127.0.0.1` で動くので、「公開」に見せる hop では判定から `127.0.0.0/8` だけを外し、
-     拒否を確かめる宛先は resolver で別の範囲（`10.0.0.1` など）や差し替えた interface のアドレスに向ける
-2. `render-endpoint.ts`: `fetch` を `fetchSrc` に替える。`isSafeUrl` は IP literal を `isBlockedAddress` で判定し、
-   `localhost` / `*.localhost`（末尾の `.` を外す）を拒否する形にする。禁止範囲に当たった hop は 400、それ以外の失敗は今どおり 502
-3. `serve.ts`: `/api/*` への request が `x-karasu-render` を持っていたら 403
+     テストの server は `127.0.0.1` で動き、`lo` の interface も `127.0.0.1` と `::1` を持つので、「公開」に見せる hop では
+     判定から `127.0.0.0/8` を外し、interface の一覧も `127.0.0.1` を含まないものに差し替える。拒否を確かめる宛先は
+     resolver で別の範囲（`10.0.0.1` など）や、差し替えた interface のアドレスに向ける
+2. `render-endpoint.ts`: `fetch` を `fetchSrc` に替える。`isSafeUrl` は userinfo を拒否し、IP literal を `isBlockedAddress` で
+   判定し、`localhost` / `*.localhost`（末尾の `.` を外す）を拒否する形にする
+3. `serve.ts`: `x-karasu-render` を持つ request を、routing の前に path によらず 403 にする
 4. テスト（`render-endpoint.test.ts` / `render-fetch.test.ts`。127.0.0.1 の実 server を使う）:
-   - `isBlockedAddress` の表: 上の各範囲の境界の内と外、`::ffff:127.0.0.1`、`::ffff:7f00:1`、interface のアドレス
-   - `isSafeUrl`: `localhost.`、`app.localhost`、`0x7f.1`、`2130706433`、`[::ffff:127.0.0.1]`、`[fc00::1]`、`[fe80::1]`、`100.64.0.1`
-   - loopback に解決される名前（実際の判定のまま、resolver で `127.0.0.1` を返す）が接続前に拒否され、server に
+   - `isBlockedAddress` の表: 上の各範囲の境界の内と外、`::1` と `fd00::1`（family を明示しないと素通りする形）、
+     `::ffff:127.0.0.1`、`::ffff:7f00:1`、interface のアドレスとその IPv4-mapped の形、省略しない IPv6 の書き方
+   - `isSafeUrl`: `localhost.`、`app.localhost`、`0x7f.1`、`2130706433`、`[::ffff:127.0.0.1]`、`[fc00::1]`、`[fe80::1]`、
+     `100.64.0.1`、`http://user:pass@example.com/`
+   - loopback に解決される名前（実際の判定のまま、resolver で `127.0.0.1` を返す）が接続前に 400 で拒否され、server に
      request が届かないこと。resolver が公開アドレスと private アドレスを混ぜて返したときも拒否されること
+   - `src` そのものがこのマシン自身のアドレス（差し替えた interface のアドレス）のとき 400
    - 公開に見せた server が、private に解決される名前、`[::ffff:10.0.0.1]`、差し替えた interface のアドレス
-     （このマシン自身）へ 302 すると拒否され、リダイレクト先に接続しないこと
-   - 6 回目の 3xx、`Location` の無い 3xx、`file:` への 3xx が 502
+     （このマシン自身）へ 302 すると 502 で拒否され、リダイレクト先に接続しないこと
+   - 6 回目の 3xx、`Location` の無い 3xx、`file:` への 3xx、userinfo を持つ URL への 3xx が 502
    - 1 MiB を超える本文が 502
-   - `/api/files` が `X-Karasu-Render: 1` 付きで 403、付いていなければ今どおり 200（`serve.test.ts`）
+   - `NODE_USE_ENV_PROXY=1` と `HTTP_PROXY` を設定した子プロセスで、private に解決される名前が proxy に送られず拒否されること。
+     同じ名前への 2 回目の request でも resolver が呼ばれること（keep-alive で素通りしない）
+   - `serve.test.ts`: `X-Karasu-Render: 1` 付きの `/api/files`、`//x/api/files`、`/render?code=...`、app の静的ファイルが
+     すべて 403。付いていなければ今どおり答える
    - 既存の `handleRender` のテストは `fetch` の stub を `fetchSrc` の差し替えに置き換える
 5. TPL-168: 「想定される失敗モード」の SSRF に「リダイレクト先と解決後のアドレスを確かめない」「自分自身への fetch」を足し、
    `discovered_from` に #3426 と `packages/cli/src/render-endpoint.ts` を足す
@@ -181,7 +213,8 @@ hairpin NAT と転送の経路は、karasu から見えるのが public アド�
 
 - 既存ユーザーへの影響: `/render?src=` で LAN 内や同じマシンの server の `.krs` を描いていた人は描けなくなる。
   ADR-123 が最初から禁止していた使い方で、`?code=` で代わりに渡せる。changeset に書く
-- `/api/*` は `X-Karasu-Render` を持つ request を拒否するが、app も e2e もこのヘッダを送らないので影響なし
+- `serve` は `X-Karasu-Render` を持つ request を拒否するが、app も e2e もこのヘッダを送らないので影響なし
+- proxy を通らないと外に出られない環境では `src` が使えなくなる（決めること 1）。changeset に書く
 - #3418 の Design Doc が前提にしていた「#3426 の後は `/render` が loopback・private・このマシン自身のアドレスに届かない」が
   これで成り立つ。印のヘッダは #3418 の範囲には入らない
 
@@ -189,6 +222,6 @@ hairpin NAT と転送の経路は、karasu から見えるのが public アド�
 
 - NAT64（`64:ff9b::/96`）に埋め込まれた IPv4 は判定しない。IPv6 だけのネットワークで公開サーバーに届く正当な経路でもあり、
   gateway が自分の内側へ転送する構成は本件の範囲外とする
-- HTTP proxy の環境変数（`HTTP_PROXY`）は今も `fetch` が見ておらず、`request` も見ないので、扱いは変わらない
+- proxy 越しの `src`（proxy の環境変数を見て、proxy 側で解決後のアドレスを確かめてもらう）は扱わない。要望が来たら別 Issue
 - `src` の host を allowlist（`raw.githubusercontent.com` など）に絞る案は、ADR-123 が任意の公開 URL を受けると決めたので
   採らない。公開ホストを作るときに改めて決める
