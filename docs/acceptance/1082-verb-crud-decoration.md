@@ -9,7 +9,7 @@ type: product
 - **対象ファイル**:
   - `packages/core/src/lexer/lexer.ts` (`:` を Colon トークンとして emit)
   - `packages/core/src/parser/property-readers.ts` (`parseOperationsList` / `parseOneOperation`)
-  - `packages/core/src/parser/parser.ts` (装飾 RHS バリデーション)
+  - `packages/core/src/parser/node-parser.ts` (装飾 RHS バリデーション)
   - `packages/core/src/parser/parser.test.ts`
   - `packages/core/src/spec/operations.ts` (`ResourceOperation` 型 + `isWriteOperation` 改訂)
   - `packages/core/src/spec/operations.test.ts`

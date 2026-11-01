@@ -4,6 +4,8 @@ title: "ProjectMode 初期コンテンツ — `examples/ec-platform` からの�
 status: accepted
 date: 2026-04-08
 topic: app-ui
+related_to:
+  - ADR-3345
 scope:
   packages:
     - app

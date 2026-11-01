@@ -1,20 +1,7 @@
 /// <reference types="node" />
 import { describe, it, expect } from "vitest";
 import { Parser } from "./parser/parser.js";
-import {
-  compile,
-  EC_PLATFORM_PROJECTS,
-  EC_PLATFORM_PROJECTS_EN,
-  FEATURE_SAMPLES_PROJECT,
-  FACET_STYLING_PROJECT,
-  FACET_STYLING_PROJECT_EN,
-  MULTI_FILE_SYSTEM_PROJECT,
-  MULTI_FILE_SYSTEM_PROJECT_EN,
-  DEPLOY_ONLY_PROJECT,
-  DEPLOY_ONLY_PROJECT_EN,
-  ORG_ONLY_PROJECT,
-  ORG_ONLY_PROJECT_EN,
-} from "./index.js";
+import { compile, FACET_STYLING_PROJECT, FACET_STYLING_PROJECT_EN } from "./index.js";
 import { readFileSync, readdirSync } from "fs";
 import { resolve, dirname, relative } from "path";
 import { fileURLToPath } from "url";
@@ -25,14 +12,7 @@ import { analyze } from "./resolver/warnings.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dir = resolve(__dirname, "../../../examples/en/feature-samples");
 
-// Both halves of the directory. A sample may ship a companion `.krs.style`
-// (`tag-facet-registers.krs.style`, #2177), and the bundled project carries it
-// too — so the drift guard below has to see it, or a hand edit to the sheet
-// would land on one side only.
 const featureSampleKrsFiles = readdirSync(dir).filter((f: string) => f.endsWith(".krs"));
-const files = readdirSync(dir).filter(
-  (f: string) => f.endsWith(".krs") || f.endsWith(".krs.style"),
-);
 
 describe("feature-samples: all files parse without errors", () => {
   it.each(featureSampleKrsFiles)("%s", (file) => {
@@ -43,157 +23,19 @@ describe("feature-samples: all files parse without errors", () => {
   });
 });
 
-// Drift guard (Issue #1344): FEATURE_SAMPLES_PROJECT bundles examples/en/feature-samples/
-// for ProjectMode. The bundled `content` strings must stay byte-identical to the
-// on-disk files. The `.claude/rules/examples-sync.md` mapping and `/update-examples`
-// skill keep them in sync; this test fails if a hand edit lands on only one side.
-describe("feature-samples: bundled examples.ts content matches examples/en/feature-samples/", () => {
-  it("registers index.krs plus every .krs / .krs.style file in the directory, and nothing else", () => {
-    const bundledPaths = FEATURE_SAMPLES_PROJECT.files.map((f) => f.path).sort();
-    const expectedPaths = ["index.krs", ...files.filter((f) => f !== "index.krs")].sort();
-    expect(bundledPaths).toEqual(expectedPaths);
-  });
-
-  it.each(files)("%s content is byte-identical to the bundled entry", (file) => {
-    const onDisk = readFileSync(resolve(dir, file), "utf8");
-    const entry = FEATURE_SAMPLES_PROJECT.files.find((f) => f.path === file);
-    expect(entry).toBeDefined();
-    expect(entry?.content).toBe(onDisk);
-  });
-});
-
-// Drift guard for MULTI_FILE_SYSTEM_PROJECT — same byte-equal contract as
-// FEATURE_SAMPLES_PROJECT above. ProjectMode seeds this on first launch
-// (`useProjectInitialization`) so the App's preview matches what users see
-// when they open the directory on disk. The seed is locale-matched: ja gets
-// MULTI_FILE_SYSTEM_PROJECT, en gets MULTI_FILE_SYSTEM_PROJECT_EN (#1642), and
-// both must stay byte-equal to their examples/<lang>/ source.
-describe.each([
-  ["ja", MULTI_FILE_SYSTEM_PROJECT] as const,
-  ["en", MULTI_FILE_SYSTEM_PROJECT_EN] as const,
-])(
-  "multi-file-system (%s): bundled content matches its on-disk examples/ source",
-  (lang, project) => {
-    const mfsDir = resolve(__dirname, `../../../examples/${lang}/multi-file-system`);
-    const mfsFiles = readdirSync(mfsDir).filter((f: string) => f.endsWith(".krs"));
-
-    it("registers every .krs file in the directory, and nothing else", () => {
-      const bundledPaths = project.files.map((f) => f.path).sort();
-      const expectedPaths = [...mfsFiles].sort();
-      expect(bundledPaths).toEqual(expectedPaths);
-    });
-
-    it.each(mfsFiles)("%s content is byte-identical to the bundled entry", (file) => {
-      const onDisk = readFileSync(resolve(mfsDir, file), "utf8");
-      const entry = project.files.find((f) => f.path === file);
-      expect(entry).toBeDefined();
-      expect(entry?.content).toBe(onDisk);
-    });
-  },
-);
-
-// Drift guard for the facet-styling scenario (#2175). Unlike the other seeded
-// projects this one bundles a `.krs.style` alongside its `.krs`: the whole point
-// of the example is the sheet, and an `index.krs` without it demonstrates
-// nothing. So the file filter here covers both extensions — a `.krs`-only
-// filter would let a hand edit to the sheet land on one side unnoticed.
+// The bundled content is generated from examples/ (`pnpm gen:examples`, #3345),
+// so it cannot drift from the files. What generation does not check is that the
+// facet-styling pair still works as a pair (#2175): the sheet is the subject of
+// the example, and an `index.krs` that no longer imports it by its bundled name
+// opens with an unresolved import.
 describe.each([["ja", FACET_STYLING_PROJECT] as const, ["en", FACET_STYLING_PROJECT_EN] as const])(
-  "facet-styling (%s): bundled content matches the on-disk example",
-  (lang, project) => {
-    const facetStylingDir = resolve(__dirname, `../../../examples/${lang}/facet-styling`);
-    const facetStylingFiles = readdirSync(facetStylingDir).filter(
-      (f: string) => f.endsWith(".krs") || f.endsWith(".krs.style"),
-    );
-
-    it("registers every .krs / .krs.style file in the directory, and nothing else", () => {
-      expect(project.files.map((f) => f.path).sort()).toEqual([...facetStylingFiles].sort());
-    });
-
-    it.each(facetStylingFiles)("%s content is byte-identical to the bundled entry", (file) => {
-      const onDisk = readFileSync(resolve(facetStylingDir, file), "utf8");
-      const entry = project.files.find((f) => f.path === file);
-      expect(entry).toBeDefined();
-      expect(entry?.content).toBe(onDisk);
-    });
-
+  "facet-styling (%s): the bundled entry imports the bundled sheet",
+  (_lang, project) => {
     it("keeps the sheet reachable from the entry — the @import must resolve", () => {
-      // The bundled pair is only useful if `index.krs` still points at the sheet
-      // by the name it is bundled under. Renaming one side silently would leave a
-      // project that opens with an unresolved import.
+      expect(project.files.map((f) => f.path)).toContain("facets.krs.style");
       const index = project.files.find((f) => f.path === "index.krs");
       expect(index?.content).toContain('@import "facets.krs.style"');
     });
-  },
-);
-
-// Drift guard for the ec-platform getting-started drill-down. ProjectMode seeds
-// these stage projects on first launch (`useProjectInitialization`), locale-matched:
-// ja gets EC_PLATFORM_PROJECTS, en gets EC_PLATFORM_PROJECTS_EN (#1777). The bundled
-// `content` must stay byte-equal to the on-disk examples/<lang>/ec-platform/ source.
-// Note: the entry file of each stage is renamed to index.krs when bundled
-// (system.krs / main.krs on disk), so the mapping is explicit rather than a readdir.
-const EC_PLATFORM_FILE_MAP: ReadonlyArray<
-  readonly [string, ReadonlyArray<readonly [string, string]>]
-> = [
-  ["01-system", [["01-system.krs", "index.krs"]]],
-  ["02-users", [["02-users.krs", "index.krs"]]],
-  ["02.5-clients", [["02.5-clients.krs", "index.krs"]]],
-  ["03-domains", [["03-domains.krs", "index.krs"]]],
-  ["04-annotations", [["04-annotations.krs", "index.krs"]]],
-  [
-    "05-multifile",
-    [
-      ["05-multifile/system.krs", "index.krs"],
-      ["05-multifile/ecommerce.krs", "ecommerce.krs"],
-      ["05-multifile/payment.krs", "payment.krs"],
-    ],
-  ],
-  [
-    "06-deploy",
-    [
-      ["06-deploy/system.krs", "index.krs"],
-      ["06-deploy/ecommerce.krs", "ecommerce.krs"],
-      ["06-deploy/payment.krs", "payment.krs"],
-      ["06-deploy/deploy.krs", "deploy.krs"],
-    ],
-  ],
-  [
-    "07-cross-system",
-    [
-      ["07-cross-system/main.krs", "index.krs"],
-      ["07-cross-system/ec-platform.krs", "ec-platform.krs"],
-      ["07-cross-system/payment-gateway.krs", "payment-gateway.krs"],
-    ],
-  ],
-];
-
-describe.each([["ja", EC_PLATFORM_PROJECTS] as const, ["en", EC_PLATFORM_PROJECTS_EN] as const])(
-  "ec-platform (%s): bundled content matches its on-disk examples/ source",
-  (lang, projects) => {
-    const ecDir = resolve(__dirname, `../../../examples/${lang}/ec-platform`);
-
-    it("registers the same stages with the same bundled paths", () => {
-      const actual = projects.map((p) => `${p.name}: ${p.files.map((f) => f.path).join(",")}`);
-      const expected = EC_PLATFORM_FILE_MAP.map(
-        ([name, stageFiles]) => `${name}: ${stageFiles.map(([, bundled]) => bundled).join(",")}`,
-      );
-      expect(actual).toEqual(expected);
-    });
-
-    const cases = EC_PLATFORM_FILE_MAP.flatMap(([name, stageFiles]) =>
-      stageFiles.map(([diskPath, bundledPath]) => [name, diskPath, bundledPath] as const),
-    );
-    it.each(cases)(
-      "%s/%s is byte-identical to the bundled entry",
-      (name, diskPath, bundledPath) => {
-        const onDisk = readFileSync(resolve(ecDir, diskPath), "utf8");
-        const entry = projects
-          .find((p) => p.name === name)
-          ?.files.find((f) => f.path === bundledPath);
-        expect(entry).toBeDefined();
-        expect(entry?.content).toBe(onDisk);
-      },
-    );
   },
 );
 
@@ -302,27 +144,6 @@ describe("getting-started: column hint affects rendered x positions (#969)", () 
     const inventoryX = extractRectX(result.svg, "Inventory");
     expect(notificationX).toBeLessThan(paymentX);
     expect(notificationX).toBeLessThan(inventoryX);
-  });
-});
-
-// Drift guard (#1548): the reference window's per-view Samples tab bundles
-// deploy-only / org-only via the reference payload, so the bundled content must
-// stay byte-equal to the files on disk. The tab serves the ja projects for `ja`
-// and the _EN variants otherwise (#1642); both sides are guarded here.
-describe("deploy-only / org-only: bundled content matches examples/", () => {
-  it.each([
-    ["ja", "deploy-only", DEPLOY_ONLY_PROJECT],
-    ["ja", "org-only", ORG_ONLY_PROJECT],
-    ["en", "deploy-only", DEPLOY_ONLY_PROJECT_EN],
-    ["en", "org-only", ORG_ONLY_PROJECT_EN],
-  ])("%s/%s index.krs is byte-identical to the bundled entry", (lang, name, project) => {
-    const onDisk = readFileSync(
-      resolve(__dirname, `../../../examples/${lang}/${name}/index.krs`),
-      "utf8",
-    );
-    const entry = (project as typeof DEPLOY_ONLY_PROJECT).files.find((f) => f.path === "index.krs");
-    expect(entry).toBeDefined();
-    expect(entry?.content).toBe(onDisk);
   });
 });
 

@@ -3,6 +3,7 @@ import { resolveNodePathBySuffix } from "../parser/node-path.js";
 import { edgeEndpointRef } from "../resolver/edge-endpoint.js";
 import { isAnchoredAt, nodeId } from "./anchored-edges.js";
 import { resolveContainerChain } from "./view-path.js";
+import { edgeKey } from "./edge-key.js";
 import { emptySlice, type GhostEntity, type ViewPath, type ViewSlice } from "./view-slice.js";
 
 interface DomainEntityEntry {
@@ -110,7 +111,7 @@ export function unionProjectedRelations(
   projected: readonly KrsEdge[],
 ): KrsEdge[] {
   const edges: KrsEdge[] = [...recorded];
-  const pairKey = (from: string, to: string): string => `${from}->${to}`;
+  const pairKey = (from: string, to: string): string => edgeKey({ from, to });
   /** Ordered pair → index of the first recorded edge on it (label transfer target). */
   const recordedAt = new Map<string, number>();
   /** Pairs a recorded edge occupies in either direction (projection is suppressed). */
@@ -175,7 +176,7 @@ export function projectStoreRelations(store: KrsNode, systems: readonly KrsNode[
           if (!target) continue; // bare foreign id / unresolved — dropped, as in the entity view
           const to = leafOf(target);
           if (to === undefined) continue;
-          const key = `${from}->${to}`;
+          const key = edgeKey({ from, to });
           if (seen.has(key)) continue;
           seen.add(key);
           projected.push({ ...edge, from, to, tags: [...edge.tags, PROJECTED_TAG] });
