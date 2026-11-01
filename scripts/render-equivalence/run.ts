@@ -37,8 +37,11 @@ import { buildManifest, mergeInputs } from "./inputs.ts";
 const SCRIPT_ROOT = resolve(import.meta.dirname, "../..");
 const CHILD = join(import.meta.dirname, "render-child.ts");
 
-/** A side may take minutes on a slow runner; one that hangs should not hold the job to its timeout. */
-const CHILD_TIMEOUT_MS = 20 * 60 * 1000;
+/**
+ * A side renders in seconds; one that hangs should not hold the job to its
+ * timeout. The workflow's comparison step is bounded by two of these.
+ */
+const CHILD_TIMEOUT_MS = 8 * 60 * 1000;
 
 /**
  * The environment a side's child gets: enough to run node, nothing that

@@ -63,6 +63,11 @@ jobs:
     if: github.event.pull_request.draft != true
     # Ubicloud runner (ADR-1890): compute-bound verification, no credentials.
     runs-on: ubicloud-standard-4-ubuntu-2404
+    # One budget: setup (checkout, two installs) and the verdict get what the
+    # comparison step leaves. The step's bound is two children at run.ts's
+    # CHILD_TIMEOUT_MS (8 min each) plus preparing the inputs, so a hung side
+    # fails the step, not the job, and the verdict still runs. A normal run
+    # renders both sides in seconds.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7.0.1
@@ -104,6 +109,7 @@ jobs:
       - name: Compare the merge base and HEAD
         if: steps.base.outcome == 'success' && steps.install.outcome == 'success'
         continue-on-error: true
+        timeout-minutes: 18
         working-directory: ${{ steps.base.outputs.scripts }}
         run: >-
           node --import tsx scripts/render-equivalence/run.ts
