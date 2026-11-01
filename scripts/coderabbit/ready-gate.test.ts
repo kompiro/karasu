@@ -275,10 +275,34 @@ describe("gh wrapper: gh pr ready", () => {
     expect(run(line, fakeGh(DRAFT), reviews()).status).toBe(1);
   });
 
-  it("runs `gh pr ready 12 --undo` without consulting the PR", () => {
+  it.each([
+    "gh pr ready 12 --undo",
+    "gh pr ready 12 --undo=true",
+    "gh pr ready 12 -R",
+    "gh pr ready 12 --repo",
+  ])("runs `%s` without consulting the PR", (line) => {
     const gh = fakeGh(DRAFT);
-    expect(run("gh pr ready 12 --undo", gh, reviews()).status).toBe(0);
+    expect(run(line, gh, reviews()).status).toBe(0);
     expect(calls(gh).some((c) => c.startsWith("pr view"))).toBe(false);
+  });
+
+  it("checks `gh pr ready 12 --undo=false`, which takes the PR out of draft", () => {
+    expect(run("gh pr ready 12 --undo=false", fakeGh(DRAFT), reviews()).status).toBe(1);
+  });
+
+  it("keeps --repo in the skip it suggests, so the skip readies the same PR", () => {
+    const result = run("gh pr ready -R kompiro/karasu 12", fakeGh(DRAFT), reviews());
+    expect(result.stderr).toContain(
+      "KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr ready 12 --repo kompiro/karasu.",
+    );
+  });
+
+  // A fork's PR whose head is also a commit here is checked like this
+  // repository's: the review is about the branch's commits, not the repository.
+  it("checks a fork's PR whose head is a commit here", () => {
+    const result = run("gh pr ready -R someone/karasu 12", fakeGh(DRAFT), reviews());
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("--repo someone/karasu");
   });
 
   // The gate reads the PR gh pr ready acts on: it passes --repo on to its own

@@ -32,11 +32,13 @@
 #   a PR is raised to Medium and goes through a draft;
 # - a create passes --draft;
 # - the PR is not a draft (every tier records the CLI run, #3286);
-# - a ready with --undo;
-# - a ready whose PR head is not a commit here, such as a PR of another
+# - a ready with --undo, or with -R / --repo and no value (gh reports that);
+# - a ready whose PR head is not a commit here, as for most PRs of another
 #   repository named by --repo / -R or GH_REPO. The gate passes --repo on to its
-#   own gh pr view, so it reads the PR gh pr ready acts on, and a --repo naming
-#   this repository is checked like no --repo at all (#3514);
+#   own gh pr view, so it reads the PR gh pr ready acts on: a --repo naming this
+#   repository is checked like no --repo at all, and so is a PR of a fork whose
+#   head is also a commit here, against origin's branch of the same base name
+#   (#3514);
 # - anything about a ready cannot be determined (gh fails, unknown CLI record
 #   format). The gate must never block work because of its own failure.
 #
@@ -82,6 +84,14 @@ reviewed_branch() {
   [ "$mode" != strict ] && [ "$records" -eq 0 ] && [ -n "$(ls -A "$reviews" 2>/dev/null)" ]
 }
 
+# pflag's boolean values; anything it would not accept is false.
+as_bool() {
+  case "$1" in
+    1 | t | T | true | TRUE | True) echo true ;;
+    *) echo false ;;
+  esac
+}
+
 skipped() {
   local reason=${KARASU_LOCAL_REVIEW_SKIPPED:-}
   [ -n "${reason//[[:space:]]/}" ]
@@ -93,12 +103,6 @@ if [ "$action" = "create" ]; then
   # Options of `gh pr create` that take a value, from `gh pr create --help`:
   value_short="aBbFHlmprTtR"
   # pflag's boolean values; anything it would not accept is not a draft.
-  as_bool() {
-    case "$1" in
-      1 | t | T | true | TRUE | True) echo true ;;
-      *) echo false ;;
-    esac
-  }
   draft=false
   # The option whose value the next argument is: base, head, label, repo, or
   # other.
@@ -252,6 +256,7 @@ for arg in "$@"; do
   fi
   case "$arg" in
     --undo) exit 0 ;;
+    --undo=*) [ "$(as_bool "${arg#--undo=}")" = true ] && exit 0 ;;
     -R | --repo) expect_repo=true ;;
     # -R also comes attached (-Rowner/repo, -R=owner/repo).
     -R=*) repo=${arg#-R=} ;;
@@ -265,9 +270,11 @@ done
 gh_bin=${READY_GATE_GH:-gh}
 limit=()
 command -v timeout >/dev/null 2>&1 && limit=(timeout 15)
+[ "$expect_repo" = true ] && exit 0
+
 # Read the PR gh pr ready acts on: the same --repo, and the same GH_REPO /
-# GH_HOST from the environment. A PR of another repository fails open below,
-# since its head is not a commit here.
+# GH_HOST from the environment. A PR whose head is not a commit here (most PRs
+# of another repository) fails open below.
 view=$(${limit[@]+"${limit[@]}"} "$gh_bin" pr view ${selector:+"$selector"} ${repo:+--repo "$repo"} \
   --json number,isDraft,headRefOid,baseRefName 2>/dev/null) || exit 0
 
@@ -285,4 +292,4 @@ echo "gh pr ready was refused: no completed local CodeRabbit CLI review covers P
 /engineering:code-review on git diff $base_ref...HEAD, then run the CLI once \
 (coderabbit review --agent --deep --base $base_ref --committed), commit and push the fixes, and run \
 gh pr ready again. If the CLI cannot run here (not installed, not authenticated, out of quota), tell \
-the user, then rerun as KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr ready $number."
+the user, then rerun as KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr ready $number${repo:+ --repo $repo}."
