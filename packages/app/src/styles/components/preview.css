@@ -179,6 +179,15 @@
   cursor: context-menu;
 }
 
+/* The card's corner buttons (ⓘ, D, links, team) light up under the pointer
+   like an edge does. Beyond the feedback, this is what makes Chrome count
+   them as tap targets: it moves a touch to the nearby element it judges
+   tappable, and an element with a :hover style is one. Without it a tap on
+   a small button went to an edge's hit-line passing beside it (#3027). */
+.preview-container svg .krs-node-controls:hover {
+  filter: brightness(1.4);
+}
+
 .preview-container svg .krs-edge:hover line:not(.krs-edge__hitline),
 .preview-container svg .krs-edge:hover polyline:not(.krs-edge__hitline),
 .preview-container svg .krs-edge:hover path:not(.krs-edge__hitline) {
