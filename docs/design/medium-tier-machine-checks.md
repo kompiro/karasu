@@ -224,10 +224,7 @@ A が先に入り、B が required になった時点で、言語のパスの `r
 
 1. `scripts/review/tier.ts`：`SECURITY_TIER_GLOBS` と `LANGUAGE_TIER_GLOBS` を足す。PR のタイトルを入力に加え、言語の規則の例外に使う。`SECURITY_GLOBS`（`securityReview`）にセキュリティの境界の一覧を足す
 2. `scripts/review/` に、既存のテストの変更の判定と、fix のテストの判定を足す（純粋関数。テキストを受け取る）。Review tier の CLI は `gh` でタイトルと `closingIssuesReferences` を読む
-
-<!-- absent-path-next-line: a directory this design doc intends to create (#3509) -->
-
-3. `scripts/render-equivalence/`（仮）：`pr:shots` の比較を、全 view と診断に広げた CLI。結果を JSON で出す
+3. `scripts/` の下の新しいディレクトリ（`scripts/pr-shots/` と並べる。名前は #3509 で決める）：`pr:shots` の比較を、全 view と診断に広げた CLI。結果を JSON で出す
 4. `.github/workflows/render-equivalence.yml`、`render-equivalence-skip.yml`、`rendering-change-label.yml`。どれも `/security-review` を当てる
 5. テスト：分類器（新しい一覧のパス、テストファイルの除外、`refactor` の例外）、既存のテストの変更の判定（refactor で通る import とパスの張り替え、通らない matcher の書き換え・折り返した行・ファイルの削除、それ以外の PR で理由を求める行の削除・`.skip`・`return`）、セキュリティの境界のテストファイルの行の削除が High になること、fix の判定（タイトル・Issue・`No test:`）、比較の判定表（両側で同じく失敗する入力は差にならない、片側だけの失敗は差になる、整形の出力の差）、フィルタの一致、ラベルを付ける workflow が artifact の値で PR を選ばず、artifact が無い・崩れている・head と一致しないときにラベルを変えないこと
 6. 文書：`docs/process/review.md`「リスク段階」に、Medium で人間が見るもの（描画の変化の動作確認）と、本文の `No test:` / `Test change:` の行を足す。PR テンプレートの `## Risk` の例を更新する
