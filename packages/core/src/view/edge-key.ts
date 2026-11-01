@@ -4,10 +4,11 @@ import { quotedIdLiteral } from "../formatter/quote-id.js";
 /**
  * Identity of an edge by its endpoint pair: the key every diff map is written
  * under and every renderer reads back (`edge-layer.ts`, `group-collapse.ts`,
- * the root view's per-frame lookup in `layout.ts`, the deploy ghost-edge diff),
- * and the key every view-extract dedup and suppression set compares on. Build
- * it here and nowhere else, so the writers and readers cannot drift apart
- * (TPL-1352).
+ * the root view's per-frame lookup in `layout-multi-system.ts`, the deploy
+ * ghost-edge diff), the key every view-extract dedup and suppression set
+ * compares on, and the parallel-bundle grouping in `edge-routing-bundles.ts`.
+ * Build it here and nowhere else, so the writers and readers cannot drift
+ * apart (TPL-1352).
  *
  * A plain `${from}->${to}` join is not injective: a quoted id may contain
  * `->`, so `a -> "b->c"` and `"a->b" -> c` both joined to `a->b->c` and the
