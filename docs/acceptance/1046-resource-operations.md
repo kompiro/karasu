@@ -10,7 +10,7 @@ type: product
   - `packages/core/src/lexer/lexer.ts`
   - `packages/core/src/types/tokens.ts`
   - `packages/core/src/types/ast.ts`
-  - `packages/core/src/parser/parser.ts`
+  - `packages/core/src/parser/node-parser.ts`（`parseResourceDecl`）
   - `packages/core/src/spec/operations.ts`
   - `packages/app/src/i18n/{types,en,ja,format-diagnostic}.ts`
   - `docs/spec/syntax.md`, `docs/spec/syntax.ja.md`

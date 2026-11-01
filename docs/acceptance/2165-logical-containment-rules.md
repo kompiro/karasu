@@ -4,7 +4,7 @@
 - **関連 Issue**: [#2165](https://github.com/kompiro/karasu/issues/2165)
 - **対象ファイル**:
   - `packages/core/src/builtins/reference-data.ts`（`system.canContain` + `LOGICAL_CONTAINMENT`）
-  - `packages/core/src/parser/parser.ts`
+  - `packages/core/src/parser/block-contents.ts`
   - `packages/core/src/types/ast.ts`（`node-not-in-context` の params）
   - `packages/i18n/src/{types,en,ja,render-diagnostic}.ts`
   - `docs/spec/syntax.md` / `syntax.ja.md`（§Nesting placement / §入れ子の配置）、`docs/spec/diagnostics.md` / `.ja.md`
