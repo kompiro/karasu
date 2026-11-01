@@ -3583,13 +3583,11 @@ system ECPlatform {
   }
 }
       `);
-      const errors = result.diagnostics.filter((d) => d.severity === "error");
-      expect(errors.length).toBeGreaterThan(0);
-      expect(
-        errors.some(
-          (e) => e.code === "unexpected-token-in-block" && e.params.blockKind === "sub-resource",
-        ),
-      ).toBe(true);
+      // Read whole and reported once by its placement rule (#3463), rather
+      // than one sub-resource `unexpected-token-in-block` per token.
+      expect(result.diagnostics.map((d) => [d.code, d.params])).toEqual([
+        ["infra-not-in-context", { infraKind: "database", parentKind: "table" }],
+      ]);
     });
   });
 
@@ -4466,13 +4464,19 @@ describe("a rejected construct is dropped whole (#3072)", () => {
     return source.replace(construct, construct.replace(/[^\n]/g, " "));
   };
 
-  const expectDroppedWhole = (source: string, construct: string, code: string) => {
+  // `endsAt: "value"` for a keyword and its value; `"line"` for a declaration.
+  const expectDroppedWhole = (
+    source: string,
+    construct: string,
+    code: string,
+    endsAt: "value" | "line" = code === "property-not-for-node-kind" ? "value" : "line",
+  ) => {
     const result = Parser.parse(source);
     expect(result.diagnostics.map((d) => d.code)).toEqual([code]);
     const loc = result.diagnostics[0].loc;
     const start = source.indexOf(construct);
     expect(loc?.start.offset).toBe(start);
-    if (code === "property-not-for-node-kind") {
+    if (endsAt === "value") {
       expect(loc?.end.offset).toBe(start + construct.length);
     } else {
       const lastLine = source.slice(0, start + construct.length).split("\n").length;
@@ -4575,6 +4579,11 @@ system S {
       ],
       ["role closing its block", `service A { role "operator" }`, `role "operator"`],
       [
+        "role with its value before an arrow",
+        `service A {\n    role "A" -> B\n  }\n  service B`,
+        `role "A"`,
+      ],
+      [
         "a bare role before an edge",
         `service A {\n    role\n    "A" -> B\n  }\n  service B`,
         `role`,
@@ -4589,6 +4598,134 @@ system S {
       ],
     ])("drops %s with its value", (_property, block, construct) => {
       expectDroppedWhole(`\nsystem S {\n  ${block}\n}\n`, construct, "property-not-for-node-kind");
+    });
+  });
+
+  // The paths #3072 left keyword-only (#3463).
+  describe("in a boundary block", () => {
+    const inBoundary = (construct: string) =>
+      `\nsystem S {\n  service A\n}\nboundary Z {\n  ${construct}\n  contains A\n  label "z"\n}\n`;
+
+    it.each([
+      [
+        "a database with a body",
+        `database DB {\n    table t { label "x" }\n  }`,
+        "infra-not-in-context",
+      ],
+      ["a service with a body", `service X {\n    label "x"\n  }`, "node-not-in-context"],
+      ["an entity", `entity Order`, "entity-not-in-domain"],
+      ["a nested boundary", `boundary Inner {\n    contains A\n  }`, "unexpected-token-in-block"],
+      ["a bodiless database", `database DB`, "infra-not-in-context"],
+      ["a handles property", `handles A`, "property-not-for-node-kind"],
+    ])("drops %s", (_name, construct, code) => {
+      expectDroppedWhole(inBoundary(construct), construct, code);
+    });
+  });
+
+  describe("in an infra block or a sub-resource body", () => {
+    it.each([
+      ["role in a table", `database DB {\n    table t { role "x" }\n  }`, `role "x"`],
+      [
+        "handles in a table",
+        `database DB {\n    table t {\n      handles A, B\n    }\n  }`,
+        `handles A, B`,
+      ],
+      [
+        "operations in a queue item",
+        `queue Q {\n    queue item { operations read }\n  }`,
+        `operations read`,
+      ],
+      [
+        "delivers in a database",
+        `database DB {\n    delivers Web\n    table t\n  }`,
+        `delivers Web`,
+      ],
+    ])("drops %s with its value", (_name, block, construct) => {
+      expectDroppedWhole(
+        `\nsystem S {\n  ${block}\n  service B\n}\n`,
+        construct,
+        "property-not-for-node-kind",
+      );
+    });
+
+    it.each([
+      [
+        "a service in a database",
+        `database DB {\n    service X { label "x" }\n    table t\n  }`,
+        `service X { label "x" }`,
+        "node-not-in-context",
+      ],
+      [
+        "an entity in a table",
+        `database DB {\n    table t { entity E }\n  }`,
+        `entity E`,
+        "entity-not-in-domain",
+      ],
+      [
+        "a table in a queue",
+        `queue Q {\n    table t\n    queue item\n  }`,
+        `table t`,
+        "unexpected-token-in-block",
+      ],
+    ])("drops %s", (_name, block, construct, code) => {
+      expectDroppedWhole(`\nsystem S {\n  ${block}\n  service B\n}\n`, construct, code);
+    });
+  });
+
+  describe("the table property on a kind other than entity", () => {
+    it.each([
+      ["a full mapping", `table DB.orders`],
+      // The value's own mistake is not reported, as for a rejected property.
+      ["a mapping without its sub-id", `table orders`],
+    ])("drops %s with its value", (_name, construct) => {
+      const source = `\nsystem S {\n  service A {\n    ${construct}\n    label "after"\n  }\n}\n`;
+      expectDroppedWhole(source, construct, "unexpected-token-in-block", "value");
+    });
+
+    // An id on the next line opens the next statement, so the edge keeps its
+    // source; the blanked source raises the same edge warning.
+    it("leaves an edge on the next line to the block", () => {
+      const source = `system S {\n  service A {\n    table\n    X -> B\n  }\n  service B\n  service X\n}\n`;
+      const result = Parser.parse(source);
+      const blanked = Parser.parse(blankOut(source, "table"));
+      expect(result.diagnostics.map((d) => d.code)).toEqual([
+        "unexpected-token-in-block",
+        ...blanked.diagnostics.map((d) => d.code),
+      ]);
+      expect(result.value).toEqual(blanked.value);
+    });
+  });
+
+  describe("a dotted path after delivers", () => {
+    it("drops a rejected delivers with its path", () => {
+      const construct = `delivers Web.X`;
+      const source = `\nsystem S {\n  client Web [web] {\n    ${construct}\n    label "after"\n  }\n}\n`;
+      expectDroppedWhole(source, construct, "property-not-for-node-kind");
+    });
+
+    // Blanking one element would leave a stray comma, so this one compares
+    // against the list written without it.
+    it("drops a path element on a service and keeps the rest of the list", () => {
+      const source = `system S {\n  client Web\n  service A {\n    delivers Ops.X, Web\n    label "after"\n  }\n}\n`;
+      const result = Parser.parse(source);
+      expect(result.diagnostics.map((d) => d.code)).toEqual(["unexpected-token-in-block"]);
+      const start = source.indexOf("Ops.X");
+      expect(result.diagnostics[0].loc?.start.offset).toBe(start);
+      expect(result.diagnostics[0].loc?.end.offset).toBe(start + "Ops.X".length);
+      const service = result.value.systems[0].children[1];
+      expect(service.kind === "service" && service.properties.delivers).toEqual(["Web"]);
+      expect(service.label).toBe("after");
+    });
+
+    it("drops an element ending in a dot as one error", () => {
+      const source = `system S {\n  client Web\n  service A {\n    delivers Web.\n    label "after"\n  }\n}\n`;
+      const result = Parser.parse(source);
+      expect(result.diagnostics.map((d) => d.code)).toEqual(["unexpected-token-in-block"]);
+      const start = source.indexOf("Web.");
+      expect(result.diagnostics[0].loc?.end.offset).toBe(start + "Web.".length);
+      const service = result.value.systems[0].children[1];
+      expect(service.kind === "service" && service.properties.delivers).toBeUndefined();
+      expect(service.label).toBe("after");
     });
   });
 });

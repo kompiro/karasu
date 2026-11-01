@@ -10,6 +10,7 @@ known_consumers:
   - parser
 discovered_from:
   - issue: "#3072"
+  - issue: "#3463"
 related_to:
   - TPL-2171
   - TPL-2165
@@ -53,6 +54,12 @@ scope:
 - 拒否した構文を読み切るが、読んだ結果を捨てずに子として付けてしまう（除く単位が小さすぎる
   の逆で、何も除いていない）
 - 回復が構文を読みすぎて、後ろの正しい宣言まで巻き込んで捨てる
+- 拒否の分岐を 1 つのブロックの loop にだけ入れ、同じ構文を受け付けない別の loop
+  （`boundary` の中身、infra block や sub-resource の本体）が既定の
+  `unexpected-token-in-block` + 1 トークン消費のまま残る（#3463。`boundary` の中の
+  `database` は `}` で boundary を早く閉じ、後ろがトップレベル扱いになっていた）
+- 値の reader が要素の続き（`delivers A.B` の `.B`）を読まず、受理する分岐でも拒否する
+  分岐でも残りがブロックに流れる（#3463）
 
 ## チェックリスト
 
@@ -60,6 +67,8 @@ scope:
 - [ ] 診断の範囲は、除いた構文の先頭から末尾までを覆っているか（キーワードの 1 トークンだけを指していないか。終わりを最後のトークンの `loc`（先頭）で取ると値が範囲から外れるので、`end` を使っているか）
 - [ ] テストは「誤りのある source」と「その構文を空白で塗りつぶした source」が同じモデルになることを比べているか（error の件数が 0 より多い、だけで止めていないか）
 - [ ] 後ろに兄弟の宣言とプロパティを置き、それが拒否の前と同じ親に付くことまで確かめているか
+- [ ] 同じ構文を受け付けないブロックの loop をすべて洗ったか（node の本体だけでなく、
+  `boundary` の中身、infra block、sub-resource の本体。既定の分岐に落ちる構文ごとに 1 件で済むか）
 
 ## 既知の対処パターン
 
@@ -67,6 +76,11 @@ scope:
   `packages/core/src/parser/rejected-construct.ts` の `rejectConstruct`（読み終えた構文の
   範囲で error を出す）と `rejectProperty`（プロパティの値をそのプロパティの reader で読んで
   から、キーワードから値の末尾までで error を出す）にまとめてある
+- **どの loop からも同じ helper を呼ぶ**: node の宣言は `rejectNode`（kind から
+  `infra-not-in-context` / `entity-not-in-domain` / `node-not-in-context` を選ぶ）、
+  プロパティは `property-readers.ts` の `rejectMisplacedProperty`（`role` / `handles` /
+  `operations` / `delivers` を各 reader で読む）。parser.ts の外の loop は
+  `ctx.tryParseNodeDecl()` で node を読み切る
 - **拒否したプロパティの値への指摘は捨てる**: 書けない場所のプロパティに値が欠けていても、
   直すべきはプロパティの置き場所であって値ではない。`rejectProperty` は値の reader が出した
   診断を `discardDiagnostics` で捨てる（入れ子の `facet` ブロックの拒否と同じ扱い）
@@ -84,4 +98,5 @@ scope:
   `infra-not-in-context`（本体あり・本体なし、service / domain / usecase / client の中）と
   `property-not-for-node-kind`（`role` / `handles` / `delivers` / `operations`、値の欠けた
   `handles`、末尾カンマの `delivers`、`}` 直前の 1 行書き）を、空白で塗りつぶした source との
-  比較で縛る。範囲は offset で比べる
+  比較で縛る。範囲は offset で比べる。#3463 の分は同じ block の `boundary` / infra block と
+  sub-resource の本体 / entity 以外の `table` / `delivers` の点付きパスの各 describe
