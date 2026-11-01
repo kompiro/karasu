@@ -330,51 +330,82 @@ describe("gh wrapper: gh pr create", () => {
     expect(calls(gh)).toEqual([]);
   });
 
-  // A create without --draft skips gh pr ready, so it is held to the same
-  // review: a Low ADR PR is opened this way (#3504).
+  // A Low PR may be created without --draft, which skips gh pr ready, so it is
+  // held to the same review: a Low ADR PR is opened this way (#3504). Higher
+  // tiers still go through a draft, so the ready and its converge hook run.
+  const LOW = '--label "risk: low"';
   it.each([
-    'gh pr create --label "risk: low" --title x --body-file b.md',
-    "gh pr create --base main --title x",
-    "gh pr create --base=main --title x",
-    "gh pr create -B main --title x",
-    "gh pr create -Bmain --title x",
-    "gh pr create --head chore/1-example --title x",
-  ])("runs a create without --draft once the CLI reviewed the branch: %s", (line) => {
+    `gh pr create ${LOW} --title x --body-file b.md`,
+    'gh pr create --label="risk: low" --title x',
+    'gh pr create -l "docs, risk: low" --title x',
+    'gh pr create -l"risk: low" --title x',
+    `gh pr create ${LOW} --base main --title x`,
+    `gh pr create ${LOW} --head chore/1-example --title x`,
+  ])("runs a Low create without --draft once the CLI reviewed the branch: %s", (line) => {
     const gh = fakeGh(DRAFT);
     expect(run(line, gh, reviewedWork()).status).toBe(0);
     expect(calls(gh)).toHaveLength(1);
   });
 
-  it("names the CLI review and the skip when it refuses a create without --draft", () => {
-    const result = run("gh pr create --title x", fakeGh(DRAFT), reviews());
+  it.each([
+    ["with no tier label", "gh pr create --title x"],
+    ["with another tier", 'gh pr create --label "risk: high" --title x'],
+    ["with risk: low only in the body", 'gh pr create --body "risk: low" --title x'],
+    ["with a label that only contains risk: low", 'gh pr create --label "risk: lower" --title x'],
+  ])("refuses a create without --draft %s, even once the CLI reviewed the branch", (_why, line) => {
+    const gh = fakeGh(DRAFT);
+    const result = run(line, gh, reviewedWork());
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("gh pr create --draft");
+    expect(calls(gh)).toEqual([]);
+  });
+
+  it("names the CLI review and the skip when it refuses a Low create", () => {
+    const result = run(`gh pr create ${LOW} --title x`, fakeGh(DRAFT), reviews());
     expect(result.stderr).toContain(
       "coderabbit review --agent --deep --base origin/main --committed",
     );
     expect(result.stderr).toContain("KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr create");
   });
 
+  // WORK is the reviewed commit. Naming the branch itself as the base puts WORK
+  // on the base, and naming main as the head leaves WORK out of the head, so
+  // each case fails only if the option is read.
   it.each([
-    ["the review only covers the base branch", "gh pr create --title x", BASE],
-    ["--head names a branch the review is not on", "gh pr create --head main --title x", WORK],
-    ["-H names a branch the review is not on", "gh pr create -Hmain --title x", WORK],
-  ])("refuses a create without --draft when %s", (_why, line, reviewed) => {
+    ["the review only covers the base branch", "--title x", BASE],
+    ["--base puts the review on the base", "--base chore/1-example --title x", WORK],
+    ["--base= puts the review on the base", "--base=chore/1-example --title x", WORK],
+    ["-B puts the review on the base", "-B chore/1-example --title x", WORK],
+    ["-B= puts the review on the base", "-B=chore/1-example --title x", WORK],
+    ["-B attached puts the review on the base", "-Bchore/1-example --title x", WORK],
+    ["--head names a branch the review is not on", "--head main --title x", WORK],
+    ["-H names a branch the review is not on", "-Hmain --title x", WORK],
+    ["--head names <owner>:<branch> the review is not on", "--head kompiro:main --title x", WORK],
+    [
+      "--base is the value of --body, and -B names the base",
+      "--body --base -B chore/1-example --title x",
+      WORK,
+    ],
+  ])("refuses a Low create without --draft when %s", (_why, args, reviewed) => {
     const gh = fakeGh(DRAFT);
+    const line = `gh pr create ${LOW} ${args}`;
     const result = run(line, gh, reviews({ head: reviewed, state: "complete" }));
     expect(result.status).toBe(1);
     expect(calls(gh)).toEqual([]);
   });
 
-  it("runs a create without --draft on a deliberate skip that names a reason", () => {
+  it("runs a Low create without --draft on a deliberate skip that names a reason", () => {
     const gh = fakeGh(DRAFT);
-    const line = "KARASU_LOCAL_REVIEW_SKIPPED=cli-out-of-quota gh pr create --title x";
+    const line = `KARASU_LOCAL_REVIEW_SKIPPED=cli-out-of-quota gh pr create ${LOW} --title x`;
     expect(run(line, gh, reviews()).status).toBe(0);
-    expect(calls(gh)).toEqual(["pr create --title x"]);
+    expect(calls(gh)).toEqual(["pr create --label risk: low --title x"]);
   });
 
-  it("does not count a skip without a reason for a create", () => {
-    expect(
-      run("KARASU_LOCAL_REVIEW_SKIPPED= gh pr create --title x", fakeGh(DRAFT), reviews()).status,
-    ).toBe(1);
+  it.each([
+    ["without a reason", `KARASU_LOCAL_REVIEW_SKIPPED= gh pr create ${LOW} --title x`],
+    ["for a create that is not Low", "KARASU_LOCAL_REVIEW_SKIPPED=quota gh pr create --title x"],
+  ])("does not count a skip %s", (_why, line) => {
+    expect(run(line, fakeGh(DRAFT), reviews()).status).toBe(1);
   });
 });
 

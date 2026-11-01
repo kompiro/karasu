@@ -6,18 +6,22 @@
 #
 # - `gh pr ready` needs a completed local CodeRabbit CLI review whose reviewed
 #   commit belongs to this PR's branch: an ancestor of the PR head that is not
-#   on the base branch.
-# - `gh pr create` without --draft skips `gh pr ready`, so it needs the same
-#   review, read against the branch being pushed (--head, or HEAD) and --base
-#   (or origin's default branch). A Low ADR PR is opened this way (#3504). Fix commits made after it are fine, since the CLI runs
+#   on the base branch. Fix commits made after it are fine, since the CLI runs
 #   once (ADR-3326). The CLI keeps one directory per local review, with the
 #   reviewed commit in git.json (.head) and the completion state in
 #   .session-complete-v2 (.state). /engineering:code-review leaves no record,
 #   so only the CLI run is checked; the refusal names both steps.
+# - `gh pr create` must pass --draft, except for a Low PR (--label "risk: low"):
+#   a Low ADR PR opens without a draft (#3504). Such a create skips
+#   `gh pr ready`, so it needs the same review, read against the branch the PR
+#   will have (--head, or HEAD) and --base (or origin's default branch). A
+#   higher tier still goes through a draft, so the ready and its converge hook
+#   (ADR-3333) are not skipped.
 #
 # Lets the call through when:
 # - KARASU_LOCAL_REVIEW_SKIPPED holds a non-empty reason, the deliberate skip
-#   for when the CLI cannot run here;
+#   for when the CLI cannot run here (a create still needs --draft or
+#   "risk: low");
 # - a create passes --draft;
 # - the PR is not a draft (every tier records the CLI run, #3286);
 # - --undo, or --repo / -R (the local checkout may not hold that repository);
@@ -80,15 +84,26 @@ if [ "$action" = "create" ]; then
     esac
   }
   draft=false
-  # The option whose value the next argument is: base, head, repo, or other.
+  # The option whose value the next argument is: base, head, label, repo, or
+  # other.
   expect_value=""
   base_name=""
   head_name=""
+  low=false
   other_repo=false
   take_value() {
+    local name
     case "$1" in
       base) base_name=$2 ;;
       head) head_name=$2 ;;
+      label)
+        # gh splits a --label value on commas.
+        while IFS= read -r -d , name; do
+          name=${name#"${name%%[![:space:]]*}"}
+          name=${name%"${name##*[![:space:]]}"}
+          [ "$name" = "risk: low" ] && low=true
+        done <<<"$2,"
+        ;;
       repo) other_repo=true ;;
     esac
   }
@@ -106,9 +121,11 @@ if [ "$action" = "create" ]; then
       --base=*) base_name=${arg#--base=} ;;
       --head) expect_value="head" ;;
       --head=*) head_name=${arg#--head=} ;;
+      --label) expect_value=label ;;
+      --label=*) take_value label "${arg#--label=}" ;;
       --repo) expect_value=repo ;;
       --repo=*) other_repo=true ;;
-      --assignee | --attach | --body | --body-file | --label | --milestone | \
+      --assignee | --attach | --body | --body-file | --milestone | \
         --project | --recover | --reviewer | --template | --title)
         expect_value=other
         ;;
@@ -127,6 +144,7 @@ if [ "$action" = "create" ]; then
             case "$letter" in
               B) option=base ;;
               H) option="head" ;;
+              l) option=label ;;
               R) option=repo ;;
               *) option=other ;;
             esac
@@ -147,11 +165,25 @@ if [ "$action" = "create" ]; then
     esac
   done
   [ "$draft" = true ] && exit 0
+  if [ "$low" != true ]; then
+    echo "gh pr create was refused: create the PR as a draft (gh pr create --draft). Run \
+/engineering:code-review on the branch diff and one CodeRabbit CLI review before taking it out of draft \
+with gh pr ready (docs/process.md PR workflow). Only a Low PR (--label \"risk: low\", a Low ADR PR in \
+.claude/rules/adr.md) is created without --draft."
+    exit 0
+  fi
   skipped && exit 0
   [ "$other_repo" = true ] && exit 0
-  head_ref=${head_name:-HEAD}
-  head=$(git rev-parse --verify --quiet "$head_ref^{commit}" ||
-    git rev-parse --verify --quiet "origin/$head_ref^{commit}") || exit 0
+  # gh takes --head as <branch> or <owner>:<branch>, and does not push it: the
+  # PR gets the remote branch. Without --head, gh pushes HEAD.
+  if [ -n "$head_name" ]; then
+    head_ref=${head_name#*:}
+    head=$(git rev-parse --verify --quiet "origin/$head_ref^{commit}" ||
+      git rev-parse --verify --quiet "$head_ref^{commit}") || exit 0
+  else
+    head_ref=HEAD
+    head=$(git rev-parse --verify --quiet "HEAD^{commit}") || exit 0
+  fi
   if [ -z "$base_name" ]; then
     base_name=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)
     base_name=${base_name#origin/}
@@ -159,9 +191,8 @@ if [ "$action" = "create" ]; then
   base_ref=$(base_ref_of "${base_name:-main}") || exit 0
   reviewed_branch "$head" "$base_ref" && exit 0
   echo "gh pr create was refused: no completed local CodeRabbit CLI review covers this branch \
-(head ${head:0:7}). Create the PR as a draft (gh pr create --draft) and take it out of draft with gh pr ready \
-once the review is done (docs/process.md PR workflow). To create it ready (a Low ADR PR, \
-.claude/rules/adr.md): run /engineering:code-review on git diff $base_ref...HEAD, then run the CLI once \
+(head ${head:0:7}). A Low PR is created without --draft only after its local review (.claude/rules/adr.md): \
+run /engineering:code-review on git diff $base_ref...$head_ref, then run the CLI once \
 (coderabbit review --agent --deep --base $base_ref --committed), then create it again. If the CLI cannot run \
 here (not installed, not authenticated, out of quota), tell the user, then rerun as \
 KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr create ..."

@@ -2,8 +2,8 @@ name: Review request
 
 # CodeRabbit reviews only PRs labeled `risk: high` or `risk: design`
 # (.coderabbit.yaml `auto_review.labels`, Issue #3286). Claude labels its PRs
-# while they are drafts, or at `gh pr create` for a Low ADR PR that opens
-# without one (Issue #3504); this labels every other PR that arrives without a tier
+# while they are drafts, or at `gh pr create` for a Low ADR PR that is not
+# opened as a draft (Issue #3504); this labels every other PR that arrives without a tier
 # label `risk: high`, so an outside author's PR, or one opened from the GitHub UI,
 # is treated as High: CodeRabbit and a human reading the diff. The `Review tier`
 # check treats a missing label as High too; this makes the label say so. Whether
