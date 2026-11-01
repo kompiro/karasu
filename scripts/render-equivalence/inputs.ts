@@ -18,7 +18,7 @@ export type Entry =
   | { kind: "fence"; name: string; source: string };
 
 /** A source whose formatter (`.krs`) or Tidy (`.krs.style`) output is compared. */
-export interface Source {
+interface Source {
   name: string;
   source: string;
 }
