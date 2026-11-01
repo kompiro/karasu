@@ -27,8 +27,7 @@ name: VS Code Extension Release
 # (not the tip of main), and the `record` job then tags it
 # `karasu-vscode@<version>` and adds it to that commit's GitHub Release
 # `release-YYYY-MM-DD` (#2939).
-# See docs/design/vscode-changeset-versioning.md (refines ADR-1315),
-# Issue #1316, docs/design/vscode-pre-release-channel.md (#2940), and
+# See ADR-1758 (refines ADR-1315), Issue #1316, ADR-2940, and
 # docs/release.md "VS Code 拡張のリリース".
 #
 # Auth: Microsoft Entra ID via GitHub OIDC (no stored secret, nothing to expire

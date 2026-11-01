@@ -59,3 +59,9 @@ jobs:
 
       - name: No raw NUL bytes in tracked text files
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lint/no-nul-bytes.ts
+
+      # Same reasoning for Design Doc citations (Issue #3471): `.claude/rules/`
+      # and any README can cite one, and those PRs reach only this stub.
+      # `scripts/lint/design-doc-refs.test.ts` fails if either side loses the step.
+      - name: No Design Doc citations outside docs/
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lint/design-doc-refs.ts
