@@ -268,6 +268,10 @@ tpl-tools の変更、karasu での採用、取りこぼしの補完の順に進
    - 重み付きで並べ（同点は id 順で決定的に）、`--limit`（既定 10）で切り、切った件数を出す
    - frontmatter に任意の `scope.paths: string[]` を足す。`tpl validate` は glob が少なくとも
      1 つのファイルに一致するか検査する（一致しない glob は、パスの実在検査と同じく腐った鍵）
+   - glob の照合は `*` `**` `?` だけを扱う小さな照合器を tpl-tools に書く。tpl-tools は
+     `engines.node >=20` で `path.matchesGlob` が使えず、ADR-17 は依存を足さない方針を取っている。
+     `.claude/rules` の `paths:` もこの 3 つで足りている。それ以上の記法が要るようになったら、
+     依存を足すか Node の下限を上げるかを tpl-tools の ADR で決める
    - パスの抜き出しは `source-paths.ts` の既存の走査を再利用し、ディレクトリを指すものを除く
 2. **karasu で採用する**
    - tpl-tools を上げ、`tpl.config.json` に接頭辞 `packages` `scripts` `.github` を書く。
@@ -275,15 +279,19 @@ tpl-tools の変更、karasu での採用、取りこぼしの補完の順に進
    - `pnpm tpl:changed`（`tpl related --base origin/main`）を足す
    <!-- absent-path-next-line: the hook script this design creates (#3486) -->
    - `scripts/tpl/changed-files-reminder.sh`（仮）を PostToolUse / PostToolUseFailure のフックに足す。
-     `gh pr create` の出力の PR URL を確かめたうえで、フックの入力の `cwd`（`gh pr create` を
-     実行したディレクトリ。PR の worktree）で `pnpm tpl:changed` を実行し、上位 10 件と促しを
-     `additionalContext` で返す。フックは `$CLAUDE_PROJECT_DIR`（main の checkout）から起動するので、
-     そこで実行すると PR で足した `## 関連テスト` が見えない。`cwd` が PR のブランチの checkout で
-     なければ何も出さない。ほかの想定外の状態でも何も出さずに終わる（ADR-3359 のフックと同じ方針）
+     `gh pr create` の出力の PR URL から PR を取り（ADR-3359 のフックと同じ）、`gh pr view` の
+     `headRefName` と `baseRefName` を読む。`git worktree list --porcelain` から `headRefName` を
+     checkout している worktree を探し、そこで `tpl related --base origin/<baseRefName>` を実行して、
+     上位 10 件と促しを `additionalContext` で返す。フックは `$CLAUDE_PROJECT_DIR`（main の checkout）
+     から起動するので、そこで実行すると PR で足した `## 関連テスト` が見えない。フックの入力の
+     `cwd` は `cd X && gh pr create` のような呼び方で PR の worktree を指さないので使わない。
+     base を PR から読むので、stacked PR（`docs/process/stacked-pr.md`）でも下の PR のファイルを
+     数えない。worktree が見つからないときやほかの想定外の状態では何も出さずに終わる（ADR-3359 の
+     フックと同じ方針）
    - `docs/process.md` の手順 10 に「`pnpm tpl:changed` の一覧のうち当てた TPL を本文で引用する」を
      足す（仕組みは ADR を指す。`docs/process.md` にスクリプトのパスを書かない）。
      `.github/PULL_REQUEST_TEMPLATE.md` の `## TPL impact` の案内にも同じ 1 行を足す
-   - フックのテスト（stub の gh で、一致あり・0 件・URL なし・`cwd` が別ブランチ）
+   - フックのテスト（stub の gh で、一致あり・0 件・URL なし・worktree なし・base が `main` でない PR）
 3. **取りこぼしを補う**
    - 運用系の TPL（TPL-2786・TPL-2804・TPL-3286 など、測定で `.github/` を名指さずに運用系の PR に
      引用された TPL）に `scope.paths` を書く
