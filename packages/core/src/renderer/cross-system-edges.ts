@@ -148,7 +148,7 @@ export function layoutCrossSystemEdges(
       // Two systems may now each keep an `Api` card that reaches the same
       // stub (#2917), so the de-dupe identity carries the source system: only
       // edges folded within one source system merge.
-      const key = `${sourceSystem ?? ""}\u0000${fromId}->${toField}`;
+      const key = JSON.stringify([sourceSystem ?? null, fromId, toField]);
       if (seenCrossStub.has(key)) continue;
       seenCrossStub.add(key);
     }

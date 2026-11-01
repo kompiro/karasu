@@ -46,6 +46,15 @@ describe("markParallelBundles", () => {
     expect(ba.bundleSize).toBeUndefined();
   });
 
+  it("does not bundle two pairs whose endpoints join to one string (#3111)", () => {
+    // `a -> "b->c"` and `"a->b" -> c` both joined to `a->b->c`.
+    const e1 = edge({ from: "a", to: "b->c" });
+    const e2 = edge({ from: "a->b", to: "c" });
+    markParallelBundles([e1, e2]);
+    expect(e1.bundleSize).toBeUndefined();
+    expect(e2.bundleSize).toBeUndefined();
+  });
+
   it("does not move ports that distributePorts already spread", () => {
     const e1 = edge({
       fromPoint: { x: 60, y: 100 },

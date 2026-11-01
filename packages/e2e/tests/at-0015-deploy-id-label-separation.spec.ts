@@ -76,10 +76,17 @@ test.describe("AT-0015 Deploy id/label separation", () => {
     await expect(preview).toContainText("本番環境");
     await expect(preview).toContainText("order-service");
 
-    // Any parse regression would surface as a warning item.
+    // A parse regression surfaces in the diagnostic banner as an error or a
+    // warning; a model-level regression as a warning-severity item in the
+    // warning panel. Both assertions leave `info` out (TPL-1608): the info
+    // register is an open set, and counting it would turn this spec red for a
+    // new info diagnostic the fixture happens to trigger, with nothing broken.
+    await expect(
+      page.locator(".diagnostic-banner__item--error, .diagnostic-banner__item--warning"),
+    ).toHaveCount(0);
     const panel = page.locator(".warning-panel");
     if ((await panel.count()) > 0) {
-      await expect(panel.locator(".warning-item")).toHaveCount(0);
+      await expect(panel.locator(".warning-item--warning")).toHaveCount(0);
     }
   });
 });

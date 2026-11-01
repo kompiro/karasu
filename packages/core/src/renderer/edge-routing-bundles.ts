@@ -34,6 +34,7 @@
  */
 import { type AnchorRect, detectSide } from "./edge-routing-ports.js";
 import type { LayoutEdge } from "./layout-types.js";
+import { edgeKey } from "../view/edge-key.js";
 
 const BUNDLE_GAP = 12;
 
@@ -49,7 +50,7 @@ export function markParallelBundles(
 ): void {
   const groups = new Map<string, LayoutEdge[]>();
   for (const edge of layoutEdges) {
-    const key = `${edge.from}->${edge.to}`;
+    const key = edgeKey(edge);
     const list = groups.get(key);
     if (list) {
       list.push(edge);
