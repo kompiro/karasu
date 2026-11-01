@@ -11,7 +11,7 @@ import { join } from "node:path";
 // choices: repoint the code, which makes the promotion PR a code change and
 // costs it the Low tier ADR-2331 gives an ADR-only PR (#3468), or leave the
 // citation dead. When this guard was written, 68 of the 83 such citations were
-// already dead. Cite the Issue instead, and the ADR once it exists. That is
+// already dead. Cite the ADR instead, or the Issue while there is no ADR yet. That is
 // TPL-2254, and ADR-2348 already holds AT records to it
 // (`scripts/acceptance/design-refs.ts`); this guard holds everything outside
 // `docs/` to it. Inside `docs/`, a promotion swaps links in Markdown and stays
@@ -102,13 +102,13 @@ export function describeFinding(f: Finding): string {
   if (f.kind === "stale-exemption") {
     return `${f.path}: listed in EXEMPT_FILES but cites no Design Doc; remove the entry`;
   }
-  return `${f.path}:${f.line} cites ${f.ref}; cite the Issue (#N) or the ADR instead`;
+  return `${f.path}:${f.line} cites ${f.ref}; cite the ADR, or the Issue (#N) until one exists`;
 }
 
 export const HOW_TO_FIX = [
   "A Design Doc is deleted when it is promoted to an ADR, so a citation of one",
   "from outside docs/ always ends up dead, or makes the promotion PR edit code.",
-  "Cite the Issue (#N), and the ADR once it exists (ADR-3471).",
+  "Cite the ADR, or the Issue (#N) while there is no ADR yet (ADR-3471).",
 ].join("\n");
 
 /** Reads every tracked regular file in scope. Symlinks and unreadable files are skipped. */

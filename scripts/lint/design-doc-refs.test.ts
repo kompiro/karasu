@@ -86,7 +86,7 @@ describe("describeFinding", () => {
   it("names the file, the line and what to cite instead", () => {
     const [finding] = check([...BACKING, file("packages/a.ts", "\n// docs/design/a.md")]);
     expect(describeFinding(finding)).toBe(
-      "packages/a.ts:2 cites docs/design/a.md; cite the Issue (#N) or the ADR instead",
+      "packages/a.ts:2 cites docs/design/a.md; cite the ADR, or the Issue (#N) until one exists",
     );
     expect(HOW_TO_FIX).toContain("ADR-3471");
   });

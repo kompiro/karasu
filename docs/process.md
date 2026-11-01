@@ -33,7 +33,7 @@
 
 **設計ドキュメント (`docs/design/`) には「採用」「取りやめ」のドキュメントを置かない。**
 決定が下りたら ADR に昇格させ、設計ドキュメントは削除する。
-このため `docs/` の外（コード・設定・workflow・`.claude/rules/`）からは Design Doc を指さず、Issue と、あれば ADR を指す（検査が促す。仕組みは ADR-3471）。
+このため `docs/` の外（コード・設定・workflow・`.claude/rules/`）からは Design Doc を指さず、ADR を、まだ無ければ Issue を指す（検査が促す。仕組みは ADR-3471）。
 
 ---
 

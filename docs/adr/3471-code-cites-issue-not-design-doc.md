@@ -1,6 +1,6 @@
 ---
 id: ADR-3471
-title: docs/ の外からは Design Doc ではなく Issue と ADR を指す
+title: docs/ の外からは Design Doc ではなく ADR か Issue を指す
 status: accepted
 date: 2026-11-01
 topic: adr-tooling
@@ -25,7 +25,7 @@ assumptions:
   - "grep: .claude/rules/adr.md :: lint:design-doc-refs"
 ---
 
-# ADR-3471: docs/ の外からは Design Doc ではなく Issue と ADR を指す
+# ADR-3471: docs/ の外からは Design Doc ではなく ADR か Issue を指す
 
 - **日付**: 2026-11-01
 - **ステータス**: 決定済み
@@ -46,7 +46,7 @@ AT レコードは同じ問題を ADR-2348 で解いている。AT は Issue を
 
 ## 決定
 
-**`docs/` の外（コード・設定・workflow・`.claude/rules/` など、追跡されているすべてのファイル）は `docs/design/<name>.md` を指さない。Issue（`#N`）を指し、ADR があればそれを指す。**
+**`docs/` の外（コード・設定・workflow・`.claude/rules/` など、追跡されているすべてのファイル）は `docs/design/<name>.md` を指さない。ADR を指し、ADR がまだ無ければ Issue（`#N`）を指す。** どちらも消えないアドレスなので、片方で足りる。ADR は Issue に、Issue は ADR と PR に辿れる。
 
 - 例外は、昇格せず消えない `docs/design/TEMPLATE.md` だけ。
 - Design Doc のパスを引用ではなくデータとして持つファイル（リスク段階の分類器のテスト、ADR の差分の種類のテスト、AT の検査、本検査のテスト）は、`scripts/lint/design-doc-refs.ts` の `EXEMPT_FILES` に理由と一緒に名前で載せる。載っているのに Design Doc のパスを 1 つも持たないファイルは、それ自体が検査で落ちるので、例外の一覧は理由より長く残らない。
