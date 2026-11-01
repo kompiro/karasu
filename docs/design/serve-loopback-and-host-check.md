@@ -137,7 +137,7 @@ HTTP server を 2 つ立て、同じ handler を渡す。
 
 `Host` 検査はアクセス制御ではない。`Host` を送るのは request を作った側で、ブラウザ以外は好きな値を送れる。
 reverse proxy や port forwarding 越しに開く場合、karasu から見える接続は loopback から来て、`Host` は proxy が決める。
-nginx の既定のように upstream のアドレス（`127.0.0.1:3000`）に書き換える proxy なら `--allowed-host` 無しでも通り、
+`Host` を upstream の IP に書き換える proxy（`proxy_pass http://127.0.0.1:3000` のときの nginx の既定）なら `--allowed-host` 無しでも通り、
 外から来た `Host` をそのまま渡す proxy でも、外から `Host: localhost` を送れば通りうる。どちらの場合も、proxy に届く誰でも `/api/*` で
 配信ディレクトリを読める。だから proxy や forwarding で開くときは、誰が届くかを proxy 側の認証・認可で決めることを前提にする
 （Codespaces の port を private のままにする、ngrok に認証を付ける、など）。`--allowed-host` は、その名前で開いた
@@ -248,12 +248,13 @@ Codespaces の port forwarding（`*.app.github.dev`）や ngrok のように、�
    - CLI: 使用中の port への listen がメッセージと exit 1 になる。port を含む `--allowed-host` がエラーになる
    - 既存の e2e（`localhost` で到達し、表示 URL に `http://localhost:` を期待する）がそのまま通ること
 4. docs: `docs/tools/cli.md` / `cli.ja.md` の options 表に `--host` と `--allowed-host`、全インターフェースで
-   listen する例（`docker run -p` / LAN）と警告の説明、Codespaces などの forwarded name で `--allowed-host` が要ること。
+   listen する例（`docker run -p` / LAN）と警告の説明、届く `Host` が IP literal・`localhost`・`*.localhost` のどれでもない
+   とき（Codespaces などの forwarded name、upstream の DNS 名に書き換える proxy）だけ `--allowed-host` が要ること。
    `docs/tools/app.md` / `app.ja.md` と AT-0032 は `http://localhost:3000` を示すだけで、既定の表示 URL を変えないので変更しない
 5. TPL-168 の「想定される失敗モード」に DNS rebinding（CORS では止まらない、`Host` で止める。`Host` は `req.headers.host` から読む）を足し、
    `discovered_from` に #3418 を足す
-6. changeset: `karasu` minor（既定の bind が変わる。LAN から開いていた人は `--host 0.0.0.0`、forwarded name で開いていた人は
-   `--allowed-host` が要る）
+6. changeset: `karasu` minor（既定の bind が変わる。LAN から開いていた人は `--host 0.0.0.0`、届く `Host` が IP literal・
+   `localhost`・`*.localhost` のどれでもない名前で開いていた人は、その名前の `--allowed-host` が要る）
 7. AT: `docs/acceptance/` に serve の bind と `Host` 検査の AT を足す。TC は自動化できるもの（上の 3）を e2e に紐付け、
    別マシンから開けないことの確認は preview では確かめられないので AT にしない
 8. ADR 昇格: 実装完了後に `docs/adr/3418-serve-loopback-and-host-check.md` として昇格し、本 Design Doc を同じ PR で削除する
@@ -261,9 +262,10 @@ Codespaces の port forwarding（`*.app.github.dev`）や ngrok のように、�
 ### 影響範囲・マイグレーション
 
 - 既存ユーザーへの影響: LAN の別マシンや container の外から `karasu serve` を開いていた人は `--host 0.0.0.0` を、
-  Codespaces の forwarded URL や、`Host` に外の名前（IP literal でも `localhost` でもない名前）を載せたまま届く
-  reverse proxy 越しに開いていた人は `--allowed-host <name>` を足す必要がある。proxy が `Host` を upstream のアドレス
-  （nginx の既定の `127.0.0.1:3000` など）に書き換える場合は要らない。changeset の本文と CLI docs に書く。CLI docs には、proxy や forwarding で開くときのアクセス制御は proxy 側で行うこと
+  Codespaces の forwarded URL や reverse proxy 越しに開いていた人は、karasu に届く `Host` の hostname（正規化後）が
+  IP literal、`localhost`、`*.localhost` のどれでもないときだけ、その名前を `--allowed-host <name>` に足す必要がある。
+  proxy が `Host` を `127.0.0.1:3000` のような upstream の IP に書き換えるなら要らず、`karasu:3000` のような upstream の
+  DNS 名に書き換えるなら `--allowed-host karasu` が要る。changeset の本文と CLI docs に書く。CLI docs には、proxy や forwarding で開くときのアクセス制御は proxy 側で行うこと
   （`--allowed-host` はアクセス制御ではないこと）も書く
 - `localhost` / `127.0.0.1` で開いている人（大多数）には変化が無い。表示 URL も origin も変わらないので、app の `localStorage`
   （theme、locale、パネル幅）と、API key の `sessionStorage`（`local` を選んだときは `localStorage`）もそのまま使える
