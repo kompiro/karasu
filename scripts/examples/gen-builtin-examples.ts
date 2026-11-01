@@ -86,13 +86,13 @@ export const REGISTERED_EXAMPLES: readonly RegisteredExample[] = [
     constant: "CLIENT_MCP_PROJECT",
     dir: "en/client-mcp",
     layout: "flat",
-    doc: "A system with client nodes, including an MCP client.",
+    doc: "A minimal sample of the client feature set (#823), including an MCP-style server.",
   },
   {
     constant: "EC_PLATFORM_PROJECTS",
     dir: "ja/ec-platform",
     layout: "staged",
-    doc: "The step-by-step tutorial, one project per stage. The first stage is opened first.",
+    doc: "The step-by-step tutorial ProjectMode seeds, one project per stage, in stage order.",
   },
   {
     constant: "EC_PLATFORM_PROJECTS_EN",
@@ -223,6 +223,12 @@ function readStaged(absDir: string, dir: string): ExampleProject[] {
         name: e.name.slice(0, -".krs".length),
         files: [{ path: "index.krs", content }],
       });
+    } else if (e.isFile() && isBundled(e.name)) {
+      // A top-level stage is a single `.krs` bundled as `index.krs`, so a sheet
+      // here has no stage to belong to. Fail rather than drop it.
+      throw new Error(
+        `examples/${dir}/${e.name}: a staged directory takes a .krs.style only inside a stage directory.`,
+      );
     }
   }
   if (projects.length === 0) throw new Error(`examples/${dir} has no stages to bundle.`);

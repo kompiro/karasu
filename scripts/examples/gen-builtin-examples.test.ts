@@ -102,6 +102,11 @@ describe("built-in examples reader", () => {
     expect(() => readRegisteredExamples(root, [staged])).toThrow(/system\.krs and main\.krs/);
   });
 
+  it("fails on a sheet at the top of a staged directory, outside any stage", () => {
+    write({ "en/s/01-a.krs": "", "en/s/stray.krs.style": "" });
+    expect(() => readRegisteredExamples(root, [staged])).toThrow(/only inside a stage/);
+  });
+
   it("writes content verbatim through the template literal escapes", () => {
     const content = "a `tick` and ${x} and \\ backslash\n";
     write({ "en/x/index.krs": content });

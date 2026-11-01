@@ -671,7 +671,7 @@ organization Acme {
   ],
 };
 
-/** A system with client nodes, including an MCP client. Source: `examples/en/client-mcp/`. */
+/** A minimal sample of the client feature set (#823), including an MCP-style server. Source: `examples/en/client-mcp/`. */
 export const CLIENT_MCP_PROJECT: ExampleProject = {
   name: "client-mcp",
   files: [
@@ -778,7 +778,7 @@ system OrderPlatform {
   ],
 };
 
-/** The step-by-step tutorial, one project per stage. The first stage is opened first. Source: `examples/ja/ec-platform/`. */
+/** The step-by-step tutorial ProjectMode seeds, one project per stage, in stage order. Source: `examples/ja/ec-platform/`. */
 export const EC_PLATFORM_PROJECTS: ExampleProject[] = [
   {
     name: "01-system",
