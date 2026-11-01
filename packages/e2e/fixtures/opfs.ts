@@ -4,7 +4,7 @@ import { test as base } from "./network.js";
 /**
  * OPFS fixture for Playwright tests.
  *
- * See `docs/design/opfs-fixture-helper.md` for the design rationale.
+ * See ADR-862 (docs/adr/862-opfs-fixture-helper.md) for the design rationale.
  *
  * Usage:
  *
@@ -81,6 +81,8 @@ const PROJECTS_DIR = "projects";
 const LAST_PROJECT_KEY = "karasu-last-project-id";
 const LOCALE_KEY = "karasu-locale";
 const DEFAULT_PIN_LOCALE: "en" | "ja" | null = "en";
+/** A static file at the app origin, opened only to get a document there. */
+const ORIGIN_DOCUMENT = "/favicon.svg";
 
 export const test = base.extend<{ opfs: OpfsFixture }>({
   opfs: async ({ page, baseURL }, use) => {
@@ -89,14 +91,16 @@ export const test = base.extend<{ opfs: OpfsFixture }>({
     let mode: Mode = "opfs";
     let originReady = false;
 
-    // Establish the OPFS origin once per fixture instance by booting memory
-    // mode (which never touches OPFS). After this, `page.evaluate(...)` runs
-    // in a real document at the karasu origin and can call
-    // `navigator.storage.getDirectory()`.
+    // Establish the OPFS origin once per fixture instance by opening a static
+    // file the app serves (packages/app/public). After this,
+    // `page.evaluate(...)` runs in a real document at the karasu origin and
+    // can call `navigator.storage.getDirectory()` and `localStorage`. Until
+    // #3237 this booted the app in memory mode, a full app load that
+    // `gotoApp()` then repeats; the static file costs ~20ms instead of
+    // ~800ms, and no app is running while the fixture writes.
     const ensureOrigin = async () => {
       if (originReady) return;
-      const url = new URL("/", baseURL);
-      url.searchParams.set("mode", "memory");
+      const url = new URL(ORIGIN_DOCUMENT, baseURL);
       await page.goto(url.toString());
       originReady = true;
     };

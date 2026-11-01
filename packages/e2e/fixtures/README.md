@@ -57,9 +57,9 @@ test("seeded project is preselected", async ({ page, opfs }) => {
 | `opfs.mode`                | The current mode (`"opfs"` by default; updated by `seed()`).                                                                    |
 
 `seed()` and `reset()` are safe to call before or between `gotoApp()`
-calls. The fixture establishes the OPFS origin internally by booting
-`?mode=memory` once on first use, so tests do not need to perform a
-preliminary navigation.
+calls. The fixture establishes the OPFS origin internally by opening
+`/favicon.svg` (a static file at the app origin, not an app boot) once
+on first use, so tests do not need to perform a preliminary navigation.
 
 `lastProjectId` is applied in both modes — it is written to
 `localStorage` regardless of `mode`. `MemoryModeApp` does not consume
