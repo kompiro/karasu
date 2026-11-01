@@ -111,7 +111,7 @@ type: product
 
 - [x] AT-O: エッジの `facets` を実演する `examples/en/feature-samples/tag-facet-registers.krs` と対の `.krs.style` が parse し、`examples.ts` の bundled content と byte 一致する
 
-  > ✅ Automated — `packages/core/src/examples.test.ts` › `feature-samples: all files parse without errors` ／ `feature-samples: bundled examples.ts content matches examples/en/feature-samples/`
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `feature-samples: all files parse without errors` ／ `scripts/examples/gen-builtin-examples.test.ts` › `built-in examples codegen (#3345)` › `the committed module matches a fresh render of examples/`
 
 ## 意図的に対象外
 

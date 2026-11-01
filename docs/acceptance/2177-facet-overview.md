@@ -79,7 +79,7 @@
 
 - [x] AT-Q: register 総合サンプルが parse し、`examples.ts` と byte 一致し、gallery でレンダリングされる
 
-  > ✅ Automated — `packages/core/src/examples.test.ts` の parse ガードと drift ガード（`.krs.style` も対象に含めるよう拡張した）、`packages/docs-site/scripts/lib/render-examples.test.ts`
+  > ✅ Automated — `packages/core/src/examples.test.ts` の parse ガード、`scripts/examples/gen-builtin-examples.test.ts` の drift テスト（同梱内容は `.krs.style` も含めて `examples/` から生成される、#3345）、`packages/docs-site/scripts/lib/render-examples.test.ts`
 
 - [x] AT-J2: `facetOverview` が `useAppViews` の bundle から `PreviewContextValue.systemView` まで実際に届く
 

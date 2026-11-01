@@ -6,73 +6,48 @@ paths:
 
 # examples 変更時の同期ルール
 
-**到達状態**: `examples/` 配下の登録済みファイルと
-`packages/core/src/builtins/examples.ts` の対応エントリが byte 一致している。
-検証は `packages/core/src/examples.test.ts` の drift ガードが行う —
-examples を変更したら `pnpm --filter @karasu-tools/core test` が通る状態で、
-`examples/` と `examples.ts` の両方を同一コミットに含める。
+**到達状態**: `packages/core/src/builtins/examples.generated.ts` が `examples/` から生成した
+ものと一致し、`examples/` の変更と生成物の変更が同じコミットに入っている。次が通れば成り立っている:
 
-`examples/ja/ec-platform/`・`examples/en/ec-platform/`・`examples/en/feature-samples/`
-の編集は `/update-examples` スキル経由で行う（スキルが `examples.ts` の同期と
-コミットまで担う）。それ以外の登録済みディレクトリは下記「更新手順」で手動同期する。
+```bash
+pnpm gen:examples --check
+```
 
-## 登録済みディレクトリと examples.ts の対応
+同じ検査を `scripts/examples/gen-builtin-examples.test.ts`（CI の `test:scripts`）と
+pre-push の `examples-generated-check` も行う。
 
-`examples.ts` は登録済みディレクトリの内容を文字列として保持し、ProjectMode の
-初回起動時に使用される。ファイル単位の対応は各定数の `files[].path` から読み取れる。
+## examples を変更したら
 
-| examples ディレクトリ | examples.ts の定数 |
-|---|---|
-| `ja/getting-started/` | `GETTING_STARTED_PROJECT` |
-| `en/getting-started/` | `GETTING_STARTED_PROJECT_EN` |
-| `en/client-mcp/` | `CLIENT_MCP_PROJECT` |
-| `ja/facet-styling/` | `FACET_STYLING_PROJECT` |
-| `en/facet-styling/` | `FACET_STYLING_PROJECT_EN` |
-| `ja/ec-platform/` | `EC_PLATFORM_PROJECTS`（スキル管理） |
-| `en/ec-platform/` | `EC_PLATFORM_PROJECTS_EN`（スキル管理） |
-| `en/feature-samples/` | `FEATURE_SAMPLES_PROJECT`（スキル管理） |
-| `ja/multi-file-system/` | `MULTI_FILE_SYSTEM_PROJECT` |
-| `en/multi-file-system/` | `MULTI_FILE_SYSTEM_PROJECT_EN` |
-| `ja/deploy-only/` | `DEPLOY_ONLY_PROJECT` |
-| `en/deploy-only/` | `DEPLOY_ONLY_PROJECT_EN` |
-| `ja/org-only/` | `ORG_ONLY_PROJECT` |
-| `en/org-only/` | `ORG_ONLY_PROJECT_EN` |
+1. `examples/` のファイルを直す
+2. `pnpm gen:examples` を実行する
+3. `examples/` と `examples.generated.ts` を同じコミットに入れる
 
-登録されていないディレクトリ（`hr-tool/` など）は変更しても同期不要。
+生成物は手で直さない。直しても次の `pnpm gen:examples` で上書きされ、drift テストが落とす。
+登録されていないディレクトリ（`hr-tool/` など）を変えたときは生成物が変わらないので、手順 2 は何もしない。
 
-## 同期時の注意点（drift テストのエラーだけでは気づきにくいもの）
+どのディレクトリを同梱するかは `scripts/examples/gen-builtin-examples.ts` の
+`REGISTERED_EXAMPLES` が唯一の一覧で、`examples.ts` はそれを再 export しているだけである（#3345）。
 
-- multi-stage プロジェクト（ec-platform の `05-multifile/`・`06-deploy/`・
-  `07-cross-system/`）は各ステージの先頭ファイル（`system.krs` / `main.krs`）が
-  bundled 時に `index.krs` にリネームされる（#1777）
-- `feature-samples/` に新サンプルを追加したら、カタログ役の `index.krs` にも
-  1 行追記する（現在 14 個 → 追加のたびに増える）
-- `facet-styling/` は **`.krs` と `.krs.style` を対で**バンドルする唯一の登録済み
-  ディレクトリ。シートがサンプルの主題そのものなので、`.krs` だけ同期すると
-  「開いても何も起きないプロジェクト」になる。drift ガードの file filter も
-  `.krs.style` を含めてある
-- `deploy-only/` / `org-only/` は Reference ウィンドウの Samples タブ（#1548）で
-  参照され、en ロケールでは `*_EN` 変種、ja では `ja/` 版が表示される（#1642）。
-  `multi-file-system/`・`ec-platform/` も同様に en/ja のロケール一致版が
-  ProjectMode の seed に投入されるため、両ロケールを揃えて更新する
+## 生成が見てくれないこと
 
-## 更新手順
+生成は中身を写すだけで、サンプルとして意味が通るかは見ない。次は人が揃える:
 
-### 登録済みファイルを変更する場合
+- `feature-samples/` に新サンプルを追加したら、カタログ役の `index.krs` にも 1 行追記する
+- `facet-styling/` は `.krs` と `.krs.style` が対で意味を持つ。シートがサンプルの主題で、
+  `index.krs` がシートを `@import` しなくなると開いても何も起きないプロジェクトになる
+  （`packages/core/src/examples.test.ts` が import の残存だけ確かめる）
+- `deploy-only/` / `org-only/` は Reference ウィンドウの Samples タブ（#1548）、
+  `getting-started/`・`multi-file-system/`・`ec-platform/` は ProjectMode の seed に、
+  en/ja のロケール一致版が使われる（#1642、#1777）。片方のロケールだけ直さず、両方を揃える
 
-1. 対象の `examples/` ファイルを変更する
-2. `examples.ts` の対応する `content` フィールドを同内容に更新する
-3. `pnpm --filter @karasu-tools/core test` で drift ガードが通ることを確認する
-4. 両ファイルを同一コミットに含める
+## 新しいディレクトリを同梱する
 
-### 新しい examples ディレクトリを登録する場合
+1. `examples/` にディレクトリを置く
+2. `REGISTERED_EXAMPLES` に 1 行足す（定数名・ディレクトリ・`flat` / `staged`・説明）
+3. `packages/core/src/builtins/examples.ts` と `packages/core/src/index.ts` の再 export に定数を足す
+   （`gen-builtin-examples.test.ts` が `examples.ts` の export と登録表の一致を確かめる）
+4. `pnpm gen:examples` を実行し、すべてを同じコミットに入れる
 
-1. `examples/` にファイルを追加する
-2. `examples.ts` に新しい `ExampleProject` エントリを追加する
-3. `packages/core/src/examples.test.ts` に drift ガードを追加する
-4. 上の対応表にも 1 行追記する
-5. すべてを同一コミットに含める
-
-> かつて本ファイルにはファイル単位の全対応表（60 行超）を置いていたが、
-> `examples.ts` と drift テストから導出可能な重複で腐りやすいため、
-> ディレクトリ単位の表に縮約した（#2134）。
+`flat` はディレクトリ直下の `.krs` / `.krs.style` をすべて同梱する（ファイルを足しても登録表は変えない）。
+`staged` は `ec-platform/` の形で、直下の `.krs` と各サブディレクトリが 1 つずつのプロジェクトになり、
+サブディレクトリの入口（`system.krs` か `main.krs` のちょうど 1 つ）は `index.krs` に改名される。

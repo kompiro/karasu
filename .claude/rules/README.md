@@ -46,7 +46,7 @@ prompt（本体プロンプトの大幅削減）以降、書き方が悪いル�
 ## このリポジトリでの参考実装
 
 - 到達状態 + 機械検証: `changesets.md`（`pnpm changeset status --since=main`）、
-  `examples-sync.md`（`examples.test.ts` の drift ガード）、
+  `examples-sync.md`（`gen:examples` の生成物と drift テスト）、
   `program-slices.md`（`pnpm program:slices`）
 - ファイル編集を伴わない作業への入口宣言: `program-slices.md`（Issue の分割起票は
   `paths:` で発火しないので「分割起票しようとしたら本ファイルを読む」を冒頭に置く）
