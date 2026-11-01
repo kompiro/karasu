@@ -9,8 +9,10 @@ import { describe, expect, it } from "vitest";
 // nothing else notices until someone runs the audit command by hand.
 //
 // Both ways the workflows file an Issue are read: a `gh issue create` command
-// (its `--label` flags) and an `issues.create({ ... })` call inside
-// `actions/github-script` (its `labels:` array).
+// (its `--label` / `-l` flags) and an `issues.create(...)` call inside
+// `actions/github-script` (its `labels:` array). An Issue filed any other way
+// (a `gh api` POST, a script the workflow runs) is not seen: none exists
+// today, and one added later has to be read here too.
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 const WORKFLOW_DIR = join(REPO_ROOT, ".github/workflows");
@@ -21,28 +23,29 @@ const TOPICS: readonly string[] = JSON.parse(
 
 type IssueSite = { readonly where: string; readonly labels: readonly string[] };
 
-/** The `--label` values of each `gh issue create`, following `\` continuations. */
+/** The `--label` / `-l` values of each `gh issue create`, following `\` continuations. */
 function ghIssueCreateSites(file: string, lines: readonly string[]): IssueSite[] {
   const sites: IssueSite[] = [];
   lines.forEach((line, i) => {
-    if (!/\bgh issue create\b/.test(line)) return;
+    if (/^\s*#/.test(line) || !/\bgh issue create\b/.test(line)) return;
     let command = line;
     for (let j = i; lines[j].trimEnd().endsWith("\\") && j + 1 < lines.length; j++) {
       command += `\n${lines[j + 1]}`;
     }
-    const labels = [...command.matchAll(/--label\s+(?:"([^"]*)"|'([^']*)'|(\S+))/g)].map(
-      (m) => m[1] ?? m[2] ?? m[3],
-    );
+    // `--label a,b` adds both, so a value is split on commas.
+    const labels = [...command.matchAll(/(?:--label[=\s]|-l\s)\s*(?:"([^"]*)"|'([^']*)'|(\S+))/g)]
+      .flatMap((m) => (m[1] ?? m[2] ?? m[3]).split(","))
+      .map((label) => label.trim());
     sites.push({ where: `${file}:${i + 1}`, labels });
   });
   return sites;
 }
 
-/** The string literals in the `labels:` array of each `issues.create({ ... })`. */
+/** The string literals in the `labels:` array of each `issues.create(...)`. */
 function issuesCreateSites(file: string, lines: readonly string[]): IssueSite[] {
   const sites: IssueSite[] = [];
   lines.forEach((line, i) => {
-    if (!/\.issues\.create\(\{/.test(line)) return;
+    if (!/\.issues\.create\(/.test(line)) return;
     const end = lines.findIndex((l, j) => j > i && /^\s*\}\);/.test(l));
     const call = lines.slice(i, end === -1 ? undefined : end + 1).join("\n");
     const array = call.match(/labels:\s*\[([^\]]*)\]/)?.[1] ?? "";
@@ -53,7 +56,7 @@ function issuesCreateSites(file: string, lines: readonly string[]): IssueSite[] 
 }
 
 const sites = readdirSync(WORKFLOW_DIR)
-  .filter((file) => file.endsWith(".yml"))
+  .filter((file) => /\.ya?ml$/.test(file))
   .flatMap((file) => {
     const lines = readFileSync(join(WORKFLOW_DIR, file), "utf8").split("\n");
     return [...ghIssueCreateSites(file, lines), ...issuesCreateSites(file, lines)];
