@@ -56,8 +56,8 @@ gh stack view --json | jq -r '.branches[] | select(.pr.state == "OPEN") | .pr.nu
 
 #### draft PR では分単位のジョブが走らない
 
-`Check` / `Playwright` / VS Code E2E / preview・docs preview のデプロイは、draft の
-あいだ skip される（[ADR-2643](../adr/2643-stacked-pr-workflow.md)）。上位層は最下層に
+`Check` / `Playwright` / VS Code E2E / `Render equivalence` / preview・docs preview のデプロイは、draft の
+あいだ skip される（[ADR-2643](../adr/2643-stacked-pr-workflow.md)。`Render equivalence` は #3505）。上位層は最下層に
 降りてきて draft を外した時点で、初めて本番の CI を通る。秒で終わる validator
 （ADR / TPL / reference docs / AT coverage）と gitleaks は draft でも走り続ける。
 

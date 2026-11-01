@@ -1,0 +1,124 @@
+name: Render equivalence
+
+# Renders every example and acceptance-test fence at the PR's merge base and at
+# its head, and compares the SVG of each view, the diagnostics and the
+# formatter / Tidy output (Issue #3509, #3505 slice B). A PR whose title type is
+# `refactor` fails when anything differs or the comparison could not finish;
+# every other PR passes, and the artifact tells the `rendering-change` label
+# (#3510) what changed.
+#
+# The comparison is the merge base's copy of scripts/render-equivalence/, not
+# the PR's (TPL-3286): a PR that edits the comparison must not be the one
+# judging itself. Only while the merge base has no copy (the PR that adds it)
+# does the head's run. Each side's core runs in a child process of its own, with
+# none of the runner's GITHUB_* variables, so HEAD's code cannot write this
+# job's outputs, summary or verdict.
+#
+# This job runs HEAD's code, so it holds no write token: `contents: read`, a
+# checkout that does not persist credentials, and installs with
+# `--ignore-scripts`.
+#
+# The paired stub `render-equivalence-skip.yml` reports the same check on PRs
+# outside the `paths` below. Keep its `paths-ignore` in exact sync
+# (TPL-1480, `scripts/ci/render-equivalence-paths-sync.test.ts`, which also
+# checks that every file the comparison imports is on this list).
+
+on:
+  pull_request:
+    branches: [main]
+    # `edited`: the verdict depends on the title, so retitling a PR to
+    # `refactor` after it passed must run the comparison again (TPL-3286). No
+    # job-level skip for body-only edits: a skipped run reports success on the
+    # same SHA and would overwrite a failure (TPL-2643).
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+    paths:
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "scripts/render-equivalence/**"
+      - "scripts/pr-shots/**"
+      - "scripts/lint/krs-fences.ts"
+      - ".github/workflows/render-equivalence.yml"
+
+concurrency:
+  group: render-equivalence-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  render-equivalence:
+    name: Render equivalence
+    # Skipped on draft PRs: see the note in `ci.yml` (ADR-2643).
+    if: github.event.pull_request.draft != true
+    # Ubicloud runner (ADR-1890): compute-bound verification, no credentials.
+    runs-on: ubicloud-standard-4-ubuntu-2404
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      # A failure from here to the comparison is "could not compare", which
+      # the verdict step turns into a failure for a refactor only.
+      - name: Check out the merge base
+        id: base
+        continue-on-error: true
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          sha=$(git merge-base "origin/$BASE" HEAD)
+          git worktree add --detach "$RUNNER_TEMP/base" "$sha"
+          scripts="$GITHUB_WORKSPACE"
+          if [ -f "$RUNNER_TEMP/base/scripts/render-equivalence/verdict.ts" ]; then
+            scripts="$RUNNER_TEMP/base"
+          fi
+          echo "scripts=$scripts" >> "$GITHUB_OUTPUT"
+
+      - uses: pnpm/action-setup@v6.1.0
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install both checkouts
+        id: install
+        continue-on-error: true
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm --dir "$RUNNER_TEMP/base" install --frozen-lockfile --ignore-scripts
+
+      - name: Compare the merge base and HEAD
+        if: steps.base.outcome == 'success' && steps.install.outcome == 'success'
+        continue-on-error: true
+        working-directory: ${{ steps.base.outputs.scripts }}
+        run: >-
+          node --import tsx scripts/render-equivalence/run.ts
+          --base-dir "$RUNNER_TEMP/base"
+          --head-dir "$GITHUB_WORKSPACE"
+          --out "$RUNNER_TEMP/render-equivalence/result.json"
+
+      - name: Verdict
+        if: always()
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          SCRIPTS: ${{ steps.base.outputs.scripts }}
+        run: >-
+          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON
+          "${SCRIPTS:-$GITHUB_WORKSPACE}/scripts/render-equivalence/verdict.ts"
+          --result "$RUNNER_TEMP/render-equivalence/result.json"
+          --out "$RUNNER_TEMP/render-equivalence/verdict.json"
+          --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the result
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: render-equivalence
+          path: ${{ runner.temp }}/render-equivalence/
+          if-no-files-found: ignore
+          retention-days: 14
