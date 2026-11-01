@@ -477,7 +477,9 @@ describe("gh wrapper: gh pr create", () => {
   it("runs a reviewed Low create when gh repo set-default picks origin", () => {
     git("config", "remote.origin.gh-resolved", "base");
     try {
-      expect(run(`gh pr create ${LOW} --title x`, fakeGh(DRAFT), reviewedWork()).status).toBe(0);
+      const gh = fakeGh(DRAFT);
+      expect(run(`gh pr create ${LOW} --title x`, gh, reviewedWork()).status).toBe(0);
+      expect(calls(gh)).toEqual(["pr create --label risk: low --title x"]);
     } finally {
       git("config", "--unset", "remote.origin.gh-resolved");
     }
@@ -508,7 +510,9 @@ describe("gh wrapper: gh pr create", () => {
 
   it("ignores a skip without a reason on a Low create: the review decides", () => {
     const line = `KARASU_LOCAL_REVIEW_SKIPPED= gh pr create ${LOW} --title x`;
-    expect(run(line, fakeGh(DRAFT), reviewedWork()).status).toBe(0);
+    const gh = fakeGh(DRAFT);
+    expect(run(line, gh, reviewedWork()).status).toBe(0);
+    expect(calls(gh)).toEqual(["pr create --label risk: low --title x"]);
   });
 
   it("does not count a skip for a create that is not Low", () => {
