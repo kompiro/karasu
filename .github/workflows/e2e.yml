@@ -17,7 +17,8 @@ name: E2E
 # core) and the repo files specs load from disk (`examples/`, e.g. at-1646
 # opens every gallery example): a change to any of them alone must start the
 # suite too. Root build config other than `package.json` (e.g. `tsconfig.json`)
-# is left out; the typecheck and build jobs in `ci.yml` catch a break there.
+# is left out; the Typecheck and Build steps of `ci.yml`'s Check job catch a
+# break there.
 on:
   pull_request:
     branches: [main]
