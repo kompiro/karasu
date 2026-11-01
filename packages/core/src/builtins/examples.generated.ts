@@ -1,0 +1,4532 @@
+// GENERATED FILE — do not edit by hand.
+//
+// Source of truth: the directories under `examples/` registered in
+// `scripts/examples/gen-builtin-examples.ts`. Edit the example, then run
+// `pnpm gen:examples` and commit both. `pnpm gen:examples --check` and
+// `scripts/examples/gen-builtin-examples.test.ts` fail when this file is stale.
+
+export type ExampleProject = {
+  /** Project name shown in the project selector */
+  name: string;
+  /** Files to write into the project root. Paths are relative to rootPath. */
+  files: { path: string; content: string }[];
+};
+
+/** The first project ProjectMode creates for `ja` users. Source: `examples/ja/getting-started/`. */
+export const GETTING_STARTED_PROJECT: ExampleProject = {
+  name: "getting-started",
+  files: [
+    {
+      path: "index.krs",
+      content: `@import "default.krs.style"
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer [human] {
+    label "顧客"
+    description "商品を購入する一般ユーザー"
+  }
+  user Seller [human] {
+    label "出品者"
+    description "商品を出品するショップオーナー"
+  }
+  user Admin [human] {
+    label "管理者"
+    description "システムを運用する担当者"
+  }
+
+  client MobileApp [mobile] {
+    label "モバイルアプリ"
+    description "iOS / Android 向け公式アプリ"
+    capability notification
+  }
+
+  service ECommerce {
+    label "ECサイト"
+    description "商品の閲覧・購入・出品を提供する"
+
+    domain Catalog {
+      label "商品カタログ"
+      usecase SearchProducts {
+        label "商品を検索する"
+        resource ECommerceDB.ProductTable {
+          operations read
+        }
+        resource SearchIndex [external] {
+          label "検索インデックス"
+          operations read
+        }
+      }
+      usecase RegisterProduct {
+        label "商品を登録する"
+        resource ECommerceDB.ProductTable {
+          operations create, update
+        }
+        resource MediaStorage.ProductImages {
+          operations create
+        }
+      }
+
+      // ドメイン間の依存は domain ブロック内のエッジで表現する。
+      // service にドリルダウンすると依存の矢印が表示される。
+      Catalog --> Order "注文実績をランキングに反映する"
+    }
+    domain Order {
+      label "受注"
+      usecase PlaceOrder {
+        label "注文を確定する"
+        resource ECommerceDB.OrderTable {
+          operations create
+        }
+        resource OrderEvents.OrderPlaced {
+          operations create
+        }
+        resource InventoryAPI [external] {
+          label "在庫API"
+          operations read, update
+        }
+        resource PaymentAPI [external] {
+          label "決済API"
+          operations create
+        }
+      }
+      usecase ShowOrderHistory {
+        label "注文履歴を照会する"
+        resource ECommerceDB.OrderTable {
+          operations read
+        }
+      }
+
+      Order -> Catalog "商品情報を参照する"
+      Order -> Member "会員情報を参照する"
+    }
+    domain Member {
+      label "会員"
+      usecase Register {
+        label "会員登録する"
+        resource ECommerceDB.MemberTable {
+          operations create
+        }
+      }
+      usecase EditProfile {
+        label "プロフィールを編集する"
+        resource ECommerceDB.MemberTable {
+          operations read, update
+        }
+      }
+    }
+  }
+  service Payment [external] {
+    label "決済"
+    description "クレジットカード・電子マネー決済"
+  }
+  service Inventory [external] {
+    label "在庫管理"
+    description "在庫データの一元管理"
+  }
+  service Notification {
+    label "通知"
+    description "メール・プッシュ通知の送信"
+  }
+
+  // インフラ層: service が共有する database / queue / storage を
+  // system 直下のファーストクラスノードとして宣言する。
+  database ECommerceDB {
+    label "ECサイトDB"
+    table ProductTable { label "商品テーブル" }
+    table OrderTable { label "注文テーブル" }
+    table MemberTable { label "会員テーブル" }
+  }
+  queue OrderEvents {
+    label "注文イベント"
+    queue OrderPlaced { label "注文確定" }
+  }
+  storage MediaStorage {
+    label "画像ストレージ"
+    bucket ProductImages { label "商品画像" }
+  }
+
+  Customer -> MobileApp "アプリを利用する"
+  MobileApp -> ECommerce "API を呼び出す"
+  Seller -> ECommerce "商品を出品する"
+  Admin -> ECommerce "システムを管理する"
+  ECommerce -> Payment "決済を処理する"
+  ECommerce -> Inventory "在庫を照会する"
+  ECommerce --> Notification "注文確認を送信する"
+}
+
+deploy Production {
+  label "本番環境"
+  oci ecommerceApp {
+    label "ecommerce-app"
+    runtime "Kubernetes (GKE)"
+    realizes ECommerce
+  }
+  oci notificationWorker {
+    label "notification-worker"
+    runtime "Cloud Run"
+    realizes Notification
+  }
+}
+
+organization ECOrg {
+  label "EC開発組織"
+  team platform {
+    label "プラットフォームチーム"
+    owns ECommerce
+
+    team commerce {
+      label "コマースチーム"
+      owns Catalog
+      owns Order
+
+      owns Member
+    owns Notification
+      member alice {
+        label "Alice"
+        github "alice-dev"
+      }
+    }
+    team "member-team" {
+      label "会員チーム"
+      member bob {
+        label "Bob"
+        description "会員基盤担当"
+      }
+    }
+  }
+  team notification {
+    label "通知チーム"
+    member carol {
+      label "Carol"
+      slack "@carol"
+    }
+  }
+}
+
+// 凡例: swatch は色を直接指定、ref は [tag] / 型 / #id を
+// .krs.style から解決して色を引き継ぐ。scope を省略すると
+// system / deploy / org の全ビューに描画される。
+legend "凡例" {
+  ref [external] "外部システム"
+  ref [human]    "人間ユーザー"
+  ref database   "共有データベース"
+  ref queue      "メッセージキュー"
+}
+`,
+    },
+    {
+      path: "default.krs.style",
+      content: `// getting-started/default.krs.style
+// Customize diagram appearance with CSS-like selectors.
+// Uncomment and edit any rule below to try it out.
+
+// Style by node type
+// service {
+//   color: #1e40af;
+//   background-color: #dbeafe;
+// }
+
+// service[external] {
+//   color: #374151;
+//   background-color: #f3f4f6;
+// }
+
+// Style by ID
+// #ECommerce {
+//   color: #065f46;
+//   background-color: #d1fae5;
+// }
+
+// #Notification {
+//   color: #92400e;
+//   background-color: #fef3c7;
+// }
+
+// Layout hints (escape hatch — see docs/spec/style.md)
+// 外部サービスを右に寄せて行末に揃え、最下段の並びを
+// [internal service] [infra] [external services] にする。
+service[external] {
+  column: right;
+}
+
+// Color by source (edge[from=<id>]) / by target (edge[to=<id>]).
+// ECommerce から出る全エッジを 1 ルールでまとめて色付けし、
+// ハブの fan-out をたどりやすくする。
+edge[from=ECommerce] {
+  color: #2563eb;
+}
+`,
+    },
+  ],
+};
+
+/** English variant of GETTING_STARTED_PROJECT, seeded for non-`ja` locales. Source: `examples/en/getting-started/`. */
+export const GETTING_STARTED_PROJECT_EN: ExampleProject = {
+  name: "getting-started",
+  files: [
+    {
+      path: "index.krs",
+      content: `@import "default.krs.style"
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    description "End users who purchase products"
+  }
+  user Seller [human] {
+    label "Seller"
+    description "Shop owners who list products for sale"
+  }
+  user Admin [human] {
+    label "Admin"
+    description "Staff who operate the platform"
+  }
+
+  client MobileApp [mobile] {
+    label "Mobile App"
+    description "Official iOS / Android app"
+    capability notification
+  }
+
+  service ECommerce {
+    label "EC Site"
+    description "Browsing, purchasing, and listing products"
+
+    domain Catalog {
+      label "Product Catalog"
+      usecase SearchProducts {
+        label "Search products"
+        resource ECommerceDB.ProductTable {
+          operations read
+        }
+        resource SearchIndex [external] {
+          label "Search index"
+          operations read
+        }
+      }
+      usecase RegisterProduct {
+        label "Register a product"
+        resource ECommerceDB.ProductTable {
+          operations create, update
+        }
+        resource MediaStorage.ProductImages {
+          operations create
+        }
+      }
+
+      // Express domain-to-domain dependencies as edges inside a domain block.
+      // Drill down into the service to see the dependency arrows.
+      Catalog --> Order "Feed order stats into rankings"
+    }
+    domain Order {
+      label "Orders"
+      usecase PlaceOrder {
+        label "Place an order"
+        resource ECommerceDB.OrderTable {
+          operations create
+        }
+        resource OrderEvents.OrderPlaced {
+          operations create
+        }
+        resource InventoryAPI [external] {
+          label "Inventory API"
+          operations read, update
+        }
+        resource PaymentAPI [external] {
+          label "Payment API"
+          operations create
+        }
+      }
+      usecase ShowOrderHistory {
+        label "View order history"
+        resource ECommerceDB.OrderTable {
+          operations read
+        }
+      }
+
+      Order -> Catalog "Look up product details"
+      Order -> Member "Look up member info"
+    }
+    domain Member {
+      label "Members"
+      usecase Register {
+        label "Sign up as a member"
+        resource ECommerceDB.MemberTable {
+          operations create
+        }
+      }
+      usecase EditProfile {
+        label "Edit profile"
+        resource ECommerceDB.MemberTable {
+          operations read, update
+        }
+      }
+    }
+  }
+  service Payment [external] {
+    label "Payment"
+    description "Credit card and e-money payment processing"
+  }
+  service Inventory [external] {
+    label "Inventory"
+    description "Centralized inventory management"
+  }
+  service Notification {
+    label "Notification"
+    description "Email and push notification delivery"
+  }
+
+  // Infra layer: shared database / queue / storage that services depend on,
+  // declared as first-class nodes directly under system.
+  database ECommerceDB {
+    label "EC Site DB"
+    table ProductTable { label "Product table" }
+    table OrderTable { label "Order table" }
+    table MemberTable { label "Member table" }
+  }
+  queue OrderEvents {
+    label "Order events"
+    queue OrderPlaced { label "Order placed" }
+  }
+  storage MediaStorage {
+    label "Media storage"
+    bucket ProductImages { label "Product images" }
+  }
+
+  Customer -> MobileApp "Open the app"
+  MobileApp -> ECommerce "Call the API"
+  Seller -> ECommerce "List a product"
+  Admin -> ECommerce "Administer the platform"
+  ECommerce -> Payment "Process payments"
+  ECommerce -> Inventory "Check inventory"
+  ECommerce --> Notification "Send order confirmation"
+}
+
+deploy Production {
+  label "Production environment"
+  oci ecommerceApp {
+    label "ecommerce-app"
+    runtime "Kubernetes (GKE)"
+    realizes ECommerce
+  }
+  oci notificationWorker {
+    label "notification-worker"
+    runtime "Cloud Run"
+    realizes Notification
+  }
+}
+
+organization ECOrg {
+  label "EC development org"
+  team platform {
+    label "Platform team"
+    owns ECommerce
+
+    team commerce {
+      label "Commerce team"
+      owns Catalog
+      owns Order
+
+      owns Member
+    owns Notification
+      member alice {
+        label "Alice"
+        github "alice-dev"
+      }
+    }
+    team "member-team" {
+      label "Member team"
+      member bob {
+        label "Bob"
+        description "Owner of the member platform"
+      }
+    }
+  }
+  team notification {
+    label "Notification team"
+    member carol {
+      label "Carol"
+      slack "@carol"
+    }
+  }
+}
+
+// Legend: swatch supplies a literal color, ref pulls the color from
+// .krs.style for the given [tag] / type / #id. Omit the scope to show
+// on system / deploy / org views.
+legend "Legend" {
+  ref [external] "External system"
+  ref [human]    "Human user"
+  ref database   "Shared database"
+  ref queue      "Message queue"
+}
+`,
+    },
+    {
+      path: "default.krs.style",
+      content: `// getting-started/default.krs.style
+// Customize diagram appearance with CSS-like selectors.
+// Uncomment and edit any rule below to try it out.
+
+// Style by node type
+// service {
+//   color: #1e40af;
+//   background-color: #dbeafe;
+// }
+
+// service[external] {
+//   color: #374151;
+//   background-color: #f3f4f6;
+// }
+
+// Style by ID
+// #ECommerce {
+//   color: #065f46;
+//   background-color: #d1fae5;
+// }
+
+// #Notification {
+//   color: #92400e;
+//   background-color: #fef3c7;
+// }
+
+// Layout hints (escape hatch — see docs/spec/style.md)
+// Pin external services to the right side of the bottom row.
+service[external] {
+  column: right;
+}
+
+// Color by source (edge[from=<id>]) / by target (edge[to=<id>]).
+// All edges leaving ECommerce share one color in a single rule,
+// making the hub's fan-out easy to trace.
+edge[from=ECommerce] {
+  color: #2563eb;
+}
+`,
+    },
+  ],
+};
+
+/** Starter for the deploy view in the reference window's Samples tab (#1548, ADR-1296). Source: `examples/ja/deploy-only/`. */
+export const DEPLOY_ONLY_PROJECT: ExampleProject = {
+  name: "deploy-only",
+  files: [
+    {
+      path: "index.krs",
+      content: `// deploy-only/index.krs
+// Minimal example: a .krs file with only a deploy block (no system).
+// Used to demonstrate that the preview auto-selects the Deploy tab
+// when the file has no system block (Issue #766).
+
+deploy Production {
+  label "本番環境"
+
+  oci "web" {
+    label "Web フロント"
+    image "web:1.0.0"
+    runtime "Node.js 22 / Next.js"
+    realizes Storefront
+  }
+
+  lambda "order-handler" {
+    label "注文ハンドラ"
+    runtime "Node.js 22"
+    realizes OrderAPI
+  }
+
+  assets "static-assets" {
+    label "静的アセット"
+    runtime "CloudFront / S3"
+  }
+}
+`,
+    },
+  ],
+};
+
+/** English variant of DEPLOY_ONLY_PROJECT, served for non-`ja` locales (#1642). Source: `examples/en/deploy-only/`. */
+export const DEPLOY_ONLY_PROJECT_EN: ExampleProject = {
+  name: "deploy-only",
+  files: [
+    {
+      path: "index.krs",
+      content: `// deploy-only/index.krs
+// Minimal example: a .krs file with only a deploy block (no system).
+// Used to demonstrate that the preview auto-selects the Deploy tab
+// when the file has no system block (Issue #766).
+
+deploy Production {
+  label "Production environment"
+
+  oci "web" {
+    label "Web frontend"
+    image "web:1.0.0"
+    runtime "Node.js 22 / Next.js"
+    realizes Storefront
+  }
+
+  lambda "order-handler" {
+    label "Order handler"
+    runtime "Node.js 22"
+    realizes OrderAPI
+  }
+
+  assets "static-assets" {
+    label "Static assets"
+    runtime "CloudFront / S3"
+  }
+}
+`,
+    },
+  ],
+};
+
+/** Starter for the org view in the reference window's Samples tab (#1548, ADR-1296). Source: `examples/ja/org-only/`. */
+export const ORG_ONLY_PROJECT: ExampleProject = {
+  name: "org-only",
+  files: [
+    {
+      path: "index.krs",
+      content: `// org-only/index.krs
+// Minimal example: a .krs file with only an organization block (no system,
+// no deploy). Used to demonstrate that the preview auto-selects the Org tab
+// when the file has no system block and no deploy block (Issue #817).
+
+organization Acme {
+  label "Acme Engineering"
+
+  team "platform-team" {
+    label "プラットフォームチーム"
+    description "共通基盤の開発・運用"
+
+    member alice {
+      label "Alice"
+      description "テックリード"
+    }
+    member bob {
+      label "Bob"
+      description "SRE"
+    }
+  }
+
+  team "product-team" {
+    label "プロダクトチーム"
+    description "プロダクト機能の開発"
+
+    member carol {
+      label "Carol"
+      description "プロダクトエンジニア"
+    }
+  }
+}
+`,
+    },
+  ],
+};
+
+/** English variant of ORG_ONLY_PROJECT, served for non-`ja` locales (#1642). Source: `examples/en/org-only/`. */
+export const ORG_ONLY_PROJECT_EN: ExampleProject = {
+  name: "org-only",
+  files: [
+    {
+      path: "index.krs",
+      content: `// org-only/index.krs
+// Minimal example: a .krs file with only an organization block (no system,
+// no deploy). Used to demonstrate that the preview auto-selects the Org tab
+// when the file has no system block and no deploy block (Issue #817).
+
+organization Acme {
+  label "Acme Engineering"
+
+  team "platform-team" {
+    label "Platform team"
+    description "Develops and operates the shared platform"
+
+    member alice {
+      label "Alice"
+      description "Tech lead"
+    }
+    member bob {
+      label "Bob"
+      description "SRE"
+    }
+  }
+
+  team "product-team" {
+    label "Product team"
+    description "Develops product features"
+
+    member carol {
+      label "Carol"
+      description "Product engineer"
+    }
+  }
+}
+`,
+    },
+  ],
+};
+
+/** A minimal sample of the client feature set (#823), including an MCP-style server. Source: `examples/en/client-mcp/`. */
+export const CLIENT_MCP_PROJECT: ExampleProject = {
+  name: "client-mcp",
+  files: [
+    {
+      path: "index.krs",
+      content: `// client-mcp: a minimal sample exercising the full client MVP feature set
+// (Phase 1–5 of #823): client kind, delivers, handles re-export, resource
+// for client-side storage, [external] services, and an MCP-style server.
+//
+// Scenario:
+//   Customer (human)  → MobileApp + ClaudeDesktop  (clients we ship)
+//   PartnerAgent (ai) → OrderMcp                   (third-party AI agent)
+//
+//   MobileApp talks to a BFF (MobileBff) which re-exports OrderService's
+//   Order domain. ClaudeDesktop talks to OrderMcp, an MCP server that
+//   adapts OrderService for AI tool-use.
+
+system OrderPlatform {
+  label "Order Platform"
+  description "Order management exposed to mobile apps, desktop AI clients, and partner AI agents."
+
+  user Customer [human] {
+    label "Customer"
+    role "End user placing and tracking orders"
+  }
+
+  user PartnerAgent [ai] {
+    label "Partner Agent"
+    role "Third-party AI agent that calls our MCP endpoint"
+  }
+
+  client MobileApp [mobile] {
+    label "Mobile App"
+    description "iOS / Android native app"
+    handles Order
+    resource localStorage "preferences"
+    resource indexedDB "outbox"
+    resource keychain "auth-token"
+    capability notification
+    capability camera {
+      label "QR scanning"
+      description "Scan QR codes printed on physical receipts"
+    }
+    capability geolocation {
+      description "Continuous tracking while a delivery is in progress"
+    }
+  }
+
+  client ClaudeDesktop [desktop] {
+    label "Claude Desktop"
+    description "Local desktop client wired to the MCP server via stdio"
+    handles Order
+    resource opfs "drafts"
+    resource file "claude-desktop.config"
+    capability clipboard
+  }
+
+  service MobileBff {
+    label "Mobile BFF"
+    description "Edge-side API gateway tailored for the mobile app"
+    delivers MobileApp
+    handles Order
+  }
+
+  service OrderService {
+    label "Order Service"
+    description "Source of truth for orders"
+
+    domain Order {
+      label "Order"
+      description "Order placement, query, and cancellation"
+
+      usecase PlaceOrder {
+        label "Place an order"
+        resource OrderTable [external] { label "Order table" }
+      }
+      usecase CancelOrder {
+        label "Cancel an order"
+        resource OrderTable [external] { label "Order table" }
+      }
+      usecase QueryOrder {
+        label "Query order status"
+        resource OrderTable [external] { label "Order table" }
+      }
+    }
+  }
+
+  service OrderMcp [external] {
+    label "Order MCP"
+    description "MCP server that exposes OrderService to AI agents"
+    handles Order
+  }
+
+  Customer       -> MobileApp     "uses the app"
+  Customer       -> ClaudeDesktop "uses the desktop client"
+  PartnerAgent   -> OrderMcp      "tool-use over MCP"
+  MobileApp      -> MobileBff     "HTTPS"
+  ClaudeDesktop  -> OrderMcp      "stdio / MCP"
+  MobileBff      -> OrderService  "internal RPC"
+  OrderMcp       -> OrderService  "internal RPC"
+}
+`,
+    },
+  ],
+};
+
+/** The step-by-step tutorial ProjectMode seeds, one project per stage, in stage order. Source: `examples/ja/ec-platform/`. */
+export const EC_PLATFORM_PROJECTS: ExampleProject[] = [
+  {
+    name: "01-system",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/01-system.krs
+// Demonstrates: system, service, sync edge (->), async edge (-->)
+// This is the minimal building block of a karasu diagram.
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  service ECommerce {
+    label "ECサイト"
+    description "商品管理と注文処理"
+  }
+
+  service Payment {
+    label "決済サービス"
+    description "クレジットカード決済処理"
+  }
+
+  service Inventory {
+    label "在庫管理"
+    description "在庫データの管理"
+  }
+
+  service Notification {
+    label "通知サービス"
+    description "メール・プッシュ通知の送信"
+  }
+
+  ECommerce  ->  Payment      "決済を処理する"
+  ECommerce  ->  Inventory    "在庫を確認する"
+  ECommerce --> Notification  "注文確定メールを送る"
+  Inventory --> Notification  "在庫切れアラートを送る"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "02-users",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/02-users.krs
+// Demonstrates: user [human], user [ai], role property
+// Users can be human actors or AI agents interacting with the system.
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer [human] {
+    label "購入者"
+    role "商品を購入する一般ユーザー"
+  }
+
+  user Admin [human] {
+    label "運用担当者"
+    role "在庫・注文・通知の管理を行う担当者"
+  }
+
+  user RecommendationAgent [ai] {
+    label "レコメンドエージェント"
+    role "購買履歴を分析して商品を推薦するAIエージェント"
+  }
+
+  service ECommerce {
+    label "ECサイト"
+    description "商品管理と注文処理"
+  }
+
+  service Payment {
+    label "決済サービス"
+    description "クレジットカード決済処理"
+  }
+
+  service Inventory {
+    label "在庫管理"
+    description "在庫データの管理"
+  }
+
+  service Notification {
+    label "通知サービス"
+    description "メール・プッシュ通知の送信"
+  }
+
+  Customer           ->  ECommerce    "商品を購入する"
+  Admin              ->  Inventory    "在庫を管理する"
+  Admin              ->  Notification "通知設定を変更する"
+  RecommendationAgent -> ECommerce    "おすすめ商品を提案する"
+  ECommerce          ->  Payment      "決済を処理する"
+  ECommerce          ->  Inventory    "在庫を確認する"
+  ECommerce         --> Notification  "注文確定メールを送る"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "02.5-clients",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/02.5-clients.krs
+// Demonstrates: client kind with form-factor tags, service.delivers,
+// client.handles, and resource <storageKind> "<name>" lines.
+// Slots between 02-users (who) and 03-domains (what each domain does).
+//
+// User → Client → Service is the natural progression: the people in 02-users
+// don't talk to ECommerce directly — they go through a mobile or web client.
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer [human] {
+    label "購入者"
+    role "商品を購入する一般ユーザー"
+  }
+
+  user Admin [human] {
+    label "運用担当者"
+    role "在庫・注文・通知の管理を行う担当者"
+  }
+
+  // Clients we ship — sit between users and services.
+  client MobileApp [mobile] {
+    label "モバイルアプリ"
+    description "iOS / Android 向け公式アプリ"
+    handles Order
+    resource localStorage "preferences"
+    resource indexedDB "outbox"
+  }
+
+  client WebApp [web] {
+    label "Web アプリ"
+    description "ブラウザ向け SPA"
+    handles Order
+    resource sessionStorage "view-state"
+  }
+
+  service ECommerce {
+    label "ECサイト"
+    description "商品管理と注文処理"
+    // delivers links a service to the client(s) it ships to end users.
+    delivers MobileApp, WebApp
+
+    domain Order {
+      label "受注"
+    }
+  }
+
+  service Payment {
+    label "決済サービス"
+  }
+
+  service Inventory {
+    label "在庫管理"
+  }
+
+  Customer  -> MobileApp "アプリを利用する"
+  Customer  -> WebApp    "ブラウザから利用する"
+  Admin     -> WebApp    "管理画面を使う"
+  MobileApp -> ECommerce "API を呼び出す"
+  WebApp    -> ECommerce "API を呼び出す"
+  ECommerce -> Payment   "決済を処理する"
+  ECommerce -> Inventory "在庫を確認する"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "03-domains",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/03-domains.krs
+// Demonstrates: domain, usecase, resource — full drill-down hierarchy
+// Drill into ECommerce to see its internal domain structure.
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer [human] {
+    label "購入者"
+    role "商品を購入する一般ユーザー"
+  }
+
+  service ECommerce {
+    label "ECサイト"
+
+    domain Order {
+      label "受注"
+      description "注文の受付・管理・キャンセル"
+
+      usecase PlaceOrder {
+        label "注文を受け付ける"
+        resource OrderTable {
+          label "注文テーブル"
+          operations create, read
+        }
+        resource InventoryAPI {
+          label "在庫API"
+          operations read
+        }
+      }
+
+      usecase CancelOrder {
+        label "注文をキャンセルする"
+        resource OrderTable {
+          label "注文テーブル"
+          operations read, update
+        }
+      }
+
+      usecase QueryOrder {
+        label "注文状況を照会する"
+        resource OrderTable {
+          label "注文テーブル"
+          operations read
+        }
+      }
+    }
+
+    domain Catalog {
+      label "商品カタログ"
+      description "商品情報の管理と検索"
+
+      usecase SearchProducts {
+        label "商品を検索する"
+        resource ProductTable {
+          label "商品テーブル"
+          operations read
+        }
+      }
+
+      usecase UpdateProduct {
+        label "商品情報を更新する"
+        resource ProductTable {
+          label "商品テーブル"
+          operations read, update
+        }
+        resource ImageStorage {
+          label "画像ストレージ"
+          operations create, update, delete
+        }
+      }
+    }
+  }
+
+  service Payment {
+    label "決済サービス"
+
+    domain Billing {
+      label "請求"
+
+      usecase Charge {
+        label "決済を実行する"
+        resource PaymentGateway {
+          label "決済ゲートウェイ"
+        }
+        resource TransactionLog {
+          label "取引ログ"
+        }
+      }
+
+      usecase Refund {
+        label "返金する"
+        resource PaymentGateway {
+          label "決済ゲートウェイ"
+        }
+      }
+    }
+  }
+
+  service Inventory {
+    label "在庫管理"
+
+    domain Stock {
+      label "在庫"
+
+      usecase CheckStock {
+        label "在庫を確認する"
+        resource StockTable {
+          label "在庫テーブル"
+        }
+      }
+
+      usecase ReserveStock {
+        label "在庫を引き当てる"
+        resource StockTable {
+          label "在庫テーブル"
+        }
+      }
+    }
+  }
+
+  Customer  ->  ECommerce "商品を購入する"
+  ECommerce ->  Payment   "決済を処理する"
+  ECommerce ->  Inventory "在庫を確認する"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "04-annotations",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/04-annotations.krs
+// Demonstrates: [external] tag, @deprecated, @new, @experimental annotations
+// Use annotations to communicate lifecycle state and ownership boundaries.
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer [human] {
+    label "購入者"
+    role "商品を購入する一般ユーザー"
+  }
+
+  service ECommerce {
+    label "ECサイト"
+    description "商品管理と注文処理"
+  }
+
+  // @deprecated: this service is being replaced by NewPayment
+  service LegacyPayment @deprecated {
+    label "決済サービス（旧）"
+    description "旧決済サービス。NewPayment への移行中"
+  }
+
+  // @new: recently introduced replacement service
+  service NewPayment @new {
+    label "決済サービス（新）"
+    description "新しい決済サービス。PCI DSS準拠"
+  }
+
+  // @experimental: under active development, API may change
+  service RecommendationEngine @experimental {
+    label "レコメンドエンジン"
+    description "AI駆動の商品推薦サービス"
+  }
+
+  // [external]: owned by a third party, not this team
+  service StripeAPI [external] {
+    label "Stripe API"
+    description "クレジットカード決済の外部プロバイダ"
+  }
+
+  service AmazonSES [external] {
+    label "Amazon SES"
+    description "メール送信の外部サービス"
+  }
+
+  Customer           ->  ECommerce             "商品を購入する"
+  ECommerce          ->  LegacyPayment         "決済を処理する（移行中）"
+  ECommerce          ->  NewPayment            "決済を処理する（新）"
+  ECommerce          ->  RecommendationEngine  "おすすめ商品を取得する"
+  LegacyPayment      ->  StripeAPI             "カード決済"
+  NewPayment         ->  StripeAPI             "カード決済"
+  ECommerce         --> AmazonSES              "注文確定メールを送る"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "05-multifile",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/05-multifile/system.krs
+// Demonstrates: import { } from — splitting a large file into focused modules
+// Open this directory in VSCode Extension or use \`karasu serve\` in server mode.
+
+import { ECommerce } from "./ecommerce.krs"
+import { Payment } from "./payment.krs"
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer [human] {
+    label "購入者"
+    role "商品を購入する一般ユーザー"
+  }
+
+  service Inventory {
+    label "在庫管理"
+
+    domain Stock {
+      label "在庫"
+      usecase CheckStock { label "在庫を確認する" }
+      usecase ReserveStock { label "在庫を引き当てる" }
+    }
+  }
+
+  Customer  ->  ECommerce "商品を購入する"
+  ECommerce ->  Payment   "決済を処理する"
+  ECommerce ->  Inventory "在庫を確認する"
+}
+`,
+      },
+      {
+        path: "ecommerce.krs",
+        content: `// ec-platform/05-multifile/ecommerce.krs
+// ECommerce service definition — imported by system.krs
+
+service ECommerce {
+  label "ECサイト"
+  description "商品管理と注文処理"
+
+  domain Order {
+    label "受注"
+    usecase PlaceOrder {
+      label "注文を受け付ける"
+      resource OrderTable { label "注文テーブル" }
+    }
+    usecase CancelOrder { label "注文をキャンセルする" }
+    usecase QueryOrder { label "注文状況を照会する" }
+  }
+
+  domain Catalog {
+    label "商品カタログ"
+    usecase SearchProducts {
+      label "商品を検索する"
+      resource ProductTable { label "商品テーブル" }
+    }
+  }
+}
+`,
+      },
+      {
+        path: "payment.krs",
+        content: `// ec-platform/05-multifile/payment.krs
+// Payment service definition — imported by system.krs
+
+service Payment {
+  label "決済サービス"
+  description "クレジットカード決済処理"
+
+  domain Billing {
+    label "請求"
+    usecase Charge {
+      label "決済を実行する"
+      resource PaymentGateway { label "決済ゲートウェイ" }
+      resource TransactionLog { label "取引ログ" }
+    }
+    usecase Refund {
+      label "返金する"
+      resource PaymentGateway { label "決済ゲートウェイ" }
+    }
+  }
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "06-deploy",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/06-deploy/system.krs
+// Logical structure — imported by deploy.krs via realizes
+// Open this directory in VSCode Extension or use \`karasu serve\` in server mode.
+
+import { ECommerce } from "./ecommerce.krs"
+import { Payment } from "./payment.krs"
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer [human] {
+    label "購入者"
+    role "商品を購入する一般ユーザー"
+  }
+
+  service ECommerce
+  service Payment
+
+  service Inventory {
+    label "在庫管理"
+    domain Stock {
+      label "在庫"
+      usecase CheckStock { label "在庫を確認する" }
+    }
+  }
+
+  service Frontend {
+    label "フロントエンド"
+    description "SPAによる購入画面"
+  }
+
+  Customer  ->  Frontend  "ブラウザでアクセス"
+  Frontend  ->  ECommerce "APIを呼び出す"
+  ECommerce ->  Payment   "決済を処理する"
+  ECommerce ->  Inventory "在庫を確認する"
+}
+`,
+      },
+      {
+        path: "deploy.krs",
+        content: `// ec-platform/06-deploy/deploy.krs
+// Demonstrates: deploy block, oci, jar, job (with/without schedule), assets, realizes
+// Physical structure maps to logical services via \`realizes\`.
+
+deploy Production {
+  label "本番環境"
+
+  // SPA hosted on CDN
+  assets storefront {
+    label "ECフロントエンド"
+    runtime "CloudFront / S3"
+    realizes Frontend
+  }
+
+  // Main application server as a container
+  oci "ecommerce-app" {
+    label "ECアプリケーション"
+    image "ecommerce:3.2.1"
+    runtime "Node.js 22"
+    realizes ECommerce
+  }
+
+  // Payment service as an executable JAR
+  jar "payment-service" {
+    label "決済サービス"
+    runtime "Java 21 / Spring Boot 3"
+    realizes Payment
+  }
+
+  // Inventory as a container
+  oci "inventory-service" {
+    label "在庫サービス"
+    image "inventory:1.4.0"
+    runtime "Go 1.22"
+    realizes Inventory
+  }
+
+  // One-off data migration (no schedule = single run)
+  job "data-migration" {
+    label "データ移行ジョブ"
+    runtime "Python 3.12"
+  }
+
+  // Recurring billing report (cron schedule)
+  job "monthly-billing-report" {
+    label "月次売上集計"
+    schedule "0 1 1 * *"
+    runtime "Java 21"
+    realizes Payment
+  }
+}
+`,
+      },
+      {
+        path: "ecommerce.krs",
+        content: `// ec-platform/06-deploy/ecommerce.krs
+// ECommerce service definition — imported by system.krs
+
+service ECommerce {
+  label "ECサイト"
+  domain Order {
+    label "受注"
+    usecase PlaceOrder { label "注文を受け付ける" }
+    usecase QueryOrder { label "注文状況を照会する" }
+  }
+}
+`,
+      },
+      {
+        path: "payment.krs",
+        content: `// ec-platform/06-deploy/payment.krs
+// Payment service definition — imported by system.krs
+
+service Payment {
+  label "決済サービス"
+  domain Billing {
+    label "請求"
+    usecase Charge { label "決済を実行する" }
+    usecase Refund { label "返金する" }
+  }
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "07-cross-system",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/07-cross-system/main.krs
+// Demonstrates: cross-system service references with fully qualified names (System.Service)
+// ECPlatform references PaymentGateway.PaymentService across system boundaries.
+// The referenced service appears as an [external] ghost node in ECPlatform's system view.
+
+import "ec-platform.krs"
+import "payment-gateway.krs"
+`,
+      },
+      {
+        path: "ec-platform.krs",
+        content: `// ec-platform/07-cross-system/ec-platform.krs
+// ECPlatform system — references PaymentGateway.PaymentService using dot notation.
+// To suppress the implicit-external warning, add: service PaymentService [external]
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer {
+    label "顧客"
+    role "商品を購入する一般ユーザー"
+  }
+
+  service OrderService {
+    label "注文サービス"
+    description "商品の注文処理と決済依頼を担当する"
+  }
+
+  service InventoryService {
+    label "在庫管理サービス"
+    description "在庫データの管理と在庫確認 API を提供する"
+  }
+
+  Customer      -> OrderService                   "注文する"
+  OrderService  -> InventoryService               "在庫を確認する"
+  OrderService  -> PaymentGateway.PaymentService  "決済を依頼する"
+}
+`,
+      },
+      {
+        path: "payment-gateway.krs",
+        content: `// ec-platform/07-cross-system/payment-gateway.krs
+// PaymentGateway system — standalone payment processing platform.
+// This system can be rendered independently or composed with ECPlatform via main.krs.
+
+system PaymentGateway {
+  label "決済ゲートウェイ"
+
+  service PaymentService {
+    label "決済サービス"
+    description "クレジットカード・口座振替などの決済処理を担当する"
+  }
+
+  service FraudDetection {
+    label "不正検知サービス"
+    description "トランザクションの不正スコアリングを行う"
+  }
+
+  PaymentService -> FraudDetection "不正チェックを行う"
+}
+`,
+      },
+    ],
+  },
+];
+
+/** English variant of EC_PLATFORM_PROJECTS, seeded for non-`ja` locales (#1777). Source: `examples/en/ec-platform/`. */
+export const EC_PLATFORM_PROJECTS_EN: ExampleProject[] = [
+  {
+    name: "01-system",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/01-system.krs
+// Demonstrates: system, service, sync edge (->), async edge (-->)
+// This is the minimal building block of a karasu diagram.
+
+system ECPlatform {
+  label "EC Platform"
+
+  service ECommerce {
+    label "EC Site"
+    description "Product management and order processing"
+  }
+
+  service Payment {
+    label "Payment Service"
+    description "Credit card payment processing"
+  }
+
+  service Inventory {
+    label "Inventory"
+    description "Inventory data management"
+  }
+
+  service Notification {
+    label "Notification Service"
+    description "Sends email and push notifications"
+  }
+
+  ECommerce  ->  Payment      "Process payment"
+  ECommerce  ->  Inventory    "Check inventory"
+  ECommerce --> Notification  "Send order confirmation email"
+  Inventory --> Notification  "Send out-of-stock alert"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "02-users",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/02-users.krs
+// Demonstrates: user [human], user [ai], role property
+// Users can be human actors or AI agents interacting with the system.
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  user Admin [human] {
+    label "Operator"
+    role "Staff who manage inventory, orders, and notifications"
+  }
+
+  user RecommendationAgent [ai] {
+    label "Recommendation Agent"
+    role "AI agent that analyzes purchase history to recommend products"
+  }
+
+  service ECommerce {
+    label "EC Site"
+    description "Product management and order processing"
+  }
+
+  service Payment {
+    label "Payment Service"
+    description "Credit card payment processing"
+  }
+
+  service Inventory {
+    label "Inventory"
+    description "Inventory data management"
+  }
+
+  service Notification {
+    label "Notification Service"
+    description "Sends email and push notifications"
+  }
+
+  Customer            -> ECommerce    "Purchase products"
+  Admin               -> Inventory    "Manage inventory"
+  Admin               -> Notification "Change notification settings"
+  RecommendationAgent -> ECommerce    "Suggest recommended products"
+  ECommerce           -> Payment      "Process payment"
+  ECommerce           -> Inventory    "Check inventory"
+  ECommerce          --> Notification "Send order confirmation email"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "02.5-clients",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/02.5-clients.krs
+// Demonstrates: client kind with form-factor tags, service.delivers,
+// client.handles, and resource <storageKind> "<name>" lines.
+// Slots between 02-users (who) and 03-domains (what each domain does).
+//
+// User → Client → Service is the natural progression: the people in 02-users
+// don't talk to ECommerce directly — they go through a mobile or web client.
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  user Admin [human] {
+    label "Operator"
+    role "Staff who manage inventory, orders, and notifications"
+  }
+
+  // Clients we ship — sit between users and services.
+  client MobileApp [mobile] {
+    label "Mobile App"
+    description "Official iOS / Android app"
+    handles Order
+    resource localStorage "preferences"
+    resource indexedDB "outbox"
+  }
+
+  client WebApp [web] {
+    label "Web App"
+    description "Browser-based SPA"
+    handles Order
+    resource sessionStorage "view-state"
+  }
+
+  service ECommerce {
+    label "EC Site"
+    description "Product management and order processing"
+    // delivers links a service to the client(s) it ships to end users.
+    delivers MobileApp, WebApp
+
+    domain Order {
+      label "Orders"
+    }
+  }
+
+  service Payment {
+    label "Payment Service"
+  }
+
+  service Inventory {
+    label "Inventory"
+  }
+
+  Customer  -> MobileApp "Use the app"
+  Customer  -> WebApp    "Use via browser"
+  Admin     -> WebApp    "Use the admin console"
+  MobileApp -> ECommerce "Call the API"
+  WebApp    -> ECommerce "Call the API"
+  ECommerce -> Payment   "Process payment"
+  ECommerce -> Inventory "Check inventory"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "03-domains",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/03-domains.krs
+// Demonstrates: domain, usecase, resource — full drill-down hierarchy
+// Drill into ECommerce to see its internal domain structure.
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  service ECommerce {
+    label "EC Site"
+
+    domain Order {
+      label "Orders"
+      description "Accept, manage, and cancel orders"
+
+      usecase PlaceOrder {
+        label "Place an order"
+        resource OrderTable {
+          label "Order table"
+          operations create, read
+        }
+        resource InventoryAPI {
+          label "Inventory API"
+          operations read
+        }
+      }
+
+      usecase CancelOrder {
+        label "Cancel an order"
+        resource OrderTable {
+          label "Order table"
+          operations read, update
+        }
+      }
+
+      usecase QueryOrder {
+        label "Query order status"
+        resource OrderTable {
+          label "Order table"
+          operations read
+        }
+      }
+    }
+
+    domain Catalog {
+      label "Product Catalog"
+      description "Manage and search product information"
+
+      usecase SearchProducts {
+        label "Search products"
+        resource ProductTable {
+          label "Product table"
+          operations read
+        }
+      }
+
+      usecase UpdateProduct {
+        label "Update product information"
+        resource ProductTable {
+          label "Product table"
+          operations read, update
+        }
+        resource ImageStorage {
+          label "Image storage"
+          operations create, update, delete
+        }
+      }
+    }
+  }
+
+  service Payment {
+    label "Payment Service"
+
+    domain Billing {
+      label "Billing"
+
+      usecase Charge {
+        label "Execute payment"
+        resource PaymentGateway {
+          label "Payment gateway"
+        }
+        resource TransactionLog {
+          label "Transaction log"
+        }
+      }
+
+      usecase Refund {
+        label "Issue a refund"
+        resource PaymentGateway {
+          label "Payment gateway"
+        }
+      }
+    }
+  }
+
+  service Inventory {
+    label "Inventory"
+
+    domain Stock {
+      label "Stock"
+
+      usecase CheckStock {
+        label "Check stock"
+        resource StockTable {
+          label "Stock table"
+        }
+      }
+
+      usecase ReserveStock {
+        label "Reserve stock"
+        resource StockTable {
+          label "Stock table"
+        }
+      }
+    }
+  }
+
+  Customer  ->  ECommerce "Purchase products"
+  ECommerce ->  Payment   "Process payment"
+  ECommerce ->  Inventory "Check inventory"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "04-annotations",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/04-annotations.krs
+// Demonstrates: [external] tag, @deprecated, @new, @experimental annotations
+// Use annotations to communicate lifecycle state and ownership boundaries.
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  service ECommerce {
+    label "EC Site"
+    description "Product management and order processing"
+  }
+
+  // @deprecated: this service is being replaced by NewPayment
+  service LegacyPayment @deprecated {
+    label "Payment Service (legacy)"
+    description "Legacy payment service. Migrating to NewPayment"
+  }
+
+  // @new: recently introduced replacement service
+  service NewPayment @new {
+    label "Payment Service (new)"
+    description "New payment service. PCI DSS compliant"
+  }
+
+  // @experimental: under active development, API may change
+  service RecommendationEngine @experimental {
+    label "Recommendation Engine"
+    description "AI-driven product recommendation service"
+  }
+
+  // [external]: owned by a third party, not this team
+  service StripeAPI [external] {
+    label "Stripe API"
+    description "External provider for credit card payments"
+  }
+
+  service AmazonSES [external] {
+    label "Amazon SES"
+    description "External email delivery service"
+  }
+
+  Customer           ->  ECommerce             "Purchase products"
+  ECommerce          ->  LegacyPayment         "Process payment (migrating)"
+  ECommerce          ->  NewPayment            "Process payment (new)"
+  ECommerce          ->  RecommendationEngine  "Fetch recommended products"
+  LegacyPayment      ->  StripeAPI             "Card payment"
+  NewPayment         ->  StripeAPI             "Card payment"
+  ECommerce         --> AmazonSES              "Send order confirmation email"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "05-multifile",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/05-multifile/system.krs
+// Demonstrates: import { } from — splitting a large file into focused modules
+// Open this directory in VSCode Extension or use \`karasu serve\` in server mode.
+
+import { ECommerce } from "./ecommerce.krs"
+import { Payment } from "./payment.krs"
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  service Inventory {
+    label "Inventory"
+
+    domain Stock {
+      label "Stock"
+      usecase CheckStock { label "Check stock" }
+      usecase ReserveStock { label "Reserve stock" }
+    }
+  }
+
+  Customer  ->  ECommerce "Purchase products"
+  ECommerce ->  Payment   "Process payment"
+  ECommerce ->  Inventory "Check inventory"
+}
+`,
+      },
+      {
+        path: "ecommerce.krs",
+        content: `// ec-platform/05-multifile/ecommerce.krs
+// ECommerce service definition — imported by system.krs
+
+service ECommerce {
+  label "EC Site"
+  description "Product management and order processing"
+
+  domain Order {
+    label "Orders"
+    usecase PlaceOrder {
+      label "Place an order"
+      resource OrderTable { label "Order table" }
+    }
+    usecase CancelOrder { label "Cancel an order" }
+    usecase QueryOrder { label "Query order status" }
+  }
+
+  domain Catalog {
+    label "Product Catalog"
+    usecase SearchProducts {
+      label "Search products"
+      resource ProductTable { label "Product table" }
+    }
+  }
+}
+`,
+      },
+      {
+        path: "payment.krs",
+        content: `// ec-platform/05-multifile/payment.krs
+// Payment service definition — imported by system.krs
+
+service Payment {
+  label "Payment Service"
+  description "Credit card payment processing"
+
+  domain Billing {
+    label "Billing"
+    usecase Charge {
+      label "Execute payment"
+      resource PaymentGateway { label "Payment gateway" }
+      resource TransactionLog { label "Transaction log" }
+    }
+    usecase Refund {
+      label "Issue a refund"
+      resource PaymentGateway { label "Payment gateway" }
+    }
+  }
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "06-deploy",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/06-deploy/system.krs
+// Logical structure — imported by deploy.krs via realizes
+// Open this directory in VSCode Extension or use \`karasu serve\` in server mode.
+
+import { ECommerce } from "./ecommerce.krs"
+import { Payment } from "./payment.krs"
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  service ECommerce
+  service Payment
+
+  service Inventory {
+    label "Inventory"
+    domain Stock {
+      label "Stock"
+      usecase CheckStock { label "Check stock" }
+    }
+  }
+
+  service Frontend {
+    label "Frontend"
+    description "SPA-based storefront"
+  }
+
+  Customer  ->  Frontend  "Access via browser"
+  Frontend  ->  ECommerce "Call the API"
+  ECommerce ->  Payment   "Process payment"
+  ECommerce ->  Inventory "Check inventory"
+}
+`,
+      },
+      {
+        path: "deploy.krs",
+        content: `// ec-platform/06-deploy/deploy.krs
+// Demonstrates: deploy block, oci, jar, job (with/without schedule), assets, realizes
+// Physical structure maps to logical services via \`realizes\`.
+
+deploy Production {
+  label "Production"
+
+  // SPA hosted on CDN
+  assets storefront {
+    label "EC Frontend"
+    runtime "CloudFront / S3"
+    realizes Frontend
+  }
+
+  // Main application server as a container
+  oci "ecommerce-app" {
+    label "EC Application"
+    image "ecommerce:3.2.1"
+    runtime "Node.js 22"
+    realizes ECommerce
+  }
+
+  // Payment service as an executable JAR
+  jar "payment-service" {
+    label "Payment Service"
+    runtime "Java 21 / Spring Boot 3"
+    realizes Payment
+  }
+
+  // Inventory as a container
+  oci "inventory-service" {
+    label "Inventory Service"
+    image "inventory:1.4.0"
+    runtime "Go 1.22"
+    realizes Inventory
+  }
+
+  // One-off data migration (no schedule = single run)
+  job "data-migration" {
+    label "Data migration job"
+    runtime "Python 3.12"
+  }
+
+  // Recurring billing report (cron schedule)
+  job "monthly-billing-report" {
+    label "Monthly billing report"
+    schedule "0 1 1 * *"
+    runtime "Java 21"
+    realizes Payment
+  }
+}
+`,
+      },
+      {
+        path: "ecommerce.krs",
+        content: `// ec-platform/06-deploy/ecommerce.krs
+// ECommerce service definition — imported by system.krs
+
+service ECommerce {
+  label "EC Site"
+  domain Order {
+    label "Orders"
+    usecase PlaceOrder { label "Place an order" }
+    usecase QueryOrder { label "Query order status" }
+  }
+}
+`,
+      },
+      {
+        path: "payment.krs",
+        content: `// ec-platform/06-deploy/payment.krs
+// Payment service definition — imported by system.krs
+
+service Payment {
+  label "Payment Service"
+  domain Billing {
+    label "Billing"
+    usecase Charge { label "Execute payment" }
+    usecase Refund { label "Issue a refund" }
+  }
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "07-cross-system",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/07-cross-system/main.krs
+// Demonstrates: cross-system service references with fully qualified names (System.Service)
+// ECPlatform references PaymentGateway.PaymentService across system boundaries.
+// The referenced service appears as an [external] ghost node in ECPlatform's system view.
+
+import "ec-platform.krs"
+import "payment-gateway.krs"
+`,
+      },
+      {
+        path: "ec-platform.krs",
+        content: `// ec-platform/07-cross-system/ec-platform.krs
+// ECPlatform system — references PaymentGateway.PaymentService using dot notation.
+// To suppress the implicit-external warning, add: service PaymentService [external]
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  service OrderService {
+    label "Order Service"
+    description "Handles order processing and payment requests"
+  }
+
+  service InventoryService {
+    label "Inventory Service"
+    description "Manages inventory data and provides a stock-check API"
+  }
+
+  Customer      -> OrderService                   "Place an order"
+  OrderService  -> InventoryService               "Check inventory"
+  OrderService  -> PaymentGateway.PaymentService  "Request payment"
+}
+`,
+      },
+      {
+        path: "payment-gateway.krs",
+        content: `// ec-platform/07-cross-system/payment-gateway.krs
+// PaymentGateway system — standalone payment processing platform.
+// This system can be rendered independently or composed with ECPlatform via main.krs.
+
+system PaymentGateway {
+  label "Payment Gateway"
+
+  service PaymentService {
+    label "Payment Service"
+    description "Handles payments such as credit card and bank transfer"
+  }
+
+  service FraudDetection {
+    label "Fraud Detection Service"
+    description "Performs fraud scoring on transactions"
+  }
+
+  PaymentService -> FraudDetection "Run fraud check"
+}
+`,
+      },
+    ],
+  },
+];
+
+/** One file per syntax feature, catalogued by its `index.krs` (ADR-1344). Source: `examples/en/feature-samples/`. */
+export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
+  name: "feature-samples",
+  files: [
+    {
+      path: "index.krs",
+      content: `// feature-samples/index.krs
+// Catalog of single-feature .krs samples bundled with karasu.
+//
+// Each file in this project demonstrates one syntax feature in isolation —
+// open them from the file tree:
+//
+//   minimal.krs               smallest valid input (system + 2 services + edges)
+//   edges.krs                 sync (->) vs async (-->) edges, labelled / bare / block
+//   parallel-edges.krs        parallel edges between the same node pair
+//   users.krs                 [human] / [ai] user nodes with role + description
+//   external-nodes.krs        [external] tag on service / resource nodes
+//   annotations.krs           @deprecated / @new / @experimental / @migration_target
+//   legend.krs                legend blocks (swatch / ref, view & drill-down scoping)
+//   domain-drill.krs          full hierarchy: system -> service -> domain -> usecase -> resource
+//   domain-drift.krs          domain-to-domain edges (cross-service + intra-service)
+//   resource-operations.krs   usecase resource CRUD operations + read/write edges
+//   crud-matrix.krs           inputs for the \`karasu matrix\` usecase x resource grid
+//   usecase-authorization.krs authorization-as-prose convention (Access: + policy link)
+//   bff-delivers.krs          service.delivers <ClientId> for the BFF / SSR pattern
+//   deploy-all.krs            every deploy artifact type (war / jar / oci / lambda / ...)
+//   team-ownership.krs        organization / team / owns — the Group by: team axis
+//   team-dependencies.krs     derived team dependencies — cross-team / nested / unowned / structural overlap
+//   boundary-clusters.krs     boundary / contains — the Group by: boundary axis
+//   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas
+//   boundary-multi-membership.krs  a node listed in two boundaries — both frames enclose it
+//   facets.krs                facet / facets — the viewer-side highlight overlay
+//   tag-facet-registers.krs   tag vs annotation vs facet vs boundary — which register says what
+//   multi-system-root.krs     two \`system\` blocks in one file — the side-by-side root view
+
+system FeatureSamples {
+  label "Feature samples"
+  description "Open the sibling .krs files from the file tree — each one demonstrates a single syntax feature."
+
+  service Catalog {
+    label "See the file tree"
+  }
+}
+`,
+    },
+    {
+      path: "annotations.krs",
+      content: `// annotations.krs
+// Demonstrates: every lifecycle annotation — @deprecated, @new,
+// @experimental, @migration_target, @draft — individually and combined.
+
+system AnnotationSample {
+  label "Annotation Sample"
+
+  service LegacyAuth @deprecated {
+    label "Legacy Auth"
+    description "Scheduled for removal in Q3."
+  }
+
+  service NewAuth @new {
+    label "New Auth"
+    description "Introduced in the latest release."
+  }
+
+  service BetaSearch @experimental {
+    label "Beta Search"
+    description "Feature-flagged; not yet in general availability."
+  }
+
+  service MigrationBridge @deprecated @migration_target {
+    label "Migration Bridge"
+    description "Deprecated origin that is also the migration target stub."
+  }
+
+  service SessionStore @draft(confidence: "low") {
+    label "Session Store"
+    description "Inferred from the code, not confirmed by a human. Delete the @draft to accept it."
+  }
+
+  LegacyAuth -> MigrationBridge "migrate traffic"
+  MigrationBridge -> NewAuth    "forward requests"
+  NewAuth -> BetaSearch         "delegate search"
+  NewAuth -> SessionStore       "read session"
+}
+`,
+    },
+    {
+      path: "bff-delivers.krs",
+      content: `// bff-delivers.krs
+// Demonstrates: service.delivers <ClientId> for the BFF / SSR pattern.
+//
+// A Next.js / Rails+React / Laravel+Vue server ships a JS frontend bundle to
+// the browser and proxies API calls to backend services. The server-side and
+// the browser-side are different OAuth2 client types (confidential vs public)
+// and are modeled as separate nodes joined by \`delivers\`.
+
+system ECPlatform {
+  label "BFF pattern sample"
+
+  user Customer [human] {
+    label "Customer"
+  }
+
+  service NextServer {
+    label "Next.js BFF"
+    description "Server-side: SSR, API routes, session storage, asset pipeline."
+    delivers WebApp
+  }
+
+  client WebApp [web] {
+    label "Customer SPA"
+    description "Browser-side bundle delivered by NextServer."
+  }
+
+  service OrderService {
+    label "Order service"
+  }
+
+  Customer  -> WebApp       "uses"
+  WebApp    -> NextServer   "API calls (same-origin cookie)"
+  NextServer -> OrderService "user-delegated calls"
+}
+`,
+    },
+    {
+      path: "boundary-clusters.krs",
+      content: `// Semantic clusters via \`boundary\` / \`contains\` (Issue #1822, P2b).
+//
+// A \`boundary\` block declares a named cluster of system-view nodes, drawn as the
+// second "Group by" axis of the system view (the first is team ownership —
+// see team-ownership.krs). With \`groupBy: "boundary"\` the renderer bands each
+// boundary's members as a dependency-ordered group and frames it, exactly like
+// the team axis — but grouped by the author's *semantic* clusters instead of by
+// org chart. The two axes are independent and mutually exclusive.
+//
+// Here the "Payments" and "Catalog" boundaries cut across what could be a
+// different team structure: a boundary groups by meaning ("everything payments"),
+// not by who owns it. Un-clustered nodes (the shared Order DB) fall into a
+// trailing band below the boundary frames.
+//
+// Members can live on drill-down levels too: grouping resolves per view,
+// against the nodes rendered at the level being drawn (Issue #1983). The
+// Payment domain nested inside Checkout is framed on Checkout's drill-down
+// view, and its Authorize usecase on Payment's domain view — one boundary,
+// disjoint frames on several levels. Keep "Group by: Boundary" on while you
+// drill to see each level's frame.
+//
+// \`boundary\` is core notation from \`.krs language v2.0\` (docs/spec/syntax.md
+// § Grouping the system view).
+
+system Marketplace {
+  label "Marketplace"
+
+  service Checkout {
+    label "Checkout"
+    domain Cart { label "Cart" }
+    domain Payment {
+      label "Payment"
+      usecase Authorize { label "Authorize card" }
+    }
+  }
+  service Billing { label "Billing" }
+  service Wallet { label "Wallet" }
+  service Search { label "Search" }
+  service Inventory { label "Inventory" }
+  service Gateway { label "API Gateway" }
+
+  database OrderDB { label "Order DB" }
+
+  Gateway -> Search "route"
+  Gateway -> Checkout "route"
+  Checkout -> Billing "charge"
+  Billing -> Wallet "settle"
+  Checkout -> Inventory "reserve"
+  Search -> Inventory "read"
+  Checkout -> OrderDB "persist"
+}
+
+boundary payments {
+  label "Payments"
+  contains Checkout
+  contains Billing
+  contains Wallet
+  contains Payment
+  contains Authorize
+}
+
+boundary catalog {
+  label "Catalog"
+  contains Search
+  contains Inventory
+}
+`,
+    },
+    {
+      path: "boundary-multi-membership.krs",
+      content: `// A node in more than one \`boundary\` (Issue #2161).
+//
+// Ledger is listed in BOTH \`payments\` and \`pci\` below. Both memberships are
+// kept in the model, and with "Group by: Boundary" on you can see both: the
+// \`pci\` frame reaches up out of its own band to wrap Ledger where it sits at
+// the bottom of \`payments\`, so the two frames OVERLAP over that one card.
+//
+// Ledger is still drawn exactly ONCE. What overlaps is the frames, not the
+// node — a banded layout gives every node one row, and multi-membership is
+// expressed by letting a frame leave its band, never by copying the card.
+//
+// Each boundary has its own colour, cycled by declaration order, and fills it
+// faintly. That is not decoration: in one shared colour, two dashed outlines
+// around the same card read as one frame NESTED in the other. The colours (and
+// the third tone where the two fills composite) are what make it read as a
+// crossing instead. The frame titles take the same colour, so you can tell
+// which outline belongs to which boundary.
+//
+// Two things decide whether you see the overlap at all:
+//
+//   1. Boundaries that share a member are banded next to each other where the
+//      dependency flow allows it, and the shared node is seated on the row that
+//      TOUCHES the other band. Here Ledger sits at the bottom of \`payments\`,
+//      against \`pci\`. Without that seam there is nothing to reach across.
+//   2. A frame is widened only when the corridor to the card holds no card that
+//      is NOT its member. A frame must never enclose a non-member, and that
+//      rule wins over showing the containment.
+//
+// To watch rule 2 refuse — and see what it falls back to — add an edge
+// \`Ledger -> Wallet "settle"\`. That pins Ledger above Wallet inside \`payments\`,
+// so the corridor from \`pci\` up to Ledger now runs through Wallet, which is not
+// in \`pci\`. The frame stays where it is and Ledger gets a dashed \`◇ PCI scope\`
+// tab on its bottom edge instead, plus an \`info\` diagnostic saying the frame
+// could not reach it. Expect the tab to be the common outcome rather than the
+// exception: whether the corridor is clear depends on where the dependency flow
+// put the cards, which is not something you chose.
+//
+// The diagnostics panel also reports Ledger as an \`info\` for the model fact —
+// it belongs to more than one boundary. A fact worth seeing, not an error, the
+// same register as a node owned by two teams. That one is about the MODEL; the
+// reach diagnostic above is about THIS DRAWING.
+//
+// There is one case where a shared node moves frames: a boundary whose members
+// are ALL claimed by earlier ones has nothing to band, so rather than vanish it
+// takes one of its shared members — as long as the boundary it takes from keeps
+// another member. Not the case here: \`pci\` bands Card vault on its own, so it
+// needs nothing from \`payments\`.
+//
+// Boundaries group by meaning, and meanings overlap: Ledger is part of the
+// payments flow AND inside the PCI audit scope. Listing it in both is a normal
+// thing to write, not a mistake (see boundary-clusters.krs for the basics of
+// the axis). The whole membership survives a multi-file model too — a
+// \`boundary\` in an imported file and one here both count, rather than the
+// first one winning.
+//
+// \`boundary\` is core notation from \`.krs language v2.0\` (docs/spec/syntax.md
+// § Grouping the system view).
+
+system Payments {
+  label "Payments platform"
+
+  service Checkout { label "Checkout" }
+  service Ledger { label "Ledger" }
+  service Wallet { label "Wallet" }
+  service CardVault { label "Card vault" }
+  service Reporting { label "Reporting" }
+
+  database LedgerDB { label "Ledger DB" }
+
+  Checkout -> CardVault "tokenize"
+  Checkout -> Ledger "record"
+  Checkout -> Wallet "debit"
+  Ledger -> LedgerDB "persist"
+  Reporting -> LedgerDB "read"
+}
+
+boundary payments {
+  label "Payments"
+  contains Checkout
+  contains Ledger
+  contains Wallet
+}
+
+boundary pci {
+  label "PCI scope"
+  // Ledger is already in \`payments\` above. Both memberships are kept, and both
+  // frames enclose it — this one reaches up to the row Ledger sits on.
+  contains Ledger
+  contains CardVault
+}
+`,
+    },
+    {
+      path: "crud-matrix.krs",
+      content: `// Feature sample: CRUD matrix view
+//
+// Showcases the inputs that \`karasu matrix\` reduces into a usecase x resource
+// grid: write/read mix, [external] resources, and undeclared / unrecognized
+// verbs that surface as \`?\` cells.
+
+system ECPlatform {
+  database OrderDB {
+    label "Order DB"
+    table OrderTable { label "Order table" }
+    table InventoryTable { label "Inventory table" }
+  }
+  queue OrderEvents {
+    label "Order events"
+    queue OrderPlaced { label "Order placed" }
+  }
+
+  service OrderService {
+    label "Order service"
+
+    domain Order {
+      usecase PlaceOrder {
+        label "Place an order"
+        resource OrderDB.OrderTable {
+          operations create, read
+        }
+        resource OrderDB.InventoryTable {
+          operations read, update
+        }
+        resource OrderEvents.OrderPlaced {
+          operations create
+        }
+        resource PaymentAPI [external] {
+          label "Payment API"
+          operations create
+        }
+      }
+      usecase CancelOrder {
+        label "Cancel an order"
+        resource OrderDB.OrderTable {
+          operations update, delete
+        }
+        resource OrderEvents.OrderPlaced {
+          operations create
+        }
+      }
+      usecase SearchOrders {
+        label "Search orders"
+        // \`list\` is decorated as \`read\` — matrix shows \`R\` (no \`?\` suffix).
+        resource OrderDB.OrderTable {
+          operations read, list:read
+        }
+      }
+      usecase ReplaceOrderSnapshot {
+        label "Replace order snapshot (physical delete-insert)"
+        // \`replace\` decorated as both create + delete (1:N mapping).
+        // Matrix counts this as a write and contributes to ΣC and ΣD.
+        resource OrderDB.OrderTable {
+          operations replace:create,delete
+        }
+      }
+      usecase ReplayOrderEvents {
+        label "Replay order events (no operations declared)"
+        resource OrderEvents.OrderPlaced
+      }
+    }
+  }
+
+  service ReportService {
+    label "Reporting"
+    domain Report {
+      usecase ExportOrders {
+        label "Export orders"
+        resource OrderDB.OrderTable {
+          operations read
+        }
+      }
+    }
+  }
+}
+`,
+    },
+    {
+      path: "deploy-all.krs",
+      content: `// deploy-all.krs
+// Demonstrates: all deploy artifact types — war, jar, oci, lambda, function,
+// assets, job (one-shot and scheduled), artifact.
+
+system DeploySample {
+  label "Deploy Sample"
+
+  service LegacyApp    { label "Legacy App" }
+  service ApiServer    { label "API Server" }
+  service WorkerApp    { label "Worker App" }
+  service WebFrontend  { label "Web Frontend" }
+  service DataPipeline { label "Data Pipeline" }
+  service BillingJob   { label "Billing Job" }
+  service FnHandler    { label "Function Handler" }
+  service AzureFn      { label "Azure Function" }
+  service LegacyBatch  { label "Legacy Batch" }
+}
+
+deploy "Production" {
+  war "legacy-app" {
+    runtime "Tomcat 10"
+    realizes "LegacyApp"
+  }
+
+  jar "api-server" {
+    runtime "JVM 21"
+    realizes "ApiServer"
+  }
+
+  oci "worker" {
+    image "worker-app:latest"
+    runtime "Kubernetes"
+    realizes "WorkerApp"
+  }
+
+  lambda "fn-handler" {
+    runtime "Node.js 22"
+    realizes "FnHandler"
+  }
+
+  function "azure-fn" {
+    runtime "Node.js 20"
+    realizes "AzureFn"
+  }
+
+  assets "web-frontend" {
+    runtime "CloudFront"
+    realizes "WebFrontend"
+  }
+
+  job "data-pipeline" {
+    runtime "JVM 21"
+    realizes "DataPipeline"
+  }
+
+  job "monthly-billing" {
+    runtime "JVM 21"
+    schedule "0 0 1 * *"
+    realizes "BillingJob"
+  }
+
+  artifact "legacy-batch" {
+    type "COBOL batch"
+    runtime "Mainframe"
+    realizes "LegacyBatch"
+  }
+}
+`,
+    },
+    {
+      path: "domain-drift.krs",
+      content: `// domain-drift.krs
+// Demonstrates: domain-to-domain edges across and within services.
+//
+// Cross-service edge (OrderDomain -> PaymentDomain):
+//   No explicit service edge exists, so an implicit service edge is derived
+//   and rendered in amber dashed style in the system view.
+//
+// Intra-service edge (OrderDomain -> ShippingDomain within OrderService):
+//   Both domains belong to OrderService, so the edge is rendered directly
+//   in the service drill-down view.
+
+system DriftSample {
+  label "Domain Drift Sample"
+
+  service OrderService {
+    label "Order Service"
+
+    domain OrderDomain {
+      label "Order Domain"
+      description "Depends on PaymentDomain to process payments and ShippingDomain to ship orders."
+      OrderDomain -> PaymentDomain "decides payment"
+      OrderDomain -> ShippingDomain "triggers shipment"
+    }
+
+    domain ShippingDomain {
+      label "Shipping Domain"
+      description "Handles order shipment."
+    }
+  }
+
+  service PaymentService {
+    label "Payment Service"
+
+    domain PaymentDomain {
+      label "Payment Domain"
+      description "Handles payment processing for orders."
+    }
+  }
+}
+`,
+    },
+    {
+      path: "domain-drill.krs",
+      content: `// domain-drill.krs
+// Demonstrates: full logical hierarchy — system → service → domain → usecase → resource.
+// Use this to verify drill-down rendering at every level.
+
+system ECommerce {
+  label "EC Platform"
+
+  service OrderService {
+    label "Order Service"
+
+    domain OrderDomain {
+      label "Order Domain"
+
+      usecase PlaceOrder {
+        label "Place Order"
+
+        resource OrderDB {
+          label "Order DB"
+          description "Primary database for order records."
+        }
+
+        resource PaymentAPI [external] {
+          label "Payment API"
+        }
+      }
+
+      usecase CancelOrder {
+        label "Cancel Order"
+
+        resource OrderDB {
+          label "Order DB"
+        }
+      }
+    }
+
+    domain ShippingDomain {
+      label "Shipping Domain"
+
+      usecase TrackShipment {
+        label "Track Shipment"
+
+        resource ShippingAPI [external] {
+          label "Shipping API"
+        }
+      }
+    }
+  }
+}
+`,
+    },
+    {
+      path: "edges.krs",
+      content: `// edges.krs
+// Demonstrates: sync (->) and async (-->) edges, with and without labels,
+// and the property block for an edge that carries more than a label.
+
+system EdgeSample {
+  label "Edge Variants"
+
+  service A { label "Service A" }
+  service B { label "Service B" }
+  service C { label "Service C" }
+  service D { label "Service D" }
+
+  // Sync edges
+  A -> B "labelled sync call"
+  A -> C
+
+  // Async edges
+  B --> D "labelled async call"
+  C --> D
+
+  // Property block: only when there is more than a label to write.
+  // Left-click this edge in the preview to read it.
+  A --> D [async] #settlementFeed {
+    label       "streams settlements"
+    description "At-least-once delivery. Retries are idempotent on settlementId."
+    link        "https://runbook.example.com/settlement-feed" "Runbook"
+  }
+}
+`,
+    },
+    {
+      path: "external-nodes.krs",
+      content: `// external-nodes.krs
+// Demonstrates: [external] tag on service and resource nodes.
+// External nodes represent components outside the system boundary.
+
+system ExternalSample {
+  label "External Nodes"
+
+  service OrderService {
+    label "Order Service"
+
+    domain OrderDomain {
+      label "Order Domain"
+
+      usecase PlaceOrder {
+        label "Place Order"
+
+        resource PaymentAPI [external] {
+          label "Payment API"
+          description "Third-party payment gateway outside our boundary."
+        }
+
+        resource InventoryDB {
+          label "Inventory DB"
+        }
+      }
+    }
+  }
+
+  service PaymentGateway [external] {
+    label "Payment Gateway"
+    description "External payment provider — not owned by this team."
+  }
+
+  OrderService -> PaymentGateway "charges card"
+}
+`,
+    },
+    {
+      path: "facets.krs",
+      content: `// Cross-cutting membership with \`facet\`, and the overlay that shows it
+// (Issue #2174; core notation from \`.krs language v2.0\`).
+//
+// A \`facet\` is a set defined OUTSIDE the architecture — a regulation, a policy,
+// an audit scope. A tag says what an element *is*; a facet says what
+// externally-defined set it *belongs to*.
+//
+// Nothing here changes the diagram on its own. Pick facets in the preview's
+// "Facets" selector: members get a coloured ring, everything else dims, and the
+// legend gains a colour key. The selection lives in the viewer — it is never
+// written to this file, so every reader opens the same picture until they
+// choose something.
+//
+// Things worth trying, in this order:
+//
+//   1. Select \`pii\` alone. Two services and one store light up; the rest recede.
+//      Follow the edges that stay bright — that is where personal data crosses
+//      into the parts of the system that do not hold it.
+//   2. Add \`pci\` (the menu stays open). \`Checkout\` now carries TWO rings, one
+//      per facet, and the ring order is the same on every card that has both.
+//      Multi-membership is drawn, not collapsed to a "primary".
+//   3. Turn on "Group by: team" while both are still selected. The team bands
+//      and the facet rings are readable at the same time — the overlay paints
+//      per element and never touches band geometry.
+//   4. Collapse a team frame. The stub keeps the rings of the members it hides,
+//      so folding does not read as "nothing here belongs".
+//   5. Deselect everything. The diagram returns to exactly what it looked like
+//      before you started.
+
+facet pii {
+  label "Personal data"
+  description "Holds or transits data identifying a natural person (GDPR Art. 4)"
+}
+
+facet pci {
+  label "Cardholder data"
+  description "In scope for PCI DSS — stores, processes or transmits card numbers"
+}
+
+organization Acme {
+  team Storefront {
+    owns Checkout
+    owns Catalogue
+  }
+  team Platform {
+    owns Accounts
+    owns Search
+  }
+}
+
+system Shop {
+  label "Online shop"
+
+  user Customer [human] {
+    label "Customer"
+  }
+
+  client WebApp [web] {
+    label "Web storefront"
+    facets pii
+  }
+
+  service Accounts {
+    label "Accounts"
+    description "Profiles, addresses, consent records"
+    facets pii
+  }
+
+  service Checkout {
+    label "Checkout"
+    description "Takes payment — sees both the buyer and the card"
+    facets pii, pci
+  }
+
+  service Catalogue {
+    label "Catalogue"
+    description "Products and prices. Holds nothing about anyone."
+  }
+
+  service Search {
+    label "Search"
+    description "Query service over the catalogue"
+  }
+
+  database ProfileStore [index] {
+    label "Profile store"
+    facets pii
+  }
+
+  database Ledger {
+    label "Payment ledger"
+    facets pci
+  }
+
+  storage ProductImages {
+    label "Product images"
+  }
+
+  Customer -> WebApp "browses"
+  WebApp -> Accounts "sign in"
+  WebApp -> Checkout "pay"
+  WebApp -> Catalogue "browse"
+  Catalogue -> Search "index"
+  Catalogue -> ProductImages "read"
+  Accounts -> ProfileStore "read/write"
+  Checkout -> Accounts "billing address"
+  Checkout -> Ledger "record"
+}
+`,
+    },
+    {
+      path: "legend.krs",
+      content: `// Diagram legend syntax (Issue #833, #1513).
+//
+// \`legend\` blocks declare color-meaning pairs that render as a footer band
+// below each diagram view. Two entry primitives exist:
+//   swatch <hex>  "label"   — explicit color sample
+//   ref <target>  "label"   — color from the .krs.style cascade for the
+//                              given annotation / tag / id / type
+//
+// View scope is optional. When omitted, the legend appears on the top level
+// of every view. \`system\` / \`deploy\` / \`org\` target a view type; \`service\` /
+// \`domain\` target drill-down views rooted at that node kind (Issue #1513).
+// Matching is exact — each level shows only the legends for its own scope.
+
+system ECPlatform {
+  label "EC Platform"
+
+  service ECommerce {
+    label "EC Site"
+
+    domain Order {
+      label "Order"
+      usecase PlaceOrder { label "Place Order" }
+    }
+  }
+  service Payment [external] {
+    label "Payment"
+  }
+  service Legacy @deprecated {
+    label "Legacy"
+  }
+}
+
+deploy Production {
+  oci "ec-api"      { realizes ECommerce }
+  oci "payment-api" { realizes Payment }
+}
+
+organization Acme {
+  team Backend {
+    label "Backend"
+  }
+}
+
+// Shown on the top level of every view (system / deploy / org).
+legend "Owner team" {
+  swatch #2563EB "Team Backend"
+  swatch #16A34A "Team Frontend"
+  swatch #DC2626 "Third-party"
+
+  ref @deprecated "Deprecated"
+  ref [external]  "External system"
+  ref service     "Service"
+  ref #ECommerce  "EC site (focus)"
+}
+
+// Deploy-only legend — physical layer specifics.
+legend deploy "Hosting tier" {
+  swatch #0EA5E9 "Cloud Run"
+  swatch #F59E0B "On-prem"
+}
+
+// Shown only on drill-down views rooted at a service (e.g. ECommerce).
+legend service "Service internals" {
+  swatch #8B5CF6 "Domain"
+}
+
+// Shown only on drill-down views rooted at a domain (e.g. Order).
+legend domain "Domain vocabulary" {
+  swatch #3B82F6 "Usecase"
+}
+`,
+    },
+    {
+      path: "minimal.krs",
+      content: `// minimal.krs
+// Demonstrates: the smallest valid .krs input — system + 2 services + sync/async edges.
+// Use this as a baseline when isolating rendering bugs.
+
+system Minimal {
+  label "Minimal System"
+
+  service Frontend {
+    label "Frontend"
+  }
+
+  service Backend {
+    label "Backend"
+  }
+
+  Frontend ->  Backend "sync call"
+  Frontend --> Backend "async call"
+}
+`,
+    },
+    {
+      path: "multi-system-root.krs",
+      content: `// multi-system-root.krs
+// Demonstrates: two \`system\` blocks in one file — the multi-system root view.
+//
+// With more than one system declared, karasu lays the systems out side by side
+// instead of drilling into a single one. Each system keeps its own tiers
+// (user / client / service / infra) and is routed against its own bounds, so an
+// edge inside one system never detours around its neighbour.
+//
+// Both systems here have an actor that skips the client tier (Ops -> Orders,
+// Auditor -> Ledger). A straight line for those crosses the client card sitting
+// between the endpoints, so the router has to route around it — this file is
+// what the multi-system routing fences measure.
+
+system Shop {
+  label "Shop"
+  description "Storefront and order handling"
+
+  user Shopper {
+    label "Shopper"
+    role "Buys things"
+  }
+
+  user Ops {
+    label "Ops"
+    role "Operates the platform, bypassing the storefront"
+  }
+
+  client Storefront [web] {
+    label "Storefront"
+    description "Public web storefront"
+  }
+
+  service Orders {
+    label "Orders"
+    description "Order placement and tracking"
+  }
+
+  service Catalog {
+    label "Catalog"
+    description "Product catalog"
+  }
+
+  database ShopDB {
+    label "Shop DB"
+  }
+
+  Shopper -> Storefront "browses"
+  Storefront -> Orders "places orders"
+  Storefront -> Catalog "lists products"
+  Ops -> Orders "reconciles"
+  Orders -> ShopDB "persists"
+  Catalog -> ShopDB "reads"
+}
+
+system Billing {
+  label "Billing"
+  description "Invoicing and the ledger"
+
+  user Auditor {
+    label "Auditor"
+    role "Reads the ledger directly"
+  }
+
+  client BillingConsole [web] {
+    label "Billing Console"
+    description "Internal console for finance"
+  }
+
+  service Invoicing {
+    label "Invoicing"
+    description "Issues and settles invoices"
+  }
+
+  service Ledger {
+    label "Ledger"
+    description "Double-entry record of every movement"
+  }
+
+  database BillingDB {
+    label "Billing DB"
+  }
+
+  Auditor -> Ledger "audits"
+  Auditor -> BillingConsole "uses"
+  BillingConsole -> Invoicing "issues invoices"
+  Invoicing -> Ledger "posts entries"
+  Invoicing -> BillingDB "persists"
+  Ledger -> BillingDB "persists"
+}
+`,
+    },
+    {
+      path: "parallel-edges.krs",
+      content: `// parallel-edges.krs
+// Demonstrates parallel edges between the same node pair. The renderer
+// automatically bundles them: ports spread along the node sides (via the
+// existing port-distribution pass), and labels slide along the edge so
+// "create" and "update" do not stack on top of each other.
+// See ADR-1185 and Issue #1185.
+
+system ParallelEdges {
+  label "Parallel Edges"
+
+  service A { label "Client" }
+  service B { label "API" }
+  service C { label "Worker" }
+
+  // Two sync edges between the same pair: both labels must be readable.
+  A -> B "create"
+  A -> B "update"
+
+  // Sync + async between the same pair: stroke style differs and labels
+  // still need to separate.
+  B -> C "enqueue"
+  B --> C "callback"
+}
+`,
+    },
+    {
+      path: "resource-operations.krs",
+      content: `// Resource CRUD operations on usecases (Issue #1046) and the
+// derived read/write edge differentiation in the usecase view (Issue #1061).
+//
+// \`operations\` declares which CRUD verbs the enclosing usecase performs on a
+// resource. Recognized verbs are \`create\` / \`read\` / \`update\` / \`delete\`.
+// Unknown verbs still parse (preserved for translate adapters that emit
+// \`list\` / \`search\` / \`execute\`) but raise an \`unknown-resource-operation\`
+// warning. Omission keeps the dependency opaque — no diagnostic.
+//
+// In the usecase drill-down view the renderer derives a write-vs-read
+// classification from \`operations\` and shows it via:
+//   - synthesized usecase->resource edge gets a [write] / [read] pseudo-tag
+//   - edge label: "W" for write, "R" for read
+//   - edge stroke-width: 2 for write, 1.5 for read (default style)
+// Hierarchy: read (1.5) < write (2) < cyclic (2.5) keeps cyclic the
+// most attention-grabbing axis.
+//
+// This file is the AT-friendly minimal sample. See \`examples/ja/ec-platform/\`
+// for the same property used in a realistic scenario.
+
+system Demo {
+  label "Resource operations demo"
+
+  database OrderDB {
+    table OrderTable { label "Orders table" }
+  }
+
+  service Backend {
+    domain Order {
+      // Write usecase: edge renders thicker with "W" label.
+      usecase PlaceOrder {
+        label "Accept a new order"
+        resource OrderDB.OrderTable {
+          operations create, read
+        }
+        resource InventoryAPI [external] {
+          label "Inventory check API"
+          operations read
+        }
+      }
+
+      // Multi-line form accumulates verbs; still classified as write
+      // because update is in the list.
+      usecase UpdateOrder {
+        label "Modify an order"
+        resource OrderDB.OrderTable {
+          operations read
+          operations update
+        }
+      }
+
+      // Pure read usecase: edge renders thinner with "R" label.
+      usecase QueryOrder {
+        label "Query order status"
+        resource OrderDB.OrderTable {
+          operations read
+        }
+      }
+
+      // Omission form — opaque dependency. Renders as read (conservative)
+      // with "R" label and the default thin stroke.
+      usecase ListOrders {
+        label "List recent orders"
+        resource OrderDB.OrderTable
+      }
+    }
+  }
+}
+`,
+    },
+    {
+      path: "scoped-boundary.krs",
+      content: `// Scoped boundary — a \`boundary\` declared INSIDE a node block (#2036).
+//
+// Written inside a node block, a boundary is that layer's own concern: its
+// members are the declaring node's DIRECT CHILDREN (bare ids — siblings are
+// already unique), and its frame appears on the declaring node's canvas only.
+// Contrast boundary-clusters.krs, where a top-level boundary gathers nodes by
+// reference from anywhere and fragments across drill levels.
+//
+// Turn "Group by: Boundary" on and drill to see each declaration frame its own
+// canvas:
+//   - \`edge\` (declared in the system block) frames Web + Mobile on the root view.
+//   - \`core\` (declared inside Checkout) frames Ledger + Cart on Checkout's
+//     drill-down view — and nowhere else. Reporting stays outside the frame.
+//
+// A same-named boundary in another scope is a DIFFERENT boundary (identity =
+// declaring scope + id): its frame, label, and collapse state are independent.
+//
+// \`boundary\` is core notation from \`.krs language v2.0\` (docs/spec/syntax.md
+// § Grouping the system view).
+
+system Shop {
+  label "Shop"
+
+  boundary edge {
+    label "Edge services"
+    contains Web
+    contains Mobile
+  }
+
+  service Web { label "Web BFF" }
+  service Mobile { label "Mobile BFF" }
+
+  service Checkout {
+    label "Checkout"
+
+    boundary core {
+      label "Core domains"
+      contains Ledger
+      contains Cart
+    }
+
+    domain Ledger { label "Ledger" }
+    domain Cart { label "Cart" }
+    domain Reporting { label "Reporting (unclustered)" }
+  }
+
+  Web -> Checkout "order"
+  Mobile -> Checkout "order"
+}
+`,
+    },
+    {
+      path: "tag-facet-registers.krs",
+      content: `// The four vocabulary registers, side by side (Issue #2177; \`facet\` and
+// \`boundary\` are core from \`.krs language v2.0\`).
+//
+// karasu has four ways to say something extra about an element, and they are
+// not interchangeable. Picking the wrong one is the most common modelling
+// mistake, so this file puts all four on one diagram:
+//
+//   tag        [external] [index] [web]   what the element IS — its archetype
+//   annotation @deprecated @new           where it is in its LIFECYCLE
+//   facet      facets pci, pii            what externally-defined SET it is in
+//   boundary   boundary … contains        how you want the VIEW grouped
+//
+// The test that separates them: could the element change without the model
+// changing? A database is a database whether or not PCI scope covers it — PCI
+// is imposed from outside, so it is a facet. \`@deprecated\` is a fact about this
+// model's timeline. \`[index]\` says what the store is for. And \`boundary\` is not
+// about the element at all; it is about how you want to look at the picture.
+//
+// Things worth trying, in this order:
+//
+//   1. Select \`pci\` in the "Facets" selector. The members ring; everything else
+//      dims. Notice what the tags did NOT do — \`[external]\` never grouped
+//      anything, because it was never a membership. The Checkout → terminal
+//      edge lights up on its own account: it carries card data, which is a
+//      fact about the hop rather than about either end of it.
+//   2. Open "Membership overview" at the bottom of that menu. The list of
+//      what is in \`pci\` is DERIVED from the \`facets\` lines below; nothing in
+//      this file authors it, so it cannot be out of date.
+//   3. Switch "Group by" to \`boundary\` while \`pci\` is still selected. The
+//      frames and the rings coexist — one is a layout, the other is a paint.
+//   4. Look at \`tag-facet-registers.krs.style\`. \`[facets=pci]\` styles by
+//      membership, which is what an arbitrary \`[pci]\` tag selector used to be
+//      abused for. In \`.krs language v2.0\` that tag rule matches nothing; this is the
+//      replacement.
+
+@import "tag-facet-registers.krs.style"
+
+// ── facet: externally-defined sets ────────────────────────────────
+// The declaration carries the concern's metadata and nothing else. There is no
+// \`contains\` list — membership is written on the elements, so a rename never
+// means editing a distant list. Deliberately no predicates, ever: a facet says
+// WHICH things a policy covers, never what the policy says (ADR-832).
+
+facet pci {
+  label "Cardholder data"
+  description "In scope for the annual PCI DSS assessment"
+  link "https://example.com/policies/pci" "PCI policy"
+}
+
+facet pii {
+  label "Personal data"
+  description "Holds or transits data identifying a natural person"
+}
+
+// ── boundary: a grouping you draw over the view ───────────────────
+// Not a property of the elements. Two people can group the same system
+// differently and both be right, which is why this is by reference and why it
+// only draws under "Group by: boundary".
+
+boundary money {
+  label "Money path"
+  contains Checkout
+  contains Ledger
+}
+
+boundary discovery {
+  label "Discovery"
+  contains Catalogue
+  contains Search
+}
+
+system Shop {
+  label "Online shop"
+
+  user Customer [human] {
+    label "Customer"
+  }
+
+  // \`[web]\` is an archetype: it says what kind of client this is. It is not a
+  // set anyone outside the architecture defined.
+  client WebApp [web] {
+    label "Web storefront"
+    facets pii
+  }
+
+  service Checkout {
+    label "Checkout"
+    description "Takes payment — sees both the buyer and the card"
+    // Two facets at once. Multi-membership is a normal state, not a conflict:
+    // an element can be in PCI scope and hold personal data.
+    facets pci, pii
+  }
+
+  service Accounts {
+    label "Accounts"
+    description "Profiles, addresses, consent records"
+    facets pii
+  }
+
+  service Catalogue {
+    label "Catalogue"
+    description "Products and prices. Holds nothing about anyone."
+  }
+
+  // All three registers on one element, each saying a different kind of thing.
+  service Search @new {
+    label "Search"
+    description "Query service over the catalogue"
+  }
+
+  // \`@deprecated\` is lifecycle; \`[external]\` is archetype. Neither is
+  // membership — the card processor is not "in" PCI scope, it IS the outside.
+  service LegacyCardTerminal [external] @deprecated {
+    label "In-store card terminal"
+    description "Being retired once the new gateway lands"
+  }
+
+  // \`[index]\` is an archetype tag: what the store is for. \`facets pci\` is the
+  // regulation that happens to cover it. Same element, two different registers.
+  database Ledger [index] {
+    label "Payment ledger"
+    facets pci
+  }
+
+  database ProfileStore {
+    label "Profile store"
+    facets pii
+  }
+
+  storage ProductImages {
+    label "Product images"
+  }
+
+  Customer -> WebApp "browses"
+  WebApp -> Accounts "sign in"
+  WebApp -> Checkout "pay"
+  WebApp -> Catalogue "browse"
+  Catalogue -> Search "index"
+  Catalogue -> ProductImages "read"
+  Accounts -> ProfileStore "read/write"
+  Checkout -> Ledger "record"
+
+  // An edge can be in a facet too, and here it has to be. The card number
+  // leaves the building on this hop, so PCI covers the FLOW — the terminal
+  // outside is not in scope, and Checkout being in scope does not say that
+  // this particular hop carries card data. Membership belongs on the edge.
+  Checkout --> LegacyCardTerminal {
+    label  "settle"
+    facets pci
+  }
+}
+`,
+    },
+    {
+      path: "tag-facet-registers.krs.style",
+      content: `/* Styling each register with the selector that belongs to it (Issue #2175).
+ *
+ * The point of this sheet is which selector goes with which register — and that
+ * the facet selector is the one that used to be faked with an arbitrary tag.
+ */
+
+/* facet — style by MEMBERSHIP. This is the selector that replaces writing
+ * \`[pci] { … }\` against a made-up tag. It scores 10, exactly what that tag
+ * selector scored, so a sheet can be migrated one rule at a time.
+ *
+ * The old form, for comparison (matches nothing in \`.krs language v2.0\`):
+ *   [pci] { border-color: #F59E0B; }      ← warns: style-tag-selector-not-builtin
+ */
+[facets=pci] {
+  border-color: #f59e0b;
+  border-width: 2px;
+}
+
+[facets=pii] {
+  border-color: #14b8a6;
+  border-width: 2px;
+}
+
+/* Both at once — repeating the predicate ANDs it, like tags do. */
+[facets=pci][facets=pii] {
+  border-style: dashed;
+}
+
+/* The same selector reaches edges, because \`facets\` is written on edges too.
+ * A tag selector never could: there was no place on an edge to put the tag.
+ */
+edge[facets=pci] {
+  color: #f59e0b;
+  stroke-width: 2px;
+}
+
+/* tag — style by ARCHETYPE. A builtin name, so no deprecation. */
+service[external] {
+  background-color: #f3f4f6;
+}
+
+/* annotation — style by LIFECYCLE. Also a builtin name. */
+@deprecated {
+  opacity: 0.7;
+}
+`,
+    },
+    {
+      path: "team-dependencies.krs",
+      content: `// feature-samples/team-dependencies.krs
+// Demonstrates: the team dependencies karasu *derives* from \`owns\` crossed with
+// the logical edges (#2597). Nothing below declares a team-to-team relation —
+// there is no syntax for one. Every signal here falls out of ownership and the
+// edges that were already written.
+//
+// Four signals, all present in this file:
+//
+//   cross-team          Checkout Team -> Payments Team (sync, 2 inducing edges)
+//                       Checkout Team --> Fulfillment Team (async, kept separate:
+//                       an async dependency is deliberate loose coupling)
+//   nested              Payments Team -> PCI Working Group — real, but the two
+//                       already share a reporting line, so it is not a path
+//                       *across* the org
+//   unowned endpoint    Order DB belongs to no team, so the derivation says how
+//                       much of the model it could not cover
+//   structural overlap  Pricing is owned by the Payments Team but sits inside
+//                       the Checkout Team's service; Settlement likewise sits
+//                       inside its parent team's service. No edge crosses those
+//                       boundaries, yet both pairs must agree on the structure
+//
+// Read it two ways:
+//   - Org tab -> Dependencies draws the graph (solid sync, dashed async, muted
+//     nested). Containment has no arrow, so overlap appears there as a count.
+//   - \`karasu team-dependencies team-dependencies.krs\` prints the full table,
+//     including which node sits inside which.
+
+system Shop {
+  label "Shop"
+
+  service Checkout {
+    label "Checkout"
+
+    domain Cart {
+      label "Cart"
+
+      Cart -> Authorization "Authorize card"
+      Cart --> Picking "Reserve stock"
+      Cart -> Pricing "Quote line items"
+    }
+
+    // Inside Checkout's service, owned by the Payments Team below — this is
+    // the structural overlap. Pricing rules follow the money, the surface it
+    // renders on follows the cart.
+    domain Pricing {
+      label "Pricing"
+    }
+  }
+
+  service Payments {
+    label "Payments"
+
+    domain Authorization {
+      label "Authorization"
+
+      Authorization -> Settlement "Post entry"
+    }
+
+    domain Settlement {
+      label "Settlement"
+    }
+  }
+
+  service Fulfillment {
+    label "Fulfillment"
+
+    domain Picking {
+      label "Picking"
+    }
+  }
+
+  // No team owns this, so every edge reaching it is reported as an unowned
+  // endpoint rather than silently dropped.
+  database OrderDB {
+    label "Order DB"
+  }
+
+  Checkout -> OrderDB "Persist orders"
+}
+
+organization ShopOrg {
+  label "Shop Engineering"
+
+  team "checkout" {
+    label "Checkout Team"
+    owns Checkout
+  }
+
+  team "payments" {
+    label "Payments Team"
+    owns Payments
+    owns Pricing
+
+    team "pci" {
+      label "PCI Working Group"
+      owns Settlement
+    }
+  }
+
+  team "fulfillment" {
+    label "Fulfillment Team"
+    owns Fulfillment
+  }
+}
+`,
+    },
+    {
+      path: "team-ownership.krs",
+      content: `// Team ownership via organization / owns (Issue #1358, #1858).
+//
+// An \`organization\` block declares \`team\`s, and each team \`owns\` the services
+// (or domains) it is responsible for. karasu derives a 1:1 owner index from
+// this — a service card shows its owning team, and organizational queries in
+// the AI chat ("who owns Billing?") resolve through it.
+//
+// This ownership is also the first grouping axis of the system view's
+// "Group by" mode (#1858): with \`groupBy: "team"\` the renderer stacks each
+// team as a dependency-ordered band and draws a boundary frame around it, so
+// the three teams below become three framed groups (Platform depends on
+// Payments and Catalog, which reads top-to-bottom). Un-owned nodes such as the
+// shared Order DB fall into a trailing band below the team frames.
+
+system Marketplace {
+  label "Marketplace"
+
+  // -- Payments team --
+  service Checkout { label "Checkout" }
+  service Billing { label "Billing" }
+
+  // -- Catalog team --
+  service Search { label "Search" }
+  service Inventory { label "Inventory" }
+
+  // -- Platform team --
+  service Gateway { label "API Gateway" }
+  service Notifications { label "Notifications" }
+
+  // -- Shared infra (un-owned) --
+  database OrderDB { label "Order DB" }
+
+  Gateway -> Search "route"
+  Gateway -> Checkout "route"
+  Checkout -> Billing "charge"
+  Checkout -> Inventory "reserve"
+  Search -> Inventory "read"
+  Checkout -> OrderDB "persist"
+  Checkout --> Notifications "order placed"
+}
+
+organization MarketplaceOrg {
+  label "Marketplace Engineering"
+
+  team "payments" {
+    label "Payments"
+    owns Checkout
+    owns Billing
+  }
+
+  team "catalog" {
+    label "Catalog"
+    owns Search
+    owns Inventory
+  }
+
+  team "platform" {
+    label "Platform"
+    owns Gateway
+    owns Notifications
+  }
+}
+`,
+    },
+    {
+      path: "usecase-authorization.krs",
+      content: `// Authorization notes on a usecase — the description + link convention
+// (ADR-832, Issue #1282).
+//
+// karasu deliberately does NOT model runtime authorization (who may call
+// which usecase) in its vocabulary. There is no \`requires\`, no \`policy\`,
+// no \`role: admin\` attribute. Instead, the constraint is written as prose
+// in \`description\` and the canonical rule lives behind a \`link\`.
+//
+// Convention:
+//   - Start the relevant sentence with \`Access:\` (or \`アクセス:\` in JP).
+//   - Add a \`link\` whose label contains \`Authorization policy\`.
+//   - The link is authoritative; the description is a one-sentence hint.
+//   - Do NOT invent attributes inside the description text.
+//
+// See docs/spec/syntax.md "Authorization notes" for the full rationale.
+
+system Billing {
+  label "Billing platform"
+
+  service BillingAPI {
+    label "Billing API"
+
+    domain Refund {
+      label "Refunds"
+
+      // Restricted usecase — Access: prefix + policy link.
+      usecase RefundOrder {
+        label "Refund an order"
+        description "Access: admins and billing operators only. Customers cannot self-serve; partial refunds require dual approval above 10,000 JPY."
+        link "https://policy.example.com/billing/refund-order" "Authorization policy"
+      }
+
+      // Open usecase — no Access: prefix, no policy link. Anyone authenticated
+      // can call this; the absence of the convention is itself a signal.
+      usecase QueryRefundStatus {
+        label "Check refund status"
+        description "Returns the current state of a refund request."
+      }
+    }
+  }
+}
+`,
+    },
+    {
+      path: "users.krs",
+      content: `// users.krs
+// Demonstrates: [human] and [ai] user nodes with role and description properties.
+
+system UserSample {
+  label "User Node Sample"
+
+  user Customer [human] {
+    label "Customer"
+    role "Places orders and tracks shipments"
+    description "A human user who interacts with the storefront."
+  }
+
+  user SupportAgent [human] {
+    label "Support Agent"
+    role "Handles customer inquiries"
+  }
+
+  user RecommendBot [ai] {
+    label "Recommendation Bot"
+    role "Generates personalised product recommendations"
+    description "An AI agent that analyses purchase history."
+  }
+
+  service Storefront {
+    label "Storefront"
+  }
+
+  service SupportPortal {
+    label "Support Portal"
+  }
+
+  Customer      -> Storefront     "browses and orders"
+  SupportAgent  -> SupportPortal  "resolves tickets"
+  RecommendBot  -> Storefront     "injects recommendations"
+}
+`,
+    },
+  ],
+};
+
+/** Styling by facet. The `.krs.style` sheet is the subject of the sample. Source: `examples/ja/facet-styling/`. */
+export const FACET_STYLING_PROJECT: ExampleProject = {
+  name: "facet-styling",
+  files: [
+    {
+      path: "index.krs",
+      content: `// facet-styling/index.krs
+// 対象: \`[facets=<id>]\` による facet 所属でのスタイリング（#2175。\`.krs language v2.0\` から core）。
+//
+// \`facet\` は、アーキテクチャの**外側**で定義された集合 — 規制・ポリシー・監査
+// スコープ — を表す。tag は要素が「何であるか」を述べ、facet は「外部定義の
+// どの集合に属するか」を述べる。所属は要素側に書く（\`facets pci\`）ので、
+// 要素をリネームしても遠くのリストを直しに行く必要がない。
+//
+// このサンプルが扱うのは**スタイリングの側**。隣の \`facets.krs.style\` を一緒に
+// 開くこと。シートは所属で照合しており、これが \`[pci] { … }\` のような任意名
+// タグセレクタを流用していた用途の置き換えにあたる。
+//
+// 描画結果で見るポイントは 3 つ:
+//
+//   1. \`[facets=pci]\` のルールは \`Checkout\`（service）と \`Ledger\`（database）の
+//      両方に一致する。セレクタが問うのは形ではなく集合だから。\`Ledger\` は
+//      その結果を琥珀色の枠として身にまとうが、\`Checkout\` では後続のルールに
+//      上書きされる（3 を参照）。これはカスケードの結果であって、一致しなかった
+//      わけではない。
+//   2. \`Ledger\` にはさらに塗りが付く。\`database[facets=pci]\` が所属と kind を
+//      複合しているため。\`Checkout\` は database ではないので付かない。
+//   3. \`Checkout\` は 2 つの facet に属するので、\`[facets=pci][facets=pii]\`
+//      （スコア 20）が単独 facet のルール（スコア 10）に勝ち、枠が破線になる。
+//      ただし枠の**色**は \`pci\` の琥珀ではなく \`pii\` の teal になる。単独 facet の
+//      2 ルールがスコア 10 で同点なので、後に宣言したほうが勝つ — タグセレクタ
+//      2 つの場合とまったく同じ挙動である。この同点処理こそが、シートを 1
+//      ルールずつ移行できる理由そのものにあたる。
+//
+// プレビューの「ファセット」セレクタの overlay は別物で、読み手側の一時的な
+// 強調でありモデルには何も書かれない。ここで見えているのは作者が書いた
+// スタイルであり、どの読み手にも同じように効く。
+
+@import "facets.krs.style"
+
+facet pci {
+  label "カード会員データ"
+  description "年次 PCI DSS 評価の対象"
+  link "https://example.com/policies/pci" "PCI ポリシー"
+}
+
+facet pii {
+  label "個人情報"
+  description "自然人を識別できるデータを保持または通過させる"
+}
+
+system Shop {
+  label "オンラインショップ"
+
+  user Customer [human] {
+    label "顧客"
+  }
+
+  client WebApp [web] {
+    label "Web ストアフロント"
+    facets pii
+  }
+
+  // 2 つの facet に属する。購入者とカードの両方を見るため。枠が破線になる。
+  service Checkout {
+    label "チェックアウト"
+    description "決済を行う — 購入者とカードの双方を見る"
+    facets pci, pii
+  }
+
+  service Accounts {
+    label "アカウント"
+    description "プロフィール・住所・同意記録"
+    facets pii
+  }
+
+  // どちらの facet にも属さない。誰の情報も持たず、カードも扱わない。
+  service Catalogue {
+    label "カタログ"
+    description "商品と価格"
+  }
+
+  database Ledger {
+    label "決済台帳"
+    facets pci
+  }
+
+  database ProfileStore {
+    label "プロフィールストア"
+    facets pii
+  }
+
+  storage ProductImages {
+    label "商品画像"
+  }
+
+  Customer -> WebApp "閲覧する"
+  WebApp -> Accounts "サインイン"
+  WebApp -> Checkout "支払う"
+  WebApp -> Catalogue "商品を見る"
+  Accounts -> ProfileStore "読み書き"
+  Checkout -> Ledger "記録する"
+  Catalogue -> ProductImages "読み取り"
+}
+`,
+    },
+    {
+      path: "facets.krs.style",
+      content: `/* facet-styling/facets.krs.style
+ *
+ * facet 所属によるスタイリング（#2175。\`.krs language v2.0\` から core の記法）。
+ *
+ * \`[facets=<id>]\` は \`index.krs\` で \`facets <id>\` を宣言した全要素に一致する。
+ * カスケード上の振る舞いはタグセレクタと同じで、これは意図的 — 末尾の移行
+ * ノートを参照。
+ *
+ * fact と style の分離は保たれている: **どの要素が** PCI スコープかは事実なので
+ * \`.krs\` に、PCI スコープが**どう見えるか**は選択なのでここに書く。
+ */
+
+/* kind を問わない所属での照合。service（Checkout）も database（Ledger）も
+   一致する。セレクタが問うのは形ではなく集合だから。 */
+[facets=pci] {
+  border-color: #f59e0b;
+  border-width: 2px;
+}
+
+[facets=pii] {
+  border-color: #14b8a6;
+  border-width: 2px;
+}
+
+/* kind との複合 — PCI スコープの**ストア**だけが塗られる。Checkout は facet に
+   属しているが service なので、kind 側の条件で外れる。 */
+database[facets=pci] {
+  background-color: #fef3c7;
+}
+
+/* 述語を繰り返すと複数所属を同時に要求する（タグと同じく AND）。述語 2 つで
+   スコア 20 になるので、上の単独 facet ルールに勝ち、Checkout は破線になる。 */
+[facets=pci][facets=pii] {
+  border-style: dashed;
+}
+
+/* ── 任意名タグセレクタからの移行 ────────────────────────────────────────
+ *
+ * facet セレクタが無かった頃は、横断的関心事をスタイリングする唯一の手段が
+ * タグ名をでっち上げてそれに一致させることだった:
+ *
+ *     [pci] { border-color: #f59e0b; }
+ *
+ * \`.krs language v2.0\` ではこのルールは何にも一致せず、警告が出る
+ * （\`style-tag-selector-not-builtin\`）。書き換えは 3 手順:
+ *
+ *     1. 関心事を宣言する   — facet pci { label "…" description "…" }
+ *     2. 所属を移す         — 要素の \`[pci]\` を \`facets pci\` に置き換える
+ *     3. セレクタを書き換え — \`[pci]\` を \`[facets=pci]\` にする
+ *
+ * \`[facets=pci]\` のスコアは 10 で、\`[pci]\` と同じ。これがシートを 1 ルールずつ
+ * 移行できる理由で、1 つ書き換えてもどのルールが勝つかが変わらないため、
+ * 一度に全部やり切る必要がない。
+ *
+ * タグには無くて facet にあるものが 3 つある: 関心事自身のメタデータの置き場
+ * （\`description\` / \`link\`）、宣言集合に対する打ち間違い検出（\`facets pcl\` は
+ * 報告されるが \`[pcl]\` は黙って別のタグだった）、そしてプレビューの overlay。
+ */
+`,
+    },
+  ],
+};
+
+/** English variant of FACET_STYLING_PROJECT. Source: `examples/en/facet-styling/`. */
+export const FACET_STYLING_PROJECT_EN: ExampleProject = {
+  name: "facet-styling",
+  files: [
+    {
+      path: "index.krs",
+      content: `// facet-styling/index.krs
+// Demonstrates: styling by facet membership with \`[facets=<id>]\` (#2175; core from \`.krs language v2.0\`).
+//
+// A \`facet\` is a set defined OUTSIDE the architecture — a regulation, a policy,
+// an audit scope. A tag says what an element *is*; a facet says what
+// externally-defined set it *belongs to*. Membership is written on the element
+// (\`facets pci\`), so renaming an element never means editing a distant list.
+//
+// This example is about the STYLING half. Open \`facets.krs.style\` beside it:
+// the sheet matches on membership, which is the replacement for abusing an
+// arbitrary tag selector like \`[pci] { … }\` for the same job.
+//
+// Three things to look for in the rendered diagram:
+//
+//   1. The \`[facets=pci]\` rule matches both \`Checkout\` (a service) and
+//      \`Ledger\` (a database): the selector asks about the set, not the shape.
+//      \`Ledger\` wears the result as the amber border; on \`Checkout\` the amber
+//      is overridden by a later rule (see 3), which is a cascade outcome, not
+//      a matching one.
+//   2. \`Ledger\` also gets a fill, because \`database[facets=pci]\` compounds the
+//      membership with a kind. \`Checkout\` does not — it is not a database.
+//   3. \`Checkout\` is in BOTH facets, so \`[facets=pci][facets=pii]\` (score 20)
+//      beats either single-facet rule (score 10) and dashes its border. Its
+//      border COLOUR, though, is the teal of \`pii\` rather than the amber of
+//      \`pci\`: the two single-facet rules tie at 10, so the later declaration
+//      wins, exactly as two tag selectors would. That tie-break is the whole
+//      reason a sheet can be migrated one rule at a time.
+//
+// The overlay in the preview's "Facets" selector is a separate, viewer-side
+// thing: it paints a temporary highlight and writes nothing. What you see here
+// is the author's own styling, and it is on for every reader.
+
+@import "facets.krs.style"
+
+facet pci {
+  label "Cardholder data"
+  description "In scope for the annual PCI DSS assessment"
+  link "https://example.com/policies/pci" "PCI policy"
+}
+
+facet pii {
+  label "Personal data"
+  description "Holds or transits data identifying a natural person"
+}
+
+system Shop {
+  label "Online shop"
+
+  user Customer [human] {
+    label "Customer"
+  }
+
+  client WebApp [web] {
+    label "Web storefront"
+    facets pii
+  }
+
+  // In both facets: it sees the buyer and the card. Watch the dashed border.
+  service Checkout {
+    label "Checkout"
+    description "Takes payment — sees both the buyer and the card"
+    facets pci, pii
+  }
+
+  service Accounts {
+    label "Accounts"
+    description "Profiles, addresses, consent records"
+    facets pii
+  }
+
+  // In neither facet. Holds nothing about anyone, and takes no card.
+  service Catalogue {
+    label "Catalogue"
+    description "Products and prices"
+  }
+
+  database Ledger {
+    label "Payment ledger"
+    facets pci
+  }
+
+  database ProfileStore {
+    label "Profile store"
+    facets pii
+  }
+
+  storage ProductImages {
+    label "Product images"
+  }
+
+  Customer -> WebApp "browses"
+  WebApp -> Accounts "sign in"
+  WebApp -> Checkout "pay"
+  WebApp -> Catalogue "browse"
+  Accounts -> ProfileStore "read/write"
+  Checkout -> Ledger "record"
+  Catalogue -> ProductImages "read"
+}
+`,
+    },
+    {
+      path: "facets.krs.style",
+      content: `/* facet-styling/facets.krs.style
+ *
+ * Styling by facet membership (#2175; core notation from \`.krs language v2.0\`).
+ *
+ * \`[facets=<id>]\` matches every element that declares \`facets <id>\` in
+ * \`index.krs\`. It behaves like a tag selector in every way that matters to the
+ * cascade, which is deliberate — see the migration note at the bottom.
+ *
+ * Fact and style stay split: WHICH elements are in PCI scope is a fact and
+ * lives in the .krs; what PCI scope LOOKS LIKE is a choice and lives here.
+ */
+
+/* Membership, whatever the kind. Both a service (Checkout) and a database
+   (Ledger) match, because the selector asks about the set, not the shape. */
+[facets=pci] {
+  border-color: #f59e0b;
+  border-width: 2px;
+}
+
+[facets=pii] {
+  border-color: #14b8a6;
+  border-width: 2px;
+}
+
+/* Compound with a kind — only the STORES in PCI scope get the fill. Checkout
+   is in the facet but is a service, so the kind half excludes it. */
+database[facets=pci] {
+  background-color: #fef3c7;
+}
+
+/* Repeat the predicate to require several memberships at once (AND, like
+   tags). Two predicates score 20, so this beats either single-facet rule
+   above and Checkout ends up dashed. */
+[facets=pci][facets=pii] {
+  border-style: dashed;
+}
+
+/* ── Migrating from an arbitrary-name tag selector ──────────────────────────
+ *
+ * Before facet selectors existed, the only way to style a cross-cutting
+ * concern was to invent a tag and match on its name:
+ *
+ *     [pci] { border-color: #f59e0b; }
+ *
+ * In \`.krs language v2.0\` that rule matches nothing and warns
+ * (\`style-tag-selector-not-builtin\`). The rewrite is three steps:
+ *
+ *     1. declare the concern   — facet pci { label "…" description "…" }
+ *     2. move membership       — replace \`[pci]\` on the element with \`facets pci\`
+ *     3. rewrite the selector  — \`[pci]\` becomes \`[facets=pci]\`
+ *
+ * \`[facets=pci]\` scores 10, exactly what \`[pci]\` scored. That is what lets a
+ * sheet be migrated one rule at a time: rewriting a single rule cannot flip
+ * which rule wins, so the change does not have to land all at once.
+ *
+ * Three things the facet gives you that the tag never did: a home for the
+ * concern's own metadata (\`description\`, \`link\`), typo detection against the
+ * declared set (\`facets pcl\` is reported; \`[pcl]\` was silently a different
+ * tag), and the preview's overlay.
+ */
+`,
+    },
+  ],
+};
+
+/** One system split across several files with `@import`. Source: `examples/ja/multi-file-system/`. */
+export const MULTI_FILE_SYSTEM_PROJECT: ExampleProject = {
+  name: "multi-file-system",
+  files: [
+    {
+      path: "index.krs",
+      content: `// multi-file-system/index.krs
+// Demonstrates: splitting one \`system\` block across multiple files
+// (system reopen, whole-file import, deploy + organization propagation).
+// See docs/spec/syntax.md §"Multi-file import semantics".
+
+import "reader.krs"
+import "editor.krs"
+import "moderation.krs"
+
+// The system body declared here wins over the same-id declarations in the
+// imported files (S3: root entry preference). Open reader.krs / editor.krs /
+// moderation.krs directly to see the same system labeled differently.
+system Blog {
+  label "ブログプラットフォームデモ"
+  description "Reader / Editor / Moderation の三面を別ファイルに分割した例"
+}
+`,
+    },
+    {
+      path: "editor.krs",
+      content: `// multi-file-system/editor.krs
+// Authoring slice — editors write drafts, publish articles, and ask
+// Moderation for approval. Single \`Authoring\` service owns the whole
+// write-side lifecycle (drafting → publishing) rather than splitting
+// each step into its own microservice — both responsibilities are one
+// team's purview and share the same DB.
+//
+// Reaches moderation.krs via a named import; moderation.krs is also
+// brought in whole-file by index.krs (DAG re-arrival — no circular
+// warning per S5). Pulls shared databases from infra.krs.
+
+import "infra.krs"
+import { Moderation } from "moderation.krs"
+
+system Blog {
+  label "Editor slice"  // overridden by index.krs (S3)
+
+  user Editor [human] {
+    label "編集者"
+    description "記事を執筆・公開する"
+  }
+
+  client EditorApp {
+    label "編集フロント"
+    description "下書き編集・プレビュー・公開操作"
+  }
+
+  service Authoring {
+    label "編集・公開"
+    description "下書きから公開までの記事ライフサイクル"
+
+    domain "編集" {
+      usecase "下書きを編集する" {
+        resource DraftStore.drafts
+      }
+      usecase "プレビューを生成する" {
+        resource DraftStore.drafts
+      }
+    }
+
+    domain "公開" {
+      usecase "記事を公開する" {
+        resource ArticleDB.articles
+      }
+    }
+  }
+
+  Editor -> EditorApp "記事を書く"
+  EditorApp -> Authoring "下書き保存 / 公開"
+  Authoring -> Moderation "公開前チェック依頼"
+}
+
+// Same-id \`deploy\` / \`organization\` blocks merge with the ones in
+// reader.krs and moderation.krs (S4 union).
+deploy Production {
+  oci authoringContainer {
+    label "authoring-container"
+    runtime "Docker"
+    realizes Authoring
+  }
+}
+
+organization Editorial {
+  team editorial {
+    label "Editorial"
+    owns Authoring
+    member bob {
+      label "Bob"
+      description "Editor-in-chief"
+    }
+  }
+}
+`,
+    },
+    {
+      path: "infra.krs",
+      content: `// multi-file-system/infra.krs
+// Shared infrastructure — databases and external dependencies referenced
+// by services across reader / editor / moderation slices. Declared once
+// here, inside a reopened \`system Blog\` block (S3), and pulled into each
+// slice via \`import "infra.krs"\`. This is the canonical pattern for
+// cross-file shared infra:
+//
+//   - Each slice that uses a shared resource imports infra.krs, so it
+//     renders standalone in the App without unresolved-edge warnings.
+//   - DAG re-arrival (S5) memoizes the resolved infra.krs, so being
+//     reached through reader / editor / moderation doesn't duplicate work.
+//   - The merged model has one canonical declaration per resource — no
+//     ambiguity about where shared infra "lives".
+//   - Declaring inside \`system Blog { ... }\` (rather than at file root)
+//     lets the system-reopen merge in S3 attach the infra to the system,
+//     so the \`unassigned-database\` warning doesn't fire.
+
+system Blog {
+  database ArticleDB {
+    table articles
+  }
+
+  database DraftStore {
+    table drafts
+  }
+
+  // 正本ではない派生の検索インデックス。エンジン（例: ElasticSearch）は
+  // 物理層の store { type ... } で表す。
+  database SearchIndex [index] {
+    table documents
+  }
+
+  database ModerationLog {
+    table decisions
+  }
+
+  service Search [external] {
+    label "全文検索エンジン"
+    description "外部ホスト型の検索サービス。Delivery が直接クエリする"
+  }
+}
+`,
+    },
+    {
+      path: "moderation.krs",
+      content: `// multi-file-system/moderation.krs
+// Trust & Safety slice — owns moderation review and surfaces the external
+// search service that delivery relies on. Reached via two paths: named
+// import from editor.krs (Authoring asks Moderation for approval before
+// publishing) and whole-file import from index.krs. Not a cycle (S5).
+// Pulls shared databases from infra.krs (canonical infra-file pattern).
+
+import "infra.krs"
+
+system Blog {
+  // No label here — S3 leaves index.krs's label intact.
+
+  user Moderator [human] {
+    label "モデレーター"
+    description "投稿内容の審査・公開可否を判断"
+  }
+
+  client AdminApp [web] {
+    label "管理コンソール"
+    description "モデレーション / 公開キュー操作"
+  }
+
+  service Moderation {
+    label "モデレーション"
+    description "公開前チェック・違反通報の処理"
+
+    domain "審査" {
+      usecase "公開可否を判断する" {
+        resource ModerationLog.decisions
+      }
+      usecase "違反通報を処理する" {
+        resource ModerationLog.decisions
+      }
+    }
+  }
+
+  Moderator -> AdminApp "モデレーション操作"
+  AdminApp -> Moderation "判定を記録"
+}
+
+// Same-id \`deploy\` / \`organization\` blocks merge with the ones in
+// reader.krs and editor.krs (S4 union).
+deploy Production {
+  oci moderationContainer {
+    label "moderation-container"
+    runtime "Docker"
+    realizes Moderation
+  }
+}
+
+organization Editorial {
+  team trustSafety {
+    label "Trust & Safety"
+    owns Moderation
+    member carol {
+      label "Carol"
+      description "Trust & Safety lead"
+    }
+  }
+}
+`,
+    },
+    {
+      path: "reader.krs",
+      content: `// multi-file-system/reader.krs
+// Reader-facing slice of the Blog system, plus the deploy and organization
+// views (S4: whole-file import propagates \`deploy\` / \`organization\`).
+//
+// Pulls shared databases from infra.krs so this file renders standalone
+// in the App (canonical infra-file pattern).
+
+import "infra.krs"
+
+system Blog {
+  label "Reader slice"  // overridden by index.krs (S3)
+
+  user Reader [human] {
+    label "読者"
+    description "公開記事を閲覧するエンドユーザー"
+  }
+
+  client ReaderApp {
+    label "閲覧フロント"
+    description "公開ページ・記事詳細・検索"
+  }
+
+  service ArticleDelivery {
+    label "記事配信"
+    description "公開済み記事の配信とキャッシュ"
+
+    domain "配信" {
+      usecase "記事を取得する" {
+        resource ArticleDB.articles
+      }
+      usecase "全文検索する" {
+        resource SearchIndex.documents
+      }
+    }
+  }
+
+  Reader -> ReaderApp "記事を読む"
+  ReaderApp -> ArticleDelivery "記事取得"
+  ArticleDelivery -> Search "クエリ転送"
+}
+
+deploy Production {
+  label "Production"
+  oci readerContainer {
+    label "reader-container"
+    runtime "Docker"
+    realizes ArticleDelivery
+  }
+}
+
+organization Editorial {
+  label "Editorial"
+  team platform {
+    label "Platform"
+    owns ArticleDelivery
+    member alice {
+      label "Alice"
+      description "Tech lead"
+    }
+  }
+}
+`,
+    },
+  ],
+};
+
+/** English variant of MULTI_FILE_SYSTEM_PROJECT, seeded for non-`ja` locales (#1642). Source: `examples/en/multi-file-system/`. */
+export const MULTI_FILE_SYSTEM_PROJECT_EN: ExampleProject = {
+  name: "multi-file-system",
+  files: [
+    {
+      path: "index.krs",
+      content: `// multi-file-system/index.krs
+// Demonstrates: splitting one \`system\` block across multiple files
+// (system reopen, whole-file import, deploy + organization propagation).
+// See docs/spec/syntax.md §"Multi-file import semantics".
+
+import "reader.krs"
+import "editor.krs"
+import "moderation.krs"
+
+// The system body declared here wins over the same-id declarations in the
+// imported files (S3: root entry preference). Open reader.krs / editor.krs /
+// moderation.krs directly to see the same system labeled differently.
+system Blog {
+  label "Blog Platform Demo"
+  description "Example splitting the Reader / Editor / Moderation facets across separate files"
+}
+`,
+    },
+    {
+      path: "editor.krs",
+      content: `// multi-file-system/editor.krs
+// Authoring slice — editors write drafts, publish articles, and ask
+// Moderation for approval. Single \`Authoring\` service owns the whole
+// write-side lifecycle (drafting → publishing) rather than splitting
+// each step into its own microservice — both responsibilities are one
+// team's purview and share the same DB.
+//
+// Reaches moderation.krs via a named import; moderation.krs is also
+// brought in whole-file by index.krs (DAG re-arrival — no circular
+// warning per S5). Pulls shared databases from infra.krs.
+
+import "infra.krs"
+import { Moderation } from "moderation.krs"
+
+system Blog {
+  label "Editor slice"  // overridden by index.krs (S3)
+
+  user Editor [human] {
+    label "Editor"
+    description "Writes and publishes articles"
+  }
+
+  client EditorApp {
+    label "Editor frontend"
+    description "Draft editing, preview, and publishing actions"
+  }
+
+  service Authoring {
+    label "Authoring"
+    description "Article lifecycle from drafting to publishing"
+
+    domain "Editing" {
+      usecase "Edit a draft" {
+        resource DraftStore.drafts
+      }
+      usecase "Generate a preview" {
+        resource DraftStore.drafts
+      }
+    }
+
+    domain "Publishing" {
+      usecase "Publish an article" {
+        resource ArticleDB.articles
+      }
+    }
+  }
+
+  Editor -> EditorApp "Write articles"
+  EditorApp -> Authoring "Save draft / publish"
+  Authoring -> Moderation "Request pre-publish review"
+}
+
+// Same-id \`deploy\` / \`organization\` blocks merge with the ones in
+// reader.krs and moderation.krs (S4 union).
+deploy Production {
+  oci authoringContainer {
+    label "authoring-container"
+    runtime "Docker"
+    realizes Authoring
+  }
+}
+
+organization Editorial {
+  team editorial {
+    label "Editorial"
+    owns Authoring
+    member bob {
+      label "Bob"
+      description "Editor-in-chief"
+    }
+  }
+}
+`,
+    },
+    {
+      path: "infra.krs",
+      content: `// multi-file-system/infra.krs
+// Shared infrastructure — databases and external dependencies referenced
+// by services across reader / editor / moderation slices. Declared once
+// here, inside a reopened \`system Blog\` block (S3), and pulled into each
+// slice via \`import "infra.krs"\`. This is the canonical pattern for
+// cross-file shared infra:
+//
+//   - Each slice that uses a shared resource imports infra.krs, so it
+//     renders standalone in the App without unresolved-edge warnings.
+//   - DAG re-arrival (S5) memoizes the resolved infra.krs, so being
+//     reached through reader / editor / moderation doesn't duplicate work.
+//   - The merged model has one canonical declaration per resource — no
+//     ambiguity about where shared infra "lives".
+//   - Declaring inside \`system Blog { ... }\` (rather than at file root)
+//     lets the system-reopen merge in S3 attach the infra to the system,
+//     so the \`unassigned-database\` warning doesn't fire.
+
+system Blog {
+  database ArticleDB {
+    table articles
+  }
+
+  database DraftStore {
+    table drafts
+  }
+
+  // Derived search index (not the system of record). The engine, e.g.
+  // ElasticSearch, lives in the physical layer via a store { type ... }.
+  database SearchIndex [index] {
+    table documents
+  }
+
+  database ModerationLog {
+    table decisions
+  }
+
+  service Search [external] {
+    label "Full-text search engine"
+    description "Externally hosted search service, queried directly by Delivery"
+  }
+}
+`,
+    },
+    {
+      path: "moderation.krs",
+      content: `// multi-file-system/moderation.krs
+// Trust & Safety slice — owns moderation review and surfaces the external
+// search service that delivery relies on. Reached via two paths: named
+// import from editor.krs (Authoring asks Moderation for approval before
+// publishing) and whole-file import from index.krs. Not a cycle (S5).
+// Pulls shared databases from infra.krs (canonical infra-file pattern).
+
+import "infra.krs"
+
+system Blog {
+  // No label here — S3 leaves index.krs's label intact.
+
+  user Moderator [human] {
+    label "Moderator"
+    description "Reviews submitted content and decides whether to publish"
+  }
+
+  client AdminApp [web] {
+    label "Admin console"
+    description "Moderation and publish-queue operations"
+  }
+
+  service Moderation {
+    label "Moderation"
+    description "Pre-publish review and handling of abuse reports"
+
+    domain "Review" {
+      usecase "Decide whether to publish" {
+        resource ModerationLog.decisions
+      }
+      usecase "Handle an abuse report" {
+        resource ModerationLog.decisions
+      }
+    }
+  }
+
+  Moderator -> AdminApp "Moderation actions"
+  AdminApp -> Moderation "Record decisions"
+}
+
+// Same-id \`deploy\` / \`organization\` blocks merge with the ones in
+// reader.krs and editor.krs (S4 union).
+deploy Production {
+  oci moderationContainer {
+    label "moderation-container"
+    runtime "Docker"
+    realizes Moderation
+  }
+}
+
+organization Editorial {
+  team trustSafety {
+    label "Trust & Safety"
+    owns Moderation
+    member carol {
+      label "Carol"
+      description "Trust & Safety lead"
+    }
+  }
+}
+`,
+    },
+    {
+      path: "reader.krs",
+      content: `// multi-file-system/reader.krs
+// Reader-facing slice of the Blog system, plus the deploy and organization
+// views (S4: whole-file import propagates \`deploy\` / \`organization\`).
+//
+// Pulls shared databases from infra.krs so this file renders standalone
+// in the App (canonical infra-file pattern).
+
+import "infra.krs"
+
+system Blog {
+  label "Reader slice"  // overridden by index.krs (S3)
+
+  user Reader [human] {
+    label "Reader"
+    description "End users who browse published articles"
+  }
+
+  client ReaderApp {
+    label "Reader frontend"
+    description "Public pages, article details, and search"
+  }
+
+  service ArticleDelivery {
+    label "Article Delivery"
+    description "Delivery and caching of published articles"
+
+    domain "Delivery" {
+      usecase "Fetch an article" {
+        resource ArticleDB.articles
+      }
+      usecase "Full-text search" {
+        resource SearchIndex.documents
+      }
+    }
+  }
+
+  Reader -> ReaderApp "Read articles"
+  ReaderApp -> ArticleDelivery "Fetch articles"
+  ArticleDelivery -> Search "Forward queries"
+}
+
+deploy Production {
+  label "Production"
+  oci readerContainer {
+    label "reader-container"
+    runtime "Docker"
+    realizes ArticleDelivery
+  }
+}
+
+organization Editorial {
+  label "Editorial"
+  team platform {
+    label "Platform"
+    owns ArticleDelivery
+    member alice {
+      label "Alice"
+      description "Tech lead"
+    }
+  }
+}
+`,
+    },
+  ],
+};

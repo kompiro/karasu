@@ -61,8 +61,7 @@
       "files": ["packages/*/src/**/*.{ts,tsx,mts,cts}"],
       "excludeFiles": [
         "**/*.{test,spec}.{ts,tsx,mts,cts}",
-        "**/*.generated.ts",
-        "packages/core/src/builtins/examples.ts"
+        "**/*.generated.ts"
       ],
       "rules": {
         "max-lines": ["error", { "max": 600 }]

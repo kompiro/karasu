@@ -5,9 +5,8 @@ paths:
 
 # ソースの行数予算
 
-**到達状態**: `packages/*/src` の `.ts` / `.tsx` / `.mts` / `.cts`（テスト・`*.d.ts`・`*.generated.ts`・
-`packages/core/src/builtins/examples.ts` を除く）は、`.oxlintrc.json` の既定予算（600 行）以下か、
-ファイルごとの pin の行数ちょうどにある。次の 2 つが通れば成り立っている:
+**到達状態**: `packages/*/src` の `.ts` / `.tsx` / `.mts` / `.cts`（テスト・`*.d.ts`・`*.generated.ts` を
+除く）は、`.oxlintrc.json` の既定予算（600 行）以下か、ファイルごとの pin の行数ちょうどにある。次の 2 つが通れば成り立っている:
 
 ```bash
 pnpm lint
