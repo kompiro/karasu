@@ -70,6 +70,10 @@ gh がチェックアウト中のブランチを origin の repo へ push する
 - **CLI を飛ばす指定（`KARASU_LOCAL_REVIEW_SKIPPED`）は Low の create では受け付けない**。Review tier は CLI を
   飛ばした Low の記録を通さないので、受け付けると auto-merge できない PR ができる。CLI が使えない環境では
   `risk: medium` に上げて draft から作る
+- **auto-merge の適用条件は変えない。** タイトルが `docs(adr): ` で始まること、差分が ADR-2331 と
+  `.claude/rules/adr.md`「適用条件」の許す範囲だけであること、`origin/main` を fetch した直後に分類器が `low` を
+  出すことは、これまでどおり PR を作る前に確かめる。変わるのは、作成と auto-merge のあいだから draft の段階を
+  抜くことだけである
 - High・Design・Medium の PR はこれまでどおり draft で作り、`gh pr ready` と converge のフック（ADR-3333）を通る
 - ADR-3342 のうち、`gh pr ready` のゲートと、それが分からないときに通す挙動は変えない
 
@@ -105,5 +109,5 @@ gh がチェックアウト中のブランチを origin の repo へ push する
   タイトルを見るのは、分類器より弱い判定を二重に持つことになる
 - **遅れて付いたラベルを `labeled` で直す**: 30 秒より遅れて `risk: low` が届くと、`risk: high` と両方が残る。
   ワークフロー自身が付けた `risk: high` と人が付けたものを区別できないので、自動では外せない。両方が残った PR は
-  Review tier が厳しい方の High として扱い auto-merge を止めるので、安全側に倒れる。外し方は
-  `.claude/rules/adr.md` に書いた
+  Review tier が厳しい方の High として扱い auto-merge を止めるので、安全側に倒れる。そのときは
+  `gh pr edit <N> --remove-label "risk: high"` で外す（`.claude/rules/adr.md` にも同じ手順を書いた）
