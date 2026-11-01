@@ -18,7 +18,7 @@ related_to:
 scope:
   packages: [core, app, i18n]
 assumptions:
-  - "symbol: packages/core/src/parser/parser.ts :: parseEdgeBlock"
+  - "symbol: packages/core/src/parser/edge-parser.ts :: parseEdgeBlock"
   - "symbol: packages/core/src/types/ast.ts :: unionEdgeFacets"
   - "symbol: packages/core/src/renderer/facet-overlay.ts :: facetWalkRoots"
   - "file: docs/acceptance/edge-property-block.md"

@@ -13,7 +13,7 @@ assumptions:
   - "symbol: packages/core/src/types/ast.ts :: boundaryScopeKey"
   - "symbol: packages/core/src/types/ast.ts :: scopedBoundaryGroupId"
   - "symbol: packages/core/src/types/ast.ts :: displayGroupId"
-  - "symbol: packages/core/src/parser/parser.ts :: BOUNDARY_HOST_KIND"
+  - "symbol: packages/core/src/parser/block-contents.ts :: BOUNDARY_HOST_KIND"
   - "symbol: packages/core/src/renderer/group-labels.ts :: buildGroupLabelIndex"
   - "file: packages/core/src/renderer/scoped-boundary-render.test.ts"
   - "file: examples/en/feature-samples/scoped-boundary.krs"

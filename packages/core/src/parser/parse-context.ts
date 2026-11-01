@@ -34,8 +34,10 @@ export interface ParseContext extends TokenCursor {
    */
   discardDiagnostics<T>(parse: () => T): T;
   /**
-   * Parse a node declaration when the next token opens one, for a block that
-   * does not take nodes but must still read a misplaced one whole (#3463).
+   * Parse a node declaration when the next token opens one. The block parsers
+   * reach node declarations through this, since node-parser.ts imports them
+   * (#3441): a block's child nodes, and a misplaced one that a block which
+   * takes no nodes must still read whole (#3463).
    */
   tryParseNodeDecl(): KrsNode | undefined;
 }

@@ -18,6 +18,7 @@ discovered_from:
   - issue: "#2917"
   - issue: "#2819"
   - issue: "#2933"
+  - issue: "#3111"
   - root_cause_file: "packages/core/src/resolver/style-resolver.ts"
 related_to:
   - TPL-2167
@@ -150,6 +151,24 @@ key を scope しても**引く側**が bare id のままなら同じ取りこ�
 path」が次元を落とした例で、#2817 と同じく、集めた時点で持っていた次元を引く側まで
 渡さないと同じ取りこぼしが起きる。
 
+## 既知の consumer: view extract の dedup・抑止キー（#3111）
+
+#2819 は compare モードで状態を突き合わせる diff キーに範囲を絞り、同じ形の
+`${from}->${to}` join を残した。結果を格納するマップではなく、**要素を捨てるかどうかを
+決める集合**（dedup の `seen`、明示 edge による派生 edge の抑止 `explicitKeys`、集約の
+`groupKey`）も identity キーである。衝突すると上書きではなく、別の要素が黙って消える。
+
+- 集約 edge の `groupKey` が `a -> "b->c"` と `"a->b" -> c` を 1 本に集約し、後者が描かれなかった
+- 明示 edge `a -> "b->c"` が、無関係な派生 edge `"a->b"` → `c` を抑止した
+- caller ghost の判定と `buildNodePathIndex` の同 path 畳みが `nodePathKey` を identity に
+  使い、domain `S.a.b` が container `"a.b"` の caller として描かれ、`system "Shop.x"` 配下の
+  候補が消えた
+
+直し方は、edge の組は `edgeKey`、種別込みは `edgeKindKey`（`view/edge-key.ts`）、
+path は segment の区切りを保つ injective な形に揃えること（caller ghost の判定は
+`nodePathIdentityKey`、`buildNodePathIndex` の同 path 畳みは既に import 済みの `nodePathRefId`）。
+書き込みと読み取りが同じヘルパーを通る点は #2819 と同じである。
+
 ## 関連テスト
 
 - `packages/core/src/renderer/svg-renderer.test.ts` — "keeps the sync edge solid when a parallel async edge exists between the same pair"
@@ -161,6 +180,8 @@ path」が次元を落とした例で、#2817 と同じく、集めた時点で�
 - `packages/core/src/compile/injective-identity-keys.test.ts` — "a node whose id carries a dot keeps its frame (#2819)" / "an edge whose endpoint carries `->` keeps its own diff state (#2819)"
 - `packages/core/src/diff/view-diff.test.ts` — "edgeKey (#2819)"
 - `packages/core/src/diff/org-view-diff.test.ts` — "ownsEdgeKey (#2819)"
+- `packages/core/src/compile/injective-identity-keys.test.ts` — "separator-joined keys left after #2819 (#3111)"
+- `packages/core/src/view/edge-key.test.ts` — "edgeKindKey (#3111)"
 - `packages/core/src/renderer/static-bundle-same-id.test.ts` — "one level per anchor id (#2933) › draws the later system's subtree from its own nodes"
 - `packages/core/src/renderer/facet-overview.test.ts` — "buildFacetOverview › keeps two same-named nodes in different scopes apart (TPL-1352)" / "keeps two same-arrow edges in different scopes apart (TPL-1352)"
 

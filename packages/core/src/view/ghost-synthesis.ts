@@ -1,5 +1,5 @@
 import type { KrsNode, KrsEdge, NodeIdPath } from "../types/ast.js";
-import { nodePathKey } from "../parser/node-path.js";
+import { nodePathIdentityKey, nodePathKey } from "../parser/node-path.js";
 import { edgeEndpointRef, type GhostEndpointMatch } from "../resolver/edge-endpoint.js";
 import { nodeId, withChildAnchoredEdges } from "./anchored-edges.js";
 import { buildDomainServiceMap } from "./derived-edges.js";
@@ -17,7 +17,9 @@ function buildCallerGhostSystems(
   allSystems: KrsNode[],
   resolveGhost: (ref: NodeIdPath) => GhostEndpointMatch | undefined,
 ): { callerGhostSystems: GhostSystem[]; callerGhostSystemEdges: KrsEdge[] } {
-  const targetKey = nodePathKey([containerSystemId, containerId]);
+  // Identity, not text (#3111): a dotted join let the domain `S.a.b` (`b` in
+  // service `a`) answer for the container `"a.b"` and draw its caller there.
+  const targetKey = nodePathIdentityKey([containerSystemId, containerId]);
   const map = new Map<string, GhostSystem>();
   const edges: KrsEdge[] = [];
 
@@ -31,7 +33,7 @@ function buildCallerGhostSystems(
       // (#2577). For `Sys.Child` the resolved path is that same string, so
       // existing caller frames are unchanged.
       const match = resolveGhost(edgeEndpointRef(edge.to));
-      if (!match || nodePathKey(match.path) !== targetKey) continue;
+      if (!match || nodePathIdentityKey(match.path) !== targetKey) continue;
       const callerService = sys.children.find((c) => c.id === edge.from);
       if (!callerService) continue;
       const callerPath = [sys.id, callerService.id];
@@ -75,8 +77,8 @@ function buildGhostSystems(
       map.set(sysId, { systemNode: match.system, visibleServices: [] });
     }
     const gs = map.get(sysId)!;
-    const key = nodePathKey(match.path);
-    if (!gs.visibleServices.some((s) => nodePathKey(s.path) === key)) {
+    const key = nodePathIdentityKey(match.path);
+    if (!gs.visibleServices.some((s) => nodePathIdentityKey(s.path) === key)) {
       const subLabel = ghostSubLabel(match);
       gs.visibleServices.push({
         node: match.node,

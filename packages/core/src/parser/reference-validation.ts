@@ -761,7 +761,7 @@ export function buildNodePathIndex(
     const seenPaths = new Set<string>();
     const distinct: PathCandidate[] = [];
     for (const candidate of list) {
-      const key = nodePathKey(candidate.path);
+      const key = nodePathRefId(candidate.path);
       if (candidate.path.length > 1 && seenPaths.has(key)) continue;
       seenPaths.add(key);
       distinct.push(candidate);
