@@ -83,4 +83,4 @@ deploy "本番環境" {
 **Expected:**
 - The deploy container title shows `"本番環境"`.
 - The deploy node box shows `"order-service"`.
-- No parse errors are shown in the warning panel.
+- The diagnostic banner shows no error or warning, and the warning panel shows no warning-severity item (info notes may appear; TPL-1608).

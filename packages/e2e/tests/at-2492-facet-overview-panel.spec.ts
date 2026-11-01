@@ -10,6 +10,7 @@ import { bootMemoryApp } from "../fixtures/boot.js";
  *
  * Coverage map (test name → AT bullet):
  *  - "Membership overview opens below the toolbar, lists each facet's members and closes" → AC-3
+ *  - "The panel sits above the diagram, below the toolbar's menus and below the focus canvas" → AC-4
  */
 
 const KRS = `facet pii { label "Personal data" }
@@ -55,5 +56,69 @@ test.describe("AT-2492 facet overview panel", () => {
 
     await panel.getByRole("button", { name: "Close the facet overview" }).click();
     await expect(panel).toHaveCount(0);
+  });
+
+  // TPL-1468 (4): the stacking order is a computed fact, so it is read back with
+  // `elementFromPoint` rather than from the panel's `z-index` rule.
+  test("The panel sits above the diagram, below the toolbar's menus and below the focus canvas", async ({
+    page,
+    opfs,
+  }) => {
+    await bootMemoryApp(page, opfs, KRS);
+
+    await page.getByRole("button", { name: /Facets/ }).click();
+    await page.getByRole("menuitem", { name: /Membership overview/ }).click();
+    const panel = page.getByRole("dialog", { name: "Facet membership" });
+    await expect(panel).toBeVisible();
+
+    const topmostIsInside = (selector: string, x: number, y: number) =>
+      page.evaluate(
+        ([sel, px, py]) => {
+          // A modal Radix menu sets `pointer-events: none` on <body> while it is
+          // open, which drops the panel out of hit testing whatever its
+          // z-index. Lift it for the probe so the paint order decides.
+          const body = document.body.style;
+          const saved = body.pointerEvents;
+          body.pointerEvents = "auto";
+          const hit = document.elementFromPoint(px as number, py as number);
+          body.pointerEvents = saved;
+          return hit?.closest(sel as string) != null;
+        },
+        [selector, x, y] as const,
+      );
+
+    // Above the diagram: the panel floats over the preview, so its centre is its own.
+    const box = (await panel.boundingBox())!;
+    expect(
+      await topmostIsInside(".facet-overview-panel", box.x + box.width / 2, box.y + box.height / 2),
+    ).toBe(true);
+
+    // Below portalled menus: the toolbar's Docs menu drops down over the panel's
+    // top edge, and the menu wins where the two overlap.
+    await page.getByRole("button", { name: "Documentation links" }).click();
+    const menu = page.getByRole("menu");
+    await expect(menu).toBeVisible();
+    const m = (await menu.boundingBox())!;
+    const left = Math.max(m.x, box.x);
+    const right = Math.min(m.x + m.width, box.x + box.width);
+    const top = Math.max(m.y, box.y);
+    const bottom = Math.min(m.y + m.height, box.y + box.height);
+    expect(right).toBeGreaterThan(left);
+    expect(bottom).toBeGreaterThan(top);
+    expect(await topmostIsInside("[role='menu']", (left + right) / 2, (top + bottom) / 2)).toBe(
+      true,
+    );
+
+    // Below the focus canvas: it covers the whole preview from the layer above
+    // (--z-panel), so the panel's centre belongs to the canvas once it opens.
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await page.locator('.preview-container svg [data-node-id="Billing"]').first().hover();
+    await page.locator(".node-focus-pill").click();
+    await expect(page.locator(".focus-canvas")).toBeVisible();
+    await expect(panel).toBeVisible();
+    expect(
+      await topmostIsInside(".focus-canvas", box.x + box.width / 2, box.y + box.height / 2),
+    ).toBe(true);
   });
 });
