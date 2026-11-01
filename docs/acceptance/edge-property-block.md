@@ -8,7 +8,7 @@ type: product
 - **関連 Issue**: [#2543](https://github.com/kompiro/karasu/issues/2543)
 - **設計 (ADR)**: [ADR-2209](../adr/2209-edge-property-block.md)
 - **対象ファイル**:
-  - `packages/core/src/parser/parser.ts`（`parseEdge` / `parseEdgeBlock`）
+  - `packages/core/src/parser/edge-parser.ts`（`parseEdge` / `parseEdgeBlock`）
   - `packages/core/src/formatter/formatter.ts`（`renderEdge`）
   - `packages/core/src/renderer/edge-routing.ts`（`data-edge-description` / `data-edge-links`）
   - `packages/app/src/components/PreviewPane.tsx` / `EdgeDetailPanel.tsx`

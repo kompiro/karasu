@@ -29,7 +29,7 @@ export function isAnchoredAt(child: KrsNode, edge: KrsEdge): boolean {
 
 /**
  * The block kinds the parser binds to their own id, mirroring the `parentId`
- * it passes in `parser.ts` (`kind === "service" || "domain" || "entity"`). Only
+ * it passes in `parser/node-parser.ts` (`kind === "service" || "domain" || "entity"`). Only
  * these raise `edge-source-mismatch`, so only these have a diagnostic to carry
  * the signal when the render side drops an edge.
  */
