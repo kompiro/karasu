@@ -126,5 +126,7 @@ describe("compareCheckouts", () => {
     });
     expect(result.differences).toEqual([]);
     expect(result.compared).toBeGreaterThan(1000);
+    // The baseline the verdict's success floor is set against: nothing fails.
+    expect(result.succeeded).toBe(result.compared);
   }, 120_000);
 });

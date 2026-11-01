@@ -31,7 +31,13 @@ import { dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 import { headSha, mergeBase, withBaseWorktree } from "../pr-shots/base-worktree.ts";
-import { compareOutputs, countKeys, type ComparisonResult, type SideOutput } from "./compare.ts";
+import {
+  compareOutputs,
+  countKeys,
+  countSucceeded,
+  type ComparisonResult,
+  type SideOutput,
+} from "./compare.ts";
 import { buildManifest, mergeInputs } from "./inputs.ts";
 
 const SCRIPT_ROOT = resolve(import.meta.dirname, "../..");
@@ -129,6 +135,7 @@ export function compareCheckouts(options: CompareOptions): ComparisonResult {
       baseSha: options.baseSha,
       headSha: options.headSha,
       compared: countKeys(base, head),
+      succeeded: countSucceeded(base, head),
       differences: compareOutputs(base, head),
     };
   } finally {

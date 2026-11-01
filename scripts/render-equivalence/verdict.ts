@@ -28,6 +28,14 @@ import type { ComparisonResult, Difference } from "./compare.ts";
 /** How many view keys `verdict.json` and the summary list; the count is always exact. */
 export const LISTED = 200;
 
+/**
+ * The share of outputs that must succeed on both sides for "nothing differs"
+ * to mean something. Every output succeeds today; a run below this share is
+ * a broken environment (a missing file, a loader problem) failing alike on
+ * both sides, and is read as incomparable rather than equal.
+ */
+const MIN_SUCCEEDED_SHARE = 0.9;
+
 export interface Verdict {
   version: 1;
   status: "equal" | "different" | "incomparable";
@@ -67,6 +75,8 @@ export function readResult(text: string | null): ComparisonResult | null {
   const result = value as Record<string, unknown>;
   if (result.version !== 1) return null;
   if (typeof result.compared !== "number" || result.compared <= 0) return null;
+  if (typeof result.succeeded !== "number") return null;
+  if (result.succeeded < result.compared * MIN_SUCCEEDED_SHARE) return null;
   if (!Array.isArray(result.differences) || !result.differences.every(isDifference)) return null;
   return value as ComparisonResult;
 }
@@ -96,12 +106,14 @@ export function summarize(verdict: Verdict, result: ComparisonResult | null): st
   const kind = verdict.refactor ? "a `refactor` PR" : "not a `refactor` PR";
   if (verdict.status === "incomparable") {
     lines.push(
-      `The comparison did not finish (see the failed step above). This is ${kind}, so the check ` +
+      `The comparison did not finish, or too few outputs rendered on both sides to compare (see ` +
+        `the steps above and the artifact's result.json). This is ${kind}, so the check ` +
         (verdict.refactor ? "fails: equivalence was not shown." : "passes."),
     );
   } else if (verdict.status === "equal" && result !== null) {
     lines.push(
-      `No difference in ${result.compared} outputs between the merge base ` +
+      `No difference in ${result.compared} outputs (${result.succeeded} rendered on both sides) ` +
+        `between the merge base ` +
         `(\`${result.baseSha.slice(0, 7)}\`) and HEAD (\`${result.headSha.slice(0, 7)}\`).`,
     );
   } else if (result !== null) {

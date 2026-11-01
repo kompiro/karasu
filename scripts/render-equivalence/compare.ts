@@ -76,7 +76,18 @@ export interface ComparisonResult {
   headSha: string;
   /** How many keys were compared (the union of both sides). */
   compared: number;
+  /** How many of them succeeded on both sides; the rest failed on one side or both. */
+  succeeded: number;
   differences: Difference[];
+}
+
+/**
+ * Keys that succeeded on both sides. Identical failures count as equal, so a
+ * broken environment that fails every output on both sides alike would read
+ * as "nothing differs"; `verdict.ts` reads too few successes as incomparable.
+ */
+export function countSucceeded(base: SideOutput, head: SideOutput): number {
+  return Object.keys(base).filter((key) => base[key].ok && head[key]?.ok).length;
 }
 
 /** Keys either side produced, counted once. */

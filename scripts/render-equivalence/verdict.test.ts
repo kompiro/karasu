@@ -7,6 +7,7 @@ const result = (keys: string[] = []): ComparisonResult => ({
   baseSha: "a".repeat(40),
   headSha: "b".repeat(40),
   compared: 100,
+  succeeded: 100,
   differences: keys.map((key) => ({ key, reason: "output" })),
 });
 
@@ -63,6 +64,7 @@ describe("decide", () => {
 describe("readResult", () => {
   it("reads what run.ts writes", () => {
     expect(readResult(JSON.stringify(result(["x"])))).toEqual(result(["x"]));
+    expect(readResult(JSON.stringify({ ...result(), succeeded: 90 }))).not.toBeNull();
   });
 
   // Any of these means the comparison did not finish the way run.ts finishes
@@ -72,6 +74,11 @@ describe("readResult", () => {
     ["not JSON", "{"],
     ["another version", JSON.stringify({ ...result(), version: 2 })],
     ["nothing compared", JSON.stringify({ ...result(), compared: 0 })],
+    ["no success count", JSON.stringify({ ...result(), succeeded: undefined })],
+    // Every output failing alike on both sides is a broken environment, not
+    // an equivalent refactor.
+    ["nothing succeeded", JSON.stringify({ ...result(), succeeded: 0 })],
+    ["too few succeeded", JSON.stringify({ ...result(), succeeded: 89 })],
     ["differences missing", JSON.stringify({ ...result(), differences: undefined })],
     ["a malformed difference", JSON.stringify({ ...result(), differences: [{ key: 1 }] })],
   ])("returns null for %s", (_label, text) => {

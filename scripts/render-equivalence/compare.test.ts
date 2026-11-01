@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { compareOutputs, countKeys, type Outcome, type SideOutput } from "./compare.ts";
+import {
+  compareOutputs,
+  countKeys,
+  countSucceeded,
+  type Outcome,
+  type SideOutput,
+} from "./compare.ts";
 
 const ok = (output: string, diagnostics: string[] = []): Outcome => ({
   ok: true,
@@ -74,5 +80,13 @@ describe("compareOutputs", () => {
 describe("countKeys", () => {
   it("counts the union of both sides once", () => {
     expect(countKeys({ a: ok("1"), b: ok("1") }, { b: ok("1"), c: ok("1") })).toBe(3);
+  });
+});
+
+describe("countSucceeded", () => {
+  it("counts only the keys that succeeded on both sides", () => {
+    const base: SideOutput = { a: ok("1"), b: failed("E"), c: ok("1"), d: ok("1") };
+    const head: SideOutput = { a: ok("2"), b: failed("E"), c: failed("E") };
+    expect(countSucceeded(base, head)).toBe(1);
   });
 });
