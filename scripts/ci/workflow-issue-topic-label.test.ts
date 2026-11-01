@@ -43,12 +43,22 @@ function ghIssueCreateSites(file: string, lines: readonly string[]): IssueSite[]
   return sites;
 }
 
-/** The text between the parenthesis at `open` and the one that closes it. */
+/**
+ * The text between the parenthesis at `open` and the one that closes it.
+ * Parentheses inside a string literal (`"..."`, `'...'`, `` `...` ``) are not
+ * counted, so a `(` in a title cannot carry the call on into the next one.
+ */
 function callArguments(text: string, open: number): string {
   let depth = 0;
+  let quote: string | null = null;
   for (let i = open; i < text.length; i++) {
-    if (text[i] === "(") depth++;
-    else if (text[i] === ")" && --depth === 0) return text.slice(open + 1, i);
+    const c = text[i];
+    if (quote !== null) {
+      if (c === "\\") i++;
+      else if (c === quote) quote = null;
+    } else if (c === '"' || c === "'" || c === "`") quote = c;
+    else if (c === "(") depth++;
+    else if (c === ")" && --depth === 0) return text.slice(open + 1, i);
   }
   return text.slice(open + 1);
 }
@@ -59,7 +69,8 @@ function callArguments(text: string, open: number): string {
  * labels, so it fails rather than borrowing a label it may not own.
  */
 function issuesCreateSites(file: string, text: string): IssueSite[] {
-  return [...text.matchAll(/\.issues\.create\(/g)].flatMap((m) => {
+  // `\b` rather than a leading `.`, so a destructured `issues.create(` counts.
+  return [...text.matchAll(/\bissues\.create\s*\(/g)].flatMap((m) => {
     const lineStart = text.lastIndexOf("\n", m.index) + 1;
     if (/^\s*(?:#|\/\/)/.test(text.slice(lineStart, m.index))) return [];
     const args = callArguments(text, m.index + m[0].length - 1);
