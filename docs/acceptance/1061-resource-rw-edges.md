@@ -9,7 +9,7 @@ type: product
 - **対象ファイル**:
   - `packages/core/src/spec/operations.ts`
   - `packages/core/src/spec/operations.test.ts`
-  - `packages/core/src/view/view-extract.ts`
+  - `packages/core/src/view/resource-promotion.ts`
   - `packages/core/src/view/view-extract.test.ts`
   - `packages/core/src/builtins/default-style.ts`
   - `docs/spec/tags-annotations.md`
@@ -23,7 +23,7 @@ type: product
 - [x] AT-A: `isWriteOperation` が `create` / `update` / `delete` のいずれかで true、それ以外（`read` のみ・空・undefined・unknown verb）で false を返す
   > ✅ Automated — `packages/core/src/spec/operations.test.ts` › `isWriteOperation`
 
-- [x] AT-B: `view-extract.ts` `deriveUsecaseResourceNodes` が write 系 verb を含む resource への synthesized edge に `[write]` タグと `label: "W"` を付与する
+- [x] AT-B: `resource-promotion.ts` `deriveUsecaseResourceNodes` が write 系 verb を含む resource への synthesized edge に `[write]` タグと `label: "W"` を付与する
   > ✅ Automated — `packages/core/src/view/view-extract.test.ts` › `tags synthetic usecase→resource edges as write and labels them W when operations include create/update/delete`
 
 - [x] AT-C: `operations` 未指定または read のみの resource への synthesized edge に `[read]` タグと `label: "R"` を付与する
