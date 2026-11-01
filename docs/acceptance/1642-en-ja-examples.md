@@ -39,9 +39,9 @@ docs gallery の en ページが日本語ラベルの図を出していた問題
 ### AC-4: 完全対称化（Phase B — `examples/<lang>/<name>/`）
 
 - [x] 全 example が `examples/ja/<name>/`（日本語著者）/ `examples/en/<name>/`（英語著者）へ移行し、root 直下は `en/` `ja/` `github-actions/` `README.md` のみ
-  > ✅ Automated — `packages/core/src/examples.test.ts` の byte 一致ガードが移行後パス（`examples/en/feature-samples` / `examples/ja/multi-file-system` / `examples/ja/{deploy-only,org-only}`）で通る
+  > ✅ Automated — `scripts/examples/gen-builtin-examples.ts` の登録表が移行後パス（`examples/en/feature-samples` / `examples/ja/multi-file-system` / `examples/ja/{deploy-only,org-only}`）から同梱内容を生成し、`scripts/examples/gen-builtin-examples.test.ts` › `built-in examples codegen (#3345)` › `the committed module matches a fresh render of examples/` が通る（#3345 以前は `examples.test.ts` の byte 一致ガードが担っていた）
 - [x] bundled example の移動後も `examples.ts` 同梱内容と on-disk が byte 一致し、ADR の `assumptions:` file パスも実在を維持する
-  > ✅ Automated — `pnpm --filter @karasu-tools/core run test`（examples.test）+ `pnpm exec adr check-assumptions`（移動した 4 件の assumption パスを更新済み）
+  > ✅ Automated — `pnpm test:scripts`（`scripts/examples/gen-builtin-examples.test.ts`）+ `pnpm exec adr check-assumptions`（移動した 4 件の assumption パスを更新済み）
 - 注: `docs/adr/*` の決定本文は不変（immutability 規約）。移動で stale になる本文中のパス参照は意図的に残し、`assumptions:` の live check のみ更新した。
 
 ### AC-5: アプリ同梱もロケール別に出し分ける（Phase C — app reflection）
@@ -49,7 +49,7 @@ docs gallery の en ページが日本語ラベルの図を出していた問題
 > Phase A の注（line 15）では「アプリ同梱は対象外」としていたが、Issue scope #2（"Reference → Samples tab, seeds"）を満たすため本 Phase で同梱もロケール対応にする。`examples.ts` に `DEPLOY_ONLY_PROJECT_EN` / `ORG_ONLY_PROJECT_EN` / `MULTI_FILE_SYSTEM_PROJECT_EN` を追加し、各 `examples/en/...` と byte 一致。`ec-platform` は英語版が無い（scope 外）ため ja のまま据え置く。
 
 - [x] 追加した 3 つの `*_EN` 同梱が `examples/en/{deploy-only,org-only,multi-file-system}` と byte 一致する
-  > ✅ Automated — `packages/core/src/examples.test.ts`（deploy-only / org-only / multi-file-system を ja/en 両ロケールで byte ガード）
+  > ✅ Automated — `scripts/examples/gen-builtin-examples.test.ts` › `built-in examples codegen (#3345)` › `the committed module matches a fresh render of examples/`（deploy-only / org-only / multi-file-system の ja/en 両ロケールを生成物で固定）
 - [x] Reference の Samples タブ（deploy / org ビュー）が locale に応じて英語/日本語の図を返す
   > ✅ Automated — `packages/core/src/builtins/reference.test.ts` › "serves locale-appropriate deploy / org samples"
 - [x] ProjectMode の初回シードが locale に応じて multi-file-system の en/ja を投入する

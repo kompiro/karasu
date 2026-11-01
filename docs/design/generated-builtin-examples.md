@@ -53,7 +53,6 @@ drift テスト（`examples.test.ts`）が片側だけの編集を落とすの�
 
 ### 案2: データを `examples.generated.ts` に生成し、`examples.ts` は再 export だけにする
 
-<!-- absent-path-next-line: the generated module this design creates (#3345) -->
 スクリプトが `ExampleProject` 型と 14 個の定数を `packages/core/src/builtins/examples.generated.ts` に書き出す。
 `examples.ts` は生成モジュールを再 export する薄いモジュールになる。
 型を生成側に置くのは、`examples.ts` が型を持って生成側がそれを `import type` すると循環になり、
@@ -90,7 +89,6 @@ drift テスト（`examples.test.ts`）が片側だけの編集を落とすの�
 
 ### 生成の規則
 
-<!-- absent-path-next-line: the generator this design creates (#3345) -->
 ジェネレータ `scripts/examples/gen-builtin-examples.ts` が登録表を持ち、これが登録済みディレクトリの唯一の一覧になる。
 登録表の 1 行は「定数名・`examples/` からのディレクトリ・形（flat / staged）・定数に付ける説明」である。
 
@@ -114,15 +112,12 @@ drift テスト（`examples.test.ts`）が片側だけの編集を落とすの�
 
 ### 実装の指針
 
-<!-- absent-path-next-line: the generator this design creates (#3345) -->
 1. `scripts/examples/gen-builtin-examples.ts` を作る。構成は `scripts/icons/gen-builtin-icons.ts` に揃える
    （純関数の `renderModule`、`regenerate({ root, check })`、`--check` で非ゼロ終了）。`package.json` に `gen:examples` を足す
-<!-- absent-path-next-line: the generated module this design creates (#3345) -->
 2. `pnpm gen:examples` で `packages/core/src/builtins/examples.generated.ts` を書き出し、`examples.ts` を再 export に縮める
 3. 切り替えの検証: 切り替え前の `examples.ts` の定数と生成後の定数を比べ、各プロジェクトの名前と `path → content` の対応が一致することを確かめる
    （差はファイル順だけのはず）。この比較は移行時の一回限りで、テストには残さない
 4. drift ガードを置き換える
-   <!-- absent-path-next-line: the drift test this design creates (#3345) -->
    - `scripts/examples/gen-builtin-examples.test.ts`: コミット済みの生成物が `renderModule` の結果と一致する
      （失敗メッセージで `pnpm gen:examples` を案内する）。flat のディレクトリに新しいファイルを置くと生成物に入ること、
      staged の入口が無い・2 つあるときに失敗することを一時ディレクトリで確かめる
@@ -141,7 +136,6 @@ drift テスト（`examples.test.ts`）が片側だけの編集を落とすの�
 8. 消える drift ガードを指している記述を直す。ファイルの一覧ではなく検索で掃く
    （`grep -rn "examples\.test\.ts\|examples\.ts\|examples-sync" docs/acceptance .claude scripts packages/*/src`）。2026-11-01 時点で見つかっているもの:
    - AT の自動化マーカーが消える describe 名を引用している: `docs/acceptance/edge-property-block.md`、`edge-facets.md`、`1777-ec-platform-en-seed.md`、
-     <!-- absent-path-next-line: the drift test this design creates (#3345) -->
      `1046-resource-operations.md`（散文で「byte 一致 drift guard」に言及）。引用先を `scripts/examples/gen-builtin-examples.test.ts` に張り替える
    - `.claude/rules/README.md` が `examples-sync.md`（`examples.test.ts` の drift ガード）を「到達状態 + 機械検証」の参考実装に挙げている
    - `scripts/lint/skill-reference-bundle-sync.ts` のコメントが `examples.test.ts` を先例に挙げている

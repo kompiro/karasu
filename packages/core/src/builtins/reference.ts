@@ -149,8 +149,8 @@ export interface SamplesByView {
 export type ReferenceLocale = "en" | "ja";
 
 // The Reference panel's "Samples" tab shows the canonical Getting Started
-// example. Sourcing it from examples.ts (same content as
-// examples/ja/getting-started/index.krs, governed by .claude/rules/examples-sync.md)
+// example. Sourcing it from examples.ts (generated from
+// examples/ja/getting-started/index.krs by `pnpm gen:examples`, #3345)
 // keeps it from drifting — see docs/adr/1296-reference-data-single-source.md, Issue #1335.
 function indexKrs(project: ExampleProject): string {
   const file = project.files.find((f) => f.path === "index.krs");
