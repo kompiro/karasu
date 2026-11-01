@@ -60,11 +60,48 @@ Watching for .krs and .krs.style file changes...
 | --- | --- | --- |
 | `[dir]` | `.` | Directory to watch for `.krs` files |
 | `-p, --port <number>` | `3000` | Port the preview server listens on |
+| `--host <addr>` | `127.0.0.1` | Address the preview server listens on. `0.0.0.0` listens on every IPv4 interface |
+| `--allowed-host <name>` | (none) | Also answer the file API for requests whose `Host` names `<name>` (repeatable). `.example.com` also matches its subdomains |
 
 Open the printed URL and edit — save, and the diagram re-renders with no manual
 refresh. `serve` is **preview-only**; it embeds no editor. The
 [Using the App](app.md) page covers the preview pane (views, navigation,
 diagnostics, exports) and the URL-to-file mapping in detail.
+
+### Who can reach the preview
+
+By default `serve` listens on `127.0.0.1` only, so other machines cannot reach
+it. Both `http://localhost:<port>` and `http://127.0.0.1:<port>` open it.
+
+To open it from another machine or from outside a container, listen on every
+interface:
+
+```bash
+# on the LAN, then open http://<this machine's address>:3000 elsewhere
+karasu serve --host 0.0.0.0
+
+# inside a container started with docker run -p 3000:3000
+karasu serve /work --host 0.0.0.0
+```
+
+`serve` then warns on startup: anyone who can reach that address can read the
+`.krs` and `.krs.style` files in the served directory.
+
+The file API (`/api/*`) answers only when the request's `Host` is `localhost`,
+a `*.localhost` name, or an IP address. This keeps a web page whose domain was
+re-pointed at your machine (DNS rebinding) from reading your files. When you
+open the preview through a name that is none of these, such as a Codespaces
+forwarded port (`*.app.github.dev`) or a reverse proxy that passes its own DNS
+name, add that name:
+
+```bash
+karasu serve --allowed-host my-codespace-3000.app.github.dev
+```
+
+`--allowed-host` takes a bare host name: no port, scheme or path.
+It is not access control. Anyone who can reach the proxy or the forwarded port
+can read the served directory through it, so restrict who reaches it there
+(keep the Codespaces port private, put authentication in front of the proxy).
 
 ## `karasu render` — `.krs` → SVG
 
