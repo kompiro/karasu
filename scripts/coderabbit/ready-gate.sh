@@ -14,9 +14,12 @@
 # - `gh pr create` must pass --draft, except for a Low PR (--label "risk: low"):
 #   a Low ADR PR opens without a draft (#3504). Such a create skips
 #   `gh pr ready`, so it needs the same review, read against the branch the PR
-#   will have (--head, or HEAD) and --base (or origin's default branch). A
-#   higher tier still goes through a draft, so the ready and its converge hook
-#   (ADR-3333) are not skipped.
+#   will have (origin's --head branch, or HEAD) and the base gh picks (--base,
+#   the branch's gh-merge-base, or origin's default branch). A higher tier
+#   still goes through a draft, so the ready and its converge hook (ADR-3333)
+#   are not skipped. What the gate cannot read for such a create (another
+#   repository or owner, a branch not on origin, an unknown base) is refused,
+#   since --draft is always a way through.
 #
 # Lets the call through when:
 # - KARASU_LOCAL_REVIEW_SKIPPED holds a non-empty reason, the deliberate skip
@@ -24,9 +27,10 @@
 #   "risk: low");
 # - a create passes --draft;
 # - the PR is not a draft (every tier records the CLI run, #3286);
-# - --undo, or --repo / -R (the local checkout may not hold that repository);
-# - anything cannot be determined (gh fails, unknown CLI record format). The
-#   gate must never block work because of its own failure.
+# - a ready with --undo, or --repo / -R (the local checkout may not hold that
+#   repository);
+# - anything about a ready cannot be determined (gh fails, unknown CLI record
+#   format). The gate must never block work because of its own failure.
 #
 # Usage: ready-gate.sh <pr> <ready|create> [gh args...]
 # Environment: READY_GATE_GH (the real gh binary), CODERABBIT_REVIEWS_DIR.
@@ -90,7 +94,7 @@ if [ "$action" = "create" ]; then
   base_name=""
   head_name=""
   low=false
-  other_repo=false
+  repo_name=""
   take_value() {
     local name
     case "$1" in
@@ -104,7 +108,7 @@ if [ "$action" = "create" ]; then
           [ "$name" = "risk: low" ] && low=true
         done <<<"$2,"
         ;;
-      repo) other_repo=true ;;
+      repo) repo_name=$2 ;;
     esac
   }
   for arg in "$@"; do
@@ -124,7 +128,7 @@ if [ "$action" = "create" ]; then
       --label) expect_value=label ;;
       --label=*) take_value label "${arg#--label=}" ;;
       --repo) expect_value=repo ;;
-      --repo=*) other_repo=true ;;
+      --repo=*) repo_name=${arg#--repo=} ;;
       --assignee | --attach | --body | --body-file | --milestone | \
         --project | --recover | --reviewer | --template | --title)
         expect_value=other
@@ -173,26 +177,58 @@ with gh pr ready (docs/process.md PR workflow). Only a Low PR (--label \"risk: l
     exit 0
   fi
   skipped && exit 0
-  [ "$other_repo" = true ] && exit 0
-  # gh takes --head as <branch> or <owner>:<branch>, and does not push it: the
-  # PR gets the remote branch. Without --head, gh pushes HEAD.
+  # From here on the gate reads what the PR will be. Whatever it cannot read is
+  # refused rather than let through: --draft is always a way to open the PR.
+  unverifiable() {
+    echo "gh pr create was refused: $1, so the local review of this PR cannot be checked. Create it as a \
+draft (gh pr create --draft) and take it out of draft with gh pr ready (docs/process.md PR workflow)."
+    exit 0
+  }
+  # The lowercased owner/repo of a GitHub URL or of [HOST/]OWNER/REPO.
+  slug() {
+    local s=${1%/}
+    s=${s%.git}
+    s=$(printf '%s' "${s//://}" | tr '[:upper:]' '[:lower:]')
+    echo "${s#"${s%/*/*}"/}"
+  }
+  origin=$(git remote get-url origin 2>/dev/null) || unverifiable "this checkout has no origin remote"
+  origin_slug=$(slug "$origin")
+  if [ -n "$repo_name" ] && [ "$(slug "$repo_name")" != "$origin_slug" ]; then
+    unverifiable "--repo names a repository other than origin"
+  fi
+  # gh takes --head as <branch> or <owner>:<branch> and does not push it: the
+  # PR gets origin's branch. Without --head, gh pushes HEAD.
   if [ -n "$head_name" ]; then
-    head_ref=${head_name#*:}
-    head=$(git rev-parse --verify --quiet "origin/$head_ref^{commit}" ||
-      git rev-parse --verify --quiet "$head_ref^{commit}") || exit 0
+    case "$head_name" in
+      *:*)
+        owner=$(printf '%s' "${head_name%%:*}" | tr '[:upper:]' '[:lower:]')
+        [ "$owner" = "${origin_slug%%/*}" ] || unverifiable "--head names another owner's branch"
+        ;;
+    esac
+    head_ref=origin/${head_name#*:}
+    head=$(git rev-parse --verify --quiet "$head_ref^{commit}") ||
+      unverifiable "--head names a branch that is not on origin here (gh does not push --head: push it and fetch)"
   else
     head_ref=HEAD
-    head=$(git rev-parse --verify --quiet "HEAD^{commit}") || exit 0
+    head=$(git rev-parse --verify --quiet "HEAD^{commit}") || unverifiable "HEAD is not a commit"
+  fi
+  # The base gh picks: --base, then the branch's gh-merge-base, then the
+  # repository's default branch (origin/HEAD here).
+  if [ -z "$base_name" ]; then
+    branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null) &&
+      base_name=$(git config --get "branch.$branch.gh-merge-base" 2>/dev/null)
   fi
   if [ -z "$base_name" ]; then
-    base_name=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)
+    base_name=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null) ||
+      unverifiable "origin's default branch is not known here (git remote set-head origin --auto)"
     base_name=${base_name#origin/}
   fi
-  base_ref=$(base_ref_of "${base_name:-main}") || exit 0
+  base_ref=$(base_ref_of "$base_name") || unverifiable "the base branch $base_name is not here"
   reviewed_branch "$head" "$base_ref" && exit 0
   echo "gh pr create was refused: no completed local CodeRabbit CLI review covers this branch \
-(head ${head:0:7}). A Low PR is created without --draft only after its local review (.claude/rules/adr.md): \
-run /engineering:code-review on git diff $base_ref...$head_ref, then run the CLI once \
+(${head_ref} at ${head:0:7}). A Low PR is created without --draft only after its local review \
+(.claude/rules/adr.md): check out that branch, run /engineering:code-review on git diff $base_ref...HEAD, \
+then run the CLI once \
 (coderabbit review --agent --deep --base $base_ref --committed), then create it again. If the CLI cannot run \
 here (not installed, not authenticated, out of quota), tell the user, then rerun as \
 KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr create ..."
