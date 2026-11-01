@@ -261,8 +261,9 @@ Codespaces の port forwarding（`*.app.github.dev`）や ngrok のように、�
 ### 影響範囲・マイグレーション
 
 - 既存ユーザーへの影響: LAN の別マシンや container の外から `karasu serve` を開いていた人は `--host 0.0.0.0` を、
-  Codespaces の forwarded URL や reverse proxy 越しに開いていた人は `--allowed-host <name>` を足す必要がある。
-  changeset の本文と CLI docs に書く。CLI docs には、proxy や forwarding で開くときのアクセス制御は proxy 側で行うこと
+  Codespaces の forwarded URL や、`Host` に外の名前（IP literal でも `localhost` でもない名前）を載せたまま届く
+  reverse proxy 越しに開いていた人は `--allowed-host <name>` を足す必要がある。proxy が `Host` を upstream のアドレス
+  （nginx の既定の `127.0.0.1:3000` など）に書き換える場合は要らない。changeset の本文と CLI docs に書く。CLI docs には、proxy や forwarding で開くときのアクセス制御は proxy 側で行うこと
   （`--allowed-host` はアクセス制御ではないこと）も書く
 - `localhost` / `127.0.0.1` で開いている人（大多数）には変化が無い。表示 URL も origin も変わらないので、app の `localStorage`
   （theme、locale、パネル幅）と、API key の `sessionStorage`（`local` を選んだときは `localStorage`）もそのまま使える
