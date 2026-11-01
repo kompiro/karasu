@@ -482,6 +482,8 @@ export const ja: Partial<Translations> = {
     `プロパティ "${propName}" の値を期待しました`,
   "diagnostic.expectedIdAfter.message": ({ property }) =>
     `"${property}" の後に識別子または文字列リテラルを期待しました`,
+  "diagnostic.infraPathTooLong.message": ({ property }) =>
+    `"${property}" のパスは infra block とその leaf の 2 段（<Infra>.<Leaf>）で書きます`,
   "diagnostic.teamPropertyRemoved.message": `"team" プロパティは削除されました。organization ブロックと "owns" で所有を宣言してください`,
   "diagnostic.annotationParamUnsupported.message": ({ annotation, key }) =>
     `"@${annotation}" は "${key}" パラメータをサポートしていません。無視されます`,

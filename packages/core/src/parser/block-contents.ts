@@ -10,7 +10,7 @@ import type {
 import { INFRA_KIND_SET } from "../types/ast.js";
 import { LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
 import { stitchKebabTail } from "./kebab-name.js";
-import { consumeRejected, rejectConstruct, rejectNode } from "./rejected-construct.js";
+import { consumeRejected, rejectConstruct, rejectEdge, rejectNode } from "./rejected-construct.js";
 import { handleNestedLegend } from "./legend-parser.js";
 import {
   parseDescriptionValue,
@@ -380,6 +380,7 @@ function parseClientCapability(ctx: ParseContext): import("../types/ast.js").Cli
         description = parseDescriptionValue(ctx);
         continue;
       }
+      if (rejectEdge(ctx, "capability")) continue;
       ctx.error("unexpected-token-in-block", {
         blockKind: "capability",
         tokenType: String(inner.type),

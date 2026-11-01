@@ -4677,6 +4677,8 @@ system S {
       ["a full mapping", `table DB.orders`],
       // The value's own mistake is not reported, as for a rejected property.
       ["a mapping without its sub-id", `table orders`],
+      // The whole path is read, so its third segment is not left for the block (#3499).
+      ["a mapping past its leaf", `table DB.orders.extra`],
     ])("drops %s with its value", (_name, construct) => {
       const source = `\nsystem S {\n  service A {\n    ${construct}\n    label "after"\n  }\n}\n`;
       expectDroppedWhole(source, construct, "unexpected-token-in-block", "value");
@@ -4726,6 +4728,88 @@ system S {
       const service = result.value.systems[0].children[1];
       expect(service.kind === "service" && service.properties.delivers).toBeUndefined();
       expect(service.label).toBe("after");
+    });
+  });
+
+  // A block that takes no edges read the edge token by token, and the `}` of an
+  // edge's property block closed the block early (#3499).
+  describe("an edge in a block that takes no edges", () => {
+    it.each([
+      [
+        "a boundary",
+        (c: string) =>
+          `system S {\n  service A\n  service B\n}\nboundary Z {\n  ${c}\n  contains A\n  label "z"\n}\n`,
+      ],
+      ["an organization", (c: string) => `organization O {\n  ${c}\n  label "o"\n}\n`],
+      ["a team", (c: string) => `organization O {\n  team T {\n    ${c}\n    label "t"\n  }\n}\n`],
+      [
+        "a member",
+        (c: string) =>
+          `organization O {\n  team T {\n    member m {\n      ${c}\n      label "m"\n    }\n  }\n}\n`,
+      ],
+      ["a facet", (c: string) => `facet F {\n  ${c}\n  label "f"\n}\n`],
+      ["a deploy", (c: string) => `deploy P {\n  ${c}\n  label "p"\n}\n`],
+      [
+        "a deploy unit",
+        (c: string) => `deploy P {\n  oci app {\n    ${c}\n    label "a"\n  }\n}\n`,
+      ],
+      ["a legend", (c: string) => `legend {\n  ${c}\n  swatch #2563EB "Backend"\n}\n`],
+      [
+        "a capability",
+        (c: string) =>
+          `system S {\n  client W [web] {\n    capability cam {\n      ${c}\n      label "c"\n    }\n  }\n}\n`,
+      ],
+      [
+        "an edge property block",
+        (c: string) =>
+          `system S {\n  service A\n  service B\n  service C\n  A -> B {\n    ${c}\n    label "x"\n  }\n}\n`,
+      ],
+    ])("drops an edge in %s", (_name, wrap) => {
+      expectDroppedWhole(wrap("C -> D"), "C -> D", "unexpected-token-in-block");
+    });
+
+    it.each([
+      [
+        "a boundary",
+        (c: string) => `system S {\n  service A\n}\nboundary Z {\n  ${c}\n  contains A\n}\n`,
+      ],
+      ["a facet", (c: string) => `facet F {\n  ${c}\n  description "d"\n}\n`],
+    ])("drops an edge with its property block in %s", (_name, wrap) => {
+      const construct = `C -> D {\n    label "x"\n  }`;
+      expectDroppedWhole(wrap(construct), construct, "unexpected-token-in-block");
+    });
+  });
+
+  describe("an <Infra>.<Leaf> path read past its leaf", () => {
+    const inEntity = (construct: string) =>
+      `\nsystem S {\n  service A {\n    domain D {\n      entity E {\n        ${construct}\n        label "after"\n      }\n    }\n  }\n}\n`;
+
+    it.each([
+      ["a third segment", `table DB.orders.extra`],
+      ["a dot after the leaf", `table DB.orders.`],
+    ])("drops an entity table mapping with %s", (_name, construct) => {
+      expectDroppedWhole(inEntity(construct), construct, "infra-path-too-long", "value");
+    });
+
+    // A resource is a node, so the path's error keeps it with the two segments
+    // it read, as the site's dangling-dot recovery does; the block after it
+    // still parses.
+    it.each([
+      ["a third segment", `DB.C.X`],
+      ["a dot after the leaf", `DB.C.`],
+    ])("reports a resource path with %s once", (_name, path) => {
+      const source = `system S {\n  database DB { table C }\n  service A {\n    domain D {\n      usecase U {\n        resource ${path}\n        label "after"\n      }\n    }\n  }\n}\n`;
+      const result = Parser.parse(source);
+      expect(result.diagnostics.map((d) => d.code)).toEqual(["infra-path-too-long"]);
+      const start = source.indexOf(path);
+      expect(result.diagnostics[0].loc?.start.offset).toBe(start);
+      expect(result.diagnostics[0].loc?.end.offset).toBe(start + path.length);
+      const usecase = result.value.systems[0].children[1].children[0].children[0];
+      expect(usecase.label).toBe("after");
+      const resource = usecase.children[0];
+      assert(resource.kind === "resource");
+      expect(resource.ref).toEqual({ parent: "DB", child: "C" });
+      expect(resource.id).toBe("DB.C");
     });
   });
 });

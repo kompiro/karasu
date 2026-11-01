@@ -487,6 +487,8 @@ export const en: Translations = {
     `Expected value for property "${propName}"`,
   "diagnostic.expectedIdAfter.message": ({ property }) =>
     `Expected identifier or string literal after "${property}"`,
+  "diagnostic.infraPathTooLong.message": ({ property }) =>
+    `A "${property}" path names an infra block and one of its leaves (<Infra>.<Leaf>), so it has two segments`,
   "diagnostic.teamPropertyRemoved.message": `"team" property has been removed; declare ownership with an organization block and "owns"`,
   "diagnostic.annotationParamUnsupported.message": ({ annotation, key }) =>
     `"@${annotation}" does not support the "${key}" parameter; it is ignored`,

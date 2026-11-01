@@ -296,6 +296,7 @@ are mechanism-level by nature; the "rule" is the grammar itself.
 | `expected-node-id`            | error    | The parser expected a node id.                                         |
 | `expected-property-value`     | error    | The parser expected a property value.                                  |
 | `expected-id-after`           | error    | The parser expected an id after a property keyword.                    |
+| `infra-path-too-long`         | error    | A `table` mapping or a `resource` reference has more than the two segments of `<Infra>.<Leaf>`. |
 | `invalid-node-kind`           | error    | A node kind keyword is not recognised.                                 |
 | `property-not-for-node-kind`  | error    | A property is not valid for the node kind it appears on.               |
 | `link-url-scheme-not-allowed` | warning  | A `link` URL scheme is not in the allowed set (http / https / mailto). |

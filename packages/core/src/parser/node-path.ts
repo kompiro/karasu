@@ -88,6 +88,17 @@ export function readNodeIdPathTail(
 }
 
 /**
+ * True when a `<Infra>.<Leaf>` reference (`resource`, the entity `table`
+ * mapping) was read past its leaf: a third segment, or a dot after the second.
+ * Both sites read the whole path and report this once as
+ * `infra-path-too-long`, rather than stopping at two segments and leaving the
+ * rest for the block (#3499).
+ */
+export function pathPastLeaf(tail: NodeIdPathTail): boolean {
+  return tail.segments.length > 2 || (tail.segments.length === 2 && tail.dangling !== undefined);
+}
+
+/**
  * A reference matches a node when it equals the tail of that node's full
  * path. A bare id is the length-1 case.
  */

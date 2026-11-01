@@ -283,6 +283,7 @@ token が妥当な構文を成さないときに上がる低レベルのパー�
 | `expected-node-id` | error | パーサが node id を期待した。 |
 | `expected-property-value` | error | パーサがプロパティ値を期待した。 |
 | `expected-id-after` | error | パーサがプロパティ keyword の後に id を期待した。 |
+| `infra-path-too-long` | error | `table` 対応や `resource` 参照が、`<Infra>.<Leaf>` の 2 段より長い。 |
 | `invalid-node-kind` | error | node kind の keyword が認識されない。 |
 | `property-not-for-node-kind` | error | プロパティがその node kind に対して妥当でない。 |
 | `link-url-scheme-not-allowed` | warning | `link` URL の scheme が許可集合（http / https / mailto）に無い。 |

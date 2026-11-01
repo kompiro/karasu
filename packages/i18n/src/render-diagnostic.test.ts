@@ -110,6 +110,11 @@ const SAMPLES: SamplesByCode = {
     code: "expected-id-after",
     params: { property: "owns" },
   },
+  "infra-path-too-long": {
+    severity: "error",
+    code: "infra-path-too-long",
+    params: { property: "table" },
+  },
 
   // ── Parser semantic diagnostics ─────────────────────────────────────────
   "team-property-removed": {
@@ -496,6 +501,7 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "invalid-node-kind": ["component"],
   "expected-property-value": ["label"],
   "expected-id-after": ["owns"],
+  "infra-path-too-long": ["table"],
   "team-property-removed": [],
   "annotation-param-unsupported": ["@deprecated", "reason"],
   "annotation-param-value-unreadable": ["@deprecated", "until"],

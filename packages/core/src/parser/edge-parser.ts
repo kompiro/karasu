@@ -4,6 +4,7 @@ import { readNodeIdPathTail } from "./node-path.js";
 import { parseTags } from "./annotation-parser.js";
 import { parseDescriptionValue, parseLink, parseIdOrString } from "./property-readers.js";
 import { parseFacetsList } from "./org-parser.js";
+import { rejectEdge } from "./rejected-construct.js";
 import type { ParseContext } from "./parse-context.js";
 
 // Edges (`A -> B`, `A --> B`) and their optional property block, plus the
@@ -161,6 +162,8 @@ function parseEdgeBlock(
       parseFacetsList(ctx, keyword, facets);
       continue;
     }
+
+    if (rejectEdge(ctx, "edge")) continue;
 
     ctx.error("unexpected-token-in-block", {
       blockKind: "edge",

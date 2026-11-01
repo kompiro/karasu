@@ -517,6 +517,7 @@ export type Translations = {
   "diagnostic.invalidNodeKind.message": (params: { kind: string }) => string;
   "diagnostic.expectedPropertyValue.message": (params: { propName: string }) => string;
   "diagnostic.expectedIdAfter.message": (params: { property: string }) => string;
+  "diagnostic.infraPathTooLong.message": (params: { property: string }) => string;
   "diagnostic.teamPropertyRemoved.message": string;
   "diagnostic.annotationParamUnsupported.message": (params: {
     annotation: string;
