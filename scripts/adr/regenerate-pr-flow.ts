@@ -1,5 +1,5 @@
 // The decisions and the order of `pnpm adr:regenerate-pr` (Issue #3416,
-// docs/design/regenerate-adr-index-daily-pr.md "実装の指針" step 1). GitHub, git
+// docs/adr/3416-regenerate-adr-index-daily-pr.md "仕組み"). GitHub, git
 // and the clock come in through interfaces, so the flow is tested without a
 // network; `regenerate-pr.ts` supplies the real ones.
 //

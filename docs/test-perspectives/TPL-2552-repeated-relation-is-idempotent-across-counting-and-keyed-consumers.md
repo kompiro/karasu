@@ -14,7 +14,7 @@ known_consumers:
 discovered_from:
   - issue: "#2552"
   - issue: "#2713"
-  - root_cause_file: "packages/core/src/parser/parser.ts:parseRealizesList"
+  - root_cause_file: "packages/core/src/parser/deploy-parser.ts:parseRealizesList"
   - root_cause_file: "packages/core/src/renderer/deploy-layout.ts:placeGroupBlock"
 related_to:
   - TPL-2542

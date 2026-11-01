@@ -10,7 +10,7 @@
   - notation promotion gate: [#1820](https://github.com/kompiro/karasu/issues/1820)
   - 関連 TPL: [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)
   - 関連 ADR: [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（`.krs` / `.krs.style` v1.0 凍結）
-  - コード: `packages/core/src/renderer/category-collapse.ts`, `packages/core/src/renderer/layout.ts`, `packages/core/src/renderer/svg-renderer.ts`
+  - コード: `packages/core/src/renderer/category-collapse.ts`, `packages/core/src/renderer/layout.ts`, `packages/core/src/renderer/svg-renderer.ts`, `packages/core/src/renderer/canvas-controls.ts`
 
 > 本 Doc は「semantic clusters の構文をどう綴るか」から始めた初版を差し替えたもの。
 > 初版の案を却下するのではなく、**「いま何を優先すべきか」** の軸で作業順序を組み替える。

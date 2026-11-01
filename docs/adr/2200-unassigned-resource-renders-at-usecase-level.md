@@ -14,8 +14,8 @@ scope:
   packages:
     - core
 assumptions:
-  - "grep: packages/core/src/view/view-extract.ts :: if \\(!resNode.ref && resolver.resolve\\(resNode\\).entityId === undefined\\) continue;"
-  - "symbol: packages/core/src/view/view-extract.ts :: deriveUsecaseResourceNodes"
+  - "grep: packages/core/src/view/resource-promotion.ts :: if \\(!resNode.ref && resolver.resolve\\(resNode\\).entityId === undefined\\) continue;"
+  - "symbol: packages/core/src/view/resource-promotion.ts :: deriveUsecaseResourceNodes"
   - "symbol: packages/core/src/resolver/warnings.ts :: detectUnassignedResources"
 ---
 

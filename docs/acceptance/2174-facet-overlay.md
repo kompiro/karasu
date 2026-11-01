@@ -6,7 +6,7 @@
 - **関連 spec**: [`docs/spec/syntax.md`](../spec/syntax.md) §Cross-cutting membership（+ja）/ [`docs/tools/app.md`](../tools/app.md) §Toolbar（+ja）
 - **関連 TPL**: **新規** [TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md)（opt-in な視覚レイヤの無効時 inert）、[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)、[TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md)、[TPL-1886](../test-perspectives/TPL-1886-rekey-transform-preserves-per-element-decoration.md)、[TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)、[TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md)、[TPL-1402](../test-perspectives/TPL-1402-involutive-toggle-renders-both-states.md)、[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)
 - **対象ファイル**:
-  - `packages/core/src/renderer/facet-overlay.ts`（新規）/ `svg-renderer.ts` / `node-card.ts` / `svg-builder.ts` / `layout.ts`
+  - `packages/core/src/renderer/facet-overlay.ts`（新規）/ `svg-renderer.ts` / `node-card.ts` / `canvas-controls.ts` / `svg-builder.ts` / `layout.ts`
   - `packages/core/src/compile/compile.ts` / `compile-diff.ts` / `renderer/drill-down-svg.ts` / `renderer/all-layers-svg.ts`
   - `packages/app/src/hooks/useSystemView.ts` / `components/PreviewColumn.tsx`、`packages/i18n/src/{types,en,ja}.ts`
 

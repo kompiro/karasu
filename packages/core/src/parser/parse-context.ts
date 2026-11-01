@@ -21,8 +21,11 @@ export interface ParseContext extends TokenCursor {
   error<K extends DiagnosticCode>(code: K, params: DiagnosticParamsByCode[K]): void;
   /** Build a source range stamped with the file path; see `Parser.range`. */
   range(start: Token["loc"], end?: Token["loc"]): SourceRange;
-  /** Append a diagnostic built by the caller (a warning, or one anchored elsewhere). */
-  pushDiagnostic(diagnostic: Diagnostic): void;
+  /**
+   * Append diagnostics built by the caller (a warning, one anchored elsewhere,
+   * or a validator's whole result), in the order given.
+   */
+  pushDiagnostic(...diagnostics: Diagnostic[]): void;
   /** The token consumed last, or `undefined` before the first one is consumed. */
   previous(): Token | undefined;
   /**

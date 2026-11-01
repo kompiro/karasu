@@ -113,7 +113,7 @@ a11y の改善にもなり、RTL でも同じセレクタが使える（TPL-1399
 
 `workers: 1` は foundation PR #532 の既定値で再計測されていない。コードを読むかぎり cross-worker の共有状態は無い
 （OPFS は browser context ごとに隔離、`anthropic` fixture は page 単位の `page.route`、
-`test.use({ colorScheme })` はファイル単位、at-0050 は `serial` で 1 worker に固定、`vite preview` は stateless）。
+`test.use({ colorScheme })` はファイル単位、at-0050 は計測時 `serial` で 1 worker に固定（#3236 で解除）、`vite preview` は stateless）。
 ただし反対側の記録が 1 つある。`at-0050-chat-ui-phase2-byok.spec.ts` のヘッダは「同じ origin で並列に走らせると
 OPFS handle で flake した」ので serial にしたと書いている。`workers: 2` では別ファイルが 0050 と並んで OPFS を
 seed するので、同じ条件が再現しうる。計測では 0050 の結果と `createWritable` 系のエラーを名指しで見る。
@@ -144,6 +144,9 @@ seed するので、同じ条件が再現しうる。計測では 0050 の結果
   5s 超のテストが 15〜31 本に増える。最初の 3 回では 2 回目だけが超えたので 3 回追加し、偶然ではないことを確かめた
 - at-0050 は `serial` で 1 worker に固定されるので並列化の恩恵が無く、もう 1 本のブラウザと CPU を取り合う分だけ伸びる
   （47s → 55〜64s）。「最遅 spec ≤ 60s」を構造的に割りやすい → [#3236](https://github.com/kompiro/karasu/issues/3236)
+  で `serial` を外した。15 件が worker に散り、`workers: 2` の 3 回（[1](https://github.com/kompiro/karasu/actions/runs/41254244496)、
+  [2](https://github.com/kompiro/karasu/actions/runs/41254246307)、[3](https://github.com/kompiro/karasu/actions/runs/41254248202)）で
+  at-0050 の wall は 27.4s / 45.3s / 32.6s、OPFS handle のエラーは 0。外した後の最遅 spec は at-0050 か at-0014（≤ 45.3s）
 - 最も timeout に近づいたのは at-3031 の 2 本（10.7s / 10.3s、`timeout: 15_000` の約 7 割）→ [#3237](https://github.com/kompiro/karasu/issues/3237)
 - 見送りでも容量の余裕は想定より小さい。10-14 の nightly は `workers: 1` で 671s（前夜は 478s）で、
   +57 テスト（約 +170s）を足すと約 840s / 900s になる。S1 以降で nightly の全体時間が 900s に近づいたら、

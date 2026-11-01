@@ -331,7 +331,7 @@ export function PreviewColumn() {
 
            `nodeMetadata` is deliberately empty rather than the system view's
            map: entities are filtered out of the system slice
-           (`view-extract.ts`), so the map holds no entity — but a bare
+           (`resource-promotion.ts`), so the map holds no entity — but a bare
            `resource X` promoted into the usecase view carries the *entity's*
            id, so passing it would answer a click on entity `X` with the
            resource's detail panel.

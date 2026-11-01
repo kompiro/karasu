@@ -12,7 +12,8 @@ type: product
 - **対象ファイル**:
   - `packages/core/src/parser/property-readers.ts`（`commaSeparatedValues` / `readReferencePathElement` と、それに載せ替えた `parseHandlesList` / `parseOperationsList`）
   - `packages/core/src/parser/org-parser.ts`（同じく載せ替えた `parseFacetsList`）
-  - `packages/core/src/parser/parser.ts`（同じく載せ替えた `delivers` / `parseRealizesList`）
+  - `packages/core/src/parser/deploy-parser.ts`（同じく載せ替えた `parseRealizesList`）
+  - `packages/core/src/parser/parser.ts`（同じく載せ替えた `delivers`）
 
 > 同じ書き間違い（`delivers A,` と `realizes A,`）が、プロパティごとに別の診断コード・
 > 別のアンカー位置・別の行またぎ挙動になっていた。5 つの手書きリーダが独立に育った

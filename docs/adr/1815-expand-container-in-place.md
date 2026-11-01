@@ -13,7 +13,7 @@ scope:
   packages: [core, app]
 assumptions:
   - "symbol: packages/core/src/view/view-extract.ts :: extractView"
-  - "symbol: packages/core/src/renderer/svg-renderer.ts :: renderExpandControls"
+  - "symbol: packages/core/src/renderer/canvas-controls.ts :: renderExpandControls"
   - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: resolveGroupBoxes"
   - "symbol: packages/app/src/hooks/useCollapsibleSet.ts :: useCollapsibleSet"
   - "grep: packages/core/src/compile/compile.ts :: expandedContainers"
