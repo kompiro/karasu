@@ -14,8 +14,8 @@ assumptions:
   - "symbol: packages/cli/src/serve-host.ts :: isAllowedHost"
   - "symbol: packages/cli/src/serve-host.ts :: normalizeAllowedHost"
   - "symbol: packages/cli/src/serve-host.ts :: isLoopbackAddress"
-  - "symbol: packages/cli/src/serve-host.ts :: listenBanner"
-  - "symbol: packages/cli/src/serve-host.ts :: ipv6LoopbackAnswers"
+  - "grep: packages/cli/src/serve-host.ts :: http://localhost:\\$\\{port\\}"
+  - "grep: packages/cli/src/serve.ts :: another process is listening on \\[::1\\]"
   - "grep: packages/cli/src/serve.ts :: isAllowedHost\\(req\\.headers\\.host"
   - "grep: packages/cli/src/serve-command.ts :: --allowed-host <name>"
   - "grep: packages/cli/src/serve-command.ts :: --host <addr>"
@@ -89,7 +89,8 @@ IP literal、`localhost` / `*.localhost`、`--allowed-host <name>` で渡した�
   続くもの。それ以外（path・query・fragment・userinfo・percent-encoding・`\`・空白）は拒否する。`new URL("http://" + host)` は
   `localhost/evil` や `evil@localhost` からも `localhost` を取り出すので使わない。形を通った値は小文字にし、末尾の `.` を 1 つ外す。
   IPv6 は `[...]` の中を `node:net` の `isIP` で判定する。`_` は docker compose のサービス名を proxy がそのまま `Host` に渡す
-  場合のために認める（`_` は IP にも `.localhost` の一致にもならないので、許可を広げない）
+  場合のために認める（`_` を足しても IP literal にはならず、`.localhost` で終わる値は元から許す `*.localhost` の範囲なので、
+  rebinding に使える名前は増えない）
 - `Host` が無い（HTTP/1.0）か空の request は拒否する。`Host` の無い HTTP/1.1 は Node が先に 400 を返す
 - 許可するのは次の 3 つ。port は見ない
   1. **IP literal**。DNS rebinding は名前を必要とし、ページは `Host` を書き換えられない（forbidden header）。IP literal の
@@ -133,8 +134,10 @@ IP literal、`localhost` / `*.localhost`、`--allowed-host <name>` で渡した�
   開いていた人は、karasu に届く `Host` が IP literal・`localhost`・`*.localhost` のどれでもないときだけ、その名前の
   `--allowed-host` が要る（`Host` を `127.0.0.1:3000` に書き換える proxy なら要らず、`karasu:3000` のような upstream の DNS 名に
   書き換えるなら `--allowed-host karasu`）。changeset（`karasu` minor）と `docs/tools/cli.md` / `cli.ja.md` に書いた
-- `serve` のコマンド定義は `serve-command.ts` の `configureServeCommand` に移し、`index.ts` は `.command("serve [dir]")` の登録だけを
-  持つ（`skill-cli-refs` が `index.ts` の `.command(...)` からコマンド一覧を読むため）
+- `serve` のコマンド定義は、`index.ts` の行数上限に収めるため `serve-command.ts` の `configureServeCommand` に移した。
+  `index.ts` は `.command("serve [dir]")` の登録だけを持つ（`skill-cli-refs` が `index.ts` の `.command(...)` からコマンド一覧を読むため）
+- IPv6 だけの環境では既定の `127.0.0.1` で開けないので `--host ::1` を使う。明示した `--host ::` は、IPv6 の無い環境で
+  `0.0.0.0` に落ちずに失敗する（今までの `listen(port)` は落ちていた）
 - VS Code 拡張は `serve` を使わないので影響しない。Playwright の serve project と `serve.e2e.test.ts` は `localhost` で到達し続け、
   既定の bind で `localhost` が開けることを確かめている
 
