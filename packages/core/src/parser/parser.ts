@@ -6,9 +6,6 @@ import type {
   KrsNode,
   KrsEdge,
   LinkEntry,
-  DeployBlock,
-  DeployNode,
-  DeployNodeProperties,
   HandlesTarget,
   ImportDeclaration,
   ImportEntry,
@@ -18,7 +15,6 @@ import type {
   DiagnosticParamsByCode,
   ParseResult,
   LogicalNodeKind,
-  DeployNodeKind,
   DomainNode,
   ServiceNode,
   ClientNode,
@@ -36,23 +32,7 @@ import { LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
 import { Lexer } from "../lexer/lexer.js";
 import { isRecognizedResourceOperation, type CrudVerb } from "../spec/operations.js";
 import type { ResourceOperation } from "../spec/operations.js";
-import {
-  validateOwnsReferences,
-  validateContainsReferences,
-  validateScopedContainsReferences,
-  validateRealizesReferences,
-  declaredNodePathsOnce,
-  validatePhysicalRefs,
-  validateFacetDeclarations,
-  buildFacetIndexByPath,
-  facetUnionByBareId,
-  buildOwnerIndex,
-  buildBoundaryMembership,
-  buildScopedBoundaryMembership,
-  buildNodePathIndex,
-} from "./reference-validation.js";
-import { markCyclicEdges } from "./cyclic-dependencies.js";
-import { LOGICAL_KEYWORDS, DEPLOY_KEYWORDS } from "./parser-keywords.js";
+import { LOGICAL_KEYWORDS } from "./parser-keywords.js";
 import { handleNestedLegend, parseLegendBlock } from "./legend-parser.js";
 import { parseTags, parseAnnotations } from "./annotation-parser.js";
 import {
@@ -60,7 +40,6 @@ import {
   parseLink,
   parseIdOrString,
   commaSeparatedValues,
-  readReferencePathElement,
   parseOperationsList,
   parseHandlesList,
   type ParsedOperation,
@@ -72,6 +51,8 @@ import {
   parseFacetsList,
   rejectNestedFacetBlock,
 } from "./org-parser.js";
+import { parseDeployBlock } from "./deploy-parser.js";
+import { finalizeFile } from "./finalize-file.js";
 import type { ParseContext } from "./parse-context.js";
 
 /**
@@ -103,14 +84,6 @@ const BOUNDARY_HOST_KIND = {
   bucket: false,
 } as const satisfies Record<LogicalNodeKind, boolean>;
 
-const DEPLOY_PROPERTY_KEYWORDS = new Set<string>([
-  "runtime",
-  "realizes",
-  "schedule",
-  "image",
-  "type",
-]);
-
 export class Parser {
   private tokens: Token[];
   private pos = 0;
@@ -129,7 +102,7 @@ export class Parser {
     match: (type) => this.match(type),
     error: (code, params) => this.error(code, params),
     range: (start, end) => this.range(start, end),
-    pushDiagnostic: (diagnostic) => this.diagnostics.push(diagnostic),
+    pushDiagnostic: (...diagnostics) => this.diagnostics.push(...diagnostics),
     previous: () => this.tokens[this.pos - 1],
     discardDiagnostics: (parse) => {
       const before = this.diagnostics.length;
@@ -272,7 +245,7 @@ export class Parser {
           file.storages.push(this.parseInfraBlock(this.advance(), "storage") as StorageNode);
           break;
         case TokenType.Deploy:
-          file.deploys.push(this.parseDeployBlock());
+          file.deploys.push(parseDeployBlock(this.ctx));
           break;
         case TokenType.Organization:
           file.organizations.push(parseOrganizationBlock(this.ctx));
@@ -322,113 +295,7 @@ export class Parser {
       }
     }
 
-    const ownerResult = buildOwnerIndex(file);
-    file.ownerIndex = ownerResult.membership;
-    this.diagnostics.push(...ownerResult.diagnostics);
-    const topLevelMembership = buildBoundaryMembership(file);
-    file.boundaryMembership = topLevelMembership.membership;
-    this.diagnostics.push(...topLevelMembership.diagnostics);
-    // A sync dependency cycle is a fact about the model, so it is derived here
-    // with the other indexes rather than stamped later by `analyze()`: a read
-    // pass that wrote the flag made the same `KrsFile` render differently
-    // before and after it ran (#2791, TPL-2791). The ImportResolver re-derives
-    // it on the merged model, where a cycle split across files appears.
-    markCyclicEdges(file);
-    const scopedMembership = buildScopedBoundaryMembership([
-      ...file.systems,
-      ...file.services,
-      ...file.clients,
-      ...file.domains,
-      ...file.databases,
-      ...file.queues,
-      ...file.storages,
-    ]);
-    // Same root set as the scoped-boundary walk: `facets` is accepted on every
-    // node kind, so the index must reach top-level orphans (a system-less
-    // `service` / `client` / `domain` / infra block) and their descendants, not
-    // just what hangs off a `system` (TPL-1160 / TPL-1720).
-    file.facetIndexByPath = buildFacetIndexByPath([
-      ...file.systems,
-      ...file.services,
-      ...file.clients,
-      ...file.domains,
-      ...file.databases,
-      ...file.queues,
-      ...file.storages,
-    ]);
-    file.facetIndex = facetUnionByBareId(file.facetIndexByPath);
-    file.scopedBoundaryMembership = scopedMembership.membership;
-    this.diagnostics.push(...scopedMembership.diagnostics);
-    // Top-level (system-less) services get the same per-parent duplicate-child
-    // check as services nested in a system, so e.g. a usecase and entity
-    // sharing an id under a parked service's domain are caught.
-    for (const service of file.services) {
-      this.collectNodeIds(service.children, new Set<string>());
-    }
-    // Same check for top-level infra blocks. Nested ones are reached via
-    // `system.children`, but a system-less `database` / `queue` / `storage`
-    // otherwise never gets one — and its leaf children are exactly the members a
-    // scoped `boundary` addresses (#2036), which relies on sibling ids being
-    // error-unique.
-    for (const infra of [...file.databases, ...file.queues, ...file.storages]) {
-      this.collectNodeIds(infra.children, new Set<string>());
-    }
-    // The same check once more for the two parents the index walk used to run
-    // it from, before that walk moved to `buildNodePathIndex` (#2596): a system's
-    // direct children, and a top-level domain's (e.g. a usecase and an entity
-    // sharing an id, symmetric with the per-service check inside systems).
-    // `duplicate-node-id-parent` stays a per-file verdict — one parent's children
-    // are all declared in one place — so it does not travel with the index build
-    // to the merged model.
-    for (const system of file.systems) {
-      this.collectNodeIds(system.children, new Set<string>());
-    }
-    for (const domain of file.domains) {
-      this.collectNodeIds(domain.children, new Set<string>());
-    }
-    // Deploy units get their own code rather than `duplicate-node-id-parent`
-    // (#2713): `duplicate-node-in-deploy` names the block the collision is in,
-    // and docs/spec/diagnostics.md states its rule with no route qualifier —
-    // "A node id is duplicated within a `deploy` block". Until now the only
-    // emitter was the wildcard-import merge in import-resolver.ts, so a single
-    // file declaring `oci app` twice said nothing while the same collision
-    // assembled across files was an error.
-    for (const deploy of file.deploys) {
-      this.collectDeployNodeIds(deploy);
-    }
-    // The index itself is a merge-only verdict, so it is built by the shared
-    // function the ImportResolver re-runs on the merged model (#2596).
-    const nodePaths = buildNodePathIndex(file);
-    file.nodePathIndex = nodePaths.membership;
-    file.nodePathRanking = nodePaths.ranking;
-    this.diagnostics.push(...nodePaths.diagnostics);
-    // One declared-path walk for all the node-reference checks below: each
-    // built the same O(nodes) map for itself, on the path the LSP re-runs at
-    // every keystroke. Lazy, so the checks that bail on their own guard still
-    // cost nothing (#2549).
-    const declaredPaths = declaredNodePathsOnce(file);
-    this.diagnostics.push(...validateOwnsReferences(file, declaredPaths));
-    if (file.boundaries.length > 0) {
-      this.diagnostics.push(...validateContainsReferences(file, declaredPaths));
-    }
-    // Scoped boundaries resolve against direct children, so they are checked
-    // per scope rather than against the whole model (#2036).
-    this.diagnostics.push(...validateScopedContainsReferences(file));
-    // Ambiguity for realizes path refs (#2088 slice C). Existence stays with
-    // resolver/warnings.ts; only the ambiguity verdict lives here, on the same
-    // import-coupled surface as owns / contains. `handles` has no ambiguity
-    // twin, for the reason recorded in reference-validation.ts.
-    this.diagnostics.push(...validateRealizesReferences(file, declaredPaths));
-    // A `resource` / `table` naming an infra block or leaf nothing declares
-    // (#2078). Suppressed and re-derived by the ImportResolver like the checks
-    // above, since the block is canonically declared in an imported infra file.
-    this.diagnostics.push(...validatePhysicalRefs(file));
-    // Declaration uniqueness is a property of the *merged* facet namespace: two
-    // files may each declare `facet pii` with different metadata, and only the
-    // merge sees that. The ImportResolver suppresses this code per file and
-    // re-derives it there; single-file parses (LSP, `Parser.parse`) get the same
-    // verdict here (TPL-2032).
-    this.diagnostics.push(...validateFacetDeclarations(file.facets));
+    finalizeFile(this.ctx, file);
 
     return { value: file, diagnostics: this.diagnostics };
   }
@@ -1710,188 +1577,5 @@ export class Parser {
     if (next.value.length === 1) return undefined;
     this.advance();
     return next.value.slice(1);
-  }
-
-  private parseDeployBlock(): DeployBlock {
-    const start = this.advance(); // deploy
-    // Accept identifier (new: deploy Production) or string literal (legacy: deploy "name")
-    const idToken =
-      this.peek().type === TokenType.Identifier
-        ? this.advance()
-        : this.expect(TokenType.StringLiteral);
-    this.expect(TokenType.LeftBrace);
-
-    const nodes: DeployNode[] = [];
-    let label: string | undefined;
-
-    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      if (this.peek().value === "label") {
-        this.advance();
-        if (
-          this.peek().type === TokenType.StringLiteral ||
-          this.peek().type === TokenType.Identifier
-        ) {
-          label = this.advance().value;
-        } else {
-          this.error("expected-property-value", { propName: "label" });
-        }
-      } else if (DEPLOY_KEYWORDS.has(this.peek().value)) {
-        nodes.push(this.parseDeployNode());
-      } else if (this.peek().type === TokenType.Legend) {
-        handleNestedLegend(this.ctx, "deploy");
-      } else {
-        this.error("unexpected-token-in-block", {
-          blockKind: "deploy",
-          tokenType: String(this.peek().type),
-          value: this.peek().value,
-        });
-        this.advance();
-      }
-    }
-
-    const end = this.expect(TokenType.RightBrace);
-
-    return {
-      id: idToken.value,
-      label,
-      nodes,
-      loc: this.range(start.loc, end.loc),
-    };
-  }
-
-  private parseDeployNode(): DeployNode {
-    const start = this.advance(); // deploy kind keyword
-    const kind = start.value as DeployNodeKind;
-    // Accept identifier (new: oci myApp) or string literal (legacy: oci "my-app")
-    const idToken =
-      this.peek().type === TokenType.Identifier
-        ? this.advance()
-        : this.expect(TokenType.StringLiteral);
-    this.expect(TokenType.LeftBrace);
-
-    const properties: DeployNodeProperties = {};
-    let label: string | undefined;
-
-    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      if (this.peek().value === "label") {
-        this.advance();
-        if (
-          this.peek().type === TokenType.StringLiteral ||
-          this.peek().type === TokenType.Identifier
-        ) {
-          label = this.advance().value;
-        } else {
-          this.error("expected-property-value", { propName: "label" });
-        }
-      } else if (DEPLOY_PROPERTY_KEYWORDS.has(this.peek().value)) {
-        const propToken = this.advance();
-        const propName = propToken.value as keyof DeployNodeProperties;
-        if (propName === "realizes") {
-          this.parseRealizesList(propToken, properties);
-        } else if (
-          // Value can be string literal or identifier
-          this.peek().type === TokenType.StringLiteral ||
-          this.peek().type === TokenType.Identifier
-        ) {
-          (properties as Record<string, string>)[propName] = this.advance().value;
-        } else {
-          this.error("expected-property-value", { propName });
-        }
-      } else if (this.peek().type === TokenType.Legend) {
-        handleNestedLegend(this.ctx, kind);
-      } else {
-        this.error("unexpected-token-in-block", {
-          blockKind: "deploy node",
-          tokenType: String(this.peek().type),
-          value: this.peek().value,
-        });
-        this.advance();
-      }
-    }
-
-    const end = this.expect(TokenType.RightBrace);
-
-    return {
-      kind,
-      id: idToken.value,
-      label,
-      properties,
-      loc: this.range(start.loc, end.loc),
-    };
-  }
-
-  /**
-   * Parses the value of one `realizes` line, appending to the node's target
-   * list. Targets may be written one per line (#409) or comma-separated on a
-   * single line (#2167) — the comma form is sugar, so both append to the same
-   * array and a node mixing the two accumulates in document order.
-   *
-   * The list grammar itself lives in `commaSeparatedValues`, which every
-   * reference list shares (#2551); a target is a node reference path, whose
-   * dots continue the one ref even across a line break.
-   */
-  private parseRealizesList(keyword: Token, properties: DeployNodeProperties): void {
-    for (const first of commaSeparatedValues(this.ctx, keyword, "realizes")) {
-      const target = readReferencePathElement(this.ctx, first, "realizes");
-      if (!target) continue;
-      // Naming the same target twice declares one relation, not two (#2552).
-      // The repeat is dropped wherever it sits — later in this list or on a
-      // line of its own — the way `facets` has always treated a repeated id,
-      // and the entry that survives is the first, so the recorded range points
-      // at the spelling the author wrote first. Recording both instead makes
-      // consumers that count entries disagree with consumers that key by
-      // identity: the deploy layout reserved a grid cell per entry while
-      // `layoutNodes` coalesced the two placements, leaving a container sized
-      // for a unit that is never drawn.
-      const targets = (properties.realizes ??= []);
-      const already = targets.some(
-        (t) =>
-          t.path.length === target.path.length && t.path.every((seg, i) => seg === target.path[i]),
-      );
-      if (!already) targets.push(target);
-    }
-  }
-
-  private collectNodeIds(nodes: KrsNode[], seen: Set<string>): void {
-    for (const node of nodes) {
-      if (seen.has(node.id)) {
-        this.diagnostics.push({
-          severity: "error",
-          code: "duplicate-node-id-parent",
-          params: { nodeId: node.id },
-          loc: node.loc,
-        });
-      } else {
-        seen.add(node.id);
-      }
-      this.collectNodeIds(node.children, new Set<string>());
-    }
-  }
-
-  /**
-   * Per-file half of `duplicate-node-in-deploy` (#2713). A deploy block's units
-   * are its immediate children and nothing nests below them, so this is one
-   * flat pass rather than the recursive walk `collectNodeIds` does.
-   *
-   * The verdict is reported on the *repeat*, not on the first declaration: the
-   * first spelling is the one every consumer keys, so the later one is what the
-   * author has to move or rename. Nothing is dropped here — the merge path
-   * drops because it has a target block to keep intact, while a parse keeps the
-   * file as written and lets `placeGroupBlock` collapse what it cannot key.
-   */
-  private collectDeployNodeIds(deploy: DeployBlock): void {
-    const seen = new Set<string>();
-    for (const node of deploy.nodes) {
-      if (seen.has(node.id)) {
-        this.diagnostics.push({
-          severity: "error",
-          code: "duplicate-node-in-deploy",
-          params: { nodeId: node.id, deployId: deploy.id },
-          loc: node.loc,
-        });
-      } else {
-        seen.add(node.id);
-      }
-    }
   }
 }

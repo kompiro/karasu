@@ -8,7 +8,7 @@ type: product
 - **関連 Issue**: [#2552](https://github.com/kompiro/karasu/issues/2552)
 - **Related TPLs**: [TPL-2552](../test-perspectives/TPL-2552-repeated-relation-is-idempotent-across-counting-and-keyed-consumers.md)（件数を数える消費側と id で畳む消費側を一致させる）／ [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md)（sugar の両形は同一 AST）
 - **対象ファイル**:
-  - `packages/core/src/parser/parser.ts`（`parseRealizesList`）
+  - `packages/core/src/parser/deploy-parser.ts`（`parseRealizesList`）
   - `packages/core/src/view/deploy-view-extract.ts`（`extractDeployView` の container membership）
   - `docs/spec/syntax.md` / `syntax.ja.md`（§ Writing physical diagrams — `realizes` の複数指定）
 
