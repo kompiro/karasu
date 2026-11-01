@@ -16,7 +16,7 @@ import { projectStoreRelations } from "./entity-relations.js";
  * Per-domain density metrics over a resolved logical model. Used by the
  * architecture-reverse harness to detect the "domain thinned out" failure
  * mode quantitatively instead of eyeballing (see
- * `docs/design/reverse-architecture-skill.md`).
+ * ADR-1895).
  *
  * A node is attributed to its **nearest enclosing domain** — nested domains
  * do not double-count their ancestor's interior.

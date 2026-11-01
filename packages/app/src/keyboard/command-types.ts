@@ -1,6 +1,6 @@
 /**
  * A user-invokable action. A `Command` is both a keybinding target and a
- * future command-palette entry — see `docs/design/app-keyboard-shortcuts.md`.
+ * future command-palette entry — see ADR-1411.
  */
 export interface Command {
   /** Stable, unique, dot-namespaced id (e.g. `"view.toggleSidebar"`). */

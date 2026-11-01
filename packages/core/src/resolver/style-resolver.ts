@@ -168,7 +168,7 @@ export function resolveStyles(
   // Recursively process nodes carrying down the nearest annotated ancestor's
   // annotations (`parentAnnotations`). When a node has no annotations of its
   // own, it renders as if it carried the parent's — see
-  // docs/design/inherit-service-annotations.md. Explicit annotations always
+  // ADR-517. Explicit annotations always
   // win, and a child with its own annotations becomes the new propagation
   // root for its own subtree.
   function processNodes(

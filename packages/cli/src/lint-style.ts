@@ -11,7 +11,7 @@ interface LintStyleOptions {
 /**
  * `karasu lint-style` — value-level diagnostics for `.krs.style` files
  * (Phase 3 of the style AST roadmap, see
- * `docs/design/style-value-diagnostics.md`).
+ * ADR-1178).
  *
  * Reports parse diagnostics + value validator diagnostics in the
  * familiar `<file>:<line>:<col> <severity>: <message>` format. Exits

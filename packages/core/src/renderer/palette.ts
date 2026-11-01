@@ -16,7 +16,7 @@
  * values verbatim — the default theme is `"dark"`, so existing renderer
  * output (and every SVG snapshot) is byte-for-byte unchanged.
  *
- * See `docs/design/svg-diagram-theming.md` (option 1, resolve-and-embed).
+ * See ADR-1479 (option 1, resolve-and-embed).
  */
 
 /** Resolved diagram theme. `"dark"` is the default for backward compatibility. */

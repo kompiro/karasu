@@ -6,13 +6,13 @@
  *   - `string`                              : a static phrase (no interpolation)
  *   - `(params: {...}) => string`           : a phrase with typed interpolation
  *
- * Per `docs/design/i18n-support.md`, the locale files (`en.ts`, `ja.ts`)
+ * Per ADR-34, the locale files (`en.ts`, `ja.ts`)
  * implement this map. The `en.ts` file must be complete (this is what the
  * TypeScript type enforces). The `ja.ts` file may be partial; any key
  * missing in `ja.ts` falls through to the English value at render time.
  *
  * Keys are added incrementally as each app subsystem is translated in the
- * rollout phases documented in `docs/design/i18n-support.md`.
+ * rollout phases documented in ADR-34.
  * Phase A (this file's initial version) seeds the map with the strings
  * needed by the language selector itself, so Phase C1 (toolbar + selector)
  * can consume them immediately.

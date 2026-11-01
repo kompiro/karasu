@@ -39,7 +39,7 @@ import { round2 } from "./svg-number.js";
  *
  * Scope: crossings in any *single-system* view (right-angle and, since #1939,
  * diagonal; grouped and, since #1956, ungrouped). The multi-system view is
- * extended separately (#1939 Part 2) — see docs/design/system-view-grouping.md.
+ * extended separately (#1939 Part 2).
  */
 export function renderCrossingMarks(
   marks: CrossingMarks,

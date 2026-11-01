@@ -11,7 +11,7 @@ export const GHOST_MARGIN = 30;
 
 // Per-mode gap constants. Shape values are the historical defaults tuned
 // for variable-width cards (~250px). Icon values are tuned for uniform
-// 160-wide cards — see docs/design/icon-mode-layout-tuning.md.
+// 160-wide cards — see ADR-1000.
 export function getLayoutConstants(displayMode?: DisplayMode): {
   LAYER_GAP: number;
   NODE_GAP: number;

@@ -4449,3 +4449,146 @@ describe("Parser source file identity", () => {
     expect(stray?.loc && Object.keys(stray.loc)).toEqual(["start", "end"]);
   });
 });
+
+// An error is syntax karasu does not accept: the rejected construct is kept out
+// of the model, and the unit removed is exactly that construct (ADR-2677
+// decision 9, #3072). So a source with the mistake must parse to the same model
+// as the source with the construct blanked out, and the mistake raises one
+// error. Blanking (spaces, newlines kept) rather than deleting keeps every
+// later location where it was, so the two models compare whole.
+//
+// The error starts where the construct does. A property's range ends where its
+// value does; a node's ends on the construct's last line (a node range ends at
+// the start of its last token, as every node's `loc` does).
+describe("a rejected construct is dropped whole (#3072)", () => {
+  const blankOut = (source: string, construct: string): string => {
+    expect(source).toContain(construct);
+    return source.replace(construct, construct.replace(/[^\n]/g, " "));
+  };
+
+  const expectDroppedWhole = (source: string, construct: string, code: string) => {
+    const result = Parser.parse(source);
+    expect(result.diagnostics.map((d) => d.code)).toEqual([code]);
+    const loc = result.diagnostics[0].loc;
+    const start = source.indexOf(construct);
+    expect(loc?.start.offset).toBe(start);
+    if (code === "property-not-for-node-kind") {
+      expect(loc?.end.offset).toBe(start + construct.length);
+    } else {
+      const lastLine = source.slice(0, start + construct.length).split("\n").length;
+      expect(loc?.end.line).toBe(lastLine);
+    }
+    const blanked = Parser.parse(blankOut(source, construct));
+    expect(blanked.diagnostics).toEqual([]);
+    expect(result.value).toEqual(blanked.value);
+  };
+
+  describe("infra-not-in-context", () => {
+    it("drops a database inside a service with its body, and the blocks after it stay in place", () => {
+      const construct = `database OrderDB {
+      table orders { label "Orders" }
+      table lines
+    }`;
+      expectDroppedWhole(
+        `
+system S {
+  service A {
+    ${construct}
+    domain Ordering {
+      usecase PlaceOrder
+    }
+  }
+  service B
+}
+`,
+        construct,
+        "infra-not-in-context",
+      );
+    });
+
+    it.each([
+      [
+        "a queue inside a domain",
+        `queue EventBus {\n        queue OrderCreated\n      }`,
+        (c: string) => `service A {\n    domain X {\n      ${c}\n      usecase U\n    }\n  }`,
+      ],
+      [
+        "a storage inside a usecase",
+        `storage Media {\n          bucket images\n        }`,
+        (c: string) =>
+          `service A {\n    domain X {\n      usecase U {\n        ${c}\n        label "after"\n      }\n    }\n  }`,
+      ],
+      [
+        "a bodiless database inside a client",
+        `database DB [rdb]`,
+        (c: string) => `client Web [web] {\n    ${c}\n    label "after"\n  }`,
+      ],
+      [
+        "a bodiless database closing its service",
+        `database DB`,
+        (c: string) => `service A { ${c} }`,
+      ],
+    ])("drops %s", (_name, construct, wrap) => {
+      expectDroppedWhole(
+        `\nsystem S {\n  ${wrap(construct)}\n  service B\n}\n`,
+        construct,
+        "infra-not-in-context",
+      );
+    });
+
+    it("still reports a mistake inside the dropped block, as its own error", () => {
+      const result = Parser.parse(`
+system S {
+  service A {
+    database DB {
+      table t { label }
+    }
+  }
+  service B
+}
+`);
+      expect(result.diagnostics.map((d) => d.code)).toEqual([
+        "expected-string-after",
+        "infra-not-in-context",
+      ]);
+      expect(result.value.systems[0].children.map((c) => c.id)).toEqual(["A", "B"]);
+    });
+  });
+
+  describe("property-not-for-node-kind", () => {
+    it.each([
+      ["role", `service A {\n    role "operator"\n    label "after"\n  }`, `role "operator"`],
+      [
+        "handles",
+        `user U [human] {\n    handles Order.Line, Catalog\n    label "after"\n  }`,
+        `handles Order.Line, Catalog`,
+      ],
+      [
+        "delivers",
+        `client Web [web] {\n    delivers Admin, Mobile\n    label "after"\n  }`,
+        `delivers Admin, Mobile`,
+      ],
+      [
+        "operations",
+        `service A {\n    domain X {\n      usecase U {\n        operations list:read, create\n        label "after"\n      }\n    }\n  }`,
+        `operations list:read, create`,
+      ],
+      ["role closing its block", `service A { role "operator" }`, `role "operator"`],
+      [
+        "a bare role before an edge",
+        `service A {\n    role\n    "A" -> B\n  }\n  service B`,
+        `role`,
+      ],
+      // The value's own mistakes are not reported: the property cannot be
+      // written here at all, so a missing id after it has nothing to fix.
+      ["handles with no value", `user U [human] {\n    handles\n    label "after"\n  }`, `handles`],
+      [
+        "delivers with a trailing comma",
+        `client Web [web] {\n    delivers Admin,\n    label "after"\n  }`,
+        `delivers Admin,`,
+      ],
+    ])("drops %s with its value", (_property, block, construct) => {
+      expectDroppedWhole(`\nsystem S {\n  ${block}\n}\n`, construct, "property-not-for-node-kind");
+    });
+  });
+});
