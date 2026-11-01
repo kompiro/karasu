@@ -41,6 +41,18 @@ function fnv1a(input: string): string {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
+/**
+ * Records oldest first. `createdAt` has millisecond resolution, so two captures
+ * can share it (#3470); ties fall back to index position, which is capture order
+ * because records are appended inside the serialized capture.
+ */
+function inCaptureOrder(records: SnapshotRecord[]): SnapshotRecord[] {
+  return records
+    .map((record, position) => ({ record, position }))
+    .sort((a, b) => a.record.createdAt.localeCompare(b.record.createdAt) || a.position - b.position)
+    .map(({ record }) => record);
+}
+
 export class SnapshotManager {
   /**
    * Serializes the index read-modify-write (#1531, same class as ProjectManager):
@@ -86,7 +98,7 @@ export class SnapshotManager {
 
   async list(relPath: string): Promise<SnapshotRecord[]> {
     const index = await this.readIndex(relPath);
-    return [...index.records].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return inCaptureOrder(index.records).reverse();
   }
 
   async read(relPath: string, snapshotId: string): Promise<string> {
@@ -157,9 +169,7 @@ export class SnapshotManager {
    */
   private async gcIfNeeded(relPath: string): Promise<void> {
     const index = await this.readIndex(relPath);
-    const autos = index.records
-      .filter((r) => r.trigger === "auto")
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const autos = inCaptureOrder(index.records).filter((r) => r.trigger === "auto");
     const excess = autos.length - AUTO_RETENTION_CAP;
     if (excess <= 0) return;
 
