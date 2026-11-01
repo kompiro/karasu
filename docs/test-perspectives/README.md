@@ -593,3 +593,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-3286](TPL-3286-merge-eligibility-judged-on-final-diff.md) | 人間を通らないマージを許す判定は、最終の差分で行い、どの規則にも当たらない入力を厳しい側に倒す。PR 作成時の 1 回だけの判定は後のコミットで外れ、規則に当たらないパスが軽い側に倒れると誰も読まないコードが入る | build | #3286, ADR-2331 |
 | [TPL-3385](TPL-3385-consumer-of-a-signal-the-producer-stops-emitting.md) | 外部サービスの出力を変える設定変更では、その出力を待つ側の判定を新しい形の fixture で確かめる。止めた出力を答えとして待つ処理はエラーにならず時間切れまで待ち、古い形の fixture のテストは通り続ける | project | #3385, #3365 |
 | [TPL-3470](TPL-3470-timestamp-order-needs-a-tie-break.md) | 時刻で並べる一覧は、同じ時刻の項目にも本当の順序を与える tie-break を持つ。ミリ秒精度の時刻は普通に衝突し、比較が 0 を返すと順序はソート前の並びで決まる。順序のテストは sleep で時刻を進めず `Date` を固定する | project | #3470 |
+| [TPL-3494](TPL-3494-edge-never-crosses-its-own-endpoint-cards.md) | エッジは自分の端点のカードの内側も通らない。障害物の検査は端点を除外するので、線が自分のカードを突っ切っても貫通 0 のまま通り、終点のカードが矢印を隠す。端点の辺は layer の番号ではなく描画上の位置で決め、端点カードとの交差を別に測る | renderer | #3494 |
