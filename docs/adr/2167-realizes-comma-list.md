@@ -9,7 +9,7 @@ scope:
   packages: [core]
   concerns: []
 assumptions:
-  - "symbol: packages/core/src/parser/parser.ts :: parseRealizesList"
+  - "symbol: packages/core/src/parser/deploy-parser.ts :: parseRealizesList"
   - "symbol: packages/core/src/types/ast.ts :: RealizesTarget"
   - "grep: packages/core/src/formatter/formatter.ts :: realizes \\$\\{r\\.path\\.map\\(quoteId\\)"
 ---

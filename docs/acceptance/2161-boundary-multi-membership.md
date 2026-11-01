@@ -15,7 +15,7 @@
   - [TPL-2179](../test-perspectives/TPL-2179-derived-outline-measured-on-coverage-not-bbox.md)（広げた図形は実被覆で測る — slice B の proactive）
   - [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（貫通 0 + 共線オーバーラップ 0 の再計測）
   - [TPL-1799](../test-perspectives/TPL-1799-raster-pipeline-glyph-coverage.md)（`◇` の PNG グリフカバレッジ）
-- **対象**: `packages/core/src/parser/parser.ts`（`buildBoundaryMembership` / `buildScopedBoundaryMembership`）、`packages/core/src/types/ast.ts`（`boundaryMembership` / `primaryBoundaryOf` / `mergeMembership`）、`packages/core/src/fs/import-resolver.ts`、`packages/core/src/compile/compile-diff.ts`、`packages/core/src/renderer/layout.ts` / `canvas-grouping.ts` / `group-layout.ts` / `group-labels.ts`、`packages/i18n`
+- **対象**: `packages/core/src/parser/reference-validation.ts`（`buildBoundaryMembership` / `buildScopedBoundaryMembership`）、`packages/core/src/types/ast.ts`（`boundaryMembership` / `primaryBoundaryOf` / `mergeMembership`）、`packages/core/src/fs/import-resolver.ts`、`packages/core/src/compile/compile-diff.ts`、`packages/core/src/renderer/layout.ts` / `canvas-grouping.ts` / `group-layout.ts` / `group-labels.ts`、`packages/i18n`
 
 ## 概要
 
