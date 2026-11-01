@@ -66,6 +66,12 @@ jobs:
       - name: No raw NUL bytes in tracked text files
         run: pnpm run lint:no-nul-bytes
 
+      # Nothing outside docs/ may cite a Design Doc, which is deleted on
+      # promotion (Issue #3471, ADR-3471). Also run by `ci-skip.yml`, since a
+      # citation can land in `**/*.md` or `.claude/**` (TPL-2446).
+      - name: No Design Doc citations outside docs/
+        run: pnpm run lint:design-doc-refs
+
       # Every app command (`useCommand` id / keybinding) must be driven by some
       # packages/e2e/tests spec (Issue #3042, TPL-3039). It reads only app
       # source and specs, which docs-only PRs (`ci-skip.yml`) cannot change.
