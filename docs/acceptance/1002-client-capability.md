@@ -7,7 +7,7 @@
   - `packages/core/src/parser/parser.ts`
   - `packages/core/src/types/ast.ts`
   - `packages/core/src/resolver/warnings.ts`
-  - `packages/core/src/renderer/svg-renderer.ts`
+  - `packages/core/src/renderer/node-text.ts`
   - `packages/core/src/renderer/layout.ts`
   - `examples/ja/getting-started/index.krs`, `examples/en/getting-started/index.krs`, `examples/en/client-mcp/index.krs`
   - `docs/spec/syntax.md`, `docs/spec/tags-annotations.md`

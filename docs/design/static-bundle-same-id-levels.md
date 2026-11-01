@@ -7,7 +7,7 @@
   - 関連 ADR: [ADR-2917](../adr/2917-multi-system-root-same-id-nodes.md)（同名ノードを両方描き、要素の id は bare id のまま、1 ノードを指す消費側は path を持つ。anchor 文法を path にする案 B は先送り）, [ADR-1827](../adr/1827-permalink-deep-element.md)（anchor 文法は `anchorId` 1 つ。静的 SVG と SPA の parity）, [ADR-2088](../adr/2088-node-reference-path-notation.md)（bare id は集合を指す）, [ADR-110](../adr/110-permanent-link.md)（`nodePathIndex` が bare id を path に解決する）
   - 関連 spec: `docs/spec/permalink.md`（2 つの面が同じ anchor を解決する）, `docs/spec/diagnostics.md`（`node-id-multiple-locations` の勝者規則）
   - 関連 TPL: [TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md), [TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md), [TPL-2920](../test-perspectives/TPL-2920-duplicate-element-id-on-one-canvas-names-its-landing.md), [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)
-  - コード: `packages/core/src/renderer/drill-down-svg.ts`, `packages/core/src/renderer/all-layers-svg.ts`, `packages/core/src/renderer/svg-renderer.ts`, `packages/core/src/view/view-path.ts`（`resolveContainerChain`）
+  - コード: `packages/core/src/renderer/drill-down-svg.ts`, `packages/core/src/renderer/all-layers-svg.ts`, `packages/core/src/renderer/svg-renderer.ts`, `packages/core/src/renderer/node-card.ts`, `packages/core/src/view/view-path.ts`（`resolveContainerChain`）
 
 ## 背景・課題
 
@@ -148,7 +148,7 @@ walk はそのままで、すでに出した anchor id を飛ばす。
 1. **canonical 判定の helper**（`drill-down-svg.ts` 内、export しない）: `nodePathIndex` と walk の full path を受け取り、その path が bare id の canonical path かを返す。Unassigned の擬似 system の段を外して比べる。索引に無い id は「walk 順で最初に見た path」を canonical とし、bundle 1 回分の Map に記録する。
 2. **walk の path**: `buildDrillDownSvg` と `buildAllViewsSvg` の `getChildren` が返す子に、その子の full path を持たせる（ルートでは所有 system の id を前に付ける）。`DrillDownCallbacks.getChildren` の戻り値を `{ node, path }` にするか、system drill 用に path を返す callback を足す。org 側の呼び出しは現在の path 規則のままでよい（team の path は一意）。
 3. **レベルの出力**: `collectDrillDownLevelsGeneric` / `collectDrillDownLevelsWithDimensions` は、canonical でないノードではレベルを push しない。再帰は続ける。
-4. **リンク**: `childLevelLinks` の key をカードの path（`nodePathRefId(path)`）に変え、`svg-renderer.ts` は `node.path` があればそれで、無ければ bare id で引く。canonical で、かつレベルを出す子だけを Map に入れる。カードの `node.path` がルートの Unassigned ノードでどの形になるかを実装時に確かめ、walk path と同じ形に揃える。
+4. **リンク**: `childLevelLinks` の key をカードの path（`nodePathRefId(path)`）に変え、`node-card.ts` は `node.path` があればそれで、無ければ bare id で引く。canonical で、かつレベルを出す子だけを Map に入れる。カードの `node.path` がルートの Unassigned ノードでどの形になるかを実装時に確かめ、walk path と同じ形に揃える。
 5. **戻るボタン**: 再帰で「最後にレベルを出した祖先の anchor」を引き回し、それを `parentViewId` にする。`collectEntityLevels` も同じ規則に揃え、canonical でない domain の entity レベルは出さない（`#krs-entity-<domainId>` も SPA は `nodePathIndex` で解決する）。
 6. **stacked の all-layers**: 2 の full path を使い、複数 system のルート直下の帯ラベルを `[system ラベル, 子ラベル]` で始める。重複除去はしない。
 7. **テスト**（`packages/core/src/renderer/` に新しい test file。既存の `multi-system-same-id.test.ts` の隣）:

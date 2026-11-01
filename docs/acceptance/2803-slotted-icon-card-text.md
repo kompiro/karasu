@@ -13,7 +13,7 @@ type: product
   [TPL-2385](../test-perspectives/TPL-2385-attachment-follows-drawn-outline.md)（幾何は描画出力から読む）、
   [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md)（見た目の決定は 1 箇所）
 - **対象ファイル**:
-  - `packages/core/src/renderer/svg-renderer.ts`（`renderNode` のテキスト分岐 / `iconBodyBox`）
+  - `packages/core/src/renderer/node-card.ts`（`renderNode` のテキスト分岐 / `iconBodyBox`）
   - `packages/core/src/shapes/shape-registry.ts`（`pictogramGroup` / `PICTOGRAM_OFFSET`）
   - `packages/core/src/renderer/org-renderer.ts`（同じピクトグラム配置を共有）
   - `docs/spec/style.md` / `docs/spec/style.ja.md`（「How a `url()` icon is drawn」節）

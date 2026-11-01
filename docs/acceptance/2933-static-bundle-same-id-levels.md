@@ -11,7 +11,7 @@ type: product
 - **対象ファイル**:
   - `packages/core/src/renderer/drill-down-svg.ts`（`collectDrillDownLevels`・`systemAnchorOwner`・`collectEntityLevels`）
   - `packages/core/src/renderer/all-layers-svg.ts`（`DrillChild`・`systemDrillChildren`・stacked の帯ラベル）
-  - `packages/core/src/renderer/svg-renderer.ts`（`cardLinkKey`。カードのリンクを path で引く）
+  - `packages/core/src/renderer/node-card.ts`（`cardLinkKey`。カードのリンクを path で引く）
   - `packages/core/src/view/unassigned-system.ts`（`withoutUnassignedSegment`）
 
 > 静的バンドルは同じ id のノードごとに `<g id="krs-system-<id>">` を出し、複数 system のルートでは子の path に system の段を持たないため、後の system の部分木が前の system の複製になっていた。anchor id ごとにレベルを 1 つだけ出し、その中身を SPA が同じ fragment を解決する `nodePathIndex` の勝者で決める。walk は full path で回すので、勝者でないノードの下の一意な id は自分のレベルを持つ。カードは自分のレベルがあるときだけリンクし、戻るボタンは自分のノードを出すレベルを持つ最も近い祖先へ向く。

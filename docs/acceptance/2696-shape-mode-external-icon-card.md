@@ -11,7 +11,7 @@ type: product
   [TPL-2385](../test-perspectives/TPL-2385-attachment-follows-drawn-outline.md)（幾何は描画出力から読む）、
   [TPL-2175](../test-perspectives/TPL-2175-deprecation-announced-only-with-a-migration-target.md)（告知は移行先と同じ release に置く）
 - **対象ファイル**:
-  - `packages/core/src/renderer/svg-renderer.ts`（`iconBodyBox` / `renderIconFrame` / `renderSlottedText`）
+  - `packages/core/src/renderer/node-card.ts`（`iconBodyBox` / `renderIconFrame`）/ `node-text.ts`（`renderSlottedText`）
   - `packages/core/src/shapes/shape-registry.ts`（emit する scale の丸め）
   - `README.md` / `docs/tools/app.md` / `docs/tools/app.ja.md`（icon mode の非推奨告知）
 
