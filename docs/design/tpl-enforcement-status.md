@@ -147,7 +147,8 @@ TPL ごとに「どこまで機械が守っているか」を持たせ、それ�
   毎日の再生成 PR がちょうど生成器の出力であることを `Validate` が比べるので、drift しない
   （#3289 の設計 `tpl-index-daily-regeneration.md`。当初は各 PR が索引を運び CI の
   `tpl regenerate --check` で鮮度を見る前提だったが、ADR-3416 に合わせて変えた）。状態の変化は
-  索引としては PR の diff に現れないが、状態を決める印の変更は TPL のファイルの diff として見える
+  索引としては PR の diff に現れないが、状態を決める印の変更は TPL のファイルの diff として、導出の
+  仕方を変える設定や版上げは config や lockfile の diff として見える
 - `tpl related` は `--status` を付けたときだけ各行に状態を出す。既定の出力は Design Doc の
   「Related TPLs」節に貼る形なので、そこに状態を混ぜると、導出値の写しが Design Doc に入り、
   昇格後は本文を変えない ADR（ADR-2687）に固まる。これは 2-B で避ける二重管理と同じ形になる

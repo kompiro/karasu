@@ -42,7 +42,8 @@ TPL の id は Issue 番号で単調に増えるので、新しい行はいつ�
   `node` で動かすので、tpl-tools の関数は使えず、config は素の JSON として読むしかない
 - **`tpl regenerate` は `adr regenerate` と動き方が違う。** `--out-dir` が無く、作業ディレクトリの
   `<TPL ディレクトリ>/<indexFile>` に書く。`indexFile` が無ければ exit 2 になる。TPL ディレクトリは
-  `tpl.config.json` に無く、CLI の既定値（`docs/test-perspectives`）でしか決まらない
+  `tpl.config.json` に無い。karasu は `--tpl-dir` を渡していないので、CLI の既定値
+  （`docs/test-perspectives`）が使われている
 - `Validate` の workflow（`adr-validate.yml`）は path filter で起動し、対になる
   `adr-validate-skip.yml` の `paths-ignore` と一致させる必要がある（TPL-1480）
 
@@ -66,7 +67,8 @@ TPL の id は Issue 番号で単調に増えるので、新しい行はいつ�
 **#3038 の D2 が持っていた性質を 1 つ手放す。** `tpl-enforcement-status.md` の D2 は、索引を PR が
 運び CI の `--check` が鮮度を見ることで「状態の変化が PR の diff に見え、しかも drift しない」とした。
 1-B では状態の変化は PR の diff に索引として現れない。それでよいと判断する理由は 2 つある。状態を
-決めるのは項目の印で、印の変更は TPL のファイルの diff としてその PR に見える。そして drift しない保証は、
+決めるのは項目の印で、印の変更は TPL のファイルの diff としてその PR に見える（導出の仕方を変える
+`checklistHeading` の設定や tpl-tools の版上げは、config や lockfile の diff として見える）。そして drift しない保証は、
 再生成 PR が「ちょうど生成器の出力であること」を `Validate` で比べることに移るだけで、失われない。
 `tpl-enforcement-status.md` の該当箇所はこの PR で書き直し、#3488 の本文も合わせて直す。
 
@@ -112,7 +114,12 @@ TPL を消す・改名する PR が入った直後の `main` では、翌日の�
 
 - 移行の PR は `indexFile` を設定するが `index.md` を書かない（下の「影響範囲・マイグレーション」）。
   キーが `index-missing` を止めなければ、その PR から最初の再生成 PR がマージされるまで、すべての PR の
-  `tpl:validate` が落ちる。tpl-tools 側の受け入れ条件に「`indexFile` が指すファイルが無くても通る」を入れる
+  `tpl:validate` が落ちる
+- 止めたときに README の一覧表の検査へ戻ってもいけない。今の `validateAll` は `indexPath` が無いと
+  `README.md` を検査するので、キーを「`indexPath` を渡さない」で作ると、表を消した README で全 TPL が
+  落ちる（3-B と同じ失敗）
+- tpl-tools 側の受け入れ条件は「キーを設定すると、索引のファイルも `README.md` も行やリンクを
+  検査されない。索引のファイルが無く、README に表が無くても `validate` が通る」とする
 - 索引の検査を持つのは tpl-tools なので、止め方も tpl-tools に置き、karasu は設定するだけにする。
   ADR-2810 で TPL ディレクトリの検査を tpl-tools に移した線と同じ
 - キー名は tpl-tools 側の設計で決める（候補: `"indexCheck": false`）
@@ -142,9 +149,12 @@ CLI が持つ」（ADR-2810）を崩す。3-A の release は小さいので、�
   展開した一時ディレクトリを作業ディレクトリにして実行し、書かれた `index.md` を読み戻す
 - **入力の同一性（`inputKey`）に TPL の入力を含める。** `docs/test-perspectives/TPL-*.md` と
   `tpl.config.json` が違う commit を同じ入力とみなすと、TPL だけが変わった commit が生成し直されない
-- **生成器の版が窓の中で変わったときの見送りを、tpl-tools にも広げる。** 今は lockfile の
-  `@kompiro/adr-tools` だけを見ている。移行の PR 自体が tpl-tools を上げるので、広げなければ移行の直後に
-  書式の違いだけで見張りが落ちる
+- **生成器の版が窓の中で変わったときの見送りを、生成器ごとにする。** 今は lockfile の
+  `@kompiro/adr-tools` だけを見て、変わっていれば全体を見送る。tpl-tools を上げて索引の書式が変わると、
+  窓の中の古い入力を新しい生成器で作り直した索引は書式だけ違うので、見送らなければ見張りが落ちる。
+  見送りは生成器ごとに行い、tpl-tools が変わった窓では TPL の索引の比較だけを見送って ADR の出力は
+  判定する。見送ったときはどちらの生成器かを出力に書く（TPL-2786）。移行の直後は、窓の中の古い commit は
+  TPL の生成器を動かさず（上の 1 つ目）、`main` にもまだ `index.md` が無いので、見送りなしで一致する
 - **生成器が G の外に書いたら失敗にする**（`regenerate-pr.ts` の既存の検査）。G に TPL の索引を含めれば、
   `index.md` はこの検査を通る
 
@@ -180,9 +190,19 @@ CLI が持つ」（ADR-2810）を崩す。3-A の release は小さいので、�
      `check-generated.ts`、`regenerate-at.ts`、`regenerate-pr.ts`（生成・G の外への書き込みの検査・PR
      本文の出力の一覧）、`regenerate-pr-flow.ts`、`check-freshness.ts`、`scripts/review/tier.ts` の
      `regenerationWaivesRecord`。テストは `generated.ts`・`check-generated.ts` の既存のユニットテストに
-     TPL の索引の場合を足し、G を固定している `tier.test.ts` と `adr-validate-paths-sync.test.ts` を直す
+     TPL の索引の場合を足す。`tier.test.ts` の `ADR_GENERATED_GLOBS` は ADR の出力を固定しているので、
+     TPL の索引を足すかを決める（索引は `docs/test-perspectives/**` として既に Low なので、段階の判定には
+     要らない）。`scripts/ci/adr-validate-paths-sync.test.ts`（path filter の一致を固定する）に
+     `docs/test-perspectives/**` を足す
    - D5 の path filter と hook の glob を直す
-   - README の一覧表を消し、`index.md` へのリンクを置く。Validator の節（表の整合を検査すると書いた
+   - 再生成 PR を「ADR の生成物だけ」と書いている文言を直す。`docs/process/review.md`（記録を免除する
+     規則の本文）、`adr-validate.yml` の step 名とコメント、`adr-validate-skip.yml` の echo、
+     `adr-freshness.yml` と `review-tier.yml` の見出しのコメント、`check-freshness.ts` と
+     `check-generated.ts` のメッセージ、`.claude/rules/adr.md` の生成物の段落
+   - README の一覧表を消し、`index.md` へのリンクを置く。リンクの横に「`index.md` は毎日の再生成 PR
+     だけが書くので、PR には含めない」と書く。`index.md` の冒頭は tpl-tools が「手で直さず
+     `tpl regenerate` を実行する」と書くので、それを読んだ人やエージェントが PR で生成し直さないように
+     するため。Validator の節（表の整合を検査すると書いた
      2 か所）を「索引は翌日の再生成 PR が更新し、`tpl:validate` は索引を見ない」に直す。
      `at-check-coverage.yml` の「README index rules」のコメントも直す
    - `pnpm tpl:regenerate` を足す（手元で索引を見るため）。生成物をコミットしないことと、生成した
@@ -191,12 +211,18 @@ CLI が持つ」（ADR-2810）を崩す。3-A の release は小さいので、�
    - **この PR は `index.md` を書かない。** 出力の設定を変える PR が生成物を書くと `Validate` は
      混在として落とす（ADR-3416）。最初の `index.md` は再生成 PR が作る
    - **マージの直後に、手元で `pnpm adr:regenerate-pr` を実行する。** 表を消した README のリンク先が
-     翌日の routine まで 404 にならないようにするため。これは移行の手順に含め、省略しない
+     翌日の routine まで 404 にならないようにするため。これは移行の手順に含め、省略しない。実行するのは
+     マージ後の `main` を取り込んだ checkout から。スクリプトは生成器だけを新しい worktree で動かし、
+     G と生成・コミットの処理は呼び出した側の checkout のものを使うので、移行前の checkout から
+     実行すると ADR の出力しか生成されない。開いた PR の差分に `docs/test-perspectives/index.md` が
+     あることを確かめる
 3. #3289 の Proposal と Acceptance を、この設計（1-B / 2-A / 3-A）に合わせて英語で書き直す。今の
    Acceptance（`--check` が CI で落とす、`pnpm tpl:regenerate` が `index.md` だけを変える）は 1-B では
    成り立たない
-4. hane の `test-perspective` skill は「ホスト repo が一覧表を持つ場合は行を足す」と条件付きで書いて
-   いるので、表が無くなれば何もしない。変更は要らない
+4. hane の `test-perspective` skill は「ホスト repo が一覧表を持つ場合は行を足す」と条件付きで書き、
+   `tpl:validate` を「frontmatter と一覧表の検査」と呼んでいる。表が無くなれば行は足さないが、生成された
+   索引を一覧表と読んで生成し直すおそれは残る。README のリンクの横の注意（上）で防ぎ、hane 側には
+   「生成された索引は PR で触らない」の 1 行を足すよう、hane の repo に Issue を起こす
 
 ### 実装の指針
 
