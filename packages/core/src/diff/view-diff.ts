@@ -1,5 +1,5 @@
 import type { KrsEdge, KrsNode } from "../types/ast.js";
-import { quotedIdLiteral } from "../formatter/quote-id.js";
+import { edgeKey, edgeKindKey } from "../view/edge-key.js";
 import { bareIdView, nodePathRefId } from "../parser/node-path.js";
 import { UNASSIGNED_SYSTEM_ID } from "../view/unassigned-system.js";
 import type { DomainEdgeDetail, SystemFrameEdges, ViewSlice } from "../view/view-slice.js";
@@ -55,29 +55,11 @@ export interface DiffedView {
 }
 
 /**
- * Compare-mode identity of an edge: the key every diff map is written under
- * and every renderer reads back (`edge-layer.ts`, `group-collapse.ts`, the
- * root view's per-frame lookup in `layout.ts`, the deploy ghost-edge diff).
- * Build it here and nowhere else, so the writers and readers cannot drift
- * apart (TPL-1352).
- *
- * A plain `${from}->${to}` join is not injective: a quoted id may contain
- * `->`, so `a -> "b->c"` and `"a->b" -> c` both joined to `a->b->c` and the
- * two edges shared one diff state (#2819). An endpoint that would make the
- * join ambiguous (it carries the `->` separator, or the `"` / `\` the quoted
- * form is built from) is therefore wrapped in the `.krs` string-literal form,
- * the same rule `nodePathRefId` applies to path segments (ADR-2714). The key
- * then splits one way only: a bare `from` has no `->` in it and cannot end the
- * separator early (`->` does not overlap itself), and a quoted `from` ends at
- * its closing quote. Every other edge keeps the `${from}->${to}` it always had.
+ * Compare-mode identity of an edge. Defined in `view/edge-key.ts` (#3111), so
+ * view extraction can key its dedup sets on the same injective form without
+ * importing from `diff/`; re-exported here because it is public API.
  */
-export function edgeKey(edge: Pick<KrsEdge, "from" | "to">): string {
-  return `${quoteEdgeEndpoint(edge.from)}->${quoteEdgeEndpoint(edge.to)}`;
-}
-
-function quoteEdgeEndpoint(endpoint: string): string {
-  return endpoint.includes("->") || /["\\]/.test(endpoint) ? quotedIdLiteral(endpoint) : endpoint;
-}
+export { edgeKey } from "../view/edge-key.js";
 
 function nodeChanges(before: KrsNode, after: KrsNode): NodeDiffMeta["changes"] | undefined {
   const out: NonNullable<NodeDiffMeta["changes"]> = {};
@@ -241,13 +223,13 @@ function diffImplicitEdgeDetails(
 ): Map<string, DomainEdgeDetail[]> {
   const merged = new Map<string, DomainEdgeDetail[]>();
   const keys = new Set<string>([...before.keys(), ...after.keys()]);
-  // The details map is keyed `${from}->${to}#${kind}` (derived-edges'
-  // `groupKey`). Its diff state lives under `edgeKey` of the same edge, so map
-  // one to the other through the edges themselves: cutting the detail key at
-  // its first `#` misreads an endpoint that carries `#` or `->` (#2819).
+  // The details map is keyed `edgeKindKey` (derived-edges' `groupKey`). Its
+  // diff state lives under `edgeKey` of the same edge, so map one to the other
+  // through the edges themselves: cutting the detail key at its first `#`
+  // misreads an endpoint that carries `#` or `->` (#2819).
   const edgeDiffKeyOf = new Map<string, string>();
   for (const edge of edges) {
-    edgeDiffKeyOf.set(`${edge.from}->${edge.to}#${edge.kind}`, edgeKey(edge));
+    edgeDiffKeyOf.set(edgeKindKey(edge), edgeKey(edge));
   }
 
   for (const key of keys) {

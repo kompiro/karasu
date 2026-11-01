@@ -6,7 +6,7 @@
 - **Related TPLs**:
   - [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（AST 等価は綴りの保存を意味しない）
   - [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md)（受理した記法は同じ形で書き戻せる）
-- **対象**: `packages/core/src/types/ast.ts`（`KrsEdge.toPath`） / `packages/core/src/parser/parser.ts`（`parseEdge`） / `packages/core/src/formatter/formatter.ts`（`renderEdge`）
+- **対象**: `packages/core/src/types/ast.ts`（`KrsEdge.toPath`） / `packages/core/src/parser/edge-parser.ts`（`parseEdge`） / `packages/core/src/formatter/formatter.ts`（`renderEdge`）
 
 ## 概要
 

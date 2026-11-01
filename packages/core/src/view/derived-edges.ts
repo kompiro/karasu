@@ -3,6 +3,7 @@ import { INFRA_KIND_SET, unionEdgeFacets } from "../types/ast.js";
 import { buildEntityResolver, type EntityResolver } from "../resolver/resource-entity.js";
 import { collectAnchoredPeerEdges, drawnEdgeKey, nodeId } from "./anchored-edges.js";
 import type { DomainEdgeDetail, SystemFrameEdges } from "./view-slice.js";
+import { edgeKey, edgeKindKey } from "./edge-key.js";
 
 /** Walk service→domain→usecase→resource chain and return every resource node. */
 function collectResources(node: KrsNode): ResourceNode[] {
@@ -45,8 +46,9 @@ export function buildDomainServiceMap(services: KrsNode[]): Map<string, string> 
  * Multiple domain edges sharing the same (from, to, kind) are aggregated into a single edge
  * with label "N domain edges" (or the single label if there is only one).
  *
- * Returns both the synthesized edges and a detail map keyed by "fromServiceId->toServiceId"
- * containing the constituent domain edges for each aggregated pair.
+ * `explicitKeys` holds the {@link edgeKey} of every authored pair. Returns both the
+ * synthesized edges and a detail map keyed by {@link edgeKindKey} of each synthesized
+ * edge, containing the constituent domain edges for each aggregated pair.
  */
 export function deriveImplicitServiceEdges(
   services: KrsNode[],
@@ -115,11 +117,11 @@ export function deriveImplicitServiceEdges(
         // Suppression stays keyed on the *service* pair even under expansion:
         // an authored explicit serviceA→serviceB edge should still hide the
         // derived edge, whichever granularity the endpoints render at (#1921).
-        const servicePairKey = `${service.id}->${targetServiceId}`;
+        const servicePairKey = edgeKey({ from: service.id, to: targetServiceId });
         if (explicitKeys.has(servicePairKey)) continue;
         const fromEndpoint = endpointOf(domain.id, service.id);
         const toEndpoint = endpointOf(edge.to, targetServiceId);
-        const groupKey = `${fromEndpoint}->${toEndpoint}#${edge.kind}`;
+        const groupKey = edgeKindKey({ from: fromEndpoint, to: toEndpoint, kind: edge.kind });
         const detail: DomainEdgeDetail = {
           fromDomainId: domain.id,
           fromDomainLabel: domainLabelMap.get(domain.id) ?? domain.id,
@@ -216,7 +218,7 @@ export function deriveInfraEdges(
       // Keyed on the resolved store, so a physical direct reference and an
       // entity-mediated reference reaching the *same* store are not double
       // counted (the same class of dedup as explicit-suppresses-derived below).
-      const key = `${child.id}->${parentId}`;
+      const key = edgeKey({ from: child.id, to: parentId });
       if (seen.has(key)) continue;
       seen.add(key);
       syntheticEdges.push({
@@ -250,7 +252,7 @@ export function deriveDeliversEdges(children: KrsNode[]): KrsEdge[] {
     if (!delivers || delivers.length === 0) continue;
     for (const targetId of delivers) {
       if (!clientIds.has(targetId)) continue;
-      const key = `${child.id}->${targetId}`;
+      const key = edgeKey({ from: child.id, to: targetId });
       if (seen.has(key)) continue;
       seen.add(key);
       edges.push({
@@ -300,7 +302,7 @@ export function deriveCanvasEdges(opts: {
   // Merge derived edges, skipping any already covered by an explicit one. Keyed
   // on the bare pair (not the arrow kind) because suppression asks "is this
   // dependency already authored", which an anchored edge answers too.
-  const explicitKeys = new Set(explicitEdges.map((e) => `${e.from}->${e.to}`));
+  const explicitKeys = new Set(explicitEdges.map(edgeKey));
 
   const {
     edges: implicitServiceEdges,
@@ -316,7 +318,7 @@ export function deriveCanvasEdges(opts: {
   return {
     edges: [
       ...explicitEdges,
-      ...derivedEdges.filter((e) => !explicitKeys.has(`${e.from}->${e.to}`)),
+      ...derivedEdges.filter((e) => !explicitKeys.has(edgeKey(e))),
       ...implicitServiceEdges,
       ...internalEdges,
       ...deliversEdges,

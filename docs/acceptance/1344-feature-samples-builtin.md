@@ -17,8 +17,8 @@ type: product
 
 ## 受け入れ条件
 
-- [ ] AT-A: `FEATURE_SAMPLES_PROJECT.files` が `index.krs` + `examples/en/feature-samples/` 配下の全 `.krs`（14 件）を過不足なく登録し、各 `content` がディスク上のファイルと byte 単位で一致する
-  > ✅ Automated — `packages/core/src/examples.test.ts` › `feature-samples: bundled examples.ts content matches examples/en/feature-samples/`
+- [ ] AT-A: `FEATURE_SAMPLES_PROJECT.files` が `examples/en/feature-samples/` 直下の全 `.krs` / `.krs.style`（`index.krs` を含む）を過不足なく登録し、各 `content` がディスク上のファイルと byte 単位で一致する
+  > ✅ Automated — `scripts/examples/gen-builtin-examples.test.ts` › `built-in examples codegen (#3345)` › `the committed module matches a fresh render of examples/`（#3345 以降、同梱内容は `examples/` から生成される）
 
 - [ ] AT-B: `index.krs` を含む `examples/en/feature-samples/` の全ファイルが parse エラーなしで読める
   > ✅ Automated — `packages/core/src/examples.test.ts` › `feature-samples: all files parse without errors`

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { isSafeRelativePath } from "@karasu-tools/core";
 import { FileWatcher } from "./watcher.js";
 import { handleRender } from "./render-endpoint.js";
+import { RENDER_MARKER_HEADER } from "./render-fetch.js";
 
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -259,6 +260,14 @@ export function serve(dir: string, port: number, appDistDir?: string): Server {
   watcher.start();
 
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
+    // karasu の /render が送った request。経路（hairpin NAT・転送）によらず自分を読ませないため、
+    // routing の前に path によらず拒否する（#3426）
+    if (req.headers[RENDER_MARKER_HEADER] !== undefined) {
+      res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Requests sent by karasu's /render are not served.\n");
+      return;
+    }
+
     const url = new URL(req.url ?? "/", `http://localhost:${port}`);
     const pathname = url.pathname;
 

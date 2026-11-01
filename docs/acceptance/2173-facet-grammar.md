@@ -8,7 +8,7 @@
 - **対象ファイル**:
   - `packages/core/src/lexer/lexer.ts` / `packages/core/src/types/tokens.ts`（`facet` / `facets` キーワード）
   - `packages/core/src/types/ast.ts`（`FacetBlock`、`BaseNodeFields.facets`、`KrsFile.facets` / `facetIndex`、`duplicate-facet-id`）
-  - `packages/core/src/parser/parser.ts` / `reference-validation.ts`（宣言・プロパティ・index・重複検証）
+  - `packages/core/src/parser/org-parser.ts`（宣言・`facets` リスト）/ `block-contents.ts`（プロパティ）/ `finalize-file.ts`（index）/ `reference-validation.ts`（重複検証）
   - `packages/core/src/fs/import-resolver.ts`（宣言のマージと index の再構築）
   - `packages/core/src/resolver/warnings.ts` / `packages/core/src/types/warnings.ts`（`facet-not-declared`）
   - `packages/core/src/formatter/formatter.ts`（宣言ブロックと `facets` プロパティの出力）
