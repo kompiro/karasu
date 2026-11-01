@@ -248,6 +248,7 @@ skipped && exit 0
 selector=""
 repo=""
 expect_repo=false
+undo=false
 for arg in "$@"; do
   if [ "$expect_repo" = true ]; then
     repo=$arg
@@ -255,8 +256,9 @@ for arg in "$@"; do
     continue
   fi
   case "$arg" in
-    --undo) exit 0 ;;
-    --undo=*) [ "$(as_bool "${arg#--undo=}")" = true ] && exit 0 ;;
+    # A boolean flag: the last occurrence wins, as in pflag.
+    --undo) undo=true ;;
+    --undo=*) undo=$(as_bool "${arg#--undo=}") ;;
     -R | --repo) expect_repo=true ;;
     # -R also comes attached (-Rowner/repo, -R=owner/repo).
     -R=*) repo=${arg#-R=} ;;
@@ -271,12 +273,13 @@ gh_bin=${READY_GATE_GH:-gh}
 limit=()
 command -v timeout >/dev/null 2>&1 && limit=(timeout 15)
 [ "$expect_repo" = true ] && exit 0
+[ "$undo" = true ] && exit 0
 
 # Read the PR gh pr ready acts on: the same --repo, and the same GH_REPO /
 # GH_HOST from the environment. A PR whose head is not a commit here (most PRs
 # of another repository) fails open below.
 view=$(${limit[@]+"${limit[@]}"} "$gh_bin" pr view ${selector:+"$selector"} ${repo:+--repo "$repo"} \
-  --json number,isDraft,headRefOid,baseRefName 2>/dev/null) || exit 0
+  --json number,isDraft,headRefOid,baseRefName,baseRefOid 2>/dev/null) || exit 0
 
 [ "$(jq -r '.isDraft' <<<"$view")" = "true" ] || exit 0
 
@@ -284,12 +287,19 @@ number=$(jq -r '.number' <<<"$view")
 head=$(jq -r '.headRefOid' <<<"$view")
 base=$(jq -r '.baseRefName' <<<"$view")
 git cat-file -e "$head^{commit}" 2>/dev/null || exit 0
-base_ref=$(base_ref_of "$base") || exit 0
+# The PR's own base commit, which also holds for a fork's PR. When it is not
+# here (origin fetched before the base moved), fall back to the base by name.
+base_ref=$(jq -r '.baseRefOid // empty' <<<"$view")
+if [ -z "$base_ref" ] || ! git cat-file -e "$base_ref^{commit}" 2>/dev/null; then
+  base_ref=$(base_ref_of "$base") || exit 0
+fi
 reviewed_branch "$head" "$base_ref" && exit 0
+# The commands below name the base branch, which the CLI takes.
+shown=$(base_ref_of "$base") || shown=$base_ref
 
 echo "gh pr ready was refused: no completed local CodeRabbit CLI review covers PR #$number's branch \
 (head ${head:0:7}). Before taking a PR out of draft (docs/process.md PR workflow): run \
-/engineering:code-review on git diff $base_ref...HEAD, then run the CLI once \
-(coderabbit review --agent --deep --base $base_ref --committed), commit and push the fixes, and run \
+/engineering:code-review on git diff $shown...HEAD, then run the CLI once \
+(coderabbit review --agent --deep --base $shown --committed), commit and push the fixes, and run \
 gh pr ready again. If the CLI cannot run here (not installed, not authenticated, out of quota), tell \
-the user, then rerun as KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr ready $number${repo:+ --repo $repo}."
+the user, then rerun as KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr ready ${selector:-$number}${repo:+ --repo $repo}."

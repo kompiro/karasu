@@ -62,6 +62,7 @@ interface PrView {
   body: string;
   headRefOid: string;
   baseRefName: string;
+  baseRefOid?: string;
 }
 
 const DRAFT: PrView = {
@@ -286,8 +287,40 @@ describe("gh wrapper: gh pr ready", () => {
     expect(calls(gh).some((c) => c.startsWith("pr view"))).toBe(false);
   });
 
-  it("checks `gh pr ready 12 --undo=false`, which takes the PR out of draft", () => {
-    expect(run("gh pr ready 12 --undo=false", fakeGh(DRAFT), reviews()).status).toBe(1);
+  // --undo is a boolean flag: the last occurrence wins, as in pflag.
+  it.each([
+    "gh pr ready 12 --undo=false",
+    "gh pr ready 12 --undo=true --undo=false",
+    "gh pr ready 12 --undo --undo=false",
+  ])("checks `%s`, which takes the PR out of draft", (line) => {
+    expect(run(line, fakeGh(DRAFT), reviews()).status).toBe(1);
+  });
+
+  it("runs `gh pr ready 12 --undo=false --undo`, whose last --undo is true", () => {
+    expect(run("gh pr ready 12 --undo=false --undo", fakeGh(DRAFT), reviews()).status).toBe(0);
+  });
+
+  it("keeps a URL selector in the skip it suggests", () => {
+    const url = "https://github.com/someone/karasu/pull/12";
+    const result = run(`gh pr ready ${url} -R kompiro/karasu`, fakeGh(DRAFT), reviews());
+    expect(result.stderr).toContain(`gh pr ready ${url} --repo kompiro/karasu.`);
+  });
+
+  // The PR's own base commit decides what is on the base, which also holds for
+  // a fork's PR whose base branch differs from origin's of the same name.
+  it("judges the review against the PR's base commit", () => {
+    const gh = fakeGh({ ...DRAFT, baseRefOid: HEAD });
+    const result = run("gh pr ready 12", gh, reviewedWork());
+    expect(result.status).toBe(1);
+    // The commands it suggests still name the base branch, which the CLI takes.
+    expect(result.stderr).toContain(
+      "coderabbit review --agent --deep --base origin/main --committed",
+    );
+  });
+
+  it("falls back to the base branch when the PR's base commit is not here", () => {
+    const gh = fakeGh({ ...DRAFT, baseRefOid: "e".repeat(40) });
+    expect(run("gh pr ready 12", gh, reviewedWork()).status).toBe(0);
   });
 
   it("keeps --repo in the skip it suggests, so the skip readies the same PR", () => {
