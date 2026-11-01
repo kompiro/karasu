@@ -54,6 +54,11 @@ export function renderWarning() { return {}; }
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
 
 describe("childEnv", () => {
+  it("points tsx at the side's own tsconfig", () => {
+    expect(childEnv({}, REPO_ROOT).TSX_TSCONFIG_PATH).toBe(join(REPO_ROOT, "tsconfig.json"));
+    expect(childEnv({}, "/no/such/checkout").TSX_TSCONFIG_PATH).toBeUndefined();
+  });
+
   it("keeps what node needs and drops the runner's variables", () => {
     const env = childEnv({
       PATH: "/bin",

@@ -17,6 +17,7 @@ describe("titleType", () => {
     ["refactor!: drop an export", "refactor"],
     ["refactor(core)!: drop an export", "refactor"],
     ["  refactor(core): leading space", "refactor"],
+    ["Refactor(core): capitalized", "refactor"],
     ["feat(core): refactor the parser", "feat"],
     ["fix: a refactor gone wrong", "fix"],
   ])("reads %j as %j", (title, type) => {

@@ -16,7 +16,16 @@ name: Render equivalence
 #
 # This job runs HEAD's code, so it holds no write token: `contents: read`, a
 # checkout that does not persist credentials, and installs with
-# `--ignore-scripts`.
+# `--ignore-scripts`. The guards above keep HEAD's code from changing the
+# verdict by accident; they are not a boundary against a PR that means to (the
+# children run as the same user, and this YAML is the PR's own copy). The
+# design's threat is the accident (#3505); a PR that edits this workflow or the
+# comparison is High and gets a human's review.
+#
+# A failure in the comparison (the merge base, an install, the script) is
+# "could not compare": it fails a refactor and passes anything else. A failure
+# before that (checkout, pnpm, node) is the runner's and fails the job whatever
+# the title. A cancelled run (a newer event for the same PR) writes no verdict.
 #
 # The paired stub `render-equivalence-skip.yml` reports the same check on PRs
 # outside the `paths` below. Keep its `paths-ignore` in exact sync
@@ -103,7 +112,7 @@ jobs:
           --out "$RUNNER_TEMP/render-equivalence/result.json"
 
       - name: Verdict
-        if: always()
+        if: ${{ !cancelled() }}
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           SCRIPTS: ${{ steps.base.outputs.scripts }}
@@ -115,7 +124,7 @@ jobs:
           --summary "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the result
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7.0.2
         with:
           name: render-equivalence

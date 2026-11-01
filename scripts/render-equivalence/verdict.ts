@@ -40,9 +40,12 @@ export interface Verdict {
   conclusion: "success" | "failure";
 }
 
-/** The Conventional Commits type of a PR title: `refactor` for `refactor(core)!: ...`. */
+/**
+ * The Conventional Commits type of a PR title, lower-cased: `refactor` for
+ * `refactor(core)!: ...` and for `Refactor: ...` (nothing lints the case).
+ */
 export function titleType(title: string): string | null {
-  return /^([a-z]+)(\([^)]*\))?!?:/.exec(title.trim())?.[1] ?? null;
+  return /^([a-z]+)(\([^)]*\))?!?:/i.exec(title.trim())?.[1].toLowerCase() ?? null;
 }
 
 function isDifference(value: unknown): value is Difference {

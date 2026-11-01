@@ -17,7 +17,15 @@
 // side's core in a child process of its own (see render-child.ts).
 
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -38,8 +46,12 @@ const CHILD_TIMEOUT_MS = 20 * 60 * 1000;
  * and the rest of the runner's variables stay with the parent, so HEAD's code
  * cannot write the job's outputs or summary.
  */
-export function childEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+export function childEnv(env: NodeJS.ProcessEnv, root?: string): NodeJS.ProcessEnv {
   const kept: NodeJS.ProcessEnv = { NODE_ENV: "production", TZ: "UTC", LANG: "C.UTF-8" };
+  // tsx would otherwise read this script's checkout's tsconfig for the other
+  // side's sources too.
+  const tsconfig = root === undefined ? undefined : join(root, "tsconfig.json");
+  if (tsconfig !== undefined && existsSync(tsconfig)) kept.TSX_TSCONFIG_PATH = tsconfig;
   for (const name of ["PATH", "HOME", "TMPDIR"]) {
     if (env[name] !== undefined) kept[name] = env[name];
   }
@@ -70,7 +82,7 @@ export function renderInChild(root: string, manifestPath: string, outPath: strin
     {
       // `--import tsx` resolves from here: this script's checkout has tsx.
       cwd: SCRIPT_ROOT,
-      env: childEnv(process.env),
+      env: childEnv(process.env, root),
       stdio: ["ignore", "ignore", "pipe"],
       encoding: "utf8",
       maxBuffer: 16 * 1024 * 1024,
