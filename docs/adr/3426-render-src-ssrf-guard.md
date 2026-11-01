@@ -76,9 +76,10 @@ assumptions:
 | `192.0.0.0/24`、`198.18.0.0/15`                 | IETF の予約と benchmark 用                |
 | `224.0.0.0/4`、`240.0.0.0/4`、`ff00::/8`        | multicast、reserved、broadcast            |
 
-加えて、このマシンが今持つアドレス（`os.networkInterfaces()`。判定のたびに読む）を禁止する。global IPv6 のアドレスは、
+加えて、このマシンが今持つアドレス（`os.networkInterfaces()`。判定のたびに読む）を禁止する。IPv6 のアドレスは、
 アドレスそのものではなく on-link prefix（`cidr`）ごと禁止する。同じ LAN の機器は同じ prefix の global IPv6 を持ち、
-上の表のどの範囲にも入らないからである（Design Doc には無く、実装のレビューで足した）。
+上の表のどの範囲にも入らないからである（loopback と link-local の prefix は表の範囲に含まれるので、効くのは global の
+アドレスである。Design Doc には無く、実装のレビューで足した）。
 
 入口の `isSafeUrl()` は同期で落とせるものを先に 400 にする。userinfo、禁止範囲の IP literal、`localhost` / `*.localhost`
 （末尾の `.` をすべて外して）を拒否する。それ以外の名前は hop の検査に任せる。
