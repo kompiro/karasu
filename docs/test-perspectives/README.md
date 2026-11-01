@@ -591,3 +591,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-3282](TPL-3282-every-pass-skips-quoted-text-alike.md) | 同じテキストを複数の手書きスキャナで読むなら、どのスキャナも引用符の中を同じ規則で飛ばす。1 段だけが引用符を知らないと、引用符の中の `)` や `,` で読み終わり位置がずれ、次の段が引用符の中から読み始めて文字列の中の文を実行する | cli | #3282 |
 | [TPL-3286](TPL-3286-merge-eligibility-judged-on-final-diff.md) | 人間を通らないマージを許す判定は、最終の差分で行い、どの規則にも当たらない入力を厳しい側に倒す。PR 作成時の 1 回だけの判定は後のコミットで外れ、規則に当たらないパスが軽い側に倒れると誰も読まないコードが入る | build | #3286, ADR-2331 |
 | [TPL-3385](TPL-3385-consumer-of-a-signal-the-producer-stops-emitting.md) | 外部サービスの出力を変える設定変更では、その出力を待つ側の判定を新しい形の fixture で確かめる。止めた出力を答えとして待つ処理はエラーにならず時間切れまで待ち、古い形の fixture のテストは通り続ける | project | #3385, #3365 |
+| [TPL-3470](TPL-3470-timestamp-order-needs-a-tie-break.md) | 時刻で並べる一覧は、同じ時刻の項目にも本当の順序を与える tie-break を持つ。ミリ秒精度の時刻は普通に衝突し、比較が 0 を返すと順序はソート前の並びで決まる。順序のテストは sleep で時刻を進めず `Date` を固定する | project | #3470 |
