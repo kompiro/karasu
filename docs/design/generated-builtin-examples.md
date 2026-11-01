@@ -101,7 +101,11 @@ drift テスト（`examples.test.ts`）が片側だけの編集を落とすの�
 - プロジェクト名は flat ならディレクトリ名、staged ならファイル名から `.krs` を除いたものかサブディレクトリ名
 - 順序: staged のプロジェクトは名前の code point 順（`02-users` < `02.5-clients` で現状と一致）。
   プロジェクト内のファイルは `index.krs` を先頭に、残りを code point 順にする。
-  現状の `feature-samples` の手書き順からは変わるが、上のとおり表示には影響しない
+  変わるのは `files` 配列の順だけで、現状の手書き順（`feature-samples` が典型）は意味を持っていない。
+  利用側は `path` で引くか（`reference.ts` の `indexKrs`）、全件を書き出すだけ（`createProject`）で、
+  app の OPFS provider は `readdir` を名前順に並べる。`files` は公開型の配列なので npm の利用者からも順は見えるが、
+  順を約束したことはなく、中身（`path` → `content`）は変わらないので changeset は付けない。
+  意味のある順（staged のプロジェクトの並び。先頭の `01-system` が初回に選ばれる）は現状のまま保つ
 - 文字列はテンプレートリテラルで書き出す（`\`・`` ` ``・`${` をエスケープする）。
   JSON 文字列にすると 1 ファイルが 1 行になり、example の 1 行の修正が PR の diff で読めなくなるため。
   書き出す形は oxfmt が変更しない形に合わせ、`format:check` で確かめる
