@@ -102,6 +102,11 @@ describe("built-in examples reader", () => {
     expect(() => readRegisteredExamples(root, [staged])).toThrow(/system\.krs and main\.krs/);
   });
 
+  it("fails when a stage has both its entry file and an index.krs", () => {
+    write({ "en/s/01-a/system.krs": "", "en/s/01-a/index.krs": "" });
+    expect(() => readRegisteredExamples(root, [staged])).toThrow(/both system\.krs and index\.krs/);
+  });
+
   it("fails on a sheet at the top of a staged directory, outside any stage", () => {
     write({ "en/s/01-a.krs": "", "en/s/stray.krs.style": "" });
     expect(() => readRegisteredExamples(root, [staged])).toThrow(/only inside a stage/);

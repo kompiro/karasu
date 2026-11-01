@@ -204,6 +204,14 @@ function readStage(absDir: string, dir: string, stage: string): ExampleProject {
         `found ${found.length === 0 ? "none" : found.join(" and ")}.`,
     );
   }
+  if (names.includes("index.krs")) {
+    // The entry is bundled as `index.krs`, so a file already named that would
+    // take the same path and one of the two would overwrite the other.
+    throw new Error(
+      `examples/${dir}/${stage} has both ${found[0]} and index.krs; ` +
+        `${found[0]} is bundled as index.krs, so remove or rename one.`,
+    );
+  }
   const files = names.map((n) => ({
     path: n === found[0] ? "index.krs" : n,
     content: readFileSync(resolve(absDir, stage, n), "utf8"),
