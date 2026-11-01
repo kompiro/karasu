@@ -12,7 +12,7 @@ assumptions:
   - "symbol: packages/core/src/view/resource-promotion.ts :: deriveUsecaseResourceNodes"
   - "symbol: packages/core/src/resolver/style-resolver.ts :: addMissingEdgeStyles"
   - "symbol: packages/core/src/resolver/style-resolver.ts :: edgeSelectorMatches"
-  - "symbol: packages/core/src/resolver/style-resolver.test.ts :: accessEdge"
+  - "grep: packages/core/src/resolver/style-resolver.ts :: extraEdges\\?: KrsEdge\\[\\]"
   - "file: packages/core/src/integration/read-write-edge-width.test.ts"
 ---
 
