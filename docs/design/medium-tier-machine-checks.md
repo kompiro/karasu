@@ -51,6 +51,7 @@ ADR-3286 で、`risk: medium` の PR には CodeRabbit が回らなくなった�
 - **Review tier は install しない。** 描画の比較は base と head の両方で core を動かすので数分かかり、Review tier に入れると「draft でも走る、数秒の check」という性質が崩れる
 - **判定に使うコードは base 側のものにする**（TPL-3286）。PR が書き換えた比較のスクリプトで、その PR 自身を判定しない
 - **PR のコードを動かす job には書き込みのトークンを持たせない。** 描画の比較は head の core を実行する
+- **想定する相手**：信頼リストにいない作成者の PR は、分類器が常に High にする。`refactor` の例外も `rendering-change` のラベルも、効くのは信頼リストの作成者（メンテナと Claude のセッション）の PR だけである。比較の偽装で守るべきなのは悪意ではなく事故（head のコードが比較を壊すこと）だが、外部の PR で artifact やラベルを書き換えられないことは、それとは別に守る
 - **作成者が書く宣言（タイトルの型、本文の理由の行）で検査が軽くなる規則は、宣言が偽りでも厳しい側に倒れる形にする。** ADR-3011 は、判断を含む基準を Claude の判断だけで適用することを却下している。宣言で軽くなる場合は、機械の検査がその宣言を裏付けるときだけにする。例外は本文の理由の行（`No test:` / `Test change:`）で、裏付ける検査は無い。メンテナが理由の行で通すと決めたので受け入れ、check の summary に一覧を出して人間に見えるようにする
 - **描画の比較は、パッケージに触れる PR だけで走らせる**（メンテナの決定）。required にするので paired stub を置き、フィルタの一覧を両側でそろえる
 - **対象外**：PNG のピクセル比較（ADR-529 で見送り）、drill-down の 2 段目より深い view、VS Code の webview、本番でしか起きない描画の差
@@ -86,7 +87,7 @@ ADR-3286 で、`risk: medium` の PR には CodeRabbit が回らなくなった�
 ### 論点 5：既存のテストを弱める変更の扱い
 
 - **案 5a：どの PR でも落とす。** bug 修正で期待値を変えるのは正当なことが多く、#3435 のように廃止した API のテストを消す PR もある
-- **案 5b：refactor では落とし、それ以外の PR は本文に `Test change: <理由>` の行があれば通す**（メンテナの決定）
+- **案 5b：refactor では落とし、それ以外の PR は本文に `Test change: <理由>` の行があれば通す**（メンテナの決定）。#3435 は `refactor` だが、廃止した API のテストを消して呼び出しを書き換えており、挙動を保つ変更ではない。この形の PR は型を `refactor` 以外（廃止なら `feat!` や `chore`）にして `Test change:` を書く
 - **案 5c：refactor では落とし、それ以外は検査の summary に一覧を出すだけにする**
 
 ### 論点 6：ラベルをどの仕組みで付けるか
@@ -124,10 +125,11 @@ ADR-3286 で、`risk: medium` の PR には CodeRabbit が回らなくなった�
 既存のテストの変更は 4 で検査する。ただし、セキュリティの境界のテストファイル（下の一覧のディレクトリやファイル名に対応するテストファイル）で
 既存の行を消す変更は High にする。SSRF や symlink の回帰のテストを、理由の行だけで消せないようにするため
 
-| 規則               | パス                                                                                                                                                                              | 段階                                             |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| セキュリティの境界 | `packages/nest/**`、`packages/cli/src/{serve,render-*,node-fs,path-arg,watcher}*`、`packages/core/src/fs/**`、`packages/vscode/src/{message-validation,webview-html,host-files}*` | 常に High                                        |
-| 言語の挙動         | `packages/core/src/{lexer,parser,resolver,spec,style,formatter}/**`、`packages/core/src/language-version.ts`、`packages/lsp/src/diagnostics*`                                     | High。PR のタイトルの型が `refactor` なら Medium |
+| 規則               | パス                                                                                                                                                                                                                                                                                                                                                                | 段階                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| セキュリティの境界 | `packages/nest/**`、`packages/cli/src/{serve,render-*,node-fs,path-arg,watcher}*`、`packages/core/src/fs/**`、`packages/vscode/src/{message-validation,webview-html,host-files}*`、`packages/core/src/renderer/svg-builder.ts`（SVG のテキストと属性のエスケープ。app は出力を `dangerouslySetInnerHTML` で差し込み、nest と webview は信頼できない `.krs` を描く） | 常に High                                        |
+| 言語の挙動         | `packages/core/src/{lexer,parser,resolver,spec,style,formatter}/**`、`packages/core/src/language-version.ts`                                                                                                                                                                                                                                                        | High。PR のタイトルの型が `refactor` なら Medium |
+| 言語の挙動（LSP）  | `packages/lsp/src/diagnostics*`                                                                                                                                                                                                                                                                                                                                     | 常に High（比較が LSP の変換を見ないため）       |
 
 - `securityReview` の対象にも、セキュリティの境界の一覧を足す
 - タイトルは Review tier の `edited` で読み直すので、タイトルを `refactor` から変えれば段階も変わる
@@ -139,27 +141,33 @@ base と head で、次の範囲を描画して比べる。
 
 - **入力**：`examples/` の全エントリと、全 AT の `krs` fence（変わった fence だけではない）
 - **view**：root（system / deploy / org）、各 system、system の下の 1 段の drill-down。それぞれを ungrouped と、team と boundary の group-by で描く（#3502 で手作業で比べた範囲）
-- **比べるもの**：SVG の文字列と、ファイルごとの診断（code・位置・メッセージ）の一覧。parser の refactor は、描画を変えずに warning だけを変えうるため
+- **比べるもの**：SVG の文字列、ファイルごとの診断（code・位置・メッセージ）の一覧、`karasu fmt` と同じ整形の出力。parser の refactor は描画を変えずに warning だけを変えうる。`formatter/` を `refactor` の例外に入れるので、整形の出力も比べる
+- **入力は両側とも head のもの**を使う（`pr:shots` は各側のファイルを読むが、ここでは比べたいのがコードの差だけなので揃える）。examples に触れる refactor でも落ちない
 
 判定は次のとおりとする。
 
-| PR                        | 比較の結果                                                           | check                                       |
-| ------------------------- | -------------------------------------------------------------------- | ------------------------------------------- |
-| タイトルの型が `refactor` | 差が無い                                                             | 成功                                        |
-| タイトルの型が `refactor` | 差がある、または head で描画に失敗した、または base で描画に失敗した | 失敗。差のある view の一覧を summary に出す |
-| それ以外                  | どれでも                                                             | 成功（描画の差は 3 のラベルで知らせる）     |
+| PR                        | 比較の結果 | check                                       |
+| ------------------------- | ---------- | ------------------------------------------- |
+| タイトルの型が `refactor` | 差が無い   | 成功                                        |
+| タイトルの型が `refactor` | 差がある   | 失敗。差のある view の一覧を summary に出す |
+| それ以外                  | どれでも   | 成功（描画の差は 3 のラベルで知らせる）     |
+
+「差」は結果の違いで数える。両側が同じ SVG、または両側が同じ診断で描画に失敗したなら差は無い。片側だけ失敗した、失敗の診断が違う、SVG・診断・整形の出力のどれかが違う、のどれかなら差がある。AT の fence には、単独では解決できない `import` を持つもの（AT-0068、AT-0069、AT-1580）があり、両側で同じく失敗するのでこれで差にならない。ラベル（3）も同じ「差」で付ける
 
 - **比べる両側は、PR の head のコミットと、head と base の merge-base** にする（`pr:shots` と同じ）。base の先端と比べると、main が進んだだけで refactor の PR が落ちる
-- **比較を動かすスクリプトは base 側のもの**にする。base を checkout して比較のスクリプトを取り、両側の core を import する（`pr:shots` の `base-worktree.ts` / `render-side.ts` を流用する）。base にまだスクリプトが無いあいだ（このスクリプトを足す PR）だけ head のものを使う（`review-tier.yml` と同じ扱い）
+- **比較を動かすスクリプトは base 側のもの**にする。base を checkout して比較のスクリプトを取り、両側の core を**それぞれ別の子プロセス**で動かし、直列化した結果を base 側の親プロセスが比べる（`pr:shots` の `base-worktree.ts` / `render-side.ts` を流用する）。同じプロセスで head の core を import すると、head のコードがグローバルや `fs`・`process.exit` を書き換えて判定を変えられる。base にまだスクリプトが無いあいだ（このスクリプトを足す PR）だけ head のものを使う（`review-tier.yml` と同じ扱い）
 - **起動の条件**：`packages/**`、`pnpm-lock.yaml`、ルートの `package.json`、比較のスクリプト、この workflow 自身に触れる PR。外れた PR には skip stub（`render-equivalence-skip.yml`）が成功を報告する。フィルタの一覧は両方の workflow でそろえ、ずれをテストで検出する（TPL-1480）
-- **draft では skip** し、`ready_for_review` で走らせる。`scripts/ci/workflow-draft-gate.test.ts` の `DRAFT_GATED_JOBS` と `docs/process/stacked-pr.md` の一覧を同じ PR で更新する（ADR の本文は書き換えない。ADR-2687）
-- **タイトルの変更（`edited`）でも走らせる。** 判定がタイトルの型に依るので、`feat` で ready にして成功を得た後に `refactor` へ書き換えると、前の成功が残る（TPL-3286 に足した観点）
-- 権限は `contents: read` だけにする。結果（差のある view の数と一覧）を artifact に残す
+- **draft では skip** し、`ready_for_review` で走らせる。`scripts/ci/workflow-draft-gate.test.ts` の `DRAFT_GATED_JOBS` と `docs/process/stacked-pr.md` の一覧を同じ PR で更新する。`.claude/rules/stacked-pr.md` は ADR-2643 の更新も求めるが、ADR の本文は書き換えない（ADR-2687）。job は ADR-3505 に記録し、ルールとの食い違いは [#3517](https://github.com/kompiro/karasu/issues/3517) で直す
+- **タイトルの変更（`edited`）でも走らせる。** 判定がタイトルの型に依るので、`feat` で ready にして成功を得た後に `refactor` へ書き換えると、前の成功が残る（TPL-3286 に足した観点）。`edited` は本文の変更（記録の更新）でも起きるが、job-level の `if:` で本文だけの変更を skip しない。skip した run は同じ SHA の成功として前の失敗を上書きする（TPL-2643）。本文の変更のたびに数分の比較が走るのは受け入れ、`concurrency` で同じ PR の古い run を取り消す
+- 権限は `contents: read` だけにする。checkout は `persist-credentials: false`、install は `--ignore-scripts` にする。結果（差のある view の数と一覧）を artifact に残す
+- skip stub の workflow 名は `Render equivalence (skip)` にし、check の名前（job 名）だけを揃える。3 の `workflow_run` は workflow 名で起動するので、stub では起動しない
 
 ### 3. `rendering-change` ラベル
 
 - `workflow_run`（`Render equivalence` の完了）で起動する workflow が、artifact の JSON を読む。差が 1 つ以上あれば `rendering-change` を付け、無ければ外す。PR のコードは checkout しない
-- artifact は数値と固定の形の文字列だけを読み、ほかの値は捨てる。ラベル以外の操作はしない
+- 権限は `actions: read`（artifact を読む）と `pull-requests: write`（ラベル）だけにする
+- artifact は起動した run（`workflow_run.id`）のものだけを読み、数値と固定の形の文字列だけを取り出して、ほかの値は捨てる。ラベル以外の操作はしない
+- artifact が無い（draft で skip した run など）、2 つ以上ある、形が崩れている、PR を引けない、いまの head と一致しない、のどれかなら、ラベルは変えない
 - **PR の番号は artifact から読まない。** artifact は PR のコード（head の core）を動かした job が書くので、作成者が中身を決められる。PR は `workflow_run.head_sha`（と head のリポジトリ・ブランチ）から引き、その PR のいまの head が `workflow_run.head_sha` と一致するときだけラベルを変える。fork の PR では `workflow_run.pull_requests` が空になるので、この引き方が要る。古いコミットの run が遅れて終わっても、ラベルを古い結果に戻さない
 - マージは止めない。メンテナはこのラベルの PR を必ずレビューし、preview で動作を確かめる
 - パッケージに触れない PR（examples や AT だけの変更）は比較が走らないのでラベルが付かない。この場合は従来どおり `pr:shots` のフックが before/after を促す
@@ -173,12 +181,12 @@ base と head で、次の範囲を描画して比べる。
 - タイトルの型が `fix`
 - `closingIssuesReferences`（GraphQL）に `bug` ラベルの Issue がある。読むために workflow の権限に `issues: read` を足す
 
-テストケースの追加とは、新しいテストファイル、または既存のテストファイルに足した `it(` / `test(`（`.each` を含む）の行を指す。
+テストケースの追加とは、新しいテストファイル、既存のテストファイルに足した `it(` / `test(`（`.each` を含む）の行、または既存の `.each([...])` の表に足した行を指す。
 テストを書く面が無い修正（lint や CI の修正など）は、本文の `No test: <理由>` の行で通す。どの段階の PR にも適用する。
 
 **既存のテストを変える変更**：base にあるテストファイルの変更を、assert のパターンを数えずに判定する。パターンの一覧では、整形で別の行に折り返した matcher（`).toBe(` だけの行）や、同じ内容で何度も現れる assert の移動を見分けられない（`tier.ts` も、既存のテストファイルへの追加だけを Low にする案を同じ理由で却下している）。
 
-- **タイトルの型が `refactor` の PR**：既存のテストファイルで許す変更は、import の文の追加・削除と、消した行と足した行が同じ位置で対になり、モジュールのパスやファイル名の文字列（import の specifier と、`.ts` / `.tsx` / `.js` で終わる文字列）だけが違うものに限る。それ以外の変更と、テストファイルの削除は落とす。分割の refactor で起きるのは import とパスの張り替えで（#3462 の `baseline-portability.test.ts` など）、これは通る
+- **タイトルの型が `refactor` の PR**：既存のテストファイルで許す変更は、import の文（複数行にまたがる `import { … } from` を 1 つの文として読む）の追加・削除・書き換えと、消した行と足した行が同じ位置で対になり、モジュールのパスやファイル名の文字列（import の specifier と、`.ts` / `.tsx` / `.js` で終わる文字列）だけが違うものに限る。それ以外の変更と、テストファイルの削除は落とす。分割の refactor で起きるのは import とパスの張り替えで（#3462 の `baseline-portability.test.ts` など）、これは通る
 - **それ以外の PR**：既存のテストファイルで import 以外の行を 1 行でも消した、テストファイルを削除した、または `.skip` / `.fixme` / `.todo` / `.only` / `skipIf` / `runIf` や単独の `return` の行を足したなら、本文の `Test change: <理由>` の行を求める。新しいテストケースを足すだけの変更は追加だけなので、理由は要らない
 
 `No test:` と `Test change:` の行で通した PR は、check の summary に理由と一緒に一覧を出す。
@@ -189,7 +197,7 @@ base と head で、次の範囲を描画して比べる。
 
 1. 既存のテストがすべて通る（CI の test job）
 2. 既存のテストファイルを、import とパスの張り替えのほかに変えていない（4。Review tier）
-3. 全 view の SVG と診断が base と同じ（2。`Render equivalence`）
+3. 全 view の SVG・診断・整形の出力が base と同じ（2。`Render equivalence`）
 
 行数・ファイルの分け方・import のパスの変更は、この 3 つを崩さないかぎり自由である。
 
@@ -212,7 +220,7 @@ A が先に入り、B が required になった時点で、言語のパスの `r
 2. `scripts/review/` に、既存のテストの変更の判定と、fix のテストの判定を足す（純粋関数。テキストを受け取る）。Review tier の CLI は `gh` でタイトルと `closingIssuesReferences` を読む
 3. `scripts/render-equivalence/`（仮）：`pr:shots` の比較を、全 view と診断に広げた CLI。結果を JSON で出す
 4. `.github/workflows/render-equivalence.yml`、`render-equivalence-skip.yml`、`rendering-change-label.yml`。どれも `/security-review` を当てる
-5. テスト：分類器（新しい一覧のパス、テストファイルの除外、`refactor` の例外）、既存のテストの変更の判定（refactor で通る import とパスの張り替え、通らない matcher の書き換え・折り返した行・ファイルの削除、それ以外の PR で理由を求める行の削除・`.skip`・`return`）、セキュリティの境界のテストファイルの行の削除が High になること、fix の判定（タイトル・Issue・`No test:`）、比較の判定表、フィルタの一致、ラベルを付ける workflow が artifact の値で PR を選ばないこと
+5. テスト：分類器（新しい一覧のパス、テストファイルの除外、`refactor` の例外）、既存のテストの変更の判定（refactor で通る import とパスの張り替え、通らない matcher の書き換え・折り返した行・ファイルの削除、それ以外の PR で理由を求める行の削除・`.skip`・`return`）、セキュリティの境界のテストファイルの行の削除が High になること、fix の判定（タイトル・Issue・`No test:`）、比較の判定表（両側で同じく失敗する入力は差にならない、片側だけの失敗は差になる、整形の出力の差）、フィルタの一致、ラベルを付ける workflow が artifact の値で PR を選ばず、artifact が無い・崩れている・head と一致しないときにラベルを変えないこと
 6. 文書：`docs/process/review.md`「リスク段階」に、Medium で人間が見るもの（描画の変化の動作確認）と、本文の `No test:` / `Test change:` の行を足す。PR テンプレートの `## Risk` の例を更新する
 7. AT：分類器と検査はユニットテストで覆う。人間が確かめるのは「`rendering-change` が実際の PR で付き、外れること」だけで、PR の checklist で確かめる（ADR-3169）
 8. ADR 昇格：実装の完了後、`docs/adr/3505-<name>.md` に昇格し、ADR-3286 との関係（規則を足すので `related_to`。supersede はしない）を書く。本 Design Doc は同じ PR で削除する
