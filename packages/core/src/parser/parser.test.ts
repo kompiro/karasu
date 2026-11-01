@@ -4574,6 +4574,11 @@ system S {
         `operations list:read, create`,
       ],
       ["role closing its block", `service A { role "operator" }`, `role "operator"`],
+      [
+        "a bare role before an edge",
+        `service A {\n    role\n    "A" -> B\n  }\n  service B`,
+        `role`,
+      ],
       // The value's own mistakes are not reported: the property cannot be
       // written here at all, so a missing id after it has nothing to fix.
       ["handles with no value", `user U [human] {\n    handles\n    label "after"\n  }`, `handles`],

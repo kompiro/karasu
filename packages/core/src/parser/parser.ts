@@ -575,7 +575,10 @@ export class Parser {
             this.error("expected-string-after", { property: "role" });
           }
         } else {
-          rejectProperty(this.ctx, "role", kind, () => this.match(TokenType.StringLiteral));
+          // A bare `role` must not take the source of an edge on the next line.
+          rejectProperty(this.ctx, "role", kind, () => {
+            if (!this.isEdgeStart(this.peek())) this.match(TokenType.StringLiteral);
+          });
         }
         continue;
       }
