@@ -223,9 +223,10 @@ describe("separator-joined keys left after #2819 (#3111)", () => {
 `;
     /** The domain rows (`from->to`) the `a` → `b->c` edge carries for its detail panel. */
     function domainRows(svg: string): string[] {
-      // The rows sit on the label group nested inside the edge's own `<g>`.
+      // The rows sit on the label group nested inside the edge's own `<g>`; the
+      // scan stops at the next edge so it cannot borrow another edge's rows.
       const attr =
-        /<g data-edge-from="a" data-edge-to="b-&gt;c"[^>]*>[^]*?data-domain-edges="([^"]*)"/.exec(
+        /<g data-edge-from="a" data-edge-to="b-&gt;c"[^>]*>(?:(?!<g data-edge-from=)[^])*?data-domain-edges="([^"]*)"/.exec(
           svg,
         )?.[1];
       if (attr === undefined) return [];
