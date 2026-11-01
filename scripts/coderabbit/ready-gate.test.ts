@@ -47,18 +47,13 @@ git("commit", "-q", "--allow-empty", "-m", "work");
 const WORK = git("rev-parse", "HEAD");
 git("commit", "-q", "--allow-empty", "-m", "fix after the CLI review");
 const HEAD = git("rev-parse", "HEAD");
-// What a create without --draft reads (#3504): origin's URL and default branch,
-// and the branch as pushed. `chore/3-ahead` has a local commit that is not on
-// origin, whose copy of the branch is still at BASE.
+// What a create without --draft reads (#3504): origin and its default branch,
+// the branch as pushed, and `chore/5-local`, a branch at BASE that origin does
+// not have.
 git("remote", "add", "origin", "https://github.com/kompiro/karasu.git");
 git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main");
 git("update-ref", "refs/remotes/origin/chore/1-example", HEAD);
-const AHEAD = git("commit-tree", "-p", HEAD, "-m", "not pushed", `${HEAD}^{tree}`);
-git("update-ref", "refs/heads/chore/3-ahead", AHEAD);
-git("update-ref", "refs/remotes/origin/chore/3-ahead", BASE);
-// Another pushed branch at HEAD, whose gh-merge-base a test sets.
-git("update-ref", "refs/heads/chore/4-other", HEAD);
-git("update-ref", "refs/remotes/origin/chore/4-other", HEAD);
+git("update-ref", "refs/heads/chore/5-local", BASE);
 
 interface PrView {
   number: number;
@@ -350,14 +345,9 @@ describe("gh wrapper: gh pr create", () => {
     `gh pr create ${LOW} --title x --body-file b.md`,
     'gh pr create --label="risk: low" --title x',
     'gh pr create -l "docs, risk: low" --title x',
+    'gh pr create -l "risk: low ,docs" --title x',
     'gh pr create -l"risk: low" --title x',
     `gh pr create ${LOW} --base main --title x`,
-    `gh pr create ${LOW} --head chore/1-example --title x`,
-    `gh pr create ${LOW} --head kompiro:chore/1-example --title x`,
-    'gh pr create -l "risk: low ,docs" --title x',
-    `gh pr create ${LOW} --repo kompiro/karasu --title x`,
-    `gh pr create ${LOW} --repo=Kompiro/Karasu --title x`,
-    `gh pr create ${LOW} -R github.com/kompiro/karasu --title x`,
   ])("runs a Low create without --draft once the CLI reviewed the branch: %s", (line) => {
     const gh = fakeGh(DRAFT);
     expect(run(line, gh, reviewedWork()).status).toBe(0);
@@ -393,21 +383,8 @@ describe("gh wrapper: gh pr create", () => {
     expect(calls(gh)).toEqual([]);
   });
 
-  it("takes the base from the --head branch's gh-merge-base, not the checked-out one", () => {
-    git("config", "branch.chore/4-other.gh-merge-base", "chore/1-example");
-    try {
-      const gh = fakeGh(DRAFT);
-      const line = `gh pr create ${LOW} --head chore/4-other --title x`;
-      expect(run(line, gh, reviewedWork()).status).toBe(1);
-      expect(calls(gh)).toEqual([]);
-    } finally {
-      git("config", "--unset", "branch.chore/4-other.gh-merge-base");
-    }
-  });
-
   // WORK is the reviewed commit. Naming the branch itself as the base puts WORK
-  // on the base, and naming main as the head leaves WORK out of the head, so
-  // each case fails only if the option is read.
+  // on the base, so each case fails only if the option is read.
   it.each([
     ["the review only covers the base branch", "--title x", BASE],
     ["--base puts the review on the base", "--base chore/1-example --title x", WORK],
@@ -415,9 +392,6 @@ describe("gh wrapper: gh pr create", () => {
     ["-B puts the review on the base", "-B chore/1-example --title x", WORK],
     ["-B= puts the review on the base", "-B=chore/1-example --title x", WORK],
     ["-B attached puts the review on the base", "-Bchore/1-example --title x", WORK],
-    ["--head names a branch the review is not on", "--head main --title x", WORK],
-    ["-H names a branch the review is not on", "-Hmain --title x", WORK],
-    ["--head names <owner>:<branch> the review is not on", "--head kompiro:main --title x", WORK],
     [
       "--base is the value of --body, and -B names the base",
       "--body --base -B chore/1-example --title x",
@@ -428,13 +402,6 @@ describe("gh wrapper: gh pr create", () => {
     const line = `gh pr create ${LOW} ${args}`;
     const result = run(line, gh, reviews({ head: reviewed, state: "complete" }));
     expect(result.status).toBe(1);
-    expect(calls(gh)).toEqual([]);
-  });
-
-  it("reads --head from origin, since gh does not push it", () => {
-    const gh = fakeGh(DRAFT);
-    const line = `gh pr create ${LOW} --head chore/3-ahead --title x`;
-    expect(run(line, gh, reviews({ head: AHEAD, state: "complete" })).status).toBe(1);
     expect(calls(gh)).toEqual([]);
   });
 
@@ -463,21 +430,50 @@ describe("gh wrapper: gh pr create", () => {
     }
   });
 
-  // What the gate cannot read is refused, not let through: --draft is always
-  // a way to open the PR.
+  // A Low create takes one form: gh pushes the checked-out branch to origin's
+  // repository. Anything that picks another head or repository, or a base origin
+  // does not have, is refused instead of read: --draft is always a way through.
   it.each([
-    ["--repo names another repository", "--repo someone/else"],
-    ["-R names another repository", "-R someone/else"],
-    ["--head names another owner's branch", "--head someone:chore/1-example"],
-    ["--head names a branch origin does not have", "--head no-such-branch"],
-    ["--base names a branch that is not here", "--base no-such-base"],
-  ])("refuses a reviewed Low create when %s", (_why, args) => {
+    ["--head", "--head chore/1-example", {}],
+    ["-H", "-Hchore/1-example", {}],
+    ["--head=", "--head=kompiro:chore/1-example", {}],
+    ["--repo", "--repo kompiro/karasu", {}],
+    ["--repo=", "--repo=kompiro/karasu", {}],
+    ["-R", "-R kompiro/karasu", {}],
+    ["GH_REPO", "", { GH_REPO: "kompiro/karasu" }],
+    ["GH_HOST", "", { GH_HOST: "github.example.com" }],
+    // chore/5-local exists only locally, at BASE: read from it, WORK would pass.
+    ["a base origin does not have", "--base chore/5-local", {}],
+  ])("refuses a reviewed Low create with %s", (_what, args, env) => {
     const gh = fakeGh(DRAFT);
-    const result = run(`gh pr create ${LOW} ${args} --title x`, gh, reviewedWork());
+    const result = run(`gh pr create ${LOW} ${args} --title x`, gh, reviewedWork(), env);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("cannot be checked");
     expect(result.stderr).toContain("gh pr create --draft");
     expect(calls(gh)).toEqual([]);
+  });
+
+  it.each([
+    ["another remote", "remote.upstream.gh-resolved", "base"],
+    ["a repository named on origin", "remote.origin.gh-resolved", "someone/else"],
+  ])("refuses a reviewed Low create when gh repo set-default picks %s", (_what, key, value) => {
+    git("config", key, value);
+    try {
+      const result = run(`gh pr create ${LOW} --title x`, fakeGh(DRAFT), reviewedWork());
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("gh repo set-default");
+    } finally {
+      git("config", "--unset", key);
+    }
+  });
+
+  it("runs a reviewed Low create when gh repo set-default picks origin", () => {
+    git("config", "remote.origin.gh-resolved", "base");
+    try {
+      expect(run(`gh pr create ${LOW} --title x`, fakeGh(DRAFT), reviewedWork()).status).toBe(0);
+    } finally {
+      git("config", "--unset", "remote.origin.gh-resolved");
+    }
   });
 
   it("refuses a reviewed Low create when origin's default branch is not known", () => {
