@@ -6,6 +6,7 @@ date: 2026-04-27
 topic: testing
 related_to:
   - ADR-529
+  - ADR-3237
 scope:
   packages:
     - e2e
