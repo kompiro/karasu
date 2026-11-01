@@ -1,6 +1,6 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 // The `Validate` check on the generated ADR index (Issue #3416,
-// docs/design/regenerate-adr-index-daily-pr.md "現時点の方針").
+// docs/adr/3416-regenerate-adr-index-daily-pr.md "仕組み").
 //
 // PRs no longer carry the generated files; the daily regeneration PR does.
 // This lets through exactly two kinds of PR:
