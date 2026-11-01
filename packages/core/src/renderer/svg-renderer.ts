@@ -1,29 +1,18 @@
 import type { EdgeDirection, ResolvedStyles } from "../types/style.js";
 import type { ViewSlice } from "../view/view-slice.js";
 import { layout } from "./layout.js";
-import type { GroupLabelIndex } from "./group-labels.js";
-import { CATEGORY_STUB_TAG, type CategoryId } from "./category-collapse.js";
-import type { DisplayMode, HopMark, LayoutNode, LayoutResult, Rect } from "./layout-types.js";
-import { renderEdge, renderArrowMarker } from "./edge-routing.js";
-import { resolveLabelPlacements, buildLabelInputs } from "./label-placement.js";
-import {
-  edgesWithMarks,
-  renderCrossingMarks,
-  renderTrunkBands,
-  type MarkState,
-} from "./crossing-marks-svg.js";
-import { containerStyleOf, frameBordersOf, renderContainer } from "./container-frame.js";
+import { CATEGORY_STUB_TAG } from "./category-collapse.js";
+import type { DisplayMode, LayoutNode, LayoutResult, Rect } from "./layout-types.js";
+import { renderArrowMarker } from "./edge-routing.js";
+import { containerStyleOf, renderContainer } from "./container-frame.js";
 import { buildLegendFooter, el, escapeXml } from "./svg-builder.js";
 import { GHOST_OPACITY } from "./rendering-constants.js";
-import { edgeStyleKey } from "../resolver/style-resolver.js";
-import { edgeKey, type NodeDiffMeta } from "../diff/view-diff.js";
-import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
-import type { Diagnostic, LegendBlock, LegendViewScope } from "../types/ast.js";
-import type { LegendUsage } from "../legend/usage.js";
-import type { StyleSheet } from "../types/style.js";
-import { type DiagramTheme, resolvePalette } from "./palette.js";
-import { FACET_DIM_OPACITY, type FacetOverlay } from "./facet-overlay.js";
+import { DEFAULT_EMPTY_STATE_LABELS } from "./empty-state-labels.js";
+import type { LegendViewScope } from "../types/ast.js";
+import { resolvePalette } from "./palette.js";
 import { nodePathRefId } from "../parser/node-path.js";
+import type { RenderOptions } from "./render-options.js";
+import { renderEdgeLayer } from "./edge-layer.js";
 import { assignChipZones, chipZoneOf, renderNode } from "./node-card.js";
 import { resolveNodeStyle, shapeNameOf } from "./node-style.js";
 import {
@@ -62,167 +51,6 @@ export function sanitizeId(id: string): string {
  */
 export function anchorId(viewPrefix: string, nodeId: string): string {
   return `krs-${viewPrefix}-${sanitizeId(nodeId)}`;
-}
-
-export interface RenderOptions {
-  /** Diff state per node id (and per edge key `from->to`) for diff-mode rendering. */
-  nodeDiffState?: Map<string, string>;
-  edgeDiffState?: Map<string, string>;
-  /**
-   * Full node diff metadata. When provided, the renderer derives the node's
-   * `data-diff-state` from `meta.state` (preferred over `nodeDiffState`) and
-   * decorates annotation badges with their own per-badge diff state
-   * (Issue #738 / design doc D-2).
-   */
-  nodeDiffMeta?: Map<string, NodeDiffMeta>;
-  /**
-   * The canvas cards' diff metadata keyed by full path (`DiffedView.nodesByPath`).
-   * When provided, a card that knows its path takes its state from here and
-   * nowhere else: a miss means the card has no state, not that it may borrow
-   * the bare-id entry of a same-named node (#2934).
-   */
-  nodeDiffMetaByPath?: Map<string, NodeDiffMeta>;
-  /**
-   * Diff state per container keyed by container id (deploy: `serviceId`). When
-   * present, the matching `<g data-container-id>` emits `data-diff-state` so
-   * CSS can highlight whole-container additions/removals (Issue #750).
-   */
-  containerDiffState?: Map<string, string>;
-  /**
-   * Localized labels for the empty-state placeholder rendered when the
-   * layout has no nodes or containers. When omitted, English fallbacks
-   * from `DEFAULT_EMPTY_STATE_LABELS` are used.
-   */
-  emptyLabels?: EmptyStateLabels;
-  /**
-   * Legend blocks declared in the source `.krs`. The renderer paints a
-   * footer band below the diagram for every block that targets the
-   * current view scope (or omits scope). Pair with `styleSheets` so
-   * `ref` entries can resolve to swatch colors via the style cascade.
-   */
-  legends?: LegendBlock[];
-  /** Resolved style sheets, used by the legend footer to color `ref` entries. */
-  styleSheets?: StyleSheet[];
-  /**
-   * Tag/annotation/id/kind usage from the file. Lets the legend footer
-   * fall back to a neutral swatch for refs that are in use on real nodes
-   * but not painted by any style rule (e.g. `[human]`).
-   */
-  legendUsage?: LegendUsage;
-  /**
-   * Which view this render produces. Drives the legend's scope filter so
-   * a `legend deploy "..."` block does not leak into the system view.
-   */
-  viewScope?: LegendViewScope;
-  /**
-   * Diagram theme. Drives the chrome palette (canvas background, legend
-   * band, empty-state text, diff indicators, …). Defaults to `"dark"` so
-   * existing output is unchanged. The matching built-in `.krs.style`
-   * variant is selected by the caller (see `index.ts`).
-   */
-  theme?: DiagramTheme;
-  /**
-   * System-view node categories the viewer has collapsed (Issue #1821).
-   * Each collapsed category's nodes are replaced by a single ⊕ stub before
-   * layout, so the diagram reflows and edges to the hidden nodes drop. Omit
-   * (or empty) for the default fully-expanded render. Only meaningful on the
-   * system view; see `docs/design/layer-toggles.md`.
-   */
-  collapsedCategories?: ReadonlySet<CategoryId>;
-  /**
-   * When true, draw the interactive category controls (the ⊖ collapse buttons
-   * and hover extent frames) for the live preview (Issue #1821). Defaults to
-   * false so static outputs — SVG export, `/render`, CLI, guide diagrams — stay
-   * clean. The ⊕ stub of an already-collapsed category is always drawn (it is
-   * content, not chrome).
-   */
-  interactive?: boolean;
-  /**
-   * When true, draw the per-node info / deploy buttons in the card's corner
-   * lane (Issue #2420). Defaults to false, so static outputs carry no button
-   * for a viewer that cannot click it.
-   *
-   * Deliberately not folded into `interactive`: the two name different viewer
-   * capabilities. The VS Code webview handles `data-info-button` but has no
-   * category-collapse handling, so one shared flag would either take away its
-   * ⓘ or give it a dead ⊖.
-   */
-  nodeControls?: boolean;
-  /**
-   * System-view grouping axis. `"team"` (#1858, P2a) bands each node's owning
-   * team; `"boundary"` (#1822, P2b) bands by declared `boundary`. Omit for the
-   * default un-grouped kind-tier layout.
-   */
-  groupBy?: "team" | "boundary";
-  /**
-   * Declared-boundary axis (node id → every boundary it is declared in, #2178).
-   * Sourced from `krsFile.boundaryMembership`; consumed by layout only when
-   * `groupBy === "boundary"`, which bands each node by its primary membership.
-   */
-  boundaryMembership?: Map<string, string[]>;
-  /**
-   * `krsFile.scopedBoundaryMembership` — membership from `boundary` blocks
-   * declared inside a node block (#2036). Layout picks the entry for the canvas
-   * it is drawing, so these frame their own level only.
-   */
-  scopedBoundaryMembership?: Map<string, Map<string, string[]>>;
-  /**
-   * Group ids the model declares on the active axis, in declaration order
-   * (`declaredGroupOrder`). Keeps a declared-but-unplaceable group in the group
-   * order instead of letting the axis map decide which groups exist (#2178).
-   */
-  declaredGroupOrder?: readonly string[];
-  /**
-   * Declared group labels for the active axis (#2133), from
-   * `buildGroupLabelIndex(krsFile, groupBy)`; layout resolves them per canvas.
-   * Titles the group frames; omitted → frames fall back to the group id.
-   */
-  groupLabels?: GroupLabelIndex;
-  /**
-   * Team id → declared `label`, from `buildTeamLabelIndex(krsFile)`. Supplies
-   * the owner chip's display string on every axis; omitted → the chip falls
-   * back to the team id (Issue #2157).
-   */
-  teamLabels?: ReadonlyMap<string, string>;
-  collapsedGroups?: ReadonlySet<string>;
-  /**
-   * Whether the in-place expansion ⊕/⊖ controls may be drawn (Issue #1921).
-   * `render()` sets it from the slice's system count so the affordance only
-   * appears on the single-system root, where expansion is actually derived.
-   * Internal — set by `render()`, not a public compile option.
-   */
-  expandable?: boolean;
-  /**
-   * Where `render` reports the diagnostics only a laid-out view can state
-   * (#2179) — today, `boundary-membership-not-drawn`. Whether a boundary's frame
-   * can reach a card depends on where the cards landed, so the parser cannot
-   * know it and the compile pipeline cannot derive it without laying out.
-   *
-   * A sink rather than a return value because `render` returns the SVG string,
-   * and it is called from surfaces that render *many* views into one artifact
-   * (the drill-down and all-layers bundles call it once per level); collecting
-   * into a caller-owned array is what lets those accumulate. This mirrors how
-   * `ResolvedStyles.warnings` is collected.
-   *
-   * **Every surface that passes `groupBy` should pass this too** — the `◇` tab
-   * is drawn from the layout on all of them, so a surface that omits the sink
-   * draws the fallback while its diagnostics list stays silent, which is the
-   * split TPL-1983 rules out. Entries are deduplicated on push, so a membership
-   * that degrades at several levels of one bundle is stated once.
-   */
-  diagnosticSink?: Diagnostic[];
-  /**
-   * Resolved facet overlay (#2174). Absent means the overlay is off, and the
-   * renderer then emits nothing extra — that absence is what keeps
-   * "no facet selected ⇒ byte-identical output" true.
-   */
-  facetOverlay?: FacetOverlay;
-  /**
-   * Localized heading for the overlay's legend block. Core keeps an English
-   * default, the way `emptyLabels` / `annotationBadgeLabels` do — the renderer
-   * never reaches for a translation table.
-   */
-  facetLegendTitle?: string;
 }
 
 /**
@@ -451,20 +279,9 @@ export function renderFromLayout(
     }
   }
 
-  // Ghost edges — ghost wrapper dims children to GHOST_OPACITY so they read
-  // as peripheral. When diff mode is active and a ghost edge has a non-
-  // "unchanged" state, move it to the normal-edges group so the diff colors
-  // are not washed out by the wrapper opacity.
-  const ghostEdgeParts: string[] = [];
-  const normalEdgeParts: string[] = [];
-  // A collapsed team's re-targeted stub edges are keyed by the stub id, which
-  // the original `edgeDiffState` (keyed on pre-collapse endpoints) cannot match;
-  // `layout` folds their diff state onto the stub key, so overlay it here so the
-  // stub edge keeps its `data-diff-state` (#1886). Stub keys use the reserved
-  // `__group_collapsed_*__` prefix, so they never collide with real edge keys.
-  // Same shape as the diff-state merge below: a collapse stub is keyed by the
-  // stub id, which the pre-collapse membership cannot match, so the folded map
-  // overlays it (#2174 / TPL-1886).
+  // Same shape as the edge diff-state merge in `renderEdgeLayer`: a collapse
+  // stub is keyed by the stub id, which the pre-collapse membership cannot
+  // match, so the folded map overlays it (#2174 / TPL-1886).
   const overlay = options?.facetOverlay;
   const facetMembership: ReadonlyMap<string, readonly string[]> | undefined = overlay
     ? layoutResult.foldedFacetMembership
@@ -485,160 +302,18 @@ export function renderFromLayout(
     (overlay !== undefined && path !== undefined
       ? overlay.membershipByPath.get(nodePathRefId(path))
       : (facetMembership?.get(nodeId) ?? facetMembership?.get(layoutId))) ?? [];
-  /**
-   * An edge's own selected facets (#2544), read off the layout edge rather than
-   * out of a membership map: an edge's `canonicalId` is `undefined` whenever its
-   * base form collided (ADR-1096), so there is no id to key it by. Filtered
-   * through the overlay's own order — never the edge's declaration order — so
-   * the innermost casing is the same facet on every edge, the rule the node
-   * rings follow.
-   */
-  const facetOrder = overlay?.entries.map((e) => e.id) ?? [];
-  const edgeFacetsFor = (edgeLayout: LayoutResult["edges"][number]): readonly string[] => {
-    const own = edgeLayout.facets;
-    if (!overlay || own === undefined) return [];
-    return facetOrder.filter((id) => own.includes(id));
-  };
 
-  const effectiveEdgeDiffState = layoutResult.foldedEdgeDiffState
-    ? new Map<string, string>([
-        ...(options?.edgeDiffState ?? new Map<string, string>()),
-        ...layoutResult.foldedEdgeDiffState,
-      ])
-    : options?.edgeDiffState;
-  // Resolved stroke of each edge, indexed to match `layoutResult.edges` — so a
-  // crossing mark can be drawn in its own edge's colour/width (#1859 P2c-C),
-  // not a fixed default that detaches from a coloured diagram.
-  // Hops grouped by their host edge index (== position in `layoutResult.edges`,
-  // the same array `computeCrossingMarks` indexed), so the host edge's stroke can
-  // be gapped where each hop jumps over a crossing (#1859 P2c-C).
-  const hopsByEdge = new Map<number, HopMark[]>();
-  for (const hop of layoutResult.crossingMarks?.hops ?? []) {
-    const list = hopsByEdge.get(hop.edge);
-    if (list) list.push(hop);
-    else hopsByEdge.set(hop.edge, [hop]);
-  }
-  // Resolve the edge style once per edge (reused by both the label-placement
-  // pre-pass and the render loop below).
-  const edgeStyleFor = (edgeLayout: LayoutResult["edges"][number]) => {
-    // Prefer the kind-qualified style entry so parallel sync/async edges between
-    // the same pair keep their own stroke style; fall back to the bare key for
-    // synthetic layout edges (delivers, owns, ghosts, aggregated domain edges).
-    return (
-      styles.edges.get(edgeStyleKey(edgeLayout.from, edgeLayout.to, edgeLayout.kind)) ??
-      styles.edges.get(edgeStyleKey(edgeLayout.from, edgeLayout.to, undefined)) ??
-      styles.defaultEdgeStyle
-    );
-  };
-
-  // Auto label collision-avoidance (#2048): nudge labels that collide with node
-  // cards, with each other, or with another edge's polyline (#2360) off their
-  // default midpoint. A label's own edge line is exempt — that is where it
-  // belongs. Author-positioned labels (non-default label-position/label-offset)
-  // are excluded from moving but still act as obstacles, so author intent wins
-  // (ADR-1184 precedence). A nudge never carries a label onto or across the
-  // border of a frame drawn above (#3155), measured on the stroke drawn there.
-  const {
-    inputs: labelInputs,
-    nodeRects,
-    edgeLines,
-  } = buildLabelInputs(layoutResult.edges, layoutResult.nodes, edgeStyleFor);
-  const frameBorders = frameBordersOf(layoutResult, styles, palette);
-  const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects, edgeLines, frameBorders);
-  // Labels the pass could not seat clear under `label-display: auto` (#3022).
-  // The pass reports them on its inputs; `renderEdge` leaves them off the canvas.
-  const deferredLabels = new Set(labelInputs.filter((l) => l.deferred).map((l) => l.index));
-
-  const edgeStroke: { color: string; strokeWidth: number }[] = [];
-  const markedEdges = edgesWithMarks(layoutResult.crossingMarks);
-  // What the crossing marks follow from their edges (#3157), by edge index.
-  const markState: MarkState = { dimmed: new Set(), diffStates: [] };
-  let edgeIndex = 0;
-  for (const edgeLayout of layoutResult.edges) {
-    const edgeStyle = edgeStyleFor(edgeLayout);
-    edgeStroke.push({ color: edgeStyle.color, strokeWidth: edgeStyle.strokeWidth });
-    const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
-    // An edge that resolved its own state while being laid out wins over the
-    // keyed map (#2756): on the multi-system root the `edgeKey` is shared by every
-    // frame that draws the same pair, so the map cannot tell them apart. Layout
-    // leaves it unset everywhere else, where the keyed lookup is the answer.
-    const diffState = edgeLayout.diffState ?? effectiveEdgeDiffState?.get(edgeKey(edgeLayout));
-    // An edge belongs to the selection two ways, and either one is enough to
-    // keep it at full strength: it carries the facet itself (#2544), or it
-    // touches a member node. The second is why the rule is "dim when *both*
-    // endpoints are outside" — where the highlighted set meets the rest of the
-    // model is the main thing an overlay is read for.
-    // An endpoint is read through its card, so a card sharing its id with a
-    // member does not keep its edge lit (#2934); the multi-system root names
-    // the card by `fromKey` / `toKey`, every other canvas by the bare id.
-    const endpointFacets = (id: string, key: string | undefined): readonly string[] =>
-      facetsFor(id, id, layoutResult.nodes.get(key ?? id)?.path);
-    const edgeFacets = edgeFacetsFor(edgeLayout);
-    const edgeDimmed =
-      overlay !== undefined &&
-      edgeFacets.length === 0 &&
-      endpointFacets(edgeLayout.from, edgeLayout.fromKey).length === 0 &&
-      endpointFacets(edgeLayout.to, edgeLayout.toKey).length === 0;
-    const rendered = renderEdge(
-      edgeLayout,
-      edgeStyle,
-      markerId,
-      diffState,
-      hopsByEdge.get(edgeIndex),
-      labelPlacements.get(edgeIndex),
-      edgeFacets,
-      overlay?.colorOf,
-      deferredLabels.has(edgeIndex),
-      markedEdges.has(edgeIndex) ? edgeIndex : undefined,
-    );
-    if (edgeDimmed) markState.dimmed.add(edgeIndex);
-    markState.diffStates[edgeIndex] = diffState;
-    edgeIndex++;
-    const withDim = edgeDimmed ? el("g", { opacity: FACET_DIM_OPACITY }, rendered) : rendered;
-    const isDimmedGhost =
-      edgeLayout.ghost && (diffState === undefined || diffState === "unchanged");
-    if (isDimmedGhost) {
-      ghostEdgeParts.push(withDim);
-    } else {
-      normalEdgeParts.push(withDim);
-    }
-  }
-  if (ghostEdgeParts.length > 0) {
-    parts.push(el("g", { class: "ghost-edges", opacity: GHOST_OPACITY }, ...ghostEdgeParts));
-  }
-  // Trunk bands under the edges (#2883): the stretches several edges share,
-  // drawn as wide as the count they carry. Behind the lines, so a band reads as
-  // the backdrop it is and the lines stay what you follow.
-  if (layoutResult.crossingMarks && layoutResult.crossingMarks.bands.length > 0) {
-    parts.push(
-      renderTrunkBands(
-        layoutResult.crossingMarks.bands,
-        edgeStroke,
-        styles.defaultEdgeStyle,
-        markState,
-      ),
-    );
-  }
-  parts.push(el("g", { class: "edges" }, ...normalEdgeParts));
-
-  // Crossing marks on top of the edges (#1859 P2c-C): hop arcs neutralise
-  // right-angle crossings and the merge mark carries the count a trunk goes on
-  // to hold. Present only in the Group-by view (ungrouped leaves
-  // `crossingMarks` undefined — AC-5).
-  if (layoutResult.crossingMarks) {
-    const { hops, junctions } = layoutResult.crossingMarks;
-    if (hops.length > 0 || junctions.length > 0) {
-      parts.push(
-        renderCrossingMarks(
-          layoutResult.crossingMarks,
-          edgeStroke,
-          styles.defaultEdgeStyle,
-          palette,
-          markState,
-        ),
-      );
-    }
-  }
+  parts.push(
+    ...renderEdgeLayer(
+      layoutResult,
+      styles,
+      palette,
+      colorToMarkerId,
+      facetsFor,
+      overlay,
+      options?.edgeDiffState,
+    ),
+  );
 
   // Nodes (ghost users first, then normal children). As with edges, a ghost
   // node that is diff-tagged (added / removed / changed) gets promoted to the
