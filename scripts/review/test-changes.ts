@@ -40,8 +40,9 @@ function visibleBody(body: string): string {
  * as the template's placeholder (`<reason>`) is no reason.
  */
 export function reasonLine(body: string, label: "No test" | "Test change"): string | null {
-  const re = new RegExp(`^[ \\t]*(?:[-*][ \\t]+)?${label}:[ \\t]*(\\S.*?)[ \\t]*$`, "m");
-  const reason = re.exec(visibleBody(body))?.[1];
+  // Trimmed after the match: a lazy group before `[ \t]*$` is quadratic on a run of spaces.
+  const re = new RegExp(`^[ \\t]*(?:[-*][ \\t]+)?${label}:[ \\t]*(\\S.*)$`, "m");
+  const reason = re.exec(visibleBody(body))?.[1].trimEnd();
   return reason === undefined || /^<[^>]*>$/.test(reason) ? null : reason;
 }
 
@@ -61,13 +62,65 @@ export function closedIssueNumbers(body: string, repo: string): number[] {
 // ---------------------------------------------------------------------------
 // Reading a test file
 
+/**
+ * For each line, whether it starts in code rather than inside a block comment
+ * or a template literal. A light scanner: strings, `//` and `/* *\/` comments,
+ * and template literals with their `${...}` holes. Regex literals are read as
+ * code, which can only misjudge a line toward the stricter side.
+ */
+export function codeLineStarts(text: string): boolean[] {
+  const lines = text.split("\n");
+  const starts: boolean[] = [];
+  let state: "code" | "block" | "template" = "code";
+  // Brace depth in code, and the depths to return to when a `${` hole closes.
+  let depth = 0;
+  const holes: number[] = [];
+  for (const line of lines) {
+    starts.push(state === "code");
+    for (let c = 0; c < line.length; c++) {
+      const ch = line[c];
+      if (state === "block") {
+        if (ch === "*" && line[c + 1] === "/") {
+          state = "code";
+          c++;
+        }
+      } else if (state === "template") {
+        if (ch === "\\") c++;
+        else if (ch === "`") state = "code";
+        else if (ch === "$" && line[c + 1] === "{") {
+          holes.push(depth);
+          depth = 0;
+          state = "code";
+          c++;
+        }
+      } else if (ch === "/" && line[c + 1] === "/") break;
+      else if (ch === "/" && line[c + 1] === "*") {
+        state = "block";
+        c++;
+      } else if (ch === '"' || ch === "'") {
+        // A quoted string ends on its line.
+        for (c++; c < line.length && line[c] !== ch; c++) if (line[c] === "\\") c++;
+      } else if (ch === "`") state = "template";
+      else if (ch === "{") depth++;
+      else if (ch === "}") {
+        if (depth === 0 && holes.length > 0) {
+          depth = holes.pop() ?? 0;
+          state = "template";
+        } else depth--;
+      }
+    }
+  }
+  return starts;
+}
+
 /** 0-based indexes of the lines that belong to an `import ... from "..."` statement. */
 function importLines(text: string): Set<number> {
   const lines = text.split("\n");
+  const code = codeLineStarts(text);
   const inImport = new Set<number>();
   for (let i = 0; i < lines.length; i++) {
-    // Not `import(` (dynamic) or `import.meta`.
-    if (!/^\s*import(?:\s|\{|\*|["'])/.test(lines[i])) continue;
+    // Not `import(` (dynamic) or `import.meta`, nor a `.krs` import in a fixture string.
+    if (!code[i] || !/^\s*import(?:\s|\{|\*|["'])/.test(lines[i])) continue;
     let j = i;
     while (
       j < lines.length &&
@@ -103,7 +156,12 @@ function sideReader(text: string | null | undefined): (index: number, line: stri
   return (index, line) => imports.has(index) || (index < start && line.trim() === "");
 }
 
-const PATH_STRING = /(["'`])((?:\\.|(?!\1)[^\\\n])*\.[cm]?[jt]sx?)\1/g;
+/**
+ * A string that names a module by a relative path (`./a/b.ts`) or a bare file
+ * name (`node-card.ts`). A repo path (`packages/nest/a.ts`) is not one: tests of
+ * path rules use those as inputs, and changing one changes what is tested.
+ */
+const PATH_STRING = /(["'`])((?:\.\.?\/(?:[^"'`\\\n/]+\/)*)?[^"'`\\\n/]+\.[cm]?[jt]sx?)\1/g;
 const MODULE_CALL =
   /\b(import|require|vi\.(?:mock|doMock|unmock|importActual|importMock))\(\s*(["'`])(?:\\.|(?!\2)[^\\\n])*\2/g;
 
@@ -156,6 +214,55 @@ function onlySwaps(rest: { removed: string[]; added: string[] }): boolean {
 
 /** Lines that turn tests off or narrow a run to some of them. */
 const DISABLING = [/\.(?:skip|fixme|todo|only)\b/, /\b(?:skipIf|runIf)\b/, /^\s*return\s*;?\s*$/];
+
+/**
+ * Whether lines the PR leaves as they were stop being code: added lines open a
+ * block comment or a template literal around them, so the tests there no longer
+ * run though not one of their lines changed. Unknown sides count as hiding.
+ */
+function hidesLines(f: ChangedFile): boolean {
+  if (typeof f.before !== "string" || typeof f.after !== "string") return true;
+  const was = codeLineStarts(f.before);
+  const now = codeLineStarts(f.after);
+  // `-U0` hunks in order: an untouched old line moves by the lines added and
+  // removed above it.
+  const hunks = [...f.hunks].sort((a, b) => a.oldStart - b.oldStart);
+  let delta = 0;
+  let next = 0;
+  for (let line = 1; line <= was.length; line++) {
+    while (next < hunks.length) {
+      const h = hunks[next];
+      const last = h.removed.length > 0 ? h.oldStart + h.removed.length - 1 : h.oldStart;
+      if (last >= line) break;
+      delta += h.added.length - h.removed.length;
+      next++;
+    }
+    const h = hunks[next];
+    if (h !== undefined && h.removed.length > 0 && line >= h.oldStart) continue;
+    if (was[line - 1] && now[line - 1 + delta] === false) return true;
+  }
+  return false;
+}
+
+/**
+ * Whether a change to an existing test file can take coverage away: it deletes
+ * the file, removes lines beyond import moves and path or comment swaps, adds a
+ * line that skips or narrows tests, or hides untouched lines in a comment or a
+ * string.
+ */
+export function weakensTests(f: ChangedFile): boolean {
+  return (
+    f.status === "deleted" ||
+    hidesLines(f) ||
+    f.hunks.some((h) => {
+      const rest = unexplained(h, f.before, f.after);
+      return (
+        (rest.removed.length > 0 && !onlySwaps(rest)) ||
+        h.added.some((line) => DISABLING.some((re) => re.test(line)))
+      );
+    })
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Added tests
@@ -281,6 +388,7 @@ export function checkTestChanges(input: {
     const broken = existing.filter(
       (f) =>
         f.status === "deleted" ||
+        hidesLines(f) ||
         f.hunks.some((h) => !onlySwaps(unexplained(h, f.before, f.after))),
     );
     if (broken.length > 0) {
@@ -294,23 +402,13 @@ export function checkTestChanges(input: {
     return { errors, waivers };
   }
 
-  const weakened = existing.filter(
-    (f) =>
-      f.status === "deleted" ||
-      f.hunks.some((h) => {
-        const rest = unexplained(h, f.before, f.after);
-        return (
-          (rest.removed.length > 0 && !onlySwaps(rest)) ||
-          h.added.some((line) => DISABLING.some((re) => re.test(line)))
-        );
-      }),
-  );
+  const weakened = existing.filter(weakensTests);
   if (weakened.length > 0) {
     const reason = reasonLine(input.body, "Test change");
     if (reason !== null) waivers.push({ label: "Test change", reason });
     else {
       errors.push(
-        `This PR removes lines from, deletes or skips existing tests: ` +
+        `This PR removes lines from, deletes, skips or comments out existing tests: ` +
           `${weakened.map((f) => f.path).join(", ")}. Write "Test change: <reason>" in the body ` +
           `to say why (docs/process/review.md "リスク段階").`,
       );

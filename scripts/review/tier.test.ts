@@ -347,10 +347,20 @@ describe("classifyChange", () => {
           "high",
         );
         expect(tierOf(deleted(path))).toBe("high");
+        const before = "it('blocks 10.0.0.1', () => {\n  expect(fetchIt()).rejects;\n});";
+        const sides = (after: string, inserted: string[]) =>
+          modified(path, {
+            before,
+            after,
+            hunks: [{ oldStart: 0, removed: [], newStart: 1, added: inserted }],
+          });
         // Adding a case stays Medium.
-        expect(tierOf(modified(path, { hunks: [hunk([], ["it('blocks ::1', ...)"])] }))).toBe(
-          "medium",
-        );
+        expect(
+          tierOf(sides(`it('blocks ::1', () => {});\n${before}`, ["it('blocks ::1', () => {});"])),
+        ).toBe("medium");
+        // Turning the test off without removing a line is High too.
+        expect(tierOf(sides(`/*\n${before}\n*/`, ["/*"]))).toBe("high");
+        expect(tierOf(sides(`return;\n${before}`, ["return;"]))).toBe("high");
       }
       // A test of a file outside the boundary is Medium either way.
       expect(

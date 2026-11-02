@@ -23,7 +23,13 @@ import { appendFileSync, readFileSync } from "node:fs";
 import { matchesGlob, posix } from "node:path";
 import { classifyGeneratedDiff, parseNameStatus, readAdrPaths } from "../adr/generated.ts";
 import { type GitFacts, parseRecord, verifyRecord } from "./local-review-record.ts";
-import { checkTestChanges, closedIssueNumbers, isTestFile, TEST_GLOBS } from "./test-changes.ts";
+import {
+  checkTestChanges,
+  closedIssueNumbers,
+  isTestFile,
+  TEST_GLOBS,
+  weakensTests,
+} from "./test-changes.ts";
 
 export type Tier = "low" | "design" | "medium" | "high";
 
@@ -113,6 +119,10 @@ const LANGUAGE_TIER_GLOBS: readonly string[] = [
 const DANGEROUS_SINKS: readonly RegExp[] = [
   /dangerouslySetInnerHTML/,
   /innerHTML/,
+  /outerHTML/,
+  /insertAdjacentHTML/,
+  /\bsrcdoc\b/,
+  /\bdocument\.write/,
   /DOMPurify/,
   /openExternal/,
   /\beval\s*\(/,
@@ -774,9 +784,10 @@ function fileTier(
   if (byPath === "high") return "high";
   if (isTestFile(f.path)) {
     if (isNewFile(f)) return byPath;
-    // A reason line must not be enough to drop an SSRF or symlink regression test.
-    const removes = f.status === "deleted" || f.hunks.some((h) => h.removed.length > 0);
-    if (removes && isSecurityTest(f.path)) return "high";
+    // A reason line must not be enough to drop or turn off an SSRF or symlink
+    // regression test.
+    const removes = f.hunks.some((h) => h.removed.length > 0);
+    if (isSecurityTest(f.path) && (removes || weakensTests(f))) return "high";
     return "medium";
   }
   if (CODE_FILE.test(f.path) && touchesDangerousSink(f)) return "high";
@@ -1112,19 +1123,29 @@ interface PrView {
 
 /**
  * Whether the PR closes an Issue labeled `bug`: one GitHub links to it, or one
- * its body closes by keyword. An Issue that cannot be read fails the check
- * rather than counting as not a bug (TPL-3286).
+ * its body closes by keyword. An Issue that cannot be read is reported rather
+ * than counted as not a bug (TPL-3286).
  */
-function closesBug(view: PrView): boolean {
+function closesBug(view: PrView): { bug: boolean; unreadable: number[] } {
   const linked = view.closingIssuesReferences
     .filter((r) => `${r.repository.owner.login}/${r.repository.name}` === REPO)
     .map((r) => r.number);
   const numbers = new Set([...linked, ...closedIssueNumbers(view.body ?? "", REPO)]);
-  return [...numbers].some((n) =>
-    run("gh", ["api", `repos/${REPO}/issues/${n}`, "--jq", ".labels[].name"])
-      .split("\n")
-      .includes("bug"),
-  );
+  const unreadable: number[] = [];
+  let bug = false;
+  for (const n of numbers) {
+    try {
+      const labels = run(
+        "gh",
+        ["api", `repos/${REPO}/issues/${n}`, "--jq", ".labels[].name"],
+        true,
+      );
+      bug ||= labels.split("\n").includes("bug");
+    } catch {
+      unreadable.push(n);
+    }
+  }
+  return { bug, unreadable };
 }
 
 /**
@@ -1168,10 +1189,17 @@ function checkPr(pr: string): string[] {
     );
   }
   // Every tier, High included: CodeRabbit's rounds do not ask for a test either.
+  const closes = closesBug(view);
+  for (const n of closes.unreadable) {
+    errors.push(
+      `PR #${pr} closes #${n}, which could not be read to see whether it is a bug. ` +
+        `Fix the reference, or rerun the check if GitHub was unavailable.`,
+    );
+  }
   const tests = checkTestChanges({
     title: view.title,
     body: view.body ?? "",
-    closesBug: closesBug(view),
+    closesBug: closes.bug,
     files,
   });
   errors.push(...tests.errors);

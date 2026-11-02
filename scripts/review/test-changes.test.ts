@@ -3,6 +3,7 @@ import {
   addsTest,
   checkTestChanges,
   closedIssueNumbers,
+  codeLineStarts,
   maskPathsAndComments,
   reasonLine,
   titleType,
@@ -76,6 +77,13 @@ describe("reasonLine", () => {
     expect(reasonLine("No test:", "No test")).toBeNull();
     expect(reasonLine("| 1 | No test: in a table |", "No test")).toBeNull();
   });
+
+  it("trims trailing spaces, in linear time", () => {
+    expect(reasonLine("No test: x   ", "No test")).toBe("x");
+    const started = performance.now();
+    reasonLine(`No test: x${" ".repeat(60_000)}y`, "No test");
+    expect(performance.now() - started).toBeLessThan(200);
+  });
 });
 
 describe("closedIssueNumbers", () => {
@@ -125,6 +133,23 @@ describe("addsTest", () => {
   });
 });
 
+describe("codeLineStarts", () => {
+  it("tells code from block comments and template literals", () => {
+    const text = [
+      "a();",
+      "/* x",
+      "y */ b();",
+      "const s = `",
+      "${f({ a: 1 })} z",
+      "`;",
+      "c(); // `",
+      'd("/*");',
+      "e();",
+    ].join("\n");
+    expect(codeLineStarts(text)).toEqual([true, true, false, true, false, false, true, true, true]);
+  });
+});
+
 describe("maskPathsAndComments", () => {
   it("masks module paths and comment text", () => {
     expect(maskPathsAndComments('vi.mock("../renderer/a")')).toBe(
@@ -147,6 +172,10 @@ describe("maskPathsAndComments", () => {
       maskPathsAndComments('expect(a).toBe("y")'),
     );
     expect(maskPathsAndComments("// note")).not.toBe(maskPathsAndComments("/* note"));
+    // A repo path is a test's input, not a module reference.
+    expect(maskPathsAndComments('pathTier("packages/nest/a.ts")')).not.toBe(
+      maskPathsAndComments('pathTier("scripts/review/a.ts")'),
+    );
     expect(maskPathsAndComments(" * note")).not.toBe(maskPathsAndComments(" * note */"));
   });
 });
@@ -214,6 +243,19 @@ describe("checkTestChanges", () => {
       );
     });
 
+    it("does not read a .krs import inside a fixture string as an import", () => {
+      const before = [
+        "const krs = `",
+        'import "./shared.krs"',
+        "system a {}",
+        "`;",
+        ...SUITE.slice(3),
+      ];
+      const after = before.filter((l) => l !== 'import "./shared.krs"');
+      expect(check("refactor: x", [edit(T, before, after)]).errors).toHaveLength(1);
+      expect(check("feat: x", [edit(T, before, after)]).errors).toHaveLength(1);
+    });
+
     it("is not waived by a Test change line", () => {
       const after = SUITE.slice(0, -1);
       expect(
@@ -242,6 +284,30 @@ describe("checkTestChanges", () => {
         errors: [],
         waivers: [{ label: "Test change", reason: "the expectation moved" }],
       });
+    });
+
+    it.each([
+      ["a block comment", "/*", "*/"],
+      ["a template literal", "const off = `", "`;"],
+    ])("asks for a Test change line when %s wraps untouched tests", (_, open, close) => {
+      const after = [...SUITE.slice(0, 3), open, ...SUITE.slice(3), close];
+      const file = edit(T, SUITE, after);
+      // Two insertions, as -U0 prints them.
+      file.hunks = [
+        { oldStart: 3, removed: [], newStart: 4, added: [open] },
+        { oldStart: SUITE.length, removed: [], newStart: after.length, added: [close] },
+      ];
+      expect(check("feat: x", [file]).errors).toHaveLength(1);
+      expect(check("refactor: x", [file]).errors).toHaveLength(1);
+    });
+
+    it("asks for a reason when a side of the file is unknown", () => {
+      const file: ChangedFile = {
+        path: T,
+        status: "modified",
+        hunks: [{ oldStart: 10, removed: [], newStart: 11, added: ['it("y", () => {});'] }],
+      };
+      expect(check("feat: x", [file]).errors).toHaveLength(1);
     });
 
     it("asks for a reason on a deleted test file", () => {
