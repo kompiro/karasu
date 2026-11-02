@@ -110,10 +110,15 @@ describe("closedIssueNumbers", () => {
 });
 
 describe("addsTest", () => {
-  const add = (path: string): ChangedFile => ({ path, status: "added", hunks: [] });
+  const add = (path: string, after?: string): ChangedFile => ({
+    path,
+    status: "added",
+    hunks: [],
+    after,
+  });
 
   it("counts a new test file, example, renderer fixture or AT fence", () => {
-    expect(addsTest([add("packages/core/src/b.test.ts")])).toBe(true);
+    expect(addsTest([add("packages/core/src/b.test.ts", SUITE.join("\n"))])).toBe(true);
     expect(addsTest([add("examples/ja/new/index.krs")])).toBe(true);
     expect(addsTest([add("packages/core/src/renderer/fixtures/edge.krs")])).toBe(true);
     expect(addsTest([edit("docs/acceptance/x.md", ["# x"], ["# x", "```krs", "a", "```"])])).toBe(
@@ -131,6 +136,11 @@ describe("addsTest", () => {
     const before = ["it.each([", '  ["a", 1],', "])('%s', () => {});"];
     const after = ["it.each([", '  ["a", 1],', '  ["b", 2],', "])('%s', () => {});"];
     expect(addsTest([edit(T, before, after)])).toBe(true);
+  });
+
+  it("does not count a new test file whose cases are all skipped", () => {
+    const skipped = SUITE.map((l) => l.replace('it("draws', 'it.skip("draws')).join("\n");
+    expect(addsTest([add("packages/core/src/b.test.ts", skipped)])).toBe(false);
   });
 
   it("counts a row added to a named table", () => {
@@ -161,6 +171,19 @@ describe("addsTest", () => {
 });
 
 describe("codeLineStarts", () => {
+  it("reads a division after ++ or --, and a JSX closing tag, as code", () => {
+    expect(codeLineStarts(["const n = i++ / 2; /* off", "it();", "*/"].join("\n"))).toEqual([
+      true,
+      false,
+      false,
+    ]);
+    expect(codeLineStarts(["render(<p>a</p>); /*", "it();", "*/"].join("\n"))).toEqual([
+      true,
+      false,
+      false,
+    ]);
+  });
+
   it("reads a regex literal as code, whatever quotes or slashes it holds", () => {
     expect(codeLineStarts(["const q = /\\/\\//; /*", "a();", "*/", "b();"].join("\n"))).toEqual([
       true,
@@ -236,7 +259,10 @@ describe("checkTestChanges", () => {
     it("asks a fix for a test case", () => {
       expect(check("fix(core): x", [code]).errors).toHaveLength(1);
       expect(
-        check("fix(core): x", [code, { path: "x.test.ts", status: "added", hunks: [] }]),
+        check("fix(core): x", [
+          code,
+          { path: "x.test.ts", status: "added", hunks: [], after: SUITE.join("\n") },
+        ]),
       ).toMatchObject({ errors: [], waivers: [] });
     });
 
@@ -316,6 +342,28 @@ describe("checkTestChanges", () => {
       expect(check("refactor: x", [edit(T, sum, changed)]).errors).toHaveLength(1);
     });
 
+    it("fails code riding on an import line", () => {
+      const after = SUITE.map((l) =>
+        l.startsWith("import { render }")
+          ? 'import { render } from "./renderer/node-card.ts"; beforeEach((c) => c.skip());'
+          : l,
+      );
+      expect(check("refactor: x", [edit(T, SUITE, after)]).errors).toHaveLength(1);
+    });
+
+    it("fails one test API binding moved to another module", () => {
+      const after = [
+        'import { describe, it } from "vitest";',
+        'import { expect } from "./noop-expect.ts";',
+        ...SUITE.slice(1),
+      ];
+      expect(check("refactor: x", [edit(T, SUITE, after)]).errors).toHaveLength(1);
+      expect(check("feat: x", [edit(T, SUITE, after)]).errors).toHaveLength(1);
+      const spec = ['import { expect, test } from "../fixtures/opfs.js";', 'test("a", () => {});'];
+      const repointed = [spec[0].replace("opfs.js", "noop.js"), spec[1]];
+      expect(check("feat: x", [edit(T, spec, repointed)]).errors).toHaveLength(1);
+    });
+
     it("fails a test API taken from somewhere other than the runner", () => {
       const after = SUITE.map((l) => l.replace('from "vitest"', 'from "./noop-vitest.ts"'));
       expect(check("refactor: x", [edit(T, SUITE, after)]).errors).toHaveLength(1);
@@ -333,6 +381,16 @@ describe("checkTestChanges", () => {
   describe("other PRs", () => {
     it("lets a PR add cases and move imports without a reason", () => {
       const after = [...SUITE.slice(0, 9), '  it("y", () => {});', "});"];
+      expect(check("feat: x", [edit(T, SUITE, after)]).errors).toEqual([]);
+    });
+
+    it.each([
+      ['  it("system only: tabs disabled", () => {});'],
+      ["  const page = paginate({ skip: 10, take: 5 });"],
+      ["  expect(result.only).toBe(true);"],
+      ['  it("calls x.skip() on old input", () => {});'],
+    ])("does not read data or titles as a skip: %s", (line) => {
+      const after = [...SUITE.slice(0, 9), line, "});"];
       expect(check("feat: x", [edit(T, SUITE, after)]).errors).toEqual([]);
     });
 
@@ -366,6 +424,16 @@ describe("checkTestChanges", () => {
       ["a guarded return", [...SUITE.slice(0, 5), "    if (true) return;", ...SUITE.slice(5)]],
       ["a return of undefined", [...SUITE.slice(0, 5), "    return undefined;", ...SUITE.slice(5)]],
       ["a skip option", [...SUITE.slice(0, 4), "  { skip: true },", ...SUITE.slice(4)]],
+      ["a quoted skip option", [...SUITE.slice(0, 4), '  { "skip": true },', ...SUITE.slice(4)]],
+      [
+        "a context skip",
+        [...SUITE.slice(0, 3), 'beforeEach((ctx) => ctx["skip"]());', ...SUITE.slice(3)],
+      ],
+      ["a Playwright fail", [...SUITE.slice(0, 5), "    test.fail();", ...SUITE.slice(5)]],
+      [
+        "a return with a comment",
+        [...SUITE.slice(0, 5), "    return /* tmp */;", ...SUITE.slice(5)],
+      ],
     ])("asks for a Test change line on %s", (_, after) => {
       expect(check("feat: x", [edit(T, SUITE, after)]).errors).toHaveLength(1);
       expect(
@@ -398,6 +466,32 @@ describe("checkTestChanges", () => {
         hunks: [{ oldStart: 10, removed: [], newStart: 11, added: ['it("y", () => {});'] }],
       };
       expect(check("feat: x", [file]).errors).toHaveLength(1);
+    });
+
+    it("maps untouched lines across a removal and an insertion", () => {
+      // A blank line removed above, then a comment opened around the case below.
+      const after = [
+        ...SUITE.slice(0, 2),
+        ...SUITE.slice(3, 4),
+        "/*",
+        ...SUITE.slice(4, 9),
+        "*/",
+        "});",
+      ];
+      const file = edit(T, SUITE, after);
+      file.hunks = [
+        { oldStart: 3, removed: [""], newStart: 2, added: [] },
+        { oldStart: 4, removed: [], newStart: 4, added: ["/*"] },
+        { oldStart: 9, removed: [], newStart: 10, added: ["*/"] },
+      ];
+      expect(check("feat: x", [file]).errors).toHaveLength(1);
+      // The same removal alone hides nothing.
+      const blankOnly = edit(
+        T,
+        SUITE,
+        SUITE.filter((_, i) => i !== 2),
+      );
+      expect(check("feat: x", [blankOnly]).errors).toEqual([]);
     });
 
     it("asks for a reason on a deleted test file", () => {

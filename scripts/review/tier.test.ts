@@ -361,6 +361,24 @@ describe("classifyChange", () => {
         // Turning the test off without removing a line is High too.
         expect(tierOf(sides(`/*\n${before}\n*/`, ["/*"]))).toBe("high");
         expect(tierOf(sides(`return;\n${before}`, ["return;"]))).toBe("high");
+        // Rewording a comment there is not turning it off.
+        const commented = `// SSRF guard\n${before}`;
+        expect(
+          tierOf(
+            modified(path, {
+              before: commented,
+              after: `// The SSRF guard\n${before}`,
+              hunks: [
+                {
+                  oldStart: 1,
+                  removed: ["// SSRF guard"],
+                  newStart: 1,
+                  added: ["// The SSRF guard"],
+                },
+              ],
+            }),
+          ),
+        ).toBe("medium");
       }
       // A test of a file outside the boundary is Medium either way.
       expect(

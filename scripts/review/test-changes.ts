@@ -73,13 +73,17 @@ interface Side {
   masked: string[];
   /** 0-based indexes of the lines of `import ... from "..."` statements. */
   imports: Set<number>;
-  /** The module each import statement names. */
-  specifiers: string[];
+  /** Each name a value import binds, and the module it comes from. */
+  bindings: Map<string, string>;
 }
 
-/** Where a `/` opens a regex literal rather than dividing: after one of these, or at the start. */
+/**
+ * Where a `/` opens a regex literal rather than dividing: after one of these,
+ * or at the start of the line. Not after `++` / `--` (a division) or `<` (a JSX
+ * closing tag). Read on the last few characters only, to stay linear.
+ */
 const REGEX_AFTER =
-  /(?:^|[(,=:[!&|?{};+\-*%<>~^]|\b(?:return|typeof|case|do|else|in|of|void|yield|await))\s*$/;
+  /(?:^|[(,=:[!&|?{};*%~^]|(?<!\+)\+|(?<!-)-|=>|\b(?:return|typeof|case|do|else|in|of|void|yield|await))\s*$/;
 
 /**
  * Scans a file once. For each line it records the state the line starts in and
@@ -100,7 +104,10 @@ function maskLines(text: string): { states: LineState[]; masked: string[] } {
   for (const line of lines) {
     states.push(state);
     let out = state === "block" ? "⟦c⟧" : "";
+    // `out`'s last characters in code, which decide whether a `/` opens a regex.
+    let tail = "";
     for (let c = 0; c < line.length; c++) {
+      tail = out.slice(-24);
       const ch = line[c];
       if (state === "block") {
         if (ch === "*" && line[c + 1] === "/") {
@@ -133,7 +140,7 @@ function maskLines(text: string): { states: LineState[]; masked: string[] } {
         c++;
         continue;
       }
-      if (ch === "/" && REGEX_AFTER.test(out)) {
+      if (ch === "/" && REGEX_AFTER.test(tail)) {
         // A regex literal, to its closing `/` outside a character class.
         let k = c + 1;
         for (let inClass = false; k < line.length; k++) {
@@ -195,7 +202,7 @@ function readSide(text: string | null | undefined): Side | null {
   const lines = text.split("\n");
   const { states, masked } = maskLines(text);
   const imports = new Set<number>();
-  const specifiers: string[] = [];
+  const bindings = new Map<string, string>();
   for (let i = 0; i < lines.length; i++) {
     // Not `import(` (dynamic) or `import.meta`, nor a `.krs` import in a fixture string.
     if (states[i] !== "code" || !/^\s*import(?:\s|\{|\*|["'])/.test(masked[i])) continue;
@@ -205,11 +212,31 @@ function readSide(text: string | null | undefined): Side | null {
       spec = /\bfrom\s*(["'])([^"']*)\1|^\s*import\s*(["'])([^"']*)\3/.exec(lines[j]);
       if (spec !== null || /;\s*$/.test(lines[j])) break;
     }
-    if (spec !== null) specifiers.push(spec[2] ?? spec[4]);
-    for (let k = i; k <= Math.min(j, lines.length - 1); k++) imports.add(k);
+    // Only a whole statement is free: nothing but `;` or a comment may follow
+    // its module, or code could ride on an import line.
+    const whole =
+      /(?:\bfrom|^\s*import)\s*(?:(["'])[^"']*\1|\u27E6path\u27E7)\s*;?\s*(?:\/\/\u27E6c\u27E7|\/\*\u27E6c\u27E7\*\/)?\s*$/;
+    if (spec === null || j >= lines.length || !whole.test(masked[j])) continue;
+    const module = spec[2] ?? spec[4];
+    const statement = lines.slice(i, j + 1).join(" ");
+    if (!/^\s*import\s+type\b/.test(statement)) {
+      const clause = /^\s*import\s+([\s\S]*?)\s*\bfrom\b/.exec(statement)?.[1] ?? "";
+      const named = /\{([^}]*)\}/.exec(clause)?.[1] ?? "";
+      const names = [
+        ...named.split(",").flatMap((part) => {
+          const n = part.trim();
+          if (n === "" || /^type\s/.test(n)) return [];
+          return [/\bas\s+([\w$]+)$/.exec(n)?.[1] ?? n];
+        }),
+        ...(/^\s*([\w$]+)\s*(?:,|$)/.exec(clause.replace(/\{[^}]*\}/, ""))?.slice(1) ?? []),
+        ...(/\*\s*as\s+([\w$]+)/.exec(clause)?.slice(1) ?? []),
+      ];
+      for (const name of names) bindings.set(name, module);
+    }
+    for (let k = i; k <= j; k++) imports.add(k);
     i = j;
   }
-  return { lines, states, masked, imports, specifiers };
+  return { lines, states, masked, imports, bindings };
 }
 
 /** Whether a line may change freely: part of an import, or blank outside a template literal. */
@@ -240,19 +267,48 @@ const removesNothing = (h: Hunk, was: Side | null): boolean =>
   h.removed.every((_, k) => isFree(was, h.oldStart - 1 + k));
 
 /**
- * Lines that turn tests off or narrow a run to some of them, read on code with
- * comments masked: a skip or focus modifier (not a spread like `...skip`), a
- * `skip:` / `only:` / `todo:` option, and a `return` without a value.
+ * Lines that turn tests off or narrow a run to some of them. These guard
+ * against accidents, not disguises: an author off the trusted list is High and
+ * a human reads the diff (#3505). Read on code with its strings emptied, so a
+ * case title or data that says `only:` or `.skip` is not one.
  */
 const DISABLING = [
-  /(?<!\.)\.(?:skip|fixme|todo|only)\b/,
+  // A skip or focus modifier, not a spread (`...skip`) or a property (`result.only`).
+  /(?<!\.)\.(?:skip|fixme|todo|only)\b(?=\s*[(.`])/,
   /\b(?:skipIf|runIf)\b/,
-  /\b(?:skip|only|todo)\s*:/,
+  // Playwright's expected failure.
+  /\b(?:test|it)(?:\.describe)?\.fail\s*\(/,
+  // A `return` without a value.
   /(?:^|[;{)]|\belse)\s*return\s*(?:undefined\s*|void\s+0\s*)?(?:;|\}|$)/,
 ];
 
-/** The modules a test file takes its test API from: dropping one turns every test off. */
-const TEST_API = new Set(["vitest", "@playwright/test"]);
+/** The same, read with strings kept: a `skip: true` option and a `ctx["skip"]` call. */
+const DISABLING_WITH_STRINGS = [
+  /(?:^|[{,])\s*["']?(?:skip|only|todo)["']?\s*:\s*(?:true\b|!|[A-Za-z_$])/,
+  /\[\s*["'](?:skip|only|todo|fixme|fail)["']\s*\]/,
+];
+
+/** Whether an added (masked) line turns tests off. */
+function disables(masked: string): boolean {
+  const code = masked.replace(/\/\*\u27E6c\u27E7\*\//g, "").replace(/\/\/\u27E6c\u27E7$/, "");
+  const noStrings = code.replace(/(["'])(?:\\.|(?!\1)[^\\])*\1/g, '""');
+  return (
+    DISABLING.some((re) => re.test(noStrings)) || DISABLING_WITH_STRINGS.some((re) => re.test(code))
+  );
+}
+
+/** Names a test file runs its tests with: taken from anywhere else, they can turn every test off. */
+const TEST_API = new Set([
+  "it",
+  "test",
+  "expect",
+  "describe",
+  "suite",
+  "beforeEach",
+  "afterEach",
+  "beforeAll",
+  "afterAll",
+]);
 
 /**
  * Whether lines the PR leaves as they were stop being code (added lines open a
@@ -261,7 +317,9 @@ const TEST_API = new Set(["vitest", "@playwright/test"]);
  */
 function hidesLines(f: ChangedFile, was: Side | null, now: Side | null): boolean {
   if (was === null || now === null) return true;
-  if (was.specifiers.some((m) => TEST_API.has(m) && !now.specifiers.includes(m))) return true;
+  for (const [name, module] of was.bindings) {
+    if (TEST_API.has(name) && now.bindings.get(name) !== module) return true;
+  }
   // `-U0` hunks in order: an untouched old line moves by the lines added and
   // removed above it.
   const hunks = [...f.hunks].sort((a, b) => a.oldStart - b.oldStart);
@@ -304,10 +362,7 @@ export function weakensTests(f: ChangedFile): boolean {
   return f.hunks.some(
     (h) =>
       (!removesNothing(h, was) && !onlySwaps(h, was, now)) ||
-      h.added.some((line, k) => {
-        const code = now?.masked[h.newStart - 1 + k] ?? line;
-        return DISABLING.some((re) => re.test(code.replace(/\/\/⟦c⟧$/, "")));
-      }),
+      h.added.some((line, k) => disables(now?.masked[h.newStart - 1 + k] ?? line)),
   );
 }
 
@@ -353,11 +408,14 @@ function closingLine(lines: readonly string[], i: number, col: number): number {
 function eachTables(side: Side): [number, number][] {
   const { masked } = side;
   const ranges: [number, number][] = [];
+  const named = new Set<string>();
   for (let i = 0; i < masked.length; i++) {
     const m = /\.each\s*\(\s*([A-Za-z_$][\w$]*)?\s*(\))?/.exec(masked[i]);
     if (m === null) continue;
     if (m[1] !== undefined && m[2] !== undefined) {
-      // A named table: where it is declared, from the bracket after `=`.
+      // A named table: where it is declared, from the bracket after `=`. Once per name.
+      if (named.has(m[1])) continue;
+      named.add(m[1]);
       const decl = new RegExp(`\\b(?:const|let|var)\\s+${m[1].replace(/\$/g, "\\$")}\\b[^=]*=\\s*`);
       for (let j = 0; j < masked.length; j++) {
         const d = decl.exec(masked[j]);
@@ -385,7 +443,11 @@ const isCode = (masked: string): boolean => !/^\s*(?:\/\/|\/\*|⟦c⟧|$)/.test(
 export function addsTest(files: readonly ChangedFile[]): boolean {
   return files.some((f) => {
     if (f.status === "added") {
-      if (isTestFile(f.path)) return true;
+      // A new test file that only skips its cases adds none.
+      if (isTestFile(f.path)) {
+        const now = readSide(f.after);
+        return now !== null && liveCases(now) > 0;
+      }
       if (/^examples\/.*\.krs$/.test(f.path)) return true;
       if (f.path.startsWith("packages/core/src/renderer/fixtures/")) return true;
     }
