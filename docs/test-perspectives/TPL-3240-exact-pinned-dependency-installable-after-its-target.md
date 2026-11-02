@@ -48,7 +48,7 @@ scope:
 
 ## 既知の対処パターン
 
-（未確立）#3240 の Design Doc は、承認のスクリプトが `changeset pack` の書く公開計画（`publish-plan.json`。依存の順に並び、`devDependencies` は数えない）の順に承認し、記録の workflow が「依存元が npm にあり、完全一致の依存先が無い」状態を検出してトレインの Issue にコメントする形を提案している。いまの `changeset publish` も同じ計画の順に公開するので、まとめて公開するあいだは順序が守られている。
+（未確立）#3240 の Design Doc は、依存元を依存先がインストールできるようになるまで承認待ちのキューにも入れない形を提案している。`changeset pack` の公開計画（`publish-plan.json`。依存の順のグループに分かれ、`devDependencies` は数えない）の先頭のグループだけを stage し、承認されて npm に載ったら次の run で次のグループを stage する。承認する人が順序を守る必要が無いので、画面から承認しても崩れない。いまの `changeset publish` も同じ計画の順に公開するので、まとめて公開するあいだは順序が守られている。
 
 ## 関連テスト
 
