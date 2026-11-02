@@ -21,6 +21,7 @@ const UBICLOUD_JOBS = [
   "ci.yml#check",
   "e2e-nightly.yml#e2e",
   "e2e.yml#e2e",
+  "render-equivalence.yml#render-equivalence",
   "vscode-e2e.yml#vscode-e2e",
   "vscode-e2e.yml#vscode-webview-e2e",
   "vscode-screenshots.yml#capture",

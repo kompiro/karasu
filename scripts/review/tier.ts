@@ -56,6 +56,10 @@ const HIGH_GLOBS: readonly string[] = [
   // The review machinery itself. A PR that edits it must not be able to read
   // itself as lighter: Medium and Low get no CodeRabbit review (TPL-3286).
   "scripts/review/**",
+  // The comparison behind `Render equivalence`, which judges a refactor
+  // (#3505), is review machinery too.
+  "scripts/render-equivalence/**",
+  "scripts/pr-shots/**",
   "scripts/coderabbit/**",
   "scripts/bin/**",
   ".claude/settings.json",

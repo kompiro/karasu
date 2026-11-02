@@ -4,7 +4,11 @@
   "ignoreBinaries": ["convert", "fc-list"],
   "workspaces": {
     ".": {
-      "entry": ["scripts/report/index.ts", "scripts/coderabbit/await-review.ts"],
+      "entry": [
+        "scripts/report/index.ts",
+        "scripts/coderabbit/await-review.ts",
+        "scripts/render-equivalence/render-child.ts"
+      ],
       "project": ["scripts/**/*.ts"]
     },
     "packages/core": {

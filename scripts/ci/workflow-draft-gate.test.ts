@@ -23,6 +23,7 @@ const DRAFT_GATED_JOBS = [
   "docs-preview.yml#deploy",
   "e2e.yml#e2e",
   "preview.yml#preview",
+  "render-equivalence.yml#render-equivalence",
   "vscode-e2e.yml#vscode-e2e",
   "vscode-e2e.yml#vscode-webview-e2e",
 ];

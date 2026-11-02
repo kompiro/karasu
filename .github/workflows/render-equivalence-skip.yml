@@ -1,0 +1,52 @@
+name: Render equivalence (skip)
+
+# Companion of `render-equivalence.yml`, following the paired-stub pattern
+# (ADR-953, `e2e.yml` <-> `e2e-skip.yml`). A PR that touches none of that
+# workflow's `paths` (docs only, examples or acceptance records only) never
+# starts it, and a required `Render equivalence` would stay pending. This stub
+# fires on the inverse filter and reports a `Render equivalence` job that exits
+# 0. Rendering cannot have changed in such a PR's code; a change to an example
+# or a fence alone is what `pnpm pr:shots` shows (ADR-3359).
+#
+# The workflow name differs from the real one on purpose: the
+# `rendering-change` label (#3510) starts on the real workflow's name through
+# `workflow_run`, and must not start on this stub. Only the job name (the check
+# name) is shared.
+#
+# Keep the `paths-ignore` list below in exact sync with
+# `render-equivalence.yml`'s `paths` (TPL-1480,
+# `scripts/ci/render-equivalence-paths-sync.test.ts`).
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+    paths-ignore:
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "scripts/render-equivalence/**"
+      - "scripts/pr-shots/**"
+      - "scripts/lint/krs-fences.ts"
+      - ".github/workflows/render-equivalence.yml"
+
+concurrency:
+  # Distinct from render-equivalence.yml's group: a PR that mixes a listed path
+  # with an ignored one starts both, and sharing a group would let one cancel
+  # the other. Both then report `Render equivalence`, and branch protection
+  # AND-s same-named checks, so the real run's verdict governs.
+  group: render-equivalence-skip-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  render-equivalence:
+    name: Render equivalence
+    runs-on: ubuntu-latest
+    steps:
+      - name: No package change, so no rendering change to compare
+        run: |
+          echo "No packages/, lockfile, root package.json or comparison script change."
+          echo "Render equivalence is skipped."
