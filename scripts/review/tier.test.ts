@@ -339,6 +339,14 @@ describe("classifyChange", () => {
       expect(tierOf(added(T))).toBe("low");
     });
 
+    it("asks no security review for a new test of a security boundary", () => {
+      const f = added("packages/vscode/src/message-validation.test.ts");
+      expect(classifyChange({ files: [f], author: "kompiro" })).toMatchObject({
+        tier: "low",
+        securityReview: false,
+      });
+    });
+
     it("is High when lines are removed from a security-boundary test (#3505)", () => {
       for (const path of [
         "packages/cli/src/render-fetch.test.ts",
@@ -348,9 +356,16 @@ describe("classifyChange", () => {
         "packages/nest/test/upload.test.ts",
         "packages/app/src/components/ChatPane.test.tsx",
       ]) {
-        expect(tierOf(modified(path, { hunks: [hunk(["it('blocks 10.0.0.1', ...)"], [])] }))).toBe(
-          "high",
-        );
+        const removedLine = "it('blocks 10.0.0.1', () => {});";
+        const removal = modified(path, {
+          before: `${removedLine}\nit('blocks ::1', () => {});`,
+          after: "it('blocks ::1', () => {});",
+          hunks: [{ oldStart: 1, removed: [removedLine], newStart: 0, added: [] }],
+        });
+        expect(classifyChange({ files: [removal], author: "kompiro" })).toMatchObject({
+          tier: "high",
+          securityReview: true,
+        });
         expect(tierOf(deleted(path))).toBe("high");
         const before = "it('blocks 10.0.0.1', () => {\n  expect(fetchIt()).rejects;\n});";
         const sides = (after: string, inserted: string[]) =>

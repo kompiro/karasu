@@ -856,7 +856,14 @@ export function classifyChange(input: {
   return {
     tier,
     securityReview: input.files.some(
-      (f) => f.path === UNREADABLE_PATH || matchesAny(f.path, SECURITY_GLOBS) || isSinkChange(f),
+      // A test file asks for one only when it weakens a security-boundary test,
+      // as its tier does: adding a test is not a security change.
+      (f) =>
+        f.path === UNREADABLE_PATH ||
+        isSinkChange(f) ||
+        (isTestFile(f.path)
+          ? !isNewFile(f) && isSecurityTest(f.path) && weakensTests(f)
+          : matchesAny(f.path, SECURITY_GLOBS)),
     ),
     reasons,
   };
