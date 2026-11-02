@@ -68,6 +68,7 @@ flowchart TD
     ADR_2958["ADR-2958<br/>ガターを通るエッジを、共有する端ごとに 1 レーンへ束ねる"]
     ADR_3022["ADR-3022<br/>edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は foc..."]
     ADR_3026["ADR-3026<br/>同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す"]
+    ADR_3027["ADR-3027<br/>見た目が同じ両方向の edge の組を、card を動かさずに両端に矢印のある 1 本の線で描く"]
     ADR_3034["ADR-3034<br/>エッジラベルの探索範囲は約 90px のまま広げない"]
     ADR_3088["ADR-3088<br/>行間チャネルのレーンを、run がつながる縦線の向きで並べる"]
     ADR_3090["ADR-3090<br/>交差マーク（ホップ・junction chip・trunk band）をエッジの減光に追随させる"]
@@ -213,6 +214,7 @@ flowchart TD
   class ADR_2958 accepted
   class ADR_3022 accepted
   class ADR_3026 accepted
+  class ADR_3027 accepted
   class ADR_3034 not_adopted
   class ADR_3088 accepted
   class ADR_3090 accepted
