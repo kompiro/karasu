@@ -37,8 +37,10 @@
 #   repository named by --repo / -R or GH_REPO. The gate passes --repo on to its
 #   own gh pr view, so it reads the PR gh pr ready acts on: a --repo naming this
 #   repository is checked like no --repo at all, and so is a PR of a fork whose
-#   head is also a commit here, against origin's branch of the same base name
-#   (#3514);
+#   head is also a commit here. The base is the PR's own base commit, fetched
+#   from origin when it is not here (#3514);
+# - a ready whose base commit cannot be had (not fetchable, or a gh too old to
+#   report baseRefOid);
 # - anything about a ready cannot be determined (gh fails, unknown CLI record
 #   format). The gate must never block work because of its own failure.
 #
@@ -279,31 +281,28 @@ command -v timeout >/dev/null 2>&1 && limit=(timeout 15)
 # GH_HOST from the environment. A PR whose head is not a commit here (most PRs
 # of another repository) fails open below.
 view=$(${limit[@]+"${limit[@]}"} "$gh_bin" pr view ${selector:+"$selector"} ${repo:+--repo "$repo"} \
-  --json number,isDraft,headRefOid,baseRefName,baseRefOid 2>/dev/null) || exit 0
+  --json number,isDraft,headRefOid,baseRefOid 2>/dev/null) || exit 0
 
 [ "$(jq -r '.isDraft' <<<"$view")" = "true" ] || exit 0
 
 number=$(jq -r '.number' <<<"$view")
 head=$(jq -r '.headRefOid' <<<"$view")
-base=$(jq -r '.baseRefName' <<<"$view")
 git cat-file -e "$head^{commit}" 2>/dev/null || exit 0
-# The PR's own base commit, which also holds for a fork's PR. When it is not
-# here (origin fetched before the base moved), fall back to the base by name,
-# but only for this repository's PR: origin's branch of that name says nothing
-# about another repository's base, so with --repo or GH_REPO the gate lets the
-# ready through.
+# The PR's own base commit, which holds for any repository's PR, so the gate
+# never has to tell which repository gh picked. When it is not here (origin
+# fetched before the base moved), fetch it; when that fails too, or gh is too
+# old to report it, let the ready through.
 base_ref=$(jq -r '.baseRefOid // empty' <<<"$view")
-base_flag=--base-commit
-if [ -z "$base_ref" ] || ! git cat-file -e "$base_ref^{commit}" 2>/dev/null; then
-  [ -z "$repo${GH_REPO:-}" ] || exit 0
-  base_ref=$(base_ref_of "$base") || exit 0
-  base_flag=--base
+[ -n "$base_ref" ] || exit 0
+if ! git cat-file -e "$base_ref^{commit}" 2>/dev/null; then
+  ${limit[@]+"${limit[@]}"} git fetch --quiet --no-tags origin "$base_ref" >/dev/null 2>&1
+  git cat-file -e "$base_ref^{commit}" 2>/dev/null || exit 0
 fi
 reviewed_branch "$head" "$base_ref" && exit 0
 
 echo "gh pr ready was refused: no completed local CodeRabbit CLI review covers PR #$number's branch \
 (head ${head:0:7}). Before taking a PR out of draft (docs/process.md PR workflow): run \
 /engineering:code-review on git diff $base_ref...HEAD, then run the CLI once \
-(coderabbit review --agent --deep $base_flag $base_ref --committed), commit and push the fixes, and run \
+(coderabbit review --agent --deep --base-commit $base_ref --committed), commit and push the fixes, and run \
 gh pr ready again. If the CLI cannot run here (not installed, not authenticated, out of quota), tell \
 the user, then rerun as KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr ready ${selector:-$number}${repo:+ --repo $repo}."

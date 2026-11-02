@@ -50,7 +50,9 @@ const HEAD = git("rev-parse", "HEAD");
 // What a create without --draft reads (#3504): origin and its default branch,
 // the branch as pushed, and `chore/5-local`, a branch at BASE that origin does
 // not have.
-git("remote", "add", "origin", "https://github.com/kompiro/karasu.git");
+// origin is the fixture repository itself, so a fetch the gate makes stays
+// local and fails fast for a commit nobody has.
+git("remote", "add", "origin", repo);
 git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main");
 git("update-ref", "refs/remotes/origin/chore/1-example", HEAD);
 git("update-ref", "refs/heads/chore/5-local", BASE);
@@ -321,26 +323,61 @@ describe("gh wrapper: gh pr ready", () => {
     );
   });
 
-  it("falls back to the base branch when the PR's base commit is not here", () => {
-    const gh = fakeGh({ ...DRAFT, baseRefOid: "e".repeat(40) });
-    expect(run("gh pr ready 12", gh, reviewedWork()).status).toBe(0);
-    // Read by name, a review only of the base branch does not count.
-    const onBase = reviews({ head: BASE, state: "complete" });
-    expect(
-      run("gh pr ready 12", fakeGh({ ...DRAFT, baseRefOid: "e".repeat(40) }), onBase).status,
-    ).toBe(1);
+  it("fetches the PR's base commit from origin when it is not here", () => {
+    // A base that moved on origin after the last fetch: a child of HEAD, which
+    // holds the reviewed WORK.
+    const upstream = fresh("upstream");
+    execFileSync("git", ["clone", "-q", "--bare", repo, upstream], { env: isolated });
+    const moved = execFileSync(
+      "git",
+      [
+        "-C",
+        upstream,
+        "-c",
+        "user.name=t",
+        "-c",
+        "user.email=t@example.com",
+        "commit-tree",
+        "-p",
+        HEAD,
+        "-m",
+        "base moved",
+        `${HEAD}^{tree}`,
+      ],
+      { encoding: "utf8", env: isolated },
+    ).trim();
+    execFileSync("git", ["-C", upstream, "update-ref", "refs/heads/main", moved], {
+      env: isolated,
+    });
+    git("remote", "set-url", "origin", upstream);
+    try {
+      const gh = fakeGh({ ...DRAFT, baseRefOid: moved });
+      expect(run("gh pr ready 12", gh, reviewedWork()).status).toBe(1);
+      expect(git("cat-file", "-t", moved)).toBe("commit");
+    } finally {
+      git("remote", "set-url", "origin", repo);
+    }
   });
 
-  // origin's branch of the base name says nothing about another repository's
-  // base, so a PR picked by --repo or GH_REPO whose base commit is not here is
-  // let through.
+  // Without the PR's base commit the gate cannot tell what is on the base, and
+  // it never guesses which repository gh picked: it lets the ready through.
   it.each([
-    ["-R someone/karasu", {}],
-    ["", { GH_REPO: "someone/karasu" }],
-  ])("lets `gh pr ready 12 %s` through when the PR's base commit is not here", (args, env) => {
-    const gh = fakeGh({ ...DRAFT, baseRefOid: "e".repeat(40) });
-    expect(run(`gh pr ready 12 ${args}`, gh, reviews(), env).status).toBe(0);
-    expect(reachedRealGh(gh, `pr ready 12 ${args}`.trim())).toBe(true);
+    ["a base commit nobody has", { ...DRAFT, baseRefOid: "e".repeat(40) }, "gh pr ready 12"],
+    [
+      "a foreign PR URL",
+      { ...DRAFT, baseRefOid: "e".repeat(40) },
+      "gh pr ready https://github.com/someone/karasu/pull/12",
+    ],
+    [
+      "-R naming another repository",
+      { ...DRAFT, baseRefOid: "e".repeat(40) },
+      "gh pr ready 12 -R someone/karasu",
+    ],
+    ["a gh too old to report baseRefOid", { ...DRAFT, baseRefOid: undefined }, "gh pr ready 12"],
+  ])("lets the ready through with %s", (_why, view, line) => {
+    const gh = fakeGh(view);
+    expect(run(line, gh, reviews()).status).toBe(0);
+    expect(calls(gh).some((c) => c.startsWith("pr ready"))).toBe(true);
   });
 
   it("keeps --repo in the skip it suggests, so the skip readies the same PR", () => {
