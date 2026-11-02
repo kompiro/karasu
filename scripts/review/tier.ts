@@ -769,6 +769,10 @@ const touchesDangerousSink = (f: ChangedFile): boolean =>
     [...h.removed, ...h.added].some((line) => DANGEROUS_SINKS.some((re) => re.test(line))),
   );
 
+/** A code file outside the tests whose changed lines name a dangerous sink. */
+const isSinkChange = (f: ChangedFile): boolean =>
+  !isTestFile(f.path) && CODE_FILE.test(f.path) && touchesDangerousSink(f);
+
 function fileTier(
   f: ChangedFile,
   promotion: { deletedDesigns: string[]; newAdrs: string[] },
@@ -789,7 +793,7 @@ function fileTier(
     if (isSecurityTest(f.path) && weakensTests(f)) return "high";
     return "medium";
   }
-  if (CODE_FILE.test(f.path) && touchesDangerousSink(f)) return "high";
+  if (isSinkChange(f)) return "high";
   // ADR promotion (ADR-2331): only in a PR that adds an ADR record. A hunk
   // either swaps Design Doc links for the ADR or inserts links to it (#3405).
   if (promotion.newAdrs.length > 0) {
@@ -852,7 +856,7 @@ export function classifyChange(input: {
   return {
     tier,
     securityReview: input.files.some(
-      (f) => f.path === UNREADABLE_PATH || matchesAny(f.path, SECURITY_GLOBS),
+      (f) => f.path === UNREADABLE_PATH || matchesAny(f.path, SECURITY_GLOBS) || isSinkChange(f),
     ),
     reasons,
   };

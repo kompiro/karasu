@@ -286,6 +286,11 @@ describe("classifyChange", () => {
       expect(tierOf(changing("packages/app/src/components/New.tsx", [], [line]))).toBe("high");
     });
 
+    it("asks for a security review too", () => {
+      const f = changing("packages/app/src/components/New.tsx", [], ["el.innerHTML = svg;"]);
+      expect(classifyChange({ files: [f], author: "kompiro" }).securityReview).toBe(true);
+    });
+
     it("is High when the line naming a sink is removed", () => {
       expect(
         tierOf(changing("packages/app/src/x.ts", ["const clean = DOMPurify.sanitize(html);"], [])),
