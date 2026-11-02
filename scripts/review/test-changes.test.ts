@@ -30,7 +30,15 @@ function edit(path: string, before: string[], after: string[]): ChangedFile {
   return {
     path,
     status: "modified",
-    hunks: [{ oldStart: p + 1, removed, newStart: p + 1, added }],
+    // As git prints them: a side with no lines names the line before the change.
+    hunks: [
+      {
+        oldStart: removed.length > 0 ? p + 1 : p,
+        removed,
+        newStart: added.length > 0 ? p + 1 : p,
+        added,
+      },
+    ],
     before: before.join("\n"),
     after: after.join("\n"),
   };
@@ -125,6 +133,25 @@ describe("addsTest", () => {
     expect(addsTest([edit(T, before, after)])).toBe(true);
   });
 
+  it("counts a row added to a named table", () => {
+    const before = ["const CASES = [", "  [1, 2],", "];", "it.each(CASES)('%s', () => {});"];
+    const after = [
+      "const CASES = [",
+      "  [1, 2],",
+      "  [3, 4],",
+      "];",
+      "it.each(CASES)('%s', () => {});",
+    ];
+    expect(addsTest([edit(T, before, after)])).toBe(true);
+  });
+
+  it("does not count a renamed case or one added inside a comment", () => {
+    const renamed = SUITE.map((l) => l.replace('"draws a node"', '"draws a node card"'));
+    expect(addsTest([edit(T, SUITE, renamed)])).toBe(false);
+    const commented = [...SUITE, "/*", 'it("later", () => {});', "*/"];
+    expect(addsTest([edit(T, SUITE, commented)])).toBe(false);
+  });
+
   it("does not count a skipped case, a comment or a line outside a table", () => {
     const at = (line: string) => edit(T, SUITE, [...SUITE, line]);
     expect(addsTest([at('it.skip("x", () => {});')])).toBe(false);
@@ -134,6 +161,25 @@ describe("addsTest", () => {
 });
 
 describe("codeLineStarts", () => {
+  it("reads a regex literal as code, whatever quotes or slashes it holds", () => {
+    expect(codeLineStarts(["const q = /\\/\\//; /*", "a();", "*/", "b();"].join("\n"))).toEqual([
+      true,
+      false,
+      false,
+      true,
+    ]);
+    expect(codeLineStarts(['const q = /"/; /*', "a();", "*/"].join("\n"))).toEqual([
+      true,
+      false,
+      false,
+    ]);
+    expect(codeLineStarts(["const r = a / b; /*", "x", "*/"].join("\n"))).toEqual([
+      true,
+      false,
+      false,
+    ]);
+  });
+
   it("tells code from block comments and template literals", () => {
     const text = [
       "a();",
@@ -172,6 +218,9 @@ describe("maskPathsAndComments", () => {
       maskPathsAndComments('expect(a).toBe("y")'),
     );
     expect(maskPathsAndComments("// note")).not.toBe(maskPathsAndComments("/* note"));
+    // Code after a block comment closes, and a line that continues an expression with `*`.
+    expect(maskPathsAndComments("/* a */ b();")).not.toBe(maskPathsAndComments("/* a */ c();"));
+    expect(maskPathsAndComments("  * 2;")).not.toBe(maskPathsAndComments("  * 3;"));
     // A repo path is a test's input, not a module reference.
     expect(maskPathsAndComments('pathTier("packages/nest/a.ts")')).not.toBe(
       maskPathsAndComments('pathTier("scripts/review/a.ts")'),
@@ -256,6 +305,23 @@ describe("checkTestChanges", () => {
       expect(check("feat: x", [edit(T, before, after)]).errors).toHaveLength(1);
     });
 
+    it("fails code added after a comment closes, and a changed `*` continuation", () => {
+      const before = [...SUITE.slice(0, 3), "/**", " * Checks f. */", ...SUITE.slice(3)];
+      const after = before.map((l) =>
+        l === " * Checks f. */" ? ' * Checks f. */ it.skip("f2", () => {});' : l,
+      );
+      expect(check("refactor: x", [edit(T, before, after)]).errors).toHaveLength(1);
+      const sum = ["const total = a", "  * 2;", ...SUITE.slice(3)];
+      const changed = sum.map((l) => (l === "  * 2;" ? "  * 3;" : l));
+      expect(check("refactor: x", [edit(T, sum, changed)]).errors).toHaveLength(1);
+    });
+
+    it("fails a test API taken from somewhere other than the runner", () => {
+      const after = SUITE.map((l) => l.replace('from "vitest"', 'from "./noop-vitest.ts"'));
+      expect(check("refactor: x", [edit(T, SUITE, after)]).errors).toHaveLength(1);
+      expect(check("feat: x", [edit(T, SUITE, after)]).errors).toHaveLength(1);
+    });
+
     it("is not waived by a Test change line", () => {
       const after = SUITE.slice(0, -1);
       expect(
@@ -270,12 +336,36 @@ describe("checkTestChanges", () => {
       expect(check("feat: x", [edit(T, SUITE, after)]).errors).toEqual([]);
     });
 
+    it("lets a PR remove a blank line outside a template literal, or spread a variable named skip", () => {
+      expect(
+        check("feat: x", [
+          edit(
+            T,
+            SUITE,
+            SUITE.filter((l, i) => i !== 2),
+          ),
+        ]).errors,
+      ).toEqual([]);
+      const spread = [...SUITE, "expect(Math.max(...skip.points)).toBeGreaterThan(0);"];
+      expect(check("feat: x", [edit(T, SUITE, spread)]).errors).toEqual([]);
+    });
+
+    it("asks for a reason when a blank line inside a template literal is removed", () => {
+      const before = [...SUITE, "const expected = `a", "", "b`;"];
+      const after = [...SUITE, "const expected = `a", "b`;"];
+      expect(check("feat: x", [edit(T, before, after)]).errors).toHaveLength(1);
+    });
+
     it.each([
       ["a removed line", SUITE.slice(0, 6).concat(SUITE.slice(7))],
       ["a skip", SUITE.map((l) => l.replace('it("draws', 'it.skip("draws'))],
       ["an only", [...SUITE, 'describe.only("y", () => {});']],
       ["a skipIf", [...SUITE, 'it.skipIf(!process.env.CI)("y", () => {});']],
       ["an early return", [...SUITE.slice(0, 5), "    return;", ...SUITE.slice(5)]],
+      ["a commented return", [...SUITE.slice(0, 5), "    return; // tmp", ...SUITE.slice(5)]],
+      ["a guarded return", [...SUITE.slice(0, 5), "    if (true) return;", ...SUITE.slice(5)]],
+      ["a return of undefined", [...SUITE.slice(0, 5), "    return undefined;", ...SUITE.slice(5)]],
+      ["a skip option", [...SUITE.slice(0, 4), "  { skip: true },", ...SUITE.slice(4)]],
     ])("asks for a Test change line on %s", (_, after) => {
       expect(check("feat: x", [edit(T, SUITE, after)]).errors).toHaveLength(1);
       expect(

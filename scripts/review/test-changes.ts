@@ -62,45 +62,100 @@ export function closedIssueNumbers(body: string, repo: string): number[] {
 // ---------------------------------------------------------------------------
 // Reading a test file
 
+type LineState = "code" | "block" | "template";
+
+/** What the rules read from one side of a test file. */
+interface Side {
+  lines: string[];
+  /** Whether each line starts in code, inside a block comment or inside a template literal. */
+  states: LineState[];
+  /** Each line with comment text and module paths masked ({@link maskLines}). */
+  masked: string[];
+  /** 0-based indexes of the lines of `import ... from "..."` statements. */
+  imports: Set<number>;
+  /** The module each import statement names. */
+  specifiers: string[];
+}
+
+/** Where a `/` opens a regex literal rather than dividing: after one of these, or at the start. */
+const REGEX_AFTER =
+  /(?:^|[(,=:[!&|?{};+\-*%<>~^]|\b(?:return|typeof|case|do|else|in|of|void|yield|await))\s*$/;
+
 /**
- * For each line, whether it starts in code rather than inside a block comment
- * or a template literal. A light scanner: strings, `//` and `/* *\/` comments,
- * and template literals with their `${...}` holes. Regex literals are read as
- * code, which can only misjudge a line toward the stricter side.
+ * Scans a file once. For each line it records the state the line starts in and
+ * the line with its comment text replaced by `⟦c⟧` (the `//`, `/*` and `*\/`
+ * markers stay, so a line that opens or closes a comment never matches one that
+ * does not). Strings, template literals with their `${...}` holes, and regex
+ * literals are kept as written, so a quote, `//` or `/*` inside them does not
+ * change the state.
  */
-export function codeLineStarts(text: string): boolean[] {
+function maskLines(text: string): { states: LineState[]; masked: string[] } {
   const lines = text.split("\n");
-  const starts: boolean[] = [];
-  let state: "code" | "block" | "template" = "code";
+  const states: LineState[] = [];
+  const masked: string[] = [];
+  let state: LineState = "code";
   // Brace depth in code, and the depths to return to when a `${` hole closes.
   let depth = 0;
   const holes: number[] = [];
   for (const line of lines) {
-    starts.push(state === "code");
+    states.push(state);
+    let out = state === "block" ? "⟦c⟧" : "";
     for (let c = 0; c < line.length; c++) {
       const ch = line[c];
       if (state === "block") {
         if (ch === "*" && line[c + 1] === "/") {
+          out += "*/";
           state = "code";
           c++;
         }
-      } else if (state === "template") {
-        if (ch === "\\") c++;
+        continue;
+      }
+      if (state === "template") {
+        out += ch;
+        if (ch === "\\") out += line[++c] ?? "";
         else if (ch === "`") state = "code";
         else if (ch === "$" && line[c + 1] === "{") {
+          out += "{";
           holes.push(depth);
           depth = 0;
           state = "code";
           c++;
         }
-      } else if (ch === "/" && line[c + 1] === "/") break;
-      else if (ch === "/" && line[c + 1] === "*") {
+        continue;
+      }
+      if (ch === "/" && line[c + 1] === "/") {
+        out += "//⟦c⟧";
+        break;
+      }
+      if (ch === "/" && line[c + 1] === "*") {
+        out += "/*⟦c⟧";
         state = "block";
         c++;
-      } else if (ch === '"' || ch === "'") {
+        continue;
+      }
+      if (ch === "/" && REGEX_AFTER.test(out)) {
+        // A regex literal, to its closing `/` outside a character class.
+        let k = c + 1;
+        for (let inClass = false; k < line.length; k++) {
+          if (line[k] === "\\") k++;
+          else if (line[k] === "[") inClass = true;
+          else if (line[k] === "]") inClass = false;
+          else if (line[k] === "/" && !inClass) break;
+        }
+        out += line.slice(c, k + 1);
+        c = k;
+        continue;
+      }
+      if (ch === '"' || ch === "'") {
         // A quoted string ends on its line.
-        for (c++; c < line.length && line[c] !== ch; c++) if (line[c] === "\\") c++;
-      } else if (ch === "`") state = "template";
+        let k = c + 1;
+        for (; k < line.length && line[k] !== ch; k++) if (line[k] === "\\") k++;
+        out += line.slice(c, k + 1);
+        c = k;
+        continue;
+      }
+      out += ch;
+      if (ch === "`") state = "template";
       else if (ch === "{") depth++;
       else if (ch === "}") {
         if (depth === 0 && holes.length > 0) {
@@ -109,51 +164,14 @@ export function codeLineStarts(text: string): boolean[] {
         } else depth--;
       }
     }
+    masked.push(maskPaths(out));
   }
-  return starts;
+  return { states, masked };
 }
 
-/** 0-based indexes of the lines that belong to an `import ... from "..."` statement. */
-function importLines(text: string): Set<number> {
-  const lines = text.split("\n");
-  const code = codeLineStarts(text);
-  const inImport = new Set<number>();
-  for (let i = 0; i < lines.length; i++) {
-    // Not `import(` (dynamic) or `import.meta`, nor a `.krs` import in a fixture string.
-    if (!code[i] || !/^\s*import(?:\s|\{|\*|["'])/.test(lines[i])) continue;
-    let j = i;
-    while (
-      j < lines.length &&
-      !/\bfrom\s*["'][^"']*["']|^\s*import\s*["']|;\s*$/.test(lines[j]) &&
-      j - i < 200
-    ) {
-      j++;
-    }
-    for (let k = i; k <= Math.min(j, lines.length - 1); k++) inImport.add(k);
-    i = j;
-  }
-  return inImport;
-}
-
-/**
- * The 0-based index of the first line of the file's body: the first line that is
- * not blank, not a comment and not part of an import. A blank line above it sits
- * among the imports, where no test can be.
- */
-function bodyStart(text: string, imports: ReadonlySet<number>): number {
-  const lines = text.split("\n");
-  const i = lines.findIndex(
-    (line, n) => !imports.has(n) && line.trim() !== "" && !/^\s*(?:\/\/|\/\*|\*)/.test(line),
-  );
-  return i < 0 ? lines.length : i;
-}
-
-/** What a side of a file says about its lines: imports, and blank lines among them. */
-function sideReader(text: string | null | undefined): (index: number, line: string) => boolean {
-  if (typeof text !== "string") return () => false;
-  const imports = importLines(text);
-  const start = bodyStart(text, imports);
-  return (index, line) => imports.has(index) || (index < start && line.trim() === "");
+/** For each line, whether it starts in code rather than in a block comment or a template literal. */
+export function codeLineStarts(text: string): boolean[] {
+  return maskLines(text).states.map((s) => s === "code");
 }
 
 /**
@@ -165,71 +183,91 @@ const PATH_STRING = /(["'`])((?:\.\.?\/(?:[^"'`\\\n/]+\/)*)?[^"'`\\\n/]+\.[cm]?[
 const MODULE_CALL =
   /\b(import|require|vi\.(?:mock|doMock|unmock|importActual|importMock))\(\s*(["'`])(?:\\.|(?!\2)[^\\\n])*\2/g;
 
+const maskPaths = (line: string): string =>
+  line.replace(MODULE_CALL, (_, fn: string) => `${fn}(⟦path⟧`).replace(PATH_STRING, "⟦path⟧");
+
+/** The masked form of one line read on its own, starting in code (for tests). */
+export const maskPathsAndComments = (line: string): string => maskLines(line).masked[0];
+
+/** One side of a file, or null when the CLI could not read it. */
+function readSide(text: string | null | undefined): Side | null {
+  if (typeof text !== "string") return null;
+  const lines = text.split("\n");
+  const { states, masked } = maskLines(text);
+  const imports = new Set<number>();
+  const specifiers: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    // Not `import(` (dynamic) or `import.meta`, nor a `.krs` import in a fixture string.
+    if (states[i] !== "code" || !/^\s*import(?:\s|\{|\*|["'])/.test(masked[i])) continue;
+    let j = i;
+    let spec: RegExpExecArray | null = null;
+    for (; j < lines.length && j - i < 200; j++) {
+      spec = /\bfrom\s*(["'])([^"']*)\1|^\s*import\s*(["'])([^"']*)\3/.exec(lines[j]);
+      if (spec !== null || /;\s*$/.test(lines[j])) break;
+    }
+    if (spec !== null) specifiers.push(spec[2] ?? spec[4]);
+    for (let k = i; k <= Math.min(j, lines.length - 1); k++) imports.add(k);
+    i = j;
+  }
+  return { lines, states, masked, imports, specifiers };
+}
+
+/** Whether a line may change freely: part of an import, or blank outside a template literal. */
+const isFree = (side: Side | null, i: number): boolean =>
+  side !== null &&
+  (side.imports.has(i) || (side.lines[i]?.trim() === "" && side.states[i] !== "template"));
+
 /**
- * A line with its comment text and module path strings masked. Two lines that
- * mask to the same text differ only in those. A comment keeps its markers: a
- * line that opens or closes a block comment does not match one that does not, so
- * a swap cannot comment tests out.
+ * Whether every line of a hunk that is not free pairs, in order, with one that
+ * differs only in comment text or module paths. A side that could not be read
+ * pairs with nothing.
  */
-export function maskPathsAndComments(line: string): string {
-  const trimmed = line.trim();
-  const indent = line.slice(0, line.length - line.trimStart().length);
-  if (trimmed.startsWith("//")) return `${indent}//⟦c⟧`;
-  if (/^\/\*.*\*\/$/.test(trimmed) && !trimmed.slice(2, -2).includes("*/")) {
-    return `${indent}/*⟦c⟧*/`;
-  }
-  if (trimmed.startsWith("*") && !trimmed.startsWith("*/")) {
-    return `${indent}*⟦c⟧${trimmed.includes("*/") ? "*/" : ""}`;
-  }
-  let code = line;
-  // A trailing `// ...`, when the quotes before it are balanced (not inside a string).
-  const m = /\s\/\/(?!.*["'`]).*$/.exec(code);
-  if (m && (code.slice(0, m.index).match(/["'`]/g) ?? []).length % 2 === 0) {
-    code = `${code.slice(0, m.index)} //⟦c⟧`;
-  }
-  return code
-    .replace(MODULE_CALL, (_, fn: string) => `${fn}(⟦path⟧`)
-    .replace(PATH_STRING, "⟦path⟧");
-}
-
-/** The lines of a hunk that the refactor rule does not already allow (imports, blank lines among them). */
-function unexplained(h: Hunk, before: ChangedFile["before"], after: ChangedFile["after"]) {
-  const oldSide = sideReader(before);
-  const newSide = sideReader(after);
-  return {
-    removed: h.removed.filter((line, k) => !oldSide(h.oldStart - 1 + k, line)),
-    added: h.added.filter((line, k) => !newSide(h.newStart - 1 + k, line)),
-  };
-}
-
-/** Whether every remaining line pairs, in order, with one that differs only in paths or comments. */
-function onlySwaps(rest: { removed: string[]; added: string[] }): boolean {
-  return (
-    rest.removed.length === rest.added.length &&
-    rest.removed.every(
-      (line, i) => maskPathsAndComments(line) === maskPathsAndComments(rest.added[i]),
-    )
+function onlySwaps(h: Hunk, was: Side | null, now: Side | null): boolean {
+  const removed = h.removed.flatMap((_, k) =>
+    isFree(was, h.oldStart - 1 + k) ? [] : [h.oldStart - 1 + k],
+  );
+  const added = h.added.flatMap((_, k) =>
+    isFree(now, h.newStart - 1 + k) ? [] : [h.newStart - 1 + k],
+  );
+  if (removed.length !== added.length) return false;
+  return removed.every(
+    (i, n) => was !== null && now !== null && was.masked[i] === now.masked[added[n]],
   );
 }
 
-/** Lines that turn tests off or narrow a run to some of them. */
-const DISABLING = [/\.(?:skip|fixme|todo|only)\b/, /\b(?:skipIf|runIf)\b/, /^\s*return\s*;?\s*$/];
+/** Whether a hunk only adds lines, or removes nothing but free ones. */
+const removesNothing = (h: Hunk, was: Side | null): boolean =>
+  h.removed.every((_, k) => isFree(was, h.oldStart - 1 + k));
 
 /**
- * Whether lines the PR leaves as they were stop being code: added lines open a
- * block comment or a template literal around them, so the tests there no longer
- * run though not one of their lines changed. Unknown sides count as hiding.
+ * Lines that turn tests off or narrow a run to some of them, read on code with
+ * comments masked: a skip or focus modifier (not a spread like `...skip`), a
+ * `skip:` / `only:` / `todo:` option, and a `return` without a value.
  */
-function hidesLines(f: ChangedFile): boolean {
-  if (typeof f.before !== "string" || typeof f.after !== "string") return true;
-  const was = codeLineStarts(f.before);
-  const now = codeLineStarts(f.after);
+const DISABLING = [
+  /(?<!\.)\.(?:skip|fixme|todo|only)\b/,
+  /\b(?:skipIf|runIf)\b/,
+  /\b(?:skip|only|todo)\s*:/,
+  /(?:^|[;{)]|\belse)\s*return\s*(?:undefined\s*|void\s+0\s*)?(?:;|\}|$)/,
+];
+
+/** The modules a test file takes its test API from: dropping one turns every test off. */
+const TEST_API = new Set(["vitest", "@playwright/test"]);
+
+/**
+ * Whether lines the PR leaves as they were stop being code (added lines open a
+ * block comment or a template literal around them), or the file stops taking
+ * its test API from the runner. Unknown sides count as hiding.
+ */
+function hidesLines(f: ChangedFile, was: Side | null, now: Side | null): boolean {
+  if (was === null || now === null) return true;
+  if (was.specifiers.some((m) => TEST_API.has(m) && !now.specifiers.includes(m))) return true;
   // `-U0` hunks in order: an untouched old line moves by the lines added and
   // removed above it.
   const hunks = [...f.hunks].sort((a, b) => a.oldStart - b.oldStart);
   let delta = 0;
   let next = 0;
-  for (let line = 1; line <= was.length; line++) {
+  for (let line = 1; line <= was.states.length; line++) {
     while (next < hunks.length) {
       const h = hunks[next];
       const last = h.removed.length > 0 ? h.oldStart + h.removed.length - 1 : h.oldStart;
@@ -239,28 +277,37 @@ function hidesLines(f: ChangedFile): boolean {
     }
     const h = hunks[next];
     if (h !== undefined && h.removed.length > 0 && line >= h.oldStart) continue;
-    if (was[line - 1] && now[line - 1 + delta] === false) return true;
+    if (was.states[line - 1] === "code" && now.states[line - 1 + delta] !== "code") return true;
   }
   return false;
 }
 
+/** Whether a refactor's change to an existing test file keeps the tests as they were. */
+function keepsTests(f: ChangedFile): boolean {
+  if (f.status === "deleted") return false;
+  const was = readSide(f.before);
+  const now = readSide(f.after);
+  return !hidesLines(f, was, now) && f.hunks.every((h) => onlySwaps(h, was, now));
+}
+
 /**
  * Whether a change to an existing test file can take coverage away: it deletes
- * the file, removes lines beyond import moves and path or comment swaps, adds a
- * line that skips or narrows tests, or hides untouched lines in a comment or a
- * string.
+ * the file, removes lines beyond free ones and paired path or comment swaps,
+ * adds a line that skips or narrows tests, or hides untouched lines in a
+ * comment or a string.
  */
 export function weakensTests(f: ChangedFile): boolean {
-  return (
-    f.status === "deleted" ||
-    hidesLines(f) ||
-    f.hunks.some((h) => {
-      const rest = unexplained(h, f.before, f.after);
-      return (
-        (rest.removed.length > 0 && !onlySwaps(rest)) ||
-        h.added.some((line) => DISABLING.some((re) => re.test(line)))
-      );
-    })
+  if (f.status === "deleted") return true;
+  const was = readSide(f.before);
+  const now = readSide(f.after);
+  if (hidesLines(f, was, now)) return true;
+  return f.hunks.some(
+    (h) =>
+      (!removesNothing(h, was) && !onlySwaps(h, was, now)) ||
+      h.added.some((line, k) => {
+        const code = now?.masked[h.newStart - 1 + k] ?? line;
+        return DISABLING.some((re) => re.test(code.replace(/\/\/⟦c⟧$/, "")));
+      }),
   );
 }
 
@@ -270,49 +317,70 @@ export function weakensTests(f: ChangedFile): boolean {
 /** A test case opened on the line (`it(`, `test.each(`), not a skipped or focused one. */
 const TEST_CASE = /^\s*(?:it|test)(?:\.(?:each|for|concurrent|sequential|fails))*\s*[(`]/;
 
+/** How many test cases a side opens in code (not in a comment or a string). */
+const liveCases = (side: Side): number =>
+  side.masked.filter((line, i) => side.states[i] === "code" && TEST_CASE.test(line)).length;
+
 /**
- * 0-based line ranges (exclusive start, inclusive end) of the argument lists of
- * `.each(` calls: where a row added to the table is a new case. Brackets inside
- * strings and line comments are skipped.
+ * The 0-based index of the line where the bracket opened at `lines[i][col]`
+ * closes, or -1. Reads masked lines, so comments hold no brackets.
  */
-function eachTables(text: string): [number, number][] {
-  const lines = text.split("\n");
-  const ranges: [number, number][] = [];
-  for (let i = 0; i < lines.length; i++) {
-    const at = lines[i].search(/\.each\s*\(/);
-    if (at < 0) continue;
-    let depth = 0;
-    let quote: string | null = null;
-    let end = -1;
-    scan: for (let j = i; j < lines.length; j++) {
-      const line = lines[j];
-      for (let c = j === i ? lines[i].indexOf("(", at) : 0; c < line.length; c++) {
-        const ch = line[c];
-        if (quote !== null) {
-          if (ch === "\\") c++;
-          else if (ch === quote) quote = null;
-          continue;
-        }
-        if (ch === '"' || ch === "'" || ch === "`") quote = ch;
-        else if (ch === "/" && line[c + 1] === "/") break;
-        else if ("([{".includes(ch)) depth++;
-        else if (")]}".includes(ch) && --depth === 0) {
-          end = j;
-          break scan;
-        }
-      }
-      // A string other than a template literal ends with its line.
-      if (quote !== "`") quote = null;
+function closingLine(lines: readonly string[], i: number, col: number): number {
+  let depth = 0;
+  let quote: string | null = null;
+  for (let j = i; j < lines.length; j++) {
+    const line = lines[j];
+    for (let c = j === i ? col : 0; c < line.length; c++) {
+      const ch = line[c];
+      if (quote !== null) {
+        if (ch === "\\") c++;
+        else if (ch === quote) quote = null;
+      } else if (ch === '"' || ch === "'" || ch === "`") quote = ch;
+      else if ("([{".includes(ch)) depth++;
+      else if (")]}".includes(ch) && --depth === 0) return j;
     }
+    // A string other than a template literal ends with its line.
+    if (quote !== "`") quote = null;
+  }
+  return -1;
+}
+
+/**
+ * 0-based line ranges (exclusive at both ends) of the tables `.each` reads:
+ * its inline argument list, or the array a named table (`.each(CASES)`) is
+ * declared with. A row added inside one is a new case.
+ */
+function eachTables(side: Side): [number, number][] {
+  const { masked } = side;
+  const ranges: [number, number][] = [];
+  for (let i = 0; i < masked.length; i++) {
+    const m = /\.each\s*\(\s*([A-Za-z_$][\w$]*)?\s*(\))?/.exec(masked[i]);
+    if (m === null) continue;
+    if (m[1] !== undefined && m[2] !== undefined) {
+      // A named table: where it is declared, from the bracket after `=`.
+      const decl = new RegExp(`\\b(?:const|let|var)\\s+${m[1].replace(/\$/g, "\\$")}\\b[^=]*=\\s*`);
+      for (let j = 0; j < masked.length; j++) {
+        const d = decl.exec(masked[j]);
+        if (d === null) continue;
+        const end = closingLine(masked, j, d.index + d[0].length);
+        if (end > j) ranges.push([j, end]);
+      }
+      continue;
+    }
+    const end = closingLine(masked, i, masked[i].indexOf("(", m.index));
     if (end > i) ranges.push([i, end]);
   }
   return ranges;
 }
 
+/** Whether a line holds code, not only a comment or white space. */
+const isCode = (masked: string): boolean => !/^\s*(?:\/\/|\/\*|⟦c⟧|$)/.test(masked);
+
 /**
- * Whether the PR adds a test case: a new test file, a test case or `.each` row
- * added to an existing one, or a new input a test reads from a directory (an
- * example, a renderer fixture, an acceptance-test `krs` fence).
+ * Whether the PR adds a test case: a new test file, more test cases or `.each`
+ * rows in an existing one, or a new input a test reads from a directory (an
+ * example, a renderer fixture, an acceptance-test `krs` fence). Renaming a case
+ * or adding one inside a comment adds nothing.
  */
 export function addsTest(files: readonly ChangedFile[]): boolean {
   return files.some((f) => {
@@ -326,14 +394,17 @@ export function addsTest(files: readonly ChangedFile[]): boolean {
       return f.hunks.some((h) => h.added.some((line) => /^\s*(?:```|~~~)krs(?:\s|$)/.test(line)));
     }
     if (!isTestFile(f.path)) return false;
-    const tables = typeof f.after === "string" ? eachTables(f.after) : [];
+    const was = readSide(f.before);
+    const now = readSide(f.after);
+    if (was === null || now === null) return false;
+    if (liveCases(now) > liveCases(was)) return true;
+    const tables = eachTables(now);
     return f.hunks.some((h) =>
-      h.added.some((line, k) => {
-        if (TEST_CASE.test(line)) return true;
+      h.added.some((_, k) => {
         const at = h.newStart - 1 + k;
         return (
-          line.trim() !== "" &&
-          !/^\s*(?:\/\/|\/\*|\*)/.test(line) &&
+          now.states[at] === "code" &&
+          isCode(now.masked[at]) &&
           tables.some(([start, end]) => at > start && at < end)
         );
       }),
@@ -385,12 +456,7 @@ export function checkTestChanges(input: {
 
   const existing = input.files.filter((f) => f.status !== "added" && isTestFile(f.path));
   if (type === "refactor") {
-    const broken = existing.filter(
-      (f) =>
-        f.status === "deleted" ||
-        hidesLines(f) ||
-        f.hunks.some((h) => !onlySwaps(unexplained(h, f.before, f.after))),
-    );
+    const broken = existing.filter((f) => !keepsTests(f));
     if (broken.length > 0) {
       errors.push(
         `A refactor changes existing tests beyond imports, module paths and comments: ` +

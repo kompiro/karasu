@@ -785,9 +785,8 @@ function fileTier(
   if (isTestFile(f.path)) {
     if (isNewFile(f)) return byPath;
     // A reason line must not be enough to drop or turn off an SSRF or symlink
-    // regression test.
-    const removes = f.hunks.some((h) => h.removed.length > 0);
-    if (isSecurityTest(f.path) && (removes || weakensTests(f))) return "high";
+    // regression test. Moving imports or rewording a comment there is not that.
+    if (isSecurityTest(f.path) && weakensTests(f)) return "high";
     return "medium";
   }
   if (CODE_FILE.test(f.path) && touchesDangerousSink(f)) return "high";
