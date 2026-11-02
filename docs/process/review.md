@@ -87,7 +87,8 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
   違う行の対だけ。それ以外の変更とテストファイルの削除は、理由の行があっても落ちる。挙動を変える refactor
   （廃止した API のテストを消すなど）はタイトルの型を変えて、`Test change:` を書く
 - **それ以外の PR**：既存のテストファイルから import 以外の行を消す、テストファイルを消す、`.skip` / `.fixme` /
-  `.todo` / `.only` / `skipIf` / `runIf` や単独の `return` を足す PR は、`Test change:` の行が要る
+  `.todo` / `.only` / `skipIf` / `runIf` や単独の `return` を足す、ブロックコメントや文字列で既存のテストを囲む PR は、
+  `Test change:` の行が要る
 
 #### 指摘の重大度と対応
 
