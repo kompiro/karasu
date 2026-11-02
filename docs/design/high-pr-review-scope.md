@@ -4,7 +4,8 @@
 - **ステータス**: 検討中
 - **PR**: #TBD
 - **関連**:
-  - 引き金 Issue: [#3542](https://github.com/kompiro/karasu/issues/3542)（Design Doc で合意した内容を読み直さない）、[#3543](https://github.com/kompiro/karasu/issues/3543)（ファイルごとの段階と、判断してほしいことの節）。親は [#3546](https://github.com/kompiro/karasu/issues/3546)
+  - 引き金 Issue: [#3542](https://github.com/kompiro/karasu/issues/3542)（Design Doc で合意した内容を読み直さない）、[#3543](https://github.com/kompiro/karasu/issues/3543)（ファイルごとの段階と、判断してほしいことの節）
+  - 親 Issue: [#3546](https://github.com/kompiro/karasu/issues/3546)
   - 関連 ADR: [ADR-3286](../adr/3286-risk-based-review-tiers.md)（リスク段階。本設計はその規則と Review tier の出力を足す）、[ADR-3011](../adr/3011-skip-coderabbit-label.md)（判断を含む基準を Claude だけで適用しない）、[ADR-3271](../adr/3271-close-issue-with-pr.md)（Design Doc の PR は `Refs #N`、実装の PR は `Closes #N`）
   - 関連 Issue: [#3505](https://github.com/kompiro/karasu/issues/3505) / [#3508](https://github.com/kompiro/karasu/issues/3508)（言語の挙動とセキュリティの境界を High にする）、[#3380](https://github.com/kompiro/karasu/issues/3380)（段階の 1 か月後の計測）
   - 関連 TPL: [TPL-3286](../test-perspectives/TPL-3286-merge-eligibility-judged-on-final-diff.md)（本 PR で適用場面と失敗モードを足す）、[TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md)
@@ -17,13 +18,13 @@ PR の段階は、変更したファイルの段階の最大値で決まる（AD
 
 直近にマージした High の PR 24 本のうち、High のパスのファイルが一部だけだった PR が 9 本ほどあった。
 
-| PR    | High のパスのファイル / 全ファイル | CodeRabbit のレビュー           | High になった原因                   |
-| ----- | ---------------------------------- | ------------------------------- | ----------------------------------- |
-| #3409 | 4 / 51                             | 7 回                            | `docs/spec/style*`・`diagnostics*`  |
-| #3527 | 4 / 30                             | 4 回                            | `docs/spec/syntax*`・`diagnostics*` |
-| #3437 | 2 / 24                             | 2 回（再レビューの依頼は 6 回） | `docs/concepts*`                    |
-| #3498 | 6 / 26                             | 4 回                            | `.claude/rules/**`・`lefthook.yml`  |
-| #3320 | 2 / 10                             | 2 回                            | `docs/spec/style*`                  |
+| PR    | High のパスのファイル / 全ファイル | CodeRabbit のレビュー           | High になった原因                                                          |
+| ----- | ---------------------------------- | ------------------------------- | -------------------------------------------------------------------------- |
+| #3409 | 4 / 51                             | 7 回                            | `docs/spec/style*`・`diagnostics*`                                         |
+| #3527 | 4 / 30                             | 4 回                            | `docs/spec/syntax*`・`diagnostics*`                                        |
+| #3437 | 2 / 24                             | 2 回（再レビューの依頼は 6 回） | `docs/concepts*`                                                           |
+| #3498 | 6 / 26                             | 4 回                            | `.claude/rules/**`・`.claude/skills/**`・`lefthook.yml`・`scripts/lint/**` |
+| #3320 | 2 / 10                             | 2 回                            | `docs/spec/style*`                                                         |
 
 ところが、こうした PR の仕様の変更は、ほとんどが Design Doc の段階で kompiro と検討して合意したものである。
 実装の PR で spec の差分をもう一度読むのは、同じレビューを 2 回していることになる。kompiro が実装の PR で
@@ -45,30 +46,39 @@ Design Doc で合意した PR は、できるだけ人間の手を介さずに�
 
 spec の合意だけで段階が下がるのは、renderer・app・examples などの変更に spec や concepts が付いてくる PR である。
 言語の挙動を変える PR は High のまま CodeRabbit のラウンドを回すが、kompiro が読むものは「Design Doc からの
-ずれ」と「判断してほしいこと」に絞れる。
+ずれ」と「判断してほしいこと」に絞れる。セキュリティの境界に触れる PR は、Design Doc があっても kompiro が
+そのファイルを読む。
 
 ## 現状（インベントリ）
 
-| 観点                              | 現状                                                                                                                                                          |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 段階の出力                        | `tier.ts classify` は PR の段階と理由を JSON で出す。ファイルごとの段階は内部で計算しているが、一覧としては出さない                                           |
-| Review tier                       | base 側の分類器を install なしで動かす。#3508 からは、test の理由の行で通った PR を job summary（`GITHUB_STEP_SUMMARY`）に書く。権限は read だけ              |
-| High で人間が読むもの             | 差分の全部（review.md「リスク段階」の「人間が差分を読む」）                                                                                                   |
-| Design Doc と実装の PR のつながり | Design Doc の「関連」に引き金 Issue があり、Design Doc の PR は `Refs #N`、実装の PR は `Closes #N`（ADR-3271）。Design Doc は ADR に昇格するまで main に残る |
-| Design Doc の仕様の書き方         | 決まりは無い。仕様の文面を載せることもあれば、方針だけのこともある                                                                                            |
-| 実装と Design Doc の照合          | 仕組みは無い。CodeRabbit は Design Doc を読まない。`/engineering:code-review` は差分だけを見る                                                                |
-| 人間の判断が要る論点              | `/coderabbit-converge` が PR 上で質問してから kompiro に渡す（coderabbit-rounds.md）。置き場所と件数の決まりは無い                                            |
-| High の PR の機械の検査           | CI の全部と CodeRabbit のラウンド。#3508 の test の検査は High にも当たる                                                                                     |
-| 実装と spec を同じ PR に縛る検査  | `diagnostics-catalog.test.ts`（出す診断コードと `docs/spec/diagnostics*.md`）、`language-version.test.ts`（言語の版と spec の記述）                           |
+| 観点                              | 現状                                                                                                                                                              |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 段階の出力                        | `tier.ts classify` は PR の段階と理由を JSON で出す。Low より上のファイルは `reasons` に `<path>: <tier>` として並ぶが、構造化した一覧と Low のファイルは出さない |
+| Review tier                       | base 側の分類器を install なしで動かす。#3508 からは、test の理由の行で通った PR を job summary（`GITHUB_STEP_SUMMARY`）に書く。権限は read だけ                  |
+| High で人間が読むもの             | 差分の全部（review.md「リスク段階」の「人間が差分を読む」）。Review tier は High のローカルレビューの記録を検査しない                                             |
+| Design Doc の状態                 | `docs/design/` の 15 本（TEMPLATE を除く）のうち 13 本が「検討中」、1 本が却下の記録。5 本は「引き金 Issue」の行を持たない。ステータスの行は合意を表さない        |
+| Design Doc と実装の PR のつながり | Design Doc の「関連」に引き金 Issue があり、Design Doc の PR は `Refs #N`、実装の PR は `Closes #N`（ADR-3271）。Design Doc は ADR に昇格するまで main に残る     |
+| Design Doc の仕様の書き方         | 決まりは無い。仕様の文面を載せることもあれば、方針だけのこともある                                                                                                |
+| 実装と Design Doc の照合          | 仕組みは無い。CodeRabbit は Design Doc を読まない。`/engineering:code-review` は差分だけを見る                                                                    |
+| 人間の判断が要る論点              | `/coderabbit-converge` が PR 上で質問してから kompiro に渡す（coderabbit-rounds.md）。置き場所と件数の決まりは無い                                                |
+| High の PR の機械の検査           | CI の全部と CodeRabbit のラウンド。#3508 の test の検査は High にも当たる                                                                                         |
+| 実装と spec を同じ PR に縛る検査  | `diagnostics-catalog.test.ts`（出す診断コードと `docs/spec/diagnostics*.md`）、`language-version.test.ts`（言語の版と spec の記述）                               |
 
 ## 制約・前提
 
 - **段階を Claude の判断で下げない。** 合意済みとみなすのは、機械が確かめた一致だけにする。宣言で検査が軽くなる
   規則は、宣言を裏付ける検査があるときだけ効かせる（ADR-3011、#3505 の制約）
-- **合意の根拠は base 側の Design Doc から読む。** PR が自分で Design Doc を書き換えて、自分の差分と一致させる
-  ことができないようにする。同じ PR がその Design Doc を変えていたら、合意済みとみなさない（TPL-3286）
-- **Design Doc が main にあることを、kompiro の合意とみなす。** Design の PR は人間のレビューを経てマージする
-  （review.md「リスク段階」）。マージしたのは kompiro なので、main の Design Doc はそのまま合意の記録になる
+- **合意の根拠は main との merge-base の Design Doc から読み、base が `main` の PR にだけ効かせる。** PR が自分で
+  Design Doc を書き換えて、自分の差分と一致させることができないようにする。同じ PR がその Design Doc を変えていたら、
+  合意済みとみなさない。stacked PR の上の層は、下の層にしか無い Design Doc を根拠にできない（TPL-3286）
+- **Design Doc が main にあるだけでは合意とみなさない。** Design Doc は `packages/*` と一緒に Medium の PR で入ることが
+  あり、Medium では人間が差分を読まない。合意とみなすのは、その Design Doc を最後に変えたコミットが、Design の段階の
+  変更（`docs/design/**` と Low のファイルだけ）だった場合に限る。Design の PR は kompiro が読んでマージするので、
+  そのコミットの中身は kompiro が読んでいる。判定は git の履歴だけで決まる
+- **根拠にする Design Doc は、PR の `Closes #N` の Issue を「引き金 Issue」の行に挙げたものだけにする。**
+  `docs/design/TEMPLATE.md` は使わない。ほかの Design Doc に偶然一致するブロックがあっても使わない
+- **セキュリティの境界は、Design Doc があっても kompiro が読む。** #3508 の `SECURITY_TIER_GLOBS`・
+  `.github/workflows/**`・`.github/actions/**` に触れるファイルは、読む範囲を絞る対象から外す
 - **決定のパスだけを対象にする。** `docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`docs/process/**`・
   `.claude/rules/**`。workflow・lint・CI の仕組みは、文面が合意どおりでも挙動を確かめる必要があるので High のまま
   にする（kompiro の決定、2026-11-02）
@@ -76,7 +86,9 @@ spec の合意だけで段階が下がるのは、renderer・app・examples な�
 - **導き出せる一覧を PR 本文に書かない。** 本文に置いた一覧は、コミットを足すと古くなる（TPL-1032）。HEAD から
   毎回作り直せる場所に出す
 - **AI による照合は自己申告である。** subagent が列挙したずれは、ローカルレビューの記録と同じく check では
-  裏付けられない。そのため段階には使わず、kompiro が読む範囲を示すだけにする
+  裏付けられない。そのため段階には使わず、kompiro が読む範囲を示すだけにする。読む範囲を絞るのは、照合の行
+  （レビュアー `design`）を含む記録が HEAD を覆っていると Review tier が確かめた PR に限る。中身は確かめないが、
+  照合を飛ばした PR では範囲が絞られない
 - **対象外**：High のパスの見直し、CodeRabbit のラウンドの上限（#3545）、仕組みの High と決定の High の区別（#3544）
 
 ## 検討した選択肢
@@ -107,9 +119,16 @@ Design Doc に、決定のパスへ入れる文面をファイルごとのブロ
 ```
 ````
 
-Review tier は、実装の PR の決定のパスの各ファイルについて、追加行と削除行が base 側のどれかの Design Doc の
-ブロックに含まれるかを確かめる。含まれるファイルは「合意済み」として Medium に数える。ほかに High のファイルが
-無ければ PR は Medium になり、CodeRabbit のラウンドは回らない。
+ブロックは `### 仕様の変更` 見出しの直下に、行頭から始まる fence（情報文字列が `diff file=<path>`）で置く。
+中身は unified diff の hunk で、`@@` の行番号は書かなくてよい。前後の文脈の行（先頭が空白）も hunk に含める。
+入れ子の fence の中のブロック（この例のような説明用のもの）は読まない。
+
+Review tier は、実装の PR の決定のパスの各ファイルについて、PR の差分（文脈 3 行）の hunk が、根拠の Design Doc の
+そのファイルのブロックの hunk と**ちょうど一致する**かを確かめる。比べるのは各行の符号（`+` / `-` / 文脈）と
+本文（行末の空白だけを除く）と、hunk の並び。ブロックの hunk がすべて適用され、ほかの hunk が無いときだけ、
+そのファイルを「合意済み」として Medium に数える。部分的な適用、並べ替え、合意した行を別の見出しの下へ移すこと、
+空行や表の区切りだけの一致は、どれも一致しない。ほかに High のファイルが無ければ PR は Medium になり、
+CodeRabbit のラウンドは回らない。
 
 **メリット**
 
@@ -119,9 +138,13 @@ Review tier は、実装の PR の決定のパスの各ファイルについて�
 
 **デメリット**
 
-- Design Doc に日英の両方の文面を書く手間が増える。英語は日本語の訳なので、kompiro は日本語を読めばよい
+- Design Doc に日英の両方の文面を書く手間が増える。英語のブロックも Design の PR の差分に入るので kompiro の
+  目に触れるが、日本語だけを読んで合意することもありうる。そこで Design の PR のローカルレビューで、subagent が
+  日英のブロックの意味の食い違いを列挙し、記録に残す
 - 実装の途中で文面を直すと一致しなくなる。直すなら Design Doc を先に直す（小さな Design の PR）か、High の
   まま通す
+- 文脈の行まで一致を求めるので、Design Doc の後に同じ箇所の spec が変わると一致しなくなる。そのときは High に
+  戻るだけで、誤って Medium にはならない
 
 #### 案3：AI の照合だけで合意済みとする
 
@@ -142,7 +165,8 @@ subagent に Design Doc と差分を渡し、Design Doc の「現時点の方針
 | 実装が Design Doc を外れている                              | 実装を直す                                                                                                          |
 | Design Doc の方が実態に合わない（実装して分かった制約など） | 直さずに kompiro へ確認する。記録済みの決定を変えるので、coderabbit-rounds.md「人間に確認する指摘の判定」と同じ扱い |
 
-照合の結果はローカルレビューの記録に、レビュアー `design` として残す。
+照合の結果はローカルレビューの記録に、レビュアー `design` として残す。ずれが無ければ、その旨を 1 行で残す。
+coderabbit-rounds.md の「記録済みの決定」には、今は Design Doc が入っていないので、根拠の Design Doc を足す。
 
 #### 案B：CodeRabbit に Design Doc を読ませる
 
@@ -176,21 +200,24 @@ Claude が書く内容なので、本文に置いてよい。
 **仕様は案2（Design Doc の文面との一致）、実装のずれは案A（subagent の照合）、見せ方は案1（job summary）と
 `## For kompiro` 節を採る。** kompiro が High の PR で読むものは、次のどちらかになる。
 
-| PR                                                            | kompiro が読むもの                                                              |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `Closes #N` の Issue を引き金とする Design Doc が main にある | `## For kompiro` 節（ずれと論点）だけ。差分は、節が指す箇所を確かめるときに開く |
-| Design Doc が無い                                             | High のファイル（合意済みのファイルを除く）と `## For kompiro` 節               |
+| PR                                                               | kompiro が読むもの                                                                                                |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 根拠の Design Doc があり、照合の行を含む記録が HEAD を覆っている | `## For kompiro` 節（ずれと論点）と、セキュリティの境界のファイル。ほかの差分は、節が指す箇所を確かめるときに開く |
+| それ以外                                                         | High のファイル（合意済みのファイルを除く）と `## For kompiro` 節                                                 |
 
-Design Doc の有無は、PR の `Closes #N` と base 側の Design Doc の「引き金 Issue」の行で機械が決める。どちらの場合も
-CodeRabbit のラウンドが収束してから kompiro に渡し（coderabbit-rounds.md）、マージは kompiro が行う。
+根拠の Design Doc は、制約・前提の条件（`Closes #N` の Issue を「引き金 Issue」の行に挙げ、最後の変更が Design の
+段階で、PR が変えていない）で機械が決める。「引き金 Issue」の行の Issue へのリンクをすべて読み、親 Issue は別の行に
+置く。行が無い Design Doc は根拠にならない（厳しい側に倒れる）。Review tier の summary は、どちらの行に当たるかを
+表の上に出す。どちらの場合も CodeRabbit のラウンドが収束してから kompiro に渡し（coderabbit-rounds.md）、
+マージは kompiro が行う。
 
 ### スライス（実装ステップ）
 
-| スライス                                                                                                 | 前提                                | 独立に出荷できる理由                                                                  |
-| -------------------------------------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------- |
-| **B** ファイルごとの段階と `## For kompiro` 節（[#3543](https://github.com/kompiro/karasu/issues/3543)） | #3508 のマージ                      | 出力と手順を足すだけで、どの PR の段階も検査の結果も変えない                          |
-| **A1** 仕様の文面の一致で合意済みとする（[#3542](https://github.com/kompiro/karasu/issues/3542)）        | B（summary に合意済みを出す）       | 一致しなければこれまでどおり High。文面を載せていない Design Doc の PR にも影響しない |
-| **A2** Design Doc との照合（[#3542](https://github.com/kompiro/karasu/issues/3542)）                     | B（ずれを `## For kompiro` に出す） | ローカルレビューの手順を足すだけで、check は変えない                                  |
+| スライス                                                                                                             | 前提           | 独立に出荷できる理由                                                                                                                                                 |
+| -------------------------------------------------------------------------------------------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **B** ファイルごとの段階と `## For kompiro` 節（[#3543](https://github.com/kompiro/karasu/issues/3543)）             | #3508 のマージ | 出力と手順を足すだけで、どの PR の段階も検査の結果も変えない。kompiro が読む範囲は「それ以外」の行（High のファイルと節）だけで、Design Doc による絞り込みはまだ無い |
+| **A2** Design Doc との照合と、それによる読む範囲の絞り込み（[#3542](https://github.com/kompiro/karasu/issues/3542)） | B              | 照合の行を含む記録が HEAD を覆う PR だけが絞られる。照合を飛ばした PR はこれまでどおり                                                                               |
+| **A1** 仕様の文面の一致で合意済みとする（[#3542](https://github.com/kompiro/karasu/issues/3542)）                    | B              | 一致しなければこれまでどおり High。文面を載せていない Design Doc の PR にも影響しない                                                                                |
 
 > 各スライスで何ができるようになるか / その時点でまだできないことは
 > 親 Issue [#3546](https://github.com/kompiro/karasu/issues/3546) の `## Slice status` を参照。
@@ -198,22 +225,26 @@ CodeRabbit のラウンドが収束してから kompiro に渡し（coderabbit-r
 ### 実装の指針
 
 1. B：`tier.ts` に、ファイルを段階ごとにまとめる関数を足す（`classifyChange` が使う段階をそのまま使う）。
-   `classify` の JSON に `files` を足し、`check` は job summary に表を書く。`Closes #N` の Issue を引き金とする
-   Design Doc が base にあれば、それも表の上に出す。テストは `tier.test.ts` に足す
-2. B：`docs/process/review.md`「リスク段階」の High の行を、上の表の「kompiro が読むもの」に改める。PR 本文の
+   `classify` の JSON に `files` を足し、`check` は job summary に表を書く。テストは `tier.test.ts` に足す
+2. B：`docs/process/review.md`「リスク段階」の High の行を、上の表の「それ以外」の行に改める。PR 本文の
    `## For kompiro` 節（3 件まで、残りは答えの後）の手順を足し、`/coderabbit-converge` の渡し方をこの節に揃える
-3. A1：`tier.ts` に、base 側の `docs/design/*.md` から ` ```diff file=<path> ` のブロックを読み、決定のパスの
-   ファイルの追加行と削除行がブロックに含まれるかを判定する関数を足す。同じ PR がその Design Doc を変えていれば
-   使わない。含まれれば、そのファイルを Medium に数える。比較は行の前後の空白を除いて行う
-4. A1：`docs/design/TEMPLATE.md` に `### 仕様の変更` 節（任意）を足し、ブロックの書き方を書く
-5. A2：`docs/process.md` 手順 8 と `docs/process/review.md` に、Design Doc との照合を足す。subagent に渡すのは
+3. A2：`tier.ts` に根拠の Design Doc を決める関数を足す（`Closes #N`、「引き金 Issue」の行、最後の変更が Design の
+   段階か、PR が変えていないか）。`check` は、根拠があり照合の行を含む記録が HEAD を覆うときに summary の表の上に
+   「`## For kompiro` を読む」と出す。High の記録の検査はこのときだけ行い、記録が無くても check は落とさない
+4. A2：`docs/process.md` 手順 8 と `docs/process/review.md` に、Design Doc との照合を足す。subagent に渡すのは
    Design Doc と base との差分だけにし、実装の文脈を渡さない。記録のレビュアーに `design` を足す
-   （`local-review-record.ts`）
-6. TPL：TPL-3286 に、合意の根拠を PR 側の Design Doc から読む失敗モードを足す（本 PR）
-7. AT：過去の PR の差分で確かめる。#3320 の spec の差分を載せた Design Doc を base に置くと Medium になり、文面を
-   1 行変えると High に戻る。PR 側で Design Doc を足しても Medium にならない。どれもテストで確かめられるので、
+   （`local-review-record.ts`）。coderabbit-rounds.md の「記録済みの決定」に根拠の Design Doc を足し、review.md の
+   High の行に上の表の 1 行目を足す
+5. A1：`tier.ts` に、根拠の Design Doc から `### 仕様の変更` 直下のブロックを読み、決定のパスのファイルの hunk が
+   ちょうど一致するかを判定する関数を足す。一致すれば、そのファイルを Medium に数える
+6. A1：`docs/design/TEMPLATE.md` に `### 仕様の変更` 節（任意）を足し、ブロックの書き方を書く。TEMPLATE の例は
+   入れ子の fence に入れる。Design の PR のローカルレビューに、日英のブロックの照合を足す
+7. TPL：TPL-3286 に、合意の根拠を PR 側の Design Doc から読む失敗モードと、そのチェック項目を足す（本 PR）
+8. AT：過去の PR の差分で確かめる。#3320 の spec の差分を載せた Design Doc を Design のコミットで base に置くと
+   Medium になる。文面を 1 行変える、hunk を 1 つ落とす、行を並べ替える、のどれでも High に戻る。PR 側で Design Doc
+   を足しても、Medium のコミットで入った Design Doc でも、Medium にならない。どれもテストで確かめられるので、
    手動の項目は置かない
-8. ADR 昇格：すべてのスライスが終わったら ADR-3542 として昇格し、本 Design Doc を削除する。ADR-3286 を
+9. ADR 昇格：すべてのスライスが終わったら ADR-3542 として昇格し、本 Design Doc を削除する。ADR-3286 を
    `refines` で指す
 
 ### 影響範囲・マイグレーション
