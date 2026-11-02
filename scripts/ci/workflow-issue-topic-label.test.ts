@@ -50,8 +50,8 @@ function shellWords(text: string, start: number): string[] {
     const c = text[i];
     if (quote !== null) {
       if (c === quote) quote = null;
-      else if (c === "\\" && quote === '"') word += text[++i] ?? "";
-      else word += c;
+      else if (c === "\\" && quote === '"') word = (word ?? "") + (text[++i] ?? "");
+      else word = (word ?? "") + c;
     } else if (c === "\\") {
       if (text[i + 1] !== "\n") word = (word ?? "") + (text[i + 1] ?? "");
       i++;
