@@ -203,8 +203,12 @@ gh pr merge <N> --auto --squash --delete-branch
 
 `gh pr create --label` はラベルを PR を開いた後に付けるが、ラベルの無い PR に `risk: high` を付ける
 「Label untiered PRs High」（`.github/workflows/review-request.yml`）は、開いた PR では 30 秒待ってから
-ラベルを読むので、`risk: low` が先に届く（#3504）。それより遅れて `risk: high` も付いたら、Review tier は厳しい方の
-High として扱い auto-merge を止める。そのときは `gh pr edit <N> --remove-label "risk: high"` で外す。
+ラベルを読むので、ふつうは `risk: low` が先に届く（ADR-3504）。`risk: low` がそれより遅れて届くと、ワークフローが
+付けた `risk: high` と両方が残る。その後の `risk: low` の付与や auto-merge の有効化で走る Review tier は、厳しい方の
+High として扱い auto-merge を止める。ワークフローが付けたラベルでは Review tier が走らないので、最後に走った回が `risk: high` の付く前に
+ラベルを読んでいれば止まらずにマージされる（差分は Low なので、失うのは多くても CodeRabbit のレビュー 1 回分）。
+マージ前に両方のラベルが残っているのを見たら、`gh pr edit <N> --remove-label "risk: high"` で外す（`unlabeled` で
+Review tier が走り直し、Low として通る）。マージ後なら、ラベルを片付けるだけでよい。
 
 Claude のセッションの gh は、`--draft` の無い `gh pr create` を `risk: low` のときだけ、このブランチの CLI の
 レビューが済んでいれば通す（ADR-3342 のゲート）。通すのは、gh がチェックアウト中のブランチを origin の repo へ push する

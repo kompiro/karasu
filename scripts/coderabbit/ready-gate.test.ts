@@ -50,7 +50,9 @@ const HEAD = git("rev-parse", "HEAD");
 // What a create without --draft reads (#3504): origin and its default branch,
 // the branch as pushed, and `chore/5-local`, a branch at BASE that origin does
 // not have.
-git("remote", "add", "origin", "https://github.com/kompiro/karasu.git");
+// origin is the fixture repository itself, so a fetch the gate makes stays
+// local and fails fast for a commit nobody has.
+git("remote", "add", "origin", repo);
 git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main");
 git("update-ref", "refs/remotes/origin/chore/1-example", HEAD);
 git("update-ref", "refs/heads/chore/5-local", BASE);
@@ -62,6 +64,7 @@ interface PrView {
   body: string;
   headRefOid: string;
   baseRefName: string;
+  baseRefOid?: string;
 }
 
 const DRAFT: PrView = {
@@ -71,6 +74,8 @@ const DRAFT: PrView = {
   body: "Closes #1",
   headRefOid: HEAD,
   baseRefName: "main",
+  // gh returns the base branch's tip, here origin/main.
+  baseRefOid: BASE,
 };
 
 let count = 0;
@@ -198,7 +203,7 @@ describe("gh wrapper: gh pr ready", () => {
     expect(result.stderr).toContain("PR #12");
     expect(result.stderr).toContain("/engineering:code-review");
     expect(result.stderr).toContain(
-      "coderabbit review --agent --deep --base origin/main --committed",
+      `coderabbit review --agent --deep --base-commit ${BASE} --committed`,
     );
     expect(result.stderr).toContain("KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr ready 12");
     expect(reachedRealGh(gh, "pr ready 12")).toBe(false);
@@ -277,14 +282,154 @@ describe("gh wrapper: gh pr ready", () => {
 
   it.each([
     "gh pr ready 12 --undo",
-    "gh pr ready 12 --repo kompiro/other",
-    "gh pr ready -R kompiro/other 12",
-    "gh pr ready -R=kompiro/other 12",
-    "gh pr ready -Rkompiro/other 12",
+    "gh pr ready 12 --undo=true",
+    "gh pr ready 12 -R",
+    "gh pr ready 12 --repo",
   ])("runs `%s` without consulting the PR", (line) => {
     const gh = fakeGh(DRAFT);
     expect(run(line, gh, reviews()).status).toBe(0);
     expect(calls(gh).some((c) => c.startsWith("pr view"))).toBe(false);
+  });
+
+  // --undo is a boolean flag: the last occurrence wins, as in pflag.
+  it.each([
+    "gh pr ready 12 --undo=false",
+    "gh pr ready 12 --undo=true --undo=false",
+    "gh pr ready 12 --undo --undo=false",
+  ])("checks `%s`, which takes the PR out of draft", (line) => {
+    expect(run(line, fakeGh(DRAFT), reviews()).status).toBe(1);
+  });
+
+  it("runs `gh pr ready 12 --undo=false --undo`, whose last --undo is true", () => {
+    expect(run("gh pr ready 12 --undo=false --undo", fakeGh(DRAFT), reviews()).status).toBe(0);
+  });
+
+  it("keeps a URL selector in the skip it suggests", () => {
+    const url = "https://github.com/someone/karasu/pull/12";
+    const result = run(`gh pr ready ${url} -R kompiro/karasu`, fakeGh(DRAFT), reviews());
+    expect(result.stderr).toContain(`gh pr ready ${url} --repo kompiro/karasu.`);
+  });
+
+  // The PR's own base commit decides what is on the base, which also holds for
+  // a fork's PR whose base branch differs from origin's of the same name.
+  it("judges the review against the PR's base commit", () => {
+    const gh = fakeGh({ ...DRAFT, baseRefOid: HEAD });
+    const result = run("gh pr ready 12", gh, reviewedWork());
+    expect(result.status).toBe(1);
+    // The commands it suggests compare against the same base commit.
+    expect(result.stderr).toContain(`git diff ${HEAD}...HEAD`);
+    expect(result.stderr).toContain(
+      `coderabbit review --agent --deep --base-commit ${HEAD} --committed`,
+    );
+  });
+
+  it("fetches the PR's base commit from origin when it is not here", () => {
+    // A base that moved on origin after the last fetch: a child of HEAD, which
+    // holds the reviewed WORK.
+    const upstream = fresh("upstream");
+    execFileSync("git", ["clone", "-q", "--bare", repo, upstream], { env: isolated });
+    const moved = execFileSync(
+      "git",
+      [
+        "-C",
+        upstream,
+        "-c",
+        "user.name=t",
+        "-c",
+        "user.email=t@example.com",
+        "commit-tree",
+        "-p",
+        HEAD,
+        "-m",
+        "base moved",
+        `${HEAD}^{tree}`,
+      ],
+      { encoding: "utf8", env: isolated },
+    ).trim();
+    execFileSync("git", ["-C", upstream, "update-ref", "refs/heads/main", moved], {
+      env: isolated,
+    });
+    git("remote", "set-url", "origin", upstream);
+    try {
+      const gh = fakeGh({ ...DRAFT, baseRefOid: moved });
+      expect(run("gh pr ready 12", gh, reviewedWork()).status).toBe(1);
+      expect(git("cat-file", "-t", moved)).toBe("commit");
+    } finally {
+      git("remote", "set-url", "origin", repo);
+    }
+  });
+
+  // Without the PR's base commit the gate cannot tell what is on the base, and
+  // it never guesses which repository gh picked: it lets the ready through.
+  it.each([
+    ["a base commit nobody has", { ...DRAFT, baseRefOid: "e".repeat(40) }, "gh pr ready 12"],
+    [
+      "a foreign PR URL",
+      { ...DRAFT, baseRefOid: "e".repeat(40) },
+      "gh pr ready https://github.com/someone/karasu/pull/12",
+    ],
+    [
+      "-R naming another repository",
+      { ...DRAFT, baseRefOid: "e".repeat(40) },
+      "gh pr ready 12 -R someone/karasu",
+    ],
+    ["a gh too old to report baseRefOid", { ...DRAFT, baseRefOid: undefined }, "gh pr ready 12"],
+  ])("lets the ready through with %s", (_why, view, line) => {
+    const gh = fakeGh(view);
+    expect(run(line, gh, reviews()).status).toBe(0);
+    expect(calls(gh).some((c) => c.startsWith("pr ready"))).toBe(true);
+  });
+
+  it("keeps --repo in the skip it suggests, so the skip readies the same PR", () => {
+    const result = run("gh pr ready -R kompiro/karasu 12", fakeGh(DRAFT), reviews());
+    expect(result.stderr).toContain(
+      "KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr ready 12 --repo kompiro/karasu.",
+    );
+  });
+
+  // A fork's PR whose head is also a commit here is checked like this
+  // repository's: the review is about the branch's commits, not the repository.
+  it("checks a fork's PR whose head is a commit here", () => {
+    const result = run("gh pr ready -R someone/karasu 12", fakeGh(DRAFT), reviews());
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("--repo someone/karasu");
+  });
+
+  // The gate reads the PR gh pr ready acts on: it passes --repo on to its own
+  // gh pr view (#3514). The value is not taken for the PR selector.
+  it.each([
+    ["gh pr ready 12 --repo kompiro/karasu", "kompiro/karasu"],
+    ["gh pr ready 12 --repo=Kompiro/Karasu", "Kompiro/Karasu"],
+    ["gh pr ready -R kompiro/karasu 12", "kompiro/karasu"],
+    ["gh pr ready -R=github.com/kompiro/karasu 12", "github.com/kompiro/karasu"],
+    ["gh pr ready -Rkompiro/karasu 12", "kompiro/karasu"],
+  ])("checks `%s` like a ready without --repo, reading the same PR", (line, named) => {
+    const gh = fakeGh(DRAFT);
+    const result = run(line, gh, reviews());
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("PR #12");
+    expect(calls(gh).find((c) => c.startsWith("pr view"))).toMatch(
+      new RegExp(`^pr view 12 --repo ${named} --json`),
+    );
+    expect(calls(gh).some((c) => c.startsWith("pr ready"))).toBe(false);
+  });
+
+  // Another repository's PR has a head that is not a commit here: fail open.
+  it.each(["gh pr ready 12 --repo kompiro/other", "gh pr ready -R kompiro/other 12"])(
+    "runs `%s`, whose PR head is not a commit here",
+    (line) => {
+      const gh = fakeGh({ ...DRAFT, headRefOid: "f".repeat(40) });
+      expect(run(line, gh, reviews()).status).toBe(0);
+      expect(calls(gh).find((c) => c.startsWith("pr view"))).toMatch(
+        /^pr view 12 --repo kompiro\/other --json/,
+      );
+    },
+  );
+
+  it("runs `gh pr ready -R kompiro/karasu 12` once the CLI reviewed the branch", () => {
+    const gh = fakeGh(DRAFT);
+    expect(run("gh pr ready -R kompiro/karasu 12", gh, reviewedWork()).status).toBe(0);
+    expect(reachedRealGh(gh, "pr ready -R kompiro/karasu 12")).toBe(true);
   });
 
   it("fails open when gh cannot read the PR", () => {
