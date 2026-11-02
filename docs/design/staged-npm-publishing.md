@@ -60,7 +60,9 @@ changesets 3.0.3 について確かめたこと:
 - 公開の権限を持つジョブは `contents: read` のままにする（ADR-2939 決定 2）。
 - リリースの起点（Prepare → release PR → マージ、ADR-1370 / ADR-2922）は変えない。
 - 次のトレインが発車するのは、前のトレインの Issue が閉じてから（ADR-2922）。そのため承認待ちのあいだ、`main` の `packages/*/package.json` の版は stage した版のまま変わらない。
-- ADR の本文は書き換えない（`.claude/rules/adr.md`）。CI の `adr check-assumptions` は ADR-1315 の `"release": "pnpm build && changeset publish"` と ADR-2939 の `group: release-record`（`release.yml`）を検査している。
+- ADR の本文は書き換えない（`.claude/rules/adr.md`）。CI の `adr check-assumptions` は ADR-1315 と ADR-9020 の `"release": "pnpm build && changeset publish"`（`package.json`）と、ADR-2939 の `group: release-record`（`release.yml`）を検査している。
+- repo は public なので、トレインの Issue には誰でもコメントできる。判定の材料に Issue のコメントを使わない。
+- npm は 1 つのパッケージについて複数の版を同時に stage できる。
 - 対象外: Trusted Publisher に GitHub の environment を条件として足す変更（直接 publish の穴を別の方向から塞ぐ。stage 専用にしたあとで要否を判断する）。VS Code 拡張（Marketplace、Entra ID OIDC）。別 repo の `@kompiro/adr-tools` / `@kompiro/tpl-tools`。
 
 ## 検討した選択肢
@@ -84,6 +86,8 @@ npm は `workspace:` を書き換えないので、`karasu` の tarball に `"ka
 `changeset pack --out-dir` が版の選び方、依存の順、tag、pack を受け持つ。新しいスクリプト `scripts/release/stage.mts` は計画を読み、グループの順に `npm stage publish <tarball> --tag <tag> --json` を実行して、stage id と tarball の integrity を出力するだけにする。
 
 - `workspace:*` の置き換えと `prepack` の刻印は pnpm が行う（上の確認）。
+- 計画の tag は、changesets の pre モード（`pre.json`）を使わないかぎり `latest` で、`changeset pack` に `--tag` は無い。`--tag` を明示すると npm の「prerelease には `--tag` が要る」という検査が働かなくなるので、`stage.mts` は prerelease の版に `latest` を付けようとしたら止める。リハーサルの `--tag rehearsal` は spike だけの上書きにする。
+- `stage.mts` は、実行しているコミットがリリースのコミット（`chore/release-*` のブランチをマージした PR のマージコミット。`close-train` と同じ判定）でなければ何も stage しない。リリースを取りやめた版が `package.json` に残ったまま、`CHANGELOG.md` に触れる後の push や手動の `workflow_dispatch` で stage し直されるのを防ぐ。spike のリハーサルでだけこの判定を外す。
 - 再実行では、前の試行で stage 済みの版が一意制約で拒否される。CI は stage のキューを見られないので、拒否の応答を見て「stage 済み」と判断するしかない。応答の形（HTTP status と `code`）はリハーサルで確かめ、知っている形だけを stage 済みとして扱う。知らない失敗は失敗として止める（TPL-2804）。stage 済みとして扱った版は「この run が stage したものではない」と出力に明示する。論点 7 の照合が、その tarball を誰が作ったかを確かめる。
 
 **案 1D を採る。** 案 1A と同じ結果を、changesets の判定をそのまま使って得られる。
@@ -96,7 +100,7 @@ Release には、まだインストールできず、reject されうる版が�
 
 #### 案 2B: 承認のあとに別の workflow で作る
 
-新しい workflow `release-confirm.yml` が、リリースコミットの各パッケージの版が npm に載ったことを確かめ、載った版にタグを打って Release を作る。リリースコミットは、開いているトレインの Issue が名指すブランチ（`scripts/release/train.mts issue-branch`）から、そのブランチをマージした PR のマージコミットとして求める。`main` が先に進んでいても同じコミットに着く。
+新しい workflow `release-confirm.yml` が、リリースコミットで版を上げた npm パッケージ（論点 4 の定義）について、その版が npm に載ったことを確かめ、載った版にタグを打って Release を作る。版を上げなかったパッケージは、前のリリースのタグが別のコミットにあるので触らない。リリースコミットは、開いているトレインの Issue が名指すブランチ（`scripts/release/train.mts issue-branch`）から、そのブランチをマージした PR のマージコミットとして求める。`main` が先に進んでいても同じコミットに着く。
 
 - この workflow は `id-token: write` を持たない。Trusted Publisher は `release.yml` に紐づくので、記録の workflow からは npm に何も出せない。
 - いまの `record` ジョブの処理（タグの push、`github-release.mts --commit`）をそのまま移せる。
@@ -125,9 +129,9 @@ Release には、まだインストールできず、reject されうる版が�
 `scripts/release/approve.mts`（`pnpm release:approve`）を kompiro が手元で実行する。
 
 1. リリースコミットを `release-confirm.yml` と同じ方法で求める（`--commit <sha>` で指定もできる）。
-2. そのコミットで `changeset publish-plan` を求め、承認する順を決める。計画は依存の順に並んでいて、`karasu-skills` が `karasu` より先に来る。順序は手で並べた表ではなく、この計画から取る（TPL-3240）。
-3. 計画の各版について、`npm stage list <name> --json` から stage 済みの項目を探し、論点 7 の照合を行う。
-4. 照合の結果（パッケージ、版、tag、stage id、stage した主体と日時、照合の結果）を表示して確認を取る。
+2. そのコミットを手元の一時的な worktree に取り出してビルドし、`changeset pack` を実行する。出てきた `publish-plan.json` の順で承認する。計画は依存の順に並んでいて、`karasu-skills` が `karasu` より先に来る。順序は手で並べた表ではなく、この計画から取る（TPL-3240）。tarball は論点 7 の照合に使う。`changeset publish-plan` の JSON 出力は experimental なので使わない。
+3. 計画の各版について、`npm stage list <name> --json` から stage 済みの項目を探し、論点 7 の照合を行う。tag が計画と違えば照合に落とす。
+4. 照合の結果（パッケージ、版、tag、stage id、stage した主体と日時、照合の結果）を表示して確認を取る。3 パッケージの stage のキューに計画に無い項目（ほかの版）があれば、それも表示して reject を勧める。乗っ取られた run が別の版（たとえば `latest` の付いたより高い版）を stage していた場合に、画面で誤って承認されないようにするためである。
 5. 計画の順に `npm stage approve <id>` を実行する。2FA はそのたびに npm が求める。最初の失敗で止まる。
 6. 最後に `gh workflow run release-confirm.yml` で記録の workflow を起動する。
 
@@ -142,11 +146,11 @@ Release には、まだインストールできず、reject されうる版が�
 閉じる条件を次の 2 つにまとめる。判定は `scripts/release/train.mts` に置き、`release.yml` の `close-train` と `release-confirm.yml` の両方から呼ぶ。
 
 - **npm**: リリースコミットで版が変わった npm パッケージ（そのコミットと、その first parent とで `package.json` の版が違うもの）のタグが、すべてリリースコミットを指している。版が変わらなかったパッケージは対象にしない。「どこかにタグがある」では判定しない。版を上げたのに別のコミットにタグが打たれた場合を通さないためである。
-- **VS Code**: いまの `close-train` と同じく、`vscode` ジョブの結果で判定する（`AZURE_CLIENT_ID` が無くて公開を飛ばした成功も含む）。`release-confirm.yml` はジョブの結果を持たないので、`release.yml` の `close-train` が VS Code の結果をトレインの Issue にコメントで残し、`release-confirm.yml` はその最新のコメントを読む。
+- **VS Code**: いまの `close-train` と同じく、`vscode` ジョブの結果で判定する（`AZURE_CLIENT_ID` が無くて公開を飛ばした成功も含む）。`release-confirm.yml` は、リリースコミットで走った `release.yml` の最新の run を Actions の API（`head_sha` で絞る）で引き、その `vscode` ジョブの結果を読む。Issue のコメントは誰でも書けるので材料にしない。
 
 動き:
 
-- `release.yml` の `close-train` は、npm の条件が満たされていなければ閉じない。stage した版の一覧と `pnpm release:approve` の案内をコメントする。版を上げた npm パッケージが無ければ、いまと同じく VS Code の結果だけで閉じる。
+- `release.yml` の `close-train` は、npm の条件が満たされていなければ閉じない。stage した版の一覧と `pnpm release:approve` の案内をコメントし、成功で終わる（承認待ちは失敗ではない）。版を上げた npm パッケージが無ければ、いまと同じく VS Code の結果だけで閉じる。
 - `release-confirm.yml` が最後に同じ判定を行い、満たせば Release のリンクを付けて閉じる。
 - `close-train` も `release-record` の concurrency グループに入れ、`release-confirm.yml` と同時に判定やコメントをしないようにする。
 
@@ -156,10 +160,21 @@ Release には、まだインストールできず、reject されうる版が�
 
 reject は承認を拒む操作で、この設計が守りたいものの 1 つである。reject した版のタグは現れないので、トレインの Issue は閉じない。`release-prepare.yml` は開いているトレインの Issue があると次のトレインを出さない。reject の理由で次の手が分かれる。
 
-- **stage された tarball が正しくなかった**（論点 7 の照合に落ちた）: reject して版を空け、`release.yml` の run を **Re-run failed jobs** で再実行して正しい tarball を stage し直す。リリースコミットは変わらない。
-- **リリースそのものを出さないと決めた**（stage した版に不具合があった）: 残りの stage 済みの版も reject し、トレインの Issue に理由を書いて手で閉じる。直した変更は次のトレイン（または `release-prepare.yml` の手動実行）で、次の版として出す。reject した版番号は使われないまま飛ぶ。
+- **stage された tarball が正しくなかった**（論点 7 の照合に落ちた）: reject して版を空け、正しい tarball を stage し直す。`release` ジョブは「stage 済み」を成功として終えているので、**Re-run failed jobs** では走らない。`release.yml` のその run を **Re-run all jobs** で再実行する（再実行は元の run と同じリリースコミットで走る。`vscode` ジョブは公開済みの版を飛ばす）。照合に落ちたということは CI か依存が乗っ取られている疑いがあるので、再実行の前に原因を調べる。乗っ取った側は reject のあとに同じ版をまた stage しうるので、再実行のあとも照合をやり直す。原因を取り除けないあいだは、下の「CI の経路が使えないとき」に従って手元から stage する。
+- **リリースそのものを出さないと決めた**（stage した版に不具合があった）: 残りの stage 済みの版も reject し、トレインの Issue に理由を書いて手で閉じる。直した変更は次のトレイン（または `release-prepare.yml` の手動実行）で、次の版として出す。reject した版番号は使われないまま飛ぶ。取りやめた版は次のトレインまで `main` の `package.json` に残るが、`stage.mts` はリリースのコミットでしか stage しない（論点 1）ので、stage し直されることはない。
 
 この 2 つを `docs/release.md` に書く。
+
+#### CI の経路が使えないとき
+
+`stage.mts` は stage の認証を npm に任せていて、OIDC でなくても動く。npm のセッショントークンでも stage はできる（`npm help stage` の Token Behavior）。CI の stage の経路が本番で失敗したら、kompiro がリリースコミットを手元に取り出してビルドし、`npm login` したうえで `node scripts/release/stage.mts` を実行する。stage したあとは承認から記録までいつもの流れに乗る。
+
+- リリースコミットの中身をそのまま出せる。A を revert して `release.yml` を再実行する方法では戻せない。再実行は元の run と同じリリースコミット（A を含む）で走り、`main` での `workflow_dispatch` はリリースより後の変更を含みうるからである。
+- 手元から stage した版には provenance が付かない（ADR-9020 の手動公開と同じ）。
+- 手元でもリリースコミットを取り出して実行するので、`stage.mts` のリリースのコミットの判定はそのまま通る。
+- すでに承認した版があっても手順は変わらない。`changeset pack` は npm にある版を計画に入れないので、残りの版だけが stage される。
+
+この手順を `docs/release.md` に書く。直接 publish の許可（Trusted Publisher の「Allow `npm publish`」）に戻る経路を残さなくてよくなるので、段階 C を本番のトレインより前に進められる（「切り替えの段階」）。
 
 ### 論点 5: VS Code 拡張は npm の承認を待つか
 
@@ -167,7 +182,13 @@ reject は承認を拒む操作で、この設計が守りたいものの 1 つ�
 
 ### 論点 6: どの順で切り替えるか
 
-3 パッケージを同時に stage 専用にする。1 つでも「Allow `npm publish`」が残れば、そのパッケージは直接 publish できる。手順は「現時点の方針」の「切り替えの段階」に書く。
+3 パッケージを同時に stage 専用にする。1 つでも「Allow `npm publish`」が残れば、そのパッケージは直接 publish できる。
+
+切り替えるのは、実装の PR がマージされた直後で、本番のトレインより前とする。stage の経路が本番で失敗しても、手元から stage すれば戻れる（論点 4「CI の経路が使えないとき」）。CI から直接 publish する経路を予備として残す必要は無く、残すあいだは今の穴も残る。
+
+同じときに、3 パッケージの package access を「Require two-factor authentication and disallow tokens」にする（`npm help stage` の Best Practices 2）。この設定で Trusted Publishing の stage が通るかは、切り替えたあとに確かめる（通らなければ設定を戻し、別の Issue にする）。
+
+手順は「現時点の方針」の「切り替えの段階」に書く。
 
 ### 論点 7: 承認する tarball が正しいものかをどう確かめるか
 
@@ -201,7 +222,7 @@ stage 済みの版と同じ版は stage できない。乗っ取られた run �
 | 3 承認順             | 3B 計画の順で承認し、記録の workflow で違反を検出      | 順序を注意に頼らない。画面で承認した場合も見つかる                                       |
 | 4 Issue を閉じる時点 | 版を上げた npm パッケージのタグ + VS Code の結果       | 2 つの workflow が同じ条件で判定できる                                                   |
 | 5 VS Code            | 待たない                                               | 既存の構成のまま動く                                                                     |
-| 6 切り替え           | 3 パッケージ同時、本番のトレインで 1 回成功してから    | 失敗しても直接 publish に戻せる                                                          |
+| 6 切り替え           | 3 パッケージ同時、実装の PR のマージ直後               | 失敗しても手元からの stage で戻れる。直接 publish の穴を早く塞ぐ                         |
 | 7 tarball の照合     | 7C 手元で pack した tarball と中身を照合               | 照合の相手を CI の外に置く                                                               |
 
 ## Related TPLs
@@ -213,59 +234,50 @@ stage 済みの版と同じ版は stage できない。乗っ取られた run �
 
 ## 現時点の方針
 
-**論点 1〜7 とも上の「比較」の案を採る。** 公開の経路を stage に変える実装と、直接 publish の許可を外す操作を分け、あいだに本番のトレインを 1 回挟む。
+**論点 1〜7 とも上の「比較」の案を採る。** 公開の経路を stage に変える実装をリハーサルで確かめてからマージし、マージの直後に直接 publish の許可を外す。最初の本番のトレインは stage 専用の状態で出す。
 
 ### 切り替えの段階
 
 実装の PR は 1 本で、#3240 はその PR で閉じる。B と C はマージ後にしか進められないので、実装の PR を作る前に追跡用の Issue を 1 つ起こし、PR の本文から番号を示す（ADR-3271）。
 
-| 段階                                                                                                      | 前提 | 途中で止めても困らない理由                                          |
-| --------------------------------------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------- |
-| **0** Trusted Publisher の設定確認（kompiro が npmjs.com で行う）                                         | なし | 設定の追加だけで、いまの公開に影響しない                            |
-| **A** stage の経路の実装と、リハーサル（実装の PR）                                                       | 0    | 「Allow `npm publish`」は残っているので、下の手順で元の経路に戻せる |
-| **B** 2026-11-29 のトレインを stage で出す（追跡用の Issue）                                              | A    | 同上                                                                |
-| **C** 3 パッケージの「Allow `npm publish`」を外し、`docs/release.md` の前提を書き換える（追跡用の Issue） | B    | 公開の経路はすでに stage だけを使っている                           |
+| 段階                                                                                                            | 前提 | 途中で止めても困らない理由                                               |
+| --------------------------------------------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------ |
+| **0** Trusted Publisher の設定確認（kompiro が npmjs.com で行う）                                               | なし | 設定の追加だけで、いまの公開に影響しない                                 |
+| **A** stage の経路の実装と、リハーサル（実装の PR）                                                             | 0    | マージ前のリハーサルで CI の stage の経路を確かめる                      |
+| **C** 3 パッケージの「Allow `npm publish`」を外し、package access を「disallow tokens」にする（追跡用の Issue） | A    | 公開の経路はすでに stage だけを使う。失敗しても手元からの stage で戻れる |
+| **B** 2026-11-29 のトレインを stage で出す（追跡用の Issue）                                                    | C    | 同上                                                                     |
 
 - **0**: `karasu` と `@karasu-tools/core` の Trusted Publisher で「Allow `npm stage publish`」が有効かを確かめ、無ければ有効にする。`karasu-skills` は有効。
-- **A のリハーサル**: Trusted Publisher は environment を条件にしていないので、`spike/3240-stage-publish-rehearsal` で `release.yml` を `workflow_dispatch` すれば本番と同じ OIDC の経路を通る。3 パッケージの版を prerelease（`X.Y.Z-rehearsal.0`、`--tag rehearsal`）にして stage し、次を確かめたら kompiro が reject する（2FA を 3 回入力する。この形で行うことは kompiro が 2026-11-02 に了承した）。spike は実装のブランチから切り、版の書き換えと `--tag rehearsal` は spike だけに入れる。`vscode` ジョブは Marketplace に公開してしまうので、spike の `release.yml` から外す。
+- **A のリハーサル**: Trusted Publisher は environment を条件にしていないので、`spike/3240-stage-publish-rehearsal` で `release.yml` を `workflow_dispatch` すれば本番と同じ OIDC の経路を通る。3 パッケージの版を prerelease（`X.Y.Z-rehearsal.0`、`--tag rehearsal`）にして stage し、次を確かめたら kompiro が reject する（2FA を 3 回入力する。この形で行うことは kompiro が 2026-11-02 に了承した）。spike は実装のブランチから切り、版の書き換え、`--tag rehearsal`、`stage.mts` のリリースのコミットの判定を外すことは spike だけに入れる。`vscode` ジョブは Marketplace に公開してしまうので、spike の `release.yml` から外す。
   - 3 パッケージとも OIDC で stage できる。ログに `npm --version` を出す
   - 同じ版をもう一度 stage したときの拒否の形（HTTP status と `code`）。`stage.mts` はこの形だけを stage 済みとして扱う
   - `npm stage download` で取り出した tarball の中身（TPL-1681）。`karasu` の `dependencies` が完全一致の版になっていること
   - `npm stage view` に provenance が付いているか
   - `pnpm release:approve --dry-run --commit <spike の sha>` が stage id を見つけ、計画の順に並べ、手元で pack した tarball と中身が一致すること（論点 7）
+- **C のあと**に確かめること: 3 パッケージの Trusted Publisher が stage だけを許可していること。package access を「disallow tokens」にしても Trusted Publishing の stage が通ること（B の最初の stage で分かる）。
 - **B のあと**に確かめること: 承認した版に provenance（`npm view <name>@<version> dist.attestations`）があること、Release に 3 パッケージと拡張の節が揃っていること、トレインの Issue が `release-confirm.yml` で閉じたこと。追跡用の Issue に書く。
-
-#### stage の経路が本番で失敗したときの戻し方
-
-版の一意制約があるので、A を revert して `release.yml` を再実行するだけでは戻らない。
-
-1. まだ承認していない stage 済みの版を `npm stage reject` で消す（版が空き、`npm publish` できるようになる）。
-2. すでに承認した版は npm に載っているがタグが無い。リリースコミットにタグを打って push する（`docs/release.md` のリリースの流れ、手順 8 と同じ）。
-3. A を revert し、`release.yml` を **Re-run failed jobs** で再実行する。`changeset publish` は承認済みの版を飛ばし、残りを直接 publish する。
-
-この手順を `docs/release.md` と追跡用の Issue に書く。
 
 ### 実装の指針
 
-1. `scripts/release/stage.mts`: `changeset pack --out-dir` の計画を読み、グループの順に `npm stage publish <tarball> --tag <tag> --json` を実行する。stage 済みの拒否だけを飛ばし、そのことを出力に明示する。stage した `name@version`、stage id、integrity を出力する。
+1. `scripts/release/stage.mts`: リリースのコミットでなければ何もしない。`changeset pack --out-dir` の計画を読み、グループの順に `npm stage publish <tarball> --tag <tag> --json` を実行する。prerelease に `latest` を付けようとしたら止める。stage 済みの拒否だけを飛ばし、そのことを出力に明示する。stage した `name@version`、stage id、integrity を出力する。
 2. `release.yml`:
    - `pnpm run release` の中身を `pnpm build && node scripts/release/stage.mts` に変える。
    - 「Set a git identity」「Collect the tags」と `record` ジョブを削除する。
    - `close-train` を論点 4 の判定に変え、`release-record` の concurrency グループに入れる。
    - ヘッダーのコメントを stage に合わせて書き直す。
-3. `.github/workflows/release-confirm.yml`: `workflow_dispatch` と毎日の `schedule`。権限は `contents: write`、`issues: write`、`pull-requests: read`。`id-token` は持たない。リリースコミットを求め、npm に載った版のタグを打ち、Release を作り、順序の違反を検出し、論点 4 の判定で Issue を閉じる。concurrency は `release-record` グループに入れる。
-4. `scripts/release/approve.mts` と、ルートの `package.json` の `release:approve`。論点 3 の手順、論点 7 の照合、`--dry-run` と `--commit`。
+3. `.github/workflows/release-confirm.yml`: `workflow_dispatch` と毎日の `schedule`。権限は `contents: write`、`issues: write`、`pull-requests: read`、`actions: read`（`release.yml` の run の結果を読む）。`id-token` は持たない。リリースコミットを求め、版を上げた npm パッケージのうち npm に載った版のタグを打ち、Release を作り、順序の違反を検出し、論点 4 の判定で Issue を閉じる。concurrency は `release-record` グループに入れる。
+4. `scripts/release/approve.mts` と、ルートの `package.json` の `release:approve`。論点 3 の手順、論点 7 の照合、計画に無い stage 済みの項目の表示、`--dry-run` と `--commit`。
 5. `scripts/release/train.mts`: チェックリストに承認の行を足し、Issue 本文の文言（いまの「`release.yml` が閉じる」など）を直す。Issue を閉じる判定を足す。
 6. テスト: 既存の `scripts/release/*.test.ts` に倣う。計画の読み方、拒否の分類、`npm view` の `E404` とほかの失敗の区別、リリースコミットの求め方、順序の違反の検出、閉じる判定、tarball の中身の照合。`release-workflow.test.ts` はいま「Set a git identity」「Collect the tags」と `record` ジョブを検査しているので、書き直す。`release.yml` の公開ジョブが `contents: read`、`release-confirm.yml` が `id-token` を持たないことを確かめる。
-7. `published-packages.mts` は「Collect the tags」が無くなると使われない（使っているのは `release.yml` と自身のテストだけ）。テストごと削除し、knip で残りが無いことを確かめる。
-8. 文書とコメント: `docs/release.md` の「リリースの流れ」（手順 4・6・8 の公開・タグ・閉じ方）に、承認、`release-confirm.yml`、reject したとき、戻し方を足す。`vscode-release.yml` の `record` のコメント（「Release は `release.yml` が作る」）を直す。前提の節（「Allow `npm publish`」にチェックを入れる）は段階 C で書き換える。
-9. ADR の assumptions: ADR-1315 の `"release": "pnpm build && changeset publish"` と、ADR-2939 の `release.yml` の `group: release-record` は、実装の PR で成り立たなくなる（後者は `close-train` を同じグループに入れれば残る）。成り立たなくなる行は、実装の PR で frontmatter から外す（本文は変えない）。
+7. `published-packages.mts` は「Collect the tags」が無くなると使われない。コードで使っているのは `release.yml` と自身のテストだけで、ほかに `release-workflow.test.ts` と `docs/release.md` が名指している（6 と 8 で書き直す）。テストごと削除し、knip で残りが無いことを確かめる。
+8. 文書とコメント: `docs/release.md` の「リリースの流れ」（手順 4〜8 の公開の経路・タグ・閉じ方）に、承認、`release-confirm.yml`、reject したとき、CI の経路が使えないときを足す。前提の節は、stage だけを許可する Trusted Publisher の設定、登録から使うまでに失効しうること（いまの記述を stage に合わせて残す）、package access の設定に書き換える（段階 C の操作と同じ内容なので、実装の PR で書く）。`vscode-release.yml` の冒頭と `record` のコメント（`changeset publish` や「Release は `release.yml` が作る」）を直す。
+9. ADR の assumptions: ADR-1315 と ADR-9020 の `"release": "pnpm build && changeset publish"` は、実装の PR で成り立たなくなる。ADR-2939 の `release.yml` の `group: release-record` は、`close-train` を同じグループに入れるので残る。成り立たなくなる行は、実装の PR で frontmatter から外す（本文は変えない）。
 10. AT は作らない。確かめられるのは本番のトレインだけなので、A のリハーサルの結果は PR の本文に、B のあとの確認は追跡用の Issue に置く（ADR-3169）。
-11. ADR 昇格: 実装の PR がマージされたら `docs/adr/3240-staged-npm-publishing.md` に昇格し、本 Design Doc を削除する。新しい ADR は、ADR-1315（`changeset publish` で公開する）、ADR-9020（`release.yml` が OIDC で直接公開する）、ADR-2939 決定 2（`release.yml` の `record` ジョブ）、ADR-2922 の `close-train` の閉じる条件を、どこまで置き換えるかを本文に書き、`related_to` で結ぶ。どれも決定の一部だけを変えるので `supersedes` にはしない。旧 ADR の本文は変えない。段階 C で「Allow `npm publish`」を外すことも、この ADR の決定に含める。
+11. ADR 昇格: 実装の PR がマージされたら `docs/adr/3240-staged-npm-publishing.md` に昇格し、本 Design Doc を削除する。新しい ADR は、ADR-1315（`changeset publish` で公開する）、ADR-9020（`release.yml` が OIDC で直接公開する）、ADR-2939 決定 2（`release.yml` の `record` ジョブ）、ADR-2922 の `close-train` の閉じる条件を、どこまで置き換えるかを本文に書き、`related_to` で結ぶ。どれも決定の一部だけを変えるので `supersedes` にはしない。旧 ADR の本文は変えない。段階 C で「Allow `npm publish`」を外すことと package access の設定も、この ADR の決定に含める。
 
 ### 影響範囲・マイグレーション
 
 - 利用者への影響: なし。公開される tarball の中身は変わらない。公開されるまでの時間が、承認を待つ分だけ延びる。
 - メンテナの作業: トレインごとに `pnpm release:approve` を 1 回実行する（ビルドに数分、2FA を 3 回入力する）。
-- ドキュメント: `docs/release.md`（段階 A と段階 C）。
+- ドキュメント: `docs/release.md`（実装の PR でまとめて書き換える）。
 - テスト: `scripts/release/` のテストを追加・書き直す。`published-packages.test.ts` は削除する。
