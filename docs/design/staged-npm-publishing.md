@@ -111,7 +111,7 @@ npm の staged publishing について、npm 11.16.0 の `npm help stage` / `npm
 
 順序は TPL-3240 の観点に従い、「完全一致で依存する側を、依存先がインストールできるようになってから承認する」で決める。表に書いた順を守るのではなく、各パッケージの `dependencies` から導く。`release-confirm.yml` は、`karasu` が npm にあるのに、その tarball が完全一致で指す `karasu-skills` の版が無いときに失敗し、トレインの Issue にコメントする。画面で承認して順序を誤った場合も、ここで見つかる。
 
-案 3B を採る。案 3A の文書は、案 3B の手順を書く形で残す。
+案 3B を採る。案 3A の文書は、案 3B の手順を書く形で残す。`docs/release.md` は `pnpm release:approve` を正の手順とし、npmjs.com の画面での承認は禁止しない（kompiro の判断、2026-11-02）。画面で順序を誤ると、`release-confirm.yml` が検出するまでのあいだ `npm i karasu` が壊れうる。手順書にはそのことと、画面で承認するなら `karasu-skills` を先にすることを書く。
 
 ### 論点 4: トレインの Issue をいつ閉じるか
 
@@ -165,7 +165,7 @@ npm の staged publishing について、npm 11.16.0 の `npm help stage` / `npm
 | **C** 3 パッケージの「Allow `npm publish`」を外し、`docs/release.md` の前提を書き換え、ADR に昇格する（追跡用の Issue） | B    | 公開の経路はすでに stage だけを使っている                            |
 
 - **0**: `karasu` と `@karasu-tools/core` の Trusted Publisher で「Allow `npm stage publish`」が有効かを確かめ、無ければ有効にする。`karasu-skills` は有効。
-- **A のリハーサル**: Trusted Publisher は environment を条件にしていないので、`spike/3240-stage-publish-rehearsal` で `release.yml` を `workflow_dispatch` すれば本番と同じ OIDC の経路を通る。3 パッケージの版を prerelease（`X.Y.Z-rehearsal.0`、`--tag rehearsal`）にして stage し、次を確かめたら reject する（reject は 2FA が要る）。
+- **A のリハーサル**: Trusted Publisher は environment を条件にしていないので、`spike/3240-stage-publish-rehearsal` で `release.yml` を `workflow_dispatch` すれば本番と同じ OIDC の経路を通る。3 パッケージの版を prerelease（`X.Y.Z-rehearsal.0`、`--tag rehearsal`）にして stage し、次を確かめたら kompiro が reject する（2FA を 3 回入力する。この形で行うことは kompiro が 2026-11-02 に了承した）。spike は実装のブランチから切り、版の書き換えと `--tag rehearsal` は spike だけに入れる。`vscode` ジョブは Marketplace に公開してしまうので、spike の `release.yml` から外す。
   - 3 パッケージとも OIDC で stage できる
   - 同じ版をもう一度 stage したときの拒否の形（HTTP status と `code`）。`stage.mts` はこの形だけを stage 済みとみなす
   - `npm stage download` で取り出した tarball の中身（TPL-1681）。`karasu` の `dependencies` が完全一致の版になっていること
@@ -196,8 +196,3 @@ npm の staged publishing について、npm 11.16.0 の `npm help stage` / `npm
 - メンテナの作業: トレインごとに `pnpm release:approve` を 1 回実行する（2FA を 3 回入力する）。
 - ドキュメント: `docs/release.md`（段階 A と段階 C）。
 - テスト: `scripts/release/` のテストを追加・更新する。`published-packages.test.ts` は削除する。
-
-## 未解決の問い
-
-- リハーサルを spike ブランチの `workflow_dispatch` で行ってよいか。本番と同じ OIDC の経路を通るが、kompiro が 3 回 reject する（2FA）必要がある。
-- 承認を `pnpm release:approve` だけに限るか、npmjs.com の画面での承認も認めるか。画面で承認しても、順序を誤れば `release-confirm.yml` が検出するが、検出までのあいだ `npm i karasu` が壊れる。
