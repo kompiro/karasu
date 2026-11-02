@@ -54,6 +54,8 @@ describe("pathTier", () => {
     ["scripts/review/tier.ts", "high"],
     ["scripts/review/local-review-record.test.ts", "high"],
     ["scripts/coderabbit/review-state.ts", "high"],
+    ["scripts/render-equivalence/verdict.ts", "high"],
+    ["scripts/pr-shots/candidates.ts", "high"],
     ["scripts/bin/gh", "high"],
     [".claude/settings.json", "high"],
     [".claude/skills/coderabbit-converge/SKILL.md", "high"],
