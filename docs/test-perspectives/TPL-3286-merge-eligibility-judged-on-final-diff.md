@@ -8,6 +8,7 @@ applicable_to:
   - "判定を PR の作成時に 1 回だけ行い、その後のコミットで差分が変わりうる運用を設計するとき"
   - "許可するパスや種類を列挙する allowlist / denylist 形式の判定に、新しい項目を足すとき"
   - "レビューを済ませたという記録（ローカルレビューの記録など）を、マージや自動レビューの省略の条件にする検査を書く、または変えるとき"
+  - "PR の差分から、人間が読むファイルと機械の検査に任せるファイルを分ける判定や、PR を分けてよいかの判定を書く、または変えるとき"
 known_consumers:
   - review-tier
   - adr-auto-merge
@@ -16,6 +17,7 @@ discovered_from:
   - issue: "#3286"
   - issue: "#3405"
   - issue: "#3505"
+  - issue: "#3543"
   - root_cause_adr: ADR-2331
 related_to:
   - TPL-1725
