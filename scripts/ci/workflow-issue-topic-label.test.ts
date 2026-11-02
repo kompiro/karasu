@@ -9,10 +9,14 @@ import { describe, expect, it } from "vitest";
 // nothing else notices until someone runs the audit command by hand.
 //
 // Both ways the workflows file an Issue are read: a `gh issue create` command
-// (its `--label` / `-l` flags) and an `issues.create(...)` call inside
-// `actions/github-script` (its `labels:` array). An Issue filed any other way
-// (a `gh api` POST, a script the workflow runs) is not seen: none exists
-// today, and one added later has to be read here too.
+// (its `--label` / `-l` arguments) and an `issues.create(...)` call inside
+// `actions/github-script` (the top-level `labels` property of its argument).
+// Both are tokenized rather than pattern-matched, so label-like text inside a
+// title or body is never read as a label, and a form the scan cannot settle
+// (a variable argument, a spread, a shorthand `labels`) yields no labels and
+// fails. An Issue filed any other way (a `gh api` POST, a script the workflow
+// runs) is not seen: none exists today, and one added later has to be read
+// here too.
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 const WORKFLOW_DIR = join(REPO_ROOT, ".github/workflows");
@@ -23,32 +27,79 @@ const TOPICS: readonly string[] = JSON.parse(
 
 type IssueSite = { readonly where: string; readonly labels: readonly string[] };
 
-/** The `--label` / `-l` values of each `gh issue create`, following `\` continuations. */
-function ghIssueCreateSites(file: string, lines: readonly string[]): IssueSite[] {
-  const sites: IssueSite[] = [];
-  lines.forEach((line, i) => {
-    if (/^\s*#/.test(line) || !/\bgh issue create\b/.test(line)) return;
-    let command = line;
-    for (let j = i; lines[j].trimEnd().endsWith("\\") && j + 1 < lines.length; j++) {
-      command += `\n${lines[j + 1]}`;
-    }
-    // `--label a,b` adds both, so a value is split on commas.
-    const labels = [
-      ...command.matchAll(/(?:--label[=\s]|-l\s)\s*(?:"([^"]*)"|'([^']*)'|([^\s)\\]+))/g),
-    ]
-      .flatMap((m) => (m[1] ?? m[2] ?? m[3]).split(","))
-      .map((label) => label.trim());
-    sites.push({ where: `${file}:${i + 1}`, labels });
+/** Whether the match at `index` sits on a line commented out with `#` or `//`. */
+function commentedOut(text: string, index: number): boolean {
+  const lineStart = text.lastIndexOf("\n", index) + 1;
+  return /^\s*(?:#|\/\/)/.test(text.slice(lineStart, index));
+}
+
+const lineOf = (text: string, index: number): number => text.slice(0, index).split("\n").length;
+
+/**
+ * The words of the shell command starting at `start`, quoted the way the shell
+ * quotes them: `'...'` and `"..."` stay inside one word, and `\` escapes the
+ * next character (so `\` + newline joins two lines). The command ends at an
+ * unquoted newline, `;`, `|`, `&` or `)`.
+ */
+function shellWords(text: string, start: number): string[] {
+  const words: string[] = [];
+  let word: string | null = null;
+  let quote: string | null = null;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (quote !== null) {
+      if (c === quote) quote = null;
+      else if (c === "\\" && quote === '"') word += text[++i] ?? "";
+      else word += c;
+    } else if (c === "\\") {
+      if (text[i + 1] !== "\n") word = (word ?? "") + (text[i + 1] ?? "");
+      i++;
+    } else if (c === "'" || c === '"') {
+      quote = c;
+      word ??= "";
+    } else if (/\s/.test(c) || ";|&)".includes(c)) {
+      if (word !== null) words.push(word);
+      word = null;
+      if (c === "\n" || ";|&)".includes(c)) return words;
+    } else word = (word ?? "") + c;
+  }
+  if (word !== null) words.push(word);
+  return words;
+}
+
+/** `gh issue create` flags that take no value; every other flag consumes the next word. */
+const GH_BOOLEAN_FLAGS = new Set(["-e", "--editor", "-w", "--web"]);
+
+/** The labels a `gh issue create` argument list adds: `--label x`, `-l x`, `--label=x`, `x,y`. */
+function ghLabels(args: readonly string[]): string[] {
+  const values: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg.startsWith("--label=")) values.push(arg.slice("--label=".length));
+    else if (arg === "--label" || arg === "-l") values.push(args[++i] ?? "");
+    else if (arg.startsWith("-") && !arg.includes("=") && !GH_BOOLEAN_FLAGS.has(arg)) i++;
+  }
+  return values.flatMap((value) => value.split(",")).map((label) => label.trim());
+}
+
+function ghIssueCreateSites(file: string, text: string): IssueSite[] {
+  return [...text.matchAll(/\bgh issue create\b/g)].flatMap((m) => {
+    if (commentedOut(text, m.index)) return [];
+    const labels = ghLabels(shellWords(text, m.index).slice(3));
+    return [{ where: `${file}:${lineOf(text, m.index)}`, labels }];
   });
-  return sites;
 }
 
 /**
- * The text between the parenthesis at `open` and the one that closes it.
- * Parentheses inside a string literal (`"..."`, `'...'`, `` `...` ``) are not
- * counted, so a `(` in a title cannot carry the call on into the next one.
+ * Walks the JavaScript from `open` (an opening bracket) to the bracket that
+ * closes it, calling `visit` with each character outside a string literal and
+ * its depth (1 directly inside `open`). Returns the closing bracket's index.
  */
-function callArguments(text: string, open: number): string {
+function walkBrackets(
+  text: string,
+  open: number,
+  visit: (i: number, depth: number) => void,
+): number {
   let depth = 0;
   let quote: string | null = null;
   for (let i = open; i < text.length; i++) {
@@ -57,39 +108,53 @@ function callArguments(text: string, open: number): string {
       if (c === "\\") i++;
       else if (c === quote) quote = null;
     } else if (c === '"' || c === "'" || c === "`") quote = c;
-    else if (c === "(") depth++;
-    else if (c === ")" && --depth === 0) return text.slice(open + 1, i);
+    else if ("([{".includes(c)) depth++;
+    else if (")]}".includes(c) && --depth === 0) return i;
+    else if (i > open) visit(i, depth);
   }
-  return text.slice(open + 1);
+  return text.length;
 }
 
 /**
- * The string literals in the `labels:` array of each `issues.create(...)`. A
- * call with no `labels:` or more than one (a nested object's) yields no
- * labels, so it fails rather than borrowing a label it may not own.
+ * The string literals of the top-level `labels` array in the object passed to
+ * the call whose `(` is at `open`, or `[]` when the scan cannot settle them:
+ * the argument is not an object literal, it has a spread, or it has no
+ * `labels: [...]` (or more than one) at its own top level.
  */
+function callLabels(text: string, open: number): string[] {
+  const object = open + 1 + (text.slice(open + 1).length - text.slice(open + 1).trimStart().length);
+  if (text[object] !== "{") return [];
+  const keys: number[] = [];
+  let spread = false;
+  walkBrackets(text, object, (i, depth) => {
+    if (depth !== 1) return;
+    if (text.startsWith("...", i)) spread = true;
+    if (/^labels\s*:/.test(text.slice(i)) && !/[\w$.]/.test(text[i - 1])) keys.push(i);
+  });
+  if (spread || keys.length !== 1) return [];
+  const array = text.indexOf("[", keys[0]);
+  if (!/^labels\s*:\s*$/.test(text.slice(keys[0], array))) return [];
+  const end = walkBrackets(text, array, () => {});
+  return [...text.slice(array, end).matchAll(/"([^"\\]*)"|'([^'\\]*)'/g)].map((l) => l[1] ?? l[2]);
+}
+
 function issuesCreateSites(file: string, text: string): IssueSite[] {
   // `\b` rather than a leading `.`, so a destructured `issues.create(` counts.
   return [...text.matchAll(/\bissues\.create\s*\(/g)].flatMap((m) => {
-    const lineStart = text.lastIndexOf("\n", m.index) + 1;
-    if (/^\s*(?:#|\/\/)/.test(text.slice(lineStart, m.index))) return [];
-    const args = callArguments(text, m.index + m[0].length - 1);
-    const arrays = [...args.matchAll(/labels:\s*\[([^\]]*)\]/g)];
-    const labels =
-      arrays.length === 1
-        ? [...arrays[0][1].matchAll(/"([^"]*)"|'([^']*)'/g)].map((l) => l[1] ?? l[2])
-        : [];
-    const line = text.slice(0, m.index).split("\n").length;
-    return [{ where: `${file}:${line}`, labels }];
+    if (commentedOut(text, m.index)) return [];
+    const labels = callLabels(text, m.index + m[0].length - 1);
+    return [{ where: `${file}:${lineOf(text, m.index)}`, labels }];
   });
 }
 
+const scan = (file: string, text: string): IssueSite[] => [
+  ...ghIssueCreateSites(file, text),
+  ...issuesCreateSites(file, text),
+];
+
 const sites = readdirSync(WORKFLOW_DIR)
   .filter((file) => /\.ya?ml$/.test(file))
-  .flatMap((file) => {
-    const text = readFileSync(join(WORKFLOW_DIR, file), "utf8");
-    return [...ghIssueCreateSites(file, text.split("\n")), ...issuesCreateSites(file, text)];
-  });
+  .flatMap((file) => scan(file, readFileSync(join(WORKFLOW_DIR, file), "utf8")));
 
 describe("workflows that file an Issue give it a topic: label", () => {
   it("finds the Issue-filing workflows (the scan itself still works)", () => {
@@ -107,4 +172,48 @@ describe("workflows that file an Issue give it a topic: label", () => {
       expect(TOPICS).toContain(topics[0].slice("topic: ".length));
     },
   );
+});
+
+describe("the scan reads labels, not label-like text", () => {
+  const labelsOf = (text: string) => scan("t.yml", text).map((site) => site.labels);
+
+  it("reads every gh flag form, across `\\` continuations", () => {
+    const run = [
+      `gh issue create --title "T (x)" \\`,
+      `  --label "a" -l 'b' --label=c,d \\`,
+      `  --body-file /tmp/b.md`,
+      `echo "--label topic: after the command"`,
+    ].join("\n");
+    expect(labelsOf(run)).toEqual([["a", "b", "c", "d"]]);
+  });
+
+  it("does not read --label inside a quoted --body as a label", () => {
+    expect(labelsOf(`gh issue create --body "Run with --label 'topic: build'" --title T`)).toEqual([
+      [],
+    ]);
+  });
+
+  it("does not read a flag's value as a flag", () => {
+    expect(labelsOf(`gh issue create --title --label -l topic:x`)).toEqual([["topic:x"]]);
+  });
+
+  it("reads only the call's own top-level labels array", () => {
+    const script = `await github.rest.issues.create({ title: "x (", labels: [label, "topic: testing"] });`;
+    expect(labelsOf(script)).toEqual([["topic: testing"]]);
+  });
+
+  it("does not read labels: inside a string or a nested object", () => {
+    expect(labelsOf('issues.create({ body: `labels: ["topic: testing"]` });')).toEqual([[]]);
+    expect(labelsOf(`issues.create({ meta: { labels: ["topic: testing"] } });`)).toEqual([[]]);
+  });
+
+  it("yields no labels for a form it cannot settle", () => {
+    expect(labelsOf(`issues.create(params);`)).toEqual([[]]);
+    expect(labelsOf(`issues.create({ ...base, labels: ["topic: build"] });`)).toEqual([[]]);
+    expect(labelsOf(`issues.create({ labels });`)).toEqual([[]]);
+  });
+
+  it("skips commented-out lines", () => {
+    expect(labelsOf(`# gh issue create --title T\n// issues.create({})`)).toEqual([]);
+  });
 });
