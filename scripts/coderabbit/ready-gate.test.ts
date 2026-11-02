@@ -72,6 +72,8 @@ const DRAFT: PrView = {
   body: "Closes #1",
   headRefOid: HEAD,
   baseRefName: "main",
+  // gh returns the base branch's tip, here origin/main.
+  baseRefOid: BASE,
 };
 
 let count = 0;
@@ -199,7 +201,7 @@ describe("gh wrapper: gh pr ready", () => {
     expect(result.stderr).toContain("PR #12");
     expect(result.stderr).toContain("/engineering:code-review");
     expect(result.stderr).toContain(
-      "coderabbit review --agent --deep --base origin/main --committed",
+      `coderabbit review --agent --deep --base-commit ${BASE} --committed`,
     );
     expect(result.stderr).toContain("KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr ready 12");
     expect(reachedRealGh(gh, "pr ready 12")).toBe(false);
@@ -322,6 +324,23 @@ describe("gh wrapper: gh pr ready", () => {
   it("falls back to the base branch when the PR's base commit is not here", () => {
     const gh = fakeGh({ ...DRAFT, baseRefOid: "e".repeat(40) });
     expect(run("gh pr ready 12", gh, reviewedWork()).status).toBe(0);
+    // Read by name, a review only of the base branch does not count.
+    const onBase = reviews({ head: BASE, state: "complete" });
+    expect(
+      run("gh pr ready 12", fakeGh({ ...DRAFT, baseRefOid: "e".repeat(40) }), onBase).status,
+    ).toBe(1);
+  });
+
+  // origin's branch of the base name says nothing about another repository's
+  // base, so a PR picked by --repo or GH_REPO whose base commit is not here is
+  // let through.
+  it.each([
+    ["-R someone/karasu", {}],
+    ["", { GH_REPO: "someone/karasu" }],
+  ])("lets `gh pr ready 12 %s` through when the PR's base commit is not here", (args, env) => {
+    const gh = fakeGh({ ...DRAFT, baseRefOid: "e".repeat(40) });
+    expect(run(`gh pr ready 12 ${args}`, gh, reviews(), env).status).toBe(0);
+    expect(reachedRealGh(gh, `pr ready 12 ${args}`.trim())).toBe(true);
   });
 
   it("keeps --repo in the skip it suggests, so the skip readies the same PR", () => {

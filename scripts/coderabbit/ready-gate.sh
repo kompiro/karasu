@@ -288,10 +288,14 @@ head=$(jq -r '.headRefOid' <<<"$view")
 base=$(jq -r '.baseRefName' <<<"$view")
 git cat-file -e "$head^{commit}" 2>/dev/null || exit 0
 # The PR's own base commit, which also holds for a fork's PR. When it is not
-# here (origin fetched before the base moved), fall back to the base by name.
+# here (origin fetched before the base moved), fall back to the base by name,
+# but only for this repository's PR: origin's branch of that name says nothing
+# about another repository's base, so with --repo or GH_REPO the gate lets the
+# ready through.
 base_ref=$(jq -r '.baseRefOid // empty' <<<"$view")
 base_flag=--base-commit
 if [ -z "$base_ref" ] || ! git cat-file -e "$base_ref^{commit}" 2>/dev/null; then
+  [ -z "$repo${GH_REPO:-}" ] || exit 0
   base_ref=$(base_ref_of "$base") || exit 0
   base_flag=--base
 fi
