@@ -366,25 +366,31 @@ describe("classifyChange", () => {
           tier: "high",
           securityReview: true,
         });
-        expect(tierOf(deleted(path))).toBe("high");
+        expect(classifyChange({ files: [deleted(path)], author: "kompiro" })).toMatchObject({
+          tier: "high",
+          securityReview: true,
+        });
         const before = "it('blocks 10.0.0.1', () => {\n  expect(fetchIt()).rejects;\n});";
+        const classify = (f: ChangedFile) => classifyChange({ files: [f], author: "kompiro" });
         const sides = (after: string, inserted: string[]) =>
           modified(path, {
             before,
             after,
             hunks: [{ oldStart: 0, removed: [], newStart: 1, added: inserted }],
           });
-        // Adding a case stays Medium.
+        // Adding a case stays Medium, with no security review.
         expect(
-          tierOf(sides(`it('blocks ::1', () => {});\n${before}`, ["it('blocks ::1', () => {});"])),
-        ).toBe("medium");
+          classify(
+            sides(`it('blocks ::1', () => {});\n${before}`, ["it('blocks ::1', () => {});"]),
+          ),
+        ).toMatchObject({ tier: "medium", securityReview: false });
         // Turning the test off without removing a line is High too.
         expect(tierOf(sides(`/*\n${before}\n*/`, ["/*"]))).toBe("high");
         expect(tierOf(sides(`return;\n${before}`, ["return;"]))).toBe("high");
         // Rewording a comment there is not turning it off.
         const commented = `// SSRF guard\n${before}`;
         expect(
-          tierOf(
+          classify(
             modified(path, {
               before: commented,
               after: `// The SSRF guard\n${before}`,
@@ -398,16 +404,19 @@ describe("classifyChange", () => {
               ],
             }),
           ),
-        ).toBe("medium");
+        ).toMatchObject({ tier: "medium", securityReview: false });
       }
-      // A test of a file outside the boundary is Medium either way.
+      // A test of a file outside the boundary is Medium either way, with no security review.
       expect(
-        tierOf(
-          modified("packages/cli/src/render.test.ts", {
-            hunks: [hunk(["it('x', ...)"], [])],
-          }),
-        ),
-      ).toBe("medium");
+        classifyChange({
+          files: [
+            modified("packages/cli/src/render.test.ts", {
+              hunks: [hunk(["it('x', ...)"], [])],
+            }),
+          ],
+          author: "kompiro",
+        }),
+      ).toMatchObject({ tier: "medium", securityReview: false });
     });
 
     it("is Medium for any change to an existing test file (TPL-3286)", () => {
