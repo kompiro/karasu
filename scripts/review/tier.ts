@@ -19,10 +19,11 @@
 // plain `node` (type stripping), so the check needs no `pnpm install`.
 
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
 import { matchesGlob, posix } from "node:path";
 import { classifyGeneratedDiff, parseNameStatus, readAdrPaths } from "../adr/generated.ts";
 import { type GitFacts, parseRecord, verifyRecord } from "./local-review-record.ts";
+import { checkTestChanges, closedIssueNumbers, isTestFile, TEST_GLOBS } from "./test-changes.ts";
 
 export type Tier = "low" | "design" | "medium" | "high";
 
@@ -68,16 +69,63 @@ const HIGH_GLOBS: readonly string[] = [
   ".github/PULL_REQUEST_TEMPLATE.md",
 ];
 
+/**
+ * Code that stands between karasu and what it does not trust: a `.krs` from a
+ * stranger, a URL, a webview message, a path on disk (#3505). Always High, and
+ * `/security-review` too. A test file is not matched here ({@link pathTier});
+ * only removing lines from one is High ({@link fileTier}).
+ */
+const SECURITY_TIER_GLOBS: readonly string[] = [
+  "packages/nest/**",
+  "packages/cli/src/{serve,render-*,node-fs,path-arg,watcher}*",
+  "packages/core/src/fs/**",
+  "packages/vscode/src/{message-validation,webview-html,host-files}*",
+  // `openExternal`.
+  "packages/vscode/src/preview-panel.ts",
+  // Escapes the SVG text and attributes that the app, nest and the webview
+  // insert as HTML.
+  "packages/core/src/renderer/svg-builder.ts",
+  // Decodes the payload of a shared URL.
+  "packages/app/src/utils/inline-share.ts",
+  // DOMPurify and `dangerouslySetInnerHTML`.
+  "packages/app/src/components/{ChatPane,NodeDetailPanel,EdgeDetailPanel}.tsx",
+];
+
+/**
+ * Code whose change changes what the language accepts, means or rewrites
+ * (#3505). High, so a change to it gets CodeRabbit's rounds even without a spec
+ * change. A `refactor` will drop to Medium here only once `Render equivalence`
+ * is a required check that proves it (#3540); until then a refactor is High too.
+ */
+const LANGUAGE_TIER_GLOBS: readonly string[] = [
+  "packages/core/src/{lexer,parser,resolver,spec,style,formatter,annotations}/**",
+  "packages/core/src/language-version.ts",
+  "packages/core/src/builtins/default-style.ts",
+  // Turns diagnostics into what the editor shows; nothing compares its output.
+  "packages/lsp/src/diagnostics*",
+];
+
+/**
+ * Calls that put text into the DOM, run it as code or open it outside karasu. A
+ * changed line naming one makes a code file High wherever it lives, so a new
+ * file does not wait for {@link SECURITY_TIER_GLOBS} to learn its name (TPL-2446).
+ */
+const DANGEROUS_SINKS: readonly RegExp[] = [
+  /dangerouslySetInnerHTML/,
+  /innerHTML/,
+  /DOMPurify/,
+  /openExternal/,
+  /\beval\s*\(/,
+  /\bnew\s+Function\b/,
+];
+
+/** Where {@link DANGEROUS_SINKS} is read: code, not prose that names the calls. */
+const CODE_FILE = /\.(?:[cm]?[jt]sx?|html|vue|svelte)$/;
+
 const DESIGN_GLOBS: readonly string[] = ["docs/design/**"];
 
 /** `docs/adr/**` is not here: its Low cases are read from the diff ({@link adrFileTier}). */
-const LOW_GLOBS: readonly string[] = [
-  "docs/test-perspectives/**",
-  "docs/guide/**",
-  "**/*.test.ts",
-  "**/*.test.tsx",
-  "**/*.spec.ts",
-];
+const LOW_GLOBS: readonly string[] = ["docs/test-perspectives/**", "docs/guide/**", ...TEST_GLOBS];
 
 /**
  * `pnpm adr:regenerate` output. Pinned to `adr.config.json` `paths.outputs` by a
@@ -99,7 +147,7 @@ const LINKABLE_ADR = /^docs\/adr\/\d+-[a-z0-9-]+\.md$/;
 
 /** A diff touching these also gets `/security-review`, whatever its tier. */
 const SECURITY_GLOBS: readonly string[] = [
-  "packages/nest/**",
+  ...SECURITY_TIER_GLOBS,
   ".github/workflows/**",
   ".github/actions/**",
 ];
@@ -149,9 +197,15 @@ const matchesAny = (path: string, globs: readonly string[]): boolean =>
 const isPackageJson = (path: string): boolean =>
   path === "package.json" || path.endsWith("/package.json");
 
-/** The tier one path asks for by its location alone. */
+/**
+ * The tier one path asks for by its location alone. A test file stays out of
+ * the security and language rules: adding a test must not make a PR High.
+ */
 export function pathTier(path: string): Tier {
   if (matchesAny(path, HIGH_GLOBS)) return "high";
+  if (!isTestFile(path) && matchesAny(path, [...SECURITY_TIER_GLOBS, ...LANGUAGE_TIER_GLOBS])) {
+    return "high";
+  }
   if (matchesAny(path, DESIGN_GLOBS)) return "design";
   if (matchesAny(path, LOW_GLOBS)) return "low";
   return "medium";
@@ -679,7 +733,6 @@ function adrFileTier(f: ChangedFile): Tier {
   return adrEditIsRecordOnly(f.before, f.after, f.hunks) ? "low" : "medium";
 }
 
-const TEST_GLOBS: readonly string[] = ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"];
 /**
  * A test file is Low only when it is new. A new file adds tests and can take no
  * existing coverage away. Any change to an existing test file can (a deleted
@@ -689,6 +742,22 @@ const TEST_GLOBS: readonly string[] = ["**/*.test.ts", "**/*.test.tsx", "**/*.sp
  * it (TPL-3286).
  */
 const isNewFile = (f: ChangedFile): boolean => f.status === "added";
+
+/**
+ * Whether a test file covers a security boundary: it sits under one of
+ * {@link SECURITY_TIER_GLOBS}, or names a file there once its `.test` / `.spec`
+ * part is dropped (`serve.e2e.test.ts` covers `serve.ts`).
+ */
+function isSecurityTest(path: string): boolean {
+  const source = path.replace(/(?:\.e2e)?\.(?:test|spec)(?=\.tsx?$)/, "");
+  return matchesAny(path, SECURITY_TIER_GLOBS) || matchesAny(source, SECURITY_TIER_GLOBS);
+}
+
+/** Whether any line the file adds or removes names one of {@link DANGEROUS_SINKS}. */
+const touchesDangerousSink = (f: ChangedFile): boolean =>
+  f.hunks.some((h) =>
+    [...h.removed, ...h.added].some((line) => DANGEROUS_SINKS.some((re) => re.test(line))),
+  );
 
 function fileTier(
   f: ChangedFile,
@@ -703,7 +772,14 @@ function fileTier(
   // Nothing below lowers a High path: the review machinery, rules and specs are
   // read by a human however small the change is.
   if (byPath === "high") return "high";
-  if (byPath === "low" && matchesAny(f.path, TEST_GLOBS) && !isNewFile(f)) return "medium";
+  if (isTestFile(f.path)) {
+    if (isNewFile(f)) return byPath;
+    // A reason line must not be enough to drop an SSRF or symlink regression test.
+    const removes = f.status === "deleted" || f.hunks.some((h) => h.removed.length > 0);
+    if (removes && isSecurityTest(f.path)) return "high";
+    return "medium";
+  }
+  if (CODE_FILE.test(f.path) && touchesDangerousSink(f)) return "high";
   // ADR promotion (ADR-2331): only in a PR that adds an ADR record. A hunk
   // either swaps Design Doc links for the ADR or inserts links to it (#3405).
   if (promotion.newAdrs.length > 0) {
@@ -954,7 +1030,12 @@ function changedFiles(base: string, head: string): ChangedFile[] {
   const mergeBase = mergeBaseOf(base, head);
   return parseDiff(prDiff(base, head)).map((d) => {
     const f: ChangedFile = { path: d.path, status: d.status, hunks: d.hunks };
-    if (isPackageJson(d.path) || ADR_RECORD.test(d.path) || AT_RECORD.test(d.path)) {
+    if (
+      isPackageJson(d.path) ||
+      ADR_RECORD.test(d.path) ||
+      AT_RECORD.test(d.path) ||
+      isTestFile(d.path)
+    ) {
       f.before = gitShow(mergeBase, d.path);
       f.after = gitShow(head, d.path);
     }
@@ -1020,8 +1101,30 @@ interface PrView {
   labels: { name: string }[];
   headRefOid: string;
   baseRefName: string;
+  title: string;
   body: string;
   autoMergeRequest: unknown;
+  closingIssuesReferences: {
+    number: number;
+    repository: { name: string; owner: { login: string } };
+  }[];
+}
+
+/**
+ * Whether the PR closes an Issue labeled `bug`: one GitHub links to it, or one
+ * its body closes by keyword. An Issue that cannot be read fails the check
+ * rather than counting as not a bug (TPL-3286).
+ */
+function closesBug(view: PrView): boolean {
+  const linked = view.closingIssuesReferences
+    .filter((r) => `${r.repository.owner.login}/${r.repository.name}` === REPO)
+    .map((r) => r.number);
+  const numbers = new Set([...linked, ...closedIssueNumbers(view.body ?? "", REPO)]);
+  return [...numbers].some((n) =>
+    run("gh", ["api", `repos/${REPO}/issues/${n}`, "--jq", ".labels[].name"])
+      .split("\n")
+      .includes("bug"),
+  );
 }
 
 /**
@@ -1037,14 +1140,12 @@ function checkPr(pr: string): string[] {
       "--repo",
       REPO,
       "--json",
-      "author,labels,headRefOid,baseRefName,body,autoMergeRequest",
+      "author,labels,headRefOid,baseRefName,title,body,autoMergeRequest,closingIssuesReferences",
     ]),
   ) as PrView;
   const baseRef = `origin/${view.baseRefName}`;
-  const result = classifyChange({
-    files: changedFiles(baseRef, view.headRefOid),
-    author: view.author.login,
-  });
+  const files = changedFiles(baseRef, view.headRefOid);
+  const result = classifyChange({ files, author: view.author.login });
   const labeled = labelTier(view.labels.map((l) => l.name));
   // No label is High: an outside author or a bot cannot add one, and a forgotten
   // label must fall to the heavier side.
@@ -1065,6 +1166,23 @@ function checkPr(pr: string): string[] {
       `PR #${pr} is labeled "risk: ${labeled}" but its change is ${result.tier}. ` +
         `Replace the label with "risk: ${result.tier}" (docs/process/review.md "リスク段階").`,
     );
+  }
+  // Every tier, High included: CodeRabbit's rounds do not ask for a test either.
+  const tests = checkTestChanges({
+    title: view.title,
+    body: view.body ?? "",
+    closesBug: closesBug(view),
+    files,
+  });
+  errors.push(...tests.errors);
+  if (tests.waivers.length > 0) {
+    const lines = tests.waivers.map((w) => `- ${w.label}: ${w.reason}`);
+    console.log(["Passed by a reason line:", ...lines].join("\n"));
+    // The run's summary, so a human sees every PR that passed this way.
+    const summary = process.env.GITHUB_STEP_SUMMARY;
+    if (summary) {
+      appendFileSync(summary, ["### Passed by a reason line", "", ...lines, ""].join("\n"));
+    }
   }
   if (view.autoMergeRequest !== null && tier !== "low") {
     errors.push(

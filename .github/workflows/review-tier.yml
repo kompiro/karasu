@@ -9,6 +9,12 @@ name: Review tier
 #   rounds and a human reading the diff carry it. Neither does a Low PR that
 #   changes only the generated ADR index (Issue #3416): `Validate` holds it to an
 #   exact regeneration.
+# - a PR titled `fix` or closing a `bug` Issue adds no test and gives no
+#   `No test: <reason>` line, or a PR weakens existing tests: a `refactor` that
+#   changes them beyond imports, module paths and comments, or any other PR that
+#   removes test lines, deletes a test file or adds a skip without a
+#   `Test change: <reason>` line (scripts/review/test-changes.ts, #3505). These
+#   apply to every tier, High included.
 # A PR with no tier label is High.
 #
 # No path filter and no skip stub: docs-only PRs are exactly the ones that can be
@@ -44,6 +50,8 @@ concurrency:
 permissions:
   contents: read
   pull-requests: read
+  # The labels of the Issues a PR closes: a `bug` one asks for a test.
+  issues: read
 
 jobs:
   review-tier:
