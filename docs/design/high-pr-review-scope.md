@@ -2,7 +2,7 @@
 
 - **日付**: 2026-11-02
 - **ステータス**: 検討中
-- **PR**: #TBD
+- **PR**: #3549
 - **関連**:
   - 引き金 Issue: [#3542](https://github.com/kompiro/karasu/issues/3542)（Design Doc で合意した内容を読み直さない）、[#3543](https://github.com/kompiro/karasu/issues/3543)（ファイルごとの段階と、判断してほしいことの節）
   - 親 Issue: [#3546](https://github.com/kompiro/karasu/issues/3546)
