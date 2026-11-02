@@ -227,7 +227,7 @@ jobs:
                 repo: context.repo.repo,
                 title: "Nightly E2E failing on main",
                 body,
-                labels: [label],
+                labels: [label, "topic: testing"],
               });
             } else {
               // Comment on the oldest open tracker; ignore any duplicates.
