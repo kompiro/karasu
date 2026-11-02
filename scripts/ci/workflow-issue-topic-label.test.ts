@@ -39,7 +39,8 @@ const lineOf = (text: string, index: number): number => text.slice(0, index).spl
  * The words of the shell command starting at `start`, quoted the way the shell
  * quotes them: `'...'` and `"..."` stay inside one word, and `\` escapes the
  * next character (so `\` + newline joins two lines). The command ends at an
- * unquoted newline, `;`, `|`, `&` or `)`.
+ * unquoted newline, `;`, `|`, `&` or `)`, or at a `#` that starts a word (a
+ * comment runs to the newline, which ends the command).
  */
 function shellWords(text: string, start: number): string[] {
   const words: string[] = [];
@@ -54,6 +55,8 @@ function shellWords(text: string, start: number): string[] {
     } else if (c === "\\") {
       if (text[i + 1] !== "\n") word = (word ?? "") + (text[i + 1] ?? "");
       i++;
+    } else if (c === "#" && word === null) {
+      return words;
     } else if (c === "'" || c === '"') {
       quote = c;
       word ??= "";
@@ -83,7 +86,8 @@ function ghLabels(args: readonly string[]): string[] {
 }
 
 function ghIssueCreateSites(file: string, text: string): IssueSite[] {
-  return [...text.matchAll(/\bgh issue create\b/g)].flatMap((m) => {
+  // `new` is gh's alias for `create`.
+  return [...text.matchAll(/\bgh issue (?:create|new)\b/g)].flatMap((m) => {
     if (commentedOut(text, m.index)) return [];
     const labels = ghLabels(shellWords(text, m.index).slice(3));
     return [{ where: `${file}:${lineOf(text, m.index)}`, labels }];
@@ -92,14 +96,16 @@ function ghIssueCreateSites(file: string, text: string): IssueSite[] {
 
 /**
  * Walks the JavaScript from `open` (an opening bracket) to the bracket that
- * closes it, calling `visit` with each character outside a string literal and
- * its depth (1 directly inside `open`). Returns the closing bracket's index.
+ * closes it, calling `visit` with each character outside a string literal or
+ * a `//` / `/* *\/` comment, and its depth (1 directly inside `open`). Returns
+ * the closing bracket's index.
  */
 function walkBrackets(
   text: string,
   open: number,
   visit: (i: number, depth: number) => void,
 ): number {
+  const endOf = (index: number) => (index === -1 ? text.length : index);
   let depth = 0;
   let quote: string | null = null;
   for (let i = open; i < text.length; i++) {
@@ -108,6 +114,8 @@ function walkBrackets(
       if (c === "\\") i++;
       else if (c === quote) quote = null;
     } else if (c === '"' || c === "'" || c === "`") quote = c;
+    else if (text.startsWith("//", i)) i = endOf(text.indexOf("\n", i)) - 1;
+    else if (text.startsWith("/*", i)) i = endOf(text.indexOf("*/", i + 2)) + 1;
     else if ("([{".includes(c)) depth++;
     else if (")]}".includes(c) && --depth === 0) return i;
     else if (i > open) visit(i, depth);
@@ -135,7 +143,8 @@ function callLabels(text: string, open: number): string[] {
   const array = text.indexOf("[", keys[0]);
   if (!/^labels\s*:\s*$/.test(text.slice(keys[0], array))) return [];
   const end = walkBrackets(text, array, () => {});
-  return [...text.slice(array, end).matchAll(/"([^"\\]*)"|'([^'\\]*)'/g)].map((l) => l[1] ?? l[2]);
+  const elements = text.slice(array, end).replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, "");
+  return [...elements.matchAll(/"([^"\\]*)"|'([^'\\]*)'/g)].map((l) => l[1] ?? l[2]);
 }
 
 function issuesCreateSites(file: string, text: string): IssueSite[] {
@@ -211,6 +220,24 @@ describe("the scan reads labels, not label-like text", () => {
     expect(labelsOf(`issues.create(params);`)).toEqual([[]]);
     expect(labelsOf(`issues.create({ ...base, labels: ["topic: build"] });`)).toEqual([[]]);
     expect(labelsOf(`issues.create({ labels });`)).toEqual([[]]);
+  });
+
+  it("does not read a label the shell or JavaScript comments out", () => {
+    expect(labelsOf(`gh issue create --title T # --label "topic: build"`)).toEqual([[]]);
+    expect(labelsOf(`gh issue new --title T \\\n  # --label "topic: build"`)).toEqual([[]]);
+    expect(
+      labelsOf(`issues.create({\n  title: "x",\n  // labels: ["topic: testing"],\n});`),
+    ).toEqual([[]]);
+    expect(labelsOf(`issues.create({ /* labels: ["topic: testing"] */ title: "x" });`)).toEqual([
+      [],
+    ]);
+    expect(labelsOf(`issues.create({ // don't\n  body: "labels: ['topic: x']" });`)).toEqual([[]]);
+  });
+
+  it("does not read a commented-out element of the labels array", () => {
+    expect(labelsOf(`issues.create({ labels: ["bug", // "topic: testing"\n] });`)).toEqual([
+      ["bug"],
+    ]);
   });
 
   it("skips commented-out lines", () => {
