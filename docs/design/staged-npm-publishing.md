@@ -269,6 +269,7 @@ stage 済みの版と同じ版は stage できない。乗っ取られた run �
 
 ### 実装の指針
 
+<!-- absent-path-next-line: a file this design doc intends to create (#3240) -->
 1. `scripts/release/stage.mts`: リリースのコミットでなければ何もしない。`changeset pack --out-dir` の計画を読み、先頭のグループだけを `npm stage publish <tarball> --tag <tag> --json` で stage する。prerelease に `latest` を付けようとしたら、また計画に `RELEASED_PACKAGES` に無いパッケージがあれば止める。GitHub Actions の外では `--provenance=false` を付ける。stage 済みの拒否だけを飛ばし、そのことを出力に明示する。stage した `name@version`、stage id、integrity を出力する。
 2. `release.yml`:
    - `pnpm run release` の中身を `pnpm build && node scripts/release/stage.mts` に変える。`release` ジョブに `pull-requests: read` と `GH_TOKEN` を足す（リリースのコミットの判定）。
@@ -276,6 +277,7 @@ stage 済みの版と同じ版は stage できない。乗っ取られた run �
    - `close-train` を論点 4 の判定に変え、`release-record` の concurrency グループに入れる。
    - ヘッダーのコメントを stage に合わせて書き直す。
 3. `.github/workflows/release-confirm.yml`: `workflow_dispatch` と毎日の `schedule`。権限は `contents: write`、`issues: write`、`pull-requests: read`、`actions: read`（`release.yml` の run の結果を読む）。`id-token` は持たない。リリースコミットを求め、版を上げた npm パッケージのうち npm に載った版のタグを打ち、Release を作り、順序の違反を検出し、論点 4 の判定で Issue を閉じる。concurrency は `release-record` グループに入れる。
+<!-- absent-path-next-line: a file this design doc intends to create (#3240) -->
 4. `scripts/release/approve.mts` と、ルートの `package.json` の `release:approve`。論点 3 の手順（段ごとの承認と `release.yml` の再実行）、論点 7 の照合、notices のプラットフォーム固有の節を除く規則、計画に無い stage 済みの項目の表示、`--dry-run`、`--commit`、`--expect-tag`。
 5. `scripts/release/train.mts`: チェックリストに承認の行を足し、Issue 本文の文言（いまの「`release.yml` が閉じる」など）を直す。Issue を閉じる判定を足す。
 6. テスト: 既存の `scripts/release/*.test.ts` に倣う。計画の読み方、拒否の分類、`npm view` の `E404` とほかの失敗の区別、リリースコミットの求め方、順序の違反の検出、閉じる判定、tarball の中身の照合。`release-workflow.test.ts` はいま「Set a git identity」「Collect the tags」と `record` ジョブを検査しているので、書き直す。`release.yml` の `release` ジョブが `contents: read` と `pull-requests: read` だけを足した権限であること、`id-token: write` を持つのが `release` と `vscode` だけであること、`release-confirm.yml` が `id-token` を持たないことを確かめる。
