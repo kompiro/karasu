@@ -53,7 +53,7 @@ changesets 3.0.3 について確かめたこと:
 - `changeset pack --out-dir <dir>` は、npm に無い版のパッケージだけを pnpm で pack し、`<dir>/publish-plan.json` に計画を書く。計画は依存の順に並んだグループの列で、各項目は名前、版、tag、tarball のパスと sha256 の integrity を持つ。依存の順は `devDependencies` を数えない（`sortReleases` の `ignoreDevDependencies: true`）。npm に問い合わせて予期しない応答を受けたときは失敗する。
 - いまの `changeset publish` もこの計画の順に公開している。
 
-`pnpm pack` について確かめたこと: `packages/skills` で `pnpm pack` すると `prepack` / `postpack`（`scripts/stamp-version.mjs`）が走り、SKILL.md に CLI の版（`karasu-version: "0.10.0"`）が刻まれる。作業ツリーは元に戻る。公開済みの `karasu-skills@0.2.1` の tarball と比べて、ファイルの一覧、`package.json`、刻まれた版は一致した（本文の差は 0.2.1 の公開後に reference の文書が更新された分）。tarball を指定して公開すると `prepublishOnly` / `publish` / `postpublish` は走らないが、3 パッケージともこれらを持たない。
+`pnpm pack` について確かめたこと: `packages/skills` で `pnpm pack` すると `prepack` / `postpack`（`packages/skills/scripts/stamp-version.mjs`）が走り、SKILL.md に CLI の版（`karasu-version: "0.10.0"`）が刻まれる。作業ツリーは元に戻る。公開済みの `karasu-skills@0.2.1` の tarball と比べて、ファイルの一覧、`package.json`、刻まれた版は一致した（本文の差は 0.2.1 の公開後に reference の文書が更新された分）。tarball を指定して公開すると `prepublishOnly` / `publish` / `postpublish` は走らないが、3 パッケージともこれらを持たない。
 
 そのほかの前提:
 
@@ -83,6 +83,7 @@ npm は `workspace:` を書き換えないので、`karasu` の tarball に `"ka
 
 #### 案 1D: `changeset pack` の計画に従って `npm stage publish <tarball>` する
 
+<!-- absent-path-next-line: a file this design doc intends to create (#3240) -->
 `changeset pack --out-dir` が版の選び方、依存の順、tag、pack を受け持つ。新しいスクリプト `scripts/release/stage.mts` は計画を読み、**計画の先頭のグループだけ**を `npm stage publish <tarball> --tag <tag> --json` で stage して、stage id と tarball の integrity を出力する。
 
 - 計画には npm にまだ無い版だけが入るので、先頭のグループは「依存先がすべて npm に載っている」パッケージの集まりになる。`karasu-skills` と `karasu` を両方上げたリリースでは、1 回目の run が `karasu-skills`（と `@karasu-tools/core`）だけを stage する。`karasu` は `karasu-skills` が承認されて npm に載ったあとの run で、はじめて先頭のグループになり stage される。依存元は依存先がインストールできるようになるまで stage のキューに入らないので、npmjs.com の画面から承認しても順序は崩れない（TPL-3240）。
@@ -131,6 +132,7 @@ Release には、まだインストールできず、reject されうる版が�
 
 #### 案 3B: 依存先が npm に載るまで依存元を stage せず、承認のスクリプトがその段を進める
 
+<!-- absent-path-next-line: a file this design doc intends to create (#3240) -->
 `scripts/release/approve.mts`（`pnpm release:approve`）を kompiro が手元で実行する。
 
 1. リリースコミットを `release-confirm.yml` と同じ方法で求める（`--commit <sha>` で指定もできる）。
