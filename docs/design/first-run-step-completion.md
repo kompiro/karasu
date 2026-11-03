@@ -1,6 +1,6 @@
 # 初回体験のツアーで、ステップが求めた操作をしたことを示す
 
-- **日付**: 2026-11-04
+- **日付**: 2026-11-03
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#3599](https://github.com/kompiro/karasu/issues/3599)（Phase 2 Epic [#3602](https://github.com/kompiro/karasu/issues/3602)、PRD [#3573](https://github.com/kompiro/karasu/issues/3573) §4「Preserve user control」、§8・§11「ガイドの操作完了の自動検知」）
@@ -63,7 +63,7 @@ Share ダイアログは各コンポーネントの state にある。`TourStep.
     | { kind: "showing"; what: "team-dependencies" }          // org ビューでチーム依存を表示している
     | { kind: "event"; any: ("share-opened" | "svg-exported")[] };
   ```
-  1 つの評価関数が `{ viewPath, activeView, showing, events }` から判定する。データなので、app のテストがサンプル
+  1 つの評価関数が `{ viewPath, activeView, showing, events, sinceSeq }` から判定する（`sinceSeq` より後の出来事だけを数える）。データなので、app のテストがサンプル
   （`SERVICE_SPLIT_PROJECT` / `_EN`）を parse し、`drilled.node` が `buildNodePathIndex` にあることを確かめられる（TPL-3113。
   `viewPath` はドリルしたノードまでの完全なパスなので、条件は「含む」で書く）。
 - 条件：Step 1 は `{ kind: "drilled", view: "system", node: "CommerceApp" }`、Step 2 は `{ kind: "showing", what: "team-dependencies" }`、
@@ -71,14 +71,19 @@ Share ダイアログは各コンポーネントの state にある。`TourStep.
 - **評価はステップのシーンが着いてから**（TPL-1534）。`useGuidedScene` が当て終えたシーンの key を返し、ツアーはその key が
   いまのステップの key（`tour:${run}:${step}`）と一致するまで判定しない。Back や Restart の直後、前のシーンの `viewPath` で ✓ が出ない。
 - **数え直しはシーンの key で行う**（ステップの番号ではない）。同じ Step 1 でも Restart で key が変われば数え直す。
-- **出来事は seq つきの記録**にし、ツアーは「いまのシーンが着いた後の seq」だけを数える。共有の Set を誰かが空にする形にしない
-  （ほかの読み手が来ても壊れない）。出来事はツアーのプロジェクトを開いているときに起きたものだけを数える（別のプロジェクトでの Share で ✓ が出ない）。
+- **出来事は seq つきの記録**にし、共有の Set を誰かが空にする形にしない（ほかの読み手が来ても壊れない）。書く側（Share、Export SVG）は
+  プロジェクトを知らないので、**数える範囲は読む側が決める**：ツアーは、ツアーのプロジェクトを開いていて、着いたシーンの key が
+  いまのステップの key と一致するあいだだけ判定する。プロジェクトを離れると着いた key を忘れ（`useGuidedScene` の `appliedKey` と同じ）、
+  戻ってシーンが着き直すと `sinceSeq` をその時点の seq に進める。別のプロジェクトでの Share で ✓ は出ない。
 - **一度満たしたら、そのシーンのあいだは ✓ を残す**（ドリルから戻っても消さない。点いたり消えたりしない。TPL-1032 の逆向きの陳腐化は、key ごとに持つことで避ける）。
-- **書く場所**：チーム依存は表示モードの値をそのまま出す（`setMode` の updater の中では書かない。StrictMode で 2 回走る）。
+- **書く場所**：チーム依存は、実際にチーム依存を描いているか（`PreviewColumn` の表示条件と同じ：表示モードが dependencies で、
+  チーム依存のビューがある）を値として出す。`setMode` の updater の中では書かない（StrictMode で 2 回走る）。AppShell が unmount したら値を戻す。
   Share はダイアログが開いたとき、SVG はツールバーの Export SVG（`onExport`）だけを数える（drill-down・全図・draw.io・各ビューの書き出しは数えない）。
 - **パネルの表示**：ステップ本文の下に ✓ と固定の短い文（en / ja の新しい phrase）を、既存の `aria-live` の領域の中に出す。
   Next は `aria-describedby` でその文を指す。Next の見た目は変えない（e2e はその文と `aria-describedby` を見る）。
-- **再開（#3598）との関係**：再読み込みで再開したステップは ✓ を持ち越さない。状態で読む条件（Step 2）は着いたあとに読み直すので、表示していれば ✓ が出る。
+- **再開（#3598）との関係**：再読み込みで再開したステップは ✓ を持ち越さない。再開はステップのシーンの hash で起動するので、
+  Step 1 の `viewPath` は空から始まり、前回のドリルで ✓ は出ない。状態で読む条件（Step 2）は着いたあとに読み直すので、
+  チーム依存を表示していれば ✓ が出る。
 
 ### 実装の指針
 
@@ -90,7 +95,7 @@ Share ダイアログは各コンポーネントの state にある。`TourStep.
 4. テスト：
    - unit：評価関数（各 kind、着く前は判定しない、key が変わると数え直す、満たしたあと条件が外れても ✓ が残る、別プロジェクトの出来事を数えない）
    - サンプルの縛り：`drilled.node` が en / ja のサンプルの `buildNodePathIndex` にある
-   - e2e：Step 1 で実際にドリルすると ✓、Step 2 でチーム依存を開くと ✓（すでに開いていても ✓）、Step 5 で Share を開くと ✓、Step 3・4 には出ない、Back で戻ったとき前のステップの ✓ が出ない
+   - e2e：Step 1 で実際にドリルすると ✓、Step 2 でチーム依存を開くと ✓（すでに開いていても ✓）、Step 5 で Share を開くと ✓、Step 3・4 には出ない、Back で戻ったとき前のステップの ✓ が出ない、別のプロジェクトで Share を開いて戻っても Step 5 に ✓ が出ない
 5. PRD #3573 の Revisions に「§8 の検知は、示すまでにして自動では進めない」を 1 行足す。
 6. AT：`docs/acceptance/first-run-experience.md` に項目を足す（すべて自動）。
 7. ADR 昇格：実装の PR が通ったあと、ADR-3599 として昇格し、本 Design Doc を削除する。
@@ -98,7 +103,7 @@ Share ダイアログは各コンポーネントの state にある。`TourStep.
 ### 影響範囲・マイグレーション
 
 - 既存ユーザーへの影響: ツアー中の表示だけ。store は読み手がいなければ何もしない。
-- ドキュメント更新: `docs/tools/app.md` / `app.ja.md` の「First visit」節に 1 文。
+- ドキュメント更新: `docs/tools/app.md` の「First visit」節と `app.ja.md` の「初めて開いたとき：Welcome とガイドツアー」節に 1 文ずつ。
 - テスト・examples への影響: なし。
 
 ## 未解決の問い / 決めないこと
