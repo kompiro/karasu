@@ -43,16 +43,32 @@ interface ValidateResult {
 }
 
 /**
+ * The `--source-prefix` flags of the `tpl:validate` script, so these runs
+ * check the same prefixes CI does: a guard under `.github` (#3488) is reported
+ * as outside every prefix when one is missing here.
+ */
+function sourcePrefixArgs(): string[] {
+  const scripts = (
+    JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as {
+      scripts: Record<string, string>;
+    }
+  ).scripts;
+  return [...scripts["tpl:validate"].matchAll(/--source-prefix\s+(\S+)/g)].flatMap((m) => [
+    "--source-prefix",
+    m[1],
+  ]);
+}
+
+/**
  * Runs the validator from the repo root, because `--source-prefix` resolves
  * paths against the working directory — a fixture run from its own temp
  * directory would report every real path as missing.
  */
 function runTplValidate(tplDir: string): ValidateResult {
-  const run = spawnSync(
-    TPL_CLI,
-    ["validate", "--tpl-dir", tplDir, "--source-prefix", "packages", "--source-prefix", "scripts"],
-    { cwd: REPO_ROOT, encoding: "utf8" },
-  );
+  const run = spawnSync(TPL_CLI, ["validate", "--tpl-dir", tplDir, ...sourcePrefixArgs()], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+  });
   return { status: run.status ?? -1, output: `${run.stdout}${run.stderr}` };
 }
 
@@ -174,8 +190,10 @@ describe("the check runs where it can stop a merge", () => {
     expect(config.checklistHeading).toBe("チェックリスト");
   });
 
-  // `tpl review-body` without --config asks the three old questions instead of
-  // the per-status ones, and says nothing about it (#3488).
+  // `tpl review-body` falls back to tpl.config.json in its working directory;
+  // passing it explicitly keeps the per-status questions if the step's
+  // directory ever changes. Without a config it asks only the three common
+  // questions and says nothing about it (#3488).
   it("passes the config to tpl review-body in the monthly review", () => {
     expect(read(".github/workflows/tpl-review.yml")).toMatch(
       /tpl review-body[^\n]*\\\n(?:\s+--[^\n]*\\\n)*\s+--config tpl\.config\.json/,
