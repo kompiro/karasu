@@ -55,8 +55,8 @@ catch-all ルートを追加すると、「未知のパスがどこへ行くか�
 catch-all ルート、または「どのリクエストがアプリに届くか」を変える設定を追加・改修するとき:
 
 - [ ] 反転しない側（アプリ・静的アセット・兄弟ルート）が今日と同じ応答を返すことを、**経路を列挙した表**で確認したか（`/`・静的・兄弟 Function・既知の path ルート・未知の 1 セグメント・未知の複数セグメント）
-- [ ] resolver に渡さない条件は、判別子（1）・安全側 fallthrough（2）・機械チェック付き予約リスト（3）・specificity ranking（4）のどれで実現しているか。どれでもないなら腐る前提で書き直す
-- [ ] specificity ranking を採るなら、**メソッド違いでも catch-all に落ちない**ことを test で固定したか。`POST /webhooks/github` だけを登録した状態で `GET` すると 405 ではなく catch-all の 404 が返るのが典型的な取りこぼし
+- [ ] resolver に渡さない条件は、判別子（1）・安全側 fallthrough（2）・機械チェック付き予約リスト（3）・specificity ranking（4）のどれで実現しているか。どれでもないなら腐る前提で書き直す [judgment]
+- [ ] specificity ranking を採るなら、**メソッド違いでも catch-all に落ちない**ことを test で固定したか。`POST /webhooks/github` だけを登録した状態で `GET` すると 405 ではなく catch-all の 404 が返るのが典型的な取りこぼし [guard: `packages/nest/src/router.test.ts`]
 - [ ] fallthrough を使うなら、差し戻す条件は **deterministic な negative に限定**されているか（upstream 5xx を差し戻して障害を隠していないか）
 - [ ] 予約リストを使うなら、その出所はアプリ側のルート定義か。ルート定義だけを増やしたとき落ちるテストがあるか
 - [ ] 上流に問い合わせてから差し戻す設計なら、その negative 結果をキャッシュしているか（未知パスへのクロールが上流への fetch に増幅しないか）
