@@ -130,6 +130,18 @@ export const REGISTERED_EXAMPLES: readonly RegisteredExample[] = [
     layout: "flat",
     doc: "English variant of MULTI_FILE_SYSTEM_PROJECT, seeded for non-`ja` locales (#1642).",
   },
+  {
+    constant: "SERVICE_SPLIT_PROJECT",
+    dir: "ja/service-split",
+    layout: "flat",
+    doc: "The first-run guide's sample: current, planned and migrating entries of one service split (#3563).",
+  },
+  {
+    constant: "SERVICE_SPLIT_PROJECT_EN",
+    dir: "en/service-split",
+    layout: "flat",
+    doc: "English variant of SERVICE_SPLIT_PROJECT, opened for non-`ja` locales (#3563).",
+  },
 ];
 
 /** Entry files of a multi-file stage, renamed to `index.krs` when bundled (#1777). */

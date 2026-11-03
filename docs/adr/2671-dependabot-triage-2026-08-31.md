@@ -11,7 +11,9 @@ related_to: [ADR-2623, ADR-2628, ADR-2447, ADR-2401, ADR-2152, ADR-1474, ADR-784
 assumptions:
   # ADR-2628 のとおり、リテラルの依存版は書かない。本 ADR が決めたのは
   # 「bundle 増を承知で SDK を採用する」ことなので、caret pin の存在だけを表明する。
-  - "grep: packages/app/package.json :: \"@anthropic-ai/sdk\": \"\\^0\\."
+  # major で止めているのは、major を上げたら採用を判断し直すため。
+  # 1.x（API version 2026-10-21）への移行は ADR-3575 で判断した。
+  - "grep: packages/app/package.json :: \"@anthropic-ai/sdk\": \"\\^1\\."
 ---
 
 # ADR-2671: Dependabot トリアージ 2026-08-31 — exact peer は枠ではなく group で結ぶ

@@ -45,12 +45,31 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 
 | 段階 | 変更したもの | PR での CodeRabbit | 通す条件 |
 | --- | --- | --- | --- |
-| Low | `docs/test-perspectives/**`・`docs/guide/**`・新しいテストファイル（既存のテストファイルの変更は Medium）、新しい ADR、ADR の昇格（Design Doc の削除、リンクの張り替え、ADR へのリンクの追加）、既存 ADR の frontmatter、ADR の生成物だけを変える再生成 PR | 回さない | 記録と CI が通れば auto-merge（再生成 PR は記録なしで、スクリプトが REST でマージする） |
+| Low | `docs/test-perspectives/**`・`docs/guide/**`・新しいテストファイル（既存のテストファイルの変更は Medium）、新しい ADR、ADR の昇格（Design Doc の削除、リンクの張り替え、ADR へのリンクの追加）、既存 ADR の frontmatter、ADR の生成物と TPL の索引だけを変える再生成 PR | 回さない | 記録と CI が通れば auto-merge（再生成 PR は記録なしで、スクリプトが REST でマージする） |
 | Design | `docs/design/**` | ready の直後に 1 回だけ。ゲートにしない | 記録と人間のレビュー |
-| Medium | ほかのすべて（`packages/*`・`docs/acceptance/**`・`examples/**`・既存 ADR の本文など） | 回さない | 記録と、サマリー・証拠・preview を見た人間の判断 |
-| High | workflow・release・依存の変更・`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`docs/process/**`・`.claude/rules/**`・`.coderabbit.yaml`・レビューの仕組み（`scripts/review/**`・`scripts/coderabbit/**`・`.claude/skills/**` など） | Critical / Major の未対応が無くなるまで回す（再レビューは 3 回まで） | 人間が差分を読む |
+| Medium | ほかのすべて（`packages/*`・`docs/acceptance/**`・`examples/**`・既存 ADR の本文など） | 回さない | 記録と、人間の判断。描画やレイアウトが変わる PR（`rendering-change` ラベル、下）は人間が preview で動作を確かめる |
+| High | workflow・release・依存の変更・`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`docs/process/**`・`.claude/rules/**`・`.coderabbit.yaml`・レビューの仕組み（`scripts/review/**`・`scripts/coderabbit/**`・`scripts/render-equivalence/**`・`.claude/skills/**` など）・セキュリティの境界（下）・言語の挙動（下） | Critical / Major の未対応が無くなるまで回す（再レビューは 3 回まで） | 人間が差分を読む |
 
-- **差分が `packages/nest/**` か `.github/workflows/**` に触れる PR は、段階とは別に `/security-review` を当てる**
+- **セキュリティの境界**：信頼できない入力（他人の `.krs`、URL、webview のメッセージ、ディスクのパス）を受ける
+  コード。`packages/nest/**`、`karasu serve` と `render` のエンドポイント・ファイルアクセス、`packages/core/src/fs/**`、
+  VS Code の webview とのやりとり、SVG のエスケープ、app のサニタイズ箇所。足した行か消した行に
+  `dangerouslySetInnerHTML`・`innerHTML`・`DOMPurify`・`openExternal`・`eval(`・`new Function` を含むコードも
+  ここに入る
+- **言語の挙動**：`packages/core/src/` の lexer・parser・resolver・spec・style・formatter・annotations、
+  `language-version.ts`、既定のスタイル、LSP の診断。`refactor` の PR もいまは High になる（等価の検査が required に
+  なったら Medium に下げる。#3540）
+- テストファイルはこの 2 つの規則から外れ、新しいファイルは Low、既存のファイルの変更は Medium のまま。ただし
+  セキュリティの境界のテストから行を消す変更は High になる
+
+- **`rendering-change` ラベル**：check「Render equivalence」が merge base と HEAD で描画・診断・整形の出力に差を
+  見つけたか、比較を終えられなかった PR に、workflow が付ける。次の比較で差が無ければ外す。マージは止めない。比較が
+  走るのは `render-equivalence.yml` の `paths`（`packages/**`、`package.json`、`pnpm-lock.yaml`、比較のスクリプトなど）に
+  触れる PR だけなので、examples や AT だけを変える PR には付かない（`pnpm pr:shots` で before/after を見せる）。
+  パスの判定は push ごとではなく PR 全体の差分で行うので、PR がそのパスを変えているあいだは、どの push でも比較が走って
+  ラベルを判定し直す。そのパスの変更をすべて戻した PR では比較が走らず、最後の判定のラベルが残る。判定の表は
+  `scripts/render-equivalence/label.ts`
+- **差分がセキュリティの境界か `.github/workflows/**` に触れる PR は、段階とは別に `/security-review` を当てる**
+  （分類器の `securityReview` が true になる）
 - **段階のラベルは draft のうちに付ける。** CodeRabbit は `risk: high` / `risk: design` の付いた PR だけを、draft を
   外れたときにレビューする。ラベルを上げるのはよい（人間が CodeRabbit に見せたいと判断した PR など）。ready の後に
   `risk: high` へ上げた PR でレビューが始まらなければ、`@coderabbitai full review` を投げる。Low の ADR の PR だけは
@@ -61,6 +80,22 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
   止められない
 - `skip-coderabbit` ラベルと本文の ignore コマンドは使わない。Medium 以下には CodeRabbit が走らないので、外す必要がない
 - 仕組みと却下した案は [ADR-3286](../adr/3286-risk-based-review-tiers.md)
+
+#### バグ修正のテストと、既存のテストの変更
+
+**到達状態**: バグを直す PR はテストケースを足しているか、本文に `No test: <理由>` の行がある。既存のテストを
+弱める PR は、`refactor` でなく、本文に `Test change: <理由>` の行がある。Review tier は段階によらずこれを検査し、
+理由の行で通した PR は check の summary に理由を出す。理由の行は HTML コメントの外に書く。
+
+- **バグを直す PR**：タイトルの型が `fix` か、`bug` ラベルの Issue を閉じる（`Closes #N` など）PR。テストケースは、
+  新しいテストファイル、既存のテストファイルに足した `it(` / `test(` か `.each` の表の行、`examples/` の新しい `.krs`、
+  renderer の新しい fixture、AT に足した `krs` fence のどれか
+- **`refactor` の PR**：既存のテストファイルで変えてよいのは、import の文と、コメントかモジュールのパスの文字列だけが
+  違う行の対だけ。それ以外の変更とテストファイルの削除は、理由の行があっても落ちる。挙動を変える refactor
+  （廃止した API のテストを消すなど）はタイトルの型を変えて、`Test change:` を書く
+- **それ以外の PR**：既存のテストファイルから import 以外の行を消す、テストファイルを消す、`.skip` / `.fixme` /
+  `.todo` / `.only` / `skipIf` / `runIf` や単独の `return` を足す、ブロックコメントや文字列で既存のテストを囲む PR は、
+  `Test change:` の行が要る
 
 #### 指摘の重大度と対応
 
@@ -81,7 +116,7 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 
 **到達状態**: PR 本文に記録の節が 1 つあり、その `head` が PR の HEAD で、すべての指摘に対応が書かれている。
 High 以外では Review tier がこれを検査する。High でも、Claude が作る PR では同じ形で残す。
-例外は ADR の生成物だけを変える Low の再生成 PR（`pnpm adr:regenerate-pr`、#3416）で、記録を求めない。
+例外は ADR の生成物と TPL の索引（`docs/test-perspectives/index.md`、#3289）だけを変える Low の再生成 PR（`pnpm adr:regenerate-pr`、#3416）で、記録を求めない。
 生成物が head から生成し直した結果とちょうど一致することを `Validate` が確かめるので、読む差分が無い。
 
 ```

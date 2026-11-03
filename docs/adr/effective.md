@@ -199,6 +199,9 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3399](3399-dependabot-security-2026-10-30.md) — Dependabot security alert 2026-10-30（qs と serialize-javascript の override floor を修正版へ上げ、launch-editor を override し、@azure/msal-node は @azure/identity 4.14.1 が公開から 1 日経ってから lock 更新で上げる）
 - [ADR-3412](3412-workflow-actions-lockfile.md) — GitHub Actions の依存を actions.lock で固定し、検証を required check にする
 - [ADR-3421](3421-remove-copilot-gh-aw-workflows.md) — Copilot で推論する gh-aw の workflow を外し、個人の課金で動かせるまで戻さない
+- [ADR-3504](3504-low-adr-pr-without-draft.md) — Low の ADR の PR は draft を経ずに作り、ゲートはその create を 1 つの形だけ通す
+- [ADR-3571](3571-prd-as-issues.md) — PRD は docs/prd に置かず prd ラベルの Issue にし、展開した Epic をその sub-issue にする
+- [ADR-3575](3575-dependabot-triage-2026-11-02.md) — Dependabot トリアージ 2026-11-02：npm 8 件をすべて採用し、LSP 11 と SDK 1.x は ADR の assumptions を次の major に上げる差し替え PR で入れる
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -232,6 +235,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1104](1104-translate-crud-bindings.md) — translate adapter で usecase → resource バインディング + 任意 CRUD 装飾を emit する
 - [ADR-1935](1935-wrangler-translate-adapter.md) — --from wrangler translate adapter と「adapter を採る基準」
 - [ADR-3258](3258-serve-import-resolution.md) — karasu serve は配信ディレクトリをまるごとブラウザのメモリに写して import を解決する
+- [ADR-3418](3418-serve-loopback-and-host-check.md) — `karasu serve` を loopback で listen し、ローカルでない `Host` の `/api/*` を拒否する
 - [ADR-3426](3426-render-src-ssrf-guard.md) — `/render?src=` の SSRF 対策を、解決後のアドレスとリダイレクトの各ホップで行う
 - [ADR-9013](9013-cli-serve-mode.md) — CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー
 
@@ -421,6 +425,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2958](2958-gutter-lane-bundling.md) — ガターを通るエッジを、共有する端ごとに 1 レーンへ束ねる
 - [ADR-3022](3022-edge-label-disclosure.md) — edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は focus canvas で読む
 - [ADR-3026](3026-same-row-channel-route.md) — 同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す
+- [ADR-3027](3027-mutual-edge-pair-merge.md) — 見た目が同じ両方向の edge の組を、card を動かさずに両端に矢印のある 1 本の線で描く
 - [ADR-3088](3088-channel-lane-order-by-turn.md) — 行間チャネルのレーンを、run がつながる縦線の向きで並べる
 - [ADR-3090](3090-crossing-marks-follow-edge-focus.md) — 交差マーク（ホップ・junction chip・trunk band）をエッジの減光に追随させる
 - [ADR-3132](3132-frame-bounded-channels.md) — ドリルダウンの最上段の上と最下段の下のチャネルを、枠の内側で測る

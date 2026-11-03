@@ -207,6 +207,34 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
       ja: "`@deprecated` / `@migration_target` で新旧ドメインを並置。",
     },
   ),
+  {
+    // The web app's first-run guide walks these three entries of one system
+    // (#3563): current, planned, and the state in between.
+    slug: "service-split",
+    group: "scenarios",
+    title: {
+      en: "Service split — current, planned, migrating",
+      ja: "サービス分割 — 現在・計画・移行途中",
+    },
+    blurb: {
+      en: "One system three times: Billing inside one application on a shared database, Billing as its own service with its own database, and the state in between with `@migration_target` / `@planned`.",
+      ja: "同じシステムを 3 回: 1 つのアプリケーションと共有 DB の中の請求、専用 DB を持つ独立した請求サービス、そして `@migration_target` / `@planned` で表す移行途中の状態。",
+    },
+    githubDir: { en: "examples/en/service-split", ja: "examples/ja/service-split" },
+    diagrams: (
+      [
+        ["index", "Current (index.krs)", "現在（index.krs）"],
+        ["planned", "Planned (planned.krs)", "計画（planned.krs）"],
+        ["migrating", "Migrating (migrating.krs)", "移行途中（migrating.krs）"],
+      ] as const
+    ).map(([file, en, ja]) => ({
+      entry: {
+        en: `examples/en/service-split/${file}.krs`,
+        ja: `examples/ja/service-split/${file}.krs`,
+      },
+      caption: { en, ja },
+    })),
+  },
   localized(
     "deploy",
     "scenarios",

@@ -29,6 +29,24 @@ export function channelReservations(
   enclosure: ContainerRect | undefined,
 ): Map<number, number> {
   const out = new Map<number, number>();
+  for (const [row, { need, gap }] of channelLanes(result, rows, enclosure)) {
+    if (need > gap) out.set(row, need - gap);
+  }
+  return out;
+}
+
+/**
+ * The lanes' room (`lanes × LANE_PITCH`) and the gap of the channel above each
+ * row ordinal, whether or not they fit, keyed as `channelReservations` keys
+ * them. Where a frame splits one ordinal into several channels, the one
+ * shortest of room speaks for it. The label room of #3036 adds to this need.
+ */
+export function channelLanes(
+  result: LayoutResult,
+  rows: readonly (readonly string[])[],
+  enclosure: ContainerRect | undefined,
+): Map<number, { need: number; gap: number }> {
+  const out = new Map<number, { need: number; gap: number }>();
   if (rows.length === 0) return out;
   const rowTop = rows.map((row) =>
     row.reduce((top, id) => Math.min(top, result.nodes.get(id)?.y ?? Infinity), Infinity),
@@ -40,8 +58,6 @@ export function channelReservations(
     // last, with no frame around the canvas) has no gap to grow; the lane
     // pass stacks its lanes away from the row instead.
     if (!Number.isFinite(channel.upper) || !Number.isFinite(channel.lower)) continue;
-    const extra = channel.lanes * LANE_PITCH - (channel.lower - channel.upper);
-    if (extra <= 0) continue;
     // The row the channel runs above: the first whose top is at or below the
     // band's floor (a frame's top may sit between the two). A row every member
     // of which left for a side column has no top (`Infinity`) and is not a
@@ -59,7 +75,10 @@ export function channelReservations(
     ) {
       continue;
     }
-    out.set(rowBelow, Math.max(out.get(rowBelow) ?? 0, extra));
+    const need = channel.lanes * LANE_PITCH;
+    const gap = channel.lower - channel.upper;
+    const prev = out.get(rowBelow);
+    if (!prev || need - gap > prev.need - prev.gap) out.set(rowBelow, { need, gap });
   }
   return out;
 }

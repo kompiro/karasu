@@ -1,7 +1,13 @@
 /// <reference types="node" />
 import { describe, it, expect } from "vitest";
 import { Parser } from "./parser/parser.js";
-import { compile, FACET_STYLING_PROJECT, FACET_STYLING_PROJECT_EN } from "./index.js";
+import {
+  compile,
+  FACET_STYLING_PROJECT,
+  FACET_STYLING_PROJECT_EN,
+  SERVICE_SPLIT_PROJECT,
+  SERVICE_SPLIT_PROJECT_EN,
+} from "./index.js";
 import { readFileSync, readdirSync } from "fs";
 import { resolve, dirname, relative } from "path";
 import { fileURLToPath } from "url";
@@ -35,6 +41,63 @@ describe.each([["ja", FACET_STYLING_PROJECT] as const, ["en", FACET_STYLING_PROJ
       expect(project.files.map((f) => f.path)).toContain("facets.krs.style");
       const index = project.files.find((f) => f.path === "index.krs");
       expect(index?.content).toContain('@import "facets.krs.style"');
+    });
+  },
+);
+
+// The first-run guide (#3563) walks a visitor through this sample and tells them
+// what to notice at each step, so the sample must keep saying those things: the
+// guide's text and the model cannot be allowed to drift apart. Each claim below
+// is one a guide step makes about the files.
+describe.each([["ja", SERVICE_SPLIT_PROJECT] as const, ["en", SERVICE_SPLIT_PROJECT_EN] as const])(
+  "service-split (%s): the first-run guide's claims hold",
+  (_lang, project) => {
+    const parse = (path: string) => {
+      const file = project.files.find((f) => f.path === path);
+      if (!file) throw new Error(`service-split has no ${path}`);
+      const result = Parser.parse(file.content);
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+      return result.value;
+    };
+    const service = (path: string, id: string) =>
+      parse(path).systems[0].children.find((c) => c.id === id);
+    const ownedBy = (path: string, teamId: string) =>
+      parse(path)
+        .organizations[0].teams.find((t) => t.id === teamId)
+        ?.properties.owns.map((ref) => ref.join("."));
+
+    it("bundles the three entries the guide switches between", () => {
+      expect(project.files.map((f) => f.path).sort()).toEqual([
+        "index.krs",
+        "migrating.krs",
+        "planned.krs",
+      ]);
+    });
+
+    it("current: Ordering and Billing are domains of one service", () => {
+      const app = service("index.krs", "CommerceApp");
+      expect(app?.children.map((c) => c.id)).toEqual(["Ordering", "Billing"]);
+      expect(service("index.krs", "BillingService")).toBeUndefined();
+    });
+
+    it("current: the Billing Team owns the Billing domain but no service", () => {
+      expect(ownedBy("index.krs", "billing")).toEqual(["Billing"]);
+      expect(ownedBy("index.krs", "commerce")).toContain("CommerceApp");
+    });
+
+    it("planned: Billing Service has its own database and the Billing Team owns it", () => {
+      expect(service("planned.krs", "BillingService")?.children.map((c) => c.id)).toEqual([
+        "Billing",
+      ]);
+      expect(service("planned.krs", "BillingDB")).toBeDefined();
+      expect(ownedBy("planned.krs", "billing")).toEqual(["BillingService", "Billing"]);
+    });
+
+    it("migrating: Billing Service is the migration target and its database is planned", () => {
+      const billing = service("migrating.krs", "BillingService");
+      expect(billing?.annotations).toContain("migration_target");
+      expect(billing?.annotationParams?.migration_target?.from).toBe("CommerceApp");
+      expect(service("migrating.krs", "BillingDB")?.annotations).toContain("planned");
     });
   },
 );

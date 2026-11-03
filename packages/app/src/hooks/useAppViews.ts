@@ -68,7 +68,7 @@ interface UseAppViewsArgs {
    * a deep-linked hash is loaded. Pass `selectFile` from `useFileSelection`.
    * Issue #811.
    */
-  onFileChange?: (path: string) => Promise<void> | void;
+  onFileChange?: (path: string) => Promise<unknown> | void;
 }
 
 /**

@@ -3,7 +3,8 @@ import type { FileSystemProvider } from "@karasu-tools/core";
 import type { AppAction } from "../state/app-reducer.js";
 
 interface UseFileSelectionResult {
-  selectFile: (path: string) => Promise<void>;
+  /** Resolves to whether the selection landed (false when superseded or aborted). */
+  selectFile: (path: string) => Promise<boolean>;
   selectFileWithContent: (path: string, content: string) => void;
 }
 
@@ -39,16 +40,17 @@ export function useFileSelection(
         // the read transiently failed" — landing on an editable empty buffer in
         // the latter case lets the next keystroke clobber the real file (#1536).
         const stillExists = await fs.exists(path).catch(() => false);
-        if (seq !== latestSelectionRef.current) return; // superseded by a newer selection
+        if (seq !== latestSelectionRef.current) return false; // superseded by a newer selection
         if (stillExists) {
           // eslint-disable-next-line no-console
           console.error(`Failed to read existing file; keeping current selection: ${path}`);
-          return;
+          return false;
         }
         content = "";
       }
-      if (seq !== latestSelectionRef.current) return; // superseded by a newer selection
+      if (seq !== latestSelectionRef.current) return false; // superseded by a newer selection
       dispatch({ type: "SELECT_FILE", path, content });
+      return true;
     },
     [fs, dispatch],
   );

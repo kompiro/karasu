@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 import { BRANCH } from "../adr/regenerate-pr-flow.ts";
 
 // `review-request.yml` labels every untiered PR `risk: high`, except the daily
-// ADR index regeneration PR, which its script labels `risk: low` (Issue #3416).
+// regeneration PR of the ADR and TPL indexes, which its script labels `risk: low`
+// (Issue #3416).
 // The branch name lives in the workflow and in the script; if they drift, the
 // workflow labels the regeneration PR High and the script never merges it. The
 // skip must also require the head to be this repository, or a fork's branch of

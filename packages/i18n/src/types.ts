@@ -1,3 +1,5 @@
+import type { FirstRunTranslations } from "./first-run.js";
+
 /**
  * Translations — the single source of truth for all translatable strings
  * in the karasu app.
@@ -710,7 +712,7 @@ export type Translations = {
   "diagnostic.styleFileNotFound.message": (params: { filePath: string }) => string;
   "diagnostic.appProjectCompileError.message": string;
   "diagnostic.appOrgParseError.message": string;
-};
+} & FirstRunTranslations;
 
 /**
  * Params accepted by a translation key, inferred from the value type.
