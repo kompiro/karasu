@@ -117,11 +117,11 @@ README の見出しを前提にした参照をすべて作り直すことにな�
      の注記は一覧の説明なので消す
    - 「ステータス別」: 節ごと消し、冒頭の探し方に畳む
 2. 追記を求める指示が他に無いことを、上の `git grep` を PR でもう一度回して確かめる（TPL-2253）
-3. 検証: `pnpm vitest run scripts/lint/concept-adr-refs.test.ts` と `pnpm tsx scripts/lint/concept-adr-refs.ts`
+3. 検証: `pnpm vitest run scripts/lint/concept-adr-refs.test.ts` と `pnpm run lint:concept-adr-refs`
    （lefthook の該当 hook）が通る。README のリンク（`effective.md#<topic>` の anchor、`graph/<topic>.md`）が
    すべて解決する
 4. AT は作らない。人の目でしか確かめられない項目が無く、上の検証で閉じる
-5. 実装 PR のマージ後、本 Design Doc を ADR-3595 に昇格する
+5. 実装 PR のマージ後、本 Design Doc を ADR-3595 に昇格し、同じ PR で本 Design Doc を削除する
 
 ## 未解決の問い
 
