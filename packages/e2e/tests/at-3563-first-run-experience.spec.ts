@@ -137,11 +137,26 @@ test.describe("AT-3563 first-run Welcome", () => {
     await expect(editorLines(page)).toContainText("service Api");
   });
 
-  test("Restart Guided Tour… opens the sample when no project holds it (#3597)", async ({
+  test("Restart Guided Tour… opens the sample when the tour has not opened one (#3597)", async ({
     page,
     opfs,
   }) => {
-    await opfs.reset();
+    // A project the visitor named service-split is theirs, not the tour's.
+    await opfs.seed({
+      projects: [
+        {
+          id: "mine",
+          name: "service-split",
+          files: { "index.krs": "system Mine {\n  service Api\n}\n" },
+        },
+        {
+          id: "gs",
+          name: "getting-started",
+          files: { "index.krs": "system ECommerce {\n  service ECommerce\n}\n" },
+        },
+      ],
+      lastProjectId: "gs",
+    });
     await opfs.gotoApp();
     await expect(node(page, "ECommerce")).toBeVisible();
 
@@ -149,8 +164,10 @@ test.describe("AT-3563 first-run Welcome", () => {
     await page.getByRole("combobox", { name: "Search commands" }).fill("Restart Guided Tour");
     await page.keyboard.press("Enter");
     await expect(tour(page)).toContainText("1 / 5");
-    await expect(page.getByRole("combobox", { name: "Project" })).toContainText("service-split");
     await expect(node(page, "CommerceApp")).toBeVisible();
+    // A new copy beside the visitor's own project of the same name.
+    const project = page.getByRole("combobox", { name: "Project" });
+    await expect(project.getByRole("option", { name: "service-split" })).toHaveCount(2);
   });
 
   test("Track architecture evolution compares the migration with the current system", async ({
@@ -254,6 +271,23 @@ test.describe("AT-3563 Design a service split tour", () => {
     // No second copy of the sample: the one the tour opened is reused.
     const project = page.getByRole("combobox", { name: "Project" });
     await expect(project.getByRole("option", { name: "service-split" })).toHaveCount(1);
+  });
+
+  test("Restart Guided Tour… from another project goes back into the tour's copy (#3597)", async ({
+    page,
+  }) => {
+    await tour(page).getByRole("button", { name: "✕ Skip tour" }).click();
+    const project = page.getByRole("combobox", { name: "Project" });
+    await project.selectOption({ label: "getting-started" });
+    await expect(node(page, "ECommerce")).toBeVisible();
+
+    await pressChord(page, "Shift+P");
+    await page.getByRole("combobox", { name: "Search commands" }).fill("Restart Guided Tour");
+    await page.keyboard.press("Enter");
+    await expect(tour(page)).toContainText("1 / 5");
+    await expect(project).toContainText("service-split");
+    await expect(project.getByRole("option", { name: "service-split" })).toHaveCount(1);
+    await expect(node(page, "CommerceApp")).toBeVisible();
   });
 
   test("Skip ends the tour from the diff step and leaves diff mode", async ({ page }) => {

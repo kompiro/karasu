@@ -89,13 +89,13 @@ three places to start:
 - **Track architecture evolution**: opens the `service-split` sample with its
   migration compared against the current system.
 
-Samples always open as new projects, so nothing you already have is touched.
+Samples from Welcome always open as new projects, so nothing you already have is touched.
 Welcome does not appear when you open the app through a link to a specific
 place (a gallery example or a `#krs-…` permalink), or once you have chosen
 something. Run **Show Welcome…** from the command palette (`Ctrl/Cmd+Shift+P`)
 to open it again. **Restart Guided Tour…** in the same palette walks the guide
-again from step 1, in the `service-split` project it opened before (or a new
-copy if there is none).
+again from step 1, in the copy of the sample the tour opened before (or a new
+copy if that one is gone).
 
 ## The preview pane
 

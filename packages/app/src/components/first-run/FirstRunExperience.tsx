@@ -15,6 +15,7 @@ import { WelcomeDialog, type WelcomeChoice } from "./WelcomeDialog.js";
 import { EVOLVE_SCENE, SERVICE_SPLIT_TOUR } from "./tour-steps.js";
 import { useGuidedScene, type PendingScene } from "./use-guided-scene.js";
 import { markWelcomeDismissed, shouldShowWelcome } from "./welcome-gate.js";
+import { readTourProjectId, writeTourProjectId } from "./tour-project.js";
 
 interface FirstRunExperienceProps {
   /** This boot seeded the default projects (`useProjectInitialization`). */
@@ -79,22 +80,34 @@ export function FirstRunExperience({
   const serviceSplit = isJa ? SERVICE_SPLIT_PROJECT : SERVICE_SPLIT_PROJECT_EN;
 
   const startTour = useCallback((project: Project) => {
+    writeTourProjectId(project.id);
     const run = ++runs.current;
     setGuide({ kind: "tour", root: project.rootPath, step: 0, run });
   }, []);
 
   // Walks the guide again from step 1 (#3597), in the sample project the tour
   // opened before so a second run does not pile up copies; a new copy only
-  // when there is none.
+  // when that project is gone. It closes Welcome as a choice there would.
+  const restarting = useRef(false);
   const restartTour = useCallback(async () => {
-    const existing = projects.find((p) => p.name === serviceSplit.name);
+    if (restarting.current) return;
+    setGreeted(true);
+    setRequested(false);
+    markWelcomeDismissed();
+    const recorded = readTourProjectId();
+    const existing = recorded === null ? undefined : projects.find((p) => p.id === recorded);
     if (existing) {
       if (existing.id !== currentProject?.id) navigateToProject(existing);
       startTour(existing);
       return;
     }
-    const project = await openBundledExample(serviceSplit);
-    if (project) startTour(project);
+    restarting.current = true;
+    const run = runs.current;
+    const project = await openBundledExample(serviceSplit).finally(() => {
+      restarting.current = false;
+    });
+    // A guide started while the sample was opening wins (TPL-1534).
+    if (project && runs.current === run) startTour(project);
   }, [projects, serviceSplit, currentProject, navigateToProject, openBundledExample, startTour]);
 
   useCommand({

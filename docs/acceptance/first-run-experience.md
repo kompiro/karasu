@@ -74,9 +74,13 @@
 
   > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Restart Guided Tour… walks the guide again in the sample project it opened (#3597)`
 
-- [x] AT-P: サンプルのプロジェクトが無いときの Restart Guided Tour… は、サンプルを新しいプロジェクトとして開いてツアーを始める
+- [x] AT-P: ツアーがまだサンプルを開いていないときの Restart Guided Tour… は、サンプルを新しいプロジェクトとして開いてツアーを始める。利用者が同じ名前で作ったプロジェクトは使わない
 
-  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Restart Guided Tour… opens the sample when no project holds it (#3597)`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Restart Guided Tour… opens the sample when the tour has not opened one (#3597)`
+
+- [x] AT-Q: ツアーを終えて別のプロジェクトへ移ったあとの Restart Guided Tour… は、ツアーが開いたサンプルのプロジェクトへ戻る
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Restart Guided Tour… from another project goes back into the tour's copy (#3597)`
 
 ## 手動確認
 
