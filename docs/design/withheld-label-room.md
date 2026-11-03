@@ -5,7 +5,7 @@
 - **関連**:
   - 引き金 Issue: [#3036](https://github.com/kompiro/karasu/issues/3036)（行内の 2 枚のカードの間隔を、そこを通るエッジで決める）
   - 関連 ADR: [ADR-2598](../adr/2598-edge-routing-channel-capacity.md)（行間チャネルの容量と 2 パス配置）、[ADR-2611](../adr/2611-layer-spanning-edge-columns.md)（行をまたぐ列の予約）、[ADR-2048](../adr/2048-edge-label-collision-avoidance.md)（ラベル配置パス。「ノードを離してラベル空間を作る」を却下）、[ADR-3022](../adr/3022-edge-label-disclosure.md)（`label-display: auto` の保留）、[ADR-2593](../adr/2593-canvas-space-objective.md)（floor-first、候補探索）、[ADR-3027](../adr/3027-mutual-edge-pair-merge.md)（相互ペアを 1 本で描く）
-  - 関連 TPL: [TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md)、[TPL-2611](../test-perspectives/TPL-2611-feedback-key-survives-the-next-pass.md)、[TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)、[TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md)、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)、[TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md)、[TPL-3022](../test-perspectives/TPL-3022-withheld-content-stays-reachable.md)、[TPL-3036](../test-perspectives/TPL-3036-reserved-room-must-not-attract-new-traffic.md)（本 PR で起こす proactive TPL）
+  - 関連 TPL: [TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md)、[TPL-2611](../test-perspectives/TPL-2611-feedback-key-survives-the-next-pass.md)、[TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)、[TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md)、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)、[TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md)、[TPL-3022](../test-perspectives/TPL-3022-withheld-content-stays-reachable.md)、[TPL-3036](../test-perspectives/TPL-3036-reserved-room-kept-only-when-measured.md)（本 PR で起こす proactive TPL）
   - spike: `spike/3036-row-and-channel-label-room`（計測は #3036 のコメント）
   - コード: `packages/core/src/renderer/layout.ts`、`layout-reservations.ts`、`layer-layout-logics.ts`、`label-placement.ts`、`edge-layer.ts`、`svg-renderer.ts`、`layout-types.ts`、`mutual-pair.ts`
 
@@ -113,7 +113,7 @@ Issue の表は `feat/3030-edge-label-canvas-tier` 上で測ったもので、�
 - 減る仕組み: 隙間を広げると、外側のガターを回っていたエッジが内部の回廊（ADR-2611 の到達性）としてその
   隙間に入ってくる。`WordPressApp` では、ガターの水平の run に乗るラベルが 31 → 12 本に減り、行内の隙間に
   乗るラベルが 12 → 25 本に増え、そのうち置けないものが 5 → 17 本になった。開けた空間を、測った需要とは
-  別の種類の利用者（経路）が使う（[TPL-3036](../test-perspectives/TPL-3036-reserved-room-must-not-attract-new-traffic.md)）
+  別の種類の利用者（経路）が使う（[TPL-3036](../test-perspectives/TPL-3036-reserved-room-kept-only-when-measured.md)）
 - ただし密な fixture のように効く図もある。問題は開くこと自体ではなく、効いたかを確かめずに採ること
 
 ### 案3: 行間のチャネルを、置けなかったラベルの高さで開く（単独）
@@ -154,11 +154,13 @@ ADR-2598 のレーンの需要と合算し、既定の間隔を超えた分だ�
 | 密な fixture | 17 / 41 | 21 | 30 | **30**（B を採る） |
 | dify | 206 / 296 | 216 | 213 | **216**（A を採る） |
 | WordPress | 156 / 258 | 186 | 158 | **186**（A を採る） |
-| ラベルが減る view | — | 0 | 0 | **0** |
+| 返した配置でラベルが減る view | — | 0 | 0 | **0** |
 | `examples/`（85 本・全 view） | — | 同一 | 同一 | **同一** |
 
-候補 B だけを基準と比べる形では、`WordPressApp` で B が基準に負けるため、チャネルの効果ごと捨てられて
-110 本に戻る（比較を外すと 110 → 98 に減る）。候補 A を別に持つことで、各 view が自分に効く開き方を選べる。
+「返した配置でラベルが減る view」は、比較で候補を採らなかった view を基準のまま数えている。候補 B そのものは
+`WordPressApp` で基準より減る（比較を外して B を必ず採ると 110 → 98）。そのため候補 B だけを基準と比べる形では、
+この view は B を採らず基準に戻り、チャネルの効果ごと失って 110 本のままになる。候補 A を別に持つことで、
+各 view が自分に効く開き方を選べる。
 
 view ごと（案5 で変わった view はこれで全部）:
 
@@ -214,9 +216,11 @@ view ごと（案5 で変わった view はこれで全部）:
    衝突を判定する箱と同じ）。`svg-renderer` が `styles` と `palette` を閉じ込めて作る。`edgeLineKey` と同じ形で、
    渡さない呼び出し元（draw.io export、素の `layout()`）では候補を作らない
 2. **相互ペアを分けてから測る。** renderer は `applyMutualPairs` が分けた後の edge にラベルを置く（半分ごとの
-   区間と矢印）。置けないラベルの測定は、どの配置についても分けた後の edge で行う。ADR-2598 / ADR-2611 /
-   #3154 のレーン・列・側面の予約は、今と同じく分ける前の 1 回目の結果から測る（分けた後の edge で数えると
-   今の予約が変わる）
+   区間と矢印）。置けないラベルの測定は、どの配置についても分けた後の edge で行う。今の `layout()` は分割を
+   最後に 1 回だけ、返す配置に対して行うので、それより前に、1 回目・基準・各候補の配置それぞれについて、その
+   配置の edge を分けてから callback を呼ぶ。返すことにした配置の分割はそのまま最終の分割にし、分け直さない。
+   ADR-2598 / ADR-2611 / #3154 のレーン・列・側面の予約は、今と同じく分ける前の 1 回目の結果から測る（分けた
+   後の edge で数えると今の予約が変わる）
 3. **チャネルのラベルの需要。** 行序数 r のチャネルの帯は、r = 0 なら frame の天井から最初の行の上端まで、
    r = 行数 なら最後の行の下端から frame の床まで、それ以外は行 r − 1 の下端から行 r の上端まで（#3132 と
    同じ範囲）。既定のアンカーが帯の中にある置けなかったラベルについて、どの x でもそこに重なるラベルの高さ
@@ -227,7 +231,10 @@ view ごと（案5 で変わった view はこれで全部）:
 4. **行内の隙間のラベルの需要。** 行の中の隣り合う 2 枚のカードの間（行の上端から下端まで）に既定のアンカーを
    持つ置けなかったラベルのうち、最も幅の広いものの幅 + 余白 8 px × 2 を需要とし、隙間の幅を超えた分を
    右側のカードの前に開く（`extraGapBeforeCard`、カード id で鍵を持つ。TPL-2611）。ADR-2611 の列の予約が
-   同じカードにあるときは大きい方を採る。行の外端は開かない（ADR-2611 の決定 9 と同じ理由）
+   同じカードにあるときは大きい方を採る。行の外端は開かない（ADR-2611 の決定 9 と同じ理由）。grouped view
+   （frame がある view）でも開く。ADR-2611 の決定 10 が列を予約しないのは内部の回廊がそこでは提供されず、
+   列が使われないからで、ラベルの余地にはその理由が当たらない（回廊が無いので、開いた隙間に経路が入ってくる
+   心配はむしろ小さい）。効くかどうかは決定の中身 6 の比較が決める
 5. **候補と基準。** 基準は `main` が返す配置。候補 A はレーン・列・側面の予約に決定の中身 3 を加えたもの、
    候補 B は候補 A に決定の中身 4 を加えたもの。需要が出なかった候補は作らない（B の需要が無ければ B は A と
    同じなので作らない。A の需要が無ければ A は作らない）。幅予算は 1 回目の探索が選んだものをどの候補でも
@@ -236,10 +243,14 @@ view ごと（案5 で変わった view はこれで全部）:
 6. **選び方。** 各候補を配置して置けないラベルを数え、基準より**厳密に少ない**候補のうち最も少ないものを採る。
    同数なら A を採る。どれも基準より少なくなければ基準を返す（TPL-2593: 既定が先頭、厳密改善のみが勝つ）。
    ラベルの需要がどこにも無い図は候補を作らないので、配置の回数も出力も今と同じ
-7. **パス数の上限を 4 にする。** 配置は 1 回目・基準の 2 回目（構造の予約があるとき）・候補 A・候補 B の最大
-   4 回になる。候補は入力から決まる有限の集合で、繰り返しは無い。これは ADR-2598 の決定 3（「3 回目は存在
-   しない」）を、ラベルの余地の候補についてだけ置き換える。`placementPasses` は「配置を何回走らせたか」の
-   まま、型を `1 | 2 | 3 | 4` に広げる
+7. **パス数の上限を 4 にする。** ここで「配置」は、幅予算の探索（ADR-2593。それ自体が予算の候補ごとに
+   `layoutInner` を走らせる）が終わった後の配置を数える。探索の勝者が 1 回目で、そこに基準の 2 回目（構造の
+   予約があるとき）・候補 A・候補 B が続き、最大 4 回になる。候補は 1 回目の結果だけから決まる有限の集合で、
+   繰り返しは無い。これは ADR-2598 の決定 3 と ADR-2611 の決定 11（どちらも「配置は 2 回まで、
+   `placementPasses` は 1 か 2」）を、ラベルの余地の候補についてだけ置き換える。`placementPasses` は
+   「探索の後に配置を何回走らせたか」のまま、型を `1 | 2 | 3 | 4` に広げる。どの候補を採ったかは別の出力
+   （`LayoutResult.labelRoom?: "channels" | "channels+rows"`。採らなかったときは無し）で報告する。どちらも
+   出力であって入力にはしない（ADR-2521）
 8. **数えないもの。** `label-display: always` と `hover` のラベル（`always` は置けなくても描かれ、`hover` は
    canvas に描かれない）、合成ラベル（`N domain edges` など。保留されないので置けなかったことにならない）、
    ghost / cyclic のエッジのラベル。ghost と cyclic の `auto` のラベルはラベル配置パスでは保留されうる
@@ -252,17 +263,21 @@ view ごと（案5 で変わった view はこれで全部）:
 spike（`spike/3036-row-and-channel-label-room`）の構成をそのまま使える。違うのは次の点。
 
 1. `edge-layer.ts`: ラベル配置パスを 1 つの関数に切り出し、`renderEdgeLayer` と callback の両方から呼ぶ
-   （spike は同じ 3 つの呼び出しを並べた関数を別に書いた）
-2. `layout-types.ts`: `LayoutOptions.withheldLabels` と `placementPasses` の型を広げる。このファイルは行数予算が
+   （spike は同じ 3 つの呼び出しを並べた関数を別に書いた）。callback が返す幅と高さは `labelBox` の箱の寸法に
+   する。spike はラベルの文字列の幅と font size を返し、行内の需要を「文字列の幅 + 8 px × 2」（箱の幅より 4 px
+   小さい）、チャネルの x の重なりを「アンカー ± 文字列の幅 / 2」で測った。箱の寸法にすると計測の数字
+   （30 / 216 / 186）が動きうるので、実装 PR で測り直して記録する
+2. `placementPasses` と `labelRoom`: spike は `placementPasses` を 1 か 2 のまま報告し、`labelRoom` を持たない
+3. `layout-types.ts`: `LayoutOptions.withheldLabels` を足し、`placementPasses` の型を広げ、`labelRoom` を足す。このファイルは行数予算が
    pin されている（`.claude/rules/line-budget.md`）ので、足す分は別の型をこのファイルの外へ移して相殺する
    （spike は module augmentation で逃げた）
-3. `layout-reservations.ts`: チャネルのレーンの需要（相互ペアを分ける前の edge）、チャネルのラベルの需要、
+4. `layout-reservations.ts`: チャネルのレーンの需要（相互ペアを分ける前の edge）、チャネルのラベルの需要、
    行内の隙間のラベルの需要（どちらも callback が返したラベルから）を、それぞれ序数ごとの値として返す
-4. 候補の組み立てと選択は `layout.ts` の外の module に置く（spike の `chooseLabelRoom`。`layout.ts` は
+5. 候補の組み立てと選択は `layout.ts` の外の module に置く（spike の `chooseLabelRoom`。`layout.ts` は
    600 行の予算の際にある）。spike は配置ごとに edge を複製して相互ペアを分けて測ったが、実装では選ばれた
    配置の分割を最終の分割として使い回し、分け直さない
-5. `svg-renderer.ts`: `withheldLabels` を渡す
-6. テスト:
+6. `svg-renderer.ts`: `withheldLabels` を渡す
+7. テスト:
    - 密な fixture で、置けるラベルが 17 → 30 以上、候補 B が採られる。置けないラベルが無い隙間とチャネルの
      間隔が変わらない
    - `withheldLabels` を渡さない `layout()` の出力が今と同じ
@@ -270,12 +285,15 @@ spike（`spike/3036-row-and-channel-label-room`）の構成をそのまま使え
    - 候補 B が基準に負け候補 A が勝つ入力で A が採られ、どちらも負ける入力で基準が返ること
    - font size が違うラベルが同じチャネルに重なる fixture で、合計の高さが開くこと
    - dify / WordPress は repo に無いので、view ごとの増減と採った候補を実装 PR に記録する（TPL-3036）
-7. AT: `docs/acceptance/` に追加する。手動項目は preview で密な fixture を開き、混んだ行内の隙間とチャネルに
+8. AT: `docs/acceptance/` に追加する。手動項目は preview で密な fixture を開き、混んだ行内の隙間とチャネルに
    ラベルが増えていることを目で確かめる 1 件
-8. changeset: `@karasu-tools/core` と `karasu` に minor（レイアウトの挙動が変わる）
-9. ADR 昇格: 実装の PR がマージされたら `docs/adr/3036-withheld-label-room.md` に昇格し、本 Design Doc を
-   削除する。ADR-2598 は決定 3 のパス数の上限だけがこの ADR で置き換わり、ほかは有効なままなので、
-   supersede はせず `related_to` で結び、置き換える範囲を新 ADR の本文に書く
+9. changeset: `@karasu-tools/core` と `karasu` に minor（レイアウトの挙動が変わる）
+10. ADR 昇格: 実装の PR がマージされたら `docs/adr/3036-withheld-label-room.md` に昇格し、本 Design Doc を
+    削除する。ADR-2598 と ADR-2611 は、パス数の上限（ADR-2598 の決定 3、ADR-2611 の決定 11）だけがこの ADR で
+    改訂され、ほかは有効なままなので、`supersedes` ではなく `refines: [ADR-2598, ADR-2611]` で結ぶ（ADR-788 で
+    `supersedes` は時間軸の置き換え、`related_to` は意思決定に影響しない参照。1 つの決定だけを改訂する前例は
+    ADR-2761 の `refines: [ADR-2593]`）。改訂する範囲は新 ADR の本文に書く。`layout-types.ts` の
+    `placementPasses` のコメント（"Never 3"）も実装 PR で直す
 
 ### 影響範囲・マイグレーション
 
@@ -284,7 +302,9 @@ spike（`spike/3036-row-and-channel-label-room`）の構成をそのまま使え
 - 性能: ラベルが置けなかった図では、候補の配置とラベル配置パスの分だけ遅くなる（大きな view で約 2 倍）
 - ドキュメント更新: なし（`docs/spec/style.md` の `label-display` の説明は変わらない）
 - テスト・examples への影響: 密な fixture を `compile` で描いて数を固定しているテスト
-  （`edge-label-disclosure-surfaces.test.ts`）の期待値が変わる。素の `layout()` で測るテスト
+  （`edge-label-disclosure-surfaces.test.ts`）の期待値が変わる。E2E の
+  `packages/e2e/tests/at-3031-focus-canvas.spec.ts` は同じ fixture で保留されたラベルが 10 本より多いことを
+  前提にしており、30 / 41 では 11 本残って 1 本差で通る。実装で数字が動けば落ちうるので、前提を見直す。素の `layout()` で測るテスト
   （`mutual-pair.test.ts`、`label-placement.test.ts` の `dense canvas fence`）は callback を渡さないので
   変わらない。`examples/` は変わらない
 
