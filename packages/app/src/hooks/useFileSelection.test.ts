@@ -75,10 +75,12 @@ describe("useFileSelection", () => {
       const dispatch = vi.fn<() => void>();
       const { result } = renderHook(() => useFileSelection(fs, dispatch));
 
+      let landed = false;
       await act(async () => {
-        await result.current.selectFile("/missing.krs");
+        landed = await result.current.selectFile("/missing.krs");
       });
 
+      expect(landed).toBe(true);
       expect(dispatch).toHaveBeenCalledWith({
         type: "SELECT_FILE",
         path: "/missing.krs",
@@ -99,10 +101,12 @@ describe("useFileSelection", () => {
       const dispatch = vi.fn<() => void>();
       const { result } = renderHook(() => useFileSelection(fs, dispatch));
 
+      let landed = true;
       await act(async () => {
-        await result.current.selectFile("/exists.krs");
+        landed = await result.current.selectFile("/exists.krs");
       });
 
+      expect(landed).toBe(false);
       expect(dispatch).not.toHaveBeenCalled();
     });
 
