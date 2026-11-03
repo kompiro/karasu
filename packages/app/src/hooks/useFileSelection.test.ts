@@ -39,6 +39,32 @@ describe("useFileSelection", () => {
       });
     });
 
+    it("reports whether the selection landed: a superseded read resolves to false", async () => {
+      let releaseSlow: (content: string) => void = () => {};
+      const fs = makeFs({
+        readFile: vi.fn<(path: string) => Promise<string>>((path) =>
+          path === "/slow.krs"
+            ? new Promise<string>((resolve) => {
+                releaseSlow = resolve;
+              })
+            : Promise.resolve("fast"),
+        ),
+      });
+      const dispatch = vi.fn<() => void>();
+      const { result } = renderHook(() => useFileSelection(fs, dispatch));
+
+      let slow: Promise<boolean> = Promise.resolve(true);
+      let fast = false;
+      await act(async () => {
+        slow = result.current.selectFile("/slow.krs");
+        fast = await result.current.selectFile("/fast.krs");
+        releaseSlow("slow");
+      });
+
+      expect(fast).toBe(true);
+      expect(await slow).toBe(false);
+    });
+
     it("falls back to empty content when the file does not exist", async () => {
       const fs = makeFs({
         readFile: vi.fn<(path: string) => Promise<string>>(async () => {
@@ -49,10 +75,12 @@ describe("useFileSelection", () => {
       const dispatch = vi.fn<() => void>();
       const { result } = renderHook(() => useFileSelection(fs, dispatch));
 
+      let landed = false;
       await act(async () => {
-        await result.current.selectFile("/missing.krs");
+        landed = await result.current.selectFile("/missing.krs");
       });
 
+      expect(landed).toBe(true);
       expect(dispatch).toHaveBeenCalledWith({
         type: "SELECT_FILE",
         path: "/missing.krs",
@@ -73,10 +101,12 @@ describe("useFileSelection", () => {
       const dispatch = vi.fn<() => void>();
       const { result } = renderHook(() => useFileSelection(fs, dispatch));
 
+      let landed = true;
       await act(async () => {
-        await result.current.selectFile("/exists.krs");
+        landed = await result.current.selectFile("/exists.krs");
       });
 
+      expect(landed).toBe(false);
       expect(dispatch).not.toHaveBeenCalled();
     });
 

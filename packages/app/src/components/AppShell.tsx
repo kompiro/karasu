@@ -64,7 +64,7 @@ interface AppShellProps {
    * or initial deep-link). ProjectMode passes `selectFile`; modes without
    * per-file navigation (Serve/Memory) omit this. Issue #811.
    */
-  onFileChange?: (path: string) => Promise<void> | void;
+  onFileChange?: (path: string) => Promise<unknown> | void;
   /**
    * A host that owns the editor (the VS Code webview, #3311) takes the jump to a
    * node's definition: it gets the node and the file that defines it, and the

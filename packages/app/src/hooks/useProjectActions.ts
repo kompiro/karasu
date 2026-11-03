@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import type { Dispatch } from "react";
-import type { FileSystemProvider, Project } from "@karasu-tools/core";
+import type { ExampleProject, FileSystemProvider, Project } from "@karasu-tools/core";
 import type { AppAction } from "../state/app-reducer.js";
 import type { ProjectManager } from "../fs/project-manager.js";
 import { useTranslation } from "../i18n/index.js";
@@ -28,6 +28,11 @@ interface ProjectActions {
   importProject: (file: File) => Promise<void>;
   /** Open a gallery example (#1646) by slug + lang, fetched from the fixed origin. */
   openExample: (slug: string, lang: string) => Promise<void>;
+  /**
+   * Create a new project from an example bundled with the app and switch to
+   * it. Resolves to the project, or `null` when creation failed (reported).
+   */
+  openBundledExample: (example: ExampleProject) => Promise<Project | null>;
 }
 
 /**
@@ -121,24 +126,45 @@ export function useProjectActions({
     [pm, dispatch, projects, navigateToProject, reportError, t],
   );
 
+  // A new project under a name no existing project has, so opening an example
+  // never touches the user's own work.
+  const addExampleProject = useCallback(
+    async ({ name, files }: ExampleProject): Promise<Project> => {
+      const finalName = disambiguateName(
+        name,
+        projects.map((p) => p.name),
+      );
+      const project = await pm.createProject(finalName, files);
+      dispatch({ type: "ADD_PROJECT", project });
+      navigateToProject(project);
+      return project;
+    },
+    [pm, dispatch, projects, navigateToProject],
+  );
+
   const openExample = useCallback(
     async (slug: string, lang: string) => {
       try {
-        const { files, name } = await fetchExampleProject(slug, lang);
-        const finalName = disambiguateName(
-          name,
-          projects.map((p) => p.name),
-        );
-        const project = await pm.createProject(finalName, files);
-        dispatch({ type: "ADD_PROJECT", project });
-        navigateToProject(project);
+        await addExampleProject(await fetchExampleProject(slug, lang));
       } catch (err) {
         // fetchExampleProject throws on an unknown slug, fetch failure, redirect,
         // or the size/count caps; surface it instead of failing silently.
         reportError(t("project.error.openExample", { detail: errorDetail(err) }));
       }
     },
-    [pm, dispatch, projects, navigateToProject, reportError, t],
+    [addExampleProject, reportError, t],
+  );
+
+  const openBundledExample = useCallback(
+    async (example: ExampleProject) => {
+      try {
+        return await addExampleProject(example);
+      } catch (err) {
+        reportError(t("project.error.openExample", { detail: errorDetail(err) }));
+        return null;
+      }
+    },
+    [addExampleProject, reportError, t],
   );
 
   return {
@@ -148,5 +174,6 @@ export function useProjectActions({
     exportProject,
     importProject,
     openExample,
+    openBundledExample,
   };
 }
