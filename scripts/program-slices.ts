@@ -15,10 +15,14 @@ import { execFileSync } from "node:child_process";
 //   pnpm program:slices          # every open parent that has sub-issues
 //   pnpm program:slices 2161     # one parent
 //
+// A parent labelled `prd` is a PRD, whose sub-issues are Epics rather than
+// slices (ADR-3571). Each Epic carries its own table, so the PRD is not checked.
+//
 // Requires an authenticated `gh` (the script shells out; no new dependency).
 
 const REPO = "kompiro/karasu";
 const SLICE_HEADING = "## Slice status";
+const PRD_LABEL = "prd";
 
 interface SubIssue {
   number: number;
@@ -31,6 +35,7 @@ interface Parent {
   title: string;
   body: string;
   subs: SubIssue[];
+  labels?: string[];
 }
 
 export interface Problem {
@@ -57,7 +62,12 @@ export function sliceTableRefs(body: string): number[] | null {
   return [...section.matchAll(/#(\d+)\b/g)].map((m) => Number(m[1]));
 }
 
+function isPrd(parent: Parent): boolean {
+  return parent.labels?.includes(PRD_LABEL) ?? false;
+}
+
 export function checkParent(parent: Parent): Problem[] {
+  if (isPrd(parent)) return [];
   const problems: Problem[] = [];
   const refs = sliceTableRefs(parent.body);
   if (refs === null) {
@@ -111,9 +121,28 @@ function openIssueNumbers(): number[] {
 function loadParent(issue: number): Parent | null {
   const subs = subIssuesOf(issue);
   if (subs.length === 0) return null;
-  const raw = gh(["issue", "view", String(issue), "--repo", REPO, "--json", "number,title,body"]);
-  const meta = JSON.parse(raw) as { number: number; title: string; body: string };
-  return { number: meta.number, title: meta.title, body: meta.body ?? "", subs };
+  const raw = gh([
+    "issue",
+    "view",
+    String(issue),
+    "--repo",
+    REPO,
+    "--json",
+    "number,title,body,labels",
+  ]);
+  const meta = JSON.parse(raw) as {
+    number: number;
+    title: string;
+    body: string;
+    labels: { name: string }[];
+  };
+  return {
+    number: meta.number,
+    title: meta.title,
+    body: meta.body ?? "",
+    subs,
+    labels: meta.labels.map((l) => l.name),
+  };
 }
 
 function main(): void {
@@ -134,7 +163,7 @@ function main(): void {
   for (const parent of parents.sort((a, b) => a.number - b.number)) {
     const done = parent.subs.filter((s) => s.state === "closed").length;
     console.log(`\n#${parent.number} ${parent.title}`);
-    console.log(`  ${done}/${parent.subs.length} slices`);
+    console.log(`  ${done}/${parent.subs.length} ${isPrd(parent) ? "epics (PRD)" : "slices"}`);
     for (const sub of parent.subs) {
       console.log(`  ${sub.state === "closed" ? "✅" : "⬜"} #${sub.number} ${sub.title}`);
     }

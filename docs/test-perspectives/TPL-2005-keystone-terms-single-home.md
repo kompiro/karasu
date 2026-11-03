@@ -54,10 +54,10 @@ ADR にまたがって使われる。定義を各所に散らして書くと、�
 この 2 つに加え、用語集は 2 面（EN `docs/glossary.md` / JA `docs/glossary.ja.md`）と
 モデリング言語用語集 [`docs/spec/glossary.md`](../spec/glossary.md) との相互リンクを持つ。
 in-site リンク（published ページ間）は `check-links`（TPL-1621）が解決を縛るが、
-**用語集が参照する PRD / roadmap / design doc / ADR は unpublished なので GitHub URL に
+**用語集が参照する roadmap / design doc / ADR は unpublished なので GitHub URL に
 rewrite され、check-links の検査対象外**である点に注意 — これらのリンク切れは機械検出
 されないので、リンク先ファイルの rename / 削除（例: design doc の ADR 昇格）時は用語集の
-リンクを手で追随させる。
+リンクを手で追随させる。keystone PRD は Issue（#3572）なので消えない（ADR-2348）。
 
 ## 想定される失敗モード
 
@@ -84,7 +84,7 @@ keystone / permalink の用語を扱う doc を変更するときに確認する
       ref-pinned の design doc・permalink ADR の機構と矛盾していないか。
 - [ ] EN / JA 両ファイルを更新したか。両者と `docs/spec/glossary.md`（モデリング言語用語集）
       との相互リンクが生きているか。
-- [ ] 用語集が参照する unpublished doc（PRD / roadmap / design doc / ADR）を rename / 削除
+- [ ] 用語集が参照する unpublished doc（roadmap / design doc / ADR）を rename / 削除
       したなら、用語集側のリンクを追随させたか（check-links は検出しない）。
 - [ ] `pnpm --filter docs-site check-links` が通るか（published ページ間のリンク・アンカー解決）。
 - [ ] 新規 published ページを足したなら PUBLISHED_EN_FILES + astro.config.mjs sidebar +

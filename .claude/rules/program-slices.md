@@ -27,6 +27,9 @@ paths:
 ADR 昇格など）は `docs/design/TEMPLATE.md` が求める設計の中身で、この一覧には当たらない（実例: [#2232](https://github.com/kompiro/karasu/pull/2232) が
 `boundary-membership-1n.md` に入れた capability map — [#2237](https://github.com/kompiro/karasu/issues/2237) で親 Issue へ移した）。
 
+親が `prd` ラベルの PRD Issue なら、その sub-issue は Epic で、`## Slice status` 表は各 Epic が持つ。
+`pnpm program:slices` は PRD を検査から外す（ADR-3571）。
+
 ## 守ること 2 つ
 
 **完了マークを手で書かない。** `## Slice status` 表に ✅ 列を作らない。完了は

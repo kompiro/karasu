@@ -26,7 +26,7 @@ assumptions:
 
 `docs/prd/` は PR #1825 で、製品の要件・方針（何を・なぜ）を残す場所として作った。ADR に昇格して消える `docs/design/` と違い、PRD は ADR にせず残し、要件を Issue に展開する、という位置づけだった。決めた ADR は無く、CLAUDE.md の表と `docs/prd/README.md` だけが規約を持っていた。
 
-5 か月で使われたのは 2 件（keystone と、マージ前の first-run）で、製品の方針はそれ以外ではすでに Issue（Epic、Brainstorm、planning）に置かれていた。first-run（#3563）で、ファイルを Epic と並べて持つ費用がまとめて表に出た。
+PR #1825（2026-06）以来、使われたのは 2 件（keystone と、マージ前の first-run）で、製品の方針はそれ以外ではすでに Issue（Epic、Brainstorm、planning）に置かれていた。first-run（#3563）で、ファイルを Epic と並べて持つ費用がまとめて表に出た。
 
 - **2 か所の内容が重なる。** Epic #3563 の本文が PRD の「Out of scope」と計測の注記を写していた。
 - **マージの順序が逆転する。** 実装 PR #3568 が PRD の PR #3567 より先にマージされ、`main` の `docs/acceptance/first-run-experience.md` が存在しないファイルを指した。
@@ -46,6 +46,7 @@ PRD Issue（prd）        何を・なぜ。後のフェーズ、成功指標、
 - PRD Issue を立てるのは、方針が 1 つの Epic より長く使われるときだけ。Epic 1 本で完結する要件は Epic の本文に書く。
 - Epic の本文は PRD Issue を指すだけで、内容を写さない。
 - 方針を変えたら、PRD の本文の `## Revisions` に日付付きで足す。議論はコメントで行う。
+- `epic:` ラベルは Epic とスライスに付け、PRD Issue には付けない。
 - PRD Issue は、そこから起票する Epic が残っているあいだ open にする。全フェーズを終えたか、別の PRD に置き換えたら閉じる。
 
 ## 理由
@@ -53,7 +54,7 @@ PRD Issue（prd）        何を・なぜ。後のフェーズ、成功指標、
 - **置き場が 1 つになる。** 状態（open/closed）と進捗（sub-issue）を GitHub が持ち、Epic とのあいだで内容が食い違わない。
 - **順序の逆転が起きない。** PRD の PR が無いので、実装 PR より後に PRD がマージされる状態がそもそも生まれない。
 - **言語が揃う。** Issue は英語という規約に乗り、PRD と Epic で同じ内容を 2 言語で持たない。
-- **使う流れの中にある。** Epic と sub-issue は毎日使う仕組みで、`pnpm program:slices` は親の番号を指定して検査するので、階層が 1 段増えても Epic の検査はそのまま動く。GitHub の sub-issue は 8 階層・親 1 件あたり 100 件まで持てるので、3 階層は余裕の範囲に収まる。
+- **使う流れの中にある。** Epic と sub-issue は毎日使う仕組みで、`pnpm program:slices` は `prd` ラベルの親を検査から外す（PRD の sub-issue は Epic で、`## Slice status` 表は各 Epic が持つ）ので、階層が 1 段増えても Epic の検査はそのまま動く。GitHub の sub-issue は 8 階層・親 1 件あたり 100 件まで持てるので、3 階層は余裕の範囲に収まる。
 - **参照先として消えない。** 閉じた Issue も削除されないアドレスなので（ADR-2348）、AT・TPL・roadmap から指したまま残せる。
 
 ## 却下した案
@@ -65,6 +66,7 @@ PRD Issue（prd）        何を・なぜ。後のフェーズ、成功指標、
 ## 帰結
 
 - `docs/prd/README.md` と `docs/prd/keystone-primary-path.md` を削除し、内容は #3572 に英訳して移した。ファイルの最終版は Git の履歴に残る。
-- `docs/` の外を含む参照（glossary、roadmap、TPL-2005、AT 2 件、`.claude/rules/adr.md`、app のコメント）は PRD Issue に張り替えた。
-- `docs/prd/` を指す ADR-1827・ADR-1828・ADR-2901 の本文は ADR-2687 に従って書き換えない。CI はこの節の dead path を追わない（`scripts/lint/record-source-paths.ts`）。
+- 参照（glossary、roadmap、TPL-2005、AT 2 件、app のコメント、`epic:` ラベルの説明）は PRD Issue に張り替え、`.claude/rules/adr.md` と `.coderabbit.yaml` の例示から `docs/prd/` を外した。
+- `scripts/program-slices.ts` は `prd` ラベルの親を検査から外す。
+- `docs/prd/` を指す ADR-1827・ADR-1828・ADR-2901 の本文は ADR-2687 に従って書き換えない。これらの ADR 本文の dead path は CI が追わない（`scripts/lint/record-source-paths.ts` は `docs/adr/**` を走査しない）。
 - ADR-2331 と ADR-2348 にある `docs/prd/` の記述は、当時の事実の記録として残す。
