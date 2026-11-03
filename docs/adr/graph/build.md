@@ -145,6 +145,7 @@ flowchart TD
     ADR_3399["ADR-3399<br/>Dependabot security alert 2026-10-30（qs と seria..."]
     ADR_3412["ADR-3412<br/>GitHub Actions の依存を actions.lock で固定し、検証を requi..."]
     ADR_3421["ADR-3421<br/>Copilot で推論する gh-aw の workflow を外し、個人の課金で動かせるまで..."]
+    ADR_3504["ADR-3504<br/>Low の ADR の PR は draft を経ずに作り、ゲートはその create を 1..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -173,6 +174,7 @@ flowchart TD
   ADR_3020 --> ADR_2969
   ADR_3326 --> ADR_3052
   ADR_3342 --> ADR_3326
+  ADR_3504 --> ADR_3286
   ADR_1974 --> ADR_1820
   ADR_2065 --> ADR_1314
   ADR_2065 --> ADR_1820
@@ -348,6 +350,7 @@ flowchart TD
   class ADR_3399 accepted
   class ADR_3412 accepted
   class ADR_3421 accepted
+  class ADR_3504 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost

@@ -210,6 +210,7 @@ flowchart TD
     ADR_3399["ADR-3399<br/>Dependabot security alert 2026-10-30（qs と seria..."]
     ADR_3412["ADR-3412<br/>GitHub Actions の依存を actions.lock で固定し、検証を requi..."]
     ADR_3421["ADR-3421<br/>Copilot で推論する gh-aw の workflow を外し、個人の課金で動かせるまで..."]
+    ADR_3504["ADR-3504<br/>Low の ADR の PR は draft を経ずに作り、ゲートはその create を 1..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -241,6 +242,7 @@ flowchart TD
     ADR_1104["ADR-1104<br/>translate adapter で usecase → resource バインディング ..."]
     ADR_1935["ADR-1935<br/>--from wrangler translate adapter と「adapter を採る基準」"]
     ADR_3258["ADR-3258<br/>karasu serve は配信ディレクトリをまるごとブラウザのメモリに写して import ..."]
+    ADR_3418["ADR-3418<br/>`karasu serve` を loopback で listen し、ローカルでない `H..."]
     ADR_3426["ADR-3426<br/>`/render?src=` の SSRF 対策を、解決後のアドレスとリダイレクトの各ホップで行う"]
     ADR_9013["ADR-9013<br/>CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
   end
@@ -430,6 +432,7 @@ flowchart TD
     ADR_2958["ADR-2958<br/>ガターを通るエッジを、共有する端ごとに 1 レーンへ束ねる"]
     ADR_3022["ADR-3022<br/>edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は foc..."]
     ADR_3026["ADR-3026<br/>同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す"]
+    ADR_3027["ADR-3027<br/>見た目が同じ両方向の edge の組を、card を動かさずに両端に矢印のある 1 本の線で描く"]
     ADR_3034["ADR-3034<br/>エッジラベルの探索範囲は約 90px のまま広げない"]
     ADR_3088["ADR-3088<br/>行間チャネルのレーンを、run がつながる縦線の向きで並べる"]
     ADR_3090["ADR-3090<br/>交差マーク（ホップ・junction chip・trunk band）をエッジの減光に追随させる"]
@@ -663,6 +666,8 @@ flowchart TD
   ADR_3020 --> ADR_2969
   ADR_3326 --> ADR_3052
   ADR_3342 --> ADR_3326
+  ADR_3418 --> ADR_3426
+  ADR_3504 --> ADR_3286
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -1106,6 +1111,7 @@ flowchart TD
   class ADR_3020 accepted
   class ADR_3022 accepted
   class ADR_3026 accepted
+  class ADR_3027 accepted
   class ADR_3034 not_adopted
   class ADR_3052 accepted
   class ADR_3069 accepted
@@ -1151,10 +1157,12 @@ flowchart TD
   class ADR_3405 accepted
   class ADR_3412 accepted
   class ADR_3416 accepted
+  class ADR_3418 accepted
   class ADR_3421 accepted
   class ADR_3426 accepted
   class ADR_3429 accepted
   class ADR_3471 accepted
+  class ADR_3504 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
