@@ -1,0 +1,115 @@
+// service-split/planned.krs: 目標のアーキテクチャ。
+// 請求は専用のデータベースを持つ独立したサービスとして動き、
+// 請求ルールを持つチームがそれを動かすサービスも持つ。
+// index.krs（現在のアーキテクチャ）と見比べる。
+
+system Commerce {
+  label "コマースプラットフォーム"
+
+  user Customer [human] {
+    label "顧客"
+    description "注文して支払う"
+  }
+  user FinanceStaff [human] {
+    label "経理担当"
+    description "請求書と返金を確認する"
+  }
+
+  service CommerceApp {
+    label "コマースアプリケーション"
+    description "ストアフロントと注文"
+
+    domain Ordering {
+      label "注文"
+      usecase PlaceOrder {
+        label "注文する"
+        resource CommerceDB.Orders { operations create }
+      }
+      usecase TrackOrder {
+        label "注文を追跡する"
+        resource CommerceDB.Orders { operations read }
+      }
+    }
+  }
+
+  service BillingService {
+    label "請求サービス"
+    description "請求書と決済。独自のリリースサイクル"
+
+    domain Billing {
+      label "請求"
+      usecase IssueInvoice {
+        label "請求書を発行する"
+        resource BillingDB.Invoices { operations create }
+      }
+      usecase CapturePayment {
+        label "決済を確定する"
+        resource BillingDB.Payments { operations create }
+      }
+    }
+  }
+
+  service InventoryWorker {
+    label "在庫ワーカー"
+    description "在庫の引当と解放をバックグラウンドで行う"
+
+    domain Inventory {
+      label "在庫"
+      usecase ReserveStock {
+        label "在庫を引き当てる"
+        resource CommerceDB.Stock { operations update }
+      }
+    }
+  }
+
+  service PaymentGateway [external] {
+    label "決済ゲートウェイ"
+    description "外部事業者が運営するカード決済"
+  }
+
+  database CommerceDB {
+    label "コマースDB"
+    description "注文と在庫"
+    table Orders { label "注文" }
+    table Stock { label "在庫" }
+  }
+
+  database BillingDB {
+    label "請求DB"
+    description "請求だけが持つ"
+    table Invoices { label "請求書" }
+    table Payments { label "決済" }
+  }
+
+  Customer -> CommerceApp "注文"
+  Customer -> BillingService "支払い"
+  FinanceStaff -> BillingService "請求書を確認"
+  CommerceApp -> BillingService "注文内容を添えて請求書を依頼"
+  CommerceApp -> InventoryWorker "在庫を引当"
+  BillingService -> PaymentGateway "決済を確定"
+}
+
+organization Shop {
+  label "ショップ開発部"
+
+  team commerce {
+    label "コマースチーム"
+    description "ストアフロントと注文フローを作る"
+    owns CommerceApp
+    owns Ordering
+  }
+
+  team billing {
+    label "請求チーム"
+    description "請求ルールと、それを動かすサービスを持つ"
+    owns BillingService
+    owns Billing
+  }
+
+  team platform {
+    label "プラットフォームチーム"
+    description "共有データベースとバックグラウンドワーカーを運用する"
+    owns InventoryWorker
+    owns Inventory
+  }
+}

@@ -4530,3 +4530,721 @@ organization Editorial {
     },
   ],
 };
+
+/** The first-run guide's sample: current, planned and migrating entries of one service split (#3563). Source: `examples/ja/service-split/`. */
+export const SERVICE_SPLIT_PROJECT: ExampleProject = {
+  name: "service-split",
+  files: [
+    {
+      path: "index.krs",
+      content: `// service-split/index.krs: 現在のアーキテクチャ。
+// 初回体験ガイド（#3563）の題材。planned.krs（目標）と migrating.krs
+// （移行途中）と見比べる。
+//
+// 注文と請求は別のドメインだが、どちらも 1 つの Commerce Application に
+// 同居し、1 つの Commerce Database を共有している。請求チームは請求ドメインを
+// 持つが、サービスは 1 つも持っていない。
+
+system Commerce {
+  label "コマースプラットフォーム"
+
+  user Customer [human] {
+    label "顧客"
+    description "注文して支払う"
+  }
+  user FinanceStaff [human] {
+    label "経理担当"
+    description "請求書と返金を確認する"
+  }
+
+  service CommerceApp {
+    label "コマースアプリケーション"
+    description "注文と請求を抱える 1 つのデプロイ単位"
+
+    domain Ordering {
+      label "注文"
+      usecase PlaceOrder {
+        label "注文する"
+        resource CommerceDB.Orders { operations create }
+      }
+      usecase TrackOrder {
+        label "注文を追跡する"
+        resource CommerceDB.Orders { operations read }
+      }
+
+      Ordering -> Billing "請求書を依頼"
+    }
+    domain Billing {
+      label "請求"
+      usecase IssueInvoice {
+        label "請求書を発行する"
+        resource CommerceDB.Invoices { operations create }
+        resource CommerceDB.Orders { operations read }
+      }
+      usecase CapturePayment {
+        label "決済を確定する"
+        resource CommerceDB.Payments { operations create }
+      }
+    }
+  }
+
+  service InventoryWorker {
+    label "在庫ワーカー"
+    description "在庫の引当と解放をバックグラウンドで行う"
+
+    domain Inventory {
+      label "在庫"
+      usecase ReserveStock {
+        label "在庫を引き当てる"
+        resource CommerceDB.Stock { operations update }
+      }
+    }
+  }
+
+  service PaymentGateway [external] {
+    label "決済ゲートウェイ"
+    description "外部事業者が運営するカード決済"
+  }
+
+  database CommerceDB {
+    label "コマースDB"
+    description "プラットフォーム全体で共有"
+    table Orders { label "注文" }
+    table Invoices { label "請求書" }
+    table Payments { label "決済" }
+    table Stock { label "在庫" }
+  }
+
+  Customer -> CommerceApp "注文・支払い"
+  FinanceStaff -> CommerceApp "請求書を確認"
+  CommerceApp -> InventoryWorker "在庫を引当"
+  CommerceApp -> PaymentGateway "決済を確定"
+}
+
+organization Shop {
+  label "ショップ開発部"
+
+  team commerce {
+    label "コマースチーム"
+    description "ストアフロントと注文フローを作る"
+    owns CommerceApp
+    owns Ordering
+  }
+
+  team billing {
+    label "請求チーム"
+    description "請求ルールを持つが、出荷先はコマースアプリケーションの中"
+    owns Billing
+  }
+
+  team platform {
+    label "プラットフォームチーム"
+    description "共有データベースとバックグラウンドワーカーを運用する"
+    owns InventoryWorker
+    owns Inventory
+  }
+}
+`,
+    },
+    {
+      path: "migrating.krs",
+      content: `// service-split/migrating.krs: 移行途中の状態。
+// Billing Service は動いているが、まだ共有の Commerce Database を読み書き
+// している。専用の Billing Database は計画のみで、まだ無い。
+// データの移動が、分割の完了を決めるステップになる。
+
+system Commerce {
+  label "コマースプラットフォーム"
+
+  user Customer [human] {
+    label "顧客"
+    description "注文して支払う"
+  }
+  user FinanceStaff [human] {
+    label "経理担当"
+    description "請求書と返金を確認する"
+  }
+
+  service CommerceApp {
+    label "コマースアプリケーション"
+    description "ストアフロントと注文"
+
+    domain Ordering {
+      label "注文"
+      usecase PlaceOrder {
+        label "注文する"
+        resource CommerceDB.Orders { operations create }
+      }
+      usecase TrackOrder {
+        label "注文を追跡する"
+        resource CommerceDB.Orders { operations read }
+      }
+    }
+  }
+
+  service BillingService @migration_target(from: CommerceApp) {
+    label "請求サービス"
+    description "切り出し済み。まだ共有 DB を使う"
+
+    domain Billing {
+      label "請求"
+      usecase IssueInvoice {
+        label "請求書を発行する"
+        resource CommerceDB.Invoices { operations create }
+        resource CommerceDB.Orders { operations read }
+      }
+      usecase CapturePayment {
+        label "決済を確定する"
+        resource CommerceDB.Payments { operations create }
+      }
+    }
+  }
+
+  service InventoryWorker {
+    label "在庫ワーカー"
+    description "在庫の引当と解放をバックグラウンドで行う"
+
+    domain Inventory {
+      label "在庫"
+      usecase ReserveStock {
+        label "在庫を引き当てる"
+        resource CommerceDB.Stock { operations update }
+      }
+    }
+  }
+
+  service PaymentGateway [external] {
+    label "決済ゲートウェイ"
+    description "外部事業者が運営するカード決済"
+  }
+
+  database CommerceDB {
+    label "コマースDB"
+    description "請求のテーブルはまだ移っていない"
+    table Orders { label "注文" }
+    table Invoices @deprecated { label "請求書" }
+    table Payments @deprecated { label "決済" }
+    table Stock { label "在庫" }
+  }
+
+  database BillingDB @planned {
+    label "請求DB"
+    description "請求のテーブルの移動先"
+    table Invoices { label "請求書" }
+    table Payments { label "決済" }
+  }
+
+  Customer -> CommerceApp "注文"
+  Customer -> BillingService "支払い"
+  FinanceStaff -> BillingService "請求書を確認"
+  CommerceApp -> BillingService "請求書を依頼"
+  CommerceApp -> InventoryWorker "在庫を引当"
+  BillingService -> PaymentGateway "決済を確定"
+}
+
+organization Shop {
+  label "ショップ開発部"
+
+  team commerce {
+    label "コマースチーム"
+    description "ストアフロントと注文フローを作る"
+    owns CommerceApp
+    owns Ordering
+  }
+
+  team billing {
+    label "請求チーム"
+    description "請求サービスを運用。データ移行まではデータをプラットフォームチームに頼る"
+    owns BillingService
+    owns Billing
+  }
+
+  team platform {
+    label "プラットフォームチーム"
+    description "共有データベースとバックグラウンドワーカーを運用する"
+    owns InventoryWorker
+    owns Inventory
+  }
+}
+`,
+    },
+    {
+      path: "planned.krs",
+      content: `// service-split/planned.krs: 目標のアーキテクチャ。
+// 請求は専用のデータベースを持つ独立したサービスとして動き、
+// 請求ルールを持つチームがそれを動かすサービスも持つ。
+// index.krs（現在のアーキテクチャ）と見比べる。
+
+system Commerce {
+  label "コマースプラットフォーム"
+
+  user Customer [human] {
+    label "顧客"
+    description "注文して支払う"
+  }
+  user FinanceStaff [human] {
+    label "経理担当"
+    description "請求書と返金を確認する"
+  }
+
+  service CommerceApp {
+    label "コマースアプリケーション"
+    description "ストアフロントと注文"
+
+    domain Ordering {
+      label "注文"
+      usecase PlaceOrder {
+        label "注文する"
+        resource CommerceDB.Orders { operations create }
+      }
+      usecase TrackOrder {
+        label "注文を追跡する"
+        resource CommerceDB.Orders { operations read }
+      }
+    }
+  }
+
+  service BillingService {
+    label "請求サービス"
+    description "請求書と決済。独自のリリースサイクル"
+
+    domain Billing {
+      label "請求"
+      usecase IssueInvoice {
+        label "請求書を発行する"
+        resource BillingDB.Invoices { operations create }
+      }
+      usecase CapturePayment {
+        label "決済を確定する"
+        resource BillingDB.Payments { operations create }
+      }
+    }
+  }
+
+  service InventoryWorker {
+    label "在庫ワーカー"
+    description "在庫の引当と解放をバックグラウンドで行う"
+
+    domain Inventory {
+      label "在庫"
+      usecase ReserveStock {
+        label "在庫を引き当てる"
+        resource CommerceDB.Stock { operations update }
+      }
+    }
+  }
+
+  service PaymentGateway [external] {
+    label "決済ゲートウェイ"
+    description "外部事業者が運営するカード決済"
+  }
+
+  database CommerceDB {
+    label "コマースDB"
+    description "注文と在庫"
+    table Orders { label "注文" }
+    table Stock { label "在庫" }
+  }
+
+  database BillingDB {
+    label "請求DB"
+    description "請求だけが持つ"
+    table Invoices { label "請求書" }
+    table Payments { label "決済" }
+  }
+
+  Customer -> CommerceApp "注文"
+  Customer -> BillingService "支払い"
+  FinanceStaff -> BillingService "請求書を確認"
+  CommerceApp -> BillingService "注文内容を添えて請求書を依頼"
+  CommerceApp -> InventoryWorker "在庫を引当"
+  BillingService -> PaymentGateway "決済を確定"
+}
+
+organization Shop {
+  label "ショップ開発部"
+
+  team commerce {
+    label "コマースチーム"
+    description "ストアフロントと注文フローを作る"
+    owns CommerceApp
+    owns Ordering
+  }
+
+  team billing {
+    label "請求チーム"
+    description "請求ルールと、それを動かすサービスを持つ"
+    owns BillingService
+    owns Billing
+  }
+
+  team platform {
+    label "プラットフォームチーム"
+    description "共有データベースとバックグラウンドワーカーを運用する"
+    owns InventoryWorker
+    owns Inventory
+  }
+}
+`,
+    },
+  ],
+};
+
+/** English variant of SERVICE_SPLIT_PROJECT, opened for non-`ja` locales (#3563). Source: `examples/en/service-split/`. */
+export const SERVICE_SPLIT_PROJECT_EN: ExampleProject = {
+  name: "service-split",
+  files: [
+    {
+      path: "index.krs",
+      content: `// service-split/index.krs: the CURRENT architecture.
+// The subject of the first-run guide (#3563). Compare it with planned.krs
+// (the target) and migrating.krs (the state in between).
+//
+// Ordering and Billing are separate domains, but both live in one
+// Commerce Application and share one Commerce Database. The Billing Team
+// owns the Billing domain without owning any service.
+
+system Commerce {
+  label "Commerce Platform"
+
+  user Customer [human] {
+    label "Customer"
+    description "Places orders and pays for them"
+  }
+  user FinanceStaff [human] {
+    label "Finance staff"
+    description "Reviews invoices and refunds"
+  }
+
+  service CommerceApp {
+    label "Commerce Application"
+    description "One deployable that holds ordering and billing"
+
+    domain Ordering {
+      label "Ordering"
+      usecase PlaceOrder {
+        label "Place an order"
+        resource CommerceDB.Orders { operations create }
+      }
+      usecase TrackOrder {
+        label "Track an order"
+        resource CommerceDB.Orders { operations read }
+      }
+
+      Ordering -> Billing "Request an invoice"
+    }
+    domain Billing {
+      label "Billing"
+      usecase IssueInvoice {
+        label "Issue an invoice"
+        resource CommerceDB.Invoices { operations create }
+        resource CommerceDB.Orders { operations read }
+      }
+      usecase CapturePayment {
+        label "Capture a payment"
+        resource CommerceDB.Payments { operations create }
+      }
+    }
+  }
+
+  service InventoryWorker {
+    label "Inventory Worker"
+    description "Reserves and releases stock in the background"
+
+    domain Inventory {
+      label "Inventory"
+      usecase ReserveStock {
+        label "Reserve stock"
+        resource CommerceDB.Stock { operations update }
+      }
+    }
+  }
+
+  service PaymentGateway [external] {
+    label "Payment Gateway"
+    description "Card payments, run by a provider"
+  }
+
+  database CommerceDB {
+    label "Commerce Database"
+    description "Shared by every part of the platform"
+    table Orders { label "Orders" }
+    table Invoices { label "Invoices" }
+    table Payments { label "Payments" }
+    table Stock { label "Stock" }
+  }
+
+  Customer -> CommerceApp "Order and pay"
+  FinanceStaff -> CommerceApp "Review invoices"
+  CommerceApp -> InventoryWorker "Reserve stock"
+  CommerceApp -> PaymentGateway "Capture payments"
+}
+
+organization Shop {
+  label "Shop Engineering"
+
+  team commerce {
+    label "Commerce Team"
+    description "Builds the storefront and the ordering flow"
+    owns CommerceApp
+    owns Ordering
+  }
+
+  team billing {
+    label "Billing Team"
+    description "Owns the invoicing rules, but ships them inside the Commerce Application"
+    owns Billing
+  }
+
+  team platform {
+    label "Platform Team"
+    description "Runs the shared database and the background workers"
+    owns InventoryWorker
+    owns Inventory
+  }
+}
+`,
+    },
+    {
+      path: "migrating.krs",
+      content: `// service-split/migrating.krs: the state IN BETWEEN.
+// Billing Service is running, but it still reads and writes the shared
+// Commerce Database: its own Billing Database is planned, not built.
+// Moving the data is the step that decides when the split is done.
+
+system Commerce {
+  label "Commerce Platform"
+
+  user Customer [human] {
+    label "Customer"
+    description "Places orders and pays for them"
+  }
+  user FinanceStaff [human] {
+    label "Finance staff"
+    description "Reviews invoices and refunds"
+  }
+
+  service CommerceApp {
+    label "Commerce Application"
+    description "Storefront and ordering"
+
+    domain Ordering {
+      label "Ordering"
+      usecase PlaceOrder {
+        label "Place an order"
+        resource CommerceDB.Orders { operations create }
+      }
+      usecase TrackOrder {
+        label "Track an order"
+        resource CommerceDB.Orders { operations read }
+      }
+    }
+  }
+
+  service BillingService @migration_target(from: CommerceApp) {
+    label "Billing Service"
+    description "Split out, still on the shared database"
+
+    domain Billing {
+      label "Billing"
+      usecase IssueInvoice {
+        label "Issue an invoice"
+        resource CommerceDB.Invoices { operations create }
+        resource CommerceDB.Orders { operations read }
+      }
+      usecase CapturePayment {
+        label "Capture a payment"
+        resource CommerceDB.Payments { operations create }
+      }
+    }
+  }
+
+  service InventoryWorker {
+    label "Inventory Worker"
+    description "Reserves and releases stock in the background"
+
+    domain Inventory {
+      label "Inventory"
+      usecase ReserveStock {
+        label "Reserve stock"
+        resource CommerceDB.Stock { operations update }
+      }
+    }
+  }
+
+  service PaymentGateway [external] {
+    label "Payment Gateway"
+    description "Card payments, run by a provider"
+  }
+
+  database CommerceDB {
+    label "Commerce Database"
+    description "Billing tables have not moved yet"
+    table Orders { label "Orders" }
+    table Invoices @deprecated { label "Invoices" }
+    table Payments @deprecated { label "Payments" }
+    table Stock { label "Stock" }
+  }
+
+  database BillingDB @planned {
+    label "Billing Database"
+    description "Where the billing tables will move"
+    table Invoices { label "Invoices" }
+    table Payments { label "Payments" }
+  }
+
+  Customer -> CommerceApp "Order"
+  Customer -> BillingService "Pay"
+  FinanceStaff -> BillingService "Review invoices"
+  CommerceApp -> BillingService "Request an invoice"
+  CommerceApp -> InventoryWorker "Reserve stock"
+  BillingService -> PaymentGateway "Capture payments"
+}
+
+organization Shop {
+  label "Shop Engineering"
+
+  team commerce {
+    label "Commerce Team"
+    description "Builds the storefront and the ordering flow"
+    owns CommerceApp
+    owns Ordering
+  }
+
+  team billing {
+    label "Billing Team"
+    description "Runs Billing Service; depends on the Platform Team for its data until the move"
+    owns BillingService
+    owns Billing
+  }
+
+  team platform {
+    label "Platform Team"
+    description "Runs the shared database and the background workers"
+    owns InventoryWorker
+    owns Inventory
+  }
+}
+`,
+    },
+    {
+      path: "planned.krs",
+      content: `// service-split/planned.krs: the TARGET architecture.
+// Billing runs as its own service with its own database, and the team
+// that owns the billing rules owns the service that runs them.
+// Compare it with index.krs (the current architecture).
+
+system Commerce {
+  label "Commerce Platform"
+
+  user Customer [human] {
+    label "Customer"
+    description "Places orders and pays for them"
+  }
+  user FinanceStaff [human] {
+    label "Finance staff"
+    description "Reviews invoices and refunds"
+  }
+
+  service CommerceApp {
+    label "Commerce Application"
+    description "Storefront and ordering"
+
+    domain Ordering {
+      label "Ordering"
+      usecase PlaceOrder {
+        label "Place an order"
+        resource CommerceDB.Orders { operations create }
+      }
+      usecase TrackOrder {
+        label "Track an order"
+        resource CommerceDB.Orders { operations read }
+      }
+    }
+  }
+
+  service BillingService {
+    label "Billing Service"
+    description "Invoices and payments, own release cycle"
+
+    domain Billing {
+      label "Billing"
+      usecase IssueInvoice {
+        label "Issue an invoice"
+        resource BillingDB.Invoices { operations create }
+      }
+      usecase CapturePayment {
+        label "Capture a payment"
+        resource BillingDB.Payments { operations create }
+      }
+    }
+  }
+
+  service InventoryWorker {
+    label "Inventory Worker"
+    description "Reserves and releases stock in the background"
+
+    domain Inventory {
+      label "Inventory"
+      usecase ReserveStock {
+        label "Reserve stock"
+        resource CommerceDB.Stock { operations update }
+      }
+    }
+  }
+
+  service PaymentGateway [external] {
+    label "Payment Gateway"
+    description "Card payments, run by a provider"
+  }
+
+  database CommerceDB {
+    label "Commerce Database"
+    description "Orders and stock"
+    table Orders { label "Orders" }
+    table Stock { label "Stock" }
+  }
+
+  database BillingDB {
+    label "Billing Database"
+    description "Owned by billing alone"
+    table Invoices { label "Invoices" }
+    table Payments { label "Payments" }
+  }
+
+  Customer -> CommerceApp "Order"
+  Customer -> BillingService "Pay"
+  FinanceStaff -> BillingService "Review invoices"
+  CommerceApp -> BillingService "Request an invoice with the order details"
+  CommerceApp -> InventoryWorker "Reserve stock"
+  BillingService -> PaymentGateway "Capture payments"
+}
+
+organization Shop {
+  label "Shop Engineering"
+
+  team commerce {
+    label "Commerce Team"
+    description "Builds the storefront and the ordering flow"
+    owns CommerceApp
+    owns Ordering
+  }
+
+  team billing {
+    label "Billing Team"
+    description "Owns the invoicing rules and the service that runs them"
+    owns BillingService
+    owns Billing
+  }
+
+  team platform {
+    label "Platform Team"
+    description "Runs the shared database and the background workers"
+    owns InventoryWorker
+    owns Inventory
+  }
+}
+`,
+    },
+  ],
+};

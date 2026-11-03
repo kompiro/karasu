@@ -1,0 +1,107 @@
+// service-split/index.krs: the CURRENT architecture.
+// The subject of the first-run guide (#3563). Compare it with planned.krs
+// (the target) and migrating.krs (the state in between).
+//
+// Ordering and Billing are separate domains, but both live in one
+// Commerce Application and share one Commerce Database. The Billing Team
+// owns the Billing domain without owning any service.
+
+system Commerce {
+  label "Commerce Platform"
+
+  user Customer [human] {
+    label "Customer"
+    description "Places orders and pays for them"
+  }
+  user FinanceStaff [human] {
+    label "Finance staff"
+    description "Reviews invoices and refunds"
+  }
+
+  service CommerceApp {
+    label "Commerce Application"
+    description "One deployable that holds ordering and billing"
+
+    domain Ordering {
+      label "Ordering"
+      usecase PlaceOrder {
+        label "Place an order"
+        resource CommerceDB.Orders { operations create }
+      }
+      usecase TrackOrder {
+        label "Track an order"
+        resource CommerceDB.Orders { operations read }
+      }
+
+      Ordering -> Billing "Request an invoice"
+    }
+    domain Billing {
+      label "Billing"
+      usecase IssueInvoice {
+        label "Issue an invoice"
+        resource CommerceDB.Invoices { operations create }
+        resource CommerceDB.Orders { operations read }
+      }
+      usecase CapturePayment {
+        label "Capture a payment"
+        resource CommerceDB.Payments { operations create }
+      }
+    }
+  }
+
+  service InventoryWorker {
+    label "Inventory Worker"
+    description "Reserves and releases stock in the background"
+
+    domain Inventory {
+      label "Inventory"
+      usecase ReserveStock {
+        label "Reserve stock"
+        resource CommerceDB.Stock { operations update }
+      }
+    }
+  }
+
+  service PaymentGateway [external] {
+    label "Payment Gateway"
+    description "Card payments, run by a provider"
+  }
+
+  database CommerceDB {
+    label "Commerce Database"
+    description "Shared by every part of the platform"
+    table Orders { label "Orders" }
+    table Invoices { label "Invoices" }
+    table Payments { label "Payments" }
+    table Stock { label "Stock" }
+  }
+
+  Customer -> CommerceApp "Order and pay"
+  FinanceStaff -> CommerceApp "Review invoices"
+  CommerceApp -> InventoryWorker "Reserve stock"
+  CommerceApp -> PaymentGateway "Capture payments"
+}
+
+organization Shop {
+  label "Shop Engineering"
+
+  team commerce {
+    label "Commerce Team"
+    description "Builds the storefront and the ordering flow"
+    owns CommerceApp
+    owns Ordering
+  }
+
+  team billing {
+    label "Billing Team"
+    description "Owns the invoicing rules, but ships them inside the Commerce Application"
+    owns Billing
+  }
+
+  team platform {
+    label "Platform Team"
+    description "Runs the shared database and the background workers"
+    owns InventoryWorker
+    owns Inventory
+  }
+}

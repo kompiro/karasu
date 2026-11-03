@@ -217,6 +217,8 @@ export {
   FACET_STYLING_PROJECT_EN,
   MULTI_FILE_SYSTEM_PROJECT,
   MULTI_FILE_SYSTEM_PROJECT_EN,
+  SERVICE_SPLIT_PROJECT,
+  SERVICE_SPLIT_PROJECT_EN,
 } from "./builtins/examples.js";
 export {
   type ExampleLang,
