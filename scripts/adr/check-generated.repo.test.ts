@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 // The `Validate` check and the freshness watcher against a real git repository
-// and the real generator (Issue #3416). The unit tests in check-generated.test.ts
+// and the real generators (Issue #3416; the TPL index since Issue #3289). The unit tests in check-generated.test.ts
 // cover the decisions; these cover what only real commits show: the merge base,
 // `--no-renames`, reading the head commit rather than the checkout, and the
 // generator running on a commit's inputs.
@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 const ROOT = resolve(import.meta.dirname, "../..");
 const TSX = join(ROOT, "node_modules", ".bin", "tsx");
 const ADR = join(ROOT, "node_modules", ".bin", "adr");
+const TPL = join(ROOT, "node_modules", ".bin", "tpl");
 // A caller's GIT_DIR or GIT_INDEX_FILE (a pre-push hook sets them) must not
 // point the throwaway repository's git at the real one.
 const ENV = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("GIT_")));
@@ -43,6 +44,31 @@ const adrText = (n: number) =>
     "",
   ].join("\n");
 
+const TPL_CONFIG = JSON.stringify({ idFormat: "issue-number", indexFile: "index.md", topics: ["build"] });
+
+const tplText = (n: number) =>
+  [
+    "---",
+    `id: TPL-${n}`,
+    `title: "sample ${n}"`,
+    "status: active",
+    "date: 2026-10-31",
+    "applicable_to:",
+    '  - "x"',
+    "discovered_from:",
+    `  - issue: "#${n}"`,
+    "topic: build",
+    "scope:",
+    "  packages: []",
+    "---",
+    "",
+    `# TPL-${n}: sample ${n}`,
+    "",
+  ].join("\n");
+
+const lockfile = (adr: string, tpl: string) =>
+  `packages:\n\n  '@kompiro/adr-tools@${adr}':\n\n  '@kompiro/tpl-tools@${tpl}':\n`;
+
 let repo: string;
 
 const git = (args: string[], env: Record<string, string> = {}) =>
@@ -70,6 +96,8 @@ const commit = (message: string, hoursAgo = 0) => {
 
 const regenerate = () =>
   execFileSync(ADR, ["regenerate"], { cwd: repo, env: ENV, stdio: ["ignore", "ignore", "pipe"] });
+const regenerateTpl = () =>
+  execFileSync(TPL, ["regenerate"], { cwd: repo, env: ENV, stdio: ["ignore", "ignore", "pipe"] });
 
 const run = (script: string, args: string[]) => {
   try {
@@ -216,7 +244,7 @@ describe("check-freshness.ts on a real repository", { timeout: 60_000 }, () => {
     commit("generator upgrade 10 hours ago", 10);
     const result = freshness();
     expect(result.code).toBe(0);
-    expect(result.out).toMatch(/Freshness not judged/);
+    expect(result.out).toMatch(/Freshness of main's generated ADR index not judged/);
   });
 
   it("passes again after the regeneration merges", () => {
@@ -226,5 +254,96 @@ describe("check-freshness.ts on a real repository", { timeout: 60_000 }, () => {
     regenerate();
     commit("regeneration merged", 1);
     expect(freshness().code).toBe(0);
+  });
+});
+
+describe("the TPL index on a real repository", { timeout: 60_000 }, () => {
+  /** main with tpl.config.json naming the index, one TPL and both indexes current. */
+  const tplMain = (hoursAgo: number) => {
+    write("tpl.config.json", TPL_CONFIG);
+    write("docs/test-perspectives/TPL-1-sample.md", tplText(1));
+    regenerateTpl();
+    return commit("main with current indexes", hoursAgo);
+  };
+
+  describe("check-generated.ts", () => {
+    let base: string;
+    beforeEach(() => {
+      base = tplMain(100);
+      git(["checkout", "-q", "-B", "tpl-2", base]);
+      write("docs/test-perspectives/TPL-2-sample.md", tplText(2));
+    });
+
+    it("passes a TPL PR that leaves the index alone", () => {
+      expect(check(base, commit("add TPL-2"))).toMatchObject({ code: 0 });
+    });
+
+    it("passes a regeneration PR that holds exactly the TPL generator's output", () => {
+      const merged = commit("add TPL-2");
+      regenerateTpl();
+      expect(check(merged, commit("regenerate"))).toMatchObject({ code: 0 });
+    });
+
+    it("fails a PR that adds a TPL and writes the index in the same change", () => {
+      regenerateTpl();
+      const result = check(base, commit("TPL and index together"));
+      expect(result.code).toBe(1);
+      expect(result.out).toMatch(/docs\/test-perspectives\/index\.md.*drop them from this PR/s);
+    });
+
+    it("fails a regeneration PR whose TPL index is hand-edited", () => {
+      const merged = commit("add TPL-2");
+      regenerateTpl();
+      write("docs/test-perspectives/index.md", "edited\n");
+      const result = check(merged, commit("hand edit"));
+      expect(result.code).toBe(1);
+      expect(result.out).toMatch(/index\.md: differs from a regeneration/);
+    });
+  });
+
+  it("check-generated.ts passes the PR that first names the index without writing it", () => {
+    const base = commit("main before the TPL index", 100);
+    write("tpl.config.json", TPL_CONFIG);
+    write("docs/test-perspectives/TPL-1-sample.md", tplText(1));
+    expect(check(base, commit("name the index"))).toMatchObject({ code: 0 });
+  });
+
+  describe("check-freshness.ts", () => {
+    it("passes right after the index is named: older commits do not run the TPL generator", () => {
+      commit("main before the TPL index", 100);
+      write("tpl.config.json", TPL_CONFIG);
+      write("docs/test-perspectives/TPL-1-sample.md", tplText(1));
+      commit("name the index 10 hours ago", 10);
+      const result = freshness();
+      expect(result).toMatchObject({ code: 0 });
+      expect(result.out).toMatch(/TPL index reflects/);
+    });
+
+    it("fails once an unreflected TPL is older than 50 hours", () => {
+      tplMain(100);
+      write("docs/test-perspectives/TPL-2-sample.md", tplText(2));
+      commit("TPL merged 60 hours ago", 60);
+      const result = freshness();
+      expect(result.code).toBe(1);
+      expect(result.out).toMatch(/TPL index matches no main commit's inputs/);
+      expect(result.out).toMatch(/ADR index reflects/);
+    });
+
+    it("skips only the TPL index when tpl-tools changed inside the window", () => {
+      write("pnpm-lock.yaml", lockfile("0.0.13", "0.0.13"));
+      tplMain(100);
+      write("docs/adr/2-sample.md", adrText(2));
+      write("docs/test-perspectives/TPL-2-sample.md", tplText(2));
+      commit("ADR and TPL merged 60 hours ago", 60);
+      write("pnpm-lock.yaml", lockfile("0.0.13", "0.0.14"));
+      commit("tpl-tools upgrade 10 hours ago", 10);
+      const result = freshness();
+      // The ADR index is still judged, and is stale.
+      expect(result.code).toBe(1);
+      expect(result.out).toMatch(
+        /Freshness of main's generated TPL index not judged: the @kompiro\/tpl-tools version changed/,
+      );
+      expect(result.out).toMatch(/ADR index matches no main commit's inputs/);
+    });
   });
 });

@@ -2,19 +2,28 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  type AdrPaths,
+  type GeneratedPaths,
+  type GeneratorRoot,
+  TPL_DIR,
   classifyGeneratedDiff,
   generatedGlobs,
   isGenerated,
   parseNameStatus,
   readAdrPaths,
+  readGeneratedPaths,
+  readTplPaths,
+  rootGlobs,
   sameOutputs,
 } from "./generated.ts";
 
-const CONFIG: AdrPaths = {
-  adrDir: "docs/adr",
+const ADR: GeneratorRoot = {
+  dir: "docs/adr",
   outputs: ["effective.md", "graph.md", "graph/"],
 };
+const TPL: GeneratorRoot = { dir: TPL_DIR, outputs: ["index.md"] };
+const CONFIG: GeneratedPaths = { adr: ADR, tpl: TPL };
+/** A commit from before `tpl.config.json` named an `indexFile`. */
+const NO_TPL_INDEX: GeneratedPaths = { adr: ADR, tpl: { dir: TPL_DIR, outputs: [] } };
 
 const files = (...entries: [string, string][]) =>
   entries.map(([status, path]) => ({ status, path }));
@@ -22,7 +31,7 @@ const files = (...entries: [string, string][]) =>
 describe("readAdrPaths", () => {
   it("reads the repo's adr.config.json", () => {
     const text = readFileSync(resolve(__dirname, "../../adr.config.json"), "utf-8");
-    expect(readAdrPaths(text)).toEqual(CONFIG);
+    expect(readAdrPaths(text)).toEqual(ADR);
   });
 
   it("refuses a config without outputs or with a non-path output", () => {
@@ -36,17 +45,48 @@ describe("readAdrPaths", () => {
   });
 });
 
+describe("readTplPaths", () => {
+  it("reads the repo's tpl.config.json", () => {
+    const text = readFileSync(resolve(__dirname, "../../tpl.config.json"), "utf-8");
+    expect(readTplPaths(text)).toEqual(TPL);
+  });
+
+  it("has no outputs without the file or without indexFile", () => {
+    expect(readTplPaths(null)).toEqual({ dir: TPL_DIR, outputs: [] });
+    expect(readTplPaths(JSON.stringify({ idFormat: "issue-number" }))).toEqual({
+      dir: TPL_DIR,
+      outputs: [],
+    });
+  });
+
+  it("refuses an indexFile that is not a path", () => {
+    expect(() => readTplPaths(JSON.stringify({ indexFile: "" }))).toThrow(/indexFile/);
+    expect(() => readTplPaths(JSON.stringify({ indexFile: 1 }))).toThrow(/indexFile/);
+  });
+});
+
+describe("readGeneratedPaths", () => {
+  it("refuses a commit without adr.config.json", () => {
+    expect(() => readGeneratedPaths({ adr: null, tpl: null })).toThrow(/adr\.config\.json/);
+  });
+});
+
 describe("generatedGlobs", () => {
-  it("joins each output to adrDir and turns a directory into its subtree", () => {
+  it("joins each output to its root and turns a directory into its subtree", () => {
     expect(generatedGlobs(CONFIG)).toEqual([
       "docs/adr/effective.md",
       "docs/adr/graph.md",
       "docs/adr/graph/**",
+      "docs/test-perspectives/index.md",
     ]);
   });
 
-  it("normalizes a trailing slash on adrDir and a dot segment", () => {
-    expect(generatedGlobs({ adrDir: "docs/adr/", outputs: ["./index.md", "by-topic//"] })).toEqual([
+  it("leaves the TPL index out when tpl.config.json names none", () => {
+    expect(generatedGlobs(NO_TPL_INDEX)).not.toContain("docs/test-perspectives/index.md");
+  });
+
+  it("normalizes a trailing slash on the root and a dot segment", () => {
+    expect(rootGlobs({ dir: "docs/adr/", outputs: ["./index.md", "by-topic//"] })).toEqual([
       "docs/adr/by-topic/**",
       "docs/adr/index.md",
     ]);
@@ -58,15 +98,26 @@ describe("generatedGlobs", () => {
     expect(isGenerated("docs/adr/graph/a/b.md", globs)).toBe(true);
     expect(isGenerated("docs/adr/graph-notes.md", globs)).toBe(false);
     expect(isGenerated("docs/adr/3416-x.md", globs)).toBe(false);
+    expect(isGenerated("docs/test-perspectives/TPL-3289-x.md", globs)).toBe(false);
+    expect(isGenerated("docs/test-perspectives/README.md", globs)).toBe(false);
   });
 });
 
 describe("sameOutputs", () => {
   it("ignores order and compares the joined paths", () => {
     expect(
-      sameOutputs(CONFIG, { adrDir: "docs/adr/", outputs: ["graph/", "graph.md", "effective.md"] }),
+      sameOutputs(CONFIG, {
+        ...CONFIG,
+        adr: { dir: "docs/adr/", outputs: ["graph/", "graph.md", "effective.md"] },
+      }),
     ).toBe(true);
-    expect(sameOutputs(CONFIG, { ...CONFIG, outputs: ["effective.md", "graph.md"] })).toBe(false);
+    expect(
+      sameOutputs(CONFIG, { ...CONFIG, adr: { ...ADR, outputs: ["effective.md", "graph.md"] } }),
+    ).toBe(false);
+  });
+
+  it("differs when only the TPL index differs", () => {
+    expect(sameOutputs(CONFIG, NO_TPL_INDEX)).toBe(false);
   });
 });
 
@@ -87,8 +138,11 @@ describe("parseNameStatus", () => {
 });
 
 describe("classifyGeneratedDiff", () => {
-  const classify = (list: ReturnType<typeof files>, head: AdrPaths = CONFIG) =>
-    classifyGeneratedDiff({ base: CONFIG, head, files: list });
+  const classify = (
+    list: ReturnType<typeof files>,
+    head: GeneratedPaths = CONFIG,
+    base: GeneratedPaths = CONFIG,
+  ) => classifyGeneratedDiff({ base, head, files: list });
 
   it("an ADR PR that leaves the generated files alone is regular", () => {
     expect(classify(files(["A", "docs/adr/3416-x.md"], ["D", "docs/design/x.md"])).kind).toBe(
@@ -124,10 +178,51 @@ describe("classifyGeneratedDiff", () => {
     expect(classify([]).kind).toBe("regular");
   });
 
+  describe("the TPL index", () => {
+    it("a PR that adds a TPL and leaves the index alone is regular", () => {
+      expect(classify(files(["A", "docs/test-perspectives/TPL-3289-x.md"])).kind).toBe("regular");
+    });
+
+    it("a PR that changes only the TPL index, or it and the ADR outputs, is a regeneration", () => {
+      expect(classify(files(["A", "docs/test-perspectives/index.md"])).kind).toBe("regeneration");
+      expect(
+        classify(files(["M", "docs/adr/effective.md"], ["M", "docs/test-perspectives/index.md"]))
+          .kind,
+      ).toBe("regeneration");
+    });
+
+    it("the TPL index together with a TPL is mixed", () => {
+      const v = classify(
+        files(["A", "docs/test-perspectives/TPL-3289-x.md"], ["M", "docs/test-perspectives/index.md"]),
+      );
+      expect(v.kind).toBe("mixed");
+      expect(v.reasons[0]).toMatch(/docs\/test-perspectives\/index\.md/);
+    });
+
+    it("naming the index in tpl.config.json and writing it in the same PR is mixed", () => {
+      const v = classify(
+        files(["M", "tpl.config.json"], ["A", "docs/test-perspectives/index.md"]),
+        CONFIG,
+        NO_TPL_INDEX,
+      );
+      expect(v.kind).toBe("mixed");
+    });
+
+    it("naming the index without writing it is regular", () => {
+      expect(classify(files(["M", "tpl.config.json"]), CONFIG, NO_TPL_INDEX).kind).toBe("regular");
+    });
+
+    it("an index-only diff while only the head names the index is not a regeneration", () => {
+      const v = classify(files(["A", "docs/test-perspectives/index.md"]), CONFIG, NO_TPL_INDEX);
+      expect(v.kind).toBe("mixed");
+      expect(v.reasons[0]).toMatch(/tpl\.config\.json indexFile/);
+    });
+  });
+
   describe("when the outputs move", () => {
-    const moved: AdrPaths = {
-      adrDir: "docs/adr",
-      outputs: ["effective.md", "graph.md", "topics/"],
+    const moved: GeneratedPaths = {
+      ...CONFIG,
+      adr: { dir: "docs/adr", outputs: ["effective.md", "graph.md", "topics/"] },
     };
 
     it("changing the config and deleting the old output is regular", () => {
@@ -145,7 +240,7 @@ describe("classifyGeneratedDiff", () => {
     it("a generated-only diff across different outputs is not a regeneration", () => {
       const v = classify(files(["A", "docs/adr/topics/parser.md"]), moved);
       expect(v.kind).toBe("mixed");
-      expect(v.reasons[0]).toMatch(/paths\.outputs differs/);
+      expect(v.reasons[0]).toMatch(/paths\.outputs or tpl\.config\.json indexFile\) differ/);
     });
 
     it("an output that only the head names is still generated", () => {

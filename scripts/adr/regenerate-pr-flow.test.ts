@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { ConfigTexts, GeneratedPaths } from "./generated.ts";
 import {
   BRANCH,
   type CheckRun,
@@ -20,7 +21,10 @@ import {
   regeneratePr,
 } from "./regenerate-pr-flow.ts";
 
-const CONFIG = readFileSync(resolve(__dirname, "../../adr.config.json"), "utf-8");
+const CONFIGS: ConfigTexts = {
+  adr: readFileSync(resolve(__dirname, "../../adr.config.json"), "utf-8"),
+  tpl: readFileSync(resolve(__dirname, "../../tpl.config.json"), "utf-8"),
+};
 const REQUIRED = ["Check", "Validate", "Reference docs", "Playwright", "verify"];
 const GENERATED_ONLY = "M\0docs/adr/effective.md\0";
 
@@ -108,22 +112,26 @@ function fakeWorkspace(opts: {
   commit: string | null;
   exists?: boolean;
   onPush?: (lease: string | null, commit: string) => void;
-  configAt?: (rev: string) => string | null;
+  configsAt?: (rev: string) => ConfigTexts;
   nameStatus?: string;
 }) {
   const calls: string[] = [];
+  const regenerated: GeneratedPaths[] = [];
   const workspace: Workspace = {
     fetchMain: () => void calls.push("fetchMain"),
     fetchPull: (n) => {
       calls.push(`fetchPull #${n}`);
       return "old-head";
     },
-    config: (rev) => (opts.configAt ? opts.configAt(rev) : CONFIG),
+    configs: (rev) => (opts.configsAt ? opts.configsAt(rev) : CONFIGS),
     mergeBase: () => "base",
     nameStatus: () => opts.nameStatus ?? GENERATED_ONLY,
     worktreeExists: () => opts.exists ?? false,
     addWorktree: () => void calls.push("addWorktree"),
-    regenerate: () => void calls.push("regenerate"),
+    regenerate: (paths) => {
+      calls.push("regenerate");
+      regenerated.push(paths);
+    },
     commitGenerated: () => {
       calls.push("commit");
       return opts.commit;
@@ -134,7 +142,7 @@ function fakeWorkspace(opts: {
     },
     removeWorktree: () => void calls.push("removeWorktree"),
   };
-  return { workspace, calls };
+  return { workspace, calls, regenerated };
 }
 
 function fakeClock() {
@@ -346,10 +354,44 @@ describe("regeneratePr", () => {
     const gh = fakeGitHub({ pulls: [pull({ number: 7 })], branch: "old-head" });
     const ws = fakeWorkspace({
       commit: null,
-      configAt: (rev) => (rev === "origin/main" ? moved : CONFIG),
+      configsAt: (rev) => (rev === "origin/main" ? { ...CONFIGS, adr: moved } : CONFIGS),
     });
     go(gh, ws);
     expect(gh.calls.some((c) => c.startsWith("merge"))).toBe(false);
+  });
+
+  it("does not pick up yesterday's PR when the TPL index moved on main", () => {
+    const moved = JSON.stringify({ indexFile: "INDEX.md" });
+    const gh = fakeGitHub({ pulls: [pull({ number: 7 })], branch: "old-head" });
+    const ws = fakeWorkspace({
+      commit: null,
+      configsAt: (rev) => (rev === "origin/main" ? { ...CONFIGS, tpl: moved } : CONFIGS),
+    });
+    go(gh, ws);
+    expect(gh.calls.some((c) => c.startsWith("merge"))).toBe(false);
+  });
+
+  it("regenerates the TPL index along with the ADR outputs", () => {
+    const gh = fakeGitHub({});
+    const ws = fakeWorkspace({
+      commit: "new-head",
+      nameStatus: "M\0docs/adr/effective.md\0A\0docs/test-perspectives/index.md\0",
+      onPush: (_, c) => gh.setBranch(c),
+    });
+    expect(go(gh, ws).outcome).toBe("merged");
+    expect(ws.regenerated).toEqual([
+      expect.objectContaining({ tpl: { dir: "docs/test-perspectives", outputs: ["index.md"] } }),
+    ]);
+  });
+
+  it("leaves the TPL generator out when main's tpl.config.json names no indexFile", () => {
+    const gh = fakeGitHub({});
+    const ws = fakeWorkspace({
+      commit: null,
+      configsAt: () => ({ ...CONFIGS, tpl: JSON.stringify({ idFormat: "issue-number" }) }),
+    });
+    go(gh, ws);
+    expect(ws.regenerated[0].tpl.outputs).toEqual([]);
   });
 
   it("refuses to touch a hand-made PR on the branch", () => {

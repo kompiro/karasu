@@ -1,6 +1,6 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
-// `pnpm adr:regenerate-pr`: opens and merges the PR that brings the generated ADR
-// index on `main` up to date (Issue #3416). The flow is in `regenerate-pr-flow.ts`;
+// `pnpm adr:regenerate-pr`: opens and merges the PR that brings the generated
+// indexes on `main` (ADR, and TPL since Issue #3289) up to date (Issue #3416). The flow is in `regenerate-pr-flow.ts`;
 // this file is the real GitHub, git and clock it runs against.
 //
 // Everything on GitHub goes through REST (`gh api`): the routine's proxy refuses
@@ -12,7 +12,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import type { AdrPaths } from "./generated.ts";
+import { CONFIG_FILES, type GeneratedPaths, GENERATORS } from "./generated.ts";
 import {
   BASE,
   BRANCH,
@@ -145,7 +145,8 @@ function gitWorkspace(root: string): Workspace {
   const tree = join(root, ".claude", "worktrees", BRANCH);
   const git = (args: string[], quiet = false) => gitIn(root, args, quiet);
   const inTree = (args: string[]) => gitIn(tree, args);
-  const outputPaths = (paths: AdrPaths) => paths.outputs.map((o) => join(paths.adrDir, o));
+  const outputPaths = (paths: GeneratedPaths) =>
+    GENERATORS.flatMap((g) => paths[g].outputs.map((o) => join(paths[g].dir, o)));
   const exec = (cmd: string, args: string[]) =>
     execFileSync(cmd, args, { cwd: tree, stdio: ["ignore", "inherit", "inherit"] });
 
@@ -156,12 +157,15 @@ function gitWorkspace(root: string): Workspace {
       git(["fetch", "--no-tags", "origin", `refs/pull/${n}/head`]);
       return git(["rev-parse", "FETCH_HEAD"]).trim();
     },
-    config: (rev) => {
-      try {
-        return git(["show", `${rev}:adr.config.json`], true);
-      } catch {
-        return null;
-      }
+    configs: (rev) => {
+      const show = (path: string) => {
+        try {
+          return git(["show", `${rev}:${path}`], true);
+        } catch {
+          return null;
+        }
+      };
+      return { adr: show(CONFIG_FILES.adr), tpl: show(CONFIG_FILES.tpl) };
     },
     mergeBase: (a, b) => git(["merge-base", a, b]).trim(),
     nameStatus: (a, b) => git(["diff", "--no-renames", "--name-status", "-z", a, b]),
@@ -173,10 +177,16 @@ function gitWorkspace(root: string): Workspace {
     regenerate: (paths) => {
       // A directory output is replaced whole, so a file the generator no longer
       // writes (a topic that lost its last ADR) goes away.
-      for (const out of paths.outputs.filter((o) => o.endsWith("/"))) {
-        rmSync(join(tree, paths.adrDir, out), { recursive: true, force: true });
+      for (const g of GENERATORS) {
+        for (const out of paths[g].outputs.filter((o) => o.endsWith("/"))) {
+          rmSync(join(tree, paths[g].dir, out), { recursive: true, force: true });
+        }
       }
       exec("pnpm", ["exec", "adr", "regenerate"]);
+      // Without an `indexFile`, `tpl regenerate` has nothing to write and exits non-zero.
+      if (paths.tpl.outputs.length > 0) {
+        exec("pnpm", ["exec", "tpl", "regenerate", "--tpl-dir", paths.tpl.dir]);
+      }
     },
     commitGenerated: (paths) => {
       const changed = inTree(["status", "--porcelain=v1", "-z", "--untracked-files=all"])
