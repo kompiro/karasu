@@ -94,7 +94,7 @@ flowchart TD
     L --> M[通常の Editor へ]
 ```
 
-初期実装では 3 つの入口をすべて作り込まない。**Design a service split を最初の完成された体験として実装し、他の入口は既存サンプルにつなぐ。**
+このフローは完成形である。初期実装では 3 つの入口をすべて作り込まない。**Design a service split を最初の完成された体験として実装し、他の入口はガイドなしで既存サンプルにつなぐ**（Understand は Getting Started、Evolve は移行途中の構造を現在と比べた差分）。
 
 ## 6. Welcome
 
@@ -111,13 +111,15 @@ flowchart TD
 │   What would you like to do?              │
 │  ┌─────────────────────────────────────┐  │
 │  │ Design a service split   (guided)   │  │
-│  │ Explore boundaries and ownership    │  │
+│  │   Explore boundaries and ownership  │  │
 │  └─────────────────────────────────────┘  │
 │  ┌─────────────────────────────────────┐  │
 │  │ Understand an existing system       │  │
+│  │   Explore structure and dependencies│  │
 │  └─────────────────────────────────────┘  │
 │  ┌─────────────────────────────────────┐  │
 │  │ Track architecture evolution        │  │
+│  │   Compare plans and actual changes  │  │
 │  └─────────────────────────────────────┘  │
 │              Open the editor              │
 └───────────────────────────────────────────┘
@@ -125,11 +127,11 @@ flowchart TD
 
 ### 要件
 
-- 初回訪問時に表示する。既存ユーザーは通常のエディタに直接戻れる。
+- 初回訪問時にだけ表示する。判定は 1 つの規則にまとめる: 既定プロジェクトを作った起動（OPFS が空だった）であり、特定の場所へのリンク（ギャラリーの example、`#krs-…` のパーマリンク、共有リンク）で開いておらず、まだどれも選んでいない。既存のプロジェクトがある利用者には出ないので、通常のエディタにそのまま入れる。
 - スキップできる。
 - 各選択肢から適切なサンプルを読み込む。
 - 編集中のモデルを破棄しない（サンプルは新しいプロジェクトとして作る）。
-- 表示有無はローカルに保持してよい。
+- 「選んだ」ことはローカル（localStorage）に保持する。コマンドパレットから開き直せる。
 
 ### 非目標
 
@@ -201,7 +203,7 @@ karasu が設計上の正解を提示する必要はない。**モデルを見�
 
 ### karasu の仕様に合わせた構成
 
-提案時の「状態ごとに system / domains / services / organization の 4 ファイル」は概念案で、実装では次の形にした。
+この PRD の元になった提案では「状態ごとに system / domains / services / organization の 4 ファイル」としていたが、これは概念案で、実装では次の形にする（[#3564](https://github.com/kompiro/karasu/issues/3564)）。
 
 - 1 つのプロジェクトに 3 つの入口ファイルを置く: `index.krs`（Current）、`planned.krs`（Planned）、`migrating.krs`（Migrating）。各ステップがファイル 1 つの切り替えで済み、差分モードが 2 ファイルをそのまま比べられる。
 - 移行途中の状態は既存のライフサイクル注釈で表す: `@planned`（まだ無い）、`@migration_target(from: …)`（移行先）、`@deprecated`（移行元）。`@migrating` という注釈は無く、追加もしない（新しい DSL 構文は非目標）。
@@ -220,7 +222,7 @@ AI は初回体験の必須要素にしない。ユーザーが自分のシス�
 
 既存機能を組み合わせて、サービス分割の体験を提供する。
 
-- Welcome 画面と 3 つの入口（[#3565](https://github.com/kompiro/karasu/issues/3565)）
+- Welcome 画面と 3 つの入口、コマンドパレットからの再表示（[#3565](https://github.com/kompiro/karasu/issues/3565)）
 - Current / Planned / Migrating のサンプル（[#3564](https://github.com/kompiro/karasu/issues/3564)）
 - 5 ステップのガイド、既存ビューとの連携、共有操作への誘導、Skip / Continue to editor（[#3566](https://github.com/kompiro/karasu/issues/3566)）
 
@@ -232,7 +234,7 @@ AI は初回体験の必須要素にしない。ユーザーが自分のシス�
 - サンプルの切り替え
 - Understand / Evolve シナリオの充実
 - 共有先から戻った際の文脈維持
-- 初回体験の再実行（Phase 1 ではコマンドパレットから Welcome を開き直せる）
+- 初回体験の再実行（Phase 1 の再表示はコマンドパレットだけ）
 
 ### Phase 3: チーム利用の検証
 
