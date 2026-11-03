@@ -15,8 +15,8 @@ interface TourPanelProps {
 }
 
 /**
- * The guided tour's panel (#3566): a small region, not a dialog. It holds no
- * focus and sits at the bottom left, over the file tree and the editor, which
+ * The guided tour's panel (#3566): a small region, not a dialog. It does not
+ * trap focus and sits at the bottom left, over the file tree and the editor, which
  * the tour does not need; the diagram, the view tabs, the toolbar and the diff
  * banner below it stay in view.
  */

@@ -25,6 +25,7 @@ const diffScene: PendingScene = {
   root: "/projects/tour",
   scene: { file: "planned.krs", view: "system", compareWith: "index.krs" },
   key: "tour:1:2",
+  reapplyOnReturn: true,
 };
 
 type Props = { project: Project | null; file: string | null; pending: PendingScene | null };
@@ -98,6 +99,7 @@ describe("useGuidedScene", () => {
       root: "/projects/tour",
       scene: { file: "index.krs", view: "org" },
       key: "tour:1:1",
+      reapplyOnReturn: true,
     };
     const { selectFile, dispatch } = setup({
       project: tourProject,
@@ -124,6 +126,7 @@ describe("useGuidedScene", () => {
       root: "/projects/tour",
       scene: { file: "index.krs", view: "org" },
       key: "tour:1:1",
+      reapplyOnReturn: true,
     };
     const { rerender, dispatch } = setup(
       { project: tourProject, file: "/projects/tour/index.krs", pending: diffScene },
@@ -176,6 +179,42 @@ describe("useGuidedScene", () => {
       rerender({ project: tourProject, file: "/projects/tour/index.krs", pending: diffScene });
     });
     expect(dispatch).toHaveBeenCalledTimes(4);
+  });
+
+  it("does not apply a one-off scene again when the visitor comes back", async () => {
+    const evolve: PendingScene = { ...diffScene, key: "scene:1", reapplyOnReturn: false };
+    const { rerender, dispatch } = setup({
+      project: tourProject,
+      file: "/projects/tour/index.krs",
+      pending: evolve,
+    });
+    await act(async () => {});
+    expect(dispatch).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      rerender({ project: otherProject, file: "/projects/gs/index.krs", pending: evolve });
+    });
+    await act(async () => {
+      rerender({ project: tourProject, file: "/projects/tour/index.krs", pending: evolve });
+    });
+    expect(dispatch).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps a scene's diff off another project the visitor switched to during the read", async () => {
+    let release: () => void = () => {};
+    const slow = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { rerender, dispatch } = setup(
+      { project: tourProject, file: "/projects/tour/index.krs", pending: diffScene },
+      () => slow,
+    );
+    await act(async () => {
+      rerender({ project: otherProject, file: "/projects/gs/index.krs", pending: diffScene });
+    });
+    await act(async () => {
+      release();
+    });
+    expect(dispatch).not.toHaveBeenCalled();
   });
 
   it("applies a scene once per key, and again for a new key", async () => {

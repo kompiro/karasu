@@ -89,9 +89,11 @@ export function FirstRunExperience({
         const seeded = projects.find((p) => p.name === template.name);
         // On a first visit the seeded project is already open: navigating to
         // it again would clear the open file without selecting it back.
-        if (seeded && seeded.id === currentProject?.id)
+        // A switch clears any diff; reselecting must leave the same state.
+        if (seeded && seeded.id === currentProject?.id) {
           await selectFile(`${seeded.rootPath}/index.krs`);
-        else if (seeded) navigateToProject(seeded);
+          dispatch({ type: "SET_COMPARE_SOURCE", source: null });
+        } else if (seeded) navigateToProject(seeded);
         else await openBundledExample(template);
         return;
       }
@@ -107,18 +109,24 @@ export function FirstRunExperience({
           : { kind: "scene", root: project.rootPath, run },
       );
     },
-    [isJa, projects, currentProject, navigateToProject, selectFile, openBundledExample],
+    [isJa, projects, currentProject, navigateToProject, selectFile, openBundledExample, dispatch],
   );
 
   const pending = useMemo<PendingScene | null>(() => {
     if (!guide) return null;
     if (guide.kind === "scene") {
-      return { root: guide.root, scene: EVOLVE_SCENE, key: `scene:${guide.run}` };
+      return {
+        root: guide.root,
+        scene: EVOLVE_SCENE,
+        key: `scene:${guide.run}`,
+        reapplyOnReturn: false,
+      };
     }
     return {
       root: guide.root,
       scene: SERVICE_SPLIT_TOUR[guide.step].scene,
       key: `tour:${guide.run}:${guide.step}`,
+      reapplyOnReturn: true,
     };
   }, [guide]);
 

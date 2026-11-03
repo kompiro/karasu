@@ -8,6 +8,12 @@ export interface PendingScene {
   root: string;
   scene: Scene;
   key: string;
+  /**
+   * Apply it again when the visitor comes back to its project. A tour step
+   * is still on screen, so its scene comes back with it; a one-off scene
+   * has done its job once and must not override where the visitor went.
+   */
+  reapplyOnReturn: boolean;
 }
 
 interface UseGuidedSceneArgs {
@@ -32,8 +38,10 @@ interface UseGuidedSceneArgs {
  * an earlier, slower selection, so a scene left before its file loaded cannot
  * land over the next one. Its diff and view are dropped the same way, by
  * checking after the read that the scene is still the current one (TPL-1534).
- * Leaving the scene's project forgets it was applied, so coming back shows it
- * again: the switch back resets the file and the diff.
+ * Leaving the project of a scene that asks to be re-applied forgets it was
+ * applied, so coming back shows it again: the switch back resets the file and
+ * the diff. A visitor who switches projects during the read keeps the scene's
+ * diff off the other project the same way.
  */
 export function useGuidedScene({
   pending,
@@ -43,17 +51,19 @@ export function useGuidedScene({
   dispatch,
 }: UseGuidedSceneArgs): void {
   const appliedKey = useRef<string | null>(null);
-  // The scene the guide is on now, read after an await. Synced in an effect,
-  // which runs before the apply effect below sees the same render.
+  // The scene the guide is on now and the open project, read after an await.
+  // Synced in an effect, which runs before the apply effect below.
   const currentKey = useRef<string | null>(null);
+  const currentRoot = useRef<string | null>(null);
   useEffect(() => {
     currentKey.current = pending?.key ?? null;
-  }, [pending]);
+    currentRoot.current = currentProject?.rootPath ?? null;
+  }, [pending, currentProject]);
 
   useEffect(() => {
     if (!pending) return;
     if (currentProject?.rootPath !== pending.root) {
-      appliedKey.current = null;
+      if (pending.reapplyOnReturn) appliedKey.current = null;
       return;
     }
     if (appliedKey.current === pending.key) return;
@@ -63,7 +73,7 @@ export function useGuidedScene({
     const { root, scene, key } = pending;
     void (async () => {
       await selectFile(`${root}/${scene.file}`);
-      if (currentKey.current !== key) return;
+      if (currentKey.current !== key || currentRoot.current !== root) return;
       dispatch({
         type: "SET_COMPARE_SOURCE",
         source: scene.compareWith ? { kind: "file", path: `${root}/${scene.compareWith}` } : null,
