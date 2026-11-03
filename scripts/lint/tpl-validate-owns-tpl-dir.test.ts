@@ -58,7 +58,11 @@ function runTplValidate(tplDir: string): ValidateResult {
 
 let fixtureRoot: string;
 
-/** A TPL that satisfies every other rule, so the only finding can be the body. */
+/**
+ * A TPL that satisfies every other rule, so the only finding can be the body.
+ * The CLI reads the repo's tpl.config.json, whose "checklistHeading" requires a
+ * checklist with at least one item.
+ */
 function writeFixture(body: string): string {
   const dir = mkdtempSync(join(fixtureRoot, "tpl-"));
   writeFileSync(
@@ -83,6 +87,10 @@ function writeFixture(body: string): string {
       "## 観点",
       "",
       body,
+      "",
+      "## チェックリスト",
+      "",
+      "- [ ] fixture item [judgment]",
       "",
     ].join("\n"),
   );
@@ -147,12 +155,31 @@ describe("the check runs where it can stop a merge", () => {
   // Without the prefixes `tpl validate` still exits 0 — it just never opens a
   // body. That is the silent half of this regression, so assert the flags
   // rather than the command name.
-  it("passes both source prefixes from the tpl:validate script", () => {
+  it("passes the source prefixes from the tpl:validate script", () => {
     const scripts = (JSON.parse(read("package.json")) as { scripts: Record<string, string> })
       .scripts;
 
     expect(scripts["tpl:validate"]).toContain("--source-prefix packages");
     expect(scripts["tpl:validate"]).toContain("--source-prefix scripts");
+    // A `[guard: …]` may name a workflow when its step runs an external
+    // executable (#3488); without this prefix that guard path goes unchecked.
+    expect(scripts["tpl:validate"]).toContain("--source-prefix .github");
+  });
+
+  // Without "checklistHeading" tpl-tools reads no item markers: every
+  // `[guard: …]` would go unchecked and no TPL would have a status (#3488).
+  it("turns the checklist marker check on in tpl.config.json", () => {
+    const config = JSON.parse(read("tpl.config.json")) as { checklistHeading?: unknown };
+
+    expect(config.checklistHeading).toBe("チェックリスト");
+  });
+
+  // `tpl review-body` without --config asks the three old questions instead of
+  // the per-status ones, and says nothing about it (#3488).
+  it("passes the config to tpl review-body in the monthly review", () => {
+    expect(read(".github/workflows/tpl-review.yml")).toMatch(
+      /tpl review-body[^\n]*\\\n(?:\s+--[^\n]*\\\n)*\s+--config tpl\.config\.json/,
+    );
   });
 
   it.each(REQUIRED_CHECK_WORKFLOWS)(
