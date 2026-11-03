@@ -358,7 +358,8 @@ function hidesLines(f: ChangedFile, was: Side | null, now: Side | null): boolean
   if (was === null || now === null) return true;
   for (const [name, b] of was.bindings) {
     const kept = now.bindings.get(name);
-    if (isTestApi(b) && (kept?.module !== b.module || kept.imported !== b.imported)) return true;
+    if (isTestApi(name, b) && (kept?.module !== b.module || kept.imported !== b.imported))
+      return true;
   }
   return untouchedLines(f, was.states.length).some(
     ([old, cur]) => was.states[old] === "code" && now.states[cur] !== "code",
@@ -368,9 +369,15 @@ function hidesLines(f: ChangedFile, was: Side | null, now: Side | null): boolean
 /** Runner modules whose namespace import is the test API. */
 const RUNNER_MODULES = new Set(["vitest", "@playwright/test", "node:test"]);
 
-/** Whether a binding is one of the names a test runs its tests with, under any local name. */
-const isTestApi = (b: Binding): boolean =>
-  TEST_API.has(b.imported) || (b.imported === "*" && RUNNER_MODULES.has(b.module));
+/**
+ * Whether a local name binds the names a test runs its tests with: under that
+ * name, under the name it was exported as, or as a runner module's default or
+ * namespace import (`import test from "node:test"`).
+ */
+const isTestApi = (name: string, b: Binding): boolean =>
+  TEST_API.has(name) ||
+  TEST_API.has(b.imported) ||
+  ((b.imported === "*" || b.imported === "default") && RUNNER_MODULES.has(b.module));
 
 /**
  * The 0-based [old, new] indexes of the lines a PR leaves as they were. `-U0`
@@ -433,7 +440,7 @@ export function isTestSupport(f: ChangedFile): boolean {
     return false;
   }
   const was = readSide(f.before);
-  return was !== null && [...was.bindings.values()].some(isTestApi);
+  return was !== null && [...was.bindings].some(([name, b]) => isTestApi(name, b));
 }
 
 /** A line that holds only a comment, or nothing, outside a template literal. */

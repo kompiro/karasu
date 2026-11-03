@@ -637,6 +637,21 @@ describe("checkTestChanges", () => {
       expect(isTestSupport(edit(H, other, other))).toBe(false);
     });
 
+    it("reads a runner module's default import as the test API", () => {
+      const helper = ['import test from "node:test";', "export const x = 1;"];
+      expect(isTestSupport(edit(H, helper, helper))).toBe(true);
+      const before = ['import test from "node:test";', 'test("x", () => {});'];
+      const after = ['import test from "./fake-runner.ts";', 'test("x", () => {});'];
+      expect(check("refactor: x", [edit(T, before, after)]).errors).toHaveLength(1);
+    });
+
+    it("keeps reading a test API name taken from a module of the tests' own", () => {
+      const before = ['import { check as expect } from "./assert.ts";', "expect(1);"];
+      const after = ['import { check as expect } from "./other.ts";', "expect(1);"];
+      // Re-pointing a local `expect` to another module changes what it checks.
+      expect(check("feat: x", [edit(T, before, after)]).errors).toHaveLength(1);
+    });
+
     it("asks for a reason when a helper takes its test API from somewhere else", () => {
       const before = ['import { test as base } from "@playwright/test";', "export const x = 1;"];
       const after = ['import { test as base } from "./fake-runner.ts";', "export const x = 1;"];
