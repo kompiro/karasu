@@ -244,18 +244,20 @@ const contains = (outer: Box, a: Box) =>
   a.x + a.width <= outer.x + outer.width &&
   a.y + a.height <= outer.y + outer.height;
 
-/** Where a step's node sits relative to the preview and the tour panel. */
+/**
+ * Where a step's node sits relative to the preview and the tour panel. The
+ * diagram may be larger than the preview, so the whole node need not fit; its
+ * name (the first text in the node) must, since that is what the step names.
+ */
 async function placement(page: Page, id: string, panel: Locator) {
-  const [n, preview, p] = await Promise.all([
+  const [n, name, preview, p] = await Promise.all([
     node(page, id).boundingBox(),
+    node(page, id).locator("text").first().boundingBox(),
     page.locator(".preview-container").first().boundingBox(),
     panel.boundingBox(),
   ]);
-  if (!n || !preview || !p) return { rendered: false };
-  // The diagram may be taller than the preview and scroll, so the node only has
-  // to be on screen (its center inside the preview), not wholly inside it.
-  const center = { x: n.x + n.width / 2, y: n.y + n.height / 2, width: 0, height: 0 };
-  return { rendered: true, onScreen: contains(preview, center), underPanel: overlaps(n, p) };
+  if (!n || !name || !preview || !p) return { rendered: false };
+  return { rendered: true, nameInPreview: contains(preview, name), underPanel: overlaps(n, p) };
 }
 
 /** The text of every box in the panel whose content needs more room than it has. */
@@ -277,8 +279,29 @@ async function insideViewport(page: Page, panel: Locator) {
   return !!box && !!size && contains({ x: 0, y: 0, ...size }, box);
 }
 
-/** The node each step's text talks about; steps that point at none are null. */
-const POINTED_AT: (string | null)[] = ["CommerceApp", null, "BillingService", "BillingDB", null];
+/**
+ * Per step: the node its text talks about (null when it points at none), and
+ * how to tell the step's own scene has rendered. Consecutive scenes share
+ * nodes (BillingDB is in planned.krs and migrating.krs), so geometry read
+ * before the scene lands would judge the previous step's diagram (TPL-1534).
+ */
+const STEPS: { node: string | null; ready: (page: Page) => Promise<void> }[] = [
+  { node: "CommerceApp", ready: (page) => expect(diffBanner(page)).toHaveCount(0) },
+  { node: null, ready: (page) => expect(selectedTab(page, "Org")).toBeVisible() },
+  {
+    node: "BillingService",
+    ready: (page) =>
+      expect(node(page, "BillingService")).toHaveAttribute("data-diff-state", "added"),
+  },
+  {
+    node: "BillingDB",
+    ready: async (page) => {
+      await expect(diffBanner(page)).toHaveCount(0);
+      await expect(node(page, "BillingDB")).not.toHaveAttribute("data-diff-state", /.*/);
+    },
+  },
+  { node: null, ready: async () => {} },
+];
 
 const LAYOUT_COPY = {
   en: { design: /Design a service split/, next: "Next →" },
@@ -299,16 +322,18 @@ test.describe("AT-3563 tour layout", () => {
         .click();
       const panel = page.locator(".first-run-tour");
 
-      for (const [i, id] of POINTED_AT.entries()) {
-        await expect(panel).toContainText(`${i + 1} / ${POINTED_AT.length}`);
+      for (const [i, step] of STEPS.entries()) {
+        await expect(panel).toContainText(`${i + 1} / ${STEPS.length}`);
+        await step.ready(page);
+        const id = step.node;
         if (id) {
           await expect
             .poll(() => placement(page, id, panel))
-            .toEqual({ rendered: true, onScreen: true, underPanel: false });
+            .toEqual({ rendered: true, nameInPreview: true, underPanel: false });
         }
         await expect.poll(() => overflowing(panel)).toEqual([]);
         await expect.poll(() => insideViewport(page, panel)).toBe(true);
-        if (i < POINTED_AT.length - 1) {
+        if (i < STEPS.length - 1) {
           await panel.getByRole("button", { name: LAYOUT_COPY[lang].next }).click();
         }
       }

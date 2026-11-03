@@ -4,6 +4,7 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import type { Project } from "@karasu-tools/core";
 import type { AppAction } from "../../state/app-reducer.js";
 import { useGuidedScene, type PendingScene } from "./use-guided-scene.js";
+import { requestReveal, useRevealRequest } from "../../state/preview-reveal.js";
 
 afterEach(cleanup);
 
@@ -254,5 +255,26 @@ describe("useGuidedScene", () => {
       });
     });
     expect(dispatch).toHaveBeenCalledTimes(4);
+  });
+
+  it("asks the preview to keep the scene's node in view, and withdraws it when the guide ends (#3583)", async () => {
+    requestReveal(null);
+    const revealed = renderHook(() => useRevealRequest());
+    const scene: PendingScene = {
+      ...diffScene,
+      scene: { ...diffScene.scene, reveal: "BillingService" },
+    };
+    const { rerender } = setup({
+      project: tourProject,
+      file: "/projects/tour/planned.krs",
+      pending: scene,
+    });
+    await act(async () => {});
+    expect(revealed.result.current?.nodeId).toBe("BillingService");
+
+    await act(async () => {
+      rerender({ project: tourProject, file: "/projects/tour/planned.krs", pending: null });
+    });
+    expect(revealed.result.current).toBeNull();
   });
 });
