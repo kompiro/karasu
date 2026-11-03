@@ -57,7 +57,7 @@ in-site リンク（published ページ間）は `check-links`（TPL-1621）が�
 **用語集が参照する roadmap / design doc / ADR は unpublished なので GitHub URL に
 rewrite され、check-links の検査対象外**である点に注意 — これらのリンク切れは機械検出
 されないので、リンク先ファイルの rename / 削除（例: design doc の ADR 昇格）時は用語集の
-リンクを手で追随させる。keystone PRD は Issue（#3572）なので消えない（ADR-2348）。
+リンクを手で追随させる。keystone PRD は Issue（#3572）なので消えない（ADR-3571、ADR-2348）。
 
 ## 想定される失敗モード
 

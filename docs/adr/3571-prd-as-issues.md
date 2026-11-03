@@ -46,7 +46,7 @@ PRD Issue（prd）        何を・なぜ。後のフェーズ、成功指標、
 - PRD Issue を立てるのは、方針が 1 つの Epic より長く使われるときだけ。Epic 1 本で完結する要件は Epic の本文に書く。
 - Epic の本文は PRD Issue を指すだけで、内容を写さない。
 - 方針を変えたら、PRD の本文の `## Revisions` に日付付きで足す。議論はコメントで行う。
-- `epic:` ラベルは Epic とスライスに付け、PRD Issue には付けない。
+- `epic:` ラベルは Epic とスライスに付けてよく、PRD Issue には付けない。
 - PRD Issue は、そこから起票する Epic が残っているあいだ open にする。全フェーズを終えたか、別の PRD に置き換えたら閉じる。
 
 ## 理由
