@@ -76,6 +76,32 @@ export function FirstRunExperience({
   });
 
   const isJa = locale === "ja";
+  const serviceSplit = isJa ? SERVICE_SPLIT_PROJECT : SERVICE_SPLIT_PROJECT_EN;
+
+  const startTour = useCallback((project: Project) => {
+    const run = ++runs.current;
+    setGuide({ kind: "tour", root: project.rootPath, step: 0, run });
+  }, []);
+
+  // Walks the guide again from step 1 (#3597), in the sample project the tour
+  // opened before so a second run does not pile up copies; a new copy only
+  // when there is none.
+  const restartTour = useCallback(async () => {
+    const existing = projects.find((p) => p.name === serviceSplit.name);
+    if (existing) {
+      if (existing.id !== currentProject?.id) navigateToProject(existing);
+      startTour(existing);
+      return;
+    }
+    const project = await openBundledExample(serviceSplit);
+    if (project) startTour(project);
+  }, [projects, serviceSplit, currentProject, navigateToProject, openBundledExample, startTour]);
+
+  useCommand({
+    id: "view.restartTour",
+    title: "Restart Guided Tour…",
+    run: () => void restartTour(),
+  });
 
   const choose = useCallback(
     async (choice: WelcomeChoice) => {
@@ -98,18 +124,25 @@ export function FirstRunExperience({
         return;
       }
 
-      const project = await openBundledExample(
-        isJa ? SERVICE_SPLIT_PROJECT : SERVICE_SPLIT_PROJECT_EN,
-      );
+      const project = await openBundledExample(serviceSplit);
       if (!project) return;
-      const run = ++runs.current;
-      setGuide(
-        choice === "design"
-          ? { kind: "tour", root: project.rootPath, step: 0, run }
-          : { kind: "scene", root: project.rootPath, run },
-      );
+      if (choice === "design") {
+        startTour(project);
+        return;
+      }
+      setGuide({ kind: "scene", root: project.rootPath, run: ++runs.current });
     },
-    [isJa, projects, currentProject, navigateToProject, selectFile, openBundledExample, dispatch],
+    [
+      isJa,
+      projects,
+      currentProject,
+      navigateToProject,
+      selectFile,
+      openBundledExample,
+      dispatch,
+      serviceSplit,
+      startTour,
+    ],
   );
 
   const pending = useMemo<PendingScene | null>(() => {

@@ -92,7 +92,9 @@ Watching for .krs and .krs.style file changes...
 サンプルは常に新しいプロジェクトとして開くので、既存のプロジェクトには触れません。
 特定の場所へのリンク（ギャラリーの example や `#krs-…` のパーマリンク）から開いたとき、
 一度どれかを選んだあとは、Welcome は出ません。コマンドパレット（`Ctrl/Cmd+Shift+P`）の
-**Show Welcome…** で再び開けます。
+**Show Welcome…** で再び開けます。同じパレットの **Restart Guided Tour…** は、
+ガイドを Step 1 からやり直します。以前ツアーが開いた `service-split` プロジェクトを使い、
+なければ新しく開きます。
 
 ## プレビューペイン
 

@@ -93,7 +93,9 @@ Samples always open as new projects, so nothing you already have is touched.
 Welcome does not appear when you open the app through a link to a specific
 place (a gallery example or a `#krs-…` permalink), or once you have chosen
 something. Run **Show Welcome…** from the command palette (`Ctrl/Cmd+Shift+P`)
-to open it again.
+to open it again. **Restart Guided Tour…** in the same palette walks the guide
+again from step 1, in the `service-split` project it opened before (or a new
+copy if there is none).
 
 ## The preview pane
 

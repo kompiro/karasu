@@ -9,7 +9,8 @@ import { selectedTab } from "../fixtures/tabs.js";
  * sample (#3564) in five steps. The opfs fixture marks Welcome dismissed for
  * every other spec; these opt back in with `showWelcome: true`.
  *
- * The palette-only `view.showWelcome` command (Show Welcome…) reopens Welcome.
+ * The palette-only `view.showWelcome` command (Show Welcome…) reopens Welcome,
+ * and `view.restartTour` (Restart Guided Tour…) walks the guide again (#3597).
  *
  * The layout block decides what used to be a manual check (#3583): the node
  * each step talks about stays inside the preview and clear of the panel, and
@@ -136,6 +137,22 @@ test.describe("AT-3563 first-run Welcome", () => {
     await expect(editorLines(page)).toContainText("service Api");
   });
 
+  test("Restart Guided Tour… opens the sample when no project holds it (#3597)", async ({
+    page,
+    opfs,
+  }) => {
+    await opfs.reset();
+    await opfs.gotoApp();
+    await expect(node(page, "ECommerce")).toBeVisible();
+
+    await pressChord(page, "Shift+P");
+    await page.getByRole("combobox", { name: "Search commands" }).fill("Restart Guided Tour");
+    await page.keyboard.press("Enter");
+    await expect(tour(page)).toContainText("1 / 5");
+    await expect(page.getByRole("combobox", { name: "Project" })).toContainText("service-split");
+    await expect(node(page, "CommerceApp")).toBeVisible();
+  });
+
   test("Track architecture evolution compares the migration with the current system", async ({
     page,
     opfs,
@@ -219,6 +236,24 @@ test.describe("AT-3563 Design a service split tour", () => {
     await panel.getByRole("button", { name: "✓ Continue to editor" }).click();
     await expect(tour(page)).toHaveCount(0);
     await expect(node(page, "BillingDB")).toBeVisible();
+  });
+
+  test("Restart Guided Tour… walks the guide again in the sample project it opened (#3597)", async ({
+    page,
+  }) => {
+    const panel = tour(page);
+    await panel.getByRole("button", { name: "Next →" }).click();
+    await panel.getByRole("button", { name: "Next →" }).click();
+    await expect(panel).toContainText("3 / 5");
+
+    await pressChord(page, "Shift+P");
+    await page.getByRole("combobox", { name: "Search commands" }).fill("Restart Guided Tour");
+    await page.keyboard.press("Enter");
+    await expect(panel).toContainText("1 / 5");
+    await expect(diffBanner(page)).toHaveCount(0);
+    // No second copy of the sample: the one the tour opened is reused.
+    const project = page.getByRole("combobox", { name: "Project" });
+    await expect(project.getByRole("option", { name: "service-split" })).toHaveCount(1);
   });
 
   test("Skip ends the tour from the diff step and leaves diff mode", async ({ page }) => {
