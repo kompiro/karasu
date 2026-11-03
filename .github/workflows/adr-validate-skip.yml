@@ -15,6 +15,7 @@ on:
     types: [opened, synchronize, reopened]
     paths-ignore:
       - "docs/adr/**"
+      - "docs/test-perspectives/**"
       - "adr.config.json"
       - "tpl.config.json"
       - "scripts/lint/config-topics-sync.ts"
@@ -41,6 +42,7 @@ jobs:
       - name: Non-ADR change — skip Validate
         run: |
           echo "PR does not touch ADR paths. Validation is skipped."
-          echo "If your change touches docs/adr/**, adr.config.json, tpl.config.json,"
-          echo "scripts/lint/config-topics-sync.ts or .github/workflows/adr-validate.yml,"
+          echo "If your change touches docs/adr/**, docs/test-perspectives/**, adr.config.json,"
+          echo "tpl.config.json, scripts/lint/config-topics-sync.ts, scripts/adr/**,"
+          echo "package.json, pnpm-lock.yaml or .github/workflows/adr-validate.yml,"
           echo "the real Validate runs."

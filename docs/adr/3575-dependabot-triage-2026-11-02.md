@@ -1,15 +1,38 @@
-# Dependabot トリアージ 2026-11-02
+---
+id: ADR-3575
+title: Dependabot トリアージ 2026-11-02：npm 8 件をすべて採用し、LSP 11 と SDK 1.x は ADR の assumptions を次の major に上げる差し替え PR で入れる
+status: accepted
+date: 2026-11-03
+topic: build
+related_to:
+  - ADR-3381
+  - ADR-2337
+  - ADR-2671
+  - ADR-2628
+  - ADR-2474
+  - ADR-2152
+  - ADR-2623
+  - ADR-2447
+  - ADR-1642
+scope:
+  packages: [app, lsp, vscode, docs-site]
+  concerns: [ci, dependencies, security]
+---
+
+# ADR-3575: Dependabot トリアージ 2026-11-02：npm 8 件をすべて採用し、LSP 11 と SDK 1.x は ADR の assumptions を次の major に上げる差し替え PR で入れる
 
 - **日付**: 2026-11-03
-- **ステータス**: 検討中
+- **ステータス**: 決定済み
 - **関連**:
+  - Design Doc PR: [#3575](https://github.com/kompiro/karasu/pull/3575)（本 ADR に昇格し削除）
   - 対象 Dependabot PR: [#3552](https://github.com/kompiro/karasu/pull/3552) / [#3553](https://github.com/kompiro/karasu/pull/3553) / [#3554](https://github.com/kompiro/karasu/pull/3554) / [#3555](https://github.com/kompiro/karasu/pull/3555) / [#3556](https://github.com/kompiro/karasu/pull/3556) / [#3557](https://github.com/kompiro/karasu/pull/3557) / [#3558](https://github.com/kompiro/karasu/pull/3558) / [#3559](https://github.com/kompiro/karasu/pull/3559)
-  - 前回トリアージ: [ADR-3381](../adr/3381-dependabot-triage-2026-10-26.md)
-  - LSP の対 upgrade と protocol 一致の不変条件: [ADR-2337](../adr/2337-lsp-pair-upgrade-protocol-parity.md)
-  - SDK を bundle 増を承知で採用した回: [ADR-2671](../adr/2671-dependabot-triage-2026-08-31.md)
-  - assumptions は major で止める: [ADR-2628](../adr/2628-adr-assumption-version-policy.md)、`.claude/rules/adr.md`「assumptions に書くこと」
+  - 差し替え PR: [#3580](https://github.com/kompiro/karasu/pull/3580)（LSP 11）/ [#3581](https://github.com/kompiro/karasu/pull/3581)（`@anthropic-ai/sdk` 1.3.0）
+  - 前回トリアージ: [ADR-3381](./3381-dependabot-triage-2026-10-26.md)
+  - LSP の対 upgrade と protocol 一致の不変条件: [ADR-2337](./2337-lsp-pair-upgrade-protocol-parity.md)
+  - SDK を bundle 増を承知で採用した回: [ADR-2671](./2671-dependabot-triage-2026-08-31.md)
+  - assumptions は major で止める: [ADR-2628](./2628-adr-assumption-version-policy.md)、`.claude/rules/adr.md`「assumptions に書くこと」
   - bump と assumptions 緩和を 1 本で入れた前例: [#2626](https://github.com/kompiro/karasu/pull/2626)（oxfmt と ADR-2447）
-  - 判定語彙: [ADR-2474](../adr/2474-dependabot-replacement-pr-vocabulary.md)、rebase は差し替えの理由にならない: [ADR-2152](../adr/2152-dependabot-triage-2026-07-27.md)
+  - 判定語彙: [ADR-2474](./2474-dependabot-replacement-pr-vocabulary.md)、rebase は差し替えの理由にならない: [ADR-2152](./2152-dependabot-triage-2026-07-27.md)
 
 ## 背景
 
@@ -48,20 +71,24 @@ grep で固定）で、major を上げたら判断し直せ、という柵が意
   起票まで 7 日 1 時間）、直接 bump で最も新しいのは `marked@18.1.2`（10-26 14:54）
 - **`pnpm-workspace.yaml` の `overrides:`**: 衝突なし（`vite@8: ^8.3.3`、`postcss: ^8.5.18` は新版を含む）
 
-## 一覧
+## 決定
 
-| PR    | 依存                 | from → to            | 種別      | 対象             | CI                          | リスク | 推奨 | 反映                                                                                          |
-| ----- | -------------------- | -------------------- | --------- | ---------------- | --------------------------- | ------ | ---- | --------------------------------------------------------------------------------------------- |
-| #3557 | `marked`             | 18.1.1 → 18.1.2      | patch     | app（runtime）   | green                       | low    | 採用 | そのままマージ                                                                                |
-| #3558 | `lucide-react`       | 1.60.0 → 1.61.0      | minor     | app（runtime）   | green                       | low    | 採用 | そのままマージ                                                                                |
-| #3554 | `knip`               | 6.42.1 → 6.43.0      | minor     | root（dev）      | green                       | low    | 採用 | そのままマージ                                                                                |
-| #3556 | `vite`               | 8.3.4 → 8.3.5        | patch     | app（dev）       | green                       | low    | 採用 | そのままマージ                                                                                |
-| #3553 | `@astrojs/starlight` | 0.42.6 → 0.42.7      | patch     | docs-site（dev） | green                       | low    | 採用 | そのままマージ                                                                                |
-| #3559 | `astro`              | 7.4.1 → 7.4.2        | patch     | docs-site（dev） | green                       | low    | 採用 | そのままマージ（rebase 想定）                                                                 |
-| #3552 | `lsp` group（4 件）  | 10.1.2 → 11.0.0 ほか | **major** | lsp / vscode     | **ADR assumptions で fail** | medium | 採用 | **差し替え PR**（ADR-2337 の assumptions と changeset を同梱）                                |
-| #3555 | `@anthropic-ai/sdk`  | 0.135.0 → 1.3.0      | **major** | app（runtime）   | **ADR assumptions で fail** | medium | 採用 | **差し替え PR**（ADR-2671 の assumptions を同梱、実キーでの往復を kompiro が preview で確認） |
+**8 件すべてを採用した。却下・保留はゼロ。** 6 件は bot PR をそのままマージし、major の 2 件（#3552 / #3555）は
+bot PR を close して、**bump と、それを止めていた ADR の assumptions を次の major に上げる変更を 1 コミットにした
+差し替え PR** で入れる。判定は「採用」なので `@dependabot ignore` は設定していない。
 
-## PR ごとの分析
+| PR    | 依存                 | from → to            | 種別      | 対象             | リスク | 判断                    | 反映                                                                                                                                              |
+| ----- | -------------------- | -------------------- | --------- | ---------------- | ------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #3557 | `marked`             | 18.1.1 → 18.1.2      | patch     | app（runtime）   | low    | 採用                    | そのままマージ                                                                                                                                    |
+| #3554 | `knip`               | 6.42.1 → 6.43.0      | minor     | root（dev）      | low    | 採用                    | そのままマージ                                                                                                                                    |
+| #3556 | `vite`               | 8.3.4 → 8.3.5        | patch     | app（dev）       | low    | 採用                    | そのままマージ                                                                                                                                    |
+| #3558 | `lucide-react`       | 1.60.0 → **1.62.0**  | minor     | app（runtime）   | low    | 採用                    | そのままマージ（rebase 1 回。rebase で対象版が 1.61.0 から繰り上がった。後述「結果」）                                                            |
+| #3553 | `@astrojs/starlight` | 0.42.6 → 0.42.7      | patch     | docs-site（dev） | low    | 採用                    | そのままマージ（rebase 1 回）                                                                                                                     |
+| #3559 | `astro`              | 7.4.1 → 7.4.2        | patch     | docs-site（dev） | low    | 採用                    | そのままマージ（rebase 2 回）                                                                                                                     |
+| #3552 | `lsp` group（4 件）  | 10.1.2 → 11.0.0 ほか | **major** | lsp / vscode     | medium | 採用（bot PR は close） | 差し替え PR [#3580](https://github.com/kompiro/karasu/pull/3580)（ADR-2337 の assumptions を `^11.`、`karasu-vscode` の patch changeset）         |
+| #3555 | `@anthropic-ai/sdk`  | 0.135.0 → 1.3.0      | **major** | app（runtime）   | medium | 採用（bot PR は close） | 差し替え PR [#3581](https://github.com/kompiro/karasu/pull/3581)（ADR-2671 の assumptions を `^1.`、preview での実キー往復を checklist に置いた） |
+
+## 理由（PR ごとの分析）
 
 ### #3552 `lsp` group: `vscode-languageserver` / `vscode-languageclient` 10.1.2 → 11.0.0
 
@@ -185,9 +212,9 @@ CommonMark 準拠の修正 3 件（type 6 HTML block の終端、emphasis の fl
 `ChatPane` / `NodeDetailPanel` / `EdgeDetailPanel` で使う。強調記号が連続する入力の解釈が仕様側に寄るだけで、Playwright は green。
 lock に `marked@18.1.1` が残るのは `@vscode/vsce@4.0.0` の exact pin（拡張のパッケージング用 dev ツール）で、配布物には入らない。
 
-### #3558 `lucide-react` 1.60.0 → 1.61.0（`packages/app`、runtime）
+### #3558 `lucide-react` 1.60.0 → 1.61.0（rebase 後 1.62.0、`packages/app`、runtime）
 
-アイコン 4 個の追加だけ。dependencies はゼロのまま。
+1.61.0 はアイコン 4 個の追加だけで、dependencies はゼロのまま。rebase で対象が 1.62.0 に繰り上がった分は「結果」に書く。
 
 ### #3554 `knip` 6.42.1 → 6.43.0（root、dev）
 
@@ -208,17 +235,48 @@ build の chunk import map と bundled-dev の修正。transitive は `rolldown`
 `vite` 8.3.5 / `rolldown` 1.2.15 を連れてくる（#3556 と同じ版）。両 PR とも Deploy Docs（docs-site の build）が green。
 2 本とも `packages/docs-site/package.json` と lock を触るので、先にマージした方の後でもう一方は rebase になる見込み。
 
-## 反映
+## 結果
 
-マージ順は ADR-2671 の学び（clean なものを先に流し、conflict したものを最後にまとめて rebase する）に従う。全 PR が
-`pnpm-lock.yaml` を触るので直列になる。
+マージ順は ADR-2671 の学び（clean なものを先に流し、conflict したものを最後にまとめて rebase する）に従った。
+全 PR が `pnpm-lock.yaml` を触るので直列になる。
 
-1. そのままマージ: #3557 → #3558 → #3554 → #3556 → #3553 → #3559。conflict したら `@dependabot rebase` してから進める。
-   rebase 後は PR タイトルの版が分析した版から動いていないことを確認する
-2. #3552 と #3555 を close し（判定は「採用」なので `@dependabot ignore` は付けない）、差し替え PR を 2 本出す
-   - LSP: 4 宣言の bump + ADR-2337 の assumptions を `^11.` + `karasu-vscode` の patch changeset
-   - SDK: bump + ADR-2671 の assumptions を `^1.`。PR の checklist に「preview の Chat で実キー 1 往復（kompiro）」を置く
-3. 本 Design Doc を ADR に昇格し、同じ PR で削除する
+1. #3557 をマージした直後に #3558 が conflict し、#3554 のマージ後に #3553、#3556 のマージ後に #3559 が conflict した。
+   clean だった #3554 → #3556 を先に流し、conflict した 3 本に `@dependabot rebase` を頼んでから #3558 → #3553 → #3559 の順に
+   マージした。#3559 は #3553 のマージで再び conflict したので rebase が 2 回要った
+2. #3552 と #3555 を close し、差し替え PR [#3580](https://github.com/kompiro/karasu/pull/3580)（LSP 11）と
+   [#3581](https://github.com/kompiro/karasu/pull/3581)（SDK 1.3.0）を出した。どちらも CodeRabbit のラウンドが収束し
+   （#3580 は Minor 1 件を却下、#3581 は指摘なし）、CI green で 11-03 にマージされた。bot の 6 件のマージで lock が
+   conflict したので main を取り込んだ。#3580 は収束の後に取り込み、PR の変更が変わっていないこと（`tier.ts same-change`）を
+   確かめて再レビューを頼まなかった。#3581 はレビューを頼む前に取り込んだ。#3581 の「preview の Chat で実キー 1 往復」の項目は、PR の checklist ではチェックされない
+   ままマージされた
+
+**rebase で対象版が 1 件繰り上がった。** #3558 は rebase 後のタイトルが `lucide-react` 1.60.0 → **1.62.0** になった
+（[ADR-2623](./2623-dependabot-triage-2026-08-25.md) で astro が繰り上がったのと同じ形）。1.62.0 を同じ手順で確かめ、採用を続けた。
+
+- 公開は 10-27 06:14 で rebase の時点で 7 日を越えている。publisher は GitHub Actions OIDC + provenance のまま。
+  lifecycle script と dependencies はゼロ、advisory もゼロ、tarball 全体で不審パターンは 0 件
+- 中身はアイコン 5 個の追加と、package.json への `exports` の追加（upstream #4822）。`exports["."]` の `import` は
+  従来の `module` フィールドと同じ `dist/esm/lucide-react.mjs` を指し、app は `"lucide-react"` 本体しか import しないので
+  解決先は変わらない。build と Playwright は green
+
+rebase で transitive の版も 2 つ増えた（#3553 の `magic-string` 1.4.5 と `mdast-util-to-markdown` 2.2.1。#3559 も
+`magic-string` 1.4.5）。どちらも 10-27 公開で 7 日を越え、publisher の種類は旧版と同じ（前者は GitHub Actions OIDC +
+provenance、後者は `wooorm`）、advisory はゼロで、追加行のヒットは README と警告文の URL だけだった。
+
+**差し替え PR の lock は、bot の 6 件をマージした後の main から作り直した。** どちらも main を取り込んでから、
+main の lock に自分の manifest を当てて `pnpm install` した。
+
+- LSP の依存エッジの差分は #3552 の 14 行とちょうど一致する
+- SDK の差分は `@anthropic-ai/sdk` の 4 行だけで、`@opentelemetry/api` は 1.9.1 のまま残る（`^1.4.1` を満たすので
+  再解決されない。bot PR は 1.10.0 へ動かしていた）。lock は 1.3.0 に固定し、specifier は `^1.3.0` にした。
+  1.4.0（11-02 公開）は cooldown 前
+- 最初は bot の 6 件より前の main から作ったので、`@napi-rs/wasm-runtime` の乗り換えと、誰からも参照されない
+  `vite@8.3.4` 向け snapshot の除去が混ざっていた。どちらも 6 件のマージで main 側に入り、取り込み後は消えた
+
+**CI が見ないものは手元で回した。** major 2 件の bot PR は、CI / Check が ADR assumptions の段で止まり、その後ろの
+Typecheck・Test・Build が skip されていた。bot PR のヘッドと差し替え PR の両方で手元で回し、すべて通った
+（LSP: lsp 72 件・vscode 125 件、SDK: app 1640 件 / 差し替え後 1670 件）。**assumptions で止まった major の PR は、
+CI の見た目より確かめられていることが少ない。** 次回以降も、この段で落ちた PR はヘッドで Typecheck・Test・Build を回す。
 
 ## 却下した案
 
