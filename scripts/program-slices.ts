@@ -168,8 +168,10 @@ function main(): void {
       console.log(`  ${sub.state === "closed" ? "✅" : "⬜"} #${sub.number} ${sub.title}`);
     }
     if (isPrd(parent)) {
-      console.log("  (not checked: each Epic is checked as its own parent)");
-      continue;
+      const epics = parent.subs.map((s) => s.number).join(" ");
+      console.log(
+        `  (PRD, not checked here: run \`pnpm program:slices ${epics}\` to check its Epics)`,
+      );
     }
     const found = checkParent(parent);
     for (const p of found) console.log(`  ⚠ ${p.message}`);
@@ -184,8 +186,11 @@ function main(): void {
   }
   const checked = parents.filter((p) => !isPrd(p)).length;
   const skipped = parents.length - checked;
+  const note = skipped > 0 ? `; ${skipped} PRD(s) not checked` : "";
   console.log(
-    `\n${checked} parent(s) account for every slice${skipped > 0 ? `; ${skipped} PRD(s) not checked` : ""}.`,
+    checked === 0
+      ? `\nNo slice parents checked${note}.`
+      : `\n${checked} parent(s) account for every slice${note}.`,
   );
 }
 

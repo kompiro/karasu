@@ -33,4 +33,4 @@
 - [ ] M-2: `docs/roadmap.md` keystone 節が用語集を正典として参照する 1 行を持ち、用語の定義を再掲していない（定義は 1 箇所のみ）。keystone PRD（[#3572](https://github.com/kompiro/karasu/issues/3572)）の本文は PR の checkout に含まれないので、ここでは確かめない（PRD Issue を編集するときに TPL-2005 を当てる）
 - [ ] M-3: `pnpm --filter docs-site build` 後、`/glossary/`（EN）と `/ja/glossary/`（JA）が描画され、sidebar に "Keystone glossary" が Concepts の下に出る
 - [ ] M-4: Reference 配下の既存 "Glossary"（`spec/glossary`）と新 "Keystone glossary" が別ページとして共存し、タイトルで区別できる（H1: "Keystone & permalink glossary" vs "Glossary"）
-- [ ] M-5: 用語集内の roadmap / permalink.md / design doc へのリンク（unpublished → GitHub URL に rewrite）が正しい GitHub パスに解決し、keystone PRD へのリンクが Issue #3572 を開く
+- [ ] M-5: 用語集内の roadmap / permalink.md へのリンク（unpublished → GitHub URL に rewrite）が正しい GitHub パスに解決する。keystone PRD へのリンク（絶対 URL）が Issue #3572 を開く
