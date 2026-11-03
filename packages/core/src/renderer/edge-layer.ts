@@ -29,14 +29,16 @@ import { FACET_DIM_OPACITY, type FacetOverlay } from "./facet-overlay.js";
  * on the stroke drawn there.
  */
 function placeLabels(layoutResult: LayoutResult, styles: ResolvedStyles, palette: DiagramPalette) {
-  const { inputs, nodeRects, edgeLines } = buildLabelInputs(
-    layoutResult.edges,
-    layoutResult.nodes,
-    (edge) => resolvedEdgeStyle(styles, edge),
+  const {
+    inputs: labelInputs,
+    nodeRects,
+    edgeLines,
+  } = buildLabelInputs(layoutResult.edges, layoutResult.nodes, (edge) =>
+    resolvedEdgeStyle(styles, edge),
   );
   const frameBorders = frameBordersOf(layoutResult, styles, palette);
-  const labelPlacements = resolveLabelPlacements(inputs, nodeRects, edgeLines, frameBorders);
-  return { labelInputs: inputs, labelPlacements };
+  const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects, edgeLines, frameBorders);
+  return { labelInputs, labelPlacements };
 }
 
 /**
