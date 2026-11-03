@@ -4,8 +4,10 @@ import {
   checkTestChanges,
   closedIssueNumbers,
   codeLineStarts,
+  isTestSupport,
   maskPathsAndComments,
   reasonLine,
+  removedInputs,
   titleType,
 } from "./test-changes.ts";
 import type { ChangedFile } from "./tier.ts";
@@ -496,6 +498,138 @@ describe("checkTestChanges", () => {
 
     it("asks for a reason on a deleted test file", () => {
       expect(check("chore: x", [{ path: T, status: "deleted", hunks: [] }]).errors).toHaveLength(1);
+    });
+  });
+
+  describe("helpers, runner configs and inputs (#3548)", () => {
+    const H = "packages/e2e/fixtures/editor.ts";
+    const HELPER = [
+      'import { type Page, expect } from "@playwright/test";',
+      "",
+      "export async function typeIn(page: Page, text: string) {",
+      "  await page.keyboard.type(text);",
+      '  await expect(page.locator(".view-lines")).toContainText(text);',
+      "}",
+    ];
+    const C = "packages/core/vitest.config.ts";
+    const CONFIG = [
+      'import { defineConfig } from "vitest/config";',
+      "",
+      "export default defineConfig({",
+      "  test: {",
+      '    include: ["src/**/*.test.ts"],',
+      "  },",
+      "});",
+    ];
+    const gone = (path: string, before = "graph {}"): ChangedFile => ({
+      path,
+      status: "deleted",
+      hunks: [],
+      before,
+      after: null,
+    });
+    const added = (path: string, after = "graph {}"): ChangedFile => ({
+      path,
+      status: "added",
+      hunks: [],
+      before: null,
+      after,
+    });
+
+    it("reads a module that takes the test API as a helper", () => {
+      expect(isTestSupport(edit(H, HELPER, HELPER))).toBe(true);
+      const typesOnly = ['import type { Page } from "@playwright/test";', ...HELPER.slice(1, 4)];
+      expect(isTestSupport(edit("packages/e2e/fixtures/chat.ts", typesOnly, typesOnly))).toBe(
+        false,
+      );
+      expect(isTestSupport(added(H, HELPER.join("\n")))).toBe(false);
+      expect(isTestSupport(edit(C, CONFIG, CONFIG))).toBe(false);
+    });
+
+    it("asks for a reason when an assertion leaves a helper, and fails a refactor", () => {
+      const file = edit(H, HELPER, HELPER.slice(0, 4).concat(HELPER.slice(5)));
+      expect(check("test(e2e): x", [file]).errors).toHaveLength(1);
+      expect(check("test(e2e): x", [file], "Test change: the wait moved").errors).toEqual([]);
+      expect(check("refactor(e2e): x", [file]).errors).toHaveLength(1);
+    });
+
+    it("lets a PR add to a helper or move its imports", () => {
+      const more = [...HELPER, "export const ready = true;"];
+      expect(check("test(e2e): x", [edit(H, HELPER, more)]).errors).toEqual([]);
+      const moved = ['import { expect, type Page } from "@playwright/test";', ...HELPER.slice(1)];
+      expect(check("refactor(e2e): x", [edit(H, HELPER, moved)]).errors).toEqual([]);
+    });
+
+    it.each([
+      ["an exclude", [...CONFIG.slice(0, 5), '    exclude: ["src/slow/**"],', ...CONFIG.slice(5)]],
+      ["a narrowed include", CONFIG.map((l) => l.replace("src/**", "src/parser/**"))],
+      ["a commented-out include", CONFIG.map((l) => l.replace("    include", "    // include"))],
+      [
+        "a comment opened around the include",
+        [...CONFIG.slice(0, 4), "/*", ...CONFIG.slice(4, 5), "*/", ...CONFIG.slice(5)],
+      ],
+    ])("asks for a reason when a runner config gets %s", (_, after) => {
+      const file = edit(C, CONFIG, after);
+      expect(check("chore: x", [file]).errors).toHaveLength(1);
+      expect(check("chore: x", [file], "Test change: slow tests run nightly").errors).toEqual([]);
+      // A refactor asks for the same line rather than failing: an alias change keeps the run.
+      expect(check("refactor: x", [file]).errors).toHaveLength(1);
+      expect(check("refactor: x", [file], "Test change: alias only").errors).toEqual([]);
+    });
+
+    it("asks for a reason on any change to which specs run, even one that widens it", () => {
+      // Whether a regex or glob narrows the run is not read from the text.
+      const before = [...CONFIG, "const SERVE_SPECS = /at-0032-/;"];
+      const after = [...CONFIG, "const SERVE_SPECS = /at-(0032|3258)-/;"];
+      expect(check("fix: x", [edit(C, before, after)], "No test: config").errors).toHaveLength(1);
+    });
+
+    it("lets a runner config change its comments and blank lines, or be added", () => {
+      const before = [...CONFIG.slice(0, 4), "    // the unit tests", ...CONFIG.slice(4)];
+      const after = [...CONFIG.slice(0, 4), "    // unit tests only", "", ...CONFIG.slice(4)];
+      expect(check("refactor: x", [edit(C, before, after)]).errors).toEqual([]);
+      const noted = [
+        ...CONFIG.slice(0, 2),
+        "// Measured in #1.",
+        "/* and kept */",
+        ...CONFIG.slice(2),
+      ];
+      expect(check("ci: x", [edit(C, CONFIG, noted)]).errors).toEqual([]);
+      expect(check("chore: x", [added(C, CONFIG.join("\n"))]).errors).toEqual([]);
+      expect(check("chore: x", [gone(C, CONFIG.join("\n"))]).errors).toHaveLength(1);
+    });
+
+    it("reads a deleted example or fixture as a removed input, and a move as none", () => {
+      const ex = "examples/ja/shop/index.krs";
+      const fx = "packages/core/src/renderer/fixtures/edge.krs";
+      expect(removedInputs([gone(ex)])).toEqual([ex]);
+      expect(removedInputs([gone(fx)])).toEqual([fx]);
+      expect(removedInputs([gone(ex), added("examples/ja/store/index.krs")])).toEqual([]);
+      expect(
+        removedInputs([gone(ex), added("examples/ja/store/index.krs", "graph { a }")]),
+      ).toEqual([ex]);
+      // Moved out of the inputs, it is no longer read.
+      expect(removedInputs([gone(fx), added("docs/edge.krs")])).toEqual([fx]);
+      expect(removedInputs([gone("packages/e2e/fixtures/serve-project/index.krs")])).toEqual([]);
+    });
+
+    it("reads an acceptance-test record left with fewer krs fences as a removed input", () => {
+      const AT = "docs/acceptance/0001-x.md";
+      const before = ["# x", "```krs", "a", "```", "", "```krs", "b", "```"];
+      expect(removedInputs([edit(AT, before, before.slice(0, 5))])).toEqual([AT]);
+      const swapped = [...before.slice(4), ...before.slice(0, 4)];
+      expect(removedInputs([edit(AT, before, swapped)])).toEqual([]);
+      expect(removedInputs([gone(AT, before.join("\n"))])).toEqual([AT]);
+      expect(removedInputs([gone(AT, "# x\nno fences")])).toEqual([]);
+    });
+
+    it("asks a reason for a removed input, and fails a refactor that removes one", () => {
+      const files = [gone("examples/ja/shop/index.krs")];
+      expect(check("docs: x", files).errors).toHaveLength(1);
+      expect(check("docs: x", files, "Test change: the example moved to a guide").errors).toEqual(
+        [],
+      );
+      expect(check("refactor: x", files).errors).toHaveLength(1);
     });
   });
 });

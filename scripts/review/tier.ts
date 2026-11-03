@@ -26,7 +26,10 @@ import { type GitFacts, parseRecord, verifyRecord } from "./local-review-record.
 import {
   checkTestChanges,
   closedIssueNumbers,
+  isCodeFile,
+  isRunnerConfig,
   isTestFile,
+  isTestInput,
   TEST_GLOBS,
   weakensTests,
 } from "./test-changes.ts";
@@ -1055,7 +1058,11 @@ function changedFiles(base: string, head: string): ChangedFile[] {
       isPackageJson(d.path) ||
       ADR_RECORD.test(d.path) ||
       AT_RECORD.test(d.path) ||
-      isTestFile(d.path)
+      isTestFile(d.path) ||
+      // Test helpers, runner configs and test inputs, for the test rules.
+      isCodeFile(d.path) ||
+      isRunnerConfig(d.path) ||
+      isTestInput(d.path)
     ) {
       f.before = gitShow(mergeBase, d.path);
       f.after = gitShow(head, d.path);
