@@ -86,10 +86,12 @@ type Pan = { scale: number; x: number; y: number };
 /**
  * Keeps the requested node inside the preview pane by panning it (#3583). A
  * diagram taller than the pane opens centered with its top out of reach, so
- * the node a tour step names can start half outside. Re-applied after every
- * render while the request stands, because the scene's diagram can land after
- * the request; the shift is zero once the node is inside, and a press or
- * wheel in the pane withdraws the request, so it never fights the user.
+ * the node a tour step names can start half outside. Re-applied when the
+ * request, the diagram or its key changes, because the scene's diagram can
+ * land after the request. The pan is set from where the node sits with no pan
+ * (only a reveal moves it while a request stands: a press or wheel in the pane
+ * withdraws the request), so the result does not depend on the steps the
+ * visitor took to get here, and it never fights the user.
  *
  * While a request stands it applies to whatever this pane shows, so a visitor
  * who switches tabs during a tour step sees the node kept in view there too.
@@ -108,11 +110,15 @@ export function useRevealNode(
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
+    // Scrolling a subtree that owns its wheel (a detail panel) does not pan.
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.target as Element | null)?.closest?.("[data-wheel-zoom-ignore]")) dismissReveal();
+    };
     el.addEventListener("pointerdown", dismissReveal);
-    el.addEventListener("wheel", dismissReveal, { passive: true });
+    el.addEventListener("wheel", onWheel, { passive: true });
     return () => {
       el.removeEventListener("pointerdown", dismissReveal);
-      el.removeEventListener("wheel", dismissReveal);
+      el.removeEventListener("wheel", onWheel);
     };
   }, [containerRef]);
   useLayoutEffect(() => {
@@ -120,9 +126,22 @@ export function useRevealNode(
     if (!reveal || !container || !svgRef.current) return;
     const target = svgRef.current.querySelector(`[data-node-id="${CSS.escape(reveal.nodeId)}"]`);
     if (!target) return;
-    const d = revealDelta(target.getBoundingClientRect(), container.getBoundingClientRect());
-    if (d.x === 0 && d.y === 0) return;
-    setTransform((prev) => ({ ...prev, x: prev.x + d.x, y: prev.y + d.y }));
+    const node = target.getBoundingClientRect();
+    const pane = container.getBoundingClientRect();
+    setTransform((prev) => {
+      // The translate is in screen pixels, so taking it off gives the node's
+      // box with no pan; the reveal's shift from there is the pan to set.
+      const d = revealDelta(
+        {
+          left: node.left - prev.x,
+          right: node.right - prev.x,
+          top: node.top - prev.y,
+          bottom: node.bottom - prev.y,
+        },
+        pane,
+      );
+      return d.x === prev.x && d.y === prev.y ? prev : { ...prev, x: d.x, y: d.y };
+    });
     // `svg` and `diagramKey` are triggers: a new diagram (or the transform
     // reset that comes with a new key) moves the node again.
     // eslint-disable-next-line react/exhaustive-effect-dependencies

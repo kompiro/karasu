@@ -298,4 +298,38 @@ describe("useGuidedScene", () => {
     });
     expect(revealed.result.current).toBeNull();
   });
+
+  it("withdraws the reveal for a scene that names no node, and when the guide unmounts (#3583)", async () => {
+    requestReveal(null);
+    const revealed = renderHook(() => useRevealRequest());
+    const named: PendingScene = {
+      ...diffScene,
+      scene: { ...diffScene.scene, reveal: "BillingService" },
+    };
+    const orgScene: PendingScene = {
+      root: "/projects/tour",
+      scene: { file: "index.krs", view: "org" },
+      key: "tour:1:1",
+      reapplyOnReturn: true,
+    };
+    const { rerender, unmount } = setup({
+      project: tourProject,
+      file: "/projects/tour/planned.krs",
+      pending: named,
+    });
+    await act(async () => {});
+    expect(revealed.result.current?.nodeId).toBe("BillingService");
+
+    await act(async () => {
+      rerender({ project: tourProject, file: "/projects/tour/planned.krs", pending: orgScene });
+    });
+    expect(revealed.result.current).toBeNull();
+
+    await act(async () => {
+      rerender({ project: tourProject, file: "/projects/tour/index.krs", pending: named });
+    });
+    expect(revealed.result.current?.nodeId).toBe("BillingService");
+    unmount();
+    expect(revealed.result.current).toBeNull();
+  });
 });

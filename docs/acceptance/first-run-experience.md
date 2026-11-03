@@ -62,7 +62,7 @@
 
   > ✅ Automated — `packages/core/src/examples.test.ts` › `current: the Billing Team owns the Billing domain but no service`
 
-- [x] AT-M: Design a service split の各ステップで、パネルの文が指しているノード（Step 1 のコマースアプリケーション、Step 3 の追加された請求サービス、Step 4 の ◇ Planned の請求 DB）の名前がプレビューの画面内にあり、ノードがツアーパネルと重ならない（既定のデスクトップの大きさ 1280×720 で判定）
+- [x] AT-M: Design a service split の各ステップで、パネルの文が指しているノード（Step 1 のコマースアプリケーション、Step 3 の追加された請求サービス、Step 4 の ◇ Planned の請求 DB）の名前がプレビューの画面内にあり、ノードがツアーパネルと重ならない。どのステップでもパネルが画面内に収まり、パネル内の文言がはみ出さない（既定のデスクトップの大きさ 1280×720 で判定）
 
   > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(en) keeps each step's node clear of the panel, with no text overflowing`
 

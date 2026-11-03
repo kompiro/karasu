@@ -81,6 +81,8 @@ export function useGuidedScene({
     if (appliedKey.current === pending.key) return;
     if (!currentFilePath?.startsWith(`${pending.root}/`)) return;
     appliedKey.current = pending.key;
+    // The previous scene's node no longer applies; this one sets its own once it lands.
+    requestReveal(null);
 
     const { root, scene, key } = pending;
     void (async () => {
