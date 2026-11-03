@@ -68,15 +68,15 @@ infra leaf の「所有ドメイン」は **論理層（`entity` の親 domain�
 ## チェックリスト
 
 - 別ドメイン所有の leaf への read/write → 1 件発火、`accessingDomain` / `owningDomains` /
-  `infraId` / `tableId` / `mode` が正しい。
-- 所有ドメイン自身のアクセス（intra）→ 発火しない。
-- 兄弟テーブル: A が `DB.a` 所有・B が `DB.b` 所有、A が `DB.b` にアクセス → 発火（leaf 粒度）。
-- co-owned leaf: A・B が同一 leaf を所有、C がアクセス → 発火（owners=[A,B]）、A / B のアクセス → 発火しない。
+  `infraId` / `tableId` / `mode` が正しい。 [guard: `packages/core/src/resolver/warnings.test.ts`]
+- 所有ドメイン自身のアクセス（intra）→ 発火しない。 [guard: `packages/core/src/resolver/warnings.test.ts`]
+- 兄弟テーブル: A が `DB.a` 所有・B が `DB.b` 所有、A が `DB.b` にアクセス → 発火（leaf 粒度）。 [guard: `packages/core/src/resolver/warnings.test.ts`]
+- co-owned leaf: A・B が同一 leaf を所有、C がアクセス → 発火（owners=[A,B]）、A / B のアクセス → 発火しない。 [guard: `packages/core/src/resolver/warnings.test.ts`]
 - `[external]` / `[index]` store 越え → 発火しない。
-- entity マッピングの無い純物理モデル → 発火しない。
-- cross-system 参照 → 発火しない（scope 外）。
-- read+write を同一ドメインから → 1 件に集約、`mode: readwrite`。
-- `shared-infra-fan-in` と同一 store で共起しても互いに抑制せず独立に発火する。
+- entity マッピングの無い純物理モデル → 発火しない。 [guard: `packages/core/src/resolver/warnings.test.ts`]
+- cross-system 参照 → 発火しない（scope 外）。 [guard: `packages/core/src/resolver/warnings.test.ts`]
+- read+write を同一ドメインから → 1 件に集約、`mode: readwrite`。 [guard: `packages/core/src/resolver/warnings.test.ts`]
+- `shared-infra-fan-in` と同一 store で共起しても互いに抑制せず独立に発火する。 [guard: `packages/core/src/resolver/warnings.test.ts`]
 
 ## 関連テスト
 
