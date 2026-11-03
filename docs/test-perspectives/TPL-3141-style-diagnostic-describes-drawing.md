@@ -56,8 +56,8 @@ resolver は検査を通った宣言しか読まないので、範囲を持た�
 スタイル値の範囲・型を追加・変更するとき:
 
 - [ ] 範囲は `PROPERTY_SCHEMAS` だけに書いたか（resolver に min / max / clamp / 整数判定を足していないか）
-- [ ] 範囲外の値は、宣言を書かなかったときと同じに描かれるか（弱いルールの値か既定）
-- [ ] 診断は宣言ごとに 1 件で、ノードの数によらないか
+- [ ] 範囲外の値は、宣言を書かなかったときと同じに描かれるか（弱いルールの値か既定） [guard: `packages/core/src/style/schema-bounds.test.ts`]
+- [ ] 診断は宣言ごとに 1 件で、ノードの数によらないか [guard: `packages/core/src/style/schema-bounds.test.ts`]
 - [ ] parser が値ノードを作れない形が残っていないか（残るなら、報告せずに捨てる経路になっていないか）
 - [ ] karasu が同梱するシート（builtin / icon theme）は検査の対象外のままか
 

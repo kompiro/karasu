@@ -63,7 +63,7 @@ silent な取りこぼしになる。これは TPL-1666（ノード style/metada
       取りこぼし」かを区別できるテストがあるか（合成エッジ・dot-notation 端点を
       明示的に含むケースを置く）
 - [ ] 端点述語の specificity が意図した tier（`edge[from=X]` は `edge[tag]` と同格の
-      11）になっているか — `computeSpecificity` の lock テストで縛れているか
+      11）になっているか — `computeSpecificity` の lock テストで縛れているか [guard: `packages/core/src/parser/style-parser.test.ts`]
 
 ## 既知の対処パターン
 
