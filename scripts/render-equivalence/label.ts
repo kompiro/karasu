@@ -194,13 +194,20 @@ function githubIo(repo: string, runId: string): Io {
       });
     },
     artifacts() {
-      const page = ghJson([
-        "-X",
-        "GET",
-        `repos/${repo}/actions/runs/${runId}/artifacts`,
-        "-f",
-        "per_page=100",
-      ]) as Record<string, unknown>;
+      let page: Record<string, unknown>;
+      try {
+        page = ghJson([
+          "-X",
+          "GET",
+          `repos/${repo}/actions/runs/${runId}/artifacts`,
+          "-f",
+          "per_page=100",
+        ]) as Record<string, unknown>;
+      } catch (error) {
+        // Like an unreadable verdict: the run compared, but nothing shows it is equal.
+        console.log(`Could not list the run's artifacts: ${(error as Error).message}`);
+        return [];
+      }
       const list = (Array.isArray(page.artifacts) ? page.artifacts : []) as Record<
         string,
         unknown
