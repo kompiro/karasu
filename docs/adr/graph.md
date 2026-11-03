@@ -211,6 +211,8 @@ flowchart TD
     ADR_3412["ADR-3412<br/>GitHub Actions の依存を actions.lock で固定し、検証を requi..."]
     ADR_3421["ADR-3421<br/>Copilot で推論する gh-aw の workflow を外し、個人の課金で動かせるまで..."]
     ADR_3504["ADR-3504<br/>Low の ADR の PR は draft を経ずに作り、ゲートはその create を 1..."]
+    ADR_3571["ADR-3571<br/>PRD は docs/prd に置かず prd ラベルの Issue にし、展開した Epic..."]
+    ADR_3575["ADR-3575<br/>Dependabot トリアージ 2026-11-02：npm 8 件をすべて採用し、LSP ..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -1163,6 +1165,8 @@ flowchart TD
   class ADR_3429 accepted
   class ADR_3471 accepted
   class ADR_3504 accepted
+  class ADR_3571 accepted
+  class ADR_3575 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
