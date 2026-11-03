@@ -74,9 +74,7 @@ describe("readTplPaths", () => {
       "*.md",
       "a\\b.md",
     ]) {
-      expect(() => readTplPaths(JSON.stringify({ indexFile })), indexFile).toThrow(
-        /plain file under/,
-      );
+      expect(() => readTplPaths(JSON.stringify({ indexFile }))).toThrow(/plain file under/);
     }
     expect(readTplPaths(JSON.stringify({ indexFile: "./index.md" })).outputs).toEqual([
       "./index.md",
