@@ -15,6 +15,7 @@ discovered_from:
 related_to:
   - TPL-2044
   - TPL-3022
+  - TPL-3437
 topic: app-ui
 scope:
   packages:
@@ -37,6 +38,8 @@ SVG の当たり判定は**塗った形の上**だけで起きる。`fill="none"
 - 押せるはずの要素が、線の上と文字の上でしか反応しない。単語のあいだ、行のあいだ、線の横を押しても何も起きない
 - pointer を動かすと、押せる表示（cursor: pointer）が文字の上でだけ点いたり消えたりする
 - 押せる領域を見える要素より前に描き、文字の選択やほかの要素の当たり判定を奪う
+
+当たり判定の領域はあるのに、タッチのタップが近くの別の要素へ移る失敗は別の原因で起きる（[TPL-3437](TPL-3437-tap-target-needs-its-own-pressability-cue.md)）。
 
 ## チェックリスト
 

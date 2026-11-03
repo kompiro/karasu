@@ -10,6 +10,7 @@ known_consumers:
   - edge-routing
   - edge-routing-lanes
   - crossing-marks
+  - mutual-pair
 discovered_from:
   - issue: "#3027"
   - root_cause_adr: "ADR-2958"
@@ -70,4 +71,8 @@ ADR-2958 は種別の違う edge を同じ束に入れない。この観点は�
 ## 関連テスト
 
 - `packages/core/src/renderer/edge-routing-lane-bundles.test.ts`「never bundles a sync edge with an async one (#2490)」: 種別の違う edge を同じ lane の束にまとめない
-- #3027 の実装 PR で、条件を 1 つずつ外した両方向の組のテストを足す
+- `packages/core/src/renderer/mutual-pair.test.ts`「only pairs the reader cannot tell apart are merged (TPL-3027)」: 種別・色・太さ・線種・diff state・cyclic・ghost・`groupBackward`・trunk・並列の束・collapse の stub・system 間の各条件を 1 つずつ外した両方向の組が 2 本のまま残る。鍵が無い呼び出し（draw.io）と組の無い canvas は今日の出力のまま
+
+## 派生元 spec
+
+- [`docs/concepts.ja.md`](../concepts.ja.md) — 「集約 — 俯瞰時の情報量を絞る」節（同じ種別・同じ見た目の両方向の組は 1 本の線で描かれる。#3027 で追加）

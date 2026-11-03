@@ -60,3 +60,6 @@ interactive control（button / tab / list item / menu item / toggle）は、ク�
 
 - `packages/app/src/components/PreviewColumn.test.tsx` — toggle 状態を `aria-pressed` で assert（shadcn Button 移行で class → 属性に変更）
 - `packages/e2e/tests/at-0033-drilldown-export.spec.ts` / `at-0044-org-tree-view.spec.ts` / `at-0048-resource-shape-icon-mode.spec.ts` — トグルの `aria-pressed` を E2E で固定
+- `packages/app/src/components/DiffModeBanner.test.tsx` — Swap トグルの可視ラベルが状態に応じて「⇄ Swap」/「⇄ Swap back」に変わり、`aria-pressed` も `false` / `true` で一致することを固定する（`aria-pressed` だけでなく可視ラベルでも押下状態が区別できること。#1399）
+- `packages/app/src/components/PreviewViewControls.test.tsx` — `PreviewViewControls — contracts the move must not drop` › `keeps aria-pressed on the toggles it carries, in both states (TPL-1399, TPL-1402)`：toolbar から移したトグルが両状態で `aria-pressed` を引き継いでいることを固定する（移行で a11y 契約を落とさない）
+- `packages/e2e/tests/at-0058-graphical-diff-viewer.spec.ts` — diff の Swap ボタンを押すと `aria-pressed="true"` になり diff の向きも反転することを E2E で固定する

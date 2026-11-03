@@ -19,6 +19,8 @@ on:
       - "packages/app/**"
       - "packages/core/**"
       - "packages/e2e/**"
+      - "packages/i18n/**"
+      - "examples/**"
       - "pnpm-lock.yaml"
       - "package.json"
       - ".github/workflows/e2e.yml"
@@ -43,6 +45,6 @@ jobs:
     steps:
       - name: No E2E-relevant change — skip Playwright
         run: |
-          echo "No packages/app|core|e2e (or lockfile) change. Playwright is skipped."
+          echo "No packages/app|core|e2e|i18n, examples (or lockfile) change. Playwright is skipped."
           echo "If your change touches those paths, ensure at least one falls"
           echo "outside e2e-skip.yml's paths-ignore so the real E2E suite runs."

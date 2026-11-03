@@ -49,7 +49,8 @@ import グラフは **DAG** を許す。あるファイル C が `entry → A �
 
 ## 関連テスト
 
-未確立（spec PR 後の実装 PR で `packages/core/src/fs/import-resolver.test.ts` に追加予定）。
+- `packages/core/src/fs/import-resolver.test.ts` — `multi-file import semantics (#1381)`：同じファイルに named import と wildcard import の 2 経路で到達しても `circular-import` を出さないこと（`S5: DAG re-arrival of the same file is not a cycle — no circular-import warning`）と、A → B → A の真の循環では出すこと（`S5: a true cycle still produces a circular-import warning`）を固定する。DAG 再到達で全 import が解決されることは同じ block の S2 テストが見る
+- `packages/core/src/fs/import-resolver.test.ts` — `circular import detection` › `detects circular krs imports`：`.krs` の真の循環で `circular-import` を出すこと、`directory import` › `does not warn about circular import when entry file is in the imported directory`：entry 自身を含むディレクトリを import しても循環扱いしないことを固定する
 
 ## 派生元 spec
 

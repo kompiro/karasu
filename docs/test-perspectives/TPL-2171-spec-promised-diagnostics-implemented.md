@@ -94,6 +94,10 @@ spec に診断の約束を書く / 約束済み領域の実装を変更すると
   （TPL-1296 の担保。挙動の約束は対象外）
 - `packages/core/src/resolver/warnings.test.ts` — セレクタ重複警告
   （`detectStyleConflicts()` / `style-conflict`）の実装側担保。spec style.md の約束に対応する
+- `packages/core/src/types/diagnostics-catalog.test.ts` — `diagnostics catalog completeness (TPL-1623)`。
+  実装の全診断コードと warning kind が `docs/spec/diagnostics.md` / `.ja.md` に載っていること、
+  逆に実装から消えたコードが catalog の表に残っていないこと（「names no retired code」）。
+  診断の削除・rename で spec 側を更新し忘れると落ちる。spec の散文が約束した診断の存在そのものは対象外
 
 ## 派生元 spec
 

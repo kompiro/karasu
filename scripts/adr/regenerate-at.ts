@@ -1,5 +1,6 @@
-// Runs the ADR index generator on what one commit holds, and reads the generated
-// files that commit holds, without touching the working tree (Issue #3416).
+// Runs the index generators (ADR and TPL) on what one commit holds, and reads the
+// generated files that commit holds, without touching the working tree (Issue
+// #3416; the TPL index joined in Issue #3289).
 //
 // Both the `Validate` check (scripts/adr/check-generated.ts) and the freshness
 // watcher (scripts/adr/check-freshness.ts) compare a commit's generated files
@@ -9,14 +10,43 @@
 // commit in main's history.
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type AdrPaths, generatedGlobs, isGenerated, readAdrPaths } from "./generated.ts";
+import {
+  CONFIG_FILES,
+  type ConfigTexts,
+  type GeneratedPaths,
+  type Generator,
+  type GeneratorRoot,
+  GENERATORS,
+  generatedGlobs,
+  isGenerated,
+  readAdrPaths,
+  readGeneratedPaths,
+  readTplPaths,
+  rootGlobs,
+} from "./generated.ts";
 
 /** Repo-relative path to file content. */
 export type Tree = Map<string, string>;
+
+/** One tree per generator. */
+export type GeneratedTrees = Record<Generator, Tree>;
+
+/** The package that provides each generator, as the lockfile names it. */
+export const GENERATOR_PACKAGES: Record<Generator, string> = {
+  adr: "@kompiro/adr-tools",
+  tpl: "@kompiro/tpl-tools",
+};
+
+/** The generators' binaries to run. */
+export type GeneratorBins = Record<Generator, string>;
+
+/** Every generator's files in one tree. The roots do not overlap. */
+export const mergeTrees = (trees: GeneratedTrees): Tree =>
+  new Map(GENERATORS.flatMap((g) => [...trees[g]]));
 
 const git = (args: string[]): string =>
   execFileSync("git", args, {
@@ -34,51 +64,68 @@ export const mergeBase = (a: string, b: string): string => git(["merge-base", a,
 export const nameStatus = (a: string, b: string): string =>
   git(["diff", "--no-renames", "--name-status", "-z", a, b]);
 
-/** `adr.config.json` at a commit, or null when it is not there. */
-export function configAt(rev: string): string | null {
+const showAt = (rev: string, path: string): string | null => {
   try {
-    return git(["show", `${rev}:adr.config.json`]);
+    return git(["show", `${rev}:${path}`]);
   } catch {
     return null;
   }
+};
+
+/** Each generator's config at a commit; null for a file that is not there. */
+export const configsAt = (rev: string): ConfigTexts => ({
+  adr: showAt(rev, CONFIG_FILES.adr),
+  tpl: showAt(rev, CONFIG_FILES.tpl),
+});
+
+export function generatedPathsAt(rev: string): GeneratedPaths {
+  const configs = configsAt(rev);
+  if (configs.adr === null) throw new Error(`${rev} has no adr.config.json`);
+  return readGeneratedPaths(configs);
 }
 
-export function adrPathsAt(rev: string): AdrPaths {
-  const text = configAt(rev);
+/** One generator's root at a commit, read from that generator's config alone. */
+export function rootAt(rev: string, generator: Generator): GeneratorRoot {
+  const text = showAt(rev, CONFIG_FILES[generator]);
+  if (generator === "tpl") return readTplPaths(text);
   if (text === null) throw new Error(`${rev} has no adr.config.json`);
   return readAdrPaths(text);
 }
 
 /** The generated files a commit holds, under the outputs `paths` names. */
-export function generatedTreeAt(rev: string, paths: AdrPaths): Tree {
-  const globs = generatedGlobs(paths);
-  const names = git(["ls-tree", "-r", "-z", "--name-only", rev, "--", paths.adrDir])
-    .split("\0")
-    .filter((p) => p !== "" && isGenerated(p, globs));
-  return new Map(names.map((p) => [p, git(["show", `${rev}:${p}`])]));
+export function generatedTreeAt(rev: string, paths: GeneratedPaths): GeneratedTrees {
+  const tree = (g: Generator): Tree => {
+    const globs = rootGlobs(paths[g]);
+    if (globs.length === 0) return new Map();
+    const names = git(["ls-tree", "-r", "-z", "--name-only", rev, "--", paths[g].dir])
+      .split("\0")
+      .filter((p) => p !== "" && isGenerated(p, globs));
+    return new Map(names.map((p) => [p, git(["show", `${rev}:${p}`])]));
+  };
+  return { adr: tree("adr"), tpl: tree("tpl") };
 }
 
 /**
- * What the generator reads at a commit, as a comparable key: the ADR directory
- * without the generated files, and the config. Two commits with the same key
+ * What one generator reads at a commit, as a comparable key: its directory
+ * without the generated files, and its config. Two commits with the same key
  * regenerate the same output (for the same generator).
  */
-export function inputKey(rev: string, paths: AdrPaths): string {
+export function inputKey(rev: string, paths: GeneratedPaths, generator: Generator): string {
   const globs = generatedGlobs(paths);
-  return git(["ls-tree", "-r", "-z", rev, "--", paths.adrDir, "adr.config.json"])
+  return git(["ls-tree", "-r", "-z", rev, "--", paths[generator].dir, CONFIG_FILES[generator]])
     .split("\0")
     .filter((e) => e !== "" && !isGenerated(e.slice(e.indexOf("\t") + 1), globs))
     .join("\n");
 }
 
-/** The `@kompiro/adr-tools` version a commit's lockfile resolves, or null. */
-export function generatorVersionAt(rev: string): string | null {
-  try {
-    const lock = git(["show", `${rev}:pnpm-lock.yaml`]);
-    return /^ {2}'@kompiro\/adr-tools@([^'(]+)':/m.exec(lock)?.[1] ?? null;
-  } catch {
-    return null;
-  }
+const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+
+/** The version of a generator's package that a commit's lockfile resolves, or null. */
+export function generatorVersionAt(rev: string, generator: Generator): string | null {
+  const lock = showAt(rev, "pnpm-lock.yaml");
+  if (lock === null) return null;
+  const pkg = escapeRegExp(GENERATOR_PACKAGES[generator]);
+  return new RegExp(`^ {2}'${pkg}@([^'(]+)':`, "m").exec(lock)?.[1] ?? null;
 }
 
 function readTree(root: string, prefix: string, into: Tree, dir = ""): void {
@@ -90,35 +137,70 @@ function readTree(root: string, prefix: string, into: Tree, dir = ""): void {
 }
 
 /**
- * Runs `adr regenerate` on a commit's inputs in a temporary directory and
- * returns what it writes, keyed by the repo-relative paths the outputs live at.
- * The commit's own generated files are removed first so they cannot feed the
- * result. `adrBin` is the generator to run: the checkout's, so a generator
- * upgrade is judged by the new generator.
+ * Runs the generators on a commit's inputs in a temporary directory and returns
+ * what they write, keyed by the repo-relative paths the outputs live at. The
+ * commit's own generated files are removed first so they cannot feed the
+ * result. Only the generators `paths` names are run; one with no outputs at the
+ * commit (the TPL generator before `tpl.config.json` named an `indexFile`) is not
+ * run either. Either way its tree is empty.
+ * `bins` are the generators to run: the checkout's, so a generator upgrade is
+ * judged by the new generator.
  */
-export function regenerateAt(rev: string, paths: AdrPaths, adrBin: string): Tree {
+export function regenerateAt(
+  rev: string,
+  paths: Partial<GeneratedPaths>,
+  bins: GeneratorBins,
+): GeneratedTrees {
   const work = mkdtempSync(join(tmpdir(), "adr-regenerate-"));
   try {
     const src = join(work, "src");
     const out = join(work, "out");
     mkdirSync(src);
     mkdirSync(out);
+    const roots = Object.fromEntries(
+      GENERATORS.flatMap((g) => {
+        const root = paths[g];
+        return root !== undefined && root.outputs.length > 0 ? [[g, root]] : [];
+      }),
+    ) as Partial<GeneratedPaths>;
+    const runs = GENERATORS.filter((g) => roots[g] !== undefined);
     const archive = execFileSync(
       "git",
-      ["archive", "--format=tar", rev, "--", "adr.config.json", paths.adrDir],
+      [
+        "archive",
+        "--format=tar",
+        rev,
+        "--",
+        ...runs.flatMap((g) => [CONFIG_FILES[g], roots[g]!.dir]),
+      ],
       { maxBuffer: 256 * 1024 * 1024 },
     );
     execFileSync("tar", ["-x", "-C", src], { input: archive });
-    for (const output of paths.outputs) {
-      rmSync(join(src, paths.adrDir, output), { recursive: true, force: true });
+    for (const g of runs) {
+      for (const output of roots[g]!.outputs) {
+        rmSync(join(src, roots[g]!.dir, output), { recursive: true, force: true });
+      }
     }
-    execFileSync(adrBin, ["regenerate", `--out-dir=${out}`], {
-      cwd: src,
-      stdio: ["ignore", "ignore", "pipe"],
-    });
-    const tree: Tree = new Map();
-    readTree(out, posix.normalize(paths.adrDir), tree);
-    return tree;
+    const trees: GeneratedTrees = { adr: new Map(), tpl: new Map() };
+    if (roots.adr !== undefined) {
+      execFileSync(bins.adr, ["regenerate", `--out-dir=${out}`], {
+        cwd: src,
+        stdio: ["ignore", "ignore", "pipe"],
+      });
+      readTree(out, posix.normalize(roots.adr.dir), trees.adr);
+    }
+    if (roots.tpl !== undefined) {
+      // `tpl regenerate` writes into the TPL directory of its working directory.
+      execFileSync(bins.tpl, ["regenerate", "--tpl-dir", roots.tpl.dir], {
+        cwd: src,
+        stdio: ["ignore", "ignore", "pipe"],
+      });
+      for (const output of roots.tpl.outputs) {
+        const rel = posix.normalize(posix.join(roots.tpl.dir, output));
+        if (existsSync(join(src, rel))) trees.tpl.set(rel, readFileSync(join(src, rel), "utf-8"));
+      }
+    }
+    return trees;
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
@@ -141,6 +223,8 @@ export function compareTrees(regenerated: Tree, committed: Tree): string[] {
   return problems.sort();
 }
 
-/** The generator installed next to this script, in the checkout the check runs from. */
-export const checkoutGenerator = (): string =>
-  join(dirname(fileURLToPath(import.meta.url)), "..", "..", "node_modules", ".bin", "adr");
+/** The generators installed next to this script, in the checkout the check runs from. */
+export const checkoutGenerators = (): GeneratorBins => {
+  const bin = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "node_modules", ".bin");
+  return { adr: join(bin, "adr"), tpl: join(bin, "tpl") };
+};

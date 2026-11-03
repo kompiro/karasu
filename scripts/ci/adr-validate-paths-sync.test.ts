@@ -8,7 +8,8 @@ import { describe, expect, it } from "vitest";
 // path either gets no `Validate` at all (the required check hangs pending) or
 // only the no-op one (the check is skipped where it matters, TPL-1725). The
 // generator-upgrade paths added in Issue #3416 (`package.json`,
-// `pnpm-lock.yaml`) are exactly the kind a later edit could drop from one side.
+// `pnpm-lock.yaml`) and the TPL directory added in Issue #3289 are exactly the
+// kind a later edit could drop from one side.
 
 const ROOT = resolve(import.meta.dirname, "../..");
 const read = (path: string) => readFileSync(resolve(ROOT, ".github/workflows", path), "utf-8");
@@ -44,11 +45,13 @@ describe("adr-validate paths", () => {
     expect([...skip[0]].sort()).toEqual([...validate[0]].sort());
   });
 
-  it("covers the generator, its check and its config", () => {
+  it("covers the generators, their check and their configs", () => {
     expect(validate[0]).toEqual(
       expect.arrayContaining([
         "docs/adr/**",
+        "docs/test-perspectives/**",
         "adr.config.json",
+        "tpl.config.json",
         "scripts/adr/**",
         "package.json",
         "pnpm-lock.yaml",

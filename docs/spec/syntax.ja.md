@@ -758,7 +758,8 @@ service OrderService {
 **物理対応 — `table <InfraId>.<subId>`。** entity は infra サブリソース 1 つに
 dot 記法で対応づけられる（`table OrderDB.orders`）。対応は任意 — 対応のない
 entity は前向き設計・ボトムアップの正当な中間状態。v1 では dot 形式のみ受け付け、
-bare な `table orders` は `expected-id-after` を出す。
+bare な `table orders` は `expected-id-after` を、leaf より先に続くパス（`table OrderDB.orders.extra`、
+または `orders` の後のドット）は `infra-path-too-long` を出す。どちらも対応は記録しない。
 
 **関連 — 関連 1 つ = edge 1 本。** entity 間の関連は既存の edge 構文
 （`->` 同期 / `-->` 非同期）を、参照を保持する側の entity ブロック内で宣言する。
@@ -1327,6 +1328,12 @@ system Shop {
   `import { A. }` / `resource OrderDB.` / cross-system edge endpoint は #2088 以前の
   復帰をそのまま保ち、報告したうえで読めたセグメントを記録する。9 サイトが共有するのは
   記法と接尾辞規則であって、壊れた参照がモデルに何を残すかではない。
+- **2 段のサイトはパスを最後まで読む。** `resource` と entity の `table` マッピングは
+  infra block とその leaf を指すので、3 段目（`resource OrderDB.Orders.Extra`）や leaf の
+  後のドットもまとめて読み、`infra-path-too-long` を 1 回だけ報告する（#3499）。`table` は
+  対応を記録せず、`resource` は dangling dot のときと同じく先頭 2 段を残す。
+- **ドットは次の文の edge の source を取り込まない。** どのサイトでも、ドットの後ろの id が
+  後の行にあり `->` / `-->` が続くなら、それはその edge の source としてブロックに残す（#3499）。
 
 > Related TPLs: [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md) — ノード id を指す記法はサイト間で 1 つの規則を共有し、受理側と解決側が同じヘルパーを引く。[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — path を受理する参照は path をキーに持つ索引を要求する（`ownerIndex` / `boundaryMembership` は full path キー）。
 

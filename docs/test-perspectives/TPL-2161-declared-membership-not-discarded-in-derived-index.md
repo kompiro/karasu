@@ -77,6 +77,10 @@ boundary 軸（[#2178](https://github.com/kompiro/karasu/issues/2178) slice A �
 team 軸（`ownerIndex`）は依然 1:1 first-wins であり、本観点の未適用箇所として残っている
 （[#2178](https://github.com/kompiro/karasu/issues/2178) の設計で意図的に範囲外 — stable 構文かつ
 `@migration_target` の precedence を持つため、[[TPL-1583]] の勝者選択規則と併せて再訪する）。
+ただし team 軸の派生でも、所有者リストそのものは畳まずに運ぶ経路がある:
+
+- `packages/core/src/view/derivation-contracts.test.ts` — 行 `findStructuralOverlaps: node owned across a containment boundary`。
+  2 チームに `owns` された node の overlap が `teams: ["t2", "t3"]` を全量で持ち、primary 1 件に畳まれないこと。
 
 ## 派生元 spec
 

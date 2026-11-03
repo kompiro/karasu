@@ -4,6 +4,7 @@ import { layout } from "./layout.js";
 import { CATEGORY_STUB_TAG } from "./category-collapse.js";
 import type { DisplayMode, LayoutNode, LayoutResult, Rect } from "./layout-types.js";
 import { renderArrowMarker } from "./edge-routing.js";
+import { edgeLineKeyOf } from "./edge-line-key.js";
 import { containerStyleOf, renderContainer } from "./container-frame.js";
 import { buildLegendFooter, el, escapeXml } from "./svg-builder.js";
 import { GHOST_OPACITY } from "./rendering-constants.js";
@@ -12,7 +13,7 @@ import type { LegendViewScope } from "../types/ast.js";
 import { resolvePalette } from "./palette.js";
 import { nodePathRefId } from "../parser/node-path.js";
 import type { RenderOptions } from "./render-options.js";
-import { renderEdgeLayer } from "./edge-layer.js";
+import { renderEdgeLayer, withheldLabelsOf } from "./edge-layer.js";
 import { assignChipZones, chipZoneOf, renderNode } from "./node-card.js";
 import { resolveNodeStyle, shapeNameOf } from "./node-style.js";
 import {
@@ -104,10 +105,13 @@ export function render(
     // The layout is about to apply the shape insets it was given the hook for,
     // so the lane is measured the way `renderNode` will draw it.
     chipZoneOf(node, node.id, styles, palette, displayMode !== "icon", serviceIdsWithDeploy);
+  const edgeLineKey = edgeLineKeyOf(styles, options?.edgeDiffState);
   const layoutResult = layout(viewSlice, {
     ownerIndex,
     shapeForNode,
     chipZoneFor,
+    edgeLineKey,
+    withheldLabels: (result) => withheldLabelsOf(result, styles, palette),
     teamLabels: options?.teamLabels,
     boundaryMembership: options?.boundaryMembership,
     scopedBoundaryMembership: options?.scopedBoundaryMembership,

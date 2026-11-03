@@ -326,12 +326,13 @@ export function readFocusSource(svgMarkup: string): FocusSource {
     const line = g.querySelector(":scope > :is(path, line, polyline):not(.krs-edge__hitline)");
     const text = g.querySelector(":scope > text");
     const stroke = line?.getAttribute("stroke") ?? "#94A3B8";
+    const cue = text?.querySelector(".krs-edge__cue")?.textContent?.length ?? 0;
     edges.push({
       from: g.getAttribute("data-edge-from") ?? "",
       to: g.getAttribute("data-edge-to") ?? "",
-      // A synthetic label (`W`, `N domain edges`) is not on the group as an
-      // attribute (ADR-1554); what the canvas drew is all there is.
-      label: g.getAttribute("data-edge-label") ?? text?.textContent ?? "",
+      // A synthetic label (`W`, `N domain edges`) is not on the group as an attribute
+      // (ADR-1554): read what the canvas drew, less a paired half's arrow (#3027).
+      label: g.getAttribute("data-edge-label") ?? (text?.textContent ?? "").slice(cue),
       stroke,
       dash: line?.getAttribute("stroke-dasharray") ?? null,
       textFill: text?.getAttribute("fill") ?? stroke,

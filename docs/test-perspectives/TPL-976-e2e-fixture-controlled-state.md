@@ -78,3 +78,5 @@ E2E テスト / 共通 fixture を追加・修正するとき、以下を確認�
 - `packages/e2e/fixtures/network.ts` / `tests/fixtures/network.smoke.spec.ts` — Google Fonts へのリクエストがスタブで答えられることを確認する
 - `packages/e2e/fixtures/README.md` — fixture 利用方針
 - `scripts/ci/playwright-flaky-summary.ts` — Playwright JSON report を解析して retry-pass（flaky）テストを `::warning::` annotation と `$GITHUB_STEP_SUMMARY` の markdown 表で surface する。`e2e.yml` / `e2e-nightly.yml` の "Surface flaky retry-passes" ステップから `if: always()` で実行（gap GT13-2 / #1271）
+- `scripts/lint/no-direct-page-goto.ts` — `packages/e2e/tests` / `packages/vscode-e2e/tests` 配下の `page.goto(...)` 直接呼び出しを検出して fail させる lint（fixture 経由のブートを強制。チェックリスト項目 1）
+- `scripts/lint/no-direct-page-goto.test.ts` — 上記 lint の scanner テスト：実 repo の両ディレクトリに違反が 0 件であること、`page.goto` の各表記を検出し `pages.goto` やコメントは誤検出しないこと（`regression rehearsal`）、`packages/e2e/fixtures` は走査対象外であること（`fixture exemption`）

@@ -70,10 +70,8 @@ scope:
 
 ## 関連テスト
 
-- （未確立 — 本観点は主に spec / 語彙設計レビュー時の判断材料。`resource` storage
-  kind の境界は `client-resource-invalid-kind` の parser テストが担保する）
+- `packages/core/src/parser/parser.test.ts`（`parses client resources with all whitelisted storage kinds` で予約集合 6 値の受理、`rejects unknown client resource kind` で集合外の kind（`cookie`）が `client-resource-invalid-kind` で拒否されることを固定する）。それ以外の項目は spec / 語彙設計レビュー時の判断材料で、テストでは担保しない
 
 ## 派生元 spec
 
 - `docs/concepts.md` —「Structure, not implementation — the `client` sub-language as the test case」節（structure / implementation の線と client の各機能の位置づけ）
-</content>

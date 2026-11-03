@@ -72,6 +72,14 @@ kebab-case 名は `<word> - <word>` のトークン列として parser に届く
   セレクタが適用されることを assert する
   （`packages/core/src/resolver/warnings.test.ts` の #2509 ブロック参照）。
 
+## 関連テスト
+
+- `packages/core/src/parser/parser.test.ts` — `kebab-case vocabulary names stitch into one name (#2509)`。tag（node / edge）・
+  annotation・legend ref の各ポジションで `my-team-internal-tag` 形の名前が 1 つの名前として AST に載ること、keyword 断片
+  （`legacy-system` / `audit-table`）も縫合されること、capability も共有ヘルパーを通ること
+- `packages/core/src/resolver/warnings.test.ts` — `hyphenated tag names warn once with the full name (#2509)`。警告が author の書いた
+  名前で 1 件だけ出ること、`.krs.style` の同綴りセレクタがその tag に適用されること（TPL-1415）
+
 ## 派生元 spec
 
 - `docs/spec/tags-annotations.md` §Tags — 名前の字句規則（kebab-case が

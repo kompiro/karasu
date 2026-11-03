@@ -54,7 +54,7 @@ export function EdgeDetailPanel(props: EdgeDetailPanelProps) {
         top: anchorY,
         maxWidth: 360,
         maxHeight: 400,
-        zIndex: 100,
+        zIndex: "var(--z-floating-panel)",
       }}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}

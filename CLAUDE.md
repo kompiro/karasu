@@ -18,7 +18,7 @@ C4 Modelに触発されつつも独自の語彙を持ち、論理構造と物理
 | 設計判断の経緯（ADR）— 有効な決定一覧               | `docs/adr/effective.md` (auto-generated; see also `docs/adr/graph.md`) |
 | 設計判断の経緯（ADR）— 全履歴                        | `docs/adr/`                     |
 | 詳細技術設計 — どう作るか（制約・代替案・実装方針）。ADR 昇格を基本とする transient | `docs/design/`                  |
-| 製品要件・方針（PRD）— 何を/なぜ。ADR 化せず persist、Issue に展開         | `docs/prd/`                     |
+| 製品要件・方針（PRD）: 何を/なぜ。展開した Epic はその sub-issue（ADR-3571） | GitHub Issues（`prd` ラベル）     |
 | 受け入れテスト基準                                  | `docs/acceptance/`              |
 | テスト観点ライブラリ（過去 bug から抽出した再発防止観点） | `docs/test-perspectives/`       |
 | 開発プロセス（ドキュメントライフサイクル・PR フロー） | `docs/process.md`               |

@@ -1,5 +1,6 @@
 import type { Translations } from "./types.js";
 import { formatRange } from "./format.js";
+import { firstRunJa } from "./first-run.js";
 
 /**
  * Japanese translation map.
@@ -80,6 +81,7 @@ export const ja: Partial<Translations> = {
   "project.error.export": ({ detail }) => `⚠ プロジェクトのエクスポートに失敗しました: ${detail}`,
   "project.error.import": ({ detail }) => `⚠ インポートに失敗しました: ${detail}`,
   "project.error.openExample": ({ detail }) => `⚠ example を開けませんでした: ${detail}`,
+  ...firstRunJa,
   "project.error.snapshot": ({ detail }) => `⚠ スナップショットの取得に失敗しました: ${detail}`,
   "project.error.dismiss": "✕ 閉じる",
   "serve.error.fileNotFound": ({ file }) => `ファイルが見つかりません: ${file}`,
@@ -482,6 +484,8 @@ export const ja: Partial<Translations> = {
     `プロパティ "${propName}" の値を期待しました`,
   "diagnostic.expectedIdAfter.message": ({ property }) =>
     `"${property}" の後に識別子または文字列リテラルを期待しました`,
+  "diagnostic.infraPathTooLong.message": ({ property }) =>
+    `"${property}" のパスは infra block とその leaf の 2 段（<Infra>.<Leaf>）で書きます`,
   "diagnostic.teamPropertyRemoved.message": `"team" プロパティは削除されました。organization ブロックと "owns" で所有を宣言してください`,
   "diagnostic.annotationParamUnsupported.message": ({ annotation, key }) =>
     `"@${annotation}" は "${key}" パラメータをサポートしていません。無視されます`,

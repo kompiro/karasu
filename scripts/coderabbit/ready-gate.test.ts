@@ -47,6 +47,13 @@ git("commit", "-q", "--allow-empty", "-m", "work");
 const WORK = git("rev-parse", "HEAD");
 git("commit", "-q", "--allow-empty", "-m", "fix after the CLI review");
 const HEAD = git("rev-parse", "HEAD");
+// What a create without --draft reads (#3504): origin and its default branch,
+// the branch as pushed, and `chore/5-local`, a branch at BASE that origin does
+// not have.
+git("remote", "add", "origin", "https://github.com/kompiro/karasu.git");
+git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main");
+git("update-ref", "refs/remotes/origin/chore/1-example", HEAD);
+git("update-ref", "refs/heads/chore/5-local", BASE);
 
 interface PrView {
   number: number;
@@ -328,6 +335,189 @@ describe("gh wrapper: gh pr create", () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("gh pr create --draft");
     expect(calls(gh)).toEqual([]);
+  });
+
+  // A Low PR may be created without --draft, which skips gh pr ready, so it is
+  // held to the same review: a Low ADR PR is opened this way (#3504). Higher
+  // tiers still go through a draft, so the ready and its converge hook run.
+  const LOW = '--label "risk: low"';
+  it.each([
+    `gh pr create ${LOW} --title x --body-file b.md`,
+    'gh pr create --label="risk: low" --title x',
+    'gh pr create -l "docs, risk: low" --title x',
+    'gh pr create -l "risk: low ,docs" --title x',
+    'gh pr create -l"risk: low" --title x',
+    `gh pr create ${LOW} --base main --title x`,
+  ])("runs a Low create without --draft once the CLI reviewed the branch: %s", (line) => {
+    const gh = fakeGh(DRAFT);
+    expect(run(line, gh, reviewedWork()).status).toBe(0);
+    expect(calls(gh)).toHaveLength(1);
+  });
+
+  it.each([
+    ["with no tier label", "gh pr create --title x"],
+    ["with another tier", 'gh pr create --label "risk: high" --title x'],
+    ["with risk: low only in the body", 'gh pr create --body "risk: low" --title x'],
+    ["with a label that only contains risk: low", 'gh pr create --label "risk: lower" --title x'],
+    ["with risk: low next to a higher tier", 'gh pr create -l "risk: low,risk: high" --title x'],
+    [
+      "with risk: low and a second --label for Design",
+      `gh pr create ${LOW} -l "risk: design" --title x`,
+    ],
+  ])("refuses a create without --draft %s, even once the CLI reviewed the branch", (_why, line) => {
+    const gh = fakeGh(DRAFT);
+    const result = run(line, gh, reviewedWork());
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("gh pr create --draft");
+    expect(calls(gh)).toEqual([]);
+  });
+
+  it("names the CLI review, and Medium for when it cannot run, when it refuses a Low create", () => {
+    const result = run(`gh pr create ${LOW} --title x`, fakeGh(DRAFT), reviews());
+    expect(result.stderr).toContain(
+      "coderabbit review --agent --deep --base origin/main --committed",
+    );
+    expect(result.stderr).toContain("risk: medium");
+    expect(result.stderr).not.toContain("KARASU_LOCAL_REVIEW_SKIPPED=<reason> gh pr create");
+  });
+
+  it("refuses a Low create when the review store holds no readable record", () => {
+    const store = reviews({ head: "", state: "complete", gitJson: '{"reviewedCommit": "abc"}' });
+    const gh = fakeGh(DRAFT);
+    expect(run(`gh pr create ${LOW} --title x`, gh, store).status).toBe(1);
+    expect(calls(gh)).toEqual([]);
+  });
+
+  // WORK is the reviewed commit. Naming the branch itself as the base puts WORK
+  // on the base, so each case fails only if the option is read.
+  it.each([
+    ["the review only covers the base branch", "--title x", BASE],
+    ["--base puts the review on the base", "--base chore/1-example --title x", WORK],
+    ["--base= puts the review on the base", "--base=chore/1-example --title x", WORK],
+    ["-B puts the review on the base", "-B chore/1-example --title x", WORK],
+    ["-B= puts the review on the base", "-B=chore/1-example --title x", WORK],
+    ["-B attached puts the review on the base", "-Bchore/1-example --title x", WORK],
+    [
+      "--base is the value of --body, and -B names the base",
+      "--body --base -B chore/1-example --title x",
+      WORK,
+    ],
+  ])("refuses a Low create without --draft when %s", (_why, args, reviewed) => {
+    const gh = fakeGh(DRAFT);
+    const line = `gh pr create ${LOW} ${args}`;
+    const result = run(line, gh, reviews({ head: reviewed, state: "complete" }));
+    expect(result.status).toBe(1);
+    // Refused for the review, not because a misread base could not be found.
+    expect(result.stderr).toContain("no completed local CodeRabbit CLI review");
+    expect(calls(gh)).toEqual([]);
+  });
+
+  // gh picks the base from --base, then the branch's gh-merge-base, then the
+  // repository's default branch. Each case points the default at the branch
+  // itself, which puts the reviewed WORK on the base.
+  it.each([
+    [
+      "the branch's gh-merge-base",
+      () => git("config", "branch.chore/1-example.gh-merge-base", "chore/1-example"),
+      () => git("config", "--unset", "branch.chore/1-example.gh-merge-base"),
+    ],
+    [
+      "origin's default branch",
+      () => git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/chore/1-example"),
+      () => git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"),
+    ],
+  ])("takes the base from %s when --base is absent", (_from, set, restore) => {
+    set();
+    try {
+      const gh = fakeGh(DRAFT);
+      expect(run(`gh pr create ${LOW} --title x`, gh, reviewedWork()).status).toBe(1);
+      expect(calls(gh)).toEqual([]);
+    } finally {
+      restore();
+    }
+  });
+
+  // A Low create takes one form: gh pushes the checked-out branch to origin's
+  // repository. Anything that picks another head or repository, or a base origin
+  // does not have, is refused instead of read: --draft is always a way through.
+  it.each([
+    ["--head", "--head chore/1-example", {}],
+    ["-H", "-Hchore/1-example", {}],
+    ["--head=", "--head=kompiro:chore/1-example", {}],
+    ["--repo", "--repo kompiro/karasu", {}],
+    ["--repo=", "--repo=kompiro/karasu", {}],
+    ["-R", "-R kompiro/karasu", {}],
+    ["GH_REPO", "", { GH_REPO: "kompiro/karasu" }],
+    ["GH_HOST", "", { GH_HOST: "github.example.com" }],
+    // chore/5-local exists only locally, at BASE: read from it, WORK would pass.
+    ["a base origin does not have", "--base chore/5-local", {}],
+  ])("refuses a reviewed Low create with %s", (_what, args, env) => {
+    const gh = fakeGh(DRAFT);
+    const result = run(`gh pr create ${LOW} ${args} --title x`, gh, reviewedWork(), env);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("cannot be checked");
+    expect(result.stderr).toContain("gh pr create --draft");
+    expect(calls(gh)).toEqual([]);
+  });
+
+  it.each([
+    ["another remote", "remote.upstream.gh-resolved", "base"],
+    ["a repository named on origin", "remote.origin.gh-resolved", "someone/else"],
+  ])("refuses a reviewed Low create when gh repo set-default picks %s", (_what, key, value) => {
+    git("config", key, value);
+    try {
+      const result = run(`gh pr create ${LOW} --title x`, fakeGh(DRAFT), reviewedWork());
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("gh repo set-default");
+    } finally {
+      git("config", "--unset", key);
+    }
+  });
+
+  it("runs a reviewed Low create when gh repo set-default picks origin", () => {
+    git("config", "remote.origin.gh-resolved", "base");
+    try {
+      const gh = fakeGh(DRAFT);
+      expect(run(`gh pr create ${LOW} --title x`, gh, reviewedWork()).status).toBe(0);
+      expect(calls(gh)).toEqual(["pr create --label risk: low --title x"]);
+    } finally {
+      git("config", "--unset", "remote.origin.gh-resolved");
+    }
+  });
+
+  it("refuses a reviewed Low create when origin's default branch is not known", () => {
+    git("symbolic-ref", "--delete", "refs/remotes/origin/HEAD");
+    try {
+      const result = run(`gh pr create ${LOW} --title x`, fakeGh(DRAFT), reviewedWork());
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("git remote set-head origin --auto");
+    } finally {
+      git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main");
+    }
+  });
+
+  // Review tier refuses a Low record that skipped the CLI, so the skip would
+  // open a PR that can never auto-merge.
+  it("refuses a Low create on a deliberate skip, naming the Medium draft route", () => {
+    const gh = fakeGh(DRAFT);
+    const line = `KARASU_LOCAL_REVIEW_SKIPPED=cli-out-of-quota gh pr create ${LOW} --title x`;
+    // Even with a review on the branch: the skip itself is the refusal.
+    const result = run(line, gh, reviewedWork());
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("risk: medium");
+    expect(calls(gh)).toEqual([]);
+  });
+
+  it("ignores a skip without a reason on a Low create: the review decides", () => {
+    const line = `KARASU_LOCAL_REVIEW_SKIPPED= gh pr create ${LOW} --title x`;
+    const gh = fakeGh(DRAFT);
+    expect(run(line, gh, reviewedWork()).status).toBe(0);
+    expect(calls(gh)).toEqual(["pr create --label risk: low --title x"]);
+  });
+
+  it("does not count a skip for a create that is not Low", () => {
+    const line = "KARASU_LOCAL_REVIEW_SKIPPED=quota gh pr create --title x";
+    expect(run(line, fakeGh(DRAFT), reviews()).status).toBe(1);
   });
 });
 

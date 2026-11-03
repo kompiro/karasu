@@ -68,6 +68,7 @@ group-collapse（#1874）は逆に **id を意図的に書き換える**ケー�
 - `packages/core/src/renderer/deploy-renderer.test.ts` › `job band (#1738)`（帯ラッパー描画・非該当時の不在）
 - `packages/core/src/renderer/layout.test.ts` › `layout > group-collapse ghost-edge re-anchoring (#1874)`（team を畳むと ghost コネクタが stub に再アンカー・親枠へフォールバックしない）
 - `packages/core/src/renderer/group-layout.test.ts` › `seam placement (#2176)` / `resolvePlacementAxis (#2176)`（seam bias と band 無し boundary の member 引き取りが行を書き換えるだけで、配置の全域性・一意性を壊さない）
+- `packages/core/src/renderer/group-by-render.test.ts` › `compile() with groupBy: team` / `compile() with groupBy: team — multi-system root view (#1884)`（`still renders every node exactly once, grouped (TPL-1738: totality)` 等で group 化後も全ノードちょうど一度、`re-anchors a cross-system edge from a collapsed team onto its stub (TPL-1738)` 等で畳んだ team の端点が stub に付け替わる）
 - `packages/core/src/renderer/boundary-membership.test.ts` › `placement moves only to give a boundary a band (#2176)`（引き取りの有無にかかわらず全ノードちょうど一度）
 
 ## 派生元 spec

@@ -89,4 +89,6 @@ TPL-510（派生タグの semantic 区別）とは **対**になる観点:
 
 - `packages/core/src/view/view-extract.test.ts` — implicit edge の集約が writer 側の入力から自動的に生成される動作
 - `packages/core/src/resolver/style-resolver.test.ts` — 親 annotation の継承（writer は親に 1 つ書く / reader は子で見える）
+- `packages/core/src/integration/cross-view-rendering.test.ts` — `cross-view rendering integration`：writer が 1 行書いた `owns` が org view と system view の両方の SVG に team の印として現れること（Part A）、service の `@deprecated` / `@experimental` が子孫の描画まで badge として継承されること（Part B、AT-0056）を renderer の出力で固定する
+- `packages/core/src/view/derivation-contracts.test.ts` — `meta: every derivation path preserves and transforms documented attributes (TPL-510)`：implicit edge の `kind` や継承 annotation など、writer が選んだ粒度の semantic が派生後も保存されることを派生関数ごとに固定する（チェックリスト項目 4、実装側は TPL-510）
 - `docs/concepts.ja.md` 「エッジ → explicit と implicit」「アノテーションの継承」

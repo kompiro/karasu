@@ -55,3 +55,6 @@ inline editor / 行内 confirm UI を実装するとき、以下を確認する:
 ## 関連テスト
 
 - `packages/app/src/components/ProjectSelector.test.tsx`
+- `packages/app/src/components/ChatPane.test.tsx` — `plain Enter (no modifier) does not submit (TPL-948 / #948 prophylaxis)` と `Cmd/Ctrl+Enter submits exactly once with preventDefault (TPL-948)`：修飾キーなしの Enter では送信せず、Cmd/Ctrl+Enter は `preventDefault` 付きでちょうど 1 回だけ送信する
+- `packages/app/src/components/PasteCompareDialog.test.tsx` — `plain Enter on the textarea does not confirm or close the dialog (TPL-948 / #948 prophylaxis)`：Enter で confirm / cancel が呼ばれないことを固定し、将来 Enter 確定を足すときにガード無しで配線する退行を検出する
+- `packages/app/src/components/FileTree.test.tsx` — `FileTree context menu (AT-0005)`：context menu から開く inline input の rename / New File / New Folder を Enter キーで確定する流れを固定する（キーボード操作の regression test。副次アクションが起きないことの assert までは持たない）

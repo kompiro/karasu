@@ -77,6 +77,8 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.expectedPropertyValue.message", d.params);
     case "expected-id-after":
       return t("diagnostic.expectedIdAfter.message", d.params);
+    case "infra-path-too-long":
+      return t("diagnostic.infraPathTooLong.message", d.params);
     case "team-property-removed":
       return t("diagnostic.teamPropertyRemoved.message");
     case "annotation-param-unsupported":

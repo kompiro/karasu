@@ -64,3 +64,5 @@ karasu には、ある粒度（domain edge）を別の粒度（service edge）�
 
 - `packages/core/src/view/view-extract.test.ts` を含む view-extract 関連の test
 - `packages/core/src/resolver/style-resolver.test.ts`
+- `packages/core/src/view/derivation-contracts.test.ts` — `meta: every derivation path preserves and transforms documented attributes (TPL-510)`：派生関数ごとに保持する属性（`preserves`、例: implicit edge の `kind`）と付与する属性（`transforms`、例: `[implicit]`）を表で宣言し、派生後の観測値と突き合わせる meta-test（チェックリスト項目 1）
+- `packages/core/src/renderer/drill-down-svg.test.ts` — `store-scoped ER projection on the database drill-down page (#2721)`：投影関係に付く `[projected]` タグは色だけを担い、sync の関係は実線、async の関係は破線のまま残ることを固定する（自動付与タグと sync/async 区別の共存）

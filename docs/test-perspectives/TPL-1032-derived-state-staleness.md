@@ -67,3 +67,4 @@ scope:
 - `packages/app/src/components/NodeDetailPanel.test.tsx`
 - `packages/app/src/components/WarningPanel.test.tsx`
 - `packages/app/src/hooks/useSystemView.test.tsx`
+- `packages/app/src/hooks/useDebouncedCompile.test.tsx` — recompile 結果の publish 経路を固定する（チェックリスト項目 3）：入力が途中で変わった in-flight compile の古い結果は捨て（`drops a stale in-flight compile when inputs change mid-flight`、#1534）、error から同一内容へ復帰したときは fingerprint が同じでも publish し直す（`re-publishes after error→recovery even when the fingerprint is unchanged`、#1540）

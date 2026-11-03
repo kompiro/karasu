@@ -11,6 +11,9 @@ import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import type { CategoryId } from "./category-collapse.js";
 import type { GroupLabelIndex } from "./group-labels.js";
 import type { Point } from "./edge-geometry.js";
+import type { CrossingMarks } from "./crossing-mark-types.js";
+
+export type { HopMark, JunctionMark, TrunkBand, CrossingMarks } from "./crossing-mark-types.js";
 
 export type LayoutNodeProperties = CommonProperties & {
   role?: string;
@@ -200,6 +203,11 @@ export interface LayoutEdge {
    * waypoint (fan-out).
    */
   trunkJoin?: number;
+  /**
+   * One half of a mutual pair drawn as one line (#3027, `mutual-pair.ts`): the
+   * route runs from the split, not the source card, to this edge's own target.
+   */
+  pairHalf?: boolean;
 }
 
 /** Axis-aligned box. The unit `ContainerRect.coverage` is built from. */
@@ -337,15 +345,25 @@ export interface LayoutResult {
    */
   widthBound?: boolean;
   /**
-   * How many times the placement ran (#2608): 1, or 2 when the first pass
-   * through the routing chain found an inter-row channel carrying more runs
-   * than its default gap holds at `LANE_PITCH`, so the rows were re-placed
-   * with that room reserved. Never 3 — the second pass is an upper bound
-   * stated by construction, not a convergence loop. An output, like
-   * `widthBudget`, so a test can pin "the default gaps sufficed" without a
-   * flag that could steer the layout (ADR-2521).
+   * How many times the placement ran after the width-budget search (#2608):
+   * 1, plus one when the first pass through the routing chain found a channel,
+   * a row or a frame side short of room, so the rows were re-placed with that
+   * room reserved, plus one for each label-room candidate (#3036). At most 4:
+   * every reservation and candidate is measured on the first pass alone, so
+   * the count is an upper bound stated by construction, not a convergence
+   * loop. An output, like `widthBudget`, so a test can pin "the default gaps
+   * sufficed" without a flag that could steer the layout (ADR-2521).
    */
-  placementPasses?: 1 | 2;
+  placementPasses?: 1 | 2 | 3 | 4;
+  /**
+   * The label room this placement kept (#3036): `"channels"` when the channels
+   * between rows were opened by the labels the first pass could not seat,
+   * `"channels+rows"` when the gaps inside rows were opened as well (with
+   * whatever channel room those labels asked for, none included). Unset when no
+   * candidate seated strictly more labels than the placement without it. An
+   * output, like `placementPasses` (ADR-2521).
+   */
+  labelRoom?: "channels" | "channels+rows";
   /**
    * True when measurement compensated for shape content insets (#2366 F):
    * a shapeForNode hook was supplied and the display mode is not the
@@ -393,84 +411,6 @@ export interface LayoutResult {
   degradedMemberships?: readonly { nodeId: string; boundaryId: string }[];
 }
 
-/**
- * A hop arc centred at `(x, y)`, spanning `halfWidth` px either side along the
- * host segment's direction (#1859 P2c-C, oriented in #1939). `angle` is the host
- * segment's direction in **degrees** (0 = horizontal, so an axis-aligned hop
- * renders exactly as before); the arc bumps perpendicular to it. `edge` is the
- * index (into `LayoutResult.edges`) of the host edge, so the renderer can colour
- * the mark like its own edge.
- */
-export interface HopMark {
-  x: number;
-  y: number;
-  halfWidth: number;
-  angle: number;
-  edge: number;
-  /**
-   * Arc height, when the default `HOP_RADIUS` would leave the arc inside
-   * something it is supposed to hop over. Set where the hop rides a trunk band,
-   * whose width grows with the count it carries: an arc drawn inside the band is
-   * not a smaller mark, it is a crossing that reads as a connection (TPL-2631).
-   */
-  ry?: number;
-}
-
-/**
- * The merge mark at a trunk elbow (#1859 P2c-C, numbered in #2883). `edge` is
- * the index of the joining stub edge, so the mark is coloured like the edge that
- * merges there. `edges` is every edge the spine carries past the mark (the
- * `count` of them), which is what the mark belongs to: hover keeps it bright
- * while any of them is in focus (#3090).
- *
- * `count` is how many edges the spine carries onward from this point, which the
- * renderer draws as the mark itself: a dot says a merge happened, and nothing
- * more, so the line below it reads the same whether it carries two edges or
- * seven. The number and the band's width (see {@link TrunkBand}) always agree.
- *
- * `x` is normally the elbow's own x. It slides along the spine only where the
- * mark would otherwise cover a hop arc, because a covered crossing reads as a
- * connection and this mark asserts exactly that (TPL-2631).
- */
-export interface JunctionMark {
-  x: number;
-  y: number;
-  edge: number;
-  count: number;
-  edges: number[];
-}
-
-/**
- * One stretch of a trunk that several edges draw on the same pixels, and how
- * many of them it carries there (#2883).
- *
- * `points` is a polyline, so the spine's last stretch and the shared run into
- * the target come as one band: they carry the same count, and joining them means
- * the corner is a join rather than two butted ends. Drawn under the edges, in
- * the colour of one of them, at a width derived from `count` alone — the stroke
- * width of the edges themselves already means read versus write (ADR-1061), so
- * the band borrows the colour and not the weight. `edges` is every edge the band
- * carries, so it dims only when none of them is in focus (#3090).
- */
-export interface TrunkBand {
-  points: Point[];
-  count: number;
-  edge: number;
-  edges: number[];
-}
-
-/**
- * Marks for the Group-by view: hops (crossing = not connected), junctions
- * (merge = connected, carrying the count), and the bands that give the count a
- * width. Junctions and bands come from shared spines, so a canvas whose edges
- * share none has neither.
- */
-export interface CrossingMarks {
-  hops: HopMark[];
-  junctions: JunctionMark[];
-  bands: TrunkBand[];
-}
-
 export type DisplayMode = "shape" | "icon";
 
 /**
@@ -503,6 +443,19 @@ export interface LayoutOptions {
    * renderer supplies it, and callers without styles simply get no keep-out.
    */
   chipZoneFor?: (node: LayoutNode) => Rect | undefined;
+  /**
+   * A key over how an edge's line is drawn (colour, width, stroke style, diff
+   * state), which only the renderer resolves (#3027). A mutual pair with equal
+   * keys is drawn as one line (TPL-3027); omitted (draw.io, bare layout), none is.
+   */
+  edgeLineKey?: (edge: LayoutEdge) => string | undefined;
+  /**
+   * The renderer's label pass, run on a placement: the labels it could not seat
+   * under `label-display: auto`, at their default anchors, with the box the pass
+   * tested (#3036). `layout()` opens room for them and keeps a candidate only
+   * when it seats strictly more; omitted (draw.io, bare layout), none is tried.
+   */
+  withheldLabels?: (result: LayoutResult) => readonly WithheldLabel[];
   /**
    * Team id → declared `label`, from `buildTeamLabelIndex`. Supplies the chip's
    * display string on every axis (the group-frame titles get theirs from
@@ -601,4 +554,11 @@ export interface LayoutOptions {
    * keep their diff decoration, re-keyed onto the stub id (#1886).
    */
   edgeDiffState?: ReadonlyMap<string, string>;
+}
+
+/** A label the renderer's pass could not seat, at its default anchor, with its box size (#3036). */
+export interface WithheldLabel {
+  anchor: Point;
+  width: number;
+  height: number;
 }

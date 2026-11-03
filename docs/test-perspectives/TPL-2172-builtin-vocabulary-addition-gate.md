@@ -68,6 +68,17 @@ builtin の tag / annotation を追加する PR で:
 - [ ] 一緒に検討して**却下した候補とその理由**が ADR に列挙され、却下が挙動として現れている（引き続き `tag-not-builtin` / `annotation-not-builtin` の警告対象であることをテストする）。
 - [ ] その名前が今日 inert に受理されている（warning が出ていた）ことによる挙動変化を changeset に書いている。
 
+## 関連テスト
+
+- `scripts/reference/gen-docs.test.ts` — `reference docs codegen` の「the committed spec docs are up to date」。
+  `reference-data.ts` から生成した spec 表がコミット済みのものと一致すること（`pnpm gen:reference` の掛け忘れで落ちる）
+- `packages/core/src/resolver/warnings.test.ts` — `store role tags and @planned — the #2172 vocabulary decision`。
+  採用した `[cache]` / `[analytics]` / `@planned` が警告なしで受理されること、`appliesTo` 外の kind では
+  `tag-not-applicable` になること、却下した `[kv]` / `@canary` が引き続き `tag-not-builtin` /
+  `annotation-not-builtin` の対象であること
+- `packages/core/src/examples.test.ts` — 「%s puts every builtin tag on an applicable kind」（applicability フェンス）。
+  `appliesTo` を縮小したとき、出荷サンプルが `tag-not-applicable` を出し始めると落ちる
+
 ## 派生元 spec
 
 - `docs/spec/tags-annotations.md` §*Non-builtin tag names have no effect* / §*Non-builtin annotation names have no effect*（言語 v2.0 で改題、#2677） — builtin 追加要望という移行先経路を規定している節。本 TPL はその経路を裁く側の観点。

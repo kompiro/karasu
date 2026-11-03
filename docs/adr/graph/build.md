@@ -138,12 +138,16 @@ flowchart TD
     ADR_3340["ADR-3340<br/>converge のラウンドでは指摘を種類として直し、push の前にそのラウンドの修正分だけ..."]
     ADR_3342["ADR-3342<br/>ブランチでローカルの CLI レビューが済むまで、Claude のセッションの gh で gh..."]
     ADR_3344["ADR-3344<br/>ソースファイルに行数予算を設け、超えているファイルは現在の行数で pin する"]
+    ADR_3345["ADR-3345<br/>組み込み examples は `examples/` から生成し、`examples.ts`..."]
     ADR_3350["ADR-3350<br/>リリーストレインの PR の段階を、差分が changeset version の出力だけなら..."]
     ADR_3359["ADR-3359<br/>描画が変わる PR に、merge-base と比べた before/after の画像を添付する"]
     ADR_3381["ADR-3381<br/>Dependabot トリアージ 2026-10-26：npm 12 件をそのまま採用し、ch..."]
     ADR_3399["ADR-3399<br/>Dependabot security alert 2026-10-30（qs と seria..."]
     ADR_3412["ADR-3412<br/>GitHub Actions の依存を actions.lock で固定し、検証を requi..."]
     ADR_3421["ADR-3421<br/>Copilot で推論する gh-aw の workflow を外し、個人の課金で動かせるまで..."]
+    ADR_3504["ADR-3504<br/>Low の ADR の PR は draft を経ずに作り、ゲートはその create を 1..."]
+    ADR_3571["ADR-3571<br/>PRD は docs/prd に置かず prd ラベルの Issue にし、展開した Epic..."]
+    ADR_3575["ADR-3575<br/>Dependabot トリアージ 2026-11-02：npm 8 件をすべて採用し、LSP ..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -172,6 +176,7 @@ flowchart TD
   ADR_3020 --> ADR_2969
   ADR_3326 --> ADR_3052
   ADR_3342 --> ADR_3326
+  ADR_3504 --> ADR_3286
   ADR_1974 --> ADR_1820
   ADR_2065 --> ADR_1314
   ADR_2065 --> ADR_1820
@@ -340,12 +345,16 @@ flowchart TD
   class ADR_3340 accepted
   class ADR_3342 accepted
   class ADR_3344 accepted
+  class ADR_3345 accepted
   class ADR_3350 not_adopted
   class ADR_3359 accepted
   class ADR_3381 accepted
   class ADR_3399 accepted
   class ADR_3412 accepted
   class ADR_3421 accepted
+  class ADR_3504 accepted
+  class ADR_3571 accepted
+  class ADR_3575 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost

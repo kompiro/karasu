@@ -72,6 +72,14 @@ scope:
   `docs/adr/**` は対象外（本文は当時の記録 — ADR-706）
 - **本番にしか確認手段がない項目は AT から外す**: 本番にしか現れないもの（デプロイ設定、OAuth、カスタムドメイン）は、マージを止める検査にならない。AT ではなく、実装 PR を作る前に別の Issue に起こして消化する（ADR-3271）。docs-site も [#2260](https://github.com/kompiro/karasu/issues/2260) で PR preview を得たので、記録の手順は app と同じく preview で実行できる（URL は PR 本文の欄に置く）
 
+## 関連テスト
+
+- `scripts/lint/record-source-paths.ts` — `pnpm run lint:record-source-paths` の本体。`docs/{acceptance,design}` の
+  コードスパンに書かれた `packages/…` / `scripts/…` のパスを working tree と突き合わせ、不在なら落とす
+  （チェックリスト 2 項目目のソースパス側）
+- `scripts/lint/record-source-paths.test.ts` — 上記 lint の単体テスト。パスとして拾う範囲（`sourcePathsInLine`）、
+  `absent-path-next-line` marker の読み取り（`absentPathReason`）、frontmatter と fenced code を読まないこと（`checkMarkdown`）
+
 ## 由来
 
 45 件の AT が `pnpm --filter @karasu-tools/app dev` などローカル dev サーバの起動を指示しており、うち 3 件は**既に腐ったブランチ名入り preview URL**（`https://fix-legend-human-annotation.karasu.pages.dev` 等）を代替として併記していた（[#2254](https://github.com/kompiro/karasu/issues/2254)）。いずれも「書いた PR の中では正しかった」もので、記録の寿命とアドレスの寿命が合っていないという 1 つの原因の別々の現れ方である。

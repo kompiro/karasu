@@ -1,0 +1,115 @@
+// service-split/planned.krs: the TARGET architecture.
+// Billing runs as its own service with its own database, and the team
+// that owns the billing rules owns the service that runs them.
+// Compare it with index.krs (the current architecture).
+
+system Commerce {
+  label "Commerce Platform"
+
+  user Customer [human] {
+    label "Customer"
+    description "Places orders and pays for them"
+  }
+  user FinanceStaff [human] {
+    label "Finance staff"
+    description "Reviews invoices and refunds"
+  }
+
+  service CommerceApp {
+    label "Commerce Application"
+    description "Storefront and ordering"
+
+    domain Ordering {
+      label "Ordering"
+      usecase PlaceOrder {
+        label "Place an order"
+        resource CommerceDB.Orders { operations create }
+      }
+      usecase TrackOrder {
+        label "Track an order"
+        resource CommerceDB.Orders { operations read }
+      }
+    }
+  }
+
+  service BillingService {
+    label "Billing Service"
+    description "Invoices and payments, own release cycle"
+
+    domain Billing {
+      label "Billing"
+      usecase IssueInvoice {
+        label "Issue an invoice"
+        resource BillingDB.Invoices { operations create }
+      }
+      usecase CapturePayment {
+        label "Capture a payment"
+        resource BillingDB.Payments { operations create }
+      }
+    }
+  }
+
+  service InventoryWorker {
+    label "Inventory Worker"
+    description "Reserves and releases stock in the background"
+
+    domain Inventory {
+      label "Inventory"
+      usecase ReserveStock {
+        label "Reserve stock"
+        resource CommerceDB.Stock { operations update }
+      }
+    }
+  }
+
+  service PaymentGateway [external] {
+    label "Payment Gateway"
+    description "Card payments, run by a provider"
+  }
+
+  database CommerceDB {
+    label "Commerce Database"
+    description "Orders and stock"
+    table Orders { label "Orders" }
+    table Stock { label "Stock" }
+  }
+
+  database BillingDB {
+    label "Billing Database"
+    description "Owned by billing alone"
+    table Invoices { label "Invoices" }
+    table Payments { label "Payments" }
+  }
+
+  Customer -> CommerceApp "Order"
+  Customer -> BillingService "Pay"
+  FinanceStaff -> BillingService "Review invoices"
+  CommerceApp -> BillingService "Request an invoice"
+  CommerceApp -> InventoryWorker "Reserve stock"
+  BillingService -> PaymentGateway "Capture payments"
+}
+
+organization Shop {
+  label "Shop Engineering"
+
+  team commerce {
+    label "Commerce Team"
+    description "Builds the storefront and the ordering flow"
+    owns CommerceApp
+    owns Ordering
+  }
+
+  team billing {
+    label "Billing Team"
+    description "Owns the invoicing rules and the service that runs them"
+    owns BillingService
+    owns Billing
+  }
+
+  team platform {
+    label "Platform Team"
+    description "Runs the shared database and the background workers"
+    owns InventoryWorker
+    owns Inventory
+  }
+}

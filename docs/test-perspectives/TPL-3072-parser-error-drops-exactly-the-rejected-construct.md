@@ -11,6 +11,7 @@ known_consumers:
 discovered_from:
   - issue: "#3072"
   - issue: "#3463"
+  - issue: "#3499"
 related_to:
   - TPL-2171
   - TPL-2165
@@ -60,6 +61,15 @@ scope:
   `database` は `}` で boundary を早く閉じ、後ろがトップレベル扱いになっていた）
 - 値の reader が要素の続き（`delivers A.B` の `.B`）を読まず、受理する分岐でも拒否する
   分岐でも残りがブロックに流れる（#3463）
+- node だけを拒否の対象に数え、edge を受け付けない loop（`boundary`・`organization`・
+  `team`・`member`・`facet`・`deploy` と deploy unit・`legend`・`capability`・edge の
+  プロパティブロック）が edge をトークンごとに報告する。edge にプロパティブロックがあると、
+  その `}` が外側のブロックを閉じる（#3499。`boundary` の中の `A -> B { label "x" }` は
+  error 7 件だった）
+- 段数の決まったパスの reader が上限で読むのをやめ、残りの段をブロックに流す
+  （#3499。`table DB.orders.extra` の `.extra`、`resource DB.C.X` の `.X`）。逆に最後まで
+  読む側では、末尾のドットが次の行の edge の source を段として取り込み、残った `-> B` が
+  暗黙の source の edge として読まれる（`readNodeIdPathTail` は後の行で矢印の続く id を取り込まない）
 
 ## チェックリスト
 
@@ -69,6 +79,8 @@ scope:
 - [ ] 後ろに兄弟の宣言とプロパティを置き、それが拒否の前と同じ親に付くことまで確かめているか
 - [ ] 同じ構文を受け付けないブロックの loop をすべて洗ったか（node の本体だけでなく、
   `boundary` の中身、infra block、sub-resource の本体。既定の分岐に落ちる構文ごとに 1 件で済むか）
+- [ ] node と同じく edge も、受け付けない loop で丸ごと読んでいるか（`grep -n 'blockKind:' packages/core/src/parser/*.ts` で既定の分岐を持つ loop を挙げ、edge を受け付けるもの以外に `rejectEdge` があるか）
+- [ ] 段数の決まったパスは、上限で止めずに最後まで読んでから段数を判定しているか
 
 ## 既知の対処パターン
 
@@ -79,8 +91,13 @@ scope:
 - **どの loop からも同じ helper を呼ぶ**: node の宣言は `rejectNode`（kind から
   `infra-not-in-context` / `entity-not-in-domain` / `node-not-in-context` を選ぶ）、
   プロパティは `property-readers.ts` の `rejectMisplacedProperty`（`role` / `handles` /
-  `operations` / `delivers` を各 reader で読む）。parser.ts の外の loop は
-  `ctx.tryParseNodeDecl()` で node を読み切る
+  `operations` / `delivers` を各 reader で読む）、edge は `rejectEdge`（`ctx.tryParseEdge()`
+  でプロパティブロックまで読み切り、`unexpected-token-in-block` を 1 件出す）。node-parser.ts
+  と edge-parser.ts の外の loop は `ctx.tryParseNodeDecl()` / `ctx.tryParseEdge()` で読み切る
+- **段数の決まったパスは最後まで読んでから判定する**: `<Infra>.<Leaf>` の `table` と
+  `resource` は `readNodeIdPathTail` を上限なしで呼び、`pathPastLeaf`（3 段目、または 2 段目の
+  後のドット）なら `infra-path-too-long` を 1 件出す。`table` は対応を記録しない。`resource` は
+  node なので、dangling dot の回復と同じく先頭 2 段で残す
 - **拒否したプロパティの値への指摘は捨てる**: 書けない場所のプロパティに値が欠けていても、
   直すべきはプロパティの置き場所であって値ではない。`rejectProperty` は値の reader が出した
   診断を `discardDiagnostics` で捨てる（入れ子の `facet` ブロックの拒否と同じ扱い）
@@ -99,4 +116,6 @@ scope:
   `property-not-for-node-kind`（`role` / `handles` / `delivers` / `operations`、値の欠けた
   `handles`、末尾カンマの `delivers`、`}` 直前の 1 行書き）を、空白で塗りつぶした source との
   比較で縛る。範囲は offset で比べる。#3463 の分は同じ block の `boundary` / infra block と
-  sub-resource の本体 / entity 以外の `table` / `delivers` の点付きパスの各 describe
+  sub-resource の本体 / entity 以外の `table` / `delivers` の点付きパスの各 describe。#3499 の分は
+  「an edge in a block that takes no edges」（10 種の block と、プロパティブロック付きの edge）と
+  「an <Infra>.<Leaf> path read past its leaf」（entity の `table`、`resource`）

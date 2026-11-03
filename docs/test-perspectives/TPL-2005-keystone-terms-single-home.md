@@ -5,7 +5,7 @@ status: active
 date: 2026-07-16
 applicable_to:
   - "keystone 由来の用語（read / record split・funnel / retained・record-as-byproduct・source of truth / 描画層・supply → share → explore）や permalink family（deep / repo-backed / ref-pinned / inline snapshot）を定義・言い換えする文を追加・変更するとき"
-  - "PRD（docs/prd/keystone-primary-path.md）・ロードマップ（docs/roadmap.md）・permalink epic・ADR で上記の用語を説明したくなったとき（定義を再掲する誘惑）"
+  - "keystone PRD（Issue #3572）・ロードマップ（docs/roadmap.md）・permalink epic・ADR で上記の用語を説明したくなったとき（定義を再掲する誘惑）"
   - "docs/glossary.md / docs/glossary.ja.md の項目を追加・変更するとき、および permalink 機構が変わって permalink.md / design doc / ADR 側の記述が動いたとき"
   - "新しく壁打ち・PRD で load-bearing な語彙を coin したとき（恒久的な定義場所を最初から決めるため）"
   - "version vocabulary（互換性の軸・notation tier / annotation の主語区別・言語版表記）を定義・言い換えする文を追加・変更するとき — この語彙の正典は docs/glossary.md ではなく docs/roadmap.md §version vocabulary（ADR-2124）"
@@ -54,10 +54,10 @@ ADR にまたがって使われる。定義を各所に散らして書くと、�
 この 2 つに加え、用語集は 2 面（EN `docs/glossary.md` / JA `docs/glossary.ja.md`）と
 モデリング言語用語集 [`docs/spec/glossary.md`](../spec/glossary.md) との相互リンクを持つ。
 in-site リンク（published ページ間）は `check-links`（TPL-1621）が解決を縛るが、
-**用語集が参照する PRD / roadmap / design doc / ADR は unpublished なので GitHub URL に
+**用語集が参照する roadmap / design doc / ADR は unpublished なので GitHub URL に
 rewrite され、check-links の検査対象外**である点に注意 — これらのリンク切れは機械検出
 されないので、リンク先ファイルの rename / 削除（例: design doc の ADR 昇格）時は用語集の
-リンクを手で追随させる。
+リンクを手で追随させる。keystone PRD は Issue（#3572）なので消えない（ADR-3571、ADR-2348）。
 
 ## 想定される失敗モード
 
@@ -84,16 +84,20 @@ keystone / permalink の用語を扱う doc を変更するときに確認する
       ref-pinned の design doc・permalink ADR の機構と矛盾していないか。
 - [ ] EN / JA 両ファイルを更新したか。両者と `docs/spec/glossary.md`（モデリング言語用語集）
       との相互リンクが生きているか。
-- [ ] 用語集が参照する unpublished doc（PRD / roadmap / design doc / ADR）を rename / 削除
+- [ ] 用語集が参照する unpublished doc（roadmap / design doc / ADR）を rename / 削除
       したなら、用語集側のリンクを追随させたか（check-links は検出しない）。
 - [ ] `pnpm --filter docs-site check-links` が通るか（published ページ間のリンク・アンカー解決）。
 - [ ] 新規 published ページを足したなら PUBLISHED_EN_FILES + astro.config.mjs sidebar +
       `.ja.md` sibling が揃っているか。
 
+## 関連テスト
+
+- `packages/docs-site/scripts/lib/site-map.test.ts` › `published pages` — `spec/glossary.md` が公開対象に含まれること、`PUBLISHED_EN_FILES` に登録した全ページが disk に存在し route と content path に解決されることを PR 時点で固定する（sidebar と `.ja.md` sibling の揃いは見ない）
+
 ## 派生元
 
 - 恒久的な定義場所の原則: [`docs/glossary.md`](../glossary.md)（本 TPL が守らせる正典）。
 - 起票の動機: [#1831](https://github.com/kompiro/karasu/issues/1831)（coined 用語の drift 懸念）。
-- 用語の初出: PRD [`docs/prd/keystone-primary-path.md`](../prd/keystone-primary-path.md)。
+- 用語の初出: keystone PRD [#3572](https://github.com/kompiro/karasu/issues/3572)。
 - permalink 機構の正典: [`docs/spec/permalink.md`](../spec/permalink.md) /
   [ADR-1829](../adr/1829-adr-permalink-convention.md)。

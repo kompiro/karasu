@@ -1,0 +1,107 @@
+// service-split/index.krs: 現在のアーキテクチャ。
+// 初回体験ガイド（#3563）の題材。planned.krs（目標）と migrating.krs
+// （移行途中）と見比べる。
+//
+// 注文と請求は別のドメインだが、どちらも 1 つの Commerce Application に
+// 同居し、1 つの Commerce Database を共有している。請求チームは請求ドメインを
+// 持つが、サービスは 1 つも持っていない。
+
+system Commerce {
+  label "コマースプラットフォーム"
+
+  user Customer [human] {
+    label "顧客"
+    description "注文して支払う"
+  }
+  user FinanceStaff [human] {
+    label "経理担当"
+    description "請求書と返金を確認する"
+  }
+
+  service CommerceApp {
+    label "コマースアプリケーション"
+    description "注文と請求を抱える 1 つのデプロイ単位"
+
+    domain Ordering {
+      label "注文"
+      usecase PlaceOrder {
+        label "注文する"
+        resource CommerceDB.Orders { operations create }
+      }
+      usecase TrackOrder {
+        label "注文を追跡する"
+        resource CommerceDB.Orders { operations read }
+      }
+
+      Ordering -> Billing "請求書を依頼"
+    }
+    domain Billing {
+      label "請求"
+      usecase IssueInvoice {
+        label "請求書を発行する"
+        resource CommerceDB.Invoices { operations create }
+        resource CommerceDB.Orders { operations read }
+      }
+      usecase CapturePayment {
+        label "決済を確定する"
+        resource CommerceDB.Payments { operations create }
+      }
+    }
+  }
+
+  service InventoryWorker {
+    label "在庫ワーカー"
+    description "在庫の引当と解放をバックグラウンドで行う"
+
+    domain Inventory {
+      label "在庫"
+      usecase ReserveStock {
+        label "在庫を引き当てる"
+        resource CommerceDB.Stock { operations update }
+      }
+    }
+  }
+
+  service PaymentGateway [external] {
+    label "決済ゲートウェイ"
+    description "外部事業者が運営するカード決済"
+  }
+
+  database CommerceDB {
+    label "コマースDB"
+    description "プラットフォーム全体で共有"
+    table Orders { label "注文" }
+    table Invoices { label "請求書" }
+    table Payments { label "決済" }
+    table Stock { label "在庫" }
+  }
+
+  Customer -> CommerceApp "注文・支払い"
+  FinanceStaff -> CommerceApp "請求書を確認"
+  CommerceApp -> InventoryWorker "在庫を引当"
+  CommerceApp -> PaymentGateway "決済を確定"
+}
+
+organization Shop {
+  label "ショップ開発部"
+
+  team commerce {
+    label "コマースチーム"
+    description "ストアフロントと注文フローを作る"
+    owns CommerceApp
+    owns Ordering
+  }
+
+  team billing {
+    label "請求チーム"
+    description "請求ルールを持つが、出荷先はコマースアプリケーションの中"
+    owns Billing
+  }
+
+  team platform {
+    label "プラットフォームチーム"
+    description "共有データベースとバックグラウンドワーカーを運用する"
+    owns InventoryWorker
+    owns Inventory
+  }
+}

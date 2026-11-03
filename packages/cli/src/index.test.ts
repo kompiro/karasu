@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { EventEmitter } from "node:events";
 
-const mockServe = vi.fn<() => void>();
+const mockServe = vi.fn<(...args: unknown[]) => EventEmitter>();
 const mockRender = vi.fn<() => void>();
 vi.mock("./serve.js", () => ({ serve: mockServe }));
 vi.mock("./render.js", () => ({ render: mockRender }));
@@ -10,6 +11,7 @@ const { program } = await import("./index.js");
 describe("CLI program", () => {
   beforeEach(() => {
     mockServe.mockReset();
+    mockServe.mockImplementation(() => new EventEmitter());
     mockRender.mockReset();
   });
 
@@ -22,25 +24,126 @@ describe("CLI program", () => {
     expect(cmd).toBeDefined();
   });
 
+  const defaults = { host: "127.0.0.1", allowedHosts: [] };
+
   it("serve defaults dir to '.' and port to 3000", async () => {
     await program.parseAsync(["node", "karasu", "serve"]);
-    expect(mockServe).toHaveBeenCalledWith(".", 3000);
+    expect(mockServe).toHaveBeenCalledWith(".", 3000, defaults);
   });
 
   it("serve passes an explicit directory", async () => {
     await program.parseAsync(["node", "karasu", "serve", "./arch"]);
-    expect(mockServe).toHaveBeenCalledWith("./arch", 3000);
+    expect(mockServe).toHaveBeenCalledWith("./arch", 3000, defaults);
   });
 
   it("serve parses --port as a number", async () => {
     await program.parseAsync(["node", "karasu", "serve", "./arch", "--port", "4000"]);
-    expect(mockServe).toHaveBeenCalledWith("./arch", 4000);
+    expect(mockServe).toHaveBeenCalledWith("./arch", 4000, defaults);
   });
 
   it("serve parses -p shorthand", async () => {
     await program.parseAsync(["node", "karasu", "serve", "-p", "8080"]);
-    expect(mockServe).toHaveBeenCalledWith(".", 8080);
+    expect(mockServe).toHaveBeenCalledWith(".", 8080, defaults);
   });
+
+  // #3418: loopback by default, --host to widen, --allowed-host for forwarded names.
+  it("serve passes --host and the normalized --allowed-host names", async () => {
+    await program.parseAsync([
+      "node",
+      "karasu",
+      "serve",
+      "--host",
+      "0.0.0.0",
+      "--allowed-host",
+      "Foo.App.GitHub.Dev.",
+      "--allowed-host",
+      ".example.com",
+    ]);
+    expect(mockServe).toHaveBeenCalledWith(".", 3000, {
+      host: "0.0.0.0",
+      allowedHosts: ["foo.app.github.dev", ".example.com"],
+    });
+  });
+
+  it("serve exits 1 with a message when the server cannot listen", async () => {
+    const server = new EventEmitter();
+    mockServe.mockImplementation(() => server);
+    const stderr: string[] = [];
+    vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+      stderr.push(String(chunk));
+      return true;
+    });
+    const exit = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
+    try {
+      await program.parseAsync(["node", "karasu", "serve", "--host", "127.0.0.1", "-p", "3000"]);
+      server.emit("error", Object.assign(new Error("listen EADDRINUSE"), { code: "EADDRINUSE" }));
+      expect(exit).toHaveBeenCalledWith(1);
+      expect(stderr.join("")).toContain("cannot listen on 127.0.0.1:3000: listen EADDRINUSE");
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  describe("serve error messages (#3418)", () => {
+    let stderr: string[];
+    let exit: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      stderr = [];
+      vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+        stderr.push(String(chunk));
+        return true;
+      });
+      exit = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("brackets an IPv6 --host in the listen error", async () => {
+      const server = new EventEmitter();
+      mockServe.mockImplementation(() => server);
+      await program.parseAsync(["node", "karasu", "serve", "--host", "::1", "-p", "3000"]);
+      server.emit("error", new Error("listen EADDRNOTAVAIL"));
+      expect(stderr.join("")).toContain("cannot listen on [::1]:3000: listen EADDRNOTAVAIL");
+      expect(exit).toHaveBeenCalledWith(1);
+    });
+
+    it("does not report an error after listening as a failed listen", async () => {
+      const server = new EventEmitter();
+      mockServe.mockImplementation(() => server);
+      await program.parseAsync(["node", "karasu", "serve", "-p", "3000"]);
+      server.emit("listening");
+      server.emit("error", new Error("accept EMFILE"));
+      expect(stderr.join("")).toContain("karasu serve: accept EMFILE");
+      expect(stderr.join("")).not.toContain("cannot listen");
+      expect(exit).toHaveBeenCalledWith(1);
+    });
+  });
+
+  it.each(["foo.app.github.dev:443", "https://foo.app.github.dev", "foo/bar", ""])(
+    "serve rejects --allowed-host %j with exit 1",
+    async (value) => {
+      const stderr: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+        stderr.push(String(chunk));
+        return true;
+      });
+      vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
+        throw new Error(`process.exit(${code})`);
+      }) as never);
+      try {
+        await expect(
+          program.parseAsync(["node", "karasu", "serve", "--allowed-host", value]),
+        ).rejects.toThrow("process.exit(1)");
+        expect(stderr.join("")).toContain("--allowed-host");
+        expect(mockServe).not.toHaveBeenCalled();
+      } finally {
+        vi.restoreAllMocks();
+      }
+    },
+  );
 
   it("has a 'render' command", () => {
     const cmd = program.commands.find((c) => c.name() === "render");

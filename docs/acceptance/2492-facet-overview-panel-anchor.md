@@ -1,13 +1,14 @@
 # AT: ファセット所属一覧パネルがツールバーに食い込まない
 
 - **日付**: 2026-08-14
-- **関連 Issue**: [#2492](https://github.com/kompiro/karasu/issues/2492)
+- **関連 Issue**: [#2492](https://github.com/kompiro/karasu/issues/2492)、[#3482](https://github.com/kompiro/karasu/issues/3482)（重なり順を z-index スケールから選ぶ）
 - **Related TPLs**:
   [TPL-2492](../test-perspectives/TPL-2492-published-measurement-carries-its-origin.md)（本 bug から起こした観点）、
   [TPL-1468](../test-perspectives/TPL-1468-overlay-z-index-scale.md)
 - **対象ファイル**:
   - `packages/app/src/components/PreviewColumn.tsx`（`--preview-toolbar-bottom` の publish）
-  - `packages/app/src/styles/components/panels.css`（`.facet-overview-panel` の `top`）
+  - `packages/app/src/styles/components/panels.css`（`.facet-overview-panel` の `top` と `z-index`）
+  - `packages/app/src/styles/tokens.css`（`--z-floating-panel`）
 
 ## 概要
 
@@ -42,6 +43,11 @@
 
 - [x] facet を宣言したモデルで「ファセット → 所属一覧」を開くと、パネルの上端がツールバーの下端以下にあり、ツールバーのボタンを覆わない。パネルは facet ごとに所属要素を並べ、閉じるボタンで閉じる
   > ✅ Automated — `packages/e2e/tests/at-2492-facet-overview-panel.spec.ts` › `Membership overview opens below the toolbar, lists each facet's members and closes`
+
+### AC-4: 重なり順がスケールの floating-panel 層にある（#3482）
+
+- [x] パネルはダイアグラムの上に描かれ、ツールバーのメニュー（portal される shadcn の DropdownMenu）が重なる位置ではメニューが手前に来る。フォーカスキャンバスを開くと、パネルの位置でもキャンバスが手前に来る。判定は `elementFromPoint` で computed stacking を読む（TPL-1468 (4)）
+  > ✅ Automated — `packages/e2e/tests/at-2492-facet-overview-panel.spec.ts` › `The panel sits above the diagram, below the toolbar's menus and below the focus canvas`
 
 ## 手動確認
 

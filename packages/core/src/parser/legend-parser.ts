@@ -1,6 +1,7 @@
 import { TokenType } from "../types/tokens.js";
 import type { LegendBlock, LegendEntry, LegendRefTarget, LegendViewScope } from "../types/ast.js";
 import { stitchKebabTail } from "./kebab-name.js";
+import { rejectEdge } from "./rejected-construct.js";
 import type { ParseContext } from "./parse-context.js";
 
 // ─── Legend block ────────────────────────────────────────────────────────
@@ -62,7 +63,7 @@ export function parseLegendBlock(ctx: ParseContext): LegendBlock {
     } else if (token.type === TokenType.Ref) {
       const entry = parseLegendRef(ctx);
       if (entry) entries.push(entry);
-    } else {
+    } else if (!rejectEdge(ctx, "legend")) {
       ctx.error("unexpected-token-in-block", {
         blockKind: "legend",
         tokenType: String(token.type),

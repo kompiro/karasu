@@ -8,6 +8,7 @@ import type {
 import { DEPLOY_KEYWORDS } from "./parser-keywords.js";
 import { handleNestedLegend } from "./legend-parser.js";
 import { commaSeparatedValues, readReferencePathElement } from "./property-readers.js";
+import { rejectEdge } from "./rejected-construct.js";
 import type { ParseContext } from "./parse-context.js";
 
 // The `deploy` block and its units (`oci`, `lambda`, `store`, …), including the
@@ -44,7 +45,7 @@ export function parseDeployBlock(ctx: ParseContext): DeployBlock {
       nodes.push(parseDeployNode(ctx));
     } else if (ctx.peek().type === TokenType.Legend) {
       handleNestedLegend(ctx, "deploy");
-    } else {
+    } else if (!rejectEdge(ctx, "deploy")) {
       ctx.error("unexpected-token-in-block", {
         blockKind: "deploy",
         tokenType: String(ctx.peek().type),
@@ -99,7 +100,7 @@ function parseDeployNode(ctx: ParseContext): DeployNode {
       }
     } else if (ctx.peek().type === TokenType.Legend) {
       handleNestedLegend(ctx, kind);
-    } else {
+    } else if (!rejectEdge(ctx, "deploy node")) {
       ctx.error("unexpected-token-in-block", {
         blockKind: "deploy node",
         tokenType: String(ctx.peek().type),

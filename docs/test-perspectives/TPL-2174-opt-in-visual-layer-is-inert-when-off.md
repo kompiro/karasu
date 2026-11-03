@@ -87,6 +87,15 @@ opt-in な視覚レイヤを足す / 触る PR で:
 - [ ] 静的バンドルを含む**全サーフェス**で無効時の assert がある（TPL-1983）。
 - [ ] 「無効」を `undefined` に畳んでおり、空だが有効な状態が型として作れない。
 
+## 関連テスト
+
+- `packages/core/src/renderer/facet-overlay.test.ts` — `facet overlay — off by default (proactive: opt-in layers are inert when off)`。
+  `OVERLAY_MARKERS` を列挙して未選択時に 1 つも出ないこと（(2) の検出）、facet 宣言の有無で出力が一致すること（(1) の検出）、
+  空の選択と未知の facet が同一出力になること、選択を外すと元に戻ること（TPL-1402）
+- `packages/core/src/compile/facet-overlay-surfaces.test.ts` — `facet overlay reaches every render surface (TPL-219)` の
+  「every surface leaves its output untouched when nothing is selected」。live compile・drill-down・all-layers・all-views の
+  各サーフェスで、未選択時に `data-facet-ring` / `data-facet-member` が出ないこと（TPL-1983）
+
 ## 派生元 spec
 
 - `docs/spec/syntax.md` §*Cross-cutting membership (`facet`)* /

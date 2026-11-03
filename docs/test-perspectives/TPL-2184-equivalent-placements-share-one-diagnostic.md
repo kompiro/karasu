@@ -100,6 +100,14 @@ pnpm --filter @karasu-tools/core test -- warnings
   描画先の無い node に container を与える機構であって、未割り当ての標識ではない。
   片方だけ揃えるのが正しい場合があり、そのときは理由を spec に書く。
 
+## 関連テスト
+
+- `packages/core/src/resolver/warnings.test.ts` — `unassigned-domain warning`。ファイル直下と `system` 直下の
+  両方の綴りで警告が出ること、「covers every parent canContain lets hold a domain」（`canContain` 上の全親の走査）、
+  2 つの綴りが混在したときの順序、`canContain` 外の入れ子は `node-not-in-context` に任せて二重報告しないこと
+- `packages/core/src/examples.test.ts` — 「%s declares no domain directly inside a system」（placement フェンス）。
+  `system` 直下の `domain` が `unassigned-domain` を出すようになったので、出荷サンプルがその配置を使っていないこと
+
 ## 派生元 spec
 
 - `docs/spec/syntax.md` / `syntax.ja.md` §「Nesting placement」/「入れ子の配置」

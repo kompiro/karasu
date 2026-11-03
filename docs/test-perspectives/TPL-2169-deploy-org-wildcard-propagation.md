@@ -50,7 +50,16 @@ karasu は論理 (`system`)・物理 (`deploy`)・組織 (`organization`) の三
 
 ## 関連テスト
 
-未確立（spec PR 後の実装 PR で `examples/ja/multi-file-system/` を使った AT を追加予定）。
+- `packages/core/src/fs/import-resolver.test.ts` — `multi-file import semantics (#1381)` の「S4: same-id `deploy`
+  and `organization` blocks merge across files」。whole-file import で imported 側の deploy node と team が importer
+  に現れ、両ファイルの deploy node と team が union されること（node / team の id で見ており、`realizes` /
+  `owns` の relation そのものは assert していない）
+- 同じファイルの「S2 + S4: end-to-end on the examples/ja/multi-file-system fixture」。出荷サンプルを入力に、
+  system / deploy / organization の 3 面すべての内容が merge 結果に現れること
+- 同じファイルの `wildcard import` の「merges deploy blocks from wildcard import」と「merges same-named deploy
+  blocks from wildcard import」
+
+top-level block 種別を列挙する curated table（チェックリスト 1 項目目）はまだ無い。
 
 ## 派生元 spec
 

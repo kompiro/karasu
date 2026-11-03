@@ -95,6 +95,19 @@ deprecation 診断を追加する PR で確認する:
   編集できない入力を診断対象から外す。除外の根拠は「編集できるか」であって
   「builtin かどうか」ではない。
 
+## 関連テスト
+
+- `packages/core/src/resolver/facet-style-selector.test.ts` — `arbitrary-name selector deprecation (#2175)`。
+  非 builtin の tag / annotation セレクタで警告が出ること、移行先の `[facets=<id>]` では出ないこと、
+  ユーザーが編集できない system sheet では出ないこと、1 つの名前について model 側（`tag-not-builtin`）と
+  style 側（`style-tag-selector-not-builtin`）の両方で出ること
+- 同じファイルの `[facets=<id>] selector — cascade`。移行先が置き換え元の tag セレクタと同じ specificity
+  （単独で 10、kind 付きで 11）を持つこと
+
+旧記法が v1.x で動き続けることの固定（チェックリスト 3 項目目）は、言語 v2.0（#2677）で任意名セレクタを
+無効にしたため、現在は同じ describe の「no longer applies a rule whose selector names a non-builtin tag (v2.0)」が
+v2.0 側の挙動を固定している。
+
 ## 派生元 spec
 
 - `docs/spec/style.md` / `style.ja.md` §「Facet selectors (`[facets=<id>]`)」（言語 v2.0 で core になり、見出しの「— experimental」が外れた。#2677）

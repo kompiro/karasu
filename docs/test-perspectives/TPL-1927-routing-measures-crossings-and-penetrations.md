@@ -94,6 +94,8 @@ system-view grouping の設計計測（`docs/design/system-view-grouping.md` § 
 
 - `packages/core/src/renderer/edge-routing-channels.test.ts`（skip-layer 直交ルーティング — ノードカード貫通の既存ガード）
 - `packages/core/src/renderer/edge-routing-groups.test.ts`（grouped view のルーティング — `totalPenetrations == 0`・`collinearVerticalOverlaps == 0`・`collinearHorizontalOverlaps == 0` を assert。#1859 / #1927）
+- `packages/core/src/renderer/routing-parity.test.ts`（`shared routing chain — ungrouped fences (#2362, TPL-1927)` で ungrouped の実サンプル群について貫通ゼロと共線オーバーラップゼロ、`shared routing chain — grouped output is unchanged` で grouped の貫通ゼロと交差数を同時に assert する）
+- `packages/core/src/renderer/group-by-drilldown-render.test.ts`（`P2c routing on a grouped drill view (TPL-1927)` › `routes with zero penetrations where straight lines would pierce (dual metric)`: drill レベルの grouped view で貫通ゼロと交差数を両方測る。`draws no frame on a level without members — byte-identical to ungrouped (rule 3)` で非対象レベルの byte 一致）
 
 ## 派生元 spec / 設計
 

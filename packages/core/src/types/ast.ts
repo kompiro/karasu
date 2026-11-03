@@ -1038,6 +1038,7 @@ export interface DiagnosticParamsByCode {
   "invalid-node-kind": { kind: string };
   "expected-property-value": { propName: string };
   "expected-id-after": { property: string };
+  "infra-path-too-long": { property: "table" | "resource" };
 
   // ── Parser semantic diagnostics ─────────────────────────────────────────
   "team-property-removed": Record<string, never>;

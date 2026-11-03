@@ -73,4 +73,5 @@ jobs:
           gh issue create \
             --title "TPL deprecation review — ${{ steps.period.outputs.label }}" \
             --label "documentation" \
+            --label "topic: testing" \
             --body-file /tmp/tpl-review-body.md

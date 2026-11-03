@@ -58,6 +58,16 @@ prefix / 名前空間で一括削除する store を足す・変えるときに�
 - **削除数を返す** — 完全性は証明できなくても、走ったことは記録できる
 - **1 回の purge で完全性を主張しない** — eventually consistent な一覧では、purge 中に着地した書き込みが見えないことがある。削除経路は再実行できる形にしておく
 
+## 関連テスト
+
+- `packages/nest/src/store/gallery-keys.test.ts` — `account id normalisation` の「collapses leading zeros, so one account cannot own two prefixes」
+  （`"042"` と `"42"` が同じ id になる）と「refuses anything that is not a positive integer」（`42/43` のようなセパレータ入りを拒否）。
+  `key layout` の「ends the sweepable prefixes with a slash, so 42 cannot reach 420」が末尾セパレータを、各 prefix の `v1` がバージョン成分を固定する
+- `packages/nest/src/store/gallery-purge-coverage.test.ts` — `account purge coverage` の「touches nothing belonging to an account whose id merely extends it」
+  （`GalleryStore.purgeAccount` 経由で 42 の purge が 420 を巻き込まない）と「counts what it deleted in every category」
+- `packages/nest/src/store/sweep.test.ts` — `purgeByPrefix`。削除件数を返すこと、eventually consistent な一覧で再出現した鍵を 1 回だけ数えること、
+  削除が効かないときに成功を返さず prefix を名指して失敗すること
+
 ## 由来
 
 karasu-nest の生成済み `.krs` キャッシュ（[#2284](https://github.com/kompiro/karasu/issues/2284)）は、[ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md) 決定 6 の「uninstall = purge」を成立させるために installation id を prefix の最外に置く鍵 layout を採った。レビューで、`installationId` が `number | string` を受けるのに `"042"` を `42` へ畳んでいないことが指摘された — webhook payload と route param という 2 つの経路が同じ id を別の綴りで渡しうる設計だったため、片方の綴りで書かれたデータが purge の射程外に残りうる状態だった。

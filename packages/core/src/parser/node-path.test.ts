@@ -65,6 +65,23 @@ describe("readNodeIdPathTail", () => {
     expect(cursor.peek()).toBe(tail.dangling);
   });
 
+  // A path segment is never followed by an arrow, so an id on a later line
+  // with one after it is the next edge's source (#3499).
+  it.each([
+    ["->", "A.B.\nX -> Y"],
+    ["-->", "A.\nX --> Y"],
+  ])("leaves an edge source on the next line unconsumed (%s)", (_arrow, source) => {
+    const { first, cursor } = tailCursor(source);
+    const tail = readNodeIdPathTail(first, cursor);
+    expect(tail.dangling?.value).toBe("X");
+    expect(cursor.peek()).toBe(tail.dangling);
+  });
+
+  it("still reads a segment on the next line that no arrow follows", () => {
+    const { first, cursor } = tailCursor("A.\nB }");
+    expect(readNodeIdPathTail(first, cursor).segments).toEqual(["A", "B"]);
+  });
+
   it("tracks end at the last accepted segment when a later dot dangles", () => {
     const { first, cursor } = tailCursor("A.B. }");
     const tail = readNodeIdPathTail(first, cursor);

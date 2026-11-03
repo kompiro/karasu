@@ -57,6 +57,20 @@ export function rejectProperty(
 }
 
 /**
+ * Reject an edge written in a block that takes no edges, after it was parsed
+ * whole with its property block (#3499). Returns false when the next token
+ * opens no edge, so the caller falls through to its own default branch.
+ */
+export function rejectEdge(ctx: ParseContext, blockKind: string): boolean {
+  const token = ctx.peek();
+  const edge = ctx.tryParseEdge();
+  if (!edge) return false;
+  const params = { blockKind, tokenType: String(token.type), value: token.value };
+  rejectConstruct(ctx, edge.loc, "unexpected-token-in-block", params);
+  return true;
+}
+
+/**
  * Reject a node declared where its kind cannot be placed, after it was parsed
  * whole. The code says which placement rule it broke: an infra block belongs
  * directly under `system`, an `entity` under a `domain`, and every other kind

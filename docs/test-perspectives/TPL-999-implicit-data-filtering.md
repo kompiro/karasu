@@ -60,3 +60,6 @@ scope:
 ## 関連テスト
 
 - `packages/core/src/renderer/legend-footer.test.ts`
+- `packages/core/src/builtins/reference-spec-sync.test.ts` — `Reference data ↔ docs/spec agreement (TPL-1296)`：`docs/spec/tags-annotations.md` に書かれた author tag / annotation がすべて reference data に登録され、resolver が合成する edge tag がすべて spec に記載されていることを固定する（表示対象のカタログの網羅性。チェックリスト項目 1）
+- `packages/core/src/resolver/warnings.test.ts` — `tag-not-builtin warning (#2159, closed register in v2.0)` / `annotation-not-builtin warning (#2159, closed register in v2.0)`：登録外の tag / annotation には warning を出し、builtin の全 annotation（`REFERENCE_DATA` から生成）には出さないことで、登録の線引きをテストで明示する
+- `packages/app/src/components/icon-consistency.test.ts` — `icon source consistency between NodeDetailPanel and icon-card renderer (TPL-999 / TPL-1001)`：renderer の `ICON_THEME_STYLE_SOURCE` と NodeDetailPanel の `KIND_TO_ICON_NAME` を両者の和集合で突き合わせ、図とパネルでアイコンが食い違わないことを固定する（チェックリスト項目 4）

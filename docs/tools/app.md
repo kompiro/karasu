@@ -73,6 +73,28 @@ same app with the editor enabled:
 The playground opens `index.krs` by default. See
 [The editor](#the-editor-playground) for the editing features.
 
+### First visit: Welcome and the guided tour
+
+On your first visit the playground opens with a **Welcome** dialog that offers
+three places to start:
+
+- **Design a service split**: opens the `service-split` sample as a new
+  project and starts a five-step guided tour: the current architecture, the
+  teams that own it (Org view), the planned architecture compared with the
+  current one (diff mode), the state in between (`@migration_target`,
+  `@planned`), and how to share the result. The tour is a small panel at the
+  bottom left; **Skip tour** ends it at any step, and **Continue to editor**
+  ends it on the last one.
+- **Understand an existing system**: opens the Getting Started project.
+- **Track architecture evolution**: opens the `service-split` sample with its
+  migration compared against the current system.
+
+Samples always open as new projects, so nothing you already have is touched.
+Welcome does not appear when you open the app through a link to a specific
+place (a gallery example or a `#krs-…` permalink), or once you have chosen
+something. Run **Show Welcome…** from the command palette (`Ctrl/Cmd+Shift+P`)
+to open it again.
+
 ## The preview pane
 
 The preview pane is the heart of the app and is identical in `serve` and the

@@ -84,6 +84,9 @@ view-state オプションに適用範囲の制限を導入・変更・撤去す
 - `packages/core/src/renderer/group-by-drilldown-render.test.ts` — #1983 正規化後の全 surface
   一致の柵（interactive / 3 つの静的 export builder / entity view のレベル別フレーム、
   member 不在レベルの byte 一致、ghost 除外）
+- `packages/core/src/compile/facet-overlay-surfaces.test.ts` — facet overlay が live compile・3 つの静的
+  bundle・entity view・diff render の全 surface に届くこと（効く側）と、未選択時はどの surface の出力も
+  変えないこと（効かない側）を両方 assert する
 
 ## 派生元 spec
 

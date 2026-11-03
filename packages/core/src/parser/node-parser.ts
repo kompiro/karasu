@@ -10,7 +10,7 @@ import type {
 import { INFRA_KIND_SET } from "../types/ast.js";
 import { isRecognizedResourceOperation, type CrudVerb } from "../spec/operations.js";
 import type { ResourceOperation } from "../spec/operations.js";
-import { readNodeIdPathTail } from "./node-path.js";
+import { readNodeIdPathTail, pathPastLeaf } from "./node-path.js";
 import { parseTags, parseAnnotations } from "./annotation-parser.js";
 import type { ParsedOperation } from "./property-readers.js";
 import { parseBlockContentsWithProperties } from "./block-contents.js";
@@ -208,19 +208,33 @@ function parseResourceDecl(ctx: ParseContext, start: Token): KrsNode {
   // Check for dot-notation: resource OrderDB.C
   let ref: { parent: string; child: string } | undefined;
   if (ctx.peek().type === TokenType.Dot) {
-    const tail = readNodeIdPathTail(idToken, ctx, {
-      maxSegments: 2,
-      acceptStringSegments: true,
-    });
-    // On a dangling dot, keep this site's historical recovery: report, leave
-    // the bad token unconsumed, and still join its value into the id.
-    const childToken = tail.dangling ?? tail.end;
-    if (tail.dangling) {
-      ctx.error("expected-id-or-string", { context: "resource child id" });
+    // The whole path is read, so a segment past the leaf is reported once
+    // instead of being left for the block to report token by token (#3499).
+    const tail = readNodeIdPathTail(idToken, ctx, { acceptStringSegments: true });
+    if (pathPastLeaf(tail)) {
+      const last = tail.danglingDot ?? tail.end;
+      ctx.pushDiagnostic({
+        severity: "error",
+        code: "infra-path-too-long",
+        params: { property: "resource" },
+        loc: ctx.range(idToken.loc, last.end ?? last.loc),
+      });
+      // Keep the first two segments, as the dangling-dot recovery below keeps
+      // what it read.
+      ref = { parent: id, child: tail.segments[1] };
+      id = `${id}.${tail.segments[1]}`;
+      idToken = last;
+    } else {
+      // On a dangling dot, keep this site's historical recovery: report, leave
+      // the bad token unconsumed, and still join its value into the id.
+      const childToken = tail.dangling ?? tail.end;
+      if (tail.dangling) {
+        ctx.error("expected-id-or-string", { context: "resource child id" });
+      }
+      ref = { parent: id, child: childToken.value };
+      id = `${id}.${childToken.value}`;
+      idToken = childToken;
     }
-    ref = { parent: id, child: childToken.value };
-    id = `${id}.${childToken.value}`;
-    idToken = childToken;
   }
 
   const tags = parseTags(ctx);

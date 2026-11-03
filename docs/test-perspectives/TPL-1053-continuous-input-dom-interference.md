@@ -53,3 +53,5 @@ scope:
 ## 関連テスト
 
 - `packages/app/src/components/EditorPane.test.tsx`
+- `packages/app/src/components/SettingsPane.test.tsx` — `SettingsPane — IME composition anti-regression (TPL-1053)`：compositionstart→compositionend の間に controlled な API key 入力の値が書き戻されないことを固定する（将来 composition 中に正規化を足す退行を検出する）
+- `packages/app/src/components/ChatPane.test.tsx` — `controlled chat input during a simulated IME composition cycle is not rewritten`：チャット入力でも同じく composition の最中に値が書き換えられないことを固定する

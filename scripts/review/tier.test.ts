@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { generatedGlobs, readAdrPaths } from "../adr/generated.ts";
+import { readAdrPaths, rootGlobs } from "../adr/generated.ts";
 import {
   ADR_GENERATED_GLOBS,
   adrEditIsRecordOnly,
@@ -34,11 +34,46 @@ describe("pathTier", () => {
     ["packages/app/src/App.test.tsx", "low"],
     ["packages/e2e/tests/share.spec.ts", "low"],
     ["docs/design/risk-based-review-tiers.md", "design"],
-    ["packages/core/src/parser/parser.ts", "medium"],
-    ["packages/nest/src/worker.ts", "medium"],
+    ["packages/core/src/renderer/layout.ts", "medium"],
+    ["packages/cli/src/render.ts", "medium"],
+    ["packages/app/src/components/Toolbar.tsx", "medium"],
     ["docs/acceptance/permalink-deep-element.md", "medium"],
     ["examples/ja/ec-platform/index.krs", "medium"],
     [".github/workflows/ci.yml", "high"],
+    // Security boundaries (#3505).
+    ["packages/nest/src/worker.ts", "high"],
+    ["packages/cli/src/serve.ts", "high"],
+    ["packages/cli/src/serve-host.ts", "high"],
+    ["packages/cli/src/render-fetch.ts", "high"],
+    ["packages/cli/src/node-fs.ts", "high"],
+    ["packages/cli/src/path-arg.ts", "high"],
+    ["packages/cli/src/watcher.ts", "high"],
+    ["packages/core/src/fs/import-resolver.ts", "high"],
+    ["packages/vscode/src/message-validation.ts", "high"],
+    ["packages/vscode/src/webview-html.ts", "high"],
+    ["packages/vscode/src/host-files.ts", "high"],
+    ["packages/vscode/src/preview-panel.ts", "high"],
+    ["packages/core/src/renderer/svg-builder.ts", "high"],
+    ["packages/app/src/utils/inline-share.ts", "high"],
+    ["packages/app/src/components/ChatPane.tsx", "high"],
+    ["packages/app/src/components/NodeDetailPanel.tsx", "high"],
+    ["packages/app/src/components/EdgeDetailPanel.tsx", "high"],
+    // Language behavior (#3505).
+    ["packages/core/src/lexer/lexer.ts", "high"],
+    ["packages/core/src/parser/parser.ts", "high"],
+    ["packages/core/src/resolver/resolve.ts", "high"],
+    ["packages/core/src/spec/operations.ts", "high"],
+    ["packages/core/src/style/parser.ts", "high"],
+    ["packages/core/src/formatter/format.ts", "high"],
+    ["packages/core/src/annotations/index.ts", "high"],
+    ["packages/core/src/language-version.ts", "high"],
+    ["packages/core/src/builtins/default-style.ts", "high"],
+    ["packages/lsp/src/diagnostics.ts", "high"],
+    // A test file stays out of both: adding a test must not make a PR High.
+    ["packages/cli/src/serve.test.ts", "low"],
+    ["packages/nest/src/worker.test.ts", "low"],
+    ["packages/core/src/renderer/svg-builder.test.ts", "low"],
+    ["packages/lsp/src/diagnostics.test.ts", "low"],
     [".github/actions/purge-preview-deployments/action.yml", "high"],
     ["packages/cli/CHANGELOG.md", "high"],
     ["pnpm-workspace.yaml", "high"],
@@ -54,6 +89,8 @@ describe("pathTier", () => {
     ["scripts/review/tier.ts", "high"],
     ["scripts/review/local-review-record.test.ts", "high"],
     ["scripts/coderabbit/review-state.ts", "high"],
+    ["scripts/render-equivalence/verdict.ts", "high"],
+    ["scripts/pr-shots/candidates.ts", "high"],
     ["scripts/bin/gh", "high"],
     [".claude/settings.json", "high"],
     [".claude/skills/coderabbit-converge/SKILL.md", "high"],
@@ -223,12 +260,49 @@ describe("classifyChange", () => {
     );
   });
 
-  it("asks for a security review on nest and workflow changes", () => {
+  it("asks for a security review on security boundaries and workflow changes", () => {
     const sec = (path: string) =>
       classifyChange({ files: [modified(path)], author: "kompiro" }).securityReview;
     expect(sec("packages/nest/src/a.ts")).toBe(true);
+    expect(sec("packages/cli/src/render-fetch.ts")).toBe(true);
+    expect(sec("packages/core/src/renderer/svg-builder.ts")).toBe(true);
     expect(sec(".github/workflows/x.yml")).toBe(true);
     expect(sec("packages/core/a.ts")).toBe(false);
+    expect(sec("packages/core/src/parser/parser.ts")).toBe(false);
+  });
+
+  describe("dangerous sinks (#3505)", () => {
+    const changing = (path: string, removed: string[], addedLines: string[]) =>
+      modified(path, { hunks: [{ oldStart: 3, removed, newStart: 3, added: addedLines }] });
+
+    it.each([
+      ["el.innerHTML = svg;"],
+      ["<div dangerouslySetInnerHTML={{ __html: html }} />"],
+      ["const clean = DOMPurify.sanitize(html);"],
+      ["vscode.env.openExternal(uri);"],
+      ["return eval (code);"],
+      ["const f = new Function('x', body);"],
+    ])("is High for a code file whose added line names a sink: %s", (line) => {
+      expect(tierOf(changing("packages/app/src/components/New.tsx", [], [line]))).toBe("high");
+    });
+
+    it("asks for a security review too", () => {
+      const f = changing("packages/app/src/components/New.tsx", [], ["el.innerHTML = svg;"]);
+      expect(classifyChange({ files: [f], author: "kompiro" }).securityReview).toBe(true);
+    });
+
+    it("is High when the line naming a sink is removed", () => {
+      expect(
+        tierOf(changing("packages/app/src/x.ts", ["const clean = DOMPurify.sanitize(html);"], [])),
+      ).toBe("high");
+    });
+
+    it("does not read prose or tests, nor names that only contain the word", () => {
+      const line = "el.innerHTML = svg;";
+      expect(tierOf(changing("docs/acceptance/x.md", [], [line]))).toBe("medium");
+      expect(tierOf(changing("packages/app/src/x.test.ts", [], [line]))).toBe("medium");
+      expect(tierOf(changing("packages/app/src/x.ts", [], ["const medieval = 1;"]))).toBe("medium");
+    });
   });
 
   it("treats an empty change as Medium", () => {
@@ -263,6 +337,86 @@ describe("classifyChange", () => {
 
     it("is Low only for a new test file", () => {
       expect(tierOf(added(T))).toBe("low");
+    });
+
+    it("asks no security review for a new test of a security boundary", () => {
+      const f = added("packages/vscode/src/message-validation.test.ts");
+      expect(classifyChange({ files: [f], author: "kompiro" })).toMatchObject({
+        tier: "low",
+        securityReview: false,
+      });
+    });
+
+    it("is High when lines are removed from a security-boundary test (#3505)", () => {
+      for (const path of [
+        "packages/cli/src/render-fetch.test.ts",
+        "packages/cli/src/serve.e2e.test.ts",
+        "packages/core/src/renderer/svg-builder.test.ts",
+        "packages/core/src/fs/import-resolver.test.ts",
+        "packages/nest/test/upload.test.ts",
+        "packages/app/src/components/ChatPane.test.tsx",
+      ]) {
+        const removedLine = "it('blocks 10.0.0.1', () => {});";
+        const removal = modified(path, {
+          before: `${removedLine}\nit('blocks ::1', () => {});`,
+          after: "it('blocks ::1', () => {});",
+          hunks: [{ oldStart: 1, removed: [removedLine], newStart: 0, added: [] }],
+        });
+        expect(classifyChange({ files: [removal], author: "kompiro" })).toMatchObject({
+          tier: "high",
+          securityReview: true,
+        });
+        expect(classifyChange({ files: [deleted(path)], author: "kompiro" })).toMatchObject({
+          tier: "high",
+          securityReview: true,
+        });
+        const before = "it('blocks 10.0.0.1', () => {\n  expect(fetchIt()).rejects;\n});";
+        const classify = (f: ChangedFile) => classifyChange({ files: [f], author: "kompiro" });
+        const sides = (after: string, inserted: string[]) =>
+          modified(path, {
+            before,
+            after,
+            hunks: [{ oldStart: 0, removed: [], newStart: 1, added: inserted }],
+          });
+        // Adding a case stays Medium, with no security review.
+        expect(
+          classify(
+            sides(`it('blocks ::1', () => {});\n${before}`, ["it('blocks ::1', () => {});"]),
+          ),
+        ).toMatchObject({ tier: "medium", securityReview: false });
+        // Turning the test off without removing a line is High too.
+        expect(tierOf(sides(`/*\n${before}\n*/`, ["/*"]))).toBe("high");
+        expect(tierOf(sides(`return;\n${before}`, ["return;"]))).toBe("high");
+        // Rewording a comment there is not turning it off.
+        const commented = `// SSRF guard\n${before}`;
+        expect(
+          classify(
+            modified(path, {
+              before: commented,
+              after: `// The SSRF guard\n${before}`,
+              hunks: [
+                {
+                  oldStart: 1,
+                  removed: ["// SSRF guard"],
+                  newStart: 1,
+                  added: ["// The SSRF guard"],
+                },
+              ],
+            }),
+          ),
+        ).toMatchObject({ tier: "medium", securityReview: false });
+      }
+      // A test of a file outside the boundary is Medium either way, with no security review.
+      expect(
+        classifyChange({
+          files: [
+            modified("packages/cli/src/render.test.ts", {
+              hunks: [hunk(["it('x', ...)"], [])],
+            }),
+          ],
+          author: "kompiro",
+        }),
+      ).toMatchObject({ tier: "medium", securityReview: false });
     });
 
     it("is Medium for any change to an existing test file (TPL-3286)", () => {
@@ -730,20 +884,23 @@ describe("isLinkInsert", () => {
 describe("ADR_GENERATED_GLOBS", () => {
   it("names the same paths as adr.config.json paths.outputs", () => {
     const config = readAdrPaths(readFileSync(resolve(REPO_ROOT, "adr.config.json"), "utf-8"));
-    expect([...ADR_GENERATED_GLOBS].sort()).toEqual(generatedGlobs(config));
+    expect([...ADR_GENERATED_GLOBS].sort()).toEqual(rootGlobs(config));
   });
 });
 
 describe("regenerationWaivesRecord", () => {
-  const config = readFileSync(resolve(REPO_ROOT, "adr.config.json"), "utf-8");
+  const configs = {
+    adr: readFileSync(resolve(REPO_ROOT, "adr.config.json"), "utf-8"),
+    tpl: readFileSync(resolve(REPO_ROOT, "tpl.config.json"), "utf-8"),
+  };
   const waives = (
     nameStatus: string,
     extra: Partial<Parameters<typeof regenerationWaivesRecord>[0]> = {},
   ) =>
     regenerationWaivesRecord({
       tier: "low",
-      baseConfig: config,
-      headConfig: config,
+      baseConfigs: configs,
+      headConfigs: configs,
       nameStatus,
       ...extra,
     });
@@ -765,16 +922,30 @@ describe("regenerationWaivesRecord", () => {
     expect(waives(regeneration, { tier: "medium" })).toBe(false);
   });
 
-  it("keeps the record when either config is missing or unreadable", () => {
-    expect(waives(regeneration, { baseConfig: null })).toBe(false);
-    expect(waives(regeneration, { headConfig: "{" })).toBe(false);
+  it("waives the record for a PR that changes only the TPL index", () => {
+    expect(waives("A\0docs/test-perspectives/index.md\0")).toBe(true);
+    expect(waives(`${regeneration}M\0docs/test-perspectives/index.md\0`)).toBe(true);
+  });
+
+  it("keeps the record for a PR that writes the TPL index with a TPL", () => {
+    expect(
+      waives("A\0docs/test-perspectives/TPL-3289-x.md\0M\0docs/test-perspectives/index.md\0"),
+    ).toBe(false);
+  });
+
+  it("keeps the record when adr.config.json is missing or a config is unreadable", () => {
+    expect(waives(regeneration, { baseConfigs: { ...configs, adr: null } })).toBe(false);
+    expect(waives(regeneration, { headConfigs: { ...configs, adr: "{" } })).toBe(false);
+    expect(waives(regeneration, { headConfigs: { ...configs, tpl: "{" } })).toBe(false);
   });
 
   it("keeps the record when the outputs differ between base and head", () => {
     const moved = JSON.stringify({
       paths: { adrDir: "docs/adr", outputs: { effective: "effective.md" } },
     });
-    expect(waives(regeneration, { headConfig: moved })).toBe(false);
+    expect(waives(regeneration, { headConfigs: { ...configs, adr: moved } })).toBe(false);
+    const noIndex = JSON.stringify({ idFormat: "issue-number" });
+    expect(waives(regeneration, { baseConfigs: { ...configs, tpl: noIndex } })).toBe(false);
   });
 });
 

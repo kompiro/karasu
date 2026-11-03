@@ -58,8 +58,8 @@ export interface ReadNodeIdPathTailOptions {
  * segment token has already been consumed by the caller (the same calling
  * convention as `stitchKebabTail`). A `.` is consumed only while the
  * segment budget allows; if the token after a consumed `.` is not a valid
- * segment, reading stops and that token is returned as `dangling`,
- * unconsumed.
+ * segment, or is the source of an edge on a later line, reading stops and
+ * that token is returned as `dangling`, unconsumed.
  */
 export function readNodeIdPathTail(
   first: Token,
@@ -77,7 +77,14 @@ export function readNodeIdPathTail(
     const isSegment =
       next.type === TokenType.Identifier ||
       (acceptStringSegments && next.type === TokenType.StringLiteral);
-    if (!isSegment) {
+    // An id on a later line that an arrow follows is the next statement's edge
+    // source, not this path's next segment. A path segment is never followed
+    // by an arrow, so this only changes recovery after a trailing dot (#3499).
+    const opensEdge =
+      next.loc.line > dot.loc.line &&
+      (cursor.peekAt(1).type === TokenType.Arrow ||
+        cursor.peekAt(1).type === TokenType.DashedArrow);
+    if (!isSegment || opensEdge) {
       return { segments, end, dangling: next, danglingDot: dot };
     }
     cursor.advance();
@@ -85,6 +92,17 @@ export function readNodeIdPathTail(
     end = next;
   }
   return { segments, end };
+}
+
+/**
+ * True when a `<Infra>.<Leaf>` reference (`resource`, the entity `table`
+ * mapping) was read past its leaf: a third segment, or a dot after the second.
+ * Both sites read the whole path and report this once as
+ * `infra-path-too-long`, rather than stopping at two segments and leaving the
+ * rest for the block (#3499).
+ */
+export function pathPastLeaf(tail: NodeIdPathTail): boolean {
+  return tail.segments.length > 2 || (tail.segments.length === 2 && tail.dangling !== undefined);
 }
 
 /**

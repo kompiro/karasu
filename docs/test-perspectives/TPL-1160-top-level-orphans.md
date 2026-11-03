@@ -57,3 +57,5 @@ renderer は `synthesizeUnassignedSystem()`（`packages/core/src/view/unassigned
 
 - `packages/core/src/view/unassigned-system.test.ts`
 - `packages/core/src/view/crud-matrix-extract.test.ts`
+- `packages/core/src/parser/facet.test.ts` — `indexes top-level orphan nodes and their descendants`：top-level の `service` / `domain` / `database` / `client` とその子孫も `facetIndex` に載ることを固定する（orphan を走査から落とさない）
+- `packages/core/src/fs/import-resolver.test.ts` — `node imports` の top-level service を名前で import する系統（`fills stub in system.children when importing a top-level service by name` ほか）と `ec-platform/05-multifile end-to-end (#412 / TPL-1160)`：top-level 宣言を named import で `system` 内に取り込む `.krs` が、stub を埋めて内容を失わずにマージされることを固定する

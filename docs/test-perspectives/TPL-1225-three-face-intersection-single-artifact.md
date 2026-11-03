@@ -77,4 +77,5 @@ join しなければ復元できない関係は、議論のテーブルに乗ら
 - `docs/concepts.ja.md` 「論理・物理・組織の三面構造」 / 「目標 → 三面構造の目標」
 - `docs/spec/syntax.md` — `realizes` / `owns` の構文
 - `examples/` — 三面が同居したサンプル `.krs`
+- `packages/core/src/integration/three-face-cross-binding.test.ts` — `three-face cross-binding integration (TPL-1225 item 4 / GC22-1)`：論理・物理・組織が同居した 1 つの `.krs` で `realizes` と `owns` の両方が解決され、各面が描画されることを固定する。`realizes` / `owns` を 1 本ずつ落とすと fail する regression rehearsal 付き（チェックリスト「サンプル / fixture / e2e に三面が同居した `.krs` が含まれているか」）
 - 関連 TPL: TPL-1207（text を single source of truth に保つ）/ TPL-907（cross-reference の resolver 側検証）

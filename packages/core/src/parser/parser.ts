@@ -50,6 +50,7 @@ export class Parser {
     previous: () => this.tokens[this.pos - 1],
     tryParseNodeDecl: () =>
       this.isLogicalKeyword(this.peek()) ? parseNodeDecl(this.ctx) : undefined,
+    tryParseEdge: () => (isEdgeStart(this.ctx, this.peek()) ? parseEdge(this.ctx) : undefined),
     discardDiagnostics: (parse) => {
       const before = this.diagnostics.length;
       const result = parse();

@@ -11,6 +11,7 @@ related_to:
   - ADR-3333
   - ADR-3011
   - ADR-3117
+  - ADR-3504
 scope:
   packages: []
   concerns:

@@ -9,7 +9,8 @@ import { expect, test, type OpfsFixture } from "../fixtures/opfs.js";
  * over the preview with every label in full.
  *
  * The model is the dense fixture slice A is fenced with: 10 domains, 41
- * labelled edges, most of them left off or cut on the main canvas.
+ * labelled edges, some of them left off and others cut on the main canvas
+ * (how many the canvas seats is #3036's count, fenced in core).
  */
 
 const DENSE = readFileSync(
@@ -90,7 +91,7 @@ test.describe("AT-3031 focus canvas", () => {
         label: g.getAttribute("data-edge-label")!,
       })),
     );
-    expect(candidates.length).toBeGreaterThan(10);
+    expect(candidates.length).toBeGreaterThan(0);
 
     let opened: (typeof candidates)[number] | null = null;
     for (const c of candidates) {

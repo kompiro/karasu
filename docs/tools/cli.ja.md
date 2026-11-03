@@ -60,11 +60,46 @@ Watching for .krs and .krs.style file changes...
 | --- | --- | --- |
 | `[dir]` | `.` | `.krs` を監視するディレクトリ |
 | `-p, --port <number>` | `3000` | プレビューサーバーが待ち受けるポート |
+| `--host <addr>` | `127.0.0.1` | プレビューサーバーが待ち受けるアドレス。`0.0.0.0` ですべての IPv4 インターフェースで待ち受ける |
+| `--allowed-host <name>` | （なし） | `Host` が `<name>` の request にもファイル API を返す（繰り返し指定できる）。`.example.com` はサブドメインにも一致する |
 
 表示された URL を開いて編集します。保存すると手動リロードなしで図が再描画され
 ます。`serve` は**プレビュー専用**で、エディタは内蔵しません。プレビューペイン
 （ビュー・ナビゲーション・診断・エクスポート）や URL とファイルの対応は
 [アプリの使い方](app.ja.md)で詳しく説明しています。
+
+### プレビューに届く範囲
+
+既定では `serve` は `127.0.0.1` だけで待ち受けるので、別のマシンからは届きません。
+`http://localhost:<port>` と `http://127.0.0.1:<port>` のどちらでも開けます。
+
+別のマシンやコンテナの外から開くときは、すべてのインターフェースで待ち受けます。
+
+```bash
+# LAN で。別のマシンから http://<このマシンのアドレス>:3000 を開く
+karasu serve --host 0.0.0.0
+
+# docker run -p 3000:3000 で起動したコンテナの中で
+karasu serve /work --host 0.0.0.0
+```
+
+このとき `serve` は起動時に警告を出します。そのアドレスに届く人は誰でも、配信ディレクトリの
+`.krs` と `.krs.style` を読めます。
+
+ファイル API（`/api/*`）は、request の `Host` が `localhost`、`*.localhost` の名前、IP アドレスの
+どれかのときだけ答えます。これで、ドメインをあなたのマシンに向け直した Web ページ（DNS rebinding）が
+ファイルを読むことを防ぎます。これらのどれでもない名前でプレビューを開くとき（Codespaces の
+forwarded port の `*.app.github.dev` や、自分の DNS 名を渡す reverse proxy など）は、その名前を足します。
+
+```bash
+karasu serve --allowed-host my-codespace-3000.app.github.dev
+```
+
+`--allowed-host` にはホスト名だけを渡します。port・scheme・path は付けません。
+`.` で始まる値は 2 ラベル以上にします（`.com` ではなく `.example.com`）。
+`--allowed-host` はアクセス制御ではありません。proxy や forwarded port に届く人は誰でも、そこを通して配信
+ディレクトリを読めます。届く人はそちらで絞ってください（Codespaces の port を private のままにする、
+proxy の前に認証を置く、など）。
 
 ## `karasu render` — `.krs` → SVG
 

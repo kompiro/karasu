@@ -178,10 +178,12 @@ karasu はこれを sync/async 種別ごとに **1 本の implicit エッジへ�
 これは「目標と非目標」節の **一度に見せる情報量を絞る** 原則の直接的な具現化である:
 俯瞰時は畳み、必要な詳細は drill-down と詳細パネルに委ねる。
 集約は sync / async を別々に扱うため、同じペアに両方の依存があれば 2 本描かれる。
+同じ種別・同じ見た目の両方向の組（`A -> B` と `B -> A`）は、両端に矢印のある 1 本の線で描かれる。
+edge は 2 本のまま残り、それぞれが自分の target 側の半分と、向きの矢印を先頭に付けたラベルを持つ（ADR-3027 予定、#3027）。
 
 参照: ADR-445、ADR-510、PR #607。
 
-> Related TPLs: [TPL-3022](test-perspectives/TPL-3022-withheld-content-stays-reachable.md) — canvas が省略・保留した authored 情報は、その surface 上で全文に到達できる経路を持つ。
+> Related TPLs: [TPL-3022](test-perspectives/TPL-3022-withheld-content-stays-reachable.md) — canvas が省略・保留した authored 情報は、その surface 上で全文に到達できる経路を持つ。 [TPL-3027](test-perspectives/TPL-3027-visual-merge-only-when-indistinguishable.md) — 2 本の edge を 1 本の線で描くのは、読む人が 2 本を区別できない場合に限る。
 
 ### ghost — drill-down で視野が狭まっても境界を失わない
 

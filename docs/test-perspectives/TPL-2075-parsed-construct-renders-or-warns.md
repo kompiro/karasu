@@ -117,3 +117,5 @@ silent drop はとくに view 抽出側の filter で生まれる。
   （view 側の filter と診断側の判定式を同時に見る唯一のテスト）
 - `packages/core/src/resolver/warnings.test.ts` › `edge-endpoint-not-at-scope warning`
 - `packages/core/src/view/view-extract.test.ts` › `service-anchored edges (#2223)`
+- `packages/core/src/fs/import-resolver.test.ts` › `edge-endpoint-not-at-scope across a system reopen (#2075)` — 別ファイルの `system` 再オープンで届いた端点に対して正準形のエッジが誤発火しないことを、多ファイル merge 経路で固定する
+- `packages/core/src/examples.test.ts` › `examples: every shipped .krs is free of edge endpoint diagnostics` — 出荷している全 example（正準形の実例）で `edge-endpoint-not-at-scope` と曖昧端点の診断が 0 件であることを assert する

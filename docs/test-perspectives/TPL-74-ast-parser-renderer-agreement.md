@@ -71,3 +71,6 @@ karasu の AST には `BaseNodeFields`（`packages/core/src/types/ast.ts:41`）�
 - `packages/core/src/parser/base-node-fields-coverage.test.ts` — `BaseNodeFields` のユーザー入力フィールド × 全 kind の coverage meta-test。`BaseNodeFields` に新 field を追加すると compile-time の `Equal<keyof BaseNodeFields, ExpectedKeys>` 契約で fail し、新 kind を追加すると `Equal<_Covered, KrsNode["kind"]>` で fail する（gap G12-1 / #1233）
 - `packages/core/src/renderer/deploy-layout.test.ts`
 - `packages/core/src/builtins/reference.test.ts` — sample との整合
+- `packages/core/src/builtins/reference-parser-sync.test.ts` — `REFERENCE_DATA.nodeKinds ↔ parser`：各 kind × 各 property を最小 `.krs` で宣言し、reference の property 一覧と parser が受理する keyword が双方向で一致することを固定する（lexer の新 keyword が判断なしに入ると `covers every property keyword the lexer knows` が fail）
+- `scripts/lint/krs-fences.ts` — `docs/spec` / guide / concepts / acceptance の `krs` フェンスを parser に通し、spec の記述が実装より先行・乖離したら fail する
+- `packages/core/src/examples.test.ts` — `examples/en/feature-samples/` の `.krs` が error なく parse でき（`feature-samples: all files parse without errors`）、`examples.ts` に同梱した内容とも一致することを固定する
