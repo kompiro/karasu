@@ -277,4 +277,25 @@ describe("useGuidedScene", () => {
     });
     expect(revealed.result.current).toBeNull();
   });
+
+  it("withdraws the reveal when the visitor leaves the scene's project (#3583)", async () => {
+    requestReveal(null);
+    const revealed = renderHook(() => useRevealRequest());
+    const scene: PendingScene = {
+      ...diffScene,
+      scene: { ...diffScene.scene, reveal: "BillingService" },
+    };
+    const { rerender } = setup({
+      project: tourProject,
+      file: "/projects/tour/planned.krs",
+      pending: scene,
+    });
+    await act(async () => {});
+    expect(revealed.result.current?.nodeId).toBe("BillingService");
+
+    await act(async () => {
+      rerender({ project: otherProject, file: "/projects/gs/index.krs", pending: scene });
+    });
+    expect(revealed.result.current).toBeNull();
+  });
 });

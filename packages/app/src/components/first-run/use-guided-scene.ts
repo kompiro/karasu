@@ -64,14 +64,17 @@ export function useGuidedScene({
     currentRoot.current = currentProject?.rootPath ?? null;
   }, [pending, currentProject]);
 
-  // The guide has ended: the preview may move freely again.
+  // The guide has ended, or the guide is gone: the preview may move freely again.
   useEffect(() => {
     if (!pending) requestReveal(null);
   }, [pending]);
+  useEffect(() => () => requestReveal(null), []);
 
   useEffect(() => {
     if (!pending) return;
     if (currentProject?.rootPath !== pending.root) {
+      // The scene's node belongs to its project; coming back re-applies it.
+      requestReveal(null);
       if (pending.reapplyOnReturn) appliedKey.current = null;
       return;
     }

@@ -90,6 +90,12 @@ type Pan = { scale: number; x: number; y: number };
  * render while the request stands, because the scene's diagram can land after
  * the request; the shift is zero once the node is inside, and a press or
  * wheel in the pane withdraws the request, so it never fights the user.
+ *
+ * While a request stands it applies to whatever this pane shows, so a visitor
+ * who switches tabs during a tour step sees the node kept in view there too.
+ * It keeps the node inside the pane only: whether the tour panel, which floats
+ * over the editor, stays clear of it is checked at the default desktop size
+ * by the first-run e2e, not guaranteed here.
  */
 export function useRevealNode(
   containerRef: RefObject<HTMLElement | null>,
@@ -102,10 +108,10 @@ export function useRevealNode(
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    el.addEventListener("mousedown", dismissReveal);
+    el.addEventListener("pointerdown", dismissReveal);
     el.addEventListener("wheel", dismissReveal, { passive: true });
     return () => {
-      el.removeEventListener("mousedown", dismissReveal);
+      el.removeEventListener("pointerdown", dismissReveal);
       el.removeEventListener("wheel", dismissReveal);
     };
   }, [containerRef]);
