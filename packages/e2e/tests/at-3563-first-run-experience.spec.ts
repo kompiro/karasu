@@ -165,7 +165,7 @@ test.describe("AT-3563 first-run Welcome", () => {
     await page.keyboard.press("Enter");
     await expect(tour(page)).toContainText("1 / 5");
     await expect(node(page, "CommerceApp")).toBeVisible();
-    // A new copy beside the visitor's own project of the same name.
+    // A new copy (its name disambiguated) beside the visitor's own service-split.
     const project = page.getByRole("combobox", { name: "Project" });
     await expect(project.getByRole("option", { name: "service-split" })).toHaveCount(2);
   });

@@ -77,6 +77,18 @@ describe("Restart Guided Tour… (#3597)", () => {
     expect(localStorage.getItem("karasu-first-run-tour-project")).toBe("tour");
   });
 
+  it("is ignored while a Welcome choice is still opening the sample", async () => {
+    const open = deferredOpen();
+    setup(open.openBundledExample);
+    runCommand(/Show Welcome/);
+    fireEvent.click(screen.getByRole("button", { name: /Design a service split/ }));
+    runCommand(/Restart Guided Tour/);
+    expect(open.openBundledExample).toHaveBeenCalledTimes(1);
+
+    await act(async () => open.resolve(copy));
+    expect(localStorage.getItem("karasu-first-run-tour-project")).toBe("tour");
+  });
+
   it("closes Welcome when it runs while Welcome is open", async () => {
     const open = deferredOpen();
     setup(open.openBundledExample);

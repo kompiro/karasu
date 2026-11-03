@@ -86,10 +86,9 @@ export function FirstRunExperience({
   }, []);
 
   // Opening a copy of the sample is an OPFS write. While one is in flight a
-  // second open is ignored, and a guide started meanwhile wins over the slow
-  // one (TPL-1534). The discarded copy stays as a project; `addExampleProject`
-  // has already switched to it, and the winning guide's panel shows once the
-  // visitor is back in its project.
+  // second open is ignored, and so is a restart (below), so no guide starts
+  // meanwhile. The run check is a second line of defence for a future path
+  // that starts a guide without this guard: the newer guide wins (TPL-1534).
   const opening = useRef(false);
   const openSample = useCallback(async (): Promise<Project | null> => {
     if (opening.current) return null;
@@ -105,10 +104,10 @@ export function FirstRunExperience({
   // opened before so a second run does not pile up copies; a new copy only
   // when that project is gone. It closes Welcome as a choice there would.
   const restartTour = useCallback(async () => {
-    if (opening.current) return;
     setGreeted(true);
     setRequested(false);
     markWelcomeDismissed();
+    if (opening.current) return;
     const recorded = readTourProjectId();
     const existing = recorded === null ? undefined : projects.find((p) => p.id === recorded);
     if (existing) {
