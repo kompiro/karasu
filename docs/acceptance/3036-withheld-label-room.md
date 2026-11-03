@@ -6,7 +6,7 @@ type: product
 
 - **日付**: 2026-11-03
 - **関連 Issue**: [#3036](https://github.com/kompiro/karasu/issues/3036)
-- **関連 ADR**: [ADR-2598](../adr/2598-edge-routing-channel-capacity.md)、[ADR-2611](../adr/2611-layer-spanning-edge-columns.md)、[ADR-2593](../adr/2593-canvas-space-objective.md)、[ADR-3022](../adr/3022-edge-label-disclosure.md)
+- **関連 ADR**: [ADR-2598](../adr/2598-edge-routing-channel-capacity.md)、[ADR-2611](../adr/2611-layer-spanning-edge-columns.md)、[ADR-2593](../adr/2593-canvas-space-objective.md)、[ADR-3022](../adr/3022-edge-label-disclosure.md)、[ADR-3036](../adr/3036-withheld-label-room.md)
 - **Related TPLs**: [TPL-3036](../test-perspectives/TPL-3036-reserved-room-kept-only-when-measured.md), [TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md), [TPL-2611](../test-perspectives/TPL-2611-feedback-key-survives-the-next-pass.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)
 - **対象ファイル**: `packages/core/src/renderer/label-room.ts`（`chooseLabelRoom` / `labelRoomInChannels` / `labelRoomInRows`）、`layout.ts`、`layout-reservations.ts`（`channelLanes`）、`edge-layer.ts`（`withheldLabelsOf`）、`svg-renderer.ts`
 
