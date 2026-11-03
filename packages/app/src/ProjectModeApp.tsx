@@ -5,6 +5,7 @@ import { FileTree } from "./components/FileTree.js";
 import { AppShell } from "./components/AppShell.js";
 import { PasteCompareDialog } from "./components/PasteCompareDialog.js";
 import { ErrorBanner } from "./components/ErrorBanner.js";
+import { FirstRunExperience } from "./components/first-run/FirstRunExperience.js";
 import { useOpenTranslateDialog } from "./components/TranslateProvider.js";
 import { SnapshotPickerModal } from "./components/SnapshotPickerModal.js";
 import { useAppContext } from "./state/app-context.js";
@@ -38,6 +39,12 @@ export function ProjectModeApp() {
   // rendering, which `react(refs)` forbids. The initializer runs once and
   // the value is stable for the life of the component.
   const [pm] = useState(() => new ProjectManager(fs));
+  // The URL as opened, before navigation rewrites the path and the hash: the
+  // first-run Welcome stays out of the way of a link that asked for a place.
+  const [initialLocation] = useState(() => ({
+    search: window.location.search,
+    hash: window.location.hash,
+  }));
 
   const {
     currentProject,
@@ -74,18 +81,31 @@ export function ProjectModeApp() {
   const { navigateToProject } = useProjectNavigation(projects, currentProject, dispatch);
   const { selectFile } = useFileSelection(fs, dispatch);
 
-  useProjectInitialization({ pm, fs, dispatch, currentProject, selectFile });
+  const { seededDefaults } = useProjectInitialization({
+    pm,
+    fs,
+    dispatch,
+    currentProject,
+    selectFile,
+  });
 
-  const { createProject, renameProject, deleteProject, exportProject, importProject, openExample } =
-    useProjectActions({
-      pm,
-      fs,
-      projects,
-      currentProject,
-      dispatch,
-      navigateToProject,
-      reportError,
-    });
+  const {
+    createProject,
+    renameProject,
+    deleteProject,
+    exportProject,
+    importProject,
+    openExample,
+    openBundledExample,
+  } = useProjectActions({
+    pm,
+    fs,
+    projects,
+    currentProject,
+    dispatch,
+    navigateToProject,
+    reportError,
+  });
 
   // Deep-link (#1646): `?example=<slug>&lang=<lang>` opens a gallery example once
   // on load (the gallery's "Open in the app" button builds this link). slug/lang
@@ -209,6 +229,17 @@ export function ProjectModeApp() {
         projects={projects}
         currentProject={currentProject}
         onSelectProject={handleSelectProject}
+      />
+      <FirstRunExperience
+        seededDefaults={seededDefaults}
+        initialLocation={initialLocation}
+        projects={projects}
+        currentProject={currentProject}
+        currentFilePath={currentFilePath}
+        navigateToProject={navigateToProject}
+        selectFile={selectFile}
+        openBundledExample={openBundledExample}
+        dispatch={dispatch}
       />
       {paste.pasteDialog?.mode === "edit" && (
         <PasteCompareDialog

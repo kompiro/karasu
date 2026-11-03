@@ -84,7 +84,7 @@ system Commerce {
   Customer -> CommerceApp "Order"
   Customer -> BillingService "Pay"
   FinanceStaff -> BillingService "Review invoices"
-  CommerceApp -> BillingService "Request an invoice with the order details"
+  CommerceApp -> BillingService "Request an invoice"
   CommerceApp -> InventoryWorker "Reserve stock"
   BillingService -> PaymentGateway "Capture payments"
 }

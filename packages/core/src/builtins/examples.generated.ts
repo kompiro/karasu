@@ -4856,7 +4856,7 @@ system Commerce {
   Customer -> CommerceApp "注文"
   Customer -> BillingService "支払い"
   FinanceStaff -> BillingService "請求書を確認"
-  CommerceApp -> BillingService "注文内容を添えて請求書を依頼"
+  CommerceApp -> BillingService "請求書を依頼"
   CommerceApp -> InventoryWorker "在庫を引当"
   BillingService -> PaymentGateway "決済を確定"
 }
@@ -5215,7 +5215,7 @@ system Commerce {
   Customer -> CommerceApp "Order"
   Customer -> BillingService "Pay"
   FinanceStaff -> BillingService "Review invoices"
-  CommerceApp -> BillingService "Request an invoice with the order details"
+  CommerceApp -> BillingService "Request an invoice"
   CommerceApp -> InventoryWorker "Reserve stock"
   BillingService -> PaymentGateway "Capture payments"
 }

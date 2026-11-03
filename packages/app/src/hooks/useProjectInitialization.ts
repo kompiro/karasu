@@ -1,4 +1,4 @@
-import { useEffect, useRef, type Dispatch } from "react";
+import { useEffect, useRef, useState, type Dispatch } from "react";
 import {
   CLIENT_MCP_PROJECT,
   EC_PLATFORM_PROJECTS,
@@ -64,6 +64,9 @@ async function cleanupPasteCompareTempFiles(
  *    the next session can restore it, and auto-select the project's
  *    `index.krs` as the active editor file.
  *
+ * It reports whether this boot seeded the defaults, which is the app's only
+ * reliable sign of a first visit: the first-run Welcome keys on it (#3565).
+ *
  * Previously these lived as three separate `useEffect`s in `ProjectModeApp`
  * whose ordering was implicit; consolidating them here makes the startup
  * sequence the single source of truth.
@@ -74,7 +77,8 @@ export function useProjectInitialization({
   dispatch,
   currentProject,
   selectFile,
-}: UseProjectInitializationArgs): void {
+}: UseProjectInitializationArgs): { seededDefaults: boolean } {
+  const [seededDefaults, setSeededDefaults] = useState(false);
   // Guards against re-seeding when the effect runs twice (React StrictMode
   // double-invokes effects in dev, and both runs would otherwise observe an
   // empty list and seed the defaults twice). Survives the double-invoke because
@@ -130,6 +134,7 @@ export function useProjectInitialization({
             facetStylingTemplate.files,
           );
           initialProjects.push(facetStylingProject);
+          setSeededDefaults(true);
           dispatch({ type: "SET_PROJECTS", projects: initialProjects });
         } else {
           dispatch({ type: "SET_PROJECTS", projects: projectList });
@@ -154,4 +159,6 @@ export function useProjectInitialization({
     localStorage.setItem(LAST_PROJECT_KEY, currentProject.id);
     void selectFile(`${currentProject.rootPath}/index.krs`);
   }, [currentProject, selectFile]);
+
+  return { seededDefaults };
 }
