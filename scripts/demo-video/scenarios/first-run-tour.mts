@@ -94,7 +94,7 @@ const T = {
 
 /** Moves the caption card to the bottom right, clear of the tour panel. */
 async function say(p: Page, text: readonly [string, string]): Promise<void> {
-  await caption(p, text);
+  // The override goes in first, so no recorded frame shows the card at the left.
   await p.evaluate(() => {
     if (document.getElementById("krs-demo-cap-right")) return;
     const style = document.createElement("style");
@@ -102,6 +102,7 @@ async function say(p: Page, text: readonly [string, string]): Promise<void> {
     style.textContent = "#krs-demo-cap{left:auto !important;right:32px}";
     document.documentElement.appendChild(style);
   });
+  await caption(p, text);
 }
 
 async function answers(): Promise<boolean> {
@@ -115,7 +116,11 @@ async function answers(): Promise<boolean> {
 /** Resolves once the preview server answers; rejects if it exits first. */
 async function waitForPreview(server: ChildProcess): Promise<void> {
   let exited = false;
+  // "error" is a spawn failure (the vite binary missing when deps are not installed).
   server.once("exit", () => {
+    exited = true;
+  });
+  server.once("error", () => {
     exited = true;
   });
   for (let i = 0; i < 150; i++) {
@@ -186,6 +191,7 @@ const scenario: Scenario = {
         ms: 900,
       });
       await panel.waitFor();
+      parkPointer();
       await sleep(800);
       await say(p, t.opened);
       await sleep(4000);
