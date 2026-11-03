@@ -94,8 +94,8 @@ Welcome does not appear when you open the app through a link to a specific
 place (a gallery example or a `#krs-…` permalink), or once you have chosen
 something. Run **Show Welcome…** from the command palette (`Ctrl/Cmd+Shift+P`)
 to open it again. **Restart Guided Tour…** in the same palette walks the guide
-again from step 1, in the copy of the sample the tour opened before (or a new
-copy if that one is gone).
+again from step 1, in the copy of the sample the tour opened before, with any
+edits you made there (or a new copy if that one is gone).
 
 ## The preview pane
 

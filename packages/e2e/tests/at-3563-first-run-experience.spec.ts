@@ -262,12 +262,16 @@ test.describe("AT-3563 Design a service split tour", () => {
     await panel.getByRole("button", { name: "Next →" }).click();
     await panel.getByRole("button", { name: "Next →" }).click();
     await expect(panel).toContainText("3 / 5");
+    // Step 3's diff has landed, so the restart has a diff to clear.
+    await expect(diffBanner(page)).toContainText("planned.krs");
 
     await pressChord(page, "Shift+P");
     await page.getByRole("combobox", { name: "Search commands" }).fill("Restart Guided Tour");
     await page.keyboard.press("Enter");
     await expect(panel).toContainText("1 / 5");
     await expect(diffBanner(page)).toHaveCount(0);
+    await expect(selectedTab(page, "System")).toBeVisible();
+    await expect(node(page, "CommerceApp")).toBeVisible();
     // No second copy of the sample: the one the tour opened is reused.
     const project = page.getByRole("combobox", { name: "Project" });
     await expect(project.getByRole("option", { name: "service-split" })).toHaveCount(1);
@@ -285,7 +289,7 @@ test.describe("AT-3563 Design a service split tour", () => {
     await page.getByRole("combobox", { name: "Search commands" }).fill("Restart Guided Tour");
     await page.keyboard.press("Enter");
     await expect(tour(page)).toContainText("1 / 5");
-    await expect(project).toContainText("service-split");
+    await expect(project.locator("option:checked")).toHaveText("service-split");
     await expect(project.getByRole("option", { name: "service-split" })).toHaveCount(1);
     await expect(node(page, "CommerceApp")).toBeVisible();
   });

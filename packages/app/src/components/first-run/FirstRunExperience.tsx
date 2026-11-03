@@ -85,12 +85,27 @@ export function FirstRunExperience({
     setGuide({ kind: "tour", root: project.rootPath, step: 0, run });
   }, []);
 
+  // Opening a copy of the sample is an OPFS write. While one is in flight a
+  // second open is ignored, and a guide started meanwhile wins over the slow
+  // one (TPL-1534). The discarded copy stays as a project; `addExampleProject`
+  // has already switched to it, and the winning guide's panel shows once the
+  // visitor is back in its project.
+  const opening = useRef(false);
+  const openSample = useCallback(async (): Promise<Project | null> => {
+    if (opening.current) return null;
+    opening.current = true;
+    const run = runs.current;
+    const project = await openBundledExample(serviceSplit).finally(() => {
+      opening.current = false;
+    });
+    return project && runs.current === run ? project : null;
+  }, [openBundledExample, serviceSplit]);
+
   // Walks the guide again from step 1 (#3597), in the sample project the tour
   // opened before so a second run does not pile up copies; a new copy only
   // when that project is gone. It closes Welcome as a choice there would.
-  const restarting = useRef(false);
   const restartTour = useCallback(async () => {
-    if (restarting.current) return;
+    if (opening.current) return;
     setGreeted(true);
     setRequested(false);
     markWelcomeDismissed();
@@ -101,14 +116,9 @@ export function FirstRunExperience({
       startTour(existing);
       return;
     }
-    restarting.current = true;
-    const run = runs.current;
-    const project = await openBundledExample(serviceSplit).finally(() => {
-      restarting.current = false;
-    });
-    // A guide started while the sample was opening wins (TPL-1534).
-    if (project && runs.current === run) startTour(project);
-  }, [projects, serviceSplit, currentProject, navigateToProject, openBundledExample, startTour]);
+    const project = await openSample();
+    if (project) startTour(project);
+  }, [projects, currentProject, navigateToProject, openSample, startTour]);
 
   useCommand({
     id: "view.restartTour",
@@ -137,7 +147,7 @@ export function FirstRunExperience({
         return;
       }
 
-      const project = await openBundledExample(serviceSplit);
+      const project = await openSample();
       if (!project) return;
       if (choice === "design") {
         startTour(project);
@@ -153,7 +163,7 @@ export function FirstRunExperience({
       selectFile,
       openBundledExample,
       dispatch,
-      serviceSplit,
+      openSample,
       startTour,
     ],
   );
