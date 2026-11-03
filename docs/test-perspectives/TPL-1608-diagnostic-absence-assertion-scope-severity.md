@@ -64,7 +64,7 @@ store を共有して `shared-infra-fan-in` を出す）も、fixture を書き�
 - [ ] 検証したいのは `warning`（退行）か、`info` も含む全件か、明示しているか [judgment]
 - [ ] UI なら `.warning-item--warning`、core なら `warningSeverity()` で severity を絞っているか
 - [ ] fixture の .krs が意図せず info 診断（`shared-infra-fan-in` / `domain-dispersal` 等）を誘発していないか確認し、誘発する場合でも assertion 側でスコープしているか
-- [ ] 新しい `info` 診断を core に追加する PR では、`.warning-item` を全件数える既存テストがないか grep して確認したか
+- [ ] 新しい `info` 診断を core に追加する PR では、`.warning-item` を全件数える既存テストがないか grep して確認したか [judgment]
 
 ## 既知の対処パターン
 
