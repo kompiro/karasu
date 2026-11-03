@@ -109,6 +109,8 @@ function fake(
   options: {
     run?: Run;
     pulls?: Pull[];
+    /** What a second look at the PRs finds, after the verdict is read. */
+    pullsLater?: Pull[];
     artifacts?: Artifact[];
     verdict?: string | null;
   } = {},
@@ -118,7 +120,8 @@ function fake(
     run: () => options.run ?? run(),
     pulls: () => {
       calls.pullsRead++;
-      return options.pulls ?? [pull()];
+      const first = options.pulls ?? [pull()];
+      return calls.pullsRead > 1 ? (options.pullsLater ?? first) : first;
     },
     artifacts: () => options.artifacts ?? [artifact()],
     verdict: () => {
@@ -213,5 +216,15 @@ describe("label", () => {
     label(io);
     expect(calls.setLabel).toEqual([]);
     expect(calls.verdictRead).toBe(0);
+  });
+
+  it("leaves the label alone when the PR is pushed to while the verdict is read", () => {
+    const { io, calls } = fake({
+      verdict: verdict("different", 1),
+      pullsLater: [pull({ headSha: "c".repeat(40) })],
+    });
+    label(io);
+    expect(calls.verdictRead).toBe(1);
+    expect(calls.setLabel).toEqual([]);
   });
 });

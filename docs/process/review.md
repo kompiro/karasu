@@ -62,9 +62,10 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
   セキュリティの境界のテストから行を消す変更は High になる
 
 - **`rendering-change` ラベル**：check「Render equivalence」が merge base と HEAD で描画・診断・整形の出力に差を
-  見つけたか、比較を終えられなかった PR に、workflow が付ける。差が無くなれば外す。マージは止めない。比較が走るのは
-  パッケージに触れる PR だけなので、examples や AT だけを変える PR には付かない（`pnpm pr:shots` で before/after を
-  見せる）。判定の表は `scripts/render-equivalence/label.ts`
+  見つけたか、比較を終えられなかった PR に、workflow が付ける。次の比較で差が無ければ外す。マージは止めない。比較が
+  走るのは `render-equivalence.yml` の `paths`（`packages/**`、`package.json`、`pnpm-lock.yaml`、比較のスクリプトなど）に
+  触れる PR だけなので、examples や AT だけを変える PR には付かない（`pnpm pr:shots` で before/after を見せる）。
+  付いた後の push がそのパスに触れなければ比較が走らず、ラベルは残る。判定の表は `scripts/render-equivalence/label.ts`
 - **差分がセキュリティの境界か `.github/workflows/**` に触れる PR は、段階とは別に `/security-review` を当てる**
   （分類器の `securityReview` が true になる）
 - **段階のラベルは draft のうちに付ける。** CodeRabbit は `risk: high` / `risk: design` の付いた PR だけを、draft を

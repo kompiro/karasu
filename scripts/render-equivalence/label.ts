@@ -140,6 +140,11 @@ export function label(io: Io): void {
     io.log(`#${pull.number} already ${on ? "has" : "lacks"} ${LABEL}.`);
     return;
   }
+  // Reading the artifact takes a while; a push meanwhile makes this answer old.
+  if (targetPull(run, io.pulls(run))?.number !== pull.number) {
+    io.log(`#${pull.number} was pushed to while the verdict was read; the label is left as it is.`);
+    return;
+  }
   io.setLabel(pull.number, on);
   io.log(`#${pull.number}: ${on ? "added" : "removed"} ${LABEL}.`);
 }
