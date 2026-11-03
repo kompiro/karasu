@@ -4,6 +4,7 @@ import {
   checkTestChanges,
   closedIssueNumbers,
   codeLineStarts,
+  isRunnerConfig,
   isTestSupport,
   maskPathsAndComments,
   reasonLine,
@@ -621,6 +622,112 @@ describe("checkTestChanges", () => {
       expect(removedInputs([edit(AT, before, swapped)])).toEqual([]);
       expect(removedInputs([gone(AT, before.join("\n"))])).toEqual([AT]);
       expect(removedInputs([gone(AT, "# x\nno fences")])).toEqual([]);
+    });
+
+    it("reads an aliased or namespace import of the test API as a helper", () => {
+      const network = [
+        'import { test as base } from "@playwright/test";',
+        "",
+        "export const x = 1;",
+      ];
+      expect(isTestSupport(edit(H, network, network))).toBe(true);
+      const ns = ['import * as pw from "@playwright/test";', "export const x = 1;"];
+      expect(isTestSupport(edit(H, ns, ns))).toBe(true);
+      const other = ['import * as path from "node:path";', "export const x = 1;"];
+      expect(isTestSupport(edit(H, other, other))).toBe(false);
+    });
+
+    it("asks for a reason when a helper takes its test API from somewhere else", () => {
+      const before = ['import { test as base } from "@playwright/test";', "export const x = 1;"];
+      const after = ['import { test as base } from "./fake-runner.ts";', "export const x = 1;"];
+      expect(check("test(e2e): x", [edit(H, before, after)]).errors).toHaveLength(1);
+    });
+
+    it("asks for a reason on a deleted helper", () => {
+      const file: ChangedFile = { ...gone(H, HELPER.join("\n")) };
+      expect(check("test(e2e): x", [file]).errors).toHaveLength(1);
+    });
+
+    it("names every runner config in the repository", () => {
+      for (const path of [
+        "vitest.config.ts",
+        "packages/cli/vitest.pack.config.ts",
+        "packages/e2e/playwright.config.ts",
+        "packages/vscode-e2e/.vscode-test.mjs",
+        "packages/vscode-e2e/tests/webview/.mocharc.json",
+      ]) {
+        expect([path, isRunnerConfig(path)]).toEqual([path, true]);
+      }
+      expect(isRunnerConfig("packages/app/vite.config.ts")).toBe(false);
+      expect(isRunnerConfig("packages/x/.mocharc.yml")).toBe(false);
+    });
+
+    it("asks for a reason when a config's comment is removed around untouched lines", () => {
+      const before = [
+        ...CONFIG.slice(0, 5),
+        "/*",
+        '    exclude: ["src/slow/**"],',
+        "*/",
+        ...CONFIG.slice(5),
+      ];
+      const after = [...CONFIG.slice(0, 5), '    exclude: ["src/slow/**"],', ...CONFIG.slice(5)];
+      const file = edit(C, before, after);
+      // Two deletions, as -U0 prints them: the exclude line is untouched.
+      file.hunks = [
+        { oldStart: 6, removed: ["/*"], newStart: 5, added: [] },
+        { oldStart: 8, removed: ["*/"], newStart: 6, added: [] },
+      ];
+      expect(check("refactor: x", [file]).errors).toHaveLength(1);
+    });
+
+    it("asks for a reason when a side of a runner config is unknown", () => {
+      const file = edit(C, CONFIG, CONFIG);
+      file.after = null;
+      expect(check("chore: x", [file]).errors).toHaveLength(1);
+    });
+
+    it("reports a refactor's broken helper and changed config separately", () => {
+      const helper = edit(H, HELPER, HELPER.slice(0, 4).concat(HELPER.slice(5)));
+      const config = edit(
+        C,
+        CONFIG,
+        CONFIG.map((l) => l.replace("src/**", "src/parser/**")),
+      );
+      expect(check("refactor: x", [helper, config]).errors).toHaveLength(2);
+    });
+
+    it("pairs moves one to one within a group", () => {
+      const ex = "examples/ja/shop/index.krs";
+      // Into the renderer fixtures: the examples' tests still lose it.
+      expect(
+        removedInputs([gone(ex), added("packages/core/src/renderer/fixtures/shop.krs")]),
+      ).toEqual([ex]);
+      const twin = "examples/en/shop/index.krs";
+      expect(removedInputs([gone(ex), gone(twin), added("examples/ja/store/index.krs")])).toEqual([
+        twin,
+      ]);
+      expect(removedInputs([{ ...gone(ex), before: null }])).toEqual([ex]);
+    });
+
+    it("does not count a moved example as an added test", () => {
+      const ex = "examples/ja/shop/index.krs";
+      expect(addsTest([gone(ex), added("examples/ja/store/index.krs")])).toBe(false);
+      expect(addsTest([gone(ex), added("examples/ja/store/index.krs", "graph { b }")])).toBe(true);
+    });
+
+    it("keeps an acceptance-test record's fences across a rename or a split", () => {
+      const record = ["# x", "```krs", "a", "```", "```krs", "b", "```"];
+      const A = "docs/acceptance/0001-a.md";
+      const B = "docs/acceptance/0001-b.md";
+      expect(removedInputs([gone(A, record.join("\n")), added(B, record.join("\n"))])).toEqual([]);
+      const split = [
+        edit(A, record, record.slice(0, 4)),
+        added(B, ["# y", ...record.slice(4)].join("\n")),
+      ];
+      expect(removedInputs(split)).toEqual([]);
+      const unknown = edit(A, record, record);
+      unknown.after = null;
+      expect(removedInputs([unknown])).toEqual([A]);
     });
 
     it("asks a reason for a removed input, and fails a refactor that removes one", () => {

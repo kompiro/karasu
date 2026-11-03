@@ -26,16 +26,22 @@ export const isTestFile = (path: string): boolean => TEST_GLOBS.some((g) => matc
 
 /** A test runner's config, which decides which test files run at all. */
 export const isRunnerConfig = (path: string): boolean =>
-  /(?:^|\/)(?:(?:vitest|playwright)\.(?:config|workspace)\.[cm]?[jt]s|\.mocharc(?:\.[a-z]+)?)$/.test(
+  /(?:^|\/)(?:(?:vitest|playwright)(?:\.[\w-]+)*\.(?:config|workspace)\.[cm]?[jt]s|\.vscode-test\.[cm]?[jt]s|\.mocharc\.(?:json|[cm]?js))$/.test(
     path,
   );
 
 /** An input a test reads from its directory: adding one adds a case, deleting one drops it. */
-export const isTestInput = (path: string): boolean =>
-  /^examples\/.*\.krs$/.test(path) || path.startsWith("packages/core/src/renderer/fixtures/");
+export const isTestInput = (path: string): boolean => inputGroup(path) !== null;
 
-/** A file whose code the rules read: the CLI loads both sides of these. */
-export const isCodeFile = (path: string): boolean => /\.[cm]?[jt]sx?$/.test(path);
+/** Which tests read an input. An input moves only within its group. */
+function inputGroup(path: string): string | null {
+  if (/^examples\/.*\.krs$/.test(path)) return "examples";
+  if (path.startsWith("packages/core/src/renderer/fixtures/")) return "renderer";
+  return null;
+}
+
+/** A file whose code {@link isTestSupport} reads. */
+const isCodeFile = (path: string): boolean => /\.[cm]?[jt]sx?$/.test(path);
 
 /** The Conventional Commits type of a title, lower-cased (`fix(core)!: x` → `fix`), or null. */
 export function titleType(title: string): string | null {
@@ -79,6 +85,13 @@ export function closedIssueNumbers(body: string, repo: string): number[] {
 
 type LineState = "code" | "block" | "template";
 
+/** What a value import binds a local name to. */
+interface Binding {
+  module: string;
+  /** The exported name (`test` in `{ test as base }`), `default`, or `*` for a namespace. */
+  imported: string;
+}
+
 /** What the rules read from one side of a test file. */
 interface Side {
   lines: string[];
@@ -91,7 +104,7 @@ interface Side {
   /** 0-based indexes of the lines of `import ... from "..."` statements. */
   imports: Set<number>;
   /** Each name a value import binds, and the module it comes from. */
-  bindings: Map<string, string>;
+  bindings: Map<string, Binding>;
 }
 
 /**
@@ -221,7 +234,7 @@ function readSide(text: string | null | undefined): Side | null {
   const lines = text.split("\n");
   const { states, masked, bare } = maskLines(text);
   const imports = new Set<number>();
-  const bindings = new Map<string, string>();
+  const bindings = new Map<string, Binding>();
   for (let i = 0; i < lines.length; i++) {
     // Not `import(` (dynamic) or `import.meta`, nor a `.krs` import in a fixture string.
     if (states[i] !== "code" || !/^\s*import(?:\s|\{|\*|["'])/.test(masked[i])) continue;
@@ -241,16 +254,23 @@ function readSide(text: string | null | undefined): Side | null {
     if (!/^\s*import\s+type\b/.test(statement)) {
       const clause = /^\s*import\s+([\s\S]*?)\s*\bfrom\b/.exec(statement)?.[1] ?? "";
       const named = /\{([^}]*)\}/.exec(clause)?.[1] ?? "";
-      const names = [
-        ...named.split(",").flatMap((part) => {
+      // [local, imported] pairs.
+      const names: [string, string][] = [
+        ...named.split(",").flatMap((part): [string, string][] => {
           const n = part.trim();
           if (n === "" || /^type\s/.test(n)) return [];
-          return [/\bas\s+([\w$]+)$/.exec(n)?.[1] ?? n];
+          const alias = /^([\w$]+)\s+as\s+([\w$]+)$/.exec(n);
+          return [alias === null ? [n, n] : [alias[2], alias[1]]];
         }),
-        ...(/^\s*([\w$]+)\s*(?:,|$)/.exec(clause.replace(/\{[^}]*\}/, ""))?.slice(1) ?? []),
-        ...(/\*\s*as\s+([\w$]+)/.exec(clause)?.slice(1) ?? []),
+        ...(/^\s*([\w$]+)\s*(?:,|$)/.exec(clause.replace(/\{[^}]*\}/, ""))?.slice(1) ?? []).map(
+          (n): [string, string] => [n, "default"],
+        ),
+        ...(/\*\s*as\s+([\w$]+)/.exec(clause)?.slice(1) ?? []).map((n): [string, string] => [
+          n,
+          "*",
+        ]),
       ];
-      for (const name of names) bindings.set(name, module);
+      for (const [name, imported] of names) bindings.set(name, { module, imported });
     }
     for (let k = i; k <= j; k++) imports.add(k);
     i = j;
@@ -336,15 +356,33 @@ const TEST_API = new Set([
  */
 function hidesLines(f: ChangedFile, was: Side | null, now: Side | null): boolean {
   if (was === null || now === null) return true;
-  for (const [name, module] of was.bindings) {
-    if (TEST_API.has(name) && now.bindings.get(name) !== module) return true;
+  for (const [name, b] of was.bindings) {
+    const kept = now.bindings.get(name);
+    if (isTestApi(b) && (kept?.module !== b.module || kept.imported !== b.imported)) return true;
   }
-  // `-U0` hunks in order: an untouched old line moves by the lines added and
-  // removed above it.
+  return untouchedLines(f, was.states.length).some(
+    ([old, cur]) => was.states[old] === "code" && now.states[cur] !== "code",
+  );
+}
+
+/** Runner modules whose namespace import is the test API. */
+const RUNNER_MODULES = new Set(["vitest", "@playwright/test", "node:test"]);
+
+/** Whether a binding is one of the names a test runs its tests with, under any local name. */
+const isTestApi = (b: Binding): boolean =>
+  TEST_API.has(b.imported) || (b.imported === "*" && RUNNER_MODULES.has(b.module));
+
+/**
+ * The 0-based [old, new] indexes of the lines a PR leaves as they were. `-U0`
+ * hunks in order: an untouched old line moves by the lines added and removed
+ * above it.
+ */
+function untouchedLines(f: ChangedFile, oldLength: number): [number, number][] {
   const hunks = [...f.hunks].sort((a, b) => a.oldStart - b.oldStart);
+  const pairs: [number, number][] = [];
   let delta = 0;
   let next = 0;
-  for (let line = 1; line <= was.states.length; line++) {
+  for (let line = 1; line <= oldLength; line++) {
     while (next < hunks.length) {
       const h = hunks[next];
       const last = h.removed.length > 0 ? h.oldStart + h.removed.length - 1 : h.oldStart;
@@ -354,9 +392,9 @@ function hidesLines(f: ChangedFile, was: Side | null, now: Side | null): boolean
     }
     const h = hunks[next];
     if (h !== undefined && h.removed.length > 0 && line >= h.oldStart) continue;
-    if (was.states[line - 1] === "code" && now.states[line - 1 + delta] !== "code") return true;
+    pairs.push([line - 1, line - 1 + delta]);
   }
-  return false;
+  return pairs;
 }
 
 /** Whether a refactor's change to an existing test file keeps the tests as they were. */
@@ -395,7 +433,7 @@ export function isTestSupport(f: ChangedFile): boolean {
     return false;
   }
   const was = readSide(f.before);
-  return was !== null && [...was.bindings.keys()].some((name) => TEST_API.has(name));
+  return was !== null && [...was.bindings.values()].some(isTestApi);
 }
 
 /** A line that holds only a comment, or nothing, outside a template literal. */
@@ -413,7 +451,13 @@ export function changesRunner(f: ChangedFile): boolean {
   if (f.status === "deleted") return true;
   const was = readSide(f.before);
   const now = readSide(f.after);
-  if (was === null || now === null || hidesLines(f, was, now)) return true;
+  if (was === null || now === null) return true;
+  // Opening or closing a comment around lines the PR leaves as they were.
+  if (
+    untouchedLines(f, was.states.length).some(([old, cur]) => was.states[old] !== now.states[cur])
+  ) {
+    return true;
+  }
   const kept = (side: Side, start: number, lines: readonly string[]): string[] =>
     lines.flatMap((_, k) => (isCommentOnly(side, start - 1 + k) ? [] : [side.bare[start - 1 + k]]));
   return f.hunks.some((h) => {
@@ -429,29 +473,57 @@ const KRS_FENCE = /^\s*(?:```|~~~)krs(?:\s|$)/;
 const AT_RECORD = /^docs\/acceptance\/[^/]+\.md$/;
 
 /**
+ * The deleted and added inputs that pair, one to one, as the same text moved
+ * within one group. `--no-renames` splits a move into a deletion and an addition.
+ */
+function inputMoves(files: readonly ChangedFile[]): Set<string> {
+  const added = new Map<string, string[]>();
+  for (const f of files) {
+    const group = inputGroup(f.path);
+    if (f.status !== "added" || group === null || typeof f.after !== "string") continue;
+    const key = `${group}\u0000${f.after}`;
+    added.set(key, [...(added.get(key) ?? []), f.path]);
+  }
+  const moved = new Set<string>();
+  for (const f of files) {
+    const group = inputGroup(f.path);
+    if (f.status !== "deleted" || group === null || typeof f.before !== "string") continue;
+    const to = added.get(`${group}\u0000${f.before}`)?.shift();
+    if (to !== undefined) moved.add(f.path).add(to);
+  }
+  return moved;
+}
+
+const fences = (text: string): number => text.split("\n").filter((l) => KRS_FENCE.test(l)).length;
+
+/**
  * The inputs a PR takes away from tests that read a directory, the mirror of
- * what {@link addsTest} counts: a deleted example or renderer fixture, unless
- * another input is added with the same text (a move), and an acceptance-test
- * record left with fewer `krs` fences. An unknown side counts as taken away.
+ * what {@link addsTest} counts: a deleted example or renderer fixture that did
+ * not move ({@link inputMoves}), and acceptance-test records that lose `krs`
+ * fences when the PR's records together have fewer (a renamed or split record
+ * keeps its fences). An unknown side counts as taken away.
  */
 export function removedInputs(files: readonly ChangedFile[]): string[] {
-  const moved = new Set(
-    files.flatMap((f) =>
-      f.status === "added" && isTestInput(f.path) && typeof f.after === "string" ? [f.after] : [],
-    ),
+  const moved = inputMoves(files);
+  const deleted = files.flatMap((f) =>
+    f.status === "deleted" && isTestInput(f.path) && !moved.has(f.path) ? [f.path] : [],
   );
-  const fences = (text: string): number => text.split("\n").filter((l) => KRS_FENCE.test(l)).length;
-  return files.flatMap((f) => {
-    if (f.status === "deleted" && isTestInput(f.path)) {
-      return typeof f.before === "string" && moved.has(f.before) ? [] : [f.path];
-    }
-    if (f.status !== "added" && AT_RECORD.test(f.path)) {
-      if (typeof f.before !== "string") return [f.path];
-      const after = f.status === "deleted" ? 0 : typeof f.after === "string" ? fences(f.after) : -1;
-      return after < fences(f.before) ? [f.path] : [];
-    }
-    return [];
-  });
+  const records = files.filter((f) => AT_RECORD.test(f.path));
+  const count = (text: string | null | undefined, absent: boolean): number | null =>
+    absent ? 0 : typeof text === "string" ? fences(text) : null;
+  const sides = records.map((f) => ({
+    path: f.path,
+    before: count(f.before, f.status === "added"),
+    after: count(f.after, f.status === "deleted"),
+  }));
+  const unknown = sides.filter((r) => r.before === null || r.after === null);
+  if (unknown.length > 0) return [...deleted, ...unknown.map((r) => r.path)];
+  const total = (k: "before" | "after"): number => sides.reduce((n, r) => n + (r[k] ?? 0), 0);
+  const fewer =
+    total("after") < total("before")
+      ? sides.filter((r) => (r.after ?? 0) < (r.before ?? 0)).map((r) => r.path)
+      : [];
+  return [...deleted, ...fewer];
 }
 
 // ---------------------------------------------------------------------------
@@ -525,10 +597,11 @@ const isCode = (masked: string): boolean => !/^\s*(?:\/\/|\/\*|⟦c⟧|$)/.test(
 /**
  * Whether the PR adds a test case: a new test file, more test cases or `.each`
  * rows in an existing one, or a new input a test reads from a directory (an
- * example, a renderer fixture, an acceptance-test `krs` fence). Renaming a case
- * or adding one inside a comment adds nothing.
+ * example, a renderer fixture, an acceptance-test `krs` fence). Renaming a case,
+ * adding one inside a comment or moving an input adds nothing.
  */
 export function addsTest(files: readonly ChangedFile[]): boolean {
+  const moved = inputMoves(files);
   return files.some((f) => {
     if (f.status === "added") {
       // A new test file that only skips its cases adds none.
@@ -536,7 +609,8 @@ export function addsTest(files: readonly ChangedFile[]): boolean {
         const now = readSide(f.after);
         return now !== null && liveCases(now) > 0;
       }
-      if (isTestInput(f.path)) return true;
+      // A moved input is the same case.
+      if (isTestInput(f.path)) return !moved.has(f.path);
     }
     if (f.status === "deleted") return false;
     if (AT_RECORD.test(f.path)) {

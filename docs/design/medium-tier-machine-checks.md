@@ -197,9 +197,9 @@ base と head で、次の範囲を描画して比べる。
 
 テストファイルの外でテストを弱める変更も、同じ規則で読む（#3548）。
 
-- **helper**：テストの API（`expect` / `test` など）を import しているモジュールは、テストファイルと同じに扱う。helper かどうかはディレクトリの一覧ではなく base 側の import で決める。一覧は、helper を別のディレクトリに置いた時点で漏れる。`import type` だけのモジュール（assert しない helper）は対象にしない
-- **テストの入力**：テストケースの追加として数える入力（`examples/` の `.krs`、renderer の fixture、AT の `krs` fence）を消すことを、テストケースを消すことと同じに扱う。足す方向と消す方向を同じ集合で読む。`--no-renames` の差分では移動が削除と追加に分かれるので、同じ内容の入力を別のパスに足した削除は移動として数えない
-- **runner の設定**（`vitest.config.*` / `vitest.workspace.*` / `playwright.config.*` / `.mocharc*`）：コメントの行と空行以外の変更に `Test change:` を求め、`refactor` でも理由の行で通す。キー（`include` / `exclude`）を読む案は取らない。#3327 は `testMatch` に渡す正規表現の定数を書き換え、#3160 の `exclude` は coverage の設定だったので、キーの一覧ではどちらも誤る。refactor を落とす案も取らない。#2604 の refactor は alias を消しただけで、実行範囲は変わっていない。2026-08 以降の main の 802 コミットに当てると、新しく理由の行を求めるのは 17 件だった（helper 4 件、設定 13 件）。どれも実行範囲を狭めていない。設定は月に数回しか変わらないので、理由の行 1 行の手間として受け入れる
+- **helper**：テストの API（`expect` / `test` など）を import しているモジュールは、テストファイルと同じに扱う。helper かどうかはディレクトリの一覧ではなく base 側の import で決める。別名（`{ test as base }`）は import 元の名前で読む。一覧は、helper を別のディレクトリに置いた時点で漏れる。`import type` だけのモジュール（assert しない helper）は対象にしない
+- **テストの入力**：テストケースの追加として数える入力（`examples/` の `.krs`、renderer の fixture、AT の `krs` fence）を消すことを、テストケースを消すことと同じに扱う。足す方向と消す方向を同じ集合で読む。`--no-renames` の差分では移動が削除と追加に分かれるので、同じ種類の入力（examples どうし、fixture どうし）に同じ内容のファイルを足した削除は、1 対 1 で移動として対にし、足した側もテストケースの追加に数えない。AT は記録の改名や分割で fence が別のファイルへ移るので、PR の AT 全体の fence の数で比べる
+- **runner の設定**（`vitest.config.*`・`vitest.pack.config.*` のような中間名つき・`vitest.workspace.*`・`playwright.config.*`・`.vscode-test.*`・`.mocharc.json` / `.mocharc.js`）：コメントの行と空行以外の変更と、変えていない行の周りでコメントを開け閉めする変更に `Test change:` を求め、`refactor` でも理由の行で通す。キー（`include` / `exclude`）を読む案は取らない。#3327 は `testMatch` に渡す正規表現の定数を書き換え、#3160 の `exclude` は coverage の設定だったので、キーの一覧ではどちらも誤る。refactor を落とす案も取らない。#2604 の refactor は alias を消しただけで、実行範囲は変わっていない。2026-08 以降の main の 802 コミットに当てると、新しく理由の行を求めるのは 18 件だった（helper 5 件、設定 13 件）。どれも実行範囲を狭めていない。設定は月に数回しか変わらないので、理由の行 1 行の手間として受け入れる
 
 `No test:` と `Test change:` の行で通した PR は、check の summary に理由と一緒に一覧を出す。
 
