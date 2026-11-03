@@ -79,7 +79,7 @@ upstream の History（README）が挙げる互換性の変更は 3 点で、い
 
 | 変更                                                    | karasu                                                                                          |
 | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| JSON-RPC が Node.js 14.17.0 以上を要求                  | VS Code の拡張ホストと `karasu` CLI（`>=22.12`）で満たす                                        |
+| JSON-RPC が Node.js 14.17.0 以上を要求                  | server は VS Code 拡張にだけ同梱され、拡張ホストの Node で満たす                                |
 | `PipeTransport` / `SocketTransport` に `close()` が必須 | 自前の transport 実装なし。`packages/vscode/src/extension.ts` は `TransportKind.ipc` だけを使う |
 | UUID 生成を `RAL` に集約、外部の `RAL` 実装は非対応     | `RAL` を実装・参照していない（`packages/lsp/src`・`packages/vscode/src` を grep）               |
 
@@ -115,7 +115,9 @@ bot ブランチに commit を足す形は次の recreate で失われる（`.cl
 ### #3555 `@anthropic-ai/sdk` 0.135.0 → 1.3.0
 
 0.x から 1.x への major で、CHANGELOG の `⚠ BREAKING CHANGES` は 1.0.0 の「new API version 2026-10-21 のサポート」1 項目だけ。
-**SDK の API surface ではなく、SDK が送る `anthropic-version` が変わる**ことが本体である。
+変わるものは 2 種類ある。**実通信では SDK が送る `anthropic-version` と認証ヘッダが変わり**、SDK の TypeScript の型も
+変わる（下表の下 2 行）。型の変更が app の呼び出しに効くかは typecheck で、実通信の変更が効くかは API の versioning と
+preflight で、分けて確かめた。
 
 |                                      | 0.135.0          | 1.3.0                                                                        |
 | ------------------------------------ | ---------------- | ---------------------------------------------------------------------------- |
@@ -232,13 +234,14 @@ build の chunk import map と bundled-dev の修正。transitive は `rolldown`
 
 ### SDK を 0.x に留める（`@dependabot ignore this major version`）
 
-**却下**。0.x の最終は 0.137.0（10-20）で、以後の修正は 1.x にしか出ない。2023-06-01 に終了日は告知されていないが、
+**却下**。0.x の最終は 0.137.0（10-20）で、それ以降の版は 1.x だけである。2023-06-01 に終了日は告知されていないが、
 留めると Chat の SDK 更新が止まる。app が送る引数はどれも 2026-10-21 で変わらず、確かめられていないのは実キーでの往復だけなので、
 保留ではなく preview での確認付きで採用する。
 
 ## 対象外の観測
 
-- **open alert 3 件は今回の PR と無関係**。#102（`@azure/msal-node`、high、既知）に加え、10-31 に #104（`glob` `>= 9.0.0, <= 14.0.1`、
+- **open alert 3 件は本バッチでは解決しない**。#102（`@azure/msal-node`、high、既知）に加え、10-31 に #104（`glob` `>= 9.0.0, <= 14.0.1`、
   GHSA-3g3m-2fjr-6pw4）と #105（`minimatch` `< 11.0.1`、GHSA-g3hv-75wg-m249）が起票されている。lock の解決は `glob` 10.5.0 / 13.0.6、
   `minimatch` 9.0.9 / 10.2.6 で、どれも脆弱範囲の内側。#3552 の `vscode-languageclient@11.0.0` も `minimatch ^10.2.6` のままなので、
-  本バッチでは解決も悪化もしない。`/hane:security-alert` で別に扱う
+  #3552 の差し替え PR は #105 の脆弱範囲を含んだままだが、解決も悪化もしない（脆弱版が lock に残る経路は main と同じ）。
+  `/hane:security-alert` で別に扱い、差し替え PR のマージの前提にはしない
