@@ -330,9 +330,7 @@ export function regeneratePr(deps: Deps): Result {
     if (sha !== pr.head.sha) {
       log(`PR #${pr.number}: fetched ${sha}, GitHub reports ${pr.head.sha}; regenerating instead`);
     } else if (!sameConfig) {
-      log(
-        `PR #${pr.number}: the outputs changed on main since it was made; regenerating instead`,
-      );
+      log(`PR #${pr.number}: the outputs changed on main since it was made; regenerating instead`);
     } else {
       const ready = readiness(pr.number, sha);
       if (ready.state !== "ready") {

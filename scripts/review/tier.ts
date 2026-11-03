@@ -1258,7 +1258,7 @@ function checkPr(pr: string): string[] {
     });
     if (waived) {
       console.log(
-        "ADR index regeneration: no local review record is required (Validate checks it).",
+        "Index regeneration (ADR, TPL): no local review record is required (Validate checks it).",
       );
     } else {
       const record = parseRecord(view.body ?? "");

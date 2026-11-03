@@ -84,9 +84,14 @@ describe("checkGenerated", () => {
   });
 
   it("fails a regeneration PR whose TPL index is hand-edited", () => {
-    const committed = tree({ ...Object.fromEntries(GENERATED), "docs/test-perspectives/index.md": "x" });
+    const committed = tree({
+      ...Object.fromEntries(GENERATED),
+      "docs/test-perspectives/index.md": "x",
+    });
     const result = check("M\0docs/test-perspectives/index.md\0", { committed: () => committed });
-    expect(result.errors).toEqual([expect.stringMatching(/index\.md: differs from a regeneration/)]);
+    expect(result.errors).toEqual([
+      expect.stringMatching(/index\.md: differs from a regeneration/),
+    ]);
   });
 
   it("fails a PR that adds a TPL and writes the TPL index", () => {

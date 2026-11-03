@@ -193,7 +193,10 @@ describe("classifyGeneratedDiff", () => {
 
     it("the TPL index together with a TPL is mixed", () => {
       const v = classify(
-        files(["A", "docs/test-perspectives/TPL-3289-x.md"], ["M", "docs/test-perspectives/index.md"]),
+        files(
+          ["A", "docs/test-perspectives/TPL-3289-x.md"],
+          ["M", "docs/test-perspectives/index.md"],
+        ),
       );
       expect(v.kind).toBe("mixed");
       expect(v.reasons[0]).toMatch(/docs\/test-perspectives\/index\.md/);

@@ -134,7 +134,11 @@ function readTree(root: string, prefix: string, into: Tree, dir = ""): void {
  * `bins` are the generators to run: the checkout's, so a generator upgrade is
  * judged by the new generator.
  */
-export function regenerateAt(rev: string, paths: GeneratedPaths, bins: GeneratorBins): GeneratedTrees {
+export function regenerateAt(
+  rev: string,
+  paths: GeneratedPaths,
+  bins: GeneratorBins,
+): GeneratedTrees {
   const work = mkdtempSync(join(tmpdir(), "adr-regenerate-"));
   try {
     const src = join(work, "src");
@@ -144,7 +148,13 @@ export function regenerateAt(rev: string, paths: GeneratedPaths, bins: Generator
     const runs = GENERATORS.filter((g) => paths[g].outputs.length > 0);
     const archive = execFileSync(
       "git",
-      ["archive", "--format=tar", rev, "--", ...runs.flatMap((g) => [CONFIG_FILES[g], paths[g].dir])],
+      [
+        "archive",
+        "--format=tar",
+        rev,
+        "--",
+        ...runs.flatMap((g) => [CONFIG_FILES[g], paths[g].dir]),
+      ],
       { maxBuffer: 256 * 1024 * 1024 },
     );
     execFileSync("tar", ["-x", "-C", src], { input: archive });

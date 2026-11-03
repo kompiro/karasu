@@ -44,7 +44,11 @@ const adrText = (n: number) =>
     "",
   ].join("\n");
 
-const TPL_CONFIG = JSON.stringify({ idFormat: "issue-number", indexFile: "index.md", topics: ["build"] });
+const TPL_CONFIG = JSON.stringify({
+  idFormat: "issue-number",
+  indexFile: "index.md",
+  topics: ["build"],
+});
 
 const tplText = (n: number) =>
   [
