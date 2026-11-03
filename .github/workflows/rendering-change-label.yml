@@ -1,0 +1,61 @@
+name: Rendering change label
+
+# Adds `rendering-change` to a PR whose `Render equivalence` run found the
+# rendering changed, or could not compare it, and removes it when the run found
+# nothing changed (Issue #3510, #3505 slice C). The label blocks nothing: it
+# tells the maintainer to review the PR and try it on the preview. The decision
+# table is in scripts/render-equivalence/label.ts.
+#
+# `workflow_run` runs this file and the script from the default branch, with a
+# token that can write labels, after a run that executed the PR's code. So this
+# job never checks out or runs PR code, reads only the starting run's artifact
+# (`verdict.json`, through `unzip -p`, never extracted to disk), and takes only
+# its `status` and `differences`. The PR comes from the run's head commit and
+# branch, never from the artifact, and is labelled only while its head is still
+# that commit: a PR's artifact can decide its own label, not another PR's.
+#
+# `workflow_run` matches on the workflow's name, which a PR could copy, so the
+# job also requires the run to come from render-equivalence.yml on a
+# `pull_request` event. The skip stub is named `Render equivalence (skip)` and
+# does not start this. A PR that stops touching the compared paths keeps the
+# label its last run gave it.
+
+on:
+  workflow_run:
+    workflows: [Render equivalence]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  label:
+    name: Rendering change label
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.path == '.github/workflows/render-equivalence.yml'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      # The default branch's copy of the script.
+      contents: read
+      # The starting run and its artifact.
+      actions: read
+      # The label.
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/render-equivalence
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Add or remove the label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: >-
+          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON
+          scripts/render-equivalence/label.ts
