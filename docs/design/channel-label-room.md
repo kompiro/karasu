@@ -15,7 +15,7 @@
 広がらない。さらに、レーンは線 1 本ぶん（`LANE_PITCH = 14 px`）の幅しかなく、高さ約 15 px・幅最大
 317 px のラベルはどちらの軸にも収まらない。`label-display: auto`（ADR-3022）では、密な fixture
 （`packages/core/src/renderer/fixtures/dense-domain-canvas.krs` の `UmamiApp`）で 41 本中 13 本しか
-ラベルが置けなかった。
+ラベルが置けなかった（Issue を書いた時点の数字。今の `main` では 17 本。下の「密な fixture の今の数字」）。
 
 Issue の受け入れ条件は 3 つある。
 
@@ -217,8 +217,9 @@ view ごと（変わった view はこれで全部）:
 1. **測る関数は renderer のラベル配置パスそのもの。** `edge-layer.ts` の `buildLabelInputs` →
    `frameBordersOf` → `resolveLabelPlacements` を 1 つの関数に切り出し、renderer の描画とレイアウトの測定の
    両方がそれを呼ぶ（TPL-219）。レイアウトには `LayoutOptions` の callback として渡す
-   （`withheldLabels?: (result: LayoutResult) => …`。返すのは置けなかったラベルのアンカー・幅・
-   font size）。`svg-renderer` が `styles` と `palette` を閉じ込めて作る。`edgeLineKey` と同じ形で、
+   （`withheldLabels?: (result: LayoutResult) => { anchor; width; height }[]`）。返すのは置けなかったラベルの
+   既定のアンカー・ラベルの箱の幅・箱の高さで、幅と高さは切り出した関数が `labelBox` で計算する（renderer が
+   衝突を判定する箱と同じ）。`svg-renderer` が `styles` と `palette` を閉じ込めて作る。`edgeLineKey` と同じ形で、
    渡さない呼び出し元（draw.io export、素の `layout()`）では予約しない
 2. **相互ペアを分けてから測る。** renderer は `applyMutualPairs` が分けた後の edge にラベルを置く（半分ごとの
    区間と矢印）。測定も分けた後の edge で行う。ADR-2598 / ADR-2611 / #3154 のレーン・列・側面の予約は、
@@ -228,8 +229,8 @@ view ごと（変わった view はこれで全部）:
 3. **数え方。** 行序数 r のチャネルの帯は、r = 0 なら frame の天井から最初の行の上端まで、r = 行数 なら
    最後の行の下端から frame の床まで、それ以外は行 r − 1 の下端から行 r の上端まで（#3132 と同じ範囲）。
    既定のアンカーが帯の中にある置けなかったラベルについて、どの x でもそこに重なるラベルの高さ
-   （`labelBox` の高さ + 余白 2 px）の合計を取り、その最大値をラベルの需要とする（font size が違うラベルが
-   混ざっても足りる）
+   （callback が返した箱の高さに、レイアウト側で余白 2 px を足したもの）の合計を取り、その最大値をラベルの
+   需要とする（font size が違うラベルが混ざっても足りる）
 4. **需要は 1 つに合算する。** 行序数 r の需要は `レーン数 × LANE_PITCH + ラベルの需要` で、既定の間隔を
    超えた分だけ広げる（floor-first）。ADR-2598 の予約とは別々に足さない（レーンを二重に数えないため）。
    frame が帯を分けて 1 つの序数に ADR-2598 のチャネルが複数あるときは、`レーン数 × LANE_PITCH − 間隔` が
@@ -242,8 +243,11 @@ view ごと（変わった view はこれで全部）:
    2 パス目の結果でもう一度ラベルを測り、置けなかったラベルが 1 回目より**少ないときだけ** 2 パス目を採る。
    そうでなければ 1 回目の結果を返す（TPL-2593 の 2 番目の条件）。このとき `placementPasses` は 2 とする
    （このフィールドの意味は「配置を何回走らせたか」で、返した配置がどちらかではない）。ほかの予約と同時に走るときは 2 パス目を
-   捨てられないので、この比較はしない。そこでの「減らない」は計測で確かめる（試作 2 では、比較を入れても
-   入れなくても全 view で同じ結果だった。比較が 2 パス目を捨てた view は無い）
+   捨てられない（レーン・列・側面の予約は ADR-2598 / ADR-2611 / #3154 の容量の約束で、ラベルの数のために
+   取り下げない）ので、この比較はしない。そこでの「減らない」はテストと計測で確かめる（実装の指針 6。試作 2 では、
+   比較を入れても入れなくても全 view で同じ結果だった。比較が 2 パス目を捨てた view は無い）。減る入力が
+   見つかったら、ラベルの余地とほかの予約を合わせた目的を決めるか、ラベルの余地を配線が使えない資源に移す。
+   どちらも本 Design Doc では決めない
 7. **数えないもの。** `label-display: always` と `hover` のラベル（`always` は置けなくても描かれ、
    `hover` は canvas に描かれない）、合成ラベル（`N domain edges` など。保留されないので置けなかったことに
    ならない）、ghost / cyclic のエッジのラベル。ghost と cyclic の `auto` のラベルはラベル配置パスでは保留
@@ -257,8 +261,8 @@ view ごと（変わった view はこれで全部）:
 1. `edge-layer.ts`: ラベル配置パスを関数に切り出し、`renderEdgeLayer` と callback の両方から呼ぶ
 2. `layout-types.ts`: `LayoutOptions.withheldLabels` を足す
 3. `layout-reservations.ts`: 2 つの測定を分ける。レーンの需要（序数ごとのレーン数と間隔）は、相互ペアを
-   分ける前の edge で測る。ラベルの需要（序数ごとの高さ）は、分けた後に callback が返したラベル（アンカー・
-   幅・高さの配列。ラベル配置パスは知らない）から測る。`layout.ts` が 2 つを序数ごとに合算して
+   分ける前の edge で測る。ラベルの需要（序数ごとの高さ）は、分けた後に callback が返したラベル
+   （`{ anchor, width, height }` の配列。ラベル配置パスは知らない）から測る。`layout.ts` が 2 つを序数ごとに合算して
    `extraGapBeforeRow` にする
 4. `layout.ts`: 決定の中身 2・5・6 の順序で、予約の測定・相互ペアの分割・ラベルの測定・2 パス目と比較を
    組む。試作 2 は 1 回目の edge を複製して分けたが、実装では予約を測った後に 1 回目の edge をそのまま分け、
@@ -270,6 +274,8 @@ view ごと（変わった view はこれで全部）:
    - `withheldLabels` を渡さない `layout()` の出力が今と同じ
    - `examples/` の全 view がバイト同一（既存の snapshot と examples の柵）
    - 2 パス目が置けるラベルを増やさない入力で、1 回目の結果が返ること（決定の中身 6）
+   - ラベルの余地とレーン・列・側面の予約が同時に開く fixture で、renderer のラベル配置パスで測り直して、
+     置けなかったラベルが増えないこと（決定の中身 6 で比較しない側の柵）
    - font size が違うラベルが同じチャネルに重なる fixture で、合計の高さが開くこと
    - dify / WordPress は repo に無いので、view ごとの増減を実装 PR に記録する（TPL-3036）
 7. AT: `docs/acceptance/` に追加する。手動項目は preview で密な fixture を開き、混んだチャネルにラベルが
