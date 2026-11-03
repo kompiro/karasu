@@ -110,6 +110,7 @@ funnel→retained の背骨。notation / cookbook はこの retained record を�
 | 柱 | Epic parent / label | 中身 | 着手 intent |
 | --- | --- | --- | --- |
 | **karasu-nest public** | [#3171](https://github.com/kompiro/karasu/issues/3171) ・`epic: karasu-nest-public` | karasu-nest のギャラリーを運用者以外に開く。開く前提条件は [`docs/policy/nest-data-handling.md`](policy/nest-data-handling.md) の未了節が空になること | 律速はコードではなく法務レビュー（[#2691](https://github.com/kompiro/karasu/issues/2691)）。入口となる `/` の公開一覧（[#3016](https://github.com/kompiro/karasu/issues/3016)）は先に作れるが、運用者以外への告知は #2691 の後 |
+| **first-run** | [#3563](https://github.com/kompiro/karasu/issues/3563) ・`epic: first-run` | Web App の初回訪問者に、共通のモデルでチームの設計判断が変わることを 5 分で体験してもらう（Welcome + サービス分割のガイド）。要件は PRD [`docs/prd/first-run-experience.md`](prd/first-run-experience.md) | Phase 1（既存機能の組み合わせ）から。Phase 2 / 3 は Phase 1 の利用を見てから起票 |
 
 `epic: comprehension` / `epic: boundary` / `epic: facets` は宣言していた子がすべて着地した
 ため柱から降ろした（Epic close は本節を prune した PR — [ADR-2218](adr/2218-roadmap-pruning-policy.md)）。
