@@ -200,6 +200,8 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3412](3412-workflow-actions-lockfile.md) — GitHub Actions の依存を actions.lock で固定し、検証を required check にする
 - [ADR-3421](3421-remove-copilot-gh-aw-workflows.md) — Copilot で推論する gh-aw の workflow を外し、個人の課金で動かせるまで戻さない
 - [ADR-3504](3504-low-adr-pr-without-draft.md) — Low の ADR の PR は draft を経ずに作り、ゲートはその create を 1 つの形だけ通す
+- [ADR-3571](3571-prd-as-issues.md) — PRD は docs/prd に置かず prd ラベルの Issue にし、展開した Epic をその sub-issue にする
+- [ADR-3575](3575-dependabot-triage-2026-11-02.md) — Dependabot トリアージ 2026-11-02：npm 8 件をすべて採用し、LSP 11 と SDK 1.x は ADR の assumptions を次の major に上げる差し替え PR で入れる
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
