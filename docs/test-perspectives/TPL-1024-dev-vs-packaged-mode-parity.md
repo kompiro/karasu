@@ -54,7 +54,7 @@ dev tree の relative path（`asAbsolutePath(path.join("..", "lsp", "out", "serv
 - [ ] 別 package のビルド成果物（`packages/lsp/out/`）を参照している場合、packaging ステップで **拡張内 (`packages/vscode/lsp/` 等) にコピー** するスクリプトを持っているか
 - [ ] **dev mode と packaged mode の両方で同じテストが走る** 経路があるか（拡張なら ExTester で実 `.vsix` を install して動かすテスト）
 - [ ] パス解決が失敗したときに **明示的なエラーログ** を出しているか（silent fallback で「動いているように見える」状態を作らない）
-- [ ] バージョンアップで配布物の構造を変える PR では、dev / packaged の両方の path 解決が壊れていないことを差分でチェック
+- [ ] バージョンアップで配布物の構造を変える PR では、dev / packaged の両方の path 解決が壊れていないことを差分でチェック [judgment]
 
 ## 既知の対処パターン
 
