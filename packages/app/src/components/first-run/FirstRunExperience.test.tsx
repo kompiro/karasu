@@ -89,6 +89,18 @@ describe("Restart Guided Tour… (#3597)", () => {
     expect(localStorage.getItem("karasu-first-run-tour-project")).toBe("tour");
   });
 
+  it("does not start the tour when the visitor chose the editor while the sample was opening", async () => {
+    const open = deferredOpen();
+    setup(open.openBundledExample);
+    runCommand(/Restart Guided Tour/);
+    runCommand(/Show Welcome/);
+    fireEvent.click(screen.getByRole("button", { name: /Open the editor/ }));
+
+    await act(async () => open.resolve(copy));
+    expect(screen.queryByRole("region", { name: "Guided tour" })).toBeNull();
+    expect(localStorage.getItem("karasu-first-run-tour-project")).toBeNull();
+  });
+
   it("closes Welcome when it runs while Welcome is open", async () => {
     const open = deferredOpen();
     setup(open.openBundledExample);

@@ -130,6 +130,9 @@ export function FirstRunExperience({
       setGreeted(true);
       setRequested(false);
       markWelcomeDismissed();
+      // A choice that starts no guide still outranks a sample still opening
+      // for an earlier restart: the visitor chose to be elsewhere.
+      if (choice === "editor" || choice === "understand") runs.current++;
       if (choice === "editor") return;
 
       if (choice === "understand") {
