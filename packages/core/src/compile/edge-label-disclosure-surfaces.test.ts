@@ -200,12 +200,14 @@ describe("dense canvas: what `auto` leaves off stays reachable on every surface 
     return { deferred: kind("deferred"), truncated: kind("truncated") };
   }
 
-  it("the UmamiApp drill-down leaves most labels off and truncates the rest", () => {
+  // How many labels the canvas seats is #3036's count (`label-room.test.ts`);
+  // here it only has to leave some off for the reachability to be exercised.
+  it("the UmamiApp drill-down leaves labels off and truncates others", () => {
     const svg = compile(dense, { viewPath: ["Umami", "UmamiApp"] }).svg;
     const edges = edgeGroups(svg);
     expect(edges).toHaveLength(41);
     const { deferred, truncated } = expectReachable(svg);
-    expect(deferred).toBeGreaterThan(20);
+    expect(deferred).toBeGreaterThan(0);
     expect(truncated).toBeGreaterThanOrEqual(8);
     // A deferred edge draws no label; every other one does.
     expect(edges.filter((e) => !e.body.includes("<text"))).toHaveLength(deferred);
@@ -221,7 +223,7 @@ describe("dense canvas: what `auto` leaves off stays reachable on every surface 
     "$name: every withheld label in the bundle is reachable",
     ({ render }) => {
       const { deferred } = expectReachable(render(dense));
-      expect(deferred).toBeGreaterThan(20);
+      expect(deferred).toBeGreaterThan(0);
     },
   );
 });

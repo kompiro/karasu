@@ -1,9 +1,9 @@
 import type { ResolvedStyles } from "../types/style.js";
 import { edgeKey } from "../diff/view-diff.js";
-import type { HopMark, LayoutResult } from "./layout-types.js";
+import type { HopMark, LayoutResult, WithheldLabel } from "./layout-types.js";
 import { renderEdge } from "./edge-routing.js";
 import { resolvedEdgeStyle } from "./edge-line-key.js";
-import { resolveLabelPlacements, buildLabelInputs } from "./label-placement.js";
+import { resolveLabelPlacements, buildLabelInputs, labelBox } from "./label-placement.js";
 import {
   edgesWithMarks,
   renderCrossingMarks,
@@ -15,6 +15,54 @@ import { el } from "./svg-builder.js";
 import { GHOST_OPACITY } from "./rendering-constants.js";
 import type { DiagramPalette } from "./palette.js";
 import { FACET_DIM_OPACITY, type FacetOverlay } from "./facet-overlay.js";
+
+/**
+ * The renderer's label pass (#2048), run once by the edge pass below and once
+ * per candidate placement by `layout()` through `withheldLabelsOf` (#3036), so
+ * the layout measures exactly what the canvas draws (TPL-219). Nudges labels
+ * that collide with node cards, with each other, or with another edge's
+ * polyline (#2360) off their default midpoint. A label's own edge line is
+ * exempt — that is where it belongs. Author-positioned labels (non-default
+ * label-position/label-offset) are excluded from moving but still act as
+ * obstacles, so author intent wins (ADR-1184 precedence). A nudge never carries
+ * a label onto or across the border of a frame drawn above (#3155), measured
+ * on the stroke drawn there.
+ */
+function placeLabels(layoutResult: LayoutResult, styles: ResolvedStyles, palette: DiagramPalette) {
+  const {
+    inputs: labelInputs,
+    nodeRects,
+    edgeLines,
+  } = buildLabelInputs(layoutResult.edges, layoutResult.nodes, (edge) =>
+    resolvedEdgeStyle(styles, edge),
+  );
+  const frameBorders = frameBordersOf(layoutResult, styles, palette);
+  const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects, edgeLines, frameBorders);
+  return { labelInputs, labelPlacements };
+}
+
+/**
+ * The labels the canvas would leave off `layoutResult` under `label-display:
+ * auto` (#3022), at their default anchors, sized by the box the pass tested —
+ * what `layout()` opens room for (#3036). Ghost and cyclic edges' labels are
+ * left out: they are dimmed context that takes only the room the real labels
+ * leave, and the canvas does not grow for them.
+ */
+export function withheldLabelsOf(
+  layoutResult: LayoutResult,
+  styles: ResolvedStyles,
+  palette: DiagramPalette,
+): WithheldLabel[] {
+  return placeLabels(layoutResult, styles, palette)
+    .labelInputs.filter((label) => {
+      const edge = layoutResult.edges[label.index];
+      return label.deferred === true && edge.ghost !== true && edge.cyclic !== true;
+    })
+    .map((label) => {
+      const box = labelBox(label.anchor, label.width, label.fontSize);
+      return { anchor: label.anchor, width: box.width, height: box.height };
+    });
+}
 
 /**
  * The edge pass of `renderFromLayout`: ghost edges, trunk bands, edges and
@@ -76,25 +124,9 @@ export function renderEdgeLayer(
     if (list) list.push(hop);
     else hopsByEdge.set(hop.edge, [hop]);
   }
-  // Resolve the edge style once per edge (reused by both the label-placement
-  // pre-pass and the render loop below).
   const edgeStyleFor = (edgeLayout: LayoutResult["edges"][number]) =>
     resolvedEdgeStyle(styles, edgeLayout);
-
-  // Auto label collision-avoidance (#2048): nudge labels that collide with node
-  // cards, with each other, or with another edge's polyline (#2360) off their
-  // default midpoint. A label's own edge line is exempt — that is where it
-  // belongs. Author-positioned labels (non-default label-position/label-offset)
-  // are excluded from moving but still act as obstacles, so author intent wins
-  // (ADR-1184 precedence). A nudge never carries a label onto or across the
-  // border of a frame drawn above (#3155), measured on the stroke drawn there.
-  const {
-    inputs: labelInputs,
-    nodeRects,
-    edgeLines,
-  } = buildLabelInputs(layoutResult.edges, layoutResult.nodes, edgeStyleFor);
-  const frameBorders = frameBordersOf(layoutResult, styles, palette);
-  const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects, edgeLines, frameBorders);
+  const { labelInputs, labelPlacements } = placeLabels(layoutResult, styles, palette);
   // Labels the pass could not seat clear under `label-display: auto` (#3022).
   // The pass reports them on its inputs; `renderEdge` leaves them off the canvas.
   const deferredLabels = new Set(labelInputs.filter((l) => l.deferred).map((l) => l.index));
