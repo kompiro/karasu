@@ -47,7 +47,7 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 | --- | --- | --- | --- |
 | Low | `docs/test-perspectives/**`・`docs/guide/**`・新しいテストファイル（既存のテストファイルの変更は Medium）、新しい ADR、ADR の昇格（Design Doc の削除、リンクの張り替え、ADR へのリンクの追加）、既存 ADR の frontmatter、ADR の生成物だけを変える再生成 PR | 回さない | 記録と CI が通れば auto-merge（再生成 PR は記録なしで、スクリプトが REST でマージする） |
 | Design | `docs/design/**` | ready の直後に 1 回だけ。ゲートにしない | 記録と人間のレビュー |
-| Medium | ほかのすべて（`packages/*`・`docs/acceptance/**`・`examples/**`・既存 ADR の本文など） | 回さない | 記録と、人間の判断。描画やレイアウトが変わる PR は人間が preview で動作を確かめる |
+| Medium | ほかのすべて（`packages/*`・`docs/acceptance/**`・`examples/**`・既存 ADR の本文など） | 回さない | 記録と、人間の判断。描画やレイアウトが変わる PR（`rendering-change` ラベル、下）は人間が preview で動作を確かめる |
 | High | workflow・release・依存の変更・`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`docs/process/**`・`.claude/rules/**`・`.coderabbit.yaml`・レビューの仕組み（`scripts/review/**`・`scripts/coderabbit/**`・`scripts/render-equivalence/**`・`.claude/skills/**` など）・セキュリティの境界（下）・言語の挙動（下） | Critical / Major の未対応が無くなるまで回す（再レビューは 3 回まで） | 人間が差分を読む |
 
 - **セキュリティの境界**：信頼できない入力（他人の `.krs`、URL、webview のメッセージ、ディスクのパス）を受ける
@@ -61,6 +61,13 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 - テストファイルはこの 2 つの規則から外れ、新しいファイルは Low、既存のファイルの変更は Medium のまま。ただし
   セキュリティの境界のテストから行を消す変更は High になる
 
+- **`rendering-change` ラベル**：check「Render equivalence」が merge base と HEAD で描画・診断・整形の出力に差を
+  見つけたか、比較を終えられなかった PR に、workflow が付ける。次の比較で差が無ければ外す。マージは止めない。比較が
+  走るのは `render-equivalence.yml` の `paths`（`packages/**`、`package.json`、`pnpm-lock.yaml`、比較のスクリプトなど）に
+  触れる PR だけなので、examples や AT だけを変える PR には付かない（`pnpm pr:shots` で before/after を見せる）。
+  パスの判定は push ごとではなく PR 全体の差分で行うので、PR がそのパスを変えているあいだは、どの push でも比較が走って
+  ラベルを判定し直す。そのパスの変更をすべて戻した PR では比較が走らず、最後の判定のラベルが残る。判定の表は
+  `scripts/render-equivalence/label.ts`
 - **差分がセキュリティの境界か `.github/workflows/**` に触れる PR は、段階とは別に `/security-review` を当てる**
   （分類器の `securityReview` が true になる）
 - **段階のラベルは draft のうちに付ける。** CodeRabbit は `risk: high` / `risk: design` の付いた PR だけを、draft を
