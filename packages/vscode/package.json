@@ -43,7 +43,7 @@
     "@karasu-tools/core": "workspace:*",
     "@karasu-tools/i18n": "workspace:*",
     "@karasu-tools/lsp": "workspace:*",
-    "vscode-languageclient": "^10.1.2"
+    "vscode-languageclient": "^11.0.0"
   },
   "devDependencies": {
     "@karasu-tools/app": "workspace:*",
