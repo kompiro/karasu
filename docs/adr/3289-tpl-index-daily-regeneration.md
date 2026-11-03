@@ -40,7 +40,7 @@ assumptions:
 
 `docs/test-perspectives/README.md` の末尾の一覧表は手書きで、TPL を足す PR はそこに 1 行ずつ追記していた。
 TPL の id は Issue 番号で単調に増えるので、新しい行はいつも表の末尾に入り、同時に開いた 2 本の PR は
-同じ位置への挿入として衝突した（2026-09-19〜10-19 に README を触った 28 commit のうち 23 が 1 行の追記）。
+同じ位置への挿入として衝突した（#3289 の測定では、2026-09-19〜10-19 に README を触った 28 commit のうち 23 が 1 行の追記）。
 
 #3289 は当初、`tpl regenerate` で topic ごとの索引 `index.md` を生成し、各 PR がそれをコミットして CI の
 `tpl regenerate --check` で鮮度を見る、と提案していた。topic で分けても同じ topic に足す並行 PR は衝突し続ける。
@@ -60,7 +60,8 @@ TPL の索引 `docs/test-perspectives/index.md` は PR に含めず、ADR の生
   `indexFile` から作る。どちらも素の JSON として読む（`scripts/review/tier.ts` が install なしの `node` で
   import するため）。TPL のディレクトリは karasu 側の定数で持ち、`regenerate-at.ts` と `regenerate-pr.ts` は
   `--tpl-dir` で渡す。`pnpm tpl:validate` と `pnpm tpl:regenerate` は CLI の既定値（同じ
-  `docs/test-perspectives`）に頼っているので、両者が食い違ったら tpl-tools の config にディレクトリのキーを足す。`tpl.config.json` が無いか `indexFile` が無ければ TPL の根は出力を持たない。
+  `docs/test-perspectives`）に頼っているので、両者が食い違ったら tpl-tools の config にディレクトリのキーを
+  足す。`tpl.config.json` が無いか `indexFile` が無ければ TPL の根は出力を持たない。
   差分の分類（ふつうの PR / 再生成の PR / 混在）の規則は ADR-3416 のままで、判定の対象を両方の和集合にする
 - **`indexFile` は TPL ディレクトリ配下の素のパスだけを許す。** 生成物のパスは glob として照合するので、
   `..` や glob・extglob の文字（`!(README).md` など）を含む名前は、ほかのファイルを生成物として扱わせる。
@@ -76,8 +77,8 @@ TPL の索引 `docs/test-perspectives/index.md` は PR に含めず、ADR の生
     書かれた索引を読み戻す（`regenerate-at.ts`。routine の `regenerate-pr.ts` は自分の worktree で直接動かす）
   - 入力の同一性（`inputKey`）と lockfile から読む版は生成器ごとに取る
   - 鮮度の見張りは生成器ごとに、その生成器の config だけで生成し直して判定する（`rootAt`）。片方の生成器が
-    古い commit の config を拒んでも、もう片方の判定は失われない。窓の中で版が変わった生成器だけ判定を
-    見送り、どちらを見送ったかを出力に書く（TPL-2786）
+    古い commit の config を拒んでも、もう片方の判定は失われない。窓の中で版が変わり、どの commit とも一致
+    しなかった生成器だけ判定を見送り、どちらを見送ったかを出力に書く（TPL-2786）
   - 再生成 PR の worktree で生成器が生成物の外に書いたら失敗にする（`strayPaths`）
 - **再生成 PR の名前は変えない。** ブランチ `chore/adr-regenerate` と本文の印 `<!-- adr-regenerate -->` は
   再生成 PR を見分ける印・`review-request.yml`・routine の設定が持っているので、そのまま使う。PR のタイトルと
@@ -115,7 +116,7 @@ TPL の索引 `docs/test-perspectives/index.md` は PR に含めず、ADR の生
   却下した形を TPL にだけ残すことになる
 - **TPL 専用の再生成 PR を別に作る。** ブランチ・印・routine の起動・鮮度の見張りが二重になり、2 本の PR が
   同じ required check を待つ。利点は生成器が互いの失敗に巻き込まれないことだが、どちらかの生成器が壊れるのは
-  その版を上げる PR で、それは `Validate` がその PR で落とす。鮮度の見張りは生成器ごとに判定するので、
+  その版・config・入力を変える PR で、どれも `Validate` がその PR で落とす。鮮度の見張りは生成器ごとに判定するので、
   片方の失敗がもう片方の判定を奪うこともない
 - **`validate` 用と `regenerate` 用に config を分ける。** `indexFile` の無い config では `tpl validate` が
   README の一覧表を検査するので、表を消した README で全 TPL が落ちる
