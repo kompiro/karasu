@@ -84,18 +84,29 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 #### バグ修正のテストと、既存のテストの変更
 
 **到達状態**: バグを直す PR はテストケースを足しているか、本文に `No test: <理由>` の行がある。既存のテストを
-弱める PR は、`refactor` でなく、本文に `Test change: <理由>` の行がある。Review tier は段階によらずこれを検査し、
+弱める PR は、`refactor` でなく、本文に `Test change: <理由>` の行がある。テストの実行範囲を決める runner の設定を
+変える PR は、`refactor` を含めて `Test change:` の行がある。Review tier は段階によらずこれを検査し、
 理由の行で通した PR は check の summary に理由を出す。理由の行は HTML コメントの外に書く。
 
 - **バグを直す PR**：タイトルの型が `fix` か、`bug` ラベルの Issue を閉じる（`Closes #N` など）PR。テストケースは、
   新しいテストファイル、既存のテストファイルに足した `it(` / `test(` か `.each` の表の行、`examples/` の新しい `.krs`、
   renderer の新しい fixture、AT に足した `krs` fence のどれか
-- **`refactor` の PR**：既存のテストファイルで変えてよいのは、import の文と、コメントかモジュールのパスの文字列だけが
-  違う行の対だけ。それ以外の変更とテストファイルの削除は、理由の行があっても落ちる。挙動を変える refactor
+- **既存のテスト**：テストファイルに加えて、テストの API（`expect` / `test` / `describe` など）を import している
+  テストファイル以外のモジュール（`packages/e2e/fixtures/` の helper など）を含む。helper かどうかはディレクトリでなく、
+  base 側の import で決まる
+- **テストの入力**：ディレクトリを読むテストが拾うファイル。`examples/` の `.krs`、renderer の fixture、AT の `krs`
+  fence で、足せばテストケースの追加になる。削除すると（同じ内容のファイルを別の入力のパスに足す移動は除く）、AT なら
+  `krs` fence を減らすと、テストケースを消したことになる
+- **`refactor` の PR**：既存のテストで変えてよいのは、import の文と、コメントかモジュールのパスの文字列だけが
+  違う行の対だけ。それ以外の変更、テストファイルの削除、テストの入力の削除は、理由の行があっても落ちる。挙動を変える refactor
   （廃止した API のテストを消すなど）はタイトルの型を変えて、`Test change:` を書く
-- **それ以外の PR**：既存のテストファイルから import 以外の行を消す、テストファイルを消す、`.skip` / `.fixme` /
-  `.todo` / `.only` / `skipIf` / `runIf` や単独の `return` を足す、ブロックコメントや文字列で既存のテストを囲む PR は、
-  `Test change:` の行が要る
+- **それ以外の PR**：既存のテストから import 以外の行を消す、テストファイルを消す、`.skip` / `.fixme` /
+  `.todo` / `.only` / `skipIf` / `runIf` や単独の `return` を足す、ブロックコメントや文字列で既存のテストを囲む、
+  テストの入力を消す PR は、`Test change:` の行が要る
+- **runner の設定**（`vitest.config.*` / `vitest.workspace.*` / `playwright.config.*` / `.mocharc*`）：コメントの行と
+  空行以外を変える PR は、`refactor` でも `Test change:` の行が要る。どのファイルが走るかは glob や正規表現の
+  データで決まり、変更が範囲を狭めるかを文面からは読めない。alias の変更のように範囲を変えない refactor もあるので、
+  refactor でも落とさず理由の行で通す
 
 #### 指摘の重大度と対応
 
