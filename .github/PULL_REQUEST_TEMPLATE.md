@@ -31,9 +31,17 @@ The review tier from `node scripts/review/tier.ts classify`, matching the PR's
 `risk: *` label (docs/process/review.md "リスク段階"), and what made it that tier.
 CodeRabbit reviews only `risk: high` and `risk: design` PRs; a PR without a
 tier label is High.
-Add "+ security review" when the classifier asks for one (packages/nest or
-.github/workflows), with what /security-review found.
-e.g. "Medium: packages/core/src/parser.ts" / "High: .github/workflows/ci.yml + security review (no findings)"
+Add "+ security review" when the classifier asks for one (`securityReview`:
+a security boundary or .github/workflows), with what /security-review found.
+e.g. "Medium: packages/core/src/renderer/layout.ts" / "High: packages/core/src/parser/parser.ts" /
+"High: packages/cli/src/serve.ts + security review (no findings)"
+
+The Review tier check also asks, whatever the tier (docs/process/review.md):
+- a PR titled `fix` or closing a `bug` Issue adds a test case, or says why not
+  on a line of its own, outside this comment: "No test: <reason>";
+- a PR that removes lines from, deletes or skips existing tests says why:
+  "Test change: <reason>". A `refactor` may change tests only by moving imports
+  and swapping module paths or comments.
 -->
 
 ## Local review
