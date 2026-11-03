@@ -127,6 +127,20 @@ describe("the focus canvas in the preview", () => {
     expect(root.querySelector<HTMLElement>(".node-focus-pill")!.hidden).toBe(true);
   });
 
+  it("takes the pill away when the card is pressed, so it does not outlive a drill-down (#3569)", () => {
+    // A tap is a hover and a press with no `mouseleave` after it, and the pill
+    // survives the next level's SVG: the press is what has to clear it.
+    const { container: root } = render(pane());
+    const card = root.querySelector(`.preview-container svg [data-node-id="Identity"] rect`)!;
+    fireEvent.mouseOver(card);
+    const pill = root.querySelector<HTMLElement>(".node-focus-pill")!;
+    expect(pill.hidden).toBe(false);
+    fireEvent.mouseDown(card, { button: 0 });
+    expect(pill.hidden).toBe(true);
+    const rule = [...document.head.querySelectorAll("style")].map((s) => s.textContent).join("");
+    expect(rule).not.toContain('[data-edge-from="Identity"]');
+  });
+
   // The marks sit outside the edge groups, so the rule has to name them (#3090).
   const injected = () =>
     [...document.head.querySelectorAll("style")].map((s) => s.textContent).join("");
