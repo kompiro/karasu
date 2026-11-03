@@ -6,7 +6,7 @@ paths:
 # 複数スライスに分けた仕事の追跡
 
 **到達状態**: 1 つの仕事を複数 Issue に割ったら、親 Issue に sub-issue が登録され、
-親 Issue の body に `## Slice status` 表がある。`pnpm program:slices <親番号>` が
+親 Issue の body に `## Slice status` 表がある（`prd` ラベルの PRD Issue を除く。下の「PRD の親」）。`pnpm program:slices <親番号>` が
 問題を報告しない。
 
 **発火条件**: 編集後の Design Doc に `### スライス` 節がある（= 実装を複数 Issue に
@@ -26,6 +26,10 @@ paths:
 プログラムが完成した瞬間に一覧が失われる。`### 実装の指針` の手順（TPL・AT・spec・
 ADR 昇格など）は `docs/design/TEMPLATE.md` が求める設計の中身で、この一覧には当たらない（実例: [#2232](https://github.com/kompiro/karasu/pull/2232) が
 `boundary-membership-1n.md` に入れた capability map — [#2237](https://github.com/kompiro/karasu/issues/2237) で親 Issue へ移した）。
+
+**PRD の親**: 親が `prd` ラベルの PRD Issue なら、その sub-issue は Epic で、`## Slice status` 表は
+各 Epic が持つ。PRD Issue には表を足さない（本ファイルの他の記述より優先する）。`pnpm program:slices` は
+PRD を検査から外す（ADR-3571）。
 
 ## 守ること 2 つ
 
@@ -80,5 +84,5 @@ gh api repos/kompiro/karasu/issues/<parent>/sub_issues \
 pnpm program:slices <親番号>
 ```
 
-sub-issue を持つ親の body に `## Slice status` 節が無い、または節が sub-issue を
+sub-issue を持つ親（`prd` ラベルの PRD Issue を除く）の body に `## Slice status` 節が無い、または節が sub-issue を
 取りこぼしていると非ゼロ終了する。引数なしで open な親を全件チェックする。

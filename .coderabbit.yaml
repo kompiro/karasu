@@ -196,7 +196,7 @@ reviews:
           forms a pair only when its `*.ja.md` sibling exists:
           `docs/spec/i18n.md` has none and is written in Japanese, so never ask
           for its translation or a twin. Everything else under `docs/`
-          (process, adr, design, prd, test-perspectives) is Japanese — do not
+          (process, adr, design, test-perspectives) is Japanese — do not
           propose translating it or restyling its prose.
         - Regions between `<!-- gen:reference:* -->` markers in `docs/spec/*.md`
           are generated from `packages/core/src/builtins/reference-data.ts` by
@@ -294,7 +294,7 @@ reviews:
         feat / fix / docs / chore / refactor / test / perf / build / ci. Scope is
         the package (core, app, cli, lsp, vscode, nest, i18n, e2e, docs-site) or,
         for `docs`, the doc area the file lives in (design, adr, spec, guide,
-        acceptance, test-perspectives, prd, roadmap, process, concepts). A
+        acceptance, test-perspectives, roadmap, process, concepts). A
         `docs/design/**` change is `docs(design)`. Imperative mood, no trailing
         period.
     description:
