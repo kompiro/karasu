@@ -27,6 +27,13 @@ interface UseGuidedSceneArgs {
  * be overwritten by the slower auto-select. After that, the scene goes through
  * the same actions a click does, in the order the reducer needs: selecting a
  * file resets the view, so the view is set last.
+ *
+ * The file is selected even when it is already open: `selectFile` supersedes
+ * an earlier, slower selection, so a scene left before its file loaded cannot
+ * land over the next one. Its diff and view are dropped the same way, by
+ * checking after the read that the scene is still the current one (TPL-1534).
+ * Leaving the scene's project forgets it was applied, so coming back shows it
+ * again: the switch back resets the file and the diff.
  */
 export function useGuidedScene({
   pending,
@@ -36,17 +43,27 @@ export function useGuidedScene({
   dispatch,
 }: UseGuidedSceneArgs): void {
   const appliedKey = useRef<string | null>(null);
+  // The scene the guide is on now, read after an await. Synced in an effect,
+  // which runs before the apply effect below sees the same render.
+  const currentKey = useRef<string | null>(null);
+  useEffect(() => {
+    currentKey.current = pending?.key ?? null;
+  }, [pending]);
 
   useEffect(() => {
-    if (!pending || appliedKey.current === pending.key) return;
-    if (currentProject?.rootPath !== pending.root) return;
+    if (!pending) return;
+    if (currentProject?.rootPath !== pending.root) {
+      appliedKey.current = null;
+      return;
+    }
+    if (appliedKey.current === pending.key) return;
     if (!currentFilePath?.startsWith(`${pending.root}/`)) return;
     appliedKey.current = pending.key;
 
-    const { root, scene } = pending;
-    const path = `${root}/${scene.file}`;
+    const { root, scene, key } = pending;
     void (async () => {
-      if (currentFilePath !== path) await selectFile(path);
+      await selectFile(`${root}/${scene.file}`);
+      if (currentKey.current !== key) return;
       dispatch({
         type: "SET_COMPARE_SOURCE",
         source: scene.compareWith ? { kind: "file", path: `${root}/${scene.compareWith}` } : null,

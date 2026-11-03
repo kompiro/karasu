@@ -50,6 +50,14 @@
 
   > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Skip ends the tour from the diff step and leaves diff mode`
 
+- [x] AT-K: ステップを素早く行き来しても、読み込みの遅かった前のステップの差分やビューが後から被らない
+
+  > ✅ Automated — `packages/app/src/components/first-run/use-guided-scene.test.ts` › `drops the diff and view of a scene left before its file loaded (TPL-1534)`
+
+- [x] AT-L: Welcome を閉じるとキーボードのフォーカスがツアーに移る
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `hands keyboard focus to the tour when Welcome closes`
+
 - [x] AT-J: ガイドが「気づき」として示す内容がサンプルで成り立っている（同居・所有のずれ・移行の注釈）
 
   > ✅ Automated — `packages/core/src/examples.test.ts` › `current: the Billing Team owns the Billing domain but no service`

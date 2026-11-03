@@ -87,7 +87,11 @@ export function FirstRunExperience({
       if (choice === "understand") {
         const template = isJa ? GETTING_STARTED_PROJECT : GETTING_STARTED_PROJECT_EN;
         const seeded = projects.find((p) => p.name === template.name);
-        if (seeded) navigateToProject(seeded);
+        // On a first visit the seeded project is already open: navigating to
+        // it again would clear the open file without selecting it back.
+        if (seeded && seeded.id === currentProject?.id)
+          await selectFile(`${seeded.rootPath}/index.krs`);
+        else if (seeded) navigateToProject(seeded);
         else await openBundledExample(template);
         return;
       }
@@ -103,7 +107,7 @@ export function FirstRunExperience({
           : { kind: "scene", root: project.rootPath, run },
       );
     },
-    [isJa, projects, navigateToProject, openBundledExample],
+    [isJa, projects, currentProject, navigateToProject, selectFile, openBundledExample],
   );
 
   const pending = useMemo<PendingScene | null>(() => {
@@ -131,11 +135,13 @@ export function FirstRunExperience({
     );
   }, []);
 
+  // The diff a tour step opened is the tour's, so the editor starts without
+  // it; a comparison the visitor opened on another step stays.
+  const tourStep = guide?.kind === "tour" ? SERVICE_SPLIT_TOUR[guide.step] : null;
   const endTour = useCallback(() => {
     setGuide(null);
-    // The tour's diff is the tour's; the editor starts without it.
-    dispatch({ type: "SET_COMPARE_SOURCE", source: null });
-  }, [dispatch]);
+    if (tourStep?.scene.compareWith) dispatch({ type: "SET_COMPARE_SOURCE", source: null });
+  }, [tourStep, dispatch]);
 
   // The panel belongs to the tour's project: switching away hides it, and
   // switching back shows it again at the same step.

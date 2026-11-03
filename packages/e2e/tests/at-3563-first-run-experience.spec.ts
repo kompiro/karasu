@@ -32,6 +32,8 @@ function node(page: Page, id: string) {
 
 const diffBanner = (page: Page) => page.getByRole("status", { name: "Diff mode active" });
 
+const editorLines = (page: Page) => page.locator(".monaco-editor .view-lines").first();
+
 test.describe("AT-3563 first-run Welcome", () => {
   test("greets a first visit once: after a choice, a reload opens the editor", async ({
     page,
@@ -94,6 +96,9 @@ test.describe("AT-3563 first-run Welcome", () => {
     await expect(welcome(page)).toHaveCount(0);
     await expect(page.getByRole("combobox", { name: "Project" })).toContainText("getting-started");
     await expect(node(page, "ECommerce")).toBeVisible();
+    // The project was already open: the choice must leave its index.krs open
+    // in the editor, not an empty buffer the preview hides by falling back.
+    await expect(editorLines(page)).toContainText("system ECPlatform");
   });
 
   test("Track architecture evolution compares the migration with the current system", async ({
@@ -120,6 +125,10 @@ test.describe("AT-3563 Design a service split tour", () => {
       .getByRole("button", { name: /Design a service split/ })
       .click();
     await expect(tour(page)).toBeVisible();
+  });
+
+  test("hands keyboard focus to the tour when Welcome closes", async ({ page }) => {
+    await expect(tour(page).getByRole("button", { name: "Next →" })).toBeFocused();
   });
 
   test("opens the sample as a new project, leaving the seeded ones in place", async ({ page }) => {

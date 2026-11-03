@@ -9,7 +9,11 @@ import { SERVICE_SPLIT_TOUR } from "./tour-steps.js";
 afterEach(cleanup);
 
 function renderStep(index: number) {
-  const handlers = { onBack: vi.fn(), onNext: vi.fn(), onClose: vi.fn() };
+  const handlers = {
+    onBack: vi.fn<() => void>(),
+    onNext: vi.fn<() => void>(),
+    onClose: vi.fn<() => void>(),
+  };
   render(
     <LocaleProvider initialLocale="en">
       <TourPanel
@@ -41,10 +45,11 @@ describe("TourPanel", () => {
 
   it("cannot go back from the first step, and can skip or go on", async () => {
     const user = userEvent.setup();
-    const { onNext, onClose } = renderStep(0);
-    expect((screen.getByRole("button", { name: "← Back" }) as HTMLButtonElement).disabled).toBe(
-      true,
-    );
+    const { onBack, onNext, onClose } = renderStep(0);
+    const back = screen.getByRole("button", { name: "← Back" });
+    expect(back.getAttribute("aria-disabled")).toBe("true");
+    await user.click(back);
+    expect(onBack).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Next →" }));
     expect(onNext).toHaveBeenCalledOnce();
     await user.click(screen.getByRole("button", { name: "✕ Skip tour" }));

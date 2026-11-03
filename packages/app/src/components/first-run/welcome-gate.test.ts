@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+// @vitest-environment jsdom
+import { describe, expect, it, vi } from "vitest";
 import {
   WELCOME_DISMISSED_KEY,
   hasDeepLink,
@@ -32,6 +33,7 @@ describe("hasDeepLink", () => {
     ["?krs=system-root", ""],
     ["", "#krs-org-root"],
     ["", "#krs-system-Shop.Payment?file=%2Fprojects%2Fa%2Findex.krs"],
+    ["", "#s=not-a-payload"],
   ])("treats search %j / hash %j as a link that asked for a place", (search, hash) => {
     expect(hasDeepLink({ search, hash })).toBe(true);
   });
@@ -80,5 +82,17 @@ describe("storage that throws (private windows, blocked site data)", () => {
   it("reads as not dismissed, and marking it does not throw", () => {
     expect(isWelcomeDismissed(throwingStorage)).toBe(false);
     expect(() => markWelcomeDismissed(throwingStorage)).not.toThrow();
+  });
+
+  it("survives a window.localStorage accessor that itself throws", () => {
+    const spy = vi.spyOn(window, "localStorage", "get").mockImplementation(() => {
+      throw new DOMException("blocked", "SecurityError");
+    });
+    try {
+      expect(isWelcomeDismissed()).toBe(false);
+      expect(() => markWelcomeDismissed()).not.toThrow();
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

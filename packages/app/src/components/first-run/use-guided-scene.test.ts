@@ -29,12 +29,13 @@ const diffScene: PendingScene = {
 
 type Props = { project: Project | null; file: string | null; pending: PendingScene | null };
 
-function setup(initial: Props) {
+function setup(initial: Props, read: (path: string) => Promise<void> = async () => {}) {
   const calls: string[] = [];
-  const selectFile = vi.fn(async (path: string) => {
+  const selectFile = vi.fn<(path: string) => Promise<void>>(async (path) => {
     calls.push(`select ${path}`);
+    await read(path);
   });
-  const dispatch = vi.fn((action: AppAction) => {
+  const dispatch = vi.fn<(action: AppAction) => void>((action) => {
     calls.push(action.type);
   });
   const view = renderHook(
@@ -92,7 +93,7 @@ describe("useGuidedScene", () => {
     ]);
   });
 
-  it("clears the diff for a scene without one, and skips selecting the file already open", async () => {
+  it("clears the diff for a scene without one, and selects its file even when already open", async () => {
     const orgScene: PendingScene = {
       root: "/projects/tour",
       scene: { file: "index.krs", view: "org" },
@@ -104,11 +105,77 @@ describe("useGuidedScene", () => {
       pending: orgScene,
     });
     await act(async () => {});
-    expect(selectFile).not.toHaveBeenCalled();
+    // Selecting it again supersedes a slower selection still in flight.
+    expect(selectFile).toHaveBeenCalledWith("/projects/tour/index.krs");
     expect(dispatch.mock.calls.map(([a]) => a)).toEqual([
       { type: "SET_COMPARE_SOURCE", source: null },
       { type: "SET_ACTIVE_VIEW", activeView: "org" },
     ]);
+  });
+
+  it("drops the diff and view of a scene left before its file loaded (TPL-1534)", async () => {
+    // Step 3's planned.krs loads slowly; the visitor presses Back to step 2
+    // before it lands. Step 3 must not switch the diff on afterwards.
+    let releaseSlow: () => void = () => {};
+    const slow = new Promise<void>((resolve) => {
+      releaseSlow = resolve;
+    });
+    const orgScene: PendingScene = {
+      root: "/projects/tour",
+      scene: { file: "index.krs", view: "org" },
+      key: "tour:1:1",
+    };
+    const { rerender, dispatch } = setup(
+      { project: tourProject, file: "/projects/tour/index.krs", pending: diffScene },
+      (path) => (path.endsWith("planned.krs") ? slow : Promise.resolve()),
+    );
+    await act(async () => {
+      rerender({ project: tourProject, file: "/projects/tour/index.krs", pending: orgScene });
+    });
+    await act(async () => {
+      releaseSlow();
+    });
+    expect(dispatch.mock.calls.map(([a]) => a)).toEqual([
+      { type: "SET_COMPARE_SOURCE", source: null },
+      { type: "SET_ACTIVE_VIEW", activeView: "org" },
+    ]);
+  });
+
+  it("drops a scene's late diff once the guide has ended", async () => {
+    let release: () => void = () => {};
+    const slow = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { rerender, dispatch } = setup(
+      { project: tourProject, file: "/projects/tour/index.krs", pending: diffScene },
+      () => slow,
+    );
+    await act(async () => {
+      rerender({ project: tourProject, file: "/projects/tour/index.krs", pending: null });
+    });
+    await act(async () => {
+      release();
+    });
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it("shows the scene again after the visitor leaves its project and comes back", async () => {
+    const { rerender, dispatch } = setup({
+      project: tourProject,
+      file: "/projects/tour/planned.krs",
+      pending: diffScene,
+    });
+    await act(async () => {});
+    expect(dispatch).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      rerender({ project: otherProject, file: "/projects/gs/index.krs", pending: diffScene });
+    });
+    // Coming back resets the file to index.krs and clears the diff.
+    await act(async () => {
+      rerender({ project: tourProject, file: "/projects/tour/index.krs", pending: diffScene });
+    });
+    expect(dispatch).toHaveBeenCalledTimes(4);
   });
 
   it("applies a scene once per key, and again for a new key", async () => {

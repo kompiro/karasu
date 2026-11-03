@@ -21,6 +21,7 @@ export type FirstRunTranslations = {
   "firstRun.tour.ariaLabel": string;
   "firstRun.tour.heading": string;
   "firstRun.tour.progress": (params: { current: number; total: number }) => string;
+  "firstRun.tour.progressLabel": string;
   "firstRun.tour.skip": string;
   "firstRun.tour.back": string;
   "firstRun.tour.next": string;
@@ -67,6 +68,7 @@ export const firstRunEn: FirstRunTranslations = {
   "firstRun.tour.ariaLabel": "Guided tour",
   "firstRun.tour.heading": "Design a service split",
   "firstRun.tour.progress": ({ current, total }) => `${current} / ${total}`,
+  "firstRun.tour.progressLabel": "Tour progress",
   "firstRun.tour.skip": "✕ Skip tour",
   "firstRun.tour.back": "← Back",
   "firstRun.tour.next": "Next →",
@@ -121,6 +123,7 @@ export const firstRunJa: Partial<FirstRunTranslations> = {
   "firstRun.tour.ariaLabel": "ガイドツアー",
   "firstRun.tour.heading": "サービス分割を設計する",
   "firstRun.tour.progress": ({ current, total }) => `${current} / ${total}`,
+  "firstRun.tour.progressLabel": "ツアーの進み具合",
   "firstRun.tour.skip": "✕ ツアーを終了",
   "firstRun.tour.back": "← 戻る",
   "firstRun.tour.next": "次へ →",

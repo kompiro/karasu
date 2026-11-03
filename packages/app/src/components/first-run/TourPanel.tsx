@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "../../i18n/index.js";
 import type { TourStep } from "./tour-steps.js";
@@ -23,6 +24,17 @@ export function TourPanel({ step, index, total, onBack, onNext, onClose }: TourP
   const { t } = useTranslation();
   const isFirst = index === 0;
   const isLast = index === total - 1;
+  const forwardRef = useRef<HTMLButtonElement>(null);
+
+  // Take focus when the panel appears with nothing else focused (right after
+  // Welcome closes), so a keyboard user does not have to tab through the app.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      const active = document.activeElement;
+      if (!active || active === document.body) forwardRef.current?.focus();
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, []);
 
   return (
     <section
@@ -35,7 +47,7 @@ export function TourPanel({ step, index, total, onBack, onNext, onClose }: TourP
       </div>
       <div
         role="progressbar"
-        aria-label={t("firstRun.tour.ariaLabel")}
+        aria-label={t("firstRun.tour.progressLabel")}
         aria-valuemin={1}
         aria-valuemax={total}
         aria-valuenow={index + 1}
@@ -46,31 +58,39 @@ export function TourPanel({ step, index, total, onBack, onNext, onClose }: TourP
           style={{ width: `${((index + 1) / total) * 100}%` }}
         />
       </div>
-      <h2 className="text-sm font-semibold">{t(step.title)}</h2>
-      <p className="text-xs leading-relaxed text-[color:var(--text-secondary)]">{t(step.body)}</p>
-      {step.notice && (
-        <p className="border-l-2 border-[color:var(--accent)] pl-2 text-xs leading-relaxed">
-          <strong>{t("firstRun.tour.notice")}:</strong> {t(step.notice)}
-        </p>
-      )}
-      {step.questions && (
-        <div className="text-xs leading-relaxed">
-          <p className="font-medium">{t("firstRun.step.decision.questions")}</p>
-          <ul className="list-disc pl-4 text-[color:var(--text-secondary)]">
-            {step.questions.map((q) => (
-              <li key={q}>{t(q)}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {step.done && <p className="text-xs leading-relaxed font-medium">{t(step.done)}</p>}
+      <div aria-live="polite" className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold">{t(step.title)}</h2>
+        <p className="text-xs leading-relaxed text-[color:var(--text-secondary)]">{t(step.body)}</p>
+        {step.notice && (
+          <p className="border-l-2 border-[color:var(--accent)] pl-2 text-xs leading-relaxed">
+            <strong>{t("firstRun.tour.notice")}:</strong> {t(step.notice)}
+          </p>
+        )}
+        {step.questions && (
+          <div className="text-xs leading-relaxed">
+            <p className="font-medium">{t("firstRun.step.decision.questions")}</p>
+            <ul className="list-disc pl-4 text-[color:var(--text-secondary)]">
+              {step.questions.map((q) => (
+                <li key={q}>{t(q)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {step.done && <p className="text-xs leading-relaxed font-medium">{t(step.done)}</p>}
+      </div>
       <div className="flex items-center gap-1 pt-1">
         {!isLast && <Button onClick={onClose}>{t("firstRun.tour.skip")}</Button>}
         <span className="flex-1" />
-        <Button onClick={onBack} disabled={isFirst}>
+        {/* aria-disabled, not disabled: stepping back onto the first step would
+            otherwise disable the focused button and drop focus to the page. */}
+        <Button
+          onClick={isFirst ? undefined : onBack}
+          aria-disabled={isFirst}
+          className={isFirst ? "opacity-50" : undefined}
+        >
           {t("firstRun.tour.back")}
         </Button>
-        <Button variant="actionable" onClick={isLast ? onClose : onNext}>
+        <Button ref={forwardRef} variant="actionable" onClick={isLast ? onClose : onNext}>
           {isLast ? t("firstRun.tour.finish") : t("firstRun.tour.next")}
         </Button>
       </div>
