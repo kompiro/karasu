@@ -167,6 +167,10 @@ function main(): void {
     for (const sub of parent.subs) {
       console.log(`  ${sub.state === "closed" ? "✅" : "⬜"} #${sub.number} ${sub.title}`);
     }
+    if (isPrd(parent)) {
+      console.log("  (not checked: each Epic is checked as its own parent)");
+      continue;
+    }
     const found = checkParent(parent);
     for (const p of found) console.log(`  ⚠ ${p.message}`);
     problems.push(...found);
@@ -178,7 +182,11 @@ function main(): void {
     );
     process.exit(1);
   }
-  console.log("\nAll parents account for every slice.");
+  const checked = parents.filter((p) => !isPrd(p)).length;
+  const skipped = parents.length - checked;
+  console.log(
+    `\n${checked} parent(s) account for every slice${skipped > 0 ? `; ${skipped} PRD(s) not checked` : ""}.`,
+  );
 }
 
 if (process.argv[1]?.endsWith("program-slices.ts")) main();
