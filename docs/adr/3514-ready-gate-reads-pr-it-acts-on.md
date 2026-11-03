@@ -10,15 +10,16 @@ refines:
 related_to:
   - ADR-3504
   - ADR-3326
+  - ADR-3286
 scope:
   packages: []
   concerns:
     - ci
 assumptions:
   - "file: scripts/coderabbit/ready-gate.sh"
-  - "grep: scripts/coderabbit/ready-gate.sh :: so it reads the PR gh pr ready acts on"
-  - "grep: scripts/coderabbit/ready-gate.sh :: headRefOid,baseRefOid"
-  - "grep: scripts/coderabbit/ready-gate.sh :: --no-tags origin"
+  - "grep: scripts/coderabbit/ready-gate.sh :: pr view .*--repo"
+  - "grep: scripts/coderabbit/ready-gate.sh :: baseRefOid // empty"
+  - "grep: scripts/coderabbit/ready-gate.sh :: git fetch .*origin"
 ---
 
 # ADR-3514: gh pr ready のゲートは --repo をそのまま渡して同じ PR を読み、base は PR の base コミットで判定する
@@ -40,8 +41,8 @@ ADR-3342 のゲートは、`--repo` / `-R` の付いた `gh pr ready` を確か�
 その repo を持つとは限らない、というのが理由だった。しかし値がこの repo を指していても通したので、
 `gh pr ready <N> -R kompiro/karasu` と書くだけで CLI レビューの確認を飛ばせた（#3514）。
 
-また、ゲートは「CLI がレビューしたコミットが base に無い」を、origin にある base と同じ名前のブランチで
-確かめていた。PR が別の repo の PR なら、その名前のブランチは別のものを指す。
+また、ゲートは「CLI がレビューしたコミットが base に無い」を、origin の（無ければローカルの）base と同じ名前の
+ブランチで確かめていた。PR が別の repo の PR なら、その名前のブランチは別のものを指す。
 
 ## 決定
 
@@ -50,17 +51,17 @@ ADR-3342 のゲートは、`--repo` / `-R` の付いた `gh pr ready` を確か�
 
 - `--repo` / `-R` は、どの書き方（`--repo X`・`--repo=X`・`-R X`・`-RX`・`-R=X`）でも値を読む。
   `GH_REPO` / `GH_HOST` は環境から gh にそのまま届くので、ゲートは読まない
-- この repo を指す `--repo` は、`--repo` が無いときと同じく確かめる。別の repo の PR でも、その base コミットが
-  手元にあれば同じ規則で確かめる（fork の PR など）
-- base コミットが手元に無ければ origin から fetch する。それでも得られないとき（別の repo のコミット、
-  `baseRefOid` を返さない古い gh）は通す。ADR-3342 の「分からないときは通す」のとおり
+- この repo を指す `--repo` は、`--repo` が無いときと同じく確かめる。別の repo の PR でも、その head コミットが
+  手元にあれば同じ規則で確かめる（fork の PR など）。head コミットが手元に無い PR（別の repo の PR の多く）は通す
+- base コミットが手元に無ければ origin から fetch する。`baseRefOid` を返さない古い gh のときと、fetch しても
+  base コミットが得られないとき（別の repo のコミット）は通す。ADR-3342 の「分からないときは通す」のとおり
 - origin の同名ブランチを base とみなす読み方はやめる
 - 拒否したときに案内する飛ばし方（`KARASU_LOCAL_REVIEW_SKIPPED=<理由> gh pr ready ...`）は、元の PR の指定と
   `--repo` を残す。案内するレビューのコマンドも同じ base コミットに対して当てる
 - `--undo` は、gh と同じく最後に指定した値で判断する。値の無い `-R` / `--repo` はゲートでは判定せず gh に任せる
   （gh がエラーを出す）
-- ADR-3342 のうち、上に書いたもの以外（CodeRabbit を外した PR・draft でない PR・`--undo` を通すこと、
-  記録が読めないときに通すこと）は変えない
+- ADR-3342 のうち、上に書いたもの以外（draft でない PR・`--undo` を通すこと、記録が読めないときに通すこと）は
+  変えない。CodeRabbit を外した PR を通すことは、すでに ADR-3286（#3365）でやめている
 
 ## 理由
 
@@ -83,7 +84,7 @@ ADR-3342 のゲートは、`--repo` / `-R` の付いた `gh pr ready` を確か�
   上と同じ列挙になる。base コミットを fetch すれば、名前に戻る必要は無い
 - **自分の repo を指す `-R` で base コミットが取れないときは拒否する**: 自分の repo かどうかを見分ける、
   やめた比較を戻すことになる。fetch した後も取れないのは origin に繋がらないときくらいで、そのときは通してよい
-- **`baseRefOid` を返さない古い gh（2.63 未満）では拒否する**: ゲートの故障で作業を止めない、という ADR-3342 の
-  原則に反する。開発環境の gh はこれより新しい
+- **`baseRefOid` を返さない古い gh では拒否する**: ゲートの故障で作業を止めない、という ADR-3342 の原則に反する。
+  開発環境の gh は `baseRefOid` を返す
 - **`--repo` の付いた ready はこれまでどおり通す**: 値を書くだけで確認を飛ばせる。飛ばすなら
   `KARASU_LOCAL_REVIEW_SKIPPED` で理由を残す、という ADR-3342 の決定が意味を持たなくなる
