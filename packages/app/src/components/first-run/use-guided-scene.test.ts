@@ -30,11 +30,16 @@ const diffScene: PendingScene = {
 
 type Props = { project: Project | null; file: string | null; pending: PendingScene | null };
 
-function setup(initial: Props, read: (path: string) => Promise<void> = async () => {}) {
+function setup(
+  initial: Props,
+  read: (path: string) => Promise<void> = async () => {},
+  lands = true,
+) {
   const calls: string[] = [];
-  const selectFile = vi.fn<(path: string) => Promise<void>>(async (path) => {
+  const selectFile = vi.fn<(path: string) => Promise<boolean>>(async (path) => {
     calls.push(`select ${path}`);
     await read(path);
+    return lands;
   });
   const dispatch = vi.fn<(action: AppAction) => void>((action) => {
     calls.push(action.type);
@@ -214,6 +219,17 @@ describe("useGuidedScene", () => {
     await act(async () => {
       release();
     });
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it("leaves the diff and view alone when the scene's file could not be selected", async () => {
+    // A read that failed on an existing file, or one a newer selection superseded.
+    const { dispatch } = setup(
+      { project: tourProject, file: "/projects/tour/index.krs", pending: diffScene },
+      async () => {},
+      false,
+    );
+    await act(async () => {});
     expect(dispatch).not.toHaveBeenCalled();
   });
 

@@ -25,7 +25,7 @@ interface FirstRunExperienceProps {
   currentProject: Project | null;
   currentFilePath: string | null;
   navigateToProject: (project: Project) => void;
-  selectFile: (path: string) => Promise<void>;
+  selectFile: (path: string) => Promise<boolean>;
   openBundledExample: (example: ExampleProject) => Promise<Project | null>;
   dispatch: Dispatch<AppAction>;
 }

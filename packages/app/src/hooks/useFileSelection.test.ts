@@ -39,6 +39,32 @@ describe("useFileSelection", () => {
       });
     });
 
+    it("reports whether the selection landed: a superseded read resolves to false", async () => {
+      let releaseSlow: (content: string) => void = () => {};
+      const fs = makeFs({
+        readFile: vi.fn<(path: string) => Promise<string>>((path) =>
+          path === "/slow.krs"
+            ? new Promise<string>((resolve) => {
+                releaseSlow = resolve;
+              })
+            : Promise.resolve("fast"),
+        ),
+      });
+      const dispatch = vi.fn<() => void>();
+      const { result } = renderHook(() => useFileSelection(fs, dispatch));
+
+      let slow: Promise<boolean> = Promise.resolve(true);
+      let fast = false;
+      await act(async () => {
+        slow = result.current.selectFile("/slow.krs");
+        fast = await result.current.selectFile("/fast.krs");
+        releaseSlow("slow");
+      });
+
+      expect(fast).toBe(true);
+      expect(await slow).toBe(false);
+    });
+
     it("falls back to empty content when the file does not exist", async () => {
       const fs = makeFs({
         readFile: vi.fn<(path: string) => Promise<string>>(async () => {

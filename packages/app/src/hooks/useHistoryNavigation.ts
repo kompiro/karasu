@@ -259,7 +259,7 @@ export function useHistoryNavigation({
    * (used by modes without per-file navigation, e.g. ServeMode/MemoryMode).
    * Issue #811.
    */
-  onFileChange?: (path: string) => Promise<void> | void;
+  onFileChange?: (path: string) => Promise<unknown> | void;
 }): {
   navigateActiveView: (view: ActiveView) => void;
   navigateViewPath: (path: string[]) => void;

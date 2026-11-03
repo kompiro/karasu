@@ -20,7 +20,7 @@ interface UseGuidedSceneArgs {
   pending: PendingScene | null;
   currentProject: Project | null;
   currentFilePath: string | null;
-  selectFile: (path: string) => Promise<void>;
+  selectFile: (path: string) => Promise<boolean>;
   dispatch: Dispatch<AppAction>;
 }
 
@@ -72,8 +72,10 @@ export function useGuidedScene({
 
     const { root, scene, key } = pending;
     void (async () => {
-      await selectFile(`${root}/${scene.file}`);
-      if (currentKey.current !== key || currentRoot.current !== root) return;
+      // A read that failed or was superseded leaves another file open; a
+      // diff or view meant for the scene's file must not land on it.
+      const landed = await selectFile(`${root}/${scene.file}`);
+      if (!landed || currentKey.current !== key || currentRoot.current !== root) return;
       dispatch({
         type: "SET_COMPARE_SOURCE",
         source: scene.compareWith ? { kind: "file", path: `${root}/${scene.compareWith}` } : null,

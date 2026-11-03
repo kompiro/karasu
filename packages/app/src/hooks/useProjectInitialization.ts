@@ -24,7 +24,7 @@ interface UseProjectInitializationArgs {
   dispatch: Dispatch<AppAction>;
   currentProject: Project | null;
   /** `selectFile` from `useFileSelection` — invoked with the project's `index.krs` on switch. */
-  selectFile: (path: string) => Promise<void>;
+  selectFile: (path: string) => Promise<unknown>;
 }
 
 const PASTE_COMPARE_FILE = ".karasu-paste-compare.krs";
