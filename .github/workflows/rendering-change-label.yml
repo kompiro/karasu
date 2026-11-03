@@ -17,8 +17,9 @@ name: Rendering change label
 # `workflow_run` matches on the workflow's name, which a PR could copy, so the
 # job also requires the run to come from render-equivalence.yml on a
 # `pull_request` event. The skip stub is named `Render equivalence (skip)` and
-# does not start this. A PR that stops touching the compared paths keeps the
-# label its last run gave it.
+# does not start this. The `paths` filter reads the PR's whole diff, so every
+# push re-runs the comparison while the PR changes a compared path; a PR that
+# reverts all of those changes keeps the label its last run gave it.
 
 on:
   workflow_run:
