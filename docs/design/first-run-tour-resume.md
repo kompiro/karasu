@@ -64,7 +64,8 @@ Phase 1 のツアーは `FirstRunExperience` の React state（`guide`）にし�
 
 - **記録**: `localStorage["karasu-first-run-tour"] = { v: 1, tour: "service-split", projectId, step }`。
   `tour` は今後のツアー（#3600 の Understand / Evolve、#3601 の 2 つ目のサンプル）と区別するため。
-  `projectId` はツアーのプロジェクトの記録（#3597）と同じ値になる。
+  `projectId` はツアーのプロジェクトの記録（#3597）と同じ値になるが、2 つは寿命が違うので分けて持つ。ツアーのプロジェクトの記録は
+  ツアーを終えても残り（Restart Guided Tour… の戻り先）、この記録はツアーを終えたら消える（再開するかどうか）。
 - **書く・消す**: effect ではなく操作の場所で書く。ツアーを始めたとき（Welcome の Design a service split、Restart Guided Tour…）と
   Next / Back で書き、Skip、Continue to editor、ほかのガイドを始めたとき（Track architecture evolution）に消す。
   `guide` の変化を見る effect で書くと、復元しなかった起動で `guide === null` を「終わった」と読んで消してしまう。
@@ -74,7 +75,9 @@ Phase 1 のツアーは `FirstRunExperience` の React state（`guide`）にし�
   かつ `?example` / `?krs` / `#s=` を持たないときだけ復元する。起動時のプロジェクトだけでは決めない（最後のプロジェクトがツアーのものだと、
   外から来たリンクでもツアーのプロジェクトで起動する）。
   - パスが `/projects/<記録の projectId>`：再読み込み、閉じたタブを開き直す。hash（アプリ自身の `#krs-…`）は問わない。
-  - パスにプロジェクトが無く、query も hash も無い：アドレス欄からアプリを開き直し、最後のプロジェクト（ツアーのもの）で起動する。
+  - パスにプロジェクトが無く、query も hash も無く、**起動するプロジェクト（`karasu-last-project-id` から選ばれるもの）が記録の
+    `projectId` である**：アドレス欄からアプリを開き直した。最後のプロジェクトが別なら復元しない（ツアーのファイルを別のプロジェクトに
+    読み込ませない）。
   - それ以外（`?example=`、他人の `#krs-…`、共有リンクから project mode に落ちた場合、別のプロジェクトのパス）：復元しない。記録は消さない。
     あとでツアーのプロジェクトへ切り替えても、復元しなかった起動ではパネルは出ない（ツアーに戻りたければ Restart Guided Tour…）。
   - `hasDeepLink` は使わない（アプリ自身の `#krs-…` を外のリンクと読んでしまう）。
@@ -85,7 +88,11 @@ Phase 1 のツアーは `FirstRunExperience` の React state（`guide`）にし�
   （`useProjectNavigation` の初期化の `replaceState`、AppShell の mount より前）で、**hash をステップのシーンのものに書き換える**
   （`buildHash(scene.view, [], { file: root/scene.file })`）。すると hash の復元はシーンのファイル・ビューをそのまま当て、
   シーンの適用はファイル・ビューを変えないので `pushState` が起きない。シーンが足すのは URL に無い差分と reveal だけになる。
-  hash の解決とシーンの適用の順序に依らず同じ結果になり、**ブラウザの履歴は増えない**。Step 1 で入口の hash がドリルを持っていても、
+  ただし Step 3〜5 の hash は `index.krs` 以外のファイルを指し、今の `useHistoryNavigation` は hash の復元を終えたと判定するときに
+  ファイルを待たない（プロジェクトの切り替えで自動選択される `index.krs` が先に着くと、復元を終えたあとで目的のファイルが着き、
+  `pushState` される）。これは `?file=` が `index.krs` 以外を指す deep link すべてに今もある競合なので、**hash の復元はファイルも待つ**
+  ように直す：effect ① で hash の `filePath` を復元の目標に入れ、effect ③ は `currentFilePath` がそれと一致するまで復元を終えない。
+  これで hash の解決とシーンの適用の順序に依らず同じ結果になり、**ブラウザの履歴は増えない**。Step 1 で入口の hash がドリルを持っていても、
   書き換えでドリルは外れる（再開した Step 1 に前回のドリルで ✓ が出ない。#3599）。
 - **範囲外の値**: `v` / `tour` が違う、`step` がツアーの長さの外、`projectId` のプロジェクトが無い、JSON が壊れている、は記録ごと捨てる。
 - **再開したステップの表示**: ✓（#3599）は持ち越さない。ステップの中で起きたことの記録は再読み込みで消える。
@@ -96,20 +103,29 @@ Phase 1 のツアーは `FirstRunExperience` の React state（`guide`）にし�
 
 1. `packages/app/src/components/first-run/tour-progress.ts`：`readTourProgress(storage?)` / `writeTourProgress` / `clearTourProgress`。
    型ガードで形を確かめ、外れたら `null`（TPL-1530）。`tour-project.ts` と同じく storage を差し替えられ、失敗は握りつぶす。
-2. `ProjectModeApp`：`initialLocation` に `pathname` を足す。復元するかを入口の URL と記録から決め、復元するときは
-   `useProjectNavigation` の初期化で hash をステップのシーンのものに書き換える。
-3. `FirstRunExperience`：`startTour`・`moveStep`・`endTour`・Evolve の開始で書く・消す。初期値の復元は純粋な `useState` の初期化関数で。
-4. テスト：
+2. 判定を 1 か所にする：純粋な `decideTourResume({ entry, record, projects, lastProjectId })` が「復元するか、するならどのプロジェクトの
+   どのステップか」を返す。`ProjectModeApp` が 1 回だけ呼び、結果を 2 か所に渡す：`useProjectNavigation` には起動先が決まったときに
+   hash を差し替える `initialHashFor(target)` として（hooks 層に `tour-steps` を持ち込まない）、`FirstRunExperience` には prop として
+   （初期化関数がそれを読む）。別々に storage と URL を読むと、hash だけ書き換わって復元しない、またはその逆が起きる。
+   捨てるべき記録の削除は `FirstRunExperience` の mount 時の effect が行う。
+3. `useHistoryNavigation`：hash の復元の目標に `filePath` を入れ、`currentFilePath` が一致するまで復元を終えない（上の順序の規則）。
+4. `FirstRunExperience`：`startTour`・`moveStep`・`endTour`・Evolve の開始で書く・消す。初期値の復元は純粋な `useState` の初期化関数で、
+   `decideTourResume` の結果を読む。
+5. テスト：
    - unit（jsdom）：読み書き、形・版・範囲の外れ、壊れた JSON、例外を投げる storage
+   - unit（`decideTourResume`）：パスが一致、パス無しで最後のプロジェクトが一致、パス無しで最後のプロジェクトが別、`?example`、`#s=`、
+     パス無しの `#krs-…`、別のプロジェクトのパス、ローカルに無いプロジェクトのパス
+   - e2e（at-3284 に足す）：`?file=` が `index.krs` 以外を指す deep link で開いても `history.length` が増えない
    - e2e（opfs fixture は localStorage を毎回消すので他の spec に影響しない。TPL-976）：
-     - Step 3 で再読み込みすると 3 / 5 と差分が戻り、`history.length` がツアー無しで同じ再読み込みをしたときと同じ
+     - Step 3 で再読み込みすると 3 / 5 と差分が戻り、`history.length` が再読み込みの前と同じ
      - Step 1 でドリルしてから再読み込みすると、ドリルは外れて 1 / 5 に戻る
      - Skip のあと再読み込みしても出ない
      - ツアー中に別のプロジェクトへ切り替えて再読み込みすると出ない。ツアーのプロジェクトへ戻しても出ない
      - ギャラリーの example（`?example=`）で開くと出ず、そのあとツアーのプロジェクトへ切り替えても出ない
      - 最後のプロジェクトがツアーのものの状態で、他人の permalink（`/#krs-system-CommerceApp`）を開くと出ない
-5. AT：`docs/acceptance/first-run-experience.md` に再開の項目を足す（すべて自動）。
-6. ADR 昇格：実装の PR が通ったあと、ADR-3598 として昇格し、本 Design Doc を削除する。
+     - 最後のプロジェクトがツアーのものでない状態で、パス無しの `/` を開くと出ず、ツアーのファイルも読み込まれない
+6. AT：`docs/acceptance/first-run-experience.md` に再開の項目を足す（すべて自動）。
+7. ADR 昇格：実装の PR が通ったあと、ADR-3598 として昇格し、本 Design Doc を削除する。
 
 ### 影響範囲・マイグレーション
 

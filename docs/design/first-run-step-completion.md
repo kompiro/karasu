@@ -75,10 +75,12 @@ Share ダイアログは各コンポーネントの state にある。`TourStep.
   プロジェクトを知らないので、**数える範囲は読む側が決める**：ツアーは、ツアーのプロジェクトを開いていて、着いたシーンの key が
   いまのステップの key と一致するあいだだけ判定する。プロジェクトを離れると着いた key を忘れ（`useGuidedScene` の `appliedKey` と同じ）、
   戻ってシーンが着き直すと `sinceSeq` をその時点の seq に進める。別のプロジェクトでの Share で ✓ は出ない。
+  すでに出ていた ✓ は key ごとに覚えているので、別のプロジェクトへ行って戻っても残る（戻っても key は変わらない）。
 - **一度満たしたら、そのシーンのあいだは ✓ を残す**（ドリルから戻っても消さない。点いたり消えたりしない。TPL-1032 の逆向きの陳腐化は、key ごとに持つことで避ける）。
 - **書く場所**：チーム依存は、実際にチーム依存を描いているか（`PreviewColumn` の表示条件と同じ：表示モードが dependencies で、
   チーム依存のビューがある）を値として出す。`setMode` の updater の中では書かない（StrictMode で 2 回走る）。AppShell が unmount したら値を戻す。
-  Share はダイアログが開いたとき、SVG はツールバーの Export SVG（`onExport`）だけを数える（drill-down・全図・draw.io・各ビューの書き出しは数えない）。
+  Share はダイアログが開いたとき、SVG はツールバーの Export SVG（`onExport`）のクリックを、そのとき書き出すもの（全レイヤーの表示中なら
+  全レイヤーの SVG）に依らず数える。ドロップダウンの drill-down（`onExportDrillDown`）・全図（`onExportAllDiagrams`）・draw.io は数えない。
 - **パネルの表示**：ステップ本文の下に ✓ と固定の短い文（en / ja の新しい phrase）を、既存の `aria-live` の領域の中に出す。
   Next は `aria-describedby` でその文を指す。Next の見た目は変えない（e2e はその文と `aria-describedby` を見る）。
 - **再開（#3598）との関係**：再読み込みで再開したステップは ✓ を持ち越さない。再開はステップのシーンの hash で起動するので、
@@ -89,11 +91,13 @@ Share ダイアログは各コンポーネントの state にある。`TourStep.
 
 1. `packages/app/src/state/app-signals.ts`：いまの状態（`teamDependenciesShown`）と seq つきの出来事を持つ module store。
    `preview-reveal.ts` と同じく `useSyncExternalStore`。unit テスト用に reset を持つ。
-2. 書く場所：`useOrgDisplayMode`（値を出す）、`useShareDialog` の open、`PreviewToolbar` の Export SVG の handler。
+2. 書く場所：`showTeamDependencies` は `PreviewColumn` が自分の表示条件（`activeView === "org"`、表示モードが dependencies、
+   チーム依存のビューがある）から effect で書き、cleanup で戻す（AppShell の unmount もこれで覆う）。`useShareDialog` の open、
+   `PreviewToolbar` の Export SVG の handler。
 3. `tour-steps.ts` に `completion`、評価関数、`TourPanel` に ✓ と文、`FirstRunExperience` でシーンの key と出来事の seq の起点を持つ。
    `useGuidedScene` は当て終えた key を返す。
 4. テスト：
-   - unit：評価関数（各 kind、着く前は判定しない、key が変わると数え直す、満たしたあと条件が外れても ✓ が残る、別プロジェクトの出来事を数えない）
+   - unit：評価関数（各 kind、着く前は判定しない、key が変わると数え直す、満たしたあと条件が外れても ✓ が残る、別プロジェクトの出来事を数えない、別のプロジェクトへ行って戻っても出ていた ✓ が残る）
    - サンプルの縛り：`drilled.node` が en / ja のサンプルの `buildNodePathIndex` にある
    - e2e：Step 1 で実際にドリルすると ✓、Step 2 でチーム依存を開くと ✓（すでに開いていても ✓）、Step 5 で Share を開くと ✓、Step 3・4 には出ない、Back で戻ったとき前のステップの ✓ が出ない、別のプロジェクトで Share を開いて戻っても Step 5 に ✓ が出ない
 5. PRD #3573 の Revisions に「§8 の検知は、示すまでにして自動では進めない」を 1 行足す。
