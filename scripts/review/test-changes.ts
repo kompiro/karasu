@@ -447,7 +447,7 @@ const isCommentOnly = (side: Side, i: number): boolean =>
  * any change but comment lines and blank lines counts, as does a comment opened
  * around lines the PR leaves as they were. An unknown side counts too.
  */
-export function changesRunner(f: ChangedFile): boolean {
+function changesRunner(f: ChangedFile): boolean {
   if (f.status === "deleted") return true;
   const was = readSide(f.before);
   const now = readSide(f.after);
