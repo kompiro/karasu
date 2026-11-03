@@ -6,7 +6,7 @@
   - 引き金 Issue: [#3036](https://github.com/kompiro/karasu/issues/3036)（行内の 2 枚のカードの間隔を、そこを通るエッジで決める）
   - 関連 ADR: [ADR-2598](../adr/2598-edge-routing-channel-capacity.md)（行間チャネルの容量と 2 パス配置）、[ADR-2611](../adr/2611-layer-spanning-edge-columns.md)（行をまたぐ列の予約）、[ADR-2048](../adr/2048-edge-label-collision-avoidance.md)（ラベル配置パス。「ノードを離してラベル空間を作る」を却下）、[ADR-3022](../adr/3022-edge-label-disclosure.md)（`label-display: auto` の保留）、[ADR-2593](../adr/2593-canvas-space-objective.md)（floor-first）、[ADR-3027](../adr/3027-mutual-edge-pair-merge.md)（相互ペアを 1 本で描く）
   - 関連 TPL: [TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md)、[TPL-2611](../test-perspectives/TPL-2611-feedback-key-survives-the-next-pass.md)、[TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)、[TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md)、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)、[TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md)、[TPL-3022](../test-perspectives/TPL-3022-withheld-content-stays-reachable.md)、[TPL-3036](../test-perspectives/TPL-3036-reserved-room-must-not-attract-new-traffic.md)（本 PR で起こす proactive TPL）
-  - コード: `packages/core/src/renderer/layout.ts`、`layout-reservations.ts`、`layer-layout-logics.ts`、`label-placement.ts`、`edge-layer.ts`、`svg-renderer.ts`、`layout-types.ts`
+  - コード: `packages/core/src/renderer/layout.ts`、`layout-reservations.ts`、`layer-layout-logics.ts`、`label-placement.ts`、`edge-layer.ts`、`svg-renderer.ts`、`layout-types.ts`、`mutual-pair.ts`
 
 ## 背景・課題
 
@@ -32,18 +32,20 @@ Issue の受け入れ条件は 3 つある。
 
 | 観点 | 現状 |
 | --- | --- |
-| 行間のチャネル | `channelReservations`（ADR-2598）が、1 回目の配線で数えたレーン数 × `LANE_PITCH` が既定の間隔を超えた行の直前だけ広げ、`layoutInner` をもう 1 回だけ走らせる |
+| 行間のチャネル | `channelReservations`（ADR-2598）が、1 回目の配線で数えたレーン数 × `LANE_PITCH` が既定の間隔を超えた行の直前だけ広げ、`layoutInner` をもう 1 回だけ走らせる。幅予算は探索が選んだものを固定し、行の構成は 1 回目のものを使う |
+| frame で区切られたチャネル | drill-down の frame の中では、最初の行の上（序数 0）と最後の行の下（序数 `rows.length`）のチャネルも予約する（#3132） |
 | 行内の隙間 | `columnReservations`（ADR-2611）が、外側のガターへ出た 2 行以上離れたエッジを target ごとに 1 本と数え、空きレーンが足りない行に `TRUNK_LANE_GAP`（24 px）の列を 1 本だけ開く。適用は `extraGapBeforeCard`（カード id で鍵を持つ） |
 | `NODE_GAP` | 行内のカード間と、同じ層の折り返し（sub-row）の間の両方に使う定数。一様に広げると高さも伸びる |
-| ラベルの配置 | `svg-renderer` の `edge-layer.ts` が、配置の**後**に `buildLabelInputs` → `resolveLabelPlacements` を走らせる（ADR-2048 / ADR-3022）。レイアウトはエッジのラベルの style（`label-display`・`label-max-chars`・`font-size`・位置）を受け取らない |
+| 相互ペア | `applyMutualPairs`（#3027）は、配置が確定した後（2 パス目を走らせるならその結果）にだけ走り、ペアを 1 本の線と 2 つの半分（`pairHalf`、ラベルごとの区間と矢印）に分ける |
+| ラベルの配置 | `svg-renderer` の `edge-layer.ts` が、配置の**後**に `buildLabelInputs` → `frameBordersOf` → `resolveLabelPlacements` を走らせる（ADR-2048 / ADR-3022 / #3155）。frame の境界は `ResolvedStyles` と `DiagramPalette` から決まり、レイアウトはどちらも受け取らない |
 | 先例 | `LayoutOptions.edgeLineKey`（#3027）は、renderer が style から作った関数をレイアウトへ渡す。draw.io export と素の `layout()` は渡さず、その機能は働かない |
 
 ### 密な fixture の今の数字
 
 Issue の表は `feat/3030-edge-label-canvas-tier` 上で測ったもので、その後 #3027（相互ペアを 1 本で描く）、
-#3309 などが入って図が変わった。今の `main` では canvas が 1480 × 918、`auto` で置けるラベルは
-**17 / 41** である。行内の隙間はどれも 60 px で、そこを縦に通る線は 1〜2 本しかない（24 px のレーンなら
-2 本入る）。Issue の「5〜14 本」は残っていない。
+#3309 などが入って図が変わった。今の `main` では `auto` で置けるラベルは **17 / 41** である。行内の隙間は
+どれも 60 px で、そこを縦に通る線は 1〜2 本しかない（24 px のレーンなら 2 本入る）。Issue の「5〜14 本」は
+残っていない。
 
 置けなかった 24 本のラベルの既定のアンカー位置:
 
@@ -58,18 +60,29 @@ Issue の表は `feat/3030-edge-label-canvas-tier` 上で測ったもので、�
 - **floor-first**（ADR-2593 / TPL-2593）: 既定の配置でラベルが置けている図は 1 バイトも変えない
 - **2 パスまで**（ADR-2598）: 予約は 1 回目の結果から測り、配置をもう 1 回だけ走らせる。3 回目は置かない
 - **鍵は構造キー**（TPL-2611）: 予約の適用先は行序数・カード id で持ち、座標で持たない
+- **測る判定と描く判定は同じ関数**（TPL-219）: 置けなかったラベルを数えるのは、renderer が描くときに使う
+  ラベル配置パスそのものでなければならない。別に書いた近似で数えると、測ったものと描かれるものがずれる
 - **ADR-2048 の却下との線引き**: ADR-2048 は「レイアウトでノードを離してラベル空間を作る」を「影響範囲が
   全レイアウト・全 snapshot に及び、cosmetic 修正には過大」として却下した。本件は、置けなかったラベルが
   ある図の、そのラベルがあるチャネルだけを広げる。置けている図は変わらない（下の計測で `examples/`
   85 本がバイト同一）
 - **大きい canvas は縮小表示される**（TPL-1223）: 面積の増加は文字が小さくなることと引き換えになる
-- **範囲外**: deploy view と複数 system の root view は ADR-2598 の時点で予約しない。本件もそれに従う
+- **範囲外**: 複数 system の root view（ADR-2598 の決定 4）と deploy view（ADR-2598 の「残る限界」）は
+  ADR-2598 の時点で予約しない。本件もそれに従う
 
 ## 検討した選択肢
 
-計測はすべて `main` に試作のパッチを当てて行った。コーパスは密な fixture（`UmamiApp`）、dify
-（`/workspaces/dify/index.krs`、405 view・ラベル 296 本）、WordPress（1,031 view・ラベル 258 本）。
-試作のスクリプトとパッチは `reports/3036/`（gitignore）にある。
+コーパスは密な fixture（`UmamiApp`）、dify（405 view・ラベル 296 本）、WordPress（1,031 view・ラベル
+258 本）。dify と WordPress は repo の外にある reverse 済みのモデルで、ADR-2598 / ADR-2611 の計測と同じもの。
+試作のパッチとスクリプトは `reports/3036/`（gitignore）にある。
+
+試作は 2 つある。
+
+- **試作 1**（`prototype.patch`）: 案2・案3 の方向を比べるための粗い版。全エッジに既定の style（`auto`・
+  11 px・48 文字）を当て、frame の境界を渡さず、相互ペアを分けずに測った。案3 については ADR-2598 の
+  レーンの予約の上にラベルの分を**足して**いて、レーンを二重に数えていた
+- **試作 2**（`prototype-v2.patch`）: 下の「決定の中身」の形。renderer のラベル配置パスを callback で
+  受け取り、相互ペアを分けた後で測り、レーンとラベルを 1 つの需要に合算する。案3 の数字はこちらで測った
 
 ### 案1: 行内の隙間を、通る線の本数で開く（Issue の提案そのまま）
 
@@ -88,12 +101,12 @@ Issue の表は `feat/3030-edge-label-canvas-tier` 上で測ったもので、�
 ### 案2: 行内の隙間を、置けなかったラベルの幅で開く
 
 1 回目の配置にラベル配置パスを走らせ、置けなかったラベルのうち既定のアンカーが行内の隙間にあるものの
-幅（+ 余白 8 px × 2）まで、その隙間を開く。
+幅（+ 余白 8 px × 2）まで、その隙間を開く。試作 1 で測った。
 
 | | 密な fixture | dify | WordPress |
 | --- | --- | --- | --- |
-| `main` | 17 / 41（1480 × 918） | 206 / 296 | 156 / 258 |
-| 案2 | 23 / 41（1828 × 918、面積 +24%） | **204** / 296 | **120** / 258 |
+| `main` | 17 / 41 | 206 / 296 | 156 / 258 |
+| 案2 | 23 / 41（幅 +24%） | **204** / 296 | **120** / 258 |
 
 **メリット**
 
@@ -102,50 +115,55 @@ Issue の表は `feat/3030-edge-label-canvas-tier` 上で測ったもので、�
 **デメリット**
 
 - **実モデルで置けるラベルが減る。** WordPress の `WordPressApp` で 110 → 76、`WpDB` で 32 → 30、
-  dify の `DifyDB` で 206 → 204。増えた view は 1 つも無い。TPL-2593 の単調性に反する
+  dify の `DifyDB` で 206 → 204。増えた view は 1 つも無い。TPL-2593 の「既定候補が先頭で、厳密改善のみが
+  勝つ」に反する
 - 減る仕組み: 隙間を広げると、外側のガターを回っていたエッジが内部の回廊（ADR-2611 の到達性）として
   その隙間に入ってくる。`WordPressApp` では、ガターの水平の run に乗るラベルが 31 → 12 本に減り、行内の
   隙間に乗るラベルが 12 → 25 本に増え、そのうち置けないものが 5 → 17 本になった。開けた空間を、測った
-  需要とは別の経路が使う。行内の隙間は配線が配分する資源なので、ラベルのための予約にならない
+  需要とは別の経路が使う。行内の隙間は配線が回廊として選ぶ資源なので、ラベルのための予約にならない
   （[TPL-3036](../test-perspectives/TPL-3036-reserved-room-must-not-attract-new-traffic.md)）
+- この仕組みは試作 1 の近似（style の固定、frame の境界なし）に依らない。広げた隙間に経路が入ってくるのは
+  回廊の選択の性質である
 
-### 案3: 行間のチャネルを、置けなかったラベルの行数で開く
+### 案3: 行間のチャネルを、置けなかったラベルの高さで開く
 
-1 回目の配置にラベル配置パスを走らせ、置けなかったラベルのうち既定のアンカーが行間のチャネルにある
-ものを集める。その x 範囲（ラベルの箱の幅）を区間分割して、重なり合うラベルの最大数 k を数え、
-チャネルの需要を `レーン数 × LANE_PITCH + k × ラベル 1 行の高さ` とする。既定の間隔（ADR-2598 の
-予約を含む）を超えた分だけ、その行の直前を広げる。
+1 回目の配置で、renderer と同じラベル配置パスを走らせ、置けなかったラベルのうち既定のアンカーが行間の
+チャネル（frame で区切られた最初と最後のチャネルを含む）にあるものを集める。どの x でも、そこに重なる
+ラベルの高さの合計の最大値を、そのチャネルのラベルの需要とする。ADR-2598 のレーンの需要と合算し、
+既定の間隔を超えた分だけその行の直前を広げる。試作 2 で測った。
 
 | | 密な fixture | dify | WordPress |
 | --- | --- | --- | --- |
-| `main` | 17 / 41（1480 × 918） | 206 / 296 | 156 / 258 |
-| 案3 | **22** / 41（1480 × 1058、面積 +15%） | **214** / 296 | **190** / 258 |
+| `main` | 17 / 41（1520 × 958） | 206 / 296 | 156 / 258 |
+| 案3 | **21** / 41（1520 × 1064、面積 +11%） | **216** / 296 | **186** / 258 |
 
-view ごと:
+view ごと（変わった view はこれで全部）:
 
 | view | ラベル | 面積 |
 | --- | --- | --- |
-| `WordPressApp` | 110 → 139 / 200 | 7.70 → 11.10 Mpx（+44%） |
-| `WpDB` | 32 → 37 / 44 | 1.58 → 1.71 Mpx（+8%） |
-| `DifyDB` | 206 → 214 / 296 | 19.93 → 24.98 Mpx（+25%） |
+| `UmamiApp`（密な fixture） | 17 → 21 / 41 | +11% |
+| `DifyDB` | 206 → 216 / 296 | 19.93 → 21.41 Mpx（+7%） |
+| `WordPressApp` | 110 → 138 / 200 | 7.70 → 9.26 Mpx（+20%） |
+| `WpDB` | 32 → 34 / 44 | 1.58 → 1.65 Mpx（+4%） |
 
 **メリット**
 
-- **どの view でも置けるラベルが減らない。** 変わった view はすべて増えた
+- **計測したどの view でも置けるラベルが減らない。** 変わった 4 view はすべて増えた
 - `examples/` 85 本（全 view のバンドル）はバイト同一。置けないラベルがある view だけが変わる
-- チャネルは行の構造で決まり、広げても新しい経路を呼び込まない。ADR-2598 の予約と同じ鍵（行序数）・
-  同じ 2 パス目に乗る
+- ADR-2598 の予約と同じ鍵（行序数）・同じ 2 パス目に乗る
 
 **デメリット**
 
-- 面積が伸びる view がある。`WordPressApp` は +44%
-- 1 回目の配置でもラベル配置パスを走らせるので、ラベルのある view は遅くなる。`DifyDB` 196 → 254 ms、
-  `WordPressApp` 217 → 239 ms、密な fixture 10 → 16 ms（3〜5 回の中央値）
-- レイアウトがラベルの style を受け取る必要がある
+- 面積が伸びる view がある（最大 +20%）
+- 1 回目の配置でもラベル配置パスと相互ペアの分割を走らせるので、ラベルのある view は遅くなる。試作 2 で
+  `DifyDB` 181 → 258 ms、`WordPressApp` 163 → 202 ms、密な fixture 8 → 14 ms（5〜9 回の中央値）。
+  ラベルの少ない小さな図（`examples/en/ec-platform/01-system.krs`）は 1 ms で変わらない
+- チャネルを広げても新しい経路を呼び込まないことは、回廊の候補が増えないという構造と計測で示しており、
+  経路の選択が変わる余地は残る（下の「決定の中身」6 で 2 パス目を比べる）
 
 ### 案4: 間隔を一様に広げる
 
-`NODE_GAP` を定数のまま大きくする（Issue の表の形）。
+`NODE_GAP` を定数のまま大きくする（Issue の表の形）。試作 1 の計測（canvas は `layout()` の寸法）。
 
 | `NODE_GAP` | 密な fixture のラベル | canvas | 面積 |
 | --- | --- | --- | --- |
@@ -161,17 +179,17 @@ view ごと:
 
 ### 案2 + 案3
 
-密な fixture で 29 / 41（面積 +42%）と最も多いが、案2 の非単調性をそのまま持ち込む（WordPress 155 / 258 と
+試作 1 では密な fixture で 29 / 41 と最も多かったが、案2 の非単調性をそのまま持ち込む（WordPress 155 / 258 と
 `main` より少ない）。
 
 ## 比較
 
 | 観点 | 案1 | 案2 | 案3 | 案4 |
 | --- | --- | --- | --- | --- |
-| 密な fixture のラベル | 17（変化なし） | 23 | 22 | 25〜31 |
+| 密な fixture のラベル | 17（変化なし） | 23 | 21 | 25〜31 |
 | 実モデルで減る view | なし | 3 | **なし** | 未計測 |
 | `examples/` の差分 | なし | なし | **なし** | 全部 |
-| 面積 | なし | +24%（密） | +15%（密）、最大 +44%（1 view） | +34〜141% |
+| 面積 | なし | +24%（密） | +4〜20%（変わった view のみ） | +34〜141%（全部） |
 | パス数 | 2 まで | 2 まで | 2 まで | 1 |
 
 ## 現時点の方針
@@ -180,56 +198,73 @@ view ごと:
 
 受け入れ条件 1 への答え:
 
-- **行内の隙間の需要は、線についても ADR-2611 の列で足りている。** 今の `main` で行内の隙間を通る線は
+- **行内の隙間の需要は、線については ADR-2611 の列で足りている。** 今の `main` で行内の隙間を通る線は
   60 px に収まり、収まらない分（外側のガターへ出た長いエッジ）は ADR-2611 が数えて列を開いている。
   線の本数を需要に足しても何も開かない（案1）
 - **ラベル付きのエッジは、線より多くを求める。ただし求める先は行間のチャネルである。** 行内の隙間を
-  ラベルのために開くと、開けた空間に配線が入ってきてラベルは減る（案2）。チャネルは配線が配分しない
-  ので、開けた分がそのままラベルの余地になる（案3）
+  ラベルのために開くと、開けた空間を配線が回廊として使い、ラベルは減る（案2）。チャネルの高さを変えても、
+  縦に抜けられる隙間（回廊の候補）は増えない。変わるのはレーンの位置と経路の長さで、それによって経路の
+  選択が変わることは ADR-2598 のとおりありうる。計測では、開けた分がラベルの余地になり、どの view でも
+  ラベルは減らなかった（案3）。構造だけでは保証できないので、決定の中身 6 で 2 パス目を比べる
 
-受け入れ条件 2 は、行内の隙間ではなく行間のチャネルについて示す（密な fixture で 17 → 22、混んだ
-チャネルだけが開き、置けないラベルが無いチャネルは開かない）。受け入れ条件 3 は案3 で満たす。
+受け入れ条件 2 は、行内の隙間ではなく行間のチャネルについて示す（密な fixture で 17 → 21。置けないラベルが
+無いチャネルは開かない）。受け入れ条件 3 は案3 で満たす。
 
 ### 決定の中身
 
-1. **需要の入力。** 1 回目の配置（幅予算の探索が選んだもの）に、renderer と同じラベル配置パスを走らせる。
-   `buildLabelInputs` → `resolveLabelPlacements` を、renderer と同じ引数（frame の境界を含む。#3155）で
-   呼ぶ。同じ判定を 2 か所に書き分けない（TPL-219）。置けなかった（`deferred`）ラベルだけを数える
-2. **ラベルの style はコールバックで受け取る。** `LayoutOptions` に `edgeLabelStyle?: (edge) =>
-   ResolvedEdgeStyle` を足し、`svg-renderer` が `resolvedEdgeStyle(styles, edge)` を渡す（`edgeLineKey` と
-   同じ形）。渡さない呼び出し元（draw.io export、素の `layout()`）では予約しない
-3. **数え方。** 既定のアンカーが行間のチャネルの帯（上の行の下端と下の行の上端の間）にあるラベルを、
-   その x 範囲で区間分割し、重なりの最大数 k を数える。ラベル 1 行の高さは、そのラベルの箱の高さ
-   （`labelBox`）に余白を足したもの。需要は ADR-2598 のレーンと**合算**して 1 つの値にする
-   （`レーン数 × LANE_PITCH + Σ ラベル行の高さ`）。2 つの予約を別々に最大値で合わせると、どちらかが
-   相手の分を食う
-4. **閾値は既定の間隔。** 需要が今の間隔に収まるチャネルは広げない（floor-first）
-5. **鍵と適用は ADR-2598 のまま。** 行序数で持ち、同じ 2 パス目で適用する。`placementPasses` は 1 か 2
-6. **数えないもの。** `label-display: always` と `hover` のラベル（`always` は置けなくても描かれ、
-   `hover` は canvas に描かれない）、ghost / cyclic のエッジ、合成ラベル（`N domain edges` など。
-   保留されないので `deferred` にならない）
-7. **予約しない経路。** 複数 system の root view と deploy view（ADR-2598 の決定 4 と同じ）
+1. **測る関数は renderer のラベル配置パスそのもの。** `edge-layer.ts` の `buildLabelInputs` →
+   `frameBordersOf` → `resolveLabelPlacements` を 1 つの関数に切り出し、renderer の描画とレイアウトの測定の
+   両方がそれを呼ぶ（TPL-219）。レイアウトには `LayoutOptions` の callback として渡す
+   （`withheldLabels?: (result: LayoutResult) => …`。返すのは置けなかったラベルのアンカー・幅・
+   font size）。`svg-renderer` が `styles` と `palette` を閉じ込めて作る。`edgeLineKey` と同じ形で、
+   渡さない呼び出し元（draw.io export、素の `layout()`）では予約しない
+2. **相互ペアを分けてから測る。** renderer は `applyMutualPairs` が分けた後の edge にラベルを置く（半分ごとの
+   区間と矢印）。測定も分けた後の edge で行う。ADR-2598 / ADR-2611 / #3154 のレーン・列・側面の予約は、
+   今と同じく分ける前の 1 回目の結果から測る（分けた後の edge で数えると今の予約が変わる）。順序は
+   「予約を測る → 1 回目の相互ペアを分ける → ラベルを測る」とし、2 パス目を走らせないときは、分けた
+   1 回目の結果がそのまま最終の結果になる（今と同じ出力）
+3. **数え方。** 行序数 r のチャネルの帯は、r = 0 なら frame の天井から最初の行の上端まで、r = 行数 なら
+   最後の行の下端から frame の床まで、それ以外は行 r − 1 の下端から行 r の上端まで（#3132 と同じ範囲）。
+   既定のアンカーが帯の中にある置けなかったラベルについて、どの x でもそこに重なるラベルの高さ
+   （`labelBox` の高さ + 余白 2 px）の合計を取り、その最大値をラベルの需要とする（font size が違うラベルが
+   混ざっても足りる）
+4. **需要は 1 つに合算する。** チャネルの需要は `レーン数 × LANE_PITCH + ラベルの需要`。既定の間隔を
+   超えた分だけ広げる（floor-first）。ADR-2598 の予約とは別々に足さない（レーンを二重に数えないため）
+5. **鍵・幅予算・行の構成は ADR-2598 のまま。** 予約は行序数で持ち、2 パス目は 1 回目の探索が選んだ幅予算を
+   そのまま使い、探索をやり直さない。行の折り返しは予約の前の幅で決まる（ADR-2611 の決定 7）ので、2 パス目の
+   行の構成は 1 回目と同じである。`placementPasses` は 1 か 2
+6. **厳密改善のみが勝つ。** ラベルの余地だけが 2 パス目の理由のとき（レーン・列・側面の予約が無い）は、
+   2 パス目の結果でもう一度ラベルを測り、置けなかったラベルが 1 回目より**少ないときだけ** 2 パス目を採る。
+   そうでなければ 1 回目の結果を返す（TPL-2593 の 2 番目の条件）。ほかの予約と同時に走るときは 2 パス目を
+   捨てられないので、この比較はしない。そこでの「減らない」は計測で確かめる（試作 2 では、比較を入れても
+   入れなくても全 view で同じ結果だった。比較が 2 パス目を捨てた view は無い）
+7. **数えないもの。** `label-display: always` と `hover` のラベル（`always` は置けなくても描かれ、
+   `hover` は canvas に描かれない）、ghost / cyclic のエッジのラベル、合成ラベル（`N domain edges` など。
+   保留されないので置けなかったことにならない）
+8. **予約しない経路。** 複数 system の root view と deploy view（ADR-2598 と同じ）
 
 ### 実装の指針
 
-1. `layout-types.ts`: `LayoutOptions.edgeLabelStyle` を足す
-2. `layout-reservations.ts`: `channelReservations` に、置けなかったラベルの行数を需要として足す入力を
-   加える（ラベルの入力は `layout.ts` で作って渡し、`layout-reservations.ts` はラベル配置パスを知らない
-   形にするか、実装時に依存の向きを決める。`check:cycles` が通ること）
-3. `layout.ts`: 1 回目の結果に対してラベル配置パスを走らせ、置けなかったラベルを集める。予約が空なら
-   2 パス目を走らせない（今と同じ）
-4. `svg-renderer.ts`: `edgeLabelStyle` を渡す
-5. テスト:
-   - 密な fixture で、置けるラベルが 17 → 22 以上、`placementPasses` が 2、置けないラベルが無い
-     チャネルの間隔が変わらない
-   - `edgeLabelStyle` を渡さない `layout()` の出力が今と同じ
+1. `edge-layer.ts`: ラベル配置パスを関数に切り出し、`renderEdgeLayer` と callback の両方から呼ぶ
+2. `layout-types.ts`: `LayoutOptions.withheldLabels` を足す
+3. `layout-reservations.ts`: `channelReservations` を、レーンの需要と置けなかったラベルの需要を 1 つにして
+   返す形にする。ラベルの需要は、ラベル配置パスを知らない形（アンカー・幅・高さの配列）で受け取る
+4. `layout.ts`: 決定の中身 2・5・6 の順序で、予約の測定・相互ペアの分割・ラベルの測定・2 パス目と比較を
+   組む。試作 2 は 1 回目の edge を複製して分けたが、実装では予約を測った後に 1 回目の edge をそのまま分け、
+   2 パス目を走らせないときに分け直さないようにする
+5. `svg-renderer.ts`: `withheldLabels` を渡す
+6. テスト:
+   - 密な fixture で、置けるラベルが 17 → 21 以上、`placementPasses` が 2、置けないラベルが無いチャネルの
+     間隔が変わらない
+   - `withheldLabels` を渡さない `layout()` の出力が今と同じ
    - `examples/` の全 view がバイト同一（既存の snapshot と examples の柵）
-   - 置けないラベルがある view で、ラベルの数が減らない（TPL-2593。実モデルは repo に無いので、
-     密な fixture と合成 fixture で固定し、dify / WordPress の数字は PR に記録する）
-6. AT: `docs/acceptance/` に追加する。手動項目は preview で密な fixture を開き、混んだチャネルにラベルが
+   - 2 パス目が置けるラベルを増やさない入力で、1 回目の結果が返ること（決定の中身 6）
+   - font size が違うラベルが同じチャネルに重なる fixture で、合計の高さが開くこと
+   - dify / WordPress は repo に無いので、view ごとの増減を実装 PR に記録する（TPL-3036）
+7. AT: `docs/acceptance/` に追加する。手動項目は preview で密な fixture を開き、混んだチャネルにラベルが
    増えていることを目で確かめる 1 件
-7. changeset: `@karasu-tools/core` と `karasu` に minor（レイアウトの挙動が変わる）
-8. ADR 昇格: 実装の PR がマージされたら `docs/adr/3036-channel-label-room.md` に昇格し、本 Design Doc を
+8. changeset: `@karasu-tools/core` と `karasu` に minor（レイアウトの挙動が変わる）
+9. ADR 昇格: 実装の PR がマージされたら `docs/adr/3036-channel-label-room.md` に昇格し、本 Design Doc を
    削除する
 
 ### 影響範囲・マイグレーション
@@ -242,14 +277,13 @@ view ごと:
 
 ## 未解決の問い / 決めないこと
 
-- **1 view あたりの伸びに上限を付けるか。** チャネルごとのラベル行を 1 行までにすると、`WordPressApp` は
-  139 → 137 本・面積 +44% → +29%、`DifyDB` は 214 → 213 本・+25% → +22% になるが、密な fixture では 1 本も
-  増えない（17 のまま。チャネルの今の間隔に 1 行ぶんの余地が既にある）。**本 Design Doc は上限を付けない**
-  方針で出し、レビューで判断を仰ぐ。上限を付けるなら、密な fixture で効く値（3 行で 19 本）と実モデルの面積の
-  兼ね合いで決める
-- **1 回目のラベル配置の結果を renderer で使い回すか。** 予約が空の view では、1 回目の配置がそのまま最終の
-  配置なので、renderer が同じパスをもう一度走らせるのは重複である。使い回せば案3 の時間のコストの大半が
-  消えるが、`LayoutResult` にラベルの結果を持たせる形になる。性能の最適化として実装時に判断する
+- **1 回目のラベル配置の結果を renderer で使い回すか。** 2 パス目を走らせない view では、1 回目に測った
+  ラベル配置がそのまま最終の配置で、renderer が同じパスをもう一度走らせるのは重複である。使い回せば
+  時間のコストの多くが消えるが、`LayoutResult` にラベルの結果を持たせる形になる。性能の最適化として実装時に
+  判断する
+- **1 view あたりの伸びに上限を付けるか。** 試作 2 では最大 +20%（`WordPressApp`）。本 Design Doc は上限を
+  付けない。上限を付けると密な fixture のような、1 つのチャネルに複数行のラベルが要る図で効かなくなる
+  （試作 1 では、チャネルあたり 1 行に制限すると密な fixture は 1 本も増えなかった）
 - **行内の隙間を開く別の方法。** 案2 の失敗は、開けた空間に配線が入ってくることだった。配線が使えない
   余地（ラベル専用の帯）として開く方法はありうるが、配線側に「使ってはいけない帯」を持たせる変更になり、
   本件の範囲を超える。必要になったら別の Issue で扱う
