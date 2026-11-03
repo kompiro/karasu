@@ -56,6 +56,7 @@ import {
 } from "./layout-measure.js";
 import { nodePathRefId } from "../parser/node-path.js";
 import { applyMutualPairs } from "./mutual-pair.js";
+import { chooseLabelRoom } from "./label-room.js";
 import type { LayoutNode, ContainerRect, LayoutResult, LayoutOptions } from "./layout-types.js";
 
 export type { LayoutNode, LayoutEdge, LayoutResult, DisplayMode } from "./layout-types.js";
@@ -115,22 +116,32 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // out to a gutter; where a row carries more such columns than the gaps
   // between its cards can hold at `TRUNK_LANE_GAP`, the missing width is
   // opened inside that row. Joined to the channel reservation above so both
-  // are applied by **one** re-placement: `placementPasses` stays 1 or 2, the
-  // bound ADR-2598 set.
+  // are applied by **one** re-placement.
   const columns = columnReservations(found.result.result, found.result.rows);
   const sides = gutterReservations(found.result.result, found.result.enclosure);
   const reserved = reservations.size > 0 || columns.size > 0 || sides !== undefined;
-  const run = reserved
-    ? layoutInner(viewSlice, options, found.budget, reservations, columns, sides)
-    : found.result;
-  const result = run.result;
+  // Label room (#3036): candidates that also open room for the labels the
+  // renderer could not seat, kept only where they seat strictly more of them.
+  const chosen = chooseLabelRoom({
+    first: found.result,
+    structural: reserved
+      ? layoutInner(viewSlice, options, found.budget, reservations, columns, sides)
+      : undefined,
+    reservations,
+    columns,
+    options,
+    place: (rows, cols) => layoutInner(viewSlice, options, found.budget, rows, cols, sides),
+  });
+  const { result } = chosen.run;
   // Crossing marks decorate the routed edges and change neither the canvas
   // nor the reservation, so only the surviving placement pays for them (#2761
   // once found them computed five times for one drawing). Mutual pairs become
   // one line here too (#3027): their split has to clear the final hops.
-  if (run.crossingMarksPending) result.crossingMarks = applyMutualPairs(result.edges, options);
+  if (chosen.run.crossingMarksPending)
+    result.crossingMarks = applyMutualPairs(result.edges, options);
   result.widthBudget = found.budget;
-  result.placementPasses = reserved ? 2 : 1;
+  result.placementPasses = chosen.passes;
+  if (chosen.labelRoom) result.labelRoom = chosen.labelRoom;
   result.shapeInsetsApplied = !!options.shapeForNode && options.displayMode !== "icon";
   return result;
 }
