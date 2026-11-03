@@ -53,12 +53,12 @@ domain id の error 級一意性とは異なる）。bare id では foreign enti
 ## チェックリスト
 
 - outgoing `D1 の entity -> D2.Foreign` → Foreign が `ghostEntities`（キー `D2.Foreign`）、
-  `childNodes` に無い、edge が `ghostEntityEdges` に正規化されて入る。
-- incoming `D2.x -> D1.local` → x が ghost、edge が正規化される。
-- 同一 foreign を両方向で参照 → ghost は 1 つに dedup、edge は両方残る。
-- bare の cross-domain 参照 → ドロップ（ghost 化しない）。
-- 限定子付きでも resource / 未定義ターゲット → ドロップ。
-- 限定子付きの自ドメイン参照（`Order -> ThisDomain.LocalEntity`）→ intra として bare に正規化。
+  `childNodes` に無い、edge が `ghostEntityEdges` に正規化されて入る。 [guard: `packages/core/src/view/view-extract.test.ts`]
+- incoming `D2.x -> D1.local` → x が ghost、edge が正規化される。 [guard: `packages/core/src/view/view-extract.test.ts`]
+- 同一 foreign を両方向で参照 → ghost は 1 つに dedup、edge は両方残る。 [guard: `packages/core/src/view/view-extract.test.ts`]
+- bare の cross-domain 参照 → ドロップ（ghost 化しない）。 [guard: `packages/core/src/view/view-extract.test.ts`]
+- 限定子付きでも resource / 未定義ターゲット → ドロップ。 [guard: `packages/core/src/view/view-extract.test.ts`]
+- 限定子付きの自ドメイン参照（`Order -> ThisDomain.LocalEntity`）→ intra として bare に正規化。 [guard: `packages/core/src/view/view-extract.test.ts`]
 
 ## 関連テスト
 

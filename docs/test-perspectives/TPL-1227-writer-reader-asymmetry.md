@@ -63,11 +63,11 @@ karasu の edge モデルの根幹は **書き手と読み手の非対称性** �
 
 新しい relation / edge / cross-reference 機能を提案・実装するとき、以下を確認する:
 
-- [ ] writer は **意図を表現する自然な粒度** だけでこの relation を書けるか（最小の入力で意味が伝わるか）
-- [ ] reader 側に **drill-down / aggregation / collapse / inheritance** のいずれかの自動的な progressive disclosure 経路があるか（そのまま手書きの粒度で表示する以外の選択肢があるか）
-- [ ] writer→reader の集約 / 派生は **karasu が自動で行う** か。reader 側に手作業のマッピングを要求していないか
+- [ ] writer は **意図を表現する自然な粒度** だけでこの relation を書けるか（最小の入力で意味が伝わるか） [judgment]
+- [ ] reader 側に **drill-down / aggregation / collapse / inheritance** のいずれかの自動的な progressive disclosure 経路があるか（そのまま手書きの粒度で表示する以外の選択肢があるか） [judgment]
+- [ ] writer→reader の集約 / 派生は **karasu が自動で行う** か。reader 側に手作業のマッピングを要求していないか [judgment]
 - [ ] writer が選んだ粒度の semantic（`kind` / 親の annotation など）が **すべての reader view で保存** されているか（→ 実装側は TPL-510 が担保）
-- [ ] 既存 relation の表（domain edge / realizes / owns / inherited annotation）の **隣に置いたときに違和感のない形** になっているか。違和感があるなら、設計が非対称性から外れているサイン
+- [ ] 既存 relation の表（domain edge / realizes / owns / inherited annotation）の **隣に置いたときに違和感のない形** になっているか。違和感があるなら、設計が非対称性から外れているサイン [judgment]
 
 ## 既知の対処パターン
 

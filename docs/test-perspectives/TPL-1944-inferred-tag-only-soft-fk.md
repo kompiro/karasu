@@ -55,18 +55,18 @@ scope:
 
 ## チェックリスト
 
-- Explicit FK（`REFERENCES`）由来の関連 → `A -> B` に `[inferred]` が **付かない**。
-- Soft FK（列名規約・`REFERENCES` 無し）由来の関連 → `A -> B [inferred]`。
-- 同じ target に Explicit と Soft の両方が寄与 → 無タグ（Explicit が勝つ）。
-- 全列 FK ジャンクションの 2 本の Explicit FK → どちらの関連も無タグ。
-- 集約内の child→root FK（内部リンク）→ 関連として出力しない（自己参照も同様）。
+- Explicit FK（`REFERENCES`）由来の関連 → `A -> B` に `[inferred]` が **付かない**。 [guard: `packages/core/src/translate/db.test.ts`]
+- Soft FK（列名規約・`REFERENCES` 無し）由来の関連 → `A -> B [inferred]`。 [guard: `packages/core/src/translate/db.test.ts`]
+- 同じ target に Explicit と Soft の両方が寄与 → 無タグ（Explicit が勝つ）。 [guard: `packages/core/src/translate/db.test.ts`]
+- 全列 FK ジャンクションの 2 本の Explicit FK → どちらの関連も無タグ。 [guard: `packages/core/src/translate/db.test.ts`]
+- 集約内の child→root FK（内部リンク）→ 関連として出力しない（自己参照も同様）。 [guard: `packages/core/src/translate/db.test.ts`]
 - `edge[inferred]` 既定スタイルが色のみを設定し、`[sync]` / `[async]` の線種を
   上書きしない。
 - 同じ判定が **table 層にも**そのまま適用される（#2722）: `translate --from db` が
   `database` ブロック内に記録する `TableA -> TableB` は、Explicit FK が 1 本でも寄与すれば
   無タグ、Soft FK のみなら `[inferred]`。entity 関連と table エッジは同じ関連集合から
   出るので、一方だけ `[inferred]` になる組み合わせは存在しない
-  （`packages/core/src/translate/db.test.ts` › recorded table edges (#2722)）。
+  （`packages/core/src/translate/db.test.ts` › recorded table edges (#2722)）。 [guard: `packages/core/src/translate/db.test.ts`]
 
 ## 派生元 spec
 
