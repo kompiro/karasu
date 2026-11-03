@@ -5,7 +5,7 @@ status: accepted
 date: 2026-11-03
 topic: build
 scope:
-  packages: [docs-site, lsp, vscode, vscode-e2e]
+  packages: [docs-site, vscode, vscode-e2e]
   concerns: [security, dependencies]
 related_to: [ADR-3399, ADR-3575, ADR-2337, ADR-2401]
 ---
@@ -94,15 +94,21 @@ minimatch 11 と glob 14 は API を削る major である。
   `vscode-languageclient@11.0.0` は `lib/common/fileOperations.js` で `Minimatch#makeRe()` を呼ぶ**
 - glob 14 は `walk()` の戻り値を配列に変え、`MatchRecord#entries()` を削除し、`path-scurry` 3 を要求する
 
-override で minimatch@9/@10 と glob@10/@13 を新 major に押し上げると、出荷物の languageclient が実行時に壊れうる。
-dev 用の利用元も、新 major で動くことを upstream が保証していない組み合わせになる。
+override で minimatch@9/@10 を minimatch 11 に押し上げると、出荷物の languageclient が実行時に壊れうる。glob は
+languageclient の依存ではなく、利用元（mocha、`@vscode/test-cli`、`test-exclude`、`vscode-extension-tester`）はすべて
+開発時の道具なので、glob@10/@13 を glob 14 に押し上げて壊れうるのは開発時のテストと拡張のテスト実行である。どちらも、
+新 major で動くことを upstream が保証していない組み合わせになる。
 
 一方で、悪用の条件は当方では満たされない。
 
-- #105 は攻撃者が glob パターンを渡せることが条件。当方のパターンはすべて repo の設定（vitest の coverage、mocha の spec、
-  `.vscodeignore`、typescript-eslint の `allowDefaultProject`）か、karasu 自身の LSP server から来る。karasu の server は
-  `workspace.fileOperations` を登録しないので、languageclient の minimatch の経路はそもそも走らない
-  （`packages/lsp/src` と `packages/vscode/src` を grep）
+- #105 は、攻撃者が glob パターンを渡せることと、`optimizationLevel >= 2` で処理されることの両方が条件。
+  - `optimizationLevel` の既定は 1 で、minimatch を直接呼ぶ利用元（typescript-eslint・vsce・mocha・`test-exclude`・
+    `@vscode/test-cli`・languageclient）はどれも指定しない（tarball を grep）。glob は内部で常に 2 を渡すので、
+    glob を通るパターン（mocha の spec、`@vscode/test-cli` と `test-exclude` の対象、extester の vsix のパス）は 2 で処理される
+  - そのパターンはすべて repo の設定（vitest の coverage、mocha の spec、`.vscodeignore`、typescript-eslint の
+    `allowDefaultProject`、extester の引数）か、karasu 自身の LSP server から来る。攻撃者が渡せるものは無い
+  - karasu の server は `workspace.fileOperations` を登録しないので、languageclient の minimatch の経路はそもそも走らない
+    （`packages/lsp/src` と `packages/vscode/src` を grep）
 - #104 は `signal` / `AbortSignal.timeout()` で walk の時間を区切る呼び出しが条件。利用元のどれも glob に `signal` を渡さない
 - `vscode-languageclient` 以外の利用元はすべて開発時だけ使う
 
