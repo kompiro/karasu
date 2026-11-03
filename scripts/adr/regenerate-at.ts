@@ -19,10 +19,13 @@ import {
   type ConfigTexts,
   type GeneratedPaths,
   type Generator,
+  type GeneratorRoot,
   GENERATORS,
   generatedGlobs,
   isGenerated,
+  readAdrPaths,
   readGeneratedPaths,
+  readTplPaths,
   rootGlobs,
 } from "./generated.ts";
 
@@ -81,6 +84,14 @@ export function generatedPathsAt(rev: string): GeneratedPaths {
   return readGeneratedPaths(configs);
 }
 
+/** One generator's root at a commit, read from that generator's config alone. */
+export function rootAt(rev: string, generator: Generator): GeneratorRoot {
+  const text = showAt(rev, CONFIG_FILES[generator]);
+  if (generator === "tpl") return readTplPaths(text);
+  if (text === null) throw new Error(`${rev} has no adr.config.json`);
+  return readAdrPaths(text);
+}
+
 /** The generated files a commit holds, under the outputs `paths` names. */
 export function generatedTreeAt(rev: string, paths: GeneratedPaths): GeneratedTrees {
   const tree = (g: Generator): Tree => {
@@ -129,14 +140,15 @@ function readTree(root: string, prefix: string, into: Tree, dir = ""): void {
  * Runs the generators on a commit's inputs in a temporary directory and returns
  * what they write, keyed by the repo-relative paths the outputs live at. The
  * commit's own generated files are removed first so they cannot feed the
- * result. A generator with no outputs at the commit (the TPL generator before
- * `tpl.config.json` named an `indexFile`) is not run and yields an empty tree.
+ * result. Only the generators `paths` names are run; one with no outputs at the
+ * commit (the TPL generator before `tpl.config.json` named an `indexFile`) is not
+ * run either. Either way its tree is empty.
  * `bins` are the generators to run: the checkout's, so a generator upgrade is
  * judged by the new generator.
  */
 export function regenerateAt(
   rev: string,
-  paths: GeneratedPaths,
+  paths: Partial<GeneratedPaths>,
   bins: GeneratorBins,
 ): GeneratedTrees {
   const work = mkdtempSync(join(tmpdir(), "adr-regenerate-"));
@@ -145,7 +157,13 @@ export function regenerateAt(
     const out = join(work, "out");
     mkdirSync(src);
     mkdirSync(out);
-    const runs = GENERATORS.filter((g) => paths[g].outputs.length > 0);
+    const roots = Object.fromEntries(
+      GENERATORS.flatMap((g) => {
+        const root = paths[g];
+        return root !== undefined && root.outputs.length > 0 ? [[g, root]] : [];
+      }),
+    ) as Partial<GeneratedPaths>;
+    const runs = GENERATORS.filter((g) => roots[g] !== undefined);
     const archive = execFileSync(
       "git",
       [
@@ -153,32 +171,32 @@ export function regenerateAt(
         "--format=tar",
         rev,
         "--",
-        ...runs.flatMap((g) => [CONFIG_FILES[g], paths[g].dir]),
+        ...runs.flatMap((g) => [CONFIG_FILES[g], roots[g]!.dir]),
       ],
       { maxBuffer: 256 * 1024 * 1024 },
     );
     execFileSync("tar", ["-x", "-C", src], { input: archive });
     for (const g of runs) {
-      for (const output of paths[g].outputs) {
-        rmSync(join(src, paths[g].dir, output), { recursive: true, force: true });
+      for (const output of roots[g]!.outputs) {
+        rmSync(join(src, roots[g]!.dir, output), { recursive: true, force: true });
       }
     }
     const trees: GeneratedTrees = { adr: new Map(), tpl: new Map() };
-    if (runs.includes("adr")) {
+    if (roots.adr !== undefined) {
       execFileSync(bins.adr, ["regenerate", `--out-dir=${out}`], {
         cwd: src,
         stdio: ["ignore", "ignore", "pipe"],
       });
-      readTree(out, posix.normalize(paths.adr.dir), trees.adr);
+      readTree(out, posix.normalize(roots.adr.dir), trees.adr);
     }
-    if (runs.includes("tpl")) {
+    if (roots.tpl !== undefined) {
       // `tpl regenerate` writes into the TPL directory of its working directory.
-      execFileSync(bins.tpl, ["regenerate", "--tpl-dir", paths.tpl.dir], {
+      execFileSync(bins.tpl, ["regenerate", "--tpl-dir", roots.tpl.dir], {
         cwd: src,
         stdio: ["ignore", "ignore", "pipe"],
       });
-      for (const output of paths.tpl.outputs) {
-        const rel = posix.normalize(posix.join(paths.tpl.dir, output));
+      for (const output of roots.tpl.outputs) {
+        const rel = posix.normalize(posix.join(roots.tpl.dir, output));
         if (existsSync(join(src, rel))) trees.tpl.set(rel, readFileSync(join(src, rel), "utf-8"));
       }
     }

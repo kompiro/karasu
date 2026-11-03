@@ -333,6 +333,22 @@ describe("the TPL index on a real repository", { timeout: 60_000 }, () => {
       expect(result.out).toMatch(/ADR index reflects/);
     });
 
+    it("judges the ADR index even where the TPL generator fails on an old commit", () => {
+      // tpl-tools refuses an indexFile named like a TPL; the ADR side must not go down with it.
+      write(
+        "tpl.config.json",
+        JSON.stringify({ ...JSON.parse(TPL_CONFIG), indexFile: "TPL-index.md" }),
+      );
+      write("docs/test-perspectives/TPL-1-sample.md", tplText(1));
+      commit("main with a TPL config the generator refuses", 100);
+      write("tpl.config.json", TPL_CONFIG);
+      write("docs/adr/2-sample.md", adrText(2));
+      commit("fix the config and add an ADR 10 hours ago", 10);
+      const result = freshness();
+      expect(result.out).toMatch(/ADR index reflects/);
+      expect(result.out).toMatch(/regenerating \w+ \(tpl\) failed/);
+    });
+
     it("skips only the TPL index when tpl-tools changed inside the window", () => {
       write("pnpm-lock.yaml", lockfile("0.0.13", "0.0.13"));
       tplMain(100);

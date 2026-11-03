@@ -25,7 +25,7 @@
 
 import { type Generator, GENERATORS } from "./generated.ts";
 import {
-  type GeneratedTrees,
+  type Tree,
   GENERATOR_PACKAGES,
   checkoutGenerators,
   compareTrees,
@@ -34,6 +34,7 @@ import {
   generatorVersionAt,
   inputKey,
   regenerateAt,
+  rootAt,
 } from "./regenerate-at.ts";
 import { execFileSync } from "node:child_process";
 
@@ -108,20 +109,17 @@ function main(): number {
   const candidates = windowCommits(history, now);
   const oldest = candidates.at(-1)!;
 
-  // Both generators run on a candidate at once; the judgement of each reads its own tree.
-  const regenerated = new Map<string, GeneratedTrees | null>();
-  const regenerate = (sha: string): GeneratedTrees | null => {
-    if (!regenerated.has(sha)) {
-      try {
-        regenerated.set(sha, regenerateAt(sha, generatedPathsAt(sha), bins));
-      } catch (e) {
-        // A generator that fails on every candidate also ends as "stale"; say why.
-        const stderr = String((e as { stderr?: unknown }).stderr ?? "").trim();
-        console.error(`regenerating ${sha} failed: ${stderr || (e as Error).message}`);
-        regenerated.set(sha, null);
-      }
+  // Each generator runs on its own config, so one that fails on a candidate (an
+  // old config the new generator refuses) does not take the other's judgement with it.
+  const regenerate = (sha: string, g: Generator): Tree | null => {
+    try {
+      return regenerateAt(sha, { [g]: rootAt(sha, g) }, bins)[g];
+    } catch (e) {
+      // A generator that fails on every candidate also ends as "stale"; say why.
+      const stderr = String((e as { stderr?: unknown }).stderr ?? "").trim();
+      console.error(`regenerating ${sha} (${g}) failed: ${stderr || (e as Error).message}`);
+      return null;
     }
-    return regenerated.get(sha)!;
   };
 
   const judge = (g: Generator): Freshness =>
@@ -129,8 +127,8 @@ function main(): number {
       candidates,
       key: (sha) => inputKey(sha, paths, g),
       matches: (sha) => {
-        const trees = regenerate(sha);
-        return trees !== null && compareTrees(trees[g], committed[g]).length === 0;
+        const tree = regenerate(sha, g);
+        return tree !== null && compareTrees(tree, committed[g]).length === 0;
       },
       generatorChanged:
         generatorVersionAt(head.sha, g) === generatorVersionAt(oldest.sha, g)

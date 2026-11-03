@@ -73,6 +73,18 @@ export function readTplPaths(configText: string | null): GeneratorRoot {
   if (typeof indexFile !== "string" || indexFile === "") {
     throw new Error("tpl.config.json indexFile is not a path");
   }
+  // A file inside the TPL directory, named literally: the generated paths are
+  // globs, and a name that escaped the directory would make other files generated.
+  if (
+    indexFile.startsWith("/") ||
+    indexFile.endsWith("/") ||
+    /[\\*?[\]{}]/.test(indexFile) ||
+    indexFile.split("/").includes("..")
+  ) {
+    throw new Error(
+      `tpl.config.json indexFile must be a plain file under ${TPL_DIR}: ${indexFile}`,
+    );
+  }
   return { dir: TPL_DIR, outputs: [indexFile] };
 }
 
@@ -102,6 +114,19 @@ export const generatedGlobs = (paths: GeneratedPaths): string[] =>
 
 export const isGenerated = (path: string, globs: readonly string[]): boolean =>
   globs.some((g) => matchesGlob(path, g));
+
+/** Every generator's outputs as repo-relative paths; a directory output keeps its `/`. */
+export const outputPaths = (paths: GeneratedPaths): string[] =>
+  GENERATORS.flatMap((g) => paths[g].outputs.map((o) => posix.join(paths[g].dir, o)));
+
+/**
+ * The changed paths (`git status`, repo-relative) that no generator's outputs
+ * cover: what a generator wrote outside them.
+ */
+export function strayPaths(changed: readonly string[], paths: GeneratedPaths): string[] {
+  const outputs = outputPaths(paths);
+  return changed.filter((p) => !outputs.some((o) => (o.endsWith("/") ? p.startsWith(o) : p === o)));
+}
 
 /** Whether two configs name the same outputs, whatever their order. */
 export function sameOutputs(a: GeneratedPaths, b: GeneratedPaths): boolean {

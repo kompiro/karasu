@@ -1,7 +1,8 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 // `pnpm adr:regenerate-pr`: opens and merges the PR that brings the generated
-// indexes on `main` (ADR, and TPL since Issue #3289) up to date (Issue #3416). The flow is in `regenerate-pr-flow.ts`;
-// this file is the real GitHub, git and clock it runs against.
+// indexes on `main` (ADR, and TPL since Issue #3289) up to date (Issue #3416).
+// The flow is in `regenerate-pr-flow.ts`; this file is the real GitHub, git and
+// clock it runs against.
 //
 // Everything on GitHub goes through REST (`gh api`): the routine's proxy refuses
 // GraphQL, which every `gh pr` command uses.
@@ -12,7 +13,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { CONFIG_FILES, type GeneratedPaths, GENERATORS } from "./generated.ts";
+import { CONFIG_FILES, GENERATORS, outputPaths, strayPaths } from "./generated.ts";
 import {
   BASE,
   BRANCH,
@@ -145,8 +146,6 @@ function gitWorkspace(root: string): Workspace {
   const tree = join(root, ".claude", "worktrees", BRANCH);
   const git = (args: string[], quiet = false) => gitIn(root, args, quiet);
   const inTree = (args: string[]) => gitIn(tree, args);
-  const outputPaths = (paths: GeneratedPaths) =>
-    GENERATORS.flatMap((g) => paths[g].outputs.map((o) => join(paths[g].dir, o)));
   const exec = (cmd: string, args: string[]) =>
     execFileSync(cmd, args, { cwd: tree, stdio: ["ignore", "inherit", "inherit"] });
 
@@ -194,9 +193,7 @@ function gitWorkspace(root: string): Workspace {
         .filter((l) => l !== "")
         .map((l) => l.slice(3));
       const generated = outputPaths(paths);
-      const stray = changed.filter(
-        (p) => !generated.some((g) => (g.endsWith("/") ? p.startsWith(g) : p === g)),
-      );
+      const stray = strayPaths(changed, paths);
       if (stray.length > 0) {
         throw new Error(`the generator changed files outside its outputs: ${stray.join(", ")}`);
       }

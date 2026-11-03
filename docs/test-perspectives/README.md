@@ -418,7 +418,7 @@ TPL の frontmatter から生成するファイルで、手では書かない。
 索引を見るのはよいが、コミットする前に捨てる:
 
 ```
-git reset -q -- docs/test-perspectives/index.md && { git restore --source=HEAD --worktree -- docs/test-perspectives/index.md 2>/dev/null || rm -f docs/test-perspectives/index.md; }
+(cd "$(git rev-parse --show-toplevel)" && git reset -q -- docs/test-perspectives/index.md && { git restore --source=HEAD --worktree -- docs/test-perspectives/index.md 2>/dev/null || rm -f docs/test-perspectives/index.md; })
 ```
 
 stage 済みの索引も外れる。HEAD に `index.md` があればその版へ戻し、無ければ（最初の再生成 PR が

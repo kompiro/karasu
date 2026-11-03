@@ -371,7 +371,7 @@ export function regeneratePr(deps: Deps): Result {
           outcome: "closed",
           pr: pr.html_url,
           pickedUp,
-          message: `the index on main is current; closed PR #${pr.number}`,
+          message: `the indexes on main are current; closed PR #${pr.number}`,
         };
       }
       return pickedUp !== undefined
@@ -381,7 +381,7 @@ export function regeneratePr(deps: Deps): Result {
             pickedUp,
             message: "merged yesterday's PR; main is current",
           }
-        : { outcome: "nothing", message: "the index on main is current" };
+        : { outcome: "nothing", message: "the indexes on main are current" };
     }
 
     const own = diffKind("origin/main", commit);

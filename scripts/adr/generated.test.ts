@@ -14,6 +14,7 @@ import {
   readTplPaths,
   rootGlobs,
   sameOutputs,
+  strayPaths,
 } from "./generated.ts";
 
 const ADR: GeneratorRoot = {
@@ -62,6 +63,24 @@ describe("readTplPaths", () => {
   it("refuses an indexFile that is not a path", () => {
     expect(() => readTplPaths(JSON.stringify({ indexFile: "" }))).toThrow(/indexFile/);
     expect(() => readTplPaths(JSON.stringify({ indexFile: 1 }))).toThrow(/indexFile/);
+  });
+
+  it("refuses an indexFile outside the TPL directory or with glob characters", () => {
+    for (const indexFile of [
+      "../CLAUDE.md",
+      "a/../../x.md",
+      "/abs.md",
+      "dir/",
+      "*.md",
+      "a\\b.md",
+    ]) {
+      expect(() => readTplPaths(JSON.stringify({ indexFile })), indexFile).toThrow(
+        /plain file under/,
+      );
+    }
+    expect(readTplPaths(JSON.stringify({ indexFile: "./index.md" })).outputs).toEqual([
+      "./index.md",
+    ]);
   });
 });
 
@@ -118,6 +137,34 @@ describe("sameOutputs", () => {
 
   it("differs when only the TPL index differs", () => {
     expect(sameOutputs(CONFIG, NO_TPL_INDEX)).toBe(false);
+  });
+});
+
+describe("strayPaths", () => {
+  it("lets through every generator's outputs, a directory output's files included", () => {
+    expect(
+      strayPaths(
+        [
+          "docs/adr/effective.md",
+          "docs/adr/graph/parser.md",
+          "docs/test-perspectives/index.md",
+          "docs/test-perspectives/TPL-3289-x.md",
+          "docs/adr/graph-notes.md",
+        ],
+        CONFIG,
+      ),
+    ).toEqual(["docs/test-perspectives/TPL-3289-x.md", "docs/adr/graph-notes.md"]);
+  });
+
+  it("normalizes a dot segment in an output", () => {
+    const dotted = { ...CONFIG, tpl: { dir: TPL_DIR, outputs: ["./index.md"] } };
+    expect(strayPaths(["docs/test-perspectives/index.md"], dotted)).toEqual([]);
+  });
+
+  it("treats the TPL index as stray when tpl.config.json names none", () => {
+    expect(strayPaths(["docs/test-perspectives/index.md"], NO_TPL_INDEX)).toEqual([
+      "docs/test-perspectives/index.md",
+    ]);
   });
 });
 

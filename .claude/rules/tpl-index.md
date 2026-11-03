@@ -19,7 +19,7 @@ TPL の PR は TPL のファイルだけを変え、索引の行は足さない�
 手元で `pnpm tpl:regenerate` を実行して索引を見てよいが、コミットする前に捨てる:
 
 ```
-git reset -q -- docs/test-perspectives/index.md && { git restore --source=HEAD --worktree -- docs/test-perspectives/index.md 2>/dev/null || rm -f docs/test-perspectives/index.md; }
+(cd "$(git rev-parse --show-toplevel)" && git reset -q -- docs/test-perspectives/index.md && { git restore --source=HEAD --worktree -- docs/test-perspectives/index.md 2>/dev/null || rm -f docs/test-perspectives/index.md; })
 ```
 
 混ぜた PR は pre-push の `adr-generated-check` と required check の `Validate` が止める。
