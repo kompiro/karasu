@@ -4,7 +4,7 @@
 
 **keystone** 壁打ちで導入した load-bearing な用語と、**permalink family** の
 恒久的な定義場所。これらは PRD
-（[`docs/prd/keystone-primary-path.md`](prd/keystone-primary-path.md)）・
+（keystone PRD [#3572](https://github.com/kompiro/karasu/issues/3572)）・
 permalink epic（[#1826](https://github.com/kompiro/karasu/issues/1826)）・
 [ロードマップ](roadmap.md)・各 ADR にまたがって使われる。用語は**ここを正典として
 定義**し、他ドキュメントは定義を再掲せず**このページを参照**する（語彙の drift を防ぐ）。
@@ -79,5 +79,5 @@ karasu の permalink は、ADR / PR / docs が karasu の構造を*指す*ため
   **版語彙**の正典（互換性の軸・notation tier と `@experimental` / `@deprecated`
   annotation の区別・`.krs language v1.0` 表記 — [ADR-2124](adr/2124-version-vocabulary.md)）。
   本用語集のスコープ外だが、「version」系の用語を探す読者のためにここから指す。
-- [`docs/prd/keystone-primary-path.md`](prd/keystone-primary-path.md) — これらの
+- keystone PRD [#3572](https://github.com/kompiro/karasu/issues/3572) — これらの
   用語が導入された keystone 壁打ちの全容。

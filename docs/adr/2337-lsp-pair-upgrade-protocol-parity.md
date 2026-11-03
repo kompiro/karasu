@@ -11,8 +11,10 @@ related_to: [ADR-2333, ADR-2447, ADR-2318]
 assumptions:
   # 本 ADR が決めたのは client / server を 10.x へ対で上げることであって、
   # 10.1.0 というリテラルの patch 版ではない（ADR-2628）。
-  - "grep: packages/lsp/package.json :: \"vscode-languageserver\": \"\\^10\\."
-  - "grep: packages/vscode/package.json :: \"vscode-languageclient\": \"\\^10\\."
+  # major を上げたら対で上がったかを判断し直すため major で止めている。
+  # 11.x への対 upgrade は ADR-3575（Dependabot トリアージ 2026-11-02）で判断した。
+  - "grep: packages/lsp/package.json :: \"vscode-languageserver\": \"\\^11\\."
+  - "grep: packages/vscode/package.json :: \"vscode-languageclient\": \"\\^11\\."
   - "grep: .github/dependabot.yml :: vscode-languageserver-textdocument"
   - "symbol: packages/lsp/src/diagnostics.test.ts :: messageOf"
   - "grep: packages/lsp/tsconfig.json :: \"types\": \\[\"node\"\\]"

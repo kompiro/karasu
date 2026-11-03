@@ -54,3 +54,16 @@ describe("checkParent", () => {
     expect(checkParent(parent(body, [11]))).toEqual([]);
   });
 });
+
+describe("PRD parents", () => {
+  const prd = { ...parent("## Scope\n\nPhase 1: #3563", [3563]), labels: ["prd"] };
+
+  it("does not ask a PRD for a slice table: its sub-issues are Epics with their own", () => {
+    expect(checkParent(prd)).toEqual([]);
+  });
+
+  it("still checks a parent whose labels do not include prd", () => {
+    const epic = { ...parent("## Scope", [11]), labels: ["epic: first-run"] };
+    expect(checkParent(epic)).toHaveLength(1);
+  });
+});

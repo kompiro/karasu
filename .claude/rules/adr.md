@@ -135,6 +135,7 @@ pnpm adr:check-assumptions # 本文の参照ファイル / 識別子の存在確
 （`git restore --source=HEAD --staged --worktree -- docs/adr/effective.md docs/adr/graph.md docs/adr/graph && git clean -fdq -- docs/adr/graph`。stage 済みの生成物も戻る。
 `git restore docs/adr` は未コミットの ADR 本体の編集まで戻すので使わない）。混ぜた PR は pre-push の `adr-generated-check` と required check の `Validate` が
 止める。急いで `main` の生成物を更新したいときは、PR の外で `pnpm adr:regenerate-pr` を実行する。
+同じ再生成 PR が TPL の索引（`docs/test-perspectives/index.md`）も書く（`.claude/rules/tpl-index.md`）。
 
 `adr.config.json` の `paths.outputs`（出力先）を変える PR は、古い出力の削除だけを含め、
 新しい出力先には書かない。新しい出力先は次の再生成 PR が作る（上のコマンドは今の出力先しか
@@ -229,7 +230,7 @@ Low でなければ、出た段階のラベルを付けて draft で作り、`gh
      Design になり、auto-merge せずに人間がレビューする
    - **その Design Doc を指していた参照を、新 ADR に張り替える差分**
      （`docs/adr/**` を除く任意のディレクトリ — `docs/acceptance/` /
-     `docs/spec/` / `docs/test-perspectives/` / `docs/prd/` / `docs/roadmap.md`
+     `docs/spec/` / `docs/test-perspectives/` / `docs/roadmap.md`
      のいずれでもよい。削除でリンク切れになるものを繋ぎ直すのは昇格の一部で
      あって、別の判断ではない）。変えてよいのはリンク先と、リンクの文字列のうち
      ファイル名・パス・`ADR-<n>` の言い換えだけ。High のパス（`docs/spec/**` など）は

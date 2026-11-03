@@ -1,13 +1,14 @@
 name: ADR index freshness
 
-# Watches the generated ADR index on main (Issue #3416, TPL-2786). PRs no longer
-# carry `docs/adr/effective.md`, `graph.md` and `graph/`; a daily Claude routine
-# regenerates them through `pnpm adr:regenerate-pr`. If the routine stops, or two
-# runs in a row do not merge, nothing else notices: main's index just goes
-# stale.
+# Watches the generated indexes on main (Issue #3416, TPL-2786). PRs no longer
+# carry `docs/adr/effective.md`, `graph.md`, `graph/` or, since Issue #3289,
+# `docs/test-perspectives/index.md`; a daily Claude routine regenerates them
+# through `pnpm adr:regenerate-pr`. If the routine stops, or two runs in a row do
+# not merge, nothing else notices: main's indexes just go stale.
 #
-# This fails only when the oldest change main's index does not reflect is
-# older than 50 hours (scripts/adr/check-freshness.ts). An ADR merged right
+# This fails only when the oldest change an index on main does not reflect is
+# older than 50 hours (scripts/adr/check-freshness.ts). The ADR and TPL indexes
+# are judged separately. An ADR merged right
 # after the routine's fetch, a run that waits out the checks and the next run
 # that picks its PR up take up to about 48 hours; one missed day is already in
 # the routine's own report. A scheduled run that fails notifies the workflow's
@@ -50,5 +51,5 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Check that main's ADR index is no more than 50 hours behind
+      - name: Check that main's ADR and TPL indexes are no more than 50 hours behind
         run: pnpm exec tsx scripts/adr/check-freshness.ts

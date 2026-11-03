@@ -3,7 +3,8 @@
 // and the clock come in through interfaces, so the flow is tested without a
 // network; `regenerate-pr.ts` supplies the real ones.
 //
-// PRs do not carry the generated ADR index. Once a day a Claude routine runs the
+// PRs do not carry the generated indexes (ADR, and TPL since Issue #3289). Once a
+// day a Claude routine runs the
 // script; a human can run the same thing by hand. It:
 //
 // 1. merges yesterday's regeneration PR if it is still open and ready;
@@ -19,11 +20,12 @@
 // because of anything this script decides.
 
 import {
-  type AdrPaths,
+  type ConfigTexts,
   type DiffVerdict,
+  type GeneratedPaths,
   classifyGeneratedDiff,
   parseNameStatus,
-  readAdrPaths,
+  readGeneratedPaths,
   sameOutputs,
 } from "./generated.ts";
 
@@ -32,7 +34,7 @@ export const BRANCH = "chore/adr-regenerate";
 export const BASE = "main";
 /** Present in every regeneration PR's body: one of the four marks that identify it. */
 export const MARKER = "<!-- adr-regenerate -->";
-export const TITLE = "chore(adr): regenerate the ADR index";
+export const TITLE = "chore(adr): regenerate the ADR and TPL indexes";
 export const LOW_LABEL = "risk: low";
 /** Inside the routine's 30-minute background limit, counted from the start of the run. */
 export const DEADLINE_MS = 25 * 60 * 1000;
@@ -97,21 +99,21 @@ export interface Workspace {
   fetchMain(): void;
   /** Fetches a PR's head and returns the SHA that arrived. */
   fetchPull(n: number): string;
-  /** `adr.config.json` at a revision, or null when the file is not there. */
-  config(rev: string): string | null;
+  /** `adr.config.json` and `tpl.config.json` at a revision; null for a file that is not there. */
+  configs(rev: string): ConfigTexts;
   mergeBase(a: string, b: string): string;
   /** `git diff --no-renames --name-status -z <a> <b>`. */
   nameStatus(a: string, b: string): string;
   worktreeExists(): boolean;
   /** Adds the worktree, detached at `origin/main`, and installs its dependencies. */
   addWorktree(): void;
-  /** Clears the directory outputs and runs `adr regenerate` in the worktree. */
-  regenerate(paths: AdrPaths): void;
+  /** Clears the directory outputs and runs the generators that have outputs in the worktree. */
+  regenerate(paths: GeneratedPaths): void;
   /**
    * Stages the generated paths and commits them. Returns the commit, or null when
    * nothing changed. Throws when the generator wrote outside the generated paths.
    */
-  commitGenerated(paths: AdrPaths): string | null;
+  commitGenerated(paths: GeneratedPaths): string | null;
   /** Pushes the worktree's HEAD to the branch. `lease` null means the branch must not exist. */
   push(lease: string | null): void;
   removeWorktree(): void;
@@ -220,9 +222,9 @@ export function prBody(): string {
     MARKER,
     "",
     "Regenerates the ADR index (`docs/adr/effective.md`, `docs/adr/graph.md`, `docs/adr/graph/`) " +
-      "from `main`.",
+      "and the TPL index (`docs/test-perspectives/index.md`) from `main`.",
     "",
-    "Opened by `pnpm adr:regenerate-pr` (Issue #3416). The PR changes only generated files; " +
+    "Opened by `pnpm adr:regenerate-pr` (Issues #3416, #3289). The PR changes only generated files; " +
       "the required `Validate` check holds it to an exact regeneration, so it merges without a " +
       "local review record once the required checks and `Review tier` pass.",
     "",
@@ -258,14 +260,14 @@ export function regeneratePr(deps: Deps): Result {
 
   const diffKind = (base: string, head: string): DiffVerdict => {
     const mergeBase = workspace.mergeBase(base, head);
-    const baseConfig = workspace.config(mergeBase);
-    const headConfig = workspace.config(head);
-    if (baseConfig === null || headConfig === null) {
+    const baseConfigs = workspace.configs(mergeBase);
+    const headConfigs = workspace.configs(head);
+    if (baseConfigs.adr === null || headConfigs.adr === null) {
       return { kind: "mixed", reasons: ["adr.config.json is missing on one side"], generated: [] };
     }
     return classifyGeneratedDiff({
-      base: readAdrPaths(baseConfig),
-      head: readAdrPaths(headConfig),
+      base: readGeneratedPaths(baseConfigs),
+      head: readGeneratedPaths(headConfigs),
       files: parseNameStatus(workspace.nameStatus(mergeBase, head)),
     });
   };
@@ -319,18 +321,16 @@ export function regeneratePr(deps: Deps): Result {
   let pickedUp: string | undefined;
   if (pr !== null) {
     const sha = workspace.fetchPull(pr.number);
-    const headConfig = workspace.config(sha);
-    const mainConfig = workspace.config("origin/main");
+    const headConfigs = workspace.configs(sha);
+    const mainConfigs = workspace.configs("origin/main");
     const sameConfig =
-      headConfig !== null &&
-      mainConfig !== null &&
-      sameOutputs(readAdrPaths(headConfig), readAdrPaths(mainConfig));
+      headConfigs.adr !== null &&
+      mainConfigs.adr !== null &&
+      sameOutputs(readGeneratedPaths(headConfigs), readGeneratedPaths(mainConfigs));
     if (sha !== pr.head.sha) {
       log(`PR #${pr.number}: fetched ${sha}, GitHub reports ${pr.head.sha}; regenerating instead`);
     } else if (!sameConfig) {
-      log(
-        `PR #${pr.number}: paths.outputs changed on main since it was made; regenerating instead`,
-      );
+      log(`PR #${pr.number}: the outputs changed on main since it was made; regenerating instead`);
     } else {
       const ready = readiness(pr.number, sha);
       if (ready.state !== "ready") {
@@ -354,11 +354,11 @@ export function regeneratePr(deps: Deps): Result {
   }
 
   // 2. Regenerate from origin/main in the script's own worktree.
-  const mainConfig = workspace.config("origin/main");
-  if (mainConfig === null) {
+  const mainConfigs = workspace.configs("origin/main");
+  if (mainConfigs.adr === null) {
     return { outcome: "failed", pickedUp, message: "origin/main has no adr.config.json" };
   }
-  const paths = readAdrPaths(mainConfig);
+  const paths = readGeneratedPaths(mainConfigs);
   try {
     workspace.addWorktree();
     workspace.regenerate(paths);
@@ -371,7 +371,7 @@ export function regeneratePr(deps: Deps): Result {
           outcome: "closed",
           pr: pr.html_url,
           pickedUp,
-          message: `the index on main is current; closed PR #${pr.number}`,
+          message: `the indexes on main are current; closed PR #${pr.number}`,
         };
       }
       return pickedUp !== undefined
@@ -381,7 +381,7 @@ export function regeneratePr(deps: Deps): Result {
             pickedUp,
             message: "merged yesterday's PR; main is current",
           }
-        : { outcome: "nothing", message: "the index on main is current" };
+        : { outcome: "nothing", message: "the indexes on main are current" };
     }
 
     const own = diffKind("origin/main", commit);

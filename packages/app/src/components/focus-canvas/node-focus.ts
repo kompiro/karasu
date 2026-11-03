@@ -176,6 +176,13 @@ export function attachNodeFocus(container: HTMLElement, options: NodeFocusOption
   };
 
   const onLeave = () => clear();
+  // A press on the diagram ends the hover it began from: it drills down or
+  // pans, and either way the card the pill sits on is no longer what the
+  // reader is reading. A tap brings no `mouseleave` after it, and the pill
+  // survives the next level's SVG, so without this it would stay over that
+  // level pointing at a card it no longer has (#3569). The pill stops its own
+  // presses, so pressing it still opens the canvas.
+  const onPress = () => clear();
 
   // The pill is not part of the diagram: a press on it must not pan the
   // diagram or reach the pane's click handling underneath.
@@ -193,9 +200,11 @@ export function attachNodeFocus(container: HTMLElement, options: NodeFocusOption
   pill.addEventListener("click", onPill);
   container.addEventListener("mouseover", onOver);
   container.addEventListener("mouseleave", onLeave);
+  container.addEventListener("mousedown", onPress);
   return () => {
     container.removeEventListener("mouseover", onOver);
     container.removeEventListener("mouseleave", onLeave);
+    container.removeEventListener("mousedown", onPress);
     container.removeAttribute("data-node-focus");
     style.remove();
     pill.remove();

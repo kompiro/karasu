@@ -21,7 +21,13 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
 import { matchesGlob, posix } from "node:path";
-import { classifyGeneratedDiff, parseNameStatus, readAdrPaths } from "../adr/generated.ts";
+import {
+  CONFIG_FILES,
+  type ConfigTexts,
+  classifyGeneratedDiff,
+  parseNameStatus,
+  readGeneratedPaths,
+} from "../adr/generated.ts";
 import { type GitFacts, parseRecord, verifyRecord } from "./local-review-record.ts";
 import {
   checkTestChanges,
@@ -871,26 +877,27 @@ export function classifyChange(input: {
 
 /**
  * Whether a PR's local review record is waived because the PR is the daily
- * regeneration of the ADR index (Issue #3416): a Low PR whose diff changes only
+ * regeneration of the ADR and TPL indexes (Issues #3416, #3289): a Low PR whose diff changes only
  * generated files, with the same outputs on both sides. `Validate` holds such a
  * PR to an exact regeneration, so a reviewer would have nothing to read. The
  * kind comes from the same module and the same diff (`--no-renames`, merge base
- * to head) that `Validate` uses, so the two checks cannot disagree on it. An
- * unreadable config on either side keeps the record required.
+ * to head) that `Validate` uses, so the two checks cannot disagree on it. A
+ * missing `adr.config.json` or an unreadable config on either side keeps the
+ * record required.
  */
 export function regenerationWaivesRecord(input: {
   tier: Tier;
-  baseConfig: string | null;
-  headConfig: string | null;
+  baseConfigs: ConfigTexts;
+  headConfigs: ConfigTexts;
   /** `git diff --no-renames --name-status -z <merge-base> <head>`. */
   nameStatus: string;
 }): boolean {
-  if (input.tier !== "low" || input.baseConfig === null || input.headConfig === null) return false;
+  if (input.tier !== "low") return false;
   try {
     return (
       classifyGeneratedDiff({
-        base: readAdrPaths(input.baseConfig),
-        head: readAdrPaths(input.headConfig),
+        base: readGeneratedPaths(input.baseConfigs),
+        head: readGeneratedPaths(input.headConfigs),
         files: parseNameStatus(input.nameStatus),
       }).kind === "regeneration"
     );
@@ -1232,8 +1239,14 @@ function checkPr(pr: string): string[] {
     const mergeBase = mergeBaseOf(baseRef, view.headRefOid);
     const waived = regenerationWaivesRecord({
       tier,
-      baseConfig: gitShow(mergeBase, "adr.config.json"),
-      headConfig: gitShow(view.headRefOid, "adr.config.json"),
+      baseConfigs: {
+        adr: gitShow(mergeBase, CONFIG_FILES.adr),
+        tpl: gitShow(mergeBase, CONFIG_FILES.tpl),
+      },
+      headConfigs: {
+        adr: gitShow(view.headRefOid, CONFIG_FILES.adr),
+        tpl: gitShow(view.headRefOid, CONFIG_FILES.tpl),
+      },
       nameStatus: run("git", [
         "diff",
         "--no-renames",
@@ -1245,7 +1258,7 @@ function checkPr(pr: string): string[] {
     });
     if (waived) {
       console.log(
-        "ADR index regeneration: no local review record is required (Validate checks it).",
+        "Index regeneration (ADR, TPL): no local review record is required (Validate checks it).",
       );
     } else {
       const record = parseRecord(view.body ?? "");

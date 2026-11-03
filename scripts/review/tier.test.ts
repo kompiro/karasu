@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { generatedGlobs, readAdrPaths } from "../adr/generated.ts";
+import { readAdrPaths, rootGlobs } from "../adr/generated.ts";
 import {
   ADR_GENERATED_GLOBS,
   adrEditIsRecordOnly,
@@ -884,20 +884,23 @@ describe("isLinkInsert", () => {
 describe("ADR_GENERATED_GLOBS", () => {
   it("names the same paths as adr.config.json paths.outputs", () => {
     const config = readAdrPaths(readFileSync(resolve(REPO_ROOT, "adr.config.json"), "utf-8"));
-    expect([...ADR_GENERATED_GLOBS].sort()).toEqual(generatedGlobs(config));
+    expect([...ADR_GENERATED_GLOBS].sort()).toEqual(rootGlobs(config));
   });
 });
 
 describe("regenerationWaivesRecord", () => {
-  const config = readFileSync(resolve(REPO_ROOT, "adr.config.json"), "utf-8");
+  const configs = {
+    adr: readFileSync(resolve(REPO_ROOT, "adr.config.json"), "utf-8"),
+    tpl: readFileSync(resolve(REPO_ROOT, "tpl.config.json"), "utf-8"),
+  };
   const waives = (
     nameStatus: string,
     extra: Partial<Parameters<typeof regenerationWaivesRecord>[0]> = {},
   ) =>
     regenerationWaivesRecord({
       tier: "low",
-      baseConfig: config,
-      headConfig: config,
+      baseConfigs: configs,
+      headConfigs: configs,
       nameStatus,
       ...extra,
     });
@@ -919,16 +922,30 @@ describe("regenerationWaivesRecord", () => {
     expect(waives(regeneration, { tier: "medium" })).toBe(false);
   });
 
-  it("keeps the record when either config is missing or unreadable", () => {
-    expect(waives(regeneration, { baseConfig: null })).toBe(false);
-    expect(waives(regeneration, { headConfig: "{" })).toBe(false);
+  it("waives the record for a PR that changes only the TPL index", () => {
+    expect(waives("A\0docs/test-perspectives/index.md\0")).toBe(true);
+    expect(waives(`${regeneration}M\0docs/test-perspectives/index.md\0`)).toBe(true);
+  });
+
+  it("keeps the record for a PR that writes the TPL index with a TPL", () => {
+    expect(
+      waives("A\0docs/test-perspectives/TPL-3289-x.md\0M\0docs/test-perspectives/index.md\0"),
+    ).toBe(false);
+  });
+
+  it("keeps the record when adr.config.json is missing or a config is unreadable", () => {
+    expect(waives(regeneration, { baseConfigs: { ...configs, adr: null } })).toBe(false);
+    expect(waives(regeneration, { headConfigs: { ...configs, adr: "{" } })).toBe(false);
+    expect(waives(regeneration, { headConfigs: { ...configs, tpl: "{" } })).toBe(false);
   });
 
   it("keeps the record when the outputs differ between base and head", () => {
     const moved = JSON.stringify({
       paths: { adrDir: "docs/adr", outputs: { effective: "effective.md" } },
     });
-    expect(waives(regeneration, { headConfig: moved })).toBe(false);
+    expect(waives(regeneration, { headConfigs: { ...configs, adr: moved } })).toBe(false);
+    const noIndex = JSON.stringify({ idFormat: "issue-number" });
+    expect(waives(regeneration, { baseConfigs: { ...configs, tpl: noIndex } })).toBe(false);
   });
 });
 

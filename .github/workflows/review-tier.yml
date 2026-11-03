@@ -7,8 +7,8 @@ name: Review tier
 # - a Low, Design or Medium PR has no valid local review record in its body
 #   (scripts/review/local-review-record.ts). High reads no record: CodeRabbit's
 #   rounds and a human reading the diff carry it. Neither does a Low PR that
-#   changes only the generated ADR index (Issue #3416): `Validate` holds it to an
-#   exact regeneration.
+#   changes only the generated indexes, ADR and TPL (Issues #3416, #3289):
+#   `Validate` holds it to an exact regeneration.
 # - a PR titled `fix` or closing a `bug` Issue adds no test and gives no
 #   `No test: <reason>` line, or a PR weakens existing tests: a `refactor` that
 #   changes them beyond imports, module paths and comments, or any other PR that
