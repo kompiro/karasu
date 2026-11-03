@@ -1,4 +1,4 @@
-import { type Page } from "@playwright/test";
+import { type Locator, type Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
 import { pressChord } from "../fixtures/keyboard.js";
 import { selectedTab } from "../fixtures/tabs.js";
@@ -11,9 +11,9 @@ import { selectedTab } from "../fixtures/tabs.js";
  *
  * The palette-only `view.showWelcome` command (Show Welcome…) reopens Welcome.
  *
- * Out of scope (manual, PR checklist): whether the panel's placement leaves
- * the parts of the diagram each step talks about in view is a layout
- * judgment.
+ * The layout block decides what used to be a manual check (#3583): the node
+ * each step talks about stays inside the preview and clear of the panel, and
+ * no text in the panel overflows its box, in English and in Japanese.
  */
 
 const WELCOME = "Build a shared understanding of your architecture.";
@@ -231,4 +231,112 @@ test.describe("AT-3563 Design a service split tour", () => {
     await expect(tour(page)).toHaveCount(0);
     await expect(diffBanner(page)).toHaveCount(0);
   });
+});
+
+type Box = { x: number; y: number; width: number; height: number };
+
+const overlaps = (a: Box, b: Box) =>
+  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+const contains = (outer: Box, a: Box) =>
+  a.x >= outer.x &&
+  a.y >= outer.y &&
+  a.x + a.width <= outer.x + outer.width &&
+  a.y + a.height <= outer.y + outer.height;
+
+/**
+ * Where a step's node sits relative to the preview and the tour panel. The
+ * diagram may be larger than the preview, so the whole node need not fit; its
+ * name (the first text in the node) must, since that is what the step names.
+ */
+async function placement(page: Page, id: string, panel: Locator) {
+  const [n, name, preview, p] = await Promise.all([
+    node(page, id).boundingBox(),
+    node(page, id).locator("text").first().boundingBox(),
+    page.locator(".preview-container").first().boundingBox(),
+    panel.boundingBox(),
+  ]);
+  if (!n || !name || !preview || !p) return { rendered: false };
+  return { rendered: true, nameInPreview: contains(preview, name), underPanel: overlaps(n, p) };
+}
+
+/** The text of every box in the panel whose content needs more room than it has. */
+function overflowing(panel: Locator) {
+  return panel.evaluate((root) =>
+    [root, ...root.querySelectorAll("*")]
+      .filter(
+        (el) =>
+          el.clientWidth > 0 &&
+          (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1),
+      )
+      .map((el) => (el.textContent ?? "").trim().slice(0, 40)),
+  );
+}
+
+async function insideViewport(page: Page, panel: Locator) {
+  const box = await panel.boundingBox();
+  const size = page.viewportSize();
+  return !!box && !!size && contains({ x: 0, y: 0, ...size }, box);
+}
+
+/**
+ * Per step: the node its text talks about (null when it points at none), and
+ * how to tell the step's own scene has rendered. Consecutive scenes share
+ * nodes (BillingDB is in planned.krs and migrating.krs), so geometry read
+ * before the scene lands would judge the previous step's diagram (TPL-1534).
+ */
+const STEPS: { node: string | null; ready: (page: Page) => Promise<void> }[] = [
+  { node: "CommerceApp", ready: (page) => expect(diffBanner(page)).toHaveCount(0) },
+  { node: null, ready: (page) => expect(selectedTab(page, "Org")).toBeVisible() },
+  {
+    node: "BillingService",
+    ready: (page) =>
+      expect(node(page, "BillingService")).toHaveAttribute("data-diff-state", "added"),
+  },
+  {
+    node: "BillingDB",
+    ready: async (page) => {
+      await expect(diffBanner(page)).toHaveCount(0);
+      await expect(node(page, "BillingDB")).not.toHaveAttribute("data-diff-state", /.*/);
+    },
+  },
+  { node: null, ready: async () => {} },
+];
+
+const LAYOUT_COPY = {
+  en: { design: /Design a service split/, next: "Next →" },
+  ja: { design: /サービス分割を設計する/, next: "次へ →" },
+} as const;
+
+test.describe("AT-3563 tour layout", () => {
+  for (const lang of ["en", "ja"] as const) {
+    test(`(${lang}) keeps each step's node clear of the panel, with no text overflowing`, async ({
+      page,
+      opfs,
+    }) => {
+      await opfs.reset({ showWelcome: true, pinLocale: lang });
+      await opfs.gotoApp();
+      await page
+        .locator(".first-run-welcome")
+        .getByRole("button", { name: LAYOUT_COPY[lang].design })
+        .click();
+      const panel = page.locator(".first-run-tour");
+
+      for (const [i, step] of STEPS.entries()) {
+        await expect(panel).toContainText(`${i + 1} / ${STEPS.length}`);
+        await step.ready(page);
+        const id = step.node;
+        if (id) {
+          await expect
+            .poll(() => placement(page, id, panel))
+            .toEqual({ rendered: true, nameInPreview: true, underPanel: false });
+        }
+        await expect.poll(() => overflowing(panel)).toEqual([]);
+        await expect.poll(() => insideViewport(page, panel)).toBe(true);
+        if (i < STEPS.length - 1) {
+          await panel.getByRole("button", { name: LAYOUT_COPY[lang].next }).click();
+        }
+      }
+    });
+  }
 });

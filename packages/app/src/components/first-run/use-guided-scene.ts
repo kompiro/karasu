@@ -1,6 +1,7 @@
 import { useEffect, useRef, type Dispatch } from "react";
 import type { Project } from "@karasu-tools/core";
 import type { AppAction } from "../../state/app-reducer.js";
+import { requestReveal } from "../../state/preview-reveal.js";
 import type { Scene } from "./tour-steps.js";
 
 /** A scene to show in the project at `root`. A new `key` applies it again. */
@@ -42,6 +43,9 @@ interface UseGuidedSceneArgs {
  * applied, so coming back shows it again: the switch back resets the file and
  * the diff. A visitor who switches projects during the read keeps the scene's
  * diff off the other project the same way.
+ *
+ * A scene that names a node asks the preview to keep it in view; a scene that
+ * names none, or the guide ending, withdraws the request (#3583).
  */
 export function useGuidedScene({
   pending,
@@ -60,15 +64,25 @@ export function useGuidedScene({
     currentRoot.current = currentProject?.rootPath ?? null;
   }, [pending, currentProject]);
 
+  // The guide has ended, or the guide is gone: the preview may move freely again.
+  useEffect(() => {
+    if (!pending) requestReveal(null);
+  }, [pending]);
+  useEffect(() => () => requestReveal(null), []);
+
   useEffect(() => {
     if (!pending) return;
     if (currentProject?.rootPath !== pending.root) {
+      // The scene's node belongs to its project; coming back re-applies it.
+      requestReveal(null);
       if (pending.reapplyOnReturn) appliedKey.current = null;
       return;
     }
     if (appliedKey.current === pending.key) return;
     if (!currentFilePath?.startsWith(`${pending.root}/`)) return;
     appliedKey.current = pending.key;
+    // The previous scene's node no longer applies; this one sets its own once it lands.
+    requestReveal(null);
 
     const { root, scene, key } = pending;
     void (async () => {
@@ -81,6 +95,7 @@ export function useGuidedScene({
         source: scene.compareWith ? { kind: "file", path: `${root}/${scene.compareWith}` } : null,
       });
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: scene.view });
+      requestReveal(scene.reveal ?? null);
     })();
   }, [pending, currentProject, currentFilePath, selectFile, dispatch]);
 }

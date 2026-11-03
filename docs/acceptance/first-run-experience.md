@@ -1,7 +1,7 @@
 # AT: Web App の初回体験（Welcome とサービス分割のガイドツアー）
 
 - **日付**: 2026-11-03
-- **関連 Issue**: [#3563](https://github.com/kompiro/karasu/issues/3563)（Epic）/ [#3564](https://github.com/kompiro/karasu/issues/3564)（サンプル）/ [#3565](https://github.com/kompiro/karasu/issues/3565)（Welcome）/ [#3566](https://github.com/kompiro/karasu/issues/3566)（ガイドツアー）
+- **関連 Issue**: [#3563](https://github.com/kompiro/karasu/issues/3563)（Epic）/ [#3583](https://github.com/kompiro/karasu/issues/3583)（配置の自動判定）/ [#3564](https://github.com/kompiro/karasu/issues/3564)（サンプル）/ [#3565](https://github.com/kompiro/karasu/issues/3565)（Welcome）/ [#3566](https://github.com/kompiro/karasu/issues/3566)（ガイドツアー）
 - **PRD**: [#3573](https://github.com/kompiro/karasu/issues/3573)
 - **対象ファイル**:
   - `examples/{en,ja}/service-split/`（`index.krs` / `planned.krs` / `migrating.krs`）
@@ -62,7 +62,14 @@
 
   > ✅ Automated — `packages/core/src/examples.test.ts` › `current: the Billing Team owns the Billing domain but no service`
 
+- [x] AT-M: Design a service split の各ステップで、パネルの文が指しているノード（Step 1 のコマースアプリケーション、Step 3 の追加された請求サービス、Step 4 の ◇ Planned の請求 DB）の名前がプレビューの画面内にあり、ノードがツアーパネルと重ならない。どのステップでもパネルが画面内に収まり、パネル内の文言がはみ出さない（既定のデスクトップの大きさ 1280×720 で判定）
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(en) keeps each step's node clear of the panel, with no text overflowing`
+
+- [x] AT-N: 日本語 UI でも同じ配置が成り立ち、どのステップでもパネルが画面内に収まり、パネル内の文言が切れたりはみ出したりしない
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(ja) keeps each step's node clear of the panel, with no text overflowing`
+
 ## 手動確認
 
-- [ ] M-1: PR の preview を初めて開く（サイトデータを消したブラウザ）と Welcome が出て、Design a service split の各ステップで、パネルの文が指している部分（Step 1 のコマースアプリケーション、Step 3 の追加された請求サービス、Step 4 の ◇ Planned の請求 DB）がパネルに隠れずに見える
-- [ ] M-2: 同じ確認を日本語 UI でも行い、文言が切れたりはみ出したりしない
+N/A — 自動テストですべて覆っている（配置と文言のはみ出しは AT-M / AT-N の e2e が判定する。[#3583](https://github.com/kompiro/karasu/issues/3583)）

@@ -19,6 +19,7 @@ import { useFormattedDiagnostic } from "../i18n/format-diagnostic.js";
 import { useTranslation } from "../i18n/index.js";
 import { diagnosticLocationLabel, findingKeys } from "../utils/diagnostic-location.js";
 import type { HighlightAttribute } from "../state/app-reducer.js";
+import { useRevealNode } from "../state/preview-reveal.js";
 
 interface PreviewPaneProps {
   svg: string;
@@ -200,6 +201,7 @@ export function PreviewPane({
     setTransformDiagram(diagramKey);
     setTransform(INITIAL_TRANSFORM);
   }
+  useRevealNode(containerRef, svgRef, setTransform, svg, diagramKey);
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(false);
   const [detailPanel, setDetailPanel] = useState<DetailPanelState | null>(null);

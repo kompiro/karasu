@@ -67,7 +67,7 @@
         "max-lines": ["error", { "max": 600 }]
       }
     },
-    { "files": ["packages/app/src/components/PreviewPane.tsx"], "rules": { "max-lines": ["error", { "max": 848 }] } },
+    { "files": ["packages/app/src/components/PreviewPane.tsx"], "rules": { "max-lines": ["error", { "max": 850 }] } },
     { "files": ["packages/app/src/components/focus-canvas/build.ts"], "rules": { "max-lines": ["error", { "max": 860 }] } },
     { "files": ["packages/app/src/hooks/useChatSession.ts"], "rules": { "max-lines": ["error", { "max": 626 }] } },
     { "files": ["packages/app/src/hooks/useChatSession/prompt.ts"], "rules": { "max-lines": ["error", { "max": 610 }] } },
