@@ -56,7 +56,7 @@ identity キー）を各サーフェスが独立に組み立てると、一方�
 
 - [ ] element アンカー文字列は `anchorId` / `sanitizeId`（`@karasu-tools/core`）を経由し、各 producer が `krs-<view>-<id>` を直書きしていない（単一階層の whole-view タブ `#krs-deploy` / `#krs-matrix` / `#krs-org-tree` は element アンカーではない documented 例外 — `docs/spec/permalink.md`）
 - [ ] identity キーは `id` であり `label` ではない（highlight / node / view すべて）
-- [ ] 静的 SVG（`drill-down-svg.ts`）と SPA（`buildHash`）が同一入力で同一アンカーを返す parity test がある [guard: `packages/app/src/hooks/useHistoryNavigation.test.ts`, `packages/core/src/renderer/drill-down-svg.test.ts`]
+- [ ] 静的 SVG（`drill-down-svg.ts`）と SPA（`buildHash`）が同一入力で同一アンカーを返す parity test がある
 - [ ] 外部 URL から来る target を validate し、未知 view / 解決不能 id は throw せず degrade する
 - [ ] 新しい `view`（`ActiveView` / `ShareTargetView`）を足したら両 producer・両パーサが網羅する（[TPL-1094](TPL-1094-enum-member-addition.md)）
 

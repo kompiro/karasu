@@ -56,7 +56,7 @@ karasu には「同じ仕様を 2 箇所で手書きしている」構造があ�
 
 - [ ] spec doc に keyword（style プロパティ / shape / タグ / アノテーション / ノード種別）を足したら、同じ PR で `reference.ts` の対応する配列にエントリを足したか。 [guard: `packages/core/src/builtins/reference-spec-sync.test.ts`]
 - [ ] 逆向きも忘れない: parser / 文法（`LOGICAL_KEYWORDS`、infra ブロック、トークン種別等）や `reference.ts` 側にキーワード（ノード種別含む）を先に足したら、同じ PR で `docs/spec/syntax.md`（必要なら `style.md` / `tags-annotations.md`）にその layer・用途・制約を記述する節を足したか。`scripts/lint/krs-fences.ts` の `krs` fence は使用例しか縛れないので、節の追加は人手で確認する。
-- [ ] 新エントリの description を `STRINGS_EN` と `STRINGS_JA` の **両方** に足したか（型 union も更新したか）。 [guard: `packages/core/src/builtins/reference-data.test.ts`]
+- [ ] 新エントリの description を `STRINGS_EN` と `STRINGS_JA` の **両方** に足したか（型 union も更新したか）。
 - [ ] `packages/core/src/builtins/reference-spec-sync.test.ts` が通るか（= spec doc が記述する keyword をすべて reference が含むか）。新カテゴリの doc テーブルを足したなら、その抽出も smoke test に加えたか。 [guard: `packages/core/src/builtins/reference-spec-sync.test.ts`]
 - [ ] 双方向ではなく「spec → reference」の片方向 subset チェックに留めているか（reference に余分があってもよい）。 [judgment]
 - [ ] `PROPERTY_SCHEMAS` にエントリを足したら、同じ PR で `docs/spec/style.md` / `style.ja.md` に記載し、resolver で実際に消費したか（受理するだけのゴーストプロパティを作らない — #1492）。

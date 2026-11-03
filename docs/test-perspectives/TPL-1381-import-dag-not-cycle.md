@@ -40,7 +40,7 @@ import グラフは **DAG** を許す。あるファイル C が `entry → A �
 - [ ] 「ロード / 解決中」と「ロード / 解決済み」を別のセット（path-stack vs memo）で表現しているか
 - [ ] 真の循環（loading-stack に既に居る）のときだけ警告 / 早期 return しているか
 - [ ] DAG 再到達のテストケース（同じファイルを 2 経路で到達して全 import が正しく解決される）があるか
-- [ ] 真の循環のテストケース（A → B → A）が `circular-import` を発する側でカバーされているか [guard: `packages/core/src/fs/import-resolver.test.ts`]
+- [ ] 真の循環のテストケース（A → B → A）が `circular-import` を発する側でカバーされているか
 
 ## 既知の対処パターン
 
