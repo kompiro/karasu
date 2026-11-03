@@ -22,7 +22,7 @@ interface WelcomeDialogProps {
 /**
  * The first-run Welcome (#3565): what karasu is for, and three places to start.
  * Only Design a service split is a guided path; the other two open a sample
- * and leave the visitor in it (PRD docs/prd/first-run-experience.md §5).
+ * and leave the visitor in it (PRD #3573 §5).
  */
 export function WelcomeDialog({ open, onChoose }: WelcomeDialogProps) {
   const { t } = useTranslation();

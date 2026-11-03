@@ -229,7 +229,7 @@ Low でなければ、出た段階のラベルを付けて draft で作り、`gh
      Design になり、auto-merge せずに人間がレビューする
    - **その Design Doc を指していた参照を、新 ADR に張り替える差分**
      （`docs/adr/**` を除く任意のディレクトリ — `docs/acceptance/` /
-     `docs/spec/` / `docs/test-perspectives/` / `docs/prd/` / `docs/roadmap.md`
+     `docs/spec/` / `docs/test-perspectives/` / `docs/roadmap.md`
      のいずれでもよい。削除でリンク切れになるものを繋ぎ直すのは昇格の一部で
      あって、別の判断ではない）。変えてよいのはリンク先と、リンクの文字列のうち
      ファイル名・パス・`ADR-<n>` の言い換えだけ。High のパス（`docs/spec/**` など）は
