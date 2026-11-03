@@ -39,10 +39,10 @@ scope:
 
 新機能の実装/修正時に、以下を確認する:
 
-- [ ] ユーザーの連続操作（compositionstart→compositionend / pointerdown→pointerup / touchstart→touchend）が発生しうる UI かどうかが識別されているか
-- [ ] 連続操作の最中に DOM を操作する別系統の処理（再描画 / state 同期 / controlled value の書き戻し / debounce ベースの side effect）の有無が把握されているか
+- [ ] ユーザーの連続操作（compositionstart→compositionend / pointerdown→pointerup / touchstart→touchend）が発生しうる UI かどうかが識別されているか [judgment]
+- [ ] 連続操作の最中に DOM を操作する別系統の処理（再描画 / state 同期 / controlled value の書き戻し / debounce ベースの side effect）の有無が把握されているか [judgment]
 - [ ] 走る場合、操作の境界を尊重するガードが入っているか（compositionEnd まで buffer する / `isComposingRef` でガードする / debounce のタイミングを境界後にずらす）
-- [ ] IME（少なくとも日本語 IME on Blink）/ モバイルタッチ / スクリーンリーダーなど、開発環境で再現しにくい入力経路で動作確認されているか
+- [ ] IME（少なくとも日本語 IME on Blink）/ モバイルタッチ / スクリーンリーダーなど、開発環境で再現しにくい入力経路で動作確認されているか [judgment]
 
 ## 既知の対処パターン
 
