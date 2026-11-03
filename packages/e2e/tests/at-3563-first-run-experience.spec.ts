@@ -101,6 +101,41 @@ test.describe("AT-3563 first-run Welcome", () => {
     await expect(editorLines(page)).toContainText("system ECPlatform");
   });
 
+  test("Understand from an open Getting Started reopens index.krs and leaves the diff", async ({
+    page,
+    opfs,
+  }) => {
+    await opfs.seed({
+      projects: [
+        {
+          id: "gs",
+          name: "getting-started",
+          files: {
+            "index.krs": "system Shop {\n  service Api\n}\n",
+            "before.krs": "system Shop {\n  service Legacy\n}\n",
+          },
+        },
+      ],
+      lastProjectId: "gs",
+    });
+    await opfs.gotoApp();
+    await expect(node(page, "Api")).toBeVisible();
+    await page.locator(".file-tree-item", { hasText: "before.krs" }).first().click({
+      button: "right",
+    });
+    await page.getByRole("button", { name: "⇄ Compare with current" }).click();
+    await expect(diffBanner(page)).toBeVisible();
+
+    await pressChord(page, "Shift+P");
+    await page.getByRole("combobox", { name: "Search commands" }).fill("Show Welcome");
+    await page.keyboard.press("Enter");
+    await welcome(page)
+      .getByRole("button", { name: /Understand an existing system/ })
+      .click();
+    await expect(diffBanner(page)).toHaveCount(0);
+    await expect(editorLines(page)).toContainText("service Api");
+  });
+
   test("Track architecture evolution compares the migration with the current system", async ({
     page,
     opfs,

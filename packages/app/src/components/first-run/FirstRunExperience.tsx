@@ -91,8 +91,8 @@ export function FirstRunExperience({
         // it again would clear the open file without selecting it back.
         // A switch clears any diff; reselecting must leave the same state.
         if (seeded && seeded.id === currentProject?.id) {
-          await selectFile(`${seeded.rootPath}/index.krs`);
           dispatch({ type: "SET_COMPARE_SOURCE", source: null });
+          await selectFile(`${seeded.rootPath}/index.krs`);
         } else if (seeded) navigateToProject(seeded);
         else await openBundledExample(template);
         return;
