@@ -99,7 +99,8 @@ export function pickArtifact(artifacts: Artifact[]): Artifact | null {
   const named = artifacts.filter((a) => a.name === ARTIFACT);
   if (named.length !== 1) return null;
   const [artifact] = named;
-  return artifact.expired || artifact.size > MAX_ARTIFACT_BYTES ? null : artifact;
+  // Written so a size the API left out (NaN) fails too.
+  return !artifact.expired && artifact.size <= MAX_ARTIFACT_BYTES ? artifact : null;
 }
 
 export interface Io {

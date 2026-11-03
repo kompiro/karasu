@@ -94,6 +94,7 @@ describe("pickArtifact", () => {
     ["two", [artifact(), artifact({ id: 2 })]],
     ["an expired one", [artifact({ expired: true })]],
     ["one too large to be a verdict", [artifact({ size: 2 * 1024 * 1024 })]],
+    ["one without a size", [artifact({ size: Number.NaN })]],
   ])("picks nothing from %s", (_name, artifacts) => {
     expect(pickArtifact(artifacts)).toBeNull();
   });
