@@ -72,6 +72,10 @@ describe("readTplPaths", () => {
       "/abs.md",
       "dir/",
       "*.md",
+      "!(README).md",
+      "@(x).md",
+      ".",
+      "sub/.",
       "a\\b.md",
     ]) {
       expect(() => readTplPaths(JSON.stringify({ indexFile }))).toThrow(/plain file under/);

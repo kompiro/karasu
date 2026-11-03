@@ -116,6 +116,14 @@ describe("checkGenerated", () => {
     ]);
   });
 
+  it("fails, without throwing, when the head names an indexFile outside the TPL directory", () => {
+    const bad = { ...CONFIGS, tpl: JSON.stringify({ indexFile: "../x.md" }) };
+    expect(check("M\0tpl.config.json\0", { headConfigs: bad })).toEqual({
+      kind: "unknown",
+      errors: [expect.stringMatching(/configs failed.*plain file under/)],
+    });
+  });
+
   it("fails when the config is missing on one side", () => {
     expect(check("", { baseConfigs: { ...CONFIGS, adr: null } }).errors[0]).toMatch(
       /adr\.config\.json is missing/,

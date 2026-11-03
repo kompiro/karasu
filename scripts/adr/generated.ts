@@ -74,12 +74,13 @@ export function readTplPaths(configText: string | null): GeneratorRoot {
     throw new Error("tpl.config.json indexFile is not a path");
   }
   // A file inside the TPL directory, named literally: the generated paths are
-  // globs, and a name that escaped the directory would make other files generated.
+  // globs (extglobs included), and a name that escaped the directory or matched
+  // other files would make them generated. Only plain segments are allowed.
+  const segments = indexFile.split("/");
   if (
-    indexFile.startsWith("/") ||
-    indexFile.endsWith("/") ||
-    /[\\*?[\]{}]/.test(indexFile) ||
-    indexFile.split("/").includes("..")
+    !/^[\w.-]+(?:\/[\w.-]+)*$/.test(indexFile) ||
+    segments.includes("..") ||
+    segments.at(-1) === "."
   ) {
     throw new Error(
       `tpl.config.json indexFile must be a plain file under ${TPL_DIR}: ${indexFile}`,

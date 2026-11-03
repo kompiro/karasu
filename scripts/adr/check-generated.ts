@@ -28,6 +28,7 @@
 
 import {
   type ConfigTexts,
+  type GeneratedPaths,
   classifyGeneratedDiff,
   parseNameStatus,
   readGeneratedPaths,
@@ -63,8 +64,17 @@ export function checkGenerated(input: CheckInput): { kind: string; errors: strin
       errors: ["adr.config.json is missing at the merge base or the head"],
     };
   }
-  const base = readGeneratedPaths(input.baseConfigs);
-  const head = readGeneratedPaths(input.headConfigs);
+  let base: GeneratedPaths;
+  let head: GeneratedPaths;
+  try {
+    base = readGeneratedPaths(input.baseConfigs);
+    head = readGeneratedPaths(input.headConfigs);
+  } catch (e) {
+    return {
+      kind: "unknown",
+      errors: [`reading the generators' configs failed: ${(e as Error).message}`],
+    };
+  }
   const verdict = classifyGeneratedDiff({ base, head, files: parseNameStatus(input.nameStatus) });
 
   let regenerated: Tree;

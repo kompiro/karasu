@@ -347,6 +347,9 @@ describe("the TPL index on a real repository", { timeout: 60_000 }, () => {
       const result = freshness();
       expect(result.out).toMatch(/ADR index reflects/);
       expect(result.out).toMatch(/regenerating \w+ \(tpl\) failed/);
+      // No candidate regenerates the TPL index the head names, and it is not committed yet.
+      expect(result.out).toMatch(/TPL index matches no main commit's inputs/);
+      expect(result.code).toBe(1);
     });
 
     it("skips only the TPL index when tpl-tools changed inside the window", () => {
