@@ -56,7 +56,7 @@ karasu の AST には `BaseNodeFields`（`packages/core/src/types/ast.ts:41`）�
 - [ ] parser 側の `*_PROPERTY_KEYWORDS` セット（system / deploy / org など各 kind 群）すべてに新 field の keyword が含まれているか
 - [ ] 各 `parseXxxNode` が field を AST に書き込むコードを持っているか（keyword だけ追加して書き込みを忘れていないか）
 - [ ] renderer / layout で `node.<field> ?? fallback` のような **defensive な default** が使われているか。`node.id` を直接表示している箇所が無いか
-- [ ] `sampleKrs` / `examples/` / `docs/spec/syntax.md` の記述と実装が一致しているか（spec が先行している場合、実装の遅れに気づける）
+- [ ] `sampleKrs` / `examples/` / `docs/spec/syntax.md` の記述と実装が一致しているか（spec が先行している場合、実装の遅れに気づける） [guard: `scripts/lint/krs-fences.ts`]
 
 ## 既知の対処パターン
 
