@@ -358,7 +358,8 @@ export interface LayoutResult {
   /**
    * The label room this placement kept (#3036): `"channels"` when the channels
    * between rows were opened by the labels the first pass could not seat,
-   * `"channels+rows"` when the gaps inside rows were opened too. Unset when no
+   * `"channels+rows"` when the gaps inside rows were opened as well (with
+   * whatever channel room those labels asked for, none included). Unset when no
    * candidate seated strictly more labels than the placement without it. An
    * output, like `placementPasses` (ADR-2521).
    */

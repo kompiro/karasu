@@ -30,7 +30,7 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/label-room.test.ts` › `labelRoomInRows: the widest withheld label in a gap, plus its margins` › `opens a gap before its right-hand card by what the widest label is short of`、`opens nothing for a label outside every gap between two cards of a row`、`opens nothing where the label already fits the gap`
 
-- [x] AT-D: チャネルの需要は、x が重なるラベルの高さ（+ 余白 2 px × 2）の合計の最大値。font size の違うラベルが重なれば合計が開き、横に並ぶラベルは高さを共有する。行の中のラベルはチャネルの需要にならない
+- [x] AT-D: チャネルの需要は、x が重なるラベルの高さ（+ 余白 2 px）の合計の最大値。font size の違うラベルが重なれば合計が開き、横に並ぶラベルは高さを共有する。行の中のラベルはチャネルの需要にならない
 
   > ✅ Automated — `packages/core/src/renderer/label-room.test.ts` › `labelRoomInChannels: the largest sum of label heights over any x` › `stacks labels of different font sizes that overlap in x`、`lets labels side by side share the height`、`measures nothing for a label inside a row`
 

@@ -131,8 +131,8 @@ describe("labelRoomInChannels: the largest sum of label heights over any x", () 
       label(50, 70, 80, 16),
       label(60, 70, 80, 24),
     ]);
-    // (16 + 2 × 2) + (24 + 2 × 2) over the 20 px channel between rows 0 and 1.
-    expect(room).toEqual(new Map([[1, { height: 48, gap: 20 }]]));
+    // (16 + 2) + (24 + 2) over the 20 px channel between rows 0 and 1.
+    expect(room).toEqual(new Map([[1, { height: 44, gap: 20 }]]));
   });
 
   it("lets labels side by side share the height", () => {
@@ -140,7 +140,7 @@ describe("labelRoomInChannels: the largest sum of label heights over any x", () 
       label(40, 70, 60, 16),
       label(180, 70, 60, 24),
     ]);
-    expect(room.get(1)?.height).toBe(28);
+    expect(room.get(1)?.height).toBe(26);
   });
 
   it("measures nothing for a label inside a row", () => {
@@ -154,17 +154,24 @@ describe("chooseLabelRoom keeps a candidate only when it seats strictly more (TP
    * label in the row gap and one in the channel (so both candidates are made),
    * and the counts the label pass reports on each candidate.
    */
-  function choose(counts: { first: number; a: number; b: number }) {
-    const first = { result: FIRST(), rows: ROWS, crossingMarksPending: false };
+  function choose(counts: { first: number; a: number; b: number; structural?: number }) {
+    const run = () => ({ result: FIRST(), rows: ROWS, crossingMarksPending: true });
+    const first = run();
+    const structural = counts.structural === undefined ? undefined : run();
     // On the first placement: a label in the row gap, one in the channel, and
-    // copies of the first up to the count. On a candidate: just the count.
-    const demand = [label(115, 30), label(50, 70), label(115, 30), label(115, 30), label(115, 30)];
+    // copies of the first up to the count. Elsewhere: just the count.
+    const demand = [
+      label(115, 30),
+      label(50, 70, 80, 24),
+      ...Array.from({ length: 8 }, () => label(115, 30)),
+    ];
     const withheldOn = new Map<LayoutResult, number>();
+    if (structural) withheldOn.set(structural.result, counts.structural!);
     const placed: string[] = [];
     const chosen = chooseLabelRoom({
       first,
-      structural: undefined,
-      reservations: new Map(),
+      structural,
+      reservations: structural ? new Map([[1, 4]]) : new Map(),
       columns: new Map(),
       options: {
         withheldLabels: (result) =>
@@ -175,12 +182,12 @@ describe("chooseLabelRoom keeps a candidate only when it seats strictly more (TP
       place: (_rows, columns) => {
         const kind = columns.size > 0 ? "b" : "a";
         placed.push(kind);
-        const run = { result: FIRST(), rows: ROWS, crossingMarksPending: false };
-        withheldOn.set(run.result, counts[kind]);
-        return run;
+        const candidate = run();
+        withheldOn.set(candidate.result, counts[kind]);
+        return candidate;
       },
     });
-    return { chosen, placed, first };
+    return { chosen, placed, first, structural };
   }
 
   it("places A, then B, and keeps the one that withholds fewest", () => {
@@ -204,6 +211,31 @@ describe("chooseLabelRoom keeps a candidate only when it seats strictly more (TP
     expect(chosen.labelRoom).toBeUndefined();
     // The candidates were still placed and measured.
     expect(chosen.passes).toBe(3);
+  });
+
+  it("measures a candidate against the structural placement, not the first", () => {
+    // The first placement withholds 5, the structural one 2: A's 3 is fewer
+    // than the first's but not the baseline's, so the structural one is kept.
+    const { chosen, structural } = choose({ first: 5, structural: 2, a: 3, b: 4 });
+    expect(chosen.run).toBe(structural);
+    expect(chosen.labelRoom).toBeUndefined();
+    // The search's winner, the structural pass, A and B.
+    expect(chosen.passes).toBe(4);
+  });
+
+  it("returns a placement already split, so `layout()` does not split it again", () => {
+    const { chosen, structural } = choose({ first: 5, structural: 4, a: 3, b: 1 });
+    expect(chosen.labelRoom).toBe("channels+rows");
+    expect(chosen.run.crossingMarksPending).toBe(false);
+    expect(chosen.run.result.crossingMarks).toBeDefined();
+    expect(structural!.crossingMarksPending).toBe(false);
+  });
+
+  it("leaves a baseline it did not measure for `layout()` to split", () => {
+    const { chosen, first } = choose({ first: 0, structural: 0, a: 0, b: 0 });
+    expect(chosen.run).not.toBe(first);
+    expect(chosen.run.crossingMarksPending).toBe(true);
+    expect(chosen.passes).toBe(2);
   });
 
   it("places nothing when the label pass withholds nothing", () => {

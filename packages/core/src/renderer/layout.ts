@@ -120,8 +120,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   const columns = columnReservations(found.result.result, found.result.rows);
   const sides = gutterReservations(found.result.result, found.result.enclosure);
   const reserved = reservations.size > 0 || columns.size > 0 || sides !== undefined;
-  // Label room (#3036): candidates that also open room for the labels the
-  // renderer could not seat, kept only where they seat strictly more of them.
+  // Label room (#3036): kept only where it seats strictly more withheld labels.
   const chosen = chooseLabelRoom({
     first: found.result,
     structural: reserved

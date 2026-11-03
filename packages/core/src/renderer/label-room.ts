@@ -23,7 +23,7 @@ import type {
   WithheldLabel,
 } from "./layout-types.js";
 
-/** Room kept above and below a label stacked in a channel. */
+/** Room added to the height of each label stacked in a channel. */
 const CHANNEL_LABEL_MARGIN = 2;
 /** Room kept either side of a label across a gap inside a row. */
 const ROW_LABEL_MARGIN = 8;
@@ -78,7 +78,7 @@ export function labelRoomInChannels(
     const events: [x: number, height: number][] = [];
     for (const label of withheld) {
       if (label.anchor.y <= upper || label.anchor.y >= lower) continue;
-      const height = label.height + 2 * CHANNEL_LABEL_MARGIN;
+      const height = label.height + CHANNEL_LABEL_MARGIN;
       events.push([label.anchor.x - label.width / 2, height]);
       events.push([label.anchor.x + label.width / 2, -height]);
     }
