@@ -5,7 +5,7 @@ status: active
 date: 2026-07-16
 applicable_to:
   - "keystone 由来の用語（read / record split・funnel / retained・record-as-byproduct・source of truth / 描画層・supply → share → explore）や permalink family（deep / repo-backed / ref-pinned / inline snapshot）を定義・言い換えする文を追加・変更するとき"
-  - "PRD（docs/prd/keystone-primary-path.md）・ロードマップ（docs/roadmap.md）・permalink epic・ADR で上記の用語を説明したくなったとき（定義を再掲する誘惑）"
+  - "keystone PRD（Issue #3572）・ロードマップ（docs/roadmap.md）・permalink epic・ADR で上記の用語を説明したくなったとき（定義を再掲する誘惑）"
   - "docs/glossary.md / docs/glossary.ja.md の項目を追加・変更するとき、および permalink 機構が変わって permalink.md / design doc / ADR 側の記述が動いたとき"
   - "新しく壁打ち・PRD で load-bearing な語彙を coin したとき（恒久的な定義場所を最初から決めるため）"
   - "version vocabulary（互換性の軸・notation tier / annotation の主語区別・言語版表記）を定義・言い換えする文を追加・変更するとき — この語彙の正典は docs/glossary.md ではなく docs/roadmap.md §version vocabulary（ADR-2124）"
@@ -98,6 +98,6 @@ keystone / permalink の用語を扱う doc を変更するときに確認する
 
 - 恒久的な定義場所の原則: [`docs/glossary.md`](../glossary.md)（本 TPL が守らせる正典）。
 - 起票の動機: [#1831](https://github.com/kompiro/karasu/issues/1831)（coined 用語の drift 懸念）。
-- 用語の初出: PRD [`docs/prd/keystone-primary-path.md`](../prd/keystone-primary-path.md)。
+- 用語の初出: keystone PRD [#3572](https://github.com/kompiro/karasu/issues/3572)。
 - permalink 機構の正典: [`docs/spec/permalink.md`](../spec/permalink.md) /
   [ADR-1829](../adr/1829-adr-permalink-convention.md)。
