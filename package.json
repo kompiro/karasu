@@ -54,6 +54,7 @@
     "census:vocabulary": "tsx scripts/census/vocabulary.ts",
     "tpl:validate": "tpl validate --config tpl.config.json --packages-root packages --source-prefix packages --source-prefix scripts",
     "tpl:related": "tpl related --config tpl.config.json",
+    "tpl:regenerate": "tpl regenerate --config tpl.config.json",
     "tpl:review:body": "tpl review-body --repo kompiro/karasu",
     "at:check-coverage": "tsx scripts/acceptance/check-coverage.ts",
     "at:test": "vitest run --config scripts/vitest.config.ts scripts/acceptance",
