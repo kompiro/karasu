@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch } from "react";
 import type { AppAction, ActiveView, HighlightAttribute } from "../state/app-reducer.js";
 import { buildHash, parseHash } from "./history-hash.js";
@@ -51,7 +51,8 @@ export function useHistoryNavigation({
   highlightedNodeId: string | null;
   /**
    * Called when popstate (or initial-mount hash) requests a different file.
-   * Implementations should read the file's content and dispatch SELECT_FILE.
+   * Implementations should read the file's content and dispatch SELECT_FILE,
+   * and resolve to `false` when the file did not open (#3598).
    * Optional — when omitted, file changes are not restored from the URL
    * (used by modes without per-file navigation, e.g. ServeMode/MemoryMode).
    * Issue #811.
@@ -107,11 +108,18 @@ export function useHistoryNavigation({
   const restoringDeepLinkRef = useRef(false);
   // The values effect ② dispatched, which the state must hold before the
   // restoration counts as committed. A field absent here is not waited on.
+  // `filePath` is the file the hash names (#3598): a project switch opens
+  // `index.krs` first, and a file that lands after the restoration ended was
+  // pushed as a second entry.
   const restoreTargetRef = useRef<{
     activeView?: ActiveView;
     viewPath?: string[];
     highlightedNodeId?: string;
+    filePath?: string;
   }>({});
+  // Set when the hash's file did not open, so effect ③ re-checks the
+  // restoration without it even if no other state changes.
+  const [fileWaitEnded, setFileWaitEnded] = useState(false);
 
   // Stable ref for onFileChange — referenced inside long-lived effects without re-running them.
   const onFileChangeRef = useLatestRef(onFileChange);
@@ -145,8 +153,20 @@ export function useHistoryNavigation({
     // proceeds with the parsed values — SELECT_FILE resets viewPath in the
     // reducer, but the deferred-resolution effect ② re-applies the parsed
     // nodeId once the path index is ready.
-    if (parsed.filePath && parsed.filePath !== currentFilePath && onFileChangeRef.current) {
-      void onFileChangeRef.current(parsed.filePath);
+    const file = parsed.filePath;
+    if (file && onFileChangeRef.current) {
+      restoreTargetRef.current.filePath = file;
+      // A selection of the same file made elsewhere joins this one, so a
+      // `false` means the file will not open from here (#3598): its read
+      // failed, or the visitor chose another file. Waiting on stops then.
+      const opening = file === currentFilePath ? undefined : onFileChangeRef.current(file);
+      if (opening) {
+        void opening.then((landed) => {
+          if (landed !== false || restoreTargetRef.current.filePath !== file) return;
+          delete restoreTargetRef.current.filePath;
+          setFileWaitEnded(true);
+        });
+      }
     }
     // Stash the highlight for deferred re-application in effect ②. The immediate
     // dispatch below sets it on mount, but the seed's VIEW_RESET wipes it; the
@@ -198,6 +218,10 @@ export function useHistoryNavigation({
     // non-empty one proves the seed's SELECT_FILE (and its VIEW_RESET) has run.
     const indexReady =
       (!!nodePathIndex && nodePathIndex.size > 0) || (!!orgPathIndex && orgPathIndex.size > 0);
+    // Nor before the hash's file is in (#3598): its SELECT_FILE resets the
+    // view and the drill, so values applied over another file would not last.
+    const fileTarget = restoreTargetRef.current.filePath;
+    if (fileTarget !== undefined && fileTarget !== currentFilePath) return;
 
     // The view first (#3208): SET_ACTIVE_VIEW clears viewPath and the
     // highlight, so the node and highlight below must land after it, and an
@@ -244,7 +268,7 @@ export function useHistoryNavigation({
         highlightAttribute: pendingHighlightAttributeRef.current,
       });
     }
-  }, [nodePathIndex, orgPathIndex, dispatch]);
+  }, [nodePathIndex, orgPathIndex, dispatch, currentFilePath, fileWaitEnded]);
 
   // ③ Sync state changes → hash (Issue #811)
   // Includes `currentFilePath` so file switches participate in browser
@@ -300,14 +324,24 @@ export function useHistoryNavigation({
       const landed =
         (target.activeView === undefined || target.activeView === activeView) &&
         (target.viewPath === undefined || samePath(target.viewPath, viewPath)) &&
-        (target.highlightedNodeId === undefined || target.highlightedNodeId === highlightedNodeId);
+        (target.highlightedNodeId === undefined ||
+          target.highlightedNodeId === highlightedNodeId) &&
+        (target.filePath === undefined || target.filePath === currentFilePath);
       if (currentFilePath !== null && !pending && landed) {
         restoringDeepLinkRef.current = false;
         restoreTargetRef.current = {};
       }
     }
     prevFilePathRef.current = currentFilePath;
-  }, [activeView, viewPath, isOrgTreeView, isEntityView, highlightedNodeId, currentFilePath]);
+  }, [
+    activeView,
+    viewPath,
+    isOrgTreeView,
+    isEntityView,
+    highlightedNodeId,
+    currentFilePath,
+    fileWaitEnded,
+  ]);
 
   // ④ popstate handler — browser back/forward
   useEffect(() => {

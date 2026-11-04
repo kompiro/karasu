@@ -65,6 +65,42 @@ describe("useFileSelection", () => {
       expect(await slow).toBe(false);
     });
 
+    // #3598: the boot opens a deep link's file from the project switch and
+    // from the hash; neither request may read the other as superseding it.
+    it("joins a request for the file already being read, and reads it once", async () => {
+      let release: (content: string) => void = () => {};
+      const fs = makeFs({
+        readFile: vi.fn<(path: string) => Promise<string>>(
+          () =>
+            new Promise<string>((resolve) => {
+              release = resolve;
+            }),
+        ),
+      });
+      const dispatch = vi.fn<() => void>();
+      const { result } = renderHook(() => useFileSelection(fs, dispatch));
+
+      let landed: boolean[] = [];
+      await act(async () => {
+        const first = result.current.selectFile("/a.krs");
+        const second = result.current.selectFile("/a.krs");
+        release("A");
+        landed = await Promise.all([first, second]);
+      });
+
+      expect(landed).toEqual([true, true]);
+      expect(fs.readFile).toHaveBeenCalledTimes(1);
+      expect(dispatch).toHaveBeenCalledTimes(1);
+
+      // Once it has landed, asking again reads the file again.
+      await act(async () => {
+        const again = result.current.selectFile("/a.krs");
+        release("A2");
+        await again;
+      });
+      expect(fs.readFile).toHaveBeenCalledTimes(2);
+    });
+
     it("falls back to empty content when the file does not exist", async () => {
       const fs = makeFs({
         readFile: vi.fn<(path: string) => Promise<string>>(async () => {

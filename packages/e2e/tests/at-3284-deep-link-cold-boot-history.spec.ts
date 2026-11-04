@@ -58,3 +58,66 @@ for (const [hash, settled] of [
     await expect.poll(() => page.url()).toBe(linkedFrom);
   });
 }
+
+// #3598: a project switch opens `index.krs`; a link naming another file used
+// to have it land after the restoration ended, which pushed a second entry.
+const OTHER = `system Shop {
+  service BillingService {
+    domain Billing {}
+  }
+}
+
+organization Acme {
+  team Billing {
+    owns BillingService
+  }
+}
+`;
+
+const file = (path: string) => `?file=${encodeURIComponent(path)}`;
+
+test("a cold boot on a link naming another file than index.krs adds one history entry (AT-F)", async ({
+  page,
+  opfs,
+}) => {
+  await opfs.seed({
+    projects: [{ id: "shop", name: "Shop", files: { "index.krs": KRS, "other.krs": OTHER } }],
+    lastProjectId: "shop",
+  });
+  const linkedFrom = page.url();
+  const before = await page.evaluate(() => history.length);
+
+  const hash = `#krs-org-root${file("/projects/shop/other.krs")}`;
+  await opfs.gotoApp(`/${hash}`);
+  await expect(page.locator('svg [data-node-id="Billing"]').first()).toBeVisible();
+  await expect(page.locator(".monaco-editor .view-lines").first()).toContainText("BillingService");
+  await expect.poll(() => page.evaluate(() => location.hash)).toBe(hash);
+
+  expect(await page.evaluate(() => history.length)).toBe(before + 1);
+  await page.goBack();
+  await expect.poll(() => page.url()).toBe(linkedFrom);
+});
+
+test("after a link naming a file the project does not have, a file switch is a new entry (AT-G)", async ({
+  page,
+  opfs,
+}) => {
+  await opfs.seed({
+    projects: [{ id: "shop", name: "Shop", files: { "index.krs": KRS } }],
+    lastProjectId: "shop",
+  });
+  const hash = `#krs-system-root${file("/projects/shop/missing.krs")}`;
+  await opfs.gotoApp(`/${hash}`);
+  await expect.poll(() => page.evaluate(() => location.hash)).toBe(hash);
+  const restored = await page.evaluate(() => history.length);
+
+  await page.locator(".file-tree-item", { hasText: "index.krs" }).first().click();
+  await expect(page.locator('svg [data-node-id="OrderService"]').first()).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => location.hash))
+    .toBe(`#krs-system-root${file("/projects/shop/index.krs")}`);
+  expect(await page.evaluate(() => history.length)).toBe(restored + 1);
+
+  await page.goBack();
+  await expect.poll(() => page.evaluate(() => location.hash)).toBe(hash);
+});

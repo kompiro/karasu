@@ -284,6 +284,33 @@ describe("useProjectInitialization — project switch", () => {
     expect(selectFile).toHaveBeenCalledWith("/projects/abc/index.krs");
   });
 
+  // #3598: the file a deep link names is the boot's first, so nothing opens
+  // over it once the hash has been restored.
+  it("opens the file the hash names on the boot's switch, and index.krs on later ones", async () => {
+    history.replaceState(
+      null,
+      "",
+      "/projects/abc#krs-system-root?file=%2Fprojects%2Fabc%2Fplanned.krs",
+    );
+    const selectFile = vi.fn<(path: string) => Promise<void>>(async () => {});
+    const { rerender } = renderHook(
+      ({ project }: { project: Project }) =>
+        useProjectInitialization({
+          pm: makePm([]),
+          fs: new InMemoryFileSystemProvider(),
+          dispatch: vi.fn<(action: unknown) => void>(),
+          currentProject: project,
+          selectFile,
+        }),
+      { initialProps: { project: makeProject("abc") } },
+    );
+    await waitFor(() => expect(selectFile).toHaveBeenCalledWith("/projects/abc/planned.krs"));
+
+    rerender({ project: makeProject("def") });
+    await waitFor(() => expect(selectFile).toHaveBeenCalledWith("/projects/def/index.krs"));
+    history.replaceState(null, "", "/");
+  });
+
   it("is a no-op when currentProject is null", async () => {
     const pm = makePm([makeProject("a")]);
     const dispatch = vi.fn<(action: unknown) => void>();

@@ -5,7 +5,7 @@ import { buildHash, parseHash, shareTargetToHash } from "./history-hash.js";
 import { useHistoryNavigation } from "./useHistoryNavigation.js";
 import { anchorId } from "@karasu-tools/core";
 import { useReducer } from "react";
-import { appReducer, initialState } from "../state/app-reducer.js";
+import { appReducer, initialState, type AppAction } from "../state/app-reducer.js";
 
 afterEach(cleanup);
 
@@ -838,6 +838,119 @@ describe("useHistoryNavigation", () => {
       expect(location.hash).toBe("#krs-system-root?file=%2Findex.krs");
       await act(async () => {
         result.current.dispatch({ type: "SET_ACTIVE_VIEW", activeView: "deploy" });
+      });
+      expect(pushState).toHaveBeenCalledTimes(1);
+      pushState.mockRestore();
+    });
+  });
+
+  // #3598: a hash may name a file other than the `index.krs` a project switch
+  // opens. The restoration waits for that file, and re-applies the view and
+  // the drill over it rather than over the file open before it, so the file
+  // landing late neither pushes an entry nor resets what was restored.
+  describe("a deep link naming another file adds no history entry (#3598)", () => {
+    const KRS = "system S {\n  service A {}\n}\n";
+
+    /**
+     * The hook on the real reducer, with `/index.krs` already open (the
+     * project switch's file) and `onFileChange` resolved by the test. With
+     * `withSeed` the path index fills in the render a file lands in; without
+     * it, a render later, on `compileNow()`.
+     */
+    function renderOnIndexKrs(withSeed: boolean) {
+      let compiledFor: string | null = withSeed ? null : "/index.krs";
+      const reads = new Map<string, (opens: boolean) => void>();
+      const dispatchRef: { current: ((action: AppAction) => void) | null } = { current: null };
+      const onFileChange = vi.fn<(path: string) => Promise<boolean>>(
+        (path) =>
+          new Promise((resolve) => {
+            reads.set(path, (opens) => {
+              if (opens) dispatchRef.current?.({ type: "SELECT_FILE", path, content: KRS });
+              resolve(opens);
+            });
+          }),
+      );
+      const hook = renderHook(() => {
+        const [state, dispatch] = useReducer(appReducer, {
+          ...initialState,
+          currentFilePath: "/index.krs",
+          fileContent: KRS,
+        });
+        dispatchRef.current = dispatch;
+        const nodePathIndex =
+          state.fileContent && (withSeed || compiledFor === state.currentFilePath)
+            ? new Map([["A", ["A"]]])
+            : new Map<string, string[]>();
+        useHistoryNavigation(
+          makeOptions({
+            dispatch,
+            nodePathIndex,
+            orgPathIndex: nodePathIndex,
+            activeView: state.activeView,
+            viewPath: state.viewPath,
+            currentFilePath: state.currentFilePath,
+            highlightedNodeId: state.highlightedNodeId,
+            onFileChange,
+          }),
+        );
+        return { state, dispatch };
+      });
+      return {
+        ...hook,
+        onFileChange,
+        open: async (path: string, opens = true) => {
+          await act(async () => reads.get(path)?.(opens));
+        },
+        compileNow: async () => {
+          compiledFor = hook.result.current.state.currentFilePath;
+          await act(async () => hook.rerender());
+        },
+      };
+    }
+
+    it.each([
+      ["#krs-org-root?file=%2Fplanned.krs", true, "org", []],
+      ["#krs-org-root?file=%2Fplanned.krs", false, "org", []],
+      ["#krs-system-A?file=%2Fplanned.krs", true, "system", ["A"]],
+      ["#krs-system-A?file=%2Fplanned.krs", false, "system", ["A"]],
+      ["#krs-system-root?file=%2Fplanned.krs", true, "system", []],
+    ] as const)(
+      "%s restores on the named file (index fills in its render: %s)",
+      async (hash, withSeed, view, path) => {
+        history.replaceState(null, "", hash);
+        const pushState = vi.spyOn(history, "pushState");
+        const { result, onFileChange, open, compileNow } = renderOnIndexKrs(withSeed);
+        expect(onFileChange).toHaveBeenCalledWith("/planned.krs");
+
+        // The file open before the named one has its index; nothing ends yet.
+        await compileNow();
+        await open("/planned.krs");
+        await compileNow();
+
+        expect(result.current.state.currentFilePath).toBe("/planned.krs");
+        expect(result.current.state.activeView).toBe(view);
+        expect(result.current.state.viewPath).toEqual(path);
+        expect(pushState).not.toHaveBeenCalled();
+        expect(location.hash).toBe(hash);
+
+        await act(async () => {
+          result.current.dispatch({ type: "SET_ACTIVE_VIEW", activeView: "deploy" });
+        });
+        expect(pushState).toHaveBeenCalledTimes(1);
+        pushState.mockRestore();
+      },
+    );
+
+    it("stops waiting for the named file when it does not open", async () => {
+      history.replaceState(null, "", "#krs-system-root?file=%2Fbroken.krs");
+      const pushState = vi.spyOn(history, "pushState");
+      const { result, open } = renderOnIndexKrs(true);
+      await open("/broken.krs", false);
+
+      expect(result.current.state.currentFilePath).toBe("/index.krs");
+      expect(pushState).not.toHaveBeenCalled();
+      await act(async () => {
+        result.current.dispatch({ type: "SET_ACTIVE_VIEW", activeView: "org" });
       });
       expect(pushState).toHaveBeenCalledTimes(1);
       pushState.mockRestore();

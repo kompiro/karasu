@@ -5,9 +5,9 @@ type: product
 # AT: deep link を開いても history に途中の entry が積まれない（#3284）
 
 - **日付**: 2026-10-22
-- **関連 Issue**: [#3284](https://github.com/kompiro/karasu/issues/3284)
+- **関連 Issue**: [#3284](https://github.com/kompiro/karasu/issues/3284) / [#3598](https://github.com/kompiro/karasu/issues/3598)（`index.krs` 以外のファイルを指すリンク）
 - **Related TPLs**: [TPL-1842](../test-perspectives/TPL-1842-restore-state-survive-later-reset.md)
-- **対象ファイル**: `packages/app/src/hooks/useHistoryNavigation.ts`（effect ② / effect ③）
+- **対象ファイル**: `packages/app/src/hooks/useHistoryNavigation.ts`（effect ② / effect ③）、`packages/app/src/hooks/useProjectInitialization.ts`（起動時のファイル）、`packages/app/src/hooks/useFileSelection.ts`（同じファイルの選択の合流）
 
 > deep link（`#krs-deploy` / `#krs-org-root` / `#krs-system-<id>` / `:<highlight>` 付き）で app を cold boot すると、hash を書く effect が復元前の state（mount 直後の `system` root、seed の reset、再適用の直前の commit）を `pushState` していた。Back はそれらを経由してからリンク元に戻っていた。hash が名指す値がすべて state に commit されるまで、書き込みを replace にする。
 
@@ -36,6 +36,18 @@ type: product
 - [x] AT-E: 再適用する値が state にすでにある場合（model に無い node を指す drill hash が root に解決される）も、復元が開いたまま残らず、次の操作が push される
 
   > ✅ Automated — `packages/app/src/hooks/useHistoryNavigation.test.ts` › `a cold boot on a deep link adds no history entry (#3284)` › `pushes the first navigation when the restored value was already in the state`
+
+### AC-3: `index.krs` 以外のファイルを指すリンクでも同じ（#3598）
+
+- [x] AT-F: `?file=` が `index.krs` 以外を指す deep link で開いても `history.length` が 1 だけ増え、そのファイルとリンクのビューが開いて、Back でリンク元に戻る。実 reducer では、先に開いていた `index.krs` の index が揃っても復元を終えず、指すファイルが入ってからビュー・ドリルを当てて終える（index がそのファイルと同じ render で埋まる場合と、1 render 遅れる場合の両方）
+
+  > ✅ Automated — `packages/e2e/tests/at-3284-deep-link-cold-boot-history.spec.ts` › `a cold boot on a link naming another file than index.krs adds one history entry (AT-F)`
+  > ✅ Automated — `packages/app/src/hooks/useHistoryNavigation.test.ts` › `a deep link naming another file adds no history entry (#3598)` › `%s restores on the named file (index fills in its render: %s)`
+
+- [x] AT-G: プロジェクトに無いファイルを指す deep link でも復元が終わり、そのあとのファイルの切り替えは通常どおり history に積まれる。指すファイルが開けなかったときも、待ち続けずに復元を終える
+
+  > ✅ Automated — `packages/e2e/tests/at-3284-deep-link-cold-boot-history.spec.ts` › `after a link naming a file the project does not have, a file switch is a new entry (AT-G)`
+  > ✅ Automated — `packages/app/src/hooks/useHistoryNavigation.test.ts` › `a deep link naming another file adds no history entry (#3598)` › `stops waiting for the named file when it does not open`
 
 ## 手動確認
 

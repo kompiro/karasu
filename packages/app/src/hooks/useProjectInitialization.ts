@@ -16,6 +16,7 @@ import {
 import type { ProjectManager } from "../fs/project-manager.js";
 import { resolveLocale } from "../i18n/locale.js";
 import type { AppAction } from "../state/app-reducer.js";
+import { parseHash } from "./history-hash.js";
 import { LAST_PROJECT_KEY } from "./useProjectNavigation.js";
 
 interface UseProjectInitializationArgs {
@@ -62,7 +63,9 @@ async function cleanupPasteCompareTempFiles(
  *    done.
  * 2. **On project switch**: persist `currentProject.id` to localStorage so
  *    the next session can restore it, and auto-select the project's
- *    `index.krs` as the active editor file.
+ *    `index.krs` as the active editor file. The boot's switch opens the file
+ *    the URL hash names instead (#3598), so the file a deep link restores is
+ *    the first one to land and nothing opens over it afterwards.
  *
  * It reports whether this boot seeded the defaults, which is the app's only
  * reliable sign of a first visit: the first-run Welcome keys on it (#3565).
@@ -153,11 +156,15 @@ export function useProjectInitialization({
     })();
   }, [pm, fs, dispatch]);
 
-  // On project switch: persist to localStorage + auto-select index.krs.
+  // On project switch: persist to localStorage + auto-select index.krs. The
+  // hash is read once the boot has written it (`useProjectNavigation`).
+  const booted = useRef(false);
   useEffect(() => {
     if (!currentProject) return;
     localStorage.setItem(LAST_PROJECT_KEY, currentProject.id);
-    void selectFile(`${currentProject.rootPath}/index.krs`);
+    const hashFile = booted.current ? null : parseHash(location.hash)?.filePath;
+    booted.current = true;
+    void selectFile(hashFile ?? `${currentProject.rootPath}/index.krs`);
   }, [currentProject, selectFile]);
 
   return { seededDefaults };
