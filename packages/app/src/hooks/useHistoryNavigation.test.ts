@@ -1,12 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, cleanup } from "@testing-library/react";
-import {
-  buildHash,
-  parseHash,
-  shareTargetToHash,
-  useHistoryNavigation,
-} from "./useHistoryNavigation.js";
+import { buildHash, parseHash, shareTargetToHash } from "./history-hash.js";
+import { useHistoryNavigation } from "./useHistoryNavigation.js";
 import { anchorId } from "@karasu-tools/core";
 import { useReducer } from "react";
 import { appReducer, initialState } from "../state/app-reducer.js";

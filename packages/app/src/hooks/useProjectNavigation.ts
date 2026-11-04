@@ -2,7 +2,7 @@ import { useEffect, useCallback, useRef } from "react";
 import type { Dispatch } from "react";
 import type { Project } from "@karasu-tools/core";
 import type { AppAction } from "../state/app-reducer.js";
-import { buildHash } from "./useHistoryNavigation.js";
+import { buildHash } from "./history-hash.js";
 import { PROJECTS_SEGMENT } from "../routes.js";
 
 export const LAST_PROJECT_KEY = "karasu-last-project-id";

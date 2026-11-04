@@ -1,5 +1,5 @@
 import type { ShareTarget } from "@karasu-tools/core";
-import { shareTargetToHash, parseHash } from "../hooks/useHistoryNavigation.js";
+import { shareTargetToHash, parseHash } from "../hooks/history-hash.js";
 
 /**
  * Resolve the deep-link anchor to normalize the entry URL to, or null for none.
