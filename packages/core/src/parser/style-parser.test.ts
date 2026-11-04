@@ -211,6 +211,60 @@ edge#OrderDB.OrderTable->Logger { color: #EF4444; }
     });
   });
 
+  // #3520: an id made only of hex digits was lexed as a color, so `#face` was a
+  // type selector that matched nothing and `edge#feed` did not parse.
+  describe("hex-shaped ids in selector position", () => {
+    function selectorOf(source: string) {
+      const result = StyleParser.parse(`${source} { color: red; }`);
+      expect(result.diagnostics).toEqual([]);
+      expect(result.value.rules).toHaveLength(1);
+      return result.value.rules[0].selector;
+    }
+
+    it.each([
+      ["#face", "face"],
+      ["#Feed.Items", "Feed.Items"],
+      ["#add", "add"],
+    ])("reads %s as a node id", (source, id) => {
+      const selector = selectorOf(source);
+      expect(selector.id).toBe(id);
+      expect(selector.nodeType).toBeUndefined();
+      expect(computeSpecificity(selector)).toBe(100);
+    });
+
+    it.each([
+      ["edge#feed", "feed"],
+      ["edge#face->db", "face->db"],
+      ["edge#face-->db", "face-->db"],
+      ["edge#Feed.Items->x", "Feed.Items->x"],
+      ["edge#bad.x->c", "bad.x->c"],
+      ["edge#123.4->c", "123.4->c"],
+      ["edge#abc--d->c", "abc--d->c"],
+    ])("reads %s as an edge id", (source, edgeId) => {
+      expect(selectorOf(source).edgeId).toBe(edgeId);
+    });
+
+    it("reads boundary#<hex> and team#<hex> as ids", () => {
+      expect(selectorOf("boundary#cafe").boundaryId).toBe("cafe");
+      const team = selectorOf("team#bead");
+      expect(team.nodeType).toBe("team");
+      expect(team.id).toBe("bead");
+    });
+
+    // An endpoint that itself starts with `#` (the quoted form #3480 writes)
+    // must keep it: only the selector's own `#` is dropped.
+    it("keeps a # that belongs to the endpoint", () => {
+      expect(selectorOf("edge##abc->c").edgeId).toBe("#abc->c");
+      expect(selectorOf("edge#a->#abc").edgeId).toBe("a->#abc");
+    });
+
+    it("keeps the selector's source range over the whole id", () => {
+      const selector = selectorOf("edge#face->db");
+      expect(selector.loc.start.offset).toBe(0);
+      expect(selector.loc.end.offset).toBe("edge#face->db".length);
+    });
+  });
+
   describe("edge[from=<id>] / edge[to=<id>] selector", () => {
     it("parses a source selector", () => {
       const result = StyleParser.parse(`edge[from=ApiGateway] { color: #3B82F6; }`);

@@ -224,9 +224,8 @@ export class StyleParser {
     };
 
     // #id selector
-    if (this.peek().type === TokenType.Hash) {
-      this.advance(); // #
-      const idToken = this.expect(TokenType.Identifier);
+    if (this.atHashId()) {
+      const idToken = this.expectHashId();
       selector.id = idToken.value;
       selector.loc = this.rangeBetween(startToken, idToken);
       return selector;
@@ -244,9 +243,8 @@ export class StyleParser {
     // same shape as edge#<id> below. A boundary is not a node, so a bare
     // `#<id>` would address the node id space instead; the keyword is what
     // selects which space the id is read in.
-    if (selector.nodeType === "boundary" && this.peek().type === TokenType.Hash) {
-      this.advance(); // #
-      const id = this.expect(TokenType.Identifier);
+    if (selector.nodeType === "boundary" && this.atHashId()) {
+      const id = this.expectHashId();
       selector.boundaryId = id.value;
       lastToken = id;
     }
@@ -257,9 +255,8 @@ export class StyleParser {
     // moving it onto another object. It therefore lands in `selector.id`, which
     // is what makes the node matchers AND the two parts and what scores it 101
     // (100 for the id + 1 for the kind) with no change to `computeSpecificity`.
-    if (selector.nodeType === "team" && this.peek().type === TokenType.Hash) {
-      this.advance(); // #
-      const id = this.expect(TokenType.Identifier);
+    if (selector.nodeType === "team" && this.atHashId()) {
+      const id = this.expectHashId();
       selector.id = id.value;
       lastToken = id;
     }
@@ -267,9 +264,8 @@ export class StyleParser {
     // edge#<id> selector — only meaningful after `edge`. Accepts either an
     // author identifier (`edge#criticalWrite`) or a base form
     // (`edge#A->B` / `edge#A-->B`).
-    if (selector.nodeType === "edge" && this.peek().type === TokenType.Hash) {
-      this.advance(); // #
-      const first = this.expect(TokenType.Identifier);
+    if (selector.nodeType === "edge" && this.atHashId()) {
+      const first = this.expectHashId();
       const next = this.peek().type;
       if (next === TokenType.Arrow || next === TokenType.DashedArrow) {
         const arrow = this.advance().value;
@@ -515,6 +511,32 @@ export class StyleParser {
     const text = parts.join(" ").trim();
     const node = refused ? undefined : buildValueNode(atoms, segmentStarts);
     return { text, node, refused };
+  }
+
+  /** Whether the next token starts a `#<id>`: a `#`, or a hex-shaped id read as one token. */
+  private atHashId(): boolean {
+    const token = this.peek();
+    return (
+      token.type === TokenType.Hash ||
+      (token.type === TokenType.Identifier && token.value.startsWith("#"))
+    );
+  }
+
+  /**
+   * Read `#<id>` and return the id token. The lexer reads a hex-shaped id
+   * (`#face`, `edge#feed`) as one color token; in selector position it is `#`
+   * plus the id, so the rule matches what the author named (#3520). Only that
+   * `#` is dropped: after a `#` token the id is taken as written, so
+   * `edge##abc->c` keeps `#abc` as its first endpoint.
+   */
+  private expectHashId(): Token {
+    const token = this.peek();
+    if (token.type === TokenType.Hash) {
+      this.advance(); // #
+      return this.expect(TokenType.Identifier);
+    }
+    this.advance();
+    return { ...token, value: token.value.slice(1) };
   }
 
   /** Whether `hash` is immediately followed, with no space, by an identifier. */

@@ -183,8 +183,9 @@ export class StyleLexer {
         this.advance();
         return { type: TokenType.Equals, value: "=", loc };
       case "#":
-        // Distinguish hex color (#ABC123) from ID selector (#MyId)
-        // Hex colors: all following chars are hex digits and count is 3,4,6,8
+        // Distinguish hex color (#ABC123) from ID selector (#MyId). A hex-shaped
+        // id (`#face`) still reads as a color; the selector parser takes it as
+        // `#` + id (#3520).
         if (this.isHexColor()) {
           return this.readHexColor(loc);
         }
@@ -227,18 +228,22 @@ export class StyleLexer {
       offset++;
     }
     const hexLen = offset - 1;
-    // Must be valid hex color length AND not followed by an ident char
-    if (hexLen === 0) return false;
-    // Anything that continues a word keeps the run in an id, not only what can
-    // start one: a combining mark or a non-ASCII digit (`#café`, written
-    // decomposed), or a `-` before a word character (`#add-on`). Otherwise the
-    // selector stopped at `#cafe` / `#add` and could not name the id (#3140).
-    const end = this.pos + offset;
-    const followedByIdent =
-      wordPartAt(this.source, end, this.source[end - 1]) !== "" ||
-      (this.source[end] === "-" && isIdentPart(codePointAt(this.source, end + 1)));
-    // If hex chars are followed by more ident chars, it's an ID not a color
-    return !followedByIdent && (hexLen === 3 || hexLen === 4 || hexLen === 6 || hexLen === 8);
+    if (hexLen !== 3 && hexLen !== 4 && hexLen !== 6 && hexLen !== 8) return false;
+    // A color only when the word after `#` ends with the hex run. Anything the
+    // id would continue through keeps the run in an id: a combining mark or a
+    // non-ASCII digit (`#café`, written decomposed), a `-` that starts no arrow
+    // (`#add-on`, `#abc--d`), a `.` segment (`#Feed.Items`), a decimal
+    // (`#123.4`). Otherwise the selector stopped at the run and could not name
+    // the id, or the lexer dropped the `.` (#3140, #3520).
+    return this.wordLengthAt(this.pos + 1) === hexLen;
+  }
+
+  /** The length of the token `readToken` would read at `pos`, without consuming it. */
+  private wordLengthAt(pos: number): number {
+    const probe = new StyleLexer(this.source);
+    probe.pos = pos;
+    probe.readToken();
+    return probe.pos - pos;
   }
 
   private readHexColor(loc: SourceLocation): Token {
