@@ -3,6 +3,8 @@ import type { Dispatch } from "react";
 import type { AppAction, ActiveView, HighlightAttribute } from "../state/app-reducer.js";
 import { buildHash, parseHash } from "./history-hash.js";
 import { useLatestRef } from "./useLatestRef.js";
+import type { FileSelectionStatus } from "./useFileSelection.js";
+import { registerDeepLinkRestore } from "../state/deep-link-restore.js";
 
 /**
  * The attribute a `:<highlight>` restored from the hash is matched against
@@ -14,6 +16,9 @@ import { useLatestRef } from "./useLatestRef.js";
 function hashHighlightAttribute(view: ActiveView): HighlightAttribute {
   return view === "deploy" ? "data-realized-node-id" : "data-node-id";
 }
+
+/** Where the path indexes stand relative to the open entry (#3598). */
+export type PathIndexState = "current" | "compiling" | "failed";
 
 function samePath(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((segment, i) => segment === b[i]);
@@ -35,7 +40,7 @@ export function useHistoryNavigation({
   highlightedNodeId,
   onFileChange,
   fileRoot = null,
-  pathIndexCurrent = true,
+  pathIndexState = "current",
 }: {
   activeView: ActiveView;
   viewPath: string[];
@@ -54,23 +59,24 @@ export function useHistoryNavigation({
   /**
    * Called when popstate (or initial-mount hash) requests a different file.
    * Implementations should read the file's content and dispatch SELECT_FILE,
-   * and resolve to whether the file opened (#3598).
+   * and resolve to how the selection ended (#3598).
    * Optional — when omitted, file changes are not restored from the URL
    * (used by modes without per-file navigation, e.g. ServeMode/MemoryMode).
    * Issue #811.
    */
-  onFileChange?: (path: string) => Promise<boolean>;
+  onFileChange?: (path: string) => Promise<FileSelectionStatus>;
   /**
    * The open project's root. A hash naming a file outside it is not opened
    * on mount (#3598): it would open as an empty buffer no project owns.
    */
   fileRoot?: string | null;
   /**
-   * Whether the path indexes were compiled for the entry now open. They lag
-   * a file switch until the debounced compile lands, and a drill resolved
-   * against the previous file's index would be dropped (#3598).
+   * Whether the path indexes come from the entry now open (#3598). They lag a
+   * file switch until the debounced compile lands (`"compiling"`): a drill
+   * resolved against the previous file's index would be dropped. A compile
+   * that settles with errors keeps the previous index (`"failed"`).
    */
-  pathIndexCurrent?: boolean;
+  pathIndexState?: PathIndexState;
 }): {
   navigateActiveView: (view: ActiveView) => void;
   navigateViewPath: (path: string[]) => void;
@@ -144,6 +150,7 @@ export function useHistoryNavigation({
     restoreTargetRef.current = {};
     restoringDeepLinkRef.current = false;
   });
+  useEffect(() => registerDeepLinkRestore(() => endRestoreRef.current()), []);
 
   // Stable ref for onFileChange — referenced inside long-lived effects without re-running them.
   const onFileChangeRef = useLatestRef(onFileChange);
@@ -181,12 +188,17 @@ export function useHistoryNavigation({
     const inRoot = fileRoot === null || file?.startsWith(`${fileRoot}/`);
     if (file && inRoot && onFileChangeRef.current) {
       restoreTargetRef.current.filePath = file;
-      // A selection of the same file made elsewhere joins this one, so a
-      // `false` means the file will not open from here (#3598): its read
-      // failed, or the visitor chose another file. Waiting on stops then.
+      // A selection of the same file made elsewhere joins this one (#3598).
+      // Superseded means the visitor chose another file or project, which
+      // ends the restoration before their file lands; a failed read only
+      // stops the wait for the file.
       if (file !== currentFilePath) {
-        void onFileChangeRef.current(file).then((landed) => {
-          if (landed || restoreTargetRef.current.filePath !== file) return;
+        void onFileChangeRef.current(file).then((status) => {
+          if (status === "opened" || restoreTargetRef.current.filePath !== file) return;
+          if (status === "superseded") {
+            endRestoreRef.current();
+            return;
+          }
           delete restoreTargetRef.current.filePath;
           setFileWaitEnded(true);
         });
@@ -238,16 +250,22 @@ export function useHistoryNavigation({
   // ② Re-apply the pending view, resolve pendingNodeId and re-apply the
   // pending highlight once the relevant path index is available.
   useEffect(() => {
-    // Gate on a populated index: it derives from the seeded file content, so a
-    // non-empty one proves the seed's SELECT_FILE (and its VIEW_RESET) has run.
-    const indexReady =
-      (!!nodePathIndex && nodePathIndex.size > 0) || (!!orgPathIndex && orgPathIndex.size > 0);
-    // Nor before the hash's file is in, and its own index with it (#3598):
+    // Not before the hash's file is in, and its own index with it (#3598):
     // its SELECT_FILE resets the view and the drill, so values applied over
     // another file would not last, and the index lags the switch.
     const fileTarget = restoreTargetRef.current.filePath;
     if (fileTarget !== undefined && fileTarget !== currentFilePath) return;
-    if (!pathIndexCurrent) return;
+    if (pathIndexState === "compiling") return;
+    // A compile that settled with errors keeps the previous file's index: the
+    // tab and the highlight still apply, and the drill, which only that stale
+    // index could resolve, is dropped so the restoration can end.
+    const compileFailed = pathIndexState === "failed";
+    // Gate on a populated index: it derives from the seeded file content, so a
+    // non-empty one proves the seed's SELECT_FILE (and its VIEW_RESET) has run.
+    const indexReady =
+      compileFailed ||
+      (!!nodePathIndex && nodePathIndex.size > 0) ||
+      (!!orgPathIndex && orgPathIndex.size > 0);
 
     // The view first (#3208): SET_ACTIVE_VIEW clears viewPath and the
     // highlight, so the node and highlight below must land after it, and an
@@ -269,7 +287,9 @@ export function useHistoryNavigation({
     const isOrgPending = pendingActiveViewRef.current === "org";
     const index = isOrgPending ? orgPathIndex : nodePathIndex;
 
-    if (nodeId !== null) {
+    if (nodeId !== null && compileFailed) {
+      pendingNodeIdRef.current = null;
+    } else if (nodeId !== null) {
       if (!index || index.size === 0) return;
       const resolvedPath = index.get(nodeId) ?? [];
       pendingNodeIdRef.current = null;
@@ -294,7 +314,7 @@ export function useHistoryNavigation({
         highlightAttribute: pendingHighlightAttributeRef.current,
       });
     }
-  }, [nodePathIndex, orgPathIndex, dispatch, currentFilePath, fileWaitEnded, pathIndexCurrent]);
+  }, [nodePathIndex, orgPathIndex, dispatch, currentFilePath, fileWaitEnded, pathIndexState]);
 
   // ③ Sync state changes → hash (Issue #811)
   // Includes `currentFilePath` so file switches participate in browser
@@ -386,6 +406,8 @@ export function useHistoryNavigation({
   // ④ popstate handler — browser back/forward
   useEffect(() => {
     const handlePopState = () => {
+      // Back / Forward is the visitor's: a restoration still running ends.
+      if (restoringDeepLinkRef.current) endRestoreRef.current();
       const parsed = parseHash(location.hash);
       if (!parsed) return;
 

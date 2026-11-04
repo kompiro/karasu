@@ -5,7 +5,7 @@ import { type Locator, type Page } from "@playwright/test";
 import { drillInto } from "../fixtures/drill.js";
 import { expect, test, type OpfsFixture } from "../fixtures/opfs.js";
 import { pressChord } from "../fixtures/keyboard.js";
-import { selectedTab } from "../fixtures/tabs.js";
+import { openViewTab, selectedTab } from "../fixtures/tabs.js";
 
 /**
  * AT-3563: the web app's first-run experience. Welcome (#3565) greets a first
@@ -365,6 +365,9 @@ test.describe("AT-3563 resuming the tour (#3598)", () => {
     await expect(diffBanner(page)).toContainText("planned.krs");
     await expect(node(page, "BillingService")).toHaveAttribute("data-diff-state", "added");
     expect(await page.evaluate(() => history.length)).toBe(before);
+    // The restoration has ended: the visitor's next move is a new entry.
+    await openViewTab(page, "Org");
+    await expect.poll(() => page.evaluate(() => history.length)).toBe(before + 1);
   });
 
   // The org view is the one a scene sets after its file's SELECT_FILE reset
@@ -384,6 +387,8 @@ test.describe("AT-3563 resuming the tour (#3598)", () => {
     await expect(selectedTab(page, "Org")).toBeVisible();
     await expect.poll(() => page.evaluate(() => location.hash)).toMatch(/^#krs-org-root/);
     expect(await page.evaluate(() => history.length)).toBe(before);
+    await openViewTab(page, "System");
+    await expect.poll(() => page.evaluate(() => history.length)).toBe(before + 1);
   });
 
   test("a reload after drilling on step 1 comes back to step 1, undrilled", async ({

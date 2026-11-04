@@ -2,20 +2,26 @@ import { useCallback, useRef, type Dispatch } from "react";
 import type { FileSystemProvider } from "@karasu-tools/core";
 import type { AppAction } from "../state/app-reducer.js";
 
+/**
+ * How a file selection ended: the file is open (a missing file opens as an
+ * empty buffer), its read failed, or a later selection of another file took
+ * over before it landed (#3598).
+ */
+export type FileSelectionStatus = "opened" | "failed" | "superseded";
+
 interface InFlightSelection {
   path: string;
   fallback: string | undefined;
-  landed: Promise<boolean>;
+  landed: Promise<FileSelectionStatus>;
 }
 
 interface UseFileSelectionResult {
   /**
-   * Resolves to whether the selection landed (false when superseded by
-   * another file or aborted). A request for the file already being read
-   * joins that read. When the read fails and nothing newer was asked for,
-   * `fallback` is selected instead (#3598).
+   * Resolves to how the selection ended. A request for the file already
+   * being read joins that read. When the read fails and nothing newer was
+   * asked for, `fallback` is selected instead (#3598).
    */
-  selectFile: (path: string, fallback?: string) => Promise<boolean>;
+  selectFile: (path: string, fallback?: string) => Promise<FileSelectionStatus>;
   selectFileWithContent: (path: string, content: string) => void;
 }
 
@@ -47,7 +53,7 @@ export function useFileSelection(
 
   const selectFile = useCallback(
     (path: string, fallback?: string) => {
-      const select = (target: string, orElse?: string): Promise<boolean> => {
+      const select = (target: string, orElse?: string): Promise<FileSelectionStatus> => {
         const joined = inFlightRef.current;
         if (joined?.path === target) {
           joined.fallback ??= orElse;
@@ -56,7 +62,7 @@ export function useFileSelection(
         const seq = ++latestSelectionRef.current;
         // A later request for the same file may add the fallback while this reads.
         const request: Omit<InFlightSelection, "landed"> = { path: target, fallback: orElse };
-        const landed = (async () => {
+        const landed = (async (): Promise<FileSelectionStatus> => {
           let content: string;
           try {
             content = await fs.readFile(target);
@@ -65,19 +71,19 @@ export function useFileSelection(
             // the read transiently failed" — landing on an editable empty buffer in
             // the latter case lets the next keystroke clobber the real file (#1536).
             const stillExists = await fs.exists(target).catch(() => false);
-            if (seq !== latestSelectionRef.current) return false; // superseded by a newer selection
+            if (seq !== latestSelectionRef.current) return "superseded";
             if (stillExists) {
               // eslint-disable-next-line no-console
               console.error(`Failed to read existing file; keeping current selection: ${target}`);
               // Nothing newer was asked for, so the fallback opens instead.
               if (request.fallback) void select(request.fallback);
-              return false;
+              return "failed";
             }
             content = "";
           }
-          if (seq !== latestSelectionRef.current) return false; // superseded by a newer selection
+          if (seq !== latestSelectionRef.current) return "superseded";
           dispatch({ type: "SELECT_FILE", path: target, content });
-          return true;
+          return "opened";
         })().finally(() => {
           if (seq === latestSelectionRef.current) inFlightRef.current = null;
         });

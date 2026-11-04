@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures/opfs.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-3284: opening a deep link adds one history entry, the link itself.
@@ -94,6 +95,11 @@ test("a cold boot on a link naming another file than index.krs adds one history 
   await expect.poll(() => page.evaluate(() => location.hash)).toBe(hash);
 
   expect(await page.evaluate(() => history.length)).toBe(before + 1);
+  // The restoration has ended: the visitor's next move is a new entry.
+  await openViewTab(page, "System");
+  await expect.poll(() => page.evaluate(() => history.length)).toBe(before + 2);
+  await page.goBack();
+  await expect.poll(() => page.evaluate(() => location.hash)).toBe(hash);
   await page.goBack();
   await expect.poll(() => page.url()).toBe(linkedFrom);
 });

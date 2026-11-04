@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, act, cleanup } from "@testing-library/react";
-import { useFileSelection } from "./useFileSelection.js";
+import { useFileSelection, type FileSelectionStatus } from "./useFileSelection.js";
 import type { FileSystemProvider } from "@karasu-tools/core";
 
 afterEach(cleanup);
@@ -39,7 +39,7 @@ describe("useFileSelection", () => {
       });
     });
 
-    it("reports whether the selection landed: a superseded read resolves to false", async () => {
+    it("reports how the selection ended: a superseded read resolves to superseded", async () => {
       let releaseSlow: (content: string) => void = () => {};
       const fs = makeFs({
         readFile: vi.fn<(path: string) => Promise<string>>((path) =>
@@ -53,16 +53,16 @@ describe("useFileSelection", () => {
       const dispatch = vi.fn<() => void>();
       const { result } = renderHook(() => useFileSelection(fs, dispatch));
 
-      let slow: Promise<boolean> = Promise.resolve(true);
-      let fast = false;
+      let slow: Promise<FileSelectionStatus> = Promise.resolve("opened");
+      let fast: FileSelectionStatus = "failed";
       await act(async () => {
         slow = result.current.selectFile("/slow.krs");
         fast = await result.current.selectFile("/fast.krs");
         releaseSlow("slow");
       });
 
-      expect(fast).toBe(true);
-      expect(await slow).toBe(false);
+      expect(fast).toBe("opened");
+      expect(await slow).toBe("superseded");
     });
 
     // #3598: the boot opens a deep link's file from the project switch and
@@ -80,7 +80,7 @@ describe("useFileSelection", () => {
       const dispatch = vi.fn<() => void>();
       const { result } = renderHook(() => useFileSelection(fs, dispatch));
 
-      let landed: boolean[] = [];
+      let landed: FileSelectionStatus[] = [];
       await act(async () => {
         const first = result.current.selectFile("/a.krs");
         const second = result.current.selectFile("/a.krs");
@@ -88,7 +88,7 @@ describe("useFileSelection", () => {
         landed = await Promise.all([first, second]);
       });
 
-      expect(landed).toEqual([true, true]);
+      expect(landed).toEqual(["opened", "opened"]);
       expect(fs.readFile).toHaveBeenCalledTimes(1);
       expect(dispatch).toHaveBeenCalledTimes(1);
 
@@ -120,7 +120,7 @@ describe("useFileSelection", () => {
       const dispatch = vi.fn<() => void>();
       const { result } = renderHook(() => useFileSelection(fs, dispatch));
 
-      let landed = true;
+      let landed: FileSelectionStatus = "opened";
       await act(async () => {
         const a = result.current.selectFile("/a.krs");
         // A request for the same file joins the read and brings the fallback.
@@ -128,7 +128,7 @@ describe("useFileSelection", () => {
         failA();
         landed = await a;
       });
-      expect(landed).toBe(false);
+      expect(landed).toBe("failed");
       expect(dispatch).toHaveBeenCalledWith({
         type: "SELECT_FILE",
         path: "/index.krs",
@@ -158,12 +158,12 @@ describe("useFileSelection", () => {
       const dispatch = vi.fn<() => void>();
       const { result } = renderHook(() => useFileSelection(fs, dispatch));
 
-      let landed = false;
+      let landed: FileSelectionStatus = "failed";
       await act(async () => {
         landed = await result.current.selectFile("/missing.krs");
       });
 
-      expect(landed).toBe(true);
+      expect(landed).toBe("opened");
       expect(dispatch).toHaveBeenCalledWith({
         type: "SELECT_FILE",
         path: "/missing.krs",
@@ -184,12 +184,12 @@ describe("useFileSelection", () => {
       const dispatch = vi.fn<() => void>();
       const { result } = renderHook(() => useFileSelection(fs, dispatch));
 
-      let landed = true;
+      let landed: FileSelectionStatus = "opened";
       await act(async () => {
         landed = await result.current.selectFile("/exists.krs");
       });
 
-      expect(landed).toBe(false);
+      expect(landed).toBe("failed");
       expect(dispatch).not.toHaveBeenCalled();
     });
 

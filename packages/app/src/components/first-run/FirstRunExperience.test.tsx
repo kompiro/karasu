@@ -5,6 +5,7 @@ import type { ExampleProject, Project } from "@karasu-tools/core";
 import { LocaleProvider } from "../../i18n/index.js";
 import { CommandProvider } from "../../keyboard/command-context.js";
 import { KeyboardShortcutDispatcher } from "../../keyboard/KeyboardShortcutDispatcher.js";
+import type { FileSelectionStatus } from "../../hooks/useFileSelection.js";
 import type { AppAction } from "../../state/app-reducer.js";
 import { requestReveal } from "../../state/preview-reveal.js";
 import { CommandPalette } from "../CommandPalette.js";
@@ -60,7 +61,7 @@ function setup(
           currentProject={open}
           currentFilePath={`${open.rootPath}/index.krs`}
           navigateToProject={vi.fn<(project: Project) => void>()}
-          selectFile={vi.fn<(path: string) => Promise<boolean>>(async () => true)}
+          selectFile={vi.fn<(path: string) => Promise<FileSelectionStatus>>(async () => "opened")}
           openBundledExample={openBundledExample}
           dispatch={vi.fn<(action: AppAction) => void>()}
         />

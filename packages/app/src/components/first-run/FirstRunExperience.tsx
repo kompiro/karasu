@@ -18,6 +18,7 @@ import { markWelcomeDismissed, shouldShowWelcome } from "./welcome-gate.js";
 import { readTourProjectId, writeTourProjectId } from "./tour-project.js";
 import { clearTourProgress, writeTourProgress } from "./tour-progress.js";
 import type { TourResume } from "./tour-resume.js";
+import type { FileSelectionStatus } from "../../hooks/useFileSelection.js";
 
 interface FirstRunExperienceProps {
   /** This boot seeded the default projects (`useProjectInitialization`). */
@@ -30,7 +31,7 @@ interface FirstRunExperienceProps {
   currentProject: Project | null;
   currentFilePath: string | null;
   navigateToProject: (project: Project) => void;
-  selectFile: (path: string) => Promise<boolean>;
+  selectFile: (path: string) => Promise<FileSelectionStatus>;
   openBundledExample: (example: ExampleProject) => Promise<Project | null>;
   dispatch: Dispatch<AppAction>;
 }
