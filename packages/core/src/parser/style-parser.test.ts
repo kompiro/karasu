@@ -258,11 +258,15 @@ edge#OrderDB.OrderTable->Logger { color: #EF4444; }
       expect(selectorOf("edge#a->#abc").edgeId).toBe("a->#abc");
     });
 
-    it("keeps the selector's source range over the whole id", () => {
-      const selector = selectorOf("edge#face->db");
-      expect(selector.loc.start.offset).toBe(0);
-      expect(selector.loc.end.offset).toBe("edge#face->db".length);
-    });
+    it.each(["#face", "edge#feed", "boundary#cafe", "team#bead", "edge#face->db"])(
+      "keeps the source range of %s over the whole selector",
+      (source) => {
+        const selector = selectorOf(source);
+        expect(selector.loc.start.offset).toBe(0);
+        expect(selector.loc.end.offset).toBe(source.length);
+        expect(selector.loc.end.column).toBe(source.length + 1);
+      },
+    );
   });
 
   describe("edge[from=<id>] / edge[to=<id>] selector", () => {

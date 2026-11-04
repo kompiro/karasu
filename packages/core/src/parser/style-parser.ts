@@ -538,7 +538,12 @@ export class StyleParser {
       return this.expect(TokenType.Identifier);
     }
     this.advance();
-    return { ...token, value: token.value.slice(1) };
+    const { line, column, offset } = token.loc;
+    return {
+      ...token,
+      value: token.value.slice(1),
+      loc: { line, column: column + 1, offset: offset + 1 },
+    };
   }
 
   /** Whether `hash` is immediately followed, with no space, by an identifier. */
