@@ -1,12 +1,13 @@
 # AT: Web App の初回体験（Welcome とサービス分割のガイドツアー）
 
 - **日付**: 2026-11-03
-- **関連 Issue**: [#3563](https://github.com/kompiro/karasu/issues/3563)（Epic）/ [#3583](https://github.com/kompiro/karasu/issues/3583)（配置の自動判定）/ [#3597](https://github.com/kompiro/karasu/issues/3597)（ツアーのやり直し）/ [#3564](https://github.com/kompiro/karasu/issues/3564)（サンプル）/ [#3565](https://github.com/kompiro/karasu/issues/3565)（Welcome）/ [#3566](https://github.com/kompiro/karasu/issues/3566)（ガイドツアー）
+- **関連 Issue**: [#3563](https://github.com/kompiro/karasu/issues/3563)（Epic）/ [#3583](https://github.com/kompiro/karasu/issues/3583)（配置の自動判定）/ [#3597](https://github.com/kompiro/karasu/issues/3597)（ツアーのやり直し）/ [#3598](https://github.com/kompiro/karasu/issues/3598)（ツアーの再開）/ [#3564](https://github.com/kompiro/karasu/issues/3564)（サンプル）/ [#3565](https://github.com/kompiro/karasu/issues/3565)（Welcome）/ [#3566](https://github.com/kompiro/karasu/issues/3566)（ガイドツアー）
 - **PRD**: [#3573](https://github.com/kompiro/karasu/issues/3573)
 - **対象ファイル**:
   - `examples/{en,ja}/service-split/`（`index.krs` / `planned.krs` / `migrating.krs`）
   - `packages/app/src/components/first-run/`（Welcome、ツアーパネル、表示条件、シーンの適用）
-  - `packages/app/src/ProjectModeApp.tsx`（配線）
+  - `packages/app/src/ProjectModeApp.tsx`（配線、起動時のツアーの再開の判定）
+  - `packages/app/src/hooks/useProjectNavigation.ts` / `useHistoryNavigation.ts`（再開するステップの hash で起動し、hash の復元がそのファイルを待つ）
   - `packages/e2e/fixtures/opfs.ts`（既定で Welcome を閉じた状態にする）
 
 > 初回訪問者が 5 分で「共通のモデルを持つとチームの設計判断が変わる」ことを体験する経路。Welcome は既定プロジェクトを作った初回起動だけに出て、Design a service split が 5 ステップのガイドに入る。
@@ -81,6 +82,37 @@
 - [x] AT-Q: ツアーを終えて別のプロジェクトへ移ったあとの Restart Guided Tour… は、ツアーが開いたサンプルのプロジェクトへ戻る
 
   > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Restart Guided Tour… from another project goes back into the tour's copy (#3597)`
+
+- [x] AT-R: Step 3 で再読み込みすると、Step 3 と差分のまま戻り、ブラウザの履歴は増えない
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a reload on step 3 comes back to step 3 with its diff, adding no history entry`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `shows a resumed tour at its step from the first render, and Continue to editor removes it`
+
+- [x] AT-S: Step 1 でドリルしてから再読み込みすると、ドリルは外れて Step 1 に戻る
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a reload after drilling on step 1 comes back to step 1, undrilled`
+
+- [x] AT-T: Skip・Continue to editor・Track architecture evolution でツアーを終えたあとは、再読み込みしてもツアーは出ない
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a reload after Skip shows no tour`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `records the step where the tour starts and moves, and removes it on Skip`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `removes the record when another guide starts`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `shows a resumed tour at its step from the first render, and Continue to editor removes it`
+
+- [x] AT-U: ツアーのプロジェクト以外で開いたとき（別のプロジェクトでの再読み込み、ギャラリーの example、他人の permalink、最後のプロジェクトが別のときのパス無しの URL）はツアーが出ず、そのあとツアーのプロジェクトへ切り替えても出ない。パス無しの URL ではツアーのファイルも開かない
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a reload in another project shows no tour, nor does switching back`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a gallery example link shows no tour, nor does switching to the tour's project`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `someone's permalink shows no tour, though the tour's project is the last one`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a bare URL opening another last project shows no tour and opens none of its files`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-resume.test.ts` › `keeps the record and does not resume on %s`
+
+- [x] AT-V: 記録が読めない・形や版が違う・ステップが範囲外・プロジェクトが無いときは再開せず、記録を消す。storage が例外を投げても起動は止まらない
+
+  > ✅ Automated — `packages/app/src/components/first-run/tour-progress.test.ts` › `reads %s as no record`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-progress.test.ts` › `reads a storage that throws as no record, and writing or clearing it does not throw`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-resume.test.ts` › `discards a record that is missing or unreadable, or whose project is gone`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `deletes a record the boot discarded, and leaves one it kept for a later boot`
 
 ## 手動確認
 

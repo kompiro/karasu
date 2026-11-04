@@ -98,6 +98,11 @@ again from step 1, in the copy of the sample the tour opened before, with any
 edits you made there (or a new copy if there is none, for example when you
 never took the tour or deleted that project).
 
+Reloading the page during the tour, or opening the app again from its address
+bar, comes back to the step you were on in the tour's project. A link that
+opens a specific place (a gallery example, a permalink, another project) does
+not bring the tour back; Restart Guided Tour… does.
+
 ## The preview pane
 
 The preview pane is the heart of the app and is identical in `serve` and the

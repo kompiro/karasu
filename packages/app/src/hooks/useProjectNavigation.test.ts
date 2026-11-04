@@ -121,6 +121,50 @@ describe("useProjectNavigation", () => {
       );
     });
 
+    // #3598: the first-run tour decides whether it resumes from the boot's
+    // inputs, once the list is known, and its hash is the one written.
+    it("asks decideInitialHash once, after the projects are known and before writing the URL", () => {
+      history.replaceState(null, "", "/#krs-system-Payment");
+      vi.mocked(history.replaceState).mockClear();
+      localStorage.setItem(LAST_PROJECT_KEY, "bbb");
+      const dispatch = vi.fn<() => void>();
+      const decideInitialHash = vi.fn<(t: Project, p: Project[], l: string | null) => string>(
+        () => {
+          // Nothing written yet: the URL is still the one the app was opened with.
+          expect(history.replaceState).not.toHaveBeenCalled();
+          expect(dispatch).not.toHaveBeenCalled();
+          return "#krs-org-root";
+        },
+      );
+      const { rerender } = renderHook(
+        ({ projs }: { projs: Project[] }) =>
+          useProjectNavigation(projs, null, dispatch, decideInitialHash),
+        { initialProps: { projs: [] as Project[] } },
+      );
+      expect(decideInitialHash).not.toHaveBeenCalled();
+
+      rerender({ projs: projects });
+      rerender({ projs: [...projects, makeProject("ccc")] });
+
+      expect(decideInitialHash).toHaveBeenCalledTimes(1);
+      expect(decideInitialHash).toHaveBeenCalledWith(projectB, projects, "bbb");
+      expect(history.replaceState).toHaveBeenCalledWith(null, "", "/projects/bbb#krs-org-root");
+    });
+
+    it("keeps the URL's hash when decideInitialHash returns null", () => {
+      history.replaceState(null, "", "/projects/aaa#krs-system-Payment");
+      vi.mocked(history.replaceState).mockClear();
+      const dispatch = vi.fn<() => void>();
+
+      renderHook(() => useProjectNavigation(projects, null, dispatch, () => null));
+
+      expect(history.replaceState).toHaveBeenCalledWith(
+        null,
+        "",
+        "/projects/aaa#krs-system-Payment",
+      );
+    });
+
     it("does not run when projects list is empty", () => {
       const dispatch = vi.fn<() => void>();
 

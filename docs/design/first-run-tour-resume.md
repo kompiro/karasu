@@ -111,7 +111,6 @@ Phase 1 のツアーは `FirstRunExperience` の React state（`guide`）にし�
 
 ### 実装の指針
 
-<!-- absent-path-next-line: created by the #3598 implementation -->
 1. `packages/app/src/components/first-run/tour-progress.ts`：`readTourProgress(storage?)` / `writeTourProgress` / `clearTourProgress`。
    型ガードで形を確かめ、外れたら `null`（TPL-1530）。`tour-project.ts` と同じく storage を差し替えられ、失敗は握りつぶす。
 2. 判定を 1 か所にする：純粋な `decideTourResume({ entry, record, projects, lastProjectId })` が「復元するか、するならどのプロジェクトの

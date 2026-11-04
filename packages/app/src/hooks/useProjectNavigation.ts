@@ -10,9 +10,20 @@ export const LAST_PROJECT_KEY = "karasu-last-project-id";
 // hook can never disagree about which segment ProjectMode owns (#1961).
 const PROJECT_PATH_RE = new RegExp(`^/${PROJECTS_SEGMENT}/([^/]+)`);
 
-export function getProjectIdFromPath(): string | null {
-  return location.pathname.match(PROJECT_PATH_RE)?.[1] ?? null;
+export function getProjectIdFromPath(pathname = location.pathname): string | null {
+  return pathname.match(PROJECT_PATH_RE)?.[1] ?? null;
 }
+
+/**
+ * Decides the hash the boot opens `target` with, given the project list and
+ * the last project id it read; `null` keeps the URL's own hash. Called once,
+ * before the boot writes the URL (#3598).
+ */
+export type DecideInitialHash = (
+  target: Project,
+  projects: Project[],
+  lastProjectId: string | null,
+) => string | null;
 
 export function buildProjectPath(projectId: string, hash = ""): string {
   return `/${PROJECTS_SEGMENT}/${projectId}${hash}`;
@@ -21,7 +32,8 @@ export function buildProjectPath(projectId: string, hash = ""): string {
 /**
  * ProjectMode の URL ナビゲーションを管理するフック。
  *
- * - 初期化時: `/projects/<id>` からプロジェクトを復元し、URL を正規化する
+ * - 初期化時: `/projects/<id>` からプロジェクトを復元し、URL を正規化する。
+ *   `decideInitialHash` があれば、その hash で起動する（#3598）
  * - navigateToProject: プロジェクト切り替え時に pushState で URL を更新する
  * - popstate: ブラウザの戻る/進むでプロジェクトを同期する
  */
@@ -29,6 +41,7 @@ export function useProjectNavigation(
   projects: Project[],
   currentProject: Project | null,
   dispatch: Dispatch<AppAction>,
+  decideInitialHash?: DecideInitialHash,
 ) {
   const initialized = useRef(false);
 
@@ -42,10 +55,11 @@ export function useProjectNavigation(
     const target =
       projects.find((p) => p.id === urlId) ?? projects.find((p) => p.id === lastId) ?? projects[0];
 
+    const hash = decideInitialHash?.(target, projects, lastId) ?? location.hash;
     dispatch({ type: "SET_CURRENT_PROJECT", project: target });
     // hash は保持しつつ URL を正規化する
-    history.replaceState(null, "", buildProjectPath(target.id, location.hash));
-  }, [projects, dispatch]);
+    history.replaceState(null, "", buildProjectPath(target.id, hash));
+  }, [projects, dispatch, decideInitialHash]);
 
   // プロジェクト切り替え: pushState で URL を更新する。
   // SELECT_FILE が viewPath/activeView を system/root にリセットするため、

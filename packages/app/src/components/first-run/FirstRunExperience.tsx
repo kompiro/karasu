@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type Dispatch } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch } from "react";
 import {
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
@@ -16,12 +16,16 @@ import { EVOLVE_SCENE, SERVICE_SPLIT_TOUR } from "./tour-steps.js";
 import { useGuidedScene, type PendingScene } from "./use-guided-scene.js";
 import { markWelcomeDismissed, shouldShowWelcome } from "./welcome-gate.js";
 import { readTourProjectId, writeTourProjectId } from "./tour-project.js";
+import { clearTourProgress, writeTourProgress } from "./tour-progress.js";
+import type { TourResume } from "./tour-resume.js";
 
 interface FirstRunExperienceProps {
   /** This boot seeded the default projects (`useProjectInitialization`). */
   seededDefaults: boolean;
   /** The URL the app was opened with, read before the app rewrites the hash. */
   initialLocation: Pick<Location, "search" | "hash">;
+  /** What the boot decided about a recorded tour, before the app rewrote the URL (#3598). */
+  tourResume: TourResume;
   projects: Project[];
   currentProject: Project | null;
   currentFilePath: string | null;
@@ -33,7 +37,7 @@ interface FirstRunExperienceProps {
 
 /** A running guide or a one-off scene, in the project it opened. */
 type Guide =
-  | { kind: "tour"; root: string; step: number; run: number }
+  | { kind: "tour"; projectId: string; root: string; step: number; run: number }
   | { kind: "scene"; root: string; run: number };
 
 /**
@@ -42,11 +46,13 @@ type Guide =
  * only exists where there are projects to open samples into. Everything it
  * does goes through the actions the rest of the app uses: samples are new
  * projects, and a guide step is a file selection, a view, and the existing
- * diff mode.
+ * diff mode. The tour's progress is recorded where it starts, moves and ends,
+ * so a reload resumes the same step (#3598).
  */
 export function FirstRunExperience({
   seededDefaults,
   initialLocation,
+  tourResume,
   projects,
   currentProject,
   currentFilePath,
@@ -56,8 +62,23 @@ export function FirstRunExperience({
   dispatch,
 }: FirstRunExperienceProps) {
   const { locale } = useTranslation();
-  const [guide, setGuide] = useState<Guide | null>(null);
+  // A resumed tour is there from the first frame. `run` 0 is never a
+  // started tour's, which count from 1, so its scene key is its own.
+  const [guide, setGuide] = useState<Guide | null>(() =>
+    tourResume.kind === "resume"
+      ? {
+          kind: "tour",
+          projectId: tourResume.projectId,
+          root: tourResume.root,
+          step: tourResume.step,
+          run: 0,
+        }
+      : null,
+  );
   const runs = useRef(0);
+  useEffect(() => {
+    if (tourResume.kind === "discard") clearTourProgress();
+  }, [tourResume]);
 
   // Welcome greets a first visit until the visitor chooses, and opens again
   // whenever the command asks. Deciding the greeting reads storage once, when
@@ -81,8 +102,9 @@ export function FirstRunExperience({
 
   const startTour = useCallback((project: Project) => {
     writeTourProjectId(project.id);
+    writeTourProgress({ projectId: project.id, step: 0 });
     const run = ++runs.current;
-    setGuide({ kind: "tour", root: project.rootPath, step: 0, run });
+    setGuide({ kind: "tour", projectId: project.id, root: project.rootPath, step: 0, run });
   }, []);
 
   // Opening a copy of the sample is an OPFS write. While one is in flight a
@@ -155,6 +177,8 @@ export function FirstRunExperience({
         startTour(project);
         return;
       }
+      // Another guide replaces the tour, so a reload must not bring it back.
+      clearTourProgress();
       setGuide({ kind: "scene", root: project.rootPath, run: ++runs.current });
     },
     [
@@ -190,21 +214,23 @@ export function FirstRunExperience({
 
   useGuidedScene({ pending, currentProject, currentFilePath, selectFile, dispatch });
 
-  const moveStep = useCallback((delta: number) => {
-    setGuide((g) =>
-      g?.kind === "tour"
-        ? {
-            ...g,
-            step: Math.min(Math.max(g.step + delta, 0), SERVICE_SPLIT_TOUR.length - 1),
-          }
-        : g,
-    );
-  }, []);
+  // The step is computed here rather than in an updater, which StrictMode
+  // runs twice, so the record is written once, from the step shown.
+  const moveStep = useCallback(
+    (delta: number) => {
+      if (guide?.kind !== "tour") return;
+      const step = Math.min(Math.max(guide.step + delta, 0), SERVICE_SPLIT_TOUR.length - 1);
+      setGuide({ ...guide, step });
+      writeTourProgress({ projectId: guide.projectId, step });
+    },
+    [guide],
+  );
 
   // The diff a tour step opened is the tour's, so the editor starts without
   // it; a comparison the visitor opened on another step stays.
   const tourStep = guide?.kind === "tour" ? SERVICE_SPLIT_TOUR[guide.step] : null;
   const endTour = useCallback(() => {
+    clearTourProgress();
     setGuide(null);
     if (tourStep?.scene.compareWith) dispatch({ type: "SET_COMPARE_SOURCE", source: null });
   }, [tourStep, dispatch]);
