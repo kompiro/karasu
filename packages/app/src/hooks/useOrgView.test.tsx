@@ -155,3 +155,40 @@ describe("useOrgView", () => {
     expect(result.current.orgSvg).toBe(validSvg);
   });
 });
+
+// #3598: a deep link's restoration waits for the path index of the entry now
+// open, and goes ahead without it once that entry's compile has failed.
+describe("useOrgView entry tracking (#3598)", () => {
+  const OTHER = "/test/other.krs";
+
+  it("reports the new entry even when it draws the same org view as the previous one", async () => {
+    const fs = await makeFs("system S {\n  service A {}\n}\n");
+    await fs.writeFile(OTHER, "system S {\n  service B {}\n}\n");
+    const { result, rerender } = renderHook(({ entry }) => useOrgView(entry, fs, []), {
+      initialProps: { entry: ENTRY_PATH },
+    });
+    await waitFor(() => expect(result.current.compiledEntryPath).toBe(ENTRY_PATH), {
+      timeout: 1000,
+    });
+
+    rerender({ entry: OTHER });
+    await waitFor(() => expect(result.current.compiledEntryPath).toBe(OTHER), { timeout: 1000 });
+    expect(result.current.settledEntryPath).toBe(OTHER);
+    expect([...result.current.nodePathIndex.keys()]).toContain("B");
+  });
+
+  it("settles an entry with errors while keeping the previous entry's index", async () => {
+    const fs = await makeFs(ORG_SOURCE_A);
+    await fs.writeFile(OTHER, TEAM_ERROR_SOURCE);
+    const { result, rerender } = renderHook(({ entry }) => useOrgView(entry, fs, []), {
+      initialProps: { entry: ENTRY_PATH },
+    });
+    await waitFor(() => expect(result.current.compiledEntryPath).toBe(ENTRY_PATH), {
+      timeout: 1000,
+    });
+
+    rerender({ entry: OTHER });
+    await waitFor(() => expect(result.current.settledEntryPath).toBe(OTHER), { timeout: 1000 });
+    expect(result.current.compiledEntryPath).toBe(ENTRY_PATH);
+  });
+});

@@ -12,8 +12,8 @@ scope:
 assumptions:
   - "file: packages/app/src/hooks/useHistoryNavigation.ts"
   - "file: packages/app/src/state/app-reducer.ts"
-  - "symbol: packages/app/src/hooks/useHistoryNavigation.ts :: buildHash"
-  - "symbol: packages/app/src/hooks/useHistoryNavigation.ts :: parseHash"
+  - "symbol: packages/app/src/hooks/history-hash.ts :: buildHash"
+  - "symbol: packages/app/src/hooks/history-hash.ts :: parseHash"
   - "symbol: packages/app/src/state/app-reducer.ts :: ActiveView"
 ---
 

@@ -6,13 +6,20 @@ import { AppShell } from "./components/AppShell.js";
 import { PasteCompareDialog } from "./components/PasteCompareDialog.js";
 import { ErrorBanner } from "./components/ErrorBanner.js";
 import { FirstRunExperience } from "./components/first-run/FirstRunExperience.js";
+import { readTourProgress } from "./components/first-run/tour-progress.js";
+import {
+  KEEP_TOUR,
+  decideTourResume,
+  tourStepHash,
+  type TourResume,
+} from "./components/first-run/tour-resume.js";
 import { useOpenTranslateDialog } from "./components/TranslateProvider.js";
 import { SnapshotPickerModal } from "./components/SnapshotPickerModal.js";
 import { useAppContext } from "./state/app-context.js";
 import { useTranslation } from "./i18n/index.js";
 import { ProjectManager } from "./fs/project-manager.js";
 import { SnapshotManager } from "./fs/snapshot-manager.js";
-import { useProjectNavigation } from "./hooks/useProjectNavigation.js";
+import { useProjectNavigation, type DecideInitialHash } from "./hooks/useProjectNavigation.js";
 import { useFileSelection } from "./hooks/useFileSelection.js";
 import { useProjectInitialization } from "./hooks/useProjectInitialization.js";
 import { useProjectActions } from "./hooks/useProjectActions.js";
@@ -40,11 +47,30 @@ export function ProjectModeApp() {
   // the value is stable for the life of the component.
   const [pm] = useState(() => new ProjectManager(fs));
   // The URL as opened, before navigation rewrites the path and the hash: the
-  // first-run Welcome stays out of the way of a link that asked for a place.
+  // first-run Welcome stays out of the way of a link that asked for a place,
+  // and a recorded tour resumes only on its own project's URL (#3598).
   const [initialLocation] = useState(() => ({
+    pathname: window.location.pathname,
     search: window.location.search,
     hash: window.location.hash,
   }));
+  // Decided once, when the boot knows the projects and before it writes the
+  // URL: a resumed step boots on its scene's hash, so the hash restoration
+  // and the tour's scene agree on the file and the view (#3598).
+  const [tourResume, setTourResume] = useState<TourResume>(KEEP_TOUR);
+  const decideInitialHash = useCallback<DecideInitialHash>(
+    (_target, projects, lastProjectId) => {
+      const decision = decideTourResume({
+        entry: initialLocation,
+        record: readTourProgress(),
+        projects,
+        lastProjectId,
+      });
+      setTourResume(decision);
+      return decision.kind === "resume" ? tourStepHash(decision.root, decision.step) : null;
+    },
+    [initialLocation],
+  );
 
   const {
     currentProject,
@@ -78,7 +104,12 @@ export function ProjectModeApp() {
     ? (lastKrsFilePath ?? `${currentProject.rootPath}/index.krs`)
     : null;
 
-  const { navigateToProject } = useProjectNavigation(projects, currentProject, dispatch);
+  const { navigateToProject, bootFile } = useProjectNavigation(
+    projects,
+    currentProject,
+    dispatch,
+    decideInitialHash,
+  );
   const { selectFile } = useFileSelection(fs, dispatch);
 
   const { seededDefaults } = useProjectInitialization({
@@ -87,6 +118,7 @@ export function ProjectModeApp() {
     dispatch,
     currentProject,
     selectFile,
+    bootFile,
   });
 
   const {
@@ -233,6 +265,7 @@ export function ProjectModeApp() {
       <FirstRunExperience
         seededDefaults={seededDefaults}
         initialLocation={initialLocation}
+        tourResume={tourResume}
         projects={projects}
         currentProject={currentProject}
         currentFilePath={currentFilePath}

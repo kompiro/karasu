@@ -1,7 +1,11 @@
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { type Locator, type Page } from "@playwright/test";
-import { expect, test } from "../fixtures/opfs.js";
+import { drillInto } from "../fixtures/drill.js";
+import { expect, test, type OpfsFixture } from "../fixtures/opfs.js";
 import { pressChord } from "../fixtures/keyboard.js";
-import { selectedTab } from "../fixtures/tabs.js";
+import { openViewTab, selectedTab } from "../fixtures/tabs.js";
 
 /**
  * AT-3563: the web app's first-run experience. Welcome (#3565) greets a first
@@ -11,6 +15,8 @@ import { selectedTab } from "../fixtures/tabs.js";
  *
  * The palette-only `view.showWelcome` command (Show Welcome…) reopens Welcome,
  * and `view.restartTour` (Restart Guided Tour…) walks the guide again (#3597).
+ * A reload resumes the step the tour was on, and a link from outside does not
+ * (#3598); the opfs fixture clears the record with the rest of localStorage.
  *
  * The layout block decides what used to be a manual check (#3583): the node
  * each step talks about stays inside the preview and clear of the panel, and
@@ -303,6 +309,174 @@ test.describe("AT-3563 Design a service split tour", () => {
     await panel.getByRole("button", { name: "✕ Skip tour" }).click();
     await expect(tour(page)).toHaveCount(0);
     await expect(diffBanner(page)).toHaveCount(0);
+  });
+});
+
+/** The tour's project, as the progress record names it (#3598). */
+async function tourProjectId(page: Page): Promise<string> {
+  const raw = await page.evaluate(() => localStorage.getItem("karasu-first-run-tour"));
+  const id = raw ? (JSON.parse(raw) as { projectId?: string }).projectId : undefined;
+  if (!id) throw new Error(`no tour progress recorded: ${raw}`);
+  return id;
+}
+
+const projectSelect = (page: Page) => page.getByRole("combobox", { name: "Project" });
+
+async function startTour(page: Page, opfs: OpfsFixture) {
+  await opfs.reset({ showWelcome: true });
+  await opfs.gotoApp();
+  await welcome(page)
+    .getByRole("button", { name: /Design a service split/ })
+    .click();
+  await expect(tour(page)).toContainText("1 / 5");
+  await expect(node(page, "CommerceApp")).toBeVisible();
+}
+
+const EXAMPLES_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../../../examples");
+
+/** Serve the gallery's fixed origin from the repo's examples/ (as AT-1646 does). */
+async function serveGallery(page: Page) {
+  await page.route("https://raw.githubusercontent.com/kompiro/karasu/main/examples/**", (route) => {
+    const rel = route.request().url().split("/examples/")[1];
+    return route.fulfill({
+      status: 200,
+      contentType: "text/plain",
+      body: readFileSync(resolve(EXAMPLES_DIR, rel), "utf8"),
+    });
+  });
+}
+
+test.describe("AT-3563 resuming the tour (#3598)", () => {
+  test("a reload on step 3 comes back to step 3 with its diff, adding no history entry", async ({
+    page,
+    opfs,
+  }) => {
+    await startTour(page, opfs);
+    const next = tour(page).getByRole("button", { name: "Next →" });
+    await next.click();
+    await next.click();
+    await expect(tour(page)).toContainText("3 / 5");
+    await expect(diffBanner(page)).toContainText("planned.krs");
+    const before = await page.evaluate(() => history.length);
+
+    await page.reload();
+    await expect(tour(page)).toContainText("3 / 5");
+    await expect(diffBanner(page)).toContainText("index.krs");
+    await expect(diffBanner(page)).toContainText("planned.krs");
+    await expect(node(page, "BillingService")).toHaveAttribute("data-diff-state", "added");
+    expect(await page.evaluate(() => history.length)).toBe(before);
+    // The restoration has ended: the visitor's next move is a new entry.
+    await openViewTab(page, "Org");
+    await expect.poll(() => page.evaluate(() => history.length)).toBe(before + 1);
+  });
+
+  // The org view is the one a scene sets after its file's SELECT_FILE reset
+  // the view to System; both land in one commit, so no entry is pushed.
+  test("a reload on step 2 comes back to the org view, adding no history entry", async ({
+    page,
+    opfs,
+  }) => {
+    await startTour(page, opfs);
+    await tour(page).getByRole("button", { name: "Next →" }).click();
+    await expect(tour(page)).toContainText("2 / 5");
+    await expect(selectedTab(page, "Org")).toBeVisible();
+    const before = await page.evaluate(() => history.length);
+
+    await page.reload();
+    await expect(tour(page)).toContainText("2 / 5");
+    await expect(selectedTab(page, "Org")).toBeVisible();
+    await expect.poll(() => page.evaluate(() => location.hash)).toMatch(/^#krs-org-root/);
+    expect(await page.evaluate(() => history.length)).toBe(before);
+    await openViewTab(page, "System");
+    await expect.poll(() => page.evaluate(() => history.length)).toBe(before + 1);
+  });
+
+  test("a reload after drilling on step 1 comes back to step 1, undrilled", async ({
+    page,
+    opfs,
+  }) => {
+    await startTour(page, opfs);
+    await drillInto(page, ["CommerceApp"], { firstMatch: true });
+    await expect(node(page, "Ordering")).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => location.hash.split("?")[0]))
+      .toBe("#krs-system-CommerceApp");
+
+    await page.reload();
+    await expect(tour(page)).toContainText("1 / 5");
+    await expect(node(page, "CommerceApp")).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => location.hash.split("?")[0]))
+      .toBe("#krs-system-root");
+  });
+
+  test("a reload after Skip shows no tour", async ({ page, opfs }) => {
+    await startTour(page, opfs);
+    await tour(page).getByRole("button", { name: "✕ Skip tour" }).click();
+    await expect(tour(page)).toHaveCount(0);
+
+    await page.reload();
+    await expect(node(page, "CommerceApp")).toBeVisible();
+    await expect(tour(page)).toHaveCount(0);
+  });
+
+  test("a reload in another project shows no tour, nor does switching back", async ({
+    page,
+    opfs,
+  }) => {
+    await startTour(page, opfs);
+    const id = await tourProjectId(page);
+    await projectSelect(page).selectOption({ label: "getting-started" });
+    await expect(node(page, "ECommerce")).toBeVisible();
+
+    await page.reload();
+    await expect(node(page, "ECommerce")).toBeVisible();
+    await expect(tour(page)).toHaveCount(0);
+    await projectSelect(page).selectOption(id);
+    await expect(node(page, "CommerceApp")).toBeVisible();
+    await expect(tour(page)).toHaveCount(0);
+  });
+
+  test("a gallery example link shows no tour, nor does switching to the tour's project", async ({
+    page,
+    opfs,
+  }) => {
+    await startTour(page, opfs);
+    const id = await tourProjectId(page);
+    await serveGallery(page);
+
+    await opfs.gotoApp("/?example=payment-platform&lang=en");
+    await expect(projectSelect(page).locator("option:checked")).toHaveText(/payment-platform/);
+    await expect(tour(page)).toHaveCount(0);
+    await projectSelect(page).selectOption(id);
+    await expect(node(page, "CommerceApp")).toBeVisible();
+    await expect(tour(page)).toHaveCount(0);
+  });
+
+  test("someone's permalink shows no tour, though the tour's project is the last one", async ({
+    page,
+    opfs,
+  }) => {
+    await startTour(page, opfs);
+    await opfs.gotoApp("/#krs-system-CommerceApp");
+    await expect(node(page, "Ordering")).toBeVisible();
+    await expect(tour(page)).toHaveCount(0);
+  });
+
+  test("a bare URL opening another last project shows no tour and opens none of its files", async ({
+    page,
+    opfs,
+  }) => {
+    await startTour(page, opfs);
+    const id = await tourProjectId(page);
+    await projectSelect(page).selectOption({ label: "getting-started" });
+    await expect(node(page, "ECommerce")).toBeVisible();
+
+    await opfs.gotoApp("/");
+    await expect(node(page, "ECommerce")).toBeVisible();
+    await expect(tour(page)).toHaveCount(0);
+    await expect(projectSelect(page).locator("option:checked")).toHaveText("getting-started");
+    expect(await page.evaluate(() => location.href)).not.toContain(id);
   });
 });
 

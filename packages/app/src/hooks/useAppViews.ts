@@ -29,6 +29,7 @@ import {
 import { useResolvedCompareSource } from "./useResolvedCompareSource.js";
 import type { CompareSource } from "../fs/compare-source.js";
 import type { SnapshotManager } from "../fs/snapshot-manager.js";
+import type { FileSelectionStatus } from "./useFileSelection.js";
 
 interface UseAppViewsArgs {
   entryPath: string | null;
@@ -68,7 +69,7 @@ interface UseAppViewsArgs {
    * a deep-linked hash is loaded. Pass `selectFile` from `useFileSelection`.
    * Issue #811.
    */
-  onFileChange?: (path: string) => Promise<unknown> | void;
+  onFileChange?: (path: string) => Promise<FileSelectionStatus>;
 }
 
 /**
@@ -290,6 +291,8 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     nodePathIndex,
     organizations,
     ownerIndex,
+    compiledEntryPath,
+    settledEntryPath,
     recompile: recompileOrg,
     toggleTeamExpand,
     orgTreeSvg,
@@ -342,6 +345,13 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     setIsEntityView: setIsEntityViewOpen,
     highlightedNodeId,
     onFileChange,
+    fileRoot: projectRoot,
+    pathIndexState:
+      compiledEntryPath === effEntryPath
+        ? "current"
+        : settledEntryPath === effEntryPath
+          ? "failed"
+          : "compiling",
   });
 
   const recompile = useCallback(() => {
