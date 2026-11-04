@@ -92,6 +92,7 @@ Share ダイアログは各コンポーネントの state にある。`TourStep.
 
 ### 実装の指針
 
+<!-- absent-path-next-line: created by the #3599 implementation -->
 1. `packages/app/src/state/app-signals.ts`：いまの状態（`teamDependenciesShown`）と seq つきの出来事を持つ module store。
    `preview-reveal.ts` と同じく `useSyncExternalStore`。unit テスト用に reset を持つ。
 2. 書く場所：`showTeamDependencies` は `PreviewColumn` が自分の表示条件（`activeView === "org"`、表示モードが dependencies、
