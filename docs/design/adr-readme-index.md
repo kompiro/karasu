@@ -8,7 +8,7 @@
   - 生成物を毎日の再生成 PR で更新する決定: [ADR-3416](../adr/3416-regenerate-adr-index-daily-pr.md)
   - 姉妹の作業: TPL の README 表を生成した索引に置き換えた [#3289](https://github.com/kompiro/karasu/issues/3289)
   - topic の見出しと `> Derives from` の同期: `.claude/rules/adr-topics.md`、`scripts/lint/concept-adr-refs.ts`、AT [1389](../acceptance/1389-concepts-adr-topic-refs.md)
-  - 関連 TPL: [TPL-2253](../test-perspectives/TPL-2253-removal-sweep-needs-a-search-not-a-file-list.md)（「どこからも消す」は検索で閉じる）、[TPL-2005](../test-perspectives/TPL-2005-keystone-terms-single-home.md)（正典は 1 か所）
+  - 関連 TPL: [TPL-2253](../test-perspectives/TPL-2253-removal-sweep-needs-a-search-not-a-file-list.md)（「どこからも消す」は検索で閉じる）、[TPL-2005](../test-perspectives/TPL-2005-keystone-terms-single-home.md)（正典は 1 か所）、[TPL-1480](../test-perspectives/TPL-1480-consistency-check-triggers-on-both-sides.md)（整合の検査は両側の変更で起動する）
 
 ## 背景・課題
 
@@ -49,7 +49,8 @@ topic の正本は `adr.config.json` の `topics` で、README の見出しは�
 
 ## 制約・前提
 
-- `concept-adr-refs.ts` の検査（全 topic に `> Derives from` がある、anchor が concepts に実在する）は通り続けること
+- `concept-adr-refs.ts` の検査（全 topic に `> Derives from` がある。anchor を書いた entry はその anchor が concepts に
+  実在する。`app-ui` / `cli` / `vscode` のように anchor を持たない `N/A` の entry も正当）は通り続けること
 - `.claude/rules/adr-topics.md` の到達状態（見出しが topics と一致）は変えない
 - 生成物（`effective.md` / `graph.md` / `graph/*.md`）は ADR-3416 の再生成 PR だけが書く。README を生成物にする場合も
   手書き部分（説明・`> Derives from`）と同じファイルに混ざる
@@ -70,7 +71,7 @@ README から ADR の一覧（トピック別の `- [ADR-n]` 行と「ステー�
 - 追記する手順そのものが無くなるので、ずれる場所が無くなる。正本は frontmatter 1 か所で、一覧はそこからの生成物だけになる（TPL-2005）
 - ADR-788 の「frontmatter を正本、その他は生成物」と同じ線を README にも引く。新しい仕組みを足さない
 - topic の語彙・説明・`> Derives from` はそのまま残るので、`process.md` / TEMPLATE / lint / rule の参照はどれも変えずに済む
-- 1 ファイルの docs 変更で閉じ、adr-tools のリリースを待たない
+- README と既存の lint（`concept-adr-refs.ts`）の拡張だけで閉じ、adr-tools のリリースを待たない
 
 **デメリット**
 
@@ -117,11 +118,23 @@ README の見出しを前提にした参照をすべて作り直すことにな�
      の注記は一覧の説明なので消す
    - 「ステータス別」: 節ごと消し、冒頭の探し方に畳む
 2. 追記を求める指示が他に無いことを、上の `git grep` を PR でもう一度回して確かめる（TPL-2253）
-3. 検証: `pnpm vitest run scripts/lint/concept-adr-refs.test.ts` と `pnpm run lint:concept-adr-refs`
-   （lefthook の該当 hook）が通る。README のリンク（`effective.md#<topic>` の anchor、`graph/<topic>.md`）が
-   すべて解決する
-4. AT は作らない。人の目でしか確かめられない項目が無く、上の検証で閉じる
-5. 実装 PR のマージ後、本 Design Doc を ADR-3595 に昇格し、同じ PR で本 Design Doc を削除する
+3. 新しく置く生成物へのリンクを機械で検査する。いまの検査はどれもこのリンクを見ない（`concept-adr-refs.ts` が読むのは
+   `> Derives from` の行だけ。docs site の `check-links` は ADR を範囲外にし、`record-source-paths.ts` は `docs/adr/**` を
+   走査しない）。そこで `concept-adr-refs.ts` を広げる。すでに README を topic ごとに parse し、`adr.config.json` の
+   `topics` も読んでいるので、同じ場所で次を確かめるのが最も小さい
+   - 各 topic の節に `effective.md#<topic>` と `graph/<topic>.md` へのリンクがある
+   - リンク先が実在する（`effective.md` に `## <topic>` の見出しがあり、`docs/adr/graph/<topic>.md` がある）
+
+   いまは 15 topic すべてについて両方が揃っている。生成物はどの topic にも見出しとファイルを出すので、検査が落ちるのは
+   topic を足したのに再生成が済んでいないとき、または README の書き損じのときになる。テストは
+   `scripts/lint/concept-adr-refs.test.ts` に足す（既存の fixture の形に合わせる）。検査が生成物も読むようになるので、
+   `lefthook.yml` の `concept-adr-refs` の glob に `docs/adr/effective.md` と `docs/adr/graph/*.md` を足す
+   （[TPL-1480](../test-perspectives/TPL-1480-consistency-check-triggers-on-both-sides.md)。再生成 PR には lefthook が走らないが、CI の vitest が同じ検査を回す）
+
+4. 検証: `pnpm vitest run scripts/lint/concept-adr-refs.test.ts` と `pnpm run lint:concept-adr-refs`
+   （lefthook の該当 hook）が通る
+5. AT は作らない。人の目でしか確かめられない項目が無く、上の検証で閉じる
+6. 実装 PR のマージ後、本 Design Doc を ADR-3595 に昇格し、同じ PR で本 Design Doc を削除する
 
 ## 未解決の問い
 
