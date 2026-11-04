@@ -174,6 +174,20 @@ describe("useProjectNavigation", () => {
       );
     });
 
+    // A project id the URL names but this browser does not have falls back to
+    // another project; the hash's file belongs to neither and is not opened.
+    it("hands over no file when the hash names one outside the boot's project", () => {
+      history.replaceState(
+        null,
+        "",
+        "/projects/gone#krs-system-root?file=%2Fprojects%2Fgone%2Fx.krs",
+      );
+      const dispatch = vi.fn<() => void>();
+      const { result } = renderHook(() => useProjectNavigation(projects, null, dispatch));
+      expect(dispatch).toHaveBeenCalledWith({ type: "SET_CURRENT_PROJECT", project: projectA });
+      expect(result.current.bootFile.current).toBeNull();
+    });
+
     it("does not run when projects list is empty", () => {
       const dispatch = vi.fn<() => void>();
 

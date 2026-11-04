@@ -121,6 +121,32 @@ describe("useGuidedScene", () => {
     ]);
   });
 
+  // #3598: a resumed step booted on its scene's hash, so its file is already
+  // open with the view restored; a second SELECT_FILE would reset it.
+  it("does not select a resumed scene's file again when it is open, and selects it when it is not", async () => {
+    const resumed = { ...diffScene, key: "tour:0:2", resumed: true };
+    const open = setup({
+      project: tourProject,
+      file: "/projects/tour/planned.krs",
+      pending: resumed,
+    });
+    await act(async () => {});
+    expect(open.calls).toEqual(["SET_COMPARE_SOURCE", "SET_ACTIVE_VIEW"]);
+    cleanup();
+
+    const other = setup({
+      project: tourProject,
+      file: "/projects/tour/index.krs",
+      pending: resumed,
+    });
+    await act(async () => {});
+    expect(other.calls).toEqual([
+      "select /projects/tour/planned.krs",
+      "SET_COMPARE_SOURCE",
+      "SET_ACTIVE_VIEW",
+    ]);
+  });
+
   it("drops the diff and view of a scene left before its file loaded (TPL-1534)", async () => {
     // Step 3's planned.krs loads slowly; the visitor presses Back to step 2
     // before it lands. Step 3 must not switch the diff on afterwards.

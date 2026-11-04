@@ -68,7 +68,7 @@ interface UseAppViewsArgs {
    * a deep-linked hash is loaded. Pass `selectFile` from `useFileSelection`.
    * Issue #811.
    */
-  onFileChange?: (path: string) => Promise<unknown> | void;
+  onFileChange?: (path: string) => Promise<boolean>;
 }
 
 /**
@@ -290,6 +290,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     nodePathIndex,
     organizations,
     ownerIndex,
+    compiledEntryPath,
     recompile: recompileOrg,
     toggleTeamExpand,
     orgTreeSvg,
@@ -342,6 +343,8 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     setIsEntityView: setIsEntityViewOpen,
     highlightedNodeId,
     onFileChange,
+    fileRoot: projectRoot,
+    pathIndexCurrent: compiledEntryPath === effEntryPath,
   });
 
   const recompile = useCallback(() => {

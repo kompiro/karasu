@@ -39,6 +39,8 @@ interface OrgViewState {
    * different model than the tree beside it.
    */
   teamDependencies: TeamDependencyReport;
+  /** The entry `nodePathIndex` and `organizations` were compiled from (#3598). */
+  compiledEntryPath: string | null;
 }
 
 const EMPTY_TEAM_DEPENDENCIES: TeamDependencyReport = {
@@ -127,6 +129,7 @@ export function useOrgView(
         ownerIndex: prev.ownerIndex,
         styles: prev.styles,
         teamDependencies: prev.teamDependencies,
+        compiledEntryPath: prev.compiledEntryPath,
       }),
       okState: () => ({
         orgSvg: svg,
@@ -137,6 +140,7 @@ export function useOrgView(
         ownerIndex: orgBase.ownerIndex,
         styles: orgBase.styles,
         teamDependencies: orgBase.teamDependencies,
+        compiledEntryPath: entryPath,
       }),
       // Org names its state fields differently (orgSvg / orgDiagnostics); the
       // selectors bridge that, so the scaffold needs no per-view field names.
@@ -157,6 +161,7 @@ export function useOrgView(
       ownerIndex: new Map(),
       styles: undefined,
       teamDependencies: EMPTY_TEAM_DEPENDENCIES,
+      compiledEntryPath: null,
     },
     compile,
     onError: (prev) => ({

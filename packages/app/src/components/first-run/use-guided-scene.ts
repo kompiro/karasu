@@ -15,6 +15,12 @@ export interface PendingScene {
    * has done its job once and must not override where the visitor went.
    */
   reapplyOnReturn: boolean;
+  /**
+   * A tour step resumed at boot (#3598). The boot's URL already opened the
+   * scene's file and view, so the file is not selected again when it is open:
+   * a second SELECT_FILE would only reset what the restoration applied.
+   */
+  resumed?: boolean;
 }
 
 interface UseGuidedSceneArgs {
@@ -88,7 +94,8 @@ export function useGuidedScene({
     void (async () => {
       // A read that failed or was superseded leaves another file open; a
       // diff or view meant for the scene's file must not land on it.
-      const landed = await selectFile(`${root}/${scene.file}`);
+      const path = `${root}/${scene.file}`;
+      const landed = (pending.resumed && currentFilePath === path) || (await selectFile(path));
       if (!landed || currentKey.current !== key || currentRoot.current !== root) return;
       dispatch({
         type: "SET_COMPARE_SOURCE",

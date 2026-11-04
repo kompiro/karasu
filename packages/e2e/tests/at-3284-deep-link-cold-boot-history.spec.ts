@@ -98,9 +98,10 @@ test("a cold boot on a link naming another file than index.krs adds one history 
   await expect.poll(() => page.url()).toBe(linkedFrom);
 });
 
-// A missing file opens as an empty buffer (the selection lands), so this
-// covers a restoration that ends on that buffer. A file that does not open at
-// all is the unit test's `stops waiting for the named file when it does not open`.
+// A missing file opens as an empty buffer (the selection lands) whose index
+// stays empty, so the link's Deploy tab stays pending; leaving the file is the
+// visitor's navigation and must end the restoration. A file that does not open
+// at all is the unit test's `stops waiting for the named file when it does not open`.
 test("after a link naming a file the project does not have, a file switch is a new entry (AT-G)", async ({
   page,
   opfs,
@@ -109,12 +110,15 @@ test("after a link naming a file the project does not have, a file switch is a n
     projects: [{ id: "shop", name: "Shop", files: { "index.krs": KRS } }],
     lastProjectId: "shop",
   });
-  const hash = `#krs-system-root${file("/projects/shop/missing.krs")}`;
-  await opfs.gotoApp(`/${hash}`);
-  await expect.poll(() => page.evaluate(() => location.hash)).toBe(hash);
+  const missing = file("/projects/shop/missing.krs");
+  await opfs.gotoApp(`/#krs-deploy${missing}`);
+  // The tab cannot be restored on an empty buffer; the entry keeps the file.
+  await expect.poll(() => page.evaluate(() => location.hash)).toContain(missing);
+  const indexItem = page.locator(".file-tree-item", { hasText: "index.krs" }).first();
+  await expect(indexItem).toBeVisible();
   const restored = await page.evaluate(() => history.length);
 
-  await page.locator(".file-tree-item", { hasText: "index.krs" }).first().click();
+  await indexItem.click();
   await expect(page.locator('svg [data-node-id="OrderService"]').first()).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => location.hash))
@@ -122,5 +126,5 @@ test("after a link naming a file the project does not have, a file switch is a n
   expect(await page.evaluate(() => history.length)).toBe(restored + 1);
 
   await page.goBack();
-  await expect.poll(() => page.evaluate(() => location.hash)).toBe(hash);
+  await expect.poll(() => page.evaluate(() => location.hash)).toContain(missing);
 });

@@ -37,7 +37,15 @@ interface FirstRunExperienceProps {
 
 /** A running guide or a one-off scene, in the project it opened. */
 type Guide =
-  | { kind: "tour"; projectId: string; root: string; step: number; run: number }
+  | {
+      kind: "tour";
+      projectId: string;
+      root: string;
+      step: number;
+      run: number;
+      /** Resumed at boot, until the visitor moves (#3598). */
+      resumed?: boolean;
+    }
   | { kind: "scene"; root: string; run: number };
 
 /**
@@ -72,6 +80,7 @@ export function FirstRunExperience({
           root: tourResume.root,
           step: tourResume.step,
           run: 0,
+          resumed: true,
         }
       : null,
   );
@@ -209,6 +218,7 @@ export function FirstRunExperience({
       scene: SERVICE_SPLIT_TOUR[guide.step].scene,
       key: `tour:${guide.run}:${guide.step}`,
       reapplyOnReturn: true,
+      resumed: guide.resumed,
     };
   }, [guide]);
 
@@ -220,7 +230,7 @@ export function FirstRunExperience({
     (delta: number) => {
       if (guide?.kind !== "tour") return;
       const step = Math.min(Math.max(guide.step + delta, 0), SERVICE_SPLIT_TOUR.length - 1);
-      setGuide({ ...guide, step });
+      setGuide({ ...guide, step, resumed: false });
       writeTourProgress({ projectId: guide.projectId, step });
     },
     [guide],

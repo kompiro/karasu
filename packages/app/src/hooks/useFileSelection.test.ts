@@ -101,6 +101,53 @@ describe("useFileSelection", () => {
       expect(fs.readFile).toHaveBeenCalledTimes(2);
     });
 
+    // #3598: the boot opens a deep link's file with index.krs as the
+    // fallback, so a file that exists but cannot be read does not leave the
+    // editor empty, unless the visitor asked for something else meanwhile.
+    it("selects the fallback when the read of an existing file fails, unless a newer selection came", async () => {
+      let failA: () => void = () => {};
+      const fs = makeFs({
+        readFile: vi.fn<(path: string) => Promise<string>>((path) =>
+          path === "/a.krs"
+            ? new Promise<string>((_, reject) => {
+                failA = () => reject(new Error("I/O error"));
+              })
+            : Promise.resolve(`content of ${path}`),
+        ),
+        exists: vi.fn<(path: string) => Promise<boolean>>(async () => true),
+      });
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const dispatch = vi.fn<() => void>();
+      const { result } = renderHook(() => useFileSelection(fs, dispatch));
+
+      let landed = true;
+      await act(async () => {
+        const a = result.current.selectFile("/a.krs");
+        // A request for the same file joins the read and brings the fallback.
+        void result.current.selectFile("/a.krs", "/index.krs");
+        failA();
+        landed = await a;
+      });
+      expect(landed).toBe(false);
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SELECT_FILE",
+        path: "/index.krs",
+        content: "content of /index.krs",
+      });
+
+      dispatch.mockClear();
+      await act(async () => {
+        const a = result.current.selectFile("/a.krs", "/index.krs");
+        await result.current.selectFile("/b.krs");
+        failA();
+        await a;
+      });
+      expect(dispatch.mock.calls).toEqual([
+        [{ type: "SELECT_FILE", path: "/b.krs", content: "content of /b.krs" }],
+      ]);
+      vi.restoreAllMocks();
+    });
+
     it("falls back to empty content when the file does not exist", async () => {
       const fs = makeFs({
         readFile: vi.fn<(path: string) => Promise<string>>(async () => {

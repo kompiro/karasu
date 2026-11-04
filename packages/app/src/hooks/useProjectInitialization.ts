@@ -23,8 +23,11 @@ interface UseProjectInitializationArgs {
   fs: FileSystemProvider;
   dispatch: Dispatch<AppAction>;
   currentProject: Project | null;
-  /** `selectFile` from `useFileSelection` — invoked with the project's `index.krs` on switch. */
-  selectFile: (path: string) => Promise<unknown>;
+  /**
+   * `selectFile` from `useFileSelection` — invoked with the project's `index.krs` on switch,
+   * or with the boot's file and `index.krs` as the fallback when it cannot be read.
+   */
+  selectFile: (path: string, fallback?: string) => Promise<unknown>;
   /**
    * The file the boot's URL hash names (`useProjectNavigation`), opened by
    * the boot's switch instead of `index.krs` (#3598).
@@ -170,7 +173,9 @@ export function useProjectInitialization({
     localStorage.setItem(LAST_PROJECT_KEY, currentProject.id);
     const hashFile = booted.current ? null : bootFile?.current;
     booted.current = true;
-    void selectFile(hashFile ?? `${currentProject.rootPath}/index.krs`);
+    const index = `${currentProject.rootPath}/index.krs`;
+    // A boot file that exists but cannot be read leaves the editor on index.krs.
+    void (hashFile ? selectFile(hashFile, index) : selectFile(index));
   }, [currentProject, selectFile, bootFile]);
 
   return { seededDefaults };

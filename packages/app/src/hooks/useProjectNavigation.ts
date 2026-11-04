@@ -58,7 +58,10 @@ export function useProjectNavigation(
       projects.find((p) => p.id === urlId) ?? projects.find((p) => p.id === lastId) ?? projects[0];
 
     const hash = decideInitialHash?.(target, projects, lastId) ?? location.hash;
-    bootFile.current = parseHash(hash)?.filePath ?? null;
+    // Only a file of the boot's project: another project's path would open
+    // as an empty buffer that autosaves where no project owns it.
+    const file = parseHash(hash)?.filePath ?? null;
+    bootFile.current = file?.startsWith(`${target.rootPath}/`) ? file : null;
     dispatch({ type: "SET_CURRENT_PROJECT", project: target });
     // hash は保持しつつ URL を正規化する
     history.replaceState(null, "", buildProjectPath(target.id, hash));

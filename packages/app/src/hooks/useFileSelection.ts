@@ -2,13 +2,20 @@ import { useCallback, useRef, type Dispatch } from "react";
 import type { FileSystemProvider } from "@karasu-tools/core";
 import type { AppAction } from "../state/app-reducer.js";
 
+interface InFlightSelection {
+  path: string;
+  fallback: string | undefined;
+  landed: Promise<boolean>;
+}
+
 interface UseFileSelectionResult {
   /**
    * Resolves to whether the selection landed (false when superseded by
    * another file or aborted). A request for the file already being read
-   * joins that read.
+   * joins that read. When the read fails and nothing newer was asked for,
+   * `fallback` is selected instead (#3598).
    */
-  selectFile: (path: string) => Promise<boolean>;
+  selectFile: (path: string, fallback?: string) => Promise<boolean>;
   selectFileWithContent: (path: string, content: string) => void;
 }
 
@@ -36,37 +43,48 @@ export function useFileSelection(
   // file again joins it instead of superseding it (#3598): the boot opens the
   // file a deep link names from the project switch and from the hash, and
   // neither should read the other's request as failed.
-  const inFlightRef = useRef<{ path: string; landed: Promise<boolean> } | null>(null);
+  const inFlightRef = useRef<InFlightSelection | null>(null);
 
   const selectFile = useCallback(
-    (path: string) => {
-      if (inFlightRef.current?.path === path) return inFlightRef.current.landed;
-      const seq = ++latestSelectionRef.current;
-      const landed = (async () => {
-        let content: string;
-        try {
-          content = await fs.readFile(path);
-        } catch {
-          // Distinguish "missing" (navigate to an empty buffer) from "exists but
-          // the read transiently failed" — landing on an editable empty buffer in
-          // the latter case lets the next keystroke clobber the real file (#1536).
-          const stillExists = await fs.exists(path).catch(() => false);
-          if (seq !== latestSelectionRef.current) return false; // superseded by a newer selection
-          if (stillExists) {
-            // eslint-disable-next-line no-console
-            console.error(`Failed to read existing file; keeping current selection: ${path}`);
-            return false;
-          }
-          content = "";
+    (path: string, fallback?: string) => {
+      const select = (target: string, orElse?: string): Promise<boolean> => {
+        const joined = inFlightRef.current;
+        if (joined?.path === target) {
+          joined.fallback ??= orElse;
+          return joined.landed;
         }
-        if (seq !== latestSelectionRef.current) return false; // superseded by a newer selection
-        dispatch({ type: "SELECT_FILE", path, content });
-        return true;
-      })().finally(() => {
-        if (seq === latestSelectionRef.current) inFlightRef.current = null;
-      });
-      inFlightRef.current = { path, landed };
-      return landed;
+        const seq = ++latestSelectionRef.current;
+        // A later request for the same file may add the fallback while this reads.
+        const request: Omit<InFlightSelection, "landed"> = { path: target, fallback: orElse };
+        const landed = (async () => {
+          let content: string;
+          try {
+            content = await fs.readFile(target);
+          } catch {
+            // Distinguish "missing" (navigate to an empty buffer) from "exists but
+            // the read transiently failed" — landing on an editable empty buffer in
+            // the latter case lets the next keystroke clobber the real file (#1536).
+            const stillExists = await fs.exists(target).catch(() => false);
+            if (seq !== latestSelectionRef.current) return false; // superseded by a newer selection
+            if (stillExists) {
+              // eslint-disable-next-line no-console
+              console.error(`Failed to read existing file; keeping current selection: ${target}`);
+              // Nothing newer was asked for, so the fallback opens instead.
+              if (request.fallback) void select(request.fallback);
+              return false;
+            }
+            content = "";
+          }
+          if (seq !== latestSelectionRef.current) return false; // superseded by a newer selection
+          dispatch({ type: "SELECT_FILE", path: target, content });
+          return true;
+        })().finally(() => {
+          if (seq === latestSelectionRef.current) inFlightRef.current = null;
+        });
+        inFlightRef.current = Object.assign(request, { landed });
+        return landed;
+      };
+      return select(path, fallback);
     },
     [fs, dispatch],
   );

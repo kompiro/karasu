@@ -851,14 +851,27 @@ describe("useHistoryNavigation", () => {
   describe("a deep link naming another file adds no history entry (#3598)", () => {
     const KRS = "system S {\n  service A {}\n}\n";
 
+    /** The path index a compile of `content` yields: one entry per service. */
+    const indexOf = (content: string) =>
+      new Map([...content.matchAll(/service (\w+)/g)].map(([, id]) => [id, [id]]));
+
     /**
-     * The hook on the real reducer, with `/index.krs` already open (the
-     * project switch's file) and `onFileChange` resolved by the test. With
-     * `withSeed` the path index fills in the render a file lands in; without
-     * it, a render later, on `compileNow()`.
+     * The hook on the real reducer, with `onFileChange` resolved by the test.
+     * By default `/index.krs` is already open (a switch that opened it before
+     * the named file); `openAtMount: null` boots from no file, as the app
+     * does. With `withSeed` the path index is compiled in the render a file
+     * lands in; without it, the previous file's index stays until
+     * `compileNow()`, as the debounced compile leaves it.
      */
-    function renderOnIndexKrs(withSeed: boolean) {
-      let compiledFor: string | null = withSeed ? null : "/index.krs";
+    function renderOnIndexKrs(
+      withSeed: boolean,
+      {
+        openAtMount = "/index.krs" as string | null,
+        mountContent = KRS,
+        fileRoot = null as string | null,
+      } = {},
+    ) {
+      let compiled = { path: openAtMount, content: openAtMount ? mountContent : "" };
       const reads = new Map<string, (opens: boolean, content: string) => void>();
       const dispatchRef: { current: ((action: AppAction) => void) | null } = { current: null };
       const onFileChange = vi.fn<(path: string) => Promise<boolean>>(
@@ -873,15 +886,13 @@ describe("useHistoryNavigation", () => {
       const hook = renderHook(() => {
         const [state, dispatch] = useReducer(appReducer, {
           ...initialState,
-          currentFilePath: "/index.krs",
-          fileContent: KRS,
+          currentFilePath: openAtMount,
+          fileContent: openAtMount ? mountContent : "",
         });
         dispatchRef.current = dispatch;
-        const nodePathIndex =
-          state.fileContent && (withSeed || compiledFor === state.currentFilePath)
-            ? new Map([["A", ["A"]]])
-            : new Map<string, string[]>();
-        useHistoryNavigation(
+        if (withSeed) compiled = { path: state.currentFilePath, content: state.fileContent };
+        const nodePathIndex = indexOf(compiled.content);
+        const nav = useHistoryNavigation(
           makeOptions({
             dispatch,
             nodePathIndex,
@@ -891,9 +902,11 @@ describe("useHistoryNavigation", () => {
             currentFilePath: state.currentFilePath,
             highlightedNodeId: state.highlightedNodeId,
             onFileChange,
+            fileRoot,
+            pathIndexCurrent: compiled.path === state.currentFilePath,
           }),
         );
-        return { state, dispatch };
+        return { state, dispatch, nav };
       });
       return {
         ...hook,
@@ -902,7 +915,8 @@ describe("useHistoryNavigation", () => {
           await act(async () => reads.get(path)?.(opens, content));
         },
         compileNow: async () => {
-          compiledFor = hook.result.current.state.currentFilePath;
+          const { currentFilePath, fileContent } = hook.result.current.state;
+          compiled = { path: currentFilePath, content: fileContent };
           await act(async () => hook.rerender());
         },
       };
@@ -963,6 +977,103 @@ describe("useHistoryNavigation", () => {
         result.current.dispatch({ type: "SET_ACTIVE_VIEW", activeView: "org" });
       });
       expect(pushState).toHaveBeenCalledTimes(2);
+      pushState.mockRestore();
+    });
+
+    it.each([true, false])(
+      "restores a boot from no file open on the named file (index in its render: %s)",
+      async (withSeed) => {
+        history.replaceState(null, "", "#krs-org-root?file=%2Fplanned.krs");
+        const pushState = vi.spyOn(history, "pushState");
+        const { result, open, compileNow } = renderOnIndexKrs(withSeed, { openAtMount: null });
+        await open("/planned.krs");
+        await compileNow();
+
+        expect(result.current.state.activeView).toBe("org");
+        expect(pushState).not.toHaveBeenCalled();
+        expect(location.hash).toBe("#krs-org-root?file=%2Fplanned.krs");
+        await act(async () => result.current.nav.navigateActiveView("deploy"));
+        expect(pushState).toHaveBeenCalledTimes(1);
+        pushState.mockRestore();
+      },
+    );
+
+    // The previous file's index stays until the debounced compile lands; a
+    // drill resolved against it in the commit the named file lands would end
+    // the restoration without the drill.
+    it("resolves the drill against the named file's own index, not the one before it", async () => {
+      history.replaceState(null, "", "#krs-system-A?file=%2Fplanned.krs");
+      const pushState = vi.spyOn(history, "pushState");
+      const { result, open, compileNow } = renderOnIndexKrs(false, {
+        mountContent: "system S {\n  service B {}\n}\n",
+      });
+      await compileNow();
+      await open("/planned.krs");
+      expect(result.current.state.viewPath).toEqual([]);
+
+      await compileNow();
+      expect(result.current.state.viewPath).toEqual(["A"]);
+      expect(pushState).not.toHaveBeenCalled();
+      expect(location.hash).toBe("#krs-system-A?file=%2Fplanned.krs");
+      pushState.mockRestore();
+    });
+
+    // Picking another file before the named one lands is the visitor's own
+    // navigation, like leaving it after it opened: the hash's drill is not
+    // applied to the file they chose.
+    it("ends the restoration when the visitor opens another file before the named one", async () => {
+      history.replaceState(null, "", "#krs-system-A?file=%2Fplanned.krs");
+      const pushState = vi.spyOn(history, "pushState");
+      const { result, open, compileNow } = renderOnIndexKrs(true, { openAtMount: null });
+      await act(async () => {
+        result.current.dispatch({ type: "SELECT_FILE", path: "/other.krs", content: KRS });
+      });
+      await open("/planned.krs", false);
+      await compileNow();
+
+      expect(result.current.state.currentFilePath).toBe("/other.krs");
+      expect(result.current.state.viewPath).toEqual([]);
+      await act(async () => result.current.nav.navigateViewPath(["A"]));
+      expect(pushState).toHaveBeenCalledTimes(1);
+      pushState.mockRestore();
+    });
+
+    // The named file opened as an empty buffer, so the hash's tab waits for
+    // an index that never comes while the visitor stays in the file. Their
+    // tab clicks and drills are pushed, and the tab is not applied later over
+    // where they went once the file fills.
+    it("ends the restoration on the visitor's own tab click or drill in the named file", async () => {
+      history.replaceState(null, "", "#krs-deploy?file=%2Fmissing.krs");
+      const pushState = vi.spyOn(history, "pushState");
+      const { result, open, compileNow } = renderOnIndexKrs(true, { openAtMount: null });
+      await open("/missing.krs", true, "");
+      expect(pushState).not.toHaveBeenCalled();
+
+      await act(async () => result.current.nav.navigateActiveView("org"));
+      expect(pushState).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        result.current.dispatch({ type: "UPDATE_FILE_CONTENT", content: KRS });
+      });
+      await compileNow();
+      expect(result.current.state.activeView).toBe("org");
+
+      await act(async () => result.current.nav.navigateActiveView("system"));
+      await act(async () => result.current.nav.navigateViewPath(["A"]));
+      expect(pushState).toHaveBeenCalledTimes(3);
+      pushState.mockRestore();
+    });
+
+    it("does not open a named file outside the open project", async () => {
+      history.replaceState(null, "", "#krs-system-root?file=%2Fprojects%2Fother%2Fx.krs");
+      const pushState = vi.spyOn(history, "pushState");
+      const { result, onFileChange } = renderOnIndexKrs(true, {
+        openAtMount: "/projects/p/index.krs",
+        fileRoot: "/projects/p",
+      });
+      expect(onFileChange).not.toHaveBeenCalled();
+      expect(location.hash).toBe("#krs-system-root?file=%2Fprojects%2Fp%2Findex.krs");
+      await act(async () => result.current.nav.navigateActiveView("org"));
+      expect(pushState).toHaveBeenCalledTimes(1);
       pushState.mockRestore();
     });
 
@@ -1358,7 +1469,7 @@ describe("useHistoryNavigation", () => {
 
     it("calls onFileChange on initial mount when the hash specifies a different file", () => {
       history.replaceState(null, "", "#krs-system-root?file=%2Fwanted.krs");
-      const onFileChange = vi.fn<(path: string) => Promise<void>>(async () => {});
+      const onFileChange = vi.fn<(path: string) => Promise<boolean>>(async () => true);
       renderHook(() =>
         useHistoryNavigation(makeOptions({ currentFilePath: "/a.krs", onFileChange })),
       );
@@ -1366,7 +1477,7 @@ describe("useHistoryNavigation", () => {
     });
 
     it("calls onFileChange on popstate when the hash specifies a different file", async () => {
-      const onFileChange = vi.fn<(path: string) => Promise<void>>(async () => {});
+      const onFileChange = vi.fn<(path: string) => Promise<boolean>>(async () => true);
       renderHook(() =>
         useHistoryNavigation(makeOptions({ currentFilePath: "/a.krs", onFileChange })),
       );
@@ -1381,7 +1492,7 @@ describe("useHistoryNavigation", () => {
     });
 
     it("does not call onFileChange on popstate when the file is unchanged", async () => {
-      const onFileChange = vi.fn<(path: string) => Promise<void>>(async () => {});
+      const onFileChange = vi.fn<(path: string) => Promise<boolean>>(async () => true);
       renderHook(() =>
         useHistoryNavigation(makeOptions({ currentFilePath: "/a.krs", onFileChange })),
       );

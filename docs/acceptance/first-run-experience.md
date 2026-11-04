@@ -87,6 +87,7 @@
 
   > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a reload on step 3 comes back to step 3 with its diff, adding no history entry`
   > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a reload on step 2 comes back to the org view, adding no history entry`
+  > ✅ Automated — `packages/app/src/components/first-run/use-guided-scene.test.ts` › `does not select a resumed scene's file again when it is open, and selects it when it is not`
   > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `shows a resumed tour at its step from the first render, and Continue to editor removes it`
 
 - [x] AT-S: Step 1 でドリルしてから再読み込みすると、ドリルは外れて Step 1 に戻る

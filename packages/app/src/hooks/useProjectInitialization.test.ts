@@ -304,7 +304,12 @@ describe("useProjectInitialization — project switch", () => {
         }),
       { initialProps: { project: makeProject("abc") } },
     );
-    await waitFor(() => expect(selectFile).toHaveBeenCalledWith("/projects/abc/planned.krs"));
+    await waitFor(() =>
+      expect(selectFile).toHaveBeenCalledWith(
+        "/projects/abc/planned.krs",
+        "/projects/abc/index.krs",
+      ),
+    );
 
     rerender({ project: makeProject("def") });
     await waitFor(() => expect(selectFile).toHaveBeenCalledWith("/projects/def/index.krs"));
