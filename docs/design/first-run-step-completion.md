@@ -70,8 +70,10 @@ Share ダイアログは各コンポーネントの state にある。`TourStep.
   `viewPath` はドリルしたノードまでの完全なパスなので、条件は「含む」で書く）。
 - 条件：Step 1 は `{ kind: "drilled", view: "system", node: "CommerceApp" }`、Step 2 は `{ kind: "showing", what: "team-dependencies" }`、
   Step 5 は `{ kind: "event", any: ["share-opened", "svg-exported"] }`。Step 3・4 は持たない。
-- **評価はステップのシーンが着いてから**（TPL-1534）。`useGuidedScene` が当て終えたシーンの key を返し、ツアーはその key が
-  いまのステップの key（`tour:${run}:${step}`）と一致するまで判定しない。Back や Restart の直後、前のシーンの `viewPath` で ✓ が出ない。
+- **評価はステップのシーンが着いてから**（TPL-1534）。「着いた key」は `useGuidedScene` の `appliedKey`（`selectFile` の前に立てる、
+  同じシーンを 2 度当てないための印）とは別に持つ。`selectFile` が `landed` を返し、`currentKey` / `currentRoot` の確認を通ってから
+  立て、`useGuidedScene` の戻り値（state）としてツアーに渡す。ツアーはその key がいまのステップの key（`tour:${run}:${step}`）と
+  一致するまで判定しない。Back や Restart の直後、前のシーンの `viewPath` で ✓ が出ない。
 - **数え直しはシーンの key で行う**（ステップの番号ではない）。同じ Step 1 でも Restart で key が変われば数え直す。
 - **出来事は seq つきの記録**にし、共有の Set を誰かが空にする形にしない（ほかの読み手が来ても壊れない）。書く側（Share、Export SVG）は
   プロジェクトを知らないので、**数える範囲は読む側が決める**：ツアーは、ツアーのプロジェクトを開いていて、着いたシーンの key が
@@ -82,8 +84,9 @@ Share ダイアログは各コンポーネントの state にある。`TourStep.
 - **一度満たしたら、そのシーンのあいだは ✓ を残す**（ドリルから戻っても消さない。点いたり消えたりしない。TPL-1032 の逆向きの陳腐化は、key ごとに持つことで避ける）。
 - **書く場所**：チーム依存は、実際にチーム依存を描いているか（`PreviewColumn` の表示条件と同じ：表示モードが dependencies で、
   チーム依存のビューがある）を値として出す。`setMode` の updater の中では書かない（StrictMode で 2 回走る）。AppShell が unmount したら値を戻す。
-  Share はダイアログが開いたとき、SVG はツールバーの Export SVG（`onExport`）のクリックを、そのとき書き出すもの（全レイヤーの表示中なら
-  全レイヤーの SVG）に依らず数える。ドロップダウンの drill-down（`onExportDrillDown`）・全図（`onExportAllDiagrams`）・draw.io は数えない。
+  どちらも**成功したとき**に書く（開始では書かない。失敗しても ✓ が出ないように）：Share はダイアログが共有リンクを作れたとき、
+  SVG はツールバーの Export SVG（`onExport`）の書き出しが例外なく終わったとき。そのとき書き出すもの（全レイヤーの表示中なら
+  全レイヤーの SVG）には依らない。ドロップダウンの drill-down（`onExportDrillDown`）・全図（`onExportAllDiagrams`）・draw.io は数えない。
 - **パネルの表示**：ステップ本文の下に ✓ と固定の短い文（en / ja の新しい phrase）を、既存の `aria-live` の領域の中に出す。
   Next は `aria-describedby` でその文を指す。Next の見た目は変えない（e2e はその文と `aria-describedby` を見る）。
 - **再開（#3598）との関係**：再読み込みで再開したステップは ✓ を持ち越さない。再開はステップのシーンの hash で起動するので、
