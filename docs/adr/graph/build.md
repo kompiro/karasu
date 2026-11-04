@@ -149,6 +149,7 @@ flowchart TD
     ADR_3514["ADR-3514<br/>gh pr ready のゲートは --repo をそのまま渡して同じ PR を読み、base..."]
     ADR_3571["ADR-3571<br/>PRD は docs/prd に置かず prd ラベルの Issue にし、展開した Epic..."]
     ADR_3575["ADR-3575<br/>Dependabot トリアージ 2026-11-02：npm 8 件をすべて採用し、LSP ..."]
+    ADR_3586["ADR-3586<br/>Dependabot security alert 2026-11-03（@azure/msa..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -357,6 +358,7 @@ flowchart TD
   class ADR_3514 accepted
   class ADR_3571 accepted
   class ADR_3575 accepted
+  class ADR_3586 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost

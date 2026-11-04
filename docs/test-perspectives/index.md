@@ -126,6 +126,7 @@ Active TPLs grouped by `topic`, then deprecated ones.
 - [TPL-2366](TPL-2366-badge-color-canvas-contrast.md) — canvas 上に直接描かれる文字色（badge-color 等）はテーマごとに 4.5:1 を機械検証する (#2366)
 - [TPL-2421](TPL-2421-kind-color-hue-table.md) — kind の色は色相表から導出する — 追加時は表に行を足し、fill / text を同色相ルールで導く (#2421)
 - [TPL-3141](TPL-3141-style-diagnostic-describes-drawing.md) — スタイル値の診断は描画を説明する: 範囲はスキーマ 1 か所、無効な宣言は cascade で 1 回捨てる (#3141)
+- [TPL-3480](TPL-3480-generated-id-relexes-in-target-grammar.md) — 別の文法に書き出す id は、その文法の lexer で読み戻して同じ値になる形で出す (#3480)
 
 ### navigation
 
