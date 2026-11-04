@@ -1,7 +1,7 @@
 # AT: Web App の初回体験（Welcome とサービス分割のガイドツアー）
 
 - **日付**: 2026-11-03
-- **関連 Issue**: [#3563](https://github.com/kompiro/karasu/issues/3563)（Epic）/ [#3583](https://github.com/kompiro/karasu/issues/3583)（配置の自動判定）/ [#3564](https://github.com/kompiro/karasu/issues/3564)（サンプル）/ [#3565](https://github.com/kompiro/karasu/issues/3565)（Welcome）/ [#3566](https://github.com/kompiro/karasu/issues/3566)（ガイドツアー）
+- **関連 Issue**: [#3563](https://github.com/kompiro/karasu/issues/3563)（Epic）/ [#3583](https://github.com/kompiro/karasu/issues/3583)（配置の自動判定）/ [#3597](https://github.com/kompiro/karasu/issues/3597)（ツアーのやり直し）/ [#3564](https://github.com/kompiro/karasu/issues/3564)（サンプル）/ [#3565](https://github.com/kompiro/karasu/issues/3565)（Welcome）/ [#3566](https://github.com/kompiro/karasu/issues/3566)（ガイドツアー）
 - **PRD**: [#3573](https://github.com/kompiro/karasu/issues/3573)
 - **対象ファイル**:
   - `examples/{en,ja}/service-split/`（`index.krs` / `planned.krs` / `migrating.krs`）
@@ -69,6 +69,18 @@
 - [x] AT-N: 日本語 UI でも同じ配置が成り立ち、どのステップでもパネルが画面内に収まり、パネル内の文言が切れたりはみ出したりしない
 
   > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(ja) keeps each step's node clear of the panel, with no text overflowing`
+
+- [x] AT-O: コマンドパレットの Restart Guided Tour… でツアーを Step 1 からやり直せ、以前ツアーが開いたサンプルのプロジェクトを使う（2 つ目のコピーを作らない）
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Restart Guided Tour… walks the guide again in the sample project it opened (#3597)`
+
+- [x] AT-P: ツアーがまだサンプルを開いていないときの Restart Guided Tour… は、サンプルを新しいプロジェクトとして開いてツアーを始める。利用者が同じ名前で作ったプロジェクトは使わない
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Restart Guided Tour… opens the sample when the tour has not opened one (#3597)`
+
+- [x] AT-Q: ツアーを終えて別のプロジェクトへ移ったあとの Restart Guided Tour… は、ツアーが開いたサンプルのプロジェクトへ戻る
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Restart Guided Tour… from another project goes back into the tour's copy (#3597)`
 
 ## 手動確認
 

@@ -9,7 +9,8 @@ import { selectedTab } from "../fixtures/tabs.js";
  * sample (#3564) in five steps. The opfs fixture marks Welcome dismissed for
  * every other spec; these opt back in with `showWelcome: true`.
  *
- * The palette-only `view.showWelcome` command (Show Welcome…) reopens Welcome.
+ * The palette-only `view.showWelcome` command (Show Welcome…) reopens Welcome,
+ * and `view.restartTour` (Restart Guided Tour…) walks the guide again (#3597).
  *
  * The layout block decides what used to be a manual check (#3583): the node
  * each step talks about stays inside the preview and clear of the panel, and
@@ -136,6 +137,39 @@ test.describe("AT-3563 first-run Welcome", () => {
     await expect(editorLines(page)).toContainText("service Api");
   });
 
+  test("Restart Guided Tour… opens the sample when the tour has not opened one (#3597)", async ({
+    page,
+    opfs,
+  }) => {
+    // A project the visitor named service-split is theirs, not the tour's.
+    await opfs.seed({
+      projects: [
+        {
+          id: "mine",
+          name: "service-split",
+          files: { "index.krs": "system Mine {\n  service Api\n}\n" },
+        },
+        {
+          id: "gs",
+          name: "getting-started",
+          files: { "index.krs": "system ECommerce {\n  service ECommerce\n}\n" },
+        },
+      ],
+      lastProjectId: "gs",
+    });
+    await opfs.gotoApp();
+    await expect(node(page, "ECommerce")).toBeVisible();
+
+    await pressChord(page, "Shift+P");
+    await page.getByRole("combobox", { name: "Search commands" }).fill("Restart Guided Tour");
+    await page.keyboard.press("Enter");
+    await expect(tour(page)).toContainText("1 / 5");
+    await expect(node(page, "CommerceApp")).toBeVisible();
+    // A new copy (its name disambiguated) beside the visitor's own service-split.
+    const project = page.getByRole("combobox", { name: "Project" });
+    await expect(project.getByRole("option", { name: "service-split" })).toHaveCount(2);
+  });
+
   test("Track architecture evolution compares the migration with the current system", async ({
     page,
     opfs,
@@ -219,6 +253,45 @@ test.describe("AT-3563 Design a service split tour", () => {
     await panel.getByRole("button", { name: "✓ Continue to editor" }).click();
     await expect(tour(page)).toHaveCount(0);
     await expect(node(page, "BillingDB")).toBeVisible();
+  });
+
+  test("Restart Guided Tour… walks the guide again in the sample project it opened (#3597)", async ({
+    page,
+  }) => {
+    const panel = tour(page);
+    await panel.getByRole("button", { name: "Next →" }).click();
+    await panel.getByRole("button", { name: "Next →" }).click();
+    await expect(panel).toContainText("3 / 5");
+    // Step 3's diff has landed, so the restart has a diff to clear.
+    await expect(diffBanner(page)).toContainText("planned.krs");
+
+    await pressChord(page, "Shift+P");
+    await page.getByRole("combobox", { name: "Search commands" }).fill("Restart Guided Tour");
+    await page.keyboard.press("Enter");
+    await expect(panel).toContainText("1 / 5");
+    await expect(diffBanner(page)).toHaveCount(0);
+    await expect(selectedTab(page, "System")).toBeVisible();
+    await expect(node(page, "CommerceApp")).toBeVisible();
+    // No second copy of the sample: the one the tour opened is reused.
+    const project = page.getByRole("combobox", { name: "Project" });
+    await expect(project.getByRole("option", { name: "service-split" })).toHaveCount(1);
+  });
+
+  test("Restart Guided Tour… from another project goes back into the tour's copy (#3597)", async ({
+    page,
+  }) => {
+    await tour(page).getByRole("button", { name: "✕ Skip tour" }).click();
+    const project = page.getByRole("combobox", { name: "Project" });
+    await project.selectOption({ label: "getting-started" });
+    await expect(node(page, "ECommerce")).toBeVisible();
+
+    await pressChord(page, "Shift+P");
+    await page.getByRole("combobox", { name: "Search commands" }).fill("Restart Guided Tour");
+    await page.keyboard.press("Enter");
+    await expect(tour(page)).toContainText("1 / 5");
+    await expect(project.locator("option:checked")).toHaveText("service-split");
+    await expect(project.getByRole("option", { name: "service-split" })).toHaveCount(1);
+    await expect(node(page, "CommerceApp")).toBeVisible();
   });
 
   test("Skip ends the tour from the diff step and leaves diff mode", async ({ page }) => {

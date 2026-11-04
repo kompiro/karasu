@@ -15,6 +15,7 @@ import { WelcomeDialog, type WelcomeChoice } from "./WelcomeDialog.js";
 import { EVOLVE_SCENE, SERVICE_SPLIT_TOUR } from "./tour-steps.js";
 import { useGuidedScene, type PendingScene } from "./use-guided-scene.js";
 import { markWelcomeDismissed, shouldShowWelcome } from "./welcome-gate.js";
+import { readTourProjectId, writeTourProjectId } from "./tour-project.js";
 
 interface FirstRunExperienceProps {
   /** This boot seeded the default projects (`useProjectInitialization`). */
@@ -76,12 +77,62 @@ export function FirstRunExperience({
   });
 
   const isJa = locale === "ja";
+  const serviceSplit = isJa ? SERVICE_SPLIT_PROJECT : SERVICE_SPLIT_PROJECT_EN;
+
+  const startTour = useCallback((project: Project) => {
+    writeTourProjectId(project.id);
+    const run = ++runs.current;
+    setGuide({ kind: "tour", root: project.rootPath, step: 0, run });
+  }, []);
+
+  // Opening a copy of the sample is an OPFS write. While one is in flight a
+  // second open is ignored, and so is a restart (below), so no guide starts
+  // meanwhile. The run check is a second line of defence for a future path
+  // that starts a guide without this guard: the newer guide wins (TPL-1534).
+  const opening = useRef(false);
+  const openSample = useCallback(async (): Promise<Project | null> => {
+    if (opening.current) return null;
+    opening.current = true;
+    const run = runs.current;
+    const project = await openBundledExample(serviceSplit).finally(() => {
+      opening.current = false;
+    });
+    return project && runs.current === run ? project : null;
+  }, [openBundledExample, serviceSplit]);
+
+  // Walks the guide again from step 1 (#3597), in the sample project the tour
+  // opened before so a second run does not pile up copies; a new copy only
+  // when that project is gone. It closes Welcome as a choice there would.
+  const restartTour = useCallback(async () => {
+    setGreeted(true);
+    setRequested(false);
+    markWelcomeDismissed();
+    if (opening.current) return;
+    const recorded = readTourProjectId();
+    const existing = recorded === null ? undefined : projects.find((p) => p.id === recorded);
+    if (existing) {
+      if (existing.id !== currentProject?.id) navigateToProject(existing);
+      startTour(existing);
+      return;
+    }
+    const project = await openSample();
+    if (project) startTour(project);
+  }, [projects, currentProject, navigateToProject, openSample, startTour]);
+
+  useCommand({
+    id: "view.restartTour",
+    title: "Restart Guided Tour…",
+    run: () => void restartTour(),
+  });
 
   const choose = useCallback(
     async (choice: WelcomeChoice) => {
       setGreeted(true);
       setRequested(false);
       markWelcomeDismissed();
+      // A choice that starts no guide still outranks a sample still opening
+      // for an earlier restart: the visitor chose to be elsewhere.
+      if (choice === "editor" || choice === "understand") runs.current++;
       if (choice === "editor") return;
 
       if (choice === "understand") {
@@ -98,18 +149,25 @@ export function FirstRunExperience({
         return;
       }
 
-      const project = await openBundledExample(
-        isJa ? SERVICE_SPLIT_PROJECT : SERVICE_SPLIT_PROJECT_EN,
-      );
+      const project = await openSample();
       if (!project) return;
-      const run = ++runs.current;
-      setGuide(
-        choice === "design"
-          ? { kind: "tour", root: project.rootPath, step: 0, run }
-          : { kind: "scene", root: project.rootPath, run },
-      );
+      if (choice === "design") {
+        startTour(project);
+        return;
+      }
+      setGuide({ kind: "scene", root: project.rootPath, run: ++runs.current });
     },
-    [isJa, projects, currentProject, navigateToProject, selectFile, openBundledExample, dispatch],
+    [
+      isJa,
+      projects,
+      currentProject,
+      navigateToProject,
+      selectFile,
+      openBundledExample,
+      dispatch,
+      openSample,
+      startTour,
+    ],
   );
 
   const pending = useMemo<PendingScene | null>(() => {
