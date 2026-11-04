@@ -9,6 +9,7 @@ applicable_to:
   - "セレクタや参照の値として受け付ける字句（識別子 / 文字列リテラル）を足す・変えるとき"
 discovered_from:
   - issue: "#3480"
+  - issue: "#3520"
 related_to:
   - TPL-1352
   - TPL-1755
