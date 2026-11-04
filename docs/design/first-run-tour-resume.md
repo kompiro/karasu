@@ -91,7 +91,10 @@ Phase 1 のツアーは `FirstRunExperience` の React state（`guide`）にし�
   ただし Step 3〜5 の hash は `index.krs` 以外のファイルを指し、今の `useHistoryNavigation` は hash の復元を終えたと判定するときに
   ファイルを待たない（プロジェクトの切り替えで自動選択される `index.krs` が先に着くと、復元を終えたあとで目的のファイルが着き、
   `pushState` される）。これは `?file=` が `index.krs` 以外を指す deep link すべてに今もある競合なので、**hash の復元はファイルも待つ**
-  ように直す：effect ① で hash の `filePath` を復元の目標に入れ、effect ③ は `currentFilePath` がそれと一致するまで復元を終えない。
+  ように直す：effect ① で hash の `filePath` を復元の目標に入れ、effect ③ は今の終了条件（保留中の解決が無いこと、目標のビュー・ドリル・
+  ハイライトと一致すること）に**加えて** `currentFilePath` がそれと一致するまで復元を終えない。目標のファイルの選択が着かずに終わった
+  （`selectFile` が false を返した、あるいは別の選択に追い越された）ときは、ファイルの一致を待つのをやめ、今の条件だけで復元を終える
+  （開けないファイルを指す deep link で復元が終わらなくならない）。
   これで hash の解決とシーンの適用の順序に依らず同じ結果になり、**ブラウザの履歴は増えない**。Step 1 で入口の hash がドリルを持っていても、
   書き換えでドリルは外れる（再開した Step 1 に前回のドリルで ✓ が出ない。#3599）。
 - **範囲外の値**: `v` / `tour` が違う、`step` がツアーの長さの外、`projectId` のプロジェクトが無い、JSON が壊れている、は記録ごと捨てる。
@@ -104,10 +107,12 @@ Phase 1 のツアーは `FirstRunExperience` の React state（`guide`）にし�
 1. `packages/app/src/components/first-run/tour-progress.ts`：`readTourProgress(storage?)` / `writeTourProgress` / `clearTourProgress`。
    型ガードで形を確かめ、外れたら `null`（TPL-1530）。`tour-project.ts` と同じく storage を差し替えられ、失敗は握りつぶす。
 2. 判定を 1 か所にする：純粋な `decideTourResume({ entry, record, projects, lastProjectId })` が「復元するか、するならどのプロジェクトの
-   どのステップか」を返す。`ProjectModeApp` が 1 回だけ呼び、結果を 2 か所に渡す：`useProjectNavigation` には起動先が決まったときに
-   hash を差し替える `initialHashFor(target)` として（hooks 層に `tour-steps` を持ち込まない）、`FirstRunExperience` には prop として
-   （初期化関数がそれを読む）。別々に storage と URL を読むと、hash だけ書き換わって復元しない、またはその逆が起きる。
-   捨てるべき記録の削除は `FirstRunExperience` の mount 時の effect が行う。
+   どのステップか」を返す。呼ぶのは `useProjectNavigation` の初期化の effect の中、プロジェクトの一覧が揃い（`SET_PROJECTS` の後）、
+   起動先が決まり、初回の `replaceState` をする直前の 1 回だけ（初回 render の空の一覧で判定して有効な記録を捨てない）。
+   `ProjectModeApp` はその判定を `useProjectNavigation` に `decideInitialHash(target, projects)` として渡し（hooks 層に `tour-steps` を
+   持ち込まない）、返った判定を state に置いて `FirstRunExperience` に prop で渡す。`FirstRunExperience` は読み込みが終わってから
+   mount するので、初期化関数が読む時点で判定は決まっている。別々に storage と URL を読むと、hash だけ書き換わって復元しない、
+   またはその逆が起きる。捨てるべき記録の削除は `FirstRunExperience` の mount 時の effect が行う。
 3. `useHistoryNavigation`：hash の復元の目標に `filePath` を入れ、`currentFilePath` が一致するまで復元を終えない（上の順序の規則）。
 4. `FirstRunExperience`：`startTour`・`moveStep`・`endTour`・Evolve の開始で書く・消す。初期値の復元は純粋な `useState` の初期化関数で、
    `decideTourResume` の結果を読む。
@@ -115,7 +120,11 @@ Phase 1 のツアーは `FirstRunExperience` の React state（`guide`）にし�
    - unit（jsdom）：読み書き、形・版・範囲の外れ、壊れた JSON、例外を投げる storage
    - unit（`decideTourResume`）：パスが一致、パス無しで最後のプロジェクトが一致、パス無しで最後のプロジェクトが別、`?example`、`#s=`、
      パス無しの `#krs-…`、別のプロジェクトのパス、ローカルに無いプロジェクトのパス
-   - e2e（at-3284 に足す）：`?file=` が `index.krs` 以外を指す deep link で開いても `history.length` が増えない
+   - unit（実際の `appReducer` で）：`index.krs` 以外を指す hash の復元が、path index が初回の render で揃う場合と後の render で揃う場合の
+     どちらでも、ビュー・ドリル・ファイルが揃ってから終わる。目標のファイルの選択が失敗したら待つのをやめる
+   - e2e（at-3284 に足す）：`?file=` が `index.krs` 以外を指す deep link で開いても `history.length` が増えない。プロジェクトに無いファイルを指す
+     deep link でも、そのあとのファイルの切り替えが通常どおり履歴に積まれる（復元が終わっている）
+   - 判定の順序：`decideTourResume` が `SET_PROJECTS` の後、初回の `replaceState` の前に 1 回だけ呼ばれる
    - e2e（opfs fixture は localStorage を毎回消すので他の spec に影響しない。TPL-976）：
      - Step 3 で再読み込みすると 3 / 5 と差分が戻り、`history.length` が再読み込みの前と同じ
      - Step 1 でドリルしてから再読み込みすると、ドリルは外れて 1 / 5 に戻る

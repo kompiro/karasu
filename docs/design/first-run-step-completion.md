@@ -63,7 +63,9 @@ Share ダイアログは各コンポーネントの state にある。`TourStep.
     | { kind: "showing"; what: "team-dependencies" }          // org ビューでチーム依存を表示している
     | { kind: "event"; any: ("share-opened" | "svg-exported")[] };
   ```
-  1 つの評価関数が `{ viewPath, activeView, showing, events, sinceSeq }` から判定する（`sinceSeq` より後の出来事だけを数える）。データなので、app のテストがサンプル
+  1 つの評価関数が `{ viewPath, activeView, showing, events, sinceSeq, completed }` から判定する（`sinceSeq` より後の出来事だけを数える）。
+  `completed` はツアーが持つ「完了したシーンの key の集合」で、評価関数は「すでに完了している」か「いま条件を満たしている」なら ✓ を返す。
+  `showing` はいまの表示なので、Step 2 で表示を閉じても `completed` が ✓ を保つ。データなので、app のテストがサンプル
   （`SERVICE_SPLIT_PROJECT` / `_EN`）を parse し、`drilled.node` が `buildNodePathIndex` にあることを確かめられる（TPL-3113。
   `viewPath` はドリルしたノードまでの完全なパスなので、条件は「含む」で書く）。
 - 条件：Step 1 は `{ kind: "drilled", view: "system", node: "CommerceApp" }`、Step 2 は `{ kind: "showing", what: "team-dependencies" }`、
@@ -75,7 +77,8 @@ Share ダイアログは各コンポーネントの state にある。`TourStep.
   プロジェクトを知らないので、**数える範囲は読む側が決める**：ツアーは、ツアーのプロジェクトを開いていて、着いたシーンの key が
   いまのステップの key と一致するあいだだけ判定する。プロジェクトを離れると着いた key を忘れ（`useGuidedScene` の `appliedKey` と同じ）、
   戻ってシーンが着き直すと `sinceSeq` をその時点の seq に進める。別のプロジェクトでの Share で ✓ は出ない。
-  すでに出ていた ✓ は key ごとに覚えているので、別のプロジェクトへ行って戻っても残る（戻っても key は変わらない）。
+  すでに出ていた ✓ は `completed` に残るので、別のプロジェクトへ行って戻っても、Back で完了済みのステップに戻っても出る
+  （同じ run の同じステップは同じ key）。Restart は run が変わるので、すべて未完了から始まる。
 - **一度満たしたら、そのシーンのあいだは ✓ を残す**（ドリルから戻っても消さない。点いたり消えたりしない。TPL-1032 の逆向きの陳腐化は、key ごとに持つことで避ける）。
 - **書く場所**：チーム依存は、実際にチーム依存を描いているか（`PreviewColumn` の表示条件と同じ：表示モードが dependencies で、
   チーム依存のビューがある）を値として出す。`setMode` の updater の中では書かない（StrictMode で 2 回走る）。AppShell が unmount したら値を戻す。
@@ -99,7 +102,7 @@ Share ダイアログは各コンポーネントの state にある。`TourStep.
 4. テスト：
    - unit：評価関数（各 kind、着く前は判定しない、key が変わると数え直す、満たしたあと条件が外れても ✓ が残る、別プロジェクトの出来事を数えない、別のプロジェクトへ行って戻っても出ていた ✓ が残る）
    - サンプルの縛り：`drilled.node` が en / ja のサンプルの `buildNodePathIndex` にある
-   - e2e：Step 1 で実際にドリルすると ✓、Step 2 でチーム依存を開くと ✓（すでに開いていても ✓）、Step 5 で Share を開くと ✓、Step 3・4 には出ない、Back で戻ったとき前のステップの ✓ が出ない、別のプロジェクトで Share を開いて戻っても Step 5 に ✓ が出ない
+   - e2e：Step 1 で実際にドリルすると ✓、Step 2 でチーム依存を開くと ✓（すでに開いていても ✓）、Step 5 で Share を開くと ✓、Step 3・4 には出ない、Back で未完了のステップに戻ったとき、離れたステップの状態（たとえば Step 2 からの `viewPath`）で ✓ が出ない、Back で完了済みのステップに戻ると ✓ が出る、別のプロジェクトで Share を開いて戻っても Step 5 に ✓ が出ない
 5. PRD #3573 の Revisions に「§8 の検知は、示すまでにして自動では進めない」を 1 行足す。
 6. AT：`docs/acceptance/first-run-experience.md` に項目を足す（すべて自動）。
 7. ADR 昇格：実装の PR が通ったあと、ADR-3599 として昇格し、本 Design Doc を削除する。
