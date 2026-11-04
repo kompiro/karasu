@@ -5,7 +5,9 @@
 - **関連**:
   - 引き金 Issue: [#3598](https://github.com/kompiro/karasu/issues/3598)（Phase 2 Epic [#3602](https://github.com/kompiro/karasu/issues/3602)、PRD [#3573](https://github.com/kompiro/karasu/issues/3573) §11「共有先から戻った際の文脈維持」）
   - 関連 TPL: [TPL-1842](../test-perspectives/TPL-1842-restore-state-survive-later-reset.md)（復元した状態が後のリセットに負けない）、[TPL-1530](../test-perspectives/TPL-1530-persistent-store-init-and-mutation-resilience.md)（永続化した値の初期化と破損への耐性）、[TPL-1534](../test-perspectives/TPL-1534-cancel-stale-async-effect-results.md)（遅れて届く非同期の結果）、[TPL-976](../test-perspectives/TPL-976-e2e-fixture-controlled-state.md)（e2e の fixture が状態を決める）
-  - コード: `packages/app/src/components/first-run/FirstRunExperience.tsx`、`tour-project.ts`（#3597）、`use-guided-scene.ts`、`welcome-gate.ts`、`packages/app/src/hooks/useHistoryNavigation.ts`、`packages/app/src/hooks/useProjectNavigation.ts`、`packages/app/src/ProjectModeApp.tsx`
+  - 前提: [#3597](https://github.com/kompiro/karasu/issues/3597)（PR #3604）の Restart Guided Tour… とツアーのプロジェクトの記録（`tour-project.ts`）。
+    本 Doc の実装は #3604 のマージ後に始める
+  - コード: `packages/app/src/components/first-run/FirstRunExperience.tsx`、`tour-project.ts`（#3604 で追加）、`use-guided-scene.ts`、`welcome-gate.ts`、`packages/app/src/hooks/useHistoryNavigation.ts`、`packages/app/src/hooks/useProjectNavigation.ts`、`packages/app/src/ProjectModeApp.tsx`
 
 ## 背景・課題
 
@@ -19,7 +21,7 @@ Phase 1 のツアーは `FirstRunExperience` の React state（`guide`）にし�
 | --- | --- |
 | ツアーの状態 | `guide: { kind: "tour", root, step, run }`。`root` はサンプルのプロジェクトの `rootPath`（`/projects/<id>`、名前を変えても変わらない） |
 | シーンの適用 | `useGuidedScene`。プロジェクトを離れて戻ると `reapplyOnReturn` で同じシーンを当て直す。`selectFile` は `VIEW_RESET` を伴う |
-| ツアーのプロジェクト | `localStorage["karasu-first-run-tour-project"]`（#3597）。ツアーを始めるたびに書き、ツアーを終えても消さない。Restart Guided Tour… はこれで戻り先を引く |
+| ツアーのプロジェクト | `localStorage["karasu-first-run-tour-project"]`（#3597、PR #3604 で追加）。ツアーを始めるたびに書き、ツアーを終えても消さない。Restart Guided Tour… はこれで戻り先を引く |
 | URL | `useHistoryNavigation` は起動時に hash が無くても `#krs-system-root?file=…` を `replaceState` で書き、以後もビュー・ドリル・ファイルの変化を hash に反映する。つまり**再読み込みの URL は常に `#krs-…` を持つ** |
 | deep link の判定 | `hasDeepLink(location)`（`?example` / `?krs` / `#krs-` / `#s=`）。Welcome の判定に使う |
 | 起動時のプロジェクト | `useProjectNavigation` は URL の `/projects/<id>` がローカルにあればそれを、無ければ `localStorage["karasu-last-project-id"]` を開く。ツアーのあとは最後のプロジェクトがツアーのものになるので、`?example=` や他人の `#krs-…` で開いても、まずツアーのプロジェクトで起動する |
@@ -92,11 +94,16 @@ Phase 1 のツアーは `FirstRunExperience` の React state（`guide`）にし�
   ファイルを待たない（プロジェクトの切り替えで自動選択される `index.krs` が先に着くと、復元を終えたあとで目的のファイルが着き、
   `pushState` される）。これは `?file=` が `index.krs` 以外を指す deep link すべてに今もある競合なので、**hash の復元はファイルも待つ**
   ように直す：effect ① で hash の `filePath` を復元の目標に入れ、effect ③ は今の終了条件（保留中の解決が無いこと、目標のビュー・ドリル・
-  ハイライトと一致すること）に**加えて** `currentFilePath` がそれと一致するまで復元を終えない。目標のファイルの選択が着かずに終わった
-  （`selectFile` が false を返した、あるいは別の選択に追い越された）ときは、ファイルの一致を待つのをやめ、今の条件だけで復元を終える
+  ハイライトと一致すること）に**加えて** `currentFilePath` がそれと一致するまで復元を終えない。hash がファイルを指す起動では、
+  **復元のあいだファイルの選択を 1 か所が持つ**：プロジェクトの切り替えの自動選択は `index.krs` ではなく hash のファイルを選び
+  （起動のファイルが hash のファイルになる）、シーンの同じファイルの選択はそれに合流する。`selectFile` は後の要求が前の要求を
+  `false` にするので、**追い越しは失敗に数えない**。待つのをやめるのは、目標のパスの読み込みが決着して失敗したときだけで、
+  そのときは今の条件だけで復元を終える
   （開けないファイルを指す deep link で復元が終わらなくならない）。
   これで hash の解決とシーンの適用の順序に依らず同じ結果になり、**ブラウザの履歴は増えない**。Step 1 で入口の hash がドリルを持っていても、
   書き換えでドリルは外れる（再開した Step 1 に前回のドリルで ✓ が出ない。#3599）。
+- **記録を消せなかったとき**: storage が書き込みは受けたのに削除で例外を投げると、終えたツアーの記録が残り、次の起動で再開しうる。
+  そうなる storage はまれなので受け入れる（再開を抑える印は持たない）。
 - **範囲外の値**: `v` / `tour` が違う、`step` がツアーの長さの外、`projectId` のプロジェクトが無い、JSON が壊れている、は記録ごと捨てる。
 - **再開したステップの表示**: ✓（#3599）は持ち越さない。ステップの中で起きたことの記録は再読み込みで消える。
 - **言語**: 記録は言語に依らない。ja で始めて en で再読み込みしても、同じプロジェクトの同じステップに戻る。
