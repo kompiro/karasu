@@ -120,6 +120,10 @@ export function useHistoryNavigation({
   // Set when the hash's file did not open, so effect ③ re-checks the
   // restoration without it even if no other state changes.
   const [fileWaitEnded, setFileWaitEnded] = useState(false);
+  // The hash's file has been open. Moving to another file after that is the
+  // visitor's own navigation, which ends the restoration even when the hash's
+  // file never filled the index (an empty buffer, a parse error) (#3598).
+  const restoredFileOpenedRef = useRef(false);
 
   // Stable ref for onFileChange — referenced inside long-lived effects without re-running them.
   const onFileChangeRef = useLatestRef(onFileChange);
@@ -297,6 +301,20 @@ export function useHistoryNavigation({
       return;
     }
 
+    if (
+      restoringDeepLinkRef.current &&
+      restoredFileOpenedRef.current &&
+      currentFilePath !== restoreTargetRef.current.filePath
+    ) {
+      // What the hash's file could not resolve is dropped, and this file
+      // switch is pushed like any other.
+      pendingActiveViewRestoreRef.current = null;
+      pendingNodeIdRef.current = null;
+      pendingHighlightRef.current = null;
+      restoreTargetRef.current = {};
+      restoringDeepLinkRef.current = false;
+    }
+
     const newHash = buildHash(activeView, viewPath, {
       orgTree: isOrgTreeView,
       entityView: isEntityView,
@@ -317,6 +335,9 @@ export function useHistoryNavigation({
       // not only the pending refs, and the next commit's write is replaced
       // too. A target already equal to the state matches here and now.
       const target = restoreTargetRef.current;
+      if (target.filePath !== undefined && target.filePath === currentFilePath) {
+        restoredFileOpenedRef.current = true;
+      }
       const pending =
         pendingActiveViewRestoreRef.current !== null ||
         pendingNodeIdRef.current !== null ||

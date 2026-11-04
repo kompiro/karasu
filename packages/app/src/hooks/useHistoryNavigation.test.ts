@@ -859,13 +859,13 @@ describe("useHistoryNavigation", () => {
      */
     function renderOnIndexKrs(withSeed: boolean) {
       let compiledFor: string | null = withSeed ? null : "/index.krs";
-      const reads = new Map<string, (opens: boolean) => void>();
+      const reads = new Map<string, (opens: boolean, content: string) => void>();
       const dispatchRef: { current: ((action: AppAction) => void) | null } = { current: null };
       const onFileChange = vi.fn<(path: string) => Promise<boolean>>(
         (path) =>
           new Promise((resolve) => {
-            reads.set(path, (opens) => {
-              if (opens) dispatchRef.current?.({ type: "SELECT_FILE", path, content: KRS });
+            reads.set(path, (opens, content) => {
+              if (opens) dispatchRef.current?.({ type: "SELECT_FILE", path, content });
               resolve(opens);
             });
           }),
@@ -898,8 +898,8 @@ describe("useHistoryNavigation", () => {
       return {
         ...hook,
         onFileChange,
-        open: async (path: string, opens = true) => {
-          await act(async () => reads.get(path)?.(opens));
+        open: async (path: string, opens = true, content = KRS) => {
+          await act(async () => reads.get(path)?.(opens, content));
         },
         compileNow: async () => {
           compiledFor = hook.result.current.state.currentFilePath;
@@ -940,6 +940,31 @@ describe("useHistoryNavigation", () => {
         pushState.mockRestore();
       },
     );
+
+    // The named file opened, but as an empty buffer (a missing file) whose
+    // index never fills, so the drill stays pending. Opening another file is
+    // the visitor's navigation: it must not leave the restoration on, which
+    // turned every later navigation into a replace for the whole session.
+    it("ends the restoration when the visitor leaves a named file whose index stays empty", async () => {
+      history.replaceState(null, "", "#krs-system-A?file=%2Fmissing.krs");
+      const pushState = vi.spyOn(history, "pushState");
+      const { result, open } = renderOnIndexKrs(true);
+      await open("/missing.krs", true, "");
+      expect(result.current.state.currentFilePath).toBe("/missing.krs");
+      expect(pushState).not.toHaveBeenCalled();
+
+      await act(async () => {
+        result.current.dispatch({ type: "SELECT_FILE", path: "/index.krs", content: KRS });
+      });
+      expect(pushState).toHaveBeenCalledTimes(1);
+      expect(pushState.mock.calls[0]?.[2]).toBe("#krs-system-root?file=%2Findex.krs");
+
+      await act(async () => {
+        result.current.dispatch({ type: "SET_ACTIVE_VIEW", activeView: "org" });
+      });
+      expect(pushState).toHaveBeenCalledTimes(2);
+      pushState.mockRestore();
+    });
 
     it("stops waiting for the named file when it does not open", async () => {
       history.replaceState(null, "", "#krs-system-root?file=%2Fbroken.krs");

@@ -136,7 +136,7 @@ describe("useProjectNavigation", () => {
           return "#krs-org-root";
         },
       );
-      const { rerender } = renderHook(
+      const { result, rerender } = renderHook(
         ({ projs }: { projs: Project[] }) =>
           useProjectNavigation(projs, null, dispatch, decideInitialHash),
         { initialProps: { projs: [] as Project[] } },
@@ -149,6 +149,15 @@ describe("useProjectNavigation", () => {
       expect(decideInitialHash).toHaveBeenCalledTimes(1);
       expect(decideInitialHash).toHaveBeenCalledWith(projectB, projects, "bbb");
       expect(history.replaceState).toHaveBeenCalledWith(null, "", "/projects/bbb#krs-org-root");
+      expect(result.current.bootFile.current).toBeNull();
+    });
+
+    it("hands over the file the hash it writes names, for the boot's file selection", () => {
+      history.replaceState(null, "", "/projects/aaa#krs-system-root");
+      const dispatch = vi.fn<() => void>();
+      const decide = () => "#krs-org-root?file=%2Fprojects%2Faaa%2Fplanned.krs";
+      const { result } = renderHook(() => useProjectNavigation(projects, null, dispatch, decide));
+      expect(result.current.bootFile.current).toBe("/projects/aaa/planned.krs");
     });
 
     it("keeps the URL's hash when decideInitialHash returns null", () => {

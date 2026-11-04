@@ -1,8 +1,8 @@
 import { useEffect, useCallback, useRef } from "react";
-import type { Dispatch } from "react";
+import type { Dispatch, RefObject } from "react";
 import type { Project } from "@karasu-tools/core";
 import type { AppAction } from "../state/app-reducer.js";
-import { buildHash } from "./history-hash.js";
+import { buildHash, parseHash } from "./history-hash.js";
 import { PROJECTS_SEGMENT } from "../routes.js";
 
 export const LAST_PROJECT_KEY = "karasu-last-project-id";
@@ -33,7 +33,8 @@ export function buildProjectPath(projectId: string, hash = ""): string {
  * ProjectMode の URL ナビゲーションを管理するフック。
  *
  * - 初期化時: `/projects/<id>` からプロジェクトを復元し、URL を正規化する。
- *   `decideInitialHash` があれば、その hash で起動する（#3598）
+ *   `decideInitialHash` があれば、その hash で起動する（#3598）。書いた hash が
+ *   指すファイルを `bootFile` に置き、起動時のファイルの選択に渡す
  * - navigateToProject: プロジェクト切り替え時に pushState で URL を更新する
  * - popstate: ブラウザの戻る/進むでプロジェクトを同期する
  */
@@ -42,8 +43,9 @@ export function useProjectNavigation(
   currentProject: Project | null,
   dispatch: Dispatch<AppAction>,
   decideInitialHash?: DecideInitialHash,
-) {
+): { navigateToProject: (project: Project) => void; bootFile: RefObject<string | null> } {
   const initialized = useRef(false);
+  const bootFile = useRef<string | null>(null);
 
   // 初期化: projects が確定した後に URL を解析してプロジェクトを復元する
   useEffect(() => {
@@ -56,6 +58,7 @@ export function useProjectNavigation(
       projects.find((p) => p.id === urlId) ?? projects.find((p) => p.id === lastId) ?? projects[0];
 
     const hash = decideInitialHash?.(target, projects, lastId) ?? location.hash;
+    bootFile.current = parseHash(hash)?.filePath ?? null;
     dispatch({ type: "SET_CURRENT_PROJECT", project: target });
     // hash は保持しつつ URL を正規化する
     history.replaceState(null, "", buildProjectPath(target.id, hash));
@@ -87,5 +90,5 @@ export function useProjectNavigation(
     return () => window.removeEventListener("popstate", handlePopState);
   }, [projects, currentProject, dispatch]);
 
-  return { navigateToProject };
+  return { navigateToProject, bootFile };
 }

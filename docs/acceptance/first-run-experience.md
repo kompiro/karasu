@@ -83,9 +83,10 @@
 
   > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Restart Guided Tour… from another project goes back into the tour's copy (#3597)`
 
-- [x] AT-R: Step 3 で再読み込みすると、Step 3 と差分のまま戻り、ブラウザの履歴は増えない
+- [x] AT-R: Step 3 で再読み込みすると、Step 3 と差分のまま戻り、Step 2 で再読み込みすると Org ビューのまま戻る。どちらもブラウザの履歴は増えない
 
   > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a reload on step 3 comes back to step 3 with its diff, adding no history entry`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a reload on step 2 comes back to the org view, adding no history entry`
   > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `shows a resumed tour at its step from the first render, and Continue to editor removes it`
 
 - [x] AT-S: Step 1 でドリルしてから再読み込みすると、ドリルは外れて Step 1 に戻る

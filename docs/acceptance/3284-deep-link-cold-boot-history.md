@@ -44,10 +44,11 @@ type: product
   > ✅ Automated — `packages/e2e/tests/at-3284-deep-link-cold-boot-history.spec.ts` › `a cold boot on a link naming another file than index.krs adds one history entry (AT-F)`
   > ✅ Automated — `packages/app/src/hooks/useHistoryNavigation.test.ts` › `a deep link naming another file adds no history entry (#3598)` › `%s restores on the named file (index fills in its render: %s)`
 
-- [x] AT-G: プロジェクトに無いファイルを指す deep link でも復元が終わり、そのあとのファイルの切り替えは通常どおり history に積まれる。指すファイルが開けなかったときも、待ち続けずに復元を終える
+- [x] AT-G: プロジェクトに無いファイルを指す deep link でも復元が終わり、そのあとのファイルの切り替えは通常どおり history に積まれる。指すファイルが開けなかったときも、待ち続けずに復元を終える。指すファイルの index が空のまま（ドリル先が解決できない）でも、別のファイルへ移れば復元を終え、その移動から history に積まれる
 
   > ✅ Automated — `packages/e2e/tests/at-3284-deep-link-cold-boot-history.spec.ts` › `after a link naming a file the project does not have, a file switch is a new entry (AT-G)`
   > ✅ Automated — `packages/app/src/hooks/useHistoryNavigation.test.ts` › `a deep link naming another file adds no history entry (#3598)` › `stops waiting for the named file when it does not open`
+  > ✅ Automated — `packages/app/src/hooks/useHistoryNavigation.test.ts` › `a deep link naming another file adds no history entry (#3598)` › `ends the restoration when the visitor leaves a named file whose index stays empty`
 
 ## 手動確認
 

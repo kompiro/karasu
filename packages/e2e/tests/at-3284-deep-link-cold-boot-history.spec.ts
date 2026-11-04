@@ -98,6 +98,9 @@ test("a cold boot on a link naming another file than index.krs adds one history 
   await expect.poll(() => page.url()).toBe(linkedFrom);
 });
 
+// A missing file opens as an empty buffer (the selection lands), so this
+// covers a restoration that ends on that buffer. A file that does not open at
+// all is the unit test's `stops waiting for the named file when it does not open`.
 test("after a link naming a file the project does not have, a file switch is a new entry (AT-G)", async ({
   page,
   opfs,

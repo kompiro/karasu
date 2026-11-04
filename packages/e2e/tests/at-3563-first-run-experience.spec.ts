@@ -367,6 +367,25 @@ test.describe("AT-3563 resuming the tour (#3598)", () => {
     expect(await page.evaluate(() => history.length)).toBe(before);
   });
 
+  // The org view is the one a scene sets after its file's SELECT_FILE reset
+  // the view to System; both land in one commit, so no entry is pushed.
+  test("a reload on step 2 comes back to the org view, adding no history entry", async ({
+    page,
+    opfs,
+  }) => {
+    await startTour(page, opfs);
+    await tour(page).getByRole("button", { name: "Next →" }).click();
+    await expect(tour(page)).toContainText("2 / 5");
+    await expect(selectedTab(page, "Org")).toBeVisible();
+    const before = await page.evaluate(() => history.length);
+
+    await page.reload();
+    await expect(tour(page)).toContainText("2 / 5");
+    await expect(selectedTab(page, "Org")).toBeVisible();
+    await expect.poll(() => page.evaluate(() => location.hash)).toMatch(/^#krs-org-root/);
+    expect(await page.evaluate(() => history.length)).toBe(before);
+  });
+
   test("a reload after drilling on step 1 comes back to step 1, undrilled", async ({
     page,
     opfs,

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Dispatch } from "react";
+import { useEffect, useRef, useState, type Dispatch, type RefObject } from "react";
 import {
   CLIENT_MCP_PROJECT,
   EC_PLATFORM_PROJECTS,
@@ -16,7 +16,6 @@ import {
 import type { ProjectManager } from "../fs/project-manager.js";
 import { resolveLocale } from "../i18n/locale.js";
 import type { AppAction } from "../state/app-reducer.js";
-import { parseHash } from "./history-hash.js";
 import { LAST_PROJECT_KEY } from "./useProjectNavigation.js";
 
 interface UseProjectInitializationArgs {
@@ -26,6 +25,11 @@ interface UseProjectInitializationArgs {
   currentProject: Project | null;
   /** `selectFile` from `useFileSelection` — invoked with the project's `index.krs` on switch. */
   selectFile: (path: string) => Promise<unknown>;
+  /**
+   * The file the boot's URL hash names (`useProjectNavigation`), opened by
+   * the boot's switch instead of `index.krs` (#3598).
+   */
+  bootFile?: RefObject<string | null>;
 }
 
 const PASTE_COMPARE_FILE = ".karasu-paste-compare.krs";
@@ -80,6 +84,7 @@ export function useProjectInitialization({
   dispatch,
   currentProject,
   selectFile,
+  bootFile,
 }: UseProjectInitializationArgs): { seededDefaults: boolean } {
   const [seededDefaults, setSeededDefaults] = useState(false);
   // Guards against re-seeding when the effect runs twice (React StrictMode
@@ -157,15 +162,16 @@ export function useProjectInitialization({
   }, [pm, fs, dispatch]);
 
   // On project switch: persist to localStorage + auto-select index.krs. The
-  // hash is read once the boot has written it (`useProjectNavigation`).
+  // boot's file is handed over rather than read back from the URL, which a
+  // child's effect may already have rewritten in the same commit.
   const booted = useRef(false);
   useEffect(() => {
     if (!currentProject) return;
     localStorage.setItem(LAST_PROJECT_KEY, currentProject.id);
-    const hashFile = booted.current ? null : parseHash(location.hash)?.filePath;
+    const hashFile = booted.current ? null : bootFile?.current;
     booted.current = true;
     void selectFile(hashFile ?? `${currentProject.rootPath}/index.krs`);
-  }, [currentProject, selectFile]);
+  }, [currentProject, selectFile, bootFile]);
 
   return { seededDefaults };
 }

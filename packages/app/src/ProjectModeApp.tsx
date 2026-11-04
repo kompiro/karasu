@@ -104,7 +104,7 @@ export function ProjectModeApp() {
     ? (lastKrsFilePath ?? `${currentProject.rootPath}/index.krs`)
     : null;
 
-  const { navigateToProject } = useProjectNavigation(
+  const { navigateToProject, bootFile } = useProjectNavigation(
     projects,
     currentProject,
     dispatch,
@@ -118,6 +118,7 @@ export function ProjectModeApp() {
     dispatch,
     currentProject,
     selectFile,
+    bootFile,
   });
 
   const {
