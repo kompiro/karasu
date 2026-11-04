@@ -203,6 +203,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3514](3514-ready-gate-reads-pr-it-acts-on.md) — gh pr ready のゲートは --repo をそのまま渡して同じ PR を読み、base は PR の base コミットで判定する
 - [ADR-3571](3571-prd-as-issues.md) — PRD は docs/prd に置かず prd ラベルの Issue にし、展開した Epic をその sub-issue にする
 - [ADR-3575](3575-dependabot-triage-2026-11-02.md) — Dependabot トリアージ 2026-11-02：npm 8 件をすべて採用し、LSP 11 と SDK 1.x は ADR の assumptions を次の major に上げる差し替え PR で入れる
+- [ADR-3586](3586-dependabot-security-2026-11-03.md) — Dependabot security alert 2026-11-03（@azure/msal-node は ADR-3399 のとおり @azure/identity 4.14.1 への lock 更新で直し、glob と minimatch は修正版が新 major だけなので alert を open のまま保留する）
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
