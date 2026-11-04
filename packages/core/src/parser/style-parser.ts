@@ -14,6 +14,8 @@ import type {
 } from "../types/style.js";
 import type { Diagnostic, ParseResult } from "../types/ast.js";
 import { StyleLexer } from "../lexer/style-lexer.js";
+import { inFile, rangeBetweenTokens, tokenLoc } from "./style-source-range.js";
+import { buildValueNode, classifyIdentAtom } from "./style-value-node.js";
 
 const ANONYMOUS_SHEET_ID = "<anonymous>";
 
@@ -567,90 +569,6 @@ export class StyleParser {
 }
 
 /**
- * Classify a bare identifier atom. Hex tokens land here too because the
- * lexer emits them as `Identifier` with a leading `#` (see style-lexer
- * `readHexColor`). Numeric values (`12`, `12px`, `0.5`) similarly come
- * through as `Identifier`.
- */
-function classifyIdentAtom(value: string, token: Token, file: string | undefined): ValueNode {
-  if (value.startsWith("#")) {
-    return { kind: "hex", value, loc: tokenLoc(token, file) };
-  }
-  const numericMatch = /^(-?(?:\d+(?:\.\d+)?|\.\d+))([a-zA-Z%]+)?$/.exec(value);
-  if (numericMatch) {
-    const numeric = Number.parseFloat(numericMatch[1]);
-    const unit = numericMatch[2];
-    if (unit) {
-      return {
-        kind: "length",
-        value: numeric,
-        unit,
-        raw: numericMatch[1],
-        loc: tokenLoc(token, file),
-      };
-    }
-    return {
-      kind: "number",
-      value: numeric,
-      raw: numericMatch[1],
-      loc: tokenLoc(token, file),
-    };
-  }
-  return { kind: "ident", value, loc: tokenLoc(token, file) };
-}
-
-/**
- * The value node for a declaration's atoms. Commas split items; within an
- * item, one atom stands for itself and several make a `sequence` (#3141), so
- * every atom the author wrote reaches the validator. The caller has already
- * refused an empty value or an empty item, so every segment has an atom.
- */
-function buildValueNode(atoms: ValueNode[], segmentStarts: number[]): ValueNode {
-  const items: ValueNode[] = [];
-  for (let i = 0; i < segmentStarts.length; i++) {
-    const end = i + 1 < segmentStarts.length ? segmentStarts[i + 1] : atoms.length;
-    items.push(segmentNode(atoms.slice(segmentStarts[i], end)));
-  }
-  if (items.length === 1) return items[0];
-  return {
-    kind: "list",
-    items,
-    loc: spanOf(items),
-  };
-}
-
-/** One comma item: a single atom, or a `sequence` of its space-separated atoms. */
-function segmentNode(atoms: ValueNode[]): ValueNode {
-  const [first, second, ...rest] = atoms;
-  if (second === undefined) return first;
-  return { kind: "sequence", items: [first, second, ...rest], loc: spanOf(atoms) };
-}
-
-/** From the first node's start to the last one's end. */
-function spanOf(nodes: ValueNode[]): SourceRange {
-  // The nodes are atoms of one declaration, so they share its file.
-  return inFile(
-    { start: nodes[0].loc.start, end: nodes[nodes.length - 1].loc.end },
-    nodes[0].loc.file,
-  );
-}
-
-/**
- * Attach the sheet's file to a range when the parse was given one, omitting
- * the key otherwise, so a sheet parsed without a path compares equal to the
- * shape it had before (#2715, TPL-2715). Every caller hands in a range it has
- * just built, so assigning in place is safe and spares a copy per range.
- *
- * The free range helpers below take `file` as a required parameter rather than
- * an optional one: a range built without it would silently lose the sheet's
- * identity, and this way a new call site cannot forget to pass it.
- */
-function inFile(range: SourceRange, file: string | undefined): SourceRange {
-  if (file !== undefined) range.file = file;
-  return range;
-}
-
-/**
  * The parse diagnostics of a sheet handed in as a string next to a `.krs`
  * string, with their positions removed. Such a compile has two documents and a
  * path for neither, so a position could only be read against the `.krs`,
@@ -665,36 +583,6 @@ export function unplacedStyleDiagnostics(diagnostics: readonly Diagnostic[]): Di
     const { loc: _loc, ...rest } = d;
     return rest as Diagnostic;
   });
-}
-
-function tokenLoc(token: Token, file: string | undefined): SourceRange {
-  const len = token.value.length;
-  return inFile(
-    {
-      start: { ...token.loc },
-      end: {
-        line: token.loc.line,
-        column: token.loc.column + len,
-        offset: token.loc.offset + len,
-      },
-    },
-    file,
-  );
-}
-
-function rangeBetweenTokens(start: Token, end: Token, file: string | undefined): SourceRange {
-  const len = end.value.length;
-  return inFile(
-    {
-      start: { ...start.loc },
-      end: {
-        line: end.loc.line,
-        column: end.loc.column + len,
-        offset: end.loc.offset + len,
-      },
-    },
-    file,
-  );
 }
 
 /**

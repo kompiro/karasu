@@ -65,7 +65,11 @@ edge の canonical id は SVG の `data-edge-canonical-id` に載り、app の�
 
 ## 関連テスト
 
-（#3480 の実装 PR で追加する）
+- hex 形の id（#3520）: `packages/core/src/parser/style-parser.test.ts` の
+  `hex-shaped ids in selector position`、`packages/core/src/lexer/style-lexer.test.ts` の
+  `keeps %s in one id`、`packages/core/src/index.test.ts` の
+  `targets nodes and edges whose ids are hex-shaped`
+- 生成した id の往復（#3480 の実装 PR で追加する）
 
 ## 派生元 spec
 
