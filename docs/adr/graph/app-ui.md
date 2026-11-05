@@ -47,6 +47,7 @@ flowchart TD
     ADR_2317["ADR-2317<br/>プレビューの操作を 2 面に分ける — 図を変える操作はドリルパスの行、持ち出す操作はツールバー"]
     ADR_2461["ADR-2461<br/>色の上の文字は per-theme のインクで、半透明クロームの上の文字は合成後の色で判定する"]
     ADR_2535["ADR-2535<br/>日本語判定は主要サブタグの完全一致で行い、Windows の言語名だけを明示的に許す"]
+    ADR_3598["ADR-3598<br/>初回体験のツアーを localStorage の記録と入口の URL で再開し、deep li..."]
     ADR_9009["ADR-9009<br/>ツールバーボタンはアイコン+テキストラベル必須"]
     ADR_9010["ADR-9010<br/>MemoryMode と ProjectMode の統一 — Reducer + `Karas..."]
     ADR_9011["ADR-9011<br/>Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
@@ -142,6 +143,7 @@ flowchart TD
   class ADR_2317 accepted
   class ADR_2461 accepted
   class ADR_2535 accepted
+  class ADR_3598 accepted
   class ADR_9009 accepted
   class ADR_9010 accepted
   class ADR_9011 accepted
