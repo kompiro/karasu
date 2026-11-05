@@ -22,6 +22,7 @@ discovered_from:
   - root_cause_file: "packages/core/src/resolver/style-resolver.ts"
 related_to:
   - TPL-2167
+  - TPL-3480
 topic: core-concepts
 scope:
   packages:

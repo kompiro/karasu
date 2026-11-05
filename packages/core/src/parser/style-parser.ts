@@ -1,10 +1,4 @@
-import {
-  TokenType,
-  type Token,
-  type SourceLocation,
-  type SourceRange,
-  type Trivia,
-} from "../types/tokens.js";
+import { TokenType, type Token, type SourceLocation, type SourceRange } from "../types/tokens.js";
 import type {
   StyleSheet,
   StyleRule,
@@ -16,6 +10,8 @@ import type { Diagnostic, ParseResult } from "../types/ast.js";
 import { StyleLexer } from "../lexer/style-lexer.js";
 import { inFile, rangeBetweenTokens, tokenLoc } from "./style-source-range.js";
 import { buildValueNode, classifyIdentAtom } from "./style-value-node.js";
+import { edgeBaseForm } from "../style/edge-endpoint-literal.js";
+import { splitSameLineTrivia, takeLeadingTrivia } from "./style-trivia.js";
 
 const ANONYMOUS_SHEET_ID = "<anonymous>";
 
@@ -109,6 +105,7 @@ export class StyleParser {
   }
 
   private endOfToken(token: Token): SourceLocation {
+    if (token.end) return { ...token.end };
     const len = token.value.length;
     return {
       line: token.loc.line,
@@ -265,16 +262,27 @@ export class StyleParser {
 
     // edge#<id> selector — only meaningful after `edge`. Accepts either an
     // author identifier (`edge#criticalWrite`) or a base form
-    // (`edge#A->B` / `edge#A-->B`).
+    // (`edge#A->B` / `edge#A-->B`). An endpoint `.krs.style` cannot read as one
+    // identifier is a string literal, as in `.krs` (`edge#"a b"->c`); the base
+    // is normalized the way the canonical id is built, so `edge#"a"->c` is
+    // `edge#a->c` (#3480).
     if (selector.nodeType === "edge" && this.atHashId()) {
-      const first = this.expectHashId();
+      const first =
+        this.peek().type === TokenType.Hash
+          ? (this.advance(), this.parseEdgeEndpoint())
+          : this.expectHashId();
       const next = this.peek().type;
       if (next === TokenType.Arrow || next === TokenType.DashedArrow) {
-        const arrow = this.advance().value;
-        const second = this.expect(TokenType.Identifier);
-        selector.edgeId = `${first.value}${arrow}${second.value}`;
+        const arrow = this.advance().value === "->" ? "->" : "-->";
+        const second = this.parseEdgeEndpoint();
+        selector.edgeId = edgeBaseForm(first.value, arrow, second.value);
         lastToken = second;
       } else {
+        // An author id is an identifier; a literal or `#db` names an endpoint
+        // and needs the arrow.
+        if (first.type !== TokenType.Identifier || first.value.startsWith("#")) {
+          this.expect(TokenType.Arrow);
+        }
         selector.edgeId = first.value;
         lastToken = first;
       }
@@ -291,8 +299,12 @@ export class StyleParser {
       if (this.peek().type === TokenType.Equals) {
         this.advance(); // =
         // `<id>` may be a dot-notation endpoint (e.g. `OrderDB.OrderTable`),
-        // which the lexer already folds into a single Identifier.
-        const value = this.expect(TokenType.Identifier);
+        // which the lexer already folds into a single Identifier, or a string
+        // literal for an endpoint that is not one identifier (`[from="a b"]`).
+        const value =
+          inner.value === "from" || inner.value === "to"
+            ? this.parseEdgeEndpoint()
+            : this.expect(TokenType.Identifier);
         if (inner.value === "from") {
           selector.edgeFrom = value.value;
         } else if (inner.value === "to") {
@@ -546,6 +558,22 @@ export class StyleParser {
     };
   }
 
+  /**
+   * One endpoint of `edge#<from><arrow><to>` or `[from=]` / `[to=]`: an
+   * identifier, a string literal (its decoded value), or `#` + identifier with
+   * no space, read as the endpoint `#db` that the canonical id writes `"#db"`.
+   */
+  private parseEdgeEndpoint(): Token {
+    const token = this.peek();
+    if (token.type === TokenType.StringLiteral) return this.advance();
+    if (token.type === TokenType.Hash && this.isAdjacentIdentifier(token)) {
+      this.advance(); // #
+      const id = this.advance();
+      return { ...id, value: `#${id.value}`, loc: token.loc };
+    }
+    return this.expect(TokenType.Identifier);
+  }
+
   /** Whether `hash` is immediately followed, with no space, by an identifier. */
   private isAdjacentIdentifier(hash: Token): boolean {
     const next = this.peekAt(1);
@@ -588,40 +616,6 @@ export function unplacedStyleDiagnostics(diagnostics: readonly Diagnostic[]): Di
     const { loc: _loc, ...rest } = d;
     return rest as Diagnostic;
   });
-}
-
-/**
- * Consume the leading trivia attached to `token` and clear it on the token
- * so the same trivia is not visible to a later splitter call.
- */
-function takeLeadingTrivia(token: Token): Trivia[] {
-  const trivia = token.leadingTrivia ?? [];
-  token.leadingTrivia = [];
-  return trivia;
-}
-
-/**
- * Split `nextToken.leadingTrivia` into trivia that occurs on `boundaryLine`
- * (returned as `sameLine`) and the rest, which is left attached to the
- * token as its remaining `leadingTrivia`. The same-line slice is the
- * trailing trivia of whatever construct ended on `boundaryLine`.
- */
-function splitSameLineTrivia(nextToken: Token, boundaryLine: number): { sameLine: Trivia[] } {
-  const trivia = nextToken.leadingTrivia ?? [];
-  if (trivia.length === 0) return { sameLine: [] };
-  const sameLine: Trivia[] = [];
-  const rest: Trivia[] = [];
-  let stillSameLine = true;
-  for (const t of trivia) {
-    if (stillSameLine && t.kind !== "blank-line" && t.loc.start.line === boundaryLine) {
-      sameLine.push(t);
-    } else {
-      stillSameLine = false;
-      rest.push(t);
-    }
-  }
-  nextToken.leadingTrivia = rest;
-  return { sameLine };
 }
 
 export function computeSpecificity(selector: Omit<StyleSelector, "loc">): number {

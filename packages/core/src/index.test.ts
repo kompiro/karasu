@@ -614,6 +614,87 @@ edge#feed { color: #FF0000; }
   });
 });
 
+// #3480: the app's right-click menu writes `edge#${data-edge-canonical-id}`
+// into the sheet, so the id read off the SVG must parse there and hit only
+// that edge, whatever its endpoints are.
+describe("compile — edge#<canonical id> written the way the app writes it", () => {
+  function unescapeAttr(value: string): string {
+    return value
+      .replace(/&quot;/g, '"')
+      .replace(/&gt;/g, ">")
+      .replace(/&lt;/g, "<")
+      .replace(/&amp;/g, "&");
+  }
+  function escapeAttr(value: string): string {
+    return value
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+  function edgeGroup(svg: string, from: string, to: string): string {
+    const head = `<g data-edge-from="${escapeAttr(from)}" data-edge-to="${escapeAttr(to)}"`;
+    const start = svg.indexOf(head);
+    if (start < 0) throw new Error(`no edge ${from} -> ${to}`);
+    return svg.slice(start, svg.indexOf("</g>", start));
+  }
+  function canonicalIdOf(svg: string, from: string, to: string): string {
+    const m = /data-edge-canonical-id="([^"]*)"/.exec(edgeGroup(svg, from, to));
+    if (!m) throw new Error(`edge ${from} -> ${to} has no canonical id`);
+    return unescapeAttr(m[1]);
+  }
+  function strokeOf(svg: string, from: string, to: string): string | undefined {
+    return [...edgeGroup(svg, from, to).matchAll(/stroke="([^"]*)"/g)]
+      .map((m) => m[1])
+      .find((stroke) => stroke !== "transparent");
+  }
+  function render(krs: string, styleSource = "") {
+    const result = compile(krs, { styleSource });
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    return result;
+  }
+
+  it.each([
+    {
+      name: "an endpoint with a space",
+      krs: `system S {\n  service "a b" {}\n  service c {}\n  service d {}\n  "a b" -> c\n  d -> c\n}`,
+      target: ["a b", "c"],
+      other: ["d", "c"],
+    },
+    {
+      name: "a trailing - next to an async edge",
+      krs: `system S {\n  service "a-" {}\n  service a {}\n  service c {}\n  "a-" -> c\n  a --> c\n}`,
+      target: ["a-", "c"],
+      other: ["a", "c"],
+    },
+  ])("targets only the edge with $name", ({ krs, target, other }) => {
+    const plain = render(krs);
+    expect(plain.diagnostics.filter((d) => d.code === "ambiguous-edge-base")).toEqual([]);
+    const id = canonicalIdOf(plain.svg, target[0], target[1]);
+    expect(canonicalIdOf(plain.svg, other[0], other[1])).not.toBe(id);
+
+    const styled = render(krs, `edge#${id} { color: #00FF00; }`);
+    expect(styled.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    expect(strokeOf(styled.svg, target[0], target[1])).toBe("#00FF00");
+    expect(strokeOf(styled.svg, other[0], other[1])).not.toBe("#00FF00");
+  });
+
+  // The two bases used to be the same `a->b->c`. The rule now names one edge;
+  // the SVG still paints both because the resolved style map keys edges by the
+  // plain join (#3481), so this pins the selector side only.
+  it("gives endpoints containing -> their own id and a rule that names one of them", () => {
+    const krs = `system S {\n  service a {}\n  service "b->c" {}\n  service "a->b" {}\n  service c {}\n  "a->b" -> c\n  a -> "b->c"\n}`;
+    const plain = render(krs);
+    expect(plain.diagnostics.filter((d) => d.code === "ambiguous-edge-base")).toEqual([]);
+    const target = canonicalIdOf(plain.svg, "a", "b->c");
+    const other = canonicalIdOf(plain.svg, "a->b", "c");
+    expect([target, other]).toEqual(['a->"b->c"', '"a->b"->c']);
+    const sheet = StyleParser.parse(`edge#${target} { color: #00FF00; }`);
+    expect(sheet.diagnostics).toEqual([]);
+    expect(sheet.value.rules[0].selector.edgeId).toBe(target);
+  });
+});
+
 describe("compile — edge direction hint reaches the layered layout", () => {
   // Drill into a service (non-forced layer path) and observe the rendered
   // SVG to verify the direction hint reaches the layout. The top-level

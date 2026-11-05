@@ -211,6 +211,13 @@ edge[to=AuthService] { color: #F59E0B; } /* AuthService を呼ぶ全エッジ */
 edge[from=ApiGateway][async] { stroke-style: dashed; }  /* ApiGateway 発の async エッジ */
 ```
 
+識別子 1 つで書けない端点は、`edge#<id>` と同じく文字列リテラルで書き
+（[識別子 1 つで書けない端点](#識別子-1-つで書けない端点)）、引用符を外した値で比較される:
+
+```css
+edge[from="Card Vault"] { color: #EF4444; }
+```
+
 `from` / `to` 以外の属性（例: `edge[source=X]`）は `unknown-edge-selector-attribute`
 エラーになる。
 
@@ -245,6 +252,50 @@ edge#PlaceOrder->OrderDB.OrderTable { direction: down; }
 **どちらにも一致しない**。区別したい場合は `.krs` 側でいずれかに `#<id>` を
 付ける。詳細は [`docs/spec/syntax.md`](syntax.md#edge-declaration) と
 [`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md) を参照。
+
+### 識別子 1 つで書けない端点
+
+quoted のノード id は任意の文字列を持てるが、`edge#` の後の端点は `.krs.style`
+で読み戻して同じ値になる必要がある。そのため base 形式は、端点を style の
+lexer が識別子 1 つとして読み、末尾が `-` でなく（後ろの矢印に `-` が吸われる）、
+先頭が `#` でないときだけそのまま書く。それ以外の端点は `.krs` と同じ文字列
+リテラル（`\` と `"` を escape）で書く。識別子で書ける id は今までどおり素の
+連結なので、既存の rule は変わらない。
+
+```krs
+system S {
+  service "a b" {}
+  service "b->c" {}
+  service "a->b" {}
+  service "a-" {}
+  service a {}
+  service c {}
+  "a b" -> c "reads"
+  "a->b" -> c "reads"
+  a -> "b->c" "writes"
+  "a-" -> c "calls"
+  a --> c "notifies"
+}
+```
+
+```css
+edge#"a b"->c  { color: #00FF00; }       /* 空白を含む端点 */
+edge#"a->b"->c { color: #3B82F6; }       /* 2 本はもう同じ base にならない */
+edge#a->"b->c" { color: #F59E0B; }
+edge#"a-"->c   { stroke-style: dashed; } /* sync。async の a-->c とは別 */
+```
+
+パーサも同じ規則で base を正規化するので、不要な引用符（`edge#"a"->c`）は
+`edge#a->c` と同じセレクタになり、空白を挟んだ `edge#a- -> c` は
+`edge#"a-"->c` になる。`#` で始まる端点は引用符なしでも書け（`edge#a->#db`）、
+`"#db"` を指す。矢印の無い文字列リテラルは author id ではない（author id は
+識別子）ので、`edge#"a b"` は parse エラーになる。
+
+app の右クリックのエッジ方向メニューは `edge#<canonical id>` を書き込むので、
+これらの引用符付きの形も書く。`ambiguous-edge-base` warning と facet 一覧も
+同じ形で base を表示する。
+
+> Related TPLs: [TPL-3480](../test-perspectives/TPL-3480-generated-id-relexes-in-target-grammar.md)（base 形式は `.krs.style` に書かれるので、そこで読み戻して同じ値になること）、[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md)（端点の違う 2 本のエッジが同じ base にならないこと）。
 
 ### タグセレクタを優先すべきケース
 

@@ -251,11 +251,12 @@ edge#OrderDB.OrderTable->Logger { color: #EF4444; }
       expect(team.id).toBe("bead");
     });
 
-    // An endpoint that itself starts with `#` (the quoted form #3480 writes)
-    // must keep it: only the selector's own `#` is dropped.
+    // An endpoint that itself starts with `#` must keep it: only the
+    // selector's own `#` is dropped. The base is normalized to the quoted
+    // form the canonical id writes (#3480).
     it("keeps a # that belongs to the endpoint", () => {
-      expect(selectorOf("edge##abc->c").edgeId).toBe("#abc->c");
-      expect(selectorOf("edge#a->#abc").edgeId).toBe("a->#abc");
+      expect(selectorOf("edge##abc->c").edgeId).toBe('"#abc"->c');
+      expect(selectorOf("edge#a->#abc").edgeId).toBe('a->"#abc"');
     });
 
     it.each(["#face", "edge#feed", "boundary#cafe", "team#bead", "edge#face->db"])(
@@ -267,6 +268,73 @@ edge#OrderDB.OrderTable->Logger { color: #EF4444; }
         expect(selector.loc.end.column).toBe(source.length + 1);
       },
     );
+  });
+
+  // #3480: an endpoint that is not one style identifier is written as the
+  // `.krs` string literal, and the base is normalized the way the canonical id
+  // is built, so a rule written either way matches the same edge.
+  describe("quoted edge endpoints", () => {
+    function parseOne(source: string) {
+      const result = StyleParser.parse(`${source} { color: red; }`);
+      return { diagnostics: result.diagnostics, selector: result.value.rules[0]?.selector };
+    }
+
+    it.each([
+      ['edge#"a b"->c', '"a b"->c'],
+      ['edge#a->"b->c"', 'a->"b->c"'],
+      ['edge#"a->b"->c', '"a->b"->c'],
+      ['edge#"a-"->c', '"a-"->c'],
+      ['edge#a->"b-"', 'a->"b-"'],
+      ['edge#"a b"-->c', '"a b"-->c'],
+      ['edge#"a\\"b"->c', '"a\\"b"->c'],
+    ])("reads %s as the base %s", (source, edgeId) => {
+      const { diagnostics, selector } = parseOne(source);
+      expect(diagnostics).toEqual([]);
+      expect(selector?.edgeId).toBe(edgeId);
+    });
+
+    it("normalizes a needless literal to the bare base", () => {
+      expect(parseOne('edge#"a"->"c"').selector?.edgeId).toBe("a->c");
+    });
+
+    // `a- -> c` reads the trailing `-` into the from endpoint; the base quotes
+    // it so it no longer equals the async `a-->c`.
+    it("normalizes edge#a- -> c to the sync base of the endpoint a-", () => {
+      expect(parseOne("edge#a- -> c").selector?.edgeId).toBe('"a-"->c');
+    });
+
+    // A `#`-prefixed endpoint that is not hex-shaped lexes as `#` + identifier;
+    // it is the endpoint `#db`, written `"#db"` in the base (#3606 review).
+    it.each([
+      ["edge#a->#db", 'a->"#db"'],
+      ["edge##db->c", '"#db"->c'],
+      ['edge#a->"#db"', 'a->"#db"'],
+    ])("reads %s as the base %s", (source, edgeId) => {
+      const { diagnostics, selector } = parseOne(source);
+      expect(diagnostics).toEqual([]);
+      expect(selector?.edgeId).toBe(edgeId);
+    });
+
+    // An author id is one identifier; a literal or `#db` with no arrow is an
+    // endpoint missing its other half.
+    it.each(['edge#"a b"', "edge##db"])("reports %s, which has no arrow", (source) => {
+      const { diagnostics } = parseOne(source);
+      expect(diagnostics.map((d) => d.code)).toEqual(["style-token-type-mismatch"]);
+      expect(diagnostics[0].params).toMatchObject({ expected: "Arrow" });
+    });
+
+    it("reads [from=] / [to=] string literals as the endpoint value", () => {
+      const { diagnostics, selector } = parseOne('edge[from="a b"][to="b->c"]');
+      expect(diagnostics).toEqual([]);
+      expect(selector?.edgeFrom).toBe("a b");
+      expect(selector?.edgeTo).toBe("b->c");
+    });
+
+    it("covers a quoted endpoint in the selector range", () => {
+      const source = 'edge#a->"b c"';
+      const { selector } = parseOne(source);
+      expect(selector?.loc.end.offset).toBe(source.length);
+    });
   });
 
   describe("edge[from=<id>] / edge[to=<id>] selector", () => {

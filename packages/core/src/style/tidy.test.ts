@@ -267,6 +267,30 @@ describe("tidyStyleSheet — edge endpoint selectors round-trip (#1755)", () => 
   });
 });
 
+// #3480: quoted endpoints are written back quoted, so `karasu fmt` keeps the
+// edge a rule names (parse(format(x)) ≡ parse(x)).
+describe("tidyStyleSheet — quoted edge endpoints round-trip (#3480)", () => {
+  it.each([
+    ['edge#"a b"->c', 'edge#"a b"->c'],
+    ['edge#a->"b->c"', 'edge#a->"b->c"'],
+    ['edge#"a"->c', "edge#a->c"],
+    ["edge#a- -> c", 'edge#"a-"->c'],
+    ['edge[from="a b"]', 'edge[from="a b"]'],
+    ['edge[to="b->c"][async]', 'edge[to="b->c"][async]'],
+  ])("formats %s as %s", (selector, formatted) => {
+    expect(tidyStyleSheet(`${selector} { color: red; }\n`).output).toBe(
+      `${formatted} {\n  color: red;\n}\n`,
+    );
+  });
+
+  it("is idempotent on the formatted form", () => {
+    const once = tidyStyleSheet(
+      `edge#"a b"->c { color: red; }\nedge[from="x\\"y"] { color: blue; }\n`,
+    ).output;
+    expect(tidyStyleSheet(once).output).toBe(once);
+  });
+});
+
 // #3141: the parser does not store a declaration it refuses, so rebuilding the
 // text from the parsed rules would delete it, with its comment.
 describe("tidyStyleSheet — sheets with a parse error", () => {
