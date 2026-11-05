@@ -41,7 +41,7 @@ inline editor のような UI で、Enter キーの押下で「現在の input �
 inline editor / 行内 confirm UI を実装するとき、以下を確認する:
 
 - [ ] handler 内で React state を変えて UI 構造が入れ替わる場合、**event 漏れを防ぐ手段** が明示的に入っているか（`e.preventDefault()` + `e.stopPropagation()` / `<form onSubmit>` でラップ / handler 内で focus を別所に移す）
-- [ ] 確定 / cancel 後にフォーカスが落ちる先の要素（次に mount される button / input）を意識しているか。クリックで activate される要素の隣に inline editor を置いていないか
+- [ ] 確定 / cancel 後にフォーカスが落ちる先の要素（次に mount される button / input）を意識しているか。クリックで activate される要素の隣に inline editor を置いていないか [judgment]
 - [ ] Enter / Escape の両方向で「1 押下 = 1 アクション」が成立するテストがあるか（`fireEvent.keyDown(input, { key: "Enter" })` の後に副次アクション handler が呼ばれていないことを assert）
 - [ ] マウス操作の test だけでなく、キーボード操作の regression test を持っているか
 

@@ -47,7 +47,7 @@ surface は 2 つに分かれ、扱う道具が違う:
 
 ## チェックリスト
 
-- [ ] 追加 / 変更した **keyboard shortcut**（`keybinding` chord）を `docs/tools/app.md` と `app.ja.md` の両方に載せたか（`pnpm lint:app-shortcut-docs-sync` が緑か）。doc に載せない判断なら `scripts/lint/app-shortcut-docs-sync.ts` の `DOC_EXEMPT` に理由付きで追加したか。
+- [ ] 追加 / 変更した **keyboard shortcut**（`keybinding` chord）を `docs/tools/app.md` と `app.ja.md` の両方に載せたか（`pnpm lint:app-shortcut-docs-sync` が緑か）。doc に載せない判断なら `scripts/lint/app-shortcut-docs-sync.ts` の `DOC_EXEMPT` に理由付きで追加したか。 [guard: `scripts/lint/app-shortcut-docs-sync.test.ts`]
 - [ ] 追加 / 変更した **toolbar action / diagram view** を `docs/tools` の該当節（en + ja の両方）に反映したか。
 - [ ] 追加 / 変更した **CLI subcommand / flag** を `docs/tools` の CLI ページ（en + ja の両方）に反映したか（CLI ページ着地後）。
 - [ ] 反映を **en と ja の双方** に入れたか（片側だけは drift）。

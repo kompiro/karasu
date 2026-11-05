@@ -72,18 +72,18 @@ e2e に入れるかどうかの判定条件は 1 つ、**その流れが jsdom �
 
 - [ ] 機械で見る集合: 足した `keybinding` の Playwright 形（`mod+shift+p` → `ControlOrMeta+Shift+P`）か
       command id（`id[:=]"…"`、定数や JSX prop も含む）が、どこかの `packages/e2e/tests/*.spec.ts` に
-      現れる。現れないなら spec を同じ PR で足すか、`EXEMPT` に理由を書く。
+      現れる。現れないなら spec を同じ PR で足すか、`EXEMPT` に理由を書く。 [guard: `scripts/lint/e2e-command-coverage.ts`]
 - [ ] レビューで見る集合: 登録 API を通らない操作面（view tab、toolbar toggle、context menu の項目）は、
       その aria-label / 表示文字列で `packages/e2e/tests` を grep し、1 件も無ければ spec を足すか
-      手動のままにする理由を AT に書く。
+      手動のままにする理由を AT に書く。 [judgment]
 - [ ] その流れが jsdom の模せない境界（永続化・URL/history・別ウィンドウ・実フォーカス・
       ネイティブダイアログ）を跨ぐなら、AT の該当項目を unit ではなく e2e の
-      `✅ Automated` で埋める。
+      `✅ Automated` で埋める。 [judgment]
 - [ ] 「別 Issue が閉じたら e2e 化する」と書くなら、その Issue の close 時に戻る手段
-      （Issue 側の follow-up、または `test.fixme` + 追跡 Issue、ADR-1008）を同時に置く。
+      （Issue 側の follow-up、または `test.fixme` + 追跡 Issue、ADR-1008）を同時に置く。 [judgment]
 - [ ] E2E の充足を測るときは、AT の自動化率ではなく「spec を 1 本も引かない操作面」を
       数える（`docs/acceptance/` を `packages/e2e/tests/` の path で grep し、引かない
-      ファイルのうち app 対象のものを列挙する）。
+      ファイルのうち app 対象のものを列挙する）。 [judgment]
 
 ## 既知の対処パターン
 

@@ -41,10 +41,10 @@ light theme の deploy ラベルが白で潰れていた。logical kind は `col
 
 `default-style.ts` の kind ルールを追加・変更するとき:
 
-- [ ] `background-color` を設定したルールは、対になる **text `color`** も設定したか
+- [ ] `background-color` を設定したルールは、対になる **text `color`** も設定したか [guard: `packages/core/src/builtins/default-style-contrast.test.ts`]
 - [ ] **light テーマ**でラベルが背景に対して読めるか（白文字 `#F9FAFB` に落ちて
-      いないか）を確認したか（dark だけでなく light も render して確認）
-- [ ] dark / light の両テンプレートで同じ kind 集合を揃えているか
+      いないか）を確認したか（dark だけでなく light も render して確認） [guard: `packages/core/src/builtins/default-style-contrast.test.ts`]
+- [ ] dark / light の両テンプレートで同じ kind 集合を揃えているか [guard: `packages/core/src/builtins/default-style-contrast.test.ts`]
 
 ## 既知の対処パターン
 

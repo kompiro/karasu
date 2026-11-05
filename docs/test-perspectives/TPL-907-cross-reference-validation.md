@@ -41,7 +41,7 @@ karasu には既に `unresolved-handles`（`warnings.ts:402`）と `unresolved-r
 
 新しい cross-reference プロパティを追加するとき、以下を確認する:
 
-- [ ] 参照先 id を resolve するための **set / map** を `analyze()` 経由で構築しているか（`handles` / `realizes` の既存 detector と同じ位置に並べる）
+- [ ] 参照先 id を resolve するための **set / map** を `analyze()` 経由で構築しているか（`handles` / `realizes` の既存 detector と同じ位置に並べる） [judgment]
 - [ ] 解決失敗時に発火する **新しい warning kind**（`unresolved-<property>`）を導入しているか。i18n（en/ja）と formatter switch を併せて更新したか
 - [ ] 同一 id が **import 経由でファイル境界をまたぐ** 場合と、**top-level 宣言** にぶら下がる場合の両方で resolve されることをテストで確認したか
 - [ ] 既存の `unassigned-*` 系 warning と二重発火しないか（同じ id について「unresolved」「unassigned」両方が出ないよう、source-of-truth を 1 つに揃えているか）

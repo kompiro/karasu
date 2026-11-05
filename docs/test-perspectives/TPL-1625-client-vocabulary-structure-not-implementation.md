@@ -52,13 +52,13 @@ scope:
 `client` 語彙を足す / 変えるとき:
 
 - [ ] その機能はアクセスパスの**参加者か関係**を名指す（実装・スキーマ・
-      ペイロード・実行時値ではない）
-- [ ] 記録するのは「種類 / 関係」までで、**内容や値**は記録しない
+      ペイロード・実行時値ではない） [judgment]
+- [ ] 記録するのは「種類 / 関係」までで、**内容や値**は記録しない [judgment]
 - [ ] 受け付ける集合を絞るべきもの（storage kind 等）は予約集合 + 専用診断で
       境界を実行可能にしている
-- [ ] 「実装詳細を書きたい」要求は `description` + `link` に逃がす設計になっている
+- [ ] 「実装詳細を書きたい」要求は `description` + `link` に逃がす設計になっている [judgment]
 - [ ] `docs/concepts.md`「Structure, not implementation — the `client` sub-language」
-      節の規定と矛盾しない（en/ja 双方）
+      節の規定と矛盾しない（en/ja 双方） [judgment]
 
 ## 既知の対処パターン
 

@@ -81,22 +81,22 @@ TPL-2366 が canvas 上に描かれる文字（`packages/core` の builtin sheet
 - [ ] **両方のテーマセット**で、載りうる全 `--bg-*` に対して 4.5:1 以上か
       （`theme-contrast.test.ts` が自動判定。新トークンは `TEXT_TOKENS` /
       `SURFACES` に追加する。追加も除外もしなければ drift ガードが落ちるので、
-      「書き忘れ」ではなく「除外した理由」を必ず残すことになる）
+      「書き忘れ」ではなく「除外した理由」を必ず残すことになる） [guard: `packages/app/src/styles/theme-contrast.test.ts`]
 - [ ] その文字が半透明の背景（tint / バナー）の上に載るなら、下地との合成後の
       色で測ったか（`compositeOver()` を使う。不透明 surface だけの検証は通る）。
       `TINTED_PAIRS` に「載りうる surface」を列挙する — 列挙しなければ
-      drift ガードが落ちる
+      drift ガードが落ちる [guard: `packages/app/src/styles/theme-contrast.test.ts`]
 - [ ] 不透明な**色**（`--accent` 等）の上に文字を置くなら、前景をテーマごとの
       インクにしたか。背景色を暗くして解こうとすると、その色が別の場所で
       「文字」として使われている場合に壊れる（#2461 の `--accent`）
-- [ ] テキストを `opacity` で減光していないか（減光するなら明度の違うトークンで）
+- [ ] テキストを `opacity` で減光していないか（減光するなら明度の違うトークンで） [guard: `packages/app/src/styles/styles-no-raw-color.test.ts`]
 - [ ] そのトークンが複数の役割（本文 / バッジ / stroke）を持つなら、**最も厳しい
-      基準**で検証したか
-- [ ] ランプの順序（primary → secondary → tertiary → muted）が保たれているか
+      基準**で検証したか [judgment]
+- [ ] ランプの順序（primary → secondary → tertiary → muted）が保たれているか [guard: `packages/app/src/styles/theme-contrast.test.ts`]
 - [ ] 未達なら同色相のまま明度だけ倒したか（`contrastRatio()` で再測定する。
-      目視・手計算で決めない）
+      目視・手計算で決めない） [judgment]
 - [ ] data-URI に色を焼き込んでいないか。焼き込む必要があるなら画像ごと
-      `themes.css` のトークンにしてテーマごとに定義する
+      `themes.css` のトークンにしてテーマごとに定義する [guard: `packages/app/src/styles/styles-no-raw-color.test.ts`]
 
 ## 既知の対処パターン
 

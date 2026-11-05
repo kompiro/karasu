@@ -62,12 +62,12 @@ surface 間で挙動が割れたまま誰も気づかなかった。
 view-state オプションに適用範囲の制限を導入・変更・撤去するとき:
 
 - [ ] そのオプションが届く**全経路**を列挙したか（オプション名で repo-wide grep し、
-      interactive compile / 静的 bundle・export / diff / 特殊 view の各 surface を確認）
+      interactive compile / 静的 bundle・export / diff / 特殊 view の各 surface を確認） [judgment]
 - [ ] gate の判定は共有ヘルパ・単一地点に置いたか（surface ごとに gate を複製すると、
       surface 追加時・撤去時に漏れる）
 - [ ] spec に書いた適用範囲と全経路の実挙動が一致することを、**効く側と効かない側の両方**で
       assert するテストがあるか
-- [ ] 制限の緩和・撤去でも同じ全経路リストを再訪したか（片側だけ緩めない）
+- [ ] 制限の緩和・撤去でも同じ全経路リストを再訪したか（片側だけ緩めない） [judgment]
 
 ## 既知の対処パターン
 
