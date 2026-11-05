@@ -269,6 +269,8 @@ export function ProjectModeApp() {
         projects={projects}
         currentProject={currentProject}
         currentFilePath={currentFilePath}
+        activeView={state.activeView}
+        viewPath={state.viewPath}
         navigateToProject={navigateToProject}
         selectFile={selectFile}
         openBundledExample={openBundledExample}

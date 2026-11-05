@@ -1,4 +1,4 @@
-import { useEffect, useRef, type Dispatch } from "react";
+import { useEffect, useRef, useState, type Dispatch } from "react";
 import type { Project } from "@karasu-tools/core";
 import type { AppAction } from "../../state/app-reducer.js";
 import { requestReveal } from "../../state/preview-reveal.js";
@@ -54,6 +54,12 @@ interface UseGuidedSceneArgs {
  *
  * A scene that names a node asks the preview to keep it in view; a scene that
  * names none, or the guide ending, withdraws the request (#3583).
+ *
+ * Returns the key of the scene that has landed: its file opened and its view
+ * and diff were set, while it was still the current scene in its project.
+ * Leaving the project forgets it, as for re-applying. The tour judges a step's
+ * ask only once its scene has landed (#3599), apart from `appliedKey`, which
+ * is set before the read so the scene is not applied twice.
  */
 export function useGuidedScene({
   pending,
@@ -61,8 +67,13 @@ export function useGuidedScene({
   currentFilePath,
   selectFile,
   dispatch,
-}: UseGuidedSceneArgs): void {
+}: UseGuidedSceneArgs): string | null {
   const appliedKey = useRef<string | null>(null);
+  // Forgotten as soon as the open project is not the scene's, during render,
+  // so a return to it waits for the scene to land again.
+  const openRoot = currentProject?.rootPath ?? null;
+  const [landed, setLanded] = useState<{ key: string; root: string } | null>(null);
+  if (landed && landed.root !== openRoot) setLanded(null);
   // The scene the guide is on now and the open project, read after an await.
   // Synced in an effect, which runs before the apply effect below.
   const currentKey = useRef<string | null>(null);
@@ -110,6 +121,9 @@ export function useGuidedScene({
       });
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: scene.view });
       requestReveal(scene.reveal ?? null);
+      setLanded({ key, root });
     })();
   }, [pending, currentProject, currentFilePath, selectFile, dispatch]);
+
+  return landed?.key ?? null;
 }

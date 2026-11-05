@@ -8,10 +8,12 @@ import { KeyboardShortcutDispatcher } from "../../keyboard/KeyboardShortcutDispa
 import type { FileSelectionStatus } from "../../hooks/useFileSelection.js";
 import type { AppAction } from "../../state/app-reducer.js";
 import { requestReveal } from "../../state/preview-reveal.js";
+import { beginEvent, recordEvent, resetAppSignals } from "../../state/app-signals.js";
 import { CommandPalette } from "../CommandPalette.js";
 import { FirstRunExperience } from "./FirstRunExperience.js";
 import { TOUR_PROGRESS_KEY, readTourProgress, writeTourProgress } from "./tour-progress.js";
 import { KEEP_TOUR, type TourResume } from "./tour-resume.js";
+import { SERVICE_SPLIT_TOUR } from "./tour-steps.js";
 
 afterEach(() => {
   cleanup();
@@ -60,6 +62,8 @@ function setup(
           projects={[gettingStarted, copy]}
           currentProject={open}
           currentFilePath={`${open.rootPath}/index.krs`}
+          activeView="system"
+          viewPath={[]}
           navigateToProject={vi.fn<(project: Project) => void>()}
           selectFile={vi.fn<(path: string) => Promise<FileSelectionStatus>>(async () => "opened")}
           openBundledExample={openBundledExample}
@@ -181,5 +185,93 @@ describe("tour progress (#3598)", () => {
     setup(vi.fn());
     expect(panel()).toBeNull();
     expect(readTourProgress()).toEqual({ projectId: "tour", step: 2 });
+  });
+});
+
+describe("a step's ask marked done (#3599)", () => {
+  afterEach(() => resetAppSignals());
+
+  const resumeAt = (step: number): TourResume => ({
+    kind: "resume",
+    projectId: copy.id,
+    root: copy.rootPath,
+    step,
+  });
+
+  /** A resumed tour in `copy`, with the app state the test moves by hand. */
+  function renderTour(step: number) {
+    writeTourProgress({ projectId: "tour", step });
+    const file = `${copy.rootPath}/${SERVICE_SPLIT_TOUR[step].scene.file}`;
+    const ui = (over: { open?: Project; viewPath?: string[] } = {}) => {
+      const open = over.open ?? copy;
+      return (
+        <LocaleProvider initialLocale="en">
+          <CommandProvider>
+            <FirstRunExperience
+              seededDefaults={false}
+              initialLocation={{ search: "", hash: "" }}
+              tourResume={resumeAt(step)}
+              projects={[gettingStarted, copy]}
+              currentProject={open}
+              currentFilePath={open === copy ? file : `${open.rootPath}/index.krs`}
+              activeView="system"
+              viewPath={over.viewPath ?? []}
+              navigateToProject={vi.fn<(project: Project) => void>()}
+              selectFile={vi.fn<(path: string) => Promise<FileSelectionStatus>>(
+                async () => "opened",
+              )}
+              openBundledExample={vi.fn<(example: ExampleProject) => Promise<Project | null>>()}
+              dispatch={vi.fn<(action: AppAction) => void>()}
+            />
+          </CommandProvider>
+        </LocaleProvider>
+      );
+    };
+    const view = render(ui());
+    return {
+      update: async (over: Parameters<typeof ui>[0]) => act(async () => view.rerender(ui(over))),
+    };
+  }
+
+  const doneText = () => screen.queryByText(/✓ Done/);
+
+  it("marks the drill step once the visitor drilled in, and keeps it after they drill out", async () => {
+    const tour = renderTour(0);
+    await act(async () => {});
+    expect(doneText()).toBeNull();
+
+    await tour.update({ viewPath: ["CommerceApp"] });
+    const done = doneText();
+    expect(done).not.toBeNull();
+    const next = screen.getByRole("button", { name: "Next →" });
+    expect(next.getAttribute("aria-describedby")).toBe(done?.id);
+
+    await tour.update({ viewPath: [] });
+    expect(doneText()).not.toBeNull();
+  });
+
+  it("does not count a share made in another project", async () => {
+    const tour = renderTour(4);
+    await act(async () => {});
+    await tour.update({ open: gettingStarted });
+    act(() => recordEvent("share-opened"));
+    await tour.update({ open: copy });
+    expect(doneText()).toBeNull();
+
+    act(() => recordEvent("share-opened"));
+    expect(doneText()).not.toBeNull();
+  });
+
+  it("does not count a share begun in another project that finishes after coming back", async () => {
+    const tour = renderTour(4);
+    await act(async () => {});
+    await tour.update({ open: gettingStarted });
+    let started = 0;
+    act(() => {
+      started = beginEvent();
+    });
+    await tour.update({ open: copy });
+    act(() => recordEvent("share-opened", started));
+    expect(doneText()).toBeNull();
   });
 });
