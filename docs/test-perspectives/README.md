@@ -401,7 +401,7 @@ per-topic で 1 つずつ進める。一度に全 topic を audit すると 200 
 - [#1273](https://github.com/kompiro/karasu/issues/1273) **GB11-1** — SVG builder family parity（builders × params）
 - [#1275](https://github.com/kompiro/karasu/issues/1275) **GR20-1** — identity-comparison sites use id（detectors × id-vs-label）
 
-採用理由: TS reflection / 自動 discovery より explicit な table のほうが code review で auditable である。ただし**表そのものは、新しいエントリが追加されても表の編集を強制しない。** 表への登録を型・表とコードの突き合わせ・導出のどれかで強制したときに限り、explicit な表は新しい箇所も捕まえるガード（`[guard: …]`）になる。#1233 の `packages/core/src/parser/base-node-fields-coverage.test.ts` は型の契約で全 kind の登録を強制しているのでガードになり、#1249 の `packages/core/src/view/derivation-contracts.test.ts` は登録を忘れたエントリがすり抜けると自ら書いているので、元の箇所を固定するだけに留まる（[#3038](https://github.com/kompiro/karasu/issues/3038)）。**新しいファミリの meta-check が必要になったら、curated table に登録を強制する仕組みを添えた形を default の選択肢に置く**。
+採用理由: TS reflection / 自動 discovery より explicit な table のほうが code review で auditable である。ただし**表そのものは、新しいエントリが追加されても表の編集を強制しない。** 表への登録を型・表とコードの突き合わせ・導出のどれかで強制したときに限り、explicit な表は新しい箇所も捕まえるガード（`[guard: …]`）になる。#1233 の `packages/core/src/parser/base-node-fields-coverage.test.ts` は型の契約で全 kind の登録を強制しているのでガードになる。ただしこの契約は、表の型注釈が各エントリの `kind` を広げたせいで、どんな表でも成り立つ空の契約になっていた（`entity` の fixture が無くても通った。#3589 で直し、契約が空にならないことも型で固定した）。**登録を強制する仕組みは、それ自体が効いていることを確かめないと、表と同じく黙ってすり抜ける。** 一方、#1249 の `packages/core/src/view/derivation-contracts.test.ts` は登録を忘れたエントリがすり抜けると自ら書いているので、元の箇所を固定するだけに留まる（[#3038](https://github.com/kompiro/karasu/issues/3038)）。**新しいファミリの meta-check が必要になったら、curated table に登録を強制する仕組みを添えた形を default の選択肢に置く**。
 
 #### 観察 B: per-layer-strong / cross-layer-weak ギャップ
 

@@ -52,9 +52,9 @@ karasu の AST には `BaseNodeFields`（`packages/core/src/types/ast.ts:41`）�
 
 ノードの共通 field を追加・変更するとき、以下を確認する:
 
-- [ ] その field を持つべき全 node kind が `BaseNodeFields` のような **共通基底を extends している** か（していないなら、まず継承構造の修正から）
+- [ ] その field を持つべき全 node kind が `BaseNodeFields` のような **共通基底を extends している** か（していないなら、まず継承構造の修正から） [guard: `packages/core/src/parser/base-node-fields-coverage.test.ts`]
 - [ ] parser 側の `*_PROPERTY_KEYWORDS` セット（system / deploy / org など各 kind 群）すべてに新 field の keyword が含まれているか
-- [ ] 各 `parseXxxNode` が field を AST に書き込むコードを持っているか（keyword だけ追加して書き込みを忘れていないか）
+- [ ] 各 `parseXxxNode` が field を AST に書き込むコードを持っているか（keyword だけ追加して書き込みを忘れていないか） [guard: `packages/core/src/parser/base-node-fields-coverage.test.ts`]
 - [ ] renderer / layout で `node.<field> ?? fallback` のような **defensive な default** が使われているか。`node.id` を直接表示している箇所が無いか
 - [ ] `sampleKrs` / `examples/` / `docs/spec/syntax.md` の記述と実装が一致しているか（spec が先行している場合、実装の遅れに気づける）
 
