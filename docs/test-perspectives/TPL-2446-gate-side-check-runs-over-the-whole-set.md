@@ -12,6 +12,7 @@ known_consumers:
 discovered_from:
   - issue: "#2446"
   - root_cause_file: ".github/workflows/ci.yml"
+  - issue: "#3590"
 related_to:
   - TPL-1725
   - TPL-1480
