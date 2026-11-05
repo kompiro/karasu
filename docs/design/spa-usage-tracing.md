@@ -132,7 +132,7 @@ SPA（本番と preview の Pages でだけ送信を有効にする）
 
 - 受信用 Worker という維持する面が 1 つ増える
 - Workers Logs の保持期間は短い（7 日という記載を見た。現行の値はスライス A で確認する）。長期の推移は Phase 2 まで見られない
-- 別 origin なので CORS の preflight を受ける
+- 別 origin なので、preflight を避けるために body を `text/plain` で送るという制約がつく（後述）。Worker は CORS の応答ヘッダーを返す
 
 #### 5a: SPA 側で OTel Web SDK を使う
 
@@ -220,7 +220,7 @@ span の時間はブラウザの時計で測る。完了までの時間は、`ou
 ### 受信用 Worker の検査と組み立て直し
 
 - 受信口は別のサブドメイン（例: `karasu-telemetry.kompiro.dev`）に置く。nest と同じ custom domain の形にし、`karasu.kompiro.dev` のパスに Worker の route を当てる形は採らない（Pages の custom domain と同じ host でどちらが先に応答するかを確かめる手間に見合わない）
-- **SPA は body を `Content-Type: text/plain` で送る。** 中身は OTLP/JSON だが、`text/plain` の POST は CORS の preflight を伴わない単純な要求なので、ページを離れる瞬間の keepalive の送信が preflight の往復で落ちることがない。Worker は `text/plain` と `application/json` だけを受け、ほかは 415。Phase 2 で送信先へ転送するときは `application/json` を付け直す
+- **SPA は body を `Content-Type: text/plain` で送る。** 中身は OTLP/JSON だが、`text/plain` の POST は CORS の preflight を伴わない単純な要求なので、ページを離れる瞬間の keepalive の送信が preflight の往復で落ちることがない。Worker は `text/plain` だけを受け、ほかは 415 で返す。OPTIONS（preflight）には答えないので、ブラウザから `application/json` で送る変更は送信そのものが失敗し、E2E で気づける。Phase 2 で送信先へ転送するときは `application/json` を付け直す
 - `Origin` が本番か preview の origin（上の条件 2 と同じ集合）に一致しなければ 403。Worker が Origin から `deployment`（`production` / `preview`）を付け、SPA の申告は使わない。集計は `production` だけで行い、preview（spike の origin も同じ形に見える）の span は送信の確認にだけ使って、集計には入れない
 - **Origin の検査は絞り込みであって認証ではない。** ブラウザの外からは Origin を偽れるので、偽の span を `production` として送れる。数値が汚されうることは受け入れる。指標は判断の材料で、ADR-2262 のカウンタと違って人の判断を通さずに数字として読まれるので、数字の急な変化は偽の span を疑ってから読む。費用が膨らむのは、Workers の rate limiting binding で止める。rate limit の鍵には接続元の IP を使い、Cloudflare の rate limit の仕組みが短い時間窓の計数にだけ使う。Worker はそれをログにも保存先にも書かない
 - body は上限（例: 64KB）を超えたら 413
@@ -250,7 +250,7 @@ span の時間はブラウザの時計で測る。完了までの時間は、`ou
 
 ### 実装の指針
 
-1. スライス A: 新しい Worker パッケージを作る（nest の `wrangler.toml` を手本に、`workers_dev = false`、custom domain、`[observability] enabled = true`、invocation log を切る、rate limiting binding）。許可リストは 1 つのモジュールに置き、Worker の検査と文書の突き合わせテストの両方がそこを読む。組み立て直しのテストは、resource の属性・event・link・`status.message`・許可していない属性を入れた body から、それらが消えることを確かめる。許可した鍵（`view` など）にノード名を入れた body と、形の合わない id を持つ body から、その属性と span が消えることも確かめる。デプロイは nest と同じく専用の workflow にする
+1. スライス A: 新しい Worker パッケージを作る（nest の `wrangler.toml` を手本に、`workers_dev = false`、custom domain、`[observability] enabled = true`、invocation log を切る、rate limiting binding）。許可リストは 1 つのモジュールに置き、Worker の検査と文書の突き合わせテストの両方がそこを読む。組み立て直しのテストは、resource の属性・event・link・`status.message`・許可していない属性を入れた body から、それらが消えることを確かめる。許可した鍵（`view` など）にノード名を入れた body と、形の合わない id を持つ body から、その属性と span が消えることも確かめる。デプロイは nest と同じく専用の workflow にする。Workers Logs の保持期間に加え、invocation log を切ったときに `console.log` の記録へリクエストのメタデータ（IP・User-Agent）が付かないことを確かめる。この Worker では Workers Traces（`[observability.traces]`）を有効にしない
 2. スライス B: 送信モジュール（例: `src/telemetry/sender.ts`）を `src/main.tsx` からだけ import し、上の「共有コードとの継ぎ目」のとおり `mountApp` に渡す。上の 3 つの条件を満たさないとき、または `?reference` のときは何もしない。たまった span は、一定の件数か一定の時間（例: 10 秒）で送り、`visibilitychange` で `hidden` になったときにも送る。送信には `fetch(..., { keepalive: true })` を使う。ページを離れた後も要求が続くが、keepalive の body は合計 64KB までなので、こまめに送って 1 回の body を小さく保つ。送れなかった span を localStorage に貯めて次の訪問で送ることはしない（識別子と同じく、端末に残る記録を増やさないため）。最後の span が落ちることは受け入れる。E2E は Chromium だけなので、ほかのブラウザでページを離れるときに落ちる分も受け入れる。Chat のクライアントにも `openTelemetry: false` を渡す（tracer provider は作らないが、将来 5a に移ったときの備え）。CSP を足すときは `connect-src` に受信口を入れる
 3. スライス B のテスト:
    - TPL-3612 のとおり、4 つのビルドの成果物を両方向で検査する。目印は 2 つ:
@@ -258,6 +258,7 @@ span の時間はブラウザの時計で測る。完了までの時間は、`ou
      - 受信口の host の文字列。URL は `deploy.yml` と `preview.yml` でしか渡さないので、ふつうのビルドではどの成果物にも無い。テストで 4 つの設定をダミーの URL を渡してビルドし、host が `dist/` にだけ現れることを確かめる
      - serve・VS Code の webview・viewer は minify するので、パッケージ名の文字列では探さない（Pages のビルドは `minify: false`）。`@opentelemetry/api` は Chat 経由で各ビルドに入りうるので、目印に使わない
    - 送信を有効にする 3 つの条件の unit test（origin・ビルド時の URL・GPC と DNT と設定の組み合わせ）
+   - 受信口の URL を渡す環境変数の名前が `deploy.yml` と `preview.yml` にだけ現れることの検査。`spike-preview.yml` はビルドの手順を `preview.yml` に揃えると書いているので、写し間違いで spike にも URL が渡るのを止める
    - `docs/policy/app-telemetry.md` と許可リストの突き合わせテスト
 4. AT: `docs/acceptance/` に新規ファイル。TC は:
    - Welcome からツアーを最後まで進めると、`welcome.choice`・`tour.step`・`tour.end` が受信口に届く（受信口と許可 origin をテスト用に差し替えた Playwright で確認する）
