@@ -11,7 +11,10 @@
 //
 //   1. Compile-time — `keyof BaseNodeFields` is compared against an explicit
 //      ExpectedKeys union. Adding a field to the interface makes this fail at
-//      type-check, forcing a deliberate decision about coverage.
+//      type-check, forcing a deliberate decision about coverage. The fixture
+//      kinds and USER_FACING_FIELDS are likewise held to the whole
+//      KrsNode["kind"] / UserFacingField unions, and a fence keeps each
+//      fixture's kind literal so that contract cannot hold vacuously (#3589).
 //   2. Runtime — for each (USER_FACING_FIELDS × KIND_FIXTURES) pair, parse a
 //      minimal source with the field set and assert the AST node carries it;
 //      also parse without the field and assert the default value, so a
