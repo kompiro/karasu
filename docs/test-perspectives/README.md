@@ -175,7 +175,7 @@ active なエントリのみが表示される（deprecated はクエリで除�
 
 #### 変更ファイルから引く
 
-PR を作るときは **`pnpm tpl:changed`** で、`origin/main` からの変更ファイルを名指す active な TPL を重みの順に上位 10 件出す（stacked PR は `pnpm tpl:changed --base origin/<base>`）。鍵は、本文のコードスパンが名指す `sourcePrefixes` の下のファイル（テストファイルなら `.test` / `.spec` を外した対応ソースにも一致させる）と `scope.paths` の glob。多数の TPL が名指すファイルだけに当たった TPL は下に行く。出た TPL のうち当てたものを PR 本文の `## TPL impact` で引用する。Claude が `gh pr create` を実行すると、同じ一覧をフックが出す（ADR-3486）。
+PR を作るときは **`pnpm tpl:changed`** で、`origin/main` からの変更ファイルを名指す active な TPL を重みの順に上位 10 件出す（stacked PR は PR の base を渡して `pnpm tpl:related --base origin/<base>`。`tpl:changed` は `--base origin/main` を含むので重ねない）。鍵は、本文のコードスパンが名指す `sourcePrefixes` の下のファイル（テストファイルなら `.test` / `.spec` を外した対応ソースにも一致させる）と `scope.paths` の glob。多数の TPL が名指すファイルだけに当たった TPL は下に行く。出た TPL のうち当てたものを PR 本文の `## TPL impact` で引用する。Claude が `gh pr create` を実行すると、同じ一覧をフックが出す（ADR-3486）。
 
 この照会は止めない。当てなかった TPL に理由は要らない。0 件は「当てる TPL が無い」ではなく「ファイルでは分からない」なので、横断的な原則は今までどおり `pnpm tpl:related <topic>` で当てる。PR で当てたのに一覧に出なかった TPL があれば、その PR で `## 関連テスト` に名指すファイルを足すか、`scope.paths` を書く。
 

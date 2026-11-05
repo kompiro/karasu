@@ -57,12 +57,17 @@ worktree=$(git -C "${CLAUDE_PROJECT_DIR:-$PWD}" worktree list --porcelain 2>/dev
 tpl_bin="$worktree/node_modules/.bin/tpl"
 [ -x "$tpl_bin" ] || exit 0
 
+errors=$(mktemp) || exit 0
+trap 'rm -f "$errors"' EXIT
 list=$(cd "$worktree" && ${limit[@]+"${limit[@]}"} "$tpl_bin" related --config tpl.config.json \
-  --base "origin/$base" 2>/dev/null) || exit 0
+  --base "origin/$base" 2>"$errors") || exit 0
+# The command a person runs for the same list. tpl:changed carries
+# --base origin/main, so another base goes through tpl:related rather than a
+# second --base.
+if [ "$base" = main ]; then rerun="pnpm tpl:changed"; else rerun="pnpm tpl:related --base origin/$base"; fi
 
 if [ -n "$list" ]; then
-  ctx="TPLs whose body names a file PR $repo#$number changes (\`pnpm tpl:changed --base origin/$base\`, \
-top 10 by weight):
+  ctx="TPLs whose body names a file PR $repo#$number changes (\`$rerun\`, top 10 by weight):
 
 $list
 
@@ -71,10 +76,15 @@ the change meets them (a test, a checked item). Nothing needs to be written for 
 apply. If you cite a TPL that is not listed here, add the file it should have named to its \
 \`## 関連テスト\` (or \`scope.paths\`) in this PR. Editing the body does not push, so it costs no \
 review round."
-else
-  ctx="No TPL names a file PR $repo#$number changes (\`pnpm tpl:changed --base origin/$base\`). \
+# Only tpl-tools' own zero-match line means "no match". An empty stdout for any
+# other reason (a tpl-tools older than 0.0.14 reads --base's value as a topic
+# and exits 0) would otherwise tell Claude that nothing applies.
+elif grep -qx 'No active TPL names a changed file.' "$errors"; then
+  ctx="No TPL names a file PR $repo#$number changes (\`$rerun\`). \
 Cross-cutting TPLs are not recalled by file: check \`pnpm tpl:related <topic>\` for the topics this \
 change touches, and cite the ones that apply under \`## TPL impact\`."
+else
+  exit 0
 fi
 
 jq -n --arg ctx "$ctx" --arg event "$event" \

@@ -56,17 +56,22 @@ writeFileSync(
     "#!/usr/bin/env bash",
     `printf '%s|%s\\n' "$PWD" "$*" >> '${tplLog}'`,
     `[ -f '${tplOut}.fail' ] && exit 1`,
+    `cat '${tplOut}.err' >&2`,
     `cat '${tplOut}'`,
     "",
   ].join("\n"),
 );
 chmodSync(tplBin, 0o755);
 
-/** What the stub tpl prints, or a failure. */
-function tplPrints(stdout: string | null): void {
+/** tpl-tools' own zero-match line, pinned against the real binary below. */
+const ZERO_MATCH = "No active TPL names a changed file.\n";
+
+/** What the stub tpl prints on stdout and stderr, or a failure. */
+function tplPrints(stdout: string | null, stderr = ""): void {
   rmSync(tplLog, { force: true });
   rmSync(`${tplOut}.fail`, { force: true });
   writeFileSync(tplOut, stdout ?? "");
+  writeFileSync(`${tplOut}.err`, stderr);
   if (stdout === null) writeFileSync(`${tplOut}.fail`, "");
 }
 
@@ -139,6 +144,7 @@ describe("tpl changed-files reminder hook", () => {
     const ctx = context(runHook(CREATE, created(), gh));
     expect(ctx).toContain("PR kompiro/karasu#42");
     expect(ctx).toContain(LIST);
+    expect(ctx).toContain("`pnpm tpl:changed`");
     expect(ctx).toContain("## TPL impact");
     expect(tplCalls()).toEqual([`${worktree}|related --config tpl.config.json --base origin/main`]);
     expect(readFileSync(gh.argsFile, "utf8").trim()).toBe(
@@ -149,17 +155,29 @@ describe("tpl changed-files reminder hook", () => {
   it("diffs a stacked PR against its own base, not main", () => {
     tplPrints(LIST);
     const ctx = context(runHook(CREATE, created(), stubGh("feat/x feat/lower")));
-    expect(ctx).toContain("pnpm tpl:changed --base origin/feat/lower");
+    // tpl:changed already carries --base origin/main; the rerun must not add a second one.
+    expect(ctx).toContain("`pnpm tpl:related --base origin/feat/lower`");
     expect(tplCalls()).toEqual([
       `${worktree}|related --config tpl.config.json --base origin/feat/lower`,
     ]);
   });
 
   it("says so and points to the topic query when no TPL matches", () => {
-    tplPrints("");
+    tplPrints("", ZERO_MATCH);
     const ctx = context(runHook(CREATE, created(), stubGh("feat/x main")));
     expect(ctx).toContain("No TPL names a file PR kompiro/karasu#42 changes");
     expect(ctx).toContain("pnpm tpl:related <topic>");
+  });
+
+  it("stays silent when tpl prints nothing for another reason (a tpl-tools without --base)", () => {
+    // tpl-tools before 0.0.14 reads --base's value as a topic and exits 0.
+    tplPrints("", 'No active TPLs found for topic "origin/main".\n');
+    expect(runHook(CREATE, created(), stubGh("feat/x main"))).toBe("");
+  });
+
+  it("stays silent when the PR has no changed files", () => {
+    tplPrints("", "No changed files, so no TPL to list.\n");
+    expect(runHook(CREATE, created(), stubGh("feat/x main"))).toBe("");
   });
 
   it("lists on PostToolUseFailure, when a later command in the call failed", () => {
@@ -230,5 +248,37 @@ describe("tpl changed-files reminder hook", () => {
     const ctx = context(runHook(CREATE, created("https://github.com/someone/fork/pull/7\n"), gh));
     expect(ctx).toContain("PR someone/fork#7");
     expect(readFileSync(gh.argsFile, "utf8")).toContain("pr view 7 --repo someone/fork");
+  });
+});
+
+// The stub above stands in for tpl-tools' output contract. Pin the parts the
+// hook relies on against the binary this repo installs, so a tpl-tools bump
+// that changes them fails here instead of silently changing the hook's answer.
+describe("the tpl-tools contract the hook relies on", () => {
+  const repoRoot = resolve(import.meta.dirname, "../..");
+  const tpl = (...args: string[]) =>
+    spawnSync(
+      join(repoRoot, "node_modules/.bin/tpl"),
+      ["related", "--config", "tpl.config.json", ...args],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+        env: isolated,
+      },
+    );
+
+  it("prints nothing on stdout and the zero-match line on stderr when no TPL names a changed file", () => {
+    // docs/ is outside sourcePrefixes, so no TPL can name it as a key.
+    const result = tpl("--changed-files", "docs/process.md");
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe(ZERO_MATCH);
+  });
+
+  it("lists matches on stdout", () => {
+    const result = tpl("--changed-files", "packages/core/src/parser/parser.ts", "--limit", "1");
+    expect(result.status).toBe(0);
+    expect(result.stdout).toMatch(/^- \[TPL-\d+\]/);
+    expect(result.stderr).toBe("");
   });
 });
