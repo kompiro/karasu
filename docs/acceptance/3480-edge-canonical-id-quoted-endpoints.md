@@ -48,7 +48,7 @@ type: product
 
 ### AC-3: app と同じ形で書いた rule がその edge だけに当たる
 
-- [x] AT-E: SVG の `data-edge-canonical-id` を `edge#<id>` として書いた rule は、エラーなく parse され、その edge だけの見た目を変える
+- [x] AT-E: SVG の `data-edge-canonical-id` を `edge#<id>` として書いた rule は、エラーなく parse され、その edge の id だけを指す。空白を含む端点・末尾が `-` の端点では、その edge だけの見た目が変わる。`"a->b" -> c` と `a -> "b->c"` が同じビューにある場合は、解決済みのスタイルの key が共有されるため両方に描かれる（#3481）。ここでは id とセレクタだけを確かめる
 
   > ✅ Automated — `packages/core/src/index.test.ts` › `compile — edge#<canonical id> written the way the app writes it` › `targets only the edge with $name`
   >

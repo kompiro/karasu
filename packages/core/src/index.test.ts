@@ -615,8 +615,9 @@ edge#feed { color: #FF0000; }
 });
 
 // #3480: the app's right-click menu writes `edge#${data-edge-canonical-id}`
-// into the sheet, so the id read off the SVG must parse there and hit only
-// that edge, whatever its endpoints are.
+// into the sheet, so the id read off the SVG must parse there and name only
+// that edge, whatever its endpoints are. Where the drawn result can show it,
+// only that edge changes; endpoints containing -> cannot yet (#3481).
 describe("compile — edge#<canonical id> written the way the app writes it", () => {
   function unescapeAttr(value: string): string {
     return value
