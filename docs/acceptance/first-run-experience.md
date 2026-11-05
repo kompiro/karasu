@@ -126,6 +126,9 @@
   > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `marks the drill step once the visitor drilled in, and keeps it after they drill out`
   > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `is done once the visitor drilled into the node the step names`
   > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `is done while the team dependencies are on screen, including from before the step`
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `records an SVG export from the toolbar button, and none from the menu's other exports`
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `records a share only once its link exists, not when the dialog opens`
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `says the team dependencies are showing only while the org tab draws them`
 
 - [x] AT-X: 操作を頼まないステップ（3・4）には ✓ が出ない。✓ はステップのシーンが着いてから判定するので、Back で戻った未完了のステップに、離れたステップでした操作で ✓ が出ず、完了済みのステップに戻れば ✓ が出る。別のプロジェクトでの Share や、シーンが着く前の出来事は数えない。Restart Guided Tour… と再読み込みは未完了から始まる
 
