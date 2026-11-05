@@ -79,6 +79,11 @@ const USER_FACING_FIELDS = [
   "facets",
 ] as const satisfies readonly UserFacingField[];
 
+// `satisfies` accepts any subset, so the list is also held to the whole union:
+// a field dropped from it would otherwise stop being probed silently (#3589).
+const _userFacingFieldsContract: Equal<(typeof USER_FACING_FIELDS)[number], UserFacingField> = true;
+void _userFacingFieldsContract;
+
 // ─── Per-kind fixtures ─────────────────────────────────────────────────────
 
 interface FieldModifiers {
@@ -221,16 +226,23 @@ const KIND_FIXTURES = [
   },
 ] as const satisfies readonly KindFixture[];
 
-// Compile-time exhaustiveness: every kind in KrsNode["kind"] must appear in
-// KIND_FIXTURES. We enforce this via a typed Record of kind → boolean.
+// Compile-time exhaustiveness: the union of the kinds KIND_FIXTURES lists must
+// equal KrsNode["kind"], so a kind without a fixture fails to type-check.
 type _Covered = (typeof KIND_FIXTURES)[number]["kind"];
 const _kindExhaustivenessContract: Equal<_Covered, KrsNode["kind"]> = true;
 void _kindExhaustivenessContract;
 
-// Fences the contract itself: an entry's `kind` must stay its literal. If the
-// array is annotated again (or `kind` widened another way), this fails to
-// type-check instead of the contract above silently holding for any array.
-const _kindStaysLiteral: Equal<(typeof KIND_FIXTURES)[0]["kind"], "system"> = true;
+// Fences the contract itself: every entry's `kind` must be a single literal.
+// If the array is annotated again, or one entry's `kind` is widened (`as
+// KrsNode["kind"]`), `_Covered` becomes the whole union whatever the array
+// holds, and the contract above would pass vacuously. This fails instead.
+type IsUnion<T, U = T> = T extends unknown ? ([U] extends [T] ? false : true) : never;
+type _EntryKindIsUnion = (typeof KIND_FIXTURES)[number] extends infer E
+  ? E extends { kind: infer K }
+    ? IsUnion<K>
+    : never
+  : never;
+const _kindStaysLiteral: Equal<_EntryKindIsUnion, false> = true;
 void _kindStaysLiteral;
 
 // ─── Per-field default & set values ────────────────────────────────────────
@@ -254,11 +266,15 @@ function defaultFor(field: UserFacingField): unknown {
   return [];
 }
 
+const EXPECTED_VALUES: Record<UserFacingField, unknown> = {
+  label: "Coverage Probe",
+  tags: ["external"],
+  annotations: ["deprecated"],
+  facets: ["pii"],
+};
+
 function expectedFor(field: UserFacingField): unknown {
-  if (field === "label") return "Coverage Probe";
-  if (field === "tags") return ["external"];
-  if (field === "facets") return ["pii"];
-  return ["deprecated"];
+  return EXPECTED_VALUES[field];
 }
 
 // ─── Tests ─────────────────────────────────────────────────────────────────
@@ -272,6 +288,7 @@ describe("BaseNodeFields × kind coverage (TPL-74 / G12-1)", () => {
         const errors = result.diagnostics.filter((d) => d.severity === "error");
         expect(errors).toHaveLength(0);
         const node = fixture.extract(result.value);
+        expect(node.kind).toBe(fixture.kind);
         for (const field of USER_FACING_FIELDS) {
           expect(getField(node, field)).toEqual(defaultFor(field));
         }
@@ -284,6 +301,7 @@ describe("BaseNodeFields × kind coverage (TPL-74 / G12-1)", () => {
           const errors = result.diagnostics.filter((d) => d.severity === "error");
           expect(errors).toHaveLength(0);
           const node = fixture.extract(result.value);
+          expect(node.kind).toBe(fixture.kind);
           expect(getField(node, field)).toEqual(expectedFor(field));
         });
       }

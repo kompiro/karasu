@@ -53,12 +53,17 @@ scope:
 - **`satisfies` で表を縛る**: `const TABLE = [...] as const satisfies readonly Fixture[]`。注釈と違い、
   `satisfies` は表の形を検査したうえで推論された型（リテラル）を残す。repo では
   `formatter-top-level-coverage.test.ts`・`formatter-property-coverage.test.ts`・
-  `reference-top-level-coverage.test.ts` が同じ理由で `satisfies` を使い、「注釈ではなく `satisfies` が
-  load-bearing」とコメントしている
-- **契約を契約で固定する**: `Equal<(typeof TABLE)[0]["kind"], "system"> = true` のように、表の要素型が
-  リテラルのままであることを型で検査する。注釈に戻すとこの行が型エラーになる（#3589）
+  `reference-top-level-coverage.test.ts` も表を `satisfies` で縛っている（これらは `satisfies Record<…>` で
+  キーの欠落を直接落とす形で、formatter-top-level は注釈だと検査が効かなくなると明記している）
+- **部分集合を受け入れる表は union とも突き合わせる**: `satisfies readonly X[]` は X の部分集合も通すので、
+  表の要素の union を `Equal` で元の union と比べる（#3589 の `USER_FACING_FIELDS`）
+- **契約を契約で固定する**: 表のどのエントリの `kind` も単一のリテラルであることを型で検査する
+  （`IsUnion<K>` を全エントリに分配して `false` であることを求める）。表を注釈に戻す、または 1 件だけ
+  `as KrsNode["kind"]` で広げると型エラーになる。先頭のエントリだけを見る形は、順序に依存し、後ろのエントリの
+  拡幅を見逃す（#3589）
 
 ## 関連テスト
 
-- `packages/core/src/parser/base-node-fields-coverage.test.ts` — `KIND_FIXTURES` を `satisfies` で縛り、
-  `_kindStaysLiteral` で契約が空にならないことを固定する（#3589）。注釈に戻す、または fixture を 1 件消すと `tsc` が落ちる
+- `packages/core/src/parser/base-node-fields-coverage.test.ts`：`KIND_FIXTURES` を `satisfies` で縛り、
+  `_kindStaysLiteral` で契約が空にならないことを固定する（#3589）。注釈に戻す、1 件の `kind` を広げる、
+  fixture を 1 件消す、`USER_FACING_FIELDS` から field を 1 つ消す、のどれでも `tsc` が落ちる
