@@ -75,7 +75,7 @@ unfurl が要る共有では **`/s?s=`（query, server-visible）** を短縮の
 - [ ] deep target を指す場合、要素は author-given `id`（`label` ではない）で
       指しているか。
 - [ ] 機密構造に対して「短縮しない／自前 shortener」を選べる旨が guide に明記
-      されているか（trust posture のユーザー選択）。
+      されているか（trust posture のユーザー選択）。 [judgment]
 
 ## 既知の対処パターン
 

@@ -61,12 +61,12 @@ TPL-2075 は「**どこか 1 つでも**描画先があるか」（silent drop �
 
 昇格ゲート・view filter を足すとき、および「描画される」と書くときに確認する:
 
-- [ ] 散文の「描画される / されない」に **view level（system / service / domain / usecase / entity …）を明記**したか。level を書けないなら、それは自分がまだ調べていないという信号
-- [ ] その要素を**全 view path で抽出**して、出る階層と出ない階層を実測したか（`extractView` を path 長ごとに回すだけでよい）
+- [ ] 散文の「描画される / されない」に **view level（system / service / domain / usecase / entity …）を明記**したか。level を書けないなら、それは自分がまだ調べていないという信号 [judgment]
+- [ ] その要素を**全 view path で抽出**して、出る階層と出ない階層を実測したか（`extractView` を path 長ごとに回すだけでよい） [judgment]
 - [ ] 落ちる側だけでなく**出る側も assert** したか。片側だけのテストは、反対側が変わっても落ちない
 - [ ] テスト名・コメントが level を含んでいるか（`never drawn` ではなく `not promoted to the domain view`）
-- [ ] 同じ主張を持つ doc を grep で全部数えたか（en / ja、spec / guide / acceptance）。#2200 は 6 ファイルだった
-- [ ] CRUD マトリクス・coverage など **SVG 以外の表示面**も確認したか。そこに出るなら「描画されない」は誤り
+- [ ] 同じ主張を持つ doc を grep で全部数えたか（en / ja、spec / guide / acceptance）。#2200 は 6 ファイルだった [judgment]
+- [ ] CRUD マトリクス・coverage など **SVG 以外の表示面**も確認したか。そこに出るなら「描画されない」は誤り [judgment]
 
 ## 既知の対処パターン
 

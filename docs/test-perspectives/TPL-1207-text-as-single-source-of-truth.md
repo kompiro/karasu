@@ -51,11 +51,11 @@ karasu の根幹原則は **`.krs` テキストが single source of truth (SoT)*
 
 新しい機能 / 永続化 / 状態保持を追加するとき、以下を確認する:
 
-- [ ] 機能が扱う **すべての state が `.krs` テキストから復元可能** か。あるいは `.krs.style` / `examples/` など karasu の正式アーティファクトに収まるか
-- [ ] `.krs` に書かれない一時状態がある場合、それは **「別ユーザー / 別マシンで再現する必要がない」** ことが説明できるか（UI フォーカス位置や undo stack のような ephemeral state は OK、モデルの意味に関わる情報は NG）
-- [ ] AI / Chat / 自動生成系の経路で、出力が **`.krs` テキストとして書き戻され**、人間が手で編集可能な状態に着地しているか（AI 内部メモリだけに保持していないか）
-- [ ] 新しい入力経路（drag, voice, AI suggestion）が、最終的に **既存の text-editing パイプライン**（compile / format / save）を通っているか
-- [ ] 機能の永続化先が複数ある場合、**SoT がどれか** を Design Doc / コメントで明示しているか。「両方が真」の状態を許していないか
+- [ ] 機能が扱う **すべての state が `.krs` テキストから復元可能** か。あるいは `.krs.style` / `examples/` など karasu の正式アーティファクトに収まるか [judgment]
+- [ ] `.krs` に書かれない一時状態がある場合、それは **「別ユーザー / 別マシンで再現する必要がない」** ことが説明できるか（UI フォーカス位置や undo stack のような ephemeral state は OK、モデルの意味に関わる情報は NG） [judgment]
+- [ ] AI / Chat / 自動生成系の経路で、出力が **`.krs` テキストとして書き戻され**、人間が手で編集可能な状態に着地しているか（AI 内部メモリだけに保持していないか） [judgment]
+- [ ] 新しい入力経路（drag, voice, AI suggestion）が、最終的に **既存の text-editing パイプライン**（compile / format / save）を通っているか [judgment]
+- [ ] 機能の永続化先が複数ある場合、**SoT がどれか** を Design Doc / コメントで明示しているか。「両方が真」の状態を許していないか [judgment]
 
 ## 既知の対処パターン
 

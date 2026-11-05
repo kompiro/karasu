@@ -49,7 +49,7 @@ scope:
 
 派生 view / panel / hook を実装するとき、以下を確認する:
 
-- [ ] 派生先の表示を駆動する **入力次元** がすべて列挙されているか（`nodeId` だけでなく `nodeMetadata` の中身、`compile result version`、`displayMode` など）
+- [ ] 派生先の表示を駆動する **入力次元** がすべて列挙されているか（`nodeId` だけでなく `nodeMetadata` の中身、`compile result version`、`displayMode` など） [judgment]
 - [ ] memoization / `useMemo` / `useEffect` の依存配列がそれら全次元を含んでいるか（reference equality だけで済むか、deep な version key が要るか）
 - [ ] recompile 結果の **publish が無条件** か（debounce drop / 条件 skip / ref stale で落ちないか）。落ちうる経路にはログまたはテストを置く
 - [ ] **両方向**（追加された / 消えた / 変わった）の編集を 1 つの test で連続適用し、派生先がそのたびに正しく更新されることを assert しているか
