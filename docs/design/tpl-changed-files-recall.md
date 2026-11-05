@@ -278,7 +278,7 @@ tpl-tools の変更、karasu での採用、取りこぼしの補完の順に進
      `package.json` の `tpl:validate` からフラグを外す
    - `pnpm tpl:changed` を足す。中身は `tpl related --config tpl.config.json --base <ref>` で、`<ref>` の既定は `origin/main`。
      `--config` は今の `tpl:related` スクリプトと同じく明示する（接頭辞を設定から読むので、CWD に依存させない）。
-     stacked PR では PR の base（`pnpm tpl:changed --base origin/<baseRefName>`）を渡し、フックと同じ一覧になる
+     stacked PR では PR の base を `pnpm tpl:related --base origin/<baseRefName>` で渡し、フックと同じ一覧になる（`tpl:changed` は `--base origin/main` を含むので重ねない）
    - `scripts/tpl/changed-files-reminder.sh` を PostToolUse / PostToolUseFailure のフックに足す。
      `gh pr create` の出力の PR URL から PR を取り（ADR-3359 のフックと同じ）、`gh pr view` の
      `headRefName` と `baseRefName` を読む。`git worktree list --porcelain` から `headRefName` を

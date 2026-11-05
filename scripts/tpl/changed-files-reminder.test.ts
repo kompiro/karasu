@@ -55,9 +55,10 @@ writeFileSync(
   [
     "#!/usr/bin/env bash",
     `printf '%s|%s\\n' "$PWD" "$*" >> '${tplLog}'`,
-    `[ -f '${tplOut}.fail' ] && exit 1`,
     `cat '${tplOut}.err' >&2`,
     `cat '${tplOut}'`,
+    `[ -f '${tplOut}.fail' ] && exit 1`,
+    "exit 0",
     "",
   ].join("\n"),
 );
@@ -66,13 +67,13 @@ chmodSync(tplBin, 0o755);
 /** tpl-tools' own zero-match line, pinned against the real binary below. */
 const ZERO_MATCH = "No active TPL names a changed file.\n";
 
-/** What the stub tpl prints on stdout and stderr, or a failure. */
-function tplPrints(stdout: string | null, stderr = ""): void {
+/** What the stub tpl prints on stdout and stderr, and whether it then exits 1. */
+function tplPrints(stdout: string, stderr = "", fails = false): void {
   rmSync(tplLog, { force: true });
   rmSync(`${tplOut}.fail`, { force: true });
-  writeFileSync(tplOut, stdout ?? "");
+  writeFileSync(tplOut, stdout);
   writeFileSync(`${tplOut}.err`, stderr);
-  if (stdout === null) writeFileSync(`${tplOut}.fail`, "");
+  if (fails) writeFileSync(`${tplOut}.fail`, "");
 }
 
 const tplCalls = () => (existsSync(tplLog) ? readFileSync(tplLog, "utf8").trim().split("\n") : []);
@@ -227,7 +228,8 @@ describe("tpl changed-files reminder hook", () => {
   });
 
   it("stays silent when tpl fails (for example, an unknown base ref)", () => {
-    tplPrints(null);
+    // Output before the failure, so only the exit status keeps the hook quiet.
+    tplPrints(LIST, ZERO_MATCH, true);
     expect(runHook(CREATE, created(), stubGh("feat/x feat/gone"))).toBe("");
     expect(tplCalls()).toHaveLength(1);
   });
@@ -268,8 +270,10 @@ describe("the tpl-tools contract the hook relies on", () => {
     );
 
   it("prints nothing on stdout and the zero-match line on stderr when no TPL names a changed file", () => {
-    // docs/ is outside sourcePrefixes, so no TPL can name it as a key.
-    const result = tpl("--changed-files", "docs/process.md");
+    // An empty TPL directory matches nothing, whatever later TPLs name.
+    const empty = join(work, "no-tpls");
+    mkdirSync(empty, { recursive: true });
+    const result = tpl("--tpl-dir", empty, "--changed-files", "packages/core/src/parser/parser.ts");
     expect(result.status).toBe(0);
     expect(result.stdout).toBe("");
     expect(result.stderr).toBe(ZERO_MATCH);
@@ -280,5 +284,12 @@ describe("the tpl-tools contract the hook relies on", () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toMatch(/^- \[TPL-\d+\]/);
     expect(result.stderr).toBe("");
+  });
+
+  it("takes --base, the form the hook passes (HEAD...HEAD has no changed files)", () => {
+    const result = tpl("--base", "HEAD");
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe("No changed files, so no TPL to list.\n");
   });
 });

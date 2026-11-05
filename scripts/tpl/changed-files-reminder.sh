@@ -3,9 +3,9 @@
 # .claude/settings.json.
 #
 # After Claude opens a PR with `gh pr create`, list in the same turn the TPLs
-# whose body names a file the PR changes (top 10 by weight), and ask it to cite
-# the ones that apply under `## TPL impact` while the PR is still a draft
-# (#3486, ADR-3486). It never gates: the checklist items are judgment, so
+# whose body (or `scope.paths`) names a file the PR changes (top 10 by weight),
+# and ask it to cite the ones that apply under `## TPL impact` while the PR is
+# still a draft (#3486, ADR-3486). It never gates: the checklist items are judgment, so
 # asking for a reason per skipped TPL would only grow boilerplate.
 #
 # The PR is taken from the URL gh prints, not from the command text (as in
@@ -67,7 +67,7 @@ list=$(cd "$worktree" && ${limit[@]+"${limit[@]}"} "$tpl_bin" related --config t
 if [ "$base" = main ]; then rerun="pnpm tpl:changed"; else rerun="pnpm tpl:related --base origin/$base"; fi
 
 if [ -n "$list" ]; then
-  ctx="TPLs whose body names a file PR $repo#$number changes (\`$rerun\`, top 10 by weight):
+  ctx="TPLs whose body or scope.paths names a file PR $repo#$number changes (\`$rerun\`, top 10 by weight):
 
 $list
 
