@@ -56,6 +56,8 @@ topic: app-ui # ADR と同じ controlled vocabulary
 scope:
   packages:
     - app
+  paths: # optional — 本文の名指しで引けないときだけ足す想起の鍵（glob）
+    - ".github/workflows/**"
 ---
 ```
 
@@ -63,6 +65,7 @@ scope:
 
 - **`applicable_to`** — この観点が適用される **抽象パターン**。再利用可能な抽象度で書く。1 行 = 1 パターンに分解し、複数パターンに当てはまる観点なら複数行で並べる。consumer の具体名は書かない（そちらは `known_consumers`）
 - **`known_consumers`** — この観点が適用されると判明している **具体的な consumer**（feature / module / package など）。kebab-case で、grep で検索しやすい形にする。union のように consumer 空間が広すぎて列挙が無意味な場合は省略する（フィールドごとオミット）。新たに該当 consumer が見つかったら追記する
+- **`scope.paths`** — PR の変更ファイルから TPL を引くときの鍵を足す glob（`*` `**` `?` だけを使う）。鍵の基本は本文の `## 関連テスト` などが名指すファイルで（下の「変更ファイルから引く」）、`scope.paths` はそれと和になる。書くのは、本文がファイルを名指せないのに関係する PR が決まっている TPL（workflow 全般の運用系など）と、PR で当てたのに一覧に出なかった TPL だけ。特定のファイルに結びつかない横断的な原則には広い glob を書かない — ほぼ全 PR に出て一覧が読まれなくなる。`tpl validate` は各 glob が 1 つ以上のファイルに一致することを検査する
 - **`topic`** — ADR と同じ controlled vocabulary（`docs/adr/README.md` のセクション見出しを参照）。たとえば: `core-concepts` / `parser` / `resolver` / `renderer` / `edges` / `styling` / `navigation` / `app-ui` / `project` / `chat-ai` / `cli` / `vscode` / `testing` / `build` / `adr-tooling`
 
 ### 本文セクション
@@ -71,7 +74,7 @@ scope:
 2. **想定される失敗モード** — この観点が見落とされた場合に、どのような形で失敗が現れるか
 3. **チェックリスト** — 新機能の実装/修正時に確認する項目。**3〜5項目に絞る**（多すぎると使われない）
 4. **既知の対処パターン** — 過去にこの問題を解決した方法
-5. **関連テスト** — この観点を検証する既存テストのパス
+5. **関連テスト** — この観点を検証する既存テストのパス。ここで名指すファイル（テストなら対応するソースも）は、PR の変更ファイルから TPL を引く鍵にもなる（「変更ファイルから引く」）
 
 ## 運用ルール
 
@@ -132,13 +135,14 @@ frontmatter と、本文が名指しするソースパスは **`pnpm tpl:validat
 - `related_to` が指す TPL が同ディレクトリに存在すること
 - `scope.packages` が `packages/` 配下の実在ディレクトリを指すこと
 - `status: deprecated` のエントリ本文に deprecation rationale が含まれること
-- 本文のインラインコードスパンが名指しする `packages/…` / `scripts/…` のパスが working tree に実在すること。不在が正しい場合（履歴・例示）は直上の行で `<!-- absent-path-next-line: <理由> -->` と宣言する。宣言は逆向きにも検査され、理由が空、または次行のパスが全部実在するようになると落ちる（[#2810](https://github.com/kompiro/karasu/issues/2810)）
+- `scope.paths` の各 glob が working tree の 1 つ以上のファイルに一致すること
+- 本文のインラインコードスパンが名指しする `packages/…` / `scripts/…` / `.github/…` のパスが working tree に実在すること。不在が正しい場合（履歴・例示）は直上の行で `<!-- absent-path-next-line: <理由> -->` と宣言する。宣言は逆向きにも検査され、理由が空、または次行のパスが全部実在するようになると落ちる（[#2810](https://github.com/kompiro/karasu/issues/2810)）
 
 索引（[index.md](index.md)）は検査しない。`tpl.config.json` の `"indexCheck": false` が止めている。索引は
 毎日の再生成 PR が書くので、TPL を足した直後の PR では古いか、まだ無いのが正常である。索引が TPL と
 一致していることは、再生成 PR の `Validate` が生成し直した結果と比べて確かめる（[#3289](https://github.com/kompiro/karasu/issues/3289)）。
 
-実装は外部パッケージ [`@kompiro/tpl-tools`](https://github.com/kompiro/tpl-tools)（`tpl validate` サブコマンド）。`pnpm tpl:validate` は `--config tpl.config.json` を渡し、`--packages-root packages` で `scope.packages` を、`--source-prefix packages --source-prefix scripts` で本文のソースパスを検証している（karasu#1357 で切り出し、#2810 で本文の照合を移管）。`docs/{acceptance,design}` 側の同じ検査は `pnpm run lint:record-source-paths` が持つ — 1 ディレクトリ 1 オーナーで、二重には走らせない。
+実装は外部パッケージ [`@kompiro/tpl-tools`](https://github.com/kompiro/tpl-tools)（`tpl validate` サブコマンド）。`pnpm tpl:validate` は `--config tpl.config.json` を渡し、`--packages-root packages` で `scope.packages` を検証する。本文のソースパスの接頭辞（`packages` `scripts` `.github`）は `tpl.config.json` の `sourcePrefixes` に置き、`tpl related` の変更ファイルからの照会と共有する（karasu#1357 で切り出し、#2810 で本文の照合を移管、#3486 で接頭辞を設定へ移した）。`docs/{acceptance,design}` 側の同じ検査は `pnpm run lint:record-source-paths` が持つ — 1 ディレクトリ 1 オーナーで、二重には走らせない。
 
 > **なぜ ADR と config を分けているか**（karasu#2083 → #2188）
 > `tpl-tools` と `adr-tools` は同じ config キー `idFormat` を読む。分離当時
@@ -168,6 +172,12 @@ $ pnpm tpl:related renderer --package core
 ```
 
 active なエントリのみが表示される（deprecated はクエリで除外）。`<topic>` が ADR vocabulary 外でも warning 付きで実行はする — 新トピック導入時の事前確認に使えるように。実装は `@kompiro/tpl-tools` の `tpl related` サブコマンド。
+
+#### 変更ファイルから引く
+
+PR を作るときは **`pnpm tpl:changed`** で、`origin/main` からの変更ファイルを名指す active な TPL を重みの順に上位 10 件出す（stacked PR は `pnpm tpl:changed --base origin/<base>`）。鍵は、本文のコードスパンが名指す `sourcePrefixes` の下のファイル（テストファイルなら `.test` / `.spec` を外した対応ソースにも一致させる）と `scope.paths` の glob。多数の TPL が名指すファイルだけに当たった TPL は下に行く。出た TPL のうち当てたものを PR 本文の `## TPL impact` で引用する。Claude が `gh pr create` を実行すると、同じ一覧をフックが出す（ADR-3486）。
+
+この照会は止めない。当てなかった TPL に理由は要らない。0 件は「当てる TPL が無い」ではなく「ファイルでは分からない」なので、横断的な原則は今までどおり `pnpm tpl:related <topic>` で当てる。PR で当てたのに一覧に出なかった TPL があれば、その PR で `## 関連テスト` に名指すファイルを足すか、`scope.paths` を書く。
 
 ## TPL のライフサイクル
 

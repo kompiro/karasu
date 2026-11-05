@@ -127,6 +127,10 @@ Lifecycle: concept → proactive TPL → development → bug → retrospective T
 
 Pick the row(s) that apply; write "N/A" if none (pure refactor / docs / chore):
 
+- Any PR — `pnpm tpl:changed` lists the TPLs whose body names a file this
+  PR changes (stacked PR: `--base origin/<base>`). Cite the ones that
+  apply and how the change meets them; skipped ones need no reason.
+
 - Bug-fix PR (closes a `bug` Issue) — walk the 3-Yes rule:
   could the same root cause occur in another feature / structurally
   recurring / not yet covered. If all yes, add a retrospective TPL in
