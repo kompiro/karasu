@@ -32,7 +32,7 @@ assumptions:
   - 関連 ADR: [ADR-278](278-browser-history-navigation.md)（ブラウザの履歴）、[ADR-321](321-project-url-navigation.md)（`/projects/<id>`）、[ADR-425](425-hash-highlight-restoration.md)（hash のハイライトの復元）、[ADR-811](811-diff-open-file-as-entry.md)（hash の `?file=`）、[ADR-1094](1094-active-view-url-hash.md)、[ADR-1827](1827-permalink-deep-element.md)（deep permalink）
   - TPL: [TPL-1842](../test-perspectives/TPL-1842-restore-state-survive-later-reset.md)、[TPL-1530](../test-perspectives/TPL-1530-persistent-store-init-and-mutation-resilience.md)、[TPL-1534](../test-perspectives/TPL-1534-cancel-stale-async-effect-results.md)、[TPL-976](../test-perspectives/TPL-976-e2e-fixture-controlled-state.md)
   - AT: [first-run-experience.md](../acceptance/first-run-experience.md)（AT-R〜AT-V）、[3284-deep-link-cold-boot-history.md](../acceptance/3284-deep-link-cold-boot-history.md)（AC-3、AT-F / AT-G）
-  - コード: `packages/app/src/components/first-run/tour-progress.ts`、`tour-resume.ts`、`FirstRunExperience.tsx`、`use-guided-scene.ts`、`packages/app/src/ProjectModeApp.tsx`、`packages/app/src/hooks/useProjectNavigation.ts`、`useProjectInitialization.ts`、`useFileSelection.ts`、`useHistoryNavigation.ts`、`history-hash.ts`、`useOrgView.ts`、`packages/app/src/state/deep-link-restore.ts`
+  - コード: `packages/app/src/components/first-run/tour-progress.ts`、`tour-resume.ts`、`FirstRunExperience.tsx`、`use-guided-scene.ts`、`packages/app/src/ProjectModeApp.tsx`、`packages/app/src/hooks/useProjectNavigation.ts`、`useProjectInitialization.ts`、`useFileSelection.ts`、`useHistoryNavigation.ts`、`history-hash.ts`、`useOrgView.ts`、`useAppViews.ts`、`useCrossNavigation.ts`、`useOutline.ts`、`packages/app/src/state/deep-link-restore.ts`
 
 ## 背景
 
@@ -62,9 +62,12 @@ Phase 1 のツアーは `FirstRunExperience` の React state にしかなく、�
   （#3600、#3601）と区別するため。ツアーのプロジェクトの記録（#3597）とは寿命が違うので分けて持つ（そちらはツアーを
   終えても残り、こちらは消える）。
 - 書く・消すのは操作の場所で行う。ツアーを始めたとき（Welcome の Design a service split、Restart Guided Tour…）と Next / Back で
-  書き、Skip、Continue to editor、ほかのガイドを始めたときに消す。`guide` を見る effect では書かない（復元しなかった起動の
-  `guide === null` を「終わった」と読んで消してしまう）。
-- 形・版・ステップの範囲が外れた値、壊れた JSON、ローカルに無いプロジェクトを指す記録は捨てる。storage の例外は握りつぶし、
+  書き、Skip、Continue to editor、Track architecture evolution のガイドを始めたときに消す（Understand では消さない）。
+  `guide` を見る effect では書かない（復元しなかった起動の `guide === null` を「終わった」と読んで消してしまう）。
+  Next / Back は新しいステップを closure の `guide` から求め、`setGuide` と記録の書き込みを別々に行う（`setGuide` の
+  updater の中では書かない。StrictMode で 2 回走る）。
+- 形・版・ステップの範囲が外れた値、壊れた JSON、ローカルに無いプロジェクトを指す記録は捨てる。捨てる削除は
+  `FirstRunExperience` の mount 時の effect が行い、読み取りは副作用を持たない。storage の例外は握りつぶし、
   再開しない動作に落ちる（TPL-1530）。削除が失敗して終えたツアーの記録が残る storage はまれなので、抑える印は持たない。
 - 記録は言語に依らない。複数のタブでは最後に書いたタブが勝つ。✓（#3599）は持ち越さない。
 
@@ -81,23 +84,27 @@ Phase 1 のツアーは `FirstRunExperience` の React state にしかなく、�
 
 呼ぶのは `useProjectNavigation` の初期化で、プロジェクトの一覧が揃い起動先が決まったあと、初回の `replaceState` の直前に
 1 回だけ（`ProjectModeApp` が `decideInitialHash(target, projects, lastProjectId)` として渡し、hooks 層に `tour-steps` を
-持ち込まない）。再開しなかった起動では、あとからツアーのプロジェクトへ切り替えてもパネルは出ない。
+持ち込まない）。`ProjectModeApp` は返った判定を state に置き、`FirstRunExperience` に prop で渡す。`FirstRunExperience` は
+読み込みが終わり、プロジェクトが開いてから mount するので、初期化関数が読む時点で判定は決まっている。再開しなかった起動では、あとからツアーのプロジェクトへ切り替えてもパネルは出ない。
 
 ### 再開の順序（TPL-1842）
 
 - 再開する起動では、起動時の hash を `tourStepHash(root, step)`（シーンのファイルとビュー、ドリル無し）に書き換える。hash の
   復元がシーンのファイル・ビューを当て、シーンの適用は URL に無い差分と reveal だけを足すので、**ブラウザの履歴は増えない**。
   入口の hash のドリルは外れる。
-- `FirstRunExperience` は `useState` の初期化関数で `{ kind: "tour", root, step, run: 0 }` を作る（パネルの無い 1 フレームを
-  作らない）。再開したシーンは deep link の復元を終わらせない（下の「訪問者の操作」に数えない）。
+- `FirstRunExperience` は純粋な `useState` の初期化関数で、`resumed: true` の印を持つツアーを作る（パネルの無い 1 フレームを
+  作らない。`run` は 0 で、`startTour` は 1 から数えるので key は重ならない）。`resumed` の付いたシーンは、deep link の復元を
+  終わらせず（下の「訪問者の操作」に数えない）、すでに開いているシーンのファイルを選び直さない（2 回目の `SELECT_FILE` が
+  復元したビューを reset しない）。Next / Back で `resumed` は外れる。
 
 ### deep link の復元（ツアー以外のリンクにも効く）
 
-- **ファイルを待つ**: hash の `?file=` を復元の目標に入れ、`currentFilePath` がそれになり、さらにパスの索引がそのファイルから
-  作られたもの（`useOrgView` の `settledEntryPath`）になるまで、ビュー・ドリル・ハイライトを当てず、復元を終えない。
+- **ファイルを待つ**: hash の `?file=` を復元の目標に入れ、`currentFilePath` がそれになり、さらにそのファイルのコンパイルが
+  決着する（`useOrgView` の `settledEntryPath`）まで、ビュー・ドリル・ハイライトを当てず、復元を終えない。パスの索引が
+  そのファイルのものと見なせるのは `compiledEntryPath` が一致したときだけ（判定は `useAppViews` の `pathIndexState`）。
 - **起動のファイルは 1 か所が選ぶ**: hash がファイルを指す起動では、プロジェクトの切り替えの自動選択が `index.krs` ではなく
-  hash のファイル（`bootFile`）を開く。`bootFile` は起動するプロジェクトの中のパスに限り、その読み込みが失敗したら `index.krs`
-  を開く。同じファイルの読み込みが進行中なら、後の選択はそれに合流する。
+  hash のファイル（`bootFile`）を開く。`bootFile` は起動するプロジェクトの中のパスに限り、ファイルはあるのに読めなかったら
+  `index.krs` を開く（無いファイルは空のバッファで開き、`"opened"` に数える）。同じファイルの読み込みが進行中なら、後の選択はそれに合流する。
 - **`selectFile` の結果を 3 つに分ける**: `"opened" | "failed" | "superseded"`。追い越された（訪問者が別のファイルや
   プロジェクトを選んだ）ときは復元を終える。読み込みが失敗したときは、ファイルを待つのだけをやめ、ほかの値の復元は続ける
   （開けないファイルを指すリンクで復元が終わらなくならない）。
