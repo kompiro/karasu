@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { check, parseConceptFile, parseDerivesFrom } from "./concept-adr-refs";
+import { check, parseConceptFile, parseDerivesFrom, parseTopicLinks } from "./concept-adr-refs";
 
 const REPO_ROOT = resolve(__dirname, "..", "..");
 
@@ -73,6 +73,23 @@ describe("parsers", () => {
       },
     ]);
   });
+
+  it("parseTopicLinks collects link targets per topic section, stopping at the next heading", () => {
+    const links = parseTopicLinks(
+      [
+        "### Topic A",
+        "> Derives from (`alpha`): N/A",
+        "",
+        "現役の ADR: [effective.md#alpha](effective.md#alpha)、依存図: [graph/alpha.md](graph/alpha.md)",
+        "### Topic B",
+        "> Derives from (`beta`): N/A",
+        "## Other",
+        "[effective.md#beta](effective.md#beta)",
+      ].join("\n"),
+    );
+    expect([...(links.get("alpha") ?? [])]).toEqual(["effective.md#alpha", "graph/alpha.md"]);
+    expect([...(links.get("beta") ?? [])]).toEqual([]);
+  });
 });
 
 describe("regression rehearsal", () => {
@@ -80,7 +97,7 @@ describe("regression rehearsal", () => {
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), "concept-adr-refs-"));
-    mkdirSync(join(dir, "docs", "adr"), { recursive: true });
+    mkdirSync(join(dir, "docs", "adr", "graph"), { recursive: true });
   });
 
   afterEach(() => {
@@ -92,6 +109,8 @@ describe("regression rehearsal", () => {
     conceptsEn?: string;
     conceptsJa?: string;
     readme?: string;
+    effective?: string;
+    graphTopics?: string[];
   }): void {
     const config = opts.config ?? ["alpha", "beta"];
     const conceptsEn =
@@ -116,9 +135,19 @@ describe("regression rehearsal", () => {
         "### Alpha",
         "> Derives from (`alpha`): [concepts.md → S1](../concepts.md#section-one)",
         "",
+        "現役の ADR: [effective.md#alpha](effective.md#alpha)、依存図: [graph/alpha.md](graph/alpha.md)",
+        "",
         "### Beta",
         "> Derives from (`beta`): N/A — implementation topic, no originating concept section",
+        "",
+        "現役の ADR: [effective.md#beta](effective.md#beta)、依存図: [graph/beta.md](graph/beta.md)",
       ].join("\n");
+    const effective =
+      opts.effective ?? ["# Effective ADR Set", "", "## alpha", "", "## beta"].join("\n");
+    writeFileSync(join(dir, "docs", "adr", "effective.md"), effective);
+    for (const topic of opts.graphTopics ?? config) {
+      writeFileSync(join(dir, "docs", "adr", "graph", `${topic}.md`), `# ADR Topic: ${topic}`);
+    }
     writeFileSync(join(dir, "adr.config.json"), JSON.stringify({ topics: config }));
     writeFileSync(join(dir, "docs", "concepts.md"), conceptsEn);
     writeFileSync(join(dir, "docs", "concepts.ja.md"), conceptsJa);
@@ -241,5 +270,43 @@ describe("regression rehearsal", () => {
     expect(problems.some((p) => p.kind === "warning" && p.message.includes("Section One"))).toBe(
       true,
     );
+  });
+
+  it("flags a topic section that does not link its generated index slices", () => {
+    scaffold({
+      readme: [
+        "# ADR",
+        "",
+        "### Alpha",
+        "> Derives from (`alpha`): [c](../concepts.md#section-one)",
+        "",
+        "現役の ADR: [effective.md#beta](effective.md#beta)、依存図: [graph/alpha.md](graph/alpha.md)",
+        "",
+        "### Beta",
+        "> Derives from (`beta`): N/A",
+        "",
+        "現役の ADR: [effective.md#beta](effective.md#beta)、依存図: [graph/beta.md](graph/beta.md)",
+      ].join("\n"),
+    });
+    const errors = check(dir).filter((p) => p.kind === "error");
+    expect(errors.map((e) => e.message)).toEqual([
+      "docs/adr/README.md: topic `alpha` section does not link effective.md#alpha.",
+    ]);
+  });
+
+  it("flags a topic whose effective.md heading has not been generated", () => {
+    scaffold({ effective: ["# Effective ADR Set", "", "## alpha"].join("\n") });
+    const errors = check(dir).filter((p) => p.kind === "error");
+    expect(errors.map((e) => e.message)).toEqual([
+      'docs/adr/effective.md has no "## beta" heading; regenerate the ADR index (pnpm adr:regenerate).',
+    ]);
+  });
+
+  it("flags a topic whose graph file has not been generated", () => {
+    scaffold({ graphTopics: ["alpha"] });
+    const errors = check(dir).filter((p) => p.kind === "error");
+    expect(errors.map((e) => e.message)).toEqual([
+      "docs/adr/graph/beta.md does not exist; regenerate the ADR index (pnpm adr:regenerate).",
+    ]);
   });
 });
