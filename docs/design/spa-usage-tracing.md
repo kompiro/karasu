@@ -2,7 +2,7 @@
 
 - **日付**: 2026-11-05
 - **ステータス**: 検討中
-- **PR**: #（作成後に記入）
+- **PR**: #3619
 - **関連**:
   - 引き金 Issue: [#3612](https://github.com/kompiro/karasu/issues/3612)（PRD [#3573](https://github.com/kompiro/karasu/issues/3573) の sub-issue）
   - 関連 ADR: [ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md)（決定 5: state と secret を静的な Pages app に置かない。[ADR-2578](../adr/2578-nest-retires-server-side-reverse.md) が引き継ぐ）、[ADR-1996](../adr/1996-karasu-nest-data-trust.md)（集めるものの文書と実装を機械で突き合わせる）、[ADR-3020](../adr/3020-nest-custom-domain-karasu-nest-kompiro-dev.md)（nest の origin と `__Host-` cookie）、[ADR-2249](../adr/2249-permalink-generation-seam.md)（permalink 面にカウンタを置く案の却下）、[ADR-2262](../adr/2262-nest-intake-and-completion.md)（水増しされうる数を受け入れた理由）、[ADR-3381](../adr/3381-dependabot-triage-2026-10-26.md) と [ADR-3575](../adr/3575-dependabot-triage-2026-11-02.md)（`@anthropic-ai/sdk` の OTel 対応。後者が現行の 1.3.0）
