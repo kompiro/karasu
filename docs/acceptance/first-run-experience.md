@@ -135,6 +135,8 @@
   > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Back onto an undone step ignores what the visitor did on the step they left, and onto a done one shows it done`
   > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a share made in another project does not mark step 5`
   > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `does not count a share made in another project`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `does not count a share begun in another project that finishes after coming back`
+  > ✅ Automated — `packages/app/src/state/app-signals.test.ts` › `dates an event that took a ticket to its start, so a reader from after the start skips it`
   > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `counts a share or an SVG export only after the scene landed`
   > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `judges nothing before the step's own scene has landed (TPL-1534)`
   > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `keeps a step done under its key after the condition goes away, and only under it`

@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, renderHook } from "@testing-library/react";
 import {
+  beginEvent,
   getAppSignals,
   happenedSince,
   recordEvent,
@@ -27,6 +28,17 @@ describe("app signals (#3599)", () => {
     // A reader from before both sees both; reading takes nothing away.
     expect(happenedSince(signals, ["share-opened", "svg-exported"], 0)).toBe(true);
     expect(happenedSince(getAppSignals(), ["share-opened"], 0)).toBe(true);
+  });
+
+  it("dates an event that took a ticket to its start, so a reader from after the start skips it", () => {
+    const started = beginEvent();
+    const readerPoint = getAppSignals().seq;
+    recordEvent("share-opened", started);
+    expect(happenedSince(getAppSignals(), ["share-opened"], readerPoint)).toBe(false);
+    expect(happenedSince(getAppSignals(), ["share-opened"], started - 1)).toBe(true);
+    // A later event still moves the clock past the reader.
+    recordEvent("svg-exported");
+    expect(happenedSince(getAppSignals(), ["svg-exported"], readerPoint)).toBe(true);
   });
 
   it("keeps what is showing as a value", () => {

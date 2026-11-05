@@ -10,6 +10,11 @@ interface TourPanelProps {
   total: number;
   /** The visitor did what the step asks (#3599). */
   done?: boolean;
+  /**
+   * The step's scene has landed, so what the visitor does now counts toward
+   * its ask. Exposed as `data-scene-landed` for the e2e to wait on.
+   */
+  landed?: boolean;
   onBack: () => void;
   onNext: () => void;
   /** Ends the tour from any step: Skip, or Continue to editor on the last one. */
@@ -27,6 +32,7 @@ export function TourPanel({
   index,
   total,
   done = false,
+  landed = false,
   onBack,
   onNext,
   onClose,
@@ -50,6 +56,7 @@ export function TourPanel({
   return (
     <section
       aria-label={t("firstRun.tour.ariaLabel")}
+      data-scene-landed={landed}
       className="first-run-tour fixed bottom-12 left-4 z-[var(--z-floating-panel)] flex w-[340px] max-w-[calc(100vw-32px)] flex-col gap-2 rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-overlay)] p-3 text-[color:var(--text-primary)] shadow-xl"
     >
       <div className="flex items-center justify-between text-[11px] text-[color:var(--text-secondary)]">

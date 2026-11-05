@@ -490,12 +490,21 @@ type Box = { x: number; y: number; width: number; height: number };
 
 const stepDone = (page: Page) => tour(page).getByText(/✓ Done/);
 
-/** From step 1, Next until `step`. */
+/**
+ * The step's scene has landed: what the visitor does from now on counts
+ * toward its ask. The step counter moves before that, on the click.
+ */
+async function sceneLanded(page: Page, step: number) {
+  await expect(tour(page)).toContainText(`${step} / 5`);
+  await expect(tour(page)).toHaveAttribute("data-scene-landed", "true");
+}
+
+/** From step 1, Next until `step`, and wait for its scene. */
 async function walkTo(page: Page, step: number) {
   for (let i = 1; i < step; i++) {
     await tour(page).getByRole("button", { name: "Next →" }).click();
   }
-  await expect(tour(page)).toContainText(`${step} / 5`);
+  await sceneLanded(page, step);
 }
 
 test.describe("AT-3563 a step's ask marked done (#3599)", () => {
@@ -504,6 +513,7 @@ test.describe("AT-3563 a step's ask marked done (#3599)", () => {
     opfs,
   }) => {
     await startTour(page, opfs);
+    await sceneLanded(page, 1);
     await expect(stepDone(page)).toHaveCount(0);
     await drillInto(page, ["CommerceApp"], { firstMatch: true });
     await expect(stepDone(page)).toBeVisible();
@@ -522,6 +532,7 @@ test.describe("AT-3563 a step's ask marked done (#3599)", () => {
     opfs,
   }) => {
     await startTour(page, opfs);
+    await sceneLanded(page, 1);
     await walkTo(page, 2);
     await expect(stepDone(page)).toHaveCount(0);
     await teamDependenciesToggle(page).click();
@@ -529,10 +540,10 @@ test.describe("AT-3563 a step's ask marked done (#3599)", () => {
 
     const next = tour(page).getByRole("button", { name: "Next →" });
     await next.click();
-    await expect(tour(page)).toContainText("3 / 5");
+    await sceneLanded(page, 3);
     await expect(stepDone(page)).toHaveCount(0);
     await next.click();
-    await expect(tour(page)).toContainText("4 / 5");
+    await sceneLanded(page, 4);
     await expect(stepDone(page)).toHaveCount(0);
   });
 
@@ -541,6 +552,7 @@ test.describe("AT-3563 a step's ask marked done (#3599)", () => {
     opfs,
   }) => {
     await startTour(page, opfs);
+    await sceneLanded(page, 1);
     await openTeamDependencies(page);
     await openViewTab(page, "System");
     await expect(stepDone(page)).toHaveCount(0);
@@ -553,12 +565,13 @@ test.describe("AT-3563 a step's ask marked done (#3599)", () => {
     opfs,
   }) => {
     await startTour(page, opfs);
+    await sceneLanded(page, 1);
     await walkTo(page, 2);
     // Drill in on step 2, then go Back to step 1, whose ask is that drill.
     await openViewTab(page, "System");
     await drillInto(page, ["CommerceApp"], { firstMatch: true });
     await tour(page).getByRole("button", { name: "← Back" }).click();
-    await expect(tour(page)).toContainText("1 / 5");
+    await sceneLanded(page, 1);
     await expect(node(page, "CommerceApp")).toBeVisible();
     await expect(stepDone(page)).toHaveCount(0);
 
@@ -566,12 +579,13 @@ test.describe("AT-3563 a step's ask marked done (#3599)", () => {
     await expect(stepDone(page)).toBeVisible();
     await walkTo(page, 2);
     await tour(page).getByRole("button", { name: "← Back" }).click();
-    await expect(tour(page)).toContainText("1 / 5");
+    await sceneLanded(page, 1);
     await expect(stepDone(page)).toBeVisible();
   });
 
   test("Share on step 5 marks it done, and Export SVG does too", async ({ page, opfs }) => {
     await startTour(page, opfs);
+    await sceneLanded(page, 1);
     await walkTo(page, 5);
     await expect(stepDone(page)).toHaveCount(0);
     const dialog = await openShareDialog(page);
@@ -579,7 +593,7 @@ test.describe("AT-3563 a step's ask marked done (#3599)", () => {
     await dialog.getByRole("button", { name: /Close/ }).first().click();
 
     await page.reload();
-    await expect(tour(page)).toContainText("5 / 5");
+    await sceneLanded(page, 5);
     await expect(stepDone(page)).toHaveCount(0);
     await clickAndDownload(page.getByRole("button", { name: "Export SVG" }));
     await expect(stepDone(page)).toBeVisible();
@@ -587,6 +601,7 @@ test.describe("AT-3563 a step's ask marked done (#3599)", () => {
 
   test("a share made in another project does not mark step 5", async ({ page, opfs }) => {
     await startTour(page, opfs);
+    await sceneLanded(page, 1);
     await walkTo(page, 5);
     const id = await tourProjectId(page);
     await projectSelect(page).selectOption({ label: "getting-started" });
@@ -595,7 +610,7 @@ test.describe("AT-3563 a step's ask marked done (#3599)", () => {
     await dialog.getByRole("button", { name: /Close/ }).first().click();
 
     await projectSelect(page).selectOption(id);
-    await expect(tour(page)).toContainText("5 / 5");
+    await sceneLanded(page, 5);
     await expect(node(page, "BillingDB")).toBeVisible();
     await expect(stepDone(page)).toHaveCount(0);
   });

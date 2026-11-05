@@ -17,9 +17,9 @@ export type EventSignal = "share-opened" | "svg-exported";
  */
 export interface AppSignals {
   showing: ReadonlySet<ShowingSignal>;
-  /** The seq of each event's latest occurrence. */
+  /** The seq of each event's latest occurrence (its start, for one that took a ticket). */
   lastEvent: Readonly<Partial<Record<EventSignal, number>>>;
-  /** The seq of the latest event of any kind; 0 before any. */
+  /** The latest seq handed out, to an event or a ticket; 0 before any. */
   seq: number;
 }
 
@@ -41,10 +41,28 @@ export function setShowing(what: ShowingSignal, on: boolean): void {
   update({ ...current, showing });
 }
 
-/** Records that `what` just happened. */
-export function recordEvent(what: EventSignal): void {
+/**
+ * Takes a seq for something that starts now and finishes later (a share
+ * waits for its link). Recording it with this ticket dates it to its start,
+ * so a reader whose point is after the start does not count it, however late
+ * it finishes: a share begun in another project and finished after coming
+ * back is not a share made here.
+ */
+export function beginEvent(): number {
   const seq = current.seq + 1;
-  update({ ...current, lastEvent: { ...current.lastEvent, [what]: seq }, seq });
+  update({ ...current, seq });
+  return seq;
+}
+
+/** Records that `what` happened, now or, with a ticket from `beginEvent`, when it began. */
+export function recordEvent(what: EventSignal, ticket?: number): void {
+  const seq = ticket ?? current.seq + 1;
+  const last = Math.max(seq, current.lastEvent[what] ?? 0);
+  update({
+    ...current,
+    lastEvent: { ...current.lastEvent, [what]: last },
+    seq: Math.max(seq, current.seq),
+  });
 }
 
 /** Whether any of `kinds` happened after `sinceSeq`. */

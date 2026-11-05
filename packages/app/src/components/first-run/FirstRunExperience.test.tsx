@@ -8,7 +8,7 @@ import { KeyboardShortcutDispatcher } from "../../keyboard/KeyboardShortcutDispa
 import type { FileSelectionStatus } from "../../hooks/useFileSelection.js";
 import type { AppAction } from "../../state/app-reducer.js";
 import { requestReveal } from "../../state/preview-reveal.js";
-import { recordEvent, resetAppSignals } from "../../state/app-signals.js";
+import { beginEvent, recordEvent, resetAppSignals } from "../../state/app-signals.js";
 import { CommandPalette } from "../CommandPalette.js";
 import { FirstRunExperience } from "./FirstRunExperience.js";
 import { TOUR_PROGRESS_KEY, readTourProgress, writeTourProgress } from "./tour-progress.js";
@@ -260,5 +260,18 @@ describe("a step's ask marked done (#3599)", () => {
 
     act(() => recordEvent("share-opened"));
     expect(doneText()).not.toBeNull();
+  });
+
+  it("does not count a share begun in another project that finishes after coming back", async () => {
+    const tour = renderTour(4);
+    await act(async () => {});
+    await tour.update({ open: gettingStarted });
+    let started = 0;
+    act(() => {
+      started = beginEvent();
+    });
+    await tour.update({ open: copy });
+    act(() => recordEvent("share-opened", started));
+    expect(doneText()).toBeNull();
   });
 });

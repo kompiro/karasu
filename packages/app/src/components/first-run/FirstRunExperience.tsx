@@ -300,6 +300,7 @@ export function FirstRunExperience({
           index={guide.step}
           total={SERVICE_SPLIT_TOUR.length}
           done={stepDone}
+          landed={landing.key === pending?.key}
           onBack={() => moveStep(-1)}
           onNext={() => moveStep(1)}
           onClose={endTour}
