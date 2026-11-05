@@ -66,7 +66,7 @@ consumer ごとに表示が割れる。
       `d.params` を直接使う（内部エラーなら `code` を出す、テストなら `code` /
       `params` を assert する）こと
 - [ ] union に `kind` / `code` を追加したとき、すべての renderer が網羅性チェック
-      （`never` 検査など）で更新漏れを検出できるか
+      （`never` 検査など）で更新漏れを検出できるか [guard: `packages/i18n/src/render-warning.test.ts`, `packages/i18n/src/render-diagnostic.test.ts`]
 
 ## 既知の対処パターン
 

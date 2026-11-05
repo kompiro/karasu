@@ -146,11 +146,11 @@ round-trip テストは、コメントがどこに出ても、あるいは消え
 - [ ] `--check` / dry-run モードで idempotent か（同じ入力に 2 回かけて差分が出ないか）
 - [ ] **新しく出力する行のコメントが、その行の上か行末に残るか**（#3263）。AST に位置が無い行は、トークン列から位置を引かないとコメントを付けられない
 - [ ] 元のコードで使われていた構文の variations すべてに対して動作するか（quoted ID / bare ID / dot-notation / 特殊文字を含む ID / 予約語と衝突する ID）
-- [ ] **parser が受理する構文を漏れなく出力するか**。変換層が AST のプロパティを手で列挙している箇所（`printFile` の top-level リストなど）は、期待集合を型・スキーマから導出したテストで網羅性を固定したか（#2076）
+- [ ] **parser が受理する構文を漏れなく出力するか**。変換層が AST のプロパティを手で列挙している箇所（`printFile` の top-level リストなど）は、期待集合を型・スキーマから導出したテストで網羅性を固定したか（#2076） [guard: `packages/core/src/formatter/formatter-top-level-coverage.test.ts`, `packages/core/src/formatter/formatter-property-coverage.test.ts`]
 - [ ] **ネストされた構文も、それを描く emit 経路すべてで round-trip するか**。`KrsFile` の top-level 配列から導出したガードは**ノード内の構文を守らない**。スコープ内 `boundary`（#2036 slice A で `fmt` が黙って削除した実例）や `annotationParams`（#2571）のように per-node に持つ構文は、ネスト位置ごとに round-trip テストを用意し、1 プロパティに複数の emit 経路があるとき（`renderNode` / `renderTeam` など）は fixture を経路ごとに回す。#2571 は片方がパラメータのみ、もう片方がアノテーション丸ごとを落としていた
-- [ ] 新しい top-level 構文 / AST プロパティを足したとき、変換層に配線し忘れると **テストか typecheck が落ちる**か
-- [ ] その網羅性ガード自体が**空振りしていない**ことを負のテストで確認したか（わざと構文を 1 つ落として落ちるか / 型にダミーキーを足して `tsc` が落ちるか）
-- [ ] ID だけでなく **値**（label / description / URL / title 等）も escape して出力しているか。生のテンプレート補間 `` `x "${value}"` `` が残っていないか（#2087）
+- [ ] 新しい top-level 構文 / AST プロパティを足したとき、変換層に配線し忘れると **テストか typecheck が落ちる**か [guard: `packages/core/src/formatter/formatter-top-level-coverage.test.ts`, `packages/core/src/formatter/formatter-property-coverage.test.ts`]
+- [ ] その網羅性ガード自体が**空振りしていない**ことを負のテストで確認したか（わざと構文を 1 つ落として落ちるか / 型にダミーキーを足して `tsc` が落ちるか） [judgment]
+- [ ] ID だけでなく **値**（label / description / URL / title 等）も escape して出力しているか。生のテンプレート補間 `` `x "${value}"` `` が残っていないか（#2087） [guard: `packages/core/src/formatter/quote-string.test.ts`]
 - [ ] escape する文字集合が **lexer がデコードする集合と一致**しているか。lexer が解釈しない `\<char>` を出力していないか（多すぎる escape も値を壊す）
 - [ ] 外部入力を取り込む経路（`translate --from ...`）について、自由テキストを含む hostile input で出力が parse できるか（#2087 は OpenAPI `summary` で顕在化）
 - [ ] 複数の表現形式を持つプロパティで、**その形式では表現できない値**（`"""` を含む description 等）に fallback 経路があり、テストされているか

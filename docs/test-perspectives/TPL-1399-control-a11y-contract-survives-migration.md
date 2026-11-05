@@ -44,7 +44,7 @@ interactive control（button / tab / list item / menu item / toggle）は、ク�
 
 ## チェックリスト
 
-- [ ] 移行・リファクタ対象の control が持っていた `aria-*` 属性・`role`・`type` を、移行後の要素がすべて引き継いでいるか差分で確認した
+- [ ] 移行・リファクタ対象の control が持っていた `aria-*` 属性・`role`・`type` を、移行後の要素がすべて引き継いでいるか差分で確認した [judgment]
 - [ ] `role` を持つ要素は、その role が要素タグおよび親コンテナの role と ARIA 仕様上整合しているか（`listitem`→`list` の子、`menuitem`→menu の子、`button` に `listitem` を付けていない 等）
 - [ ] すべてのボタンに可視テキストラベルがあるか（アイコンのみは不可。`aria-label` は補助であって代替ではない）
 - [ ] toggle は `aria-pressed` を持ち、かつ可視ラベルまたはスタイルでも押下状態が区別できるか

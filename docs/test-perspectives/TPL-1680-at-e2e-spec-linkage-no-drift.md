@@ -45,7 +45,7 @@ scope:
 
 - [ ] 追加した `packages/e2e/tests/at-*.spec.ts` を、対応する `docs/acceptance/*.md` の automation marker（`> ✅ Automated by \`<full path>\``）で **full path** 名指ししたか（`pnpm at:check-coverage --strict` が緑か）。
 - [ ] spec を rename / 削除したとき、その path を参照している AT doc を **全て** 追従更新したか（stale reference を残していないか）。
-- [ ] AT-numbered でない smoke / fixture spec（`*.smoke.spec.ts`）は orphan guard の対象外で良いか（AT に縛られない test infra なら可）。
+- [ ] AT-numbered でない smoke / fixture spec（`*.smoke.spec.ts`）は orphan guard の対象外で良いか（AT に縛られない test infra なら可）。 [judgment]
 - [ ] guard の hook glob が **spec 側（`packages/e2e/tests/**`）も** 含むか（doc 側だけだと spec 追加で発火しない）。
 
 ## 既知の対処パターン

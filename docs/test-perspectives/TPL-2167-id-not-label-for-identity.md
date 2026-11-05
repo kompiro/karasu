@@ -52,7 +52,7 @@ identity に関わる処理を実装・修正するとき、以下を確認す�
 - [ ] cross-file / cross-system で参照を辿るときも `id` ベースか（`SystemId.ServiceId` のドット記法も id ベース）
 - [ ] テストに **「`id` 同じ / `label` 違い」** と **「`id` 違い / `label` 同じ」** の両方の fixture が含まれているか。前者は同一視、後者は別物扱いされること
 - [ ] i18n 経由で表示文字列を切り替えた状態でも、identity 系の処理結果が変わらないことを確認したか
-- [ ] エラーメッセージや warning 文中に `id` を含めているか（`label` だけだとユーザーが「どのノードか」を辿れない）
+- [ ] エラーメッセージや warning 文中に `id` を含めているか（`label` だけだとユーザーが「どのノードか」を辿れない） [guard: `packages/i18n/src/render-diagnostic.test.ts`, `packages/i18n/src/render-warning.test.ts`]
 
 ## 既知の対処パターン
 

@@ -67,7 +67,7 @@ karasu は逆コンウェイ戦略の過渡期（移行元 → 移行先の引�
 - [ ] 重複が起きても info 診断（`duplicate-owner-assignment` / `domain-dispersal`）は
       引き続き発火し、severity が error に戻っていないか（[[TPL-1386]]）
 - [ ] 継承の有無（domain=親 service を継承 / team=継承しない）を意識して priority の
-      入力アノテーションを選んでいるか
+      入力アノテーションを選んでいるか [judgment]
 - [ ] 宣言順を入れ替えても勝者が変わらないこと（`@migration_target` が後置でも前置でも勝つ）を
       テストしているか
 - [ ] per-node の Map を bare id キーで足すとき、1 ノードの値なら path キー（`nodePathRefId`）を

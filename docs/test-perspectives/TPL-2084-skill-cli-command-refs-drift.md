@@ -51,10 +51,10 @@ surface は 2 つに分かれ、扱う道具が違う（TPL-1716 と同型）:
 
 skill を追加・変更するとき、または CLI の command / adapter surface を変えるときに確認する:
 
-- [ ] skill 内の全 `karasu <cmd>` 参照が登録済みコマンドか（`pnpm lint:skill-cli-refs` が緑か）。
+- [ ] skill 内の全 `karasu <cmd>` 参照が登録済みコマンドか（`pnpm lint:skill-cli-refs` が緑か）。 [guard: `scripts/lint/skill-cli-refs.ts`, `scripts/lint/skill-cli-refs.test.ts`]
 - [ ] 各コマンドを **正しい入力型・用途** で使っているか（例: `.krs` の検証は `render`、`.krs.style` は `lint-style`）。名前が実在するだけでは不十分。
-- [ ] skill が CLI の capability の **不在**を断定していないか（「adapter が無い」「〜はできない」）。断定するなら、その時点の `karasu <cmd> --help` / adapter 一覧で裏を取ったか。
-- [ ] CLI に subcommand / translate adapter を足したとき、その存在を前提が変わる skill（とりわけ「無い」と書いている箇所）を読み直したか。
+- [ ] skill が CLI の capability の **不在**を断定していないか（「adapter が無い」「〜はできない」）。断定するなら、その時点の `karasu <cmd> --help` / adapter 一覧で裏を取ったか。 [judgment]
+- [ ] CLI に subcommand / translate adapter を足したとき、その存在を前提が変わる skill（とりわけ「無い」と書いている箇所）を読み直したか。 [judgment]
 
 ## 既知の対処パターン
 
