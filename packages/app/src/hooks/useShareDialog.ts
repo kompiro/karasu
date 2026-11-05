@@ -3,6 +3,7 @@ import { useClipboardCopy } from "./useClipboardCopy.js";
 import { buildShareUrls } from "../utils/inline-share.js";
 import type { SharePayload, ShareTarget } from "../utils/inline-share.js";
 import type { ActiveView } from "../state/app-reducer.js";
+import { recordEvent } from "../state/app-signals.js";
 
 /** Props to spread directly onto `<ShareDialog />` — matches `ShareDialogProps`. */
 interface ShareDialogRenderProps {
@@ -136,6 +137,9 @@ export function useShareDialog({
     setShareTarget(target);
     setIncludeTarget(include);
     const fragmentUrl = applyShareUrls(payload, target, include);
+    // The link exists now; a reader outside the dialog (the first-run tour,
+    // #3599) counts a share only when it did.
+    recordEvent("share-opened");
     // Eagerly copy the private link (the default), preserving the click gesture.
     copyShare(fragmentUrl);
   }

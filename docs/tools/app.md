@@ -85,6 +85,9 @@ three places to start:
   `@planned`), and how to share the result. The tour is a small panel at the
   bottom left; **Skip tour** ends it at any step, and **Continue to editor**
   ends it on the last one.
+  A step that asks you to do something (drill in, turn on the team
+  dependencies, share or export) shows a ✓ once you have done it; you still
+  move on with **Next** when you are ready.
 - **Understand an existing system**: opens the Getting Started project.
 - **Track architecture evolution**: opens the `service-split` sample with its
   migration compared against the current system.

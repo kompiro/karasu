@@ -11,6 +11,7 @@ import { usePreview } from "../state/preview-context.js";
 import { useActiveViewData } from "../state/active-view-data.js";
 import { ShareDialog } from "./ShareDialog.js";
 import { useShareDialog } from "../hooks/useShareDialog.js";
+import { recordEvent, useShowingSignal } from "../state/app-signals.js";
 import { useTranslation } from "../i18n/index.js";
 import { useCommand } from "../keyboard/use-command.js";
 import { Button } from "@/components/ui/button";
@@ -170,6 +171,9 @@ export function PreviewColumn() {
   // model (ADR-766).
   const showTeamDependencies =
     activeView === "org" && isTeamDependenciesOpen && hasTeamDependencyView;
+  // What a reader outside the preview (the first-run tour, #3599) sees as
+  // "the team dependencies are on screen": the same condition that draws them.
+  useShowingSignal("team-dependencies", showTeamDependencies);
   // Entity sub-mode: only while drilled into a domain that actually has an
   // entity view (mirrors org Tree View, but scoped to the system view).
   const showEntityView = activeView === "system" && isEntityViewOpen && hasEntityView;
@@ -187,7 +191,14 @@ export function PreviewColumn() {
           ? !!activeAllLayersSvg
           : !!svg;
 
+  // The toolbar's Export SVG. An export that finished is recorded (#3599),
+  // whichever SVG it wrote; the dropdown's other exports are not this button.
   function handleExport() {
+    exportCurrentSvg();
+    recordEvent("svg-exported");
+  }
+
+  function exportCurrentSvg() {
     if (showEntityView && entityViewSvg) {
       onExportSvg(entityViewSvg, exportFilename.replace(/\.svg$/, "-entity.svg"));
       return;

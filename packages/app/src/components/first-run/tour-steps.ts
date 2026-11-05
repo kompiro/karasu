@@ -1,5 +1,11 @@
 import type { Translations } from "@karasu-tools/i18n";
 import type { ActiveView } from "../../state/app-reducer.js";
+import {
+  happenedSince,
+  type AppSignals,
+  type EventSignal,
+  type ShowingSignal,
+} from "../../state/app-signals.js";
 
 /** A translation key whose value takes no parameters. */
 type PhraseKey = {
@@ -24,8 +30,22 @@ export interface Scene {
   reveal?: string;
 }
 
+/**
+ * What a step asks the visitor to do, as data, so a test can hold the node it
+ * names against the sample (#3599). A step that asks for nothing has none.
+ */
+export type StepCompletion =
+  /** Drilled into `node` in that view: the view path holds it. */
+  | { kind: "drilled"; view: "system"; node: string }
+  /** The app is showing it now. */
+  | { kind: "showing"; what: ShowingSignal }
+  /** Any of these happened since the step's scene landed. */
+  | { kind: "event"; any: readonly EventSignal[] };
+
 export interface TourStep {
   scene: Scene;
+  /** What the step asks for; the panel marks it done once the visitor did it. */
+  completion?: StepCompletion;
   title: PhraseKey;
   body: PhraseKey;
   /** What the step wants the visitor to notice in the diagram. */
@@ -44,12 +64,14 @@ export interface TourStep {
 export const SERVICE_SPLIT_TOUR: readonly TourStep[] = [
   {
     scene: { file: "index.krs", view: "system", reveal: "CommerceApp" },
+    completion: { kind: "drilled", view: "system", node: "CommerceApp" },
     title: "firstRun.step.current.title",
     body: "firstRun.step.current.body",
     notice: "firstRun.step.current.notice",
   },
   {
     scene: { file: "index.krs", view: "org" },
+    completion: { kind: "showing", what: "team-dependencies" },
     title: "firstRun.step.org.title",
     body: "firstRun.step.org.body",
     notice: "firstRun.step.org.notice",
@@ -78,11 +100,49 @@ export const SERVICE_SPLIT_TOUR: readonly TourStep[] = [
   },
   {
     scene: { file: "migrating.krs", view: "system" },
+    completion: { kind: "event", any: ["share-opened", "svg-exported"] },
     title: "firstRun.step.share.title",
     body: "firstRun.step.share.body",
     done: "firstRun.step.share.done",
   },
 ];
+
+export interface CompletionInput {
+  completion: StepCompletion | undefined;
+  /** The scene key of the step on screen (`tour:<run>:<step>`). */
+  key: string;
+  /** The scene that has landed in the tour's project, or null while none has. */
+  landedKey: string | null;
+  /** The scene keys already marked done. */
+  completed: ReadonlySet<string>;
+  activeView: ActiveView;
+  viewPath: readonly string[];
+  signals: AppSignals;
+  /** Only events after this seq count: the seq when the scene landed. */
+  sinceSeq: number;
+}
+
+/**
+ * Whether the step's ask is done (#3599). Once done it stays done for that
+ * scene key, so drilling back out or closing the dependencies does not take
+ * the mark away. Nothing is judged before the step's own scene has landed in
+ * the tour's project: right after Back or a restart, the view path still
+ * belongs to the previous scene (TPL-1534).
+ */
+export function isStepDone(input: CompletionInput): boolean {
+  const { completion, key } = input;
+  if (!completion) return false;
+  if (input.completed.has(key)) return true;
+  if (input.landedKey !== key) return false;
+  switch (completion.kind) {
+    case "drilled":
+      return input.activeView === completion.view && input.viewPath.includes(completion.node);
+    case "showing":
+      return input.signals.showing.has(completion.what);
+    case "event":
+      return happenedSince(input.signals, completion.any, input.sinceSeq);
+  }
+}
 
 /** The Track architecture evolution entry: the migration so far, as a diff against today. */
 export const EVOLVE_SCENE: Scene = {

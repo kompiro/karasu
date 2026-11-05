@@ -27,6 +27,7 @@ export type FirstRunTranslations = {
   "firstRun.tour.next": string;
   "firstRun.tour.finish": string;
   "firstRun.tour.notice": string;
+  "firstRun.tour.stepDone": string;
   "firstRun.step.current.title": string;
   "firstRun.step.current.body": string;
   "firstRun.step.current.notice": string;
@@ -74,6 +75,7 @@ export const firstRunEn: FirstRunTranslations = {
   "firstRun.tour.next": "Next →",
   "firstRun.tour.finish": "✓ Continue to editor",
   "firstRun.tour.notice": "Notice",
+  "firstRun.tour.stepDone": "✓ Done. Look around as long as you like, then move on.",
   "firstRun.step.current.title": "Explore the current architecture",
   "firstRun.step.current.body":
     "This is your current system. Click Commerce Application to open it and see the domains inside.",
@@ -129,6 +131,7 @@ export const firstRunJa: Partial<FirstRunTranslations> = {
   "firstRun.tour.next": "次へ →",
   "firstRun.tour.finish": "✓ エディタに進む",
   "firstRun.tour.notice": "気づき",
+  "firstRun.tour.stepDone": "✓ できました。好きなだけ見てから、先へ進んでください。",
   "firstRun.step.current.title": "現在のアーキテクチャを見る",
   "firstRun.step.current.body":
     "これが現在のシステムです。コマースアプリケーションをクリックして、中にあるドメインを見てください。",
