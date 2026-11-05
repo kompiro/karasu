@@ -37,11 +37,12 @@ const readPackage = (path: string): PackageJson => JSON.parse(read(path)) as Pac
 const OTHER_RUNNERS: Record<string, { workflow: string; command: RegExp }> = {
   "@karasu-tools/e2e": {
     workflow: ".github/workflows/e2e.yml",
-    command: /pnpm --filter @karasu-tools\/e2e (?:run )?test(?=\s|$)/m,
+    command: /^\s*run: (?:xvfb-run -a )?pnpm --filter @karasu-tools\/e2e (?:run )?test(?=\s|$)/m,
   },
   "@karasu-tools/vscode-e2e": {
     workflow: ".github/workflows/vscode-e2e.yml",
-    command: /pnpm --filter @karasu-tools\/vscode-e2e (?:run )?test(?=\s|$)/m,
+    command:
+      /^\s*run: (?:xvfb-run -a )?pnpm --filter @karasu-tools\/vscode-e2e (?:run )?test(?=\s|$)/m,
   },
 };
 
