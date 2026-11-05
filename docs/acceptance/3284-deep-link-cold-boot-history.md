@@ -8,6 +8,7 @@ type: product
 - **関連 Issue**: [#3284](https://github.com/kompiro/karasu/issues/3284) / [#3598](https://github.com/kompiro/karasu/issues/3598)（`index.krs` 以外のファイルを指すリンク）
 - **Related TPLs**: [TPL-1842](../test-perspectives/TPL-1842-restore-state-survive-later-reset.md)
 - **対象ファイル**: `packages/app/src/hooks/useHistoryNavigation.ts`（effect ② / effect ③）、`packages/app/src/hooks/useProjectInitialization.ts`（起動時のファイル）、`packages/app/src/hooks/useFileSelection.ts`（同じファイルの選択の合流、読めないときの fallback）、`packages/app/src/hooks/useOrgView.ts`（index がどのファイルから作られたか）、`packages/app/src/state/deep-link-restore.ts`（利用者の操作で復元を終える）
+- **関連 ADR**: [ADR-3598](../adr/3598-first-run-tour-resume.md)
 
 > deep link（`#krs-deploy` / `#krs-org-root` / `#krs-system-<id>` / `:<highlight>` 付き）で app を cold boot すると、hash を書く effect が復元前の state（mount 直後の `system` root、seed の reset、再適用の直前の commit）を `pushState` していた。Back はそれらを経由してからリンク元に戻っていた。hash が名指す値がすべて state に commit されるまで、書き込みを replace にする。
 

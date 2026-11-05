@@ -9,6 +9,7 @@
   - `packages/app/src/ProjectModeApp.tsx`（配線、起動時のツアーの再開の判定）
   - `packages/app/src/hooks/useProjectNavigation.ts` / `useHistoryNavigation.ts`（再開するステップの hash で起動し、hash の復元がそのファイルを待つ）
   - `packages/e2e/fixtures/opfs.ts`（既定で Welcome を閉じた状態にする）
+- **関連 ADR**: [ADR-3598](../adr/3598-first-run-tour-resume.md)
 
 > 初回訪問者が 5 分で「共通のモデルを持つとチームの設計判断が変わる」ことを体験する経路。Welcome は既定プロジェクトを作った初回起動だけに出て、Design a service split が 5 ステップのガイドに入る。
 
