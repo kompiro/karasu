@@ -16,7 +16,9 @@ describe("concept-adr-refs validator", () => {
 
   it("real repo: every concept section carries a Related ADR topics annotation", () => {
     const problems = check(REPO_ROOT);
-    const warnings = problems.filter((p) => p.kind === "warning");
+    const warnings = problems.filter(
+      (p) => p.kind === "warning" && p.message.includes("Related ADR topics"),
+    );
     expect(warnings).toEqual([]);
   });
 });
@@ -294,19 +296,25 @@ describe("regression rehearsal", () => {
     ]);
   });
 
-  it("flags a topic whose effective.md heading has not been generated", () => {
+  it("warns, but does not fail, when a topic has no effective.md heading yet", () => {
     scaffold({ effective: ["# Effective ADR Set", "", "## alpha"].join("\n") });
-    const errors = check(dir).filter((p) => p.kind === "error");
-    expect(errors.map((e) => e.message)).toEqual([
-      'docs/adr/effective.md has no "## beta" heading; regenerate the ADR index (pnpm adr:regenerate).',
-    ]);
+    const problems = check(dir);
+    expect(problems.filter((p) => p.kind === "error")).toEqual([]);
+    expect(
+      problems.some(
+        (p) => p.kind === "warning" && p.message.includes('has no "## beta" heading yet'),
+      ),
+    ).toBe(true);
   });
 
-  it("flags a topic whose graph file has not been generated", () => {
+  it("warns, but does not fail, when a topic has no graph file yet", () => {
     scaffold({ graphTopics: ["alpha"] });
-    const errors = check(dir).filter((p) => p.kind === "error");
-    expect(errors.map((e) => e.message)).toEqual([
-      "docs/adr/graph/beta.md does not exist; regenerate the ADR index (pnpm adr:regenerate).",
-    ]);
+    const problems = check(dir);
+    expect(problems.filter((p) => p.kind === "error")).toEqual([]);
+    expect(
+      problems.some(
+        (p) => p.kind === "warning" && p.message.includes("graph/beta.md does not exist yet"),
+      ),
+    ).toBe(true);
   });
 });

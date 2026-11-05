@@ -10,8 +10,8 @@ import { resolve } from "node:path";
 //     back-ref pointing at a concept anchor (or `N/A`).
 // The two directions must agree.
 // Each README topic section also links its slice of the generated index
-// (`effective.md#<topic>`, `graph/<topic>.md`), and those targets must exist
-// (Issue #3595).
+// (`effective.md#<topic>`, `graph/<topic>.md`); a target the generator has not
+// written yet is a warning (Issue #3595).
 
 export interface Problem {
   kind: "error" | "warning";
@@ -267,16 +267,19 @@ export function check(repoRoot: string): Problem[] {
         });
       }
     }
+    // Warnings, not errors: the generator only emits a topic once it has an
+    // accepted ADR, and ADR PRs leave the generated files to the daily
+    // regeneration PR (ADR-3416), so a PR that adds a topic is briefly ahead.
     if (!effectiveTopics.has(topic)) {
       problems.push({
-        kind: "error",
-        message: `${EFFECTIVE_PATH} has no "## ${topic}" heading; regenerate the ADR index (pnpm adr:regenerate).`,
+        kind: "warning",
+        message: `${EFFECTIVE_PATH} has no "## ${topic}" heading yet; it appears once \`${topic}\` has an accepted ADR and the ADR index is regenerated.`,
       });
     }
     if (!existsSync(resolve(repoRoot, GRAPH_DIR, `${topic}.md`))) {
       problems.push({
-        kind: "error",
-        message: `${GRAPH_DIR}/${topic}.md does not exist; regenerate the ADR index (pnpm adr:regenerate).`,
+        kind: "warning",
+        message: `${GRAPH_DIR}/${topic}.md does not exist yet; it appears once \`${topic}\` has an ADR and the ADR index is regenerated.`,
       });
     }
   }
