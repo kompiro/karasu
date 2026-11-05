@@ -89,11 +89,13 @@ describe("unit-test reach policy (Issue #3590)", () => {
     expect(named.size).toBeGreaterThanOrEqual(6);
   });
 
-  it("gives every vitest package a test:coverage script", () => {
-    const missing = vitestPackages
-      .filter((p) => p.scripts?.["test:coverage"] === undefined)
-      .map((p) => p.name);
-    expect(missing).toEqual([]);
+  it("gives every vitest package a test:coverage script that runs vitest", () => {
+    // Existence is not enough: a script reduced to `echo skipped` keeps the
+    // root command green while the Check job runs none of that package's tests.
+    const notVitest = vitestPackages
+      .filter((p) => !/^vitest run\b/.test(p.scripts?.["test:coverage"] ?? ""))
+      .map((p) => `${p.name}: ${p.scripts?.["test:coverage"] ?? "(missing)"}`);
+    expect(notVitest).toEqual([]);
   });
 
   it("names every vitest package in the root test:coverage", () => {
@@ -103,6 +105,7 @@ describe("unit-test reach policy (Issue #3590)", () => {
   it("keeps scripts/ in the root test:coverage", () => {
     // `scripts/` is not a workspace package, so the scan above never sees it.
     expect(rootTestCoverage).toContain("pnpm run test:scripts");
+    expect(readPackage("package.json").scripts?.["test:scripts"]).toMatch(/^vitest run\b/);
   });
 
   it("names a workflow for every package whose tests use another runner", () => {
