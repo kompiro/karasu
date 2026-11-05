@@ -34,7 +34,7 @@ export interface Scene {
  * What a step asks the visitor to do, as data, so a test can hold the node it
  * names against the sample (#3599). A step that asks for nothing has none.
  */
-export type StepCompletion =
+type StepCompletion =
   /** Drilled into `node` in that view: the view path holds it. */
   | { kind: "drilled"; view: "system"; node: string }
   /** The app is showing it now. */
