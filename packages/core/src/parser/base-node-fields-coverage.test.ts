@@ -23,6 +23,7 @@ import type {
   BaseNodeFields,
   ClientNode,
   DatabaseNode,
+  EntityNode,
   KrsFile,
   KrsNode,
   QueueGroupNode,
@@ -116,7 +117,11 @@ function renderLabelBlock(mods: FieldModifiers): string {
   return lines.length > 0 ? `\n${lines.join("\n")}\n` : "";
 }
 
-const KIND_FIXTURES: readonly KindFixture[] = [
+// `satisfies` (not a type annotation) keeps each entry's literal `kind`, so the
+// exhaustiveness contract below sees the kinds actually listed. Annotating the
+// array as `readonly KindFixture[]` widened every entry to `KrsNode["kind"]` and
+// made the contract hold whatever the array held (#3589).
+const KIND_FIXTURES = [
   {
     kind: "system",
     source: (mods) => `system Sys${renderTagAnnotationSuffix(mods)} {${renderLabelBlock(mods)}}`,
@@ -139,6 +144,14 @@ const KIND_FIXTURES: readonly KindFixture[] = [
   usecase Uc${renderTagAnnotationSuffix(mods)} {${renderLabelBlock(mods)}}
 }`,
     extract: (file) => file.domains[0].children[0] as UsecaseNode,
+  },
+  {
+    kind: "entity",
+    source: (mods) =>
+      `domain Dom {
+  entity Ent${renderTagAnnotationSuffix(mods)} {${renderLabelBlock(mods)}}
+}`,
+    extract: (file) => file.domains[0].children[0] as EntityNode,
   },
   {
     kind: "resource",
@@ -206,13 +219,19 @@ const KIND_FIXTURES: readonly KindFixture[] = [
 }`,
     extract: (file) => file.storages[0].children[0],
   },
-];
+] as const satisfies readonly KindFixture[];
 
 // Compile-time exhaustiveness: every kind in KrsNode["kind"] must appear in
 // KIND_FIXTURES. We enforce this via a typed Record of kind → boolean.
 type _Covered = (typeof KIND_FIXTURES)[number]["kind"];
 const _kindExhaustivenessContract: Equal<_Covered, KrsNode["kind"]> = true;
 void _kindExhaustivenessContract;
+
+// Fences the contract itself: an entry's `kind` must stay its literal. If the
+// array is annotated again (or `kind` widened another way), this fails to
+// type-check instead of the contract above silently holding for any array.
+const _kindStaysLiteral: Equal<(typeof KIND_FIXTURES)[0]["kind"], "system"> = true;
+void _kindStaysLiteral;
 
 // ─── Per-field default & set values ────────────────────────────────────────
 
