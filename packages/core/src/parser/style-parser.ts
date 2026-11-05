@@ -280,9 +280,10 @@ export class StyleParser {
       } else {
         // An author id is an identifier; a literal or `#db` names an endpoint
         // and needs the arrow.
-        if (first.type !== TokenType.Identifier || first.value.startsWith("#")) {
-          this.expect(TokenType.Arrow);
-        }
+        const endpointOnly =
+          first.type === TokenType.StringLiteral ||
+          (first.type === TokenType.Identifier && first.value.startsWith("#"));
+        if (endpointOnly) this.expect(TokenType.Arrow);
         selector.edgeId = first.value;
         lastToken = first;
       }

@@ -323,6 +323,12 @@ edge#OrderDB.OrderTable->Logger { color: #EF4444; }
       expect(diagnostics[0].params).toMatchObject({ expected: "Arrow" });
     });
 
+    it("reports a missing id once", () => {
+      expect(parseOne("edge#").diagnostics.map((d) => d.params)).toEqual([
+        { expected: "Identifier", got: "LeftBrace", value: "{" },
+      ]);
+    });
+
     it("reads [from=] / [to=] string literals as the endpoint value", () => {
       const { diagnostics, selector } = parseOne('edge[from="a b"][to="b->c"]');
       expect(diagnostics).toEqual([]);

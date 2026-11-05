@@ -271,7 +271,6 @@ system S {
   service a {}
   service c {}
   "a b" -> c "reads"
-  "a->b" -> c "reads"
   a -> "b->c" "writes"
   "a-" -> c "calls"
   a --> c "notifies"
@@ -280,10 +279,14 @@ system S {
 
 ```css
 edge#"a b"->c  { color: #00FF00; }       /* 空白を含む端点 */
-edge#"a->b"->c { color: #3B82F6; }       /* 2 本はもう同じ base にならない */
-edge#a->"b->c" { color: #F59E0B; }
+edge#a->"b->c" { color: #F59E0B; }       /* 端点の中の -> */
 edge#"a-"->c   { stroke-style: dashed; } /* sync。async の a-->c とは別 */
 ```
+
+`"a->b" -> c` と `a -> "b->c"` は別々の base（`"a->b"->c` と `a->"b->c"`）になるので、
+この組に warning は出なくなった。ただし [#3481](https://github.com/kompiro/karasu/issues/3481)
+が直るまでは、2 本が同じビューにあると解決済みのスタイルを 1 つ共有するので、片方への rule が
+両方に描かれる。
 
 パーサも同じ規則で base を正規化するので、不要な引用符（`edge#"a"->c`）は
 `edge#a->c` と同じセレクタになり、空白を挟んだ `edge#a- -> c` は

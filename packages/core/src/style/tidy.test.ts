@@ -277,6 +277,8 @@ describe("tidyStyleSheet — quoted edge endpoints round-trip (#3480)", () => {
     ["edge#a- -> c", 'edge#"a-"->c'],
     ['edge[from="a b"]', 'edge[from="a b"]'],
     ['edge[to="b->c"][async]', 'edge[to="b->c"][async]'],
+    ['edge[from=""]', 'edge[from=""]'],
+    ['edge[to=""]', 'edge[to=""]'],
   ])("formats %s as %s", (selector, formatted) => {
     expect(tidyStyleSheet(`${selector} { color: red; }\n`).output).toBe(
       `${formatted} {\n  color: red;\n}\n`,

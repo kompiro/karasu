@@ -282,7 +282,6 @@ system S {
   service a {}
   service c {}
   "a b" -> c "reads"
-  "a->b" -> c "reads"
   a -> "b->c" "writes"
   "a-" -> c "calls"
   a --> c "notifies"
@@ -291,10 +290,15 @@ system S {
 
 ```css
 edge#"a b"->c  { color: #00FF00; }       /* endpoint with a space */
-edge#"a->b"->c { color: #3B82F6; }       /* the two edges no longer share a base */
-edge#a->"b->c" { color: #F59E0B; }
+edge#a->"b->c" { color: #F59E0B; }       /* -> inside an endpoint */
 edge#"a-"->c   { stroke-style: dashed; } /* sync, apart from the async a-->c */
 ```
+
+`"a->b" -> c` and `a -> "b->c"` get different bases (`"a->b"->c` and
+`a->"b->c"`), so the warning no longer fires for that pair. Until
+[#3481](https://github.com/kompiro/karasu/issues/3481) is fixed, the two still
+share one resolved style when they are in the same view, so a rule for one of
+them is drawn on both.
 
 The parser normalizes the base the same way, so a needless literal
 (`edge#"a"->c`) is the same selector as `edge#a->c`, and a spaced
