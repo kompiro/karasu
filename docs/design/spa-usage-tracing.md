@@ -127,7 +127,7 @@ SPA（Pages の入口だけで tracer provider を作る）
 
 - 受信用 Worker という維持する面が 1 つ増える
 - Workers Logs の保持期間は短い（7 日という記載を見た。現行の値はスライス A で確認する）。長期の推移は Phase 2 まで見られない
-- OTel Web SDK の分だけバンドルが増える（遅延読み込みで初回表示から外す。サイズはスライス B で測る）
+- OTel Web SDK の分だけバンドルが増える（遅延読み込みで初回表示から外す。上限は置かず、サイズを記録する）
 - 別 origin なので CORS の preflight を受ける
 
 ## 比較
@@ -185,7 +185,8 @@ span の時間はブラウザの時計で測る。完了までの時間は、`to
 
 ### 受信用 Worker の検査
 
-- `Origin` が `https://karasu.kompiro.dev` と完全に一致しなければ 403。preview の origin（`*.karasu.pages.dev`）を許すかは未解決の問いに置く
+- 受信口は別のサブドメイン（例: `karasu-telemetry.kompiro.dev`）に置く。nest と同じ custom domain の形にし、`karasu.kompiro.dev` のパスに Worker の route を当てる形は採らない（Pages の custom domain と同じ host でどちらが先に応答するかを確かめる手間に見合わない）。別 origin なので CORS の preflight に答える
+- `Origin` が `https://karasu.kompiro.dev` か Pages の preview（`https://<名前>.karasu.pages.dev` の 1 段だけ）に一致しなければ 403。Worker が Origin から `deployment`（`production` / `preview`）を付け、SPA の申告は使わない。集計は `production` だけで行い、preview は送信の確認に使う
 - body は上限（例: 64KB）を超えたら 413。OTLP/HTTP JSON 以外は 415
 - 許可リストに無い span 名の span を捨て、許可リストに無い属性を落とす。捨てた件数だけを記録する（捨てた中身は記録しない）
 - 検査で結論が出せない（JSON が壊れているなど）ときは、通すのではなく捨てる
@@ -194,6 +195,7 @@ span の時間はブラウザの時計で測る。完了までの時間は、`to
 ### 告知と opt-out
 
 - `docs/policy/app-telemetry.md` に、集めるもの・集めないもの・保持期間・止め方を書く。許可リストと文書を突き合わせるテストを置く（TPL-1296、ADR-1996 の決定 6 と同じ形）
+- この文書は `nest-data-handling.md` と同じ「事実の記述」として公開し、privacy policy とは呼ばない。個人データを集めないので、送信の開始を #2691 の法務レビューの完了待ちにしない
 - ブラウザが `navigator.globalPrivacyControl === true` または Do Not Track を送っているときは送らない
 - アプリの設定に送信を止めるスイッチを置く。この設定だけは localStorage に書く（止めたことを覚えるため。値は真偽だけで、識別子ではない）
 
@@ -211,7 +213,7 @@ span の時間はブラウザの時計で測る。完了までの時間は、`to
 ### 実装の指針
 
 1. スライス A: 新しい Worker パッケージを作る（nest の `wrangler.toml` を手本に、`workers_dev = false`、custom domain、`[observability] enabled = true`、invocation log を切る）。許可リストは 1 つのモジュールに置き、Worker の検査と文書の突き合わせテストの両方がそこを読む。デプロイは nest と同じく専用の workflow にする
-2. スライス B: `src/main.tsx` で provider を作り、OTel Web SDK と exporter は動的 import で遅延読み込みする。`visibilitychange` で `hidden` になったときに flush する。Chat のクライアントに `openTelemetry: false` を渡す。CSP があれば `connect-src` に受信口を足す
+2. スライス B: `src/main.tsx` で provider を作り、OTel Web SDK と exporter は動的 import で遅延読み込みする。サイズの上限は置かず、遅延読み込みする chunk の gzip サイズを PR に記録する。`visibilitychange` で `hidden` になったときに flush する。Chat のクライアントに `openTelemetry: false` を渡す。CSP があれば `connect-src` に受信口を足す
 3. スライス B のテスト: TPL-3612 のとおり、4 つのビルドの成果物を走査して、受信口の host と SDK の目印が Pages の成果物にだけあることを検査する。`docs/policy/app-telemetry.md` と許可リストの突き合わせテストを置く
 4. AT: `docs/acceptance/` に新規ファイル。TC は:
    - Welcome からツアーを最後まで進めると、`welcome.choice`・`tour.step`・`tour.end` が受信口に届く（受信口をテスト用に差し替えた Playwright で確認する）
@@ -225,10 +227,3 @@ span の時間はブラウザの時計で測る。完了までの時間は、`to
 - 既存ユーザーへの影響: Pages の SPA だけ、遅延読み込みの分のリクエストと送信が増える。serve・VS Code・nest の viewer は変わらない
 - ドキュメント更新: `docs/policy/app-telemetry.md`（新規）、README か docs-site の privacy の記述、PRD #3573 §12 の「測れない」の記述
 - テスト・examples への影響: 成果物検査のテストが増える。examples は変わらない
-
-## 未解決の問い
-
-1. **受信口の host。** 別のサブドメイン（例: `karasu-telemetry.kompiro.dev`）にするか、`karasu.kompiro.dev` のパス（例: `/otel/*`）に Worker の route を当てるか。後者は CORS が要らないが、Pages の custom domain と同じ host に Worker の route を当てたとき、どちらが先に応答するかを確かめる必要がある
-2. **preview の origin を許すか。** `*.karasu.pages.dev` の preview から送られた span を受けると、検証が楽になる代わりに本番の数値に混ざる。受けるなら `deployment` の属性で分ける
-3. **法務レビューの要否。** nest の文書は法務レビューが終わるまで公開しない扱いである（#2691）。本設計は個人データを集めないが、`app-telemetry.md` を公開する前に同じレビューを通すか
-4. **OTel Web SDK のサイズの上限。** 遅延読み込みでも、何 KB（gzip）までなら許すかを決めておく。超えたら、OTLP の JSON を自前で組み立てる小さな exporter に切り替える
