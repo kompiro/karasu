@@ -11,6 +11,7 @@ related_to:
   - ADR-2810
   - ADR-3289
   - ADR-2687
+  - ADR-3169
 assumptions:
   - "grep: tpl.config.json :: \"checklistHeading\": \"チェックリスト\""
   - "grep: package.json :: --source-prefix \\.github"
@@ -89,10 +90,12 @@ TPL のファイルには宣言しない。
 - 状態は生成索引（ADR-3289）の各行と `tpl related <topic> --status` に出る。`tpl checklist` は印ごとに項目を並べる
 - `tpl related` の既定の出力には状態を出さない。既定の出力は Design Doc の「Related TPLs」節に貼る形なので、
   状態を混ぜると導出値の写しが Design Doc に入り、昇格後は本文を変えない ADR（ADR-2687）に固まる
-- 書式の誤った印は、状態の導出では unguarded に数える（守られていない側に倒す）。誤った印を finding にするのは
+- 書式の誤った印は、状態の導出では unguarded に数える（守られていない側に倒す）。導出するコマンドは
+  `--source-prefix` を受けないので、ここで言う書式は位置・後ろの句読点・パスの無い `[guard: ]` だけで、
+  スパンが検査の対象になる形か・ファイルを指すかは `validate` だけが見る。誤った印を finding にするのも
   `validate` だけで、CI がそこで落とすので main には残らない
 - 月次レビューの Issue（`tpl review-body --config tpl.config.json`）は状態ごとに問いを変える。`unguarded` /
-  `partial` には「印の無い項目のうち、ガードにできるものはあるか」、`guarded` には「チェックリストを薄くできるか」、
+  `partial` には「印の無い項目のうち、新しい箇所の違反で赤くなるガードにできるものはあるか」、`guarded` には「チェックリストを薄くできるか」、
   `judgment` には「プログラムで判定できるようになった項目はあるか」
 - 状態は `status: active | deprecated`（ライフサイクル）とは直交する
 
@@ -103,7 +106,7 @@ TPL のファイルには宣言しない。
 
 - 元 bug の箇所や known_consumers だけを固定するテストは `[guard: …]` に書かず、「関連テスト」節に書く。その項目は印なしのまま残る
 - 手で保守する表を回すテストは、新しい箇所が表に入ることを型・表とコードの突き合わせ・導出のどれかが強制しているときだけガードになる
-- 参照先は、CI の step から辿った呼び出しの終点にある、この repo のファイルにする（テストファイルや `scripts/` のスクリプト）。
+- 参照先は、CI の step から辿った呼び出しの終点にある、この repo のファイルにする（テストファイルや、`scripts/`・`packages/*/scripts/` のスクリプト）。
   終点が外部の実行ファイル（`adr validate` など）のときだけ、その step を持つ workflow をガードにし、項目の本文で
   呼ばれるコマンドを名指しする。設定データや外部パッケージの中身はガードではない。このため karasu の
   `pnpm tpl:validate` に `--source-prefix .github` を足した
