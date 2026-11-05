@@ -56,7 +56,7 @@ karasu の `opfs` fixture は `wipe()` / `seed()` を提供しているのに、
 
 E2E テスト / 共通 fixture を追加・修正するとき、以下を確認する:
 
-- [ ] テスト本体が **`page.goto()` 直接呼び出しではなく fixture 経由** でブートしているか（必ず `wipe()` → `seed()` のライフサイクルに乗る）
+- [ ] テスト本体が **`page.goto()` 直接呼び出しではなく fixture 経由** でブートしているか（必ず `wipe()` → `seed()` のライフサイクルに乗る） [guard: `scripts/lint/no-direct-page-goto.test.ts`]
 - [ ] runner 依存の環境値（`navigator.language` / locale / timezone / 認証 token / feature flag / 外部ホストへの通信）が **fixture 側で pin** されているか。i18n 等を意図的に test する spec のみが opt-out できる構造か
 - [ ] テスト終了時に fixture が **状態を破棄** するか（次のテストが前のテストの状態を見ない保証がある）。`afterEach(cleanup)` を含む
 - [ ] flake が `flaky` retry-pass として **隠蔽されていない** か。CI ログで retry 発生数を可視化しているか

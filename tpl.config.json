@@ -3,6 +3,7 @@
   "idFormat": "issue-number",
   "indexFile": "index.md",
   "indexCheck": false,
+  "checklistHeading": "チェックリスト",
   "topics": [
     "core-concepts",
     "parser",

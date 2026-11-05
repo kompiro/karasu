@@ -58,12 +58,12 @@ join しなければ復元できない関係は、議論のテーブルに乗ら
 
 新機能・新統合・新ビューを設計するとき、以下を確認する:
 
-- [ ] この機能は **論理・物理・組織** のいずれかの面を `.krs` 外（issue tracker / ownership registry / IaC / HR システム / 外部 API）に押し出していないか
-- [ ] `realizes`（物理 → 論理）と `owns`（組織 → 論理/物理）の **両端が同じ artifact に居る** 設計になっているか。片方だけ外部 source なら、cross-face link は表現できない
-- [ ] 「便利だから外部から fetch」の誘惑があるとき、それを採用すると Conway / 逆コンウェイ戦略の議論ができなくなる artifact が生まれないか考えたか
-- [ ] 外部システムとの統合は **取り込み（import / abstraction）** にとどめ、参照を外部 source に対する live link にしていないか（取り込み後は `.krs` が source of truth → TPL-1207 と整合）
+- [ ] この機能は **論理・物理・組織** のいずれかの面を `.krs` 外（issue tracker / ownership registry / IaC / HR システム / 外部 API）に押し出していないか [judgment]
+- [ ] `realizes`（物理 → 論理）と `owns`（組織 → 論理/物理）の **両端が同じ artifact に居る** 設計になっているか。片方だけ外部 source なら、cross-face link は表現できない [judgment]
+- [ ] 「便利だから外部から fetch」の誘惑があるとき、それを採用すると Conway / 逆コンウェイ戦略の議論ができなくなる artifact が生まれないか考えたか [judgment]
+- [ ] 外部システムとの統合は **取り込み（import / abstraction）** にとどめ、参照を外部 source に対する live link にしていないか（取り込み後は `.krs` が source of truth → TPL-1207 と整合） [judgment]
 - [ ] サンプル / fixture / e2e に **三面が同居した `.krs`** が含まれているか。論理だけ / 物理だけ / 組織だけのテストでは、cross-face link の壊れが検出できない
-- [ ] AT / DesignDoc で「この機能を使うと、三面の交点（`realizes` / `owns` の通り道）がどう保たれるか」を一文で説明できるか
+- [ ] AT / DesignDoc で「この機能を使うと、三面の交点（`realizes` / `owns` の通り道）がどう保たれるか」を一文で説明できるか [judgment]
 
 ## 既知の対処パターン
 

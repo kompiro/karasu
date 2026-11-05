@@ -45,7 +45,7 @@ publish 前の `npm pack --dry-run`（Tarball Contents）が、配布面の唯�
 
 publish 対象パッケージを追加・変更するとき、以下を確認する:
 
-- [ ] `npm pack --dry-run` の Tarball Contents を実際に確認したか（ソースの存在ではなく tarball の中身で判断する）
+- [ ] `npm pack --dry-run` の Tarball Contents を実際に確認したか（ソースの存在ではなく tarball の中身で判断する） [judgment]
 - [ ] `files` がディレクトリまるごとの glob（`["dist"]`）になっていないか。単一バンドルなら `dist/index.js` のように成果物そのものを列挙する
 - [ ] `bin` / `main` / `module` / `exports` / `types` が指す全ファイルが `files` に含まれているか
 - [ ] tarball にテスト JS（`*.test.js`）・テスト型定義・不要な sourcemap・dev 専用ファイルが含まれていないか

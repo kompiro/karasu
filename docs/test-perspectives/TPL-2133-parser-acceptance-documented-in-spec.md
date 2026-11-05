@@ -53,10 +53,10 @@ positional label（`<kw> <id> "<label>"`）を受理し続け、約 4 ヶ月間�
       `.ja.md`）にその形を記載したか。記載しない受理形を足していないか
 - [ ] construct の受理形を横並びで確かめるとき、spec の記述ではなく**実測**
       （最小 `.krs` を `Parser.parse` に通して diagnostics を見る）を根拠にしたか。
-      #2133 の発見も実測による（issue 本文の測定表）
+      #2133 の発見も実測による（issue 本文の測定表） [judgment]
 - [ ] 決定（ADR）で「form X はやめて form Y にする」と決めたとき、既存 construct に
       form X の残党がないかを keyword 単位の grep と実測で棚卸ししたか。ADR-19 は
-      node kinds だけ直して org 系 4 construct を取り残した
+      node kinds だけ直して org 系 4 construct を取り残した [judgment]
 
 ## 派生元 spec
 

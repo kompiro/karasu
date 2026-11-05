@@ -75,19 +75,19 @@ kind 語彙が色として空洞化していた。deploy 側では `war` の茶�
       **canvas に近い側** / text = その反対端）。地だけ別系統の色になっていないか。
       「低明度が fill」と絶対値で覚えると light テーマで反転して破綻する
 - [ ] `background-color` を設定したなら対の `color` もあるか（[[TPL-1697]]）、
-      その対が両テーマで 4.5:1 以上か
+      その対が両テーマで 4.5:1 以上か [guard: `packages/core/src/builtins/default-style-contrast.test.ts`]
 - [ ] 塗りなしにするなら、`none` ではなく `transparent` を使ったか
-      （`transparent` は painted なのでクリック・ホバーの当たり判定が残る）
+      （`transparent` は painted なのでクリック・ホバーの当たり判定が残る） [guard: `packages/core/src/builtins/default-style-contrast.test.ts`]
 - [ ] 塗りなしにするなら、枠線が**素の canvas / 重ねた boundary tint /
       `@deprecated` の fade 後**の 3 面すべてに対して 3:1 以上か。dark / light を
-      別々に較正したか（規則は同じでも向きが逆になる）
+      別々に較正したか（規則は同じでも向きが逆になる） [guard: `packages/core/src/builtins/default-style-contrast.test.ts`]
 - [ ] 判定から外した fade 状態があるなら、「どんな色でも届かないから外した」と
       理由を書いたか。ガードのしきい値と builtin の opacity 値が**結ばれて**いるか
       （opacity を上げたのにガードが古い α で測り続ける状態を作らない）
 - [ ] 塗りなしにするなら、`background-color` を色として読んでいる描画面を
-      grep したか（`merged["background-color"]` / `style.backgroundColor`）
+      grep したか（`merged["background-color"]` / `style.backgroundColor`） [judgment]
 - [ ] 既存の意味色（diff = amber / `edge[cyclic]` = 赤 / boundary の 6 hues /
-      team = 緑）と**新たな**衝突を作っていないか
+      team = 緑）と**新たな**衝突を作っていないか [judgment]
 
 ## 既知の対処パターン
 

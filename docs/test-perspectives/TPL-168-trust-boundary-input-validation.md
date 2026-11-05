@@ -73,11 +73,11 @@ karasu の `karasu serve` のような HTTP API、VS Code 拡張の message hand
 
 外部入力を受け取る handler を実装・修正するとき、以下を確認する:
 
-- [ ] **trust boundary（HTTP/IPC/CLI/message handler の入口）** を明示的に意識し、入力を「未検証 (tainted)」として扱っているか
+- [ ] **trust boundary（HTTP/IPC/CLI/message handler の入口）** を明示的に意識し、入力を「未検証 (tainted)」として扱っているか [judgment]
 - [ ] path を組み立てる場合、`resolve()` で正規化したうえで **`startsWith(safeDir + sep)`** など bounds check を入れているか。**符号化バリエーション**（URL-encoded `../`, NUL バイト, Windows separator）も拒否されるか
-- [ ] symlink / hardlink によるバイパスの可能性が評価されているか。strict が必要なら `realpath` を取って再検証するか、symlinks 自体を禁止する
+- [ ] symlink / hardlink によるバイパスの可能性が評価されているか。strict が必要なら `realpath` を取って再検証するか、symlinks 自体を禁止する [judgment]
 - [ ] shell / SQL / serialized 文字列を組み立てる場合、**string interpolation ではなく parameterized API** を使っているか（`spawn(cmd, args[])` / prepared statement）
-- [ ] 拒否時の挙動（404 / null 返却 / error throw）が **副作用を起こさず明確** か。silently 別のものを返さないか
+- [ ] 拒否時の挙動（404 / null 返却 / error throw）が **副作用を起こさず明確** か。silently 別のものを返さないか [judgment]
 - [ ] ユーザー由来の URL を `href` / `window.open` / `src` に渡す場合、**スキーム allowlist**（http / https / mailto）を通しているか。escape（XSS 対策のエンコード）はスキームを検証しない別物であり、`javascript:` / `data:` URL は escape を素通りする。WHATWG `new URL()` でパースすればブラウザの href 解釈（大文字小文字・タブ/改行除去）と一致した判定になる
 - [ ] negative test（traversal 試行 / injection 試行 / null byte / 巨大入力）が回帰テストに **必ず 1 件** 含まれているか
 
