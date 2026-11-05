@@ -44,8 +44,9 @@ interface ValidateResult {
 }
 
 /**
- * Runs the validator from the repo root with the repo's own config, so the
- * prefixes under test are the ones `tpl:validate` reads. The root matters
+ * Runs the validator from the repo root with the repo's own config, so these
+ * runs check the same prefixes CI does: a guard under `.github` (#3488) is
+ * reported as outside every prefix when one is missing. The root matters
  * because source paths resolve against the working directory — a fixture run
  * from its own temp directory would report every real path as missing.
  */
@@ -59,7 +60,11 @@ function runTplValidate(tplDir: string): ValidateResult {
 
 let fixtureRoot: string;
 
-/** A TPL that satisfies every other rule, so the only finding can be the body. */
+/**
+ * A TPL that satisfies every other rule, so the only finding can be the body.
+ * The CLI reads the repo's tpl.config.json, whose "checklistHeading" requires a
+ * checklist with at least one item.
+ */
 function writeFixture(body: string): string {
   const dir = mkdtempSync(join(fixtureRoot, "tpl-"));
   writeFileSync(
@@ -84,6 +89,10 @@ function writeFixture(body: string): string {
       "## 観点",
       "",
       body,
+      "",
+      "## チェックリスト",
+      "",
+      "- [ ] fixture item [judgment]",
       "",
     ].join("\n"),
   );
@@ -156,8 +165,27 @@ describe("the check runs where it can stop a merge", () => {
 
     expect(scripts["tpl:validate"]).toContain("--config tpl.config.json");
     expect(scripts["tpl:validate"]).not.toContain("--source-prefix");
-    expect(config.sourcePrefixes).toEqual(
-      expect.arrayContaining(["packages", "scripts", ".github"]),
+    expect(config.sourcePrefixes).toEqual(expect.arrayContaining(["packages", "scripts"]));
+    // A `[guard: …]` may name a workflow when its step runs an external
+    // executable (#3488); without this prefix that guard path goes unchecked.
+    expect(config.sourcePrefixes).toContain(".github");
+  });
+
+  // Without "checklistHeading" tpl-tools reads no item markers: every
+  // `[guard: …]` would go unchecked and no TPL would have a status (#3488).
+  it("turns the checklist marker check on in tpl.config.json", () => {
+    const config = JSON.parse(read("tpl.config.json")) as { checklistHeading?: unknown };
+
+    expect(config.checklistHeading).toBe("チェックリスト");
+  });
+
+  // `tpl review-body` falls back to tpl.config.json in its working directory;
+  // passing it explicitly keeps the per-status questions if the step's
+  // directory ever changes. Without a config it asks only the three common
+  // questions and says nothing about it (#3488).
+  it("passes the config to tpl review-body in the monthly review", () => {
+    expect(read(".github/workflows/tpl-review.yml")).toMatch(
+      /tpl review-body[^\n]*\\\n(?:\s+--[^\n]*\\\n)*\s+--config tpl\.config\.json/,
     );
   });
 

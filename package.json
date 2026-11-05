@@ -56,7 +56,7 @@
     "tpl:related": "tpl related --config tpl.config.json",
     "tpl:changed": "tpl related --config tpl.config.json --base origin/main",
     "tpl:regenerate": "tpl regenerate --config tpl.config.json",
-    "tpl:review:body": "tpl review-body --repo kompiro/karasu",
+    "tpl:review:body": "tpl review-body --repo kompiro/karasu --config tpl.config.json",
     "at:check-coverage": "tsx scripts/acceptance/check-coverage.ts",
     "at:test": "vitest run --config scripts/vitest.config.ts scripts/acceptance",
     "qa:checklist": "tsx scripts/acceptance/generate-qa-checklist.ts",

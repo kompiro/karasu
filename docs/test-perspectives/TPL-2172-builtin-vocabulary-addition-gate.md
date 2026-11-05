@@ -62,11 +62,11 @@ karasu での実例（[#2172](https://github.com/kompiro/karasu/issues/2172)）:
 
 builtin の tag / annotation を追加する PR で:
 
-- [ ] 3 問（register / 既存表現 / 停止規則）それぞれの答えを PR description か ADR に書いている。
-- [ ] 同じ PR で既定描画の効果（`default-style.ts` の badge / shape）が入っており、**light / dark 両シート**、かつ **`appliesTo` に挙げた全 kind** にセレクタがある。
-- [ ] `appliesTo` を必要最小の kind に絞ったうえで、`pnpm gen:reference` を実行し spec 表と `reference-data.ts` が一致している（[TPL-1296](TPL-1296-spec-doc-reference-data-sync.md)）。拡大は後から後方互換にできるが、**縮小は `tag-not-applicable`（#2225）が既存モデルに警告を出すようになるため破壊的**である。縮小するなら `examples/` の applicability フェンス（`examples.test.ts`）が落ちることを先に確認する。
+- [ ] 3 問（register / 既存表現 / 停止規則）それぞれの答えを PR description か ADR に書いている。 [judgment]
+- [ ] 同じ PR で既定描画の効果（`default-style.ts` の badge / shape）が入っており、**light / dark 両シート**、かつ **`appliesTo` に挙げた全 kind** にセレクタがある。 [guard: `packages/core/src/builtins/default-style.test.ts`]
+- [ ] `appliesTo` を必要最小の kind に絞ったうえで、`pnpm gen:reference` を実行し spec 表と `reference-data.ts` が一致している（[TPL-1296](TPL-1296-spec-doc-reference-data-sync.md)）。拡大は後から後方互換にできるが、**縮小は `tag-not-applicable`（#2225）が既存モデルに警告を出すようになるため破壊的**である。縮小するなら `examples/` の applicability フェンス（`examples.test.ts`）が落ちることを先に確認する。 [guard: `scripts/reference/gen-docs.test.ts`, `packages/core/src/examples.test.ts`]
 - [ ] 一緒に検討して**却下した候補とその理由**が ADR に列挙され、却下が挙動として現れている（引き続き `tag-not-builtin` / `annotation-not-builtin` の警告対象であることをテストする）。
-- [ ] その名前が今日 inert に受理されている（warning が出ていた）ことによる挙動変化を changeset に書いている。
+- [ ] その名前が今日 inert に受理されている（warning が出ていた）ことによる挙動変化を changeset に書いている。 [judgment]
 
 ## 関連テスト
 

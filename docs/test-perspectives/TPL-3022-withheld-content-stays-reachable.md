@@ -77,7 +77,7 @@ ADR-1554 が context menu でのラベル省略を却下した理由も同じ形
 authored な情報を省略・保留する PR で:
 
 - [ ] 省略・保留が起きる各 render surface について、全文に到達する経路を PR に列挙した
-      （app / 静的 SVG / all-layers / VS Code preview）
+      （app / 静的 SVG / all-layers / VS Code preview） [judgment]
 - [ ] 省略・保留した要素が全文を機械的に持つことを、surface ごとにテストで assert している
       （例: 保留した edge が `data-edge-label` か `<title>` を持つ）
 - [ ] 到達した先（tooltip・パネル・menu）が省略関数を通らず、全文を折り返して出すことを

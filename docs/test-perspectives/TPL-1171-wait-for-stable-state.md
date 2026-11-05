@@ -54,10 +54,10 @@ E2E で「操作 → 再描画 → assertion」のシーケンスを書くとき
 
 E2E で UI 状態の assertion / 連鎖操作を書くとき、以下を確認する:
 
-- [ ] click / nav / fill の **直前と直後** に「想定 state に到達した」signal を待っているか（`waitForURL` / `getByRole(..., { name }).waitFor()` / 特定要素の `toBeVisible()` など）
+- [ ] click / nav / fill の **直前と直後** に「想定 state に到達した」signal を待っているか（`waitForURL` / `getByRole(..., { name }).waitFor()` / 特定要素の `toBeVisible()` など） [judgment]
 - [ ] auto-retry が効く assertion（`toHaveCount` / `toHaveClass` / `toHaveText`）で **timeout を伸ばさず** に通るか。伸ばさないと通らないなら待機点が間違っている可能性が高い
 - [ ] Monaco Editor 等の async mount コンポーネントに対しては、**fixture が「ready」を保証する helper** を提供しているか（直接 keystroke を送らない）
-- [ ] 「class が付いた瞬間」のような **transient な state** を assertion せず、「**stable な後続状態**」（次の操作が enabled になっている等）で代替できないか検討したか
+- [ ] 「class が付いた瞬間」のような **transient な state** を assertion せず、「**stable な後続状態**」（次の操作が enabled になっている等）で代替できないか検討したか [judgment]
 - [ ] retry を 2 → 1 → 0 と段階的に絞ったときに通り続けるか。`retries=0` で通らないテストは **隠れ flake** を抱えている
 
 ## 既知の対処パターン

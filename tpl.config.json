@@ -4,6 +4,7 @@
   "indexFile": "index.md",
   "indexCheck": false,
   "sourcePrefixes": ["packages", "scripts", ".github"],
+  "checklistHeading": "チェックリスト",
   "topics": [
     "core-concepts",
     "parser",
