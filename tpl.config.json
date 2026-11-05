@@ -3,6 +3,7 @@
   "idFormat": "issue-number",
   "indexFile": "index.md",
   "indexCheck": false,
+  "sourcePrefixes": ["packages", "scripts", ".github"],
   "topics": [
     "core-concepts",
     "parser",
