@@ -34,7 +34,7 @@ PRD #3573 §12 は first-run の成功指標を置いた（Welcome からデモ�
 | Pages Functions | `/s`（OGP の共有ページ）、`/render`（SVG / PNG）、bare route（`/<owner>/<repo>`）、`/r`（旧 prefix の redirect）。どれもクエリかパスにモデルか repo 名を持つ |
 | nest | `karasu-nest.kompiro.dev` の別 Worker。`[observability] enabled = true`。Workers Paid プラン |
 | `packages/app` から作るビルド | Pages の SPA（`index.html`）、serve（`vite.serve.config.ts`）、VS Code の webview（`vite.vscode-webview.config.ts`）、nest の viewer（`vite.viewer.config.ts`） |
-| 同じ成果物が動く場所 | `packages/app/dist`（Pages の成果物）は、Pages のほかに monorepo の `karasu serve`（`packages/cli/src/serve.ts` の `findAppDistDir`）、`vite dev`、Playwright の E2E（`vite build && vite preview`）でも動く。入口の `main.tsx` も同じ |
+| 同じ入口が動く場所 | `packages/app/dist`（Pages の成果物）は、Pages のほかに monorepo の `karasu serve`（`packages/cli/src/serve.ts` の `findAppDistDir`）と、CI の Playwright の E2E（`vite build && vite preview`）でも動く。`vite dev`（手元の E2E もこれ）は `dist` ではなくソースを配信するが、入口は同じ `main.tsx` である |
 | OTel の依存 | `@opentelemetry/api` 1.9.1 が `@anthropic-ai/sdk` 1.3.0 経由ですでに `packages/app` の依存木にある。SDK はクライアントに tracer provider を渡さないとき、グローバルの provider を使う。グローバルに何も登録されていなければ no-op で、クライアントの `openTelemetry: false` でも止められる（ADR-3381、ADR-3575） |
 | first-run の状態 | Welcome を閉じたこととツアーの進み具合を localStorage に持つ（`welcome-gate.ts`、`tour-progress.ts`）。テレメトリとは無関係 |
 | 集めるものの文書 | nest には `docs/policy/nest-data-handling.md` と `nest-privacy.md`（草案）がある。後者は「アクセス解析・トラッキング目的の第三者スクリプトを持たない」と書いている。app にはまだ無い |
@@ -46,7 +46,7 @@ PRD #3573 §12 は first-run の成功指標を置いた（Welcome からデモ�
 - **モデルの中身を送らない。** ノード名、`.krs` の本文、URL のクエリと fragment、repo 名、例外のメッセージとスタックを送らない。共有のペイロードは fragment（`#s=`）か `/s?s=` のクエリにあるので、URL をそのまま送る仕組みは使えない
 - **受信口は Pages app の外に置く。** ADR-1990 決定 5（ADR-2578 が引き継ぐ）は、state と secret を静的な Pages app に同居させないと決めている。Phase 2 で送信先の API キーを持つので、受信口は secret を持つ
 - **nest にも同居させない。** nest の origin は `__Host-` のセッション cookie を持つ（ADR-3020）。匿名の受信口を同じ origin に置くと、cookie が付いた要求を受け取る面が増える。デプロイとロールバックも nest と分けたい（ADR-2578 が nest を Pages から分けた理由と同じ）
-- **送るのは本番と preview の Pages の SPA だけ。** serve と VS Code はローカルのモデルを開く面で、外へ送らない。nest の viewer は、`nest-privacy.md` が持たないと書いている。monorepo の `karasu serve`・`vite dev`・E2E は Pages と同じ成果物を動かすので、成果物の検査（TPL-3612）だけでは止まらない。実行時の判定も要る
+- **送るのは本番と preview の Pages の SPA だけ。** serve と VS Code はローカルのモデルを開く面で、外へ送らない。nest の viewer は、`nest-privacy.md` が持たないと書いている。monorepo の `karasu serve`・`vite dev`・E2E は Pages と同じ入口を動かすので、成果物の検査（TPL-3612）だけでは止まらない。実行時の判定も要る
 - **送信先は今は決めない。** Phase 1 は Cloudflare の中で完結させ、送信先を後から選んでも SPA を変えずに済む形にする
 - **Chat の span を拾わない。** Chat（`useChatSession`）はモデルをプロンプトに入れて `@anthropic-ai/sdk` を呼ぶ。グローバルな tracer provider を登録すると、SDK がその呼び出しの span を作る
 - Out of scope: nest の Worker 自身の tracing（Cloudflare の Workers tracing の設定だけで済むので別 Issue）、再訪の計測（識別しない以上、測れない）
@@ -173,17 +173,27 @@ span 名は 7 種類に決まっていて（後述の許可リスト）、親子
 
 次の 3 つがすべて成り立つときだけ送る。どれかが欠ければ送信モジュールは何もしない。
 
-1. **ビルド時**: `deploy.yml` と preview の workflow だけが、受信口の URL を `import.meta.env` で渡す。手元の `pnpm build`・`vite dev`・monorepo の `karasu serve` が使う `dist` は URL を持たない
+1. **ビルド時**: `deploy.yml` と `preview.yml` だけが、受信口の URL を `import.meta.env` で渡す。`spike-preview.yml`（同じ Pages project に PR なしで deploy する）には渡さない。手元の `pnpm build` の `dist`（monorepo の `karasu serve` が使う）と `vite dev` も URL を持たない
 2. **実行時**: `location.origin` が `https://karasu.kompiro.dev` か Pages の preview（`https://<名前>.karasu.pages.dev` の 1 段だけ）に一致する。誤って URL 付きの `dist` を手元で配信しても送らない
 3. **利用者**: GPC（`navigator.globalPrivacyControl === true`）も Do Not Track も無く、アプリの設定で送信を止めていない
 
-serve・VS Code・viewer の入口は送信モジュールを import しない。E2E で送信を確かめるときだけ、テスト用のビルド設定が受信口の URL をスタブに、許可する origin を E2E の host に差し替える。
+加えて、reference の pop-out（`?reference`。`mount-app.tsx` が同じ入口で描く別ウィンドウ）では送らない。送ると 1 回の利用が 2 回の訪問に数えられる。
+
+E2E で送信を確かめるときだけ、テスト用のビルド設定が受信口の URL をスタブに、許可する origin を E2E の host に差し替える。
+
+### 共有コードとの継ぎ目
+
+イベントを出すのは共有のコードである（`FirstRunExperience` は `ProjectModeApp` が描き、view の切り替え・共有・描画も serve と共有する `App` のコードにある）。共有のコードは送信モジュールを import せず、何もしない既定の実装を持つ継ぎ目（例: `TelemetrySink` の型と no-op）だけを使う。
+
+- Pages の入口 `main.tsx` だけが送信モジュールを import し、`mountApp({ telemetry })` で本物の実装を渡す
+- `serve-main.tsx`・VS Code の webview・viewer の入口は何も渡さない。継ぎ目は no-op のまま
+- 成果物の検査（TPL-3612）が目印にするのは送信モジュールで、継ぎ目ではない。継ぎ目はどのビルドにも入ってよい
 
 ### ユーザーを識別しないための決め事
 
 | 扱い | 決め事 |
 | --- | --- |
-| 1 回の訪問の束ね方 | 読み込み時に trace id と訪問の span id を乱数で作り、メモリにだけ持つ。`app.visit` の span は読み込み時にすぐ閉じて送り、以降の span はすべて同じ trace id で、親をこの訪問の span id にする。タブを閉じれば消える |
+| 1 回の訪問の束ね方 | 読み込み時に trace id と訪問の span id を乱数で作り、メモリにだけ持つ。`app.visit` の span は読み込み時にすぐ閉じ、最初の送信に含める。以降の span はすべて同じ trace id で、親をこの訪問の span id にする。タブを閉じれば消える |
 | ツアーが再読み込みをまたぐとき | 新しい訪問として数え、ツアーのステップの span に `resumed: true` を付ける。開始時刻を保存して訪問をつなぐことはしない |
 | 数値の属性 | ノード数・エッジ数は 2 の累乗の幅（`1-2`、`3-4`、`5-8`…）に丸める。正確な数は特定の共有モデルの目印になりうる |
 | 例外 | span に例外を記録しない（メッセージとスタックにノード名や `.krs` が入りうる）。失敗は `outcome: error` の列挙値だけで表す |
@@ -192,11 +202,12 @@ serve・VS Code・viewer の入口は送信モジュールを import しない�
 
 ### イベントの許可リスト（初版）
 
-span 名と属性は Worker の許可リストに載せたものだけを通す。属性の値は列挙値か、丸めた数値か、小さな整数に限る。下は §12 から逆算した初版で、`view` と `kind` の値の集合はスライス B でコードから確定する。
+span 名と属性は Worker の許可リストに載せたものだけを通す。属性の値は列挙値か、丸めた数値か、小さな整数に限る。下は §12 から逆算した初版である。`view` と `kind` の値の集合はスライス A でコード（view の種類と共有の操作の定義）から確定し、Worker を出す前に許可リストに入れる。
 
 | span 名 | 属性 | §12 の指標 |
 | --- | --- | --- |
-| `app.visit` | `entry`（`welcome` / `deep_link` / `share` / `permalink` / `direct`）、`locale`（`ja` / `en`） | 母数 |
+| `app.visit` | `entry`（URL の形で分ける。`share`: `#s=`、`permalink`: bare route（`/<owner>/<repo>`）、`deep_link`: `?example`・`?krs`・`#krs-`（`welcome-gate.ts` の `hasDeepLink` から `#s=` を除いたもの）、`direct`: そのどれでもない）、`locale`（`ja` / `en`） | 母数 |
+| `welcome.shown` | `trigger`（`first_visit` / `command`。後者はコマンドの `view.showWelcome`） | Welcome からデモを始める率の分母（`first_visit` だけ） |
 | `welcome.choice` | `choice`（`understand` / `design` / `evolve` / `editor`。Esc と外側のクリックも `editor`、`WelcomeDialog.tsx` の `WelcomeChoice`） | Welcome からデモを始める率 |
 | `tour.step` | `tour`（`service-split`）、`step`（整数）、`outcome`（`completed` / `skipped` / `left`）、`resumed`（真偽） | 完了率・完了までの時間 |
 | `tour.end` | `tour`、`outcome`（`completed` / `abandoned`）、`steps_done`（整数）、`elapsed_s`（ツアーの開始からの秒数、整数）、`resumed`（真偽） | 完了率・完了までの時間 |
@@ -208,11 +219,13 @@ span の時間はブラウザの時計で測る。完了までの時間は、`ou
 
 ### 受信用 Worker の検査と組み立て直し
 
-- 受信口は別のサブドメイン（例: `karasu-telemetry.kompiro.dev`）に置く。nest と同じ custom domain の形にし、`karasu.kompiro.dev` のパスに Worker の route を当てる形は採らない（Pages の custom domain と同じ host でどちらが先に応答するかを確かめる手間に見合わない）。別 origin なので CORS の preflight に答える
-- `Origin` が本番か preview の origin（上の条件 2 と同じ集合）に一致しなければ 403。Worker が Origin から `deployment`（`production` / `preview`）を付け、SPA の申告は使わない。集計は `production` だけで行い、preview は送信の確認に使う
-- **Origin の検査は絞り込みであって認証ではない。** ブラウザの外からは Origin を偽れるので、偽の span は送れる。数が水増しされうることは受け入れる（ADR-2262 がリクエスト受付のカウンタで受け入れたのと同じ理由で、水増しのコストは金銭ではなく数値の質にしか効かない）。量で費用が膨らむのは、Workers の rate limiting binding で止める。rate limit の鍵には接続元の IP をメモリ上で使うが、ログにも保存先にも書かない
-- body は上限（例: 64KB）を超えたら 413。OTLP/HTTP JSON 以外は 415
+- 受信口は別のサブドメイン（例: `karasu-telemetry.kompiro.dev`）に置く。nest と同じ custom domain の形にし、`karasu.kompiro.dev` のパスに Worker の route を当てる形は採らない（Pages の custom domain と同じ host でどちらが先に応答するかを確かめる手間に見合わない）
+- **SPA は body を `Content-Type: text/plain` で送る。** 中身は OTLP/JSON だが、`text/plain` の POST は CORS の preflight を伴わない単純な要求なので、ページを離れる瞬間の keepalive の送信が preflight の往復で落ちることがない。Worker は `text/plain` と `application/json` だけを受け、ほかは 415。Phase 2 で送信先へ転送するときは `application/json` を付け直す
+- `Origin` が本番か preview の origin（上の条件 2 と同じ集合）に一致しなければ 403。Worker が Origin から `deployment`（`production` / `preview`）を付け、SPA の申告は使わない。集計は `production` だけで行い、preview（spike の origin も同じ形に見える）の span は送信の確認にだけ使って、集計には入れない
+- **Origin の検査は絞り込みであって認証ではない。** ブラウザの外からは Origin を偽れるので、偽の span を `production` として送れる。数値が汚されうることは受け入れる。指標は判断の材料で、ADR-2262 のカウンタと違って人の判断を通さずに数字として読まれるので、数字の急な変化は偽の span を疑ってから読む。費用が膨らむのは、Workers の rate limiting binding で止める。rate limit の鍵には接続元の IP を使い、Cloudflare の rate limit の仕組みが短い時間窓の計数にだけ使う。Worker はそれをログにも保存先にも書かない
+- body は上限（例: 64KB）を超えたら 413
 - **受け取った body をそのまま通さず、許可した項目だけで span を組み立て直す。** 残すのは span 名・trace id・span id・親の span id・開始と終了の時刻・許可リストの属性だけである。resource の属性（`service.*`、`telemetry.sdk.*`、ブラウザの検出器が足すもの）、scope、span の event（例外の記録を含む）、link、`status.message` は捨てる。resource は Worker が固定の値（`service.name` と `deployment`）で付け直す。Phase 2 の転送も、この組み立て直した span だけを送る
+- **鍵だけでなく値も検査する。** 列挙の属性は値が集合に入っているか、整数は型と範囲、丸めた幅は決めた幅の集合、真偽は型、trace id と span id は 32 桁と 16 桁の 16 進、時刻は数値であるかを見る。合わない属性は落とし、id か時刻が合わない span は捨てる。許可した鍵にモデルの文字列を入れても、ここで落ちる
 - 許可リストに無い span 名の span と、許可リストに無い属性は捨てる。捨てた件数だけを記録する（捨てた中身は記録しない）
 - 検査で結論が出せない（JSON が壊れているなど）ときは、通すのではなく捨てる
 - Phase 1 では span 1 つを `console.log({ span, attrs, duration_ms, trace, deployment })` の 1 行にする。Query Builder で `span` ごとに数え、`trace` で 1 回の訪問を束ねる
@@ -220,7 +233,7 @@ span の時間はブラウザの時計で測る。完了までの時間は、`ou
 ### 告知と opt-out
 
 - `docs/policy/app-telemetry.md` に、集めるもの・集めないもの・保持期間・止め方を書く。許可リストと文書を突き合わせるテストを置く（TPL-1296、ADR-1996 の決定 6 と同じ形）
-- 同じ文書に、**Cloudflare が通信の途中で接続元の IP を扱うこと**、受信用 Worker が IP を rate limit の鍵としてだけメモリ上で使い、記録しないことを書く。Phase 2 で第三者の送信先に転送するときは、その送信先を同じ文書に足してから始める
+- 同じ文書に、**Cloudflare が通信の途中で接続元の IP を扱うこと**、受信用 Worker が IP を rate limit の鍵としてだけ使い（Cloudflare の rate limit の仕組みが短い時間窓で数える）、記録しないことを書く。Phase 2 で第三者の送信先に転送するときは、その送信先を同じ文書に足してから始める
 - アプリの設定に送信を止めるスイッチを置く。この設定だけは localStorage に書く（止めたことを覚えるため。値は真偽だけで、識別子ではない）
 - この文書は `nest-data-handling.md` と同じ「事実の記述」として公開し、privacy policy とは呼ばない。送信の開始を #2691 の法務レビューの完了待ちにしない（kompiro の判断）。拠りどころは、ファーストパーティで、利用者を識別せず、集計の計測だけに使い、告知と止める手段がある計測であること（CNIL が同意なしで認める計測と同じ条件）。端末からの送信そのものに及ぶ規制（ePrivacy 5(3) の読み方）があるので、この条件のどれかを外す変更（識別子を足す、計測以外に使う、第三者に生のまま渡す、止める手段を外す）は #2691 のレビューに回す。これは法的助言ではない
 
@@ -237,10 +250,13 @@ span の時間はブラウザの時計で測る。完了までの時間は、`ou
 
 ### 実装の指針
 
-1. スライス A: 新しい Worker パッケージを作る（nest の `wrangler.toml` を手本に、`workers_dev = false`、custom domain、`[observability] enabled = true`、invocation log を切る、rate limiting binding）。許可リストは 1 つのモジュールに置き、Worker の検査と文書の突き合わせテストの両方がそこを読む。組み立て直しのテストは、resource の属性・event・link・`status.message`・許可していない属性を入れた body から、それらが消えることを確かめる。デプロイは nest と同じく専用の workflow にする
-2. スライス B: 送信モジュール（例: `src/telemetry/`）を `src/main.tsx` からだけ import する。上の 3 つの条件を満たさなければ何もしない。たまった span は、一定の件数か一定の時間（例: 10 秒）で送り、`visibilitychange` で `hidden` になったときにも送る。送信には `fetch(..., { keepalive: true })` を使う。ページを離れた後も要求が続くが、keepalive の body は合計 64KB までなので、こまめに送って 1 回の body を小さく保つ。送れなかった span を localStorage に貯めて次の訪問で送ることはしない（識別子と同じく、端末に残る記録を増やさないため）。最後の span が落ちることは受け入れる。Chat のクライアントにも `openTelemetry: false` を渡す（tracer provider は作らないが、将来 5a に移ったときの備え）。CSP を足すときは `connect-src` に受信口を入れる
+1. スライス A: 新しい Worker パッケージを作る（nest の `wrangler.toml` を手本に、`workers_dev = false`、custom domain、`[observability] enabled = true`、invocation log を切る、rate limiting binding）。許可リストは 1 つのモジュールに置き、Worker の検査と文書の突き合わせテストの両方がそこを読む。組み立て直しのテストは、resource の属性・event・link・`status.message`・許可していない属性を入れた body から、それらが消えることを確かめる。許可した鍵（`view` など）にノード名を入れた body と、形の合わない id を持つ body から、その属性と span が消えることも確かめる。デプロイは nest と同じく専用の workflow にする
+2. スライス B: 送信モジュール（例: `src/telemetry/sender.ts`）を `src/main.tsx` からだけ import し、上の「共有コードとの継ぎ目」のとおり `mountApp` に渡す。上の 3 つの条件を満たさないとき、または `?reference` のときは何もしない。たまった span は、一定の件数か一定の時間（例: 10 秒）で送り、`visibilitychange` で `hidden` になったときにも送る。送信には `fetch(..., { keepalive: true })` を使う。ページを離れた後も要求が続くが、keepalive の body は合計 64KB までなので、こまめに送って 1 回の body を小さく保つ。送れなかった span を localStorage に貯めて次の訪問で送ることはしない（識別子と同じく、端末に残る記録を増やさないため）。最後の span が落ちることは受け入れる。E2E は Chromium だけなので、ほかのブラウザでページを離れるときに落ちる分も受け入れる。Chat のクライアントにも `openTelemetry: false` を渡す（tracer provider は作らないが、将来 5a に移ったときの備え）。CSP を足すときは `connect-src` に受信口を入れる
 3. スライス B のテスト:
-   - TPL-3612 のとおり、4 つのビルドの成果物を検査する。目印は受信口の host の文字列と、送信モジュールのモジュール id。後者は `rejectMonaco`（`vite.serve.config.ts`）と同じく `generateBundle` で `getModuleIds()` を見る。minify でパッケージ名は残らないので、パッケージ名の文字列では探さない。`@opentelemetry/api` は Chat 経由で各ビルドに入りうるので、目印に使わない
+   - TPL-3612 のとおり、4 つのビルドの成果物を両方向で検査する。目印は 2 つ:
+     - 送信モジュールのモジュール id。`rejectMonaco`（`vite.serve.config.ts`）と同じく `generateBundle` で `getModuleIds()` を見て、serve・VS Code の webview・viewer のビルドに入っていたら build を落とす。Pages のビルドには入っていることをテストで確かめる。これは受信口の URL の有無に関係なく、ふつうの PR の CI で働く
+     - 受信口の host の文字列。URL は `deploy.yml` と `preview.yml` でしか渡さないので、ふつうのビルドではどの成果物にも無い。テストで 4 つの設定をダミーの URL を渡してビルドし、host が `dist/` にだけ現れることを確かめる
+     - serve・VS Code の webview・viewer は minify するので、パッケージ名の文字列では探さない（Pages のビルドは `minify: false`）。`@opentelemetry/api` は Chat 経由で各ビルドに入りうるので、目印に使わない
    - 送信を有効にする 3 つの条件の unit test（origin・ビルド時の URL・GPC と DNT と設定の組み合わせ）
    - `docs/policy/app-telemetry.md` と許可リストの突き合わせテスト
 4. AT: `docs/acceptance/` に新規ファイル。TC は:
@@ -248,7 +264,8 @@ span の時間はブラウザの時計で測る。完了までの時間は、`ou
    - 共有リンク（`#s=…`）から開いても、送った body に fragment とノード名が含まれない
    - ツアーの途中で別のページへ移っても、移る直前の `tour.step` が受信口に届く
    - GPC を有効にしたブラウザでは何も送らない
-   - `karasu serve` で開いたアプリは、npm の serve ビルドでも monorepo の `packages/app/dist` でも何も送らない
+   - `karasu serve` で開いたアプリは何も送らない。npm の serve ビルドに加え、受信口の URL を渡してビルドした `packages/app/dist` を monorepo の `karasu serve` で開いても送らないことを確かめる（URL の無い `dist` では origin の判定を確かめられないため）
+   - reference の pop-out を開いても `app.visit` が増えない
 5. ADR 昇格: スライス B が終わった時点で `docs/adr/3612-spa-usage-tracing.md` に昇格し、本 Design Doc は同じ PR で削除する
 
 ### 影響範囲・マイグレーション
