@@ -583,6 +583,35 @@ edge[from=A] { color: #3B82F6; }
     // whole fan-out (specificity 11 beats the base `edge` rule, score 1).
     expect(result.svg).toContain("#3B82F6");
   });
+
+  // #3520: `face` / `feed` are all hex digits, so `#face` / `edge#feed` /
+  // `edge#face->db` were lexed as colors and the rules never applied.
+  it("targets nodes and edges whose ids are hex-shaped", () => {
+    const result = compile(
+      `
+system S {
+  service face {}
+  service db {}
+  service cafe {}
+  face -> db
+  face -> cafe #feed
+}
+      `,
+      {
+        styleSource: `
+edge { color: #000000; }
+#face { background-color: #ABCDEF; }
+edge#face->db { color: #00FF00; }
+edge#feed { color: #FF0000; }
+        `,
+      },
+    );
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    expect(result.svg).toContain("#ABCDEF");
+    expect(result.svg).toContain("#00FF00");
+    expect(result.svg).toContain("#FF0000");
+  });
 });
 
 describe("compile — edge direction hint reaches the layered layout", () => {

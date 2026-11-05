@@ -211,8 +211,10 @@ flowchart TD
     ADR_3412["ADR-3412<br/>GitHub Actions の依存を actions.lock で固定し、検証を requi..."]
     ADR_3421["ADR-3421<br/>Copilot で推論する gh-aw の workflow を外し、個人の課金で動かせるまで..."]
     ADR_3504["ADR-3504<br/>Low の ADR の PR は draft を経ずに作り、ゲートはその create を 1..."]
+    ADR_3514["ADR-3514<br/>gh pr ready のゲートは --repo をそのまま渡して同じ PR を読み、base..."]
     ADR_3571["ADR-3571<br/>PRD は docs/prd に置かず prd ラベルの Issue にし、展開した Epic..."]
     ADR_3575["ADR-3575<br/>Dependabot トリアージ 2026-11-02：npm 8 件をすべて採用し、LSP ..."]
+    ADR_3586["ADR-3586<br/>Dependabot security alert 2026-11-03（@azure/msa..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -436,6 +438,7 @@ flowchart TD
     ADR_3026["ADR-3026<br/>同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す"]
     ADR_3027["ADR-3027<br/>見た目が同じ両方向の edge の組を、card を動かさずに両端に矢印のある 1 本の線で描く"]
     ADR_3034["ADR-3034<br/>エッジラベルの探索範囲は約 90px のまま広げない"]
+    ADR_3036["ADR-3036<br/>置けなかったラベルの分だけ、行間のチャネルと行内の隙間を開く（候補から選ぶ）"]
     ADR_3088["ADR-3088<br/>行間チャネルのレーンを、run がつながる縦線の向きで並べる"]
     ADR_3090["ADR-3090<br/>交差マーク（ホップ・junction chip・trunk band）をエッジの減光に追随させる"]
     ADR_3132["ADR-3132<br/>ドリルダウンの最上段の上と最下段の下のチャネルを、枠の内側で測る"]
@@ -496,6 +499,7 @@ flowchart TD
     ADR_2810["ADR-2810<br/>TPL 本文のソースパス照合を `@kompiro/tpl-tools` へ移し、Requir..."]
     ADR_3169["ADR-3169<br/>受け入れテストの手動項目は、マージ前に確かめられるものに限る"]
     ADR_3237["ADR-3237<br/>OPFS fixture の origin は app の起動ではなく static file..."]
+    ADR_3289["ADR-3289<br/>TPL の索引は PR に含めず、ADR の生成物と同じ毎日の再生成 PR で生成する"]
     ADR_3429["ADR-3429<br/>合成エッジのスタイル解決テストは、本物の受け渡しと同じ `extraEdges` で渡し、`...."]
     ADR_9012["ADR-9012<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
   end
@@ -1115,6 +1119,7 @@ flowchart TD
   class ADR_3026 accepted
   class ADR_3027 accepted
   class ADR_3034 not_adopted
+  class ADR_3036 accepted
   class ADR_3052 accepted
   class ADR_3069 accepted
   class ADR_3077 accepted
@@ -1141,6 +1146,7 @@ flowchart TD
   class ADR_3258 accepted
   class ADR_3271 accepted
   class ADR_3286 accepted
+  class ADR_3289 accepted
   class ADR_3304 accepted
   class ADR_3309 accepted
   class ADR_3314 accepted
@@ -1165,8 +1171,10 @@ flowchart TD
   class ADR_3429 accepted
   class ADR_3471 accepted
   class ADR_3504 accepted
+  class ADR_3514 accepted
   class ADR_3571 accepted
   class ADR_3575 accepted
+  class ADR_3586 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

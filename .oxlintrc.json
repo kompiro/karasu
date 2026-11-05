@@ -67,7 +67,7 @@
         "max-lines": ["error", { "max": 600 }]
       }
     },
-    { "files": ["packages/app/src/components/PreviewPane.tsx"], "rules": { "max-lines": ["error", { "max": 848 }] } },
+    { "files": ["packages/app/src/components/PreviewPane.tsx"], "rules": { "max-lines": ["error", { "max": 850 }] } },
     { "files": ["packages/app/src/components/focus-canvas/build.ts"], "rules": { "max-lines": ["error", { "max": 860 }] } },
     { "files": ["packages/app/src/hooks/useChatSession.ts"], "rules": { "max-lines": ["error", { "max": 626 }] } },
     { "files": ["packages/app/src/hooks/useChatSession/prompt.ts"], "rules": { "max-lines": ["error", { "max": 610 }] } },
@@ -79,7 +79,7 @@
     { "files": ["packages/core/src/formatter/formatter.ts"], "rules": { "max-lines": ["error", { "max": 1045 }] } },
     { "files": ["packages/core/src/fs/import-resolver.ts"], "rules": { "max-lines": ["error", { "max": 1397 }] } },
     { "files": ["packages/core/src/parser/reference-validation.ts"], "rules": { "max-lines": ["error", { "max": 1082 }] } },
-    { "files": ["packages/core/src/parser/style-parser.ts"], "rules": { "max-lines": ["error", { "max": 732 }] } },
+    { "files": ["packages/core/src/parser/style-parser.ts"], "rules": { "max-lines": ["error", { "max": 647 }] } },
     { "files": ["packages/core/src/renderer/crossing-marks.ts"], "rules": { "max-lines": ["error", { "max": 717 }] } },
     { "files": ["packages/core/src/renderer/deploy-layout.ts"], "rules": { "max-lines": ["error", { "max": 683 }] } },
     { "files": ["packages/core/src/renderer/drill-down-svg.ts"], "rules": { "max-lines": ["error", { "max": 918 }] } },

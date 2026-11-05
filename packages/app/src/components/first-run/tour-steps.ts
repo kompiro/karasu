@@ -20,6 +20,8 @@ export interface Scene {
   view: ActiveView;
   /** The "before" side of the existing diff mode; the scene's `file` is "after". */
   compareWith?: SampleEntry;
+  /** The node the step's text names, kept in view in the preview (#3583). */
+  reveal?: string;
 }
 
 export interface TourStep {
@@ -41,7 +43,7 @@ export interface TourStep {
  */
 export const SERVICE_SPLIT_TOUR: readonly TourStep[] = [
   {
-    scene: { file: "index.krs", view: "system" },
+    scene: { file: "index.krs", view: "system", reveal: "CommerceApp" },
     title: "firstRun.step.current.title",
     body: "firstRun.step.current.body",
     notice: "firstRun.step.current.notice",
@@ -53,13 +55,18 @@ export const SERVICE_SPLIT_TOUR: readonly TourStep[] = [
     notice: "firstRun.step.org.notice",
   },
   {
-    scene: { file: "planned.krs", view: "system", compareWith: "index.krs" },
+    scene: {
+      file: "planned.krs",
+      view: "system",
+      compareWith: "index.krs",
+      reveal: "BillingService",
+    },
     title: "firstRun.step.target.title",
     body: "firstRun.step.target.body",
     notice: "firstRun.step.target.notice",
   },
   {
-    scene: { file: "migrating.krs", view: "system" },
+    scene: { file: "migrating.krs", view: "system", reveal: "BillingDB" },
     title: "firstRun.step.decision.title",
     body: "firstRun.step.decision.body",
     questions: [
