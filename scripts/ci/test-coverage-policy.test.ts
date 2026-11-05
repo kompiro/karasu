@@ -37,13 +37,28 @@ const readPackage = (path: string): PackageJson => JSON.parse(read(path)) as Pac
 const OTHER_RUNNERS: Record<string, { workflow: string; command: RegExp }> = {
   "@karasu-tools/e2e": {
     workflow: ".github/workflows/e2e.yml",
-    command: /pnpm --filter @karasu-tools\/e2e (?:run )?test\b/,
+    command: /pnpm --filter @karasu-tools\/e2e (?:run )?test(?=\s|$)/m,
   },
   "@karasu-tools/vscode-e2e": {
     workflow: ".github/workflows/vscode-e2e.yml",
-    command: /pnpm --filter @karasu-tools\/vscode-e2e (?:run )?test\b/,
+    command: /pnpm --filter @karasu-tools\/vscode-e2e (?:run )?test(?=\s|$)/m,
   },
 };
+
+/** The one workspace glob the directory scan below walks (same check as the typecheck guard). */
+const WORKSPACE_GLOB = "packages/*";
+
+/** The `packages:` list of pnpm-workspace.yaml, stopping at its first non-item line. */
+function workspaceGlobs(): string[] {
+  const lines = read("pnpm-workspace.yaml").split("\n");
+  const globs: string[] = [];
+  for (const line of lines.slice(lines.indexOf("packages:") + 1)) {
+    const entry = /^ {2}- "(.+)"\s*$/.exec(line);
+    if (!entry) break;
+    globs.push(entry[1]);
+  }
+  return globs;
+}
 
 const packages = readdirSync(join(REPO_ROOT, "packages"), { withFileTypes: true })
   .filter(
@@ -66,9 +81,11 @@ const isNamed = (p: { dir: string; name: string }): boolean =>
 
 describe("unit-test reach policy (Issue #3590)", () => {
   it("finds the workspace's test suites", () => {
-    // Parser sanity: an empty scan would make every assertion below vacuous.
-    expect(vitestPackages.length).toBeGreaterThanOrEqual(8);
-    expect(named.size).toBeGreaterThanOrEqual(8);
+    // Parser sanity: an empty scan, or a second workspace glob the scan does
+    // not walk, would make every assertion below vacuous.
+    expect(workspaceGlobs()).toEqual([WORKSPACE_GLOB]);
+    expect(vitestPackages.length).toBeGreaterThanOrEqual(6);
+    expect(named.size).toBeGreaterThanOrEqual(6);
   });
 
   it("gives every vitest package a test:coverage script", () => {
@@ -97,7 +114,7 @@ describe("unit-test reach policy (Issue #3590)", () => {
     }
   });
 
-  it("runs the root test:coverage in the Check job", () => {
+  it("runs the root test:coverage in ci.yml", () => {
     expect(read(".github/workflows/ci.yml")).toMatch(/^\s+run: pnpm run test:coverage$/m);
   });
 });
