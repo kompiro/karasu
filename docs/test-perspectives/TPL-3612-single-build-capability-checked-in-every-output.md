@@ -40,6 +40,10 @@ VS Code の webview、karasu-nest のギャラリー viewer（`viewer.html`）�
 両方向で確かめる。載せない面の文書（`docs/policy/nest-privacy.md` の「トラッキング目的の
 スクリプトを持たない」など）が約束を書いているときは、その約束がこの検査の根拠になる。
 
+成果物の検査で分かるのは「どのビルドに入っているか」までである。**同じ成果物が複数の場所で
+動く**なら、実行時の判定も要る。`packages/app/dist`（Pages の成果物）は、monorepo の
+`karasu serve`・`vite dev`・Playwright の E2E でも動く。
+
 ## 想定される失敗モード
 
 - 共有コンポーネント（`ProjectModeApp` などの app shell）の中で送信を初期化し、同じ shell を使う serve や viewer のビルドにも送信が入る
@@ -47,24 +51,30 @@ VS Code の webview、karasu-nest のギャラリー viewer（`viewer.html`）�
 - `karasu serve` や VS Code でローカルのモデルを開いただけで、外部へリクエストが飛ぶ（CSP で止まっても、止まったことに誰も気づかない）
 - 入口のコードの unit test は通るが、実際のバンドルには残っている（dead code が tree shaking されない、動的 import が別 chunk で残る）
 - 載せる面のほうで、ビルド設定の変更で機能が黙って消える（片方向だけ検査していると気づかない）
+- 成果物の検査は通るが、同じ成果物を手元で配信したとき（monorepo の `karasu serve`、`vite dev`、E2E）に本番の送信先へ送る
+- 機能のために依存のグローバルな仕組みを有効にし（OpenTelemetry の `register()` など）、同じグローバルを見る別のライブラリ（Chat の `@anthropic-ai/sdk`）まで動き出す
 
 ## チェックリスト
 
 - [ ] 機能を載せるビルドと載せないビルドを、ビルド設定（`vite*.config.ts`）から列挙し、手書きの一覧と照合しているか
-- [ ] 載せないビルドの成果物（`dist-serve/`・`dist-vscode-webview/`・viewer の出力）に、機能の目印（送信先の host、SDK のパッケージ名、固有の文字列）が無いことを検査しているか
+- [ ] 載せないビルドの成果物（`dist-serve/`・`dist-vscode-webview/`・viewer の出力）に、機能の目印が無いことを検査しているか。目印は minify で消えないもの（送信先の host の文字列、bundle 時のモジュール id）を使い、パッケージ名の文字列には頼らない
 - [ ] 載せるビルドの成果物に、同じ目印があることも検査しているか
 - [ ] 機能の初期化が入口（`main.tsx` など）だけにあり、共有の shell やコンポーネントの import の副作用で起きないか
+- [ ] 同じ成果物が載せない場所でも動くなら、実行時の判定（origin、ビルド時にだけ渡す設定）で止めているか
+- [ ] 送信先を実行時に組み立てる・設定から受け取る作りなら、文字列の目印では見つからない。載せない面を実際に動かし、外へのリクエストが起きないことをネットワークで確かめているか（E2E / AT）
+- [ ] 機能が依存のグローバルな登録を使わず、入口から明示的に渡しているか
 - [ ] 載せない面の文書が約束を書いているなら、その文書から検査へのリンクがあるか
 
 ## 既知の対処パターン
 
-- 初期化を入口ファイルだけに置き、共有コードには送信をしない API（何もしない既定の実装）だけを渡す。OpenTelemetry なら、共有コードは `@opentelemetry/api` だけに依存し、SDK の登録は Pages の入口だけで行う（SDK が登録されなければ API は no-op になる）
-- ビルド後の成果物を文字列で走査するテストを置く。`packages/app/src/viewer/build-config.test.ts` は viewer と app の出力先の分離を設定から検査しており、成果物の中身の検査はその隣に置ける
+- 初期化を入口ファイルだけに置き、共有コードには何もしない既定の実装を持つ継ぎ目だけを見せる。入口が実装を継ぎ目に明示的に渡す。OpenTelemetry なら `register()` や `trace.setGlobalTracerProvider` を呼ばない（グローバルを見る別のライブラリまで span を作り出す）
+- bundle 時に `generateBundle` で `this.getModuleIds()` を見て、載せないビルドに機能のモジュールが入っていたら build を落とす。`vite.serve.config.ts` の `rejectMonaco` が同じ形
+- ビルド後の成果物を文字列（送信先の host など）で走査するテストを置く。`packages/app/src/viewer/build-config.test.ts` は viewer と app の出力先の分離を設定から検査しており、成果物の中身の検査はその隣に置ける
 
 ## 関連テスト
 
 - まだ無い。#3612 の実装 PR で、各ビルドの成果物を走査するテストとして着地させる
-- 参考: `packages/app/src/viewer/build-config.test.ts`（viewer のビルドが app の Pages 出力と分かれていることを設定から検査する）、`packages/app/src/serve-build-config.test.ts`（serve の入口の差し替えを検査する）
+- 参考: `packages/app/src/viewer/build-config.test.ts`（viewer のビルドが app の Pages 出力と分かれていることを設定から検査する）、`packages/app/src/viewer/vscode/build-config.test.ts`（VS Code の webview のビルドを検査する）、`packages/app/src/serve-build-config.test.ts`（serve の入口の差し替えを検査する）
 
 ## 関連 TPL
 
