@@ -6,7 +6,7 @@
   - 引き金 Issue: [#3486](https://github.com/kompiro/karasu/issues/3486)（#3038 の D5 から分けた）
   - 関連 ADR: [ADR-1192](../adr/1192-test-perspective-library.md)（TPL の運用）、[ADR-1357](../adr/1357-tpl-tools-extraction.md)（照会と検査は `@kompiro/tpl-tools` に置き、karasu は設定と本文だけを持つ）、[ADR-3359](../adr/3359-pr-before-after-screenshots.md)（`gh pr create` の後に Claude Code のフックで促す先例）
   - tpl-tools ADR-17（本文のコードスパンが名指すパスの実在検査。`--source-prefix`。接頭辞を設定ファイルに置く案は「利用者がいないうちは早い」として見送った）
-  - 関連 ADR: [ADR-3038](../adr/3038-tpl-enforcement-status.md)（#3038。D5 で本件を分けた）
+  - 関連 Design Doc: [ADR-3038](../adr/3038-tpl-enforcement-status.md)（#3038。D5 で本件を分けた）
   - 関連 TPL: [TPL-1725](../test-perspectives/TPL-1725-gated-test-suite-detection-gap.md)（起動条件が対象を覆わないと検出が抜ける）、[TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md)（手で持つ対応表は drift する）
 
 ## 背景・課題
@@ -17,7 +17,7 @@ TPL のチェックリスト項目の多くはプログラムで判定できな�
 今それは、作成者が正しい topic で `tpl related <topic>` を打つことを思い出すかどうかで決まる。
 
 #3038 は `tpl related --changed-files` を提案したが、今の frontmatter には変更ファイルと
-TPL を結ぶ鍵が無いので、設計を分けた（ADR-3038 の D5）。
+TPL を結ぶ鍵が無いので、設計を分けた（`ADR-3038` の D5）。
 
 - `scope.packages` は粗すぎる。`packages/core` の下を変えると、`core` を持つ TPL がほぼ全部出る
 - `known_consumers` は機能名で、パスではない
