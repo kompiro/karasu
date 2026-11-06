@@ -42,7 +42,9 @@ Welcome の 3 つの入口のうち、ガイドがあるのは Design a service 
 ## 制約・前提
 
 - PRD §4「Preserve user control」：ガイドは操作を妨げない。✓ は示すだけで、進むのは Next（ADR-3599）。
-- 訪問者のプロジェクトの内容を書き換えない。Welcome の脚注（既存のプロジェクトはそのまま残る）を守る。
+- 訪問者のプロジェクトの内容を書き換えない。Welcome の脚注（既存のプロジェクトはそのまま残る）を守る。編集は打鍵ごとに順番に
+  保存され（`useEditorDocument`）、Welcome はモーダルなのでその間は打鍵できない。シーンの切り替えはファイルツリーのクリックと同じ
+  `selectFile` で、未保存の編集を失う経路は増えない。
 - ガイドの文がサンプルについて述べることは、core のテストで縛る（Phase 1 と同じ）。ステップが名指すノードは、app のテストで
   en / ja のサンプルと照合する（TPL-3113）。
 - 同時に走るガイドは 1 つ。進み具合の記録も 1 つ。
@@ -102,8 +104,8 @@ Getting Started は訪問者が編集できる。Show Welcome… から入り直
 ### 確定させる規則
 
 - **データの形**：`tour-steps.ts` に `TourId = "service-split" | "understand" | "evolve"` と
-  `TourDefinition { heading: PhraseKey; steps: readonly TourStep[] }`、`TOURS` を置く。`Scene.file` は Getting Started の `index.krs` も
-  受ける。見出しは `firstRun.welcome.*.title` を指し、`firstRun.tour.heading` は消す。`isStepDone` と `TourStep` は変えない。
+  `TourDefinition { heading: PhraseKey; steps: readonly TourStep[] }`、`TOURS` を置く。見出しは `firstRun.welcome.*.title` を指し、
+  `firstRun.tour.heading` は消す。`isStepDone` と `TourStep` は変えない。
 - **`Guide`**：`kind` をやめ、`{ tour, projectId, root, step, run, resumed? }` にする。`EVOLVE_SCENE`、`reapplyOnReturn`、
   `useGuidedScene` の `reapplyOnReturn` の分岐はなくなる（Evolve も離れて戻ればシーンを当て直す）。シーンの key は
   `tour:${run}:${step}` のままで、`run` が開始ごとに変わるので ✓ は混ざらない。
@@ -118,8 +120,8 @@ Getting Started は訪問者が編集できる。Show Welcome… から入り直
   読めないファイルがあれば一致しないものとして扱う。一致するものが無ければ新しいコピーを開く。読み取りのあいだにほかのガイドが
   始まったら、`runs` の確認で捨てる（TPL-1534）。開いているプロジェクトがそれなら移動しない（移動すると開いているファイルが
   閉じる）。
-- **Evolve のプロジェクト**：今のとおり、毎回 service-split の新しいコピー。Design のコピーは流用しない。Design の途中の訪問者が、
-  移行のステップの差分を奪われないため。
+- **Evolve のプロジェクト**：今のとおり、毎回 service-split の新しいコピー。Design のコピーを流用すると、訪問者が Design のコピーで
+  編集していた場合に文が合わなくなる。
 - **Welcome**：Understand と Evolve にもバッジ（`Guided · 3 min`）を付け、説明の文を「ガイド付きで見る」方向に直す。
   `WelcomeDialog` の「ガイドは Design だけ」のコメントを直す。
 - **パネル**：`TourPanel` は `heading` を受け取る。ステップ数の表示は既存の `total` で足りる。
