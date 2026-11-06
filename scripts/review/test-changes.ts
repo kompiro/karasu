@@ -2,10 +2,12 @@
 //
 // - a bug fix adds a test that shows the bug is gone (`fix` title, or a PR that
 //   closes a `bug` Issue), unless the body says `No test: <reason>`;
-// - a change to an existing test file does not take coverage away. A `refactor`
-//   may only move imports and swap module paths or comments; any other PR that
+// - a change to existing tests does not take coverage away. A `refactor` may
+//   only move imports and swap module paths or comments; any other PR that
 //   removes test lines, deletes a test file or adds a skip says
-//   `Test change: <reason>`.
+//   `Test change: <reason>`. Existing tests are test files, helper modules that
+//   take the test API (#3548), test runner configs, and the inputs a test reads
+//   from a directory.
 //
 // The rules read the diff as changed lines, not as assertion patterns: a
 // pattern list cannot tell a wrapped matcher (`).toBe(` alone on a line) or a
@@ -21,6 +23,25 @@ import type { ChangedFile, Hunk } from "./tier.ts";
 export const TEST_GLOBS: readonly string[] = ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"];
 
 export const isTestFile = (path: string): boolean => TEST_GLOBS.some((g) => matchesGlob(path, g));
+
+/** A test runner's config, which decides which test files run at all. */
+export const isRunnerConfig = (path: string): boolean =>
+  /(?:^|\/)(?:(?:vitest|playwright)(?:\.[\w-]+)*\.(?:config|workspace)\.[cm]?[jt]s|\.vscode-test\.[cm]?[jt]s|\.mocharc\.(?:json|[cm]?js))$/.test(
+    path,
+  );
+
+/** An input a test reads from its directory: adding one adds a case, deleting one drops it. */
+export const isTestInput = (path: string): boolean => inputGroup(path) !== null;
+
+/** Which tests read an input. An input moves only within its group. */
+function inputGroup(path: string): string | null {
+  if (/^examples\/.*\.krs$/.test(path)) return "examples";
+  if (path.startsWith("packages/core/src/renderer/fixtures/")) return "renderer";
+  return null;
+}
+
+/** A file whose code {@link isTestSupport} reads. */
+const isCodeFile = (path: string): boolean => /\.[cm]?[jt]sx?$/.test(path);
 
 /** The Conventional Commits type of a title, lower-cased (`fix(core)!: x` → `fix`), or null. */
 export function titleType(title: string): string | null {
@@ -64,6 +85,13 @@ export function closedIssueNumbers(body: string, repo: string): number[] {
 
 type LineState = "code" | "block" | "template";
 
+/** What a value import binds a local name to. */
+interface Binding {
+  module: string;
+  /** The exported name (`test` in `{ test as base }`), `default`, or `*` for a namespace. */
+  imported: string;
+}
+
 /** What the rules read from one side of a test file. */
 interface Side {
   lines: string[];
@@ -71,10 +99,12 @@ interface Side {
   states: LineState[];
   /** Each line with comment text and module paths masked ({@link maskLines}). */
   masked: string[];
+  /** Each line with only comment text masked. */
+  bare: string[];
   /** 0-based indexes of the lines of `import ... from "..."` statements. */
   imports: Set<number>;
   /** Each name a value import binds, and the module it comes from. */
-  bindings: Map<string, string>;
+  bindings: Map<string, Binding>;
 }
 
 /**
@@ -93,10 +123,11 @@ const REGEX_AFTER =
  * literals are kept as written, so a quote, `//` or `/*` inside them does not
  * change the state.
  */
-function maskLines(text: string): { states: LineState[]; masked: string[] } {
+function maskLines(text: string): { states: LineState[]; masked: string[]; bare: string[] } {
   const lines = text.split("\n");
   const states: LineState[] = [];
   const masked: string[] = [];
+  const bare: string[] = [];
   let state: LineState = "code";
   // Brace depth in code, and the depths to return to when a `${` hole closes.
   let depth = 0;
@@ -171,9 +202,10 @@ function maskLines(text: string): { states: LineState[]; masked: string[] } {
         } else depth--;
       }
     }
+    bare.push(out);
     masked.push(maskPaths(out));
   }
-  return { states, masked };
+  return { states, masked, bare };
 }
 
 /** For each line, whether it starts in code rather than in a block comment or a template literal. */
@@ -200,9 +232,9 @@ export const maskPathsAndComments = (line: string): string => maskLines(line).ma
 function readSide(text: string | null | undefined): Side | null {
   if (typeof text !== "string") return null;
   const lines = text.split("\n");
-  const { states, masked } = maskLines(text);
+  const { states, masked, bare } = maskLines(text);
   const imports = new Set<number>();
-  const bindings = new Map<string, string>();
+  const bindings = new Map<string, Binding>();
   for (let i = 0; i < lines.length; i++) {
     // Not `import(` (dynamic) or `import.meta`, nor a `.krs` import in a fixture string.
     if (states[i] !== "code" || !/^\s*import(?:\s|\{|\*|["'])/.test(masked[i])) continue;
@@ -222,21 +254,28 @@ function readSide(text: string | null | undefined): Side | null {
     if (!/^\s*import\s+type\b/.test(statement)) {
       const clause = /^\s*import\s+([\s\S]*?)\s*\bfrom\b/.exec(statement)?.[1] ?? "";
       const named = /\{([^}]*)\}/.exec(clause)?.[1] ?? "";
-      const names = [
-        ...named.split(",").flatMap((part) => {
+      // [local, imported] pairs.
+      const names: [string, string][] = [
+        ...named.split(",").flatMap((part): [string, string][] => {
           const n = part.trim();
           if (n === "" || /^type\s/.test(n)) return [];
-          return [/\bas\s+([\w$]+)$/.exec(n)?.[1] ?? n];
+          const alias = /^([\w$]+)\s+as\s+([\w$]+)$/.exec(n);
+          return [alias === null ? [n, n] : [alias[2], alias[1]]];
         }),
-        ...(/^\s*([\w$]+)\s*(?:,|$)/.exec(clause.replace(/\{[^}]*\}/, ""))?.slice(1) ?? []),
-        ...(/\*\s*as\s+([\w$]+)/.exec(clause)?.slice(1) ?? []),
+        ...(/^\s*([\w$]+)\s*(?:,|$)/.exec(clause.replace(/\{[^}]*\}/, ""))?.slice(1) ?? []).map(
+          (n): [string, string] => [n, "default"],
+        ),
+        ...(/\*\s*as\s+([\w$]+)/.exec(clause)?.slice(1) ?? []).map((n): [string, string] => [
+          n,
+          "*",
+        ]),
       ];
-      for (const name of names) bindings.set(name, module);
+      for (const [name, imported] of names) bindings.set(name, { module, imported });
     }
     for (let k = i; k <= j; k++) imports.add(k);
     i = j;
   }
-  return { lines, states, masked, imports, bindings };
+  return { lines, states, masked, bare, imports, bindings };
 }
 
 /** Whether a line may change freely: part of an import, or blank outside a template literal. */
@@ -317,15 +356,40 @@ const TEST_API = new Set([
  */
 function hidesLines(f: ChangedFile, was: Side | null, now: Side | null): boolean {
   if (was === null || now === null) return true;
-  for (const [name, module] of was.bindings) {
-    if (TEST_API.has(name) && now.bindings.get(name) !== module) return true;
+  for (const [name, b] of was.bindings) {
+    const kept = now.bindings.get(name);
+    if (isTestApi(name, b) && (kept?.module !== b.module || kept.imported !== b.imported))
+      return true;
   }
-  // `-U0` hunks in order: an untouched old line moves by the lines added and
-  // removed above it.
+  return untouchedLines(f, was.states.length).some(
+    ([old, cur]) => was.states[old] === "code" && now.states[cur] !== "code",
+  );
+}
+
+/** Runner modules whose namespace import is the test API. */
+const RUNNER_MODULES = new Set(["vitest", "@playwright/test", "node:test"]);
+
+/**
+ * Whether a local name binds the names a test runs its tests with: under that
+ * name, under the name it was exported as, or as a runner module's default or
+ * namespace import (`import test from "node:test"`).
+ */
+const isTestApi = (name: string, b: Binding): boolean =>
+  TEST_API.has(name) ||
+  TEST_API.has(b.imported) ||
+  ((b.imported === "*" || b.imported === "default") && RUNNER_MODULES.has(b.module));
+
+/**
+ * The 0-based [old, new] indexes of the lines a PR leaves as they were. `-U0`
+ * hunks in order: an untouched old line moves by the lines added and removed
+ * above it.
+ */
+function untouchedLines(f: ChangedFile, oldLength: number): [number, number][] {
   const hunks = [...f.hunks].sort((a, b) => a.oldStart - b.oldStart);
+  const pairs: [number, number][] = [];
   let delta = 0;
   let next = 0;
-  for (let line = 1; line <= was.states.length; line++) {
+  for (let line = 1; line <= oldLength; line++) {
     while (next < hunks.length) {
       const h = hunks[next];
       const last = h.removed.length > 0 ? h.oldStart + h.removed.length - 1 : h.oldStart;
@@ -335,9 +399,9 @@ function hidesLines(f: ChangedFile, was: Side | null, now: Side | null): boolean
     }
     const h = hunks[next];
     if (h !== undefined && h.removed.length > 0 && line >= h.oldStart) continue;
-    if (was.states[line - 1] === "code" && now.states[line - 1 + delta] !== "code") return true;
+    pairs.push([line - 1, line - 1 + delta]);
   }
-  return false;
+  return pairs;
 }
 
 /** Whether a refactor's change to an existing test file keeps the tests as they were. */
@@ -364,6 +428,109 @@ export function weakensTests(f: ChangedFile): boolean {
       (!removesNothing(h, was) && !onlySwaps(h, was, now)) ||
       h.added.some((line, k) => disables(now?.masked[h.newStart - 1 + k] ?? line)),
   );
+}
+
+/**
+ * Whether a file other than a test file takes the test API (`expect`, `test`)
+ * before the PR: an e2e helper that asserts. Its lines count like a test
+ * file's. Read from its imports, not from a list of helper directories.
+ */
+export function isTestSupport(f: ChangedFile): boolean {
+  if (f.status === "added" || isTestFile(f.path) || isRunnerConfig(f.path) || !isCodeFile(f.path)) {
+    return false;
+  }
+  const was = readSide(f.before);
+  return was !== null && [...was.bindings].some(([name, b]) => isTestApi(name, b));
+}
+
+/** A line that holds only a comment, or nothing, outside a template literal. */
+const isCommentOnly = (side: Side, i: number): boolean =>
+  side.states[i] !== "template" &&
+  /^\s*(?:(?:\/\/|\/\*)?\u27E6c\u27E7(?:\*\/)?)?\s*$/.test(side.bare[i] ?? "");
+
+/**
+ * Whether a change to a runner config can take test files out of the run. Which
+ * files run is data (an `include` glob, a `testMatch` regex in a constant), so
+ * any change but comment lines and blank lines counts, as does a comment opened
+ * around lines the PR leaves as they were. An unknown side counts too.
+ */
+function changesRunner(f: ChangedFile): boolean {
+  if (f.status === "deleted") return true;
+  const was = readSide(f.before);
+  const now = readSide(f.after);
+  if (was === null || now === null) return true;
+  // Opening or closing a comment around lines the PR leaves as they were.
+  if (
+    untouchedLines(f, was.states.length).some(([old, cur]) => was.states[old] !== now.states[cur])
+  ) {
+    return true;
+  }
+  const kept = (side: Side, start: number, lines: readonly string[]): string[] =>
+    lines.flatMap((_, k) => (isCommentOnly(side, start - 1 + k) ? [] : [side.bare[start - 1 + k]]));
+  return f.hunks.some((h) => {
+    const removed = kept(was, h.oldStart, h.removed);
+    const added = kept(now, h.newStart, h.added);
+    return removed.length !== added.length || removed.some((line, n) => line !== added[n]);
+  });
+}
+
+/** A line that opens a `krs` fence, which an acceptance-test record's test reads. */
+const KRS_FENCE = /^\s*(?:```|~~~)krs(?:\s|$)/;
+
+const AT_RECORD = /^docs\/acceptance\/[^/]+\.md$/;
+
+/**
+ * The deleted and added inputs that pair, one to one, as the same text moved
+ * within one group. `--no-renames` splits a move into a deletion and an addition.
+ */
+function inputMoves(files: readonly ChangedFile[]): Set<string> {
+  const added = new Map<string, string[]>();
+  for (const f of files) {
+    const group = inputGroup(f.path);
+    if (f.status !== "added" || group === null || typeof f.after !== "string") continue;
+    const key = `${group}\u0000${f.after}`;
+    added.set(key, [...(added.get(key) ?? []), f.path]);
+  }
+  const moved = new Set<string>();
+  for (const f of files) {
+    const group = inputGroup(f.path);
+    if (f.status !== "deleted" || group === null || typeof f.before !== "string") continue;
+    const to = added.get(`${group}\u0000${f.before}`)?.shift();
+    if (to !== undefined) moved.add(f.path).add(to);
+  }
+  return moved;
+}
+
+const fences = (text: string): number => text.split("\n").filter((l) => KRS_FENCE.test(l)).length;
+
+/**
+ * The inputs a PR takes away from tests that read a directory, the mirror of
+ * what {@link addsTest} counts: a deleted example or renderer fixture that did
+ * not move ({@link inputMoves}), and acceptance-test records that lose `krs`
+ * fences when the PR's records together have fewer (a renamed or split record
+ * keeps its fences). An unknown side counts as taken away.
+ */
+export function removedInputs(files: readonly ChangedFile[]): string[] {
+  const moved = inputMoves(files);
+  const deleted = files.flatMap((f) =>
+    f.status === "deleted" && isTestInput(f.path) && !moved.has(f.path) ? [f.path] : [],
+  );
+  const records = files.filter((f) => AT_RECORD.test(f.path));
+  const count = (text: string | null | undefined, absent: boolean): number | null =>
+    absent ? 0 : typeof text === "string" ? fences(text) : null;
+  const sides = records.map((f) => ({
+    path: f.path,
+    before: count(f.before, f.status === "added"),
+    after: count(f.after, f.status === "deleted"),
+  }));
+  const unknown = sides.filter((r) => r.before === null || r.after === null);
+  if (unknown.length > 0) return [...deleted, ...unknown.map((r) => r.path)];
+  const total = (k: "before" | "after"): number => sides.reduce((n, r) => n + (r[k] ?? 0), 0);
+  const fewer =
+    total("after") < total("before")
+      ? sides.filter((r) => (r.after ?? 0) < (r.before ?? 0)).map((r) => r.path)
+      : [];
+  return [...deleted, ...fewer];
 }
 
 // ---------------------------------------------------------------------------
@@ -437,10 +604,11 @@ const isCode = (masked: string): boolean => !/^\s*(?:\/\/|\/\*|⟦c⟧|$)/.test(
 /**
  * Whether the PR adds a test case: a new test file, more test cases or `.each`
  * rows in an existing one, or a new input a test reads from a directory (an
- * example, a renderer fixture, an acceptance-test `krs` fence). Renaming a case
- * or adding one inside a comment adds nothing.
+ * example, a renderer fixture, an acceptance-test `krs` fence). Renaming a case,
+ * adding one inside a comment or moving an input adds nothing.
  */
 export function addsTest(files: readonly ChangedFile[]): boolean {
+  const moved = inputMoves(files);
   return files.some((f) => {
     if (f.status === "added") {
       // A new test file that only skips its cases adds none.
@@ -448,12 +616,12 @@ export function addsTest(files: readonly ChangedFile[]): boolean {
         const now = readSide(f.after);
         return now !== null && liveCases(now) > 0;
       }
-      if (/^examples\/.*\.krs$/.test(f.path)) return true;
-      if (f.path.startsWith("packages/core/src/renderer/fixtures/")) return true;
+      // A moved input is the same case.
+      if (isTestInput(f.path)) return !moved.has(f.path);
     }
     if (f.status === "deleted") return false;
-    if (/^docs\/acceptance\/[^/]+\.md$/.test(f.path)) {
-      return f.hunks.some((h) => h.added.some((line) => /^\s*(?:```|~~~)krs(?:\s|$)/.test(line)));
+    if (AT_RECORD.test(f.path)) {
+      return f.hunks.some((h) => h.added.some((line) => KRS_FENCE.test(line)));
     }
     if (!isTestFile(f.path)) return false;
     const was = readSide(f.before);
@@ -491,7 +659,8 @@ export interface TestCheck {
 /**
  * Both test questions for one PR. `closesBug` is whether the PR closes an Issue
  * labeled `bug` (the CLI reads the labels). `files` holds `before` and `after`
- * for every existing test file it changes.
+ * for every test file, code file, test input and acceptance-test record it
+ * changes.
  */
 export function checkTestChanges(input: {
   title: string;
@@ -516,28 +685,40 @@ export function checkTestChanges(input: {
     }
   }
 
-  const existing = input.files.filter((f) => f.status !== "added" && isTestFile(f.path));
+  const existing = input.files.filter(
+    (f) => f.status !== "added" && (isTestFile(f.path) || isTestSupport(f)),
+  );
+  // Taking away an input drops cases without touching a test file.
+  const inputs = removedInputs(input.files);
+  // A refactor may change a runner config too (an alias, a coverage setting),
+  // and whether it keeps the run cannot be read from the text: every PR,
+  // refactors included, says why.
+  const configs = input.files
+    .filter((f) => f.status !== "added" && isRunnerConfig(f.path) && changesRunner(f))
+    .map((f) => f.path);
+  const weakened = [...configs];
   if (type === "refactor") {
-    const broken = existing.filter((f) => !keepsTests(f));
+    const broken = [...existing.filter((f) => !keepsTests(f)).map((f) => f.path), ...inputs];
     if (broken.length > 0) {
       errors.push(
-        `A refactor changes existing tests beyond imports, module paths and comments: ` +
-          `${broken.map((f) => f.path).join(", ")}. A refactor keeps the tests as they are; ` +
-          `if the change is not behavior-preserving, give the title another type and write ` +
-          `"Test change: <reason>" in the body.`,
+        `A refactor changes existing tests or their helpers beyond imports, module paths and ` +
+          `comments, or deletes a test input: ${broken.join(", ")}. A refactor keeps the tests ` +
+          `as they are; if the change is not behavior-preserving, give the title another type ` +
+          `and write "Test change: <reason>" in the body.`,
       );
     }
-    return { errors, waivers };
+  } else {
+    weakened.unshift(...existing.filter(weakensTests).map((f) => f.path), ...inputs);
   }
 
-  const weakened = existing.filter(weakensTests);
   if (weakened.length > 0) {
     const reason = reasonLine(input.body, "Test change");
     if (reason !== null) waivers.push({ label: "Test change", reason });
     else {
       errors.push(
-        `This PR removes lines from, deletes, skips or comments out existing tests: ` +
-          `${weakened.map((f) => f.path).join(", ")}. Write "Test change: <reason>" in the body ` +
+        `This PR removes lines from, deletes, skips or comments out existing tests or their ` +
+          `helpers, deletes a test input or changes a test runner config: ` +
+          `${weakened.join(", ")}. Write "Test change: <reason>" in the body ` +
           `to say why (docs/process/review.md "リスク段階").`,
       );
     }
