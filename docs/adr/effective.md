@@ -25,6 +25,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3405](3405-promotion-adds-adr-link.md) — ADR の昇格で、新しい ADR へのリンクを足すだけの差分も張り替えと同じく Low に数える
 - [ADR-3416](3416-regenerate-adr-index-daily-pr.md) — ADR の生成物は PR に含めず、毎日の routine が出す再生成の PR でだけ更新する
 - [ADR-3471](3471-code-cites-issue-not-design-doc.md) — docs/ の外からは Design Doc ではなく ADR か Issue を指す
+- [ADR-3595](3595-adr-readme-topic-entry-point.md) — docs/adr/README.md の手書き一覧をやめ、topic の語彙と生成物への入口にする
 
 ## app-ui
 
@@ -69,6 +70,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2535](2535-locale-ja-exact-subtag.md) — 日本語判定は主要サブタグの完全一致で行い、Windows の言語名だけを明示的に許す
 - [ADR-3598](3598-first-run-tour-resume.md) — 初回体験のツアーを localStorage の記録と入口の URL で再開し、deep link の復元は指すファイルを待つ
 - [ADR-3599](3599-first-run-step-completion.md) — 初回体験のツアーは、ステップが頼んだ操作をしたことを示すだけで、進むのは訪問者に任せる
+- [ADR-3600](3600-first-run-understand-evolve-tours.md) — 初回体験の Understand と Evolve を同じ機構のガイドにし、シーンは開いているバッファを読み直さない
 - [ADR-9009](9009-toolbar-icon-label.md) — ツールバーボタンはアイコン+テキストラベル必須
 - [ADR-9010](9010-memory-project-mode-unification.md) — MemoryMode と ProjectMode の統一 — Reducer + `KarasuPreviewColumn`
 - [ADR-9011](9011-editor-diagnostics-display.md) — Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ
@@ -293,6 +295,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2223](2223-service-anchored-edge-renders-on-parent-canvas.md) — service ブロックに書いたエッジは、その service をノードとして描くビューに描画する
 - [ADR-2477](2477-parallel-edge-nudge-gate-colocation.md) — 並列エッジの perpendicular nudge は「重なっているか」で判定する
 - [ADR-2501](2501-errored-edge-declaration-renders-nowhere.md) — 起点スコープに反するエッジ宣言はどのビューにも描画しない
+- [ADR-3480](3480-edge-canonical-id-quoted-endpoints.md) — edge の canonical id（base form）は `.krs.style` で読み戻せる形にする
 - [ADR-9019](9019-edge-direction-style.md) — `.krs.style` の edge `direction` プロパティ — 矢印の流れる向きを 5 値 enum で指定
 
 ## navigation
@@ -488,10 +491,13 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2348](2348-at-records-point-at-issues.md) — AT レコードは Design Doc ではなく Issue を指す — 削除が規約で確定しているアドレスを記録に埋めない
 - [ADR-2648](2648-record-source-path-guard.md) — 記録が名指すソースパスを機械で照合し、不在が正しい場合は宣言させる
 - [ADR-2810](2810-tpl-source-path-check-ownership.md) — TPL 本文のソースパス照合を `@kompiro/tpl-tools` へ移し、Required な `Check` から走らせる
+- [ADR-3038](3038-tpl-enforcement-status.md) — TPL の enforcement 状態をチェックリスト項目の印から導出する
+- [ADR-3039](3039-app-e2e-coverage-program.md) — app の E2E は jsdom が模せない境界を跨ぐ流れを持ち、コマンドの追加は機械で止める
 - [ADR-3169](3169-at-manual-items-before-merge.md) — 受け入れテストの手動項目は、マージ前に確かめられるものに限る
 - [ADR-3237](3237-opfs-fixture-origin-from-static-file.md) — OPFS fixture の origin は app の起動ではなく static file で得る
 - [ADR-3289](3289-tpl-index-daily-regeneration.md) — TPL の索引は PR に含めず、ADR の生成物と同じ毎日の再生成 PR で生成する
 - [ADR-3429](3429-synthetic-edge-style-fixtures.md) — 合成エッジのスタイル解決テストは、本物の受け渡しと同じ `extraEdges` で渡し、`.krs` から SVG までの柵と組にする
+- [ADR-3486](3486-tpl-changed-files-recall.md) — PR の変更ファイルから関係する TPL を引き、PR を作った直後に出す
 - [ADR-9012](9012-app-testing-strategy.md) — `packages/app` のテスト戦略 — `@testing-library/react` + renderHook + ARIA
 
 ## vscode
