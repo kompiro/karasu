@@ -24,6 +24,9 @@ scope:
     - "scripts/lint/*.ts"
     - "scripts/ci/*-policy.test.ts"
     - "scripts/ci/*-sync.test.ts"
+    - "scripts/ci/workflow-draft-gate.test.ts"
+    - "scripts/ci/workflow-issue-topic-label.test.ts"
+    - "scripts/ci/pnpm-config-location.test.ts"
     - "scripts/release/*-workflow.test.ts"
 ---
 
