@@ -16,7 +16,7 @@ import { join } from "node:path";
  * does not serve) rather than run as a step.
  */
 
-export type RecordAddressKind = "preview-host" | "session-path" | "dev-server-command";
+type RecordAddressKind = "preview-host" | "session-path" | "dev-server-command";
 
 export interface RecordAddressFinding {
   file: string;
