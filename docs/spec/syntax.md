@@ -1041,8 +1041,11 @@ further; a multi-match uniform in (kind, depth) is intentional broadcast and
 stays silent. Two `system` blocks sharing an id in one file are not merged, so
 one anchored path can genuinely name two nodes.
 
-An endpoint that resolves nowhere is a different case, reported as
-`unresolved-edge-endpoint` (bare) or `cross-system-ref-unresolved` (qualified).
+An endpoint that resolves nowhere is a different case. A bare one is reported as
+`unresolved-edge-endpoint`, and a qualified one on a `system`-scope edge as
+`cross-system-ref-unresolved`. A qualified one declared inside a `service`,
+`domain` or `entity` is not reported today
+([#3655](https://github.com/kompiro/karasu/issues/3655)).
 All of these diagnostics are catalogued in the
 [diagnostics & rules reference](diagnostics.md).
 

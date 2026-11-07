@@ -96,7 +96,7 @@ command parses its input as `.krs.style`, so a perfectly valid `.krs` yields a
 page of bogus "Expected LeftBrace" errors. This skill produces no `.krs.style`
 files, so `lint-style` has no role here.
 
-**The CLI does not catch everything.** Three losses in this pipeline are
+**The CLI does not catch everything.** Four losses in this pipeline are
 completely silent — no error, no warning, and `coverage` unaffected. They are
 listed under "Silent losses" below and each has a prescribed mechanical check.
 Budget for writing one small script; a run without it can ship a model that
@@ -439,10 +439,15 @@ footprint and makes the `coverage` numbers incomparable across domains.
    for). The first two fire when a `resource Db.T` or
    `table Db.T` names an infra block or leaf nothing declares; the third when a
    `facets` reference names no `facet` block. A dropped declaration makes every
-   reference to it dangle at once — so finding none of those lines is the check
-   that step 5 happened. The infra message says whether the *block* or only the *leaf* is
-   missing; a wall of "no database / queue / storage block declares" means you
-   skipped this step.
+   reference to it dangle at once, so a wall of "no database / queue / storage
+   block declares" means you skipped this step. The infra message says whether
+   the *block* or only the *leaf* is missing.
+
+   **No warning is not proof.** A declaration nothing references can drop without
+   a warning, and `coverage` only counts what is still declared. So also compare
+   the merged model with its inputs: every infra block, leaf and `facet` the
+   skeleton declares, and every `facets` membership a fragment wrote, is still
+   there. Make it part of the checker ("Silent losses").
 
    Any facet the fan-out **proposed** (Phase 2) is decided here, in one place:
    accept it by adding the declaration, or drop the memberships that reference
@@ -701,7 +706,7 @@ footprint and makes the `coverage` numbers incomparable across domains.
    - merge the additions and re-run `coverage`.
 5. **Stop condition**: every domain is `thin: false` **or recorded as genuinely
    thin with the reason**, the system-of-record `database` reports an empty
-   `unmappedButReferenced`, the relation checker is clean, every warning
+   `unmappedButReferenced`, the checker is clean, every warning
    from step 2 is repaired or recorded with its reason, and every multi-domain `service` has a domain
    edge in its drill-down or a recorded reason for having none (Phase 3 step
    8). `coverage` scores the logical and physical layers only — no metric
@@ -800,7 +805,7 @@ footprint and makes the `coverage` numbers incomparable across domains.
 
 ## Silent losses — write the checker
 
-Three losses produce **no diagnostic of any kind**. `render` exits 0, `coverage`
+Four losses produce **no diagnostic of any kind**. `render` exits 0, `coverage`
 is unaffected, and the model looks finished. The first cost real relations in a
 measured run.
 
@@ -813,6 +818,8 @@ measured run.
 3. **An infra block or leaf id equal to a `domain` id, or a leaf id equal to a
    `service` id.** It surfaces when `karasu subtree <that id>` refuses to resolve
    an ambiguous id, or when an `owns` / `contains` names it.
+4. **A declaration or membership the merge dropped, when nothing references it.**
+   An unreferenced `table` or a `facets` line simply vanishes.
 
 Other bare relation targets are not on this list: `Order -> Customer` warns
 `edge-endpoint-not-at-scope` when `Customer` lives in another domain, and
@@ -835,7 +842,9 @@ and infra declarations and every relation inside an entity block (`A -> B`,
   another domain's entity id;
 - a bare target inside `entity X` that is not an entity of `X`'s own domain;
 - an infra block or leaf id equal to a `domain` id, or a leaf id equal to a
-  `service` id.
+  `service` id;
+- an infra block, leaf or `facet` declared in the skeleton, or a `facets`
+  membership written in a fragment, that the merged model no longer has.
 
 Two authoring notes for that script, both learned the hard way:
 

@@ -966,7 +966,9 @@ broadcast であり沈黙する。同一ファイル内の同 id `system` ブロ
 ため、anchor された 1 本の path が本当に 2 ノードを名指すことがある。
 
 端点がどこにも解決しない場合は別のケースで、bare は `unresolved-edge-endpoint`
-（§S6）、qualified は `cross-system-ref-unresolved` として報告される。これらの診断は
+（§S6）、`system` スコープの edge の qualified は `cross-system-ref-unresolved` として
+報告される。`service`・`domain`・`entity` の中で宣言した qualified は、いまは報告されない
+（[#3655](https://github.com/kompiro/karasu/issues/3655)）。これらの診断は
 [診断と規則のリファレンス](diagnostics.md)にカタログ化されている。
 
 > Related TPLs:
