@@ -5,7 +5,7 @@
 - **関連**:
   - 引き金 Issue: [#3600](https://github.com/kompiro/karasu/issues/3600)（Phase 2 Epic [#3602](https://github.com/kompiro/karasu/issues/3602)、PRD [#3573](https://github.com/kompiro/karasu/issues/3573) §5・§11「fuller Understand / Evolve scenarios」）
   - 関連 ADR: [ADR-3598](../adr/3598-first-run-tour-resume.md)（ツアーの再開）、[ADR-3599](../adr/3599-first-run-step-completion.md)（ステップの ✓）
-  - 関連 TPL: [TPL-3113](../test-perspectives/TPL-3113-written-path-resolves-to-its-node.md)（書いたパスがそのノードに解決する）、[TPL-1534](../test-perspectives/TPL-1534-cancel-stale-async-effect-results.md)（遅れて届く非同期の結果）、[TPL-1530](../test-perspectives/TPL-1530-persistent-store-init-and-mutation-resilience.md)（永続ストアの読み書き）
+  - 関連 TPL: [TPL-3113](../test-perspectives/TPL-3113-written-path-resolves-to-its-node.md)（書いたパスがそのノードに解決する）、[TPL-1534](../test-perspectives/TPL-1534-cancel-stale-async-effect-results.md)（遅れて届く非同期の結果）、[TPL-1530](../test-perspectives/TPL-1530-persistent-store-init-and-mutation-resilience.md)（永続ストアの読み書き）、[TPL-1535](../test-perspectives/TPL-1535-edit-and-watch-same-store.md)（自分で書き込みつつ監視するストア）
   - コード: `packages/app/src/components/first-run/`（`tour-steps.ts`、`FirstRunExperience.tsx`、`TourPanel.tsx`、`WelcomeDialog.tsx`、`tour-progress.ts`、`tour-project.ts`、`tour-resume.ts`、`use-guided-scene.ts`）、`packages/core/src/examples.test.ts`、`packages/i18n/src/first-run.ts`
 
 ## 背景・課題
@@ -42,9 +42,8 @@ Welcome の 3 つの入口のうち、ガイドがあるのは Design a service 
 ## 制約・前提
 
 - PRD §4「Preserve user control」：ガイドは操作を妨げない。✓ は示すだけで、進むのは Next（ADR-3599）。
-- 訪問者のプロジェクトの内容を書き換えない。Welcome の脚注（既存のプロジェクトはそのまま残る）を守る。編集は打鍵ごとに順番に
-  保存され（`useEditorDocument`）、Welcome はモーダルなのでその間は打鍵できない。シーンの切り替えはファイルツリーのクリックと同じ
-  `selectFile` で、未保存の編集を失う経路は増えない。
+- 訪問者のプロジェクトの内容を書き換えない。Welcome の脚注（既存のプロジェクトはそのまま残る）を守る。打ったばかりの編集も
+  失わない（下の「シーンのファイルがすでに開いているとき」）。
 - ガイドの文がサンプルについて述べることは、core のテストで縛る（Phase 1 と同じ）。ステップが名指すノードは、app のテストで
   en / ja のサンプルと照合する（TPL-3113）。
 - 同時に走るガイドは 1 つ。進み具合の記録も 1 つ。
@@ -109,6 +108,15 @@ Getting Started は訪問者が編集できる。Show Welcome… から入り直
 - **`Guide`**：`kind` をやめ、`{ tour, projectId, root, step, run, resumed? }` にする。`EVOLVE_SCENE`、`reapplyOnReturn`、
   `useGuidedScene` の `reapplyOnReturn` の分岐はなくなる（Evolve も離れて戻ればシーンを当て直す）。シーンの key は
   `tour:${run}:${step}` のままで、`run` が開始ごとに変わるので ✓ は混ざらない。
+- **シーンのファイルがすでに開いているとき**：ディスクから読み直さず、開いているバッファをそのまま使う。今の `useGuidedScene` は
+  開いているファイルも `selectFile` で読み直す。保存がコミットされる前に Next を押すと、バッファが古い内容に戻り、完了した保存は
+  `isOwnWrite` で自分の書き込みとして無視され、次の打鍵が古い内容を元にディスクを上書きする。`useFileSelection` と
+  `useEditorDocument` を書き込みの遅い fs でつないだ使い捨てのテストで再現した（`base` に `X` を打って Next、続けて `Y` を打つと、
+  ディスクは `base+Y` になる）。窓は打鍵からコミットまでの間だけだが、失うのは訪問者の入力で、Understand は全ステップが、Evolve は
+  Step 1→2 が同じファイルなのでこの経路を通る回数が増える。Design の Step 1→2 と 4→5 にある同じ穴も、ここで一緒に塞がる。
+  `useFileSelection` に、進行中の読み取りを追い越したうえで view だけを初期化する入口（`SELECT_FILE` の `VIEW_RESET` と同じ範囲で、
+  `fileContent` に触れない）を足し、シーンはファイルが開いていればそれを使う。前のシーンの遅い読み取りを落とす働き（TPL-1534）は
+  これで保たれる。
 - **進み具合の記録**：`{ v: 1, tour, projectId, step }` のまま `tour` の値を増やす。既存の `service-split` の記録はそのまま読める。
   `tour` が未知の値、またはステップがそのガイドの範囲外なら無効。`tourStepHash` と `TourResume` は `tour` を受け渡す。
 - **始めたとき**：どの入口も `startTour(tour, project)` を通り、記録を書く。別のガイドの記録は上書きする。ADR-3598 の「Evolve で
@@ -134,10 +142,10 @@ Getting Started は訪問者が編集できる。Show Welcome… から入り直
 2. `tour-progress.ts`、`tour-project.ts`、`tour-resume.ts` を `tour` 対応に。
 3. `FirstRunExperience.tsx` の `Guide`、`startTour`、`choose`、`restartTour`。`ProjectModeApp` から「テンプレートと中身が同じか」を
    読む手段を渡す。
-4. `WelcomeDialog`、`TourPanel`、`use-guided-scene.ts`。
+4. `WelcomeDialog`、`TourPanel`、`use-guided-scene.ts`、`useFileSelection.ts`。TPL-1535 のチェックリストに「開いているファイルを読み直す経路が、コミット前の保存を巻き戻さないか」を足す。
 5. テスト：
    - core：Getting Started と service-split の気づきの縛り（en / ja）
-   - unit：記録の読み書き（未知の `tour`、範囲外のステップ、既存の形式のプロジェクト記録）、再開の判定、Understand のプロジェクトの選択（一致・不一致・読めない・無い）
+   - unit：記録の読み書き（未知の `tour`、範囲外のステップ、既存の形式のプロジェクト記録）、再開の判定、Understand のプロジェクトの選択（一致・不一致・読めない・無い）、書き込みの遅い fs で打鍵の直後に同じファイルのシーンへ進んでも編集が残る、前のシーンの遅い読み取りがあとから届かない
    - e2e：2 つのガイドを Next で歩く、Evolve の差分が Step 3 で読み替わり Skip で消える、再読み込みで同じガイドの同じステップに戻る、✓、Restart が最後に始めたガイドをやり直す、編集した Getting Started では新しいコピーが開く、全ステップで表示するノードがパネルに隠れない（en / ja）
 6. PRD #3573 の §5 の「他の入口はガイドなし」を Revisions で更新する。`docs/tools/app.md`、`app.ja.md`、changeset、AT。
 7. ADR 昇格：実装の PR が通ったあと ADR-3600 として昇格し、本 Design Doc を削除する。
@@ -153,5 +161,11 @@ Getting Started は訪問者が編集できる。Show Welcome… から入り直
 
 - Restart で戻るプロジェクトを訪問者が編集していた場合は、#3597 のとおりそのまま使う。文が合わないことは受け入れる（自分で編集した
   コピーを、自分でやり直している）。
+- 保存の完了を待つ仕組みは足さない。別のファイルを読むシーンでは、保存先は打鍵の時点のパスなので編集は失われない。Understand の
+  プロジェクトの照合が保存前の内容を読んでも、編集を失うわけではなく、編集済みのプロジェクトを使って文が合わなくなるだけで、
+  Welcome を開いて選ぶあいだに保存は終わる。順番待ちは `AppShell` の下の `useSerializedFileWrite` にあり、その上の `ProjectModeApp`
+  から待つには配線が増える。
+- 別のファイルへ移って、保存のコミット前に元のファイルへ戻る（Next を 2 回、書き込みより速く押す）場合は読み直しが残る。
+- ファイルツリーで開いているファイルをクリックしても同じ読み直しが起きる。ガイドに固有の話ではないので [#3626](https://github.com/kompiro/karasu/issues/3626) に分けた。
 - 別のサンプルでの Design（#3601）は本 Doc に含めない。`TourDefinition` の形は変えずに足せる見込みで、そちらで決める。
 - 各ステップの所要時間の表示は `Guided · 3 min` の概算だけにする。
