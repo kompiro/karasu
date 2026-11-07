@@ -210,7 +210,7 @@ system Shop {
 
 ### `@draft` — asserted, not confirmed
 
-`@draft` marks a statement **the model makes but nobody has confirmed**. It is the honesty layer for models that were not written by hand: the `reverse-architecture` skill reverses a repository into `.krs` with an LLM ([ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md) decision 4), and a generated model that cannot say which parts it guessed at invites the reader to trust all of it equally.
+`@draft` marks a statement **the model makes but nobody has confirmed**. It is the honesty layer for models that were not written by hand: the `reverse-architecture` skill reverses a repository into `.krs` with an LLM, and a generated model that cannot say which parts it guessed at invites the reader to trust all of it equally ([ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md) decision 4).
 
 ```krs
 system Payments {

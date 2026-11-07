@@ -2,4 +2,4 @@
 "karasu-skills": patch
 ---
 
-The `reverse-architecture` skill now describes current CLI behaviour (#3640). `karasu fmt` keeps `@draft(confidence: ...)`, a bare cross-domain entity relation warns `edge-endpoint-not-at-scope` instead of being silent, and `service` vs `domain` id collisions warn. The checker script the skill asks for now only has to find qualified targets that name no entity. The bundled tag and annotation reference also says that reversing runs in your agent session, not in karasu-nest.
+The `reverse-architecture` skill now describes what the CLI actually reports (#3640). The CLI prints diagnostic messages without codes, so the skill's validation steps match on message text; before, its greps for codes came back empty even on a broken model. It also knows that `karasu fmt` keeps `@draft(confidence: ...)`, that most bare entity relation targets warn, and that any infra id equal to a service or domain id draws no diagnostic. The bundled references now say the `reverse-architecture` skill reverses repositories, and that only a qualified entity relation is exempt from the edge scope check.

@@ -1031,7 +1031,7 @@ be moved, and names where the target is declared. Anchoring is what keeps every
 accepted form drawable: a fragment resolving inside the declaring system would
 name a node no ghost frame can hold, and the edge would land on no view.
 
-A relation inside an `entity` block is not judged here — the entity view
+A qualified relation inside an `entity` block is not judged here — the entity view
 resolves those against the domains of one system and draws the foreign entity
 as a ghost.
 
