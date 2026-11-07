@@ -192,11 +192,12 @@ describe("switching the subject (#3601)", () => {
 
   it("does not undo the switch on the second click of a double-click", async () => {
     const add = vi.fn<(example: ExampleProject) => Promise<Project | null>>(async () => payroll);
-    renderGuide({ add });
+    const { openProject } = renderGuide({ add });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: TO_PAYROLL }), { detail: 1 });
     });
     expect(readTourProgress()?.tour).toBe("service-split-payroll");
+    await openProject(payroll);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: TO_SHOP }), { detail: 2 });
     });
