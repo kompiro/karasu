@@ -14,10 +14,14 @@ Two skills cover the two reasons to model a system:
 | **Read** a system you don't know: a new job, an OSS project, an inherited codebase | `reverse-architecture` (this guide) |
 | **Record** a system you work on, including decisions the code can't show | `karasu-author`, which interviews you one layer at a time |
 
-The reverse runs in your own agent session. karasu does not read your source or
-call a model for you, so your code goes only where your agent already sends it.
+The reverse runs in your own agent session. The karasu CLI works on your machine and
+calls no model, so your code goes only where your agent already sends it. The model
+it produces is yours to share or not: see
+[View and share the result](#view-and-share-the-result) for what each kind of link
+exposes.
 
-If you have no agent that can read a repository and run commands, use the
+The skill needs an agent that can read a repository, run commands and start
+subagents. If yours can't, use the
 [one-shot prompt](#without-a-coding-agent-a-one-shot-prompt) instead. It gives you
 a rougher overview.
 
@@ -57,10 +61,9 @@ Open your agent in the repository and ask in your own words:
 Reverse-engineer this repository into a karasu model.
 ```
 
-Phase 2 of the skill starts one subagent per domain, so your agent needs to be able
-to start subagents. On a large repository, expect the agent to confirm the number
-of domains with you before it starts them. That number decides the cost, so this
-is the moment to check it (see [Cost and time](#cost-and-time)).
+On a large repository, expect the agent to confirm the number of domains with you
+before it starts the subagents. That number largely decides the cost, so this is the
+moment to check it (see [Cost and time](#cost-and-time)).
 
 ## What the skill does
 
@@ -109,17 +112,20 @@ fastest way into a review.
 ## Cost and time
 
 The fan-out is the expensive part, and it scales with the number of domains and the
-size of each domain's source. These are figures measured during the skill's
-development, and they count output tokens only:
+size of each domain's source. These figures come from measurements during the skill's
+development:
 
 | Repository | Domains | Output tokens | Time |
 | --- | --- | --- | --- |
-| 85 files | 3 | about 318k | about 12 minutes |
-| about 7,800 files | 19 | about 110-145k per domain | not measured |
+| 85 files | 3 | about 318k for the whole run | about 12 minutes |
+| about 7,800 files | 19 | at least 2.1-2.8M | not measured |
+
+The second total is 19 domains at the measured 110-145k per domain subagent, so it
+leaves out the scout, synthesis and repairs. Input tokens come on top of both rows.
 
 Budget for this before you start, especially on a metered plan. A usage limit that
 hits mid-run stops the subagents running at that moment. Finished batches keep their
-results, so a run can pick up with the domains that are left.
+results on disk, so you can ask the agent to continue with the remaining domains.
 
 ## Review the result
 
@@ -136,13 +142,14 @@ the main way to misuse it. It is a map to check against the code. In this order:
 3. **Run the measurements yourself.**
 
    ```bash
-   karasu check index.krs     # the model is valid
+   karasu check index.krs     # fails on errors; read the warnings too
    karasu coverage index.krs  # how deep each domain went, and what the merge lost
    ```
 
-   `coverage` flags thin domains relative to the others, so a domain that really owns
-   one table can be flagged and still be correct. The notes should say so when that
-   is the case.
+   `check` exits 0 on warnings, but a warning about a reference to something
+   undeclared is usually what the merge dropped. `coverage` flags thin domains
+   relative to the others, so a domain that really owns one table can be flagged and
+   still be correct. The notes should say so when that is the case.
 
 Some gaps are invisible to these commands. `coverage` does not measure the overlays
 or count domain edges, and a relation to `Domain.Entity` where that entity does not
@@ -161,13 +168,22 @@ karasu serve .
 ```
 
 To hand it to someone, `karasu render index.krs -o architecture.svg` writes a single
-SVG with every view, and the app's **Share** button copies a link that carries the
-whole model in the URL.
+SVG with every view. The app's **Share** button offers two links, and anyone who has
+either one can read the whole model:
 
-Hosted links have a size ceiling of 8,000 encoded characters, roughly 15 KB of
-flattened `.krs`, and a reverse with several domains is likely to pass it. Above the
-ceiling a Share link still opens, but shows no preview card when pasted. The two
-forms below are affected as well.
+| Link | Reaches the server | Preview card when pasted |
+| --- | --- | --- |
+| **Private link** (copied by default) | No | No |
+| **Link with preview** | Yes, and may appear in logs | Yes |
+
+For a model of a private system, use the SVG file or the private link.
+
+The forms that go through the server have a ceiling of 8,000 encoded characters,
+roughly 15 KB of flattened `.krs`. A reverse with several domains is likely to pass
+it, and a large run can pass it many times over. Above the ceiling the app doesn't
+offer the link with preview, which leaves the SVG file and the private link. A very
+long private link may not survive some chat tools. Two more forms have the same
+ceiling:
 
 - **A public repository's own URL.** Commit the model as `index.krs` or `karasu.krs`
   at the repository root, and `https://karasu.kompiro.dev/<owner>/<repo>` opens it.
@@ -176,10 +192,10 @@ forms below are affected as well.
   [ADR permalinks](adr-permalinks.md#repo-backed-permalinks--pin-to-a-commit-sha) for
   pinning a link to a commit.
 - **An image.** `https://karasu.kompiro.dev/render?s=<payload>&view=system` returns
-  an SVG, where `<payload>` is the encoded value from a Share URL. Use `view=deploy`
-  or `view=org` for the other views, and add `&format=png` (for example
-  `&format=png&width=1200`) for a PNG. Above the ceiling the URL may be too long to
-  be accepted.
+  an SVG, where `<payload>` is the encoded value from a Share URL. It reaches the
+  server, like the link with preview. Use `view=deploy` or `view=org` for the other
+  views, and add `&format=png` (for example `&format=png&width=1200`) for a PNG. Above
+  the ceiling the URL may be too long to be accepted.
 
 ## Without a coding agent: a one-shot prompt
 
@@ -201,9 +217,9 @@ Steer the model toward the **strong** views.
 
 Add the [syntax reference](../spec/syntax.md) to a Claude Project or Custom GPT as
 knowledge, or paste it into the chat. Add the
-[notation cookbook](notation-cookbook.md) as well: its worked idioms (a KV store, a
-shared datastore, an external dependency) stop the model from inventing shapes of its
-own.
+[notation cookbook](notation-cookbook.md) as well: it shows worked idioms (a KV store,
+a shared datastore, an external dependency), so the model picks karasu-idiomatic
+shapes instead of inventing them.
 
 ### Step 2: give the model the project
 
