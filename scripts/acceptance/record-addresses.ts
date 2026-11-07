@@ -27,12 +27,18 @@ export interface RecordAddressFinding {
   text: string;
 }
 
+/** One flag and, when another word of the command follows, its value. */
+const FLAG = String.raw`(?:\s+--?[\w=@/.][\w=@/.-]*(?:\s+(?!run\b|exec\b|dev\b|preview\b|start\b|vite\b|-)[@\w./-]+)?)`;
 /** A package manager with any flags, then a script that starts a server. */
-const SERVER_SCRIPT =
-  /\b(?:pnpm|npm|yarn)(?:\s+-{1,2}[\w=@/.-]+(?:\s+(?!run\b|-)[@\w./-]+(?=\s+(?:-|run\b|dev\b|preview\b|start\b)))?)*\s+(?:run\s+)?(?:dev|preview|start)\b/g;
-/** The tool under those scripts, called directly. */
-const SERVER_TOOL =
-  /\b(?:(?:npx|pnpm(?:\s+exec)?)\s+vite\b(?!\s+(?:build|optimize)\b)|vite\s+dev\b|astro\s+(?:dev|preview)\b)|\blocalhost:5173\b/g;
+const SERVER_SCRIPT = new RegExp(
+  String.raw`\b(?:pnpm|npm|yarn)${FLAG}*\s+(?:run${FLAG}*\s+)?(?:dev|preview|start)\b`,
+  "g",
+);
+/** The tool under those scripts, called directly or through a package manager. */
+const SERVER_TOOL = new RegExp(
+  String.raw`\b(?:(?:npx|(?:pnpm|npm|yarn)${FLAG}*(?:\s+exec)?)\s+vite\b(?!\s+(?:build|optimize)\b)|vite\s+dev\b|astro\s+(?:dev|preview)\b)|\blocalhost:5173\b`,
+  "g",
+);
 
 const PATTERNS: readonly (readonly [RecordAddressKind, RegExp])[] = [
   // The production host has no subdomain, and a `<branch>` placeholder is fine.

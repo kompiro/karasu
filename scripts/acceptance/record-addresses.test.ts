@@ -25,6 +25,10 @@ describe("findRecordAddresses (TPL-2254)", () => {
     ["run preview", "pnpm --filter @karasu-tools/docs-site run preview", "dev-server-command"],
     ["npm start", "npm start", "dev-server-command"],
     ["pnpm exec vite", "pnpm exec vite", "dev-server-command"],
+    ["a filtered exec", "pnpm --filter @x/app exec vite --port 5173", "dev-server-command"],
+    ["flags after run", "pnpm run --filter @x/app dev", "dev-server-command"],
+    ["npm run with a workspace", "npm run --workspace=packages/app dev", "dev-server-command"],
+    ["yarn vite", "yarn vite", "dev-server-command"],
     ["npx vite", "npx vite --port 5173", "dev-server-command"],
     ["vite dev", "vite dev", "dev-server-command"],
     ["astro dev", "`astro dev` で開く", "dev-server-command"],
@@ -56,6 +60,12 @@ describe("findRecordAddresses (TPL-2254)", () => {
     ["a kept AT's serve port", "http://localhost:3000"],
   ])("leaves %s alone", (_name, source) => {
     expect(kinds(source)).toEqual([]);
+  });
+
+  it("does not backtrack on a long run of flags", () => {
+    const started = performance.now();
+    expect(kinds(`pnpm ${"--flag ".repeat(60)}build`)).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(1000);
   });
 
   it("reports a markdown link's repeated host once", () => {
