@@ -79,7 +79,7 @@
     { "files": ["packages/core/src/formatter/formatter.ts"], "rules": { "max-lines": ["error", { "max": 1045 }] } },
     { "files": ["packages/core/src/fs/import-resolver.ts"], "rules": { "max-lines": ["error", { "max": 1397 }] } },
     { "files": ["packages/core/src/parser/reference-validation.ts"], "rules": { "max-lines": ["error", { "max": 1082 }] } },
-    { "files": ["packages/core/src/parser/style-parser.ts"], "rules": { "max-lines": ["error", { "max": 647 }] } },
+    { "files": ["packages/core/src/parser/style-parser.ts"], "rules": { "max-lines": ["error", { "max": 642 }] } },
     { "files": ["packages/core/src/renderer/crossing-marks.ts"], "rules": { "max-lines": ["error", { "max": 717 }] } },
     { "files": ["packages/core/src/renderer/deploy-layout.ts"], "rules": { "max-lines": ["error", { "max": 683 }] } },
     { "files": ["packages/core/src/renderer/drill-down-svg.ts"], "rules": { "max-lines": ["error", { "max": 918 }] } },
@@ -94,7 +94,7 @@
     { "files": ["packages/core/src/types/ast.ts"], "rules": { "max-lines": ["error", { "max": 1246 }] } },
     { "files": ["packages/i18n/src/en.ts"], "rules": { "max-lines": ["error", { "max": 635 }] } },
     { "files": ["packages/i18n/src/ja.ts"], "rules": { "max-lines": ["error", { "max": 634 }] } },
-    { "files": ["packages/i18n/src/types.ts"], "rules": { "max-lines": ["error", { "max": 725 }] } }
+    { "files": ["packages/i18n/src/types.ts"], "rules": { "max-lines": ["error", { "max": 721 }] } }
   ],
   "settings": {
     "react": {

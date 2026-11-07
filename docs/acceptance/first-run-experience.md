@@ -1,15 +1,16 @@
 # AT: Web App の初回体験（Welcome とサービス分割のガイドツアー）
 
 - **日付**: 2026-11-03
-- **関連 Issue**: [#3563](https://github.com/kompiro/karasu/issues/3563)（Epic）/ [#3583](https://github.com/kompiro/karasu/issues/3583)（配置の自動判定）/ [#3597](https://github.com/kompiro/karasu/issues/3597)（ツアーのやり直し）/ [#3598](https://github.com/kompiro/karasu/issues/3598)（ツアーの再開）/ [#3564](https://github.com/kompiro/karasu/issues/3564)（サンプル）/ [#3565](https://github.com/kompiro/karasu/issues/3565)（Welcome）/ [#3566](https://github.com/kompiro/karasu/issues/3566)（ガイドツアー）
+- **関連 Issue**: [#3563](https://github.com/kompiro/karasu/issues/3563)（Epic）/ [#3583](https://github.com/kompiro/karasu/issues/3583)（配置の自動判定）/ [#3597](https://github.com/kompiro/karasu/issues/3597)（ツアーのやり直し）/ [#3598](https://github.com/kompiro/karasu/issues/3598)（ツアーの再開）/ [#3599](https://github.com/kompiro/karasu/issues/3599)（ステップの操作を終えた印）/ [#3564](https://github.com/kompiro/karasu/issues/3564)（サンプル）/ [#3565](https://github.com/kompiro/karasu/issues/3565)（Welcome）/ [#3566](https://github.com/kompiro/karasu/issues/3566)（ガイドツアー）
 - **PRD**: [#3573](https://github.com/kompiro/karasu/issues/3573)
 - **対象ファイル**:
   - `examples/{en,ja}/service-split/`（`index.krs` / `planned.krs` / `migrating.krs`）
   - `packages/app/src/components/first-run/`（Welcome、ツアーパネル、表示条件、シーンの適用）
   - `packages/app/src/ProjectModeApp.tsx`（配線、起動時のツアーの再開の判定）
   - `packages/app/src/hooks/useProjectNavigation.ts` / `useHistoryNavigation.ts`（再開するステップの hash で起動し、hash の復元がそのファイルを待つ）
+  - `packages/app/src/state/app-signals.ts`（チーム依存の表示・Share・SVG の書き出しを、ツアーが読める値と出来事にする）
   - `packages/e2e/fixtures/opfs.ts`（既定で Welcome を閉じた状態にする）
-- **関連 ADR**: [ADR-3598](../adr/3598-first-run-tour-resume.md)
+- **関連 ADR**: [ADR-3598](../adr/3598-first-run-tour-resume.md)、[ADR-3599](../adr/3599-first-run-step-completion.md)
 
 > 初回訪問者が 5 分で「共通のモデルを持つとチームの設計判断が変わる」ことを体験する経路。Welcome は既定プロジェクトを作った初回起動だけに出て、Design a service split が 5 ステップのガイドに入る。
 
@@ -116,6 +117,35 @@
   > ✅ Automated — `packages/app/src/components/first-run/tour-progress.test.ts` › `reads a storage that throws as no record, and writing or clearing it does not throw`
   > ✅ Automated — `packages/app/src/components/first-run/tour-resume.test.ts` › `discards a record that is missing or unreadable, or whose project is gone`
   > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `deletes a record the boot discarded, and leaves one it kept for a later boot`
+
+- [x] AT-W: ステップが頼んだ操作（Step 1 でコマースアプリケーションへのドリル、Step 2 でチーム依存の表示、Step 5 で Share か Export SVG）をすると、パネルに ✓ と短い文が出て、Next がその文を説明として指す。条件が外れても（ドリルから戻る）✓ は残る。すでにチーム依存を表示していれば、Step 2 に着いたときに ✓ が出る
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `drilling in on step 1 marks it done, Next points at the mark, and drilling out keeps it`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `turning on the team dependencies on step 2 marks it done, and steps 3 and 4 ask for nothing`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `step 2 is done on arrival when the team dependencies are already on`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Share on step 5 marks it done, and Export SVG does too`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `marks the drill step once the visitor drilled in, and keeps it after they drill out`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `is done once the visitor drilled into the node the step names`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `is done while the team dependencies are on screen, including from before the step`
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `records an SVG export from the toolbar button, and none from the menu's other exports`
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `records a share only once its link exists, not when the dialog opens`
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `says the team dependencies are showing only while the org tab draws them`
+
+- [x] AT-X: 操作を頼まないステップ（3・4）には ✓ が出ない。✓ はステップのシーンが着いてから判定するので、Back で戻った未完了のステップに、離れたステップでした操作で ✓ が出ず、完了済みのステップに戻れば ✓ が出る。別のプロジェクトでの Share や、シーンが着く前の出来事は数えない。Restart Guided Tour… と再読み込みは未完了から始まる
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Back onto an undone step ignores what the visitor did on the step they left, and onto a done one shows it done`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a share made in another project does not mark step 5`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `does not count a share made in another project`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `does not count a share begun in another project that finishes after coming back`
+  > ✅ Automated — `packages/app/src/state/app-signals.test.ts` › `dates an event that took a ticket to its start, so a reader from after the start skips it`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `counts a share or an SVG export only after the scene landed`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `judges nothing before the step's own scene has landed (TPL-1534)`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `keeps a step done under its key after the condition goes away, and only under it`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `marks nothing on the steps that ask for nothing`
+
+- [x] AT-Y: ステップがドリルを頼むノードは、en / ja のサンプルにある
+
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `step %i`
 
 ## 手動確認
 

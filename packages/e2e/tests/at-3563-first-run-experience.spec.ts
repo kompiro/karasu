@@ -5,6 +5,9 @@ import { type Locator, type Page } from "@playwright/test";
 import { drillInto } from "../fixtures/drill.js";
 import { expect, test, type OpfsFixture } from "../fixtures/opfs.js";
 import { pressChord } from "../fixtures/keyboard.js";
+import { clickAndDownload } from "../fixtures/download.js";
+import { openShareDialog } from "../fixtures/share.js";
+import { openTeamDependencies, teamDependenciesToggle } from "../fixtures/org.js";
 import { openViewTab, selectedTab } from "../fixtures/tabs.js";
 
 /**
@@ -17,6 +20,9 @@ import { openViewTab, selectedTab } from "../fixtures/tabs.js";
  * and `view.restartTour` (Restart Guided Tour…) walks the guide again (#3597).
  * A reload resumes the step the tour was on, and a link from outside does not
  * (#3598); the opfs fixture clears the record with the rest of localStorage.
+ *
+ * A step that asks for something (drill in, turn on the team dependencies,
+ * share or export) marks itself done once the visitor did it (#3599).
  *
  * The layout block decides what used to be a manual check (#3583): the node
  * each step talks about stays inside the preview and clear of the panel, and
@@ -481,6 +487,134 @@ test.describe("AT-3563 resuming the tour (#3598)", () => {
 });
 
 type Box = { x: number; y: number; width: number; height: number };
+
+const stepDone = (page: Page) => tour(page).getByText(/✓ Done/);
+
+/**
+ * The step's scene has landed: what the visitor does from now on counts
+ * toward its ask. The step counter moves before that, on the click.
+ */
+async function sceneLanded(page: Page, step: number) {
+  await expect(tour(page)).toContainText(`${step} / 5`);
+  await expect(tour(page)).toHaveAttribute("data-scene-landed", "true");
+}
+
+/** From step 1, Next until `step`, and wait for its scene. */
+async function walkTo(page: Page, step: number) {
+  for (let i = 1; i < step; i++) {
+    await tour(page).getByRole("button", { name: "Next →" }).click();
+  }
+  await sceneLanded(page, step);
+}
+
+test.describe("AT-3563 a step's ask marked done (#3599)", () => {
+  test("drilling in on step 1 marks it done, Next points at the mark, and drilling out keeps it", async ({
+    page,
+    opfs,
+  }) => {
+    await startTour(page, opfs);
+    await sceneLanded(page, 1);
+    await expect(stepDone(page)).toHaveCount(0);
+    await drillInto(page, ["CommerceApp"], { firstMatch: true });
+    await expect(stepDone(page)).toBeVisible();
+    const id = await stepDone(page).getAttribute("id");
+    await expect(tour(page).getByRole("button", { name: "Next →" })).toHaveAttribute(
+      "aria-describedby",
+      id ?? "",
+    );
+    await page.goBack();
+    await expect(node(page, "CommerceApp")).toBeVisible();
+    await expect(stepDone(page)).toBeVisible();
+  });
+
+  test("turning on the team dependencies on step 2 marks it done, and steps 3 and 4 ask for nothing", async ({
+    page,
+    opfs,
+  }) => {
+    await startTour(page, opfs);
+    await sceneLanded(page, 1);
+    await walkTo(page, 2);
+    await expect(stepDone(page)).toHaveCount(0);
+    await teamDependenciesToggle(page).click();
+    await expect(stepDone(page)).toBeVisible();
+
+    const next = tour(page).getByRole("button", { name: "Next →" });
+    await next.click();
+    await sceneLanded(page, 3);
+    await expect(stepDone(page)).toHaveCount(0);
+    await next.click();
+    await sceneLanded(page, 4);
+    await expect(stepDone(page)).toHaveCount(0);
+  });
+
+  test("step 2 is done on arrival when the team dependencies are already on", async ({
+    page,
+    opfs,
+  }) => {
+    await startTour(page, opfs);
+    await sceneLanded(page, 1);
+    await openTeamDependencies(page);
+    await openViewTab(page, "System");
+    await expect(stepDone(page)).toHaveCount(0);
+    await walkTo(page, 2);
+    await expect(stepDone(page)).toBeVisible();
+  });
+
+  test("Back onto an undone step ignores what the visitor did on the step they left, and onto a done one shows it done", async ({
+    page,
+    opfs,
+  }) => {
+    await startTour(page, opfs);
+    await sceneLanded(page, 1);
+    await walkTo(page, 2);
+    // Drill in on step 2, then go Back to step 1, whose ask is that drill.
+    await openViewTab(page, "System");
+    await drillInto(page, ["CommerceApp"], { firstMatch: true });
+    await tour(page).getByRole("button", { name: "← Back" }).click();
+    await sceneLanded(page, 1);
+    await expect(node(page, "CommerceApp")).toBeVisible();
+    await expect(stepDone(page)).toHaveCount(0);
+
+    await drillInto(page, ["CommerceApp"], { firstMatch: true });
+    await expect(stepDone(page)).toBeVisible();
+    await walkTo(page, 2);
+    await tour(page).getByRole("button", { name: "← Back" }).click();
+    await sceneLanded(page, 1);
+    await expect(stepDone(page)).toBeVisible();
+  });
+
+  test("Share on step 5 marks it done, and Export SVG does too", async ({ page, opfs }) => {
+    await startTour(page, opfs);
+    await sceneLanded(page, 1);
+    await walkTo(page, 5);
+    await expect(stepDone(page)).toHaveCount(0);
+    const dialog = await openShareDialog(page);
+    await expect(stepDone(page)).toBeVisible();
+    await dialog.getByRole("button", { name: /Close/ }).first().click();
+
+    await page.reload();
+    await sceneLanded(page, 5);
+    await expect(stepDone(page)).toHaveCount(0);
+    await clickAndDownload(page.getByRole("button", { name: "Export SVG" }));
+    await expect(stepDone(page)).toBeVisible();
+  });
+
+  test("a share made in another project does not mark step 5", async ({ page, opfs }) => {
+    await startTour(page, opfs);
+    await sceneLanded(page, 1);
+    await walkTo(page, 5);
+    const id = await tourProjectId(page);
+    await projectSelect(page).selectOption({ label: "getting-started" });
+    await expect(node(page, "ECommerce")).toBeVisible();
+    const dialog = await openShareDialog(page);
+    await dialog.getByRole("button", { name: /Close/ }).first().click();
+
+    await projectSelect(page).selectOption(id);
+    await sceneLanded(page, 5);
+    await expect(node(page, "BillingDB")).toBeVisible();
+    await expect(stepDone(page)).toHaveCount(0);
+  });
+});
 
 const overlaps = (a: Box, b: Box) =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;

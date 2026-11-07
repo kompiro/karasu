@@ -1,5 +1,5 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 // Validates the bidirectional reference layer between docs/concepts*.md and
@@ -9,6 +9,9 @@ import { resolve } from "node:path";
 //   - docs/adr/README.md topic headings carry a `> Derives from (`topic`):`
 //     back-ref pointing at a concept anchor (or `N/A`).
 // The two directions must agree.
+// Each README topic section also links its slice of the generated index
+// (`effective.md#<topic>`, `graph/<topic>.md`); a target the generator has not
+// written yet is a warning (Issue #3595).
 
 export interface Problem {
   kind: "error" | "warning";
@@ -31,6 +34,8 @@ interface DerivesFrom {
 const CONCEPT_FILES = ["docs/concepts.md", "docs/concepts.ja.md"] as const;
 const README_PATH = "docs/adr/README.md";
 const CONFIG_PATH = "adr.config.json";
+const EFFECTIVE_PATH = "docs/adr/effective.md";
+const GRAPH_DIR = "docs/adr/graph";
 
 function backtickedTokens(text: string): string[] {
   return [...text.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
@@ -75,6 +80,31 @@ export function parseDerivesFrom(content: string): DerivesFrom[] {
     out.push({ topic: match[1], anchor: anchorMatch ? anchorMatch[1] : null, raw: rest });
   }
   return out;
+}
+
+/** Link targets per topic section, keyed by the section's `> Derives from` topic. */
+export function parseTopicLinks(content: string): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>();
+  let current: Set<string> | null = null;
+  for (const line of content.split("\n")) {
+    if (/^#{1,3}\s/.test(line)) {
+      current = null;
+      continue;
+    }
+    const derives = /^>\s*Derives from\s*\(`([^`]+)`\):/.exec(line);
+    if (derives) {
+      current = out.get(derives[1]) ?? new Set();
+      out.set(derives[1], current);
+      continue;
+    }
+    if (!current) continue;
+    for (const m of line.matchAll(/\]\(([^)\s]+)\)/g)) current.add(m[1]);
+  }
+  return out;
+}
+
+export function parseEffectiveTopics(content: string): Set<string> {
+  return new Set([...content.matchAll(/^##\s+(\S+)\s*$/gm)].map((m) => m[1]));
 }
 
 export function check(repoRoot: string): Problem[] {
@@ -217,6 +247,40 @@ export function check(repoRoot: string): Problem[] {
           }.`,
         });
       }
+    }
+  }
+
+  // Each topic section links its generated index slices, and they exist.
+  const linksByTopic = parseTopicLinks(readme);
+  const effectivePath = resolve(repoRoot, EFFECTIVE_PATH);
+  const effectiveTopics = existsSync(effectivePath)
+    ? parseEffectiveTopics(readFileSync(effectivePath, "utf8"))
+    : new Set<string>();
+  for (const topic of derivesByTopic.keys()) {
+    if (!topics.has(topic)) continue; // already reported as unknown
+    const links = linksByTopic.get(topic) ?? new Set<string>();
+    for (const target of [`effective.md#${topic}`, `graph/${topic}.md`]) {
+      if (!links.has(target)) {
+        problems.push({
+          kind: "error",
+          message: `${README_PATH}: topic \`${topic}\` section does not link ${target}.`,
+        });
+      }
+    }
+    // Warnings, not errors: the generator only emits a topic once it has an
+    // accepted ADR, and ADR PRs leave the generated files to the daily
+    // regeneration PR (ADR-3416), so a PR that adds a topic is briefly ahead.
+    if (!effectiveTopics.has(topic)) {
+      problems.push({
+        kind: "warning",
+        message: `${EFFECTIVE_PATH} has no "## ${topic}" heading yet; it appears once \`${topic}\` has an accepted ADR and the ADR index is regenerated.`,
+      });
+    }
+    if (!existsSync(resolve(repoRoot, GRAPH_DIR, `${topic}.md`))) {
+      problems.push({
+        kind: "warning",
+        message: `${GRAPH_DIR}/${topic}.md does not exist yet; it appears once \`${topic}\` has an ADR and the ADR index is regenerated.`,
+      });
     }
   }
 

@@ -218,6 +218,14 @@ a `from=` and a `to=` rule:
 edge[from=ApiGateway][async] { stroke-style: dashed; }  /* async edges out of ApiGateway */
 ```
 
+An endpoint that is not one identifier is written as a string literal, as
+in `edge#<id>` ([Endpoints that are not one identifier](#endpoints-that-are-not-one-identifier)),
+and is compared without its quotes:
+
+```css
+edge[from="Card Vault"] { color: #EF4444; }
+```
+
 Any attribute other than `from` / `to` (e.g. `edge[source=X]`) raises an
 `unknown-edge-selector-attribute` error.
 
@@ -254,6 +262,56 @@ author id, the parser raises an `ambiguous-edge-base` warning and the
 one of the edges an `#<id>` in `.krs`. See
 [`docs/spec/syntax.md`](syntax.md#edge-declaration) and
 [`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md).
+
+### Endpoints that are not one identifier
+
+A quoted node id may hold any string, but an endpoint after `edge#` must
+read back as itself in `.krs.style`. The base form therefore writes an
+endpoint bare only when the style lexer reads it as one identifier, it does
+not end with `-` (an arrow after it would take the `-`), and it does not start
+with `#`. Any other endpoint is written as the `.krs` string literal, with `\`
+and `"` escaped. Ids that are identifiers keep the plain join, so existing
+rules are unchanged.
+
+```krs
+system S {
+  service "a b" {}
+  service "b->c" {}
+  service "a->b" {}
+  service "a-" {}
+  service a {}
+  service c {}
+  "a b" -> c "reads"
+  a -> "b->c" "writes"
+  "a-" -> c "calls"
+  a --> c "notifies"
+}
+```
+
+```css
+edge#"a b"->c  { color: #00FF00; }       /* endpoint with a space */
+edge#a->"b->c" { color: #F59E0B; }       /* -> inside an endpoint */
+edge#"a-"->c   { stroke-style: dashed; } /* sync, apart from the async a-->c */
+```
+
+`"a->b" -> c` and `a -> "b->c"` get different bases (`"a->b"->c` and
+`a->"b->c"`), so the warning no longer fires for that pair. Until
+[#3481](https://github.com/kompiro/karasu/issues/3481) is fixed, the two still
+share one resolved style when they are in the same view, so a rule for one of
+them is drawn on both.
+
+The parser normalizes the base the same way, so a needless literal
+(`edge#"a"->c`) is the same selector as `edge#a->c`, and a spaced
+`edge#a- -> c` is `edge#"a-"->c`. An endpoint that starts with `#` may be
+written bare (`edge#a->#db`) and means `"#db"`. A string literal without an
+arrow is not an author id (author ids are identifiers), so `edge#"a b"` is a
+parse error.
+
+The app's right-click edge-direction menu writes `edge#<canonical id>`, so it
+writes these quoted forms too. The `ambiguous-edge-base` warning and the facet
+overview show the base in the same form.
+
+> Related TPLs: [TPL-3480](../test-perspectives/TPL-3480-generated-id-relexes-in-target-grammar.md) — the base form is written into `.krs.style`, so it must re-lex there as the same value. [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — two edges with different endpoints never share a base.
 
 ### When to prefer tag selectors
 

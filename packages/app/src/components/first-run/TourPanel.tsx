@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "../../i18n/index.js";
 import type { TourStep } from "./tour-steps.js";
@@ -8,6 +8,13 @@ interface TourPanelProps {
   /** Zero-based. */
   index: number;
   total: number;
+  /** The visitor did what the step asks (#3599). */
+  done?: boolean;
+  /**
+   * The step's scene has landed, so what the visitor does now counts toward
+   * its ask. Exposed as `data-scene-landed` for the e2e to wait on.
+   */
+  landed?: boolean;
   onBack: () => void;
   onNext: () => void;
   /** Ends the tour from any step: Skip, or Continue to editor on the last one. */
@@ -20,8 +27,18 @@ interface TourPanelProps {
  * the tour does not need; the diagram, the view tabs, the toolbar and the diff
  * banner below it stay in view.
  */
-export function TourPanel({ step, index, total, onBack, onNext, onClose }: TourPanelProps) {
+export function TourPanel({
+  step,
+  index,
+  total,
+  done = false,
+  landed = false,
+  onBack,
+  onNext,
+  onClose,
+}: TourPanelProps) {
   const { t } = useTranslation();
+  const doneId = useId();
   const isFirst = index === 0;
   const isLast = index === total - 1;
   const forwardRef = useRef<HTMLButtonElement>(null);
@@ -39,6 +56,7 @@ export function TourPanel({ step, index, total, onBack, onNext, onClose }: TourP
   return (
     <section
       aria-label={t("firstRun.tour.ariaLabel")}
+      data-scene-landed={landed}
       className="first-run-tour fixed bottom-12 left-4 z-[var(--z-floating-panel)] flex w-[340px] max-w-[calc(100vw-32px)] flex-col gap-2 rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-overlay)] p-3 text-[color:var(--text-primary)] shadow-xl"
     >
       <div className="flex items-center justify-between text-[11px] text-[color:var(--text-secondary)]">
@@ -76,6 +94,11 @@ export function TourPanel({ step, index, total, onBack, onNext, onClose }: TourP
             </ul>
           </div>
         )}
+        {done && (
+          <p id={doneId} className="text-xs leading-relaxed text-[color:var(--accent)]">
+            {t("firstRun.tour.stepDone")}
+          </p>
+        )}
         {step.done && <p className="text-xs leading-relaxed font-medium">{t(step.done)}</p>}
       </div>
       <div className="flex items-center gap-1 pt-1">
@@ -90,7 +113,12 @@ export function TourPanel({ step, index, total, onBack, onNext, onClose }: TourP
         >
           {t("firstRun.tour.back")}
         </Button>
-        <Button ref={forwardRef} variant="actionable" onClick={isLast ? onClose : onNext}>
+        <Button
+          ref={forwardRef}
+          variant="actionable"
+          aria-describedby={done ? doneId : undefined}
+          onClick={isLast ? onClose : onNext}
+        >
           {isLast ? t("firstRun.tour.finish") : t("firstRun.tour.next")}
         </Button>
       </div>

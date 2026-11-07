@@ -9,10 +9,11 @@ import {
 } from "@karasu-tools/core";
 import { useTranslation } from "../../i18n/index.js";
 import { useCommand } from "../../keyboard/use-command.js";
-import type { AppAction } from "../../state/app-reducer.js";
+import type { ActiveView, AppAction } from "../../state/app-reducer.js";
+import { useAppSignals } from "../../state/app-signals.js";
 import { TourPanel } from "./TourPanel.js";
 import { WelcomeDialog, type WelcomeChoice } from "./WelcomeDialog.js";
-import { EVOLVE_SCENE, SERVICE_SPLIT_TOUR } from "./tour-steps.js";
+import { EVOLVE_SCENE, SERVICE_SPLIT_TOUR, isStepDone } from "./tour-steps.js";
 import { useGuidedScene, type PendingScene } from "./use-guided-scene.js";
 import { markWelcomeDismissed, shouldShowWelcome } from "./welcome-gate.js";
 import { readTourProjectId, writeTourProjectId } from "./tour-project.js";
@@ -30,6 +31,9 @@ interface FirstRunExperienceProps {
   projects: Project[];
   currentProject: Project | null;
   currentFilePath: string | null;
+  /** The view and the drill, for a step that asks to drill in (#3599). */
+  activeView: ActiveView;
+  viewPath: readonly string[];
   navigateToProject: (project: Project) => void;
   selectFile: (path: string) => Promise<FileSelectionStatus>;
   openBundledExample: (example: ExampleProject) => Promise<Project | null>;
@@ -65,6 +69,8 @@ export function FirstRunExperience({
   projects,
   currentProject,
   currentFilePath,
+  activeView,
+  viewPath,
   navigateToProject,
   selectFile,
   openBundledExample,
@@ -223,7 +229,42 @@ export function FirstRunExperience({
     };
   }, [guide]);
 
-  useGuidedScene({ pending, currentProject, currentFilePath, selectFile, dispatch });
+  const landedKey = useGuidedScene({
+    pending,
+    currentProject,
+    currentFilePath,
+    selectFile,
+    dispatch,
+  });
+
+  // A step's ask is judged once its scene has landed, from that point on
+  // (#3599): an event counts only after the latest landing, so a share made in
+  // another project, or before coming back, does not mark the step. A step
+  // marked done keeps its mark under its scene key, for Back and coming back;
+  // a restart has new keys, so it starts with none done.
+  const signals = useAppSignals();
+  const [landing, setLanding] = useState<{ key: string | null; seq: number }>({
+    key: null,
+    seq: 0,
+  });
+  if (landing.key !== landedKey) setLanding({ key: landedKey, seq: signals.seq });
+  const [completed, setCompleted] = useState<ReadonlySet<string>>(() => new Set());
+  const stepDone =
+    guide?.kind === "tour" && pending !== null
+      ? isStepDone({
+          completion: SERVICE_SPLIT_TOUR[guide.step].completion,
+          key: pending.key,
+          landedKey: landing.key,
+          completed,
+          activeView,
+          viewPath,
+          signals,
+          sinceSeq: landing.seq,
+        })
+      : false;
+  if (stepDone && pending && !completed.has(pending.key)) {
+    setCompleted(new Set(completed).add(pending.key));
+  }
 
   // The step is computed here rather than in an updater, which StrictMode
   // runs twice, so the record is written once, from the step shown.
@@ -258,6 +299,8 @@ export function FirstRunExperience({
           step={SERVICE_SPLIT_TOUR[guide.step]}
           index={guide.step}
           total={SERVICE_SPLIT_TOUR.length}
+          done={stepDone}
+          landed={landing.key === pending?.key}
           onBack={() => moveStep(-1)}
           onNext={() => moveStep(1)}
           onClose={endTour}

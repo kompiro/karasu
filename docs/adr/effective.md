@@ -67,6 +67,8 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2317](2317-preview-toolbar-density.md) — プレビューの操作を 2 面に分ける — 図を変える操作はドリルパスの行、持ち出す操作はツールバー
 - [ADR-2461](2461-accent-ink-and-composited-contrast.md) — 色の上の文字は per-theme のインクで、半透明クロームの上の文字は合成後の色で判定する
 - [ADR-2535](2535-locale-ja-exact-subtag.md) — 日本語判定は主要サブタグの完全一致で行い、Windows の言語名だけを明示的に許す
+- [ADR-3598](3598-first-run-tour-resume.md) — 初回体験のツアーを localStorage の記録と入口の URL で再開し、deep link の復元は指すファイルを待つ
+- [ADR-3599](3599-first-run-step-completion.md) — 初回体験のツアーは、ステップが頼んだ操作をしたことを示すだけで、進むのは訪問者に任せる
 - [ADR-9009](9009-toolbar-icon-label.md) — ツールバーボタンはアイコン+テキストラベル必須
 - [ADR-9010](9010-memory-project-mode-unification.md) — MemoryMode と ProjectMode の統一 — Reducer + `KarasuPreviewColumn`
 - [ADR-9011](9011-editor-diagnostics-display.md) — Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ

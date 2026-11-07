@@ -3378,6 +3378,21 @@ system S {
     ).toEqual([]);
   });
 
+  // #3480: the subject of an edge is the `edge#<id>` form, quoted where an
+  // endpoint is not one style identifier.
+  it("names an edge with a quoted endpoint the way edge#<id> writes it", () => {
+    const warnings = facetWarnings(`
+system S {
+  service "Card Vault" {}
+  service Billing {}
+  "Card Vault" -> Billing { facets ghost }
+}
+    `);
+    expect(warnings.map((w) => (w.kind === "facet-not-declared" ? w.params.subject : ""))).toEqual([
+      '"Card Vault"->Billing',
+    ]);
+  });
+
   it("warns once per undeclared id, not once per node in the facet", () => {
     const warnings = facetWarnings(`
 system S {

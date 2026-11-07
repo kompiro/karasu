@@ -37,6 +37,7 @@
     "package": "pnpm run build && vsce package --no-dependencies",
     "publish": "pnpm run build && vsce publish --no-dependencies",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit && tsc --noEmit -p scripts"
   },
   "dependencies": {
@@ -49,6 +50,7 @@
     "@karasu-tools/app": "workspace:*",
     "@types/node": "^26.6.5",
     "@types/vscode": "^1.140.0",
+    "@vitest/coverage-v8": "^5.0.5",
     "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2",
