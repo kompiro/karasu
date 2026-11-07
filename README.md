@@ -82,7 +82,9 @@ Two agent skills drive the karasu CLI for you:
 - [`reverse-architecture`](packages/skills/skills/reverse-architecture/SKILL.md)
   has a repository-aware agent inspect an existing codebase and build a model,
   combining agent judgment for domain structure with deterministic CLI
-  extraction and validation.
+  extraction and validation. See the
+  [guide](https://kompiro.github.io/karasu/guide/reverse-engineering-with-ai/)
+  for what it costs and how to review the result.
 
 The skills drive the karasu CLI, so install that too with `npm i -g karasu`.
 In Claude Code, install them as a plugin:

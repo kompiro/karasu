@@ -51,6 +51,7 @@ it in a view. See [Vocabulary registers](spec/tags-annotations/#vocabulary-regis
 and the [Grouping & membership](examples/grouping-and-membership/) examples.
 
 - **[Guides](guide/)** — designing service and team boundaries, onboarding, evolution.
+- **[Reverse-engineer a repository](guide/reverse-engineering-with-ai/)**: have your coding agent build a model of an existing codebase.
 - **[Reference](spec/syntax/)** — the `.krs` / `.krs.style` syntax, tags, and annotations.
 - **[Concepts](concepts/)** — the design philosophy behind karasu.
 

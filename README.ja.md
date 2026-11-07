@@ -83,7 +83,9 @@ npx --yes karasu@latest serve .
 - [`reverse-architecture`](packages/skills/skills/reverse-architecture/SKILL.md)
   は、リポジトリを読める AI agent が既存のコードベースを調査し、karasu model を
   構築します。ドメイン構造には agent の判断を使い、CLI による決定的な抽出と
-  検証を組み合わせます。
+  検証を組み合わせます。コストと結果のレビュー方法は
+  [ガイド](https://kompiro.github.io/karasu/ja/guide/reverse-engineering-with-ai/)
+  を参照してください。
 
 skill は karasu CLI を使うので、`npm i -g karasu` で CLI も入れてください。
 Claude Code では plugin として入れられます:

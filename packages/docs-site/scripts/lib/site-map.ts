@@ -38,6 +38,7 @@ export const PUBLISHED_EN_FILES: readonly string[] = [
   "guide/05-communicating-diagrams.md",
   "guide/adr-permalinks.md",
   "guide/notation-cookbook.md",
+  "guide/reverse-engineering-with-ai.md",
   "spec/glossary.md",
   "spec/syntax.md",
   "spec/style.md",

@@ -165,7 +165,7 @@ CI ステップの成否判定に使えます。すぐ使える GitHub Actions �
 | `fmt [files...]` | `.krs` を in-place でフォーマット（CI 用 `--check`、パイプ用 `--stdin`） |
 | `tidy-style [files...]` | `.krs.style` を整える: 重複ルールをまとめ、プロパティを軸ごとにグループ化 |
 | `lint-style [files...]` | `.krs.style` のプロパティ値をスキーマに照らして lint |
-| `translate <file>` | インフラ設定や API 仕様を `.krs` スキャフォールドに変換（`--from compose` \| `k8s` \| `openapi` \| `db`） |
+| `translate <file>` | インフラ設定や API 仕様を `.krs` スキャフォールドに変換（`--from compose` \| `k8s` \| `openapi` \| `db` \| `wrangler`） |
 | `apply <file>` | stdin の `.krs` を適用 — 同 id のノードは置換、無ければ追記 |
 | `append <file>` | stdin の `.krs` を新しいトップレベルブロックとして末尾に追記 |
 | `insert <parent-id> <file>` | stdin の `.krs` を指定ノードの最後の子として挿入 |
@@ -247,7 +247,7 @@ CLI は karasu の agent skill（[`karasu-skills`](https://www.npmjs.com/package
 | Skill | 何をするか |
 | --- | --- |
 | `karasu-author` | 自分のシステムのモデルを、会話しながら 1 層ずつ作り・更新する。変更のたびに `karasu check` で検証する |
-| `reverse-architecture` | 既存のリポジトリをリバースエンジニアリングしてモデルにする |
+| `reverse-architecture` | 既存のリポジトリをリバースエンジニアリングしてモデルにする。[ガイド](../guide/reverse-engineering-with-ai.ja.md)を参照 |
 
 ```bash
 # すべての skill を ./.claude/skills にコピー
