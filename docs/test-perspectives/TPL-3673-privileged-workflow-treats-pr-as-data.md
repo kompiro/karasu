@@ -59,7 +59,8 @@ default branch の定義で動く workflow は、PR が定義を書き換えら�
 
 ## 関連テスト
 
-（未確立）
+- `scripts/render-equivalence/label.test.ts`: artifact の値だけでラベルを決める判定
+- `scripts/adr/regenerate-pr-flow.test.ts`: head の SHA を固定したマージ
 
 ## 派生元
 
