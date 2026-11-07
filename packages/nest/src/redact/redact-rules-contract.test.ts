@@ -38,18 +38,23 @@ const FIXED_TEXT_BEFORE_SECRET = ["basic-auth-header"];
  * Whether scanning grows faster than the input, from two sizes four times apart:
  * a linear scan takes about 4x as long and a quadratic one about 16x. Wall-clock
  * time alone would depend on the machine, and a budget at `MAX_SUBMISSION_BYTES`
- * would make a quadratic rule run for minutes before it failed. A scan too quick
- * to matter at the large size passes: even at the cap it stays under `cpu_ms`.
+ * would make a quadratic rule run for minutes before it failed. A scan under
+ * `NEGLIGIBLE_MS` at the large size passes, since the timing is noise down there.
  */
 const SMALL_BYTES = 64 * 1024;
 const LARGE_BYTES = SMALL_BYTES * 4;
-const NEGLIGIBLE_MS = 150;
+const NEGLIGIBLE_MS = 30;
 function growsSuperLinearly(unit: string, scan: (input: string) => void): boolean {
+  // The fastest of three, so a pause in one run cannot read as growth.
   const timed = (bytes: number): number => {
     const input = unit.repeat(Math.ceil(bytes / unit.length));
-    const started = performance.now();
-    scan(input);
-    return performance.now() - started;
+    return Math.min(
+      ...[0, 1, 2].map(() => {
+        const started = performance.now();
+        scan(input);
+        return performance.now() - started;
+      }),
+    );
   };
   const small = timed(SMALL_BYTES);
   const large = timed(LARGE_BYTES);
