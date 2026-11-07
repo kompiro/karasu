@@ -55,6 +55,13 @@ export async function expectNoWarningMatching(page: Page, pattern?: RegExp): Pro
       await expect(panel.locator(".warning-item--warning")).toHaveCount(0);
     }
   }
+  // A parse error reaches the banner, not the panel, so a source that fails to
+  // parse would otherwise satisfy "no warnings".
+  if (!pattern) {
+    await expect(
+      page.locator(".diagnostic-banner__item--error, .diagnostic-banner__item--warning"),
+    ).toHaveCount(0);
+  }
 }
 
 /**
