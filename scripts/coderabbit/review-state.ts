@@ -220,11 +220,13 @@ const isHeadCommit = (s: Snapshot, sha: string): boolean =>
  * parents from HEAD for as long as each step is a merge of the base that left the
  * change as it was. The local review record asks the same questions before it covers
  * a later HEAD (TPL-3286). A step git cannot answer ends the walk and keeps what was
- * found before it, which leaves the stricter reading of "the head".
+ * found before it, which leaves the stricter reading of "the head". `onFailure` hears
+ * why, for the caller to report: this module does no I/O.
  */
 export function commitsWithSameChange(
   headSha: string,
   git: Pick<GitFacts, "resolve" | "onlyBaseMerges" | "sameChange">,
+  onFailure: (err: unknown) => void = () => {},
 ): string[] {
   const commits: string[] = [];
   let current = headSha;
@@ -240,7 +242,8 @@ export function commitsWithSameChange(
       }
       commits.push(parent);
       current = parent;
-    } catch {
+    } catch (err) {
+      onFailure(err);
       return commits;
     }
   }

@@ -34,9 +34,9 @@ import {
 //
 // Run it from a checkout of the repository: which earlier commits still count as the
 // head is read from local git against `origin/<base>`, after fetching both. A failed
-// fetch goes to stderr and the comparison still runs on what is here. Whatever git
-// cannot answer leaves only the exact head, so the run waits rather than converging
-// early.
+// fetch goes to stderr and the comparison still runs on what is here. A step git cannot
+// answer ends the walk: only the commits verified before it count, so the run waits
+// rather than converging early.
 //
 // stdout is one JSON line: { pr, headSha, sameChangeCommits, since, state, bodyFindings,
 // bodyFindingIds, threadReplies, threadReplyUrls, waitedMin, limitWaitedMin, outcome }.
@@ -172,7 +172,9 @@ function fetchForComparison(pr: number, headSha: string, baseRefName: string): v
 
 function readSameChangeCommits(pr: number, headSha: string, baseRefName: string): string[] {
   fetchForComparison(pr, headSha, baseRefName);
-  return commitsWithSameChange(headSha, gitFacts(`origin/${baseRefName}`, headSha));
+  return commitsWithSameChange(headSha, gitFacts(`origin/${baseRefName}`, headSha), (err) => {
+    console.error(`could not compare the commits before ${headSha}: ${String(err)}`);
+  });
 }
 
 function fetchHead(pr: number): PrHead {

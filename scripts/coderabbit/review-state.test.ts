@@ -723,8 +723,23 @@ describe("commitsWithSameChange (#3657)", () => {
         return true;
       },
     };
-    expect(commitsWithSameChange("c", git)).toEqual(["b"]);
+    const failures: unknown[] = [];
+    expect(commitsWithSameChange("c", git, (err) => failures.push(err))).toEqual(["b"]);
+    expect(failures).toEqual([new Error("no merge base")]);
   });
+
+  it.each(["resolve", "onlyBaseMerges", "sameChange"] as const)(
+    "is empty when %s fails on the first step",
+    (question) => {
+      const git = {
+        ...facts(["c", "b"], ["c"]),
+        [question]: () => {
+          throw new Error("no answer");
+        },
+      };
+      expect(commitsWithSameChange("c", git)).toEqual([]);
+    },
+  );
 });
 
 describe("parseAnnouncedWaitMs", () => {
