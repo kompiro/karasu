@@ -62,8 +62,8 @@ store を共有して `shared-infra-fan-in` を出す）も、fixture を書き�
 診断の不在 / 件数を検証するテストを書く・直すときに確認する:
 
 - [ ] 検証したいのは `warning`（退行）か、`info` も含む全件か、明示しているか [judgment]
-- [ ] UI なら `.warning-item--warning`、core なら `warningSeverity()` で severity を絞っているか
-- [ ] fixture の .krs が意図せず info 診断（`shared-infra-fan-in` / `domain-dispersal` 等）を誘発していないか確認し、誘発する場合でも assertion 側でスコープしているか
+- [ ] UI なら `.warning-item--warning`、core なら `warningSeverity()` で severity を絞っているか [guard: `scripts/lint/e2e-spec-conventions.test.ts`]
+- [ ] fixture の .krs が意図せず info 診断（`shared-infra-fan-in` / `domain-dispersal` 等）を誘発していないか確認し、誘発する場合でも assertion 側でスコープしているか [guard: `scripts/lint/e2e-spec-conventions.test.ts`]
 - [ ] 新しい `info` 診断を core に追加する PR では、`.warning-item` を全件数える既存テストがないか grep して確認したか [judgment]
 
 ## 既知の対処パターン
@@ -75,6 +75,7 @@ store を共有して `shared-infra-fan-in` を出す）も、fixture を書き�
 
 ## 関連テスト
 
+- `scripts/lint/e2e-spec-conventions.test.ts` — `packages/e2e` の spec と fixture をすべて走査する。
 - `packages/e2e/tests/at-0047-infra-nodes-system-diagram.spec.ts`
 - `packages/app/src/components/WarningPanel.test.tsx`（severity 別 class の検証）
 - `packages/core/src/parser/parser.test.ts`（`boundary declarations` › `stays silent for members that render only on drill levels — no warning of any kind (#1983)` が全件・全 severity の不在を意図として明示する例。`parses sampleKrs from getReference() without errors` などは `d.severity === "warning"` で絞ってから件数を見る）

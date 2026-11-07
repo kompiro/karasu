@@ -67,7 +67,7 @@ test.describe("AT-3057 focus canvas from the keyboard", () => {
 
     // The palette-only `view.showRelations` command.
     await page.keyboard.press("ControlOrMeta+Shift+P");
-    await page.keyboard.type("Show Relations");
+    await page.getByRole("combobox", { name: "Search commands" }).fill("Show Relations");
     await page.keyboard.press("Enter");
 
     const panel = page.locator(".focus-canvas__panel");

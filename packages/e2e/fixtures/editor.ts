@@ -40,7 +40,8 @@ const WARNING_SETTLE_MS = 500;
  * note on `WARNING_SETTLE_MS` for why the settle is a blind sleep.
  *
  * - `pattern` omitted: the warning panel, if present, must have zero
- *   `.warning-item` children (used when *any* warning would be wrong).
+ *   `.warning-item--warning` children (used when *any* warning would be wrong;
+ *   `info` items are an open set, TPL-1608).
  * - `pattern` given: the warning panel, if present, must not contain text
  *   matching it (used when other, unrelated warnings are expected).
  */
@@ -51,7 +52,7 @@ export async function expectNoWarningMatching(page: Page, pattern?: RegExp): Pro
     if (pattern) {
       await expect(panel).not.toContainText(pattern);
     } else {
-      await expect(panel.locator(".warning-item")).toHaveCount(0);
+      await expect(panel.locator(".warning-item--warning")).toHaveCount(0);
     }
   }
 }

@@ -130,7 +130,7 @@ granted suite-wide in `playwright.config.ts`.
 negative idiom used by specs that prove a source does _not_ trigger a
 diagnostic: it settles for `WARNING_SETTLE_MS` (500ms, defined next to
 `COMPILE_SETTLE_MS`) then checks the `.warning-panel`, if present, either
-has zero `.warning-item`s (`pattern` omitted) or does not contain text
+has zero `.warning-item--warning`s (`pattern` omitted) or does not contain text
 matching `pattern`. There is no positive signal to wait on for a negative
 assertion, so the settle sleep stays — tightening it is a separate,
 riskier follow-up.
