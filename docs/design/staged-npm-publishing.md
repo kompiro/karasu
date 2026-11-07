@@ -87,7 +87,6 @@ npm は `workspace:` を書き換えないので、`karasu` の tarball に `"ka
 #### 案 1D: `changeset pack` の計画に従って `npm stage publish <tarball>` する
 
 <!-- absent-path-next-line: a file this design doc intends to create (#3240) -->
-
 `changeset pack --out-dir` が版の選び方、依存の順、tag、pack を受け持つ。新しいスクリプト `scripts/release/stage.mts` は計画を読み、**計画の先頭のグループだけ**を `npm stage publish <tarball> --tag <tag> --json` で stage して、stage id と tarball の integrity を出力する。
 
 - 計画には npm にまだ無い版だけが入るので、先頭のグループは「依存先がすべて npm に載っている」パッケージの集まりになる。`karasu-skills` と `karasu` を両方上げたリリースでは、1 回目の run が `karasu-skills`（と `@karasu-tools/core`）だけを stage する。`karasu` は `karasu-skills` が承認されて npm に載ったあとの run で、はじめて先頭のグループになり stage される。依存元は依存先がインストールできるようになるまで stage のキューに入らないので、npmjs.com の画面から承認しても順序は崩れない（TPL-3240）。
@@ -138,7 +137,6 @@ Release には、まだインストールできず、reject されうる版が�
 #### 案 3B: 依存先が npm に載るまで依存元を stage せず、承認のスクリプトがその段を進める
 
 <!-- absent-path-next-line: a file this design doc intends to create (#3240) -->
-
 `scripts/release/approve.mts`（`pnpm release:approve`）を kompiro が手元で実行する。
 
 1. リリースコミットを `release-confirm.yml` と同じ方法で求める（`--commit <sha>` で指定もできる）。
@@ -317,7 +315,6 @@ stage 済みの版と同じ版は stage できない。乗っ取られた run �
 ### 実装の指針
 
 <!-- absent-path-next-line: a file this design doc intends to create (#3240) -->
-
 1. `scripts/release/stage.mts`: リリースのコミットでなければ何もしない。`changeset pack --out-dir` の計画を読み、先頭のグループだけを `npm stage publish <tarball> --tag <tag> --json` で stage する。prerelease に `latest` を付けようとしたら、また計画に `RELEASED_PACKAGES` に無いパッケージがあれば止める。GitHub Actions の外では `--provenance=false` を付ける。stage 済みの拒否だけを飛ばし、そのことを出力に明示する。stage した `name@version`、stage id、integrity を出力する。
 2. `release.yml`:
    - `pnpm run release` の中身を `pnpm build && node scripts/release/stage.mts` に変える。`release` ジョブに `pull-requests: read` と `GH_TOKEN` を足す（リリースのコミットの判定）。
@@ -329,7 +326,6 @@ stage 済みの版と同じ版は stage できない。乗っ取られた run �
    - `record`（`contents: write`、`issues: write`、`pull-requests: read`、`actions: read`。`actions: read` は `release.yml` の run の結果を読むため）: `verify` が通した版のタグを打ち、Release を作り、順序の違反を検出し、論点 4 の判定で Issue を閉じる。`verify` が落ちたら、落ちた版とファイルの一覧を Issue にコメントする。依存を入れない。concurrency は `release-record` グループに入れる。
 
 <!-- absent-path-next-line: a file this design doc intends to create (#3240) -->
-
 4. `scripts/release/approve.mts` と、ルートの `package.json` の `release:approve`。論点 3 の手順（段ごとの承認と `release.yml` の再実行）、論点 7 の照合、notices のプラットフォーム固有の節を除く規則、計画に無い stage 済みの項目の表示、`--dry-run`、`--commit`、`--expect-tag`。照合の処理は `release-confirm.yml` の `verify` と共有する。
 5. `scripts/release/train.mts`: チェックリストに承認の行と、「版を上げる npm パッケージに検証済みの stage 専用の接続があるか。無ければマージの直前に作る」の行を足し、Issue 本文の文言（いまの「`release.yml` が閉じる」など）を直す。Issue を閉じる判定を足す。
 6. テスト: 既存の `scripts/release/*.test.ts` に倣う。計画の読み方、拒否の分類、`npm view` の `E404` とほかの失敗の区別、リリースコミットの求め方、順序の違反の検出、閉じる判定、tarball の中身の照合、照合に落ちた版にタグを打たないこと、計画外の版の検出（`latest` 以外のタグ、以前からある版、取り下げ済みの版）。`release-workflow.test.ts` はいま「Set a git identity」「Collect the tags」と `record` ジョブを検査しているので、書き直す。`release.yml` の `release` ジョブが `contents: read` と `pull-requests: read` だけを足した権限であること、`id-token: write` を持つのが `release` と `vscode` だけであること、`release-confirm.yml` が `id-token` を持たないこと、`verify` が `contents: write` を持たず、`record` が依存を入れないことを確かめる。
