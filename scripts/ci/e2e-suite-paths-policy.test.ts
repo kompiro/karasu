@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 // suite's `paths` is written by hand, so it can miss what the suite builds:
 // `packages/i18n` was missing from `e2e.yml` until #3484, with nothing to say
 // so. This derives what the suite needs from the workspace graph and compares.
+// It does not see files a spec reads from disk, and the roots below are kept by
+// hand, so this is a related test of TPL-1725, not a guard marker (ADR-3038 D4).
 
 const ROOT = resolve(import.meta.dirname, "../..");
 const read = (path: string) => readFileSync(resolve(ROOT, path), "utf-8");
@@ -71,9 +73,18 @@ const SUITES: Record<string, (yaml: string) => string[]> = {
     "app",
     // `E2E_SERVE=1` adds the `serve` project, which builds and starts the CLI
     // and stages the app's serve build (`packages/e2e/scripts/start-serve.ts`).
-    ...(/^\s*E2E_SERVE: "1"$/m.test(yaml) ? ["cli"] : []),
+    ...(/^\s*E2E_SERVE:\s*["']?1["']?\s*(?:#.*)?$/m.test(yaml) ? ["cli"] : []),
   ],
   "vscode-e2e.yml": () => ["vscode-e2e", "vscode"],
+};
+
+/**
+ * Packages a suite builds but deliberately does not start on (#3330: app PRs are
+ * frequent and the VS Code job is long and not required). The workflow's own
+ * comment records the trade-off, and a test below keeps this list from outliving it.
+ */
+const DELIBERATELY_OMITTED: Record<string, readonly string[]> = {
+  "vscode-e2e.yml": ["packages/app/**"],
 };
 
 describe("E2E suite paths (TPL-1725, TPL-1480)", () => {
@@ -88,12 +99,26 @@ describe("E2E suite paths (TPL-1725, TPL-1480)", () => {
     it("starts on a change to anything the suite builds", () => {
       const yaml = workflow(name);
       const [paths = []] = lists(yaml, "paths");
+      const omitted = DELIBERATELY_OMITTED[name] ?? [];
       const needed = workspaceClosure(SUITES[name]!(yaml)).map((dir) => `packages/${dir}/**`);
-      expect(needed.filter((entry) => !paths.includes(entry))).toEqual([]);
+      expect(needed.filter((entry) => !paths.includes(entry) && !omitted.includes(entry))).toEqual(
+        [],
+      );
       expect(paths).toEqual(
         expect.arrayContaining(["pnpm-lock.yaml", "package.json", `.github/workflows/${name}`]),
       );
     });
+  });
+
+  it("omits only what the suite builds, and says why in the workflow", () => {
+    const yaml = workflow("vscode-e2e.yml");
+    const [paths = []] = lists(yaml, "paths");
+    const needed = workspaceClosure(SUITES["vscode-e2e.yml"]!(yaml));
+    for (const omitted of DELIBERATELY_OMITTED["vscode-e2e.yml"]!) {
+      expect(paths).not.toContain(omitted);
+      expect(needed.map((dir) => `packages/${dir}/**`)).toContain(omitted);
+      expect(yaml).toContain(`# \`${omitted}\` is left out on purpose`);
+    }
   });
 
   it("starts the app suite on a change to the example files specs load from disk", () => {

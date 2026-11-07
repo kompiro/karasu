@@ -45,7 +45,7 @@ scope:
 - [ ] `pnpm ... <script> -- <flag>` の形になっていないか。なっているなら **下位ツールを直接叩く**（`pnpm --filter X exec vite --port ...`）形に置き換え、引数が確実に届く経路にしているか [guard: `scripts/ci/pnpm-arg-forwarding-policy.test.ts`]
 - [ ] 同じツールを 2 経路（dev / preview、local / CI など）で起動している場合、**両経路が同じ引数を同じ方法で渡している**か（片方だけ `--` 経由、片方だけ既定値依存になっていないか）
 - [ ] port / host のような値を、**既定値と異なる値**で一度起動して実際に反映されるか確認したか（既定値のままだと引数無視のバグが隠れる） [judgment]
-- [ ] pnpm / npm のバージョン更新で `--` 転送の挙動が変わりうることを前提に、引数依存の起動は「直接叩く」で pin しているか [guard: `scripts/ci/pnpm-arg-forwarding-policy.test.ts`]
+- [ ] pnpm / npm のバージョン更新で `--` 転送の挙動が変わりうることを前提に、引数依存の起動は「直接叩く」で pin しているか
 
 ## 既知の対処パターン
 

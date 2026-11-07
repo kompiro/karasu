@@ -47,8 +47,8 @@ scope:
 UI / surface を変える PR（特にリファクタ・リネーム・control 削除）で、以下を確認する:
 
 - [ ] 変更する surface を assert している gated スイートが無いか確認する（削除・改名する control のラベル / role / セレクタを e2e specs に grep する。例: `grep -rn "Open reference" packages/e2e`）。 [judgment]
-- [ ] 該当スイートがあれば、PR の変更ファイルがそのスイートの `paths` に一致し、`paths` がスイートの読む入力をすべて覆っていることを確かめる。入力は、検証対象が依存するパッケージと、spec がディスクから読む repo 内のファイル（karasu の app E2E なら、`.github/workflows/e2e.yml` の `paths` が `packages/app/package.json` の workspace 依存と `examples/` を含む）。そのうえでマージ前に green を確認する。 [guard: `scripts/ci/e2e-suite-paths-policy.test.ts`]
-- [ ] 削除・改名で stale 化するアサーションは、同じ PR でテスト側も更新する（テストを後追いの別 PR に先送りしない）。 [guard: `scripts/ci/e2e-suite-paths-policy.test.ts`]
+- [ ] 該当スイートがあれば、PR の変更ファイルがそのスイートの `paths` に一致し、`paths` がスイートの読む入力をすべて覆っていることを確かめる。入力は、検証対象が依存するパッケージと、spec がディスクから読む repo 内のファイル（karasu の app E2E なら、`.github/workflows/e2e.yml` の `paths` が `packages/app/package.json` の workspace 依存と `examples/` を含む）。そのうえでマージ前に green を確認する。
+- [ ] 削除・改名で stale 化するアサーションは、同じ PR でテスト側も更新する（テストを後追いの別 PR に先送りしない）。
 - [ ] 起動できない事情があるなら、対象スイート名と「次にどこで検証されるか（nightly 日時など）」を PR に明記して検出遅延を可視化する。 [judgment]
 
 ## 既知の対処パターン
@@ -62,7 +62,7 @@ UI / surface を変える PR（特にリファクタ・リネーム・control �
 
 ## 関連テスト
 
-- `scripts/ci/e2e-suite-paths-policy.test.ts`
+- `scripts/ci/e2e-suite-paths-policy.test.ts` — 各スイートの `paths` が workspace の依存閉包を覆うことを検査する。spec がディスクから読むファイルには届かないので、チェックリストの印にはしない。
 - `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts`（AC-5 — reference pop-out 起動経路。stale 化した実例）
 - `.github/workflows/e2e.yml`（app E2E のトリガ定義 — path filter, ADR-1729 / Required check, ADR-1866）
 - `.github/workflows/e2e-skip.yml`（Required check `Playwright` の paired stub — `paths` 非一致 PR の pending を防ぐ, #1867）
