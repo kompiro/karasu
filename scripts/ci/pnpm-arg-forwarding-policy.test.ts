@@ -49,8 +49,8 @@ export function forwardedFlags(text: string): string[] {
     .join("\n")
     .replace(/\\\n\s*/g, " ");
   return [
-    ...code.matchAll(/\bpnpm\b[^|&;\n]*\s--\s+(?:[^|&;\n]*\s)?["']?-[^\n]*/g),
-    ...code.matchAll(/["']pnpm["'][^)]*?["']--["']\s*,\s*(?:[^\]]*,\s*)?["']-[^\n]*/g),
+    ...code.matchAll(/\bpnpm\b[^|&;\n]*\s["']?--["']?\s+(?:[^|&;\n]*\s)?["']?-[^\n]*/g),
+    ...code.matchAll(/["']pnpm["'][^)]*?["']--["']\s*,\s*(?:[^\]]*,\s*)?["'`]-[^\n]*/g),
   ].map((match) => match[0]);
 }
 
@@ -85,6 +85,8 @@ describe("pnpm argument forwarding (TPL-2046)", () => {
       ["a continued line", "pnpm test \\\n  -- --port 5173"],
       ["a quoted flag", 'pnpm test -- "--port" 5173'],
       ["an argument array", 'spawnSync("pnpm", ["test", "--", "--port", "5173"]);'],
+      ["a quoted separator", 'pnpm test "--" --port 5173'],
+      ["a template flag in an array", 'spawn("pnpm", ["test", "--", `--port=${port}`]);'],
     ])("flags %s", (_name, line) => {
       expect(forwardedFlags(line)).toHaveLength(1);
     });

@@ -58,13 +58,25 @@ function readCommand(text: string): { words: string[]; end: number } {
   return { words, end: i };
 }
 
+/** `line` up to an unquoted `#` that starts a word, which is what makes it a comment. */
+function withoutComment(line: string): string {
+  let quote: string | undefined;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]!;
+    if (quote) {
+      if (ch === quote) quote = undefined;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === "#" && (i === 0 || /\s/.test(line[i - 1]!))) {
+      return line.slice(0, i);
+    }
+  }
+  return line;
+}
+
 /** Each `curl` command in a workflow, with `\` continuations joined and comments skipped. */
 function curlCalls(yaml: string): CurlCall[] {
-  const text = yaml
-    .split("\n")
-    .filter((line) => !/^\s*#/.test(line))
-    .join("\n")
-    .replace(/\\\n/g, " ");
+  const text = yaml.split("\n").map(withoutComment).join("\n").replace(/\\\n/g, " ");
   const starts = [...text.matchAll(/(?<![\w-])curl\s/g)].map((match) => match.index);
   return starts.map((start, i) => {
     const { words, end } = readCommand(text.slice(start));
@@ -201,6 +213,17 @@ describe("curl in workflows and actions (TPL-2291)", () => {
       const second = kept.replace("https://x", "https://y");
       const calls = curlCalls(`${second}\n${checked}`);
       expect(calls.map(curlProblem)).toEqual(["never reads the status it kept", undefined]);
+    });
+
+    it("does not read a trailing comment as part of the command", () => {
+      expect(problemOf("curl -sS https://x # TODO add -f")).toBeDefined();
+      expect(problemOf("curl -f https://x # falls back with || true")).toBeUndefined();
+      expect(curlCalls("run: echo hi # curl https://nope")).toEqual([]);
+    });
+
+    it("keeps a # inside a word or a quoted value", () => {
+      expect(curlCalls("curl -f https://x/#frag")[0]!.words).toContain("https://x/#frag");
+      expect(curlCalls('curl -f "https://x/ #frag"')[0]!.words).toContain("https://x/ #frag");
     });
 
     it("skips comments and finds a call however it is reached", () => {
