@@ -11,6 +11,7 @@ known_consumers:
   - karasu-nest-redaction
 discovered_from:
   - issue: "#2287"
+  - issue: "#3639"
 related_to:
   - TPL-168
   - TPL-1503
@@ -61,9 +62,13 @@ scope:
 - **自分のマーカーを最優先で除外する**: すべての規則の前に「これは自分が書いたものか」を見る
 - **near-miss を `it.each` の表にする**: 表そのものが仕様として読める。規則を足す人は表に行を足すことになる
 - **完全一致で書く**: `expect(result.text).toBe(...)` と `expect(result.findings).toEqual([...])`。書くのは少し面倒だが、これが「規則が意図どおり狭いか」を担保する唯一の形
+- **区切り文字が `\b` にもクラスにも当たる形を疑う**: `\beyJ[A-Za-z0-9_-]{8,}\.` は `-` が単語境界でありクラスの文字でもあるので、`eyJ-` の繰り返しで開始位置ごとに末尾まで走る。ネストした量化子が無くても二次時間になる（#3639 で 3 規則）。繰り返しの単位は規則の先頭の文字列 + 区切り文字で作り、投稿の上限サイズで測る。
 
 ## 関連テスト
 
+- `packages/nest/src/redact/redact-rules-contract.test.ts` — `REDACTION_RULES` の id と表のキーの一致を検査するので、
+  redaction の規則を足すと near-miss・出力の再検出・位置指定の置換・敵対的入力の時間の行が無いまま通らない。
+  ほかの検出器（lint・診断）には届かず、時間の検査は表と生成した入力に限られるので、チェックリストの印にはしない。
 - `packages/nest/src/redact/redact.test.ts` — `redact` の「redacts a %s and nothing around it」は規則ごとに置換後の文字列と
   finding（ラベル・件数・長さ）を完全一致で検証し、`what it must leave alone` は commit SHA・UUID・`tokenizer`・env 参照などの
   near-miss 表で無変更を完全一致で検証する。`what the review found leaking` が規則の相互作用（「keeps a specific finding rather than
