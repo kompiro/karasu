@@ -5,6 +5,8 @@ import {
   compile,
   FACET_STYLING_PROJECT,
   FACET_STYLING_PROJECT_EN,
+  GETTING_STARTED_PROJECT,
+  GETTING_STARTED_PROJECT_EN,
   SERVICE_SPLIT_PROJECT,
   SERVICE_SPLIT_PROJECT_EN,
 } from "./index.js";
@@ -99,8 +101,86 @@ describe.each([["ja", SERVICE_SPLIT_PROJECT] as const, ["en", SERVICE_SPLIT_PROJ
       expect(billing?.annotationParams?.migration_target?.from).toBe("CommerceApp");
       expect(service("migrating.krs", "BillingDB")?.annotations).toContain("planned");
     });
+
+    // Track architecture evolution (#3600).
+    it("evolve, against today: the Billing domain has left Commerce Application", () => {
+      const domains = (path: string) => service(path, "CommerceApp")?.children.map((c) => c.id);
+      expect(domains("index.krs")).toContain("Billing");
+      expect(domains("migrating.krs")).not.toContain("Billing");
+      expect(service("index.krs", "BillingService")).toBeUndefined();
+      expect(service("migrating.krs", "BillingService")).toBeDefined();
+    });
+
+    const tables = (path: string, id: string) =>
+      Object.fromEntries(
+        (service(path, id)?.children ?? []).map((c) => [
+          c.id,
+          c.annotations.includes("deprecated"),
+        ]),
+      );
+
+    it("evolve, the marks: the billing tables are deprecated and their database only planned", () => {
+      expect(tables("migrating.krs", "CommerceDB")).toMatchObject({
+        Invoices: true,
+        Payments: true,
+        Orders: false,
+      });
+      expect(service("migrating.krs", "BillingDB")?.annotations).toContain("planned");
+    });
+
+    it("evolve, what is left: the billing tables move to Billing Database", () => {
+      expect(Object.keys(tables("planned.krs", "CommerceDB"))).not.toContain("Invoices");
+      expect(Object.keys(tables("planned.krs", "CommerceDB"))).not.toContain("Payments");
+      expect(Object.keys(tables("planned.krs", "BillingDB"))).toEqual(["Invoices", "Payments"]);
+      expect(service("planned.krs", "BillingDB")?.annotations).not.toContain("planned");
+    });
   },
 );
+
+// The Understand an existing system guide (#3600) makes these claims about the
+// Getting Started sample.
+describe.each([
+  ["ja", GETTING_STARTED_PROJECT] as const,
+  ["en", GETTING_STARTED_PROJECT_EN] as const,
+])("getting-started (%s): the first-run guide's claims hold", (_lang, project) => {
+  const file = project.files.find((f) => f.path === "index.krs");
+  if (!file) throw new Error("getting-started has no index.krs");
+  const model = Parser.parse(file.content).value;
+  const services = model.systems[0].children;
+  const service = (id: string) => services.find((c) => c.id === id);
+
+  it("system: Product Catalog and Orders depend on each other", () => {
+    const domain = (id: string) => service("ECommerce")?.children.find((c) => c.id === id);
+    expect(domain("Catalog")?.edges).toContainEqual(
+      expect.objectContaining({ from: "Catalog", to: "Order" }),
+    );
+    expect(domain("Order")?.edges).toContainEqual(
+      expect.objectContaining({ from: "Order", to: "Catalog" }),
+    );
+  });
+
+  it("deploy: only EC Site and Notification are run, Payment and Inventory are external", () => {
+    const realized = model.deploys.flatMap((deploy) =>
+      deploy.nodes.flatMap(
+        (node) => node.properties.realizes?.map((ref) => ref.path.join(".")) ?? [],
+      ),
+    );
+    expect(realized.sort()).toEqual(["ECommerce", "Notification"]);
+    expect(service("Payment")?.tags).toContain("external");
+    expect(service("Inventory")?.tags).toContain("external");
+  });
+
+  it("org: the Notification team owns nothing, and the Commerce team owns the Notification service", () => {
+    const teams = model.organizations[0].teams;
+    const owns = (team: (typeof teams)[number] | undefined) =>
+      team?.properties.owns.map((ref) => ref.join("."));
+    expect(owns(teams.find((t) => t.id === "notification"))).toEqual([]);
+    const commerce = teams
+      .flatMap((t) => t.children)
+      .find((c) => c.kind === "team" && c.id === "commerce");
+    expect(commerce?.kind === "team" ? owns(commerce) : undefined).toContain("Notification");
+  });
+});
 
 describe("feature-samples: domain-drift.krs demonstrates domain-to-domain edges", () => {
   it("parses without errors and has a domain edge", () => {

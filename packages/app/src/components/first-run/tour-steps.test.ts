@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { Parser, SERVICE_SPLIT_PROJECT, SERVICE_SPLIT_PROJECT_EN } from "@karasu-tools/core";
+import { en, ja, type Translations } from "@karasu-tools/i18n";
+import {
+  GETTING_STARTED_PROJECT,
+  GETTING_STARTED_PROJECT_EN,
+  Parser,
+  SERVICE_SPLIT_PROJECT,
+  SERVICE_SPLIT_PROJECT_EN,
+  type ExampleProject,
+} from "@karasu-tools/core";
 import type { AppSignals } from "../../state/app-signals.js";
-import { SERVICE_SPLIT_TOUR, isStepDone, type CompletionInput } from "./tour-steps.js";
+import { TOURS, isStepDone, isTourId, type CompletionInput } from "./tour-steps.js";
 
 const none: AppSignals = { showing: new Set(), lastEvent: {}, seq: 0 };
 
@@ -19,7 +27,7 @@ function input(over: Partial<CompletionInput>): CompletionInput {
   };
 }
 
-const [current, org, target, decision, share] = SERVICE_SPLIT_TOUR;
+const [current, org, target, decision, share] = TOURS["service-split"].steps;
 
 describe("isStepDone (#3599)", () => {
   it("is done once the visitor drilled into the node the step names", () => {
@@ -82,18 +90,102 @@ describe("isStepDone (#3599)", () => {
   });
 });
 
+describe("isTourId (#3600)", () => {
+  it("accepts the guides and nothing else, including keys of the object's prototype", () => {
+    for (const tour of Object.keys(TOURS)) expect(isTourId(tour)).toBe(true);
+    for (const value of ["other", "constructor", "toString", 1, null]) {
+      expect(isTourId(value)).toBe(false);
+    }
+  });
+});
+
+describe("the guides' shape (#3600)", () => {
+  it.each(Object.entries(TOURS))("%s ends on sharing, and only there", (_tour, { steps }) => {
+    const last = steps[steps.length - 1];
+    expect(last.title).toBe("firstRun.step.share.title");
+    expect(last.completion).toEqual({ kind: "event", any: ["share-opened", "svg-exported"] });
+    expect(last.done).toBeDefined();
+    expect(steps.slice(0, -1).filter((step) => step.done)).toEqual([]);
+  });
+});
+
+const SAMPLES: [string, keyof typeof TOURS, ExampleProject][] = [
+  ["ja", "service-split", SERVICE_SPLIT_PROJECT],
+  ["en", "service-split", SERVICE_SPLIT_PROJECT_EN],
+  ["ja", "evolve", SERVICE_SPLIT_PROJECT],
+  ["en", "evolve", SERVICE_SPLIT_PROJECT_EN],
+  ["ja", "understand", GETTING_STARTED_PROJECT],
+  ["en", "understand", GETTING_STARTED_PROJECT_EN],
+];
+
+describe.each(SAMPLES)("%s %s: what the steps name exists (TPL-3113)", (_lang, tour, project) => {
+  /** The ids of the system's nodes: what a step can reveal or ask to drill into. */
+  const nodeIds = (path: string) => {
+    const file = project.files.find((f) => f.path === path);
+    const { systems } = Parser.parse(file?.content ?? "").value;
+    return systems.flatMap((system) => system.children.map((node) => node.id));
+  };
+
+  it.each(TOURS[tour].steps.map((step, i) => [i + 1, step] as const))("step %i", (_n, step) => {
+    const { file, compareWith, reveal } = step.scene;
+    const paths = project.files.map((f) => f.path);
+    expect(paths).toContain(file);
+    expect(paths).toEqual(expect.arrayContaining(compareWith ? [compareWith] : []));
+    const drilled = step.completion?.kind === "drilled" ? [step.completion.node] : [];
+    const named = reveal ? [reveal, ...drilled] : drilled;
+    expect(nodeIds(file)).toEqual(expect.arrayContaining(named));
+  });
+});
+
+/**
+ * What the guides' text calls a node must be what the diagram calls it: a
+ * visitor looks for the name they just read. The ids are the sample's; the
+ * labels come from the model, so renaming one in either place fails here.
+ */
+type Labelled = { id: string; label?: string; children?: readonly Labelled[] };
+const labelsOf = (project: ExampleProject, path: string) => {
+  const file = project.files.find((f) => f.path === path);
+  const { systems, organizations } = Parser.parse(file?.content ?? "").value;
+  const labels = new Map<string, string>();
+  const walk = (nodes: readonly Labelled[]) => {
+    for (const node of nodes) {
+      labels.set(node.id, node.label ?? node.id);
+      walk(node.children ?? []);
+    }
+  };
+  walk(systems.flatMap((system) => system.children) as readonly Labelled[]);
+  walk(organizations.flatMap((organization) => organization.teams) as readonly Labelled[]);
+  return labels;
+};
+
+const GUIDE_TEXT_NAMES: [keyof Translations, "understand" | "evolve", string[]][] = [
+  ["firstRun.understand.system.body", "understand", ["ECommerce"]],
+  ["firstRun.understand.system.notice", "understand", ["Catalog", "Order"]],
+  [
+    "firstRun.understand.deploy.notice",
+    "understand",
+    ["ECommerce", "Notification", "Payment", "Inventory"],
+  ],
+  ["firstRun.understand.org.notice", "understand", ["notification", "Notification", "commerce"]],
+  ["firstRun.evolve.diff.notice", "evolve", ["BillingService", "Billing", "CommerceApp"]],
+  ["firstRun.evolve.marks.body", "evolve", ["BillingDB", "CommerceDB"]],
+  ["firstRun.evolve.remaining.notice", "evolve", ["BillingDB"]],
+];
+
 describe.each([
-  ["ja", SERVICE_SPLIT_PROJECT],
-  ["en", SERVICE_SPLIT_PROJECT_EN],
+  ["ja", ja, GETTING_STARTED_PROJECT, SERVICE_SPLIT_PROJECT],
+  ["en", en, GETTING_STARTED_PROJECT_EN, SERVICE_SPLIT_PROJECT_EN],
 ] as const)(
-  "service-split (%s): the nodes the steps ask for exist (TPL-3113)",
-  (_lang, project) => {
-    it.each(SERVICE_SPLIT_TOUR.map((step, i) => [i + 1, step] as const))("step %i", (_n, step) => {
-      if (step.completion?.kind !== "drilled") return;
-      const file = project.files.find((f) => f.path === step.scene.file);
-      expect(file).toBeDefined();
-      const index = Parser.parse(file?.content ?? "").value.nodePathIndex;
-      expect(index.get(step.completion.node)).toContain(step.completion.node);
+  "%s: the guides' text uses the sample's labels (#3600)",
+  (_lang, phrases, gs, split) => {
+    it.each(GUIDE_TEXT_NAMES)("%s", (key, guide, ids) => {
+      const labels =
+        guide === "understand" ? labelsOf(gs, "index.krs") : labelsOf(split, "migrating.krs");
+      const text = String(phrases[key]);
+      const missing = ids
+        .map((id) => labels.get(id) ?? id)
+        .filter((label) => !text.includes(label));
+      expect(missing).toEqual([]);
     });
   },
 );

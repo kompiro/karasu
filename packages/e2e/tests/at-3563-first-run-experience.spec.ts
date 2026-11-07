@@ -26,7 +26,8 @@ import { openViewTab, selectedTab } from "../fixtures/tabs.js";
  *
  * The layout block decides what used to be a manual check (#3583): the node
  * each step talks about stays inside the preview and clear of the panel, and
- * no text in the panel overflows its box, in English and in Japanese.
+ * no text in the panel overflows its box, in English and in Japanese, in every
+ * guide (#3600). The other two guides' walks are in AT-3600.
  */
 
 const WELCOME = "Build a shared understanding of your architecture.";
@@ -97,7 +98,7 @@ test.describe("AT-3563 first-run Welcome", () => {
     await expect(welcome(page)).toBeVisible();
   });
 
-  test("Understand an existing system opens the seeded Getting Started project", async ({
+  test("Understand an existing system starts in the seeded Getting Started project", async ({
     page,
     opfs,
   }) => {
@@ -112,41 +113,13 @@ test.describe("AT-3563 first-run Welcome", () => {
     // The project was already open: the choice must leave its index.krs open
     // in the editor, not an empty buffer the preview hides by falling back.
     await expect(editorLines(page)).toContainText("system ECPlatform");
-  });
-
-  test("Understand from an open Getting Started reopens index.krs and leaves the diff", async ({
-    page,
-    opfs,
-  }) => {
-    await opfs.seed({
-      projects: [
-        {
-          id: "gs",
-          name: "getting-started",
-          files: {
-            "index.krs": "system Shop {\n  service Api\n}\n",
-            "before.krs": "system Shop {\n  service Legacy\n}\n",
-          },
-        },
-      ],
-      lastProjectId: "gs",
-    });
-    await opfs.gotoApp();
-    await expect(node(page, "Api")).toBeVisible();
-    await page.locator(".file-tree-item", { hasText: "before.krs" }).first().click({
-      button: "right",
-    });
-    await page.getByRole("button", { name: "⇄ Compare with current" }).click();
-    await expect(diffBanner(page)).toBeVisible();
-
-    await pressChord(page, "Shift+P");
-    await page.getByRole("combobox", { name: "Search commands" }).fill("Show Welcome");
-    await page.keyboard.press("Enter");
-    await welcome(page)
-      .getByRole("button", { name: /Understand an existing system/ })
-      .click();
-    await expect(diffBanner(page)).toHaveCount(0);
-    await expect(editorLines(page)).toContainText("service Api");
+    // A first visit has one Getting Started: the guide uses it, not a copy.
+    await expect(tour(page)).toContainText("1 / 4");
+    await expect(
+      page
+        .getByRole("combobox", { name: "Project" })
+        .getByRole("option", { name: /getting-started/ }),
+    ).toHaveCount(1);
   });
 
   test("Restart Guided Tour… opens the sample when the tour has not opened one (#3597)", async ({
@@ -182,7 +155,7 @@ test.describe("AT-3563 first-run Welcome", () => {
     await expect(project.getByRole("option", { name: "service-split" })).toHaveCount(2);
   });
 
-  test("Track architecture evolution compares the migration with the current system", async ({
+  test("Track architecture evolution starts on the migration compared with the current system", async ({
     page,
     opfs,
   }) => {
@@ -194,7 +167,7 @@ test.describe("AT-3563 first-run Welcome", () => {
     await expect(diffBanner(page)).toContainText("index.krs");
     await expect(diffBanner(page)).toContainText("migrating.krs");
     await expect(node(page, "BillingService")).toBeVisible();
-    await expect(tour(page)).toHaveCount(0);
+    await expect(tour(page)).toContainText("1 / 4");
   });
 });
 
@@ -666,58 +639,90 @@ async function insideViewport(page: Page, panel: Locator) {
  * nodes (BillingDB is in planned.krs and migrating.krs), so geometry read
  * before the scene lands would judge the previous step's diagram (TPL-1534).
  */
-const STEPS: { node: string | null; ready: (page: Page) => Promise<void> }[] = [
-  { node: "CommerceApp", ready: (page) => expect(diffBanner(page)).toHaveCount(0) },
-  { node: null, ready: (page) => expect(selectedTab(page, "Org")).toBeVisible() },
+type LayoutStep = { node: string | null; ready: (page: Page) => Promise<void> };
+
+const noDiff = (page: Page) => expect(diffBanner(page)).toHaveCount(0);
+const addedBillingService = (page: Page) =>
+  expect(node(page, "BillingService")).toHaveAttribute("data-diff-state", "added");
+
+const LAYOUT_GUIDES: {
+  /** Part of the test's name: the Design guide's came first, and has none. */
+  name: string;
+  entry: { en: RegExp; ja: RegExp };
+  steps: LayoutStep[];
+}[] = [
   {
-    node: "BillingService",
-    ready: (page) =>
-      expect(node(page, "BillingService")).toHaveAttribute("data-diff-state", "added"),
+    name: "",
+    entry: { en: /Design a service split/, ja: /サービス分割を設計する/ },
+    steps: [
+      { node: "CommerceApp", ready: noDiff },
+      { node: null, ready: (page) => expect(selectedTab(page, "Org")).toBeVisible() },
+      { node: "BillingService", ready: addedBillingService },
+      {
+        node: "BillingDB",
+        ready: async (page) => {
+          await noDiff(page);
+          await expect(node(page, "BillingDB")).not.toHaveAttribute("data-diff-state", /.*/);
+        },
+      },
+      { node: null, ready: async () => {} },
+    ],
   },
   {
-    node: "BillingDB",
-    ready: async (page) => {
-      await expect(diffBanner(page)).toHaveCount(0);
-      await expect(node(page, "BillingDB")).not.toHaveAttribute("data-diff-state", /.*/);
-    },
+    name: "Understand: ",
+    entry: { en: /Understand an existing system/, ja: /既存のシステムを理解する/ },
+    steps: [
+      { node: "ECommerce", ready: noDiff },
+      { node: null, ready: (page) => expect(selectedTab(page, "Deploy")).toBeVisible() },
+      { node: null, ready: (page) => expect(selectedTab(page, "Org")).toBeVisible() },
+      { node: null, ready: (page) => expect(selectedTab(page, "System")).toBeVisible() },
+    ],
   },
-  { node: null, ready: async () => {} },
+  {
+    name: "Evolve: ",
+    entry: { en: /Track architecture evolution/, ja: /アーキテクチャの変化を追う/ },
+    steps: [
+      { node: "BillingService", ready: addedBillingService },
+      { node: "BillingDB", ready: noDiff },
+      { node: "BillingDB", ready: (page) => expect(diffBanner(page)).toContainText("planned.krs") },
+      { node: null, ready: noDiff },
+    ],
+  },
 ];
 
-const LAYOUT_COPY = {
-  en: { design: /Design a service split/, next: "Next →" },
-  ja: { design: /サービス分割を設計する/, next: "次へ →" },
-} as const;
+const NEXT = { en: "Next →", ja: "次へ →" } as const;
 
 test.describe("AT-3563 tour layout", () => {
-  for (const lang of ["en", "ja"] as const) {
-    test(`(${lang}) keeps each step's node clear of the panel, with no text overflowing`, async ({
-      page,
-      opfs,
-    }) => {
-      await opfs.reset({ showWelcome: true, pinLocale: lang });
-      await opfs.gotoApp();
-      await page
-        .locator(".first-run-welcome")
-        .getByRole("button", { name: LAYOUT_COPY[lang].design })
-        .click();
-      const panel = page.locator(".first-run-tour");
+  for (const guide of LAYOUT_GUIDES) {
+    for (const lang of ["en", "ja"] as const) {
+      test(`(${lang}) ${guide.name}keeps each step's node clear of the panel, with no text overflowing`, async ({
+        page,
+        opfs,
+      }) => {
+        await opfs.reset({ showWelcome: true, pinLocale: lang });
+        await opfs.gotoApp();
+        await page
+          .locator(".first-run-welcome")
+          .getByRole("button", { name: guide.entry[lang] })
+          .click();
+        const panel = page.locator(".first-run-tour");
 
-      for (const [i, step] of STEPS.entries()) {
-        await expect(panel).toContainText(`${i + 1} / ${STEPS.length}`);
-        await step.ready(page);
-        const id = step.node;
-        if (id) {
-          await expect
-            .poll(() => placement(page, id, panel))
-            .toEqual({ rendered: true, nameInPreview: true, underPanel: false });
+        for (const [i, step] of guide.steps.entries()) {
+          await expect(panel).toContainText(`${i + 1} / ${guide.steps.length}`);
+          await step.ready(page);
+          const id = step.node;
+          if (id) {
+            await expect
+              .poll(() => placement(page, id, panel))
+              .toEqual({ rendered: true, nameInPreview: true, underPanel: false });
+          }
+          await expect.poll(() => overflowing(panel)).toEqual([]);
+          await expect.poll(() => insideViewport(page, panel)).toBe(true);
+          if (i < guide.steps.length - 1) {
+            await panel.getByRole("button", { name: NEXT[lang] }).click();
+          }
         }
-        await expect.poll(() => overflowing(panel)).toEqual([]);
-        await expect.poll(() => insideViewport(page, panel)).toBe(true);
-        if (i < STEPS.length - 1) {
-          await panel.getByRole("button", { name: LAYOUT_COPY[lang].next }).click();
-        }
-      }
-    });
+      });
+    }
   }
 });

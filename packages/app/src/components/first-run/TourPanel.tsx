@@ -4,6 +4,8 @@ import { useTranslation } from "../../i18n/index.js";
 import type { TourStep } from "./tour-steps.js";
 
 interface TourPanelProps {
+  /** The guide's name. */
+  heading: string;
   step: TourStep;
   /** Zero-based. */
   index: number;
@@ -28,6 +30,7 @@ interface TourPanelProps {
  * banner below it stay in view.
  */
 export function TourPanel({
+  heading,
   step,
   index,
   total,
@@ -60,7 +63,7 @@ export function TourPanel({
       className="first-run-tour fixed bottom-12 left-4 z-[var(--z-floating-panel)] flex w-[340px] max-w-[calc(100vw-32px)] flex-col gap-2 rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-overlay)] p-3 text-[color:var(--text-primary)] shadow-xl"
     >
       <div className="flex items-center justify-between text-[11px] text-[color:var(--text-secondary)]">
-        <span>{t("firstRun.tour.heading")}</span>
+        <span>{heading}</span>
         <span>{t("firstRun.tour.progress", { current: index + 1, total })}</span>
       </div>
       <div

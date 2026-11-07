@@ -14,12 +14,13 @@ export type FirstRunTranslations = {
   "firstRun.welcome.design.badge": string;
   "firstRun.welcome.understand.title": string;
   "firstRun.welcome.understand.description": string;
+  "firstRun.welcome.understand.badge": string;
   "firstRun.welcome.evolve.title": string;
   "firstRun.welcome.evolve.description": string;
+  "firstRun.welcome.evolve.badge": string;
   "firstRun.welcome.openEditor": string;
   "firstRun.welcome.footnote": string;
   "firstRun.tour.ariaLabel": string;
-  "firstRun.tour.heading": string;
   "firstRun.tour.progress": (params: { current: number; total: number }) => string;
   "firstRun.tour.progressLabel": string;
   "firstRun.tour.skip": string;
@@ -47,6 +48,26 @@ export type FirstRunTranslations = {
   "firstRun.step.share.title": string;
   "firstRun.step.share.body": string;
   "firstRun.step.share.done": string;
+  "firstRun.understand.system.title": string;
+  "firstRun.understand.system.body": string;
+  "firstRun.understand.system.notice": string;
+  "firstRun.understand.deploy.title": string;
+  "firstRun.understand.deploy.body": string;
+  "firstRun.understand.deploy.notice": string;
+  "firstRun.understand.org.title": string;
+  "firstRun.understand.org.body": string;
+  "firstRun.understand.org.notice": string;
+  "firstRun.understand.done": string;
+  "firstRun.evolve.diff.title": string;
+  "firstRun.evolve.diff.body": string;
+  "firstRun.evolve.diff.notice": string;
+  "firstRun.evolve.marks.title": string;
+  "firstRun.evolve.marks.body": string;
+  "firstRun.evolve.marks.notice": string;
+  "firstRun.evolve.remaining.title": string;
+  "firstRun.evolve.remaining.body": string;
+  "firstRun.evolve.remaining.notice": string;
+  "firstRun.evolve.done": string;
 };
 
 export const firstRunEn: FirstRunTranslations = {
@@ -60,14 +81,16 @@ export const firstRunEn: FirstRunTranslations = {
   "firstRun.welcome.design.badge": "Guided · 5 min",
   "firstRun.welcome.understand.title": "Understand an existing system",
   "firstRun.welcome.understand.description":
-    "Explore structure and dependencies in a sample platform.",
+    "Read a sample platform's structure, deployment and ownership with a three-minute guide.",
+  "firstRun.welcome.understand.badge": "Guided · 3 min",
   "firstRun.welcome.evolve.title": "Track architecture evolution",
-  "firstRun.welcome.evolve.description": "Compare a migration in progress with the current system.",
+  "firstRun.welcome.evolve.description":
+    "Follow a migration in progress with a three-minute guide: where it stands and what is left.",
+  "firstRun.welcome.evolve.badge": "Guided · 3 min",
   "firstRun.welcome.openEditor": "✎ Open the editor",
   "firstRun.welcome.footnote":
-    "No account or install needed. Samples open as new projects, and your own projects stay as they are.",
+    "No account or install needed. Guides use sample projects, and your own work stays as it is.",
   "firstRun.tour.ariaLabel": "Guided tour",
-  "firstRun.tour.heading": "Design a service split",
   "firstRun.tour.progress": ({ current, total }) => `${current} / ${total}`,
   "firstRun.tour.progressLabel": "Tour progress",
   "firstRun.tour.skip": "✕ Skip tour",
@@ -104,6 +127,38 @@ export const firstRunEn: FirstRunTranslations = {
     "Decisions work better when everyone shares the same context. Use Share in the toolbar to copy a link to this model, or Export SVG to put the diagram in a document.",
   "firstRun.step.share.done":
     "You have explored an architecture decision with karasu. Next, model your own system, draw its target, and compare the two.",
+  "firstRun.understand.system.title": "See the whole system",
+  "firstRun.understand.system.body":
+    "One diagram shows who uses the system and what it is made of. Click EC Site to open it and see the domains inside.",
+  "firstRun.understand.system.notice": "Product Catalog and Orders depend on each other.",
+  "firstRun.understand.deploy.title": "See how it runs",
+  "firstRun.understand.deploy.body":
+    "The Deploy view shows the same system by how it runs: what is deployed, and on what.",
+  "firstRun.understand.deploy.notice":
+    "Only EC Site and Notification are run here. Payment and Inventory are external services.",
+  "firstRun.understand.org.title": "See who owns what",
+  "firstRun.understand.org.body": "The Org view shows the same system by who owns it.",
+  "firstRun.understand.org.notice":
+    "The Notification team owns nothing here. In the System view, the Notification service shows who does: the Commerce team.",
+  "firstRun.understand.done":
+    "You have read a system from three sides with karasu. Next, model your own system and see what it tells your team.",
+  "firstRun.evolve.diff.title": "Compare the migration with today",
+  "firstRun.evolve.diff.body":
+    "This is a migration in progress, compared with today's system: added parts are green, removed parts are red.",
+  "firstRun.evolve.diff.notice":
+    "Billing Service has appeared, and the Billing domain has left Commerce Application.",
+  "firstRun.evolve.marks.title": "Read the migration in the model",
+  "firstRun.evolve.marks.body":
+    "The model itself says where the migration stands: Billing Database is marked as planned. Click Commerce Database to open it and see its tables.",
+  "firstRun.evolve.marks.notice":
+    "The billing tables are marked deprecated, and the database they will move to is only planned.",
+  "firstRun.evolve.remaining.title": "See what is left",
+  "firstRun.evolve.remaining.body":
+    "This compares the target with the migration: the difference is the work still to do.",
+  "firstRun.evolve.remaining.notice":
+    "What is left is moving the data: the billing tables go to Billing Database.",
+  "firstRun.evolve.done":
+    "You have followed a migration with karasu. Next, record your own as a current, an in-between and a target model, and compare them.",
 };
 
 export const firstRunJa: Partial<FirstRunTranslations> = {
@@ -116,14 +171,16 @@ export const firstRunJa: Partial<FirstRunTranslations> = {
   "firstRun.welcome.design.badge": "ガイド付き · 5 分",
   "firstRun.welcome.understand.title": "既存のシステムを理解する",
   "firstRun.welcome.understand.description":
-    "サンプルのプラットフォームで、構造と依存関係を見ます。",
+    "サンプルのプラットフォームの構造・配置・所有を、3 分のガイドで見ていきます。",
+  "firstRun.welcome.understand.badge": "ガイド付き · 3 分",
   "firstRun.welcome.evolve.title": "アーキテクチャの変化を追う",
-  "firstRun.welcome.evolve.description": "移行途中の構造を、現在のシステムと比べます。",
+  "firstRun.welcome.evolve.description":
+    "進行中の移行の現在地と残りの仕事を、3 分のガイドで見ていきます。",
+  "firstRun.welcome.evolve.badge": "ガイド付き · 3 分",
   "firstRun.welcome.openEditor": "✎ エディタを開く",
   "firstRun.welcome.footnote":
-    "アカウントもインストールも不要です。サンプルは新しいプロジェクトとして開き、既存のプロジェクトはそのまま残ります。",
+    "アカウントもインストールも不要です。ガイドはサンプルのプロジェクトで進み、自分の作業はそのまま残ります。",
   "firstRun.tour.ariaLabel": "ガイドツアー",
-  "firstRun.tour.heading": "サービス分割を設計する",
   "firstRun.tour.progress": ({ current, total }) => `${current} / ${total}`,
   "firstRun.tour.progressLabel": "ツアーの進み具合",
   "firstRun.tour.skip": "✕ ツアーを終了",
@@ -160,4 +217,36 @@ export const firstRunJa: Partial<FirstRunTranslations> = {
     "全員が同じ前提を持つと、判断はうまくいきます。ツールバーの「Share」でこのモデルへのリンクをコピーするか、「SVG をエクスポート」で図を文書に貼れます。",
   "firstRun.step.share.done":
     "karasu で設計判断をひととおり見ました。次は、自分のシステムをモデル化し、目標を描いて、2 つを比べてみてください。",
+  "firstRun.understand.system.title": "システム全体を見る",
+  "firstRun.understand.system.body":
+    "1 枚の図で、誰がシステムを使い、何でできているかが分かります。ECサイトをクリックして、中にあるドメインを見てください。",
+  "firstRun.understand.system.notice": "商品カタログと受注は互いに依存しています。",
+  "firstRun.understand.deploy.title": "どう動いているかを見る",
+  "firstRun.understand.deploy.body":
+    "Deploy ビューは、同じシステムを動かし方で見せます。何を、どこで動かしているかが分かります。",
+  "firstRun.understand.deploy.notice":
+    "ここで動かしているのは ECサイトと通知だけです。決済と在庫管理は外部のサービスです。",
+  "firstRun.understand.org.title": "誰が持っているかを見る",
+  "firstRun.understand.org.body": "Org ビューは、同じシステムを持ち主で見せます。",
+  "firstRun.understand.org.notice":
+    "通知チームはここでは何も持っていません。System ビューの通知サービスを見ると、持っているのはコマースチームです。",
+  "firstRun.understand.done":
+    "karasu でシステムを 3 つの面から読みました。次は、自分のシステムをモデル化して、チームに何が見えるかを確かめてください。",
+  "firstRun.evolve.diff.title": "移行を今のシステムと比べる",
+  "firstRun.evolve.diff.body":
+    "これは進行中の移行を、今のシステムと比べたものです。追加は緑、削除は赤で示されます。",
+  "firstRun.evolve.diff.notice":
+    "請求サービスができ、請求ドメインはコマースアプリケーションから出ました。",
+  "firstRun.evolve.marks.title": "モデルで移行を読む",
+  "firstRun.evolve.marks.body":
+    "移行がどこまで進んだかは、モデル自体が語ります。請求DBには計画中の印が付いています。コマースDBをクリックして、テーブルを見てください。",
+  "firstRun.evolve.marks.notice":
+    "請求のテーブルには廃止予定の印が付き、移る先の DB はまだ計画だけです。",
+  "firstRun.evolve.remaining.title": "残りの仕事を見る",
+  "firstRun.evolve.remaining.body":
+    "目標を移行途中の状態と比べたものです。この差分が、残りの仕事です。",
+  "firstRun.evolve.remaining.notice":
+    "残っているのはデータの移動です。請求のテーブルが請求DBへ移ります。",
+  "firstRun.evolve.done":
+    "karasu で移行をひととおり追いました。次は、自分の移行を現在・途中・目標のモデルに残して、比べてみてください。",
 };
