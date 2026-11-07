@@ -4,7 +4,7 @@ title: 初回体験のツアーは、ステップが頼んだ操作をしたこ�
 status: accepted
 date: 2026-11-06
 topic: app-ui
-related_to: [ADR-3598]
+related_to: [ADR-3598, ADR-3600]
 scope:
   packages: [app, i18n]
 assumptions:
