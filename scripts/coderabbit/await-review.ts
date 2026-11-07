@@ -22,8 +22,9 @@ import {
 } from "./review-state.ts";
 
 // Reads a PR's CodeRabbit state and, unless `--once`, polls until the author has
-// something to act on (Issue #2846). Read-only: it never posts, pushes or
-// resolves — `.claude/skills/coderabbit-converge` does that.
+// something to act on (Issue #2846). Read-only on GitHub: it never posts, pushes or
+// resolves — `.claude/skills/coderabbit-converge` does that. Locally it fetches the
+// base and the PR head, which moves the `origin/<base>` ref all worktrees share.
 //
 //   pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --once
 //   pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --since <iso> [--timeout-min 30] [--limit-budget-min 120]
@@ -136,17 +137,35 @@ interface PrHead {
   defaultSince: string;
 }
 
+/** Heads already fetched: the commits a head merged cannot change, so once per head. */
+const fetchedHeads = new Set<string>();
+
 /**
- * Fetches first: "Update branch" or a merge from another machine leaves HEAD or the
- * merged commits missing here, and that would read as not the same change for the
- * whole wait. Empty when this checkout still cannot say, which leaves the exact head
- * as the only head.
+ * "Update branch" or a merge from another machine leaves HEAD or the merged commits
+ * missing here, and that would read as not the same change for the whole wait. A
+ * failure only warns: what is already here may still answer, and what is not reads
+ * as not the same change. A later poll retries it.
  */
-function readSameChangeCommits(pr: number, headSha: string, baseRefName: string): string[] {
+function fetchForComparison(pr: number, headSha: string, baseRefName: string): void {
+  if (fetchedHeads.has(headSha)) return;
+  const refspec = `+refs/heads/${baseRefName}:refs/remotes/origin/${baseRefName}`;
   try {
-    execFileSync("git", ["fetch", "--quiet", "origin", baseRefName, `pull/${pr}/head`], {
-      stdio: "ignore",
+    execFileSync("git", ["fetch", "--quiet", "--no-tags", "origin", refspec, `pull/${pr}/head`], {
+      stdio: ["ignore", "ignore", "inherit"],
+      // A stalled connection would otherwise outlast `--timeout-min`.
+      timeout: 30_000,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
     });
+    fetchedHeads.add(headSha);
+  } catch (err) {
+    console.error(`could not fetch ${headSha}, comparing what is here: ${String(err)}`);
+  }
+}
+
+/** Empty when this checkout cannot say, which leaves the exact head as the only head. */
+function readSameChangeCommits(pr: number, headSha: string, baseRefName: string): string[] {
+  fetchForComparison(pr, headSha, baseRefName);
+  try {
     return commitsWithSameChange(headSha, gitFacts(`origin/${baseRefName}`, headSha));
   } catch (err) {
     console.error(`could not compare the commits before ${headSha}: ${String(err)}`);

@@ -81,7 +81,7 @@ pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --since <since>
 ```
 
 **Bash の `run_in_background` で起動し、終了通知を待つ。** 自分でポーリングしない。
-スクリプトは読み取り専用で、行動が必要な状態になるか予算が尽きるまで戻らない。
+スクリプトは GitHub に何も書かず（手元では base と PR の HEAD を fetch する）、行動が必要な状態になるか予算が尽きるまで戻らない。
 rate limit 中は CodeRabbit が告知した時刻まで眠る。`pnpm run` 経由の alias にしないこと
 （flag が届かない: TPL-2046）。
 
