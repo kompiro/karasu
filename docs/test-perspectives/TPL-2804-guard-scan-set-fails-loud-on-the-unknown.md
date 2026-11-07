@@ -20,6 +20,14 @@ related_to:
 topic: build
 scope:
   packages: []
+  paths:
+    - "scripts/lint/*.ts"
+    - "scripts/ci/*-policy.test.ts"
+    - "scripts/ci/*-sync.test.ts"
+    - "scripts/ci/workflow-draft-gate.test.ts"
+    - "scripts/ci/workflow-issue-topic-label.test.ts"
+    - "scripts/ci/pnpm-config-location.test.ts"
+    - "scripts/release/*-workflow.test.ts"
 ---
 
 # TPL-2804: 走査対象を持つガードは、未知の要素が黙って対象外になる側ではなく大声で落ちる側に集合を定義する。除外は全走査の上の deny-list で表し、裏付けのないエントリを finding にする

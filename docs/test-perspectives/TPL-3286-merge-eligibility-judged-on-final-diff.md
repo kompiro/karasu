@@ -22,6 +22,11 @@ related_to:
 topic: build
 scope:
   packages: []
+  paths:
+    - "scripts/review/**"
+    - ".github/workflows/review-*.yml"
+    - "scripts/ci/review-*.test.ts"
+    - "scripts/coderabbit/ready-gate*"
 ---
 
 # TPL-3286: 人間を通らないマージを許す判定は、最終の差分で行い、どの規則にも当たらない入力を厳しい側に倒す
