@@ -649,6 +649,8 @@ const LAYOUT_GUIDES: {
   /** Part of the test's name: the Design guide's came first, and has none. */
   name: string;
   entry: { en: RegExp; ja: RegExp };
+  /** The guide is reached from another's first step (#3601). */
+  switchVia?: { en: RegExp; ja: RegExp };
   steps: LayoutStep[];
 }[] = [
   {
@@ -663,6 +665,28 @@ const LAYOUT_GUIDES: {
         ready: async (page) => {
           await noDiff(page);
           await expect(node(page, "BillingDB")).not.toHaveAttribute("data-diff-state", /.*/);
+        },
+      },
+      { node: null, ready: async () => {} },
+    ],
+  },
+  {
+    name: "Payroll: ",
+    entry: { en: /Design a service split/, ja: /サービス分割を設計する/ },
+    switchVia: { en: /Try it with a payroll system/, ja: /給与システムの題材で試す/ },
+    steps: [
+      { node: "WorkforceApp", ready: noDiff },
+      { node: null, ready: (page) => expect(selectedTab(page, "Org")).toBeVisible() },
+      {
+        node: "PayrollService",
+        ready: (page) =>
+          expect(node(page, "PayrollService")).toHaveAttribute("data-diff-state", "added"),
+      },
+      {
+        node: "PayrollDB",
+        ready: async (page) => {
+          await noDiff(page);
+          await expect(node(page, "PayrollDB")).not.toHaveAttribute("data-diff-state", /.*/);
         },
       },
       { node: null, ready: async () => {} },
@@ -706,6 +730,9 @@ test.describe("AT-3563 tour layout", () => {
           .getByRole("button", { name: guide.entry[lang] })
           .click();
         const panel = page.locator(".first-run-tour");
+        if (guide.switchVia) {
+          await panel.getByRole("button", { name: guide.switchVia[lang] }).click();
+        }
 
         for (const [i, step] of guide.steps.entries()) {
           await expect(panel).toContainText(`${i + 1} / ${guide.steps.length}`);

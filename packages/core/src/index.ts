@@ -219,6 +219,8 @@ export {
   MULTI_FILE_SYSTEM_PROJECT_EN,
   SERVICE_SPLIT_PROJECT,
   SERVICE_SPLIT_PROJECT_EN,
+  PAYROLL_SPLIT_PROJECT,
+  PAYROLL_SPLIT_PROJECT_EN,
 } from "./builtins/examples.js";
 export {
   type ExampleLang,

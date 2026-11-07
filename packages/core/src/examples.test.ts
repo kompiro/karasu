@@ -7,6 +7,8 @@ import {
   FACET_STYLING_PROJECT_EN,
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
+  PAYROLL_SPLIT_PROJECT,
+  PAYROLL_SPLIT_PROJECT_EN,
   SERVICE_SPLIT_PROJECT,
   SERVICE_SPLIT_PROJECT_EN,
 } from "./index.js";
@@ -47,95 +49,123 @@ describe.each([["ja", FACET_STYLING_PROJECT] as const, ["en", FACET_STYLING_PROJ
   },
 );
 
-// The first-run guide (#3563) walks a visitor through this sample and tells them
-// what to notice at each step, so the sample must keep saying those things: the
+// The first-run guide (#3563) walks a visitor through these samples and tells them
+// what to notice at each step, so the samples must keep saying those things: the
 // guide's text and the model cannot be allowed to drift apart. Each claim below
-// is one a guide step makes about the files.
-describe.each([["ja", SERVICE_SPLIT_PROJECT] as const, ["en", SERVICE_SPLIT_PROJECT_EN] as const])(
-  "service-split (%s): the first-run guide's claims hold",
-  (_lang, project) => {
-    const parse = (path: string) => {
-      const file = project.files.find((f) => f.path === path);
-      if (!file) throw new Error(`service-split has no ${path}`);
-      const result = Parser.parse(file.content);
-      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
-      return result.value;
-    };
-    const service = (path: string, id: string) =>
-      parse(path).systems[0].children.find((c) => c.id === id);
-    const ownedBy = (path: string, teamId: string) =>
-      parse(path)
-        .organizations[0].teams.find((t) => t.id === teamId)
-        ?.properties.owns.map((ref) => ref.join("."));
+// is one a guide step makes about the files. The two subjects (#3601) have the
+// same shape role for role, so the claims are written over the roles.
+const SHOP_ROLES = {
+  app: "CommerceApp",
+  stays: "Ordering",
+  moves: "Billing",
+  newService: "BillingService",
+  sharedDb: "CommerceDB",
+  newDb: "BillingDB",
+  movedTables: ["Invoices", "Payments"],
+  stayingTable: "Orders",
+  appTeam: "commerce",
+  movesTeam: "billing",
+};
+const PAYROLL_ROLES: typeof SHOP_ROLES = {
+  app: "WorkforceApp",
+  stays: "Attendance",
+  moves: "Payroll",
+  newService: "PayrollService",
+  sharedDb: "WorkforceDB",
+  newDb: "PayrollDB",
+  movedTables: ["Payslips", "Transfers"],
+  stayingTable: "Timesheets",
+  appTeam: "workforce",
+  movesTeam: "payroll",
+};
 
-    it("bundles the three entries the guide switches between", () => {
-      expect(project.files.map((f) => f.path).sort()).toEqual([
-        "index.krs",
-        "migrating.krs",
-        "planned.krs",
-      ]);
+describe.each([
+  ["service-split", "ja", SERVICE_SPLIT_PROJECT, SHOP_ROLES] as const,
+  ["service-split", "en", SERVICE_SPLIT_PROJECT_EN, SHOP_ROLES] as const,
+  ["payroll-split", "ja", PAYROLL_SPLIT_PROJECT, PAYROLL_ROLES] as const,
+  ["payroll-split", "en", PAYROLL_SPLIT_PROJECT_EN, PAYROLL_ROLES] as const,
+])("%s (%s): the first-run guide's claims hold", (name, _lang, project, roles) => {
+  const parse = (path: string) => {
+    const file = project.files.find((f) => f.path === path);
+    if (!file) throw new Error(`${name} has no ${path}`);
+    const result = Parser.parse(file.content);
+    // Warnings too: a guide must not open on a sample that warns (#3601).
+    expect(result.diagnostics.filter((d) => d.severity !== "info")).toEqual([]);
+    return result.value;
+  };
+  const service = (path: string, id: string) =>
+    parse(path).systems[0].children.find((c) => c.id === id);
+  const ownedBy = (path: string, teamId: string) =>
+    parse(path)
+      .organizations[0].teams.find((t) => t.id === teamId)
+      ?.properties.owns.map((ref) => ref.join("."));
+
+  it("bundles the three entries the guide switches between", () => {
+    expect(project.files.map((f) => f.path).sort()).toEqual([
+      "index.krs",
+      "migrating.krs",
+      "planned.krs",
+    ]);
+  });
+
+  it("current: the two domains live in one service", () => {
+    const app = service("index.krs", roles.app);
+    expect(app?.children.map((c) => c.id)).toEqual([roles.stays, roles.moves]);
+    expect(service("index.krs", roles.newService)).toBeUndefined();
+  });
+
+  it("current: the team of the moving domain owns that domain but no service", () => {
+    expect(ownedBy("index.krs", roles.movesTeam)).toEqual([roles.moves]);
+    expect(ownedBy("index.krs", roles.appTeam)).toContain(roles.app);
+  });
+
+  it("planned: the new service has its own database and that team owns it", () => {
+    expect(service("planned.krs", roles.newService)?.children.map((c) => c.id)).toEqual([
+      roles.moves,
+    ]);
+    expect(service("planned.krs", roles.newDb)).toBeDefined();
+    expect(ownedBy("planned.krs", roles.movesTeam)).toEqual([roles.newService, roles.moves]);
+  });
+
+  it("migrating: the new service is the migration target and its database is planned", () => {
+    const split = service("migrating.krs", roles.newService);
+    expect(split?.annotations).toContain("migration_target");
+    expect(split?.annotationParams?.migration_target?.from).toBe(roles.app);
+    expect(service("migrating.krs", roles.newDb)?.annotations).toContain("planned");
+  });
+
+  // Track architecture evolution (#3600) walks the shop sample, and the second
+  // subject keeps the same shape.
+  it("evolve, against today: the moving domain has left the application", () => {
+    const domains = (path: string) => service(path, roles.app)?.children.map((c) => c.id);
+    expect(domains("index.krs")).toContain(roles.moves);
+    expect(domains("migrating.krs")).not.toContain(roles.moves);
+    expect(service("index.krs", roles.newService)).toBeUndefined();
+    expect(service("migrating.krs", roles.newService)).toBeDefined();
+  });
+
+  const tables = (path: string, id: string) =>
+    Object.fromEntries(
+      (service(path, id)?.children ?? []).map((c) => [c.id, c.annotations.includes("deprecated")]),
+    );
+
+  it("evolve, the marks: the moving tables are deprecated and their database only planned", () => {
+    expect(tables("migrating.krs", roles.sharedDb)).toMatchObject({
+      [roles.movedTables[0]]: true,
+      [roles.movedTables[1]]: true,
+      [roles.stayingTable]: false,
     });
+    expect(service("migrating.krs", roles.newDb)?.annotations).toContain("planned");
+  });
 
-    it("current: Ordering and Billing are domains of one service", () => {
-      const app = service("index.krs", "CommerceApp");
-      expect(app?.children.map((c) => c.id)).toEqual(["Ordering", "Billing"]);
-      expect(service("index.krs", "BillingService")).toBeUndefined();
-    });
-
-    it("current: the Billing Team owns the Billing domain but no service", () => {
-      expect(ownedBy("index.krs", "billing")).toEqual(["Billing"]);
-      expect(ownedBy("index.krs", "commerce")).toContain("CommerceApp");
-    });
-
-    it("planned: Billing Service has its own database and the Billing Team owns it", () => {
-      expect(service("planned.krs", "BillingService")?.children.map((c) => c.id)).toEqual([
-        "Billing",
-      ]);
-      expect(service("planned.krs", "BillingDB")).toBeDefined();
-      expect(ownedBy("planned.krs", "billing")).toEqual(["BillingService", "Billing"]);
-    });
-
-    it("migrating: Billing Service is the migration target and its database is planned", () => {
-      const billing = service("migrating.krs", "BillingService");
-      expect(billing?.annotations).toContain("migration_target");
-      expect(billing?.annotationParams?.migration_target?.from).toBe("CommerceApp");
-      expect(service("migrating.krs", "BillingDB")?.annotations).toContain("planned");
-    });
-
-    // Track architecture evolution (#3600).
-    it("evolve, against today: the Billing domain has left Commerce Application", () => {
-      const domains = (path: string) => service(path, "CommerceApp")?.children.map((c) => c.id);
-      expect(domains("index.krs")).toContain("Billing");
-      expect(domains("migrating.krs")).not.toContain("Billing");
-      expect(service("index.krs", "BillingService")).toBeUndefined();
-      expect(service("migrating.krs", "BillingService")).toBeDefined();
-    });
-
-    const tables = (path: string, id: string) =>
-      Object.fromEntries(
-        (service(path, id)?.children ?? []).map((c) => [
-          c.id,
-          c.annotations.includes("deprecated"),
-        ]),
-      );
-
-    it("evolve, the marks: the billing tables are deprecated and their database only planned", () => {
-      expect(tables("migrating.krs", "CommerceDB")).toMatchObject({
-        Invoices: true,
-        Payments: true,
-        Orders: false,
-      });
-      expect(service("migrating.krs", "BillingDB")?.annotations).toContain("planned");
-    });
-
-    it("evolve, what is left: the billing tables move to Billing Database", () => {
-      expect(Object.keys(tables("planned.krs", "CommerceDB"))).not.toContain("Invoices");
-      expect(Object.keys(tables("planned.krs", "CommerceDB"))).not.toContain("Payments");
-      expect(Object.keys(tables("planned.krs", "BillingDB"))).toEqual(["Invoices", "Payments"]);
-      expect(service("planned.krs", "BillingDB")?.annotations).not.toContain("planned");
-    });
-  },
-);
+  it("evolve, what is left: the moving tables go to the new database", () => {
+    for (const table of roles.movedTables) {
+      expect(Object.keys(tables("planned.krs", roles.sharedDb))).not.toContain(table);
+    }
+    expect(Object.keys(tables("planned.krs", roles.newDb))).toEqual(roles.movedTables);
+    expect(service("planned.krs", roles.newDb)?.annotations).not.toContain("planned");
+  });
+});
 
 // The Understand an existing system guide (#3600) makes these claims about the
 // Getting Started sample.

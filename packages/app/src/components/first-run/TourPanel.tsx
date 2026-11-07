@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useTranslation } from "../../i18n/index.js";
 import type { TourStep } from "./tour-steps.js";
 
@@ -21,6 +22,11 @@ interface TourPanelProps {
   onNext: () => void;
   /** Ends the tour from any step: Skip, or Continue to editor on the last one. */
   onClose: () => void;
+  /** The offer to walk the guide on the other subject (#3601), when this step has it. */
+  switchLabel?: string;
+  onSwitch?: () => void;
+  /** A switch is resolving its project: every button waits for it. */
+  switching?: boolean;
 }
 
 /**
@@ -39,12 +45,19 @@ export function TourPanel({
   onBack,
   onNext,
   onClose,
+  switchLabel,
+  onSwitch,
+  switching = false,
 }: TourPanelProps) {
   const { t } = useTranslation();
   const doneId = useId();
   const isFirst = index === 0;
   const isLast = index === total - 1;
   const forwardRef = useRef<HTMLButtonElement>(null);
+  // aria-disabled, not disabled: a button that disables itself under the focus
+  // would drop focus to the page.
+  const unlessSwitching = <T,>(handler: T) => (switching ? undefined : handler);
+  const lockClass = switching ? "opacity-50" : undefined;
 
   // Take focus when the panel appears with nothing else focused (right after
   // Welcome closes), so a keyboard user does not have to tab through the app.
@@ -104,15 +117,32 @@ export function TourPanel({
         )}
         {step.done && <p className="text-xs leading-relaxed font-medium">{t(step.done)}</p>}
       </div>
+      {switchLabel && (
+        <Button
+          className={cn("self-start", lockClass)}
+          aria-disabled={switching}
+          onClick={unlessSwitching(onSwitch)}
+        >
+          {switchLabel}
+        </Button>
+      )}
       <div className="flex items-center gap-1 pt-1">
-        {!isLast && <Button onClick={onClose}>{t("firstRun.tour.skip")}</Button>}
+        {!isLast && (
+          <Button
+            className={lockClass}
+            aria-disabled={switching}
+            onClick={unlessSwitching(onClose)}
+          >
+            {t("firstRun.tour.skip")}
+          </Button>
+        )}
         <span className="flex-1" />
         {/* aria-disabled, not disabled: stepping back onto the first step would
             otherwise disable the focused button and drop focus to the page. */}
         <Button
-          onClick={isFirst ? undefined : onBack}
-          aria-disabled={isFirst}
-          className={isFirst ? "opacity-50" : undefined}
+          onClick={isFirst ? undefined : unlessSwitching(onBack)}
+          aria-disabled={isFirst || switching}
+          className={isFirst ? "opacity-50" : lockClass}
         >
           {t("firstRun.tour.back")}
         </Button>
@@ -120,7 +150,9 @@ export function TourPanel({
           ref={forwardRef}
           variant="actionable"
           aria-describedby={done ? doneId : undefined}
-          onClick={isLast ? onClose : onNext}
+          aria-disabled={switching}
+          className={lockClass}
+          onClick={unlessSwitching(isLast ? onClose : onNext)}
         >
           {isLast ? t("firstRun.tour.finish") : t("firstRun.tour.next")}
         </Button>

@@ -36,6 +36,10 @@ A system mid-migration from a legacy monolith to microservices. Demonstrates `@d
 
 The sample behind the web app's first-run guide (#3563): splitting Billing out of one Commerce Application. Three self-contained entries show the same system **current** (two domains in one service, a shared database, a team that owns a domain but no service), **planned** (an independent Billing Service with its own database) and **migrating** (`@migration_target(from: …)` on the new service, `@planned` on the database it will move to). Open `planned.krs` and compare it with `index.krs` to see the structural diff. Bundled into the app, so edit it with `pnpm gen:examples` (see `.claude/rules/examples-sync.md`).
 
+### `payroll-split/` — `index.krs` + `planned.krs` + `migrating.krs`
+
+The second subject of the same guide (#3601), for a visitor who would rather not read an online shop: splitting Payroll out of one Workforce Application. It has the same shape as `service-split/`, role for role, in a different domain. Bundled into the app, so edit it with `pnpm gen:examples` (see `.claude/rules/examples-sync.md`).
+
 ### `deploy/system.krs`
 
 A retail platform focused on the **deploy diagram**. Shows all artifact types side by side: `war`, `jar`, `oci`, `lambda`, `function`, `assets`, `job` (with and without schedule), and `artifact` (catch-all). Useful as a syntax reference for the physical structure view.

@@ -1,15 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { en, ja, type Translations } from "@karasu-tools/i18n";
-import {
-  GETTING_STARTED_PROJECT,
-  GETTING_STARTED_PROJECT_EN,
-  Parser,
-  SERVICE_SPLIT_PROJECT,
-  SERVICE_SPLIT_PROJECT_EN,
-  type ExampleProject,
-} from "@karasu-tools/core";
+import { Parser, type ExampleProject } from "@karasu-tools/core";
 import type { AppSignals } from "../../state/app-signals.js";
-import { TOURS, isStepDone, isTourId, type CompletionInput } from "./tour-steps.js";
+import { TOURS, isStepDone, isTourId, type CompletionInput, type TourId } from "./tour-steps.js";
 
 const none: AppSignals = { showing: new Set(), lastEvent: {}, seq: 0 };
 
@@ -109,14 +102,34 @@ describe("the guides' shape (#3600)", () => {
   });
 });
 
-const SAMPLES: [string, keyof typeof TOURS, ExampleProject][] = [
-  ["ja", "service-split", SERVICE_SPLIT_PROJECT],
-  ["en", "service-split", SERVICE_SPLIT_PROJECT_EN],
-  ["ja", "evolve", SERVICE_SPLIT_PROJECT],
-  ["en", "evolve", SERVICE_SPLIT_PROJECT_EN],
-  ["ja", "understand", GETTING_STARTED_PROJECT],
-  ["en", "understand", GETTING_STARTED_PROJECT_EN],
-];
+describe("switching the subject (#3601)", () => {
+  it("offers it on the Design guides only, each pointing at the other", () => {
+    expect(TOURS["service-split"].switchTo?.tour).toBe("service-split-payroll");
+    expect(TOURS["service-split-payroll"].switchTo?.tour).toBe("service-split");
+    expect(TOURS.understand.switchTo).toBeUndefined();
+    expect(TOURS.evolve.switchTo).toBeUndefined();
+  });
+
+  it("walks the same scenes on both subjects, so the guide has one shape", () => {
+    const shape = (tour: TourId) =>
+      TOURS[tour].steps.map(({ scene, completion }) => ({
+        file: scene.file,
+        view: scene.view,
+        compareWith: scene.compareWith,
+        asks: completion?.kind,
+      }));
+    expect(shape("service-split-payroll")).toEqual(shape("service-split"));
+  });
+});
+
+// From TOURS, so a guide added there is held here without anyone remembering to.
+const SAMPLES = (Object.keys(TOURS) as TourId[]).flatMap((tour) =>
+  (["ja", "en"] as const).map((lang): [string, TourId, ExampleProject] => [
+    lang,
+    tour,
+    TOURS[tour].example[lang],
+  ]),
+);
 
 describe.each(SAMPLES)("%s %s: what the steps name exists (TPL-3113)", (_lang, tour, project) => {
   /** The ids of the system's nodes: what a step can reveal or ask to drill into. */
@@ -158,34 +171,55 @@ const labelsOf = (project: ExampleProject, path: string) => {
   return labels;
 };
 
-const GUIDE_TEXT_NAMES: [keyof Translations, "understand" | "evolve", string[]][] = [
-  ["firstRun.understand.system.body", "understand", ["ECommerce"]],
-  ["firstRun.understand.system.notice", "understand", ["Catalog", "Order"]],
-  [
-    "firstRun.understand.deploy.notice",
-    "understand",
-    ["ECommerce", "Notification", "Payment", "Inventory"],
+/** The file whose labels the guide's text is read against; it names every node. */
+const LABELS_FROM: Record<TourId, string> = {
+  "service-split": "migrating.krs",
+  understand: "index.krs",
+  evolve: "migrating.krs",
+  "service-split-payroll": "migrating.krs",
+};
+
+const GUIDE_TEXT_NAMES: Record<TourId, [keyof Translations, string[]][]> = {
+  "service-split": [
+    ["firstRun.step.current.body", ["CommerceApp"]],
+    ["firstRun.step.current.notice", ["Ordering", "Billing"]],
+    ["firstRun.step.org.notice", ["billing", "Billing", "commerce"]],
+    ["firstRun.step.target.body", ["Billing"]],
+    ["firstRun.step.decision.body", ["BillingService"]],
+    ["firstRun.step.decision.q1", ["BillingService"]],
   ],
-  ["firstRun.understand.org.notice", "understand", ["notification", "Notification", "commerce"]],
-  ["firstRun.evolve.diff.notice", "evolve", ["BillingService", "Billing", "CommerceApp"]],
-  ["firstRun.evolve.marks.body", "evolve", ["BillingDB", "CommerceDB"]],
-  ["firstRun.evolve.remaining.notice", "evolve", ["BillingDB"]],
-];
+  understand: [
+    ["firstRun.understand.system.body", ["ECommerce"]],
+    ["firstRun.understand.system.notice", ["Catalog", "Order"]],
+    ["firstRun.understand.deploy.notice", ["ECommerce", "Notification", "Payment", "Inventory"]],
+    ["firstRun.understand.org.notice", ["notification", "Notification", "commerce"]],
+  ],
+  evolve: [
+    ["firstRun.evolve.diff.notice", ["BillingService", "Billing", "CommerceApp"]],
+    ["firstRun.evolve.marks.body", ["BillingDB", "CommerceDB"]],
+    ["firstRun.evolve.remaining.notice", ["BillingDB"]],
+  ],
+  "service-split-payroll": [
+    ["firstRun.payroll.current.body", ["WorkforceApp"]],
+    ["firstRun.payroll.current.notice", ["Attendance", "Payroll"]],
+    ["firstRun.payroll.org.notice", ["payroll", "Payroll", "workforce"]],
+    ["firstRun.payroll.target.body", ["Payroll"]],
+    ["firstRun.payroll.decision.body", ["PayrollService"]],
+    ["firstRun.payroll.decision.q1", ["PayrollService"]],
+  ],
+};
 
 describe.each([
-  ["ja", ja, GETTING_STARTED_PROJECT, SERVICE_SPLIT_PROJECT],
-  ["en", en, GETTING_STARTED_PROJECT_EN, SERVICE_SPLIT_PROJECT_EN],
-] as const)(
-  "%s: the guides' text uses the sample's labels (#3600)",
-  (_lang, phrases, gs, split) => {
-    it.each(GUIDE_TEXT_NAMES)("%s", (key, guide, ids) => {
-      const labels =
-        guide === "understand" ? labelsOf(gs, "index.krs") : labelsOf(split, "migrating.krs");
-      const text = String(phrases[key]);
-      const missing = ids
-        .map((id) => labels.get(id) ?? id)
-        .filter((label) => !text.includes(label));
-      expect(missing).toEqual([]);
-    });
-  },
-);
+  ["ja", ja],
+  ["en", en],
+] as const)("%s: the guides' text uses the sample's labels (#3600)", (lang, phrases) => {
+  const rows = (Object.keys(GUIDE_TEXT_NAMES) as TourId[]).flatMap((tour) =>
+    GUIDE_TEXT_NAMES[tour].map(([key, ids]) => [key, tour, ids] as const),
+  );
+  it.each(rows)("%s (%s)", (key, tour, ids) => {
+    const labels = labelsOf(TOURS[tour].example[lang], LABELS_FROM[tour]);
+    const text = String(phrases[key]);
+    const missing = ids.map((id) => labels.get(id) ?? id).filter((label) => !text.includes(label));
+    expect(missing).toEqual([]);
+  });
+});

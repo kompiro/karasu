@@ -136,7 +136,7 @@ export function ProjectModeApp() {
     exportProject,
     importProject,
     openExample,
-    openBundledExample,
+    addBundledExample,
   } = useProjectActions({
     pm,
     fs,
@@ -282,7 +282,7 @@ export function ProjectModeApp() {
         navigateToProject={navigateToProject}
         selectFile={selectFile}
         keepOpenFile={keepOpenFile}
-        openBundledExample={openBundledExample}
+        addBundledExample={addBundledExample}
         matchesExample={matchesExample}
         dispatch={dispatch}
       />

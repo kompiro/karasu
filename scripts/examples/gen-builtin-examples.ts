@@ -142,6 +142,18 @@ export const REGISTERED_EXAMPLES: readonly RegisteredExample[] = [
     layout: "flat",
     doc: "English variant of SERVICE_SPLIT_PROJECT, opened for non-`ja` locales (#3563).",
   },
+  {
+    constant: "PAYROLL_SPLIT_PROJECT",
+    dir: "ja/payroll-split",
+    layout: "flat",
+    doc: "The first-run guide's second subject: the same split as SERVICE_SPLIT_PROJECT in a payroll system (#3601).",
+  },
+  {
+    constant: "PAYROLL_SPLIT_PROJECT_EN",
+    dir: "en/payroll-split",
+    layout: "flat",
+    doc: "English variant of PAYROLL_SPLIT_PROJECT, opened for non-`ja` locales (#3601).",
+  },
 ];
 
 /** Entry files of a multi-file stage, renamed to `index.krs` when bundled (#1777). */
