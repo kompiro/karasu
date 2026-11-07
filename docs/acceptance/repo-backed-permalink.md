@@ -85,7 +85,7 @@
 
 ### 手動確認（実デプロイでのみ検証可能）
 
-> **M-2〜M-4 は PR プレビュー deployment で `curl` により確認済み**（実測: `/r/foo`→400、`/r/kompiro/karasu@<sha>`（root `.krs` 無し）→404、`/r/kompiro/karasu/examples/en/deploy-org/index.krs@<sha>`→302→`/s`→200、明示 path 不在→404、`/`→200、`/render`→400）。ただし CI テストではなく手動 curl 検証のため box は `[ ]` のままにする（canonical marker 規約: `[x]` は自動テスト裏付けを要する）。M-1 の視覚的 drill-down 描画のみ純粋な人手確認を残す。
+> **M-2〜M-4 は PR #1945 のプレビュー deployment で `curl` により確認済み**（実測: `/r/foo`→400、`/r/kompiro/karasu@<sha>`（root `.krs` 無し）→404、`/r/kompiro/karasu/examples/en/deploy-org/index.krs@<sha>`→302→`/s`→200、明示 path 不在→404、`/`→200、`/render`→400）。ただし CI テストではなく手動 curl 検証のため box は `[ ]` のままにする（canonical marker 規約: `[x]` は自動テスト裏付けを要する）。M-1 の視覚的 drill-down 描画のみ純粋な人手確認を残す。
 
 - [ ] M-1: public repo（例 `examples/en/deploy-org/index.krs` を持つ karasu 自身）に対し `https://<host>/r/kompiro/karasu/examples/en/deploy-org/index.krs@<sha>` を開くと、nest SPA がそのモデルを drill-down 付きで**視覚表示**する（302 → `/s?s=` → `/#s=` の bounce 経由。HTTP chain 302→`/s`→200 は確認済み、残りは描画の目視）
 - [ ] M-2: 存在しない ref / repo は 404、不正な permalink は 400、明示 path 不在は 404 のプレーンテキストを返す（プレビューで `curl` 確認済み）

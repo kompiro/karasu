@@ -13,7 +13,7 @@ without any visible change to rendered output.
 
 ## Verification commands
 
-Run from the worktree root:
+Run from the repo root:
 
 ```
 npm run test --workspace=packages/core  # 27 files, 464 tests

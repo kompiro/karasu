@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * Guard: an AT record must not name a place that only one session or one PR had.
+ * An AT record must not name a place that only one session or one PR had.
  *
  * A record is re-read long after the PR that wrote it (TPL-2254). A preview
  * deployment's host dies with the PR, and a worktree path never existed for
@@ -10,6 +10,10 @@ import { join } from "node:path";
  * said `npm run dev` long after the repo moved to pnpm. A manual step says what
  * to open and what to expect; where to run it is the PR's Preview URL or a local
  * checkout. `design-refs.ts` holds the same rule for `docs/design/`.
+ *
+ * Not read: a machine's absolute path (`/workspaces/...`), and `wrangler pages dev`
+ * and a bare `vite preview`, which records discuss as a subject (what the e2e server
+ * does not serve) rather than run as a step.
  */
 
 export type RecordAddressKind = "preview-host" | "session-path" | "dev-server-command";
@@ -23,26 +27,36 @@ export interface RecordAddressFinding {
   text: string;
 }
 
+/** A package manager with any flags, then a script that starts a server. */
+const SERVER_SCRIPT =
+  /\b(?:pnpm|npm|yarn)(?:\s+-{1,2}[\w=@/.-]+(?:\s+(?!run\b|-)[@\w./-]+(?=\s+(?:-|run\b|dev\b|preview\b|start\b)))?)*\s+(?:run\s+)?(?:dev|preview|start)\b/g;
+/** The tool under those scripts, called directly. */
+const SERVER_TOOL =
+  /\b(?:(?:npx|pnpm(?:\s+exec)?)\s+vite\b(?!\s+(?:build|optimize)\b)|vite\s+dev\b|astro\s+(?:dev|preview)\b)|\blocalhost:5173\b/g;
+
 const PATTERNS: readonly (readonly [RecordAddressKind, RegExp])[] = [
   // The production host has no subdomain, and a `<branch>` placeholder is fine.
   ["preview-host", /\b[a-z0-9][a-z0-9-]*\.karasu(?:-docs)?\.pages\.dev\b/g],
-  // The trailing `/` lets a sentence or a test name mention the directory itself.
-  ["session-path", /(?:^|[\s`"'(])(?:\.claude\/worktrees|\.worktrees)\/[^\s`"')]*/g],
-  ["dev-server-command", /\bnpm run dev\b|\bpnpm(?: --filter \S+)?(?: run)? dev\b/g],
+  // A name after the `/` is what makes it a session's path: `.claude/worktrees/`
+  // and `.claude/worktrees/<branch>` only say where worktrees go.
+  ["session-path", /(?<![\w-])(?:\.claude\/worktrees|\.worktrees)\/[\w.-][^\s`"')]*/g],
+  ["dev-server-command", SERVER_SCRIPT],
+  ["dev-server-command", SERVER_TOOL],
 ];
 
 /** Findings for one record. Exported so the rules can be tested on plain text. */
 export function findRecordAddresses(file: string, source: string): RecordAddressFinding[] {
-  return source.split("\n").flatMap((text, i) =>
-    PATTERNS.flatMap(([kind, pattern]) =>
-      [...text.matchAll(pattern)].map((match) => ({
-        file,
-        line: i + 1,
-        kind,
-        text: match[0].trim().replace(/^[`"'(]/, ""),
-      })),
-    ),
-  );
+  return source.split("\n").flatMap((text, i) => {
+    // A markdown link spells the same address twice: one reference, one finding.
+    const seen = new Set<string>();
+    return PATTERNS.flatMap(([kind, pattern]) =>
+      [...text.matchAll(pattern)].flatMap((match) => {
+        if (seen.has(match[0])) return [];
+        seen.add(match[0]);
+        return [{ file, line: i + 1, kind, text: match[0] }];
+      }),
+    );
+  });
 }
 
 export function analyzeRecordAddresses(repoRoot: string): RecordAddressFinding[] {

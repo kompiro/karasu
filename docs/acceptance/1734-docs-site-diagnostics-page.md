@@ -19,6 +19,6 @@
 
   > ✅ Automated — `pnpm --filter @karasu-tools/docs-site build`。
 
-- [ ] `astro dev` でサイドバーに **Reference → diagnostics** が英語・日本語の両ロケールで表示され、ページが正しくレンダリングされる
+- [ ] サイドバーに **Reference → diagnostics** が英語・日本語の両ロケールで表示され、ページが正しくレンダリングされる
 
   > 🧑 Manual — 公開ドキュメントサイト（https://kompiro.github.io/karasu/）の `/spec/diagnostics/` と `/ja/spec/diagnostics/` を開いて目視確認する（サイドバー配置・見出し・規則ファミリのテーブル）。

@@ -24,6 +24,6 @@
 
   > 🧑 Manual — Explore エージェントが concepts.md / spec/* から抽出した term→定義→出典の対応に基づき各項目を作成し、リンク先の正典と突き合わせて確認した。TPL-1296 を back-ref で紐付け。
 
-- [ ] `astro dev` でサイドバーに **Reference → Glossary** が英語・日本語の両ロケールで表示され、ページが正しくレンダリングされる
+- [ ] サイドバーに **Reference → Glossary** が英語・日本語の両ロケールで表示され、ページが正しくレンダリングされる
 
   > 🧑 Manual — 公開ドキュメントサイト（https://kompiro.github.io/karasu/）の `/spec/glossary/` と `/ja/spec/glossary/` を開いて目視確認する（サイドバー配置・見出し・各グループのリスト・出典リンクの遷移）。

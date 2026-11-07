@@ -41,7 +41,7 @@
 
 ### AC-3: bilingual な公開とハイライト（手動確認）
 
-- [ ] guides 01–05・spec（syntax/style/tags-annotations）・concepts が en・ja の両方でビルドされ到達できる（`pnpm --filter @karasu-tools/docs-site run build` → 23 ページ生成、`astro preview` で確認）
+- [ ] guides 01–05・spec（syntax/style/tags-annotations）・concepts が en・ja の両方でビルドされ到達できる（`pnpm --filter @karasu-tools/docs-site run build` → 23 ページ生成、PR の docs preview で確認）
 - [ ] language switcher で同一ページの en ↔ ja を往復でき、サイドバーが Guides / Reference / Concepts を両ロケールで表示する
 - [ ] `krs` / `krs.style` の fence が vscode grammar 由来でシンタックスハイライトされる（`data-language="krs"` ブロックがトークン色付けされる）
 
@@ -54,4 +54,4 @@
 
 - 自動（PR ゲート）: `pnpm --filter @karasu-tools/docs-site run test`（`rewrite.test.ts` / `site-map.test.ts` ほかのユニット層）。root の `test` / `test:coverage` チェーンに入っており PR CI で走る。
 - 自動（deploy ゲート）: `pnpm --filter @karasu-tools/docs-site run check-links`（in-site link/anchor 解決）は `build` 内で実行され、`.github/workflows/pages.yml`（main への push 時のデプロイ）でのみ走る — PR 時点ではゲートしない。
-- 手動: `pnpm --filter @karasu-tools/docs-site run build && pnpm --filter @karasu-tools/docs-site run preview` でローカル起動し、AC-3 / AC-4 を目視確認する。
+- 手動: PR の docs preview で AC-3 / AC-4 を目視確認する。

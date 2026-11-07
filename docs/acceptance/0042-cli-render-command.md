@@ -29,6 +29,8 @@ Supports all-views bundled output (default) and individual view output (`--view`
 
 ### Setup
 
+Run from the repo root:
+
 ```bash
 npm run build --workspace=packages/core
 npm run build --workspace=packages/cli

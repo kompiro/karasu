@@ -15,6 +15,23 @@ describe("findRecordAddresses (TPL-2254)", () => {
     ["pnpm dev", "1. `pnpm dev` で起動", "dev-server-command"],
     ["pnpm run dev", "pnpm run dev", "dev-server-command"],
     ["a filtered dev", "`pnpm --filter @karasu-tools/app dev` →", "dev-server-command"],
+    ["-F", "pnpm -F @karasu-tools/app dev", "dev-server-command"],
+    ["--filter=", "pnpm --filter=@karasu-tools/app dev", "dev-server-command"],
+    ["-C", "pnpm -C packages/app dev", "dev-server-command"],
+    ["-r", "pnpm -r dev", "dev-server-command"],
+    ["npm -w", "npm -w packages/app run dev", "dev-server-command"],
+    ["yarn", "yarn dev", "dev-server-command"],
+    ["pnpm preview", "pnpm --filter @karasu-tools/app preview", "dev-server-command"],
+    ["run preview", "pnpm --filter @karasu-tools/docs-site run preview", "dev-server-command"],
+    ["npm start", "npm start", "dev-server-command"],
+    ["pnpm exec vite", "pnpm exec vite", "dev-server-command"],
+    ["npx vite", "npx vite --port 5173", "dev-server-command"],
+    ["vite dev", "vite dev", "dev-server-command"],
+    ["astro dev", "`astro dev` で開く", "dev-server-command"],
+    ["the dev server's address", "http://localhost:5173/", "dev-server-command"],
+    ["a relative worktree path", "../.worktrees/x/a", "session-path"],
+    ["a home worktree path", "~/.claude/worktrees/x/a", "session-path"],
+    ["an absolute worktree path", "/workspaces/karasu/.claude/worktrees/feat/x/a", "session-path"],
   ])("flags %s", (_name, source, kind) => {
     expect(kinds(source)).toEqual([kind]);
   });
@@ -29,8 +46,21 @@ describe("findRecordAddresses (TPL-2254)", () => {
     ["karasu serve", "`karasu serve` を起動し http://localhost:3000 を開く"],
     ["a build command", "pnpm --filter @karasu-tools/app build"],
     ["a word starting with dev", "pnpm devtools"],
+    ["a test run", "pnpm vitest run src/a.test.ts"],
+    ["vite preview as a subject", "`vite preview` を相手にする e2e には現れない"],
+    ["a build", "pnpm --filter @karasu-tools/docs-site run build"],
+    ["npx vitest", "npx vitest run"],
+    ["vite build", "pnpm exec vite build"],
+    ["a placeholder worktree", "`.claude/worktrees/<branch-name>`"],
+    ["the worktree directory", "`.claude/worktrees/` 配下に置く"],
+    ["a kept AT's serve port", "http://localhost:3000"],
   ])("leaves %s alone", (_name, source) => {
     expect(kinds(source)).toEqual([]);
+  });
+
+  it("reports a markdown link's repeated host once", () => {
+    const link = "[a.karasu.pages.dev](https://a.karasu.pages.dev)";
+    expect(kinds(link)).toEqual(["preview-host"]);
   });
 
   it("reports the line and the text as written", () => {
