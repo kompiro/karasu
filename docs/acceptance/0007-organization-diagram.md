@@ -13,7 +13,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 
 ## Prerequisites
 
-- App running (`npm run dev`)
+- App running
 - Browser open at <https://karasu.kompiro.dev/>
 - A project is selected (e.g., Getting Started)
 

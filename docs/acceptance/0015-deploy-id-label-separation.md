@@ -7,7 +7,7 @@ consistent with logical nodes. The renderer shows the label when set, falling ba
 
 ## Prerequisites
 
-- karasu app is running (`npm run dev` in `packages/app`)
+- karasu app is running
 - A `.krs` file with a deploy block can be loaded in the editor
 
 ## Test Cases

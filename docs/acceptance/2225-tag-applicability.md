@@ -68,7 +68,7 @@ spec 表にも印字されているが、**どの consumer も検証していな
 
 - [ ] AT-L: 🧑 Manual — app のプレビューで `service Api [index]` を書き、警告パネルに `tag-not-applicable` が warning アイコンで出て、メッセージが適用先（`database`）を示すこと
 
-  > `pnpm --filter @karasu-tools/app dev` → `index.krs` に `system S { service Api [index] {} }` を入力
+  > `index.krs` に `system S { service Api [index] {} }` を入力
 
 - [ ] AT-M: 🧑 Manual — VS Code 拡張で同じ `.krs` を開き、LSP 経由で該当行に warning の波線が出ること
 

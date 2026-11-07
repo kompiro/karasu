@@ -83,7 +83,7 @@
 
 ### AC-6: 本番 Pages でのみ確認できる項目
 
-> **AT-Q は preview deployment `feat-bare-permalink-route.karasu.pages.dev` で `curl` により確認済み**（実測: `/`・`/projects/my-project`・`/nope`・`/nope/deeper/further` → SPA、`/s` → 400、`/kompiro/karasu` → 案内ページ、`…/index.krs` → 302、`/r/…` → 301）。**本番の SPA fallback が local と同じく効くこと**がここで確定した。CI テストではなく手動 curl 検証のため box は `[ ]` のままにする。
+> **AT-Q は preview deployment で `curl` により確認済み**（実測: `/`・`/projects/my-project`・`/nope`・`/nope/deeper/further` → SPA、`/s` → 400、`/kompiro/karasu` → 案内ページ、`…/index.krs` → 302、`/r/…` → 301）。**本番の SPA fallback が local と同じく効くこと**がここで確定した。CI テストではなく手動 curl 検証のため box は `[ ]` のままにする。
 
 - [ ] AT-Q: **手動** — preview deployment で `_redirects` の SPA fallback が効くこと。`wrangler pages dev` は `/* /index.html 200` を "Infinite loop detected" として無視するため、local と本番で fallback の経路が異なる
 - [ ] AT-R: **手動** — `/assets/*` が Function を起動しないこと（`_routes.json` の exclude が honor されること）。**外形からは観測できない** — exclude が効いていなくても Function は辞退して同じアセットを返すため、応答は区別できない。Cloudflare dashboard の Functions invocation メトリクスで確認する。効いていない場合の症状はコスト（1 ページロードあたり数十 invocation）であって機能不全ではない

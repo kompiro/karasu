@@ -30,7 +30,6 @@ Supports all-views bundled output (default) and individual view output (`--view`
 ### Setup
 
 ```bash
-cd .worktrees/cli-render
 npm run build --workspace=packages/core
 npm run build --workspace=packages/cli
 alias karasu="node $(pwd)/packages/cli/dist/index.js"

@@ -97,7 +97,7 @@
 
 - [ ] AT-Q: 🧑 Manual — app で facet を選び、メンバーにリング・非メンバーの減光・legend の色凡例が**目で読めること**（色のコントラストが light / dark 双方で成立しているか。TPL-1697）
 
-  > `pnpm --filter @karasu-tools/app dev` → `index.krs` に `facet pii { label "Personal data" }` と `service Api { facets pii }` を書き、Facets セレクタから選択。テーマを切り替えて両方で確認
+  > `index.krs` に `facet pii { label "Personal data" }` と `service Api { facets pii }` を書き、Facets セレクタから選択。テーマを切り替えて両方で確認
 
 - [ ] AT-R: 🧑 Manual — **Group by: team / boundary と同時に**有効にして、バンドとリングが互いを潰さずに読めること（#2174 が名指しする AT 項目）
 

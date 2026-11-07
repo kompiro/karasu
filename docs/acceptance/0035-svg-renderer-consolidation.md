@@ -35,7 +35,7 @@ npm run format:check
 
 ### AC-2: レンダリング結果の不変
 
-- [ ] Open the app (`npm run dev`) and load an org diagram — visual output is unchanged
+- [ ] Open the app and load an org diagram — visual output is unchanged
 - [ ] Load a system diagram — visual output is unchanged
 - [ ] Load a deploy diagram — visual output is unchanged
 

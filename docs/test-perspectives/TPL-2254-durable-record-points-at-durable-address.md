@@ -51,9 +51,9 @@ scope:
 
 - [ ] 手順に URL を書かず、入力（埋めた `.krs` など）と期待結果だけで実行できるか。その PR の preview かローカルの checkout で、マージ前に確かめられるか [judgment]
 - [ ] 指しているファイルは、この記録より長生きするか — `docs/design/` は昇格時に削除されるので代わりに Issue と ADR を指す。`packages/…` / `scripts/…` は機械で照合される（AT と設計ドキュメントは `pnpm run lint:record-source-paths`、TPL は `pnpm run tpl:validate`。不在が正しいならどちらでも、その行の上に理由付きで宣言する） [guard: `scripts/lint/record-source-paths.ts`, `scripts/acceptance/design-refs.ts`, `.github/workflows/at-check-coverage.yml`, `.github/workflows/ci.yml`]
-- [ ] ブランチ名・PR 番号・セッション固有のパスが URL に含まれていないか
-- [ ] AT の手順にローカル dev サーバの起動コマンドを書いていないか（確かめる場所はその PR の preview かローカルの checkout で、手順はそこで開く入力と期待結果だけにする）
-- [ ] preview URL を記録に焼き付けず、PR 本文の Preview URL 欄に置いたか
+- [ ] ブランチ名・PR 番号・セッション固有のパスが URL に含まれていないか [guard: `scripts/acceptance/record-addresses.ts`]
+- [ ] AT の手順にローカル dev サーバの起動コマンドを書いていないか（確かめる場所はその PR の preview かローカルの checkout で、手順はそこで開く入力と期待結果だけにする） [guard: `scripts/acceptance/record-addresses.ts`]
+- [ ] preview URL を記録に焼き付けず、PR 本文の Preview URL 欄に置いたか [guard: `scripts/acceptance/record-addresses.ts`]
 - [ ] 本番にしか現れない項目（デプロイ設定、OAuth など）を AT に置かず、実装 PR を作る前に別の Issue に起こしたか [judgment]
 
 ## 既知の対処パターン
@@ -74,6 +74,7 @@ scope:
 
 ## 関連テスト
 
+- `scripts/acceptance/record-addresses.test.ts`
 - `scripts/lint/record-source-paths.ts` — `pnpm run lint:record-source-paths` の本体。`docs/{acceptance,design}` の
   コードスパンに書かれた `packages/…` / `scripts/…` のパスを working tree と突き合わせ、不在なら落とす
   （チェックリスト 2 項目目のソースパス側）
