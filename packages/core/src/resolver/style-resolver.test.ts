@@ -646,8 +646,8 @@ describe("resolveStyles", () => {
     const IMPLICIT_AMBER = "#F59E0B";
 
     /**
-     * Resolve a system with one `[implicit]` edge (A→B) and one explicit
-     * untagged edge (C→B). Returns both resolved styles so callers can
+     * Resolve one `[implicit]` edge (A→B), passed beside a system that holds one
+     * explicit untagged edge (C→B). Returns both resolved styles so callers can
      * assert the implicit edge's styling and the explicit sibling's
      * non-participation. `userSheets` are appended after the builtin sheet.
      *
@@ -660,11 +660,7 @@ describe("resolveStyles", () => {
       const system = makeNode({
         kind: "system",
         id: "Test",
-        children: [
-          makeNode({ kind: "service", id: "A", label: "A" }),
-          makeNode({ kind: "service", id: "B", label: "B" }),
-          makeNode({ kind: "service", id: "C", label: "C" }),
-        ],
+        children: [],
         edges: [
           {
             from: "C",
