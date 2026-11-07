@@ -5,7 +5,7 @@ status: accepted
 date: 2026-05-06
 topic: edges
 depends_on: [ADR-1142]
-related_to: [ADR-969, ADR-1076]
+related_to: [ADR-969, ADR-1076, ADR-3480]
 scope:
   packages: [core]
 ---

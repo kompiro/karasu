@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-11-05
 - **関連 Issue**: [#3480](https://github.com/kompiro/karasu/issues/3480)（前提 [#3520](https://github.com/kompiro/karasu/issues/3520)）
+- **設計 (ADR)**: [ADR-3480](../adr/3480-edge-canonical-id-quoted-endpoints.md)
 - **Related TPLs**: [TPL-3480](../test-perspectives/TPL-3480-generated-id-relexes-in-target-grammar.md), [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md), [TPL-1755](../test-perspectives/TPL-1755-edge-endpoint-selector-id-form.md)
 - **対象ファイル**: `packages/core/src/style/edge-endpoint-literal.ts`、`packages/core/src/resolver/canonical-id.ts`、`packages/core/src/parser/style-parser.ts`、`packages/core/src/style/serialize.ts`、`packages/i18n/src/{en,ja,types}.ts`、`docs/spec/style.md`、`docs/spec/style.ja.md`
 
