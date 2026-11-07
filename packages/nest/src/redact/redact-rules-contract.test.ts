@@ -257,14 +257,18 @@ describe("the limits the timing fixes put on detection", () => {
     expect(redact(uri("oracle+cx_oracle")).text).not.toContain(password);
   });
 
-  it("redacts a password holding `@`, `?` or `#`, and not a port before a query", () => {
-    for (const secret of ["pa@ss", "pa?ss", "pa#ss", "12345x?y"]) {
+  it("redacts a password holding `@`, `?` or `#`, whatever it starts with", () => {
+    for (const secret of ["pa@ss", "pa?ss", "pa#ss", "1234?ss", "1234#ss"]) {
       expect(redact(`postgres://u:${secret}@host/db`).text).toBe(
         "postgres://u:[REDACTED:connection-string-password]@host/db",
       );
     }
-    const query = "http://host:8080?x=a@b";
-    expect(redact(query)).toEqual({ text: query, findings: [] });
+  });
+
+  it("over-redacts a port before a query holding `@`, which reads the same", () => {
+    expect(redact("http://host:8080?x=a@b").text).toBe(
+      "http://host:[REDACTED:connection-string-password]@b",
+    );
   });
 
   it("finds a JWT with a long header, and by `(?<!-)` not one right after `-`", () => {
