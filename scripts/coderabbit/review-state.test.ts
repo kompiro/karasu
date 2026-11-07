@@ -3,7 +3,9 @@ import {
   type AuthorComment,
   bodyFindingCount,
   bodyFindingIds,
+  changeCommittedAt,
   classify,
+  commitsWithSameChange,
   findingSeverity,
   parseAnnouncedWaitMs,
   parseNoticeHeadSha,
@@ -71,6 +73,50 @@ function cleanSummary(
       "",
       verdict,
       "",
+      "<details>",
+      "<summary><strong>Commits</strong></summary>",
+      `Reviewing files that changed from the base of the PR and between 762d7acf27310987374c27493a731afa00d15587 and ${head}.`,
+      "</details>",
+      "<!-- recent_review_end -->",
+    ].join("\n"),
+  };
+}
+
+/**
+ * The summary comment since the verdict moved to its own section, trimmed from
+ * #3628 (#3657). `skipped` adds the notice a merge-only push writes above the rest.
+ */
+function statusSummary(
+  updatedAt: string,
+  head = HEAD,
+  {
+    skipped = false,
+    verdict = "No actionable comments were generated in the recent review.",
+    walkthrough = "The PR rewrites the guides around the skill.",
+  } = {},
+): CodeRabbitComment {
+  return {
+    createdAt: "2026-09-15T12:56:11Z",
+    updatedAt,
+    body: [
+      "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->",
+      ...(skipped
+        ? [
+            "<!-- This is an auto-generated comment: skip review by coderabbit.ai -->",
+            "> ## Review skipped",
+            "> Auto incremental reviews are disabled on this repository.",
+            "<!-- end of auto-generated comment: skip review by coderabbit.ai -->",
+          ]
+        : []),
+      "<!-- recent_review_status_start -->",
+      "",
+      verdict,
+      "",
+      "<!-- recent_review_status_end -->",
+      "<!-- walkthrough_start -->",
+      walkthrough,
+      "<!-- walkthrough_end -->",
+      "<!-- recent_review_start -->",
       "<details>",
       "<summary><strong>Commits</strong></summary>",
       `Reviewing files that changed from the base of the PR and between 762d7acf27310987374c27493a731afa00d15587 and ${head}.`,
@@ -389,6 +435,120 @@ describe("classify", () => {
     });
   });
 
+  describe("a verdict in the recent_review_status section (#3657)", () => {
+    it("is converged when the status says the review of the head found nothing", () => {
+      expect(classify(snapshot({ comments: [statusSummary("2026-09-15T14:05:00Z")] }))).toEqual({
+        kind: "converged",
+      });
+    });
+
+    it("waits when the status section holds another verdict", () => {
+      const state = classify(
+        snapshot({
+          comments: [
+            statusSummary("2026-09-15T14:05:00Z", HEAD, {
+              verdict: "Actionable comments posted: 1",
+            }),
+          ],
+        }),
+      );
+      expect(state).toEqual({ kind: "waiting" });
+    });
+
+    it("does not read the sentence quoted in the walkthrough as the verdict", () => {
+      const state = classify(
+        snapshot({
+          comments: [
+            statusSummary("2026-09-15T14:05:00Z", HEAD, {
+              verdict: "Actionable comments posted: 1",
+              walkthrough: "The script now reads 'No actionable comments were generated'.",
+            }),
+          ],
+        }),
+      );
+      expect(state).toEqual({ kind: "waiting" });
+    });
+  });
+
+  // #3628: a clean review of the commit before a merge of main. CodeRabbit skips the
+  // merge-only push, so the verdict never names HEAD (ADR-3286).
+  describe("a commit HEAD only merged the base into (#3657)", () => {
+    const merged = { sameChangeCommits: [OLD] };
+
+    it("reads the clean verdict on that commit as the answer", () => {
+      const state = classify(
+        snapshot({
+          ...merged,
+          comments: [statusSummary("2026-09-15T14:05:00Z", OLD, { skipped: true })],
+        }),
+      );
+      expect(state).toEqual({ kind: "converged" });
+    });
+
+    it("waits when that commit does not count as the same change", () => {
+      const state = classify(
+        snapshot({ comments: [statusSummary("2026-09-15T14:05:00Z", OLD, { skipped: true })] }),
+      );
+      expect(state).toEqual({ kind: "waiting" });
+    });
+
+    it("waits when the verdict names a commit outside the list", () => {
+      const state = classify(
+        snapshot({
+          sameChangeCommits: ["0123abc"],
+          comments: [statusSummary("2026-09-15T14:05:00Z", OLD, { skipped: true })],
+        }),
+      );
+      expect(state).toEqual({ kind: "waiting" });
+    });
+
+    it("reads a review with findings on that commit", () => {
+      const state = classify(
+        snapshot({
+          ...merged,
+          reviews: [
+            { state: "COMMENTED", commitId: OLD, submittedAt: "2026-09-15T14:05:00Z", body: "x" },
+          ],
+          threads: [
+            {
+              isResolved: false,
+              lastCommentAt: "2026-09-15T14:05:00Z",
+              lastCommentByCodeRabbit: true,
+              severity: "major",
+            },
+          ],
+        }),
+      );
+      expect(state).toEqual({ kind: "changes", unresolved: 1, heavy: 1 });
+    });
+
+    it("does not read a review of a commit GitHub lost as a review of the head", () => {
+      const state = classify(
+        snapshot({
+          ...merged,
+          reviews: [
+            { state: "COMMENTED", commitId: "", submittedAt: "2026-09-15T14:05:00Z", body: "x" },
+          ],
+        }),
+      );
+      expect(state).toEqual({ kind: "waiting" });
+    });
+
+    it("still reads an answer that names HEAD itself", () => {
+      const state = classify(
+        snapshot({ ...merged, comments: [statusSummary("2026-09-15T14:05:00Z")] }),
+      );
+      expect(state).toEqual({ kind: "converged" });
+    });
+
+    it("still answers to a limit notice on that commit, whose review never ran", () => {
+      const state = classify(
+        snapshot({ ...merged, comments: [limitNotice("2026-09-15T14:27:57Z", 39, OLD)] }),
+      );
+      expect(state).toEqual({ kind: "rate_limited", readyAt: "2026-09-15T15:06:57.000Z" });
+    });
+  });
+
   describe("rate limit", () => {
     // #2841: the last review covers an older commit, the push after it hit the limit.
     const limited = snapshot({
@@ -498,6 +658,88 @@ describe("classify", () => {
       expect(state).toEqual({ kind: "converged" });
     });
   });
+});
+
+describe("changeCommittedAt (#3657)", () => {
+  const commits = [
+    { oid: "a", committedDate: "2026-09-15T10:00:00Z" },
+    { oid: "b", committedDate: "2026-09-15T11:00:00Z" },
+    { oid: "c", committedDate: "2026-09-15T12:00:00Z" },
+  ];
+
+  it("is the head's time when no earlier commit has the same change", () => {
+    expect(changeCommittedAt(commits, "c", [])).toBe("2026-09-15T12:00:00Z");
+  });
+
+  it("is the oldest same-change commit's time, past every merge", () => {
+    expect(changeCommittedAt(commits, "c", ["b", "a"])).toBe("2026-09-15T10:00:00Z");
+  });
+
+  it("falls back to the head when GitHub does not list that commit", () => {
+    expect(changeCommittedAt(commits, "c", ["z"])).toBe("2026-09-15T12:00:00Z");
+  });
+
+  it("is the epoch when GitHub lists neither", () => {
+    expect(changeCommittedAt(commits, "z", [])).toBe(new Date(0).toISOString());
+  });
+});
+
+describe("commitsWithSameChange (#3657)", () => {
+  /** A first-parent chain, newest first; each listed commit merges the base when `merges` says so. */
+  const facts = (chain: string[], merges: string[], differs: string[] = []) => ({
+    resolve: (rev: string) => {
+      const i = chain.indexOf(rev.replace(/\^1$/, ""));
+      return i >= 0 && i + 1 < chain.length ? chain[i + 1] : null;
+    },
+    onlyBaseMerges: (_from: string, to: string) => merges.includes(to),
+    sameChange: (a: string, _b: string) => !differs.includes(a),
+  });
+
+  it("is empty when HEAD is not a merge", () => {
+    expect(commitsWithSameChange("c", facts(["c", "b", "a"], []))).toEqual([]);
+  });
+
+  it("names the commit a merge of the base sits on, and stops at the first real commit", () => {
+    expect(commitsWithSameChange("c", facts(["c", "b", "a"], ["c"]))).toEqual(["b"]);
+  });
+
+  it("walks through consecutive merges of the base", () => {
+    expect(commitsWithSameChange("c", facts(["c", "b", "a"], ["c", "b"]))).toEqual(["b", "a"]);
+  });
+
+  it("stops when a merge changed the PR's lines", () => {
+    expect(commitsWithSameChange("c", facts(["c", "b", "a"], ["c"], ["b"]))).toEqual([]);
+  });
+
+  it("stops at a commit with no parent to read", () => {
+    expect(commitsWithSameChange("c", facts(["c"], ["c"]))).toEqual([]);
+  });
+
+  it("keeps what it found when git cannot answer a later step", () => {
+    const git = {
+      ...facts(["c", "b", "a"], ["c", "b"]),
+      sameChange: (a: string) => {
+        if (a === "a") throw new Error("no merge base");
+        return true;
+      },
+    };
+    const failures: unknown[] = [];
+    expect(commitsWithSameChange("c", git, (err) => failures.push(err))).toEqual(["b"]);
+    expect(failures).toEqual([new Error("no merge base")]);
+  });
+
+  it.each(["resolve", "onlyBaseMerges", "sameChange"] as const)(
+    "is empty when %s fails on the first step",
+    (question) => {
+      const git = {
+        ...facts(["c", "b"], ["c"]),
+        [question]: () => {
+          throw new Error("no answer");
+        },
+      };
+      expect(commitsWithSameChange("c", git)).toEqual([]);
+    },
+  );
 });
 
 describe("parseAnnouncedWaitMs", () => {

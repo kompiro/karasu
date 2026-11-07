@@ -31,9 +31,10 @@ Playwright boots `@karasu-tools/app` via `vite` automatically (see
 Two workflows report it:
 
 - `.github/workflows/e2e.yml` runs the suite on pull requests whose changed
-  files match its `paths` (`packages/app/**`, `packages/core/**`,
-  `packages/e2e/**`, the lockfile, the root `package.json`, the workflow
-  itself; [ADR-1729](../../docs/adr/1729-e2e-path-filter-trigger.md)). Draft
+  files match its `paths` (`packages/app/**`, `packages/cli/**`,
+  `packages/core/**`, `packages/e2e/**`, `packages/i18n/**`,
+  `packages/skills/**`, `examples/**`, the lockfile, the root `package.json`,
+  the workflow itself; [ADR-1729](../../docs/adr/1729-e2e-path-filter-trigger.md)). Draft
   PRs are skipped until `ready_for_review`
   ([ADR-2643](../../docs/adr/2643-stacked-pr-workflow.md)).
 - `.github/workflows/e2e-skip.yml` is the paired stub: on PRs that match none
@@ -57,15 +58,15 @@ gh workflow run e2e-nightly.yml -f workers=2    # measurement run; tracker left 
 Each dispatched run gets its own concurrency slot, so back-to-back dispatches
 do not cancel each other.
 
-### Serve mode (`serve` project, nightly only)
+### Serve mode (`serve` project)
 
 AT-0032 runs in a second project, `serve`, against `karasu serve` on port
 5174 instead of the app's own server (#3049). Playwright starts every
 `webServer` entry whatever `--project` says, so the project and its server
-exist only when `E2E_SERVE=1`. The nightly sets it and `e2e.yml` does not, so
-the PR gate never builds or starts the CLI; a `packages/cli` regression in
-serve mode shows up in the nightly, not on the PR
-([#3039](https://github.com/kompiro/karasu/issues/3039), decision 4).
+exist only when `E2E_SERVE=1`. `e2e.yml` and the nightly set it, so a
+`packages/cli` regression in serve mode fails the PR that causes it, and a
+failure to build or start the CLI fails the Playwright check on every PR that
+runs the suite ([#3661](https://github.com/kompiro/karasu/issues/3661)).
 
 `scripts/start-serve.ts` copies `fixtures/serve-project/` into the
 git-ignored `.serve-scratch/`, builds the CLI bundle, stages the serve build

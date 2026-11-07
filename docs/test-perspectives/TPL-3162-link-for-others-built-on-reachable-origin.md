@@ -83,4 +83,4 @@ scope:
 - `packages/app/src/utils/inline-share.test.ts` › `points both links at the public app when given its origin and the root path`
 - `packages/app/src/components/ShareDialog.test.tsx` › `names the host the links open on only when they are built elsewhere`
 - `scripts/lint/hosted-app-origin.test.ts`（app の `HOSTED_APP_ORIGIN` と docs-site の `APP_URL` が同じ値）
-- `packages/e2e/tests/at-0032-cli-serve-mode.spec.ts` › `TC-07: Share builds its links on the public app, not on the local server`（nightly、karasu serve に対して）
+- `packages/e2e/tests/at-0032-cli-serve-mode.spec.ts` › `TC-07: Share builds its links on the public app, not on the local server`（karasu serve に対して）

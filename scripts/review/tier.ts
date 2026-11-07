@@ -1086,7 +1086,7 @@ function sameChange(base: string, a: string, b: string): boolean {
 }
 
 /** Git answers for {@link verifyRecord}, read from the checkout the CLI runs in. */
-function gitFacts(baseRef: string, headSha: string): GitFacts {
+export function gitFacts(baseRef: string, headSha: string): GitFacts {
   const resolve = (rev: string): string | null => {
     try {
       return git("rev-parse", "--verify", "--quiet", `${rev}^{commit}`).trim();
