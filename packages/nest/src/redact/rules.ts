@@ -185,7 +185,9 @@ export const REDACTION_RULES: readonly RedactionRule[] = [
     // word boundaries as well as scheme characters, so an unbounded run restarts
     // at each one. `"a.".repeat(n)` took 277 seconds at the 1 MiB submission cap.
     // `_` is outside RFC 3986, but SQLAlchemy URLs use it (`oracle+cx_oracle://`).
-    pattern: /\b[a-z][a-z0-9+._-]{0,31}:\/\/[^\s:/@]+:([^\s@/]+)@/i,
+    // The password runs to the last `@` of the userinfo, so a raw `@` in it cannot
+    // leave a suffix behind, and it stops at `?` and `#`, which end the authority.
+    pattern: /\b[a-z][a-z0-9+._-]{0,31}:\/\/[^\s:/@]+:([^\s/?#]+)@/i,
     secretGroup: 1,
   },
   {

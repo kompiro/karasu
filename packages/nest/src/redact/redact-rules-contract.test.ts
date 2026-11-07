@@ -257,6 +257,14 @@ describe("the limits the timing fixes put on detection", () => {
     expect(redact(uri("oracle+cx_oracle")).text).not.toContain(password);
   });
 
+  it("redacts a password holding `@`, and not a query that looks like one", () => {
+    expect(redact("postgres://u:pa@ss@host/db").text).toBe(
+      "postgres://u:[REDACTED:connection-string-password]@host/db",
+    );
+    const query = "http://host:8080?x=a@b";
+    expect(redact(query)).toEqual({ text: query, findings: [] });
+  });
+
   it("finds a JWT with a long header, and by `(?<!-)` not one right after `-`", () => {
     const token = `eyJ${alnum(100).repeat(80)}.${alnum(8)}.${alnum(8)}`;
     expect(redact(`token ${token}`).findings.map((f) => f.ruleId)).toEqual(["jwt"]);
