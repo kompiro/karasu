@@ -457,6 +457,7 @@ $ karasu render index.krs --format drawio --output arch.drawio
 ## さらに学ぶ
 
 - 関連ガイド: [境界設計](01-service-team-design.ja.md)（設計）/ [進化・移行](03-evolution.ja.md)（変更）/ [伝達](05-communicating-diagrams.ja.md)（スタイル・凡例・CI）/ [アクセス経路とクライアント](04-access-paths.ja.md)
+- エージェントにモデルの下書きを作らせる: [AI エージェントでリバースする](reverse-engineering-with-ai.ja.md)
 - ガイド全体の地図: [`docs/guide/README.md`](README.md)
 - 構文の正確な仕様: [`docs/spec/syntax.ja.md`](../spec/syntax.ja.md)
 - 設計思想（三面構造・scoped glance・translate の非対称性）: [`docs/concepts.ja.md`](../concepts.ja.md)

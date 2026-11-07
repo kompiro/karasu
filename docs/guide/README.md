@@ -23,7 +23,7 @@ Standalone how-tos, independent of the chapter series:
 | Recipe | For | Contents |
 |--------|-----|----------|
 | [Notation cookbook](notation-cookbook.md) ([JA](notation-cookbook.ja.md)) | Authors & the authoring LLM | worked **idioms** ("how do I express X"): KV store, `[index]`, `[external]`, shared-infra fan-in, cross-domain refs, multi-file split — feedable alongside `syntax.md` |
-| [Reverse-engineering with an LLM](reverse-engineering-with-ai.md) ([JA](reverse-engineering-with-ai.ja.md)) | Anyone exploring an unfamiliar project | feed `syntax.md` (+ the cookbook) to Claude/ChatGPT → get a `.krs` overview → share via the **Share** button / embed via `/render` |
+| [Reverse-engineering with an AI agent](reverse-engineering-with-ai.md) ([JA](reverse-engineering-with-ai.ja.md)) | Anyone exploring an unfamiliar project | the `reverse-architecture` skill: install it, what it does, what it costs, how to review the model it writes; a one-shot prompt if you have no coding agent |
 | [Linking an ADR to a karasu structure](adr-permalinks.md) ([JA](adr-permalinks.ja.md)) | Anyone recording decisions in ADRs | the `/s?s=` payload as the canonical permalink, shortening as an optional alias, the trust trade-off |
 
 ## Chapter flow

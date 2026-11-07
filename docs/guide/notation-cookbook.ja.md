@@ -8,7 +8,7 @@
 *自明でない*パターンを対象にします。各エントリはコピーして使える worked snippet です。
 
 意図的に短くしてあるので、プロジェクトをリバースエンジニアリングするとき
-`syntax.md` と**一緒に LLM へ渡せます**（[LLM でリバースする](reverse-engineering-with-ai.md)
+`syntax.md` と**一緒に LLM へ渡せます**（[LLM でリバースする](reverse-engineering-with-ai.ja.md)
 を参照）。人間のオンボーディング資料も兼ねます。生成されたモデルは常に*仕様ではなく
 地図*として扱い、コードと照合してください。
 
@@ -368,5 +368,5 @@ system Shop {
 
 - [`docs/spec/syntax.md`](../spec/syntax.md) — 厳密な `.krs` 文法（まずこれを渡す）
 - [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md) — タグ / アノテーション一覧
-- [LLM でリバースする](reverse-engineering-with-ai.md) — 文法と一緒にこのクックブックを渡す
+- [LLM でリバースする](reverse-engineering-with-ai.ja.md) — 文法と一緒にこのクックブックを渡す
 - [オンボーディングガイド](02-onboarding.md) — 既存システムを図へ読み下す

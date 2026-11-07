@@ -17,6 +17,7 @@ describe("published pages", () => {
     expect(PUBLISHED_EN_FILES).toContain("spec/glossary.md");
     expect(PUBLISHED_EN_FILES).toContain("spec/diagnostics.md");
     expect(PUBLISHED_EN_FILES).toContain("guide/notation-cookbook.md");
+    expect(PUBLISHED_EN_FILES).toContain("guide/reverse-engineering-with-ai.md");
   });
 
   it("every published en file exists on disk", () => {
