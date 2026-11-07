@@ -18,6 +18,10 @@ topic: testing
 scope:
   packages:
     - e2e
+  paths:
+    - "package.json"
+    - "packages/e2e/package.json"
+    - "packages/e2e/playwright.config.ts"
 ---
 
 # TPL-2046: pnpm run <script> -- <flag> は flag が下位ツールに届かないことがある

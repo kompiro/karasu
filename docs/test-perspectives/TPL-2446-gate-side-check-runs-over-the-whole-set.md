@@ -20,6 +20,9 @@ related_to:
 topic: build
 scope:
   packages: []
+  paths:
+    - ".github/workflows/ci*.yml"
+    - "lefthook.yml"
 ---
 
 # TPL-2446: マージを gate する側の検証は対象を列挙せず全走査で回す — ローカルで広く走る同名チェックが CI 側の列挙漏れを隠す

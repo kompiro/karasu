@@ -15,6 +15,8 @@ related_to:
 topic: build
 scope:
   packages: []
+  paths:
+    - "scripts/adr/regenerate-pr*.ts"
 ---
 
 # TPL-2658: エージェントに任せる自動化の書き込み範囲は、prompt の文言ではなく宣言で検証する
