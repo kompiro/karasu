@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { assertStructureOnly, redact } from "./redact.js";
-import { MAX_SUBMISSION_BYTES } from "../store/submissions.js";
 import { REDACTION_RULES } from "./rules.js";
 
 // Fences what TPL-2287 asks of every redaction rule, not of the rules that
@@ -19,7 +18,7 @@ interface RuleContract {
   after: string;
   /** Reads like this rule's input, and no rule may touch it. */
   nearMiss: string;
-  /** Built to make this rule's pattern work hard. It need not end up redacted. */
+  /** Repeated, this makes the rule's pattern work hard. It need not end up redacted. */
   hostile: string;
   /**
    * A match holding an earlier copy of the secret, so a splice by substring
@@ -36,13 +35,26 @@ interface RuleContract {
 const FIXED_TEXT_BEFORE_SECRET = ["basic-auth-header"];
 
 /**
- * Half of `cpu_ms` in `packages/nest/wrangler.toml`, at the largest input a
- * submission can hold. Half, because a cold isolate runs a pattern slower than
- * this already warmed process does.
+ * Whether scanning grows faster than the input, from two sizes four times apart:
+ * a linear scan takes about 4x as long and a quadratic one about 16x. Wall-clock
+ * time alone would depend on the machine, and a budget at `MAX_SUBMISSION_BYTES`
+ * would make a quadratic rule run for minutes before it failed. A scan too quick
+ * to matter at the large size passes: even at the cap it stays under `cpu_ms`.
  */
-const BUDGET_MS = 2500;
-const hostileFrom = (unit: string): string =>
-  unit.repeat(Math.ceil(MAX_SUBMISSION_BYTES / unit.length));
+const SMALL_BYTES = 64 * 1024;
+const LARGE_BYTES = SMALL_BYTES * 4;
+const NEGLIGIBLE_MS = 150;
+function growsSuperLinearly(unit: string, scan: (input: string) => void): boolean {
+  const timed = (bytes: number): number => {
+    const input = unit.repeat(Math.ceil(bytes / unit.length));
+    const started = performance.now();
+    scan(input);
+    return performance.now() - started;
+  };
+  const small = timed(SMALL_BYTES);
+  const large = timed(LARGE_BYTES);
+  return large > NEGLIGIBLE_MS && large / Math.max(small, 1) > 8;
+}
 
 /** Separators worth repeating: each is a word boundary, a class member, or both. */
 const STRESS_SEPARATORS = ["", ".", "-", "+", "_", "=", ":", "/", " ", "\n"];
@@ -51,9 +63,9 @@ const STRESS_SEPARATORS = ["", ".", "-", "+", "_", "=", ":", "/", " ", "\n"];
  * Inputs built from a rule's own secret: its leading characters and a separator,
  * repeated. Restarting at each repeat is how all three quadratic rules failed.
  */
-const stressInputs = (secret: string): string[] =>
+const stressUnits = (secret: string): string[] =>
   [2, 3, 4, 6, 8].flatMap((length) =>
-    STRESS_SEPARATORS.map((separator) => hostileFrom(secret.slice(0, length) + separator)),
+    STRESS_SEPARATORS.map((separator) => secret.slice(0, length) + separator),
   );
 
 // Composed at runtime so this file trips neither `gitleaks` nor a reader's
@@ -67,7 +79,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: `ghp_${alnum(36)}`,
     after: '";',
     nearMiss: `const key = "ghp_${alnum(35)}";`,
-    hostile: hostileFrom("ghp_"),
+    hostile: "ghp_",
     decoy: null,
   },
   "github-fine-grained-token": {
@@ -75,7 +87,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: `github_pat_${alnum(22)}`,
     after: '";',
     nearMiss: `const key = "github_pat_${alnum(21)}";`,
-    hostile: hostileFrom("github_pat-"),
+    hostile: "github_pat-",
     decoy: null,
   },
   "aws-access-key-id": {
@@ -83,7 +95,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: `AKIA${"A1B2C3D4".repeat(2)}`,
     after: '";',
     nearMiss: `const id = "AKIA${"A1B2C3D4".repeat(2).slice(1)}";`,
-    hostile: hostileFrom("AKIA"),
+    hostile: "AKIA",
     decoy: null,
   },
   "slack-token": {
@@ -91,7 +103,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: `xoxb-${alnum(10)}`,
     after: '";',
     nearMiss: `const key = "xoxb-${alnum(9)}";`,
-    hostile: hostileFrom("xoxb_"),
+    hostile: "xoxb_",
     decoy: null,
   },
   "stripe-key": {
@@ -99,7 +111,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: `sk_live_${alnum(16)}`,
     after: '";',
     nearMiss: `const key = "sk_live_${alnum(15)}";`,
-    hostile: hostileFrom("sk_live_"),
+    hostile: "sk_live_",
     decoy: null,
   },
   "google-api-key": {
@@ -107,7 +119,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: `AIza${alnum(35)}`,
     after: '";',
     nearMiss: `const key = "AIza${alnum(34)}";`,
-    hostile: hostileFrom("AIza."),
+    hostile: "AIza.",
     decoy: null,
   },
   "sendgrid-key": {
@@ -115,7 +127,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: `SG.${alnum(16)}.${alnum(16)}`,
     after: '";',
     nearMiss: `const key = "SG.${alnum(16)}.${alnum(15)}";`,
-    hostile: hostileFrom("SG."),
+    hostile: "SG.",
     decoy: null,
   },
   "twilio-key": {
@@ -123,7 +135,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: `AC${"0123456789abcdef".repeat(2)}`,
     after: '";',
     nearMiss: `const sid = "AC${"0123456789ABCDEF".repeat(2)}";`,
-    hostile: hostileFrom("AC0123456789abcdef."),
+    hostile: "AC0123456789abcdef.",
     decoy: null,
   },
   "anthropic-key": {
@@ -131,7 +143,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: `sk-ant-${alnum(20)}`,
     after: '";',
     nearMiss: `const key = "sk-ant-${alnum(19)}";`,
-    hostile: hostileFrom("sk-ant."),
+    hostile: "sk-ant.",
     decoy: null,
   },
   "openai-key": {
@@ -139,7 +151,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: `sk-proj-${alnum(20)}`,
     after: '";',
     nearMiss: `const key = "sk-${alnum(19)}";`,
-    hostile: hostileFrom("sk."),
+    hostile: "sk.",
     decoy: null,
   },
   "private-key-block": {
@@ -151,7 +163,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     ].join("\n"),
     after: "`;",
     nearMiss: "const key = `-----BEGIN PUBLIC KEY-----\nMIIBIjAN\n-----END PUBLIC KEY-----`;",
-    hostile: hostileFrom(`-----BEGIN ${PRIVATE}-----\n`),
+    hostile: `-----BEGIN ${PRIVATE}-----\n`,
     decoy: null,
   },
   "bcrypt-hash": {
@@ -159,7 +171,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: `$2b$10$${alnum(53)}`,
     after: '" });',
     nearMiss: `users.push({ hash: "$2b$10$${alnum(52)}" });`,
-    hostile: hostileFrom("$2b$10$."),
+    hostile: "$2b$10$.",
     decoy: null,
   },
   "basic-auth-header": {
@@ -167,7 +179,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: alnum(16),
     after: "",
     nearMiss: "Basic authentication is required",
-    hostile: hostileFrom("Basic "),
+    hostile: "Basic ",
     decoy: null,
   },
   jwt: {
@@ -175,7 +187,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: `eyJ${alnum(8)}.${alnum(8)}.${alnum(8)}`,
     after: '";',
     nearMiss: `const pair = "eyJ${alnum(8)}.${alnum(8)}";`,
-    hostile: hostileFrom("eyJ-"),
+    hostile: "eyJ-",
     decoy: null,
   },
   "connection-string-password": {
@@ -183,7 +195,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: alnum(12),
     after: "@db.internal:5432/orders",
     nearMiss: "postgres://app_user@db.internal:5432/orders",
-    hostile: hostileFrom("a."),
+    hostile: "a.",
     decoy: {
       source: "postgres://s3cr3tadmin:s3cr3t@db.internal/orders",
       expected: "postgres://s3cr3tadmin:[REDACTED:connection-string-password]@db.internal/orders",
@@ -194,7 +206,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: alnum(12),
     after: '"',
     nearMiss: `database_name = "${alnum(12)}"`,
-    hostile: hostileFrom("token_"),
+    hostile: "token_",
     decoy: {
       source: 'hunter2plus_password = "hunter2plus"',
       expected: 'hunter2plus_password = "[REDACTED:assigned-secret]"',
@@ -205,7 +217,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: alnum(16),
     after: "",
     nearMiss: `API_URL=${alnum(16)}`,
-    hostile: hostileFrom("token="),
+    hostile: "token=",
     decoy: {
       source: "s3cr3tplus_token=s3cr3tplus",
       expected: "s3cr3tplus_token=[REDACTED:assigned-secret-bare]",
@@ -300,27 +312,21 @@ describe("every redaction rule meets the detector contract (TPL-2287)", () => {
       expect(() => assertStructureOnly(text)).not.toThrow();
     });
 
-    it("scans its hostile input in bounded time", () => {
-      const started = performance.now();
-      redact(contract().hostile);
-      expect(performance.now() - started).toBeLessThan(BUDGET_MS);
+    it("scans its hostile input in linear time", () => {
+      expect(growsSuperLinearly(contract().hostile, redact)).toBe(false);
     });
 
-    it("scans inputs built from its own secret in bounded time", () => {
+    it("scans inputs built from its own secret in linear time", () => {
       const rule = REDACTION_RULES.find((r) => r.id === id)!;
-      const pattern = new RegExp(
-        rule.pattern.source,
-        `${rule.pattern.flags.replace(/[gd]/g, "")}gd`,
-      );
-      const slow = stressInputs(contract().secret).filter((input) => {
-        const started = performance.now();
+      const flags = `${rule.pattern.flags.replace(/[gd]/g, "")}gd`;
+      const scan = (input: string): void => {
         // Draining the matches is the work being timed.
-        for (const _ of input.matchAll(pattern));
-        return performance.now() - started >= BUDGET_MS;
-      });
-      expect(slow.map((input) => input.slice(0, 12))).toEqual([]);
-        expect(performance.now() - started, input.slice(0, 12)).toBeLessThan(BUDGET_MS);
-      }
+        for (const _ of input.matchAll(new RegExp(rule.pattern.source, flags)));
+      };
+      // `find`, so a regression fails on its first slow input.
+      expect(
+        stressUnits(contract().secret).find((unit) => growsSuperLinearly(unit, scan)),
+      ).toBeUndefined();
     });
   });
 });
