@@ -37,7 +37,7 @@ const FIXED_TEXT_BEFORE_SECRET = ["basic-auth-header"];
 /**
  * Whether scanning grows faster than the input, from two sizes four times apart:
  * a linear scan takes about 4x as long and a quadratic one about 16x. Wall-clock
- * time alone would depend on the machine, and a budget at `MAX_SUBMISSION_BYTES`
+ * clock time would depend on the machine, and a budget at `MAX_SUBMISSION_BYTES`
  * would make a quadratic rule run for minutes before it failed. A scan under
  * `NEGLIGIBLE_MS` at the large size passes, since the timing is noise down there.
  */
@@ -45,14 +45,18 @@ const SMALL_BYTES = 64 * 1024;
 const LARGE_BYTES = SMALL_BYTES * 4;
 const NEGLIGIBLE_MS = 30;
 function growsSuperLinearly(unit: string, scan: (input: string) => void): boolean {
-  // The fastest of three, so a pause in one run cannot read as growth.
+  // CPU time, so a busy machine cannot read as growth: on the wall clock a short
+  // scan fits in one scheduler slice and a longer one gets preempted. The fastest
+  // of three takes out a garbage collection. Vitest runs each file in its own
+  // process here, so the count is this scan's.
   const timed = (bytes: number): number => {
     const input = unit.repeat(Math.ceil(bytes / unit.length));
     return Math.min(
       ...[0, 1, 2].map(() => {
-        const started = performance.now();
+        const started = process.cpuUsage();
         scan(input);
-        return performance.now() - started;
+        const { user, system } = process.cpuUsage(started);
+        return (user + system) / 1000;
       }),
     );
   };
