@@ -175,7 +175,10 @@ export const REDACTION_RULES: readonly RedactionRule[] = [
     description: "Password inside a URI's userinfo",
     // Only the password is redacted; scheme, user and host are structure the
     // model legitimately needs to describe a dependency.
-    pattern: /\b[a-z][a-z0-9+.-]*:\/\/[^\s:/@]+:([^\s@/]+)@/i,
+    // The scheme is bounded for the reason `ASSIGNMENT_KEY` is: `.` `-` `+` are
+    // word boundaries as well as scheme characters, so an unbounded run restarts
+    // at each one. `"a.".repeat(n)` took 277 seconds at the 1 MiB submission cap.
+    pattern: /\b[a-z][a-z0-9+.-]{0,31}:\/\/[^\s:/@]+:([^\s@/]+)@/i,
     secretGroup: 1,
   },
   {

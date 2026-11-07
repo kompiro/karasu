@@ -47,11 +47,11 @@ scope:
 
 - [ ] positive テストは**結果の文字列を完全一致で**検証しているか。`toContain` は規則が壊れていても通る
 - [ ] finding / 診断の**中身も完全一致で**検証しているか（件数・ラベル・位置）。ラベルが別規則に化けても `toContain` は気づかない
-- [ ] **near-miss 集合**があるか。その規則が当たりそうで当ててはいけない入力を、規則ごとに最低 1 つ
+- [ ] **near-miss 集合**があるか。その規則が当たりそうで当ててはいけない入力を、規則ごとに最低 1 つ [guard: `packages/nest/src/redact/redact-rules-contract.test.ts`]
 - [ ] 規則同士の**相互作用**をテストしたか。汎用規則と個別規則が同じ入力に当たる例、置換後のテキストが次の規則に当たる例 [judgment]
-- [ ] 検出器が**自分の出力を再検出しない**ことを確認したか。出力側の検査にも同じ規則集合を使うなら必須
-- [ ] 位置指定の置換に**インデックス**を使っているか（`RegExp` の `d` フラグなど）。部分文字列置換は取り違える
-- [ ] 敵対的入力での**実行時間**を測ったか。ネストした量化子を避け、上限付き文字クラスで書いたか
+- [ ] 検出器が**自分の出力を再検出しない**ことを確認したか。出力側の検査にも同じ規則集合を使うなら必須 [guard: `packages/nest/src/redact/redact-rules-contract.test.ts`]
+- [ ] 位置指定の置換に**インデックス**を使っているか（`RegExp` の `d` フラグなど）。部分文字列置換は取り違える [guard: `packages/nest/src/redact/redact-rules-contract.test.ts`]
+- [ ] 敵対的入力での**実行時間**を測ったか。ネストした量化子を避け、上限付き文字クラスで書いたか [guard: `packages/nest/src/redact/redact-rules-contract.test.ts`]
 - [ ] 除外ヒューリスティックは**構文形で**書かれているか（`${VAR}` `{{x}}` `<x>` `$UPPER`）。先頭 1 文字での判定は必ず本物を巻き込む [judgment]
 
 ## 既知の対処パターン
@@ -64,6 +64,9 @@ scope:
 
 ## 関連テスト
 
+- `packages/nest/src/redact/redact-rules-contract.test.ts` — `REDACTION_RULES` の id と表のキーの一致を検査するので、
+  規則を足すと near-miss・出力の再検出・位置指定の置換・敵対的入力の時間の行が無いまま通らない。karasu-nest の redaction 規則が対象で、
+  ほかの検出器（lint・診断）には届かない。
 - `packages/nest/src/redact/redact.test.ts` — `redact` の「redacts a %s and nothing around it」は規則ごとに置換後の文字列と
   finding（ラベル・件数・長さ）を完全一致で検証し、`what it must leave alone` は commit SHA・UUID・`tokenizer`・env 参照などの
   near-miss 表で無変更を完全一致で検証する。`what the review found leaking` が規則の相互作用（「keeps a specific finding rather than
