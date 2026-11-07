@@ -46,7 +46,7 @@ npm の staged publishing について、npm 11.16.0 の `npm help stage` / `npm
 - npm は `workspace:` プロトコルを書き換えない。パッケージのディレクトリで `npm stage publish` を実行すると、tarball に `workspace:*` が残る。
 - tag は stage 時に決まり、後から変えられない。指定しなければ `latest`。prerelease は `--tag` が必須。
 - `npm trust github` は `--allow-publish` と `--allow-stage-publish` で許可する操作を設定する。既存の設定を変えるサブコマンドは無く、man page は `npm trust revoke` してから作り直す手順を示している。
-- [Trusted Publisher の文書](https://docs.npmjs.com/trusted-publishers/)は「既存の接続は変更できない。変えるには削除して作り直す」としている。そう明記している対象は provider と必須の項目で、Allowed actions も同じかは書かれていない。一方で、#3238 では「Allow `npm publish`」を有効にしたが、画面で切り替えたのか作り直したのかの記録は無い。本設計は切り替えられることに頼らず、どちらでも成り立つ削除と作成で手順を組む。
+- [Trusted Publisher の文書](https://docs.npmjs.com/trusted-publishers/)は「既存の接続は変更できない。変えるには削除して作り直す」としている。そう明記している対象は provider と必須の項目で、Allowed actions も同じかは書かれていない。#3238 の「Allow `npm publish`」は、kompiro の記憶では npm の画面で切り替えた（2026-11-07 に確認。当時の記録は無い）。切り替えた相手は作ったばかりで未検証の接続で、検証済みの接続を切り替えたときに検証済みの状態が保たれるかは文書に無い。本設計の切り替え（論点 6）は、切り替えられることに頼らず、どちらでも成り立つ削除と作成で組む。
 - 同じ文書によると、新しく作った接続は 2 日以内に最初の publish が成功しないと失効する。失効すると `E404` になる（#3238 で `karasu-skills` が当たった）。`npm stage publish` の成功がこの 1 回に数えられるのか、承認まで要るのかは書かれていない。
 - 文書の範囲では、npmjs.com の画面での承認を止める設定は無い。
 - 要件は npm >= 11.15.0（GitHub の changelog）と Node >= 22.14.0（docs.npmjs.com の staged publishing のページ）。`release.yml` のコメントは「Node 24 は npm 11.17 以上を同梱する」としているが、devcontainer の Node 24.18.0 が同梱するのは npm 11.16.0 だった。どちらでも 11.15.0 は満たす。ADR-2397 の方針どおり npm を別途上げず、リハーサルのログに `npm --version` を出して確かめる。
@@ -153,7 +153,7 @@ Release には、まだインストールできず、reject されうる版が�
 
 順序の違反（`karasu` が npm にあるのに、その tarball が完全一致で指す `karasu-skills` の版が npm に無い）は、上の stage の段で起きないはずだが、`release-confirm.yml` は念のためこれを検出したら失敗し、トレインの Issue にコメントする。
 
-**案 3B を採る。** `docs/release.md` は `pnpm release:approve` を正の手順とし、npmjs.com の画面での承認は禁止しない（kompiro の判断、2026-11-02）。依存元は依存先が npm に載るまで stage されないので、画面で承認しても順序は崩れない。tarball の中身は、画面で承認した版も論点 7 の案 7D で照合する。画面で承認するときは、先に `pnpm release:approve --dry-run` を実行すれば公開の前に照合できる（`docs/release.md` にこの手順を書く）。段を分けて stage する形は、CodeRabbit CLI の指摘を受けて kompiro が 2026-11-02 に選んだ（それまでは画面で順序を誤ると、検出までのあいだ `npm i karasu` が壊れうる設計だった）。承認のあいだに `release.yml` の再実行が 1 回入り、その分（数分）待つ。
+**案 3B を採る。** `docs/release.md` は `pnpm release:approve` を正の手順とし、kompiro が npmjs.com の画面で承認することは禁止しない（kompiro の判断、2026-11-02。案 7D の限界を踏まえて 2026-11-07 に再度確認した）。依存元は依存先が npm に載るまで stage されないので、画面で承認しても順序は崩れない。tarball の中身は、画面で承認した版も論点 7 の案 7D で照合する。画面で承認するときは、先に `pnpm release:approve --dry-run` を実行すれば公開の前に照合できる（`docs/release.md` にこの手順を書く）。段を分けて stage する形は、CodeRabbit CLI の指摘を受けて kompiro が 2026-11-02 に選んだ（それまでは画面で順序を誤ると、検出までのあいだ `npm i karasu` が壊れうる設計だった）。承認のあいだに `release.yml` の再実行が 1 回入り、その分（数分）待つ。
 
 ### 論点 4: トレインの Issue をいつ閉じるか
 
@@ -208,7 +208,7 @@ reject は承認を拒む操作で、この設計が守りたいものの 1 つ�
 
 ### 論点 6: どの順で切り替えるか
 
-3 パッケージを同時に切り替える。1 つでも「Allow `npm publish`」が残れば、そのパッケージは直接 publish できる。切り替えは 2 回の操作に分ける。
+3 パッケージを同時に切り替える。1 つでも「Allow `npm publish`」が残れば、そのパッケージは直接 publish できる。切り替えは 2 回の操作に分ける（kompiro が 2026-11-07 に了承）。
 
 1. 実装の PR がマージされた直後に、3 パッケージの接続を削除する。ここで CI から直接 publish する経路が閉じる。
 2. 版を上げるリリース PR をマージする直前に、そのリリースで版を上げるパッケージの接続を、stage だけを許可する形で作る。版を上げないパッケージの接続は、次に版を上げるときまで作らない。
@@ -216,6 +216,8 @@ reject は承認を拒む操作で、この設計が守りたいものの 1 つ�
 接続を作り直すと、そこから 2 日の期限が始まる（「制約・前提」）。マージの直後に作り直すと、次のトレインまでに失効する。#3238 の `karasu-skills` と同じ失敗である。リリース PR のマージの直前に作れば、stage が数えられる場合でも承認まで要る場合でも、その日の stage と承認で期限に間に合う。作ってから 2 日以内に承認まで終える。
 
 作り直した直後に spike から stage して接続を検証する案もあるが、採らない。stage が検証に数えられるかが分からず、数えられなくても失効に気づくのは本番のトレインになる。また、期限のあいだ接続を残すより、削除しておくほうが攻撃できる経路が少ない。
+
+2 回に分ける理由は、作り直すと 2 日の期限が始まることである。検証済みの接続を画面で切り替えられて、検証済みの状態も保たれるなら（「制約・前提」）、マージの直後に「Allow `npm publish`」を外すだけで済み、期限は始まらず 2 回目の操作も要らない。段階 0 で `karasu` か `@karasu-tools/core` を切り替えることになれば、そこで分かる。分かった時点でこの形に改めるかは kompiro が判断する。分からないまま B に来たとき、改めないとき、切り替えられないときは、上の 2 回の操作で進める。
 
 CI から直接 publish する経路を予備として残す必要は無い。接続が無いあいだも、stage の経路が本番で失敗しても、手元から stage すれば版を出せる（論点 4「CI の経路が使えないとき」）。接続が失効していたら stage が `E404` で止まるので、作り直して `release.yml` の run を再実行する。
 
@@ -295,7 +297,7 @@ stage 済みの版と同じ版は stage できない。乗っ取られた run �
 | **B** マージ直後に 3 パッケージの接続を削除し、package access を「disallow tokens」にする（追跡用の Issue） | A    | 接続が無いあいだは CI からの stage が失敗するだけで、手元から stage できる |
 | **C** 版を上げるパッケージの stage 専用の接続を作り、2026-11-29 のトレインを stage で出す（追跡用の Issue） | B    | 同上                                                                       |
 
-- **0**: `karasu` と `@karasu-tools/core` の Trusted Publisher で「Allow `npm stage publish`」が有効かを確かめる。`karasu-skills` は有効なので変えない。有効でなければ、画面で切り替えられるならそうし、切り替えられなければ次の順で作り直す。
+- **0**: `karasu` と `@karasu-tools/core` の Trusted Publisher で「Allow `npm stage publish`」が有効かを確かめる。`karasu-skills` は有効なので変えない。有効でなければ、まず画面で切り替える（#3238 で切り替えた kompiro の記憶による）。切り替えたら、そのあとも接続が検証済みのままかを画面で確かめる（論点 6 の判断の材料になる）。切り替えられなければ次の順で作り直す。
   1. リハーサルの spike をすぐ動かせる状態にする。作り直してから 2 日以内にリハーサルを行うためである。
   2. 削除から作成までのあいだ、その接続の OIDC の publish と stage は通らない。削除の前に、リリース PR が開いていないことと `release.yml` が走っていないこと（`gh run list --workflow release.yml --status in_progress`）を確かめる。
   3. 接続を削除し、「Allow `npm publish`」と「Allow `npm stage publish`」の両方を有効にして作り直す。実装がマージされるまでは、いまの公開の経路がまだ `npm publish` を使うからである。
