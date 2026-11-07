@@ -102,7 +102,7 @@ Design の入口の「毎回新しいコピー」をそのまま使うと、往�
 | チーム | `commerce`、`billing`、`platform` | `workforce`、`payroll`、`platform` |
 | 持ち主のずれ | `billing` はドメインだけを持つ | `payroll` はドメインだけを持つ |
 | 組織 | `Shop`（Shop Engineering） | `Corporate`（Corporate Engineering） |
-| システムの辺 | `Customer` と `FinanceStaff` が `CommerceApp` を呼び、migrating で `FinanceStaff` が移る | `Employee` と `PayrollStaff` が `WorkforceApp` を呼び、migrating で `PayrollStaff` が移る |
+| システムの辺 | `Customer` と `FinanceStaff` が `CommerceApp` を呼ぶ。migrating で `FinanceStaff` は `BillingService` へ移り、`Customer` は注文を `CommerceApp` に、支払いを `BillingService` に分ける | `Employee` と `PayrollStaff` が `WorkforceApp` を呼ぶ。migrating で `PayrollStaff` は `PayrollService` へ移り、`Employee` は勤怠の入力を `WorkforceApp` に、給与明細の確認を `PayrollService` に分ける |
 
 表にないものも service-split に揃える。ドメインとテーブルの id は重ねない（`team ... { owns X }` が `owns-target-ambiguous` になる）。
 
