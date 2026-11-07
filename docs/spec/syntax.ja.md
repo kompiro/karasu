@@ -957,7 +957,7 @@ anchor を要求するのは、受理したすべての形を描画可能に保�
 system の内部に解決する断片は、どの ghost フレームにも収まらないノードを指すことに
 なり、エッジはどのビューにも載らない。
 
-`entity` ブロック内の関連はここでは判定しない — entity ビューが 1 つの system の
+`entity` ブロック内の限定子付きの関連はここでは判定しない — entity ビューが 1 つの system の
 domain を対象に解決し、外部の entity を ghost として描く。
 
 qualified の端点が kind または深さの異なる 2 つ以上のノードに届いたときは
@@ -966,7 +966,9 @@ broadcast であり沈黙する。同一ファイル内の同 id `system` ブロ
 ため、anchor された 1 本の path が本当に 2 ノードを名指すことがある。
 
 端点がどこにも解決しない場合は別のケースで、bare は `unresolved-edge-endpoint`
-（§S6）、qualified は `cross-system-ref-unresolved` として報告される。これらの診断は
+（§S6）、`system` スコープの edge の qualified は `cross-system-ref-unresolved` として
+報告される（先頭のセグメントがその system の `[external]` の子なら報告されない）。`service`・`domain`・`entity` の中で宣言した qualified は、いまは報告されない
+（[#3655](https://github.com/kompiro/karasu/issues/3655)）。これらの診断は
 [診断と規則のリファレンス](diagnostics.md)にカタログ化されている。
 
 > Related TPLs:
