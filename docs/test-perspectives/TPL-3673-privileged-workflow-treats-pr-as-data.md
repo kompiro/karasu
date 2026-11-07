@@ -48,7 +48,7 @@ default branch の定義で動く workflow は、PR が定義を書き換えら�
 
 - [ ] PR の head を実行する処理と、書き込みのトークンを持つ処理が別の job に分かれているか [judgment]
 - [ ] 起動イベントの中身を使わず、GitHub から読み直した状態で判断しているか。使うなら、起動元の workflow のパスと event と head の SHA まで確かめているか [judgment]
-- [ ] 鍵が、PR 側の workflow から読めない場所にあるか
+- [ ] 鍵が PR 側の workflow から読めないことを、本物の鍵を渡さずに実際に試して確かめたか
 - [ ] 書き込みが、確かめた SHA に固定されているか（`sha` 付きのマージ、ラベルなら head が同じ間だけ）
 - [ ] main に入れる経路が、push の workflow を起動する名義を使っているか
 

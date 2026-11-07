@@ -17,7 +17,7 @@ PR の段階はすでに機械が決めている（`scripts/review/tier.ts`）�
 - **native の auto-merge は required check しか待たない。** `Review tier` はまだ required ではない（#3364）ので、この check を待たずにマージしうる。実際に #3386 は、最後の `Review tier` が失敗した 16 秒後にマージされた（失敗の理由は調べていない）。
 - **`Review tier` は PR 側の workflow ファイルで動く**（#3363）。workflow を書き換えた PR は Low にならないので、Claude の手順ではこの経路に届かないが、守っているのは手順である。
 
-ADR-3286 の導入後にマージした Low の PR は 39 本（うち routine の再生成が 7 本）で、作成からマージまでの中央値は 1.2 分である。10 分を超えたのは 4 本で、#3529 のほかに #3387・#3497 は draft を外すのが遅れ、#3425 は作成後にコミットを足している（遅れた理由までは調べていない）。ふだんの流れは速いので、解きたいのは速さではなく、マージがセッションの振る舞いに依存していることである。
+ADR-3286 の導入後にマージした Low の PR は、2026-11-07 の集計で 39 本（うち routine の再生成が 7 本）で、作成からマージまでの中央値は 1.2 分である。10 分を超えたのは 4 本で、#3529 のほかに #3387・#3497 は draft を外すのが遅れ、#3425 は作成後にコミットを足している（遅れた理由までは調べていない）。ふだんの流れは速いので、解きたいのは速さではなく、マージがセッションの振る舞いに依存していることである。
 
 **この設計で得られないもの。** workflow が保証するのは条件であって、変更の品質ではない。パスの分類・CI・記録の形式と鮮度は機械で確かめられるが、ローカルレビューの記録は自己申告のままである（ADR-3286）。
 
@@ -42,7 +42,7 @@ ADR-3286 の導入後にマージした Low の PR は 39 本（うち routine �
 - **merge queue は使えない**（user 所有の repo。ADR-3416）。Actions の PR 作成は OFF のままで（ADR-1370）、本設計は PR を作らない。
 - **GitHub の schedule は遅れることも飛ぶこともある。** 間隔は保証にならない。
 - **分類器の確認が 1 つ減る。** Claude は `risk: low` を付けるだけになるので、分類器はマージの操作を見なくなる。分類器が見ていた文脈（そのマージを頼まれたか）は機械の条件に置き換わらない。Claude が Low の差分を作って PR を開けば、人が読まずに main に入る。これは今の auto-merge でも同じ経路だが、拒否されて止まる機会が無くなる。この経路の範囲は分類器の Low の規則で決まるので、Low の範囲を広げるときはこの点を再評価する。
-- **範囲外。** Medium と High は従来どおり kompiro がマージする。Low の範囲を広げる話は扱わない（#3380）。
+- **範囲外。** Design・Medium・High は従来どおり kompiro がマージする。Low の範囲を広げる話は扱わない（#3380）。
 
 ## 検討した選択肢
 
@@ -73,7 +73,7 @@ main に固定した workflow が `risk: low` の open な PR を毎回すべて
 
 **デメリット**
 
-- 判定は有効にした時点の 1 回だけで、マージの時点には走らない。GitHub がマージの時点で見るのは required check だけで、`Review tier` を required にしても（#3364）、その run は PR 側の workflow で動く（#3363）
+- 判定は有効にした時点の 1 回だけで、マージの時点で GitHub が見るのは required check だけである。#3364 と #3363 がそろえば案1に近い水準になるが、#3363 が頼る required workflow は organization の ruleset の機能だと理解しており、user 所有の repo で使えるかを確かめていない
 - 有効にした後の push の扱いも GitHub 任せになる。今の手順が「push の前に auto-merge を解く」と書いているのはこのためである（TPL-3286）。`gh pr merge --match-head-commit` がマージの時点まで効くかは確かめていない
 - 名義の問題は案1と同じで、なくならない
 
@@ -102,12 +102,12 @@ main に固定した workflow が `risk: low` の open な PR を毎回すべて
 
 | | N1: GitHub App | N2: fine-grained PAT | N3: `GITHUB_TOKEN` + `workflow_dispatch` |
 | --- | --- | --- | --- |
-| push の workflow | 起動する | 起動する | 起動しない。merger が必要な workflow を列挙して起動する |
+| push の workflow | 起動する想定（未確認） | 起動する想定 | 起動しない。merger が必要な workflow を列挙して起動する |
 | 寿命 | トークンは 1 時間。鍵に期限なし | 期限の管理が要る | run の間だけ |
 | 権限の幅 | Contents・Pull requests の write。`workflows` を渡さない | 同じ | job の `permissions` |
 | マージの名義 | `<app>[bot]`。Low の経路を計測で分けられる（#3380） | kompiro。人のマージと見分けられない | `github-actions[bot]` |
 | 準備 | kompiro が App を作り、install し、鍵を置く | kompiro が PAT を作って置く | なし |
-| 主な弱み | 鍵の管理 | 期限切れで黙って止まる（失敗は run に出る） | push の workflow を足したときに列挙から漏れる。`deploy.yml` のような無条件の workflow の扱いも別に要る |
+| 主な弱み | 鍵の管理 | 期限が切れると止まる | push の workflow を足したときに列挙から漏れる。`deploy.yml` のような無条件の workflow の扱いも別に要る |
 
 ### 起動の仕方（案1を採る場合）
 
@@ -120,27 +120,30 @@ main に固定した workflow が `risk: low` の open な PR を毎回すべて
 | --- | --- | --- | --- | --- |
 | マージが LLM に依存しない | はい | はい | いいえ | いいえ |
 | 判定した差分とマージする差分が一致 | はい（SHA 固定） | 有効にした時点までは | required check に頼る | はい（SHA 固定） |
-| マージの時点で記録と差分を判定する | はい | いいえ | #3364 が要る | はい |
-| 判定のコードを PR が書き換えられない | はい | 有効にする時点は | #3363 が要る | はい |
+| マージの直前に記録と差分を判定する | はい | #3364 が要る | #3364 が要る | はい |
+| 判定のコードを PR が書き換えられない | はい | #3363 が要る | #3363 が要る | はい |
 | 新しい鍵 | 要る | 要る | 不要 | 不要 |
 | 変更量 | 中 | 小〜中 | 小 | 中 |
 
 ## 現時点の方針
 
-**案1 + N1（GitHub App）+ T2 を採用する。** 解きたいのはマージのセッション依存で、案3と案4はそれを残す。案2は待つ処理を省けるが、マージの時点の判定を手放す。名義は、期限切れで止まらず、鍵からトークンを 1 時間ごとに作るので漏れたトークンの寿命が短く、計測でも分けられる N1 を勧める。
+**案1 + N1（GitHub App）+ T2 を採用する。** 解きたいのはマージのセッション依存で、案3と案4はそれを残す。案2は待つ処理を省けるが、#3364 と使えるか分からない #3363 に頼る。名義は、期限切れで止まらず、鍵からトークンを 1 時間ごとに作るので漏れたトークンの寿命が短く、計測でも分けられる N1 を勧める。
 
 ### 動き
 
 ```
-workflow_run（required check の完了）・10 分ごとの cron
+workflow_run（required check と Review tier の完了）・10 分ごとの cron
   └→ judge job（読み取りだけの GITHUB_TOKEN。main を checkout し、PR の head は object として fetch するだけ）
-       open な risk: low の PR をすべて読み、PR ごとに判定する
-       出力: マージしてよい PR の number と sha / 拒否した PR の number と sha と理由コード
-  └→ notify job（pull-requests: write の GITHUB_TOKEN。鍵なし、checkout なし）
-       理由コードから決まった文面でコメントする。同じ head には重ねない
-  └→ merge job（environment: main に絞る。App の鍵はここだけ。checkout なし）
-       number と sha の形を検査し、ラベルを読み直して、sha を固定してマージ
+       open な risk: low の PR をすべて読み、PR ごとに判定する。結論が出ない PR があっても job は成功にする
+       出力: マージしてよい PR の number と sha / 拒否した PR の number と sha と理由コード / 結論が出なかった PR
+  ├→ merge job（judge の後。environment を main に絞る。App の鍵はここだけ。checkout なし）
+  │    number と sha の形を検査し、状態とラベルを読み直して、sha を固定してマージ
+  ├→ notify job（judge の後。pull-requests: write の GITHUB_TOKEN。鍵なし、checkout なし）
+  │    理由コードから決まった文面でコメントする。同じ head と理由コードには重ねない
+  └→ report job（常に最後。結論が出なかった PR かマージの失敗があれば run を失敗にする）
 ```
+
+merge と notify は互いに待たない。judge を失敗にすると `needs` の先が飛ばされ、1 本の PR の例外で全部のマージが止まるので、失敗は report job に集める。
 
 イベントの中身は読まない。どのトリガーでも同じ走査をするので、起動の名前を PR が真似ても、走査が 1 回増えるだけである（TPL-3673）。`concurrency` で 1 本ずつ動かし、待ちは最新の 1 本だけにする。
 
@@ -153,10 +156,10 @@ workflow_run（required check の完了）・10 分ごとの cron
 1. PR が open で draft でなく、base が main で、head が同じ repo にある
 2. `risk:` のラベルがちょうど `risk: low` の 1 つである
 3. main の `tier.ts check --pr <n> --head <sha>` が通る。`--head` は新しく足すフラグで、PR の `headRefOid` が違えば、push が入っただけなので待ちとして扱う。差分が Low であること（base 側の分類器）、作成者が信頼リストにいること、記録が HEAD を覆っていることはここで確かめる。作業ツリーは main のままで、PR のファイルをディスクに置かず、実行もしない。`review-tier.yml` の「base に分類器が無ければ head のものを使う」fallback は持ち込まない
-4. ruleset の required check が head の SHA で成功している。ruleset に required check が無ければ拒否する。`Review tier` は見ない（条件 3 が同じプログラムを main から実行する）。required でない check（preview など）も見ない。数え方は次のとおりで、`judgeChecks` を拡張するか別に書く
-   - 同じ workflow の中では最新の結果だけを数え、workflow をまたぐとすべてを見る。`Check` は 3 つの workflow が出すので、最新だけでは本物の失敗を隠す。一方で全 run を見ると、同じ SHA でやり直して通った PR が止まったままになる
-   - `skipped` と `neutral` は結果に数えない。draft のときの run は `skipped` で終わるので、これを通すと CI を走らせずにマージしうる（TPL-2643）。skip の stub は `success` を出すので影響しない。required check が `skipped` だけになる PR が実際に無いかはスライス A で確かめる
-5. `mergeable` が true である。null なら待ち、false なら拒否する
+4. ruleset の required check が head の SHA で成功している。今は `Review tier` が ruleset に無いので見ず、#3364 の後は同じ扱いで数える（条件 3 が同じプログラムを main から実行するので、ここで頼らない）。required でない check（preview など）は見ない。数え方は次のとおりで、`judgeChecks` を拡張するか別に書く
+   - workflow ごとに最新の結果を 1 つ取り、そのすべてが `success` であることを求める。`Check` は 3 つの workflow が出すので、名前で最新だけを取ると本物の失敗を隠す
+   - `skipped`・`cancelled`・`neutral` は通さない。docs とコードが混ざった PR では本物の workflow と skip の stub の両方が走るので、本物が draft の run の `skipped` で終わっても stub の `success` が残る（#3161 の head で確かめた。TPL-2643）。`skipped` を結果から外すだけではこの PR がマージされる。パスの filter で本物の workflow が起動しない PR には run そのものが無いので、この規則に当たらない
+5. `mergeable` が true である
 
 条件 3 が見る記録は自己申告で、形式と鮮度しか確かめない。条件 4 は、workflow を書き換えられる書き込み権限の持ち主からは守れない（同じ repo のブランチの workflow は `checks: write` を要求して、別の commit に check run を作れる）。ruleset の required check も同じ前提で動いているので、本設計で弱くなるわけではない。
 
@@ -164,13 +167,16 @@ workflow_run（required check の完了）・10 分ごとの cron
 
 | 結果 | 例 | 動き |
 | --- | --- | --- |
-| 待ち | check が走っている、`mergeable` が null、判定の途中で push が入った | 何もしない。run は成功 |
-| 拒否 | check の失敗、差分が Low でない、記録が古い、ラベルが 2 つある、コンフリクト | 理由コードで PR に 1 回コメントする。run は成功 |
-| 結論なし | GitHub の API の失敗、判定中の例外 | その PR をマージせず、残りの PR の判定は続け、最後に run を失敗にする（TPL-2786） |
+| 対象外 | 条件 1 に当たらない（draft、base が main でない、fork） | 何もしない。draft に戻すのは止め方の 1 つなので、コメントしない |
+| 待ち | check が走っている、`mergeable` が null、判定の途中で push が入った、条件 4 が `skipped` や `cancelled` で止まっている | 何もしない。同じ head で 30 分待ったら、理由コード `stalled` で 1 回コメントする |
+| 拒否 | check の失敗、差分が Low でない、記録が古い、ラベルが 2 つある（`review-request.yml` が足すことがある）、`Closes` の先が 404、コンフリクト | 理由コードで PR に 1 回コメントする。run は成功 |
+| 結論なし | GitHub の API の失敗（404 を除く）、判定中の例外、ruleset に required check が無い | その PR をマージせず、残りの PR の判定は続け、report job が run を失敗にする（TPL-2786） |
 
-このために `tier.ts` の `checkPr` を、規則違反と読めなかったことを分けて返す形に直す。今は `closes.unreadable` も規則違反と同じ扱いで、GitHub の一時的な失敗が誤った拒否のコメントになる。パスを読めない差分の節は、ADR-3286 のとおり High（拒否）のままにする。
+このために `tier.ts` の `checkPr` を、規則違反と読めなかったことを分けて返す形に直す。今は `closes.unreadable` が規則違反と同じ扱いで、404 も一時的な失敗も区別しない。404 と 410 は拒否（`Closes` の参照を直す）、それ以外は結論なしにする。パスを読めない差分の節は、ADR-3286 のとおり High（拒否）のままにする。
 
-マージの失敗は、409（head が変わった）なら次の run が判定し直すので失敗にしない。それ以外は残りの PR を処理してから run を失敗にする。
+PR ごとに拒否を先に判定し、待ちより優先する。コンフリクトした PR には `pull_request` の workflow が走らないので、順序を逆にすると条件 4 で待ち続ける。
+
+マージに失敗したら、PR を読み直す。head・状態・ラベルのどれかが変わっていれば（push、draft への戻し、native の auto-merge が先にマージした、など）次の run に任せ、変わっていなければ run を失敗にする。どちらの場合も残りの PR の処理は続ける。
 
 ### 止め方
 
@@ -181,17 +187,19 @@ workflow_run（required check の完了）・10 分ごとの cron
 ### 周りの変更
 
 - **再生成の PR。** routine がマージを続ける（上の「動き」）。merger に任せるかはスライス D で判断する。任せるなら、`readiness()` の `pr.state` の判定、前日の PR のマージに失敗したときに `fetchMain()` を通らない経路、`paths.outputs` の変更を見て前日の PR をマージしない判定を先に直す必要がある。
-- **Claude の手順。** `.claude/rules/adr.md`・`docs/process/review.md`・`docs/process.md` と、`kompiro/hane` の `start-dev` スキルから `gh pr merge --auto` と `--disable-auto` の手順を外す。`gh pr create --label "risk: low"` が「揃ったらマージしてよい」という依頼になる。ADR-3342 のゲートは変えない。`adr.md` が `Review tier` を required と書いている箇所も直す。
-- **`allow_auto_merge` を切る。** 手順から外すだけでは、セッションや人が `--auto` を打てば条件 3 を通らずにマージできる（#3386 の経路）。スライス C の後に repo の設定で false にして、この経路を機械で閉じる。Medium と High は `Review tier` がすでに auto-merge を許していないので、影響するのは Low だけである。切った後は `Review tier` の auto-merge の規則と `tier.ts` のエラーの文面を片付ける。
-- **#3364 と #3363。** #3364 は Medium と High の経路でも意味があるので、予定どおり進める。本設計の前提にはしない。#3363 は `allow_auto_merge` を切ると Low の経路で残る意味が無くなるので、スライス C の後に要否を見直す。
+- **Claude の手順。** `.claude/rules/adr.md`・`docs/process/review.md`・`docs/process.md` と、`kompiro/hane` の `start-dev` スキルから `gh pr merge --auto` と `--disable-auto` の手順を外す。`gh pr create --label "risk: low"` が「揃ったらマージしてよい」という依頼になる。ADR-3342 のゲートは変えない。`adr.md` と `review.md` が `Review tier` を required と書いている箇所も直す。
+- **`allow_auto_merge` を切る。** 手順から外すだけでは、古いセッションや人が `--auto` を打てば条件 3 を通らずにマージできる（#3386 の経路）。スライス C の最後に kompiro が repo の設定で false にして、この経路を閉じる。Design・Medium・High は `Review tier` がすでに auto-merge を許していないので、影響するのは Low だけである。`kompiro/hane` は別に出荷するので、古い版の `start-dev` が残るセッションでは `--auto` がエラーになる。切った後は `Review tier` の auto-merge の規則と `tier.ts` のエラーの文面を片付ける。
+- **残る経路。** `gh pr merge --squash` の直接のマージは、この設計では閉じない。approval が 0 で `Review tier` が required でないあいだは、条件 3 を通らずに入る。手順と分類器が止めている今の状態が続く。Low 以外も含めて機械で止めるのは #3364 の役目である。
+- **#3364 と #3363。** #3364 は上の残る経路を閉じるので、予定どおり進める。本設計の前提にはしない。#3363 は `allow_auto_merge` を切ると Low の経路で残る意味が無くなるので、スライス D で要否を見直す。
 
 ### スライス（実装ステップ）
 
 | スライス | 前提 | 独立に出荷できる理由 |
 | --- | --- | --- |
-| **A** judge を dry-run で動かす。`tier.ts check` に `--head` と 3 つの結果を足し、条件 4 の数え方を書く | なし | 読み取りだけで、鍵もマージも無い。判定を job summary に出すだけで、Low の PR のマージの経路は変わらない |
-| **B** App と environment を用意し、merge job と notify job を有効にする | A、kompiro の App の作成 | `--auto` は手順に残すので、merger が動かなければ今の経路でマージできる |
-| **C** Claude の手順から `--auto` を外し、`allow_auto_merge` を切る | B | B で merger が単独でマージすることを確かめた後なので、外しても Low は止まらない |
+| **0** 鍵の置き場所を確かめる spike（下の「未確認」の先頭） | なし | マージしない PR 1 本で済む。読めるなら設計を直してから kompiro に App を頼む |
+| **A** judge を dry-run で動かす。`tier.ts check` に `--head` と結果の区別を足し、条件 4 の数え方を書く | 0 | 読み取りだけで、鍵もマージも無い。判定を job summary に出すだけで、Low の PR のマージの経路は変わらない |
+| **B** App と environment を用意し、merge・notify・report の job を有効にする。ここから `risk: low` は「揃ったらマージしてよい」という依頼になる | A、kompiro の App の作成 | `--auto` は手順に残すので、merger が動かなければ今の経路でマージできる |
+| **C** Claude の手順（repo と `kompiro/hane`）から `--auto` を外し、最後に `allow_auto_merge` を切る | B | B で merger が単独でマージすることを確かめた後なので、外しても Low は止まらない |
 | **D** 再生成の PR を merger に任せるかを判断する。#3363 の要否を見直す | C | routine のマージは独立に動き続けるので、急がない |
 
 **native の auto-merge が先にマージするので、`--auto` を打つと A と B の確認ができない。** auto-merge は最後の required check の直後に走り（#3497 は `ready_for_review` の 3 秒後）、judge は `workflow_run` の後に open な PR だけを読むので、PR はふつう消えている。そこで A と B の間は、確認に使う Low の PR に次の順で `--auto` を遅らせる。
@@ -201,27 +209,42 @@ workflow_run（required check の完了）・10 分ごとの cron
 
 ### 実装の指針
 
-1. 判定を `scripts/review/` に置き、GitHub と git を interface で渡して、ネットワークなしでテストする（`regenerate-pr-flow.ts` と同じ形）。条件ごとの拒否、結論を出せないときの失敗、required check が空のときの拒否、1 つの PR の失敗が残りの PR を止めないこと、同じ SHA でやり直して通った PR、`skipped` だけの required check をテストに持たせる（TPL-3286、TPL-2786、TPL-2643）。
+1. 判定を `scripts/review/` に置き、GitHub と git を interface で渡して、ネットワークなしでテストする（`regenerate-pr-flow.ts` と同じ形）。条件ごとの拒否、結論を出せないときの失敗、required check が空のときの拒否、1 つの PR の失敗が残りの PR を止めないこと、同じ SHA でやり直して通った PR、本物の workflow が `skipped` で stub が `success` の PR、拒否が待ちに優先すること、同じ head で理由コードが変わったときのコメントをテストに持たせる（TPL-3286、TPL-2786、TPL-2643）。
 2. workflow に path filter を付けない（TPL-1725）。judge job は依存を install しない。App の権限を workflow のコメントではなく App の設定として記録し、確かめ方を ADR に残す（TPL-2658）。
 3. PR は `.github/workflows/**` に触れるので High で、`/security-review` を当てる。
-4. `create-github-app-token` を足すときは `actions.lock` も更新する。
+4. workflow を足すときは `actions.lock` も更新する（スライス A から）。実装 PR で TPL-3286 の `known_consumers` と TPL-3673 の `scope.paths` に merger を足す。
 5. AT は作らない。挙動は vitest で固定し、実環境での確認（下の「未確認」）はスライス B の確認として Issue に書く（ADR-3271）。
 6. ADR 昇格: スライス C の後に `docs/adr/3673-low-pr-merger-workflow.md` とする。ADR-3286 の Low の通す条件と ADR-3504 の手順を変え、ADR-3416 の「新しい鍵を足さない」を Low のマージについて覆すことを背景に書く。
 
-### 未確認（スライス B で確かめる）
+### 未確認
 
-- **同じ repo のブランチの `pull_request` の workflow が、environment の鍵を読めないこと。** 鍵の置き場所の根拠そのものなので、最初に確かめる。読めるなら B に進まない
+**スライス 0 で確かめる。**
+
+- **同じ repo のブランチの `pull_request` の workflow が、environment の鍵を読めないこと。** 鍵の置き場所の根拠そのものである。branch を main に絞った `github-pages` を job の `environment` に指定した PR を 1 本開き、job が拒否されることを見る。secret は要らず、本物の鍵を渡さずに済む
+
+**スライス A で確かめる。**
+
+- judge の `GITHUB_TOKEN` で ruleset の required check を読めるか（ADR-3416 は routine の名義でだけ確かめた）
+- 条件 4 に必要な「check run から workflow へ」の対応。`check_suite.id` から `actions/runs` の `path` を引くので `actions: read` が要る見込み。同じ workflow のやり直しが `filter=latest` で 1 つに畳まれるかも見る
+- 条件 4 で実際に `stalled` になる PR がどれだけあるか
+
+**スライス B で確かめる。**
+
 - environment の branch 制限が `workflow_run` と `schedule` の job を通すか
 - App の名義のマージで `deploy.yml`・`pages.yml` などの push の workflow が起動するか
 - App の名義のマージで `delete_branch_on_merge` が効くか（`adr.md` の後始末が頼っている）。squash の commit の author が誰になるか
-- `require_extra_approval_for_unattributed_changes` が App のマージで approval を求めないか（ADR-3416 はユーザーの名義でだけ確かめた）
-- `workflows` の権限を持たない App が、workflow を変える PR のマージを拒否されるか。拒否されるなら分類器が誤っても workflow の変更は入らない。されなくても、条件 3 で High として止まる
-- コンフリクトした PR で `mergeable` が false と読め、REST のマージが何を返すか
+- App に要る最小の権限。`require_extra_approval_for_unattributed_changes` が App のマージで approval を求めないか（ADR-3416 はユーザーの名義でだけ確かめた）
+- `workflows` の権限を持たない App で、main を取り込んだ Low の PR のマージが拒否されないか。拒否されるなら merge job の失敗として run に出る
+- コンフリクトした PR で `mergeable` が false と読め、REST のマージが何を返すか。draft の PR を REST が拒否するか
+
+**設計の前提として置くが、試さないもの。**
+
+- 同じ repo のブランチの workflow が `checks: write` で別の commit に check run を作れること。安全側の前提なので、確かめなくても設計は変わらない
 
 ### 影響範囲・マイグレーション
 
 - 既存ユーザーへの影響: なし（repo の運用の変更）
-- kompiro の作業: スライス B で App の作成・install・environment の作成と鍵の登録
+- kompiro の作業: スライス B で App の作成・install・environment の作成と鍵の登録、スライス C で `allow_auto_merge` の変更
 - 計測: #3380 の Low の revert の計測に、App の名義のマージを使える
 
 ## Related TPLs
