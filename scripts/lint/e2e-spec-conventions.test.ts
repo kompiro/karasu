@@ -5,9 +5,9 @@ import { describe, expect, it } from "vitest";
 // Scans every E2E spec and fixture for the spec-writing rules of TPL-1171 and
 // TPL-1608. Each of them fails silently: an extended timeout and a raw keystroke
 // pass today and flake later, and a count of every `.warning-item` passes until a
-// new `info` diagnostic lands. Only the timeout rule is general enough to carry a
-// TPL guard marker: what the other two catch is narrower than their items, which
-// also cover other input methods, other severity checks and core tests.
+// new `info` diagnostic lands. A static scan catches the common spellings and not
+// all of them (an options object in a constant, `keyboard.press` in a loop), so
+// this is a related test of those TPLs, not a guard marker (ADR-3038 D4).
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 const SCANNED_ROOTS = ["packages/e2e/tests", "packages/e2e/fixtures"];
@@ -61,17 +61,38 @@ interface Finding {
 /**
  * Blanks comments, and the contents of strings when `strings` is set, keeping
  * every line number. It reads strings so that a glob such as `"/api/*"` does not
- * open a comment. A `"` or `'` string ends at its line even if unclosed, so a
- * quote inside a regex literal cannot swallow the rest of the file.
+ * open a comment, and regex literals so that `/https?:\/\//` does not either. A
+ * `"` or `'` string ends at its line even if unclosed.
  */
 function blank(source: string, strings: boolean): string {
+  const previousToken = (index: number): string =>
+    /\S?\s*$/.exec(source.slice(0, index))?.[0][0] ?? "";
+  const isRegexStart = (source_: string, index: number): boolean => {
+    const next = source_[index + 1];
+    if (next === "/" || next === "*") return false;
+    return /^$|[(,=:[!&|?{};\n]/.test(previousToken(index));
+  };
+  const regexEnd = (source_: string, index: number): number => {
+    let inClass = false;
+    for (let i = index + 1; i < source_.length && source_[i] !== "\n"; i++) {
+      if (source_[i] === "\\") i++;
+      else if (source_[i] === "[") inClass = true;
+      else if (source_[i] === "]") inClass = false;
+      else if (source_[i] === "/" && !inClass) return i + 1;
+    }
+    return index + 1;
+  };
   const blanked = (text: string) => text.replace(/[^\n]/g, " ");
   let out = "";
   let i = 0;
   while (i < source.length) {
     const ch = source[i]!;
     let end = i + 1;
-    if (ch === '"' || ch === "'" || ch === "`") {
+    if (ch === "/" && isRegexStart(source, i)) {
+      end = regexEnd(source, i);
+      const body = source.slice(i, end);
+      out += strings ? blanked(body) : body;
+    } else if (ch === '"' || ch === "'" || ch === "`") {
       while (end < source.length && source[end] !== ch) {
         if (ch !== "`" && source[end] === "\n") break;
         end += source[end] === "\\" ? 2 : 1;
@@ -202,6 +223,18 @@ describe("E2E spec conventions (TPL-1171, TPL-1608)", () => {
       expect(rulesIn(glob)).toEqual(["raw-keystroke"]);
       expect(rulesIn('f("a // b", page.keyboard.type("x"));')).toEqual(["raw-keystroke"]);
       expect(rulesIn('const r = /don\'t/;\nawait page.keyboard.type("x");')).toEqual([
+        "raw-keystroke",
+      ]);
+    });
+
+    it("is not fooled by comment markers inside regex literals", () => {
+      expect(rulesIn("await expect(a).toHaveURL(/https?:\\/\\//, { timeout: 15000 });")).toEqual([
+        "extended-assertion-timeout",
+      ]);
+      expect(rulesIn('const r = /\\/api\\/*/;\nawait page.keyboard.type("x");')).toEqual([
+        "raw-keystroke",
+      ]);
+      expect(rulesIn('const n = a / b;\nawait page.keyboard.type("x"); // c / d')).toEqual([
         "raw-keystroke",
       ]);
     });
