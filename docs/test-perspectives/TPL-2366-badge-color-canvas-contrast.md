@@ -41,11 +41,11 @@ TPL-1697（kind の background-color には対の text color を設定する）�
 
 builtin テーマや palette の文字系色を追加・変更するとき:
 
-- [ ] その色は canvas またはカード背景の上に**文字として**描かれるか確認したか
+- [ ] その色は canvas またはカード背景の上に**文字として**描かれるか確認したか [judgment]
 - [ ] dark / light 両テーマで `contrastRatio()` が 4.5 以上か
       （`default-style-contrast.test.ts` が badge-color を自動検証する。対象外の
-      色を足した場合はテストの走査対象に追加する）
-- [ ] 4.5 未満なら同系色相の暗色/明色へ倒したか（彩度維持のまま明度だけ調整）
+      色を足した場合はテストの走査対象に追加する） [guard: `packages/core/src/builtins/default-style-contrast.test.ts`]
+- [ ] 4.5 未満なら同系色相の暗色/明色へ倒したか（彩度維持のまま明度だけ調整） [judgment]
 
 ## 既知の対処パターン
 

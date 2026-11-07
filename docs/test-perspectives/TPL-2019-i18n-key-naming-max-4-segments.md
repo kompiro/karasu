@@ -64,12 +64,12 @@ UI サーフェスが複数生まれるケースで sub-feature セグメント�
 `Translations` 型（`packages/i18n/src/types.ts`）に新しい key を追加する
 PR で確認する:
 
-- [ ] key の dot-segment 数が 4 以下か（`<feature>.<sub-feature?>.<element>.<state>`）。
+- [ ] key の dot-segment 数が 4 以下か（`<feature>.<sub-feature?>.<element>.<state>`）。 [guard: `packages/i18n/src/catalog.test.ts`]
 - [ ] sub-feature を導入するなら、そのまとまりだけで element.state キーが
-      複数生まれるか（1〜2 個で済むなら flat な 3 段に収める）。
-- [ ] sub-feature の下にさらに孫階層（5 段目）を作っていないか。
+      複数生まれるか（1〜2 個で済むなら flat な 3 段に収める）。 [judgment]
+- [ ] sub-feature の下にさらに孫階層（5 段目）を作っていないか。 [guard: `packages/i18n/src/catalog.test.ts`]
 - [ ] `docs/spec/i18n.md` の key naming 規約と実際の命名が一致しているか
-      （spec を読まずに直感で命名していないか）。
+      （spec を読まずに直感で命名していないか）。 [judgment]
 
 ## 関連テスト
 

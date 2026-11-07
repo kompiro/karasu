@@ -57,10 +57,10 @@ skip が「合格」として報告される仕組みでは、条件解除の状
 - [ ] skip の条件を解除する状態変化を列挙し、そのすべてが workflow の trigger
       （`on:` / `types:`）に含まれているか確認した
 - [ ] skip されたときに Required check へ報告される値（success / pending / neutral）を
-      確認し、それが「マージを止める」側か「素通しする」側か言えるようにした
+      確認し、それが「マージを止める」側か「素通しする」側か言えるようにした [judgment]
 - [ ] skip 条件と trigger のズレを落とす機械チェックを置いた（例:
       `scripts/ci/workflow-draft-gate.test.ts`）
-- [ ] 状態変化を実際に 1 度起こして、本番の job が起動することを観測した
+- [ ] 状態変化を実際に 1 度起こして、本番の job が起動することを観測した [judgment]
 
 ## 既知の対処パターン
 

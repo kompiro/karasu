@@ -2,8 +2,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import type { Project } from "@karasu-tools/core";
+import type { FileSelectionStatus } from "../../hooks/useFileSelection.js";
 import type { AppAction } from "../../state/app-reducer.js";
 import { useGuidedScene, type PendingScene } from "./use-guided-scene.js";
+import { requestReveal, useRevealRequest } from "../../state/preview-reveal.js";
+import { registerDeepLinkRestore } from "../../state/deep-link-restore.js";
 
 afterEach(cleanup);
 
@@ -36,10 +39,10 @@ function setup(
   lands = true,
 ) {
   const calls: string[] = [];
-  const selectFile = vi.fn<(path: string) => Promise<boolean>>(async (path) => {
+  const selectFile = vi.fn<(path: string) => Promise<FileSelectionStatus>>(async (path) => {
     calls.push(`select ${path}`);
     await read(path);
-    return lands;
+    return lands ? "opened" : "failed";
   });
   const dispatch = vi.fn<(action: AppAction) => void>((action) => {
     calls.push(action.type);
@@ -118,6 +121,58 @@ describe("useGuidedScene", () => {
       { type: "SET_COMPARE_SOURCE", source: null },
       { type: "SET_ACTIVE_VIEW", activeView: "org" },
     ]);
+  });
+
+  // #3598: a resumed step booted on its scene's hash, so its file is already
+  // open with the view restored; a second SELECT_FILE would reset it.
+  it("does not select a resumed scene's file again when it is open, and selects it when it is not", async () => {
+    const resumed = { ...diffScene, key: "tour:0:2", resumed: true };
+    const open = setup({
+      project: tourProject,
+      file: "/projects/tour/planned.krs",
+      pending: resumed,
+    });
+    await act(async () => {});
+    expect(open.calls).toEqual(["SET_COMPARE_SOURCE", "SET_ACTIVE_VIEW"]);
+    cleanup();
+
+    const other = setup({
+      project: tourProject,
+      file: "/projects/tour/index.krs",
+      pending: resumed,
+    });
+    await act(async () => {});
+    expect(other.calls).toEqual([
+      "select /projects/tour/planned.krs",
+      "SET_COMPARE_SOURCE",
+      "SET_ACTIVE_VIEW",
+    ]);
+  });
+
+  // #3598: a scene the visitor moved to (Next, Back, a new tour) is their
+  // navigation, so a deep link's restoration still holding values ends; the
+  // resumed step is the restoration's own scene and leaves it running.
+  it("ends a deep link's restoration for a scene the visitor moved to, not for the resumed one", async () => {
+    const end = vi.fn<() => void>();
+    const unregister = registerDeepLinkRestore(end);
+    const resumed = { ...diffScene, key: "tour:0:2", resumed: true };
+    const { rerender } = setup({
+      project: tourProject,
+      file: "/projects/tour/planned.krs",
+      pending: resumed,
+    });
+    await act(async () => {});
+    expect(end).not.toHaveBeenCalled();
+
+    await act(async () => {
+      rerender({
+        project: tourProject,
+        file: "/projects/tour/planned.krs",
+        pending: { ...diffScene, key: "tour:0:1", resumed: false },
+      });
+    });
+    expect(end).toHaveBeenCalledTimes(1);
+    unregister();
   });
 
   it("drops the diff and view of a scene left before its file loaded (TPL-1534)", async () => {
@@ -254,5 +309,81 @@ describe("useGuidedScene", () => {
       });
     });
     expect(dispatch).toHaveBeenCalledTimes(4);
+  });
+
+  it("asks the preview to keep the scene's node in view, and withdraws it when the guide ends (#3583)", async () => {
+    requestReveal(null);
+    const revealed = renderHook(() => useRevealRequest());
+    const scene: PendingScene = {
+      ...diffScene,
+      scene: { ...diffScene.scene, reveal: "BillingService" },
+    };
+    const { rerender } = setup({
+      project: tourProject,
+      file: "/projects/tour/planned.krs",
+      pending: scene,
+    });
+    await act(async () => {});
+    expect(revealed.result.current?.nodeId).toBe("BillingService");
+
+    await act(async () => {
+      rerender({ project: tourProject, file: "/projects/tour/planned.krs", pending: null });
+    });
+    expect(revealed.result.current).toBeNull();
+  });
+
+  it("withdraws the reveal when the visitor leaves the scene's project (#3583)", async () => {
+    requestReveal(null);
+    const revealed = renderHook(() => useRevealRequest());
+    const scene: PendingScene = {
+      ...diffScene,
+      scene: { ...diffScene.scene, reveal: "BillingService" },
+    };
+    const { rerender } = setup({
+      project: tourProject,
+      file: "/projects/tour/planned.krs",
+      pending: scene,
+    });
+    await act(async () => {});
+    expect(revealed.result.current?.nodeId).toBe("BillingService");
+
+    await act(async () => {
+      rerender({ project: otherProject, file: "/projects/gs/index.krs", pending: scene });
+    });
+    expect(revealed.result.current).toBeNull();
+  });
+
+  it("withdraws the reveal for a scene that names no node, and when the guide unmounts (#3583)", async () => {
+    requestReveal(null);
+    const revealed = renderHook(() => useRevealRequest());
+    const named: PendingScene = {
+      ...diffScene,
+      scene: { ...diffScene.scene, reveal: "BillingService" },
+    };
+    const orgScene: PendingScene = {
+      root: "/projects/tour",
+      scene: { file: "index.krs", view: "org" },
+      key: "tour:1:1",
+      reapplyOnReturn: true,
+    };
+    const { rerender, unmount } = setup({
+      project: tourProject,
+      file: "/projects/tour/planned.krs",
+      pending: named,
+    });
+    await act(async () => {});
+    expect(revealed.result.current?.nodeId).toBe("BillingService");
+
+    await act(async () => {
+      rerender({ project: tourProject, file: "/projects/tour/planned.krs", pending: orgScene });
+    });
+    expect(revealed.result.current).toBeNull();
+
+    await act(async () => {
+      rerender({ project: tourProject, file: "/projects/tour/index.krs", pending: named });
+    });
+    expect(revealed.result.current?.nodeId).toBe("BillingService");
+    unmount();
+    expect(revealed.result.current).toBeNull();
   });
 });

@@ -9,229 +9,231 @@ Active TPLs grouped by `topic`, then deprecated ones.
 
 ### core-concepts
 
-- [TPL-1160](TPL-1160-top-level-orphans.md) — KrsFile のトップレベル宣言（unassigned orphans）を全消費側で扱う (#1160, #412)
-- [TPL-1207](TPL-1207-text-as-single-source-of-truth.md) — 新しい入力経路 / 永続化 / 状態保持はすべて `.krs` テキストに収束させる
-- [TPL-1223](TPL-1223-scoped-glance-drill-down.md) — 一度に見せる範囲を限定し、drill-down を first-class に保つ
-- [TPL-1225](TPL-1225-three-face-intersection-single-artifact.md) — 論理・物理・組織の三面は一つの `.krs` artifact 内で交差させる
-- [TPL-1281](TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — 既存キーワードの語彙的曖昧さは、まず外部 fence（別 ADR）で意味を縛れるか検討してから deprecate を判断する (#1281)
-- [TPL-1352](TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — 値ごとに区別が必要な属性は、その値を格納するマップのキーに含める (#1352, #2714, #2817, #2917, #2819, #2933, #3111)
-- [TPL-1386](TPL-1386-diagnostic-register-fact-vs-style.md) — 新規 resolver diagnostic の register は「事実か流派判断か」で決める (#1386)
-- [TPL-1417](TPL-1417-single-renderer-for-structured-messages.md) — 構造化メッセージ（Warning / Diagnostic）の文字列化は単一の renderer に集約する (#1417)
-- [TPL-1522](TPL-1522-style-coupled-diagnostics-sheetless-context.md) — style 連動の diagnostic はシート不在の文脈（LSP 単一ドキュメント）での挙動を仕様化する (#1522, #2082, #2410)
-- [TPL-1583](TPL-1583-migration-priority-index-winner.md) — 1:1 index は migration 共存の重複から @migration_target を勝者に選ぶ — 全 index で一貫させる (#1583, #2550, #2934)
-- [TPL-1625](TPL-1625-client-vocabulary-structure-not-implementation.md) — client の語彙はアクセスパスの構造を名指し、実装の詳細を名指さない (#1625)
-- [TPL-1995](TPL-1995-generated-content-is-marked-at-its-seams.md) — 生成物の不確かさは、不確かな場所に印を付け、解決した人が消せる形にする (#1995)
-- [TPL-2161](TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 宣言された多重所属を派生 index で捨てない — 単一値しか扱えないビューの都合は view 側で解決する (#2161)
-- [TPL-2166](TPL-2166-information-flows-up.md) — 新機能の情報の流れは抽象化方向（up）か、詳細化方向（down）かを判定する
-- [TPL-2172](TPL-2172-builtin-vocabulary-addition-gate.md) — builtin 語彙の追加は register 判定・既存表現の有無・停止規則の 3 問を通す (#2172)
-- [TPL-2175](TPL-2175-deprecation-announced-only-with-a-migration-target.md) — 非推奨は移行先が出荷される release で告知する — 移行先の無い deprecation は「唯一動く手段をやめろ」と言っているだけ (#2175)
-- [TPL-2200](TPL-2200-render-claim-names-its-view-level.md) — 「描画される」と書くときは、どの view で描画されるかまで書き、両側をテストで固定する (#2200)
-- [TPL-2585](TPL-2585-partial-mapping-view-states-its-denominator.md) — 部分的な写像を通した派生ビューは、写らなかった分母を同じ面で示す (#2585)
+- [TPL-1160](TPL-1160-top-level-orphans.md) — KrsFile のトップレベル宣言（unassigned orphans）を全消費側で扱う (#1160, #412) · unguarded 0/3, judgment 2
+- [TPL-1207](TPL-1207-text-as-single-source-of-truth.md) — 新しい入力経路 / 永続化 / 状態保持はすべて `.krs` テキストに収束させる · judgment 5
+- [TPL-1223](TPL-1223-scoped-glance-drill-down.md) — 一度に見せる範囲を限定し、drill-down を first-class に保つ · unguarded 0/2, judgment 4
+- [TPL-1225](TPL-1225-three-face-intersection-single-artifact.md) — 論理・物理・組織の三面は一つの `.krs` artifact 内で交差させる · unguarded 0/1, judgment 5
+- [TPL-1281](TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — 既存キーワードの語彙的曖昧さは、まず外部 fence（別 ADR）で意味を縛れるか検討してから deprecate を判断する (#1281) · judgment 4
+- [TPL-1352](TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — 値ごとに区別が必要な属性は、その値を格納するマップのキーに含める (#1352, #2714, #2817, #2917, #2819, #2933, #3111) · unguarded 0/3, judgment 3
+- [TPL-1386](TPL-1386-diagnostic-register-fact-vs-style.md) — 新規 resolver diagnostic の register は「事実か流派判断か」で決める (#1386) · unguarded 0/2, judgment 3
+- [TPL-1417](TPL-1417-single-renderer-for-structured-messages.md) — 構造化メッセージ（Warning / Diagnostic）の文字列化は単一の renderer に集約する (#1417) · partial 1/4
+- [TPL-1522](TPL-1522-style-coupled-diagnostics-sheetless-context.md) — style 連動の diagnostic はシート不在の文脈（LSP 単一ドキュメント）での挙動を仕様化する (#1522, #2082, #2410) · unguarded 0/2, judgment 3
+- [TPL-1583](TPL-1583-migration-priority-index-winner.md) — 1:1 index は migration 共存の重複から @migration_target を勝者に選ぶ — 全 index で一貫させる (#1583, #2550, #2934) · unguarded 0/5, judgment 1
+- [TPL-1625](TPL-1625-client-vocabulary-structure-not-implementation.md) — client の語彙はアクセスパスの構造を名指し、実装の詳細を名指さない (#1625) · unguarded 0/1, judgment 4
+- [TPL-1995](TPL-1995-generated-content-is-marked-at-its-seams.md) — 生成物の不確かさは、不確かな場所に印を付け、解決した人が消せる形にする (#1995) · partial 1/4, judgment 3
+- [TPL-2161](TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 宣言された多重所属を派生 index で捨てない — 単一値しか扱えないビューの都合は view 側で解決する (#2161) · unguarded 0/4, judgment 1
+- [TPL-2166](TPL-2166-information-flows-up.md) — 新機能の情報の流れは抽象化方向（up）か、詳細化方向（down）かを判定する · judgment 5
+- [TPL-2172](TPL-2172-builtin-vocabulary-addition-gate.md) — builtin 語彙の追加は register 判定・既存表現の有無・停止規則の 3 問を通す (#2172) · partial 2/3, judgment 2
+- [TPL-2175](TPL-2175-deprecation-announced-only-with-a-migration-target.md) — 非推奨は移行先が出荷される release で告知する — 移行先の無い deprecation は「唯一動く手段をやめろ」と言っているだけ (#2175) · unguarded 0/3, judgment 4
+- [TPL-2200](TPL-2200-render-claim-names-its-view-level.md) — 「描画される」と書くときは、どの view で描画されるかまで書き、両側をテストで固定する (#2200) · unguarded 0/2, judgment 4
+- [TPL-2585](TPL-2585-partial-mapping-view-states-its-denominator.md) — 部分的な写像を通した派生ビューは、写らなかった分母を同じ面で示す (#2585) · unguarded 0/3, judgment 2
 
 ### parser
 
-- [TPL-74](TPL-74-ast-parser-renderer-agreement.md) — ノード共通フィールドの追加には AST 型 / parser keyword / renderer fallback の三点同意が必要 (#74, #1233)
-- [TPL-907](TPL-907-cross-reference-validation.md) — 新しい cross-reference プロパティには resolver-side 検証と unresolved warning を必ず付ける (#907, #2078)
-- [TPL-1101](TPL-1101-round-trip-guarantee.md) — コードを変換する機能では parse(format(x)) ≡ parse(x) の round-trip を保証する (#1101, #1058, #2076, #2087, #2571, #2650, #2707, #3101, #3263)
-- [TPL-1623](TPL-1623-diagnostics-catalog-completeness.md) — 全診断コードは規則カタログに 1 件の項目を持つ（規則 ↔ 診断の双方向完全性） (#1623)
-- [TPL-1882](TPL-1882-entity-carries-no-attributes.md) — `entity` は名前・関連・物理対応のみを受け付け、属性を持たせない
-- [TPL-2088](TPL-2088-id-reference-notation-uniform-across-sites.md) — ノード id を指す参照サイトは受理する記法と解決規則を全サイトで共有する (#2650)
-- [TPL-2133](TPL-2133-parser-acceptance-documented-in-spec.md) — parser が受理する形は spec に文書化されている（受理 ⊆ 文書化 — 逆方向 drift の検出） (#2133)
-- [TPL-2165](TPL-2165-containment-rule-has-single-definition.md) — containment 規則は定義を 1 つだけ持ち、それを強制するのは parser である（表と実装を二重に書かない） (#2165)
-- [TPL-2171](TPL-2171-spec-promised-diagnostics-implemented.md) — spec が約束する診断は専用の診断コードとして実装されていることを検証する
-- [TPL-2509](TPL-2509-kebab-name-positions-share-one-lexical-rule.md) — kebab-case 名を受けるポジションは 1 つの字句規則を共有し、追加時は全ポジションで検証する (#2509, #2707, #2849, #3140)
-- [TPL-2542](TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — 既存プロパティに 2 つ目の受理形（sugar）を足したら、両形が同一 AST に落ちること・formatter の往復・要素単位の range を同じ PR で固定する (#2167, #2543)
-- [TPL-2552](TPL-2552-repeated-relation-is-idempotent-across-counting-and-keyed-consumers.md) — 同じ相手を二度書ける参照リストは、件数を数える消費側と id で畳む消費側の両方に届く — 両者を食い違わせない (#2552, #2713)
-- [TPL-2707](TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md) — lexer は parser が拒否すべき入力を黙って捨ててはならない (#2707, #2848, #3093, #3032, #3140)
-- [TPL-3072](TPL-3072-parser-error-drops-exactly-the-rejected-construct.md) — parser の error は拒否した構文をちょうど 1 つ分だけモデルから除く。誤りのある source は、その構文を空白で塗りつぶした source と同じモデルになり、error は 1 件だけ出る (#3072, #3463, #3499)
+- [TPL-74](TPL-74-ast-parser-renderer-agreement.md) — ノード共通フィールドの追加には AST 型 / parser keyword / renderer fallback の三点同意が必要 (#74, #1233) · unguarded 0/5
+- [TPL-907](TPL-907-cross-reference-validation.md) — 新しい cross-reference プロパティには resolver-side 検証と unresolved warning を必ず付ける (#907, #2078) · unguarded 0/4, judgment 1
+- [TPL-1101](TPL-1101-round-trip-guarantee.md) — コードを変換する機能では parse(format(x)) ≡ parse(x) の round-trip を保証する (#1101, #1058, #2076, #2087, #2571, #2650, #2707, #3101, #3263) · partial 3/13, judgment 1
+- [TPL-1623](TPL-1623-diagnostics-catalog-completeness.md) — 全診断コードは規則カタログに 1 件の項目を持つ（規則 ↔ 診断の双方向完全性） (#1623) · partial 2/3, judgment 1
+- [TPL-1882](TPL-1882-entity-carries-no-attributes.md) — `entity` は名前・関連・物理対応のみを受け付け、属性を持たせない · unguarded 0/4
+- [TPL-2088](TPL-2088-id-reference-notation-uniform-across-sites.md) — ノード id を指す参照サイトは受理する記法と解決規則を全サイトで共有する (#2650) · unguarded 0/6, judgment 1
+- [TPL-2133](TPL-2133-parser-acceptance-documented-in-spec.md) — parser が受理する形は spec に文書化されている（受理 ⊆ 文書化 — 逆方向 drift の検出） (#2133) · unguarded 0/1, judgment 2
+- [TPL-2165](TPL-2165-containment-rule-has-single-definition.md) — containment 規則は定義を 1 つだけ持ち、それを強制するのは parser である（表と実装を二重に書かない） (#2165) · partial 3/5, judgment 1
+- [TPL-2171](TPL-2171-spec-promised-diagnostics-implemented.md) — spec が約束する診断は専用の診断コードとして実装されていることを検証する · partial 1/4, judgment 1
+- [TPL-2509](TPL-2509-kebab-name-positions-share-one-lexical-rule.md) — kebab-case 名を受けるポジションは 1 つの字句規則を共有し、追加時は全ポジションで検証する (#2509, #2707, #2849, #3140) · unguarded 0/2
+- [TPL-2542](TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — 既存プロパティに 2 つ目の受理形（sugar）を足したら、両形が同一 AST に落ちること・formatter の往復・要素単位の range を同じ PR で固定する (#2167, #2543) · unguarded 0/4, judgment 1
+- [TPL-2552](TPL-2552-repeated-relation-is-idempotent-across-counting-and-keyed-consumers.md) — 同じ相手を二度書ける参照リストは、件数を数える消費側と id で畳む消費側の両方に届く — 両者を食い違わせない (#2552, #2713) · unguarded 0/3, judgment 2
+- [TPL-2707](TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md) — lexer は parser が拒否すべき入力を黙って捨ててはならない (#2707, #2848, #3093, #3032, #3140) · partial 2/5, judgment 1
+- [TPL-3072](TPL-3072-parser-error-drops-exactly-the-rejected-construct.md) — parser の error は拒否した構文をちょうど 1 つ分だけモデルから除く。誤りのある source は、その構文を空白で塗りつぶした source と同じモデルになり、error は 1 件だけ出る (#3072, #3463, #3499) · unguarded 0/7
 
 ### resolver
 
-- [TPL-1381](TPL-1381-import-dag-not-cycle.md) — DAG 経由で同じファイルに 2 回到達するのは循環ではない (#1381)
-- [TPL-1383](TPL-1383-whole-file-import-completeness.md) — whole-file import は imported ファイルの全 top-level ノードと全 children を merged に流す (#1381)
-- [TPL-1385](TPL-1385-infra-redeclared-across-files.md) — 同名 database / queue / storage の再宣言は union merge、info 診断で surface する (#1385, #2754, #2780)
-- [TPL-1720](TPL-1720-validation-target-set-enumerates-all-kinds.md) — cross-reference 検証の valid-target set は spec が許す全 kind を列挙し、重複する集合は同期させる (#1720, #2408)
-- [TPL-1967](TPL-1967-domain-ownership-derived-from-entity-not-declared.md) — infra leaf のドメイン所有は entity 層から導出する — 物理 table に再宣言せず、leaf 粒度・所有集合で扱う
-- [TPL-2032](TPL-2032-reference-existence-validated-on-merged-space.md) — 参照存在チェック（contains / owns 等）は per-file ではなくマージ後の id 空間で検証する (#2032, #2036, #2082)
-- [TPL-2075](TPL-2075-parsed-construct-renders-or-warns.md) — parse を通った構造は、どこかの view で描画されるか診断されるかのどちらかである (#2075, #2223, #2501)
-- [TPL-2167](TPL-2167-id-not-label-for-identity.md) — identity 判定 / 比較 / 集約のキーには `id` を使い、`label` などの表示・翻訳文字列を使わない
-- [TPL-2168](TPL-2168-system-reopen-merge.md) — 同名 system / deploy / organization の再オープンは children を union し、property は import-graph root に近い側が勝つ (#1381)
-- [TPL-2169](TPL-2169-deploy-org-wildcard-propagation.md) — whole-file import は system だけでなく deploy / organization も伝搬する (#1381)
-- [TPL-2170](TPL-2170-dangling-edge-preserves-node.md) — edge / relation の片側が未解決でも、解決できた側のノードは drop しない (#1381)
-- [TPL-2184](TPL-2184-equivalent-placements-share-one-diagnostic.md) — 同じモデリング状態を表す複数の配置は、綴りが違っても同じ診断を出す (#2184)
-- [TPL-2221](TPL-2221-merge-only-facts-decided-on-merged-model.md) — マージ後にしか成立しない事実を述べる診断は、マージ後のモデルで判定する — per-file 判定は沈黙して落ちる (#2221, #2596)
-- [TPL-2577](TPL-2577-endpoint-reach-is-one-rule-for-bare-and-qualified.md) — 参照の到達範囲は綴りではなく構造で決まる — bare と qualified に別々の規則を持たない (#2577)
-- [TPL-2635](TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は「宣言だけか、直近の owned 祖先まで遡るか」を宣言し、その選択をテストで固定する (#2635)
-- [TPL-2715](TPL-2715-source-position-carries-its-document.md) — 位置情報は、それが指す文書の識別と対でしか運べない (#2715)
-- [TPL-2791](TPL-2791-read-passes-do-not-write-the-model.md) — モデルを読むだけのパス（解析・描画・書き出し）は、渡された KrsFile に書き込まない (#2791)
+- [TPL-1381](TPL-1381-import-dag-not-cycle.md) — DAG 経由で同じファイルに 2 回到達するのは循環ではない (#1381) · unguarded 0/4
+- [TPL-1383](TPL-1383-whole-file-import-completeness.md) — whole-file import は imported ファイルの全 top-level ノードと全 children を merged に流す (#1381) · unguarded 0/4
+- [TPL-1385](TPL-1385-infra-redeclared-across-files.md) — 同名 database / queue / storage の再宣言は union merge、info 診断で surface する (#1385, #2754, #2780) · unguarded 0/5
+- [TPL-1720](TPL-1720-validation-target-set-enumerates-all-kinds.md) — cross-reference 検証の valid-target set は spec が許す全 kind を列挙し、重複する集合は同期させる (#1720, #2408) · unguarded 0/5, judgment 1
+- [TPL-1967](TPL-1967-domain-ownership-derived-from-entity-not-declared.md) — infra leaf のドメイン所有は entity 層から導出する — 物理 table に再宣言せず、leaf 粒度・所有集合で扱う · unguarded 0/9
+- [TPL-2032](TPL-2032-reference-existence-validated-on-merged-space.md) — 参照存在チェック（contains / owns 等）は per-file ではなくマージ後の id 空間で検証する (#2032, #2036, #2082) · unguarded 0/8
+- [TPL-2075](TPL-2075-parsed-construct-renders-or-warns.md) — parse を通った構造は、どこかの view で描画されるか診断されるかのどちらかである (#2075, #2223, #2501) · unguarded 0/7
+- [TPL-2167](TPL-2167-id-not-label-for-identity.md) — identity 判定 / 比較 / 集約のキーには `id` を使い、`label` などの表示・翻訳文字列を使わない · partial 1/5
+- [TPL-2168](TPL-2168-system-reopen-merge.md) — 同名 system / deploy / organization の再オープンは children を union し、property は import-graph root に近い側が勝つ (#1381) · unguarded 0/5
+- [TPL-2169](TPL-2169-deploy-org-wildcard-propagation.md) — whole-file import は system だけでなく deploy / organization も伝搬する (#1381) · unguarded 0/4
+- [TPL-2170](TPL-2170-dangling-edge-preserves-node.md) — edge / relation の片側が未解決でも、解決できた側のノードは drop しない (#1381) · unguarded 0/4
+- [TPL-2184](TPL-2184-equivalent-placements-share-one-diagnostic.md) — 同じモデリング状態を表す複数の配置は、綴りが違っても同じ診断を出す (#2184) · unguarded 0/3, judgment 3
+- [TPL-2221](TPL-2221-merge-only-facts-decided-on-merged-model.md) — マージ後にしか成立しない事実を述べる診断は、マージ後のモデルで判定する — per-file 判定は沈黙して落ちる (#2221, #2596) · unguarded 0/5
+- [TPL-2577](TPL-2577-endpoint-reach-is-one-rule-for-bare-and-qualified.md) — 参照の到達範囲は綴りではなく構造で決まる — bare と qualified に別々の規則を持たない (#2577) · unguarded 0/4
+- [TPL-2635](TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は「宣言だけか、直近の owned 祖先まで遡るか」を宣言し、その選択をテストで固定する (#2635) · unguarded 0/5
+- [TPL-2715](TPL-2715-source-position-carries-its-document.md) — 位置情報は、それが指す文書の識別と対でしか運べない (#2715) · unguarded 0/4, judgment 1
+- [TPL-2791](TPL-2791-read-passes-do-not-write-the-model.md) — モデルを読むだけのパス（解析・描画・書き出し）は、渡された KrsFile に書き込まない (#2791) · unguarded 0/3, judgment 1
 
 ### renderer
 
-- [TPL-999](TPL-999-implicit-data-filtering.md) — データ表示の暗黙フィルタ（宣言漏れ / resolver / null 戻り）を全経路で確認する (#999, #132)
-- [TPL-1001](TPL-1001-display-mode-cross-surface.md) — 表示モード / グローバルレンダリング切替は全描画面の点検と precedence 設計が必要 (#1001, #279, #132, #183, #1479, #2482)
-- [TPL-1415](TPL-1415-shared-vocabulary-dual-representation.md) — 同一語彙を複数の表現で持つときは片方更新による静かな drift を検証する (#1415, #1856)
-- [TPL-1666](TPL-1666-style-lookup-matches-layout-id-form.md) — ノード style/metadata の lookup は layout が使う id 形（bare / 修飾）をすべて試す (#1666)
-- [TPL-1736](TPL-1736-tier-split-no-edge-penetration.md) — system-view のティアを分割/挿入したら、新たに段を跨ぐエッジが中間カードを貫通しないことを確認する
-- [TPL-1738](TPL-1738-relayout-into-group-preserves-placement-and-edges.md) — 要素を主構造から抜き出して別グループに再配置するとき、全要素ちょうど一度配置 + 参照エッジの端点保持を検証する (#1738, #1874)
-- [TPL-1761](TPL-1761-external-side-placement-invariant.md) — system-view で external をサイドに置く配置は、他 kind の配置帯を侵さず決定的で、column override を尊重する (#2384, #2394, #2625)
-- [TPL-1790](TPL-1790-root-svg-viewbox-responsive.md) — プレビューに渡す root SVG は viewBox を持ち、CSS 縮小時に内容がスケールすること (#1790)
-- [TPL-1799](TPL-1799-raster-pipeline-glyph-coverage.md) — 別ランタイムで再ラスタライズする経路は、ソースが出力しうる全グリフ/リソースをカバーする (#1799)
-- [TPL-1886](TPL-1886-rekey-transform-preserves-per-element-decoration.md) — 端点 id を書き換える集約/畳み込み変換は、元 id にキーされた per-要素の装飾（diff state 等）を再導出する（retarget 後も装飾が残ることを assert） (#1886)
-- [TPL-1927](TPL-1927-routing-measures-crossings-and-penetrations.md) — エッジルーティング/レイアウトの可読性を検証するときは、交差数だけでなくノード/フレーム貫通数も測る（貫通は 0 を assert） (#1927)
-- [TPL-1954](TPL-1954-new-route-shape-participates-in-overlap-passes.md) — 新しいエッジ route 形（waypoint 構成）を足したら、既存の overlap 回避パス（lane 分離・port fan-out）がその形を素通りしていないか確認する (#1954, #2362, #2477)
-- [TPL-1983](TPL-1983-view-state-gate-parity-across-surfaces.md) — view-state オプションの適用範囲制限（gate）は全 render surface で同一条件に揃える (#1983, #2033)
-- [TPL-2044](TPL-2044-svg-interactive-control-paints-last.md) — SVG の interactive control（back button 等）は不透明背景より後に描いて hit-testable を保つこと (#2044)
-- [TPL-2048](TPL-2048-label-placement-measured-and-byte-stable.md) — エッジラベルの配置（衝突回避）は label↔label / label↔node の overlap を数値で計測して assert する。衝突が無い図は byte-stable に保ち、author 指定ラベルは動かさない (#2048, #2360, #3155)
-- [TPL-2157](TPL-2157-resolved-relation-rendered-for-every-kind.md) — 解決済みの関係を描画する側の kind gate も、spec が許す全 kind を列挙する (#2157)
-- [TPL-2174](TPL-2174-opt-in-visual-layer-is-inert-when-off.md) — opt-in な視覚レイヤは、無効時に自分のマーカーを 1 つも出さない (#2174)
-- [TPL-2179](TPL-2179-derived-outline-measured-on-coverage-not-bbox.md) — 要素に届かせるために広げた図形は、実被覆で測る（bbox で測らない）— 非メンバーを飲み込まない述語が必要 (#2179, #2240)
-- [TPL-2234](TPL-2234-one-entity-one-appearance-resolver.md) — 1 つのエンティティの見た目を複数の面が描くなら、見た目の決定は 1 つの関数に閉じる（上書き手段を足す前に畳む） (#2234, #2179, #2445)
-- [TPL-2385](TPL-2385-attachment-follows-drawn-outline.md) — bounding box より内側に描かれる図形では、接続点もクロームも「描かれた輪郭」に付ける — 検証は描画出力で測る (#2385, #2366, #2696)
-- [TPL-2593](TPL-2593-layout-feedback-is-floor-first-and-monotone.md) — レイアウトに測定値をフィードバックするなら、候補は入力だけで決まり、既定候補が先頭で、厳密改善のみが勝つ (#2593)
-- [TPL-2611](TPL-2611-feedback-key-survives-the-next-pass.md) — 測定値を前段へ返すとき、鍵は次のパスで動かない構造キーで持つ (#2611)
-- [TPL-2631](TPL-2631-decoration-must-not-hide-a-crossing-mark.md) — 図に装飾を足したら、既存のマークがその上でまだ読めることを測る（覆われたマークは反対の意味に読まれる） (#2631, #2884)
-- [TPL-2632](TPL-2632-viewer-affordance-not-gated-on-author-identity.md) — 閲覧者向けの affordance を、作者側の identity で gate しない (#2632)
-- [TPL-2662](TPL-2662-themed-surface-fallback-comes-from-palette.md) — テーマ付き surface の「誰も色を指定しなかったとき」の色は palette から取る (#2662)
-- [TPL-2756](TPL-2756-downstream-consumes-what-upstream-assembled.md) — パイプラインの下流は、上流が組み立てた集合を作り直さず消費する (#2756, #2223)
-- [TPL-2802](TPL-2802-core-registry-contents-do-not-depend-on-host.md) — core が描画・診断で読むレジストリの中身は、ホストが何を呼んだかで変わってはならない (#2802)
-- [TPL-2803](TPL-2803-measured-lines-are-drawn-lines.md) — カードの寸法を測るテキストレイアウトと描くテキストレイアウトは同じもの — 測った行はすべて描き、描く行はすべて測る (#2803)
-- [TPL-2956](TPL-2956-regrouping-svg-elements-keeps-paint-order.md) — SVG の要素をまとめ直すなら、重なる要素の描画順を保つ（変わるなら、変わる組を数えて記録する） (#2956)
-- [TPL-2958](TPL-2958-bundle-shared-geometry-survives-later-passes.md) — 束ねた共有区間は、後に走るすべてのパスを通ったあとも同一座標のまま残ることを測る (#2958, #2966)
-- [TPL-3022](TPL-3022-withheld-content-stays-reachable.md) — canvas が省略・保留した authored 情報は、その surface 上で全文に到達できる経路を持つ (#3022)
-- [TPL-3026](TPL-3026-candidate-chain-covers-every-endpoint-relation.md) — 候補を順に試すルーターは、端点の位置関係ごとに少なくとも 1 つの候補を持つ。柵の corpus は各位置関係を 1 件ずつ含む (#3026, #3133, #3309)
-- [TPL-3027](TPL-3027-visual-merge-only-when-indistinguishable.md) — 複数の要素を 1 つの見た目にまとめるのは、それらが見た目と意味で区別できないときだけにする (#3027)
-- [TPL-3036](TPL-3036-reserved-room-kept-only-when-measured.md) — 需要を測って開けた空間に別の種類の利用者が入れるなら、開いた配置を測ってから採る (#3036)
-- [TPL-3088](TPL-3088-later-pass-moves-ends-in-the-direction-earlier-separation-assumed.md) — 前のパスが「重ならない」と判定した要素の端を後のパスが動かすなら、動かす向きがその判定と矛盾しないことを測る (#3088)
-- [TPL-3090](TPL-3090-edge-decoration-follows-edge-emphasis.md) — エッジに属する装飾をエッジのグループの外に描くなら、エッジの識別を持たせ、強調・減光に追随させる (#3090, #3157)
-- [TPL-3126](TPL-3126-compare-pairs-revisions-by-identity-not-position.md) — compare モードは before と after の要素を id で突き合わせる。配列の位置や「先頭」で突き合わせない (#3126)
-- [TPL-3132](TPL-3132-resource-inside-a-frame-measured-against-the-frame.md) — 枠の中で分け合う資源（チャネル・レーン）は、その枠の内側を境界として測り、足りなければ枠を広げる (#3132, #3154)
-- [TPL-3134](TPL-3134-zero-length-segment-escapes-claim-and-gains-length-later.md) — 長さ 0 の区間を経路に残すなら、後のパスがそれに長さを与えないことを確かめる。与えるなら経路から外す (#3134)
-- [TPL-3197](TPL-3197-removed-card-reads-every-per-node-value-from-before-by-path.md) — compare モードで削除されたカードを描くのに引く per-node の値は、すべて before 側から自分の path で補う (#3197)
-- [TPL-3494](TPL-3494-edge-never-crosses-its-own-endpoint-cards.md) — エッジは自分の端点のカードの内側も通らない。障害物の検査は端点を除外するので、別に測る (#3494)
+- [TPL-999](TPL-999-implicit-data-filtering.md) — データ表示の暗黙フィルタ（宣言漏れ / resolver / null 戻り）を全経路で確認する (#999, #132) · unguarded 0/2, judgment 2
+- [TPL-1001](TPL-1001-display-mode-cross-surface.md) — 表示モード / グローバルレンダリング切替は全描画面の点検と precedence 設計が必要 (#1001, #279, #132, #183, #1479, #2482) · unguarded 0/6
+- [TPL-1415](TPL-1415-shared-vocabulary-dual-representation.md) — 同一語彙を複数の表現で持つときは片方更新による静かな drift を検証する (#1415, #1856) · unguarded 0/3, judgment 2
+- [TPL-1666](TPL-1666-style-lookup-matches-layout-id-form.md) — ノード style/metadata の lookup は layout が使う id 形（bare / 修飾）をすべて試す (#1666) · unguarded 0/3
+- [TPL-1736](TPL-1736-tier-split-no-edge-penetration.md) — system-view のティアを分割/挿入したら、新たに段を跨ぐエッジが中間カードを貫通しないことを確認する · partial 1/5
+- [TPL-1738](TPL-1738-relayout-into-group-preserves-placement-and-edges.md) — 要素を主構造から抜き出して別グループに再配置するとき、全要素ちょうど一度配置 + 参照エッジの端点保持を検証する (#1738, #1874) · unguarded 0/5
+- [TPL-1761](TPL-1761-external-side-placement-invariant.md) — system-view で external をサイドに置く配置は、他 kind の配置帯を侵さず決定的で、column override を尊重する (#2384, #2394, #2625) · partial 1/10, judgment 1
+- [TPL-1790](TPL-1790-root-svg-viewbox-responsive.md) — プレビューに渡す root SVG は viewBox を持ち、CSS 縮小時に内容がスケールすること (#1790) · unguarded 0/4
+- [TPL-1799](TPL-1799-raster-pipeline-glyph-coverage.md) — 別ランタイムで再ラスタライズする経路は、ソースが出力しうる全グリフ/リソースをカバーする (#1799) · unguarded 0/4, judgment 1
+- [TPL-1886](TPL-1886-rekey-transform-preserves-per-element-decoration.md) — 端点 id を書き換える集約/畳み込み変換は、元 id にキーされた per-要素の装飾（diff state 等）を再導出する（retarget 後も装飾が残ることを assert） (#1886) · unguarded 0/4
+- [TPL-1927](TPL-1927-routing-measures-crossings-and-penetrations.md) — エッジルーティング/レイアウトの可読性を検証するときは、交差数だけでなくノード/フレーム貫通数も測る（貫通は 0 を assert） (#1927) · partial 4/7
+- [TPL-1954](TPL-1954-new-route-shape-participates-in-overlap-passes.md) — 新しいエッジ route 形（waypoint 構成）を足したら、既存の overlap 回避パス（lane 分離・port fan-out）がその形を素通りしていないか確認する (#1954, #2362, #2477) · partial 1/4, judgment 2
+- [TPL-1983](TPL-1983-view-state-gate-parity-across-surfaces.md) — view-state オプションの適用範囲制限（gate）は全 render surface で同一条件に揃える (#1983, #2033) · unguarded 0/2, judgment 2
+- [TPL-2044](TPL-2044-svg-interactive-control-paints-last.md) — SVG の interactive control（back button 等）は不透明背景より後に描いて hit-testable を保つこと (#2044) · unguarded 0/3
+- [TPL-2048](TPL-2048-label-placement-measured-and-byte-stable.md) — エッジラベルの配置（衝突回避）は label↔label / label↔node の overlap を数値で計測して assert する。衝突が無い図は byte-stable に保ち、author 指定ラベルは動かさない (#2048, #2360, #3155) · unguarded 0/12, judgment 2
+- [TPL-2157](TPL-2157-resolved-relation-rendered-for-every-kind.md) — 解決済みの関係を描画する側の kind gate も、spec が許す全 kind を列挙する (#2157) · unguarded 0/4, judgment 1
+- [TPL-2174](TPL-2174-opt-in-visual-layer-is-inert-when-off.md) — opt-in な視覚レイヤは、無効時に自分のマーカーを 1 つも出さない (#2174) · unguarded 0/5, judgment 1
+- [TPL-2179](TPL-2179-derived-outline-measured-on-coverage-not-bbox.md) — 要素に届かせるために広げた図形は、実被覆で測る（bbox で測らない）— 非メンバーを飲み込まない述語が必要 (#2179, #2240) · unguarded 0/6, judgment 2
+- [TPL-2234](TPL-2234-one-entity-one-appearance-resolver.md) — 1 つのエンティティの見た目を複数の面が描くなら、見た目の決定は 1 つの関数に閉じる（上書き手段を足す前に畳む） (#2234, #2179, #2445) · unguarded 0/3, judgment 2
+- [TPL-2385](TPL-2385-attachment-follows-drawn-outline.md) — bounding box より内側に描かれる図形では、接続点もクロームも「描かれた輪郭」に付ける — 検証は描画出力で測る (#2385, #2366, #2696) · unguarded 0/4, judgment 1
+- [TPL-2593](TPL-2593-layout-feedback-is-floor-first-and-monotone.md) — レイアウトに測定値をフィードバックするなら、候補は入力だけで決まり、既定候補が先頭で、厳密改善のみが勝つ (#2593) · unguarded 0/7, judgment 2
+- [TPL-2611](TPL-2611-feedback-key-survives-the-next-pass.md) — 測定値を前段へ返すとき、鍵は次のパスで動かない構造キーで持つ (#2611) · unguarded 0/4
+- [TPL-2631](TPL-2631-decoration-must-not-hide-a-crossing-mark.md) — 図に装飾を足したら、既存のマークがその上でまだ読めることを測る（覆われたマークは反対の意味に読まれる） (#2631, #2884) · unguarded 0/2, judgment 3
+- [TPL-2632](TPL-2632-viewer-affordance-not-gated-on-author-identity.md) — 閲覧者向けの affordance を、作者側の identity で gate しない (#2632) · unguarded 0/4, judgment 1
+- [TPL-2662](TPL-2662-themed-surface-fallback-comes-from-palette.md) — テーマ付き surface の「誰も色を指定しなかったとき」の色は palette から取る (#2662) · unguarded 0/5
+- [TPL-2756](TPL-2756-downstream-consumes-what-upstream-assembled.md) — パイプラインの下流は、上流が組み立てた集合を作り直さず消費する (#2756, #2223) · unguarded 0/4, judgment 1
+- [TPL-2802](TPL-2802-core-registry-contents-do-not-depend-on-host.md) — core が描画・診断で読むレジストリの中身は、ホストが何を呼んだかで変わってはならない (#2802) · partial 2/5
+- [TPL-2803](TPL-2803-measured-lines-are-drawn-lines.md) — カードの寸法を測るテキストレイアウトと描くテキストレイアウトは同じもの — 測った行はすべて描き、描く行はすべて測る (#2803) · unguarded 0/2, judgment 2
+- [TPL-2956](TPL-2956-regrouping-svg-elements-keeps-paint-order.md) — SVG の要素をまとめ直すなら、重なる要素の描画順を保つ（変わるなら、変わる組を数えて記録する） (#2956) · unguarded 0/3, judgment 2
+- [TPL-2958](TPL-2958-bundle-shared-geometry-survives-later-passes.md) — 束ねた共有区間は、後に走るすべてのパスを通ったあとも同一座標のまま残ることを測る (#2958, #2966) · unguarded 0/3, judgment 1
+- [TPL-3022](TPL-3022-withheld-content-stays-reachable.md) — canvas が省略・保留した authored 情報は、その surface 上で全文に到達できる経路を持つ (#3022) · unguarded 0/6, judgment 1
+- [TPL-3026](TPL-3026-candidate-chain-covers-every-endpoint-relation.md) — 候補を順に試すルーターは、端点の位置関係ごとに少なくとも 1 つの候補を持つ。柵の corpus は各位置関係を 1 件ずつ含む (#3026, #3133, #3309) · unguarded 0/2, judgment 2
+- [TPL-3027](TPL-3027-visual-merge-only-when-indistinguishable.md) — 複数の要素を 1 つの見た目にまとめるのは、それらが見た目と意味で区別できないときだけにする (#3027) · unguarded 0/3, judgment 2
+- [TPL-3036](TPL-3036-reserved-room-kept-only-when-measured.md) — 需要を測って開けた空間に別の種類の利用者が入れるなら、開いた配置を測ってから採る (#3036) · unguarded 0/1, judgment 2
+- [TPL-3088](TPL-3088-later-pass-moves-ends-in-the-direction-earlier-separation-assumed.md) — 前のパスが「重ならない」と判定した要素の端を後のパスが動かすなら、動かす向きがその判定と矛盾しないことを測る (#3088) · unguarded 0/3, judgment 2
+- [TPL-3090](TPL-3090-edge-decoration-follows-edge-emphasis.md) — エッジに属する装飾をエッジのグループの外に描くなら、エッジの識別を持たせ、強調・減光に追随させる (#3090, #3157) · unguarded 0/5
+- [TPL-3126](TPL-3126-compare-pairs-revisions-by-identity-not-position.md) — compare モードは before と after の要素を id で突き合わせる。配列の位置や「先頭」で突き合わせない (#3126) · unguarded 0/4
+- [TPL-3132](TPL-3132-resource-inside-a-frame-measured-against-the-frame.md) — 枠の中で分け合う資源（チャネル・レーン）は、その枠の内側を境界として測り、足りなければ枠を広げる (#3132, #3154) · unguarded 0/5, judgment 1
+- [TPL-3134](TPL-3134-zero-length-segment-escapes-claim-and-gains-length-later.md) — 長さ 0 の区間を経路に残すなら、後のパスがそれに長さを与えないことを確かめる。与えるなら経路から外す (#3134) · unguarded 0/5, judgment 1
+- [TPL-3197](TPL-3197-removed-card-reads-every-per-node-value-from-before-by-path.md) — compare モードで削除されたカードを描くのに引く per-node の値は、すべて before 側から自分の path で補う (#3197) · unguarded 0/2, judgment 1
+- [TPL-3494](TPL-3494-edge-never-crosses-its-own-endpoint-cards.md) — エッジは自分の端点のカードの内側も通らない。障害物の検査は端点を除外するので、別に測る (#3494) · unguarded 0/3, judgment 1
 
 ### edges
 
-- [TPL-510](TPL-510-derivation-tag-semantics.md) — 派生・集約で自動付与するタグは元ノードの semantic 区別を保存する (#510)
-- [TPL-1227](TPL-1227-writer-reader-asymmetry.md) — 新しい edge / relation 機能は writer の coarse 表現と reader の progressive disclosure を両立する
-- [TPL-1936](TPL-1936-cross-domain-entity-reference-qualified.md) — cross-domain entity 関連は限定子付き `DomainId.EntityId` で参照し、bare id は intra-domain 専用であることを検証する
-- [TPL-1944](TPL-1944-inferred-tag-only-soft-fk.md) — `translate --from db` は Soft FK 由来の関連にのみ `[inferred]` を付け、Explicit FK 由来は無タグ（確定）にする
+- [TPL-510](TPL-510-derivation-tag-semantics.md) — 派生・集約で自動付与するタグは元ノードの semantic 区別を保存する (#510) · unguarded 0/4
+- [TPL-1227](TPL-1227-writer-reader-asymmetry.md) — 新しい edge / relation 機能は writer の coarse 表現と reader の progressive disclosure を両立する · unguarded 0/1, judgment 4
+- [TPL-1936](TPL-1936-cross-domain-entity-reference-qualified.md) — cross-domain entity 関連は限定子付き `DomainId.EntityId` で参照し、bare id は intra-domain 専用であることを検証する · unguarded 0/6
+- [TPL-1944](TPL-1944-inferred-tag-only-soft-fk.md) — `translate --from db` は Soft FK 由来の関連にのみ `[inferred]` を付け、Explicit FK 由来は無タグ（確定）にする · unguarded 0/7
 
 ### styling
 
-- [TPL-1503](TPL-1503-accepted-vocabulary-must-have-effect.md) — 受理される語彙は「効果を持つ」「警告される」「open set と明文化」のいずれかに属する
-- [TPL-1697](TPL-1697-kind-style-sets-text-color-per-theme.md) — ノード kind ルールで background-color を設定したら、対になる text color も設定する（テーマごと） (#1697)
-- [TPL-1755](TPL-1755-edge-endpoint-selector-id-form.md) — エッジの端点で引くセレクタ / lookup は、ビューが格納する端点 id 形（bare / dot-notation）で比較する (#1755)
-- [TPL-2193](TPL-2193-theme-token-contrast-every-surface.md) — テーマトークンの文字色は、載りうる全 surface に対してテーマごとに 4.5:1 を機械検証する (#2193, #2461)
-- [TPL-2269](TPL-2269-shipped-defaults-must-not-leak-into-a-second-rendering.md) — 出荷側の既定値を持つエンティティに 2 つ目の描画面を足すとき、既定値は面ごとに分ける（著者の宣言だけを渡す） (#2269)
-- [TPL-2366](TPL-2366-badge-color-canvas-contrast.md) — canvas 上に直接描かれる文字色（badge-color 等）はテーマごとに 4.5:1 を機械検証する (#2366)
-- [TPL-2421](TPL-2421-kind-color-hue-table.md) — kind の色は色相表から導出する — 追加時は表に行を足し、fill / text を同色相ルールで導く (#2421)
-- [TPL-3141](TPL-3141-style-diagnostic-describes-drawing.md) — スタイル値の診断は描画を説明する: 範囲はスキーマ 1 か所、無効な宣言は cascade で 1 回捨てる (#3141)
+- [TPL-1503](TPL-1503-accepted-vocabulary-must-have-effect.md) — 受理される語彙は「効果を持つ」「警告される」「open set と明文化」のいずれかに属する · partial 1/3, judgment 2
+- [TPL-1697](TPL-1697-kind-style-sets-text-color-per-theme.md) — ノード kind ルールで background-color を設定したら、対になる text color も設定する（テーマごと） (#1697) · guarded 3/3
+- [TPL-1755](TPL-1755-edge-endpoint-selector-id-form.md) — エッジの端点で引くセレクタ / lookup は、ビューが格納する端点 id 形（bare / dot-notation）で比較する (#1755) · unguarded 0/4
+- [TPL-2193](TPL-2193-theme-token-contrast-every-surface.md) — テーマトークンの文字色は、載りうる全 surface に対してテーマごとに 4.5:1 を機械検証する (#2193, #2461) · partial 5/7, judgment 2
+- [TPL-2269](TPL-2269-shipped-defaults-must-not-leak-into-a-second-rendering.md) — 出荷側の既定値を持つエンティティに 2 つ目の描画面を足すとき、既定値は面ごとに分ける（著者の宣言だけを渡す） (#2269) · unguarded 0/5
+- [TPL-2366](TPL-2366-badge-color-canvas-contrast.md) — canvas 上に直接描かれる文字色（badge-color 等）はテーマごとに 4.5:1 を機械検証する (#2366) · guarded 1/1, judgment 2
+- [TPL-2421](TPL-2421-kind-color-hue-table.md) — kind の色は色相表から導出する — 追加時は表に行を足し、fill / text を同色相ルールで導く (#2421) · partial 3/6, judgment 2
+- [TPL-3141](TPL-3141-style-diagnostic-describes-drawing.md) — スタイル値の診断は描画を説明する: 範囲はスキーマ 1 か所、無効な宣言は cascade で 1 回捨てる (#3141) · partial 2/5
+- [TPL-3480](TPL-3480-generated-id-relexes-in-target-grammar.md) — 別の文法に書き出す id は、その文法の lexer で読み戻して同じ値になる形で出す (#3480, #3520) · unguarded 0/5
 
 ### navigation
 
-- [TPL-1094](TPL-1094-enum-member-addition.md) — 列挙型メンバー追加時に消費側の網羅性を型で強制する (#1094)
-- [TPL-1827](TPL-1827-deep-link-anchor-cross-surface-parity.md) — deep-link アンカーは id ベースの単一文法を全サーフェスで共有する (#1827)
-- [TPL-1842](TPL-1842-restore-state-survive-later-reset.md) — URL/共有から復元する state は、後発の seed reset を越えて再適用する (#1842, #3208, #3284)
-- [TPL-1961](TPL-1961-catch-all-route-inverts-default.md) — 既定を反転させる catch-all ルートは、反転しない側の経路を判別子か機械チェックで固定する (#1961)
-- [TPL-2249](TPL-2249-resolution-stays-deterministic.md) — 解決（resolution）に生成・パーソナライズを混ぜない — URL が内容を決める性質を壊さず、生成は別資源として mint する (#2249)
-- [TPL-2259](TPL-2259-shared-budget-enforced-at-every-producer.md) — 共有された予算・上限は、定数を export するのではなく判定そのものを共有し、生成点すべてで強制する (#2259)
-- [TPL-2818](TPL-2818-cross-view-handover-carries-receiver-id-space.md) — ビューをまたいで id を手渡すときは、受け手のビューが要素に載せている id 空間の値を手渡す (#2818, #2549, #2714)
-- [TPL-2920](TPL-2920-duplicate-element-id-on-one-canvas-names-its-landing.md) — 1 つのキャンバスに同じ要素 id が 2 つ以上描かれる面では、最初の要素を返す API の着地点を決めて記録する (#2917, #2933)
-- [TPL-2993](TPL-2993-third-party-content-runs-outside-session-origin.md) — 第三者が書いた内容を描画する script は、セッションを持つ origin の権限で走らせない (#2993)
-- [TPL-3113](TPL-3113-written-path-resolves-to-its-node.md) — ノードを名指す path を書く側と、その path を解決する側は、同じノードに着地する (#3113, #2933)
+- [TPL-1094](TPL-1094-enum-member-addition.md) — 列挙型メンバー追加時に消費側の網羅性を型で強制する (#1094) · unguarded 0/1, judgment 3
+- [TPL-1827](TPL-1827-deep-link-anchor-cross-surface-parity.md) — deep-link アンカーは id ベースの単一文法を全サーフェスで共有する (#1827) · unguarded 0/5
+- [TPL-1842](TPL-1842-restore-state-survive-later-reset.md) — URL/共有から復元する state は、後発の seed reset を越えて再適用する (#1842, #3208, #3284) · unguarded 0/6
+- [TPL-1961](TPL-1961-catch-all-route-inverts-default.md) — 既定を反転させる catch-all ルートは、反転しない側の経路を判別子か機械チェックで固定する (#1961) · unguarded 0/7, judgment 1
+- [TPL-2249](TPL-2249-resolution-stays-deterministic.md) — 解決（resolution）に生成・パーソナライズを混ぜない — URL が内容を決める性質を壊さず、生成は別資源として mint する (#2249) · unguarded 0/2, judgment 3
+- [TPL-2259](TPL-2259-shared-budget-enforced-at-every-producer.md) — 共有された予算・上限は、定数を export するのではなく判定そのものを共有し、生成点すべてで強制する (#2259) · partial 2/4, judgment 1
+- [TPL-2818](TPL-2818-cross-view-handover-carries-receiver-id-space.md) — ビューをまたいで id を手渡すときは、受け手のビューが要素に載せている id 空間の値を手渡す (#2818, #2549, #2714) · unguarded 0/4, judgment 1
+- [TPL-2920](TPL-2920-duplicate-element-id-on-one-canvas-names-its-landing.md) — 1 つのキャンバスに同じ要素 id が 2 つ以上描かれる面では、最初の要素を返す API の着地点を決めて記録する (#2917, #2933) · unguarded 0/3, judgment 2
+- [TPL-2993](TPL-2993-third-party-content-runs-outside-session-origin.md) — 第三者が書いた内容を描画する script は、セッションを持つ origin の権限で走らせない (#2993) · unguarded 0/5
+- [TPL-3113](TPL-3113-written-path-resolves-to-its-node.md) — ノードを名指す path を書く側と、その path を解決する側は、同じノードに着地する (#3113, #2933) · unguarded 0/3, judgment 2
 
 ### app-ui
 
-- [TPL-948](TPL-948-event-handler-ui-restructure.md) — UI 構造を変える event handler は次描画でマウントされる target への event 漏れを防ぐ (#948)
-- [TPL-1032](TPL-1032-derived-state-staleness.md) — 派生 view / panel の memoization は source state の変化次元すべてを key に含める (#1032, #891)
-- [TPL-1053](TPL-1053-continuous-input-dom-interference.md) — ユーザーの連続操作中は DOM / state を破壊する別系統の処理を抑止する (#1053)
-- [TPL-1399](TPL-1399-control-a11y-contract-survives-migration.md) — interactive control の a11y 契約は機能テストに映らないので移行・リファクタで静かに壊れる (#1399)
-- [TPL-1402](TPL-1402-involutive-toggle-renders-both-states.md) — involutive な toggle は両方の結果状態を end-to-end でレンダリング検証する (#1402)
-- [TPL-1419](TPL-1419-global-shortcut-text-input-inhibition.md) — グローバルキーボードショートカットはテキスト入力フォーカス下での挙動を契約として検証する (#3207)
-- [TPL-1468](TPL-1468-overlay-z-index-scale.md) — overlay/portal surface の重なり順はマジックナンバーではなく文書化された z-index スケールから選ぶ (#1468)
-- [TPL-1530](TPL-1530-persistent-store-init-and-mutation-resilience.md) — 永続ストアの初期化・更新は fail-closed に — RMW は直列化し、not-found と read error を区別する (#1530, #1531)
-- [TPL-1534](TPL-1534-cancel-stale-async-effect-results.md) — 非同期 effect は入力変化・unmount で in-flight 結果を破棄してから publish する (#1534, #1540)
-- [TPL-1535](TPL-1535-edit-and-watch-same-store.md) — 自分で書き込みつつ監視するストアでは、書き込みを直列化し自己エコーと非同期 read レースを処理する (#1535, #1536)
-- [TPL-1537](TPL-1537-react-passive-event-preventdefault-noop.md) — React の synthetic onWheel / onTouchMove では preventDefault が no-op になる (#1537)
-- [TPL-2019](TPL-2019-i18n-key-naming-max-4-segments.md) — i18n key は <feature>.<sub-feature?>.<element>.<state> の最大 4 段命名規約に従う (#2019)
-- [TPL-2316](TPL-2316-declarable-construct-reachable-from-reference.md) — 宣言できる構文は Reference から到達できる — 半分だけ載っている状態を作らない (#2316)
-- [TPL-2492](TPL-2492-published-measurement-carries-its-origin.md) — publish した実測値は原点込みで契約する — 高さを offset として読める形で配らない (#2492)
-- [TPL-2789](TPL-2789-injected-dom-state-follows-reinjection.md) — 流し込んだ DOM に後から当てた状態は、流し込み直しと同じ契機で当て直す (#2789, #1171)
-- [TPL-2800](TPL-2800-diagram-pane-shared-viewer-affordances.md) — 図を描くペインは共有ビューアコンポーネントを通す — サブモードごとに操作系を落とさない (#2800, #2799, #3178)
-- [TPL-3162](TPL-3162-link-for-others-built-on-reachable-origin.md) — 他人に渡すリンクは、受け取った人が開ける origin から作る (#3162)
-- [TPL-3180](TPL-3180-svg-control-hit-area-is-its-region.md) — SVG の押せる要素は、描いた線と文字の形ではなく、押せる領域を当たり判定に持つ (#3180)
-- [TPL-3437](TPL-3437-tap-target-needs-its-own-pressability-cue.md) — 押せる要素は、ブラウザから見ても押せる要素であること。クリックを祖先に委譲すると、タッチのタップが近くの別の要素に移る (#3027)
+- [TPL-948](TPL-948-event-handler-ui-restructure.md) — UI 構造を変える event handler は次描画でマウントされる target への event 漏れを防ぐ (#948) · unguarded 0/3, judgment 1
+- [TPL-1032](TPL-1032-derived-state-staleness.md) — 派生 view / panel の memoization は source state の変化次元すべてを key に含める (#1032, #891) · unguarded 0/4, judgment 1
+- [TPL-1053](TPL-1053-continuous-input-dom-interference.md) — ユーザーの連続操作中は DOM / state を破壊する別系統の処理を抑止する (#1053) · unguarded 0/1, judgment 3
+- [TPL-1399](TPL-1399-control-a11y-contract-survives-migration.md) — interactive control の a11y 契約は機能テストに映らないので移行・リファクタで静かに壊れる (#1399) · unguarded 0/3, judgment 1
+- [TPL-1402](TPL-1402-involutive-toggle-renders-both-states.md) — involutive な toggle は両方の結果状態を end-to-end でレンダリング検証する (#1402) · unguarded 0/4
+- [TPL-1419](TPL-1419-global-shortcut-text-input-inhibition.md) — グローバルキーボードショートカットはテキスト入力フォーカス下での挙動を契約として検証する (#3207) · unguarded 0/5
+- [TPL-1468](TPL-1468-overlay-z-index-scale.md) — overlay/portal surface の重なり順はマジックナンバーではなく文書化された z-index スケールから選ぶ (#1468) · unguarded 0/4
+- [TPL-1530](TPL-1530-persistent-store-init-and-mutation-resilience.md) — 永続ストアの初期化・更新は fail-closed に — RMW は直列化し、not-found と read error を区別する (#1530, #1531) · unguarded 0/6
+- [TPL-1534](TPL-1534-cancel-stale-async-effect-results.md) — 非同期 effect は入力変化・unmount で in-flight 結果を破棄してから publish する (#1534, #1540) · unguarded 0/4
+- [TPL-1535](TPL-1535-edit-and-watch-same-store.md) — 自分で書き込みつつ監視するストアでは、書き込みを直列化し自己エコーと非同期 read レースを処理する (#1535, #1536) · unguarded 0/6
+- [TPL-1537](TPL-1537-react-passive-event-preventdefault-noop.md) — React の synthetic onWheel / onTouchMove では preventDefault が no-op になる (#1537) · unguarded 0/5
+- [TPL-2019](TPL-2019-i18n-key-naming-max-4-segments.md) — i18n key は <feature>.<sub-feature?>.<element>.<state> の最大 4 段命名規約に従う (#2019) · guarded 2/2, judgment 2
+- [TPL-2316](TPL-2316-declarable-construct-reachable-from-reference.md) — 宣言できる構文は Reference から到達できる — 半分だけ載っている状態を作らない (#2316) · partial 1/3, judgment 3
+- [TPL-2492](TPL-2492-published-measurement-carries-its-origin.md) — publish した実測値は原点込みで契約する — 高さを offset として読める形で配らない (#2492) · unguarded 0/2, judgment 3
+- [TPL-2789](TPL-2789-injected-dom-state-follows-reinjection.md) — 流し込んだ DOM に後から当てた状態は、流し込み直しと同じ契機で当て直す (#2789, #1171) · unguarded 0/3, judgment 2
+- [TPL-2800](TPL-2800-diagram-pane-shared-viewer-affordances.md) — 図を描くペインは共有ビューアコンポーネントを通す — サブモードごとに操作系を落とさない (#2800, #2799, #3178) · unguarded 0/3, judgment 1
+- [TPL-3162](TPL-3162-link-for-others-built-on-reachable-origin.md) — 他人に渡すリンクは、受け取った人が開ける origin から作る (#3162) · unguarded 0/4, judgment 1
+- [TPL-3180](TPL-3180-svg-control-hit-area-is-its-region.md) — SVG の押せる要素は、描いた線と文字の形ではなく、押せる領域を当たり判定に持つ (#3180) · unguarded 0/4
+- [TPL-3437](TPL-3437-tap-target-needs-its-own-pressability-cue.md) — 押せる要素は、ブラウザから見ても押せる要素であること。クリックを祖先に委譲すると、タッチのタップが近くの別の要素に移る (#3027) · unguarded 0/2, judgment 1
 
 ### project
 
-- [TPL-2226](TPL-2226-every-key-prefix-must-be-purgeable.md) — 削除を約束したストアに新しい鍵空間を足したら、削除経路に足したことを機械で確かめる (#2226)
-- [TPL-2284](TPL-2284-purge-scope-identity-is-canonical.md) — 削除範囲を決める識別子は、綴りの揺れが別スコープにならないよう canonical 化する (#2284)
-- [TPL-2288](TPL-2288-background-work-platform-ceiling.md) — 非同期実行の器は、実測した所要時間に対して器の上限を先に確かめる (#2288)
-- [TPL-2374](TPL-2374-long-call-bounded-by-silence-not-duration.md) — 分単位になりうる外部呼び出しは、総所要時間ではなく無通信で打ち切る (#2374)
-- [TPL-2379](TPL-2379-expensive-failure-records-its-cause.md) — 再現に実費がかかる処理の失敗記録は、再実行なしで原因が分かるだけの情報を持つ (#2379)
-- [TPL-2587](TPL-2587-author-managed-content-has-no-ttl.md) — 作者が自分で管理するコンテンツに期限を置かない — 置くなら期限があることを機械で確かめる (#2587)
-- [TPL-2655](TPL-2655-sliding-expiry-needs-an-unrenewable-cap.md) — 更新で延びる期限には、更新されない上限を併置する — 上限はストアが強制できないので読み取り時に確かめる (#2655)
-- [TPL-2909](TPL-2909-pending-items-need-stable-ids-not-a-moving-window.md) — 処理待ちの項目は、動く窓で絞り込まず項目自身の安定 id で持つ (#2909)
-- [TPL-2995](TPL-2995-purge-must-catch-writes-that-land-after-it.md) — 結果整合のストアで削除を約束したら、削除の後に届く書き込みも消えることを確かめる (#2995)
-- [TPL-3385](TPL-3385-consumer-of-a-signal-the-producer-stops-emitting.md) — 外部サービスの出力を変える設定変更では、その出力を待つ側の判定を新しい形の fixture で確かめる (#3385)
-- [TPL-3470](TPL-3470-timestamp-order-needs-a-tie-break.md) — 時刻で並べる一覧は、同じ時刻の項目にも本当の順序を与える tie-break を持つ (#3470)
+- [TPL-2226](TPL-2226-every-key-prefix-must-be-purgeable.md) — 削除を約束したストアに新しい鍵空間を足したら、削除経路に足したことを機械で確かめる (#2226) · unguarded 0/5, judgment 1
+- [TPL-2284](TPL-2284-purge-scope-identity-is-canonical.md) — 削除範囲を決める識別子は、綴りの揺れが別スコープにならないよう canonical 化する (#2284) · unguarded 0/7
+- [TPL-2288](TPL-2288-background-work-platform-ceiling.md) — 非同期実行の器は、実測した所要時間に対して器の上限を先に確かめる (#2288) · unguarded 0/2, judgment 5
+- [TPL-2374](TPL-2374-long-call-bounded-by-silence-not-duration.md) — 分単位になりうる外部呼び出しは、総所要時間ではなく無通信で打ち切る (#2374) · unguarded 0/3, judgment 2
+- [TPL-2379](TPL-2379-expensive-failure-records-its-cause.md) — 再現に実費がかかる処理の失敗記録は、再実行なしで原因が分かるだけの情報を持つ (#2379) · unguarded 0/3, judgment 2
+- [TPL-2587](TPL-2587-author-managed-content-has-no-ttl.md) — 作者が自分で管理するコンテンツに期限を置かない — 置くなら期限があることを機械で確かめる (#2587) · unguarded 0/4, judgment 1
+- [TPL-2655](TPL-2655-sliding-expiry-needs-an-unrenewable-cap.md) — 更新で延びる期限には、更新されない上限を併置する — 上限はストアが強制できないので読み取り時に確かめる (#2655) · unguarded 0/3
+- [TPL-2909](TPL-2909-pending-items-need-stable-ids-not-a-moving-window.md) — 処理待ちの項目は、動く窓で絞り込まず項目自身の安定 id で持つ (#2909) · unguarded 0/5
+- [TPL-2995](TPL-2995-purge-must-catch-writes-that-land-after-it.md) — 結果整合のストアで削除を約束したら、削除の後に届く書き込みも消えることを確かめる (#2995) · unguarded 0/1, judgment 6
+- [TPL-3385](TPL-3385-consumer-of-a-signal-the-producer-stops-emitting.md) — 外部サービスの出力を変える設定変更では、その出力を待つ側の判定を新しい形の fixture で確かめる (#3385) · unguarded 0/1, judgment 3
+- [TPL-3470](TPL-3470-timestamp-order-needs-a-tie-break.md) — 時刻で並べる一覧は、同じ時刻の項目にも本当の順序を与える tie-break を持つ (#3470) · unguarded 0/3, judgment 2
 
 ### cli
 
-- [TPL-168](TPL-168-trust-boundary-input-validation.md) — 外部から来る input は trust boundary を越える前に validate / canonicalize する (#168, #1526, #1527, #1525, #3283, #3426, #3418)
-- [TPL-239](TPL-239-convenience-vs-principled-api.md) — consumer の境界では convenience API ではなく principled API を使う (#239, #507)
-- [TPL-2536](TPL-2536-locale-source-chain-completeness.md) — 環境から生タグを取り出す consumer は、その環境が定める優先順位の鎖を全部辿る — 一番有名な 1 本だけを読まない (#2536)
-- [TPL-2942](TPL-2942-path-argument-exists-is-not-readable-file.md) — パス引数は「存在する」だけでは読めるファイルではない — 種類まで見て、理由を言うメッセージで止める (#2942, #3106)
-- [TPL-3258](TPL-3258-host-supplies-whole-import-graph.md) — project を自前の fs でコンパイルする画面は、import グラフに届く全ファイルを実際のパスで渡し、そのどれが変わっても描き直す (#3258)
-- [TPL-3282](TPL-3282-every-pass-skips-quoted-text-alike.md) — 同じテキストを複数の手書きスキャナで読むなら、どのスキャナも引用符の中を同じ規則で飛ばす (#3282)
+- [TPL-168](TPL-168-trust-boundary-input-validation.md) — 外部から来る input は trust boundary を越える前に validate / canonicalize する (#168, #1526, #1527, #1525, #3283, #3426, #3418) · unguarded 0/4, judgment 3
+- [TPL-239](TPL-239-convenience-vs-principled-api.md) — consumer の境界では convenience API ではなく principled API を使う (#239, #507) · unguarded 0/1, judgment 3
+- [TPL-2536](TPL-2536-locale-source-chain-completeness.md) — 環境から生タグを取り出す consumer は、その環境が定める優先順位の鎖を全部辿る — 一番有名な 1 本だけを読まない (#2536) · unguarded 0/3, judgment 2
+- [TPL-2942](TPL-2942-path-argument-exists-is-not-readable-file.md) — パス引数は「存在する」だけでは読めるファイルではない — 種類まで見て、理由を言うメッセージで止める (#2942, #3106) · unguarded 0/4
+- [TPL-3258](TPL-3258-host-supplies-whole-import-graph.md) — project を自前の fs でコンパイルする画面は、import グラフに届く全ファイルを実際のパスで渡し、そのどれが変わっても描き直す (#3258) · unguarded 0/5
+- [TPL-3282](TPL-3282-every-pass-skips-quoted-text-alike.md) — 同じテキストを複数の手書きスキャナで読むなら、どのスキャナも引用符の中を同じ規則で飛ばす (#3282) · unguarded 0/4
 
 ### vscode
 
-- [TPL-1024](TPL-1024-dev-vs-packaged-mode-parity.md) — dev tree のレイアウトに依存するパス / 設定は packaged / installed モードでも動くことを確認する (#1024, #3017, #3303)
-- [TPL-2996](TPL-2996-preview-reads-editor-buffers.md) — エディタの中で動く機能は、開いているファイルを保存前のバッファから読む。entry だけでなく import 先も (#2996)
+- [TPL-1024](TPL-1024-dev-vs-packaged-mode-parity.md) — dev tree のレイアウトに依存するパス / 設定は packaged / installed モードでも動くことを確認する (#1024, #3017, #3303) · unguarded 0/4, judgment 1
+- [TPL-2996](TPL-2996-preview-reads-editor-buffers.md) — エディタの中で動く機能は、開いているファイルを保存前のバッファから読む。entry だけでなく import 先も (#2996) · unguarded 0/4
 
 ### testing
 
-- [TPL-976](TPL-976-e2e-fixture-controlled-state.md) — E2E テストは fixture が状態 / 環境 / 後始末をすべて所有し、リーク経路を post-merge で監視する (#976, #1006, #1007, #1271, #3249)
-- [TPL-1171](TPL-1171-wait-for-stable-state.md) — E2E の async UI 操作は要求した state ではなく到達した stable state を待ってから assert / 操作する (#1171, #976, #2850)
-- [TPL-1608](TPL-1608-diagnostic-absence-assertion-scope-severity.md) — 診断の不在を assert するテストは severity でスコープする（info register は open set） (#1608)
-- [TPL-1680](TPL-1680-at-e2e-spec-linkage-no-drift.md) — AT ↔ e2e spec の linkage は machine guard で固定する（spec を足す / rename したら AT doc から辿れること） (#1680)
-- [TPL-1725](TPL-1725-gated-test-suite-detection-gap.md) — label-gated / 遅延実行のテストスイートは、その検証対象を変える PR でマージ前に必ず起動させる (#1725)
-- [TPL-2046](TPL-2046-pnpm-double-dash-arg-forwarding.md) — pnpm run <script> -- <flag> は flag が下位ツールに届かないことがある。CLI 引数は下位ツールに直接渡す (#2046)
-- [TPL-2047](TPL-2047-doc-embedded-krs-is-parsed-not-prose.md) — ドキュメントに埋めた .krs は散文ではなく入力として parse する（手順は誰も実行しないので静かに文法から外れる） (#2047, #2415, #2910)
-- [TPL-2254](TPL-2254-durable-record-points-at-durable-address.md) — 再実行される記録は、記録より長生きするアドレスを指す (#2254, #2259, #3169, #3271)
-- [TPL-2287](TPL-2287-detector-near-misses-are-the-spec.md) — 検出器の false positive 予算は正しさの一部 — near-miss 事例を仕様として書く (#2287)
-- [TPL-2291](TPL-2291-mocked-transport-does-not-verify-the-remote-contract.md) — 通信相手をモックしたテストは、こちらのロジックしか検証しない — 相手が受理するかは別に確かめる (#2291)
-- [TPL-2456](TPL-2456-module-instance-scoped-identity.md) — 参照同一性で判定される共有オブジェクトは、module のコピーが 2 つになった瞬間に壊れる (#2456)
-- [TPL-2598](TPL-2598-fence-corpus-must-reach-the-limit.md) — 計測柵は、その資源の限界に達する入力を corpus に持って初めて柵になる (#2598)
-- [TPL-2810](TPL-2810-two-implementations-agree-only-when-measured.md) — 同じ検査の実装が 2 つになったら、緑同士は一致の証明ではない — 差分 fixture で規則差を測り、移す先が merge を止められるかを確かめてから片方を退役させる (#2810)
-- [TPL-3039](TPL-3039-e2e-coverage-follows-surface-not-history.md) — E2E のカバレッジは AT の履歴ではなく操作面の集合に対して測り、操作面の登録と spec の対応を機械で見る (#3039)
+- [TPL-976](TPL-976-e2e-fixture-controlled-state.md) — E2E テストは fixture が状態 / 環境 / 後始末をすべて所有し、リーク経路を post-merge で監視する (#976, #1006, #1007, #1271, #3249) · partial 1/5
+- [TPL-1171](TPL-1171-wait-for-stable-state.md) — E2E の async UI 操作は要求した state ではなく到達した stable state を待ってから assert / 操作する (#1171, #976, #2850) · unguarded 0/3, judgment 2
+- [TPL-1608](TPL-1608-diagnostic-absence-assertion-scope-severity.md) — 診断の不在を assert するテストは severity でスコープする（info register は open set） (#1608) · unguarded 0/2, judgment 2
+- [TPL-1680](TPL-1680-at-e2e-spec-linkage-no-drift.md) — AT ↔ e2e spec の linkage は machine guard で固定する（spec を足す / rename したら AT doc から辿れること） (#1680) · unguarded 0/3, judgment 1
+- [TPL-1725](TPL-1725-gated-test-suite-detection-gap.md) — label-gated / 遅延実行のテストスイートは、その検証対象を変える PR でマージ前に必ず起動させる (#1725) · unguarded 0/2, judgment 2
+- [TPL-2046](TPL-2046-pnpm-double-dash-arg-forwarding.md) — pnpm run <script> -- <flag> は flag が下位ツールに届かないことがある。CLI 引数は下位ツールに直接渡す (#2046) · unguarded 0/3, judgment 1
+- [TPL-2047](TPL-2047-doc-embedded-krs-is-parsed-not-prose.md) — ドキュメントに埋めた .krs は散文ではなく入力として parse する（手順は誰も実行しないので静かに文法から外れる） (#2047, #2415, #2910) · guarded 3/3, judgment 3
+- [TPL-2254](TPL-2254-durable-record-points-at-durable-address.md) — 再実行される記録は、記録より長生きするアドレスを指す (#2254, #2259, #3169, #3271) · partial 1/4, judgment 2
+- [TPL-2287](TPL-2287-detector-near-misses-are-the-spec.md) — 検出器の false positive 予算は正しさの一部 — near-miss 事例を仕様として書く (#2287) · unguarded 0/6, judgment 2
+- [TPL-2291](TPL-2291-mocked-transport-does-not-verify-the-remote-contract.md) — 通信相手をモックしたテストは、こちらのロジックしか検証しない — 相手が受理するかは別に確かめる (#2291) · unguarded 0/3, judgment 4
+- [TPL-2456](TPL-2456-module-instance-scoped-identity.md) — 参照同一性で判定される共有オブジェクトは、module のコピーが 2 つになった瞬間に壊れる (#2456) · unguarded 0/2, judgment 2
+- [TPL-2598](TPL-2598-fence-corpus-must-reach-the-limit.md) — 計測柵は、その資源の限界に達する入力を corpus に持って初めて柵になる (#2598) · judgment 4
+- [TPL-2810](TPL-2810-two-implementations-agree-only-when-measured.md) — 同じ検査の実装が 2 つになったら、緑同士は一致の証明ではない — 差分 fixture で規則差を測り、移す先が merge を止められるかを確かめてから片方を退役させる (#2810) · unguarded 0/2, judgment 3
+- [TPL-3039](TPL-3039-e2e-coverage-follows-surface-not-history.md) — E2E のカバレッジは AT の履歴ではなく操作面の集合に対して測り、操作面の登録と spec の対応を機械で見る (#3039) · guarded 1/1, judgment 4
+- [TPL-3589](TPL-3589-exhaustiveness-contract-must-not-be-vacuous.md) — 登録を強制する型の契約は、それ自体が空にならないことまで固定する。表の型注釈がエントリを広げると、契約はどんな表でも成り立つ (#3589) · unguarded 0/2, judgment 1
 
 ### build
 
-- [TPL-219](TPL-219-parallel-function-parity.md) — 並列に存在する関数ファミリは parameter parity を保つ (#219, #160, #1273, #1884, #2033, #2646, #2911, #2879, #3097)
-- [TPL-1296](TPL-1296-spec-doc-reference-data-sync.md) — 人間向け spec ドキュメントと in-app reference データは片方向 smoke test で同期を縛る (#1296, #1327, #1492, #1586)
-- [TPL-1480](TPL-1480-consistency-check-triggers-on-both-sides.md) — 2 つの成果物の整合性を検証するチェックは、両方の変更で起動させる（片側にだけ path filter / hook glob を張らない） (#1480)
-- [TPL-1621](TPL-1621-docs-pipeline-link-anchor-resolution.md) — docs/ を別系統へ取り込むパイプラインは repo-relative リンクと明示アンカーの未解決をビルド時に fail させる
-- [TPL-1681](TPL-1681-publishable-tarball-completeness.md) — publish するパッケージの tarball は実行に必要な build 成果物だけを含み、テスト・型・sourcemap を除外する (#1681, #3017, #3138)
-- [TPL-1716](TPL-1716-user-facing-surface-docs-sync.md) — user-facing な app/CLI surface の変更は docs/tools の両ロケール + reference に反映する
-- [TPL-2005](TPL-2005-keystone-terms-single-home.md) — keystone・permalink の coined 用語は単一の正典（docs/glossary.md）を持つ — 他 doc は再定義せず参照する
-- [TPL-2084](TPL-2084-skill-cli-command-refs-drift.md) — エージェント向け skill が散文で参照する CLI コマンド名は CLI レジストリと同期させる (#2084, #2090)
-- [TPL-2158](TPL-2158-catalog-fenced-against-parser-not-generated-doc.md) — 手書き catalog は parser 実測で双方向に縛る — その catalog から生成した doc を根拠にしたガードは循環している (#2158)
-- [TPL-2185](TPL-2185-drift-guard-distinguishes-declaration-from-mention.md) — drift guard は「宣言」と「言及」を区別する — 前方参照を stale と誤検出しない (#2185)
-- [TPL-2253](TPL-2253-removal-sweep-needs-a-search-not-a-file-list.md) — 「どこからも消す」変更は手書きのファイル一覧ではなく検索で閉じる (#2253)
-- [TPL-2446](TPL-2446-gate-side-check-runs-over-the-whole-set.md) — マージを gate する側の検証は対象を列挙せず全走査で回す — ローカルで広く走る同名チェックが CI 側の列挙漏れを隠す (#2446)
-- [TPL-2643](TPL-2643-skip-reports-success-without-running.md) — 走らずに success を報告する gate は、skip 条件を解除する状態変化を必ず trigger 側にも持つ (#2643)
-- [TPL-2658](TPL-2658-agent-write-scope-is-declared-not-prompted.md) — エージェントに任せる自動化の書き込み範囲は、prompt の文言ではなく宣言で検証する (#2658)
-- [TPL-2786](TPL-2786-guard-failure-must-fail-the-run.md) — 安全網が結論を出せなかったときは、通過ではなく失敗として扱う (#2786)
-- [TPL-2804](TPL-2804-guard-scan-set-fails-loud-on-the-unknown.md) — 走査対象を持つガードは、未知の要素が黙って対象外になる側ではなく大声で落ちる側に集合を定義する。除外は全走査の上の deny-list で表し、裏付けのないエントリを finding にする (#2804)
-- [TPL-2805](TPL-2805-budget-bounds-the-work-it-names.md) — 予算は、その名前が指す仕事だけを覆う — 境界のない準備と同じ予算に入れない (#2805, #2807)
-- [TPL-2879](TPL-2879-stateful-instance-not-shared-across-concurrent-calls.md) — 呼び出しごとに状態を作り直すインスタンスを、並行する呼び出しで共有しない (#2879)
-- [TPL-3103](TPL-3103-shipped-doc-links-resolve-where-installed.md) — 配布物に入る文書のリンクは、配布物の中か絶対 URL を指す (#3103, #1779)
-- [TPL-3137](TPL-3137-bundled-notices-cover-workspace-deps.md) — バンドルした配布物の notices は、バンドルに入る workspace パッケージの依存まで数える (#3137)
-- [TPL-3286](TPL-3286-merge-eligibility-judged-on-final-diff.md) — 人間を通らないマージを許す判定は、最終の差分で行い、どの規則にも当たらない入力を厳しい側に倒す (#3286, #3405, #3505)
+- [TPL-219](TPL-219-parallel-function-parity.md) — 並列に存在する関数ファミリは parameter parity を保つ (#219, #160, #1273, #1884, #2033, #2646, #2911, #2879, #3097) · unguarded 0/3, judgment 2
+- [TPL-1296](TPL-1296-spec-doc-reference-data-sync.md) — 人間向け spec ドキュメントと in-app reference データは片方向 smoke test で同期を縛る (#1296, #1327, #1492, #1586) · partial 2/5, judgment 1
+- [TPL-1480](TPL-1480-consistency-check-triggers-on-both-sides.md) — 2 つの成果物の整合性を検証するチェックは、両方の変更で起動させる（片側にだけ path filter / hook glob を張らない） (#1480) · unguarded 0/2, judgment 2
+- [TPL-1621](TPL-1621-docs-pipeline-link-anchor-resolution.md) — docs/ を別系統へ取り込むパイプラインは repo-relative リンクと明示アンカーの未解決をビルド時に fail させる · guarded 6/6, judgment 1
+- [TPL-1681](TPL-1681-publishable-tarball-completeness.md) — publish するパッケージの tarball は実行に必要な build 成果物だけを含み、テスト・型・sourcemap を除外する (#1681, #3017, #3138) · unguarded 0/4, judgment 1
+- [TPL-1716](TPL-1716-user-facing-surface-docs-sync.md) — user-facing な app/CLI surface の変更は docs/tools の両ロケール + reference に反映する · partial 1/5
+- [TPL-2005](TPL-2005-keystone-terms-single-home.md) — keystone・permalink の coined 用語は単一の正典（docs/glossary.md）を持つ — 他 doc は再定義せず参照する · partial 1/4, judgment 2
+- [TPL-2084](TPL-2084-skill-cli-command-refs-drift.md) — エージェント向け skill が散文で参照する CLI コマンド名は CLI レジストリと同期させる (#2084, #2090) · partial 1/2, judgment 2
+- [TPL-2158](TPL-2158-catalog-fenced-against-parser-not-generated-doc.md) — 手書き catalog は parser 実測で双方向に縛る — その catalog から生成した doc を根拠にしたガードは循環している (#2158) · guarded 4/4, judgment 1
+- [TPL-2185](TPL-2185-drift-guard-distinguishes-declaration-from-mention.md) — drift guard は「宣言」と「言及」を区別する — 前方参照を stale と誤検出しない (#2185) · unguarded 0/1, judgment 4
+- [TPL-2253](TPL-2253-removal-sweep-needs-a-search-not-a-file-list.md) — 「どこからも消す」変更は手書きのファイル一覧ではなく検索で閉じる (#2253) · judgment 5
+- [TPL-2446](TPL-2446-gate-side-check-runs-over-the-whole-set.md) — マージを gate する側の検証は対象を列挙せず全走査で回す — ローカルで広く走る同名チェックが CI 側の列挙漏れを隠す (#2446, #3590) · unguarded 0/4, judgment 2
+- [TPL-2643](TPL-2643-skip-reports-success-without-running.md) — 走らずに success を報告する gate は、skip 条件を解除する状態変化を必ず trigger 側にも持つ (#2643) · unguarded 0/2, judgment 2
+- [TPL-2658](TPL-2658-agent-write-scope-is-declared-not-prompted.md) — エージェントに任せる自動化の書き込み範囲は、prompt の文言ではなく宣言で検証する (#2658) · unguarded 0/4, judgment 1
+- [TPL-2786](TPL-2786-guard-failure-must-fail-the-run.md) — 安全網が結論を出せなかったときは、通過ではなく失敗として扱う (#2786) · unguarded 0/4, judgment 1
+- [TPL-2804](TPL-2804-guard-scan-set-fails-loud-on-the-unknown.md) — 走査対象を持つガードは、未知の要素が黙って対象外になる側ではなく大声で落ちる側に集合を定義する。除外は全走査の上の deny-list で表し、裏付けのないエントリを finding にする (#2804) · unguarded 0/2, judgment 2
+- [TPL-2805](TPL-2805-budget-bounds-the-work-it-names.md) — 予算は、その名前が指す仕事だけを覆う — 境界のない準備と同じ予算に入れない (#2805, #2807) · unguarded 0/3, judgment 2
+- [TPL-2879](TPL-2879-stateful-instance-not-shared-across-concurrent-calls.md) — 呼び出しごとに状態を作り直すインスタンスを、並行する呼び出しで共有しない (#2879) · unguarded 0/3, judgment 1
+- [TPL-3103](TPL-3103-shipped-doc-links-resolve-where-installed.md) — 配布物に入る文書のリンクは、配布物の中か絶対 URL を指す (#3103, #1779) · unguarded 0/2, judgment 2
+- [TPL-3137](TPL-3137-bundled-notices-cover-workspace-deps.md) — バンドルした配布物の notices は、バンドルに入る workspace パッケージの依存まで数える (#3137) · unguarded 0/4
+- [TPL-3286](TPL-3286-merge-eligibility-judged-on-final-diff.md) — 人間を通らないマージを許す判定は、最終の差分で行い、どの規則にも当たらない入力を厳しい側に倒す (#3286, #3405, #3505) · partial 8/18, judgment 1
 
 ### adr-tooling
 
-- [TPL-1829](TPL-1829-adr-permalink-records-source.md) — ADR permalink は record ではなく pointer — in-repo .krs source を必須で記録する (#1829)
-- [TPL-2188](TPL-2188-id-uniqueness-needs-cross-corpus-check.md) — 採番 id の一意性は corpus 横断の機械検証か大域 allocator で担保する (#2188)
+- [TPL-1829](TPL-1829-adr-permalink-records-source.md) — ADR permalink は record ではなく pointer — in-repo .krs source を必須で記録する (#1829) · unguarded 0/4, judgment 1
+- [TPL-2188](TPL-2188-id-uniqueness-needs-cross-corpus-check.md) — 採番 id の一意性は corpus 横断の機械検証か大域 allocator で担保する (#2188) · unguarded 0/2, judgment 2

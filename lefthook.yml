@@ -263,9 +263,10 @@ pre-push:
       # The bidirectional reference layer between docs/concepts*.md and the
       # ADR topic vocabulary (Issue #1389) — fail if a concept anchor or a
       # `> Related ADR topics:` annotation drifts from a `> Derives from`
-      # back-ref in docs/adr/README.md. The vitest test
+      # back-ref in docs/adr/README.md, or if a README topic section stops
+      # linking its effective.md / graph/<topic>.md slice. The vitest test
       # (scripts/lint/concept-adr-refs.test.ts) mirrors this guard in CI.
-      glob: "{docs/concepts.md,docs/concepts.ja.md,docs/adr/README.md,adr.config.json,scripts/lint/concept-adr-refs.ts}"
+      glob: "{docs/concepts.md,docs/concepts.ja.md,docs/adr/README.md,docs/adr/effective.md,docs/adr/graph/*.md,adr.config.json,scripts/lint/concept-adr-refs.ts}"
       run: pnpm run lint:concept-adr-refs
     locale-normalization:
       # The raw-tag → Locale rule has one owner, `resolveLocaleTag` in

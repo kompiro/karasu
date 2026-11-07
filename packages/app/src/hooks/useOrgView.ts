@@ -39,6 +39,13 @@ interface OrgViewState {
    * different model than the tree beside it.
    */
   teamDependencies: TeamDependencyReport;
+  /** The entry `nodePathIndex` and `organizations` were compiled from (#3598). */
+  compiledEntryPath: string | null;
+  /**
+   * The entry whose compile last settled, whether it succeeded or failed
+   * (#3598). Past `compiledEntryPath` when the open entry has errors.
+   */
+  settledEntryPath: string | null;
 }
 
 const EMPTY_TEAM_DEPENDENCIES: TeamDependencyReport = {
@@ -115,7 +122,9 @@ export function useOrgView(
 
     return {
       // Org's fingerprint intentionally omits nodeMetadata (it carries none).
-      fingerprint: computeViewResultFingerprint({ svg, warnings: orgBase.warnings, diagnostics }),
+      // The entry is part of it: two files can draw the same org view, and the
+      // path index of the one now open must still replace the other's (#3598).
+      fingerprint: `${entryPath}\n${computeViewResultFingerprint({ svg, warnings: orgBase.warnings, diagnostics })}`,
       // On error keep the prior org metadata (only swap in the stale SVG +
       // fresh diagnostics), matching the prior per-hook behavior.
       errorState: (svgToShow, prev) => ({
@@ -127,6 +136,8 @@ export function useOrgView(
         ownerIndex: prev.ownerIndex,
         styles: prev.styles,
         teamDependencies: prev.teamDependencies,
+        compiledEntryPath: prev.compiledEntryPath,
+        settledEntryPath: entryPath,
       }),
       okState: () => ({
         orgSvg: svg,
@@ -137,6 +148,8 @@ export function useOrgView(
         ownerIndex: orgBase.ownerIndex,
         styles: orgBase.styles,
         teamDependencies: orgBase.teamDependencies,
+        compiledEntryPath: entryPath,
+        settledEntryPath: entryPath,
       }),
       // Org names its state fields differently (orgSvg / orgDiagnostics); the
       // selectors bridge that, so the scaffold needs no per-view field names.
@@ -157,11 +170,14 @@ export function useOrgView(
       ownerIndex: new Map(),
       styles: undefined,
       teamDependencies: EMPTY_TEAM_DEPENDENCIES,
+      compiledEntryPath: null,
+      settledEntryPath: null,
     },
     compile,
     onError: (prev) => ({
       ...prev,
       orgDiagnostics: [{ severity: "error", code: "app-org-parse-error", params: {} }],
+      settledEntryPath: entryPath,
     }),
     deps: [
       entryPath,

@@ -77,7 +77,7 @@ scope:
 
 - [ ] 判定はマージ直前の差分に対して、push のたびに走るか（PR 作成時の 1 回だけになっていないか）
 - [ ] 判定結果とラベルが食い違ったとき、マージを止める required check として失敗するか
-- [ ] どの規則にも当たらないパスを入力したテストがあり、自動マージを許さない段階になると assert しているか
+- [ ] どの規則にも当たらないパスを入力したテストがあり、自動マージを許さない段階になると assert しているか [guard: `scripts/review/tier.test.ts`]
 - [ ] 1 つのファイルの中で重さが変わるもの（`package.json` の依存と scripts など）を、ファイル名ではなく
       差分の中身で分けているか
 - [ ] 判定する検査に、軽い段階の PR を飛ばすパスフィルタが付いていないか
@@ -86,17 +86,17 @@ scope:
       変わっていれば（コンフリクトの解消で PR の行を書き換えた）失敗するか。比較はファイルごとの追加行と削除行の
       順序付きの並びと、行に現れない変化（変更の種類・リネーム元・ファイルモード・バイナリと空ファイルの blob）で行い、
       別ファイルへの移動、同じ内容の行の増減、同じファイルの中での行の入れ替え、モードやバイナリだけの変更を
-      「同じ」とみなさないか
+      「同じ」とみなさないか [guard: `scripts/review/local-review-record.test.ts`, `scripts/review/tier.test.ts`]
 - [ ] 判定に使う分類器は base 側のものか（PR が書き換えた分類器で、その PR 自身を判定していないか）
-- [ ] 記録が「直した」と書くコミットが、記録の `head` の祖先であることを確かめているか
+- [ ] 記録が「直した」と書くコミットが、記録の `head` の祖先であることを確かめているか [guard: `scripts/review/local-review-record.test.ts`]
 - [ ] 記録を読む場所は、作成者と maintainer しか書けない場所（PR 本文など）か
 - [ ] ラベルが無いときは最も重い段階として扱ったうえで、その実効のラベルが差分から出した段階より低いときに失敗するか
-- [ ] 記録を求める段階で、記録そのものが無い（節が無い・読めない）PR を失敗させるか
-- [ ] 記録のすべての指摘に対応が書かれていなければ失敗するか
+- [ ] 記録を求める段階で、記録そのものが無い（節が無い・読めない）PR を失敗させるか [guard: `scripts/review/local-review-record.test.ts`]
+- [ ] 記録のすべての指摘に対応が書かれていなければ失敗するか [guard: `scripts/review/local-review-record.test.ts`]
 - [ ] 人間を通らない段階では、Critical / Major の却下・記録の省略・前段のレビューの省略を含む記録を通さないか
-      （Minor / Trivial の却下は通す）
-- [ ] 重大度が Critical / Major / Minor / Trivial のどれでもない指摘を、Major として判定するか
-- [ ] 記録が前提にする base（merge-base）が、いまの PR の base と HEAD の merge-base と一致するかを見ているか
+      （Minor / Trivial の却下は通す） [guard: `scripts/review/local-review-record.test.ts`]
+- [ ] 重大度が Critical / Major / Minor / Trivial のどれでもない指摘を、Major として判定するか [guard: `scripts/review/local-review-record.test.ts`]
+- [ ] 記録が前提にする base（merge-base）が、いまの PR の base と HEAD の merge-base と一致するかを見ているか [guard: `scripts/review/local-review-record.test.ts`]
 - [ ] 作成者の宣言（タイトルの型・本文の理由の行）で段階や検査が軽くなる規則には、その宣言を機械で裏付ける検査
       （`refactor` なら等価の検査）があり、裏付けが成り立たないときに PR を落とすか。裏付けの検査が走らない PR では
       例外を効かせていないか
@@ -106,7 +106,7 @@ scope:
       規約の対象外のファイル）を
       入力したテストで、Low にならないと assert しているか
 - [ ] 例外の規則が前提にする差分の形を、その差分を作る側の書き方の規則（`.claude/rules/acceptance.md` など）が
-      求める形と突き合わせたか。実際の PR の差分を分類器に通し、意図した段階になることを確かめたか
+      求める形と突き合わせたか。実際の PR の差分を分類器に通し、意図した段階になることを確かめたか [judgment]
 
 ## 既知の対処パターン
 

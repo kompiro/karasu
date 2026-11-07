@@ -74,10 +74,10 @@ system-view grouping の設計計測（`docs/design/system-view-grouping.md` § 
 
 エッジルーティング/レイアウトの可読性を変える実装・変更で、以下を確認する:
 
-- [ ] 可読性の検証で**交差数と貫通数を両方測る**テストを書いた（片方だけにしない）。
-- [ ] **ノード/フレーム貫通数 == 0** を厳密に assert した（「救済される」の定性確認で済ませない）。
-- [ ] **相異なるエッジの共線オーバーラップ数 == 0** を assert した（**縦**＝同一 x + y 区間の正長オーバーラップ／**横**＝同一 y + x 区間の正長オーバーラップの両方。意図的な集約トランク兄弟は同一 `trunkId` で除外）。単一 x にレーンを共有させる／単一アンカーに複数エッジを付ける実装では特に必須（#1927）。
-- [ ] 貫通判定の障害物集合に**ノードカードとフレーム矩形の両方**を含めた（grouped/framed view）。
+- [ ] 可読性の検証で**交差数と貫通数を両方測る**テストを書いた（片方だけにしない）。 [guard: `packages/core/src/renderer/routing-parity.test.ts`]
+- [ ] **ノード/フレーム貫通数 == 0** を厳密に assert した（「救済される」の定性確認で済ませない）。 [guard: `packages/core/src/renderer/routing-parity.test.ts`]
+- [ ] **相異なるエッジの共線オーバーラップ数 == 0** を assert した（**縦**＝同一 x + y 区間の正長オーバーラップ／**横**＝同一 y + x 区間の正長オーバーラップの両方。意図的な集約トランク兄弟は同一 `trunkId` で除外）。単一 x にレーンを共有させる／単一アンカーに複数エッジを付ける実装では特に必須（#1927）。 [guard: `packages/core/src/renderer/routing-parity.test.ts`]
+- [ ] 貫通判定の障害物集合に**ノードカードとフレーム矩形の両方**を含めた（grouped/framed view）。 [guard: `packages/core/src/renderer/routing-parity.test.ts`]
 - [ ] 交差を hop/junction 等の**表現で無害化**する設計なら、交差数の残存を欠陥と誤認せず、代わりに「全交差が mark 付き（非接続/接続が明示）」を assert した。
 - [ ] 退化ケース（グループ 1 つ / 枠なし / infra・external なし）で貫通ゼロが保たれることを確認した。
 - [ ] 「Group by: none」等の**非対象モードが byte-identical で不変**であることを確認した（新ルーティングが gate 内でのみ走る）。

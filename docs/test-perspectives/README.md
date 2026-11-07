@@ -56,6 +56,8 @@ topic: app-ui # ADR と同じ controlled vocabulary
 scope:
   packages:
     - app
+  paths: # optional — 本文の名指しで引けないときだけ足す想起の鍵（glob）
+    - ".github/workflows/**"
 ---
 ```
 
@@ -63,15 +65,49 @@ scope:
 
 - **`applicable_to`** — この観点が適用される **抽象パターン**。再利用可能な抽象度で書く。1 行 = 1 パターンに分解し、複数パターンに当てはまる観点なら複数行で並べる。consumer の具体名は書かない（そちらは `known_consumers`）
 - **`known_consumers`** — この観点が適用されると判明している **具体的な consumer**（feature / module / package など）。kebab-case で、grep で検索しやすい形にする。union のように consumer 空間が広すぎて列挙が無意味な場合は省略する（フィールドごとオミット）。新たに該当 consumer が見つかったら追記する
+- **`scope.paths`** — PR の変更ファイルから TPL を引くときの鍵を足す glob（`*` `**` `?` だけを使う）。鍵の基本は本文の `## 関連テスト` などが名指すファイルで（下の「変更ファイルから引く」）、`scope.paths` はそれと和になる。書くのは、本文がファイルを名指せないのに関係する PR が決まっている TPL（workflow 全般の運用系など）と、PR で当てたのに一覧に出なかった TPL だけ。特定のファイルに結びつかない横断的な原則には広い glob を書かない — ほぼ全 PR に出て一覧が読まれなくなる。`tpl validate` は各 glob が 1 つ以上のファイルに一致することを検査する
 - **`topic`** — ADR と同じ controlled vocabulary（`docs/adr/README.md` のセクション見出しを参照）。たとえば: `core-concepts` / `parser` / `resolver` / `renderer` / `edges` / `styling` / `navigation` / `app-ui` / `project` / `chat-ai` / `cli` / `vscode` / `testing` / `build` / `adr-tooling`
 
 ### 本文セクション
 
 1. **観点** — 何を検証すべきかを、再利用可能な抽象度で記述する
 2. **想定される失敗モード** — この観点が見落とされた場合に、どのような形で失敗が現れるか
-3. **チェックリスト** — 新機能の実装/修正時に確認する項目。**3〜5項目に絞る**（多すぎると使われない）
+3. **チェックリスト** — 新機能の実装/修正時に確認する項目。**3〜5項目に絞る**（多すぎると使われない）。見出しは `## チェックリスト` に固定し、ガードを確かめた項目と判定できない項目にだけ末尾に印を付ける（下の「チェックリスト項目の印」）
 4. **既知の対処パターン** — 過去にこの問題を解決した方法
-5. **関連テスト** — この観点を検証する既存テストのパス
+5. **関連テスト** — この観点を検証する既存テストのパス。ここで名指すファイル（テストなら対応するソースも）は、PR の変更ファイルから TPL を引く鍵にもなる（「変更ファイルから引く」）
+
+### チェックリスト項目の印
+
+チェックリストの各項目は、その項目を機械が守っているかを末尾の印で示す（[#3038](https://github.com/kompiro/karasu/issues/3038)、[#3488](https://github.com/kompiro/karasu/issues/3488)）。
+読んだその場で「これは CI が守っている / 自分が確かめる」が分かるようにするためである。
+
+```markdown
+- [ ] key の dot-segment 数が 4 以下か。 [guard: `packages/i18n/src/catalog.test.ts`]
+- [ ] sub-feature を導入するなら、そのまとまりだけで element.state キーが複数生まれるか。 [judgment]
+- [ ] dark / light の両テンプレートで同じ kind 集合を揃えているか
+```
+
+- **`[guard: …]`**：その項目に**新しい箇所**が違反したとき、CI で動くチェックが赤くなる。ファイル集合の走査、registry の列挙、型レベルの網羅、閉じたクラスの全列挙のどれかであること。元の bug の箇所や既知の consumer だけを固定するテストはガードではなく、「関連テスト」節に書く。手で保守する表を回すテストは、新しい箇所が表に入ることを型・突き合わせ・導出のどれかが強制しているときだけガードになる
+- **参照先は、CI の step から辿った呼び出しの終点にあるこの repo のファイル**（テストか、`scripts/` / `packages/*/scripts/` のスクリプト）にする。行番号は付けず、インラインコードスパンでファイル単位に並べる（``[guard: `a`, `b`]``）。設定データや `node_modules` の中はガードではない。終点が外部の実行ファイル（`adr validate` など）のときだけ、その step を持つ workflow を参照先にし、項目の本文で呼ばれるコマンドを名指しする
+- **`[judgment]`**：プログラムでは判定できない項目（設計時の意図の判断、人が行為をしたかの問い、repo の外にある対象）
+- **印なし**：判定はできるが、まだ機械が守っていない項目。思い出して確かめる必要がある。新しく書いた項目の既定はこれになる
+- 印は項目の本文の最後に 1 つだけ置き、前の文と空白で区切る。本文中で印の書式を説明するときはインラインコードスパンに入れる
+
+`[guard: …]` を足すときは、そのガードを開いて上の条件を確かめ、確かめた内容を PR に書く。ガードが
+新しい箇所も捕まえるかはプログラムでは判定できないので、TPL を変える PR のレビューが見る。間違った
+`[guard: …]` は、守られていない項目を守られていると読ませるので、印が無いより悪い。迷ったら印を付けない。
+
+印から TPL ごとの状態を導出する（TPL に状態を書かない）。
+
+| 状態 | 条件 | 意味 |
+| --- | --- | --- |
+| `guarded` | 印なし = 0 かつ guard ≥ 1 | 判定できる項目はすべて機械が守っている |
+| `partial` | 印なし ≥ 1 かつ guard ≥ 1 | 一部の項目は思い出す必要がある |
+| `unguarded` | guard = 0 かつ 印なし ≥ 1 | 判定できる項目をすべて思い出す必要がある |
+| `judgment` | すべての項目が judgment | 機械には判定できない。思い出すことが前提 |
+
+状態は `pnpm exec tpl related <topic> --status` と、毎日の再生成 PR が書く索引（[index.md](index.md)）に出る。
+項目を印ごとに一覧するには `pnpm exec tpl checklist --marker unguarded` を使う。
 
 ## 運用ルール
 
@@ -101,25 +137,27 @@ deprecation の **トリガー** は月次の定期レビューで起こす。`a
 
 > なぜ月次か: 当初は週次で回していた（一括 backfill 直後で obsolescence を早く捕捉したかったため）。運用開始から実際に deprecate された TPL は 0 件、2026-W30 / W31 のレビューも全件 `keep` で、週次の Issue はキューのノイズになっていた。当初の「全件 `keep` が安定したら伸ばす」条件を満たしたので、#2094 / #2136 のレビューをもって月次へ緩めた。月次でも全件 `keep` が続くなら半年次を検討し、逆に 1 回のレビューで複数 deprecate が出たら週次へ戻す（cadence 自体も TPL のレビュー対象）。
 
-**Issue の中身**: `tpl review-body` が生成する。`active` TPL ごとにチェックボックス + 3 つの観点が並ぶ:
+**Issue の中身**: `tpl review-body --config tpl.config.json` が生成する。冒頭に全 TPL 共通の 3 つの観点が並び、続いて `active` TPL がチェックリストの状態（上の「チェックリスト項目の印」）ごとにまとめられ、状態ごとの問いが付く。`unguarded` / `partial` の TPL には「印の無い項目のうち、新しい箇所の違反で赤くなるガードにできるものはあるか」、`guarded` の TPL には「チェックリストを薄くできるか」、`judgment` の TPL には「プログラムで判定できるようになった項目はあるか」を問う。共通の 3 つの観点は次のとおり:
 
 1. 引用された `root_cause_file` / `root_cause_adr` は今も存在するか? 関数 / パターンは生き残っているか?
 2. アーキテクチャの前提が変わっていないか?（例: 「user stylesheet は常に最後」 → 「mode-locked properties は user sheet を bypass する」）
 3. この TPL を包含するより新しい TPL があるか?（あれば `superseded_by` として deprecate — ADR と同じ運用）
 
+> 作業ディレクトリに `tpl.config.json` が無く `--config` も渡さないと、生成器は状態を読まずに共通の観点だけを出す。ワークフローと `pnpm tpl:review:body` は、作業ディレクトリに頼らないよう明示して渡している。
+>
 > 見出しの期間名はワークフローが `--period-label` で渡す（タイトルと同じ暦月）。渡さないと生成器は ISO 週を書き、タイトルと本文が違う期間を名乗る（#2622 が実例。修正は [tpl-tools#20](https://github.com/kompiro/tpl-tools/issues/20)）。ローカルで中身だけ見たいときは `pnpm tpl:review:body`（見出しは ISO 週）で足りる。
 
 **処分（disposition）**:
 
 - **keep** — 今も妥当。編集不要
-- **update** — 観点は妥当だが、チェックリスト / 既知の対処 / 関連テストの refresh が必要
+- **update** — 観点は妥当だが、チェックリスト / 既知の対処 / 関連テストの refresh、または項目の印の見直し（ガードができた項目に `[guard: …]` を付ける、ガードが消えた項目から外す）が必要
 - **deprecate** — root cause が構造的に消滅。`status: deprecated` にして末尾に rationale を追記（前節 "deprecated への移行" の手順）
 
 **完了処理**: レビューが終わったら、Issue にディスポジションのサマリ（例: `keep: 18 / update: 1 / deprecate: 1`）をコメントしてクローズする。
 
 ### Validator
 
-frontmatter と、本文が名指しするソースパスは **`pnpm tpl:validate`** で機械的にチェックされる。pre-push の lefthook（glob なし）と、Required な `Check` の両ジョブ（`.github/workflows/ci.yml` と `.github/workflows/at-check-coverage.yml`）で自動実行されるが、ローカルで先に確認したいときも同じコマンドで走る。
+frontmatter、チェックリストの印、本文が名指しするソースパスは **`pnpm tpl:validate`** で機械的にチェックされる。pre-push の lefthook（glob なし）と、Required な `Check` の両ジョブ（`.github/workflows/ci.yml` と `.github/workflows/at-check-coverage.yml`）で自動実行されるが、ローカルで先に確認したいときも同じコマンドで走る。
 
 検査内容:
 
@@ -132,13 +170,16 @@ frontmatter と、本文が名指しするソースパスは **`pnpm tpl:validat
 - `related_to` が指す TPL が同ディレクトリに存在すること
 - `scope.packages` が `packages/` 配下の実在ディレクトリを指すこと
 - `status: deprecated` のエントリ本文に deprecation rationale が含まれること
-- 本文のインラインコードスパンが名指しする `packages/…` / `scripts/…` のパスが working tree に実在すること。不在が正しい場合（履歴・例示）は直上の行で `<!-- absent-path-next-line: <理由> -->` と宣言する。宣言は逆向きにも検査され、理由が空、または次行のパスが全部実在するようになると落ちる（[#2810](https://github.com/kompiro/karasu/issues/2810)）
+- `scope.paths` の各 glob が working tree の 1 つ以上のファイルに一致すること
+- `## チェックリスト` 節があり、項目が 1 つ以上あること（`tpl.config.json` の `checklistHeading`）
+- 項目の印の書式（末尾に 1 つだけ、前に空白、後ろに何も無い、`[guard: ]` が空でない）と、`[guard: …]` の各パスが `sourcePrefixes` のどれかから始まる実在のファイルであること（行番号・glob・ディレクトリは不可。`<!-- absent-path-next-line: … -->` で黙らせることもできない）
+- 本文のインラインコードスパンが名指しする `packages/…` / `scripts/…` / `.github/…` のパスが working tree に実在すること。不在が正しい場合（履歴・例示）は直上の行で `<!-- absent-path-next-line: <理由> -->` と宣言する。宣言は逆向きにも検査され、理由が空、または次行のパスが全部実在するようになると落ちる（[#2810](https://github.com/kompiro/karasu/issues/2810)）
 
 索引（[index.md](index.md)）は検査しない。`tpl.config.json` の `"indexCheck": false` が止めている。索引は
 毎日の再生成 PR が書くので、TPL を足した直後の PR では古いか、まだ無いのが正常である。索引が TPL と
 一致していることは、再生成 PR の `Validate` が生成し直した結果と比べて確かめる（[#3289](https://github.com/kompiro/karasu/issues/3289)）。
 
-実装は外部パッケージ [`@kompiro/tpl-tools`](https://github.com/kompiro/tpl-tools)（`tpl validate` サブコマンド）。`pnpm tpl:validate` は `--config tpl.config.json` を渡し、`--packages-root packages` で `scope.packages` を、`--source-prefix packages --source-prefix scripts` で本文のソースパスを検証している（karasu#1357 で切り出し、#2810 で本文の照合を移管）。`docs/{acceptance,design}` 側の同じ検査は `pnpm run lint:record-source-paths` が持つ — 1 ディレクトリ 1 オーナーで、二重には走らせない。
+実装は外部パッケージ [`@kompiro/tpl-tools`](https://github.com/kompiro/tpl-tools)（`tpl validate` サブコマンド）。`pnpm tpl:validate` は `--config tpl.config.json` を渡し、`--packages-root packages` で `scope.packages` を検証する。本文のソースパスとガードのパスの接頭辞（`packages` `scripts` `.github`）は `tpl.config.json` の `sourcePrefixes` に置き、`tpl related` の変更ファイルからの照会と共有する（karasu#1357 で切り出し、#2810 で本文の照合を移管、#3486 で接頭辞を設定へ移した）。`docs/{acceptance,design}` 側の同じ検査は `pnpm run lint:record-source-paths` が持つ — 1 ディレクトリ 1 オーナーで、二重には走らせない。
 
 > **なぜ ADR と config を分けているか**（karasu#2083 → #2188）
 > `tpl-tools` と `adr-tools` は同じ config キー `idFormat` を読む。分離当時
@@ -168,6 +209,12 @@ $ pnpm tpl:related renderer --package core
 ```
 
 active なエントリのみが表示される（deprecated はクエリで除外）。`<topic>` が ADR vocabulary 外でも warning 付きで実行はする — 新トピック導入時の事前確認に使えるように。実装は `@kompiro/tpl-tools` の `tpl related` サブコマンド。
+
+#### 変更ファイルから引く
+
+PR を作るときは **`pnpm tpl:changed`** で、`origin/main` からの変更ファイルを名指す active な TPL を重みの順に上位 10 件出す（stacked PR は PR の base を渡して `pnpm tpl:related --base origin/<base>`。`tpl:changed` は `--base origin/main` を含むので重ねない）。鍵は、本文のコードスパンが名指す `sourcePrefixes` の下のファイル（テストファイルなら `.test` / `.spec` を外した対応ソースにも一致させる）と `scope.paths` の glob。多数の TPL が名指すファイルだけに当たった TPL は下に行く。出た TPL のうち当てたものを PR 本文の `## TPL impact` で引用する。Claude が `gh pr create` を実行すると、同じ一覧をフックが出す（ADR-3486）。
+
+この照会は止めない。当てなかった TPL に理由は要らない。0 件は「当てる TPL が無い」ではなく「ファイルでは分からない」なので、横断的な原則は今までどおり `pnpm tpl:related <topic>` で当てる。PR で当てたのに一覧に出なかった TPL があれば、その PR で `## 関連テスト` に名指すファイルを足すか、`scope.paths` を書く。
 
 ## TPL のライフサイクル
 
@@ -364,7 +411,7 @@ per-topic で 1 つずつ進める。一度に全 topic を audit すると 200 
 - [#1273](https://github.com/kompiro/karasu/issues/1273) **GB11-1** — SVG builder family parity（builders × params）
 - [#1275](https://github.com/kompiro/karasu/issues/1275) **GR20-1** — identity-comparison sites use id（detectors × id-vs-label）
 
-採用理由: TS reflection / 自動 discovery より explicit な table のほうが code review で auditable で、新エントリ追加時に table 編集を強制できる。**新しいファミリの meta-check が必要になったら、まず curated table を default の選択肢に置く**。
+採用理由: TS reflection / 自動 discovery より explicit な table のほうが code review で auditable である。ただし**表そのものは、新しいエントリが追加されても表の編集を強制しない。** 表への登録を型・表とコードの突き合わせ・導出のどれかで強制したときに限り、explicit な表は新しい箇所も捕まえるガード（`[guard: …]`）になる。#1233 の `packages/core/src/parser/base-node-fields-coverage.test.ts` は型の契約で全 kind の登録を強制しているのでガードになる。ただしこの契約は、表の型注釈が各エントリの `kind` を広げたせいで、どんな表でも成り立つ空の契約になっていた（`entity` の fixture が無くても通った。#3589 で直し、契約が空にならないことも型で固定した）。**登録を強制する仕組みは、それ自体が効いていることを確かめないと、表と同じく黙ってすり抜ける。** 一方、#1249 の `packages/core/src/view/derivation-contracts.test.ts` は登録を忘れたエントリがすり抜けると自ら書いているので、元の箇所を固定するだけに留まる（[#3038](https://github.com/kompiro/karasu/issues/3038)）。**新しいファミリの meta-check が必要になったら、curated table に登録を強制する仕組みを添えた形を default の選択肢に置く**。
 
 #### 観察 B: per-layer-strong / cross-layer-weak ギャップ
 

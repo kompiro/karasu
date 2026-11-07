@@ -564,8 +564,8 @@ export const ja: Partial<Translations> = {
     `エッジ id "#${authorId}" が重複しています。エッジ id は system 内で一意である必要があります`,
   "diagnostic.duplicateEdgeLabel.message": ({ label }) =>
     `このエッジには位置引数の label が既にあるため、block の label "${label}" は 2 つ目の label です。位置引数形か block プロパティのどちらか一方だけを書いてください`,
-  "diagnostic.ambiguousEdgeBase.message": ({ fromId, toId, arrow }) =>
-    `複数のエッジが base "${fromId}${arrow}${toId}" を共有しており、識別する #<id> がありません。これらのエッジは per-edge style selector では一致しません`,
+  "diagnostic.ambiguousEdgeBase.message": ({ base }) =>
+    `複数のエッジが base edge#${base} を共有しており、識別する #<id> がありません。これらのエッジは per-edge style selector では一致しません`,
   "diagnostic.styleTokenTypeMismatch.message": ({ expected, got, value }) =>
     `${expected} を期待しましたが ${got} ("${value}") が見つかりました`,
   "diagnostic.expectedStylePropertyName.message": ({ got }) =>

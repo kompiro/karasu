@@ -68,8 +68,8 @@ core の関数が「名前 → 実装」のレジストリを引くとき、**�
 
 - [ ] 組み込みの中身は core の import だけで登録されるか。core 外に残る登録呼び出しは利用者独自の追加だけか
       （`resolveIconManifest` / `registerIcon` / `registerShape` を core 外で grep する）
-- [ ] 「ホストが何もしない状態で core を import し、組み込み名を引くと実装が返る」ことをテストしているか
-- [ ] 組み込み登録を前提にした機能（icon theme が生成する名前など）が、すべて登録済みの名前だけを使っていることを parity テストで固定しているか
+- [ ] 「ホストが何もしない状態で core を import し、組み込み名を引くと実装が返る」ことをテストしているか [guard: `packages/core/src/shapes/builtin-icons.test.ts`]
+- [ ] 組み込み登録を前提にした機能（icon theme が生成する名前など）が、すべて登録済みの名前だけを使っていることを parity テストで固定しているか [guard: `packages/core/src/shapes/builtin-icons.test.ts`]
 - [ ] 配布物（CLI の単一バンドル、`.vsix`、Worker バンドル）でも組み込みが入っているか。dev tree のファイル配置に依存していないか（TPL-1024）
 - [ ] レジストリを前提にした診断が、描画しない面（LSP）でも誤検知しないか
 

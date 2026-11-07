@@ -51,10 +51,10 @@ convenience API は便利でシグネチャが小さいので **consumer が無�
 
 consumer 境界（拡張 / CLI / IPC / package public API）で karasu core を呼ぶとき、以下を確認する:
 
-- [ ] 呼ぶ関数に **convenience / principled の双子が存在するか** 確認したか（grep で `compile` / `parse` などの名前を含む関数を一覧する）
-- [ ] convenience を選ぶ場合、principled が提供する追加の振る舞い（multi-file / async / error 伝播）が **不要であることが明確** か。Design Doc / コメントで根拠を残しているか
+- [ ] 呼ぶ関数に **convenience / principled の双子が存在するか** 確認したか（grep で `compile` / `parse` などの名前を含む関数を一覧する） [judgment]
+- [ ] convenience を選ぶ場合、principled が提供する追加の振る舞い（multi-file / async / error 伝播）が **不要であることが明確** か。Design Doc / コメントで根拠を残しているか [judgment]
 - [ ] consumer 境界では **default で principled** を選び、convenience を選ぶのは「principled がオーバースペックである理由」が言える場合だけにしているか
-- [ ] convenience の存在が「テストやスクリプト用の補助 API」として明確にラベル付けされているか（公開 API として晒すと misuse を誘発する）
+- [ ] convenience の存在が「テストやスクリプト用の補助 API」として明確にラベル付けされているか（公開 API として晒すと misuse を誘発する） [judgment]
 
 ## 既知の対処パターン
 

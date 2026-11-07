@@ -63,6 +63,7 @@ jobs:
           PERIOD_LABEL: ${{ steps.period.outputs.label }}
         run: |
           pnpm --silent exec tpl review-body \
+            --config tpl.config.json \
             --period-label "$PERIOD_LABEL" \
             > /tmp/tpl-review-body.md
 

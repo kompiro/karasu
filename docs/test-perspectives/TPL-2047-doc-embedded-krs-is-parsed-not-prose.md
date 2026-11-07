@@ -91,17 +91,17 @@ pnpm run lint:krs-fences   # docs/{acceptance,spec,guide}/** と docs/concepts*.
 `docs/acceptance/*.md`（および spec / guide）に `.krs` を書くときに確認する:
 
 - [ ] スニペットは完全なモデルか。完全なら無印 ` ```krs `、抜粋なら
-      ` ```krs fragment `、不正入力のデモなら ` ```krs invalid ` を宣言したか。
-- [ ] `pnpm run lint:krs-fences` が緑か（新しい fence が parse できるか）。
+      ` ```krs fragment `、不正入力のデモなら ` ```krs invalid ` を宣言したか。 [guard: `scripts/lint/krs-fences.ts`]
+- [ ] `pnpm run lint:krs-fences` が緑か（新しい fence が parse できるか）。 [guard: `scripts/lint/krs-fences.ts`, `scripts/lint/krs-fences.test.ts`]
 - [ ] `.krs` の例を裸の ``` fence に入れていないか。擬似文法（`user <id> [<tags>]`）
-      だけが裸のままでよい。
+      だけが裸のままでよい。 [guard: `scripts/lint/krs-fences.ts`]
 - [ ] 文法上の主張（「これは書ける」「これは書けない」）を**散文のインラインコード
-      だけ**で書いていないか。書けるなら fence にして機械検証に載せたか。
+      だけ**で書いていないか。書けるなら fence にして機械検証に載せたか。 [judgment]
 - [ ] 手順が描画結果を見に行くものなら、その要素に **到達する経路が実際にあるか**
       確認したか（#2047 の後半: bare な `resource` はスタイル上シェイプが決まって
-      いても usecase 図に昇格せず、永久に目視できなかった — silent drop 自体は [TPL-2075](TPL-2075-parsed-construct-renders-or-warns.md) の観点）。
+      いても usecase 図に昇格せず、永久に目視できなかった — silent drop 自体は [TPL-2075](TPL-2075-parsed-construct-renders-or-warns.md) の観点）。 [judgment]
 - [ ] 自動化できた項目は `- [x]` + `> ✅ Automated — …` に畳み、目視でしか判定でき
-      ない観点だけを `- [ ]` として残したか（[TPL-1680](TPL-1680-at-e2e-spec-linkage-no-drift.md)）。
+      ない観点だけを `- [ ]` として残したか（[TPL-1680](TPL-1680-at-e2e-spec-linkage-no-drift.md)）。 [judgment]
 
 ## 既知の対処パターン
 

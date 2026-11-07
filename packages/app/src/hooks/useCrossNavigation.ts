@@ -2,6 +2,7 @@ import { useCallback, useMemo, type Dispatch } from "react";
 import type { DisplayMode } from "@karasu-tools/core";
 import { nodePathMatchesSuffix, parseNodePathRefId } from "@karasu-tools/core";
 import type { AppAction } from "../state/app-reducer.js";
+import { endDeepLinkRestore } from "../state/deep-link-restore.js";
 
 interface UseCrossNavigationArgs {
   dispatch: Dispatch<AppAction>;
@@ -35,6 +36,8 @@ export interface UseCrossNavigationResult {
  * Thin dispatch wrappers that AppShell passes to child panes for cross-view
  * navigation (e.g. clicking a deploy badge in the system view switches to the
  * deploy view). Kept together here so AppShell stays focused on layout.
+ * Each jump is the visitor's navigation, so it ends a deep link's restoration
+ * still running (#3598).
  */
 export function useCrossNavigation({
   dispatch,
@@ -44,6 +47,7 @@ export function useCrossNavigation({
 }: UseCrossNavigationArgs): UseCrossNavigationResult {
   const handleContainerClick = useCallback(
     (realizedNodeId: string | null) => {
+      endDeepLinkRestore();
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: realizedNodeId });
     },
     [dispatch],
@@ -51,6 +55,7 @@ export function useCrossNavigation({
 
   const handleDeployButtonClick = useCallback(
     (serviceId: string) => {
+      endDeepLinkRestore();
       // A node id crosses into the deploy view, which marks that node on the
       // container realizing it (#2818).
       dispatch({
@@ -66,6 +71,7 @@ export function useCrossNavigation({
   const handleTeamButtonClick = useCallback(
     (teamId: string) => {
       const parentPath = teamPathIndex.get(teamId) ?? [];
+      endDeepLinkRestore();
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: "org", highlightNodeId: teamId });
       if (parentPath.length > 0) navigateViewPath(parentPath);
     },
@@ -87,6 +93,7 @@ export function useCrossNavigation({
         indexedPath !== undefined && nodePathMatchesSuffix(segments, indexedPath)
           ? indexedPath
           : undefined;
+      endDeepLinkRestore();
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: nodeId });
       if (resolvedPath !== undefined) navigateViewPath(resolvedPath);
     },
@@ -108,6 +115,7 @@ export function useCrossNavigation({
   );
 
   const clearHighlight = useCallback(() => {
+    endDeepLinkRestore();
     dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null });
   }, [dispatch]);
 

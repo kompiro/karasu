@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures/opfs.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-3284: opening a deep link adds one history entry, the link itself.
@@ -58,3 +59,78 @@ for (const [hash, settled] of [
     await expect.poll(() => page.url()).toBe(linkedFrom);
   });
 }
+
+// #3598: a project switch opens `index.krs`; a link naming another file used
+// to have it land after the restoration ended, which pushed a second entry.
+const OTHER = `system Shop {
+  service BillingService {
+    domain Billing {}
+  }
+}
+
+organization Acme {
+  team Billing {
+    owns BillingService
+  }
+}
+`;
+
+const file = (path: string) => `?file=${encodeURIComponent(path)}`;
+
+test("a cold boot on a link naming another file than index.krs adds one history entry (AT-F)", async ({
+  page,
+  opfs,
+}) => {
+  await opfs.seed({
+    projects: [{ id: "shop", name: "Shop", files: { "index.krs": KRS, "other.krs": OTHER } }],
+    lastProjectId: "shop",
+  });
+  const linkedFrom = page.url();
+  const before = await page.evaluate(() => history.length);
+
+  const hash = `#krs-org-root${file("/projects/shop/other.krs")}`;
+  await opfs.gotoApp(`/${hash}`);
+  await expect(page.locator('svg [data-node-id="Billing"]').first()).toBeVisible();
+  await expect(page.locator(".monaco-editor .view-lines").first()).toContainText("BillingService");
+  await expect.poll(() => page.evaluate(() => location.hash)).toBe(hash);
+
+  expect(await page.evaluate(() => history.length)).toBe(before + 1);
+  // The restoration has ended: the visitor's next move is a new entry.
+  await openViewTab(page, "System");
+  await expect.poll(() => page.evaluate(() => history.length)).toBe(before + 2);
+  await page.goBack();
+  await expect.poll(() => page.evaluate(() => location.hash)).toBe(hash);
+  await page.goBack();
+  await expect.poll(() => page.url()).toBe(linkedFrom);
+});
+
+// A missing file opens as an empty buffer (the selection lands) whose index
+// stays empty, so the link's Deploy tab stays pending; leaving the file is the
+// visitor's navigation and must end the restoration. A file that does not open
+// at all is the unit test's `stops waiting for the named file when it does not open`.
+test("after a link naming a file the project does not have, a file switch is a new entry (AT-G)", async ({
+  page,
+  opfs,
+}) => {
+  await opfs.seed({
+    projects: [{ id: "shop", name: "Shop", files: { "index.krs": KRS } }],
+    lastProjectId: "shop",
+  });
+  const missing = file("/projects/shop/missing.krs");
+  await opfs.gotoApp(`/#krs-deploy${missing}`);
+  // The tab cannot be restored on an empty buffer; the entry keeps the file.
+  await expect.poll(() => page.evaluate(() => location.hash)).toContain(missing);
+  const indexItem = page.locator(".file-tree-item", { hasText: "index.krs" }).first();
+  await expect(indexItem).toBeVisible();
+  const restored = await page.evaluate(() => history.length);
+
+  await indexItem.click();
+  await expect(page.locator('svg [data-node-id="OrderService"]').first()).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => location.hash))
+    .toBe(`#krs-system-root${file("/projects/shop/index.krs")}`);
+  expect(await page.evaluate(() => history.length)).toBe(restored + 1);
+
+  await page.goBack();
+  await expect.poll(() => page.evaluate(() => location.hash)).toContain(missing);
+});

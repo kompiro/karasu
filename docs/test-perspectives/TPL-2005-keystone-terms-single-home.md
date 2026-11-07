@@ -79,14 +79,14 @@ rewrite され、check-links の検査対象外**である点に注意 — こ�
 keystone / permalink の用語を扱う doc を変更するときに確認する:
 
 - [ ] 用語の**定義**を書いているなら、それは `docs/glossary.md` か。他 doc では定義せず
-      用語集へリンクしているか。
+      用語集へリンクしているか。 [judgment]
 - [ ] `docs/glossary.md` / `.ja.md` の permalink 項目が `docs/spec/permalink.md`・repo-backed /
-      ref-pinned の design doc・permalink ADR の機構と矛盾していないか。
+      ref-pinned の design doc・permalink ADR の機構と矛盾していないか。 [judgment]
 - [ ] EN / JA 両ファイルを更新したか。両者と `docs/spec/glossary.md`（モデリング言語用語集）
       との相互リンクが生きているか。
 - [ ] 用語集が参照する unpublished doc（roadmap / design doc / ADR）を rename / 削除
       したなら、用語集側のリンクを追随させたか（check-links は検出しない）。
-- [ ] `pnpm --filter docs-site check-links` が通るか（published ページ間のリンク・アンカー解決）。
+- [ ] `pnpm --filter docs-site check-links` が通るか（published ページ間のリンク・アンカー解決）。 [guard: `packages/docs-site/scripts/check-links.ts`]
 - [ ] 新規 published ページを足したなら PUBLISHED_EN_FILES + astro.config.mjs sidebar +
       `.ja.md` sibling が揃っているか。
 

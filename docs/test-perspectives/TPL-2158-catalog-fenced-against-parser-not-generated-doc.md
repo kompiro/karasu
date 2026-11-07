@@ -74,11 +74,11 @@ kind 集合は parser の `LOGICAL_KEYWORDS` と直接比較する。
 
 `reference-data.ts` の catalog、または catalog を読む同期テストを触るときに確認する:
 
-- [ ] 追加したプロパティを、その kind の最小 `.krs` で実際に parse して受理を確認したか（spec の記述ではなく実測を根拠にする）。
-- [ ] 削除・廃止したプロパティを catalog からも消したか（parser が error を返すエントリを広告していないか）。
-- [ ] 新しい kind を parser に足したなら、同じ PR で catalog に足したか（`reference-parser-sync.test.ts` の kind 集合比較が落ちる）。
-- [ ] 新しいプロパティ keyword を lexer に足したなら、`PROPERTY_SNIPPETS` に書き方を 1 つ足したか（`covers every property keyword the lexer knows` が落ちる）。
-- [ ] 追加した同期テストの入力は、検査対象と独立した情報源か。`docs/` を読むテストなら、その節が `gen:` マーカー区間で生成されたものでないか確認したか。
+- [ ] 追加したプロパティを、その kind の最小 `.krs` で実際に parse して受理を確認したか（spec の記述ではなく実測を根拠にする）。 [guard: `packages/core/src/builtins/reference-parser-sync.test.ts`]
+- [ ] 削除・廃止したプロパティを catalog からも消したか（parser が error を返すエントリを広告していないか）。 [guard: `packages/core/src/builtins/reference-parser-sync.test.ts`]
+- [ ] 新しい kind を parser に足したなら、同じ PR で catalog に足したか（`reference-parser-sync.test.ts` の kind 集合比較が落ちる）。 [guard: `packages/core/src/builtins/reference-parser-sync.test.ts`]
+- [ ] 新しいプロパティ keyword を lexer に足したなら、`PROPERTY_SNIPPETS` に書き方を 1 つ足したか（`covers every property keyword the lexer knows` が落ちる）。 [guard: `packages/core/src/builtins/reference-parser-sync.test.ts`]
+- [ ] 追加した同期テストの入力は、検査対象と独立した情報源か。`docs/` を読むテストなら、その節が `gen:` マーカー区間で生成されたものでないか確認したか。 [judgment]
 
 ## 既知の対処パターン
 

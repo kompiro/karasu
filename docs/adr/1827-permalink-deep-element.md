@@ -10,7 +10,7 @@ scope:
 assumptions:
   - "symbol: packages/core/src/share/synthesize.ts :: ShareTarget"
   - "symbol: packages/core/src/renderer/svg-renderer.ts :: anchorId"
-  - "symbol: packages/app/src/hooks/useHistoryNavigation.ts :: shareTargetToHash"
+  - "symbol: packages/app/src/hooks/history-hash.ts :: shareTargetToHash"
   - "symbol: packages/app/src/utils/inline-share.ts :: SHARE_TARGET_VIEWS"
   - "file: docs/spec/permalink.md"
   - "file: docs/test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md"

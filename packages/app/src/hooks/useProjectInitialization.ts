@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Dispatch } from "react";
+import { useEffect, useRef, useState, type Dispatch, type RefObject } from "react";
 import {
   CLIENT_MCP_PROJECT,
   EC_PLATFORM_PROJECTS,
@@ -23,8 +23,16 @@ interface UseProjectInitializationArgs {
   fs: FileSystemProvider;
   dispatch: Dispatch<AppAction>;
   currentProject: Project | null;
-  /** `selectFile` from `useFileSelection` — invoked with the project's `index.krs` on switch. */
-  selectFile: (path: string) => Promise<unknown>;
+  /**
+   * `selectFile` from `useFileSelection` — invoked with the project's `index.krs` on switch,
+   * or with the boot's file and `index.krs` as the fallback when it cannot be read.
+   */
+  selectFile: (path: string, fallback?: string) => Promise<unknown>;
+  /**
+   * The file the boot's URL hash names (`useProjectNavigation`), opened by
+   * the boot's switch instead of `index.krs` (#3598).
+   */
+  bootFile?: RefObject<string | null>;
 }
 
 const PASTE_COMPARE_FILE = ".karasu-paste-compare.krs";
@@ -62,7 +70,9 @@ async function cleanupPasteCompareTempFiles(
  *    done.
  * 2. **On project switch**: persist `currentProject.id` to localStorage so
  *    the next session can restore it, and auto-select the project's
- *    `index.krs` as the active editor file.
+ *    `index.krs` as the active editor file. The boot's switch opens the file
+ *    the URL hash names instead (#3598), so the file a deep link restores is
+ *    the first one to land and nothing opens over it afterwards.
  *
  * It reports whether this boot seeded the defaults, which is the app's only
  * reliable sign of a first visit: the first-run Welcome keys on it (#3565).
@@ -77,6 +87,7 @@ export function useProjectInitialization({
   dispatch,
   currentProject,
   selectFile,
+  bootFile,
 }: UseProjectInitializationArgs): { seededDefaults: boolean } {
   const [seededDefaults, setSeededDefaults] = useState(false);
   // Guards against re-seeding when the effect runs twice (React StrictMode
@@ -153,12 +164,19 @@ export function useProjectInitialization({
     })();
   }, [pm, fs, dispatch]);
 
-  // On project switch: persist to localStorage + auto-select index.krs.
+  // On project switch: persist to localStorage + auto-select index.krs. The
+  // boot's file is handed over rather than read back from the URL, which a
+  // child's effect may already have rewritten in the same commit.
+  const booted = useRef(false);
   useEffect(() => {
     if (!currentProject) return;
     localStorage.setItem(LAST_PROJECT_KEY, currentProject.id);
-    void selectFile(`${currentProject.rootPath}/index.krs`);
-  }, [currentProject, selectFile]);
+    const hashFile = booted.current ? null : bootFile?.current;
+    booted.current = true;
+    const index = `${currentProject.rootPath}/index.krs`;
+    // A boot file that exists but cannot be read leaves the editor on index.krs.
+    void (hashFile ? selectFile(hashFile, index) : selectFile(index));
+  }, [currentProject, selectFile, bootFile]);
 
   return { seededDefaults };
 }

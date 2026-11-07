@@ -1,15 +1,18 @@
 import type { Diagnostic, KrsEdge, KrsFile, KrsNode } from "../types/ast.js";
 import { edgeArrow } from "../types/ast.js";
 import type { SourceRange } from "../types/tokens.js";
+import { edgeBaseForm } from "../style/edge-endpoint-literal.js";
 
 /**
  * Compute the base portion of an edge's canonical ID — `<from><arrow><to>`
  * where arrow is `->` for sync edges and `-->` for async. This is the
- * fallback canonical ID used when no `authorId` is set.
+ * fallback canonical ID used when no `authorId` is set. An endpoint that
+ * `.krs.style` cannot read as one identifier is quoted (`a->"b->c"`), so the
+ * id is the selector that matches the edge and two edges with different
+ * endpoints never share it (#3480).
  */
 export function edgeBaseId(edge: KrsEdge): string {
-  const arrow = edgeArrow(edge.kind);
-  return `${edge.from}${arrow}${edge.to}`;
+  return edgeBaseForm(edge.from, edgeArrow(edge.kind), edge.to);
 }
 
 /**
@@ -61,7 +64,7 @@ export function assignEdgeCanonicalIds(edges: readonly KrsEdge[]): Diagnostic[] 
         diagnostics.push({
           severity: "warning",
           code: "ambiguous-edge-base",
-          params: { fromId: edge.from, toId: edge.to, arrow },
+          params: { fromId: edge.from, toId: edge.to, arrow, base: edgeBaseId(edge) },
           ...(edge.loc ? { loc: edge.loc } : {}),
         });
       }

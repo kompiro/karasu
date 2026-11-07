@@ -67,6 +67,8 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2317](2317-preview-toolbar-density.md) — プレビューの操作を 2 面に分ける — 図を変える操作はドリルパスの行、持ち出す操作はツールバー
 - [ADR-2461](2461-accent-ink-and-composited-contrast.md) — 色の上の文字は per-theme のインクで、半透明クロームの上の文字は合成後の色で判定する
 - [ADR-2535](2535-locale-ja-exact-subtag.md) — 日本語判定は主要サブタグの完全一致で行い、Windows の言語名だけを明示的に許す
+- [ADR-3598](3598-first-run-tour-resume.md) — 初回体験のツアーを localStorage の記録と入口の URL で再開し、deep link の復元は指すファイルを待つ
+- [ADR-3599](3599-first-run-step-completion.md) — 初回体験のツアーは、ステップが頼んだ操作をしたことを示すだけで、進むのは訪問者に任せる
 - [ADR-9009](9009-toolbar-icon-label.md) — ツールバーボタンはアイコン+テキストラベル必須
 - [ADR-9010](9010-memory-project-mode-unification.md) — MemoryMode と ProjectMode の統一 — Reducer + `KarasuPreviewColumn`
 - [ADR-9011](9011-editor-diagnostics-display.md) — Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ
@@ -200,8 +202,10 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3412](3412-workflow-actions-lockfile.md) — GitHub Actions の依存を actions.lock で固定し、検証を required check にする
 - [ADR-3421](3421-remove-copilot-gh-aw-workflows.md) — Copilot で推論する gh-aw の workflow を外し、個人の課金で動かせるまで戻さない
 - [ADR-3504](3504-low-adr-pr-without-draft.md) — Low の ADR の PR は draft を経ずに作り、ゲートはその create を 1 つの形だけ通す
+- [ADR-3514](3514-ready-gate-reads-pr-it-acts-on.md) — gh pr ready のゲートは --repo をそのまま渡して同じ PR を読み、base は PR の base コミットで判定する
 - [ADR-3571](3571-prd-as-issues.md) — PRD は docs/prd に置かず prd ラベルの Issue にし、展開した Epic をその sub-issue にする
 - [ADR-3575](3575-dependabot-triage-2026-11-02.md) — Dependabot トリアージ 2026-11-02：npm 8 件をすべて採用し、LSP 11 と SDK 1.x は ADR の assumptions を次の major に上げる差し替え PR で入れる
+- [ADR-3586](3586-dependabot-security-2026-11-03.md) — Dependabot security alert 2026-11-03（@azure/msal-node は ADR-3399 のとおり @azure/identity 4.14.1 への lock 更新で直し、glob と minimatch は修正版が新 major だけなので alert を open のまま保留する）
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -426,6 +430,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3022](3022-edge-label-disclosure.md) — edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は focus canvas で読む
 - [ADR-3026](3026-same-row-channel-route.md) — 同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す
 - [ADR-3027](3027-mutual-edge-pair-merge.md) — 見た目が同じ両方向の edge の組を、card を動かさずに両端に矢印のある 1 本の線で描く
+- [ADR-3036](3036-withheld-label-room.md) — 置けなかったラベルの分だけ、行間のチャネルと行内の隙間を開く（候補から選ぶ）
 - [ADR-3088](3088-channel-lane-order-by-turn.md) — 行間チャネルのレーンを、run がつながる縦線の向きで並べる
 - [ADR-3090](3090-crossing-marks-follow-edge-focus.md) — 交差マーク（ホップ・junction chip・trunk band）をエッジの減光に追随させる
 - [ADR-3132](3132-frame-bounded-channels.md) — ドリルダウンの最上段の上と最下段の下のチャネルを、枠の内側で測る
@@ -485,6 +490,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2810](2810-tpl-source-path-check-ownership.md) — TPL 本文のソースパス照合を `@kompiro/tpl-tools` へ移し、Required な `Check` から走らせる
 - [ADR-3169](3169-at-manual-items-before-merge.md) — 受け入れテストの手動項目は、マージ前に確かめられるものに限る
 - [ADR-3237](3237-opfs-fixture-origin-from-static-file.md) — OPFS fixture の origin は app の起動ではなく static file で得る
+- [ADR-3289](3289-tpl-index-daily-regeneration.md) — TPL の索引は PR に含めず、ADR の生成物と同じ毎日の再生成 PR で生成する
 - [ADR-3429](3429-synthetic-edge-style-fixtures.md) — 合成エッジのスタイル解決テストは、本物の受け渡しと同じ `extraEdges` で渡し、`.krs` から SVG までの柵と組にする
 - [ADR-9012](9012-app-testing-strategy.md) — `packages/app` のテスト戦略 — `@testing-library/react` + renderHook + ARIA
 
