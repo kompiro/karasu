@@ -6,8 +6,8 @@ import { expect, test } from "../fixtures/serve.js";
  *
  * Runs only in the `serve` project, against `karasu serve` over
  * `fixtures/serve-project/` (`scripts/start-serve.ts`). That project exists
- * only under `E2E_SERVE=1`, which the nightly sets. The API side of the same
- * cases is in `packages/cli/src/serve*.test.ts`.
+ * only under `E2E_SERVE=1`, which `e2e.yml` and the nightly set. The API side of
+ * the same cases is in `packages/cli/src/serve*.test.ts`.
  */
 
 const diagram = (page: Page) => page.locator(".app.serve-mode .preview-container svg");
