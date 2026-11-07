@@ -32,7 +32,9 @@ import { type GitFacts, parseRecord, verifyRecord } from "./local-review-record.
 import {
   checkTestChanges,
   closedIssueNumbers,
+  isRunnerConfig,
   isTestFile,
+  isTestInput,
   TEST_GLOBS,
   weakensTests,
 } from "./test-changes.ts";
@@ -1062,10 +1064,14 @@ function changedFiles(base: string, head: string): ChangedFile[] {
       isPackageJson(d.path) ||
       ADR_RECORD.test(d.path) ||
       AT_RECORD.test(d.path) ||
-      isTestFile(d.path)
+      isTestFile(d.path) ||
+      // Test helpers, runner configs and test inputs, for the test rules.
+      CODE_FILE.test(d.path) ||
+      isRunnerConfig(d.path) ||
+      isTestInput(d.path)
     ) {
-      f.before = gitShow(mergeBase, d.path);
-      f.after = gitShow(head, d.path);
+      f.before = d.status === "added" ? null : gitShow(mergeBase, d.path);
+      f.after = d.status === "deleted" ? null : gitShow(head, d.path);
     }
     return f;
   });
