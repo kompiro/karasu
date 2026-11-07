@@ -16,6 +16,7 @@ import { WelcomeDialog, type WelcomeChoice } from "./WelcomeDialog.js";
 import { TOURS, isStepDone, type TourId } from "./tour-steps.js";
 import { useGuidedScene, type PendingScene } from "./use-guided-scene.js";
 import { markWelcomeDismissed, shouldShowWelcome } from "./welcome-gate.js";
+import { isNamedAfterExample } from "./project-matches-example.js";
 import { readTourProject, writeTourProject } from "./tour-project.js";
 import { clearTourProgress, writeTourProgress } from "./tour-progress.js";
 import type { TourResume } from "./tour-resume.js";
@@ -143,14 +144,15 @@ export function FirstRunExperience({
   // The project a guide starts in, the way its Welcome entry says (#3600).
   // Design and Evolve open a new copy of their sample. Understand uses a Getting
   // Started that still says what the sample says, so a first visit does not get
-  // a second one; an edited one would make its text false, so it gets a new copy
-  // too, unless the visitor chose otherwise during the read.
+  // a second one, and a visitor who edited theirs does not get a new copy every
+  // time. An edited one would make its text false, so it gets a new copy, unless
+  // the visitor chose otherwise during the read.
   const resolveProject = useCallback(
     async (tour: TourId, run: number) => {
       if (tour !== "understand") {
         return { project: await openBundledExample(serviceSplit), unchanged: false };
       }
-      for (const candidate of projects.filter((p) => p.name === gettingStarted.name)) {
+      for (const candidate of projects.filter((p) => isNamedAfterExample(p, gettingStarted))) {
         if (await matchesExample(candidate, gettingStarted)) {
           return { project: candidate, unchanged: true };
         }

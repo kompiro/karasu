@@ -182,6 +182,21 @@ describe("where a guide starts (#3600)", () => {
     expect(readTourProgress()?.projectId).toBe("gs");
   });
 
+  it("Understand reuses an unedited copy it opened earlier, not a project of another name", async () => {
+    const earlier: Project = { ...gettingStarted, id: "gs-2", name: "getting-started (2)" };
+    const other: Project = { ...gettingStarted, id: "mine", name: "getting-started (work)" };
+    const open = openNever();
+    const matchesExample = vi.fn<(project: Project, example: ExampleProject) => Promise<boolean>>(
+      async (project) => project.id !== "gs",
+    );
+    setup(open, { projects: [gettingStarted, other, earlier], matchesExample });
+    chooseUnderstand();
+    await act(async () => {});
+    expect(open).not.toHaveBeenCalled();
+    expect(matchesExample.mock.calls.map(([project]) => project.id)).toEqual(["gs", "gs-2"]);
+    expect(readTourProgress()?.projectId).toBe("gs-2");
+  });
+
   it("Understand opens a new copy when no Getting Started matches, and does not navigate again", async () => {
     const fresh: Project = { ...gettingStarted, id: "gs-2", rootPath: "/projects/gs-2" };
     const open = vi.fn<(example: ExampleProject) => Promise<Project | null>>(async () => fresh);

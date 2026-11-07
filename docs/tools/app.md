@@ -90,9 +90,9 @@ three places to start:
   move on with **Next** when you are ready.
 - **Understand an existing system**: starts a four-step guided tour of the
   Getting Started project: the whole system, how it runs (Deploy view), who owns
-  what (Org view), and how to share what you found. It uses your Getting Started
-  while it still matches the sample, and otherwise opens a new copy, so your
-  edits stay as they are.
+  what (Org view), and how to share what you found. It uses a Getting Started
+  that still matches the sample, and otherwise opens a new copy, so your edits
+  stay as they are.
 - **Track architecture evolution**: opens the `service-split` sample as a new
   project and starts a four-step guided tour: the migration compared with today
   (diff mode), the migration marks in the model (`@migration_target`, `@planned`,

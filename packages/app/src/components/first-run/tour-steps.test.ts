@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { en, ja, type Translations } from "@karasu-tools/i18n";
 import {
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
@@ -135,3 +136,56 @@ describe.each(SAMPLES)("%s %s: what the steps name exists (TPL-3113)", (_lang, t
     expect(nodeIds(file)).toEqual(expect.arrayContaining(named));
   });
 });
+
+/**
+ * What the guides' text calls a node must be what the diagram calls it: a
+ * visitor looks for the name they just read. The ids are the sample's; the
+ * labels come from the model, so renaming one in either place fails here.
+ */
+type Labelled = { id: string; label?: string; children?: readonly Labelled[] };
+const labelsOf = (project: ExampleProject, path: string) => {
+  const file = project.files.find((f) => f.path === path);
+  const { systems, organizations } = Parser.parse(file?.content ?? "").value;
+  const labels = new Map<string, string>();
+  const walk = (nodes: readonly Labelled[]) => {
+    for (const node of nodes) {
+      labels.set(node.id, node.label ?? node.id);
+      walk(node.children ?? []);
+    }
+  };
+  walk(systems.flatMap((system) => system.children) as readonly Labelled[]);
+  walk(organizations.flatMap((organization) => organization.teams) as readonly Labelled[]);
+  return labels;
+};
+
+const GUIDE_TEXT_NAMES: [keyof Translations, "understand" | "evolve", string[]][] = [
+  ["firstRun.understand.system.body", "understand", ["ECommerce"]],
+  ["firstRun.understand.system.notice", "understand", ["Catalog", "Order"]],
+  [
+    "firstRun.understand.deploy.notice",
+    "understand",
+    ["ECommerce", "Notification", "Payment", "Inventory"],
+  ],
+  ["firstRun.understand.org.notice", "understand", ["notification", "Notification", "commerce"]],
+  ["firstRun.evolve.diff.notice", "evolve", ["BillingService", "Billing", "CommerceApp"]],
+  ["firstRun.evolve.marks.body", "evolve", ["BillingDB", "CommerceDB"]],
+  ["firstRun.evolve.remaining.notice", "evolve", ["BillingDB"]],
+];
+
+describe.each([
+  ["ja", ja, GETTING_STARTED_PROJECT, SERVICE_SPLIT_PROJECT],
+  ["en", en, GETTING_STARTED_PROJECT_EN, SERVICE_SPLIT_PROJECT_EN],
+] as const)(
+  "%s: the guides' text uses the sample's labels (#3600)",
+  (_lang, phrases, gs, split) => {
+    it.each(GUIDE_TEXT_NAMES)("%s", (key, guide, ids) => {
+      const labels =
+        guide === "understand" ? labelsOf(gs, "index.krs") : labelsOf(split, "migrating.krs");
+      const text = String(phrases[key]);
+      const missing = ids
+        .map((id) => labels.get(id) ?? id)
+        .filter((label) => !text.includes(label));
+      expect(missing).toEqual([]);
+    });
+  },
+);

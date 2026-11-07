@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryFileSystemProvider, type ExampleProject } from "@karasu-tools/core";
-import { projectMatchesExample } from "./project-matches-example.js";
+import { isNamedAfterExample, projectMatchesExample } from "./project-matches-example.js";
 
 const example: ExampleProject = {
   name: "getting-started",
@@ -17,6 +17,19 @@ async function withFiles(files: Record<string, string>) {
   for (const [path, content] of Object.entries(files)) await fs.writeFile(`/p/${path}`, content);
   return fs;
 }
+
+describe("isNamedAfterExample (#3600)", () => {
+  it.each([
+    ["getting-started", true],
+    ["getting-started (2)", true],
+    ["getting-started (12)", true],
+    ["getting-started (work)", false],
+    ["getting-started-2", false],
+    ["service-split", false],
+  ])("%s: %s", (name, expected) => {
+    expect(isNamedAfterExample({ name }, example)).toBe(expected);
+  });
+});
 
 describe("projectMatchesExample (#3600)", () => {
   it("matches when every file of the sample is there unchanged", async () => {

@@ -89,7 +89,7 @@ export const firstRunEn: FirstRunTranslations = {
   "firstRun.welcome.evolve.badge": "Guided · 3 min",
   "firstRun.welcome.openEditor": "✎ Open the editor",
   "firstRun.welcome.footnote":
-    "No account or install needed. Samples open as new projects, and your own projects stay as they are.",
+    "No account or install needed. Guides use sample projects, and your own work stays as it is.",
   "firstRun.tour.ariaLabel": "Guided tour",
   "firstRun.tour.progress": ({ current, total }) => `${current} / ${total}`,
   "firstRun.tour.progressLabel": "Tour progress",
@@ -139,7 +139,7 @@ export const firstRunEn: FirstRunTranslations = {
   "firstRun.understand.org.title": "See who owns what",
   "firstRun.understand.org.body": "The Org view shows the same system by who owns it.",
   "firstRun.understand.org.notice":
-    "The Notification team owns nothing here: the Notification service belongs to the Commerce team.",
+    "The Notification team owns nothing here. In the System view, the Notification service shows who does: the Commerce team.",
   "firstRun.understand.done":
     "You have read a system from three sides with karasu. Next, model your own system and see what it tells your team.",
   "firstRun.evolve.diff.title": "Compare the migration with today",
@@ -179,7 +179,7 @@ export const firstRunJa: Partial<FirstRunTranslations> = {
   "firstRun.welcome.evolve.badge": "ガイド付き · 3 分",
   "firstRun.welcome.openEditor": "✎ エディタを開く",
   "firstRun.welcome.footnote":
-    "アカウントもインストールも不要です。サンプルは新しいプロジェクトとして開き、既存のプロジェクトはそのまま残ります。",
+    "アカウントもインストールも不要です。ガイドはサンプルのプロジェクトで進み、自分の作業はそのまま残ります。",
   "firstRun.tour.ariaLabel": "ガイドツアー",
   "firstRun.tour.progress": ({ current, total }) => `${current} / ${total}`,
   "firstRun.tour.progressLabel": "ツアーの進み具合",
@@ -220,7 +220,7 @@ export const firstRunJa: Partial<FirstRunTranslations> = {
   "firstRun.understand.system.title": "システム全体を見る",
   "firstRun.understand.system.body":
     "1 枚の図で、誰がシステムを使い、何でできているかが分かります。ECサイトをクリックして、中にあるドメインを見てください。",
-  "firstRun.understand.system.notice": "商品カタログと注文は互いに依存しています。",
+  "firstRun.understand.system.notice": "商品カタログと受注は互いに依存しています。",
   "firstRun.understand.deploy.title": "どう動いているかを見る",
   "firstRun.understand.deploy.body":
     "Deploy ビューは、同じシステムを動かし方で見せます。何を、どこで動かしているかが分かります。",
@@ -229,7 +229,7 @@ export const firstRunJa: Partial<FirstRunTranslations> = {
   "firstRun.understand.org.title": "誰が持っているかを見る",
   "firstRun.understand.org.body": "Org ビューは、同じシステムを持ち主で見せます。",
   "firstRun.understand.org.notice":
-    "通知チームはここでは何も持っておらず、通知サービスはコマースチームのものです。",
+    "通知チームはここでは何も持っていません。System ビューの通知サービスを見ると、持っているのはコマースチームです。",
   "firstRun.understand.done":
     "karasu でシステムを 3 つの面から読みました。次は、自分のシステムをモデル化して、チームに何が見えるかを確かめてください。",
   "firstRun.evolve.diff.title": "移行を今のシステムと比べる",

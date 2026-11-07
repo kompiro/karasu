@@ -119,6 +119,13 @@ test.describe("AT-3600 Understand an existing system", () => {
 
     await projects(page).selectOption("gs");
     await expect(node(page, "Api")).toBeVisible();
+
+    // The copy is unedited, so a second Understand goes back to it.
+    await runCommand(page, "Show Welcome");
+    await page.getByRole("button", { name: UNDERSTAND }).click();
+    await sceneLanded(page, 1);
+    await expect(node(page, "ECommerce")).toBeVisible();
+    await expect(copies(page, /getting-started/)).toHaveCount(2);
   });
 
   test("a reload on step 2 comes back to the same guide and step", async ({ page, opfs }) => {

@@ -157,10 +157,11 @@
   > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `compares the migration with today, reads the marks, compares the target, and ends on sharing`
   > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `Skip on the target diff ends the tour and leaves diff mode`
 
-- [x] AT-AB: Understand は Getting Started がサンプルと同じならそれを使い、編集されていれば新しいコピーを開く。編集されたプロジェクトは残る。ファイルが読めなければ同じでないものとして扱い、読むあいだに Open the editor を選べばガイドは始まらない
+- [x] AT-AB: Understand は Getting Started（前に開いたコピーを含む）がサンプルと同じならそれを使い、どれも編集されていれば新しいコピーを開く。編集されたプロジェクトは残る。ファイルが読めなければ同じでないものとして扱い、読むあいだに Open the editor を選べばガイドは始まらない
 
   > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `opens a new copy when Getting Started was edited, leaving the edited one as it is`
   > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Understand navigates to a matching Getting Started that is not open`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Understand reuses an unedited copy it opened earlier, not a project of another name`
   > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Understand opens a new copy when no Getting Started matches, and does not navigate again`
   > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `drops an Understand the visitor chose the editor over while reading (TPL-1534)`
   > ✅ Automated — `packages/app/src/components/first-run/project-matches-example.test.ts` › `does not match when a file is missing or cannot be read`
@@ -200,12 +201,13 @@
   > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(en) Evolve: keeps each step's node clear of the panel, with no text overflowing`
   > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(ja) Evolve: keeps each step's node clear of the panel, with no text overflowing`
 
-- [x] AT-AI: 各ガイドの気づきがサンプルで成り立っている（en / ja）
+- [x] AT-AI: 各ガイドの気づきがサンプルで成り立っていて、文がノードを図と同じ名前で呼ぶ（en / ja）
 
   > ✅ Automated — `packages/core/src/examples.test.ts` › `system: Product Catalog and Orders depend on each other`
   > ✅ Automated — `packages/core/src/examples.test.ts` › `deploy: only EC Site and Notification are run, Payment and Inventory are external`
   > ✅ Automated — `packages/core/src/examples.test.ts` › `org: the Notification team owns nothing, and the Commerce team owns the Notification service`
   > ✅ Automated — `packages/core/src/examples.test.ts` › `evolve, what is left: the billing tables move to Billing Database`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `%s`
 
 ## 手動確認
 
