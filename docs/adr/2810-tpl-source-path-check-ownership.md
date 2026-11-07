@@ -9,6 +9,7 @@ related_to:
   - ADR-1357
   - ADR-2687
   - ADR-1192
+  - ADR-3486
 scope:
   packages: []
   concerns: [ci]
