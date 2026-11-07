@@ -152,7 +152,13 @@ export function FirstRunExperience({
       if (tour !== "understand") {
         return { project: await openBundledExample(serviceSplit), unchanged: false };
       }
-      for (const candidate of projects.filter((p) => isNamedAfterExample(p, gettingStarted))) {
+      // The open one first: moving away from it would be for nothing.
+      const candidates = projects
+        .filter((p) => isNamedAfterExample(p, gettingStarted))
+        .sort(
+          (a, b) => Number(b.id === openProjectId.current) - Number(a.id === openProjectId.current),
+        );
+      for (const candidate of candidates) {
         if (await matchesExample(candidate, gettingStarted)) {
           return { project: candidate, unchanged: true };
         }

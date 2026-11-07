@@ -197,6 +197,16 @@ describe("where a guide starts (#3600)", () => {
     expect(readTourProgress()?.projectId).toBe("gs-2");
   });
 
+  it("Understand stays in the open copy when another unedited one comes first", async () => {
+    const open2: Project = { ...gettingStarted, id: "gs-2", name: "getting-started (2)" };
+    const navigateToProject = vi.fn<(project: Project) => void>();
+    setup(openNever(), { projects: [gettingStarted, open2], open: open2, navigateToProject });
+    chooseUnderstand();
+    await act(async () => {});
+    expect(navigateToProject).not.toHaveBeenCalled();
+    expect(readTourProgress()?.projectId).toBe("gs-2");
+  });
+
   it("Understand opens a new copy when no Getting Started matches, and does not navigate again", async () => {
     const fresh: Project = { ...gettingStarted, id: "gs-2", rootPath: "/projects/gs-2" };
     const open = vi.fn<(example: ExampleProject) => Promise<Project | null>>(async () => fresh);
