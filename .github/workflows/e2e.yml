@@ -17,9 +17,9 @@ name: E2E
 # core), the CLI the `serve` project builds and starts with its workspace
 # dependencies (`packages/cli/package.json`: skills, core and i18n; #3661), and
 # the repo files specs load from disk (`examples/`, e.g. at-1646 opens every
-# gallery example): a change to any of them alone must start the suite too. Root build config other than `package.json` (e.g. `tsconfig.json`)
-# is left out; the Typecheck and Build steps of `ci.yml`'s Check job catch a
-# break there.
+# gallery example): a change to any of them alone must start the suite too.
+# Root build config other than `package.json` (e.g. `tsconfig.json`) is left
+# out; the Typecheck and Build steps of `ci.yml`'s Check job catch a break there.
 on:
   pull_request:
     branches: [main]
