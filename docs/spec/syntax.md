@@ -1031,7 +1031,7 @@ be moved, and names where the target is declared. Anchoring is what keeps every
 accepted form drawable: a fragment resolving inside the declaring system would
 name a node no ghost frame can hold, and the edge would land on no view.
 
-A relation inside an `entity` block is not judged here — the entity view
+A qualified relation inside an `entity` block is not judged here — the entity view
 resolves those against the domains of one system and draws the foreign entity
 as a ghost.
 
@@ -1041,8 +1041,12 @@ further; a multi-match uniform in (kind, depth) is intentional broadcast and
 stays silent. Two `system` blocks sharing an id in one file are not merged, so
 one anchored path can genuinely name two nodes.
 
-An endpoint that resolves nowhere is a different case, reported as
-`unresolved-edge-endpoint` (bare) or `cross-system-ref-unresolved` (qualified).
+An endpoint that resolves nowhere is a different case. A bare one is reported as
+`unresolved-edge-endpoint`, and a qualified one on a `system`-scope edge as
+`cross-system-ref-unresolved`, unless its first segment is an `[external]` child of
+that system. A qualified one declared inside a `service`,
+`domain` or `entity` is not reported today
+([#3655](https://github.com/kompiro/karasu/issues/3655)).
 All of these diagnostics are catalogued in the
 [diagnostics & rules reference](diagnostics.md).
 
