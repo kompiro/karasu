@@ -14,7 +14,7 @@ related_to:
   - ADR-3169
 assumptions:
   - "grep: tpl.config.json :: \"checklistHeading\": \"チェックリスト\""
-  - "grep: package.json :: --source-prefix \\.github"
+  - "grep: tpl.config.json :: \"sourcePrefixes\": \\[.*\"\\.github\""
   - "grep: .github/workflows/tpl-review.yml :: --config tpl\\.config\\.json"
   - "grep: docs/test-perspectives/README.md :: ### チェックリスト項目の印"
 ---
