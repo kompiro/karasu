@@ -12,6 +12,7 @@ related_to:
   - ADR-3289
   - ADR-2687
   - ADR-3169
+  - ADR-3486
 assumptions:
   - "grep: tpl.config.json :: \"checklistHeading\": \"チェックリスト\""
   - "grep: tpl.config.json :: \"sourcePrefixes\": \\[.*\"\\.github\""
