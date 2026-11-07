@@ -14,7 +14,7 @@
 PR の段階はすでに機械が決めている（`scripts/review/tier.ts`）。しかし Low の PR を実際にマージまで運ぶのは Claude のセッションで、次の 3 点がそこに残っている。
 
 - **Claude が手順を読んで `gh pr merge --auto` を実行し、auto mode の分類器がそれを許す必要がある。** 手元の記録（この環境に残る transcript のみ）では、128 回のうち 3 回が拒否された。理由は `Merge Without Review` が 1 回、`Unrequested Commit in a Connected App` が 2 回である。#3529 は作成の 6 秒後に拒否され、マージまで約 7 時間かかった。
-- **native の auto-merge は required check しか待たない。** `Review tier` はまだ required ではない（#3364）ので、この check を待たずにマージしうる。実際に #3386 は、最後の `Review tier` が失敗した 16 秒後にマージされた（失敗の理由は調べていない）。
+- **native の auto-merge は required check しか待たない。** `Review tier` はまだ required ではない（#3364）ので、この check を待たずにマージしうる。実際に #3386 は、最後の `Review tier` が失敗した 16 秒後にマージされた（Low が通さない Major の却下の記録と、対応欄の形式の誤りで落ちていた）。
 - **`Review tier` は PR 側の workflow ファイルで動く**（#3363）。workflow を書き換えた PR は Low にならないので、Claude の手順ではこの経路に届かないが、守っているのは手順である。
 
 ADR-3286 の導入後にマージした Low の PR は、2026-11-07 の集計で 39 本（うち routine の再生成が 7 本）で、作成からマージまでの中央値は 1.2 分である。10 分を超えたのは 4 本で、#3529 のほかに #3387・#3497 は draft を外すのが遅れ、#3425 は作成後にコミットを足している（遅れた理由までは調べていない）。ふだんの流れは速いので、解きたいのは速さではなく、マージがセッションの振る舞いに依存していることである。
@@ -107,7 +107,7 @@ main に固定した workflow が `risk: low` の open な PR を毎回すべて
 | 権限の幅 | Contents・Pull requests の write。`workflows` を渡さない | 同じ | job の `permissions` |
 | マージの名義 | `<app>[bot]`。Low の経路を計測で分けられる（#3380） | kompiro。人のマージと見分けられない | `github-actions[bot]` |
 | 準備 | kompiro が App を作り、install し、鍵を置く | kompiro が PAT を作って置く | なし |
-| 主な弱み | 鍵の管理 | 期限が切れると止まる | push の workflow を足したときに列挙から漏れる。`deploy.yml` のような無条件の workflow の扱いも別に要る |
+| 主な弱み | 鍵の管理（漏れたときの範囲は「未解決の問い」） | 期限が切れると止まる。漏れたときの範囲は N1 と同じ | push の workflow を足したときに列挙から漏れる。`deploy.yml` のような無条件の workflow の扱いも別に要る |
 
 ### 起動の仕方（案1を採る場合）
 
@@ -157,13 +157,13 @@ merge と notify は互いに待たない。judge を失敗にすると `needs` 
 2. `risk:` のラベルがちょうど `risk: low` の 1 つである
 3. main の `tier.ts check --pr <n> --head <sha>` が通る。`--head` は新しく足すフラグで、PR の `headRefOid` が違えば、push が入っただけなので待ちとして扱う。差分が Low であること（base 側の分類器）、作成者が信頼リストにいること、記録が HEAD を覆っていることはここで確かめる。作業ツリーは main のままで、PR のファイルをディスクに置かず、実行もしない。`review-tier.yml` の「base に分類器が無ければ head のものを使う」fallback は持ち込まない
 4. ruleset の required check が head の SHA で成功している。今は `Review tier` が ruleset に無いので見ず、#3364 の後は同じ扱いで数える（条件 3 が同じプログラムを main から実行するので、ここで頼らない）。required でない check（preview など）は見ない。数え方は次のとおりで、`judgeChecks` を拡張するか別に書く
-   - workflow ごとに最新の結果を 1 つ取り、そのすべてが `success` であることを求める。`Check` は 3 つの workflow が出すので、名前で最新だけを取ると本物の失敗を隠す
+   - workflow ごとに最新の結果を 1 つ取り、そのすべてが `success` であることを求める。`Check` は 3 つの workflow が出すので、名前で最新だけを取ると本物の失敗を隠す。新旧は run の id で決める。`filter=latest` は draft の run と ready の run を 1 つに畳まず（#3666）、時刻は前後することがある（#3472 は `started_at` で並べると逆になる）
    - `skipped`・`cancelled`・`neutral` は通さない。docs とコードが混ざった PR では本物の workflow と skip の stub の両方が走るので、本物が draft の run の `skipped` で終わっても stub の `success` が残る（#3161 の head で確かめた。TPL-2643）。`skipped` を結果から外すだけではこの PR がマージされる。パスの filter で本物の workflow が起動しない PR には run そのものが無いので、この規則に当たらない
 5. `mergeable` が true である
 
 条件 3 が見る記録は自己申告で、形式と鮮度しか確かめない。条件 4 は、workflow を書き換えられる書き込み権限の持ち主からは守れない（同じ repo のブランチの workflow は `checks: write` を要求して、別の commit に check run を作れる）。ruleset の required check も同じ前提で動いているので、本設計で弱くなるわけではない。
 
-### 判定の 3 つの結果
+### 判定の結果
 
 | 結果 | 例 | 動き |
 | --- | --- | --- |
@@ -225,8 +225,10 @@ PR ごとに拒否を先に判定し、待ちより優先する。コンフリ�
 **スライス A で確かめる。**
 
 - judge の `GITHUB_TOKEN` で ruleset の required check を読めるか（ADR-3416 は routine の名義でだけ確かめた）
-- 条件 4 に必要な「check run から workflow へ」の対応。`check_suite.id` から `actions/runs` の `path` を引くので `actions: read` が要る見込み。同じ workflow のやり直しが `filter=latest` で 1 つに畳まれるかも見る
-- 条件 4 で実際に `stalled` になる PR がどれだけあるか
+- 条件 4 に必要な「check run から workflow へ」の対応。`check_suite.id` から `actions/runs` の `path` を引くので `actions: read` が要る見込み。同じ run のやり直し（re-run）の見え方も見る
+- 条件 4 で実際に `stalled` になる PR がどれだけあるか。`gh pr ready` を push の直後に実行すると本物の run が `cancelled` や `skipped` で終わることがあり、そのときは手で re-run するまで止まる（安全な側に倒れる）。下の試算の範囲では 0 回だった
+
+条件 4 は過去の PR で試算した（2026-11-07）。マージ済みの Low 40 本のうち 34 本が通り、通らない 6 本は、`verify-lockfile.yml` が入る前の 5 本（新しい PR には当たらない）と base が spike ブランチの #3438 だった。ただしこの 40 本には `ci.yml` や `e2e.yml` が走ったものが無いので、Low 以外の 60 本にも当てて、`skipped` と `success` が並ぶ `Check` を含めて読めることを確かめた（59 本が通り、1 本は #3472 の時刻の逆転で、id で並べれば通る）。条件 3 は各 PR の最新の `Review tier` で代用し、main の `tier.ts` では再実行していない。
 
 **スライス B で確かめる。**
 
@@ -259,3 +261,7 @@ PR ごとに拒否を先に判定し、待ちより優先する。コンフリ�
 ## 未解決の問い
 
 1. **マージの名義と、新しい鍵を足すこと。** 案は N1（GitHub App）。ADR-3416 が避けた鍵を足す判断で、App の作成は kompiro の作業になる。kompiro の判断を待つ。
+
+   判断の材料として、鍵が漏れたときに届く範囲を書いておく（設定からの推論で、試していない）。Contents と Pull requests の write があれば、workflow 以外のファイルをブランチに commit して PR を開き、required check が通ればマージできる。approval は 0 で、`tier.ts` は ruleset に入っていないので、Low に限らない。`scripts/review/**` やビルドのスクリプトも入る。`deploy.yml` は repo のコードをビルドする job の後のステップで `CLOUDFLARE_API_TOKEN` を受け取るので、`workflows` の権限を渡さなくても、コードがこの secret に届く。
+
+   ADR-3416 が却下した bypass の鍵と違い、CI は通らないといけないが、CI は内容を Low に絞らない。起こりやすさを下げるのは、鍵を environment で絞った merge job だけに置き、その job が checkout しないことである。この範囲は N1 でも N2 でも同じで、N3 以外の案1と案2に共通する。受け入れられないなら案3か案4に戻る。routine のユーザーの名義のトークンも同じ範囲に届くので（ADR-3416 の代償）、新しい範囲ではなく、届く経路が 1 つ増える。
