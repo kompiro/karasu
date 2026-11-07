@@ -152,7 +152,7 @@ Active TPLs grouped by `topic`, then deprecated ones.
 - [TPL-1468](TPL-1468-overlay-z-index-scale.md) — overlay/portal surface の重なり順はマジックナンバーではなく文書化された z-index スケールから選ぶ (#1468) · unguarded 0/4
 - [TPL-1530](TPL-1530-persistent-store-init-and-mutation-resilience.md) — 永続ストアの初期化・更新は fail-closed に — RMW は直列化し、not-found と read error を区別する (#1530, #1531) · unguarded 0/6
 - [TPL-1534](TPL-1534-cancel-stale-async-effect-results.md) — 非同期 effect は入力変化・unmount で in-flight 結果を破棄してから publish する (#1534, #1540) · unguarded 0/4
-- [TPL-1535](TPL-1535-edit-and-watch-same-store.md) — 自分で書き込みつつ監視するストアでは、書き込みを直列化し自己エコーと非同期 read レースを処理する (#1535, #1536) · unguarded 0/6
+- [TPL-1535](TPL-1535-edit-and-watch-same-store.md) — 自分で書き込みつつ監視するストアでは、書き込みを直列化し自己エコーと非同期 read レースを処理する (#1535, #1536) · unguarded 0/7
 - [TPL-1537](TPL-1537-react-passive-event-preventdefault-noop.md) — React の synthetic onWheel / onTouchMove では preventDefault が no-op になる (#1537) · unguarded 0/5
 - [TPL-2019](TPL-2019-i18n-key-naming-max-4-segments.md) — i18n key は <feature>.<sub-feature?>.<element>.<state> の最大 4 段命名規約に従う (#2019) · guarded 2/2, judgment 2
 - [TPL-2316](TPL-2316-declarable-construct-reachable-from-reference.md) — 宣言できる構文は Reference から到達できる — 半分だけ載っている状態を作らない (#2316) · partial 1/3, judgment 3
@@ -174,7 +174,7 @@ Active TPLs grouped by `topic`, then deprecated ones.
 - [TPL-2655](TPL-2655-sliding-expiry-needs-an-unrenewable-cap.md) — 更新で延びる期限には、更新されない上限を併置する — 上限はストアが強制できないので読み取り時に確かめる (#2655) · unguarded 0/3
 - [TPL-2909](TPL-2909-pending-items-need-stable-ids-not-a-moving-window.md) — 処理待ちの項目は、動く窓で絞り込まず項目自身の安定 id で持つ (#2909) · unguarded 0/5
 - [TPL-2995](TPL-2995-purge-must-catch-writes-that-land-after-it.md) — 結果整合のストアで削除を約束したら、削除の後に届く書き込みも消えることを確かめる (#2995) · unguarded 0/1, judgment 6
-- [TPL-3385](TPL-3385-consumer-of-a-signal-the-producer-stops-emitting.md) — 外部サービスの出力を変える設定変更では、その出力を待つ側の判定を新しい形の fixture で確かめる (#3385) · unguarded 0/1, judgment 3
+- [TPL-3385](TPL-3385-consumer-of-a-signal-the-producer-stops-emitting.md) — 外部サービスの出力の形が変わっても、その出力を待つ側の判定が気づけるようにする (#3385, #3657) · unguarded 0/2, judgment 3
 - [TPL-3470](TPL-3470-timestamp-order-needs-a-tie-break.md) — 時刻で並べる一覧は、同じ時刻の項目にも本当の順序を与える tie-break を持つ (#3470) · unguarded 0/3, judgment 2
 
 ### cli
