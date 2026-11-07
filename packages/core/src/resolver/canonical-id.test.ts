@@ -31,6 +31,22 @@ describe("edgeBaseId", () => {
   it("uses --> for async edges", () => {
     expect(edgeBaseId(edge({ from: "A", to: "B", kind: "async" }))).toBe("A-->B");
   });
+
+  // #3480: the base is written into `.krs.style` as `edge#<base>`, so an
+  // endpoint that is not one style identifier is quoted there.
+  it("quotes an endpoint that is not one style identifier", () => {
+    expect(edgeBaseId(edge({ from: "a b", to: "c" }))).toBe('"a b"->c');
+    expect(edgeBaseId(edge({ from: "a", to: "b->c" }))).toBe('a->"b->c"');
+    expect(edgeBaseId(edge({ from: "a-", to: "c" }))).toBe('"a-"->c');
+    expect(edgeBaseId(edge({ from: "#abc", to: "c" }))).toBe('"#abc"->c');
+  });
+
+  it("keeps the plain join for identifier endpoints", () => {
+    expect(edgeBaseId(edge({ from: "PlaceOrder", to: "OrderDB.OrderTable" }))).toBe(
+      "PlaceOrder->OrderDB.OrderTable",
+    );
+    expect(edgeBaseId(edge({ from: "face", to: "db" }))).toBe("face->db");
+  });
 });
 
 describe("assignEdgeCanonicalIds", () => {
@@ -66,8 +82,28 @@ describe("assignEdgeCanonicalIds", () => {
     expect(diags[0]).toMatchObject({
       severity: "warning",
       code: "ambiguous-edge-base",
-      params: { fromId: "A", toId: "B", arrow: "->" },
+      params: { fromId: "A", toId: "B", arrow: "->", base: "A->B" },
     });
+  });
+
+  // #3480: both bases were the plain join `a->b->c`, so two edges with
+  // different endpoints were reported as one ambiguous pair.
+  it("keeps endpoints containing -> apart", () => {
+    const a = edge({ from: "a->b", to: "c" });
+    const b = edge({ from: "a", to: "b->c" });
+    const diags = assignEdgeCanonicalIds([a, b]);
+    expect(diags).toEqual([]);
+    expect(a.canonicalId).toBe('"a->b"->c');
+    expect(b.canonicalId).toBe('a->"b->c"');
+  });
+
+  it("keeps a trailing - apart from the async arrow", () => {
+    const sync = edge({ from: "a-", to: "c" });
+    const async = edge({ from: "a", to: "c", kind: "async" });
+    const diags = assignEdgeCanonicalIds([sync, async]);
+    expect(diags).toEqual([]);
+    expect(sync.canonicalId).toBe('"a-"->c');
+    expect(async.canonicalId).toBe("a-->c");
   });
 
   it("clears canonicalId silently when two edges share an authorId (project-wide pass owns the diagnostic)", () => {

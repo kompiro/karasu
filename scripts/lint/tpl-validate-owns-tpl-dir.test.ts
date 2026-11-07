@@ -11,10 +11,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 //
 // Two things can silently undo this, and neither shows up as a red build:
 //
-//   1. `--source-prefix` disappears from the `tpl:validate` script. `tpl
-//      validate` still passes — it just stops reading bodies at all — so the
-//      TPL directory would be checked by nobody, since ADR-2648's guard no
-//      longer scans it either.
+//   1. The source prefixes disappear from what `tpl:validate` reads (since
+//      #3486, `sourcePrefixes` in `tpl.config.json`; before, `--source-prefix`
+//      flags on the script). `tpl validate` still passes — it just stops
+//      reading bodies at all — so the TPL directory would be checked by nobody,
+//      since ADR-2648's guard no longer scans it either.
 //   2. The check moves back to a workflow that is not the Required `Check`
 //      context. `tpl-validate.yml` was exactly that: its job was named `TPL
 //      validate` and its own header said "not a required check yet". A check
@@ -43,29 +44,14 @@ interface ValidateResult {
 }
 
 /**
- * The `--source-prefix` flags of the `tpl:validate` script, so these runs
- * check the same prefixes CI does: a guard under `.github` (#3488) is reported
- * as outside every prefix when one is missing here.
- */
-function sourcePrefixArgs(): string[] {
-  const scripts = (
-    JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as {
-      scripts: Record<string, string>;
-    }
-  ).scripts;
-  return [...scripts["tpl:validate"].matchAll(/--source-prefix\s+(\S+)/g)].flatMap((m) => [
-    "--source-prefix",
-    m[1],
-  ]);
-}
-
-/**
- * Runs the validator from the repo root, because `--source-prefix` resolves
- * paths against the working directory — a fixture run from its own temp
- * directory would report every real path as missing.
+ * Runs the validator from the repo root with the repo's own config, so these
+ * runs check the same prefixes CI does: a guard under `.github` (#3488) is
+ * reported as outside every prefix when one is missing. The root matters
+ * because source paths resolve against the working directory — a fixture run
+ * from its own temp directory would report every real path as missing.
  */
 function runTplValidate(tplDir: string): ValidateResult {
-  const run = spawnSync(TPL_CLI, ["validate", "--tpl-dir", tplDir, ...sourcePrefixArgs()], {
+  const run = spawnSync(TPL_CLI, ["validate", "--config", "tpl.config.json", "--tpl-dir", tplDir], {
     cwd: REPO_ROOT,
     encoding: "utf8",
   });
@@ -169,17 +155,20 @@ describe("tpl-tools owns the source paths named in TPL bodies", () => {
 
 describe("the check runs where it can stop a merge", () => {
   // Without the prefixes `tpl validate` still exits 0 — it just never opens a
-  // body. That is the silent half of this regression, so assert the flags
-  // rather than the command name.
-  it("passes the source prefixes from the tpl:validate script", () => {
+  // body. That is the silent half of this regression, so assert the prefixes
+  // rather than the command name. A `--source-prefix` flag on the script would
+  // replace the config's list, so the script must not carry one.
+  it("reads the source prefixes from tpl.config.json in the tpl:validate script", () => {
     const scripts = (JSON.parse(read("package.json")) as { scripts: Record<string, string> })
       .scripts;
+    const config = JSON.parse(read("tpl.config.json")) as { sourcePrefixes?: string[] };
 
-    expect(scripts["tpl:validate"]).toContain("--source-prefix packages");
-    expect(scripts["tpl:validate"]).toContain("--source-prefix scripts");
+    expect(scripts["tpl:validate"]).toContain("--config tpl.config.json");
+    expect(scripts["tpl:validate"]).not.toContain("--source-prefix");
+    expect(config.sourcePrefixes).toEqual(expect.arrayContaining(["packages", "scripts"]));
     // A `[guard: …]` may name a workflow when its step runs an external
     // executable (#3488); without this prefix that guard path goes unchecked.
-    expect(scripts["tpl:validate"]).toContain("--source-prefix .github");
+    expect(config.sourcePrefixes).toContain(".github");
   });
 
   // Without "checklistHeading" tpl-tools reads no item markers: every

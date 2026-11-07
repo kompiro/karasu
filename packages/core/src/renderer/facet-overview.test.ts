@@ -169,6 +169,22 @@ describe("buildFacetOverview", () => {
     ]);
   });
 
+  // #3480: the row is meant to be pasted into `edge#<id>`, so an endpoint that
+  // is not one style identifier comes out quoted.
+  it("quotes an edge endpoint that is not one style identifier", () => {
+    const overview = buildFacetOverview(
+      parse(`
+        facet pii { label "PII" }
+        system Shop {
+          service "Card Vault" {}
+          service Billing {}
+          "Card Vault" -> Billing { facets pii }
+        }
+      `),
+    );
+    expect(overview[0].members.map((m) => m.id)).toEqual(['"Card Vault"->Billing']);
+  });
+
   it("keeps two same-arrow edges in different scopes apart (TPL-1352)", () => {
     // The same reason node rows carry a path: an edge is identified by the
     // block that declares it, not by its arrow form alone.
