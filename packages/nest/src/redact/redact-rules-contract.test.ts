@@ -44,6 +44,11 @@ const FIXED_TEXT_BEFORE_SECRET = ["basic-auth-header"];
 const SMALL_BYTES = 64 * 1024;
 const LARGE_BYTES = SMALL_BYTES * 4;
 const NEGLIGIBLE_MS = 30;
+/** This test runs under Node; the package's types are for Workers, which have no `process`. */
+declare const process: {
+  cpuUsage(previous?: { user: number; system: number }): { user: number; system: number };
+};
+
 function growsSuperLinearly(unit: string, scan: (input: string) => void): boolean {
   // CPU time, so a busy machine cannot read as growth: on the wall clock a short
   // scan fits in one scheduler slice and a longer one gets preempted. The fastest
