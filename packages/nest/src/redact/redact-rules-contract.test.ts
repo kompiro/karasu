@@ -257,10 +257,12 @@ describe("the limits the timing fixes put on detection", () => {
     expect(redact(uri("oracle+cx_oracle")).text).not.toContain(password);
   });
 
-  it("redacts a password holding `@`, and not a query that looks like one", () => {
-    expect(redact("postgres://u:pa@ss@host/db").text).toBe(
-      "postgres://u:[REDACTED:connection-string-password]@host/db",
-    );
+  it("redacts a password holding `@`, `?` or `#`, and not a port before a query", () => {
+    for (const secret of ["pa@ss", "pa?ss", "pa#ss", "12345x?y"]) {
+      expect(redact(`postgres://u:${secret}@host/db`).text).toBe(
+        "postgres://u:[REDACTED:connection-string-password]@host/db",
+      );
+    }
     const query = "http://host:8080?x=a@b";
     expect(redact(query)).toEqual({ text: query, findings: [] });
   });
