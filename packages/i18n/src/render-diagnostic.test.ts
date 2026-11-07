@@ -309,7 +309,12 @@ const SAMPLES: SamplesByCode = {
   "ambiguous-edge-base": {
     severity: "warning",
     code: "ambiguous-edge-base",
-    params: { fromId: "OrderService", toId: "PaymentService", arrow: "->" },
+    params: {
+      fromId: "OrderService",
+      toId: "PaymentService",
+      arrow: "->",
+      base: "OrderService->PaymentService",
+    },
   },
 
   // ── Style parser ────────────────────────────────────────────────────────
@@ -535,7 +540,7 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "unresolved-table-ref": ["Order", "OrderDB", "orders"],
   "duplicate-edge-id": ["#checkout"],
   "duplicate-edge-label": ["places an order"],
-  "ambiguous-edge-base": ["OrderService->PaymentService"],
+  "ambiguous-edge-base": ["edge#OrderService->PaymentService"],
   "style-token-type-mismatch": ["Identifier", "Semicolon"],
   "expected-style-property-name": ["Colon"],
   "expected-semicolon-between-properties": ["color"],
