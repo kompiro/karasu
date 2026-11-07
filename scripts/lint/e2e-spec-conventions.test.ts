@@ -70,7 +70,8 @@ function blank(source: string, strings: boolean): string {
   const isRegexStart = (source_: string, index: number): boolean => {
     const next = source_[index + 1];
     if (next === "/" || next === "*") return false;
-    return /^$|[(,=:[!&|?{};\n]/.test(previousToken(index));
+    if (/\breturn\s*$/.test(source_.slice(Math.max(0, index - 12), index))) return true;
+    return /^$|[(,=:[!&|?{};>\n]/.test(previousToken(index));
   };
   const regexEnd = (source_: string, index: number): number => {
     let inClass = false;
@@ -234,9 +235,17 @@ describe("E2E spec conventions (TPL-1171, TPL-1608)", () => {
       expect(rulesIn('const r = /\\/api\\/*/;\nawait page.keyboard.type("x");')).toEqual([
         "raw-keystroke",
       ]);
-      expect(rulesIn('const n = a / b;\nawait page.keyboard.type("x"); // c / d')).toEqual([
+      expect(rulesIn('const f = () => /\\/api\\/*/;\nawait page.keyboard.type("x");')).toEqual([
         "raw-keystroke",
       ]);
+      expect(
+        rulesIn('function f() { return /\\/api\\/*/; }\nawait page.keyboard.type("x");'),
+      ).toEqual(["raw-keystroke"]);
+    });
+
+    it("does not take division for a regex", () => {
+      // Read as a regex, `/ page.keyboard.type("x") /` would be blanked.
+      expect(rulesIn('const n = a / page.keyboard.type("x") / b;')).toEqual(["raw-keystroke"]);
     });
 
     it("reports the line of the finding, comments counted", () => {
