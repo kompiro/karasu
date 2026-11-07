@@ -444,6 +444,7 @@ Don't aim for perfection — treat **reducing warnings one at a time** as the wo
 ## Further reading
 
 - Related guides: [Boundary Design](01-service-team-design.md) (design) / [Evolution & Migration](03-evolution.md) (change) / [Communicating Diagrams](05-communicating-diagrams.md) (style, legend, CI) / [Access Paths & Clients](04-access-paths.md)
+- Have an agent draft the model: [Reverse-engineering with an AI agent](reverse-engineering-with-ai.md)
 - Map of all guides: [`docs/guide/README.md`](README.md)
 - Precise syntax spec: [`docs/spec/syntax.md`](../spec/syntax.md)
 - Design philosophy (three faces, scoped glance, translate's asymmetry): [`docs/concepts.md`](../concepts.md)

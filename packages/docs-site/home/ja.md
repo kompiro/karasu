@@ -50,6 +50,7 @@ karasu（鴉）はアーキテクチャのためのテキストベース DSL で
 と [グルーピングと所属](examples/grouping-and-membership/) のサンプルを参照してください。
 
 - **[ガイド](guide/)** — サービス境界・チーム境界の設計、オンボーディング、進化。
+- **[リポジトリをリバースする](guide/reverse-engineering-with-ai/)**: コーディングエージェントに既存のコードベースのモデルを作らせる。
 - **[リファレンス](spec/syntax/)** — `.krs` / `.krs.style` の構文・タグ・アノテーション。
 - **[コンセプト](concepts/)** — karasu の設計思想。
 
