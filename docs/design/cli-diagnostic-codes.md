@@ -5,7 +5,7 @@
 - **関連**:
   - 引き金 Issue: [#3654](https://github.com/kompiro/karasu/issues/3654)
   - 発端の修正: [#3640](https://github.com/kompiro/karasu/issues/3640)（`reverse-architecture` skill の検証を `LC_ALL=C` + メッセージ本文の照合に変えた暫定対応）
-  - 関連 ADR: [ADR-1567](../adr/1567-rule-diagnostic-separation-and-catalog.md)（診断コードは安定 API）, [ADR-1417](../adr/1417-lsp-cli-i18n.md)（CLI のメッセージは locale に従う）, [ADR-2901](../adr/2901-karasu-authoring-skill.md)（skill の Step 0 は CLI の版の下限だけを照合する）
+  - 関連 ADR: [ADR-1567](../adr/1567-rule-diagnostic-separation-and-catalog.md)（診断コードは安定 API）, [ADR-1417](../adr/1417-lsp-cli-i18n.md)（CLI のメッセージは locale に従う）, [ADR-2901](../adr/2901-karasu-authoring-skill.md)（skill の Step 0 は CLI の版の下限だけを照合し、新しい CLI と古い skill の互換は CLI が持つ）
   - 関連 TPL: [TPL-3654](../test-perspectives/TPL-3654-cli-diagnostic-line-carries-code.md)（本 Design Doc で起こす）, [TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md), [TPL-2084](../test-perspectives/TPL-2084-skill-cli-command-refs-drift.md), [TPL-1417](../test-perspectives/TPL-1417-single-renderer-for-structured-messages.md), [TPL-2536](../test-perspectives/TPL-2536-locale-source-chain-completeness.md)
   - コード: `packages/cli/src/report-diagnostics.ts`, `packages/cli/src/compile-system-view.ts`, `packages/cli/src/diff.ts`, `packages/cli/src/lint-style.ts`, `packages/cli/src/tidy-style.ts`, `packages/cli/src/i18n.ts`
 
@@ -33,6 +33,7 @@
 
 ## 制約・前提
 
+- **stdout / stderr の形式は後方互換を保つ方針である**（`docs/release.md`「CLI の後方互換」、ADR-2901）。案1 と案2 はこの形式を変えるので、例外として扱うなら理由を記録する必要がある。
 - **skill と CLI は別々に更新される。** 消費者は 3 つある。公開中の 0.2.1（コードで grep する）、#3640 の版（行の接頭辞とメッセージの断片で読む。月次のトレインを挟んで本件より先に出れば利用者に届く）、利用者のスクリプト（`^Warning: ` など）。どのリリース順でも、grep が空になって停止条件を素通りする #3640 の失敗を起こしてはいけない。
 - **コードは翻訳しない。** 接頭辞 `Warning:` もすでに locale によらず英語である。
 - **`[code]` の無い行は「カタログの診断ではない」ことを意味する。** 引数の通知まで無理にコード化しない。
@@ -102,11 +103,14 @@ rustc の形で、コードの位置はメッセージの長さや改行に左�
 | メッセージからカタログを引ける | できる | できる | できない | 指定したときだけ |
 | `check` 以外のコマンドへ届く | 全部 | 全部 | 別途決める | 全部 |
 | 構造化された位置を取れる | できない | できない | できる | できない |
+| `docs/release.md` の後方互換の方針 | 例外が要る | 例外が要る | 触れない | 触れない |
 | 変更量 | 小 | 小 | 中 | 小 |
 
 ## 現時点の方針
 
 **案1 を採用する。** Issue の受け入れ条件（翻訳された文章を解析せずに、どの診断かを判別できる / skill の検証がそれを使う）を、新しい出力形式を増やさずに満たす。案1 も案2 も一部の消費者を黙って壊すので、壊す範囲で選ぶ。案2 が壊す接頭辞での読み方は、#3640 の版の skill と `Warning:` の形を文書で示してきた出力の読み方そのものである。案1 が壊す行末の固定は、repo の中ではテストにしか無い。案2 の利点（行の内容に左右されない）は行全体の正規化で得られる。
+
+**後方互換の方針の例外として扱う。** 方針の目的は、手元に残る古い skill とスクリプトを壊さないことである。案1 は接頭辞・位置・メッセージを保ったまま行末に足すだけで、公開中の 0.2.1 も main の skill も repo のスクリプトも行末を固定していない（確認済み）。壊れるのは、repo の外で行末を固定して読むスクリプトで、これは CHANGELOG で知らせる。案3 なら例外は要らないが、人が読む出力は変わらず、0.2.1 の grep も当たらない。
 
 案3 は却下ではなく見送る。位置やパラメータを構造で読みたい消費者が現れたら、`coverage` の前例に沿って足す。案1 のコードと矛盾しない。
 
@@ -115,7 +119,7 @@ rustc の形で、コードの位置はメッセージの長さや改行に左�
 1. カタログの診断を出す行は、末尾が ` [<code>]` で終わる。`<code>` は `DiagnosticParamsByCode` のキーか `WarningKind` のメンバーで、locale によらない。カタログの行の最後の語は CLI が足すコードで、メッセージの中の `[...]` とは位置で区別できる。
 2. その行は、位置を含めて全体で 1 行である。行の区切りと制御文字（C0、U+0085、U+2028、U+2029）をエスケープする。`\n`、`\r`、`\t` は 2 文字の形、それ以外は `\uXXXX` にする。
 3. 既存の接頭辞と位置の形は、コマンドごとに今のまま変えない。変わるのは行末と、2 のエスケープだけである。
-4. `[<code>]` の無い行はカタログの診断ではない。逆は成り立たない。カタログの外の行は 2 の約束の外で、利用者の文字列で終わると同じ形に見える（`karasu check 'nope [edge-source-mismatch]'`）。`check` / `render` のカタログの外の行に入る利用者の文字列は、実行者が渡した引数である（想定外の例外のメッセージを除く）。モデルの内容はカタログの行で届くので、固定した入口で実行する消費者にはこの形で足りる。引数まで疑う消費者が現れたら案3 を足す。
+4. `[<code>]` の無い行はカタログの診断ではない。例外は `karasu fmt` の `Cannot format: ... (<codes>)` で、コードを文中に書く形のまま残す。逆は成り立たない。カタログの外の行は 2 の約束の外で、利用者の文字列で終わると同じ形に見える（`karasu check 'nope [edge-source-mismatch]'`）。`check` / `render` のカタログの外の行に入る利用者の文字列は、実行者が渡した引数である（想定外の例外のメッセージを除く）。モデルの内容はカタログの行で届くので、固定した入口で実行する消費者にはこの形で足りる。引数まで疑う消費者が現れたら案3 を足す。
 
 ### 実装の指針
 
@@ -124,15 +128,19 @@ rustc の形で、コードの位置はメッセージの長さや改行に左�
 3. skill を更新する。到達状態は、`packages/skills/skills/**` が翻訳された文章を照合しないことである。`LC_ALL=C` を外すので、文章の断片を 1 つでも照合に残すと `ja` の locale で空振りする。判定はコードで行い、メッセージの内容はエージェントが locale のまま読む。skill がコードを書くときは、出力どおりの `` `[unresolved-edge-endpoint]` `` の形にする。`reverse-architecture` では次を直す。
    - Phase 4 step 2: `karasu check index.krs` を実行してコードで判定する形にし、`LC_ALL=C` と `Message contains` 列を外す。`Circular dependency detected` の行は `cyclic-dependency` に直す
    - Reached state: 「the CLI prints messages, not codes」と、`references unknown node` の断片を見る停止条件を、コードでの判定に直す
-   - Phase 3: 「the error `Duplicate node id`」は `[duplicate-node-id-parent]` に、英語の文章を引いた「a wall of ...」と「The infra message says ...」は意味の説明に直す。block と leaf のどちらが無いかはコードでは分からないので、エージェントがメッセージを読む
+   - Phase 1 step 5: 「the error `Duplicate node id`」は `` `[duplicate-node-id-parent]` `` に直す
+   - Phase 3: エッジの種類を書いた `` `[implicit]` `` は、下の lint がコードと読むので、バッククォートの形をやめる。英語の文章を引いた「a wall of ...」と「The infra message says ...」は意味の説明に直す。block と leaf のどちらが無いかはコードでは分からないので、エージェントがメッセージを読む
    - `render` を検証に使うと書いた箇所と、Step 0 が呼ぶコマンドの一覧に `check` を反映する
 
    `karasu-author` の「コードは出ない」という記述は、行末のコードでカタログを引く説明に直す。
 <!-- absent-path-next-line: the guard this design intends to add (#3654) -->
-4. drift のガードとして `scripts/lint/skill-diagnostic-codes.ts` を足す。公開する skill の、バッククォートで囲んだ `` `[code]` `` の形の語が `DiagnosticParamsByCode` / `WarningKind` に実在することを検査する。表か散文かは問わない。ヘッダの名前に頼らないので、新しい表や停止条件もそのまま対象になる。
+4. drift のガードとして `scripts/lint/skill-diagnostic-codes.ts` を足す。公開する skill の `SKILL.md` で、バッククォートで囲んだ `` `[code]` `` の形の語が `DiagnosticParamsByCode` / `WarningKind` に実在することを検査する。表か散文かは問わず、ヘッダの名前にも頼らない。
    - `lint:skill-cli-refs` と同じく pre-push と CI に載せ、glob に core の `types/ast.ts` と `types/warnings.ts` を足す。core だけの改名でも落ちるように、実際の skill を読む vitest の mirror も `ci.yml` で動かす
-   - `reverse-architecture` に `` `[code]` `` が 1 つも見つからない状態もテストで落とす
+   - 対象は `SKILL.md` だけである。同梱の reference は spec の写しで、`` `[external]` `` などのタグを書くので対象にしない
+   - タグを同じ形で書くと lint が落ちる。除外を設けると検査が弱まるので、失敗のメッセージで「この形はコード専用」と伝え、タグは別の書き方にする
+   - `reverse-architecture` にカタログのコードと一致する `` `[code]` `` が 1 つも無い状態もテストで落とす
    - `[` `]` の無い裸の語（`invalid-owns` など）は検査できない。判定に使うコードは `[code]` の形で書くと決め、説明の中の裸の語は対象にしない。TPL の項目もこの形に限って書く
+   - この lint が捕まえるのは、この形で書いたコードの実在だけである。文章の断片で照合する新しい行は検出できないので、手順 3 の到達状態はレビューで確かめる
 5. `docs/spec/diagnostics.md`（と `.ja.md`）に CLI の出力の約束の節を足し、`> Related TPLs:` で TPL-3654 に紐付ける。`docs/tools/cli.md` の `check` にも書く。同梱の reference を再生成する。
 6. changeset は `karasu` の minor と `karasu-skills`（`.claude/rules/changesets.md` の「skill が前提にする CLI の挙動」）。#3640 の changeset（`.changeset/reverse-skill-current-diagnostics.md`）が未消費なら、「コードを出さない」という記述が同じトレインで誤りになるので、実装 PR で書き直す。
 7. AT: `docs/acceptance/` に新規ファイル。人の確認は要らず、TC はすべて上の自動テストに到達させる。
@@ -148,7 +156,7 @@ rustc の形で、コードの位置はメッセージの長さや改行に左�
 - #3640 の版と新しい CLI: 本件より先のトレインで届いた場合も、接頭辞とメッセージの断片がそのままなので動き続ける。
 - 新しい skill と古い CLI: Step 0 の下限（パック時の CLI の版）が止める。
 - リリース順: 本件が次のトレインに間に合えば #3640 の版は利用者に届かない。どちらの順でも上のとおり動くので、順序は固定しない。
-- ドキュメント更新: `docs/spec/diagnostics.md`, `docs/spec/diagnostics.ja.md`, `docs/tools/cli.md`, `docs/tools/cli.ja.md`, 同梱の reference。
+- ドキュメント更新: `docs/spec/diagnostics.md`, `docs/spec/diagnostics.ja.md`, `docs/tools/cli.md`, `docs/tools/cli.ja.md`, `docs/release.md`（診断の行の行末への追加を、後方互換の方針の例外として書く）, 同梱の reference。
 - テスト・examples への影響: 行の形を固定した CLI のテストの更新。examples への影響は無い。
 
 ## 決めないこと
