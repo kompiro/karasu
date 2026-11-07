@@ -1,6 +1,6 @@
 // Starts `karasu serve` for the Playwright `serve` project (#3049). Run by the
 // second `webServer` entry in `playwright.config.ts`, which exists only when
-// `E2E_SERVE=1` (the nightly).
+// `E2E_SERVE=1` (`e2e.yml` and the nightly).
 //
 // 1. Copy `fixtures/serve-project/` into the scratch dir, so every start sees
 //    the checked-in content and a test that rewrites a file never edits a

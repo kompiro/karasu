@@ -21,6 +21,8 @@ scope:
   packages:
     - e2e
     - app
+  paths:
+    - ".github/workflows/*.yml"
 ---
 
 # TPL-1725: label-gated / 遅延実行のテストスイートは、その検証対象を変える PR でマージ前に必ず起動させる

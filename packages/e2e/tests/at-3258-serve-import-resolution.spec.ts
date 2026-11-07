@@ -4,7 +4,7 @@ import { expect, test } from "../fixtures/serve.js";
 /**
  * AT-3258: `karasu serve` resolves imports.
  *
- * Runs in the `serve` project (`E2E_SERVE=1`, the nightly), over
+ * Runs in the `serve` project (`E2E_SERVE=1`: `e2e.yml` and the nightly), over
  * `fixtures/serve-project/imports/`: an entry that pulls services in by a
  * whole-file, a named and a directory import and styles them from an
  * `@import`ed sheet. Serve mode used to put only the opened file into the

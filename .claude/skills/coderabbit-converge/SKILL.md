@@ -41,9 +41,13 @@ pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --once
 
 CodeRabbit は approve も changes-requested も出さない（`request_changes_workflow: false`）。収束は
 レビューの state ではなく、未解決の thread と本文の指摘で決まる。指摘が無い回は review も thread も残らず、
-要約コメントの `recent_review` 欄が「No actionable comments were generated」に書き換わるだけになる。
-スクリプトはその欄が HEAD を対象に挙げていれば HEAD への答えとして読む。ほかの答えと同じく CodeRabbit が
-90 秒静かになるまでは `in_progress` で、その後、未解決の thread が無ければ `converged` を返す（#3385）。
+要約コメントの `recent_review_status` 欄（古いコメントでは `recent_review` 欄）が「No actionable comments were generated」に書き換わるだけになる。
+スクリプトは `recent_review` 欄の "Commits" 行が HEAD を対象に挙げていれば HEAD への答えとして読む。ほかの答えと同じく CodeRabbit が
+90 秒静かになるまでは `in_progress` で、その後、未解決の thread が無ければ `converged` を返す（#3385、#3657）。
+
+main を取り込むだけの push に CodeRabbit はレビューを走らせず、要約コメントの先頭に「Review skipped」、HEAD の
+check に `skipped` を出す。これは未レビューを意味しない。取り込みの前のコミットへの答えはコメントの下に残っており、
+PR の変更が同じなら、スクリプトはそのコミットを出力の `sameChangeCommits` に挙げて HEAD への答えとして読む（#3657）。
 
 ## 前提
 
@@ -67,7 +71,7 @@ CodeRabbit は approve も changes-requested も出さない（`request_changes_
 
 `since` は、次のレビューを起こす**最後の行動の直前**に `date -u +%Y-%m-%dT%H:%M:%SZ` で
 記録した時刻にする。再レビューを頼むラウンドは `@coderabbitai review` の投稿の直前、頼まずに返信だけのラウンドは
-最後の返信の直前。初回は省略してよい（HEAD commit の時刻が使われる）。
+最後の返信の直前。初回は省略してよい（HEAD commit の時刻が使われる。main を取り込んだだけの HEAD なら、取り込みの前のコミットの時刻）。
 
 それより前に記録すると、依頼の前に投げた返信への CodeRabbit の応答だけで「応答あり」と
 判定され、レビューを待たずにループが進む。
@@ -77,7 +81,7 @@ pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --since <since>
 ```
 
 **Bash の `run_in_background` で起動し、終了通知を待つ。** 自分でポーリングしない。
-スクリプトは読み取り専用で、行動が必要な状態になるか予算が尽きるまで戻らない。
+スクリプトは GitHub に何も書かず（手元では base と PR の HEAD を fetch する）、行動が必要な状態になるか予算が尽きるまで戻らない。
 rate limit 中は CodeRabbit が告知した時刻まで眠る。`pnpm run` 経由の alias にしないこと
 （flag が届かない: TPL-2046）。
 
@@ -106,7 +110,7 @@ stdout の JSON の `outcome` で分岐する。**`outcome` が何であって�
 | `converged` | `bodyFindings` と `threadReplies` が 0 なら、記録の表を更新して終了し、通知する（下の「終わり方」） |
 | `changes` | 3 へ。`state.heavy` は未解決のうち Critical / Major（と重大度の無いもの）の件数 |
 | `limit_elapsed` | `gh pr comment <pr> --body "@coderabbitai review"` を **1 回だけ**投げ、その直前の時刻を `since` にして 1 へ |
-| `timeout` | 待ち時間の予算が尽きるまでに、ラウンドの答えが読めなかった。多くは HEAD への review も、HEAD を挙げた指摘ゼロの要約も届いていない。答えが届いた直後の 90 秒の静かな時間に予算が尽きたときもここに来るので、記録した `since` のまま `--once --since <since>` で読み直してから判断する。状態を添えて通知して終了 |
+| `timeout` | 待ち時間の予算が尽きるまでに、ラウンドの答えが読めなかった。多くは HEAD（取り込みだけの HEAD なら `sameChangeCommits` のコミットも同じ）への review も、それを挙げた指摘ゼロの要約も届いていない。答えが届いた直後の 90 秒の静かな時間に予算が尽きたときもここに来るので、記録した `since` のまま `--once --since <since>` で読み直してから判断する。状態を添えて通知して終了 |
 | `limit_budget_exceeded` | 状態を添えて通知して終了 |
 
 `@coderabbitai review` を投げてよいのは、`limit_elapsed` のときと、3 で Critical / Major を直した
@@ -185,6 +189,9 @@ node scripts/review/tier.ts same-change --from <最後にレビューされた�
 
 `false`（コンフリクトの解消で PR の行を書き換えた）なら、その変更を Critical / Major の修正と同じに扱い、
 再レビューを頼む。
+
+`await-review.ts` も同じ判定で取り込みの push を飛ばして答えを読むので、`true` のときに読み直すなら `--since` を
+付けずに `--once` で読む。取り込みの時刻を `--since` に渡すと、それより前に届いた review は数えられない。
 
 ## 終わり方
 

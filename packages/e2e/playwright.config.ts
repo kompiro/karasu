@@ -38,9 +38,9 @@ const appServer: WebServer = {
 
 // Serve mode (`karasu serve`, AT-0032) runs against a second server (#3049).
 // Playwright starts every `webServer` entry whatever `--project` says, so the
-// entry and its project exist only under `E2E_SERVE=1`, which the nightly
-// sets and `e2e.yml` does not: the PR gate neither builds the CLI nor fails
-// when it cannot start (packages/cli is outside its path filter).
+// entry and its project exist only under `E2E_SERVE=1`, which `e2e.yml` and
+// the nightly set (#3661): a local run of the app's specs neither builds the
+// CLI nor fails when it cannot start.
 // `start-serve.ts` builds and stages the serve build the npm package ships
 // (#3303), so this project does not depend on the first entry's app build.
 const SERVE_SPECS = /at-(0032|3258)-/;
