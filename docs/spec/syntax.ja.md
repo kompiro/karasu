@@ -967,7 +967,7 @@ broadcast であり沈黙する。同一ファイル内の同 id `system` ブロ
 
 端点がどこにも解決しない場合は別のケースで、bare は `unresolved-edge-endpoint`
 （§S6）、`system` スコープの edge の qualified は `cross-system-ref-unresolved` として
-報告される。`service`・`domain`・`entity` の中で宣言した qualified は、いまは報告されない
+報告される（先頭のセグメントがその system の `[external]` の子なら報告されない）。`service`・`domain`・`entity` の中で宣言した qualified は、いまは報告されない
 （[#3655](https://github.com/kompiro/karasu/issues/3655)）。これらの診断は
 [診断と規則のリファレンス](diagnostics.md)にカタログ化されている。
 

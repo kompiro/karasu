@@ -1043,7 +1043,8 @@ one anchored path can genuinely name two nodes.
 
 An endpoint that resolves nowhere is a different case. A bare one is reported as
 `unresolved-edge-endpoint`, and a qualified one on a `system`-scope edge as
-`cross-system-ref-unresolved`. A qualified one declared inside a `service`,
+`cross-system-ref-unresolved`, unless its first segment is an `[external]` child of
+that system. A qualified one declared inside a `service`,
 `domain` or `entity` is not reported today
 ([#3655](https://github.com/kompiro/karasu/issues/3655)).
 All of these diagnostics are catalogued in the

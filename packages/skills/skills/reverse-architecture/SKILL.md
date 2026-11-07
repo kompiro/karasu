@@ -447,7 +447,7 @@ footprint and makes the `coverage` numbers incomparable across domains.
    a warning, and `coverage` only counts what is still declared. So also compare
    the merged model with its inputs: every infra block, leaf and `facet` the
    skeleton declares, and every `facets` membership a fragment wrote, is still
-   there. Make it part of the checker ("Silent losses").
+   there, apart from the memberships of proposals you declined just below. Make it part of the checker ("Silent losses").
 
    Any facet the fan-out **proposed** (Phase 2) is decided here, in one place:
    accept it by adding the declaration, or drop the memberships that reference
@@ -844,7 +844,9 @@ and infra declarations and every relation inside an entity block (`A -> B`,
 - an infra block or leaf id equal to a `domain` id, or a leaf id equal to a
   `service` id;
 - an infra block, leaf or `facet` declared in the skeleton, or a `facets`
-  membership written in a fragment, that the merged model no longer has.
+  membership written in a fragment, that the merged model no longer has. Give it
+  the list of declined facet proposals (Phase 3 step 5), whose memberships are
+  dropped on purpose.
 
 Two authoring notes for that script, both learned the hard way:
 
