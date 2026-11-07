@@ -145,7 +145,10 @@ export const REDACTION_RULES: readonly RedactionRule[] = [
     // Spans lines on purpose: the armour without the body is not a secret,
     // and redacting only the header would leave the key material behind.
     // OpenSSH keys are covered because their armour says "PRIVATE KEY" too.
-    pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/,
+    // The body stops at the next BEGIN so that repeated headers with no END do
+    // not each scan to the end of the input (7 seconds at the 1 MiB cap).
+    pattern:
+      /-----BEGIN [A-Z ]*PRIVATE KEY-----(?:(?!-----BEGIN )[\s\S])*?-----END [A-Z ]*PRIVATE KEY-----/,
     secretGroup: 0,
   },
   {
@@ -167,7 +170,10 @@ export const REDACTION_RULES: readonly RedactionRule[] = [
     description: "JSON Web Token",
     // Three base64url segments; the header segment must decode to something
     // starting `{"`, which `eyJ` is. Two segments alone are too common.
-    pattern: /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/,
+    // `-` is a word boundary and a segment character, so `(?<!-)` keeps `eyJ-`
+    // repeated from restarting at each one (15 seconds at 240 KB). A length bound
+    // would miss a long header (`x5c`); this misses only a token right after `-`.
+    pattern: /\b(?<!-)eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/,
     secretGroup: 0,
   },
   {
@@ -178,7 +184,8 @@ export const REDACTION_RULES: readonly RedactionRule[] = [
     // The scheme is bounded for the reason `ASSIGNMENT_KEY` is: `.` `-` `+` are
     // word boundaries as well as scheme characters, so an unbounded run restarts
     // at each one. `"a.".repeat(n)` took 277 seconds at the 1 MiB submission cap.
-    pattern: /\b[a-z][a-z0-9+.-]{0,31}:\/\/[^\s:/@]+:([^\s@/]+)@/i,
+    // `_` is outside RFC 3986, but SQLAlchemy URLs use it (`oracle+cx_oracle://`).
+    pattern: /\b[a-z][a-z0-9+._-]{0,31}:\/\/[^\s:/@]+:([^\s@/]+)@/i,
     secretGroup: 1,
   },
   {

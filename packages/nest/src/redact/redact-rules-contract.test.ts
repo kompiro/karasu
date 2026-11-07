@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { assertStructureOnly, redact } from "./redact.js";
+import { MAX_SUBMISSION_BYTES } from "../store/submissions.js";
 import { REDACTION_RULES } from "./rules.js";
 
-// Fences what TPL-2287 asks of every rule, not of the rules that happened to
-// have a bug. The table is keyed by rule id and checked against
+// Fences what TPL-2287 asks of every redaction rule, not of the rules that
+// happened to have a bug. The table is keyed by rule id and checked against
 // `REDACTION_RULES`, so a new rule cannot land without its row: a near-miss, a
 // hostile input and, where the secret is a capture group, a decoy.
+//
+// The timing checks are evidence, not proof. They caught three quadratic rules,
+// but a new rule can be slow on an input neither its row nor the generated ones
+// try, which is why TPL-2287's timing item carries no guard marker.
 
 interface RuleContract {
   /** The text around the secret; the secret between them is what gets replaced. */
@@ -30,9 +35,26 @@ interface RuleContract {
  */
 const FIXED_TEXT_BEFORE_SECRET = ["basic-auth-header"];
 
-/** About the size of the input the original quadratic pattern took 4 seconds on. */
-const HOSTILE_BYTES = 240_000;
-const hostileFrom = (unit: string): string => unit.repeat(Math.ceil(HOSTILE_BYTES / unit.length));
+/**
+ * Half of `cpu_ms` in `packages/nest/wrangler.toml`, at the largest input a
+ * submission can hold. Half, because a cold isolate runs a pattern slower than
+ * this already warmed process does.
+ */
+const BUDGET_MS = 2500;
+const hostileFrom = (unit: string): string =>
+  unit.repeat(Math.ceil(MAX_SUBMISSION_BYTES / unit.length));
+
+/** Separators worth repeating: each is a word boundary, a class member, or both. */
+const STRESS_SEPARATORS = ["", ".", "-", "+", "_", "=", ":", "/", " ", "\n"];
+
+/**
+ * Inputs built from a rule's own secret: its leading characters and a separator,
+ * repeated. Restarting at each repeat is how all three quadratic rules failed.
+ */
+const stressInputs = (secret: string): string[] =>
+  [2, 3, 4, 6, 8].flatMap((length) =>
+    STRESS_SEPARATORS.map((separator) => hostileFrom(secret.slice(0, length) + separator)),
+  );
 
 // Composed at runtime so this file trips neither `gitleaks` nor a reader's
 // alarm: none of these are real.
@@ -153,7 +175,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: `eyJ${alnum(8)}.${alnum(8)}.${alnum(8)}`,
     after: '";',
     nearMiss: `const pair = "eyJ${alnum(8)}.${alnum(8)}";`,
-    hostile: hostileFrom("eyJabcdefgh."),
+    hostile: hostileFrom("eyJ-"),
     decoy: null,
   },
   "connection-string-password": {
@@ -161,7 +183,7 @@ const CONTRACTS: Record<string, RuleContract> = {
     secret: alnum(12),
     after: "@db.internal:5432/orders",
     nearMiss: "postgres://app_user@db.internal:5432/orders",
-    hostile: hostileFrom("a://b:c"),
+    hostile: hostileFrom("a."),
     decoy: {
       source: "postgres://s3cr3tadmin:s3cr3t@db.internal/orders",
       expected: "postgres://s3cr3tadmin:[REDACTED:connection-string-password]@db.internal/orders",
@@ -191,13 +213,37 @@ const CONTRACTS: Record<string, RuleContract> = {
   },
 };
 
-describe("the URI scheme bound", () => {
-  it("still finds a URI at the end of a long run of scheme characters", () => {
-    // `.` is a word boundary, so the match restarts at `postgres` however long
-    // the run before it is. The bound cannot hide a real connection string.
-    const run = "a.".repeat(100);
-    expect(redact(`${run}postgres://app_user:s3cr3t-p4ssw0rd@db.internal`).text).toBe(
-      `${run}postgres://app_user:[REDACTED:connection-string-password]@db.internal`,
+describe("the limits the timing fixes put on detection", () => {
+  const password = "s3cr3t-p4ssw0rd";
+  const uri = (scheme: string) => `${scheme}://app_user:${password}@db.internal`;
+
+  it("finds a URI at the end of a long run of scheme characters", () => {
+    // `.` is a word boundary, so the match restarts at `postgres`.
+    expect(redact(uri(`${"a.".repeat(100)}postgres`)).text).not.toContain(password);
+  });
+
+  it("finds a scheme of 32 characters and, by the bound, not one of 33", () => {
+    expect(redact(uri("a".repeat(32))).text).not.toContain(password);
+    expect(redact(uri("a".repeat(33))).text).toContain(password);
+  });
+
+  it("finds a scheme holding `_`, as SQLAlchemy URLs do", () => {
+    expect(redact(uri("oracle+cx_oracle")).text).not.toContain(password);
+  });
+
+  it("finds a JWT with a long header, and by `(?<!-)` not one right after `-`", () => {
+    const token = `eyJ${alnum(100).repeat(80)}.${alnum(8)}.${alnum(8)}`;
+    expect(redact(`token ${token}`).findings.map((f) => f.ruleId)).toEqual(["jwt"]);
+    expect(redact(`x-${token}`).findings).toEqual([]);
+  });
+
+  it("redacts both of two private key blocks, and not a body with no END", () => {
+    const block = `-----BEGIN ${PRIVATE}-----\nMIIE\n-----END ${PRIVATE}-----`;
+    expect(redact(`${block}\n${block}`).text).toBe(
+      "[REDACTED:private-key-block]\n[REDACTED:private-key-block]",
+    );
+    expect(redact(`-----BEGIN ${PRIVATE}-----\nAAA\n${block}`).text).toBe(
+      `-----BEGIN ${PRIVATE}-----\nAAA\n[REDACTED:private-key-block]`,
     );
   });
 });
@@ -219,7 +265,8 @@ describe("every redaction rule meets the detector contract (TPL-2287)", () => {
 
   it.each(
     Object.entries(CONTRACTS).flatMap(([id, { decoy }]) => (decoy ? [[id, decoy] as const] : [])),
-  )("%s splices by position, not by searching for the secret text", (_id, decoy) => {
+  )("%s splices by position, not by searching for the secret text", (id, decoy) => {
+    expect(decoy.expected).toContain(`[REDACTED:${id}]`);
     expect(redact(decoy.source).text).toBe(decoy.expected);
   });
 
@@ -256,7 +303,24 @@ describe("every redaction rule meets the detector contract (TPL-2287)", () => {
     it("scans its hostile input in bounded time", () => {
       const started = performance.now();
       redact(contract().hostile);
-      expect(performance.now() - started).toBeLessThan(1000);
+      expect(performance.now() - started).toBeLessThan(BUDGET_MS);
+    });
+
+    it("scans inputs built from its own secret in bounded time", () => {
+      const rule = REDACTION_RULES.find((r) => r.id === id)!;
+      const pattern = new RegExp(
+        rule.pattern.source,
+        `${rule.pattern.flags.replace(/[gd]/g, "")}gd`,
+      );
+      const slow = stressInputs(contract().secret).filter((input) => {
+        const started = performance.now();
+        // Draining the matches is the work being timed.
+        for (const _ of input.matchAll(pattern));
+        return performance.now() - started >= BUDGET_MS;
+      });
+      expect(slow.map((input) => input.slice(0, 12))).toEqual([]);
+        expect(performance.now() - started, input.slice(0, 12)).toBeLessThan(BUDGET_MS);
+      }
     });
   });
 });
