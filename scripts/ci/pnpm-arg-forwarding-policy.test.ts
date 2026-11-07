@@ -8,6 +8,8 @@ import { describe, expect, it } from "vitest";
 // `pnpm --filter X exec <tool> <flag>`. This scans what starts processes in CI,
 // in the hooks and in the repo's scripts, both as a command line and as a
 // `spawn("pnpm", [...])` array. A prose mention in docs is not a process start.
+// A flag held in a variable is out of a scan's reach, so this is a related test of
+// TPL-2046, not a guard marker (ADR-3038 D4).
 
 const ROOT = resolve(import.meta.dirname, "../..");
 

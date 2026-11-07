@@ -73,7 +73,7 @@ function curlCalls(yaml: string): CurlCall[] {
     const lineEnd = text.indexOf("\n", stop);
     return {
       words,
-      capturedBy: /(\w+)=\$\($/.exec(text.slice(lineStart, start))?.[1],
+      capturedBy: /(\w+)="?\$\($/.exec(text.slice(lineStart, start))?.[1],
       after: text.slice(stop, lineEnd === -1 ? text.length : lineEnd),
       following: text.slice(stop, starts[i + 1] ?? text.length),
     };
@@ -102,6 +102,7 @@ function readFlags(words: readonly string[]): CurlFlags {
     if (word === "--fail") flags.fail = true;
     else if (word === "--fail-with-body") flags.failWithBody = true;
     else if (word === "--output") flags.output = words[++i];
+    else if (word.startsWith("--output=")) flags.output = word.slice("--output=".length);
     else if (word === "--write-out") flags.writeOut = words[++i];
     else if (/^-[A-Za-z]/.test(word)) {
       for (let c = 1; c < word.length; c++) {
@@ -122,7 +123,7 @@ function readFlags(words: readonly string[]): CurlFlags {
 function curlProblem(call: CurlCall): string | undefined {
   const flags = readFlags(call.words);
   if (flags.output === "/dev/null") return "discards the response body";
-  if (/\|\|\s*(?:true|:)/.test(call.after)) return "swallows the failure";
+  if (/\|\|/.test(call.after)) return "handles the failure itself, which can hide it";
   if (flags.failWithBody && call.capturedBy) return "captures the only copy of the body";
   if (flags.fail || flags.failWithBody) return undefined;
   if (!flags.output?.startsWith("$") || !flags.writeOut?.includes("%{http_code}")) {
@@ -188,6 +189,9 @@ describe("curl in workflows and actions (TPL-2291)", () => {
       ["rm's -f after &&", "curl -sS https://x > a && rm -f b"],
       ["rm's -f before it", "rm -f a; curl -sS https://x"],
       ["a swallowed failure", "curl -f https://x || true"],
+      ["a failure turned into success", "curl -f https://x || exit 0"],
+      ["a discarded body, long form with =", "curl -f --output=/dev/null https://x"],
+      ["the body captured, quoted", 'body="$(curl --fail-with-body https://x)"'],
       ["the body captured as the only copy", "body=$(curl --fail-with-body https://x)"],
       ["a status it never reads", `${kept}\ncat "$body"`],
       ["a body it never logs", `${kept}\nif [ "$status" != "200" ]; then exit 1; fi`],
