@@ -25,9 +25,9 @@ assumptions:
 - **ステータス**: 決定済み
 - **関連**:
   - Issue [#3038](https://github.com/kompiro/karasu/issues/3038)（分類の結果と `## Slice status` 表）、設計 PR [#3478](https://github.com/kompiro/karasu/pull/3478)
-  - スライス: [#3487](https://github.com/kompiro/karasu/issues/3487)（見出しの統一）、[kompiro/tpl-tools#31](https://github.com/kompiro/tpl-tools/issues/31)（印の解析と状態の導出）、[#3488](https://github.com/kompiro/karasu/issues/3488)（全 TPL への印、PR [#3610](https://github.com/kompiro/karasu/pull/3610)）、[#3489](https://github.com/kompiro/karasu/issues/3489)（ガードの backlog）
+  - スライス: [#3487](https://github.com/kompiro/karasu/issues/3487)（見出しの統一）、[kompiro/tpl-tools#31](https://github.com/kompiro/tpl-tools/issues/31)（印の解析と状態の導出）、[#3488](https://github.com/kompiro/karasu/issues/3488)（全 TPL の項目を確かめて印を付ける、PR [#3610](https://github.com/kompiro/karasu/pull/3610)）、[#3489](https://github.com/kompiro/karasu/issues/3489)（ガードの backlog）
   - [ADR-1192](1192-test-perspective-library.md)（TPL の運用）、[ADR-1357](1357-tpl-tools-extraction.md)（検査と照会は `@kompiro/tpl-tools` が持つ）、[ADR-2810](2810-tpl-source-path-check-ownership.md)（TPL ディレクトリの検査は tpl-tools の CLI が持つ）、[ADR-3289](3289-tpl-index-daily-regeneration.md)（状態を出す索引は毎日の再生成 PR が書く）
-  - tpl-tools 側の実装判断: tpl-tools ADR-17（本文のパスの実在検査と `--source-prefix`）、ADR-27（`tpl regenerate` の索引）、ADR-31（印の解析・状態の導出・`checklistHeading`）。`@kompiro/tpl-tools@0.0.13` で公開
+  - tpl-tools 側の実装判断: tpl-tools ADR-17（本文のパスの実在検査と `--source-prefix`）、ADR-27（`tpl regenerate` の索引）、ADR-31（印の解析・状態の導出・`checklistHeading`）。印の解析と状態の導出は `@kompiro/tpl-tools@0.0.12` で公開
   - 変更ファイルから TPL を引く仕組みは別の設計: [#3486](https://github.com/kompiro/karasu/issues/3486)
 
 ## 背景
@@ -53,7 +53,7 @@ TPL は、設計・実装・bug 修正のときに人か LLM が**思い出し�
 ## 決定
 
 TPL のチェックリストの各項目の末尾に、CI が守っている項目は `[guard: …]`、プログラムで判定できない項目は
-`[judgment]` を書き、印の無い項目を「判定できるがガードが無い」とみなす。TPL ごとの状態はこの印から導出するだけで、
+`[judgment]` を書き、印の無い項目を「判定できるがガードが無い」とみなして、TPL ごとの状態はこの印から導出するだけで
 TPL のファイルには宣言しない。
 
 ## 仕組み
@@ -75,8 +75,10 @@ TPL のファイルには宣言しない。
   tpl-tools のテストが持つ。TPL-2287）
 - `tpl validate` は、ガードのスパンが既存の実在検査（tpl-tools ADR-17）の対象になる形でないもの（行番号付き・glob・
   ファイル名だけなど）、ファイルを指さないもの、`<!-- absent-path-next-line -->` の直下にあるもの、位置や書式の
-  誤った印、項目が 1 つも無いチェックリストを finding にする。黙って読み飛ばされる形を許すと、ガードの参照が
-  検査されないまま残るからである
+  誤った印を finding にする。黙って読み飛ばされる形を許すと、ガードの参照が検査されないまま残るからである
+- 印の検査が有効なのに `--source-prefix` が 1 つも渡されていなければ usage error にする（パスを検査する手段が無い）
+- 項目が 1 つも無いチェックリストも finding にする（これが無いと、D3 の `judgment` の「すべての項目が judgment」が
+  空虚に成り立つ）
 
 ### 状態（D2・D3）
 
@@ -114,12 +116,13 @@ TPL のファイルには宣言しない。
   確かめていない項目は印なしにする（間違ったガードは、ガードが無いより悪い）
 
 README「横断観察 A」の、curated table を meta-check の既定にする理由は「表への登録を型・突き合わせ・導出のどれかで
-強制したときに限り、explicit な表は review で auditable なガードになる」に書き直した。
+強制したときに限り、explicit な表は新しい箇所も捕まえるガードになる」に書き直した。
 
 ### 運用への反映（#3488 / PR #3610）
 
-- 全 TPL のチェックリストに印を付けた。`[guard: …]` は 74 項目、`[judgment]` は 262 項目（#3610 の時点）。`[guard: …]` は
-  ガードを開いて D4 を確かめた項目にだけ付け、確かめた記録を PR に残した
+- 全 TPL のチェックリストの項目を確かめ、当てはまる項目に印を付けた。`[guard: …]` は 74 項目、`[judgment]` は
+  262 項目（#3610 の時点）で、ほかの項目は印なしのままである。`[guard: …]` はガードを開いて D4 を確かめた項目にだけ付け、
+  確かめた記録を PR に残した
 - 1 つの関数の case を列挙する項目（TPL-1755・1936・1944・1961・1967 の 22 項目）は、新しい実装や経路を
   覆わないので印なしにした
 - `docs/test-perspectives/README.md`（「チェックリスト項目の印」節・Validator・月次レビューの問い・横断観察 A）と
@@ -153,6 +156,11 @@ README「横断観察 A」の、curated table を meta-check の既定にする�
 - ガードの backlog の起票（#3489）。どんなガードを作るかは印に無く分類の `mechanism` 列にしか無いので、backlog は
   分類から起こす。起票し終えたら分類 CSV は使わず、印を唯一の記録にする（TPL-2810）
 - `guarded` の TPL でチェックリストをどこまで縮めてよいかの基準は、最初の月次レビューで実例を見てから README に書く
+
+## 作らなかったもの
+
+- 受け入れテスト: 変わるのは開発ツールと TPL 本文だけで、ユーザーが観測する挙動が無い。検証は tpl-tools のユニットテストと `pnpm tpl:validate` で行う
+- proactive TPL: 本設計が破りうる原則「実在を検査された参照は、参照先が主張どおりの役割を果たすことまでは保証しない」は、TPL-2810 と TPL-2291 が既に持つ
 
 ## Related TPLs
 
