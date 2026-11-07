@@ -45,20 +45,24 @@ edge の canonical id は、著者 id（`.krs` の `#<id>`）が無ければ bas
 base form は端点の文字列を素のまま繋いでいた。端点は quoted id なら任意の文字列を取れるが、`edge#` の端点は `.krs.style` の識別子しか読めなかった。この食い違いで次の 3 つが起きていた。
 
 1. **識別子でない端点の edge に rule が書けない。** `"a b" -> c` の canonical id は `a b->c` で、app が書き込む `edge#a b->c { ... }` は parse エラーになり、どの edge にも当たらない。右クリックで方向を選んでも何も起きず、壊れた rule がファイルに残る。
-2. **別々の edge が同じ base になる。** `"a->b" -> c` と `a -> "b->c"` はどちらも base が `a->b->c` になり、ADR-1096 の規則どおり `ambiguous-edge-base` が出て canonical id が外れる。警告は「同じ base を共有する edge に `#<id>` を付けよ」と言うが、2 本は端点が違う。
+2. **別々の edge が同じ base になる。** `"a->b" -> c` と `a -> "b->c"` はどちらも base が `a->b->c` になり、ADR-1096 の規則どおり `ambiguous-edge-base` が出て canonical id が外れる。警告は同じ base を共有する edge に識別する `#<id>` が無いと指摘するが、2 本は端点が違う。
 3. **末尾が `-` の端点が async の base と重なる。** `"a-" -> c`（sync）の base は `a-->c` で、`a --> c`（async）の base と同じ文字列になる。`.krs.style` の lexer は `a-` を 1 つの識別子として読むので、端点を単独で読ませても検出できない。
 
 いずれも、base form が `.krs.style` の lexer で読み戻せる形になっていないことが原因である。#2819 / #3111 で入れた `edgeKey` は内部キー用で、`->`・`"`・`\` を含む端点だけを囲む。空白や末尾の `-` は囲まないので、`.krs.style` に書く文字列にはそのまま使えない。
 
 ## 決定
 
-base form の各端点は、`.krs.style` の識別子 1 つとして読み戻せるならそのまま出し、読めなければ `.krs` と同じ文字列リテラルで囲み、`edge#` / `edge[from=]` / `edge[to=]` のセレクタも同じヘルパーで正規化する。
+base form の各端点は、`.krs.style` で読み戻して同じ値になる下の 3 条件を満たすならそのまま出し、満たさなければ `.krs` と同じ文字列リテラルで囲み、`edge#` セレクタも同じヘルパーで組み直す。
 
 端点を囲まずに出す条件は 3 つで、1 つでも満たさなければ囲む（`styleEndpointLiteral`）。
 
 1. `StyleLexer` で端点だけを tokenize して、ちょうど 1 つの `Identifier` が端点と同じ値で返る
 2. 末尾が `-` でない。矢印の手前に置くと `-` が矢印に吸われるため。from と to のどちらに置くかをヘルパーが知らなくて済むよう、to の端点にも同じ条件を当てる
 3. 先頭が `#` でない。`#abc` は単独なら色トークン（値が `#abc` の `Identifier`）として条件 1 を通るが、それは色であって識別子ではない
+
+`.krs` の bare word（`isBareWord`）は 3 条件を必ず満たすので、lexer を通さずにそのまま返す。ほとんどの id がこの経路を通る。
+
+hex 形の端点（`face`・`Feed.Items`）は囲まない。読めなかったのは端点の形ではなく `edge#` の直後の読み方の問題で、#3520 で直した。
 
 | edge | base form |
 | --- | --- |
@@ -71,7 +75,7 @@ base form の各端点は、`.krs.style` の識別子 1 つとして読み戻せ
 セレクタの扱いは次のとおりである。
 
 - **`edge#`**: 端点に文字列リテラルと `#` で始まる値（`edge#a->#db`）も受け付け、`edgeBaseForm` で組み直す。`edge#"a"->c` は `edge#a->c` に、`edge#a- -> c` は `edge#"a-"->c` に正規化される
-- **著者 id**: 矢印の無い 1 トークンは今までどおり識別子だけを受け付ける。`edge#"a b"` はエラーになる
+- **著者 id**: 著者 id と base form は名前空間を共有する。著者 id は識別子なので矢印を含まず、base form は必ず矢印を含む。この区別を崩さないよう、矢印の無い 1 トークンは今までどおり識別子だけを受け付け、`edge#"a b"` はエラーにする
 - **`edge[from=]` / `edge[to=]`**: 値に文字列リテラルを受け付け、引用符を外した値を端点と比べる。`serialize.ts` は `styleEndpointLiteral` を通して書き戻すので、`karasu fmt` の往復で値が変わらない。空文字列（`[from=""]`）も落とさない
 
 base form を表示する箇所（facet 監査行の id、`facet-not-declared` の subject、`ambiguous-edge-base` の警告）も同じ形を出す。警告の params には `base` を足した。
@@ -79,8 +83,8 @@ base form を表示する箇所（facet 監査行の id、`facet-not-declared` �
 ## 理由
 
 - **canonical id は `.krs.style` に書かれることが前提の文字列である。** 「`.krs.style` の lexer で読み戻して同じ値になる」ことを base form の条件にすれば、問題 1〜3 が同じ規則で消える
-- **判定を lexer に任せる。** lexer の規則（`-`・`.`・非 ASCII・数値・黙って捨てる記号）を別に書き写さないので、lexer が変わっても判定がずれない。書き出す側と読む側が同じヘルパーを通る（TPL-1352）
-- **普通のモデルでは id が変わらない。** 識別子として読める端点は囲まれないので、`data-edge-canonical-id` と既存の `.krs.style` はそのまま動く。囲まれる edge の `edge#` rule はもともと parse できなかったので、壊れる rule はほぼ無い（下の「影響」）
+- **判定を lexer に任せる。** lexer の規則（`-`・`.`・非 ASCII・数値・黙って捨てる記号）を別に書き写さないので、lexer が変わっても判定がずれない（bare word の近道だけは、bare word が 3 条件を満たすという前提に依る）。書き出す側と読む側が同じヘルパーを通る（TPL-1352）
+- **普通のモデルでは id が変わらない。** 3 条件を満たす端点は囲まれないので、`data-edge-canonical-id` と既存の `.krs.style` はそのまま動く。囲まれる edge の `edge#` rule はもともと parse できなかったので、壊れる rule はほぼ無い（下の「影響」）
 - **injective になる。** 囲まない端点は `#` で始まらず、`"` も `->` も含まず、`-` で終わらない。base form の先頭が `"` なら from は閉じ引用符で終わり、そうでなければ矢印を始める最初の `-` の手前で終わる。矢印の種類もその位置で決まり、残りが to になる
 - **ADR-1096 の規則を保つ。** 本当に重なる edge は今までどおり警告して canonical id を外す。tie-break・index・hash は入れない
 - **`.krs` と同じ書き方である。** 作者が `.krs` に書いた形と見た目が揃い、ADR-2714 の「曖昧にする部分だけ囲む」と同じ考え方になる
@@ -89,10 +93,10 @@ base form を表示する箇所（facet 監査行の id、`facet-not-declared` �
 
 ## 影響
 
-端点がすべて識別子として読めるモデルでは何も変わらない。変わるのは次のとおりで、changeset に書いた。
+端点がすべて 3 条件を満たすモデルでは何も変わらない。変わるのは次のとおりで、changeset に書いた。
 
-- 識別子として読めない端点を持つ edge の canonical id、`data-edge-canonical-id`、`edgeBaseId` の出力に引用符が付く
-- `edge#a-->c` は sync の `"a-" -> c` に当たらなくなる（`edge#"a-"->c` と書く）。空白入りの `edge#a- -> c` は async の `a --> c` ではなく sync の `"a-" -> c` を指すようになる
+- 3 条件を満たさない端点を持つ edge の canonical id、`data-edge-canonical-id`、`edgeBaseId` の出力に引用符が付く
+- `edge#a-->c` は sync の `"a-" -> c` に当たらなくなる（`edge#"a-"->c` と書く）。空白入りの `edge#a- -> c` は async の `a --> c` ではなく sync の `"a-" -> c` を指すようになる。その edge が無ければ、この rule はどの edge にも当たらなくなり、診断も出ない
 - `karasu fmt` が正規形で書き戻す。`edge#a->#abc` は `edge#a->"#abc"` に、`edge[from=#abc]` は `edge[from="#abc"]` になる。当たる edge は変わらない
 
 ## 残した制限
