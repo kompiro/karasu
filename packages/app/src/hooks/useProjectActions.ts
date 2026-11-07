@@ -29,8 +29,9 @@ interface ProjectActions {
   /** Open a gallery example (#1646) by slug + lang, fetched from the fixed origin. */
   openExample: (slug: string, lang: string) => Promise<void>;
   /**
-   * Create a new project from an example bundled with the app and switch to
-   * it. Resolves to the project, or `null` when creation failed (reported).
+   * Create a new project from an example bundled with the app, without opening
+   * it: the caller navigates once it knows the visitor still wants that (#3601).
+   * Resolves to the project, or `null` when creation failed (reported).
    */
   addBundledExample: (example: ExampleProject) => Promise<Project | null>;
 }
@@ -154,7 +155,6 @@ export function useProjectActions({
     [addExampleProject, navigateToProject, reportError, t],
   );
 
-  // The caller opens it, once it knows the visitor still wants that (#3601).
   const addBundledExample = useCallback(
     async (example: ExampleProject) => {
       try {

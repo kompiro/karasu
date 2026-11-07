@@ -190,6 +190,20 @@ describe("switching the subject (#3601)", () => {
     await act(async () => pending.resolve(payroll));
   });
 
+  it("does not undo the switch on the second click of a double-click", async () => {
+    const add = vi.fn<(example: ExampleProject) => Promise<Project | null>>(async () => payroll);
+    renderGuide({ add });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: TO_PAYROLL }), { detail: 1 });
+    });
+    expect(readTourProgress()?.tour).toBe("service-split-payroll");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: TO_SHOP }), { detail: 2 });
+    });
+    expect(readTourProgress()?.tour).toBe("service-split-payroll");
+    expect(add).toHaveBeenCalledTimes(1);
+  });
+
   it("locks the panel while it resolves, so Skip neither works nor brings the guide back", async () => {
     const pending = deferred<Project | null>();
     const add = vi.fn<(example: ExampleProject) => Promise<Project | null>>(() => pending.promise);

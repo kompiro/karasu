@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, type MouseEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "../../i18n/index.js";
@@ -121,7 +121,11 @@ export function TourPanel({
         <Button
           className={cn("self-start", lockClass)}
           aria-disabled={switching}
-          onClick={unlessSwitching(onSwitch)}
+          // The way back appears under the pointer, so the second click of a
+          // double-click would undo the switch it just made.
+          onClick={unlessSwitching((event: MouseEvent) => {
+            if (event.detail <= 1) onSwitch?.();
+          })}
         >
           {switchLabel}
         </Button>

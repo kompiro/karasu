@@ -63,6 +63,7 @@ const SHOP_ROLES = {
   newDb: "BillingDB",
   movedTables: ["Invoices", "Payments"],
   stayingTable: "Orders",
+  crossDomainRead: "CommerceDB.Orders",
   appTeam: "commerce",
   movesTeam: "billing",
 };
@@ -75,6 +76,7 @@ const PAYROLL_ROLES: typeof SHOP_ROLES = {
   newDb: "PayrollDB",
   movedTables: ["Payslips", "Transfers"],
   stayingTable: "Timesheets",
+  crossDomainRead: "WorkforceDB.Timesheets",
   appTeam: "workforce",
   movesTeam: "payroll",
 };
@@ -132,6 +134,29 @@ describe.each([
     expect(split?.annotations).toContain("migration_target");
     expect(split?.annotationParams?.migration_target?.from).toBe(roles.app);
     expect(service("migrating.krs", roles.newDb)?.annotations).toContain("planned");
+  });
+
+  /** What the node's usecases read and write, as `Database.Table`. */
+  const resources = (node: ReturnType<typeof service>): string[] =>
+    (node?.children ?? []).flatMap((child) =>
+      child.kind === "resource" ? [child.id] : resources(child),
+    );
+  const databases = (node: ReturnType<typeof service>) => [
+    ...new Set(resources(node).map((id) => id.split(".")[0])),
+  ];
+
+  it("current: the two domains share one database", () => {
+    expect(databases(service("index.krs", roles.app))).toEqual([roles.sharedDb]);
+    expect(resources(service("index.krs", roles.app))).toContain(roles.crossDomainRead);
+  });
+
+  it("migrating: the new service still uses the shared database", () => {
+    expect(databases(service("migrating.krs", roles.newService))).toEqual([roles.sharedDb]);
+    expect(resources(service("migrating.krs", roles.newService))).toContain(roles.crossDomainRead);
+  });
+
+  it("planned: the new service uses its own database alone", () => {
+    expect(databases(service("planned.krs", roles.newService))).toEqual([roles.newDb]);
   });
 
   // Track architecture evolution (#3600) walks the shop sample, and the second

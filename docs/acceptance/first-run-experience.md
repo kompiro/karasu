@@ -162,7 +162,7 @@
   > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `opens a new copy when Getting Started was edited, leaving the edited one as it is`
   > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Understand navigates to a matching Getting Started that is not open`
   > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Understand reuses an unedited copy it opened earlier, not a project of another name`
-  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Understand opens a new copy when no Getting Started matches, and does not navigate again`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Understand opens a new copy when no Getting Started matches, navigating to it once`
   > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `drops an Understand the visitor chose the editor over while reading (TPL-1534)`
   > ✅ Automated — `packages/app/src/components/first-run/project-matches-example.test.ts` › `does not match when a file is missing or cannot be read`
 
