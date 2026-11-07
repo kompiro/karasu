@@ -1,14 +1,17 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 import { execFileSync } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
+import { gitFacts } from "../review/tier.ts";
 import {
   ACTIONABLE_KINDS,
+  changeCommittedAt,
   CODERABBIT_LOGINS,
   DEFAULT_CLASSIFY_OPTIONS,
   type AuthorComment,
   bodyFindingCount,
   bodyFindingIds,
   classify,
+  commitsWithSameChange,
   type CodeRabbitComment,
   findingSeverity,
   type CodeRabbitReview,
@@ -19,8 +22,9 @@ import {
 } from "./review-state.ts";
 
 // Reads a PR's CodeRabbit state and, unless `--once`, polls until the author has
-// something to act on (Issue #2846). Read-only: it never posts, pushes or
-// resolves — `.claude/skills/coderabbit-converge` does that.
+// something to act on (Issue #2846). Read-only on GitHub: it never posts, pushes or
+// resolves — `.claude/skills/coderabbit-converge` does that. Locally it fetches the
+// base and the PR head, which moves the `origin/<base>` ref all worktrees share.
 //
 //   pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --once
 //   pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --since <iso> [--timeout-min 30] [--limit-budget-min 120]
@@ -28,8 +32,17 @@ import {
 // Invoke it through `pnpm exec tsx`, not a `pnpm run` alias: flags after `--`
 // do not reliably reach the script that way (TPL-2046).
 //
-// stdout is one JSON line: { pr, headSha, since, state, bodyFindings, bodyFindingIds,
-// threadReplies, threadReplyUrls, waitedMin, limitWaitedMin, outcome }.
+// Run it from a checkout of the repository: which earlier commits still count as the
+// head is read from local git against `origin/<base>`, after fetching both. A failed
+// fetch goes to stderr and the comparison still runs on what is here. A step git cannot
+// answer ends the walk: only the commits verified before it count, so the run waits
+// rather than converging early.
+//
+// stdout is one JSON line: { pr, headSha, sameChangeCommits, since, state, bodyFindings,
+// bodyFindingIds, threadReplies, threadReplyUrls, waitedMin, limitWaitedMin, outcome }.
+// `sameChangeCommits` lists the earlier commits an answer may name in place of the head:
+// a push that only merged the base gets no review of its own, and leaves the change as
+// it was reviewed (#3657). Without `--since`, the oldest of them sets `since`.
 // `threadReplies` counts the open threads where CodeRabbit answered a reply and now
 // waits on the author, whatever the outcome (#2954); `threadReplyUrls` links each
 // answer.
@@ -71,7 +84,7 @@ interface RestReview {
   user: { login: string } | null;
   state: string;
   body: string | null;
-  commit_id: string;
+  commit_id: string | null;
   submitted_at: string | null;
 }
 
@@ -121,25 +134,67 @@ const byCodeRabbit = (login: string | undefined): boolean =>
 
 interface PrHead {
   headSha: string;
-  headCommittedAt: string;
+  sameChangeCommits: string[];
+  defaultSince: string;
+}
+
+/** Heads already fetched: the commits a head merged cannot change, so once per head. */
+const fetchedHeads = new Set<string>();
+
+/**
+ * "Update branch" or a merge from another machine leaves HEAD or the merged commits
+ * missing here, and that would read as not the same change for the whole wait. A
+ * failure only warns: what is already here may still answer, and what is not reads
+ * as not the same change. A later poll retries it.
+ */
+function fetchForComparison(pr: number, headSha: string, baseRefName: string): void {
+  if (fetchedHeads.has(headSha)) return;
+  const refspec = `+refs/heads/${baseRefName}:refs/remotes/origin/${baseRefName}`;
+  try {
+    execFileSync("git", ["fetch", "--quiet", "--no-tags", "origin", refspec, `pull/${pr}/head`], {
+      stdio: ["ignore", "ignore", "inherit"],
+      // A stalled connection would otherwise block the polling for good. The low-speed
+      // limit ends it from inside git first: a killed fetch leaves its http helper
+      // alive, holding this script's stderr.
+      timeout: 30_000,
+      env: {
+        ...process.env,
+        GIT_TERMINAL_PROMPT: "0",
+        GIT_HTTP_LOW_SPEED_LIMIT: "1",
+        GIT_HTTP_LOW_SPEED_TIME: "20",
+      },
+    });
+    fetchedHeads.add(headSha);
+  } catch (err) {
+    console.error(`could not fetch ${headSha}, comparing what is here: ${String(err)}`);
+  }
+}
+
+function readSameChangeCommits(pr: number, headSha: string, baseRefName: string): string[] {
+  fetchForComparison(pr, headSha, baseRefName);
+  return commitsWithSameChange(headSha, gitFacts(`origin/${baseRefName}`, headSha), (err) => {
+    console.error(`could not compare the commits before ${headSha}: ${String(err)}`);
+  });
 }
 
 function fetchHead(pr: number): PrHead {
   const view = JSON.parse(
-    gh(["pr", "view", String(pr), "--repo", REPO, "--json", "headRefOid,commits"]),
+    gh(["pr", "view", String(pr), "--repo", REPO, "--json", "headRefOid,baseRefName,commits"]),
   ) as {
     headRefOid: string;
+    baseRefName: string;
     commits: { oid: string; committedDate: string }[];
   };
-  const head = view.commits.find((c) => c.oid === view.headRefOid);
+  const sameChangeCommits = readSameChangeCommits(pr, view.headRefOid, view.baseRefName);
   return {
     headSha: view.headRefOid,
-    headCommittedAt: head?.committedDate ?? new Date(0).toISOString(),
+    sameChangeCommits,
+    defaultSince: changeCommittedAt(view.commits, view.headRefOid, sameChangeCommits),
   };
 }
 
 function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
-  const { headSha, headCommittedAt } = fetchHead(pr);
+  const { headSha, sameChangeCommits, defaultSince } = fetchHead(pr);
   const [owner, name] = REPO.split("/");
 
   const reviews: CodeRabbitReview[] = ghPages<RestReview[]>([`repos/${REPO}/pulls/${pr}/reviews`])
@@ -147,7 +202,7 @@ function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
     .filter((r) => byCodeRabbit(r.user?.login) && r.submitted_at !== null)
     .map((r) => ({
       state: r.state,
-      commitId: r.commit_id,
+      commitId: r.commit_id ?? "",
       submittedAt: r.submitted_at as string,
       body: r.body ?? "",
     }));
@@ -187,7 +242,8 @@ function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
 
   return {
     headSha,
-    since: since ?? headCommittedAt,
+    sameChangeCommits,
+    since: since ?? defaultSince,
     now: new Date().toISOString(),
     reviews,
     comments,
@@ -219,7 +275,7 @@ function parseArgs(argv: string[]): Args {
     const a = argv[i];
     if (a === "--once") args.once = true;
     else if (a === "--since") {
-      // Without an operand the head commit time would silently stand in, and an
+      // Without an operand the default `since` would silently stand in, and an
       // earlier round's answer could read as the answer to this one.
       const value = argv[++i];
       if (value === undefined || value.startsWith("--"))
@@ -250,6 +306,7 @@ async function main(): Promise<void> {
       JSON.stringify({
         pr: args.pr,
         headSha: snap.headSha,
+        sameChangeCommits: snap.sameChangeCommits,
         since: snap.since,
         state,
         bodyFindings: bodyFindingCount(snap),

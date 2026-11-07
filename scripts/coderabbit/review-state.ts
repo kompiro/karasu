@@ -11,6 +11,8 @@
 //
 // Pure: `await-review.ts` fetches the snapshot and owns the clock.
 
+import type { GitFacts } from "../review/local-review-record.ts";
+
 /** REST reports the App as `coderabbitai[bot]`, GraphQL as `coderabbitai`. */
 export const CODERABBIT_LOGINS: ReadonlySet<string> = new Set([
   "coderabbitai",
@@ -37,11 +39,15 @@ const IN_PROGRESS_MARKERS = [
 ];
 /** The summary comment's section about the latest review, rewritten every round. */
 const RECENT_REVIEW_SECTION = /<!-- recent_review_start -->([\s\S]*?)<!-- recent_review_end -->/;
-/** What that section says when a review found nothing to file. */
+/** Where the verdict has been since CodeRabbit moved it out of that section (#3657). */
+const RECENT_REVIEW_STATUS_SECTION =
+  /<!-- recent_review_status_start -->([\s\S]*?)<!-- recent_review_status_end -->/;
+/** What those sections say when a review found nothing to file. */
 const NO_ACTIONABLE_COMMENTS = "No actionable comments were generated";
 
 export interface CodeRabbitReview {
   state: string;
+  /** Empty when GitHub no longer has the commit: it then names no head. */
   commitId: string;
   submittedAt: string;
   body: string;
@@ -108,8 +114,16 @@ export interface ReviewThread {
 export interface Snapshot {
   headSha: string;
   /**
+   * Earlier commits whose change HEAD still is: only merges of the base came after
+   * them, and those left the PR's lines as they were ({@link commitsWithSameChange}).
+   * An answer about one of these is an answer about HEAD, because such a push gets no
+   * review of its own (`auto_incremental_review: false`, ADR-3286).
+   */
+  sameChangeCommits?: readonly string[];
+  /**
    * The author's last action on the PR — a push, a thread reply, a posted
-   * command. Only CodeRabbit output at or after this instant answers it.
+   * command; a push that only merged the base is none ({@link changeCommittedAt}).
+   * Only CodeRabbit output at or after this instant answers it.
    */
   since: string;
   now: string;
@@ -195,22 +209,83 @@ export function parseNoticeHeadSha(body: string): string | null {
 }
 
 /** Both sides may be abbreviated; CodeRabbit writes full shas, a caller may not. */
-const sameCommit = (a: string, b: string): boolean => a.startsWith(b) || b.startsWith(a);
+const sameCommit = (a: string, b: string): boolean =>
+  a !== "" && b !== "" && (a.startsWith(b) || b.startsWith(a));
+
+const isHeadCommit = (s: Snapshot, sha: string): boolean =>
+  [s.headSha, ...(s.sameChangeCommits ?? [])].some((c) => sameCommit(c, sha));
+
+/**
+ * The commits {@link Snapshot.sameChangeCommits} names, newest first: follow first
+ * parents from HEAD for as long as each step is a merge of the base that left the
+ * change as it was. The local review record asks the same questions before it covers
+ * a later HEAD (TPL-3286). A step git cannot answer ends the walk and keeps what was
+ * found before it, which leaves the stricter reading of "the head". `onFailure` hears
+ * why, for the caller to report: this module does no I/O.
+ */
+export function commitsWithSameChange(
+  headSha: string,
+  git: Pick<GitFacts, "resolve" | "onlyBaseMerges" | "sameChange">,
+  onFailure: (err: unknown) => void = () => {},
+): string[] {
+  const commits: string[] = [];
+  let current = headSha;
+  for (;;) {
+    try {
+      const parent = git.resolve(`${current}^1`);
+      if (
+        parent === null ||
+        !git.onlyBaseMerges(parent, current) ||
+        !git.sameChange(parent, headSha)
+      ) {
+        return commits;
+      }
+      commits.push(parent);
+      current = parent;
+    } catch (err) {
+      onFailure(err);
+      return commits;
+    }
+  }
+}
+
+/**
+ * The default `since`: when the change HEAD carries was committed, not when HEAD was.
+ * A merge-only push asks CodeRabbit nothing, so the answer to the commit before it
+ * must not read as older than the last action. Epoch when GitHub lists neither.
+ */
+export function changeCommittedAt(
+  commits: readonly { oid: string; committedDate: string }[],
+  headSha: string,
+  sameChangeCommits: readonly string[],
+): string {
+  const oldest = sameChangeCommits.at(-1) ?? headSha;
+  const at = (sha: string) => commits.find((c) => c.oid === sha)?.committedDate;
+  return at(oldest) ?? at(headSha) ?? new Date(0).toISOString();
+}
 
 /**
  * When CodeRabbit last said, in its summary comment, that a review of the head
  * found nothing (#3385). Since `request_changes_workflow: false` (#3365) such a
  * round files no review at all: before, an `APPROVED` review followed seconds
- * later, so reading reviews was enough. The section names the reviewed range in
- * its "Commits" line, and only a range ending at the head describes this push.
+ * later, so reading reviews was enough. The `recent_review` section names the
+ * reviewed range in its "Commits" line, and only a range ending at the head or
+ * at a commit that counts as the head describes this push ({@link isHeadCommit}).
+ * The verdict is in that section or, since #3657, in
+ * `recent_review_status`; both are matched by section because the rest of the
+ * comment summarizes the PR and may quote the sentence.
  */
 function cleanSummaryOfHead(s: Snapshot): number | null {
   let at: number | null = null;
   for (const c of s.comments) {
     const section = RECENT_REVIEW_SECTION.exec(c.body)?.[1];
-    if (section === undefined || !section.includes(NO_ACTIONABLE_COMMENTS)) continue;
+    if (section === undefined) continue;
+    const status = RECENT_REVIEW_STATUS_SECTION.exec(c.body)?.[1] ?? "";
+    if (!section.includes(NO_ACTIONABLE_COMMENTS) && !status.includes(NO_ACTIONABLE_COMMENTS)) {
+      continue;
+    }
     const reviewed = parseNoticeHeadSha(section);
-    if (reviewed === null || !sameCommit(reviewed, s.headSha)) continue;
+    if (reviewed === null || !isHeadCommit(s, reviewed)) continue;
     at = Math.max(at ?? -Infinity, ms(c.updatedAt));
   }
   return at;
@@ -231,7 +306,7 @@ function rateLimitReadyAt(s: Snapshot, opts: ClassifyOptions, notAfter: number):
 
     if (c.body.includes(RATE_LIMIT_MARKER)) {
       const noticeHead = parseNoticeHeadSha(c.body);
-      if (noticeHead !== null && !sameCommit(noticeHead, s.headSha)) continue;
+      if (noticeHead !== null && !isHeadCommit(s, noticeHead)) continue;
       const wait = parseAnnouncedWaitMs(c.body) ?? opts.fallbackBackoffMs;
       readyAt = Math.max(readyAt ?? 0, ms(c.updatedAt) + wait);
     } else if (c.body.includes(COMMAND_REPLY_MARKER) && c.body.includes(COMMAND_RATE_LIMITED)) {
@@ -356,7 +431,7 @@ export function classify(
   const unresolved = open.length;
   const heavy = open.filter((t) => t.severity !== "minor" && t.severity !== "trivial").length;
   const reviews = [...s.reviews].sort((a, b) => ms(a.submittedAt) - ms(b.submittedAt));
-  const onHead = (r: CodeRabbitReview) => r.commitId === s.headSha;
+  const onHead = (r: CodeRabbitReview) => isHeadCommit(s, r.commitId);
   const commitReviews = reviews.filter(isCommitReview);
   const latest = commitReviews.at(-1);
 

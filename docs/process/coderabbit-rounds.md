@@ -134,7 +134,9 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
   再レビューせず、再レビューは `@coderabbitai review` で頼んだときだけ走って枠を 1 回使う。main はラウンドの
   途中では取り込まず、収束した後にコンフリクトがあるときだけ取り込む。取り込みだけの push には再レビューを
   頼まない（`node scripts/review/tier.ts same-change --from <最後にレビューされたコミット>` が `same: true` の
-  とき、PR の変更は変わっていない）。上限に当たると
+  とき、PR の変更は変わっていない）。取り込みの push には要約コメントの先頭に「Review skipped」、HEAD の check に
+  `skipped` が出るが、未レビューという意味ではない。前のコミットへのレビューの結果は、同じコメントの下と、そのコミットの
+  check に残っている。指摘が 0 件の回は review も inline コメントも残らず、この要約コメントが唯一の記録になる。上限に当たると
   サマリーコメントに「Next included review available in N minutes」が出るが、
   **CodeRabbit は明けても自分では再レビューしない。** 告知時刻を過ぎてから
   `@coderabbitai review` を 1 回投げる。それより前に投げても「Review rate limited.」で

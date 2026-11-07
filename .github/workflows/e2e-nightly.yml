@@ -90,8 +90,7 @@ jobs:
           # has no inputs and falls back to the shipped value.
           PLAYWRIGHT_WORKERS: ${{ inputs.workers || 1 }}
           # Adds the `serve` project and its `karasu serve` webServer
-          # (AT-0032, #3049). Only the nightly sets it: `e2e.yml` would
-          # otherwise build and start the CLI on every PR (#3039 decision 4).
+          # (AT-0032, #3049). `e2e.yml` sets it too (#3661).
           E2E_SERVE: "1"
         run: pnpm --filter @karasu-tools/e2e test
 
