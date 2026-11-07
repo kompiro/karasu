@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, renderHook } from "@testing-library/react";
-import type { Project } from "@karasu-tools/core";
-import type { FileSelectionStatus } from "../../hooks/useFileSelection.js";
-import type { AppAction } from "../../state/app-reducer.js";
+import { useReducer } from "react";
+import { InMemoryFileSystemProvider, type Project } from "@karasu-tools/core";
+import { ObservableFileSystemProvider } from "../../fs/observable-provider.js";
+import { useEditorDocument } from "../../hooks/useEditorDocument.js";
+import { useFileSelection, type FileSelectionStatus } from "../../hooks/useFileSelection.js";
+import { appReducer, initialState, type AppAction } from "../../state/app-reducer.js";
 import { useGuidedScene, type PendingScene } from "./use-guided-scene.js";
 import { requestReveal, useRevealRequest } from "../../state/preview-reveal.js";
 import { registerDeepLinkRestore } from "../../state/deep-link-restore.js";
@@ -28,7 +31,6 @@ const diffScene: PendingScene = {
   root: "/projects/tour",
   scene: { file: "planned.krs", view: "system", compareWith: "index.krs" },
   key: "tour:1:2",
-  reapplyOnReturn: true,
 };
 
 type Props = { project: Project | null; file: string | null; pending: PendingScene | null };
@@ -47,6 +49,9 @@ function setup(
   const dispatch = vi.fn<(action: AppAction) => void>((action) => {
     calls.push(action.type);
   });
+  const keepOpenFile = vi.fn<() => void>(() => {
+    calls.push("keep open file");
+  });
   const view = renderHook(
     ({ project, file, pending }: Props) =>
       useGuidedScene({
@@ -54,11 +59,12 @@ function setup(
         currentProject: project,
         currentFilePath: file,
         selectFile,
+        keepOpenFile,
         dispatch,
       }),
     { initialProps: initial },
   );
-  return { ...view, calls, selectFile, dispatch };
+  return { ...view, calls, selectFile, keepOpenFile, dispatch };
 }
 
 describe("useGuidedScene", () => {
@@ -102,21 +108,21 @@ describe("useGuidedScene", () => {
     ]);
   });
 
-  it("clears the diff for a scene without one, and selects its file even when already open", async () => {
+  it("clears the diff for a scene without one, and keeps its file's buffer when it is open (TPL-1535)", async () => {
     const orgScene: PendingScene = {
       root: "/projects/tour",
       scene: { file: "index.krs", view: "org" },
       key: "tour:1:1",
-      reapplyOnReturn: true,
     };
-    const { selectFile, dispatch } = setup({
+    const { selectFile, keepOpenFile, dispatch } = setup({
       project: tourProject,
       file: "/projects/tour/index.krs",
       pending: orgScene,
     });
     await act(async () => {});
-    // Selecting it again supersedes a slower selection still in flight.
-    expect(selectFile).toHaveBeenCalledWith("/projects/tour/index.krs");
+    // Reading it back could replace an edit whose save has not committed.
+    expect(selectFile).not.toHaveBeenCalled();
+    expect(keepOpenFile).toHaveBeenCalledTimes(1);
     expect(dispatch.mock.calls.map(([a]) => a)).toEqual([
       { type: "SET_COMPARE_SOURCE", source: null },
       { type: "SET_ACTIVE_VIEW", activeView: "org" },
@@ -125,7 +131,7 @@ describe("useGuidedScene", () => {
 
   // #3598: a resumed step booted on its scene's hash, so its file is already
   // open with the view restored; a second SELECT_FILE would reset it.
-  it("does not select a resumed scene's file again when it is open, and selects it when it is not", async () => {
+  it("does not select or reset a resumed scene's file when it is open, and selects it when it is not", async () => {
     const resumed = { ...diffScene, key: "tour:0:2", resumed: true };
     const open = setup({
       project: tourProject,
@@ -186,7 +192,6 @@ describe("useGuidedScene", () => {
       root: "/projects/tour",
       scene: { file: "index.krs", view: "org" },
       key: "tour:1:1",
-      reapplyOnReturn: true,
     };
     const { rerender, dispatch } = setup(
       { project: tourProject, file: "/projects/tour/index.krs", pending: diffScene },
@@ -239,24 +244,6 @@ describe("useGuidedScene", () => {
       rerender({ project: tourProject, file: "/projects/tour/index.krs", pending: diffScene });
     });
     expect(dispatch).toHaveBeenCalledTimes(4);
-  });
-
-  it("does not apply a one-off scene again when the visitor comes back", async () => {
-    const evolve: PendingScene = { ...diffScene, key: "scene:1", reapplyOnReturn: false };
-    const { rerender, dispatch } = setup({
-      project: tourProject,
-      file: "/projects/tour/index.krs",
-      pending: evolve,
-    });
-    await act(async () => {});
-    expect(dispatch).toHaveBeenCalledTimes(2);
-    await act(async () => {
-      rerender({ project: otherProject, file: "/projects/gs/index.krs", pending: evolve });
-    });
-    await act(async () => {
-      rerender({ project: tourProject, file: "/projects/tour/index.krs", pending: evolve });
-    });
-    expect(dispatch).toHaveBeenCalledTimes(2);
   });
 
   it("keeps a scene's diff off another project the visitor switched to during the read", async () => {
@@ -364,7 +351,6 @@ describe("useGuidedScene", () => {
       root: "/projects/tour",
       scene: { file: "index.krs", view: "org" },
       key: "tour:1:1",
-      reapplyOnReturn: true,
     };
     const { rerender, unmount } = setup({
       project: tourProject,
@@ -385,5 +371,77 @@ describe("useGuidedScene", () => {
     expect(revealed.result.current?.nodeId).toBe("BillingService");
     unmount();
     expect(revealed.result.current).toBeNull();
+  });
+});
+
+describe("a scene on the open file, with a save still queued (TPL-1535)", () => {
+  /** A write takes a while to commit, as OPFS does on close(). */
+  class SlowWrites extends InMemoryFileSystemProvider {
+    override async writeFile(path: string, content: string): Promise<void> {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      await super.writeFile(path, content);
+    }
+  }
+  const path = "/projects/tour/index.krs";
+  const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 80)));
+  const scene = (key: string): PendingScene => ({
+    root: "/projects/tour",
+    scene: { file: "index.krs", view: "org" },
+    key,
+  });
+
+  async function render() {
+    const disk = new SlowWrites();
+    await disk.writeFile(path, "base");
+    const fs = new ObservableFileSystemProvider(disk);
+    const hook = renderHook(
+      ({ pending }: { pending: PendingScene }) => {
+        const [state, dispatch] = useReducer(appReducer, {
+          ...initialState,
+          currentProject: tourProject,
+        });
+        const { selectFile, keepOpenFile } = useFileSelection(fs, dispatch);
+        const document = useEditorDocument({
+          fs,
+          currentFilePath: state.currentFilePath,
+          fileContent: state.fileContent,
+          dispatch,
+          recompile: () => {},
+        });
+        useGuidedScene({
+          pending,
+          currentProject: state.currentProject,
+          currentFilePath: state.currentFilePath,
+          selectFile,
+          keepOpenFile,
+          dispatch,
+        });
+        return { state, selectFile, document };
+      },
+      { initialProps: { pending: scene("tour:1:0") } },
+    );
+    await act(async () => {
+      await hook.result.current.selectFile(path);
+    });
+    await settle();
+    return { hook, disk };
+  }
+
+  it("keeps an edit made just before Next, in the buffer and on disk", async () => {
+    const { hook, disk } = await render();
+    const type = (text: string) => void hook.result.current.document.handleEditorChange(text);
+
+    await act(async () => {
+      type("base+X");
+      hook.rerender({ pending: scene("tour:1:1") });
+    });
+    await settle();
+    expect(hook.result.current.state.activeView).toBe("org");
+    expect(hook.result.current.state.fileContent).toBe("base+X");
+    expect(await disk.readFile(path)).toBe("base+X");
+
+    await act(async () => type(`${hook.result.current.state.fileContent}+Y`));
+    await settle();
+    expect(await disk.readFile(path)).toBe("base+X+Y");
   });
 });

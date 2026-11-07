@@ -12,7 +12,7 @@ type PhraseKey = {
   [K in keyof Translations]: Translations[K] extends string ? K : never;
 }[keyof Translations];
 
-/** The entries of the bundled service-split sample (examples/<lang>/service-split). */
+/** The entries of the bundled samples the guides walk (examples/<lang>/). */
 type SampleEntry = "index.krs" | "planned.krs" | "migrating.krs";
 
 /**
@@ -56,12 +56,14 @@ export interface TourStep {
   done?: PhraseKey;
 }
 
+const SHARE_COMPLETION: StepCompletion = { kind: "event", any: ["share-opened", "svg-exported"] };
+
 /**
- * The Design a service split guide (#3566). What each step tells the visitor
- * to notice is fenced against the sample in packages/core/src/examples.test.ts;
+ * The first-run guides (#3566, #3600). What each step tells the visitor to
+ * notice is fenced against the samples in packages/core/src/examples.test.ts;
  * change the two together.
  */
-export const SERVICE_SPLIT_TOUR: readonly TourStep[] = [
+const SERVICE_SPLIT_STEPS: readonly TourStep[] = [
   {
     scene: { file: "index.krs", view: "system", reveal: "CommerceApp" },
     completion: { kind: "drilled", view: "system", node: "CommerceApp" },
@@ -100,12 +102,101 @@ export const SERVICE_SPLIT_TOUR: readonly TourStep[] = [
   },
   {
     scene: { file: "migrating.krs", view: "system" },
-    completion: { kind: "event", any: ["share-opened", "svg-exported"] },
+    completion: SHARE_COMPLETION,
     title: "firstRun.step.share.title",
     body: "firstRun.step.share.body",
     done: "firstRun.step.share.done",
   },
 ];
+
+/** Reads the Getting Started sample from three sides. */
+const UNDERSTAND_STEPS: readonly TourStep[] = [
+  {
+    scene: { file: "index.krs", view: "system", reveal: "ECommerce" },
+    completion: { kind: "drilled", view: "system", node: "ECommerce" },
+    title: "firstRun.understand.system.title",
+    body: "firstRun.understand.system.body",
+    notice: "firstRun.understand.system.notice",
+  },
+  {
+    scene: { file: "index.krs", view: "deploy" },
+    title: "firstRun.understand.deploy.title",
+    body: "firstRun.understand.deploy.body",
+    notice: "firstRun.understand.deploy.notice",
+  },
+  {
+    scene: { file: "index.krs", view: "org" },
+    title: "firstRun.understand.org.title",
+    body: "firstRun.understand.org.body",
+    notice: "firstRun.understand.org.notice",
+  },
+  {
+    scene: { file: "index.krs", view: "system" },
+    completion: SHARE_COMPLETION,
+    title: "firstRun.step.share.title",
+    body: "firstRun.step.share.body",
+    done: "firstRun.understand.done",
+  },
+];
+
+/** Follows the service-split sample's migration: against today, in the model, against the target. */
+const EVOLVE_STEPS: readonly TourStep[] = [
+  {
+    scene: {
+      file: "migrating.krs",
+      view: "system",
+      compareWith: "index.krs",
+      reveal: "BillingService",
+    },
+    title: "firstRun.evolve.diff.title",
+    body: "firstRun.evolve.diff.body",
+    notice: "firstRun.evolve.diff.notice",
+  },
+  {
+    scene: { file: "migrating.krs", view: "system", reveal: "BillingDB" },
+    completion: { kind: "drilled", view: "system", node: "CommerceDB" },
+    title: "firstRun.evolve.marks.title",
+    body: "firstRun.evolve.marks.body",
+    notice: "firstRun.evolve.marks.notice",
+  },
+  {
+    scene: {
+      file: "planned.krs",
+      view: "system",
+      compareWith: "migrating.krs",
+      reveal: "BillingDB",
+    },
+    title: "firstRun.evolve.remaining.title",
+    body: "firstRun.evolve.remaining.body",
+    notice: "firstRun.evolve.remaining.notice",
+  },
+  {
+    scene: { file: "migrating.krs", view: "system" },
+    completion: SHARE_COMPLETION,
+    title: "firstRun.step.share.title",
+    body: "firstRun.step.share.body",
+    done: "firstRun.evolve.done",
+  },
+];
+
+export type TourId = "service-split" | "understand" | "evolve";
+
+export interface TourDefinition {
+  /** The panel's heading: the Welcome entry the guide belongs to. */
+  heading: PhraseKey;
+  steps: readonly TourStep[];
+}
+
+export const TOURS: Record<TourId, TourDefinition> = {
+  "service-split": { heading: "firstRun.welcome.design.title", steps: SERVICE_SPLIT_STEPS },
+  understand: { heading: "firstRun.welcome.understand.title", steps: UNDERSTAND_STEPS },
+  evolve: { heading: "firstRun.welcome.evolve.title", steps: EVOLVE_STEPS },
+};
+
+/** A value read from storage names a guide, not just any key of the object's prototype. */
+export function isTourId(value: unknown): value is TourId {
+  return typeof value === "string" && Object.hasOwn(TOURS, value);
+}
 
 export interface CompletionInput {
   completion: StepCompletion | undefined;
@@ -143,10 +234,3 @@ export function isStepDone(input: CompletionInput): boolean {
       return happenedSince(input.signals, completion.any, input.sinceSeq);
   }
 }
-
-/** The Track architecture evolution entry: the migration so far, as a diff against today. */
-export const EVOLVE_SCENE: Scene = {
-  file: "migrating.krs",
-  view: "system",
-  compareWith: "index.krs",
-};

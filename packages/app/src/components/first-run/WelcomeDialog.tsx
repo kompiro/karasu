@@ -21,8 +21,8 @@ interface WelcomeDialogProps {
 
 /**
  * The first-run Welcome (#3565): what karasu is for, and three places to start.
- * Only Design a service split is a guided path; the other two open a sample
- * and leave the visitor in it (PRD #3573 §5).
+ * Each starts a guide on a bundled sample (#3566, #3600), and Open the editor
+ * leaves the visitor in the project that is open.
  */
 export function WelcomeDialog({ open, onChoose }: WelcomeDialogProps) {
   const { t } = useTranslation();
@@ -49,12 +49,14 @@ export function WelcomeDialog({ open, onChoose }: WelcomeDialogProps) {
             icon={<Compass aria-hidden className="size-4" />}
             title={t("firstRun.welcome.understand.title")}
             description={t("firstRun.welcome.understand.description")}
+            badge={t("firstRun.welcome.understand.badge")}
             onClick={() => onChoose("understand")}
           />
           <EntryCard
             icon={<GitCompareArrows aria-hidden className="size-4" />}
             title={t("firstRun.welcome.evolve.title")}
             description={t("firstRun.welcome.evolve.description")}
+            badge={t("firstRun.welcome.evolve.badge")}
             onClick={() => onChoose("evolve")}
           />
         </div>

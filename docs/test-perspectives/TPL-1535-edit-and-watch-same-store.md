@@ -47,6 +47,7 @@ watch + write するストア / 非同期選択を実装・修正するとき:
 - [ ] 自分の write を **直列化**しているか（`SerialQueue` 等）。並行 write が reorder してディスクが古い値で終わらないか
 - [ ] watch の echo ガードが **中間の自己 write も識別**できるか。「現在 buffer と一致」だけでなく **最近自分が書いた値の集合**（または世代トークン）で判定しているか。外部 write は素通しされるか
 - [ ] その自己 write 記録は **開いているファイルにスコープ**されているか（別ファイルで書いた値が現在ファイルの外部更新を誤抑止しないか）。content 一致での識別はフルコンテンツ衝突で誤抑止しうる点を理解しているか（世代トークンなら回避可能）
+- [ ] 開いているファイルを **読み直す経路**が、コミット前の保存を古い内容で巻き戻さないか。読み直した値はそのあと届く自分の write の echo ガードで見逃され、次の打鍵が古い内容を元に上書きする。開いているなら読まずに buffer を使えないか
 - [ ] 非同期選択に **シーケンストークン**があり、最新の選択だけが state を更新するか（遅い先行 read が後勝ちしないか）
 - [ ] read 失敗時に **「存在しない（→空で良い）」と「存在するが read 失敗（→空で着地させない）」を区別**しているか。空 buffer が後続書き込みで実ファイルを上書きしないか
 - [ ] 巻き戻り / 取り違え / 空上書きの **negative テスト**（並行 write・out-of-order read・exists+read失敗）があるか
@@ -57,6 +58,7 @@ watch + write するストア / 非同期選択を実装・修正するとき:
 - 直近 write の値を bounded set に記録し、watcher は `isOwnWrite(fresh)` で自己エコー（中間含む）を抑止。外部 write は集合に無いので反映される（`useSerializedFileWrite` + `useEditorExternalRefresh`）。**集合は開いているファイルにスコープする**（ファイル切替でクリア）— 別ファイルで打った値が現在ファイルの外部更新を誤抑止しないように
 - 非同期選択は `const seq = ++latest.current; … if (seq !== latest.current) return;` で最新のみ反映（`useFileSelection`）
 - read 失敗時は `fs.exists()` で分岐し、存在するなら空 buffer に着地させず選択を中止する
+- 開いているファイルを選び直すガイドのシーンは読まずに buffer を保ち、view の初期化と進行中の読み取りの追い越しだけを行う（`useFileSelection` の `keepOpenFile`、#3600）。ファイルツリーで開いているファイルをクリックする経路に同じ穴が残っている（#3626）
 
 ## 派生元 spec
 
@@ -67,5 +69,6 @@ watch + write するストア / 非同期選択を実装・修正するとき:
 - `packages/app/src/hooks/useSerializedFileWrite.test.ts`（直列化・自己 write 追跡・bounded 退避・ファイル切替でのクリア）
 - `packages/app/src/hooks/useEditorExternalRefresh.test.ts`（中間自己 write の抑止 / 外部 write は反映）
 - `packages/app/src/hooks/useFileSelection.test.ts`（out-of-order read で最新が勝つ / exists+read失敗で空上書きしない）
+- `packages/app/src/components/first-run/use-guided-scene.test.ts`（`keeps an edit made just before Next, in the buffer and on disk`: 書き込みの遅い fs で、打鍵の直後に同じファイルのシーンへ進んでも編集が残る）
 - `packages/app/src/fs/observable-provider.test.ts`（`update (serialized read-modify-write)` › `serializes concurrent updates to the same path (no lost update)` / `serializes a writeFile against an update on the same path`: 同一 path への並行 write が直列化され、古い値で終わらない）
 - `packages/app/src/lib/append-style-rule.test.ts`（`upsertEdgeDirectionRule` › `does not clobber a concurrent editor save when run through the serialized provider`: スタイル追記とエディタ保存が同じストアに並行 write しても上書き消失しない）

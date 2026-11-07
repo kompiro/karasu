@@ -111,6 +111,7 @@ export type AppAction =
   | { type: "SET_PROJECTS"; projects: Project[] }
   | { type: "SET_CURRENT_PROJECT"; project: Project }
   | { type: "SELECT_FILE"; path: string; content: string }
+  | { type: "RESET_FILE_VIEW" }
   | { type: "UPDATE_FILE_CONTENT"; content: string }
   | { type: "SET_FILE_TREE"; tree: DirEntry[] }
   | { type: "SET_VIEW_PATH"; path: string[] }
@@ -158,6 +159,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         lastKrsFilePath:
           action.path === "" ? null : isKrsFile(action.path) ? action.path : state.lastKrsFilePath,
       };
+
+    case "RESET_FILE_VIEW":
+      return { ...state, ...VIEW_RESET };
 
     case "UPDATE_FILE_CONTENT":
       return { ...state, fileContent: action.content };

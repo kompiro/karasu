@@ -92,6 +92,7 @@ path を書く処理か読む処理を作る / 触るとき:
 
 ## 関連テスト
 
+- `packages/app/src/components/first-run/tour-steps.test.ts`（各ガイドのステップが名指すノードが en / ja のサンプルにあり、文がノードを図と同じラベルで呼ぶ）
 - `packages/core/src/compile/top-level-same-id-drill.test.ts` › a top-level node sharing its id
   with a system's child (#3113)（permalink の path と、ルート・drill 先の各カードの
   `data-node-path` / `nodeMetadataByPath` の `viewPath` を compile に戻し、そのノードの子が

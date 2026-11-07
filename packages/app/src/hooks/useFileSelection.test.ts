@@ -19,6 +19,44 @@ function makeFs(overrides: Partial<FileSystemProvider> = {}): FileSystemProvider
 }
 
 describe("useFileSelection", () => {
+  describe("keepOpenFile (TPL-1535)", () => {
+    it("resets the view without reading the file", () => {
+      const fs = makeFs();
+      const dispatch = vi.fn<() => void>();
+      const { result } = renderHook(() => useFileSelection(fs, dispatch));
+
+      act(() => result.current.keepOpenFile());
+
+      expect(fs.readFile).not.toHaveBeenCalled();
+      expect(dispatch).toHaveBeenCalledWith({ type: "RESET_FILE_VIEW" });
+    });
+
+    it("keeps a read still in flight from landing, and a later selection of that file reads again", async () => {
+      let release: (content: string) => void = () => {};
+      const readFile = vi.fn<(path: string) => Promise<string>>(
+        () =>
+          new Promise((resolve) => {
+            release = resolve;
+          }),
+      );
+      const dispatch = vi.fn<() => void>();
+      const { result } = renderHook(() => useFileSelection(makeFs({ readFile }), dispatch));
+
+      let status: Promise<FileSelectionStatus> = Promise.resolve("opened");
+      act(() => {
+        status = result.current.selectFile("/b.krs");
+        result.current.keepOpenFile();
+      });
+      await act(async () => release("late"));
+      expect(await status).toBe("superseded");
+      expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: "SELECT_FILE" }));
+
+      act(() => void result.current.selectFile("/b.krs"));
+      expect(readFile).toHaveBeenCalledTimes(2);
+      await act(async () => release("again"));
+    });
+  });
+
   describe("selectFile", () => {
     it("reads content from fs and dispatches SELECT_FILE", async () => {
       const fs = makeFs({

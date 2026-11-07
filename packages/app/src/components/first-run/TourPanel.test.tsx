@@ -4,7 +4,9 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LocaleProvider } from "../../i18n/index.js";
 import { TourPanel } from "./TourPanel.js";
-import { SERVICE_SPLIT_TOUR } from "./tour-steps.js";
+import { TOURS } from "./tour-steps.js";
+
+const { steps } = TOURS["service-split"];
 
 afterEach(cleanup);
 
@@ -17,9 +19,10 @@ function renderStep(index: number) {
   render(
     <LocaleProvider initialLocale="en">
       <TourPanel
-        step={SERVICE_SPLIT_TOUR[index]}
+        heading="Design a service split"
+        step={steps[index]}
         index={index}
-        total={SERVICE_SPLIT_TOUR.length}
+        total={steps.length}
         {...handlers}
       />
     </LocaleProvider>,
@@ -36,6 +39,7 @@ describe("TourPanel", () => {
 
   it("shows where the visitor is: step count and progress", () => {
     renderStep(1);
+    expect(screen.getByText("Design a service split")).toBeTruthy();
     expect(screen.getByText("2 / 5")).toBeTruthy();
     expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("2");
     expect(
