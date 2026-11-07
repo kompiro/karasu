@@ -4,7 +4,7 @@ title: 初回体験のツアーを localStorage の記録と入口の URL で再
 status: accepted
 date: 2026-11-05
 topic: app-ui
-related_to: [ADR-278, ADR-321, ADR-425, ADR-811, ADR-1094, ADR-1827]
+related_to: [ADR-278, ADR-321, ADR-425, ADR-811, ADR-1094, ADR-1827, ADR-3600]
 scope:
   packages: [app]
 assumptions:
