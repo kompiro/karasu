@@ -714,6 +714,17 @@ describe("commitsWithSameChange (#3657)", () => {
   it("stops at a commit with no parent to read", () => {
     expect(commitsWithSameChange("c", facts(["c"], ["c"]))).toEqual([]);
   });
+
+  it("keeps what it found when git cannot answer a later step", () => {
+    const git = {
+      ...facts(["c", "b", "a"], ["c", "b"]),
+      sameChange: (a: string) => {
+        if (a === "a") throw new Error("no merge base");
+        return true;
+      },
+    };
+    expect(commitsWithSameChange("c", git)).toEqual(["b"]);
+  });
 });
 
 describe("parseAnnouncedWaitMs", () => {

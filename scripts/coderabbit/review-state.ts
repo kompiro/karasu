@@ -219,8 +219,8 @@ const isHeadCommit = (s: Snapshot, sha: string): boolean =>
  * The commits {@link Snapshot.sameChangeCommits} names, newest first: follow first
  * parents from HEAD for as long as each step is a merge of the base that left the
  * change as it was. The local review record asks the same questions before it covers
- * a later HEAD (TPL-3286). A step git cannot answer ends the walk, which leaves the
- * stricter reading of "the head".
+ * a later HEAD (TPL-3286). A step git cannot answer ends the walk and keeps what was
+ * found before it, which leaves the stricter reading of "the head".
  */
 export function commitsWithSameChange(
   headSha: string,
@@ -229,16 +229,20 @@ export function commitsWithSameChange(
   const commits: string[] = [];
   let current = headSha;
   for (;;) {
-    const parent = git.resolve(`${current}^1`);
-    if (
-      parent === null ||
-      !git.onlyBaseMerges(parent, current) ||
-      !git.sameChange(parent, headSha)
-    ) {
+    try {
+      const parent = git.resolve(`${current}^1`);
+      if (
+        parent === null ||
+        !git.onlyBaseMerges(parent, current) ||
+        !git.sameChange(parent, headSha)
+      ) {
+        return commits;
+      }
+      commits.push(parent);
+      current = parent;
+    } catch {
       return commits;
     }
-    commits.push(parent);
-    current = parent;
   }
 }
 
@@ -262,8 +266,9 @@ export function changeCommittedAt(
  * found nothing (#3385). Since `request_changes_workflow: false` (#3365) such a
  * round files no review at all: before, an `APPROVED` review followed seconds
  * later, so reading reviews was enough. The `recent_review` section names the
- * reviewed range in its "Commits" line, and only a range ending at the head
- * describes this push. The verdict is in that section or, since #3657, in
+ * reviewed range in its "Commits" line, and only a range ending at the head or
+ * at a commit that counts as the head describes this push ({@link isHeadCommit}).
+ * The verdict is in that section or, since #3657, in
  * `recent_review_status`; both are matched by section because the rest of the
  * comment summarizes the PR and may quote the sentence.
  */

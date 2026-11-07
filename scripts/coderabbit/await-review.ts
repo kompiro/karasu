@@ -170,15 +170,9 @@ function fetchForComparison(pr: number, headSha: string, baseRefName: string): v
   }
 }
 
-/** Empty when this checkout cannot say, which leaves the exact head as the only head. */
 function readSameChangeCommits(pr: number, headSha: string, baseRefName: string): string[] {
   fetchForComparison(pr, headSha, baseRefName);
-  try {
-    return commitsWithSameChange(headSha, gitFacts(`origin/${baseRefName}`, headSha));
-  } catch (err) {
-    console.error(`could not compare the commits before ${headSha}: ${String(err)}`);
-    return [];
-  }
+  return commitsWithSameChange(headSha, gitFacts(`origin/${baseRefName}`, headSha));
 }
 
 function fetchHead(pr: number): PrHead {
