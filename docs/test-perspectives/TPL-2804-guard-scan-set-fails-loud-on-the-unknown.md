@@ -22,7 +22,8 @@ scope:
   packages: []
   paths:
     - "scripts/lint/*.ts"
-    - "scripts/ci/*.test.ts"
+    - "scripts/ci/*-policy.test.ts"
+    - "scripts/ci/*-sync.test.ts"
     - "scripts/release/*-workflow.test.ts"
 ---
 

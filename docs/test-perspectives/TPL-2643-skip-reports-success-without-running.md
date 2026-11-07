@@ -24,6 +24,9 @@ scope:
     - ".github/workflows/*-skip.yml"
     - ".github/workflows/ci.yml"
     - ".github/workflows/review-*.yml"
+    - ".github/workflows/*e2e.yml"
+    - ".github/workflows/render-equivalence.yml"
+    - ".github/workflows/*preview.yml"
 ---
 
 # TPL-2643: 走らずに success を報告する gate は、skip 条件を解除する状態変化を必ず trigger 側にも持つ

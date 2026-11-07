@@ -19,7 +19,6 @@ scope:
   packages:
     - e2e
   paths:
-    - "package.json"
     - "packages/e2e/package.json"
     - "packages/e2e/playwright.config.ts"
 ---
