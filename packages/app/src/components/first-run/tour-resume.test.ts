@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Project } from "@karasu-tools/core";
 import { parseHash } from "../../hooks/history-hash.js";
+import type { TourProgress } from "./tour-progress.js";
 import { decideTourResume, tourStepHash } from "./tour-resume.js";
 
 const stamp = { createdAt: "2026-11-04T00:00:00Z", updatedAt: "2026-11-04T00:00:00Z" };
@@ -11,15 +12,21 @@ const project = (id: string): Project => ({
   ...stamp,
 });
 const projects = [project("gs"), project("tour")];
-const record = { projectId: "tour", step: 2 };
-const resumed = { kind: "resume", projectId: "tour", root: "/projects/tour", step: 2 };
+const record: TourProgress = { tour: "service-split", projectId: "tour", step: 2 };
+const resumed = {
+  kind: "resume",
+  tour: "service-split",
+  projectId: "tour",
+  root: "/projects/tour",
+  step: 2,
+};
 
 function decide(
   url: string,
   {
     lastProjectId = "tour",
     rec = record,
-  }: { lastProjectId?: string | null; rec?: typeof record | null } = {},
+  }: { lastProjectId?: string | null; rec?: TourProgress | null } = {},
 ) {
   const { pathname, search, hash } = new URL(url, "https://karasu.test");
   return decideTourResume({
@@ -64,26 +71,39 @@ describe("decideTourResume (#3598)", () => {
 
   it("discards a record that is missing or unreadable, or whose project is gone", () => {
     expect(decide("/projects/tour", { rec: null })).toEqual({ kind: "discard" });
-    expect(decide("/projects/gone", { rec: { projectId: "gone", step: 0 } })).toEqual({
-      kind: "discard",
-    });
-    expect(decide("/?example=x", { rec: { projectId: "gone", step: 0 } })).toEqual({
-      kind: "discard",
-    });
+    const gone: TourProgress = { tour: "service-split", projectId: "gone", step: 0 };
+    expect(decide("/projects/gone", { rec: gone })).toEqual({ kind: "discard" });
+    expect(decide("/?example=x", { rec: gone })).toEqual({ kind: "discard" });
+  });
+
+  it("resumes the guide the record names (#3600)", () => {
+    const rec: TourProgress = { tour: "evolve", projectId: "tour", step: 1 };
+    expect(decide("/projects/tour", { rec })).toEqual({ ...resumed, tour: "evolve", step: 1 });
   });
 });
 
 describe("tourStepHash (#3598)", () => {
   it("opens a step on its scene's file and view, undrilled", () => {
-    expect(parseHash(tourStepHash("/projects/tour", 1))).toMatchObject({
+    expect(parseHash(tourStepHash("/projects/tour", "service-split", 1))).toMatchObject({
       activeView: "org",
       nodeId: null,
       highlightNodeId: null,
       filePath: "/projects/tour/index.krs",
     });
-    expect(parseHash(tourStepHash("/projects/tour", 2))).toMatchObject({
+    expect(parseHash(tourStepHash("/projects/tour", "service-split", 2))).toMatchObject({
       activeView: "system",
       nodeId: null,
+      filePath: "/projects/tour/planned.krs",
+    });
+  });
+
+  it("reads the step from the guide it is given (#3600)", () => {
+    expect(parseHash(tourStepHash("/projects/gs", "understand", 1))).toMatchObject({
+      activeView: "deploy",
+      filePath: "/projects/gs/index.krs",
+    });
+    expect(parseHash(tourStepHash("/projects/tour", "evolve", 2))).toMatchObject({
+      activeView: "system",
       filePath: "/projects/tour/planned.krs",
     });
   });

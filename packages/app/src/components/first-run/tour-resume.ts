@@ -2,14 +2,14 @@ import type { Project } from "@karasu-tools/core";
 import { buildHash } from "../../hooks/history-hash.js";
 import { getProjectIdFromPath } from "../../hooks/useProjectNavigation.js";
 import type { TourProgress } from "./tour-progress.js";
-import { SERVICE_SPLIT_TOUR } from "./tour-steps.js";
+import { TOURS, type TourId } from "./tour-steps.js";
 
 /**
  * What the boot does with a recorded tour (#3598): resume it, leave the record
  * for a later boot, or delete it.
  */
 export type TourResume =
-  | { kind: "resume"; projectId: string; root: string; step: number }
+  | { kind: "resume"; tour: TourId; projectId: string; root: string; step: number }
   | { kind: "keep" }
   | { kind: "discard" };
 
@@ -51,7 +51,13 @@ export function decideTourResume({
       ? pathId === project.id
       : entry.search === "" && entry.hash === "" && lastProjectId === project.id;
   return resumes
-    ? { kind: "resume", projectId: project.id, root: project.rootPath, step: record.step }
+    ? {
+        kind: "resume",
+        tour: record.tour,
+        projectId: project.id,
+        root: project.rootPath,
+        step: record.step,
+      }
     : KEEP_TOUR;
 }
 
@@ -61,7 +67,7 @@ export function decideTourResume({
  * scene adds only what the URL does not carry (the diff and the node to keep
  * in view), so resuming adds no history entry (TPL-1842).
  */
-export function tourStepHash(root: string, step: number): string {
-  const { scene } = SERVICE_SPLIT_TOUR[step];
+export function tourStepHash(root: string, tour: TourId, step: number): string {
+  const { scene } = TOURS[tour].steps[step];
   return buildHash(scene.view, [], { file: `${root}/${scene.file}` });
 }

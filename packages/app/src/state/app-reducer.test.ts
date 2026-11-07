@@ -102,6 +102,25 @@ describe("appReducer — activeView / highlightedNodeId", () => {
     });
   });
 
+  describe("RESET_FILE_VIEW", () => {
+    it("resets the view as SELECT_FILE does, and leaves the file and its buffer", () => {
+      const state: AppState = {
+        ...initialState,
+        currentFilePath: "/p/index.krs",
+        fileContent: "edited",
+        viewPath: ["ECommerce"],
+        activeView: "org",
+        highlightedNodeId: "Catalog",
+      };
+      expect(appReducer(state, { type: "RESET_FILE_VIEW" })).toEqual({
+        ...state,
+        viewPath: [],
+        activeView: "system",
+        highlightedNodeId: null,
+      });
+    });
+  });
+
   describe("SELECT_FILE", () => {
     it("resets activeView to system", () => {
       const state = stateWith({ activeView: "deploy" });

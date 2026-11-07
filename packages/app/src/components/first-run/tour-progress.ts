@@ -1,4 +1,4 @@
-import { SERVICE_SPLIT_TOUR } from "./tour-steps.js";
+import { TOURS, isTourId, type TourId } from "./tour-steps.js";
 
 /**
  * How far the visitor got in the first-run tour (#3598), so a reload or a
@@ -6,21 +6,21 @@ import { SERVICE_SPLIT_TOUR } from "./tour-steps.js";
  * starts or moves, removed when it ends. Kept apart from the tour's project
  * (`tour-project.ts`), which outlives the tour as Restart Guided Tour…'s way
  * back. Like the Welcome flag, a storage that throws reads as no record, and
- * a value of another shape, version or tour reads as none too (TPL-1530).
+ * a value of another shape or version, of a guide this build does not have, or
+ * past that guide's last step reads as none too (TPL-1530).
  */
 
 export const TOUR_PROGRESS_KEY = "karasu-first-run-tour";
 
 export interface TourProgress {
+  tour: TourId;
   projectId: string;
-  /** Index into `SERVICE_SPLIT_TOUR`. */
+  /** Index into the guide's steps. */
   step: number;
 }
 
 interface StoredTourProgress extends TourProgress {
   v: 1;
-  /** Which guide this is, apart from the ones still to come (#3600, #3601). */
-  tour: "service-split";
 }
 
 function isStoredTourProgress(value: unknown): value is StoredTourProgress {
@@ -28,12 +28,12 @@ function isStoredTourProgress(value: unknown): value is StoredTourProgress {
   const { v, tour, projectId, step } = value as Record<string, unknown>;
   return (
     v === 1 &&
-    tour === "service-split" &&
+    isTourId(tour) &&
     typeof projectId === "string" &&
     projectId !== "" &&
     Number.isInteger(step) &&
     (step as number) >= 0 &&
-    (step as number) < SERVICE_SPLIT_TOUR.length
+    (step as number) < TOURS[tour].steps.length
   );
 }
 
@@ -42,7 +42,8 @@ export function readTourProgress(storage?: Pick<Storage, "getItem">): TourProgre
     const raw = (storage ?? localStorage).getItem(TOUR_PROGRESS_KEY);
     if (raw === null) return null;
     const value: unknown = JSON.parse(raw);
-    return isStoredTourProgress(value) ? { projectId: value.projectId, step: value.step } : null;
+    if (!isStoredTourProgress(value)) return null;
+    return { tour: value.tour, projectId: value.projectId, step: value.step };
   } catch {
     return null;
   }
@@ -50,10 +51,10 @@ export function readTourProgress(storage?: Pick<Storage, "getItem">): TourProgre
 
 /** Best effort: without storage, a reload ends the tour as it did before #3598. */
 export function writeTourProgress(
-  { projectId, step }: TourProgress,
+  { tour, projectId, step }: TourProgress,
   storage?: Pick<Storage, "setItem">,
 ): void {
-  const record: StoredTourProgress = { v: 1, tour: "service-split", projectId, step };
+  const record: StoredTourProgress = { v: 1, tour, projectId, step };
   try {
     (storage ?? localStorage).setItem(TOUR_PROGRESS_KEY, JSON.stringify(record));
   } catch {

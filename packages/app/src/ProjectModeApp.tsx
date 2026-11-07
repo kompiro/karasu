@@ -6,6 +6,7 @@ import { AppShell } from "./components/AppShell.js";
 import { PasteCompareDialog } from "./components/PasteCompareDialog.js";
 import { ErrorBanner } from "./components/ErrorBanner.js";
 import { FirstRunExperience } from "./components/first-run/FirstRunExperience.js";
+import { projectMatchesExample } from "./components/first-run/project-matches-example.js";
 import { readTourProgress } from "./components/first-run/tour-progress.js";
 import {
   KEEP_TOUR,
@@ -26,7 +27,7 @@ import { useProjectActions } from "./hooks/useProjectActions.js";
 import { usePasteCompare } from "./hooks/usePasteCompare.js";
 import { useSnapshotCompare } from "./hooks/useSnapshotCompare.js";
 import { useTransientError } from "./hooks/useTransientError.js";
-import { type Project } from "@karasu-tools/core";
+import { type ExampleProject, type Project } from "@karasu-tools/core";
 
 const ACTION_ERROR_DISMISS_MS = 6000;
 
@@ -67,7 +68,9 @@ export function ProjectModeApp() {
         lastProjectId,
       });
       setTourResume(decision);
-      return decision.kind === "resume" ? tourStepHash(decision.root, decision.step) : null;
+      return decision.kind === "resume"
+        ? tourStepHash(decision.root, decision.tour, decision.step)
+        : null;
     },
     [initialLocation],
   );
@@ -110,7 +113,7 @@ export function ProjectModeApp() {
     dispatch,
     decideInitialHash,
   );
-  const { selectFile } = useFileSelection(fs, dispatch);
+  const { selectFile, keepOpenFile } = useFileSelection(fs, dispatch);
 
   const { seededDefaults } = useProjectInitialization({
     pm,
@@ -120,6 +123,11 @@ export function ProjectModeApp() {
     selectFile,
     bootFile,
   });
+
+  const matchesExample = useCallback(
+    (project: Project, example: ExampleProject) => projectMatchesExample(fs, project, example),
+    [fs],
+  );
 
   const {
     createProject,
@@ -273,7 +281,9 @@ export function ProjectModeApp() {
         viewPath={state.viewPath}
         navigateToProject={navigateToProject}
         selectFile={selectFile}
+        keepOpenFile={keepOpenFile}
         openBundledExample={openBundledExample}
+        matchesExample={matchesExample}
         dispatch={dispatch}
       />
       {paste.pasteDialog?.mode === "edit" && (

@@ -88,18 +88,26 @@ three places to start:
   A step that asks you to do something (drill in, turn on the team
   dependencies, share or export) shows a ✓ once you have done it; you still
   move on with **Next** when you are ready.
-- **Understand an existing system**: opens the Getting Started project.
-- **Track architecture evolution**: opens the `service-split` sample with its
-  migration compared against the current system.
+- **Understand an existing system**: starts a four-step guided tour of the
+  Getting Started project: the whole system, how it runs (Deploy view), who owns
+  what (Org view), and how to share what you found. It uses your Getting Started
+  while it still matches the sample, and otherwise opens a new copy, so your
+  edits stay as they are.
+- **Track architecture evolution**: opens the `service-split` sample as a new
+  project and starts a four-step guided tour: the migration compared with today
+  (diff mode), the migration marks in the model (`@migration_target`, `@planned`,
+  `@deprecated`), the target compared with the migration (what is left), and how
+  to share where it stands.
 
-Samples from Welcome always open as new projects, so nothing you already have is touched.
+All three tours work the same way. Samples from Welcome never touch anything you
+already have.
 Welcome does not appear when you open the app through a link to a specific
 place (a gallery example or a `#krs-…` permalink), or once you have chosen
 something. Run **Show Welcome…** from the command palette (`Ctrl/Cmd+Shift+P`)
-to open it again. **Restart Guided Tour…** in the same palette walks the guide
-again from step 1, in the copy of the sample the tour opened before, with any
-edits you made there (or a new copy if there is none, for example when you
-never took the tour or deleted that project).
+to open it again. **Restart Guided Tour…** in the same palette walks the last
+guide you started again from step 1, in the project it used before, with any
+edits you made there. If that project is gone, the guide opens the way its
+Welcome entry does; if you never took a tour, it starts Design a service split.
 
 Reloading the page during the tour, or opening the app again from its address
 bar, comes back to the step you were on in the tour's project. A link that

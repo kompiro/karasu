@@ -13,10 +13,10 @@ import type { ActiveView, AppAction } from "../../state/app-reducer.js";
 import { useAppSignals } from "../../state/app-signals.js";
 import { TourPanel } from "./TourPanel.js";
 import { WelcomeDialog, type WelcomeChoice } from "./WelcomeDialog.js";
-import { EVOLVE_SCENE, SERVICE_SPLIT_TOUR, isStepDone } from "./tour-steps.js";
+import { TOURS, isStepDone, type TourId } from "./tour-steps.js";
 import { useGuidedScene, type PendingScene } from "./use-guided-scene.js";
 import { markWelcomeDismissed, shouldShowWelcome } from "./welcome-gate.js";
-import { readTourProjectId, writeTourProjectId } from "./tour-project.js";
+import { readTourProject, writeTourProject } from "./tour-project.js";
 import { clearTourProgress, writeTourProgress } from "./tour-progress.js";
 import type { TourResume } from "./tour-resume.js";
 import type { FileSelectionStatus } from "../../hooks/useFileSelection.js";
@@ -36,26 +36,34 @@ interface FirstRunExperienceProps {
   viewPath: readonly string[];
   navigateToProject: (project: Project) => void;
   selectFile: (path: string) => Promise<FileSelectionStatus>;
+  keepOpenFile: () => void;
   openBundledExample: (example: ExampleProject) => Promise<Project | null>;
+  /** Whether the project still holds the sample's files unchanged (#3600). */
+  matchesExample: (project: Project, example: ExampleProject) => Promise<boolean>;
   dispatch: Dispatch<AppAction>;
 }
 
-/** A running guide or a one-off scene, in the project it opened. */
-type Guide =
-  | {
-      kind: "tour";
-      projectId: string;
-      root: string;
-      step: number;
-      run: number;
-      /** Resumed at boot, until the visitor moves (#3598). */
-      resumed?: boolean;
-    }
-  | { kind: "scene"; root: string; run: number };
+/** A running guide, in the project it opened. */
+interface Guide {
+  tour: TourId;
+  projectId: string;
+  root: string;
+  step: number;
+  run: number;
+  /** Resumed at boot, until the visitor moves (#3598). */
+  resumed?: boolean;
+}
+
+/** The guide each Welcome entry starts. */
+const ENTRY_TOUR: Record<Exclude<WelcomeChoice, "editor">, TourId> = {
+  design: "service-split",
+  understand: "understand",
+  evolve: "evolve",
+};
 
 /**
- * The first-run experience (#3563): the Welcome dialog (#3565) and the
- * Design a service split tour (#3566). Mounted from `ProjectModeApp`, so it
+ * The first-run experience (#3563): the Welcome dialog (#3565) and the guided
+ * tours its entries start (#3566, #3600). Mounted from `ProjectModeApp`, so it
  * only exists where there are projects to open samples into. Everything it
  * does goes through the actions the rest of the app uses: samples are new
  * projects, and a guide step is a file selection, a view, and the existing
@@ -73,16 +81,18 @@ export function FirstRunExperience({
   viewPath,
   navigateToProject,
   selectFile,
+  keepOpenFile,
   openBundledExample,
+  matchesExample,
   dispatch,
 }: FirstRunExperienceProps) {
-  const { locale } = useTranslation();
+  const { locale, t } = useTranslation();
   // A resumed tour is there from the first frame. `run` 0 is never a
   // started tour's, which count from 1, so its scene key is its own.
   const [guide, setGuide] = useState<Guide | null>(() =>
     tourResume.kind === "resume"
       ? {
-          kind: "tour",
+          tour: tourResume.tour,
           projectId: tourResume.projectId,
           root: tourResume.root,
           step: tourResume.step,
@@ -114,48 +124,84 @@ export function FirstRunExperience({
   });
 
   const isJa = locale === "ja";
+  const gettingStarted = isJa ? GETTING_STARTED_PROJECT : GETTING_STARTED_PROJECT_EN;
   const serviceSplit = isJa ? SERVICE_SPLIT_PROJECT : SERVICE_SPLIT_PROJECT_EN;
 
-  const startTour = useCallback((project: Project) => {
-    writeTourProjectId(project.id);
-    writeTourProgress({ projectId: project.id, step: 0 });
+  const startTour = useCallback((tour: TourId, project: Project) => {
+    writeTourProject({ tour, projectId: project.id });
+    writeTourProgress({ tour, projectId: project.id, step: 0 });
     const run = ++runs.current;
-    setGuide({ kind: "tour", projectId: project.id, root: project.rootPath, step: 0, run });
+    setGuide({ tour, projectId: project.id, root: project.rootPath, step: 0, run });
   }, []);
 
-  // Opening a copy of the sample is an OPFS write. While one is in flight a
-  // second open is ignored, and so is a restart (below), so no guide starts
-  // meanwhile. The run check is a second line of defence for a future path
-  // that starts a guide without this guard: the newer guide wins (TPL-1534).
-  const opening = useRef(false);
-  const openSample = useCallback(async (): Promise<Project | null> => {
-    if (opening.current) return null;
-    opening.current = true;
-    const run = runs.current;
-    const project = await openBundledExample(serviceSplit).finally(() => {
-      opening.current = false;
-    });
-    return project && runs.current === run ? project : null;
-  }, [openBundledExample, serviceSplit]);
+  // The open project, read after an await.
+  const openProjectId = useRef(currentProject?.id);
+  useEffect(() => {
+    openProjectId.current = currentProject?.id;
+  }, [currentProject]);
 
-  // Walks the guide again from step 1 (#3597), in the sample project the tour
-  // opened before so a second run does not pile up copies; a new copy only
-  // when that project is gone. It closes Welcome as a choice there would.
+  // The project a guide starts in, the way its Welcome entry says (#3600).
+  // Design and Evolve open a new copy of their sample. Understand uses a Getting
+  // Started that still says what the sample says, so a first visit does not get
+  // a second one; an edited one would make its text false, so it gets a new copy
+  // too, unless the visitor chose otherwise during the read.
+  const resolveProject = useCallback(
+    async (tour: TourId, run: number) => {
+      if (tour !== "understand") {
+        return { project: await openBundledExample(serviceSplit), unchanged: false };
+      }
+      for (const candidate of projects.filter((p) => p.name === gettingStarted.name)) {
+        if (await matchesExample(candidate, gettingStarted)) {
+          return { project: candidate, unchanged: true };
+        }
+      }
+      if (runs.current !== run) return { project: null, unchanged: false };
+      return { project: await openBundledExample(gettingStarted), unchanged: false };
+    },
+    [gettingStarted, serviceSplit, projects, matchesExample, openBundledExample],
+  );
+
+  // Opening a copy of the sample is an OPFS write. While one is in flight a
+  // second start is ignored, so no guide starts meanwhile. The run check is a
+  // second line of defence for a future path that starts a guide without this
+  // guard, and it drops a guide the visitor chose the editor over: the newer
+  // choice wins (TPL-1534).
+  const opening = useRef(false);
+  const enterTour = useCallback(
+    async (tour: TourId) => {
+      if (opening.current) return;
+      opening.current = true;
+      const run = runs.current;
+      const { project, unchanged } = await resolveProject(tour, run).finally(() => {
+        opening.current = false;
+      });
+      if (!project || runs.current !== run) return;
+      // Navigating to the open project again would clear the open file without
+      // selecting it back. A new copy has navigated already.
+      if (unchanged && project.id !== openProjectId.current) navigateToProject(project);
+      startTour(tour, project);
+    },
+    [resolveProject, navigateToProject, startTour],
+  );
+
+  // Walks the last guide started again from step 1 (#3597, #3600), in the
+  // project it opened so a second run does not pile up copies; opened the way
+  // its entry does when that project is gone, and the Design guide when none
+  // has started. It closes Welcome as a choice there would.
   const restartTour = useCallback(async () => {
     setGreeted(true);
     setRequested(false);
     markWelcomeDismissed();
     if (opening.current) return;
-    const recorded = readTourProjectId();
-    const existing = recorded === null ? undefined : projects.find((p) => p.id === recorded);
-    if (existing) {
+    const recorded = readTourProject();
+    const existing = recorded && projects.find((p) => p.id === recorded.projectId);
+    if (recorded && existing) {
       if (existing.id !== currentProject?.id) navigateToProject(existing);
-      startTour(existing);
+      startTour(recorded.tour, existing);
       return;
     }
-    const project = await openSample();
-    if (project) startTour(project);
-  }, [projects, currentProject, navigateToProject, openSample, startTour]);
+    await enterTour(recorded?.tour ?? "service-split");
+  }, [projects, currentProject, navigateToProject, enterTour, startTour]);
 
   useCommand({
     id: "view.restartTour",
@@ -168,63 +214,26 @@ export function FirstRunExperience({
       setGreeted(true);
       setRequested(false);
       markWelcomeDismissed();
-      // A choice that starts no guide still outranks a sample still opening
-      // for an earlier restart: the visitor chose to be elsewhere.
-      if (choice === "editor" || choice === "understand") runs.current++;
-      if (choice === "editor") return;
-
-      if (choice === "understand") {
-        const template = isJa ? GETTING_STARTED_PROJECT : GETTING_STARTED_PROJECT_EN;
-        const seeded = projects.find((p) => p.name === template.name);
-        // On a first visit the seeded project is already open: navigating to
-        // it again would clear the open file without selecting it back.
-        // A switch clears any diff; reselecting must leave the same state.
-        if (seeded && seeded.id === currentProject?.id) {
-          dispatch({ type: "SET_COMPARE_SOURCE", source: null });
-          await selectFile(`${seeded.rootPath}/index.krs`);
-        } else if (seeded) navigateToProject(seeded);
-        else await openBundledExample(template);
+      if (choice === "editor") {
+        // Outranks a sample still opening for an earlier start: the visitor
+        // chose to be elsewhere.
+        runs.current++;
         return;
       }
-
-      const project = await openSample();
-      if (!project) return;
-      if (choice === "design") {
-        startTour(project);
-        return;
-      }
-      // Another guide replaces the tour, so a reload must not bring it back.
-      clearTourProgress();
-      setGuide({ kind: "scene", root: project.rootPath, run: ++runs.current });
+      await enterTour(ENTRY_TOUR[choice]);
     },
-    [
-      isJa,
-      projects,
-      currentProject,
-      navigateToProject,
-      selectFile,
-      openBundledExample,
-      dispatch,
-      openSample,
-      startTour,
-    ],
+    [enterTour],
   );
+
+  const steps = guide ? TOURS[guide.tour].steps : null;
+  const tourStep = guide && steps ? steps[guide.step] : null;
 
   const pending = useMemo<PendingScene | null>(() => {
     if (!guide) return null;
-    if (guide.kind === "scene") {
-      return {
-        root: guide.root,
-        scene: EVOLVE_SCENE,
-        key: `scene:${guide.run}`,
-        reapplyOnReturn: false,
-      };
-    }
     return {
       root: guide.root,
-      scene: SERVICE_SPLIT_TOUR[guide.step].scene,
+      scene: TOURS[guide.tour].steps[guide.step].scene,
       key: `tour:${guide.run}:${guide.step}`,
-      reapplyOnReturn: true,
       resumed: guide.resumed,
     };
   }, [guide]);
@@ -234,6 +243,7 @@ export function FirstRunExperience({
     currentProject,
     currentFilePath,
     selectFile,
+    keepOpenFile,
     dispatch,
   });
 
@@ -250,9 +260,9 @@ export function FirstRunExperience({
   if (landing.key !== landedKey) setLanding({ key: landedKey, seq: signals.seq });
   const [completed, setCompleted] = useState<ReadonlySet<string>>(() => new Set());
   const stepDone =
-    guide?.kind === "tour" && pending !== null
+    tourStep && pending
       ? isStepDone({
-          completion: SERVICE_SPLIT_TOUR[guide.step].completion,
+          completion: tourStep.completion,
           key: pending.key,
           landedKey: landing.key,
           completed,
@@ -270,17 +280,16 @@ export function FirstRunExperience({
   // runs twice, so the record is written once, from the step shown.
   const moveStep = useCallback(
     (delta: number) => {
-      if (guide?.kind !== "tour") return;
-      const step = Math.min(Math.max(guide.step + delta, 0), SERVICE_SPLIT_TOUR.length - 1);
+      if (!guide) return;
+      const step = Math.min(Math.max(guide.step + delta, 0), TOURS[guide.tour].steps.length - 1);
       setGuide({ ...guide, step, resumed: false });
-      writeTourProgress({ projectId: guide.projectId, step });
+      writeTourProgress({ tour: guide.tour, projectId: guide.projectId, step });
     },
     [guide],
   );
 
   // The diff a tour step opened is the tour's, so the editor starts without
   // it; a comparison the visitor opened on another step stays.
-  const tourStep = guide?.kind === "tour" ? SERVICE_SPLIT_TOUR[guide.step] : null;
   const endTour = useCallback(() => {
     clearTourProgress();
     setGuide(null);
@@ -289,16 +298,17 @@ export function FirstRunExperience({
 
   // The panel belongs to the tour's project: switching away hides it, and
   // switching back shows it again at the same step.
-  const showTour = guide?.kind === "tour" && currentProject?.rootPath === guide.root;
+  const showTour = guide && tourStep && steps && currentProject?.rootPath === guide.root;
 
   return (
     <>
       <WelcomeDialog open={welcomeOpen} onChoose={(c) => void choose(c)} />
       {showTour && (
         <TourPanel
-          step={SERVICE_SPLIT_TOUR[guide.step]}
+          heading={t(TOURS[guide.tour].heading)}
+          step={tourStep}
           index={guide.step}
-          total={SERVICE_SPLIT_TOUR.length}
+          total={steps.length}
           done={stepDone}
           landed={landing.key === pending?.key}
           onBack={() => moveStep(-1)}
