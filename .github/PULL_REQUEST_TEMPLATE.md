@@ -125,7 +125,13 @@ NOTICE item below is a manual check CI cannot do. Mark "N/A" otherwise.
 TPL = Test Perspective Library (docs/test-perspectives/README.md).
 Lifecycle: concept → proactive TPL → development → bug → retrospective TPL.
 
-Pick the row(s) that apply; write "N/A" if none (pure refactor / docs / chore):
+First run `pnpm tpl:changed`: it lists the TPLs whose body (or
+`scope.paths`) names a file this PR changes (stacked PR:
+`pnpm tpl:related --base origin/<base>`). Cite the ones that apply and how
+the change meets them; skipped ones need no reason.
+
+Then pick the row(s) that apply; write "N/A" if no row applies and nothing
+the list shows applies (pure refactor / docs / chore):
 
 - Bug-fix PR (closes a `bug` Issue) — walk the 3-Yes rule:
   could the same root cause occur in another feature / structurally

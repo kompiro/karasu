@@ -1110,7 +1110,7 @@ export interface DiagnosticParamsByCode {
   // about what the checker looks at, so there is none (#2549).
   "duplicate-edge-id": { authorId: string };
   "duplicate-edge-label": { label: string };
-  "ambiguous-edge-base": { fromId: string; toId: string; arrow: "->" | "-->" };
+  "ambiguous-edge-base": { fromId: string; toId: string; arrow: "->" | "-->"; base: string };
 
   // ── Style parser ────────────────────────────────────────────────────────
   "style-token-type-mismatch": { expected: string; got: string; value: string };

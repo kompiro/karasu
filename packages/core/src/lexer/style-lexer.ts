@@ -311,7 +311,9 @@ export class StyleLexer {
       }
     }
     if (this.peek() === '"') this.advance();
-    return { type: TokenType.StringLiteral, value, loc };
+    // `value` has lost the quotes and escapes, so a range over an `edge#"a b"`
+    // endpoint needs the end the cursor reached (#3480).
+    return { type: TokenType.StringLiteral, value, loc, end: this.loc() };
   }
 
   private readIdentifier(loc: SourceLocation): Token {

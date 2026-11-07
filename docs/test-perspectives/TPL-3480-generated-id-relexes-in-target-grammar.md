@@ -70,8 +70,11 @@ edge の canonical id は SVG の `data-edge-canonical-id` に載り、app の�
   `hex-shaped ids in selector position`、`packages/core/src/lexer/style-lexer.test.ts` の
   `keeps %s in one id`、`packages/core/src/index.test.ts` の
   `targets nodes and edges whose ids are hex-shaped`
-- 生成した id の往復（#3480 の実装 PR で追加する）
+- 生成した id の往復（#3480）: `packages/core/src/style/edge-endpoint-literal.test.ts` の
+  `edge base form round-trips through edge#<base>`（`edge#<base>` に埋めて parse し直す性質テスト）、
+  `packages/core/src/index.test.ts` の `edge#<canonical id> written the way the app writes it`、
+  `packages/app/src/lib/append-style-rule.test.ts` の `writes a rule that parses back to the id of %s`
 
 ## 派生元 spec
 
-- `docs/spec/style.md` §「Edge ID selector (`edge#<id>`)」
+- `docs/spec/style.md` §「Edge ID selector (`edge#<id>`)」の「Endpoints that are not one identifier」

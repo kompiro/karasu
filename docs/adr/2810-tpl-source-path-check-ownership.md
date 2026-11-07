@@ -9,6 +9,7 @@ related_to:
   - ADR-1357
   - ADR-2687
   - ADR-1192
+  - ADR-3486
 scope:
   packages: []
   concerns: [ci]
@@ -17,7 +18,7 @@ assumptions:
   - "grep: scripts/lint/record-source-paths.ts :: export const SCANNED_DIRS = \\[\"docs/acceptance\", \"docs/design\"\\]"
   - "file: scripts/lint/tpl-validate-owns-tpl-dir.test.ts"
   - "grep: package.json :: \"@kompiro/tpl-tools\": \"\\^0\\."
-  - "grep: package.json :: --source-prefix packages --source-prefix scripts"
+  - "grep: tpl.config.json :: \"sourcePrefixes\": \\[\"packages\", \"scripts\""
   - "grep: .github/workflows/ci.yml :: pnpm run tpl:validate"
   - "grep: .github/workflows/at-check-coverage.yml :: pnpm run tpl:validate"
   - "file: docs/test-perspectives/TPL-2810-two-implementations-agree-only-when-measured.md"
