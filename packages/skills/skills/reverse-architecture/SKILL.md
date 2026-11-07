@@ -96,10 +96,10 @@ command parses its input as `.krs.style`, so a perfectly valid `.krs` yields a
 page of bogus "Expected LeftBrace" errors. This skill produces no `.krs.style`
 files, so `lint-style` has no role here.
 
-**The CLI does not catch everything.** Three losses in this pipeline are
+**The CLI does not catch everything.** Two losses in this pipeline are
 completely silent — no error, no warning, and `coverage` unaffected. They are
 listed under "Silent losses" below and each has a prescribed mechanical check.
-Budget for writing one small script; a run without it will ship a model that
+Budget for writing one small script; a run without it can ship a model that
 renders clean and is quietly missing relations.
 
 ## Procedure (4-phase pipeline)
@@ -200,10 +200,8 @@ renders clean and is quietly missing relations.
    as a document-level note: the useful signal is *which* seam was uncertain,
    and a document-level score averages that away. The bare mark is complete, and
    what a human review deletes — that deletion is the ratchet, so keep it one
-   token to remove. `@draft(confidence: "low" | "medium" | "high")` refines it,
-   but **`karasu fmt` drops the parameter today** (#2571) and Phase 3 ends with
-   `fmt`, so anything that must survive goes in `description`, not in the
-   parameter.
+   token to remove. `@draft(confidence: "low" | "medium" | "high")` refines it;
+   the reason a seam is uncertain goes in `description`.
 
    Over-splitting is recoverable by a human folding domains up; a wrong merge is
    not, so when genuinely torn, prefer the split and mark it. A finished model
@@ -222,12 +220,12 @@ renders clean and is quietly missing relations.
 5. Assign canonical ids (**English PascalCase**; `label` follows the user's
    language). Subagents reuse these ids instead of inventing their own.
 
-   **Ids share more namespaces than you would expect, and two of the collisions
-   are silent.** Before finalizing, check that no id is used twice across:
-   `domain` vs `entity` (warns `entity-anchor-collision`), `domain` vs an infra
-   **leaf** (`table` / `queue-item` / `bucket` — **no diagnostic at all**; it
-   surfaces only when `karasu subtree <id>` refuses to resolve an ambiguous id),
-   and `service` vs `domain`. Rename the *infra leaf*, not the domain: the leaf's
+   **Ids share more namespaces than you would expect, and one of the collisions
+   is silent.** Before finalizing, check that no id is used twice across:
+   `domain` vs `entity` (warns `entity-anchor-collision`), `service` vs `domain`
+   (warns `node-id-multiple-locations`), and `domain` vs an infra **leaf**
+   (`table` / `queue-item` / `bucket` — **no diagnostic at all**; it surfaces only
+   when `karasu subtree <id>` refuses to resolve an ambiguous id). Rename the *infra leaf*, not the domain: the leaf's
    real name survives in its `label`.
 
 6. **Declare the cross-cutting vocabulary once, here.** A deep-dive meets facts
@@ -301,8 +299,8 @@ subagent:
     `Message -> Chat "belongs to"` inside `entity Message { … }`.
   - **a relation leaving the domain must name its target `DomainId.EntityId`.**
     A bare id resolves intra-domain only: pointed at a foreign entity it does
-    not ghost, it is **dropped from the entity view** with no diagnostic, so the
-    relation you found disappears silently. Write
+    not ghost, it is **dropped from the entity view** and warns
+    `edge-endpoint-not-at-scope`. Write
     `Order -> Customers.Customer "placed by"`. The target may be a domain no
     fragment has written yet (Phase 3 step 7 is what makes those ids agree).
   - **the domains this slice calls are `domain` edges, not comments.** When
@@ -673,8 +671,8 @@ footprint and makes the `coverage` numbers incomparable across domains.
    | `unresolved-resource-ref` / `unresolved-table-ref` | warning, exit 0 | an infra block or leaf the merge dropped (Phase 3 step 5) |
    | `facet-not-declared` | warning, exit 0 | a `facets` id no `facet` block declares — a fan-out proposal that never got decided (Phase 3 step 5) |
    | `contains-target-not-found` | warning, exit 0 | a `boundary` member id that does not exist; the membership is inert (Phase 3 step 10) |
-   | `unresolved-edge-endpoint` | warning, exit 0 | a domain edge naming a domain nothing declares — usually a Phase 1 id an agent respelled; the edge is dropped (Phase 3 step 8) |
-   | `edge-endpoint-not-at-scope` | warning, exit 0 | an edge from a `domain` to a `service` — it renders on no view; move it to `service` scope (Phase 3 step 8) |
+   | `unresolved-edge-endpoint` | warning, exit 0 | a domain edge naming a domain nothing declares — usually a Phase 1 id an agent respelled — or an entity relation whose bare target names nothing; the edge is dropped (Phase 3 step 8) |
+   | `edge-endpoint-not-at-scope` | warning, exit 0 | an edge from a `domain` to a `service`: move it to `service` scope (Phase 3 step 8). Or an entity relation whose bare target lives in another domain: qualify it as `DomainId.EntityId`. Either way it renders on no view |
    | `edge-source-mismatch` | error, non-zero | a relation inside `entity X` that does not start at `X` — the usual cause is a rename that missed one of its three sites |
    | `duplicate-facet-id`, `duplicate-boundary-id`, `boundary-not-in-context` | error, non-zero | the overlay is structurally wrong, not merely dangling |
    | `entity-anchor-collision` | warning, exit 0 | an entity id equal to its domain id, or duplicated across domains |
@@ -791,18 +789,20 @@ footprint and makes the `coverage` numbers incomparable across domains.
 
 ## Silent losses — write the checker
 
-Three losses produce **no diagnostic of any kind**. `render` exits 0, `coverage`
-is unaffected, and the model looks finished. Two of them cost real relations in a
+Two losses produce **no diagnostic of any kind**. `render` exits 0, `coverage`
+is unaffected, and the model looks finished. The first cost real relations in a
 measured run.
 
-1. **A bare cross-domain relation target.** `Order -> Customer` where `Customer`
-   lives in another domain resolves to nothing and is dropped from the entity
-   view. Documented (TPL-1936), still silent.
-2. **A qualified target naming an entity that does not exist.** `Order ->
+1. **A qualified target naming an entity that does not exist.** `Order ->
    Customers.Custmer`, or a correct-looking `-> Plugin.Plugin` where the deep-dive
-   actually named the entity `PluginDeclaration`. Also dropped, also silent.
-3. **An infra leaf id equal to a domain id.** No diagnostic; it surfaces only
-   when `karasu subtree <that id>` refuses to resolve an ambiguous id.
+   actually named the entity `PluginDeclaration`. It is dropped from the entity
+   view.
+2. **An infra leaf id equal to a domain id.** It surfaces only when
+   `karasu subtree <that id>` refuses to resolve an ambiguous id.
+
+A bare relation target is not on this list: `Order -> Customer` warns
+`edge-endpoint-not-at-scope` when `Customer` lives in another domain, and
+`unresolved-edge-endpoint` when nothing declares it (Phase 4 step 2).
 
 A dangling **domain** edge is not on this list — it warns
 `unresolved-edge-endpoint`. What is silent about domain edges is their
@@ -811,12 +811,10 @@ domains carry no edge at all, which is why Phase 3 step 8 has its own reached
 state.
 
 Write a small script that parses the merged `.krs` for `domain` / `entity`
-declarations and every `A -> B` / `A --> B` inside an entity block, then reports:
-
-- a qualified target `D.E` where `D` is not a declared domain, or `E` is not one
-  of `D`'s entities (offer the near-matches — the usual cause is one agent
-  guessing another domain's entity id);
-- a bare target inside `entity X` that is not an entity of `X`'s own domain.
+declarations and every `A -> B` / `A --> B` inside an entity block, then reports
+a qualified target `D.E` where `D` is not a declared domain, or `E` is not one of
+`D`'s entities. Offer the near-matches: the usual cause is one agent guessing
+another domain's entity id.
 
 Two authoring notes for that script, both learned the hard way:
 
@@ -826,9 +824,9 @@ Two authoring notes for that script, both learned the hard way:
 - **A rename has three sites**: the `entity X {` declaration, every relation
   **source** `X -> …` inside it, and every bare intra-domain **target** `… -> X`
   elsewhere in the same domain, plus every qualified `Domain.X` model-wide.
-  Missing the target site is the one that stays silent — missing the source site
-  at least raises `edge-source-mismatch`. In one run a synthesis rename broke ten
-  relations this way and only the checker found them.
+  Missing a qualified `Domain.X` is the one that stays silent: a missed source
+  raises `edge-source-mismatch`, and a missed bare target warns
+  `unresolved-edge-endpoint`. Only the checker finds the qualified ones.
 
 ## Deliverables
 
@@ -899,9 +897,9 @@ Two authoring notes for that script, both learned the hard way:
   string when a value carries Markdown; there is no need to restructure a
   sentence around a quotation mark.
 - **A cross-domain entity relation must be written `DomainId.EntityId`.** A bare
-  id is intra-domain only and is dropped from the entity view with no
-  diagnostic — see "Silent losses", which also covers the qualified-but-wrong
-  case that the roster pass alone will not catch.
+  id is intra-domain only, so it is dropped from the entity view and warns
+  `edge-endpoint-not-at-scope`. "Silent losses" covers the qualified-but-wrong
+  case, which draws no warning and which the roster pass alone will not catch.
 - **Entity relations do not become domain edges.** The service drill-down reads
   only the edges declared inside `domain` blocks, and nothing rolls a
   cross-domain entity relation up into one. Agents record the domains they call
