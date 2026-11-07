@@ -13,6 +13,7 @@ discovered_from:
 related_to:
   - TPL-1666
   - TPL-1697
+  - TPL-3480
 topic: styling
 scope:
   packages:

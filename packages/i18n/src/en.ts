@@ -569,8 +569,8 @@ export const en: Translations = {
     `Duplicate edge id "#${authorId}"; edge ids must be unique within a system`,
   "diagnostic.duplicateEdgeLabel.message": ({ label }) =>
     `This edge already has a positional label, so the block's label "${label}" is a second one; keep either the positional form or the block property, not both`,
-  "diagnostic.ambiguousEdgeBase.message": ({ fromId, toId, arrow }) =>
-    `Multiple edges share the base "${fromId}${arrow}${toId}" with no #<id> to disambiguate; per-edge style selectors will not match any of them`,
+  "diagnostic.ambiguousEdgeBase.message": ({ base }) =>
+    `Multiple edges share the base edge#${base} with no #<id> to disambiguate; per-edge style selectors will not match any of them`,
   "diagnostic.styleTokenTypeMismatch.message": ({ expected, got, value }) =>
     `Expected ${expected} but got ${got} ("${value}")`,
   "diagnostic.expectedStylePropertyName.message": ({ got }) =>
