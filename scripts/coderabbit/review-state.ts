@@ -47,6 +47,7 @@ const NO_ACTIONABLE_COMMENTS = "No actionable comments were generated";
 
 export interface CodeRabbitReview {
   state: string;
+  /** Empty when GitHub no longer has the commit: it then names no head. */
   commitId: string;
   submittedAt: string;
   body: string;
@@ -121,7 +122,8 @@ export interface Snapshot {
   sameChangeCommits?: readonly string[];
   /**
    * The author's last action on the PR — a push, a thread reply, a posted
-   * command. Only CodeRabbit output at or after this instant answers it.
+   * command; a push that only merged the base is none ({@link changeCommittedAt}).
+   * Only CodeRabbit output at or after this instant answers it.
    */
   since: string;
   now: string;
@@ -207,7 +209,8 @@ export function parseNoticeHeadSha(body: string): string | null {
 }
 
 /** Both sides may be abbreviated; CodeRabbit writes full shas, a caller may not. */
-const sameCommit = (a: string, b: string): boolean => a.startsWith(b) || b.startsWith(a);
+const sameCommit = (a: string, b: string): boolean =>
+  a !== "" && b !== "" && (a.startsWith(b) || b.startsWith(a));
 
 const isHeadCommit = (s: Snapshot, sha: string): boolean =>
   [s.headSha, ...(s.sameChangeCommits ?? [])].some((c) => sameCommit(c, sha));
@@ -237,6 +240,21 @@ export function commitsWithSameChange(
     commits.push(parent);
     current = parent;
   }
+}
+
+/**
+ * The default `since`: when the change HEAD carries was committed, not when HEAD was.
+ * A merge-only push asks CodeRabbit nothing, so the answer to the commit before it
+ * must not read as older than the last action. Epoch when GitHub lists neither.
+ */
+export function changeCommittedAt(
+  commits: readonly { oid: string; committedDate: string }[],
+  headSha: string,
+  sameChangeCommits: readonly string[],
+): string {
+  const oldest = sameChangeCommits.at(-1) ?? headSha;
+  const at = (sha: string) => commits.find((c) => c.oid === sha)?.committedDate;
+  return at(oldest) ?? at(headSha) ?? new Date(0).toISOString();
 }
 
 /**

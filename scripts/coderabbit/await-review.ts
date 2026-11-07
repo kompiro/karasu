@@ -4,6 +4,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { gitFacts } from "../review/tier.ts";
 import {
   ACTIONABLE_KINDS,
+  changeCommittedAt,
   CODERABBIT_LOGINS,
   DEFAULT_CLASSIFY_OPTIONS,
   type AuthorComment,
@@ -31,8 +32,9 @@ import {
 // do not reliably reach the script that way (TPL-2046).
 //
 // Run it from a checkout of the repository: which earlier commits still count as the
-// head is read from local git against `origin/<base>`. A commit missing here reads as
-// not the same change, so a stale checkout waits rather than converging early.
+// head is read from local git against `origin/<base>`, after fetching both. When that
+// fails, a message goes to stderr and only the exact head counts, so the run waits
+// rather than converging early.
 //
 // stdout is one JSON line: { pr, headSha, sameChangeCommits, since, state, bodyFindings,
 // bodyFindingIds, threadReplies, threadReplyUrls, waitedMin, limitWaitedMin, outcome }.
@@ -80,7 +82,7 @@ interface RestReview {
   user: { login: string } | null;
   state: string;
   body: string | null;
-  commit_id: string;
+  commit_id: string | null;
   submitted_at: string | null;
 }
 
@@ -131,13 +133,20 @@ const byCodeRabbit = (login: string | undefined): boolean =>
 interface PrHead {
   headSha: string;
   sameChangeCommits: string[];
-  /** When the change HEAD carries was last committed; a merge-only push is no action. */
-  changeCommittedAt: string;
+  defaultSince: string;
 }
 
-/** Empty when this checkout cannot say, which leaves the exact head as the only head. */
-function readSameChangeCommits(headSha: string, baseRefName: string): string[] {
+/**
+ * Fetches first: "Update branch" or a merge from another machine leaves HEAD or the
+ * merged commits missing here, and that would read as not the same change for the
+ * whole wait. Empty when this checkout still cannot say, which leaves the exact head
+ * as the only head.
+ */
+function readSameChangeCommits(pr: number, headSha: string, baseRefName: string): string[] {
   try {
+    execFileSync("git", ["fetch", "--quiet", "origin", baseRefName, `pull/${pr}/head`], {
+      stdio: "ignore",
+    });
     return commitsWithSameChange(headSha, gitFacts(`origin/${baseRefName}`, headSha));
   } catch (err) {
     console.error(`could not compare the commits before ${headSha}: ${String(err)}`);
@@ -153,21 +162,16 @@ function fetchHead(pr: number): PrHead {
     baseRefName: string;
     commits: { oid: string; committedDate: string }[];
   };
-  const sameChangeCommits = readSameChangeCommits(view.headRefOid, view.baseRefName);
-  const committedAt = (sha: string | undefined) =>
-    view.commits.find((c) => c.oid === sha)?.committedDate;
+  const sameChangeCommits = readSameChangeCommits(pr, view.headRefOid, view.baseRefName);
   return {
     headSha: view.headRefOid,
     sameChangeCommits,
-    changeCommittedAt:
-      committedAt(sameChangeCommits.at(-1)) ??
-      committedAt(view.headRefOid) ??
-      new Date(0).toISOString(),
+    defaultSince: changeCommittedAt(view.commits, view.headRefOid, sameChangeCommits),
   };
 }
 
 function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
-  const { headSha, sameChangeCommits, changeCommittedAt } = fetchHead(pr);
+  const { headSha, sameChangeCommits, defaultSince } = fetchHead(pr);
   const [owner, name] = REPO.split("/");
 
   const reviews: CodeRabbitReview[] = ghPages<RestReview[]>([`repos/${REPO}/pulls/${pr}/reviews`])
@@ -175,7 +179,7 @@ function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
     .filter((r) => byCodeRabbit(r.user?.login) && r.submitted_at !== null)
     .map((r) => ({
       state: r.state,
-      commitId: r.commit_id,
+      commitId: r.commit_id ?? "",
       submittedAt: r.submitted_at as string,
       body: r.body ?? "",
     }));
@@ -216,7 +220,7 @@ function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
   return {
     headSha,
     sameChangeCommits,
-    since: since ?? changeCommittedAt,
+    since: since ?? defaultSince,
     now: new Date().toISOString(),
     reviews,
     comments,
@@ -248,7 +252,7 @@ function parseArgs(argv: string[]): Args {
     const a = argv[i];
     if (a === "--once") args.once = true;
     else if (a === "--since") {
-      // Without an operand the head commit time would silently stand in, and an
+      // Without an operand the default `since` would silently stand in, and an
       // earlier round's answer could read as the answer to this one.
       const value = argv[++i];
       if (value === undefined || value.startsWith("--"))

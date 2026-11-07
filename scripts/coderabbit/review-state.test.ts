@@ -3,6 +3,7 @@ import {
   type AuthorComment,
   bodyFindingCount,
   bodyFindingIds,
+  changeCommittedAt,
   classify,
   commitsWithSameChange,
   findingSeverity,
@@ -521,6 +522,18 @@ describe("classify", () => {
       expect(state).toEqual({ kind: "changes", unresolved: 1, heavy: 1 });
     });
 
+    it("does not read a review of a commit GitHub lost as a review of the head", () => {
+      const state = classify(
+        snapshot({
+          ...merged,
+          reviews: [
+            { state: "COMMENTED", commitId: "", submittedAt: "2026-09-15T14:05:00Z", body: "x" },
+          ],
+        }),
+      );
+      expect(state).toEqual({ kind: "waiting" });
+    });
+
     it("still reads an answer that names HEAD itself", () => {
       const state = classify(
         snapshot({ ...merged, comments: [statusSummary("2026-09-15T14:05:00Z")] }),
@@ -644,6 +657,30 @@ describe("classify", () => {
       });
       expect(state).toEqual({ kind: "converged" });
     });
+  });
+});
+
+describe("changeCommittedAt (#3657)", () => {
+  const commits = [
+    { oid: "a", committedDate: "2026-09-15T10:00:00Z" },
+    { oid: "b", committedDate: "2026-09-15T11:00:00Z" },
+    { oid: "c", committedDate: "2026-09-15T12:00:00Z" },
+  ];
+
+  it("is the head's time when no earlier commit has the same change", () => {
+    expect(changeCommittedAt(commits, "c", [])).toBe("2026-09-15T12:00:00Z");
+  });
+
+  it("is the oldest same-change commit's time, past every merge", () => {
+    expect(changeCommittedAt(commits, "c", ["b", "a"])).toBe("2026-09-15T10:00:00Z");
+  });
+
+  it("falls back to the head when GitHub does not list that commit", () => {
+    expect(changeCommittedAt(commits, "c", ["z"])).toBe("2026-09-15T12:00:00Z");
+  });
+
+  it("is the epoch when GitHub lists neither", () => {
+    expect(changeCommittedAt(commits, "z", [])).toBe(new Date(0).toISOString());
   });
 });
 
