@@ -253,7 +253,8 @@ stage 済みの版と同じ版は stage できない。乗っ取られた run �
 - `verify` ジョブ（`contents: read`、`id-token` なし）がリリースコミットを取り出してビルドし、各パッケージのディレクトリで `pnpm pack` する。公開済みの版は `changeset pack` の計画に入らないので、ここでは pack を直接呼ぶ。pack の処理は `changeset pack` と同じ pnpm の pack である。
 - 公開された tarball を `npm pack <name>@<version> --ignore-scripts` で取り出し、案 7C と同じ処理で中身を比べる。tarball は信用できない入力なので、展開するときに中のパスをそのまま使わない。
 - `record` ジョブ（`contents: write`）は、`verify` が通した版にだけタグを打つ。依存のスクリプトが走るビルドを、タグを push できる権限と同じジョブに置かないためである。`record` はいまと同じく依存を入れずに動く。
-- `verify` は、`dist-tags.latest` がリリースコミットの版より高いパッケージがあれば失敗する。計画に無い版が画面で承認された場合は、版ごとの照合には現れないためである。
+- `verify` は、計画に無い版が公開されていれば失敗する。画面で承認された計画外の版は、`--tag next` のように `latest` を動かさないものも含めて、版ごとの照合には現れないためである。判定はパッケージごとに `npm view <name> time versions --json` で行う。タグのある最新の版の公開時刻より後に公開された版のうち、リリースコミットの版でないものを計画外とする。以前からある版は基準より前なので対象にならず、トレインの合間に承認された版も次の照合で見つかる。取り下げ済みの版（`versions` に無いものと deprecate したもの）は除く。
+- ビルドや `npm` の取得の失敗は、不一致と区別して失敗にする（TPL-2804）。Issue に「照合に落ちた」と書くのは、中身を比べて違ったときと計画外の版を見つけたときだけである。
 - 案 7B と違い、`stage.mts` の出力を信用せず、別の run でビルドし直して比べる。書き換えた `release.yml` を別のブランチから動かして stage したものは、これで見つかる。
 
 限界が 2 つある。照合は公開の後なので、公開そのものは止められない。止められるのはタグ、Release、Issue のクローズで、公開された版は取り下げることになる（論点 4「公開後の照合に落ちたとき」）。また、乗っ取られた依存が両方のビルドに同じ偽物を入れると見抜けず、`verify` の結果も偽られる。公開の前に CI の外で照合できるのは案 7C だけなので、`pnpm release:approve` を正の手順とする判断は変わらない。
@@ -307,7 +308,7 @@ stage 済みの版と同じ版は stage できない。乗っ取られた run �
   - `npm stage download` で取り出した tarball の中身（TPL-1681）。`karasu` の `dependencies` が完全一致の版になっていること
   - `npm stage view` に provenance が付いているか
   - `pnpm release:approve --dry-run --commit <spike の sha> --expect-tag rehearsal` が stage id を見つけ、計画の先頭のグループとして並べ、手元で pack した tarball と中身が一致すること（論点 7）。1 回目と 2 回目の run のそれぞれで行う。一致しないファイルがあれば、環境で変わるものかを調べる
-  - 案 7D の `verify` が、前回のリリースコミットで pack した tarball と、公開済みの版の中身を一致と判定すること。リハーサルでは承認しないので、公開された版が無いと確かめられないためである。`release-confirm.yml` はまだ `main` に無く `workflow_dispatch` できないので、spike だけ push の trigger を足して動かす
+  - 案 7D の `verify` が、前回のリリースコミットで pack した tarball と、公開済みの版の中身を一致と判定すること。リハーサルでは承認しないので、公開された版が無いと確かめられないためである。前回の版にはすでにタグがあり、そのままでは照合の対象にならないので、spike では対象をその版に固定し、`record` ジョブを外す（spike からタグや Release を作らないため）。`release-confirm.yml` はまだ `main` に無く `workflow_dispatch` できないので、spike だけ push の trigger を足して動かす
   - 0 で接続を作り直したパッケージがあれば、stage のあとに npmjs.com の表示で検証済みになったか。stage が 2 日の期限の 1 回に数えられるかがここで分かる。数えられなくても、C の手順は承認まで 2 日以内に終えるので変わらない
 - **B のあと**に確かめること: 3 パッケージの Trusted Publisher に接続が残っていないこと。
 - **C の直前**に行うこと: トレインの Issue の表で版を上げるパッケージを確かめ、リリース PR をマージする直前に接続を作る。「Allow `npm publish`」が外れていることを画面で確かめる。作ってから 2 日以内に承認まで終える。
@@ -324,14 +325,14 @@ stage 済みの版と同じ版は stage できない。乗っ取られた run �
    - `close-train` を論点 4 の判定に変え、`release-record` の concurrency グループに入れる。
    - ヘッダーのコメントを stage に合わせて書き直す。
 3. `.github/workflows/release-confirm.yml`: `workflow_dispatch` と毎日の `schedule`。どのジョブも `id-token` を持たない。ジョブを 2 つに分ける。
-   - `verify`（`contents: read`、`issues: read`、`pull-requests: read`）: リリースコミットを求め、npm に載っていてタグがまだ無い版を案 7D のとおり照合する。その版が無い日はビルドせずに終える。`dist-tags.latest` の確認もここで行う。
+   - `verify`（`contents: read`、`issues: read`、`pull-requests: read`）: リリースコミットを求め、npm に載っていてタグがまだ無い版を案 7D のとおり照合する。その版が無い日はビルドしない。計画外の版の検出はビルドが要らないので毎回行う。
    - `record`（`contents: write`、`issues: write`、`pull-requests: read`、`actions: read`。`actions: read` は `release.yml` の run の結果を読むため）: `verify` が通した版のタグを打ち、Release を作り、順序の違反を検出し、論点 4 の判定で Issue を閉じる。`verify` が落ちたら、落ちた版とファイルの一覧を Issue にコメントする。依存を入れない。concurrency は `release-record` グループに入れる。
 
 <!-- absent-path-next-line: a file this design doc intends to create (#3240) -->
 
 4. `scripts/release/approve.mts` と、ルートの `package.json` の `release:approve`。論点 3 の手順（段ごとの承認と `release.yml` の再実行）、論点 7 の照合、notices のプラットフォーム固有の節を除く規則、計画に無い stage 済みの項目の表示、`--dry-run`、`--commit`、`--expect-tag`。照合の処理は `release-confirm.yml` の `verify` と共有する。
 5. `scripts/release/train.mts`: チェックリストに承認の行と、「版を上げる npm パッケージに検証済みの stage 専用の接続があるか。無ければマージの直前に作る」の行を足し、Issue 本文の文言（いまの「`release.yml` が閉じる」など）を直す。Issue を閉じる判定を足す。
-6. テスト: 既存の `scripts/release/*.test.ts` に倣う。計画の読み方、拒否の分類、`npm view` の `E404` とほかの失敗の区別、リリースコミットの求め方、順序の違反の検出、閉じる判定、tarball の中身の照合、照合に落ちた版にタグを打たないこと、`dist-tags.latest` の確認。`release-workflow.test.ts` はいま「Set a git identity」「Collect the tags」と `record` ジョブを検査しているので、書き直す。`release.yml` の `release` ジョブが `contents: read` と `pull-requests: read` だけを足した権限であること、`id-token: write` を持つのが `release` と `vscode` だけであること、`release-confirm.yml` が `id-token` を持たないこと、`verify` が `contents: write` を持たず、`record` が依存を入れないことを確かめる。
+6. テスト: 既存の `scripts/release/*.test.ts` に倣う。計画の読み方、拒否の分類、`npm view` の `E404` とほかの失敗の区別、リリースコミットの求め方、順序の違反の検出、閉じる判定、tarball の中身の照合、照合に落ちた版にタグを打たないこと、計画外の版の検出（`latest` 以外のタグ、以前からある版、取り下げ済みの版）。`release-workflow.test.ts` はいま「Set a git identity」「Collect the tags」と `record` ジョブを検査しているので、書き直す。`release.yml` の `release` ジョブが `contents: read` と `pull-requests: read` だけを足した権限であること、`id-token: write` を持つのが `release` と `vscode` だけであること、`release-confirm.yml` が `id-token` を持たないこと、`verify` が `contents: write` を持たず、`record` が依存を入れないことを確かめる。
 7. `published-packages.mts` は「Collect the tags」が無くなると使われない。コードで使っているのは `release.yml` と自身のテストだけで、ほかに `release-workflow.test.ts` と `docs/release.md` が名指している（6 と 8 で書き直す）。テストごと削除し、knip で残りが無いことを確かめる。
 8. 文書とコメント: `docs/release.md` の「リリースの流れ」（手順 4〜8 の公開の経路・タグ・閉じ方）に、承認、画面で承認する前の `--dry-run`、`release-confirm.yml`、reject したとき、公開後の照合に落ちたとき、CI の経路が使えないときを足す。前提の節は、stage だけを許可する Trusted Publisher の設定、版を上げるリリース PR のマージ直前に作ること、登録から使うまでに失効しうること（いまの記述を stage に合わせて残す）、package access の設定に書き換える（段階 B と C の操作と同じ内容なので、実装の PR で書く）。`vscode-release.yml` の冒頭と `record` のコメント（`changeset publish` や「Release は `release.yml` が作る」）を直す。
 9. ADR の assumptions: ADR-1315 と ADR-9020 の `"release": "pnpm build && changeset publish"` は、実装の PR で成り立たなくなる。ADR-2939 の `release.yml` の `group: release-record` は、`close-train` を同じグループに入れるので残る。成り立たなくなる行は、実装の PR で frontmatter から外す（本文は変えない）。
