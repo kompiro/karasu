@@ -33,9 +33,10 @@ import {
 // do not reliably reach the script that way (TPL-2046).
 //
 // Run it from a checkout of the repository: which earlier commits still count as the
-// head is read from local git against `origin/<base>`, after fetching both. When that
-// fails, a message goes to stderr and only the exact head counts, so the run waits
-// rather than converging early.
+// head is read from local git against `origin/<base>`, after fetching both. A failed
+// fetch goes to stderr and the comparison still runs on what is here. Whatever git
+// cannot answer leaves only the exact head, so the run waits rather than converging
+// early.
 //
 // stdout is one JSON line: { pr, headSha, sameChangeCommits, since, state, bodyFindings,
 // bodyFindingIds, threadReplies, threadReplyUrls, waitedMin, limitWaitedMin, outcome }.
@@ -152,9 +153,16 @@ function fetchForComparison(pr: number, headSha: string, baseRefName: string): v
   try {
     execFileSync("git", ["fetch", "--quiet", "--no-tags", "origin", refspec, `pull/${pr}/head`], {
       stdio: ["ignore", "ignore", "inherit"],
-      // A stalled connection would otherwise outlast `--timeout-min`.
+      // A stalled connection would otherwise block the polling for good. The low-speed
+      // limit ends it from inside git first: a killed fetch leaves its http helper
+      // alive, holding this script's stderr.
       timeout: 30_000,
-      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+      env: {
+        ...process.env,
+        GIT_TERMINAL_PROMPT: "0",
+        GIT_HTTP_LOW_SPEED_LIMIT: "1",
+        GIT_HTTP_LOW_SPEED_TIME: "20",
+      },
     });
     fetchedHeads.add(headSha);
   } catch (err) {
