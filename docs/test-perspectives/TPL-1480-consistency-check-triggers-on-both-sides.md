@@ -14,6 +14,9 @@ related_to: []
 topic: build
 scope:
   packages: []
+  paths:
+    - ".github/workflows/*.yml"
+    - "lefthook.yml"
 ---
 
 # TPL-1480: 2 つの成果物の整合性を検証するチェックは、両方の変更で起動させる

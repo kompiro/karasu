@@ -16,6 +16,9 @@ related_to:
 topic: build
 scope:
   packages: []
+  paths:
+    - ".github/workflows/*.yml"
+    - ".github/actions/**"
 ---
 
 # TPL-2786: 安全網が結論を出せなかったときは、通過ではなく失敗として扱う
