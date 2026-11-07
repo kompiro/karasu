@@ -25,7 +25,7 @@ assumptions:
 - **ステータス**: 決定済み
 - **関連**:
   - Issue [#3038](https://github.com/kompiro/karasu/issues/3038)（分類の結果と `## Slice status` 表）、設計 PR [#3478](https://github.com/kompiro/karasu/pull/3478)
-  - スライス: [#3487](https://github.com/kompiro/karasu/issues/3487)（見出しの統一）、[kompiro/tpl-tools#31](https://github.com/kompiro/tpl-tools/issues/31)（印の解析と状態の導出）、[#3488](https://github.com/kompiro/karasu/issues/3488)（全 TPL の項目を確かめて印を付ける、PR [#3610](https://github.com/kompiro/karasu/pull/3610)）、[#3489](https://github.com/kompiro/karasu/issues/3489)（ガードの backlog）
+  - スライス: [#3487](https://github.com/kompiro/karasu/issues/3487)（見出しの統一）、[kompiro/tpl-tools#31](https://github.com/kompiro/tpl-tools/issues/31)（印の解析と状態の導出）、[#3488](https://github.com/kompiro/karasu/issues/3488)（印のバックフィル、PR [#3610](https://github.com/kompiro/karasu/pull/3610)）、[#3489](https://github.com/kompiro/karasu/issues/3489)（ガードの backlog）
   - [ADR-1192](1192-test-perspective-library.md)（TPL の運用）、[ADR-1357](1357-tpl-tools-extraction.md)（検査と照会は `@kompiro/tpl-tools` が持つ）、[ADR-2810](2810-tpl-source-path-check-ownership.md)（TPL ディレクトリの検査は tpl-tools の CLI が持つ）、[ADR-3289](3289-tpl-index-daily-regeneration.md)（状態を出す索引は毎日の再生成 PR が書く）
   - tpl-tools 側の実装判断: tpl-tools ADR-17（本文のパスの実在検査と `--source-prefix`）、ADR-27（`tpl regenerate` の索引）、ADR-31（印の解析・状態の導出・`checklistHeading`）。印の解析と状態の導出は `@kompiro/tpl-tools@0.0.12` で公開
   - 変更ファイルから TPL を引く仕組みは別の設計: [#3486](https://github.com/kompiro/karasu/issues/3486)
@@ -93,7 +93,7 @@ TPL のファイルには宣言しない。
 - `tpl related` の既定の出力には状態を出さない。既定の出力は Design Doc の「Related TPLs」節に貼る形なので、
   状態を混ぜると導出値の写しが Design Doc に入り、昇格後は本文を変えない ADR（ADR-2687）に固まる
 - 書式の誤った印は、状態の導出では unguarded に数える（守られていない側に倒す）。導出するコマンドは
-  `--source-prefix` を受けないので、ここで言う書式は位置・後ろの句読点・パスの無い `[guard: ]` だけで、
+  `--source-prefix` を受けないので、ここで言う書式は印そのものの形と位置（位置・後ろの句読点・パスの無い `[guard: ]` など）で、
   スパンが検査の対象になる形か・ファイルを指すかは `validate` だけが見る。誤った印を finding にするのも
   `validate` だけで、CI がそこで落とすので main には残らない
 - 月次レビューの Issue（`tpl review-body --config tpl.config.json`）は状態ごとに問いを変える。`unguarded` /
@@ -115,16 +115,17 @@ TPL のファイルには宣言しない。
 - **ガードの一般性はプログラムでは判定できない。** 実在は validator が見て、一般性は TPL を変える PR のレビューが見る。
   確かめていない項目は印なしにする（間違ったガードは、ガードが無いより悪い）
 
-README「横断観察 A」の、curated table を meta-check の既定にする理由は「表への登録を型・突き合わせ・導出のどれかで
-強制したときに限り、explicit な表は新しい箇所も捕まえるガードになる」に書き直した。
+README「横断観察 A」の、curated table を meta-check の既定にする理由は、表への登録を型・表とコードの突き合わせ・導出のどれかで
+強制したときに限り、explicit な表は新しい箇所も捕まえるガードになる、という形に書き直した。
 
 ### 運用への反映（#3488 / PR #3610）
 
-- 全 TPL のチェックリストの項目を確かめ、当てはまる項目に印を付けた。`[guard: …]` は 74 項目、`[judgment]` は
-  262 項目（#3610 の時点）で、ほかの項目は印なしのままである。`[guard: …]` はガードを開いて D4 を確かめた項目にだけ付け、
+- 分類を出発点に印を付けた。`[guard: …]` は 74 項目、`[judgment]` は 262 項目（#3610 の時点）で、ほかの項目は
+  印なしのままである。`[guard: …]` はガードを開いて D4 を確かめた項目にだけ付け、
   確かめた記録を PR に残した
-- 1 つの関数の case を列挙する項目（TPL-1755・1936・1944・1961・1967 の 22 項目）は、新しい実装や経路を
-  覆わないので印なしにした
+- 1 つの関数の case を列挙する項目（TPL-1755・1936・1944・1961・1967 の 22 項目）は、D4 の「閉じたクラスの全列挙」に
+  当たるかでレビューの読みが割れた（新しい実装や経路を覆わないという指摘があった）。迷う項目は印なしにする規則に従い、
+  印なしにした
 - `docs/test-perspectives/README.md`（「チェックリスト項目の印」節・Validator・月次レビューの問い・横断観察 A）と
   `TEMPLATE.md` を更新した
 
@@ -155,6 +156,7 @@ README「横断観察 A」の、curated table を meta-check の既定にする�
 
 - ガードの backlog の起票（#3489）。どんなガードを作るかは印に無く分類の `mechanism` 列にしか無いので、backlog は
   分類から起こす。起票し終えたら分類 CSV は使わず、印を唯一の記録にする（TPL-2810）
+- 上の 22 項目を `[guard: …]` にするかどうかは未決である
 - `guarded` の TPL でチェックリストをどこまで縮めてよいかの基準は、最初の月次レビューで実例を見てから README に書く
 
 ## 作らなかったもの
