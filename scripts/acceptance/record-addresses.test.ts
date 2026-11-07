@@ -51,6 +51,8 @@ describe("findRecordAddresses (TPL-2254)", () => {
     ["a build command", "pnpm --filter @karasu-tools/app build"],
     ["a word starting with dev", "pnpm devtools"],
     ["a test run", "pnpm vitest run src/a.test.ts"],
+    ["a package named after a tool", "pnpm --filter vite-plugin-x build"],
+    ["a script named after one", "pnpm dev-tools"],
     ["vite preview as a subject", "`vite preview` を相手にする e2e には現れない"],
     ["a build", "pnpm --filter @karasu-tools/docs-site run build"],
     ["npx vitest", "npx vitest run"],
