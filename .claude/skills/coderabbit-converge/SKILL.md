@@ -41,9 +41,13 @@ pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --once
 
 CodeRabbit は approve も changes-requested も出さない（`request_changes_workflow: false`）。収束は
 レビューの state ではなく、未解決の thread と本文の指摘で決まる。指摘が無い回は review も thread も残らず、
-要約コメントの `recent_review` 欄が「No actionable comments were generated」に書き換わるだけになる。
-スクリプトはその欄が HEAD を対象に挙げていれば HEAD への答えとして読む。ほかの答えと同じく CodeRabbit が
-90 秒静かになるまでは `in_progress` で、その後、未解決の thread が無ければ `converged` を返す（#3385）。
+要約コメントの `recent_review_status` 欄（古いコメントでは `recent_review` 欄）が「No actionable comments were generated」に書き換わるだけになる。
+スクリプトは `recent_review` 欄の "Commits" 行が HEAD を対象に挙げていれば HEAD への答えとして読む。ほかの答えと同じく CodeRabbit が
+90 秒静かになるまでは `in_progress` で、その後、未解決の thread が無ければ `converged` を返す（#3385、#3657）。
+
+main を取り込むだけの push に CodeRabbit はレビューを走らせず、要約コメントの先頭に「Review skipped」、HEAD の
+check に `skipped` を出す。これは未レビューを意味しない。取り込みの前のコミットへの答えはコメントの下に残っており、
+PR の変更が同じなら、スクリプトはそのコミットを出力の `sameChangeCommits` に挙げて HEAD への答えとして読む（#3657）。
 
 ## 前提
 
@@ -185,6 +189,9 @@ node scripts/review/tier.ts same-change --from <最後にレビューされた�
 
 `false`（コンフリクトの解消で PR の行を書き換えた）なら、その変更を Critical / Major の修正と同じに扱い、
 再レビューを頼む。
+
+`await-review.ts` も同じ判定で取り込みの push を飛ばして答えを読むので、`true` のときに読み直すなら `--since` を
+付けずに `--once` で読む。取り込みの時刻を `--since` に渡すと、それより前の答えは数えられず `waiting` のままになる。
 
 ## 終わり方
 

@@ -1,6 +1,7 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 import { execFileSync } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
+import { gitFacts } from "../review/tier.ts";
 import {
   ACTIONABLE_KINDS,
   CODERABBIT_LOGINS,
@@ -9,6 +10,7 @@ import {
   bodyFindingCount,
   bodyFindingIds,
   classify,
+  commitsWithSameChange,
   type CodeRabbitComment,
   findingSeverity,
   type CodeRabbitReview,
@@ -28,8 +30,15 @@ import {
 // Invoke it through `pnpm exec tsx`, not a `pnpm run` alias: flags after `--`
 // do not reliably reach the script that way (TPL-2046).
 //
-// stdout is one JSON line: { pr, headSha, since, state, bodyFindings, bodyFindingIds,
-// threadReplies, threadReplyUrls, waitedMin, limitWaitedMin, outcome }.
+// Run it from a checkout of the repository: which earlier commits still count as the
+// head is read from local git against `origin/<base>`. A commit missing here reads as
+// not the same change, so a stale checkout waits rather than converging early.
+//
+// stdout is one JSON line: { pr, headSha, sameChangeCommits, since, state, bodyFindings,
+// bodyFindingIds, threadReplies, threadReplyUrls, waitedMin, limitWaitedMin, outcome }.
+// `sameChangeCommits` lists the earlier commits an answer may name in place of the head:
+// a push that only merged the base gets no review of its own, and leaves the change as
+// it was reviewed (#3657). Without `--since`, the oldest of them sets `since`.
 // `threadReplies` counts the open threads where CodeRabbit answered a reply and now
 // waits on the author, whatever the outcome (#2954); `threadReplyUrls` links each
 // answer.
@@ -121,25 +130,44 @@ const byCodeRabbit = (login: string | undefined): boolean =>
 
 interface PrHead {
   headSha: string;
-  headCommittedAt: string;
+  sameChangeCommits: string[];
+  /** When the change HEAD carries was last committed; a merge-only push is no action. */
+  changeCommittedAt: string;
+}
+
+/** Empty when this checkout cannot say, which leaves the exact head as the only head. */
+function readSameChangeCommits(headSha: string, baseRefName: string): string[] {
+  try {
+    return commitsWithSameChange(headSha, gitFacts(`origin/${baseRefName}`, headSha));
+  } catch (err) {
+    console.error(`could not compare the commits before ${headSha}: ${String(err)}`);
+    return [];
+  }
 }
 
 function fetchHead(pr: number): PrHead {
   const view = JSON.parse(
-    gh(["pr", "view", String(pr), "--repo", REPO, "--json", "headRefOid,commits"]),
+    gh(["pr", "view", String(pr), "--repo", REPO, "--json", "headRefOid,baseRefName,commits"]),
   ) as {
     headRefOid: string;
+    baseRefName: string;
     commits: { oid: string; committedDate: string }[];
   };
-  const head = view.commits.find((c) => c.oid === view.headRefOid);
+  const sameChangeCommits = readSameChangeCommits(view.headRefOid, view.baseRefName);
+  const committedAt = (sha: string | undefined) =>
+    view.commits.find((c) => c.oid === sha)?.committedDate;
   return {
     headSha: view.headRefOid,
-    headCommittedAt: head?.committedDate ?? new Date(0).toISOString(),
+    sameChangeCommits,
+    changeCommittedAt:
+      committedAt(sameChangeCommits.at(-1)) ??
+      committedAt(view.headRefOid) ??
+      new Date(0).toISOString(),
   };
 }
 
 function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
-  const { headSha, headCommittedAt } = fetchHead(pr);
+  const { headSha, sameChangeCommits, changeCommittedAt } = fetchHead(pr);
   const [owner, name] = REPO.split("/");
 
   const reviews: CodeRabbitReview[] = ghPages<RestReview[]>([`repos/${REPO}/pulls/${pr}/reviews`])
@@ -187,7 +215,8 @@ function fetchSnapshot(pr: number, since: string | undefined): Snapshot {
 
   return {
     headSha,
-    since: since ?? headCommittedAt,
+    sameChangeCommits,
+    since: since ?? changeCommittedAt,
     now: new Date().toISOString(),
     reviews,
     comments,
@@ -250,6 +279,7 @@ async function main(): Promise<void> {
       JSON.stringify({
         pr: args.pr,
         headSha: snap.headSha,
+        sameChangeCommits: snap.sameChangeCommits,
         since: snap.since,
         state,
         bodyFindings: bodyFindingCount(snap),
