@@ -686,7 +686,7 @@ footprint and makes the `coverage` numbers incomparable across domains.
    | `duplicate-facet-id`, `duplicate-boundary-id`, `boundary-not-in-context` | `is already declared`, `Duplicate boundary id`, `cannot be declared inside` | error, non-zero | the overlay is structurally wrong, not merely dangling. Two top-level `boundary` blocks with one id merge instead, so only the scoped form raises `duplicate-boundary-id` |
    | `entity-anchor-collision` | `deep-links are ambiguous` | warning, exit 0 | an entity id equal to its domain id, or duplicated across domains |
    | `node-id-multiple-locations` | `appears in multiple locations` | warning, exit 0 | a `service`, `domain` or `client` id used twice; rename unless it is a deliberate migration pair (Phase 1 step 5) |
-   | `duplicate-boundary-assignment`, `duplicate-owner-assignment`, `cross-domain-store-access` | `belongs to more than one boundary`, `is owned by more than one team`, `owned by` | info | overlapping membership / a boundary crossing — facts, not repairs |
+   | `duplicate-boundary-assignment`, `duplicate-owner-assignment`, `cross-domain-store-access` | `belongs to more than one boundary`, `is owned by more than one team`, `owned by another domain`, `other domains` | info | overlapping membership / a boundary crossing — facts, not repairs |
    | `Circular dependency detected` | that text | warning, exit 0 | may be a real fact (two services that genuinely call each other). Verify in source before "fixing" it |
 
    A warning leaves the exit code at 0, and most of these name a reference the
@@ -834,7 +834,8 @@ and infra declarations and every relation inside an entity block (`A -> B`,
   domain's path. Offer the near-matches: the usual cause is one agent guessing
   another domain's entity id;
 - a bare target inside `entity X` that is not an entity of `X`'s own domain;
-- an infra block or leaf id equal to a `service` or `domain` id.
+- an infra block or leaf id equal to a `domain` id, or a leaf id equal to a
+  `service` id.
 
 Two authoring notes for that script, both learned the hard way:
 
