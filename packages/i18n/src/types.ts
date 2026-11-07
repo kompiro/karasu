@@ -626,11 +626,7 @@ export type Translations = {
   }) => string;
   "diagnostic.duplicateEdgeId.message": (params: { authorId: string }) => string;
   "diagnostic.duplicateEdgeLabel.message": (params: { label: string }) => string;
-  "diagnostic.ambiguousEdgeBase.message": (params: {
-    fromId: string;
-    toId: string;
-    arrow: "->" | "-->";
-  }) => string;
+  "diagnostic.ambiguousEdgeBase.message": (params: { base: string }) => string;
   "diagnostic.styleTokenTypeMismatch.message": (params: {
     expected: string;
     got: string;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InMemoryFileSystemProvider } from "@karasu-tools/core";
+import { InMemoryFileSystemProvider, StyleParser, edgeBaseId } from "@karasu-tools/core";
 import { ObservableFileSystemProvider } from "../fs/observable-provider.js";
 import {
   deriveStyleFilePath,
@@ -121,6 +121,51 @@ describe("upsertEdgeDirectionRule", () => {
     // and the direction rule is present.
     expect(result).toContain("user { shape: user; }");
     expect(result).toContain("edge#criticalWrite { direction: down; }");
+  });
+
+  const EDGE_LOC = {
+    start: { line: 1, column: 1, offset: 0 },
+    end: { line: 1, column: 1, offset: 0 },
+  };
+
+  // #3480: the canonical id of an edge with a quoted endpoint is quoted in the
+  // base form, and the rule the menu writes must parse back to that id.
+  it.each([
+    ["an endpoint with a space", { from: "a b", to: "c" }],
+    ["an endpoint containing ->", { from: "a", to: "b->c" }],
+    ["an endpoint ending in -", { from: "a-", to: "c" }],
+  ])("writes a rule that parses back to the id of %s", async (_name, endpoints) => {
+    const canonicalId = edgeBaseId({ kind: "sync", tags: [], loc: EDGE_LOC, ...endpoints });
+    const fs = new InMemoryFileSystemProvider();
+    await upsertEdgeDirectionRule(fs, "/site.krs.style", canonicalId, "down");
+    await upsertEdgeDirectionRule(fs, "/site.krs.style", canonicalId, "right");
+    const sheet = StyleParser.parse(await fs.readFile("/site.krs.style"));
+    expect(sheet.diagnostics).toEqual([]);
+    expect(sheet.value.rules.map((r) => [r.selector.edgeId, r.properties.direction])).toEqual([
+      [canonicalId, "right"],
+    ]);
+  });
+
+  // Known (#3524): the rule scanner does not read quotes, so an endpoint with
+  // `{` / `}` hides the existing rule and each pick appends another. The rules
+  // still parse to the edge's id; the later one wins.
+  it("appends again for an endpoint containing { or } (#3524)", async () => {
+    const canonicalId = edgeBaseId({
+      kind: "sync",
+      tags: [],
+      loc: EDGE_LOC,
+      from: "x{y}",
+      to: "c",
+    });
+    const fs = new InMemoryFileSystemProvider();
+    await upsertEdgeDirectionRule(fs, "/site.krs.style", canonicalId, "down");
+    await upsertEdgeDirectionRule(fs, "/site.krs.style", canonicalId, "right");
+    const sheet = StyleParser.parse(await fs.readFile("/site.krs.style"));
+    expect(sheet.diagnostics).toEqual([]);
+    expect(sheet.value.rules.map((r) => [r.selector.edgeId, r.properties.direction])).toEqual([
+      [canonicalId, "down"],
+      [canonicalId, "right"],
+    ]);
   });
 });
 
