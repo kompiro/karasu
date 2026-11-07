@@ -22,7 +22,7 @@ describe("publishedRoutes", () => {
   it("does not invent routes for pages the site does not publish", () => {
     const routes = publishedRoutes();
     // A real doc, deliberately outside PUBLISHED_EN_FILES.
-    expect(routes).not.toContain("guide/reverse-engineering-with-ai/");
+    expect(routes).not.toContain("github-actions/");
     expect(routes).not.toContain("roadmap/");
   });
 });

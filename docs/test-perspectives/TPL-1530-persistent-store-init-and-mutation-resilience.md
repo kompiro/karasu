@@ -65,6 +65,7 @@ scope:
 
 ## 関連テスト
 
+- `packages/app/src/components/first-run/tour-progress.test.ts` / `tour-project.test.ts`（ツアーの記録: 未知のガイド・prototype のキー・範囲外のステップ・#3600 より前の形式、storage が例外を投げても起動を止めない）
 - `packages/app/src/fs/project-manager.test.ts`（corrupt metadata → throw / 並行 create で lost update しない）
 - `packages/app/src/hooks/useProjectInitialization.test.ts`（bootstrap throw → SET_INIT_ERROR + loading 解除 / StrictMode 二重実行で seed 一回）
 - `packages/app/src/fs/serial-queue.test.ts`（直列実行・rejection 非伝播の単体テスト）

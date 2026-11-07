@@ -211,7 +211,7 @@ system Shop {
 
 ### `@draft` — 主張されているが未確認
 
-`@draft` は、**モデルがそう言っているが誰も確認していない**記述に付ける印である。手で書いていないモデルのための正直さの層で、karasu-nest は LLM でリポジトリを `.krs` に reverse する（[ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md) 決定 4）。どこが推測かを自分で言えない生成モデルは、読み手に全体を同じ確度で信じさせてしまう。
+`@draft` は、**モデルがそう言っているが誰も確認していない**記述に付ける印である。手で書いていないモデルのための正直さの層で、`reverse-architecture` skill は LLM でリポジトリを `.krs` に reverse する。どこが推測かを自分で言えない生成モデルは、読み手に全体を同じ確度で信じさせてしまう（[ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md) 決定 4）。
 
 ```krs
 system Payments {

@@ -22,6 +22,13 @@ interface UseFileSelectionResult {
    * asked for, `fallback` is selected instead (#3598).
    */
   selectFile: (path: string, fallback?: string) => Promise<FileSelectionStatus>;
+  /**
+   * Treats the open file as selected again without reading it: the view resets
+   * as it does on a selection, and a read still in flight no longer lands. The
+   * buffer stays, so an edit whose save has not committed is not replaced by
+   * the older content on disk (TPL-1535).
+   */
+  keepOpenFile: () => void;
   selectFileWithContent: (path: string, content: string) => void;
 }
 
@@ -95,6 +102,12 @@ export function useFileSelection(
     [fs, dispatch],
   );
 
+  const keepOpenFile = useCallback(() => {
+    latestSelectionRef.current++;
+    inFlightRef.current = null;
+    dispatch({ type: "RESET_FILE_VIEW" });
+  }, [dispatch]);
+
   const selectFileWithContent = useCallback(
     (path: string, content: string) => {
       dispatch({ type: "SELECT_FILE", path, content });
@@ -102,5 +115,5 @@ export function useFileSelection(
     [dispatch],
   );
 
-  return { selectFile, selectFileWithContent };
+  return { selectFile, keepOpenFile, selectFileWithContent };
 }
