@@ -145,7 +145,7 @@ README「横断観察 A」の、curated table を meta-check の既定にする�
 - **自己申告だけ（照合しない）。** 申告がチェックリストからずれても誰も気づかない
 - **語彙を `automated` / `partial` / `manual` にする（#3038 の提案）。** 全項目が judgment の TPL が空虚に automated になる。
   karasu では「手動」が受け入れテストの手動項目（ADR-3169）を指すので紛らわしい
-- **変更ファイルから TPL を引く仕組みを同じ設計に含める。** 対応付けの鍵（パス）が frontmatter に無く、`scope.packages`
+- **変更ファイルから TPL を引く仕組みを同じ設計に含める（D5）。** 対応付けの鍵（パス）が frontmatter に無く、`scope.packages`
   は粗すぎる（`core` を持つ TPL が大半）。印と状態はその仕組みが無くても成り立つので、別の設計（#3486）に分けた
 
 ## 残っていること
