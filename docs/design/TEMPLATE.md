@@ -99,6 +99,34 @@
 
 **案N を採用する** — <理由>
 
+### 仕様の変更
+
+<!-- 任意。決定のパス（`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`docs/process/**`・
+     `.claude/rules/**`）に入れる文面を、ファイルごとのブロックで載せる。実装の PR の差分がブロックと
+     ちょうど一致すれば、Review tier はそのファイルを Medium に数える（`docs/process/review.md`
+     「Design Doc に載せた仕様の文面」）。載せないなら本節ごと削除する。
+
+     ブロックは本見出しの直下に、行頭から始まる fence で置く。情報文字列は `diff file=<パス>`、中身は
+     unified diff の hunk で、実装の差分（`git diff -U3`）に出る文脈の行もそのまま写す。hunk の間は
+     `@@` の行で区切る（行番号は省いてよい）。日英の両方を載せる。下の例は外側の fence の中にあるので、
+     Review tier は読まない。 -->
+
+````md
+```diff file=docs/spec/style.md
+@@
+ Under `auto`, the label is moved to a clear position.
+-If no position is clear, it is dropped.
++If no position is clear, it is left off the canvas.
+```
+
+```diff file=docs/spec/style.ja.md
+@@
+ `auto` では、label を空いた位置へ動かす。
+-空いた位置が無ければ捨てる。
++空いた位置が無ければ canvas から外す。
+```
+````
+
 ### スライス（実装ステップ）
 
 <!-- 任意。実装を複数 PR / Issue に割るときだけ書く（1 PR で終わるなら本節ごと削除）。

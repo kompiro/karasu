@@ -1,0 +1,51 @@
+`<title>` に持つので、viewer は hover で全文を出せる（ブラウザで開いた
+静的 SVG も含む）。その edge には `data-edge-label-withheld="truncated"`
+が付く。上限に収まる label の edge は、この property が無かったときと
+同じ出力になる。
+
+文字数は code point で数え、描画幅では数えない。正の整数でない値は
+無視され、デフォルトが使われる。
+
+機械生成の label（usecase → resource edge の `W` / `R`、集約 edge の
+`N domain edges`）は省略しない。
+
+### `label-display` — `auto | always | hover`
+
+canvas に label を描くかどうか。デフォルトは `auto`。
+
+| 値 | canvas が label を描く条件 |
+| --- | --- |
+| `auto` | node card・他の label・他の edge の線に重ならずに置けるときだけ |
+| `always` | 常に。重なる位置でも描く |
+| `hover` | 描かない。viewer が hover で出す |
+
+```css
+edge { label-display: always; }            /* 全 label を、重なっても描く */
+edge[async] { label-display: hover; }      /* hover するまで出さない */
+```
+
+`auto` では、まず自動配置（上の `label-position` を参照）が label を
+空いた位置へ動かす。空いた位置とは、card・他の label・他の edge の線に
+重ならない位置である。届く範囲に空きが無ければ、そこには描かずに
+canvas から外す。外した label の場所は、
+後から置く label が使える。全部の label が重ならずに置ける canvas は、
+`auto` でも `always` でも同じ出力になる。
+
+canvas から外した label には、同じ surface 上で必ず届く。edge は書いた
+文字列を `data-edge-label` と `<title>` に持ち、
+`data-edge-label-withheld="deferred"` が付く。
+
+次の label は値にかかわらず常に描く。
+
+- `auto` のとき、author が `label-position` / `label-offset` で位置を
+  指定した label。author の指定が勝つので、重なる位置でもそこに描く。
+- 機械生成の label（`W` / `R`、`N domain edges`）。書かれた文字列では
+  ないので、hover で出し直す元が無い。
+- 集約 edge の label。内訳を開くためにクリックする対象でもある。
+
+この 2 つの property が無かったときの挙動に戻すには次のように書く。
+
+```css
+edge { label-max-chars: none; label-display: always; }
+```
+

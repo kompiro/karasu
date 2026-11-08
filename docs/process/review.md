@@ -48,7 +48,7 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 | Low | `docs/test-perspectives/**`・`docs/guide/**`・新しいテストファイル（既存のテストファイルの変更は Medium）、新しい ADR、ADR の昇格（Design Doc の削除、リンクの張り替え、ADR へのリンクの追加）、既存 ADR の frontmatter、ADR の生成物と TPL の索引だけを変える再生成 PR | 回さない | 記録と CI が通れば auto-merge（再生成 PR は記録なしで、スクリプトが REST でマージする） |
 | Design | `docs/design/**` | ready の直後に 1 回だけ。ゲートにしない | 記録と人間のレビュー |
 | Medium | ほかのすべて（`packages/*`・`docs/acceptance/**`・`examples/**`・既存 ADR の本文など） | 回さない | 記録と、人間の判断。描画やレイアウトが変わる PR（`rendering-change` ラベル、下）は人間が preview で動作を確かめる |
-| High | workflow・release・依存の変更・`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`docs/process/**`・`.claude/rules/**`・`.coderabbit.yaml`・レビューの仕組み（`scripts/review/**`・`scripts/coderabbit/**`・`scripts/render-equivalence/**`・`.claude/skills/**` など）・セキュリティの境界（下）・言語の挙動（下） | Critical / Major の未対応が無くなるまで回す（再レビューは 3 回まで） | 人間が High のファイルと `## For Reviewers` 節を読む。合意済みの Design Doc が裏付ける PR は、節と、summary が並べるファイル（セキュリティの境界と、決定・言語の挙動のパスの外の High のファイル）を読む（下の「High の PR で人間が読むもの」） |
+| High | workflow・release・依存の変更・`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`docs/process/**`・`.claude/rules/**`・`.coderabbit.yaml`・レビューの仕組み（`scripts/review/**`・`scripts/coderabbit/**`・`scripts/render-equivalence/**`・`.claude/skills/**` など）・セキュリティの境界（下）・言語の挙動（下） | Critical / Major の未対応が無くなるまで回す（再レビューは 3 回まで） | 人間が High のファイルと `## For Reviewers` 節を読む。合意済みの Design Doc が裏付ける PR は、節と、summary が並べるファイル（セキュリティの境界と、決定・言語の挙動のパスの外の High のファイル）を読む（下の「High の PR で人間が読むもの」）。決定のパスのファイルは、差分が裏付けの Design Doc に載せた文面とちょうど一致すれば Medium に数える（下の「Design Doc に載せた仕様の文面」） |
 
 - **セキュリティの境界**：信頼できない入力（他人の `.krs`、URL、webview のメッセージ、ディスクのパス）を受ける
   コード。`packages/nest/**`、`karasu serve` と `render` のエンドポイント・ファイルアクセス、`packages/core/src/fs/**`、
@@ -147,6 +147,34 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
   ことである。満たせば読む範囲を絞る（上の表の 1 行目）。満たさなくても check は落ちず、範囲が絞られないだけで、
   summary が理由を出す
 - 記録の後にコミットを足したら、照合もそのコミットに当て直す。記録の `head` が HEAD を覆わなくなると、範囲は絞られない
+
+#### Design Doc に載せた仕様の文面
+
+**到達状態**: 裏付けの Design Doc（上の「High の PR で人間が読むもの」の条件）の `### 仕様の変更` 節に載せた文面と、
+差分がちょうど一致する決定のパスのファイルは、Review tier が Medium に数える。ほかに High のファイルが無ければ PR は
+Medium になり、CodeRabbit のラウンドは回らない。一致しなければ、これまでどおり High である。
+
+```
+node scripts/review/tier.ts classify --closes <N>   # PR を作る前。一致したファイルは reasons に "(the text the backing Design Doc agreed)"
+```
+
+- **ブロックの書き方**：`### 仕様の変更` 見出しの直下に、行頭から始まる fence を置き、情報文字列を `diff file=<パス>`
+  にする。中身は unified diff の hunk で、実装の差分（`git diff -U3`）に出る文脈の行もそのまま写す。hunk の間は `@@` の
+  行で区切る（行番号は書かなくてよい）。空行は文脈の空行として読む。1 ファイルに 1 ブロックで、中身に fence を含むなら
+  外側の fence を長くする。見出しが 2 つある Design Doc と、閉じていない fence のある Design Doc からは、どのブロックも
+  読まない。ほかの fence の中のブロック（説明用の例）は読まない。書き方の例は `docs/design/TEMPLATE.md`
+- **一致の判定**：PR の差分（文脈 3 行）の hunk が、ブロックの hunk と、各行の符号と本文（行末の空白を除く）と並びまで
+  同じであること。ほかに hunk が無いこと。どの hunk も空行や表の区切りでない行を変えていること。hunk の文脈と削除の行が
+  base のファイルのちょうど 1 箇所に当てはまること。新しいファイルは base に無いときだけ一致し、ファイルの削除・
+  モードの変更は一致しない
+- **実装の途中で文面を直す**なら、先に Design の PR で Design Doc を直してマージし、main を取り込む。そうしないなら
+  High のまま通す
+- **Medium になった PR を kompiro に渡す直前に、Review tier を走り直させる。** 検査の後に main で Design Doc が変わっても、
+  公開された結果は古いままである。走り直した run は裏付けを外してファイルを High に戻すので、`risk: medium` のラベルとの
+  食い違いで落ちる。そのときは main を取り込む
+- **Design の PR で `### 仕様の変更` に日英のブロックを置いたら**、ローカルレビューで、実装の文脈を持たない subagent が
+  日英のブロックの意味の食い違いを列挙し、記録にレビュアー `design` の行として残す。kompiro が日本語だけを読んで
+  合意しても、英語のブロックの食い違いが記録に残る
 
 #### バグ修正のテストと、既存のテストの変更
 

@@ -444,9 +444,10 @@ export interface Classification {
    * reading an agreed Design Doc narrows (Issue #3542): `boundary` when it is on
    * a security boundary, which is always read, and `narrowable` when it is a
    * decision or language-behavior path off the boundary, whose agreed content
-   * need not be read again.
+   * need not be read again. `agreed` when its diff is the text the backing Design
+   * Doc agreed, which made it Medium.
    */
-  files: { path: string; tier: Tier; boundary: boolean; narrowable: boolean }[];
+  files: { path: string; tier: Tier; boundary: boolean; narrowable: boolean; agreed?: true }[];
 }
 
 /** 1-based inclusive line range of the YAML frontmatter, or null when there is none. */
@@ -860,6 +861,11 @@ const NARROWABLE_GLOBS: readonly string[] = [
   ...LANGUAGE_TIER_GLOBS,
 ];
 
+/** The decision paths: the only files whose text a Design Doc's spec blocks agree. */
+const DECISION_GLOBS: readonly string[] = NARROWABLE_GLOBS.filter(
+  (g) => !LANGUAGE_TIER_GLOBS.includes(g),
+);
+
 /**
  * Whether `f` is on a security boundary for the narrowed reading: by its path
  * alone, test files included, so no exception keeps such a file out of the read.
@@ -885,6 +891,11 @@ const isSecurityChange = (f: ChangedFile): boolean =>
 export function classifyChange(input: {
   files: readonly ChangedFile[];
   author: string;
+  /**
+   * Decision-path files whose diff is the text the backing Design Doc agreed
+   * ({@link agreedSpecFiles}): Medium instead of High (Issue #3542).
+   */
+  agreed?: readonly string[];
 }): Classification {
   const reasons: string[] = [];
   // No change at all is not a reason to skip the human: treat it as Medium.
@@ -904,15 +915,24 @@ export function classifyChange(input: {
 
   const files: Classification["files"] = [];
   for (const f of input.files) {
-    const t = fileTier(f, promotion);
+    let t = fileTier(f, promotion);
     const name = f.path === UNREADABLE_PATH ? UNREADABLE_NAME : f.path;
-    if (rank(t) > rank("low")) reasons.push(`${name}: ${t}`);
     const boundary = onBoundary(f);
+    const agreed =
+      t === "high" &&
+      !boundary &&
+      matchesAny(f.path, DECISION_GLOBS) &&
+      (input.agreed ?? []).includes(f.path);
+    if (agreed) t = "medium";
+    if (rank(t) > rank("low")) {
+      reasons.push(`${name}: ${t}${agreed ? " (the text the backing Design Doc agreed)" : ""}`);
+    }
     files.push({
       path: name,
       tier: t,
       boundary,
       narrowable: !boundary && matchesAny(f.path, NARROWABLE_GLOBS),
+      ...(agreed ? { agreed: true } : {}),
     });
     tier = stricter(tier, t);
   }
@@ -1034,6 +1054,166 @@ export function backingDesignDoc(input: {
   return { state: "backed", path, blob: blobs.mergeBase };
 }
 
+// ---------------------------------------------------------------------------
+// Spec text agreed in the backing Design Doc (Issue #3542)
+
+const SPEC_HEADING = /^### 仕様の変更[ \t]*$/;
+const OPEN_FENCE = /^( {0,3})(`{3,}|~{3,})(.*)$/;
+const BLOCK_INFO = /^diff file=(\S+)$/;
+
+/**
+ * A hunk as compared: one entry per line, its sign (`+`, `-` or a space for
+ * context) and its text without trailing whitespace. An empty line is context:
+ * an editor drops the space a blank context line starts with.
+ */
+type TextHunk = string[];
+
+const hunkLine = (line: string): string | null => {
+  const body = line.replace(/\s+$/u, "");
+  if (body === "") return " ";
+  return "+- ".includes(body[0]) ? body : null;
+};
+
+/** Splits hunk lines at `@@` lines; a line `hunkLine` cannot read makes the whole null. */
+function textHunks(lines: readonly string[]): TextHunk[] | null {
+  const hunks: TextHunk[] = [[]];
+  for (const line of lines) {
+    if (line.startsWith("@@")) hunks.push([]);
+    else if (line.startsWith("\\")) continue; // "\ No newline at end of file"
+    else {
+      const l = hunkLine(line);
+      if (l === null) return null;
+      hunks[hunks.length - 1].push(l);
+    }
+  }
+  return hunks.filter((h) => h.length > 0);
+}
+
+/**
+ * The spec blocks of a Design Doc: under its one `### 仕様の変更` heading, each
+ * fence that starts its line with the info string `diff file=<path>`, read as
+ * hunks. A fence inside another fence is the outer one's text, so an example in
+ * a `````md` fence is not read. A path with two blocks, or a block with a line
+ * that is not a hunk line, maps to null; a doc with more than one such heading,
+ * or a block left unclosed, gives nothing (TPL-3286).
+ */
+export function specBlocks(doc: string): Map<string, TextHunk[] | null> {
+  const blocks = new Map<string, TextHunk[] | null>();
+  let sections = 0;
+  let inSection = false;
+  let fence: { close: RegExp; block: { path: string; lines: string[] } | null } | null = null;
+  for (const line of doc.split(/\r?\n/)) {
+    if (fence !== null) {
+      if (!fence.close.test(line)) {
+        fence.block?.lines.push(line);
+        continue;
+      }
+      if (fence.block !== null) {
+        const { path, lines } = fence.block;
+        blocks.set(path, blocks.has(path) ? null : textHunks(lines));
+      }
+      fence = null;
+      continue;
+    }
+    const open = OPEN_FENCE.exec(line);
+    if (open !== null) {
+      const info = BLOCK_INFO.exec(open[3].trim());
+      fence = {
+        close: new RegExp(`^ {0,3}${open[2][0]}{${open[2].length},}[ \\t]*$`),
+        block: inSection && open[1] === "" && info !== null ? { path: info[1], lines: [] } : null,
+      };
+      continue;
+    }
+    if (HEADING.test(line)) {
+      inSection = SPEC_HEADING.test(line);
+      if (inSection) sections++;
+    }
+  }
+  return sections > 1 || fence !== null ? new Map() : blocks;
+}
+
+/** The hunks of a one-file `git diff -U3`, as {@link TextHunk}s; null when one cannot be read. */
+export function contextHunks(diff: string): TextHunk[] | null {
+  const lines = diff.split("\n");
+  const first = lines.findIndex((l) => HUNK_HEADER.test(l));
+  if (first < 0) return [];
+  const body = lines.slice(first);
+  // The diff's own trailing newline is not a line of the last hunk.
+  if (body[body.length - 1] === "") body.pop();
+  return textHunks(body);
+}
+
+/** Whether a changed line says something: not blank, not only a table rule or `---`. */
+const saysSomething = (l: string): boolean => l[0] !== " " && /[^\s|:-]/u.test(l.slice(1));
+
+/** How many times `seq` runs, line for line, in `lines`. */
+function occurrences(lines: readonly string[], seq: readonly string[]): number {
+  let n = 0;
+  for (let i = 0; i + seq.length <= lines.length; i++) {
+    if (seq.every((s, j) => lines[i + j] === s)) n++;
+  }
+  return n;
+}
+
+/**
+ * Whether a decision-path file's diff is exactly the text the Design Doc agreed
+ * for it (Issue #3542): its `-U3` hunks are the block's hunks, line for line and
+ * in order, so a partial, reordered or moved application does not match. Every
+ * hunk must change a line that says something, and its context and removed
+ * lines must sit at exactly one place in the base file, so the agreed text has
+ * one position. A new file matches only when the base has none; a deleted file,
+ * a mode change or a binary file never does.
+ */
+export function matchesAgreedText(input: {
+  block: readonly TextHunk[];
+  /** `git diff --no-renames -U3 <merge-base> <head> -- <path>`. */
+  diff: string;
+  /** The file at the merge base, or null where it is absent. */
+  base: string | null;
+}): boolean {
+  const [file] = parseDiff(input.diff);
+  if (file === undefined || file.binary || file.status === "deleted") return false;
+  if (file.oldMode !== file.newMode && file.status === "modified") return false;
+  if ([file.oldMode, file.newMode].includes("120000")) return false;
+  const hunks = contextHunks(input.diff);
+  const { block } = input;
+  if (hunks === null || block.length === 0 || hunks.length !== block.length) return false;
+  if (
+    !block.every((h, i) => h.length === hunks[i].length && h.every((l, j) => l === hunks[i][j]))
+  ) {
+    return false;
+  }
+  if (!block.every((h) => h.some(saysSomething))) return false;
+  if (file.status === "added") return input.base === null;
+  if (input.base === null) return false;
+  const lines = input.base.split("\n").map((l) => l.replace(/\s+$/u, ""));
+  return block.every((h) => {
+    const old = h.filter((l) => l[0] !== "+").map((l) => l.slice(1));
+    return old.length > 0 && occurrences(lines, old) === 1;
+  });
+}
+
+/**
+ * The decision-path files whose diff is the text the backing Design Doc agreed,
+ * which {@link classifyChange} counts as Medium (Issue #3542).
+ */
+export function agreedSpecFiles(
+  doc: string,
+  files: readonly { path: string; diff: string; base: string | null }[],
+): string[] {
+  const blocks = specBlocks(doc);
+  return files
+    .filter((f) => {
+      const block = blocks.get(f.path);
+      return (
+        matchesAny(f.path, DECISION_GLOBS) &&
+        block != null &&
+        matchesAgreedText({ block, diff: f.diff, base: f.base })
+      );
+    })
+    .map((f) => f.path);
+}
+
 /** Code points of a path the summary shows: a longer one is cut and marked. */
 const SUMMARY_PATH_CHARS = 200;
 
@@ -1075,7 +1255,13 @@ const SUMMARY_ROWS = 200;
 export function tierSummary(input: {
   effective: Tier;
   trustedAuthor: boolean;
-  files: readonly { path: string; tier: Tier; boundary?: boolean; narrowable?: boolean }[];
+  files: readonly {
+    path: string;
+    tier: Tier;
+    boundary?: boolean;
+    narrowable?: boolean;
+    agreed?: boolean;
+  }[];
   /**
    * On a High PR: the Design Doc that backs it, and whether the conformance check
    * covers HEAD (Issue #3542), with why not. The reading is narrowed only when
@@ -1139,10 +1325,23 @@ export function tierSummary(input: {
     }
   } else {
     lines.push(`The PR is ${input.effective}.`, "");
+    const agreed = input.files.filter((f) => f.agreed).length;
+    const backing = input.design?.backing;
+    if (agreed > 0 && backing?.state === "backed") {
+      lines.push(
+        `${agreed === 1 ? "One file is" : `${agreed} files are`} Medium, marked agreed below: ` +
+          `the diff is the spec text the agreed Design Doc ${summaryPath(backing.path)} ` +
+          `(blob <code>${backing.blob.slice(0, 12)}</code>) holds. Rerun Review tier right before ` +
+          "hand-off: if main has changed the Design Doc since, the rerun fails on the label until main is merged.",
+        "",
+      );
+    }
   }
   const listed = input.files.slice(0, SUMMARY_ROWS);
   lines.push("| Tier | File |", "| --- | --- |");
-  for (const f of listed) lines.push(`| ${f.tier} | ${summaryPath(f.path)} |`);
+  for (const f of listed) {
+    lines.push(`| ${f.tier}${f.agreed ? " (agreed)" : ""} | ${summaryPath(f.path)} |`);
+  }
   const rest = input.files.length - listed.length;
   if (rest > 0) lines.push("", `${rest} more ${rest === 1 ? "file is" : "files are"} not listed.`);
   return [...lines, ""].join("\n");
@@ -1546,6 +1745,52 @@ function closesBug(view: PrView): { bug: boolean; missing: number[]; unreadable:
   return { bug, missing, unreadable };
 }
 
+/**
+ * The Design Doc that backs a change and the decision-path files whose diff is
+ * its agreed text (Issue #3542). Advisory: a git failure gives no backing and no
+ * agreed file, so the files stay High, rather than failing the check.
+ */
+function designAgreement(input: {
+  baseRefName: string;
+  baseRef: string;
+  head: string;
+  closes: readonly number[];
+  files: readonly ChangedFile[];
+}): { backing: Backing; agreed: string[] } {
+  try {
+    const mergeBase = mergeBaseOf(input.baseRef, input.head);
+    const backing = backingDesignDoc({
+      baseRefName: input.baseRefName,
+      closes: input.closes,
+      changed: input.files.map((f) => f.path),
+      facts: designDocFacts(mergeBase),
+    });
+    if (backing.state !== "backed") return { backing, agreed: [] };
+    const doc = gitShow(mergeBase, backing.path) ?? "";
+    const candidates = input.files
+      .filter((f) => matchesAny(f.path, DECISION_GLOBS))
+      .map((f) => ({
+        path: f.path,
+        diff: gitDiff(
+          "--no-renames",
+          "--full-index",
+          "-U3",
+          mergeBase,
+          input.head,
+          "--",
+          `:(literal)${f.path}`,
+        ),
+        base: gitShow(mergeBase, f.path),
+      }));
+    return { backing, agreed: agreedSpecFiles(doc, candidates) };
+  } catch (e) {
+    return {
+      backing: { state: "none", reason: `git could not answer: ${String(e).split("\n")[0]}` },
+      agreed: [],
+    };
+  }
+}
+
 /** What the `Review tier` check found on one head of a PR. */
 export type PrCheck =
   /** The PR's head is not the one asked for: a push arrived. */
@@ -1594,7 +1839,14 @@ export function checkPr(pr: string, head?: string): PrCheck {
   }
   const baseRef = `origin/${view.baseRefName}`;
   const files = changedFiles(baseRef, view.headRefOid);
-  const result = classifyChange({ files, author: view.author.login });
+  const { backing, agreed } = designAgreement({
+    baseRefName: view.baseRefName,
+    baseRef,
+    head: view.headRefOid,
+    closes: closedIssues(view),
+    files,
+  });
+  const result = classifyChange({ files, author: view.author.login, agreed });
   const labeled = labelTier(view.labels.map((l) => l.name));
   // No label is High: an outside author or a bot cannot add one, and a forgotten
   // label must fall to the heavier side.
@@ -1639,43 +1891,33 @@ export function checkPr(pr: string, head?: string): PrCheck {
   }
   let design: DesignCheck | null = null;
   if (tier === "high") {
-    // Advisory: a git failure here gives no backing rather than failing the check.
-    try {
-      const backing = backingDesignDoc({
-        baseRefName: view.baseRefName,
-        closes: closedIssues(view),
-        changed: files.map((f) => f.path),
-        facts: designDocFacts(mergeBaseOf(baseRef, view.headRefOid)),
-      });
-      let why: string | null = null;
-      if (backing.state === "backed") {
-        try {
-          why = designCheckGap(
-            view.body ?? "",
-            parseRecord(view.body ?? ""),
-            gitFacts(baseRef, view.headRefOid),
-            backing,
-          );
-        } catch (e) {
-          why = `the local review record could not be checked: ${String(e).split("\n")[0]}`;
-        }
+    let why: string | null = null;
+    if (backing.state === "backed") {
+      try {
+        why = designCheckGap(
+          view.body ?? "",
+          parseRecord(view.body ?? ""),
+          gitFacts(baseRef, view.headRefOid),
+          backing,
+        );
+      } catch (e) {
+        why = `the local review record could not be checked: ${String(e).split("\n")[0]}`;
       }
-      design = {
-        backing,
-        checked: backing.state === "backed" && why === null,
-        ...(why ? { why } : {}),
-      };
-    } catch (e) {
-      design = {
-        backing: { state: "none", reason: `git could not answer: ${String(e).split("\n")[0]}` },
-        checked: false,
-      };
     }
+    design = {
+      backing,
+      checked: backing.state === "backed" && why === null,
+      ...(why ? { why } : {}),
+    };
     Object.assign(summary, {
       designDoc: design.backing,
       designChecked: design.checked,
       designGap: design.why,
     });
+  } else if (agreed.length > 0) {
+    // The summary names the Design Doc whose text made the PR lighter.
+    design = { backing, checked: false };
+    Object.assign(summary, { designDoc: backing });
   }
   if (tier !== "high") {
     const mergeBase = mergeBaseOf(baseRef, view.headRefOid);
@@ -1726,7 +1968,7 @@ export function checkExitCode(result: { errors: string[]; unreadable: string[] }
 }
 
 const USAGE = `usage:
-  tier.ts classify [--base <ref>] [--head <rev>] [--author <login>]
+  tier.ts classify [--base <ref>] [--head <rev>] [--author <login>] [--closes <n>[,<n>...]]
   tier.ts check --pr <n> [--head <sha>]
     exit 0 passes, 1 breaks a rule, 3 the head is not <sha>, 4 something could not be read
   tier.ts same-change --from <rev> [--to <rev>] [--base <ref>]
@@ -1738,11 +1980,26 @@ function main(argv: string[]): number {
 
   if (cmd === "classify") {
     const author = flag(rest, "--author") ?? run("gh", ["api", "user", "--jq", ".login"]).trim();
-    const result = classifyChange({
-      files: changedFiles(base, flag(rest, "--head") ?? "HEAD"),
-      author,
-    });
-    console.log(JSON.stringify(result, null, 2));
+    const head = flag(rest, "--head") ?? "HEAD";
+    const files = changedFiles(base, head);
+    // `--closes`: the Issues the PR will close, so the backing Design Doc's agreed
+    // spec text counts as it will in the check.
+    const closes = (flag(rest, "--closes") ?? "")
+      .split(",")
+      .filter((n) => /^\d+$/.test(n))
+      .map(Number);
+    const { backing, agreed } =
+      closes.length > 0
+        ? designAgreement({
+            baseRefName: base.replace(/^origin\//, ""),
+            baseRef: base,
+            head,
+            closes,
+            files,
+          })
+        : { backing: null, agreed: [] };
+    const result = classifyChange({ files, author, agreed });
+    console.log(JSON.stringify(backing ? { ...result, designDoc: backing } : result, null, 2));
     return 0;
   }
 
