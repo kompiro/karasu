@@ -202,6 +202,28 @@ gh pr create --label "risk: low" --title "docs(adr): ..." --body-file <本文>
 gh pr merge <N> --auto --squash --delete-branch
 ```
 
+#### #3694 が open のあいだは、judge の判定を見てから `--auto` を打つ（一時）
+
+**到達状態**: Low の PR に `--auto` を打つ前に `Low PR merger` の run がその PR を判定していて、
+判定と期待が #3694 にコメントしてある。
+
+この節は、上の手順の最後の `gh pr merge --auto` と `docs/process.md` 手順 15 に優先する。
+`gh issue view 3694 --json state --jq .state` が `OPEN` のあいだだけ効き、スライス C（#3681）で消す。
+`--auto` を先に打つと、native の auto-merge が最後の check の数秒後にマージし、judge（#3673 のスライス A）が
+読む前に PR が閉じてしまう。judge はマージもコメントもせず、判定を run のログと job summary に出すだけである。
+
+```
+gh pr checks <N> --watch --required     # 1. required check が揃うのを待つ
+gh run list --workflow low-pr-merger.yml --limit 3 --json databaseId,createdAt,status
+gh run watch <run-id>                   # 2. 1 が終わった後に始まった run を待つ（check の完了か 10 分ごとの cron で起動する）
+gh run view <run-id> --log | grep -A12 '"pr": <N>,'   # 3. その PR の判定を読む
+```
+
+4. #3694 にコメントする。PR 番号、run の URL、判定（`outcome` と `reasons`）、期待した判定、一致したか。
+   required check がすべて通っていれば期待は `merge`。PR が判定に現れなければ、そう書く
+5. 判定が何であっても `gh pr merge <N> --auto --squash --delete-branch` を打つ。マージの経路は
+   まだ native の auto-merge で、食い違いは kompiro が #3694 のコメントで読む
+
 `gh pr create --label` はラベルを PR を開いた後に付けるが、ラベルの無い PR に `risk: high` を付ける
 「Label untiered PRs High」（`.github/workflows/review-request.yml`）は、開いた PR では 30 秒待ってから
 ラベルを読むので、ふつうは `risk: low` が先に届く（ADR-3504）。`risk: low` がそれより遅れて届くと、ワークフローが
