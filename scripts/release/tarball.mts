@@ -113,15 +113,23 @@ function parsePax(data: Buffer): Record<string, string> {
 }
 
 /**
- * A package path, or null for one that could escape the package directory.
- * npm puts every file under `package/`; the first segment is dropped whatever
- * it is called, as npm itself does.
+ * A package path, or null for any path that npm's extraction could place
+ * somewhere else. The first segment must be `package/`, as npm and pnpm write
+ * it; every other segment must be a plain name. node-tar's Unpack keeps a `\\`
+ * as a literal character, strips Windows drive and UNC roots after the first
+ * segment, and drops empty segments, so a path with any of those could be
+ * compared as one file and installed as another (even over a genuine file).
  */
 export function packagePath(entryPath: string): string | null {
-  const segments = entryPath.replaceAll("\\", "/").split("/");
-  const rest = segments.slice(1).filter((segment) => segment !== "" && segment !== ".");
-  if (rest.length === 0 || rest.includes("..") || entryPath.startsWith("/")) return null;
-  return rest.join("/");
+  const [first, ...rest] = entryPath.split("/");
+  if (first !== "package" || rest.length === 0) return null;
+  const plain = (segment: string) =>
+    segment !== "" &&
+    segment !== "." &&
+    segment !== ".." &&
+    !segment.includes("\\") &&
+    !segment.includes(":");
+  return rest.every(plain) ? rest.join("/") : null;
 }
 
 /** Adds a file, failing on one a case-insensitive file system would merge. */
@@ -314,23 +322,51 @@ function noticeHeadingName(line: string): string | null {
   return m ? m[1] : null;
 }
 
+type NoticeSection = { heading: string | null; body: string };
+
 /**
- * A notices file without the sections of `platform` packages. Headings are
- * read outside code fences only, because licence texts can contain `## `.
+ * A notices file cut at its `## ` headings. Headings are read outside code
+ * fences only, because licence texts can contain `## `.
  */
-export function withoutPlatformSections(notices: string, platform: Set<string>): string {
-  const kept: string[] = [];
+function noticeSections(notices: string): NoticeSection[] {
+  const sections: NoticeSection[] = [{ heading: null, body: "" }];
   let inFence = false;
-  let skipping = false;
   for (const line of notices.split("\n")) {
-    if (!inFence) {
-      const name = noticeHeadingName(line);
-      if (name !== null) skipping = platform.has(name);
+    if (!inFence && line.startsWith("## ")) {
+      sections.push({ heading: line, body: "" });
+    } else {
+      sections[sections.length - 1].body += `${line}\n`;
     }
     if (line.startsWith("```")) inFence = !inFence;
-    if (!skipping) kept.push(line);
   }
-  return kept.join("\n");
+  return sections;
+}
+
+/**
+ * Whether two notices files are the same but for which platform-specific
+ * packages they list. Section by section, a heading may differ only when both
+ * name a package `pnpm-lock.yaml` records with `os` or `cpu` and the section's
+ * text is the same: `@esbuild/linux-arm64` on one machine for `@esbuild/linux-x64`
+ * on another. Nothing can be added, dropped or reworded under such a heading.
+ */
+export function sameNoticesAcrossPlatforms(
+  expected: string,
+  actual: string,
+  platform: Set<string>,
+): boolean {
+  const a = noticeSections(expected);
+  const b = noticeSections(actual);
+  if (a.length !== b.length) return false;
+  return a.every((section, i) => {
+    const other = b[i];
+    if (section.body !== other.body) return false;
+    if (section.heading === other.heading) return true;
+    const names = [
+      noticeHeadingName(section.heading ?? ""),
+      noticeHeadingName(other.heading ?? ""),
+    ];
+    return names.every((name) => name !== null && platform.has(name));
+  });
 }
 
 const NOTICE_FILE = /(^|\/)THIRD_PARTY_NOTICES\.md$/;
@@ -351,26 +387,24 @@ export const isSame = (diff: TarballDifference): boolean =>
 
 /**
  * Compares the files of `actual` (staged or published) with `expected` (packed
- * from the release commit). Notices files are compared without the sections of
- * platform-specific packages, the one difference known to come from the machine
- * that built the pack.
+ * from the release commit). Notices files may differ only in which
+ * platform-specific packages they name (`sameNoticesAcrossPlatforms`), the one
+ * difference known to come from the machine that built the pack.
  */
 export function compareTarballs(
   expected: TarballFiles,
   actual: TarballFiles,
   platform: Set<string> = new Set(),
 ): TarballDifference {
-  const normalise = (path: string, content: Buffer): Buffer =>
-    NOTICE_FILE.test(path)
-      ? Buffer.from(withoutPlatformSections(content.toString("utf8"), platform))
-      : content;
+  const same = (path: string, a: Buffer, b: Buffer): boolean =>
+    a.equals(b) ||
+    (NOTICE_FILE.test(path) &&
+      sameNoticesAcrossPlatforms(a.toString("utf8"), b.toString("utf8"), platform));
   const missing = [...expected.keys()].filter((path) => !actual.has(path)).sort();
   const extra = [...actual.keys()].filter((path) => !expected.has(path)).sort();
   const changed = [...expected.keys()]
     .filter((path) => actual.has(path))
-    .filter(
-      (path) => !normalise(path, expected.get(path)!).equals(normalise(path, actual.get(path)!)),
-    )
+    .filter((path) => !same(path, expected.get(path)!, actual.get(path)!))
     .sort();
   return { missing, extra, changed };
 }
@@ -381,4 +415,49 @@ export function describeDifference(label: string, diff: TarballDifference): stri
   for (const path of diff.extra) lines.push(`  extra:   ${JSON.stringify(path)}`);
   for (const path of diff.changed) lines.push(`  changed: ${JSON.stringify(path)}`);
   return lines.join("\n");
+}
+
+// ------------------------------------------------------------------ manifest
+
+/**
+ * Fields npm installs from. npm resolves a version from the registry's metadata
+ * (the packument), not from the `package.json` inside the tarball, so a
+ * counterfeit could add a dependency or an install script there while the
+ * tarball still matches ("manifest confusion").
+ */
+const INSTALL_FIELDS = [
+  "dependencies",
+  "optionalDependencies",
+  "peerDependencies",
+  "peerDependenciesMeta",
+  "bundleDependencies",
+  "bundledDependencies",
+  "bin",
+  "scripts",
+  "os",
+  "cpu",
+  "engines",
+  "main",
+  "exports",
+  "type",
+] as const;
+
+/** Stable JSON: object keys sorted, so key order does not count as a change. */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    );
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+
+/** The install fields where the registry's metadata differs from the packed manifest. */
+export function manifestDifferences(
+  packed: Record<string, unknown>,
+  registry: Record<string, unknown>,
+): string[] {
+  return INSTALL_FIELDS.filter((field) => canonical(packed[field]) !== canonical(registry[field]));
 }

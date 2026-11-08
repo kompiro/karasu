@@ -7,7 +7,8 @@ import {
   platformPackages,
   readTarball,
   readTarballWithNodeTar,
-  withoutPlatformSections,
+  manifestDifferences,
+  sameNoticesAcrossPlatforms,
 } from "./tarball.mts";
 
 // Fences the tarball check of #3240: a staged or published tarball is compared
@@ -129,7 +130,7 @@ describe("readTarball", () => {
           { path: second, content: "2" },
         ]),
       );
-    expect(() => twice("package/./a.js")).toThrow(/duplicate/);
+    expect(() => twice("package/a.js")).toThrow(/duplicate/);
     expect(() => twice("package/A.js")).toThrow(/duplicate/);
   });
 
@@ -238,11 +239,24 @@ describe("readTarball", () => {
 });
 
 describe("packagePath", () => {
-  it("drops the first segment and refuses escapes", () => {
+  it("drops the package/ segment", () => {
     expect(packagePath("package/skills/SKILL.md")).toBe("skills/SKILL.md");
-    expect(packagePath("package/a/../../b")).toBeNull();
-    expect(packagePath("/abs/file")).toBeNull();
-    expect(packagePath("package/")).toBeNull();
+  });
+
+  it("refuses any path npm's extraction could place elsewhere", () => {
+    for (const path of [
+      "package/a/../../b",
+      "/abs/file",
+      "package/",
+      "other/index.js",
+      "package/./a.js",
+      "package//a.js",
+      "package/\\\\a\\b\\index.js",
+      "package/a\\b.js",
+      "package/c:/index.js",
+    ]) {
+      expect({ path, accepted: packagePath(path) }).toEqual({ path, accepted: null });
+    }
   });
 });
 
@@ -273,26 +287,56 @@ describe("platform notices", () => {
     expect([...platformPackages(lockfile)].sort()).toEqual(["@esbuild/linux-x64", "fsevents"]);
   });
 
-  it("drops their sections, reading headings outside code fences only", () => {
-    const notices = [
+  const notices = (platformPkg: string, licence = "MIT", extra = "") =>
+    [
       "# Third-Party Notices",
       "",
-      "## @esbuild/linux-x64@0.28.2",
+      `## ${platformPkg}@0.28.2`,
       "",
       "```",
-      "MIT",
+      licence,
       "```",
       "",
+      extra,
       "## yaml@2.9.1",
       "",
       "```",
       "## @esbuild/linux-x64@0.28.2 inside a licence",
       "```",
     ].join("\n");
-    const kept = withoutPlatformSections(notices, new Set(["@esbuild/linux-x64"]));
-    expect(kept).not.toContain("MIT");
-    expect(kept).toContain("## yaml@2.9.1");
-    expect(kept).toContain("inside a licence");
+  const platform = new Set(["@esbuild/linux-x64", "@esbuild/linux-arm64"]);
+
+  it("accepts notices that only name another platform's package", () => {
+    expect(
+      sameNoticesAcrossPlatforms(
+        notices("@esbuild/linux-arm64"),
+        notices("@esbuild/linux-x64"),
+        platform,
+      ),
+    ).toBe(true);
+  });
+
+  it("refuses a different text under a platform heading, or an added section", () => {
+    expect(
+      sameNoticesAcrossPlatforms(
+        notices("@esbuild/linux-arm64"),
+        notices("@esbuild/linux-x64", "Evil"),
+        platform,
+      ),
+    ).toBe(false);
+    expect(
+      sameNoticesAcrossPlatforms(
+        notices("@esbuild/linux-arm64"),
+        notices("@esbuild/linux-x64", "MIT", "## @esbuild/linux-x64@0\n\nvisit evil.example\n\n"),
+        platform,
+      ),
+    ).toBe(false);
+  });
+
+  it("refuses a heading swap that names a package without os or cpu", () => {
+    expect(
+      sameNoticesAcrossPlatforms(notices("@esbuild/linux-arm64"), notices("left-pad"), platform),
+    ).toBe(false);
   });
 });
 
@@ -311,26 +355,49 @@ describe("compareTarballs", () => {
     expect(diff).toEqual({ missing: ["a"], extra: ["c"], changed: ["b"] });
   });
 
-  it("ignores only the platform sections of a notices file", () => {
+  it("lets a notices file differ only by its platform packages", () => {
     const notices = (platformPkg: string, body = "MIT") =>
       `# N\n\n## ${platformPkg}@1.0.0\n\nx\n\n## yaml@2.9.1\n\n${body}\n`;
     const platform = new Set(["@esbuild/linux-x64", "@esbuild/linux-arm64"]);
-    const expected = files({ "dist/app/THIRD_PARTY_NOTICES.md": notices("@esbuild/linux-arm64") });
+    const path = "dist/app/THIRD_PARTY_NOTICES.md";
+    const expected = files({ [path]: notices("@esbuild/linux-arm64") });
     expect(
-      isSame(
-        compareTarballs(
-          expected,
-          files({ "dist/app/THIRD_PARTY_NOTICES.md": notices("@esbuild/linux-x64") }),
-          platform,
-        ),
-      ),
+      isSame(compareTarballs(expected, files({ [path]: notices("@esbuild/linux-x64") }), platform)),
     ).toBe(true);
     expect(
       compareTarballs(
         expected,
-        files({ "dist/app/THIRD_PARTY_NOTICES.md": notices("@esbuild/linux-x64", "Apache") }),
+        files({ [path]: notices("@esbuild/linux-x64", "Apache") }),
         platform,
       ).changed,
-    ).toEqual(["dist/app/THIRD_PARTY_NOTICES.md"]);
+    ).toEqual([path]);
+  });
+});
+
+describe("manifestDifferences", () => {
+  const packed = {
+    name: "karasu",
+    bin: { karasu: "dist/index.js" },
+    dependencies: { "karasu-skills": "0.3.0", yaml: "^2.9.1" },
+    scripts: { prepack: "pnpm run build" },
+  };
+
+  it("matches registry metadata with the same install fields in another key order", () => {
+    const registry = {
+      ...packed,
+      dependencies: { yaml: "^2.9.1", "karasu-skills": "0.3.0" },
+      dist: { tarball: "https://registry.npmjs.org/karasu/-/karasu-0.11.0.tgz" },
+      _id: "karasu@0.11.0",
+    };
+    expect(manifestDifferences(packed, registry)).toEqual([]);
+  });
+
+  it("finds a dependency or an install script only the registry metadata has", () => {
+    const registry = {
+      ...packed,
+      dependencies: { ...packed.dependencies, evil: "1.0.0" },
+      scripts: { ...packed.scripts, postinstall: "node evil.js" },
+    };
+    expect(manifestDifferences(packed, registry)).toEqual(["dependencies", "scripts"]);
   });
 });
