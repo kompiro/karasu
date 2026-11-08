@@ -1,13 +1,13 @@
 # karasu — 開発環境
 
-> hane のスキルが見つからないとき、`/workspaces` の隣の repo を編集するときに読む。
+> hane や tpl-tools のスキルが見つからないとき、`/workspaces` の隣の repo を編集するときに読む。
 >
 > `docs/process.md` と同じ規律で書く。「今どうするか」だけを書き、経緯は ADR / Issue に置く
 > （[ADR-2351](../adr/2351-process-md-holds-instructions.md)）。
 
 ### Claude Code plugin のセットアップ
 
-karasu のワークフローを Claude Code 上で再現するには、portable な skill 群を提供する `kompiro/hane` plugin をインストールする。
+karasu のワークフローを Claude Code 上で再現するには、portable な skill 群を提供する `kompiro/hane` plugin と、TPL を書く skill を提供する `kompiro/tpl-tools` plugin をインストールする。どちらも `kompiro-hane` marketplace にある。
 
 ```
 /plugin marketplace add kompiro/hane
@@ -18,7 +18,7 @@ karasu のワークフローを Claude Code 上で再現するには、portable 
 tpl-tools が marketplace に載る前に `kompiro-hane` を追加していた場合は、先に
 `/plugin marketplace update kompiro-hane` を実行する（そうしないと install が plugin を見つけられない）。
 
-plugin にバンドルされる skill とその karasu 内での主な用途:
+2 つの plugin にバンドルされる skill とその karasu 内での主な用途:
 
 | Skill | 用途 |
 |---|---|
