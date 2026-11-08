@@ -19,6 +19,7 @@ discovered_from:
   - issue: "#2819"
   - issue: "#2933"
   - issue: "#3111"
+  - issue: "#3481"
   - root_cause_file: "packages/core/src/resolver/style-resolver.ts"
 related_to:
   - TPL-2167
@@ -170,6 +171,20 @@ path は segment の区切りを保つ injective な形に揃えること（call
 `nodePathIdentityKey`、`buildNodePathIndex` の同 path 畳みは既に import 済みの `nodePathRefId`）。
 書き込みと読み取りが同じヘルパーを通る点は #2819 と同じである。
 
+## 既知の consumer: 解決済みスタイルのキーと `direction` の引き当て（#3481）
+
+#3111 は `.krs.style` のセレクタの問題として、解決済みスタイルの `styles.edges` のキー
+（`edgeStyleKey` と kind 無しの `${from}->${to}`）を残した。#3480 で canonical id が別々になり、
+`edge#` の rule は 1 本にだけ当たるようになったが、結果を格納するキーがまだ素の join だった。
+
+- `a -> "b->c"` と `"a->b" -> c` が同じキーに書かれ、後に書いた方のスタイルで 2 本とも描かれた。
+  `edge#"a->b"->c` の色は 2 本に付き、`edge#a->"b->c"` の色はどちらにも付かなかった
+- レイアウトも同じ join で `direction` を引いたので、片方への `direction: up` がもう片方にも効くか、
+  どちらにも効かなかった
+
+照合（どの edge に当たるか）が正しくても、結果を格納するキーが injective でなければ同じ結果になる。
+直し方は `edgeStyleKey` を `edgeKey` / `edgeKindKey` に通し、レイアウトの引き当ても `edgeKey` にすること。
+
 ## 関連テスト
 
 - `packages/core/src/renderer/svg-renderer.test.ts` — "keeps the sync edge solid when a parallel async edge exists between the same pair"
@@ -185,6 +200,8 @@ path は segment の区切りを保つ injective な形に揃えること（call
 - `packages/core/src/view/edge-key.test.ts` — "edgeKindKey (#3111)"
 - `packages/core/src/renderer/static-bundle-same-id.test.ts` — "one level per anchor id (#2933) › draws the later system's subtree from its own nodes"
 - `packages/core/src/renderer/facet-overview.test.ts` — "buildFacetOverview › keeps two same-named nodes in different scopes apart (TPL-1352)" / "keeps two same-arrow edges in different scopes apart (TPL-1352)"
+- `packages/core/src/resolver/style-resolver.test.ts` — "edgeStyleKey (#3481)"
+- `packages/core/src/index.test.ts` — "compile — edge#<canonical id> written the way the app writes it › gives endpoints containing -> their own id and a rule that names one of them" / "turns only the edge a direction rule names when endpoints contain ->"
 
 ## 派生元 spec
 
