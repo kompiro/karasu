@@ -17,10 +17,10 @@ related_to:
 discovered_from:
   - issue: "#1171"
   - issue: "#976"
-  - root_cause_file: "packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts:162"
+  - root_cause_file: "packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts:Clicking a deploy container switches to System"
   - root_cause_file: "packages/e2e/fixtures/editor.ts"
   - issue: "#2850"
-  - root_cause_file: "packages/e2e/tests/at-1479-svg-theming.spec.ts:119"
+  - root_cause_file: "packages/e2e/tests/at-1479-svg-theming.spec.ts:the diagram follows a theme switch and returns on switching back"
 topic: testing
 scope:
   packages:

@@ -11,7 +11,7 @@ discovered_from:
   - issue: "#1415"
   - issue: "#1856"
   - root_cause_file: "packages/core/src/builtins/icon-theme.ts"
-  - root_cause_file: "packages/core/src/builtins/default-style.ts:192"
+  - root_cause_file: "packages/core/src/builtins/default-style.ts:ANNOTATION_LABEL_KEYS"
   - root_cause_file: "packages/app/src/components/icon-consistency.test.ts"
 related_to:
   - TPL-1094

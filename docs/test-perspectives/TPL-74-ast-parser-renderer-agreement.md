@@ -18,7 +18,7 @@ related_to:
 discovered_from:
   - issue: "#74"
   - issue: "#1233"
-  - root_cause_file: "packages/core/src/types/ast.ts:41"
+  - root_cause_file: "packages/core/src/types/ast.ts:BaseNodeFields"
   - root_cause_file: "packages/core/src/parser/parser.ts"
   - root_cause_file: "packages/core/src/renderer/deploy-layout.ts"
 topic: parser

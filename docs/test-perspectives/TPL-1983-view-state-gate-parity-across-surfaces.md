@@ -13,8 +13,8 @@ known_consumers:
 discovered_from:
   - issue: "#1983"
   - issue: "#2033"
-  - root_cause_file: "packages/core/src/renderer/drill-down-svg.ts:133"
-  - root_cause_file: "packages/app/src/components/AppShell.tsx:228"
+  - root_cause_file: "packages/core/src/renderer/drill-down-svg.ts:legendScopeForLogicalSlice"
+  - root_cause_file: "packages/app/src/components/AppShell.tsx:groupByAxis"
 related_to:
   - TPL-219
   - TPL-1001

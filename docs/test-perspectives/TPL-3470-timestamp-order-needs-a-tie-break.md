@@ -12,7 +12,7 @@ known_consumers:
   - nest-submissions
 discovered_from:
   - issue: "#3470"
-  - root_cause_file: "packages/app/src/fs/snapshot-manager.ts:100"
+  - root_cause_file: "packages/app/src/fs/snapshot-manager.ts:inCaptureOrder"
 related_to:
   - TPL-2048
 topic: project

@@ -11,8 +11,8 @@ known_consumers:
   - app-shell
 discovered_from:
   - issue: "#1053"
-  - root_cause_file: "packages/app/src/components/EditorPane.tsx:127"
-  - root_cause_file: "packages/app/src/components/AppShell.tsx:159"
+  - root_cause_file: "packages/app/src/components/EditorPane.tsx:isComposingRef"
+  - root_cause_file: "packages/app/src/components/AppShell.tsx:handleEditorChange"
 related_to: []
 topic: app-ui
 scope:

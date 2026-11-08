@@ -19,10 +19,10 @@ discovered_from:
   - issue: "#2707"
   - issue: "#3101"
   - issue: "#3263"
-  - root_cause_file: "packages/core/src/formatter/formatter.ts:203"
-  - root_cause_file: "packages/core/src/types/ast.ts :: KrsEdge.to"
+  - root_cause_file: "packages/core/src/formatter/formatter.ts:quoteId(node.ref.parent)"
+  - root_cause_file: "packages/core/src/types/ast.ts :: KrsEdge"
   - root_cause_file: "packages/core/src/formatter/quote-id.ts:needsQuotes"
-  - root_cause_file: "packages/core/src/formatter/formatter.ts:124"
+  - root_cause_file: "packages/core/src/formatter/formatter.ts:topLevel"
 related_to: []
 topic: parser
 scope:

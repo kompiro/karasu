@@ -13,7 +13,7 @@ known_consumers:
 discovered_from:
   - issue: "#907"
   - issue: "#2078"
-  - root_cause_file: "packages/core/src/resolver/warnings.ts:586"
+  - root_cause_file: "packages/core/src/resolver/warnings.ts:unresolved-realizes"
 related_to:
   - TPL-1032
 topic: parser
