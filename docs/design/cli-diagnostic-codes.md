@@ -25,14 +25,15 @@
 | --- | --- |
 | コードの有無 | `Diagnostic` の `code` と `Warning` の `kind` はどちらも必須（`packages/core/src/types/ast.ts`, `warnings.ts`）。欠けているのは出力だけ |
 | コードの形 | `DiagnosticParamsByCode` と `WarningKind` の全 114 件が `[a-z0-9-]+`。長さは 12〜37 文字（平均 22 文字、例 `expected-semicolon-between-properties`）で、行の頭に置くには長い。短い識別子はまだ無い |
-| 重大度 | カタログは各コードに重大度を 1 つ書く（error 50、warning 54、info 10）。`Warning` の重大度は種類ごとに `warningSeverity` が決める。`Diagnostic` は出す箇所ごとに `severity` を書くが、core の 62 種類のコードを走査したかぎり、同じコードを 2 つの重大度で出す箇所は無い（`this.error` と `rejectConstruct` は常に error） |
+| 重大度 | カタログは各コードに重大度を 1 つ書く（error 50、warning 54、info 10）。`Warning` の重大度は種類ごとに `warningSeverity` が決める。`Diagnostic` は出す箇所ごとに `severity` を書く。core の 62 種類の `Diagnostic` のコードを走査したかぎり、同じコードを 2 つの重大度で出す箇所は無い（`this.error` と `rejectConstruct` は常に error）。`app-*` のコードは `packages/app` が出す |
+| 面によって重大度が変わるコード | `DiagnosticParamsByCode` と `WarningKind` は 7 つの名前を共有する（81 + 40 = 121 件で、名前は 114 種類）。そのうち `style-invalid-enum-value`、`style-invalid-hex-color`、`style-invalid-length-unit`、`style-missing-length-unit`、`style-out-of-range` の 5 つは、スタイルシートを検査する `lint-style` / `tidy-style` では `Diagnostic` の error、モデルを組む `render` / `check` / LSP では `resolver/model-warnings.ts` の `diagnosticToWarning` で `Warning` になり warning で出る。カタログはこの 5 つを error とだけ書いている。残る `style-unknown-property` と `style-unknown-icon` はどちらの面でも warning |
 | カタログ | 全コードが `docs/spec/diagnostics.md` に載ることを meta-test が強制する（TPL-1623） |
-| 診断を流す箇所 | `report-diagnostics.ts`（`render` / `check`、`Warning: <loc>: <msg>`）、`compile-system-view.ts`（`subtree` などのエラー）、`diff.ts`（`Warning: <loc> <msg>`）、`lint-style.ts`（`stdin:<l>:<c> <severity>: <msg>`）、`tidy-style.ts`（`<name>:<l>:<c> error: <msg>`）。重大度の語の位置はコマンドで違う |
+| 診断を流す箇所 | `report-diagnostics.ts`（`render` / `check`、`Warning: <loc>: <msg>`）、`compile-system-view.ts`（`subtree` などのエラー）、`diff.ts`（`Warning: <loc> <msg>`）、`lint-style.ts`（`<file>:<l>:<c> <severity>: <msg>`、stdin のときは `stdin:<l>:<c> ...`。どちらも stdout）、`tidy-style.ts`（`<name>:<l>:<c> error: <msg>`）。重大度の語の位置はコマンドで違う |
 | 診断ではない行 | `Warning: --include-matrix requires --output` や `translate` の警告は引数や変換の通知で、カタログのコードを持たない。`karasu fmt` の `Cannot format: ...` も翻訳されない別の形 |
 | 機械向け形式の前例 | `karasu coverage --format json`（stdout、版の欄なし）、`karasu capabilities --json`（`schemaVersion` を持つ） |
 | ほかの面 | LSP は診断に `code` を付けていない。人がコードを目にする面は CLI の行だけ |
 | skill の版の照合 | Step 0 は下限のみ。下限はパック時の CLI の版（`packages/skills/scripts/stamp-version.mjs`）。古い skill と新しい CLI の組み合わせは検出されない |
-| 配布中の skill | 公開中の `karasu-skills` は 0.2.1。`karasu render` の出力を kebab のコードで grep し、停止条件は「grep が空」である。#3656 の版（エージェントが `Error:` / `Warning:` / `Info:` の行を読み、メッセージの断片で照合する）は main にあるが未リリースで、changeset が残っている |
+| 配布中の skill | 公開中の `karasu-skills` は 0.2.1。`karasu render` の出力を kebab のコードで grep し、停止条件は「grep が空」である。#3640 の版（#3656 でマージ。エージェントが `Error:` / `Warning:` / `Info:` の行を読み、メッセージの断片で照合する）は main にあるが未リリースで、changeset が残っている |
 
 ## 制約・前提
 
@@ -62,6 +63,7 @@ ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号
 - 行の頭で重大度と診断が読め、4 文字なのでメッセージの読みを邪魔しない
 - カタログに ID の列を足せば、行からそのまま引ける
 - 重大度を変えると ID も変わる（ADR-2208 のような昇格で `W0xx` が `E0xx` になる）。機械は kebab のコードで判定するので、影響は人の記憶とカタログの引き直しにとどまる
+- 面によって重大度が変わる 5 つのコードは、ID を 2 つ持つ（`lint-style` では `E0xx`、`render` では `W0xx`）。行の文字が、その行の重大度の語と食い違わないようにするためである
 
 #### 案B: kebab のコードを接頭辞に置く（`Warning[unresolved-edge-endpoint]: ...`）
 
@@ -91,6 +93,7 @@ ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号
       "file": "index.krs",
       "line": 7,
       "column": 3,
+      "params": { "from": "A", "to": "ghost", "unresolvedId": "ghost" },
       "message": "Edge \"A → ghost\" references unknown node \"ghost\"; ...",
       "details": []
     }
@@ -98,7 +101,7 @@ ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号
 }
 ```
 
-- 改行や区切り文字の問題が無く、位置も取り出せる
+- 改行や区切り文字の問題が無く、位置と `params`（言語によらない値）も取り出せる
 - 読めなかったことが分かる。CLI が JSON を出さずに失敗したら、消費者の parse が失敗するので、「診断が 0 件」と取り違えない。grep の照合は、出力の形が変わると空になり、0 件と区別できなかった
 - `coverage --format json` と `capabilities --json` の前例に合う
 
@@ -147,58 +150,67 @@ ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号
 
 ### 確定させる約束
 
-1. **ID の形:** `[EWI][0-9]{3}`。文字は、カタログがそのコードに書く重大度（`E` = error、`W` = warning、`I` = info）。番号は文字ごとに 001 から振る。最初の割り当てはカタログの表の順に行い、以後は新しいコードに次の番号を足す。
-2. **ID は再利用しない。** コードを廃止するか重大度を変えたときは、古い ID を廃止した ID として残し、番号を空けたままにする。重大度を変えたコードには新しい文字で次の番号を振る。
+1. **ID の形:** `[EWI][0-9]{3}`。ID は kebab のコードと重大度の組に振り、文字はその重大度（`E` = error、`W` = warning、`I` = info）である。番号は文字ごとに 001 から振る。最初の割り当てはカタログの表の順に行い、以後は新しい組に次の番号を足す。
+   - ほとんどのコードは重大度が 1 つなので ID も 1 つである
+   - 面によって重大度が変わるコード（上の 5 つ）は、重大度ごとに ID を持つ。`DiagnosticParamsByCode` と `WarningKind` が同じ名前を同じ重大度で持つとき（`style-unknown-property` など）は、ID を共有する
+   - 1 つの ID が指すのは、常に 1 つのコードである
+2. **ID は再利用しない。** コードを廃止するか重大度を変えたときは、古い ID を廃止した ID として残し、番号を空けたままにする。重大度を変えたコードには新しい文字で次の番号を振る。一度 main に入った ID は、現役でも廃止でも、同じコードを指し続ける。
 3. **人が読む行:** カタログの診断を出す行は、重大度の語の直後に `[<ID>]` を置く（`Warning[W014]:`、`stdin:3:5 error[E041]:`）。位置の形、重大度の語の位置と綴り、メッセージはコマンドごとに今のまま変えない。`[<ID>]` の無い行はカタログの診断ではない（引数の通知、`translate` の警告、`karasu fmt` の `Cannot format: ...`）。
 4. **機械が読む形:** `karasu check --format json` は、上の形の JSON を 1 つだけ stdout に出す。
    - `diagnostics` の並びは、テキストで出す順と同じにする
-   - `id`、`code`、`severity`、`message` は必ずある。`code` は `DiagnosticParamsByCode` のキーか `WarningKind` のメンバーで、locale によらない。`message` と `details` は locale に従う
-   - `file`、`line`、`column` は位置を持つ診断にだけある。`file` はテキストの行と同じ表示用のパス
-   - `errorCount` は error の件数で、終了コードはテキストのときと同じ（error があれば 1、無ければ 0）
-   - カタログの外の失敗（ファイルが無い、未知のフラグ、想定外の例外）では JSON を出さず、stderr にテキストを出して 0 以外で終わる。消費者は、stdout が JSON として読めなければ失敗として止まる
-   - フィールドを足すのは互換の範囲内とし、消す・意味を変えるときは `schemaVersion` を上げる
+   - `id`、`code`、`severity`、`params`、`message`、`details` は必ずある。`code` は `DiagnosticParamsByCode` のキーか `WarningKind` のメンバーで、`params` はそのコードの型に従う値である。どちらも locale によらない。`message` と `details` は locale に従う。`details` は、ほかに行を持たない診断では `[]` である
+   - `file` は、テキストの行が位置にファイルを出す診断にある（位置を持たない `Diagnostic` は入口のファイルだけを出す）。`line` と `column` は行と桁を持つ診断にだけある。位置を持たない `Warning` には 3 つとも無い。`file` はテキストの行と同じ表示用のパス
+   - `errorCount` は error の件数である。終了コードはテキストのときと同じで、読める JSON と 1 はモデルの error、読める JSON と 0 は error なしを表す
+   - カタログの外の失敗（ファイルが無い、未知のフラグ、想定外の例外）では JSON を出さず、stderr にテキストを出して 0 以外で終わる。JSON を出したときは、カタログの診断を stderr に出さない（廃止したフラグの通知など、カタログの外の行は stderr に残る）
+   - 消費者は、stdout が JSON として読めないか、`schemaVersion` が知らない値なら、失敗として止まる
+   - フィールドを足すのは互換の範囲内とし、消す・意味を変えるとき（`params` のキーを含む）は `schemaVersion` を上げる
    - 既定は `--format text` で、今の出力に案A の ID を足したもの
 
 ### 実装の指針
 
 <!-- absent-path-next-line: the registry this design intends to add (#3654) -->
-1. **ID の登録簿を core に置く。** `packages/core/src/types/diagnostic-ids.ts` に、kebab のコードから ID への対応 `Record<DiagnosticCode | WarningKind, DiagnosticId>` と、廃止した ID の一覧を置く。`Record` なので、コードを足して ID を忘れると型検査で落ちる。テストで次を確かめる:
-   - ID が重複しない。廃止した ID と現役の ID が重ならない
-   - 文字ごとに、現役と廃止を合わせた番号が 001 から空きなく並ぶ（ID を消すと番号が空くので落ちる。再利用はこれで防ぐ）
+1. **ID の登録簿を core に置く。** `packages/core/src/types/diagnostic-ids.ts` に、`Diagnostic` の対応 `Record<DiagnosticCode, DiagnosticId>`、`Warning` の対応 `Record<WarningKind, DiagnosticId>`、廃止した ID の一覧（ID と旧コードの組）を置く。`Record` なので、コードを足して ID を忘れると型検査で落ちる。テストで次を確かめる:
+   - 1 つの ID が指すコードは 1 つで、廃止した ID と現役の ID が重ならない。2 つの対応が同じ名前を同じ重大度で持つときは同じ ID、違う重大度なら違う ID である
+   - 文字ごとに、現役と廃止を合わせた番号が 001 から空きなく並ぶ（廃止の記録なしに ID を消すと番号が空いて落ちる）
    - `Warning` の ID の文字が `warningSeverity` と一致する
-   - `Diagnostic` を出す箇所の重大度と ID の文字が一致する。`packages/core/src` を走査し、`severity:` と `code:` の組に加えて、重大度を固定した helper（`this.error`、`rejectConstruct`）に渡すコードも見る
-
-   並行する 2 本の PR が同じ番号を取ると、両方が通ってからマージした時点で main の重複検査が落ちる（ruleset は base への追従を求めない）。リリースは月次なので、公開前に後の方の番号を振り直す。
-2. **カタログに ID の列を足す。** `docs/spec/diagnostics.md` と `.ja.md` の各表に `ID` 列を足し、meta-test（`diagnostics-catalog.test.ts`）で列と登録簿の一致、文字と `Severity` 列の一致を確かめる。廃止した ID は、カタログの節に「廃止した ID」として旧コードとともに残し、古い出力からも引けるようにする。
-3. **行の形を 1 か所に集める。** `packages/cli/src/i18n.ts` に、重大度の語に `[<ID>]` を付ける関数を置き、stderr / stdout へ診断を流す箇所はすべてこれを使う（TPL-1417）。素のメッセージを返す `formatDiagnostic` / `formatWarning` / `renderDiagnostic` / `renderWarning` を呼ぶのは `i18n.ts`、`render-endpoint.ts`、JSON を組む箇所だけにし、`packages/cli/src` を走査するテストで新しい箇所の取りこぼしを止める。
-4. **`karasu check --format json` を足す。** 不明な形式は `coverage` と同じ形で拒否する。`agent-surface.json` にフラグを足し（`compat.test.ts` が求める）、`capabilities --json` にも出す。
-5. **contract test を `packages/cli` に足す。** テキストは `render` / `check` / `subtree` / `diff` / `lint-style` / `tidy-style` の各形で ID が重大度の語の直後に付くこと、JSON は上の約束の各項目、`ja` の locale でも ID と `code` が同じこと、ファイルが無いときに stdout が空で 0 以外で終わることを確かめる。接頭辞を固定した既存のテスト（`check.test.ts` の `Style file not found` など）は新しい形に更新する。
-6. **skill を更新する。** 到達状態は、`packages/skills/skills/**` が判定を `karasu check --format json` の `code` で行い、翻訳された文章も、行の接頭辞も、ID も照合しないことである。`LC_ALL=C` を外すので、文章の断片を 1 つでも判定に残すと `ja` の locale で空振りする。メッセージの内容は、エージェントが locale のまま読む。`reverse-architecture` では次を直す。
-   - Phase 4 step 2: `karasu check --format json index.krs` で判定する形にし、`LC_ALL=C` と `Message contains` 列を外す。stdout が JSON として読めなければ止まると書く。`Circular dependency detected` の行は `cyclic-dependency` に直す
+   - `Diagnostic` を出す箇所の重大度と ID の文字が一致する。`packages/core/src` と `packages/app/src`（`app-*` のコード）を走査し、`severity:` と `code:` の組に加えて、重大度を固定した helper（`this.error`、`rejectConstruct`）に渡すコードも見る。本番で出す箇所の無いコード（`generic-text`）は、登録簿の文字だけを見る
+<!-- absent-path-next-line: the history guard this design intends to add (#3654) -->
+2. **ID の履歴を検査する。** 連続と重複の検査だけでは、廃止したコードの ID を別のコードに付け替える変更が通る。`scripts/lint/diagnostic-ids-history.ts` で、merge base の登録簿にある ID が、HEAD でも同じコードを（現役か廃止として）指していることを確かめ、pre-push と CI に載せる。
+   並行する 2 本の PR が同じ番号を取ると、両方が通ってからマージした時点で main の重複検査が落ちる（ruleset は base への追従を求めない）。リリースは月次なので、公開前に後の方の番号を振り直す。まだ公開していない ID なので、振り直しは再利用に当たらない。
+3. **カタログに ID の列を足す。** `docs/spec/diagnostics.md` と `.ja.md` の各表の `Code` 列の後ろに `ID` 列を足す（meta-test は先頭の列をコードとして読むので、先頭には置かない）。meta-test（`diagnostics-catalog.test.ts`）で、列と登録簿の一致と、文字と `Severity` 列の一致を確かめる。
+   - 面によって重大度が変わる 5 つのコードは、`Severity` 列に面ごとの重大度を書き（`error`（`lint-style` / `tidy-style`）、`warning`（`render` / `check`））、`ID` 列に 2 つの ID を書く
+   - 廃止した ID は「廃止した ID」の表に、ID を先頭の列にして旧コードとともに残し、古い出力からも引けるようにする。旧コードを先頭の列のバッククォートで書くと、meta-test の「廃止したコードを載せない」検査に当たる
+4. **行の形を 1 か所に集める。** `packages/cli/src/i18n.ts` に、重大度の語に `[<ID>]` を付ける関数を置き、stderr / stdout へ診断を流す箇所はすべてこれを使う（TPL-1417）。素のメッセージを返す `formatDiagnostic` / `formatWarning` / `renderDiagnostic` / `renderWarning` を呼ぶのは `i18n.ts`、`render-endpoint.ts`、JSON を組む箇所だけにし、`packages/cli/src` を走査するテストで新しい箇所の取りこぼしを止める。
+5. **`karasu check --format json` を足す。** 不明な形式は `coverage` と同じ形で拒否する。`agent-surface.json` にフラグを足す（`compat.test.ts` が求める）。`capabilities --json` は commander の定義から作られるので、フラグはそのまま載る。
+6. **contract test を `packages/cli` に足す。** テキストは `render` / `check` / `subtree` / `diff` / `lint-style` / `tidy-style` の各形で ID が重大度の語の直後に付くこと、面によって重大度が変わるコードが `lint-style` と `check` で違う ID を出すこと、JSON は上の約束の各項目、`ja` の locale でも ID・`code`・`params` が同じこと、ファイルが無いときに stdout が空で 0 以外で終わることを確かめる。既存のテストは 2 種類を直す。
+   - 接頭辞を固定した照合（`check.test.ts` の `Style file not found` など）は新しい形に更新する
+   - 接頭辞が無いことを確かめる否定の照合（`check.test.ts` の `not.toMatch(/^Error: /m)`、`render.e2e.test.ts` の `not.toContain("Error:")`）は、新しい形では何にも当たらず素通りするので、`^Error(\[E[0-9]{3}\])?:` のように両方の形に当たる照合に直す。ほかにも同じ形の否定の照合が無いかを `packages/cli` で探す
+7. **skill を更新する。** 到達状態は、`packages/skills/skills/**` が判定を `karasu check --format json` の `code` で行い、翻訳された文章も、行の接頭辞も、ID も照合しないことである。`LC_ALL=C` を外すので、文章の断片を 1 つでも判定に残すと `ja` の locale で空振りする。メッセージの内容は、エージェントが locale のまま読む。`reverse-architecture` では次を直す。
+   - Phase 4 step 2: `karasu check --format json index.krs` で判定する形にし、`LC_ALL=C` と `Message contains` 列を外す。stdout が JSON として読めないか、`schemaVersion` が知らない値なら止まると書く。`Circular dependency detected` の行は `cyclic-dependency` に直す
    - Reached state: 「the CLI prints messages, not codes」と、`references unknown node` の断片を見る停止条件を、`code` での判定に直す
-   - Phase 1 step 5: 「the error `Duplicate node id`」を `duplicate-node-id-parent` の `code` に直す
-   - Phase 3: 英語の文章を引いた「a wall of ...」と「The infra message says ...」は意味の説明に直す。block と leaf のどちらが無いかは `code` では分からないので、エージェントが `message` を読む
+   - Phase 1 step 5: 「the error `Duplicate node id`」を、ファイル内の重複の `duplicate-node-id-parent` と、ファイルをまたぐ重複の `duplicate-node-in-system` の 2 つの `code` に直す
+   - Phase 3: 英語の文章を引いた「a wall of ...」と「The infra message says ...」は意味の説明に直す。block と leaf のどちらが無いかは、`unresolved-resource-ref` / `unresolved-table-ref` の `params.missing`（`block` / `leaf`）で判定する
    - `render` を検証に使うと書いた箇所と、Step 0 が呼ぶコマンドの一覧に `check --format json` を反映する
 
    `karasu-author` の「コードは出ない」という記述は、行の ID でカタログを引く説明と、検証は JSON で行う説明に直す。
 <!-- absent-path-next-line: the guard this design intends to add (#3654) -->
-7. **skill の drift ガードとして `scripts/lint/skill-diagnostic-codes.ts` を足す。** 公開する skill の `SKILL.md` について次を確かめる。
+8. **skill の drift ガードとして `scripts/lint/skill-diagnostic-codes.ts` を足す。** 公開する skill の `SKILL.md` について次を確かめる。
    - 判定に使うコードを書く形を `` `code:<kebab>` `` に決め（JSON の `code` 欄を指す）、その形の語がすべて `DiagnosticParamsByCode` / `WarningKind` に実在する。表か散文かは問わず、ヘッダの名前にも頼らない
    - `[EWI][0-9]{3}` の形の ID を書かない（ID は重大度で変わるので判定の鍵にしない）
    - `reverse-architecture` に `` `code:<kebab>` `` が 1 つも無い状態を落とす
    - `lint:skill-cli-refs` と同じく pre-push と CI に載せ、glob に core の `types/ast.ts` と `types/warnings.ts` を足す。core だけの改名でも落ちるように、実際の skill を読む vitest の mirror も `ci.yml` で動かす
    - 対象は `SKILL.md` だけである。同梱の reference は spec の写しなので対象にしない
 
-   この lint が捕まえるのは、この形で書いたコードの実在と ID の不使用だけである。文章の断片で照合する新しい行は検出できないので、手順 6 の到達状態はレビューで確かめる。
-8. **ドキュメント。** `docs/spec/diagnostics.md`（と `.ja.md`）に「CLI での表示」の節を足し（ID の形、行の形、JSON の約束）、`> Related TPLs:` で TPL-3654 に紐付ける。`docs/tools/cli.md`（と `.ja.md`）の `check` に `--format json` を書く。`docs/release.md`「CLI の後方互換」を、上の範囲に改める。同梱の reference を再生成する。
-9. **changeset。** `karasu` の minor（ID の表示と `--format json`。CHANGELOG に、診断の行の接頭辞が変わることと、機械は JSON を読むことを書く）と `karasu-skills`（`.claude/rules/changesets.md` の「skill が前提にする CLI の挙動」）。#3640 の changeset（`.changeset/reverse-skill-current-diagnostics.md`）が未消費なら、同じトレインで誤りになるので、実装 PR で書き直す。
-10. **AT。** `docs/acceptance/` に新規ファイル。人の確認は要らず、TC はすべて上の自動テストに到達させる。
+   この lint が捕まえるのは、この形で書いたコードの実在と ID の不使用だけである。文章の断片で照合する新しい行は検出できないので、手順 7 の到達状態はレビューで確かめる。
+9. **ドキュメント。** `docs/spec/diagnostics.md`（と `.ja.md`）に「CLI での表示」の節を足し（ID の形、行の形、JSON の約束）、`> Related TPLs:` で TPL-3654 に紐付ける。`docs/tools/cli.md`（と `.ja.md`）の `check` に `--format json` を書く。`docs/release.md`「CLI の後方互換」を、上の範囲に改める。同梱の reference を再生成する。
+10. **changeset。** `karasu` の minor（ID の表示と `--format json`。CHANGELOG に、診断の行の接頭辞が変わることと、機械は JSON を読むことを書く）と `karasu-skills`（`.claude/rules/changesets.md` の「skill が前提にする CLI の挙動」）。#3640 の changeset（`.changeset/reverse-skill-current-diagnostics.md`）が未消費なら、同じトレインで誤りになるので、実装 PR で書き直す。
+11. **AT。** `docs/acceptance/` に新規ファイル。人の確認は要らず、TC はすべて上の自動テストに到達させる。
     - `karasu check` の警告とエラーの行の頭に、locale によらず同じ ID が付く
     - `unresolved-edge-endpoint` を発火させた fixture で、`ja` の locale でも `--format json` の `code` で判定できる
-    - ファイルが無いとき、`--format json` は stdout に何も出さず 0 以外で終わる
-    - 登録簿の ID がカタログの `ID` 列と重大度に一致し、番号に空きが無い
+    - モデルに error があるとき、`--format json` は読める JSON を出して 1 で終わる。ファイルが無いときは stdout に何も出さず 0 以外で終わる
+    - 登録簿の ID がカタログの `ID` 列と重大度に一致し、番号に空きが無く、merge base の ID が同じコードを指し続ける
     - `reverse-architecture` の `` `code:<kebab>` `` がすべてカタログに実在し、ID を書いていない
-11. **ADR 昇格。** 実装完了後に `docs/adr/3654-cli-diagnostic-codes.md` として昇格し、本 Design Doc は同じ PR で削除する。
+12. **ADR 昇格。** 実装完了後に `docs/adr/3654-cli-diagnostic-codes.md` として昇格し、本 Design Doc は同じ PR で削除する。
 
 実装は 1 本の PR にする。分けるなら、skill の更新は `--format json` と同じ PR に置く（skill だけが先に出ると、Step 0 の下限が JSON を持たない CLI を止めないまま判定が失敗する）。
 
