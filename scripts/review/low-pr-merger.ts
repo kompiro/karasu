@@ -56,7 +56,7 @@ const ghList = <T>(path: string, jq: string): T[] =>
     .map((l) => JSON.parse(l) as T);
 
 const PULL_FIELDS =
-  "{number, state, draft, body, html_url, labels: [.labels[] | {name}], base: {ref: .base.ref}, " +
+  "{number, state, draft, body, html_url, updated_at, labels: [.labels[] | {name}], base: {ref: .base.ref}, " +
   "head: {ref: .head.ref, sha: .head.sha, " +
   "repo: (if .head.repo then {full_name: .head.repo.full_name} else null end)}}";
 
@@ -85,8 +85,6 @@ const restGitHub: GitHub = {
       `repos/${REPO}/actions/runs?head_sha=${sha}&per_page=100`,
       ".workflow_runs[] | {id, path, event, check_suite_id}",
     ),
-  commitDate: (sha) =>
-    gh([`repos/${REPO}/commits/${sha}`, "--jq", ".commit.committer.date"]).trim(),
 };
 
 const git = (...args: string[]): string =>

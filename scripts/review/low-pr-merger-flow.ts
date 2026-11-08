@@ -44,6 +44,8 @@ export interface Pull {
   labels: { name: string }[];
   base: { ref: string };
   head: { ref: string; sha: string; repo: { full_name: string } | null };
+  /** Changes with every push, and with label and comment edits. */
+  updated_at: string;
   /** Only on a single PR's read: null while GitHub is still computing it. */
   mergeable?: boolean | null;
   mergeable_state?: string;
@@ -78,8 +80,6 @@ export interface GitHub {
   requiredChecks(): string[];
   checkRuns(sha: string): CheckRun[];
   workflowRuns(sha: string): WorkflowRun[];
-  /** The committer date of a commit (ISO 8601). */
-  commitDate(sha: string): string;
 }
 
 /** `tier.ts check` on one head, already reduced to what the judge needs. */
@@ -143,8 +143,8 @@ export type ChecksVerdict =
   | { state: "fail"; failed: string[] }
   /** `stuck`: some workflow's latest result is skipped, cancelled or neutral. */
   | { state: "pending"; waiting: string[]; stuck: boolean }
-  /** A check run whose workflow run could not be found: nothing to count it against. */
-  | { state: "unknown"; message: string };
+  /** Check runs whose workflow run could not be found: nothing to count them against. */
+  | { state: "unknown"; messages: string[] };
 
 const FAILED = new Set(["failure", "timed_out", "action_required", "startup_failure"]);
 
@@ -168,6 +168,7 @@ export function judgeChecks(
   const bySuite = new Map(workflows.map((w) => [w.check_suite_id, w]));
   const waiting: string[] = [];
   const failed: string[] = [];
+  const unknown: string[] = [];
   let stuck = false;
   for (const name of [...new Set(required)]) {
     const latest = new Map<string, { run: CheckRun; workflow: WorkflowRun }>();
@@ -175,10 +176,8 @@ export function judgeChecks(
       if (run.app !== ACTIONS_APP || run.name !== name) continue;
       const workflow = run.check_suite_id === null ? undefined : bySuite.get(run.check_suite_id);
       if (workflow === undefined) {
-        return {
-          state: "unknown",
-          message: `check run ${run.id} (${name}) has no workflow run to belong to`,
-        };
+        unknown.push(`check run ${run.id} (${name}) has no workflow run to belong to`);
+        continue;
       }
       const key = `${workflow.path} ${workflow.event}`;
       const seen = latest.get(key);
@@ -207,7 +206,9 @@ export function judgeChecks(
       }
     }
   }
+  // A failure outranks what could not be counted: the PR is rejected either way.
   if (failed.length > 0) return { state: "fail", failed };
+  if (unknown.length > 0) return { state: "unknown", messages: unknown };
   if (waiting.length > 0) return { state: "pending", waiting, stuck };
   return { state: "pass" };
 }
@@ -227,7 +228,10 @@ function scopeOf(pr: Pull): string | null {
   return outOfScope(pr);
 }
 
-function judgeOne(deps: Deps, listed: Pull, required: readonly string[]): Verdict {
+/** The ruleset's required checks, or why they could not be read. */
+type Required = { names: readonly string[] } | { error: string };
+
+function judgeOne(deps: Deps, listed: Pull, required: Required): Verdict {
   const { github } = deps;
   const pr = github.pull(listed.number);
   const sha = pr.head.sha;
@@ -251,10 +255,13 @@ function judgeOne(deps: Deps, listed: Pull, required: readonly string[]): Verdic
     reasons.push("mergeable-unknown");
   }
 
-  const runs = github.checkRuns(sha);
-  const checks = judgeChecks(required, runs, github.workflowRuns(sha));
+  const runs = "names" in required ? github.checkRuns(sha) : [];
+  const checks: ChecksVerdict =
+    "names" in required
+      ? judgeChecks(required.names, runs, github.workflowRuns(sha))
+      : { state: "unknown", messages: [required.error] };
   if (checks.state === "unknown") {
-    undecided.push(checks.message);
+    undecided.push(...checks.messages);
   } else if (checks.state === "fail") {
     reasons.push("checks-failed");
     details.push(...checks.failed);
@@ -281,9 +288,10 @@ function judgeOne(deps: Deps, listed: Pull, required: readonly string[]): Verdic
     return { pr: pr.number, sha, outcome: "no-conclusion", details: undecided };
   }
   if (reasons.length > 0) {
-    // A head no workflow ever ran on stalls from its commit.
-    const since = lastActivity(runs) ?? Date.parse(github.commitDate(sha));
-    const stalled = deps.now() - since >= STALL_MS;
+    // A head no workflow ever ran on stalls from the PR's last update: a push
+    // updates it, while the commit can be dated long before the push.
+    const since = lastActivity(runs) ?? Date.parse(pr.updated_at);
+    const stalled = Number.isFinite(since) && deps.now() - since >= STALL_MS;
     return { pr: pr.number, sha, outcome: "wait", reasons, details, stalled };
   }
   return { pr: pr.number, sha, outcome: "merge" };
@@ -298,21 +306,18 @@ export function judge(deps: Deps): Verdict[] {
     .openPulls()
     .filter((p) => p.labels.some((l) => l.name === LOW_LABEL))
     .sort((a, b) => a.number - b.number);
-  let required: string[];
+  let required: Required;
   try {
-    required = deps.github.requiredChecks();
-    if (required.length === 0) throw new Error("the ruleset on main requires no status check");
+    const names = deps.github.requiredChecks();
+    required =
+      names.length > 0
+        ? { names }
+        : { error: "required checks: the ruleset on main requires none" };
   } catch (e) {
-    // Without the required checks condition 4 cannot be judged for anyone in scope.
-    const details = [`required checks: ${(e as Error).message}`];
-    return candidates.map((p): Verdict => {
-      const why = outOfScope(p);
-      return why === null
-        ? { pr: p.number, sha: p.head.sha, outcome: "no-conclusion", details }
-        : { pr: p.number, sha: p.head.sha, outcome: "out-of-scope", why };
-    });
+    // Condition 4 cannot be judged; the other conditions can still reject a PR.
+    required = { error: `required checks: ${(e as Error).message}` };
   }
-  return candidates.map((p) => {
+  return candidates.map((p): Verdict => {
     try {
       return judgeOne(deps, p, required);
     } catch (e) {

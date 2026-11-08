@@ -31,6 +31,7 @@ const pull = (over: Partial<Pull> & { number: number }): Pull => ({
     sha: `sha-${over.number}`,
     repo: { full_name: "kompiro/karasu" },
   },
+  updated_at: RECENT,
   mergeable: true,
   mergeable_state: "clean",
   ...over,
@@ -77,7 +78,6 @@ function deps(init: {
   pullFails?: number;
   /** The PRs as the per-PR read returns them, when that differs from the list. */
   reread?: (p: Pull) => Pull;
-  commitDate?: string;
 }): Deps & { tierCalls: number[] } {
   const tierCalls: number[] = [];
   // One set of runs per head, so the check runs and the workflow runs agree.
@@ -97,7 +97,6 @@ function deps(init: {
     requiredChecks: init.required ?? (() => REQUIRED),
     checkRuns: (sha) => reportsOf(sha).runs,
     workflowRuns: (sha) => reportsOf(sha).workflows,
-    commitDate: () => init.commitDate ?? RECENT,
   };
   return {
     github,
@@ -216,6 +215,15 @@ describe("judgeChecks", () => {
     expect(judgeOf([...passing(), other])).toEqual({ state: "pass" });
   });
 
+  it("lets a failure outrank a check run it could not map, whatever the order", () => {
+    const failedFirst = reported("Check", "failure");
+    const orphan = reported("Validate", "success");
+    const { runs, workflows } = split([failedFirst, orphan]);
+    const without = workflows.filter((w) => w !== orphan.workflow);
+    expect(judgeChecks(["Check", "Validate"], runs, without)).toMatchObject({ state: "fail" });
+    expect(judgeChecks(["Validate", "Check"], runs, without)).toMatchObject({ state: "fail" });
+  });
+
   it("cannot decide when a check run belongs to no workflow run it read", () => {
     const { runs, workflows } = split(passing());
     expect(judgeChecks(REQUIRED, runs, workflows.slice(1))).toMatchObject({ state: "unknown" });
@@ -308,14 +316,17 @@ describe("judge", () => {
     });
   });
 
-  it("reports a wait on a head no workflow ran on as stalled 30 minutes after its commit", () => {
-    const pulls = [pull({ number: 1, mergeable: null })];
-    const quiet = (commitDate: string) => judge(deps({ pulls, checks: () => [], commitDate }))[0];
+  it("reports a wait on a head no workflow ran on as stalled 30 minutes after the PR's update", () => {
+    const quiet = (updated_at: string) =>
+      judge(
+        deps({ pulls: [pull({ number: 1, mergeable: null, updated_at })], checks: () => [] }),
+      )[0];
     expect(quiet(RECENT)).toMatchObject({ outcome: "wait", stalled: false });
     expect(quiet(new Date(NOW - STALL_MS).toISOString())).toMatchObject({
       outcome: "wait",
       stalled: true,
     });
+    expect(quiet("not a date")).toMatchObject({ outcome: "wait", stalled: false });
   });
 
   it("leaves out a PR whose risk: low was removed after the list was read", () => {
@@ -378,11 +389,21 @@ describe("judge", () => {
     ]) {
       const d = deps({ pulls: [pull({ number: 1 }), pull({ number: 2, draft: true })], required });
       expect(judge(d)).toMatchObject([
-        { pr: 1, outcome: "no-conclusion" },
+        { pr: 1, outcome: "no-conclusion", details: [expect.stringMatching(/^required checks: /)] },
         { pr: 2, outcome: "out-of-scope", why: "draft" },
       ]);
-      expect(d.tierCalls).toEqual([]);
     }
+  });
+
+  it("still rejects on the other conditions when the ruleset cannot be read", () => {
+    const required = () => {
+      throw new Error("HTTP 403");
+    };
+    const labels = [{ name: "risk: low" }, { name: "risk: high" }];
+    expect(judge(deps({ pulls: [pull({ number: 1, labels })], required }))[0]).toMatchObject({
+      outcome: "reject",
+      reasons: ["labels"],
+    });
   });
 });
 
