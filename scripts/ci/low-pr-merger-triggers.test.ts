@@ -66,15 +66,29 @@ describe("low-pr-merger.yml triggers", () => {
   });
 });
 
+/** Each job's lines, by job id. */
+const jobs = new Map(
+  [
+    ...merger.slice(merger.search(/^jobs:/m)).matchAll(/^ {2}([\w-]+):\s*\n((?:(?: {4}.*)?\n)*)/gm),
+  ].map(([, id, body]) => [id, body]),
+);
+const job = (id: string): string => {
+  const body = jobs.get(id);
+  if (body === undefined) throw new Error(`low-pr-merger.yml has no job ${id}`);
+  return body;
+};
+
 describe("low-pr-merger.yml treats PRs as data (TPL-3673)", () => {
   it("is not started by a PR, so a PR cannot change what judges it", () => {
     expect(parse("low-pr-merger.yml").onPullRequest).toBe(false);
     expect(merger).not.toMatch(/pull_request_target/);
   });
 
-  it("checks out main without keeping the token, and installs nothing", () => {
-    expect(merger).toMatch(/ref: main\n/);
-    expect(merger).toMatch(/persist-credentials: false/);
+  it("checks out only main, without keeping the token, and installs nothing", () => {
+    expect([...merger.matchAll(/actions\/checkout@/g)].length).toBe(
+      [...merger.matchAll(/ref: main\n {10}(?:fetch-depth: 0\n {10})?persist-credentials: false/g)]
+        .length,
+    );
     expect(merger).not.toMatch(/\b(?:pnpm|npm|yarn) (?:install|ci|i)\b/);
   });
 
@@ -82,8 +96,32 @@ describe("low-pr-merger.yml treats PRs as data (TPL-3673)", () => {
     expect(merger).not.toMatch(/github\.event\./);
   });
 
-  it("grants the judge read access only", () => {
+  it("grants nothing at the top, and the judge read access only", () => {
     expect(merger).toMatch(/^permissions: \{\}$/m);
-    expect(merger).not.toMatch(/: write\b/);
+    expect(job("judge")).not.toMatch(/: write\b/);
+  });
+
+  it("keeps the App key in the merge job alone, which runs no repository code", () => {
+    for (const [id, body] of jobs) {
+      if (id !== "merge") expect(body, id).not.toMatch(/secrets\.|environment:/);
+    }
+    const merge = job("merge");
+    expect(merge).toMatch(/^ {4}environment: low-pr-merger$/m);
+    expect(merge).toMatch(/^ {4}permissions: \{\}$/m);
+    expect(merge).not.toMatch(/actions\/checkout@|scripts\//);
+  });
+
+  it("merges only at the head the judge cleared, after reading the PR again", () => {
+    const merge = job("merge");
+    expect(merge).toMatch(/pulls\/\$pr\/merge" \\\n\s+-f merge_method=squash -f sha="\$sha"/);
+    expect(merge).toContain('"$sha" =~ ^[0-9a-f]{40}$');
+    expect(merge).toContain("printf 'open\\tfalse\\t%s\\tmain\\trisk: low' \"$sha\"");
+  });
+
+  it("fails the run when a job did not finish or a PR got no conclusion (TPL-2786)", () => {
+    const report = job("report");
+    expect(report).toMatch(/^ {4}needs: \[judge, merge, notify\]$/m);
+    expect(report).toMatch(/^ {4}if: always\(\)$/m);
+    expect(report).toContain("UNDECIDED: ${{ needs.judge.outputs.undecided }}");
   });
 });

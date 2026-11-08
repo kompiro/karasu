@@ -1,11 +1,11 @@
 name: Low PR merger
 
 # Merges `risk: low` PRs from `main`'s definition instead of Claude enabling
-# auto-merge (Issue #3673). Slice A (#3679): the judge only. It reads every open
-# `risk: low` PR and writes its verdict (merge, wait, reject, no conclusion) to
-# the job summary; nothing is merged or commented yet, and Low PRs still merge
-# through `gh pr merge --auto`. The conditions are in
-# scripts/review/low-pr-merger-flow.ts.
+# auto-merge (Issue #3673). The judge reads every open `risk: low` PR and decides
+# merge, wait, reject or no conclusion (scripts/review/low-pr-merger-flow.ts);
+# the merge job merges what it cleared, the notify job comments on what it
+# rejected or left stalled, and the report job fails the run on whatever nobody
+# decided (TPL-2786).
 #
 # `workflow_run` and `schedule` run this file from `main`, so a PR cannot change
 # what judges it. The judge treats every PR as data (TPL-3673): it checks out
@@ -64,6 +64,9 @@ jobs:
       actions: read
     outputs:
       verdicts: ${{ steps.judge.outputs.verdicts }}
+      merges: ${{ steps.judge.outputs.merges }}
+      notices: ${{ steps.judge.outputs.notices }}
+      undecided: ${{ steps.judge.outputs.undecided }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -79,4 +82,131 @@ jobs:
         id: judge
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/review/low-pr-merger.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/review/low-pr-merger.ts judge
+
+  # The only job with the App key, and it runs no repository code: no checkout,
+  # just the REST merge pinned to the head the judge read. The key lives in the
+  # `low-pr-merger` environment, which deploys from `main` only, so a workflow on
+  # any other branch is refused it (#3678). The App merges rather than
+  # GITHUB_TOKEN so that the push workflows on main start (ADR-3416).
+  merge:
+    name: Merge cleared Low PRs
+    needs: judge
+    if: needs.judge.outputs.merges != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: low-pr-merger
+    permissions: {}
+    steps:
+      - uses: actions/create-github-app-token@v3.3.0
+        id: app
+        with:
+          client-id: ${{ vars.LOW_PR_MERGER_CLIENT_ID }}
+          private-key: ${{ secrets.LOW_PR_MERGER_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      # Each PR is read again and merged only while it is still what the judge
+      # cleared: open, ready, based on main, labeled exactly `risk: low`, at the
+      # same head. `sha` makes GitHub refuse the merge if a push lands after the
+      # read. A merge that fails on an unchanged PR fails the run; one whose PR
+      # changed meanwhile is left to the next run.
+      - name: Merge the PRs the judge cleared
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          VERDICTS: ${{ needs.judge.outputs.verdicts }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          now() {
+            gh api "repos/$REPO/pulls/$1" --jq \
+              '[.state, .draft, .head.sha, .base.ref, ([.labels[].name | select(startswith("risk:"))] | join(","))] | @tsv'
+          }
+          failed=0
+          while IFS=$'\t' read -r pr sha; do
+            if ! [[ "$pr" =~ ^[0-9]+$ && "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error::malformed verdict: PR '$pr', head '$sha'"
+              failed=1
+              continue
+            fi
+            cleared=$(printf 'open\tfalse\t%s\tmain\trisk: low' "$sha")
+            if ! before=$(now "$pr"); then
+              echo "::error::could not read #$pr"
+              failed=1
+            elif [[ "$before" != "$cleared" ]]; then
+              echo "#$pr changed since the judge read it; the next run judges it again"
+            elif gh api -X PUT "repos/$REPO/pulls/$pr/merge" \
+              -f merge_method=squash -f sha="$sha" > /dev/null; then
+              echo "merged #$pr at $sha"
+            elif after=$(now "$pr") && [[ "$after" != "$before" ]]; then
+              echo "#$pr changed while merging; the next run judges it again"
+            else
+              echo "::error::could not merge #$pr at $sha"
+              failed=1
+            fi
+          done < <(jq -r '.[] | select(.outcome == "merge") | [.pr, .sha] | @tsv' <<< "$VERDICTS")
+          exit "$failed"
+
+  # Comments from fixed text per reason code (scripts/review/low-pr-merger-notice.ts),
+  # once per head and reasons. No key: GITHUB_TOKEN can comment.
+  notify:
+    name: Comment on Low PRs it will not merge
+    needs: judge
+    if: needs.judge.outputs.notices != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      # main's scripts.
+      contents: read
+      # The comments on the PRs.
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Comment on rejected and stalled PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERDICTS: ${{ needs.judge.outputs.verdicts }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/review/low-pr-merger.ts notify
+
+  # The judge succeeds even when it could not decide a PR, so that one PR does not
+  # stop the others; this job turns that, and any failed merge or comment, into a
+  # failed run.
+  report:
+    name: Report
+    needs: [judge, merge, notify]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Fail the run on what was not done
+        env:
+          JUDGE: ${{ needs.judge.result }}
+          MERGE: ${{ needs.merge.result }}
+          NOTIFY: ${{ needs.notify.result }}
+          UNDECIDED: ${{ needs.judge.outputs.undecided }}
+        run: |
+          status=0
+          if [[ "$JUDGE" != success ]]; then
+            echo "::error::the judge did not finish: $JUDGE"
+            status=1
+          fi
+          for job in "merge:$MERGE" "notify:$NOTIFY"; do
+            if [[ "${job#*:}" != success && "${job#*:}" != skipped ]]; then
+              echo "::error::the ${job%%:*} job did not finish: ${job#*:}"
+              status=1
+            fi
+          done
+          if [[ "${UNDECIDED:-0}" != 0 ]]; then
+            echo "::error::the judge reached no conclusion on $UNDECIDED PR(s); its summary names them"
+            status=1
+          fi
+          exit "$status"
