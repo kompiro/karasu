@@ -62,6 +62,7 @@ UI / surface を変える PR（特にリファクタ・リネーム・control �
 
 ## 関連テスト
 
+- `scripts/ci/e2e-suite-paths-policy.test.ts` — 各スイートの `paths` が workspace の依存閉包を覆うことを検査する。spec がディスクから読むファイルには届かないので、チェックリストの印にはしない。
 - `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts`（AC-5 — reference pop-out 起動経路。stale 化した実例）
 - `.github/workflows/e2e.yml`（app E2E のトリガ定義 — path filter, ADR-1729 / Required check, ADR-1866）
 - `.github/workflows/e2e-skip.yml`（Required check `Playwright` の paired stub — `paths` 非一致 PR の pending を防ぐ, #1867）

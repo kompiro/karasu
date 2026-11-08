@@ -54,6 +54,10 @@ scope:
 - **失敗レスポンスをファイルに落としてから判定する** — `curl -o file -w '%{http_code}'` で本文と状態を分離すると、非 200 のときに本文をそのままログへ出せる。`$(...)` で本文を掴むと、失敗時にちょうど本文が失われる
 - **マージ後スモークテストを完了条件に含める** — 本番経路がマージ後にしか動かない変更は、マージした時点ではなく、実際に 1 度通した時点で完了とする（[TPL-2254](TPL-2254-durable-record-points-at-durable-address.md) と同じく、記録ではなく実物で確かめる）
 
+## 関連テスト
+
+- `scripts/ci/curl-response-policy.test.ts` — `.github` の curl が応答を検査することを走査する。ほかの外部呼び出し（`fetch`、`gh api`）には届かないので、チェックリストの印にはしない。
+
 ## 由来
 
 `spike-preview.yml` の cleanup が Cloudflare の deployments API を `per_page=100&page=N` で辿るよう書かれ、偽の `curl` を PATH に置いたテストで「3 ページ 71 件を取りこぼしなく削除」まで確認して報告された（[#2278](https://github.com/kompiro/karasu/pull/2278)）。偽 `curl` はクエリ文字列を見ずにフィクスチャを返していたため、実際の API が `per_page=100` に 400 を返す事実は検証されておらず、マージ後に実ブランチを削除して初めて露見した（[#2291](https://github.com/kompiro/karasu/issues/2291)）。しかも `--fail-with-body` のボディがコマンド置換に飲まれ、ログには `curl: (22)` しか残らなかった。「モックの作り込み」と「相手の受理」は独立で、前者をいくら足しても後者には届かない。
