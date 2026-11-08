@@ -20,8 +20,8 @@ name: VS Code Extension Release
 # Versioning IS managed by changesets (`karasu-vscode` was removed from
 # `.changeset/config.json` `ignore`): `changeset version` bumps
 # `packages/vscode/package.json` + writes its CHANGELOG. But `karasu-vscode` is
-# `private: true`, so `changeset publish` (release.yml) never publishes it to
-# npm — the Marketplace publish stays here, called by release.yml after the
+# `private: true`, so release.yml never stages it on npm (it is not in the
+# changesets publish plan) — the Marketplace publish stays here, called by release.yml after the
 # version is bumped. The stable version published is whatever is in
 # `packages/vscode/package.json`, built from the commit that set that version
 # (not the tip of main), and the `record` job then tags it
@@ -148,7 +148,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Idempotent like `changeset publish`: a version the Marketplace already
+      # Idempotent like the npm staging: a version the Marketplace already
       # has as a stable release is not published again, so the release train,
       # which calls this workflow after every npm release, is a no-op for the
       # extension when its version did not move (#2922). A version that exists
@@ -292,8 +292,8 @@ jobs:
           fi
 
   # Tags the published version on its release commit and extends that commit's
-  # GitHub Release (created by release.yml for the npm packages, or created
-  # here when only the extension shipped). Runs only after a successful stable
+  # GitHub Release (created by release-confirm.yml for the npm packages, or
+  # created here when only the extension shipped). Runs only after a successful stable
   # Marketplace publish, so a version that failed to publish never gets a tag
   # (#2939). A pre-release is tagged by `record-pre-release` instead (#2940).
   record:
@@ -344,10 +344,9 @@ jobs:
 
   # Tags the commit a pre-release was built from, so a report against a
   # pre-release version leads back to its source (#2940). Only after a
-  # successful publish. No `@` in the name: release.yml collects the `@` tags
-  # of a merge commit and github-release.mts reads `<package>@<version>` as a
-  # stable release, so a pre-release never lands in a `release-YYYY-MM-DD`
-  # Release. No GitHub Release either: a pre-release has no CHANGELOG section.
+  # successful publish. No `@` in the name: github-release.mts reads
+  # `<package>@<version>` as a stable release, so a pre-release never lands in
+  # a `release-YYYY-MM-DD` Release. No GitHub Release either: a pre-release has no CHANGELOG section.
   record-pre-release:
     name: Record pre-release
     needs: release
