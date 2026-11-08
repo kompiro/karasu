@@ -96,6 +96,27 @@ describe("useProjectActions — success", () => {
   });
 });
 
+describe("useProjectActions — adding a bundled example (#3601)", () => {
+  const example = { name: "payroll-split", files: [{ path: "index.krs", content: "system S {}" }] };
+
+  it("adds it without opening it: the caller decides whether to navigate", async () => {
+    const { result, pm, dispatch, navigateToProject } = setup();
+    pm.createProject.mockResolvedValue(proj("payroll-split"));
+    const added = await result.current.addBundledExample(example);
+    expect(added).toEqual(proj("payroll-split"));
+    expect(dispatch).toHaveBeenCalledWith({ type: "ADD_PROJECT", project: proj("payroll-split") });
+    expect(navigateToProject).not.toHaveBeenCalled();
+  });
+
+  it("reports a failure and resolves to null", async () => {
+    const { result, pm, dispatch, reportError } = setup();
+    pm.createProject.mockRejectedValue(new Error("quota exceeded"));
+    expect(await result.current.addBundledExample(example)).toBeNull();
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(reportError.mock.calls[0][0]).toContain("quota exceeded");
+  });
+});
+
 describe("useProjectActions — failures surface via reportError (#1532)", () => {
   // The message asserts BOTH the interpolated detail AND the action-specific
   // wording, so a wrong-key copy-paste (e.g. create using the rename string)

@@ -5248,3 +5248,721 @@ organization Shop {
     },
   ],
 };
+
+/** The first-run guide's second subject: the same split as SERVICE_SPLIT_PROJECT in a payroll system (#3601). Source: `examples/ja/payroll-split/`. */
+export const PAYROLL_SPLIT_PROJECT: ExampleProject = {
+  name: "payroll-split",
+  files: [
+    {
+      path: "index.krs",
+      content: `// payroll-split/index.krs: 現在のアーキテクチャ。
+// 初回体験ガイドの 2 つ目の題材（#3601）。planned.krs（目標）と migrating.krs
+// （移行途中）と見比べる。
+//
+// 勤怠と給与は別のドメインだが、どちらも 1 つの Workforce Application に
+// 同居し、1 つの Workforce Database を共有している。給与チームは給与ドメインを
+// 持つが、サービスは 1 つも持っていない。
+
+system Workforce {
+  label "人事基盤"
+
+  user Employee [human] {
+    label "従業員"
+    description "勤怠を入力し、給与明細を確認する"
+  }
+  user PayrollStaff [human] {
+    label "給与担当"
+    description "給与計算と振込を確認する"
+  }
+
+  service WorkforceApp {
+    label "人事アプリケーション"
+    description "勤怠と給与を抱える 1 つのデプロイ単位"
+
+    domain Attendance {
+      label "勤怠"
+      usecase RecordHours {
+        label "勤務時間を入力する"
+        resource WorkforceDB.Timesheets { operations create }
+      }
+      usecase ApproveTimesheet {
+        label "勤務表を承認する"
+        resource WorkforceDB.Timesheets { operations update }
+      }
+
+      Attendance -> Payroll "締めた勤務表を渡す"
+    }
+    domain Payroll {
+      label "給与"
+      usecase CalculatePay {
+        label "給与を計算する"
+        resource WorkforceDB.Payslips { operations create }
+        resource WorkforceDB.Timesheets { operations read }
+      }
+      usecase TransferPay {
+        label "給与を振り込む"
+        resource WorkforceDB.Transfers { operations create }
+      }
+    }
+  }
+
+  service ReminderWorker {
+    label "リマインダーワーカー"
+    description "勤務表のリマインダーをバックグラウンドで送る"
+
+    domain Reminders {
+      label "リマインダー"
+      usecase SendReminder {
+        label "リマインダーを送る"
+        resource WorkforceDB.ReminderQueue { operations update }
+      }
+    }
+  }
+
+  service BankTransfer [external] {
+    label "銀行振込"
+    description "給与の支払い。銀行が運営する"
+  }
+
+  database WorkforceDB {
+    label "人事データベース"
+    description "基盤のすべての部分で共有"
+    table Timesheets { label "勤務表" }
+    table Payslips { label "給与明細" }
+    table Transfers { label "振込" }
+    table ReminderQueue { label "リマインダーキュー" }
+  }
+
+  Employee -> WorkforceApp "勤怠の入力と給与明細の確認"
+  PayrollStaff -> WorkforceApp "給与計算を確認"
+  WorkforceApp -> ReminderWorker "リマインダーを予約"
+  WorkforceApp -> BankTransfer "振込を送る"
+}
+
+organization Corporate {
+  label "コーポレート開発部"
+
+  team workforce {
+    label "人事チーム"
+    description "従業員ポータルと勤怠の流れを作る"
+    owns WorkforceApp
+    owns Attendance
+  }
+
+  team payroll {
+    label "給与チーム"
+    description "給与のルールを持つが、人事アプリケーションの中で出荷している"
+    owns Payroll
+  }
+
+  team platform {
+    label "基盤チーム"
+    description "共有データベースとバックグラウンドワーカーを運用する"
+    owns ReminderWorker
+    owns Reminders
+  }
+}
+`,
+    },
+    {
+      path: "migrating.krs",
+      content: `// payroll-split/migrating.krs: 移行途中の状態。
+// 給与サービスは動いているが、まだ共有の Workforce Database を読み書きしている。
+// 専用の Payroll Database は計画だけで、まだ作られていない。
+// データの移動が、分割の完了を決める。
+
+system Workforce {
+  label "人事基盤"
+
+  user Employee [human] {
+    label "従業員"
+    description "勤怠を入力し、給与明細を確認する"
+  }
+  user PayrollStaff [human] {
+    label "給与担当"
+    description "給与計算と振込を確認する"
+  }
+
+  service WorkforceApp {
+    label "人事アプリケーション"
+    description "従業員ポータルと勤怠"
+
+    domain Attendance {
+      label "勤怠"
+      usecase RecordHours {
+        label "勤務時間を入力する"
+        resource WorkforceDB.Timesheets { operations create }
+      }
+      usecase ApproveTimesheet {
+        label "勤務表を承認する"
+        resource WorkforceDB.Timesheets { operations update }
+      }
+    }
+  }
+
+  service PayrollService @migration_target(from: WorkforceApp) {
+    label "給与サービス"
+    description "切り出し済み。まだ共有データベースを使う"
+
+    domain Payroll {
+      label "給与"
+      usecase CalculatePay {
+        label "給与を計算する"
+        resource WorkforceDB.Payslips { operations create }
+        resource WorkforceDB.Timesheets { operations read }
+      }
+      usecase TransferPay {
+        label "給与を振り込む"
+        resource WorkforceDB.Transfers { operations create }
+      }
+    }
+  }
+
+  service ReminderWorker {
+    label "リマインダーワーカー"
+    description "勤務表のリマインダーをバックグラウンドで送る"
+
+    domain Reminders {
+      label "リマインダー"
+      usecase SendReminder {
+        label "リマインダーを送る"
+        resource WorkforceDB.ReminderQueue { operations update }
+      }
+    }
+  }
+
+  service BankTransfer [external] {
+    label "銀行振込"
+    description "給与の支払い。銀行が運営する"
+  }
+
+  database WorkforceDB {
+    label "人事データベース"
+    description "給与のテーブルはまだ移っていない"
+    table Timesheets { label "勤務表" }
+    table Payslips @deprecated { label "給与明細" }
+    table Transfers @deprecated { label "振込" }
+    table ReminderQueue { label "リマインダーキュー" }
+  }
+
+  database PayrollDB @planned {
+    label "給与データベース"
+    description "給与のテーブルの移行先"
+    table Payslips { label "給与明細" }
+    table Transfers { label "振込" }
+  }
+
+  Employee -> WorkforceApp "勤務時間を入力する"
+  Employee -> PayrollService "給与明細を確認"
+  PayrollStaff -> PayrollService "給与計算を確認"
+  WorkforceApp -> PayrollService "締めた勤務表を渡す"
+  WorkforceApp -> ReminderWorker "リマインダーを予約"
+  PayrollService -> BankTransfer "振込を送る"
+}
+
+organization Corporate {
+  label "コーポレート開発部"
+
+  team workforce {
+    label "人事チーム"
+    description "従業員ポータルと勤怠の流れを作る"
+    owns WorkforceApp
+    owns Attendance
+  }
+
+  team payroll {
+    label "給与チーム"
+    description "給与サービスを運用する。移行までデータは基盤チームに頼る"
+    owns PayrollService
+    owns Payroll
+  }
+
+  team platform {
+    label "基盤チーム"
+    description "共有データベースとバックグラウンドワーカーを運用する"
+    owns ReminderWorker
+    owns Reminders
+  }
+}
+`,
+    },
+    {
+      path: "planned.krs",
+      content: `// payroll-split/planned.krs: 目標のアーキテクチャ。
+// 給与は専用のデータベースを持つ独立したサービスになり、給与のルールを持つ
+// チームがそれを動かすサービスも持つ。
+// index.krs（現在のアーキテクチャ）と見比べる。
+
+system Workforce {
+  label "人事基盤"
+
+  user Employee [human] {
+    label "従業員"
+    description "勤怠を入力し、給与明細を確認する"
+  }
+  user PayrollStaff [human] {
+    label "給与担当"
+    description "給与計算と振込を確認する"
+  }
+
+  service WorkforceApp {
+    label "人事アプリケーション"
+    description "従業員ポータルと勤怠"
+
+    domain Attendance {
+      label "勤怠"
+      usecase RecordHours {
+        label "勤務時間を入力する"
+        resource WorkforceDB.Timesheets { operations create }
+      }
+      usecase ApproveTimesheet {
+        label "勤務表を承認する"
+        resource WorkforceDB.Timesheets { operations update }
+      }
+    }
+  }
+
+  service PayrollService {
+    label "給与サービス"
+    description "給与計算と振込。独自のリリースサイクル"
+
+    domain Payroll {
+      label "給与"
+      usecase CalculatePay {
+        label "給与を計算する"
+        resource PayrollDB.Payslips { operations create }
+      }
+      usecase TransferPay {
+        label "給与を振り込む"
+        resource PayrollDB.Transfers { operations create }
+      }
+    }
+  }
+
+  service ReminderWorker {
+    label "リマインダーワーカー"
+    description "勤務表のリマインダーをバックグラウンドで送る"
+
+    domain Reminders {
+      label "リマインダー"
+      usecase SendReminder {
+        label "リマインダーを送る"
+        resource WorkforceDB.ReminderQueue { operations update }
+      }
+    }
+  }
+
+  service BankTransfer [external] {
+    label "銀行振込"
+    description "給与の支払い。銀行が運営する"
+  }
+
+  database WorkforceDB {
+    label "人事データベース"
+    description "勤務表とリマインダー"
+    table Timesheets { label "勤務表" }
+    table ReminderQueue { label "リマインダーキュー" }
+  }
+
+  database PayrollDB {
+    label "給与データベース"
+    description "給与だけが持つ"
+    table Payslips { label "給与明細" }
+    table Transfers { label "振込" }
+  }
+
+  Employee -> WorkforceApp "勤務時間を入力する"
+  Employee -> PayrollService "給与明細を確認"
+  PayrollStaff -> PayrollService "給与計算を確認"
+  WorkforceApp -> PayrollService "締めた勤務表を渡す"
+  WorkforceApp -> ReminderWorker "リマインダーを予約"
+  PayrollService -> BankTransfer "振込を送る"
+}
+
+organization Corporate {
+  label "コーポレート開発部"
+
+  team workforce {
+    label "人事チーム"
+    description "従業員ポータルと勤怠の流れを作る"
+    owns WorkforceApp
+    owns Attendance
+  }
+
+  team payroll {
+    label "給与チーム"
+    description "給与のルールと、それを動かすサービスを持つ"
+    owns PayrollService
+    owns Payroll
+  }
+
+  team platform {
+    label "基盤チーム"
+    description "共有データベースとバックグラウンドワーカーを運用する"
+    owns ReminderWorker
+    owns Reminders
+  }
+}
+`,
+    },
+  ],
+};
+
+/** English variant of PAYROLL_SPLIT_PROJECT, opened for non-`ja` locales (#3601). Source: `examples/en/payroll-split/`. */
+export const PAYROLL_SPLIT_PROJECT_EN: ExampleProject = {
+  name: "payroll-split",
+  files: [
+    {
+      path: "index.krs",
+      content: `// payroll-split/index.krs: the CURRENT architecture.
+// The second subject of the first-run guide (#3601). Compare it with planned.krs
+// (the target) and migrating.krs (the state in between).
+//
+// Attendance and Payroll are separate domains, but both live in one
+// Workforce Application and share one Workforce Database. The Payroll Team
+// owns the Payroll domain without owning any service.
+
+system Workforce {
+  label "Workforce Platform"
+
+  user Employee [human] {
+    label "Employee"
+    description "Records hours and checks payslips"
+  }
+  user PayrollStaff [human] {
+    label "Payroll staff"
+    description "Reviews pay runs and transfers"
+  }
+
+  service WorkforceApp {
+    label "Workforce Application"
+    description "One deployable that holds attendance and payroll"
+
+    domain Attendance {
+      label "Attendance"
+      usecase RecordHours {
+        label "Record hours"
+        resource WorkforceDB.Timesheets { operations create }
+      }
+      usecase ApproveTimesheet {
+        label "Approve a timesheet"
+        resource WorkforceDB.Timesheets { operations update }
+      }
+
+      Attendance -> Payroll "Hand over closed timesheets"
+    }
+    domain Payroll {
+      label "Payroll"
+      usecase CalculatePay {
+        label "Calculate pay"
+        resource WorkforceDB.Payslips { operations create }
+        resource WorkforceDB.Timesheets { operations read }
+      }
+      usecase TransferPay {
+        label "Transfer pay"
+        resource WorkforceDB.Transfers { operations create }
+      }
+    }
+  }
+
+  service ReminderWorker {
+    label "Reminder Worker"
+    description "Sends timesheet reminders in the background"
+
+    domain Reminders {
+      label "Reminders"
+      usecase SendReminder {
+        label "Send a reminder"
+        resource WorkforceDB.ReminderQueue { operations update }
+      }
+    }
+  }
+
+  service BankTransfer [external] {
+    label "Bank Transfer"
+    description "Salary payments, run by a bank"
+  }
+
+  database WorkforceDB {
+    label "Workforce Database"
+    description "Shared by every part of the platform"
+    table Timesheets { label "Timesheets" }
+    table Payslips { label "Payslips" }
+    table Transfers { label "Transfers" }
+    table ReminderQueue { label "Reminder queue" }
+  }
+
+  Employee -> WorkforceApp "Record hours and check payslips"
+  PayrollStaff -> WorkforceApp "Review pay runs"
+  WorkforceApp -> ReminderWorker "Schedule reminders"
+  WorkforceApp -> BankTransfer "Send transfers"
+}
+
+organization Corporate {
+  label "Corporate Engineering"
+
+  team workforce {
+    label "Workforce Team"
+    description "Builds the employee portal and the attendance flow"
+    owns WorkforceApp
+    owns Attendance
+  }
+
+  team payroll {
+    label "Payroll Team"
+    description "Owns the pay rules, but ships them inside the Workforce Application"
+    owns Payroll
+  }
+
+  team platform {
+    label "Platform Team"
+    description "Runs the shared database and the background workers"
+    owns ReminderWorker
+    owns Reminders
+  }
+}
+`,
+    },
+    {
+      path: "migrating.krs",
+      content: `// payroll-split/migrating.krs: the state IN BETWEEN.
+// Payroll Service is running, but it still reads and writes the shared
+// Workforce Database: its own Payroll Database is planned, not built.
+// Moving the data is the step that decides when the split is done.
+
+system Workforce {
+  label "Workforce Platform"
+
+  user Employee [human] {
+    label "Employee"
+    description "Records hours and checks payslips"
+  }
+  user PayrollStaff [human] {
+    label "Payroll staff"
+    description "Reviews pay runs and transfers"
+  }
+
+  service WorkforceApp {
+    label "Workforce Application"
+    description "Employee portal and attendance"
+
+    domain Attendance {
+      label "Attendance"
+      usecase RecordHours {
+        label "Record hours"
+        resource WorkforceDB.Timesheets { operations create }
+      }
+      usecase ApproveTimesheet {
+        label "Approve a timesheet"
+        resource WorkforceDB.Timesheets { operations update }
+      }
+    }
+  }
+
+  service PayrollService @migration_target(from: WorkforceApp) {
+    label "Payroll Service"
+    description "Split out, still on the shared database"
+
+    domain Payroll {
+      label "Payroll"
+      usecase CalculatePay {
+        label "Calculate pay"
+        resource WorkforceDB.Payslips { operations create }
+        resource WorkforceDB.Timesheets { operations read }
+      }
+      usecase TransferPay {
+        label "Transfer pay"
+        resource WorkforceDB.Transfers { operations create }
+      }
+    }
+  }
+
+  service ReminderWorker {
+    label "Reminder Worker"
+    description "Sends timesheet reminders in the background"
+
+    domain Reminders {
+      label "Reminders"
+      usecase SendReminder {
+        label "Send a reminder"
+        resource WorkforceDB.ReminderQueue { operations update }
+      }
+    }
+  }
+
+  service BankTransfer [external] {
+    label "Bank Transfer"
+    description "Salary payments, run by a bank"
+  }
+
+  database WorkforceDB {
+    label "Workforce Database"
+    description "Payroll tables have not moved yet"
+    table Timesheets { label "Timesheets" }
+    table Payslips @deprecated { label "Payslips" }
+    table Transfers @deprecated { label "Transfers" }
+    table ReminderQueue { label "Reminder queue" }
+  }
+
+  database PayrollDB @planned {
+    label "Payroll Database"
+    description "Where the payroll tables will move"
+    table Payslips { label "Payslips" }
+    table Transfers { label "Transfers" }
+  }
+
+  Employee -> WorkforceApp "Record hours"
+  Employee -> PayrollService "Check payslips"
+  PayrollStaff -> PayrollService "Review pay runs"
+  WorkforceApp -> PayrollService "Hand over closed timesheets"
+  WorkforceApp -> ReminderWorker "Schedule reminders"
+  PayrollService -> BankTransfer "Send transfers"
+}
+
+organization Corporate {
+  label "Corporate Engineering"
+
+  team workforce {
+    label "Workforce Team"
+    description "Builds the employee portal and the attendance flow"
+    owns WorkforceApp
+    owns Attendance
+  }
+
+  team payroll {
+    label "Payroll Team"
+    description "Runs Payroll Service; depends on the Platform Team for its data until the move"
+    owns PayrollService
+    owns Payroll
+  }
+
+  team platform {
+    label "Platform Team"
+    description "Runs the shared database and the background workers"
+    owns ReminderWorker
+    owns Reminders
+  }
+}
+`,
+    },
+    {
+      path: "planned.krs",
+      content: `// payroll-split/planned.krs: the TARGET architecture.
+// Payroll runs as its own service with its own database, and the team
+// that owns the pay rules owns the service that runs them.
+// Compare it with index.krs (the current architecture).
+
+system Workforce {
+  label "Workforce Platform"
+
+  user Employee [human] {
+    label "Employee"
+    description "Records hours and checks payslips"
+  }
+  user PayrollStaff [human] {
+    label "Payroll staff"
+    description "Reviews pay runs and transfers"
+  }
+
+  service WorkforceApp {
+    label "Workforce Application"
+    description "Employee portal and attendance"
+
+    domain Attendance {
+      label "Attendance"
+      usecase RecordHours {
+        label "Record hours"
+        resource WorkforceDB.Timesheets { operations create }
+      }
+      usecase ApproveTimesheet {
+        label "Approve a timesheet"
+        resource WorkforceDB.Timesheets { operations update }
+      }
+    }
+  }
+
+  service PayrollService {
+    label "Payroll Service"
+    description "Pay runs and transfers, own release cycle"
+
+    domain Payroll {
+      label "Payroll"
+      usecase CalculatePay {
+        label "Calculate pay"
+        resource PayrollDB.Payslips { operations create }
+      }
+      usecase TransferPay {
+        label "Transfer pay"
+        resource PayrollDB.Transfers { operations create }
+      }
+    }
+  }
+
+  service ReminderWorker {
+    label "Reminder Worker"
+    description "Sends timesheet reminders in the background"
+
+    domain Reminders {
+      label "Reminders"
+      usecase SendReminder {
+        label "Send a reminder"
+        resource WorkforceDB.ReminderQueue { operations update }
+      }
+    }
+  }
+
+  service BankTransfer [external] {
+    label "Bank Transfer"
+    description "Salary payments, run by a bank"
+  }
+
+  database WorkforceDB {
+    label "Workforce Database"
+    description "Timesheets and reminders"
+    table Timesheets { label "Timesheets" }
+    table ReminderQueue { label "Reminder queue" }
+  }
+
+  database PayrollDB {
+    label "Payroll Database"
+    description "Owned by payroll alone"
+    table Payslips { label "Payslips" }
+    table Transfers { label "Transfers" }
+  }
+
+  Employee -> WorkforceApp "Record hours"
+  Employee -> PayrollService "Check payslips"
+  PayrollStaff -> PayrollService "Review pay runs"
+  WorkforceApp -> PayrollService "Hand over closed timesheets"
+  WorkforceApp -> ReminderWorker "Schedule reminders"
+  PayrollService -> BankTransfer "Send transfers"
+}
+
+organization Corporate {
+  label "Corporate Engineering"
+
+  team workforce {
+    label "Workforce Team"
+    description "Builds the employee portal and the attendance flow"
+    owns WorkforceApp
+    owns Attendance
+  }
+
+  team payroll {
+    label "Payroll Team"
+    description "Owns the pay rules and the service that runs them"
+    owns PayrollService
+    owns Payroll
+  }
+
+  team platform {
+    label "Platform Team"
+    description "Runs the shared database and the background workers"
+    owns ReminderWorker
+    owns Reminders
+  }
+}
+`,
+    },
+  ],
+};

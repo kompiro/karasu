@@ -1,0 +1,107 @@
+// payroll-split/index.krs: 現在のアーキテクチャ。
+// 初回体験ガイドの 2 つ目の題材（#3601）。planned.krs（目標）と migrating.krs
+// （移行途中）と見比べる。
+//
+// 勤怠と給与は別のドメインだが、どちらも 1 つの Workforce Application に
+// 同居し、1 つの Workforce Database を共有している。給与チームは給与ドメインを
+// 持つが、サービスは 1 つも持っていない。
+
+system Workforce {
+  label "人事基盤"
+
+  user Employee [human] {
+    label "従業員"
+    description "勤怠を入力し、給与明細を確認する"
+  }
+  user PayrollStaff [human] {
+    label "給与担当"
+    description "給与計算と振込を確認する"
+  }
+
+  service WorkforceApp {
+    label "人事アプリケーション"
+    description "勤怠と給与を抱える 1 つのデプロイ単位"
+
+    domain Attendance {
+      label "勤怠"
+      usecase RecordHours {
+        label "勤務時間を入力する"
+        resource WorkforceDB.Timesheets { operations create }
+      }
+      usecase ApproveTimesheet {
+        label "勤務表を承認する"
+        resource WorkforceDB.Timesheets { operations update }
+      }
+
+      Attendance -> Payroll "締めた勤務表を渡す"
+    }
+    domain Payroll {
+      label "給与"
+      usecase CalculatePay {
+        label "給与を計算する"
+        resource WorkforceDB.Payslips { operations create }
+        resource WorkforceDB.Timesheets { operations read }
+      }
+      usecase TransferPay {
+        label "給与を振り込む"
+        resource WorkforceDB.Transfers { operations create }
+      }
+    }
+  }
+
+  service ReminderWorker {
+    label "リマインダーワーカー"
+    description "勤務表のリマインダーをバックグラウンドで送る"
+
+    domain Reminders {
+      label "リマインダー"
+      usecase SendReminder {
+        label "リマインダーを送る"
+        resource WorkforceDB.ReminderQueue { operations update }
+      }
+    }
+  }
+
+  service BankTransfer [external] {
+    label "銀行振込"
+    description "給与の支払い。銀行が運営する"
+  }
+
+  database WorkforceDB {
+    label "人事データベース"
+    description "基盤のすべての部分で共有"
+    table Timesheets { label "勤務表" }
+    table Payslips { label "給与明細" }
+    table Transfers { label "振込" }
+    table ReminderQueue { label "リマインダーキュー" }
+  }
+
+  Employee -> WorkforceApp "勤怠の入力と給与明細の確認"
+  PayrollStaff -> WorkforceApp "給与計算を確認"
+  WorkforceApp -> ReminderWorker "リマインダーを予約"
+  WorkforceApp -> BankTransfer "振込を送る"
+}
+
+organization Corporate {
+  label "コーポレート開発部"
+
+  team workforce {
+    label "人事チーム"
+    description "従業員ポータルと勤怠の流れを作る"
+    owns WorkforceApp
+    owns Attendance
+  }
+
+  team payroll {
+    label "給与チーム"
+    description "給与のルールを持つが、人事アプリケーションの中で出荷している"
+    owns Payroll
+  }
+
+  team platform {
+    label "基盤チーム"
+    description "共有データベースとバックグラウンドワーカーを運用する"
+    owns ReminderWorker
+    owns Reminders
+  }
+}

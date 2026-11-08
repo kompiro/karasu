@@ -29,10 +29,11 @@ interface ProjectActions {
   /** Open a gallery example (#1646) by slug + lang, fetched from the fixed origin. */
   openExample: (slug: string, lang: string) => Promise<void>;
   /**
-   * Create a new project from an example bundled with the app and switch to
-   * it. Resolves to the project, or `null` when creation failed (reported).
+   * Create a new project from an example bundled with the app, without opening
+   * it: the caller navigates once it knows the visitor still wants that (#3601).
+   * Resolves to the project, or `null` when creation failed (reported).
    */
-  openBundledExample: (example: ExampleProject) => Promise<Project | null>;
+  addBundledExample: (example: ExampleProject) => Promise<Project | null>;
 }
 
 /**
@@ -136,26 +137,25 @@ export function useProjectActions({
       );
       const project = await pm.createProject(finalName, files);
       dispatch({ type: "ADD_PROJECT", project });
-      navigateToProject(project);
       return project;
     },
-    [pm, dispatch, projects, navigateToProject],
+    [pm, dispatch, projects],
   );
 
   const openExample = useCallback(
     async (slug: string, lang: string) => {
       try {
-        await addExampleProject(await fetchExampleProject(slug, lang));
+        navigateToProject(await addExampleProject(await fetchExampleProject(slug, lang)));
       } catch (err) {
         // fetchExampleProject throws on an unknown slug, fetch failure, redirect,
         // or the size/count caps; surface it instead of failing silently.
         reportError(t("project.error.openExample", { detail: errorDetail(err) }));
       }
     },
-    [addExampleProject, reportError, t],
+    [addExampleProject, navigateToProject, reportError, t],
   );
 
-  const openBundledExample = useCallback(
+  const addBundledExample = useCallback(
     async (example: ExampleProject) => {
       try {
         return await addExampleProject(example);
@@ -174,6 +174,6 @@ export function useProjectActions({
     exportProject,
     importProject,
     openExample,
-    openBundledExample,
+    addBundledExample,
   };
 }

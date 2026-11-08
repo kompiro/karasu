@@ -235,6 +235,34 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
       caption: { en, ja },
     })),
   },
+  {
+    // The first-run guide's second subject (#3601): the same three entries, in
+    // a payroll system instead of an online shop.
+    slug: "payroll-split",
+    group: "scenarios",
+    title: {
+      en: "Payroll split — current, planned, migrating",
+      ja: "給与の分割 — 現在・計画・移行途中",
+    },
+    blurb: {
+      en: "One system three times: Payroll inside one application on a shared database, Payroll as its own service with its own database, and the state in between with `@migration_target` / `@planned`.",
+      ja: "同じシステムを 3 回: 1 つのアプリケーションと共有 DB の中の給与、専用 DB を持つ独立した給与サービス、そして `@migration_target` / `@planned` で表す移行途中の状態。",
+    },
+    githubDir: { en: "examples/en/payroll-split", ja: "examples/ja/payroll-split" },
+    diagrams: (
+      [
+        ["index", "Current (index.krs)", "現在（index.krs）"],
+        ["planned", "Planned (planned.krs)", "計画（planned.krs）"],
+        ["migrating", "Migrating (migrating.krs)", "移行途中（migrating.krs）"],
+      ] as const
+    ).map(([file, en, ja]) => ({
+      entry: {
+        en: `examples/en/payroll-split/${file}.krs`,
+        ja: `examples/ja/payroll-split/${file}.krs`,
+      },
+      caption: { en, ja },
+    })),
+  },
   localized(
     "deploy",
     "scenarios",

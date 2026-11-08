@@ -29,6 +29,8 @@ export type FirstRunTranslations = {
   "firstRun.tour.finish": string;
   "firstRun.tour.notice": string;
   "firstRun.tour.stepDone": string;
+  "firstRun.tour.switchToPayroll": string;
+  "firstRun.tour.switchToShop": string;
   "firstRun.step.current.title": string;
   "firstRun.step.current.body": string;
   "firstRun.step.current.notice": string;
@@ -48,6 +50,13 @@ export type FirstRunTranslations = {
   "firstRun.step.share.title": string;
   "firstRun.step.share.body": string;
   "firstRun.step.share.done": string;
+  "firstRun.payroll.current.body": string;
+  "firstRun.payroll.current.notice": string;
+  "firstRun.payroll.org.notice": string;
+  "firstRun.payroll.target.body": string;
+  "firstRun.payroll.target.notice": string;
+  "firstRun.payroll.decision.body": string;
+  "firstRun.payroll.decision.q1": string;
   "firstRun.understand.system.title": string;
   "firstRun.understand.system.body": string;
   "firstRun.understand.system.notice": string;
@@ -99,6 +108,8 @@ export const firstRunEn: FirstRunTranslations = {
   "firstRun.tour.finish": "✓ Continue to editor",
   "firstRun.tour.notice": "Notice",
   "firstRun.tour.stepDone": "✓ Done. Look around as long as you like, then move on.",
+  "firstRun.tour.switchToPayroll": "⇄ Try it with a payroll system instead",
+  "firstRun.tour.switchToShop": "⇄ Try it with an online shop instead",
   "firstRun.step.current.title": "Explore the current architecture",
   "firstRun.step.current.body":
     "This is your current system. Click Commerce Application to open it and see the domains inside.",
@@ -127,6 +138,19 @@ export const firstRunEn: FirstRunTranslations = {
     "Decisions work better when everyone shares the same context. Use Share in the toolbar to copy a link to this model, or Export SVG to put the diagram in a document.",
   "firstRun.step.share.done":
     "You have explored an architecture decision with karasu. Next, model your own system, draw its target, and compare the two.",
+  "firstRun.payroll.current.body":
+    "This is your current system. Click Workforce Application to open it and see the domains inside.",
+  "firstRun.payroll.current.notice":
+    "Attendance and Payroll are separate domains, yet they live in one service and share one database.",
+  "firstRun.payroll.org.notice":
+    "The Payroll Team owns the Payroll domain, but the service it runs in belongs to the Workforce Team.",
+  "firstRun.payroll.target.body":
+    "What if Payroll became an independent service? This is the planned architecture, compared with the current one: added parts are green, removed parts are red.",
+  "firstRun.payroll.target.notice":
+    "Splitting the service also means moving the payroll data and changing who calls whom.",
+  "firstRun.payroll.decision.body":
+    "Architecture decisions involve trade-offs. This is the state in between: Payroll Service runs, but still uses the shared database, and its own database is only planned.",
+  "firstRun.payroll.decision.q1": "What does an independent Payroll Service improve?",
   "firstRun.understand.system.title": "See the whole system",
   "firstRun.understand.system.body":
     "One diagram shows who uses the system and what it is made of. Click EC Site to open it and see the domains inside.",
@@ -189,6 +213,8 @@ export const firstRunJa: Partial<FirstRunTranslations> = {
   "firstRun.tour.finish": "✓ エディタに進む",
   "firstRun.tour.notice": "気づき",
   "firstRun.tour.stepDone": "✓ できました。好きなだけ見てから、先へ進んでください。",
+  "firstRun.tour.switchToPayroll": "⇄ 給与システムの題材で試す",
+  "firstRun.tour.switchToShop": "⇄ EC サイトの題材で試す",
   "firstRun.step.current.title": "現在のアーキテクチャを見る",
   "firstRun.step.current.body":
     "これが現在のシステムです。コマースアプリケーションをクリックして、中にあるドメインを見てください。",
@@ -217,6 +243,19 @@ export const firstRunJa: Partial<FirstRunTranslations> = {
     "全員が同じ前提を持つと、判断はうまくいきます。ツールバーの「Share」でこのモデルへのリンクをコピーするか、「SVG をエクスポート」で図を文書に貼れます。",
   "firstRun.step.share.done":
     "karasu で設計判断をひととおり見ました。次は、自分のシステムをモデル化し、目標を描いて、2 つを比べてみてください。",
+  "firstRun.payroll.current.body":
+    "これが現在のシステムです。人事アプリケーションをクリックして、中にあるドメインを見てください。",
+  "firstRun.payroll.current.notice":
+    "勤怠と給与は別のドメインなのに、1 つのサービスに同居し、1 つのデータベースを共有しています。",
+  "firstRun.payroll.org.notice":
+    "給与チームは給与ドメインを持っていますが、それが動くサービスは人事チームのものです。",
+  "firstRun.payroll.target.body":
+    "給与が独立したサービスになったら？これは計画中のアーキテクチャを現在と比べたものです。追加は緑、削除は赤で示されます。",
+  "firstRun.payroll.target.notice":
+    "サービスを分けるには、給与のデータを移し、呼び出しの向きも変える必要があります。",
+  "firstRun.payroll.decision.body":
+    "設計判断にはトレードオフがあります。これは移行途中の状態です。給与サービスは動いていますが、まだ共有データベースを使っており、専用のデータベースは計画だけです。",
+  "firstRun.payroll.decision.q1": "給与サービスの独立は、何を改善するのか？",
   "firstRun.understand.system.title": "システム全体を見る",
   "firstRun.understand.system.body":
     "1 枚の図で、誰がシステムを使い、何でできているかが分かります。ECサイトをクリックして、中にあるドメインを見てください。",

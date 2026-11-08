@@ -1,12 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch } from "react";
-import {
-  GETTING_STARTED_PROJECT,
-  GETTING_STARTED_PROJECT_EN,
-  SERVICE_SPLIT_PROJECT,
-  SERVICE_SPLIT_PROJECT_EN,
-  type ExampleProject,
-  type Project,
-} from "@karasu-tools/core";
+import type { ExampleProject, Project } from "@karasu-tools/core";
 import { useTranslation } from "../../i18n/index.js";
 import { useCommand } from "../../keyboard/use-command.js";
 import type { ActiveView, AppAction } from "../../state/app-reducer.js";
@@ -38,7 +31,8 @@ interface FirstRunExperienceProps {
   navigateToProject: (project: Project) => void;
   selectFile: (path: string) => Promise<FileSelectionStatus>;
   keepOpenFile: () => void;
-  openBundledExample: (example: ExampleProject) => Promise<Project | null>;
+  /** Adds a copy of the sample to the projects, without opening it. */
+  addBundledExample: (example: ExampleProject) => Promise<Project | null>;
   /** Whether the project still holds the sample's files unchanged (#3600). */
   matchesExample: (project: Project, example: ExampleProject) => Promise<boolean>;
   dispatch: Dispatch<AppAction>;
@@ -83,7 +77,7 @@ export function FirstRunExperience({
   navigateToProject,
   selectFile,
   keepOpenFile,
-  openBundledExample,
+  addBundledExample,
   matchesExample,
   dispatch,
 }: FirstRunExperienceProps) {
@@ -124,10 +118,6 @@ export function FirstRunExperience({
     run: () => setRequested(true),
   });
 
-  const isJa = locale === "ja";
-  const gettingStarted = isJa ? GETTING_STARTED_PROJECT : GETTING_STARTED_PROJECT_EN;
-  const serviceSplit = isJa ? SERVICE_SPLIT_PROJECT : SERVICE_SPLIT_PROJECT_EN;
-
   const startTour = useCallback((tour: TourId, project: Project) => {
     writeTourProject({ tour, projectId: project.id });
     writeTourProgress({ tour, projectId: project.id, step: 0 });
@@ -141,55 +131,68 @@ export function FirstRunExperience({
     openProjectId.current = currentProject?.id;
   }, [currentProject]);
 
-  // The project a guide starts in, the way its Welcome entry says (#3600).
-  // Design and Evolve open a new copy of their sample. Understand uses a Getting
-  // Started that still says what the sample says, so a first visit does not get
-  // a second one, and a visitor who edited theirs does not get a new copy every
-  // time. An edited one would make its text false, so it gets a new copy, unless
-  // the visitor chose otherwise during the read.
+  // The project a guide starts in (#3600). Design and Evolve add a new copy of
+  // their sample. A guide that reuses one takes a copy that still says what the
+  // sample says, so a first visit does not get a second Getting Started and
+  // switching back and forth does not pile up copies (#3601). An edited one
+  // would make the guide's text false, so it gets a new copy, unless the visitor
+  // chose otherwise during the read.
   const resolveProject = useCallback(
-    async (tour: TourId, run: number) => {
-      if (tour !== "understand") {
-        return { project: await openBundledExample(serviceSplit), unchanged: false };
-      }
-      // The open one first: moving away from it would be for nothing.
-      const candidates = projects
-        .filter((p) => isNamedAfterExample(p, gettingStarted))
-        .sort(
-          (a, b) => Number(b.id === openProjectId.current) - Number(a.id === openProjectId.current),
-        );
-      for (const candidate of candidates) {
-        if (await matchesExample(candidate, gettingStarted)) {
-          return { project: candidate, unchanged: true };
+    async (tour: TourId, reuse: boolean, wanted: () => boolean) => {
+      const example = TOURS[tour].example[locale === "ja" ? "ja" : "en"];
+      if (reuse) {
+        // The open one first: moving away from it would be for nothing.
+        const candidates = projects
+          .filter((p) => isNamedAfterExample(p, example))
+          .sort(
+            (a, b) =>
+              Number(b.id === openProjectId.current) - Number(a.id === openProjectId.current),
+          );
+        for (const candidate of candidates) {
+          if (await matchesExample(candidate, example)) return candidate;
         }
+        if (!wanted()) return null;
       }
-      if (runs.current !== run) return { project: null, unchanged: false };
-      return { project: await openBundledExample(gettingStarted), unchanged: false };
+      return addBundledExample(example);
     },
-    [gettingStarted, serviceSplit, projects, matchesExample, openBundledExample],
+    [locale, projects, matchesExample, addBundledExample],
   );
 
-  // Opening a copy of the sample is an OPFS write. While one is in flight a
-  // second start is ignored, so no guide starts meanwhile. The run check is a
-  // second line of defence for a future path that starts a guide without this
-  // guard, and it drops a guide the visitor chose the editor over: the newer
-  // choice wins (TPL-1534).
+  // Adding a copy of the sample is an OPFS write. While one is in flight a
+  // second start is ignored, so no guide starts meanwhile. The newer choice wins
+  // (TPL-1534): choosing the editor, ending the guide or opening another project
+  // meanwhile drops the start, before it moves the visitor anywhere. A copy
+  // already written stays in the project list.
   const opening = useRef(false);
   const enterTour = useCallback(
-    async (tour: TourId) => {
+    async (tour: TourId, reuse = TOURS[tour].reusesCopy ?? false) => {
       if (opening.current) return;
       opening.current = true;
       const run = runs.current;
-      const { project, unchanged } = await resolveProject(tour, run).finally(() => {
+      const from = openProjectId.current;
+      const wanted = () =>
+        runs.current === run && (from === undefined || openProjectId.current === from);
+      const project = await resolveProject(tour, reuse, wanted).finally(() => {
         opening.current = false;
       });
-      if (!project || runs.current !== run) return;
+      if (!project || !wanted()) return;
       // Navigating to the open project again would clear the open file without
-      // selecting it back. A new copy has navigated already.
-      if (unchanged && project.id !== openProjectId.current) navigateToProject(project);
+      // selecting it back.
+      if (project.id !== openProjectId.current) navigateToProject(project);
       startTour(tour, project);
     },
     [resolveProject, navigateToProject, startTour],
+  );
+
+  // Moves to the guide on the other subject (#3601). The panel can be pressed
+  // while the project resolves, unlike Welcome, so it stays locked until then.
+  const [switching, setSwitching] = useState(false);
+  const switchSample = useCallback(
+    async (tour: TourId) => {
+      setSwitching(true);
+      await enterTour(tour, true).finally(() => setSwitching(false));
+    },
+    [enterTour],
   );
 
   // Walks the last guide started again from step 1 (#3597, #3600), in the
@@ -299,6 +302,8 @@ export function FirstRunExperience({
   // The diff a tour step opened is the tour's, so the editor starts without
   // it; a comparison the visitor opened on another step stays.
   const endTour = useCallback(() => {
+    // Outranks a guide still opening for a restart: it must not come back.
+    runs.current++;
     clearTourProgress();
     setGuide(null);
     if (tourStep?.scene.compareWith) dispatch({ type: "SET_COMPARE_SOURCE", source: null });
@@ -307,6 +312,7 @@ export function FirstRunExperience({
   // The panel belongs to the tour's project: switching away hides it, and
   // switching back shows it again at the same step.
   const showTour = guide && tourStep && steps && currentProject?.rootPath === guide.root;
+  const switchTo = guide?.step === 0 ? TOURS[guide.tour].switchTo : undefined;
 
   return (
     <>
@@ -322,6 +328,9 @@ export function FirstRunExperience({
           onBack={() => moveStep(-1)}
           onNext={() => moveStep(1)}
           onClose={endTour}
+          switchLabel={switchTo && t(switchTo.label)}
+          onSwitch={switchTo && (() => void switchSample(switchTo.tour))}
+          switching={switching}
         />
       )}
     </>

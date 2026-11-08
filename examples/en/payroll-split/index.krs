@@ -1,0 +1,107 @@
+// payroll-split/index.krs: the CURRENT architecture.
+// The second subject of the first-run guide (#3601). Compare it with planned.krs
+// (the target) and migrating.krs (the state in between).
+//
+// Attendance and Payroll are separate domains, but both live in one
+// Workforce Application and share one Workforce Database. The Payroll Team
+// owns the Payroll domain without owning any service.
+
+system Workforce {
+  label "Workforce Platform"
+
+  user Employee [human] {
+    label "Employee"
+    description "Records hours and checks payslips"
+  }
+  user PayrollStaff [human] {
+    label "Payroll staff"
+    description "Reviews pay runs and transfers"
+  }
+
+  service WorkforceApp {
+    label "Workforce Application"
+    description "One deployable that holds attendance and payroll"
+
+    domain Attendance {
+      label "Attendance"
+      usecase RecordHours {
+        label "Record hours"
+        resource WorkforceDB.Timesheets { operations create }
+      }
+      usecase ApproveTimesheet {
+        label "Approve a timesheet"
+        resource WorkforceDB.Timesheets { operations update }
+      }
+
+      Attendance -> Payroll "Hand over closed timesheets"
+    }
+    domain Payroll {
+      label "Payroll"
+      usecase CalculatePay {
+        label "Calculate pay"
+        resource WorkforceDB.Payslips { operations create }
+        resource WorkforceDB.Timesheets { operations read }
+      }
+      usecase TransferPay {
+        label "Transfer pay"
+        resource WorkforceDB.Transfers { operations create }
+      }
+    }
+  }
+
+  service ReminderWorker {
+    label "Reminder Worker"
+    description "Sends timesheet reminders in the background"
+
+    domain Reminders {
+      label "Reminders"
+      usecase SendReminder {
+        label "Send a reminder"
+        resource WorkforceDB.ReminderQueue { operations update }
+      }
+    }
+  }
+
+  service BankTransfer [external] {
+    label "Bank Transfer"
+    description "Salary payments, run by a bank"
+  }
+
+  database WorkforceDB {
+    label "Workforce Database"
+    description "Shared by every part of the platform"
+    table Timesheets { label "Timesheets" }
+    table Payslips { label "Payslips" }
+    table Transfers { label "Transfers" }
+    table ReminderQueue { label "Reminder queue" }
+  }
+
+  Employee -> WorkforceApp "Record hours and check payslips"
+  PayrollStaff -> WorkforceApp "Review pay runs"
+  WorkforceApp -> ReminderWorker "Schedule reminders"
+  WorkforceApp -> BankTransfer "Send transfers"
+}
+
+organization Corporate {
+  label "Corporate Engineering"
+
+  team workforce {
+    label "Workforce Team"
+    description "Builds the employee portal and the attendance flow"
+    owns WorkforceApp
+    owns Attendance
+  }
+
+  team payroll {
+    label "Payroll Team"
+    description "Owns the pay rules, but ships them inside the Workforce Application"
+    owns Payroll
+  }
+
+  team platform {
+    label "Platform Team"
+    description "Runs the shared database and the background workers"
+    owns ReminderWorker
+    owns Reminders
+  }
+}

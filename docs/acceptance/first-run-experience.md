@@ -1,10 +1,10 @@
-# AT: Web App の初回体験（Welcome と 3 つのガイドツアー）
+# AT: Web App の初回体験（Welcome と 3 つのガイドツアー、題材の切り替え）
 
 - **日付**: 2026-11-03
-- **関連 Issue**: [#3563](https://github.com/kompiro/karasu/issues/3563)（Epic）/ [#3583](https://github.com/kompiro/karasu/issues/3583)（配置の自動判定）/ [#3597](https://github.com/kompiro/karasu/issues/3597)（ツアーのやり直し）/ [#3598](https://github.com/kompiro/karasu/issues/3598)（ツアーの再開）/ [#3599](https://github.com/kompiro/karasu/issues/3599)（ステップの操作を終えた印）/ [#3600](https://github.com/kompiro/karasu/issues/3600)（Understand と Evolve のガイド）/ [#3564](https://github.com/kompiro/karasu/issues/3564)（サンプル）/ [#3565](https://github.com/kompiro/karasu/issues/3565)（Welcome）/ [#3566](https://github.com/kompiro/karasu/issues/3566)（ガイドツアー）
+- **関連 Issue**: [#3563](https://github.com/kompiro/karasu/issues/3563)（Epic）/ [#3583](https://github.com/kompiro/karasu/issues/3583)（配置の自動判定）/ [#3597](https://github.com/kompiro/karasu/issues/3597)（ツアーのやり直し）/ [#3598](https://github.com/kompiro/karasu/issues/3598)（ツアーの再開）/ [#3599](https://github.com/kompiro/karasu/issues/3599)（ステップの操作を終えた印）/ [#3600](https://github.com/kompiro/karasu/issues/3600)（Understand と Evolve のガイド）/ [#3601](https://github.com/kompiro/karasu/issues/3601)（2 つ目の題材）/ [#3564](https://github.com/kompiro/karasu/issues/3564)（サンプル）/ [#3565](https://github.com/kompiro/karasu/issues/3565)（Welcome）/ [#3566](https://github.com/kompiro/karasu/issues/3566)（ガイドツアー）
 - **PRD**: [#3573](https://github.com/kompiro/karasu/issues/3573)
 - **対象ファイル**:
-  - `examples/{en,ja}/service-split/`（`index.krs` / `planned.krs` / `migrating.krs`）、`examples/{en,ja}/getting-started/`
+  - `examples/{en,ja}/service-split/`、`examples/{en,ja}/payroll-split/`（`index.krs` / `planned.krs` / `migrating.krs`）、`examples/{en,ja}/getting-started/`
   - `packages/app/src/components/first-run/`（Welcome、ツアーパネル、表示条件、シーンの適用）
   - `packages/app/src/ProjectModeApp.tsx`（配線、起動時のツアーの再開の判定）
   - `packages/app/src/hooks/useFileSelection.ts`（開いているファイルを読み直さずに選び直す）
@@ -64,7 +64,7 @@
 
 - [x] AT-J: ガイドが「気づき」として示す内容がサンプルで成り立っている（同居・所有のずれ・移行の注釈）
 
-  > ✅ Automated — `packages/core/src/examples.test.ts` › `current: the Billing Team owns the Billing domain but no service`
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `current: the team of the moving domain owns that domain but no service`
 
 - [x] AT-M: Design a service split の各ステップで、パネルの文が指しているノード（Step 1 のコマースアプリケーション、Step 3 の追加された請求サービス、Step 4 の ◇ Planned の請求 DB）の名前がプレビューの画面内にあり、ノードがツアーパネルと重ならない。どのステップでもパネルが画面内に収まり、パネル内の文言がはみ出さない（既定のデスクトップの大きさ 1280×720 で判定）
 
@@ -162,7 +162,7 @@
   > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `opens a new copy when Getting Started was edited, leaving the edited one as it is`
   > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Understand navigates to a matching Getting Started that is not open`
   > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Understand reuses an unedited copy it opened earlier, not a project of another name`
-  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Understand opens a new copy when no Getting Started matches, and does not navigate again`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Understand opens a new copy when no Getting Started matches, navigating to it once`
   > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `drops an Understand the visitor chose the editor over while reading (TPL-1534)`
   > ✅ Automated — `packages/app/src/components/first-run/project-matches-example.test.ts` › `does not match when a file is missing or cannot be read`
 
@@ -206,8 +206,49 @@
   > ✅ Automated — `packages/core/src/examples.test.ts` › `system: Product Catalog and Orders depend on each other`
   > ✅ Automated — `packages/core/src/examples.test.ts` › `deploy: only EC Site and Notification are run, Payment and Inventory are external`
   > ✅ Automated — `packages/core/src/examples.test.ts` › `org: the Notification team owns nothing, and the Commerce team owns the Notification service`
-  > ✅ Automated — `packages/core/src/examples.test.ts` › `evolve, what is left: the billing tables move to Billing Database`
-  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `%s`
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `evolve, what is left: the moving tables go to the new database`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `%s (%s)`
+
+- [x] AT-AJ: Design のガイドの Step 1 で給与システムの題材に切り替えると、同じ 5 ステップをその題材で歩ける。ステップの ✓ は持ち越さない
+
+  > ✅ Automated — `packages/e2e/tests/at-3601-second-sample.spec.ts` › `walks the five steps on the payroll sample after switching on step 1`
+
+- [x] AT-AK: 切り替えのボタンは Design のガイドの Step 1 にだけ出て、Understand と Evolve には出ない
+
+  > ✅ Automated — `packages/e2e/tests/at-3601-second-sample.spec.ts` › `offers the switch on step 1 only`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.switch.test.tsx` › `is not on the %s guide`
+
+- [x] AT-AL: 題材を行き来してもプロジェクトは増えず、編集したコピーはそのまま残ってガイドは新しいコピーを開く
+
+  > ✅ Automated — `packages/e2e/tests/at-3601-second-sample.spec.ts` › `going back and forth adds no copies`
+  > ✅ Automated — `packages/e2e/tests/at-3601-second-sample.spec.ts` › `a copy the visitor edited stays as it is, and the guide gets a new one`
+
+- [x] AT-AM: 切り替えたあとも、再読み込みで同じステップに戻り、Restart Guided Tour… は切り替え先のガイドをやり直す。前の題材のプロジェクトに戻ってもパネルは出ない
+
+  > ✅ Automated — `packages/e2e/tests/at-3601-second-sample.spec.ts` › `a reload comes back to the same step of the guide switched to`
+  > ✅ Automated — `packages/e2e/tests/at-3601-second-sample.spec.ts` › `Restart Guided Tour… walks the guide switched to, in its project`
+  > ✅ Automated — `packages/e2e/tests/at-3601-second-sample.spec.ts` › `going back to the previous subject's project shows no panel`
+
+- [x] AT-AN: 切り替えの解決中はパネルの操作が効かず、その間に別のプロジェクトを開くと、そのプロジェクトに留まる
+
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.switch.test.tsx` › `locks the panel while it resolves, so Skip neither works nor brings the guide back`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.switch.test.tsx` › `stays in the project the visitor opened while a new copy was being added`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.switch.test.tsx` › `stays in the project the visitor opened while an existing copy was being read`
+
+- [x] AT-AO: Restart でガイドを開き直している最中に Skip すると、ガイドは戻らない
+
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `does not bring back a guide skipped while Restart reopens it (TPL-1534)`
+
+- [x] AT-AP: 給与システムの題材の各ステップで、パネルの文が指すノードがプレビューの画面内にあってパネルと重ならず、パネルが画面内に収まり文言がはみ出さない（en / ja、1280×720）
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(en) Payroll: keeps each step's node clear of the panel, with no text overflowing`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(ja) Payroll: keeps each step's node clear of the panel, with no text overflowing`
+
+- [x] AT-AQ: 給与システムの題材の気づきがサンプルで成り立っていて、warning が出ない（en / ja）
+
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `current: the team of the moving domain owns that domain but no service`
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `migrating: the new service is the migration target and its database is planned`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `walks the same scenes on both subjects, so the guide has one shape`
 
 ## 手動確認
 

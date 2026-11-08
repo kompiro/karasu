@@ -35,17 +35,17 @@ const copy: Project = { id: "tour", name: "service-split", rootPath: "/projects/
 /** A sample open that resolves only when the test says so. */
 function deferredOpen() {
   let resolve: (project: Project | null) => void = () => {};
-  const openBundledExample = vi.fn<(example: ExampleProject) => Promise<Project | null>>(
+  const addBundledExample = vi.fn<(example: ExampleProject) => Promise<Project | null>>(
     () =>
       new Promise((r) => {
         resolve = r;
       }),
   );
-  return { openBundledExample, resolve: (p: Project | null) => resolve(p) };
+  return { addBundledExample, resolve: (p: Project | null) => resolve(p) };
 }
 
 function setup(
-  openBundledExample: (example: ExampleProject) => Promise<Project | null>,
+  addBundledExample: (example: ExampleProject) => Promise<Project | null>,
   {
     tourResume = KEEP_TOUR,
     open = gettingStarted,
@@ -77,7 +77,7 @@ function setup(
           navigateToProject={navigateToProject}
           selectFile={vi.fn<(path: string) => Promise<FileSelectionStatus>>(async () => "opened")}
           keepOpenFile={vi.fn<() => void>()}
-          openBundledExample={openBundledExample}
+          addBundledExample={addBundledExample}
           matchesExample={matchesExample}
           dispatch={vi.fn<(action: AppAction) => void>()}
         />
@@ -94,10 +94,10 @@ function runCommand(name: RegExp) {
 describe("Restart Guided Tour… (#3597)", () => {
   it("opens one copy of the sample even when run again while the first is opening (TPL-1534)", async () => {
     const open = deferredOpen();
-    setup(open.openBundledExample);
+    setup(open.addBundledExample);
     runCommand(/Restart Guided Tour/);
     runCommand(/Restart Guided Tour/);
-    expect(open.openBundledExample).toHaveBeenCalledTimes(1);
+    expect(open.addBundledExample).toHaveBeenCalledTimes(1);
 
     await act(async () => open.resolve(copy));
     expect(readTourProject()).toEqual({ tour: "service-split", projectId: "tour" });
@@ -105,11 +105,11 @@ describe("Restart Guided Tour… (#3597)", () => {
 
   it("is ignored while a Welcome choice is still opening the sample", async () => {
     const open = deferredOpen();
-    setup(open.openBundledExample);
+    setup(open.addBundledExample);
     runCommand(/Show Welcome/);
     fireEvent.click(screen.getByRole("button", { name: /Design a service split/ }));
     runCommand(/Restart Guided Tour/);
-    expect(open.openBundledExample).toHaveBeenCalledTimes(1);
+    expect(open.addBundledExample).toHaveBeenCalledTimes(1);
 
     await act(async () => open.resolve(copy));
     expect(readTourProject()).toEqual({ tour: "service-split", projectId: "tour" });
@@ -117,7 +117,7 @@ describe("Restart Guided Tour… (#3597)", () => {
 
   it("does not start the tour when the visitor chose the editor while the sample was opening", async () => {
     const open = deferredOpen();
-    setup(open.openBundledExample);
+    setup(open.addBundledExample);
     runCommand(/Restart Guided Tour/);
     runCommand(/Show Welcome/);
     fireEvent.click(screen.getByRole("button", { name: /Open the editor/ }));
@@ -129,7 +129,7 @@ describe("Restart Guided Tour… (#3597)", () => {
 
   it("closes Welcome when it runs while Welcome is open", async () => {
     const open = deferredOpen();
-    setup(open.openBundledExample);
+    setup(open.addBundledExample);
     runCommand(/Show Welcome/);
     expect(screen.getByRole("dialog")).not.toBeNull();
 
@@ -207,7 +207,7 @@ describe("where a guide starts (#3600)", () => {
     expect(readTourProgress()?.projectId).toBe("gs-2");
   });
 
-  it("Understand opens a new copy when no Getting Started matches, and does not navigate again", async () => {
+  it("Understand opens a new copy when no Getting Started matches, navigating to it once", async () => {
     const fresh: Project = { ...gettingStarted, id: "gs-2", rootPath: "/projects/gs-2" };
     const open = vi.fn<(example: ExampleProject) => Promise<Project | null>>(async () => fresh);
     const navigateToProject = vi.fn<(project: Project) => void>();
@@ -216,7 +216,8 @@ describe("where a guide starts (#3600)", () => {
     await act(async () => {});
     expect(open).toHaveBeenCalledTimes(1);
     expect(open.mock.calls[0][0].name).toBe("getting-started");
-    expect(navigateToProject).not.toHaveBeenCalled();
+    expect(navigateToProject).toHaveBeenCalledTimes(1);
+    expect(navigateToProject).toHaveBeenCalledWith(fresh);
     expect(readTourProgress()).toEqual({ tour: "understand", projectId: "gs-2", step: 0 });
   });
 
@@ -267,6 +268,28 @@ describe("where a guide starts (#3600)", () => {
     expect(readTourProgress()).toEqual({ tour: "service-split", projectId: "tour", step: 0 });
   });
 
+  it("does not bring back a guide skipped while Restart reopens it (TPL-1534)", async () => {
+    writeTourProject({ tour: "service-split", projectId: "gone" });
+    writeTourProgress({ tour: "service-split", projectId: "tour", step: 1 });
+    const open = deferredOpen();
+    const navigateToProject = vi.fn<(project: Project) => void>();
+    const tourResume: TourResume = {
+      kind: "resume",
+      tour: "service-split",
+      projectId: copy.id,
+      root: copy.rootPath,
+      step: 1,
+    };
+    setup(open.addBundledExample, { open: copy, tourResume, navigateToProject });
+    runCommand(/Restart Guided Tour/);
+    fireEvent.click(screen.getByRole("button", { name: "✕ Skip tour" }));
+    const fresh: Project = { ...copy, id: "fresh", rootPath: "/projects/fresh" };
+    await act(async () => open.resolve(fresh));
+    expect(screen.queryByRole("region", { name: "Guided tour" })).toBeNull();
+    expect(readTourProgress()).toBeNull();
+    expect(navigateToProject).not.toHaveBeenCalled();
+  });
+
   it("Restart opens the guide the way its entry does when its project is gone", async () => {
     writeTourProject({ tour: "understand", projectId: "gone" });
     const open = openNever();
@@ -290,7 +313,7 @@ describe("tour progress (#3598)", () => {
 
   it("records the step where the tour starts and moves, and removes it on Skip", async () => {
     const open = deferredOpen();
-    setup(open.openBundledExample, { open: copy });
+    setup(open.addBundledExample, { open: copy });
     runCommand(/Show Welcome/);
     fireEvent.click(screen.getByRole("button", { name: /Design a service split/ }));
     await act(async () => open.resolve(copy));
@@ -319,7 +342,7 @@ describe("tour progress (#3598)", () => {
   it("replaces the record when another guide starts (#3600)", async () => {
     writeTourProgress({ tour: "service-split", projectId: "tour", step: 2 });
     const open = deferredOpen();
-    setup(open.openBundledExample);
+    setup(open.addBundledExample);
     runCommand(/Show Welcome/);
     fireEvent.click(screen.getByRole("button", { name: /Track architecture evolution/ }));
     await act(async () => open.resolve(copy));
@@ -392,7 +415,7 @@ describe("a step's ask marked done (#3599)", () => {
                 async () => "opened",
               )}
               keepOpenFile={vi.fn<() => void>()}
-              openBundledExample={vi.fn<(example: ExampleProject) => Promise<Project | null>>()}
+              addBundledExample={vi.fn<(example: ExampleProject) => Promise<Project | null>>()}
               matchesExample={vi.fn<(p: Project, e: ExampleProject) => Promise<boolean>>()}
               dispatch={vi.fn<(action: AppAction) => void>()}
             />
