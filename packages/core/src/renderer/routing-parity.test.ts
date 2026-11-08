@@ -54,6 +54,7 @@ import { CONTAINER_LABEL_HEIGHT, CONTAINER_PADDING } from "./layout-constants.js
 import { HOP_RADIUS, trunkBandHalfWidth } from "./crossing-marks.js";
 import { labelAnchorWithSegment, ownLabelSegment } from "./edge-routing.js";
 import { ObstacleIndex } from "./obstacle-index.js";
+import { generateLargeModel } from "./fixtures/large-model.js";
 import type { LayoutEdge, LayoutNode, LayoutResult } from "./layout-types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -367,6 +368,32 @@ describe("shared routing chain — ungrouped fences (#2362, TPL-1927)", () => {
       // marks can be fewer than crossings — but never zero while crossings exist.
       // Comparing booleans keeps this a single unconditional assertion.
       expect(hops > 0).toBe(crossings > 0);
+    },
+  );
+});
+
+/**
+ * The examples are small. The generated model has the size of the
+ * reverse-engineered models the layer-spanning work was measured on (about 10k
+ * lines; #2611 TC-B4), so the fence also holds where interior corridors are
+ * crowded. Root view, the system view and one service view.
+ */
+describe("a model of real-world size (#2611, #3668)", () => {
+  const src = generateLargeModel();
+
+  // The fence below leans on the model staying this size and staying valid as the syntax moves.
+  it("is about 10k lines and parses without diagnostics", () => {
+    expect(src.split("\n").length).toBeGreaterThanOrEqual(10_000);
+    expect(Parser.parse(src).diagnostics).toEqual([]);
+  });
+
+  it.each([[[]], [["Platform"]], [["Platform", "Service15"]]])(
+    "view %j: no edge pierces a card and no two edges share a corridor",
+    (path: string[]) => {
+      const res = layoutOfSource(src, undefined, path);
+      expect(totalPenetrations(res)).toBe(0);
+      expect(collinearOverlaps(res, "v")).toBe(0);
+      expect(collinearOverlaps(res, "h")).toBe(0);
     },
   );
 });

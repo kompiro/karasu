@@ -49,9 +49,11 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › shared routing chain — ungrouped fences / grouped output is unchanged（既存の柵。値の変更なしで通過）(TC-B3)
 
-- [ ] TC-B4: dify（20 view / 1,102 edge）で共線ペアが縦横とも 0、貫通が悪化しない
+- [x] TC-B4: 実世界規模のモデル（`pnpm bench:large-model` が生成する約 10k 行のモデル）で、共線ペアが縦横とも 0、貫通 0
 
-  > 🔍 Manual — 外部モデル（`/workspaces/dify/index.krs`）は repo に無いため CI では回せない。`reports/layer-spanning-edge-columns` の生成物で確認する（今回の測定値: 共線 3/13 → 0/0、貫通 7 → 7）
+  > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `a model of real-world size (#2611, #3668)` › `view %j: no edge pierces a card and no two edges share a corridor`
+
+  当初は reverse した langgenius/dify のモデル（20 view / 1,102 edge）で測った（共線 3/13 → 0/0、貫通 7 → 7）。そのモデルは repo に無く誰も測り直せないので、#3668 で生成モデルの自動テストに置き換えた。
 
 ### AC-3: 予約の鍵が 2 パス目で壊れない（TPL-2611）
 

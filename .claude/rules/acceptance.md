@@ -5,8 +5,8 @@ paths:
 
 # AT レコードを書くときのルール
 
-**到達状態**: `pnpm at:check-coverage` が finding ゼロで通る（marker と design-doc
-references の両方）。埋めた `.krs` は `pnpm run lint:krs-fences` が別途 parse する。
+**到達状態**: `pnpm at:check-coverage` が finding ゼロで通る（marker、design-doc
+references、記録のアドレスの 3 つ）。埋めた `.krs` は `pnpm run lint:krs-fences` が別途 parse する。
 
 `docs/acceptance/**` の書き方の正本はこのファイル。`docs/process.md` は
 `docs/acceptance/` がどういう置き場かだけを持ち、書き方はここに集約している。
@@ -83,6 +83,13 @@ preview の URL は PR 本文の Preview URL 欄に出る。
 書かない。** preview URL は PR がマージされた時点で 404 になる。本番 URL を書くと、
 マージ後にしか確かめられない検査だと読める（上の節）。app で開く入力は `index.krs` として
 開く前提で書く（app はそれ以外のファイル名を開かない）。
+
+preview のホスト、worktree などセッションに固有のパス、dev サーバの起動コマンドは
+`pnpm at:check-coverage` が finding にする（`scripts/acceptance/record-addresses.ts`）。
+
+**手元のマシンにしかないファイルも入力にしない。** `/workspaces/...` のような絶対パスは、
+書いた人のマシンでしか開けない。この形は検査が読まないので、書く側で守る。大きなモデルが
+要る手順では、そのモデルを repo に置き、repo の中のパスで指す。
 
 ## 埋める `.krs` スニペットは fence で主張を宣言する
 

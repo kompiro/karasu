@@ -1,0 +1,55 @@
+/* eslint-disable no-console -- CLI entry point; the path written is the output */
+// Writes the large synthetic model (packages/core/src/renderer/fixtures/large-model.ts)
+// to `<dir>/index.krs`, for a manual step or a benchmark that needs a model of
+// real-world size (#3668):
+//
+//   pnpm bench:large-model <dir>
+//   pnpm bench:large-model <dir> --services 40
+//   pnpm bench:render <dir>/index.krs
+
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import {
+  DEFAULT_OPTIONS,
+  generateLargeModel,
+  type LargeModelOptions,
+} from "../../packages/core/src/renderer/fixtures/large-model.ts";
+
+function parseArgs(argv: string[]): { dir: string; options: LargeModelOptions } {
+  let dir: string | undefined;
+  const options = { ...DEFAULT_OPTIONS };
+  const flags: Record<string, keyof LargeModelOptions> = {
+    "--services": "services",
+    "--domains": "domainsPerService",
+    "--usecases": "usecasesPerDomain",
+  };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    const key = flags[arg];
+    if (key) {
+      const value = Number(argv[++i]);
+      if (!Number.isInteger(value) || value < 1) {
+        throw new Error(`${arg} expects a positive integer, got ${argv[i]}`);
+      }
+      options[key] = value;
+    } else if (arg.startsWith("--")) {
+      throw new Error(`unknown option ${arg}`);
+    } else {
+      dir = arg;
+    }
+  }
+  if (!dir)
+    throw new Error(
+      "usage: pnpm bench:large-model <dir> [--services N] [--domains N] [--usecases N]",
+    );
+  return { dir, options };
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const { dir, options } = parseArgs(process.argv.slice(2));
+  mkdirSync(dir, { recursive: true });
+  const file = join(dir, "index.krs");
+  writeFileSync(file, generateLargeModel(options));
+  console.log(file);
+}
