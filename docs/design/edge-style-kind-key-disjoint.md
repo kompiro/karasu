@@ -2,7 +2,7 @@
 
 - **日付**: 2026-11-08
 - **ステータス**: 検討中
-- **PR**: #TBD
+- **PR**: #3715
 - **関連**:
   - 引き金 Issue: [#3702](https://github.com/kompiro/karasu/issues/3702)（#3481 のレビューで発見）
   - 関連 Design Doc: [injective-node-path-keys](injective-node-path-keys.md)（`edgeKey` の囲み規則を決めた案D。ADR への昇格はまだ）
