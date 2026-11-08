@@ -749,8 +749,8 @@ describe("compile — edge#<canonical id> written the way the app writes it", ()
     const svg = drawBox(`edge#${id} { direction: ${direction}; }`);
     const [from, to] = [boxOf(svg, pair[0]), boxOf(svg, pair[1])];
     expect(from.y).toBe(to.y);
-    if (direction === "left") expect(from.x).toBeGreaterThan(to.x);
-    else expect(from.x).toBeLessThan(to.x);
+    // `left` draws the target to the left of the source, `right` to its right.
+    expect(Math.sign(from.x - to.x)).toBe(direction === "left" ? 1 : -1);
     expect(boxOf(svg, other[0]).y).toBeLessThan(boxOf(svg, other[1]).y);
   });
 });
