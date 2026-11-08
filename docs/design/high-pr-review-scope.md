@@ -71,10 +71,21 @@ spec の合意だけで段階が下がるのは、renderer・app・examples な�
 - **合意の根拠は main との merge-base の Design Doc から読み、base が `main` の PR にだけ効かせる。** PR が自分で
   Design Doc を書き換えて、自分の差分と一致させることができないようにする。同じ PR がその Design Doc を変えていたら、
   合意済みとみなさない。stacked PR の上の層は、下の層にしか無い Design Doc を根拠にできない（TPL-3286）
+- **merge-base の Design Doc が、検査した時点の main の先頭でも同じであることを求める。** PR を開いた後に、別の
+  Design の PR が main でその Design Doc を改めたり消したりすると、merge-base には古い合意が残る。検査し直しても
+  merge-base は変わらないので、Review tier は merge-base と `origin/main` の先頭で Design Doc の blob を比べ、違えば
+  合意済みとみなさない（厳しい側に倒れる）。main を取り込めば新しい Design Doc で判定し直す。ruleset は
+  base が最新であることを求めない（`strict_required_status_checks_policy: false`）ので、検査の後に main が動くと
+  結果は古くなる。そのため summary に使った Design Doc の blob を出し、`/coderabbit-converge` は kompiro に渡す直前に
+  main の先頭の blob と比べて、違えば main を取り込む。渡した後に main で Design Doc が変わる場合は拾わない。
+  そうした改訂は kompiro がレビューしてマージした Design の PR なので、kompiro は改訂を知っている（TPL-1032）
 - **Design Doc が main にあるだけでは合意とみなさない。** Design Doc は `packages/*` と一緒に Medium の PR で入ることが
-  あり、Medium では人間が差分を読まない。合意とみなすのは、その Design Doc を最後に変えたコミットが、Design の段階の
-  変更（`docs/design/**` と Low のファイルだけ）だった場合に限る。Design の PR は kompiro が読んでマージするので、
-  そのコミットの中身は kompiro が読んでいる。判定は git の履歴だけで決まる
+  あり、Medium では人間が差分を読まない。合意とみなすのは、作成から main の先頭まで、その Design Doc を変えたすべての
+  コミットが Design の段階の変更（`docs/design/**` と Low のファイルだけ）だった場合に限る。最後の変更だけを見ると、
+  Medium の PR が足した合意のブロックを、後の Design の PR が無関係な行を直しただけで合意済みに変えてしまう。
+  ruleset が squash マージだけを許すので、main のコミットは PR 1 本の最終の差分にあたり、そのコミットの段階は
+  ADR-3286 の PR の段階と同じになる。すべての行がどれかの Design の PR の差分にあったので、いまの中身は kompiro が
+  読んでいる。判定は git の履歴だけで決まる
 - **根拠にする Design Doc は、PR の `Closes #N` の Issue を「引き金 Issue」の行に挙げたものだけにする。**
   `docs/design/TEMPLATE.md` は使わない。ほかの Design Doc に偶然一致するブロックがあっても使わない
 - **セキュリティの境界は、Design Doc があっても kompiro が読む。** #3508 の `SECURITY_TIER_GLOBS`・
@@ -206,8 +217,8 @@ Claude が書く内容なので、本文に置いてよい。
 | 根拠の Design Doc があり、照合の行を含む記録が HEAD を覆っている | `## For kompiro` 節（ずれと論点）と、セキュリティの境界のファイル。ほかの差分は、節が指す箇所を確かめるときに開く |
 | それ以外                                                         | High のファイル（合意済みのファイルを除く）と `## For kompiro` 節                                                 |
 
-根拠の Design Doc は、制約・前提の条件（`Closes #N` の Issue を「引き金 Issue」の行に挙げ、最後の変更が Design の
-段階で、PR が変えていない）で機械が決める。「引き金 Issue」の行の Issue へのリンクをすべて読み、親 Issue は別の行に
+根拠の Design Doc は、制約・前提の条件（`Closes #N` の Issue を「引き金 Issue」の行に挙げ、変えたコミットがすべて
+Design の段階で、PR が変えておらず、merge-base と main の先頭で同じ）で機械が決める。「引き金 Issue」の行の Issue へのリンクをすべて読み、親 Issue は別の行に
 置く。行が無い Design Doc は根拠にならない（厳しい側に倒れる）。Review tier の summary は、どちらの行に当たるかを
 表の上に出す。どちらの場合も CodeRabbit のラウンドが収束してから kompiro に渡し（coderabbit-rounds.md）、
 マージは kompiro が行う。
@@ -229,9 +240,11 @@ Claude が書く内容なので、本文に置いてよい。
    `classify` の JSON に `files` を足し、`check` は job summary に表を書く。テストは `tier.test.ts` に足す
 2. B：`docs/process/review.md`「リスク段階」の High の行を、上の表の「それ以外」の行に改める。PR 本文の
    `## For kompiro` 節（3 件まで、残りは答えの後）の手順を足し、`/coderabbit-converge` の渡し方をこの節に揃える
-3. A2：`tier.ts` に根拠の Design Doc を決める関数を足す（`Closes #N`、「引き金 Issue」の行、最後の変更が Design の
-   段階か、PR が変えていないか）。`check` は、根拠があり照合の行を含む記録が HEAD を覆うときに summary の表の上に
-   「`## For kompiro` を読む」と出す。High の記録の検査はこのときだけ行い、記録が無くても check は落とさない
+3. A2：`tier.ts` に根拠の Design Doc を決める関数を足す（`Closes #N`、「引き金 Issue」の行、変えたコミットが
+   すべて Design の段階か、PR が変えていないか、merge-base と `origin/main` の先頭で blob が同じか）。`check` は、
+   根拠があり照合の行を含む記録が HEAD を覆うときに summary の表の上に「`## For kompiro` を読む」と、使った
+   Design Doc の blob を出す。High の記録の検査はこのときだけ行い、記録が無くても check は落とさない。
+   `/coderabbit-converge` の渡す手順に、summary の blob と main の先頭の blob の比較を足す
 4. A2：`docs/process.md` 手順 8 と `docs/process/review.md` に、Design Doc との照合を足す。subagent に渡すのは
    Design Doc と base との差分だけにし、実装の文脈を渡さない。記録のレビュアーに `design` を足す
    （`local-review-record.ts`）。coderabbit-rounds.md の「記録済みの決定」に根拠の Design Doc を足し、review.md の
@@ -243,8 +256,9 @@ Claude が書く内容なので、本文に置いてよい。
 7. TPL：TPL-3286 に、合意の根拠を PR 側の Design Doc から読む失敗モードと、そのチェック項目を足す（本 PR）
 8. AT：過去の PR の差分で確かめる。#3320 の spec の差分を載せた Design Doc を Design のコミットで base に置くと
    Medium になる。文面を 1 行変える、hunk を 1 つ落とす、行を並べ替える、のどれでも High に戻る。PR 側で Design Doc
-   を足しても、Medium のコミットで入った Design Doc でも、入れ子の fence の中の説明用の例と一致しても、同じ文脈が
-   base のファイルの 2 箇所に当てはまっても、Medium にならない。どれもテストで確かめられるので、
+   を足しても、Medium のコミットで入った Design Doc でも、Medium のコミットで入ったブロックの後に Design のコミットが
+   別の行を直しても、merge-base の後に main で Design Doc が変わっても、入れ子の fence の中の説明用の例と一致しても、
+   同じ文脈が base のファイルの 2 箇所に当てはまっても、Medium にならない。どれもテストで確かめられるので、
    手動の項目は置かない
 9. ADR 昇格：すべてのスライスが終わったら ADR-3542 として昇格し、本 Design Doc を削除する。ADR-3286 を
    `refines` で指す
