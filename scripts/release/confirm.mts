@@ -53,6 +53,7 @@ import {
   compareTarballs,
   describeDifference,
   isSame,
+  manifestDifferences,
   platformPackages,
   readTarball,
 } from "./tarball.mts";
@@ -251,8 +252,26 @@ function verify(argv: string[]): void {
       continue;
     }
     const diff = compareTarballs(expected, published, platform);
-    if (isSame(diff)) verified.push(packageTag(pkg));
-    else mismatches.push(describeDifference(packageTag(pkg), diff));
+    if (!isSame(diff)) {
+      mismatches.push(describeDifference(packageTag(pkg), diff));
+      continue;
+    }
+    // npm installs from the registry's metadata, not from the tarball's
+    // package.json, so the install fields there must match the pack too.
+    const manifest = expected.get("package.json");
+    if (manifest === undefined)
+      throw new Error(`the pack of ${packageTag(pkg)} has no package.json`);
+    const fields = manifestDifferences(
+      JSON.parse(manifest.toString("utf8")) as Record<string, unknown>,
+      JSON.parse(runOk("npm", ["view", packageTag(pkg), "--json"])) as Record<string, unknown>,
+    );
+    if (fields.length > 0) {
+      mismatches.push(
+        `${packageTag(pkg)}: the registry metadata differs from the packed package.json in ${fields.join(", ")}.`,
+      );
+      continue;
+    }
+    verified.push(packageTag(pkg));
   }
   console.log(`Verified: ${verified.join(", ") || "none"}`);
   for (const mismatch of mismatches) console.log(`::error::${mismatch.replaceAll("\n", "%0A")}`);
