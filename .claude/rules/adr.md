@@ -216,15 +216,18 @@ job summary に出すだけである。
 ```
 gh run list --workflow low-pr-merger.yml --limit 1 --json databaseId,status,createdAt
 gh run watch <run-id> --exit-status
-gh run view <run-id> --log | grep -A12 '"pr": <N>,'   # その PR の判定を読む
+gh run view <run-id> --log | sed -n '/"pr": <N>,/,/Z   },\{0,1\}$/p'   # その PR の判定を最後まで読む
 ```
 
-1. PR を作った後に始まった `Low PR merger` の run を待ち、その PR の判定を読む。judge は check の完了ごとと
-   10 分ごとの cron で走る
+1. PR に `risk: low` が付いた後に始まった `Low PR merger` の run を待ち、その PR の判定を読む。judge は
+   check の完了ごとと 10 分ごとの cron で走る。`gh pr create --label` はラベルを作成の後に付けるので、それより前の
+   run は PR を対象から外している
 2. `outcome` が `wait` で `stalled` が `true` でなければ、次の run で 1 を繰り返す
 3. #3694 にコメントする。PR 番号、run の URL、判定（`outcome`・`reasons`・`stalled`）、期待した判定、一致したか。
-   期待は judge の条件で決める: ラベルが `risk: low` だけで、Review tier を含む required check がすべて `success`、
-   コンフリクトが無ければ `merge`。どれかが落ちていれば `reject`。PR が判定に現れなければ、そう書く
+   期待は judge の条件（`scripts/review/low-pr-merger-flow.ts`）で決める。ラベルが `risk: low` だけで、Review tier
+   を含む required check の最新の run がすべて `success`、コンフリクトが無ければ `merge`。tier のラベルが他にもある、
+   check が失敗した、コンフリクトしているなら `reject`。check が走っている、最新の run が `skipped` か `cancelled`、
+   `mergeable` が未計算なら `wait` で、30 分続けば `stalled`。ラベルが付いた後の run に PR が現れなければ、そう書く
 4. 判定が何であっても `gh pr merge <N> --auto --squash --delete-branch` を打つ。マージの経路は
    まだ native の auto-merge で、食い違いは kompiro が #3694 のコメントで読む
 
