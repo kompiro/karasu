@@ -50,28 +50,34 @@
 
 ### 人が読む行
 
-#### 案A: 重大度の文字 + 番号の ID を接頭辞に置く（採用）
+#### 案A: 重大度の文字 + 番号の ID を接頭辞に置く（`Warning[W014]: ...`）
 
-```
-Warning[W014]: index.krs:7:3: Edge "A → ghost" references unknown node "ghost"; the edge is dropped (the resolved endpoint is kept)
-Error[E003]: index.krs:2:1: Expected ';' between properties
-stdin:3:5 error[E041]: Unknown property "colour"
-```
+ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号で、文字ごとに番号を振る。4 文字で、ID だけを見ても重大度が分かる。
 
-ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号で、文字ごとに番号を振る。rustc の `error[E0308]` と同じ位置に置く。
+却下した。行では文字が直前の重大度の語と同じことを言うので、情報が重複する（kompiro、PR #3663 のコメント）。しかも文字があるために ID が重大度に縛られる。
 
-- 行の頭で重大度と診断が読め、4 文字なのでメッセージの読みを邪魔しない
-- カタログに ID の列を足せば、行からそのまま引ける
-- 重大度を変えると ID も変わる（ADR-2208 のような昇格で `W0xx` が `E0xx` になる）。機械は kebab のコードで判定するので、影響は人の記憶とカタログの引き直しにとどまる
-- 面によって重大度が変わる 5 つのコードは、ID を 2 つ持つ（`lint-style` では `E0xx`、`render` では `W0xx`）。行の文字が、その行の重大度の語と食い違わないようにするためである
+- 面によって重大度が変わる 5 つのコードは、ID を 2 つ持つことになる（`lint-style` では `E0xx`、`render` では `W0xx`）。1 つにすると、`Warning[E0xx]:` のように文字と語が食い違う
+- 重大度を変えると ID も変わる（ADR-2208 のような昇格で `W0xx` が `E0xx` になる）。人の記憶や古い出力の ID が引けなくなる
 
 #### 案B: kebab のコードを接頭辞に置く（`Warning[unresolved-edge-endpoint]: ...`）
 
 新しい識別子が要らない。ただしコードは平均 22 文字、最長 37 文字で、行の頭を長く占める。
 
-#### 案C: 重大度によらない通し番号（`Warning[KRS2014]: ...`）
+#### 案C: 重大度によらない `KRS` + 番号の ID を接頭辞に置く（採用）
 
-重大度を変えても ID が変わらない。ただし ID から重大度が読めず、5〜7 文字になる。
+```
+Warning[KRS014]: index.krs:7:3: Edge "A → ghost" references unknown node "ghost"; the edge is dropped (the resolved endpoint is kept)
+Error[KRS003]: index.krs:2:1: Expected ';' between properties
+theme.krs.style:3:5 error[KRS041]: Invalid hex color for "fill": "#12" (expected ...)
+Warning[KRS041]: theme.krs.style:3:5: fill: "#12" is not a valid hex color (expected ...) ...
+```
+
+最後の 2 行は同じ `style-invalid-hex-color` で、`lint-style` と `render` の出力である（番号は例）。ID は `KRS` と 3 桁の番号で、コードごとに 1 つ振る。rustc の `error[E0308]` と同じく、重大度の語の直後に置く。重大度は語が示し、ID は診断だけを示す。
+
+- 6 文字でメッセージの読みを邪魔せず、カタログに ID の列を足せば行からそのまま引ける
+- `KRS` は拡張子 `.krs` と揃い、ほかのツールの番号（`E0308`、`TS2322`）と混ざらないので、grep や Web 検索で引ける
+- 面によって重大度が変わるコードも ID は 1 つで、上の例のように同じ `KRS041` が `lint-style` では error、`render` では warning の語と並ぶ
+- 重大度を変えても ID は変わらない。kebab のコードと同じく、コードが続くかぎり同じ ID が同じ診断を指す
 
 #### 案D: 行末に kebab のコードを足す（改訂前の方針）
 
@@ -87,7 +93,7 @@ ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号
   "errorCount": 0,
   "diagnostics": [
     {
-      "id": "W014",
+      "id": "KRS014",
       "code": "unresolved-edge-endpoint",
       "severity": "warning",
       "file": "index.krs",
@@ -107,7 +113,7 @@ ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号
 
 #### 案K: テキストの行を機械向けにも約束する
 
-案A の行を `^(Error|Warning|Info)\[([EWI][0-9]{3})\]` で読ませる。ID は重大度で変わるので判定の鍵には向かず、kebab のコードが行に無いので、判定にはカタログの対応表が要る。行が読めないときに 0 件と取り違える問題も残る。
+案C の行を `^(Error|Warning|Info)\[(KRS[0-9]{3})\]` で読ませる。kebab のコードが行に無いので、判定にはカタログの対応表が要る。位置は行の形から切り出すしかなく、行が読めないときに 0 件と取り違える問題も残る。
 
 #### 案L: オプトインのフラグや環境変数でテキストの行に kebab のコードを足す
 
@@ -117,10 +123,11 @@ ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号
 
 人が読む行:
 
-| 観点 | 案A 文字+番号 | 案B kebab | 案C 通し番号 | 案D 行末 kebab |
+| 観点 | 案A 文字+番号 | 案B kebab | 案C `KRS`+番号 | 案D 行末 kebab |
 | --- | --- | --- | --- | --- |
-| 行の頭の長さ | 4 文字 | 12〜37 文字 | 5〜7 文字 | 変わらない（行末に 12〜37 文字） |
-| ID から重大度が読める | 読める | 読めない | 読めない | 読めない |
+| 行の頭の長さ | 4 文字 | 12〜37 文字 | 6 文字 | 変わらない（行末に 12〜37 文字） |
+| 重大度の語との重複 | ある（文字が語を繰り返す） | 無い | 無い | 無い |
+| 面によって重大度が変わるコード | ID が 2 つ | 1 つ | 1 つ | 1 つ |
 | 重大度を変えたとき | ID が変わる | 変わらない | 変わらない | 変わらない |
 | 新しい識別子の管理 | 要る | 要らない | 要る | 要らない |
 | 接頭辞で読む消費者（`^Warning: `） | 壊す | 壊す | 壊す | 保つ |
@@ -132,7 +139,6 @@ ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号
 | 翻訳された文章を読まずに判別できる | できる | できる（対応表が要る） | 指定したときだけ |
 | 読めなかったことが分かる | 分かる（parse が失敗する） | 分からない（0 件に見える） | 分からない |
 | 位置を構造で取れる | 取れる | 取れない | 取れない |
-| 重大度を変えても判定が変わらない | 変わらない（`code` で判定） | 変わる | 変わらない |
 
 ## Related TPLs
 
@@ -144,18 +150,17 @@ ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号
 
 ## 現時点の方針
 
-**人が読む行は案A、機械が読む形は案J にする。** 人は行の頭の短い ID でカタログを引き、機械は JSON の `code` で判定する。判定の鍵を kebab のコードにするのは、ADR-1567 が安定を約束したのがこちらで、重大度を変えても変わらないからである。ID は人のための別名として扱う。
+**人が読む行は案C、機械が読む形は案J にする。** 人は行の頭の短い ID でカタログを引き、機械は JSON の `code` で判定する。ID もコードと 1 対 1 で変わらないが、判定の鍵は kebab のコードに 1 つに決める。ADR-1567 が安定を約束したのがこちらで、名前だけで意味が読めるからである。ID は人のための別名として扱う。
 
 **後方互換の方針の範囲を改める。** `docs/release.md`「CLI の後方互換」は stdout / stderr の形式を約束に含めている。本件の後は、機械が読む面を `check --format json`（`schemaVersion` で版を示す）、コマンド名、フラグ、終了コードに限り、診断の行は人向けとして約束から外す。人向けの行の形を変えるときは CHANGELOG で知らせる。方針の目的（手元に残る古い skill とスクリプトを壊さない）に対して、壊れるものと残るものは「影響範囲・マイグレーション」に書いた。
 
 ### 確定させる約束
 
-1. **ID の形:** `[EWI][0-9]{3}`。ID は kebab のコードと重大度の組に振り、文字はその重大度（`E` = error、`W` = warning、`I` = info）である。番号は文字ごとに 001 から振る。最初の割り当てはカタログの表の順に行い、以後は新しい組に次の番号を足す。
-   - ほとんどのコードは重大度が 1 つなので ID も 1 つである
-   - 面によって重大度が変わるコード（上の 5 つ）は、重大度ごとに ID を持つ。`DiagnosticParamsByCode` と `WarningKind` が同じ名前を同じ重大度で持つとき（`style-unknown-property` など）は、ID を共有する
-   - 1 つの ID が指すのは、常に 1 つのコードである
-2. **ID は再利用しない。** コードを廃止するか重大度を変えたときは、古い ID を廃止した ID として残し、番号を空けたままにする。重大度を変えたコードには新しい文字で次の番号を振る。一度 main に入った ID は、現役でも廃止でも、同じコードを指し続ける。
-3. **人が読む行:** カタログの診断を出す行は、重大度の語の直後に `[<ID>]` を置く（`Warning[W014]:`、`stdin:3:5 error[E041]:`）。位置の形、重大度の語の位置と綴り、メッセージはコマンドごとに今のまま変えない。`[<ID>]` の無い行はカタログの診断ではない（引数の通知、`translate` の警告、`karasu fmt` の `Cannot format: ...`）。
+1. **ID の形:** `KRS[0-9]{3}`。ID は kebab のコードに 1 つ振り、重大度を含まない。番号は 001 から振る。最初の割り当てはカタログの表の順に行い、以後は新しいコードに次の番号を足す。
+   - `DiagnosticParamsByCode` と `WarningKind` が同じ名前を持つとき（上の 7 つ）は、重大度が同じでも違っても、1 つの ID を共有する
+   - 1 つの ID が指すのは、常に 1 つのコードである。コードの重大度を変えても ID は変わらない
+2. **ID は再利用しない。** コードを廃止したときは、その ID を廃止した ID として残し、番号を空けたままにする。一度 main に入った ID は、現役でも廃止でも、同じコードを指し続ける。
+3. **人が読む行:** カタログの診断を出す行は、重大度の語の直後に `[<ID>]` を置く（`Warning[KRS014]:`、`stdin:3:5 error[KRS041]:`）。位置の形、重大度の語の位置と綴り、メッセージはコマンドごとに今のまま変えない。`[<ID>]` の無い行はカタログの診断ではない（引数の通知、`translate` の警告、`karasu fmt` の `Cannot format: ...`）。
 4. **機械が読む形:** `karasu check --format json` は、上の形の JSON を 1 つだけ stdout に出す。
    - `diagnostics` の並びは、テキストで出す順と同じにする
    - `id`、`code`、`severity`、`params`、`message`、`details` は必ずある。`code` は `DiagnosticParamsByCode` のキーか `WarningKind` のメンバーで、`params` はそのコードの型に従う値である。どちらも locale によらない。`message` と `details` は locale に従う。`details` は、ほかに行を持たない診断では `[]` である
@@ -164,27 +169,25 @@ ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号
    - カタログの外の失敗（ファイルが無い、未知のフラグ、想定外の例外）では JSON を出さず、stderr にテキストを出して 0 以外で終わる。JSON を出したときは、カタログの診断を stderr に出さない（廃止したフラグの通知など、カタログの外の行は stderr に残る）
    - 消費者は、stdout が JSON として読めないか、`schemaVersion` が知らない値なら、失敗として止まる
    - フィールドを足すのは互換の範囲内とし、消す・意味を変えるとき（`params` のキーを含む）は `schemaVersion` を上げる
-   - 既定は `--format text` で、今の出力に案A の ID を足したもの
+   - 既定は `--format text` で、今の出力に案C の ID を足したもの
 
 ### 実装の指針
 
 <!-- absent-path-next-line: the registry this design intends to add (#3654) -->
 1. **ID の登録簿を core に置く。** `packages/core/src/types/diagnostic-ids.ts` に、`Diagnostic` の対応 `Record<DiagnosticCode, DiagnosticId>`、`Warning` の対応 `Record<WarningKind, DiagnosticId>`、廃止した ID の一覧（ID と旧コードの組）を置く。`Record` なので、コードを足して ID を忘れると型検査で落ちる。テストで次を確かめる:
-   - 1 つの ID が指すコードは 1 つで、廃止した ID と現役の ID が重ならない。2 つの対応が同じ名前を同じ重大度で持つときは同じ ID、違う重大度なら違う ID である
-   - 文字ごとに、現役と廃止を合わせた番号が 001 から空きなく並ぶ（廃止の記録なしに ID を消すと番号が空いて落ちる）
-   - `Warning` の ID の文字が `warningSeverity` と一致する
-   - `Diagnostic` を出す箇所の重大度と ID の文字が一致する。`packages/core/src` と `packages/app/src`（`app-*` のコード）を走査し、`severity:` と `code:` の組に加えて、重大度を固定した helper（`this.error`、`rejectConstruct`）に渡すコードも見る。本番で出す箇所の無いコード（`generic-text`）は、登録簿の文字だけを見る
+   - 1 つの ID が指すコードは 1 つで、廃止した ID と現役の ID が重ならない。2 つの対応が同じ名前を持つときは同じ ID である
+   - 現役と廃止を合わせた番号が 001 から空きなく並ぶ（廃止の記録なしに ID を消すと番号が空いて落ちる）
 <!-- absent-path-next-line: the history guard this design intends to add (#3654) -->
 2. **ID の履歴を検査する。** 連続と重複の検査だけでは、廃止したコードの ID を別のコードに付け替える変更が通る。`scripts/lint/diagnostic-ids-history.ts` で、merge base の登録簿にある ID が、HEAD でも同じコードを（現役か廃止として）指していることを確かめ、pre-push と CI に載せる。
    並行する 2 本の PR が同じ番号を取ると、両方が通ってからマージした時点で main の重複検査が落ちる（ruleset は base への追従を求めない）。リリースは月次なので、公開前に後の方の番号を振り直す。まだ公開していない ID なので、振り直しは再利用に当たらない。
-3. **カタログに ID の列を足す。** `docs/spec/diagnostics.md` と `.ja.md` の各表の `Code` 列の後ろに `ID` 列を足す（meta-test は先頭の列をコードとして読むので、先頭には置かない）。meta-test（`diagnostics-catalog.test.ts`）で、列と登録簿の一致と、文字と `Severity` 列の一致を確かめる。
-   - 面によって重大度が変わる 5 つのコードは、`Severity` 列に面ごとの重大度を書き（`error`（`lint-style` / `tidy-style`）、`warning`（`render` / `check`））、`ID` 列に 2 つの ID を書く
+3. **カタログに ID の列を足す。** `docs/spec/diagnostics.md` と `.ja.md` の各表の `Code` 列の後ろに `ID` 列を足す（meta-test は先頭の列をコードとして読むので、先頭には置かない）。meta-test（`diagnostics-catalog.test.ts`）で、列と登録簿の一致を確かめる。
+   - 面によって重大度が変わる 5 つのコードは、`Severity` 列に面ごとの重大度を書く（`error`（`lint-style` / `tidy-style`）、`warning`（`render` / `check`））。今のカタログは error とだけ書いており、`render` の行と食い違っている。`ID` 列は 1 つである
    - 廃止した ID は「廃止した ID」の表に、ID を先頭の列にして旧コードとともに残し、古い出力からも引けるようにする。旧コードを先頭の列のバッククォートで書くと、meta-test の「廃止したコードを載せない」検査に当たる
 4. **行の形を 1 か所に集める。** `packages/cli/src/i18n.ts` に、重大度の語に `[<ID>]` を付ける関数を置き、stderr / stdout へ診断を流す箇所はすべてこれを使う（TPL-1417）。素のメッセージを返す `formatDiagnostic` / `formatWarning` / `renderDiagnostic` / `renderWarning` を呼ぶのは `i18n.ts`、`render-endpoint.ts`、JSON を組む箇所だけにし、`packages/cli/src` を走査するテストで新しい箇所の取りこぼしを止める。
 5. **`karasu check --format json` を足す。** 不明な形式は `coverage` と同じ形で拒否する。`agent-surface.json` にフラグを足す（`compat.test.ts` が求める）。`capabilities --json` は commander の定義から作られるので、フラグはそのまま載る。
-6. **contract test を `packages/cli` に足す。** テキストは `render` / `check` / `subtree` / `diff` / `lint-style` / `tidy-style` の各形で ID が重大度の語の直後に付くこと、面によって重大度が変わるコードが `lint-style` と `check` で違う ID を出すこと、JSON は上の約束の各項目、`ja` の locale でも ID・`code`・`params` が同じこと、ファイルが無いときに stdout が空で 0 以外で終わることを確かめる。既存のテストは 2 種類を直す。
+6. **contract test を `packages/cli` に足す。** テキストは `render` / `check` / `subtree` / `diff` / `lint-style` / `tidy-style` の各形で ID が重大度の語の直後に付くこと、面によって重大度が変わるコードが `lint-style` と `check` で同じ ID を違う重大度の語と出すこと、JSON は上の約束の各項目、`ja` の locale でも ID・`code`・`params` が同じこと、ファイルが無いときに stdout が空で 0 以外で終わることを確かめる。既存のテストは 2 種類を直す。
    - 接頭辞を固定した照合（`check.test.ts` の `Style file not found` など）は新しい形に更新する
-   - 接頭辞が無いことを確かめる否定の照合（`check.test.ts` の `not.toMatch(/^Error: /m)`、`render.e2e.test.ts` の `not.toContain("Error:")`）は、新しい形では何にも当たらず素通りするので、`^Error(\[E[0-9]{3}\])?:` のように両方の形に当たる照合に直す。ほかにも同じ形の否定の照合が無いかを `packages/cli` で探す
+   - 接頭辞が無いことを確かめる否定の照合（`check.test.ts` の `not.toMatch(/^Error: /m)`、`render.e2e.test.ts` の `not.toContain("Error:")`）は、新しい形では何にも当たらず素通りするので、`^Error(\[KRS[0-9]{3}\])?:` のように両方の形に当たる照合に直す。ほかにも同じ形の否定の照合が無いかを `packages/cli` で探す
 7. **skill を更新する。** 到達状態は、`packages/skills/skills/**` が判定を `karasu check --format json` の `code` で行い、翻訳された文章も、行の接頭辞も、ID も照合しないことである。`LC_ALL=C` を外すので、文章の断片を 1 つでも判定に残すと `ja` の locale で空振りする。メッセージの内容は、エージェントが locale のまま読む。`reverse-architecture` では次を直す。
    - Phase 4 step 2: `karasu check --format json index.krs` で判定する形にし、`LC_ALL=C` と `Message contains` 列を外す。stdout が JSON として読めないか、`schemaVersion` が知らない値なら止まると書く。`Circular dependency detected` の行は `cyclic-dependency` に直す
    - Reached state: 「the CLI prints messages, not codes」と、`references unknown node` の断片を見る停止条件を、`code` での判定に直す
@@ -196,7 +199,7 @@ ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号
 <!-- absent-path-next-line: the guard this design intends to add (#3654) -->
 8. **skill の drift ガードとして `scripts/lint/skill-diagnostic-codes.ts` を足す。** 公開する skill の `SKILL.md` について次を確かめる。
    - 判定に使うコードを書く形を `` `code:<kebab>` `` に決め（JSON の `code` 欄を指す）、その形の語がすべて `DiagnosticParamsByCode` / `WarningKind` に実在する。表か散文かは問わず、ヘッダの名前にも頼らない
-   - `[EWI][0-9]{3}` の形の ID を書かない（ID は重大度で変わるので判定の鍵にしない）
+   - `KRS[0-9]{3}` の形の ID を書かない（判定の鍵を `code` の 1 つに保つ。2 つの鍵が混ざると、片方だけ直したときにずれる）
    - `reverse-architecture` に `` `code:<kebab>` `` が 1 つも無い状態を落とす
    - `lint:skill-cli-refs` と同じく pre-push と CI に載せ、glob に core の `types/ast.ts` と `types/warnings.ts` を足す。core だけの改名でも落ちるように、実際の skill を読む vitest の mirror も `ci.yml` で動かす
    - 対象は `SKILL.md` だけである。同梱の reference は spec の写しなので対象にしない
@@ -208,7 +211,7 @@ ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号
     - `karasu check` の警告とエラーの行の頭に、locale によらず同じ ID が付く
     - `unresolved-edge-endpoint` を発火させた fixture で、`ja` の locale でも `--format json` の `code` で判定できる
     - モデルに error があるとき、`--format json` は読める JSON を出して 1 で終わる。ファイルが無いときは stdout に何も出さず 0 以外で終わる
-    - 登録簿の ID がカタログの `ID` 列と重大度に一致し、番号に空きが無く、merge base の ID が同じコードを指し続ける
+    - 登録簿の ID がカタログの `ID` 列に一致し、番号に空きが無く、merge base の ID が同じコードを指し続ける
     - `reverse-architecture` の `` `code:<kebab>` `` がすべてカタログに実在し、ID を書いていない
 12. **ADR 昇格。** 実装完了後に `docs/adr/3654-cli-diagnostic-codes.md` として昇格し、本 Design Doc は同じ PR で削除する。
 
@@ -218,7 +221,7 @@ ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号
 
 - 既存ユーザーへの影響: 診断の行の重大度の語の直後に `[<ID>]` が増える。`^Warning: ` のように接頭辞で読むスクリプトは空振りするので、`karasu check --format json` へ移ってもらう（CHANGELOG で知らせる）。終了コードは変わらない。
 - 公開中の 0.2.1 と新しい CLI: テキストの行に kebab のコードは載らないので、0.2.1 のコードの grep は今と同じく空のままで、後退も改善もしない。新しい skill で直る。
-- #3640 の版と新しい CLI: エージェントは手順に従って `Error:` / `Warning:` / `Info:` の行を読むので、`Warning[W014]:` の行を読み落とす恐れがある。本件を次のトレイン（11-29）に載せれば、#3640 の版は利用者に届かない。間に合わなければ、#3640 の版が公開されたあとに本件が出る組み合わせが残る。その場合でもメッセージは変わらないので、エージェントが行を読めば判定は動く。
+- #3640 の版と新しい CLI: エージェントは手順に従って `Error:` / `Warning:` / `Info:` の行を読むので、`Warning[KRS014]:` の行を読み落とす恐れがある。本件は次のトレイン（11-29）に載せ、#3640 の版を利用者に届けない（kompiro、PR #3663 のコメント）。
 - 新しい skill と古い CLI: Step 0 の下限（パック時の CLI の版）が止める。下限は `--format json` を持つ版になる。
 - ドキュメント更新: `docs/spec/diagnostics.md`, `docs/spec/diagnostics.ja.md`, `docs/tools/cli.md`, `docs/tools/cli.ja.md`, `docs/release.md`, 同梱の reference。
 - テスト・examples への影響: 行の形を固定した CLI のテストの更新。examples への影響は無い。
@@ -227,7 +230,7 @@ ID は `E` / `W` / `I`（error / warning / info）の 1 文字と 3 桁の番号
 
 - `render` など `check` 以外のコマンドの JSON 出力: 消費者が現れたときに、同じスキーマで足す。
 - LSP（VS Code の Problems）に ID や `code` を載せるか: 今は `code` を付けていない。人が目にする面を揃えるなら別の Issue で扱う。
-- カタログの ID ごとのアンカー（docs-site で `#W014` に飛ぶ）: カタログの表を引ければ足りるので、要望が出たら決める。
+- カタログの ID ごとのアンカー（docs-site で `#KRS014` に飛ぶ）: カタログの表を引ければ足りるので、要望が出たら決める。
 - テキストの行に改行を含むメッセージを 1 行に整えること: 行は人向けになり、機械は JSON を読むので扱わない。
 - `karasu serve` の 422 応答にコードを載せるか: 消費者がいないので決めない。
 - 診断ではない `Warning:` 行（引数の通知、`translate` の警告）への ID の付与と、`karasu fmt` の `Cannot format: ... (<codes>)` の形: カタログの外か、`check` で確かめられるので変えない。
