@@ -78,8 +78,18 @@ ADR-3486 の決定を引き継ぎ、鍵には次の 2 つを含める。ガー�
 - **置き場所:** 照会とスキーマは tpl-tools（ADR-41）、karasu は設定・TPL 本文・フックだけを持つ（ADR-1357）
 - **届け方:** `gh pr create` の直後に Claude Code のフック（`scripts/tpl/changed-files-reminder.sh`）が
   一覧を出し、`## TPL impact` での引用を促す。人の作成者には `pnpm tpl:changed`（stacked PR は
-  `pnpm tpl:related --base origin/<base>`）。引用が無くても PR は止めない
+  `pnpm tpl:related --base origin/<base>`）。引用が無くても PR は止めず、当てなかった TPL に理由も求めない
+- **フックの作り:** PostToolUse と PostToolUseFailure の両方に置く。`gh pr create` の出力の URL から
+  PR を取り、`gh pr view` の `headRefName` と `baseRefName` を読む。変更ファイルは PR の base から数える
+  （stacked PR で下の PR のファイルを数えない）。`git worktree list` で head のブランチの worktree を
+  探してそこで `tpl` を実行し、`$CLAUDE_PROJECT_DIR` やフックの入力の `cwd` では実行しない。0 件と
+  伝えるのは、tpl-tools の標準エラーに `No active TPL names a changed file.` が出たときだけで、
+  この文言は contract test が見張る。worktree が見つからないときやほかの想定外の状態では何も出さない
 - **横断的な原則の TPL:** 鍵では引かない。設計時の `tpl related <topic>` で当てる
+- **人の作成者:** フックは届かず、`pnpm tpl:changed` を思い出すことに頼る。人の作成者が増えたら、
+  ADR-3486 が却下した PR へのコメント（CI）を足す
+- **検証:** AT は作らない。tpl-tools のユニットテスト、`scripts/tpl/changed-files-reminder.test.ts`、
+  `pnpm tpl:validate` で確かめる
 
 ## 測定
 
@@ -127,7 +137,7 @@ PR にしか出なかった。
 - **印の鍵は、ガードを触る PR に TPL を出す。** 印が名指すのはその項目を守るガードで、ガードを
   変える PR はその TPL を読むべき変更である。外すには印を読み分ける規則が tpl-tools に要るが、外して
   減る件数はほぼ無い
-- **`docs/design` は、ADR-3486 が `docs/` を外した理由に当たらない。** 外した理由は 2 つで、
+- **`docs/design` では、ADR-3486 が `docs/` を外した理由より得失の小ささが勝る。** 外した理由は 2 つで、
   `docs/` を足しても再現率が 1 件しか増えないことと、`docs/spec/syntax.md`（46 TPL が名指す）の
   ような文書が鍵に入ることだった。`docs/design` は再現率を 1 件も増やさなかったが、増える件数も
   3 本の PR に 1 件ずつで、ADR-3486 が避けた文書のような件数の膨張は起きない。`docs/design/` を
@@ -136,7 +146,9 @@ PR にしか出なかった。
 - **Design Doc が消えたら、`tpl validate` が昇格 PR を止める。** 消えたパスを名指す TPL があると
   `tpl validate` が失敗するので（`at-check-coverage.yml` が `docs/design/**` の変更で走らせる）、昇格 PR は
   TPL を ADR へ付け替えるか、`absent-path-next-line` で消えたパスと宣言する。宣言したパスは鍵に
-  残るが、消えたファイルを変える PR はもう無いので、一覧には出ない
+  残るが、消えたファイルを変える PR はもう無いので、一覧には出ない。ガードの印が名指すパスは
+  宣言で黙らせられないので（`docs/test-perspectives/README.md`）、付け替えるしかない。今 Design Doc を
+  名指す印は無い
 - **接頭辞の一覧は 1 つに保つ。** 照会用と検査用に分けると、`tpl.config.json` に同じような一覧が
   2 つ並び、片方だけ更新されて drift する（TPL-1032）。分けて得られる差は 3 本の PR の 1 件だけだった
 
