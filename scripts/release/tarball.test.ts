@@ -411,6 +411,17 @@ describe("manifestDifferences", () => {
     ).toEqual(["bin"]);
   });
 
+  it("keeps the scope out of a string bin's command, and flags a renamed command", () => {
+    const scoped = (bin: unknown) => ({ name: "@karasu-tools/x", bin });
+    expect(manifestDifferences(scoped("./cli.js"), scoped({ x: "cli.js" }))).toEqual([]);
+    expect(manifestDifferences(scoped({ x: "cli.js" }), scoped({ y: "cli.js" }))).toEqual(["bin"]);
+  });
+
+  it("compares a bin target that is not a string as it is", () => {
+    const withBin = (bin: unknown) => ({ name: "karasu", bin });
+    expect(manifestDifferences(withBin({ karasu: "1" }), withBin({ karasu: 1 }))).toEqual(["bin"]);
+  });
+
   it("finds a dependency or an install script only the registry metadata has", () => {
     const registry = {
       ...packed,

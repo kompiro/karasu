@@ -272,7 +272,7 @@ export async function main(argv: string[]): Promise<void> {
       if (!checks.every(checkPassed)) {
         throw new Error(
           checks.some((check) => check.staged === null)
-            ? "a version of this group is not staged yet: check the release.yml run of the release commit"
+            ? "a version of this group is not staged yet: check the release.yml run of the release commit (a version npm refused as previously published but that is in no queue was unpublished once and needs a new version number)"
             : "a staged version did not pass the check. Do not approve it; reject it and see docs/release.md",
         );
       }
