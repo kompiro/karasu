@@ -987,7 +987,7 @@ export interface DesignCheck {
 
 /**
  * The Design Doc that backs a PR, so its agreed content need not be read again
- * (Issue #3542, `docs/design/high-pr-review-scope.md` 制約・前提). Every rule
+ * (Issue #3542). Every rule
  * falls to "none" when in doubt (TPL-3286): the doc is the one Design Doc at the
  * merge base with main whose 「引き金 Issue」 line links an Issue the PR closes;
  * the PR does not change it; main's tip has the same blob; and every commit on
