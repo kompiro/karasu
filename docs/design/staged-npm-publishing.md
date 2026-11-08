@@ -219,9 +219,9 @@ reject は承認を拒む操作で、この設計が守りたいものの 1 つ�
 
 実装の PR がマージされた直後に、3 パッケージの接続で「Allow `npm publish`」のチェックを外し、stage だけを許可する形にする。接続は消さないので、検証済みの状態が保たれれば 2 日の期限は始まらず、以後のトレインは接続に触らずに stage で出せる。
 
-- 外したら、3 パッケージとも画面で「not yet validated」が出ていないことと、「Allow `npm publish`」と「Allow `npm dist-tag`」が外れていることを確かめる（dist-tag を許可すると、乗っ取られた run が `latest` を動かせる）。状態が画面で分からなければ、未検証として扱う。
+- 外したら、3 パッケージとも画面で「not yet validated」が出ていないことと、「Allow `npm publish`」と「Allow `npm dist-tag`」が外れていることを確かめる（dist-tag を許可すると、乗っ取られた run が `latest` を動かせる）。状態が画面で分からなければ、未検証として扱う（その場合は 3 パッケージとも案 6B になる）。
 - 未検証に戻ったパッケージと、チェックを外せず削除と作成しかできないパッケージは、接続を削除して案 6B に移る。案 6B もマージ直後に削除するので、やり直す作業は無い。
-- 受け入れるリスク: マージから最初のトレインまで、版を上げないパッケージも含めて CI から stage できる経路が開いている（論点 7 の、先に stage する攻撃）。stage した版は承認するまでインストールできず、`pnpm release:approve` は照合に落ちた版を承認せず、計画に無い項目は reject を勧める（案 7C）。画面で承認したときも、公開後の照合がタグと Release を止める（案 7D）。案 6B でも最初のトレインのあとは接続が残るので、差はおもにこの期間である。
+- 受け入れるリスク: マージから最初のトレインまで、版を上げないパッケージも含めて CI から stage できる経路が開いている（論点 7 の、先に stage する攻撃）。stage した版は承認するまでインストールできず、`pnpm release:approve` は照合に落ちた版を承認せず、計画に無い項目は reject を勧める（案 7C）。画面で承認したときも、公開後の照合がタグと Release を止める（案 7D）。案 6B でも版を上げたパッケージの接続は残るので、差はパッケージごとに、次に版を上げるまでの期間である。版を上げないパッケージは、そのあいだ先に stage されうる。`pnpm release:approve` は 3 パッケージの stage のキューを表示するので、気づくのは次のトレインの承認のときである。
 
 #### 案 6B: マージ直後に接続を削除し、リリース PR の直前に作る（2 回の操作）
 
@@ -287,7 +287,7 @@ stage 済みの版と同じ版は stage できない。乗っ取られた run �
 | 3 承認順             | 3B 依存先が npm に載るまで依存元を stage しない        | 順序を注意に頼らない。画面で承認しても崩れない                                           |
 | 4 Issue を閉じる時点 | 版を上げた npm パッケージのタグ + VS Code の結果       | 2 つの workflow が同じ条件で判定できる                                                   |
 | 5 VS Code            | 待たない                                               | 既存の構成のまま動く                                                                     |
-| 6 切り替え           | 6A マージ直後に「Allow `npm publish`」を外す（外せなければ 6B） | 直接 publish の穴を早く塞ぐ。接続を残すので 2 日の期限が始まらない                       |
+| 6 切り替え           | 6A マージ直後に「Allow `npm publish`」を外す（外せなければ 6B） | 直接 publish の穴を早く塞ぐ。編集で検証済みが保たれれば、2 日の期限が始まらない           |
 | 7 tarball の照合     | 7C 手元での照合 + 7D 公開後に CI で照合                | 7C は照合の相手を CI の外に置く。7D は承認の経路を問わずタグの前に照合する               |
 
 ## Related TPLs
@@ -318,7 +318,7 @@ stage 済みの版と同じ版は stage できない。乗っ取られた run �
   - 切り替えられなければ、次の順で作り直す。
     1. 削除から作成までのあいだ、その接続の OIDC の publish と stage は通らない。削除の前に、リリース PR が開いていないことと `release.yml` が走っていないこと（`gh run list --workflow release.yml --status in_progress`）を確かめる。
     2. 接続を削除し、stage と「Allow `npm publish`」の両方を許可して作り直す。実装がマージされるまでは、いまの公開の経路がまだ `npm publish` を使うからである。2 日以内にリハーサルを行う。
-    3. リハーサルが遅れて、実装のマージの前に失効したら（`E404`）、接続を削除して作り直し、リハーサルをやり直す。実装のマージ後に失効していたら、B でその接続を削除して案 6B で進める。実装より先にトレインを出すことになったら、`docs/release.md` の前提どおりリリース PR のマージ直前に作り直す。
+    3. リハーサルを終える前に失効したら（`E404`）、接続を削除して作り直し、リハーサルを続ける。リハーサルを終えたあとの失効では作り直さず、B でその接続を削除して案 6B で進める（stage が検証に数えられなければ、リハーサルのあとも失効する）。実装より先にトレインを出すことになったら、`docs/release.md` の前提どおりリリース PR のマージ直前に作り直す。
 - **A のリハーサル**: Trusted Publisher は environment を条件にしていないので、`spike/3240-stage-publish-rehearsal` で `release.yml` を `workflow_dispatch` すれば本番と同じ OIDC の経路を通る。3 パッケージの版を prerelease（`X.Y.Z-rehearsal.0`、`--tag rehearsal`）にして stage し、次を確かめたら kompiro が reject する（2FA を 3 回入力する。この形で行うことは kompiro が 2026-11-02 に了承した）。リハーサルでは承認しないので、1 回目の run は `karasu-skills` と `@karasu-tools/core` だけを stage する（段の分け方の確認になる）。`karasu` は、spike の版の書き換えを `karasu` だけにした 2 回目の run で stage する（`karasu-skills` の現在の版は npm にあるので、`karasu` が先頭のグループになる）。spike は実装のブランチから切り、版の書き換え、`--tag rehearsal`、`stage.mts` のリリースのコミットと版を上げたパッケージの判定を外すことは spike だけに入れる。`vscode` ジョブは、spike では拡張の版を上げないので公開はしない（Entra の federated credential も `main` しか信頼しない）が、要らないので spike の `release.yml` から外す。
   - 3 パッケージとも OIDC で stage できる。ログに `npm --version` を出す
   - 同じ版をもう一度 stage したときの拒否の形（HTTP status と `code`）。`stage.mts` はこの形だけを stage 済みとして扱う
@@ -346,7 +346,7 @@ stage 済みの版と同じ版は stage できない。乗っ取られた run �
 
 <!-- absent-path-next-line: a file this design doc intends to create (#3240) -->
 4. `scripts/release/approve.mts` と、ルートの `package.json` の `release:approve`。論点 3 の手順（段ごとの承認と `release.yml` の再実行）、論点 7 の照合、notices のプラットフォーム固有の節を除く規則、計画に無い stage 済みの項目の表示、`--dry-run`、`--commit`、`--expect-tag`。照合の処理は `release-confirm.yml` の `verify` と共有する。
-5. `scripts/release/train.mts`: チェックリストに承認の行と、「版を上げる npm パッケージに検証済みの stage 専用の接続があるか。無ければマージの直前に作る」の行を足し、Issue 本文の文言（いまの「`release.yml` が閉じる」など）を直す。Issue を閉じる判定を足す。
+5. `scripts/release/train.mts`: チェックリストに承認の行と、「版を上げる npm パッケージに、失効していない stage 専用の接続があるか。無ければマージの直前に作る」の行を足し、Issue 本文の文言（いまの「`release.yml` が閉じる」など）を直す。Issue を閉じる判定を足す。
 6. テスト: 既存の `scripts/release/*.test.ts` に倣う。計画の読み方、版を上げていないパッケージで止まること、拒否の分類、`npm view` の `E404` とほかの失敗の区別、リリースコミットの求め方、順序の違反の検出、閉じる判定、tarball の中身の照合、照合に落ちた版にタグを打たないこと、計画外の版の検出（`latest` 以外のタグ、以前からある版、取り下げ済みの版）。`release-workflow.test.ts` はいま「Set a git identity」「Collect the tags」と `record` ジョブを検査しているので、書き直す。`release.yml` の `release` ジョブが `contents: read` と `pull-requests: read` だけを足した権限であること、`id-token: write` を持つのが `release` と `vscode` だけであること、`release-confirm.yml` が `id-token` を持たないこと、`verify` が `contents: write` を持たず、`record` が依存を入れないことを確かめる。
 7. `published-packages.mts` は「Collect the tags」が無くなると使われない。コードで使っているのは `release.yml` と自身のテストだけで、ほかに `release-workflow.test.ts` と `docs/release.md` が名指している（6 と 8 で書き直す）。テストごと削除し、knip で残りが無いことを確かめる。
 8. 文書とコメント: `docs/release.md` の「リリースの流れ」（手順 4〜8 の公開の経路・タグ・閉じ方）に、承認、画面で承認する前の `--dry-run`、`release-confirm.yml`、reject したとき、公開後の照合に落ちたとき、CI の経路が使えないときを足す。前提の節は、stage だけを許可する Trusted Publisher の設定、接続が無いパッケージは版を上げるリリース PR のマージ直前に作ること、登録から使うまでに失効しうること（いまの記述を stage に合わせて残す）、package access の設定に書き換える（段階 B と C の操作と同じ内容なので、実装の PR で書く）。`vscode-release.yml` の冒頭と `record` のコメント（`changeset publish` や「Release は `release.yml` が作る」）を直す。
