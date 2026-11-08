@@ -71,7 +71,8 @@ ADR-3486 の決定を引き継ぎ、鍵には次の 2 つを含める。ガー�
 引き継ぐ決定は次のとおり（理由と却下した案は ADR-3486）。
 
 - **鍵:** TPL の本文が `sourcePrefixes` の下で名指すファイルと、名指したテストに対応するソース、
-  それに任意の `scope.paths` の glob。ディレクトリを指すスパンは鍵にしない。存在しないパスも鍵に
+  それに任意の `scope.paths` の glob（取りこぼしが観測された TPL だけが書き、横断的な原則には広い
+  glob を書かない）。ディレクトリを指すスパンは鍵にしない。存在しないパスも鍵に
   残す（tpl-tools ADR-41）
 - **件数:** 重み（変更ファイルごとに、そのファイルを名指す TPL の数の逆数の和）の順に上位 10 件。
   11 件目以降は件数と、全件を出すコマンドだけを示す
@@ -84,7 +85,8 @@ ADR-3486 の決定を引き継ぎ、鍵には次の 2 つを含める。ガー�
   （stacked PR で下の PR のファイルを数えない）。`git worktree list` で head のブランチの worktree を
   探してそこで `tpl` を実行し、`$CLAUDE_PROJECT_DIR` やフックの入力の `cwd` では実行しない。0 件と
   伝えるのは、tpl-tools の標準エラーに `No active TPL names a changed file.` が出たときだけで、
-  この文言は contract test が見張る。worktree が見つからないときやほかの想定外の状態では何も出さない
+  この文言は contract test が見張る。0 件は「当てる TPL が無い」ではなく「この鍵では分からない」と
+  伝え、設計時の `tpl related <topic>` を案内する。worktree が見つからないときやほかの想定外の状態では何も出さない
 - **横断的な原則の TPL:** 鍵では引かない。設計時の `tpl related <topic>` で当てる
 - **人の作成者:** フックは届かず、`pnpm tpl:changed` を思い出すことに頼る。人の作成者が増えたら、
   ADR-3486 が却下した PR へのコメント（CI）を足す
@@ -123,7 +125,7 @@ PR にしか出なかった。
 - **接頭辞:** `functions` と `docs/design` で一覧が変わったのは、10-22〜11-01 の 3 本（#3451・#3462・
   #3469）だけだった。どれもコードと Design Doc を同時に変えた PR で、`docs/design/system-view-grouping.md`
   を名指す TPL-1927 が 1 件増えた。引用はされていない。本文が `docs/design/` を名指す TPL は
-  TPL-1927 と TPL-3126 の 2 つ、`functions/` を名指す TPL も 2 つしかない
+  TPL-1927 と TPL-3126 の 2 つ、`functions/` のファイルを名指す TPL は TPL-1799 の 1 つしかない
 
 絶対値は ADR-3486 の表とは比べられない。今の TPL 本文と tpl-tools の規則（存在しないパスも鍵に
 残す）で数えており、同じ期間でも `gh pr list --search merged:` が返す PR は 147 本（ADR-3486 の
