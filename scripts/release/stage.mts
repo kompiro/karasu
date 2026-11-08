@@ -69,7 +69,12 @@ const isPrerelease = (version: string): boolean => version.includes("-");
 /** Reasons the plan must not be staged; empty when it may. */
 export function planProblems(
   plan: PlannedRelease[][],
-  opts: { npmNames: string[]; bumped: { name: string; version: string }[] | null },
+  opts: {
+    npmNames: string[];
+    bumped: { name: string; version: string }[] | null;
+    /** `--tag`, which replaces the plan's tag for every release. */
+    tag?: string | null;
+  },
 ): string[] {
   return plan.flat().flatMap((release) => {
     const id = `${release.name}@${release.version}`;
@@ -87,7 +92,7 @@ export function planProblems(
         `${id} is not on npm but this release did not bump it, as after an abandoned release. Add a patch changeset for ${release.name} and release again.`,
       );
     }
-    if (isPrerelease(release.version) && release.tag === "latest") {
+    if (isPrerelease(release.version) && (opts.tag ?? release.tag) === "latest") {
       problems.push(`${id} is a prerelease and would be staged under latest.`);
     }
     return problems;
@@ -177,6 +182,7 @@ export function main(argv: string[]): void {
   const problems = planProblems(plan, {
     npmNames: npmPackagesAt(sha).map((pkg) => pkg.name),
     bumped: options.anyCommit ? null : bumpedPackagesAt(sha),
+    tag: options.tag,
   });
   if (problems.length > 0) {
     for (const problem of problems) console.log(`::error::${problem}`);

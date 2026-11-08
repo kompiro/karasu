@@ -66,6 +66,12 @@ describe("planProblems", () => {
       planProblems([[release("karasu", "0.11.0-next.0")]], { npmNames, bumped: null }),
     ).toEqual([expect.stringMatching(/prerelease/)]);
   });
+
+  it("checks the tag that will be used, so --tag can stage a prerelease", () => {
+    const plan = [[release("karasu", "0.11.0-rehearsal.0")]];
+    expect(planProblems(plan, { npmNames, bumped: null, tag: "rehearsal" })).toEqual([]);
+    expect(planProblems(plan, { npmNames, bumped: null, tag: "latest" })).toHaveLength(1);
+  });
 });
 
 describe("stageArgs", () => {
