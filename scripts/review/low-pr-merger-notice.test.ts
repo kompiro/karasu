@@ -85,6 +85,6 @@ describe("parseVerdicts", () => {
     ],
     ["no output at all", ""],
   ])("refuses %s", (_, json) => {
-    expect(() => parseVerdicts(json)).toThrow();
+    expect(() => parseVerdicts(json)).toThrow(/verdicts|JSON/);
   });
 });

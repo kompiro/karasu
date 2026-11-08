@@ -102,9 +102,8 @@ describe("low-pr-merger.yml treats PRs as data (TPL-3673)", () => {
   });
 
   it("keeps the App key in the merge job alone, which runs no repository code", () => {
-    for (const [id, body] of jobs) {
-      if (id !== "merge") expect(body, id).not.toMatch(/secrets\.|environment:/);
-    }
+    const holders = [...jobs].filter(([, body]) => /secrets\.|environment:/.test(body));
+    expect(holders.map(([id]) => id)).toEqual(["merge"]);
     const merge = job("merge");
     expect(merge).toMatch(/^ {4}environment: low-pr-merger$/m);
     expect(merge).toMatch(/^ {4}permissions: \{\}$/m);
