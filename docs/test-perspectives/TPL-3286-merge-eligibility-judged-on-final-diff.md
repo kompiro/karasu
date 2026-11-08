@@ -12,6 +12,7 @@ known_consumers:
   - review-tier
   - adr-auto-merge
   - local-review-record
+  - low-pr-merger
 discovered_from:
   - issue: "#3286"
   - issue: "#3405"
@@ -135,3 +136,6 @@ scope:
 - `scripts/review/local-review-record.test.ts`：記録の無い PR、古い `head`、base の食い違い、main の取り込み以外の
   コミット、`head` の外の修正コミット、対応の無い指摘、Low での Critical / Major の却下・`Waived:`・CLI の省略、
   重大度の無い指摘を Major として扱うこと
+- `scripts/review/low-pr-merger-flow.test.ts`：Low の PR の merger（#3673）が、判定した head の SHA で結論を出すこと、
+  push で head が動いたら待つこと、実際の workflow が `skipped` で skip 用の stub が `success` の PR を通さないこと、
+  結論を出せない PR をマージ可にしないこと
