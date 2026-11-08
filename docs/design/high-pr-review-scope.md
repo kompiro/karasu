@@ -76,8 +76,9 @@ spec の合意だけで段階が下がるのは、renderer・app・examples な�
   merge-base は変わらないので、Review tier は merge-base と `origin/main` の先頭で Design Doc の blob を比べ、違えば
   合意済みとみなさない（厳しい側に倒れる）。main を取り込めば新しい Design Doc で判定し直す。ruleset は
   base が最新であることを求めない（`strict_required_status_checks_policy: false`）ので、検査の後に main が動くと
-  結果は古くなる。そのため summary に使った Design Doc の blob を出し、`/coderabbit-converge` は kompiro に渡す直前に
-  main の先頭の blob と比べて、違えば main を取り込む。渡した後に main で Design Doc が変わる場合は拾わない。
+  結果は古くなる。そのため summary に使った Design Doc の blob を出し、kompiro に渡す直前
+  （High は `/coderabbit-converge`、A1 で Medium になった PR は Medium の渡し方）に main の先頭の blob と比べて、違えば
+  main を取り込む。渡した後に main で Design Doc が変わる場合は拾わない。
   そうした改訂は kompiro がレビューしてマージした Design の PR なので、kompiro は改訂を知っている（TPL-1032）
 - **Design Doc が main にあるだけでは合意とみなさない。** Design Doc は `packages/*` と一緒に Medium の PR で入ることが
   あり、Medium では人間が差分を読まない。合意とみなすのは、作成から main の先頭まで、その Design Doc を変えたすべての
@@ -244,7 +245,7 @@ Design の段階で、PR が変えておらず、merge-base と main の先頭�
    すべて Design の段階か、PR が変えていないか、merge-base と `origin/main` の先頭で blob が同じか）。`check` は、
    根拠があり照合の行を含む記録が HEAD を覆うときに summary の表の上に「`## For kompiro` を読む」と、使った
    Design Doc の blob を出す。High の記録の検査はこのときだけ行い、記録が無くても check は落とさない。
-   `/coderabbit-converge` の渡す手順に、summary の blob と main の先頭の blob の比較を足す
+   `/coderabbit-converge` と Medium の渡す手順に、summary の blob と main の先頭の blob の比較を足す
 4. A2：`docs/process.md` 手順 8 と `docs/process/review.md` に、Design Doc との照合を足す。subagent に渡すのは
    Design Doc と base との差分だけにし、実装の文脈を渡さない。記録のレビュアーに `design` を足す
    （`local-review-record.ts`）。coderabbit-rounds.md の「記録済みの決定」に根拠の Design Doc を足し、review.md の
