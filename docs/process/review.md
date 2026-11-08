@@ -136,9 +136,10 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
   | 実装が Design Doc を外れている | 実装を直す。対応は `fixed in <sha>` |
   | Design Doc の方が実態に合わない（実装して分かった制約など） | 直さずに `## For Reviewers` 節に載せる。記録済みの決定を変えるので、coderabbit-rounds.md「人間に確認する指摘の判定」と同じ扱い。対応は `declined: asked in For Reviewers` |
 
-- ずれが無いときの行は `| design | Trivial | <Design Doc のパス> | No deviation | no deviation |` と書く
+- ずれが無いときの行は `| <番号> | design | Trivial | <Design Doc のパス> | No deviation | no deviation |` と書く
+  （`local-review-record.ts render` の findings なら `{reviewer: "design", sev: "Trivial", where: <パス>, finding: "No deviation", disposition: "no deviation"}`）
 - 照合は自己申告で、Review tier は中身を確かめない。確かめるのは形だけで、PR 本文に `## For Reviewers` 節があり、
-  記録が `Waived:` でなく、`design` の行を持ち、Medium の記録と同じ検査を通る（HEAD を覆い、どの行にも対応がある）
+  その節が空でなく（論点が無ければ「None」）、記録が `Waived:` でなく、`design` の行を持ち、Medium の記録と同じ検査を通る（HEAD を覆い、どの行にも対応がある）
   ことである。満たせば読む範囲を絞る（上の表の 1 行目）。満たさなくても check は落ちず、範囲が絞られないだけで、
   summary が理由を出す
 - 記録の後にコミットを足したら、照合もそのコミットに当て直す。記録の `head` が HEAD を覆わなくなると、範囲は絞られない

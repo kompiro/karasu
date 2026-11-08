@@ -1522,6 +1522,23 @@ describe("tierSummary with a backing Design Doc (#3542)", () => {
     expect(text).not.toContain("High files below");
   });
 
+  it("does not narrow when more files must still be read than the rows listed", () => {
+    const many = Array.from({ length: 201 }, (_, i) => ({
+      path: `packages/nest/src/${i}.test.ts`,
+      tier: "low" as const,
+      boundary: true,
+      narrowable: false,
+    }));
+    const text = tierSummary({
+      effective: "high",
+      trustedAuthor: true,
+      files: [files[0], ...many],
+      design: { backing: backed, checked: true },
+    });
+    expect(text).toContain("but the reading is not narrowed: more files must still be read");
+    expect(text).toContain("The reviewer reads the High files below");
+  });
+
   it("says so when nothing but the section needs reading", () => {
     const text = tierSummary({
       effective: "high",
@@ -1593,6 +1610,10 @@ describe("designCheckGap (#3542)", () => {
     expect(gap(withSection(record([DESIGN_ROW])))).toBeNull();
   });
 
+  it("reads a section saved with CRLF line ends", () => {
+    expect(gap(withSection(record([DESIGN_ROW])).replace(/\n/g, "\r\n"))).toBeNull();
+  });
+
   it.each([
     ["the section is missing", record([DESIGN_ROW]), "no ## For Reviewers section"],
     [
@@ -1600,7 +1621,12 @@ describe("designCheckGap (#3542)", () => {
       `<!--\n## For Reviewers\n-->\n${record([DESIGN_ROW])}`,
       "no ## For Reviewers section",
     ],
-    ["there is no record", "## For Reviewers\n", "no local review record"],
+    ["there is no record", "## For Reviewers\n\nNone.\n", "no local review record"],
+    [
+      "the section holds only the template's comment",
+      `## For Reviewers\n\n<!-- On a High PR... -->\n\n## Local review\n${record([DESIGN_ROW])}`,
+      "is empty",
+    ],
     ["the record has no design row", withSection(record([])), "no design row"],
     ["the record is waived", withSection(record([DESIGN_ROW], "Waived: by hand")), "waived"],
     [

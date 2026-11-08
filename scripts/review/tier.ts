@@ -1096,14 +1096,16 @@ export function tierSummary(input: {
             ? `it has more High files than the ${SUMMARY_ROWS} rows listed`
             : null;
     const backing = input.design?.backing;
+    const kept = input.files.filter((f) => f.boundary || (f.tier === "high" && !f.narrowable));
+    // A list too long to show whole would leave some of these unread with no word of it.
+    const narrowed =
+      backing?.state === "backed" && input.design?.checked === true && kept.length <= SUMMARY_ROWS;
     if (why !== null) {
       lines.push(
         `The PR is High and ${why}. The reviewer reads the whole diff and the PR's \`## For Reviewers\` section.`,
         "",
       );
-    } else if (backing?.state === "backed" && input.design?.checked) {
-      // The table lists every High file (`why` above), so these fit in it too.
-      const kept = input.files.filter((f) => f.boundary || (f.tier === "high" && !f.narrowable));
+    } else if (narrowed && backing?.state === "backed") {
       lines.push(
         `The PR is High and the agreed Design Doc ${summaryPath(backing.path)} ` +
           `(blob <code>${backing.blob.slice(0, 12)}</code>) backs it. The reviewer reads the PR's ` +
@@ -1113,18 +1115,18 @@ export function tierSummary(input: {
         "",
         ...(kept.length === 0
           ? ["No file needs reading beyond the section."]
-          : [
-              "Files still read:",
-              "",
-              ...kept.slice(0, SUMMARY_ROWS).map((f) => `- ${summaryPath(f.path)}`),
-            ]),
+          : ["Files still read:", "", ...kept.map((f) => `- ${summaryPath(f.path)}`)]),
         "",
       );
     } else {
       if (backing?.state === "backed") {
         lines.push(
           `The agreed Design Doc ${summaryPath(backing.path)} backs the PR, but the reading is not ` +
-            `narrowed: ${summaryText(input.design?.why ?? "the conformance check was not read")}.`,
+            `narrowed: ${summaryText(
+              input.design?.checked
+                ? `more files must still be read than the ${SUMMARY_ROWS} rows listed`
+                : (input.design?.why ?? "the conformance check was not read"),
+            )}.`,
           "",
         );
       } else if (backing?.state === "none") {
@@ -1415,8 +1417,13 @@ function designDocFacts(mergeBase: string): DesignDocFacts {
  * narrowed (Issue #3542).
  */
 export function designCheckGap(body: string, parsed: ParseResult, facts: GitFacts): string | null {
-  if (!/^## For Reviewers[ \t]*$/m.test(visibleBody(body))) {
-    return "the PR body has no ## For Reviewers section";
+  // The section's own text, up to the next `## ` heading; CRLF from the web editor too.
+  const section = /^## For Reviewers[ \t]*\r?$([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(
+    visibleBody(body),
+  );
+  if (section === null) return "the PR body has no ## For Reviewers section";
+  if (section[1].trim() === "") {
+    return "the PR body's ## For Reviewers section is empty (write None when there is nothing)";
   }
   if ("error" in parsed) return parsed.error;
   if (parsed.record.waived !== undefined) return "the local review record is waived";
@@ -1622,14 +1629,18 @@ export function checkPr(pr: string, head?: string): PrCheck {
         changed: files.map((f) => f.path),
         facts: designDocFacts(mergeBaseOf(baseRef, view.headRefOid)),
       });
-      const why =
-        backing.state === "backed"
-          ? designCheckGap(
-              view.body ?? "",
-              parseRecord(view.body ?? ""),
-              gitFacts(baseRef, view.headRefOid),
-            )
-          : null;
+      let why: string | null = null;
+      if (backing.state === "backed") {
+        try {
+          why = designCheckGap(
+            view.body ?? "",
+            parseRecord(view.body ?? ""),
+            gitFacts(baseRef, view.headRefOid),
+          );
+        } catch (e) {
+          why = `the local review record could not be checked: ${String(e).split("\n")[0]}`;
+        }
+      }
       design = {
         backing,
         checked: backing.state === "backed" && why === null,
