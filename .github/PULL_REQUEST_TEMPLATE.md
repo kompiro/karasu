@@ -62,9 +62,10 @@ but Claude's PRs keep it.
 <!--
 On a High PR, the points that need the reviewer's decision (docs/process/review.md
 "High の PR で人間が読むもの"): findings that would change a recorded decision,
-and what the author wants the reviewer to decide. At most 3 unanswered ones at a
-time, each with the point, the record it touches, the options, and a link to
-the thread or comment. Write "None" when there is nothing, "N/A" below High.
+deviations where the Design Doc no longer fits (docs/process/review.md
+"Design Doc との照合"), and what the author wants the reviewer to decide. At
+most 3 unanswered ones at a time, each with the point, the record it touches,
+the options, and a link to the thread or comment. Write "None" when there is nothing, "N/A" below High.
 -->
 
 ## How to revert
