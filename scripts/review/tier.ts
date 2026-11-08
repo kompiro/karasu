@@ -43,6 +43,7 @@ import {
   isTestFile,
   isTestInput,
   TEST_GLOBS,
+  visibleBody,
   weakensTests,
 } from "./test-changes.ts";
 
@@ -439,10 +440,13 @@ export interface Classification {
   /** Why the tier is what it is, one line per cause, for the check's log. */
   reasons: string[];
   /**
-   * Every changed file with its own tier, strictest first (Issue #3543), and
-   * whether it is a security change: one that asks for `/security-review`.
+   * Every changed file with its own tier, strictest first (Issue #3543). For the
+   * reading an agreed Design Doc narrows (Issue #3542): `boundary` when it is on
+   * a security boundary, which is always read, and `narrowable` when it is a
+   * decision or language-behavior path off the boundary, whose agreed content
+   * need not be read again.
    */
-  files: { path: string; tier: Tier; security: boolean }[];
+  files: { path: string; tier: Tier; boundary: boolean; narrowable: boolean }[];
 }
 
 /** 1-based inclusive line range of the YAML frontmatter, or null when there is none. */
@@ -841,6 +845,32 @@ function fileTier(
 }
 
 /**
+ * The paths whose content a Design Doc agrees on: decisions (spec, concepts,
+ * process, rules) and the code that carries the language's behavior. Everything
+ * else that is High, the review and release machinery or a dependency change,
+ * is read even when a Design Doc backs the PR: its wording can match the design
+ * while its behavior does not (Issue #3542, kompiro's decision of 2026-11-02).
+ */
+const NARROWABLE_GLOBS: readonly string[] = [
+  "docs/spec/**",
+  "docs/concepts*.md",
+  "docs/process.md",
+  "docs/process/**",
+  ".claude/rules/**",
+  ...LANGUAGE_TIER_GLOBS,
+];
+
+/**
+ * Whether `f` is on a security boundary for the narrowed reading: by its path
+ * alone, test files included, so no exception keeps such a file out of the read.
+ */
+const onBoundary = (f: ChangedFile): boolean =>
+  f.path === UNREADABLE_PATH ||
+  isSinkChange(f) ||
+  matchesAny(f.path, SECURITY_GLOBS) ||
+  (isTestFile(f.path) && isSecurityTest(f.path));
+
+/**
  * Whether the change to `f` asks for `/security-review`. A test file asks for one
  * only when it weakens a security-boundary test, as its tier does: adding a test
  * is not a security change.
@@ -877,7 +907,13 @@ export function classifyChange(input: {
     const t = fileTier(f, promotion);
     const name = f.path === UNREADABLE_PATH ? UNREADABLE_NAME : f.path;
     if (rank(t) > rank("low")) reasons.push(`${name}: ${t}`);
-    files.push({ path: name, tier: t, security: isSecurityChange(f) });
+    const boundary = onBoundary(f);
+    files.push({
+      path: name,
+      tier: t,
+      boundary,
+      narrowable: !boundary && matchesAny(f.path, NARROWABLE_GLOBS),
+    });
     tier = stricter(tier, t);
   }
   // A stable sort keeps the diff's order within a tier.
@@ -890,7 +926,7 @@ export function classifyChange(input: {
 
   return {
     tier,
-    securityReview: files.some((f) => f.security),
+    securityReview: input.files.some(isSecurityChange),
     reasons,
     files,
   };
@@ -905,15 +941,19 @@ const ISSUE_LINK = /\]\(https:\/\/github\.com\/kompiro\/karasu\/issues\/(\d+)\)/
 
 /**
  * The Issues a Design Doc's 「引き金 Issue」 line links to, read from its metadata
- * (above the first `## ` heading). Only links count: a bare `#N` in the line's
- * prose names a related Issue, not a trigger.
+ * (above the first `## ` heading). Only links outside full-width parentheses
+ * count: a bare `#N`, or a link in the line's （…） prose, names a related Issue,
+ * not a trigger.
  */
 export function triggerIssues(text: string): number[] {
   const numbers = new Set<number>();
   for (const line of text.split("\n")) {
     if (/^## /.test(line)) break;
     const m = TRIGGER_LINE.exec(line);
-    if (m) for (const l of m[1].matchAll(ISSUE_LINK)) numbers.add(Number(l[1]));
+    // A link inside （…） is prose about the trigger, not one: 「（[#2917](…) の再点検で切り出した）」.
+    if (m)
+      for (const l of m[1].replace(/（[^）]*）/g, "").matchAll(ISSUE_LINK))
+        numbers.add(Number(l[1]));
   }
   return [...numbers];
 }
@@ -937,6 +977,13 @@ export interface DesignDocFacts {
 export type Backing =
   | { state: "backed"; path: string; blob: string }
   | { state: "none"; reason: string };
+
+/** On a High PR: the backing, and whether the conformance check covers HEAD, with why not. */
+export interface DesignCheck {
+  backing: Backing;
+  checked: boolean;
+  why?: string;
+}
 
 /**
  * The Design Doc that backs a PR, so its agreed content need not be read again
@@ -1028,13 +1075,13 @@ const SUMMARY_ROWS = 200;
 export function tierSummary(input: {
   effective: Tier;
   trustedAuthor: boolean;
-  files: readonly { path: string; tier: Tier; security?: boolean }[];
+  files: readonly { path: string; tier: Tier; boundary?: boolean; narrowable?: boolean }[];
   /**
-   * On a High PR: the Design Doc that backs it, and whether a local review record
-   * with a `design` row covers HEAD (Issue #3542). The reading is narrowed only
-   * when both hold.
+   * On a High PR: the Design Doc that backs it, and whether the conformance check
+   * covers HEAD (Issue #3542), with why not. The reading is narrowed only when
+   * both hold.
    */
-  design?: { backing: Backing; checked: boolean } | null;
+  design?: DesignCheck | null;
 }): string {
   const lines = ["### Files by tier", ""];
   if (input.effective === "high") {
@@ -1055,23 +1102,29 @@ export function tierSummary(input: {
         "",
       );
     } else if (backing?.state === "backed" && input.design?.checked) {
-      const security = input.files.filter((f) => f.security);
+      // The table lists every High file (`why` above), so these fit in it too.
+      const kept = input.files.filter((f) => f.boundary || (f.tier === "high" && !f.narrowable));
       lines.push(
         `The PR is High and the agreed Design Doc ${summaryPath(backing.path)} ` +
           `(blob <code>${backing.blob.slice(0, 12)}</code>) backs it. The reviewer reads the PR's ` +
-          "`## For Reviewers` section and the security-boundary files, and opens the other files only " +
-          "to check what the section points to.",
+          "`## For Reviewers` section and the files listed here (security boundaries, and High files " +
+          "outside the decision and language-behavior paths), and opens the other files only to check " +
+          "what the section points to.",
         "",
-        ...(security.length === 0
-          ? ["No file is on a security boundary."]
-          : ["Security-boundary files:", "", ...security.map((f) => `- ${summaryPath(f.path)}`)]),
+        ...(kept.length === 0
+          ? ["No file needs reading beyond the section."]
+          : [
+              "Files still read:",
+              "",
+              ...kept.slice(0, SUMMARY_ROWS).map((f) => `- ${summaryPath(f.path)}`),
+            ]),
         "",
       );
     } else {
       if (backing?.state === "backed") {
         lines.push(
-          `The agreed Design Doc ${summaryPath(backing.path)} backs the PR, but no local review record ` +
-            "with a `design` row covers HEAD, so the reading is not narrowed.",
+          `The agreed Design Doc ${summaryPath(backing.path)} backs the PR, but the reading is not ` +
+            `narrowed: ${summaryText(input.design?.why ?? "the conformance check was not read")}.`,
           "",
         );
       } else if (backing?.state === "none") {
@@ -1332,8 +1385,9 @@ function designDocFacts(mergeBase: string): DesignDocFacts {
       .filter((l) => l !== "");
   return {
     docsAtMergeBase: () =>
-      git("ls-tree", "--name-only", mergeBase, "docs/design/")
-        .split("\n")
+      // `-z`: an unquoted path, so a non-ASCII name is matched, not dropped.
+      git("ls-tree", "-z", "--name-only", mergeBase, "docs/design/")
+        .split("\0")
         .filter((path) => DESIGN_DOC.test(path))
         .map((path) => ({ path, text: gitShow(mergeBase, path) ?? "" })),
     blobs: (path) => ({ mergeBase: blob(mergeBase, path), tip: blob("origin/main", path) }),
@@ -1354,16 +1408,23 @@ function designDocFacts(mergeBase: string): DesignDocFacts {
 }
 
 /**
- * Whether a local review record covers HEAD and holds the Design Doc
- * conformance check (a `design` row). On High the check never fails on it: it
- * only decides whether the reading is narrowed (Issue #3542).
+ * Why the Design Doc conformance check does not cover HEAD, or null when it
+ * does: the body has a `## For Reviewers` section, and a local review record that
+ * is not waived, holds a `design` row, and passes as a Medium record would. On
+ * High the check never fails on this: it only decides whether the reading is
+ * narrowed (Issue #3542).
  */
-function designRecordCovers(parsed: ParseResult, facts: GitFacts): boolean {
-  return (
-    "record" in parsed &&
-    parsed.record.findings.some(isDesignRow) &&
-    verifyRecord(parsed, "medium", facts).length === 0
-  );
+export function designCheckGap(body: string, parsed: ParseResult, facts: GitFacts): string | null {
+  if (!/^## For Reviewers[ \t]*$/m.test(visibleBody(body))) {
+    return "the PR body has no ## For Reviewers section";
+  }
+  if ("error" in parsed) return parsed.error;
+  if (parsed.record.waived !== undefined) return "the local review record is waived";
+  if (!parsed.record.findings.some(isDesignRow)) {
+    return "the local review record has no design row (docs/process/review.md, Design Doc との照合)";
+  }
+  const errors = verifyRecord(parsed, "medium", facts);
+  return errors.length === 0 ? null : `the local review record does not pass: ${errors[0]}`;
 }
 
 /** Git answers for {@link verifyRecord}, read from the checkout the CLI runs in. */
@@ -1476,7 +1537,7 @@ export type PrCheck =
       /** Whether the author is on the trusted list: the job summary reads the rest whole. */
       trustedAuthor: boolean;
       /** On a High PR, the Design Doc that backs it and whether its conformance check covers HEAD. */
-      design: { backing: Backing; checked: boolean } | null;
+      design: DesignCheck | null;
       /** Rules the PR breaks: it has to change before it passes. */
       errors: string[];
       /** What could not be read: the PR may pass on a rerun. */
@@ -1551,19 +1612,40 @@ export function checkPr(pr: string, head?: string): PrCheck {
         `Disable it with gh pr merge ${pr} --disable-auto.`,
     );
   }
-  let design: { backing: Backing; checked: boolean } | null = null;
+  let design: DesignCheck | null = null;
   if (tier === "high") {
-    const backing = backingDesignDoc({
-      baseRefName: view.baseRefName,
-      closes: closedIssues(view),
-      changed: files.map((f) => f.path),
-      facts: designDocFacts(mergeBaseOf(baseRef, view.headRefOid)),
+    // Advisory: a git failure here gives no backing rather than failing the check.
+    try {
+      const backing = backingDesignDoc({
+        baseRefName: view.baseRefName,
+        closes: closedIssues(view),
+        changed: files.map((f) => f.path),
+        facts: designDocFacts(mergeBaseOf(baseRef, view.headRefOid)),
+      });
+      const why =
+        backing.state === "backed"
+          ? designCheckGap(
+              view.body ?? "",
+              parseRecord(view.body ?? ""),
+              gitFacts(baseRef, view.headRefOid),
+            )
+          : null;
+      design = {
+        backing,
+        checked: backing.state === "backed" && why === null,
+        ...(why ? { why } : {}),
+      };
+    } catch (e) {
+      design = {
+        backing: { state: "none", reason: `git could not answer: ${String(e).split("\n")[0]}` },
+        checked: false,
+      };
+    }
+    Object.assign(summary, {
+      designDoc: design.backing,
+      designChecked: design.checked,
+      designGap: design.why,
     });
-    const checked =
-      backing.state === "backed" &&
-      designRecordCovers(parseRecord(view.body ?? ""), gitFacts(baseRef, view.headRefOid));
-    design = { backing, checked };
-    Object.assign(summary, { designDoc: backing, designChecked: checked });
   }
   if (tier !== "high") {
     const mergeBase = mergeBaseOf(baseRef, view.headRefOid);

@@ -48,7 +48,7 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 | Low | `docs/test-perspectives/**`・`docs/guide/**`・新しいテストファイル（既存のテストファイルの変更は Medium）、新しい ADR、ADR の昇格（Design Doc の削除、リンクの張り替え、ADR へのリンクの追加）、既存 ADR の frontmatter、ADR の生成物と TPL の索引だけを変える再生成 PR | 回さない | 記録と CI が通れば auto-merge（再生成 PR は記録なしで、スクリプトが REST でマージする） |
 | Design | `docs/design/**` | ready の直後に 1 回だけ。ゲートにしない | 記録と人間のレビュー |
 | Medium | ほかのすべて（`packages/*`・`docs/acceptance/**`・`examples/**`・既存 ADR の本文など） | 回さない | 記録と、人間の判断。描画やレイアウトが変わる PR（`rendering-change` ラベル、下）は人間が preview で動作を確かめる |
-| High | workflow・release・依存の変更・`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`docs/process/**`・`.claude/rules/**`・`.coderabbit.yaml`・レビューの仕組み（`scripts/review/**`・`scripts/coderabbit/**`・`scripts/render-equivalence/**`・`.claude/skills/**` など）・セキュリティの境界（下）・言語の挙動（下） | Critical / Major の未対応が無くなるまで回す（再レビューは 3 回まで） | 人間が High のファイルと `## For Reviewers` 節を読む。合意済みの Design Doc が裏付ける PR は、節とセキュリティの境界のファイルを読む（下の「High の PR で人間が読むもの」） |
+| High | workflow・release・依存の変更・`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`docs/process/**`・`.claude/rules/**`・`.coderabbit.yaml`・レビューの仕組み（`scripts/review/**`・`scripts/coderabbit/**`・`scripts/render-equivalence/**`・`.claude/skills/**` など）・セキュリティの境界（下）・言語の挙動（下） | Critical / Major の未対応が無くなるまで回す（再レビューは 3 回まで） | 人間が High のファイルと `## For Reviewers` 節を読む。合意済みの Design Doc が裏付ける PR は、節と、summary が並べるファイル（セキュリティの境界と、決定・言語の挙動のパスの外の High のファイル）を読む（下の「High の PR で人間が読むもの」） |
 
 - **セキュリティの境界**：信頼できない入力（他人の `.krs`、URL、webview のメッセージ、ディスクのパス）を受ける
   コード。`packages/nest/**`、`karasu serve` と `render` のエンドポイント・ファイルアクセス、`packages/core/src/fs/**`、
@@ -89,7 +89,7 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 
 | PR | kompiro が読むもの |
 | --- | --- |
-| 合意済みの Design Doc が裏付け、`design` の行を含むローカルレビューの記録が HEAD を覆っている | `## For Reviewers` 節と、セキュリティの境界のファイル（summary が並べる）。ほかの差分は、節が指す箇所を確かめるときに開く |
+| 合意済みの Design Doc が裏付け、Design Doc との照合が HEAD を覆っている（下の「Design Doc との照合」） | `## For Reviewers` 節と、summary が「Files still read」に並べるファイル。ほかの差分は、節が指す箇所を確かめるときに開く |
 | それ以外 | 表の High のファイルと `## For Reviewers` 節 |
 
 - **合意済みの Design Doc** は Review tier が git の履歴だけで決める。PR の base が `main` で、PR が閉じる Issue
@@ -98,6 +98,10 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
   （`docs/design/**` と Low のファイルだけ）で、名前を変えた履歴が無いこと。どれかが欠ければ裏付けは無く、summary が
   理由を出す。Design Doc を変えた High や Medium の PR では、kompiro はその Design Doc を読んでいないので、それ以降
   その Design Doc は裏付けにならない
+- **読まなくてよくなるのは、決定のパス（`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`docs/process/**`・
+  `.claude/rules/**`）と言語の挙動のコードだけである。** どちらも中身を Design Doc で合意し、ずれは照合が拾う。
+  セキュリティの境界（テストファイルも含む）と、それ以外の High（レビューやリリースの仕組み、依存の変更など）は、
+  文面が合意どおりでも挙動を確かめる必要があるので読む
 - **kompiro に渡す直前に、summary が出した Design Doc の blob と `git rev-parse origin/main:<path>` を比べる。** 違えば
   main を取り込んで Review tier を走り直させる（ruleset は base に追いついていることを求めないので、検査の後に main で
   Design Doc が変わると結果が古くなる）。渡した後の変化は拾わない。その改訂は kompiro がマージした Design の PR である
@@ -132,8 +136,11 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
   | 実装が Design Doc を外れている | 実装を直す。対応は `fixed in <sha>` |
   | Design Doc の方が実態に合わない（実装して分かった制約など） | 直さずに `## For Reviewers` 節に載せる。記録済みの決定を変えるので、coderabbit-rounds.md「人間に確認する指摘の判定」と同じ扱い。対応は `declined: asked in For Reviewers` |
 
-- 照合は自己申告で、Review tier は中身を確かめない。確かめるのは、`design` の行を含む記録が HEAD を覆っているか
-  だけで、覆っていれば読む範囲を絞る（上の表の 1 行目）。覆っていなくても check は落ちず、範囲が絞られないだけになる
+- ずれが無いときの行は `| design | Trivial | <Design Doc のパス> | No deviation | no deviation |` と書く
+- 照合は自己申告で、Review tier は中身を確かめない。確かめるのは形だけで、PR 本文に `## For Reviewers` 節があり、
+  記録が `Waived:` でなく、`design` の行を持ち、Medium の記録と同じ検査を通る（HEAD を覆い、どの行にも対応がある）
+  ことである。満たせば読む範囲を絞る（上の表の 1 行目）。満たさなくても check は落ちず、範囲が絞られないだけで、
+  summary が理由を出す
 - 記録の後にコミットを足したら、照合もそのコミットに当て直す。記録の `head` が HEAD を覆わなくなると、範囲は絞られない
 
 #### バグ修正のテストと、既存のテストの変更

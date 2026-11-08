@@ -202,8 +202,8 @@ PR 本文のローカルレビューの記録に、このラウンドまでの C
 `coderabbit`、ラウンドの CLI の指摘は `cli`。`docs/process/review.md`「ローカルレビューの記録」）。記録を
 書き直したら、Review tier が走り直して記録が HEAD を覆うのを待つ。
 
-Review tier の job summary が合意済みの Design Doc を挙げていれば（`gh pr checks <pr>` の Review tier の run の
-summary、または `node scripts/review/tier.ts check --pr <pr>` の `designDoc`）、その blob を
+合意済みの Design Doc が PR を裏付けていれば（`node scripts/review/tier.ts check --pr <pr>` が出す `designDoc` が
+`backed`。Review tier の run の summary にも出る）、その blob を
 `git fetch origin main && git rev-parse origin/main:<path>` と比べる。違えば main を取り込んで push し、上の「main の
 取り込み」に従う（`docs/process/review.md`「High の PR で人間が読むもの」）。PushNotification ツールが使えれば 1 行で通知し、
 最後のメッセージに次をまとめる。
