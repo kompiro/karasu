@@ -28,6 +28,7 @@
  * Runs on Node's type stripping (the record job installs nothing), so it uses
  * erasable TypeScript only and imports nothing but node builtins and siblings.
  */
+import { createHash } from "node:crypto";
 import { appendFileSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -236,11 +237,20 @@ function verify(argv: string[]): void {
     runOk("pnpm", ["pack", "--pack-destination", ours], join(tree, pkg.dir));
     const theirs = mkdtempSync(join(tmpdir(), "karasu-npm-"));
     runOk("npm", ["pack", packageTag(pkg), "--ignore-scripts", "--pack-destination", theirs]);
-    const diff = compareTarballs(
-      readTarball(readFileSync(onlyTarball(ours))),
-      readTarball(readFileSync(onlyTarball(theirs))),
-      platform,
-    );
+    const expected = readTarball(readFileSync(onlyTarball(ours)));
+    // A published tarball the readers refuse is reported like a mismatch: it is
+    // live on npm, and a refusal is what a crafted archive would produce. A
+    // failure to build or fetch, above, stops the run instead (TPL-2804).
+    let published: ReturnType<typeof readTarball>;
+    try {
+      published = readTarball(readFileSync(onlyTarball(theirs)));
+    } catch (error) {
+      mismatches.push(
+        `${packageTag(pkg)}: the published tarball could not be read safely (${(error as Error).message}).`,
+      );
+      continue;
+    }
+    const diff = compareTarballs(expected, published, platform);
     if (isSame(diff)) verified.push(packageTag(pkg));
     else mismatches.push(describeDifference(packageTag(pkg), diff));
   }
@@ -294,7 +304,11 @@ function record(argv: string[]): void {
   if (failures !== "") {
     commentOnce(
       issue,
-      marker("failed", sha),
+      // A new failure on the same commit is a new comment.
+      marker(
+        "failed",
+        `${sha}:${createHash("sha256").update(failures).digest("hex").slice(0, 12)}`,
+      ),
       [
         "The published npm tarballs did not pass the check against the release commit (#3240). Nothing was tagged for these versions, and this Issue stays open. See docs/release.md for what to do.",
         "",

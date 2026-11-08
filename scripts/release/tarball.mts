@@ -12,8 +12,12 @@
  * differ between environments. Files are compared by path and content.
  *
  * Runs on Node's type stripping, so it uses erasable TypeScript only and
- * imports nothing but node builtins.
+ * imports nothing but node builtins. Reading a tarball also loads the node-tar
+ * that the npm CLI on PATH bundles (see `readTarball`).
  */
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { createRequire } from "node:module";
+import { delimiter, dirname, join } from "node:path";
 import { gunzipSync } from "node:zlib";
 
 /** Path inside the package (the leading `package/` removed) → content. */
@@ -22,42 +26,60 @@ export type TarballFiles = Map<string, Buffer>;
 const BLOCK = 512;
 
 /*
- * The reader is strict on purpose. npm extracts tarballs with node-tar, and a
- * counterfeit could hide a file from a lenient reader that node-tar still
- * extracts (an entry after a single zero block, a header with a bad checksum
- * that node-tar skips and then reads its data as headers). Anything this reader
- * might interpret differently from node-tar is rejected instead of guessed at,
- * so the check fails rather than passing a tarball it did not fully read.
+ * A tarball is read twice, by two independent readers, and passes only if both
+ * see the same files (`readTarball`):
+ *
+ * - node-tar, the library npm extracts packages with, loaded from the npm CLI
+ *   itself and run in strict mode, so a warning is a failure;
+ * - the strict reader below, which rejects anything it might interpret
+ *   differently from node-tar instead of guessing.
+ *
+ * A counterfeit has to hide a file from the check while npm still extracts it.
+ * Reviews of a single hand-written reader found such archives (an entry after
+ * one zero block, a checksum node-tar refuses and then reads the data as
+ * headers, a newline inside a pax value that node-tar splits on). To pass now,
+ * an archive has to read the same way in both readers.
  */
 
 /** pax records that only carry metadata; anything else is refused. */
-const PAX_METADATA = new Set(["path", "mtime", "atime", "ctime", "uid", "gid", "uname", "gname"]);
+const PAX_METADATA: Record<string, RegExp> = {
+  path: /^[^\n\0]+$/,
+  mtime: /^[0-9]+(\.[0-9]+)?$/,
+  atime: /^[0-9]+(\.[0-9]+)?$/,
+  ctime: /^[0-9]+(\.[0-9]+)?$/,
+  uid: /^[0-9]+$/,
+  gid: /^[0-9]+$/,
+  uname: /^[^\n\0]*$/,
+  gname: /^[^\n\0]*$/,
+};
 
+/** A NUL-terminated header field; fails if anything follows the first NUL. */
 function readString(block: Buffer, offset: number, length: number): string {
   const raw = block.subarray(offset, offset + length);
   const end = raw.indexOf(0);
-  return (end === -1 ? raw : raw.subarray(0, end)).toString("utf8");
+  if (end !== -1 && !raw.subarray(end).every((byte) => byte === 0)) {
+    throw new Error("tar header field has data after its terminating NUL");
+  }
+  const text = (end === -1 ? raw : raw.subarray(0, end)).toString("utf8");
+  if (text.includes("\n")) throw new Error("tar header field contains a newline");
+  return text;
 }
 
 function readOctal(block: Buffer, offset: number, length: number): number {
   if (block[offset] & 0x80) throw new Error("base-256 numbers in tar headers are not supported");
-  const text = readString(block, offset, length).trim();
+  const raw = block.subarray(offset, offset + length).toString("latin1");
+  const text = raw.replace(/[\0 ]+$/, "").replace(/^ +/, "");
   if (text === "") return 0;
   if (!/^[0-7]+$/.test(text))
-    throw new Error(`malformed tar header number: ${JSON.stringify(text)}`);
+    throw new Error(`malformed tar header number: ${JSON.stringify(raw)}`);
   return Number.parseInt(text, 8);
 }
 
 function checkHeader(header: Buffer): void {
-  let unsigned = 0;
-  let signed = 0;
-  for (let i = 0; i < BLOCK; i++) {
-    const byte = i >= 148 && i < 156 ? 0x20 : header[i];
-    unsigned += byte;
-    signed += byte > 127 ? byte - 256 : byte;
-  }
-  const stored = readOctal(header, 148, 8);
-  if (stored !== unsigned && stored !== signed) throw new Error("tar header checksum mismatch");
+  // node-tar accepts the unsigned sum only, so a signed one must fail here too.
+  let sum = 0;
+  for (let i = 0; i < BLOCK; i++) sum += i >= 148 && i < 156 ? 0x20 : header[i];
+  if (readOctal(header, 148, 8) !== sum) throw new Error("tar header checksum mismatch");
   if (header.toString("latin1", 257, 265) !== "ustar\u000000") {
     throw new Error("only POSIX ustar tar headers are supported");
   }
@@ -77,8 +99,14 @@ function parsePax(data: Buffer): Record<string, string> {
     const eq = record.indexOf("=");
     if (eq <= 0) throw new Error("malformed pax header");
     const key = record.slice(0, eq);
-    if (!PAX_METADATA.has(key)) throw new Error(`unsupported pax record: ${JSON.stringify(key)}`);
-    records[key] = record.slice(eq + 1);
+    const value = record.slice(eq + 1);
+    const allowed = Object.hasOwn(PAX_METADATA, key) ? PAX_METADATA[key] : null;
+    if (allowed === null) throw new Error(`unsupported pax record: ${JSON.stringify(key)}`);
+    // node-tar splits pax data on newlines, so one inside a value could carry
+    // a record only node-tar sees.
+    if (!allowed.test(value)) throw new Error(`malformed pax ${key} record`);
+    if (Object.hasOwn(records, key)) throw new Error(`repeated pax record: ${key}`);
+    records[key] = value;
     offset = end;
   }
   return records;
@@ -96,14 +124,20 @@ export function packagePath(entryPath: string): string | null {
   return rest.join("/");
 }
 
-/**
- * Every regular file of a `.tgz`. Fails on an entry it cannot place safely and
- * on any archive it cannot read the way node-tar would (see above).
- */
-export function readTarball(gzipped: Buffer): TarballFiles {
+/** Adds a file, failing on one a case-insensitive file system would merge. */
+function addFile(files: TarballFiles, folded: Set<string>, entryPath: string, data: Buffer): void {
+  const path = packagePath(entryPath);
+  if (path === null) throw new Error(`tar entry outside the package: ${JSON.stringify(entryPath)}`);
+  const key = path.normalize("NFC").toLowerCase();
+  if (folded.has(key)) throw new Error(`duplicate tar entry: ${path}`);
+  folded.add(key);
+  files.set(path, data);
+}
+
+/** The strict reader: every regular file, or a failure on anything unusual. */
+export function readTarballStrict(gzipped: Buffer): TarballFiles {
   const tar = gunzipSync(gzipped);
   const files: TarballFiles = new Map();
-  /** Paths as a case-insensitive file system would see them. */
   const folded = new Set<string>();
   let offset = 0;
   let pax: Record<string, string> | null = null;
@@ -136,6 +170,9 @@ export function readTarball(gzipped: Buffer): TarballFiles {
 
     const prefix = readString(header, 345, 155);
     const name = readString(header, 0, 100);
+    if (pax?.path !== undefined && prefix !== "") {
+      throw new Error("a pax path together with a ustar prefix is not supported");
+    }
     const entryPath = pax?.path ?? (prefix ? `${prefix}/${name}` : name);
     pax = null;
 
@@ -145,14 +182,101 @@ export function readTarball(gzipped: Buffer): TarballFiles {
     }
     if (type !== "0")
       throw new Error(`unexpected tar entry type ${JSON.stringify(type)} at ${entryPath}`);
-    const path = packagePath(entryPath);
-    if (path === null)
-      throw new Error(`tar entry outside the package: ${JSON.stringify(entryPath)}`);
-    const key = path.normalize("NFC").toLowerCase();
-    if (folded.has(key)) throw new Error(`duplicate tar entry: ${path}`);
-    folded.add(key);
-    files.set(path, Buffer.from(data));
+    addFile(files, folded, entryPath, Buffer.from(data));
   }
+}
+
+// ------------------------------------------------------------------ node-tar
+
+/** The directory of the npm CLI found on PATH. */
+function npmCliDir(): string {
+  for (const dir of (process.env.PATH ?? "").split(delimiter)) {
+    const bin = join(dir, "npm");
+    if (dir === "" || !existsSync(bin)) continue;
+    let at = dirname(realpathSync(bin));
+    for (let up = 0; up < 4; up++) {
+      const manifest = join(at, "package.json");
+      if (
+        existsSync(manifest) &&
+        (JSON.parse(readFileSync(manifest, "utf8")) as { name?: string }).name === "npm"
+      ) {
+        return at;
+      }
+      at = dirname(at);
+    }
+  }
+  throw new Error("cannot find the npm CLI on PATH, whose node-tar reads the tarballs");
+}
+
+type TarEntry = {
+  type: string;
+  path: string;
+  on(event: "data", listener: (chunk: Buffer) => void): void;
+  resume(): void;
+};
+type NodeTar = {
+  t(options: {
+    strict: boolean;
+    onwarn: (code: string, message: string) => void;
+    onentry: (entry: TarEntry) => void;
+  }): { on(event: "error", listener: (error: Error) => void): void; end(data: Buffer): void };
+};
+
+let nodeTar: NodeTar | null = null;
+
+/** Every regular file as npm's own node-tar lists it, in strict mode. */
+export function readTarballWithNodeTar(gzipped: Buffer): TarballFiles {
+  nodeTar ??= createRequire(join(npmCliDir(), "package.json"))("tar") as NodeTar;
+  const files: TarballFiles = new Map();
+  const folded = new Set<string>();
+  const problems: string[] = [];
+  const entries: { entry: TarEntry; chunks: Buffer[] }[] = [];
+  const stream = nodeTar.t({
+    strict: true,
+    onwarn: (code, message) => problems.push(`${code}: ${message}`),
+    onentry: (entry) => {
+      if (entry.type === "File" || entry.type === "OldFile") {
+        const chunks: Buffer[] = [];
+        entry.on("data", (chunk) => chunks.push(chunk));
+        entries.push({ entry, chunks });
+      } else {
+        if (entry.type !== "Directory")
+          problems.push(`unexpected ${entry.type} entry at ${entry.path}`);
+        entry.resume();
+      }
+    },
+  });
+  stream.on("error", (error) => problems.push(error.message));
+  // node-tar processes a buffer synchronously on end(), as npm itself relies on.
+  stream.end(gzipped);
+  if (problems.length > 0) throw new Error(`node-tar refused the tarball: ${problems.join("; ")}`);
+  for (const { entry, chunks } of entries) {
+    addFile(files, folded, entry.path, Buffer.concat(chunks));
+  }
+  return files;
+}
+
+// ------------------------------------------------------------------ both
+
+function sameFiles(a: TarballFiles, b: TarballFiles): boolean {
+  if (a.size !== b.size) return false;
+  for (const [path, content] of a) {
+    const other = b.get(path);
+    if (other === undefined || !other.equals(content)) return false;
+  }
+  return true;
+}
+
+/**
+ * Every regular file of a `.tgz`, read by node-tar and by the strict reader.
+ * Fails unless both read it and see the same files (see above).
+ */
+export function readTarball(gzipped: Buffer): TarballFiles {
+  const strict = readTarballStrict(gzipped);
+  const npm = readTarballWithNodeTar(gzipped);
+  if (!sameFiles(strict, npm))
+    throw new Error("node-tar and the strict reader see different files");
+  return strict;
 }
 
 // ------------------------------------------------------------------ platform notices
