@@ -7,6 +7,7 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
 import type { EdgeDirection } from "../types/style.js";
+import { edgeKey } from "../view/edge-key.js";
 
 function buildGraph(
   nodeIds: string[],
@@ -30,7 +31,7 @@ function buildGraph(
   const dependencyPairs: Array<{ from: string; to: string }> = [];
   for (const edge of edges) {
     if (!idSet.has(edge.from) || !idSet.has(edge.to)) continue;
-    const direction = edgeDirections?.get(`${edge.from}->${edge.to}`);
+    const direction = edgeDirections?.get(edgeKey(edge));
     if (direction === "up") {
       dependencyPairs.push({ from: edge.to, to: edge.from });
     } else {
@@ -89,7 +90,7 @@ function applyDirectionHintsToForcedLayers(
 ): Map<string, number> {
   const adjusted = new Map(layers);
   for (const edge of edges) {
-    const dir = edgeDirections.get(`${edge.from}->${edge.to}`);
+    const dir = edgeDirections.get(edgeKey(edge));
     if (dir === undefined || dir === "auto") continue;
     if (!adjusted.has(edge.from) || !adjusted.has(edge.to)) continue;
     const targetLayer = adjusted.get(edge.to)!;

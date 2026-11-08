@@ -6,7 +6,8 @@ import { quotedIdLiteral } from "../formatter/quote-id.js";
  * under and every renderer reads back (`edge-layer.ts`, `group-collapse.ts`,
  * the root view's per-frame lookup in `layout-multi-system.ts`, the deploy
  * ghost-edge diff), the key every view-extract dedup and suppression set
- * compares on, and the parallel-bundle grouping in `edge-routing-bundles.ts`.
+ * compares on, the parallel-bundle grouping in `edge-routing-bundles.ts`, and the
+ * resolved style map with the layout's `direction` lookups (`edgeStyleKey`, #3481).
  * Build it here and nowhere else, so the writers and readers cannot drift
  * apart (TPL-1352).
  *
