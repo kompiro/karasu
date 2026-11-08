@@ -5,6 +5,8 @@ import { readAdrPaths, rootGlobs } from "../adr/generated.ts";
 import {
   ADR_GENERATED_GLOBS,
   adrEditIsRecordOnly,
+  backingDesignDoc,
+  type DesignDocFacts,
   type ChangedFile,
   checkExitCode,
   type Hunk,
@@ -22,6 +24,7 @@ import {
   readFailure,
   regenerationWaivesRecord,
   tierSummary,
+  triggerIssues,
   UNREADABLE_PATH,
   unquoteGitPath,
 } from "./tier.ts";
@@ -261,18 +264,18 @@ describe("classifyChange", () => {
       author: "kompiro",
     });
     expect(files).toEqual([
-      { path: "docs/spec/syntax.md", tier: "high" },
-      { path: "(a diff section whose path could not be read)", tier: "high" },
-      { path: "packages/core/a.ts", tier: "medium" },
-      { path: "packages/core/b.ts", tier: "medium" },
-      { path: "docs/guide/a.md", tier: "low" },
+      { path: "docs/spec/syntax.md", tier: "high", security: false },
+      { path: "(a diff section whose path could not be read)", tier: "high", security: true },
+      { path: "packages/core/a.ts", tier: "medium", security: false },
+      { path: "packages/core/b.ts", tier: "medium", security: false },
+      { path: "docs/guide/a.md", tier: "low", security: false },
     ]);
   });
 
   it("keeps each file's own tier when the author makes the PR High", () => {
     expect(
       classifyChange({ files: [modified("docs/guide/a.md")], author: "someone" }).files,
-    ).toEqual([{ path: "docs/guide/a.md", tier: "low" }]);
+    ).toEqual([{ path: "docs/guide/a.md", tier: "low", security: false }]);
   });
 
   it("reads package.json by the fields that moved", () => {
@@ -1324,5 +1327,188 @@ describe("tierSummary (#3543)", () => {
       .split("\n")
       .filter((l) => l.startsWith("| high"));
     expect(rows).toEqual([`| high | <code>${cell}</code> |`]);
+  });
+});
+
+const issueLink = (n: number) => `[#${n}](https://github.com/kompiro/karasu/issues/${n})`;
+const designDoc = (trigger: string, parent = issueLink(3546)) =>
+  [
+    "# Title",
+    "",
+    "- **関連**:",
+    `  - 引き金 Issue: ${trigger}`,
+    `  - 親 Issue: ${parent}`,
+    "",
+    "## 背景・課題",
+    "",
+    `- 引き金 Issue: ${issueLink(9999)}`,
+  ].join("\n");
+
+describe("triggerIssues (#3542)", () => {
+  it("reads every Issue link on the 引き金 Issue line", () => {
+    expect(triggerIssues(designDoc(`${issueLink(3542)}（A）、${issueLink(3543)}（B）`))).toEqual([
+      3542, 3543,
+    ]);
+  });
+
+  it("ignores a bare #N in the line's prose, the parent line, and lines below the metadata", () => {
+    expect(triggerIssues(designDoc(`${issueLink(3542)}（#3505 の制約）`))).toEqual([3542]);
+    expect(triggerIssues(designDoc("#3542"))).toEqual([]);
+  });
+
+  it("ignores a link to another repository", () => {
+    expect(
+      triggerIssues(designDoc("[#3542](https://github.com/other/karasu/issues/3542)")),
+    ).toEqual([]);
+  });
+});
+
+describe("backingDesignDoc (#3542)", () => {
+  const DOC = "docs/design/agreed.md";
+  const BLOB = "1".repeat(40);
+  const docFacts = (over: Partial<DesignDocFacts> = {}): DesignDocFacts => ({
+    docsAtMergeBase: () => [
+      { path: DOC, text: designDoc(issueLink(3542)) },
+      { path: "docs/design/TEMPLATE.md", text: designDoc(issueLink(3542)) },
+      { path: "docs/design/other.md", text: designDoc(issueLink(1)) },
+    ],
+    blobs: () => ({ mergeBase: BLOB, tip: BLOB }),
+    history: () => ({ shas: ["a".repeat(40), "b".repeat(40)], renamed: false }),
+    commitTier: () => "design",
+    ...over,
+  });
+  const back = (over: Partial<Parameters<typeof backingDesignDoc>[0]> = {}) =>
+    backingDesignDoc({
+      baseRefName: "main",
+      closes: [3542],
+      changed: ["docs/spec/syntax.md"],
+      facts: docFacts(),
+      ...over,
+    });
+
+  it("backs a PR with the one Design Doc whose 引き金 Issue line links an Issue it closes", () => {
+    expect(back()).toEqual({ state: "backed", path: DOC, blob: BLOB });
+  });
+
+  it.each([
+    ["the base is not main", { baseRefName: "feat/lower" }, "base is not main"],
+    ["the PR closes no Issue", { closes: [] }, "closes no Issue"],
+    ["no Design Doc links the Issue", { closes: [7] }, "no Design Doc"],
+    ["the PR changes the Design Doc", { changed: [DOC] }, "the PR changes"],
+    [
+      "main's tip has another blob",
+      { facts: docFacts({ blobs: () => ({ mergeBase: BLOB, tip: "2".repeat(40) }) }) },
+      "merge main",
+    ],
+    [
+      "main's tip has no such file",
+      { facts: docFacts({ blobs: () => ({ mergeBase: BLOB, tip: null }) }) },
+      "merge main",
+    ],
+    [
+      "the history goes through a rename",
+      { facts: docFacts({ history: () => ({ shas: ["a".repeat(40)], renamed: true }) }) },
+      "renamed",
+    ],
+    [
+      "an earlier commit was Medium though the last was Design",
+      {
+        facts: docFacts({ commitTier: (sha) => (sha.startsWith("b") ? "medium" : "design") }),
+      },
+      "medium change",
+    ],
+    [
+      "a commit was High (a Design Doc changed in a High PR is not read as a design)",
+      { facts: docFacts({ commitTier: () => "high" }) },
+      "high change",
+    ],
+    [
+      "two Design Docs link the Issue",
+      {
+        facts: docFacts({
+          docsAtMergeBase: () => [
+            { path: DOC, text: designDoc(issueLink(3542)) },
+            { path: "docs/design/second.md", text: designDoc(issueLink(3542)) },
+          ],
+        }),
+      },
+      "more than one",
+    ],
+  ])("gives no backing when %s", (_, over, reason) => {
+    const b = back(over);
+    expect(b.state).toBe("none");
+    expect(b.state === "none" && b.reason).toContain(reason);
+  });
+
+  it("never uses the template, even when it links the Issue", () => {
+    const onlyTemplate = docFacts({
+      docsAtMergeBase: () => [
+        { path: "docs/design/TEMPLATE.md", text: designDoc(issueLink(3542)) },
+      ],
+    });
+    expect(back({ facts: onlyTemplate }).state).toBe("none");
+  });
+
+  it("does not take an Issue named only on the parent line", () => {
+    const parentOnly = docFacts({
+      docsAtMergeBase: () => [{ path: DOC, text: designDoc(issueLink(1), issueLink(3542)) }],
+    });
+    expect(back({ facts: parentOnly }).state).toBe("none");
+  });
+});
+
+describe("tierSummary with a backing Design Doc (#3542)", () => {
+  const files = [
+    { path: "docs/spec/syntax.md", tier: "high" as const, security: false },
+    { path: "packages/cli/src/serve.ts", tier: "high" as const, security: true },
+    { path: "packages/core/a.ts", tier: "medium" as const, security: false },
+  ];
+  const backed = { state: "backed" as const, path: "docs/design/agreed.md", blob: "1".repeat(40) };
+  const summary = (design: Parameters<typeof tierSummary>[0]["design"], trustedAuthor = true) =>
+    tierSummary({ effective: "high", trustedAuthor, files, design });
+
+  it("narrows the reading to For Reviewers and the security-boundary files when checked", () => {
+    const text = summary({ backing: backed, checked: true });
+    expect(text).toContain("the agreed Design Doc <code>docs/design/agreed.md</code>");
+    expect(text).toContain("<code>111111111111</code>");
+    expect(text).toContain(
+      "reads the PR's `## For Reviewers` section and the security-boundary files",
+    );
+    expect(text).toContain("- <code>packages/cli/src/serve.ts</code>");
+    expect(text).not.toContain("- <code>docs/spec/syntax.md</code>");
+    expect(text).not.toContain("High files below");
+  });
+
+  it("says so when no file is on a security boundary", () => {
+    const text = tierSummary({
+      effective: "high",
+      trustedAuthor: true,
+      files: [files[0]],
+      design: { backing: backed, checked: true },
+    });
+    expect(text).toContain("No file is on a security boundary.");
+  });
+
+  it("does not narrow without a design row covering HEAD", () => {
+    const text = summary({ backing: backed, checked: false });
+    expect(text).toContain("so the reading is not narrowed");
+    expect(text).toContain("The reviewer reads the High files below");
+  });
+
+  it("names why no Design Doc backs the PR, as literal text", () => {
+    const text = summary({
+      backing: { state: "none", reason: "the PR changes docs/design/<x>.md" },
+      checked: false,
+    });
+    expect(text).toContain(
+      "No Design Doc backs the PR: the PR changes docs/design/&#60;x&#62;.md.",
+    );
+    expect(text).toContain("The reviewer reads the High files below");
+  });
+
+  it("reads the whole diff of an untrusted author's PR, backing or not", () => {
+    const text = summary({ backing: backed, checked: true }, false);
+    expect(text).toContain("The reviewer reads the whole diff");
+    expect(text).not.toContain("security-boundary files");
   });
 });

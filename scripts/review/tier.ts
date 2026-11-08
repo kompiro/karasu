@@ -28,7 +28,13 @@ import {
   parseNameStatus,
   readGeneratedPaths,
 } from "../adr/generated.ts";
-import { type GitFacts, parseRecord, verifyRecord } from "./local-review-record.ts";
+import {
+  type GitFacts,
+  isDesignRow,
+  type ParseResult,
+  parseRecord,
+  verifyRecord,
+} from "./local-review-record.ts";
 import {
   checkTestChanges,
   closedIssueNumbers,
@@ -432,8 +438,11 @@ export interface Classification {
   securityReview: boolean;
   /** Why the tier is what it is, one line per cause, for the check's log. */
   reasons: string[];
-  /** Every changed file with its own tier, strictest first (Issue #3543). */
-  files: { path: string; tier: Tier }[];
+  /**
+   * Every changed file with its own tier, strictest first (Issue #3543), and
+   * whether it is a security change: one that asks for `/security-review`.
+   */
+  files: { path: string; tier: Tier; security: boolean }[];
 }
 
 /** 1-based inclusive line range of the YAML frontmatter, or null when there is none. */
@@ -831,6 +840,18 @@ function fileTier(
   return byPath;
 }
 
+/**
+ * Whether the change to `f` asks for `/security-review`. A test file asks for one
+ * only when it weakens a security-boundary test, as its tier does: adding a test
+ * is not a security change.
+ */
+const isSecurityChange = (f: ChangedFile): boolean =>
+  f.path === UNREADABLE_PATH ||
+  isSinkChange(f) ||
+  (isTestFile(f.path)
+    ? !isNewFile(f) && isSecurityTest(f.path) && weakensTests(f)
+    : matchesAny(f.path, SECURITY_GLOBS));
+
 export function classifyChange(input: {
   files: readonly ChangedFile[];
   author: string;
@@ -851,12 +872,12 @@ export function classifyChange(input: {
       .map((f) => f.path),
   };
 
-  const files: { path: string; tier: Tier }[] = [];
+  const files: Classification["files"] = [];
   for (const f of input.files) {
     const t = fileTier(f, promotion);
     const name = f.path === UNREADABLE_PATH ? UNREADABLE_NAME : f.path;
     if (rank(t) > rank("low")) reasons.push(`${name}: ${t}`);
-    files.push({ path: name, tier: t });
+    files.push({ path: name, tier: t, security: isSecurityChange(f) });
     tier = stricter(tier, t);
   }
   // A stable sort keeps the diff's order within a tier.
@@ -869,19 +890,101 @@ export function classifyChange(input: {
 
   return {
     tier,
-    securityReview: input.files.some(
-      // A test file asks for one only when it weakens a security-boundary test,
-      // as its tier does: adding a test is not a security change.
-      (f) =>
-        f.path === UNREADABLE_PATH ||
-        isSinkChange(f) ||
-        (isTestFile(f.path)
-          ? !isNewFile(f) && isSecurityTest(f.path) && weakensTests(f)
-          : matchesAny(f.path, SECURITY_GLOBS)),
-    ),
+    securityReview: files.some((f) => f.security),
     reasons,
     files,
   };
+}
+
+// ---------------------------------------------------------------------------
+// The Design Doc that backs a PR (Issue #3542)
+
+/** The line of a Design Doc's metadata that names the Issues it was written for. */
+const TRIGGER_LINE = /^\s*-\s*引き金 Issue\s*[:：](.*)$/;
+const ISSUE_LINK = /\]\(https:\/\/github\.com\/kompiro\/karasu\/issues\/(\d+)\)/g;
+
+/**
+ * The Issues a Design Doc's 「引き金 Issue」 line links to, read from its metadata
+ * (above the first `## ` heading). Only links count: a bare `#N` in the line's
+ * prose names a related Issue, not a trigger.
+ */
+export function triggerIssues(text: string): number[] {
+  const numbers = new Set<number>();
+  for (const line of text.split("\n")) {
+    if (/^## /.test(line)) break;
+    const m = TRIGGER_LINE.exec(line);
+    if (m) for (const l of m[1].matchAll(ISSUE_LINK)) numbers.add(Number(l[1]));
+  }
+  return [...numbers];
+}
+
+/** The git questions {@link backingDesignDoc} asks, answered from the checkout. */
+export interface DesignDocFacts {
+  /** The Design Docs at the PR's merge base with main, with their text. */
+  docsAtMergeBase(): { path: string; text: string }[];
+  /** The blob of `path` at the merge base and at main's tip, or null where it is absent. */
+  blobs(path: string): { mergeBase: string | null; tip: string | null };
+  /**
+   * The first-parent commits on main's tip that changed `path`, and whether its
+   * history goes back through a rename (then its content came in under another
+   * name, which this history does not show).
+   */
+  history(path: string): { shas: string[]; renamed: boolean };
+  /** The tier of what a commit on main changed against its first parent. */
+  commitTier(sha: string): Tier;
+}
+
+export type Backing =
+  | { state: "backed"; path: string; blob: string }
+  | { state: "none"; reason: string };
+
+/**
+ * The Design Doc that backs a PR, so its agreed content need not be read again
+ * (Issue #3542, `docs/design/high-pr-review-scope.md` 制約・前提). Every rule
+ * falls to "none" when in doubt (TPL-3286): the doc is the one Design Doc at the
+ * merge base with main whose 「引き金 Issue」 line links an Issue the PR closes;
+ * the PR does not change it; main's tip has the same blob; and every commit on
+ * main that ever changed it was a Design-tier change, which kompiro read.
+ */
+export function backingDesignDoc(input: {
+  baseRefName: string;
+  closes: readonly number[];
+  changed: readonly string[];
+  facts: DesignDocFacts;
+}): Backing {
+  const none = (reason: string): Backing => ({ state: "none", reason });
+  if (input.baseRefName !== "main") return none("the PR's base is not main");
+  if (input.closes.length === 0) return none("the PR closes no Issue");
+  const candidates = input.facts
+    .docsAtMergeBase()
+    .filter((d) => DESIGN_DOC.test(d.path) && d.path !== "docs/design/TEMPLATE.md")
+    .filter((d) => triggerIssues(d.text).some((n) => input.closes.includes(n)));
+  if (candidates.length === 0) {
+    return none("no Design Doc links an Issue the PR closes on its 引き金 Issue line");
+  }
+  if (candidates.length > 1) {
+    return none(
+      `more than one Design Doc names the Issue: ${candidates.map((d) => d.path).join(", ")}`,
+    );
+  }
+  const { path } = candidates[0];
+  if (input.changed.includes(path)) return none(`the PR changes ${path}`);
+  const blobs = input.facts.blobs(path);
+  if (blobs.mergeBase === null || blobs.tip !== blobs.mergeBase) {
+    return none(`${path} changed on main after the PR's merge base; merge main`);
+  }
+  const history = input.facts.history(path);
+  if (history.renamed) return none(`${path} was renamed, so its history is not all here`);
+  if (history.shas.length === 0) return none(`${path} has no history on main`);
+  for (const sha of history.shas) {
+    const t = input.facts.commitTier(sha);
+    if (t !== "design") {
+      return none(
+        `${sha.slice(0, 7)} changed ${path} in a ${t} change, which no one read as a design`,
+      );
+    }
+  }
+  return { state: "backed", path, blob: blobs.mergeBase };
 }
 
 /** Code points of a path the summary shows: a longer one is cut and marked. */
@@ -897,6 +1000,11 @@ function summaryPath(path: string): string {
   const shown = chars.length > SUMMARY_PATH_CHARS ? chars.slice(0, SUMMARY_PATH_CHARS) : chars;
   const cut = shown.length < chars.length ? "&#8230;" : "";
   return `<code>${shown.join("").replace(/[^A-Za-z0-9/.-]/gu, (c) => `&#${c.codePointAt(0)};`)}${cut}</code>`;
+}
+
+/** Free text (a reason naming paths) as job-summary Markdown that renders literally. */
+function summaryText(text: string): string {
+  return text.replace(/[^A-Za-z0-9/.,;:' -]/gu, (c) => `&#${c.codePointAt(0)};`);
 }
 
 /** The name {@link classifyChange} lists a diff section under when its path could not be read. */
@@ -920,7 +1028,13 @@ const SUMMARY_ROWS = 200;
 export function tierSummary(input: {
   effective: Tier;
   trustedAuthor: boolean;
-  files: readonly { path: string; tier: Tier }[];
+  files: readonly { path: string; tier: Tier; security?: boolean }[];
+  /**
+   * On a High PR: the Design Doc that backs it, and whether a local review record
+   * with a `design` row covers HEAD (Issue #3542). The reading is narrowed only
+   * when both hold.
+   */
+  design?: { backing: Backing; checked: boolean } | null;
 }): string {
   const lines = ["### Files by tier", ""];
   if (input.effective === "high") {
@@ -934,12 +1048,40 @@ export function tierSummary(input: {
           : high.length > SUMMARY_ROWS
             ? `it has more High files than the ${SUMMARY_ROWS} rows listed`
             : null;
-    lines.push(
-      why === null
-        ? "The PR is High. The reviewer reads the High files below and the PR's `## For Reviewers` section."
-        : `The PR is High and ${why}. The reviewer reads the whole diff and the PR's \`## For Reviewers\` section.`,
-      "",
-    );
+    const backing = input.design?.backing;
+    if (why !== null) {
+      lines.push(
+        `The PR is High and ${why}. The reviewer reads the whole diff and the PR's \`## For Reviewers\` section.`,
+        "",
+      );
+    } else if (backing?.state === "backed" && input.design?.checked) {
+      const security = input.files.filter((f) => f.security);
+      lines.push(
+        `The PR is High and the agreed Design Doc ${summaryPath(backing.path)} ` +
+          `(blob <code>${backing.blob.slice(0, 12)}</code>) backs it. The reviewer reads the PR's ` +
+          "`## For Reviewers` section and the security-boundary files, and opens the other files only " +
+          "to check what the section points to.",
+        "",
+        ...(security.length === 0
+          ? ["No file is on a security boundary."]
+          : ["Security-boundary files:", "", ...security.map((f) => `- ${summaryPath(f.path)}`)]),
+        "",
+      );
+    } else {
+      if (backing?.state === "backed") {
+        lines.push(
+          `The agreed Design Doc ${summaryPath(backing.path)} backs the PR, but no local review record ` +
+            "with a `design` row covers HEAD, so the reading is not narrowed.",
+          "",
+        );
+      } else if (backing?.state === "none") {
+        lines.push(`No Design Doc backs the PR: ${summaryText(backing.reason)}.`, "");
+      }
+      lines.push(
+        "The PR is High. The reviewer reads the High files below and the PR's `## For Reviewers` section.",
+        "",
+      );
+    }
   } else {
     lines.push(`The PR is ${input.effective}.`, "");
   }
@@ -1165,6 +1307,65 @@ function sameChange(base: string, a: string, b: string): boolean {
   return diffFingerprint(prDiff(base, a), excluded) === diffFingerprint(prDiff(base, b), excluded);
 }
 
+/** Git answers for {@link backingDesignDoc}, read from the checkout the CLI runs in. */
+function designDocFacts(mergeBase: string): DesignDocFacts {
+  const blob = (rev: string, path: string): string | null => {
+    try {
+      return (
+        run("git", ["rev-parse", "--verify", "--quiet", `${rev}:${path}`], true).trim() || null
+      );
+    } catch {
+      return null;
+    }
+  };
+  const log = (path: string, follow: boolean): string[] =>
+    git(
+      "log",
+      "--first-parent",
+      "--format=%H",
+      ...(follow ? ["--follow"] : []),
+      "origin/main",
+      "--",
+      path,
+    )
+      .split("\n")
+      .filter((l) => l !== "");
+  return {
+    docsAtMergeBase: () =>
+      git("ls-tree", "--name-only", mergeBase, "docs/design/")
+        .split("\n")
+        .filter((path) => DESIGN_DOC.test(path))
+        .map((path) => ({ path, text: gitShow(mergeBase, path) ?? "" })),
+    blobs: (path) => ({ mergeBase: blob(mergeBase, path), tip: blob("origin/main", path) }),
+    history: (path) => {
+      const shas = log(path, false);
+      return { shas, renamed: log(path, true).length !== shas.length };
+    },
+    commitTier: (sha) => {
+      try {
+        // The path rules only: who wrote a commit on main does not change what it touched.
+        return classifyChange({ files: changedFiles(`${sha}^`, sha), author: "kompiro" }).tier;
+      } catch {
+        // A root commit, or one git cannot diff: nothing shows a human read it.
+        return "high";
+      }
+    },
+  };
+}
+
+/**
+ * Whether a local review record covers HEAD and holds the Design Doc
+ * conformance check (a `design` row). On High the check never fails on it: it
+ * only decides whether the reading is narrowed (Issue #3542).
+ */
+function designRecordCovers(parsed: ParseResult, facts: GitFacts): boolean {
+  return (
+    "record" in parsed &&
+    parsed.record.findings.some(isDesignRow) &&
+    verifyRecord(parsed, "medium", facts).length === 0
+  );
+}
+
 /** Git answers for {@link verifyRecord}, read from the checkout the CLI runs in. */
 export function gitFacts(baseRef: string, headSha: string): GitFacts {
   const resolve = (rev: string): string | null => {
@@ -1231,11 +1432,15 @@ export function readFailure(stderr: string): "missing" | "unreadable" {
  * its body closes by keyword. An Issue that cannot be read is reported rather
  * than counted as not a bug (TPL-3286).
  */
-function closesBug(view: PrView): { bug: boolean; missing: number[]; unreadable: number[] } {
+function closedIssues(view: PrView): number[] {
   const linked = view.closingIssuesReferences
     .filter((r) => `${r.repository.owner.login}/${r.repository.name}` === REPO)
     .map((r) => r.number);
-  const numbers = new Set([...linked, ...closedIssueNumbers(view.body ?? "", REPO)]);
+  return [...new Set([...linked, ...closedIssueNumbers(view.body ?? "", REPO)])];
+}
+
+function closesBug(view: PrView): { bug: boolean; missing: number[]; unreadable: number[] } {
+  const numbers = closedIssues(view);
   const missing: number[] = [];
   const unreadable: number[] = [];
   let bug = false;
@@ -1270,6 +1475,8 @@ export type PrCheck =
       files: Classification["files"];
       /** Whether the author is on the trusted list: the job summary reads the rest whole. */
       trustedAuthor: boolean;
+      /** On a High PR, the Design Doc that backs it and whether its conformance check covers HEAD. */
+      design: { backing: Backing; checked: boolean } | null;
       /** Rules the PR breaks: it has to change before it passes. */
       errors: string[];
       /** What could not be read: the PR may pass on a rerun. */
@@ -1344,6 +1551,20 @@ export function checkPr(pr: string, head?: string): PrCheck {
         `Disable it with gh pr merge ${pr} --disable-auto.`,
     );
   }
+  let design: { backing: Backing; checked: boolean } | null = null;
+  if (tier === "high") {
+    const backing = backingDesignDoc({
+      baseRefName: view.baseRefName,
+      closes: closedIssues(view),
+      changed: files.map((f) => f.path),
+      facts: designDocFacts(mergeBaseOf(baseRef, view.headRefOid)),
+    });
+    const checked =
+      backing.state === "backed" &&
+      designRecordCovers(parseRecord(view.body ?? ""), gitFacts(baseRef, view.headRefOid));
+    design = { backing, checked };
+    Object.assign(summary, { designDoc: backing, designChecked: checked });
+  }
   if (tier !== "high") {
     const mergeBase = mergeBaseOf(baseRef, view.headRefOid);
     const waived = regenerationWaivesRecord({
@@ -1379,6 +1600,7 @@ export function checkPr(pr: string, head?: string): PrCheck {
     effective: tier,
     files: result.files,
     trustedAuthor: TRUSTED_AUTHORS.has(view.author.login),
+    design,
     errors,
     unreadable,
     waivers: tests.waivers,
