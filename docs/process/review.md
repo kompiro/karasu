@@ -89,7 +89,8 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 
 - 表は Review tier が HEAD から毎回作り直す。PR 本文にファイルの一覧を書かない（コミットを足すと古くなる。TPL-1032）
 - 次の PR は差分の全部を読む（summary がそう出す）。作成者が信頼リストにいない PR、High のファイルが無く
-  ラベルで（ラベルが無いことも含む）High になった PR、パスを読めない差分の節がある PR
+  ラベルで（ラベルが無いことも含む）High になった PR、パスを読めない差分の節がある PR、High のファイルが表の行数
+  （200）に収まらない PR
 - `rendering-change` ラベルの付いた PR は、High でも人間が preview で動作を確かめる（上の表の Medium の行）
 - 節に載せるのは、従うと記録済みの決定が変わる指摘（CodeRabbit の指摘は coderabbit-rounds.md「人間に確認する
   指摘の判定」、ローカルレビューの指摘も同じ判定）と、作成者が kompiro に決めてほしいことである。項目ごとに、

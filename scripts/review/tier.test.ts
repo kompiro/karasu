@@ -1275,21 +1275,41 @@ describe("tierSummary (#3543)", () => {
     expect(text).not.toContain("kompiro reads");
   });
 
-  it("lists every High file and counts the rest past 200 rows", () => {
-    const many = [
-      ...Array.from({ length: 250 }, (_, i) => ({
-        path: `docs/spec/${i}.md`,
-        tier: "high" as const,
-      })),
-      ...Array.from({ length: 50 }, (_, i) => ({
-        path: `packages/core/${i}.ts`,
-        tier: "medium" as const,
-      })),
-    ];
-    const rows = summary({ files: many }).split("\n");
-    expect(rows.filter((l) => l.startsWith("| high"))).toHaveLength(250);
-    expect(rows.filter((l) => l.startsWith("| medium"))).toHaveLength(0);
-    expect(rows).toContain("50 more files below High are not listed.");
+  const many = (high: number, medium: number) => [
+    ...Array.from({ length: high }, (_, i) => ({
+      path: `docs/spec/${i}.md`,
+      tier: "high" as const,
+    })),
+    ...Array.from({ length: medium }, (_, i) => ({
+      path: `packages/core/${i}.ts`,
+      tier: "medium" as const,
+    })),
+  ];
+
+  it("lists the first 200 files strictest first and counts the rest", () => {
+    const rows = summary({ files: many(150, 100) }).split("\n");
+    expect(rows.filter((l) => l.startsWith("| high"))).toHaveLength(150);
+    expect(rows.filter((l) => l.startsWith("| medium"))).toHaveLength(50);
+    expect(rows).toContain("50 more files are not listed.");
+    expect(rows).toContain(
+      "The PR is High. kompiro reads the High files below and the PR's `## For kompiro` section.",
+    );
+    expect(summary({ files: many(150, 51) })).toContain("1 more file is not listed.");
+  });
+
+  it("asks for the whole diff when the High files do not fit in the rows", () => {
+    const text = summary({ files: many(201, 0) });
+    expect(text).toContain("more High files than the 200 rows listed");
+    expect(text).toContain("kompiro reads the whole diff");
+  });
+
+  it("cuts a path past 200 code points and keeps the table under 1 MiB", () => {
+    const long = `${"|".repeat(4000)}.md`;
+    const text = summary({
+      files: Array.from({ length: 300 }, () => ({ path: long, tier: "high" as const })),
+    });
+    expect(text).toContain(`<code>${"&#124;".repeat(200)}&#8230;</code>`);
+    expect(Buffer.byteLength(text)).toBeLessThan(1024 * 1024);
   });
 
   it.each([

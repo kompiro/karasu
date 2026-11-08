@@ -884,29 +884,38 @@ export function classifyChange(input: {
   };
 }
 
+/** Code points of a path the summary shows: a longer one is cut and marked. */
+const SUMMARY_PATH_CHARS = 200;
+
 /**
  * A path as job-summary Markdown that renders as the literal path: every
  * character outside a plain path alphabet becomes a numeric entity, so a file
  * name cannot open a table cell, a link or emphasis.
  */
 function summaryPath(path: string): string {
-  return `<code>${path.replace(/[^A-Za-z0-9/.-]/gu, (c) => `&#${c.codePointAt(0)};`)}</code>`;
+  const chars = [...path];
+  const shown = chars.length > SUMMARY_PATH_CHARS ? chars.slice(0, SUMMARY_PATH_CHARS) : chars;
+  const cut = shown.length < chars.length ? "&#8230;" : "";
+  return `<code>${shown.join("").replace(/[^A-Za-z0-9/.-]/gu, (c) => `&#${c.codePointAt(0)};`)}${cut}</code>`;
 }
 
 /** The name {@link classifyChange} lists a diff section under when its path could not be read. */
 const UNREADABLE_NAME = "(a diff section whose path could not be read)";
 
-/** Rows the table lists before it counts the rest: GitHub drops a step summary over 1 MiB. */
+/**
+ * Rows the table lists before it counts the rest. With {@link SUMMARY_PATH_CHARS}
+ * this keeps the table well under 1 MiB, past which GitHub drops the whole step
+ * summary.
+ */
 const SUMMARY_ROWS = 200;
 
 /**
  * The Review tier job summary of what a human reads (Issue #3543): the files by
- * tier, rebuilt from HEAD on every run, so it never goes stale as a list in the
- * PR body would (TPL-1032). kompiro reads only the High files when the High
- * comes from them. A PR from an author off the trusted list, one that is High by
- * its label alone, and one with a diff section whose path could not be read are
- * read whole. Every High file is listed; past {@link SUMMARY_ROWS} rows, the
- * files below High are counted instead.
+ * tier, strictest first, rebuilt from HEAD on every run, so it never goes stale
+ * as a list in the PR body would (TPL-1032). kompiro reads only the High files
+ * when the High comes from them and the table lists them all. Otherwise the PR
+ * is read whole: an author off the trusted list, a PR High by its label alone,
+ * a diff section whose path could not be read, or more High files than rows.
  */
 export function tierSummary(input: {
   effective: Tier;
@@ -921,22 +930,24 @@ export function tierSummary(input: {
       : high.some((f) => f.path === UNREADABLE_NAME)
         ? "a diff section's path could not be read"
         : high.length === 0
-          ? "its label (or a missing one), not by a file"
-          : null;
+          ? "it is High by its label (or a missing one), not by a file"
+          : high.length > SUMMARY_ROWS
+            ? `it has more High files than the ${SUMMARY_ROWS} rows listed`
+            : null;
     lines.push(
       why === null
         ? "The PR is High. kompiro reads the High files below and the PR's `## For kompiro` section."
-        : `The PR is High: ${why}. kompiro reads the whole diff and the PR's \`## For kompiro\` section.`,
+        : `The PR is High and ${why}. kompiro reads the whole diff and the PR's \`## For kompiro\` section.`,
       "",
     );
   } else {
     lines.push(`The PR is ${input.effective}.`, "");
   }
-  const listed = input.files.filter((f, i) => f.tier === "high" || i < SUMMARY_ROWS);
+  const listed = input.files.slice(0, SUMMARY_ROWS);
   lines.push("| Tier | File |", "| --- | --- |");
   for (const f of listed) lines.push(`| ${f.tier} | ${summaryPath(f.path)} |`);
   const rest = input.files.length - listed.length;
-  if (rest > 0) lines.push("", `${rest} more files below High are not listed.`);
+  if (rest > 0) lines.push("", `${rest} more ${rest === 1 ? "file is" : "files are"} not listed.`);
   return [...lines, ""].join("\n");
 }
 
