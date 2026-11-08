@@ -31,7 +31,7 @@ scope:
 
 ## 観点
 
-karasu の AST には `BaseNodeFields`（`packages/core/src/types/ast.ts:41`）という共通インターフェースがあり、`label`, `tags`, `annotations` など全ノード共通のはずの field はここに定義される。**ある field を「全 kind が持つべき」と決めたら、3 点で同意を取る必要がある:**
+karasu の AST には `BaseNodeFields`（`packages/core/src/types/ast.ts`）という共通インターフェースがあり、`label`, `tags`, `annotations` など全ノード共通のはずの field はここに定義される。**ある field を「全 kind が持つべき」と決めたら、3 点で同意を取る必要がある:**
 
 1. **AST 型** — その node 型が `BaseNodeFields` を `extends` しているか
 2. **parser** — その keyword が当該 node の `*_PROPERTY_KEYWORDS` に含まれ、`parseXxxNode` が AST に書き込んでいるか

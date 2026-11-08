@@ -74,5 +74,5 @@ E2E で UI 状態の assertion / 連鎖操作を書くとき、以下を確認�
 
 - `scripts/lint/e2e-spec-conventions.test.ts` — `packages/e2e` の spec と fixture をすべて走査する。assertion の timeout の延長と直接の keystroke を静的に検出する。定数に入れた options や `keyboard.press` の連打には届かないので、チェックリストの印にはしない。
 - `packages/e2e/fixtures/editor.ts` — `replaceEditorContent` 等の wait-for-ready helper
-- `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts:162`
+- `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts`（`Clicking a deploy container switches to System` のテスト）
 - `packages/e2e/playwright.config.ts` — retries 設定

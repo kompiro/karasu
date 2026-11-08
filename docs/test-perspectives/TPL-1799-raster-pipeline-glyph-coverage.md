@@ -11,7 +11,7 @@ known_consumers:
   - svg-renderer
 discovered_from:
   - issue: "#1799"
-  - root_cause_file: "functions/render.ts:25"
+  - root_cause_file: "functions/render.ts:FONT_PATHS"
 related_to:
   - TPL-1001
   - TPL-219

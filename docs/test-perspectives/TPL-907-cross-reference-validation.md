@@ -28,7 +28,7 @@ scope:
 
 `.krs` の構文に「他のノードの id を指す参照プロパティ」を追加するとき（`handles`, `realizes`, edge の `from` / `to`, 将来追加される類似プロパティ）、parser はそのプロパティを「任意の identifier として」受理してしまう。**識別子が実在のノードに解決できるかは parser の責任ではなく、resolver の責任**。ここに validator を入れ忘れると、**typo がサイレントに連結を切り、ユーザーは「描画が出ない」現象として遅れて気づく** ことになる。
 
-karasu には既に `unresolved-handles`（`warnings.ts:402`）と `unresolved-realizes`（`warnings.ts:586`）の前例がある。新しい cross-reference プロパティを追加する PR は、必ずこの**「validator + warning kind を一緒に追加する」** パターンを踏襲する必要がある。
+karasu には既に `unresolved-handles` と `unresolved-realizes`（どちらも `packages/core/src/resolver/warnings.ts`）の前例がある。新しい cross-reference プロパティを追加する PR は、必ずこの**「validator + warning kind を一緒に追加する」** パターンを踏襲する必要がある。
 
 ## 想定される失敗モード
 

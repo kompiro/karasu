@@ -12,7 +12,7 @@ known_consumers:
 discovered_from:
   - issue: "#1053"
   - root_cause_file: "packages/app/src/components/EditorPane.tsx:isComposingRef"
-  - root_cause_file: "packages/app/src/components/AppShell.tsx:handleEditorChange"
+  - root_cause_file: "packages/app/src/hooks/useEditorDocument.ts:handleEditorChange"
 related_to: []
 topic: app-ui
 scope:
@@ -46,7 +46,7 @@ scope:
 
 ## 既知の対処パターン
 
-- `isComposingRef` のような `useRef<boolean>` フラグを `onDidCompositionStart` / `onDidCompositionEnd` で立て下ろし、composition 中は `pendingValueRef` に値を貯めて compositionEnd で flush する（`EditorPane.tsx:127` 周辺の現在の実装）
+- `isComposingRef` のような `useRef<boolean>` フラグを `onDidCompositionStart` / `onDidCompositionEnd` で立て下ろし、composition 中は `pendingValueRef` に値を貯めて compositionEnd で flush する（`packages/app/src/components/EditorPane.tsx` の現在の実装）
 - controlled component の prop を不要に頻繁に更新しない（必要なときだけ親 state を同期する）
 - debounce / throttle を入れる場合、connection 単位（composition 開始〜終了）でリセットする
 

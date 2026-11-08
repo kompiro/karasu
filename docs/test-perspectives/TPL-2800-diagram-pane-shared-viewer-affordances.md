@@ -16,8 +16,8 @@ discovered_from:
   - issue: "#2800"
   - issue: "#2799"
   - issue: "#3178"
-  - root_cause_file: "packages/app/src/components/PreviewColumn.tsx:BreadcrumbBar"
-  - root_cause_file: "packages/app/src/components/PreviewPane.tsx:data-wheel-zoom-ignore"
+  - root_cause_file: 'packages/app/src/components/PreviewColumn.tsx:className="preview-pane--entity"'
+  - root_cause_file: "packages/app/src/components/PreviewPane.tsx:non-passive wheel listener"
 related_to:
   - TPL-219
   - TPL-1983

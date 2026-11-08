@@ -10,7 +10,7 @@ known_consumers:
   - diff-swap-button
 discovered_from:
   - issue: "#1402"
-  - root_cause_file: "packages/app/src/hooks/useAppViews.ts:canSwap"
+  - root_cause_file: "packages/app/src/hooks/useAppViews.ts:const effCompareFs"
 related_to:
   - TPL-948
 topic: app-ui

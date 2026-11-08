@@ -3,7 +3,7 @@
   "idFormat": "issue-number",
   "indexFile": "index.md",
   "indexCheck": false,
-  "sourcePrefixes": ["packages", "scripts", ".github", "docs/design"],
+  "sourcePrefixes": ["packages", "scripts", ".github", "functions", "docs/design"],
   "checklistHeading": "チェックリスト",
   "topics": [
     "core-concepts",

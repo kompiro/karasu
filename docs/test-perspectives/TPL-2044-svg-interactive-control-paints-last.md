@@ -10,7 +10,7 @@ known_consumers:
   - drill-down-svg
 discovered_from:
   - issue: "#2044"
-  - root_cause_file: "packages/core/src/renderer/drill-down-svg.ts:renderBackButton"
+  - root_cause_file: "packages/core/src/renderer/drill-down-svg.ts:${innerContent}${backButton}"
 related_to:
   - TPL-219
   - TPL-1790
