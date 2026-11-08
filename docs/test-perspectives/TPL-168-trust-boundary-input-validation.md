@@ -17,7 +17,7 @@ known_consumers:
 related_to: []
 discovered_from:
   - issue: "#168"
-  - root_cause_file: "packages/cli/src/serve.ts:41"
+  - root_cause_file: "packages/cli/src/serve.ts:resolveKrsFile"
   - issue: "#1526"
   - issue: "#1527"
   - root_cause_file: "packages/app/src/utils/import-project-zip.ts"

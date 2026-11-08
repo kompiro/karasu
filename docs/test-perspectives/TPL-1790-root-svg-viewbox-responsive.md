@@ -12,7 +12,7 @@ known_consumers:
   - all-layers-svg
 discovered_from:
   - issue: "#1790"
-  - root_cause_file: "packages/core/src/renderer/drill-down-svg.ts:437"
+  - root_cause_file: 'packages/core/src/renderer/drill-down-svg.ts:viewBox="0 0 ${totalWidth} ${totalHeight}"'
 related_to:
   - TPL-219
   - TPL-74
