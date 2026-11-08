@@ -179,9 +179,7 @@ describe("unplannedVersions", () => {
     ).toEqual([]);
   });
 
-  it("fails without a tagged version to measure from", () => {
-    expect(() =>
-      unplannedVersions({ time, versions, tagged: [], releaseVersion: "0.11.0" }),
-    ).toThrow(/no tagged version/);
+  it("cannot measure a package with no tagged version yet", () => {
+    expect(unplannedVersions({ time, versions, tagged: [], releaseVersion: "0.11.0" })).toBeNull();
   });
 });

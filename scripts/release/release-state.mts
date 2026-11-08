@@ -130,18 +130,21 @@ export function orderViolations(
  * Versions of a package published after its newest tagged version that are not
  * the release commit's version. A version approved on npmjs.com outside the
  * plan, under any dist-tag, shows up here and nowhere else. Versions published
- * before that point predate the staged releases and are left alone.
+ * before that point predate the staged releases and are left alone. Null when
+ * no version is tagged yet.
  */
 export function unplannedVersions(opts: {
   time: Record<string, string>;
   versions: string[];
   tagged: string[];
   releaseVersion: string;
-}): string[] {
+}): string[] | null {
   const taggedTimes = opts.tagged.flatMap((version) =>
     opts.time[version] ? [Date.parse(opts.time[version])] : [],
   );
-  if (taggedTimes.length === 0) throw new Error("no tagged version is on npm to measure from");
+  // A package with no tagged version yet (a newly public one) has nothing to
+  // measure from: its manually published first version is not unplanned.
+  if (taggedTimes.length === 0) return null;
   const since = Math.max(...taggedTimes);
   return opts.versions.filter(
     (version) =>

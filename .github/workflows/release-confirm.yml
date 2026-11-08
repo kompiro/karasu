@@ -47,9 +47,12 @@ jobs:
       verified: ${{ steps.verify.outputs.verified }}
       report: ${{ steps.report.outputs.report }}
     steps:
+      # No credentials stay in either checkout: the release commit's build runs
+      # in this job.
       - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0 # read the release commit's first parent and the tags
+          persist-credentials: false
 
       # Node 24 runs the .mts scripts through type stripping.
       - uses: actions/setup-node@v7.1.0
@@ -62,14 +65,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/release/confirm.mts locate
 
-      # The release commit is built in its own directory with this workflow's
-      # scripts doing the comparison, so the checked code is never the code
-      # that checks it.
+      # The release commit is built in its own directory and compared by this
+      # workflow's scripts. Its build could still tamper with this job, so the
+      # job can only read, and `record` re-checks every tag name it is handed.
       - uses: actions/checkout@v7.0.1
         if: ${{ steps.locate.outputs.candidates != '' && steps.locate.outputs.candidates != '[]' }}
         with:
           ref: ${{ steps.locate.outputs.sha }}
           path: release-commit
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v6.1.0
         if: ${{ steps.locate.outputs.candidates != '' && steps.locate.outputs.candidates != '[]' }}

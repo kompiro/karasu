@@ -12,9 +12,9 @@ import {
 // Fences the tarball check of #3240: a staged or published tarball is compared
 // file by file with a pack of the release commit, read in memory only.
 
-type Entry = { path: string; content?: string; type?: string };
+type Entry = { path: string; content?: string; type?: string; badChecksum?: boolean };
 
-function header(name: string, size: number, type: string): Buffer {
+function header(name: string, size: number, type: string, badChecksum = false): Buffer {
   const block = Buffer.alloc(512);
   block.write(name, 0, 100, "utf8");
   block.write("0000644\0", 100);
@@ -22,6 +22,9 @@ function header(name: string, size: number, type: string): Buffer {
   block.write(type, 156);
   block.write("ustar\0", 257);
   block.write("00", 263);
+  block.fill(0x20, 148, 156);
+  const sum = block.reduce((total, byte) => total + byte, 0) + (badChecksum ? 1 : 0);
+  block.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148);
   return block;
 }
 
@@ -30,21 +33,36 @@ function pad(data: Buffer): Buffer {
   return rest === 0 ? data : Buffer.concat([data, Buffer.alloc(512 - rest)]);
 }
 
-function tgz(entries: Entry[], opts: { pax?: Record<string, string> } = {}): Buffer {
+/** A pax extended header holding `records`, as node-tar writes one. */
+function paxBlocks(records: Record<string, string>): Buffer[] {
+  const body = Object.entries(records)
+    .map(([key, value]) => {
+      const rest = ` ${key}=${value}\n`;
+      let length = rest.length;
+      while (`${length}${rest}`.length !== length) length = `${length}${rest}`.length;
+      return `${length}${rest}`;
+    })
+    .join("");
+  const data = Buffer.from(body);
+  return [header("PaxHeader", data.length, "x"), pad(data)];
+}
+
+function tar(entries: (Entry | Buffer[])[]): Buffer {
   const blocks: Buffer[] = [];
   for (const entry of entries) {
-    const data = Buffer.from(entry.content ?? "");
-    if (opts.pax?.[entry.path]) {
-      const record = `path=${opts.pax[entry.path]}\n`;
-      const length = record.length + 3;
-      const pax = Buffer.from(`${length + String(length).length - 2} ${record}`);
-      blocks.push(header("PaxHeader", pax.length, "x"), pad(pax));
+    if (Array.isArray(entry)) {
+      blocks.push(...entry);
+      continue;
     }
-    blocks.push(header(entry.path, data.length, entry.type ?? "0"), pad(data));
+    const data = Buffer.from(entry.content ?? "");
+    blocks.push(header(entry.path, data.length, entry.type ?? "0", entry.badChecksum), pad(data));
   }
-  blocks.push(Buffer.alloc(1024));
-  return gzipSync(Buffer.concat(blocks));
+  return Buffer.concat(blocks);
 }
+
+const END = Buffer.alloc(1024);
+
+const tgz = (entries: (Entry | Buffer[])[]): Buffer => gzipSync(Buffer.concat([tar(entries), END]));
 
 describe("readTarball", () => {
   it("reads the files under package/ by their path inside the package", () => {
@@ -62,7 +80,7 @@ describe("readTarball", () => {
   it("takes the path from a pax header", () => {
     const long = `package/${"a".repeat(120)}.md`;
     const files = readTarball(
-      tgz([{ path: "package/short", content: "y" }], { pax: { "package/short": long } }),
+      tgz([paxBlocks({ path: long }), { path: "package/short", content: "y" }]),
     );
     expect([...files.keys()]).toEqual([`${"a".repeat(120)}.md`]);
   });
@@ -76,15 +94,65 @@ describe("readTarball", () => {
     );
   });
 
-  it("refuses the same path twice", () => {
-    expect(() =>
+  it("refuses the same path twice, also as a case-insensitive file system sees it", () => {
+    const twice = (second: string) =>
       readTarball(
         tgz([
-          { path: "package/a", content: "1" },
-          { path: "package/./a", content: "2" },
+          { path: "package/a.js", content: "1" },
+          { path: second, content: "2" },
         ]),
+      );
+    expect(() => twice("package/./a.js")).toThrow(/duplicate/);
+    expect(() => twice("package/A.js")).toThrow(/duplicate/);
+  });
+
+  // The shapes below are ones node-tar reads differently from a lenient reader:
+  // each could hide a file that `npm i` extracts but the check never sees.
+  it("refuses an entry hidden behind a single zero block", () => {
+    const hidden = Buffer.concat([
+      tar([{ path: "package/index.js", content: "benign" }]),
+      Buffer.alloc(512),
+      tar([{ path: "package/index.js", content: "EVIL" }]),
+      END,
+    ]);
+    expect(() => readTarball(gzipSync(hidden))).toThrow(/after the end-of-archive/);
+  });
+
+  it("refuses a header with a wrong checksum", () => {
+    expect(() =>
+      readTarball(tgz([{ path: "package/index.js", content: "x", badChecksum: true }])),
+    ).toThrow(/checksum/);
+  });
+
+  it("refuses pax records that change more than metadata, and global pax headers", () => {
+    expect(() =>
+      readTarball(tgz([paxBlocks({ size: "4" }), { path: "package/index.js", content: "x" }])),
+    ).toThrow(/unsupported pax record/);
+    expect(() =>
+      readTarball(
+        tgz([paxBlocks({ linkpath: "/etc/passwd" }), { path: "package/a", content: "" }]),
       ),
-    ).toThrow(/duplicate/);
+    ).toThrow(/unsupported pax record/);
+    expect(() => readTarball(tgz([{ path: "pax_global_header", type: "g" }]))).toThrow(
+      /unexpected tar entry type/,
+    );
+  });
+
+  it("refuses a header that is not POSIX ustar", () => {
+    const gnu = header("package/index.js", 1, "0");
+    gnu.write("ustar  \0", 257);
+    gnu.fill(0x20, 148, 156);
+    const sum = gnu.reduce((total, byte) => total + byte, 0);
+    gnu.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148);
+    expect(() => readTarball(gzipSync(Buffer.concat([gnu, pad(Buffer.from("x")), END])))).toThrow(
+      /ustar/,
+    );
+  });
+
+  it("refuses an archive without its end blocks", () => {
+    expect(() => readTarball(gzipSync(tar([{ path: "package/a", content: "x" }])))).toThrow(
+      /end-of-archive/,
+    );
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { marker, partialRelease, vscodeSucceeded } from "./confirm.mts";
+import { marker, partialRelease, taggable, vscodeSucceeded } from "./confirm.mts";
 import type { NpmPackage } from "./release-state.mts";
 
 // Fences the record decisions of release-confirm.yml (#3240).
@@ -47,5 +47,26 @@ describe("marker", () => {
   it("names the kind and the subject, so a new state gets a new comment", () => {
     expect(marker("staged", "karasu@1.0.0")).toBe("<!-- release-confirm:staged:karasu@1.0.0 -->");
     expect(marker("staged", "karasu@1.0.0")).not.toBe(marker("staged", "karasu@1.0.1"));
+  });
+});
+
+describe("taggable", () => {
+  const pkg = (name: string, version: string): NpmPackage => ({
+    name,
+    dir: name,
+    version,
+    workspaceDependencies: [],
+  });
+  const bumped = [pkg("karasu-skills", "0.3.0"), pkg("karasu", "0.11.0")];
+
+  it("pushes only bumped versions that are untagged and on npm", () => {
+    expect(
+      taggable(["karasu-skills@0.3.0", "karasu@0.11.0"], bumped, (p) => p.name === "karasu-skills"),
+    ).toEqual({ accepted: ["karasu-skills@0.3.0"], refused: ["karasu@0.11.0"] });
+  });
+
+  it("refuses names the verify job should never hand over", () => {
+    const handed = ["karasu@99.0.0", "release-2026-11-29", "karasu-vscode@0.5.0"];
+    expect(taggable(handed, bumped, () => true)).toEqual({ accepted: [], refused: handed });
   });
 });
