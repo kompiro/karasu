@@ -912,7 +912,7 @@ const SUMMARY_ROWS = 200;
 /**
  * The Review tier job summary of what a human reads (Issue #3543): the files by
  * tier, strictest first, rebuilt from HEAD on every run, so it never goes stale
- * as a list in the PR body would (TPL-1032). kompiro reads only the High files
+ * as a list in the PR body would (TPL-1032). The reviewer reads only the High files
  * when the High comes from them and the table lists them all. Otherwise the PR
  * is read whole: an author off the trusted list, a PR High by its label alone,
  * a diff section whose path could not be read, or more High files than rows.
@@ -936,8 +936,8 @@ export function tierSummary(input: {
             : null;
     lines.push(
       why === null
-        ? "The PR is High. kompiro reads the High files below and the PR's `## For kompiro` section."
-        : `The PR is High and ${why}. kompiro reads the whole diff and the PR's \`## For kompiro\` section.`,
+        ? "The PR is High. The reviewer reads the High files below and the PR's `## For Reviewers` section."
+        : `The PR is High and ${why}. The reviewer reads the whole diff and the PR's \`## For Reviewers\` section.`,
       "",
     );
   } else {

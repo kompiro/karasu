@@ -48,7 +48,7 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 | Low | `docs/test-perspectives/**`・`docs/guide/**`・新しいテストファイル（既存のテストファイルの変更は Medium）、新しい ADR、ADR の昇格（Design Doc の削除、リンクの張り替え、ADR へのリンクの追加）、既存 ADR の frontmatter、ADR の生成物と TPL の索引だけを変える再生成 PR | 回さない | 記録と CI が通れば auto-merge（再生成 PR は記録なしで、スクリプトが REST でマージする） |
 | Design | `docs/design/**` | ready の直後に 1 回だけ。ゲートにしない | 記録と人間のレビュー |
 | Medium | ほかのすべて（`packages/*`・`docs/acceptance/**`・`examples/**`・既存 ADR の本文など） | 回さない | 記録と、人間の判断。描画やレイアウトが変わる PR（`rendering-change` ラベル、下）は人間が preview で動作を確かめる |
-| High | workflow・release・依存の変更・`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`docs/process/**`・`.claude/rules/**`・`.coderabbit.yaml`・レビューの仕組み（`scripts/review/**`・`scripts/coderabbit/**`・`scripts/render-equivalence/**`・`.claude/skills/**` など）・セキュリティの境界（下）・言語の挙動（下） | Critical / Major の未対応が無くなるまで回す（再レビューは 3 回まで） | 人間が High のファイルと `## For kompiro` 節を読む（下の「High の PR で人間が読むもの」） |
+| High | workflow・release・依存の変更・`docs/spec/**`・`docs/concepts*.md`・`docs/process.md`・`docs/process/**`・`.claude/rules/**`・`.coderabbit.yaml`・レビューの仕組み（`scripts/review/**`・`scripts/coderabbit/**`・`scripts/render-equivalence/**`・`.claude/skills/**` など）・セキュリティの境界（下）・言語の挙動（下） | Critical / Major の未対応が無くなるまで回す（再レビューは 3 回まで） | 人間が High のファイルと `## For Reviewers` 節を読む（下の「High の PR で人間が読むもの」） |
 
 - **セキュリティの境界**：信頼できない入力（他人の `.krs`、URL、webview のメッセージ、ディスクのパス）を受ける
   コード。`packages/nest/**`、`karasu serve` と `render` のエンドポイント・ファイルアクセス、`packages/core/src/fs/**`、
@@ -84,7 +84,7 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 #### High の PR で人間が読むもの
 
 **到達状態**: High の PR では、Review tier の job summary に変更したファイルを段階ごとに並べた表があり、PR 本文の
-`## For kompiro` 節に、kompiro の判断が要る論点のうち答えの無いものが 3 件まで載っている。論点が無ければ節に
+`## For Reviewers` 節に、kompiro の判断が要る論点のうち答えの無いものが 3 件まで載っている。論点が無ければ節に
 「None」と書く。kompiro が読むのは、表の High のファイルとこの節である。
 
 - 表は Review tier が HEAD から毎回作り直す。PR 本文にファイルの一覧を書かない（コミットを足すと古くなる。TPL-1032）

@@ -57,12 +57,12 @@ which replaces this section's record or appends one. On High it is optional,
 but Claude's PRs keep it.
 -->
 
-## For kompiro
+## For Reviewers
 
 <!--
-On a High PR, the points that need kompiro's decision (docs/process/review.md
+On a High PR, the points that need the reviewer's decision (docs/process/review.md
 "High の PR で人間が読むもの"): findings that would change a recorded decision,
-and what the author wants kompiro to decide. At most 3 unanswered ones at a
+and what the author wants the reviewer to decide. At most 3 unanswered ones at a
 time, each with the point, the record it touches, the options, and a link to
 the thread or comment. Write "None" when there is nothing, "N/A" below High.
 -->

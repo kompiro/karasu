@@ -1231,11 +1231,11 @@ describe("tierSummary (#3543)", () => {
   const summary = (extra: Partial<Parameters<typeof tierSummary>[0]> = {}) =>
     tierSummary({ effective: "high", trustedAuthor: true, files, ...extra });
 
-  it("tells kompiro to read the High files and For kompiro on a High PR", () => {
+  it("tells the reviewer to read the High files and For Reviewers on a High PR", () => {
     expect(summary().split("\n")).toEqual([
       "### Files by tier",
       "",
-      "The PR is High. kompiro reads the High files below and the PR's `## For kompiro` section.",
+      "The PR is High. The reviewer reads the High files below and the PR's `## For Reviewers` section.",
       "",
       "| Tier | File |",
       "| --- | --- |",
@@ -1264,7 +1264,7 @@ describe("tierSummary (#3543)", () => {
     ],
   ])("asks for the whole diff when %s", (_, extra, why) => {
     const text = summary(extra);
-    expect(text).toContain("kompiro reads the whole diff");
+    expect(text).toContain("The reviewer reads the whole diff");
     expect(text).toContain(why);
     expect(text).not.toContain("High files below");
   });
@@ -1272,7 +1272,7 @@ describe("tierSummary (#3543)", () => {
   it("names the tier without a reading line below High", () => {
     const text = summary({ effective: "medium", files: [files[1]] });
     expect(text).toContain("The PR is medium.");
-    expect(text).not.toContain("kompiro reads");
+    expect(text).not.toContain("reviewer reads");
   });
 
   const many = (high: number, medium: number) => [
@@ -1292,7 +1292,7 @@ describe("tierSummary (#3543)", () => {
     expect(rows.filter((l) => l.startsWith("| medium"))).toHaveLength(50);
     expect(rows).toContain("50 more files are not listed.");
     expect(rows).toContain(
-      "The PR is High. kompiro reads the High files below and the PR's `## For kompiro` section.",
+      "The PR is High. The reviewer reads the High files below and the PR's `## For Reviewers` section.",
     );
     expect(summary({ files: many(150, 51) })).toContain("1 more file is not listed.");
   });
@@ -1300,7 +1300,7 @@ describe("tierSummary (#3543)", () => {
   it("asks for the whole diff when the High files do not fit in the rows", () => {
     const text = summary({ files: many(201, 0) });
     expect(text).toContain("more High files than the 200 rows listed");
-    expect(text).toContain("kompiro reads the whole diff");
+    expect(text).toContain("The reviewer reads the whole diff");
   });
 
   it("cuts a path past 200 code points and keeps the table under 1 MiB", () => {
