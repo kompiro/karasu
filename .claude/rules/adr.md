@@ -207,21 +207,25 @@ gh pr merge <N> --auto --squash --delete-branch
 **到達状態**: Low の PR に `--auto` を打つ前に `Low PR merger` の run がその PR を判定していて、
 判定と期待が #3694 にコメントしてある。
 
-この節は、上の手順の最後の `gh pr merge --auto` と `docs/process.md` 手順 15 に優先する。
-`gh issue view 3694 --json state --jq .state` が `OPEN` のあいだだけ効き、スライス C（#3681）で消す。
-`--auto` を先に打つと、native の auto-merge が最後の check の数秒後にマージし、judge（#3673 のスライス A）が
-読む前に PR が閉じてしまう。judge はマージもコメントもせず、判定を run のログと job summary に出すだけである。
+この節は、上の手順の最後の `gh pr merge --auto`、下の「`--auto` を使うので CI 完走前にコマンド発行して構わない」、
+`docs/process.md` 手順 15 に優先する。`gh issue view 3694 --json state --jq .state` が `OPEN` のあいだだけ効き、
+スライス C（#3681）で消す。`--auto` を先に打つと、native の auto-merge が最後の check の数秒後にマージし、
+judge（#3673 のスライス A）が読む前に PR が閉じてしまう。judge はマージもコメントもせず、判定を run のログと
+job summary に出すだけである。
 
 ```
-gh pr checks <N> --watch --required     # 1. required check が揃うのを待つ
-gh run list --workflow low-pr-merger.yml --limit 3 --json databaseId,createdAt,status
-gh run watch <run-id>                   # 2. 1 が終わった後に始まった run を待つ（check の完了か 10 分ごとの cron で起動する）
-gh run view <run-id> --log | grep -A12 '"pr": <N>,'   # 3. その PR の判定を読む
+gh run list --workflow low-pr-merger.yml --limit 1 --json databaseId,status,createdAt
+gh run watch <run-id> --exit-status
+gh run view <run-id> --log | grep -A12 '"pr": <N>,'   # その PR の判定を読む
 ```
 
-4. #3694 にコメントする。PR 番号、run の URL、判定（`outcome` と `reasons`）、期待した判定、一致したか。
-   required check がすべて通っていれば期待は `merge`。PR が判定に現れなければ、そう書く
-5. 判定が何であっても `gh pr merge <N> --auto --squash --delete-branch` を打つ。マージの経路は
+1. PR を作った後に始まった `Low PR merger` の run を待ち、その PR の判定を読む。judge は check の完了ごとと
+   10 分ごとの cron で走る
+2. `outcome` が `wait` で `stalled` が `true` でなければ、次の run で 1 を繰り返す
+3. #3694 にコメントする。PR 番号、run の URL、判定（`outcome`・`reasons`・`stalled`）、期待した判定、一致したか。
+   期待は judge の条件で決める: ラベルが `risk: low` だけで、Review tier を含む required check がすべて `success`、
+   コンフリクトが無ければ `merge`。どれかが落ちていれば `reject`。PR が判定に現れなければ、そう書く
+4. 判定が何であっても `gh pr merge <N> --auto --squash --delete-branch` を打つ。マージの経路は
    まだ native の auto-merge で、食い違いは kompiro が #3694 のコメントで読む
 
 `gh pr create --label` はラベルを PR を開いた後に付けるが、ラベルの無い PR に `risk: high` を付ける
