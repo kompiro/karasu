@@ -76,7 +76,8 @@ kompiro が判断した（2026-11-07、PR #3659 の検討中）。
 
 - `TourPanel` は Step 1 のときだけ切り替えのボタンを出す。押すと切り替え先のガイドを Step 1 から始める。✓ は持ち越さない。
 - 切り替えは未編集のコピーを再利用する（ADR-3600 の Understand と同じ照合）。編集したコピーは残し、ガイドは新しいコピーを開く。
-  `reusesCopy` を持つのは Understand と payroll のガイドで、Design と Evolve の入口は今のとおり毎回新しいコピーを開く。
+  `reusesCopy` を持つのは Understand と payroll のガイドで、Design と Evolve の入口は今のとおり毎回新しいコピーを開く。payroll のガイドは
+  Welcome の入口を持たないので、Restart Guided Tour… がそのプロジェクトを見つけられず開き直すときも、切り替えと同じく再利用する。
 - 解決中はパネルのボタンをすべて `aria-disabled` で止める。フォーカスを落とさないため `disabled` は使わない。
 - 切り替えのボタンはダブルクリックの 2 回目（`event.detail` が 2 以上）を無視する。戻るボタンがポインタの下に現れるため。
 - 前の題材のプロジェクトは残し、プロジェクトのセレクタから戻れる。そこにはパネルは出ない。Welcome は変えず、Design の入口は常に EC から始める。
