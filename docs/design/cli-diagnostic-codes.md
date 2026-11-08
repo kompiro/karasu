@@ -159,7 +159,7 @@ Warning[KRS041]: theme.krs.style:3:5: fill: "#12" is not a valid hex color (expe
 1. **ID の形:** `KRS[0-9]{3}`。ID は kebab のコードに 1 つ振り、重大度を含まない。番号は 001 から振る。最初の割り当てはカタログの表の順に行い、以後は新しいコードに次の番号を足す。
    - `DiagnosticParamsByCode` と `WarningKind` が同じ名前を持つとき（上の 7 つ）は、重大度が同じでも違っても、1 つの ID を共有する
    - 1 つの ID が指すのは、常に 1 つのコードである。コードの重大度を変えても ID は変わらない
-2. **ID は再利用しない。** コードを廃止したときは、その ID を廃止した ID として残し、番号を空けたままにする。一度 main に入った ID は、現役でも廃止でも、同じコードを指し続ける。
+2. **ID は再利用しない。** コードを廃止したときは、その ID を廃止した ID として残し、番号を空けたままにする。一度公開した ID は、現役でも廃止でも、同じコードを指し続ける。公開前の ID は、重複を解くために振り直してよい。
 3. **人が読む行:** カタログの診断を出す行は、重大度の語の直後に `[<ID>]` を置く（`Warning[KRS014]:`、`stdin:3:5 error[KRS041]:`）。位置の形、重大度の語の位置と綴り、メッセージはコマンドごとに今のまま変えない。`[<ID>]` の無い行はカタログの診断ではない（引数の通知、`translate` の警告、`karasu fmt` の `Cannot format: ...`）。
 4. **機械が読む形:** `karasu check --format json` は、上の形の JSON を 1 つだけ stdout に出す。
    - `diagnostics` の並びは、テキストで出す順と同じにする
@@ -178,8 +178,8 @@ Warning[KRS041]: theme.krs.style:3:5: fill: "#12" is not a valid hex color (expe
    - 1 つの ID が指すコードは 1 つで、廃止した ID と現役の ID が重ならない。2 つの対応が同じ名前を持つときは同じ ID である
    - 現役と廃止を合わせた番号が 001 から空きなく並ぶ（廃止の記録なしに ID を消すと番号が空いて落ちる）
 <!-- absent-path-next-line: the history guard this design intends to add (#3654) -->
-2. **ID の履歴を検査する。** 連続と重複の検査だけでは、廃止したコードの ID を別のコードに付け替える変更が通る。`scripts/lint/diagnostic-ids-history.ts` で、merge base の登録簿にある ID が、HEAD でも同じコードを（現役か廃止として）指していることを確かめ、pre-push と CI に載せる。
-   並行する 2 本の PR が同じ番号を取ると、両方が通ってからマージした時点で main の重複検査が落ちる（ruleset は base への追従を求めない）。リリースは月次なので、公開前に後の方の番号を振り直す。まだ公開していない ID なので、振り直しは再利用に当たらない。
+2. **ID の履歴を検査する。** 連続と重複の検査だけでは、廃止したコードの ID を別のコードに付け替える変更が通る。`scripts/lint/diagnostic-ids-history.ts` で、公開済みの最新版（最新の `karasu@*` タグ）の登録簿にある ID が、HEAD でも同じコードを（現役か廃止として）指していることを確かめ、pre-push と CI に載せる。そのタグに登録簿が無い（本件を含む版がまだ出ていない）あいだは、比べるものが無いので通す。
+   比べる相手を merge base でなく公開済みの版にするのは、公開前の振り直しを許すためである。並行する 2 本の PR が同じ番号を取ると、両方が通ってからマージした時点で main の重複検査が落ちる（ruleset は base への追従を求めない）。そのときは次の PR で後の方の番号を振り直す。まだ公開していない ID なので、振り直しは再利用に当たらず、履歴の検査も通る。重複を残したまま公開しないよう、リリース PR の CI も重複検査を通る。
 3. **カタログに ID の列を足す。** `docs/spec/diagnostics.md` と `.ja.md` の各表の `Code` 列の後ろに `ID` 列を足す（meta-test は先頭の列をコードとして読むので、先頭には置かない）。meta-test（`diagnostics-catalog.test.ts`）で、列と登録簿の一致を確かめる。
    - 面によって重大度が変わる 5 つのコードは、`Severity` 列に面ごとの重大度を書く（`error`（`lint-style` / `tidy-style`）、`warning`（`render` / `check`））。今のカタログは error とだけ書いており、`render` の行と食い違っている。`ID` 列は 1 つである
    - 廃止した ID は「廃止した ID」の表に、ID を先頭の列にして旧コードとともに残し、古い出力からも引けるようにする。旧コードを先頭の列のバッククォートで書くと、meta-test の「廃止したコードを載せない」検査に当たる
@@ -211,7 +211,7 @@ Warning[KRS041]: theme.krs.style:3:5: fill: "#12" is not a valid hex color (expe
     - `karasu check` の警告とエラーの行の頭に、locale によらず同じ ID が付く
     - `unresolved-edge-endpoint` を発火させた fixture で、`ja` の locale でも `--format json` の `code` で判定できる
     - モデルに error があるとき、`--format json` は読める JSON を出して 1 で終わる。ファイルが無いときは stdout に何も出さず 0 以外で終わる
-    - 登録簿の ID がカタログの `ID` 列に一致し、番号に空きが無く、merge base の ID が同じコードを指し続ける
+    - 登録簿の ID がカタログの `ID` 列に一致し、番号に空きが無く、公開済みの版の ID が同じコードを指し続ける
     - `reverse-architecture` の `` `code:<kebab>` `` がすべてカタログに実在し、ID を書いていない
 12. **ADR 昇格。** 実装完了後に `docs/adr/3654-cli-diagnostic-codes.md` として昇格し、本 Design Doc は同じ PR で削除する。
 
