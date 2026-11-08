@@ -7,7 +7,7 @@
 // workflow's token must not repeat them. Each comment carries a marker for its
 // head and reasons, so the same verdict on the same head is said once.
 
-import type { Verdict } from "./low-pr-merger-flow.ts";
+import type { VerdictOutput } from "./low-pr-merger-flow.ts";
 
 /** Reasons a comment can name: the rejections, and a wait that stalled. */
 const TEXT: Readonly<Record<string, string>> = {
@@ -31,12 +31,24 @@ export const BOT_LOGIN = "github-actions[bot]";
 
 const isSha = (s: unknown): s is string => typeof s === "string" && /^[0-9a-f]{40}$/.test(s);
 
+const OUTCOMES = ["out-of-scope", "merge", "wait", "reject", "no-conclusion"];
+const REASONS = [
+  "labels",
+  "tier",
+  "checks-failed",
+  "conflict",
+  "checks-pending",
+  "checks-stuck",
+  "mergeable-unknown",
+  "head-moved",
+];
+
 /**
  * The judge's verdicts, as the notify and merge steps read them back from a step
  * output. Throws on anything but the shape the judge writes, so a malformed
  * output stops the run instead of being half-read (TPL-2786).
  */
-export function parseVerdicts(json: string): Verdict[] {
+export function parseVerdicts(json: string): VerdictOutput[] {
   const value: unknown = JSON.parse(json);
   if (!Array.isArray(value)) throw new Error("verdicts: not an array");
   for (const v of value as Record<string, unknown>[]) {
@@ -44,19 +56,24 @@ export function parseVerdicts(json: string): Verdict[] {
       throw new Error(`verdicts: bad PR number ${JSON.stringify(v.pr)}`);
     }
     if (!isSha(v.sha)) throw new Error(`verdicts: #${v.pr}: bad head ${JSON.stringify(v.sha)}`);
-    if (
-      !["out-of-scope", "merge", "wait", "reject", "no-conclusion"].includes(v.outcome as string)
-    ) {
+    if (!OUTCOMES.includes(v.outcome as string)) {
       throw new Error(`verdicts: #${v.pr}: bad outcome ${JSON.stringify(v.outcome)}`);
     }
+    const reasons = v.reasons ?? [];
+    if (!Array.isArray(reasons) || !reasons.every((r) => REASONS.includes(r as string))) {
+      throw new Error(`verdicts: #${v.pr}: bad reasons ${JSON.stringify(v.reasons)}`);
+    }
+    if (v.stalled !== undefined && typeof v.stalled !== "boolean") {
+      throw new Error(`verdicts: #${v.pr}: bad stalled ${JSON.stringify(v.stalled)}`);
+    }
   }
-  return value as Verdict[];
+  return value as VerdictOutput[];
 }
 
 /** The reasons a verdict comments on, or none when it says nothing to the PR. */
-function reasonsOf(v: Verdict): string[] {
-  if (v.outcome === "reject") return [...v.reasons].sort();
-  if (v.outcome === "wait" && v.stalled) return ["stalled"];
+function reasonsOf(v: VerdictOutput): string[] {
+  if (v.outcome === "reject") return [...(v.reasons ?? [])].sort();
+  if (v.outcome === "wait" && v.stalled === true) return ["stalled"];
   return [];
 }
 
@@ -69,7 +86,7 @@ export interface Notice {
  * The comment for a verdict, or null when there is nothing to say or `posted`
  * (the bodies of the bot's earlier comments on the PR) already said it.
  */
-export function noticeFor(v: Verdict, posted: readonly string[]): Notice | null {
+export function noticeFor(v: VerdictOutput, posted: readonly string[]): Notice | null {
   const reasons = reasonsOf(v);
   if (reasons.length === 0) return null;
   const marker = `<!-- low-pr-merger head=${v.sha} reasons=${reasons.join(",")} -->`;

@@ -118,6 +118,13 @@ describe("low-pr-merger.yml treats PRs as data (TPL-3673)", () => {
     expect(merge).toContain("printf 'open\\tfalse\\t%s\\tmain\\trisk: low' \"$sha\"");
   });
 
+  it("hands the verdicts to a step only through env, never into a script", () => {
+    const uses = merger.split("\n").filter((l) => l.includes("needs.judge.outputs.verdicts"));
+    expect(uses.length).toBeGreaterThan(0);
+    for (const line of uses)
+      expect(line).toMatch(/^ {10}VERDICTS: \$\{\{ needs\.judge\.outputs\.verdicts \}\}$/);
+  });
+
   it("fails the run when a job did not finish or a PR got no conclusion (TPL-2786)", () => {
     const report = job("report");
     expect(report).toMatch(/^ {4}needs: \[judge, merge, notify\]$/m);

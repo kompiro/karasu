@@ -1,24 +1,22 @@
 import { describe, expect, it } from "vitest";
-import type { Verdict } from "./low-pr-merger-flow.ts";
+import type { VerdictOutput } from "./low-pr-merger-flow.ts";
 import { noticeFor, parseVerdicts } from "./low-pr-merger-notice.ts";
 
 const SHA = "0123456789abcdef0123456789abcdef01234567";
 const OTHER = "fedcba9876543210fedcba9876543210fedcba98";
 
-const reject = (over: Partial<Extract<Verdict, { outcome: "reject" }>> = {}): Verdict => ({
+const reject = (over: Partial<VerdictOutput> = {}): VerdictOutput => ({
   pr: 7,
   sha: SHA,
   outcome: "reject",
   reasons: ["tier"],
-  details: ["PR #7 is labeled risk: low but its change is high"],
   ...over,
 });
-const wait = (stalled: boolean): Verdict => ({
+const wait = (stalled: boolean): VerdictOutput => ({
   pr: 7,
   sha: SHA,
   outcome: "wait",
   reasons: ["checks-stuck"],
-  details: [],
   stalled,
 });
 
@@ -31,10 +29,10 @@ describe("noticeFor", () => {
     expect(notice?.body).toContain("at `0123456`");
   });
 
-  it("never repeats what the PR wrote: details stay out of the comment (TPL-3673)", () => {
-    const notice = noticeFor(reject({ details: ["@someone <img src=x> `rm -rf`"] }), []);
-    expect(notice?.body).not.toContain("@someone");
-    expect(notice?.body).not.toContain("<img");
+  it("is written from the reason codes alone (TPL-3673)", () => {
+    const body = noticeFor(reject({ reasons: ["labels"] }), [])!.body;
+    expect(body.split("\n").slice(1).join("\n")).not.toMatch(/[0-9a-f]{8,}/);
+    expect(body).toContain("tier label besides `risk: low`");
   });
 
   it("names every reason, in a stable order", () => {
@@ -49,10 +47,10 @@ describe("noticeFor", () => {
   });
 
   it("says nothing to a PR it merges, leaves out, or could not decide", () => {
-    const silent: Verdict[] = [
+    const silent: VerdictOutput[] = [
       { pr: 7, sha: SHA, outcome: "merge" },
-      { pr: 7, sha: SHA, outcome: "out-of-scope", why: "draft" },
-      { pr: 7, sha: SHA, outcome: "no-conclusion", details: ["HTTP 502"] },
+      { pr: 7, sha: SHA, outcome: "out-of-scope" },
+      { pr: 7, sha: SHA, outcome: "no-conclusion" },
     ];
     for (const v of silent) expect(noticeFor(v, [])).toBeNull();
   });
@@ -71,7 +69,7 @@ describe("noticeFor", () => {
 
 describe("parseVerdicts", () => {
   it("reads back what the judge wrote", () => {
-    const verdicts: Verdict[] = [{ pr: 1, sha: SHA, outcome: "merge" }, reject()];
+    const verdicts: VerdictOutput[] = [{ pr: 1, sha: SHA, outcome: "merge" }, reject(), wait(true)];
     expect(parseVerdicts(JSON.stringify(verdicts))).toEqual(verdicts);
   });
 
@@ -80,6 +78,11 @@ describe("parseVerdicts", () => {
     ["a PR number that is not a positive integer", `[{"pr":"7","sha":"${SHA}","outcome":"merge"}]`],
     ["a head that is not a full SHA", `[{"pr":7,"sha":"main","outcome":"merge"}]`],
     ["an unknown outcome", `[{"pr":7,"sha":"${SHA}","outcome":"approve"}]`],
+    ["an unknown reason", `[{"pr":7,"sha":"${SHA}","outcome":"reject","reasons":["<b>hi</b>"]}]`],
+    [
+      "a stalled that is not a boolean",
+      `[{"pr":7,"sha":"${SHA}","outcome":"wait","stalled":"yes"}]`,
+    ],
     ["no output at all", ""],
   ])("refuses %s", (_, json) => {
     expect(() => parseVerdicts(json)).toThrow();

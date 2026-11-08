@@ -12,6 +12,7 @@ import {
   judgeChecks,
   outOfScope,
   renderSummary,
+  toOutput,
 } from "./low-pr-merger-flow.ts";
 
 const REQUIRED = ["Check", "Validate"];
@@ -74,6 +75,9 @@ function deps(init: {
   tier?: (pr: number) => TierResult;
   required?: () => string[];
   pullFails?: number;
+  /** The PRs as the per-PR read returns them, when that differs from the list. */
+  reread?: (p: Pull) => Pull;
+  commitDate?: string;
 }): Deps & { tierCalls: number[] } {
   const tierCalls: number[] = [];
   // One set of runs per head, so the check runs and the workflow runs agree.
@@ -87,11 +91,13 @@ function deps(init: {
     openPulls: () => init.pulls.map(({ mergeable: _m, mergeable_state: _s, ...p }) => p),
     pull: (n) => {
       if (n === init.pullFails) throw new Error(`gh api repos/kompiro/karasu/pulls/${n}: HTTP 502`);
-      return structuredClone(init.pulls.find((p) => p.number === n)!);
+      const p = structuredClone(init.pulls.find((q) => q.number === n)!);
+      return init.reread ? init.reread(p) : p;
     },
     requiredChecks: init.required ?? (() => REQUIRED),
     checkRuns: (sha) => reportsOf(sha).runs,
     workflowRuns: (sha) => reportsOf(sha).workflows,
+    commitDate: () => init.commitDate ?? RECENT,
   };
   return {
     github,
@@ -302,6 +308,40 @@ describe("judge", () => {
     });
   });
 
+  it("reports a wait on a head no workflow ran on as stalled 30 minutes after its commit", () => {
+    const pulls = [pull({ number: 1, mergeable: null })];
+    const quiet = (commitDate: string) => judge(deps({ pulls, checks: () => [], commitDate }))[0];
+    expect(quiet(RECENT)).toMatchObject({ outcome: "wait", stalled: false });
+    expect(quiet(new Date(NOW - STALL_MS).toISOString())).toMatchObject({
+      outcome: "wait",
+      stalled: true,
+    });
+  });
+
+  it("leaves out a PR whose risk: low was removed after the list was read", () => {
+    const reread = (p: Pull): Pull => ({ ...p, labels: [] });
+    expect(judge(deps({ pulls: [pull({ number: 1 })], reread }))[0]).toMatchObject({
+      outcome: "out-of-scope",
+      why: "no longer labeled risk: low",
+    });
+  });
+
+  it("still rejects a PR whose check runs it could not map", () => {
+    const checks = () => {
+      const r = reported("Check", "success");
+      r.workflow.check_suite_id = -1;
+      return [r];
+    };
+    const labels = [{ name: "risk: low" }, { name: "risk: high" }];
+    expect(judge(deps({ pulls: [pull({ number: 1, labels })], checks }))[0]).toMatchObject({
+      outcome: "reject",
+      reasons: ["labels"],
+    });
+    expect(judge(deps({ pulls: [pull({ number: 2 })], checks }))[0]).toMatchObject({
+      outcome: "no-conclusion",
+    });
+  });
+
   it("has no conclusion when the tier check could not read something", () => {
     const tier = (): TierResult => ({ state: "unreadable", messages: ["closes #9: HTTP 502"] });
     expect(judge(deps({ pulls: [pull({ number: 1 })], tier }))[0]).toEqual({
@@ -336,10 +376,39 @@ describe("judge", () => {
         throw new Error("HTTP 403");
       },
     ]) {
-      const d = deps({ pulls: [pull({ number: 1 })], required });
-      expect(judge(d)).toMatchObject([{ pr: 1, outcome: "no-conclusion" }]);
+      const d = deps({ pulls: [pull({ number: 1 }), pull({ number: 2, draft: true })], required });
+      expect(judge(d)).toMatchObject([
+        { pr: 1, outcome: "no-conclusion" },
+        { pr: 2, outcome: "out-of-scope", why: "draft" },
+      ]);
       expect(d.tierCalls).toEqual([]);
     }
+  });
+});
+
+describe("toOutput", () => {
+  it("hands on the PR, the head, the outcome and the reason codes, never the details", () => {
+    const output = toOutput([
+      { pr: 1, sha: "a", outcome: "merge" },
+      { pr: 2, sha: "b", outcome: "reject", reasons: ["tier"], details: ["`$(curl x)`.test.ts"] },
+      {
+        pr: 3,
+        sha: "c",
+        outcome: "wait",
+        reasons: ["checks-stuck"],
+        details: ["x"],
+        stalled: true,
+      },
+      { pr: 4, sha: "d", outcome: "out-of-scope", why: "base is $(x)" },
+      { pr: 5, sha: "e", outcome: "no-conclusion", details: ["HTTP 502"] },
+    ]);
+    expect(output).toEqual([
+      { pr: 1, sha: "a", outcome: "merge" },
+      { pr: 2, sha: "b", outcome: "reject", reasons: ["tier"] },
+      { pr: 3, sha: "c", outcome: "wait", reasons: ["checks-stuck"], stalled: true },
+      { pr: 4, sha: "d", outcome: "out-of-scope" },
+      { pr: 5, sha: "e", outcome: "no-conclusion" },
+    ]);
   });
 });
 
