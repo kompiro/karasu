@@ -212,12 +212,19 @@ async function waitForPublished(releases: PlannedRelease[]): Promise<void> {
  * seen. It runs right after the approval instead of waiting for the daily
  * release-confirm.yml, and stops before the next group.
  */
-function checkInstallFields(packed: Map<string, Record<string, unknown>>): void {
-  const differing = [...packed].flatMap(([spec, manifest]) => {
-    const registry = JSON.parse(runOk("npm", ["view", spec, "--json"])) as Record<string, unknown>;
-    const fields = manifestDifferences(manifest, registry);
-    return fields.length > 0 ? [`${spec}: ${fields.join(", ")}`] : [];
-  });
+async function checkInstallFields(packed: Map<string, Record<string, unknown>>): Promise<void> {
+  const differing: string[] = [];
+  for (const [spec, manifest] of packed) {
+    // `npm view` prints nothing for a version it does not serve, and one
+    // request may still meet a stale answer right after `waitForPublished`.
+    let served = "";
+    await waitFor(`the metadata of ${spec} on npm`, () => {
+      served = runOk("npm", ["view", spec, "--json"]);
+      return served !== "";
+    });
+    const fields = manifestDifferences(manifest, JSON.parse(served) as Record<string, unknown>);
+    if (fields.length > 0) differing.push(`${spec}: ${fields.join(", ")}`);
+  }
   if (differing.length > 0) {
     throw new Error(
       [
@@ -324,7 +331,15 @@ export async function main(argv: string[]): Promise<void> {
         approvedAny = true;
       }
       await waitForPublished(checks.map((check) => check.release));
-      checkInstallFields(packed);
+      try {
+        await checkInstallFields(packed);
+      } catch (error) {
+        // The train Issue gets the report now, not at the next daily run;
+        // release-confirm.yml tags nothing that differs.
+        step("Starting release-confirm.yml to report on the train Issue");
+        run("gh", ["workflow", "run", "release-confirm.yml"]);
+        throw error;
+      }
       if (plan.length === 1) break;
       await rerunRelease(resolved);
     }

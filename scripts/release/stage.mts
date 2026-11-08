@@ -232,8 +232,15 @@ export function main(argv: string[]): void {
       // Not staged by this run: the approval step checks who made the tarball.
       // npm answers the same for a version unpublished long ago, which is in
       // no queue and can never be staged again; approval then finds nothing.
+      // The lookup only picks the wording, so its failure does not stop staging.
+      let onNpm = false;
+      try {
+        onNpm = isOnNpm(release.name, release.version);
+      } catch (error) {
+        console.log(`::warning::Could not look up ${release.name}@${release.version}: ${error}`);
+      }
       summary(
-        isOnNpm(release.name, release.version)
+        onNpm
           ? `| ${id} | ${tag} | already on npm | | |`
           : `| ${id} | ${tag} | refused by npm as previously staged or published: expected in the stage queue, otherwise the version number is used up and needs a bump | | |`,
       );
