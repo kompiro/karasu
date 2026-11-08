@@ -196,16 +196,16 @@ Active TPLs grouped by `topic`, then deprecated ones.
 - [TPL-976](TPL-976-e2e-fixture-controlled-state.md) — E2E テストは fixture が状態 / 環境 / 後始末をすべて所有し、リーク経路を post-merge で監視する (#976, #1006, #1007, #1271, #3249) · partial 1/5
 - [TPL-1171](TPL-1171-wait-for-stable-state.md) — E2E の async UI 操作は要求した state ではなく到達した stable state を待ってから assert / 操作する (#1171, #976, #2850) · unguarded 0/3, judgment 2
 - [TPL-1608](TPL-1608-diagnostic-absence-assertion-scope-severity.md) — 診断の不在を assert するテストは severity でスコープする（info register は open set） (#1608) · unguarded 0/2, judgment 2
-- [TPL-1680](TPL-1680-at-e2e-spec-linkage-no-drift.md) — AT ↔ e2e spec の linkage は machine guard で固定する（spec を足す / rename したら AT doc から辿れること） (#1680) · unguarded 0/3, judgment 1
+- [TPL-1680](TPL-1680-at-e2e-spec-linkage-no-drift.md) — AT ↔ e2e spec の linkage は machine guard で固定する（spec を足す / rename したら AT doc から辿れること） (#1680) · partial 1/3, judgment 1
 - [TPL-1725](TPL-1725-gated-test-suite-detection-gap.md) — label-gated / 遅延実行のテストスイートは、その検証対象を変える PR でマージ前に必ず起動させる (#1725) · unguarded 0/2, judgment 2
 - [TPL-2046](TPL-2046-pnpm-double-dash-arg-forwarding.md) — pnpm run <script> -- <flag> は flag が下位ツールに届かないことがある。CLI 引数は下位ツールに直接渡す (#2046) · unguarded 0/3, judgment 1
 - [TPL-2047](TPL-2047-doc-embedded-krs-is-parsed-not-prose.md) — ドキュメントに埋めた .krs は散文ではなく入力として parse する（手順は誰も実行しないので静かに文法から外れる） (#2047, #2415, #2910) · guarded 3/3, judgment 3
 - [TPL-2254](TPL-2254-durable-record-points-at-durable-address.md) — 再実行される記録は、記録より長生きするアドレスを指す (#2254, #2259, #3169, #3271) · partial 1/4, judgment 2
-- [TPL-2287](TPL-2287-detector-near-misses-are-the-spec.md) — 検出器の false positive 予算は正しさの一部 — near-miss 事例を仕様として書く (#2287) · unguarded 0/6, judgment 2
+- [TPL-2287](TPL-2287-detector-near-misses-are-the-spec.md) — 検出器の false positive 予算は正しさの一部 — near-miss 事例を仕様として書く (#2287, #3639) · unguarded 0/6, judgment 2
 - [TPL-2291](TPL-2291-mocked-transport-does-not-verify-the-remote-contract.md) — 通信相手をモックしたテストは、こちらのロジックしか検証しない — 相手が受理するかは別に確かめる (#2291) · unguarded 0/3, judgment 4
-- [TPL-2456](TPL-2456-module-instance-scoped-identity.md) — 参照同一性で判定される共有オブジェクトは、module のコピーが 2 つになった瞬間に壊れる (#2456) · unguarded 0/2, judgment 2
+- [TPL-2456](TPL-2456-module-instance-scoped-identity.md) — 参照同一性で判定される共有オブジェクトは、module のコピーが 2 つになった瞬間に壊れる (#2456) · judgment 4
 - [TPL-2598](TPL-2598-fence-corpus-must-reach-the-limit.md) — 計測柵は、その資源の限界に達する入力を corpus に持って初めて柵になる (#2598) · judgment 4
-- [TPL-2810](TPL-2810-two-implementations-agree-only-when-measured.md) — 同じ検査の実装が 2 つになったら、緑同士は一致の証明ではない — 差分 fixture で規則差を測り、移す先が merge を止められるかを確かめてから片方を退役させる (#2810) · unguarded 0/2, judgment 3
+- [TPL-2810](TPL-2810-two-implementations-agree-only-when-measured.md) — 同じ検査の実装が 2 つになったら、緑同士は一致の証明ではない — 差分 fixture で規則差を測り、移す先が merge を止められるかを確かめてから片方を退役させる (#2810) · judgment 5
 - [TPL-3039](TPL-3039-e2e-coverage-follows-surface-not-history.md) — E2E のカバレッジは AT の履歴ではなく操作面の集合に対して測り、操作面の登録と spec の対応を機械で見る (#3039) · guarded 1/1, judgment 4
 - [TPL-3589](TPL-3589-exhaustiveness-contract-must-not-be-vacuous.md) — 登録を強制する型の契約は、それ自体が空にならないことまで固定する。表の型注釈がエントリを広げると、契約はどんな表でも成り立つ (#3589) · unguarded 0/2, judgment 1
 
@@ -231,7 +231,9 @@ Active TPLs grouped by `topic`, then deprecated ones.
 - [TPL-2879](TPL-2879-stateful-instance-not-shared-across-concurrent-calls.md) — 呼び出しごとに状態を作り直すインスタンスを、並行する呼び出しで共有しない (#2879) · unguarded 0/3, judgment 1
 - [TPL-3103](TPL-3103-shipped-doc-links-resolve-where-installed.md) — 配布物に入る文書のリンクは、配布物の中か絶対 URL を指す (#3103, #1779) · unguarded 0/2, judgment 2
 - [TPL-3137](TPL-3137-bundled-notices-cover-workspace-deps.md) — バンドルした配布物の notices は、バンドルに入る workspace パッケージの依存まで数える (#3137) · unguarded 0/4
-- [TPL-3286](TPL-3286-merge-eligibility-judged-on-final-diff.md) — 人間を通らないマージを許す判定は、最終の差分で行い、どの規則にも当たらない入力を厳しい側に倒す (#3286, #3405, #3505) · partial 8/18, judgment 1
+- [TPL-3240](TPL-3240-exact-pinned-dependency-installable-after-its-target.md) — 完全一致で依存するパッケージは、依存先がインストールできるようになってからインストールできるようにする (#3240) · unguarded 0/5
+- [TPL-3286](TPL-3286-merge-eligibility-judged-on-final-diff.md) — 人間を通らないマージを許す判定は、最終の差分で行い、どの規則にも当たらない入力を厳しい側に倒す (#3286, #3405, #3505, #3542) · partial 8/19, judgment 1
+- [TPL-3673](TPL-3673-privileged-workflow-treats-pr-as-data.md) — 書き込み権限を持つ workflow は、PR 由来のものをデータとして扱い、実行も信用もしない (#3673) · unguarded 0/3, judgment 2
 
 ### adr-tooling
 
