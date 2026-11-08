@@ -56,6 +56,7 @@ system S {
 | `implicitEdgeDetails`（`derived-edges.ts`） | kind 付き | 混ざらない |
 | `edgeDiffKeyOf`（`view-diff.ts`） | キーは kind 付き、値が kind 無し | 混ざらない |
 | view extract の dedup・抑止、`edge-routing-bundles.ts` のバンドル | kind 無し | 混ざらない |
+| 描いた edge の dedup（`drawnEdgeKey`、`anchored-edges.ts`・`view-extract.ts`・`derived-edges.ts`） | kind 付き | 混ざらない |
 
 `edgeKey` は core の index から export されているが、core の外（app・vscode・cli・lsp・nest）には読み手も書き手も無い。SVG にも出ない。SVG の `data-edge-canonical-id` と `edge#` セレクタは ADR-3480 の `edgeBaseForm` が作り、`edgeKey` とは関係しない。
 
@@ -70,7 +71,9 @@ system S {
 
 ### 案1: `edgeKey` が `#` を含む端点も囲む
 
-`quoteEdgeEndpoint` の条件に `#` を足す。案D は「join を曖昧にする文字（区切りの `->` と、引用形を作る `"` / `\`）を含む端点を囲む」規則で、`#` は `edgeKindKey` が足す区切りである。足すと、kind 無しキーには引用の外に `#` が現れず、kind 付きキーには引用の外にちょうど 1 つ現れる。2 つの形はどのマップでも重ならない。
+`quoteEdgeEndpoint` の条件に `#` を足す（`->` の判定は残し、`"` / `\` を見る正規表現に `#` を加える）。案D は「join を曖昧にする文字（区切りの `->` と、引用形を作る `"` / `\`）を含む端点を囲む」規則で、`#` は `edgeKindKey` が足す区切りである。足すと、kind 無しキーには引用の外に `#` が現れず、kind 付きキーには引用の外にちょうど 1 つ現れる。2 つの形はどのマップでも重ならない。
+
+同じ Design Doc が `ownsEdgeKey`（`org-view-diff.ts`）で既に同じ規則を採っている。区切り `#owns#` を含みうる team id を、`#`・`"`・`\` を含むときだけ囲む。案1 は新しい規則を作るのではなく、この規則を `edgeKey` にも当てはめる。
 
 **メリット**
 
@@ -108,7 +111,7 @@ system S {
 
 - 公開の型 `ResolvedStyles` にフィールドが増える
 - 読み書きする 5 か所を変える。書き込みは `style-resolver.ts` の 2 か所、読み取りは `edge-line-key.ts` の fallback、`svg-renderer.ts` の `edgeDirections` と矢印 marker の色の収集である
-- kind 無しキーを直接読み書きするテストが 7 行ある（`svg-renderer.test.ts` 2・`mutual-pair.test.ts` 1・`label-placement.test.ts` 4）
+- kind 無しキーを直接読み書きするテストが多い。`style-resolver.test.ts` だけで、`result.edges.get("A->B")` の形で引く行が 42 ある。ほかに `svg-renderer.test.ts`・`mutual-pair.test.ts`・`label-placement.test.ts` にもある
 - `nodesByPath` が別マップにしたのは、素の id `"Shop.Api"` と path `Shop.Api` が別の識別の空間で、同じ文字列を取りうるからである。edge の 2 つの形は同じ `edgeKey` から作るので、区切りを囲めば文字列のまま分けられる
 
 ### 案4: `#sync` / `#async` で終わる端点だけを囲む
@@ -122,11 +125,19 @@ system S {
 - 規則が `EdgeKind` の値の一覧に依存する。kind が増えると黙って壊れる
 - 案D の「区切りを含む端点を囲む」という規則の形から外れる
 
+### 案5: `edgeKindKey` の区切りを、`edgeKey` が既に囲む文字に替える
+
+たとえば `"` を区切りにすれば、`edgeKey` を変えずに 2 つの形が分かれる。
+
+**デメリット**
+
+- 普通のモデルの kind 付きキーがすべて変わる（`A->B#sync` が別の文字列になる）。制約の 1 つ目に反する。テストも `"A->B#sync"` を期待している（`facet-style-selector.test.ts` など）
+
 ## 比較
 
 | 観点 | 案1 | 案2 | 案3 | 案4 |
 | --- | --- | --- | --- | --- |
-| 変更量 | 1 行 + テスト | 引き当て 3 か所 + 規則 1 つ | 型 + 読み書き 5 か所 + テスト 7 行 | 1 行 + テスト |
+| 変更量 | 1 行 + テスト | 引き当て 3 か所 + 規則 1 つ | 型 + 読み書き 5 か所 + テスト 40 行以上 | 1 行 + テスト |
 | 公開 API | `edgeKey` の出力（`#` を含む端点だけ） | 変わらない | `ResolvedStyles` の型 | `edgeKey` の出力（`#sync` / `#async` で終わる端点だけ） |
 | 普通のモデルのキー | 変わらない | 変わらない | 変わらない | 変わらない |
 | キーの規則の数 | 1 | 2 | 1 | 1 |
@@ -134,13 +145,13 @@ system S {
 
 ## 現時点の方針
 
-**案1 を採用する。** `quoteEdgeEndpoint` の条件を `/["\\#]/` に替えて上の表と同じモデルを測ると、model の順がどちらでも、4 つの rule はそれぞれ書いた edge だけの色と上下を変えた。`#` は `edgeKindKey` が足す区切りなので、案D の規則（区切りを含む端点を囲む）をそのまま当てはめるだけで 2 つの形が重ならなくなる。書き手と読み手は今のヘルパーのままで、#3481 の揃え方も TPL-1352 の「ヘルパーを 1 つ」も保てる。変わるのは `#` を含む端点の edge のキー文字列だけで、それを core の外で読むコードは無い。
+**案1 を採用する。** `quoteEdgeEndpoint` の正規表現に `#` を足して上の表と同じモデルを測ると、model の順がどちらでも、4 つの rule はそれぞれ書いた edge だけの色と上下を変えた。`#` は `edgeKindKey` が足す区切りなので、案D の規則（区切りを含む端点を囲む）をそのまま当てはめるだけで 2 つの形が重ならなくなる。書き手と読み手は今のヘルパーのままで、#3481 の揃え方も TPL-1352 の「ヘルパーを 1 つ」も保てる。変わるのは `#` を含む端点の edge のキー文字列だけで、それを core の外で読むコードは無い。
 
-案3 は構造としては最も堅く、費用も大きくはない。それでも採らないのは、直るのが `styles.edges` と `edgeDirections` だけだからである。2 つの形が重なる性質は `edgeKey` / `edgeKindKey` 自体に残り、次に 2 つの形を混ぜたマップが同じ衝突を起こす。案1 はその性質をヘルパーの側で消す。
+案3 は構造としては最も堅いが、公開の型と 40 行以上のテストを変える。しかも直るのは `styles.edges` と `edgeDirections` だけである。2 つの形が重なる性質は `edgeKey` / `edgeKindKey` 自体に残り、次に 2 つの形を混ぜたマップが同じ衝突を起こす。案1 はその性質をヘルパーの側で消す。
 
 ### 実装の指針
 
-1. `packages/core/src/view/edge-key.ts`: `quoteEdgeEndpoint` の条件を `/["\\#]/` にし、`edgeKey` と `edgeKindKey` の doc に `#` を囲む理由（kind の区切りなので、kind 無しキーと kind 付きキーが重ならない。#3702）を足す
+1. `packages/core/src/view/edge-key.ts`: `quoteEdgeEndpoint` の正規表現を `/["\\]/` から `/["\\#]/` にし（`->` の判定は残す）、`edgeKey` と `edgeKindKey` の doc に `#` を囲む理由（kind の区切りなので、kind 無しキーと kind 付きキーが重ならない。#3702）を足す
 2. テスト:
    - `edge-key.test.ts`: `#` を含む端点の `edgeKey` が囲まれること、`edgeKey({ from: "x", to: "y#sync" })` が `edgeKindKey({ from: "x", to: "y", kind: "sync" })` と違うこと、普通の id のキーが変わらないこと
    - `style-resolver.test.ts` の `edgeStyleKey (#3481)`: kind 無しキーと kind 付きキーが重ならないこと
