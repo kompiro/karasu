@@ -8,7 +8,7 @@
 // or run. Dependency-free, like `tier.ts`: the workflow runs it with plain `node`.
 //
 // Output: a table in the job summary, the verdicts as JSON on stdout and, under
-// Actions, as the step output `verdicts`. It exits 0 even when it could not
+// Actions, as the step output `verdicts` (without the details, which quote PRs). It exits 0 even when it could not
 // decide some PR: those are verdicts too, and one PR must not stop the judging
 // of the others (TPL-2786 is kept by whatever reads the verdicts).
 //
@@ -24,6 +24,7 @@ import {
   type WorkflowRun,
   judge,
   renderSummary,
+  toOutput,
 } from "./low-pr-merger-flow.ts";
 import { BASE, REPO } from "../adr/regenerate-pr-flow.ts";
 import { checkPr } from "./tier.ts";
@@ -78,6 +79,8 @@ const restGitHub: GitHub = {
       `repos/${REPO}/actions/runs?head_sha=${sha}&per_page=100`,
       ".workflow_runs[] | {id, path, event, check_suite_id}",
     ),
+  commitDate: (sha) =>
+    gh([`repos/${REPO}/commits/${sha}`, "--jq", ".commit.committer.date"]).trim(),
 };
 
 const git = (...args: string[]): string =>
@@ -100,7 +103,7 @@ function main(): number {
   git("fetch", "--quiet", "--no-tags", "origin", BASE);
   const verdicts = judge({ github: restGitHub, checkTier, now: () => Date.now() });
 
-  const json = JSON.stringify(verdicts);
+  const json = JSON.stringify(toOutput(verdicts));
   console.log(JSON.stringify(verdicts, null, 2));
   for (const v of verdicts) {
     if (v.outcome === "no-conclusion") {

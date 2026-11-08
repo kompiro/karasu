@@ -78,6 +78,8 @@ export interface GitHub {
   requiredChecks(): string[];
   checkRuns(sha: string): CheckRun[];
   workflowRuns(sha: string): WorkflowRun[];
+  /** The committer date of a commit (ISO 8601). */
+  commitDate(sha: string): string;
 }
 
 /** `tier.ts check` on one head, already reduced to what the judge needs. */
@@ -219,15 +221,23 @@ function lastActivity(runs: readonly CheckRun[]): number | null {
   return times.length === 0 ? null : Math.max(...times);
 }
 
+/** Condition 1 and the label the PR was listed by: removing it is how a PR is taken out. */
+function scopeOf(pr: Pull): string | null {
+  if (!pr.labels.some((l) => l.name === LOW_LABEL)) return `no longer labeled ${LOW_LABEL}`;
+  return outOfScope(pr);
+}
+
 function judgeOne(deps: Deps, listed: Pull, required: readonly string[]): Verdict {
   const { github } = deps;
   const pr = github.pull(listed.number);
   const sha = pr.head.sha;
-  const skip = outOfScope(pr);
+  const skip = scopeOf(pr);
   if (skip !== null) return { pr: pr.number, sha, outcome: "out-of-scope", why: skip };
 
   const reasons: Reason[] = [];
   const details: string[] = [];
+  /** What could not be read; a rejection still outranks it. */
+  const undecided: string[] = [];
 
   if (!labelsAreLow(pr.labels.map((l) => l.name))) {
     reasons.push("labels");
@@ -244,9 +254,8 @@ function judgeOne(deps: Deps, listed: Pull, required: readonly string[]): Verdic
   const runs = github.checkRuns(sha);
   const checks = judgeChecks(required, runs, github.workflowRuns(sha));
   if (checks.state === "unknown") {
-    return { pr: pr.number, sha, outcome: "no-conclusion", details: [checks.message] };
-  }
-  if (checks.state === "fail") {
+    undecided.push(checks.message);
+  } else if (checks.state === "fail") {
     reasons.push("checks-failed");
     details.push(...checks.failed);
   } else if (checks.state === "pending") {
@@ -260,18 +269,21 @@ function judgeOne(deps: Deps, listed: Pull, required: readonly string[]): Verdic
   } else if (tier.state === "fail") {
     reasons.push("tier");
     details.push(...tier.errors);
+  } else if (tier.state === "unreadable") {
+    undecided.push(...tier.messages);
   }
 
   const rejected = reasons.filter((r) => REJECTIONS.has(r));
   if (rejected.length > 0) {
     return { pr: pr.number, sha, outcome: "reject", reasons: rejected, details };
   }
-  if (tier.state === "unreadable") {
-    return { pr: pr.number, sha, outcome: "no-conclusion", details: tier.messages };
+  if (undecided.length > 0) {
+    return { pr: pr.number, sha, outcome: "no-conclusion", details: undecided };
   }
   if (reasons.length > 0) {
-    const since = lastActivity(runs);
-    const stalled = since !== null && deps.now() - since >= STALL_MS;
+    // A head no workflow ever ran on stalls from its commit.
+    const since = lastActivity(runs) ?? Date.parse(github.commitDate(sha));
+    const stalled = deps.now() - since >= STALL_MS;
     return { pr: pr.number, sha, outcome: "wait", reasons, details, stalled };
   }
   return { pr: pr.number, sha, outcome: "merge" };
@@ -291,14 +303,14 @@ export function judge(deps: Deps): Verdict[] {
     required = deps.github.requiredChecks();
     if (required.length === 0) throw new Error("the ruleset on main requires no status check");
   } catch (e) {
-    // Without the required checks condition 4 cannot be judged for anyone.
+    // Without the required checks condition 4 cannot be judged for anyone in scope.
     const details = [`required checks: ${(e as Error).message}`];
-    return candidates.map((p) => ({
-      pr: p.number,
-      sha: p.head.sha,
-      outcome: "no-conclusion",
-      details,
-    }));
+    return candidates.map((p): Verdict => {
+      const why = outOfScope(p);
+      return why === null
+        ? { pr: p.number, sha: p.head.sha, outcome: "no-conclusion", details }
+        : { pr: p.number, sha: p.head.sha, outcome: "out-of-scope", why };
+    });
   }
   return candidates.map((p) => {
     try {
@@ -312,6 +324,30 @@ export function judge(deps: Deps): Verdict[] {
       };
     }
   });
+}
+
+/**
+ * A verdict as later jobs read it: the PR, the head, the outcome and the reason
+ * codes. The details and the out-of-scope reason stay in the job summary: they
+ * quote what a PR wrote (file paths, label names), and nothing a PR wrote is
+ * handed on to a job that can merge or comment (TPL-3673).
+ */
+export interface VerdictOutput {
+  pr: number;
+  sha: string;
+  outcome: Verdict["outcome"];
+  reasons?: Reason[];
+  stalled?: boolean;
+}
+
+export function toOutput(verdicts: readonly Verdict[]): VerdictOutput[] {
+  return verdicts.map((v) => ({
+    pr: v.pr,
+    sha: v.sha,
+    outcome: v.outcome,
+    ...(v.outcome === "reject" || v.outcome === "wait" ? { reasons: v.reasons } : {}),
+    ...(v.outcome === "wait" ? { stalled: v.stalled } : {}),
+  }));
 }
 
 const cell = (text: string): string => text.replace(/\|/g, "\\|").replace(/\s*\n\s*/g, " ");
