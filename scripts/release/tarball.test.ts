@@ -6,24 +6,45 @@ import {
   packagePath,
   platformPackages,
   readTarball,
+  readTarballWithNodeTar,
   withoutPlatformSections,
 } from "./tarball.mts";
 
 // Fences the tarball check of #3240: a staged or published tarball is compared
 // file by file with a pack of the release commit, read in memory only.
 
-type Entry = { path: string; content?: string; type?: string; badChecksum?: boolean };
+type Entry = {
+  path: string;
+  content?: string;
+  type?: string;
+  badChecksum?: boolean;
+  /** Bytes written to the uname field. */
+  uname?: Buffer;
+  prefix?: string;
+  /** Store the signed checksum, which node-tar refuses. */
+  signed?: boolean;
+};
 
-function header(name: string, size: number, type: string, badChecksum = false): Buffer {
+function header(
+  name: string,
+  size: number,
+  type: string,
+  badChecksum = false,
+  extra: Pick<Entry, "uname" | "prefix" | "signed"> = {},
+): Buffer {
   const block = Buffer.alloc(512);
-  block.write(name, 0, 100, "utf8");
+  block.write(name, 0, 100, "latin1");
+  extra.uname?.copy(block, 265);
+  if (extra.prefix) block.write(extra.prefix, 345);
   block.write("0000644\0", 100);
   block.write(`${size.toString(8).padStart(11, "0")}\0`, 124);
   block.write(type, 156);
   block.write("ustar\0", 257);
   block.write("00", 263);
   block.fill(0x20, 148, 156);
-  const sum = block.reduce((total, byte) => total + byte, 0) + (badChecksum ? 1 : 0);
+  const sum =
+    block.reduce((total, byte) => total + (extra.signed && byte > 127 ? byte - 256 : byte), 0) +
+    (badChecksum ? 1 : 0);
   block.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148);
   return block;
 }
@@ -33,15 +54,18 @@ function pad(data: Buffer): Buffer {
   return rest === 0 ? data : Buffer.concat([data, Buffer.alloc(512 - rest)]);
 }
 
+/** One pax record, `<length> <key>=<value>\n`. */
+function paxRecord(key: string, value: string): string {
+  const rest = ` ${key}=${value}\n`;
+  let length = rest.length;
+  while (`${length}${rest}`.length !== length) length = `${length}${rest}`.length;
+  return `${length}${rest}`;
+}
+
 /** A pax extended header holding `records`, as node-tar writes one. */
 function paxBlocks(records: Record<string, string>): Buffer[] {
   const body = Object.entries(records)
-    .map(([key, value]) => {
-      const rest = ` ${key}=${value}\n`;
-      let length = rest.length;
-      while (`${length}${rest}`.length !== length) length = `${length}${rest}`.length;
-      return `${length}${rest}`;
-    })
+    .map(([key, value]) => paxRecord(key, value))
     .join("");
   const data = Buffer.from(body);
   return [header("PaxHeader", data.length, "x"), pad(data)];
@@ -55,7 +79,10 @@ function tar(entries: (Entry | Buffer[])[]): Buffer {
       continue;
     }
     const data = Buffer.from(entry.content ?? "");
-    blocks.push(header(entry.path, data.length, entry.type ?? "0", entry.badChecksum), pad(data));
+    blocks.push(
+      header(entry.path, data.length, entry.type ?? "0", entry.badChecksum, entry),
+      pad(data),
+    );
   }
   return Buffer.concat(blocks);
 }
@@ -147,6 +174,60 @@ describe("readTarball", () => {
     expect(() => readTarball(gzipSync(Buffer.concat([gnu, pad(Buffer.from("x")), END])))).toThrow(
       /ustar/,
     );
+  });
+
+  it("refuses a checksum node-tar refuses, which would make it read data as headers", () => {
+    // node-tar skips a header whose checksum is only right as a signed sum and
+    // reads its data block as the next header: here a pax header hides evil.js.
+    const data = Buffer.alloc(1024);
+    header("1024 mtime=x/evil.js", 5, "0").copy(data, 0);
+    Buffer.from("EVIL\n").copy(data, 512);
+    data[1023] = 0x0a;
+    const archive = tgz([
+      { path: "package/package.json", content: "{}" },
+      [
+        header("PaxHeader", data.length, "x", false, { uname: Buffer.from([0xff]), signed: true }),
+        data,
+      ],
+    ]);
+    expect(() => readTarball(archive)).toThrow(/checksum/);
+    expect(() => readTarballWithNodeTar(archive)).toThrow(/node-tar refused/);
+  });
+
+  it("refuses a newline inside a pax value, which node-tar splits into another record", () => {
+    const inner = paxRecord("path", "package/dist/index.js").replace(/\n$/, "");
+    const data = Buffer.from(paxRecord("mtime", `1\n${inner}`));
+    expect(() =>
+      readTarball(
+        tgz([
+          [header("PaxHeader", data.length, "x"), pad(data)],
+          { path: "package/README.md", content: "readme" },
+        ]),
+      ),
+    ).toThrow(/malformed pax mtime/);
+  });
+
+  it("refuses data after the NUL of a name, and a pax path next to a ustar prefix", () => {
+    expect(() =>
+      readTarball(tgz([{ path: "package/README.md\0\n/x".padEnd(100, "y"), content: "r" }])),
+    ).toThrow(/after its terminating NUL/);
+    expect(() =>
+      readTarball(
+        tgz([
+          paxBlocks({ path: "package/README.md" }),
+          { path: "README.md", prefix: "package/dist", content: "r" },
+        ]),
+      ),
+    ).toThrow(/pax path together with a ustar prefix/);
+  });
+
+  it("reads a plain archive the same way as npm's node-tar", () => {
+    const archive = tgz([
+      { path: "package/package.json", content: "{}" },
+      paxBlocks({ path: `package/${"b".repeat(120)}.md` }),
+      { path: "package/short", content: "long" },
+    ]);
+    expect([...readTarballWithNodeTar(archive)]).toEqual([...readTarball(archive)]);
   });
 
   it("refuses an archive without its end blocks", () => {
