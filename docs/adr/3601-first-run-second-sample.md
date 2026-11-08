@@ -23,7 +23,7 @@ assumptions:
 - **ステータス**: 決定済み
 - **関連**:
   - Issue [#3601](https://github.com/kompiro/karasu/issues/3601)（Phase 2 Epic [#3602](https://github.com/kompiro/karasu/issues/3602)、PRD [#3573](https://github.com/kompiro/karasu/issues/3573) §9・§11「Switch between samples」）。Design Doc PR #3659、実装 PR #3674
-  - 関連 ADR: [ADR-3600](3600-first-run-understand-evolve-tours.md)（ガイドをデータとして持つ、Understand の照合）、[ADR-3598](3598-first-run-tour-resume.md)（ツアーの再開）、[ADR-3599](3599-first-run-step-completion.md)（ステップの ✓）、[ADR-1642](1642-en-ja-example-parity.md)（en / ja のサンプルの対応）、[ADR-3345](3345-generated-builtin-examples.md)（同梱サンプルの生成）
+  - 関連 ADR: [ADR-3600](3600-first-run-understand-evolve-tours.md)（ガイドをデータとして持つ、Understand の照合）、[ADR-3598](3598-first-run-tour-resume.md)（ツアーの再開）、[ADR-3599](3599-first-run-step-completion.md)（ステップの ✓）、[ADR-1642](1642-en-ja-example-parity.md)（en / ja のサンプルの対応）、[ADR-1646](1646-open-gallery-example-in-app.md)（ギャラリーのサンプルをアプリで開く）、[ADR-3345](3345-generated-builtin-examples.md)（同梱サンプルの生成）
   - TPL: [TPL-3113](../test-perspectives/TPL-3113-written-path-resolves-to-its-node.md)、[TPL-1534](../test-perspectives/TPL-1534-cancel-stale-async-effect-results.md)、[TPL-2019](../test-perspectives/TPL-2019-i18n-key-naming-max-4-segments.md)
   - AT: [first-run-experience.md](../acceptance/first-run-experience.md)（AT-AJ〜AT-AQ）
   - コード: `examples/{en,ja}/payroll-split/`、`scripts/examples/gen-builtin-examples.ts`、`packages/core/src/builtins/examples.ts`、`packages/docs-site/scripts/lib/examples-manifest.ts`、`packages/app/src/components/first-run/`（`tour-steps.ts`、`FirstRunExperience.tsx`、`TourPanel.tsx`）、`packages/app/src/hooks/useProjectActions.ts`、`packages/i18n/src/first-run.ts`、`packages/core/src/examples.test.ts`
@@ -61,6 +61,9 @@ kompiro が判断した（2026-11-07、PR #3659 の検討中）。
 | 分割後 | `BillingService`、`BillingDB` | `PayrollService`、`PayrollDB` |
 | チーム（持ち主のずれ） | `commerce`、`billing`、`platform`（`billing` はドメインだけを持つ） | `workforce`、`payroll`、`platform`（`payroll` はドメインだけを持つ） |
 
+表にないものも service-split に揃える。どちらのサンプルでも、ドメインとテーブルの id を重ねない（重ねると `team ... { owns X }` が
+`owns-target-ambiguous` になる）。`packages/core/src/examples.test.ts` は、両方のサンプルが warning も含めて診断なしで読めることを確かめる。
+
 `@karasu-tools/core` は `PAYROLL_SPLIT_PROJECT` と `PAYROLL_SPLIT_PROJECT_EN` を公開する。ギャラリーにも `payroll-split` のページを足す。
 
 ### ガイド
@@ -71,6 +74,8 @@ kompiro が判断した（2026-11-07、PR #3659 の検討中）。
 - `TourDefinition` に `example`（en / ja のサンプル）、任意の `reusesCopy`、任意の `switchTo: { tour, label }` を足す。Design の 2 つのガイドだけが
   `switchTo` で互いを指す。ボタンの文は「⇄ Try it with a payroll system instead」「⇄ Try it with an online shop instead」、ja は
   「⇄ 給与システムの題材で試す」「⇄ EC サイトの題材で試す」。
+- 文を縛るテストはガイドの一覧から作る。`tour-steps.test.ts` は、ノードを解決するサンプルを `TOURS[tour].example` から、呼び名の縛りを
+  `TourId` をキーにした表から引くので、ガイドを足して縛りを足し忘れると落ちる。題材の気づきは `examples.test.ts` が en / ja で確かめる。
 
 ### 切り替え
 
@@ -81,16 +86,19 @@ kompiro が判断した（2026-11-07、PR #3659 の検討中）。
 - 解決中はパネルのボタンをすべて `aria-disabled` で止める。フォーカスを落とさないため `disabled` は使わない。
 - 切り替えのボタンはダブルクリックの 2 回目（`event.detail` が 2 以上）を無視する。戻るボタンがポインタの下に現れるため。
 - 前の題材のプロジェクトは残し、プロジェクトのセレクタから戻れる。そこにはパネルは出ない。Welcome は変えず、Design の入口は常に EC から始める。
+  Restart Guided Tour… は最後に始めたガイドをやり直すので、切り替えたあとは payroll のガイドになる。
 
 ### どの入口でも、新しい選択を優先する
 
-同梱サンプルの追加（`addBundledExample`）はプロジェクトを作るだけにして移動しない。移動は `enterTour` の 1 か所で、次の確認のあとに行う。
+同梱サンプルの追加（`addBundledExample`）はプロジェクトを作るだけにして移動しない。プロジェクトを非同期に解決する開始はすべて `enterTour` を
+通り、移動は `enterTour` の中で次の確認のあとに行う。
 
 - 始めたときから `runs` が進んでいない（エディタを選ぶ、ガイドを終える、で進む。`endTour` も `runs` を進める）
-- 開いているプロジェクトが始めたときのまま
+- 開いているプロジェクトが始めたときのまま（始めたときにプロジェクトが開いていなければ、この確認はしない）
 
 どちらかが崩れたら開始を取りやめ、移動もしない（TPL-1534）。書き込みまで済んだコピーはプロジェクトの一覧に残る。この確認は切り替えに限らず、
-Welcome の入口と Restart Guided Tour… を含むすべての開始に当てる。
+Welcome の入口と、記録したプロジェクトが消えていて Restart Guided Tour… が開き直す場合にも当たる。記録したプロジェクトが残っていれば、Restart は
+待たずにそこへ移動してガイドを始めるので、割り込む余地がない。
 
 ## 理由
 
@@ -106,13 +114,14 @@ Welcome の入口と Restart Guided Tour… を含むすべての開始に当て
 - 解決中にパネルを止め、`endTour` で `runs` を進めるのは、Welcome と違ってパネルは解決中も押せるため。それまでの `endTour` は `runs` を進めず、
   Restart でプロジェクトを開き直している最中に Skip すると、解決後にガイドが戻ってきた。この不具合は main にあり、この変更で塞いだ。
 - 追加と移動を分けたのは、パネルを止めてもプロジェクトのセレクタは押せるため。新しいコピーは追加の途中で移動まで済んでいたので、`runs` の確認だけ
-  では訪問者の選択を戻せなかった。Design Doc では確認の関数を追加に渡す形を書いたが、実装では追加が移動しない形のほうが単純で、こちらにした。
+  では訪問者の選択を戻せなかった。PR #3659 の途中の版では確認の関数を追加に渡す形を書いたが、追加が移動しない形のほうが単純で、こちらにした。
 
 ## 却下した案
 
 - **データが出るまで見送る**: 読み替えの負担が残る。
 - **診療予約と会計（クリニック）**: 医療の用語は en / ja の訳語を選ぶ負担が大きく、実務の正確さも問われる。
 - **認証の切り出し（B2B SaaS）**: 認証は横断機能で、ドメインとチームの持ち主のずれという同じ形にならない。
+- **既存の `examples/*/hr-tool` を使う**: 同じ人事の領域だが、最初から勤怠と給与が別サービスで、3 つの状態も持たない。
 - **ギャラリーから取ってくる**（`fetch-example`、ADR-1646）: docs-site は別にデプロイされるので、ノードを名指しする文と取ってくるサンプルが
   別のビルドになる。ずれるとドリルの ✓ が出ず文が嘘になり、取得に失敗する経路も増える。
 - **Welcome で選ぶ**: 何も知らない段階の判断が 1 つ増え、主な経路に効く。
@@ -125,10 +134,13 @@ Welcome の入口と Restart Guided Tour… を含むすべての開始に当て
 
 ## 影響
 
-- Design のガイドの Step 1 にボタンが 1 つ増え、パネルがその分高くなる。全ステップでノードがパネルに隠れないことは e2e で確かめている（AT-AP）。
+- Design の 2 つのガイドの Step 1 にボタンが 1 つ増え、パネルがその分高くなる。全ステップでノードがパネルに隠れないことは、EC のガイドを
+  AT-M・AT-N、payroll のガイドを AT-AP の e2e で確かめている。
 - 同梱サンプルが en / ja で 3 ファイルずつ増える。gzip で約 3 KB。`@karasu-tools/core` の公開定数が 2 つ増え、ギャラリーに en / ja のページが増える。
   あとで消すと core の破壊的変更になり、公開の URL も消える。
 - どの入口でも、解決中にエディタを選ぶ、別のプロジェクトを開く、ガイドを終えると、開始を取りやめて移動しない。
 - 古い版のタブが `service-split-payroll` の記録を読むと、未知の値として無効になる（ADR-3600 の規則のまま）。
+- 新しい DSL 構文は足していない。3 つの状態は既存の `@planned`、`@migration_target`、`@deprecated` で書いた。訪問者の領域を推測して題材を
+  出し分けることはしない。
 - Understand と Evolve の題材は増やさない。題材を 3 つ以上にするときは、`switchTo` が切り替え先を 1 つしか持たないので形を変える。
 - デモ動画のシナリオ（`scripts/demo-video/scenarios/first-run-tour.mts`）は EC のガイドだけを歩くので変えていない。
