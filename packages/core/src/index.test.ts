@@ -706,31 +706,52 @@ describe("compile — edge#<canonical id> written the way the app writes it", ()
 
   // The layout read `direction` back with the same plain join, so a hint on one
   // of the pair steered the other too, or neither (#3481).
-  it("turns only the edge a direction rule names when endpoints contain ->", () => {
-    const krs = `system S {\n  service Box {\n    domain a {}\n    domain "b->c" {}\n    domain "a->b" {}\n    domain c {}\n    "a->b" -> c\n    a -> "b->c"\n  }\n}`;
-    const yOf = (svg: string, id: string): number => {
-      const open = svg.indexOf(`data-node-id="${escapeAttr(id)}"`);
-      if (open < 0) throw new Error(`no node ${id}`);
-      const m = /<rect\s[^>]*\sy="([0-9.]+)"/.exec(svg.slice(open, open + 800));
-      if (!m) throw new Error(`no rect y for ${id}`);
-      return parseFloat(m[1]);
-    };
-    const draw = (styleSource: string) => {
-      const result = compile(krs, { styleSource, viewPath: ["S", "Box"] });
-      if (result.diagramType !== "system") throw new Error("expected system result");
-      return result.svg;
-    };
-    const plain = draw("");
-    expect(yOf(plain, "a->b")).toBeLessThan(yOf(plain, "c"));
-    expect(yOf(plain, "a")).toBeLessThan(yOf(plain, "b->c"));
+  const ARROW_PAIR_BOX = `system S {\n  service Box {\n    domain a {}\n    domain "b->c" {}\n    domain "a->b" {}\n    domain c {}\n    "a->b" -> c\n    a -> "b->c"\n  }\n}`;
+  function boxOf(svg: string, id: string): { x: number; y: number } {
+    const open = svg.indexOf(`data-node-id="${escapeAttr(id)}"`);
+    if (open < 0) throw new Error(`no node ${id}`);
+    const segment = svg.slice(open, open + 800);
+    const x = /<rect\b[^>]*?\sx="([0-9.]+)"/.exec(segment);
+    const y = /<rect\b[^>]*?\sy="([0-9.]+)"/.exec(segment);
+    if (!x || !y) throw new Error(`no rect for ${id}`);
+    return { x: parseFloat(x[1]), y: parseFloat(y[1]) };
+  }
+  function drawBox(styleSource: string): string {
+    const result = compile(ARROW_PAIR_BOX, { styleSource, viewPath: ["S", "Box"] });
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    return result.svg;
+  }
+  const FIRST = { pair: ["a->b", "c"], id: '"a->b"->c', other: ["a", "b->c"] } as const;
+  const LAST = { pair: ["a", "b->c"], id: 'a->"b->c"', other: ["a->b", "c"] } as const;
 
-    const firstUp = draw(`edge#"a->b"->c { direction: up; }`);
-    expect(yOf(firstUp, "a->b")).toBeGreaterThan(yOf(firstUp, "c"));
-    expect(yOf(firstUp, "a")).toBeLessThan(yOf(firstUp, "b->c"));
+  it("lays the pair out top to bottom without a direction rule", () => {
+    const svg = drawBox("");
+    for (const [from, to] of [FIRST.pair, LAST.pair]) {
+      expect(boxOf(svg, from).y).toBeLessThan(boxOf(svg, to).y);
+    }
+  });
 
-    const lastUp = draw(`edge#a->"b->c" { direction: up; }`);
-    expect(yOf(lastUp, "a")).toBeGreaterThan(yOf(lastUp, "b->c"));
-    expect(yOf(lastUp, "a->b")).toBeLessThan(yOf(lastUp, "c"));
+  it.each([
+    { name: "the edge declared first", ...FIRST },
+    { name: "the edge declared last", ...LAST },
+  ])("turns only $name up when endpoints contain ->", ({ pair, id, other }) => {
+    const svg = drawBox(`edge#${id} { direction: up; }`);
+    expect(boxOf(svg, pair[0]).y).toBeGreaterThan(boxOf(svg, pair[1]).y);
+    expect(boxOf(svg, other[0]).y).toBeLessThan(boxOf(svg, other[1]).y);
+  });
+
+  it.each([
+    { name: "the edge declared first", direction: "left", ...FIRST },
+    { name: "the edge declared first", direction: "right", ...FIRST },
+    { name: "the edge declared last", direction: "left", ...LAST },
+    { name: "the edge declared last", direction: "right", ...LAST },
+  ])("turns only $name $direction when endpoints contain ->", ({ pair, id, other, direction }) => {
+    const svg = drawBox(`edge#${id} { direction: ${direction}; }`);
+    const [from, to] = [boxOf(svg, pair[0]), boxOf(svg, pair[1])];
+    expect(from.y).toBe(to.y);
+    if (direction === "left") expect(from.x).toBeGreaterThan(to.x);
+    else expect(from.x).toBeLessThan(to.x);
+    expect(boxOf(svg, other[0]).y).toBeLessThan(boxOf(svg, other[1]).y);
   });
 });
 

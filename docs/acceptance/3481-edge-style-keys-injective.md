@@ -29,11 +29,15 @@ type: product
 
 - [x] AT-C: 同じ 2 本で、どちらの edge に `direction: up` を書いても、上下が入れ替わるのはその edge の端点だけになる
 
-  > ✅ Automated — `packages/core/src/index.test.ts` › `compile — edge#<canonical id> written the way the app writes it` › `turns only the edge a direction rule names when endpoints contain ->`
+  > ✅ Automated — `packages/core/src/index.test.ts` › `compile — edge#<canonical id> written the way the app writes it` › `turns only $name up when endpoints contain ->`
+
+- [x] AT-D: 同じ 2 本で、どちらの edge に `direction: left` / `right` を書いても、同じ層に並ぶのはその edge の端点だけになる
+
+  > ✅ Automated — `packages/core/src/index.test.ts` › `compile — edge#<canonical id> written the way the app writes it` › `turns only $name $direction when endpoints contain ->`
 
 ### AC-3: 普通のモデルのキーは変わらない
 
-- [x] AT-D: 端点に `->`・`"`・`\` を含まない edge のキーは、今までと同じ `A->B` / `A->B#sync` のままで、`->` を含む端点の組は別々のキーになる
+- [x] AT-E: 端点に `->`・`"`・`\` を含まない edge のキーは、今までと同じ `A->B` / `A->B#sync` のままで、`->` を含む端点の組は別々のキーになる
 
   > ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `edgeStyleKey (#3481)` › `keeps the plain join for ordinary endpoints`
   >

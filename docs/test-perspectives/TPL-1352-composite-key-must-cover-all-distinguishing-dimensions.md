@@ -177,8 +177,8 @@ path は segment の区切りを保つ injective な形に揃えること（call
 （`edgeStyleKey` と kind 無しの `${from}->${to}`）を残した。#3480 で canonical id が別々になり、
 `edge#` の rule は 1 本にだけ当たるようになったが、結果を格納するキーがまだ素の join だった。
 
-- `a -> "b->c"` と `"a->b" -> c` が同じキーに書かれ、後に書いた方のスタイルで 2 本とも描かれた。
-  `edge#"a->b"->c` の色は 2 本に付き、`edge#a->"b->c"` の色はどちらにも付かなかった
+- `a -> "b->c"` と `"a->b" -> c` が同じキーに書かれ、後に宣言した方のスタイルで 2 本とも描かれた。
+  後に宣言した edge への rule の色は 2 本に付き、先に宣言した edge への rule の色はどちらにも付かなかった
 - レイアウトも同じ join で `direction` を引いたので、片方への `direction: up` がもう片方にも効くか、
   どちらにも効かなかった
 
@@ -201,7 +201,7 @@ path は segment の区切りを保つ injective な形に揃えること（call
 - `packages/core/src/renderer/static-bundle-same-id.test.ts` — "one level per anchor id (#2933) › draws the later system's subtree from its own nodes"
 - `packages/core/src/renderer/facet-overview.test.ts` — "buildFacetOverview › keeps two same-named nodes in different scopes apart (TPL-1352)" / "keeps two same-arrow edges in different scopes apart (TPL-1352)"
 - `packages/core/src/resolver/style-resolver.test.ts` — "edgeStyleKey (#3481)"
-- `packages/core/src/index.test.ts` — "compile — edge#<canonical id> written the way the app writes it › gives endpoints containing -> their own id and a rule that names one of them" / "turns only the edge a direction rule names when endpoints contain ->"
+- `packages/core/src/index.test.ts` — "compile — edge#<canonical id> written the way the app writes it › gives endpoints containing -> their own id and a rule that names one of them" / "turns only $name up when endpoints contain ->" / "turns only $name $direction when endpoints contain ->"
 
 ## 派生元 spec
 
