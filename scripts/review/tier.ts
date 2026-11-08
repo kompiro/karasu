@@ -432,6 +432,8 @@ export interface Classification {
   securityReview: boolean;
   /** Why the tier is what it is, one line per cause, for the check's log. */
   reasons: string[];
+  /** Every changed file with its own tier, strictest first (Issue #3543). */
+  files: { path: string; tier: Tier }[];
 }
 
 /** 1-based inclusive line range of the YAML frontmatter, or null when there is none. */
@@ -849,13 +851,17 @@ export function classifyChange(input: {
       .map((f) => f.path),
   };
 
+  const files: { path: string; tier: Tier }[] = [];
   for (const f of input.files) {
     const t = fileTier(f, promotion);
     const name =
       f.path === UNREADABLE_PATH ? "(a diff section whose path could not be read)" : f.path;
     if (rank(t) > rank("low")) reasons.push(`${name}: ${t}`);
+    files.push({ path: name, tier: t });
     tier = stricter(tier, t);
   }
+  // A stable sort keeps the diff's order within a tier.
+  files.sort((a, b) => rank(b.tier) - rank(a.tier));
 
   if (!TRUSTED_AUTHORS.has(input.author)) {
     tier = "high";
@@ -875,7 +881,44 @@ export function classifyChange(input: {
           : matchesAny(f.path, SECURITY_GLOBS)),
     ),
     reasons,
+    files,
   };
+}
+
+/**
+ * A path as job-summary Markdown that renders as the literal path: every
+ * character outside a plain path alphabet becomes a numeric entity, so a file
+ * name cannot open a table cell, a link or emphasis.
+ */
+function summaryPath(path: string): string {
+  return `<code>${path.replace(/[^A-Za-z0-9/.-]/gu, (c) => `&#${c.codePointAt(0)};`)}</code>`;
+}
+
+/**
+ * The Review tier job summary of what a human reads (Issue #3543): the files by
+ * tier, rebuilt from HEAD on every run, so it never goes stale as a list in the
+ * PR body would (TPL-1032). A High PR with no High file is High by its label or
+ * its author, and then the whole diff is read.
+ */
+export function tierSummary(input: {
+  effective: Tier;
+  files: readonly { path: string; tier: Tier }[];
+}): string {
+  const lines = ["### Files by tier", ""];
+  if (input.effective === "high") {
+    lines.push(
+      input.files.some((f) => f.tier === "high")
+        ? "The PR is High. kompiro reads the High files below and the PR's `## For kompiro` section."
+        : "The PR is High by its label or its author, not by a file. kompiro reads the whole diff " +
+            "and the PR's `## For kompiro` section.",
+      "",
+    );
+  } else {
+    lines.push(`The PR is ${input.effective}.`, "");
+  }
+  lines.push("| Tier | File |", "| --- | --- |");
+  for (const f of input.files) lines.push(`| ${f.tier} | ${summaryPath(f.path)} |`);
+  return [...lines, ""].join("\n");
 }
 
 /**
@@ -1191,6 +1234,10 @@ export type PrCheck =
       head: string;
       /** The classification, as the check logs it. */
       summary: Record<string, unknown>;
+      /** The stricter of the label and the change. */
+      effective: Tier;
+      /** Every changed file with its own tier, for the job summary. */
+      files: Classification["files"];
       /** Rules the PR breaks: it has to change before it passes. */
       errors: string[];
       /** What could not be read: the PR may pass on a rerun. */
@@ -1297,6 +1344,8 @@ export function checkPr(pr: string, head?: string): PrCheck {
     state: "checked",
     head: view.headRefOid,
     summary,
+    effective: tier,
+    files: result.files,
     errors,
     unreadable,
     waivers: tests.waivers,
@@ -1340,11 +1389,12 @@ function main(argv: string[]): number {
       return 3;
     }
     console.log(JSON.stringify(result.summary, null, 2));
+    const summary = process.env.GITHUB_STEP_SUMMARY;
+    if (summary) appendFileSync(summary, tierSummary(result));
     if (result.waivers.length > 0) {
       const lines = result.waivers.map((w) => `- ${w.label}: ${w.reason}`);
       console.log(["Passed by a reason line:", ...lines].join("\n"));
       // The run's summary, so a human sees every PR that passed this way.
-      const summary = process.env.GITHUB_STEP_SUMMARY;
       if (summary) {
         appendFileSync(summary, ["### Passed by a reason line", "", ...lines, ""].join("\n"));
       }
