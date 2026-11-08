@@ -23,7 +23,11 @@ assumptions:
   - "file: scripts/tpl/changed-files-reminder.sh"
   - "grep: .claude/settings.json :: scripts/tpl/changed-files-reminder.sh"
   - "grep: package.json :: \"tpl:changed\": \"tpl related --config tpl.config.json --base origin/main\""
-  - "grep: tpl.config.json :: \"sourcePrefixes\": \\[\"packages\", \"scripts\", \"\\.github\", \"functions\", \"docs/design\""
+  - "grep: tpl.config.json :: \"sourcePrefixes\": \\[[^\\]]*\"packages\""
+  - "grep: tpl.config.json :: \"sourcePrefixes\": \\[[^\\]]*\"scripts\""
+  - "grep: tpl.config.json :: \"sourcePrefixes\": \\[[^\\]]*\"\\.github\""
+  - "grep: tpl.config.json :: \"sourcePrefixes\": \\[[^\\]]*\"functions\""
+  - "grep: tpl.config.json :: \"sourcePrefixes\": \\[[^\\]]*\"docs/design\""
   - "grep: .github/PULL_REQUEST_TEMPLATE.md :: pnpm tpl:changed"
   - "grep: docs/test-perspectives/README.md :: #### 変更ファイルから引く"
 ---
@@ -34,7 +38,7 @@ assumptions:
 - **ステータス**: 決定済み
 - **関連**:
   - [ADR-3486](3486-tpl-changed-files-recall.md)（supersedes。鍵・件数・届け方を決めた。元の測定と却下した案はそちらにある）
-  - 測定: [#3486 のコメント](https://github.com/kompiro/karasu/issues/3486#issuecomment-6722522308)（印の測定の結果とスクリプト。ADR-2419 に従い main に入れない）
+  - 測定: #3486 のコメント 2 件。[印の測定](https://github.com/kompiro/karasu/issues/3486#issuecomment-6722522308)（`measure_guard.py`）と、[接頭辞を含む 3 条件の測定](https://github.com/kompiro/karasu/issues/3486#issuecomment-6722802526)（`measure_keys.py`、docs だけの PR を含む集計）。どちらも結果とスクリプトを載せ、ADR-2419 に従い main に入れない
   - 接頭辞を足した PR: [#3693](https://github.com/kompiro/karasu/pull/3693)（[#2732](https://github.com/kompiro/karasu/issues/2732)。`root_cause_file` の引用の検査）
   - [ADR-1192](1192-test-perspective-library.md)（TPL の運用）、[ADR-1357](1357-tpl-tools-extraction.md)（照会と検査は `@kompiro/tpl-tools` が持つ）、[ADR-2810](2810-tpl-source-path-check-ownership.md)（本文のパスの検査は tpl-tools の CLI が持つ）、[ADR-3038](3038-tpl-enforcement-status.md)（チェックリスト項目の印）、[ADR-3359](3359-pr-before-after-screenshots.md)（`gh pr create` の後にフックで促す先例）
   - tpl-tools 側の実装判断: tpl-tools ADR-41（鍵・順位・glob の記法）、ADR-48（`root_cause_file` の引用の検査）
@@ -67,8 +71,11 @@ ADR-3486 の決定を引き継ぎ、鍵には次の 2 つを含める。ガー�
 引き継ぐ決定は次のとおり（理由と却下した案は ADR-3486）。
 
 - **鍵:** TPL の本文が `sourcePrefixes` の下で名指すファイルと、名指したテストに対応するソース、
-  それに任意の `scope.paths` の glob。存在しないパスも鍵に残す（tpl-tools ADR-41）
-- **件数:** 重み（変更ファイルごとに、そのファイルを名指す TPL の数の逆数の和）の順に上位 10 件
+  それに任意の `scope.paths` の glob。ディレクトリを指すスパンは鍵にしない。存在しないパスも鍵に
+  残す（tpl-tools ADR-41）
+- **件数:** 重み（変更ファイルごとに、そのファイルを名指す TPL の数の逆数の和）の順に上位 10 件。
+  11 件目以降は件数と、全件を出すコマンドだけを示す
+- **置き場所:** 照会とスキーマは tpl-tools（ADR-41）、karasu は設定・TPL 本文・フックだけを持つ（ADR-1357）
 - **届け方:** `gh pr create` の直後に Claude Code のフック（`scripts/tpl/changed-files-reminder.sh`）が
   一覧を出し、`## TPL impact` での引用を促す。人の作成者には `pnpm tpl:changed`（stacked PR は
   `pnpm tpl:related --base origin/<base>`）。引用が無くても PR は止めない
@@ -115,15 +122,21 @@ PR にしか出なかった。
 ## 理由
 
 - **どちらの影響も、件数を目に見えて増やさない。** 中央値・上位 10 件の再現率・精度はどの条件でも
-  同じで、p90 が 0.5 動いただけだった。ADR-3486 が鍵の候補を比べたときの差（K0 と K1g で中央値
+  同じだった。動いたのは、印による p90 の 0.5 と、最大値・10 件超の PR 数・再現率の 1 ずつだけである。ADR-3486 が鍵の候補を比べたときの差（K0 と K1g で中央値
   66.5 と 3.5）に比べて無視できる
 - **印の鍵は、ガードを触る PR に TPL を出す。** 印が名指すのはその項目を守るガードで、ガードを
   変える PR はその TPL を読むべき変更である。外すには印を読み分ける規則が tpl-tools に要るが、外して
   減る件数はほぼ無い
-- **`docs/design` は、ADR-3486 が `docs/` を外した理由に当たらない。** 外した理由は
-  `docs/spec/syntax.md` のように多数の TPL が名指す文書が鍵に入ることだった。`docs/design/` を
-  名指す TPL は 2 つで、Design Doc は ADR への昇格で消える一時的な文書である。消えると
-  `tpl validate` が昇格 PR に TPL の付け替えを求めるので、鍵が腐ったまま残らない
+- **`docs/design` は、ADR-3486 が `docs/` を外した理由に当たらない。** 外した理由は 2 つで、
+  `docs/` を足しても再現率が 1 件しか増えないことと、`docs/spec/syntax.md`（46 TPL が名指す）の
+  ような文書が鍵に入ることだった。`docs/design` は再現率を 1 件も増やさなかったが、増える件数も
+  3 本の PR に 1 件ずつで、ADR-3486 が避けた文書のような件数の膨張は起きない。`docs/design/` を
+  名指す TPL は 2 つで、Design Doc は ADR への昇格で消える一時的な文書である。接頭辞の目的は
+  `root_cause_file` と本文のパスの検査（#3693）で、照会での得失はその副作用として小さい
+- **Design Doc が消えたら、`tpl validate` が昇格 PR を止める。** 消えたパスを名指す TPL があると
+  `tpl validate` が失敗するので（`at-check-coverage.yml` が `docs/design/**` の変更で走らせる）、昇格 PR は
+  TPL を ADR へ付け替えるか、`absent-path-next-line` で消えたパスと宣言する。宣言したパスは鍵に
+  残るが、消えたファイルを変える PR はもう無いので、一覧には出ない
 - **接頭辞の一覧は 1 つに保つ。** 照会用と検査用に分けると、`tpl.config.json` に同じような一覧が
   2 つ並び、片方だけ更新されて drift する（TPL-1032）。分けて得られる差は 3 本の PR の 1 件だけだった
 
