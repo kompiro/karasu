@@ -24,7 +24,8 @@ description: >
   直したか理由を返して却下し、直さない Minor / Trivial は理由を書いて閉じた）。review 本文にしかない指摘にも
   対応か却下の理由を返し、その id を PR のコメントに書いたので `bodyFindings` が 0。CodeRabbit が thread 内で
   返した答えもすべて読んで応じたので `threadReplies` が 0。CodeRabbit の指摘と対応は PR 本文のローカルレビューの
-  記録の表に足してある。人間の判断が要る論点は PR 上で質問済み
+  記録の表に足してある。人間の判断が要る論点は PR 上で質問済みで、PR 本文の `## For kompiro` 節に 3 件まで
+  載っている（`docs/process/review.md`「High の PR で人間が読むもの」）
 - **人間の判断待ちで止まっている:** 止まった理由（質問・再レビューの上限・待ち時間の上限・CodeRabbit の無反応・
   id を持たない指摘）が通知済み
 
@@ -137,7 +138,9 @@ rate limit 中に push したいコミットができたら、push と再レビ�
    - **却下する:** thread に理由を返信し、その thread だけを `resolveReviewThread` で閉じる。直さない Minor /
      Trivial も同じく理由を書いて閉じ、議論は続けない
    - **記録済みの決定が変わる:** 直さない。thread に、指摘・該当する記録・取りうる選択肢を並べた
-     質問を maintainer 宛てに返信し、未解決のまま「質問済み」として覚えておく
+     質問を maintainer 宛てに返信し、未解決のまま「質問済み」として覚えておく。PR 本文の `## For kompiro` 節に、
+     その thread へのリンクを付けて載せる。答えの無い項目が 3 件あれば、残りは載せずに覚えておき、答えが付いて
+     節から外した後で次の項目を載せる
 3. コミットがあれば、push の前に**このラウンドの修正分だけへ CodeRabbit CLI を 1 回当てる**
    （`coderabbit review --agent --deep --base-commit <このラウンドの修正を始める前の HEAD> --committed`）。
    出た指摘は 2 と同じ判定で扱い、CLI は回し直さない。CLI が使えないときは飛ばす。CLI の指摘は PR の
