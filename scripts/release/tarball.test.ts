@@ -392,6 +392,25 @@ describe("manifestDifferences", () => {
     expect(manifestDifferences(packed, registry)).toEqual([]);
   });
 
+  it("reads bin the way npm installs it", () => {
+    const withBin = (bin: unknown) => ({ name: "karasu", bin });
+    expect(
+      manifestDifferences(
+        withBin({ karasu: "./dist/index.js" }),
+        withBin({ karasu: "dist/index.js" }),
+      ),
+    ).toEqual([]);
+    expect(
+      manifestDifferences(withBin("./dist/index.js"), withBin({ karasu: "dist/index.js" })),
+    ).toEqual([]);
+    expect(
+      manifestDifferences(
+        withBin({ karasu: "dist/index.js" }),
+        withBin({ karasu: "dist/evil.js" }),
+      ),
+    ).toEqual(["bin"]);
+  });
+
   it("finds a dependency or an install script only the registry metadata has", () => {
     const registry = {
       ...packed,

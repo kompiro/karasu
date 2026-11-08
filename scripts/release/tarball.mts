@@ -454,10 +454,29 @@ function canonical(value: unknown): string {
   return JSON.stringify(value ?? null);
 }
 
+/**
+ * `bin` as npm installs it: a string becomes `{ <name without scope>: path }`,
+ * and `./dist/index.js` and `dist/index.js` are the same file. npm may write
+ * either form to the registry, which is not a change.
+ */
+function installedBin(manifest: Record<string, unknown>): unknown {
+  const bin = manifest.bin;
+  if (bin === undefined || bin === null) return bin;
+  const name = String(manifest.name ?? "").replace(/^@[^/]+\//, "");
+  const entries = typeof bin === "string" ? [[name, bin]] : Object.entries(bin as object);
+  return Object.fromEntries(
+    entries.map(([command, path]) => [command, String(path).replace(/^(\.\/)+/, "")]),
+  );
+}
+
 /** The install fields where the registry's metadata differs from the packed manifest. */
 export function manifestDifferences(
   packed: Record<string, unknown>,
   registry: Record<string, unknown>,
 ): string[] {
-  return INSTALL_FIELDS.filter((field) => canonical(packed[field]) !== canonical(registry[field]));
+  const value = (manifest: Record<string, unknown>, field: string) =>
+    field === "bin" ? installedBin(manifest) : manifest[field];
+  return INSTALL_FIELDS.filter(
+    (field) => canonical(value(packed, field)) !== canonical(value(registry, field)),
+  );
 }
