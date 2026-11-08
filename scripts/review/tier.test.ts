@@ -1733,6 +1733,34 @@ describe("specBlocks (#3542)", () => {
     expect(blocks.get("docs/spec/a.md")).toEqual([[" ```css", "+x", " ```"]]);
   });
 
+  it("reads a tilde fence, and not a block inside an HTML comment, which GitHub does not show", () => {
+    const blocks = specBlocks(
+      doc(
+        "### 仕様の変更",
+        "<!-- a note -->",
+        "~~~diff file=docs/spec/tilde.md",
+        "+t",
+        "~~~",
+        "<!--",
+        "```diff file=docs/spec/hidden.md",
+        "+h",
+        "```",
+        "-->",
+      ),
+    );
+    expect([...blocks.keys()]).toEqual(["docs/spec/tilde.md"]);
+    expect(
+      specBlocks(doc("### 仕様の変更", "<!--", "```diff file=docs/spec/a.md", "+a")).size,
+    ).toBe(0);
+  });
+
+  it("ends the section at any other heading, a sub-heading included", () => {
+    const blocks = specBlocks(
+      doc("### 仕様の変更", "#### 補足", "```diff file=docs/spec/a.md", "+a", "```"),
+    );
+    expect(blocks.size).toBe(0);
+  });
+
   it("reads a CRLF doc", () => {
     const blocks = specBlocks("### 仕様の変更\r\n```diff file=docs/spec/a.md\r\n+x\r\n```\r\n");
     expect(blocks.get("docs/spec/a.md")).toEqual([["+x"]]);
@@ -1780,6 +1808,11 @@ describe("contextHunks (#3542)", () => {
       "",
     ].join("\n");
     expect(contextHunks(diff)).toEqual([[" a", "-b", "+c"]]);
+  });
+
+  it("gives null for a diff of two files, so neither can match", () => {
+    const one = ["diff --git a/x.md b/x.md", "--- a/x.md", "+++ b/x.md", "@@ -1 +1 @@", "-b", "+c"];
+    expect(contextHunks([...one, ...one, ""].join("\n"))).toBeNull();
   });
 });
 
@@ -1834,14 +1867,14 @@ describe("agreed spec text, with #3320's spec diff (#3542)", () => {
     expect(agreedSpecFiles(agreedDoc, candidates())).toEqual([EN, JA]);
   });
 
-  it("does not agree a file whose block has one line reworded", () => {
+  it("agrees neither file when one block has a line reworded: all or nothing", () => {
     const lines = hunkLines(diffs[EN]).map((l) =>
       l.startsWith("+label, another edge's line") ? `${l} too` : l,
     );
     expect(lines).not.toEqual(hunkLines(diffs[EN]));
     expect(
       agreedSpecFiles(docWith({ [EN]: lines, [JA]: hunkLines(diffs[JA]) }), candidates()),
-    ).toEqual([JA]);
+    ).toEqual([]);
   });
 
   it("does not agree a file with a hunk dropped from the block, or the hunks reordered", () => {
@@ -1879,7 +1912,21 @@ describe("agreed spec text, with #3320's spec diff (#3542)", () => {
 
   it("does not agree a file whose block's context sits at two places in the base", () => {
     const twice = `${bases[JA]}\n${bases[JA]}`;
-    expect(agreedSpecFiles(agreedDoc, candidates({ [JA]: twice }))).toEqual([EN]);
+    expect(agreedSpecFiles(agreedDoc, candidates({ [JA]: twice }))).toEqual([]);
+  });
+
+  it("agrees nothing when the PR leaves out a file the Design Doc has a block for", () => {
+    expect(agreedSpecFiles(agreedDoc, candidates().slice(0, 1))).toEqual([]);
+  });
+
+  it("agrees when a line differs only in trailing spaces, but not in a full-width space", () => {
+    const en = hunkLines(diffs[EN]).map((l) => (l.startsWith("+") ? `${l}  ` : l));
+    const doc = docWith({ [EN]: en, [JA]: hunkLines(diffs[JA]) });
+    expect(agreedSpecFiles(doc, candidates())).toEqual([EN, JA]);
+    const wide = hunkLines(diffs[EN]).map((l) => (l.startsWith("+") ? `${l}\u3000` : l));
+    expect(
+      agreedSpecFiles(docWith({ [EN]: wide, [JA]: hunkLines(diffs[JA]) }), candidates()),
+    ).toEqual([]);
   });
 
   it("does not agree a path outside the decision paths, whatever its block says", () => {
@@ -1922,6 +1969,34 @@ describe("agreed spec text, with #3320's spec diff (#3542)", () => {
     expect(
       matchesAgreedText({ block: [["-A rule.", "+A new rule."]], diff: mode, base: "A rule.\n" }),
     ).toBe(false);
+  });
+
+  it("does not agree a binary file, a symlink, a submodule or a modified file the base lacks", () => {
+    const rule = ["@@ -1 +1 @@", "-A rule.", "+A new rule."];
+    const block = [["-A rule.", "+A new rule."]];
+    const head = (mode: string) => [
+      `index 1..2 ${mode}`,
+      "--- a/docs/spec/n.md",
+      "+++ b/docs/spec/n.md",
+    ];
+    const base = "A rule.\n";
+    expect(matchesAgreedText({ block, diff: fileDiff(head("100644"), rule), base })).toBe(true);
+    expect(matchesAgreedText({ block, diff: fileDiff(head("100644"), rule), base: null })).toBe(
+      false,
+    );
+    expect(matchesAgreedText({ block, diff: fileDiff(head("120000"), rule), base })).toBe(false);
+    const gitlink = fileDiff(
+      ["new file mode 160000", "index 0..1", "--- /dev/null", "+++ b/docs/spec/n.md"],
+      ["@@ -0,0 +1 @@", "+Subproject commit 1111"],
+    );
+    expect(
+      matchesAgreedText({ block: [["+Subproject commit 1111"]], diff: gitlink, base: null }),
+    ).toBe(false);
+    const binary = fileDiff(
+      ["index 1..2 100644", "Binary files a/docs/spec/n.md and b/docs/spec/n.md differ"],
+      [],
+    );
+    expect(matchesAgreedText({ block, diff: binary, base })).toBe(false);
   });
 
   it("does not agree a hunk that changes only blank lines or a table rule", () => {
@@ -1976,6 +2051,24 @@ describe("classifyChange with agreed spec text (#3542)", () => {
     expect(tier([spec], "someone")).toBe("high");
   });
 
+  it("keeps High a decision-path file that is also High for another reason or on the boundary", () => {
+    const changelog: ChangedFile = {
+      path: "docs/spec/CHANGELOG.md",
+      status: "modified",
+      hunks: [],
+    };
+    const manifest: ChangedFile = { path: "docs/spec/package.json", status: "modified", hunks: [] };
+    const sink: ChangedFile = {
+      path: ".claude/rules/x.html",
+      status: "modified",
+      hunks: [{ oldStart: 1, removed: [], newStart: 1, added: ["el.innerHTML = s;"] }],
+    };
+    for (const f of [changelog, manifest, sink]) {
+      const r = classifyChange({ files: [f], author: "kompiro", agreed: [f.path] });
+      expect(r.files[0].tier).toBe("high");
+    }
+  });
+
   it("is High as before when nothing is agreed", () => {
     expect(classifyChange({ files: [spec], author: "kompiro" }).tier).toBe("high");
   });
@@ -2000,5 +2093,17 @@ describe("tierSummary with agreed spec text (#3542)", () => {
     expect(out).toContain("Rerun Review tier right before hand-off");
     expect(out).toContain("| medium (agreed) | <code>docs/spec/style.md</code> |");
     expect(out).toContain("| medium | <code>packages/app/src/x.ts</code> |");
+  });
+
+  it("marks an agreed file on a High PR too", () => {
+    const out = tierSummary({
+      effective: "high",
+      trustedAuthor: true,
+      files: [
+        { path: "scripts/review/tier.ts", tier: "high" },
+        { path: "docs/spec/style.md", tier: "medium", agreed: true },
+      ],
+    });
+    expect(out).toContain("| medium (agreed) | <code>docs/spec/style.md</code> |");
   });
 });

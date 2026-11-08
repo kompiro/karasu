@@ -107,23 +107,35 @@
      「Design Doc に載せた仕様の文面」）。載せないなら本節ごと削除する。
 
      ブロックは本見出しの直下に、行頭から始まる fence で置く。情報文字列は `diff file=<パス>`、中身は
-     unified diff の hunk で、実装の差分（`git diff -U3`）に出る文脈の行もそのまま写す。hunk の間は
-     `@@` の行で区切る（行番号は省いてよい）。日英の両方を載せる。下の例は外側の fence の中にあるので、
-     Review tier は読まない。 -->
+     unified diff の hunk で、`git diff -U3 --diff-algorithm=myers --indent-heuristic
+     --inter-hunk-context=0` が出す文脈の行（前後 3 行。空行も文脈の行）もそのまま写す。hunk の間は
+     `@@` の行で区切る（行番号は省いてよい）。日英の両方を載せる。決定のパスのブロックがすべて一致した
+     ときだけ Medium になる。下の例は外側の fence の中にあるので、Review tier は読まない。HTML コメントの
+     中のブロックも読まない。 -->
 
 ````md
 ```diff file=docs/spec/style.md
 @@
+ ### label-display
+
  Under `auto`, the label is moved to a clear position.
 -If no position is clear, it is dropped.
 +If no position is clear, it is left off the canvas.
+ A canvas whose labels all find a clear position is the
+ same under `auto` and `always`.
+
 ```
 
 ```diff file=docs/spec/style.ja.md
 @@
+ ### label-display
+
  `auto` では、label を空いた位置へ動かす。
 -空いた位置が無ければ捨てる。
 +空いた位置が無ければ canvas から外す。
+ 全部の label が空いた位置に置ける canvas は、
+ `auto` でも `always` でも同じ出力になる。
+
 ```
 ````
 

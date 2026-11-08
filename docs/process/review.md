@@ -158,23 +158,30 @@ Medium になり、CodeRabbit のラウンドは回らない。一致しなけ�
 node scripts/review/tier.ts classify --closes <N>   # PR を作る前。一致したファイルは reasons に "(the text the backing Design Doc agreed)"
 ```
 
-- **ブロックの書き方**：`### 仕様の変更` 見出しの直下に、行頭から始まる fence を置き、情報文字列を `diff file=<パス>`
-  にする。中身は unified diff の hunk で、実装の差分（`git diff -U3`）に出る文脈の行もそのまま写す。hunk の間は `@@` の
-  行で区切る（行番号は書かなくてよい）。空行は文脈の空行として読む。1 ファイルに 1 ブロックで、中身に fence を含むなら
-  外側の fence を長くする。見出しが 2 つある Design Doc と、閉じていない fence のある Design Doc からは、どのブロックも
-  読まない。ほかの fence の中のブロック（説明用の例）は読まない。書き方の例は `docs/design/TEMPLATE.md`
-- **一致の判定**：PR の差分（文脈 3 行）の hunk が、ブロックの hunk と、各行の符号と本文（行末の空白を除く）と並びまで
-  同じであること。ほかに hunk が無いこと。どの hunk も空行や表の区切りでない行を変えていること。hunk の文脈と削除の行が
-  base のファイルのちょうど 1 箇所に当てはまること。新しいファイルは base に無いときだけ一致し、ファイルの削除・
-  モードの変更は一致しない
+- **ブロックの書き方**：`### 仕様の変更` 見出しの直下（ほかの見出しより前）に、行頭から始まる fence を置き、情報文字列を
+  `diff file=<パス>` にする。中身は unified diff の hunk で、文面を手元で決定のパスのファイルに入れてから
+  `git diff -U3 --diff-algorithm=myers --indent-heuristic --inter-hunk-context=0 origin/main -- <パス>` が出す hunk を、
+  文脈の行も含めてそのまま写す（Review tier も同じ指定で差分を作る）。hunk の間は `@@` の行で区切る（行番号は書かなくて
+  よい）。空行は文脈の空行として読む。1 ファイルに 1 ブロックで、中身に fence を含むなら外側の fence を長くする。
+  `### 仕様の変更` の見出しが 2 つある Design Doc と、閉じていない fence か HTML コメントのある Design Doc からは、どの
+  ブロックも読まない。ほかの fence の中のブロック（説明用の例）と HTML コメントの中のブロック（GitHub が表示しない）は
+  読まない。書き方の例は `docs/design/TEMPLATE.md`
+- **一致の判定**：PR の差分（文脈 3 行）の hunk が、ブロックの hunk と、各行の符号と本文（行末の空白とタブを除く）と
+  並びまで同じであること。ほかに hunk が無いこと。どの hunk も空行や表の区切りでない行を変えていること。hunk の文脈と
+  削除の行が base のファイルのちょうど 1 箇所に当てはまること。新しいファイルは base に無いときだけ一致し、ファイルの
+  削除・モードの変更・symlink・submodule は一致しない。**Design Doc が決定のパスにブロックを置いたファイルがすべて
+  一致したときだけ、どれも Medium に数える。** 英語のブロックだけを入れて日本語を落とした PR は、どちらも High のままになる。
+  changelog や `package.json` のように、決定のパスのほかの理由でも High のファイルは、一致しても High のまま
 - **実装の途中で文面を直す**なら、先に Design の PR で Design Doc を直してマージし、main を取り込む。そうしないなら
   High のまま通す
 - **Medium になった PR を kompiro に渡す直前に、Review tier を走り直させる。** 検査の後に main で Design Doc が変わっても、
   公開された結果は古いままである。走り直した run は裏付けを外してファイルを High に戻すので、`risk: medium` のラベルとの
-  食い違いで落ちる。そのときは main を取り込む
+  食い違いで落ちる。そのときは main を取り込む。走り直しは
+  `gh run rerun "$(gh run list --workflow review-tier.yml --branch <ブランチ> --limit 1 --json databaseId --jq '.[0].databaseId')"`
 - **Design の PR で `### 仕様の変更` に日英のブロックを置いたら**、ローカルレビューで、実装の文脈を持たない subagent が
-  日英のブロックの意味の食い違いを列挙し、記録にレビュアー `design` の行として残す。kompiro が日本語だけを読んで
-  合意しても、英語のブロックの食い違いが記録に残る
+  日英のブロックの意味の食い違いを列挙し、記録にレビュアー `design` の行として残す。場所の列は Design Doc の
+  パスと行（`<パス>:<行>`）にし、食い違いが無ければ `| <番号> | design | Trivial | <パス> | No deviation between the ja and en blocks | no deviation |`
+  と書く。kompiro が日本語だけを読んで合意しても、英語のブロックの食い違いが記録に残る
 
 #### バグ修正のテストと、既存のテストの変更
 

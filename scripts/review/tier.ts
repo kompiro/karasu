@@ -867,6 +867,19 @@ const DECISION_GLOBS: readonly string[] = NARROWABLE_GLOBS.filter(
 );
 
 /**
+ * Whether a file is High for its decision path alone, so agreed text may make
+ * it Medium: not also a release or dependency file (a changelog, a
+ * `package.json`), whose change is read whatever its text.
+ */
+const decisionOnly = (path: string): boolean =>
+  matchesAny(path, DECISION_GLOBS) &&
+  !isPackageJson(path) &&
+  !matchesAny(
+    path,
+    HIGH_GLOBS.filter((g) => !DECISION_GLOBS.includes(g)),
+  );
+
+/**
  * Whether `f` is on a security boundary for the narrowed reading: by its path
  * alone, test files included, so no exception keeps such a file out of the read.
  */
@@ -919,10 +932,7 @@ export function classifyChange(input: {
     const name = f.path === UNREADABLE_PATH ? UNREADABLE_NAME : f.path;
     const boundary = onBoundary(f);
     const agreed =
-      t === "high" &&
-      !boundary &&
-      matchesAny(f.path, DECISION_GLOBS) &&
-      (input.agreed ?? []).includes(f.path);
+      t === "high" && !boundary && decisionOnly(f.path) && (input.agreed ?? []).includes(f.path);
     if (agreed) t = "medium";
     if (rank(t) > rank("low")) {
       reasons.push(`${name}: ${t}${agreed ? " (the text the backing Design Doc agreed)" : ""}`);
@@ -1069,7 +1079,7 @@ const BLOCK_INFO = /^diff file=(\S+)$/;
 type TextHunk = string[];
 
 const hunkLine = (line: string): string | null => {
-  const body = line.replace(/\s+$/u, "");
+  const body = line.replace(/[ \t\r]+$/, "");
   if (body === "") return " ";
   return "+- ".includes(body[0]) ? body : null;
 };
@@ -1102,7 +1112,13 @@ export function specBlocks(doc: string): Map<string, TextHunk[] | null> {
   let sections = 0;
   let inSection = false;
   let fence: { close: RegExp; block: { path: string; lines: string[] } | null } | null = null;
+  // GitHub does not render what an HTML comment holds, so a block there is not read.
+  let inComment = false;
   for (const line of doc.split(/\r?\n/)) {
+    if (inComment) {
+      inComment = !line.includes("-->");
+      continue;
+    }
     if (fence !== null) {
       if (!fence.close.test(line)) {
         fence.block?.lines.push(line);
@@ -1113,6 +1129,11 @@ export function specBlocks(doc: string): Map<string, TextHunk[] | null> {
         blocks.set(path, blocks.has(path) ? null : textHunks(lines));
       }
       fence = null;
+      continue;
+    }
+    const comment = line.lastIndexOf("<!--");
+    if (comment >= 0 && !line.slice(comment).includes("-->")) {
+      inComment = true;
       continue;
     }
     const open = OPEN_FENCE.exec(line);
@@ -1129,7 +1150,7 @@ export function specBlocks(doc: string): Map<string, TextHunk[] | null> {
       if (inSection) sections++;
     }
   }
-  return sections > 1 || fence !== null ? new Map() : blocks;
+  return sections > 1 || fence !== null || inComment ? new Map() : blocks;
 }
 
 /** The hunks of a one-file `git diff -U3`, as {@link TextHunk}s; null when one cannot be read. */
@@ -1174,7 +1195,9 @@ export function matchesAgreedText(input: {
   const [file] = parseDiff(input.diff);
   if (file === undefined || file.binary || file.status === "deleted") return false;
   if (file.oldMode !== file.newMode && file.status === "modified") return false;
-  if ([file.oldMode, file.newMode].includes("120000")) return false;
+  // A regular file only: a symlink's or a submodule's diff is not text a reader sees.
+  const regular = (m: string | null) => m === null || m === "100644" || m === "100755";
+  if (!regular(file.oldMode) || !regular(file.newMode)) return false;
   const hunks = contextHunks(input.diff);
   const { block } = input;
   if (hunks === null || block.length === 0 || hunks.length !== block.length) return false;
@@ -1186,7 +1209,7 @@ export function matchesAgreedText(input: {
   if (!block.every((h) => h.some(saysSomething))) return false;
   if (file.status === "added") return input.base === null;
   if (input.base === null) return false;
-  const lines = input.base.split("\n").map((l) => l.replace(/\s+$/u, ""));
+  const lines = input.base.split("\n").map((l) => l.replace(/[ \t\r]+$/, ""));
   return block.every((h) => {
     const old = h.filter((l) => l[0] !== "+").map((l) => l.slice(1));
     return old.length > 0 && occurrences(lines, old) === 1;
@@ -1202,7 +1225,7 @@ export function agreedSpecFiles(
   files: readonly { path: string; diff: string; base: string | null }[],
 ): string[] {
   const blocks = specBlocks(doc);
-  return files
+  const agreed = files
     .filter((f) => {
       const block = blocks.get(f.path);
       return (
@@ -1212,6 +1235,10 @@ export function agreedSpecFiles(
       );
     })
     .map((f) => f.path);
+  // All or nothing: a PR that applies the English block and leaves out the
+  // Japanese one would let the two drift with no one reading either.
+  const decided = [...blocks.keys()].filter((p) => matchesAny(p, DECISION_GLOBS));
+  return decided.every((p) => agreed.includes(p)) ? agreed : [];
 }
 
 /** Code points of a path the summary shows: a longer one is cut and marked. */
@@ -1746,9 +1773,24 @@ function closesBug(view: PrView): { bug: boolean; missing: number[]; unreadable:
 }
 
 /**
+ * The diff options that shape a hunk, pinned so a local `diff.algorithm` or
+ * `diff.interHunkContext` cannot draw the hunks a block is compared with
+ * differently from CI. `docs/process/review.md` gives authors the same command.
+ */
+const AGREED_DIFF = [
+  "--no-renames",
+  "--full-index",
+  "-U3",
+  "--diff-algorithm=myers",
+  "--indent-heuristic",
+  "--inter-hunk-context=0",
+];
+
+/**
  * The Design Doc that backs a change and the decision-path files whose diff is
- * its agreed text (Issue #3542). Advisory: a git failure gives no backing and no
- * agreed file, so the files stay High, rather than failing the check.
+ * its agreed text (Issue #3542). Advisory: a git failure gives no backing, or
+ * keeps the backing with no agreed file, so the files stay High, rather than
+ * failing the check.
  */
 function designAgreement(input: {
   baseRefName: string;
@@ -1757,37 +1799,35 @@ function designAgreement(input: {
   closes: readonly number[];
   files: readonly ChangedFile[];
 }): { backing: Backing; agreed: string[] } {
+  let mergeBase: string;
+  let backing: Backing;
   try {
-    const mergeBase = mergeBaseOf(input.baseRef, input.head);
-    const backing = backingDesignDoc({
+    mergeBase = mergeBaseOf(input.baseRef, input.head);
+    backing = backingDesignDoc({
       baseRefName: input.baseRefName,
       closes: input.closes,
       changed: input.files.map((f) => f.path),
       facts: designDocFacts(mergeBase),
     });
-    if (backing.state !== "backed") return { backing, agreed: [] };
-    const doc = gitShow(mergeBase, backing.path) ?? "";
-    const candidates = input.files
-      .filter((f) => matchesAny(f.path, DECISION_GLOBS))
-      .map((f) => ({
-        path: f.path,
-        diff: gitDiff(
-          "--no-renames",
-          "--full-index",
-          "-U3",
-          mergeBase,
-          input.head,
-          "--",
-          `:(literal)${f.path}`,
-        ),
-        base: gitShow(mergeBase, f.path),
-      }));
-    return { backing, agreed: agreedSpecFiles(doc, candidates) };
   } catch (e) {
     return {
       backing: { state: "none", reason: `git could not answer: ${String(e).split("\n")[0]}` },
       agreed: [],
     };
+  }
+  if (backing.state !== "backed") return { backing, agreed: [] };
+  try {
+    const doc = gitShow(mergeBase, backing.path) ?? "";
+    const candidates = input.files
+      .filter((f) => matchesAny(f.path, DECISION_GLOBS))
+      .map((f) => ({
+        path: f.path,
+        diff: gitDiff(...AGREED_DIFF, mergeBase, input.head, "--", `:(literal)${f.path}`),
+        base: gitShow(mergeBase, f.path),
+      }));
+    return { backing, agreed: agreedSpecFiles(doc, candidates) };
+  } catch {
+    return { backing, agreed: [] };
   }
 }
 
@@ -1839,15 +1879,22 @@ export function checkPr(pr: string, head?: string): PrCheck {
   }
   const baseRef = `origin/${view.baseRefName}`;
   const files = changedFiles(baseRef, view.headRefOid);
-  const { backing, agreed } = designAgreement({
-    baseRefName: view.baseRefName,
-    baseRef,
-    head: view.headRefOid,
-    closes: closedIssues(view),
-    files,
-  });
-  const result = classifyChange({ files, author: view.author.login, agreed });
   const labeled = labelTier(view.labels.map((l) => l.name));
+  const plain = classifyChange({ files, author: view.author.login });
+  // Agreement only lowers High files, and the backing only matters on a High PR:
+  // a PR that is lighter by its files and its label needs neither.
+  const { backing, agreed } =
+    plain.tier === "high" || labeled === null || labeled === "high"
+      ? designAgreement({
+          baseRefName: view.baseRefName,
+          baseRef,
+          head: view.headRefOid,
+          closes: closedIssues(view),
+          files,
+        })
+      : { backing: { state: "none", reason: "the PR is not High" } as Backing, agreed: [] };
+  const result =
+    agreed.length > 0 ? classifyChange({ files, author: view.author.login, agreed }) : plain;
   // No label is High: an outside author or a bot cannot add one, and a forgotten
   // label must fall to the heavier side.
   const tier = labeled === null ? "high" : stricter(labeled, result.tier);
