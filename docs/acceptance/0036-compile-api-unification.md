@@ -53,7 +53,7 @@ org view は AC-1 の `compileProject(entry, fs, { diagramType: "org", ... })` �
 
 ### packages/app
 
-1. `cd .worktrees/compile-unify && npm run dev` でアプリを起動する
+1. アプリを開く
 2. System ビューでノードが正しく描画される
 3. Deploy タブに切り替えてデプロイ図が描画される
 4. Org タブに切り替えてorg図が描画される

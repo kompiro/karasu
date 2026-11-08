@@ -9,7 +9,7 @@ to fullscreen focus mode, and that toggling back restores the previous layout.
 
 ## Prerequisites
 
-- App is running locally (`npm run dev`)
+- The app is open
 - At least one project exists in ProjectMode with a `.krs` file open
 
 ---

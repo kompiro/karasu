@@ -24,6 +24,6 @@
 
   > 🧑 Manual — `serve` / `render` のオプションと既定値、コマンド一覧を `packages/cli/src/index.ts` の commander 定義と突き合わせて確認する（実装時に突き合わせ済み）。TPL-1296。
 
-- [ ] `astro dev` でサイドバーに **Tools → Using the karasu CLI** が英語・日本語の両ロケールで表示され、ページが正しくレンダリングされる
+- [ ] サイドバーに **Tools → Using the karasu CLI** が英語・日本語の両ロケールで表示され、ページが正しくレンダリングされる
 
   > 🧑 Manual — 公開ドキュメントサイト（https://kompiro.github.io/karasu/）の `/tools/cli/` と `/ja/tools/cli/` を開いて目視確認する（サイドバー配置・見出し・テーブル・外部リンク）。

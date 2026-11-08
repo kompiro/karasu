@@ -13,7 +13,7 @@ without any visible change to rendered output.
 
 ## Verification commands
 
-Run from the worktree root:
+Run from the repo root:
 
 ```
 npm run test --workspace=packages/core  # 27 files, 464 tests
@@ -35,7 +35,7 @@ npm run format:check
 
 ### AC-2: レンダリング結果の不変
 
-- [ ] Open the app (`npm run dev`) and load an org diagram — visual output is unchanged
+- [ ] Open the app and load an org diagram — visual output is unchanged
 - [ ] Load a system diagram — visual output is unchanged
 - [ ] Load a deploy diagram — visual output is unchanged
 
