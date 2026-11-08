@@ -2,9 +2,13 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readAdrPaths, rootGlobs } from "../adr/generated.ts";
+import { type GitFacts, parseRecord } from "./local-review-record.ts";
 import {
   ADR_GENERATED_GLOBS,
   adrEditIsRecordOnly,
+  backingDesignDoc,
+  type DesignDocFacts,
+  designCheckGap,
   type ChangedFile,
   checkExitCode,
   type Hunk,
@@ -22,6 +26,7 @@ import {
   readFailure,
   regenerationWaivesRecord,
   tierSummary,
+  triggerIssues,
   UNREADABLE_PATH,
   unquoteGitPath,
 } from "./tier.ts";
@@ -261,18 +266,42 @@ describe("classifyChange", () => {
       author: "kompiro",
     });
     expect(files).toEqual([
-      { path: "docs/spec/syntax.md", tier: "high" },
-      { path: "(a diff section whose path could not be read)", tier: "high" },
-      { path: "packages/core/a.ts", tier: "medium" },
-      { path: "packages/core/b.ts", tier: "medium" },
-      { path: "docs/guide/a.md", tier: "low" },
+      { path: "docs/spec/syntax.md", tier: "high", boundary: false, narrowable: true },
+      {
+        path: "(a diff section whose path could not be read)",
+        tier: "high",
+        boundary: true,
+        narrowable: false,
+      },
+      { path: "packages/core/a.ts", tier: "medium", boundary: false, narrowable: false },
+      { path: "packages/core/b.ts", tier: "medium", boundary: false, narrowable: false },
+      { path: "docs/guide/a.md", tier: "low", boundary: false, narrowable: false },
     ]);
   });
+
+  it.each([
+    ["docs/spec/syntax.md", false, true],
+    ["docs/process/review.md", false, true],
+    [".claude/rules/adr.md", false, true],
+    ["packages/core/src/parser/parser.ts", false, true],
+    ["scripts/review/tier.ts", false, false],
+    [".claude/skills/coderabbit-converge/SKILL.md", false, false],
+    ["pnpm-lock.yaml", false, false],
+    [".github/workflows/ci.yml", true, false],
+    ["packages/cli/src/serve.ts", true, false],
+    ["packages/nest/src/index.test.ts", true, false],
+  ])(
+    "marks %s boundary=%s narrowable=%s for the narrowed reading (#3542)",
+    (path, boundary, narrowable) => {
+      const [f] = classifyChange({ files: [modified(path)], author: "kompiro" }).files;
+      expect({ boundary: f.boundary, narrowable: f.narrowable }).toEqual({ boundary, narrowable });
+    },
+  );
 
   it("keeps each file's own tier when the author makes the PR High", () => {
     expect(
       classifyChange({ files: [modified("docs/guide/a.md")], author: "someone" }).files,
-    ).toEqual([{ path: "docs/guide/a.md", tier: "low" }]);
+    ).toEqual([{ path: "docs/guide/a.md", tier: "low", boundary: false, narrowable: false }]);
   });
 
   it("reads package.json by the fields that moved", () => {
@@ -1324,5 +1353,306 @@ describe("tierSummary (#3543)", () => {
       .split("\n")
       .filter((l) => l.startsWith("| high"));
     expect(rows).toEqual([`| high | <code>${cell}</code> |`]);
+  });
+});
+
+const issueLink = (n: number) => `[#${n}](https://github.com/kompiro/karasu/issues/${n})`;
+const designDoc = (trigger: string, parent = issueLink(3546)) =>
+  [
+    "# Title",
+    "",
+    "- **関連**:",
+    `  - 引き金 Issue: ${trigger}`,
+    `  - 親 Issue: ${parent}`,
+    "",
+    "## 背景・課題",
+    "",
+    `- 引き金 Issue: ${issueLink(9999)}`,
+  ].join("\n");
+
+describe("triggerIssues (#3542)", () => {
+  it("reads every Issue link on the 引き金 Issue line", () => {
+    expect(triggerIssues(designDoc(`${issueLink(3542)}（A）、${issueLink(3543)}（B）`))).toEqual([
+      3542, 3543,
+    ]);
+  });
+
+  it("ignores a bare #N in the line's prose, the parent line, and lines below the metadata", () => {
+    expect(triggerIssues(designDoc(`${issueLink(3542)}（#3505 の制約）`))).toEqual([3542]);
+    expect(triggerIssues(designDoc("#3542"))).toEqual([]);
+  });
+
+  it("ignores a link inside the line's full-width parenthesized prose", () => {
+    expect(
+      triggerIssues(designDoc(`${issueLink(3542)}（${issueLink(2917)} の再点検で切り出した）`)),
+    ).toEqual([3542]);
+  });
+
+  it("ignores a link to another repository", () => {
+    expect(
+      triggerIssues(designDoc("[#3542](https://github.com/other/karasu/issues/3542)")),
+    ).toEqual([]);
+  });
+});
+
+describe("backingDesignDoc (#3542)", () => {
+  const DOC = "docs/design/agreed.md";
+  const BLOB = "1".repeat(40);
+  const docFacts = (over: Partial<DesignDocFacts> = {}): DesignDocFacts => ({
+    docsAtMergeBase: () => [
+      { path: DOC, text: designDoc(issueLink(3542)) },
+      { path: "docs/design/TEMPLATE.md", text: designDoc(issueLink(3542)) },
+      { path: "docs/design/other.md", text: designDoc(issueLink(1)) },
+    ],
+    blobs: () => ({ mergeBase: BLOB, tip: BLOB }),
+    history: () => ({ shas: ["a".repeat(40), "b".repeat(40)], renamed: false }),
+    commitTier: () => "design",
+    ...over,
+  });
+  const back = (over: Partial<Parameters<typeof backingDesignDoc>[0]> = {}) =>
+    backingDesignDoc({
+      baseRefName: "main",
+      closes: [3542],
+      changed: ["docs/spec/syntax.md"],
+      facts: docFacts(),
+      ...over,
+    });
+
+  it("backs a PR with the one Design Doc whose 引き金 Issue line links an Issue it closes", () => {
+    expect(back()).toEqual({ state: "backed", path: DOC, blob: BLOB });
+  });
+
+  it.each([
+    ["the base is not main", { baseRefName: "feat/lower" }, "base is not main"],
+    ["the PR closes no Issue", { closes: [] }, "closes no Issue"],
+    ["no Design Doc links the Issue", { closes: [7] }, "no Design Doc"],
+    ["the PR changes the Design Doc", { changed: [DOC] }, "the PR changes"],
+    [
+      "main's tip has another blob",
+      { facts: docFacts({ blobs: () => ({ mergeBase: BLOB, tip: "2".repeat(40) }) }) },
+      "merge main",
+    ],
+    [
+      "main's tip has no such file",
+      { facts: docFacts({ blobs: () => ({ mergeBase: BLOB, tip: null }) }) },
+      "merge main",
+    ],
+    [
+      "the merge base has no such file",
+      { facts: docFacts({ blobs: () => ({ mergeBase: null, tip: null }) }) },
+      "merge main",
+    ],
+    [
+      "the history is empty",
+      { facts: docFacts({ history: () => ({ shas: [], renamed: false }) }) },
+      "no history",
+    ],
+    [
+      "the history goes through a rename",
+      { facts: docFacts({ history: () => ({ shas: ["a".repeat(40)], renamed: true }) }) },
+      "renamed",
+    ],
+    [
+      "an earlier commit was Medium though the last was Design",
+      {
+        facts: docFacts({ commitTier: (sha) => (sha.startsWith("b") ? "medium" : "design") }),
+      },
+      "medium change",
+    ],
+    [
+      "a commit was High (a Design Doc changed in a High PR is not read as a design)",
+      { facts: docFacts({ commitTier: () => "high" }) },
+      "high change",
+    ],
+    [
+      "two Design Docs link the Issue",
+      {
+        facts: docFacts({
+          docsAtMergeBase: () => [
+            { path: DOC, text: designDoc(issueLink(3542)) },
+            { path: "docs/design/second.md", text: designDoc(issueLink(3542)) },
+          ],
+        }),
+      },
+      "more than one",
+    ],
+  ])("gives no backing when %s", (_, over, reason) => {
+    const b = back(over);
+    expect(b.state).toBe("none");
+    expect(b.state === "none" && b.reason).toContain(reason);
+  });
+
+  it("never uses the template, even when it links the Issue", () => {
+    const onlyTemplate = docFacts({
+      docsAtMergeBase: () => [
+        { path: "docs/design/TEMPLATE.md", text: designDoc(issueLink(3542)) },
+      ],
+    });
+    expect(back({ facts: onlyTemplate }).state).toBe("none");
+  });
+
+  it("does not take an Issue named only on the parent line", () => {
+    const parentOnly = docFacts({
+      docsAtMergeBase: () => [{ path: DOC, text: designDoc(issueLink(1), issueLink(3542)) }],
+    });
+    expect(back({ facts: parentOnly }).state).toBe("none");
+  });
+});
+
+describe("tierSummary with a backing Design Doc (#3542)", () => {
+  const files = [
+    { path: "docs/spec/syntax.md", tier: "high" as const, boundary: false, narrowable: true },
+    { path: "packages/cli/src/serve.ts", tier: "high" as const, boundary: true, narrowable: false },
+    { path: "scripts/review/tier.ts", tier: "high" as const, boundary: false, narrowable: false },
+    { path: "packages/core/a.ts", tier: "medium" as const, boundary: false, narrowable: false },
+  ];
+  const backed = { state: "backed" as const, path: "docs/design/agreed.md", blob: "1".repeat(40) };
+  const summary = (design: Parameters<typeof tierSummary>[0]["design"], trustedAuthor = true) =>
+    tierSummary({ effective: "high", trustedAuthor, files, design });
+
+  it("narrows the reading to For Reviewers, the boundary files and the non-narrowable High files", () => {
+    const text = summary({ backing: backed, checked: true });
+    expect(text).toContain("the agreed Design Doc <code>docs/design/agreed.md</code>");
+    expect(text).toContain("<code>111111111111</code>");
+    expect(text).toContain("reads the PR's `## For Reviewers` section and the files listed here");
+    expect(text).toContain("- <code>packages/cli/src/serve.ts</code>");
+    expect(text).toContain("- <code>scripts/review/tier.ts</code>");
+    expect(text).not.toContain("- <code>docs/spec/syntax.md</code>");
+    expect(text).not.toContain("- <code>packages/core/a.ts</code>");
+    expect(text).not.toContain("High files below");
+  });
+
+  it("does not narrow when more files must still be read than the rows listed", () => {
+    const many = Array.from({ length: 201 }, (_, i) => ({
+      path: `packages/nest/src/${i}.test.ts`,
+      tier: "low" as const,
+      boundary: true,
+      narrowable: false,
+    }));
+    const text = tierSummary({
+      effective: "high",
+      trustedAuthor: true,
+      files: [files[0], ...many],
+      design: { backing: backed, checked: true },
+    });
+    expect(text).toContain("but the reading is not narrowed: more files must still be read");
+    expect(text).toContain("The reviewer reads the High files below");
+  });
+
+  it("says so when nothing but the section needs reading", () => {
+    const text = tierSummary({
+      effective: "high",
+      trustedAuthor: true,
+      files: [files[0]],
+      design: { backing: backed, checked: true },
+    });
+    expect(text).toContain("No file needs reading beyond the section.");
+  });
+
+  it("does not narrow when the conformance check does not cover HEAD, and says why", () => {
+    const text = summary({
+      backing: backed,
+      checked: false,
+      why: "the local review record is waived",
+    });
+    expect(text).toContain("but the reading is not narrowed: the local review record is waived.");
+    expect(text).toContain("The reviewer reads the High files below");
+  });
+
+  it("names why no Design Doc backs the PR, as literal text", () => {
+    const text = summary({
+      backing: { state: "none", reason: "the PR changes docs/design/<x>.md" },
+      checked: false,
+    });
+    expect(text).toContain(
+      "No Design Doc backs the PR: the PR changes docs/design/&#60;x&#62;.md.",
+    );
+    expect(text).toContain("The reviewer reads the High files below");
+  });
+
+  it("reads the whole diff of an untrusted author's PR, backing or not", () => {
+    const text = summary({ backing: backed, checked: true }, false);
+    expect(text).toContain("The reviewer reads the whole diff");
+    expect(text).not.toContain("files listed here");
+  });
+});
+
+describe("designCheckGap (#3542)", () => {
+  const HEAD = "a".repeat(40);
+  const BASE = "b".repeat(40);
+  const git: GitFacts = {
+    headSha: HEAD,
+    mergeBase: () => BASE,
+    resolve: (rev) => (HEAD.startsWith(rev) ? HEAD : null),
+    isAncestor: (a, b) => a === b,
+    onlyBaseMerges: () => true,
+    sameChange: () => true,
+  };
+  const record = (rows: string[], extra = "") =>
+    [
+      `<!-- local-review:v1 base=${BASE} head=${HEAD} -->`,
+      "## Local review",
+      "",
+      "Reviewers: subagent, coderabbit CLI --deep",
+      extra,
+      "",
+      "| # | Reviewer | Sev | Where | Finding | Disposition |",
+      "| --- | --- | --- | --- | --- | --- |",
+      ...rows,
+      "<!-- /local-review -->",
+    ].join("\n");
+  const BLOB = "1234567890abcdef".repeat(2) + "12345678";
+  const DESIGN_ROW = `| 1 | design | Trivial | docs/design/agreed.md@${BLOB.slice(0, 12)} | No deviation | no deviation |`;
+  const gap = (body: string) =>
+    designCheckGap(body, parseRecord(body), git, { path: "docs/design/agreed.md", blob: BLOB });
+  const withSection = (r: string) => `## For Reviewers\n\nNone.\n\n${r}`;
+
+  it("passes a body with the section and a fresh record holding a design row", () => {
+    expect(gap(withSection(record([DESIGN_ROW])))).toBeNull();
+  });
+
+  it("reads a section saved with CRLF line ends", () => {
+    expect(gap(withSection(record([DESIGN_ROW])).replace(/\n/g, "\r\n"))).toBeNull();
+  });
+
+  it.each([
+    ["the section is missing", record([DESIGN_ROW]), "no ## For Reviewers section"],
+    [
+      "the section is only inside a comment",
+      `<!--\n## For Reviewers\n-->\n${record([DESIGN_ROW])}`,
+      "no ## For Reviewers section",
+    ],
+    ["there is no record", "## For Reviewers\n\nNone.\n", "no local review record"],
+    [
+      "the section holds only the template's comment",
+      `## For Reviewers\n\n<!-- On a High PR... -->\n\n## Local review\n${record([DESIGN_ROW])}`,
+      "is empty",
+    ],
+    ["the record has no design row", withSection(record([])), "no design row"],
+    ["the record is waived", withSection(record([DESIGN_ROW], "Waived: by hand")), "waived"],
+    [
+      "a design row names no blob",
+      withSection(
+        record(["| 1 | design | Trivial | docs/design/agreed.md | No deviation | no deviation |"]),
+      ),
+      "another version",
+    ],
+    [
+      "a design row names another blob (main revised the Design Doc)",
+      withSection(record([DESIGN_ROW.replace(BLOB.slice(0, 12), "fedcba987654")])),
+      "another version",
+    ],
+    [
+      "a design row names another Design Doc",
+      withSection(record([DESIGN_ROW.replace("agreed.md", "other.md")])),
+      "another version",
+    ],
+    [
+      "another row has no disposition",
+      withSection(record([DESIGN_ROW, "| 2 | engineering | Major | x.ts | y | later |"])),
+      "does not pass",
+    ],
+  ])("reports a gap when %s", (_, body, why) => {
+    expect(gap(body)).toContain(why);
   });
 });

@@ -51,6 +51,7 @@ CodeRabbit は approve も changes-requested も出さず、どのレビュー�
 
 判断基準は 1 つ、**その指摘に従うと記録済みの決定が変わるかどうか**。記録済みの決定とは
 Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`、`.claude/rules/`、
+PR を裏付ける合意済みの Design Doc（[review.md](review.md)「High の PR で人間が読むもの」）、
 およびその PR で人間が明示した方針を指す。
 
 | 指摘 | どうするか |
@@ -60,6 +61,8 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 
 確認が要る論点が出ても、**それ以外の指摘は先に収束させる**。人間を待つあいだ手を止めない。
 人間に渡すときは、残っている質問を `## For Reviewers` 節に載せ、却下した指摘およびその理由とまとめて 1 回で伝える。
+渡す直前に Review tier を走り直させ、公開された summary を `main` の先頭で判定し直す（review.md「High の PR で人間が
+読むもの」）。
 
 #### ラウンドの回し方
 
