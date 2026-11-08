@@ -32,6 +32,7 @@ import { type GitFacts, parseRecord, verifyRecord } from "./local-review-record.
 import {
   checkTestChanges,
   closedIssueNumbers,
+  type Waiver,
   isRunnerConfig,
   isTestFile,
   isTestInput,
@@ -1145,37 +1146,66 @@ interface PrView {
 }
 
 /**
+ * What a failed `gh api` read means: the thing is not there (404, 410), which
+ * the PR has to fix, or GitHub did not answer, which a rerun may fix.
+ */
+export function readFailure(stderr: string): "missing" | "unreadable" {
+  return /\bHTTP (?:404|410)\b/.test(stderr) ? "missing" : "unreadable";
+}
+
+/**
  * Whether the PR closes an Issue labeled `bug`: one GitHub links to it, or one
  * its body closes by keyword. An Issue that cannot be read is reported rather
  * than counted as not a bug (TPL-3286).
  */
-function closesBug(view: PrView): { bug: boolean; unreadable: number[] } {
+function closesBug(view: PrView): { bug: boolean; missing: number[]; unreadable: number[] } {
   const linked = view.closingIssuesReferences
     .filter((r) => `${r.repository.owner.login}/${r.repository.name}` === REPO)
     .map((r) => r.number);
   const numbers = new Set([...linked, ...closedIssueNumbers(view.body ?? "", REPO)]);
+  const missing: number[] = [];
   const unreadable: number[] = [];
   let bug = false;
   for (const n of numbers) {
     try {
-      const labels = run(
+      const labels = execFileSync(
         "gh",
         ["api", `repos/${REPO}/issues/${n}`, "--jq", ".labels[].name"],
-        true,
+        { encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] },
       );
       bug ||= labels.split("\n").includes("bug");
-    } catch {
-      unreadable.push(n);
+    } catch (e) {
+      const failure = readFailure(String((e as { stderr?: unknown }).stderr ?? ""));
+      (failure === "missing" ? missing : unreadable).push(n);
     }
   }
-  return { bug, unreadable };
+  return { bug, missing, unreadable };
 }
 
+/** What the `Review tier` check found on one head of a PR. */
+export type PrCheck =
+  /** The PR's head is not the one asked for: a push arrived. */
+  | { state: "moved"; head: string }
+  | {
+      state: "checked";
+      head: string;
+      /** The classification, as the check logs it. */
+      summary: Record<string, unknown>;
+      /** Rules the PR breaks: it has to change before it passes. */
+      errors: string[];
+      /** What could not be read: the PR may pass on a rerun. */
+      unreadable: string[];
+      /** The rules a reason line in the body waived. */
+      waivers: Waiver[];
+    };
+
 /**
- * The `Review tier` check. Returns the errors that fail it, and logs the
- * classification. A tier below High also needs a valid local review record.
+ * The `Review tier` check on the PR's current head, or on `head` when given (the
+ * Low PR merger, Issue #3673, judges the head it read the checks of). A tier
+ * below High also needs a valid local review record. Git and GitHub failures
+ * other than an Issue read throw.
  */
-function checkPr(pr: string): string[] {
+export function checkPr(pr: string, head?: string): PrCheck {
   const view = JSON.parse(
     run("gh", [
       "pr",
@@ -1187,6 +1217,9 @@ function checkPr(pr: string): string[] {
       "author,labels,headRefOid,baseRefName,title,body,autoMergeRequest,closingIssuesReferences",
     ]),
   ) as PrView;
+  if (head !== undefined && view.headRefOid !== head) {
+    return { state: "moved", head: view.headRefOid };
+  }
   const baseRef = `origin/${view.baseRefName}`;
   const files = changedFiles(baseRef, view.headRefOid);
   const result = classifyChange({ files, author: view.author.login });
@@ -1194,9 +1227,7 @@ function checkPr(pr: string): string[] {
   // No label is High: an outside author or a bot cannot add one, and a forgotten
   // label must fall to the heavier side.
   const tier = labeled === null ? "high" : stricter(labeled, result.tier);
-  console.log(
-    JSON.stringify({ pr: Number(pr), label: labeled, effective: tier, ...result }, null, 2),
-  );
+  const summary = { pr: Number(pr), label: labeled, effective: tier, ...result };
 
   const errors: string[] = [];
   for (const label of unknownRiskLabels(view.labels.map((l) => l.name))) {
@@ -1213,12 +1244,14 @@ function checkPr(pr: string): string[] {
   }
   // Every tier, High included: CodeRabbit's rounds do not ask for a test either.
   const closes = closesBug(view);
-  for (const n of closes.unreadable) {
-    errors.push(
-      `PR #${pr} closes #${n}, which could not be read to see whether it is a bug. ` +
-        `Fix the reference, or rerun the check if GitHub was unavailable.`,
-    );
+  for (const n of closes.missing) {
+    errors.push(`PR #${pr} closes #${n}, which does not exist. Fix the reference.`);
   }
+  const unreadable = closes.unreadable.map(
+    (n) =>
+      `PR #${pr} closes #${n}, which could not be read to see whether it is a bug. ` +
+      `Rerun the check if GitHub was unavailable.`,
+  );
   const tests = checkTestChanges({
     title: view.title,
     body: view.body ?? "",
@@ -1226,15 +1259,6 @@ function checkPr(pr: string): string[] {
     files,
   });
   errors.push(...tests.errors);
-  if (tests.waivers.length > 0) {
-    const lines = tests.waivers.map((w) => `- ${w.label}: ${w.reason}`);
-    console.log(["Passed by a reason line:", ...lines].join("\n"));
-    // The run's summary, so a human sees every PR that passed this way.
-    const summary = process.env.GITHUB_STEP_SUMMARY;
-    if (summary) {
-      appendFileSync(summary, ["### Passed by a reason line", "", ...lines, ""].join("\n"));
-    }
-  }
   if (view.autoMergeRequest !== null && tier !== "low") {
     errors.push(
       `PR #${pr} has auto-merge enabled but its tier is ${tier}; only Low merges on its own. ` +
@@ -1263,20 +1287,32 @@ function checkPr(pr: string): string[] {
       ]),
     });
     if (waived) {
-      console.log(
-        "Index regeneration (ADR, TPL): no local review record is required (Validate checks it).",
-      );
+      Object.assign(summary, { recordWaived: "index regeneration (ADR, TPL); Validate checks it" });
     } else {
       const record = parseRecord(view.body ?? "");
       errors.push(...verifyRecord(record, tier, gitFacts(baseRef, view.headRefOid)));
     }
   }
-  return errors;
+  return {
+    state: "checked",
+    head: view.headRefOid,
+    summary,
+    errors,
+    unreadable,
+    waivers: tests.waivers,
+  };
+}
+
+/** The CLI's exit code for a checked head: a broken rule outranks an unread fact. */
+export function checkExitCode(result: { errors: string[]; unreadable: string[] }): number {
+  if (result.errors.length > 0) return 1;
+  return result.unreadable.length > 0 ? 4 : 0;
 }
 
 const USAGE = `usage:
   tier.ts classify [--base <ref>] [--head <rev>] [--author <login>]
-  tier.ts check --pr <n>
+  tier.ts check --pr <n> [--head <sha>]
+    exit 0 passes, 1 breaks a rule, 3 the head is not <sha>, 4 something could not be read
   tier.ts same-change --from <rev> [--to <rev>] [--base <ref>]
   tier.ts in-diff <path> <line>[-<end>] [--base <ref>]`;
 
@@ -1297,9 +1333,24 @@ function main(argv: string[]): number {
   if (cmd === "check") {
     const pr = flag(rest, "--pr");
     if (pr === undefined) throw new Error(USAGE);
-    const errors = checkPr(pr);
-    for (const e of errors) console.error(`::error::${e}`);
-    return errors.length > 0 ? 1 : 0;
+    const head = flag(rest, "--head");
+    const result = checkPr(pr, head);
+    if (result.state === "moved") {
+      console.error(`::error::PR #${pr} is at ${result.head}, not ${head}: a push arrived.`);
+      return 3;
+    }
+    console.log(JSON.stringify(result.summary, null, 2));
+    if (result.waivers.length > 0) {
+      const lines = result.waivers.map((w) => `- ${w.label}: ${w.reason}`);
+      console.log(["Passed by a reason line:", ...lines].join("\n"));
+      // The run's summary, so a human sees every PR that passed this way.
+      const summary = process.env.GITHUB_STEP_SUMMARY;
+      if (summary) {
+        appendFileSync(summary, ["### Passed by a reason line", "", ...lines, ""].join("\n"));
+      }
+    }
+    for (const e of [...result.errors, ...result.unreadable]) console.error(`::error::${e}`);
+    return checkExitCode(result);
   }
 
   if (cmd === "same-change") {

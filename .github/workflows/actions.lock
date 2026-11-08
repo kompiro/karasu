@@ -49,6 +49,9 @@ workflows:
         - 'actions/setup-node@v7.1.0'
         - 'actions/upload-artifact@v7.0.2'
         - 'pnpm/action-setup@v6.1.0'
+    '.github/workflows/low-pr-merger.yml':
+        - 'actions/checkout@v7.0.1'
+        - 'actions/setup-node@v7.1.0'
     '.github/workflows/nest-deploy.yml':
         - 'actions/checkout@v7.0.1'
         - 'actions/setup-node@v7.1.0'

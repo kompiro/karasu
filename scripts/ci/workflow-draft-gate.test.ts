@@ -128,8 +128,10 @@ describe("draft gate on expensive workflows (ADR-2643)", () => {
       .filter((job) => job.condition.includes(DRAFT_GATE))
       .map((job) => job.key)
       .sort();
-    // Adding or removing an entry here is a policy change: say so in ADR-2643
-    // and in the `docs/process/stacked-pr.md` "draft PR では分単位のジョブが走らない" section in the same PR.
+    // Adding or removing an entry here is a policy change: update the job list in
+    // the `docs/process/stacked-pr.md` "draft PR では分単位のジョブが走らない" section
+    // in the same PR, citing the ADR or Issue that decided an added job. ADR-2643
+    // records the policy, not the list, and ADR bodies are immutable (ADR-2687).
     expect(gated).toEqual([...DRAFT_GATED_JOBS].sort());
   });
 

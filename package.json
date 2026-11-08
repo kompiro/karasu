@@ -77,7 +77,7 @@
     "@changesets/cli": "^3.0.3",
     "@karasu-tools/core": "workspace:*",
     "@kompiro/adr-tools": "^0.0.13",
-    "@kompiro/tpl-tools": "^0.0.14",
+    "@kompiro/tpl-tools": "^0.1.0",
     "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.5",
     "knip": "^6.43.0",

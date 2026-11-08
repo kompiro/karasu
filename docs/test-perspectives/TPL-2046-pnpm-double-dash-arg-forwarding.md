@@ -13,7 +13,7 @@ related_to:
   - TPL-1024
 discovered_from:
   - issue: "#2046"
-  - root_cause_file: "packages/e2e/playwright.config.ts:8"
+  - root_cause_file: "packages/e2e/playwright.config.ts:webServerCommand"
 topic: testing
 scope:
   packages:

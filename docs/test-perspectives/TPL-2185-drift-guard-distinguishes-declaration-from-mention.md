@@ -11,7 +11,7 @@ known_consumers:
   - language-version
 discovered_from:
   - issue: "#2185"
-  - root_cause_file: "packages/core/src/language-version.test.ts:34"
+  - root_cause_file: "packages/core/src/language-version.test.ts:staleVersions"
 related_to:
   - TPL-1296
   - TPL-2158

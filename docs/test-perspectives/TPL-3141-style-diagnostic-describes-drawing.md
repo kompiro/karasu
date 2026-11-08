@@ -13,7 +13,7 @@ known_consumers:
   - style-resolver
 discovered_from:
   - issue: "#3141"
-  - root_cause_file: "packages/core/src/resolver/style-resolver.ts:690"
+  - root_cause_file: "packages/core/src/resolver/style-resolver.ts:finiteNumber"
 related_to:
   - TPL-1503
 topic: styling
