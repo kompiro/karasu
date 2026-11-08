@@ -11,8 +11,8 @@ known_consumers:
   - property-schema
   - parse-annotations
 discovered_from:
-  - root_cause_file: "packages/core/src/style/property-schema.ts:56"
-  - root_cause_file: "packages/core/src/parser/parser.ts:1312"
+  - root_cause_file: 'packages/core/src/style/property-schema.ts:"stroke-style"'
+  - root_cause_file: "packages/core/src/parser/annotation-parser.ts:parseAnnotations"
 related_to:
   - TPL-1296
   - TPL-1415

@@ -15,7 +15,7 @@ related_to:
   - TPL-976
 discovered_from:
   - issue: "#1024"
-  - root_cause_file: "packages/vscode/src/extension.ts:46"
+  - root_cause_file: "packages/vscode/src/extension.ts:serverModuleCandidates"
   - issue: "#3017"
   - root_cause_file: "packages/cli/src/serve.ts"
   - issue: "#3303"

@@ -17,7 +17,7 @@ discovered_from:
   - issue: "#2818"
   - issue: "#2549"
   - issue: "#2714"
-  - root_cause_file: "packages/app/src/components/PreviewPane.tsx:518"
+  - root_cause_file: "packages/app/src/components/PreviewPane.tsx:highlightAttribute"
 related_to:
   - TPL-1666
   - TPL-1352

@@ -13,7 +13,7 @@ known_consumers:
   - style-resolver
 discovered_from:
   - issue: "#510"
-  - root_cause_file: "packages/core/src/view/view-extract.ts:111"
+  - root_cause_file: "packages/core/src/view/derived-edges.ts:deriveImplicitServiceEdges"
   - root_cause_file: "packages/core/src/builtins/default-style.ts"
 related_to:
   - TPL-1094

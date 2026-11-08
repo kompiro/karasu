@@ -15,7 +15,7 @@ discovered_from:
   - issue: "#1160"
   - issue: "#412"
   - root_cause_file: "packages/core/src/view/unassigned-system.ts"
-  - root_cause_file: "packages/core/src/fs/import-resolver.ts:389"
+  - root_cause_file: "packages/core/src/fs/import-resolver.ts:mergeNamedImport"
 related_to: []
 topic: core-concepts
 scope:
