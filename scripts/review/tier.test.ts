@@ -21,6 +21,7 @@ import {
   pathTier,
   readFailure,
   regenerationWaivesRecord,
+  tierSummary,
   UNREADABLE_PATH,
   unquoteGitPath,
 } from "./tier.ts";
@@ -246,6 +247,32 @@ describe("classifyChange", () => {
     expect(tierOf(modified("docs/guide/a.md"), modified("docs/design/x.md"))).toBe("design");
     expect(tierOf(modified("docs/guide/a.md"), modified("packages/core/a.ts"))).toBe("medium");
     expect(tierOf(modified("docs/guide/a.md"), modified(".github/workflows/x.yml"))).toBe("high");
+  });
+
+  it("lists every file with its own tier, strictest first and in diff order within a tier", () => {
+    const { files } = classifyChange({
+      files: [
+        modified("docs/guide/a.md"),
+        modified("packages/core/a.ts"),
+        modified("docs/spec/syntax.md"),
+        modified("packages/core/b.ts"),
+        modified(UNREADABLE_PATH),
+      ],
+      author: "kompiro",
+    });
+    expect(files).toEqual([
+      { path: "docs/spec/syntax.md", tier: "high" },
+      { path: "(a diff section whose path could not be read)", tier: "high" },
+      { path: "packages/core/a.ts", tier: "medium" },
+      { path: "packages/core/b.ts", tier: "medium" },
+      { path: "docs/guide/a.md", tier: "low" },
+    ]);
+  });
+
+  it("keeps each file's own tier when the author makes the PR High", () => {
+    expect(
+      classifyChange({ files: [modified("docs/guide/a.md")], author: "someone" }).files,
+    ).toEqual([{ path: "docs/guide/a.md", tier: "low" }]);
   });
 
   it("reads package.json by the fields that moved", () => {
@@ -1193,5 +1220,109 @@ describe("checkExitCode", () => {
 
   it("lets a broken rule outrank an unread fact: the PR has to change either way", () => {
     expect(checkExitCode({ errors: ["x"], unreadable: ["y"] })).toBe(1);
+  });
+});
+
+describe("tierSummary (#3543)", () => {
+  const files = [
+    { path: "docs/spec/syntax.md", tier: "high" as const },
+    { path: "packages/core/a.ts", tier: "medium" as const },
+  ];
+  const summary = (extra: Partial<Parameters<typeof tierSummary>[0]> = {}) =>
+    tierSummary({ effective: "high", trustedAuthor: true, files, ...extra });
+
+  it("tells the reviewer to read the High files and For Reviewers on a High PR", () => {
+    expect(summary().split("\n")).toEqual([
+      "### Files by tier",
+      "",
+      "The PR is High. The reviewer reads the High files below and the PR's `## For Reviewers` section.",
+      "",
+      "| Tier | File |",
+      "| --- | --- |",
+      "| high | <code>docs/spec/syntax.md</code> |",
+      "| medium | <code>packages/core/a.ts</code> |",
+      "",
+    ]);
+  });
+
+  it.each([
+    ["no file is High", { files: [files[1]] }, "its label (or a missing one)"],
+    ["the author is not trusted", { trustedAuthor: false }, "not on the trusted list"],
+    [
+      "a diff section could not be read",
+      {
+        files: [
+          ...files,
+          {
+            path: classifyChange({ files: [modified(UNREADABLE_PATH)], author: "kompiro" }).files[0]
+              .path,
+            tier: "high" as const,
+          },
+        ],
+      },
+      "could not be read",
+    ],
+  ])("asks for the whole diff when %s", (_, extra, why) => {
+    const text = summary(extra);
+    expect(text).toContain("The reviewer reads the whole diff");
+    expect(text).toContain(why);
+    expect(text).not.toContain("High files below");
+  });
+
+  it("names the tier without a reading line below High", () => {
+    const text = summary({ effective: "medium", files: [files[1]] });
+    expect(text).toContain("The PR is medium.");
+    expect(text).not.toContain("reviewer reads");
+  });
+
+  const many = (high: number, medium: number) => [
+    ...Array.from({ length: high }, (_, i) => ({
+      path: `docs/spec/${i}.md`,
+      tier: "high" as const,
+    })),
+    ...Array.from({ length: medium }, (_, i) => ({
+      path: `packages/core/${i}.ts`,
+      tier: "medium" as const,
+    })),
+  ];
+
+  it("lists the first 200 files strictest first and counts the rest", () => {
+    const rows = summary({ files: many(150, 100) }).split("\n");
+    expect(rows.filter((l) => l.startsWith("| high"))).toHaveLength(150);
+    expect(rows.filter((l) => l.startsWith("| medium"))).toHaveLength(50);
+    expect(rows).toContain("50 more files are not listed.");
+    expect(rows).toContain(
+      "The PR is High. The reviewer reads the High files below and the PR's `## For Reviewers` section.",
+    );
+    expect(summary({ files: many(150, 51) })).toContain("1 more file is not listed.");
+  });
+
+  it("asks for the whole diff when the High files do not fit in the rows", () => {
+    const text = summary({ files: many(201, 0) });
+    expect(text).toContain("more High files than the 200 rows listed");
+    expect(text).toContain("The reviewer reads the whole diff");
+  });
+
+  it("cuts a path past 200 code points and keeps the table under 1 MiB", () => {
+    const long = `${"|".repeat(4000)}.md`;
+    const text = summary({
+      files: Array.from({ length: 300 }, () => ({ path: long, tier: "high" as const })),
+    });
+    expect(text).toContain(`<code>${"&#124;".repeat(200)}&#8230;</code>`);
+    expect(Buffer.byteLength(text)).toBeLessThan(1024 * 1024);
+  });
+
+  it.each([
+    ["a|b.md", "a&#124;b.md"],
+    ["a`b`.md", "a&#96;b&#96;.md"],
+    ["[x](https://e.example).md", "&#91;x&#93;&#40;https&#58;//e.example&#41;.md"],
+    ["<img src=x>.md", "&#60;img&#32;src&#61;x&#62;.md"],
+    ["a\n| high | b.md", "a&#10;&#124;&#32;high&#32;&#124;&#32;b.md"],
+    ["_x_/*y*.md", "&#95;x&#95;/&#42;y&#42;.md"],
+  ])("renders the path %j as literal text in one cell", (path, cell) => {
+    const rows = summary({ files: [{ path, tier: "high" }] })
+      .split("\n")
+      .filter((l) => l.startsWith("| high"));
+    expect(rows).toEqual([`| high | <code>${cell}</code> |`]);
   });
 });

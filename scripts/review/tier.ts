@@ -432,6 +432,8 @@ export interface Classification {
   securityReview: boolean;
   /** Why the tier is what it is, one line per cause, for the check's log. */
   reasons: string[];
+  /** Every changed file with its own tier, strictest first (Issue #3543). */
+  files: { path: string; tier: Tier }[];
 }
 
 /** 1-based inclusive line range of the YAML frontmatter, or null when there is none. */
@@ -849,13 +851,16 @@ export function classifyChange(input: {
       .map((f) => f.path),
   };
 
+  const files: { path: string; tier: Tier }[] = [];
   for (const f of input.files) {
     const t = fileTier(f, promotion);
-    const name =
-      f.path === UNREADABLE_PATH ? "(a diff section whose path could not be read)" : f.path;
+    const name = f.path === UNREADABLE_PATH ? UNREADABLE_NAME : f.path;
     if (rank(t) > rank("low")) reasons.push(`${name}: ${t}`);
+    files.push({ path: name, tier: t });
     tier = stricter(tier, t);
   }
+  // A stable sort keeps the diff's order within a tier.
+  files.sort((a, b) => rank(b.tier) - rank(a.tier));
 
   if (!TRUSTED_AUTHORS.has(input.author)) {
     tier = "high";
@@ -875,7 +880,75 @@ export function classifyChange(input: {
           : matchesAny(f.path, SECURITY_GLOBS)),
     ),
     reasons,
+    files,
   };
+}
+
+/** Code points of a path the summary shows: a longer one is cut and marked. */
+const SUMMARY_PATH_CHARS = 200;
+
+/**
+ * A path as job-summary Markdown that renders as the literal path: every
+ * character outside a plain path alphabet becomes a numeric entity, so a file
+ * name cannot open a table cell, a link or emphasis.
+ */
+function summaryPath(path: string): string {
+  const chars = [...path];
+  const shown = chars.length > SUMMARY_PATH_CHARS ? chars.slice(0, SUMMARY_PATH_CHARS) : chars;
+  const cut = shown.length < chars.length ? "&#8230;" : "";
+  return `<code>${shown.join("").replace(/[^A-Za-z0-9/.-]/gu, (c) => `&#${c.codePointAt(0)};`)}${cut}</code>`;
+}
+
+/** The name {@link classifyChange} lists a diff section under when its path could not be read. */
+const UNREADABLE_NAME = "(a diff section whose path could not be read)";
+
+/**
+ * Rows the table lists before it counts the rest. With {@link SUMMARY_PATH_CHARS}
+ * this keeps the table well under 1 MiB, past which GitHub drops the whole step
+ * summary.
+ */
+const SUMMARY_ROWS = 200;
+
+/**
+ * The Review tier job summary of what a human reads (Issue #3543): the files by
+ * tier, strictest first, rebuilt from HEAD on every run, so it never goes stale
+ * as a list in the PR body would (TPL-1032). The reviewer reads only the High files
+ * when the High comes from them and the table lists them all. Otherwise the PR
+ * is read whole: an author off the trusted list, a PR High by its label alone,
+ * a diff section whose path could not be read, or more High files than rows.
+ */
+export function tierSummary(input: {
+  effective: Tier;
+  trustedAuthor: boolean;
+  files: readonly { path: string; tier: Tier }[];
+}): string {
+  const lines = ["### Files by tier", ""];
+  if (input.effective === "high") {
+    const high = input.files.filter((f) => f.tier === "high");
+    const why = !input.trustedAuthor
+      ? "its author is not on the trusted list"
+      : high.some((f) => f.path === UNREADABLE_NAME)
+        ? "a diff section's path could not be read"
+        : high.length === 0
+          ? "it is High by its label (or a missing one), not by a file"
+          : high.length > SUMMARY_ROWS
+            ? `it has more High files than the ${SUMMARY_ROWS} rows listed`
+            : null;
+    lines.push(
+      why === null
+        ? "The PR is High. The reviewer reads the High files below and the PR's `## For Reviewers` section."
+        : `The PR is High and ${why}. The reviewer reads the whole diff and the PR's \`## For Reviewers\` section.`,
+      "",
+    );
+  } else {
+    lines.push(`The PR is ${input.effective}.`, "");
+  }
+  const listed = input.files.slice(0, SUMMARY_ROWS);
+  lines.push("| Tier | File |", "| --- | --- |");
+  for (const f of listed) lines.push(`| ${f.tier} | ${summaryPath(f.path)} |`);
+  const rest = input.files.length - listed.length;
+  if (rest > 0) lines.push("", `${rest} more ${rest === 1 ? "file is" : "files are"} not listed.`);
+  return [...lines, ""].join("\n");
 }
 
 /**
@@ -1191,6 +1264,12 @@ export type PrCheck =
       head: string;
       /** The classification, as the check logs it. */
       summary: Record<string, unknown>;
+      /** The stricter of the label and the change. */
+      effective: Tier;
+      /** Every changed file with its own tier, for the job summary. */
+      files: Classification["files"];
+      /** Whether the author is on the trusted list: the job summary reads the rest whole. */
+      trustedAuthor: boolean;
       /** Rules the PR breaks: it has to change before it passes. */
       errors: string[];
       /** What could not be read: the PR may pass on a rerun. */
@@ -1297,6 +1376,9 @@ export function checkPr(pr: string, head?: string): PrCheck {
     state: "checked",
     head: view.headRefOid,
     summary,
+    effective: tier,
+    files: result.files,
+    trustedAuthor: TRUSTED_AUTHORS.has(view.author.login),
     errors,
     unreadable,
     waivers: tests.waivers,
@@ -1340,15 +1422,16 @@ function main(argv: string[]): number {
       return 3;
     }
     console.log(JSON.stringify(result.summary, null, 2));
+    const summary = process.env.GITHUB_STEP_SUMMARY;
     if (result.waivers.length > 0) {
       const lines = result.waivers.map((w) => `- ${w.label}: ${w.reason}`);
       console.log(["Passed by a reason line:", ...lines].join("\n"));
       // The run's summary, so a human sees every PR that passed this way.
-      const summary = process.env.GITHUB_STEP_SUMMARY;
       if (summary) {
         appendFileSync(summary, ["### Passed by a reason line", "", ...lines, ""].join("\n"));
       }
     }
+    if (summary) appendFileSync(summary, tierSummary(result));
     for (const e of [...result.errors, ...result.unreadable]) console.error(`::error::${e}`);
     return checkExitCode(result);
   }
