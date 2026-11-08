@@ -1,13 +1,14 @@
-# CLI の診断出力に安定したコードを載せる
+# 診断の出力に安定したコードを載せる（CLI・VS Code・app）
 
 - **日付**: 2026-11-07（2026-11-08 に kompiro のコメントを受けて方針を改訂）
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#3654](https://github.com/kompiro/karasu/issues/3654)
+  - エディタとプレビューの実装: [#3712](https://github.com/kompiro/karasu/issues/3712)
   - 発端の修正: [#3640](https://github.com/kompiro/karasu/issues/3640)（`reverse-architecture` skill の検証を `LC_ALL=C` + メッセージ本文の照合に変えた暫定対応）
   - 関連 ADR: [ADR-1567](../adr/1567-rule-diagnostic-separation-and-catalog.md)（診断コードは安定 API）, [ADR-1417](../adr/1417-lsp-cli-i18n.md)（CLI のメッセージは locale に従う）, [ADR-2901](../adr/2901-karasu-authoring-skill.md)（skill の Step 0 は CLI の版の下限だけを照合し、新しい CLI と古い skill の互換は CLI が持つ）, [ADR-2208](../adr/2208-positional-label-error-promotion.md)（診断の重大度を変えた前例）
   - 関連 TPL: [TPL-3654](../test-perspectives/TPL-3654-cli-diagnostics-carry-stable-code.md)（本 Design Doc で起こす）, [TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md), [TPL-2084](../test-perspectives/TPL-2084-skill-cli-command-refs-drift.md), [TPL-1417](../test-perspectives/TPL-1417-single-renderer-for-structured-messages.md), [TPL-2536](../test-perspectives/TPL-2536-locale-source-chain-completeness.md)
-  - コード: `packages/cli/src/report-diagnostics.ts`, `packages/cli/src/compile-system-view.ts`, `packages/cli/src/diff.ts`, `packages/cli/src/lint-style.ts`, `packages/cli/src/tidy-style.ts`, `packages/cli/src/check.ts`, `packages/cli/src/i18n.ts`
+  - コード: `packages/cli/src/report-diagnostics.ts`, `packages/cli/src/compile-system-view.ts`, `packages/cli/src/diff.ts`, `packages/cli/src/lint-style.ts`, `packages/cli/src/tidy-style.ts`, `packages/cli/src/check.ts`, `packages/cli/src/i18n.ts`, `packages/lsp/src/diagnostics.ts`, `packages/app/src/components/PreviewPane.tsx`, `packages/app/src/components/WarningPanel.tsx`, `packages/app/src/utils/docs-site-links.ts`
 
 ## 背景・課題
 
@@ -31,7 +32,8 @@
 | 診断を流す箇所 | `report-diagnostics.ts`（`render` / `check`、`Warning: <loc>: <msg>`）、`compile-system-view.ts`（`subtree` などのエラー）、`diff.ts`（`Warning: <loc> <msg>`）、`lint-style.ts`（`<file>:<l>:<c> <severity>: <msg>`、stdin のときは `stdin:<l>:<c> ...`。どちらも stdout）、`tidy-style.ts`（`<name>:<l>:<c> error: <msg>`）。重大度の語の位置はコマンドで違う |
 | 診断ではない行 | `Warning: --include-matrix requires --output` や `translate` の警告は引数や変換の通知で、カタログのコードを持たない。`karasu fmt` の `Cannot format: ...` も翻訳されない別の形 |
 | 機械向け形式の前例 | `karasu coverage --format json`（stdout、版の欄なし）、`karasu capabilities --json`（`schemaVersion` を持つ） |
-| ほかの面 | LSP は診断に `code` を付けていない。人がコードを目にする面は CLI の行だけ |
+| エディタとプレビュー | VS Code は LSP の `Diagnostic` で表示する。`packages/lsp/src/diagnostics.ts` は `severity`、`range`、`message`、`source: "karasu"` を付け、`code` を付けない。app はエラーのバナー（`PreviewPane.tsx`）と警告のパネル（`WarningPanel.tsx`）に、アイコン、位置、メッセージを出す。どちらにもコードは出ない |
+| docs-site へのリンク | app は `packages/app/src/utils/docs-site-links.ts` で docs-site の URL を組み、locale の接頭辞（`ja/`）を付ける。`#` の付いた route は持たない（見出しの slug が locale で違うため。TPL-1621）。カタログは `spec/diagnostics/` で公開されている |
 | skill の版の照合 | Step 0 は下限のみ。下限はパック時の CLI の版（`packages/skills/scripts/stamp-version.mjs`）。古い skill と新しい CLI の組み合わせは検出されない |
 | 配布中の skill | 公開中の `karasu-skills` は 0.2.1。`karasu render` の出力を kebab のコードで grep し、停止条件は「grep が空」である。#3640 の版（#3656 でマージ。エージェントが `Error:` / `Warning:` / `Info:` の行を読み、メッセージの断片で照合する）は main にあるが未リリースで、changeset が残っている |
 
@@ -42,6 +44,7 @@
 - **skill と CLI は別々に更新される。** 消費者は 3 つある。公開中の 0.2.1（kebab のコードで grep する）、#3640 の版（エージェントが行の接頭辞を見て読む。月次のトレインを挟んで本件より先に出れば利用者に届く）、利用者のスクリプト（`^Warning: ` など）。どのリリース順でも、照合が空になって停止条件を素通りする #3640 の失敗を、新しい skill で起こしてはいけない。
 - **kebab のコードは安定 API のまま残す**（ADR-1567）。短い ID はその表示用の別名で、kebab のコードを置き換えない。
 - **コードも ID も翻訳しない。** 接頭辞 `Warning` もすでに locale によらず英語である。
+- **ID は人が診断を目にするすべての面に出す。** CLI の行に加えて、VS Code と app の表示にも同じ ID を出す（kompiro、PR #3663 のコメント）。面によって文言が違う診断（上の 5 つの style コード）も、ID で同じものだと分かる。
 - **対象外:** `karasu serve` の 422 応答の本文（`render-endpoint.ts`）。#3655（未解決 endpoint の報告漏れ）は別の Issue で扱う。
 
 ## 検討した選択肢
@@ -147,6 +150,7 @@ Warning[KRS041]: theme.krs.style:3:5: fill: "#12" is not a valid hex color (expe
 - [TPL-1417](../test-perspectives/TPL-1417-single-renderer-for-structured-messages.md): 行の形を 1 か所に集める
 - [TPL-2084](../test-perspectives/TPL-2084-skill-cli-command-refs-drift.md): skill が書く CLI のコマンドとフラグのずれ（`check --format json`）
 - [TPL-2536](../test-perspectives/TPL-2536-locale-source-chain-completeness.md): locale を変えても ID と JSON の `code` が変わらないこと
+- [TPL-1621](../test-perspectives/TPL-1621-docs-pipeline-link-anchor-resolution.md): VS Code と app のリンクを locale で slug が変わる見出しのアンカーに向けないこと
 
 ## 現時点の方針
 
@@ -170,6 +174,10 @@ Warning[KRS041]: theme.krs.style:3:5: fill: "#12" is not a valid hex color (expe
    - 消費者は、stdout が JSON として読めないか、`schemaVersion` が知らない値なら、失敗として止まる
    - フィールドを足すのは互換の範囲内とし、消す・意味を変えるとき（`params` のキーを含む）は `schemaVersion` を上げる
    - 既定は `--format text` で、今の出力に案C の ID を足したもの
+5. **エディタとプレビュー:** CLI と同じ ID を、同じ登録簿から出す。locale では変えない。
+   - VS Code: LSP の `Diagnostic` の `code` に ID を、`codeDescription.href` に docs-site のカタログ（`spec/diagnostics/`、LSP の locale の接頭辞付き）を入れる。VS Code は Problems パネルとホバーに `karasu(KRS014)` と出し、ID をカタログへのリンクにする。kebab のコードは載せない（エディタの読み手は人で、機械は `check --format json` を読む）
+   - app: エラーのバナーと警告のパネルで、重大度のアイコンの直後に ID を出し、同じカタログのページへのリンクにする（新しいタブで開く）
+   - リンク先はページの先頭で、ID ごとのアンカーは付けない（下の「決めないこと」）。読み手はページ内を ID で検索する
 
 ### 実装の指針
 
@@ -213,9 +221,18 @@ Warning[KRS041]: theme.krs.style:3:5: fill: "#12" is not a valid hex color (expe
     - モデルに error があるとき、`--format json` は読める JSON を出して 1 で終わる。ファイルが無いときは stdout に何も出さず 0 以外で終わる
     - 登録簿の ID がカタログの `ID` 列に一致し、番号に空きが無く、公開済みの版の ID が同じコードを指し続ける
     - `reverse-architecture` の `` `code:<kebab>` `` がすべてカタログに実在し、ID を書いていない
-12. **ADR 昇格。** 実装完了後に `docs/adr/3654-cli-diagnostic-codes.md` として昇格し、本 Design Doc は同じ PR で削除する。
+12. **ADR 昇格。** 1 本目の実装が終わったら `docs/adr/3654-cli-diagnostic-codes.md` として昇格し、本 Design Doc は同じ PR で削除する。ADR にはエディタとプレビューの約束（確定させる約束の 5）も残し、#3712 はその ADR に沿って実装する。
 
-実装は 1 本の PR にする。分けるなら、skill の更新は `--format json` と同じ PR に置く（skill だけが先に出ると、Step 0 の下限が JSON を持たない CLI を止めないまま判定が失敗する）。
+上の 1〜12 は 1 本の PR にし、11-29 のトレインに載せる。分けるなら、skill の更新は `--format json` と同じ PR に置く（skill だけが先に出ると、Step 0 の下限が JSON を持たない CLI を止めないまま判定が失敗する）。
+
+#### エディタとプレビューでの表示（2 本目の PR、#3712）
+
+1 本目が core に足す登録簿を使うので、その後に出す。skill や CLI の互換に関わらないので、トレインの期限には縛られない。
+
+1. **カタログの URL を 1 か所で組む。** app と lsp がともに依存する場所（`packages/i18n` など）に、locale を受けてカタログの URL を返す関数を置き、`docs-site-links.ts` の base URL と locale の接頭辞の規則もそこへ移す。`scripts/lint/reference-docs-links.ts` の検査対象に `spec/diagnostics/` を足し、公開されていない route を指したら落ちるようにする。
+2. **LSP。** `computeDiagnostics` が、parser の `Diagnostic` と resolver の `Warning` の両方に `code` と `codeDescription` を付ける。`diagnostics.test.ts` で、`ja` の locale でも `code` が同じで `href` だけが `ja/` になることを確かめる。登録簿の対応を通さずに `Diagnostic` を組む箇所が増えないよう、組む関数を 1 つにする（TPL-1417）。
+3. **app。** バナーと警告のパネルに ID とリンクを出す。component のテストで、同じ fixture の診断に CLI と同じ ID が出ることを確かめ、e2e で表示とリンク先を確かめる。
+4. **ドキュメントと changeset。** `docs/spec/diagnostics.md` の「CLI での表示」の節を「表示」に広げ、VS Code と app の形を書く。changeset は `karasu-vscode` と、app を同梱する `karasu`（`karasu serve`）に付ける（`@karasu-tools/app` と `@karasu-tools/lsp` は changeset の対象外）。
 
 ### 影響範囲・マイグレーション
 
@@ -229,8 +246,7 @@ Warning[KRS041]: theme.krs.style:3:5: fill: "#12" is not a valid hex color (expe
 ## 決めないこと
 
 - `render` など `check` 以外のコマンドの JSON 出力: 消費者が現れたときに、同じスキーマで足す。
-- LSP（VS Code の Problems）に ID や `code` を載せるか: 今は `code` を付けていない。人が目にする面を揃えるなら別の Issue で扱う。
-- カタログの ID ごとのアンカー（docs-site で `#KRS014` に飛ぶ）: カタログの表を引ければ足りるので、要望が出たら決める。
+- カタログの ID ごとのアンカー（VS Code や app のリンクから `#krs014` に飛ぶ）: 見出しの slug は locale で違うので使えず（TPL-1621）、表の行に locale によらない `id` を埋める必要がある。ページ内を ID で検索すれば引けるので、リンクの利用が増えてから決める。
 - テキストの行に改行を含むメッセージを 1 行に整えること: 行は人向けになり、機械は JSON を読むので扱わない。
 - `karasu serve` の 422 応答にコードを載せるか: 消費者がいないので決めない。
 - 診断ではない `Warning:` 行（引数の通知、`translate` の警告）への ID の付与と、`karasu fmt` の `Cannot format: ... (<codes>)` の形: カタログの外か、`check` で確かめられるので変えない。
