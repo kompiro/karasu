@@ -119,10 +119,19 @@ export type StageOutcome =
 
 /**
  * Registry rejections that mean "this version is already in the stage queue",
- * as seen in the rehearsal (#3240). Only these are skipped on a re-run; any
- * other failure stops the run (TPL-2804).
+ * as seen in the rehearsal (#3240, run 42486392324 attempt 2):
+ *
+ *   npm error code E409
+ *   npm error 409 Conflict - POST .../-/stage/package/... - Cannot stage
+ *   previously published version "0.4.2-rehearsal.0".
+ *
+ * npm words a staged version as "previously published"; a version approved
+ * between `changeset pack` and staging gets the same answer. Only these are
+ * skipped on a re-run; any other failure stops the run (TPL-2804).
  */
-export const ALREADY_STAGED: RegExp[] = [];
+export const ALREADY_STAGED: RegExp[] = [
+  /\bE409\b[\s\S]*Cannot stage previously published version/,
+];
 
 export function classifyStage(result: CommandResult, name: string): StageOutcome {
   if (result.status === 0) {
@@ -207,7 +216,7 @@ export function main(argv: string[]): void {
     }
     if (outcome.kind === "already-staged") {
       // Not staged by this run: the approval step checks who made the tarball.
-      summary(`| ${id} | ${tag} | already staged, not by this run | | |`);
+      summary(`| ${id} | ${tag} | already staged or published, not by this run | | |`);
       continue;
     }
     summary(`| ${id} | ${tag} | staged | ${outcome.stageId} | ${outcome.integrity} |`);
