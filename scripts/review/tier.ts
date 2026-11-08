@@ -1412,11 +1412,18 @@ function designDocFacts(mergeBase: string): DesignDocFacts {
 /**
  * Why the Design Doc conformance check does not cover HEAD, or null when it
  * does: the body has a `## For Reviewers` section, and a local review record that
- * is not waived, holds a `design` row, and passes as a Medium record would. On
+ * is not waived, holds `design` rows that all name the backing Design Doc at its
+ * blob (`<path>@<blob>`, so a comparison against an older version of the doc
+ * does not count after main revises it), and passes as a Medium record would. On
  * High the check never fails on this: it only decides whether the reading is
  * narrowed (Issue #3542).
  */
-export function designCheckGap(body: string, parsed: ParseResult, facts: GitFacts): string | null {
+export function designCheckGap(
+  body: string,
+  parsed: ParseResult,
+  facts: GitFacts,
+  backing: { path: string; blob: string },
+): string | null {
   // The section's own text, up to the next `## ` heading; CRLF from the web editor too.
   const section = /^## For Reviewers[ \t]*\r?$([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(
     visibleBody(body),
@@ -1427,8 +1434,19 @@ export function designCheckGap(body: string, parsed: ParseResult, facts: GitFact
   }
   if ("error" in parsed) return parsed.error;
   if (parsed.record.waived !== undefined) return "the local review record is waived";
-  if (!parsed.record.findings.some(isDesignRow)) {
+  const rows = parsed.record.findings.filter(isDesignRow);
+  if (rows.length === 0) {
     return "the local review record has no design row (docs/process/review.md, Design Doc との照合)";
+  }
+  const compared = (where: string): boolean => {
+    const m = /^(.+)@([0-9a-f]{7,40})$/.exec(where.trim());
+    return m !== null && m[1] === backing.path && backing.blob.startsWith(m[2]);
+  };
+  if (!rows.every((f) => compared(f.where))) {
+    return (
+      `a design row does not name ${backing.path}@${backing.blob.slice(0, 12)}: ` +
+      "the comparison was against another version of the Design Doc, so redo it"
+    );
   }
   const errors = verifyRecord(parsed, "medium", facts);
   return errors.length === 0 ? null : `the local review record does not pass: ${errors[0]}`;
@@ -1636,6 +1654,7 @@ export function checkPr(pr: string, head?: string): PrCheck {
             view.body ?? "",
             parseRecord(view.body ?? ""),
             gitFacts(baseRef, view.headRefOid),
+            backing,
           );
         } catch (e) {
           why = `the local review record could not be checked: ${String(e).split("\n")[0]}`;

@@ -200,8 +200,9 @@ node scripts/review/tier.ts same-change --from <最後にレビューされた�
 
 PR 本文のローカルレビューの記録に、このラウンドまでの CodeRabbit の指摘と対応を足す（レビュアーは
 `coderabbit`、ラウンドの CLI の指摘は `cli`。`docs/process/review.md`「ローカルレビューの記録」）。記録に
-`design` の行があり、ラウンドの修正か main の取り込みで PR の変更が変わったなら（`tier.ts same-change` が
-`false`）、記録を書き直す前に Design Doc との照合を当て直し、その結果で `design` の行を作り直す（review.md
+`design` の行があり、ラウンドの修正か main の取り込みで PR の変更が変わったとき（`tier.ts same-change` が
+`false`）と、取り込んだ main が Design Doc を変えていたとき（行の `@<blob>` が `git rev-parse origin/main:<path>` と
+違う）は、記録を書き直す前に Design Doc との照合を当て直し、その結果で `design` の行を作り直す（review.md
 「Design Doc との照合」）。前の照合の行を新しい HEAD に持ち越さない。
 
 渡す直前に、PR の最新の Review tier の run を走り直させ（`gh run list --workflow review-tier.yml --branch <branch>

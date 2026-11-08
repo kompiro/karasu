@@ -1601,9 +1601,10 @@ describe("designCheckGap (#3542)", () => {
       ...rows,
       "<!-- /local-review -->",
     ].join("\n");
-  const DESIGN_ROW =
-    "| 1 | design | Trivial | docs/design/agreed.md | No deviation | no deviation |";
-  const gap = (body: string) => designCheckGap(body, parseRecord(body), git);
+  const BLOB = "1234567890abcdef".repeat(2) + "12345678";
+  const DESIGN_ROW = `| 1 | design | Trivial | docs/design/agreed.md@${BLOB.slice(0, 12)} | No deviation | no deviation |`;
+  const gap = (body: string) =>
+    designCheckGap(body, parseRecord(body), git, { path: "docs/design/agreed.md", blob: BLOB });
   const withSection = (r: string) => `## For Reviewers\n\nNone.\n\n${r}`;
 
   it("passes a body with the section and a fresh record holding a design row", () => {
@@ -1629,6 +1630,23 @@ describe("designCheckGap (#3542)", () => {
     ],
     ["the record has no design row", withSection(record([])), "no design row"],
     ["the record is waived", withSection(record([DESIGN_ROW], "Waived: by hand")), "waived"],
+    [
+      "a design row names no blob",
+      withSection(
+        record(["| 1 | design | Trivial | docs/design/agreed.md | No deviation | no deviation |"]),
+      ),
+      "another version",
+    ],
+    [
+      "a design row names another blob (main revised the Design Doc)",
+      withSection(record([DESIGN_ROW.replace(BLOB.slice(0, 12), "fedcba987654")])),
+      "another version",
+    ],
+    [
+      "a design row names another Design Doc",
+      withSection(record([DESIGN_ROW.replace("agreed.md", "other.md")])),
+      "another version",
+    ],
     [
       "another row has no disposition",
       withSection(record([DESIGN_ROW, "| 2 | engineering | Major | x.ts | y | later |"])),
