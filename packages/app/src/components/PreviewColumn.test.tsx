@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render as rtlRender, screen, fireEvent, cleanup, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
@@ -9,6 +9,7 @@ import { PreviewProvider, type PreviewContextValue } from "../state/preview-cont
 import { LocaleProvider } from "../i18n/index.js";
 import { CommandProvider, useCommandRegistry } from "../keyboard/command-context.js";
 import { readSharedProjectFromHash } from "../utils/inline-share.js";
+import { getAppSignals, resetAppSignals } from "../state/app-signals.js";
 import { PreviewToolbarSlotContext, type PreviewToolbarSlot } from "./preview-toolbar-slot.js";
 
 afterEach(cleanup);
@@ -1699,5 +1700,63 @@ describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja
     expect(surfaces.textContent).toContain("ツリー表示");
     expect(surfaces.textContent).not.toContain("Tree View");
     expect(surfaces.querySelector('[aria-label="Toggle org tree view"]')).toBeNull();
+  });
+});
+
+// What a reader outside the preview (the first-run tour) learns from it (#3599).
+describe("app signals", () => {
+  // Other tests here share and export too, and the store is module-wide.
+  beforeEach(() => resetAppSignals());
+  afterEach(() => resetAppSignals());
+
+  it("records an SVG export from the toolbar button, and none from the menu's other exports", async () => {
+    renderPreview(
+      makeProps({
+        activeView: "system",
+        getDrillDownSvg: () => "<svg>drilldown</svg>",
+        exportBundlesAvailable: true,
+      }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Export options/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Export Drill-down SVG" }));
+    expect(getAppSignals().lastEvent["svg-exported"]).toBeUndefined();
+
+    fireEvent.click(screen.getByRole("button", { name: /Export SVG/ }));
+    expect(getAppSignals().lastEvent["svg-exported"]).toBe(1);
+  });
+
+  it("records a share only once its link exists, not when the dialog opens", async () => {
+    const user = userEvent.setup();
+    let resolve: (payload: { krs: string }) => void = () => {};
+    const bundle = new Promise<{ krs: string }>((r) => {
+      resolve = r;
+    });
+    renderPreview(makeProps({ hasKrsSource: true, getShareBundle: () => bundle }));
+    await user.click(screen.getByRole("button", { name: /Share/ }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(getAppSignals().lastEvent["share-opened"]).toBeUndefined();
+
+    await act(async () => resolve({ krs: "system S {}" }));
+    await screen.findByLabelText("Private shareable URL");
+    expect(getAppSignals().lastEvent["share-opened"]).toBe(1);
+  });
+
+  it("says the team dependencies are showing only while the org tab draws them", () => {
+    const deps = {
+      teamDependencySvg: '<svg data-view="team-dependencies"><g data-team-node="ec"/></svg>',
+      hasTeamDependencyView: true,
+      isTeamDependenciesOpen: true,
+    };
+    const { rerender, unmount } = renderPreview(makeProps({ activeView: "org", ...deps }));
+    expect(getAppSignals().showing.has("team-dependencies")).toBe(true);
+    rerender(
+      <LocaleProvider initialLocale="en">
+        <PreviewProvider value={makeProps({ activeView: "system", ...deps })}>
+          <PreviewColumn />
+        </PreviewProvider>
+      </LocaleProvider>,
+    );
+    expect(getAppSignals().showing.has("team-dependencies")).toBe(false);
+    unmount();
   });
 });

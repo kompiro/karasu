@@ -60,7 +60,7 @@ kind gate を扱う。
 
 - [ ] kind gate を **共有定数**（`OWNABLE_KIND_SET` / `DEPLOY_AFFORDANCE_KIND_SET` のような ReadonlySet）にしたか。inline の `kind === "x" || kind === "y"` を複数箇所にコピーしていないか
 - [ ] **描画・measure・metadata の 3 点セット**を同じ gate で通したか（measure を忘れるとチップが未予約領域に描かれる）
-- [ ] 同じ情報を出す**全サーフェス**を洗い出したか（SVG カード / core の `NodeMetadata` / app の detail panel / VS Code webview / エクスポータ）
+- [ ] 同じ情報を出す**全サーフェス**を洗い出したか（SVG カード / core の `NodeMetadata` / app の detail panel / VS Code webview / エクスポータ） [judgment]
 - [ ] 意図的に**除外する kind** があるなら、理由をコード定数の doc コメントに書き、除外を assert するテストを置いたか（例: infra は shape 都合で deploy ボタン対象外）
 - [ ] kind を列挙する**振る舞いテスト**（定数を回して各 kind で提示されることを assert）を置き、定数に kind を足したらケース不足で落ちるようにしたか
 

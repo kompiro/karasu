@@ -73,6 +73,51 @@ same app with the editor enabled:
 The playground opens `index.krs` by default. See
 [The editor](#the-editor-playground) for the editing features.
 
+### First visit: Welcome and the guided tour
+
+On your first visit the playground opens with a **Welcome** dialog that offers
+three places to start:
+
+- **Design a service split**: opens the `service-split` sample as a new
+  project and starts a five-step guided tour: the current architecture, the
+  teams that own it (Org view), the planned architecture compared with the
+  current one (diff mode), the state in between (`@migration_target`,
+  `@planned`), and how to share the result. The tour is a small panel at the
+  bottom left; **Skip tour** ends it at any step, and **Continue to editor**
+  ends it on the last one.
+  A step that asks you to do something (drill in, turn on the team
+  dependencies, share or export) shows a ✓ once you have done it; you still
+  move on with **Next** when you are ready.
+  If an online shop is far from your work, step 1 offers to walk the same guide
+  on a payroll system (the `payroll-split` sample), and the way back. Switching
+  uses a copy that still matches the sample, and otherwise opens a new one.
+- **Understand an existing system**: starts a four-step guided tour of the
+  Getting Started project: the whole system, how it runs (Deploy view), who owns
+  what (Org view), and how to share what you found. It uses a Getting Started
+  that still matches the sample, and otherwise opens a new copy, so your edits
+  stay as they are.
+- **Track architecture evolution**: opens the `service-split` sample as a new
+  project and starts a four-step guided tour: the migration compared with today
+  (diff mode), the migration marks in the model (`@migration_target`, `@planned`,
+  `@deprecated`), the target compared with the migration (what is left), and how
+  to share where it stands.
+
+All three tours work the same way. Samples from Welcome never touch anything you
+already have.
+Welcome does not appear when you open the app through a link to a specific
+place (a gallery example or a `#krs-…` permalink), or once you have chosen
+something. Run **Show Welcome…** from the command palette (`Ctrl/Cmd+Shift+P`)
+to open it again. **Restart Guided Tour…** in the same palette walks the last
+guide you started again from step 1, in the project it used before, with any
+edits you made there. If that project is gone, the guide opens the way its
+Welcome entry does (or the way switching does, for the payroll guide); if you
+never took a tour, it starts Design a service split.
+
+Reloading the page during the tour, or opening the app again from its address
+bar, comes back to the step you were on in the tour's project. A link that
+opens a specific place (a gallery example, a permalink, another project) does
+not bring the tour back; Restart Guided Tour… does.
+
 ## The preview pane
 
 The preview pane is the heart of the app and is identical in `serve` and the

@@ -183,7 +183,7 @@ edge[implicit] {
 ```
 
 - [x] The implicit service edge now renders in **purple** (`#A855F7`) with a **dotted** line
-> ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `user edge[implicit] rule overrides builtin amber to purple dotted`
+> ✅ Automated — `packages/core/src/integration/implicit-edge-style.test.ts` › `lets a user edge[implicit] rule replace the builtin colour and line style`
 
 - [x] Explicit (non-implicit) edges are unaffected
 > ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `user edge[implicit] rule overrides builtin amber to purple dotted`

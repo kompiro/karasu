@@ -1,0 +1,118 @@
+// payroll-split/migrating.krs: the state IN BETWEEN.
+// Payroll Service is running, but it still reads and writes the shared
+// Workforce Database: its own Payroll Database is planned, not built.
+// Moving the data is the step that decides when the split is done.
+
+system Workforce {
+  label "Workforce Platform"
+
+  user Employee [human] {
+    label "Employee"
+    description "Records hours and checks payslips"
+  }
+  user PayrollStaff [human] {
+    label "Payroll staff"
+    description "Reviews pay runs and transfers"
+  }
+
+  service WorkforceApp {
+    label "Workforce Application"
+    description "Employee portal and attendance"
+
+    domain Attendance {
+      label "Attendance"
+      usecase RecordHours {
+        label "Record hours"
+        resource WorkforceDB.Timesheets { operations create }
+      }
+      usecase ApproveTimesheet {
+        label "Approve a timesheet"
+        resource WorkforceDB.Timesheets { operations update }
+      }
+    }
+  }
+
+  service PayrollService @migration_target(from: WorkforceApp) {
+    label "Payroll Service"
+    description "Split out, still on the shared database"
+
+    domain Payroll {
+      label "Payroll"
+      usecase CalculatePay {
+        label "Calculate pay"
+        resource WorkforceDB.Payslips { operations create }
+        resource WorkforceDB.Timesheets { operations read }
+      }
+      usecase TransferPay {
+        label "Transfer pay"
+        resource WorkforceDB.Transfers { operations create }
+      }
+    }
+  }
+
+  service ReminderWorker {
+    label "Reminder Worker"
+    description "Sends timesheet reminders in the background"
+
+    domain Reminders {
+      label "Reminders"
+      usecase SendReminder {
+        label "Send a reminder"
+        resource WorkforceDB.ReminderQueue { operations update }
+      }
+    }
+  }
+
+  service BankTransfer [external] {
+    label "Bank Transfer"
+    description "Salary payments, run by a bank"
+  }
+
+  database WorkforceDB {
+    label "Workforce Database"
+    description "Payroll tables have not moved yet"
+    table Timesheets { label "Timesheets" }
+    table Payslips @deprecated { label "Payslips" }
+    table Transfers @deprecated { label "Transfers" }
+    table ReminderQueue { label "Reminder queue" }
+  }
+
+  database PayrollDB @planned {
+    label "Payroll Database"
+    description "Where the payroll tables will move"
+    table Payslips { label "Payslips" }
+    table Transfers { label "Transfers" }
+  }
+
+  Employee -> WorkforceApp "Record hours"
+  Employee -> PayrollService "Check payslips"
+  PayrollStaff -> PayrollService "Review pay runs"
+  WorkforceApp -> PayrollService "Hand over closed timesheets"
+  WorkforceApp -> ReminderWorker "Schedule reminders"
+  PayrollService -> BankTransfer "Send transfers"
+}
+
+organization Corporate {
+  label "Corporate Engineering"
+
+  team workforce {
+    label "Workforce Team"
+    description "Builds the employee portal and the attendance flow"
+    owns WorkforceApp
+    owns Attendance
+  }
+
+  team payroll {
+    label "Payroll Team"
+    description "Runs Payroll Service; depends on the Platform Team for its data until the move"
+    owns PayrollService
+    owns Payroll
+  }
+
+  team platform {
+    label "Platform Team"
+    description "Runs the shared database and the background workers"
+    owns ReminderWorker
+    owns Reminders
+  }
+}

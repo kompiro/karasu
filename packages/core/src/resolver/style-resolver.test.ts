@@ -646,28 +646,22 @@ describe("resolveStyles", () => {
     const IMPLICIT_AMBER = "#F59E0B";
 
     /**
-     * Resolve a system with one `[implicit]` edge (A→B) and one explicit
-     * untagged edge (C→B). Returns both resolved styles so callers can
+     * Resolve one `[implicit]` edge (A→B), passed beside a system that holds one
+     * explicit untagged edge (C→B). Returns both resolved styles so callers can
      * assert the implicit edge's styling and the explicit sibling's
      * non-participation. `userSheets` are appended after the builtin sheet.
+     *
+     * An `[implicit]` edge is never in a node's `edges`: the compile path
+     * derives it and hands it to `resolveStyles` as `extraEdges`, so this does
+     * the same (ADR-3429). `integration/implicit-edge-style.test.ts` covers the
+     * same styles from `.krs` source through the SVG.
      */
     function resolveImplicitEdge(kind: "sync" | "async", userSheets: StyleSheet[] = []) {
       const system = makeNode({
         kind: "system",
         id: "Test",
-        children: [
-          makeNode({ kind: "service", id: "A", label: "A" }),
-          makeNode({ kind: "service", id: "B", label: "B" }),
-          makeNode({ kind: "service", id: "C", label: "C" }),
-        ],
+        children: [],
         edges: [
-          {
-            from: "A",
-            to: "B",
-            kind,
-            tags: ["implicit"],
-            loc: dummyLoc,
-          },
           {
             from: "C",
             to: "B",
@@ -677,7 +671,21 @@ describe("resolveStyles", () => {
           },
         ],
       });
-      const result = resolveStyles([system], [getBuiltinStyleSheet(), ...userSheets]);
+      const implicitEdge: KrsEdge = {
+        from: "A",
+        to: "B",
+        kind,
+        tags: ["implicit"],
+        loc: dummyLoc,
+      };
+      const result = resolveStyles(
+        [system],
+        [getBuiltinStyleSheet(), ...userSheets],
+        undefined,
+        undefined,
+        undefined,
+        [implicitEdge],
+      );
       return { implicit: result.edges.get("A->B")!, explicit: result.edges.get("C->B")! };
     }
 

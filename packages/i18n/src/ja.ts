@@ -1,5 +1,6 @@
 import type { Translations } from "./types.js";
 import { formatRange } from "./format.js";
+import { firstRunJa } from "./first-run.js";
 
 /**
  * Japanese translation map.
@@ -80,6 +81,7 @@ export const ja: Partial<Translations> = {
   "project.error.export": ({ detail }) => `⚠ プロジェクトのエクスポートに失敗しました: ${detail}`,
   "project.error.import": ({ detail }) => `⚠ インポートに失敗しました: ${detail}`,
   "project.error.openExample": ({ detail }) => `⚠ example を開けませんでした: ${detail}`,
+  ...firstRunJa,
   "project.error.snapshot": ({ detail }) => `⚠ スナップショットの取得に失敗しました: ${detail}`,
   "project.error.dismiss": "✕ 閉じる",
   "serve.error.fileNotFound": ({ file }) => `ファイルが見つかりません: ${file}`,
@@ -562,8 +564,8 @@ export const ja: Partial<Translations> = {
     `エッジ id "#${authorId}" が重複しています。エッジ id は system 内で一意である必要があります`,
   "diagnostic.duplicateEdgeLabel.message": ({ label }) =>
     `このエッジには位置引数の label が既にあるため、block の label "${label}" は 2 つ目の label です。位置引数形か block プロパティのどちらか一方だけを書いてください`,
-  "diagnostic.ambiguousEdgeBase.message": ({ fromId, toId, arrow }) =>
-    `複数のエッジが base "${fromId}${arrow}${toId}" を共有しており、識別する #<id> がありません。これらのエッジは per-edge style selector では一致しません`,
+  "diagnostic.ambiguousEdgeBase.message": ({ base }) =>
+    `複数のエッジが base edge#${base} を共有しており、識別する #<id> がありません。これらのエッジは per-edge style selector では一致しません`,
   "diagnostic.styleTokenTypeMismatch.message": ({ expected, got, value }) =>
     `${expected} を期待しましたが ${got} ("${value}") が見つかりました`,
   "diagnostic.expectedStylePropertyName.message": ({ got }) =>

@@ -46,13 +46,13 @@ scope:
 
 `docs/` を別系統へ取り込むパイプライン、またはリンク/アンカーの書き換え・公開ページ集合を変更するときに確認する:
 
-- [ ] in-site リンクの解決先ルートが公開ページ集合に存在することをビルド時に assert しているか。存在しなければ fail するか。
-- [ ] `#fragment` 付きリンクのアンカーが取り込み先ページに実在することを assert しているか。見出し slug は本番と同じ slugger（`github-slugger`）で算出しているか。
-- [ ] ページ内 `#anchor` リンク（同一ページ内ジャンプ）も検証対象に含めているか。
-- [ ] 多言語ページで、アンカーをロケールごとに正しく解決しているか（英語アンカーの ja ページへの流用を検出できるか）。
-- [ ] 公開ページ集合（`PUBLISHED_EN_FILES` 等）からページを外す / リネームするとき、それを指す in-site リンクが残っていないことを同じチェックで担保しているか。
-- [ ] サイト外リンク（`examples/` / ADR / 外部）は GitHub / 外部 URL へ落とすだけで、到達性の双方向検証はしていないか（片方向に留めて test を脆くしない）。
-- [ ] コードフェンス内の `](...)` を書き換え・検証の対象から除外しているか（`krs` 例の中のリンク様文字列を誤書き換えしない）。
+- [ ] in-site リンクの解決先ルートが公開ページ集合に存在することをビルド時に assert しているか。存在しなければ fail するか。 [guard: `packages/docs-site/scripts/check-links.ts`]
+- [ ] `#fragment` 付きリンクのアンカーが取り込み先ページに実在することを assert しているか。見出し slug は本番と同じ slugger（`github-slugger`）で算出しているか。 [guard: `packages/docs-site/scripts/check-links.ts`]
+- [ ] ページ内 `#anchor` リンク（同一ページ内ジャンプ）も検証対象に含めているか。 [guard: `packages/docs-site/scripts/check-links.ts`]
+- [ ] 多言語ページで、アンカーをロケールごとに正しく解決しているか（英語アンカーの ja ページへの流用を検出できるか）。 [guard: `packages/docs-site/scripts/check-links.ts`]
+- [ ] 公開ページ集合（`PUBLISHED_EN_FILES` 等）からページを外す / リネームするとき、それを指す in-site リンクが残っていないことを同じチェックで担保しているか。 [guard: `packages/docs-site/scripts/check-links.ts`]
+- [ ] サイト外リンク（`examples/` / ADR / 外部）は GitHub / 外部 URL へ落とすだけで、到達性の双方向検証はしていないか（片方向に留めて test を脆くしない）。 [judgment]
+- [ ] コードフェンス内の `](...)` を書き換え・検証の対象から除外しているか（`krs` 例の中のリンク様文字列を誤書き換えしない）。 [guard: `packages/docs-site/scripts/lib/rewrite.test.ts`]
 
 ## 既知の対処パターン
 

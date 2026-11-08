@@ -1,0 +1,118 @@
+// service-split/migrating.krs: 移行途中の状態。
+// Billing Service は動いているが、まだ共有の Commerce Database を読み書き
+// している。専用の Billing Database は計画のみで、まだ無い。
+// データの移動が、分割の完了を決めるステップになる。
+
+system Commerce {
+  label "コマースプラットフォーム"
+
+  user Customer [human] {
+    label "顧客"
+    description "注文して支払う"
+  }
+  user FinanceStaff [human] {
+    label "経理担当"
+    description "請求書と返金を確認する"
+  }
+
+  service CommerceApp {
+    label "コマースアプリケーション"
+    description "ストアフロントと注文"
+
+    domain Ordering {
+      label "注文"
+      usecase PlaceOrder {
+        label "注文する"
+        resource CommerceDB.Orders { operations create }
+      }
+      usecase TrackOrder {
+        label "注文を追跡する"
+        resource CommerceDB.Orders { operations read }
+      }
+    }
+  }
+
+  service BillingService @migration_target(from: CommerceApp) {
+    label "請求サービス"
+    description "切り出し済み。まだ共有 DB を使う"
+
+    domain Billing {
+      label "請求"
+      usecase IssueInvoice {
+        label "請求書を発行する"
+        resource CommerceDB.Invoices { operations create }
+        resource CommerceDB.Orders { operations read }
+      }
+      usecase CapturePayment {
+        label "決済を確定する"
+        resource CommerceDB.Payments { operations create }
+      }
+    }
+  }
+
+  service InventoryWorker {
+    label "在庫ワーカー"
+    description "在庫の引当と解放をバックグラウンドで行う"
+
+    domain Inventory {
+      label "在庫"
+      usecase ReserveStock {
+        label "在庫を引き当てる"
+        resource CommerceDB.Stock { operations update }
+      }
+    }
+  }
+
+  service PaymentGateway [external] {
+    label "決済ゲートウェイ"
+    description "外部事業者が運営するカード決済"
+  }
+
+  database CommerceDB {
+    label "コマースDB"
+    description "請求のテーブルはまだ移っていない"
+    table Orders { label "注文" }
+    table Invoices @deprecated { label "請求書" }
+    table Payments @deprecated { label "決済" }
+    table Stock { label "在庫" }
+  }
+
+  database BillingDB @planned {
+    label "請求DB"
+    description "請求のテーブルの移動先"
+    table Invoices { label "請求書" }
+    table Payments { label "決済" }
+  }
+
+  Customer -> CommerceApp "注文"
+  Customer -> BillingService "支払い"
+  FinanceStaff -> BillingService "請求書を確認"
+  CommerceApp -> BillingService "請求書を依頼"
+  CommerceApp -> InventoryWorker "在庫を引当"
+  BillingService -> PaymentGateway "決済を確定"
+}
+
+organization Shop {
+  label "ショップ開発部"
+
+  team commerce {
+    label "コマースチーム"
+    description "ストアフロントと注文フローを作る"
+    owns CommerceApp
+    owns Ordering
+  }
+
+  team billing {
+    label "請求チーム"
+    description "請求サービスを運用。データ移行まではデータをプラットフォームチームに頼る"
+    owns BillingService
+    owns Billing
+  }
+
+  team platform {
+    label "プラットフォームチーム"
+    description "共有データベースとバックグラウンドワーカーを運用する"
+    owns InventoryWorker
+    owns Inventory
+  }
+}

@@ -23,6 +23,7 @@ flowchart TD
     ADR_3405["ADR-3405<br/>ADR の昇格で、新しい ADR へのリンクを足すだけの差分も張り替えと同じく Low に数える"]
     ADR_3416["ADR-3416<br/>ADR の生成物は PR に含めず、毎日の routine が出す再生成の PR でだけ更新する"]
     ADR_3471["ADR-3471<br/>docs/ の外からは Design Doc ではなく ADR か Issue を指す"]
+    ADR_3595["ADR-3595<br/>docs/adr/README.md の手書き一覧をやめ、topic の語彙と生成物への入口にする"]
   end
   ADR_1077 --> ADR_788
 
@@ -49,4 +50,5 @@ flowchart TD
   class ADR_3405 accepted
   class ADR_3416 accepted
   class ADR_3471 accepted
+  class ADR_3595 accepted
 ```

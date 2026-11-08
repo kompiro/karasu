@@ -1,0 +1,255 @@
+# AT: Web App の初回体験（Welcome と 3 つのガイドツアー、題材の切り替え）
+
+- **日付**: 2026-11-03
+- **関連 Issue**: [#3563](https://github.com/kompiro/karasu/issues/3563)（Epic）/ [#3583](https://github.com/kompiro/karasu/issues/3583)（配置の自動判定）/ [#3597](https://github.com/kompiro/karasu/issues/3597)（ツアーのやり直し）/ [#3598](https://github.com/kompiro/karasu/issues/3598)（ツアーの再開）/ [#3599](https://github.com/kompiro/karasu/issues/3599)（ステップの操作を終えた印）/ [#3600](https://github.com/kompiro/karasu/issues/3600)（Understand と Evolve のガイド）/ [#3601](https://github.com/kompiro/karasu/issues/3601)（2 つ目の題材）/ [#3564](https://github.com/kompiro/karasu/issues/3564)（サンプル）/ [#3565](https://github.com/kompiro/karasu/issues/3565)（Welcome）/ [#3566](https://github.com/kompiro/karasu/issues/3566)（ガイドツアー）
+- **PRD**: [#3573](https://github.com/kompiro/karasu/issues/3573)
+- **対象ファイル**:
+  - `examples/{en,ja}/service-split/`、`examples/{en,ja}/payroll-split/`（`index.krs` / `planned.krs` / `migrating.krs`）、`examples/{en,ja}/getting-started/`
+  - `packages/app/src/components/first-run/`（Welcome、ツアーパネル、表示条件、シーンの適用）
+  - `packages/app/src/ProjectModeApp.tsx`（配線、起動時のツアーの再開の判定）
+  - `packages/app/src/hooks/useFileSelection.ts`（開いているファイルを読み直さずに選び直す）
+  - `packages/app/src/hooks/useProjectNavigation.ts` / `useHistoryNavigation.ts`（再開するステップの hash で起動し、hash の復元がそのファイルを待つ）
+  - `packages/app/src/state/app-signals.ts`（チーム依存の表示・Share・SVG の書き出しを、ツアーが読める値と出来事にする）
+  - `packages/e2e/fixtures/opfs.ts`（既定で Welcome を閉じた状態にする）
+- **関連 ADR**: [ADR-3598](../adr/3598-first-run-tour-resume.md)、[ADR-3599](../adr/3599-first-run-step-completion.md)、[ADR-3600](../adr/3600-first-run-understand-evolve-tours.md)、[ADR-3601](../adr/3601-first-run-second-sample.md)
+
+> 初回訪問者が 5 分で「共通のモデルを持つとチームの設計判断が変わる」ことを体験する経路。Welcome は既定プロジェクトを作った初回起動だけに出て、Design a service split が 5 ステップ、Understand an existing system と Track architecture evolution が 4 ステップのガイドに入る。
+
+## 受け入れ条件
+
+- [x] AT-A: 初回訪問で Welcome が出て、どれかを選んだあとは再読み込みしても出ない
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `greets a first visit once: after a choice, a reload opens the editor`
+
+- [x] AT-B: 特定の場所へのリンク（`#krs-…` など）で開いたときは Welcome が出ない
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `stays out of the way of a deep link`
+  > ✅ Automated — `packages/app/src/components/first-run/welcome-gate.test.ts` › `does not greet a visitor who arrived through a deep link`
+
+- [x] AT-C: 既存のプロジェクトがある利用者には Welcome が出ない（既存ユーザーの操作を妨げない）
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `does not greet a visitor whose projects are already there`
+
+- [x] AT-D: コマンドパレットの Show Welcome… で Welcome を開き直せる
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Show Welcome… in the command palette opens it again`
+
+- [x] AT-E: Understand an existing system は作成済みの Getting Started でガイドを始め、初回はコピーを作らない
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Understand an existing system starts in the seeded Getting Started project`
+
+- [x] AT-F: Track architecture evolution は移行途中の構造を現在のシステムと比べる画面でガイドを始める
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Track architecture evolution starts on the migration compared with the current system`
+
+- [x] AT-G: Design a service split はサンプルを新しいプロジェクトとして開き、既存のプロジェクトは残る
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `opens the sample as a new project, leaving the seeded ones in place`
+
+- [x] AT-H: Next / Back で 5 ステップがそれぞれのファイル・ビュー・差分に移り、最後に Continue to editor でツアーが終わる
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Next and Back walk the five steps through their files, views and diff`
+
+- [x] AT-I: どのステップからでも Skip でツアーを終え、差分モードも抜ける
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Skip ends the tour from the diff step and leaves diff mode`
+
+- [x] AT-K: ステップを素早く行き来しても、読み込みの遅かった前のステップの差分やビューが後から被らない
+
+  > ✅ Automated — `packages/app/src/components/first-run/use-guided-scene.test.ts` › `drops the diff and view of a scene left before its file loaded (TPL-1534)`
+
+- [x] AT-L: Welcome を閉じるとキーボードのフォーカスがツアーに移る
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `hands keyboard focus to the tour when Welcome closes`
+
+- [x] AT-J: ガイドが「気づき」として示す内容がサンプルで成り立っている（同居・所有のずれ・移行の注釈）
+
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `current: the team of the moving domain owns that domain but no service`
+
+- [x] AT-M: Design a service split の各ステップで、パネルの文が指しているノード（Step 1 のコマースアプリケーション、Step 3 の追加された請求サービス、Step 4 の ◇ Planned の請求 DB）の名前がプレビューの画面内にあり、ノードがツアーパネルと重ならない。どのステップでもパネルが画面内に収まり、パネル内の文言がはみ出さない（既定のデスクトップの大きさ 1280×720 で判定）
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(en) keeps each step's node clear of the panel, with no text overflowing`
+
+- [x] AT-N: 日本語 UI でも同じ配置が成り立ち、どのステップでもパネルが画面内に収まり、パネル内の文言が切れたりはみ出したりしない
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(ja) keeps each step's node clear of the panel, with no text overflowing`
+
+- [x] AT-O: コマンドパレットの Restart Guided Tour… でツアーを Step 1 からやり直せ、以前ツアーが開いたサンプルのプロジェクトを使う（2 つ目のコピーを作らない）
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Restart Guided Tour… walks the guide again in the sample project it opened (#3597)`
+
+- [x] AT-P: ツアーがまだサンプルを開いていないときの Restart Guided Tour… は、サンプルを新しいプロジェクトとして開いてツアーを始める。利用者が同じ名前で作ったプロジェクトは使わない
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Restart Guided Tour… opens the sample when the tour has not opened one (#3597)`
+
+- [x] AT-Q: ツアーを終えて別のプロジェクトへ移ったあとの Restart Guided Tour… は、ツアーが開いたサンプルのプロジェクトへ戻る
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Restart Guided Tour… from another project goes back into the tour's copy (#3597)`
+
+- [x] AT-R: Step 3 で再読み込みすると、Step 3 と差分のまま戻り、Step 2 で再読み込みすると Org ビューのまま戻る。どちらもブラウザの履歴は増えない
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a reload on step 3 comes back to step 3 with its diff, adding no history entry`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a reload on step 2 comes back to the org view, adding no history entry`
+  > ✅ Automated — `packages/app/src/components/first-run/use-guided-scene.test.ts` › `does not select a resumed scene's file again when it is open, and selects it when it is not`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `shows a resumed tour at its step from the first render, and Continue to editor removes it`
+
+- [x] AT-S: Step 1 でドリルしてから再読み込みすると、ドリルは外れて Step 1 に戻る
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a reload after drilling on step 1 comes back to step 1, undrilled`
+
+- [x] AT-T: Skip・Continue to editor でツアーを終えたあとは、再読み込みしてもツアーは出ない。別のガイドを始めると、進み具合の記録はそのガイドのものに置き換わる
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a reload after Skip shows no tour`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `records the step where the tour starts and moves, and removes it on Skip`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `replaces the record when another guide starts (#3600)`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `shows a resumed tour at its step from the first render, and Continue to editor removes it`
+
+- [x] AT-U: ツアーのプロジェクト以外で開いたとき（別のプロジェクトでの再読み込み、ギャラリーの example、他人の permalink、最後のプロジェクトが別のときのパス無しの URL）はツアーが出ず、そのあとツアーのプロジェクトへ切り替えても出ない。パス無しの URL ではツアーのファイルも開かない
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a reload in another project shows no tour, nor does switching back`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a gallery example link shows no tour, nor does switching to the tour's project`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `someone's permalink shows no tour, though the tour's project is the last one`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a bare URL opening another last project shows no tour and opens none of its files`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-resume.test.ts` › `keeps the record and does not resume on %s`
+
+- [x] AT-V: 記録が読めない・形や版が違う・ステップが範囲外・プロジェクトが無いときは再開せず、記録を消す。storage が例外を投げても起動は止まらない
+
+  > ✅ Automated — `packages/app/src/components/first-run/tour-progress.test.ts` › `reads %s as no record`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-progress.test.ts` › `reads a storage that throws as no record, and writing or clearing it does not throw`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-resume.test.ts` › `discards a record that is missing or unreadable, or whose project is gone`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `deletes a record the boot discarded, and leaves one it kept for a later boot`
+
+- [x] AT-W: ステップが頼んだ操作（Step 1 でコマースアプリケーションへのドリル、Step 2 でチーム依存の表示、Step 5 で Share か Export SVG）をすると、パネルに ✓ と短い文が出て、Next がその文を説明として指す。条件が外れても（ドリルから戻る）✓ は残る。すでにチーム依存を表示していれば、Step 2 に着いたときに ✓ が出る
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `drilling in on step 1 marks it done, Next points at the mark, and drilling out keeps it`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `turning on the team dependencies on step 2 marks it done, and steps 3 and 4 ask for nothing`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `step 2 is done on arrival when the team dependencies are already on`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Share on step 5 marks it done, and Export SVG does too`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `marks the drill step once the visitor drilled in, and keeps it after they drill out`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `is done once the visitor drilled into the node the step names`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `is done while the team dependencies are on screen, including from before the step`
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `records an SVG export from the toolbar button, and none from the menu's other exports`
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `records a share only once its link exists, not when the dialog opens`
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `says the team dependencies are showing only while the org tab draws them`
+
+- [x] AT-X: 操作を頼まないステップ（3・4）には ✓ が出ない。✓ はステップのシーンが着いてから判定するので、Back で戻った未完了のステップに、離れたステップでした操作で ✓ が出ず、完了済みのステップに戻れば ✓ が出る。別のプロジェクトでの Share や、シーンが着く前の出来事は数えない。Restart Guided Tour… と再読み込みは未完了から始まる
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `Back onto an undone step ignores what the visitor did on the step they left, and onto a done one shows it done`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `a share made in another project does not mark step 5`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `does not count a share made in another project`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `does not count a share begun in another project that finishes after coming back`
+  > ✅ Automated — `packages/app/src/state/app-signals.test.ts` › `dates an event that took a ticket to its start, so a reader from after the start skips it`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `counts a share or an SVG export only after the scene landed`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `judges nothing before the step's own scene has landed (TPL-1534)`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `keeps a step done under its key after the condition goes away, and only under it`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `marks nothing on the steps that ask for nothing`
+
+- [x] AT-Y: ステップがドリルを頼むノードと表示するノードは、どのガイドでも en / ja のサンプルにある
+
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `step %i`
+
+- [x] AT-Z: Understand an existing system の 4 ステップが、それぞれ System・Deploy・Org・System を見せ、最後に Continue to editor で終わる。パネルの見出しはガイドの名前になる
+
+  > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `walks the system, deploy and org views of Getting Started, and ends on sharing`
+
+- [x] AT-AA: Track architecture evolution の 4 ステップが、移行と今の差分、移行のモデル、目標と移行の差分、移行のモデルを見せ、最後に Continue to editor で終わる。差分のステップで Skip すると差分モードも抜ける
+
+  > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `compares the migration with today, reads the marks, compares the target, and ends on sharing`
+  > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `Skip on the target diff ends the tour and leaves diff mode`
+
+- [x] AT-AB: Understand は Getting Started（前に開いたコピーを含む）がサンプルと同じならそれを使い、どれも編集されていれば新しいコピーを開く。編集されたプロジェクトは残る。ファイルが読めなければ同じでないものとして扱い、読むあいだに Open the editor を選べばガイドは始まらない
+
+  > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `opens a new copy when Getting Started was edited, leaving the edited one as it is`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Understand navigates to a matching Getting Started that is not open`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Understand reuses an unedited copy it opened earlier, not a project of another name`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Understand opens a new copy when no Getting Started matches, navigating to it once`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `drops an Understand the visitor chose the editor over while reading (TPL-1534)`
+  > ✅ Automated — `packages/app/src/components/first-run/project-matches-example.test.ts` › `does not match when a file is missing or cannot be read`
+
+- [x] AT-AC: Evolve は毎回 service-split の新しいコピーを開き、離れて戻ると今のステップの差分を当て直す
+
+  > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `Restart Guided Tour… redoes it in the same copy, and each start opens its own`
+  > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `leaving its project hides the panel, and coming back shows the step's diff again`
+
+- [x] AT-AD: 再読み込みで同じガイドの同じステップに戻る。記録に未知のガイドや、そのガイドの範囲外のステップがあれば再開しない
+
+  > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `a reload on step 2 comes back to the same guide and step`
+  > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `a reload on step 3 comes back to the same guide and step, with its diff`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-progress.test.ts` › `reads %s as no record`
+
+- [x] AT-AE: ステップが頼んだ操作（Understand の Step 1 で ECサイトへのドリル、Evolve の Step 2 でコマース DB へのドリル、Step 4 で Share か Export SVG）で ✓ が出る
+
+  > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `marks the drill into EC Site on step 1 and a share on step 4 done`
+  > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `marks the drill into Commerce Database on step 2 done, where the deprecated tables show`
+
+- [x] AT-AF: Restart Guided Tour… は最後に始めたガイドを同じプロジェクトでやり直す。#3600 より前の形式の記録は Design のものとして読み、プロジェクトが無ければそのガイドの入口と同じ規則で開く
+
+  > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `Restart Guided Tour… redoes it in the same project`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Restart redoes the last guide started, in its project`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Restart reads a project id recorded before #3600 as the Design guide`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `Restart opens the guide the way its entry does when its project is gone`
+
+- [x] AT-AG: 打鍵の直後に Next で同じファイルのシーンへ進んでも、保存がコミットされる前の編集が消えない（Design の Step 1→2 と 4→5 も含む）
+
+  > ✅ Automated — `packages/app/src/components/first-run/use-guided-scene.test.ts` › `keeps an edit made just before Next, in the buffer and on disk`
+  > ✅ Automated — `packages/e2e/tests/at-3600-understand-evolve-tours.spec.ts` › `an edit made during a step stays when Next stays on the file`
+
+- [x] AT-AH: Understand と Evolve の各ステップで、パネルの文が指すノードがプレビューの画面内にあってパネルと重ならず、パネルが画面内に収まり文言がはみ出さない（en / ja、1280×720）
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(en) Understand: keeps each step's node clear of the panel, with no text overflowing`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(ja) Understand: keeps each step's node clear of the panel, with no text overflowing`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(en) Evolve: keeps each step's node clear of the panel, with no text overflowing`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(ja) Evolve: keeps each step's node clear of the panel, with no text overflowing`
+
+- [x] AT-AI: 各ガイドの気づきがサンプルで成り立っていて、文がノードを図と同じ名前で呼ぶ（en / ja）
+
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `system: Product Catalog and Orders depend on each other`
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `deploy: only EC Site and Notification are run, Payment and Inventory are external`
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `org: the Notification team owns nothing, and the Commerce team owns the Notification service`
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `evolve, what is left: the moving tables go to the new database`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `%s (%s)`
+
+- [x] AT-AJ: Design のガイドの Step 1 で給与システムの題材に切り替えると、同じ 5 ステップをその題材で歩ける。ステップの ✓ は持ち越さない
+
+  > ✅ Automated — `packages/e2e/tests/at-3601-second-sample.spec.ts` › `walks the five steps on the payroll sample after switching on step 1`
+
+- [x] AT-AK: 切り替えのボタンは Design のガイドの Step 1 にだけ出て、Understand と Evolve には出ない
+
+  > ✅ Automated — `packages/e2e/tests/at-3601-second-sample.spec.ts` › `offers the switch on step 1 only`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.switch.test.tsx` › `is not on the %s guide`
+
+- [x] AT-AL: 題材を行き来してもプロジェクトは増えず、編集したコピーはそのまま残ってガイドは新しいコピーを開く
+
+  > ✅ Automated — `packages/e2e/tests/at-3601-second-sample.spec.ts` › `going back and forth adds no copies`
+  > ✅ Automated — `packages/e2e/tests/at-3601-second-sample.spec.ts` › `a copy the visitor edited stays as it is, and the guide gets a new one`
+
+- [x] AT-AM: 切り替えたあとも、再読み込みで同じステップに戻り、Restart Guided Tour… は切り替え先のガイドをやり直す。前の題材のプロジェクトに戻ってもパネルは出ない
+
+  > ✅ Automated — `packages/e2e/tests/at-3601-second-sample.spec.ts` › `a reload comes back to the same step of the guide switched to`
+  > ✅ Automated — `packages/e2e/tests/at-3601-second-sample.spec.ts` › `Restart Guided Tour… walks the guide switched to, in its project`
+  > ✅ Automated — `packages/e2e/tests/at-3601-second-sample.spec.ts` › `going back to the previous subject's project shows no panel`
+
+- [x] AT-AN: 切り替えの解決中はパネルの操作が効かず、その間に別のプロジェクトを開くと、そのプロジェクトに留まる
+
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.switch.test.tsx` › `locks the panel while it resolves, so Skip neither works nor brings the guide back`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.switch.test.tsx` › `stays in the project the visitor opened while a new copy was being added`
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.switch.test.tsx` › `stays in the project the visitor opened while an existing copy was being read`
+
+- [x] AT-AO: Restart でガイドを開き直している最中に Skip すると、ガイドは戻らない
+
+  > ✅ Automated — `packages/app/src/components/first-run/FirstRunExperience.test.tsx` › `does not bring back a guide skipped while Restart reopens it (TPL-1534)`
+
+- [x] AT-AP: 給与システムの題材の各ステップで、パネルの文が指すノードがプレビューの画面内にあってパネルと重ならず、パネルが画面内に収まり文言がはみ出さない（en / ja、1280×720）
+
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(en) Payroll: keeps each step's node clear of the panel, with no text overflowing`
+  > ✅ Automated — `packages/e2e/tests/at-3563-first-run-experience.spec.ts` › `(ja) Payroll: keeps each step's node clear of the panel, with no text overflowing`
+
+- [x] AT-AQ: 給与システムの題材の気づきがサンプルで成り立っていて、warning が出ない（en / ja）
+
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `current: the team of the moving domain owns that domain but no service`
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `migrating: the new service is the migration target and its database is planned`
+  > ✅ Automated — `packages/app/src/components/first-run/tour-steps.test.ts` › `walks the same scenes on both subjects, so the guide has one shape`
+
+## 手動確認
+
+N/A — 自動テストですべて覆っている（配置と文言のはみ出しは AT-M / AT-N / AT-AH の e2e が判定する。[#3583](https://github.com/kompiro/karasu/issues/3583)）

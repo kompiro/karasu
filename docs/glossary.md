@@ -4,7 +4,7 @@
 
 The permanent home for the load-bearing terms coined in the **keystone**
 deliberation and the **permalink family** — vocabulary that is now used across
-the PRD ([`docs/prd/keystone-primary-path.md`](prd/keystone-primary-path.md)),
+the keystone PRD ([#3572](https://github.com/kompiro/karasu/issues/3572)),
 the permalink epic ([#1826](https://github.com/kompiro/karasu/issues/1826)),
 the [roadmap](roadmap.md), and the ADRs. These terms are **defined here
 canonically**: other documents should *reference* this page rather than
@@ -92,5 +92,5 @@ pinned* — the axes compose (e.g. a deep, repo-backed, ref-pinned permalink).
   tiers vs `@experimental` / `@deprecated` annotations, `.krs language v1.0`
   notation — [ADR-2124](adr/2124-version-vocabulary.md)). Out of this glossary's
   scope; listed here so readers looking for "version" terms find the right home.
-- [`docs/prd/keystone-primary-path.md`](prd/keystone-primary-path.md) — the full
+- The keystone PRD [#3572](https://github.com/kompiro/karasu/issues/3572) — the full
   keystone deliberation these terms were coined in.

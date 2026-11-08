@@ -1,5 +1,6 @@
 import type { Trivia } from "../types/tokens.js";
 import type { StyleRule, StyleSelector, StyleSheet } from "../types/style.js";
+import { styleEndpointLiteral } from "./edge-endpoint-literal.js";
 
 /**
  * Re-serialize a `StyleSheet` (with trivia) back to source text using
@@ -100,12 +101,16 @@ export function formatSelector(selector: StyleSelector): string {
     out += `#${selector.boundaryId}`;
   }
   // Endpoint predicates (edge[from=<id>] / edge[to=<id>], #1755). Emitted
-  // before tags so `edge[from=X][async]` round-trips in source order.
-  if (selector.edgeFrom) {
-    out += `[from=${selector.edgeFrom}]`;
+  // before tags so `edge[from=X][async]` round-trips in source order. The
+  // parser stores the decoded endpoint, so one that is not a style identifier
+  // goes back in quotes (`[from="a b"]`, #3480), and an empty one stays: dropping
+  // `[from=""]` would widen the rule to every edge. `edgeId` is stored already in
+  // that form.
+  if (selector.edgeFrom !== undefined) {
+    out += `[from=${styleEndpointLiteral(selector.edgeFrom)}]`;
   }
-  if (selector.edgeTo) {
-    out += `[to=${selector.edgeTo}]`;
+  if (selector.edgeTo !== undefined) {
+    out += `[to=${styleEndpointLiteral(selector.edgeTo)}]`;
   }
   for (const tag of selector.tags) {
     out += `[${tag}]`;

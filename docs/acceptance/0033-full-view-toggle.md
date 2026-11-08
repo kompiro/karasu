@@ -8,7 +8,7 @@ Verify that the Full View toggle renders a multi-level SVG in an iframe showing 
 
 ## Prerequisites
 
-- The app is running (`npm run dev` in `.worktrees/full-view-drilldown`)
+- The app is running
 - A `.krs` file with at least 2 levels of nesting is loaded (e.g., the built-in sample)
 
 ---

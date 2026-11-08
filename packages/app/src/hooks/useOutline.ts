@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import type { DeployBlock, NodeMetadata, OrganizationBlock, SystemNode } from "@karasu-tools/core";
 import type { ActiveView } from "../state/app-reducer.js";
 import type { AppAction } from "../state/app-reducer.js";
+import { endDeepLinkRestore } from "../state/deep-link-restore.js";
 import type { OutlineNode } from "../components/OutlineView.js";
 import { toDeployOutline, toOrgOutline, toSystemOutline } from "../components/outline-adapters.js";
 
@@ -62,6 +63,8 @@ export function useOutline({
   // to the system view it derives from.
   const onSelectNode = useCallback(
     (nodeId: string) => {
+      // The visitor's own navigation ends a deep link's restoration (#3598).
+      endDeepLinkRestore();
       if (activeView === "matrix") {
         dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: nodeId });
       } else {
@@ -77,6 +80,7 @@ export function useOutline({
   // `orgPathIndex`; deploy has no drill path — it switches the selected block.
   const onActivateNode = useCallback(
     (nodeId: string, ancestorIds: string[]) => {
+      endDeepLinkRestore();
       if (activeView === "deploy") {
         // The node's deploy block is the top-level ancestor, or the node
         // itself when a block row is activated.

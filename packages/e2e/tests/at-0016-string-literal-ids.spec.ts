@@ -9,9 +9,9 @@ import { expectNoWarningMatching } from "../fixtures/editor.js";
  * that node labels are surfaced in the preview. Also exercises the
  * `realizes` string literal cross-reference in a deploy block.
  *
- * Every scenario asserts that no warning panel appears, since these
- * sources are all supposed to be legal — any parser regression would
- * surface a warning immediately.
+ * Every scenario asserts no warning-severity item and no diagnostic banner,
+ * since these sources are all supposed to be legal. `info` items are left out
+ * (TPL-1608), so AT-0016-3 names the one info diagnostic it would raise.
  */
 
 const LOGICAL_HYPHENATED_KRS = `system "e-commerce" {
@@ -95,6 +95,8 @@ test.describe("AT-0016 String literal IDs", () => {
     await bootMemoryApp(page, opfs, DEPLOY_REALIZES_LITERAL_KRS);
 
     await expectNoWarningMatching(page);
+    // A dropped `realizes` literal raises `missing-realizes`, which is `info`.
+    await expectNoWarningMatching(page, /realizes/i);
 
     // The Deploy tab should be enabled since a deploy block exists.
     await expect(page.getByRole("tab", { name: "Deploy" })).toBeEnabled();

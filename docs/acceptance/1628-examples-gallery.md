@@ -46,4 +46,4 @@
 ## 検証方法
 
 - 自動: `pnpm --filter @karasu-tools/docs-site run test`（render smoke + gallery-pages、PR CI に乗る）。
-- 手動: `pnpm --filter @karasu-tools/docs-site run build && pnpm --filter @karasu-tools/docs-site run preview` で `/examples/` を目視（AC-4）。
+- 手動: PR の docs preview で `/examples/` を目視（AC-4）。

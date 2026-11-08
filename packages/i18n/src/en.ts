@@ -1,5 +1,6 @@
 import type { Translations } from "./types.js";
 import { formatRange } from "./format.js";
+import { firstRunEn } from "./first-run.js";
 
 /**
  * English translation map.
@@ -80,6 +81,7 @@ export const en: Translations = {
   "project.error.export": ({ detail }) => `⚠ Failed to export project: ${detail}`,
   "project.error.import": ({ detail }) => `⚠ Import failed: ${detail}`,
   "project.error.openExample": ({ detail }) => `⚠ Could not open the example: ${detail}`,
+  ...firstRunEn,
   "project.error.snapshot": ({ detail }) => `⚠ Failed to capture snapshot: ${detail}`,
   "project.error.dismiss": "✕ Dismiss",
   "serve.error.fileNotFound": ({ file }) => `File not found: ${file}`,
@@ -567,8 +569,8 @@ export const en: Translations = {
     `Duplicate edge id "#${authorId}"; edge ids must be unique within a system`,
   "diagnostic.duplicateEdgeLabel.message": ({ label }) =>
     `This edge already has a positional label, so the block's label "${label}" is a second one; keep either the positional form or the block property, not both`,
-  "diagnostic.ambiguousEdgeBase.message": ({ fromId, toId, arrow }) =>
-    `Multiple edges share the base "${fromId}${arrow}${toId}" with no #<id> to disambiguate; per-edge style selectors will not match any of them`,
+  "diagnostic.ambiguousEdgeBase.message": ({ base }) =>
+    `Multiple edges share the base edge#${base} with no #<id> to disambiguate; per-edge style selectors will not match any of them`,
   "diagnostic.styleTokenTypeMismatch.message": ({ expected, got, value }) =>
     `Expected ${expected} but got ${got} ("${value}")`,
   "diagnostic.expectedStylePropertyName.message": ({ got }) =>

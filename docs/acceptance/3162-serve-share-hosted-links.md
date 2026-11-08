@@ -28,7 +28,7 @@ type: product
   >
   > ✅ Automated — `packages/app/src/utils/inline-share.test.ts` › `buildShareUrls` › `points both links at the public app when given its origin and the root path`
 
-- [x] AT-C: karasu serve で開いた `/other` から Share すると、fragment リンクが `https://karasu.kompiro.dev/#s=` で始まり、`/other` を含まない（nightly の serve プロジェクト）
+- [x] AT-C: karasu serve で開いた `/other` から Share すると、fragment リンクが `https://karasu.kompiro.dev/#s=` で始まり、`/other` を含まない（serve プロジェクト）
 
   > ✅ Automated — `packages/e2e/tests/at-0032-cli-serve-mode.spec.ts` › `AT-0032: CLI serve mode` › `TC-07: Share builds its links on the public app, not on the local server`
 

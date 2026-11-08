@@ -1,10 +1,4 @@
-import {
-  TokenType,
-  type Token,
-  type SourceLocation,
-  type SourceRange,
-  type Trivia,
-} from "../types/tokens.js";
+import { TokenType, type Token, type SourceLocation, type SourceRange } from "../types/tokens.js";
 import type {
   StyleSheet,
   StyleRule,
@@ -14,6 +8,10 @@ import type {
 } from "../types/style.js";
 import type { Diagnostic, ParseResult } from "../types/ast.js";
 import { StyleLexer } from "../lexer/style-lexer.js";
+import { inFile, rangeBetweenTokens, tokenLoc } from "./style-source-range.js";
+import { buildValueNode, classifyIdentAtom } from "./style-value-node.js";
+import { edgeBaseForm } from "../style/edge-endpoint-literal.js";
+import { splitSameLineTrivia, takeLeadingTrivia } from "./style-trivia.js";
 
 const ANONYMOUS_SHEET_ID = "<anonymous>";
 
@@ -107,6 +105,7 @@ export class StyleParser {
   }
 
   private endOfToken(token: Token): SourceLocation {
+    if (token.end) return { ...token.end };
     const len = token.value.length;
     return {
       line: token.loc.line,
@@ -224,9 +223,8 @@ export class StyleParser {
     };
 
     // #id selector
-    if (this.peek().type === TokenType.Hash) {
-      this.advance(); // #
-      const idToken = this.expect(TokenType.Identifier);
+    if (this.atHashId()) {
+      const idToken = this.expectHashId();
       selector.id = idToken.value;
       selector.loc = this.rangeBetween(startToken, idToken);
       return selector;
@@ -244,9 +242,8 @@ export class StyleParser {
     // same shape as edge#<id> below. A boundary is not a node, so a bare
     // `#<id>` would address the node id space instead; the keyword is what
     // selects which space the id is read in.
-    if (selector.nodeType === "boundary" && this.peek().type === TokenType.Hash) {
-      this.advance(); // #
-      const id = this.expect(TokenType.Identifier);
+    if (selector.nodeType === "boundary" && this.atHashId()) {
+      const id = this.expectHashId();
       selector.boundaryId = id.value;
       lastToken = id;
     }
@@ -257,26 +254,36 @@ export class StyleParser {
     // moving it onto another object. It therefore lands in `selector.id`, which
     // is what makes the node matchers AND the two parts and what scores it 101
     // (100 for the id + 1 for the kind) with no change to `computeSpecificity`.
-    if (selector.nodeType === "team" && this.peek().type === TokenType.Hash) {
-      this.advance(); // #
-      const id = this.expect(TokenType.Identifier);
+    if (selector.nodeType === "team" && this.atHashId()) {
+      const id = this.expectHashId();
       selector.id = id.value;
       lastToken = id;
     }
 
     // edge#<id> selector — only meaningful after `edge`. Accepts either an
     // author identifier (`edge#criticalWrite`) or a base form
-    // (`edge#A->B` / `edge#A-->B`).
-    if (selector.nodeType === "edge" && this.peek().type === TokenType.Hash) {
-      this.advance(); // #
-      const first = this.expect(TokenType.Identifier);
+    // (`edge#A->B` / `edge#A-->B`). An endpoint `.krs.style` cannot read as one
+    // identifier is a string literal, as in `.krs` (`edge#"a b"->c`); the base
+    // is normalized the way the canonical id is built, so `edge#"a"->c` is
+    // `edge#a->c` (#3480).
+    if (selector.nodeType === "edge" && this.atHashId()) {
+      const first =
+        this.peek().type === TokenType.Hash
+          ? (this.advance(), this.parseEdgeEndpoint())
+          : this.expectHashId();
       const next = this.peek().type;
       if (next === TokenType.Arrow || next === TokenType.DashedArrow) {
-        const arrow = this.advance().value;
-        const second = this.expect(TokenType.Identifier);
-        selector.edgeId = `${first.value}${arrow}${second.value}`;
+        const arrow = this.advance().value === "->" ? "->" : "-->";
+        const second = this.parseEdgeEndpoint();
+        selector.edgeId = edgeBaseForm(first.value, arrow, second.value);
         lastToken = second;
       } else {
+        // An author id is an identifier; a literal or `#db` names an endpoint
+        // and needs the arrow.
+        const endpointOnly =
+          first.type === TokenType.StringLiteral ||
+          (first.type === TokenType.Identifier && first.value.startsWith("#"));
+        if (endpointOnly) this.expect(TokenType.Arrow);
         selector.edgeId = first.value;
         lastToken = first;
       }
@@ -293,8 +300,12 @@ export class StyleParser {
       if (this.peek().type === TokenType.Equals) {
         this.advance(); // =
         // `<id>` may be a dot-notation endpoint (e.g. `OrderDB.OrderTable`),
-        // which the lexer already folds into a single Identifier.
-        const value = this.expect(TokenType.Identifier);
+        // which the lexer already folds into a single Identifier, or a string
+        // literal for an endpoint that is not one identifier (`[from="a b"]`).
+        const value =
+          inner.value === "from" || inner.value === "to"
+            ? this.parseEdgeEndpoint()
+            : this.expect(TokenType.Identifier);
         if (inner.value === "from") {
           selector.edgeFrom = value.value;
         } else if (inner.value === "to") {
@@ -517,6 +528,53 @@ export class StyleParser {
     return { text, node, refused };
   }
 
+  /** Whether the next token starts a `#<id>`: a `#`, or a hex-shaped id read as one token. */
+  private atHashId(): boolean {
+    const token = this.peek();
+    return (
+      token.type === TokenType.Hash ||
+      (token.type === TokenType.Identifier && token.value.startsWith("#"))
+    );
+  }
+
+  /**
+   * Read `#<id>` and return the id token. The lexer reads a hex-shaped id
+   * (`#face`, `edge#feed`) as one color token; in selector position it is `#`
+   * plus the id, so the rule matches what the author named (#3520). Only that
+   * `#` is dropped: after a `#` token the id is taken as written, so
+   * `edge##abc->c` keeps `#abc` as its first endpoint.
+   */
+  private expectHashId(): Token {
+    const token = this.peek();
+    if (token.type === TokenType.Hash) {
+      this.advance(); // #
+      return this.expect(TokenType.Identifier);
+    }
+    this.advance();
+    const { line, column, offset } = token.loc;
+    return {
+      ...token,
+      value: token.value.slice(1),
+      loc: { line, column: column + 1, offset: offset + 1 },
+    };
+  }
+
+  /**
+   * One endpoint of `edge#<from><arrow><to>` or `[from=]` / `[to=]`: an
+   * identifier, a string literal (its decoded value), or `#` + identifier with
+   * no space, read as the endpoint `#db` that the canonical id writes `"#db"`.
+   */
+  private parseEdgeEndpoint(): Token {
+    const token = this.peek();
+    if (token.type === TokenType.StringLiteral) return this.advance();
+    if (token.type === TokenType.Hash && this.isAdjacentIdentifier(token)) {
+      this.advance(); // #
+      const id = this.advance();
+      return { ...id, value: `#${id.value}`, loc: token.loc };
+    }
+    return this.expect(TokenType.Identifier);
+  }
+
   /** Whether `hash` is immediately followed, with no space, by an identifier. */
   private isAdjacentIdentifier(hash: Token): boolean {
     const next = this.peekAt(1);
@@ -545,90 +603,6 @@ export class StyleParser {
 }
 
 /**
- * Classify a bare identifier atom. Hex tokens land here too because the
- * lexer emits them as `Identifier` with a leading `#` (see style-lexer
- * `readHexColor`). Numeric values (`12`, `12px`, `0.5`) similarly come
- * through as `Identifier`.
- */
-function classifyIdentAtom(value: string, token: Token, file: string | undefined): ValueNode {
-  if (value.startsWith("#")) {
-    return { kind: "hex", value, loc: tokenLoc(token, file) };
-  }
-  const numericMatch = /^(-?(?:\d+(?:\.\d+)?|\.\d+))([a-zA-Z%]+)?$/.exec(value);
-  if (numericMatch) {
-    const numeric = Number.parseFloat(numericMatch[1]);
-    const unit = numericMatch[2];
-    if (unit) {
-      return {
-        kind: "length",
-        value: numeric,
-        unit,
-        raw: numericMatch[1],
-        loc: tokenLoc(token, file),
-      };
-    }
-    return {
-      kind: "number",
-      value: numeric,
-      raw: numericMatch[1],
-      loc: tokenLoc(token, file),
-    };
-  }
-  return { kind: "ident", value, loc: tokenLoc(token, file) };
-}
-
-/**
- * The value node for a declaration's atoms. Commas split items; within an
- * item, one atom stands for itself and several make a `sequence` (#3141), so
- * every atom the author wrote reaches the validator. The caller has already
- * refused an empty value or an empty item, so every segment has an atom.
- */
-function buildValueNode(atoms: ValueNode[], segmentStarts: number[]): ValueNode {
-  const items: ValueNode[] = [];
-  for (let i = 0; i < segmentStarts.length; i++) {
-    const end = i + 1 < segmentStarts.length ? segmentStarts[i + 1] : atoms.length;
-    items.push(segmentNode(atoms.slice(segmentStarts[i], end)));
-  }
-  if (items.length === 1) return items[0];
-  return {
-    kind: "list",
-    items,
-    loc: spanOf(items),
-  };
-}
-
-/** One comma item: a single atom, or a `sequence` of its space-separated atoms. */
-function segmentNode(atoms: ValueNode[]): ValueNode {
-  const [first, second, ...rest] = atoms;
-  if (second === undefined) return first;
-  return { kind: "sequence", items: [first, second, ...rest], loc: spanOf(atoms) };
-}
-
-/** From the first node's start to the last one's end. */
-function spanOf(nodes: ValueNode[]): SourceRange {
-  // The nodes are atoms of one declaration, so they share its file.
-  return inFile(
-    { start: nodes[0].loc.start, end: nodes[nodes.length - 1].loc.end },
-    nodes[0].loc.file,
-  );
-}
-
-/**
- * Attach the sheet's file to a range when the parse was given one, omitting
- * the key otherwise, so a sheet parsed without a path compares equal to the
- * shape it had before (#2715, TPL-2715). Every caller hands in a range it has
- * just built, so assigning in place is safe and spares a copy per range.
- *
- * The free range helpers below take `file` as a required parameter rather than
- * an optional one: a range built without it would silently lose the sheet's
- * identity, and this way a new call site cannot forget to pass it.
- */
-function inFile(range: SourceRange, file: string | undefined): SourceRange {
-  if (file !== undefined) range.file = file;
-  return range;
-}
-
-/**
  * The parse diagnostics of a sheet handed in as a string next to a `.krs`
  * string, with their positions removed. Such a compile has two documents and a
  * path for neither, so a position could only be read against the `.krs`,
@@ -643,70 +617,6 @@ export function unplacedStyleDiagnostics(diagnostics: readonly Diagnostic[]): Di
     const { loc: _loc, ...rest } = d;
     return rest as Diagnostic;
   });
-}
-
-function tokenLoc(token: Token, file: string | undefined): SourceRange {
-  const len = token.value.length;
-  return inFile(
-    {
-      start: { ...token.loc },
-      end: {
-        line: token.loc.line,
-        column: token.loc.column + len,
-        offset: token.loc.offset + len,
-      },
-    },
-    file,
-  );
-}
-
-function rangeBetweenTokens(start: Token, end: Token, file: string | undefined): SourceRange {
-  const len = end.value.length;
-  return inFile(
-    {
-      start: { ...start.loc },
-      end: {
-        line: end.loc.line,
-        column: end.loc.column + len,
-        offset: end.loc.offset + len,
-      },
-    },
-    file,
-  );
-}
-
-/**
- * Consume the leading trivia attached to `token` and clear it on the token
- * so the same trivia is not visible to a later splitter call.
- */
-function takeLeadingTrivia(token: Token): Trivia[] {
-  const trivia = token.leadingTrivia ?? [];
-  token.leadingTrivia = [];
-  return trivia;
-}
-
-/**
- * Split `nextToken.leadingTrivia` into trivia that occurs on `boundaryLine`
- * (returned as `sameLine`) and the rest, which is left attached to the
- * token as its remaining `leadingTrivia`. The same-line slice is the
- * trailing trivia of whatever construct ended on `boundaryLine`.
- */
-function splitSameLineTrivia(nextToken: Token, boundaryLine: number): { sameLine: Trivia[] } {
-  const trivia = nextToken.leadingTrivia ?? [];
-  if (trivia.length === 0) return { sameLine: [] };
-  const sameLine: Trivia[] = [];
-  const rest: Trivia[] = [];
-  let stillSameLine = true;
-  for (const t of trivia) {
-    if (stillSameLine && t.kind !== "blank-line" && t.loc.start.line === boundaryLine) {
-      sameLine.push(t);
-    } else {
-      stillSameLine = false;
-      rest.push(t);
-    }
-  }
-  nextToken.leadingTrivia = rest;
-  return { sameLine };
 }
 
 export function computeSpecificity(selector: Omit<StyleSelector, "loc">): number {

@@ -9,7 +9,7 @@ accept string literals as IDs, allowing hyphenated or otherwise non-identifier n
 
 ## Prerequisites
 
-- karasu app is running (`npm run dev` in `packages/app`)
+- karasu app is running
 - A `.krs` file can be loaded in the editor
 
 ## Test Cases

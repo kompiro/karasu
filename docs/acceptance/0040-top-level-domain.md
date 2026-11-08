@@ -10,7 +10,7 @@ domains, and that they appear in the system view SVG.
 
 ## Prerequisites
 
-- App is running (`npm run dev` in `packages/app`)
+- App is running
 
 ---
 

@@ -89,6 +89,21 @@ describe("StyleLexer — characters outside ASCII (#3140)", () => {
     expect(values("#abc->x")).toEqual(["#abc", "->", "x"]);
   });
 
+  // #3520: a `.` segment, a decimal, or a `-` that starts no arrow continued the
+  // id too, but the lexer read the run as a color and dropped or split the rest.
+  it.each([
+    ["#Feed.Items->x", ["#", "Feed.Items", "->", "x"]],
+    ["#bad.x->c", ["#", "bad.x", "->", "c"]],
+    ["#123.4->c", ["#", "123.4", "->", "c"]],
+    ["#abc--d->c", ["#", "abc--d", "->", "c"]],
+  ])("keeps %s in one id", (source, expected) => {
+    expect(values(source)).toEqual(expected);
+  });
+
+  it.each(["#abc", "#abcd", "#aabbcc", "#aabbccdd"])("still reads %s as a color value", (hex) => {
+    expect(values(`color: ${hex};`)).toEqual(["color", ":", hex, ";"]);
+  });
+
   it("reads a character that starts no word as one Unknown token with its word tail", () => {
     const tokens = new StyleLexer("[😀A]").tokenize();
     expect(tokens.map((t) => [t.type, t.value])).toEqual([

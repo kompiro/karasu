@@ -14,7 +14,7 @@ Mirrors AT-0040 (top-level domain).
 
 ## Prerequisites
 
-- App is running (`npm run dev` in `packages/app`)
+- App is running
 
 ---
 

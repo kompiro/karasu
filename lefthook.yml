@@ -48,15 +48,15 @@ pre-push:
       run: pnpm run adr:validate
     adr-generated-check:
       # Same check as the Validate step in adr-validate.yml (Issue #3416): the
-      # pushed change either leaves the generated ADR index alone or is an exact
-      # regeneration. The base is the merge base with origin/main, fetched in
+      # pushed change either leaves the generated indexes (ADR, TPL) alone or is
+      # an exact regeneration. The base is the merge base with origin/main, fetched in
       # step 7 of the PR workflow; without origin/main, CI checks it.
-      glob: "{docs/adr/**,adr.config.json,scripts/adr/**,package.json,pnpm-lock.yaml}"
+      glob: "{docs/adr/**,docs/test-perspectives/**,adr.config.json,tpl.config.json,scripts/adr/**,package.json,pnpm-lock.yaml}"
       run: |
         if git rev-parse --quiet --verify origin/main >/dev/null; then
           pnpm exec tsx scripts/adr/check-generated.ts --base origin/main
         else
-          echo "lefthook(pre-push): origin/main not found; the generated ADR index check is left to CI (Validate)."
+          echo "lefthook(pre-push): origin/main not found; the generated index check is left to CI (Validate)."
         fi
     adr-check-assumptions:
       # No `glob` on purpose: a code change can invalidate an ADR
@@ -263,9 +263,10 @@ pre-push:
       # The bidirectional reference layer between docs/concepts*.md and the
       # ADR topic vocabulary (Issue #1389) — fail if a concept anchor or a
       # `> Related ADR topics:` annotation drifts from a `> Derives from`
-      # back-ref in docs/adr/README.md. The vitest test
+      # back-ref in docs/adr/README.md, or if a README topic section stops
+      # linking its effective.md / graph/<topic>.md slice. The vitest test
       # (scripts/lint/concept-adr-refs.test.ts) mirrors this guard in CI.
-      glob: "{docs/concepts.md,docs/concepts.ja.md,docs/adr/README.md,adr.config.json,scripts/lint/concept-adr-refs.ts}"
+      glob: "{docs/concepts.md,docs/concepts.ja.md,docs/adr/README.md,docs/adr/effective.md,docs/adr/graph/*.md,adr.config.json,scripts/lint/concept-adr-refs.ts}"
       run: pnpm run lint:concept-adr-refs
     locale-normalization:
       # The raw-tag → Locale rule has one owner, `resolveLocaleTag` in

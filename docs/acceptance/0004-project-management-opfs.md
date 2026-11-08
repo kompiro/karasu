@@ -94,7 +94,7 @@ npx vitest run                                               # 159テスト全�
 npm run build                                                # 成功
 
 # 手動検証（ブラウザ）
-# 1. npm run dev で起動
+# 1. アプリを開く
 # 2. OPFS モード: プロジェクト作成 → ファイル選択 → 編集 → プレビュー確認
 # 3. InMemory モード: DevTools Console で以下を実行後リロード
 #    delete navigator.storage

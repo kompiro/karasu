@@ -78,16 +78,16 @@ pnpm gen:reference --check
       更新したか。
 - [ ] 新 kind を足したなら、その kind の `canContain` と、その kind を子に取れる
       親の `canContain` の**両方**を更新したか。
-- [ ] 変更後に `reference-parser-sync.test.ts` が通るか（表 ↔ parser の双方向）。
-- [ ] `pnpm gen:reference --check` が通るか（表 ↔ データ）。
+- [ ] 変更後に `reference-parser-sync.test.ts` が通るか（表 ↔ parser の双方向）。 [guard: `packages/core/src/builtins/reference-parser-sync.test.ts`]
+- [ ] `pnpm gen:reference --check` が通るか（表 ↔ データ）。 [guard: `scripts/reference/gen-docs.ts`]
 - [ ] `examples/**/*.krs` が `node-not-in-context` ゼロのままか（出荷サンプルが自分の
       規則に違反していないか）。言語 v2.0 からこれは error なので、違反はサンプルが
-      描画されなくなることを意味する。
+      描画されなくなることを意味する。 [guard: `packages/core/src/examples.test.ts`]
 - [ ] 規則を厳しくする（`canContain` から子を外す）なら、それは既存ファイルを error に
       する破壊的変更であり、言語の major でしか入れられない
       （[ADR-1314](../adr/1314-krs-spec-v1-freeze.md) の版セマンティクス）。言語 v1.x は
       warning、言語 v2.0 で error にした `node-not-in-context` 自体がその経路の実例
-      （#2924）。
+      （#2924）。 [judgment]
 
 ## 既知の対処パターン
 

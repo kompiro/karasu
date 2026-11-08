@@ -14,9 +14,9 @@ name: Review request
 # A comment would not do: CodeRabbit does not act on a command posted by
 # github-actions[bot] (checked on #3286).
 #
-# The daily ADR index regeneration PR (`pnpm adr:regenerate-pr`, Issue #3416) is
-# left alone: REST cannot open it as a draft, so it arrives open, and its script
-# labels it `risk: low` and checks that label before merging. Labelling it High
+# The daily regeneration PR of the ADR and TPL indexes (`pnpm adr:regenerate-pr`,
+# Issue #3416) is left alone: REST cannot open it as a draft, so it arrives open,
+# and its script labels it `risk: low` and checks that label before merging. Labelling it High
 # here would race that and start a CodeRabbit review of generated files. Only a
 # head branch in this repository counts, so a fork's branch of the same name is
 # still labelled.

@@ -5,20 +5,29 @@ import { FileTree } from "./components/FileTree.js";
 import { AppShell } from "./components/AppShell.js";
 import { PasteCompareDialog } from "./components/PasteCompareDialog.js";
 import { ErrorBanner } from "./components/ErrorBanner.js";
+import { FirstRunExperience } from "./components/first-run/FirstRunExperience.js";
+import { projectMatchesExample } from "./components/first-run/project-matches-example.js";
+import { readTourProgress } from "./components/first-run/tour-progress.js";
+import {
+  KEEP_TOUR,
+  decideTourResume,
+  tourStepHash,
+  type TourResume,
+} from "./components/first-run/tour-resume.js";
 import { useOpenTranslateDialog } from "./components/TranslateProvider.js";
 import { SnapshotPickerModal } from "./components/SnapshotPickerModal.js";
 import { useAppContext } from "./state/app-context.js";
 import { useTranslation } from "./i18n/index.js";
 import { ProjectManager } from "./fs/project-manager.js";
 import { SnapshotManager } from "./fs/snapshot-manager.js";
-import { useProjectNavigation } from "./hooks/useProjectNavigation.js";
+import { useProjectNavigation, type DecideInitialHash } from "./hooks/useProjectNavigation.js";
 import { useFileSelection } from "./hooks/useFileSelection.js";
 import { useProjectInitialization } from "./hooks/useProjectInitialization.js";
 import { useProjectActions } from "./hooks/useProjectActions.js";
 import { usePasteCompare } from "./hooks/usePasteCompare.js";
 import { useSnapshotCompare } from "./hooks/useSnapshotCompare.js";
 import { useTransientError } from "./hooks/useTransientError.js";
-import { type Project } from "@karasu-tools/core";
+import { type ExampleProject, type Project } from "@karasu-tools/core";
 
 const ACTION_ERROR_DISMISS_MS = 6000;
 
@@ -38,6 +47,33 @@ export function ProjectModeApp() {
   // rendering, which `react(refs)` forbids. The initializer runs once and
   // the value is stable for the life of the component.
   const [pm] = useState(() => new ProjectManager(fs));
+  // The URL as opened, before navigation rewrites the path and the hash: the
+  // first-run Welcome stays out of the way of a link that asked for a place,
+  // and a recorded tour resumes only on its own project's URL (#3598).
+  const [initialLocation] = useState(() => ({
+    pathname: window.location.pathname,
+    search: window.location.search,
+    hash: window.location.hash,
+  }));
+  // Decided once, when the boot knows the projects and before it writes the
+  // URL: a resumed step boots on its scene's hash, so the hash restoration
+  // and the tour's scene agree on the file and the view (#3598).
+  const [tourResume, setTourResume] = useState<TourResume>(KEEP_TOUR);
+  const decideInitialHash = useCallback<DecideInitialHash>(
+    (_target, projects, lastProjectId) => {
+      const decision = decideTourResume({
+        entry: initialLocation,
+        record: readTourProgress(),
+        projects,
+        lastProjectId,
+      });
+      setTourResume(decision);
+      return decision.kind === "resume"
+        ? tourStepHash(decision.root, decision.tour, decision.step)
+        : null;
+    },
+    [initialLocation],
+  );
 
   const {
     currentProject,
@@ -71,21 +107,45 @@ export function ProjectModeApp() {
     ? (lastKrsFilePath ?? `${currentProject.rootPath}/index.krs`)
     : null;
 
-  const { navigateToProject } = useProjectNavigation(projects, currentProject, dispatch);
-  const { selectFile } = useFileSelection(fs, dispatch);
+  const { navigateToProject, bootFile } = useProjectNavigation(
+    projects,
+    currentProject,
+    dispatch,
+    decideInitialHash,
+  );
+  const { selectFile, keepOpenFile } = useFileSelection(fs, dispatch);
 
-  useProjectInitialization({ pm, fs, dispatch, currentProject, selectFile });
+  const { seededDefaults } = useProjectInitialization({
+    pm,
+    fs,
+    dispatch,
+    currentProject,
+    selectFile,
+    bootFile,
+  });
 
-  const { createProject, renameProject, deleteProject, exportProject, importProject, openExample } =
-    useProjectActions({
-      pm,
-      fs,
-      projects,
-      currentProject,
-      dispatch,
-      navigateToProject,
-      reportError,
-    });
+  const matchesExample = useCallback(
+    (project: Project, example: ExampleProject) => projectMatchesExample(fs, project, example),
+    [fs],
+  );
+
+  const {
+    createProject,
+    renameProject,
+    deleteProject,
+    exportProject,
+    importProject,
+    openExample,
+    addBundledExample,
+  } = useProjectActions({
+    pm,
+    fs,
+    projects,
+    currentProject,
+    dispatch,
+    navigateToProject,
+    reportError,
+  });
 
   // Deep-link (#1646): `?example=<slug>&lang=<lang>` opens a gallery example once
   // on load (the gallery's "Open in the app" button builds this link). slug/lang
@@ -209,6 +269,22 @@ export function ProjectModeApp() {
         projects={projects}
         currentProject={currentProject}
         onSelectProject={handleSelectProject}
+      />
+      <FirstRunExperience
+        seededDefaults={seededDefaults}
+        initialLocation={initialLocation}
+        tourResume={tourResume}
+        projects={projects}
+        currentProject={currentProject}
+        currentFilePath={currentFilePath}
+        activeView={state.activeView}
+        viewPath={state.viewPath}
+        navigateToProject={navigateToProject}
+        selectFile={selectFile}
+        keepOpenFile={keepOpenFile}
+        addBundledExample={addBundledExample}
+        matchesExample={matchesExample}
+        dispatch={dispatch}
       />
       {paste.pasteDialog?.mode === "edit" && (
         <PasteCompareDialog

@@ -75,7 +75,6 @@ type: product
 ### 自動テスト
 
 ```bash
-cd .worktrees/memory-project-unification
 npm test          # 373 tests pass
 npm run typecheck # no errors
 npm run lint      # no errors
@@ -84,7 +83,7 @@ npm run build     # build succeeds
 
 ### 手動確認
 
-1. `npm run dev` でアプリを起動する
+1. アプリを開く
 2. **MemoryModeApp** を確認するには、OPFS が無効なブラウザ（Firefox Private Window など）またはローカル環境で `detectStorageMode()` が `"memory"` を返す状態でアクセスする
    - AC-1〜AC-3 を確認する
 3. **ProjectModeApp** を確認するには、OPFS 対応ブラウザ（Chrome / Edge）でアクセスする

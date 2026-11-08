@@ -93,9 +93,9 @@ stylesheet を入力に取る diagnostic を追加・変更するとき:
 
 - [ ] `analyze(file, [])`（シートなし）での発火・非発火を単体テストで固定したか
 - [ ] 文脈差が生じる場合、style 依存型（LSP では出ない）か style 抑制型（LSP では抑制なしで出る）かを判断し、`packages/lsp/src/diagnostics.ts` の analyze() 呼び出し上のコメントに追記したか
-- [ ] 文脈差を許容する根拠（severity の register、ケースの希少性など）を Issue または ADR に残したか
-- [ ] app / LSP 両方の手動確認項目を AT 記録に含めたか（cross-surface — TPL-1001）
-- [ ] import 結合型なら、単一ドキュメント文脈で偽陽性側に倒れるか過少報告側に倒れるかを判断し、抑制を surface の filter と検査側の早期 return のどちらに置いたか記録したか（#2082）
+- [ ] 文脈差を許容する根拠（severity の register、ケースの希少性など）を Issue または ADR に残したか [judgment]
+- [ ] app / LSP 両方の手動確認項目を AT 記録に含めたか（cross-surface — TPL-1001） [judgment]
+- [ ] import 結合型なら、単一ドキュメント文脈で偽陽性側に倒れるか過少報告側に倒れるかを判断し、抑制を surface の filter と検査側の早期 return のどちらに置いたか記録したか（#2082） [judgment]
 
 ## 既知の対処パターン
 

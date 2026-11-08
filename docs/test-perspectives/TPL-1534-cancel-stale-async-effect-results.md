@@ -57,6 +57,7 @@ scope:
 
 ## 関連テスト
 
+- `packages/app/src/components/first-run/FirstRunExperience.test.tsx`（`drops an Understand the visitor chose the editor over while reading (TPL-1534)`: 照合の読み取りのあいだに別の選択をしたらガイドを始めない）
 - `packages/app/src/hooks/useDebouncedCompile.test.tsx`（dep 変化で in-flight 結果を破棄 / error→recovery で再 publish）
 - `packages/app/src/hooks/useDeployView.test.tsx`（error→同一内容 recovery で diagnostics が解除される — #1540）
 - `packages/app/src/hooks/useFileSelection.test.ts`（`lets the latest selection win when reads resolve out of order`: 遅い先発 read が後着しても後発の選択が勝つ negative test。cancel フラグではなくシーケンストークン方式）

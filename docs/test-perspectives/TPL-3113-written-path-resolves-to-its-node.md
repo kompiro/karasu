@@ -71,9 +71,9 @@ path の形には**省略**がある。トップレベル（Unassigned）のノ�
 path を書く処理か読む処理を作る / 触るとき:
 
 - [ ] その path を**読む側をすべて列挙**したか（`viewPath[0]` や `path[0]` を grep する）。
-      読む側が 2 つ以上あるなら、1 つの関数に寄せたか（TPL-219、TPL-2756）
+      読む側が 2 つ以上あるなら、1 つの関数に寄せたか（TPL-219、TPL-2756） [judgment]
 - [ ] path の省略（system の段・擬似 system の段）があるなら、省略した path が**どのノードを
-      指すか**を 1 文で言えるか。読む側はその 1 文どおりに候補の順を決めているか
+      指すか**を 1 文で言えるか。読む側はその 1 文どおりに候補の順を決めているか [judgment]
 - [ ] 書く側の出力をそのまま読む側に通す **round-trip テスト**があるか。fixture は
       トップレベルのノードと system の子が**同じ id** を持つモデルか（衝突しないモデルでは
       読み違いが表に出ない）
@@ -92,6 +92,7 @@ path を書く処理か読む処理を作る / 触るとき:
 
 ## 関連テスト
 
+- `packages/app/src/components/first-run/tour-steps.test.ts`（各ガイドのステップが名指すノードが en / ja のサンプルにあり、文がノードを図と同じラベルで呼ぶ）
 - `packages/core/src/compile/top-level-same-id-drill.test.ts` › a top-level node sharing its id
   with a system's child (#3113)（permalink の path と、ルート・drill 先の各カードの
   `data-node-path` / `nodeMetadataByPath` の `viewPath` を compile に戻し、そのノードの子が

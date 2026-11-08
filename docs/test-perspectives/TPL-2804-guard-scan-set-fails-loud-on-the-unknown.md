@@ -20,6 +20,14 @@ related_to:
 topic: build
 scope:
   packages: []
+  paths:
+    - "scripts/lint/*.ts"
+    - "scripts/ci/*-policy.test.ts"
+    - "scripts/ci/*-sync.test.ts"
+    - "scripts/ci/workflow-draft-gate.test.ts"
+    - "scripts/ci/workflow-issue-topic-label.test.ts"
+    - "scripts/ci/pnpm-config-location.test.ts"
+    - "scripts/release/*-workflow.test.ts"
 ---
 
 # TPL-2804: 走査対象を持つガードは、未知の要素が黙って対象外になる側ではなく大声で落ちる側に集合を定義する。除外は全走査の上の deny-list で表し、裏付けのないエントリを finding にする
@@ -68,8 +76,8 @@ deny-list にも固有の腐り方がある。念のためのエントリが検�
 
 走査対象を持つガードを新設・改修するとき:
 
-- [ ] ガードが見逃したときの症状を書き出し、**走査集合の定義がそれと同じ向き（沈黙）に失敗しないか**を確認したか
-- [ ] 走査集合を「検査対象の列挙」ではなく「全体から除外を引いたもの」で定義できないか検討したか。全走査のコストは推測でなく**実測**したか
+- [ ] ガードが見逃したときの症状を書き出し、**走査集合の定義がそれと同じ向き（沈黙）に失敗しないか**を確認したか [judgment]
+- [ ] 走査集合を「検査対象の列挙」ではなく「全体から除外を引いたもの」で定義できないか検討したか。全走査のコストは推測でなく**実測**したか [judgment]
 - [ ] 除外リストの各エントリが、実在する要素に裏付けられていることを**機械で検査**しているか（裏付けのないエントリは finding）
 - [ ] 除外分岐（symlink、除外拡張子など）を**合成入力**で踏むテストがあるか。実データに該当要素が無くても検証が成立するか
 

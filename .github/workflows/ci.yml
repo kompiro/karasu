@@ -143,6 +143,12 @@ jobs:
       - name: Check ADR permalinks against the working tree
         run: pnpm run adr:check-permalinks
 
+      # The root `test:coverage` still names packages one at a time: each runs
+      # its own coverage report and thresholds in turn. `lsp` and `vscode` were
+      # missing from that list, so their vitest suites ran in no workflow
+      # (Issue #3590, TPL-2446). `scripts/ci/test-coverage-policy.test.ts` now
+      # fails if a package with a vitest `test` script is not named there, or
+      # if a package with another runner names no workflow that runs it.
       - name: Test
         run: pnpm run test:coverage
 

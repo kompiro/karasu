@@ -56,12 +56,12 @@ TPL-2171 が「spec の散文が約束した診断は実装されている」（
 新しい診断コード / warning kind を追加・改名するとき:
 
 - [ ] `docs/spec/diagnostics.md` と `diagnostics.ja.md` の双方に、適切な規則
-      ファミリーの下で 1 件の項目（`code` / severity / 発火条件）を追加した
+      ファミリーの下で 1 件の項目（`code` / severity / 発火条件）を追加した [guard: `packages/core/src/types/diagnostics-catalog.test.ts`]
 - [ ] 既存コードを **rename していない**（規則名と診断コードは別レイヤー。
       コードは安定 API なので、規則の言い回しに合わせて改名しない）
-- [ ] 規則ファミリーの選択が妥当（1 コード = 1 規則。複数規則にまたがらない）
+- [ ] 規則ファミリーの選択が妥当（1 コード = 1 規則。複数規則にまたがらない） [judgment]
 - [ ] `packages/core/src/types/diagnostics-catalog.test.ts` が green
-      （カタログ ↔ コードの双方向完全性を assert する meta-test）
+      （カタログ ↔ コードの双方向完全性を assert する meta-test） [guard: `packages/core/src/types/diagnostics-catalog.test.ts`]
 
 ## 既知の対処パターン
 

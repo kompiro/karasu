@@ -55,11 +55,19 @@ export type SeedOptions = {
    * Pass `null` to opt out (e.g. when explicitly verifying Japanese UI).
    */
   pinLocale?: "en" | "ja" | null;
+  /**
+   * Let the first-run Welcome (#3565) open. Default `false`: the fixture
+   * marks it dismissed, so a spec that boots into the default projects lands
+   * in the editor as it did before Welcome existed.
+   */
+  showWelcome?: boolean;
 };
 
 export type ResetOptions = {
   /** Same as `SeedOptions.pinLocale`. Default: `"en"`. */
   pinLocale?: "en" | "ja" | null;
+  /** Same as `SeedOptions.showWelcome`. Default: `false`. */
+  showWelcome?: boolean;
 };
 
 export type OpfsFixture = {
@@ -80,6 +88,8 @@ const META_PATH_FILE = "projects.json";
 const PROJECTS_DIR = "projects";
 const LAST_PROJECT_KEY = "karasu-last-project-id";
 const LOCALE_KEY = "karasu-locale";
+// packages/app/src/components/first-run/welcome-gate.ts
+const WELCOME_DISMISSED_KEY = "karasu-welcome-dismissed";
 const DEFAULT_PIN_LOCALE: "en" | "ja" | null = "en";
 /** A static file at the app origin, opened only to get a document there. */
 const ORIGIN_DOCUMENT = "/favicon.svg";
@@ -140,11 +150,19 @@ export const test = base.extend<{ opfs: OpfsFixture }>({
       );
     };
 
+    const applyWelcomePin = async (showWelcome: boolean) => {
+      if (showWelcome) return;
+      await page.evaluate((key) => {
+        localStorage.setItem(key, "1");
+      }, WELCOME_DISMISSED_KEY);
+    };
+
     const reset = async (options: ResetOptions = {}) => {
       const pinLocale = options.pinLocale === undefined ? DEFAULT_PIN_LOCALE : options.pinLocale;
       await ensureOrigin();
       await wipe();
       await applyLocalePin(pinLocale);
+      await applyWelcomePin(options.showWelcome ?? false);
     };
 
     const seed = async (options: SeedOptions = {}) => {
@@ -153,6 +171,7 @@ export const test = base.extend<{ opfs: OpfsFixture }>({
       await ensureOrigin();
       await wipe();
       await applyLocalePin(pinLocale);
+      await applyWelcomePin(options.showWelcome ?? false);
 
       await page.evaluate(
         async ({

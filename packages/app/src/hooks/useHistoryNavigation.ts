@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef } from "react";
-import { anchorId } from "@karasu-tools/core";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch } from "react";
-import type { ShareTarget } from "@karasu-tools/core";
 import type { AppAction, ActiveView, HighlightAttribute } from "../state/app-reducer.js";
+import { buildHash, parseHash } from "./history-hash.js";
 import { useLatestRef } from "./useLatestRef.js";
+import type { FileSelectionStatus } from "./useFileSelection.js";
+import { registerDeepLinkRestore } from "../state/deep-link-restore.js";
 
 /**
  * The attribute a `:<highlight>` restored from the hash is matched against
@@ -16,207 +17,8 @@ function hashHighlightAttribute(view: ActiveView): HighlightAttribute {
   return view === "deploy" ? "data-realized-node-id" : "data-node-id";
 }
 
-// ─── Utilities (exported for testing) ────────────────────────────────────────
-
-/**
- * Optional hash modifiers. An object (not positional args) so callers can't
- * silently pass a value into the wrong slot — the failure mode where a
- * highlight string landed where a mode boolean was expected (see the churn when
- * the entity sub-mode was added, #1907).
- */
-interface BuildHashOptions {
-  /** Org Tree View mode (only meaningful when `activeView === "org"`). */
-  orgTree?: boolean;
-  /** Entity sub-mode (only meaningful when `activeView === "system"` and drilled). */
-  entityView?: boolean;
-  /** Element id to focus-highlight on arrival. */
-  highlight?: string | null;
-  /** Open file to carry as `?file=` (Issue #811). */
-  file?: string | null;
-}
-
-/**
- * Encodes activeView + viewPath + open file into a URL hash string.
- *
- * Examples:
- *   ("deploy", [])                                          → "#krs-deploy"
- *   ("deploy", [], { highlight: "ECommerce" })              → "#krs-deploy:ECommerce"
- *   ("system", [])                                          → "#krs-system-root"
- *   ("system", ["Payment"])                                → "#krs-system-Payment"
- *   ("org", ["a", "b"])                                     → "#krs-org-b"  (last segment only)
- *   ("org", [], { orgTree: true })                         → "#krs-org-tree"  (Tree View mode)
- *   ("org", [], { highlight: "ecTeam" })                   → "#krs-org-root:ecTeam"
- *   ("system", ["Ordering"], { entityView: true })         → "#krs-entity-Ordering"  (entity sub-mode)
- *   ("system", [], { file: "/p/before.krs" })              → "#krs-system-root?file=%2Fp%2Fbefore.krs"
- */
-export function buildHash(
-  activeView: ActiveView,
-  viewPath: string[],
-  options: BuildHashOptions = {},
-): string {
-  const {
-    orgTree: isOrgTreeView = false,
-    entityView: isEntityView = false,
-    highlight: highlightNodeId = null,
-    file: filePath = null,
-  } = options;
-  // Exhaustive dispatch on activeView — adding a new ActiveView member without
-  // updating this switch fails the `never` assignment at compile time. Locks in
-  // TPL-1094 (the #1094 failure mode where a new tab silently fell into
-  // the fallback branch and produced the wrong hash).
-  let base: string;
-  switch (activeView) {
-    case "deploy":
-      base = "#krs-deploy";
-      break;
-    case "matrix":
-      base = "#krs-matrix";
-      break;
-    // system/org are drillable: their element anchors route through the shared
-    // `anchorId` grammar (core), so the SPA hash and the static drill-down SVG
-    // emit one form — the cross-surface parity guarded by TPL-1827.
-    // (deploy/matrix above are single-level whole-view tabs with a bare
-    // `#krs-<view>` token, and org Tree View is a mode — these are not element
-    // anchors and intentionally do not share the leaf grammar; see
-    // docs/spec/permalink.md.)
-    case "org":
-      base = isOrgTreeView
-        ? "#krs-org-tree"
-        : `#${anchorId("org", viewPath.length === 0 ? "root" : viewPath[viewPath.length - 1])}`;
-      break;
-    case "system":
-      // Entity sub-mode: while drilled into a domain, the same drill path is
-      // addressed with the `entity` prefix (mirrors the static
-      // #krs-entity-<domainId> bundle level). The sub-mode has no meaning at the
-      // system root (no domain drilled), so it falls back to the system anchor.
-      base =
-        isEntityView && viewPath.length > 0
-          ? `#${anchorId("entity", viewPath[viewPath.length - 1])}`
-          : `#${anchorId("system", viewPath.length === 0 ? "root" : viewPath[viewPath.length - 1])}`;
-      break;
-    default: {
-      const _exhaustive: never = activeView;
-      throw new Error(`unhandled activeView: ${String(_exhaustive)}`);
-    }
-  }
-  const withHighlight = highlightNodeId ? `${base}:${highlightNodeId}` : base;
-  return filePath ? `${withHighlight}?file=${encodeURIComponent(filePath)}` : withHighlight;
-}
-
-/**
- * Convert a deep permalink {@link ShareTarget} (carried inside a shared
- * `#s=` payload, #1827) into the canonical `#krs-<view>-<node>:highlight`
- * hash. Reuses {@link buildHash} so the share path and the in-app navigation
- * path emit one grammar. The leaf `node` becomes the single-segment viewPath;
- * `useHistoryNavigation` reconstructs the full path from it via the node-path
- * index on mount, exactly as a normal drill hash resolves.
- */
-export function shareTargetToHash(target: ShareTarget): string {
-  return buildHash(target.view, target.node ? [target.node] : [], {
-    orgTree: target.orgTree ?? false,
-    entityView: target.entityView ?? false,
-    highlight: target.highlight ?? null,
-  });
-}
-
-/**
- * Decodes a URL hash string into { activeView, nodeId, isOrgTreeView, highlightNodeId, filePath }.
- * nodeId is null for root and tree-view hashes.
- * highlightNodeId is extracted from the optional colon-suffixed segment (e.g. "#krs-deploy:ECommerce").
- * filePath is extracted from the optional `?file=<encoded>` suffix (Issue #811).
- * Returns null for unrecognized hashes.
- */
-export function parseHash(hash: string): {
-  activeView: ActiveView;
-  nodeId: string | null;
-  isOrgTreeView: boolean;
-  isEntityView: boolean;
-  highlightNodeId: string | null;
-  filePath: string | null;
-} | null {
-  // Strip the `?file=` suffix first so it doesn't interfere with `:` parsing.
-  let filePath: string | null = null;
-  let core = hash;
-  const queryIdx = hash.indexOf("?", 1);
-  if (queryIdx !== -1) {
-    const query = hash.slice(queryIdx + 1);
-    core = hash.slice(0, queryIdx);
-    const params = new URLSearchParams(query);
-    const f = params.get("file");
-    if (f) filePath = f;
-  }
-
-  // Extract optional highlight suffix: "#krs-deploy:ECommerce" → base="#krs-deploy", highlight="ECommerce"
-  const colonIdx = core.indexOf(":", 1);
-  let highlightNodeId: string | null = null;
-  let base = core;
-  if (colonIdx !== -1) {
-    highlightNodeId = core.slice(colonIdx + 1) || null;
-    base = core.slice(0, colonIdx);
-  }
-
-  // Exhaustive dispatch table — `satisfies Record<ActiveView, ...>` on
-  // PARSE_DISPATCHERS makes adding a new ActiveView a compile error here as
-  // well as in buildHash. Each dispatcher matches a disjoint prefix, so
-  // iteration order is irrelevant.
-  for (const view of Object.keys(PARSE_DISPATCHERS) as ActiveView[]) {
-    const parsed = PARSE_DISPATCHERS[view](base);
-    if (parsed) return { ...parsed, highlightNodeId, filePath };
-  }
-  return null;
-}
-
-type ParseResult = {
-  activeView: ActiveView;
-  nodeId: string | null;
-  isOrgTreeView: boolean;
-  isEntityView: boolean;
-};
-
-const PARSE_DISPATCHERS = {
-  deploy: (base) =>
-    base === "#krs-deploy"
-      ? { activeView: "deploy", nodeId: null, isOrgTreeView: false, isEntityView: false }
-      : null,
-  matrix: (base) =>
-    base === "#krs-matrix"
-      ? { activeView: "matrix", nodeId: null, isOrgTreeView: false, isEntityView: false }
-      : null,
-  org: (base) => {
-    if (base === "#krs-org-tree")
-      return { activeView: "org", nodeId: null, isOrgTreeView: true, isEntityView: false };
-    const m = base.match(/^#krs-org-(.+)$/);
-    if (!m) return null;
-    return {
-      activeView: "org",
-      nodeId: m[1] === "root" ? null : m[1],
-      isOrgTreeView: false,
-      isEntityView: false,
-    };
-  },
-  system: (base) => {
-    // The entity view is a system-view sub-mode keyed by the drilled domain id,
-    // so its #krs-entity-<domainId> hash resolves to activeView "system" with
-    // the entity sub-mode on. Checked before the plain system anchor.
-    const em = base.match(/^#krs-entity-(.+)$/);
-    if (em) {
-      return {
-        activeView: "system",
-        nodeId: em[1] === "root" ? null : em[1],
-        isOrgTreeView: false,
-        isEntityView: true,
-      };
-    }
-    const m = base.match(/^#krs-system-(.+)$/);
-    if (!m) return null;
-    return {
-      activeView: "system",
-      nodeId: m[1] === "root" ? null : m[1],
-      isOrgTreeView: false,
-      isEntityView: false,
-    };
-  },
-} satisfies Record<ActiveView, (base: string) => ParseResult | null>;
+/** Where the path indexes stand relative to the open entry (#3598). */
+export type PathIndexState = "current" | "compiling" | "failed";
 
 function samePath(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((segment, i) => segment === b[i]);
@@ -237,6 +39,8 @@ export function useHistoryNavigation({
   setIsEntityView,
   highlightedNodeId,
   onFileChange,
+  fileRoot = null,
+  pathIndexState = "current",
 }: {
   activeView: ActiveView;
   viewPath: string[];
@@ -254,12 +58,25 @@ export function useHistoryNavigation({
   highlightedNodeId: string | null;
   /**
    * Called when popstate (or initial-mount hash) requests a different file.
-   * Implementations should read the file's content and dispatch SELECT_FILE.
+   * Implementations should read the file's content and dispatch SELECT_FILE,
+   * and resolve to how the selection ended (#3598).
    * Optional — when omitted, file changes are not restored from the URL
    * (used by modes without per-file navigation, e.g. ServeMode/MemoryMode).
    * Issue #811.
    */
-  onFileChange?: (path: string) => Promise<void> | void;
+  onFileChange?: (path: string) => Promise<FileSelectionStatus>;
+  /**
+   * The open project's root. A hash naming a file outside it is not opened
+   * on mount (#3598): it would open as an empty buffer no project owns.
+   */
+  fileRoot?: string | null;
+  /**
+   * Whether the path indexes come from the entry now open (#3598). They lag a
+   * file switch until the debounced compile lands (`"compiling"`): a drill
+   * resolved against the previous file's index would be dropped. A compile
+   * that settles with errors keeps the previous index (`"failed"`).
+   */
+  pathIndexState?: PathIndexState;
 }): {
   navigateActiveView: (view: ActiveView) => void;
   navigateViewPath: (path: string[]) => void;
@@ -310,11 +127,30 @@ export function useHistoryNavigation({
   const restoringDeepLinkRef = useRef(false);
   // The values effect ② dispatched, which the state must hold before the
   // restoration counts as committed. A field absent here is not waited on.
+  // `filePath` is the file the hash names (#3598): a project switch opens
+  // `index.krs` first, and a file that lands after the restoration ended was
+  // pushed as a second entry.
   const restoreTargetRef = useRef<{
     activeView?: ActiveView;
     viewPath?: string[];
     highlightedNodeId?: string;
+    filePath?: string;
   }>({});
+  // Set when the hash's file did not open, so effect ③ re-checks the
+  // restoration without it even if no other state changes.
+  const [fileWaitEnded, setFileWaitEnded] = useState(false);
+
+  // The visitor's own navigation ends the restoration (#3598): what the hash
+  // could not resolve yet (an empty buffer, a parse error) is dropped rather
+  // than applied later over where they went, and their move is pushed.
+  const endRestoreRef = useRef(() => {
+    pendingActiveViewRestoreRef.current = null;
+    pendingNodeIdRef.current = null;
+    pendingHighlightRef.current = null;
+    restoreTargetRef.current = {};
+    restoringDeepLinkRef.current = false;
+  });
+  useEffect(() => registerDeepLinkRestore(() => endRestoreRef.current()), []);
 
   // Stable ref for onFileChange — referenced inside long-lived effects without re-running them.
   const onFileChangeRef = useLatestRef(onFileChange);
@@ -348,8 +184,25 @@ export function useHistoryNavigation({
     // proceeds with the parsed values — SELECT_FILE resets viewPath in the
     // reducer, but the deferred-resolution effect ② re-applies the parsed
     // nodeId once the path index is ready.
-    if (parsed.filePath && parsed.filePath !== currentFilePath && onFileChangeRef.current) {
-      void onFileChangeRef.current(parsed.filePath);
+    const file = parsed.filePath;
+    const inRoot = fileRoot === null || file?.startsWith(`${fileRoot}/`);
+    if (file && inRoot && onFileChangeRef.current) {
+      restoreTargetRef.current.filePath = file;
+      // A selection of the same file made elsewhere joins this one (#3598).
+      // Superseded means the visitor chose another file or project, which
+      // ends the restoration before their file lands; a failed read only
+      // stops the wait for the file.
+      if (file !== currentFilePath) {
+        void onFileChangeRef.current(file).then((status) => {
+          if (status === "opened" || restoreTargetRef.current.filePath !== file) return;
+          if (status === "superseded") {
+            endRestoreRef.current();
+            return;
+          }
+          delete restoreTargetRef.current.filePath;
+          setFileWaitEnded(true);
+        });
+      }
     }
     // Stash the highlight for deferred re-application in effect ②. The immediate
     // dispatch below sets it on mount, but the seed's VIEW_RESET wipes it; the
@@ -397,10 +250,22 @@ export function useHistoryNavigation({
   // ② Re-apply the pending view, resolve pendingNodeId and re-apply the
   // pending highlight once the relevant path index is available.
   useEffect(() => {
+    // Not before the hash's file is in, and its own index with it (#3598):
+    // its SELECT_FILE resets the view and the drill, so values applied over
+    // another file would not last, and the index lags the switch.
+    const fileTarget = restoreTargetRef.current.filePath;
+    if (fileTarget !== undefined && fileTarget !== currentFilePath) return;
+    if (pathIndexState === "compiling") return;
+    // A compile that settled with errors keeps the previous file's index: the
+    // tab and the highlight still apply, and the drill, which only that stale
+    // index could resolve, is dropped so the restoration can end.
+    const compileFailed = pathIndexState === "failed";
     // Gate on a populated index: it derives from the seeded file content, so a
     // non-empty one proves the seed's SELECT_FILE (and its VIEW_RESET) has run.
     const indexReady =
-      (!!nodePathIndex && nodePathIndex.size > 0) || (!!orgPathIndex && orgPathIndex.size > 0);
+      compileFailed ||
+      (!!nodePathIndex && nodePathIndex.size > 0) ||
+      (!!orgPathIndex && orgPathIndex.size > 0);
 
     // The view first (#3208): SET_ACTIVE_VIEW clears viewPath and the
     // highlight, so the node and highlight below must land after it, and an
@@ -422,7 +287,9 @@ export function useHistoryNavigation({
     const isOrgPending = pendingActiveViewRef.current === "org";
     const index = isOrgPending ? orgPathIndex : nodePathIndex;
 
-    if (nodeId !== null) {
+    if (nodeId !== null && compileFailed) {
+      pendingNodeIdRef.current = null;
+    } else if (nodeId !== null) {
       if (!index || index.size === 0) return;
       const resolvedPath = index.get(nodeId) ?? [];
       pendingNodeIdRef.current = null;
@@ -447,7 +314,7 @@ export function useHistoryNavigation({
         highlightAttribute: pendingHighlightAttributeRef.current,
       });
     }
-  }, [nodePathIndex, orgPathIndex, dispatch]);
+  }, [nodePathIndex, orgPathIndex, dispatch, currentFilePath, fileWaitEnded, pathIndexState]);
 
   // ③ Sync state changes → hash (Issue #811)
   // Includes `currentFilePath` so file switches participate in browser
@@ -474,6 +341,20 @@ export function useHistoryNavigation({
     if (currentFilePath === null && prev !== null) {
       prevFilePathRef.current = null;
       return;
+    }
+
+    // The boot opens the hash's file first, so a move to any other file while
+    // it is the target is the visitor's (#3598), whether or not it had opened.
+    // The boot's own move, from no file to the hash's file, is not.
+    const fileTarget = restoreTargetRef.current.filePath;
+    if (
+      restoringDeepLinkRef.current &&
+      fileTarget !== undefined &&
+      currentFilePath !== null &&
+      currentFilePath !== prev &&
+      currentFilePath !== fileTarget
+    ) {
+      endRestoreRef.current();
     }
 
     const newHash = buildHash(activeView, viewPath, {
@@ -503,18 +384,30 @@ export function useHistoryNavigation({
       const landed =
         (target.activeView === undefined || target.activeView === activeView) &&
         (target.viewPath === undefined || samePath(target.viewPath, viewPath)) &&
-        (target.highlightedNodeId === undefined || target.highlightedNodeId === highlightedNodeId);
+        (target.highlightedNodeId === undefined ||
+          target.highlightedNodeId === highlightedNodeId) &&
+        (target.filePath === undefined || target.filePath === currentFilePath);
       if (currentFilePath !== null && !pending && landed) {
         restoringDeepLinkRef.current = false;
         restoreTargetRef.current = {};
       }
     }
     prevFilePathRef.current = currentFilePath;
-  }, [activeView, viewPath, isOrgTreeView, isEntityView, highlightedNodeId, currentFilePath]);
+  }, [
+    activeView,
+    viewPath,
+    isOrgTreeView,
+    isEntityView,
+    highlightedNodeId,
+    currentFilePath,
+    fileWaitEnded,
+  ]);
 
   // ④ popstate handler — browser back/forward
   useEffect(() => {
     const handlePopState = () => {
+      // Back / Forward is the visitor's: a restoration still running ends.
+      if (restoringDeepLinkRef.current) endRestoreRef.current();
       const parsed = parseHash(location.hash);
       if (!parsed) return;
 
@@ -579,8 +472,11 @@ export function useHistoryNavigation({
   // ─── Public API ─────────────────────────────────────────────────────────────
   // Hash updates are handled by effect ③ watching state changes.
 
+  // The visitor's tab clicks and drills; the restoration's own dispatches
+  // and a guide's scene go to `dispatch` directly.
   const navigateActiveView = useCallback(
     (view: ActiveView) => {
+      if (restoringDeepLinkRef.current) endRestoreRef.current();
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: view });
     },
     [dispatch],
@@ -588,6 +484,7 @@ export function useHistoryNavigation({
 
   const navigateViewPath = useCallback(
     (path: string[]) => {
+      if (restoringDeepLinkRef.current) endRestoreRef.current();
       dispatch({ type: "SET_VIEW_PATH", path });
     },
     [dispatch],

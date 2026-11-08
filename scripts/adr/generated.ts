@@ -1,26 +1,48 @@
-// Which paths `adr regenerate` owns, and what kind of PR a diff over them is
-// (Issue #3416, docs/adr/3416-regenerate-adr-index-daily-pr.md "仕組み").
+// Which paths the index generators own, and what kind of PR a diff over them is
+// (Issue #3416, docs/adr/3416-regenerate-adr-index-daily-pr.md "仕組み"; the TPL
+// index joined in Issue #3289).
 //
-// PRs no longer carry the generated ADR index. A daily routine opens a PR that
+// PRs no longer carry the generated indexes. A daily routine opens a PR that
 // changes only the generated files, and every other PR leaves them alone. This
 // module is the one place that decides which side of that line a diff is on,
 // so the `Validate` check, the `Review tier` check and `pnpm adr:regenerate-pr`
 // cannot drift apart.
+//
+// Two generators write there: `adr regenerate` (outputs from `adr.config.json`)
+// and `tpl regenerate` (the `indexFile` of `tpl.config.json`, under the TPL
+// directory). The generated paths are the union of both.
 //
 // Dependency-free on purpose: `scripts/review/tier.ts` imports it and runs with
 // plain `node` (type stripping), with no `pnpm install`.
 
 import { matchesGlob, posix } from "node:path";
 
-/** The `paths` block of `adr.config.json` this module reads. */
-export interface AdrPaths {
-  adrDir: string;
-  /** The generator's output names, relative to `adrDir`. A trailing `/` marks a directory. */
+/** Where one generator writes: a directory and its output names relative to it. */
+export interface GeneratorRoot {
+  dir: string;
+  /** Output names, relative to `dir`. A trailing `/` marks a directory. */
   outputs: string[];
 }
 
+export const GENERATORS = ["adr", "tpl"] as const;
+export type Generator = (typeof GENERATORS)[number];
+
+/** Each generator's root. A generator with no outputs is not run. */
+export type GeneratedPaths = Record<Generator, GeneratorRoot>;
+
+/** The text of each generator's config at one commit; null when the file is not there. */
+export type ConfigTexts = Record<Generator, string | null>;
+
+export const CONFIG_FILES: Record<Generator, string> = {
+  adr: "adr.config.json",
+  tpl: "tpl.config.json",
+};
+
+/** The TPL directory. tpl-tools takes it as a flag, not from its config. */
+export const TPL_DIR = "docs/test-perspectives";
+
 /** Reads `paths.adrDir` and `paths.outputs` from the text of `adr.config.json`. */
-export function readAdrPaths(configText: string): AdrPaths {
+export function readAdrPaths(configText: string): GeneratorRoot {
   const config = JSON.parse(configText) as {
     paths?: { adrDir?: unknown; outputs?: Record<string, unknown> };
   };
@@ -36,28 +58,79 @@ export function readAdrPaths(configText: string): AdrPaths {
   if (!names.every((n): n is string => typeof n === "string" && n !== "")) {
     throw new Error("adr.config.json paths.outputs has a value that is not a path");
   }
-  return { adrDir, outputs: names };
+  return { dir: adrDir, outputs: names };
 }
 
 /**
- * The generated paths as globs over repo-relative paths: each output joined to
- * `adrDir`, and a directory output (`graph/`) turned into its whole subtree
+ * Reads `indexFile` from the text of `tpl.config.json`. Without the file or the
+ * key, the TPL generator has no outputs: commits from before the index was
+ * generated stay valid inputs.
+ */
+export function readTplPaths(configText: string | null): GeneratorRoot {
+  if (configText === null) return { dir: TPL_DIR, outputs: [] };
+  const { indexFile } = JSON.parse(configText) as { indexFile?: unknown };
+  if (indexFile === undefined) return { dir: TPL_DIR, outputs: [] };
+  if (typeof indexFile !== "string" || indexFile === "") {
+    throw new Error("tpl.config.json indexFile is not a path");
+  }
+  // A file inside the TPL directory, named literally: the generated paths are
+  // globs (extglobs included), and a name that escaped the directory or matched
+  // other files would make them generated. Only plain segments are allowed.
+  const segments = indexFile.split("/");
+  if (
+    !/^[\w.-]+(?:\/[\w.-]+)*$/.test(indexFile) ||
+    segments.includes("..") ||
+    segments.at(-1) === "."
+  ) {
+    throw new Error(
+      `tpl.config.json indexFile must be a plain file under ${TPL_DIR}: ${indexFile}`,
+    );
+  }
+  return { dir: TPL_DIR, outputs: [indexFile] };
+}
+
+/** Both generators' roots. Throws when `adr.config.json` is missing or unreadable. */
+export function readGeneratedPaths(configs: ConfigTexts): GeneratedPaths {
+  if (configs.adr === null) throw new Error("adr.config.json is missing");
+  return { adr: readAdrPaths(configs.adr), tpl: readTplPaths(configs.tpl) };
+}
+
+/**
+ * One generator's paths as globs over repo-relative paths: each output joined to
+ * the root, and a directory output (`graph/`) turned into its whole subtree
  * (`docs/adr/graph/**`).
  */
-export function generatedGlobs(paths: AdrPaths): string[] {
-  return paths.outputs
+export function rootGlobs(root: GeneratorRoot): string[] {
+  return root.outputs
     .map((out) => {
-      const joined = posix.normalize(posix.join(paths.adrDir, out));
+      const joined = posix.normalize(posix.join(root.dir, out));
       return out.endsWith("/") ? `${joined.replace(/\/+$/, "")}/**` : joined;
     })
     .sort();
 }
 
+/** The generated paths of every generator, as globs. */
+export const generatedGlobs = (paths: GeneratedPaths): string[] =>
+  GENERATORS.flatMap((g) => rootGlobs(paths[g])).sort();
+
 export const isGenerated = (path: string, globs: readonly string[]): boolean =>
   globs.some((g) => matchesGlob(path, g));
 
+/** Every generator's outputs as repo-relative paths; a directory output keeps its `/`. */
+export const outputPaths = (paths: GeneratedPaths): string[] =>
+  GENERATORS.flatMap((g) => paths[g].outputs.map((o) => posix.join(paths[g].dir, o)));
+
+/**
+ * The changed paths (`git status`, repo-relative) that no generator's outputs
+ * cover: what a generator wrote outside them.
+ */
+export function strayPaths(changed: readonly string[], paths: GeneratedPaths): string[] {
+  const outputs = outputPaths(paths);
+  return changed.filter((p) => !outputs.some((o) => (o.endsWith("/") ? p.startsWith(o) : p === o)));
+}
+
 /** Whether two configs name the same outputs, whatever their order. */
-export function sameOutputs(a: AdrPaths, b: AdrPaths): boolean {
+export function sameOutputs(a: GeneratedPaths, b: GeneratedPaths): boolean {
   const ga = generatedGlobs(a);
   const gb = generatedGlobs(b);
   return ga.length === gb.length && ga.every((g, i) => g === gb[i]);
@@ -112,8 +185,8 @@ export interface DiffVerdict {
  * write to an output by renaming it in the same change.
  */
 export function classifyGeneratedDiff(input: {
-  base: AdrPaths;
-  head: AdrPaths;
+  base: GeneratedPaths;
+  head: GeneratedPaths;
   files: readonly NameStatus[];
 }): DiffVerdict {
   const baseGlobs = generatedGlobs(input.base);
@@ -137,7 +210,8 @@ export function classifyGeneratedDiff(input: {
     return {
       kind: "mixed",
       reasons: [
-        "the PR writes generated files while adr.config.json paths.outputs differs between " +
+        "the PR writes generated files while the outputs (adr.config.json paths.outputs or " +
+          "tpl.config.json indexFile) differ between " +
           "base and head; change the outputs in one PR and let the next regeneration PR write them",
       ],
       generated: generatedPaths,

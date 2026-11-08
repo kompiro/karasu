@@ -55,10 +55,10 @@ karasu の core 診断は **karasu のモデルに関する事実**（id 未宣�
 新しい diagnostic コードを追加 / 変更する PR を出す前に確認する:
 
 - [ ] その診断が観察しているのは **karasu モデル自身の事実** か、それとも
-      **外部の流派が smell と呼ぶ構造** か、文書上で明示しているか
-- [ ] 前者なら `error` または `warning`、後者なら `info` を選んでいるか
+      **外部の流派が smell と呼ぶ構造** か、文書上で明示しているか [judgment]
+- [ ] 前者なら `error` または `warning`、後者なら `info` を選んでいるか [judgment]
 - [ ] 流派判断（「ある流派ならこうする」）に直接対応する診断を追加していないか
-      （該当する場合は実装せず、PR description にスコープ外と明記）
+      （該当する場合は実装せず、PR description にスコープ外と明記） [judgment]
 - [ ] 文言が事実先行（"X is declared in N files"）になっているか、あるいは
       規定的（"You should check..."）になっていないか
 - [ ] `docs/concepts.md` の「What karasu visualizes vs. what it doesn't prescribe」

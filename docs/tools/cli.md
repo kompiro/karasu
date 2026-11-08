@@ -167,7 +167,7 @@ changes. Run `karasu <command> --help` for the full option list and examples.
 | `fmt [files...]` | Format `.krs` files in place (`--check` for CI, `--stdin` for pipes) |
 | `tidy-style [files...]` | Tidy `.krs.style` files: merge duplicate rules, group properties |
 | `lint-style [files...]` | Lint `.krs.style` property values against the schema |
-| `translate <file>` | Translate an infra config or API spec into a `.krs` scaffold (`--from compose` \| `k8s` \| `openapi` \| `db`) |
+| `translate <file>` | Translate an infra config or API spec into a `.krs` scaffold (`--from compose` \| `k8s` \| `openapi` \| `db` \| `wrangler`) |
 | `apply <file>` | Apply piped `.krs` from stdin — replace a node by id, else append |
 | `append <file>` | Append piped `.krs` from stdin as a new top-level block |
 | `insert <parent-id> <file>` | Insert piped `.krs` from stdin as the last child of a node |
@@ -251,7 +251,7 @@ agent that reads skill directories can use them, not only Claude Code:
 | Skill | What it does |
 | --- | --- |
 | `karasu-author` | Builds and updates a model of your own system through conversation, one layer at a time, checking every change with `karasu check` |
-| `reverse-architecture` | Reverse-engineers an existing repository into a model |
+| `reverse-architecture` | Reverse-engineers an existing repository into a model. See the [guide](../guide/reverse-engineering-with-ai.md) |
 
 ```bash
 # Copy every skill into ./.claude/skills

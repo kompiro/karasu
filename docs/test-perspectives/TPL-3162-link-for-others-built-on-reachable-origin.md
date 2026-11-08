@@ -61,7 +61,7 @@ scope:
 他人に渡す URL を組み立てる変更、または画面を別の origin で動かす変更で確認する:
 
 - [ ] リンクの origin を、受け取った人が開ける場所から取っている（`window.location` を使うなら、
-      その origin が他人にも届く理由を説明できる）
+      その origin が他人にも届く理由を説明できる） [judgment]
 - [ ] origin を差し替えるとき、path も宛先で意味を持つものにしている（今のページの `pathname` を持ち越していない）
 - [ ] リンクが指す path（`#s=`・`/s?s=` など）を、宛先が実際に配っている
 - [ ] 同じ画面を動かす全ての origin（公開版・serve の 2 つの build・viewer・webview）で、作られるリンクの
@@ -83,4 +83,4 @@ scope:
 - `packages/app/src/utils/inline-share.test.ts` › `points both links at the public app when given its origin and the root path`
 - `packages/app/src/components/ShareDialog.test.tsx` › `names the host the links open on only when they are built elsewhere`
 - `scripts/lint/hosted-app-origin.test.ts`（app の `HOSTED_APP_ORIGIN` と docs-site の `APP_URL` が同じ値）
-- `packages/e2e/tests/at-0032-cli-serve-mode.spec.ts` › `TC-07: Share builds its links on the public app, not on the local server`（nightly、karasu serve に対して）
+- `packages/e2e/tests/at-0032-cli-serve-mode.spec.ts` › `TC-07: Share builds its links on the public app, not on the local server`（karasu serve に対して）

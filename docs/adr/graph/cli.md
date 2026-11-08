@@ -18,6 +18,7 @@ flowchart TD
     ADR_1104["ADR-1104<br/>translate adapter で usecase → resource バインディング ..."]
     ADR_1935["ADR-1935<br/>--from wrangler translate adapter と「adapter を採る基準」"]
     ADR_3258["ADR-3258<br/>karasu serve は配信ディレクトリをまるごとブラウザのメモリに写して import ..."]
+    ADR_3418["ADR-3418<br/>`karasu serve` を loopback で listen し、ローカルでない `H..."]
     ADR_3426["ADR-3426<br/>`/render?src=` の SSRF 対策を、解決後のアドレスとリダイレクトの各ホップで行う"]
     ADR_9013["ADR-9013<br/>CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
   end
@@ -30,6 +31,7 @@ flowchart TD
   ADR_469 --> ADR_464
   ADR_643 --> ADR_355
   ADR_644 --> ADR_355
+  ADR_3418 --> ADR_3426
   ADR_9013 --> ADR_9006
   ADR_2585 --> ADR_644
 
@@ -51,6 +53,7 @@ flowchart TD
   class ADR_1104 accepted
   class ADR_1935 accepted
   class ADR_3258 accepted
+  class ADR_3418 accepted
   class ADR_3426 accepted
   class ADR_9013 accepted
   class ADR_2585 ghost

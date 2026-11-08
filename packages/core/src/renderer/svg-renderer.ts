@@ -13,7 +13,7 @@ import type { LegendViewScope } from "../types/ast.js";
 import { resolvePalette } from "./palette.js";
 import { nodePathRefId } from "../parser/node-path.js";
 import type { RenderOptions } from "./render-options.js";
-import { renderEdgeLayer } from "./edge-layer.js";
+import { renderEdgeLayer, withheldLabelsOf } from "./edge-layer.js";
 import { assignChipZones, chipZoneOf, renderNode } from "./node-card.js";
 import { resolveNodeStyle, shapeNameOf } from "./node-style.js";
 import {
@@ -111,6 +111,7 @@ export function render(
     shapeForNode,
     chipZoneFor,
     edgeLineKey,
+    withheldLabels: (result) => withheldLabelsOf(result, styles, palette),
     teamLabels: options?.teamLabels,
     boundaryMembership: options?.boundaryMembership,
     scopedBoundaryMembership: options?.scopedBoundaryMembership,

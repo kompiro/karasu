@@ -54,7 +54,7 @@ dev tree の relative path（`asAbsolutePath(path.join("..", "lsp", "out", "serv
 - [ ] 別 package のビルド成果物（`packages/lsp/out/`）を参照している場合、packaging ステップで **拡張内 (`packages/vscode/lsp/` 等) にコピー** するスクリプトを持っているか
 - [ ] **dev mode と packaged mode の両方で同じテストが走る** 経路があるか（拡張なら ExTester で実 `.vsix` を install して動かすテスト）
 - [ ] パス解決が失敗したときに **明示的なエラーログ** を出しているか（silent fallback で「動いているように見える」状態を作らない）
-- [ ] バージョンアップで配布物の構造を変える PR では、dev / packaged の両方の path 解決が壊れていないことを差分でチェック
+- [ ] バージョンアップで配布物の構造を変える PR では、dev / packaged の両方の path 解決が壊れていないことを差分でチェック [judgment]
 
 ## 既知の対処パターン
 
@@ -69,4 +69,4 @@ dev tree の relative path（`asAbsolutePath(path.join("..", "lsp", "out", "serv
 - `packages/vscode/scripts/` — packaging 関連スクリプト（bundling step がここに入る）
 - `packages/cli/pack/serve-from-tarball.test.ts`（`pnpm --filter ./packages/cli run test:pack`）— 実際の `prepack` を通した tarball を展開して `karasu serve` を起動する packaged mode のスモーク。#3017 では `serve` が app の build を monorepo 相対の `../../app/dist` で探し、npm 版で全リクエストが 503 になっていた
 - `packages/cli/src/serve.test.ts` › `findAppDistDir` — packaged（`dist/app/`）と dev（`packages/app/dist`）の候補探索、install 先の無関係な `node_modules/app` を拾わないこと
-- `packages/e2e/tests/at-0032-cli-serve-mode.spec.ts` › `TC-02`（nightly の `serve` project）— `packages/e2e/scripts/start-serve.ts` が `build:app` で packaged と同じ serve build を `dist/app/` に置いてから起動し、TC-02 は通常 app にしか無い `/api/files` の mode 判定リクエストが出ないことを確かめる。#3303 では monorepo の fallback で通常 app の build を配信しており、冷えたサーバーで 200ms の判定が間に合わず OPFS mode で起動していた
+- `packages/e2e/tests/at-0032-cli-serve-mode.spec.ts` › `TC-02`（`serve` project）— `packages/e2e/scripts/start-serve.ts` が `build:app` で packaged と同じ serve build を `dist/app/` に置いてから起動し、TC-02 は通常 app にしか無い `/api/files` の mode 判定リクエストが出ないことを確かめる。#3303 では monorepo の fallback で通常 app の build を配信しており、冷えたサーバーで 200ms の判定が間に合わず OPFS mode で起動していた

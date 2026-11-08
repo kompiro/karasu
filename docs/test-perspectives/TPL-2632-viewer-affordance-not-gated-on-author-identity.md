@@ -64,7 +64,7 @@ scope:
 閲覧者向けの反応を付ける・変える変更で確認する:
 
 - [ ] 発火条件のセレクタ・フラグが、その反応に本当に必要なものだけを見ている（hover・hit・減光は
-      identity を見ない）
+      identity を見ない） [judgment]
 - [ ] identity が要る操作（書き戻し・context menu）は、閲覧者向けの反応とは別の class やフラグに
       載っている
 - [ ] identity を配らない描画経路を列挙し、そこに描かれた要素でも反応することを render surface

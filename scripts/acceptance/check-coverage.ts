@@ -7,6 +7,11 @@ import {
   describeDesignRefFinding,
   type DesignRefFinding,
 } from "./design-refs.ts";
+import {
+  analyzeRecordAddresses,
+  describeRecordAddressFinding,
+  type RecordAddressFinding,
+} from "./record-addresses.ts";
 
 interface CliOptions {
   strict: boolean;
@@ -20,7 +25,8 @@ const HELP_TEXT = `Usage: pnpm at:check-coverage [options]
 Surveys docs/acceptance/*.md for deviations from the canonical automation
 marker convention (see .claude/skills/acceptance-test/SKILL.md). Also rejects
 references to docs/design/, which ADR promotion deletes (see
-scripts/acceptance/design-refs.ts).
+scripts/acceptance/design-refs.ts), and addresses only one session or PR had (see
+scripts/acceptance/record-addresses.ts).
 
 The \`\`\`krs blocks embedded in these docs are parsed by \`pnpm lint:krs-fences\`,
 which covers the spec / guide / concepts docs too (see scripts/lint/krs-fences.ts).
@@ -64,7 +70,11 @@ function describeFinding(f: Finding): string {
   }
 }
 
-function reportText(report: RepoReport, designRefFindings: DesignRefFinding[]): string {
+function reportText(
+  report: RepoReport,
+  designRefFindings: DesignRefFinding[],
+  recordAddressFindings: RecordAddressFinding[],
+): string {
   const lines: string[] = [];
   const summary = summarize(report);
 
@@ -76,6 +86,7 @@ function reportText(report: RepoReport, designRefFindings: DesignRefFinding[]): 
     `  ✓ e2e linkage: ${summary.orphanSpecs} orphan spec(s), ${summary.staleSpecRefs} stale spec reference(s).`,
   );
   lines.push(`  ✓ design-doc references: ${designRefFindings.length} finding(s).`);
+  lines.push(`  ✓ record addresses: ${recordAddressFindings.length} finding(s).`);
 
   const nonConforming = report.reports.flatMap((r) => r.findings);
   if (nonConforming.length > 0) {
@@ -116,7 +127,19 @@ function reportText(report: RepoReport, designRefFindings: DesignRefFinding[]): 
     for (const f of designRefFindings) lines.push(`  ✗ ${describeDesignRefFinding(f)}`);
   }
 
-  if (summary.totalFindings === 0 && designRefFindings.length === 0) {
+  if (recordAddressFindings.length > 0) {
+    lines.push("");
+    lines.push(
+      "Addresses a later reader cannot use (preview hosts, session paths, dev-server commands):",
+    );
+    for (const f of recordAddressFindings) lines.push(`  ✗ ${describeRecordAddressFinding(f)}`);
+  }
+
+  if (
+    summary.totalFindings === 0 &&
+    designRefFindings.length === 0 &&
+    recordAddressFindings.length === 0
+  ) {
     lines.push("");
     lines.push("All AT files conform to the canonical marker convention.");
   }
@@ -133,6 +156,7 @@ function main(argv: string[]): number {
   const report = analyzeRepo({ repoRoot: opts.repoRoot });
   const summary = summarize(report);
   const designRefFindings = analyzeDesignRefs(opts.repoRoot);
+  const recordAddressFindings = analyzeRecordAddresses(opts.repoRoot);
 
   if (opts.json) {
     console.log(
@@ -141,22 +165,27 @@ function main(argv: string[]): number {
           summary: {
             ...summary,
             designRefs: designRefFindings.length,
+            recordAddresses: recordAddressFindings.length,
           },
           nonConforming: report.reports.flatMap((r) => r.findings),
           missingMarkerWithSpec: report.crossRefFindings,
           orphanSpecs: report.linkage.orphanSpecs,
           staleSpecRefs: report.linkage.staleSpecRefs,
           designRefs: designRefFindings,
+          recordAddresses: recordAddressFindings,
         },
         null,
         2,
       ),
     );
   } else {
-    console.log(reportText(report, designRefFindings));
+    console.log(reportText(report, designRefFindings, recordAddressFindings));
   }
 
-  if (opts.strict && summary.totalFindings + designRefFindings.length > 0) {
+  if (
+    opts.strict &&
+    summary.totalFindings + designRefFindings.length + recordAddressFindings.length > 0
+  ) {
     if (!opts.json) {
       console.error(
         "\nStrict mode: exiting non-zero. Rerun `pnpm at:check-coverage` (without --strict) for the full report above.",

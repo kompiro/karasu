@@ -45,19 +45,19 @@ test.describe("AT-1921 in-place expansion", () => {
       page.locator('svg [data-edge-from="Customer"][data-edge-to="OrderService"]');
 
     // Collapsed baseline: the service box carries a ⊕, no domains shown.
-    await expect(control()).toBeAttached({ timeout: 15000 });
+    await expect(control()).toBeAttached();
     await expect(cart()).toHaveCount(0);
     await expect(incomingEdge().first()).toBeAttached();
 
     // Expand: domains appear inside the frame, the connecting edge stays.
     await control().click();
-    await expect(cart().first()).toBeAttached({ timeout: 10000 });
+    await expect(cart().first()).toBeAttached();
     await expect(page.locator('svg [data-node-id="Fulfillment"]').first()).toBeAttached();
     await expect(incomingEdge().first()).toBeAttached();
 
     // Collapse via the ⊖ on the frame: back to the service box, domains gone.
     await control().click();
-    await expect(cart()).toHaveCount(0, { timeout: 10000 });
+    await expect(cart()).toHaveCount(0);
     await expect(page.locator('svg [data-node-id="OrderService"]').first()).toBeAttached();
     await expect(incomingEdge().first()).toBeAttached();
   });

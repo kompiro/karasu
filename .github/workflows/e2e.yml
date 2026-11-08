@@ -14,20 +14,23 @@ name: E2E
 #
 # Besides the app and the suite, the list covers each workspace package the
 # app depends on (`packages/app/package.json`: core and i18n; i18n depends on
-# core) and the repo files specs load from disk (`examples/`, e.g. at-1646
-# opens every gallery example): a change to any of them alone must start the
-# suite too. Root build config other than `package.json` (e.g. `tsconfig.json`)
-# is left out; the Typecheck and Build steps of `ci.yml`'s Check job catch a
-# break there.
+# core), the CLI the `serve` project builds and starts with its workspace
+# dependencies (`packages/cli/package.json`: skills, core and i18n; #3661), and
+# the repo files specs load from disk (`examples/`, e.g. at-1646 opens every
+# gallery example): a change to any of them alone must start the suite too.
+# Root build config other than `package.json` (e.g. `tsconfig.json`) is left
+# out; the Typecheck and Build steps of `ci.yml`'s Check job catch a break there.
 on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "packages/app/**"
+      - "packages/cli/**"
       - "packages/core/**"
       - "packages/e2e/**"
       - "packages/i18n/**"
+      - "packages/skills/**"
       - "examples/**"
       - "pnpm-lock.yaml"
       - "package.json"
@@ -89,6 +92,11 @@ jobs:
         # minutes (2026-10-15..17, 270 tests), and a regression that fails
         # every spec is cut here rather than reported case by case.
         timeout-minutes: 25
+        env:
+          # Adds the `serve` project and its `karasu serve` webServer (#3661).
+          # A failure to build or start the CLI fails this step on every PR
+          # that runs the suite, because Playwright waits for each webServer.
+          E2E_SERVE: "1"
         run: pnpm --filter @karasu-tools/e2e test
 
       # Informative-only — surfaces tests that failed once then passed on

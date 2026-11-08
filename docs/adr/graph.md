@@ -21,6 +21,7 @@ flowchart TD
     ADR_3405["ADR-3405<br/>ADR の昇格で、新しい ADR へのリンクを足すだけの差分も張り替えと同じく Low に数える"]
     ADR_3416["ADR-3416<br/>ADR の生成物は PR に含めず、毎日の routine が出す再生成の PR でだけ更新する"]
     ADR_3471["ADR-3471<br/>docs/ の外からは Design Doc ではなく ADR か Issue を指す"]
+    ADR_3595["ADR-3595<br/>docs/adr/README.md の手書き一覧をやめ、topic の語彙と生成物への入口にする"]
   end
   subgraph app-ui["app-ui"]
     ADR_104["ADR-104<br/>system セレクタUIを採用しない"]
@@ -64,6 +65,9 @@ flowchart TD
     ADR_2317["ADR-2317<br/>プレビューの操作を 2 面に分ける — 図を変える操作はドリルパスの行、持ち出す操作はツールバー"]
     ADR_2461["ADR-2461<br/>色の上の文字は per-theme のインクで、半透明クロームの上の文字は合成後の色で判定する"]
     ADR_2535["ADR-2535<br/>日本語判定は主要サブタグの完全一致で行い、Windows の言語名だけを明示的に許す"]
+    ADR_3598["ADR-3598<br/>初回体験のツアーを localStorage の記録と入口の URL で再開し、deep li..."]
+    ADR_3599["ADR-3599<br/>初回体験のツアーは、ステップが頼んだ操作をしたことを示すだけで、進むのは訪問者に任せる"]
+    ADR_3600["ADR-3600<br/>初回体験の Understand と Evolve を同じ機構のガイドにし、シーンは開いている..."]
     ADR_9009["ADR-9009<br/>ツールバーボタンはアイコン+テキストラベル必須"]
     ADR_9010["ADR-9010<br/>MemoryMode と ProjectMode の統一 — Reducer + `Karas..."]
     ADR_9011["ADR-9011<br/>Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
@@ -210,6 +214,11 @@ flowchart TD
     ADR_3399["ADR-3399<br/>Dependabot security alert 2026-10-30（qs と seria..."]
     ADR_3412["ADR-3412<br/>GitHub Actions の依存を actions.lock で固定し、検証を requi..."]
     ADR_3421["ADR-3421<br/>Copilot で推論する gh-aw の workflow を外し、個人の課金で動かせるまで..."]
+    ADR_3504["ADR-3504<br/>Low の ADR の PR は draft を経ずに作り、ゲートはその create を 1..."]
+    ADR_3514["ADR-3514<br/>gh pr ready のゲートは --repo をそのまま渡して同じ PR を読み、base..."]
+    ADR_3571["ADR-3571<br/>PRD は docs/prd に置かず prd ラベルの Issue にし、展開した Epic..."]
+    ADR_3575["ADR-3575<br/>Dependabot トリアージ 2026-11-02：npm 8 件をすべて採用し、LSP ..."]
+    ADR_3586["ADR-3586<br/>Dependabot security alert 2026-11-03（@azure/msa..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -241,6 +250,7 @@ flowchart TD
     ADR_1104["ADR-1104<br/>translate adapter で usecase → resource バインディング ..."]
     ADR_1935["ADR-1935<br/>--from wrangler translate adapter と「adapter を採る基準」"]
     ADR_3258["ADR-3258<br/>karasu serve は配信ディレクトリをまるごとブラウザのメモリに写して import ..."]
+    ADR_3418["ADR-3418<br/>`karasu serve` を loopback で listen し、ローカルでない `H..."]
     ADR_3426["ADR-3426<br/>`/render?src=` の SSRF 対策を、解決後のアドレスとリダイレクトの各ホップで行う"]
     ADR_9013["ADR-9013<br/>CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
   end
@@ -292,6 +302,7 @@ flowchart TD
     ADR_2223["ADR-2223<br/>service ブロックに書いたエッジは、その service をノードとして描くビューに描画する"]
     ADR_2477["ADR-2477<br/>並列エッジの perpendicular nudge は「重なっているか」で判定する"]
     ADR_2501["ADR-2501<br/>起点スコープに反するエッジ宣言はどのビューにも描画しない"]
+    ADR_3480["ADR-3480<br/>edge の canonical id（base form）は `.krs.style` で読..."]
     ADR_9019["ADR-9019<br/>`.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
   end
   subgraph navigation["navigation"]
@@ -430,7 +441,9 @@ flowchart TD
     ADR_2958["ADR-2958<br/>ガターを通るエッジを、共有する端ごとに 1 レーンへ束ねる"]
     ADR_3022["ADR-3022<br/>edge ラベルを段階的に開示する — canvas は置けるラベルだけを描き、全文は foc..."]
     ADR_3026["ADR-3026<br/>同じ行の 2 枚を結ぶエッジを、行の上下の行間チャネルで回す"]
+    ADR_3027["ADR-3027<br/>見た目が同じ両方向の edge の組を、card を動かさずに両端に矢印のある 1 本の線で描く"]
     ADR_3034["ADR-3034<br/>エッジラベルの探索範囲は約 90px のまま広げない"]
+    ADR_3036["ADR-3036<br/>置けなかったラベルの分だけ、行間のチャネルと行内の隙間を開く（候補から選ぶ）"]
     ADR_3088["ADR-3088<br/>行間チャネルのレーンを、run がつながる縦線の向きで並べる"]
     ADR_3090["ADR-3090<br/>交差マーク（ホップ・junction chip・trunk band）をエッジの減光に追随させる"]
     ADR_3132["ADR-3132<br/>ドリルダウンの最上段の上と最下段の下のチャネルを、枠の内側で測る"]
@@ -489,9 +502,13 @@ flowchart TD
     ADR_2348["ADR-2348<br/>AT レコードは Design Doc ではなく Issue を指す — 削除が規約で確定して..."]
     ADR_2648["ADR-2648<br/>記録が名指すソースパスを機械で照合し、不在が正しい場合は宣言させる"]
     ADR_2810["ADR-2810<br/>TPL 本文のソースパス照合を `@kompiro/tpl-tools` へ移し、Requir..."]
+    ADR_3038["ADR-3038<br/>TPL の enforcement 状態をチェックリスト項目の印から導出する"]
+    ADR_3039["ADR-3039<br/>app の E2E は jsdom が模せない境界を跨ぐ流れを持ち、コマンドの追加は機械で止める"]
     ADR_3169["ADR-3169<br/>受け入れテストの手動項目は、マージ前に確かめられるものに限る"]
     ADR_3237["ADR-3237<br/>OPFS fixture の origin は app の起動ではなく static file..."]
+    ADR_3289["ADR-3289<br/>TPL の索引は PR に含めず、ADR の生成物と同じ毎日の再生成 PR で生成する"]
     ADR_3429["ADR-3429<br/>合成エッジのスタイル解決テストは、本物の受け渡しと同じ `extraEdges` で渡し、`...."]
+    ADR_3486["ADR-3486<br/>PR の変更ファイルから関係する TPL を引き、PR を作った直後に出す"]
     ADR_9012["ADR-9012<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
   end
   subgraph vscode["vscode"]
@@ -663,6 +680,8 @@ flowchart TD
   ADR_3020 --> ADR_2969
   ADR_3326 --> ADR_3052
   ADR_3342 --> ADR_3326
+  ADR_3418 --> ADR_3426
+  ADR_3504 --> ADR_3286
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -1106,7 +1125,11 @@ flowchart TD
   class ADR_3020 accepted
   class ADR_3022 accepted
   class ADR_3026 accepted
+  class ADR_3027 accepted
   class ADR_3034 not_adopted
+  class ADR_3036 accepted
+  class ADR_3038 accepted
+  class ADR_3039 accepted
   class ADR_3052 accepted
   class ADR_3069 accepted
   class ADR_3077 accepted
@@ -1133,6 +1156,7 @@ flowchart TD
   class ADR_3258 accepted
   class ADR_3271 accepted
   class ADR_3286 accepted
+  class ADR_3289 accepted
   class ADR_3304 accepted
   class ADR_3309 accepted
   class ADR_3314 accepted
@@ -1151,10 +1175,22 @@ flowchart TD
   class ADR_3405 accepted
   class ADR_3412 accepted
   class ADR_3416 accepted
+  class ADR_3418 accepted
   class ADR_3421 accepted
   class ADR_3426 accepted
   class ADR_3429 accepted
   class ADR_3471 accepted
+  class ADR_3480 accepted
+  class ADR_3486 accepted
+  class ADR_3504 accepted
+  class ADR_3514 accepted
+  class ADR_3571 accepted
+  class ADR_3575 accepted
+  class ADR_3586 accepted
+  class ADR_3595 accepted
+  class ADR_3598 accepted
+  class ADR_3599 accepted
+  class ADR_3600 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

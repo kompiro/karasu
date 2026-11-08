@@ -39,6 +39,7 @@ import { DiagramViewShortcuts } from "./DiagramViewShortcuts.js";
 import { PreviewFocusShortcut } from "./PreviewFocusShortcut.js";
 import { displayRootFor } from "../utils/diagnostic-location.js";
 import type { NodeMetadata } from "@karasu-tools/core";
+import type { FileSelectionStatus } from "../hooks/useFileSelection.js";
 
 const NO_NODE_METADATA_BY_PATH: Map<string, NodeMetadata> = new Map();
 
@@ -64,7 +65,7 @@ interface AppShellProps {
    * or initial deep-link). ProjectMode passes `selectFile`; modes without
    * per-file navigation (Serve/Memory) omit this. Issue #811.
    */
-  onFileChange?: (path: string) => Promise<void> | void;
+  onFileChange?: (path: string) => Promise<FileSelectionStatus>;
   /**
    * A host that owns the editor (the VS Code webview, #3311) takes the jump to a
    * node's definition: it gets the node and the file that defines it, and the
