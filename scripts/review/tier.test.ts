@@ -6,6 +6,7 @@ import {
   ADR_GENERATED_GLOBS,
   adrEditIsRecordOnly,
   type ChangedFile,
+  checkExitCode,
   type Hunk,
   classifyChange,
   diffFingerprint,
@@ -18,6 +19,7 @@ import {
   packageJsonTier,
   parseDiff,
   pathTier,
+  readFailure,
   regenerationWaivesRecord,
   UNREADABLE_PATH,
   unquoteGitPath,
@@ -1165,5 +1167,31 @@ describe("lineInDiff", () => {
   it("is unknown for a finding with no file or line, which stays in the PR's scope", () => {
     expect(lineInDiff(diff, undefined, 12)).toBe("unknown");
     expect(lineInDiff(diff, "docs/design/x.md", undefined)).toBe("unknown");
+  });
+});
+
+describe("readFailure", () => {
+  it("reads 404 and 410 as a reference the PR has to fix", () => {
+    expect(readFailure("gh: Not Found (HTTP 404)")).toBe("missing");
+    expect(readFailure("gh: This issue was deleted (HTTP 410)")).toBe("missing");
+  });
+
+  it("reads anything else as a fact that could not be read, which a rerun may fix", () => {
+    expect(readFailure("gh: Server Error (HTTP 502)")).toBe("unreadable");
+    expect(readFailure("gh: API rate limit exceeded (HTTP 403)")).toBe("unreadable");
+    expect(readFailure("error connecting to api.github.com")).toBe("unreadable");
+    expect(readFailure("")).toBe("unreadable");
+  });
+});
+
+describe("checkExitCode", () => {
+  it("fails on a broken rule and on an unread fact, with different codes", () => {
+    expect(checkExitCode({ errors: [], unreadable: [] })).toBe(0);
+    expect(checkExitCode({ errors: ["x"], unreadable: [] })).toBe(1);
+    expect(checkExitCode({ errors: [], unreadable: ["y"] })).toBe(4);
+  });
+
+  it("lets a broken rule outrank an unread fact: the PR has to change either way", () => {
+    expect(checkExitCode({ errors: ["x"], unreadable: ["y"] })).toBe(1);
   });
 });

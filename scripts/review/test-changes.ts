@@ -645,7 +645,7 @@ export function addsTest(files: readonly ChangedFile[]): boolean {
 // ---------------------------------------------------------------------------
 // The check
 
-interface Waiver {
+export interface Waiver {
   label: "No test" | "Test change";
   reason: string;
 }
