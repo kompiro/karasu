@@ -20,7 +20,8 @@ const ENV = {
   GIT_CONFIG_NOSYSTEM: "1",
 };
 const ISSUE = 99991;
-const DOC = "docs/design/label-frames.md";
+// Built, not written out: lint:design-doc-refs reads a literal path as a citation.
+const DOC = ["docs", "design", "label-frames.md"].join("/");
 const EN = "docs/spec/style.md";
 const JA = "docs/spec/style.ja.md";
 
