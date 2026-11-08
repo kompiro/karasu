@@ -12,7 +12,11 @@ karasu のワークフローを Claude Code 上で再現するには、portable 
 ```
 /plugin marketplace add kompiro/hane
 /plugin install hane@kompiro-hane
+/plugin install tpl-tools@kompiro-hane
 ```
+
+tpl-tools が marketplace に載る前に `kompiro-hane` を追加していた場合は、先に
+`/plugin marketplace update kompiro-hane` を実行する（そうしないと install が plugin を見つけられない）。
 
 plugin にバンドルされる skill とその karasu 内での主な用途:
 
@@ -25,6 +29,7 @@ plugin にバンドルされる skill とその karasu 内での主な用途:
 | `/hane:acceptance-test` | `docs/acceptance/NNNN-*.md` の受け入れテスト記録作成 |
 | `/hane:review-docs` | リンク切れ・ドキュメント整合性レビュー |
 | `/hane:sync-docs` | コード現状に合わせてリファレンス系ドキュメントを更新 |
+| `/tpl-tools:test-perspective` | `docs/test-perspectives/` の TPL の作成・更新・deprecate（tpl-tools plugin） |
 
 karasu 専用の skill（`/svg-icon`, `/update-examples`, `/coderabbit-converge`）は `.claude/skills/` 配下にローカル定義されている（plugin 化対象外）。
 
