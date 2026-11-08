@@ -854,8 +854,7 @@ export function classifyChange(input: {
   const files: { path: string; tier: Tier }[] = [];
   for (const f of input.files) {
     const t = fileTier(f, promotion);
-    const name =
-      f.path === UNREADABLE_PATH ? "(a diff section whose path could not be read)" : f.path;
+    const name = f.path === UNREADABLE_PATH ? UNREADABLE_NAME : f.path;
     if (rank(t) > rank("low")) reasons.push(`${name}: ${t}`);
     files.push({ path: name, tier: t });
     tier = stricter(tier, t);
@@ -894,30 +893,50 @@ function summaryPath(path: string): string {
   return `<code>${path.replace(/[^A-Za-z0-9/.-]/gu, (c) => `&#${c.codePointAt(0)};`)}</code>`;
 }
 
+/** The name {@link classifyChange} lists a diff section under when its path could not be read. */
+const UNREADABLE_NAME = "(a diff section whose path could not be read)";
+
+/** Rows the table lists before it counts the rest: GitHub drops a step summary over 1 MiB. */
+const SUMMARY_ROWS = 200;
+
 /**
  * The Review tier job summary of what a human reads (Issue #3543): the files by
  * tier, rebuilt from HEAD on every run, so it never goes stale as a list in the
- * PR body would (TPL-1032). A High PR with no High file is High by its label or
- * its author, and then the whole diff is read.
+ * PR body would (TPL-1032). kompiro reads only the High files when the High
+ * comes from them. A PR from an author off the trusted list, one that is High by
+ * its label alone, and one with a diff section whose path could not be read are
+ * read whole. Every High file is listed; past {@link SUMMARY_ROWS} rows, the
+ * files below High are counted instead.
  */
 export function tierSummary(input: {
   effective: Tier;
+  trustedAuthor: boolean;
   files: readonly { path: string; tier: Tier }[];
 }): string {
   const lines = ["### Files by tier", ""];
   if (input.effective === "high") {
+    const high = input.files.filter((f) => f.tier === "high");
+    const why = !input.trustedAuthor
+      ? "its author is not on the trusted list"
+      : high.some((f) => f.path === UNREADABLE_NAME)
+        ? "a diff section's path could not be read"
+        : high.length === 0
+          ? "its label (or a missing one), not by a file"
+          : null;
     lines.push(
-      input.files.some((f) => f.tier === "high")
+      why === null
         ? "The PR is High. kompiro reads the High files below and the PR's `## For kompiro` section."
-        : "The PR is High by its label or its author, not by a file. kompiro reads the whole diff " +
-            "and the PR's `## For kompiro` section.",
+        : `The PR is High: ${why}. kompiro reads the whole diff and the PR's \`## For kompiro\` section.`,
       "",
     );
   } else {
     lines.push(`The PR is ${input.effective}.`, "");
   }
+  const listed = input.files.filter((f, i) => f.tier === "high" || i < SUMMARY_ROWS);
   lines.push("| Tier | File |", "| --- | --- |");
-  for (const f of input.files) lines.push(`| ${f.tier} | ${summaryPath(f.path)} |`);
+  for (const f of listed) lines.push(`| ${f.tier} | ${summaryPath(f.path)} |`);
+  const rest = input.files.length - listed.length;
+  if (rest > 0) lines.push("", `${rest} more files below High are not listed.`);
   return [...lines, ""].join("\n");
 }
 
@@ -1238,6 +1257,8 @@ export type PrCheck =
       effective: Tier;
       /** Every changed file with its own tier, for the job summary. */
       files: Classification["files"];
+      /** Whether the author is on the trusted list: the job summary reads the rest whole. */
+      trustedAuthor: boolean;
       /** Rules the PR breaks: it has to change before it passes. */
       errors: string[];
       /** What could not be read: the PR may pass on a rerun. */
@@ -1346,6 +1367,7 @@ export function checkPr(pr: string, head?: string): PrCheck {
     summary,
     effective: tier,
     files: result.files,
+    trustedAuthor: TRUSTED_AUTHORS.has(view.author.login),
     errors,
     unreadable,
     waivers: tests.waivers,
@@ -1390,7 +1412,6 @@ function main(argv: string[]): number {
     }
     console.log(JSON.stringify(result.summary, null, 2));
     const summary = process.env.GITHUB_STEP_SUMMARY;
-    if (summary) appendFileSync(summary, tierSummary(result));
     if (result.waivers.length > 0) {
       const lines = result.waivers.map((w) => `- ${w.label}: ${w.reason}`);
       console.log(["Passed by a reason line:", ...lines].join("\n"));
@@ -1399,6 +1420,7 @@ function main(argv: string[]): number {
         appendFileSync(summary, ["### Passed by a reason line", "", ...lines, ""].join("\n"));
       }
     }
+    if (summary) appendFileSync(summary, tierSummary(result));
     for (const e of [...result.errors, ...result.unreadable]) console.error(`::error::${e}`);
     return checkExitCode(result);
   }

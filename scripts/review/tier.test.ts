@@ -1228,9 +1228,11 @@ describe("tierSummary (#3543)", () => {
     { path: "docs/spec/syntax.md", tier: "high" as const },
     { path: "packages/core/a.ts", tier: "medium" as const },
   ];
+  const summary = (extra: Partial<Parameters<typeof tierSummary>[0]> = {}) =>
+    tierSummary({ effective: "high", trustedAuthor: true, files, ...extra });
 
   it("tells kompiro to read the High files and For kompiro on a High PR", () => {
-    expect(tierSummary({ effective: "high", files }).split("\n")).toEqual([
+    expect(summary().split("\n")).toEqual([
       "### Files by tier",
       "",
       "The PR is High. kompiro reads the High files below and the PR's `## For kompiro` section.",
@@ -1243,16 +1245,51 @@ describe("tierSummary (#3543)", () => {
     ]);
   });
 
-  it("asks for the whole diff when no file is High but the PR is", () => {
-    const text = tierSummary({ effective: "high", files: [files[1]] });
+  it.each([
+    ["no file is High", { files: [files[1]] }, "its label (or a missing one)"],
+    ["the author is not trusted", { trustedAuthor: false }, "not on the trusted list"],
+    [
+      "a diff section could not be read",
+      {
+        files: [
+          ...files,
+          {
+            path: classifyChange({ files: [modified(UNREADABLE_PATH)], author: "kompiro" }).files[0]
+              .path,
+            tier: "high" as const,
+          },
+        ],
+      },
+      "could not be read",
+    ],
+  ])("asks for the whole diff when %s", (_, extra, why) => {
+    const text = summary(extra);
     expect(text).toContain("kompiro reads the whole diff");
+    expect(text).toContain(why);
     expect(text).not.toContain("High files below");
   });
 
   it("names the tier without a reading line below High", () => {
-    const text = tierSummary({ effective: "medium", files: [files[1]] });
+    const text = summary({ effective: "medium", files: [files[1]] });
     expect(text).toContain("The PR is medium.");
     expect(text).not.toContain("kompiro reads");
+  });
+
+  it("lists every High file and counts the rest past 200 rows", () => {
+    const many = [
+      ...Array.from({ length: 250 }, (_, i) => ({
+        path: `docs/spec/${i}.md`,
+        tier: "high" as const,
+      })),
+      ...Array.from({ length: 50 }, (_, i) => ({
+        path: `packages/core/${i}.ts`,
+        tier: "medium" as const,
+      })),
+    ];
+    const rows = summary({ files: many }).split("\n");
+    expect(rows.filter((l) => l.startsWith("| high"))).toHaveLength(250);
+    expect(rows.filter((l) => l.startsWith("| medium"))).toHaveLength(0);
+    expect(rows).toContain("50 more files below High are not listed.");
   });
 
   it.each([
@@ -1263,7 +1300,7 @@ describe("tierSummary (#3543)", () => {
     ["a\n| high | b.md", "a&#10;&#124;&#32;high&#32;&#124;&#32;b.md"],
     ["_x_/*y*.md", "&#95;x&#95;/&#42;y&#42;.md"],
   ])("renders the path %j as literal text in one cell", (path, cell) => {
-    const rows = tierSummary({ effective: "high", files: [{ path, tier: "high" }] })
+    const rows = summary({ files: [{ path, tier: "high" }] })
       .split("\n")
       .filter((l) => l.startsWith("| high"));
     expect(rows).toEqual([`| high | <code>${cell}</code> |`]);
