@@ -680,19 +680,57 @@ describe("compile — edge#<canonical id> written the way the app writes it", ()
     expect(strokeOf(styled.svg, other[0], other[1])).not.toBe("#00FF00");
   });
 
-  // The two bases used to be the same `a->b->c`. The rule now names one edge;
-  // the SVG still paints both because the resolved style map keys edges by the
-  // plain join (#3481), so this pins the selector side only.
+  // The two bases used to be the same `a->b->c`, and so did the resolved style
+  // map key: whichever edge was written last styled both (#3481). Each edge is
+  // the target once, so neither write order can hide a shared key.
+  const ARROW_PAIR = `system S {\n  service a {}\n  service "b->c" {}\n  service "a->b" {}\n  service c {}\n  "a->b" -> c\n  a -> "b->c"\n}`;
+
   it("gives endpoints containing -> their own id and a rule that names one of them", () => {
-    const krs = `system S {\n  service a {}\n  service "b->c" {}\n  service "a->b" {}\n  service c {}\n  "a->b" -> c\n  a -> "b->c"\n}`;
-    const plain = render(krs);
+    const plain = render(ARROW_PAIR);
     expect(plain.diagnostics.filter((d) => d.code === "ambiguous-edge-base")).toEqual([]);
-    const target = canonicalIdOf(plain.svg, "a", "b->c");
-    const other = canonicalIdOf(plain.svg, "a->b", "c");
-    expect([target, other]).toEqual(['a->"b->c"', '"a->b"->c']);
-    const sheet = StyleParser.parse(`edge#${target} { color: #00FF00; }`);
-    expect(sheet.diagnostics).toEqual([]);
-    expect(sheet.value.rules[0].selector.edgeId).toBe(target);
+    const first = canonicalIdOf(plain.svg, "a->b", "c");
+    const last = canonicalIdOf(plain.svg, "a", "b->c");
+    expect([first, last]).toEqual(['"a->b"->c', 'a->"b->c"']);
+    for (const [target, other, id] of [
+      [["a->b", "c"], ["a", "b->c"], first],
+      [["a", "b->c"], ["a->b", "c"], last],
+    ] as const) {
+      const sheet = StyleParser.parse(`edge#${id} { color: #00FF00; }`);
+      expect(sheet.diagnostics).toEqual([]);
+      expect(sheet.value.rules[0].selector.edgeId).toBe(id);
+      const styled = render(ARROW_PAIR, `edge#${id} { color: #00FF00; }`);
+      expect(strokeOf(styled.svg, target[0], target[1])).toBe("#00FF00");
+      expect(strokeOf(styled.svg, other[0], other[1])).not.toBe("#00FF00");
+    }
+  });
+
+  // The layout read `direction` back with the same plain join, so a hint on one
+  // of the pair steered the other too, or neither (#3481).
+  it("turns only the edge a direction rule names when endpoints contain ->", () => {
+    const krs = `system S {\n  service Box {\n    domain a {}\n    domain "b->c" {}\n    domain "a->b" {}\n    domain c {}\n    "a->b" -> c\n    a -> "b->c"\n  }\n}`;
+    const yOf = (svg: string, id: string): number => {
+      const open = svg.indexOf(`data-node-id="${escapeAttr(id)}"`);
+      if (open < 0) throw new Error(`no node ${id}`);
+      const m = /<rect\s[^>]*\sy="([0-9.]+)"/.exec(svg.slice(open, open + 800));
+      if (!m) throw new Error(`no rect y for ${id}`);
+      return parseFloat(m[1]);
+    };
+    const draw = (styleSource: string) => {
+      const result = compile(krs, { styleSource, viewPath: ["S", "Box"] });
+      if (result.diagramType !== "system") throw new Error("expected system result");
+      return result.svg;
+    };
+    const plain = draw("");
+    expect(yOf(plain, "a->b")).toBeLessThan(yOf(plain, "c"));
+    expect(yOf(plain, "a")).toBeLessThan(yOf(plain, "b->c"));
+
+    const firstUp = draw(`edge#"a->b"->c { direction: up; }`);
+    expect(yOf(firstUp, "a->b")).toBeGreaterThan(yOf(firstUp, "c"));
+    expect(yOf(firstUp, "a")).toBeLessThan(yOf(firstUp, "b->c"));
+
+    const lastUp = draw(`edge#a->"b->c" { direction: up; }`);
+    expect(yOf(lastUp, "a")).toBeGreaterThan(yOf(lastUp, "b->c"));
+    expect(yOf(lastUp, "a->b")).toBeLessThan(yOf(lastUp, "c"));
   });
 });
 

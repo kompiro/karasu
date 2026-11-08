@@ -9,6 +9,7 @@
 
 import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import type { KrsEdge } from "../types/ast.js";
+import { edgeKey } from "../view/edge-key.js";
 
 /**
  * Sort items within a layer by the barycenter heuristic to minimize edge crossings.
@@ -171,7 +172,7 @@ export function applyEdgeDirectionWithinLayer(
   for (const edge of edges) {
     if (!inLayer.has(edge.from) || !inLayer.has(edge.to)) continue;
     if (layerOf.get(edge.from) !== layerOf.get(edge.to)) continue;
-    const dir = edgeDirections.get(`${edge.from}->${edge.to}`);
+    const dir = edgeDirections.get(edgeKey(edge));
     if (dir === "left" || dir === "right") {
       applicable.push({ from: edge.from, to: edge.to, direction: dir });
     }
