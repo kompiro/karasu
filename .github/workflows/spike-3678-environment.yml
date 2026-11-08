@@ -1,0 +1,31 @@
+name: Spike 3678 environment branch policy
+
+# Spike for Issue #3678 (slice 0 of #3673). Never merged.
+#
+# The Low PR merger will keep its GitHub App key in an environment whose
+# deployment branches are limited to `main`. That only protects the key if a
+# workflow running from a same-repo branch cannot use the environment.
+# `github-pages` already has that policy (custom branch policy: `main`), so the
+# `environment` job below should be refused on both events, while the `control`
+# job (no environment) runs and proves the workflow itself was started.
+# No secret is read: the job only echoes.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - spike/3678-environment-branch-policy
+
+permissions: {}
+
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "event=$GITHUB_EVENT_NAME ref=$GITHUB_REF"
+
+  environment:
+    runs-on: ubuntu-latest
+    environment: github-pages
+    steps:
+      - run: echo "NOT REFUSED event=$GITHUB_EVENT_NAME ref=$GITHUB_REF"
