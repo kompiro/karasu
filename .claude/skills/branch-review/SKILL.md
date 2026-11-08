@@ -6,10 +6,11 @@ description: >
   rules whose paths match and the TPLs that name the changed files; keep only findings it verified;
   say whether this PR caused each one; and print a verdict and a table in Japanese for the
   maintainer plus English rows for the local review record. Runs forked, with no implementation
-  context. Pass nothing for the current branch against origin/main, or a PR number, or a branch.
+  context. Pass nothing for the current branch against origin/main, a PR number, a PR number
+  with a commit (`123@<sha>`) to read the PR as it was at that commit, or a branch.
   Trigger when the user says: "ブランチをレビュー", "差分をレビュー", "branch-review",
   "review this branch", "review PR <n> with branch-review", or similar phrases.
-argument-hint: "[<PR number> | <branch>]"
+argument-hint: "[<PR number> | <PR number>@<sha> | <branch>]"
 context: fork
 agent: general-purpose
 ---
@@ -38,9 +39,13 @@ agent: general-purpose
 | 引数 | 決め方 |
 | --- | --- |
 | 空 | `git fetch origin main` の後、`BASE=$(git merge-base origin/main HEAD)`、`HEAD_REV=HEAD`。未コミットの変更は対象外とし、あれば「確認していない範囲」に書く |
-| PR 番号（`123` / `#123`） | `gh pr view <n> --json title,body,state,baseRefOid,headRefOid,closingIssuesReferences`。`git fetch origin pull/<n>/head` の後、`BASE=$(git merge-base <baseRefOid> <headRefOid>)`、`HEAD_REV=<headRefOid>`。マージ済みの PR でもこの 2 つで当時の差分を読む |
+| PR 番号（`123` / `#123`） | `gh pr view <n> --json title,body,state,baseRefOid,headRefOid,closingIssuesReferences`。`git fetch origin main pull/<n>/head` の後、`BASE=$(git merge-base <baseRefOid> <headRefOid>)`、`HEAD_REV=<headRefOid>`。マージ済みの PR でもこの 2 つで当時の差分を読む |
 | PR 番号とコミット（`123@<sha>`） | PR 番号と同じ。ただし `HEAD_REV=<sha>`、`BASE=$(git merge-base <baseRefOid> <sha>)` にして、PR の途中の状態を読む。PR の本文はマージ時のものなので、`<sha>` より後の修正を前提にした記述は意図として読まない |
-| ブランチ名 | `git fetch origin <branch>` の後、`BASE=$(git merge-base origin/main origin/<branch>)`、`HEAD_REV=origin/<branch>` |
+| ブランチ名 | `git fetch origin main <branch>` の後、`BASE=$(git merge-base origin/main origin/<branch>)`、`HEAD_REV=origin/<branch>` |
+
+どの行でも main を一緒に fetch する。手元の `origin/main` が古いと、ブランチ名では merge-base が古い main のコミットに
+落ちて、その後に main へ入った変更まで PR の差分として読むことになり、PR 番号では `baseRefOid` が手元に無く
+`git merge-base` が `Not a valid commit name` で止まる。
 
 差分は `git diff $BASE $HEAD_REV`、ファイルの一覧は `git diff --name-status $BASE $HEAD_REV`。
 `HEAD_REV` が作業ツリーと違うときは、ファイルを `git show $HEAD_REV:<path>` で、検索を
@@ -91,7 +96,7 @@ CI が見ていない中身（記述が正しいか）である。
 | --- | --- | --- |
 | 構文・解決・スタイル・整形（`packages/core/src/` の lexer / parser / resolver / style / formatter） | `docs/spec/*.md` と `*.ja.md` の該当箇所の記述、LSP の補完・hover・診断（`packages/lsp`）、`packages/vscode/syntaxes/*.tmLanguage.json`、`examples/` と AT の `krs` | 日英の見出しの構造（`spec-structure-sync`）、fence が parse できるか（`krs-fences`） |
 | 診断コード・warning | `docs/spec/diagnostics.md` / `.ja.md` の説明文、`packages/i18n/src/en.ts` / `ja.ts` のメッセージ | catalog にコードがあるか（`diagnostics-catalog.test.ts`） |
-| `docs/spec/**` | skill が同梱するコピー（`packages/skills/skills/*/reference/`）が意味の上で合っているか | 同梱コピーとの一致（`skill-reference-bundle-sync`） |
+| `docs/spec/**` | skill の本文（`packages/skills/skills/*/SKILL.md`）が spec の内容を述べている箇所の記述 | 同梱コピー（`packages/skills/skills/*/reference/`）がソースと一致するか（`skill-reference-bundle-sync`） |
 | CLI のコマンド・オプション・出力 | `docs/tools/**`・`docs/guide/**`・skill（`packages/skills/skills/**`・`.claude/skills/**`）の手順と、そこに書かれた期待する出力 | コマンド名が存在するか（`skill-cli-refs`） |
 | app の UI・ショートカット | `docs/tools/**` の説明、AT、`packages/e2e` | ショートカットの一覧（`app-shortcut-docs-sync`） |
 | レビュー・CI・workflow の仕組み（`scripts/**`・`.github/**`） | `docs/process.md`・`docs/process/**`・`.claude/rules/**`・`.claude/skills/**`・PR テンプレートの記述 | ADR の assumptions（`adr:check-assumptions`） |
@@ -103,6 +108,10 @@ CI が見ていない中身（記述が正しいか）である。
 
 ルートの `CLAUDE.md` を読む。`.claude/rules/*.md` の frontmatter の `paths:` を読み、変更したファイルに
 当てはまるルールを全部読む。差分がそのルールに反していれば候補にする。指摘にはルールのファイルと該当の文を書く。
+
+読むのは今のファイルなので、過去の PR では当時に無かったルールも当たる。指摘の根拠にした文が `$BASE` の時点に
+あったかを `git show $BASE:<path>` で確かめ、無かった文で見つけた指摘は、F の TPL と同じく原因を「この PR」と
+したまま重大度を 1 段下げる。
 
 ### F. TPL
 
