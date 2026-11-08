@@ -224,6 +224,15 @@ describe("judgeChecks", () => {
     expect(judgeChecks(["Validate", "Check"], runs, without)).toMatchObject({ state: "fail" });
   });
 
+  it("does not count a name's failure next to a run of that name it could not map", () => {
+    // The unmapped run may be the ready run that replaces the failed draft run.
+    const failed = reported("Check", "failure", { runId: 400 });
+    const newer = reported("Check", null, { runId: 401 });
+    const { runs, workflows } = split([failed, newer, reported("Validate", "success")]);
+    const without = workflows.filter((w) => w !== newer.workflow);
+    expect(judgeChecks(REQUIRED, runs, without)).toMatchObject({ state: "unknown" });
+  });
+
   it("cannot decide when a check run belongs to no workflow run it read", () => {
     const { runs, workflows } = split(passing());
     expect(judgeChecks(REQUIRED, runs, workflows.slice(1))).toMatchObject({ state: "unknown" });

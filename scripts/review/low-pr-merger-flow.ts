@@ -172,11 +172,12 @@ export function judgeChecks(
   let stuck = false;
   for (const name of [...new Set(required)]) {
     const latest = new Map<string, { run: CheckRun; workflow: WorkflowRun }>();
+    const unmapped: string[] = [];
     for (const run of runs) {
       if (run.app !== ACTIONS_APP || run.name !== name) continue;
       const workflow = run.check_suite_id === null ? undefined : bySuite.get(run.check_suite_id);
       if (workflow === undefined) {
-        unknown.push(`check run ${run.id} (${name}) has no workflow run to belong to`);
+        unmapped.push(`check run ${run.id} (${name}) has no workflow run to belong to`);
         continue;
       }
       const key = `${workflow.path} ${workflow.event}`;
@@ -189,6 +190,12 @@ export function judgeChecks(
       ) {
         latest.set(key, { run, workflow });
       }
+    }
+    if (unmapped.length > 0) {
+      // The unmapped run may be the newer run of a workflow whose older run failed,
+      // so this name's results are not counted at all.
+      unknown.push(...unmapped);
+      continue;
     }
     if (latest.size === 0) {
       waiting.push(name);
@@ -206,7 +213,7 @@ export function judgeChecks(
       }
     }
   }
-  // A failure outranks what could not be counted: the PR is rejected either way.
+  // Another name's failure outranks what could not be counted: the PR is rejected either way.
   if (failed.length > 0) return { state: "fail", failed };
   if (unknown.length > 0) return { state: "unknown", messages: unknown };
   if (waiting.length > 0) return { state: "pending", waiting, stuck };
