@@ -102,9 +102,10 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
   `.claude/rules/**`）と言語の挙動のコードだけである。** どちらも中身を Design Doc で合意し、ずれは照合が拾う。
   セキュリティの境界（テストファイルも含む）と、それ以外の High（レビューやリリースの仕組み、依存の変更など）は、
   文面が合意どおりでも挙動を確かめる必要があるので読む
-- **kompiro に渡す直前に、summary が出した Design Doc の blob と `git rev-parse origin/main:<path>` を比べる。** 違えば
-  main を取り込んで Review tier を走り直させる（ruleset は base に追いついていることを求めないので、検査の後に main で
-  Design Doc が変わると結果が古くなる）。渡した後の変化は拾わない。その改訂は kompiro がマージした Design の PR である
+- **kompiro に渡す直前に、Review tier を走り直させる。** ruleset は base に追いついていることを求めないので、検査の後に
+  main で Design Doc が変わると、公開された summary が古いまま絞った範囲を示す。走り直した run は `main` の先頭の blob と
+  比べ直し、違えば「merge main」を理由に裏付けを外すので、そのときは main を取り込む。渡した後の変化は拾わない。その改訂は
+  kompiro がマージした Design の PR である
 
 - 表は Review tier が HEAD から毎回作り直す。PR 本文にファイルの一覧を書かない（コミットを足すと古くなる。TPL-1032）
 - job summary に表が無い PR（この表を書く前の Review tier の結果が残っている PR など）は、差分の全部を読むか、

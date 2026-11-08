@@ -199,12 +199,15 @@ node scripts/review/tier.ts same-change --from <最後にレビューされた�
 ## 終わり方
 
 PR 本文のローカルレビューの記録に、このラウンドまでの CodeRabbit の指摘と対応を足す（レビュアーは
-`coderabbit`、ラウンドの CLI の指摘は `cli`。`docs/process/review.md`「ローカルレビューの記録」）。記録を
-書き直したら、Review tier が走り直して記録が HEAD を覆うのを待つ。
+`coderabbit`、ラウンドの CLI の指摘は `cli`。`docs/process/review.md`「ローカルレビューの記録」）。記録に
+`design` の行があり、ラウンドの修正か main の取り込みで PR の変更が変わったなら（`tier.ts same-change` が
+`false`）、記録を書き直す前に Design Doc との照合を当て直し、その結果で `design` の行を作り直す（review.md
+「Design Doc との照合」）。前の照合の行を新しい HEAD に持ち越さない。
 
-合意済みの Design Doc が PR を裏付けていれば（`node scripts/review/tier.ts check --pr <pr>` が出す `designDoc` が
-`backed`。Review tier の run の summary にも出る）、その blob を
-`git fetch origin main && git rev-parse origin/main:<path>` と比べる。違えば main を取り込んで push し、上の「main の
+渡す直前に、PR の最新の Review tier の run を走り直させ（`gh run list --workflow review-tier.yml --branch <branch>
+--limit 1 --json databaseId` の run を `gh run rerun`）、終わるのを待つ。走り直した run は `main` の先頭で判定し直すので、
+手元の `origin/main` ではなく公開された summary を最新にできる。その summary（`node scripts/review/tier.ts check --pr <pr>`
+の `designDoc` も同じ）が「merge main」を理由に裏付けを外していれば、main を取り込んで push し、上の「main の
 取り込み」に従う（`docs/process/review.md`「High の PR で人間が読むもの」）。PushNotification ツールが使えれば 1 行で通知し、
 最後のメッセージに次をまとめる。
 
