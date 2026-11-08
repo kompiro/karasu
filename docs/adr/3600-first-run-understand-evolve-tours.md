@@ -4,7 +4,7 @@ title: 初回体験の Understand と Evolve を同じ機構のガイドにし�
 status: accepted
 date: 2026-11-07
 topic: app-ui
-related_to: [ADR-3598, ADR-3599]
+related_to: [ADR-3598, ADR-3599, ADR-3601]
 scope:
   packages: [app, i18n, core]
 assumptions:
