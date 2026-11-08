@@ -10,7 +10,7 @@ applicable_to:
 discovered_from:
   - issue: "#NNNN" # 採番の起点 = この TPL を起こした作業の Issue。proactive でも書く。<n> はこの番号にする（別の TPL が使用済みなら PR 番号）
   # - root_cause_adr: "ADR-<n>"
-  # - root_cause_file: "path/to/file.ts:LINE" # proactive は docs/concepts.* など原則側のファイル
+  # - root_cause_file: "path/to/file.ts:symbol" # 行番号は書かない（symbol か #anchor）。proactive は docs/concepts.* など原則側のファイル
 related_to: []
 topic: core-concepts
 scope:

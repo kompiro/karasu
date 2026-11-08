@@ -29,7 +29,7 @@ discovered_from:
   - issue: "#183"
   - issue: "#1479"
   - issue: "#2482"
-  - root_cause_file: "packages/core/src/renderer/svg-builder.ts:257"
+  - root_cause_file: "packages/core/src/renderer/svg-builder.ts:buildLegendFooter"
   - root_cause_file: "packages/core/src/builtins/icon-theme.ts"
   - root_cause_file: "packages/core/src/resolver/style-resolver.ts"
   - root_cause_file: "packages/app/src/hooks/useViewSvg.ts"

@@ -12,7 +12,7 @@ discovered_from:
   - issue: "#1522"
   - issue: "#2082"
   - issue: "#2410"
-  - root_cause_file: "packages/lsp/src/diagnostics.ts:82"
+  - root_cause_file: "packages/lsp/src/diagnostics.ts:annotation-possible-typo"
 related_to:
   - TPL-1386
   - TPL-1001

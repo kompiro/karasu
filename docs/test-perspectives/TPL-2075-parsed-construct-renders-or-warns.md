@@ -17,7 +17,7 @@ discovered_from:
   - issue: "#2075"
   - issue: "#2223"
   - issue: "#2501"
-  - root_cause_file: "packages/core/src/view/view-extract.ts:972"
+  - root_cause_file: "packages/core/src/view/derived-edges.ts:deriveCanvasEdges"
 related_to:
   - TPL-1503
   - TPL-2170
