@@ -14,10 +14,13 @@
  *    cannot also forge what it is compared with.
  * 3. Shows the result, and anything else in the stage queue of the released
  *    packages, which should be rejected. On confirmation, approves the group
- *    (npm asks for 2FA each time) and stops at the first failure.
- * 4. If the plan has another group, re-runs release.yml on the release commit
+ *    (npm asks for 2FA each time) and stops at the first failure. Only the
+ *    files can be checked here: the stage queue does not show the manifest.
+ * 4. Waits until npm serves the approved versions and compares their install
+ *    fields with the local pack, stopping on a difference.
+ * 5. If the plan has another group, re-runs release.yml on the release commit
  *    to stage it, waits, and goes back to 2.
- * 5. Starts release-confirm.yml, which verifies the published versions again,
+ * 6. Starts release-confirm.yml, which verifies the published versions again,
  *    tags them and closes the train Issue.
  *
  * `--dry-run` does 1 to 3 for the first group without approving anything; run
@@ -36,6 +39,7 @@ import {
   compareTarballs,
   describeDifference,
   isSame,
+  manifestDifferences,
   platformPackages,
   readTarball,
   type TarballDifference,
@@ -200,6 +204,31 @@ async function waitForPublished(releases: PlannedRelease[]): Promise<void> {
   }
 }
 
+/**
+ * Compares the install fields npm now serves with the local pack's package.json.
+ * npm takes the version manifest from the publish request, apart from the
+ * tarball, and the stage queue does not show it (`npm stage view` has no
+ * manifest), so this is the first point where a counterfeit manifest can be
+ * seen. It runs right after the approval instead of waiting for the daily
+ * release-confirm.yml, and stops before the next group.
+ */
+function checkInstallFields(packed: Map<string, Record<string, unknown>>): void {
+  const differing = [...packed].flatMap(([spec, manifest]) => {
+    const registry = JSON.parse(runOk("npm", ["view", spec, "--json"])) as Record<string, unknown>;
+    const fields = manifestDifferences(manifest, registry);
+    return fields.length > 0 ? [`${spec}: ${fields.join(", ")}`] : [];
+  });
+  if (differing.length > 0) {
+    throw new Error(
+      [
+        "npm serves install fields that differ from the local pack. Follow docs/release.md 「公開後の照合に落ちたとき」 now:",
+        ...differing,
+      ].join("\n"),
+    );
+  }
+  console.log("Install fields on npm match the local pack.");
+}
+
 async function confirm(question: string): Promise<boolean> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
@@ -241,9 +270,14 @@ export async function main(argv: string[]): Promise<void> {
         break;
       }
       const queue = names.flatMap(stagedItems);
+      const packed = new Map<string, Record<string, unknown>>();
       const checks: Check[] = plan[0].map((release) => {
         const staged = findStaged(queue, release);
         const local = readTarball(readFileSync(join(outDir, release.tarball.path)));
+        packed.set(
+          `${release.name}@${release.version}`,
+          JSON.parse(local.get("package.json")!.toString("utf8")) as Record<string, unknown>,
+        );
         return {
           release,
           staged,
@@ -290,6 +324,7 @@ export async function main(argv: string[]): Promise<void> {
         approvedAny = true;
       }
       await waitForPublished(checks.map((check) => check.release));
+      checkInstallFields(packed);
       if (plan.length === 1) break;
       await rerunRelease(resolved);
     }

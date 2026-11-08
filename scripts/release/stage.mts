@@ -143,11 +143,7 @@ export function isAlreadyStaged(stderr: string, version: string): boolean {
   );
 }
 
-export function classifyStage(
-  result: CommandResult,
-  name: string,
-  version: string,
-): StageOutcome {
+export function classifyStage(result: CommandResult, name: string, version: string): StageOutcome {
   if (result.status === 0) {
     const parsed = JSON.parse(result.stdout) as Record<
       string,
