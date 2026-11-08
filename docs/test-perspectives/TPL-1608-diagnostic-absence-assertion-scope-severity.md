@@ -75,6 +75,7 @@ store を共有して `shared-infra-fan-in` を出す）も、fixture を書き�
 
 ## 関連テスト
 
+- `scripts/lint/e2e-spec-conventions.test.ts` — `packages/e2e` の spec と fixture で、severity を絞らない `.warning-item` を走査する。core と app のテストや `.warning-panel` の不在には届かないので、チェックリストの印にはしない。
 - `packages/e2e/tests/at-0047-infra-nodes-system-diagram.spec.ts`
 - `packages/app/src/components/WarningPanel.test.tsx`（severity 別 class の検証）
 - `packages/core/src/parser/parser.test.ts`（`boundary declarations` › `stays silent for members that render only on drill levels — no warning of any kind (#1983)` が全件・全 severity の不在を意図として明示する例。`parses sampleKrs from getReference() without errors` などは `d.severity === "warning"` で絞ってから件数を見る）
