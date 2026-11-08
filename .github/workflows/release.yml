@@ -1,5 +1,8 @@
 name: Release
 
+# REHEARSAL ONLY (spike/3240-stage-publish-rehearsal): stages prerelease
+# versions under the `rehearsal` tag from this branch; kompiro rejects them.
+#
 # Stage step of the release pipeline (OIDC trusted publishing, #3240).
 #
 # Fires when a release PR lands: `changeset version` only ever rewrites
@@ -83,67 +86,10 @@ jobs:
       # pinned exactly by another one is approved before the other is staged
       # (TPL-3240), so `pnpm release:approve` re-runs this workflow for the
       # next group. The table of what was staged is in the job summary.
+      - name: Show the npm version (rehearsal)
+        run: npm --version
+
       - name: Stage on npm
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm run release
-
-  # The monthly release train (#2922): the VS Code extension ships in the same
-  # run. It does not depend on npm, so it runs even when the npm publish failed
-  # part-way; a job after a failed `needs` is otherwise skipped. The called
-  # workflow publishes only a version the Marketplace does not have yet, and
-  # its own `record` job adds the extension to this commit's Release.
-  vscode:
-    name: VS Code extension
-    needs: release
-    if: ${{ !cancelled() }}
-    permissions:
-      contents: write # the called `record` job pushes the tag and edits the Release
-      id-token: write # azure/login exchanges the GitHub OIDC token
-    uses: ./.github/workflows/vscode-release.yml
-    with:
-      pre_release: false
-
-  # Reports on the train's tracking Issue (#2922, #3240). A failed run is
-  # commented on and keeps the Issue open, which holds the next train. When npm
-  # versions were staged, the Issue stays open with what waits for approval;
-  # release-confirm.yml closes it once they are approved and tagged. A train
-  # that published nothing to npm is closed here. Only the Issue of the release
-  # branch this commit was merged from is touched, so a manual run after main
-  # moved on, or a push that merely edits a CHANGELOG, closes nothing.
-  close-train:
-    name: Close the release train Issue
-    needs: [release, vscode]
-    if: ${{ !cancelled() }}
-    # Shared with release-confirm.yml so the two never judge or comment on the
-    # same train at once.
-    concurrency:
-      group: release-record
-      cancel-in-progress: false
-      queue: max # keep a waiting job instead of replacing it
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write # comment on and close the tracking Issue
-      pull-requests: read # find the PR this commit was merged from
-      contents: read
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          fetch-depth: 0 # read the versions of the first parent and the tags
-
-      # Node 24 runs the .mts script through type stripping; no install needed.
-      - uses: actions/setup-node@v7.1.0
-        with:
-          node-version: "24"
-
-      - name: Close or report on the tracking Issue
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_RESULT: ${{ needs.release.result }}
-          VSCODE_RESULT: ${{ needs.vscode.result }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: >-
-          node scripts/release/confirm.mts close-train
-          --release-result "$RELEASE_RESULT"
-          --vscode-result "$VSCODE_RESULT"
-          --run-url "$RUN_URL"

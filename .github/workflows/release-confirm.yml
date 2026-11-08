@@ -21,10 +21,13 @@ name: Release — Confirm
 # Publishers trust release.yml only. `verify` runs the release commit's build
 # and can only read; `record` can push tags and installs nothing.
 
+# REHEARSAL ONLY (spike/3240-stage-publish-rehearsal): release-confirm.yml is
+# not on main yet, so it cannot be dispatched; a push to this branch runs it.
+# `locate` is pinned to the previous release (all three versions are on npm and
+# tagged), and the record job is removed so nothing is tagged from a spike.
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "17 3 * * *" # daily, 12:17 JST
+  push:
+    branches: [spike/3240-stage-publish-rehearsal]
 
 concurrency:
   group: release-confirm
@@ -56,11 +59,13 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Locate the release commit
+      - name: Locate the release commit (pinned for the rehearsal)
         id: locate
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/release/confirm.mts locate
+        run: |
+          echo "sha=eaae518d871a6679268c43ac18a3caa48d6d31f1" >> "$GITHUB_OUTPUT"
+          echo "issue=" >> "$GITHUB_OUTPUT"
+          echo 'candidates=[{"name":"karasu","dir":"packages/cli","version":"0.10.0","workspaceDependencies":["karasu-skills"]},{"name":"@karasu-tools/core","dir":"packages/core","version":"0.4.1","workspaceDependencies":[]},{"name":"karasu-skills","dir":"packages/skills","version":"0.2.1","workspaceDependencies":[]}]' >> "$GITHUB_OUTPUT"
+          echo "unplanned=" >> "$GITHUB_OUTPUT"
 
       # The release commit is built in its own directory with this workflow's
       # scripts doing the comparison, so the checked code is never the code
@@ -107,39 +112,3 @@ jobs:
             echo "::error::Published outside the plan: ${UNPLANNED}"
             exit 1
           fi
-
-  record:
-    name: Record the release
-    needs: verify
-    if: ${{ !cancelled() && needs.verify.outputs.sha != '' }}
-    # Shared with release.yml's close-train and vscode-release.yml's record so
-    # no two of them pick the same release-YYYY-MM-DD or judge the same train
-    # at once.
-    concurrency:
-      group: release-record
-      cancel-in-progress: false
-      queue: max # keep a waiting job instead of replacing it
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write # push the package tags and create the GitHub Release
-      issues: write # comment on and close the train Issue
-      pull-requests: read # find the PR the release commit was merged from
-      actions: read # read the VS Code job of the release.yml run
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          fetch-depth: 0 # the scripts read the tags and the first parent
-
-      # Node 24 runs the .mts scripts through type stripping; no install needed.
-      - uses: actions/setup-node@v7.1.0
-        with:
-          node-version: "24"
-
-      - name: Tag, create the Release and close the train
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SHA: ${{ needs.verify.outputs.sha }}
-          ISSUE: ${{ needs.verify.outputs.issue }}
-          VERIFIED: ${{ needs.verify.outputs.verified }}
-          VERIFY_REPORT: ${{ needs.verify.outputs.report }}
-        run: node scripts/release/confirm.mts record --sha "$SHA" --issue "$ISSUE" --verified "$VERIFIED"
