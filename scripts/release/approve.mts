@@ -30,7 +30,7 @@ import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { findTrain, npmPackagesAt, run, runOk } from "./release-state.mts";
+import { findTrain, isOnNpm, npmPackagesAt, run, runOk } from "./release-state.mts";
 import { readPlan, type PlannedRelease } from "./stage.mts";
 import {
   compareTarballs,
@@ -169,14 +169,35 @@ async function rerunRelease(sha: string): Promise<void> {
   ) as { databaseId: number }[];
   if (runs.length === 0) throw new Error(`no release.yml run for ${sha} to re-run`);
   const id = String(runs[0].databaseId);
+  const attempt = () =>
+    Number(runOk("gh", ["run", "view", id, "--json", "attempt", "--jq", ".attempt"]));
+  const before = attempt();
   step(`Re-running release.yml run ${id} to stage the next group`);
   runOk("gh", ["run", "rerun", id]);
-  for (let i = 0; i < 30; i++) {
-    const status = runOk("gh", ["run", "view", id, "--json", "status", "--jq", ".status"]);
-    if (status !== "completed") break;
-    await sleep(2000);
-  }
+  // Watch the new attempt, not the finished one it replaces.
+  await waitFor(`attempt ${before + 1} of run ${id}`, () => attempt() > before);
   attached("gh", ["run", "watch", id, "--exit-status"]);
+}
+
+/** Polls until `done` holds, for up to five minutes. */
+async function waitFor(what: string, done: () => boolean): Promise<void> {
+  for (let i = 0; i < 60; i++) {
+    if (done()) return;
+    await sleep(5000);
+  }
+  throw new Error(`timed out waiting for ${what}`);
+}
+
+/**
+ * Waits until npm serves the approved versions. The next group's plan and
+ * release-confirm.yml both read the registry, which can lag behind an approval.
+ */
+async function waitForPublished(releases: PlannedRelease[]): Promise<void> {
+  for (const release of releases) {
+    await waitFor(`${release.name}@${release.version} on npm`, () =>
+      isOnNpm(release.name, release.version),
+    );
+  }
 }
 
 async function confirm(question: string): Promise<boolean> {
@@ -199,6 +220,7 @@ export async function main(argv: string[]): Promise<void> {
         throw new Error(`the release PR of ${train.branch} has not merged yet`);
       return train.sha;
     })();
+  runOk("git", ["fetch", "--quiet", "origin"]);
   const resolved = runOk("git", ["rev-parse", `${sha}^{commit}`]);
   const names = npmPackagesAt(resolved).map((pkg) => pkg.name);
 
@@ -267,6 +289,7 @@ export async function main(argv: string[]): Promise<void> {
         attached("npm", ["stage", "approve", check.staged!.id]);
         approvedAny = true;
       }
+      await waitForPublished(checks.map((check) => check.release));
       if (plan.length === 1) break;
       await rerunRelease(resolved);
     }

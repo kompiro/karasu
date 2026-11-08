@@ -21,6 +21,18 @@ export type TarballFiles = Map<string, Buffer>;
 
 const BLOCK = 512;
 
+/*
+ * The reader is strict on purpose. npm extracts tarballs with node-tar, and a
+ * counterfeit could hide a file from a lenient reader that node-tar still
+ * extracts (an entry after a single zero block, a header with a bad checksum
+ * that node-tar skips and then reads its data as headers). Anything this reader
+ * might interpret differently from node-tar is rejected instead of guessed at,
+ * so the check fails rather than passing a tarball it did not fully read.
+ */
+
+/** pax records that only carry metadata; anything else is refused. */
+const PAX_METADATA = new Set(["path", "mtime", "atime", "ctime", "uid", "gid", "uname", "gname"]);
+
 function readString(block: Buffer, offset: number, length: number): string {
   const raw = block.subarray(offset, offset + length);
   const end = raw.indexOf(0);
@@ -28,6 +40,7 @@ function readString(block: Buffer, offset: number, length: number): string {
 }
 
 function readOctal(block: Buffer, offset: number, length: number): number {
+  if (block[offset] & 0x80) throw new Error("base-256 numbers in tar headers are not supported");
   const text = readString(block, offset, length).trim();
   if (text === "") return 0;
   if (!/^[0-7]+$/.test(text))
@@ -35,19 +48,38 @@ function readOctal(block: Buffer, offset: number, length: number): number {
   return Number.parseInt(text, 8);
 }
 
-/** `path=...` records of a pax extended header. */
+function checkHeader(header: Buffer): void {
+  let unsigned = 0;
+  let signed = 0;
+  for (let i = 0; i < BLOCK; i++) {
+    const byte = i >= 148 && i < 156 ? 0x20 : header[i];
+    unsigned += byte;
+    signed += byte > 127 ? byte - 256 : byte;
+  }
+  const stored = readOctal(header, 148, 8);
+  if (stored !== unsigned && stored !== signed) throw new Error("tar header checksum mismatch");
+  if (header.toString("latin1", 257, 265) !== "ustar\u000000") {
+    throw new Error("only POSIX ustar tar headers are supported");
+  }
+}
+
+/** The records of a pax extended header; fails on one it does not understand. */
 function parsePax(data: Buffer): Record<string, string> {
   const records: Record<string, string> = {};
   let offset = 0;
   while (offset < data.length) {
     const space = data.indexOf(0x20, offset);
-    if (space === -1) break;
-    const length = Number.parseInt(data.subarray(offset, space).toString("utf8"), 10);
-    if (!Number.isInteger(length) || length <= 0) throw new Error("malformed pax header");
-    const record = data.subarray(space + 1, offset + length - 1).toString("utf8");
+    const lengthText = space === -1 ? "" : data.toString("utf8", offset, space);
+    if (!/^[1-9][0-9]*$/.test(lengthText)) throw new Error("malformed pax header");
+    const end = offset + Number(lengthText);
+    if (end > data.length || data[end - 1] !== 0x0a) throw new Error("malformed pax header");
+    const record = data.toString("utf8", space + 1, end - 1);
     const eq = record.indexOf("=");
-    if (eq !== -1) records[record.slice(0, eq)] = record.slice(eq + 1);
-    offset += length;
+    if (eq <= 0) throw new Error("malformed pax header");
+    const key = record.slice(0, eq);
+    if (!PAX_METADATA.has(key)) throw new Error(`unsupported pax record: ${JSON.stringify(key)}`);
+    records[key] = record.slice(eq + 1);
+    offset = end;
   }
   return records;
 }
@@ -64,16 +96,31 @@ export function packagePath(entryPath: string): string | null {
   return rest.join("/");
 }
 
-/** Every regular file of a `.tgz`. Fails on an entry it cannot place safely. */
+/**
+ * Every regular file of a `.tgz`. Fails on an entry it cannot place safely and
+ * on any archive it cannot read the way node-tar would (see above).
+ */
 export function readTarball(gzipped: Buffer): TarballFiles {
   const tar = gunzipSync(gzipped);
   const files: TarballFiles = new Map();
+  /** Paths as a case-insensitive file system would see them. */
+  const folded = new Set<string>();
   let offset = 0;
-  let longName: string | null = null;
-  let pax: Record<string, string> = {};
-  while (offset + BLOCK <= tar.length) {
+  let pax: Record<string, string> | null = null;
+  for (;;) {
+    if (offset + BLOCK > tar.length)
+      throw new Error("tar archive ends without its end-of-archive blocks");
     const header = tar.subarray(offset, offset + BLOCK);
-    if (header.every((byte) => byte === 0)) break;
+    if (header.every((byte) => byte === 0)) {
+      // The end of the archive: everything after it must be zero, so no entry
+      // can hide behind a single zero block.
+      if (!tar.subarray(offset).every((byte) => byte === 0)) {
+        throw new Error("tar data after the end-of-archive block");
+      }
+      if (pax !== null) throw new Error("pax header without an entry");
+      return files;
+    }
+    checkHeader(header);
     const size = readOctal(header, 124, 12);
     const type = String.fromCharCode(header[156] || 0x30);
     const dataStart = offset + BLOCK;
@@ -82,31 +129,30 @@ export function readTarball(gzipped: Buffer): TarballFiles {
     offset = dataStart + Math.ceil(size / BLOCK) * BLOCK;
 
     if (type === "x") {
+      if (pax !== null) throw new Error("two pax headers in a row");
       pax = parsePax(data);
-      continue;
-    }
-    if (type === "g") continue;
-    if (type === "L") {
-      longName = readString(data, 0, data.length);
       continue;
     }
 
     const prefix = readString(header, 345, 155);
     const name = readString(header, 0, 100);
-    const entryPath = pax.path ?? longName ?? (prefix ? `${prefix}/${name}` : name);
-    longName = null;
-    pax = {};
+    const entryPath = pax?.path ?? (prefix ? `${prefix}/${name}` : name);
+    pax = null;
 
-    if (type === "5") continue;
+    if (type === "5") {
+      if (size !== 0) throw new Error(`directory entry with data: ${JSON.stringify(entryPath)}`);
+      continue;
+    }
     if (type !== "0")
       throw new Error(`unexpected tar entry type ${JSON.stringify(type)} at ${entryPath}`);
     const path = packagePath(entryPath);
     if (path === null)
       throw new Error(`tar entry outside the package: ${JSON.stringify(entryPath)}`);
-    if (files.has(path)) throw new Error(`duplicate tar entry: ${path}`);
+    const key = path.normalize("NFC").toLowerCase();
+    if (folded.has(key)) throw new Error(`duplicate tar entry: ${path}`);
+    folded.add(key);
     files.set(path, Buffer.from(data));
   }
-  return files;
 }
 
 // ------------------------------------------------------------------ platform notices
@@ -207,8 +253,8 @@ export function compareTarballs(
 
 export function describeDifference(label: string, diff: TarballDifference): string {
   const lines = [`${label}: the tarball does not match the pack of the release commit.`];
-  for (const path of diff.missing) lines.push(`  missing: ${path}`);
-  for (const path of diff.extra) lines.push(`  extra:   ${path}`);
-  for (const path of diff.changed) lines.push(`  changed: ${path}`);
+  for (const path of diff.missing) lines.push(`  missing: ${JSON.stringify(path)}`);
+  for (const path of diff.extra) lines.push(`  extra:   ${JSON.stringify(path)}`);
+  for (const path of diff.changed) lines.push(`  changed: ${JSON.stringify(path)}`);
   return lines.join("\n");
 }

@@ -87,6 +87,24 @@ export function partialRelease(
   return bumped.filter((pkg) => !present(pkg)).map(packageTag);
 }
 
+/**
+ * The handed-over tags that `record` may push: only bumped, untagged versions
+ * of the release commit that are on npm. The list comes from the verify job,
+ * which runs the release commit's build, so `record` (which can push tags)
+ * does not take its word for which names to push.
+ */
+export function taggable(
+  verified: string[],
+  bumped: NpmPackage[],
+  isUntaggedOnNpm: (pkg: NpmPackage) => boolean,
+): { accepted: string[]; refused: string[] } {
+  const allowed = new Set(bumped.filter(isUntaggedOnNpm).map(packageTag));
+  return {
+    accepted: verified.filter((tag) => allowed.has(tag)),
+    refused: verified.filter((tag) => !allowed.has(tag)),
+  };
+}
+
 /** A hidden marker that keeps a scheduled run from repeating the same comment. */
 export const marker = (kind: string, subject: string): string =>
   `<!-- release-confirm:${kind}:${subject} -->`;
@@ -151,12 +169,21 @@ function unplannedReport(packages: NpmPackage[]): string[] {
       time: Record<string, string>;
       versions: string[];
     };
-    const found = unplannedVersions({
+    const after = unplannedVersions({
       time: info.time,
       versions: info.versions,
       tagged: tagsOf(pkg.name),
       releaseVersion: pkg.version,
-    }).filter((version) => runOk("npm", ["view", `${pkg.name}@${version}`, "deprecated"]) === "");
+    });
+    if (after === null) {
+      console.log(
+        `::notice::${pkg.name} has no tagged version yet: no unplanned-version check for it.`,
+      );
+      return [];
+    }
+    const found = after.filter(
+      (version) => runOk("npm", ["view", `${pkg.name}@${version}`, "deprecated"]) === "",
+    );
     return found.map(
       (version) =>
         `${pkg.name}@${version} is on npm but is not this release's version. It was approved outside the plan.`,
@@ -272,16 +299,11 @@ function record(argv: string[]): void {
         "The published npm tarballs did not pass the check against the release commit (#3240). Nothing was tagged for these versions, and this Issue stays open. See docs/release.md for what to do.",
         "",
         "```",
-        failures,
+        // Paths come from the registry tarball: a backtick must not end the fence.
+        failures.replaceAll("`", "'"),
         "```",
       ].join("\n"),
     );
-  }
-
-  pushTags(sha, verified);
-  if (releaseTagOn(sha) !== null || verified.length > 0) {
-    runOk("node", ["scripts/release/github-release.mts", "--commit", sha]);
-    runOk("git", ["fetch", "--quiet", "--tags", "origin"]);
   }
 
   const all = npmPackagesAt(sha);
@@ -292,6 +314,23 @@ function record(argv: string[]): void {
     if (!present.has(key)) present.set(key, isOnNpm(name, version));
     return present.get(key)!;
   };
+
+  const tags = taggable(
+    verified,
+    bumped,
+    (pkg) => tagTarget(packageTag(pkg)) === null && onNpm(pkg.name, pkg.version),
+  );
+  if (tags.refused.length > 0) {
+    console.log(
+      `::error::Not a bumped, untagged version on npm, so not tagged: ${tags.refused.join(", ")}`,
+    );
+    process.exitCode = 1;
+  }
+  pushTags(sha, tags.accepted);
+  if (releaseTagOn(sha) !== null || tags.accepted.length > 0) {
+    runOk("node", ["scripts/release/github-release.mts", "--commit", sha]);
+    runOk("git", ["fetch", "--quiet", "--tags", "origin"]);
+  }
 
   const violations = orderViolations(bumped, all, onNpm);
   if (violations.length > 0) {
