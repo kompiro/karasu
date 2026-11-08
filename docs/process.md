@@ -170,7 +170,7 @@ ready → implementing → in-review → (close)
 | High の PR で CodeRabbit のラウンドを回す（収束の判定・人間に確認する指摘・ラウンドの回し方） | [docs/process/coderabbit-rounds.md](process/coderabbit-rounds.md) | 手順 15 で High の PR のラウンドを始める前、`/coderabbit-converge` を回すとき |
 | stacked PR の進め方（draft の置き方・sync の順序・draft で skip される job） | [docs/process/stacked-pr.md](process/stacked-pr.md) | `gh stack` を打つ前 |
 | spike と PoC のレポート（名前と寿命・preview・`reports/`） | [docs/process/spike.md](process/spike.md) | `spike/` で始まるブランチを切るとき、`reports/` の下に書くとき、`pnpm report:*` を走らせるとき |
-| 開発環境（Claude Code plugin・sibling repo の clone） | [docs/process/environment.md](process/environment.md) | hane や tpl-tools のスキルが見つからないとき、`/workspaces` の隣の repo を編集するとき |
+| 開発環境（Claude Code plugin・sibling repo の clone） | [docs/process/environment.md](process/environment.md) | スキルが見つからないとき、`/workspaces` の隣の repo を編集するとき |
 | 受け入れテスト（アノテーション書式・到達先） | `.claude/rules/acceptance.md` | `docs/acceptance/**` の編集 |
 | ドキュメントに埋める `.krs`（fence の主張宣言） | `.claude/rules/krs-fences.md` | `docs/{acceptance,spec,guide}/**` `docs/concepts*.md` の編集 |
 | ADR / Design Doc（昇格・supersede・permalink・auto-merge） | `.claude/rules/adr.md` | `docs/adr/**` `docs/design/**` の編集 |
