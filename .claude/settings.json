@@ -83,6 +83,7 @@
     "code-review@claude-plugins-official": true,
     "engineering@anthropic-plugin-directory": true,
     "hane@kompiro-hane": true,
+    "tpl-tools@kompiro-hane": true,
     "coderabbit@claude-plugins-official": true
   },
   "defaultMode": "acceptEdits"
