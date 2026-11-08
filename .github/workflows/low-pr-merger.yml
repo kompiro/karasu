@@ -122,8 +122,15 @@ jobs:
             gh api "repos/$REPO/pulls/$1" --jq \
               '[.state, .draft, .head.sha, .base.ref, ([.labels[].name | select(startswith("risk:"))] | join(","))] | @tsv'
           }
+          # Read before the loop, and refuse a missing or malformed list: either would
+          # otherwise merge nothing and still pass.
+          if ! cleared_list=$(jq -rn 'input | if type == "array" then .[] | select(.outcome == "merge") | [.pr, .sha] | @tsv else error("not a list") end' <<< "$VERDICTS"); then
+            echo "::error::could not read the judge's verdicts"
+            exit 1
+          fi
           failed=0
           while IFS=$'\t' read -r pr sha; do
+            [[ -z "$pr$sha" ]] && continue
             if ! [[ "$pr" =~ ^[0-9]+$ && "$sha" =~ ^[0-9a-f]{40}$ ]]; then
               echo "::error::malformed verdict: PR '$pr', head '$sha'"
               failed=1
@@ -144,7 +151,7 @@ jobs:
               echo "::error::could not merge #$pr at $sha"
               failed=1
             fi
-          done < <(jq -r '.[] | select(.outcome == "merge") | [.pr, .sha] | @tsv' <<< "$VERDICTS")
+          done <<< "$cleared_list"
           exit "$failed"
 
   # Comments from fixed text per reason code (scripts/review/low-pr-merger-notice.ts),

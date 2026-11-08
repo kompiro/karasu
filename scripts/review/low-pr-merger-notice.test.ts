@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { VerdictOutput } from "./low-pr-merger-flow.ts";
-import { noticeFor, parseVerdicts } from "./low-pr-merger-notice.ts";
+import { noticeFor, parseVerdicts, wantsNotice } from "./low-pr-merger-notice.ts";
 
 const SHA = "0123456789abcdef0123456789abcdef01234567";
 const OTHER = "fedcba9876543210fedcba9876543210fedcba98";
@@ -53,6 +53,18 @@ describe("noticeFor", () => {
       { pr: 7, sha: SHA, outcome: "no-conclusion" },
     ];
     for (const v of silent) expect(noticeFor(v, [])).toBeNull();
+  });
+
+  it("is wanted exactly for the verdicts it would comment on", () => {
+    const all: VerdictOutput[] = [
+      reject(),
+      wait(true),
+      wait(false),
+      { pr: 7, sha: SHA, outcome: "merge" },
+      { pr: 7, sha: SHA, outcome: "out-of-scope" },
+      { pr: 7, sha: SHA, outcome: "no-conclusion" },
+    ];
+    for (const v of all) expect(wantsNotice(v)).toBe(noticeFor(v, []) !== null);
   });
 
   it("says the same thing about the same head once", () => {

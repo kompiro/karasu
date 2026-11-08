@@ -29,9 +29,10 @@ import {
   type WorkflowRun,
   judge,
   renderSummary,
+  type VerdictOutput,
   toOutput,
 } from "./low-pr-merger-flow.ts";
-import { BOT_LOGIN, noticeFor, parseVerdicts } from "./low-pr-merger-notice.ts";
+import { BOT_LOGIN, noticeFor, parseVerdicts, wantsNotice } from "./low-pr-merger-notice.ts";
 import { BASE, REPO } from "../adr/regenerate-pr-flow.ts";
 import { checkPr } from "./tier.ts";
 
@@ -107,7 +108,8 @@ function runJudge(): number {
   git("fetch", "--quiet", "--no-tags", "origin", BASE);
   const verdicts = judge({ github: restGitHub, checkTier, now: () => Date.now() });
 
-  const json = JSON.stringify(toOutput(verdicts));
+  const out = toOutput(verdicts);
+  const json = JSON.stringify(out);
   console.log(JSON.stringify(verdicts, null, 2));
   for (const v of verdicts) {
     if (v.outcome === "no-conclusion") {
@@ -121,11 +123,11 @@ function runJudge(): number {
   const output = process.env.GITHUB_OUTPUT;
   if (output) {
     // The counts decide which jobs run; the verdicts themselves are what they act on.
-    const count = (keep: (v: (typeof verdicts)[number]) => boolean) => verdicts.filter(keep).length;
+    const count = (keep: (v: VerdictOutput) => boolean) => out.filter(keep).length;
     const lines = [
       `verdicts=${json}`,
       `merges=${count((v) => v.outcome === "merge")}`,
-      `notices=${count((v) => v.outcome === "reject" || (v.outcome === "wait" && v.stalled))}`,
+      `notices=${count(wantsNotice)}`,
       `undecided=${count((v) => v.outcome === "no-conclusion")}`,
     ];
     appendFileSync(output, `${lines.join("\n")}\n`);
@@ -137,7 +139,7 @@ function runJudge(): number {
 function runNotify(): number {
   const verdicts = parseVerdicts(process.env.VERDICTS ?? "");
   let failed = 0;
-  for (const v of verdicts) {
+  for (const v of verdicts.filter(wantsNotice)) {
     try {
       // Only the bot's own comments: a PR's author could otherwise post a marker to silence it.
       const posted = ghList<string>(

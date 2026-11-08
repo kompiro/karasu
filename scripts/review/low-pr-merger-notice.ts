@@ -77,6 +77,9 @@ function reasonsOf(v: VerdictOutput): string[] {
   return [];
 }
 
+/** Whether the notify job has anything to say about a verdict, before reading what it already said. */
+export const wantsNotice = (v: VerdictOutput): boolean => reasonsOf(v).length > 0;
+
 export interface Notice {
   pr: number;
   body: string;
