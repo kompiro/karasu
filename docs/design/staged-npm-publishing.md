@@ -157,7 +157,7 @@ Release には、まだインストールできず、reject されうる版が�
 
 **案 3B を採る。** `docs/release.md` は `pnpm release:approve` を正の手順とし、kompiro が npmjs.com の画面で承認することは禁止しない（kompiro の判断、2026-11-02。案 7D の限界を踏まえて 2026-11-07 に再度確認した）。依存元は依存先が npm に載るまで stage されないので、画面で承認しても順序は崩れない。tarball の中身は、画面で承認した版も論点 7 の案 7D で照合する。画面で承認するときは、先に `pnpm release:approve --dry-run` を実行すれば公開の前に照合できる（`docs/release.md` にこの手順を書く）。段を分けて stage する形は、CodeRabbit CLI の指摘を受けて kompiro が 2026-11-02 に選んだ（それまでは画面で順序を誤ると、検出までのあいだ `npm i karasu` が壊れうる設計だった）。承認のあいだに `release.yml` の再実行が 1 回入り、その分（数分）待つ。
 
-逆向きの依存もある。skill は CLI を呼ぶが、`karasu-skills` は npm の依存を持たない。この依存は ADR-2901 の版の下限で扱っている。pack のときに CLI の版が各 SKILL.md に刻まれ、エージェントは Step 0 で `karasu --version` が刻まれた版より古ければ更新を案内して止まる。`karasu-skills` を先に承認すると、刻まれた版の CLI がまだ npm に無い期間ができる。Claude Code の marketplace は版を固定しないので、その期間に skill を更新した利用者は、存在しない版への更新を案内されて止まる。順序を逆にすると `npm i karasu` が壊れるので、順序は変えない。`pnpm release:approve` は `karasu-skills` のあとに続けて `karasu` を承認するので、期間は `release.yml` の再実行を待つ数分である。画面で承認するときも、`karasu-skills` を承認したら間を空けずに `karasu` まで進める（`docs/release.md` に書く）。
+逆向きの依存もある。skill は CLI を呼ぶが、`karasu-skills` は npm の依存を持たない。この依存は ADR-2901 の版の下限で扱っている。pack のときに CLI の版が各 SKILL.md に刻まれ、エージェントは Step 0 で `karasu --version` が刻まれた版より古ければ更新を案内して止まる。`karasu-skills` を先に承認すると、刻まれた版の CLI がまだ npm に無い期間ができる。Claude Code の marketplace は版を固定しないので、その期間に skill を更新した利用者は、存在しない版への更新を案内されて止まる。順序を逆にすると `npm i karasu` が壊れるので、順序は変えない。`pnpm release:approve` は `karasu-skills` のあとに続けて `karasu` を承認するので、期間はふつう `release.yml` の再実行を待つ数分である。ただし `karasu` が照合に落ちたときや reject したときは、原因を調べて次の `karasu` が出るまで続く（論点 4「reject したとき」）。画面で承認するときも、`karasu-skills` を承認したら間を空けずに `karasu` まで進める（`docs/release.md` に書く）。
 
 ### 論点 4: トレインの Issue をいつ閉じるか
 
@@ -182,7 +182,7 @@ reject は承認を拒む操作で、この設計が守りたいものの 1 つ�
 - **リリースそのものを出さないと決めた**（stage した版に不具合があった）: 残りの stage 済みの版も reject し、reject した版のパッケージごとに patch の changeset を足す PR をマージしてから、トレインの Issue に理由を書いて手で閉じる。次のリリースでそのパッケージの版が上がり、reject した版番号は使われないまま飛ぶ。直した変更は次のトレイン（または `release-prepare.yml` の手動実行）で、次の版として出す。取りやめた版は次のトレインまで `main` の `package.json` に残るが、`stage.mts` はリリースのコミットでしか stage しない（論点 1）ので、後の push や `main` での手動の dispatch では stage されない。
   - changeset を足し忘れて次のリリースで `stage.mts` が止まったら（論点 1）、そのリリースでは何も stage されていない。計画に載っているパッケージごとに patch の changeset を足す PR をマージし、そのトレインの Issue を手で閉じて、`release-prepare.yml` を手動で実行する。
   - すでに承認した版があれば、それは npm に残る（unpublish はしない）。Issue を閉じる前に `release-confirm.yml` を手で起動し、承認済みの版のタグと Release を作る。
-  - 依存元（`karasu`）は依存先（`karasu-skills`）が npm に載ってから stage されるので、依存元だけが承認済みで依存先を reject する、という状態にはならない（論点 3）。依存先を承認したあとで依存元の stage を reject すると、`npm i karasu` は壊れないが、承認した `karasu-skills` の skill は、刻まれた版の CLI が出ないので止まったままになる（論点 3 の逆向きの依存）。刻まれた版より新しい CLI が出れば解ける。そこで `karasu` の patch の changeset を足す PR をマージしたら、月次のトレインを待たずに `release-prepare.yml` を手動で実行して、次の版の `karasu` を出す。不具合の直しに時間がかかるなら、取りやめた変更を戻した状態で出してよい。
+  - 依存元（`karasu`）は依存先（`karasu-skills`）が npm に載ってから stage されるので、依存元だけが承認済みで依存先を reject する、という状態にはならない（論点 3）。依存先を承認したあとで依存元の stage を reject すると、`npm i karasu` は壊れないが、承認した `karasu-skills` の skill は、刻まれた版の CLI が出ないので止まったままになる（論点 3 の逆向きの依存）。刻まれた版より新しい CLI が出れば解ける。そこで上の手順どおり changeset の PR をマージし、承認済みの版を記録してトレインの Issue を閉じたら、月次のトレインを待たずに `release-prepare.yml` を手動で実行して、次の版の `karasu` を出す。不具合の直しに時間がかかるなら、取りやめた変更を戻した状態で出してよいが、承認した skill が使う CLI の変更（新しいコマンドやフラグ）は戻さない。戻すと skill は Step 0 の版の照合を通ったあとで、途中で失敗する。
 
 この 2 つを `docs/release.md` に書く。
 
