@@ -2,7 +2,7 @@
 import { program } from "commander";
 import { configureServeCommand } from "./serve-command.js";
 import { render } from "./render.js";
-import { check } from "./check.js";
+import { configureCheckCommand } from "./check-command.js";
 import { translate } from "./translate/index.js";
 import {
   resolveTranslateCliOptions,
@@ -116,41 +116,7 @@ program
     },
   );
 
-program
-  .command("check <file>")
-  .description(
-    "Validate a .krs project (imports included) and write nothing. " +
-      "Prints every diagnostic; exits 1 when any is an error.",
-  )
-  .option(
-    "--format <format>",
-    "Output format: text (lines on stderr) | json (one document on stdout)",
-    "text",
-  )
-  .addHelpText(
-    "after",
-    `${DIRECTORY_ENTRY_HELP}Runs the same compile as \`karasu render\`, so a file that passes \`check\`
-renders. Use it after every edit, before \`karasu fmt\`: \`fmt\` refuses a file
-with parse errors without saying where they are.
-
-\`lint-style\` checks .krs.style files, not .krs.
-
-Each diagnostic line starts with its severity and ID (\`Warning[KRS041]: ...\`);
-look the ID up in the diagnostics catalog. The line is for people: a script or
-an agent reads \`--format json\`, whose \`code\` does not depend on the locale.
-
-Examples:
-  # Validate a project entry file
-  $ karasu check index.krs
-
-  # The same findings as JSON for a script or an agent
-  $ karasu check index.krs --format json
-
-  # Edit, then validate before formatting
-  $ echo 'service NewService { label "New" }' | karasu insert ECommerce arch.krs
-  $ karasu check arch.krs && karasu fmt arch.krs`,
-  )
-  .action((file: string, options: { format: string }) => check(file, options));
+configureCheckCommand(program.command("check <file>"), DIRECTORY_ENTRY_HELP);
 
 program
   .command("translate <file>")

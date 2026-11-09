@@ -180,7 +180,8 @@ describe("render — all-views (no --view)", () => {
 
     expect(
       stderrSpy.mock.calls.some(
-        (args) => /^Warning\[KRS\d{3}\]: /.test(String(args[0])) && String(args[0]).includes("Orphan"),
+        (args) =>
+          /^Warning\[KRS\d{3}\]: /.test(String(args[0])) && String(args[0]).includes("Orphan"),
       ),
     ).toBe(true);
   });
@@ -202,7 +203,9 @@ describe("render — all-views (no --view)", () => {
 
     const lines = stderrSpy.mock.calls.map((args) => String(args[0]));
     expect(lines.some((l) => /^Info\[KRS\d{3}\]: /.test(l) && l.includes("Order"))).toBe(true);
-    expect(lines.some((l) => /^Warning(\[KRS[0-9]{3}\])?:/.test(l) && l.includes("Order"))).toBe(false);
+    expect(lines.some((l) => /^Warning(\[KRS[0-9]{3}\])?:/.test(l) && l.includes("Order"))).toBe(
+      false,
+    );
   });
 });
 
@@ -316,7 +319,9 @@ describe("render — --view system", () => {
     // `Info:`, not `Warning:`.
     const lines = stderrSpy.mock.calls.map((args) => String(args[0]));
     expect(lines.some((l) => /^Info\[KRS\d{3}\]: /.test(l) && l.includes("Order"))).toBe(true);
-    expect(lines.some((l) => /^Warning(\[KRS[0-9]{3}\])?:/.test(l) && l.includes("Order"))).toBe(false);
+    expect(lines.some((l) => /^Warning(\[KRS[0-9]{3}\])?:/.test(l) && l.includes("Order"))).toBe(
+      false,
+    );
   });
 
   it("prints info-severity parser diagnostics (duplicate-owner-assignment) with an `Info:` prefix", async () => {
@@ -344,7 +349,9 @@ describe("render — --view system", () => {
     // dropped, and must not exit non-zero (ADR-1566).
     const lines = stderrSpy.mock.calls.map((args) => String(args[0]));
     expect(lines.some((l) => /^Info\[KRS\d{3}\]: /.test(l) && l.includes("ECommerce"))).toBe(true);
-    expect(lines.some((l) => /^Warning(\[KRS[0-9]{3}\])?:/.test(l) && l.includes("ECommerce"))).toBe(false);
+    expect(
+      lines.some((l) => /^Warning(\[KRS[0-9]{3}\])?:/.test(l) && l.includes("ECommerce")),
+    ).toBe(false);
     expect(exitSpy).not.toHaveBeenCalled();
   });
 });

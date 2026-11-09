@@ -229,10 +229,12 @@ describe("karasu check --format json (#3654)", () => {
     const missing = report.diagnostics.find((d) => d.code === "style-file-not-found");
     expect(missing).toBeDefined();
     expect(missing!.file).toBe(krs);
-    for (const d of report.diagnostics) {
-      expect(d.line === undefined).toBe(d.column === undefined);
-      if (d.line !== undefined) expect(d.file).toBeDefined();
-    }
+    expect(missing!.line).toBeUndefined();
+    const unpaired = report.diagnostics.filter(
+      (d) =>
+        (d.line === undefined) !== (d.column === undefined) || (d.line !== undefined && !d.file),
+    );
+    expect(unpaired).toEqual([]);
   });
 
   it("prints nothing on stdout and fails when the file does not exist", async () => {

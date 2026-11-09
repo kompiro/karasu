@@ -88,7 +88,9 @@ describe("AT-1020 karasu diff — stdin handling", () => {
     } finally {
       restore();
     }
-    expect(stderr).toContain('Warning[KRS058]: -:2:1: Domain "Orphan" is not assigned to any service');
+    expect(stderr).toContain(
+      'Warning[KRS058]: -:2:1: Domain "Orphan" is not assigned to any service',
+    );
     expect(stderr).not.toContain(".karasu-diff-");
   });
 
@@ -175,6 +177,8 @@ describe("karasu diff: printed positions are not shifted (#2715)", () => {
 
     await diff(before, after, {});
 
-    expect(stderr).toMatch(/^Warning\[KRS030\]: 5:3 Node id "Search" appears in multiple locations/m);
+    expect(stderr).toMatch(
+      /^Warning\[KRS030\]: 5:3 Node id "Search" appears in multiple locations/m,
+    );
   });
 });

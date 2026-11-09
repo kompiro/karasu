@@ -145,7 +145,10 @@ describe("karasu check", () => {
       const out = await run(() => check(dir));
       expect(out.exitCode).toBe(1);
       expect(out.stderr).toMatch(
-        new RegExp(`^Error\\[KRS\\d{3}\\]: ${join(dir, "index.krs").replace(/\./g, "\\.")}:2:\\d+: `, "m"),
+        new RegExp(
+          `^Error\\[KRS\\d{3}\\]: ${join(dir, "index.krs").replace(/\./g, "\\.")}:2:\\d+: `,
+          "m",
+        ),
       );
     });
 
