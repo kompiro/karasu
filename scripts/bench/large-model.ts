@@ -25,10 +25,14 @@ function parseArgs(argv: string[]): { dir: string; options: LargeModelOptions } 
     "--usecases": "usecasesPerDomain",
   };
   for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    const key = flags[arg];
+    let arg = argv[i];
+    let raw: string | undefined;
+    const eq = arg.indexOf("=");
+    if (arg.startsWith("--") && eq > 0) [arg, raw] = [arg.slice(0, eq), arg.slice(eq + 1)];
+    // Own keys only, so a directory named "constructor" is not read as a flag.
+    const key = Object.hasOwn(flags, arg) ? flags[arg] : undefined;
     if (key) {
-      const raw = argv[++i];
+      raw ??= argv[++i];
       if (raw === undefined) throw new Error(`${arg} expects a positive integer`);
       const value = Number(raw);
       if (!Number.isInteger(value) || value < 1) {
@@ -50,9 +54,14 @@ function parseArgs(argv: string[]): { dir: string; options: LargeModelOptions } 
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const { dir, options } = parseArgs(process.argv.slice(2));
-  mkdirSync(dir, { recursive: true });
-  const file = join(dir, "index.krs");
-  writeFileSync(file, generateLargeModel(options));
-  console.log(file);
+  try {
+    const { dir, options } = parseArgs(process.argv.slice(2));
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, "index.krs");
+    writeFileSync(file, generateLargeModel(options));
+    console.log(file);
+  } catch (error: unknown) {
+    console.error(`bench:large-model: ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
+  }
 }

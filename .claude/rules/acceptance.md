@@ -84,13 +84,13 @@ preview の URL は PR 本文の Preview URL 欄に出る。
 マージ後にしか確かめられない検査だと読める（上の節）。app で開く入力は `index.krs` として
 開く前提で書く（app はそれ以外のファイル名を開かない）。
 
-preview のホスト、worktree などセッションに固有のパス、dev サーバの起動コマンドは
-`pnpm at:check-coverage` が finding にする（`scripts/acceptance/record-addresses.ts`）。
+preview のホスト、worktree などセッションに固有のパス、dev サーバの起動コマンドと
+アドレス（`localhost:5173`）は `pnpm at:check-coverage` が finding にする（`scripts/acceptance/record-addresses.ts`）。
 ただし `wrangler pages dev` と単独の `vite preview` は、記録が話題として触れる語なので
 検査が読まない。手順として書かないことは、書く側で守る。
 
 **手元のマシンにしかないファイルも入力にしない。** `/workspaces/...` のような絶対パスは、
-書いた人のマシンでしか開けない。この形は検査が読まないので、書く側で守る。大きなモデルが
+書いた人のマシンでしか開けない。worktree を含まない絶対パスは検査が読まないので、書く側で守る。大きなモデルが
 要る手順では、repo に置いたモデルか、repo のスクリプトが生成するモデル（約 10k 行なら
 `pnpm bench:large-model <dir>`）を指す。
 
