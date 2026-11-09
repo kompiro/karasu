@@ -92,7 +92,7 @@ id について何も言わなくなった。ガードを増やすより、そ�
 stylesheet を入力に取る diagnostic を追加・変更するとき:
 
 - [ ] `analyze(file, [])`（シートなし）での発火・非発火を単体テストで固定したか
-- [ ] 文脈差が生じる場合、style 依存型（LSP では出ない）か style 抑制型（LSP では抑制なしで出る）かを判断し、`packages/lsp/src/single-document-context.ts` の台帳（`SINGLE_DOCUMENT_CONTEXT`）に理由とともに記録したか。台帳は `WarningKind` 全体の `Record` なので、新しい kind は記録するまで typecheck が落ちる（どちら側かの判断の正しさは見ない） [guard: `packages/lsp/src/single-document-context.ts`]
+- [ ] 文脈差が生じる場合、style 依存型（LSP では出ない）か style 抑制型（LSP では抑制なしで出る）かを判断し、`packages/lsp/src/single-document-context.ts` の台帳（`SINGLE_DOCUMENT_CONTEXT`）に理由とともに記録したか。台帳は `WarningKind` 全体の `Record` で、各項目はシート軸・import 軸・理由を必須にしているので、新しい kind は記録するまで typecheck が落ちる（どちら側かの判断の正しさは、style 抑制型と import 先の対象で発火する型を fixture で確かめる以外は見ない） [guard: `packages/lsp/src/single-document-context.ts`]
 - [ ] 文脈差を許容する根拠（severity の register、ケースの希少性など）を Issue または ADR に残したか [judgment]
 - [ ] app / LSP 両方の手動確認項目を AT 記録に含めたか（cross-surface — TPL-1001） [judgment]
 - [ ] import 結合型なら、単一ドキュメント文脈で偽陽性側に倒れるか過少報告側に倒れるかを判断し、抑制を surface の filter と検査側の早期 return のどちらに置いたか記録したか（#2082） [judgment]
@@ -101,8 +101,9 @@ stylesheet を入力に取る diagnostic を追加・変更するとき:
 
 - **型で強制する asymmetry の台帳**: `packages/lsp/src/single-document-context.ts` の
   `SINGLE_DOCUMENT_CONTEXT` が、kind ごとにシート不在文脈での振る舞い（style 依存型 /
-  style 抑制型 / シート非依存 / analyze() が出さない）と、単一ドキュメント文脈で落とすかを
-  理由とともに持つ単一の記録点になっている。`computeDiagnostics` の抑制はこの台帳から
+  style 抑制型 / シート非依存 / analyze() が出さない）、import 未解決での振る舞い（文書内だけ /
+  過少報告 / import 先の対象で誤発火）、単一ドキュメント文脈で落とすかを、理由とともに持つ
+  単一の記録点になっている。`computeDiagnostics` の抑制はこの台帳から
   導く。#1522 の時点では analyze() 呼び出し直上のコメントがこの役を持っていた
 - **register による緩和**: 抑制なしで発火する側に割れる hint は info register
   （TPL-1386）に置き、誤発火の摩擦を下げる
@@ -115,4 +116,7 @@ stylesheet を入力に取る diagnostic を追加・変更するとき:
 - `packages/core/src/resolver/facet-style-selector.test.ts`（`arbitrary-name selector deprecation (#2175)` › `emits nothing when there are no sheets — the LSP's single-document case`）—
   style 依存型の `style-*` 診断が `analyze(file, [])`（シートなし）で出ないことを単体テストで固定する
 - `packages/lsp/src/single-document-context.test.ts` — 台帳の `dependent` / `not-analyzed` の kind が、
-  同梱 example をシートなしで analyze() したときに出ないこと、自明でない記録に理由があることを確かめる
+  同梱 example をシートなしで analyze() したときに出ないこと、`fires-on-imported-target` と記録した kind の
+  集合が fixture の集合と一致し、それぞれ import 先に対象がある単一ドキュメントで発火すること、
+  `legend-ref-unresolved`（style 抑制型）がシートなしで発火し対象を選ぶシートで消えることを確かめる。
+  import 先の対象で誤発火する kind の多くは今も LSP に出る（台帳に記録済み、挙動は変えていない）
