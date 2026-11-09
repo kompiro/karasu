@@ -19,8 +19,9 @@ import { join } from "node:path";
 // against the merge base would wrongly forbid it.
 //
 // A tag whose tree has no registry yet (the releases before #3654) passes:
-// there is nothing published to keep. No `karasu@*` tag at all fails, because a
-// shallow checkout without tags would otherwise pass without comparing.
+// there is nothing published to keep. Every other way of not comparing fails:
+// no `karasu@*` tag (a shallow checkout without tags), a git error reading the
+// tag, or a published registry that parses to no entries.
 //
 // WHERE IT RUNS: lefthook pre-push, and `ci.yml`'s Check, which fetches the
 // release tags first.
@@ -74,8 +75,19 @@ export function compareRegistries(published: Registry, head: Registry): Problem[
   return problems.sort((a, b) => a.id.localeCompare(b.id));
 }
 
+/**
+ * Run git in `cwd`. GIT_DIR and friends are dropped so a caller's hook
+ * environment cannot point the command at another repository.
+ */
 function git(args: string[], cwd: string): string {
-  return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  const env = { ...process.env };
+  for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"]) delete env[key];
+  return execFileSync("git", args, {
+    cwd,
+    env,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 }
 
 /** The newest `karasu@*` tag in version order, or undefined when there is none. */
@@ -87,50 +99,97 @@ function latestReleaseTag(cwd: string): string | undefined {
   return tags[0];
 }
 
-/** The registry's text at `rev`, or undefined when that tree has no registry. */
+/** What marks the registry's file, wherever it lives in a release's tree. */
+const REGISTRY_MARKER = "export const DIAGNOSTIC_IDS";
+
+/**
+ * The registry's text in `rev`, found by its declaration rather than by
+ * {@link REGISTRY_PATH}, so moving the file cannot make a release that has one
+ * look like a release without one. Undefined only when no file under
+ * packages/core/src declares it; any other git failure throws.
+ */
 function registryAt(rev: string, cwd: string): string | undefined {
+  let found: string;
   try {
-    return git(["show", `${rev}:${REGISTRY_PATH}`], cwd);
-  } catch {
-    return undefined;
+    found = git(
+      ["grep", "-l", "--fixed-strings", REGISTRY_MARKER, rev, "--", "packages/core/src"],
+      cwd,
+    );
+  } catch (e) {
+    // `git grep` exits 1 when nothing matches, and higher on a real failure.
+    if ((e as { status?: number }).status === 1) return undefined;
+    throw e;
   }
+  const files = found
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .filter((l) => !/\.test\.ts$/.test(l));
+  if (files.length !== 1) {
+    throw new Error(`expected one registry in ${rev}, found: ${files.join(", ") || "none"}`);
+  }
+  // `git grep -l <rev>` prints `<rev>:<path>`.
+  return git(["show", files[0]], cwd);
 }
 
-function main(): void {
-  const cwd = process.cwd();
+export interface Verdict {
+  ok: boolean;
+  message: string;
+}
+
+/** The guard's decision for the repository at `cwd`. */
+export function verdict(cwd: string): Verdict {
   const tag = latestReleaseTag(cwd);
   if (!tag) {
-    console.error(
-      "diagnostic-ids-history: no karasu@* tag found. Fetch the release tags " +
+    return {
+      ok: false,
+      message:
+        "no karasu@* tag found. Fetch the release tags " +
         "(git fetch origin 'refs/tags/karasu@*:refs/tags/karasu@*') and run again.",
-    );
-    process.exit(1);
+    };
   }
   const publishedText = registryAt(tag, cwd);
   if (publishedText === undefined) {
-    console.log(`diagnostic-ids-history: ok (${tag} has no ID registry yet; nothing published)`);
-    return;
+    return { ok: true, message: `ok (${tag} has no ID registry yet; nothing published)` };
+  }
+  const published = parseRegistry(publishedText);
+  if (published.active.size === 0) {
+    // A registry that parses to nothing would compare as "no change" and hide
+    // every reuse. The parser and the file's shape have drifted apart.
+    return {
+      ok: false,
+      message: `${tag}'s registry parsed to no entries; fix parseRegistry for that release's file shape.`,
+    };
   }
   const head = parseRegistry(readFileSync(join(cwd, REGISTRY_PATH), "utf8"));
-  const problems = compareRegistries(parseRegistry(publishedText), head);
+  const problems = compareRegistries(published, head);
   if (problems.length > 0) {
-    console.error(
-      `diagnostic-ids-history: ${problems.length} published ID(s) changed since ${tag}:`,
+    const lines = problems.map((p) =>
+      p.head === undefined
+        ? `✗ ${p.id} named \`${p.published}\` in ${tag} and is gone at HEAD`
+        : `✗ ${p.id} named \`${p.published}\` in ${tag} and names \`${p.head}\` at HEAD`,
     );
-    for (const p of problems) {
-      console.error(
-        p.head === undefined
-          ? `✗ ${p.id} named \`${p.published}\` in ${tag} and is gone at HEAD`
-          : `✗ ${p.id} named \`${p.published}\` in ${tag} and names \`${p.head}\` at HEAD`,
-      );
-    }
-    console.error(
-      "\nA published ID keeps its code. Give the new code the next number, and " +
-        `move a retired code's ID to RETIRED_DIAGNOSTIC_IDS in ${REGISTRY_PATH}.`,
-    );
+    return {
+      ok: false,
+      message: [
+        `${problems.length} published ID(s) changed since ${tag}:`,
+        ...lines,
+        "",
+        "A published ID keeps its code. Give the new code the next number, and " +
+          `move a retired code's ID to RETIRED_DIAGNOSTIC_IDS in ${REGISTRY_PATH}.`,
+      ].join("\n"),
+    };
+  }
+  return { ok: true, message: `ok (every ID in ${tag} names the same code at HEAD)` };
+}
+
+function main(): void {
+  const { ok, message } = verdict(process.cwd());
+  if (!ok) {
+    console.error(`diagnostic-ids-history: ${message}`);
     process.exit(1);
   }
-  console.log(`diagnostic-ids-history: ok (every ID in ${tag} names the same code at HEAD)`);
+  console.log(`diagnostic-ids-history: ${message}`);
 }
 
 const invokedDirectly =

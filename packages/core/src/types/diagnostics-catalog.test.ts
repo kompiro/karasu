@@ -81,6 +81,10 @@ describe("diagnostics catalog completeness (TPL-1623)", () => {
       const rows = [...read(catalog).matchAll(/^\|\s*`([a-z][a-z0-9-]+)`\s*\|\s*(\S*)\s*\|/gm)].map(
         (m) => [m[1], m[2]] as const,
       );
+      // Every code needs a row, not only a mention in prose: the row is where
+      // its ID is listed.
+      const rowCodes = new Set(rows.map(([code]) => code));
+      expect(Object.keys(DIAGNOSTIC_IDS).filter((c) => !rowCodes.has(c))).toEqual([]);
       const ids: Record<string, string> = DIAGNOSTIC_IDS;
       const wrong = rows
         .filter(([code, id]) => ids[code] !== id)

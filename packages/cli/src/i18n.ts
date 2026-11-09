@@ -2,9 +2,9 @@
  * CLI-side i18n: resolve the output locale from the environment and bind
  * the shared `@karasu-tools/i18n` renderers to it.
  *
- * `formatDiagnostic` / `formatWarning` are drop-in replacements for the
- * (now removed) core compat bridges of the same name — call sites only
- * change their import path.
+ * A line for a catalog diagnostic is built with `diagnosticParts` /
+ * `warningParts`, which add the code's ID. `formatDiagnostic` returns the bare
+ * message, for the serve endpoint's 422 body only.
  */
 
 import { diagnosticIdOf } from "@karasu-tools/core";

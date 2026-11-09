@@ -151,8 +151,9 @@ JSON document on stdout, and no catalog line on stderr:
   `code`, `severity`, `params`, `message` and `details` are always present.
   `code` is a key of `DiagnosticParamsByCode` or a member of `WarningKind`, and
   `params` follows that code's type; neither depends on the locale. `message`
-  and `details` follow the locale, and `details` is `[]` when the diagnostic has
-  no further lines. Judge by `code`, not by `id` or `message`.
+  and `details` follow the locale. `details` holds supporting lines the text
+  form does not print (the services sharing a store, say) and is `[]` when there
+  are none. Judge by `code`, not by `id` or `message`.
 - `file` is present when the line names a file: a position, or a `Diagnostic`
   without one, which names the entry. `line` and `column` come with a position.
   A `Warning` without a position has none of the three. `file` is spelled as the

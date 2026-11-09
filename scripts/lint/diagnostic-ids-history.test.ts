@@ -1,8 +1,15 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { DIAGNOSTIC_IDS } from "../../packages/core/src/types/diagnostic-ids.ts";
-import { REGISTRY_PATH, compareRegistries, parseRegistry } from "./diagnostic-ids-history.ts";
+import {
+  REGISTRY_PATH,
+  compareRegistries,
+  parseRegistry,
+  verdict,
+} from "./diagnostic-ids-history.ts";
 
 function registry(active: Record<string, string>, retired: Record<string, string> = {}) {
   return { active: new Map(Object.entries(active)), retired: new Map(Object.entries(retired)) };
@@ -71,5 +78,111 @@ describe("compareRegistries", () => {
     const published = registry({ a: "KRS001", b: "KRS002" });
     const head = registry({ a: "KRS001", b: "KRS002", c: "KRS003", d: "KRS004" });
     expect(compareRegistries(published, head)).toEqual([]);
+  });
+});
+
+describe("verdict", () => {
+  // Throwaway repositories, so each way the guard could skip the comparison
+  // is exercised end to end. GIT_* variables from a calling hook are dropped
+  // so the commands cannot reach the real repository.
+  const repos: string[] = [];
+  afterEach(() => {
+    for (const r of repos.splice(0)) rmSync(r, { recursive: true, force: true });
+  });
+
+  function repo(): (args: string[]) => void {
+    const dir = mkdtempSync(join(tmpdir(), "diag-ids-history-"));
+    repos.push(dir);
+    const env = { ...process.env };
+    for (const key of Object.keys(env)) if (key.startsWith("GIT_")) delete env[key];
+    const run = (args: string[]) =>
+      void execFileSync("git", args, { cwd: dir, env, stdio: "ignore" });
+    run(["init", "-q"]);
+    run(["config", "user.email", "test@example.com"]);
+    run(["config", "user.name", "test"]);
+    run(["config", "commit.gpgsign", "false"]);
+    run(["config", "tag.gpgsign", "false"]);
+    Object.assign(run, { dir });
+    return run;
+  }
+
+  function write(dir: string, path: string, text: string): void {
+    mkdirSync(dirname(join(dir, path)), { recursive: true });
+    writeFileSync(join(dir, path), text);
+  }
+
+  const registryText = (entries: Record<string, string>) =>
+    [
+      "export const DIAGNOSTIC_IDS = {",
+      ...Object.entries(entries).map(([c, id]) => `  "${c}": "${id}",`),
+      "};",
+      "export const RETIRED_DIAGNOSTIC_IDS = [];",
+    ].join("\n");
+
+  function release(run: (args: string[]) => void, tag: string): void {
+    run(["add", "-A"]);
+    run(["commit", "-q", "--allow-empty", "-m", tag]);
+    run(["tag", tag]);
+  }
+
+  const dirOf = (run: (args: string[]) => void) => (run as unknown as { dir: string }).dir;
+
+  it("fails without any release tag", () => {
+    const run = repo();
+    write(dirOf(run), REGISTRY_PATH, registryText({ alpha: "KRS001" }));
+    run(["add", "-A"]);
+    run(["commit", "-q", "-m", "init"]);
+    expect(verdict(dirOf(run)).message).toContain("no karasu@* tag");
+  });
+
+  it("passes when the release has no registry yet", () => {
+    const run = repo();
+    write(dirOf(run), "packages/core/src/index.ts", "export {};\n");
+    release(run, "karasu@0.1.0");
+    write(dirOf(run), REGISTRY_PATH, registryText({ alpha: "KRS001" }));
+    expect(verdict(dirOf(run))).toMatchObject({ ok: true });
+  });
+
+  it("fails when HEAD gives a published ID to another code", () => {
+    const run = repo();
+    write(dirOf(run), REGISTRY_PATH, registryText({ alpha: "KRS001", beta: "KRS002" }));
+    release(run, "karasu@0.1.0");
+    write(dirOf(run), REGISTRY_PATH, registryText({ alpha: "KRS001", gamma: "KRS002" }));
+    expect(verdict(dirOf(run)).message).toContain("✗ KRS002 named `beta`");
+  });
+
+  it("still compares when the release kept its registry at another path", () => {
+    const run = repo();
+    write(
+      dirOf(run),
+      "packages/core/src/ids.ts",
+      registryText({ alpha: "KRS001", beta: "KRS002" }),
+    );
+    release(run, "karasu@0.1.0");
+    write(dirOf(run), REGISTRY_PATH, registryText({ alpha: "KRS001", gamma: "KRS002" }));
+    expect(verdict(dirOf(run)).message).toContain("✗ KRS002 named `beta`");
+  });
+
+  it("fails when the release's registry parses to no entries", () => {
+    const run = repo();
+    write(
+      dirOf(run),
+      REGISTRY_PATH,
+      'export const DIAGNOSTIC_IDS = { alpha: "KRS001", beta: "KRS002" };\n',
+    );
+    release(run, "karasu@0.1.0");
+    write(dirOf(run), REGISTRY_PATH, registryText({ alpha: "KRS001", beta: "KRS002" }));
+    expect(verdict(dirOf(run)).message).toContain("parsed to no entries");
+  });
+
+  it("compares against the newest release in version order", () => {
+    const run = repo();
+    write(dirOf(run), REGISTRY_PATH, registryText({ alpha: "KRS001" }));
+    release(run, "karasu@0.9.0");
+    write(dirOf(run), REGISTRY_PATH, registryText({ alpha: "KRS001", beta: "KRS002" }));
+    release(run, "karasu@0.10.0");
+    write(dirOf(run), REGISTRY_PATH, registryText({ alpha: "KRS001", gamma: "KRS002" }));
+    // Only 0.10.0 published KRS002 as `beta`; 0.9.0 would not see the reuse.
+    expect(verdict(dirOf(run)).message).toContain("✗ KRS002 named `beta`");
   });
 });

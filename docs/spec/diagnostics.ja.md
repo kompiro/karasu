@@ -137,8 +137,8 @@ stdout に出し、カタログの行を stderr に出さない:
 - `diagnostics` は行と同じ順に並ぶ。`id`、`code`、`severity`、`params`、
   `message`、`details` は必ずある。`code` は `DiagnosticParamsByCode` のキーか
   `WarningKind` のメンバーで、`params` はそのコードの型に従う。どちらも locale に
-  よらない。`message` と `details` は locale に従い、ほかに行を持たない診断の
-  `details` は `[]` である。判定は `code` で行い、`id` や `message` では行わない。
+  よらない。`message` と `details` は locale に従う。`details` はテキストの行に出ない補足
+  （ストアを共有するサービスなど）で、無ければ `[]` である。判定は `code` で行い、`id` や `message` では行わない。
 - `file` は、行がファイルを示すときにある。位置を持つ診断と、位置を持たない
   `Diagnostic`（入口のファイルを示す）である。`line` と `column` は位置を持つときに
   ある。位置を持たない `Warning` には 3 つとも無い。`file` の綴りは行と同じ。

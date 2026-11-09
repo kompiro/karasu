@@ -198,6 +198,7 @@ describe("karasu check --format json (#3654)", () => {
     const krs = await file("index.krs", TOP_LEVEL_USER);
     const out = await run(() => check(krs, { format: "json" }));
     expect(out.exitCode).toBe(1);
+    expect(out.stderr).toBe("");
     const report = JSON.parse(out.stdout) as Report;
     expect(report.errorCount).toBe(1);
     expect(report.diagnostics[0]).toMatchObject({
@@ -216,10 +217,11 @@ describe("karasu check --format json (#3654)", () => {
     const text = await run(() => check(krs));
     const json = JSON.parse((await run(() => check(krs, { format: "json" }))).stdout) as Report;
     const textIds = [...text.stderr.matchAll(/^\w+\[(KRS\d{3})\]: /gm)].map((m) => m[1]);
+    expect(textIds.length).toBeGreaterThan(1);
     expect(json.diagnostics.map((d) => d.id)).toEqual(textIds);
   });
 
-  it("omits the location a warning without a position does not have", async () => {
+  it("names the entry for a Diagnostic without a position", async () => {
     // A missing style sheet is a Diagnostic without a position, so like its
     // text line it names the entry and no line. `line` and `column` come as a
     // pair, and only with a file.
@@ -235,6 +237,28 @@ describe("karasu check --format json (#3654)", () => {
         (d.line === undefined) !== (d.column === undefined) || (d.line !== undefined && !d.file),
     );
     expect(unpaired).toEqual([]);
+  });
+
+  it("gives a Warning without a position no file, line or column", async () => {
+    // The text line of such a warning names no file, so neither does the JSON;
+    // borrowing the entry's path would name a file the warning did not mean.
+    const { diagnosticsJson } = await import("./report-diagnostics.js");
+    const report = JSON.parse(
+      diagnosticsJson(
+        "index.krs",
+        [],
+        [{ kind: "domain-dispersal", params: { domainId: "Order", services: ["A", "B"] } }],
+      ),
+    ) as Report;
+    expect(report.diagnostics).toHaveLength(1);
+    expect(Object.keys(report.diagnostics[0])).toEqual([
+      "id",
+      "code",
+      "severity",
+      "params",
+      "message",
+      "details",
+    ]);
   });
 
   it("prints nothing on stdout and fails when the file does not exist", async () => {
