@@ -36,4 +36,5 @@ export const test = base.extend<{ stubWebFonts: void }>({
   ],
 });
 
-export { expect } from "@playwright/test";
+// The guarded `expect` (TPL-1171): a spec gets it with `test` from any fixture.
+export { expect } from "./expect.js";
