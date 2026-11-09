@@ -49,7 +49,7 @@ surface は 2 つに分かれ、扱う道具が違う:
 
 - [ ] 追加 / 変更した **keyboard shortcut**（`keybinding` chord）を `docs/tools/app.md` と `app.ja.md` の両方に載せたか（`pnpm lint:app-shortcut-docs-sync` が緑か）。doc に載せない判断なら `scripts/lint/app-shortcut-docs-sync.ts` の `DOC_EXEMPT` に理由付きで追加したか。 [guard: `scripts/lint/app-shortcut-docs-sync.test.ts`]
 - [ ] 追加 / 変更した **toolbar action / diagram view** を `docs/tools` の該当節（en + ja の両方）に反映したか。
-- [ ] 追加 / 変更した **CLI subcommand / flag** を `docs/tools` の CLI ページ（en + ja の両方）に反映したか（CLI ページ着地後）。
+- [ ] 追加 / 変更した **CLI subcommand / flag** を `docs/tools` の CLI ページ（en + ja の両方）に反映したか（CLI ページ着地後）。 [guard: `packages/cli/src/docs-tools-sync.test.ts`]
 - [ ] 反映を **en と ja の双方** に入れたか（片側だけは drift）。
 - [ ] その表が `reference-data.ts` 由来など **機械生成できる** ものなら、手書きせず生成側を更新したか。
 
@@ -63,3 +63,4 @@ surface は 2 つに分かれ、扱う道具が違う:
 
 - `scripts/lint/app-shortcut-docs-sync.test.ts`（`chordToDisplay` / `collectChords` の単体 + 実 doc が同期している統合アサーション）
 - `packages/cli/src/compat.test.ts`（`deprecation table` › `formats the notice so the pattern docs/tools/cli.md gives agents matches it`: CLI の deprecation 通知の形式が `docs/tools/cli.md` と `cli.ja.md` の両方に書かれたパターンと一致することを固定する。CLI ページ全体の同期ではなく、通知形式の一点のみ）
+- `packages/cli/src/docs-tools-sync.test.ts`（`karasu capabilities` と同じ builder で実 `program` を辿り、全コマンドに `docs/tools/cli.md` / `cli.ja.md` の表の行があること、全 long flag がそのコマンドの行か `karasu <command>` 節に書かれていることを確かめる。`--output` / `--format` は両ページで 1 度だけ説明する共通オプションとして扱う）
