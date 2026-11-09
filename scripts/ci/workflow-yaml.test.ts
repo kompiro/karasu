@@ -111,4 +111,12 @@ describe("workflow helpers", () => {
     expect(startsOn({ paths: ["docs/**"] }, "docs/a.md")).toBe(true);
     expect(startsOn({}, "anything")).toBe(true);
   });
+
+  it("refuses a negated path pattern rather than matching nothing", () => {
+    expect(() =>
+      startsOn({ paths: ["packages/**", "!packages/docs/**"] }, "packages/a.ts"),
+    ).toThrow(/Negated path pattern "!packages\/docs\/\*\*"/);
+    // globToRegExp alone still accepts it, for callers that read `!` themselves.
+    expect(() => globToRegExp("!release/**")).not.toThrow();
+  });
 });

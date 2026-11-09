@@ -82,7 +82,10 @@ function guardExpect(base: Expect): Expect {
   return new Proxy(guarded as unknown as Expect, {
     get(_target, prop) {
       const value: unknown = Reflect.get(base, prop);
-      if (prop === "soft" || prop === "poll") {
+      // `expect.soft` is a whole expect of its own (`.poll`, `.configure`, ...),
+      // so it is guarded as one rather than replaced by a bare call.
+      if (prop === "soft") return guardExpect(value as Expect);
+      if (prop === "poll") {
         return (actual: unknown, messageOrOptions?: unknown) => {
           check(`expect.${prop}()`, messageOrOptions);
           return guardMatchers(

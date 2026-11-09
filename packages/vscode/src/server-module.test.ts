@@ -1,19 +1,26 @@
 import { describe, expect, it, vi } from "vitest";
+import { translate } from "@karasu-tools/i18n";
 import { resolveServerModule } from "./server-module.js";
 
 describe("resolveServerModule (TPL-1024)", () => {
   const candidates = ["/ext/out/server.js", "/ext/../lsp/out/server.js"] as const;
 
-  it("takes the first candidate that exists, without logging", () => {
-    const log = vi.fn<(message: string) => void>();
-    expect(resolveServerModule(candidates, (p) => p.includes("lsp"), log)).toBe(candidates[1]);
-    expect(log).not.toHaveBeenCalled();
+  it("takes the first candidate that exists, without reporting", () => {
+    const onMissing = vi.fn<(tried: readonly string[]) => void>();
+    expect(resolveServerModule(candidates, (p) => p.includes("lsp"), onMissing)).toBe(
+      candidates[1],
+    );
+    expect(onMissing).not.toHaveBeenCalled();
   });
 
-  it("names every candidate in an error when none exists", () => {
-    const log = vi.fn<(message: string) => void>();
-    expect(resolveServerModule(candidates, () => false, log)).toBe(candidates[0]);
-    expect(log).toHaveBeenCalledOnce();
-    for (const candidate of candidates) expect(log.mock.calls[0]![0]).toContain(candidate);
+  it("reports every candidate when none exists", () => {
+    const onMissing = vi.fn<(tried: readonly string[]) => void>();
+    expect(resolveServerModule(candidates, () => false, onMissing)).toBe(candidates[0]);
+    expect(onMissing).toHaveBeenCalledExactlyOnceWith(candidates);
+  });
+
+  it.each(["en", "ja"] as const)("names every tried path in the %s message", (locale) => {
+    const message = translate(locale, "vscode.server.notFound", { tried: candidates });
+    for (const candidate of candidates) expect(message).toContain(candidate);
   });
 });

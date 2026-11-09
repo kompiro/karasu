@@ -207,8 +207,20 @@ export function globToRegExp(glob: string): RegExp {
   return new RegExp(`^${out}$`);
 }
 
-const matchesAny = (file: string, globs: readonly string[]): boolean =>
-  globs.some((glob) => globToRegExp(glob).test(file));
+/**
+ * Whether `file` matches a path-filter list. A `!` entry re-includes or
+ * re-excludes what earlier entries matched, an order-dependent rule this does
+ * not model; reading it as a literal glob would match nothing and over-report
+ * coverage, so it throws instead. (`globToRegExp` itself stays usable for
+ * `branches:`, where a `!` entry is read by the caller.)
+ */
+function matchesAny(file: string, globs: readonly string[]): boolean {
+  const negated = globs.find((glob) => glob.startsWith("!"));
+  if (negated !== undefined) {
+    throw new Error(`Negated path pattern "${negated}" is not supported by the workflow reader.`);
+  }
+  return globs.some((glob) => globToRegExp(glob).test(file));
+}
 
 /** Whether a PR that changes only `file` starts a workflow with this filter. */
 export const startsOn = (filter: PathFilter, file: string): boolean =>

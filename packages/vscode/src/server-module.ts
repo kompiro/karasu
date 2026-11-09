@@ -4,20 +4,17 @@
  * (F5 from packages/vscode) may only have packages/lsp's build output.
  *
  * When none exists the client still gets the first candidate, so it fails the
- * way it always did, but `log` first names every path that was tried. Without
- * that, a missing server looked like a language server that simply never
- * answered.
+ * way it always did, but `onMissing` first receives every path that was tried,
+ * for the caller to report. Without that, a missing server looked like a
+ * language server that simply never answered.
  */
 export function resolveServerModule(
   candidates: readonly [string, ...string[]],
   exists: (path: string) => boolean,
-  log: (message: string) => void,
+  onMissing: (tried: readonly string[]) => void,
 ): string {
   const found = candidates.find((candidate) => exists(candidate));
   if (found !== undefined) return found;
-  log(
-    `karasu: the language server was not found. Tried:\n${candidates.map((c) => `  ${c}`).join("\n")}\n` +
-      "Rebuild the extension (pnpm --filter karasu-vscode run build) or reinstall it.",
-  );
+  onMissing(candidates);
   return candidates[0];
 }

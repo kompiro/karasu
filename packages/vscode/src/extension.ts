@@ -7,6 +7,7 @@ import {
   type ServerOptions,
   TransportKind,
 } from "vscode-languageclient/node";
+import { resolveLocaleTag, translate } from "@karasu-tools/i18n";
 import { NodeAtPositionRequest, PositionOfNodeRequest } from "@karasu-tools/lsp/protocol";
 import { isKarasuSourcePath } from "./host-files.js";
 import { PreviewPanel } from "./preview-panel.js";
@@ -42,7 +43,10 @@ export function activate(context: vscode.ExtensionContext): void {
   // client's output channel ("karasu Language Server") once the client exists,
   // ahead of the client's own failure (TPL-1024).
   const missingServer: string[] = [];
-  const serverModule = resolveServerModule(serverModuleCandidates, fs.existsSync, (message) => {
+  const serverModule = resolveServerModule(serverModuleCandidates, fs.existsSync, (tried) => {
+    const message = translate(resolveLocaleTag(vscode.env.language), "vscode.server.notFound", {
+      tried,
+    });
     // eslint-disable-next-line no-console
     console.error(message);
     missingServer.push(message);
