@@ -170,7 +170,7 @@ CI ステップの成否判定に使えます。すぐ使える GitHub Actions �
 | `fmt [files...]` | `.krs` を in-place でフォーマット（CI 用 `--check`、パイプ用 `--stdin`） |
 | `tidy-style [files...]` | `.krs.style` を整える: 重複ルールをまとめ、プロパティを軸ごとにグループ化（CI 用 `--check`、パイプ用 `--stdin`。`--no-merge` は並べ替えだけ） |
 | `lint-style [files...]` | `.krs.style` のプロパティ値をスキーマに照らして lint（パイプ用 `--stdin`） |
-| `translate <file>` | インフラ設定や API 仕様を `.krs` スキャフォールドに変換（`--from compose` \| `k8s` \| `openapi` \| `db` \| `wrangler`）。`--map` で `karasu.map.yaml` を指し、`--system`・`--service`・`--database` で出力するブロックに名前を付け、`--granularity` で粒度（openapi は resource / operation、db は aggregate / table）を選ぶ。`--emit-bindings` で usecase → resource の対応を足し、`--emit-crud-decoration` は各 operation に CRUD の動詞も付ける |
+| `translate <file>` | インフラ設定や API 仕様を `.krs` スキャフォールドに変換（`--from compose` \| `k8s` \| `openapi` \| `db` \| `wrangler`）。`--map` で `karasu.map.yaml` を指し、`--system` で出力したブロックを `system <name> {}` で包み（`wrangler` ではシステム名を上書きする）、`--service`・`--database` で仕様から作る service / database に名前を付け、`--granularity` で粒度（openapi は resource / operation、db は aggregate / table）を選ぶ。`--emit-bindings` で usecase → resource の対応を足し、`--emit-crud-decoration` は各 operation に CRUD の動詞も付ける |
 | `apply <file>` | stdin の `.krs` を適用 — 同 id のノードは置換、無ければ追記 |
 | `append <file>` | stdin の `.krs` を新しいトップレベルブロックとして末尾に追記 |
 | `insert <parent-id> <file>` | stdin の `.krs` を指定ノードの最後の子として挿入 |

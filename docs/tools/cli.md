@@ -172,7 +172,7 @@ the formats the command's row names.
 | `fmt [files...]` | Format `.krs` files in place (`--check` for CI, `--stdin` for pipes) |
 | `tidy-style [files...]` | Tidy `.krs.style` files: merge duplicate rules, group properties (`--check` for CI, `--stdin` for pipes, `--no-merge` only reorders) |
 | `lint-style [files...]` | Lint `.krs.style` property values against the schema (`--stdin` for pipes) |
-| `translate <file>` | Translate an infra config or API spec into a `.krs` scaffold (`--from compose` \| `k8s` \| `openapi` \| `db` \| `wrangler`). `--map` points at a `karasu.map.yaml`; `--system`, `--service` and `--database` name the emitted blocks; `--granularity` picks resource or operation (openapi), aggregate or table (db); `--emit-bindings` adds usecase → resource bindings and `--emit-crud-decoration` also marks each operation's CRUD verb |
+| `translate <file>` | Translate an infra config or API spec into a `.krs` scaffold (`--from compose` \| `k8s` \| `openapi` \| `db` \| `wrangler`). `--map` points at a `karasu.map.yaml`; `--system` wraps the emitted blocks in `system <name> {}` (for `wrangler`, it names the system instead); `--service` and `--database` name the service or database the spec becomes; `--granularity` picks resource or operation (openapi), aggregate or table (db); `--emit-bindings` adds usecase → resource bindings and `--emit-crud-decoration` also marks each operation's CRUD verb |
 | `apply <file>` | Apply piped `.krs` from stdin — replace a node by id, else append |
 | `append <file>` | Append piped `.krs` from stdin as a new top-level block |
 | `insert <parent-id> <file>` | Insert piped `.krs` from stdin as the last child of a node |
