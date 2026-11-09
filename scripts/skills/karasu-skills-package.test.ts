@@ -151,7 +151,7 @@ describe("plugin and marketplace manifests", () => {
     expect(pkg.name).toBe("karasu-skills");
     // The `!` entries keep test and source-map files out of those directories
     // (scripts/ci/publishable-tarball-policy.test.ts, TPL-1681).
-    expect(pkg.files.filter((entry: string) => !entry.startsWith("!"))).toEqual([
+    expect((pkg.files as string[]).filter((entry) => !entry.startsWith("!"))).toEqual([
       ".claude-plugin",
       "skills",
     ]);
