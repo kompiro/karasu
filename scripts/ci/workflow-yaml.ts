@@ -202,7 +202,7 @@ export function globToRegExp(glob: string): RegExp {
   return new RegExp(`^${out}$`);
 }
 
-export const matchesAny = (file: string, globs: readonly string[]): boolean =>
+const matchesAny = (file: string, globs: readonly string[]): boolean =>
   globs.some((glob) => globToRegExp(glob).test(file));
 
 /** Whether a PR that changes only `file` starts a workflow with this filter. */
