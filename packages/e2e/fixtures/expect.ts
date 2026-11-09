@@ -17,9 +17,11 @@ import { expect as playwrightExpect } from "@playwright/test";
  * checked: `toPass`, which has no default to extend (it retries until the test
  * times out unless given a bound), and the value matchers, whose argument is
  * data rather than options. Specs import this through `fixtures/opfs.ts`,
- * `fixtures/serve.ts` or `fixtures/network.ts`; `.oxlintrc.json` forbids
- * importing `expect` from `@playwright/test` in `tests/`. A helper in
- * `fixtures/` that has a reason to wait longer imports Playwright's own.
+ * `fixtures/serve.ts` or `fixtures/network.ts`, and helpers in `fixtures/`
+ * import it directly; `.oxlintrc.json` forbids importing `expect` (or `test`)
+ * from `@playwright/test` anywhere in `tests/` and `fixtures/` but this file.
+ * A helper with a real reason to wait longer needs a per-line disable that
+ * states the reason.
  */
 
 /** Playwright's default assertion timeout; `playwright.config.ts` does not change it. */

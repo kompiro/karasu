@@ -20,9 +20,11 @@ its own `test` extends `./network.js`, not `@playwright/test`.
 `network.ts`, `opfs.ts` and `serve.ts` re-export this `expect` rather than
 Playwright's. It refuses an auto-retrying assertion whose timeout waits beyond
 the 5s default (or `0`, no timeout), whether the value is written inline or held
-in a constant (TPL-1171). Specs must import `test` and `expect` from a fixture:
-`.oxlintrc.json` forbids importing either from `@playwright/test` under
-`tests/`. A helper here with a reason to wait longer imports Playwright's own.
+in a constant (TPL-1171). Specs and the helpers here import `expect` from a
+fixture or from `./expect.js`: `.oxlintrc.json` forbids importing `test` or
+`expect` from `@playwright/test` under `tests/` and `fixtures/`, except in
+`expect.ts` itself and the one `test` base in `network.ts`. A helper with a
+real reason to wait longer needs a per-line disable that states it.
 
 ## `opfs.ts` — OPFS state fixture
 

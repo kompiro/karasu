@@ -36,7 +36,8 @@
       }
     },
     {
-      "files": ["packages/e2e/tests/**/*.ts"],
+      "files": ["packages/e2e/tests/**/*.ts", "packages/e2e/fixtures/**/*.ts"],
+      "excludeFiles": ["packages/e2e/fixtures/expect.ts"],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -45,7 +46,7 @@
               {
                 "name": "@playwright/test",
                 "importNames": ["expect", "test"],
-                "message": "Import test and expect from a fixture (../fixtures/opfs.js, serve.js or network.js). Their expect refuses an assertion timeout above the default (packages/e2e/fixtures/expect.ts, TPL-1171). Types such as Page may still come from @playwright/test."
+                "message": "Import test from a fixture (opfs.js, serve.js or network.js) and expect from a fixture or fixtures/expect.js. That expect refuses an assertion timeout above the default (packages/e2e/fixtures/expect.ts, TPL-1171). Types such as Page may still come from @playwright/test."
               }
             ]
           }
