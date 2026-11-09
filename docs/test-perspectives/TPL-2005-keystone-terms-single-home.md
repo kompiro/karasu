@@ -86,8 +86,9 @@ keystone / permalink の用語を扱う doc を変更するときに確認する
       との相互リンクが生きているか。
 - [ ] 用語集が参照する unpublished doc（roadmap / design doc / ADR）を rename / 削除
       したなら、用語集側のリンクを追随させたか。check-links はリンク先ファイルの存在を見る
-      （アンカーは見ない）。`reference-docs-check.yml` は published ページを触る PR で走るので、
-      unpublished doc だけを動かす PR では main への push で赤くなる。 [guard: `packages/docs-site/scripts/check-links.ts`]
+      （アンカーは見ない）。`reference-docs-check.yml` はリンク先の置き場（`docs/adr/**`・`docs/design/**`
+      など）を触る PR でも走り、published ページがその外へリンクすると `lint:docs-site-ci-paths-sync` が
+      落ちる。 [guard: `packages/docs-site/scripts/check-links.ts`]
 - [ ] `pnpm --filter docs-site check-links` が通るか（published ページ間のリンク・アンカー解決）。 [guard: `packages/docs-site/scripts/check-links.ts`]
 - [ ] 新規 published ページを足したなら PUBLISHED_EN_FILES + sidebar（`packages/docs-site/scripts/lib/sidebar.ts`、
       `astro.config.mjs` が読む）+ `.ja.md` sibling が揃っているか。 [guard: `packages/docs-site/scripts/lib/site-map.test.ts`]
