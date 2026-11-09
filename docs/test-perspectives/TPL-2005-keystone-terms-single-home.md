@@ -83,8 +83,7 @@ keystone / permalink の用語を扱う doc を変更するときに確認する
 - [ ] `docs/glossary.md` / `.ja.md` の permalink 項目が `docs/spec/permalink.md`・repo-backed /
       ref-pinned の design doc・permalink ADR の機構と矛盾していないか。 [judgment]
 - [ ] EN / JA 両ファイルを更新したか。両者と `docs/spec/glossary.md`（モデリング言語用語集）
-      との相互リンクが生きているか。節の構造と節ごとの用語 bullet の数、4 本の相互リンクを機械が見る
-      （片方の locale だけの定義文の書き換えは見ない）。 [guard: `scripts/lint/spec-structure-sync.ts`, `scripts/lint/spec-structure-sync.test.ts`]
+      との相互リンクが生きているか。
 - [ ] 用語集が参照する unpublished doc（roadmap / design doc / ADR）を rename / 削除
       したなら、用語集側のリンクを追随させたか。check-links はリンク先ファイルの存在を見る
       （アンカーは見ない）。`reference-docs-check.yml` は published ページを触る PR で走るので、
@@ -98,7 +97,8 @@ keystone / permalink の用語を扱う doc を変更するときに確認する
 - `scripts/lint/spec-structure-sync.ts` — published ページ全部（`PUBLISHED_EN_FILES` から導く）の en/ja で見出し構造を比べ、
   用語集 2 組（`docs/glossary.md`・`docs/spec/glossary.md`）は節ごとの用語 bullet（`- **…`）の数も比べる。
   用語集と `docs/spec/glossary.md` の相互リンク 4 本（en・ja の往復）も確かめる。`reference-docs-check.yml` が
-  用語集・`docs/spec/**`・`docs/tools/**` を触る PR で走らせる
+  用語集・`docs/spec/**`・`docs/tools/**` を触る PR で走らせる。片方の locale だけで定義文を書き換えても
+  落ちないので、チェックリスト 3 項目目のガードではない
 - `packages/docs-site/scripts/lib/site-map.test.ts` › `published pages` — `spec/glossary.md` が公開対象に含まれること、`PUBLISHED_EN_FILES` に登録した全ページが disk に存在し route と content path に解決されることを PR 時点で固定する。同じ describe が、`PUBLISHED_EN_FILES` の全ページに `.ja.md` sibling があることと、sidebar（`sidebar.ts`）の autogenerate ディレクトリかリンクから辿れることも確かめる
 
 ## 派生元
