@@ -1,5 +1,7 @@
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 // The Low PR merger (Issue #3673) judges again whenever a check it waits for
@@ -129,5 +131,89 @@ describe("low-pr-merger.yml treats PRs as data (TPL-3673)", () => {
     expect(report).toMatch(/^ {4}needs: \[judge, merge, notify\]$/m);
     expect(report).toMatch(/^ {4}if: always\(\)$/m);
     expect(report).toContain("UNDECIDED: ${{ needs.judge.outputs.undecided }}");
+  });
+});
+
+/** The merge step's script, as the runner gets it. */
+const mergeScript = (() => {
+  const step = job("merge").split("- name: Merge the PRs the judge cleared")[1];
+  const body = step?.match(/ run: \|\n((?:(?: {10}.*)?\n)*)/)?.[1];
+  if (body === undefined) throw new Error("the merge job has no merge step");
+  return body.replace(/^ {10}/gm, "");
+})();
+
+const SHA = "0123456789abcdef0123456789abcdef01234567";
+const OTHER = "fedcba9876543210fedcba9876543210fedcba98";
+const cleared = (sha = SHA) => JSON.stringify([{ pr: 7, sha, outcome: "merge" }]);
+const pullNow = (sha = SHA, labels = "risk: low") => `open\tfalse\t${sha}\tmain\t${labels}`;
+
+/**
+ * Runs the merge step with a `gh` that answers every read of the PR with `pr`
+ * and records each merge request. Returns the exit code and the merge requests.
+ */
+function runMerge(verdicts: string, pr: string, mergeExit = 0) {
+  const dir = mkdtempSync(join(tmpdir(), "low-pr-merge-"));
+  try {
+    const log = join(dir, "merges");
+    writeFileSync(
+      join(dir, "gh"),
+      [
+        "#!/usr/bin/env bash",
+        'if [[ "$2" == -X ]]; then echo "$*" >> "$STUB_LOG"; exit "$STUB_MERGE_EXIT"; fi',
+        "printf '%s\\n' \"$STUB_PR\"",
+        "",
+      ].join("\n"),
+      { mode: 0o755 },
+    );
+    writeFileSync(join(dir, "step.sh"), mergeScript);
+    const run = spawnSync("bash", [join(dir, "step.sh")], {
+      encoding: "utf-8",
+      env: {
+        PATH: `${dir}:${process.env.PATH}`,
+        VERDICTS: verdicts,
+        REPO: "kompiro/karasu",
+        STUB_PR: pr,
+        STUB_LOG: log,
+        STUB_MERGE_EXIT: String(mergeExit),
+      },
+    });
+    const merges = existsSync(log) ? readFileSync(log, "utf-8").trim().split("\n") : [];
+    return { status: run.status, merges };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+describe("low-pr-merger.yml merge step", () => {
+  it("merges a PR that is still what the judge cleared, pinned to the judged head", () => {
+    expect(runMerge(cleared(), pullNow())).toEqual({
+      status: 0,
+      merges: [
+        `api -X PUT repos/kompiro/karasu/pulls/7/merge -f merge_method=squash -f sha=${SHA}`,
+      ],
+    });
+  });
+
+  it.each([
+    ["its head moved", pullNow(OTHER)],
+    ["it gained another risk label", pullNow(SHA, "risk: high,risk: low")],
+    ["it went back to draft", `open\ttrue\t${SHA}\tmain\trisk: low`],
+    ["it was closed", `closed\tfalse\t${SHA}\tmain\trisk: low`],
+  ])("leaves a PR to the next run when %s since the judge read it", (_, pr) => {
+    expect(runMerge(cleared(), pr)).toEqual({ status: 0, merges: [] });
+  });
+
+  it("merges nothing the judge did not clear", () => {
+    const verdicts = JSON.stringify([
+      { pr: 7, sha: SHA, outcome: "wait", reasons: ["checks-pending"], stalled: false },
+      { pr: 7, sha: SHA, outcome: "reject", reasons: ["tier"] },
+    ]);
+    expect(runMerge(verdicts, pullNow())).toEqual({ status: 0, merges: [] });
+  });
+
+  it("fails on a verdict list it cannot read, and on a merge refused for an unchanged PR", () => {
+    expect(runMerge("not json", pullNow())).toEqual({ status: 1, merges: [] });
+    expect(runMerge("{}", pullNow())).toEqual({ status: 1, merges: [] });
+    expect(runMerge(cleared(), pullNow(), 1).status).toBe(1);
   });
 });
