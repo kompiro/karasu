@@ -56,7 +56,7 @@ scope:
 
 ## 関連テスト
 
-- `packages/core/src/compile/compile-diff-warnings.test.ts`（「before and after resolve independently」: 両側の診断が 1 回ずつ出ること、両側が同じ style sheet を import しても info 以外の診断が出ず after の sheet が残ること。#3513 で `circular-style-import` を廃止したので、循環の誤報は「info 以外の診断なし」が見る）
+- `packages/core/src/compile/compile-diff-warnings.test.ts`（「before and after resolve independently」: 両側の診断が 1 回ずつ出ること、› `lets both sides import the same style sheet` が、両側が同じ style sheet を import しても info 以外の診断が出ず after の sheet が残ること。#3513 で `circular-style-import` を廃止したので、循環の誤報は「info 以外の診断なし」が見る）
 
 ## 派生元 spec
 
