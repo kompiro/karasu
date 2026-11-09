@@ -134,6 +134,8 @@ describe("before and after resolve independently (#2879)", () => {
       `@import "./shared.krs.style"\nsystem Shop { service Api {} }\n`,
     );
     const result = await compileSystemDiff(opts(fs));
+    // Neither side reports a problem with the shared import.
+    expect(result.diagnostics.filter((d) => d.severity !== "info")).toEqual([]);
     // After kept its sheet, so the sheet's warning is reported.
     expect(result.warnings.some((w) => w.kind === "style-unknown-icon")).toBe(true);
   });

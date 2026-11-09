@@ -56,3 +56,4 @@ import グラフは **DAG** を許す。あるファイル C が `entry → A �
 ## 派生元 spec
 
 - `docs/spec/syntax.md` §「Multi-file import semantics」 S5
+- `docs/spec/syntax.md` §「@import scope」

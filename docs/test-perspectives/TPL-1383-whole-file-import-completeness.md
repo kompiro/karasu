@@ -60,3 +60,4 @@ imported ファイルの top-level ノードのうち `queue` / `storage` / `leg
 ## 派生元 spec
 
 - `docs/spec/syntax.md` §「Multi-file import semantics」 S2
+- `docs/spec/syntax.md` §「@import scope」

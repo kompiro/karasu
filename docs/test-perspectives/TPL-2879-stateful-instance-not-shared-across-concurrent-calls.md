@@ -27,7 +27,7 @@ scope:
 
 ## 観点
 
-`ImportResolver.resolve()` は冒頭で `diagnostics` / `loadedKrs` / `visitedStyles` / `resolvedCache` などのフィールドを消してから解決を始める。1 回の呼び出しを 1 つのインスタンスで閉じる設計で、逐次に呼ぶかぎり正しい。
+`ImportResolver.resolve()` は冒頭で `diagnostics` / `loadedKrs` / `resolvedCache` などのフィールドを消してから解決を始める。1 回の呼び出しを 1 つのインスタンスで閉じる設計で、逐次に呼ぶかぎり正しい。
 
 並行に呼ぶと壊れる。`resolve()` は途中でファイルの読み込みを await するので、2 つ目の呼び出しの冒頭のリセットが 1 つ目の途中に割り込み、1 つ目が積んだ状態を消す。返す `diagnostics` は同じ配列を指す。#2879 で `compile*Diff` は before と after を 1 つのインスタンスで `Promise.all` していた。結果、両側の診断が両側に入って全件が 2 回出て、両側が同じ style sheet を import すると後から来た側が `visitedStyles` に当たって sheet を落とし、存在しない循環 import を報告した。
 

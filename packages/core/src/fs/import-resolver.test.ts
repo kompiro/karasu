@@ -767,6 +767,50 @@ system Test {
       expect(result.diagnostics).toEqual([]);
     });
 
+    it("resolves a file's @import once, beside it, when a second path reaches it from another directory", async () => {
+      // b.krs reaches sub/a.krs again through `../`: the cached resolution is
+      // reused as it is, never resolved a second time against b's directory.
+      await fs.writeFile("/project/index.krs", `import "sub/a.krs"\nimport "x/b.krs"\n`);
+      await fs.writeFile(
+        "/project/sub/a.krs",
+        `@import "t.krs.style"\nsystem A {\n  service A1\n}\n`,
+      );
+      await fs.writeFile(
+        "/project/x/b.krs",
+        `import "../sub/a.krs"\nsystem B {\n  service B1\n}\n`,
+      );
+      await fs.writeFile("/project/sub/t.krs.style", `user { background-color: #000; }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.styleSheets.map((s) => s.sheetId)).toEqual(["/project/sub/t.krs.style"]);
+      expect(result.diagnostics).toEqual([]);
+    });
+
+    it("dedupes one sheet written two ways, including through ../", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `@import "sub/t.krs.style"
+import "sub/q.krs"
+import "other/r.krs"
+system Main {
+  service M1
+}`,
+      );
+      await fs.writeFile(
+        "/project/sub/q.krs",
+        `@import "t.krs.style"\nsystem Q {\n  service Q1\n}\n`,
+      );
+      await fs.writeFile(
+        "/project/other/r.krs",
+        `@import "../sub/t.krs.style"\nsystem R {\n  service R1\n}\n`,
+      );
+      await fs.writeFile("/project/sub/t.krs.style", `user { background-color: #000; }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.styleSheets.map((s) => s.sheetId)).toEqual(["/project/sub/t.krs.style"]);
+      expect(result.diagnostics).toEqual([]);
+    });
+
     it("keeps a sheet at the position where it is reached first", async () => {
       await fs.writeFile(
         "/project/index.krs",
