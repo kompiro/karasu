@@ -28,14 +28,17 @@ function parseArgs(argv: string[]): { dir: string; options: LargeModelOptions } 
     const arg = argv[i];
     const key = flags[arg];
     if (key) {
-      const value = Number(argv[++i]);
+      const raw = argv[++i];
+      if (raw === undefined) throw new Error(`${arg} expects a positive integer`);
+      const value = Number(raw);
       if (!Number.isInteger(value) || value < 1) {
-        throw new Error(`${arg} expects a positive integer, got ${argv[i]}`);
+        throw new Error(`${arg} expects a positive integer, got ${raw}`);
       }
       options[key] = value;
     } else if (arg.startsWith("--")) {
       throw new Error(`unknown option ${arg}`);
     } else {
+      if (dir !== undefined) throw new Error(`unexpected argument ${arg}`);
       dir = arg;
     }
   }
