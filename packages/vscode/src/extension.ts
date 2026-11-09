@@ -38,10 +38,15 @@ export function activate(context: vscode.ExtensionContext): void {
     context.asAbsolutePath(path.join("out", "server.js")),
     context.asAbsolutePath(path.join("..", "lsp", "out", "server.js")),
   ];
-  // The extension host log is where a missing server should be reported; the
-  // client's own failure follows it (TPL-1024).
-  // eslint-disable-next-line no-console
-  const serverModule = resolveServerModule(serverModuleCandidates, fs.existsSync, console.error);
+  // A missing server is reported in the extension host log at once, and in the
+  // client's output channel ("karasu Language Server") once the client exists,
+  // ahead of the client's own failure (TPL-1024).
+  const missingServer: string[] = [];
+  const serverModule = resolveServerModule(serverModuleCandidates, fs.existsSync, (message) => {
+    // eslint-disable-next-line no-console
+    console.error(message);
+    missingServer.push(message);
+  });
 
   const serverOptions: ServerOptions = {
     run: { module: serverModule, transport: TransportKind.ipc },
@@ -60,6 +65,7 @@ export function activate(context: vscode.ExtensionContext): void {
   };
 
   client = new LanguageClient("karasu", "karasu Language Server", serverOptions, clientOptions);
+  for (const message of missingServer) client.outputChannel.appendLine(message);
   // Wire the deactivate stop-path to the client as soon as it is *constructed*,
   // before `start()`. The client spawns the language-server child process, so
   // `deactivate()` (window reload / uninstall) must be able to stop it even if
