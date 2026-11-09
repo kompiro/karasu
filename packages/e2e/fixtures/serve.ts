@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { test as base } from "./network.js";
 import { SERVE_FIXTURE_DIR, SERVE_SCRATCH_DIR } from "./serve-env.js";
 
-export { expect } from "@playwright/test";
+export { expect } from "./expect.js";
 
 /**
  * The directory `karasu serve` is watching (`scripts/start-serve.ts`), for
