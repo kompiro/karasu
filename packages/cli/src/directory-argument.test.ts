@@ -135,7 +135,7 @@ describe("a directory argument", () => {
     await diff(before, dir, { view: "system", output: join(tmpDir, "diff.svg") });
 
     expect(stderr).toContain(
-      `Warning: ${join(dir, "index.krs")}:2:1: Domain "Orphan" is not assigned to any service`,
+      `Warning[KRS058]: ${join(dir, "index.krs")}:2:1: Domain "Orphan" is not assigned to any service`,
     );
   });
 

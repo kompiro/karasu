@@ -7,7 +7,14 @@
  * change their import path.
  */
 
-import type { Diagnostic, Warning, FormattedWarning } from "@karasu-tools/core";
+import { diagnosticIdOf } from "@karasu-tools/core";
+import type {
+  Diagnostic,
+  DiagnosticCode,
+  Warning,
+  WarningKind,
+  FormattedWarning,
+} from "@karasu-tools/core";
 import {
   renderDiagnostic,
   renderWarning,
@@ -47,4 +54,32 @@ export function formatDiagnostic(d: Diagnostic): string {
 /** Render a core `Warning` to a localized `message` + `details`. */
 export function formatWarning(w: Warning): FormattedWarning {
   return renderWarning(w, t);
+}
+
+/**
+ * What a line needs to show one catalog diagnostic: the severity word tagged
+ * with the code's ID, and the localized message.
+ */
+export interface DiagnosticParts extends FormattedWarning {
+  /** `word` followed by the ID: `Warning` → `Warning[KRS041]` (#3654). */
+  tag: string;
+}
+
+function tagged(word: string, code: DiagnosticCode | WarningKind): string {
+  return `${word}[${diagnosticIdOf(code)}]`;
+}
+
+/**
+ * Every line the CLI prints for a catalog diagnostic goes through this or
+ * {@link warningParts}, so no command shows a diagnostic without its ID
+ * (TPL-1417, TPL-3654). `word` is the command's own spelling of the severity
+ * (`Error`, or `error` for `lint-style`); only the ID is added to it.
+ */
+export function diagnosticParts(word: string, d: Diagnostic): DiagnosticParts {
+  return { tag: tagged(word, d.code), message: formatDiagnostic(d), details: [] };
+}
+
+/** {@link diagnosticParts} for a resolver `Warning`. */
+export function warningParts(word: string, w: Warning): DiagnosticParts {
+  return { tag: tagged(word, w.kind), ...formatWarning(w) };
 }
