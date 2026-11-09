@@ -8,6 +8,7 @@ type: product
 - **関連 Issue**: [#3702](https://github.com/kompiro/karasu/issues/3702)（#3481 から分離）
 - **Related TPLs**: [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md)
 - **対象ファイル**: `packages/core/src/view/edge-key.ts`
+- **設計 (ADR)**: [ADR-3702](../adr/3702-edge-style-kind-key-disjoint.md)
 
 > 解決済みスタイルの `styles.edges` には、kind 付きのキー（`edgeKindKey`、`x->y#sync`）と
 > kind 無しのキー（`edgeKey`）が同居している。`edgeKey` は `#` を含む端点を囲んでいなかったので、
