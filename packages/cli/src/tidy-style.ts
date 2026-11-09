@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import { tidyStyleSheet, type Diagnostic } from "@karasu-tools/core";
-import { formatDiagnostic } from "./i18n.js";
+import { diagnosticParts } from "./i18n.js";
 import { resolveTargets } from "./find-files.js";
 import { readStdin } from "./stdin.js";
 
@@ -71,7 +71,8 @@ function reportErrors(name: string, diagnostics: Diagnostic[]): boolean {
   for (const d of errors) {
     const line = d.loc?.start.line ?? 1;
     const col = d.loc?.start.column ?? 1;
-    process.stderr.write(`${name}:${line}:${col} error: ${formatDiagnostic(d)}\n`);
+    const { tag, message } = diagnosticParts("error", d);
+    process.stderr.write(`${name}:${line}:${col} ${tag}: ${message}\n`);
   }
   return errors.length > 0;
 }

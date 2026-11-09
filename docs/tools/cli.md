@@ -164,7 +164,7 @@ the formats the command's row names.
 | --- | --- |
 | `serve [dir]` | Serve `.krs` files from a directory with live preview |
 | `render <file>` | Render a `.krs` file to SVG or draw.io |
-| `check <file>` | Validate a `.krs` project without writing anything; exits `1` on any error. Runs the same compile as `render`, so a file that passes renders. Run it before `fmt`, which refuses unparseable files without saying where |
+| `check <file>` | Validate a `.krs` project without writing anything; exits `1` on any error. Runs the same compile as `render`, so a file that passes renders. Run it before `fmt`, which refuses unparseable files without saying where. Each diagnostic line carries its ID after the severity word (`Warning[KRS041]: ...`), which the [diagnostics catalog](../spec/diagnostics.md#how-the-cli-shows-a-diagnostic) lists; `--format json` prints the findings as one JSON document for scripts and agents |
 | `matrix <file>` | Render a usecase × resource CRUD matrix (`md` / `csv` / `svg`). `--service` narrows the rows; `--infra`, `--external` and `--no-external` narrow the columns; `--writes-only`, `--omit-empty` and `--no-totals` trim the table |
 | `team-dependencies <file>` | Derive which teams depend on which from `owns` × the logical edges, plus ownership that crosses containment (`md` / `csv`) |
 | `coverage <file>` | Report each domain's density to spot thinly modeled domains (`md` / `json`; `--threshold` sets the thin-score cut-off, 0..1) |

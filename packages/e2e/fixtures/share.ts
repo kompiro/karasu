@@ -1,5 +1,6 @@
 import { deflateRawSync, inflateRawSync } from "node:zlib";
-import { type Locator, type Page, expect } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
+import { expect } from "./expect.js";
 import { replaceEditorContent } from "./editor.js";
 import type { OpfsFixture, SeedOptions } from "./opfs.js";
 

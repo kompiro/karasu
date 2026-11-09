@@ -158,6 +158,21 @@ pre-push:
       # it in CI.
       glob: "{.claude/skills/**,packages/skills/skills/**,packages/cli/src/index.ts,packages/cli/src/deprecations.ts,packages/core/src/translate/**,scripts/lint/skill-cli-refs.ts}"
       run: pnpm run lint:skill-cli-refs
+    skill-diagnostic-codes:
+      # A published skill judges by `karasu check --format json` codes, written
+      # as `code:<kebab>`; each must be a code core emits, and no skill names a
+      # KRS ID (Issue #3654, TPL-3654). Globbed on core's code unions too, so a
+      # code renamed in core alone re-runs it. The vitest mirror in scripts/lint
+      # runs it in CI.
+      glob: "{packages/skills/skills/**,packages/core/src/types/ast.ts,packages/core/src/types/warnings.ts,packages/core/src/types/diagnostic-ids.ts,scripts/lint/skill-diagnostic-codes.ts}"
+      run: pnpm run lint:skill-diagnostic-codes
+    diagnostic-ids-history:
+      # An ID a published release printed keeps naming the same code (Issue
+      # #3654, TPL-3654). Compares the registry against the latest karasu@*
+      # tag; the registry's own test cannot see a retired ID handed to a new
+      # code. ci.yml's Check runs it too.
+      glob: "{packages/core/src/types/diagnostic-ids.ts,scripts/lint/diagnostic-ids-history.ts}"
+      run: pnpm run lint:diagnostic-ids-history
     skill-reference-bundle-sync:
       # Each bundling skill ships copies of the specs it teaches (Issue #2574),
       # identical except for links rewritten to resolve outside this repo

@@ -118,7 +118,7 @@ describe("AT-0042 karasu render — integration with real examples", () => {
     const out = streams.stdout();
     expect(out).toContain("<svg");
     expect(streams.stderr()).not.toContain("file not found");
-    expect(streams.stderr()).not.toContain("Error:");
+    expect(streams.stderr()).not.toMatch(/^Error(\[KRS[0-9]{3}\])?:/m);
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
@@ -285,9 +285,9 @@ describe("karasu render: diagnostic locations name their file (#2715)", () => {
     const line = streams
       .stderr()
       .split("\n")
-      .find((l) => l.startsWith(`${prefix}: `) && message.test(l));
+      .find((l) => new RegExp(`^${prefix}\\[KRS\\d{3}\\]: `).test(l) && message.test(l));
     expect(line).toBeDefined();
-    const match = /^\w+: (.+):(\d+):(\d+): /.exec(line!);
+    const match = /^\w+\[KRS\d{3}\]: (.+):(\d+):(\d+): /.exec(line!);
     expect(match).not.toBeNull();
     return { file: match![1], line: Number(match![2]), column: Number(match![3]) };
   }
@@ -333,7 +333,7 @@ describe("karasu render: diagnostic locations name their file (#2715)", () => {
 
     await render(entry, { output: join(tmpDir, "out.svg") });
 
-    expect(streams.stderr()).toContain(`Error: ${entry}:4:1: `);
+    expect(streams.stderr()).toContain(`Error[KRS012]: ${entry}:4:1: `);
   });
 
   it("prints a style sheet's parse error at the sheet's line", async () => {
@@ -424,7 +424,7 @@ describe("default karasu render applies the imported style sheets (#3097)", () =
     return streams
       .stderr()
       .split("\n")
-      .filter((l) => l.startsWith("Warning: "));
+      .filter((l) => /^Warning\[KRS\d{3}\]: /.test(l));
   }
 
   it("draws the bundle with the imported sheet", async () => {

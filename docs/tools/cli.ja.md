@@ -162,7 +162,7 @@ CI ステップの成否判定に使えます。すぐ使える GitHub Actions �
 | --- | --- |
 | `serve [dir]` | ディレクトリの `.krs` をライブプレビュー付きで配信 |
 | `render <file>` | `.krs` を SVG または draw.io にレンダリング |
-| `check <file>` | 何も書き出さずに `.krs` プロジェクトを検証し、error が 1 つでもあれば終了コード `1`。`render` と同じコンパイルを通すので、通ったファイルは描画できる。`fmt` より先に実行する（`fmt` はパースできないファイルを位置を示さずに拒否する） |
+| `check <file>` | 何も書き出さずに `.krs` プロジェクトを検証し、error が 1 つでもあれば終了コード `1`。`render` と同じコンパイルを通すので、通ったファイルは描画できる。`fmt` より先に実行する（`fmt` はパースできないファイルを位置を示さずに拒否する）。診断の各行は severity の語の直後に ID（`Warning[KRS041]: ...`）を持ち、[診断カタログ](../spec/diagnostics.ja.md)で引ける。`--format json` はスクリプトやエージェント向けに、同じ診断を 1 つの JSON で出す |
 | `matrix <file>` | ユースケース × リソースの CRUD マトリクスを出力（`md` / `csv` / `svg`）。`--service` で行を、`--infra`・`--external`・`--no-external` で列を絞り、`--writes-only`・`--omit-empty`・`--no-totals` で表を削る |
 | `team-dependencies <file>` | `owns` × 論理エッジからチーム間の依存と、囲みを跨ぐ所有を導出して出力（`md` / `csv`） |
 | `coverage <file>` | ドメインごとの密度を出し、モデルが薄いドメインを見つける（`md` / `json`。`--threshold` で薄さの閾値 0..1 を変える） |

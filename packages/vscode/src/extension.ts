@@ -7,9 +7,11 @@ import {
   type ServerOptions,
   TransportKind,
 } from "vscode-languageclient/node";
+import { resolveLocaleTag, translate } from "@karasu-tools/i18n";
 import { NodeAtPositionRequest, PositionOfNodeRequest } from "@karasu-tools/lsp/protocol";
 import { isKarasuSourcePath } from "./host-files.js";
 import { PreviewPanel } from "./preview-panel.js";
+import { resolveServerModule } from "./server-module.js";
 
 const CURSOR_DEBOUNCE_MS = 150;
 
@@ -33,12 +35,22 @@ export function activate(context: vscode.ExtensionContext): void {
   // dev tree (F5 from packages/vscode) that copy might not exist yet;
   // fall back to packages/lsp's build output as a sibling of the
   // extension folder.
-  const serverModuleCandidates = [
+  const serverModuleCandidates: [string, string] = [
     context.asAbsolutePath(path.join("out", "server.js")),
     context.asAbsolutePath(path.join("..", "lsp", "out", "server.js")),
   ];
-  const serverModule =
-    serverModuleCandidates.find((p) => fs.existsSync(p)) ?? serverModuleCandidates[0];
+  // A missing server is reported in the extension host log at once, and in the
+  // client's output channel ("karasu Language Server") once the client exists,
+  // ahead of the client's own failure (TPL-1024).
+  const missingServer: string[] = [];
+  const serverModule = resolveServerModule(serverModuleCandidates, fs.existsSync, (tried) => {
+    const message = translate(resolveLocaleTag(vscode.env.language), "vscode.server.notFound", {
+      tried,
+    });
+    // eslint-disable-next-line no-console
+    console.error(message);
+    missingServer.push(message);
+  });
 
   const serverOptions: ServerOptions = {
     run: { module: serverModule, transport: TransportKind.ipc },
@@ -57,6 +69,7 @@ export function activate(context: vscode.ExtensionContext): void {
   };
 
   client = new LanguageClient("karasu", "karasu Language Server", serverOptions, clientOptions);
+  for (const message of missingServer) client.outputChannel.appendLine(message);
   // Wire the deactivate stop-path to the client as soon as it is *constructed*,
   // before `start()`. The client spawns the language-server child process, so
   // `deactivate()` (window reload / uninstall) must be able to stop it even if

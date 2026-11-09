@@ -36,6 +36,24 @@
       }
     },
     {
+      "files": ["packages/e2e/tests/**/*.ts", "packages/e2e/fixtures/**/*.ts"],
+      "excludeFiles": ["packages/e2e/fixtures/expect.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@playwright/test",
+                "importNames": ["expect", "test"],
+                "message": "Import test from a fixture (opfs.js, serve.js or network.js) and expect from a fixture or fixtures/expect.js. That expect refuses an assertion timeout above the default (packages/e2e/fixtures/expect.ts, TPL-1171). Types such as Page may still come from @playwright/test."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": ["packages/core/src/**/*.ts"],
       "rules": {
         "no-restricted-imports": [
@@ -71,7 +89,7 @@
     { "files": ["packages/app/src/components/focus-canvas/build.ts"], "rules": { "max-lines": ["error", { "max": 860 }] } },
     { "files": ["packages/app/src/hooks/useChatSession.ts"], "rules": { "max-lines": ["error", { "max": 626 }] } },
     { "files": ["packages/app/src/hooks/useChatSession/prompt.ts"], "rules": { "max-lines": ["error", { "max": 610 }] } },
-    { "files": ["packages/cli/src/index.ts"], "rules": { "max-lines": ["error", { "max": 678 }] } },
+    { "files": ["packages/cli/src/index.ts"], "rules": { "max-lines": ["error", { "max": 656 }] } },
     { "files": ["packages/core/src/builtins/default-style.ts"], "rules": { "max-lines": ["error", { "max": 711 }] } },
     { "files": ["packages/core/src/builtins/reference-data.ts"], "rules": { "max-lines": ["error", { "max": 1158 }] } },
     { "files": ["packages/core/src/compile/compile-diff.ts"], "rules": { "max-lines": ["error", { "max": 913 }] } },

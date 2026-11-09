@@ -11,7 +11,10 @@
   },
   "files": [
     "dist",
-    "icons"
+    "icons",
+    "!**/*.test.*",
+    "!**/*.spec.*",
+    "!**/*.map"
   ],
   "type": "module",
   "main": "./dist/index.js",

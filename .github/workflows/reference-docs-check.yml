@@ -6,7 +6,8 @@ name: Reference docs check
 # diagram drift guard (`gen-guide-diagrams.ts --check`, Issue #1574) plus the
 # roadmap ledger guard (`roadmap-issue-state.ts`, Issue #2245) plus the
 # embedded-snippet parse guard (`krs-fences.ts`, Issue #2415) plus the skill
-# guards (`skill-reference-bundle-sync.ts`, `skill-cli-refs.ts`) plus the
+# guards (`skill-reference-bundle-sync.ts`, `skill-cli-refs.ts`,
+# `skill-diagnostic-codes.ts`) plus the
 # docs/process.md index guard (`process-index.ts`, Issue #3337) and the ADR
 # assumption check on PRs that touch the reference single-source / guide /
 # roadmap / process paths. The skip workflow emits a no-op
@@ -156,6 +157,12 @@ jobs:
       # **/*.md` skips exactly the PR that edits only a SKILL.md (Issue #2932).
       - name: Skill CLI references registered
         run: pnpm run lint:skill-cli-refs
+
+      # Every diagnostic code a skill judges by (`code:<kebab>`) must be one
+      # core emits, and no skill names a KRS ID (Issue #3654). Same reason as
+      # above: ci.yml's `paths-ignore: **/*.md` skips a SKILL.md-only PR.
+      - name: Skill diagnostic codes exist
+        run: pnpm run lint:skill-diagnostic-codes
 
       # The roadmap's watch ledgers track work that has no Issue yet, and
       # nothing re-reads a row once its promotion trigger fires (Issue #2245).
