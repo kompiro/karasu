@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-11-09
 - **関連 Issue**: [#3654](https://github.com/kompiro/karasu/issues/3654)（発端 [#3640](https://github.com/kompiro/karasu/issues/3640)、VS Code と app は [#3712](https://github.com/kompiro/karasu/issues/3712)）
+- **設計 (ADR)**: [ADR-3654](../adr/3654-cli-diagnostic-codes.md)
 - **Related TPLs**: [TPL-3654](../test-perspectives/TPL-3654-cli-diagnostics-carry-stable-code.md), [TPL-1417](../test-perspectives/TPL-1417-single-renderer-for-structured-messages.md), [TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md)
 - **対象ファイル**: `packages/core/src/types/diagnostic-ids.ts`、`packages/cli/src/i18n.ts`、`packages/cli/src/report-diagnostics.ts`、`packages/cli/src/check.ts`、`packages/skills/skills/reverse-architecture/SKILL.md`
 
