@@ -31,10 +31,10 @@ const NOT_A_STYLE_SMELL = {
     "A leaf repeated inside one block is merged; it is a slip in the file, not a design choice.",
 } satisfies Record<string, string>;
 
-/** `code` -> Severity of every row in the catalog's tables. */
+/** `code` -> Severity of every row in the catalog's tables (an ID column may sit between). */
 function catalogSeverities(): Map<string, string> {
   const rows = read("docs/spec/diagnostics.md").matchAll(
-    /^\|\s*`([a-z][a-z0-9-]+)`\s*\|\s*(error|warning|info)\s*\|/gm,
+    /^\|\s*`([a-z][a-z0-9-]+)`\s*\|(?:\s*KRS[0-9]{3}\s*\|)?\s*(error|warning|info)\s*\|/gm,
   );
   return new Map([...rows].map((m) => [m[1], m[2]]));
 }
