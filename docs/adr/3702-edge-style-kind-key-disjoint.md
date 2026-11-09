@@ -6,6 +6,7 @@ date: 2026-11-09
 topic: edges
 related_to:
   - ADR-2714
+  - ADR-2934
   - ADR-3480
 scope:
   packages: [core]
@@ -40,7 +41,17 @@ assumptions:
 
 `svg-renderer.ts` はこのマップの全キーから `edgeDirections` を作り、レイアウトは kind 無しキーで `direction` を引く。同じ衝突で `direction` も取り違えた。
 
-main（f5ad4897）で、`x -> y` と `x -> "y#sync"` を持つ system を描いて測った結果（どの場合も診断は出ない）:
+main（f5ad4897）で次のモデルを描き、各 edge の stroke と各ノードの y 座標を SVG から読んだ結果（どの場合も診断は出ない。下の 2 行は 2 本の edge の宣言順を入れ替えて測った）:
+
+```krs
+system S {
+  service x {}
+  service y {}
+  service "y#sync" {}
+  x -> y "a"
+  x -> "y#sync" "b"
+}
+```
 
 | model の順 | rule | `x -> y` | `x -> "y#sync"` |
 | --- | --- | --- | --- |
