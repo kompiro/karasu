@@ -1423,6 +1423,65 @@ system ECPlatform {
         });
       }
 
+      it("a named import of a deploy unit carries its file's distance", async () => {
+        await fs.writeFile("/project/index.krs", `import { app } from "x.krs"\nimport "y.krs"\n`);
+        await fs.writeFile(
+          "/project/x.krs",
+          `deploy Prod {\n  label "FromX"\n  oci app { runtime "Docker" }\n}\n`,
+        );
+        await fs.writeFile("/project/y.krs", `import "z.krs"\n`);
+        await fs.writeFile(
+          "/project/z.krs",
+          `deploy Prod {\n  label "FromZ"\n  oci job { runtime "Docker" }\n}\n`,
+        );
+
+        const result = await resolver.resolve("/project/index.krs");
+        expect(result.krsFile.deploys.find((d) => d.id === "Prod")?.label).toBe("FromX");
+        const conflicts = result.diagnostics.filter((d) => d.code === "system-property-conflict");
+        expect(conflicts.map((d) => [d.params, d.loc?.file])).toEqual([
+          [expect.objectContaining({ chosen: "FromX", ignored: "FromZ" }), "/project/z.krs"],
+        ]);
+      });
+
+      it("reports once, with the final winner, when an intermediate file's verdict is reversed at the root", async () => {
+        // a.krs (1 step) imports b.krs; index also imports b.krs directly, so
+        // b is 1 step away too and merged first: b wins the tie at the root,
+        // though inside a.krs's own merge a's label won.
+        await fs.writeFile("/project/index.krs", `import "b.krs"\nimport "a.krs"\n`);
+        await fs.writeFile(
+          "/project/a.krs",
+          `import "b.krs"\nsystem S {\n  label "FromA"\n  service ASvc\n}\n`,
+        );
+        await fs.writeFile("/project/b.krs", `system S {\n  label "FromB"\n  service BSvc\n}\n`);
+
+        const result = await resolver.resolve("/project/index.krs");
+        const final = result.krsFile.systems.find((n) => n.id === "S")?.label;
+        const conflicts = result.diagnostics.filter((d) => d.code === "system-property-conflict");
+        expect(conflicts).toHaveLength(1);
+        expect(conflicts[0].params).toMatchObject({ chosen: final });
+        expect(conflicts[0].loc?.file).not.toBe(
+          final === "FromA" ? "/project/a.krs" : "/project/b.krs",
+        );
+      });
+
+      it("keeps the closer origin when a closer file repeats the same value", async () => {
+        // y.krs fills "L" from three levels down; x.krs repeats "L" one step
+        // away; w.krs says "M" two steps away. "L" is declared closer than "M".
+        await fs.writeFile(
+          "/project/index.krs",
+          `import "y.krs"\nimport "x.krs"\nimport "v.krs"\n`,
+        );
+        await fs.writeFile("/project/y.krs", `import "y2.krs"\n`);
+        await fs.writeFile("/project/y2.krs", `import "z.krs"\n`);
+        await fs.writeFile("/project/z.krs", `system S {\n  label "L"\n  service ZSvc\n}\n`);
+        await fs.writeFile("/project/x.krs", `system S {\n  label "L"\n  service XSvc\n}\n`);
+        await fs.writeFile("/project/v.krs", `import "w.krs"\n`);
+        await fs.writeFile("/project/w.krs", `system S {\n  label "M"\n  service WSvc\n}\n`);
+
+        const result = await resolver.resolve("/project/index.krs");
+        expect(result.krsFile.systems.find((n) => n.id === "S")?.label).toBe("L");
+      });
+
       it("counts the shortest path: a file imported directly and through another is one step away", async () => {
         await fs.writeFile(
           "/project/index.krs",

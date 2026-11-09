@@ -316,6 +316,7 @@ export class ImportResolver {
     // duplicate no single file can see.
     this.diagnostics.push(...validateFacetDeclarations(krsFile.facets));
 
+    this.reconciler.reportConflicts();
     const styleSheets = await this.resolveStyles(entryPath, krsFile.styleImports);
 
     return {
@@ -948,6 +949,7 @@ export class ImportResolver {
         // declared twice — already reported by the parser, so folded here
         // rather than reported again.
         const target = existingDeploy ?? { ...deploy, nodes: [] };
+        if (!existingDeploy) this.reconciler.inherit(target, deploy);
         this.mergeDeployNodes(target, matchingNodes);
         if (!existingDeploy) mergedFile.deploys.push(target);
       }
@@ -1161,7 +1163,14 @@ export class ImportResolver {
    * for is recorded — see {@link noteChainReopen}.
    */
   private chainStub(source: KrsNode): KrsNode {
-    const stub = { ...source, children: [], edges: [] } as KrsNode;
+    // `properties` copied too: a reconciled `description` set on the stub must
+    // not write through to the declaration it stands for.
+    const stub = {
+      ...source,
+      properties: { ...source.properties },
+      children: [],
+      edges: [],
+    } as KrsNode;
     this.chainOriginsOf(stub).add(source);
     this.inheritDeclaringFile(stub, source);
     return stub;

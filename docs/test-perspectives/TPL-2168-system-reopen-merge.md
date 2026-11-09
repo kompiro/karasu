@@ -28,7 +28,7 @@ scope:
 
 merge 規則:
 
-- **本体プロパティ** (`label` / `description` / タグ): `ImportResolver.resolve()` に渡された entry file（= App / CLI で開いているファイル）に近い側が勝つ。bottom-up に merge し、root 側が既に値を持つフィールドだけ採用、無ければ importee の値を採用。**異なる non-empty 値の衝突は警告 `system-property-conflict`** を発し、採用値 / 無視値 / 両者の location を含める。
+- **本体プロパティ** (`label` / `description` / タグ): `ImportResolver.resolve()` に渡された entry file（= App / CLI で開いているファイル）に近い側が勝つ。bottom-up に merge し、root 側が既に値を持つフィールドだけ採用、無ければ importee の値を採用。**異なる non-empty 値の衝突は警告 `system-property-conflict`** を発し、採用値 / 無視値を持ち、負けた側の宣言の location を指す。
 - **children**: id ごとに find-or-create で union。重複 id は既存の `duplicate-node-in-system` エラー。
 - **edges**: union（exact 重複のみ dedup）。
 
@@ -54,7 +54,7 @@ container 系ブロックの再オープン / merge を実装 / 変更すると�
 ## 既知の対処パターン
 
 - merge 関数を「empty な値だけ埋める」シャロー merge にする。non-empty 衝突は呼び出し側に warning を生成させる
-- entry からの距離は再帰呼び出しの深さで自然に表現できる（importer → importee の方向で merge 関数を呼ぶ）
+- entry からの距離は、merge の前に import グラフを幅優先でたどって最短経路で測り、埋めた値と一緒に運ぶ。再帰呼び出しの深さや merge の順では表せない: bottom-up の merge では深いファイルの値が先に埋まり、後から来た近いファイルに勝ってしまう（#3713）
 
 ## 関連テスト
 
@@ -71,7 +71,7 @@ container 系ブロックの再オープン / merge を実装 / 変更すると�
   1 段下の値が衝突したとき、import の順に依らず 1 段下が勝つことを system の `label` / `description`、deploy と
   organization の `label` で固定し、`system-property-conflict` が負けた側の宣言の位置（`loc.file`）を持つことを assert する
   （チェックリスト 1・2・5 項目目）。最短経路で数えること、同じ距離なら import の順で決まること、entry を入れ替えると
-  採用値も入れ替わること（チェックリスト 4 項目目）も同じ block が見る。新しいブロックの種類が `reconcileProperty` を
+  採用値も入れ替わること（チェックリスト 4 項目目）も同じ block が見る。新しいブロックの種類が `PropertyReconciler` を
   通らずに開き直されると、このテストは気づかないので印にはしない
 
 ## 派生元 spec

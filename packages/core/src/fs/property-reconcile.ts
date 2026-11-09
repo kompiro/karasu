@@ -11,6 +11,15 @@ interface ReconciledBlock {
   loc: SourceRange;
 }
 
+interface PendingConflict {
+  blockId: string;
+  blockKind: BlockKind;
+  property: ReconciledProperty;
+  values: Map<string, PropertyOrigin>;
+  /** The merged block's final value. */
+  read: () => string;
+}
+
 interface PropertyOrigin {
   /** Distance of the declaring file from the entry; unknown files sort last. */
   depth: number;
@@ -36,6 +45,8 @@ export class PropertyReconciler {
   private fileDepth = new Map<string, number>();
   /** Where a property's current value came from, once it is not the block's own. */
   private propertyOrigin = new WeakMap<object, Map<ReconciledProperty, PropertyOrigin>>();
+  /** Every value each (block, property) was declared with, by the closest origin. */
+  private conflicts = new Map<string, PendingConflict>();
 
   constructor(private readonly report: (diagnostic: Diagnostic) => void) {}
 
@@ -124,7 +135,7 @@ export class PropertyReconciler {
   /**
    * - `target` unset → take `source`'s value and its origin
    * - both set and different → the closer origin wins (ties keep `target`, the
-   *   one merged first) and `system-property-conflict` points at the loser
+   *   one merged first), and the conflict is kept for {@link reportConflicts}
    */
   private reconcile<B extends ReconciledBlock>(
     target: B,
@@ -143,26 +154,56 @@ export class PropertyReconciler {
       this.originsOf(target).set(property, sourceOrigin);
       return;
     }
-    if (t === s) return;
     const targetOrigin = this.originOf(target, property);
-    const sourceWins = sourceOrigin.depth < targetOrigin.depth;
-    if (sourceWins) {
+    if (t === s) {
+      // The same value declared closer: keep the closer origin, or a later,
+      // farther conflicting value could beat it.
+      if (sourceOrigin.depth < targetOrigin.depth)
+        this.originsOf(target).set(property, sourceOrigin);
+      return;
+    }
+    if (sourceOrigin.depth < targetOrigin.depth) {
       set(target, get(source));
       this.originsOf(target).set(property, sourceOrigin);
     }
-    this.report({
-      severity: "warning",
-      code: "system-property-conflict",
-      params: {
-        blockId: target.id,
-        blockKind,
-        property,
-        chosen: sourceWins ? s : t,
-        ignored: sourceWins ? t : s,
-      },
-      // Anchored on the declaration that lost, which is the one to edit.
-      loc: sourceWins ? targetOrigin.loc : sourceOrigin.loc,
-    });
+    // Reported once the whole graph is merged: an intermediate file's verdict
+    // can be reversed at the root, and a warning must name the final winner.
+    const key = `${blockKind}\u0000${target.id}\u0000${property}`;
+    let conflict = this.conflicts.get(key);
+    if (!conflict) {
+      conflict = { blockId: target.id, blockKind, property, values: new Map(), read: () => "" };
+      this.conflicts.set(key, conflict);
+    }
+    // Bottom-up, so the last merge to touch the block is the root's.
+    conflict.read = () => get(target)?.trim() ?? "";
+    for (const [value, origin] of [
+      [t, targetOrigin],
+      [s, sourceOrigin],
+    ] as const) {
+      const known = conflict.values.get(value);
+      if (!known || origin.depth < known.depth) conflict.values.set(value, origin);
+    }
+  }
+
+  /**
+   * One `system-property-conflict` per value that lost, naming the value the
+   * merged model ended with and anchored on the losing declaration (the one to
+   * edit). Call once, after the merge.
+   */
+  reportConflicts(): void {
+    for (const { blockId, blockKind, property, values, read } of this.conflicts.values()) {
+      const chosen = read();
+      for (const [ignored, origin] of values) {
+        if (ignored === chosen) continue;
+        this.report({
+          severity: "warning",
+          code: "system-property-conflict",
+          params: { blockId, blockKind, property, chosen, ignored },
+          loc: origin.loc,
+        });
+      }
+    }
+    this.conflicts.clear();
   }
 
   private originOf(block: ReconciledBlock, property: ReconciledProperty): PropertyOrigin {

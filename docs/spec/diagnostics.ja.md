@@ -69,8 +69,8 @@ karasu は未解決参照に対し **warn-don't-error**（spec §S6）に従う�
   parse 診断はそこでは `loc` を持たない（モデルの位置として読まれる位置を持たせない）。
 - **`loc` を持たない診断は位置を名指さない。** 見つからないファイルに関する診断は、
   代わりにそのパスをメッセージに含む（`file-not-found`、`style-file-not-found`）。
-  宣言ではなく id を名指すマージ時の事実（`infra-redeclared-across-files`、
-  `system-property-conflict` など）はどちらも持たない。
+  宣言ではなく id を名指すマージ時の事実（`infra-redeclared-across-files` など）は
+  どちらも持たない。`system-property-conflict` は `loc` を持ち、値が負けた側の宣言を指す。
 
 各表示面は位置を次のように印字する。
 
