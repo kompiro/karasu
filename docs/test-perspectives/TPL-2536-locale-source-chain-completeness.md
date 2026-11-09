@@ -87,7 +87,7 @@ locale（あるいは同種の「複数情報源 + 優先順位」設定）の�
       `LANGUAGE` は POSIX 外・コロン区切りのリスト・`C` ロケール時は無視、と明記） [judgment]
 - [ ] 空文字を「未設定」として次のリンクへ落としているか。`LC_ALL=` は継承した
       override をシェルで打ち消す標準的な書き方なので、`??` ではなく `||` が要る。
-      鎖の**すべての**リンクについて空文字のテストがあるか [guard: `packages/cli/src/i18n.test.ts`]
+      鎖の**すべての**リンクについて空文字のテストがあるか
 - [ ] テストが開発者のシェル設定から独立しているか。解決関数には env オブジェクトを
       **注入**して呼び、その consumer の**出力**を assert する suite は設定で locale を
       pin する（`packages/cli/vitest.config.ts` の `env: { LC_ALL: "C" }`）
@@ -114,8 +114,9 @@ locale（あるいは同種の「複数情報源 + 優先順位」設定）の�
 - `packages/cli/src/i18n.test.ts` — `LC_ALL` / `LC_MESSAGES` / `LANG` の勝敗と、
   鎖の各リンクでの空文字 fallthrough（#2536 の回帰柵）。鎖は `CLI_LOCALE_ENV_CHAIN` の
   1 つの tuple で、resolver もテストもそれを読むので、足したリンクは勝敗と空文字の
-  テストに自動で入る（チェックリスト 3 項目目）。tuple を通らずに `process.env` を
-  読む新しい consumer は覆わない（今は CLI だけが鎖を読む）。同じファイルが
+  テストに自動で入る。ただし覆うのは CLI の tuple だけで、app の鎖
+  （`packages/app/src/i18n/locale.ts`）や tuple を通らずに `process.env` を読む新しい consumer は
+  覆わないので、チェックリスト 3 項目目のガードではない。同じファイルが
   `docs/spec/i18n.md` に tuple から組んだ鎖（`` `LC_ALL` > `LC_MESSAGES` > `LANG` ``）が
   書かれていることも確かめるが、各 consumer の doc comment（`packages/i18n/src/locale.ts`
   など）は閉じた集合でないので、5 項目目のガードではない
