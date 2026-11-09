@@ -437,7 +437,7 @@ export type Warning = {
  */
 export type WarningSeverity = "warning" | "info";
 
-const INFO_WARNING_KINDS: ReadonlySet<WarningKind> = new Set<WarningKind>([
+export const INFO_WARNING_KINDS: ReadonlySet<WarningKind> = new Set<WarningKind>([
   "domain-dispersal",
   // Shared-store fan-in is a style-school smell (Database-per-Service), not a
   // defect karasu prescribes fixing — same register as domain-dispersal
