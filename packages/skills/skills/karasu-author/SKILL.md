@@ -67,7 +67,7 @@ because the user's repository does not contain them:
 | `syntax.md` | The `.krs` grammar. Read it before writing anything. |
 | `notation-cookbook.md` | Idiomatic shapes for common situations, so you do not invent your own |
 | `tags-annotations.md` | When something is a tag, an annotation, a boundary or a facet, and `@draft` |
-| `diagnostics.md` | What each diagnostic `karasu check` prints means, and how to fix it. It is keyed by a code the CLI does not print, so search it by what the message describes |
+| `diagnostics.md` | What each diagnostic `karasu check` prints means, and how to fix it. Find a line's ID (`Warning[KRS…]: ...`) in its `ID` column |
 
 Read `syntax.md` and `notation-cookbook.md` at the start of the session. Look
 things up in the other two when you need them.
@@ -159,9 +159,14 @@ Run, in this order:
 
 1. `karasu check <entry file>` (the file that imports the others, usually
    `index.krs`). It prints every diagnostic with its location and exits `1` on
-   any error. Fix every error before the next question; look it up in
-   `reference/diagnostics.md`. Warnings are worth reading out to the user: many
-   are design signals (for example the same domain spanning two services).
+   any error. Each line starts with its severity and ID (`Warning[KRS…]: ...`);
+   look the ID up in the `ID` column of `reference/diagnostics.md`. Fix every
+   error before the next question. Warnings are worth reading out to the user:
+   many are design signals (for example the same domain spanning two services).
+   The lines are for reading, and their text follows the user's locale. When you
+   decide something from the result rather than read it out, run
+   `karasu check <entry file> --format json` and judge each diagnostic by its
+   `code`.
 2. `karasu fmt <file>` for each file you changed. Run it only after `check`
    passes: `fmt` refuses a file with parse errors without saying where they are.
 

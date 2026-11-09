@@ -37,6 +37,7 @@
     "lint:e2e-command-coverage": "tsx scripts/lint/e2e-command-coverage.ts",
     "lint:skill-cli-refs": "tsx scripts/lint/skill-cli-refs.ts",
     "lint:diagnostic-ids-history": "tsx scripts/lint/diagnostic-ids-history.ts",
+    "lint:skill-diagnostic-codes": "tsx scripts/lint/skill-diagnostic-codes.ts",
     "lint:skill-reference-bundle-sync": "tsx scripts/lint/skill-reference-bundle-sync.ts",
     "lint:config-topics-sync": "tsx scripts/lint/config-topics-sync.ts",
     "lint:config-topics-sync:labels": "tsx scripts/lint/config-topics-sync.ts --labels",

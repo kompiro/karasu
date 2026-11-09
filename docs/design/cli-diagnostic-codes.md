@@ -202,7 +202,6 @@ Warning[KRS041]: theme.krs.style:3:5: fill: "#12" is not a valid hex color (expe
    - `render` を検証に使うと書いた箇所と、Step 0 が呼ぶコマンドの一覧に `check --format json` を反映する
 
    `karasu-author` の「コードは出ない」という記述は、行の ID でカタログを引く説明と、検証は JSON で行う説明に直す。
-<!-- absent-path-next-line: the guard this design intends to add (#3654) -->
 8. **skill の drift ガードとして `scripts/lint/skill-diagnostic-codes.ts` を足す。** 公開する skill の `SKILL.md` について次を確かめる。
    - 判定に使うコードを書く形を `` `code:<kebab>` `` に決め（JSON の `code` 欄を指す）、その形の語がすべて `DiagnosticParamsByCode` / `WarningKind` に実在する。表か散文かは問わず、ヘッダの名前にも頼らない
    - `KRS[0-9]{3}` の形の ID を書かない（判定の鍵を `code` の 1 つに保つ。2 つの鍵が混ざると、片方だけ直したときにずれる）
