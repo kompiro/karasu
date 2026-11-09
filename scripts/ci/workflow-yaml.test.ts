@@ -79,14 +79,25 @@ describe("workflow helpers", () => {
       [
         "jobs:",
         "  a:",
+        "    if: github.event_name == 'push'",
         "    steps:",
         "      - run: |",
         "          one \\",
         "            --flag",
         "          two",
+        "      - if: always()",
+        "        run: three",
       ].join("\n"),
     ) as Record<string, never>;
-    expect(jobs(workflow)).toEqual([{ id: "a", name: "a", commands: ["one --flag", "two"] }]);
+    expect(jobs(workflow)).toEqual([
+      {
+        id: "a",
+        name: "a",
+        if: "github.event_name == 'push'",
+        steps: [{ commands: ["one --flag", "two"] }, { if: "always()", commands: ["three"] }],
+        commands: ["one --flag", "two", "three"],
+      },
+    ]);
   });
 
   it("matches globs the way GitHub's path filter does", () => {

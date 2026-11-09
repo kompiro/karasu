@@ -11,6 +11,11 @@ import { resolve } from "node:path";
 // text of its line, which makes a lookup that depends on it fail loudly
 // instead of passing on a misread. The parser's own cases live in
 // `workflow-yaml.test.ts`.
+//
+// The helpers read triggers, path filters and `run:` steps. A job's or step's
+// `if:` is kept verbatim and not evaluated (lefthook-ci-parity.test.ts accepts
+// only conditions it has reviewed); `types:` and `continue-on-error` are not
+// read at all.
 
 export type Yaml = string | Yaml[] | { [key: string]: Yaml } | null;
 type Line = { indent: number; text: string };
@@ -210,23 +215,39 @@ export const startsOn = (filter: PathFilter, file: string): boolean =>
   (filter.paths === undefined || matchesAny(file, filter.paths)) &&
   (filter.pathsIgnore === undefined || !matchesAny(file, filter.pathsIgnore));
 
+export interface Step {
+  /** The step's `if:`, verbatim, when it has one. */
+  readonly if?: string;
+  /** The step's `run:`, one shell command per entry (continuations joined). */
+  readonly commands: readonly string[];
+}
+
 export interface Job {
   readonly id: string;
   readonly name: string;
-  /** Each `run:` of the job, one shell command per entry (continuations joined). */
+  /** The job's `if:`, verbatim, when it has one. */
+  readonly if?: string;
+  readonly steps: readonly Step[];
+  /** Every step's commands, in order. */
   readonly commands: readonly string[];
 }
+
+const condition = (value: Yaml | undefined): { if?: string } =>
+  typeof value === "string" ? { if: value } : {};
 
 export function jobs(workflow: { [key: string]: Yaml }): Job[] {
   return Object.entries(asMap(workflow.jobs)).map(([id, body]) => {
     const job = asMap(body);
-    const runs = asList(job.steps)
-      .map((step) => asMap(step).run)
-      .filter((run): run is string => typeof run === "string");
+    const steps = asList(job.steps)
+      .map(asMap)
+      .filter((step) => typeof step.run === "string")
+      .map((step) => ({ ...condition(step.if), commands: shellCommands(step.run as string) }));
     return {
       id,
       name: typeof job.name === "string" ? job.name : id,
-      commands: runs.flatMap(shellCommands),
+      ...condition(job.if),
+      steps,
+      commands: steps.flatMap((step) => step.commands),
     };
   });
 }

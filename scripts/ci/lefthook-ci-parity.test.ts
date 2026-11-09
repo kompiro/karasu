@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   asMap,
@@ -244,52 +244,126 @@ const HOOKS: Hook[] = Object.entries(
   }),
 );
 
-/** Each PR workflow with the commands its jobs come down to. */
+/** Each PR workflow with the commands its jobs' steps come down to. */
 const PR_WORKFLOWS = workflowFiles()
   .map((name) => ({ name, workflow: readWorkflow(name) }))
   .filter(({ workflow }) => pullRequestFilter(workflow) !== undefined)
   .map(({ name, workflow }) => ({
     name,
     filter: pullRequestFilter(workflow)!,
-    jobs: jobs(workflow).map((job) => new Set(job.commands.flatMap(expand))),
+    jobs: jobs(workflow).map((job) => ({
+      if: job.if,
+      steps: job.steps.map((step) => ({
+        if: step.if,
+        commands: new Set(step.commands.flatMap(expand)),
+      })),
+    })),
   }));
+
+/**
+ * `if:` conditions a counterpart job or step may carry, and why they leave the
+ * check running on every PR that can merge. The reader does not evaluate
+ * conditions, so any other one on a counterpart is reported rather than
+ * assumed to let PRs through: a push-only step would otherwise count as PR
+ * coverage.
+ */
+const REVIEWED_CONDITIONS: Record<string, string> = {
+  "github.event.pull_request.draft != true":
+    "Skips a draft PR, which cannot merge; the workflow runs again on ready_for_review.",
+  "steps.mode.outputs.mode == 'diff'":
+    "secret-scan.yml's mode step sets `diff` for pull_request and push events.",
+};
 
 /** The script a command runs, or its first two words when it names none. */
 const subject = (command: string): string =>
   command.split(" ").find((word) => /^scripts\/.+\.(?:ts|mts|sh)$/.test(word)) ??
   command.split(" ").slice(0, 2).join(" ");
 
-/** The PR workflows that run `hook`'s check, by the same command or its mirror. */
+/** The commands `hook` comes down to. */
+const hookCommands = (hook: Hook): string[] => shellCommands(hook.run).flatMap(expand);
+
+/**
+ * The PR workflows that run `hook`'s check, by the same command, a declared one
+ * or its mirror, with the `if:` conditions on the jobs and steps that do.
+ */
 function ciSide(hook: Hook, parity: Parity) {
-  const wanted = shellCommands(hook.run).flatMap(expand);
-  return PR_WORKFLOWS.filter((workflow) =>
-    workflow.jobs.some(
-      (commands) =>
-        wanted.every((command) => commands.has(command)) ||
-        (parity.ci?.commands.some((command) => commands.has(command)) ?? false) ||
-        (parity.mirror !== undefined && commands.has(SCRIPTS_VITEST)),
-    ),
+  const wanted = hookCommands(hook);
+  return PR_WORKFLOWS.flatMap((workflow) => {
+    const conditions: string[] = [];
+    const matched = workflow.jobs.filter((job) => {
+      const has = (command: string) => job.steps.some((step) => step.commands.has(command));
+      const used =
+        wanted.length > 0 && wanted.every(has)
+          ? wanted
+          : (parity.ci?.commands.filter(has) ?? []).length > 0
+            ? parity.ci!.commands.filter(has)
+            : parity.mirror !== undefined && has(SCRIPTS_VITEST)
+              ? [SCRIPTS_VITEST]
+              : [];
+      if (used.length === 0) return false;
+      if (job.if !== undefined) conditions.push(job.if);
+      for (const step of job.steps) {
+        if (step.if !== undefined && used.some((command) => step.commands.has(command))) {
+          conditions.push(step.if);
+        }
+      }
+      return true;
+    });
+    return matched.length > 0 ? [{ ...workflow, conditions }] : [];
+  });
+}
+
+/** Relative imports of a TypeScript file, resolved to repo paths without extension. */
+function importsOf(file: string): string[] {
+  const text = readFileSync(resolve(ROOT, file), "utf-8");
+  return [...text.matchAll(/(?:from|import)\s*\(?\s*["'](\.{1,2}\/[^"']+)["']/g)].map((m) =>
+    relative(ROOT, resolve(ROOT, dirname(file), m[1]!)).replace(/\.(?:js|ts|mjs|mts)$/, ""),
   );
 }
 
 /** What is wrong with `hook`'s CI counterpart, as messages; empty when nothing is. */
 function counterpartProblems(hook: Hook, parity: Parity): string[] {
-  const side = ciSide(hook, parity).map((workflow) => workflow.name);
+  // An empty `run` expands to nothing, and "every command is in CI" would hold
+  // vacuously for it.
+  if (hookCommands(hook).length === 0) return ["the hook has no run command"];
+  const side = ciSide(hook, parity);
   if (parity.localOnly !== undefined) {
-    return side.length > 0 ? [`local-only, yet ${side.join(", ")} runs it`] : [];
+    return side.length > 0 ? [`local-only, yet ${side.map((w) => w.name).join(", ")} runs it`] : [];
   }
   const problems: string[] = [];
   // A declared command must run the same script (or the same tool subcommand)
   // as the hook, so the table cannot map a hook to an unrelated step.
-  const subjects = shellCommands(hook.run).flatMap(expand).map(subject);
+  const subjects = hookCommands(hook).map(subject);
   for (const command of parity.ci?.commands ?? []) {
     if (!subjects.includes(subject(command))) problems.push(`unrelated CI command: ${command}`);
   }
-  if (parity.mirror !== undefined && !/^scripts\/.+\.test\.ts$/.test(parity.mirror)) {
-    problems.push(`mirror is not a scripts/ vitest file: ${parity.mirror}`);
+  if (parity.mirror !== undefined) {
+    if (
+      !/^scripts\/.+\.test\.ts$/.test(parity.mirror) ||
+      !existsSync(resolve(ROOT, parity.mirror))
+    ) {
+      problems.push(`mirror is not an existing scripts/ vitest file: ${parity.mirror}`);
+    } else {
+      // The mirror must import, or name, the script the hook runs; otherwise
+      // the table could point a hook at any test.
+      const scripts = subjects
+        .filter((s) => s.startsWith("scripts/"))
+        .map((s) => s.replace(/\.(?:ts|mts|sh)$/, ""));
+      const text = readFileSync(resolve(ROOT, parity.mirror), "utf-8");
+      const reached = scripts.some(
+        (script) => importsOf(parity.mirror!).includes(script) || text.includes(`${script}.ts`),
+      );
+      if (!reached)
+        problems.push(
+          `mirror ${parity.mirror} neither imports nor runs ${scripts.join(", ") || hook.run}`,
+        );
+    }
   }
-  if (parity.mirror !== undefined && !existsSync(resolve(ROOT, parity.mirror))) {
-    problems.push(`mirror does not exist: ${parity.mirror}`);
+  for (const workflow of side) {
+    for (const cond of workflow.conditions) {
+      if (!(cond in REVIEWED_CONDITIONS))
+        problems.push(`unreviewed if: ${cond} (${workflow.name})`);
+    }
   }
   if (side.length === 0) problems.push("no PR workflow runs it");
   return problems;
