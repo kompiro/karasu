@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import { StyleParser, validateStyleValues, type Diagnostic } from "@karasu-tools/core";
 import { resolveTargets } from "./find-files.js";
-import { formatDiagnostic } from "./i18n.js";
+import { diagnosticParts } from "./i18n.js";
 import { readStdin } from "./stdin.js";
 
 interface LintStyleOptions {
@@ -42,9 +42,8 @@ export async function lintStyle(files: string[], options: LintStyleOptions): Pro
     for (const d of diags) {
       const line = d.loc?.start.line ?? 1;
       const col = d.loc?.start.column ?? 1;
-      const severity = d.severity;
-      const message = formatDiagnostic(d);
-      process.stdout.write(`${file}:${line}:${col} ${severity}: ${message}\n`);
+      const { tag, message } = diagnosticParts(d.severity, d);
+      process.stdout.write(`${file}:${line}:${col} ${tag}: ${message}\n`);
       if (d.severity === "error") anyError = true;
     }
   }
@@ -59,7 +58,8 @@ async function lintStdin(): Promise<void> {
   for (const d of diags) {
     const line = d.loc?.start.line ?? 1;
     const col = d.loc?.start.column ?? 1;
-    process.stdout.write(`stdin:${line}:${col} ${d.severity}: ${formatDiagnostic(d)}\n`);
+    const { tag, message } = diagnosticParts(d.severity, d);
+    process.stdout.write(`stdin:${line}:${col} ${tag}: ${message}\n`);
     if (d.severity === "error") anyError = true;
   }
   if (anyError) process.exit(1);

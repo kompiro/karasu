@@ -78,6 +78,14 @@ jobs:
       - name: E2E command coverage
         run: pnpm run lint:e2e-command-coverage
 
+      # An ID a published release printed keeps naming the same code (Issue
+      # #3654, TPL-3654). The guard compares the registry against the latest
+      # karasu@* tag, which the shallow checkout above does not carry.
+      - name: Diagnostic IDs keep their published codes
+        run: |
+          git fetch --quiet --depth=1 origin 'refs/tags/karasu@*:refs/tags/karasu@*'
+          pnpm run lint:diagnostic-ids-history
+
       - name: Knip
         run: pnpm run knip
 

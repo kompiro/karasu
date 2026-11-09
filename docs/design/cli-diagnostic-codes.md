@@ -181,11 +181,9 @@ Warning[KRS041]: theme.krs.style:3:5: fill: "#12" is not a valid hex color (expe
 
 ### 実装の指針
 
-<!-- absent-path-next-line: the registry this design intends to add (#3654) -->
 1. **ID の登録簿を core に置く。** `packages/core/src/types/diagnostic-ids.ts` に、`Diagnostic` の対応 `Record<DiagnosticCode, DiagnosticId>`、`Warning` の対応 `Record<WarningKind, DiagnosticId>`、廃止した ID の一覧（ID と旧コードの組）を置く。`Record` なので、コードを足して ID を忘れると型検査で落ちる。テストで次を確かめる:
    - 1 つの ID が指すコードは 1 つで、廃止した ID と現役の ID が重ならない。2 つの対応が同じ名前を持つときは同じ ID である
    - 現役と廃止を合わせた番号が 001 から空きなく並ぶ（廃止の記録なしに ID を消すと番号が空いて落ちる）
-<!-- absent-path-next-line: the history guard this design intends to add (#3654) -->
 2. **ID の履歴を検査する。** 連続と重複の検査だけでは、廃止したコードの ID を別のコードに付け替える変更が通る。`scripts/lint/diagnostic-ids-history.ts` で、公開済みの最新版（最新の `karasu@*` タグ）の登録簿にある ID が、HEAD でも同じコードを（現役か廃止として）指していることを確かめ、pre-push と CI に載せる。そのタグに登録簿が無い（本件を含む版がまだ出ていない）あいだは、比べるものが無いので通す。
    比べる相手を merge base でなく公開済みの版にするのは、公開前の振り直しを許すためである。並行する 2 本の PR が同じ番号を取ると、両方が通ってからマージした時点で main の重複検査が落ちる（ruleset は base への追従を求めない）。そのときは次の PR で後の方の番号を振り直す。まだ公開していない ID なので、振り直しは再利用に当たらず、履歴の検査も通る。重複を残したまま公開しないよう、リリース PR の CI も重複検査を通る。
 3. **カタログに ID の列を足す。** `docs/spec/diagnostics.md` と `.ja.md` の各表の `Code` 列の後ろに `ID` 列を足す（meta-test は先頭の列をコードとして読むので、先頭には置かない）。meta-test（`diagnostics-catalog.test.ts`）で、列と登録簿の一致を確かめる。
@@ -204,7 +202,6 @@ Warning[KRS041]: theme.krs.style:3:5: fill: "#12" is not a valid hex color (expe
    - `render` を検証に使うと書いた箇所と、Step 0 が呼ぶコマンドの一覧に `check --format json` を反映する
 
    `karasu-author` の「コードは出ない」という記述は、行の ID でカタログを引く説明と、検証は JSON で行う説明に直す。
-<!-- absent-path-next-line: the guard this design intends to add (#3654) -->
 8. **skill の drift ガードとして `scripts/lint/skill-diagnostic-codes.ts` を足す。** 公開する skill の `SKILL.md` について次を確かめる。
    - 判定に使うコードを書く形を `` `code:<kebab>` `` に決め（JSON の `code` 欄を指す）、その形の語がすべて `DiagnosticParamsByCode` / `WarningKind` に実在する。表か散文かは問わず、ヘッダの名前にも頼らない
    - `KRS[0-9]{3}` の形の ID を書かない（判定の鍵を `code` の 1 つに保つ。2 つの鍵が混ざると、片方だけ直したときにずれる）
