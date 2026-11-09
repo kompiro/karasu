@@ -386,4 +386,3 @@ ID、続けて旧コードを書く（``| KRS000 | `old-code` |``）。古い出
 番号は別のコードに振り直さない。
 
 > Related TPLs: [TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md)（カタログ ↔ コードの完全性）, [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)（事実 vs 流派の register）, [TPL-2171](../test-perspectives/TPL-2171-spec-promised-diagnostics-implemented.md)（spec が約束する診断は実装されている）, [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)（spec ↔ source-of-truth 同期）.
-</content>
