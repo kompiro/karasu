@@ -376,8 +376,8 @@ importers:
         specifier: ^26.6.5
         version: 26.6.5
       '@types/vscode':
-        specifier: ^1.140.0
-        version: 1.140.0
+        specifier: ^1.144.0
+        version: 1.144.0
       '@vitest/coverage-v8':
         specifier: ^5.0.5
         version: 5.0.5(vitest@5.0.5)
@@ -403,8 +403,8 @@ importers:
         specifier: ^26.6.5
         version: 26.6.5
       '@types/vscode':
-        specifier: ^1.140.0
-        version: 1.140.0
+        specifier: ^1.144.0
+        version: 1.144.0
       '@vscode/test-cli':
         specifier: ^0.0.15
         version: 0.0.15
@@ -2593,8 +2593,8 @@ packages:
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
 
-  '@types/vscode@1.140.0':
-    resolution: {integrity: sha512-KAB5RBZIgnUhpp4mKsVJPPHLOQKu6WtGy2xpfWjaajEXO4xIIC+UESAXLiQ9ewx6QD1uBmvC/S8BJzkbvv4bRA==}
+  '@types/vscode@1.144.0':
+    resolution: {integrity: sha512-IDd4eQzu6MjGucfaQF0V/TY5vHX9o1albkKyZD6K/iVXSCcL5NSj4KW1wWfx1QDadPKWyxMaE/+M1wKLCJlXpA==}
 
   '@types/ws@8.18.1':
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
@@ -7671,7 +7671,7 @@ snapshots:
 
   '@types/unist@3.0.3': {}
 
-  '@types/vscode@1.140.0': {}
+  '@types/vscode@1.144.0': {}
 
   '@types/ws@8.18.1':
     dependencies:
