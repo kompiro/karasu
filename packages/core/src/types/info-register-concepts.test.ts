@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { INFO_WARNING_KINDS } from "./warnings.js";
+import type { DiagnosticCode } from "./ast.js";
+import { INFO_WARNING_KINDS, warningSeverity, type WarningKind } from "./warnings.js";
 
 // Every `info` diagnostic is classified in `docs/concepts.md`'s "What karasu
 // visualizes vs. what it doesn't prescribe" table, in both locales, or is
@@ -11,8 +12,9 @@ import { INFO_WARNING_KINDS } from "./warnings.js";
 // for resolver warnings, and the catalog rows whose Severity is `info` for
 // parser diagnostics. A diagnostic code's severity is set where it is emitted,
 // so for codes this reads the catalog, which `diagnostics-catalog.test.ts`
-// forces to list every code; a warning kind's catalog severity is checked
-// against `warningSeverity()` below.
+// forces to list every code; every warning kind's catalog severity is checked
+// against `warningSeverity()` below, so a kind made info in code but not in the
+// catalog (or the other way round) fails.
 
 const repoRoot = resolve(import.meta.dirname, "../../../..");
 const read = (rel: string) => readFileSync(resolve(repoRoot, rel), "utf8");
@@ -46,6 +48,64 @@ function registerSection(rel: string): string {
   return text.slice(start, end < 0 ? undefined : end);
 }
 
+/** Every warning kind, kept complete by the `satisfies` clause. */
+const WARNING_KINDS = Object.keys({
+  "domain-dispersal": true,
+  "shared-infra-fan-in": true,
+  "cross-domain-store-access": true,
+  "style-conflict": true,
+  "missing-runtime": true,
+  "missing-realizes": true,
+  "unresolved-realizes": true,
+  "invalid-owns": true,
+  "unassigned-domain": true,
+  "unassigned-service": true,
+  "unassigned-client": true,
+  "unresolved-handles": true,
+  "unassigned-database": true,
+  "unassigned-queue": true,
+  "unassigned-storage": true,
+  "unassigned-resource": true,
+  "cross-system-ref-implicit-external": true,
+  "cross-system-ref-unresolved": true,
+  "unresolved-edge-endpoint": true,
+  "edge-endpoint-not-at-scope": true,
+  "edge-target-ambiguous": true,
+  "cyclic-dependency": true,
+  "delivers-target-not-client": true,
+  "client-capability-duplicate": true,
+  "tag-not-builtin": true,
+  "tag-not-applicable": true,
+  "annotation-not-builtin": true,
+  "style-tag-selector-not-builtin": true,
+  "style-annotation-selector-not-builtin": true,
+  "facet-not-declared": true,
+  "entity-anchor-collision": true,
+  "legend-ref-unresolved": true,
+  "style-column-ignored-non-system-view": true,
+  "style-invalid-enum-value": true,
+  "style-invalid-hex-color": true,
+  "style-missing-length-unit": true,
+  "style-invalid-length-unit": true,
+  "style-out-of-range": true,
+  "style-unknown-property": true,
+  "style-unknown-icon": true,
+} satisfies Record<WarningKind, true>) as WarningKind[];
+
+/**
+ * Kinds that are also a diagnostic code, whose catalog row gives the code's
+ * severity. `validateStyleValues` reports these as errors (the LSP and
+ * `karasu lint-style` show them that way); the compile pipeline turns the same
+ * finding into a warning for the app's panel.
+ */
+const ROW_IS_THE_CODE: Partial<Record<Extract<WarningKind, DiagnosticCode>, string>> = {
+  "style-invalid-enum-value": "validateStyleValues reports it as an error.",
+  "style-invalid-hex-color": "validateStyleValues reports it as an error.",
+  "style-missing-length-unit": "validateStyleValues reports it as an error.",
+  "style-invalid-length-unit": "validateStyleValues reports it as an error.",
+  "style-out-of-range": "validateStyleValues reports it as an error.",
+};
+
 const catalog = catalogSeverities();
 const infoSet = new Set([
   ...INFO_WARNING_KINDS,
@@ -58,8 +118,11 @@ describe("info diagnostics are classified in docs/concepts (TPL-1386)", () => {
     expect(infoSet.size).toBeGreaterThanOrEqual(INFO_WARNING_KINDS.size);
   });
 
-  it("the catalog gives every info warning kind the info severity", () => {
-    expect([...INFO_WARNING_KINDS].filter((k) => catalog.get(k) !== "info")).toEqual([]);
+  it("the catalog gives every warning kind the severity warningSeverity() gives it", () => {
+    const disagree = WARNING_KINDS.filter((k) => !(k in ROW_IS_THE_CODE))
+      .filter((k) => catalog.get(k) !== warningSeverity(k))
+      .map((k) => `${k}: catalog ${catalog.get(k) ?? "(missing)"}, code ${warningSeverity(k)}`);
+    expect(disagree).toEqual([]);
   });
 
   it.each(["docs/concepts.md", "docs/concepts.ja.md"])(
