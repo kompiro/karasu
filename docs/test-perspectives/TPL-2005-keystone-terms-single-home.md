@@ -55,9 +55,9 @@ ADR にまたがって使われる。定義を各所に散らして書くと、�
 モデリング言語用語集 [`docs/spec/glossary.md`](../spec/glossary.md) との相互リンクを持つ。
 in-site リンク（published ページ間）は `check-links`（TPL-1621）が解決を縛るが、
 **用語集が参照する roadmap / design doc / ADR は unpublished なので GitHub URL に
-rewrite され、check-links の検査対象外**である点に注意 — これらのリンク切れは機械検出
-されないので、リンク先ファイルの rename / 削除（例: design doc の ADR 昇格）時は用語集の
-リンクを手で追随させる。keystone PRD は Issue（#3572）なので消えない（ADR-3571、ADR-2348）。
+rewrite される**。check-links はそのリンク先ファイルが repo にあることだけを見て、アンカーは
+見ない。リンク先ファイルの rename / 削除（例: design doc の ADR 昇格）時は用語集の
+リンクを追随させる。keystone PRD は Issue（#3572）なので消えない（ADR-3571、ADR-2348）。
 
 ## 想定される失敗モード
 
@@ -67,8 +67,8 @@ rewrite され、check-links の検査対象外**である点に注意 — こ�
 - permalink の機構が変わった（例: repo-backed が ref-less default HEAD を採るように
   なった）のに用語集の説明が旧機構のまま残り、`permalink.md` / design doc と矛盾する。
 - design doc（repo-backed-ref-pinned-permalink.md 等）が ADR に昇格して削除されたのに、
-  用語集の GitHub URL リンクが 404 のまま残る（check-links は unpublished リンクを検査
-  しないため気づけない）。
+  用語集の GitHub URL リンクが 404 のまま残る（#2005 の時点の check-links は unpublished
+  リンクを検査しなかったため気づけなかった。今はリンク先ファイルの存在を検査する）。
 - 新しく PRD で語彙を coin したが恒久的な定義場所を決めず、その doc の中だけに定義が
   埋もれて後続の Issue 展開時に散逸する（#1831 と同じ状況の再発）。
 - `docs/glossary.md` を PUBLISHED_EN_FILES に足したが `.ja.md` の相互リンクや sidebar
@@ -85,7 +85,9 @@ keystone / permalink の用語を扱う doc を変更するときに確認する
 - [ ] EN / JA 両ファイルを更新したか。両者と `docs/spec/glossary.md`（モデリング言語用語集）
       との相互リンクが生きているか。
 - [ ] 用語集が参照する unpublished doc（roadmap / design doc / ADR）を rename / 削除
-      したなら、用語集側のリンクを追随させたか（check-links は検出しない）。
+      したなら、用語集側のリンクを追随させたか。check-links はリンク先ファイルの存在を見る
+      （アンカーは見ない）。`reference-docs-check.yml` は published ページを触る PR で走るので、
+      unpublished doc だけを動かす PR では main への push で赤くなる。 [guard: `packages/docs-site/scripts/check-links.ts`]
 - [ ] `pnpm --filter docs-site check-links` が通るか（published ページ間のリンク・アンカー解決）。 [guard: `packages/docs-site/scripts/check-links.ts`]
 - [ ] 新規 published ページを足したなら PUBLISHED_EN_FILES + astro.config.mjs sidebar +
       `.ja.md` sibling が揃っているか。
