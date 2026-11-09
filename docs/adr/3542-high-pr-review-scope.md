@@ -82,12 +82,18 @@ PR では、kompiro が読むのを節と一部のファイルに絞る。決定
   決定を変えるもの、ほかの論点）は PR 本文の `## For Reviewers` 節に置く。一度に出すのは 3 件までで、残りは
   答えの後に出す。答えによって残りの論点が消えたり変わったりするためである（kompiro の決定、2026-11-02）
 - 裏付けの無い High の PR で kompiro が読むのは、High のファイルと `## For Reviewers` 節である
+- 次の PR は差分の全部を読み、絞り込みもしない（summary がそう出す）。作成者が信頼リストにいない PR、High の
+  ファイルが無くラベルで（ラベルが無いことも含む）High になった PR、パスを読めない差分の節がある PR、High の
+  ファイルが表の行数（200 件）に収まらない PR
+- Review tier の権限（read だけ）と性質（install なし、数秒）は変えない
 
 ### 裏付けの Design Doc と、読む範囲の絞り込み（#3542 A2、#3707）
 
-- **裏付けの Design Doc**（`backingDesignDoc`）は git の履歴だけで決める。次をすべて満たす 1 本だけが裏付けになり、
+- **裏付けの Design Doc**（`backingDesignDoc`）は、PR が閉じる Issue（GitHub の `closingIssuesReferences`）と
+  git の履歴だけで決める。次をすべて満たす 1 本だけが裏付けになり、
   どれかが欠ければ裏付けは無い（厳しい側に倒れる。git が答えられないときも無い）
-  - PR の base が `main` で、main との merge-base にある `docs/design/*.md`（TEMPLATE を除く）である
+  - PR の base が `main` で、main との merge-base にある `docs/design/*.md`（TEMPLATE を除く）である。
+    stacked PR の上の層は、下の層にしか無い Design Doc を根拠にできない
   - 「引き金 Issue」の行が、PR が `Closes` する Issue にリンクしている。そうした Design Doc がちょうど 1 本である。
     行の括弧書きの中のリンクは数えない。親 Issue は別の行に置く
   - PR がその Design Doc を変えていない
@@ -101,14 +107,18 @@ PR では、kompiro が読むのを節と一部のファイルに絞る。決定
   ローカルレビューの記録にレビュアー `design` として残し、ずれが無ければ `no deviation` の行を 1 行残す
   （`no deviation` は `design` の行にだけ使える）
 - **読む範囲を絞る条件**（`designCheckGap`）: 裏付けがあり、本文に中身のある `## For Reviewers` 節があり、
-  `design` の行を含むローカルレビューの記録が waive されずに HEAD を覆い、Medium の検査を通ること。照合の中身は
-  確かめない（自己申告なので、段階には使わず読む範囲だけに使う）
+  `design` の行を含むローカルレビューの記録が waive されずに HEAD を覆い、Medium の検査を通ること。`design` の
+  行はどれも、場所の欄に裏付けの Design Doc をいまの blob で `<path>@<blob>`（7 桁以上）と書いていなければならない。
+  古い blob と照合した行は数えない。照合の中身は確かめない（自己申告なので、段階には使わず読む範囲だけに使う）
 - **絞ったときに読むもの**: `## For Reviewers` 節と、summary が「Files still read」に並べるファイル。並べるのは
   セキュリティの境界のファイル（テストも含む）と、決定のパス・言語の挙動のパスの外にある High のファイル
-  （レビューと release の仕組み、lockfile、依存の変更）である。200 行を超えるときは絞らない
-- CodeRabbit のラウンドは絞った PR にも回り、収束してから kompiro に渡す。kompiro に渡す前に、summary の
-  Design Doc の blob が main の先頭と同じかを確かめ、違えば main を取り込む。裏付けの Design Doc は
+  （レビューと release の仕組み、lockfile、依存の変更）である。この一覧が 200 件を超えるときは絞らない
+- CodeRabbit のラウンドは絞った PR にも回り、収束してから kompiro に渡す。ruleset は base に追いついていることを
+  求めない（`strict_required_status_checks_policy: false`）ので、検査の後に main で Design Doc が変わると、公開された
+  summary が古いまま絞った範囲を示す。そのため kompiro に渡す直前に Review tier を走り直させる。走り直した run は
+  `main` の先頭の blob で判定し直し、違えば裏付けを外す。そのときは main を取り込む。裏付けの Design Doc は
   coderabbit-rounds.md の「記録済みの決定」に入る
+- **マージは人間が行う。** High の auto-merge の例外は作らず、ADR-3286 のマージの決まりは変えない
 
 ### 仕様の文面の一致（#3542 A1、#3716）
 
@@ -147,7 +157,8 @@ PR では、kompiro が読むのを節と一部のファイルに絞る。決定
 
 - 絞ったときに読むものに、レビューの仕組み・lockfile・依存の変更を残す（Design Doc の方針の表は「節とセキュリティの
   境界のファイル」だったが、制約・前提の「仕組みは High のまま」を優先した）
-- Medium の渡し方での blob の比較は A1 に回し、手で blob を比べる代わりに Review tier を走り直させる形にした
+- 渡す直前の blob の比較は、High でも Medium でも、手で比べる代わりに Review tier を走り直させる形にした。
+  Medium の渡し方の分は、A1 の前には一致で Medium になる PR が無いので A1 に回した
 - High か Medium の PR が一度でも変えた Design Doc は、以後どの PR も裏付けない。Design Doc は Design の PR でだけ
   変える。本 ADR の元の Design Doc も #3700（High）が見出しを直したため、#3716 は絞られなかった
 - 一致は Design Doc の実装の指針が書いたファイルごとではなく、全部か無しかにした
