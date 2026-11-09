@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveStyles, nodeStyleKey } from "./style-resolver.js";
+import { resolveStyles, nodeStyleKey, edgeStyleKey } from "./style-resolver.js";
 import { analyze } from "./warnings.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import { StyleParser } from "../parser/style-parser.js";
@@ -1990,5 +1990,54 @@ describe("label-max-chars / label-display properties (#3022)", () => {
 
   it("keeps the default for an unknown `label-display`", () => {
     expect(styleWith({ "label-display": "sometimes" }).labelDisplay).toBe("auto");
+  });
+});
+
+describe("edgeStyleKey (#3481)", () => {
+  it("keeps the plain join for ordinary endpoints", () => {
+    expect(edgeStyleKey("A", "B", undefined)).toBe("A->B");
+    expect(edgeStyleKey("A", "B", "sync")).toBe("A->B#sync");
+    expect(edgeStyleKey("Shop.Api", "Db", "async")).toBe("Shop.Api->Db#async");
+  });
+
+  it("keeps two edges apart when an endpoint contains ->", () => {
+    for (const kind of [undefined, "sync", "async"] as const) {
+      expect(edgeStyleKey("a", "b->c", kind)).not.toBe(edgeStyleKey("a->b", "c", kind));
+    }
+  });
+
+  it("gives each of a derived pair its own resolved style", () => {
+    const sliceEdges = [
+      {
+        from: "a->b",
+        to: "c",
+        kind: "sync" as const,
+        tags: [],
+        loc: dummyLoc,
+        canonicalId: '"a->b"->c',
+      },
+      {
+        from: "a",
+        to: "b->c",
+        kind: "sync" as const,
+        tags: [],
+        loc: dummyLoc,
+        canonicalId: 'a->"b->c"',
+      },
+    ];
+    const sheet: StyleSheet = {
+      rules: [
+        makeRule(
+          { nodeType: "edge", edgeId: '"a->b"->c', tags: [], annotations: [] },
+          { color: "#00FF00" },
+          101,
+          0,
+        ),
+      ],
+    };
+    const result = resolveStyles([], [sheet], undefined, undefined, undefined, sliceEdges);
+    expect(result.edges.get(edgeStyleKey("a->b", "c", "sync"))!.color).toBe("#00FF00");
+    expect(result.edges.get(edgeStyleKey("a", "b->c", "sync"))!.color).not.toBe("#00FF00");
+    expect(result.edges.get(edgeStyleKey("a", "b->c", undefined))!.color).not.toBe("#00FF00");
   });
 });
