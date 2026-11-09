@@ -65,6 +65,19 @@ const TOOLBAR_TERMS: Partial<Record<MessageKey, Record<Locale, string>>> = {
   "preview.focus.label": { en: "**Focus**", ja: "**フォーカス**" },
 };
 
+/**
+ * How a control's text is built from its message: as is, or with the marker the
+ * toolbar adds (a menu trigger's "▾", the focus toggle's "↗", Open All Views'
+ * "⊟"). Matching whole labels this way, not by substring, keeps one control's
+ * message from vouching for another's.
+ */
+const LABEL_FORMS: ((message: string) => string)[] = [
+  (m) => m,
+  (m) => `${m} ▾`,
+  (m) => `↗ ${m}`,
+  (m) => `⊟ ${m}`,
+];
+
 const PREVIEW = {
   activeView: "system",
   previewFocused: false,
@@ -134,9 +147,11 @@ describe("docs/tools/app covers the preview toolbar (TPL-1716)", () => {
     const labels = await renderedLabels();
     expect(labels.length).toBeGreaterThan(5);
     const termKeys = Object.keys(TOOLBAR_TERMS) as MessageKey[];
-    const unnamed = labels.filter((label) => !termKeys.some((k) => label.includes(en[k])));
+    const named = (label: string, k: MessageKey) =>
+      LABEL_FORMS.some((form) => form(en[k]) === label.trim());
+    const unnamed = labels.filter((label) => !termKeys.some((k) => named(label, k)));
     expect(unnamed).toEqual([]);
-    const unrendered = termKeys.filter((k) => !labels.some((label) => label.includes(en[k])));
+    const unrendered = termKeys.filter((k) => !labels.some((label) => named(label, k)));
     expect(unrendered).toEqual([]);
   });
 
