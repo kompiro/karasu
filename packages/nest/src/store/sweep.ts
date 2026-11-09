@@ -13,6 +13,7 @@
  * point rather than the count.
  */
 import type { KVNamespaceLike } from "../env.js";
+import type { GalleryPrefix } from "./gallery-keys.js";
 
 const LIST_PAGE_SIZE = 1000;
 
@@ -34,7 +35,7 @@ const DEFAULT_MAX_PURGE_PAGES = 64;
  */
 export async function purgeByPrefix(
   kv: KVNamespaceLike,
-  prefix: string,
+  prefix: GalleryPrefix,
   maxPages = DEFAULT_MAX_PURGE_PAGES,
 ): Promise<number> {
   // Counted as a set: a key KV re-lists because the delete has not propagated

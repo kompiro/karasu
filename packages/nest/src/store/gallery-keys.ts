@@ -13,6 +13,9 @@
  *     sess/v1/<account>/<session>          one session
  *     sess/v1/<account>/<session>/revoked  its revocation marker
  *
+ * (The picture, not the authority: `GALLERY_KEY_SPACES` below is the set the
+ * code is held to.)
+ *
  * All three put the account first, so every key an account produces is
  * reachable from the account id alone. A key that does not start with the
  * account is beyond the reach of `purgeAccount` — which is a data-trust
@@ -33,9 +36,109 @@
  * the purge to have to know about.
  */
 
-const ACCOUNT_PREFIX = "acct/v1";
-const SUBMISSION_PREFIX = "sub/v1";
-const SESSION_PREFIX = "sess/v1";
+/**
+ * How long a key space's records may live, which is a decision per space.
+ *
+ * `content` is what a submitter manages, and it has **no** TTL: content that
+ * vanished on its own would become the support request the console exists to
+ * remove (TPL-2587). `credential` is the opposite, and a TTL is **required**:
+ * a session written without one is a stolen cookie that never stops working.
+ * Neither is a default the other can fall back to, so there is no third value.
+ */
+export type Retention = "content" | "credential";
+
+export interface KeySpaceDefinition {
+  /**
+   * Ends in a version, so a layout change can introduce `v2` beside `v1` and
+   * sweep the old one by prefix (TPL-2284). The type refuses a prefix
+   * without one.
+   */
+  readonly prefix: `${string}/v${number}`;
+  readonly retention: Retention;
+}
+
+/**
+ * Every key space the gallery writes, as a closed set this module owns.
+ *
+ * A list in a comment was the old ledger, and a ledger is only as complete as
+ * the last person to remember it. TPL-2226 is the record of what that costs:
+ * a prefix added in the same PR as one that *was* swept, and left out. So the
+ * set is a value here, and everything that has to know about a key space is
+ * derived from it rather than kept beside it:
+ *
+ * - the key builders below take their prefix from this table and return a
+ *   `GalleryKey` branded with the space, and `KVNamespaceLike` (`env.ts`)
+ *   accepts nothing else. A store that builds `acct/${id}` by hand, or a key
+ *   in a space nobody registered, does not compile;
+ * - `put` takes its options from the space's `retention`, so a content key
+ *   with a TTL, or a credential key without one, does not compile either;
+ * - `GalleryStore.purgeAccount` has to name a store for every space, and its
+ *   result has a count for every space, because both are typed as a `Record`
+ *   over `GalleryKeySpace`;
+ * - `gallery-purge-coverage.test.ts` needs a seeder for every space for the
+ *   same reason, the test `MemoryKV` refuses a key outside these prefixes or a
+ *   TTL that contradicts the retention, and `nest-retention-policy-sync.test.ts`
+ *   reads this literal and requires a row in the data-handling document for
+ *   each entry.
+ *
+ * Adding a space is therefore one line here, and the compiler and those tests
+ * then list everything else it needs. That is the point: the work a new prefix
+ * creates is no longer something its author has to know about in advance.
+ *
+ * The prefixes are the deployed layout and must not change. A new layout is a
+ * new version (`acct/v2`) registered beside the old one, never an edit.
+ */
+export const GALLERY_KEY_SPACES = {
+  accounts: { prefix: "acct/v1", retention: "content" },
+  submissions: { prefix: "sub/v1", retention: "content" },
+  sessions: { prefix: "sess/v1", retention: "credential" },
+} as const satisfies Record<string, KeySpaceDefinition>;
+
+export type GalleryKeySpace = keyof typeof GALLERY_KEY_SPACES;
+
+declare const keyBrand: unique symbol;
+declare const prefixBrand: unique symbol;
+
+/**
+ * A key one of the builders below produced, in space `S`.
+ *
+ * The brand is the reason a key cannot be spelled anywhere else: a template
+ * string is a `string`, and `KVNamespaceLike` does not take one. Every builder
+ * goes through `normaliseAccountId`, so "built here" also means "canonical"
+ * (TPL-2284). `as GalleryKey` would get past it, and is the thing to refuse in
+ * review: it is the one spelling of "I built this key myself".
+ */
+export type GalleryKey<S extends GalleryKeySpace = GalleryKeySpace> = string & {
+  readonly [keyBrand]: S;
+};
+
+/** A prefix that sweeps one account's keys in space `S`. Ends in `/`. */
+export type GalleryPrefix<S extends GalleryKeySpace = GalleryKeySpace> = string & {
+  readonly [prefixBrand]: S;
+};
+
+/**
+ * The options `put` takes for a key in space `S`, from its retention.
+ *
+ * Content takes none, so there is nowhere to put an `expirationTtl`; a
+ * credential cannot be written without one. Written as `[…] extends […]` so a
+ * key whose space is not known exactly falls on the side that demands a TTL.
+ */
+export type GalleryPutArgs<S extends GalleryKeySpace> = [
+  (typeof GALLERY_KEY_SPACES)[S]["retention"],
+] extends ["content"]
+  ? []
+  : [options: { expirationTtl: number }];
+
+/** The only place a string becomes a `GalleryKey`. */
+function keyIn<S extends GalleryKeySpace>(space: S, ...segments: string[]): GalleryKey<S> {
+  return [GALLERY_KEY_SPACES[space].prefix, ...segments].join("/") as GalleryKey<S>;
+}
+
+/** The only place a string becomes a `GalleryPrefix`. */
+function prefixIn<S extends GalleryKeySpace>(space: S, accountId: string): GalleryPrefix<S> {
+  return `${GALLERY_KEY_SPACES[space].prefix}/${accountId}/` as GalleryPrefix<S>;
+}
 
 /** Thrown when a value cannot be turned into a key that round-trips. */
 export class InvalidGalleryRefError extends Error {
@@ -114,31 +217,47 @@ function requireToken(value: string, field: string, length: number): string {
   return value;
 }
 
-export function accountKey(accountId: number | string): string {
-  return `${ACCOUNT_PREFIX}/${normaliseAccountId(accountId)}`;
+export function accountKey(accountId: number | string): GalleryKey<"accounts"> {
+  return keyIn("accounts", normaliseAccountId(accountId));
 }
 
 /** Every submission one account owns. */
-export function submissionPrefix(accountId: number | string): string {
-  return `${SUBMISSION_PREFIX}/${normaliseAccountId(accountId)}/`;
+export function submissionPrefix(accountId: number | string): GalleryPrefix<"submissions"> {
+  return prefixIn("submissions", normaliseAccountId(accountId));
 }
 
-export function submissionKey(accountId: number | string, slug: string): string {
-  return `${submissionPrefix(accountId)}${requireToken(slug, "submission id", SLUG_LENGTH)}`;
+export function submissionKey(accountId: number | string, slug: string): GalleryKey<"submissions"> {
+  return keyIn(
+    "submissions",
+    normaliseAccountId(accountId),
+    requireToken(slug, "submission id", SLUG_LENGTH),
+  );
 }
 
 /** Every session one account holds, so signing out everywhere is a sweep. */
-export function sessionPrefix(accountId: number | string): string {
-  return `${SESSION_PREFIX}/${normaliseAccountId(accountId)}/`;
+export function sessionPrefix(accountId: number | string): GalleryPrefix<"sessions"> {
+  return prefixIn("sessions", normaliseAccountId(accountId));
 }
 
-export function sessionKey(accountId: number | string, sessionId: string): string {
-  return `${sessionPrefix(accountId)}${requireToken(sessionId, "session id", SESSION_LENGTH)}`;
+export function sessionKey(accountId: number | string, sessionId: string): GalleryKey<"sessions"> {
+  return keyIn(
+    "sessions",
+    normaliseAccountId(accountId),
+    requireToken(sessionId, "session id", SESSION_LENGTH),
+  );
 }
 
 /** Kept through the session's absolute lifetime so a late refresh stays inert. */
-export function sessionRevocationKey(accountId: number | string, sessionId: string): string {
-  return `${sessionKey(accountId, sessionId)}/revoked`;
+export function sessionRevocationKey(
+  accountId: number | string,
+  sessionId: string,
+): GalleryKey<"sessions"> {
+  return keyIn(
+    "sessions",
+    normaliseAccountId(accountId),
+    requireToken(sessionId, "session id", SESSION_LENGTH),
+    "revoked",
+  );
 }
 
 /** The public id for a submission: the account, then the slug. */
