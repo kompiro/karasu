@@ -2009,7 +2009,7 @@ describe("edgeStyleKey (#3481)", () => {
   it("keeps kind-less keys apart from kind keys when an endpoint contains # (#3702)", () => {
     for (const kind of ["sync", "async"] as const) {
       expect(edgeStyleKey("x", `y#${kind}`, undefined)).not.toBe(edgeStyleKey("x", "y", kind));
-      expect(edgeStyleKey("x", `y#${kind}`, kind)).not.toBe(edgeStyleKey("x", "y", kind));
+      expect(edgeStyleKey("x", `y#${kind}`, undefined)).toBe(`x->"y#${kind}"`);
     }
   });
 
