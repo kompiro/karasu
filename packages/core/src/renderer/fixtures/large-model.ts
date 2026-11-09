@@ -30,7 +30,7 @@ const SERVICE_STRIDES = [1, 4, 11];
 const pad = (n: number): string => String(n).padStart(2, "0");
 const serviceId = (s: number): string => `Service${pad(s)}`;
 // Unique across services: a domain id repeated under two services is `domain-dispersal`.
-const domainId = (s: number, d: number): string => `Domain${pad(s)}${pad(d)}`;
+const domainId = (s: number, d: number): string => `Service${pad(s)}Domain${pad(d)}`;
 const tableId = (d: number): string => `Table${pad(d)}`;
 
 export function generateLargeModel(options: LargeModelOptions = DEFAULT_OPTIONS): string {

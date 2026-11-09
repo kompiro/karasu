@@ -53,7 +53,7 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/routing-parity.test.ts` › `a model of real-world size (#2611, #3668)` › `view %j: no edge pierces a card and no two edges share a corridor`
 
-  当初は reverse した langgenius/dify のモデル（20 view / 1,102 edge）で測った（共線 3/13 → 0/0、貫通 7 → 7）。そのモデルは repo に無く誰も測り直せないので、#3668 で生成モデルの自動テストに置き換えた。
+  当初は reverse した langgenius/dify のモデル（20 view / 1,102 edge）で測った（共線 3/13 → 0/0、貫通 7 → 7）。そのモデルは repo に無く誰も測り直せないので、#3668 で生成モデルの自動テストに置き換えた。生成モデルは列を使い切るところまで混まず、#2611 より前のコードでも 0 になる。いま守っているのは「規模が大きくても 0 のまま」までで、#2611 の改善そのものは TC-B2（列を使い切る柵）が守る。
 
 ### AC-3: 予約の鍵が 2 パス目で壊れない（TPL-2611）
 

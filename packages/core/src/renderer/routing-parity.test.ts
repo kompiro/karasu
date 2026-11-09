@@ -375,8 +375,10 @@ describe("shared routing chain — ungrouped fences (#2362, TPL-1927)", () => {
 /**
  * The examples are small. The generated model has the size of the
  * reverse-engineered models the layer-spanning work was measured on (about 10k
- * lines; #2611 TC-B4), so the fence also holds where interior corridors are
- * crowded. Root view, the system view and one service view.
+ * lines; #2611 TC-B4), so penetration and collinear overlap stay at zero at that
+ * scale. It does not reach the corridor limit: the code before #2611 is clean on
+ * it too, so the #2611 fix itself is fenced by the exhausted-corridor describe
+ * below (TPL-2598), not here. Root view, the system view and one service view.
  */
 describe("a model of real-world size (#2611, #3668)", () => {
   const src = generateLargeModel();
@@ -391,6 +393,8 @@ describe("a model of real-world size (#2611, #3668)", () => {
     "view %j: no edge pierces a card and no two edges share a corridor",
     (path: string[]) => {
       const res = layoutOfSource(src, undefined, path);
+      // The router has work to do: straight centre-to-centre lines would pierce (#1954).
+      expect(straightCentrePenetrations(res)).toBeGreaterThan(0);
       expect(totalPenetrations(res)).toBe(0);
       expect(collinearOverlaps(res, "v")).toBe(0);
       expect(collinearOverlaps(res, "h")).toBe(0);
