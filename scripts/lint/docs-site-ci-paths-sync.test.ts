@@ -165,9 +165,9 @@ describe("check", () => {
 
 describe("uncoveredLinkTargets", () => {
   it("flags a link target no guard-workflow glob matches", () => {
-    const problems = uncoveredLinkTargets(["docs/design/x.md", "docs/adr/1-a.md"], ["docs/adr/**"]);
+    const problems = uncoveredLinkTargets(["scripts/review/x.ts", "docs/adr/1-a.md"], ["docs/adr/**"]);
     expect(problems.map((p) => p.message)).toEqual([
-      expect.stringContaining("links to docs/design/x.md"),
+      expect.stringContaining("links to scripts/review/x.ts"),
     ]);
   });
 });
