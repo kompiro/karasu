@@ -1,20 +1,21 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { en, type Translations } from "@karasu-tools/i18n";
 
-/** A message whose English text is a plain string (a control label). */
-type MessageKey = {
-  [K in keyof Translations]: Translations[K] extends string ? K : never;
-}[keyof Translations];
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { PreviewToolbar } from "./PreviewToolbar.js";
 import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
 import { LocaleProvider } from "../i18n/index.js";
 import { ACTIVE_VIEWS } from "../state/app-reducer.js";
+
+/** A message whose English text is a plain string (a control label). */
+type MessageKey = {
+  [K in keyof Translations]: Translations[K] extends string ? K : never;
+}[keyof Translations];
 
 // The preview's views and toolbar controls are on docs/tools/app.md and
 // app.ja.md (TPL-1716). Both are read off what the components render, not off a
@@ -93,7 +94,12 @@ function renderedTabs(): string[] {
       <DiagramTabBar active="system" onChange={noop} />
     </LocaleProvider>,
   );
-  return screen.getAllByRole("tab").map((t) => (t.textContent ?? "").replace(/^\W+/u, "").trim());
+  const labels = screen
+    .getAllByRole("tab")
+    .map((t) => (t.textContent ?? "").replace(/^\W+/u, "").trim());
+  // Unmounted here so a second call in one test does not see two tab bars.
+  cleanup();
+  return labels;
 }
 
 describe("docs/tools/app covers the preview's views (TPL-1716)", () => {
@@ -138,6 +144,8 @@ describe("docs/tools/app covers the preview toolbar (TPL-1716)", () => {
       await user.click(trigger);
       labels.push(...screen.getAllByRole("menuitem").map((m) => m.textContent ?? ""));
       await user.keyboard("{Escape}");
+      // The next trigger must not see this menu's items, nor click through it.
+      await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
     }
     // The split button's "▾" half only opens the export menu checked above.
     return labels.filter((l) => l.trim() !== "▾");

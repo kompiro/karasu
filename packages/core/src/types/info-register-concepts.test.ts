@@ -20,7 +20,7 @@ const repoRoot = resolve(import.meta.dirname, "../../../..");
 const read = (rel: string) => readFileSync(resolve(repoRoot, rel), "utf8");
 
 /** Info diagnostics that are not a school's smell, so they stay out of the table. */
-const NOT_A_STYLE_SMELL: Record<string, string> = {
+const NOT_A_STYLE_SMELL = {
   "missing-runtime": "Points at a deploy property not written yet: a completeness hint.",
   "missing-realizes": "Points at a deploy property not written yet: a completeness hint.",
   "duplicate-boundary-assignment":
@@ -29,7 +29,7 @@ const NOT_A_STYLE_SMELL: Record<string, string> = {
     "Reports a limit of the boundary layout, not a property of the model.",
   "infra-leaf-redeclared-silently":
     "A leaf repeated inside one block is merged; it is a slip in the file, not a design choice.",
-};
+} satisfies Record<string, string>;
 
 /** `code` -> Severity of every row in the catalog's tables. */
 function catalogSeverities(): Map<string, string> {
