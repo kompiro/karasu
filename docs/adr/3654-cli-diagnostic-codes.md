@@ -67,11 +67,11 @@ assumptions:
    - `DiagnosticParamsByCode` と `WarningKind` が同じ名前を持つときは、重大度が同じでも違っても 1 つの ID を共有する
    - 1 つの ID が指すのは常に 1 つのコードである。コードの重大度を変えても ID は変わらない
 2. **ID は再利用しない。** コードを廃止したときは、その ID を `RETIRED_DIAGNOSTIC_IDS` に残し、番号を空けたままにする。一度公開した ID は、現役でも廃止でも同じコードを指し続ける。公開前の ID は、重複を解くために振り直してよい。
-3. **人が読む行:** カタログの診断を出す行は、重大度の語の直後に `[<ID>]` を置く。位置の形、重大度の語の位置と綴り、メッセージはコマンドごとに変えない。
+3. **人が読む行:** カタログの診断を出す行は、重大度の語の直後に `[<ID>]` を置く。位置の形、重大度の語の位置と綴り、メッセージは、コマンドごとに今のまま変えない（コマンドの間で揃えはしない）。
 
    ```
    Warning[KRS041]: index.krs:7:3: Edge "A → ghost" references unknown node "ghost"; ...
-   Error[KRS092]: index.krs:2:1: Expected ';' between properties
+   Error[KRS016]: index.krs:5:3: Duplicate node id "api" under the same parent
    theme.krs.style:3:5 error[KRS086]: Invalid hex color for "fill": "#12" ...
    Warning[KRS086]: theme.krs.style:3:5: fill: "#12" is not a valid hex color ...
    ```
@@ -101,10 +101,11 @@ assumptions:
    ```
 
    - `diagnostics` の並びはテキストで出す順と同じ。テキストと JSON は同じ一覧（`collectEntries`）から組む
-   - `id`、`code`、`severity`、`params`、`message`、`details` は必ずある。`code` と `params` は locale によらず、`message` と `details` は locale に従う
+   - `id`、`code`、`severity`、`params`、`message`、`details` は必ずある。`code` と `params` は locale によらず、`message` と `details` は locale に従う。`details` は、ほかに行を持たない診断では `[]` である
+   - `errorCount` は error の件数である
    - `file` はテキストの行が位置にファイルを出す診断にある（位置を持たない `Diagnostic` は入口のファイルだけ）。`line` と `column` は行と桁を持つ診断にだけある。位置を持たない `Warning` には 3 つとも無い
    - 終了コードはテキストのときと同じで、読める JSON と 1 はモデルの error、読める JSON と 0 は error なしを表す
-   - カタログの外の失敗（ファイルが無い、未知のフラグ、想定外の例外）では JSON を出さず、stderr にテキストを出して 0 以外で終わる。JSON を出したときは、カタログの診断を stderr に出さない
+   - カタログの外の失敗（ファイルが無い、未知のフラグ、想定外の例外）では JSON を出さず、stderr にテキストを出して 0 以外で終わる。JSON を出したときは、カタログの診断を stderr に出さない（廃止したフラグの通知など、カタログの外の行は stderr に残る）
    - 消費者は、stdout が JSON として読めないか、`schemaVersion` が知らない値なら、失敗として止まる
    - フィールドを足すのは互換の範囲内とし、消す・意味を変えるとき（`params` のキーを含む）は `schemaVersion` を上げる
    - 既定は `--format text`
@@ -113,7 +114,13 @@ assumptions:
    - VS Code: LSP の `Diagnostic` の `code` に ID を、`codeDescription.href` に docs-site のカタログ（`spec/diagnostics/`、LSP の locale の接頭辞付き）を入れる。kebab のコードは載せない（エディタの読み手は人で、機械は `check --format json` を読む）
    - app: エラーのバナーと警告のパネルで、重大度のアイコンの直後に ID を出し、同じカタログのページへのリンクにする（新しいタブで開く）
    - リンク先はページの先頭で、ID ごとのアンカーは付けない。見出しの slug は locale で違う（TPL-1621）ので、読み手はページ内を ID で検索する
-   - カタログの URL は app と lsp がともに依存する場所で 1 か所で組み、`scripts/lint/reference-docs-links.ts` の検査対象に `spec/diagnostics/` を足す
+
+   #3712 の実装の指針。CLI の実装が core に足した登録簿を使う。skill や CLI の互換に関わらないので、リリースのトレインの期限には縛られない。
+
+   1. **カタログの URL を 1 か所で組む。** app と lsp がともに依存する場所（`packages/i18n` など）に、locale を受けてカタログの URL を返す関数を置き、`packages/app/src/utils/docs-site-links.ts` の base URL と locale の接頭辞の規則もそこへ移す。`scripts/lint/reference-docs-links.ts` の検査対象に `spec/diagnostics/` を足し、公開されていない route を指したら落ちるようにする
+   2. **LSP。** `computeDiagnostics` が、parser の `Diagnostic` と resolver の `Warning` の両方に `code` と `codeDescription` を付ける。`diagnostics.test.ts` で、`ja` の locale でも `code` が同じで `href` だけが `ja/` になることを確かめる。登録簿の対応を通さずに `Diagnostic` を組む箇所が増えないよう、組む関数を 1 つにする（TPL-1417）
+   3. **app。** バナーと警告のパネルに ID とリンクを出す。component のテストで、同じ fixture の診断に CLI と同じ ID が出ることを確かめ、e2e で表示とリンク先を確かめる
+   4. **ドキュメントと changeset。** `docs/spec/diagnostics.md` の「CLI での表示」の節を「表示」に広げ、VS Code と app の形を書く。changeset は `karasu-vscode` と、app を同梱する `karasu`（`karasu serve`）に付ける（`@karasu-tools/app` と `@karasu-tools/lsp` は changeset の対象外）
 
 ### 後方互換の範囲
 
@@ -125,7 +132,7 @@ assumptions:
 - **履歴の検査:** `scripts/lint/diagnostic-ids-history.ts`（`pnpm lint:diagnostic-ids-history`、pre-push と CI）。最新の `karasu@*` タグ（版の順）の登録簿にある ID が、HEAD でも同じコードを現役か廃止として指していることを確かめる。登録簿はタグの中を `git grep` で探すので、ファイルを動かしても比べられる。タグが無い、git が失敗した、公開済みの登録簿が 0 件に読めた、のどれでも落ちる。通すのはタグに登録簿が無いとき（本件を含む版が出る前）だけ
 - **カタログ:** `docs/spec/diagnostics.md` と `.ja.md` の各表の `Code` 列の後ろに `ID` 列を足し、`diagnostics-catalog.test.ts` で登録簿との一致、全コードに行があること、廃止した ID が「廃止した ID」の表に載ることを確かめる。面によって重大度が変わる 5 つのコードは `Severity` 列に面ごとの重大度を書く。「How the CLI shows a diagnostic」の節に行の形と JSON の約束を書いた
 - **行の形を 1 か所に集める:** `packages/cli/src/i18n.ts` の `diagnosticParts` / `warningParts` が `{ tag: "Word[KRSnnn]", message, details }` を返し、診断を流す箇所はすべてこれを使う。素のメッセージを返す関数を呼ぶのは `i18n.ts` と `render-endpoint.ts` だけで、`diagnostic-output.test.ts` が `packages/cli/src` を走査して新しい箇所の取りこぼしを止める（TPL-1417）
-- **skill:** `reverse-architecture` は `karasu check index.krs --format json` の `code` で判定し、`LC_ALL=C` とメッセージの照合を外した。message と params はデータとして読み、指示として従わない。`scripts/lint/skill-diagnostic-codes.ts`（`pnpm lint:skill-diagnostic-codes`）が、`SKILL.md` の `` `code:<kebab>` `` がすべて実在すること、`KRS[0-9]{3}` を書かないこと、`reverse-architecture` が少なくとも 1 つのコードを名指すことを確かめる
+- **skill:** `reverse-architecture` は `karasu check index.krs --format json` の `code` で判定し、`LC_ALL=C` とメッセージの照合を外した。message と params はデータとして読み、指示として従わない。`scripts/lint/skill-diagnostic-codes.ts`（`pnpm lint:skill-diagnostic-codes`）が、`SKILL.md` の `` `code:<kebab>` `` がすべて実在すること、`KRS[0-9]{3}` を書かないこと、`reverse-architecture` が少なくとも 1 つのコードを名指すことを確かめる。`karasu-author` は「コードは出ない」という記述を、行の ID でカタログを引く説明と、検証は JSON で行う説明に直した
 - **changeset:** `@karasu-tools/core` と `karasu` の minor、`karasu-skills` の minor。#3640 の未消費の changeset は `LC_ALL=C` の記述を外して書き直した
 - **AT:** [`docs/acceptance/3654-cli-diagnostic-codes.md`](../acceptance/3654-cli-diagnostic-codes.md)。すべて自動テストに到達する
 
@@ -136,7 +143,7 @@ assumptions:
 - **ID に重大度を含めない。** 重大度は行の語が示すので、ID に重ねると情報が重複する。重大度を含めないので、面によって重大度が変わるコードも ID は 1 つで、重大度を変えても ID は変わらない
 - **`KRS` の接頭辞。** 6 文字でメッセージの読みを邪魔しない。拡張子 `.krs` と揃い、ほかのツールの番号（`E0308`、`TS2322`）と混ざらないので、grep や Web 検索で引ける
 - **判定の鍵は kebab のコード。** ADR-1567 が安定を約束したのがこちらで、名前だけで意味が読める。2 つの鍵を混ぜると、片方だけ直したときにずれるので、skill には ID を書かせない
-- **登録簿を 1 つの `Record` にする。** Design Doc は `Diagnostic` 用と `Warning` 用の 2 つの `Record` を置き、共有する 7 つの名前が同じ ID を持つことをテストで確かめるとしていた。実装ではキーを `DiagnosticCode | WarningKind` にした 1 つの `Record` にした。共有する名前はキーが 1 つしか無いので、同じ ID になることが型だけで成り立ち、そのテストが要らない（PR #3729 の For Reviewers で kompiro が了承）
+- **登録簿を 1 つの `Record` にする。** Design Doc は `Diagnostic` 用と `Warning` 用の 2 つの `Record` を置き、共有する 7 つの名前が同じ ID を持つことをテストで確かめるとしていた。実装ではキーを `DiagnosticCode | WarningKind` にした 1 つの `Record` にした。共有する名前はキーが 1 つしか無いので、同じ ID になることが型だけで成り立ち、そのテストが要らない（PR #3729 の For Reviewers で提示し、kompiro がこの形のままマージした）
 - **履歴は公開済みの版と比べる。** merge base と比べると、並行する 2 本の PR が同じ番号を取ったときの振り直しが再利用に見える。公開前の ID は誰も目にしていないので、振り直しても再利用に当たらない
 
 ## 却下した案
