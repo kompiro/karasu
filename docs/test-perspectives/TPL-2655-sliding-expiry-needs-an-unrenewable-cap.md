@@ -88,7 +88,7 @@ TTL も正しく効いているように見える — 壊れているのは「�
 期限が延びる仕組みを足す・変えるときに確認する:
 
 - [ ] 延びない上限が読み取り時に判定され、上限達成レコードをストアに直接置いても「無い」として読まれ、閾値内の連続アクセスで書き込みが増えず、上限の残りがストアの TTL 下限を割る場合も決めた挙動になり、失効・削除と競合した延長がレコードを復活させないか
-- [ ] 延長の成否にかかわらず、すでに確定した認証・認可の結果が変わらないか
+- [ ] 延長の成否にかかわらず、すでに確定した認証・認可の結果が変わらないか [guard: `packages/nest/src/store/sessions.test.ts`]
 - [ ] クライアント側の期限（cookie の `Max-Age` 等）が延長後も有効な値で、既存レコードに新フィールドが無い場合の既定値と互換性が決められ、テストは固定日付 fixture ではなく実時刻または明示的に渡した時刻で判定しているか
 
 ## 既知の対処パターン
@@ -123,6 +123,8 @@ TTL も正しく効いているように見える — 壊れているのは「�
 - `packages/nest/src/store/sessions.test.ts` — `does not bring back a session that was revoked
   mid-flight` / `keeps a revoked session inert if a stale refresh writes it back` /
   `does not bring back a session the account purge swept`（復活の防止）
+- `packages/nest/src/store/sessions.test.ts`: `SessionStore.refreshIfStale` の「never rejects, whichever KV call fails」。延長は
+  失敗しても reject しない（`try` を呼び出し側ではなく延長そのものが持つ）ので、どの呼び出し側にも延長の失敗は届かない
 - `packages/nest/src/store/gallery-store.test.ts` — 延長の失敗が認証結果を変えないこと、
   判定できない時刻で上限が消えないこと、延長が呼び出しより後に残らないこと
 - `packages/nest/src/auth/session.test.ts` — cookie の `Max-Age` が上限であること

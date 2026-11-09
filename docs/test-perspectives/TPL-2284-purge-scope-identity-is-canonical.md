@@ -42,13 +42,13 @@ prefix で一括削除する store では、**識別子の綴りが 1 通りで�
 
 prefix / 名前空間で一括削除する store を足す・変えるときに確認する:
 
-- [ ] 削除範囲を決める識別子の **canonical 形を 1 か所で定義**し、書き込みと削除の**両方**がそこを通っているか（別々に正規化していると片方だけ直る）
-- [ ] 同じ主体の**異なる綴りが同じ鍵になる**ことを test で固定したか。「不正値を弾く」テストだけでは足りない
+- [ ] 削除範囲を決める識別子の **canonical 形を 1 か所で定義**し、書き込みと削除の**両方**がそこを通っているか（別々に正規化していると片方だけ直る） [guard: `packages/nest/src/store/gallery-key-contract.test.ts`, `packages/nest/src/store/gallery-keys.test.ts`]
+- [ ] 同じ主体の**異なる綴りが同じ鍵になる**ことを test で固定したか。「不正値を弾く」テストだけでは足りない [guard: `packages/nest/src/store/gallery-keys.test.ts`]
 - [ ] prefix に**セパレータを含めた**か。`4` が `42` を巻き込まないこと、`kara` が `karasu` を巻き込まないことを両方向で test したか
-- [ ] 識別子にセパレータ文字が入りうるなら**拒否**しているか（エスケープではなく拒否 — エスケープは往復の対称性を要求し、片側だけ直る事故を生む）
-- [ ] 削除が**何件消したかを返す**か。呼び出し側がログに残せないと、purge が走ったことすら後から言えない
+- [ ] 識別子にセパレータ文字が入りうるなら**拒否**しているか（エスケープではなく拒否 — エスケープは往復の対称性を要求し、片側だけ直る事故を生む） [guard: `packages/nest/src/store/gallery-keys.test.ts`]
+- [ ] 削除が**何件消したかを返す**か。呼び出し側がログに残せないと、purge が走ったことすら後から言えない [guard: `packages/nest/src/store/gallery-purge-coverage.test.ts`]
 - [ ] 一覧が eventually consistent な store（Cloudflare KV・S3）では、purge を**冪等かつ再実行可能**として設計したか。1 回の呼び出しで完全性を主張していないか
-- [ ] 鍵の layout に**バージョン成分**があるか。layout を変えるとき、旧 layout を prefix で消せる
+- [ ] 鍵の layout に**バージョン成分**があるか。layout を変えるとき、旧 layout を prefix で消せる [guard: `packages/nest/src/store/gallery-key-contract.test.ts`]
 
 ## 既知の対処パターン
 
@@ -65,6 +65,14 @@ prefix / 名前空間で一括削除する store を足す・変えるときに�
   `key layout` の「ends the sweepable prefixes with a slash, so 42 cannot reach 420」が末尾セパレータを、各 prefix の `v1` がバージョン成分を固定する
 - `packages/nest/src/store/gallery-purge-coverage.test.ts` — `account purge coverage` の「touches nothing belonging to an account whose id merely extends it」
   （`GalleryStore.purgeAccount` 経由で 42 の purge が 420 を巻き込まない）と「counts what it deleted in every category」
+- `packages/nest/src/store/gallery-keys.test.ts`: 「every key builder」。鍵か prefix を返す export（型から導出）はすべて `BUILDERS` に
+  引数の種類つきで載せないとコンパイルが通らず、種類ごとの契約（同じ主体の綴りが同じ鍵になる・`/` と `-` を含む値を拒む）を全ビルダーの
+  全引数に当てる。新しい種類の識別子は契約を書かないと宣言できない（どの綴りを同一とみなすかはそこでレビューする）
+- `packages/nest/src/store/gallery-key-contract.test.ts`: `KVNamespaceLike` がビルダーの作った brand 付きの鍵しか受け取らないこと
+  （書き込みも削除も canonical 化を通る）と、`KeySpaceDefinition` がバージョンの無い prefix を拒むことを `@ts-expect-error` で固定する
+- `packages/nest/src/store/gallery-purge-coverage.test.ts`: 「can run again on a purged account, and reports nothing the second time」。
+  全空間で 2 回目の purge が例外を出さず 0 を返すこと。eventually consistent な一覧の下で purge が完全性を主張しないことまでは
+  確かめていない（`AccountStore.purgeAccount` は削除後に読み直さない）ので、6 つ目の項目は印なし
 - `packages/nest/src/store/sweep.test.ts` — `purgeByPrefix`。削除件数を返すこと、eventually consistent な一覧で再出現した鍵を 1 回だけ数えること、
   削除が効かないときに成功を返さず prefix を名指して失敗すること
 
