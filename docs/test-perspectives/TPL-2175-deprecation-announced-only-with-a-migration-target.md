@@ -79,9 +79,9 @@ deprecation 診断を追加する PR で確認する:
       ファイル、複数 register）。片方だけになっていないか。
 - [ ] ツール自身が出力するシート（builtin テーマ、注入シート）で誤発火しないか。
       ユーザーが直せないものを警告してはならない。 [guard: `packages/core/src/builtins/non-author-sheets.test.ts`]
-- [ ] ツール自身が出力する生成コード（translate / reverse の `.krs`）でも誤発火しないか。
 - [ ] spec に **before / after の書き換え例**があるか。診断メッセージは 1〜2 文しか
       持てないので、実際の移行手順は spec 側が持つ。 [judgment]
+- [ ] ツール自身が出力する生成コード（translate / reverse の `.krs`）でも誤発火しないか。
 
 ## 既知の対処パターン
 
