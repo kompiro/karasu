@@ -179,7 +179,7 @@ export const TABLES: TableSpec[] = [
     },
     rows: (locale) =>
       REFERENCE_DATA.nodeKinds.flatMap((k) =>
-        k.layer !== "logical" && k.infraLayerLabel && k.infraIntendedUse
+        k.layer !== "logical"
           ? [
               [
                 code(k.kind),
