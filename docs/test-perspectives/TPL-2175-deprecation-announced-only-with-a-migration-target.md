@@ -78,7 +78,7 @@ deprecation 診断を追加する PR で確認する:
 - [ ] その誤りが書かれうる**すべての場所**で警告が出るか（model 側と style 側、複数
       ファイル、複数 register）。片方だけになっていないか。
 - [ ] ツール自身が出力するシート（builtin テーマ、注入シート）で誤発火しないか。
-      ユーザーが直せないものを警告してはならない。 [guard: `packages/core/src/builtins/non-author-sheets.test.ts`]
+      ユーザーが直せないものを警告してはならない。
 - [ ] spec に **before / after の書き換え例**があるか。診断メッセージは 1〜2 文しか
       持てないので、実際の移行手順は spec 側が持つ。 [judgment]
 - [ ] ツール自身が出力する生成コード（translate / reverse の `.krs`）でも誤発火しないか。
@@ -108,7 +108,10 @@ deprecation 診断を追加する PR で確認する:
   実際に置く位置（builtin は先頭、icon theme は author シートの後ろ）でも author の位置（`analyze()`）でも
   警告ゼロに保つ。表は `NON_AUTHOR_SHEET_IDS` と集合一致なので、出荷するシートを足すと表に足すまで落ちる。
   位置で除外する検査（`sheets.slice(systemSheetCount)`）が後ろに足されたシートを拾う形も、author の位置の
-  検査が捕まえる。生成コードは閉じた集合が無いので覆わない
+  検査が捕まえる。ただし表は `NON_AUTHOR_SHEET_IDS` に登録されたシートにしか閉じておらず、新しく注入したのに
+  登録しなかったシートは見えない。compile が実際に注入するシートを観測して導く案は、注入が compile の
+  オプション（表示モード・テーマ・ビュー・今後足すもの）ごとに分かれ、オプションの組み合わせが閉じた集合に
+  ならないので採らなかった。このためチェックリスト 6 項目目のガードではない。生成コードは閉じた集合が無いので覆わない
 
 旧記法が v1.x で動き続けることの固定（チェックリスト 3 項目目）は、言語 v2.0（#2677）で任意名セレクタを
 無効にしたため、現在は同じ describe の「no longer applies a rule whose selector names a non-builtin tag (v2.0)」が
