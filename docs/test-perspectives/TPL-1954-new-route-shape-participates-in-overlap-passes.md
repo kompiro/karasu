@@ -51,7 +51,7 @@ scope:
 新しい route 形（waypoint 構成の違う経路）をルーターに追加する実装で確認する:
 
 - [ ] その route を**消費する下流パスを列挙**した（レーン分離 / port fan-out / 束ね / crossing marks / 描画 / diff）。 [judgment]
-- [ ] 各下流パスの **gate 条件**を確認し、新 route 形・新アンカー先が意図せず除外されていないか点検した（`waypoints.length === N`・`waypoints[0]` 決め打ち等の**形依存 gate**、`edge.ghost || edge.cyclic` のような**カテゴリ列挙 gate**、`layoutNodes.get(id)` が引けることを前提にした**lookup 依存 gate** が典型）。
+- [ ] 各下流パスの **gate 条件**を確認し、新 route 形・新アンカー先が意図せず除外されていないか点検した（`waypoints.length === N`・`waypoints[0]` 決め打ち等の**形依存 gate**、`edge.ghost || edge.cyclic` のような**カテゴリ列挙 gate**、`layoutNodes.get(id)` が引けることを前提にした**lookup 依存 gate** が典型）。 [judgment]
 - [ ] 除外すべきでないパスには、gate を**形不変な述語**（「ガター回廊を持つか」「どの辺にアンカーするか」「まだ重なっているか」等 — カテゴリ列挙ではなく、そのパスが守りたい事実そのもの）に一般化して新形を参加させた。除外してよいパスは**意図的な除外だと明記**した。 [judgment]
 - [ ] 一般化後も**既存 route 形の結果が不変**であることを既存テスト（snapshot / 不変条件 assert）で確認した（＝一般化の回帰柵）。 [guard: `packages/core/src/renderer/routing-parity.test.ts`]
 - [ ] 新 route 形を**実際に生む fixture**で、下流パスが守る不変条件（[TPL-1927](TPL-1927-routing-measures-crossings-and-penetrations.md) の貫通ゼロ＋共線オーバーラップゼロ等）を assert した。synthetic fixture だけでなく、退行が出た**実サンプル**を柵に加えた。
