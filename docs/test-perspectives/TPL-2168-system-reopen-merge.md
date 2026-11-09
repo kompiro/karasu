@@ -67,8 +67,12 @@ container 系ブロックの再オープン / merge を実装 / 変更すると�
   チェックリスト 5 項目目は union の部分だけを覆う）
 - 同じファイルの `wildcard import` の「merges edges from same-named system across files」（edges の union）と
   「reports error for duplicate node ID in same-named system」（重複 id は `duplicate-node-in-system`）
-
-entry と sub-import を入れ替えたとき採用値が変わること（チェックリスト 4 項目目）を assert するテストはまだ無い。
+- 同じファイルの「S3: the value closest to the entry wins, whatever the import order (#3713)」。2 段下から運ばれた値と
+  1 段下の値が衝突したとき、import の順に依らず 1 段下が勝つことを system の `label` / `description`、deploy と
+  organization の `label` で固定し、`system-property-conflict` が負けた側の宣言の位置（`loc.file`）を持つことを assert する
+  （チェックリスト 1・2・5 項目目）。最短経路で数えること、同じ距離なら import の順で決まること、entry を入れ替えると
+  採用値も入れ替わること（チェックリスト 4 項目目）も同じ block が見る。新しいブロックの種類が `reconcileProperty` を
+  通らずに開き直されると、このテストは気づかないので印にはしない
 
 ## 派生元 spec
 

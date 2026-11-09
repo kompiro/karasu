@@ -1360,6 +1360,100 @@ system ECPlatform {
       expect(result.diagnostics.filter((d) => d.code === "system-property-conflict")).toEqual([]);
     });
 
+    describe("S3: the value closest to the entry wins, whatever the import order (#3713)", () => {
+      // y.krs carries a label from two levels down (z.krs); x.krs declares one a
+      // single level down. x is closer, so it wins in either import order, and
+      // the warning points at the declaration that lost.
+      async function writeChain(order: "y-first" | "x-first", body: (label: string) => string) {
+        const lines =
+          order === "y-first"
+            ? ['import "y.krs"', 'import "x.krs"']
+            : ['import "x.krs"', 'import "y.krs"'];
+        await fs.writeFile("/project/index.krs", `${lines.join("\n")}\n`);
+        await fs.writeFile("/project/y.krs", `import "z.krs"\n${body("")}\n`);
+        await fs.writeFile("/project/z.krs", body("FromZ"));
+        await fs.writeFile("/project/x.krs", body("FromX"));
+      }
+
+      const BLOCKS = [
+        [
+          "system label",
+          (v: string) => `system S {\n  ${v ? `label "${v}"` : ""}\n  service ${v || "Y"}Svc\n}`,
+          (r: Awaited<ReturnType<ImportResolver["resolve"]>>) =>
+            r.krsFile.systems.find((n) => n.id === "S")?.label,
+          { blockKind: "system", property: "label" },
+        ],
+        [
+          "system description",
+          (v: string) =>
+            `system S {\n  ${v ? `description "${v}"` : ""}\n  service ${v || "Y"}Svc\n}`,
+          (r: Awaited<ReturnType<ImportResolver["resolve"]>>) =>
+            r.krsFile.systems.find((n) => n.id === "S")?.properties.description,
+          { blockKind: "system", property: "description" },
+        ],
+        [
+          "deploy label",
+          (v: string) => `deploy Prod {\n  ${v ? `label "${v}"` : ""}\n}`,
+          (r: Awaited<ReturnType<ImportResolver["resolve"]>>) =>
+            r.krsFile.deploys.find((d) => d.id === "Prod")?.label,
+          { blockKind: "deploy", property: "label" },
+        ],
+        [
+          "organization label",
+          (v: string) => `organization Co {\n  ${v ? `label "${v}"` : ""}\n}`,
+          (r: Awaited<ReturnType<ImportResolver["resolve"]>>) =>
+            r.krsFile.organizations.find((o) => o.id === "Co")?.label,
+          { blockKind: "organization", property: "label" },
+        ],
+      ] as const;
+
+      for (const [name, body, read, params] of BLOCKS) {
+        it.each(["y-first", "x-first"] as const)(`${name}: %s`, async (order) => {
+          await writeChain(order, body);
+          const result = await resolver.resolve("/project/index.krs");
+          expect(read(result)).toBe("FromX");
+          const conflicts = result.diagnostics.filter((d) => d.code === "system-property-conflict");
+          expect(conflicts).toHaveLength(1);
+          expect(conflicts[0].params).toMatchObject({
+            ...params,
+            chosen: "FromX",
+            ignored: "FromZ",
+          });
+          expect(conflicts[0].loc?.file).toBe("/project/z.krs");
+        });
+      }
+
+      it("counts the shortest path: a file imported directly and through another is one step away", async () => {
+        await fs.writeFile(
+          "/project/index.krs",
+          `import "y.krs"\nimport "z.krs"\nimport "x.krs"\n`,
+        );
+        await fs.writeFile("/project/y.krs", `import "z.krs"\nsystem S {\n  service YSvc\n}\n`);
+        await fs.writeFile("/project/z.krs", `system S {\n  label "FromZ"\n  service ZSvc\n}\n`);
+        await fs.writeFile("/project/x.krs", `system S {\n  label "FromX"\n  service XSvc\n}\n`);
+
+        const result = await resolver.resolve("/project/index.krs");
+        // z and x are both one step away: a tie keeps the first merged (import order).
+        expect(result.krsFile.systems.find((n) => n.id === "S")?.label).toBe("FromZ");
+      });
+
+      it("follows the open file: swapping the entry swaps the adopted value", async () => {
+        await fs.writeFile(
+          "/project/a.krs",
+          `import "b.krs"\nsystem S {\n  label "FromA"\n  service ASvc\n}\n`,
+        );
+        await fs.writeFile(
+          "/project/b.krs",
+          `import "a.krs"\nsystem S {\n  label "FromB"\n  service BSvc\n}\n`,
+        );
+
+        const fromA = await resolver.resolve("/project/a.krs");
+        const fromB = await new ImportResolver(fs).resolve("/project/b.krs");
+        expect(fromA.krsFile.systems.find((n) => n.id === "S")?.label).toBe("FromA");
+        expect(fromB.krsFile.systems.find((n) => n.id === "S")?.label).toBe("FromB");
+      });
+    });
+
     it("S4: same-id `deploy` and `organization` blocks merge across files", async () => {
       await fs.writeFile(
         "/project/index.krs",

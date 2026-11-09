@@ -32,6 +32,7 @@ import {
 } from "../parser/reference-validation.js";
 import { markCyclicEdges } from "../parser/cyclic-dependencies.js";
 import { resolvePath } from "./path-utils.js";
+import { PropertyReconciler } from "./property-reconcile.js";
 import {
   ambiguousNodePathCandidates,
   bareIdView,
@@ -171,6 +172,8 @@ export class ImportResolver {
    * path it ends up at, not at a path its own file never spelled.
    */
   private declaringFile = new WeakMap<KrsNode, string>();
+  /** S3 reconciliation of reopened blocks' `label` / `description` (closer to the entry wins). */
+  private reconciler = new PropertyReconciler(() => {});
   /** ディレクトリ import の展開結果キャッシュ（Pass 1 で構築、Pass 2 で参照） */
   private dirExpansions = new Map<string, string[]>();
   /** Pass 2: ファイル単位の解決済み KrsFile cache（DAG 経由の同一ファイル到達で再利用） */
@@ -186,6 +189,8 @@ export class ImportResolver {
    */
   async resolve(entryPath: string): Promise<ResolvedProject> {
     this.declaringFile = new WeakMap();
+    // Before Pass 1, which files each block under it.
+    this.reconciler = new PropertyReconciler((d) => this.diagnostics.push(d));
     this.loadingKrs.clear();
     this.loadedKrs.clear();
     this.visitedStyles.clear();
@@ -196,6 +201,7 @@ export class ImportResolver {
 
     // Pass 1: 全ファイルをロード（循環検出・ファイル不在の報告）
     const fileMap = await this.loadFileMap(entryPath);
+    this.reconciler.measureFileDepths(fileMap, entryPath, this.dirExpansions);
 
     // Pass 2: エントリから再帰的にマージ
     const krsFile = this.resolveKrsFromMap(fileMap, entryPath);
@@ -370,6 +376,7 @@ export class ImportResolver {
     );
     fileMap.set(filePath, parseResult.value);
     this.recordDeclaringFile(parseResult.value, filePath);
+    this.reconciler.recordBlocks(parseResult.value, filePath);
 
     for (const nodeImport of parseResult.value.nodeImports) {
       if (nodeImport.path === "") continue;
@@ -725,13 +732,8 @@ export class ImportResolver {
   private mergeSystemIntoExisting(target: SystemNode, source: SystemNode): void {
     if (target === source) return;
     this.mergeScopedBoundaries(target, source);
-    this.reconcileLabel(target, source, "system");
-    this.reconcileDescription(
-      target.properties as { description?: string },
-      source.properties as { description?: string },
-      target.id,
-      "system",
-    );
+    this.reconciler.reconcileLabel(target, source, "system");
+    this.reconciler.reconcileDescription(target, source, "system");
     for (const child of source.children) {
       // 同一インスタンス: DAG 経由で同じノードに到達した場合（cache hit）— 黙って dedup
       if (target.children.includes(child)) continue;
@@ -821,19 +823,14 @@ export class ImportResolver {
 
   private mergeDeployIntoExisting(target: DeployBlock, source: DeployBlock): void {
     if (target === source) return;
-    this.reconcileLabel(target, source, "deploy");
+    this.reconciler.reconcileLabel(target, source, "deploy");
     this.mergeDeployNodes(target, source.nodes);
   }
 
   private mergeOrgIntoExisting(target: OrganizationBlock, source: OrganizationBlock): void {
     if (target === source) return;
-    this.reconcileLabel(target, source, "organization");
-    this.reconcileDescription(
-      target.properties as { description?: string },
-      source.properties as { description?: string },
-      target.id,
-      "organization",
-    );
+    this.reconciler.reconcileLabel(target, source, "organization");
+    this.reconciler.reconcileDescription(target, source, "organization");
     for (const team of source.teams) {
       if (target.teams.includes(team)) continue;
       const idConflict = target.teams.find((t) => t.id === team.id);
@@ -846,64 +843,6 @@ export class ImportResolver {
       } else {
         target.teams.push(team);
       }
-    }
-  }
-
-  /**
-   * S3: import グラフの root に近い側が勝つ。
-   * - target が未設定 → source の値で埋める
-   * - 両方が non-empty で異なる → target を維持して `system-property-conflict` warning
-   */
-  private reconcileLabel(
-    target: { id: string; label?: string },
-    source: { id: string; label?: string },
-    blockKind: "system" | "deploy" | "organization",
-  ): void {
-    const t = target.label?.trim() ?? "";
-    const s = source.label?.trim() ?? "";
-    if (!t && s) {
-      target.label = source.label;
-      return;
-    }
-    if (t && s && t !== s) {
-      this.diagnostics.push({
-        severity: "warning",
-        code: "system-property-conflict",
-        params: {
-          blockId: target.id,
-          blockKind,
-          property: "label",
-          chosen: t,
-          ignored: s,
-        },
-      });
-    }
-  }
-
-  private reconcileDescription(
-    target: { description?: string },
-    source: { description?: string },
-    blockId: string,
-    blockKind: "system" | "deploy" | "organization",
-  ): void {
-    const t = target.description?.trim() ?? "";
-    const s = source.description?.trim() ?? "";
-    if (!t && s) {
-      target.description = source.description;
-      return;
-    }
-    if (t && s && t !== s) {
-      this.diagnostics.push({
-        severity: "warning",
-        code: "system-property-conflict",
-        params: {
-          blockId,
-          blockKind,
-          property: "description",
-          chosen: t,
-          ignored: s,
-        },
-      });
     }
   }
 
@@ -1232,6 +1171,7 @@ export class ImportResolver {
   private inheritDeclaringFile(copy: KrsNode, source: KrsNode): void {
     const file = this.declaringFile.get(source);
     if (file !== undefined) this.declaringFile.set(copy, file);
+    this.reconciler.inherit(copy, source);
   }
 
   /** Record `filePath` as the declaring file of every node `file` parsed into. */
