@@ -191,12 +191,13 @@ pre-push:
       glob: "{docs/spec/**,packages/core/src/builtins/reference-data.ts,scripts/reference/**}"
       run: pnpm exec tsx scripts/reference/gen-docs.ts --check
     spec-structure-sync:
-      # Each en/ja spec pair (docs/spec/{syntax,style,tags-annotations} and
-      # docs/concepts) must keep an identical heading structure — fail if a
-      # section is added/removed/re-leveled on one side only (Issue #1501).
+      # Each en/ja pair of a published page (plus docs/spec/permalink) must
+      # keep an identical heading structure — fail if a section is
+      # added/removed/re-leveled on one side only (Issue #1501). The glossaries
+      # also compare term bullets and their cross-links (TPL-2005).
       # The vitest test (scripts/lint/spec-structure-sync.test.ts) mirrors
       # this guard in CI; reference-docs-check.yml runs it on docs-only PRs.
-      glob: "{docs/spec/**,docs/concepts.md,docs/concepts.ja.md,scripts/lint/spec-structure-sync.ts}"
+      glob: "{docs/spec/**,docs/concepts.md,docs/concepts.ja.md,docs/glossary.md,docs/glossary.ja.md,docs/tools/**,docs/guide/**,packages/docs-site/scripts/lib/site-map.ts,scripts/lint/spec-structure-sync.ts}"
       run: pnpm run lint:spec-structure-sync
     guide-diagrams-check:
       # The hero-snippet SVGs in docs/guide/diagrams/ (and the image refs in
