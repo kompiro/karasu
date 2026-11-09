@@ -753,6 +753,40 @@ describe("compile — edge#<canonical id> written the way the app writes it", ()
     expect(Math.sign(from.x - to.x)).toBe(direction === "left" ? 1 : -1);
     expect(boxOf(svg, other[0]).y).toBeLessThan(boxOf(svg, other[1]).y);
   });
+
+  // The resolved style map holds kind-less keys next to `#sync` / `#async` ones,
+  // and `x -> "y#sync"` keyed `x->y#sync`, the sync key of `x -> y`. Depending on
+  // the write order a rule styled both edges or neither, and a `direction` hint
+  // turned both or neither (#3702). Each edge is the target in both orders.
+  const HASH_PLAIN = { pair: ["x", "y"], id: "x->y", other: ["x", "y#sync"] } as const;
+  const HASH_QUOTED = { pair: ["x", "y#sync"], id: 'x->"y#sync"', other: ["x", "y"] } as const;
+  const HASH_ORDERS = [
+    { order: "plain first", edges: `x -> y\n  x -> "y#sync"` },
+    { order: "quoted first", edges: `x -> "y#sync"\n  x -> y` },
+  ];
+  const HASH_CASES = HASH_ORDERS.flatMap(({ order, edges }) =>
+    [HASH_PLAIN, HASH_QUOTED].map((target) => ({ order, edges, ...target })),
+  );
+  function drawHashPair(edges: string, styleSource: string): string {
+    const krs = `system S {\n  service x {}\n  service y {}\n  service "y#sync" {}\n  ${edges}\n}`;
+    const result = compile(krs, { styleSource, viewPath: ["S"] });
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    return result.svg;
+  }
+
+  it.each(HASH_CASES)("colors only $id when an endpoint ends in #sync ($order)", (c) => {
+    const svg = drawHashPair(c.edges, `edge#${c.id} { color: #00FF00; }`);
+    expect(canonicalIdOf(svg, c.pair[0], c.pair[1])).toBe(c.id);
+    expect(strokeOf(svg, c.pair[0], c.pair[1])).toBe("#00FF00");
+    expect(strokeOf(svg, c.other[0], c.other[1])).not.toBe("#00FF00");
+  });
+
+  it.each(HASH_CASES)("turns only $id up when an endpoint ends in #sync ($order)", (c) => {
+    const svg = drawHashPair(c.edges, `edge#${c.id} { direction: up; }`);
+    expect(boxOf(svg, c.pair[0]).y).toBeGreaterThan(boxOf(svg, c.pair[1]).y);
+    expect(boxOf(svg, c.other[0]).y).toBeLessThan(boxOf(svg, c.other[1]).y);
+  });
 });
 
 describe("compile — edge direction hint reaches the layered layout", () => {
