@@ -90,6 +90,68 @@ karasu は未解決参照に対し **warn-don't-error**（spec §S6）に従う�
 
 > Related TPLs: [TPL-2715](../test-perspectives/TPL-2715-source-position-carries-its-document.md)（位置はそれが指す文書と対で初めてアドレスになる。parse が range を作る場所でファイルを載せ、各表示面はそこから読む）。
 
+## CLI での表示
+
+人は行を読み、スクリプトとエージェントは JSON を読む。
+
+**行。** カタログの診断を出す行は、severity の語の直後にコードの ID を角括弧で
+置く:
+
+```text
+Error[KRS012]: index.krs:5:1: A top-level user is not allowed (declare it inside a system block)
+Warning[KRS041]: index.krs:3:3: Edge "A → Ghost" references unknown node "Ghost"; the edge is dropped (the resolved endpoint is kept)
+theme.krs.style:1:18 error[KRS086]: Invalid hex color ...
+```
+
+- ID は locale によらず同じである。下の表の `ID` 列で引く。
+- 行のそれ以外はコマンドごとの形のまま変えない。位置（*ソース位置* を参照）、
+  severity の語の位置と綴り、locale に従うメッセージである。
+- ID の無い行はカタログの診断ではない。引数についての通知、`translate` の警告、
+  `karasu fmt` の `Cannot format: ...` がこれに当たる。
+- 行は人向けである。形はマイナーリリースで変わりうる（CHANGELOG で知らせる）ので、
+  スクリプトは行を解析しない。
+
+**JSON。** `karasu check <file> --format json` は、同じ診断を 1 つの JSON として
+stdout に出し、カタログの行を stderr に出さない:
+
+```json
+{
+  "schemaVersion": 1,
+  "errorCount": 0,
+  "diagnostics": [
+    {
+      "id": "KRS041",
+      "code": "unresolved-edge-endpoint",
+      "severity": "warning",
+      "file": "index.krs",
+      "line": 3,
+      "column": 3,
+      "params": { "from": "A", "to": "Ghost", "unresolvedId": "Ghost" },
+      "message": "Edge \"A → Ghost\" references unknown node \"Ghost\"; the edge is dropped (the resolved endpoint is kept)",
+      "details": []
+    }
+  ]
+}
+```
+
+- `diagnostics` は行と同じ順に並ぶ。`id`、`code`、`severity`、`params`、
+  `message`、`details` は必ずある。`code` は `DiagnosticParamsByCode` のキーか
+  `WarningKind` のメンバーで、`params` はそのコードの型に従う。どちらも locale に
+  よらない。`message` と `details` は locale に従い、ほかに行を持たない診断の
+  `details` は `[]` である。判定は `code` で行い、`id` や `message` では行わない。
+- `file` は、行がファイルを示すときにある。位置を持つ診断と、位置を持たない
+  `Diagnostic`（入口のファイルを示す）である。`line` と `column` は位置を持つときに
+  ある。位置を持たない `Warning` には 3 つとも無い。`file` の綴りは行と同じ。
+- `errorCount` は error の件数である。終了コードはテキストのときと同じで、読める
+  JSON と `1` はモデルに error があること、読める JSON と `0` は無いことを表す。
+- カタログの外の失敗（ファイルが無い、未知のフラグ、想定外の例外）では JSON を
+  出さず、stderr に行を出して 0 以外で終わる。消費者は、stdout が JSON として
+  読めないか `schemaVersion` が知らない値なら、「診断が 0 件」と読まずに止まる。
+- フィールドを足しても `schemaVersion` は変えない。フィールドを消す・意味を変える
+  （`params` のキーを含む）ときは上げる。
+
+> Related TPLs: [TPL-3654](../test-perspectives/TPL-3654-cli-diagnostics-carry-stable-code.md)（人にはすべての面で短い ID を、機械には JSON のコードを出し、skill はコードで判定する）。
+
 ## 規則ファミリー
 
 ### 宣言・edge の配置・構造

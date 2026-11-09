@@ -161,7 +161,7 @@ changes. Run `karasu <command> --help` for the full option list and examples.
 | --- | --- |
 | `serve [dir]` | Serve `.krs` files from a directory with live preview |
 | `render <file>` | Render a `.krs` file to SVG or draw.io |
-| `check <file>` | Validate a `.krs` project without writing anything; exits `1` on any error. Runs the same compile as `render`, so a file that passes renders. Run it before `fmt`, which refuses unparseable files without saying where |
+| `check <file>` | Validate a `.krs` project without writing anything; exits `1` on any error. Runs the same compile as `render`, so a file that passes renders. Run it before `fmt`, which refuses unparseable files without saying where. Each line starts with the diagnostic's ID (`Warning[KRS041]: ...`), which the [diagnostics catalog](../spec/diagnostics.md#how-the-cli-shows-a-diagnostic) lists; `--format json` prints the findings as one JSON document for scripts and agents |
 | `matrix <file>` | Render a usecase × resource CRUD matrix (`md` / `csv` / `svg`) |
 | `team-dependencies <file>` | Derive which teams depend on which from `owns` × the logical edges, plus ownership that crosses containment (`md` / `csv`) |
 | `fmt [files...]` | Format `.krs` files in place (`--check` for CI, `--stdin` for pipes) |

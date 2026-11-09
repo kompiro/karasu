@@ -61,13 +61,13 @@ scope:
 
 診断を人に見せる箇所（CLI・LSP・app）、診断のコード、またはそれを読む手順書を変えるときに確認する:
 
-- [ ] カタログの診断を流す箇所が、ID を付ける共通の関数を通っているか。
+- [ ] CLI でカタログの診断を流す箇所が、ID を付ける共通の関数（`diagnosticParts` / `warningParts`）を通っているか。 [guard: `packages/cli/src/diagnostic-output.test.ts`]
 - [ ] VS Code の `Diagnostic` の `code` と app のパネルの ID が、同じ診断について CLI の行と同じで、リンクがアンカーの無いカタログのページを指しているか。
-- [ ] コードごとの ID が登録簿にあり、`Diagnostic` と `Warning` の同じ名前が同じ ID を持ち、番号に空きが無いか。
-- [ ] 公開済みの最新版の登録簿にある ID が、HEAD でも同じコードを（現役か廃止として）指しているか。
+- [ ] コードごとの ID が登録簿にあり、`Diagnostic` と `Warning` の同じ名前が同じ ID を持ち、番号に空きが無いか。 [guard: `packages/core/src/types/diagnostic-ids.test.ts`, `packages/core/src/types/diagnostics-catalog.test.ts`]
+- [ ] 公開済みの最新版の登録簿にある ID が、HEAD でも同じコードを（現役か廃止として）指しているか。 [guard: `scripts/lint/diagnostic-ids-history.ts`]
 - [ ] `karasu check --format json` が、locale を `ja` にしても同じ `id`・`code`・`params` を返すか。モデルの error では読める JSON と 1 を返し、カタログの外の失敗（ファイルが無いなど）でだけ stdout を空にして 0 以外で終わるか。
 - [ ] 行の形を変えたとき、行が無いことを確かめる否定の照合が、新しい形にも当たるよう直されているか。
-- [ ] 手順書が `` `code:<kebab>` `` の形で書いたコードが、`DiagnosticParamsByCode` / `WarningKind` に実在し、手順書が ID を書いていないか。
+- [ ] 手順書が `` `code:<kebab>` `` の形で書いたコードが、`DiagnosticParamsByCode` / `WarningKind` に実在し、手順書が ID を書いていないか。 [guard: `scripts/lint/skill-diagnostic-codes.test.ts`]
 - [ ] 手順書の判定が JSON の `code` で行われ、翻訳された文章も行の接頭辞も照合していないか。 [judgment]
 - [ ] 出力の形を変えるとき、すでに配布された手順書の照合が動き続けるか。動かないなら、空振りせず止まる形になっているか。 [judgment]
 
@@ -80,9 +80,13 @@ scope:
 
 ## 関連テスト
 
-- `packages/cli/src/check.test.ts`: 診断の行の接頭辞と位置を確かめる。ID と JSON はまだ確かめない。
-- 実装 PR で core の登録簿のテスト、カタログの meta-test の `ID` 列の検査、`packages/cli` の contract test、skill のコードを検査する lint を足し、ガードを確かめた項目に印を付ける。
+- `packages/cli/src/diagnostic-output.test.ts`: 行の ID（`check`、`lint-style`、`tidy-style`、面によって重大度が変わるコード）と、`check --format json` の約束（`ja` でも同じ `id`・`code`・`params`、error での終了コード、ファイルが無いときの空の stdout、行と同じ順）を確かめる。CLI の診断の出口が `diagnosticParts` / `warningParts` を通ることも、`packages/cli/src` を走査して確かめる。
+- `packages/cli/src/check.test.ts` ほか: コマンドごとの行の形を、具体的な ID 付きで確かめる。否定の照合は `^Error(\[KRS[0-9]{3}\])?:` の形で、新旧どちらの行にも当たる。
+- `packages/core/src/types/diagnostic-ids.test.ts`: 登録簿の 1 対 1、番号の連続、廃止した ID と現役の重なりを確かめる。
+- `packages/core/src/types/diagnostics-catalog.test.ts`: カタログの `ID` 列と「廃止した ID」の表が登録簿と一致することを確かめる。
+- `scripts/lint/diagnostic-ids-history.ts`: 最新の `karasu@*` タグの登録簿と比べる。pre-push と `ci.yml` の Check で動く。
+- `scripts/lint/skill-diagnostic-codes.ts`: 公開する skill の `` `code:<kebab>` `` の実在と ID の不使用を確かめる。pre-push、`reference-docs-check.yml`、`ci.yml` の vitest で動く。
 
 ## 派生元 spec
 
-- [`docs/spec/diagnostics.md`](../spec/diagnostics.md)（CLI での表示の節は実装 PR で足す）
+- [`docs/spec/diagnostics.md`](../spec/diagnostics.md#how-the-cli-shows-a-diagnostic)（How the CLI shows a diagnostic）

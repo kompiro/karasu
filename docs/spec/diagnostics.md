@@ -101,6 +101,74 @@ Each surface prints a location as follows.
 
 > Related TPLs: [TPL-2715](../test-perspectives/TPL-2715-source-position-carries-its-document.md) (a position is an address only together with the document it indexes, so the parse attaches the file where ranges are built and every surface reads it from there).
 
+## How the CLI shows a diagnostic
+
+People read the lines; scripts and agents read JSON.
+
+**Lines.** A line for a catalog diagnostic puts the code's ID in brackets right
+after the severity word:
+
+```text
+Error[KRS012]: index.krs:5:1: A top-level user is not allowed (declare it inside a system block)
+Warning[KRS041]: index.krs:3:3: Edge "A → Ghost" references unknown node "Ghost"; the edge is dropped (the resolved endpoint is kept)
+theme.krs.style:1:18 error[KRS086]: Invalid hex color ...
+```
+
+- The ID is the same in every locale. Look it up in the `ID` column of the
+  tables below.
+- The rest of the line keeps each command's form: the location (see _Source
+  locations_), the position and spelling of the severity word, and the message,
+  which follows the locale.
+- A line without an ID is not a catalog diagnostic: a notice about an argument,
+  a `translate` warning, or `karasu fmt`'s `Cannot format: ...`.
+- The lines are for people. Their shape may change in a minor release, announced
+  in the CHANGELOG, so a script does not parse them.
+
+**JSON.** `karasu check <file> --format json` prints the same findings as one
+JSON document on stdout, and no catalog line on stderr:
+
+```json
+{
+  "schemaVersion": 1,
+  "errorCount": 0,
+  "diagnostics": [
+    {
+      "id": "KRS041",
+      "code": "unresolved-edge-endpoint",
+      "severity": "warning",
+      "file": "index.krs",
+      "line": 3,
+      "column": 3,
+      "params": { "from": "A", "to": "Ghost", "unresolvedId": "Ghost" },
+      "message": "Edge \"A → Ghost\" references unknown node \"Ghost\"; the edge is dropped (the resolved endpoint is kept)",
+      "details": []
+    }
+  ]
+}
+```
+
+- `diagnostics` lists the findings in the order the lines print them. `id`,
+  `code`, `severity`, `params`, `message` and `details` are always present.
+  `code` is a key of `DiagnosticParamsByCode` or a member of `WarningKind`, and
+  `params` follows that code's type; neither depends on the locale. `message`
+  and `details` follow the locale, and `details` is `[]` when the diagnostic has
+  no further lines. Judge by `code`, not by `id` or `message`.
+- `file` is present when the line names a file: a position, or a `Diagnostic`
+  without one, which names the entry. `line` and `column` come with a position.
+  A `Warning` without a position has none of the three. `file` is spelled as the
+  line spells it.
+- `errorCount` counts the errors. The exit status is the text form's: readable
+  JSON with status `1` means the model has an error, with status `0` that it has
+  none.
+- A failure outside the catalog (no such file, an unknown flag, an unexpected
+  exception) prints no JSON, only a line on stderr, and exits non-zero. A
+  consumer stops when stdout does not parse as JSON or `schemaVersion` is a
+  value it does not know, rather than reading either as "no diagnostics".
+- Adding a field keeps `schemaVersion`. Removing a field or changing what one
+  means (a `params` key included) raises it.
+
+> Related TPLs: [TPL-3654](../test-perspectives/TPL-3654-cli-diagnostics-carry-stable-code.md) (people get a short ID on every surface, machines get the code in JSON, and skills judge by the code).
+
 ## Rule families
 
 ### Declaration, edge placement & structure
