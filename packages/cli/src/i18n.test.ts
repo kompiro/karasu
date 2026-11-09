@@ -56,7 +56,10 @@ describe("resolveCliLocale", () => {
 // the chain is tested at once: it wins over every later link, loses to every
 // earlier one, and an empty value there falls through (TPL-2536).
 describe("every link of CLI_LOCALE_ENV_CHAIN", () => {
-  const links = CLI_LOCALE_ENV_CHAIN.map((name, i) => ({ name, later: CLI_LOCALE_ENV_CHAIN.slice(i + 1) }));
+  const links = CLI_LOCALE_ENV_CHAIN.map((name, i) => ({
+    name,
+    later: CLI_LOCALE_ENV_CHAIN.slice(i + 1),
+  }));
 
   it.each(links)("$name alone sets the locale", ({ name }) => {
     expect(resolveCliLocale({ [name]: "ja_JP.UTF-8" })).toBe("ja");

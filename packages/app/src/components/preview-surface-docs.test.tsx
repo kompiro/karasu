@@ -7,7 +7,9 @@ import { resolve } from "node:path";
 import { en, type Translations } from "@karasu-tools/i18n";
 
 /** A message whose English text is a plain string (a control label). */
-type MessageKey = { [K in keyof Translations]: Translations[K] extends string ? K : never }[keyof Translations];
+type MessageKey = {
+  [K in keyof Translations]: Translations[K] extends string ? K : never;
+}[keyof Translations];
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { PreviewToolbar } from "./PreviewToolbar.js";
 import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
