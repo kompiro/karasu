@@ -211,7 +211,7 @@ jobs:
       # packages to `src/` through each package's vitest aliases, so no build.
       - name: docs/tools and the concepts register match the code
         run: |
-          pnpm --filter karasu exec vitest run src/docs-tools-sync.test.ts
+          pnpm --filter ./packages/cli exec vitest run src/docs-tools-sync.test.ts
           pnpm --filter @karasu-tools/app exec vitest run src/components/preview-surface-docs.test.tsx
           pnpm --filter @karasu-tools/core exec vitest run src/types/info-register-concepts.test.ts
 
