@@ -215,7 +215,7 @@ export const startsOn = (filter: PathFilter, file: string): boolean =>
   (filter.paths === undefined || matchesAny(file, filter.paths)) &&
   (filter.pathsIgnore === undefined || !matchesAny(file, filter.pathsIgnore));
 
-export interface Step {
+interface Step {
   /** The step's `if:`, verbatim, when it has one. */
   readonly if?: string;
   /** The step's `run:`, one shell command per entry (continuations joined). */
