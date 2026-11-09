@@ -31,10 +31,17 @@ import { afterAll, describe, expect, it } from "vitest";
 
 const ROOT = resolve(import.meta.dirname, "../..");
 
-/** Files a tarball must not carry, as names planted in each shipped directory. */
+/**
+ * Files a tarball must not carry, as names planted in each shipped directory.
+ * Only these kinds are probed: an arbitrary dev-only file (a script, a config)
+ * has no name to plant, so it stays outside this check (TPL-1681 says so).
+ */
 const PROBES = [
   "probe.test.js",
+  "probe.test.mjs",
+  "probe.test.ts",
   "probe.spec.js",
+  "probe.spec.ts",
   "probe.test.d.ts",
   "probe.js.map",
   "probe.d.ts.map",
@@ -59,7 +66,11 @@ interface Manifest {
 }
 
 const PUBLISHABLE = readdirSync(resolve(ROOT, "packages"), { withFileTypes: true })
-  .filter((entry) => entry.isDirectory())
+  // A leftover directory without a manifest is not a package.
+  .filter(
+    (entry) =>
+      entry.isDirectory() && existsSync(join(ROOT, "packages", entry.name, "package.json")),
+  )
   .map((entry) => ({
     dir: join(ROOT, "packages", entry.name),
     manifest: JSON.parse(

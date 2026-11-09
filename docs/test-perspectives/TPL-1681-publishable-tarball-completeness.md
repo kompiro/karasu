@@ -61,6 +61,7 @@ publish 対象パッケージを追加・変更するとき、以下を確認す
 
 ## 関連テスト
 
+- `scripts/ci/publishable-tarball-policy.test.ts` — チェックリスト 4 のガード。private でない workspace パッケージを列挙し、`files` が出荷するディレクトリにテスト JS / TS・spec・テスト型定義・sourcemap の probe を置いて `pnpm pack --dry-run` に入るかを見る。覆うのはこの名前の付くファイル種別だけで、任意の dev 専用ファイル（スクリプト・設定など）は名前を置けないためガードの外（判断で確認する）。`karasu-vscode` は private で npm に出さず、`.vsix` の中身は `.vscodeignore` が決めるので、このガードの対象集合に入らない
 - `packages/cli/src/packaging.test.ts` — `files` がバンドルとプレビュー app（`dist/app/`）に固定され、`bin` がその成果物を指すことの回帰ガード
 - `packages/cli/pack/serve-from-tarball.test.ts`（`pnpm --filter ./packages/cli run test:pack`）— 実際の tarball の中身を検査する（app が入る、sourcemap と Pages 専用ファイルと Monaco の worker が入らない）。#3017 では `karasu serve` が要る app の build が tarball に入っていなかった
 - `scripts/skills/karasu-skills-package.test.ts` — `karasu-skills packed tarball` で実際に pack した tarball を検査し、plugin manifest と全 skill のソースが入ること、stamping script とそのバックアップが入らないことを assert する
