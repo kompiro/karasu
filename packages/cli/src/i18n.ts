@@ -52,7 +52,7 @@ export function formatDiagnostic(d: Diagnostic): string {
 }
 
 /** Render a core `Warning` to a localized `message` + `details`. */
-export function formatWarning(w: Warning): FormattedWarning {
+function formatWarning(w: Warning): FormattedWarning {
   return renderWarning(w, t);
 }
 

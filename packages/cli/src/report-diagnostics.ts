@@ -121,7 +121,7 @@ export function reportWarnings(
 }
 
 /** The version of {@link diagnosticsJson}'s shape. Bump it when a field is removed or changes meaning. */
-export const DIAGNOSTICS_JSON_SCHEMA_VERSION = 1;
+const DIAGNOSTICS_JSON_SCHEMA_VERSION = 1;
 
 /**
  * `karasu check --format json`: the same findings as {@link reportDiagnostics},

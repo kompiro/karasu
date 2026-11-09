@@ -162,6 +162,8 @@ const PARITY: Record<string, Parity> = {
         "A gap: no PR workflow starts on `.claude/skills/**` (ci.yml ignores `.claude/**` and reference-docs-check.yml lists only `.claude/rules/**`). The two tracked entries are symlinks into `packages/skills/skills`, which is covered, so today the gap holds only a skill added directly under `.claude/skills`.",
     },
   },
+  "pre-push skill-diagnostic-codes": { mirror: "scripts/lint/skill-diagnostic-codes.test.ts" },
+  "pre-push diagnostic-ids-history": {},
   "pre-push skill-reference-bundle-sync": {},
   "pre-push builtin-icons-check": { mirror: "scripts/icons/gen-builtin-icons.test.ts" },
   "pre-push examples-generated-check": {
