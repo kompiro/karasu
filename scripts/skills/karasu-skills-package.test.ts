@@ -149,7 +149,12 @@ describe("plugin and marketplace manifests", () => {
 
   it("publishes only the plugin layout", () => {
     expect(pkg.name).toBe("karasu-skills");
-    expect(pkg.files).toEqual([".claude-plugin", "skills"]);
+    // The `!` entries keep test and source-map files out of those directories
+    // (scripts/ci/publishable-tarball-policy.test.ts, TPL-1681).
+    expect(pkg.files.filter((entry: string) => !entry.startsWith("!"))).toEqual([
+      ".claude-plugin",
+      "skills",
+    ]);
   });
 
   it("lets the marketplace entry install this package", () => {

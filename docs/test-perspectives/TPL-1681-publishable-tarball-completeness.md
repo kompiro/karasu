@@ -48,7 +48,7 @@ publish 対象パッケージを追加・変更するとき、以下を確認す
 - [ ] `npm pack --dry-run` の Tarball Contents を実際に確認したか（ソースの存在ではなく tarball の中身で判断する） [judgment]
 - [ ] `files` がディレクトリまるごとの glob（`["dist"]`）になっていないか。単一バンドルなら `dist/index.js` のように成果物そのものを列挙する
 - [ ] `bin` / `main` / `module` / `exports` / `types` が指す全ファイルが `files` に含まれているか
-- [ ] tarball にテスト JS（`*.test.js`）・テスト型定義・不要な sourcemap・dev 専用ファイルが含まれていないか
+- [ ] tarball にテスト JS（`*.test.js`）・テスト型定義・不要な sourcemap・dev 専用ファイルが含まれていないか [guard: `scripts/ci/publishable-tarball-policy.test.ts`]
 - [ ] `dist/` に stale な emit を混ぜた状態で `npm pack --dry-run` しても、配布物が変わらないか（決定論性）
 
 ## 既知の対処パターン
