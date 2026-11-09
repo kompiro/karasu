@@ -60,7 +60,7 @@ E2E テスト / 共通 fixture を追加・修正するとき、以下を確認�
 - [ ] runner 依存の環境値（`navigator.language` / locale / timezone / 認証 token / feature flag / 外部ホストへの通信）が **fixture 側で pin** されているか。i18n 等を意図的に test する spec のみが opt-out できる構造か
 - [ ] テスト終了時に fixture が **状態を破棄** するか（次のテストが前のテストの状態を見ない保証がある）。`afterEach(cleanup)` を含む
 - [ ] flake が `flaky` retry-pass として **隠蔽されていない** か。CI ログで retry 発生数を可視化しているか
-- [ ] **post-merge / nightly** で E2E が走る経路があるか。PR-gated だけだと main の flake が見えなくなる
+- [ ] **post-merge / nightly** で E2E が走る経路があるか。PR-gated だけだと main の flake が見えなくなる [guard: `scripts/ci/e2e-suite-nightly-policy.test.ts`]
 
 ## 既知の対処パターン
 

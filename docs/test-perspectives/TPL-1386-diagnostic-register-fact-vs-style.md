@@ -60,7 +60,7 @@ karasu の core 診断は **karasu のモデルに関する事実**（id 未宣�
 - [ ] 流派判断（「ある流派ならこうする」）に直接対応する診断を追加していないか
       （該当する場合は実装せず、PR description にスコープ外と明記） [judgment]
 - [ ] 文言が事実先行（"X is declared in N files"）になっているか、あるいは
-      規定的（"You should check..."）になっていないか
+      規定的（"You should check..."）になっていないか [judgment]
 - [ ] `docs/concepts.md` の「What karasu visualizes vs. what it doesn't prescribe」
       表に新規エントリを追加したか（`info` で導入する場合）
 

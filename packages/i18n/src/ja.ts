@@ -1,6 +1,6 @@
 import type { Translations } from "./types.js";
 import { formatRange } from "./format.js";
-import { firstRunJa } from "./first-run.js";
+import { partsJa } from "./catalog-parts.js";
 
 /**
  * Japanese translation map.
@@ -81,7 +81,7 @@ export const ja: Partial<Translations> = {
   "project.error.export": ({ detail }) => `⚠ プロジェクトのエクスポートに失敗しました: ${detail}`,
   "project.error.import": ({ detail }) => `⚠ インポートに失敗しました: ${detail}`,
   "project.error.openExample": ({ detail }) => `⚠ example を開けませんでした: ${detail}`,
-  ...firstRunJa,
+  ...partsJa,
   "project.error.snapshot": ({ detail }) => `⚠ スナップショットの取得に失敗しました: ${detail}`,
   "project.error.dismiss": "✕ 閉じる",
   "serve.error.fileNotFound": ({ file }) => `ファイルが見つかりません: ${file}`,

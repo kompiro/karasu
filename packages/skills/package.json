@@ -18,7 +18,10 @@
   },
   "files": [
     ".claude-plugin",
-    "skills"
+    "skills",
+    "!**/*.test.*",
+    "!**/*.spec.*",
+    "!**/*.map"
   ],
   "publishConfig": {
     "access": "public"

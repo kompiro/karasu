@@ -56,7 +56,7 @@ describe("lintStyle() with explicit files", () => {
 
     const out = stdout.join("");
     expect(out).toContain(file);
-    expect(out).toContain("error:");
+    expect(out).toContain("error[KRS085]:");
     expect(out).toContain("dwon");
     expect(exit).toHaveBeenCalledWith(1);
   });
@@ -80,7 +80,7 @@ describe("lintStyle() with explicit files", () => {
     await lintStyle([file], {});
 
     const out = stdout.join("");
-    expect(out).toContain("warning:");
+    expect(out).toContain("warning[KRS083]:");
     expect(out).toContain("color2");
   });
 
@@ -92,7 +92,7 @@ describe("lintStyle() with explicit files", () => {
     await lintStyle([file], {});
 
     const out = stdout.join("");
-    expect(out).toContain(`${file}:2:10 warning:`);
+    expect(out).toContain(`${file}:2:10 warning[KRS084]:`);
     expect(out).toContain('url("databse")');
   });
 
@@ -123,8 +123,8 @@ describe("lintStyle() with explicit files", () => {
     await expect(lintStyle([f1, f2], {})).rejects.toThrow("process.exit(1)");
 
     const lines = stdout.join("").split("\n").filter(Boolean);
-    expect(lines.some((l) => l.startsWith(f1) && l.includes("error:"))).toBe(true);
-    expect(lines.some((l) => l.startsWith(f2) && l.includes("error:"))).toBe(true);
+    expect(lines.some((l) => l.startsWith(f1) && / error\[KRS\d{3}\]: /.test(l))).toBe(true);
+    expect(lines.some((l) => l.startsWith(f2) && / error\[KRS\d{3}\]: /.test(l))).toBe(true);
   });
 });
 

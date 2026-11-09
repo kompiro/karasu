@@ -1,4 +1,5 @@
-import { type Page, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect } from "./expect.js";
 
 /**
  * Click a view tab (System / Deploy / Org / ...) and wait until it is

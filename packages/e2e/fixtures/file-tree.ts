@@ -1,4 +1,5 @@
-import { type Locator, type Page, expect } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
+import { expect } from "./expect.js";
 
 /** A file-tree row whose name is exactly `name` (so `index.krs` never matches `index.krs.style`). */
 export function treeItem(page: Page, name: string): Locator {

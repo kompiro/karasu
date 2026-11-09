@@ -109,7 +109,7 @@ describe("a deprecated alias still runs the replacement", () => {
   it("dispatches the aliased command through the real program", async () => {
     const r = applyDeprecations(argv("validate", "index.krs"), FIXTURE);
     await program.parseAsync(r.argv);
-    expect(mockCheck).toHaveBeenCalledWith("index.krs");
+    expect(mockCheck).toHaveBeenCalledWith("index.krs", { format: "text" });
   });
 
   it("dispatches the aliased flag through the real program", async () => {
