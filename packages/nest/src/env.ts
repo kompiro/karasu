@@ -55,6 +55,13 @@ export const KV_MINIMUM_TTL_SECONDS = 60;
  *
  * `list` names come back typed as keys because they are: everything under a
  * `GalleryPrefix` was written through a builder.
+ *
+ * **Where the narrowing stops.** It binds code whose parameter is typed
+ * `KVNamespaceLike`. A store that declares its own `{ put(key: string, …) }`
+ * and is handed this binding still compiles: TypeScript compares method
+ * parameters bivariantly, so `string` is accepted where `GalleryKey` was
+ * declared. What refuses that store's keys is the test `MemoryKV`, at
+ * runtime, and only on paths a test exercises.
  */
 export interface KVNamespaceLike {
   get(key: GalleryKey): Promise<string | null>;

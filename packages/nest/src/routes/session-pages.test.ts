@@ -8,11 +8,14 @@
  * because its CSP makes it an opaque origin.
  *
  * The other tests check the pages they are about. This one walks the route
- * table itself (`Router.table`), requests every `GET` route the way a signed-in
- * owner would, and holds each answer to that rule, so a page added to
- * `app.ts` is checked the day it is registered, by a test nobody had to
- * remember to extend. A route whose path needs a parameter this file cannot
- * fill fails until it can, rather than being skipped.
+ * table itself (`Router.table`), sends every route its method the way a
+ * signed-in owner would, and holds each answer to that rule, so a page added
+ * to `app.ts` is checked the day it is registered, by a test nobody had to
+ * remember to extend. `POST` routes get an empty same-origin form, which is
+ * what makes the console re-render a page with the problem on it, and a path
+ * nothing is registered for stands in for the router's own 404. A route whose
+ * path needs a parameter this file cannot fill fails until it can, rather than
+ * being skipped.
  */
 import { describe, expect, it, vi } from "vitest";
 import { createRouter, handleRequest } from "../app.js";
@@ -37,7 +40,7 @@ const ctx: NestExecutionContext = { waitUntil: () => {} };
  * (ADR-2592 §6), not something to add here to get a page through.
  */
 const SCRIPTED: Readonly<Record<string, (csp: string) => void>> = {
-  "/g/:id": (csp) => {
+  "GET /g/:id": (csp) => {
     expect(csp.split(/\s+/)).toEqual(expect.arrayContaining(["sandbox", "allow-scripts"]));
     expect(csp).not.toContain("allow-same-origin");
     expect(csp.split(/\s*;\s*/)).toContain("connect-src 'none'");
@@ -83,34 +86,39 @@ function env(kv: MemoryKV): NestEnv {
   };
 }
 
-describe("pages served on the session's origin", () => {
-  it("carry no script, on every GET route, except the sandboxed viewer", async () => {
-    const kv = new MemoryKV();
-    const { cookie, id } = await signedInOwner(kv);
-    const params: Readonly<Record<string, string>> = { id };
-    const routes = createRouter().table.filter(({ method }) => method === "GET");
-    expect(routes.length).toBeGreaterThan(0);
+/** No route answers this path: the router's 404 is a page too. */
+const UNROUTED = { method: "GET", pattern: "/no/such/page" };
 
-    for (const { pattern } of routes) {
+describe("pages served on the session's origin", () => {
+  it("carry no script, on every route and the 404, except the sandboxed viewer", async () => {
+    const routes = [...createRouter().table, UNROUTED];
+    expect(routes.some(({ method }) => method === "POST")).toBe(true);
+
+    for (const { method, pattern } of routes) {
+      // A fresh store per route: `POST /console/account/delete` purges the
+      // owner, and nothing after it should be checked as a stranger.
+      const kv = new MemoryKV();
+      const { cookie, id } = await signedInOwner(kv);
+      const params: Readonly<Record<string, string>> = { id };
       const path = pattern.replaceAll(/:(\w+)/g, (_, name: string) => {
         const value = params[name];
         if (value === undefined) throw new Error(`${pattern}: no value for :${name} in this test`);
         return value;
       });
-      const response = await handleRequest(
-        new Request(`${ORIGIN}${path}`, { headers: { Cookie: cookie } }),
-        env(kv),
-        ctx,
-      );
+      const init: RequestInit =
+        method === "POST"
+          ? { method, headers: { Cookie: cookie, Origin: ORIGIN }, body: new URLSearchParams() }
+          : { method, headers: { Cookie: cookie } };
+      const response = await handleRequest(new Request(`${ORIGIN}${path}`, init), env(kv), ctx);
+      const route = `${method} ${pattern}`;
       // A route that fell over answered nothing worth checking.
-      if (response.status >= 500) throw new Error(`${pattern} answered ${response.status}`);
-      const csp = response.headers.get("Content-Security-Policy") ?? "";
-      const scripted = SCRIPTED[pattern];
+      if (response.status >= 500) throw new Error(`${route} answered ${response.status}`);
+      const scripted = SCRIPTED[route];
       if (scripted !== undefined) {
-        scripted(csp);
+        scripted(response.headers.get("Content-Security-Policy") ?? "");
         continue;
       }
-      expect(await response.text(), `${pattern} serves script`).not.toMatch(SCRIPT);
+      expect(await response.text(), `${route} serves script`).not.toMatch(SCRIPT);
     }
   });
 });

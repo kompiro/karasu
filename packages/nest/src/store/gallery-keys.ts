@@ -60,16 +60,16 @@ export interface KeySpaceDefinition {
 /**
  * Every key space the gallery writes, as a closed set this module owns.
  *
- * A list in a comment was the old ledger, and a ledger is only as complete as
- * the last person to remember it. TPL-2226 is the record of what that costs:
- * a prefix added in the same PR as one that *was* swept, and left out. So the
- * set is a value here, and everything that has to know about a key space is
+ * A ledger written as a comment is only as complete as the last person to
+ * remember it. TPL-2226 is the record of what that costs: a prefix added in
+ * the same PR as one that *was* swept, and left out. So the set is a value, and everything that has to know about a key space is
  * derived from it rather than kept beside it:
  *
  * - the key builders below take their prefix from this table and return a
  *   `GalleryKey` branded with the space, and `KVNamespaceLike` (`env.ts`)
- *   accepts nothing else. A store that builds `acct/${id}` by hand, or a key
- *   in a space nobody registered, does not compile;
+ *   accepts nothing else. A store taking `KVNamespaceLike` that builds
+ *   `acct/${id}` by hand, or a key in a space nobody registered, does not
+ *   compile (`env.ts` says where that stops);
  * - `put` takes its options from the space's `retention`, so a content key
  *   with a TTL, or a credential key without one, does not compile either;
  * - `GalleryStore.purgeAccount` has to name a store for every space, and its
@@ -83,7 +83,7 @@ export interface KeySpaceDefinition {
  *
  * Adding a space is therefore one line here, and the compiler and those tests
  * then list everything else it needs. That is the point: the work a new prefix
- * creates is no longer something its author has to know about in advance.
+ * creates is not something its author has to know about in advance.
  *
  * The prefixes are the deployed layout and must not change. A new layout is a
  * new version (`acct/v2`) registered beside the old one, never an edit.

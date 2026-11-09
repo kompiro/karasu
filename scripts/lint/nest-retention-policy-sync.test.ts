@@ -271,7 +271,7 @@ describe("the data-handling document matches the code (#1996, #2591)", () => {
   });
 
   it("has a row for every registered key space, stating its retention class", () => {
-    // Complete now, where it used to say it was not. The gallery's key spaces
+    // Complete, unlike a list written here would be. The gallery's key spaces
     // are a closed set (`GALLERY_KEY_SPACES`): the stores cannot write a key
     // outside it, and `GalleryStore.purgeAccount` and the purge-coverage test
     // are typed over it. So reading that literal reads every prefix this

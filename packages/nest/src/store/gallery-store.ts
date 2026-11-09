@@ -12,8 +12,8 @@
  * account record and forgot the sessions would leave a live credential naming
  * an account that no longer exists; one who forgot a submission would leave
  * content nobody can withdraw. Every key space this package writes has to
- * appear in `purgeAccount`, and that is now a type rather than a habit: the
- * stores it walks are a `Record` over `GalleryKeySpace`, so registering a
+ * appear in `purgeAccount`, and the type says so: the stores it walks are a
+ * `Record` over `GalleryKeySpace`, so registering a
  * space in `gallery-keys.ts` without naming the store that purges it does not
  * compile. `gallery-purge-coverage.test.ts` then checks that the store named
  * really does leave nothing behind (TPL-2226).

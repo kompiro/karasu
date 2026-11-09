@@ -194,11 +194,11 @@ export class SessionStore {
    * **Never rejects.** A caller holding a session has already authenticated
    * it (the read that proved it has happened), and the worst a dropped
    * refresh costs is a sign-in sooner than it needed to be. So a failure here
-   * must not change what the caller decided (TPL-2655). It used to be the
-   * caller's `try` that guaranteed that, which made it a property of
-   * `GalleryStore.authenticate` and not of the refresh: a second caller would
-   * have had to remember it. Settling it here makes it true for every caller,
-   * including the next one. Logged rather than swallowed silently, because a
+   * must not change what the caller decided (TPL-2655). The `try` sits here
+   * rather than in each caller, so it holds for every caller of this method
+   * without any of them having to remember it. It does not cover a refresh
+   * written somewhere else that bypasses this method. Logged rather than
+   * swallowed silently, because a
    * refresh that fails *every* time is a broken binding worth seeing.
    *
    * The key is derived from `session.accountId` rather than taken as its own

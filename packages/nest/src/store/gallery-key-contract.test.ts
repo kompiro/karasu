@@ -20,6 +20,7 @@ import type { KVNamespaceLike } from "../env.js";
 import { MemoryKV } from "../testing/memory-kv.js";
 import {
   accountKey,
+  GALLERY_KEY_SPACES,
   newSessionId,
   sessionKey,
   type GalleryKeySpace,
@@ -35,9 +36,16 @@ describe("the KV binding's type", () => {
   it("refuses a key no builder produced, in a registered space or not", async () => {
     const kv: KVNamespaceLike = new MemoryKV();
     const id = 42;
+    const ttl = { expirationTtl: 3600 };
+    // Each `put` below carries a TTL, so the arity is right whatever space the
+    // compiler assumes and the brand is the only thing left to refuse. A `put`
+    // without one would also fail on the missing argument, and keep failing
+    // after the key parameter had been loosened to `string`, proving nothing.
     // @ts-expect-error -- a key spelled by hand is a string, not a GalleryKey
-    const unregistered = kv.put(`meta/v1/${id}`, "{}");
+    const unregistered = kv.put(`meta/v1/${id}`, "{}", ttl);
     await expect(unregistered).rejects.toThrow(/no registered key space/);
+    // @ts-expect-error -- a registered prefix spelled by hand is still not a key
+    await kv.put(`sess/v1/${id}/${newSessionId()}`, "{}", ttl);
     // @ts-expect-error -- the registered prefix does not make it a key
     await kv.get(`acct/v1/${id}`);
     // @ts-expect-error -- nor for a delete
@@ -64,6 +72,14 @@ describe("the KV binding's type", () => {
     // @ts-expect-error -- an unversioned layout cannot be swept by prefix later
     const unversioned: KeySpaceDefinition = { prefix: "meta", retention: "content" };
     expect(unversioned.retention).toBe("content");
+  });
+
+  it("holds the registry itself to that definition", () => {
+    // The `satisfies` in `gallery-keys.ts` is what checks each entry, and it
+    // can be deleted without anything else noticing. This assignment fails
+    // the same way if it is, so an unversioned prefix cannot get in either way.
+    const registry: Readonly<Record<string, KeySpaceDefinition>> = GALLERY_KEY_SPACES;
+    expect(Object.keys(registry).length).toBeGreaterThan(0);
   });
 
   it("gives the purge result a count for exactly the registered spaces", () => {

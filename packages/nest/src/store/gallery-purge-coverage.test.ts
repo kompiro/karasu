@@ -15,8 +15,8 @@
  * structural: write something under every prefix the gallery uses, purge, and
  * assert the store is empty.
  *
- * `SEEDERS` is deliberately a short list a reviewer can read, and it is no
- * longer one that can fall behind. It is typed as a `Record` over the
+ * `SEEDERS` is deliberately a short list a reviewer can read, and it cannot
+ * fall behind the registry. It is typed as a `Record` over the
  * registered key spaces (`GALLERY_KEY_SPACES` in `gallery-keys.ts`), and the
  * stores cannot write a key outside them, so a new space does not compile
  * until it has a seeder here, and from then on every case below runs it
