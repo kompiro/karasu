@@ -69,7 +69,11 @@ prefix / 名前空間で一括削除する store を足す・変えるときに�
   引数の種類つきで載せないとコンパイルが通らず、種類ごとの契約（同じ主体の綴りが同じ鍵になる・`/` と `-` を含む値を拒む）を全ビルダーの
   全引数に当てる。新しい種類の識別子は契約を書かないと宣言できない（どの綴りを同一とみなすかはそこでレビューする）
 - `packages/nest/src/store/gallery-key-contract.test.ts`: `KVNamespaceLike` がビルダーの作った brand 付きの鍵しか受け取らないこと
-  （書き込みも削除も canonical 化を通る）と、`KeySpaceDefinition` がバージョンの無い prefix を拒むことを `@ts-expect-error` で固定する
+  （書き込みも削除も canonical 化を通る）と、`KeySpaceDefinition` がバージョンの無い prefix を拒み、`GALLERY_KEY_SPACES` 自体が
+  その定義に照らされることを `@ts-expect-error` と代入で固定する。
+  型が縛るのは引数を `KVNamespaceLike` と型付けしたコード（既存のストアの書き方）で、既存のストアと同じ書き方の新しいストアは赤くなる。
+  自前で `{ put(key: string, …) }` と型を宣言したストアに binding を渡すと、メソッドの引数が双変に比較されるのでコンパイルが通る。
+  その場合に鍵を拒むのはテスト用の `MemoryKV`（実行時）だけで、その経路をテストが通るときに限る
 - `packages/nest/src/store/gallery-purge-coverage.test.ts`: 「can run again on a purged account, and reports nothing the second time」。
   全空間で 2 回目の purge が例外を出さず 0 を返すこと。eventually consistent な一覧の下で purge が完全性を主張しないことまでは
   確かめていない（`AccountStore.purgeAccount` は削除後に読み直さない）ので、6 つ目の項目は印なし

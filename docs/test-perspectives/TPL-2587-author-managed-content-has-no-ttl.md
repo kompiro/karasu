@@ -68,7 +68,11 @@ scope:
 - `packages/nest/src/store/accounts.test.ts` › `stores no expiry, so an account cannot outlive itself`
 - `packages/nest/src/store/sessions.test.ts` › `expires, unlike everything else the gallery stores`（資格情報側の裏返し）
 - `packages/nest/src/store/gallery-key-contract.test.ts`: 資格情報の鍵を TTL なしで、コンテンツの鍵を TTL つきで書く呼び出しを
-  `@ts-expect-error` で固定する（型の契約が空にならないこと）。同じ呼び出しを `MemoryKV` が実行時にも拒むこと
+  `@ts-expect-error` で固定する（型の契約が空にならないこと）。同じ呼び出しを `MemoryKV` が実行時にも拒むこと。
+  型が縛るのは引数を `KVNamespaceLike` と型付けしたコード（既存のストアの書き方）で、既存のストアと同じ書き方の新しいストアは赤くなる。
+  保持の種類についても同じで、自前で `{ put(key: string, …) }` と型を宣言したストアに binding を渡すと、
+  メソッドの引数が双変に比較されるのでコンパイルが通る。その場合に TTL の有無を拒むのはテスト用の `MemoryKV`（実行時）
+  だけで、その経路をテストが通るときに限る
 - `packages/nest/src/testing/memory-kv.test.ts`: 「refuses an expiry on content and a credential without one」。nest のテストが書く
   すべての `put` を、その鍵の空間の保持の種類に照らす（`MemoryKV` が registry を読む）。資格情報側は TTL が**付いていること**までで、
   値が正しいことは `sessions.test.ts` が持つ

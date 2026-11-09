@@ -65,7 +65,10 @@ scope:
   件数 1 を持つこと（期待値も registry から作る）、各 seeder が自分の空間に書くこと。新しい空間は `SEEDERS` と `GalleryStore` の
   purge 対象に足すまでコンパイルが通らない
 - `packages/nest/src/store/gallery-key-contract.test.ts`: 上の型の契約が空にならないこと（TPL-3589）。手で組んだ鍵・登録外の prefix を
-  `KVNamespaceLike` が拒むこと、`AccountPurgeResult` の鍵がちょうど `GalleryKeySpace` であることを `@ts-expect-error` と型の等価で固定する
+  `KVNamespaceLike` が拒むこと、`AccountPurgeResult` の鍵がちょうど `GalleryKeySpace` であることを `@ts-expect-error` と型の等価で固定する。
+  型が縛るのは引数を `KVNamespaceLike` と型付けしたコード（既存のストアの書き方）で、その書き方の新しいストアが登録外の prefix に書けば赤くなる。
+  自前で `{ put(key: string, …) }` と型を宣言したストアに binding を渡すと、メソッドの引数が双変に比較されるのでコンパイルが通る。
+  その場合に鍵を拒むのはテスト用の `MemoryKV`（実行時）だけで、その経路をテストが通るときに限る
 - `packages/nest/src/testing/memory-kv.ts`: nest のテストが書くすべての鍵を registry に照らし、登録外の prefix を拒む（テストの中で
   文字列で書いた鍵にも効く）
 - `packages/nest/src/store/gallery-keys.test.ts` — `key layout` の「puts the account outermost in every prefix, so one sweep reaches it all」。
