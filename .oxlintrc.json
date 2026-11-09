@@ -77,7 +77,7 @@
     { "files": ["packages/core/src/compile/compile-diff.ts"], "rules": { "max-lines": ["error", { "max": 913 }] } },
     { "files": ["packages/core/src/compile/compile.ts"], "rules": { "max-lines": ["error", { "max": 1087 }] } },
     { "files": ["packages/core/src/formatter/formatter.ts"], "rules": { "max-lines": ["error", { "max": 1045 }] } },
-    { "files": ["packages/core/src/fs/import-resolver.ts"], "rules": { "max-lines": ["error", { "max": 1397 }] } },
+    { "files": ["packages/core/src/fs/import-resolver.ts"], "rules": { "max-lines": ["error", { "max": 1396 }] } },
     { "files": ["packages/core/src/parser/reference-validation.ts"], "rules": { "max-lines": ["error", { "max": 1082 }] } },
     { "files": ["packages/core/src/parser/style-parser.ts"], "rules": { "max-lines": ["error", { "max": 642 }] } },
     { "files": ["packages/core/src/renderer/crossing-marks.ts"], "rules": { "max-lines": ["error", { "max": 717 }] } },
@@ -91,10 +91,10 @@
     { "files": ["packages/core/src/resolver/style-resolver.ts"], "rules": { "max-lines": ["error", { "max": 886 }] } },
     { "files": ["packages/core/src/resolver/warnings.ts"], "rules": { "max-lines": ["error", { "max": 1703 }] } },
     { "files": ["packages/core/src/translate/db.ts"], "rules": { "max-lines": ["error", { "max": 718 }] } },
-    { "files": ["packages/core/src/types/ast.ts"], "rules": { "max-lines": ["error", { "max": 1246 }] } },
-    { "files": ["packages/i18n/src/en.ts"], "rules": { "max-lines": ["error", { "max": 635 }] } },
-    { "files": ["packages/i18n/src/ja.ts"], "rules": { "max-lines": ["error", { "max": 634 }] } },
-    { "files": ["packages/i18n/src/types.ts"], "rules": { "max-lines": ["error", { "max": 721 }] } }
+    { "files": ["packages/core/src/types/ast.ts"], "rules": { "max-lines": ["error", { "max": 1245 }] } },
+    { "files": ["packages/i18n/src/en.ts"], "rules": { "max-lines": ["error", { "max": 633 }] } },
+    { "files": ["packages/i18n/src/ja.ts"], "rules": { "max-lines": ["error", { "max": 632 }] } },
+    { "files": ["packages/i18n/src/types.ts"], "rules": { "max-lines": ["error", { "max": 720 }] } }
   ],
   "settings": {
     "react": {
