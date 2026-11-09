@@ -704,7 +704,6 @@ export type Translations = {
     importPath: string;
     lastResolvedId: string;
   }) => string;
-  "diagnostic.circularStyleImport.message": (params: { filePath: string }) => string;
   "diagnostic.styleFileNotFound.message": (params: { filePath: string }) => string;
   "diagnostic.appProjectCompileError.message": string;
   "diagnostic.appOrgParseError.message": string;

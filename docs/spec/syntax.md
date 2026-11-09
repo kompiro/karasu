@@ -2215,6 +2215,8 @@ The same project always produces the same merged AST.
 
 - Applies to the entire file (global scope).
 - Must be written at the top of the file.
+- The path is relative to the file that declares it, the same as an `import` path. A file renders the same whether it is opened directly or imported from another directory.
+- A sheet that several files in one import graph `@import` is loaded once, at the position where it is reached first. A sheet cannot `@import`, so a style import never forms a cycle.
 - When the same selector is defined in multiple files, the last one wins (a warning is emitted).
 
 ---

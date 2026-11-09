@@ -230,7 +230,6 @@ annotation 語彙（`.krs language v2.0` はツール語彙のみを受理する
 | Code | Severity | 発火条件 |
 | --- | --- | --- |
 | `circular-import` | warning | node `import` が循環を形成する。 |
-| `circular-style-import` | warning | スタイル import が循環を形成する。 |
 | `file-not-found` | error | import されたファイルが存在しない。 |
 | `directory-not-found` | error | import されたディレクトリが存在しない。 |
 | `style-file-not-found` | warning | import されたスタイルファイルが存在しない。 |

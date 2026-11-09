@@ -122,7 +122,7 @@ describe("before and after resolve independently (#2879)", () => {
     expect(duplicates.map((d) => d.params)).toEqual([{ nodeId: "Api" }, { nodeId: "Web" }]);
   });
 
-  it("lets both sides import the same style sheet without a circular-import report", async () => {
+  it("lets both sides import the same style sheet", async () => {
     // The typical git external-diff shape: two revisions of one file, both
     // importing the same sheet. A shared resolver dropped the sheet from the
     // side that reached it second and reported a cycle that does not exist.
@@ -134,7 +134,6 @@ describe("before and after resolve independently (#2879)", () => {
       `@import "./shared.krs.style"\nsystem Shop { service Api {} }\n`,
     );
     const result = await compileSystemDiff(opts(fs));
-    expect(result.diagnostics.map((d) => d.code)).not.toContain("circular-style-import");
     // After kept its sheet, so the sheet's warning is reported.
     expect(result.warnings.some((w) => w.kind === "style-unknown-icon")).toBe(true);
   });
