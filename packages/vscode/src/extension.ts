@@ -10,6 +10,7 @@ import {
 import { NodeAtPositionRequest, PositionOfNodeRequest } from "@karasu-tools/lsp/protocol";
 import { isKarasuSourcePath } from "./host-files.js";
 import { PreviewPanel } from "./preview-panel.js";
+import { resolveServerModule } from "./server-module.js";
 
 const CURSOR_DEBOUNCE_MS = 150;
 
@@ -33,12 +34,14 @@ export function activate(context: vscode.ExtensionContext): void {
   // dev tree (F5 from packages/vscode) that copy might not exist yet;
   // fall back to packages/lsp's build output as a sibling of the
   // extension folder.
-  const serverModuleCandidates = [
+  const serverModuleCandidates: [string, string] = [
     context.asAbsolutePath(path.join("out", "server.js")),
     context.asAbsolutePath(path.join("..", "lsp", "out", "server.js")),
   ];
-  const serverModule =
-    serverModuleCandidates.find((p) => fs.existsSync(p)) ?? serverModuleCandidates[0];
+  // The extension host log is where a missing server should be reported; the
+  // client's own failure follows it (TPL-1024).
+  // eslint-disable-next-line no-console
+  const serverModule = resolveServerModule(serverModuleCandidates, fs.existsSync, console.error);
 
   const serverOptions: ServerOptions = {
     run: { module: serverModule, transport: TransportKind.ipc },
