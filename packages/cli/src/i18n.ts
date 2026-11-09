@@ -17,6 +17,13 @@ import {
 } from "@karasu-tools/i18n";
 
 /**
+ * The environment variables the CLI reads its locale from, strongest first.
+ * One tuple so the resolver, its tests (which walk every link) and the
+ * `docs/spec/i18n.md` check all read the same chain.
+ */
+export const CLI_LOCALE_ENV_CHAIN = ["LC_ALL", "LC_MESSAGES", "LANG"] as const;
+
+/**
  * Resolve the CLI's output locale from POSIX locale environment variables.
  *
  * Follows the POSIX precedence for the *message catalog* locale:
@@ -32,7 +39,10 @@ import {
  * single-tag chain expresses. Supporting it is its own change.
  */
 export function resolveCliLocale(env: NodeJS.ProcessEnv = process.env): Locale {
-  return resolveLocaleTag(env.LC_ALL || env.LC_MESSAGES || env.LANG);
+  // An empty value is unset, not a tag: `LC_ALL=` is how a shell cancels an
+  // inherited override, so the chain moves on to the next variable (TPL-2536).
+  const name = CLI_LOCALE_ENV_CHAIN.find((v) => env[v]);
+  return resolveLocaleTag(name === undefined ? undefined : env[name]);
 }
 
 // The CLI process locale is fixed for the lifetime of the run.

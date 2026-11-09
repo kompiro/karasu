@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { resolveCliLocale } from "./i18n.js";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { CLI_LOCALE_ENV_CHAIN, resolveCliLocale } from "./i18n.js";
 
 describe("resolveCliLocale", () => {
   it("resolves a Japanese LANG to 'ja'", () => {
@@ -34,7 +36,7 @@ describe("resolveCliLocale", () => {
   });
 
   it("treats an empty variable as unset at every link of the chain", () => {
-    // `||` rather than `??`: `LC_ALL=` is how a shell unsets an inherited
+    // Truthiness rather than `??`: `LC_ALL=` is how a shell unsets an inherited
     // override, so an empty value must fall through rather than win.
     expect(resolveCliLocale({ LC_ALL: "", LC_MESSAGES: "ja_JP.UTF-8" })).toBe("ja");
     expect(resolveCliLocale({ LC_MESSAGES: "", LANG: "ja_JP.UTF-8" })).toBe("ja");
@@ -47,5 +49,33 @@ describe("resolveCliLocale", () => {
 
   it("defaults to 'en' when no locale env vars are set", () => {
     expect(resolveCliLocale({})).toBe("en");
+  });
+});
+
+// Walks CLI_LOCALE_ENV_CHAIN, the tuple the resolver reads, so a link added to
+// the chain is tested at once: it wins over every later link, loses to every
+// earlier one, and an empty value there falls through (TPL-2536).
+describe("every link of CLI_LOCALE_ENV_CHAIN", () => {
+  const links = CLI_LOCALE_ENV_CHAIN.map((name, i) => ({ name, later: CLI_LOCALE_ENV_CHAIN.slice(i + 1) }));
+
+  it.each(links)("$name alone sets the locale", ({ name }) => {
+    expect(resolveCliLocale({ [name]: "ja_JP.UTF-8" })).toBe("ja");
+  });
+
+  it.each(links)("$name wins over every later link", ({ name, later }) => {
+    const env = Object.fromEntries(later.map((v) => [v, "ja_JP.UTF-8"]));
+    expect(resolveCliLocale({ ...env, [name]: "en_US.UTF-8" })).toBe("en");
+  });
+
+  it.each(links)("an empty $name falls through to each later link", ({ name, later }) => {
+    for (const next of later) {
+      expect(resolveCliLocale({ [name]: "", [next]: "ja_JP.UTF-8" })).toBe("ja");
+    }
+    expect(resolveCliLocale({ [name]: "" })).toBe("en");
+  });
+
+  it("docs/spec/i18n.md states the same chain", () => {
+    const spec = readFileSync(resolve(import.meta.dirname, "../../../docs/spec/i18n.md"), "utf8");
+    expect(spec).toContain(CLI_LOCALE_ENV_CHAIN.map((v) => `\`${v}\``).join(" > "));
   });
 });
