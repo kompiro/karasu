@@ -12,9 +12,10 @@ import { createEmptyKrsFile, type KrsFile } from "./ast.js";
 //
 // `FIELDS` must name every key of `KrsFile` (the `satisfies` clause fails
 // typecheck on a new field until it is classified), and the type below checks
-// the classification against the field's type: a map whose values are not
-// themselves a collection can only be listed as `single`, with the reason it
-// may keep one value. Whether that reason holds stays a review question.
+// the classification against the field's type: a map (or plain-object record)
+// whose values are not themselves a collection can only be listed as `single`,
+// with the reason it may keep one value. The `single` entries are reviewed
+// exemptions; whether each reason holds stays a review question.
 
 type Field =
   /** A list of declarations as written. */
@@ -64,10 +65,23 @@ const FIELDS = {
   },
 } as const satisfies Record<keyof KrsFile, Field>;
 
-/** Fields typed as a map whose value is not an array, set or map. */
+/**
+ * The value type of a keyed index: a `Map`, or a plain-object record
+ * (`Record<string, V>`). Arrays and declaration lists are not indexes.
+ */
+type IndexValue<T> =
+  T extends Map<unknown, infer V>
+    ? { value: V }
+    : T extends readonly unknown[]
+      ? false
+      : T extends Record<string, infer V>
+        ? { value: V }
+        : false;
+
+/** Fields that index a key to a value that is not an array, set, map or record. */
 type ScalarMapFields = {
-  [K in keyof KrsFile]: KrsFile[K] extends Map<unknown, infer V>
-    ? V extends readonly unknown[] | Set<unknown> | Map<unknown, unknown>
+  [K in keyof KrsFile]: IndexValue<KrsFile[K]> extends { value: infer V }
+    ? V extends readonly unknown[] | Set<unknown> | Map<unknown, unknown> | Record<string, unknown>
       ? never
       : K
     : never;

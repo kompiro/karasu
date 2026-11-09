@@ -65,9 +65,10 @@ karasu では `boundaryIndex`（`buildBoundaryIndex`）が実例である。[ADR
 
 - `packages/core/src/types/krs-file-fields.test.ts` — `KrsFile` の全フィールドを `declarations` / `multi` /
   `single`（理由付き）に分類した表。`satisfies Record<keyof KrsFile, …>` なので新しいフィールドは分類するまで
-  typecheck が落ち、値が配列・Set・Map でない Map を `single` 以外に分類しても落ちる（チェックリスト 2 項目目）。
-  既存の `single` 4 件（`ownerIndex`・`nodePathIndex`・`nodeFileIndex`・`nodeFileIndexByPath`）は理由を表に
-  書いて残している。理由が成り立つかはレビューが見る。値が配列でも 1 つの値（`nodePathIndex` の path）を表す
+  typecheck が落ち、値が配列・Set・Map・record でない Map や plain-object の record（`Record<string, V>`）を
+  `single` 以外に分類しても落ちる（チェックリスト 2 項目目）。`single` はレビューを経た免除で、既存の 4 件
+  （`ownerIndex`・`nodePathIndex`・`nodeFileIndex`・`nodeFileIndexByPath`）は理由を表に書いて残している。
+  理由が成り立つかはレビューが見る。値が配列でも 1 つの値（`nodePathIndex` の path）を表す
   Map は型では見分けられないので、分類の正しさまでは縛らない
 
 boundary 軸（[#2178](https://github.com/kompiro/karasu/issues/2178) slice A で確立）:
