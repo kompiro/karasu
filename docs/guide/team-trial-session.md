@@ -19,7 +19,8 @@ write down what did not work as it happened.
    database).
 2. **Prepare a model of your own system.** Only the part the topic touches is enough. Use
    [Reverse-engineering with an AI agent](reverse-engineering-with-ai.md) or [Designing service and team boundaries](01-service-team-design.md)
-   as a starting point. If you cannot prepare one, run the second half on a whiteboard.
+   as a starting point. If you cannot prepare one, skip step 3; in part 2, after everyone writes their prediction, put the answers side by
+   side on a whiteboard instead of the model and talk from there.
 3. **Make a share link.** Open the model, press **Share**, and copy the **private link**.
    - The link carries the model itself (styles included); karasu does not store the model anywhere. In a private link the model sits after the
      `#` in the URL, which the browser does not send to the server, so it does not reach karasu's server either.
@@ -41,9 +42,10 @@ If you run late, shorten "Talk" in part 2.
 > What we want to find out today is not how good the tool is, but whether looking at the same diagram changes how the team talks. There is no
 > right answer. Where you get stuck is what we most want to know, so say it out loud.
 >
-> Open karasu.kompiro.dev in a private browser window, choose "Design a service split", and follow the panel to the end on your own.
+> Open karasu.kompiro.dev in a private Chrome or Edge window, choose "Design a service split", and follow the panel to the end on your own.
 
-A private window is used because Welcome shows only on the first visit. The facilitator and the note-taker stay quiet and note where people
+A private window is used because Welcome shows only on the first visit. If Welcome does not appear, open it with **Show Welcome…**
+from the command palette (`Ctrl/Cmd+Shift+P`). The facilitator and the note-taker stay quiet and note where people
 stopped and what they said out loud.
 
 ### 2. On your own system (25 minutes)

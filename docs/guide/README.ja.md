@@ -25,7 +25,7 @@
 | [記法クックブック](notation-cookbook.ja.md)（[EN](notation-cookbook.md)） | 作者 & オーサリング LLM | worked **idiom**（「X をどう表現するか」）: KV ストア・`[index]`・`[external]`・共有インフラ fan-in・ドメイン越え参照・複数ファイル分割 — `syntax.md` と一緒に渡せる |
 | [AI エージェントでリバースする](reverse-engineering-with-ai.ja.md)（[EN](reverse-engineering-with-ai.md)） | 見慣れないプロジェクトを把握したい人 | `reverse-architecture` skill の入れ方、すること、コスト、書かれたモデルのレビュー方法。コーディングエージェントがない場合の単発プロンプトも |
 | [ADR から karasu 構造へリンクする](adr-permalinks.ja.md)（[EN](adr-permalinks.md)） | ADR で判断を記録する人 | 正は `/s?s=` payload・短縮は任意の別名・trust の trade-off |
-| [チームで karasu を試す](team-trial-session.ja.md)（[EN](team-trial-session.md)） | チームに karasu を紹介したい人 | 60 分の試用セッションの台本：準備、進行役のことば、記録すること、終わったあとのアンケート |
+| [チームで karasu を試す](team-trial-session.ja.md)（[EN](team-trial-session.md)） | チームに karasu を紹介したい人 | 60 分の試用セッションの台本（準備、進行役のことば、記録すること、終わったあとのアンケート） |
 
 ## 章の流れ
 
