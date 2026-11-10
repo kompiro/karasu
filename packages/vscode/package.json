@@ -48,7 +48,7 @@
   },
   "devDependencies": {
     "@karasu-tools/app": "workspace:*",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@types/vscode": "^1.140.0",
     "@vitest/coverage-v8": "^5.0.5",
     "@vscode/vsce": "^4.1.0",
