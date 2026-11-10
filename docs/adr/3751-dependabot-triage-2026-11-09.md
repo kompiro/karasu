@@ -226,7 +226,8 @@ head を `--match-head-commit` で固定してマージした。
 - `oxfmt@0.76.0`: 11-03 10:26 公開で 7 日を越えている。publisher・provenance・lifecycle script・dependencies は
   0.75.0 と同じで、optionalDependencies の platform binding が版を合わせて動くだけ。advisory ゼロ、tarball 全体の
   パターンの出現数も同数。HTML 整形の BREAKING は上記のとおり karasu に当たらない
-- rebase した他の 2 本（#3734 / #3736）は、マージのコミットの依存エッジの差分が、トリアージで確かめた集合と同じだった
+- rebase した他の 3 本（#3734 / #3736 / #3747）は、マージのコミットの依存エッジの差分で新しく参照される版が、
+  どれもトリアージで確かめた版だった（#3747 の `parse5` 8.1.0 / `semver` 7.8.6 は、先にマージした #3738 が入れた版）
 
 **Design Doc の手順 1（Review tier を rerun する）は、ほとんどの PR で要らなかった。** 起票直後の rollup に並んでいた
 Review tier の `CANCELLED` は、同じ head に対して同時に起動した重複の run で、最新の run は success だった。古い run を
