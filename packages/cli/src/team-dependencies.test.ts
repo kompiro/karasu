@@ -123,7 +123,8 @@ describe("team-dependencies CLI", () => {
     // commands print.
     await writeFile(krsPath, `system Shop {\n  service A {}\n  service A {}\n}\n`, "utf-8");
     await teamDependencies(krsPath, {});
-    expect(stderr()).toContain(`Error: ${krsPath}:`);
+    expect(stderr()).toMatch(/^Error\[KRS\d{3}\]: /m);
+    expect(stderr()).toContain(`]: ${krsPath}:`);
     expect(exitSpy).toHaveBeenCalledWith(1);
     expect(stdout()).toBe("");
   });

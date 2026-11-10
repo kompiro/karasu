@@ -135,8 +135,11 @@ export interface Result {
 
 const isTierLabel = (name: string): boolean => /^risk:/.test(name);
 
-/** The four marks of a regeneration PR (the design's "再生成の PR の見分け方"). */
-const isRegenerationPr = (pr: Pull): boolean =>
+/**
+ * The four marks of a regeneration PR (the design's "再生成の PR の見分け方"). The
+ * Low PR merger leaves a PR with all four to this script (Issue #3673).
+ */
+export const isRegenerationPr = (pr: Pull): boolean =>
   (pr.body ?? "").includes(MARKER) &&
   pr.head.ref === BRANCH &&
   pr.head.repo?.full_name === REPO &&

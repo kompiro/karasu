@@ -28,14 +28,22 @@ import {
   parseNameStatus,
   readGeneratedPaths,
 } from "../adr/generated.ts";
-import { type GitFacts, parseRecord, verifyRecord } from "./local-review-record.ts";
+import {
+  type GitFacts,
+  isDesignRow,
+  type ParseResult,
+  parseRecord,
+  verifyRecord,
+} from "./local-review-record.ts";
 import {
   checkTestChanges,
   closedIssueNumbers,
+  type Waiver,
   isRunnerConfig,
   isTestFile,
   isTestInput,
   TEST_GLOBS,
+  visibleBody,
   weakensTests,
 } from "./test-changes.ts";
 
@@ -431,6 +439,15 @@ export interface Classification {
   securityReview: boolean;
   /** Why the tier is what it is, one line per cause, for the check's log. */
   reasons: string[];
+  /**
+   * Every changed file with its own tier, strictest first (Issue #3543). For the
+   * reading an agreed Design Doc narrows (Issue #3542): `boundary` when it is on
+   * a security boundary, which is always read, and `narrowable` when it is a
+   * decision or language-behavior path off the boundary, whose agreed content
+   * need not be read again. `agreed` when its diff is the text the backing Design
+   * Doc agreed, which made it Medium.
+   */
+  files: { path: string; tier: Tier; boundary: boolean; narrowable: boolean; agreed?: true }[];
 }
 
 /** 1-based inclusive line range of the YAML frontmatter, or null when there is none. */
@@ -828,9 +845,70 @@ function fileTier(
   return byPath;
 }
 
+/**
+ * The paths whose content a Design Doc agrees on: decisions (spec, concepts,
+ * process, rules) and the code that carries the language's behavior. Everything
+ * else that is High, the review and release machinery or a dependency change,
+ * is read even when a Design Doc backs the PR: its wording can match the design
+ * while its behavior does not (Issue #3542, kompiro's decision of 2026-11-02).
+ */
+const NARROWABLE_GLOBS: readonly string[] = [
+  "docs/spec/**",
+  "docs/concepts*.md",
+  "docs/process.md",
+  "docs/process/**",
+  ".claude/rules/**",
+  ...LANGUAGE_TIER_GLOBS,
+];
+
+/** The decision paths: the only files whose text a Design Doc's spec blocks agree. */
+const DECISION_GLOBS: readonly string[] = NARROWABLE_GLOBS.filter(
+  (g) => !LANGUAGE_TIER_GLOBS.includes(g),
+);
+
+/**
+ * Whether a file is High for its decision path alone, so agreed text may make
+ * it Medium: not also a release or dependency file (a changelog, a
+ * `package.json`), whose change is read whatever its text.
+ */
+const decisionOnly = (path: string): boolean =>
+  matchesAny(path, DECISION_GLOBS) &&
+  !isPackageJson(path) &&
+  !matchesAny(
+    path,
+    HIGH_GLOBS.filter((g) => !DECISION_GLOBS.includes(g)),
+  );
+
+/**
+ * Whether `f` is on a security boundary for the narrowed reading: by its path
+ * alone, test files included, so no exception keeps such a file out of the read.
+ */
+const onBoundary = (f: ChangedFile): boolean =>
+  f.path === UNREADABLE_PATH ||
+  isSinkChange(f) ||
+  matchesAny(f.path, SECURITY_GLOBS) ||
+  (isTestFile(f.path) && isSecurityTest(f.path));
+
+/**
+ * Whether the change to `f` asks for `/security-review`. A test file asks for one
+ * only when it weakens a security-boundary test, as its tier does: adding a test
+ * is not a security change.
+ */
+const isSecurityChange = (f: ChangedFile): boolean =>
+  f.path === UNREADABLE_PATH ||
+  isSinkChange(f) ||
+  (isTestFile(f.path)
+    ? !isNewFile(f) && isSecurityTest(f.path) && weakensTests(f)
+    : matchesAny(f.path, SECURITY_GLOBS));
+
 export function classifyChange(input: {
   files: readonly ChangedFile[];
   author: string;
+  /**
+   * Decision-path files whose diff is the text the backing Design Doc agreed
+   * ({@link agreedSpecFiles}): Medium instead of High (Issue #3542).
+   */
+  agreed?: readonly string[];
 }): Classification {
   const reasons: string[] = [];
   // No change at all is not a reason to skip the human: treat it as Medium.
@@ -848,13 +926,28 @@ export function classifyChange(input: {
       .map((f) => f.path),
   };
 
+  const files: Classification["files"] = [];
   for (const f of input.files) {
-    const t = fileTier(f, promotion);
-    const name =
-      f.path === UNREADABLE_PATH ? "(a diff section whose path could not be read)" : f.path;
-    if (rank(t) > rank("low")) reasons.push(`${name}: ${t}`);
+    let t = fileTier(f, promotion);
+    const name = f.path === UNREADABLE_PATH ? UNREADABLE_NAME : f.path;
+    const boundary = onBoundary(f);
+    const agreed =
+      t === "high" && !boundary && decisionOnly(f.path) && (input.agreed ?? []).includes(f.path);
+    if (agreed) t = "medium";
+    if (rank(t) > rank("low")) {
+      reasons.push(`${name}: ${t}${agreed ? " (the text the backing Design Doc agreed)" : ""}`);
+    }
+    files.push({
+      path: name,
+      tier: t,
+      boundary,
+      narrowable: !boundary && matchesAny(f.path, NARROWABLE_GLOBS),
+      ...(agreed ? { agreed: true } : {}),
+    });
     tier = stricter(tier, t);
   }
+  // A stable sort keeps the diff's order within a tier.
+  files.sort((a, b) => rank(b.tier) - rank(a.tier));
 
   if (!TRUSTED_AUTHORS.has(input.author)) {
     tier = "high";
@@ -863,18 +956,422 @@ export function classifyChange(input: {
 
   return {
     tier,
-    securityReview: input.files.some(
-      // A test file asks for one only when it weakens a security-boundary test,
-      // as its tier does: adding a test is not a security change.
-      (f) =>
-        f.path === UNREADABLE_PATH ||
-        isSinkChange(f) ||
-        (isTestFile(f.path)
-          ? !isNewFile(f) && isSecurityTest(f.path) && weakensTests(f)
-          : matchesAny(f.path, SECURITY_GLOBS)),
-    ),
+    securityReview: input.files.some(isSecurityChange),
     reasons,
+    files,
   };
+}
+
+// ---------------------------------------------------------------------------
+// The Design Doc that backs a PR (Issue #3542)
+
+/** The line of a Design Doc's metadata that names the Issues it was written for. */
+const TRIGGER_LINE = /^\s*-\s*引き金 Issue\s*[:：](.*)$/;
+const ISSUE_LINK = /\]\(https:\/\/github\.com\/kompiro\/karasu\/issues\/(\d+)\)/g;
+
+/**
+ * The Issues a Design Doc's 「引き金 Issue」 line links to, read from its metadata
+ * (above the first `## ` heading). Only links outside full-width parentheses
+ * count: a bare `#N`, or a link in the line's （…） prose, names a related Issue,
+ * not a trigger.
+ */
+export function triggerIssues(text: string): number[] {
+  const numbers = new Set<number>();
+  for (const line of text.split("\n")) {
+    if (/^## /.test(line)) break;
+    const m = TRIGGER_LINE.exec(line);
+    // A link inside （…） is prose about the trigger, not one: 「（[#2917](…) の再点検で切り出した）」.
+    if (m)
+      for (const l of m[1].replace(/（[^）]*）/g, "").matchAll(ISSUE_LINK))
+        numbers.add(Number(l[1]));
+  }
+  return [...numbers];
+}
+
+/** The git questions {@link backingDesignDoc} asks, answered from the checkout. */
+export interface DesignDocFacts {
+  /** The Design Docs at the PR's merge base with main, with their text. */
+  docsAtMergeBase(): { path: string; text: string }[];
+  /** The blob of `path` at the merge base and at main's tip, or null where it is absent. */
+  blobs(path: string): { mergeBase: string | null; tip: string | null };
+  /**
+   * The first-parent commits on main's tip that changed `path`, and whether its
+   * history goes back through a rename (then its content came in under another
+   * name, which this history does not show).
+   */
+  history(path: string): { shas: string[]; renamed: boolean };
+  /** The tier of what a commit on main changed against its first parent. */
+  commitTier(sha: string): Tier;
+}
+
+export type Backing =
+  | { state: "backed"; path: string; blob: string }
+  | { state: "none"; reason: string };
+
+/** On a High PR: the backing, and whether the conformance check covers HEAD, with why not. */
+export interface DesignCheck {
+  backing: Backing;
+  checked: boolean;
+  why?: string;
+}
+
+/**
+ * The Design Doc that backs a PR, so its agreed content need not be read again
+ * (Issue #3542). Every rule
+ * falls to "none" when in doubt (TPL-3286): the doc is the one Design Doc at the
+ * merge base with main whose 「引き金 Issue」 line links an Issue the PR closes;
+ * the PR does not change it; main's tip has the same blob; and every commit on
+ * main that ever changed it was a Design-tier change, which kompiro read.
+ */
+export function backingDesignDoc(input: {
+  baseRefName: string;
+  closes: readonly number[];
+  changed: readonly string[];
+  facts: DesignDocFacts;
+}): Backing {
+  const none = (reason: string): Backing => ({ state: "none", reason });
+  if (input.baseRefName !== "main") return none("the PR's base is not main");
+  if (input.closes.length === 0) return none("the PR closes no Issue");
+  const candidates = input.facts
+    .docsAtMergeBase()
+    .filter((d) => DESIGN_DOC.test(d.path) && d.path !== "docs/design/TEMPLATE.md")
+    .filter((d) => triggerIssues(d.text).some((n) => input.closes.includes(n)));
+  if (candidates.length === 0) {
+    return none("no Design Doc links an Issue the PR closes on its 引き金 Issue line");
+  }
+  if (candidates.length > 1) {
+    return none(
+      `more than one Design Doc names the Issue: ${candidates.map((d) => d.path).join(", ")}`,
+    );
+  }
+  const { path } = candidates[0];
+  if (input.changed.includes(path)) return none(`the PR changes ${path}`);
+  const blobs = input.facts.blobs(path);
+  if (blobs.mergeBase === null || blobs.tip !== blobs.mergeBase) {
+    return none(`${path} changed on main after the PR's merge base; merge main`);
+  }
+  const history = input.facts.history(path);
+  if (history.renamed) return none(`${path} was renamed, so its history is not all here`);
+  if (history.shas.length === 0) return none(`${path} has no history on main`);
+  for (const sha of history.shas) {
+    const t = input.facts.commitTier(sha);
+    if (t !== "design") {
+      return none(
+        `${sha.slice(0, 7)} changed ${path} in a ${t} change, which no one read as a design`,
+      );
+    }
+  }
+  return { state: "backed", path, blob: blobs.mergeBase };
+}
+
+// ---------------------------------------------------------------------------
+// Spec text agreed in the backing Design Doc (Issue #3542)
+
+const SPEC_HEADING = /^### 仕様の変更[ \t]*$/;
+const OPEN_FENCE = /^( {0,3})(`{3,}|~{3,})(.*)$/;
+const BLOCK_INFO = /^diff file=(\S+)$/;
+
+/**
+ * A hunk as compared: one entry per line, its sign (`+`, `-` or a space for
+ * context) and its text without trailing whitespace. An empty line is context:
+ * an editor drops the space a blank context line starts with.
+ */
+type TextHunk = string[];
+
+const hunkLine = (line: string): string | null => {
+  const body = line.replace(/[ \t\r]+$/, "");
+  if (body === "") return " ";
+  return "+- ".includes(body[0]) ? body : null;
+};
+
+/** Splits hunk lines at `@@` lines; a line `hunkLine` cannot read makes the whole null. */
+function textHunks(lines: readonly string[]): TextHunk[] | null {
+  const hunks: TextHunk[] = [[]];
+  for (const line of lines) {
+    if (line.startsWith("@@")) hunks.push([]);
+    else if (line.startsWith("\\")) continue; // "\ No newline at end of file"
+    else {
+      const l = hunkLine(line);
+      if (l === null) return null;
+      hunks[hunks.length - 1].push(l);
+    }
+  }
+  return hunks.filter((h) => h.length > 0);
+}
+
+/**
+ * The spec blocks of a Design Doc: under its one `### 仕様の変更` heading, each
+ * fence that starts its line with the info string `diff file=<path>`, read as
+ * hunks. A fence inside another fence is the outer one's text, so an example in
+ * a `````md` fence is not read. A path with two blocks, or a block with a line
+ * that is not a hunk line, maps to null; a doc with more than one such heading,
+ * or a block left unclosed, gives nothing (TPL-3286).
+ */
+export function specBlocks(doc: string): Map<string, TextHunk[] | null> {
+  const blocks = new Map<string, TextHunk[] | null>();
+  let sections = 0;
+  let inSection = false;
+  let fence: { close: RegExp; block: { path: string; lines: string[] } | null } | null = null;
+  // GitHub does not render what an HTML comment holds, so a block there is not read.
+  let inComment = false;
+  for (const line of doc.split(/\r?\n/)) {
+    if (inComment) {
+      inComment = !line.includes("-->");
+      continue;
+    }
+    if (fence !== null) {
+      if (!fence.close.test(line)) {
+        fence.block?.lines.push(line);
+        continue;
+      }
+      if (fence.block !== null) {
+        const { path, lines } = fence.block;
+        blocks.set(path, blocks.has(path) ? null : textHunks(lines));
+      }
+      fence = null;
+      continue;
+    }
+    const comment = line.lastIndexOf("<!--");
+    if (comment >= 0 && !line.slice(comment).includes("-->")) {
+      inComment = true;
+      continue;
+    }
+    const open = OPEN_FENCE.exec(line);
+    if (open !== null) {
+      const info = BLOCK_INFO.exec(open[3].trim());
+      fence = {
+        close: new RegExp(`^ {0,3}${open[2][0]}{${open[2].length},}[ \\t]*$`),
+        block: inSection && open[1] === "" && info !== null ? { path: info[1], lines: [] } : null,
+      };
+      continue;
+    }
+    if (HEADING.test(line)) {
+      inSection = SPEC_HEADING.test(line);
+      if (inSection) sections++;
+    }
+  }
+  return sections > 1 || fence !== null || inComment ? new Map() : blocks;
+}
+
+/** The hunks of a one-file `git diff -U3`, as {@link TextHunk}s; null when one cannot be read. */
+export function contextHunks(diff: string): TextHunk[] | null {
+  const lines = diff.split("\n");
+  const first = lines.findIndex((l) => HUNK_HEADER.test(l));
+  if (first < 0) return [];
+  const body = lines.slice(first);
+  // The diff's own trailing newline is not a line of the last hunk.
+  if (body[body.length - 1] === "") body.pop();
+  return textHunks(body);
+}
+
+/** Whether a changed line says something: not blank, not only a table rule or `---`. */
+const saysSomething = (l: string): boolean => l[0] !== " " && /[^\s|:-]/u.test(l.slice(1));
+
+/** How many times `seq` runs, line for line, in `lines`. */
+function occurrences(lines: readonly string[], seq: readonly string[]): number {
+  let n = 0;
+  for (let i = 0; i + seq.length <= lines.length; i++) {
+    if (seq.every((s, j) => lines[i + j] === s)) n++;
+  }
+  return n;
+}
+
+/**
+ * Whether a decision-path file's diff is exactly the text the Design Doc agreed
+ * for it (Issue #3542): its `-U3` hunks are the block's hunks, line for line and
+ * in order, so a partial, reordered or moved application does not match. Every
+ * hunk must change a line that says something, and its context and removed
+ * lines must sit at exactly one place in the base file, so the agreed text has
+ * one position. A new file matches only when the base has none; a deleted file,
+ * a mode change or a binary file never does.
+ */
+export function matchesAgreedText(input: {
+  block: readonly TextHunk[];
+  /** `git diff --no-renames -U3 <merge-base> <head> -- <path>`. */
+  diff: string;
+  /** The file at the merge base, or null where it is absent. */
+  base: string | null;
+}): boolean {
+  const [file] = parseDiff(input.diff);
+  if (file === undefined || file.binary || file.status === "deleted") return false;
+  if (file.oldMode !== file.newMode && file.status === "modified") return false;
+  // A regular file only: a symlink's or a submodule's diff is not text a reader sees.
+  const regular = (m: string | null) => m === null || m === "100644" || m === "100755";
+  if (!regular(file.oldMode) || !regular(file.newMode)) return false;
+  const hunks = contextHunks(input.diff);
+  const { block } = input;
+  if (hunks === null || block.length === 0 || hunks.length !== block.length) return false;
+  if (
+    !block.every((h, i) => h.length === hunks[i].length && h.every((l, j) => l === hunks[i][j]))
+  ) {
+    return false;
+  }
+  if (!block.every((h) => h.some(saysSomething))) return false;
+  if (file.status === "added") return input.base === null;
+  if (input.base === null) return false;
+  const lines = input.base.split("\n").map((l) => l.replace(/[ \t\r]+$/, ""));
+  return block.every((h) => {
+    const old = h.filter((l) => l[0] !== "+").map((l) => l.slice(1));
+    return old.length > 0 && occurrences(lines, old) === 1;
+  });
+}
+
+/**
+ * The decision-path files whose diff is the text the backing Design Doc agreed,
+ * which {@link classifyChange} counts as Medium (Issue #3542).
+ */
+export function agreedSpecFiles(
+  doc: string,
+  files: readonly { path: string; diff: string; base: string | null }[],
+): string[] {
+  const blocks = specBlocks(doc);
+  const agreed = files
+    .filter((f) => {
+      const block = blocks.get(f.path);
+      return (
+        matchesAny(f.path, DECISION_GLOBS) &&
+        block != null &&
+        matchesAgreedText({ block, diff: f.diff, base: f.base })
+      );
+    })
+    .map((f) => f.path);
+  // All or nothing: a PR that applies the English block and leaves out the
+  // Japanese one would let the two drift with no one reading either.
+  const decided = [...blocks.keys()].filter((p) => matchesAny(p, DECISION_GLOBS));
+  return decided.every((p) => agreed.includes(p)) ? agreed : [];
+}
+
+/** Code points of a path the summary shows: a longer one is cut and marked. */
+const SUMMARY_PATH_CHARS = 200;
+
+/**
+ * A path as job-summary Markdown that renders as the literal path: every
+ * character outside a plain path alphabet becomes a numeric entity, so a file
+ * name cannot open a table cell, a link or emphasis.
+ */
+function summaryPath(path: string): string {
+  const chars = [...path];
+  const shown = chars.length > SUMMARY_PATH_CHARS ? chars.slice(0, SUMMARY_PATH_CHARS) : chars;
+  const cut = shown.length < chars.length ? "&#8230;" : "";
+  return `<code>${shown.join("").replace(/[^A-Za-z0-9/.-]/gu, (c) => `&#${c.codePointAt(0)};`)}${cut}</code>`;
+}
+
+/** Free text (a reason naming paths) as job-summary Markdown that renders literally. */
+function summaryText(text: string): string {
+  return text.replace(/[^A-Za-z0-9/.,;:' -]/gu, (c) => `&#${c.codePointAt(0)};`);
+}
+
+/** The name {@link classifyChange} lists a diff section under when its path could not be read. */
+const UNREADABLE_NAME = "(a diff section whose path could not be read)";
+
+/**
+ * Rows the table lists before it counts the rest. With {@link SUMMARY_PATH_CHARS}
+ * this keeps the table well under 1 MiB, past which GitHub drops the whole step
+ * summary.
+ */
+const SUMMARY_ROWS = 200;
+
+/**
+ * The Review tier job summary of what a human reads (Issue #3543): the files by
+ * tier, strictest first, rebuilt from HEAD on every run, so it never goes stale
+ * as a list in the PR body would (TPL-1032). The reviewer reads only the High files
+ * when the High comes from them and the table lists them all. Otherwise the PR
+ * is read whole: an author off the trusted list, a PR High by its label alone,
+ * a diff section whose path could not be read, or more High files than rows.
+ */
+export function tierSummary(input: {
+  effective: Tier;
+  trustedAuthor: boolean;
+  files: readonly {
+    path: string;
+    tier: Tier;
+    boundary?: boolean;
+    narrowable?: boolean;
+    agreed?: boolean;
+  }[];
+  /**
+   * On a High PR: the Design Doc that backs it, and whether the conformance check
+   * covers HEAD (Issue #3542), with why not. The reading is narrowed only when
+   * both hold.
+   */
+  design?: DesignCheck | null;
+}): string {
+  const lines = ["### Files by tier", ""];
+  if (input.effective === "high") {
+    const high = input.files.filter((f) => f.tier === "high");
+    const why = !input.trustedAuthor
+      ? "its author is not on the trusted list"
+      : high.some((f) => f.path === UNREADABLE_NAME)
+        ? "a diff section's path could not be read"
+        : high.length === 0
+          ? "it is High by its label (or a missing one), not by a file"
+          : high.length > SUMMARY_ROWS
+            ? `it has more High files than the ${SUMMARY_ROWS} rows listed`
+            : null;
+    const backing = input.design?.backing;
+    const kept = input.files.filter((f) => f.boundary || (f.tier === "high" && !f.narrowable));
+    // A list too long to show whole would leave some of these unread with no word of it.
+    const narrowed =
+      backing?.state === "backed" && input.design?.checked === true && kept.length <= SUMMARY_ROWS;
+    if (why !== null) {
+      lines.push(
+        `The PR is High and ${why}. The reviewer reads the whole diff and the PR's \`## For Reviewers\` section.`,
+        "",
+      );
+    } else if (narrowed && backing?.state === "backed") {
+      lines.push(
+        `The PR is High and the agreed Design Doc ${summaryPath(backing.path)} ` +
+          `(blob <code>${backing.blob.slice(0, 12)}</code>) backs it. The reviewer reads the PR's ` +
+          "`## For Reviewers` section and the files listed here (security boundaries, and High files " +
+          "outside the decision and language-behavior paths), and opens the other files only to check " +
+          "what the section points to.",
+        "",
+        ...(kept.length === 0
+          ? ["No file needs reading beyond the section."]
+          : ["Files still read:", "", ...kept.map((f) => `- ${summaryPath(f.path)}`)]),
+        "",
+      );
+    } else {
+      if (backing?.state === "backed") {
+        lines.push(
+          `The agreed Design Doc ${summaryPath(backing.path)} backs the PR, but the reading is not ` +
+            `narrowed: ${summaryText(
+              input.design?.checked
+                ? `more files must still be read than the ${SUMMARY_ROWS} rows listed`
+                : (input.design?.why ?? "the conformance check was not read"),
+            )}.`,
+          "",
+        );
+      } else if (backing?.state === "none") {
+        lines.push(`No Design Doc backs the PR: ${summaryText(backing.reason)}.`, "");
+      }
+      lines.push(
+        "The PR is High. The reviewer reads the High files below and the PR's `## For Reviewers` section.",
+        "",
+      );
+    }
+  } else {
+    lines.push(`The PR is ${input.effective}.`, "");
+    const agreed = input.files.filter((f) => f.agreed).length;
+    const backing = input.design?.backing;
+    if (agreed > 0 && backing?.state === "backed") {
+      lines.push(
+        `${agreed === 1 ? "One file is" : `${agreed} files are`} Medium, marked agreed below: ` +
+          `the diff is the spec text the agreed Design Doc ${summaryPath(backing.path)} ` +
+          `(blob <code>${backing.blob.slice(0, 12)}</code>) holds. Rerun Review tier right before ` +
+          "hand-off: if main has changed the Design Doc since, the rerun fails on the label until main is merged.",
+        "",
+      );
+    }
+  }
+  const listed = input.files.slice(0, SUMMARY_ROWS);
+  lines.push("| Tier | File |", "| --- | --- |");
+  for (const f of listed) {
+    lines.push(`| ${f.tier}${f.agreed ? " (agreed)" : ""} | ${summaryPath(f.path)} |`);
+  }
+  const rest = input.files.length - listed.length;
+  if (rest > 0) lines.push("", `${rest} more ${rest === 1 ? "file is" : "files are"} not listed.`);
+  return [...lines, ""].join("\n");
 }
 
 /**
@@ -1091,6 +1588,96 @@ function sameChange(base: string, a: string, b: string): boolean {
   return diffFingerprint(prDiff(base, a), excluded) === diffFingerprint(prDiff(base, b), excluded);
 }
 
+/** Git answers for {@link backingDesignDoc}, read from the checkout the CLI runs in. */
+function designDocFacts(mergeBase: string): DesignDocFacts {
+  const blob = (rev: string, path: string): string | null => {
+    try {
+      return (
+        run("git", ["rev-parse", "--verify", "--quiet", `${rev}:${path}`], true).trim() || null
+      );
+    } catch {
+      return null;
+    }
+  };
+  const log = (path: string, follow: boolean): string[] =>
+    git(
+      "log",
+      "--first-parent",
+      "--format=%H",
+      ...(follow ? ["--follow"] : []),
+      "origin/main",
+      "--",
+      path,
+    )
+      .split("\n")
+      .filter((l) => l !== "");
+  return {
+    docsAtMergeBase: () =>
+      // `-z`: an unquoted path, so a non-ASCII name is matched, not dropped.
+      git("ls-tree", "-z", "--name-only", mergeBase, "docs/design/")
+        .split("\0")
+        .filter((path) => DESIGN_DOC.test(path))
+        .map((path) => ({ path, text: gitShow(mergeBase, path) ?? "" })),
+    blobs: (path) => ({ mergeBase: blob(mergeBase, path), tip: blob("origin/main", path) }),
+    history: (path) => {
+      const shas = log(path, false);
+      return { shas, renamed: log(path, true).length !== shas.length };
+    },
+    commitTier: (sha) => {
+      try {
+        // The path rules only: who wrote a commit on main does not change what it touched.
+        return classifyChange({ files: changedFiles(`${sha}^`, sha), author: "kompiro" }).tier;
+      } catch {
+        // A root commit, or one git cannot diff: nothing shows a human read it.
+        return "high";
+      }
+    },
+  };
+}
+
+/**
+ * Why the Design Doc conformance check does not cover HEAD, or null when it
+ * does: the body has a `## For Reviewers` section, and a local review record that
+ * is not waived, holds `design` rows that all name the backing Design Doc at its
+ * blob (`<path>@<blob>`, so a comparison against an older version of the doc
+ * does not count after main revises it), and passes as a Medium record would. On
+ * High the check never fails on this: it only decides whether the reading is
+ * narrowed (Issue #3542).
+ */
+export function designCheckGap(
+  body: string,
+  parsed: ParseResult,
+  facts: GitFacts,
+  backing: { path: string; blob: string },
+): string | null {
+  // The section's own text, up to the next `## ` heading; CRLF from the web editor too.
+  const section = /^## For Reviewers[ \t]*\r?$([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(
+    visibleBody(body),
+  );
+  if (section === null) return "the PR body has no ## For Reviewers section";
+  if (section[1].trim() === "") {
+    return "the PR body's ## For Reviewers section is empty (write None when there is nothing)";
+  }
+  if ("error" in parsed) return parsed.error;
+  if (parsed.record.waived !== undefined) return "the local review record is waived";
+  const rows = parsed.record.findings.filter(isDesignRow);
+  if (rows.length === 0) {
+    return "the local review record has no design row (docs/process/review.md, Design Doc との照合)";
+  }
+  const compared = (where: string): boolean => {
+    const m = /^(.+)@([0-9a-f]{7,40})$/.exec(where.trim());
+    return m !== null && m[1] === backing.path && backing.blob.startsWith(m[2]);
+  };
+  if (!rows.every((f) => compared(f.where))) {
+    return (
+      `a design row does not name ${backing.path}@${backing.blob.slice(0, 12)}: ` +
+      "the comparison was against another version of the Design Doc, so redo it"
+    );
+  }
+  const errors = verifyRecord(parsed, "medium", facts);
+  return errors.length === 0 ? null : `the local review record does not pass: ${errors[0]}`;
+}
+
 /** Git answers for {@link verifyRecord}, read from the checkout the CLI runs in. */
 export function gitFacts(baseRef: string, headSha: string): GitFacts {
   const resolve = (rev: string): string | null => {
@@ -1145,37 +1732,137 @@ interface PrView {
 }
 
 /**
+ * What a failed `gh api` read means: the thing is not there (404, 410), which
+ * the PR has to fix, or GitHub did not answer, which a rerun may fix.
+ */
+export function readFailure(stderr: string): "missing" | "unreadable" {
+  return /\bHTTP (?:404|410)\b/.test(stderr) ? "missing" : "unreadable";
+}
+
+/**
  * Whether the PR closes an Issue labeled `bug`: one GitHub links to it, or one
  * its body closes by keyword. An Issue that cannot be read is reported rather
  * than counted as not a bug (TPL-3286).
  */
-function closesBug(view: PrView): { bug: boolean; unreadable: number[] } {
+function closedIssues(view: PrView): number[] {
   const linked = view.closingIssuesReferences
     .filter((r) => `${r.repository.owner.login}/${r.repository.name}` === REPO)
     .map((r) => r.number);
-  const numbers = new Set([...linked, ...closedIssueNumbers(view.body ?? "", REPO)]);
+  return [...new Set([...linked, ...closedIssueNumbers(view.body ?? "", REPO)])];
+}
+
+function closesBug(view: PrView): { bug: boolean; missing: number[]; unreadable: number[] } {
+  const numbers = closedIssues(view);
+  const missing: number[] = [];
   const unreadable: number[] = [];
   let bug = false;
   for (const n of numbers) {
     try {
-      const labels = run(
+      const labels = execFileSync(
         "gh",
         ["api", `repos/${REPO}/issues/${n}`, "--jq", ".labels[].name"],
-        true,
+        { encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] },
       );
       bug ||= labels.split("\n").includes("bug");
-    } catch {
-      unreadable.push(n);
+    } catch (e) {
+      const failure = readFailure(String((e as { stderr?: unknown }).stderr ?? ""));
+      (failure === "missing" ? missing : unreadable).push(n);
     }
   }
-  return { bug, unreadable };
+  return { bug, missing, unreadable };
 }
 
 /**
- * The `Review tier` check. Returns the errors that fail it, and logs the
- * classification. A tier below High also needs a valid local review record.
+ * The diff options that shape a hunk, pinned so a local `diff.algorithm` or
+ * `diff.interHunkContext` cannot draw the hunks a block is compared with
+ * differently from CI. `docs/process/review.md` gives authors the same command.
  */
-function checkPr(pr: string): string[] {
+const AGREED_DIFF = [
+  "--no-renames",
+  "--full-index",
+  "-U3",
+  "--diff-algorithm=myers",
+  "--indent-heuristic",
+  "--inter-hunk-context=0",
+];
+
+/**
+ * The Design Doc that backs a change and the decision-path files whose diff is
+ * its agreed text (Issue #3542). Advisory: a git failure gives no backing, or
+ * keeps the backing with no agreed file, so the files stay High, rather than
+ * failing the check.
+ */
+function designAgreement(input: {
+  baseRefName: string;
+  baseRef: string;
+  head: string;
+  closes: readonly number[];
+  files: readonly ChangedFile[];
+}): { backing: Backing; agreed: string[] } {
+  let mergeBase: string;
+  let backing: Backing;
+  try {
+    mergeBase = mergeBaseOf(input.baseRef, input.head);
+    backing = backingDesignDoc({
+      baseRefName: input.baseRefName,
+      closes: input.closes,
+      changed: input.files.map((f) => f.path),
+      facts: designDocFacts(mergeBase),
+    });
+  } catch (e) {
+    return {
+      backing: { state: "none", reason: `git could not answer: ${String(e).split("\n")[0]}` },
+      agreed: [],
+    };
+  }
+  if (backing.state !== "backed") return { backing, agreed: [] };
+  try {
+    const doc = gitShow(mergeBase, backing.path) ?? "";
+    const candidates = input.files
+      .filter((f) => matchesAny(f.path, DECISION_GLOBS))
+      .map((f) => ({
+        path: f.path,
+        diff: gitDiff(...AGREED_DIFF, mergeBase, input.head, "--", `:(literal)${f.path}`),
+        base: gitShow(mergeBase, f.path),
+      }));
+    return { backing, agreed: agreedSpecFiles(doc, candidates) };
+  } catch {
+    return { backing, agreed: [] };
+  }
+}
+
+/** What the `Review tier` check found on one head of a PR. */
+export type PrCheck =
+  /** The PR's head is not the one asked for: a push arrived. */
+  | { state: "moved"; head: string }
+  | {
+      state: "checked";
+      head: string;
+      /** The classification, as the check logs it. */
+      summary: Record<string, unknown>;
+      /** The stricter of the label and the change. */
+      effective: Tier;
+      /** Every changed file with its own tier, for the job summary. */
+      files: Classification["files"];
+      /** Whether the author is on the trusted list: the job summary reads the rest whole. */
+      trustedAuthor: boolean;
+      /** On a High PR, the Design Doc that backs it and whether its conformance check covers HEAD. */
+      design: DesignCheck | null;
+      /** Rules the PR breaks: it has to change before it passes. */
+      errors: string[];
+      /** What could not be read: the PR may pass on a rerun. */
+      unreadable: string[];
+      /** The rules a reason line in the body waived. */
+      waivers: Waiver[];
+    };
+
+/**
+ * The `Review tier` check on the PR's current head, or on `head` when given (the
+ * Low PR merger, Issue #3673, judges the head it read the checks of). A tier
+ * below High also needs a valid local review record. Git and GitHub failures
+ * other than an Issue read throw.
+ */
+export function checkPr(pr: string, head?: string): PrCheck {
   const view = JSON.parse(
     run("gh", [
       "pr",
@@ -1187,16 +1874,31 @@ function checkPr(pr: string): string[] {
       "author,labels,headRefOid,baseRefName,title,body,autoMergeRequest,closingIssuesReferences",
     ]),
   ) as PrView;
+  if (head !== undefined && view.headRefOid !== head) {
+    return { state: "moved", head: view.headRefOid };
+  }
   const baseRef = `origin/${view.baseRefName}`;
   const files = changedFiles(baseRef, view.headRefOid);
-  const result = classifyChange({ files, author: view.author.login });
   const labeled = labelTier(view.labels.map((l) => l.name));
+  const plain = classifyChange({ files, author: view.author.login });
+  // Agreement only lowers High files, and the backing only matters on a High PR:
+  // a PR that is lighter by its files and its label needs neither.
+  const { backing, agreed } =
+    plain.tier === "high" || labeled === null || labeled === "high"
+      ? designAgreement({
+          baseRefName: view.baseRefName,
+          baseRef,
+          head: view.headRefOid,
+          closes: closedIssues(view),
+          files,
+        })
+      : { backing: { state: "none", reason: "the PR is not High" } as Backing, agreed: [] };
+  const result =
+    agreed.length > 0 ? classifyChange({ files, author: view.author.login, agreed }) : plain;
   // No label is High: an outside author or a bot cannot add one, and a forgotten
   // label must fall to the heavier side.
   const tier = labeled === null ? "high" : stricter(labeled, result.tier);
-  console.log(
-    JSON.stringify({ pr: Number(pr), label: labeled, effective: tier, ...result }, null, 2),
-  );
+  const summary = { pr: Number(pr), label: labeled, effective: tier, ...result };
 
   const errors: string[] = [];
   for (const label of unknownRiskLabels(view.labels.map((l) => l.name))) {
@@ -1213,12 +1915,14 @@ function checkPr(pr: string): string[] {
   }
   // Every tier, High included: CodeRabbit's rounds do not ask for a test either.
   const closes = closesBug(view);
-  for (const n of closes.unreadable) {
-    errors.push(
-      `PR #${pr} closes #${n}, which could not be read to see whether it is a bug. ` +
-        `Fix the reference, or rerun the check if GitHub was unavailable.`,
-    );
+  for (const n of closes.missing) {
+    errors.push(`PR #${pr} closes #${n}, which does not exist. Fix the reference.`);
   }
+  const unreadable = closes.unreadable.map(
+    (n) =>
+      `PR #${pr} closes #${n}, which could not be read to see whether it is a bug. ` +
+      `Rerun the check if GitHub was unavailable.`,
+  );
   const tests = checkTestChanges({
     title: view.title,
     body: view.body ?? "",
@@ -1226,20 +1930,41 @@ function checkPr(pr: string): string[] {
     files,
   });
   errors.push(...tests.errors);
-  if (tests.waivers.length > 0) {
-    const lines = tests.waivers.map((w) => `- ${w.label}: ${w.reason}`);
-    console.log(["Passed by a reason line:", ...lines].join("\n"));
-    // The run's summary, so a human sees every PR that passed this way.
-    const summary = process.env.GITHUB_STEP_SUMMARY;
-    if (summary) {
-      appendFileSync(summary, ["### Passed by a reason line", "", ...lines, ""].join("\n"));
-    }
-  }
   if (view.autoMergeRequest !== null && tier !== "low") {
     errors.push(
       `PR #${pr} has auto-merge enabled but its tier is ${tier}; only Low merges on its own. ` +
         `Disable it with gh pr merge ${pr} --disable-auto.`,
     );
+  }
+  let design: DesignCheck | null = null;
+  if (tier === "high") {
+    let why: string | null = null;
+    if (backing.state === "backed") {
+      try {
+        why = designCheckGap(
+          view.body ?? "",
+          parseRecord(view.body ?? ""),
+          gitFacts(baseRef, view.headRefOid),
+          backing,
+        );
+      } catch (e) {
+        why = `the local review record could not be checked: ${String(e).split("\n")[0]}`;
+      }
+    }
+    design = {
+      backing,
+      checked: backing.state === "backed" && why === null,
+      ...(why ? { why } : {}),
+    };
+    Object.assign(summary, {
+      designDoc: design.backing,
+      designChecked: design.checked,
+      designGap: design.why,
+    });
+  } else if (agreed.length > 0) {
+    // The summary names the Design Doc whose text made the PR lighter.
+    design = { backing, checked: false };
+    Object.assign(summary, { designDoc: backing });
   }
   if (tier !== "high") {
     const mergeBase = mergeBaseOf(baseRef, view.headRefOid);
@@ -1263,20 +1988,36 @@ function checkPr(pr: string): string[] {
       ]),
     });
     if (waived) {
-      console.log(
-        "Index regeneration (ADR, TPL): no local review record is required (Validate checks it).",
-      );
+      Object.assign(summary, { recordWaived: "index regeneration (ADR, TPL); Validate checks it" });
     } else {
       const record = parseRecord(view.body ?? "");
       errors.push(...verifyRecord(record, tier, gitFacts(baseRef, view.headRefOid)));
     }
   }
-  return errors;
+  return {
+    state: "checked",
+    head: view.headRefOid,
+    summary,
+    effective: tier,
+    files: result.files,
+    trustedAuthor: TRUSTED_AUTHORS.has(view.author.login),
+    design,
+    errors,
+    unreadable,
+    waivers: tests.waivers,
+  };
+}
+
+/** The CLI's exit code for a checked head: a broken rule outranks an unread fact. */
+export function checkExitCode(result: { errors: string[]; unreadable: string[] }): number {
+  if (result.errors.length > 0) return 1;
+  return result.unreadable.length > 0 ? 4 : 0;
 }
 
 const USAGE = `usage:
-  tier.ts classify [--base <ref>] [--head <rev>] [--author <login>]
-  tier.ts check --pr <n>
+  tier.ts classify [--base <ref>] [--head <rev>] [--author <login>] [--closes <n>[,<n>...]]
+  tier.ts check --pr <n> [--head <sha>]
+    exit 0 passes, 1 breaks a rule, 3 the head is not <sha>, 4 something could not be read
   tier.ts same-change --from <rev> [--to <rev>] [--base <ref>]
   tier.ts in-diff <path> <line>[-<end>] [--base <ref>]`;
 
@@ -1286,20 +2027,51 @@ function main(argv: string[]): number {
 
   if (cmd === "classify") {
     const author = flag(rest, "--author") ?? run("gh", ["api", "user", "--jq", ".login"]).trim();
-    const result = classifyChange({
-      files: changedFiles(base, flag(rest, "--head") ?? "HEAD"),
-      author,
-    });
-    console.log(JSON.stringify(result, null, 2));
+    const head = flag(rest, "--head") ?? "HEAD";
+    const files = changedFiles(base, head);
+    // `--closes`: the Issues the PR will close, so the backing Design Doc's agreed
+    // spec text counts as it will in the check.
+    const closes = (flag(rest, "--closes") ?? "")
+      .split(",")
+      .filter((n) => /^\d+$/.test(n))
+      .map(Number);
+    const { backing, agreed } =
+      closes.length > 0
+        ? designAgreement({
+            baseRefName: base.replace(/^origin\//, ""),
+            baseRef: base,
+            head,
+            closes,
+            files,
+          })
+        : { backing: null, agreed: [] };
+    const result = classifyChange({ files, author, agreed });
+    console.log(JSON.stringify(backing ? { ...result, designDoc: backing } : result, null, 2));
     return 0;
   }
 
   if (cmd === "check") {
     const pr = flag(rest, "--pr");
     if (pr === undefined) throw new Error(USAGE);
-    const errors = checkPr(pr);
-    for (const e of errors) console.error(`::error::${e}`);
-    return errors.length > 0 ? 1 : 0;
+    const head = flag(rest, "--head");
+    const result = checkPr(pr, head);
+    if (result.state === "moved") {
+      console.error(`::error::PR #${pr} is at ${result.head}, not ${head}: a push arrived.`);
+      return 3;
+    }
+    console.log(JSON.stringify(result.summary, null, 2));
+    const summary = process.env.GITHUB_STEP_SUMMARY;
+    if (result.waivers.length > 0) {
+      const lines = result.waivers.map((w) => `- ${w.label}: ${w.reason}`);
+      console.log(["Passed by a reason line:", ...lines].join("\n"));
+      // The run's summary, so a human sees every PR that passed this way.
+      if (summary) {
+        appendFileSync(summary, ["### Passed by a reason line", "", ...lines, ""].join("\n"));
+      }
+    }
+    if (summary) appendFileSync(summary, tierSummary(result));
+    for (const e of [...result.errors, ...result.unreadable]) console.error(`::error::${e}`);
+    return checkExitCode(result);
   }
 
   if (cmd === "same-change") {

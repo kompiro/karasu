@@ -1,4 +1,4 @@
-import { expect } from "@playwright/test";
+import { expect } from "./expect.js";
 import { test as base } from "./network.js";
 
 /**

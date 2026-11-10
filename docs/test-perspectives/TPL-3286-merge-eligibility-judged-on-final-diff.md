@@ -8,14 +8,17 @@ applicable_to:
   - "判定を PR の作成時に 1 回だけ行い、その後のコミットで差分が変わりうる運用を設計するとき"
   - "許可するパスや種類を列挙する allowlist / denylist 形式の判定に、新しい項目を足すとき"
   - "レビューを済ませたという記録（ローカルレビューの記録など）を、マージや自動レビューの省略の条件にする検査を書く、または変えるとき"
+  - "PR の差分から、人間が読むファイルと機械の検査に任せるファイルを分ける判定や、Design Doc で合意済みとみなす判定を書く、または変えるとき"
 known_consumers:
   - review-tier
   - adr-auto-merge
   - local-review-record
+  - low-pr-merger
 discovered_from:
   - issue: "#3286"
   - issue: "#3405"
   - issue: "#3505"
+  - issue: "#3542"
   - root_cause_adr: ADR-2331
 related_to:
   - TPL-1725
@@ -77,6 +80,7 @@ scope:
   言語の挙動に触れる変更を `refactor` と書いて Medium にする、修正を `feat` と書いてテストの要求を外す、など。
   宣言を裏付ける検査が無いか、裏付けの検査が走らない PR でも例外が効く（#3505）
 - 宣言を書き換えても判定が走り直さない。タイトルを `refactor` から変えても、前の判定のラベルや check の結果が残る（#3505）
+- 合意済みとみなす根拠（Design Doc に載せた文面など）を PR 側のファイルから読む。PR が同じ差分で Design Doc を書き換えれば、自分の変更と一致する「合意」を自分で作れる。根拠は base 側から読み、同じ PR が根拠のファイルを変えていたら使わない。base 側から読んでも、根拠のファイルの最後の変更だけを見ると、人間の読まない PR が足した中身を後の人間の読む PR が無関係な行の修正で通してしまう。merge-base だけを見ると、PR を開いた後に main で改められた合意が古いまま効く（#3542）
 
 ## チェックリスト
 
@@ -112,6 +116,10 @@ scope:
       入力したテストで、Low にならないと assert しているか
 - [ ] 例外の規則が前提にする差分の形を、その差分を作る側の書き方の規則（`.claude/rules/acceptance.md` など）が
       求める形と突き合わせたか。実際の PR の差分を分類器に通し、意図した段階になることを確かめたか [judgment]
+- [ ] 合意済みとみなす根拠（Design Doc など）を main との merge-base から読み、同じ PR が根拠のファイルを変えたとき、
+      根拠を変えたコミットのどれかが人間の読まない段階だったとき（最後のコミットが人間の読む段階でも）、根拠が
+      merge-base と検査した時点の main の先頭で違うとき、根拠が PR と紐付かないとき（別の Issue の Design Doc、雛形）に、
+      軽くならないと assert しているか。根拠との一致は、符号・本文・並びまでちょうど一致する形で比べているか
 
 ## 既知の対処パターン
 
@@ -131,7 +139,11 @@ scope:
   変更が混ざる・新しい ADR が無い・Markdown 以外は Low にならない）、記録の ADR の行に新しい ADR へのリンクを足すだけの差分が Low になること
   （`isLinkInsert`。AT 以外のファイル・ほかのラベルの行・メタデータの並びの外の位置・行頭への挿入・名前でないリンク文字列・URL の中の ADR のパス・同じ hunk のほかの変更は Low にならない）、既存 ADR の本文の変更が Medium になること、
   main の取り込みの判定（`diffFingerprint`）が行の移動・増減・入れ替え・モードやバイナリだけの変更を「同じ」と
-  みなさないこと
+  みなさないこと、Design Doc に載せた仕様の文面との一致（#3542。#3320 の spec の差分で、文面を 1 行変える・hunk を
+  落とす・並べ替える・入れ子の fence の例・base の 2 箇所に当てはまる文脈・決定のパスの外のファイルは Medium にならない）
 - `scripts/review/local-review-record.test.ts`：記録の無い PR、古い `head`、base の食い違い、main の取り込み以外の
   コミット、`head` の外の修正コミット、対応の無い指摘、Low での Critical / Major の却下・`Waived:`・CLI の省略、
   重大度の無い指摘を Major として扱うこと
+- `scripts/review/low-pr-merger-flow.test.ts`：Low の PR の merger（#3673）が、判定した head の SHA で結論を出すこと、
+  push で head が動いたら待つこと、実際の workflow が `skipped` で skip 用の stub が `success` の PR を通さないこと、
+  結論を出せない PR をマージ可にしないこと

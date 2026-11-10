@@ -17,7 +17,7 @@ discovered_from:
   - issue: "#2818"
   - issue: "#2549"
   - issue: "#2714"
-  - root_cause_file: "packages/app/src/components/PreviewPane.tsx:518"
+  - root_cause_file: "packages/app/src/components/PreviewPane.tsx:highlightAttribute"
 related_to:
   - TPL-1666
   - TPL-1352
@@ -84,7 +84,7 @@ id をビューをまたいで手渡す導線を足す / 触るとき:
 - [ ] 受け手の lookup は **そのビューの 1 つの属性** を引くか。複数の属性 / Map を順に
       試す fallback で空間の違いを吸収していないか（同じ綴りの別空間の要素が横取りする）
 - [ ] 持ち運ぶ経路（hash / share payload / postMessage）に載る値が **1 つの id 空間** に
-      固定されているか。送り手のビューによって空間が変わる設計になっていないか
+      固定されているか。送り手のビューによって空間が変わる設計になっていないか [judgment]
 - [ ] 同じ導線を持つ **すべての表示面**（app / VS Code webview / 静的 SVG）を列挙し、
       それぞれで修飾・引用符付きの id を通す fence があるか。素の id だけの fixture では
       空間の一致が偶然かどうかを判別できない

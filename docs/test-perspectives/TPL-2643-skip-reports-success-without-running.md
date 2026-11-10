@@ -80,3 +80,4 @@ skip 条件と trigger を 1 つのテストで対にして assert する。kara
 ## 関連テスト
 
 - `scripts/ci/workflow-draft-gate.test.ts`
+- `scripts/review/low-pr-merger-flow.test.ts`: Low の PR の merger（#3673）が、本物の workflow の `skipped` と skip 用の stub の `success` が並ぶ head をマージ可にせず、待ちにすること

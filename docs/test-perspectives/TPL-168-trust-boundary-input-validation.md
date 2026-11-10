@@ -17,7 +17,7 @@ known_consumers:
 related_to: []
 discovered_from:
   - issue: "#168"
-  - root_cause_file: "packages/cli/src/serve.ts:41"
+  - root_cause_file: "packages/cli/src/serve.ts:resolveKrsFile"
   - issue: "#1526"
   - issue: "#1527"
   - root_cause_file: "packages/app/src/utils/import-project-zip.ts"
@@ -97,6 +97,7 @@ karasu の `karasu serve` のような HTTP API、VS Code 拡張の message hand
 ## 関連テスト
 
 - `packages/cli/src/serve.test.ts`（path traversal の negative test を含む）
+- `packages/cli/src/serve-traversal.test.ts`（`karasu serve` の全 route prefix と静的アセット経路へ、符号化した `../`・backslash・NUL を含む traversal payload を送り、配信ルート外の sentinel が一度も返らないことを確かめる。route を手で列挙しており、serve 以外の入口（VS Code の host files、app の zip import）も覆わないので、チェックリスト 2 の新しい箇所では赤くならない。ガードではなく関連テスト）
 - `packages/cli/src/serve-host.test.ts`（`Host` の形・正規化・`--allowed-host` の negative test — #3418）
 - `packages/cli/src/render-fetch.test.ts`（解決後のアドレス・リダイレクトの各ホップ・proxy・本文の上限の negative test — #3426）
 - `packages/app/src/utils/import-project-zip.test.ts`（zip-slip / 解凍爆弾・エントリ数キャップの negative test を含む — #1526 / #1527）

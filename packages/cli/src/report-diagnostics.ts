@@ -1,7 +1,93 @@
-import { warningSeverity } from "@karasu-tools/core";
+import { diagnosticIdOf, warningSeverity } from "@karasu-tools/core";
 import type { Diagnostic, Warning } from "@karasu-tools/core";
-import { formatDiagnostic, formatWarning } from "./i18n.js";
-import { diagLocFormatter } from "./compile-system-view.js";
+import { diagnosticParts, warningParts, type DiagnosticParts } from "./i18n.js";
+import { diagLocator, type DiagLocation } from "./compile-system-view.js";
+
+/** One catalog diagnostic, ready to print as a line or as JSON. */
+interface ReportEntry {
+  parts: DiagnosticParts;
+  id: string;
+  code: string;
+  severity: "error" | "warning" | "info";
+  /** Absent for a `Warning` without a position: the line names no file. */
+  location: DiagLocation | undefined;
+  params: unknown;
+}
+
+/**
+ * A compile's diagnostics and warnings in the order `render` and `check` print
+ * them: errors, then the parser's warnings and infos, then the resolver's
+ * warnings. The text and the JSON read this one list, so they cannot disagree
+ * on order or content (#3654).
+ */
+function collectEntries(
+  filePath: string,
+  diagnostics: Diagnostic[],
+  warnings: Warning[],
+  entryLabel: string = filePath,
+): ReportEntry[] {
+  const locate = diagLocator(filePath, entryLabel);
+  const entries: ReportEntry[] = [];
+
+  // Info-severity parser diagnostics (e.g. duplicate-owner-assignment) honour
+  // their register with an `Info` prefix — mirroring the info warnings below —
+  // instead of being dropped (ADR-1566 / ADR-1386).
+  const severityGroups = [
+    ["Error", "error"],
+    ["Warning", "warning"],
+    ["Info", "info"],
+  ] as const;
+  for (const [word, severity] of severityGroups) {
+    for (const d of diagnostics.filter((x) => x.severity === severity)) {
+      entries.push({
+        parts: diagnosticParts(word, d),
+        id: diagnosticIdOf(d.code),
+        code: d.code,
+        severity,
+        location: locate(d),
+        params: d.params,
+      });
+    }
+  }
+  entries.push(...warningEntries(locate, warnings));
+  return entries;
+}
+
+function warningEntries(
+  locate: (d: { loc?: Diagnostic["loc"] }) => DiagLocation,
+  warnings: Warning[],
+): ReportEntry[] {
+  return warnings.map((w) => {
+    // Honour the warning's register: info-severity kinds (e.g.
+    // domain-dispersal) print as `Info`, not `Warning` — see ADR-1386.
+    const severity = warningSeverity(w.kind);
+    return {
+      parts: warningParts(severity === "info" ? "Info" : "Warning", w),
+      id: diagnosticIdOf(w.kind),
+      code: w.kind,
+      severity,
+      // A warning that carries a position prints it the way the diagnostics
+      // do (#2802). The spec's location table names the surface, not the
+      // channel, so dropping a `loc` here reported a style sheet's line number
+      // to nobody. A warning without one keeps the bare message rather than
+      // borrowing the entry's path, which would name a file it did not mean.
+      location: w.loc ? locate(w) : undefined,
+      params: w.params,
+    };
+  });
+}
+
+function printEntries(entries: ReportEntry[]): void {
+  for (const { parts, location } of entries) {
+    const where =
+      location === undefined
+        ? ""
+        : location.line === undefined
+          ? `${location.file}: `
+          : `${location.file}:${location.line}:${location.column}: `;
+    process.stderr.write(`${parts.tag}: ${where}${parts.message}\n`);
+  }
+}
 
 /**
  * Print a compile's diagnostics and warnings to stderr and return how many are
@@ -13,31 +99,8 @@ export function reportDiagnostics(
   diagnostics: Diagnostic[],
   warnings: Warning[],
 ): number {
-  const errors = diagnostics.filter((d) => d.severity === "error");
-  const diagWarnings = diagnostics.filter((d) => d.severity === "warning");
-  const diagInfos = diagnostics.filter((d) => d.severity === "info");
-
-  const locOf = diagLocFormatter(filePath);
-  function printDiagnostics(prefix: string, list: Diagnostic[]): void {
-    for (const d of list) {
-      process.stderr.write(`${prefix}: ${locOf(d)}: ${formatDiagnostic(d)}\n`);
-    }
-  }
-
-  const severityGroups: [string, Diagnostic[]][] = [
-    ["Error", errors],
-    ["Warning", diagWarnings],
-    // Info-severity parser diagnostics (e.g. duplicate-owner-assignment) honour
-    // their register with an `Info:` prefix — mirroring the info-warning loop
-    // below — instead of being dropped (ADR-1566 / ADR-1386).
-    ["Info", diagInfos],
-  ];
-  for (const [prefix, list] of severityGroups) {
-    printDiagnostics(prefix, list);
-  }
-  printWarnings(locOf, warnings);
-
-  return errors.length;
+  printEntries(collectEntries(filePath, diagnostics, warnings));
+  return diagnostics.filter((d) => d.severity === "error").length;
 }
 
 /**
@@ -54,24 +117,37 @@ export function reportWarnings(
   warnings: Warning[],
   entryLabel: string = filePath,
 ): void {
-  printWarnings(diagLocFormatter(filePath, entryLabel), warnings);
+  printEntries(warningEntries(diagLocator(filePath, entryLabel), warnings));
 }
 
-function printWarnings(
-  locOf: (d: { loc?: Diagnostic["loc"] }) => string,
+/** The version of {@link diagnosticsJson}'s shape. Bump it when a field is removed or changes meaning. */
+const DIAGNOSTICS_JSON_SCHEMA_VERSION = 1;
+
+/**
+ * `karasu check --format json`: the same findings as {@link reportDiagnostics},
+ * as one JSON document for tools (#3654). `code` and `params` do not depend on
+ * the locale; `message` and `details` do. `file` / `line` / `column` appear
+ * exactly when the text line shows them.
+ */
+export function diagnosticsJson(
+  filePath: string,
+  diagnostics: Diagnostic[],
   warnings: Warning[],
-): void {
-  for (const w of warnings) {
-    // Honour the warning's register: info-severity kinds (e.g.
-    // domain-dispersal) print as `Info:`, not `Warning:` — see
-    // ADR-1386.
-    const prefix = warningSeverity(w.kind) === "info" ? "Info" : "Warning";
-    // A warning that carries a position prints it the way the diagnostics
-    // above do (#2802). The spec's location table names the surface, not the
-    // channel, so dropping a `loc` here reported a style sheet's line number
-    // to nobody. A warning without one keeps the bare message rather than
-    // borrowing the entry's path, which would name a file it did not mean.
-    const where = w.loc ? `${locOf(w)}: ` : "";
-    process.stderr.write(`${prefix}: ${where}${formatWarning(w).message}\n`);
-  }
+): string {
+  const entries = collectEntries(filePath, diagnostics, warnings);
+  const report = {
+    schemaVersion: DIAGNOSTICS_JSON_SCHEMA_VERSION,
+    errorCount: diagnostics.filter((d) => d.severity === "error").length,
+    diagnostics: entries.map((e) => ({
+      id: e.id,
+      code: e.code,
+      severity: e.severity,
+      ...(e.location && { file: e.location.file }),
+      ...(e.location?.line !== undefined && { line: e.location.line, column: e.location.column }),
+      params: e.params,
+      message: e.parts.message,
+      details: e.parts.details,
+    })),
+  };
+  return JSON.stringify(report, null, 2) + "\n";
 }

@@ -10,7 +10,9 @@ import {
   parseWorkflowPaths,
   PREVIEW_RULE,
   PREVIEW_WORKFLOW,
+  repoLinkTargets,
   SKIP_WORKFLOW,
+  uncoveredLinkTargets,
 } from "./docs-site-ci-paths-sync.ts";
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
@@ -161,6 +163,18 @@ describe("check", () => {
   });
 });
 
+describe("uncoveredLinkTargets", () => {
+  it("flags a link target no guard-workflow glob matches", () => {
+    const problems = uncoveredLinkTargets(
+      ["scripts/review/x.ts", "docs/adr/1-a.md"],
+      ["docs/adr/**"],
+    );
+    expect(problems.map((p) => p.message)).toEqual([
+      expect.stringContaining("links to scripts/review/x.ts"),
+    ]);
+  });
+});
+
 describe("the committed workflows", () => {
   const published = expandLocaleSiblings(
     parsePublishedFiles(read("packages/docs-site/scripts/lib/site-map.ts")),
@@ -183,6 +197,13 @@ describe("the committed workflows", () => {
   it("include the ja siblings, which a ja-only edit is the only way to change", () => {
     expect(published).toContain("concepts.ja.md");
     expect(published).toContain("glossary.ja.md");
+  });
+
+  it("trigger on every file a published page links to outside the site", () => {
+    const targets = repoLinkTargets();
+    expect(targets).toContain("docs/adr/1828-repo-backed-ref-pinned-permalink.md");
+    const checkPaths = workflows.find((w) => w.file === CHECK_WORKFLOW)!.paths;
+    expect(uncoveredLinkTargets(targets, checkPaths)).toEqual([]);
   });
 
   it("run the docs-site guards that used to fire only on the deploy to main", () => {

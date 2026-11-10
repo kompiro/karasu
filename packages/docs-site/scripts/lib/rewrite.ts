@@ -83,12 +83,45 @@ function unangle(target: string): string {
   return target.startsWith("<") && target.endsWith(">") ? target.slice(1, -1) : target;
 }
 
-/** Every inline link/image target in the body, excluding fenced code blocks. */
+/**
+ * `line` with its code spans removed. A span opens with a run of backticks and
+ * closes at the next run of the same length; a run with no partner is literal
+ * text (CommonMark's rule, applied per line). Prose that quotes link syntax,
+ * such as `` `![](diagrams/…)` `` in the guide's README, is not a link.
+ */
+export function withoutCodeSpans(line: string): string {
+  let out = "";
+  let i = 0;
+  while (i < line.length) {
+    if (line[i] !== "`") {
+      out += line[i++];
+      continue;
+    }
+    let n = 0;
+    while (line[i + n] === "`") n++;
+    const fence = "`".repeat(n);
+    let close = line.indexOf(fence, i + n);
+    while (close >= 0 && line[close + n] === "`") {
+      let skip = close;
+      while (line[skip] === "`") skip++;
+      close = line.indexOf(fence, skip);
+    }
+    if (close < 0) {
+      out += fence;
+      i += n;
+    } else {
+      i = close + n;
+    }
+  }
+  return out;
+}
+
+/** Every inline link/image target in the body, excluding code blocks and code spans. */
 export function extractLinkTargets(body: string): string[] {
   const targets: string[] = [];
   for (const { line, isProse } of eachLine(body)) {
     if (!isProse) continue;
-    for (const m of line.matchAll(LINK_RE)) targets.push(unangle(m[1]));
+    for (const m of withoutCodeSpans(line).matchAll(LINK_RE)) targets.push(unangle(m[1]));
   }
   return targets;
 }

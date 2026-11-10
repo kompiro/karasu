@@ -50,7 +50,7 @@ karasu では `boundaryIndex`（`buildBoundaryIndex`）が実例である。[ADR
 宣言 → 派生 index → ビュー の経路を新設・変更するとき:
 
 - [ ] index を作る関数が、**入力に書かれた事実をすべて出力に載せている**ことをテストする（同一要素に N 件宣言 → 出力に N 件）。
-- [ ] 単一値が要る箇所は、index ではなく**ビュー側の 1 つの純関数**（primary の選択など）に閉じている。1:1 マップをフィールドとして併存させていない。
+- [ ] 単一値が要る箇所は、index ではなく**ビュー側の 1 つの純関数**（primary の選択など）に閉じている。1:1 マップをフィールドとして併存させていない。 [guard: `packages/core/src/types/krs-file-fields.test.ts`]
 - [ ] **merge 経路すべて**（multi-file import / diff / scope 合成）が同じ多値の意味論に従うことをテストする。「最初に見たものを保つ」が残っていないか grep する。
 - [ ] 群・カテゴリの**並びや存在判定を派生 index の値集合から導いていない**（全メンバーが他群と共有の群が消えないこと）。
 - [ ] 診断の文言が**モデルの事実だけ**を述べ、ビューの解決規則（どれを primary にするか）を含んでいない。解決規則は spec に書く。 [judgment]
@@ -62,6 +62,14 @@ karasu では `boundaryIndex`（`buildBoundaryIndex`）が実例である。[ADR
 - **merge の述語を 1 箇所に集約**: 和集合か上書きかの選択を merge ヘルパー 1 つに閉じ、import-resolver / diff / scope 合成がそれを共有する。
 
 ## 関連テスト
+
+- `packages/core/src/types/krs-file-fields.test.ts` — `KrsFile` の全フィールドを `declarations` / `multi` /
+  `single`（理由付き）に分類した表。`satisfies Record<keyof KrsFile, …>` なので新しいフィールドは分類するまで
+  typecheck が落ち、値が配列・Set・Map・record でない Map や plain-object の record（`Record<string, V>`）を
+  `single` 以外に分類しても落ちる（チェックリスト 2 項目目）。`single` はレビューを経た免除で、既存の 4 件
+  （`ownerIndex`・`nodePathIndex`・`nodeFileIndex`・`nodeFileIndexByPath`）は理由を表に書いて残している。
+  理由が成り立つかはレビューが見る。値が配列でも 1 つの値（`nodePathIndex` の path）を表す
+  Map は型では見分けられないので、分類の正しさまでは縛らない
 
 boundary 軸（[#2178](https://github.com/kompiro/karasu/issues/2178) slice A で確立）:
 

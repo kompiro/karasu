@@ -1,6 +1,8 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, posix, resolve } from "node:path";
+import { extractLinkTargets } from "../../packages/docs-site/scripts/lib/rewrite.ts";
+import { PUBLISHED_EN_FILES } from "../../packages/docs-site/scripts/lib/site-map.ts";
 
 // Guards the section structure of each en/ja spec document pair (Issue #1501).
 // Heading *text* is language-specific, so the comparison is structural: the
@@ -11,17 +13,41 @@ import { resolve } from "node:path";
 // cancel each other out. A drifted pair reports the first point of divergence
 // with the surrounding heading text on both sides.
 //
+// The pairs are derived rather than listed: every page the docs site publishes
+// (`PUBLISHED_EN_FILES`, whose `.ja.md` twin `site-map.test.ts` requires) plus
+// the twinned docs the site does not publish. A page added to the site is
+// checked from the PR that adds it, so a section added to one locale of
+// `docs/tools/*` or the glossary fails here (TPL-1716, TPL-2005). Free prose
+// inside a section is not compared.
+//
 // `docs/spec/i18n.md` intentionally has no Japanese twin: it is a
 // contributor-facing policy document, not part of the user-facing spec, so it
-// is not listed here.
+// is neither published nor listed here.
 
-export const SPEC_PAIRS = [
-  { en: "docs/spec/syntax.md", ja: "docs/spec/syntax.ja.md" },
-  { en: "docs/spec/style.md", ja: "docs/spec/style.ja.md" },
-  { en: "docs/spec/tags-annotations.md", ja: "docs/spec/tags-annotations.ja.md" },
-  { en: "docs/spec/diagnostics.md", ja: "docs/spec/diagnostics.ja.md" },
-  { en: "docs/spec/permalink.md", ja: "docs/spec/permalink.ja.md" },
-  { en: "docs/concepts.md", ja: "docs/concepts.ja.md" },
+/** Twinned docs (docs-relative) the site does not publish. */
+const UNPUBLISHED_TWINNED = ["spec/permalink.md"] as const;
+
+export const SPEC_PAIRS: readonly { en: string; ja: string }[] = [
+  ...PUBLISHED_EN_FILES,
+  ...UNPUBLISHED_TWINNED,
+].map((rel) => ({ en: `docs/${rel}`, ja: `docs/${rel.replace(/\.md$/, ".ja.md")}` }));
+
+/**
+ * Glossaries whose terms are bullets (`- **term** — …`), not headings, so the
+ * heading comparison alone cannot see a term added to one locale. Their
+ * sections must also hold the same number of term bullets.
+ */
+export const TERM_BULLET_PAIRS = ["docs/glossary.md", "docs/spec/glossary.md"] as const;
+
+/**
+ * The keystone glossary and the modeling-language glossary point at each
+ * other, in both locales (TPL-2005). Source file -> repo path it must link to.
+ */
+export const GLOSSARY_CROSS_LINKS = [
+  { from: "docs/glossary.md", to: "docs/spec/glossary.md" },
+  { from: "docs/glossary.ja.md", to: "docs/spec/glossary.ja.md" },
+  { from: "docs/spec/glossary.md", to: "docs/glossary.md" },
+  { from: "docs/spec/glossary.ja.md", to: "docs/glossary.ja.md" },
 ] as const;
 
 export interface Heading {
@@ -125,6 +151,55 @@ export function comparePair(
   return null;
 }
 
+/** Top-level term bullets (`- **…`) per level 1-2 section, fenced code excluded. */
+export function termBulletsPerSection(content: string): { title: string; count: number }[] {
+  const sections: { title: string; count: number }[] = [{ title: "(preamble)", count: 0 }];
+  let fence: string | null = null;
+  for (const line of content.split("\n")) {
+    const fenceMatch = FENCE_RE.exec(line);
+    if (fenceMatch) {
+      if (fence === null) fence = fenceMatch[1][0];
+      else if (fenceMatch[1][0] === fence && fenceMatch[2].trim() === "") fence = null;
+      continue;
+    }
+    if (fence) continue;
+    const heading = /^#{1,2}\s+(.*)$/.exec(line);
+    if (heading) sections.push({ title: heading[1].trim(), count: 0 });
+    else if (/^[-*] \*\*/.test(line)) sections[sections.length - 1].count++;
+  }
+  return sections;
+}
+
+export function compareTermBullets(
+  pair: { en: string; ja: string },
+  enContent: string,
+  jaContent: string,
+): PairProblem | null {
+  const en = termBulletsPerSection(enContent);
+  const ja = termBulletsPerSection(jaContent);
+  for (let i = 0; i < Math.max(en.length, ja.length); i++) {
+    if (en[i]?.count === ja[i]?.count) continue;
+    return {
+      ...pair,
+      message:
+        `term bullets differ in section #${i} ` +
+        `(en "${en[i]?.title}" has ${en[i]?.count ?? 0}, ja "${ja[i]?.title}" has ${ja[i]?.count ?? 0})`,
+    };
+  }
+  return null;
+}
+
+/** Repo paths (no fragment) of every link in `content`, resolved from `file`. */
+function linkedPaths(file: string, content: string): Set<string> {
+  const out = new Set<string>();
+  for (const target of extractLinkTargets(content)) {
+    const path = target.split(/[#?]/)[0];
+    if (path === "" || /^[a-z][a-z0-9+.-]*:/i.test(path)) continue;
+    out.add(posix.normalize(posix.join(dirname(file), path)));
+  }
+  return out;
+}
+
 export function check(repoRoot: string): PairProblem[] {
   const problems: PairProblem[] = [];
   for (const pair of SPEC_PAIRS) {
@@ -141,6 +216,17 @@ export function check(repoRoot: string): PairProblem[] {
     const jaContent = readFileSync(resolve(repoRoot, pair.ja), "utf8");
     const problem = comparePair(pair, enContent, jaContent);
     if (problem) problems.push(problem);
+    if ((TERM_BULLET_PAIRS as readonly string[]).includes(pair.en)) {
+      const terms = compareTermBullets(pair, enContent, jaContent);
+      if (terms) problems.push(terms);
+    }
+  }
+  for (const { from, to } of GLOSSARY_CROSS_LINKS) {
+    const abs = resolve(repoRoot, from);
+    if (!existsSync(abs)) continue; // reported above as a missing pair file
+    if (!linkedPaths(from, readFileSync(abs, "utf8")).has(to)) {
+      problems.push({ en: from, ja: to, message: `${from} no longer links to ${to}` });
+    }
   }
   return problems;
 }

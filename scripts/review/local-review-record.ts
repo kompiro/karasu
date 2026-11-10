@@ -70,6 +70,13 @@ const isHeavy = (sev: string): boolean => {
  */
 const isCodeRabbitRow = (f: Finding): boolean => /^coderabbit$/i.test(f.reviewer.trim());
 
+/**
+ * A row of the Design Doc conformance check (Issue #3542): a subagent compared
+ * the branch diff with the Design Doc that backs the PR. With no deviation it
+ * leaves one row whose disposition is `no deviation`.
+ */
+export const isDesignRow = (f: Finding): boolean => /^design$/i.test(f.reviewer.trim());
+
 /** Splits a markdown table row on pipes that are not escaped. */
 function cells(row: string): string[] {
   const inner = row.trim().replace(/^\|/, "").replace(/\|$/, "");
@@ -141,6 +148,7 @@ export interface GitFacts {
 const FIXED = /^fixed in ([0-9a-f]{7,40})$/;
 const DECLINED = /^declined:\s*\S/;
 const ISSUE = /^(?:→|->)\s*#\d+$/;
+const NO_DEVIATION = /^no deviation$/i;
 const CLI_RAN = /coderabbit CLI(?! skipped)/i;
 const CLI_SKIPPED = /coderabbit CLI skipped:\s*(\S.*)?$/i;
 
@@ -229,9 +237,10 @@ export function verifyRecord(
             `raise the label to "risk: medium" so a human reads it`,
         );
       }
-    } else if (!ISSUE.test(d)) {
+    } else if (!ISSUE.test(d) && !(isDesignRow(f) && NO_DEVIATION.test(d))) {
       errors.push(
-        `finding ${n} has no disposition (fixed in <sha> / declined: <reason> / → #<issue>): ${d || "(empty)"}`,
+        `finding ${n} has no disposition (fixed in <sha> / declined: <reason> / → #<issue>, ` +
+          `or no deviation on a design row): ${d || "(empty)"}`,
       );
     }
   }

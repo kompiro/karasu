@@ -1,0 +1,82 @@
+name: Low PR merger
+
+# Merges `risk: low` PRs from `main`'s definition instead of Claude enabling
+# auto-merge (Issue #3673). Slice A (#3679): the judge only. It reads every open
+# `risk: low` PR and writes its verdict (merge, wait, reject, no conclusion) to
+# the job summary; nothing is merged or commented yet, and Low PRs still merge
+# through `gh pr merge --auto`. The conditions are in
+# scripts/review/low-pr-merger-flow.ts.
+#
+# `workflow_run` and `schedule` run this file from `main`, so a PR cannot change
+# what judges it. The judge treats every PR as data (TPL-3673): it checks out
+# `main`, fetches each PR head as objects for `tier.ts` to read, and never checks
+# out, installs or runs PR code. It reads no field of the event: whatever started
+# it, it judges every open Low PR again, so a look-alike workflow name only buys
+# one more judging.
+#
+# Started when a workflow that reports a ruleset-required check or `Review tier`
+# completes (scripts/ci/low-pr-merger-triggers.test.ts keeps the list complete),
+# and every 10 minutes as a backstop. No path filter: docs-only PRs are the ones
+# that can be Low (TPL-1725).
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+      - CI (docs-only)
+      - AT coverage check
+      - ADR validate
+      - ADR validate (skip)
+      - Reference docs check
+      - Reference docs check (skip)
+      - E2E
+      - E2E (skip)
+      - Verify Actions Lockfile
+      - Review tier
+    types: [completed]
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+# One judging at a time; a start that arrives meanwhile waits, and only the
+# newest waiting one is kept.
+concurrency:
+  group: low-pr-merger
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  judge:
+    name: Judge Low PRs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      # main's scripts, and the PR heads as objects.
+      contents: read
+      # The PRs, their labels, bodies and mergeability.
+      pull-requests: read
+      # The Issues a PR closes: `tier.ts` asks whether one is a `bug`.
+      issues: read
+      # The check runs on a head.
+      checks: read
+      # Which workflow run each check run belongs to.
+      actions: read
+    outputs:
+      verdicts: ${{ steps.judge.outputs.verdicts }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Judge the open Low PRs
+        id: judge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/review/low-pr-merger.ts

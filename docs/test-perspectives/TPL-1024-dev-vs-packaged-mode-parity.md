@@ -15,7 +15,7 @@ related_to:
   - TPL-976
 discovered_from:
   - issue: "#1024"
-  - root_cause_file: "packages/vscode/src/extension.ts:46"
+  - root_cause_file: "packages/vscode/src/extension.ts:serverModuleCandidates"
   - issue: "#3017"
   - root_cause_file: "packages/cli/src/serve.ts"
   - issue: "#3303"
@@ -66,6 +66,7 @@ dev tree の relative path（`asAbsolutePath(path.join("..", "lsp", "out", "serv
 ## 関連テスト
 
 - `packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts` — installed extension で LSP が動くかの E2E
+- `packages/vscode/src/server-module.test.ts` — 拡張が起動する language server の候補がどれも無いとき、試した全パスを挙げてエラーを記録する（それまでは黙って先頭の候補にフォールバックしていた）。この解決箇所だけを固定するテストで、ほかのパス解決箇所の silent fallback では赤くならないため、チェックリスト 4 のガードではなく関連テスト
 - `packages/vscode/scripts/` — packaging 関連スクリプト（bundling step がここに入る）
 - `packages/cli/pack/serve-from-tarball.test.ts`（`pnpm --filter ./packages/cli run test:pack`）— 実際の `prepack` を通した tarball を展開して `karasu serve` を起動する packaged mode のスモーク。#3017 では `serve` が app の build を monorepo 相対の `../../app/dist` で探し、npm 版で全リクエストが 503 になっていた
 - `packages/cli/src/serve.test.ts` › `findAppDistDir` — packaged（`dist/app/`）と dev（`packages/app/dist`）の候補探索、install 先の無関係な `node_modules/app` を拾わないこと

@@ -1,7 +1,8 @@
 ---
 id: ADR-3486
 title: PR の変更ファイルから関係する TPL を引き、PR を作った直後に出す
-status: accepted
+status: superseded
+superseded_by: ADR-3706
 date: 2026-11-07
 topic: testing
 authors: [kompiro]
@@ -20,7 +21,7 @@ assumptions:
   - "file: scripts/tpl/changed-files-reminder.sh"
   - "grep: .claude/settings.json :: scripts/tpl/changed-files-reminder.sh"
   - "grep: package.json :: \"tpl:changed\": \"tpl related --config tpl.config.json --base origin/main\""
-  - "grep: tpl.config.json :: \"sourcePrefixes\": \\[\"packages\", \"scripts\", \"\\.github\"\\]"
+  - "grep: tpl.config.json :: \"sourcePrefixes\": \\[\"packages\", \"scripts\", \"\\.github\""
   - "grep: .github/PULL_REQUEST_TEMPLATE.md :: pnpm tpl:changed"
   - "grep: docs/test-perspectives/README.md :: #### 変更ファイルから引く"
 ---
@@ -28,7 +29,7 @@ assumptions:
 # ADR-3486: PR の変更ファイルから関係する TPL を引き、PR を作った直後に出す
 
 - **日付**: 2026-11-07
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by ADR-3706
 - **関連**:
   - Issue [#3486](https://github.com/kompiro/karasu/issues/3486)（`## Slice status` 表と測定の手順）、設計 PR [#3531](https://github.com/kompiro/karasu/pull/3531)
   - スライス: [kompiro/tpl-tools#41](https://github.com/kompiro/tpl-tools/issues/41)（照会と `scope.paths`）、[#3591](https://github.com/kompiro/karasu/issues/3591)（karasu での採用、PR [#3615](https://github.com/kompiro/karasu/pull/3615)）、[#3592](https://github.com/kompiro/karasu/issues/3592)（運用系の TPL に `scope.paths` を足す）

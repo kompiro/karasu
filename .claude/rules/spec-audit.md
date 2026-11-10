@@ -55,7 +55,8 @@ grep は false positive を生む。
    するのが最短の検出経路
 4. **UI 表示 / 抑制** — `WarningPanel`（app）と
    `packages/lsp/src/diagnostics.ts`（LSP は単一ドキュメント文脈で
-   一部 warning を意図的に抑制している）
+   一部 warning を意図的に抑制している。kind ごとの扱いは
+   `packages/lsp/src/single-document-context.ts` の台帳にある）
 
 経路の途中までしか存在しない場合は「未実装」ではなく「どの層まで
 実装されているか」を指摘に書く。

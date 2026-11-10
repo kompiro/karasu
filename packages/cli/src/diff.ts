@@ -9,7 +9,7 @@ import {
 } from "@karasu-tools/core";
 import type { DiagramType } from "@karasu-tools/core";
 import { resolveKrsFileOrExit } from "./compile-system-view.js";
-import { formatDiagnostic } from "./i18n.js";
+import { diagnosticParts } from "./i18n.js";
 import { NodeFileSystemProvider } from "./node-fs.js";
 import { writeOutput } from "./output.js";
 import { reportWarnings } from "./report-diagnostics.js";
@@ -122,11 +122,13 @@ async function compileAndWrite(
   // Core positions are 1-based already; print them as they are (#2715).
   for (const d of errors) {
     const loc = d.loc ? `${d.loc.start.line}:${d.loc.start.column}` : "";
-    process.stderr.write(`Error: ${loc} ${formatDiagnostic(d)}\n`);
+    const { tag, message } = diagnosticParts("Error", d);
+    process.stderr.write(`${tag}: ${loc} ${message}\n`);
   }
   for (const d of diagWarnings) {
     const loc = d.loc ? `${d.loc.start.line}:${d.loc.start.column}` : "";
-    process.stderr.write(`Warning: ${loc} ${formatDiagnostic(d)}\n`);
+    const { tag, message } = diagnosticParts("Warning", d);
+    process.stderr.write(`${tag}: ${loc} ${message}\n`);
   }
   // Warnings are the after model's, once per diff (#2879), so they can name
   // their file the way `render` does: the after entry by its resolved path
