@@ -2,7 +2,7 @@
 
 - **日付**: 2026-11-10
 - **ステータス**: 検討中
-- **PR**: #TBD
+- **PR**: #3753
 - **関連**:
   - 引き金 Issue: [#3752](https://github.com/kompiro/karasu/issues/3752)（#3481 のテストを書くときに発見）
   - 関連 TPL: [TPL-3072](../test-perspectives/TPL-3072-parser-error-drops-exactly-the-rejected-construct.md)（#3499 で、末尾のドットの後に後の行の edge の source を読まないようにした）, [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md)（1 行に並ぶ要素の reader は、区切りの後で次の行を消費しない）, [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md)（parser が受理する形は spec に書く）
