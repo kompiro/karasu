@@ -30,9 +30,10 @@ bump 種別を問わず 15 件すべてで、次を確かめた。
 - **依存エッジ**: lock の snapshot を peer suffix を落として merge-base と各 PR ヘッドで突き合わせた
   （`security-alert` skill の edges 手順）。15 件を通して、main の lock に無い**パッケージ名**が新しく入るものはゼロ。
   動くのはすべて既存パッケージの版
-- **publisher / provenance**: 直接 bump の 15 件と、版が動く主な transitive 依存 18 件（pagefind / i18next / shiki /
+- **publisher / provenance**: 直接 bump の 15 件と、版が動く主な transitive 依存 19 件（pagefind / i18next / shiki /
   lightningcss / enhanced-resolve / rolldown / `@opentelemetry/api` / unbash / tslib / parse5 / semver / `@astrojs/mdx` /
-  mdast-util-directive / hastscript / `@ctrl/tinycolor` / tinybench / `@astrojs/telemetry` / hast-util-to-html）を registry で
+  mdast-util-directive / hastscript / `@ctrl/tinycolor` / tinybench / `@astrojs/telemetry` / hast-util-to-html /
+  `@vitest/istanbul-lib-report`）を registry で
   比べた。GitHub Actions OIDC + provenance のものは to 版も同じ。provenance なしは従来どおりで、`@vscode/vsce`
   （`microsoft1es`）、`@types/*`（`types`）、`knip` / `unbash`（`webpro`）、unified 系（`wooorm`）、`i18next`（`adrai`）、
   `lightningcss`（`devongovett`）、`parse5`（`43081j`）。publisher が変わったのは `tslib` 1 件だけ（下記）
@@ -48,11 +49,14 @@ bump 種別を問わず 15 件すべてで、次を確かめた。
     CI 判定（`detectCIProvider` / `isGitHubActions`）
   - `astro` の `fetch(` は server island の既存コードの書き換え、`exec(` は正規表現の `.exec`
   - `knip` / `@anthropic-ai/sdk` の URL は docs・CHANGELOG・バッジだけ
-- **既知 advisory**: 直接 bump の 15 版と主な transitive の新版すべてで該当ゼロ（GitHub Advisory API の `affects=`。
+  - `@types/vscode` は追加 7 行で、該当なし
+- **既知 advisory**: 直接 bump の 15 版と、上の transitive 19 件の新版、`magic-string@1.4.5` / `entities@9.0.0` で
+  該当ゼロ（GitHub Advisory API の `affects=`。
   クエリが効いていることは `undici@7.30.0` で 8 件返ることで確かめた）
 - **公開からの経過**: すべて起票時点で 7 日を越えている。最も新しいのは `@tailwindcss/vite` / `tailwindcss` 4.3.4
   （11-02 21:30 公開、起票まで 7 日と約 20 分）
-- **`pnpm-workspace.yaml` の `overrides:`**: 衝突なし（`vite@8: ^8.3.3`、`source-map-js: ^1.2.2` などは新版を含む）
+- **`pnpm-workspace.yaml` の `overrides:`**: 衝突なし。15 件で新しく解決される版に、`overrides:` の対象パッケージは
+  含まれない（依存エッジの差分で新しく参照される `<名前>@<版>` と `overrides:` のキーを突き合わせた）
 - **docs-site のビルド**: bot PR では「Deploy Docs Preview」の job ごとスキップされ、`astro build` が CI で走らない。
   #3743（astro）と #3736（starlight）の head を detached worktree に取り、`pnpm install --frozen-lockfile` と
   `pnpm --filter @karasu-tools/docs-site... run build` を実行した。どちらも 79 ページを出力して成功
@@ -158,8 +162,8 @@ publish はリリース時まで確かめられない。
 
 ### #3740 `lucide-react` 1.62.0 → 1.66.0
 
-アイコンの追加で、karasu が使うアイコンの削除・改名があれば typecheck で落ちるが green。4 版を一度にまたぐのは
-cooldown で 1.63〜1.65 が束ねられたため。
+アイコンの追加で、karasu が使うアイコンの削除・改名があれば typecheck で落ちるが green。4 版を一度にまたぐのは、
+前回の 1.62.0 の後、1 週間のうちに 1.63〜1.66 が出たため。
 
 ### #3741 `@anthropic-ai/sdk` 1.3.0 → 1.4.0
 
