@@ -110,6 +110,8 @@ describe("docs/tools/app covers the preview's views (TPL-1716)", () => {
   it.each(Object.keys(DOCS) as Locale[])(
     "%s: every tab is a row of the Diagram views table",
     (locale) => {
+      // The tab labels are not localized (DiagramTabBar writes them as
+      // literals), so both tables name each view by its English label.
       const table = section(locale, VIEWS_HEADING[locale]);
       expect(renderedTabs().filter((label) => !table.includes(`| **${label}**`))).toEqual([]);
     },
