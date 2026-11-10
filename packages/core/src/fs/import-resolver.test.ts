@@ -685,9 +685,7 @@ system Circular {
       );
     });
 
-    it("detects circular style imports", async () => {
-      // Style files referencing each other isn't directly supported
-      // by the current style parser, but we test the visited check
+    it("loads a sheet one file imports twice once, with no warning (#3513)", async () => {
       await fs.writeFile(
         "/project/index.krs",
         `@import "a.krs.style"
@@ -699,13 +697,141 @@ system Test {
       await fs.writeFile("/project/a.krs.style", `user { background-color: #000; }`);
 
       const result = await resolver.resolve("/project/index.krs");
-      // Second import of same file should be detected as circular
-      expect(result.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: "warning",
-          code: "circular-style-import",
-        }),
+      expect(result.styleSheets.map((s) => s.sheetId)).toEqual(["/project/a.krs.style"]);
+      expect(result.diagnostics).toEqual([]);
+    });
+  });
+
+  /**
+   * A sheet cannot `@import`, so a style import is never part of a cycle: a
+   * sheet reached again is a DAG re-arrival (TPL-1381), and it is one sheet at
+   * its first position. A path is relative to the file that declares it, so an
+   * imported file finds the sheet beside it (#3714). One row per import form
+   * that can carry a file's `@import` into the importer.
+   */
+  describe("style imports carried through the import graph (#3513, #3714)", () => {
+    const FORMS = [
+      ["whole-file", (_id: string, path: string) => `import "${path}"`],
+      ["named", (id: string, path: string) => `import { ${id} } from "${path}"`],
+    ] as const;
+
+    it.each(FORMS)(
+      "%s: two files that @import one sheet load it once, with no warning",
+      async (_form, importOf) => {
+        await fs.writeFile(
+          "/project/index.krs",
+          `${importOf("A", "a.krs")}\n${importOf("B", "b.krs")}\n`,
+        );
+        await fs.writeFile(
+          "/project/a.krs",
+          `@import "shared.krs.style"\nsystem A {\n  service A1\n}\n`,
+        );
+        await fs.writeFile(
+          "/project/b.krs",
+          `@import "shared.krs.style"\nsystem B {\n  service B1\n}\n`,
+        );
+        await fs.writeFile("/project/shared.krs.style", `user { background-color: #000; }`);
+
+        const result = await resolver.resolve("/project/index.krs");
+        expect(result.styleSheets.map((s) => s.sheetId)).toEqual(["/project/shared.krs.style"]);
+        expect(result.diagnostics).toEqual([]);
+      },
+    );
+
+    it.each(FORMS)(
+      "%s: an imported file in a subdirectory resolves @import beside itself",
+      async (_form, importOf) => {
+        await fs.writeFile("/project/index.krs", `${importOf("Q", "sub/q.krs")}\n`);
+        await fs.writeFile(
+          "/project/sub/q.krs",
+          `@import "t.krs.style"\nsystem Q {\n  service Q1\n}\n`,
+        );
+        await fs.writeFile("/project/sub/t.krs.style", `user { background-color: #000; }`);
+
+        const result = await resolver.resolve("/project/index.krs");
+        expect(result.styleSheets.map((s) => s.sheetId)).toEqual(["/project/sub/t.krs.style"]);
+        expect(result.diagnostics).toEqual([]);
+      },
+    );
+
+    it("a directory import carries the @import of a file in it, resolved beside that file", async () => {
+      await fs.writeFile("/project/index.krs", `import "sub/"\n`);
+      await fs.writeFile(
+        "/project/sub/q.krs",
+        `@import "t.krs.style"\nsystem Q {\n  service Q1\n}\n`,
       );
+      await fs.writeFile("/project/sub/t.krs.style", `user { background-color: #000; }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.styleSheets.map((s) => s.sheetId)).toEqual(["/project/sub/t.krs.style"]);
+      expect(result.diagnostics).toEqual([]);
+    });
+
+    it("resolves a file's @import once, beside it, when a second path reaches it from another directory", async () => {
+      // b.krs reaches sub/a.krs again through `../`: the cached resolution is
+      // reused as it is, never resolved a second time against b's directory.
+      await fs.writeFile("/project/index.krs", `import "sub/a.krs"\nimport "x/b.krs"\n`);
+      await fs.writeFile(
+        "/project/sub/a.krs",
+        `@import "t.krs.style"\nsystem A {\n  service A1\n}\n`,
+      );
+      await fs.writeFile(
+        "/project/x/b.krs",
+        `import "../sub/a.krs"\nsystem B {\n  service B1\n}\n`,
+      );
+      await fs.writeFile("/project/sub/t.krs.style", `user { background-color: #000; }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.styleSheets.map((s) => s.sheetId)).toEqual(["/project/sub/t.krs.style"]);
+      expect(result.diagnostics).toEqual([]);
+    });
+
+    it("dedupes one sheet written two ways, including through ../", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `@import "sub/t.krs.style"
+import "sub/q.krs"
+import "other/r.krs"
+system Main {
+  service M1
+}`,
+      );
+      await fs.writeFile(
+        "/project/sub/q.krs",
+        `@import "t.krs.style"\nsystem Q {\n  service Q1\n}\n`,
+      );
+      await fs.writeFile(
+        "/project/other/r.krs",
+        `@import "../sub/t.krs.style"\nsystem R {\n  service R1\n}\n`,
+      );
+      await fs.writeFile("/project/sub/t.krs.style", `user { background-color: #000; }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.styleSheets.map((s) => s.sheetId)).toEqual(["/project/sub/t.krs.style"]);
+      expect(result.diagnostics).toEqual([]);
+    });
+
+    it("keeps a sheet at the position where it is reached first", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `@import "first.krs.style"
+import "x.krs"
+system Main {
+  service M1
+}`,
+      );
+      await fs.writeFile(
+        "/project/x.krs",
+        `@import "second.krs.style"\n@import "first.krs.style"\nsystem X {\n  service X1\n}\n`,
+      );
+      await fs.writeFile("/project/first.krs.style", `user { background-color: #111; }`);
+      await fs.writeFile("/project/second.krs.style", `user { background-color: #222; }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.styleSheets.map((s) => s.sheetId)).toEqual([
+        "/project/first.krs.style",
+        "/project/second.krs.style",
+      ]);
     });
   });
 

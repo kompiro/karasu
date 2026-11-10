@@ -71,6 +71,20 @@ export class Router {
     return this;
   }
 
+  /**
+   * Every registered route, in match order, as method and pattern.
+   *
+   * Read-only and for walking the whole table: `routes/session-pages.test.ts`
+   * requests every `GET` route with a live session, so a page added here is
+   * checked for client script without anyone having to list it (TPL-2993).
+   */
+  get table(): readonly { method: string; pattern: string }[] {
+    return this.routes.map(({ method, segments }) => ({
+      method,
+      pattern: `/${segments.join("/")}`,
+    }));
+  }
+
   get(pattern: string, handler: RouteHandler): this {
     return this.add("GET", pattern, handler);
   }

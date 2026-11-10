@@ -448,11 +448,6 @@ const SAMPLES: SamplesByCode = {
       lastResolvedId: "Payments",
     },
   },
-  "circular-style-import": {
-    severity: "warning",
-    code: "circular-style-import",
-    params: { filePath: "theme.krs.style" },
-  },
   "style-file-not-found": {
     severity: "warning",
     code: "style-file-not-found",
@@ -564,7 +559,6 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "infra-leaf-redeclared-silently": ["table", "orders", "database", "OrderDB"],
   "import-id-not-found": ["OrderService", "services/orders.krs"],
   "import-path-not-found": ["Acme.Payments.Ledger", "Ledger", "Payments"],
-  "circular-style-import": ["theme.krs.style"],
   "style-file-not-found": ["missing.krs.style"],
   "app-project-compile-error": [],
   "app-org-parse-error": [],

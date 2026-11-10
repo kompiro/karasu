@@ -139,7 +139,8 @@ scope:
   変更が混ざる・新しい ADR が無い・Markdown 以外は Low にならない）、記録の ADR の行に新しい ADR へのリンクを足すだけの差分が Low になること
   （`isLinkInsert`。AT 以外のファイル・ほかのラベルの行・メタデータの並びの外の位置・行頭への挿入・名前でないリンク文字列・URL の中の ADR のパス・同じ hunk のほかの変更は Low にならない）、既存 ADR の本文の変更が Medium になること、
   main の取り込みの判定（`diffFingerprint`）が行の移動・増減・入れ替え・モードやバイナリだけの変更を「同じ」と
-  みなさないこと
+  みなさないこと、Design Doc に載せた仕様の文面との一致（#3542。#3320 の spec の差分で、文面を 1 行変える・hunk を
+  落とす・並べ替える・入れ子の fence の例・base の 2 箇所に当てはまる文脈・決定のパスの外のファイルは Medium にならない）
 - `scripts/review/local-review-record.test.ts`：記録の無い PR、古い `head`、base の食い違い、main の取り込み以外の
   コミット、`head` の外の修正コミット、対応の無い指摘、Low での Critical / Major の却下・`Waived:`・CLI の省略、
   重大度の無い指摘を Major として扱うこと

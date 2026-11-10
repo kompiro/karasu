@@ -89,4 +89,4 @@ karasu には「ビューごとに分かれた似た形の関数群」が複数�
 - `packages/core/src/renderer/drill-down-svg.test.ts`
 - `packages/core/src/renderer/multi-level-svg.test.ts`
 - `packages/core/src/index.test.ts` — `compileProject` の `diagramType` ごとの経路
-- `packages/core/src/svg-builder-family-parity.test.ts` — SVG builder family の family-wide parity meta-test。`SVG_BUILDER_FAMILY` に登録された全 builder を共通 fixture + 共通 styleSource / displayMode で呼び出し、出力に probe color が現れること（styleSource threading）と icon ↔ shape の出力が異なること（displayMode threading）を assert する（gap GB11-1 / #1273）
+- `packages/core/src/svg-builder-family-parity.test.ts` — SVG builder family の family-wide parity meta-test。`SVG_BUILDER_FAMILY` に登録された全 builder を共通 fixture + 共通 styleSource / displayMode で呼び出し、出力に probe color が現れること（styleSource threading）と icon ↔ shape の出力が異なること（displayMode threading）を assert する（gap GB11-1 / #1273）。登録表は `index.ts` の export のうち family の署名に合うもの（型から導く `FamilyName`）を `satisfies Record<FamilyName, …>` で全部要求するので、同じ署名の公開 builder を足すと登録するまで typecheck が落ちる。ただしこれは SVG builder family 1 つの閉包で、チェックリスト 5 項目目が問う「変更する family に横断テストがあるか」は family ごとに違う（diff pipeline・per-view compile など）ので、5 項目目のガードではない

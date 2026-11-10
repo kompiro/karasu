@@ -26,6 +26,9 @@ paths:
   （墓標）。項目を表から消さない。
 - 新しいコマンドやフラグを足したら `agent-surface.json` にも足す。足した名前は
   互換の約束に入る。
+- 新しいコマンドやフラグを足したら、`docs/tools/cli.md` と `cli.ja.md` の両方にも
+  書く（コマンドは Command reference の表に行を足し、フラグはそのコマンドの行か
+  `karasu <command>` 節で説明する）。`packages/cli/src/docs-tools-sync.test.ts` が落とす。
 - `.claude/skills/**` の記述は新しい名前に書き換える（`pnpm lint:skill-cli-refs` が
   古い名前を落とす）。
 

@@ -12,6 +12,12 @@
  * environment actually has — `requireBinding` is where "configured" is
  * asserted, once, at the edge of a handler that needs it.
  */
+import type {
+  GalleryKey,
+  GalleryKeySpace,
+  GalleryPrefix,
+  GalleryPutArgs,
+} from "./store/gallery-keys.js";
 
 /** A minimal structural stand-in for the Workers `ExecutionContext`. */
 export interface NestExecutionContext {
@@ -19,12 +25,6 @@ export interface NestExecutionContext {
   passThroughOnException?(): void;
 }
 
-/**
- * A KV namespace, narrowed to the operations this service uses. Declared
- * structurally rather than imported from `@cloudflare/workers-types` so the
- * package stays dependency-free and the store can be faked in unit tests with
- * an object literal.
- */
 /**
  * The shortest `expirationTtl` the real binding accepts; it rejects anything
  * below this outright.
@@ -37,16 +37,42 @@ export interface NestExecutionContext {
  */
 export const KV_MINIMUM_TTL_SECONDS = 60;
 
+/**
+ * A KV namespace, narrowed to the operations this service uses. Declared
+ * structurally rather than imported from `@cloudflare/workers-types` so the
+ * package stays dependency-free and the store can be faked in unit tests with
+ * an object literal.
+ *
+ * **Narrowed in its keys, too.** The real binding takes any string; this
+ * declaration takes only a `GalleryKey` / `GalleryPrefix`, which only the
+ * builders in `store/gallery-keys.ts` produce, and `put` takes the options the
+ * key's space allows. Being our own declaration of someone else's object is
+ * what makes that possible, and it is the point of declaring it: every key
+ * this deploy writes then goes through the registry of key spaces, so a
+ * prefix nobody registered (and so nobody purges) cannot be written without
+ * a type error (TPL-2226, TPL-2587). The runtime object is unchanged; only
+ * what our code may hand it is.
+ *
+ * `list` names come back typed as keys because they are: everything under a
+ * `GalleryPrefix` was written through a builder.
+ *
+ * **Where the narrowing stops.** It binds code whose parameter is typed
+ * `KVNamespaceLike`. A store that declares its own `{ put(key: string, …) }`
+ * and is handed this binding still compiles: TypeScript compares method
+ * parameters bivariantly, so `string` is accepted where `GalleryKey` was
+ * declared. What refuses that store's keys is the test `MemoryKV`, at
+ * runtime, and only on paths a test exercises.
+ */
 export interface KVNamespaceLike {
-  get(key: string): Promise<string | null>;
-  put(
-    key: string,
+  get(key: GalleryKey): Promise<string | null>;
+  put<S extends GalleryKeySpace>(
+    key: GalleryKey<S>,
     value: string,
-    options?: { expirationTtl?: number; metadata?: unknown },
+    ...options: GalleryPutArgs<S>
   ): Promise<void>;
-  delete(key: string): Promise<void>;
-  list(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<{
-    keys: { name: string; metadata?: unknown }[];
+  delete(key: GalleryKey): Promise<void>;
+  list(options: { prefix: GalleryPrefix; cursor?: string; limit?: number }): Promise<{
+    keys: { name: GalleryKey; metadata?: unknown }[];
     list_complete: boolean;
     cursor?: string;
   }>;

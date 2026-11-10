@@ -20,7 +20,11 @@ import { quotedIdLiteral } from "../formatter/quote-id.js";
  * same rule `nodePathRefId` applies to path segments (ADR-2714). The key then
  * splits one way only: a bare `from` has no `->` in it and cannot end the
  * separator early (`->` does not overlap itself), and a quoted `from` ends at
- * its closing quote. Every other edge keeps the `${from}->${to}` it always had.
+ * its closing quote. An endpoint carrying `#`, the separator
+ * {@link edgeKindKey} appends, is wrapped too, so no key of this form equals
+ * a kind key: the resolved style map holds both, and `x -> "y#sync"` used to
+ * key `x->y#sync`, the sync key of `x -> y` (#3702). Every other edge keeps
+ * the `${from}->${to}` it always had.
  */
 export function edgeKey(edge: Pick<KrsEdge, "from" | "to">): string {
   return `${quoteEdgeEndpoint(edge.from)}->${quoteEdgeEndpoint(edge.to)}`;
@@ -30,12 +34,14 @@ export function edgeKey(edge: Pick<KrsEdge, "from" | "to">): string {
  * Identity of an edge by its endpoint pair **and** arrow kind, so a sync and an
  * async edge between one pair stay two entries. Injective because
  * {@link edgeKey} is and the kind (`sync` / `async`) carries no `#`: the key
- * splits at its last `#`. An ordinary edge keys `${from}->${to}#${kind}`.
+ * splits at its last `#`. It always ends in a bare `#sync` / `#async`, which
+ * no {@link edgeKey} does, so the two forms can share one map (#3702). An
+ * ordinary edge keys `${from}->${to}#${kind}`.
  */
 export function edgeKindKey(edge: Pick<KrsEdge, "from" | "to" | "kind">): string {
   return `${edgeKey(edge)}#${edge.kind}`;
 }
 
 function quoteEdgeEndpoint(endpoint: string): string {
-  return endpoint.includes("->") || /["\\]/.test(endpoint) ? quotedIdLiteral(endpoint) : endpoint;
+  return endpoint.includes("->") || /["\\#]/.test(endpoint) ? quotedIdLiteral(endpoint) : endpoint;
 }

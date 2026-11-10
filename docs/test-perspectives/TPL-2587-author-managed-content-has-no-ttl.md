@@ -47,13 +47,16 @@ scope:
 期限のあるストアに新しいキー空間を足すとき:
 
 - [ ] そのキーは**作者が管理するコンテンツ**か、**資格情報・派生データ**か。どちらかを明示的に決めたか [judgment]
-- [ ] コンテンツ側なら、`put` に `expirationTtl` が**渡っていないこと**をテストで確かめたか。「渡していない」はコメントでは守れない
-- [ ] 資格情報側なら、TTL が**実際に設定されている値であること**を（定数の存在ではなく `put` のオプションで）確かめたか
-- [ ] 無期限にしたぶん、**削除の経路**は用意したか。期限が消さないなら人が消すしかなく、その手段が無いと約束できない（[TPL-2226](TPL-2226-every-key-prefix-must-be-purgeable.md)）
-- [ ] 保持方針を書いた文書（privacy policy・ポリシー文書）と実装を**機械で突き合わせたか**。日数を書くと二重管理になるので、条件（「削除されるまで」）で書けるならそのほうがよい
+- [ ] コンテンツ側なら、`put` に `expirationTtl` が**渡っていないこと**をテストで確かめたか。「渡していない」はコメントでは守れない [guard: `packages/nest/src/store/gallery-key-contract.test.ts`, `packages/nest/src/testing/memory-kv.test.ts`]
+- [ ] 資格情報側なら、TTL が**実際に設定されている値であること**を（定数の存在ではなく `put` のオプションで）確かめたか [guard: `packages/nest/src/store/gallery-key-contract.test.ts`, `packages/nest/src/testing/memory-kv.test.ts`]
+- [ ] 無期限にしたぶん、**削除の経路**は用意したか。期限が消さないなら人が消すしかなく、その手段が無いと約束できない（[TPL-2226](TPL-2226-every-key-prefix-must-be-purgeable.md)） [guard: `packages/nest/src/store/gallery-purge-coverage.test.ts`]
+- [ ] 保持方針を書いた文書（privacy policy・ポリシー文書）と実装を**機械で突き合わせたか**。日数を書くと二重管理になるので、条件（「削除されるまで」）で書けるならそのほうがよい [guard: `scripts/lint/nest-retention-policy-sync.test.ts`]
 
 ## 既知の対処パターン
 
+- **保持の種類を鍵空間ごとに registry へ書き、`put` の型をそこから導く**。`gallery-keys.ts` の `GALLERY_KEY_SPACES` が空間ごとに
+  `content`（TTL なし）か `credential`（TTL 必須）を持ち、`KVNamespaceLike.put` のオプションはその種類から決まる。コンテンツの鍵に
+  `expirationTtl` を渡すことも、資格情報の鍵を TTL なしで書くことも型エラーになる。新しい空間は種類を決めないと登録できない
 - **書き込みを 1 か所に閉じる**。`SubmissionStore.write` が唯一の `put` 呼び出しで、そこにコメントではなくテストが張り付いている。散らばった `put` は一つずつ守らねばならず、必ず一つ漏れる
 - **fake に `put` のオプションを記録させる**。`MemoryKV.puts` が `{key, options}` を積むので、「TTL が付いていない」を直接 assert できる。TTL の**不在**は、時計を進めるテストでは証明できない（消えないことの証明は、待っても終わらない）
 - **保持を日数ではなく条件で書く**。「投稿者が削除するまで保持し、アカウント削除ですべて消える」は、日数より説明しやすく、実装とずれる余地も小さい
@@ -64,7 +67,18 @@ scope:
 - `packages/nest/src/store/submissions.test.ts` › `stores no expiry, so author-managed content cannot vanish on its own`
 - `packages/nest/src/store/accounts.test.ts` › `stores no expiry, so an account cannot outlive itself`
 - `packages/nest/src/store/sessions.test.ts` › `expires, unlike everything else the gallery stores`（資格情報側の裏返し）
-- `scripts/lint/nest-retention-policy-sync.test.ts`（ポリシー文書と実装の突き合わせ）
+- `packages/nest/src/store/gallery-key-contract.test.ts`: 資格情報の鍵を TTL なしで、コンテンツの鍵を TTL つきで書く呼び出しを
+  `@ts-expect-error` で固定する（型の契約が空にならないこと）。同じ呼び出しを `MemoryKV` が実行時にも拒むこと。
+  型が縛るのは引数を `KVNamespaceLike` と型付けしたコード（既存のストアの書き方）で、既存のストアと同じ書き方の新しいストアは赤くなる。
+  保持の種類についても同じで、自前で `{ put(key: string, …) }` と型を宣言したストアに binding を渡すと、
+  メソッドの引数が双変に比較されるのでコンパイルが通る。その場合に TTL の有無を拒むのはテスト用の `MemoryKV`（実行時）
+  だけで、その経路をテストが通るときに限る
+- `packages/nest/src/testing/memory-kv.test.ts`: 「refuses an expiry on content and a credential without one」。nest のテストが書く
+  すべての `put` を、その鍵の空間の保持の種類に照らす（`MemoryKV` が registry を読む）。資格情報側は TTL が**付いていること**までで、
+  値が正しいことは `sessions.test.ts` が持つ
+- `scripts/lint/nest-retention-policy-sync.test.ts`（ポリシー文書と実装の突き合わせ）。「has a row for every registered key space,
+  stating its retention class」は `GALLERY_KEY_SPACES` を読み、登録済みの全空間に文書の行があり、`content` は条件で、`credential` は
+  日数で書かれていることを確かめる
 - `packages/nest/src/store/gallery-purge-coverage.test.ts` › `leaves nothing behind when an account is deleted`（無期限にしたぶんの削除経路。account の削除で全 prefix が消える。[TPL-2226](TPL-2226-every-key-prefix-must-be-purgeable.md)）
 
 ## 由来

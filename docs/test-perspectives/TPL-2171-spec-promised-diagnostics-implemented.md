@@ -71,7 +71,7 @@ i18n メッセージ → UI 表示）を踏んでから「存在しない」と�
 
 spec に診断の約束を書く / 約束済み領域の実装を変更するとき:
 
-- [ ] spec に「警告 / エラーを出す」と書いた約束それぞれに、対応する専用診断コードが実装に存在するか（`.claude/rules/spec-audit.md` の経路 — `types/warnings.ts` の kind → `resolver/warnings.ts` の発行箇所 → i18n メッセージ — を repo-wide で追って確認。構文処理本体だけの grep で「不在」と結論しない）
+- [ ] spec に「警告 / エラーを出す」と書いた約束それぞれに、対応する専用診断コードが実装に存在するか（`.claude/rules/spec-audit.md` の経路 — `types/warnings.ts` の kind → `resolver/warnings.ts` の発行箇所 → i18n メッセージ — を repo-wide で追って確認。構文処理本体だけの grep で「不在」と結論しない） [judgment]
 - [ ] 約束だけ先行する場合、同じ PR で実装するか、tracking Issue を起こして spec 側に注記したか [judgment]
 - [ ] 禁止構文（配置制限など）は汎用 unexpected-token ではなく、spec の意図を伝える専用メッセージで拒否しているか
 - [ ] 診断の register（error / warning / info）は spec の約束および TPL-1386 の判定樹と一致しているか

@@ -47,7 +47,7 @@ PR の変更周辺を調査し、不足しているテスト（unit / e2e / AT�
 - `docs/test-perspectives/` から、変更の `topic` / `scope.packages` に該当する
   TPL を探し、その観点が今回の変更で守られているか検証するテストを足す。
 - 3-Yes ルール（横展開しうる / 構造的に再発しうる / 既存 TPL に未掲載）を
-  満たす新規観点に気づいたら、報告に含める（TPL 起票自体は `/hane:test-perspective`
+  満たす新規観点に気づいたら、報告に含める（TPL 起票自体は `/tpl-tools:test-perspective`
   を案内するに留め、このエージェントでは行わない）。
 
 ### 4. テストの追加

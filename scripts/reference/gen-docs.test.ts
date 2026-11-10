@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { resolve } from "node:path";
+import { REFERENCE_DATA } from "../../packages/core/src/builtins/reference-data.ts";
 import { TABLES, blockFor, applyBlock, regenerate, type Locale } from "./gen-docs.ts";
 
 const repoRoot = resolve(import.meta.dirname, "../..");
@@ -23,6 +24,21 @@ describe("reference docs codegen", () => {
         }
       }
     }
+  });
+
+  // The node-kind tables split `nodeKinds` by layer. A kind that lands in
+  // neither table has no row in syntax.md even though the parser accepts it,
+  // and the "up to date" check above cannot see a row that was never
+  // generated (TPL-1296). One that lands in both is listed twice.
+  it("puts every node kind in exactly one node-kind table", () => {
+    const nodeTables = TABLES.filter((t) => t.id.startsWith("node-kinds-"));
+    const homes = REFERENCE_DATA.nodeKinds.map((k) => ({
+      kind: k.kind,
+      tables: nodeTables
+        .filter((t) => t.rows("en").some((row) => row[0] === `\`${k.kind}\``))
+        .map((t) => t.id),
+    }));
+    expect(homes.filter((h) => h.tables.length !== 1)).toEqual([]);
   });
 
   it("blockFor renders a GFM table wrapped in matching markers", () => {

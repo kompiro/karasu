@@ -1,14 +1,19 @@
 // Build-time guard (proactive TPL-1621): fail if any repo-relative link or
 // `#fragment` that points *into the published site* doesn't resolve — an unresolved
 // route or a missing heading/`<a id>` anchor would otherwise 404 silently on the
-// deployed site. Links that leave the site (examples/, ADRs, external) are out of
-// scope here; they become GitHub URLs and are not validated.
+// deployed site.
+//
+// A repo-relative link that leaves the site (examples/, ADRs, design docs) becomes
+// a GitHub URL. Its fragment is not validated, but its file must exist: a renamed
+// or deleted unpublished doc would otherwise leave a published page pointing at a
+// GitHub 404 (TPL-2005). External links are out of scope.
 
 import fs from "node:fs";
+import path from "node:path";
 import { collectAnchors, extractTitle } from "./lib/markdown.ts";
 import { extractLinkTargets, resolveLink } from "./lib/rewrite.ts";
 import { routeOf } from "./lib/site-map.ts";
-import { listSources, publishedSet } from "./sources.ts";
+import { REPO_ROOT, listSources, publishedSet } from "./sources.ts";
 
 interface Failure {
   docsRel: string;
@@ -61,6 +66,14 @@ function main(): void {
             reason: `anchor ${resolved.suffix} not found on /${resolved.route}`,
           });
         }
+      } else if (resolved.kind === "repo") {
+        if (!fs.existsSync(path.join(REPO_ROOT, resolved.repoPath))) {
+          failures.push({
+            docsRel,
+            target,
+            reason: `${resolved.repoPath} does not exist in the repo`,
+          });
+        }
       } else if (resolved.kind === "in-page") {
         if (!hasAnchor(selfRoute, resolved.suffix)) {
           failures.push({
@@ -74,19 +87,20 @@ function main(): void {
   }
 
   if (failures.length > 0) {
-    process.stderr.write(`✗ ${failures.length} unresolved in-site link(s):\n\n`);
+    process.stderr.write(`✗ ${failures.length} unresolved link(s):\n\n`);
     for (const f of failures) {
       process.stderr.write(`  docs/${f.docsRel}\n    ${f.target}\n    → ${f.reason}\n`);
     }
     process.stderr.write(
-      "\nFix the link or anchor in docs/, or add the target page to PUBLISHED_EN_FILES.\n",
+      "\nFix the link or anchor in docs/, or add the target page to PUBLISHED_EN_FILES.\n" +
+        "A link to a file that left the repo follows the file to its new path, or goes.\n",
     );
     process.exitCode = 1;
     return;
   }
 
   process.stdout.write(
-    `✓ All in-site links and anchors resolve (${sources.length} pages checked).\n`,
+    `✓ All in-site links and anchors resolve, and every repo link's file exists (${sources.length} pages checked).\n`,
   );
 }
 

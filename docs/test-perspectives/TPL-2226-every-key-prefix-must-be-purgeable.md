@@ -44,29 +44,41 @@ scope:
 
 削除を約束したストアに書き込む鍵空間を足すとき:
 
-- [ ] 新しい prefix は**削除経路のファサード**（本 repo なら `GalleryStore.purgeAccount`）から到達するか
-- [ ] その配線を**ファサード経由のテスト**で確かめたか。新ストアのメソッドを直接呼ぶテストは、配線漏れを 1 件も検出しない
-- [ ] 「全 prefix に書く → purge → ストアが空」を検証する**網羅テスト**があるか。個別 prefix のテストは、次に足される prefix を守らない
-- [ ] purge の戻り値に**新カテゴリの件数**を足したか。0 を返し続ける項目は「消していない」と区別できない
+- [ ] 新しい prefix は**削除経路のファサード**（本 repo なら `GalleryStore.purgeAccount`）から到達するか [guard: `packages/nest/src/store/gallery-purge-coverage.test.ts`, `packages/nest/src/store/gallery-key-contract.test.ts`]
+- [ ] その配線を**ファサード経由のテスト**で確かめたか。新ストアのメソッドを直接呼ぶテストは、配線漏れを 1 件も検出しない [guard: `packages/nest/src/store/gallery-purge-coverage.test.ts`]
+- [ ] 「全 prefix に書く → purge → ストアが空」を検証する**網羅テスト**があるか。個別 prefix のテストは、次に足される prefix を守らない [guard: `packages/nest/src/store/gallery-purge-coverage.test.ts`]
+- [ ] purge の戻り値に**新カテゴリの件数**を足したか。0 を返し続ける項目は「消していない」と区別できない [guard: `packages/nest/src/store/gallery-purge-coverage.test.ts`, `packages/nest/src/store/gallery-key-contract.test.ts`]
 - [ ] 鍵に主体の識別子（組織名・repo 名・ユーザー ID）が入っていないか。**本文が無害でも鍵は無害でない**
 - [ ] 「これは派生データだから対象外」と判断したなら、その判断を**削除の約束を書いた文書（ADR・プライバシーポリシー）に照らして**書き残したか。暗黙の除外は、後から読むと単なる漏れと区別がつかない [judgment]
 
 ## 既知の対処パターン
 
 - **ファサードが全ストアを所有する**。呼び出し側が「メトリクスも消してください」を覚えている必要がある設計は必ず破られる。`GalleryStore` が `AccountStore` / `SessionStore` / `SubmissionStore` を所有し、`purgeAccount` が全部を呼ぶ
-- **網羅テストを prefix の台帳にする**。`gallery-purge-coverage.test.ts` の `SEEDERS` が「この package が書く全 prefix」の一覧を兼ねる。台帳に足して配線を忘れればテストが落ち、台帳に足し忘れれば**レビュワーが見て短いことに気づける**長さに保つ
-- **戻り値をカテゴリ別にする**。`{accounts, sessions, submissions}`。合計 1 個の数値だと、どのカテゴリが 0 なのかを誰も見ない
+- **鍵空間を閉じた集合にして、台帳をそこから導出する**。`gallery-keys.ts` の `GALLERY_KEY_SPACES` が「この package が書く全 prefix」で、鍵ビルダーはそこから prefix を取り、空間を刻んだ brand 付きの鍵を返す。`env.ts` の `KVNamespaceLike` はその鍵しか受け取らないので、登録していない prefix は書けない（型エラー）。`GalleryStore` の purge 対象・`AccountPurgeResult`・`gallery-purge-coverage.test.ts` の `SEEDERS` はどれも `GalleryKeySpace` 上の `Record` なので、空間を 1 行足すとコンパイラが残りの作業を列挙する。人が台帳に足し忘れる余地が無い
+- **戻り値をカテゴリ別にする**。`Record<GalleryKeySpace, number>`（今は `{accounts, sessions, submissions}`）。合計 1 個の数値だと、どのカテゴリが 0 なのかを誰も見ない。カテゴリを鍵空間から導出すれば、新しい空間の件数を足し忘れられない
 - **削除の約束を書いた ADR から鍵 layout を参照する**。新しいストアを書く人が最初に読む場所に「ここに足したら purge も」と置く
 
 ## 関連テスト
 
-- `packages/nest/src/store/gallery-purge-coverage.test.ts` — `account purge coverage`。`SEEDERS` の全 prefix に書いて
-  `GalleryStore.purgeAccount` を通すとストアが空になること（ファサード経由の網羅テスト）と、戻り値が全カテゴリの件数を持つこと
+- `packages/nest/src/store/gallery-purge-coverage.test.ts`: `account purge coverage`。`SEEDERS`（登録済みの全鍵空間の `Record`）の
+  全空間に書いて `GalleryStore.purgeAccount` を通すとストアが空になること（ファサード経由の網羅テスト）、戻り値が登録済みの全空間で
+  件数 1 を持つこと（期待値も registry から作る）、各 seeder が自分の空間に書くこと。新しい空間は `SEEDERS` と `GalleryStore` の
+  purge 対象に足すまでコンパイルが通らない
+- `packages/nest/src/store/gallery-key-contract.test.ts`: 上の型の契約が空にならないこと（TPL-3589）。手で組んだ鍵・登録外の prefix を
+  `KVNamespaceLike` が拒むこと、`AccountPurgeResult` の鍵がちょうど `GalleryKeySpace` であることを `@ts-expect-error` と型の等価で固定する。
+  型が縛るのは引数を `KVNamespaceLike` と型付けしたコード（既存のストアの書き方）で、その書き方の新しいストアが登録外の prefix に書けば赤くなる。
+  自前で `{ put(key: string, …) }` と型を宣言したストアに binding を渡すと、メソッドの引数が双変に比較されるのでコンパイルが通る。
+  その場合に鍵を拒むのはテスト用の `MemoryKV`（実行時）だけで、その経路をテストが通るときに限る
+- `packages/nest/src/testing/memory-kv.ts`: nest のテストが書くすべての鍵を registry に照らし、登録外の prefix を拒む（テストの中で
+  文字列で書いた鍵にも効く）
 - `packages/nest/src/store/gallery-keys.test.ts` — `key layout` の「puts the account outermost in every prefix, so one sweep reaches it all」。
   どの prefix も account を最外に置き、account 単位の 1 回の sweep で届くこと
-- `scripts/lint/nest-retention-policy-sync.test.ts` — 「names each prefix the purge is wired for (not that the list is complete)」。
-  `gallery-store.ts` が各ストアの `purgeAccount` を呼ぶことと、データ取り扱い文書が各 prefix を名指していること。
-  テスト名のとおり、新しい prefix が足されたことはこのテストでは検出しない
+- `scripts/lint/nest-retention-policy-sync.test.ts`: 「has a row for every registered key space, stating its retention class」。
+  `GALLERY_KEY_SPACES` を読み、登録済みの全空間にデータ取り扱い文書の行があることを確かめる
+
+鍵に主体の識別子が入っていないか（チェックリスト 5 つ目）は印なしのまま。アカウント id は削除単位として意図して鍵に入れており、
+`gallery-keys.test.ts` の「every key builder」は全ビルダーの各引数が account（正規化された数値）か自前のトークンであることを確かめるが、
+数値やトークンの形をした別の識別子（repo の数値 id など）を新しい引数として足すことの是非は、型にもテストにも表せない
 
 ## 由来
 

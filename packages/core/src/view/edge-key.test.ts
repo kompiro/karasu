@@ -17,6 +17,18 @@ describe("edgeKindKey (#3111)", () => {
     );
   });
 
+  it("never gives a kind-less key the form of a kind key (#3702)", () => {
+    // The resolved style map holds both forms; an endpoint ending in `#sync`
+    // used to make the kind-less key of one edge the kind key of another.
+    expect(edgeKey({ from: "x", to: "y#sync" })).toBe('x->"y#sync"');
+    expect(edgeKey({ from: "x#async", to: "y" })).toBe('"x#async"->y');
+    for (const kind of ["sync", "async"] as const) {
+      expect(edgeKey({ from: "x", to: `y#${kind}` })).not.toBe(
+        edgeKindKey({ from: "x", to: "y", kind }),
+      );
+    }
+  });
+
   it("extends edgeKey with the kind", () => {
     const edge = { from: "a", to: "b->c", kind: "sync" as const };
     expect(edgeKindKey(edge)).toBe(`${edgeKey(edge)}#sync`);
