@@ -25,6 +25,14 @@ name: Reference docs check
 # recolor drifts every diagram without touching a single docs/guide path
 # (Issue #2421).
 #
+# `docs/adr/**`, `docs/design/**`, `docs/acceptance/**`, `docs/test-perspectives/**`,
+# `docs/github-actions.md` and `examples/**` hold no published page, but published
+# pages link into them and `check-links` fails when a link's file is gone. A PR
+# that renames or deletes one of them (a Design Doc removed on ADR promotion)
+# must run it, or the break surfaces only in `pages.yml` after merge (TPL-2005).
+# `lint:docs-site-ci-paths-sync` fails when a published page links into a root
+# this list does not cover.
+#
 # Keep the `paths:` list below in sync with `reference-docs-check-skip.yml`'s
 # `paths-ignore:` and with lefthook's `reference-docs-check` /
 # `guide-diagrams-check` / `roadmap-issue-state` / `process-index` globs.
@@ -56,6 +64,12 @@ on:
       - "scripts/lint/process-index.ts"
       - ".claude/rules/**"
       - "docs/release.md"
+      - "docs/adr/**"
+      - "docs/design/**"
+      - "docs/acceptance/**"
+      - "docs/test-perspectives/**"
+      - "docs/github-actions.md"
+      - "examples/**"
       - ".github/workflows/reference-docs-check.yml"
   push:
     branches: [main]
@@ -83,6 +97,12 @@ on:
       - "scripts/lint/process-index.ts"
       - ".claude/rules/**"
       - "docs/release.md"
+      - "docs/adr/**"
+      - "docs/design/**"
+      - "docs/acceptance/**"
+      - "docs/test-perspectives/**"
+      - "docs/github-actions.md"
+      - "examples/**"
       - ".github/workflows/reference-docs-check.yml"
 
 concurrency:
@@ -185,11 +205,22 @@ jobs:
       - name: docs-site content in sync
         run: pnpm --filter @karasu-tools/docs-site run sync
 
-      - name: docs-site in-site links and anchors resolve
+      - name: docs-site links resolve (routes, anchors, and repo link targets)
         run: pnpm --filter @karasu-tools/docs-site run check-links
 
       - name: docs-site unit tests
         run: pnpm --filter @karasu-tools/docs-site run test
+
+      # These tests hold docs/tools and the concepts register table to the CLI,
+      # the app and the diagnostics they describe (TPL-1716, TPL-1386). `ci.yml`
+      # runs them too, but its `paths-ignore: docs/**` skips exactly the
+      # docs-only PR that drops a row they require. They resolve workspace
+      # packages to `src/` through each package's vitest aliases, so no build.
+      - name: docs/tools and the concepts register match the code
+        run: |
+          pnpm --filter ./packages/cli exec vitest run src/docs-tools-sync.test.ts
+          pnpm --filter @karasu-tools/app exec vitest run src/components/preview-surface-docs.test.tsx
+          pnpm --filter @karasu-tools/core exec vitest run src/types/info-register-concepts.test.ts
 
       - name: Roadmap does not contradict issue state
         env:

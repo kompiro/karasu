@@ -91,7 +91,7 @@
     { "files": ["packages/app/src/hooks/useChatSession/prompt.ts"], "rules": { "max-lines": ["error", { "max": 610 }] } },
     { "files": ["packages/cli/src/index.ts"], "rules": { "max-lines": ["error", { "max": 656 }] } },
     { "files": ["packages/core/src/builtins/default-style.ts"], "rules": { "max-lines": ["error", { "max": 711 }] } },
-    { "files": ["packages/core/src/builtins/reference-data.ts"], "rules": { "max-lines": ["error", { "max": 1282 }] } },
+    { "files": ["packages/core/src/builtins/reference-data.ts"], "rules": { "max-lines": ["error", { "max": 1158 }] } },
     { "files": ["packages/core/src/compile/compile-diff.ts"], "rules": { "max-lines": ["error", { "max": 913 }] } },
     { "files": ["packages/core/src/compile/compile.ts"], "rules": { "max-lines": ["error", { "max": 1087 }] } },
     { "files": ["packages/core/src/formatter/formatter.ts"], "rules": { "max-lines": ["error", { "max": 1045 }] } },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { collectAnchors, extractTitle } from "./markdown.ts";
-import { rewriteBody, rewriteLinkTarget } from "./rewrite.ts";
+import { extractLinkTargets, rewriteBody, rewriteLinkTarget, withoutCodeSpans } from "./rewrite.ts";
 import { contentPathOf, routeOf, routeRelative, slugOf } from "./site-map.ts";
 
 const PUBLISHED = new Set([
@@ -155,5 +155,20 @@ describe("markdown helpers", () => {
     expect(anchors.has("the-inverse-conway-maneuver--designing-teams")).toBe(true);
     expect(anchors.has("goals-and-non-goals")).toBe(true);
     expect(anchors.has("not-a-heading")).toBe(false);
+  });
+});
+
+describe("extractLinkTargets", () => {
+  it("skips link syntax quoted in a code span", () => {
+    // The guide README quotes `![](diagrams/…)` next to a stray ```krs: the
+    // unpaired triple run is literal, the single-backtick spans still close.
+    const line =
+      "fenced ```krs block, a `<!-- render -->` marker, and `![](diagrams/…)`. See [x](spec/style.md).";
+    expect(extractLinkTargets(line)).toEqual(["spec/style.md"]);
+  });
+
+  it("closes a span only on a run of the same length", () => {
+    expect(withoutCodeSpans("a ``x ` [l](t)`` b")).toBe("a  b");
+    expect(withoutCodeSpans("a `x`` [l](t)")).toBe("a `x`` [l](t)");
   });
 });

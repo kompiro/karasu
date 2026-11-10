@@ -154,23 +154,28 @@ CI ステップの成否判定に使えます。すぐ使える GitHub Actions �
 を整える・既存システムを `.krs` に取り込む・変更を確認するためのコマンドも
 あります。各コマンドの全オプションと例は `karasu <command> --help` で確認でき
 ます。
+2 つのオプションは、受け付けるどのコマンドでも同じ意味です: `-o, --output
+<path>` は stdout の代わりにファイルへ書き出し、`--format <format>` はそのコマンドの
+行に書いた形式から 1 つを選びます。
 
 | コマンド | 機能 |
 | --- | --- |
 | `serve [dir]` | ディレクトリの `.krs` をライブプレビュー付きで配信 |
 | `render <file>` | `.krs` を SVG または draw.io にレンダリング |
 | `check <file>` | 何も書き出さずに `.krs` プロジェクトを検証し、error が 1 つでもあれば終了コード `1`。`render` と同じコンパイルを通すので、通ったファイルは描画できる。`fmt` より先に実行する（`fmt` はパースできないファイルを位置を示さずに拒否する）。診断の各行は severity の語の直後に ID（`Warning[KRS041]: ...`）を持ち、[診断カタログ](../spec/diagnostics.ja.md)で引ける。`--format json` はスクリプトやエージェント向けに、同じ診断を 1 つの JSON で出す |
-| `matrix <file>` | ユースケース × リソースの CRUD マトリクスを出力（`md` / `csv` / `svg`） |
+| `matrix <file>` | ユースケース × リソースの CRUD マトリクスを出力（`md` / `csv` / `svg`）。`--service` で行を、`--infra`・`--external`・`--no-external` で列を絞り、`--writes-only`・`--omit-empty`・`--no-totals` で表を削る |
 | `team-dependencies <file>` | `owns` × 論理エッジからチーム間の依存と、囲みを跨ぐ所有を導出して出力（`md` / `csv`） |
+| `coverage <file>` | ドメインごとの密度を出し、モデルが薄いドメインを見つける（`md` / `json`。`--threshold` で薄さの閾値 0..1 を変える） |
+| `subtree <node-id> <file>` | 1 つのノードの部分木を単独の `.krs` として取り出す（`--with-ancestors` で祖先の連鎖をすべて残す） |
 | `fmt [files...]` | `.krs` を in-place でフォーマット（CI 用 `--check`、パイプ用 `--stdin`） |
-| `tidy-style [files...]` | `.krs.style` を整える: 重複ルールをまとめ、プロパティを軸ごとにグループ化 |
-| `lint-style [files...]` | `.krs.style` のプロパティ値をスキーマに照らして lint |
-| `translate <file>` | インフラ設定や API 仕様を `.krs` スキャフォールドに変換（`--from compose` \| `k8s` \| `openapi` \| `db` \| `wrangler`） |
+| `tidy-style [files...]` | `.krs.style` を整える: 重複ルールをまとめ、プロパティを軸ごとにグループ化（CI 用 `--check`、パイプ用 `--stdin`。`--no-merge` は並べ替えだけ） |
+| `lint-style [files...]` | `.krs.style` のプロパティ値をスキーマに照らして lint（パイプ用 `--stdin`） |
+| `translate <file>` | インフラ設定や API 仕様を `.krs` スキャフォールドに変換（`--from compose` \| `k8s` \| `openapi` \| `db` \| `wrangler`）。`--map` で `karasu.map.yaml` を指し（compose・k8s）、`--system` は出力したブロックを `system <name> {}` で包み（openapi・db）、`wrangler` が出す system の名前を上書きし、compose と k8s では警告を出して無視する。`--service`（openapi）・`--database`（db）で仕様から作る service / database に名前を付け、`--granularity` で粒度（openapi は resource / operation、db は aggregate / table）を選ぶ。`--emit-bindings` で usecase → resource の対応を足し、`--emit-crud-decoration` は各 operation に CRUD の動詞も付ける（どちらも openapi の `--granularity resource` と db の `aggregate` でだけ効き、ほかの変換元と粒度では警告を出して無視する） |
 | `apply <file>` | stdin の `.krs` を適用 — 同 id のノードは置換、無ければ追記 |
 | `append <file>` | stdin の `.krs` を新しいトップレベルブロックとして末尾に追記 |
 | `insert <parent-id> <file>` | stdin の `.krs` を指定ノードの最後の子として挿入 |
 | `remove <node-id> <file>` | 指定 id のノードを `.krs` から in-place で削除 |
-| `diff <before> <after>` | 2 つの `.krs` リビジョン間の差分 SVG を描画（どちらの側も `-` で stdin 可） |
+| `diff <before> <after>` | 2 つの `.krs` リビジョン間の差分 SVG を描画（どちらの側も `-` で stdin 可。`--view` で 1 つのビューを選ぶ） |
 | `capabilities` | この CLI が受け付けるコマンド・フラグと、廃止した名前を一覧（skill やスクリプトからは `--json`。[下記](#karasu-capabilities-この-cli-が受け付けるもの)） |
 | `skill install [name]` | karasu の agent skill（省略時はすべて）を `.claude/skills/` か `--dir <path>` にコピー。Claude Code の plugin を入れられないエージェント向け（[下記](#karasu-skill-agent-skill-を入れる)） |
 | `skill path [name]` | インストール済み CLI が skill を置いている場所を表示 |

@@ -8,14 +8,15 @@
 // failures. Per-builder tests already cover each in isolation; this file
 // is the structural fence against the next drift.
 //
-// **When you add a new public `build*Svg(krsSource, styleSource?,
-// displayMode?, ...)` builder to `packages/core/src/index.ts`, register
-// it in `SVG_BUILDER_FAMILY` below.** The header comment is the only
-// enforcement — adding a builder without updating the table is a code-
-// review catch, not a compile error, because the family is identified by
-// a public API surface rather than a closed type.
+// The family is every export of `packages/core/src/index.ts` whose type fits
+// `FamilyMember["invoke"]`, computed from the module's type (`FamilyName`).
+// `SVG_BUILDER_FAMILY` satisfies `Record<FamilyName, …>`, so a new public
+// builder with the family signature fails typecheck until it is registered
+// here. A builder with another signature (the async `*Project` builders,
+// which resolve imports) is outside the family by construction.
 
 import { describe, it, expect } from "vitest";
+import * as core from "./index.js";
 import {
   buildAllLayersSvg,
   buildAllLayersSvgOrg,
@@ -31,13 +32,22 @@ interface FamilyMember {
   invoke: (krs: string, styleSource?: string, displayMode?: DisplayMode) => SvgResult;
 }
 
-const SVG_BUILDER_FAMILY: readonly FamilyMember[] = [
-  { name: "buildDrillDownSvg", invoke: buildDrillDownSvg },
-  { name: "buildDrillDownSvgOrg", invoke: buildDrillDownSvgOrg },
-  { name: "buildAllLayersSvg", invoke: buildAllLayersSvg },
-  { name: "buildAllLayersSvgOrg", invoke: buildAllLayersSvgOrg },
-  { name: "buildAllViewsSvg", invoke: buildAllViewsSvg },
-];
+/** Every public export whose type fits the family signature. */
+type FamilyName = {
+  [K in keyof typeof core]: (typeof core)[K] extends FamilyMember["invoke"] ? K : never;
+}[keyof typeof core];
+
+const FAMILY = {
+  buildDrillDownSvg,
+  buildDrillDownSvgOrg,
+  buildAllLayersSvg,
+  buildAllLayersSvgOrg,
+  buildAllViewsSvg,
+} satisfies Record<FamilyName, FamilyMember["invoke"]>;
+
+const SVG_BUILDER_FAMILY: readonly FamilyMember[] = Object.entries(FAMILY).map(
+  ([name, invoke]) => ({ name, invoke }),
+);
 
 // Fixture exercising all view types so org-only builders have content
 // (teams / members) and system-only builders have services. The shared

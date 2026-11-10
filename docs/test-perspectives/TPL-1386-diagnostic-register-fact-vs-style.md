@@ -62,7 +62,7 @@ karasu の core 診断は **karasu のモデルに関する事実**（id 未宣�
 - [ ] 文言が事実先行（"X is declared in N files"）になっているか、あるいは
       規定的（"You should check..."）になっていないか [judgment]
 - [ ] `docs/concepts.md` の「What karasu visualizes vs. what it doesn't prescribe」
-      表に新規エントリを追加したか（`info` で導入する場合）
+      表に新規エントリを追加したか（`info` で導入する場合） [guard: `packages/core/src/types/info-register-concepts.test.ts`]
 
 ## 既知の対処パターン
 
@@ -74,6 +74,11 @@ karasu の core 診断は **karasu のモデルに関する事実**（id 未宣�
   対応する（ADR-20260513-XX か後続 ADR で確定予定）
 
 ## 関連テスト
+
+- `packages/core/src/types/info-register-concepts.test.ts` — info の診断（`INFO_WARNING_KINDS` と、catalog で
+  Severity が `info` の行）がすべて `docs/concepts.md` / `.ja.md` の「visualizes vs. prescribes」表に載るか、
+  流派の smell ではない理由付きで免除表にあることを確かめる（チェックリスト 5 項目目）。warning kind は catalog の
+  severity と `warningSeverity()` の一致も見る。diagnostic code の severity は発行箇所で決まるので catalog の記載に頼る
 
 - `packages/core/src/resolver/warnings.test.ts` — `domain-dispersal` が info で
   発火し、error 診断で描画をブロックしないことを確認するケース
