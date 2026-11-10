@@ -1195,7 +1195,6 @@ export interface DiagnosticParamsByCode {
   // (kind, depth). The import still broadcasts (bare-id parity); the
   // warning narrates, listing candidate full paths.
   "import-target-ambiguous": { path: string; candidates: Array<{ kind: string; path: string }> };
-  "circular-style-import": { filePath: string };
   "style-file-not-found": { filePath: string };
 
   // ── Renderer: what a view resolved ──────────────────────────────────────

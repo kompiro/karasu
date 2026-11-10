@@ -299,7 +299,6 @@ annotation 語彙（`.krs language v2.0` はツール語彙のみを受理する
 | Code | ID | Severity | 発火条件 |
 | --- | --- | --- | --- |
 | `circular-import` | KRS078 | warning | node `import` が循環を形成する。 |
-| `circular-style-import` | KRS079 | warning | スタイル import が循環を形成する。 |
 | `file-not-found` | KRS080 | error | import されたファイルが存在しない。 |
 | `directory-not-found` | KRS081 | error | import されたディレクトリが存在しない。 |
 | `style-file-not-found` | KRS082 | warning | import されたスタイルファイルが存在しない。 |
@@ -381,8 +380,11 @@ throw された compile / parse エラーを app が包むときに使う合成�
 
 ### 廃止した ID
 
-廃止した ID はまだ無い。コードを廃止したときは、その行をここへ移し、先頭の列に
-ID、続けて旧コードを書く（``| KRS000 | `old-code` |``）。古い出力の ID からも引け、
-番号は別のコードに振り直さない。
+コードを廃止したときは、その行をここへ移し、先頭の列に ID、続けて旧コードを書く
+（``| KRS000 | `old-code` |``）。古い出力の ID からも引け、番号は別のコードに振り直さない。
+
+| ID | Code | 廃止の理由 |
+| --- | --- | --- |
+| KRS079 | `circular-style-import` | スタイルシートは `@import` を書けないので、スタイル import は循環しない。同じシートに 2 度届いたとき（1 つのファイルが 2 回 import しても、2 つのファイルが import しても）に誤って出ていた（[#3513](https://github.com/kompiro/karasu/issues/3513)）。 |
 
 > Related TPLs: [TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md)（カタログ ↔ コードの完全性）, [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)（事実 vs 流派の register）, [TPL-2171](../test-perspectives/TPL-2171-spec-promised-diagnostics-implemented.md)（spec が約束する診断は実装されている）, [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)（spec ↔ source-of-truth 同期）.

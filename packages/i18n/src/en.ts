@@ -627,8 +627,6 @@ export const en: Translations = {
     lastResolvedId
       ? `Import path "${path}" failed at segment "${failedSegment}" (#${failedAt}): no ancestor with that id above "${lastResolvedId}"`
       : `Import path "${path}" failed at segment "${failedSegment}" (#${failedAt}): no node with that id in ${importPath}`,
-  "diagnostic.circularStyleImport.message": ({ filePath }) =>
-    `Circular style import detected: ${filePath}`,
   "diagnostic.styleFileNotFound.message": ({ filePath }) => `Style file not found: ${filePath}`,
   "diagnostic.appProjectCompileError.message": "An error occurred while compiling the project",
   "diagnostic.appOrgParseError.message": "An error occurred during parsing",

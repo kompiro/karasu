@@ -625,8 +625,6 @@ export const ja: Partial<Translations> = {
     lastResolvedId
       ? `import path "${path}" のセグメント "${failedSegment}" (#${failedAt}) を解決できません: "${lastResolvedId}" の上にその id の祖先は存在しません`
       : `import path "${path}" のセグメント "${failedSegment}" (#${failedAt}) を解決できません: ${importPath} に該当 id を持つノードはありません`,
-  "diagnostic.circularStyleImport.message": ({ filePath }) =>
-    `循環スタイルインポートを検出しました: ${filePath}`,
   "diagnostic.styleFileNotFound.message": ({ filePath }) =>
     `スタイルファイルが見つかりません: ${filePath}`,
   "diagnostic.appProjectCompileError.message": "プロジェクトのコンパイル中にエラーが発生しました",

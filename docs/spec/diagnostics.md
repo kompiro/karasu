@@ -319,7 +319,6 @@ Resolving `import` declarations and style imports against the filesystem.
 | Code                    | ID     | Severity | Fires when                             |
 | ----------------------- | ------ | -------- | -------------------------------------- |
 | `circular-import`       | KRS078 | warning  | A node `import` forms a cycle.         |
-| `circular-style-import` | KRS079 | warning  | A style import forms a cycle.          |
 | `file-not-found`        | KRS080 | error    | An imported file does not exist.       |
 | `directory-not-found`   | KRS081 | error    | An imported directory does not exist.  |
 | `style-file-not-found`  | KRS082 | warning  | An imported style file does not exist. |
@@ -402,8 +401,12 @@ retired ID is listed below.
 
 ### Retired IDs
 
-No ID has been retired yet. When a code is retired, its row moves here with the
-ID in the first column and the old code after it (``| KRS000 | `old-code` |``),
-so an old output still finds the ID, and the number is never reused.
+When a code is retired, its row moves here with the ID in the first column and
+the old code after it (``| KRS000 | `old-code` |``), so an old output still finds
+the ID, and the number is never reused.
+
+| ID     | Code                    | Why it was retired                                                                                                                         |
+| ------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| KRS079 | `circular-style-import` | A sheet cannot `@import`, so a style import never forms a cycle; it fired only on a sheet reached twice, whether one file or two imported it ([#3513](https://github.com/kompiro/karasu/issues/3513)). |
 
 > Related TPLs: [TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md) (catalog ↔ code completeness), [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) (fact vs style register), [TPL-2171](../test-perspectives/TPL-2171-spec-promised-diagnostics-implemented.md) (spec-promised diagnostics are implemented), [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) (spec ↔ source-of-truth sync).

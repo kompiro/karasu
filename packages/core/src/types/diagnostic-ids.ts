@@ -109,7 +109,6 @@ export const DIAGNOSTIC_IDS: Readonly<Record<DiagnosticCode | WarningKind, Diagn
   "style-annotation-selector-not-builtin": "KRS076",
   "team-property-removed": "KRS077",
   "circular-import": "KRS078",
-  "circular-style-import": "KRS079",
   "file-not-found": "KRS080",
   "directory-not-found": "KRS081",
   "style-file-not-found": "KRS082",
@@ -154,7 +153,9 @@ export const DIAGNOSTIC_IDS: Readonly<Record<DiagnosticCode | WarningKind, Diagn
  * Keep one `{ id: "KRS000", code: "old-code" },` entry per line (read as text
  * by the history check).
  */
-export const RETIRED_DIAGNOSTIC_IDS: readonly { id: DiagnosticId; code: string }[] = [];
+export const RETIRED_DIAGNOSTIC_IDS: readonly { id: DiagnosticId; code: string }[] = [
+  { id: "KRS079", code: "circular-style-import" },
+];
 
 /** The ID of a `Diagnostic` code or a `Warning` kind. */
 export function diagnosticIdOf(code: DiagnosticCode | WarningKind): DiagnosticId {
