@@ -123,6 +123,10 @@ TTL も正しく効いているように見える — 壊れているのは「�
 - `packages/nest/src/store/sessions.test.ts` — `does not bring back a session that was revoked
   mid-flight` / `keeps a revoked session inert if a stale refresh writes it back` /
   `does not bring back a session the account purge swept`（復活の防止）
+- `packages/nest/src/store/sessions.test.ts`: `SessionStore.refreshIfStale` の「never rejects, whichever KV call fails」。延長は
+  失敗しても reject しない（`try` を呼び出し側ではなく延長そのものが持つ）ので、`refreshIfStale` のどの呼び出し側にも延長の失敗は
+  届かない。ただし守るのは既存の `refreshIfStale` だけで、これを通らずに期限を延ばす新しい経路を足しても赤くならないので、2 つ目の
+  項目は印なし
 - `packages/nest/src/store/gallery-store.test.ts` — 延長の失敗が認証結果を変えないこと、
   判定できない時刻で上限が消えないこと、延長が呼び出しより後に残らないこと
 - `packages/nest/src/auth/session.test.ts` — cookie の `Max-Age` が上限であること
