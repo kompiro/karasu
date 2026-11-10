@@ -407,7 +407,7 @@ the ID, and the number is never reused.
 
 | ID     | Code                    | Why it was retired                                                                                                                         |
 | ------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| KRS079 | `circular-style-import` | A sheet cannot `@import`, so a style import never forms a cycle; it fired only on a sheet two files import ([#3513](https://github.com/kompiro/karasu/issues/3513)). |
+| KRS079 | `circular-style-import` | A sheet cannot `@import`, so a style import never forms a cycle; it fired only on a sheet reached twice, whether one file or two imported it ([#3513](https://github.com/kompiro/karasu/issues/3513)). |
 
 > Related TPLs: [TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md) (catalog ↔ code completeness), [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) (fact vs style register), [TPL-2171](../test-perspectives/TPL-2171-spec-promised-diagnostics-implemented.md) (spec-promised diagnostics are implemented), [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) (spec ↔ source-of-truth sync).
 > </content>
