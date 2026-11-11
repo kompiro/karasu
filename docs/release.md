@@ -127,7 +127,7 @@ reject した版のタグは現れないので、トレインの Issue は閉じ
 照合に落ちた版はすでにインストールできる。`pnpm release:approve` が承認の直後にインストールに効く項目の違いで止まったときも、ここに従う。`release-confirm.yml` はタグも Release も作らず、落ちた版とファイルの一覧をトレインの Issue にコメントする。tarball は npm が展開に使う node-tar と、別に書いた厳格な読み取りの両方で読み、両方が同じファイルを読んだときだけ比べる。どちらかが読めない tarball も、照合に落ちたものとして扱う。差分を調べて次の手を決める。
 
 - **環境で変わるファイルだった**（誤検出）: 照合の規則（`scripts/release/tarball.mts`）を直す PR をマージし、`release-confirm.yml` を起動し直す。`pnpm release:approve` が承認の途中で止まっていて計画に次のグループが残るなら、先にリリースコミットの `release.yml` の run を再実行して stage させてから、`pnpm release:approve` を実行し直す（止まったときは次のグループがまだ stage されていない）。分かっている差は `THIRD_PARTY_NOTICES.md` のプラットフォーム固有のパッケージの節で、照合はこれを除いて比べる。
-- **tarball が正しくなかった**: 侵害として扱う。3 パッケージの Trusted Publisher の接続を削除して CI からの stage を止め、その版を取り下げる（npm の unpublish の条件を満たせば unpublish、満たさなければ deprecate）。取り下げた版番号は飛ばす。取り下げた版のパッケージ（unpublish でも deprecate でも、正しい版で置き換えるため。unpublish した版番号は npm が二度と受け付けない）と、計画に残っていた版（後のグループでまだ stage されていない版）のパッケージごとに patch の changeset を足す PR をマージしてから、Issue に経緯を書いて手で閉じる。原因を取り除いてから、その changeset で次の版を出す。
+- **tarball が正しくなかった**: 侵害として扱う。3 パッケージの Trusted Publisher の接続を削除して CI からの stage を止め、その版を取り下げる（npm の unpublish の条件を満たせば unpublish、満たさなければ deprecate）。deprecate は警告を出すだけで、版はインストールできるまま残る。その版を指す dist-tag（ふつうは `latest`）があれば、`npm dist-tag add <name>@<照合を通った前の版> latest` で戻し（2FA。Trusted Publisher の dist-tag の許可は要らない）、npm のサポートに削除を依頼する。完全一致で指している利用者は、削除されるまでその版を入れられる。取り下げた版番号は飛ばす。取り下げた版のパッケージ（unpublish でも deprecate でも、正しい版で置き換えるため。unpublish した版番号は npm が二度と受け付けない）と、計画に残っていた版（後のグループでまだ stage されていない版）のパッケージごとに patch の changeset を足す PR をマージしてから、Issue に経緯を書いて手で閉じる。原因を取り除いてから、その changeset で次の版を出す。
 
 #### CI の経路が使えないとき
 
