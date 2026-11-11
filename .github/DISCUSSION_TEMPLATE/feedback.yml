@@ -3,10 +3,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for trying karasu. Answer only the questions you want to; short answers are fine. 日本語でも構いません。
+        Thank you for trying karasu. Only the last question is required; answer the others if you want to. Short answers are fine. 日本語でも構いません。
 
         > [!WARNING]
-        > **Do not paste a share link to a private model.** A karasu share link carries the whole model, so anyone who reads this
+        > **Do not paste a share link to a model that is not meant to be public.** A karasu share link carries the whole model, so anyone who reads this
         > discussion could open it. Describe what you saw in words, or attach a screenshot with anything confidential cropped out.
   - type: checkboxes
     id: no-private-links

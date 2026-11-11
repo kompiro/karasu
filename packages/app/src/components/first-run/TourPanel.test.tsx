@@ -78,28 +78,42 @@ describe("TourPanel", () => {
     expect(onNext).not.toHaveBeenCalled();
   });
 
+  function renderTourStep(id: TourId, index: number) {
+    const tour = TOURS[id];
+    return render(
+      <LocaleProvider initialLocale="en">
+        <TourPanel
+          heading={id}
+          step={tour.steps[index]}
+          index={index}
+          total={tour.steps.length}
+          onBack={() => {}}
+          onNext={() => {}}
+          onClose={() => {}}
+        />
+      </LocaleProvider>,
+    );
+  }
+
+  function feedbackLinks() {
+    return screen
+      .queryAllByRole("link")
+      .filter((link) => link.getAttribute("href") === FEEDBACK_DISCUSSION_URL);
+  }
+
   it("asks for feedback on the last step only (#3689)", () => {
-    renderStep(steps.length - 2);
-    expect(screen.queryByRole("link", { name: /Tell us what you thought/ })).toBeNull();
+    for (const id of Object.keys(TOURS) as TourId[]) {
+      for (let index = 0; index < TOURS[id].steps.length - 1; index++) {
+        const { unmount } = renderTourStep(id, index);
+        expect(feedbackLinks(), `${id} step ${index + 1}`).toEqual([]);
+        unmount();
+      }
+    }
   });
 
-  it("ends every guide with a link to the Feedback discussions, in a new tab (#3689)", () => {
+  it("ends on a link to the Feedback discussions on the last step of each guide, in a new tab (#3689)", () => {
     for (const id of Object.keys(TOURS) as TourId[]) {
-      const tour = TOURS[id];
-      const last = tour.steps.length - 1;
-      const { unmount } = render(
-        <LocaleProvider initialLocale="en">
-          <TourPanel
-            heading={id}
-            step={tour.steps[last]}
-            index={last}
-            total={tour.steps.length}
-            onBack={() => {}}
-            onNext={() => {}}
-            onClose={() => {}}
-          />
-        </LocaleProvider>,
-      );
+      const { unmount } = renderTourStep(id, TOURS[id].steps.length - 1);
       const link = screen.getByRole("link", { name: "Tell us what you thought ↗" });
       expect(link.getAttribute("href")).toBe(FEEDBACK_DISCUSSION_URL);
       expect(link.getAttribute("target")).toBe("_blank");

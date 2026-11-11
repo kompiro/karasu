@@ -252,7 +252,7 @@
 
 - [x] AT-AR: どのガイドも最後のステップに、GitHub Discussions の Feedback カテゴリで新しい投稿を始めるリンクが出て、新しいタブで開く。最後より前のステップには出ない。リンクの category はフォーム（`.github/DISCUSSION_TEMPLATE/`）のファイル名と一致する（[#3689](https://github.com/kompiro/karasu/issues/3689)）
 
-  > ✅ Automated — `packages/app/src/components/first-run/TourPanel.test.tsx` › `ends every guide with a link to the Feedback discussions, in a new tab (#3689)`
+  > ✅ Automated — `packages/app/src/components/first-run/TourPanel.test.tsx` › `ends on a link to the Feedback discussions on the last step of each guide, in a new tab (#3689)`
   > ✅ Automated — `packages/app/src/components/first-run/TourPanel.test.tsx` › `asks for feedback on the last step only (#3689)`
   > ✅ Automated — `packages/app/src/utils/feedback-discussions.test.ts` › `preselects the category whose form is in .github/DISCUSSION_TEMPLATE`
 
