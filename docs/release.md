@@ -117,7 +117,7 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 reject した版のタグは現れないので、トレインの Issue は閉じない。理由で次の手が分かれる。
 
 - **stage された tarball が正しくなかった**（照合に落ちた）: reject して版を空け、正しい tarball を stage し直す。`release` ジョブは成功で終わっているので、`release.yml` のその run を **Re-run all jobs** で再実行する。照合に落ちたということは CI か依存が乗っ取られている疑いがあるので、再実行の前に原因を調べ、再実行のあとも照合をやり直す。原因を取り除けないあいだは、下の「CI の経路が使えないとき」に従って手元から stage する。
-- **リリースそのものを出さないと決めた**（stage した版に不具合があった）: 残りの stage 済みの版も reject する。リリースコミットで版を上げたパッケージのうち、版が npm に載っていないものごとに patch の changeset を足す PR をマージしてから、トレインの Issue に理由を書いて手で閉じる。reject した版だけでなく、後のグループでまだ stage されていない版（たとえば `karasu-skills` を承認して止めたときの `karasu`）も含める。`pnpm release:approve --dry-run` を実行すれば、計画に残る版（後のグループは `Later:` の行）が分かる。次のリリースでそのパッケージの版が上がり、使わなかった版番号は飛ぶ。
+- **リリースそのものを出さないと決めた**（stage した版に不具合があった）: 残りの stage 済みの版も reject する。リリースコミットで版を上げた npm パッケージ（`RELEASED_PACKAGES`。VS Code 拡張は含めない）のうち、版が npm に載っていないものごとに patch の changeset を足す PR をマージしてから、トレインの Issue に理由を書いて手で閉じる。reject した版だけでなく、後のグループでまだ stage されていない版（たとえば `karasu-skills` を承認して止めたときの `karasu`）も含める。`pnpm release:approve --dry-run` を実行すれば、計画に残る版（後のグループは `Later:` の行）が分かる。次のリリースでそのパッケージの版が上がり、使わなかった版番号は飛ぶ。
   - 承認済みの版があれば npm に残る（unpublish はしない）。Issue を閉じる前に `release-confirm.yml` を手で起動し、タグと Release を作る。
   - `karasu-skills` を承認したあとで `karasu` を reject したか、stage する前に取りやめたら、skill は刻まれた版の CLI が出るまで止まる。changeset の PR をマージしてトレインの Issue を閉じたら、月次のトレインを待たずに `release-prepare.yml` を手動で実行して、次の `karasu` を出す。直しに時間がかかるなら、取りやめた変更を戻した状態で出してよいが、承認した skill が使う CLI の変更（新しいコマンドやフラグ）は戻さない。
   - changeset を足し忘れると、次のリリースで `stage.mts` が「版を上げていないパッケージ」で止まる。そのリリースでは何も stage されていないので、計画に載っているパッケージごとに patch の changeset を足す PR をマージし、そのトレインの Issue を手で閉じて、`release-prepare.yml` を手動で実行する。
