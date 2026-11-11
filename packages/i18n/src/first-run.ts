@@ -29,6 +29,7 @@ export type FirstRunTranslations = {
   "firstRun.tour.finish": string;
   "firstRun.tour.notice": string;
   "firstRun.tour.stepDone": string;
+  "firstRun.tour.feedback": string;
   "firstRun.tour.switchToPayroll": string;
   "firstRun.tour.switchToShop": string;
   "firstRun.step.current.title": string;
@@ -108,6 +109,7 @@ export const firstRunEn: FirstRunTranslations = {
   "firstRun.tour.finish": "✓ Continue to editor",
   "firstRun.tour.notice": "Notice",
   "firstRun.tour.stepDone": "✓ Done. Look around as long as you like, then move on.",
+  "firstRun.tour.feedback": "Tell us what you thought ↗",
   "firstRun.tour.switchToPayroll": "⇄ Try it with a payroll system instead",
   "firstRun.tour.switchToShop": "⇄ Try it with an online shop instead",
   "firstRun.step.current.title": "Explore the current architecture",
@@ -213,6 +215,7 @@ export const firstRunJa: Partial<FirstRunTranslations> = {
   "firstRun.tour.finish": "✓ エディタに進む",
   "firstRun.tour.notice": "気づき",
   "firstRun.tour.stepDone": "✓ できました。好きなだけ見てから、先へ進んでください。",
+  "firstRun.tour.feedback": "感想を聞かせてください ↗",
   "firstRun.tour.switchToPayroll": "⇄ 給与システムの題材で試す",
   "firstRun.tour.switchToShop": "⇄ EC サイトの題材で試す",
   "firstRun.step.current.title": "現在のアーキテクチャを見る",

@@ -4,7 +4,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LocaleProvider } from "../../i18n/index.js";
 import { TourPanel } from "./TourPanel.js";
-import { TOURS } from "./tour-steps.js";
+import { TOURS, type TourId } from "./tour-steps.js";
+import { FEEDBACK_DISCUSSION_URL } from "../../utils/feedback-discussions.js";
 
 const { steps } = TOURS["service-split"];
 
@@ -75,5 +76,35 @@ describe("TourPanel", () => {
     await user.click(screen.getByRole("button", { name: "✓ Continue to editor" }));
     expect(onClose).toHaveBeenCalledOnce();
     expect(onNext).not.toHaveBeenCalled();
+  });
+
+  it("asks for feedback on the last step only (#3689)", () => {
+    renderStep(steps.length - 2);
+    expect(screen.queryByRole("link", { name: /Tell us what you thought/ })).toBeNull();
+  });
+
+  it("ends every guide with a link to the Feedback discussions, in a new tab (#3689)", () => {
+    for (const id of Object.keys(TOURS) as TourId[]) {
+      const tour = TOURS[id];
+      const last = tour.steps.length - 1;
+      const { unmount } = render(
+        <LocaleProvider initialLocale="en">
+          <TourPanel
+            heading={id}
+            step={tour.steps[last]}
+            index={last}
+            total={tour.steps.length}
+            onBack={() => {}}
+            onNext={() => {}}
+            onClose={() => {}}
+          />
+        </LocaleProvider>,
+      );
+      const link = screen.getByRole("link", { name: "Tell us what you thought ↗" });
+      expect(link.getAttribute("href")).toBe(FEEDBACK_DISCUSSION_URL);
+      expect(link.getAttribute("target")).toBe("_blank");
+      expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+      unmount();
+    }
   });
 });
