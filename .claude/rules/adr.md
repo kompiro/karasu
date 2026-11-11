@@ -202,36 +202,31 @@ gh pr create --label "risk: low" --title "docs(adr): ..." --body-file <本文>
 gh pr merge <N> --auto --squash --delete-branch
 ```
 
-#### #3694 が open のあいだは、judge の判定を見てから `--auto` を打つ（一時）
+#### #3698 が open のあいだは、`--auto` を打たずに Low PR merger を待つ（一時）
 
-**到達状態**: Low の PR に `--auto` を打つ前に `Low PR merger` の run がその PR を判定していて、
-判定と期待が #3694 にコメントしてある。
+**到達状態**: Low の PR が `Low PR merger` の merge job（GitHub App の名義）でマージされ、その結果が #3698 に
+コメントしてある。30 分待ってもマージされなかった PR は、理由を #3698 に書いたうえで `--auto` に戻してある。
 
 この節は、上の手順の最後の `gh pr merge --auto`、下の「`--auto` を使うので CI 完走前にコマンド発行して構わない」、
-`docs/process.md` 手順 15 に優先する。`gh issue view 3694 --json state --jq .state` が `OPEN` のあいだだけ効き、
-スライス C（#3681）で消す。`--auto` を先に打つと、native の auto-merge が最後の check の数秒後にマージし、
-judge（#3673 のスライス A）が読む前に PR が閉じてしまう。judge はマージもコメントもせず、判定を run のログと
-job summary に出すだけである。
+`docs/process.md` 手順 15 に優先する。`gh issue view 3698 --json state --jq .state` が `OPEN` のあいだだけ効き、
+スライス C（#3681）で消す。`--auto` を打つと、native の auto-merge が最後の check の数秒後にマージし、
+merger（#3673 のスライス B）が App でマージできるかを #3698 で確かめられない。
 
 ```
-gh pr view <N> --json labels --jq '[.labels[].name]'      # risk: low が見えたら、その時刻を T とする
-gh run list --workflow low-pr-merger.yml --limit 3 --json databaseId,status,createdAt   # createdAt が T より後の run
-gh run watch <run-id> --exit-status
-gh run view <run-id> --log | sed -n '/"pr": <N>,/,/Z   },\{0,1\}$/p'   # その PR の判定を最後まで読む
+gh pr view <N> --json state,mergedBy,mergeCommit --jq '"\(.state) \(.mergedBy.login // "") \(.mergeCommit.oid // "")"'
+gh run list --workflow low-pr-merger.yml --limit 5 --json databaseId,createdAt,conclusion
+gh run view <run-id>                                       # merge・notify・report の各 job と summary
+gh run list --commit <merge-sha> --json name,event,status  # main の push で走った workflow
 ```
 
-1. `createdAt` が T より後の `Low PR merger` の run を待ち、その PR の判定を読む。judge は check の完了ごとと
-   10 分ごとの cron で走る。`gh pr create --label` はラベルを作成の後に付けるので、T より前の run は PR を対象から
-   外している。T より後の run に 2 回続けて PR が現れなければ、3 でそう書いて 4 へ進む
-2. `outcome` が `wait` で `stalled` が `true` でなければ、次の run で 1 を繰り返す
-3. #3694 にコメントする。PR 番号、run の URL、判定（`outcome`・`reasons`・`stalled`）、期待した判定、一致したか。
-   期待は judge の条件（`scripts/review/low-pr-merger-flow.ts`）で決める。ラベルが `risk: low` だけで、Review tier
-   を含む required check の最新の run がすべて `success`、コンフリクトが無ければ `merge`。tier のラベルが他にもある、
-   check が失敗した、コンフリクトしているなら `reject`。check が走っている、最新の run が `skipped` か `cancelled`、
-   `mergeable` が未計算なら `wait` で、30 分続けば `stalled`。重なったときは `reject`、結論を出せない
-   `no-conclusion`、`wait`、`merge` の順に強い（check の 1 本が失敗し、別の 1 本が走っていれば `reject`）
-4. 判定が何であっても `gh pr merge <N> --auto --squash --delete-branch` を打つ。マージの経路は
-   まだ native の auto-merge で、食い違いは kompiro が #3694 のコメントで読む
+1. `gh pr merge` は打たない。required check がすべて終わってから 30 分まで、上の 1 行目で PR の状態を読む
+   （1 分ごとの読み直しは Bash の `run_in_background` で回す）。merger は check の完了ごとと 10 分ごとの cron で走る
+2. `MERGED` で `mergedBy` が App（`[bot]` で終わる名前）なら、#3698 にコメントする。PR 番号、マージした run の URL、
+   `mergedBy`、merge commit で `push` の workflow（`deploy.yml`、`pages.yml` など）が走ったか、head のブランチが消えたか
+3. 30 分たっても open なら、最後の run の summary と、notify job が PR に付けたコメントを読む
+   - 判定が `reject` で、理由が PR の側にある（check の失敗、コンフリクト、ラベル）なら、PR を直して 1 に戻る
+   - それ以外（`no-conclusion`、`stalled`、merge job や report job の失敗、判定が `merge` なのに open のまま）なら、
+     #3698 に PR 番号、run の URL、判定、job の結果を書いてから `gh pr merge <N> --auto --squash --delete-branch` を打つ
 
 `gh pr create --label` はラベルを PR を開いた後に付けるが、ラベルの無い PR に `risk: high` を付ける
 「Label untiered PRs High」（`.github/workflows/review-request.yml`）は、開いた PR では 30 秒待ってから
