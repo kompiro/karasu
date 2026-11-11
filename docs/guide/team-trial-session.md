@@ -81,4 +81,4 @@ and edits made by someone who opened it do not flow back to the original model.
 1. Have you opened the model since? Did you change it? How many minutes did the change take?
 2. If you did not use it, why not?
 
-Thoughts and complaints are also welcome on [GitHub Discussions](https://github.com/kompiro/karasu/discussions).
+Thoughts and complaints are also welcome in the [Feedback category of GitHub Discussions](https://github.com/kompiro/karasu/discussions/new?category=feedback). Do not paste a share link to a private model there: it carries the whole model.

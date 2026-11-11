@@ -74,4 +74,4 @@ karasu の説明会ではないので、使い方は教えず、うまくいか�
 1. あれからモデルを開きましたか？ 直しましたか？ 直すのに何分かかりましたか？
 2. 使わなかったなら、その理由は何でしたか？
 
-感想や不満は [GitHub Discussions](https://github.com/kompiro/karasu/discussions) でも受け付けています。
+感想や不満は [GitHub Discussions の Feedback カテゴリ](https://github.com/kompiro/karasu/discussions/new?category=feedback) でも受け付けています。share link にはモデル全体が入っているので、非公開のモデルの link は貼らないでください。
