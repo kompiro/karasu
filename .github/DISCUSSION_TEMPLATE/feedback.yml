@@ -1,0 +1,72 @@
+title: "[Feedback] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for trying karasu. Only the confirmation box and the last question are required; answer the others if you want to. Short answers are fine. 日本語でも構いません。
+
+        > [!WARNING]
+        > **Do not paste a share link to a model that is not meant to be public.** A karasu share link carries the whole model, so anyone who reads this
+        > discussion could open it. Describe what you saw in words, or attach a screenshot with anything confidential cropped out.
+  - type: checkboxes
+    id: no-private-links
+    attributes:
+      label: Before you post
+      options:
+        - label: This post contains no share link to a model that is not meant to be public.
+          required: true
+  - type: dropdown
+    id: how
+    attributes:
+      label: How did you try karasu?
+      options:
+        - On my own, with the guided tour
+        - With my team, in a trial session
+        - On a model of my own system
+        - Other
+    validations:
+      required: false
+  - type: textarea
+    id: stuck
+    attributes:
+      label: Where did you get stuck?
+      description: Where you stopped, and what you expected to happen instead.
+    validations:
+      required: false
+  - type: textarea
+    id: noticed
+    attributes:
+      label: Did karasu make you notice a relationship in the system you had not noticed before?
+    validations:
+      required: false
+  - type: textarea
+    id: share
+    attributes:
+      label: Did you want to share the model with a colleague?
+    validations:
+      required: false
+  - type: textarea
+    id: compared
+    attributes:
+      label: How did it differ from what you usually use, such as Mermaid, Miro or LikeC4?
+    validations:
+      required: false
+  - type: textarea
+    id: worth
+    attributes:
+      label: Is the value worth the effort of modelling your own system?
+    validations:
+      required: false
+  - type: textarea
+    id: design-review
+    attributes:
+      label: Would you want to use it in your next design review?
+    validations:
+      required: false
+  - type: textarea
+    id: team-reason
+    attributes:
+      label: What would make you use it with your team, or what would stop you?
+      description: A concrete situation helps most, for example "before we split the billing service".
+    validations:
+      required: true
