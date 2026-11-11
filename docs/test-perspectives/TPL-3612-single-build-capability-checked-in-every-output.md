@@ -57,7 +57,7 @@ VS Code の webview、karasu-nest のギャラリー viewer（`viewer.html`）�
 ## チェックリスト
 
 - [ ] 機能を載せるビルドと載せないビルドをビルド設定（`vite*.config.ts`）から列挙し、各ビルドの成果物（`dist/`・`dist-serve/`・`dist-vscode-webview/`・`dist-viewer/`）で、載せる面には目印があり、載せない面には無いことを両方向で検査しているか
-- [ ] 目印は minify で消えず、ふつうの CI のビルドでも現れるもの（bundle 時のモジュール id）か。ビルド時にしか渡さない値（送信先の URL）を目印にするなら、その値を渡したビルドで検査しているか
+- [ ] 目印は minify で消えず、ふつうの CI のビルドでも現れ、出力にコードが残っていることを表すもの（出力の chunk の `modules` で `renderedLength` が 0 より大きいモジュール id）か。モジュールのグラフ（`getModuleIds()`）にあるだけでは、tree shaking でコードが消えても「ある」と判定される。ビルド時にしか渡さない値（送信先の URL）を目印にするなら、その値を渡したビルドで検査しているか
 - [ ] 機能の初期化が入口（`main.tsx` など）だけにあり、共有のコードは何もしない既定の継ぎ目だけを使い、依存のグローバルな登録（OpenTelemetry の `register()` など）を使っていないか
 - [ ] 同じ成果物や同じ入口が載せない場所でも動くなら、実行時の判定（origin、ビルド時にだけ渡す設定）で止め、その場所を実際に動かして外へのリクエストが起きないことをネットワークで確かめているか（E2E / AT）
 - [ ] 載せない面の文書が約束を書いているなら、その文書から検査へのリンクがあるか
@@ -65,7 +65,7 @@ VS Code の webview、karasu-nest のギャラリー viewer（`viewer.html`）�
 ## 既知の対処パターン
 
 - 初期化を入口ファイルだけに置き、共有コードには何もしない既定の実装を持つ継ぎ目だけを見せる。入口が実装を継ぎ目に明示的に渡す。OpenTelemetry なら `register()` や `trace.setGlobalTracerProvider` を呼ばない（グローバルを見る別のライブラリまで span を作り出す）
-- bundle 時に `generateBundle` で `this.getModuleIds()` を見て、載せないビルドに機能のモジュールが入っていたら build を落とす。`vite.serve.config.ts` の `rejectMonaco` が同じ形
+- bundle 時に `generateBundle` で検査する。載せないビルドは `this.getModuleIds()` を見て、機能のモジュールを import しているだけで build を落とす（コードが tree shaking で消えても、共有のコードが import していること自体を止める）。`vite.serve.config.ts` の `rejectMonaco` が同じ形。載せるビルドは、グラフにあるだけでは足りないので、出力の chunk の `modules` で機能のモジュールの `renderedLength` が 0 より大きいことを確かめる
 - ビルド後の成果物を文字列（送信先の host など）で走査するテストを置く。`packages/app/src/viewer/build-config.test.ts` は viewer と app の出力先の分離を設定から検査しており、成果物の中身の検査はその隣に置ける
 
 ## 関連テスト

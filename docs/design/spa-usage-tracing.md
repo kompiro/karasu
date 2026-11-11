@@ -223,7 +223,7 @@ E2E で送信を確かめるときだけ、テスト用のビルド設定が受�
 | 数値の属性 | ノード数・エッジ数は 2 の累乗の幅（`1-2`、`3-4`、`5-8`…）に丸める。正確な数は特定の共有モデルの目印になりうる |
 | 例外 | span に例外を記録しない（メッセージとスタックにノード名や `.krs` が入りうる）。失敗は `outcome: error` の列挙値だけで表す |
 | Worker のログ | 構造化ログに IP と User-Agent を書かない。invocation log（リクエストのメタデータの自動記録）は設定で切る |
-| 国 | Worker が `request.cf.country` を読み、Analytics Engine の行にだけ書く。span と Workers Logs には入れず、Phase 2 の転送にも含めない。SPA の申告は使わない。region・city など国より細かい位置は読まない |
+| 国 | Worker が `request.cf.country` を読み、Analytics Engine の行にだけ書く。span と Workers Logs には入れず、Phase 2 の転送にも含めない。SPA の申告は使わない。region・city など国より細かい位置は読まない。日次・週次・月次のアクティブ数で、ブラウザはその期間で最初に使ったときの国に数える。期間の途中で別の国から使っても、その国には数えない。国ごとの数の合計が全体の数と一致し、同じブラウザを 2 つの国で数えないためである。旅行や出張の多い利用者の行き先の国が少なめに出ることは受け入れ、「その期間に使われた国」ではなく「その期間に最初に使われた国」として読む |
 | アクティブの判定 | 端末に最後に数えた UTC の日付だけを持ち（例: `2026-11-07`）、今日と違うときに週と月でも初めてかどうかを真偽値 2 つで送る。日付そのものは送らない。下の「アクティブの判定の手順」に従う |
 | 残るリスク | 数の少ない国の利用者は、Analytics Engine の行（ブラウザごとに 1 日 1 行、3 か月）が 1 人分の利用日の記録に近くなる。また、Workers Logs の 7 日のあいだは、`app.visit` のログと時刻で突き合わせて国と trace を結びつけられなくはない。どちらも見るのは kompiro だけとし、結びつける集計をせず、数の少ない国の数字を公開しない。行に trace id を入れないのは結びつきを難しくするためで、不可能にするものではない |
 
@@ -309,7 +309,7 @@ span の時間はブラウザの時計で測る。完了までの時間は、`ou
 2. スライス B: 送信モジュール（例: `src/telemetry/sender.ts`）を `src/main.tsx` からだけ import し、上の「共有コードとの継ぎ目」のとおり `mountApp` に渡す。上の 3 つの条件を満たさないとき、または `?reference` のときは何もしない。アクティブの判定は送信モジュールの中で完結し、共有のコードは関わらない。たまった span は、一定の件数か一定の時間（例: 10 秒）で送り、`visibilitychange` で `hidden` になったときにも送る。送信には `fetch(..., { keepalive: true })` を使う。ページを離れた後も要求が続くが、keepalive の body は合計 64KB までなので、こまめに送って 1 回の body を小さく保つ。送れなかった span を localStorage に貯めて次の訪問で送ることはしない（識別子と同じく、端末に残る記録を増やさないため）。最後の span が落ちることは受け入れる。E2E は Chromium だけなので、ほかのブラウザでページを離れるときに落ちる分も受け入れる。Chat のクライアントにも `openTelemetry: false` を渡す（tracer provider は作らないが、将来 5a に移ったときの備え）。CSP を足すときは `connect-src` に受信口を入れる
 3. スライス B のテスト:
    - TPL-3612 のとおり、4 つのビルドの成果物を両方向で検査する。目印は 2 つ:
-     - 送信モジュールのモジュール id。`rejectMonaco`（`vite.serve.config.ts`）と同じく `generateBundle` で `getModuleIds()` を見て、serve・VS Code の webview・viewer のビルドに入っていたら build を落とす。Pages のビルドには入っていることをテストで確かめる。これは受信口の URL の有無に関係なく、ふつうの PR の CI で働く
+     - 送信モジュールのモジュール id。serve・VS Code の webview・viewer のビルドは、`rejectMonaco`（`vite.serve.config.ts`）と同じく `generateBundle` で `getModuleIds()` を見て、送信モジュールを import しているだけで build を落とす（tree shaking でコードが消えても、共有のコードが import していること自体を止める）。Pages のビルドは、グラフにあるだけでは足りないので、出力の chunk の `modules` で送信モジュールの `renderedLength` が 0 より大きいこと（出力にコードが残っていること）をテストで確かめる。これは受信口の URL の有無に関係なく、ふつうの PR の CI で働く
      - 受信口の host の文字列。URL は `deploy.yml` と `preview.yml` でしか渡さないので、ふつうのビルドではどの成果物にも無い。テストで 4 つの設定をダミーの URL を渡してビルドし、host が `dist/` にだけ現れることを確かめる
      - serve・VS Code の webview・viewer は minify するので、パッケージ名の文字列では探さない（Pages のビルドは `minify: false`）。`@opentelemetry/api` は Chat 経由で各ビルドに入りうるので、目印に使わない
    - 送信を有効にする 3 つの条件の unit test（origin・ビルド時の URL・GPC と DNT と設定の組み合わせ）
