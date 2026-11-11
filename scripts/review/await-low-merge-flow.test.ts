@@ -245,3 +245,35 @@ describe("awaitLowMerge: falling back to --auto", () => {
     });
   });
 });
+
+describe("awaitLowMerge: failed reads", () => {
+  it("reads again on the next poll after a failed read", async () => {
+    const { deps } = fake({
+      pulls: [merged()],
+      runs: [{ id: 1, url: "u" }],
+      pushes: [["Deploy"]],
+    });
+    const pull = deps.pull;
+    let calls = 0;
+    deps.pull = (n) => {
+      if (calls++ === 0) throw new Error("gh api: HTTP 502");
+      return pull(n);
+    };
+    deps.mergeJob = () => job(`merged #7 at ${HEAD}\n`);
+    expect(await awaitLowMerge(deps, 7, OPTS)).toMatchObject({
+      outcome: "merged-by-merger",
+      waitedMin: 1,
+    });
+  });
+
+  it("reports the last failure when the budget runs out", async () => {
+    const { deps } = fake({ pulls: [open()] });
+    deps.pull = () => {
+      throw new Error("gh api: HTTP 502");
+    };
+    expect(await awaitLowMerge(deps, 7, { ...OPTS, budgetMs: 0 })).toMatchObject({
+      outcome: "timeout",
+      last: "error: gh api: HTTP 502",
+    });
+  });
+});

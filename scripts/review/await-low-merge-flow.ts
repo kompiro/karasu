@@ -159,37 +159,47 @@ export async function awaitLowMerge(
     head,
     waitedMin: Math.round((deps.now() - start) / 60_000),
   });
-  for (;;) {
+  /** One read of the PR: an outcome to return, or the verdict to keep waiting on. */
+  const step = async (): Promise<Outcome | string> => {
     const p = deps.pull(pr);
     head = p.headSha;
-    if (p.merged) return done(await whoMerged(deps, pr, p, opts));
-    if (p.state !== "open") return done({ outcome: "closed" });
-    if (p.autoMerge) return done({ outcome: "auto-merge-enabled" });
+    if (p.merged) return whoMerged(deps, pr, p, opts);
+    if (p.state !== "open") return { outcome: "closed" };
+    if (p.autoMerge) return { outcome: "auto-merge-enabled" };
 
     const v = deps.judge(pr);
-    if (v === null) return done({ outcome: "out-of-scope", why: "not labeled risk: low" });
-    if (v.outcome === "out-of-scope") return done({ outcome: "out-of-scope", why: v.why });
-    if (v.outcome === "reject") {
-      return done({ outcome: "fix-pr", reasons: v.reasons, details: v.details });
-    }
+    if (v === null) return { outcome: "out-of-scope", why: "not labeled risk: low" };
+    if (v.outcome === "out-of-scope") return { outcome: "out-of-scope", why: v.why };
+    if (v.outcome === "reject")
+      return { outcome: "fix-pr", reasons: v.reasons, details: v.details };
     if (v.sha !== settledHead) settledSince = null;
     if (settled(v)) {
       settledSince ??= deps.now();
       settledHead = v.sha;
       if (deps.now() - settledSince >= opts.settleMs) {
-        return done({
+        return {
           outcome: "fallback",
           verdict: v.outcome,
           details: v.outcome === "merge" ? ["the merger has not merged it"] : v.details,
-        });
+        };
       }
     } else {
       settledSince = null;
       if (v.outcome === "wait" && v.stalled && !v.reasons.includes("head-moved")) {
-        return done({ outcome: "checks-stuck", reasons: v.reasons, details: v.details });
+        return { outcome: "checks-stuck", reasons: v.reasons, details: v.details };
       }
     }
-    last = v.outcome;
+    return v.outcome;
+  };
+  for (;;) {
+    try {
+      const result = await step();
+      if (typeof result !== "string") return done(result);
+      last = result;
+    } catch (e) {
+      // A failed read is retried on the next poll; the wait is hours long.
+      last = `error: ${(e as Error).message}`;
+    }
     if (deps.now() - start >= opts.budgetMs) return done({ outcome: "timeout", last });
     await deps.sleep(opts.pollMs);
   }
