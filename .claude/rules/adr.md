@@ -239,8 +239,10 @@ gh api repos/kompiro/karasu/branches/<head-branch> --silent  # 404 ならブラ�
      #3698 に PR 番号、run の URL、判定、job の結果を書く。そのうえで、PR がいまも Low のままかを確かめる。
      `node scripts/review/tier.ts classify` が `low`、段階のラベルが `risk: low` だけ、head がローカルレビューの記録の
      head と同じ、ADR の PR ならタイトルが `docs(adr): ` で始まる、`gh pr checks <N> --required` がすべて `pass`。
-     すべて満たすときだけ `gh pr merge <N> --auto --squash --delete-branch` を打つ。check が落ちていれば PR を直して 1 に
-     戻り、それ以外を満たさなければ打たずに、下の「PR を作った後に差分を足すとき」に従う
+     すべて満たすときだけ `gh pr merge <N> --auto --squash --delete-branch` を打つ。満たさなければ打たない。check が落ちて
+     いれば PR を直して 1 に戻る。`risk: high` と `risk: low` が両方残っているだけなら、下の段落の手順で `risk: high` を
+     外して 1 に戻る。head が記録と違えば、下の「PR を作った後に差分を足すとき」に従う。それ以外（`classify` が `low`
+     でない、ADR の PR のタイトルが違う）は、出た段階のラベルに付け替えて通常の PR として扱い、マージは kompiro に任せる
 
 `gh pr create --label` はラベルを PR を開いた後に付けるが、ラベルの無い PR に `risk: high` を付ける
 「Label untiered PRs High」（`.github/workflows/review-request.yml`）は、開いた PR では 30 秒待ってから
