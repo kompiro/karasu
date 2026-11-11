@@ -7,6 +7,7 @@
       "entry": [
         "scripts/report/index.ts",
         "scripts/coderabbit/await-review.ts",
+        "scripts/review/await-low-merge.ts",
         "scripts/render-equivalence/render-child.ts"
       ],
       "project": ["scripts/**/*.ts"]
