@@ -7,7 +7,7 @@ import {
   type KrsFile,
   type SystemCompileResult,
 } from "@karasu-tools/core";
-import { formatDiagnostic } from "./i18n.js";
+import { diagnosticParts } from "./i18n.js";
 import { NodeFileSystemProvider } from "./node-fs.js";
 import { pathKindOrExit } from "./path-arg.js";
 
@@ -53,6 +53,25 @@ export function diagLocFormatter(
   filePath: string,
   entryLabel: string = filePath,
 ): (d: { loc?: Diagnostic["loc"] }) => string {
+  const locate = diagLocator(filePath, entryLabel);
+  return (d) => {
+    const { file, line, column } = locate(d);
+    return line === undefined ? file : `${file}:${line}:${column}`;
+  };
+}
+
+/** Where {@link diagLocFormatter} points, as fields (`karasu check --format json`). */
+export interface DiagLocation {
+  file: string;
+  line?: number;
+  column?: number;
+}
+
+/** {@link diagLocFormatter}'s rule, before it is joined into one string. */
+export function diagLocator(
+  filePath: string,
+  entryLabel: string = filePath,
+): (d: { loc?: Diagnostic["loc"] }) => DiagLocation {
   const canonical = new Map<string, string>();
   const canonicalOf = (path: string): string => {
     let hit = canonical.get(path);
@@ -63,12 +82,12 @@ export function diagLocFormatter(
     return hit;
   };
   return (d) => {
-    if (!d.loc) return entryLabel;
+    if (!d.loc) return { file: entryLabel };
     const file =
       d.loc.file === undefined || canonicalOf(d.loc.file) === canonicalOf(filePath)
         ? entryLabel
         : relative(process.cwd(), d.loc.file);
-    return `${file}:${d.loc.start.line}:${d.loc.start.column}`;
+    return { file, line: d.loc.start.line, column: d.loc.start.column };
   };
 }
 
@@ -190,7 +209,8 @@ function reportErrorsOrExit(diagnostics: readonly Diagnostic[], filePath: string
   const errors = diagnostics.filter((d) => d.severity === "error");
   const locOf = diagLocFormatter(filePath);
   for (const d of errors) {
-    process.stderr.write(`Error: ${locOf(d)}: ${formatDiagnostic(d)}\n`);
+    const { tag, message } = diagnosticParts("Error", d);
+    process.stderr.write(`${tag}: ${locOf(d)}: ${message}\n`);
   }
   if (errors.length > 0) {
     process.exit(1);

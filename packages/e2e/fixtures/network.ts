@@ -1,3 +1,6 @@
+// The one `test` every fixture extends has to start from Playwright's own; the
+// import ban exists to route specs and helpers through this file.
+// eslint-disable-next-line no-restricted-imports -- base of every fixture's `test`
 import { test as base } from "@playwright/test";
 
 /**
@@ -36,4 +39,5 @@ export const test = base.extend<{ stubWebFonts: void }>({
   ],
 });
 
-export { expect } from "@playwright/test";
+// The guarded `expect` (TPL-1171): a spec gets it with `test` from any fixture.
+export { expect } from "./expect.js";

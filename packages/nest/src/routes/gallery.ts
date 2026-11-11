@@ -63,8 +63,19 @@ const PUBLIC_CACHE = "public, max-age=600";
  * `allow-same-origin` — that one token is what would hand the page this
  * origin, and with it the session (TPL-2993). A CSP header rather than an
  * iframe, so the viewer has the whole window and a link opens it directly.
+ *
+ * **`connect-src 'none'`**, because the viewer needs no network at all: the
+ * submission is embedded in the page (`gallery/viewer-page.ts`), and its
+ * build has no `fetch`, XHR, WebSocket or EventSource that runs (the
+ * Anthropic SDK is bundled but only behind the editor's chat pane, which the
+ * viewer does not render; Vite's module-preload polyfill fetches only on
+ * browsers without `modulepreload`, and the module still loads as a script).
+ * The sandbox already keeps cookies off a `fetch`; this keeps the request
+ * itself from being made, so the viewer cannot call this origin's API at all
+ * (TPL-2993). A call added to the viewer later fails in the browser, visibly,
+ * instead of working until it is aimed somewhere it should not be.
  */
-const VIEWER_CSP = "sandbox allow-scripts allow-downloads allow-popups";
+const VIEWER_CSP = "sandbox allow-scripts allow-downloads allow-popups; connect-src 'none'";
 
 /** The same answer for "no such submission" and "not published". */
 const NOT_FOUND = "No submission with that id.";

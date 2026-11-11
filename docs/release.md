@@ -173,10 +173,11 @@ stable とは別に、`main` の先頭を Marketplace の pre-release チャネ�
 
 ### CLI の後方互換
 
-`karasu` CLI のうち、skill やスクリプトが呼ぶ面（コマンド名、フラグ、stdout / stderr の形式、終了コード）は後方互換を保つ（[#2961](https://github.com/kompiro/karasu/issues/2961)、設計は [ADR-2901](adr/2901-karasu-authoring-skill.md) の「利用者の手元でのずれ」）。Claude Code はサードパーティ marketplace の plugin を自動更新しないので、新しい CLI と古い skill の組み合わせは利用者の手元で普通に起きる。その互換の責任を CLI が持つ。
+`karasu` CLI のうち、skill やスクリプトが呼ぶ面（コマンド名、フラグ、終了コード、`karasu check --format json` などの機械向けの出力）は後方互換を保つ（[#2961](https://github.com/kompiro/karasu/issues/2961)、設計は [ADR-2901](adr/2901-karasu-authoring-skill.md) の「利用者の手元でのずれ」）。Claude Code はサードパーティ marketplace の plugin を自動更新しないので、新しい CLI と古い skill の組み合わせは利用者の手元で普通に起きる。その互換の責任を CLI が持つ。
 
 - **名前を変える・廃止する**: 古い名前を消さず、`packages/cli/src/deprecations.ts` の `DEPRECATIONS` に 1 行足す（種別、古い名前、代わり、廃止した版、削除する版）。古い名前は `--help` に出ない別名として動き続け、呼ばれると stderr に 1 行出す: `karasu: deprecated: 'old' -> 'new' (since 0.8.0, removal 1.0.0)`。
 - **別名を削除してよいのは major のリリースだけ**（0.x の間は 1.0.0 まで削除しない）。削除は CHANGELOG で予告する。削除した項目には `removed: true` を付け、**表から消さずに墓標として残す**。墓標の名前は「未知のコマンド」ではなく、同じ形式の `karasu: removed: ...` 行を出して終了コード 1 で失敗する。
+- **人向けの行は約束に含めない**: 診断の行（`Warning[KRS041]: ...`）は人が読むためのもので、形はマイナーリリースで変えてよい。変えるときは CHANGELOG で知らせる。スクリプトと skill は `karasu check --format json` を読み、`code` で判定する（[#3654](https://github.com/kompiro/karasu/issues/3654)）。JSON はフィールドを足しても互換の範囲内で、消す・意味を変えるときは `schemaVersion` を上げる。形は [docs/spec/diagnostics.md](spec/diagnostics.md#how-the-cli-shows-a-diagnostic) に書いた。
 - **問い合わせ**: `karasu capabilities --json` が CLI の版、登録済みのコマンドとフラグ、表の全項目を返す。形式は [docs/tools/cli.md](tools/cli.md#karasu-capabilities-what-this-cli-accepts) に書いた。
 
 守られているかは CLI の vitest（`packages/cli/src/compat.test.ts`）が確かめる。

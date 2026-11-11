@@ -1,6 +1,8 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { extractLinkTargets, resolveLink } from "../../packages/docs-site/scripts/lib/rewrite.ts";
+import { listSources, publishedSet } from "../../packages/docs-site/scripts/sources.ts";
 
 // The docs site publishes the files listed in `PUBLISHED_EN_FILES`
 // (packages/docs-site/scripts/lib/site-map.ts). Two workflows are triggered by
@@ -184,6 +186,47 @@ export function check(
   return problems;
 }
 
+/**
+ * Repo paths that published pages link to outside the site. `check-links` fails
+ * when one of them is gone, so a PR that renames or deletes one must trigger
+ * the guard workflow, which only happens when a `paths:` glob covers it
+ * (TPL-2005). Read through the site's own link resolver, the one `check-links`
+ * and the rewriter use.
+ */
+export function repoLinkTargets(): string[] {
+  const sources = listSources();
+  const published = publishedSet(sources);
+  const targets = new Set<string>();
+  for (const { docsRel, absPath } of sources) {
+    for (const target of extractLinkTargets(readFileSync(absPath, "utf8"))) {
+      const resolved = resolveLink(target, { srcDocsRel: docsRel, published });
+      if (resolved.kind === "repo") targets.add(resolved.repoPath.replace(/\/$/, ""));
+    }
+  }
+  return [...targets].sort();
+}
+
+/** Link targets that no glob in the guard workflow's `paths:` matches. */
+export function uncoveredLinkTargets(
+  targets: readonly string[],
+  checkPaths: readonly string[],
+): Problem[] {
+  return (
+    targets
+      // A directory link (`../adr/`) is covered by a glob over its contents.
+      .filter(
+        (target) =>
+          !checkPaths.some(
+            (glob) => globMatches(glob, target) || globMatches(glob, `${target}/README.md`),
+          ),
+      )
+      .map((target) => ({
+        kind: "error" as const,
+        message: `A published page links to ${target}, which no \`paths:\` entry in ${CHECK_WORKFLOW} matches, so renaming or deleting it does not run check-links on the PR.`,
+      }))
+  );
+}
+
 export function formatProblems(problems: Problem[]): string {
   const errors = problems.filter((p) => p.kind === "error");
   const lines: string[] = [];
@@ -209,7 +252,11 @@ function main(): void {
   );
   const skipPaths = parseWorkflowPaths(read(SKIP_WORKFLOW), "paths-ignore");
 
-  const problems = check(published, workflows, skipPaths);
+  const checkPaths = workflows.find((w) => w.file === CHECK_WORKFLOW)?.paths ?? [];
+  const problems = [
+    ...check(published, workflows, skipPaths),
+    ...uncoveredLinkTargets(repoLinkTargets(), checkPaths),
+  ];
   if (problems.length > 0) {
     console.error(formatProblems(problems));
     process.exit(1);

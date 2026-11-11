@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig, passthroughImageService } from "astro/config";
 import starlight from "@astrojs/starlight";
+import { SIDEBAR } from "./scripts/lib/sidebar.ts";
 
 // Reuse the VS Code TextMate grammars for `krs` / `krs.style` fence highlighting
 // (Shiki). The grammars are named "karasu"/"karasu style"; re-key them to the
@@ -46,20 +47,7 @@ export default defineConfig({
       expressiveCode: {
         shiki: { langs: [krs, krsStyle] },
       },
-      sidebar: [
-        { label: "Guides", items: [{ autogenerate: { directory: "guide" } }] },
-        { label: "Tools", items: [{ autogenerate: { directory: "tools" } }] },
-        { label: "Reference", items: [{ autogenerate: { directory: "spec" } }] },
-        { label: "Concepts", link: "/concepts/" },
-        { label: "Keystone glossary", link: "/glossary/" },
-        {
-          label: "Examples",
-          items: [
-            { label: "Overview", link: "/examples/" },
-            { autogenerate: { directory: "examples" } },
-          ],
-        },
-      ],
+      sidebar: SIDEBAR,
     }),
   ],
 });

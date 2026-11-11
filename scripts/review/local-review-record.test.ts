@@ -159,6 +159,21 @@ describe("verifyRecord", () => {
       ).toHaveLength(1);
     });
 
+    it("accepts no deviation only on a design row (#3542)", () => {
+      expect(check(body([finding({ reviewer: "design", disposition: "no deviation" })]))).toEqual(
+        [],
+      );
+      expect(check(body([finding({ reviewer: "Design", disposition: "No deviation" })]))).toEqual(
+        [],
+      );
+      expect(
+        check(body([finding({ reviewer: "engineering", disposition: "no deviation" })])),
+      ).toHaveLength(1);
+      expect(
+        check(body([finding({ reviewer: "design", disposition: "no deviation found" })])),
+      ).toHaveLength(1);
+    });
+
     it("fails a fix commit that is already on the base branch", () => {
       const onBase = facts({ isAncestor: (a, b) => a === FIX && (b === HEAD || b === BASE) });
       expect(check(body([finding({})]), "medium", onBase)).toHaveLength(1);

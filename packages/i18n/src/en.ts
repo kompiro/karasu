@@ -1,6 +1,6 @@
 import type { Translations } from "./types.js";
 import { formatRange } from "./format.js";
-import { firstRunEn } from "./first-run.js";
+import { partsEn } from "./catalog-parts.js";
 
 /**
  * English translation map.
@@ -81,7 +81,7 @@ export const en: Translations = {
   "project.error.export": ({ detail }) => `⚠ Failed to export project: ${detail}`,
   "project.error.import": ({ detail }) => `⚠ Import failed: ${detail}`,
   "project.error.openExample": ({ detail }) => `⚠ Could not open the example: ${detail}`,
-  ...firstRunEn,
+  ...partsEn,
   "project.error.snapshot": ({ detail }) => `⚠ Failed to capture snapshot: ${detail}`,
   "project.error.dismiss": "✕ Dismiss",
   "serve.error.fileNotFound": ({ file }) => `File not found: ${file}`,
@@ -627,8 +627,6 @@ export const en: Translations = {
     lastResolvedId
       ? `Import path "${path}" failed at segment "${failedSegment}" (#${failedAt}): no ancestor with that id above "${lastResolvedId}"`
       : `Import path "${path}" failed at segment "${failedSegment}" (#${failedAt}): no node with that id in ${importPath}`,
-  "diagnostic.circularStyleImport.message": ({ filePath }) =>
-    `Circular style import detected: ${filePath}`,
   "diagnostic.styleFileNotFound.message": ({ filePath }) => `Style file not found: ${filePath}`,
   "diagnostic.appProjectCompileError.message": "An error occurred while compiling the project",
   "diagnostic.appOrgParseError.message": "An error occurred during parsing",

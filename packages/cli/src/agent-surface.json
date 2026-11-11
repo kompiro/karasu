@@ -2,7 +2,7 @@
   "commands": {
     "serve": ["--allowed-host", "--host", "--port", "-p"],
     "render": ["--format", "--include-matrix", "--output", "--theme", "--view", "-o"],
-    "check": [],
+    "check": ["--format"],
     "translate": [
       "--database",
       "--emit-bindings",

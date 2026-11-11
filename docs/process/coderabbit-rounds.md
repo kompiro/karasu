@@ -8,8 +8,8 @@
 ### High の PR は CodeRabbit のラウンドが収束してから人間がレビューする
 
 **到達状態**: 人間がレビューを開いた時点で、CodeRabbit の最後のレビューに答え終わり、未解決の review thread が 0
-（Critical / Major は対応済み、直さない Minor は理由を書いて閉じてある）、そして人間の判断が要る論点は PR 上で
-質問済みになっている。
+（Critical / Major は対応済み、直さない Minor は理由を書いて閉じてある）、そして人間の判断が要る論点は PR 本文の
+`## For Reviewers` 節に載っている（3 件まで。[review.md](review.md)「High の PR で人間が読むもの」）。
 
 2 本目は **`--paginate` で全ページ数える**。`reviewThreads` を 1 ページだけ読むと、
 古い未解決 thread が範囲外に落ちて `0` が返る。`--slurp` は `--jq` と併用できないので
@@ -51,6 +51,7 @@ CodeRabbit は approve も changes-requested も出さず、どのレビュー�
 
 判断基準は 1 つ、**その指摘に従うと記録済みの決定が変わるかどうか**。記録済みの決定とは
 Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`、`.claude/rules/`、
+PR を裏付ける合意済みの Design Doc（[review.md](review.md)「High の PR で人間が読むもの」）、
 およびその PR で人間が明示した方針を指す。
 
 | 指摘 | どうするか |
@@ -59,7 +60,9 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 | 記録済みの決定を変える（スコープの拡縮、ADR / spec / rules の書き換え、別 ADR との衝突） | **直さずに人間へ確認する。** 指摘・該当する記録・取りうる選択肢を並べて聞く |
 
 確認が要る論点が出ても、**それ以外の指摘は先に収束させる**。人間を待つあいだ手を止めない。
-人間に渡すときは、残っている質問と、却下した指摘およびその理由をまとめて 1 回で伝える。
+人間に渡すときは、残っている質問を `## For Reviewers` 節に載せ、却下した指摘およびその理由とまとめて 1 回で伝える。
+渡す直前に Review tier を走り直させ、公開された summary を `main` の先頭で判定し直す（review.md「High の PR で人間が
+読むもの」）。
 
 #### ラウンドの回し方
 

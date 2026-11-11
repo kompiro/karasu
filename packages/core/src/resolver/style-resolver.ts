@@ -9,6 +9,7 @@ import type {
 import { INFRA_KIND_SET } from "../types/ast.js";
 import { bareIdView, nodePathRefId } from "../parser/node-path.js";
 import { UNASSIGNED_SYSTEM_ID } from "../view/unassigned-system.js";
+import { edgeKey, edgeKindKey } from "../view/edge-key.js";
 import { hasShape } from "../shapes/shape-registry.js";
 // `hasShape` answers for the built-in icons only once they are registered (#2802).
 import "../shapes/builtin-icons.js";
@@ -238,7 +239,7 @@ export function resolveStyles(
       // Kind-qualified key (preferred by the renderer) so parallel sync/async
       // edges keep distinct styles; bare key as a fallback for synthetic edges.
       edgeStyles.set(edgeStyleKey(edge.from, edge.to, edge.kind), style);
-      edgeStyles.set(`${edge.from}->${edge.to}`, style);
+      edgeStyles.set(edgeStyleKey(edge.from, edge.to, undefined), style);
     }
   }
 
@@ -833,8 +834,8 @@ function addMissingEdgeStyles(
     if (edgeStyles.has(qualifiedKey)) continue;
     const style = resolveEdgeStyle(edge, rules, cyclicTag);
     edgeStyles.set(qualifiedKey, style);
-    if (!edgeStyles.has(`${edge.from}->${edge.to}`)) {
-      edgeStyles.set(`${edge.from}->${edge.to}`, style);
+    if (!edgeStyles.has(edgeStyleKey(edge.from, edge.to, undefined))) {
+      edgeStyles.set(edgeStyleKey(edge.from, edge.to, undefined), style);
     }
   }
 }
@@ -876,11 +877,10 @@ export function styleDerivedEdges<T extends { childEdges: KrsEdge[] }>(
  * (delivers, owns, ghosts, aggregated domain edges) pass `kind === undefined` and
  * fall back to the bare `from->to` key, which the resolver also registers.
  *
- * Examples:
- *   edgeStyleKey("A", "B", undefined) → "A->B"
- *   edgeStyleKey("A", "B", "sync")    → "A->B#sync"
- *   edgeStyleKey("A", "B", "async")   → "A->B#async"
+ * The pair goes through `edgeKey` / `edgeKindKey`, so `a -> "b->c"` and
+ * `"a->b" -> c` keep two entries instead of sharing `a->b->c` (#3481). An
+ * ordinary edge keys `A->B` / `A->B#sync` as before.
  */
 export function edgeStyleKey(from: string, to: string, kind: EdgeKind | undefined): string {
-  return kind === undefined ? `${from}->${to}` : `${from}->${to}#${kind}`;
+  return kind === undefined ? edgeKey({ from, to }) : edgeKindKey({ from, to, kind });
 }

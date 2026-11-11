@@ -9,6 +9,7 @@ import {
 } from "@karasu-tools/core";
 import { renderDiagnostic, renderWarning, bindTranslate, type Locale } from "@karasu-tools/i18n";
 import { toLspRange, type LspRange, type SourceRangeLike } from "./lsp-position.js";
+import { SINGLE_DOCUMENT_CONTEXT } from "./single-document-context.js";
 
 const DOC_START = { line: 0, character: 0 };
 
@@ -68,59 +69,12 @@ export function computeDiagnostics(
   // …) are produced by `analyze()`, not by the parser. Surface them too so the
   // editor matches the in-app preview (ADR-1386 — the info register is
   // intended for App / LSP / CLI alike). `analyze()` needs a `KrsFile`, so this
-  // applies to `.krs` documents only. Style sheets are not available in the
-  // single-document LSP context, which cuts both ways: style-dependent
-  // warnings (`style-conflict`, `legend-ref-unresolved`,
-  // `style-tag-selector-not-builtin`, `style-annotation-selector-not-builtin`)
-  // simply do not fire here. No diagnostic is style-*suppressed* any more:
-  // `annotation-possible-typo`, the one that was (#1522), became a parser error
-  // with no suppression condition in `.krs language v2.0` (#2677), so the LSP
-  // and the app now agree on it. New style-coupled diagnostics must decide and
-  // record their side of this split here (TPL-1522).
-  //
-  // The two `style-*-selector-not-builtin` deprecations (#2175) land on the
-  // "does not fire" side, and unlike the others that is not a shortfall: they
-  // report on the *content of a stylesheet*, and the document being edited is
-  // a `.krs` file. There is nothing for them to say about it. The app and the
-  // CLI, which do hold the sheets, are where an author sees them.
+  // applies to `.krs` documents only, and runs with no stylesheet and no
+  // imports. What that does to each kind, and which kinds are dropped here, is
+  // recorded per kind in `SINGLE_DOCUMENT_CONTEXT` (TPL-1522).
   if (!isStyleDocument && !("rules" in parseResult.value)) {
     for (const w of analyze(parseResult.value, [])) {
-      // `unresolved-edge-endpoint` is import-coupled, not style-coupled: it only
-      // means "this id exists nowhere in the *merged* model" (§S6). The LSP
-      // analyzes a single document with imports unresolved, so a routine
-      // cross-file edge (the canonical system-reopen pattern) would false-positive
-      // here. Suppress it in the single-document context; the App / CLI run
-      // `analyze()` over the import-merged file where it is accurate
-      // (TPL-1522 — new import/style-coupled diagnostics record their side).
-      if (w.kind === "unresolved-edge-endpoint") continue;
-      // `edge-endpoint-not-at-scope` is import-coupled too, but is *not*
-      // suppressed (TPL-1522 — recording its side, #2075). It fires only when
-      // the endpoint id resolves *within this document* and sits outside the
-      // declaring block's peers; an endpoint that lives in another file does
-      // not resolve here, so it falls through to `unresolved-edge-endpoint`
-      // above and is dropped with it. Single-document context can therefore
-      // only under-report, never false-positive — same property as
-      // `shared-infra-fan-in` below.
-      // `shared-infra-fan-in` is *not* suppressed (TPL-1522 — recording
-      // its side): it benefits from the import-merge (cross-file sharing is only
-      // seen in the App / CLI), but in the single-document context it can only
-      // *under-report* — it fires only when both the store and ≥2 referencing
-      // services are present in this one document, so it never false-positives.
-      // Same property as `domain-dispersal`, which is likewise left to fire.
-      //
-      // `invalid-owns` is import-coupled and *not* filtered here, because it
-      // cannot false-positive on a cross-file target any more: since #2410 it
-      // reports a kind only for an id that resolves to a node in the model it was
-      // handed, and in this single-document context a target declared in another
-      // file resolves to nothing. Nothing to suppress — the diagnostic stopped
-      // answering the existence question that made it wrong. Recorded here
-      // because this comment is the ledger for that split (TPL-1522), even when
-      // the resolution lives in the check rather than in a filter above.
-      //
-      // Its existence counterpart `owns-target-not-found`, and both `contains`
-      // forms, are parser diagnostics that never reach this loop; they decline to
-      // decide inside their own validators when the file still has imports
-      // (`packages/core/src/parser/reference-validation.ts`, #2082 / #2410).
+      if (SINGLE_DOCUMENT_CONTEXT[w.kind].singleDocument === "suppressed") continue;
       diagnostics.push({
         severity: toSeverity(warningSeverity(w.kind)),
         range: locToRange(w.loc),

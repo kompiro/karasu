@@ -55,9 +55,9 @@ ADR にまたがって使われる。定義を各所に散らして書くと、�
 モデリング言語用語集 [`docs/spec/glossary.md`](../spec/glossary.md) との相互リンクを持つ。
 in-site リンク（published ページ間）は `check-links`（TPL-1621）が解決を縛るが、
 **用語集が参照する roadmap / design doc / ADR は unpublished なので GitHub URL に
-rewrite され、check-links の検査対象外**である点に注意 — これらのリンク切れは機械検出
-されないので、リンク先ファイルの rename / 削除（例: design doc の ADR 昇格）時は用語集の
-リンクを手で追随させる。keystone PRD は Issue（#3572）なので消えない（ADR-3571、ADR-2348）。
+rewrite される**。check-links はそのリンク先ファイルが repo にあることだけを見て、アンカーは
+見ない。リンク先ファイルの rename / 削除（例: design doc の ADR 昇格）時は用語集の
+リンクを追随させる。keystone PRD は Issue（#3572）なので消えない（ADR-3571、ADR-2348）。
 
 ## 想定される失敗モード
 
@@ -67,8 +67,8 @@ rewrite され、check-links の検査対象外**である点に注意 — こ�
 - permalink の機構が変わった（例: repo-backed が ref-less default HEAD を採るように
   なった）のに用語集の説明が旧機構のまま残り、`permalink.md` / design doc と矛盾する。
 - design doc（repo-backed-ref-pinned-permalink.md 等）が ADR に昇格して削除されたのに、
-  用語集の GitHub URL リンクが 404 のまま残る（check-links は unpublished リンクを検査
-  しないため気づけない）。
+  用語集の GitHub URL リンクが 404 のまま残る（#2005 の時点の check-links は unpublished
+  リンクを検査しなかったため気づけなかった。今はリンク先ファイルの存在を検査する）。
 - 新しく PRD で語彙を coin したが恒久的な定義場所を決めず、その doc の中だけに定義が
   埋もれて後続の Issue 展開時に散逸する（#1831 と同じ状況の再発）。
 - `docs/glossary.md` を PUBLISHED_EN_FILES に足したが `.ja.md` の相互リンクや sidebar
@@ -85,14 +85,22 @@ keystone / permalink の用語を扱う doc を変更するときに確認する
 - [ ] EN / JA 両ファイルを更新したか。両者と `docs/spec/glossary.md`（モデリング言語用語集）
       との相互リンクが生きているか。
 - [ ] 用語集が参照する unpublished doc（roadmap / design doc / ADR）を rename / 削除
-      したなら、用語集側のリンクを追随させたか（check-links は検出しない）。
+      したなら、用語集側のリンクを追随させたか。check-links はリンク先ファイルの存在を見る
+      （アンカーは見ない）。`reference-docs-check.yml` はリンク先の置き場（`docs/adr/**`・`docs/design/**`
+      など）を触る PR でも走り、published ページがその外へリンクすると `lint:docs-site-ci-paths-sync` が
+      落ちる。 [guard: `packages/docs-site/scripts/check-links.ts`]
 - [ ] `pnpm --filter docs-site check-links` が通るか（published ページ間のリンク・アンカー解決）。 [guard: `packages/docs-site/scripts/check-links.ts`]
-- [ ] 新規 published ページを足したなら PUBLISHED_EN_FILES + astro.config.mjs sidebar +
-      `.ja.md` sibling が揃っているか。
+- [ ] 新規 published ページを足したなら PUBLISHED_EN_FILES + sidebar（`packages/docs-site/scripts/lib/sidebar.ts`、
+      `astro.config.mjs` が読む）+ `.ja.md` sibling が揃っているか。 [guard: `packages/docs-site/scripts/lib/site-map.test.ts`]
 
 ## 関連テスト
 
-- `packages/docs-site/scripts/lib/site-map.test.ts` › `published pages` — `spec/glossary.md` が公開対象に含まれること、`PUBLISHED_EN_FILES` に登録した全ページが disk に存在し route と content path に解決されることを PR 時点で固定する（sidebar と `.ja.md` sibling の揃いは見ない）
+- `scripts/lint/spec-structure-sync.ts` — published ページ全部（`PUBLISHED_EN_FILES` から導く）の en/ja で見出し構造を比べ、
+  用語集 2 組（`docs/glossary.md`・`docs/spec/glossary.md`）は節ごとの用語 bullet（`- **…`）の数も比べる。
+  用語集と `docs/spec/glossary.md` の相互リンク 4 本（en・ja の往復）も確かめる。`reference-docs-check.yml` が
+  用語集・`docs/spec/**`・`docs/tools/**` を触る PR で走らせる。片方の locale だけで定義文を書き換えても
+  落ちないので、チェックリスト 3 項目目のガードではない
+- `packages/docs-site/scripts/lib/site-map.test.ts` › `published pages` — `spec/glossary.md` が公開対象に含まれること、`PUBLISHED_EN_FILES` に登録した全ページが disk に存在し route と content path に解決されることを PR 時点で固定する。同じ describe が、`PUBLISHED_EN_FILES` の全ページに `.ja.md` sibling があることと、sidebar（`sidebar.ts`）の autogenerate ディレクトリかリンクから辿れることも確かめる
 
 ## 派生元
 

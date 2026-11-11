@@ -1,0 +1,1067 @@
+# .krs.style 構文リファレンス
+
+> [English](style.md) · **日本語**（このファイル）
+
+> 言語バージョン: **`.krs language v2.0`**（言語 v2.0）。`.krs` と `.krs.style` は 1 つの言語版を共有し、各パッケージの npm 版とは独立（[ADR-2124](../adr/2124-version-vocabulary.md)）。v2.0 ではツール語彙にない tag / annotation を狙うルールは何にも一致しない（[後述](#任意名タグ--アノテーションセレクタからの移行)）。
+
+## 字句構造
+
+スタイルシートは、文字列とコメントの外の各文字を `.krs` ファイルと同じ分類で読む（[syntax.ja.md § 字句構造](syntax.ja.md#字句構造)）。そのため、モデルに書いたノード id・タグ・facet id は selector でも同じ語として読まれる（`#注文`、`[facets=個人情報]`）。この 2 つの selector は、次のモデルの service と facet を指す:
+
+```krs
+facet 個人情報 {}
+
+system Example {
+  service 注文 {
+    facets 個人情報
+  }
+}
+```
+
+違いは 2 つ（[#3140](https://github.com/kompiro/karasu/issues/3140)）:
+
+- 語は `-` も含められる（`font-size`、`[team-1]`）。`.` の後に語が続くと、ドット記法の id としてつながる（`OrderDB.OrderTable`）。
+- `-` は数字の前では符号付きの数（`-20px`）を、`->` / `-->` では矢印を始める。それ以外の `-` や `--` は、語を始めない非 ASCII 文字と同じく、どの位置も受け付けないトークンになる。値の中では `style-token-type-mismatch` として報告され、その宣言は効かない（`label-offset: - 20px` は `20px` として読まれず、拒否される）。
+
+> Related TPLs: [TPL-2707](../test-perspectives/TPL-2707-lexer-must-not-drop-what-the-parser-must-refuse.md)（lexer が捨てた文字は拒否できない）、[TPL-2509](../test-perspectives/TPL-2509-kebab-name-positions-share-one-lexical-rule.md)（名前の位置はすべて 1 つの字句規則で名前を読む）
+
+## セレクタの種類
+
+| セレクタ | 例 | 対象 |
+|---------|-----|------|
+| 種別 | `service` | 指定した種別の全ノード |
+| 複数種別 | `service, domain` | いずれかの種別の全ノード |
+| タグ | `[external]` | 指定タグを持つ全ノード |
+| アノテーション | `@deprecated` | 指定アノテーションを持つ全ノード |
+| 複合（種別+タグ） | `service[external]` | 種別とタグの両方に一致 |
+| 複合（タグ+アノテーション） | `[external]@deprecated` | タグとアノテーションの両方に一致 |
+| 複合（種別+タグ+アノテーション） | `service[external]@deprecated` | すべてに一致 |
+| ファセット | `[facets=pii]` | 指定 `facet` に所属する全要素 |
+| 複合（種別+ファセット） | `service[facets=pii]` | 種別と facet 所属の両方に一致 |
+| ID | `#ECommerce` | 特定ノードのみ |
+| 複合（種別+ID） | `team#Platform` | 特定 team のみ（カードとフレーム） |
+| エッジ | `edge` | 全エッジ |
+| エッジ+タグ | `edge[async]` | 指定タグのエッジ |
+| エッジ 始点 | `edge[from=ApiGateway]` | 指定ノードを始点とする全エッジ |
+| エッジ 終点 | `edge[to=ApiGateway]` | 指定ノードを終点とする全エッジ |
+| エッジ+ファセット | `edge[facets=pii]` | 指定 `facet` に所属する全エッジ |
+| エッジ ID | `edge#criticalWrite`、`edge#A->B`、`edge#A-->B` | 特定のエッジのみ |
+| バウンダリ | `boundary` | 全 boundary フレーム（*Group by: boundary*） |
+| バウンダリ ID | `boundary#pci` | 特定 boundary のフレームのみ |
+
+---
+
+## 詳細度ルール（カスケード）
+
+<!-- gen:reference:selector-specificity — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
+| セレクタ | 例 | スコア |
+|----------|----|--------|
+| 種別 | `service` | 1 |
+| タグ | `[external]` | 10 |
+| アノテーション | `@deprecated` | 10 |
+| 種別 + タグ | `service[external]` | 11 |
+| タグ + アノテーション | `[external]@deprecated` | 20 |
+| 種別 + タグ + アノテーション | `service[external]@deprecated` | 21 |
+| ファセット | `[facets=pii]` | 10 |
+| 種別 + ファセット | `service[facets=pii]` | 11 |
+| ID | `#ECommerce` | 100 |
+| 種別 + ID | `team#Platform` | 101 |
+| エッジ | `edge` | 1 |
+| エッジ + タグ | `edge[async]` | 11 |
+| エッジ 始点 / 終点 | `edge[from=ApiGateway]` | 11 |
+| エッジ + ファセット | `edge[facets=pii]` | 11 |
+| エッジ ID | `edge#criticalWrite` | 101 |
+| バウンダリ | `boundary` | 1 |
+| バウンダリ ID | `boundary#pci` | 101 |
+<!-- /gen:reference:selector-specificity -->
+
+`edge#criticalWrite` は 101（ID 100 + `edge` 種別 1）。
+同スコアなら後に書いた方が優先（CSS同様）。
+
+---
+
+## ファセットセレクタ（`[facets=<id>]`）
+
+> `facet` と同じく `.krs language v2.0` から **core の記法**。任意名の tag / annotation セレクタが担っていた styling のフックを引き継ぐ。
+
+宣言済み `facet` に所属する要素をスタイリングする
+（[syntax.ja.md § 横断的な所属](syntax.ja.md#横断的な所属facet)）。
+
+```css
+[facets=pii] {
+  border-color: #14B8A6;
+  border-width: 2px;
+}
+
+/* 種別との複合 — PCI スコープの database だけ。 */
+database[facets=pci_scope] {
+  background-color: #FEF3C7;
+}
+
+/* 繰り返すと複数所属を同時に要求する（タグと同じく AND）。 */
+[facets=pii][facets=gdpr] {
+  border-style: dashed;
+}
+```
+
+- **ノードとエッジの両方。ただしエッジに届かせるには `edge` 種別が要る。**
+  `facets` はどちらにも書ける。上の種別なし `[facets=pii]` はノード限定のままで、
+  これは種別を書かないセレクタ一般の規則（種別に `edge` を持たないセレクタは
+  エッジに一致しない）。エッジを狙うときは `edge[facets=pii]` と書く。述語の
+  繰り返しが AND になるのはノード側と同じ。widening だけは起きない — **所属する
+  エッジが 1 本も無い** facet を指す `edge[facets=...]` は、全エッジではなく何にも
+  一致しない。判定に使うのは所属だけで、その facet に top-level の `facet` 宣言が
+  あるかどうかは別の話（次の項）。
+- **所属は要素側から読む** — `facets <id>` が書かれている場所そのもの。セレクタが
+  `facet` 宣言側を参照することはない。宣言が持つのは関心事のメタデータであって
+  メンバーリストではない。
+- **未宣言の facet id はスタイル側のエラーにしない。** `facets pcl` の打ち間違いは
+  それが書かれた場所で `facet-not-declared` が 1 度だけ報告し、セレクタは何も
+  言わない — 判定に使うのは所属だけなので、`[facets=pcl]` は `facets pcl` を
+  書いた要素に、宣言済み id と同じように一致する。2 度報告すると、1 つの間違いを
+  2 箇所で直せと言うことになる。打ち間違いが壊すのは**意図した方**のルールで、
+  `[facets=pci]` が要素に届かなくなる。著者を warning へ導くのはその症状である。
+- **fact と style の分離は不変。** 所属は事実なので `.krs`、見た目は選択なのでここ。
+  プレビューの overlay はさらに別のもので、読み手の一時的な選択であり、どこにも
+  書き込まれない。
+
+### 任意名タグ / アノテーションセレクタからの移行
+
+言語 v1.x の `.krs.style` は任意のタグ名 / アノテーション名に一致し、それが横断的関心事を
+スタイリングする唯一の手段だった。facet セレクタがその置き換えである。
+`.krs language v2.0` では、ツール語彙の外の tag / annotation を名指すセレクタのルールは
+**丸ごと何にも一致しない**（`service[pci]` が全 service を塗る形に広がることはない）。
+そうしたルールは `style-tag-selector-not-builtin` / `style-annotation-selector-not-builtin`
+として警告され、これがルールが効かなくなったことを知る唯一の手がかりになる。書き換える
+までの間、そのルールに頼っていたモデルの見た目は変わる。
+
+**移行前** — 名前が関心事を担っており、その意味はどこにも宣言されていない:
+
+```krs
+system Shop {
+  database CardVault [pci] {}
+  service Payments [pci] {}
+}
+```
+
+```css
+[pci] {
+  border-color: #F59E0B;
+}
+```
+
+**移行後** — 関心事を 1 度宣言し、所属を `facets` へ移し、セレクタでそれを狙う:
+
+```krs
+facet pci {
+  label "PCI スコープ"
+  description "年次 PCI DSS 評価の対象"
+  link "https://example.com/policies/pci" "PCI ポリシー"
+}
+
+system Shop {
+  database CardVault { facets pci }
+  service Payments { facets pci }
+}
+```
+
+```css
+[facets=pci] {
+  border-color: #F59E0B;
+}
+```
+
+**specificity は変わらない** — `[facets=pci]` は `[pci]` と同じく 10 点。これは意図的で、
+移行途中のシートでどのルールが勝つかが変わってしまうと、書き換えを 1 コミットで
+やり切らねばならなくなる。
+
+タグには無くて facet にあるものが 3 つある: 関心事自身のメタデータの置き場
+（`description` / `link`）、宣言集合に対する打ち間違い検出（`facets pcl` は報告されるが、
+`[pcl]` は黙って別のタグだった）、そして overlay — 読み手が何も編集せずに facet を
+強調できる。
+
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — このセレクタが、styling の次元で `facet` を inert にしないための効果にあたる。[TPL-2175](../test-perspectives/TPL-2175-deprecation-announced-only-with-a-migration-target.md) — 非推奨は、移行先が出荷される release で告知する（それより早く告知しない）。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — 新しいセレクタ形式が `karasu fmt` / シート tidy で round-trip すること。
+
+---
+
+## 始点 / 終点エッジセレクタ（`edge[from=<id>]` / `edge[to=<id>]`）
+
+**あるノードを始点（または終点）とする全エッジ**を 1 ルールでまとめてスタイル
+できる。密な図で残った交差や束を見分ける「color-by-source」の最有力手段で、
+これが無いとハブの fan-out を `edge#Hub->Target` ルールの列挙でしか書けない。
+
+- `edge[from=<id>]` — **始点**がノード `<id>` の全エッジ
+- `edge[to=<id>]` — **終点**がノード `<id>` の全エッジ
+
+```css
+edge[from=ApiGateway] { color: #3B82F6; }   /* ApiGateway の fan-out をまとめて 1 色に */
+edge[from=Scheduler] { color: #10B981; }
+edge[to=AuthService] { color: #F59E0B; } /* AuthService を呼ぶ全エッジ */
+```
+
+`<id>` はノード id。usecase→resource 合成エッジ向けに **dot-notation の端点**
+（例: `edge[to=OrderDB.OrderTable]`）も使える。base 形式
+`edge#PlaceOrder->OrderDB.OrderTable` と同じ規則で、id はアクティブビュー上の
+エッジの `from` / `to` 端点と比較される。
+
+どちらも詳細度は **11**（`edge` 種別 1 + 端点述語 10）で `edge[<tag>]` と同格。
+タグと併用でき、1 本のエッジが `from=` と `to=` の両ルールに同時に一致しうる:
+
+```css
+edge[from=ApiGateway][async] { stroke-style: dashed; }  /* ApiGateway 発の async エッジ */
+```
+
+`from` / `to` 以外の属性（例: `edge[source=X]`）は `unknown-edge-selector-attribute`
+エラーになる。
+
+> Related TPLs: [TPL-1761](../test-perspectives/TPL-1755-edge-endpoint-selector-id-form.md)
+> （端点セレクタはビューが格納する id 形と同じ形で比較すること）。
+
+## エッジ ID セレクタ（`edge#<id>`）
+
+特定のエッジ 1 本だけにスタイルを適用する。`<id>` はエッジの **canonical id** で、
+パース後に以下の規則で確定する:
+
+1. `.krs` でエッジ宣言（または `usecase` の `resource` 行）に `#<id>` が
+   書かれていれば、その author id がそのまま canonical id になる
+2. それ以外は **base 形式** `<from><arrow><to>`。`->` は sync、`-->` は async
+
+```css
+/* `.krs` 側で  A -> B "primary" #criticalWrite  と書かれた場合 */
+edge#criticalWrite { color: #EF4444; }
+
+/* author id が無い場合の base 形式 */
+edge#A->B { color: #00FF00; }
+
+/* async の base 形式 */
+edge#A-->B { stroke-width: 2px; }
+
+/* dot-notation を含む base id（usecase→resource 合成エッジなど） */
+edge#PlaceOrder->OrderDB.OrderTable { direction: down; }
+```
+
+同じ base id を持つエッジが 2 本以上あって両方に author id が無い場合、
+パーサが `ambiguous-edge-base` warning を出し、`edge#<base>` セレクタは
+**どちらにも一致しない**。区別したい場合は `.krs` 側でいずれかに `#<id>` を
+付ける。詳細は [`docs/spec/syntax.md`](syntax.md#edge-declaration) と
+[`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md) を参照。
+
+### タグセレクタを優先すべきケース
+
+「read / write の見た目を変えたい」のような **論理分類による上書き** は
+`edge#<id>` ではなく `edge[write]` / `edge[read]` を使うこと。タグセレクタは
+論理分類に追従するので、`usecase` の `operations` を変更しただけで対象エッジが
+正しく追従する。`edge#<id>` は「**この特定のエッジ**」を直接指したい場合に
+限定して使う。
+
+---
+
+## プロパティ一覧
+
+```css
+/* ノード用プロパティ */
+background-color: #1D4ED8;
+color:            #DBEAFE;       /* テキスト色 */
+border-color:     #1E40AF;
+border-width:     2px;
+border-style:     solid;         /* solid | dashed | dotted */
+border-radius:    8px;
+font-size:        13px;
+font-weight:      bold;          /* normal | bold */
+font-family:      "Noto Sans JP", sans-serif;
+opacity:          0.6;
+
+/* エッジ用プロパティ */
+color:            #94A3B8;
+stroke-width:     1.5px;
+font-size:        11px;
+stroke-style:     solid;         /* solid | dashed | dotted（正準名、後述） */
+border-style:     solid;         /* solid | dashed | dotted（stroke-style のエイリアス） */
+direction:        auto;          /* up | down | left | right | auto（ヒント、後述） */
+label-position:   middle;        /* start | middle | end | <0.0..1.0> */
+label-offset:     0 0;            /* <dy>px or <dx>px <dy>px（screen-axis） */
+label-max-chars:  48;             /* <n> | none（canvas に描く label の文字数） */
+label-display:    auto;           /* auto | always | hover */
+
+/* karasu固有プロパティ（CSS非対応のため例外） */
+shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
+
+/* アノテーション用プロパティ（バッジ表示） */
+badge-color:      #EF4444;
+badge-icon:       "⚠";
+badge-label:      "非推奨";
+```
+
+数値と長さには符号を付けられる（`label-offset: -8px` は label を上へ動かす）。
+`border-width` / `border-radius` / `font-size` / `stroke-width` は負にできず、
+`opacity` は `[0, 1]` に収まる。範囲外の値は `style-out-of-range` として報告され、
+既定値が使われる。範囲を持つほかのプロパティ（`label-position` / `grid-columns` /
+`label-max-chars`）は、後述の各節にそれぞれの規定がある。
+
+---
+
+## stroke-style プロパティ（エッジ）
+
+`stroke-style` はエッジの線スタイル（`solid | dashed | dotted`）の
+**正準名**である。エッジが既に使っている SVG 系の `stroke-*` 語彙
+（`stroke-width`）と揃えている。`border-style` は後方互換のための
+エイリアスとしてエッジでも引き続き使える — 既存のスタイルシートは
+そのまま動作する。
+
+```css
+edge[async]  { stroke-style: dashed; }   /* 推奨 */
+edge[legacy] { border-style: dashed; }   /* エイリアス、同じ効果 */
+```
+
+カスケード後に同一エッジへ**両方**が宣言されている場合は、宣言順に
+かかわらず `stroke-style` が勝つ:
+
+```css
+edge { border-style: dotted; stroke-style: dashed; }  /* → dashed */
+```
+
+ノードの線スタイルは `border-style` のみ — `stroke-style` はノード
+シェイプには効果を持たない。
+
+> Related TPLs: [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)
+> — 本ドキュメントの `css` フェンスに宣言されたプロパティはアプリ内
+> reference データに存在しなければならず、`PROPERTY_SCHEMAS` の全エントリは
+> 本ドキュメントに記載されていなければならない（`stroke-style` は正式化前は
+> スキーマのみのゴーストだった — ADR-1492 / #1492 参照）。
+
+---
+
+## shape プロパティ
+
+<!-- gen:reference:shapes — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
+| キーワード | 形状 | 主な用途 |
+|------------|------|----------|
+| `box` | 角丸長方形 | service, domain（デフォルト） |
+| `user` | 人型（頭+体） | user |
+| `cylinder` | 円柱 | db系 |
+| `queue` | 横向き円柱 | queue系 |
+| `hexagon` | 六角形 | マイクロサービス |
+| `cloud` | 雲形 | 外部クラウド |
+<!-- /gen:reference:shapes -->
+
+カスタム形状 — `url(...)` で名前を指定する SVG アイコン：
+
+```css
+service[external] {
+  shape: url("cloud-node");
+}
+```
+
+引数はファイルへのパスではなく、**登録済みアイコンの名前**です。組み込みのセット
+（マニフェスト `packages/core/icons/icons.json` にある `service`、`database`、
+`cloud-node`、`client-web`、`table`、`oci` など。アイコンモードが描くものと同じ
+アイコンです）は core 自身が登録するので、ブラウザ app、`karasu render`、VS Code
+プレビュー、LSP のどの描画面でも同じ名前が同じアイコンに解決されます。ホストは
+独自のアイコンを追加できます（`resolveIconManifest` / `loadAndRegisterIcon`）。
+どの登録済みアイコンにも一致しない `url()` は宣言位置に `style-unknown-icon`
+warning を出し、ノードは `box` にフォールバックします。
+
+この warning はシートを読むプロセスのレジストリで判定するので、組み込みのセットに
+ついてはどこでも同じ答えになります。一方、ホストが**独自に**登録したアイコンは
+そのホストのプロセスにしかありません。言語サーバと `karasu lint-style` は別プロセス
+で動くため、ホストが登録済みの名前を未登録として報告します（ホスト側の描画は正しい
+ままです）。アイコンを足す埋め込み利用者は、compile / validate より前に登録します。
+
+### `url()` アイコンの描かれ方
+
+アイコン本体は絵であってカードではないため、ノードが宣言した
+`background-color` / `border-color` / `border-width` / `border-radius` を
+使う先を持ちません。これらはノードのカードとして本体の背後に描かれます
+（**どちらの表示モードでも**）。キャンバス上に絵だけを置きたい場合は、
+カードを宣言で消します。
+
+```css
+service[external] {
+  shape: url("cloud-node");
+  background-color: transparent;
+  border-width: 0;
+}
+```
+
+そのカードに何が描かれるかは、アイコンの宣言で決まります。
+
+テキストスロット（`krs-label` / `krs-description`）を持つアイコンは**カードの
+デザイン**です。本体自体がカードで、ラベルと説明の置き場所を自分で持っています。
+**アイコンモード**ではノードをそのカードの上に描くので、本体はまるごと使われ、
+スロットがノードのテキストを受け取ります。**シェイプモード**ではカードをノード
+自身のテキストから測るので、アイコンからはピクトグラム（`<g class="krs-pictogram">`）
+だけを取り、カード左上の padding 帯に原寸で描きます。テキストは他のシェイプと
+同じスタック — ラベル、説明、`role`、client のリソース / ケーパビリティチップ、
+リンク / チームのメタ行 — です。
+
+テキストスロットを**持たない**アイコンは単体の絵で、ノードのテキストはどちらのモード
+でも通常のスタックとしてその上に描かれます。絵の置かれ方はモードで違います。
+**シェイプモード**ではカードに内接して `viewBox` の縦横比を保ち（テキストから測った
+カードに合わせて引き伸ばされることはありません）、余った領域の中央に置かれます。
+**アイコンモード**では、そのモードが全ノードに与える固定カードを満たします。
+
+> Related TPLs:
+> [TPL-2385](../test-perspectives/TPL-2385-attachment-follows-drawn-outline.md)
+> — カード枠はノードの箱に置かれたままなので、本体を内接させてもエッジや
+> クロームは描かれた輪郭に付く。
+> [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)
+> — 表示モードは全描画面で点検する。枠はどちらのモードでも描かれ、モード間で
+> 違うのはカードの寸法と、アイコンのスロットを読むかどうか。
+> [TPL-2802](../test-perspectives/TPL-2802-core-registry-contents-do-not-depend-on-host.md)
+> — `url()` が引くレジストリの中身は core 自身が埋める。ホストが何を呼んだかで
+> 描画結果も `style-unknown-icon` の判定も変わらない。
+> [TPL-2803](../test-perspectives/TPL-2803-measured-lines-are-drawn-lines.md)
+> — カードのテキストは、その寸法を測ったレイアウトが描く。シェイプモードの
+> カードは測定が確保した行をすべて保つ。
+
+---
+
+## kind の色語彙
+
+この節は**ビルトイン**スタイルシートが kind に色を割り当てる規則を説明します。
+あなたのスタイルシートを縛るものではありません — ユーザールールはこれらすべてに
+優先します。それでも規則として書き残すのは、デフォルトの配色が全体として読める
+状態を保つためと、あとから kind を追加するときに毎回勘で決めずに済ませるためです。
+
+規則は 2 つ、それに色相表が付きます。
+
+### 規則 1 — 論理層は色相ではなく塗りで区別する
+
+`domain` / `usecase` / `resource` / `member` は同じシステムを同じ視点から語る
+語彙なので、4 つの無関係な色相で注意を奪い合うのではなく青系を共有します。区別
+するのはカードの塗り方です:
+
+| kind | 表現 | 読み方 |
+|------|------|--------|
+| `domain` | navy 塗り | この層が所有する構造 |
+| `usecase` | **塗りなし** — canvas が透け、枠線だけ | 振る舞い。それを収める構造より軽く描く |
+| `resource` | 中立な slate 塗り | 物理層が所有するものへの*参照* |
+| `member` | navy 塗り + `shape: user` | すでに形状で分離済み |
+
+塗りなしの kind には、知っておくべき帰結が 2 つあります。
+
+- **枠線が輪郭そのものになる。** 塗りがない以上、カードを描いているのは枠線だけ
+  なので、枠線が WCAG の非テキスト基準 3:1 を負います。判定面は 3 つあります:
+  素の canvas、boundary フレームの tint を重ねた canvas（メンバーシップは 1:N な
+  ので frame は重なる — 3 枚重ねまで検証）、そして `@deprecated` が fade させた
+  不透明度でのカード（塗りありなら本体が残るが、塗りなしでは輪郭しか残らない）。
+  両テーマの `usecase` 枠線が青のランプのほぼ両端に位置し、どちらも純粋に見た目で
+  選ぶ場合より canvas から遠い明度になっているのは、この 3 つを同時に満たすためです。
+
+  この fade より薄い不透明度の状態（facet オーバーレイの dim、diff の ghost）は
+  対象外です。好みの問題ではなく、その α ではどんな色でも 3:1 に届かないためです。
+  枠線に置ける最良の色は純白ですが、dark canvas に対して dim の α で 2.50:1、
+  ghost の α で 2.70:1 にしかなりません。WCAG 1.4.11 が inactive component に
+  設けている除外と同じ扱いになります。
+- **境界のメンバーシップが色で読めるようになる。** *Group by: boundary* のとき、
+  不透明な塗りに隠されていた frame の tint がカード内部まで届くので、塗りなしの
+  カードは位置だけでなく色でも境界の一員として読めます。
+
+塗りなしにするときは `none` ではなく `transparent` を使います。`transparent` は
+描画される（painted）ので、カードはクリック・ホバーの当たり判定を保ちます。
+
+### 規則 2 — deploy kind は 1 つの色相を 3 通りに使う
+
+deploy kind はそれぞれ色相を 1 つ持ちます。カードの 3 色はすべてその同じ色相を
+明度違いで取ったもので、accent がカードから浮かずにカードのものになります:
+
+- `border-color` / `badge-color` — accent、彩度そのまま
+- `background-color` — 塗り。明度の両端のうち **canvas に近い側**。カードが canvas
+  に穴を開けるのではなく、canvas の上に載っているように見せる
+- `color` — ラベル。**その反対側の端**、すなわち塗りから最も遠い明度
+
+明度のどちらが「canvas に近い側」かはテーマで入れ替わります。同じ規則から dark では
+`oci` の塗りがほぼ黒に、light では淡色になるのはこのためです。絶対的な明度ではなく
+canvas を基準に規則を書いているので、1 つの文で両テーマを記述できます。
+
+| kind | 色相 |
+|------|------|
+| `oci` | blue |
+| `lambda` | purple |
+| `jar` | green |
+| `war` | orange |
+| `function` | yellow |
+| `assets` | cyan |
+| `job` | red |
+| `artifact` | gray |
+| `store` | teal |
+
+この表が固定するのは**色相と規則**であって hex 値ではありません。具体的な hex は、
+2 つの規則と両テーマのコントラストガードを満たす値なら何でも構いません — すなわち
+`background-color` を設定する kind は対の `color` も設定し、その対が 4.5:1 を満たす
+こと。したがって kind を追加するとは、この表に行を足し、その行から 3 色を導出する
+ことです。結果はガードが検証します
+（`packages/core/src/builtins/default-style-contrast.test.ts`）。
+
+> `job` は `edge[cyclic]` と赤を共有しています。この衝突は本節より前から存在する
+> もので、既存の kind 色を組み替えるより維持を選びました。新しい kind でこれ以上
+> 衝突を増やさないでください。
+
+> Related TPLs: [TPL-2421](../test-perspectives/TPL-2421-kind-color-hue-table.md)
+> — kind の追加は色相表への行追加であり、fill / text はその行から導出する。hex は
+> コントラストガードが検証する。
+> [TPL-1697](../test-perspectives/TPL-1697-kind-style-sets-text-color-per-theme.md)
+> — `background-color` を設定する kind はテーマごとに対の text `color` も設定する。
+> [TPL-2366](../test-perspectives/TPL-2366-badge-color-canvas-contrast.md)
+> — canvas 上に直接文字として描かれる色はテーマごとにコントラストを検証する。
+
+---
+
+## レイアウトヒント（escape hatch）
+
+> **最後の手段として使う。** karasu の auto-layout（kind と到達性で決まる
+> 行配置、直交エッジルーティング、ポート分散）はほとんどの図を入力なしで
+> 描けます。レイアウトヒントは、それでも作者の意図を表現できない場合（例：
+> 管理用 actor を右側に固定したい、外部サービスを片側に寄せたい）にだけ
+> 使うこと。まずヒューリスティクスでの吸収を検討し、ヒントは最後に。
+
+### `column` — `left | center | right`
+
+同じ layer 内のノードを 3 つのバケット（`left` / `center`-もしくは未指定 / `right`）
+に振り分けます。`center` と未指定は同じ中央バケットに入るため、両端だけを
+明示的に指定して残りは未指定で済ませられます:
+
+```css
+service[external]        { column: right; }
+queue, database, storage { column: center; }
+/* internal service は未指定 → 中央バケットに入る */
+```
+
+各バケット内は既存の並び（system view では宣言順、それ以外では barycenter）
+を保持します。**layer（行）自体を動かす効果はありません**。行を変えたく
+なった場合はヒントを増やす前に auto-layout のヒューリスティクス改善 Issue
+を立ててください。
+
+#### 外部サービス（system view）: `column` で配置サイドを選ぶ
+
+system view では `[external]` サービスを既定で**左右のサイド列**に配置します
+（最下段の行ではありません）。これにより `service → external` のエッジが水平に
+走り、下向きの infra ファンアウトの間を縫わずに済みます。サイドは consume する
+サービスの位置から自動で決まります（各 external は、それを呼ぶサービスの側へ
+グルーピングされます）。external サービスに `column: left` / `column: right` を
+指定すると、その自動割り当てを**上書き**して指定した側に固定します:
+
+```css
+#LegacyBilling { column: left; }  /* この外部 SaaS を左側に固定する */
+```
+
+external サービスの `column: center` / 未指定は、サイドを自動割り当てに委ねます。
+（infra kind — `database` / `queue` / `storage` — は `[external]` タグの有無に
+関わらず最下段の行に残ります。Tags を参照。）
+
+> Related TPLs: [TPL-1761](../test-perspectives/TPL-1761-external-side-placement-invariant.md)
+
+### 適用スコープ
+
+| View | 挙動 |
+| --- | --- |
+| `system` | 上記の通り適用。 |
+| `deploy` | 無視。解決時に `style-column-ignored-non-system-view` 警告が出る。 |
+| `org`    | 同上。 |
+
+`left` / `center` / `right` 以外の値は `style-column-invalid-value`
+警告とともに破棄されます。
+
+### `grid-columns` — 正の整数
+
+コンテナの直接の子を畳むグリッドの列数を指定します。既定でもレイアウトは多数の
+兄弟を**バランス grid** に畳み、横長の一行に潰れてズームアウトを強いる状態を避けます
+（一目で把握できる解像度を保つ。コンセプトの scoped glance / 解像度の軸を参照）。
+既定の列数は ≈ 正方形に自動バランスします: 少数（5 個まで）は 1 行のまま、より多い
+場合は `ceil(sqrt(n))` 列（最大 5 列）で横ではなく縦に伸ばします。
+
+`grid-columns` はこの既定を特定のコンテナで上書きします。子を再配置したいノード
+（services なら `system`、domains なら `service`、usecases なら `domain`、member grid
+なら `team`）に指定します:
+
+```css
+#PlatformSystem { grid-columns: 3; }   /* services を 3 列で折り返す */
+#BillingDomain  { grid-columns: 2; }   /* usecases を 2 列で折り返す */
+```
+
+1 行が行幅予算を超える場合は早めに折り返すため、過大な `grid-columns` でも
+フレームを溢れさせません。system / drill-down / deploy の各ビューでは、この予算は固定の
+定数ではありません: レイアウトは候補となる幅を決められた順に試し、**画面の形に収まる
+比率のまま、キャンバスの空き空間が最小になる**ものを採ります。そのため、放っておくと
+縦長のリボンになるビューは横へ広がります。選択はモデルとレイアウト定数だけで決まり
+viewport には依存しないので、同じ入力は常に同じ SVG になり、すでに収まっているビューは
+レイアウトが変わりません。org の member grid はこの探索の対象外で、1 行あたりの枚数は
+固定です（`grid-columns` で上書きできます）。`column`（system ビュー限定）と異なり、本ヒントは system /
+drill-down ビューおよび org の member grid で有効です。deploy ビューもグリッドを自動
+バランスし、4 つ以上の unit を持つコンテナは unit も 1 列に積まずグリッドに畳みます。
+ただしコンテナを `realizes` 先でグループ化する都合上コンテナノードが無く、
+v1 では `grid-columns` による上書きはできません。
+
+正の整数でない値（`0` や `2.5` など）は `style-grid-columns-invalid-value` 警告とともに
+破棄され、レイアウトは自動バランスにフォールバックします。
+
+> Related TPLs: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md) — 一度に見せる範囲を限定し、単一ビューが一目で把握できる解像度を保つ（バランス grid は視覚密度を一定に保つ）。[TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md) — view ごとの行幅予算は探索で決まるため、決定的・floor-first・単調でなければ本節が約束する「同じ入力 → 同じ SVG」が破れる。
+
+### `direction` — `auto | up | down | left | right`
+
+エッジに対するレイアウトヒント。エッジを視覚的にどの方向に流したいかを
+示唆する。デフォルトは `auto`（エンジンに任せる）。
+
+```css
+edge[write] { direction: down; }
+edge[read]  { direction: right; }
+edge#criticalWrite { direction: down; }
+```
+
+値はリゾルバを経由して `ResolvedEdgeStyle.direction` に届き、GUI 編集
+フロー（#1076 / #1098）と karasu の layered layout の両方で使われる。
+
+#### 反映される値
+
+- **`auto`**（デフォルト）: バイアスなし。エンジンに完全に任せる
+- **`up`**: source を target の **下** に配置し、矢印が視覚的に上向きに
+  流れるようにする。トポロジカルなレイヤ割り当てでエッジを反転する
+  か、forced kind-based system view では source を target の 1 段下に
+  ずらすことで実現する。矢印自体の `from -> to` 方向は変わらない
+- **`down`**: source を target の **上** に配置し、矢印が視覚的に下方向に
+  流れるようにする。バックエッジや forced kind-based 段組などで他の
+  制約が逆方向にレイアウトしようとしても、明示的に `down` で
+  上書きできる。`up` の鏡像で、forced layout では source を target の
+  1 段上に押し上げる（target 自身と他の同種ノードは動かない）。
+  target が既に layer 0 にある場合（押し上げる余地がない）は no-op で
+  自然な orientation に戻る。drill-down view（forced layer なし）では
+  自然な topological order が既に `down` を満たすので、`auto` と
+  観察上同じ
+- **`left` / `right`**: 矢印を **左** / **右** に流す（`up` / `down` と
+  同じく「矢印の流れる向き」を値で指定する）。source endpoint は
+  矢印の流れと逆側に配置される — `direction: right` は source を
+  target の **左** に、`direction: left` は source を target の **右**
+  に置く（結果として矢印は反対側に流れる）。自然な layered layout で
+  source / target が異なる row に分かれる場合（service 同士の edge など
+  典型的なケース）、エンジンは **まず source を target の layer に
+  引き寄せ**、その後 within-layer の並び替えを行う。`up` / `down` の
+  「source 局所変位」モデルと同じ。`bucketByColumn` の後段で実行される
+  ため、source endpoint については node `column` ヒントを上書きする
+  （target の `column` は尊重）。同じ source への矛盾するヒントは
+  **last-wins** で、cascade 規約と一貫する。詳細は
+  [`docs/adr/1135-edge-direction-horizontal.md`](../adr/1135-edge-direction-horizontal.md)
+
+#### サイクル / forced-layer フォールバック
+
+`up` は absolute 指定ではなくヒント。以下のケースでエンジンは反転を
+無効化する:
+
+- **サイクルガード**: `up` を適用すると layer DAG にサイクルが発生する
+  場合、該当エッジの反転を無効化し、自然な orientation で描画する
+- **Forced kind-based layouts**: トップレベルの system view は
+  `user → client → service → ...` のような種別による段組を強制する。
+  ここでも `direction: up` は honor され、**source ノードを target の
+  1 段下にずらす** 形で実現する（target 自身と他の同種ノードは
+  動かない）。明示された該当エッジに限ってのみ kind stratification が
+  乱れる
+
+詳細は [`docs/adr/9019-edge-direction-style.md`](../adr/9019-edge-direction-style.md)。
+
+不正値は黙って破棄され、`direction` は `auto` にフォールバックする。
+
+### `label-position` — `start | middle | end | <0.0..1.0>`
+
+エッジに沿って label アンカーがどこに置かれるかを指定する。デフォルトは
+`middle`（= `0.5`）。
+
+```css
+edge[delivers] { label-position: start; }   /* source 端寄り */
+edge[implicit] { label-position: end; }     /* target 端寄り */
+edge#criticalWrite { label-position: 0.25; }
+```
+
+値がデフォルト（`0.5`）かつ `label-offset` が `0` のときは「最長セグメント
+の中点」ヒューリスティクスを保持し、既存図の出力は byte-stable のまま。
+著者がいずれかを設定した時点で、polyline 全長を辿って `position ×
+totalLength` の点をアンカーにする経路に切り替わる。
+
+不正値（未知のキーワード、数値でない文字列）は `middle` にフォールバック。
+`[0, 1]` 範囲外の小数値はクランプ。
+
+### `label-offset` — `<dy>px` または `<dx>px <dy>px`
+
+label アンカーを画面の x/y 軸方向にずらす値（pixel）。CSS shorthand
+の構文を踏襲:
+
+- **1 値** (`label-offset: 8px`) → `dx = 0`, `dy = 8`。最頻出の
+  「label を下方向にずらす」ケース
+- **2 値** (`label-offset: 4px 8px`) → `dx = 4`, `dy = 8`
+
+```css
+edge { label-offset: 0 8px; }    /* 全 label を anchor から 8px 下に */
+edge#wide { label-offset: 4px 8px; }
+```
+
+screen axis（edge perpendicular ではなく）なので、グローバルルールでも
+edge の傾きに関係なく統一された方向にシフトする。正の値は右 (x) /
+下 (y)、負の値は左 / 上。
+
+renderer が anchor の上 `-6px` に label を置く既存のオフセットとは独立。
+typographic な lift はそのまま、その上にこの offset が加算される。
+
+> **以前の draft（撤回）**: 初版は `label-offset` を edge 方向に対する
+> 1 軸 perpendicular ずらしと定義していた。これだと
+> `edge { label-offset: 8px; }` の効果が edge の傾きごとに違う方向に出て
+> 予測が立てにくかった。screen-axis CSS shorthand に切り替えた。詳細は
+> [ADR-1184](../adr/1184-edge-label-position-offset.md)。
+
+### `label-max-chars` — `<n> | none`
+
+canvas に描く label の文字数。デフォルトは `48`。超えた label は単語の
+境界で切り、末尾に `…` を付ける。`…` も文字数に含めるので、描かれる
+文字列が上限を超えることはない。
+
+```css
+edge { label-max-chars: 24; }                   /* 密な canvas 向けに短くする */
+edge#criticalWrite { label-max-chars: none; }   /* この 1 本は常に全文を描く */
+```
+
+書いた label は失われない。省略した edge は全文を `data-edge-label` と
+`<title>` に持つので、viewer は hover で全文を出せる（ブラウザで開いた
+静的 SVG も含む）。その edge には `data-edge-label-withheld="truncated"`
+が付く。上限に収まる label の edge は、この property が無かったときと
+同じ出力になる。
+
+文字数は code point で数え、描画幅では数えない。正の整数でない値は
+無視され、デフォルトが使われる。
+
+機械生成の label（usecase → resource edge の `W` / `R`、集約 edge の
+`N domain edges`）は省略しない。
+
+### `label-display` — `auto | always | hover`
+
+canvas に label を描くかどうか。デフォルトは `auto`。
+
+| 値 | canvas が label を描く条件 |
+| --- | --- |
+| `auto` | node card・他の label・他の edge の線に重ならずに置けるときだけ |
+| `always` | 常に。重なる位置でも描く |
+| `hover` | 描かない。viewer が hover で出す |
+
+```css
+edge { label-display: always; }            /* 全 label を、重なっても描く */
+edge[async] { label-display: hover; }      /* hover するまで出さない */
+```
+
+`auto` では、まず自動配置（上の `label-position` を参照）が label を
+空いた位置へ動かす。空いた位置とは、card・他の label・他の edge の線に
+重ならない位置である。届く範囲に空きが無ければ、そこには描かずに
+canvas から外す。外した label の場所は、
+後から置く label が使える。全部の label が重ならずに置ける canvas は、
+`auto` でも `always` でも同じ出力になる。
+
+canvas から外した label には、同じ surface 上で必ず届く。edge は書いた
+文字列を `data-edge-label` と `<title>` に持ち、
+`data-edge-label-withheld="deferred"` が付く。
+
+次の label は値にかかわらず常に描く。
+
+- `auto` のとき、author が `label-position` / `label-offset` で位置を
+  指定した label。author の指定が勝つので、重なる位置でもそこに描く。
+- 機械生成の label（`W` / `R`、`N domain edges`）。書かれた文字列では
+  ないので、hover で出し直す元が無い。
+- 集約 edge の label。内訳を開くためにクリックする対象でもある。
+
+この 2 つの property が無かったときの挙動に戻すには次のように書く。
+
+```css
+edge { label-max-chars: none; label-display: always; }
+```
+
+> Related TPLs: [TPL-3022](../test-perspectives/TPL-3022-withheld-content-stays-reachable.md) — canvas が省略・保留した authored 情報は、その surface 上で全文に到達できる。[TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md) — label の衝突は数値で計測し、保留するものが無い canvas は byte-stable に保つ。
+
+---
+
+## @import のスコープと衝突
+
+- グローバルスコープ（ファイル全体に適用）
+- 同じセレクタが複数ファイルで定義された場合は後勝ち
+- 衝突時は警告を出力（エラーにはしない）
+
+```
+⚠ Warning: セレクタ "service" が複数ファイルで定義されています
+  - default.krs.style:3
+  - my-theme.krs.style:2
+  my-theme.krs.style の定義が適用されます（後勝ち）
+```
+
+---
+
+## スタイル解決の擬似コード
+
+```javascript
+function resolveStyle(node, rules) {
+  return rules
+    .filter(rule => matches(node, rule.selector))
+    .sort((a, b) => specificity(a.selector) - specificity(b.selector))
+    .reduce((acc, rule) => ({ ...acc, ...rule.style }), {})
+}
+
+function specificity(selector) {
+  let score = 0
+  if (selector.id)              score += 100
+  score += selector.tags.length        * 10
+  score += selector.annotations.length * 10
+  if (selector.type)            score += 1
+  return score
+}
+```
+
+---
+
+## 完全サンプル（default.krs.style）
+
+```css
+/* ── 種別セレクタ ── */
+user {
+  background-color: #1D4ED8;
+  color:            #DBEAFE;
+  border-color:     #1E40AF;
+  border-width:     2px;
+  border-radius:    8px;
+  font-size:        13px;
+  font-weight:      bold;
+  shape:            user;
+}
+
+service {
+  background-color: #0369A1;
+  color:            #E0F2FE;
+  border-color:     #075985;
+  border-width:     2px;
+  border-radius:    8px;
+  font-size:        13px;
+  font-weight:      bold;
+  shape:            box;
+}
+
+domain {
+  background-color: #15803D;
+  color:            #D1FAE5;
+  border-color:     #166534;
+  shape:            box;
+}
+
+usecase {
+  background-color: #1F2937;
+  color:            #F9FAFB;
+  border-color:     #374151;
+  font-size:        11px;
+  shape:            box;
+}
+
+impl {
+  background-color: #78350F;
+  color:            #FEF3C7;
+  border-color:     #92400E;
+  shape:            box;
+}
+
+/* ── タグセレクタ ── */
+[external] {
+  background-color: #1F2937;
+  color:            #D1D5DB;
+  border-color:     #374151;
+  border-style:     dashed;
+}
+
+/* ── アノテーションセレクタ ── */
+@deprecated {
+  badge-color:  #EF4444;
+  badge-icon:   "⚠";
+  badge-label:  "非推奨";
+  opacity:      0.6;
+}
+
+@new {
+  badge-color:  #10B981;
+  badge-icon:   "✦";
+  badge-label:  "NEW";
+}
+
+@experimental {
+  badge-color:  #F59E0B;
+  badge-icon:   "⚗";
+  badge-label:  "実験的";
+}
+
+@migration_target {
+  badge-color:  #3B82F6;
+  badge-icon:   "→";
+  badge-label:  "移行先";
+}
+
+/* ── 複合セレクタ ── */
+user[external] {
+  color: #9CA3AF;
+}
+
+[external]@deprecated {
+  border-color: #EF4444;
+}
+
+/* ── IDセレクタ ── */
+#ECommerce {
+  background-color: #7C3AED;
+}
+
+/* ── エッジ ── */
+edge {
+  color:        #94A3B8;
+  stroke-width: 1.5px;
+  font-size:    11px;
+}
+
+edge[async] {
+  border-style: dashed;
+  color:        #6B7280;
+}
+
+/* ── 組織図（Org Tree View）── */
+team {
+  background-color: #1E3A5F;
+  color:            #E2E8F0;
+  border-color:     #3B82F6;
+}
+
+member {
+  background-color: #0F172A;
+  border-color:     #334155;
+}
+
+/* 特定チームのみ強調 */
+#BackendTeam {
+  border-color: #F59E0B;
+  border-width: 2px;
+}
+```
+
+---
+
+## boundary フレームセレクタ（`boundary` / `boundary#<id>`）
+
+*Group by: boundary* では、system view が各 `boundary` のメンバーを破線のフレームで囲み、
+宣言順に循環する識別色を付ける。style シートはこの色を引き取れる。
+
+```css
+boundary            { border-style: solid; }   /* 全フレーム */
+boundary#pci        { border-color: #C0392B; } /* 特定の boundary */
+```
+
+id 空間を選ぶのはキーワードの側である。boundary はノードではないので、裸の `#pci` は
+`pci` という名前の**ノード**を指し、フレームには決して当たらない。`#criticalWrite` が
+`edge#criticalWrite` の指すエッジではなくノードを指すのと同じ関係。specificity も他と
+同じ部品から導かれる: `boundary` が 1、`boundary#pci` が 101（id の 100 + 種別の 1）。
+
+シートが名指ししなかった boundary は循環色のままなので、1 つ指定しても他は動かない。
+
+**scoped boundary の扱い。** node ブロック内で宣言した `boundary` は identity が
+（宣言スコープ, id）なので、別々のスコープがそれぞれ `pci` を持ちうる。`boundary#pci` は
+id を名指すがスコープは名指さないので、**すべてのスコープ**（top-level を含む）の同 id に
+一致する。特定スコープの boundary だけを狙う書き方は現時点では無い。必要になったら、
+修飾なしの意味を変えずに修飾形を足せる。
+
+**サポートするプロパティ:**
+
+| プロパティ | 効果 |
+|----------|------|
+| `border-color` | フレームの色。明示指定が無ければ塗りとタイトルもこの色になる |
+| `background-color` | フレームの薄い塗り。`border-color` と分けたいときだけ |
+| `color` | フレームのタイトル。`border-color` と分けたいときだけ |
+| `border-width` | 枠線の太さ（px） |
+| `border-style` | `solid` / `dashed` / `dotted`。既定は `dashed` |
+
+> **Note**: `border-color` の 1 宣言が枠線・塗り・タイトルをまとめて塗り替える。
+> boundary の色は、重なった 2 つのフレームが「入れ子」ではなく「重なり」に読めるための
+> 条件なので、1 つの宣言でそれが 2 色に割れてはならない。分けたいときは
+> `background-color` / `color` を明示する。
+
+> **Note**: `shape` / `opacity` / `border-radius` / `font-*` / `badge-*` はフレームでは
+> 無視される。帯の外へ伸びたフレームは矩形直交の輪郭として描かれるため、設定できる
+> 角丸が存在しない。
+
+team フレーム（*Group by: team*）の指定方法は本節と異なる。team は**ノードであり**
+`#<id>` が既に届いているためで、下の [team フレーム](#team-フレームgroup-by-team) を参照。
+
+本セレクタは、スタイルを当てる構文と同じ互換性 tier に属する。`boundary` は言語 v2.0 から core
+（[syntax.ja.md](syntax.ja.md#システムビューのグルーピングboundary)）。
+
+> Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — boundary の色はフレームと `◇` タブに届き、両者は別のコードが描く。1 つの resolver を読むことで、style の上書きが片方だけを塗り替える事故を防ぐ。[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 裸の `boundary` ルールは本セレクタ以前は parse されて無効果だった。今は効果を持つ。[TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — 上の specificity 行は `reference-data.ts` からの生成物で、ここに手書きしない。
+
+---
+
+## 組織図ノードセレクタ（Org Tree View）
+
+Org Tree View は `team` / `member` の種別セレクタと ID セレクタ（`#NodeId`）をサポートします。
+
+| セレクタ | 対象 |
+|---------|------|
+| `team` | すべてのチームカード |
+| `member` | すべてのメンバーカード |
+| `#TeamId` | 特定のチームカード |
+| `team#TeamId` | 同上を team 種別に絞ったもの |
+| `#MemberId` | 特定のメンバーカード |
+| `edge` | チーム間のベジェコネクタ |
+
+**対応プロパティ:**
+
+| プロパティ | 効果 |
+|---|---|
+| `background-color` | カード背景色 |
+| `color` | テキスト色 |
+| `border-color` | 枠線色 |
+| `border-width` | 枠線幅（px） |
+| `border-radius` | 角丸（px） |
+| `font-size` | フォントサイズ（px） |
+| `font-weight` | フォントウェイト（`normal` / `bold`） |
+| `font-family` | フォントファミリー |
+
+> **注意**: `opacity` / `shape` / `badge-*` は Org Tree View では無視されます。
+> タグ・アノテーション複合セレクタ（`team[external]` 等）は現時点では未サポートです。
+
+### team フレーム（*Group by: team*）
+
+*Group by: team* のとき、system view は各チームのメンバーを囲むフレームを描く。
+このフレームと上のカードは**同じ 1 つの team** の 2 つの描画なので、上のセレクタが
+両方に届く。フレーム専用のキーワードは無い。
+
+```css
+team          { border-color: #64748B; } /* すべての team カードと、すべての team フレーム */
+#Platform     { border-color: #C0392B; } /* Platform のカードと、Platform のフレーム */
+team#Platform { border-color: #C0392B; } /* 同上を team 種別に絞ったもの */
+```
+
+`team#<id>` は**複合セレクタ**であって新しい id 空間ではない。意味は「この id を持つ
+ノード、ただし team であるとき」。specificity は 101（id の 100 + 種別の 1）で、裸の
+`#<id>`（100）と裸の `team`（1）に勝つ。これは `boundary#<id>` とは逆である。あちらは
+裸の `#<id>` では到達できない id 空間をキーワードが名指す。boundary はノードではなく、
+team はノードだからである。
+
+**どのプロパティがどちらの描画に届くか。** 各プロパティは、カード側で塗る部分に対応する
+フレーム側の部分に届く:
+
+| プロパティ | カード（Org Tree View） | フレーム（*Group by: team*） |
+|---|---|---|
+| `border-color` | 枠線色 | 輪郭の色 |
+| `background-color` | カード背景色 | フレーム内側の薄い塗り |
+| `color` | ラベル色 | フレームのタイトル色 |
+| `border-width` | 枠線幅（px） | 輪郭の太さ（px） |
+| `border-style` | 適用されない | `solid` / `dashed` / `dotted`。既定は `dashed` |
+| `border-radius` / `font-size` / `font-weight` / `font-family` | 上表のとおり | 適用されない |
+
+> **注意**: boundary フレームと違い、team フレームの塗りは `border-color` に**追従しない**。
+> boundary フレームは重なるので、1 つの色が塗りまで届かないと重なりが入れ子に読める。
+> team フレームは重ならないため、各プロパティはカード側に倣う。1 つの宣言から読み手が
+> 予測できるのはこちらである。
+
+**既定値は描画ごとに別。** builtin シートの `team { … }` は**カードの**既定値であって
+フレームには届かない。フレームの既定値はビューが自前で描く控えめな破線の輪郭である。
+したがってどのシートも名指していない team は不変で、1 つの team を名指しても他は乱れない。
+
+> **注意**: フレームに届くのは上の 3 つのセレクタだけである。述語を足したルール
+> （`team@deprecated` / `team[tag]` / `team[from=<id>]`）は、効く場面ではカードを
+> styling するがフレームには届かない。フレームは organization モデルを持たない状態で
+> シートから解決するため、team についての述語をそこで評価できない。述語を落として
+> 適用すると全フレームに広がってしまうので、ルールごと受け付けない。
+
+> Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — team はカードとフレームという別のコードで描かれ、1 つの宣言が片方だけを塗り替えてはならない。[TPL-2269](../test-perspectives/TPL-2269-shipped-defaults-must-not-leak-into-a-second-rendering.md) — builtin シートはカードだけを styling する。フレームがそれを読むと既定で全フレームが塗り替わる。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `team#<id>` は `karasu fmt` を通っても、より広い `#<id>` に書き換わらない。[TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — ここで引いた specificity は `reference-data.ts` からの生成物。

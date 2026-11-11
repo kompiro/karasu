@@ -145,7 +145,7 @@ describe("SessionStore", () => {
     // can outlive the cap without KV knowing — `get` is the only thing
     // between that and a credential that never dies.
     h.advance(SESSION_ABSOLUTE_TTL_SECONDS + DAY);
-    await h.kv.put(
+    await h.kv.plant(
       `sess/v1/42/${sessionId}`,
       JSON.stringify({
         accountId: "42",
@@ -286,7 +286,7 @@ describe("SessionStore", () => {
   it("refuses a record whose account disagrees with the key it was read from", async () => {
     const h = harness();
     const { sessionId } = await h.store.issue(42, "kompiro", h.at());
-    await h.kv.put(
+    await h.kv.plant(
       `sess/v1/42/${sessionId}`,
       JSON.stringify({
         accountId: "43",
@@ -304,7 +304,7 @@ describe("SessionStore", () => {
     // exists to prevent — so this fails closed like the mismatch above.
     const h = harness();
     const { sessionId } = await h.store.issue(42, "kompiro", h.at());
-    await h.kv.put(
+    await h.kv.plant(
       `sess/v1/42/${sessionId}`,
       JSON.stringify({ accountId: "42", login: "kompiro", issuedAt: "not a date" }),
     );
@@ -328,5 +328,24 @@ describe("SessionStore", () => {
     expect(await h.store.purgeAccount(42)).toBe(2);
     expect(await h.store.get(42, mine.sessionId, h.at())).toBeUndefined();
     expect(await h.store.get(420, theirs.sessionId, h.at())).toBeDefined();
+  });
+});
+
+describe("SessionStore.refreshIfStale", () => {
+  it("never rejects, whichever KV call fails, so no caller can be failed by it", async () => {
+    // TPL-2655: a refresh happens after the session was already accepted, so
+    // its failure must not reach the caller. The guarantee lives in the
+    // refresh itself rather than in each caller's `try`, and this holds it
+    // there for every operation the refresh makes.
+    for (const failing of ["get", "put"] as const) {
+      const h = harness();
+      const { sessionId } = await h.store.issue(42, "kompiro", h.at());
+      const session = await live(h, sessionId);
+      h.advance(SESSION_REFRESH_AFTER_SECONDS + 1);
+      const bad = (): Promise<never> => Promise.reject(new Error(`KV ${failing} is down`));
+      if (failing === "get") h.kv.get = bad;
+      else h.kv.put = bad;
+      await expect(h.store.refreshIfStale(sessionId, session, h.at())).resolves.toBe(false);
+    }
   });
 });

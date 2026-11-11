@@ -1,18 +1,23 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
-// The judge job of the Low PR merger (Issue #3673): judges every open `risk: low`
-// PR and reports the verdicts. The decisions are in `low-pr-merger-flow.ts`;
-// this file is the real GitHub and git they run against.
+// The judge and notify jobs of the Low PR merger (Issue #3673). `judge` judges
+// every open `risk: low` PR and reports the verdicts; `notify` comments on the
+// PRs those verdicts reject or leave stalled. The decisions are in
+// `low-pr-merger-flow.ts` and `low-pr-merger-notice.ts`; this file is the real
+// GitHub and git they run against. The merge itself is not here: the job that
+// holds the App key runs no repository code (`low-pr-merger.yml`).
 //
 // It runs in a checkout of `main` and treats every PR as data (TPL-3673): a PR's
 // head is fetched as objects for `tier.ts` to read, never checked out, installed
 // or run. Dependency-free, like `tier.ts`: the workflow runs it with plain `node`.
 //
 // Output: a table in the job summary, the verdicts as JSON on stdout and, under
-// Actions, as the step output `verdicts` (without the details, which quote PRs). It exits 0 even when it could not
+// Actions, as the step output `verdicts` (without the details, which quote PRs)
+// with the counts `merges`, `notices` and `undecided`. It exits 0 even when it could not
 // decide some PR: those are verdicts too, and one PR must not stop the judging
 // of the others (TPL-2786 is kept by whatever reads the verdicts).
 //
-//   node scripts/review/low-pr-merger.ts   # from the repository root, with gh logged in
+//   node scripts/review/low-pr-merger.ts judge    # from the repository root, with gh logged in
+//   VERDICTS='[...]' node scripts/review/low-pr-merger.ts notify
 
 import { execFileSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
@@ -24,8 +29,10 @@ import {
   type WorkflowRun,
   judge,
   renderSummary,
+  type VerdictOutput,
   toOutput,
 } from "./low-pr-merger-flow.ts";
+import { BOT_LOGIN, noticeFor, parseVerdicts, wantsNotice } from "./low-pr-merger-notice.ts";
 import { BASE, REPO } from "../adr/regenerate-pr-flow.ts";
 import { checkPr } from "./tier.ts";
 
@@ -96,12 +103,13 @@ function checkTier(pr: number, sha: string): TierResult {
   return { state: "pass" };
 }
 
-function main(): number {
+function runJudge(): number {
   // The tier check compares against `origin/main`; a stale one would misjudge the diff.
   git("fetch", "--quiet", "--no-tags", "origin", BASE);
   const verdicts = judge({ github: restGitHub, checkTier, now: () => Date.now() });
 
-  const json = JSON.stringify(toOutput(verdicts));
+  const out = toOutput(verdicts);
+  const json = JSON.stringify(out);
   console.log(JSON.stringify(verdicts, null, 2));
   for (const v of verdicts) {
     if (v.outcome === "no-conclusion") {
@@ -113,10 +121,51 @@ function main(): number {
   const summary = process.env.GITHUB_STEP_SUMMARY;
   if (summary) appendFileSync(summary, renderSummary(verdicts));
   const output = process.env.GITHUB_OUTPUT;
-  if (output) appendFileSync(output, `verdicts=${json}\n`);
+  if (output) {
+    // The counts decide which jobs run; the verdicts themselves are what they act on.
+    const count = (keep: (v: VerdictOutput) => boolean) => out.filter(keep).length;
+    const lines = [
+      `verdicts=${json}`,
+      `merges=${count((v) => v.outcome === "merge")}`,
+      `notices=${count(wantsNotice)}`,
+      `undecided=${count((v) => v.outcome === "no-conclusion")}`,
+    ];
+    appendFileSync(output, `${lines.join("\n")}\n`);
+  }
   return 0;
 }
 
+/** Comments on rejected and stalled PRs. A PR that fails does not stop the others; the run fails after. */
+function runNotify(): number {
+  const verdicts = parseVerdicts(process.env.VERDICTS ?? "");
+  let failed = 0;
+  for (const v of verdicts.filter(wantsNotice)) {
+    try {
+      // Only the bot's own comments: a PR's author could otherwise post a marker to silence it.
+      const posted = ghList<string>(
+        `repos/${REPO}/issues/${v.pr}/comments?per_page=100`,
+        `.[] | select(.user.login == "${BOT_LOGIN}") | .body`,
+      );
+      const notice = noticeFor(v, posted);
+      if (notice === null) continue;
+      gh(["-X", "POST", `repos/${REPO}/issues/${notice.pr}/comments`, "-f", `body=${notice.body}`]);
+      console.log(`commented on #${notice.pr}`);
+    } catch (e) {
+      failed++;
+      console.log(`::error::PR #${v.pr}: ${(e as Error).message.replace(/\s*\n\s*/g, " ")}`);
+    }
+  }
+  return failed > 0 ? 1 : 0;
+}
+
+function main(argv: string[]): number {
+  const [cmd = "judge"] = argv;
+  if (cmd === "judge") return runJudge();
+  if (cmd === "notify") return runNotify();
+  console.error("usage: low-pr-merger.ts [judge | notify]");
+  return 2;
+}
+
 if (import.meta.main) {
-  process.exitCode = main();
+  process.exitCode = main(process.argv.slice(2));
 }

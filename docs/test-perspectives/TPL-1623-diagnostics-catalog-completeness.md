@@ -81,4 +81,3 @@ TPL-1296 と同じ「並列に存在するものは drift する」発想を診�
 
 - `docs/spec/diagnostics.md` —「診断と規則のリファレンス」全体。特に
   「カタログの完全性」節が本 TPL を back-ref する。
-</content>

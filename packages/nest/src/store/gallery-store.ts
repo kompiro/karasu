@@ -11,13 +11,16 @@
  * So callers get this facade rather than the halves. A caller who deleted the
  * account record and forgot the sessions would leave a live credential naming
  * an account that no longer exists; one who forgot a submission would leave
- * content nobody can withdraw. Every prefix this package writes has to appear
- * in `purgeAccount`, and `gallery-purge-coverage.test.ts` fails the build if
- * one does not (TPL-2226).
+ * content nobody can withdraw. Every key space this package writes has to
+ * appear in `purgeAccount`, and the type says so: the stores it walks are a
+ * `Record` over `GalleryKeySpace`, so registering a
+ * space in `gallery-keys.ts` without naming the store that purges it does not
+ * compile. `gallery-purge-coverage.test.ts` then checks that the store named
+ * really does leave nothing behind (TPL-2226).
  */
 import type { KVNamespaceLike } from "../env.js";
-import { logError } from "../log.js";
 import { AccountStore, type Account } from "./accounts.js";
+import type { GalleryKeySpace } from "./gallery-keys.js";
 import { SessionStore, type Session } from "./sessions.js";
 import { SubmissionStore } from "./submissions.js";
 
@@ -34,24 +37,42 @@ export interface AuthenticateOptions {
   now?: Date;
 }
 
-export interface AccountPurgeResult {
-  /** Account records removed: 1, or 0 if there was nothing to remove. */
-  accounts: number;
-  /** Sessions revoked. */
-  sessions: number;
-  /** Submissions deleted. */
-  submissions: number;
+/**
+ * How many keys account deletion removed, per key space: `accounts` is 1 or 0,
+ * `sessions` the sessions revoked, `submissions` the submissions deleted.
+ *
+ * Derived from the registry rather than written out, so a new space has a
+ * count the moment it exists. A purge that reported zeroes while deleting is
+ * indistinguishable from one that deleted nothing, and a space missing from
+ * the result is the same report with less to look at (TPL-2226).
+ */
+export type AccountPurgeResult = Record<GalleryKeySpace, number>;
+
+/** What account deletion needs from a store: remove the account, say how much. */
+interface Purgeable {
+  purgeAccount(accountId: number | string): Promise<number>;
 }
 
 export class GalleryStore {
   readonly accounts: AccountStore;
   readonly sessions: SessionStore;
   readonly submissions: SubmissionStore;
+  /**
+   * The store that purges each key space, **in purge order**: object literal
+   * keys keep their insertion order, and that order is the one
+   * `purgeAccount` explains below.
+   */
+  private readonly purgeable: Readonly<Record<GalleryKeySpace, Purgeable>>;
 
   constructor(kv: KVNamespaceLike) {
     this.accounts = new AccountStore(kv);
     this.sessions = new SessionStore(kv);
     this.submissions = new SubmissionStore(kv);
+    this.purgeable = {
+      sessions: this.sessions,
+      submissions: this.submissions,
+      accounts: this.accounts,
+    };
   }
 
   /**
@@ -100,16 +121,9 @@ export class GalleryStore {
     // latency this adds is paid once a day and not on the requests that were
     // supposed to be fast.
     //
-    // The refresh still cannot fail the request. The viewer is authenticated
-    // either way — the read that proved it has already happened — and the
-    // worst a dropped write costs is a sign-in sooner than it needed to be.
-    // Logged rather than swallowed silently, because a refresh that fails
-    // *every* time is a broken binding worth seeing in the logs.
-    try {
-      await this.sessions.refreshIfStale(sessionId, session, now);
-    } catch (cause) {
-      logError("karasu-nest could not refresh a session", cause);
-    }
+    // No `try` here: `refreshIfStale` never rejects, which is what keeps a
+    // failed write from changing who the viewer is (`sessions.ts` says why).
+    await this.sessions.refreshIfStale(sessionId, session, now);
     return { session, account };
   }
 
@@ -123,9 +137,12 @@ export class GalleryStore {
    * something that cannot act, not something that can.
    */
   async purgeAccount(accountId: number | string): Promise<AccountPurgeResult> {
-    const sessions = await this.sessions.purgeAccount(accountId);
-    const submissions = await this.submissions.purgeAccount(accountId);
-    const accounts = await this.accounts.purgeAccount(accountId);
-    return { accounts, sessions, submissions };
+    const counts: Partial<AccountPurgeResult> = {};
+    // Sequential, in `purgeable`'s order, for the reason above.
+    for (const space of Object.keys(this.purgeable) as GalleryKeySpace[]) {
+      counts[space] = await this.purgeable[space].purgeAccount(accountId);
+    }
+    // Every key of a `Record<GalleryKeySpace, …>` was visited, so none is missing.
+    return counts as AccountPurgeResult;
   }
 }

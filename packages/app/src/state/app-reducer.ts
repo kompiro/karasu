@@ -1,7 +1,14 @@
 import type { Project, DirEntry, DisplayMode } from "@karasu-tools/core";
 import type { CompareSource } from "../fs/compare-source";
 
-export type ActiveView = "system" | "deploy" | "org" | "matrix";
+/**
+ * Every diagram view, as a value so a test can walk it: each one needs a tab in
+ * `DiagramTabBar` and a row in the Diagram views table of `docs/tools/app.md` /
+ * `app.ja.md` (TPL-1716, `components/preview-surface-docs.test.tsx`).
+ */
+export const ACTIVE_VIEWS = ["system", "deploy", "org", "matrix"] as const;
+
+export type ActiveView = (typeof ACTIVE_VIEWS)[number];
 
 export interface AppState {
   // プロジェクト管理

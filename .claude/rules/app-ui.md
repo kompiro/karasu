@@ -110,8 +110,14 @@ missing doc entry **fails the push / CI**.
   and `docs/tools/app.ja.md` in the same PR.
 - Deliberately undocumented chords go in that script's `DOC_EXEMPT` list
   with a reason (currently the `mod+shift+1/2` edit-tab toggles).
-- Toolbar / view / CLI-flag surfaces are *not* mechanically checked — they
-  rely on review (proactive TPL `TPL-1716-user-facing-surface-docs-sync`).
+- When you add or change a diagram view tab or a preview toolbar control,
+  document it in both `docs/tools/app.md` and `app.ja.md` (Diagram views
+  table / Toolbar section); `packages/app/src/components/preview-surface-docs.test.tsx`
+  fails until you do.
+- When you add or change a control on the drill-path row
+  (`PreviewViewControls`), document it in the "Drill-path row" section of both
+  `docs/tools/app.md` and `app.ja.md` in the same PR. No test checks this row,
+  so it is on you (proactive TPL `TPL-1716-user-facing-surface-docs-sync`).
 
 ## Legacy `toolbar-btn` CSS (deprecated)
 

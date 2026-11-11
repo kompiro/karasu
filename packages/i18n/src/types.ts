@@ -1,4 +1,4 @@
-import type { FirstRunTranslations } from "./first-run.js";
+import type { PartTranslations } from "./catalog-parts.js";
 
 /**
  * Translations — the single source of truth for all translatable strings
@@ -704,11 +704,10 @@ export type Translations = {
     importPath: string;
     lastResolvedId: string;
   }) => string;
-  "diagnostic.circularStyleImport.message": (params: { filePath: string }) => string;
   "diagnostic.styleFileNotFound.message": (params: { filePath: string }) => string;
   "diagnostic.appProjectCompileError.message": string;
   "diagnostic.appOrgParseError.message": string;
-} & FirstRunTranslations;
+} & PartTranslations;
 
 /**
  * Params accepted by a translation key, inferred from the value type.

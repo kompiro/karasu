@@ -37,6 +37,12 @@ on:
       - "scripts/lint/process-index.ts"
       - ".claude/rules/**"
       - "docs/release.md"
+      - "docs/adr/**"
+      - "docs/design/**"
+      - "docs/acceptance/**"
+      - "docs/test-perspectives/**"
+      - "docs/github-actions.md"
+      - "examples/**"
       - ".github/workflows/reference-docs-check.yml"
 
 concurrency:
