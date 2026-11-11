@@ -217,12 +217,14 @@ gh pr view <N> --json state,mergedBy,mergeCommit --jq '"\(.state) \(.mergedBy.lo
 gh run list --workflow low-pr-merger.yml --limit 5 --json databaseId,createdAt,conclusion
 gh run view <run-id>                                       # merge・notify・report の各 job と summary
 gh run list --commit <merge-sha> --json name,event,status  # main の push で走った workflow
+gh api repos/kompiro/karasu/branches/<head-branch> --silent  # 404 ならブランチは消えている
 ```
 
 1. `gh pr merge` は打たない。required check がすべて終わってから 30 分まで、上の 1 行目で PR の状態を読む
    （1 分ごとの読み直しは Bash の `run_in_background` で回す）。merger は check の完了ごとと 10 分ごとの cron で走る
 2. `MERGED` で `mergedBy` が App（`[bot]` で終わる名前）なら、#3698 にコメントする。PR 番号、マージした run の URL、
    `mergedBy`、merge commit で `push` の workflow（`deploy.yml`、`pages.yml` など）が走ったか、head のブランチが消えたか
+   `MERGED` でも `mergedBy` が App でない（人の手か native の auto-merge）なら、誰がマージしたかを書き、その PR は 5 本に数えない
 3. 30 分たっても open なら、最後の run の summary と、notify job が PR に付けたコメントを読む
    - 判定が `reject` で、理由が PR の側にある（check の失敗、コンフリクト、ラベル）なら、PR を直して 1 に戻る
    - それ以外（`no-conclusion`、`stalled`、merge job や report job の失敗、判定が `merge` なのに open のまま）なら、
