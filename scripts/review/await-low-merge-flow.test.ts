@@ -99,14 +99,34 @@ describe("awaitLowMerge: a merged PR", () => {
       pushWorkflows: ["Deploy", "Pages"],
       branchDeleted: true,
     });
-    // An hour before the merge at most, and never before the PR existed.
-    expect(asked).toEqual({ runsFrom: "2026-11-11T10:00:00Z", runsTo: "2026-11-11T10:20:00Z" });
+    // The hour before the merge, even before the PR existed: a run can start first.
+    expect(asked).toEqual({ runsFrom: "2026-11-11T09:20:00Z", runsTo: "2026-11-11T10:20:00Z" });
   });
 
-  it("looks for the run no earlier than an hour before the merge", async () => {
-    const { deps, asked } = fake({ pulls: [merged({ createdAt: "2026-11-01T00:00:00Z" })] });
-    await awaitLowMerge(deps, 7, OPTS);
-    expect(asked.runsFrom).toBe("2026-11-11T09:20:00Z");
+  it("keeps reading the push workflows until the list stops growing", async () => {
+    const { deps } = fake({
+      pulls: [merged()],
+      runs: [{ id: 1, url: "u" }],
+      jobs: { 1: [job(`merged #7 at ${HEAD}\n`)] },
+      pushes: [["Deploy"], ["Deploy", "Pages"], ["Deploy", "Pages"]],
+    });
+    expect(await awaitLowMerge(deps, 7, OPTS)).toMatchObject({
+      pushWorkflows: ["Deploy", "Pages"],
+      waitedMin: 2,
+    });
+  });
+
+  it("stops at the budget while a merge job is still running", async () => {
+    const { deps } = fake({
+      pulls: [merged()],
+      runs: [{ id: 1, url: "https://example.test/runs/1" }],
+      jobs: { 1: [job("", "in_progress")] },
+    });
+    expect(await awaitLowMerge(deps, 7, { ...OPTS, budgetMs: 10 * MIN })).toMatchObject({
+      outcome: "timeout",
+      last: "the merge job of https://example.test/runs/1 is still running",
+      waitedMin: 10,
+    });
   });
 
   it("does not take another PR's line for this one", async () => {
@@ -236,6 +256,20 @@ describe("awaitLowMerge: falling back to --auto", () => {
     });
   });
 
+  it("reads again when a push lands between reading the PR and judging it", async () => {
+    const { deps } = fake({
+      pulls: [open(), open({ headSha: PUSHED })],
+      verdicts: [
+        { pr: 7, sha: PUSHED, outcome: "reject", reasons: ["tier"], details: ["no record"] },
+      ],
+    });
+    expect(await awaitLowMerge(deps, 7, OPTS)).toMatchObject({
+      outcome: "fix-pr",
+      head: PUSHED,
+      waitedMin: 1,
+    });
+  });
+
   it("ends with timeout when nothing settles within the budget", async () => {
     const { deps } = fake({ pulls: [open()], verdicts: [waitVerdict(["checks-pending"], false)] });
     expect(await awaitLowMerge(deps, 7, { ...OPTS, budgetMs: 0 })).toMatchObject({
@@ -262,7 +296,8 @@ describe("awaitLowMerge: failed reads", () => {
     deps.mergeJob = () => job(`merged #7 at ${HEAD}\n`);
     expect(await awaitLowMerge(deps, 7, OPTS)).toMatchObject({
       outcome: "merged-by-merger",
-      waitedMin: 1,
+      // One poll to read again, one to see the push workflows settle.
+      waitedMin: 2,
     });
   });
 

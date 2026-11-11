@@ -102,36 +102,53 @@ const settled = (v: Verdict): boolean =>
 /**
  * How long before the merge the run that made it can have started. The merge job
  * follows the judge in the same run (10-minute timeouts each), and a queued run
- * waits for at most the one in progress.
+ * waits for at most the one in progress. The run may predate the PR itself.
  */
 const MERGE_WINDOW_MS = 60 * 60_000;
 
-async function whoMerged(deps: Deps, pr: number, p: PrState, opts: Options): Promise<Outcome> {
+const iso = (ms: number): string => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
+
+/**
+ * The `push` workflows on the merge commit, read until the list stops growing
+ * between two polls or `pushWaitMs` runs out: they do not all appear at once.
+ */
+async function pushesOn(deps: Deps, sha: string, opts: Options): Promise<string[]> {
+  const until = deps.now() + opts.pushWaitMs;
+  let seen = deps.pushWorkflows(sha);
+  while (deps.now() < until) {
+    await deps.sleep(opts.pollMs);
+    const again = deps.pushWorkflows(sha);
+    if (seen.length > 0 && again.length === seen.length) return again;
+    seen = again;
+  }
+  return seen;
+}
+
+async function whoMerged(
+  deps: Deps,
+  pr: number,
+  p: PrState,
+  opts: Options,
+  deadline: number,
+): Promise<Outcome> {
   const to = Date.parse(p.mergedAt ?? "") || deps.now();
-  const from = Math.max(Date.parse(p.createdAt), to - MERGE_WINDOW_MS);
-  const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
-  const runs = deps.mergerRuns(iso(from), iso(to));
-  for (const run of runs) {
+  for (const run of deps.mergerRuns(iso(to - MERGE_WINDOW_MS), iso(to))) {
     let job = deps.mergeJob(run.id);
     while (job !== null && job.status !== "completed") {
+      if (deps.now() >= deadline) {
+        return { outcome: "timeout", last: `the merge job of ${run.url} is still running` };
+      }
       await deps.sleep(opts.pollMs);
       job = deps.mergeJob(run.id);
     }
     if (job === null) continue;
     if (!new RegExp(`^.*merged #${pr} at `, "m").test(job.log())) continue;
-    let pushWorkflows: string[] = [];
-    const until = deps.now() + opts.pushWaitMs;
-    while (p.mergeSha !== null) {
-      pushWorkflows = deps.pushWorkflows(p.mergeSha);
-      if (pushWorkflows.length > 0 || deps.now() >= until) break;
-      await deps.sleep(opts.pollMs);
-    }
     return {
       outcome: "merged-by-merger",
       run: run.url,
       mergedBy: p.mergedBy,
       mergeSha: p.mergeSha,
-      pushWorkflows,
+      pushWorkflows: p.mergeSha === null ? [] : await pushesOn(deps, p.mergeSha, opts),
       branchDeleted: !deps.branchExists(p.headRef),
     };
   }
@@ -163,12 +180,14 @@ export async function awaitLowMerge(
   const step = async (): Promise<Outcome | string> => {
     const p = deps.pull(pr);
     head = p.headSha;
-    if (p.merged) return whoMerged(deps, pr, p, opts);
+    if (p.merged) return whoMerged(deps, pr, p, opts, start + opts.budgetMs);
     if (p.state !== "open") return { outcome: "closed" };
     if (p.autoMerge) return { outcome: "auto-merge-enabled" };
 
     const v = deps.judge(pr);
     if (v === null) return { outcome: "out-of-scope", why: "not labeled risk: low" };
+    // A push between the two reads: read both again rather than pair a head with another's verdict.
+    if (v.sha !== p.headSha) return "head-moved";
     if (v.outcome === "out-of-scope") return { outcome: "out-of-scope", why: v.why };
     if (v.outcome === "reject")
       return { outcome: "fix-pr", reasons: v.reasons, details: v.details };
