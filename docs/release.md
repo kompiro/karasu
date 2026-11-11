@@ -117,7 +117,7 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 reject した版のタグは現れないので、トレインの Issue は閉じない。理由で次の手が分かれる。
 
 - **stage された tarball が正しくなかった**（照合に落ちた）: reject して版を空け、正しい tarball を stage し直す。`release` ジョブは成功で終わっているので、`release.yml` のその run を **Re-run all jobs** で再実行する。照合に落ちたということは CI か依存が乗っ取られている疑いがあるので、再実行の前に原因を調べ、再実行のあとも照合をやり直す。原因を取り除けないあいだは、下の「CI の経路が使えないとき」に従って手元から stage する。
-- **リリースそのものを出さないと決めた**（stage した版に不具合があった）: 残りの stage 済みの版も reject する。リリースコミットで版を上げた npm パッケージ（`RELEASED_PACKAGES`。VS Code 拡張は含めない）のうち、版が npm に載っていないものごとに patch の changeset を足す PR をマージしてから、トレインの Issue に理由を書いて手で閉じる。reject した版だけでなく、後のグループでまだ stage されていない版（たとえば `karasu-skills` を承認して止めたときの `karasu`）も含める。`pnpm release:approve --dry-run` を実行すれば、計画に残る版（後のグループは `Later:` の行）が分かる。次のリリースでそのパッケージの版が上がり、使わなかった版番号は飛ぶ。
+- **リリースそのものを出さないと決めた**（stage した版に不具合があった）: 残りの stage 済みの版も reject する。リリースコミットで版を上げた npm パッケージ（`RELEASED_PACKAGES`。VS Code 拡張は含めない）のうち、版が npm に載っていないものごとに patch の changeset を足す PR をマージしてから、トレインの Issue に理由を書いて手で閉じる。判定は「その版が npm に載っていない」の 1 つで、reject した版も、後のグループでまだ stage されていない版（たとえば `karasu-skills` を承認して止めたときの `karasu`）も当たる。`pnpm release:approve --dry-run` を実行すれば、計画に残る版（後のグループは `Later:` の行）が分かる。次のリリースでそのパッケージの版が上がり、使わなかった版番号は飛ぶ。
   - 承認済みの版があれば npm に残る（unpublish はしない）。Issue を閉じる前に `release-confirm.yml` を手で起動し、タグと Release を作る。
   - `karasu-skills` を承認したあとで `karasu` を reject したか、stage する前に取りやめたら、skill は刻まれた版の CLI が出るまで止まる。changeset の PR をマージしてトレインの Issue を閉じたら、月次のトレインを待たずに `release-prepare.yml` を手動で実行して、次の `karasu` を出す。直しに時間がかかるなら、取りやめた変更を戻した状態で出してよいが、承認した skill が使う CLI の変更（新しいコマンドやフラグ）は戻さない。
   - changeset を足し忘れると、次のリリースで `stage.mts` が「版を上げていないパッケージ」で止まる。そのリリースでは何も stage されていないので、計画に載っているパッケージごとに patch の changeset を足す PR をマージし、そのトレインの Issue を手で閉じて、`release-prepare.yml` を手動で実行する。
@@ -127,7 +127,7 @@ reject した版のタグは現れないので、トレインの Issue は閉じ
 照合に落ちた版はすでにインストールできる。`pnpm release:approve` が承認の直後にインストールに効く項目の違いで止まったときも、ここに従う。`release-confirm.yml` はタグも Release も作らず、落ちた版とファイルの一覧をトレインの Issue にコメントする。tarball は npm が展開に使う node-tar と、別に書いた厳格な読み取りの両方で読み、両方が同じファイルを読んだときだけ比べる。どちらかが読めない tarball も、照合に落ちたものとして扱う。差分を調べて次の手を決める。
 
 - **環境で変わるファイルだった**（誤検出）: 照合の規則（`scripts/release/tarball.mts`）を直す PR をマージし、`release-confirm.yml` を起動し直す。`pnpm release:approve` が承認の途中で止まっていて計画に次のグループが残るなら、先にリリースコミットの `release.yml` の run を再実行して stage させてから、`pnpm release:approve` を実行し直す（止まったときは次のグループがまだ stage されていない）。分かっている差は `THIRD_PARTY_NOTICES.md` のプラットフォーム固有のパッケージの節で、照合はこれを除いて比べる。
-- **tarball が正しくなかった**: 侵害として扱う。3 パッケージの Trusted Publisher の接続を削除して CI からの stage を止め、その版を取り下げる（npm の unpublish の条件を満たせば unpublish、満たさなければ deprecate）。原因を取り除いてから次の版を出す。取り下げた版番号は飛ばす。計画に残っていた版（後のグループでまだ stage されていない版）は、上の「リリースそのものを出さないと決めた」と同じく patch の changeset を足す PR をマージしてから、Issue に経緯を書いて手で閉じる。
+- **tarball が正しくなかった**: 侵害として扱う。3 パッケージの Trusted Publisher の接続を削除して CI からの stage を止め、その版を取り下げる（npm の unpublish の条件を満たせば unpublish、満たさなければ deprecate）。原因を取り除いてから次の版を出す。取り下げた版番号は飛ばす。unpublish した版（npm はその版番号を二度と受け付けない）と、計画に残っていた版（後のグループでまだ stage されていない版）は npm に載っていないので、上の「リリースそのものを出さないと決めた」と同じく、版が npm に載っていないパッケージごとに patch の changeset を足す PR をマージしてから、Issue に経緯を書いて手で閉じる。
 
 #### CI の経路が使えないとき
 
