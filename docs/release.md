@@ -47,7 +47,7 @@ npm への公開は **changesets** で管理し、認証は **npm Trusted Publis
 
 npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`（ライブラリ）と `karasu-skills`（agent 向け skill を収めた Claude Code plugin、`packages/skills`）。CLI は esbuild で `@karasu-tools/core` を内包した単一 ESM バンドルとしてビルドする（`packages/cli` の `build` スクリプト。公開 core への依存には切り替えない）。`@karasu-tools/app` / `@karasu-tools/lsp` / `@karasu-tools/e2e` / `@karasu-tools/vscode-e2e` は `.changeset/config.json` の `ignore` に入っており版管理・公開とも対象外。
 
-`karasu-vscode`（VS Code 拡張）も changesets の**版管理対象**（`ignore` から除外）。ただし `private: true` のため `changeset publish` は npm へ publish せず（自動スキップ）、配布は Marketplace 経由で手動（後述「VS Code 拡張のリリース」）。changesets は version bump と `packages/vscode/CHANGELOG.md` 生成のみを担う。 `@changesets/cli` 3 は private パッケージを既定で版管理しない（`privatePackages` の既定が `{ version: false }`）ため、`.changeset/config.json` に `privatePackages: { "version": true, "tag": false }` を明示してこの扱いを保っている（[ADR-2877](adr/2877-dependabot-triage-2026-09-22.md)）。
+`karasu-vscode`（VS Code 拡張）も changesets の**版管理対象**（`ignore` から除外）。ただし `private: true` のため `changeset pack` の計画に入らず npm へは stage されない。配布は Marketplace 経由で手動（後述「VS Code 拡張のリリース」）。changesets は version bump と `packages/vscode/CHANGELOG.md` 生成のみを担う。 `@changesets/cli` 3 は private パッケージを既定で版管理しない（`privatePackages` の既定が `{ version: false }`）ため、`.changeset/config.json` に `privatePackages: { "version": true, "tag": false }` を明示してこの扱いを保っている（[ADR-2877](adr/2877-dependabot-triage-2026-09-22.md)）。
 
 > **`@karasu-tools/core` は v0.x（TS API、無保証）**。`.krs` / `.krs.style` 言語は v1.0 だが、TS API は minor で破壊的変更を許す（[ADR-1314](adr/1314-krs-spec-v1-freeze.md)）。`exports` は公開先に `dist` を指し、`development` 条件で repo 内は TS ソースを解決するため `pnpm typecheck` は build 非依存。
 
@@ -55,9 +55,9 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 
 `karasu-skills` は `prepack` で、その時点の CLI の版（`packages/cli/package.json`）を各 SKILL.md の `metadata.karasu-version` と本文 Step 0 に刻み、`postpack` で元に戻す（刻むのは「この版以降の CLI 向け」という下限）。利用者はルートの `.claude-plugin/marketplace.json` を marketplace として追加し、npm の `karasu-skills` を plugin として入れる（`/plugin marketplace add kompiro/karasu` → `/plugin install karasu@karasu`）。設計は [ADR-2901](adr/2901-karasu-authoring-skill.md)（#2932）。
 
-> **`karasu` は `karasu-skills` に依存する**（#2912）。`karasu skill install` が同梱の skill をコピーするため、CLI は `karasu-skills` を esbuild で内包せず実行時に解決する（ADR-1363 の「CLI は依存を内包する」の例外。中身は skill の文書だけ）。公開される `karasu` はその時点の `karasu-skills` の版を完全一致で指すので、同じトレインで `karasu-skills` の publish が失敗すると `npm i karasu` が解決できなくなる。`release.yml` の結果で両方が公開されたことを確かめる。
+> **`karasu` は `karasu-skills` に依存する**（#2912）。`karasu skill install` が同梱の skill をコピーするため、CLI は `karasu-skills` を esbuild で内包せず実行時に解決する（ADR-1363 の「CLI は依存を内包する」の例外。中身は skill の文書だけ）。公開される `karasu` はその時点の `karasu-skills` の版を完全一致で指すので、`karasu-skills` が npm に無いと `npm i karasu` が解決できない。公開の計画は依存の順に並ぶので、`karasu` は `karasu-skills` が承認されて npm に載ってから stage される（下の「リリースの流れ」の手順 4）。
 
-> **`karasu-skills` の初回 publish は手動**。npm の Trusted Publisher はパッケージが存在してからでないと登録できない（下の「前提」）。最初のリリース PR で版が確定したら、ローカルの `packages/skills` で `pnpm publish --access public`（OTP を求められる）を実行して一度だけ公開する。npmjs.com での Trusted Publisher（org `kompiro` / repo `karasu` / workflow `release.yml`）の登録は、次に版を上げるリリース PR をマージする直前に行う（登録から 2 日以内に `release.yml` が公開しないと設定が失効する。下の「前提」）。以降は `release.yml` が OIDC で公開する。`packages/skills/package.json` は `publishConfig.provenance` を持たない: provenance は Trusted Publishing で自動的に付き（`release.yml` の header）、ローカルからの初回 publish は provenance を作れないため。
+> **`karasu-skills` の初回 publish は手動**。npm の Trusted Publisher はパッケージが存在してからでないと登録できない（下の「前提」）。最初のリリース PR で版が確定したら、ローカルの `packages/skills` で `pnpm publish --access public`（OTP を求められる）を実行して一度だけ公開する。npmjs.com での Trusted Publisher（org `kompiro` / repo `karasu` / workflow `release.yml`）の登録は、次に版を上げるリリース PR をマージする直前に行う（登録から 2 日以内に公開まで終えないと設定が失効する。下の「前提」）。以降は `release.yml` が OIDC で stage し、承認で公開される。`packages/skills/package.json` は `publishConfig.provenance` を持たない: provenance は Trusted Publishing で自動的に付き（`release.yml` の header）、ローカルからの初回 publish は provenance を作れないため。
 
 > **`karasu-skills` をリリースしたら、インストール済みの plugin への届き方を確かめる**（#2932 の AT から移した項目）。新しい版を公開した後、前の版を入れた Claude Code で更新が自動で届くか、`/plugin` から手動で更新するかを確かめ、結果を `packages/skills/README.md` の「Install in Claude Code」に書く。書き終えたらこの注記を消す。
 
@@ -91,24 +91,64 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
    - **前のトレインの Issue か、`chore/release-*` の PR が開いたままなら発車しない**（それにコメントして失敗する）。同じ未マージの changeset で 2 本目のリリース PR を作らないため。前のトレインをマージするか close してから、Prepare を `workflow_dispatch` で起動し直す。
 2. Issue のリンクから **PR を開く**（Actions は PR を作れないので人が開く。人が開くことで必須チェックも走る）。
 3. **マージ前に版番号と `CHANGELOG.md` を必ず読む**（main ruleset の必須承認数は 0 = self-merge 可。目視確認はこの運用ルールで担保する）。このとき、**experimental notation の stable 昇格や破壊的変更が CHANGELOG に含まれるなら、promotion gate（[ADR-1820](adr/1820-notation-promotion-gate.md)）が通っているか・言語版に触れる変更が changeset / CHANGELOG に言語版遷移として明記されているか（[ADR-2124](adr/2124-version-vocabulary.md)、表記は `.krs language vX.Y`）を確認**する。問題なければ **squash マージ**する。
-4. マージで `main` の `packages/**/CHANGELOG.md` が変わり、`release.yml`（`paths` filter）が発火 → `changeset publish` が bump 済みパッケージを npm に公開する（`workflow_dispatch` での手動再実行も可）。
-5. 認証は **GitHub OIDC（Trusted Publishing）** — `release.yml` の `id-token: write` を npm が短命クレデンシャルに交換する。`NPM_TOKEN` は不要（保持しない）。provenance は trusted publishing で**自動付与**される（`--provenance` 不要）。要件は npm >= 11.5.1 / Node >= 22.14.0 で、`release.yml` が pin する Node 24（npm 11.17+ を同梱）が満たすため、npm を別途アップグレードするステップは持たない（[ADR-2397](adr/2397-node-24-baseline.md)）。publish の経路は `changeset publish` → `pnpm publish` → npm CLI（pnpm 10 が委譲する）。
-6. 同じ run の `record` ジョブが、公開できたパッケージのタグ（`karasu@X.Y.Z` / `@karasu-tools/core@X.Y.Z` / `karasu-skills@X.Y.Z`。対象は `scripts/release/github-release.mts` の `RELEASED_PACKAGES`）をリリース PR のマージコミットに push し、GitHub Release **`release-YYYY-MM-DD`**（マージコミットの UTC 日付。同じ日の 2 回目以降は `-2`, `-3`）を作る。本文は各パッケージの `CHANGELOG.md` の該当版の節（`scripts/release/github-release.mts`）。公開に失敗したパッケージにはタグを打たない。タグは `changeset publish` が注釈付きタグとして作るので、release ジョブは publish の前に git の identity（`github-actions[bot]`）を設定する。changesets は `git tag` の失敗を無視し、完了メッセージにも npm パッケージのタグを出さないため、「Collect the tags」ステップが、このコミットに必要なタグ（この run が公開したもの＋npm に既にある各パッケージの現在の版。`scripts/release/published-packages.mts`）を洗い出し、タグの無いものがあればジョブを失敗させる。後者を含めるのは、再実行では `changeset publish` が公開済みの版を飛ばして何も出力しないため（[#2982](https://github.com/kompiro/karasu/issues/2982)。2026-09-28 のトレインはタグが 1 つも付かず、手で補正した）。**この失敗は再実行だけでは直らない**: エラーに出たタグをリリースのマージコミットに打って push してから再実行する（手順 8）。npm の公開権限を持つジョブは `contents: read` のまま、書き込みはこのジョブだけが持つ（[#2939](https://github.com/kompiro/karasu/issues/2939)）。
-7. 同じ run で VS Code 拡張も公開される（下の「VS Code 拡張のリリース」）。npm の公開が一部失敗しても拡張の公開は走る。
-8. 最後の `close-train` ジョブが、マージされた PR のブランチ名でトラッキング Issue を特定し、全部成功していれば Release のリンクを付けて閉じる。失敗があれば、失敗した run のリンクをコメントして Issue を開いたままにする（次のトレインはそれが閉じるまで発車しない）。直したら **Re-run failed jobs** で再実行する。main が先に進んでいなければ `workflow_dispatch` での再実行でも閉じる。
+4. マージで `main` の `packages/**/CHANGELOG.md` が変わり、`release.yml`（`paths` filter）が発火する。`pnpm run release`（`pnpm build && node scripts/release/stage.mts`）が `changeset pack` で公開の計画と tarball を作り、計画の**先頭のグループだけ**を `npm stage publish <tarball>` で stage する（[#3240](https://github.com/kompiro/karasu/issues/3240)）。stage した版は、承認するまでインストールできない。何を stage したかは job の summary に表で出る。
+   - 計画は依存の順に並ぶ。`karasu` は `karasu-skills` を完全一致の版で指すので、`karasu-skills` が承認されて npm に載るまで `karasu` は stage されない（[TPL-3240](test-perspectives/TPL-3240-exact-pinned-dependency-installable-after-its-target.md)）。
+   - `stage.mts` はリリースのコミット（`chore/release-*` をマージしたコミット）でしか stage しない。計画に、このコミットで版を上げていないパッケージがあれば何も stage せずに止まる（下の「reject したとき」）。
+   - `workflow_dispatch` での手動再実行も可。
+5. 認証は **GitHub OIDC（Trusted Publishing）**。`release.yml` の `release` ジョブの `id-token: write` を npm が短命クレデンシャルに交換する。`NPM_TOKEN` は不要（保持しない）。provenance は trusted publishing で**自動付与**される（`--provenance` 不要）。stage の要件は npm >= 11.15.0 / Node >= 22.14.0 で、`release.yml` が pin する Node 24 が同梱する npm が満たすため、npm を別途アップグレードするステップは持たない（[ADR-2397](adr/2397-node-24-baseline.md)）。
+6. **kompiro が手元で `pnpm release:approve` を実行して承認する。** スクリプトはリリースコミットを一時的な worktree に取り出してビルドし、`changeset pack` の計画の順に、stage された tarball のファイルを手元の pack と比べる。一致すれば確認を求め、グループごとに `npm stage approve` する（npm が 2FA を求める）。次のグループがあれば `release.yml` の run を再実行して stage させ、終わるのを待って同じことを繰り返す。最後に `release-confirm.yml` を起動する。
+   - 照合の相手を手元で作るのは、乗っ取られた CI の run が正規の run より先に偽の tarball を stage しても、比べる相手までは偽れないようにするため。
+   - 承認の前に比べられるのはファイルだけである。npm は版のメタデータ（依存や `scripts` など、インストールに効く項目）を tarball とは別に受け取り、stage のキューはそれを見せない（`npm stage view` に manifest は無い）。そこでスクリプトは、承認した版が npm に載るのを待ってすぐにインストールに効く項目を手元の pack と比べ、違えば `release-confirm.yml` を起動して Issue に報告させ、次のグループに進まずに止まる。止まったら「公開後の照合に落ちたとき」に従う。
+   - この照合が防ぐのは、乗っ取られた CI の run と、main 以外のブランチからの run である。リリースコミットの依存そのものに毒が入っていれば、手元の `pnpm install` と `pnpm build` も同じ依存を実行するので、手元の pack や比べるスクリプトも書き換えられうる。`release-confirm.yml` の `verify` と同じ限界で、依存の更新は Dependabot のトリアージ（上）で防ぐ。
+   - 計画に無い版（たとえばより高い版）が stage のキューにあれば表示する。承認せずに `npm stage reject <id>` で消す。
+   - `karasu-skills` を承認したら、間を空けずに `karasu` まで進める。skill は刻まれた CLI の版より古い CLI では Step 0 で止まるので（[ADR-2901](adr/2901-karasu-authoring-skill.md)）、そのあいだに skill を更新した利用者が止まる。
+   - npmjs.com の画面で承認してもよい。その前に `pnpm release:approve --dry-run` を実行すれば、承認せずに照合だけを行える。画面で承認したときは、次のグループの stage も `release.yml` の run の再実行も自分で行う。
+7. **`release-confirm.yml`** が、リリースコミットで版を上げた npm パッケージのうち npm に載ってタグがまだ無い版を、承認の経路を問わず照合する。`verify` ジョブ（読み取りのみ）がリリースコミットをビルドして pack し、`npm pack <name>@<version>` で取り出した公開済みの tarball とファイルを比べる。npm はレジストリのメタデータから依存を解決するので、メタデータのうちインストールに効く項目（依存、`bin`、`scripts`、`os` / `cpu` など）も pack の `package.json` と比べる。`record` ジョブ（依存を入れない）が、一致した版にだけタグ（`karasu@X.Y.Z` / `@karasu-tools/core@X.Y.Z` / `karasu-skills@X.Y.Z`。対象は `scripts/release/github-release.mts` の `RELEASED_PACKAGES`）を打ってリリースコミットに push し、GitHub Release **`release-YYYY-MM-DD`**（リリースコミットの UTC 日付。同じ日の 2 回目以降は `-2`, `-3`）を作る。本文は各パッケージの `CHANGELOG.md` の該当版の節。
+   - `pnpm release:approve` が最後に起動するほか、毎日 1 回の `schedule` でも走る（画面での承認を拾う）。開いているトレインが無いか、リリース PR がまだマージされていなければ何もしない。
+   - 照合に落ちた版と、計画に無いのに公開された版（`latest` 以外の dist-tag のものも含む）があれば、Issue にコメントしてタグを打たない（下の「公開後の照合に落ちたとき」）。
+   - 一部のパッケージだけが npm に載っていれば、次のグループの stage を促すコメントを付ける。`karasu` が npm にあるのに、それが指す `karasu-skills` の版が無ければ失敗してコメントする。
+8. 同じ `release.yml` の run で VS Code 拡張も公開される（下の「VS Code 拡張のリリース」）。npm の承認を待たない。
+9. **トラッキング Issue を閉じるのは**、リリースコミットで版を上げた npm パッケージのタグがすべてリリースコミットを指し、`release.yml` の VS Code のジョブが成功（公開を飛ばした成功を含む）したとき。`release-confirm.yml` が Release のリンクを付けて閉じる。npm の版を上げなかったトレインは `release.yml` の `close-train` が閉じる。
+   - `close-train` は、承認待ちの版があれば一覧と `pnpm release:approve` の案内をコメントし、Issue を開いたままにする（承認待ちは失敗ではない）。
+   - run が失敗すれば、失敗した run のリンクをコメントして Issue を開いたままにする（次のトレインはそれが閉じるまで発車しない）。直したら **Re-run failed jobs** で再実行する。
 
-> 前提: 公開対象パッケージごとに npmjs.com で **Trusted Publisher**（org `kompiro` / repo `karasu` / workflow `release.yml`）を登録しておくこと。未登録のパッケージは OIDC publish が失敗する。新規パッケージは登録前に一度存在している必要があるため、**初回だけローカルから手動 publish**（`pnpm publish`、provenance off + OTP）してから登録する。
+#### reject したとき
+
+reject した版のタグは現れないので、トレインの Issue は閉じない。理由で次の手が分かれる。
+
+- **stage された tarball が正しくなかった**（照合に落ちた）: reject して版を空け、正しい tarball を stage し直す。`release` ジョブは成功で終わっているので、`release.yml` のその run を **Re-run all jobs** で再実行する。照合に落ちたということは CI か依存が乗っ取られている疑いがあるので、再実行の前に原因を調べ、再実行のあとも照合をやり直す。原因を取り除けないあいだは、下の「CI の経路が使えないとき」に従って手元から stage する。
+- **リリースそのものを出さないと決めた**（stage した版に不具合があった）: 残りの stage 済みの版も reject する。リリースコミットで版を上げた npm パッケージ（`RELEASED_PACKAGES`。VS Code 拡張は含めない）のうち、版が npm に載っていないものごとに patch の changeset を足す PR をマージしてから、トレインの Issue に理由を書いて手で閉じる。判定は「その版が npm に載っていない」の 1 つで、reject した版も、後のグループでまだ stage されていない版（たとえば `karasu-skills` を承認して止めたときの `karasu`）も当たる。`pnpm release:approve --dry-run` を実行すれば、計画に残る版（後のグループは `Later:` の行）が分かる。次のリリースでそのパッケージの版が上がり、使わなかった版番号は飛ぶ。
+  - 承認済みの版があれば npm に残る（unpublish はしない）。Issue を閉じる前に `release-confirm.yml` を手で起動し、タグと Release を作る。
+  - `karasu-skills` を承認したあとで `karasu` を reject したか、stage する前に取りやめたら、skill は刻まれた版の CLI が出るまで止まる。changeset の PR をマージしてトレインの Issue を閉じたら、月次のトレインを待たずに `release-prepare.yml` を手動で実行して、次の `karasu` を出す。直しに時間がかかるなら、取りやめた変更を戻した状態で出してよいが、承認した skill が使う CLI の変更（新しいコマンドやフラグ）は戻さない。
+  - changeset を足し忘れると、次のリリースで `stage.mts` が「版を上げていないパッケージ」で止まる。そのリリースでは何も stage されていないので、計画に載っているパッケージごとに patch の changeset を足す PR をマージし、そのトレインの Issue を手で閉じて、`release-prepare.yml` を手動で実行する。
+
+#### 公開後の照合に落ちたとき
+
+照合に落ちた版はすでにインストールできる。`pnpm release:approve` が承認の直後にインストールに効く項目の違いで止まったときも、ここに従う。`release-confirm.yml` はタグも Release も作らず、落ちた版とファイルの一覧をトレインの Issue にコメントする。tarball は npm が展開に使う node-tar と、別に書いた厳格な読み取りの両方で読み、両方が同じファイルを読んだときだけ比べる。どちらかが読めない tarball も、照合に落ちたものとして扱う。差分を調べて次の手を決める。
+
+- **環境で変わるファイルだった**（誤検出）: 照合の規則（`scripts/release/tarball.mts`）を直す PR をマージし、`release-confirm.yml` を起動し直す。`pnpm release:approve` が承認の途中で止まっていて計画に次のグループが残るなら、先にリリースコミットの `release.yml` の run を再実行して stage させてから、`pnpm release:approve` を実行し直す（止まったときは次のグループがまだ stage されていない）。分かっている差は `THIRD_PARTY_NOTICES.md` のプラットフォーム固有のパッケージの節で、照合はこれを除いて比べる。
+- **tarball が正しくなかった**: 侵害として扱う。3 パッケージの Trusted Publisher の接続を削除して CI からの stage を止める。取り下げる版には、その版を完全一致で指す公開済みの版も含める（`karasu-skills` が落ちたなら、それを指す `karasu`。画面で承認すると、照合の前に両方が公開されうる）。取り下げる前に、版ごとに `npm dist-tag ls <name>` でその版を指すタグを探し、`npm dist-tag add <name>@<照合を通った前の版> <tag>` で戻すか、戻す版が無ければ `npm dist-tag rm <name> <tag>` で外す（2FA。Trusted Publisher の dist-tag の許可は要らない）。unpublish はその版を指すタグを一緒に消し、`latest` を別の版に付け替えることもあるので、後からでは元のタグが分からない。そのあとで版を取り下げる（npm の unpublish の条件を満たせば unpublish、満たさなければ deprecate）。deprecate は警告を出すだけで、版はインストールできるまま残るので、npm のサポートに削除を依頼する。完全一致で指している利用者は、削除されるまでその版を入れられる。取り下げた版番号は飛ばす。取り下げた版のパッケージ（unpublish でも deprecate でも、正しい版で置き換えるため。unpublish した版番号は npm が二度と受け付けない）と、計画に残っていた版（後のグループでまだ stage されていない版）のパッケージごとに patch の changeset を足す PR をマージしてから、Issue に経緯を書いて手で閉じる。原因を取り除いてから、その changeset で次の版を出す。
+
+#### CI の経路が使えないとき
+
+`stage.mts` は stage の認証を npm に任せていて、OIDC でなくても動く。CI の stage が失敗したら、リリースコミットを手元に取り出し、`pnpm install --frozen-lockfile && pnpm build` のあと `npm login` して `node scripts/release/stage.mts` を実行する。stage したあとは承認から記録までいつもの流れに乗る。
+
+- 計画に次のグループがあると、`pnpm release:approve` は承認のあとで `release.yml` の run を再実行して stage させる。CI の経路が使えないあいだはこの再実行が失敗し、スクリプトはそこで止まる。止まったら、同じ手元のリリースコミットで `node scripts/release/stage.mts` をもう一度実行して次のグループを stage し、`pnpm release:approve` を実行し直す。承認済みのグループは npm に載って計画から外れているので、スクリプトは次のグループから照合する。グループが残るあいだ、これを繰り返す。
+- 手元から stage した版には provenance が付かない（`stage.mts` は GitHub Actions の外では `--provenance=false` を付ける）。
+- Trusted Publisher の接続が無いパッケージの版を、接続を作る前に出すときもこの手順を使える。
+- 実装の PR を revert して `release.yml` を再実行する方法では戻せない。再実行は元の run と同じリリースコミットで走る。
+
+> 前提: 公開対象パッケージごとに npmjs.com で **Trusted Publisher**（org `kompiro` / repo `karasu` / workflow `release.yml`）を登録しておくこと。新規パッケージは登録前に一度存在している必要があるため、**初回だけローカルから手動 publish**（`pnpm publish`、provenance off + OTP）してから登録する。
 >
-> 登録するときと、公開が失敗したときは次の 2 点を確かめる（2026-10-15 のトレインで `karasu-skills` が両方に当たった。[#3238](https://github.com/kompiro/karasu/issues/3238)）。
->
-> - **Allowed actions の「Allow `npm publish`」にチェックを入れる**。2026-09-03 以降に登録した設定は `npm stage publish` しか許可しない状態で始まり、`release.yml` の `npm publish` は `E403 ... OIDC permission denied for this action` で拒否される。「Allow `npm dist-tag`」は要らない（`latest` は公開と同時に付く）。staged publishing への移行は [#3240](https://github.com/kompiro/karasu/issues/3240) で検討している。
-> - **登録は、`release.yml` が未公開の版を 2 日以内に公開するときに行う**。登録直後の設定は「not yet validated」で、登録から 2 日以内にその設定で公開が 1 回成功しないと失効する（[npm docs](https://docs.npmjs.com/trusted-publishers/)）。登録前に手動で公開した初回の版はこの 1 回にならない（`changeset publish` は npm にある版を公開し直さない）。なので、版を上げたリリース PR をマージする直前に登録する。失効した設定では公開が `E404 Not Found - PUT https://registry.npmjs.org/<package>` になり、npmjs.com には「This trusted publisher configuration has expired」と出る。`karasu-skills` は 0.1.0 を手動で公開した直後に登録し、次の版が出る前に失効した。失効したら削除し、同じく次のリリース PR をマージする直前に登録し直す。
+> - **Allowed actions は stage だけを許可する**。「Allow `npm publish`」と「Allow `npm dist-tag`」は外す。前者が残ると CI から承認なしに公開でき、後者を許可すると乗っ取られた run が `latest` を動かせる。2026-09-03 以降に登録した設定は stage だけを許可する状態で始まる。
+> - package access は「Require two-factor authentication and disallow tokens」にする。
+> - **新しく登録するのは、そのパッケージの版を上げるリリース PR をマージする直前**。登録直後の設定は「not yet validated」で、登録から 2 日以内にその設定で公開が 1 回成功しないと失効する（[npm docs](https://docs.npmjs.com/trusted-publishers/)）。登録したら 2 日以内に承認まで終える。失効した設定では stage が `E404` になり、npmjs.com には「This trusted publisher configuration has expired」と出る。失効したら削除し、同じく次のリリース PR をマージする直前に登録し直す（2026-10-15 のトレインで `karasu-skills` が当たった。[#3238](https://github.com/kompiro/karasu/issues/3238)）。
 
 ### VS Code 拡張のリリース
 
-`karasu-vscode` の**版 bump と `CHANGELOG.md` は上記 changesets フローで自動**化される（`changeset version` が `packages/vscode/package.json` の version を更新）。`private: true` なので `changeset publish`（`release.yml`）は npm へ publish しない。Marketplace への stable の公開は、版が bump されたリリースの後に `release.yml` から自動で行う:
+`karasu-vscode` の**版 bump と `CHANGELOG.md` は上記 changesets フローで自動**化される（`changeset version` が `packages/vscode/package.json` の version を更新）。`private: true` なので `release.yml` は npm へ stage しない。Marketplace への stable の公開は、版が bump されたリリースの後に `release.yml` から自動で行う:
 
-1. リリース PR のマージで走る `release.yml` が、npm の公開のあとに **"VS Code Extension Release"**（`vscode-release.yml`）を `workflow_call` で呼ぶ。手動で出すときは Actions タブから `workflow_dispatch` で起動する（`pre_release` input を付けると下の pre-release になる）。
+1. リリース PR のマージで走る `release.yml` が、npm の stage のあとに **"VS Code Extension Release"**（`vscode-release.yml`）を `workflow_call` で呼ぶ。手動で出すときは Actions タブから `workflow_dispatch` で起動する（`pre_release` input を付けると下の pre-release になる）。
 2. `package.json` の version が **Marketplace に stable として既にあれば公開しない**（`vsce show` で確認）。拡張の版が上がらなかった月のトレインでは何も起きない。同じ版が pre-release にしか無ければ stable として出せないので失敗する。`vsce show` 自体が失敗したときも失敗する。
 3. 認証は **Microsoft Entra ID via GitHub OIDC**（`AZURE_CLIENT_ID` / `AZURE_TENANT_ID` 変数。未設定時は build + package のみで publish はスキップ）。
 4. ビルドは main の先頭ではなく、**拡張の現在の版を設定したコミット（リリース PR のマージコミット）** から行う。リリース後に main へ入った次回分の変更を拡張に混ぜないため。

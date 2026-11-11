@@ -16,7 +16,6 @@ assumptions:
   - "file: .changeset/config.json"
   - "file: .github/workflows/release.yml"
   - "file: packages/cli/README.md"
-  - "grep: package.json :: \"release\": \"pnpm build && changeset publish\""
   - "grep: packages/cli/package.json :: esbuild src/index.ts --bundle"
 ---
 

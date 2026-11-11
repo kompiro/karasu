@@ -1,0 +1,149 @@
+name: Release — Confirm
+
+# Record step of the release pipeline (#3240). release.yml stages the npm
+# versions of a release; a maintainer approves them with 2FA. This workflow
+# then checks every published version of the release commit that has no tag
+# yet against a pack of that commit, tags the ones that match, creates or
+# updates the `release-YYYY-MM-DD` GitHub Release and closes the train Issue
+# (#2939, #2922).
+#
+# It checks the versions however they were approved: `pnpm release:approve`
+# compares the staged tarballs before approving, but an approval on
+# npmjs.com does not, so the comparison here is the one every version passes.
+# A version that does not match, or one published outside the plan, gets no
+# tag; the Issue stays open with a comment and the next train waits.
+#
+# `pnpm release:approve` starts it when it is done. The daily schedule picks
+# up an approval made on npmjs.com; with no train open, or a release PR not
+# merged yet, it ends at once.
+#
+# No job here can publish to npm: none has `id-token`, and the Trusted
+# Publishers trust release.yml only. `verify` runs the release commit's build
+# and can only read; `record` can push tags and installs nothing.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *" # daily, 12:17 JST
+
+concurrency:
+  group: release-confirm
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify the published tarballs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read # find the open train Issue
+      pull-requests: read # find the release PR's merge commit
+    outputs:
+      sha: ${{ steps.locate.outputs.sha }}
+      issue: ${{ steps.locate.outputs.issue }}
+      verified: ${{ steps.verify.outputs.verified }}
+      report: ${{ steps.report.outputs.report }}
+    steps:
+      # No credentials stay in either checkout: the release commit's build runs
+      # in this job.
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0 # read the release commit's first parent and the tags
+          persist-credentials: false
+
+      # Node 24 runs the .mts scripts through type stripping.
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Locate the release commit
+        id: locate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/release/confirm.mts locate
+
+      # The release commit is built in its own directory and compared by this
+      # workflow's scripts. Its build could still tamper with this job, so the
+      # job can only read, and `record` re-checks every tag name it is handed.
+      - uses: actions/checkout@v7.0.1
+        if: ${{ steps.locate.outputs.candidates != '' && steps.locate.outputs.candidates != '[]' }}
+        with:
+          ref: ${{ steps.locate.outputs.sha }}
+          path: release-commit
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6.1.0
+        if: ${{ steps.locate.outputs.candidates != '' && steps.locate.outputs.candidates != '[]' }}
+        with:
+          package_json_file: release-commit/package.json
+
+      - name: Build the release commit
+        if: ${{ steps.locate.outputs.candidates != '' && steps.locate.outputs.candidates != '[]' }}
+        working-directory: release-commit
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Compare with the published tarballs
+        id: verify
+        if: ${{ steps.locate.outputs.candidates != '' && steps.locate.outputs.candidates != '[]' }}
+        env:
+          CANDIDATES: ${{ steps.locate.outputs.candidates }}
+        run: node scripts/release/confirm.mts verify --tree release-commit --candidates "$CANDIDATES"
+
+      # A mismatch fails the step above after writing its outputs. A build or
+      # fetch failure fails it without them, and is not reported as a mismatch
+      # (TPL-2804).
+      - name: Collect what failed the check
+        id: report
+        if: ${{ !cancelled() && steps.locate.outputs.sha != '' }}
+        env:
+          UNPLANNED: ${{ steps.locate.outputs.unplanned }}
+          MISMATCHES: ${{ steps.verify.outputs.mismatches }}
+        run: |
+          report=$(printf '%s\n\n%s' "$UNPLANNED" "$MISMATCHES" | sed '/./,$!d')
+          delimiter="EOF_$(date +%s%N)"
+          { echo "report<<${delimiter}"; echo "$report"; echo "${delimiter}"; } >> "$GITHUB_OUTPUT"
+          if [ -n "$UNPLANNED" ]; then
+            echo "::error::Published outside the plan: ${UNPLANNED}"
+            exit 1
+          fi
+
+  record:
+    name: Record the release
+    needs: verify
+    if: ${{ !cancelled() && needs.verify.outputs.sha != '' }}
+    # Shared with release.yml's close-train and vscode-release.yml's record so
+    # no two of them pick the same release-YYYY-MM-DD or judge the same train
+    # at once.
+    concurrency:
+      group: release-record
+      cancel-in-progress: false
+      queue: max # keep a waiting job instead of replacing it
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the package tags and create the GitHub Release
+      issues: write # comment on and close the train Issue
+      pull-requests: read # find the PR the release commit was merged from
+      actions: read # read the VS Code job of the release.yml run
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0 # the scripts read the tags and the first parent
+
+      # Node 24 runs the .mts scripts through type stripping; no install needed.
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Tag, create the Release and close the train
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ needs.verify.outputs.sha }}
+          ISSUE: ${{ needs.verify.outputs.issue }}
+          VERIFIED: ${{ needs.verify.outputs.verified }}
+          VERIFY_REPORT: ${{ needs.verify.outputs.report }}
+        run: node scripts/release/confirm.mts record --sha "$SHA" --issue "$ISSUE" --verified "$VERIFIED"
