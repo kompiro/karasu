@@ -238,8 +238,9 @@ gh api repos/kompiro/karasu/branches/<head-branch> --silent  # 404 ならブラ�
    - それ以外（`no-conclusion`、`stalled`、merge job や report job の失敗、判定が `merge` なのに open のまま）なら、
      #3698 に PR 番号、run の URL、判定、job の結果を書く。そのうえで、PR がいまも Low のままかを確かめる。
      `node scripts/review/tier.ts classify` が `low`、段階のラベルが `risk: low` だけ、head がローカルレビューの記録の
-     head と同じ、ADR の PR ならタイトルが `docs(adr): ` で始まる。すべて満たすときだけ
-     `gh pr merge <N> --auto --squash --delete-branch` を打つ。満たさなければ打たず、下の「PR を作った後に差分を足すとき」に従う
+     head と同じ、ADR の PR ならタイトルが `docs(adr): ` で始まる、`gh pr checks <N> --required` がすべて `pass`。
+     すべて満たすときだけ `gh pr merge <N> --auto --squash --delete-branch` を打つ。check が落ちていれば PR を直して 1 に
+     戻り、それ以外を満たさなければ打たずに、下の「PR を作った後に差分を足すとき」に従う
 
 `gh pr create --label` はラベルを PR を開いた後に付けるが、ラベルの無い PR に `risk: high` を付ける
 「Label untiered PRs High」（`.github/workflows/review-request.yml`）は、開いた PR では 30 秒待ってから
