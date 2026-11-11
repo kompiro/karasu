@@ -25,6 +25,7 @@ Standalone how-tos, independent of the chapter series:
 | [Notation cookbook](notation-cookbook.md) ([JA](notation-cookbook.ja.md)) | Authors & the authoring LLM | worked **idioms** ("how do I express X"): KV store, `[index]`, `[external]`, shared-infra fan-in, cross-domain refs, multi-file split — feedable alongside `syntax.md` |
 | [Reverse-engineering with an AI agent](reverse-engineering-with-ai.md) ([JA](reverse-engineering-with-ai.ja.md)) | Anyone exploring an unfamiliar project | the `reverse-architecture` skill: install it, what it does, what it costs, how to review the model it writes; a one-shot prompt if you have no coding agent |
 | [Linking an ADR to a karasu structure](adr-permalinks.md) ([JA](adr-permalinks.ja.md)) | Anyone recording decisions in ADRs | the `/s?s=` payload as the canonical permalink, shortening as an optional alias, the trust trade-off |
+| [Trying karasu with your team](team-trial-session.md) ([JA](team-trial-session.ja.md)) | Anyone introducing karasu to a team | a 60-minute trial session script: what to prepare, what to say, what to note, and a short survey afterwards |
 
 ## Chapter flow
 
