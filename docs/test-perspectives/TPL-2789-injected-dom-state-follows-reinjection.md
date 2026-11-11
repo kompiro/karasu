@@ -13,7 +13,7 @@ known_consumers:
 discovered_from:
   - issue: "#2789"
   - issue: "#1171"
-  - root_cause_file: "packages/app/src/components/PreviewPane.tsx:506"
+  - root_cause_file: "packages/app/src/components/PreviewPane.tsx:karasu-highlighted"
 related_to:
   - TPL-1171
   - TPL-2800

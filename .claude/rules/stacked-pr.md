@@ -6,7 +6,7 @@ paths:
 # Stacked PR の運用ルール
 
 **到達状態**: draft PR で skip する job が、`scripts/ci/workflow-draft-gate.test.ts` の
-`DRAFT_GATED_JOBS`、ADR-2643、`docs/process/stacked-pr.md` の job 一覧で一致し、その job を持つ
+`DRAFT_GATED_JOBS` と `docs/process/stacked-pr.md` の job 一覧で一致し、その job を持つ
 workflow の `types:` に `ready_for_review` がある。
 
 このファイルは workflow の編集で読み込まれ、workflow を編集するときの規則を持つ。
@@ -18,9 +18,13 @@ workflow の `types:` に `ready_for_review` がある。
 ## workflow を触るとき
 
 draft PR で skip する job を増減したら、`scripts/ci/workflow-draft-gate.test.ts` の
-`DRAFT_GATED_JOBS`、ADR-2643、`docs/process/stacked-pr.md`「draft PR では分単位のジョブが
-走らない」の job 一覧を同じ PR で更新する。テストは job 一覧の drift を落とすが、
+`DRAFT_GATED_JOBS` と、`docs/process/stacked-pr.md`「draft PR では分単位のジョブが
+走らない」の job 一覧を同じ PR で更新する。足した job には、それを決めた ADR か Issue を
+一覧に添える（例: `Render equivalence` は #3505）。テストは job 一覧の drift を落とすが、
 散文側が古くなったことは落とせない。
+
+ADR-2643 は draft で skip する方針の記録で、job の一覧を持たない。ADR の本文は書き換えない
+（[ADR-2687](../../docs/adr/2687-adr-body-is-immutable.md)）ので、job の増減で ADR-2643 は更新しない。
 
 **`if: github.event.pull_request.draft != true` を足す job には、同じ PR でその
 workflow の `types:` に `ready_for_review` を足す。** job-level の `if:` で skip された

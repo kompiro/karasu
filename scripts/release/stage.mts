@@ -30,6 +30,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   bumpedPackagesAt,
+  isOnNpm,
   isReleaseCommit,
   npmPackagesAt,
   run,
@@ -117,23 +118,32 @@ export type StageOutcome =
   | { kind: "already-staged" }
   | { kind: "failed"; message: string };
 
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 /**
- * Registry rejections that mean "this version is already in the stage queue",
- * as seen in the rehearsal (#3240, run 42486392324 attempt 2):
+ * The registry's answer when the version is already in the stage queue, as
+ * seen in the rehearsal (#3240, run 42486392324 attempt 2):
  *
  *   npm error code E409
  *   npm error 409 Conflict - POST .../-/stage/package/... - Cannot stage
  *   previously published version "0.4.2-rehearsal.0".
  *
- * npm words a staged version as "previously published"; a version approved
- * between `changeset pack` and staging gets the same answer. Only these are
- * skipped on a re-run; any other failure stops the run (TPL-2804).
+ * Both lines must be npm's own error lines and name this version, so a file
+ * name in the `npm notice` list cannot pass for it. npm gives the same answer
+ * for a version on npm and for one unpublished long ago, so the caller tells
+ * them apart. Anything else stops the run (TPL-2804).
  */
-export const ALREADY_STAGED: RegExp[] = [
-  /\bE409\b[\s\S]*Cannot stage previously published version/,
-];
+export function isAlreadyStaged(stderr: string, version: string): boolean {
+  return (
+    /^npm error code E409$/m.test(stderr) &&
+    new RegExp(
+      `^npm error 409 Conflict - .* - Cannot stage previously published version "${escapeRegExp(version)}"\\.?$`,
+      "m",
+    ).test(stderr)
+  );
+}
 
-export function classifyStage(result: CommandResult, name: string): StageOutcome {
+export function classifyStage(result: CommandResult, name: string, version: string): StageOutcome {
   if (result.status === 0) {
     const parsed = JSON.parse(result.stdout) as Record<
       string,
@@ -145,7 +155,7 @@ export function classifyStage(result: CommandResult, name: string): StageOutcome
     }
     return { kind: "staged", stageId: entry.stageId, integrity: entry.integrity };
   }
-  if (ALREADY_STAGED.some((pattern) => pattern.test(result.stderr))) {
+  if (isAlreadyStaged(result.stderr, version)) {
     return { kind: "already-staged" };
   }
   return { kind: "failed", message: result.stderr.trim() || `npm exited with ${result.status}` };
@@ -206,7 +216,11 @@ export function main(argv: string[]): void {
   for (const release of first) {
     const tag = options.tag ?? release.tag;
     const tarball = join(outDir, release.tarball.path);
-    const outcome = classifyStage(run("npm", stageArgs(tarball, tag, { inActions })), release.name);
+    const outcome = classifyStage(
+      run("npm", stageArgs(tarball, tag, { inActions })),
+      release.name,
+      release.version,
+    );
     const id = `\`${release.name}@${release.version}\``;
     if (outcome.kind === "failed") {
       summary(`| ${id} | ${tag} | failed | | |`);
@@ -216,7 +230,20 @@ export function main(argv: string[]): void {
     }
     if (outcome.kind === "already-staged") {
       // Not staged by this run: the approval step checks who made the tarball.
-      summary(`| ${id} | ${tag} | already staged or published, not by this run | | |`);
+      // npm answers the same for a version unpublished long ago, which is in
+      // no queue and can never be staged again; approval then finds nothing.
+      // The lookup only picks the wording, so its failure does not stop staging.
+      let onNpm = false;
+      try {
+        onNpm = isOnNpm(release.name, release.version);
+      } catch (error) {
+        console.log(`::warning::Could not look up ${release.name}@${release.version}: ${error}`);
+      }
+      summary(
+        onNpm
+          ? `| ${id} | ${tag} | already on npm | | |`
+          : `| ${id} | ${tag} | refused by npm as previously staged or published: expected in the stage queue, otherwise the version number is used up and needs a bump | | |`,
+      );
       continue;
     }
     summary(`| ${id} | ${tag} | staged | ${outcome.stageId} | ${outcome.integrity} |`);

@@ -465,7 +465,12 @@ function installedBin(manifest: Record<string, unknown>): unknown {
   const name = String(manifest.name ?? "").replace(/^@[^/]+\//, "");
   const entries = typeof bin === "string" ? [[name, bin]] : Object.entries(bin as object);
   return Object.fromEntries(
-    entries.map(([command, path]) => [command, String(path).replace(/^(\.\/)+/, "")]),
+    // Only a string target is rewritten; npm drops any other, so it is
+    // compared as it is.
+    entries.map(([command, path]) => [
+      command,
+      typeof path === "string" ? path.replace(/^(\.\/)+/, "") : path,
+    ]),
   );
 }
 

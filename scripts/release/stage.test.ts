@@ -100,7 +100,7 @@ describe("stageArgs", () => {
 describe("classifyStage", () => {
   it("reads the stage id and integrity npm prints", () => {
     const stdout = JSON.stringify({ karasu: { stageId: "1f0e", integrity: "sha512-abc" } });
-    expect(classifyStage({ status: 0, stdout, stderr: "" }, "karasu")).toEqual({
+    expect(classifyStage({ status: 0, stdout, stderr: "" }, "karasu", "1.0.0")).toEqual({
       kind: "staged",
       stageId: "1f0e",
       integrity: "sha512-abc",
@@ -108,28 +108,52 @@ describe("classifyStage", () => {
   });
 
   it("fails on output without a stage id", () => {
-    expect(classifyStage({ status: 0, stdout: "{}", stderr: "" }, "karasu").kind).toBe("failed");
+    expect(classifyStage({ status: 0, stdout: "{}", stderr: "" }, "karasu", "1.0.0").kind).toBe(
+      "failed",
+    );
   });
 
+  const rehearsal = [
+    "npm notice Staging to https://registry.npmjs.org/ with tag rehearsal and public access",
+    "npm error code E409",
+    'npm error 409 Conflict - POST https://registry.npmjs.org/-/stage/package/@karasu-tools%2fcore - Cannot stage previously published version "0.4.2-rehearsal.0".',
+  ].join("\n");
+
   it("skips a version npm already holds, as the rehearsal saw it", () => {
-    const stderr = [
-      "npm notice Staging to https://registry.npmjs.org/ with tag rehearsal and public access",
-      "npm error code E409",
-      'npm error 409 Conflict - POST https://registry.npmjs.org/-/stage/package/@karasu-tools%2fcore - Cannot stage previously published version "0.4.2-rehearsal.0".',
-    ].join("\n");
-    expect(classifyStage({ status: 1, stdout: "", stderr }, "@karasu-tools/core")).toEqual({
-      kind: "already-staged",
-    });
+    expect(
+      classifyStage(
+        { status: 1, stdout: "", stderr: rehearsal },
+        "@karasu-tools/core",
+        "0.4.2-rehearsal.0",
+      ),
+    ).toEqual({ kind: "already-staged" });
+  });
+
+  it("does not skip the answer for another version", () => {
+    expect(
+      classifyStage({ status: 1, stdout: "", stderr: rehearsal }, "@karasu-tools/core", "0.4.2")
+        .kind,
+    ).toBe("failed");
   });
 
   it("does not skip another 409", () => {
     const stderr = "npm error code E409\nnpm error 409 Conflict - something else";
-    expect(classifyStage({ status: 1, stdout: "", stderr }, "karasu").kind).toBe("failed");
+    expect(classifyStage({ status: 1, stdout: "", stderr }, "karasu", "1.0.0").kind).toBe("failed");
+  });
+
+  it("does not read the answer out of the file list npm prints", () => {
+    const stderr = [
+      "npm notice 1.2kB E409.txt",
+      'npm notice 1.2kB npm error 409 Conflict - x - Cannot stage previously published version "1.0.0"',
+      "npm error code E403",
+      "npm error 403 Forbidden",
+    ].join("\n");
+    expect(classifyStage({ status: 1, stdout: "", stderr }, "karasu", "1.0.0").kind).toBe("failed");
   });
 
   it("treats an unknown rejection as a failure (TPL-2804)", () => {
     expect(
-      classifyStage({ status: 1, stdout: "", stderr: "npm error code E500" }, "karasu"),
+      classifyStage({ status: 1, stdout: "", stderr: "npm error code E500" }, "karasu", "1.0.0"),
     ).toEqual({
       kind: "failed",
       message: "npm error code E500",

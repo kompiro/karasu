@@ -20,7 +20,7 @@ assumptions:
   - "file: scripts/tpl/changed-files-reminder.sh"
   - "grep: .claude/settings.json :: scripts/tpl/changed-files-reminder.sh"
   - "grep: package.json :: \"tpl:changed\": \"tpl related --config tpl.config.json --base origin/main\""
-  - "grep: tpl.config.json :: \"sourcePrefixes\": \\[\"packages\", \"scripts\", \"\\.github\"\\]"
+  - "grep: tpl.config.json :: \"sourcePrefixes\": \\[\"packages\", \"scripts\", \"\\.github\""
   - "grep: .github/PULL_REQUEST_TEMPLATE.md :: pnpm tpl:changed"
   - "grep: docs/test-perspectives/README.md :: #### 変更ファイルから引く"
 ---

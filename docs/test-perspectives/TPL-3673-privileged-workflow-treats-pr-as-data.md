@@ -24,6 +24,8 @@ scope:
   paths:
     - ".github/workflows/rendering-change-label.yml"
     - ".github/workflows/review-request.yml"
+    - ".github/workflows/low-pr-merger.yml"
+    - "scripts/review/low-pr-merger*.ts"
 ---
 
 # TPL-3673: 書き込み権限を持つ workflow は、PR 由来のものをデータとして扱い、実行も信用もしない
@@ -56,11 +58,14 @@ default branch の定義で動く workflow は、PR が定義を書き換えら�
 
 - `rendering-change-label.yml`: artifact を展開せずに必要な値だけ読み、PR は run の head から求め、head が同じ間だけラベルを付ける。名前に加えて起動元の workflow のパスと event を確かめる
 - `regenerate-pr-flow.ts`: 確かめた head の SHA を固定して REST でマージし、別の push があれば 409 で失敗する
+- `low-pr-merger.yml`（#3673）: judge は `main` を checkout し、PR の head は `tier.ts` が読む object として fetch するだけで、checkout も実行もしない。起動したイベントの中身は読まず、どの起動でも open な Low の PR をすべて読み直す
 
 ## 関連テスト
 
 - `scripts/render-equivalence/label.test.ts`: artifact の値だけでラベルを決める判定
 - `scripts/adr/regenerate-pr-flow.test.ts`: head の SHA を固定したマージ
+- `scripts/ci/low-pr-merger-triggers.test.ts`: merger の workflow が PR から起動されず、`main` を checkout し、依存を install せず、イベントの中身を読まず、書き込みの権限を持たないこと
+- `scripts/review/low-pr-merger-flow.test.ts`: 判定と書き込みのあいだに push が入ったら、その PR を待ちにすること
 
 ## 派生元
 

@@ -98,6 +98,8 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 5. 認証は **GitHub OIDC（Trusted Publishing）**。`release.yml` の `release` ジョブの `id-token: write` を npm が短命クレデンシャルに交換する。`NPM_TOKEN` は不要（保持しない）。provenance は trusted publishing で**自動付与**される（`--provenance` 不要）。stage の要件は npm >= 11.15.0 / Node >= 22.14.0 で、`release.yml` が pin する Node 24 が同梱する npm が満たすため、npm を別途アップグレードするステップは持たない（[ADR-2397](adr/2397-node-24-baseline.md)）。
 6. **kompiro が手元で `pnpm release:approve` を実行して承認する。** スクリプトはリリースコミットを一時的な worktree に取り出してビルドし、`changeset pack` の計画の順に、stage された tarball のファイルを手元の pack と比べる。一致すれば確認を求め、グループごとに `npm stage approve` する（npm が 2FA を求める）。次のグループがあれば `release.yml` の run を再実行して stage させ、終わるのを待って同じことを繰り返す。最後に `release-confirm.yml` を起動する。
    - 照合の相手を手元で作るのは、乗っ取られた CI の run が正規の run より先に偽の tarball を stage しても、比べる相手までは偽れないようにするため。
+   - 承認の前に比べられるのはファイルだけである。npm は版のメタデータ（依存や `scripts` など、インストールに効く項目）を tarball とは別に受け取り、stage のキューはそれを見せない（`npm stage view` に manifest は無い）。そこでスクリプトは、承認した版が npm に載るのを待ってすぐにインストールに効く項目を手元の pack と比べ、違えば `release-confirm.yml` を起動して Issue に報告させ、次のグループに進まずに止まる。止まったら「公開後の照合に落ちたとき」に従う。
+   - この照合が防ぐのは、乗っ取られた CI の run と、main 以外のブランチからの run である。リリースコミットの依存そのものに毒が入っていれば、手元の `pnpm install` と `pnpm build` も同じ依存を実行するので、手元の pack や比べるスクリプトも書き換えられうる。`release-confirm.yml` の `verify` と同じ限界で、依存の更新は Dependabot のトリアージ（上）で防ぐ。
    - 計画に無い版（たとえばより高い版）が stage のキューにあれば表示する。承認せずに `npm stage reject <id>` で消す。
    - `karasu-skills` を承認したら、間を空けずに `karasu` まで進める。skill は刻まれた CLI の版より古い CLI では Step 0 で止まるので（[ADR-2901](adr/2901-karasu-authoring-skill.md)）、そのあいだに skill を更新した利用者が止まる。
    - npmjs.com の画面で承認してもよい。その前に `pnpm release:approve --dry-run` を実行すれば、承認せずに照合だけを行える。画面で承認したときは、次のグループの stage も `release.yml` の run の再実行も自分で行う。
@@ -122,9 +124,9 @@ reject した版のタグは現れないので、トレインの Issue は閉じ
 
 #### 公開後の照合に落ちたとき
 
-照合に落ちた版はすでにインストールできる。`release-confirm.yml` はタグも Release も作らず、落ちた版とファイルの一覧をトレインの Issue にコメントする。tarball は npm が展開に使う node-tar と、別に書いた厳格な読み取りの両方で読み、両方が同じファイルを読んだときだけ比べる。どちらかが読めない tarball も、照合に落ちたものとして扱う。差分を調べて次の手を決める。
+照合に落ちた版はすでにインストールできる。`pnpm release:approve` が承認の直後にインストールに効く項目の違いで止まったときも、ここに従う。`release-confirm.yml` はタグも Release も作らず、落ちた版とファイルの一覧をトレインの Issue にコメントする。tarball は npm が展開に使う node-tar と、別に書いた厳格な読み取りの両方で読み、両方が同じファイルを読んだときだけ比べる。どちらかが読めない tarball も、照合に落ちたものとして扱う。差分を調べて次の手を決める。
 
-- **環境で変わるファイルだった**（誤検出）: 照合の規則（`scripts/release/tarball.mts`）を直す PR をマージし、`release-confirm.yml` を起動し直す。分かっている差は `THIRD_PARTY_NOTICES.md` のプラットフォーム固有のパッケージの節で、照合はこれを除いて比べる。
+- **環境で変わるファイルだった**（誤検出）: 照合の規則（`scripts/release/tarball.mts`）を直す PR をマージし、`release-confirm.yml` を起動し直す。`pnpm release:approve` が承認の途中で止まっていて計画に次のグループが残るなら、先にリリースコミットの `release.yml` の run を再実行して stage させてから、`pnpm release:approve` を実行し直す（止まったときは次のグループがまだ stage されていない）。分かっている差は `THIRD_PARTY_NOTICES.md` のプラットフォーム固有のパッケージの節で、照合はこれを除いて比べる。
 - **tarball が正しくなかった**: 侵害として扱う。3 パッケージの Trusted Publisher の接続を削除して CI からの stage を止め、その版を取り下げる（npm の unpublish の条件を満たせば unpublish、満たさなければ deprecate）。原因を取り除いてから次の版を出す。取り下げた版番号は飛ばし、Issue に経緯を書いて手で閉じる。
 
 #### CI の経路が使えないとき
