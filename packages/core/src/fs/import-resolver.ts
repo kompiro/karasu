@@ -314,7 +314,7 @@ export class ImportResolver {
     // duplicate no single file can see.
     this.diagnostics.push(...validateFacetDeclarations(krsFile.facets));
 
-    this.reconciler.reportConflicts();
+    this.reconciler.reportConflicts(krsFile);
     const styleSheets = await this.resolveStyles(krsFile.styleImports);
 
     return {
@@ -733,8 +733,8 @@ export class ImportResolver {
   private mergeSystemIntoExisting(target: SystemNode, source: SystemNode): void {
     if (target === source) return;
     this.mergeScopedBoundaries(target, source);
-    this.reconciler.reconcileLabel(target, source, "system");
-    this.reconciler.reconcileDescription(target, source, "system");
+    this.reconciler.reconcileLabel(target, source);
+    this.reconciler.reconcileDescription(target, source);
     for (const child of source.children) {
       // 同一インスタンス: DAG 経由で同じノードに到達した場合（cache hit）— 黙って dedup
       if (target.children.includes(child)) continue;
@@ -824,14 +824,14 @@ export class ImportResolver {
 
   private mergeDeployIntoExisting(target: DeployBlock, source: DeployBlock): void {
     if (target === source) return;
-    this.reconciler.reconcileLabel(target, source, "deploy");
+    this.reconciler.reconcileLabel(target, source);
     this.mergeDeployNodes(target, source.nodes);
   }
 
   private mergeOrgIntoExisting(target: OrganizationBlock, source: OrganizationBlock): void {
     if (target === source) return;
-    this.reconciler.reconcileLabel(target, source, "organization");
-    this.reconciler.reconcileDescription(target, source, "organization");
+    this.reconciler.reconcileLabel(target, source);
+    this.reconciler.reconcileDescription(target, source);
     for (const team of source.teams) {
       if (target.teams.includes(team)) continue;
       const idConflict = target.teams.find((t) => t.id === team.id);

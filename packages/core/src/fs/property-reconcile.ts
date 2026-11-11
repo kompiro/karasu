@@ -11,15 +11,6 @@ interface ReconciledBlock {
   loc: SourceRange;
 }
 
-interface PendingConflict {
-  blockId: string;
-  blockKind: BlockKind;
-  property: ReconciledProperty;
-  values: Map<string, PropertyOrigin>;
-  /** The merged block's final value. */
-  read: () => string;
-}
-
 interface PropertyOrigin {
   /** Distance of the declaring file from the entry; unknown files sort last. */
   depth: number;
@@ -45,8 +36,13 @@ export class PropertyReconciler {
   private fileDepth = new Map<string, number>();
   /** Where a property's current value came from, once it is not the block's own. */
   private propertyOrigin = new WeakMap<object, Map<ReconciledProperty, PropertyOrigin>>();
-  /** Every value each (block, property) was declared with, by the closest origin. */
-  private conflicts = new Map<string, PendingConflict>();
+  /**
+   * Every value a block's property was declared with across the files merged
+   * into it, by the closest origin. Kept on the block, not by id: a merge into
+   * a block that never reaches the model (the rest of a named-import source)
+   * must not decide the warning.
+   */
+  private conflicts = new WeakMap<object, Map<ReconciledProperty, Map<string, PropertyOrigin>>>();
 
   constructor(private readonly report: (diagnostic: Diagnostic) => void) {}
 
@@ -63,6 +59,13 @@ export class PropertyReconciler {
     if (file !== undefined) this.blockFile.set(copy, file);
     const origins = this.propertyOrigin.get(source);
     if (origins) this.propertyOrigin.set(copy, new Map(origins));
+    const conflicts = this.conflicts.get(source);
+    if (conflicts) {
+      this.conflicts.set(
+        copy,
+        new Map([...conflicts].map(([property, values]) => [property, new Map(values)])),
+      );
+    }
   }
 
   /**
@@ -101,12 +104,10 @@ export class PropertyReconciler {
   reconcileLabel(
     target: ReconciledBlock & { label?: string },
     source: ReconciledBlock & { label?: string },
-    blockKind: BlockKind,
   ): void {
     this.reconcile(
       target,
       source,
-      blockKind,
       "label",
       (block) => block.label,
       (block, value) => {
@@ -118,12 +119,10 @@ export class PropertyReconciler {
   reconcileDescription(
     target: ReconciledBlock & { properties: { description?: string } },
     source: ReconciledBlock & { properties: { description?: string } },
-    blockKind: BlockKind,
   ): void {
     this.reconcile(
       target,
       source,
-      blockKind,
       "description",
       (block) => block.properties.description,
       (block, value) => {
@@ -136,11 +135,12 @@ export class PropertyReconciler {
    * - `target` unset → take `source`'s value and its origin
    * - both set and different → the closer origin wins (ties keep `target`, the
    *   one merged first), and the conflict is kept for {@link reportConflicts}
+   *
+   * Conflicts `source` collected in its own file's merge move to `target` with it.
    */
   private reconcile<B extends ReconciledBlock>(
     target: B,
     source: B,
-    blockKind: BlockKind,
     property: ReconciledProperty,
     get: (block: B) => string | undefined,
     set: (block: B, value: string | undefined) => void,
@@ -148,6 +148,9 @@ export class PropertyReconciler {
     const t = get(target)?.trim() ?? "";
     const s = get(source)?.trim() ?? "";
     if (!s) return;
+    for (const [value, origin] of this.conflicts.get(source)?.get(property) ?? []) {
+      this.recordConflictValue(target, property, value, origin);
+    }
     const sourceOrigin = this.originOf(source, property);
     if (!t) {
       set(target, get(source));
@@ -168,42 +171,58 @@ export class PropertyReconciler {
     }
     // Reported once the whole graph is merged: an intermediate file's verdict
     // can be reversed at the root, and a warning must name the final winner.
-    const key = `${blockKind}\u0000${target.id}\u0000${property}`;
-    let conflict = this.conflicts.get(key);
-    if (!conflict) {
-      conflict = { blockId: target.id, blockKind, property, values: new Map(), read: () => "" };
-      this.conflicts.set(key, conflict);
+    this.recordConflictValue(target, property, t, targetOrigin);
+    this.recordConflictValue(target, property, s, sourceOrigin);
+  }
+
+  private recordConflictValue(
+    block: object,
+    property: ReconciledProperty,
+    value: string,
+    origin: PropertyOrigin,
+  ): void {
+    let byProperty = this.conflicts.get(block);
+    if (!byProperty) {
+      byProperty = new Map();
+      this.conflicts.set(block, byProperty);
     }
-    // Bottom-up, so the last merge to touch the block is the root's.
-    conflict.read = () => get(target)?.trim() ?? "";
-    for (const [value, origin] of [
-      [t, targetOrigin],
-      [s, sourceOrigin],
-    ] as const) {
-      const known = conflict.values.get(value);
-      if (!known || origin.depth < known.depth) conflict.values.set(value, origin);
+    let values = byProperty.get(property);
+    if (!values) {
+      values = new Map();
+      byProperty.set(property, values);
     }
+    const known = values.get(value);
+    if (!known || origin.depth < known.depth) values.set(value, origin);
   }
 
   /**
    * One `system-property-conflict` per value that lost, naming the value the
    * merged model ended with and anchored on the losing declaration (the one to
-   * edit). Call once, after the merge.
+   * edit). Reads the blocks `merged` holds, so only merges that reached the
+   * model count. Call once, after the merge.
    */
-  reportConflicts(): void {
-    for (const { blockId, blockKind, property, values, read } of this.conflicts.values()) {
-      const chosen = read();
-      for (const [ignored, origin] of values) {
-        if (ignored === chosen) continue;
-        this.report({
-          severity: "warning",
-          code: "system-property-conflict",
-          params: { blockId, blockKind, property, chosen, ignored },
-          loc: origin.loc,
-        });
+  reportConflicts(merged: KrsFile): void {
+    type Block = ReconciledBlock & { label?: string; properties?: { description?: string } };
+    const blocks: (readonly [BlockKind, Block])[] = [
+      ...merged.systems.map((b) => ["system", b] as const),
+      ...merged.deploys.map((b) => ["deploy", b] as const),
+      ...merged.organizations.map((b) => ["organization", b] as const),
+    ];
+    for (const [blockKind, block] of blocks) {
+      for (const [property, values] of this.conflicts.get(block) ?? []) {
+        const chosen =
+          (property === "label" ? block.label : block.properties?.description)?.trim() ?? "";
+        for (const [ignored, origin] of values) {
+          if (ignored === chosen) continue;
+          this.report({
+            severity: "warning",
+            code: "system-property-conflict",
+            params: { blockId: block.id, blockKind, property, chosen, ignored },
+            loc: origin.loc,
+          });
+        }
       }
     }
-    this.conflicts.clear();
   }
 
   private originOf(block: ReconciledBlock, property: ReconciledProperty): PropertyOrigin {

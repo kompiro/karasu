@@ -1590,6 +1590,33 @@ system ECPlatform {
         );
       });
 
+      // b.krs merges a.krs into its own block, but only `T` is named-imported
+      // from b, so b's block never reaches the model. The warning must name the
+      // value the model ended with, not the one b's merge settled on.
+      for (const [name, body, read, params] of BLOCKS) {
+        it(`${name}: a block merged only inside a named-import source does not decide the warning`, async () => {
+          await fs.writeFile(
+            "/project/index.krs",
+            `import "a.krs"\nimport { T } from "b.krs"\n${body("Root")}\n`,
+          );
+          await fs.writeFile("/project/a.krs", body("A"));
+          await fs.writeFile(
+            "/project/b.krs",
+            `import "a.krs"\n${body("B")}\nsystem T {\n  service TSvc\n}\n`,
+          );
+
+          const result = await resolver.resolve("/project/index.krs");
+          expect(read(result)).toBe("Root");
+          const conflicts = result.diagnostics.filter((d) => d.code === "system-property-conflict");
+          expect(conflicts.map((d) => [d.params, d.loc?.file])).toEqual([
+            [
+              expect.objectContaining({ ...params, chosen: "Root", ignored: "A" }),
+              "/project/a.krs",
+            ],
+          ]);
+        });
+      }
+
       it("keeps the closer origin when a closer file repeats the same value", async () => {
         // y.krs fills "L" from three levels down; x.krs repeats "L" one step
         // away; w.krs says "M" two steps away. "L" is declared closer than "M".
