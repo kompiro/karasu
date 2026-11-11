@@ -4,7 +4,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LocaleProvider } from "../../i18n/index.js";
 import { TourPanel } from "./TourPanel.js";
-import { TOURS } from "./tour-steps.js";
+import { TOURS, type TourId } from "./tour-steps.js";
+import { FEEDBACK_DISCUSSION_URL } from "../../utils/feedback-discussions.js";
 
 const { steps } = TOURS["service-split"];
 
@@ -75,5 +76,49 @@ describe("TourPanel", () => {
     await user.click(screen.getByRole("button", { name: "✓ Continue to editor" }));
     expect(onClose).toHaveBeenCalledOnce();
     expect(onNext).not.toHaveBeenCalled();
+  });
+
+  function renderTourStep(id: TourId, index: number) {
+    const tour = TOURS[id];
+    return render(
+      <LocaleProvider initialLocale="en">
+        <TourPanel
+          heading={id}
+          step={tour.steps[index]}
+          index={index}
+          total={tour.steps.length}
+          onBack={() => {}}
+          onNext={() => {}}
+          onClose={() => {}}
+        />
+      </LocaleProvider>,
+    );
+  }
+
+  function feedbackLinks() {
+    return screen
+      .queryAllByRole("link")
+      .filter((link) => link.getAttribute("href") === FEEDBACK_DISCUSSION_URL);
+  }
+
+  it("asks for feedback on the last step only (#3689)", () => {
+    for (const id of Object.keys(TOURS) as TourId[]) {
+      for (let index = 0; index < TOURS[id].steps.length - 1; index++) {
+        const { unmount } = renderTourStep(id, index);
+        expect(feedbackLinks(), `${id} step ${index + 1}`).toEqual([]);
+        unmount();
+      }
+    }
+  });
+
+  it("ends on a link to the Feedback discussions on the last step of each guide, in a new tab (#3689)", () => {
+    for (const id of Object.keys(TOURS) as TourId[]) {
+      const { unmount } = renderTourStep(id, TOURS[id].steps.length - 1);
+      const link = screen.getByRole("link", { name: "Tell us what you thought ↗" });
+      expect(link.getAttribute("href")).toBe(FEEDBACK_DISCUSSION_URL);
+      expect(link.getAttribute("target")).toBe("_blank");
+      expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+      unmount();
+    }
   });
 });
