@@ -77,7 +77,7 @@ node scripts/review/tier.ts check --pr <n>    # CI と同じ判定
 - **Low の auto-merge は「PR のマージはユーザー確認を経る」という既定運用への例外である。** 条件は Review tier を含む
   CI が通ること。有効にした後に変更を足すなら、先に `gh pr merge <n> --disable-auto` で解く。Low 以外では auto-merge を
   使わない。CI の途中で有効にすれば Review tier が落とすが、CI が通った後に有効にした PR はそのままマージされ、check では
-  止められない。#3698 が open のあいだは、有効にせずに Low PR merger のマージを待ち、結果を #3698 に書く
+  止められない。#3698 が open のあいだは、有効にせず（有効なら解き）、Low PR merger のマージを待って結果を #3698 に書く
   （`.claude/rules/adr.md`「#3698 が open のあいだは、`--auto` を打たずに Low PR merger を待つ（一時）」）
 - `skip-coderabbit` ラベルと本文の ignore コマンドは使わない。Medium 以下には CodeRabbit が走らないので、外す必要がない
 - 仕組みと却下した案は [ADR-3286](../adr/3286-risk-based-review-tiers.md)

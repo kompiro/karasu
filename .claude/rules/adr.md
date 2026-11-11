@@ -207,24 +207,28 @@ gh pr merge <N> --auto --squash --delete-branch
 **到達状態**: Low の PR が `Low PR merger` の merge job（GitHub App の名義）でマージされ、その結果が #3698 に
 コメントしてある。30 分待ってもマージされなかった PR は、理由を #3698 に書いたうえで `--auto` に戻してある。
 
-この節は、上の手順の最後の `gh pr merge --auto`、下の「`--auto` を使うので CI 完走前にコマンド発行して構わない」、
-`docs/process.md` 手順 15 に優先する。`gh issue view 3698 --json state --jq .state` が `OPEN` のあいだだけ効き、
+この節は、上の手順の最後の `gh pr merge --auto`、下の「PR を作った後に差分を足すとき」で Low の auto-merge を戻す手順、
+「`--auto` を使うので CI 完走前にコマンド発行して構わない」、`docs/process.md` 手順 15 に優先する。`gh issue view 3698 --json state --jq .state` が `OPEN` のあいだだけ効き、
 スライス C（#3681）で消す。`--auto` を打つと、native の auto-merge が最後の check の数秒後にマージし、
 merger（#3673 のスライス B）が App でマージできるかを #3698 で確かめられない。
 
 ```
+gh pr view <N> --json autoMergeRequest --jq .autoMergeRequest   # null でなければ gh pr merge <N> --disable-auto
 gh pr view <N> --json state,mergedBy,mergeCommit --jq '"\(.state) \(.mergedBy.login // "") \(.mergeCommit.oid // "")"'
 gh run list --workflow low-pr-merger.yml --limit 5 --json databaseId,createdAt,conclusion
 gh run view <run-id>                                       # merge・notify・report の各 job と summary
+gh run view <run-id> --log | grep 'merged #<N> at'          # merge job がその PR をマージした行
 gh run list --commit <merge-sha> --json name,event,status  # main の push で走った workflow
 gh api repos/kompiro/karasu/branches/<head-branch> --silent  # 404 ならブランチは消えている
 ```
 
-1. `gh pr merge` は打たない。required check がすべて終わってから 30 分まで、上の 1 行目で PR の状態を読む
-   （1 分ごとの読み直しは Bash の `run_in_background` で回す）。merger は check の完了ごとと 10 分ごとの cron で走る
-2. `MERGED` で `mergedBy` が App（`[bot]` で終わる名前）なら、#3698 にコメントする。PR 番号、マージした run の URL、
-   `mergedBy`、merge commit で `push` の workflow（`deploy.yml`、`pages.yml` など）が走ったか、head のブランチが消えたか
-   `MERGED` でも `mergedBy` が App でない（人の手か native の auto-merge）なら、誰がマージしたかを書き、その PR は 5 本に数えない
+1. `gh pr merge --auto` は打たない。以前の手順で auto-merge が有効になっている PR は、上の 1 行目で見つけて解く。
+   required check がすべて終わってから 30 分まで、上の 2 行目で PR の状態を読む（1 分ごとの読み直しは Bash の
+   `run_in_background` で回す）。merger は check の完了ごとと 10 分ごとの cron で走る
+2. `MERGED` になったら、マージした run を探す。その run の merge job のログに `merged #<N> at` の行があれば App の
+   マージで、#3698 にコメントする。PR 番号、run の URL、`mergedBy`、merge commit で `push` の workflow（`deploy.yml`、
+   `pages.yml` など）が走ったか、head のブランチが消えたか。どの run のログにもその行が無ければ（人の手か native の
+   auto-merge）、`mergedBy` を書き、その PR は 5 本に数えない
 3. 30 分たっても open なら、最後の run の summary と、notify job が PR に付けたコメントを読む
    - 判定が `reject` で、理由が PR の側にある（check の失敗、コンフリクト、ラベル）なら、PR を直して 1 に戻る
    - それ以外（`no-conclusion`、`stalled`、merge job や report job の失敗、判定が `merge` なのに open のまま）なら、
