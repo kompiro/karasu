@@ -3,7 +3,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for trying karasu. Only the last question is required; answer the others if you want to. Short answers are fine. 日本語でも構いません。
+        Thank you for trying karasu. Only the confirmation box and the last question are required; answer the others if you want to. Short answers are fine. 日本語でも構いません。
 
         > [!WARNING]
         > **Do not paste a share link to a model that is not meant to be public.** A karasu share link carries the whole model, so anyone who reads this
