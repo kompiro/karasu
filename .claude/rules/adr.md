@@ -228,8 +228,8 @@ gh api repos/kompiro/karasu/branches/<head-branch> --silent  # 404 ならブラ�
    `run_in_background` で回す）。merger は check の完了ごとと 10 分ごとの cron で走る
 2. `MERGED` になったら、required check が終わった時刻（`<checks-done>`）からマージの時刻（`<merged-at>`）までに
    作られた run をすべて挙げ、終わるのを待ってからログを読む。ログが読めない run が残るうちは決めない。どれかの run の
-   merge job のログに `merged #<N> at` の行があれば App のマージで、#3698 にコメントする。PR 番号、run の URL、`mergedBy`、merge commit で `push` の workflow（`deploy.yml`、
-   `pages.yml` など）が走ったか、head のブランチが消えたか。どの run のログにもその行が無ければ（人の手か native の
+   merge job のログに `merged #<N> at` の行があれば App のマージで、#3698 にコメントする。PR 番号、run の URL、
+   `mergedBy`、merge commit で `push` の workflow（`deploy.yml`、`pages.yml` など）が走ったか、head のブランチが消えたか。どの run のログにもその行が無ければ（人の手か native の
    auto-merge）、`mergedBy` を書き、その PR は 5 本に数えない
 3. 30 分たっても open なら、最後に終わった run の summary から、PR が `#<N>` で Head がいまの head の行を読む。行が無ければ
    その run はこの PR を判定していないので、下の「それ以外」に当たる。notify job が PR に付けたコメントは、マーカーの
@@ -238,8 +238,8 @@ gh api repos/kompiro/karasu/branches/<head-branch> --silent  # 404 ならブラ�
    - それ以外（`no-conclusion`、`stalled`、merge job や report job の失敗、判定が `merge` なのに open のまま）なら、
      #3698 に PR 番号、run の URL、判定、job の結果を書く。そのうえで、PR がいまも Low のままかを確かめる。走っている
      required check があれば、先に `gh pr checks <N> --required --watch` で終わるのを待つ。PR のブランチの worktree で
-     `git rev-parse HEAD` が PR の head と同じことを確かめてから、`node scripts/review/tier.ts classify` が `low`、段階のラベルが `risk: low` だけ、head がローカルレビューの記録の
-     head と同じ、ADR の PR ならタイトルが `docs(adr): ` で始まる、`gh pr checks <N> --required` がすべて `pass`。
+     `git rev-parse HEAD` が PR の head と同じことを確かめてから、`node scripts/review/tier.ts classify` が `low`、
+     段階のラベルが `risk: low` だけ、head がローカルレビューの記録の head と同じ、ADR の PR ならタイトルが `docs(adr): ` で始まる、`gh pr checks <N> --required` がすべて `pass`。
      すべて満たすときだけ `gh pr merge <N> --auto --squash --delete-branch` を打つ。満たさなければ打たない。check が落ちて
      いれば PR を直して 1 に戻る。`risk: high` と `risk: low` が両方残っているだけなら、下の段落の手順で `risk: high` を
      外して 1 に戻る。head が記録と違えば、下の「PR を作った後に差分を足すとき」に従う。それ以外（`classify` が `low`
