@@ -236,8 +236,9 @@ gh api repos/kompiro/karasu/branches/<head-branch> --silent  # 404 ならブラ�
    `head=` がいまの head のものだけを読む
    - 判定が `reject` で、理由が PR の側にある（check の失敗、コンフリクト、ラベル）なら、PR を直して 1 に戻る
    - それ以外（`no-conclusion`、`stalled`、merge job や report job の失敗、判定が `merge` なのに open のまま）なら、
-     #3698 に PR 番号、run の URL、判定、job の結果を書く。そのうえで、PR がいまも Low のままかを確かめる。
-     `node scripts/review/tier.ts classify` が `low`、段階のラベルが `risk: low` だけ、head がローカルレビューの記録の
+     #3698 に PR 番号、run の URL、判定、job の結果を書く。そのうえで、PR がいまも Low のままかを確かめる。走っている
+     required check があれば、先に `gh pr checks <N> --required --watch` で終わるのを待つ。PR のブランチの worktree で
+     `git rev-parse HEAD` が PR の head と同じことを確かめてから、`node scripts/review/tier.ts classify` が `low`、段階のラベルが `risk: low` だけ、head がローカルレビューの記録の
      head と同じ、ADR の PR ならタイトルが `docs(adr): ` で始まる、`gh pr checks <N> --required` がすべて `pass`。
      すべて満たすときだけ `gh pr merge <N> --auto --squash --delete-branch` を打つ。満たさなければ打たない。check が落ちて
      いれば PR を直して 1 に戻る。`risk: high` と `risk: low` が両方残っているだけなら、下の段落の手順で `risk: high` を
