@@ -29,6 +29,9 @@
  * The `theme` argument (Issue #1479) has its own sibling meta-test,
  * `theme-meta.test.ts`, applying the same enumeration pattern.
  */
+import { readFileSync, readdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import * as core from "./index.js";
 import {
@@ -129,8 +132,11 @@ interface Rendered {
 }
 
 interface Consumer {
-  /** Renders the fixture in `mode`, with `authorSheet` as the author's `.krs.style` when given. */
-  invoke: (mode: DisplayMode, authorSheet?: string) => Promise<Rendered> | Rendered;
+  /**
+   * Renders `krs` (the fixture unless given) in `mode`, with `authorSheet` as
+   * the author's `.krs.style` when given.
+   */
+  invoke: (mode: DisplayMode, authorSheet?: string, krs?: string) => Promise<Rendered> | Rendered;
   /**
    * Whether icon mode is expected to draw the system card at the fixed
    * icon-card size. True for renderers that go through `svg-renderer`'s
@@ -186,17 +192,17 @@ function findings(result: {
 }
 
 /** The fixture as a project, with the author sheet imported when given. */
-async function project(authorSheet: string | undefined, paths = [ENTRY]) {
+async function project(authorSheet: string | undefined, krs: string, paths = [ENTRY]) {
   const fs = new InMemoryFileSystemProvider();
-  const krs = authorSheet === undefined ? FIXTURE : `@import "${SHEET}"\n${FIXTURE}`;
-  for (const path of paths) await fs.writeFile(path, krs);
+  const source = authorSheet === undefined ? krs : `@import "${SHEET}"\n${krs}`;
+  for (const path of paths) await fs.writeFile(path, source);
   if (authorSheet !== undefined) await fs.writeFile(`/project/${SHEET}`, authorSheet);
   return fs;
 }
 
-async function diffOptions(mode: DisplayMode, authorSheet: string | undefined) {
+async function diffOptions(mode: DisplayMode, authorSheet: string | undefined, krs: string) {
   const [beforeEntryPath, afterEntryPath] = ["/project/before.krs", "/project/after.krs"];
-  const fs = await project(authorSheet, [beforeEntryPath, afterEntryPath]);
+  const fs = await project(authorSheet, krs, [beforeEntryPath, afterEntryPath]);
   return { beforeEntryPath, afterEntryPath, fs, displayMode: mode };
 }
 
@@ -204,8 +210,8 @@ async function diffOptions(mode: DisplayMode, authorSheet: string | undefined) {
  * The parsed fixture and its styles, resolved for `mode` the way every caller of
  * the low-level renderers resolves them (the mode's sheet last).
  */
-function resolvedFixture(mode: DisplayMode) {
-  const file = Parser.parse(FIXTURE).value;
+function resolvedFixture(mode: DisplayMode, krs: string) {
+  const file = Parser.parse(krs).value;
   const deployNodes = file.deploys.flatMap((d) => d.nodes);
   const sheets = withDisplayModeSheet([getBuiltinStyleSheet()], mode);
   const styles = resolveStyles(file.systems, sheets, deployNodes, file.organizations);
@@ -220,16 +226,16 @@ const DISPLAY_MODE_CONSUMERS = {
   compile: {
     expectsIconCard: true,
     sheets: "assembles",
-    invoke: (mode, styleSource) => {
-      const result = compile(FIXTURE, { displayMode: mode, diagramType: "system", styleSource });
+    invoke: (mode, styleSource, krs = FIXTURE) => {
+      const result = compile(krs, { displayMode: mode, diagramType: "system", styleSource });
       return { svg: result.svg, findings: findings(result) };
     },
   },
   compileProject: {
     expectsIconCard: true,
     sheets: "assembles",
-    invoke: async (mode, authorSheet) => {
-      const fs = await project(authorSheet);
+    invoke: async (mode, authorSheet, krs = FIXTURE) => {
+      const fs = await project(authorSheet, krs);
       const result = await compileProject(ENTRY, fs, { displayMode: mode, diagramType: "system" });
       return { svg: result.svg, findings: findings(result) };
     },
@@ -237,70 +243,71 @@ const DISPLAY_MODE_CONSUMERS = {
   buildDrillDownSvg: {
     expectsIconCard: true,
     sheets: "assembles",
-    invoke: (mode, sheet) => rendered(buildDrillDownSvg(FIXTURE, sheet, mode)),
+    invoke: (mode, sheet, krs = FIXTURE) => rendered(buildDrillDownSvg(krs, sheet, mode)),
   },
   buildAllLayersSvg: {
     expectsIconCard: true,
     sheets: "assembles",
-    invoke: (mode, sheet) => rendered(buildAllLayersSvg(FIXTURE, sheet, mode)),
+    invoke: (mode, sheet, krs = FIXTURE) => rendered(buildAllLayersSvg(krs, sheet, mode)),
   },
   buildAllLayersSvgOrg: {
     expectsIconCard: false,
     sheets: "assembles",
-    invoke: (mode, sheet) => rendered(buildAllLayersSvgOrg(FIXTURE, sheet, mode)),
+    invoke: (mode, sheet, krs = FIXTURE) => rendered(buildAllLayersSvgOrg(krs, sheet, mode)),
   },
   buildDrillDownSvgOrg: {
     expectsIconCard: false,
     sheets: "assembles",
-    invoke: (mode, sheet) => rendered(buildDrillDownSvgOrg(FIXTURE, sheet, mode)),
+    invoke: (mode, sheet, krs = FIXTURE) => rendered(buildDrillDownSvgOrg(krs, sheet, mode)),
   },
   buildAllViewsSvg: {
     expectsIconCard: true,
     sheets: "assembles",
-    invoke: (mode, sheet) => rendered(buildAllViewsSvg(FIXTURE, sheet, mode)),
+    invoke: (mode, sheet, krs = FIXTURE) => rendered(buildAllViewsSvg(krs, sheet, mode)),
   },
   buildAllViewsSvgProject: {
     expectsIconCard: true,
     sheets: "assembles",
-    invoke: async (mode, authorSheet) => {
-      const fs = await project(authorSheet);
+    invoke: async (mode, authorSheet, krs = FIXTURE) => {
+      const fs = await project(authorSheet, krs);
       return rendered(await buildAllViewsSvgProject(ENTRY, fs, undefined, mode));
     },
   },
   renderEntityView: {
     expectsIconCard: false,
     sheets: "assembles",
-    invoke: (mode, sheet) =>
-      rendered(renderEntityView(FIXTURE, ["EC", "Orders", "Ordering"], sheet, mode)),
+    invoke: (mode, sheet, krs = FIXTURE) =>
+      rendered(renderEntityView(krs, ["EC", "Orders", "Ordering"], sheet, mode)),
   },
   compileSystemDiff: {
     expectsIconCard: true,
     sheets: "assembles",
-    invoke: async (mode, sheet) =>
-      rendered(await compileSystemDiff(await diffOptions(mode, sheet))),
+    invoke: async (mode, sheet, krs = FIXTURE) =>
+      rendered(await compileSystemDiff(await diffOptions(mode, sheet, krs))),
   },
   compileDeployDiff: {
     expectsIconCard: false,
     sheets: "assembles",
-    invoke: async (mode, sheet) =>
-      rendered(await compileDeployDiff(await diffOptions(mode, sheet))),
+    invoke: async (mode, sheet, krs = FIXTURE) =>
+      rendered(await compileDeployDiff(await diffOptions(mode, sheet, krs))),
   },
   compileOrgDiff: {
     expectsIconCard: false,
     sheets: "assembles",
-    invoke: async (mode, sheet) => rendered(await compileOrgDiff(await diffOptions(mode, sheet))),
+    invoke: async (mode, sheet, krs = FIXTURE) =>
+      rendered(await compileOrgDiff(await diffOptions(mode, sheet, krs))),
   },
   buildAllViewsSvgDiffProject: {
     expectsIconCard: true,
     sheets: "assembles",
-    invoke: async (mode, sheet) =>
-      rendered(await buildAllViewsSvgDiffProject(await diffOptions(mode, sheet))),
+    invoke: async (mode, sheet, krs = FIXTURE) =>
+      rendered(await buildAllViewsSvgDiffProject(await diffOptions(mode, sheet, krs))),
   },
   render: {
     expectsIconCard: true,
     sheets: RESOLVED_BY_CALLER,
-    invoke: (mode) => {
-      const { file, styles } = resolvedFixture(mode);
+    invoke: (mode, _sheet, krs = FIXTURE) => {
+      const { file, styles } = resolvedFixture(mode, krs);
       return {
         svg: render(extractView(file.systems, []), styles, undefined, undefined, mode),
         findings: [],
@@ -310,8 +317,8 @@ const DISPLAY_MODE_CONSUMERS = {
   renderFromLayout: {
     expectsIconCard: true,
     sheets: RESOLVED_BY_CALLER,
-    invoke: (mode) => {
-      const { file, styles } = resolvedFixture(mode);
+    invoke: (mode, _sheet, krs = FIXTURE) => {
+      const { file, styles } = resolvedFixture(mode, krs);
       const laid = layout(extractView(file.systems, []), { displayMode: mode });
       return { svg: renderFromLayout(laid, styles, undefined, undefined, mode), findings: [] };
     },
@@ -319,8 +326,8 @@ const DISPLAY_MODE_CONSUMERS = {
   renderOrgView: {
     expectsIconCard: false,
     sheets: RESOLVED_BY_CALLER,
-    invoke: (mode) => {
-      const { file, styles } = resolvedFixture(mode);
+    invoke: (mode, _sheet, krs = FIXTURE) => {
+      const { file, styles } = resolvedFixture(mode, krs);
       return {
         svg: renderOrgView(extractOrgView(file.organizations, []), styles, mode),
         findings: [],
@@ -330,21 +337,17 @@ const DISPLAY_MODE_CONSUMERS = {
   renderDeploy: {
     expectsIconCard: false,
     sheets: RESOLVED_BY_CALLER,
-    invoke: (mode) => {
-      const { file, styles } = resolvedFixture(mode);
+    invoke: (mode, _sheet, krs = FIXTURE) => {
+      const { file, styles } = resolvedFixture(mode, krs);
       const slice = extractDeployView(file.deploys, file.systems);
       return { svg: renderDeploy(slice, styles, mode), findings: [] };
     },
   },
 } satisfies Record<DisplayModeEntryName, Consumer>;
 
+/** A builder's result; a builder that drew nothing gives `""`, which check 1 rejects for the fixture. */
 function rendered(result: Parameters<typeof findings>[0] & { svg: string | null }): Rendered {
-  if (!result.svg) {
-    throw new Error(
-      `expected non-empty svg, got diagnostics: ${JSON.stringify(result.diagnostics)}`,
-    );
-  }
-  return { svg: result.svg, findings: findings(result) };
+  return { svg: result.svg ?? "", findings: findings(result) };
 }
 
 const CONSUMERS = Object.entries(DISPLAY_MODE_CONSUMERS).map(([name, consumer]) => ({
@@ -517,5 +520,70 @@ describe("meta: a mode's sheet beats the author's on every entry point that asse
         );
       },
     );
+  });
+});
+
+/** Each drill level (`<g id="krs-…" class="krs-view…">`) of `svg`: its id, and its text up to the next level. */
+function drillLevels(svg: string): { id: string; text: string }[] {
+  const starts = [...svg.matchAll(/<g id="(krs-[^"]+)" class="krs-view[^"]*">/g)];
+  return starts.map((start, i) => ({
+    id: start[1],
+    text: svg.slice(start.index, starts[i + 1]?.index ?? svg.length),
+  }));
+}
+
+/**
+ * Levels of `svg` where an interactive control (`<a>`: a back button, a card
+ * link) comes before the level's canvas, the first `<rect>` in the level. SVG
+ * paints in document order and the canvas is opaque, so such a control is
+ * buried, invisible and unclickable (#2044). A control drawn with its own
+ * `<rect>` and emitted first still counts: its `<a` opens before that rect.
+ */
+function controlsUnderCanvas(svg: string): string[] {
+  return drillLevels(svg)
+    .filter(({ text }) => {
+      const canvas = text.indexOf("<rect");
+      const firstControl = text.indexOf("<a ");
+      return firstControl !== -1 && (canvas === -1 || firstControl < canvas);
+    })
+    .map(({ id }) => id);
+}
+
+// Every public SVG entry point takes `displayMode` (an SVG surface that ignored
+// the mode would itself break TPL-1001), so the registry above is also the set
+// of surfaces that can bundle drill levels. Which of them do is read from their
+// output, so a new builder that bundles levels is checked without being named
+// here (TPL-2044: every parallel builder keeps controls on top).
+const BUNDLES_LEVELS = (
+  await Promise.all(
+    CONSUMERS.map(async (c) => ({ c, levels: drillLevels((await c.invoke("shape")).svg) })),
+  )
+)
+  .filter(({ levels }) => levels.length > 0)
+  .map(({ c }) => c);
+
+const EXAMPLES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../examples");
+const EXAMPLE_FILES = readdirSync(EXAMPLES_ROOT, { recursive: true, encoding: "utf8" })
+  .filter((path) => path.endsWith(".krs"))
+  .sort();
+
+describe("meta: drill levels paint their controls over the level canvas (#2044)", () => {
+  it("has entry points that bundle drill levels, with a back button among them", async () => {
+    expect(BUNDLES_LEVELS.length).toBeGreaterThan(0);
+    const svgs = await Promise.all(BUNDLES_LEVELS.map(async (c) => (await c.invoke("shape")).svg));
+    expect(svgs.some((svg) => svg.includes('class="krs-back-button"'))).toBe(true);
+  });
+
+  it.each(BUNDLES_LEVELS)("$name, on the fixture", async (consumer) => {
+    expect(controlsUnderCanvas((await consumer.invoke("shape")).svg)).toEqual([]);
+  });
+
+  // The fixture has the level kinds known today; the shipped examples bring the
+  // shapes nobody wrote a fixture for, and a new example joins on its own.
+  describe.each(BUNDLES_LEVELS)("$name, on every shipped example", (consumer) => {
+    it.each(EXAMPLE_FILES)("%s", async (path) => {
+      const krs = readFileSync(resolve(EXAMPLES_ROOT, path), "utf8");
+      expect(controlsUnderCanvas((await consumer.invoke("shape", undefined, krs)).svg)).toEqual([]);
+    });
   });
 });
