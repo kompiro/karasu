@@ -43,7 +43,7 @@ import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
 import { declaredGroupOrderOf, buildGroupLabelIndex } from "./group-labels.js";
-import { countPolylinePenetrations, type Rect, type Point } from "./edge-geometry.js";
+import { countPolylinePenetrations, type Point } from "./edge-geometry.js";
 import {
   channelRunsOf,
   collectChannels,
@@ -56,96 +56,19 @@ import { labelAnchorWithSegment, ownLabelSegment } from "./edge-routing.js";
 import { ObstacleIndex } from "./obstacle-index.js";
 import { generateLargeModel } from "./fixtures/large-model.js";
 import type { LayoutEdge, LayoutNode, LayoutResult } from "./layout-types.js";
+import {
+  framesOf,
+  framesOfNode,
+  nodeOf,
+  obstaclesForEdge,
+  pointsOf,
+  totalPenetrations,
+} from "./fixtures/routing-metrics.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const EXAMPLES = resolve(__dirname, "../../../../examples");
 
 type GroupBy = "team" | "boundary";
-
-/**
- * Frames as the rects they actually cover. A boundary frame widened to reach an
- * out-of-band member (#2179) is a rectilinear polygon, and measuring its
- * *bounding box* would both invent penetrations across rows it does not enclose
- * and hide the strip it does.
- */
-function framesOf(res: LayoutResult): { id: string; pieces: Rect[] }[] {
-  return res.containers
-    .filter((c) => c.group)
-    .map((c) => ({
-      id: c.id,
-      pieces: [...(c.coverage ?? [{ x: c.x, y: c.y, width: c.width, height: c.height }])],
-    }));
-}
-
-function framesOfNode(
-  n: LayoutNode | undefined,
-  frames: { id: string; pieces: Rect[] }[],
-): Set<string> {
-  const out = new Set<string>();
-  if (!n) return out;
-  for (const f of frames) {
-    for (const p of f.pieces) {
-      const inside =
-        n.x >= p.x &&
-        n.x + n.width <= p.x + p.width &&
-        n.y >= p.y &&
-        n.y + n.height <= p.y + p.height;
-      if (inside) {
-        out.add(f.id);
-        break;
-      }
-    }
-  }
-  return out;
-}
-
-/** Obstacles an edge must never cross: non-endpoint cards + frames neither endpoint is in. */
-function obstaclesForEdge(
-  e: LayoutEdge,
-  nodes: LayoutNode[],
-  frames: { id: string; pieces: Rect[] }[],
-  fFrom: Set<string>,
-  fTo: Set<string>,
-): Rect[] {
-  return [
-    ...nodes.filter((n) => n.id !== e.from && n.id !== e.to),
-    ...frames.filter((f) => !fFrom.has(f.id) && !fTo.has(f.id)).flatMap((f) => f.pieces),
-  ];
-}
-
-function pointsOf(e: LayoutEdge): Point[] {
-  return [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
-}
-
-/**
- * A card by the id an edge endpoint names. Deploy keys its Map by that id
- * (`<container>::<unit>`); the multi-system root keys it by (system, id) and
- * keeps the bare id on the card (#2917), so fall back to a search by `id`.
- */
-function nodeOf(res: LayoutResult, id: string): LayoutNode | undefined {
-  return res.nodes.get(id) ?? [...res.nodes.values()].find((n) => n.id === id);
-}
-
-function totalPenetrations(res: LayoutResult): number {
-  const frames = framesOf(res);
-  const nodes = [...res.nodes.values()];
-  let total = 0;
-  for (const e of res.edges) {
-    if (e.ghost || e.cyclic) continue;
-    const from = nodeOf(res, e.from);
-    const to = nodeOf(res, e.to);
-    if (!from || !to) continue;
-    const obstacles = obstaclesForEdge(
-      e,
-      nodes,
-      frames,
-      framesOfNode(from, frames),
-      framesOfNode(to, frames),
-    );
-    total += countPolylinePenetrations(pointsOf(e), obstacles);
-  }
-  return total;
-}
 
 /**
  * Penetration count if every edge were drawn straight centre-to-centre on the
