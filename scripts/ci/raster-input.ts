@@ -125,6 +125,13 @@ export async function rasterizerLoaders(repoRoot: string, roots: string[]): Prom
     includeNpm: true,
     fileExtensions: ["ts", "tsx", "mts", "cts", "js", "mjs", "cjs"],
     excludeRegExp: [/\.test\.[cm]?[jt]sx?$/],
+    // Without mixedImports the TypeScript and ES-module parsers skip
+    // `require()`, so a `.ts` file loading a rasterizer that way would escape.
+    detectiveOptions: {
+      ts: { mixedImports: true },
+      tsx: { mixedImports: true },
+      es6: { mixedImports: true },
+    },
   });
   // A specifier madge could not resolve is dropped from the graph, not
   // reported as an import: a rasterizer missing from node_modules must not

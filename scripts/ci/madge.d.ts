@@ -7,6 +7,7 @@ declare module "madge" {
     includeNpm?: boolean;
     fileExtensions?: string[];
     excludeRegExp?: RegExp[];
+    detectiveOptions?: Record<string, { mixedImports?: boolean }>;
   }
   interface MadgeResult {
     obj(): Record<string, string[]>;
