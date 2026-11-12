@@ -31,7 +31,8 @@ agent: general-purpose
 
 **レビューは読むだけで行う。** ファイルの編集・コミット・push・PR へのコメントをしない。書き換えて確かめたい
 ときは scratchpad にコピーして行う。テストの実行はしてよいが、テストは作業ツリーのコードで走るので、
-`git status --porcelain` が空で、`git rev-parse HEAD` が `HEAD_REV`（下の 1.）と同じときだけ結果を根拠にする。
+`git status --porcelain` が空で、`git rev-parse HEAD` と `git rev-parse $HEAD_REV`（`HEAD_REV` は下の 1.）が同じ
+コミットを指すときだけ結果を根拠にする。
 
 ## 1. 対象を決める
 
@@ -39,14 +40,14 @@ agent: general-purpose
 
 | 引数 | 決め方 |
 | --- | --- |
-| 空 | `git fetch origin main` の後、`BASE=$(git merge-base origin/main HEAD)`、`HEAD_REV=HEAD`。未コミットの変更は対象外とし、あれば「確認していない範囲」に書く |
-| PR 番号（`123` / `#123`） | 先頭の `#` を外した番号を `<n>` とする（`pull/#123/head` は fetch できない）。`gh pr view <n> --json title,body,state,baseRefName,baseRefOid,headRefOid,closingIssuesReferences`。`git fetch origin main <baseRefName> pull/<n>/head` の後（base が `main` でない stack の PR でも `baseRefOid` が手元に来る）、`BASE=$(git merge-base <baseRefOid> <headRefOid>)`、`HEAD_REV=<headRefOid>`。マージ済みの PR でもこの 2 つで当時の差分を読む |
-| PR 番号とコミット（`123@<sha>`） | PR 番号と同じ。ただし `HEAD_REV=<sha>`、`BASE=$(git merge-base <baseRefOid> <sha>)` にして、PR の途中の状態を読む。force-push で消えたなどで `<sha>` が手元に無ければ、そこで止まってそう報告する。PR の本文は今のもの（マージ済みならマージ時のもの）なので、`<sha>` より後の修正を前提にした記述は意図として読まない |
-| ブランチ名 | `git fetch origin main`。origin にブランチがあれば一緒に fetch する。手元のブランチ（`git rev-parse --verify refs/heads/<branch>`）が無いか、`origin/<branch>` の祖先（`git merge-base --is-ancestor <branch> origin/<branch>` が成功し、2 つが違う。CodeRabbit の autofix などで手元が遅れている）なら `HEAD_REV=origin/<branch>`、それ以外は `HEAD_REV=<branch>` にして、まだ push していないコミットも読む。どちらも `BASE=$(git merge-base origin/main $HEAD_REV)` |
+| 空 | `git fetch origin main` の後、`BASE=$(git merge-base origin/main HEAD)`、`HEAD_REV=HEAD`。未コミットの変更は対象外とし、あれば「確認していない範囲」に書く。upstream があれば（`git rev-parse --verify -q @{u}`）fetch して、HEAD に無いコミットが upstream にあれば（`git rev-list HEAD..@{u}`。CodeRabbit の autofix など）それも「確認していない範囲」に書く |
+| PR 番号（`123` / `#123`） | 先頭の `#` を外した番号を `<n>` とする（`pull/#123/head` は fetch できない）。`gh pr view <n> --json title,body,state,baseRefName,baseRefOid,headRefOid,closingIssuesReferences`。`git fetch origin main pull/<n>/head` の後、`baseRefOid` が手元に無ければ（`git cat-file -e <baseRefOid>` が失敗する。base が `main` でない stack の PR）、`git fetch origin <baseRefOid>` で取ってくる（base のブランチは消えていることがあるので名前では取らない）。その後、`BASE=$(git merge-base <baseRefOid> <headRefOid>)`、`HEAD_REV=<headRefOid>`。マージ済みの PR でもこの 2 つで当時の差分を読む |
+| PR 番号とコミット（`123@<sha>`） | PR 番号と同じ。ただし `HEAD_REV=<sha>`、`BASE=$(git merge-base <baseRefOid> <sha>)` にして、PR の途中の状態を読む。`<sha>` が手元に無ければ（force-push で PR の履歴から消えたなど）`git fetch origin <sha>` を試し、それでも無ければそこで止まってそう報告する。PR の本文は今のもの（マージ済みならマージ時のもの）なので、`<sha>` より後の修正を前提にした記述は意図として読まない |
+| ブランチ名 | `git fetch origin main`。origin にブランチがあれば一緒に fetch する。手元のブランチ（`git rev-parse --verify refs/heads/<branch>`）が無いか、`origin/<branch>` の祖先（`git merge-base --is-ancestor <branch> origin/<branch>` が成功し、2 つが違う。CodeRabbit の autofix などで手元が遅れている）なら `HEAD_REV=origin/<branch>`、それ以外は `HEAD_REV=<branch>` にして、まだ push していないコミットも読む。手元と origin が分かれている（どちらにも相手に無いコミットがある）ときは、origin にしか無いコミット（`git rev-list <branch>..origin/<branch>`）を「確認していない範囲」に書く。どちらも `BASE=$(git merge-base origin/main $HEAD_REV)` |
 
 どの行でも main を一緒に fetch する。手元の `origin/main` が古いと、ブランチ名では merge-base が古い main のコミットに
 落ちて、その後に main へ入った変更まで PR の差分として読むことになり、PR 番号では `baseRefOid` が手元に無く
-`git merge-base` が `Not a valid commit name` で止まる。PR 番号で base が `main` でないときは、その base のブランチも
+`git merge-base` が `Not a valid commit name` で止まる。PR 番号で base が `main` でないときは、`baseRefOid` を SHA で
 fetch する（上の表）。
 
 差分は `git diff $BASE $HEAD_REV`、ファイルの一覧は `git diff --name-status $BASE $HEAD_REV`。
@@ -78,6 +79,8 @@ A〜F をすべて行う。指摘の候補は、場所と「どんな入力や�
 
 消した行と置き換えた行のそれぞれについて、何を守っていたか（検査、エラーの経路、場合分け、テストの
 ケース）を言い、新しいコードのどこで同じものが守られているかを探す。見つからなければ候補にする。
+指摘の場所は、消した行ではなく、守りが無くなった新しいコードの行（置き換えた行や、消した検査を通っていた呼び出し）に
+する。ファイルごと消して守りの置き場が無いときは、消したファイルを場所にし、4. の「（差分外）」を付けない。
 
 ### C. 変更した名前の利用者
 
@@ -127,10 +130,14 @@ CI が見ていない中身（記述が正しいか）である。
 pnpm -s exec tpl related --config tpl.config.json --limit 0 --changed-files <変更したファイル…>
 ```
 
-返った TPL のチェックリストのうち、この変更に当てはまる項目を確かめる。TPL の一覧は今の `docs/test-perspectives/` の
-ものなので、マージ済みの PR では当時に無かった TPL も返る。マージ済みの PR で、その TPL のファイルが `$HEAD_REV` に
-無い（`git cat-file -e $HEAD_REV:<TPL のパス>` が失敗する）ときだけ、その TPL で見つけた指摘は原因を「この PR」と
-したまま重大度を 1 段下げる。E と同じく、まだマージしていない PR とブランチでは下げない。
+返った TPL のチェックリストのうち、この変更に当てはまる項目を確かめる。`tpl related` は作業ツリーの TPL を読むので、
+作業ツリーが `HEAD_REV` でない（冒頭のテストの条件を満たさない）ときは、返った TPL の本文を
+`git show origin/main:<TPL のパス>` で読み直す。
+
+TPL の一覧は今の `docs/test-perspectives/` のものなので、マージ済みの PR では当時に無かった項目も返る。TPL のファイル名や
+ID は変わったことがあるので、パスでは判定せず、E と同じく文で判定する。マージ済みの PR で、根拠にした項目の文が
+`$HEAD_REV` の TPL に無い（`git grep -F '<項目の文の一部>' $HEAD_REV -- docs/test-perspectives` が何も返さない）ときだけ、
+その指摘は原因を「この PR」としたまま重大度を 1 段下げる。まだマージしていない PR とブランチでは下げない。
 
 ## 4. 確かめる
 
@@ -164,7 +171,7 @@ pnpm -s exec tpl related --config tpl.config.json --limit 0 --changed-files <変
 最後のメッセージを次の形にする。表示は日本語で書き、識別子とパスはそのまま書く。
 
 ````
-**判定: <要修正 | 修正の推奨あり | 指摘なし>**（<Critical と Major の件数。この PR が原因のもの>）
+**判定: <要修正 | 修正の推奨あり | 指摘なし>**（<Critical と Major の件数。この PR が原因で差分内のもの>）
 
 | # | 重大度 | 場所 | 何が起きるか | 原因 | 確かめた方法 |
 | --- | --- | --- | --- | --- | --- |
@@ -193,8 +200,9 @@ pnpm -s exec tpl related --config tpl.config.json --limit 0 --changed-files <変
 </details>
 ````
 
-- 判定は、この PR が原因の Critical か Major があれば「要修正」、表が空なら「指摘なし」、それ以外（Minor と
-  Trivial だけ、または Critical と Major が「以前から」だけ）は「修正の推奨あり」
+- 判定は、この PR が原因で「（差分外）」でない Critical か Major があれば「要修正」、表が空なら「指摘なし」、
+  それ以外（Minor と Trivial だけ、または Critical と Major が「以前から」か「（差分外）」だけ）は「修正の推奨あり」。
+  差分外の Critical と Major は、呼んだ側が Issue にする対象である（4. を参照）
 - 表は重い順に並べる。原因が「以前から」の指摘は、同じ重大度の中で後ろに置く
 - 英語の行は、PR 本文のローカルレビューの記録（`docs/process/review.md`「ローカルレビューの記録」）に移すためのもので、
   対応（`disposition`）は空にしておく。記録を書くのは呼んだ側である。`reviewer` の `branch-review` は
