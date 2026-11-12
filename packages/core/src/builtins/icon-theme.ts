@@ -168,7 +168,7 @@ const BASE_KIND_ICON = new Map<string, string>(
  * and the Outline's (TPL-1415); a multi-variant `resource` still does, until
  * its shape-mode rules follow the tag order too.
  */
-export const VARIANT_ICONS_BY_KIND: ReadonlyMap<string, ReadonlyMap<string, string>> = (() => {
+const VARIANT_ICONS_BY_KIND: ReadonlyMap<string, ReadonlyMap<string, string>> = (() => {
   const byKind = new Map<string, Map<string, string>>();
   for (const r of ICON_RULES) {
     if (r.scope !== "resource-variant" && r.scope !== "client-variant") continue;

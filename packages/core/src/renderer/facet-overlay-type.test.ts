@@ -19,6 +19,7 @@ describe("FacetOverlay cannot be active and empty (TPL-2174)", () => {
   it("rejects an overlay with no entries", () => {
     // @ts-expect-error an active overlay has at least one entry
     const empty: FacetOverlay = { entries: [], ...rest };
+    expectTypeOf<[]>().not.toExtend<FacetOverlay["entries"]>();
     void empty;
   });
 
@@ -34,6 +35,8 @@ describe("FacetOverlay cannot be active and empty (TPL-2174)", () => {
     const overlay: FacetOverlay = { entries: [entry], ...rest };
     // @ts-expect-error the entries are read-only, so they cannot be popped empty
     overlay.entries.pop();
+    // Read-only: the entries do not pass as a mutable array.
+    expectTypeOf<FacetOverlay["entries"]>().not.toExtend<Entry[]>();
   });
 
   it("accepts an overlay with one entry", () => {
