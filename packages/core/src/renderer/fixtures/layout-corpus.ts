@@ -25,10 +25,7 @@ import { Parser } from "../../parser/parser.js";
 import type { KrsNode } from "../../types/ast.js";
 import type { LayoutOptions, LayoutResult } from "../layout-types.js";
 
-const EXAMPLES_DIR = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../../../../examples",
-);
+const EXAMPLES_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../../examples");
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir).sort()) {
