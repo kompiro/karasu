@@ -69,19 +69,19 @@ system view では `[external]` サービスを左右のサイド列に配置す
 
 kind 別の帯へノードを動かす配置 post-pass を追加・変更する際:
 
-- [ ] 動かした kind 以外（actor/client/service/infra）の行・x スパンが不変であることを確認した
+- [ ] 動かした kind 以外（actor/client/service/infra）の行・x スパンが不変であることを確認した [guard: `packages/core/src/renderer/side-column-placement.test.ts`]
 - [ ] 自動配置が決定的（宣言順安定・tie-break 明示）であることを確認した
 - [ ] 自動振り分けの閾値が分類対象の集合そのものから導出されていないことを確認した。導出している場合は、**閾値が退化する入力**（要素 1 件、全要素同値）を列挙し、そのそれぞれで入力（barycenter 等）が結果に効くことをテストで示した。「同値」の判定は座標の平均に対して bit 一致ではなく許容誤差で行う [judgment]
-- [ ] style ヒント（`column` 等）による override が効くことを確認した
+- [ ] style ヒント（`column` 等）による override が効くことを確認した [guard: `packages/core/src/renderer/column-hint-override.test.ts`]
 - [ ] 列の分配が固定の広がりの N 等分になっていないことを確認した。**隣接ペアの実測ギャップ**を
-      複数の件数（入りきる件数 / 入りきらない件数の両方）で assert し、重なりが 0 であることを示した
+      複数の件数（入りきる件数 / 入りきらない件数の両方）で assert し、重なりが 0 であることを示した [guard: `packages/core/src/renderer/side-column-placement.test.ts`]
 - [ ] 入りきらない列がフレームと canvas の内側に収まることを確認した（はみ出した分だけフレームが伸び、
-      すでに収まっている図のフレームは動かない）
-- [ ] 関連 kind の境界ルール（infra は常に内側 = [ADR-1724]）が保たれることを確認した
+      すでに収まっている図のフレームは動かない） [guard: `packages/core/src/renderer/side-column-placement.test.ts`]
+- [ ] 関連 kind の境界ルール（infra は常に内側 = [ADR-1724]）が保たれることを確認した [guard: `packages/core/src/renderer/system-tier-placement.test.ts`]
 - [ ] サイド external へのエッジが内側の辺に着地し矢印が内向きであることを確認した（tier index ベースの上下アンカーに上書きが効いている）
 - [ ] サイド化の gate（益のある条件でのみ適用）が効き、単純な図が無駄に広がらないことを確認した
 - [ ] 既存の tier 配置テスト（#1724 / #823）と pull-up テスト（#974）が無変更で通ることを確認した [guard: `packages/core/src/renderer/layout.test.ts`]
-- [ ] container の bbox がサイド列を含むよう拡張され、はみ出し / クリップが無いことを確認した
+- [ ] container の bbox がサイド列を含むよう拡張され、はみ出し / クリップが無いことを確認した [guard: `packages/core/src/renderer/side-column-placement.test.ts`]
 
 ## 既知の対処パターン
 
@@ -102,6 +102,15 @@ kind 別の帯へノードを動かす配置 post-pass を追加・変更する�
   - `moves external to a side column even without user/client (#1728)`
   - `keeps a database [external] on the infra row, not the external row (kind wins over tag) (#1724)`（境界ルール回帰ガード）
   - `propagates infra pull-up through a dep-on-dep chain … (Issue #974)`（pull-up 回帰ガード）
+- `packages/core/src/renderer/side-column-placement.test.ts`（項目 1・5・6・11 のガード）: `examples/` の全キャンバスと、
+  external 件数（入りきる / 入りきらない）× 消費ハブ数（gate の上下）の生成モデルを、単一 system と multi-system root の
+  両パイプラインで配置し、最終出力で測る。カードの重なり 0、全カードが自分のフレームと canvas の内側、サイド配置を
+  切った同じモデルと比べてフレームがはみ出し分しか伸びないこと、external を取り除いたモデルと比べて他 kind の行・x スパンが
+  同じであること。external 以外の kind を別の帯へ動かす新しい post-pass の項目 1・6 は測っていない
+- `packages/core/src/renderer/column-hint-override.test.ts`（項目 4 のガード）: `PROPERTY_SCHEMAS.column` の全値 ×
+  `REFERENCE_DATA.nodeKinds` から導いた全キャンバス × 両パイプラインで、ヒントが自動配置を上書きすること
+- `packages/core/src/renderer/system-tier-placement.test.ts`（項目 7 のガード）: レジストリが infra-block とする全 kind を
+  `[external]` / `column` ヒントの有無で、サイド配置が実際に起きるキャンバスに置き、サービスの下の行に残ること
 - `packages/core/src/renderer/routing-parity.test.ts`（`shared routing chain — ungrouped-only affordances survive (#2362)` › `keeps [external] services in side columns (ADR-1728 / TPL-1761)`: 共有ルーティング chain を通しても external がサイド列に残る）
 
 ## 派生元 spec / ADR
