@@ -160,12 +160,13 @@ const BASE_KIND_ICON = new Map<string, string>(
  * `kind → (variant tag → icon name)` for every system-view kind with tag
  * variants (`resource`, `client`), derived from {@link ICON_RULES}.
  *
- * Both readers of a multi-variant node go through this one table with the same
- * rule, first-match-wins on the node's `tags` order: {@link iconNameForNode}
- * here, and `applyVariantFirstMatch` in `resolver/style-resolver.ts`, which
- * rewrites the cascade's pick (the variant declared last in the sheet). Two
- * orders would show one node with two icons, the renderer's and the Outline's
- * (TPL-1415).
+ * Both readers of a multi-variant node go through this one table:
+ * {@link iconNameForNode} here, first-match-wins on the node's `tags` order, and
+ * {@link applyVariantFirstMatch}, which rewrites the
+ * cascade's pick (the variant declared last in the sheet) to the same first
+ * match for `client`. Two orders show one node with two icons, the renderer's
+ * and the Outline's (TPL-1415); a multi-variant `resource` still does, until
+ * its shape-mode rules follow the tag order too.
  */
 export const VARIANT_ICONS_BY_KIND: ReadonlyMap<string, ReadonlyMap<string, string>> = (() => {
   const byKind = new Map<string, Map<string, string>>();
@@ -186,8 +187,9 @@ export const VARIANT_ICONS_BY_KIND: ReadonlyMap<string, ReadonlyMap<string, stri
  *
  * Tag-driven variants take precedence over the base kind: a `client` or
  * `resource` with a recognised variant tag → the variant icon, using
- * first-match-wins on `tags` order (the order `applyVariantFirstMatch` in
- * `resolver/style-resolver.ts` gives the renderer — see
+ * first-match-wins on `tags` order. The renderer agrees for `client`
+ * ({@link applyVariantFirstMatch}); for a `resource`
+ * with several variant tags it still draws the last-declared variant (see
  * {@link VARIANT_ICONS_BY_KIND}).
  *
  * Returns `undefined` for kinds with no Icon Mode pictogram (`system`,
@@ -200,6 +202,46 @@ export function iconNameForNode(kind: string, tags: readonly string[]): string |
     if (icon) return icon;
   }
   return BASE_KIND_ICON.get(kind);
+}
+
+/** Kinds whose multi-variant nodes {@link applyVariantFirstMatch} rewrites. */
+const FIRST_MATCH_VARIANT_KINDS: ReadonlySet<string> = new Set(["client"]);
+
+/**
+ * The style resolver's post-step, run on each node's merged properties.
+ * No-op for everything except a `client` carrying more than one of its variant
+ * tags ({@link VARIANT_ICONS_BY_KIND}): `client [mobile, desktop]`.
+ *
+ * CSS cascade alone resolves such a node to the variant rule declared latest
+ * in the icon theme; that contradicts the intuition that the *first* tag the
+ * user wrote should win, and it would disagree with `iconNameForNode`, which
+ * the Outline and other surfaces call (TPL-1415). This helper rewrites the
+ * resolved shape to the first variant in `tags` order. Single-tag and zero-tag
+ * nodes are handled correctly by the cascade and untouched here. User-defined
+ * shape overrides (anything that is not one of the kind's variant icon URLs)
+ * are left alone too.
+ *
+ * `resource` is deliberately not rewritten yet. Its shape-mode variants are
+ * keyword rules in the builtin sheet (`resource[api] { shape: hexagon; }`),
+ * which the cascade also resolves to the last-declared variant, so taking the
+ * first tag in icon mode alone would draw `resource [table, api]` as a hexagon
+ * in one mode and a table in the other. Until both modes follow the tag order,
+ * a multi-variant resource keeps the cascade's pick in both, and the Outline
+ * (`iconNameForNode`, first tag) still disagrees with it; `icon-theme.test.ts`
+ * holds that known gap in `CASCADE_ORDER_KINDS`.
+ */
+export function applyVariantFirstMatch(
+  node: { kind: string; tags: readonly string[] },
+  merged: Record<string, string>,
+): void {
+  const variants = VARIANT_ICONS_BY_KIND.get(node.kind);
+  if (!variants || !FIRST_MATCH_VARIANT_KINDS.has(node.kind)) return;
+  const present = node.tags.filter((t) => variants.has(t));
+  if (present.length < 2) return;
+  const currentShape = merged["shape"];
+  const variantShapes = [...variants.values()].map((icon) => `url("${icon}")`);
+  if (!currentShape || !variantShapes.includes(currentShape)) return;
+  merged["shape"] = `url("${variants.get(present[0])}")`;
 }
 
 let _cachedSheet: StyleSheet | null = null;

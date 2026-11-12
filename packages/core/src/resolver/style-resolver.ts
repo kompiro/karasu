@@ -13,7 +13,7 @@ import { edgeKey, edgeKindKey } from "../view/edge-key.js";
 import { hasShape } from "../shapes/shape-registry.js";
 // `hasShape` answers for the built-in icons only once they are registered (#2802).
 import "../shapes/builtin-icons.js";
-import { VARIANT_ICONS_BY_KIND } from "../builtins/icon-theme.js";
+import { applyVariantFirstMatch } from "../builtins/icon-theme.js";
 import { NON_AUTHOR_SHEET_IDS } from "../builtins/non-author-sheets.js";
 import { flattenSheetsInCascadeOrder, mergeInCascadeOrder } from "../style/cascade.js";
 import type {
@@ -528,31 +528,6 @@ function collectEdges(node: KrsNode): KrsEdge[] {
     edges.push(...collectEdges(child));
   }
   return edges;
-}
-
-/**
- * No-op for everything except a node carrying more than one variant tag of its
- * kind ({@link VARIANT_ICONS_BY_KIND}: `client [mobile, desktop]`,
- * `resource [table, api]`).
- *
- * CSS cascade alone resolves such a node to the variant rule declared latest
- * in the icon theme; that contradicts the intuition that the *first* tag the
- * user wrote should win, and it would disagree with `iconNameForNode`, which
- * the Outline and other surfaces call (TPL-1415). This helper rewrites the
- * resolved shape to the first variant in `tags` order. Single-tag and zero-tag
- * nodes are handled correctly by the cascade and untouched here. User-defined
- * shape overrides (anything that is not one of the kind's variant icon URLs)
- * are left alone too.
- */
-function applyVariantFirstMatch(node: KrsNode, merged: Record<string, string>): void {
-  const variants = VARIANT_ICONS_BY_KIND.get(node.kind);
-  if (!variants) return;
-  const present = node.tags.filter((t) => variants.has(t));
-  if (present.length < 2) return;
-  const currentShape = merged["shape"];
-  const variantShapes = [...variants.values()].map((icon) => `url("${icon}")`);
-  if (!currentShape || !variantShapes.includes(currentShape)) return;
-  merged["shape"] = `url("${variants.get(present[0])}")`;
 }
 
 function resolveEdgeStyle(edge: KrsEdge, rules: StyleRule[], cyclicTag = true): ResolvedEdgeStyle {

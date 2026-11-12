@@ -84,8 +84,10 @@ CSS だけに新 variant を足すと Outline view が古いアイコンを出�
   `iconNameForNode agrees with the cascade on multi-variant nodes` は、`iconNameForNode` が描く kind の
   タグ付き規則をすべて（scope を問わず）集め、variant タグ単独・順序付きの組・全部を正逆の順で
   `resolveStyles` と突き合わせる。variant を足すと組が増え、順序の規則を片方だけ変えると落ちる
-  （チェックリスト 6 項目目）。導入時は複数 variant の `resource` で両者が食い違っていたので、
-  resolver の後処理を `client` 専用から `VARIANT_ICONS_BY_KIND` を読む形に広げて揃えた。
+  （チェックリスト 6 項目目）。複数 variant の `resource` は今も食い違う（描画はカスケードで後に宣言された variant、
+  `iconNameForNode` は最初のタグ）。shape mode の variant も builtin シートのキーワード規則でカスケードの順に決まるので、
+  icon mode だけ最初のタグにすると 2 つのモードで形が分かれる。両モードをタグの順にそろえるまで `CASCADE_ORDER_KINDS` に
+  理由付きで免除し、食い違いが無くなったら落ちるようにしている
 - `packages/core/src/builtins/default-style.test.ts` — builtin シートの
   アノテーションバッジラベルが `reference-data.ts` の en ラベルと一致する
   parity テスト（#1508 で badge ルールを reference-data から生成する形に
