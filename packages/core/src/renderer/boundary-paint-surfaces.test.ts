@@ -150,31 +150,45 @@ const BOUNDARY_SURFACES = {
     buildAllLayersSvg(krs, sheet, undefined, undefined, theme, undefined, "boundary").svg ?? "",
   buildAllViewsSvg: (krs, theme, sheet) =>
     buildAllViewsSvg(krs, sheet, undefined, undefined, theme, undefined, "boundary").svg ?? "",
-  renderEntityView: (krs, theme, sheet) => {
-    // Every domain's entity view; a model without one draws nothing here.
-    const paths: string[][] = [];
-    const walk = (node: core.KrsNode, path: string[]): void => {
-      const here = [...path, node.id];
-      if (node.kind === "domain") paths.push(here);
-      for (const child of node.children) walk(child, here);
-    };
-    for (const system of Parser.parse(krs).value.systems) walk(system, []);
-    return paths
-      .map(
-        (path) =>
-          renderEntityView(krs, path, sheet, undefined, undefined, theme, undefined, "boundary")
-            .svg ?? "",
-      )
-      .join("\n");
+  renderEntityView: {
+    drawsNoBoundary: "an entity view draws entities, which no boundary contains",
+    draw: (krs, theme, sheet) => {
+      // Every domain's entity view; a model without one draws nothing here.
+      const paths: string[][] = [];
+      const walk = (node: core.KrsNode, path: string[]): void => {
+        const here = [...path, node.id];
+        if (node.kind === "domain") paths.push(here);
+        for (const child of node.children) walk(child, here);
+      };
+      for (const system of Parser.parse(krs).value.systems) walk(system, []);
+      return paths
+        .map(
+          (path) =>
+            renderEntityView(krs, path, sheet, undefined, undefined, theme, undefined, "boundary")
+              .svg ?? "",
+        )
+        .join("\n");
+    },
   },
   render: { drawnThrough: "compile" },
   renderFromLayout: { drawnThrough: "compile" },
   renderDeploy: { drawnThrough: "compile (diagramType deploy draws no boundary frame)" },
-} satisfies Record<GroupByEntryName, Draw | { drawnThrough: string }>;
+} satisfies Record<
+  GroupByEntryName,
+  Draw | { drawnThrough: string } | { drawsNoBoundary: string; draw: Draw }
+>;
 
-const DRAWING: [string, Draw][] = Object.entries(
-  BOUNDARY_SURFACES as Record<string, Draw | { drawnThrough: string }>,
-).flatMap(([name, draw]) => (typeof draw === "function" ? [[name, draw]] : []));
+type Surface = Draw | { drawnThrough: string } | { drawsNoBoundary: string; draw: Draw };
+const SURFACES = Object.entries(BOUNDARY_SURFACES as Record<string, Surface>);
+
+const DRAWING: [string, Draw][] = SURFACES.flatMap(([name, surface]) =>
+  typeof surface === "function" ? [[name, surface]] : [],
+);
+
+/** Entry points that take `groupBy` but draw no boundary, each with its reason. */
+const NO_BOUNDARY: [string, Draw][] = SURFACES.flatMap(([name, surface]) =>
+  typeof surface !== "function" && "drawsNoBoundary" in surface ? [[name, surface.draw]] : [],
+);
 
 const THEMES: DiagramTheme[] = ["dark", "light"];
 
@@ -191,6 +205,14 @@ describe("every boundary surface takes its colour from resolveBoundaryPaint (TPL
   });
 
   describe.each(DRAWING)("%s", (_name, draw) => {
+    // The repaint below proves something only where a hue was on screen first.
+    it.each(THEMES)("shows a boundary hue unrepainted on some model (%s theme)", async (theme) => {
+      const shown = await Promise.all(
+        MODELS.map(async ([, krs]) => huesIn(await draw(krs, theme), theme)),
+      );
+      expect(shown.some((hues) => hues.length > 0)).toBe(true);
+    });
+
     describe.each(THEMES)("%s theme", (theme) => {
       it.each(MODELS)(
         "%s leaves no palette hue once every boundary is repainted",
@@ -198,6 +220,14 @@ describe("every boundary surface takes its colour from resolveBoundaryPaint (TPL
           expect(huesIn(await draw(krs, theme, REPAINT), theme)).toEqual([]);
         },
       );
+    });
+  });
+
+  // An entry point that draws no boundary is kept honest: once it shows a hue,
+  // it has a boundary surface and has to move to the drawing entries above.
+  describe.each(NO_BOUNDARY)("%s", (_name, draw) => {
+    it.each(THEMES)("still shows no boundary hue on any model (%s theme)", async (theme) => {
+      for (const [, krs] of MODELS) expect(huesIn(await draw(krs, theme), theme)).toEqual([]);
     });
   });
 });

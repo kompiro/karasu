@@ -113,7 +113,9 @@ karasu の boundary で実際にこうなった:
   （`BOUNDARY_SURFACES` が `satisfies Record<GroupByEntryName, …>`）、boundary を描く全モデル（`◇` タブの出るモデルと、
   boundary で group したとき色相が出る同梱 example）を両テーマで描き、`boundary { border-color: … }` で全 boundary を
   塗り直すと SVG に `palette.boundaryHues` の色が 1 つも残らないことを見る。色相を自分で引く面は、どの関数で描いても
-  色が残って落ちる（チェックリスト 2 項目目）。boundary 以外のエンティティは見ない
+  色が残って落ちる（チェックリスト 2 項目目）。描く入口はそれぞれ、塗り直す前にどれかのモデルで色相を出すことも
+  確かめる（出さない入口では塗り直しが何も証明しない）。entity view（`renderEntityView`）は boundary を描かないので
+  理由付きで分け、どのモデルでも色相を出さないことを見る。boundary 以外のエンティティは見ない
 - 5 項目目（解決規則を書き写していない）にはガードが無い。`StyleRule.sourceIndex` を外して `flattenSheetsInCascadeOrder` の
   結果だけが順序を持つ型にする案は、#2445 の形（シートごとの index でのソート）は書けなくするが、specificity と配列の
   位置で比べるソートは手で書けるので、新しい書き写しを止めない
