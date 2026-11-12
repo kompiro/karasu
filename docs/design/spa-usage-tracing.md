@@ -45,7 +45,7 @@ PRD #3573 §12 は first-run の成功指標を置いた（Welcome からデモ�
 
 - **ユーザーを識別しない。** ユーザー ID、永続的な ID、cookie を持たない。テレメトリのために localStorage に置くのは、送信を止めたことを覚える真偽値と、最後に数えた日付の 2 つだけで、どちらも端末の外へ送らない（後述）。IP と User-Agent をログに書かない
 - **モデルの中身を送らない。** ノード名、`.krs` の本文、URL のクエリと fragment、repo 名、例外のメッセージとスタックを送らない。共有のペイロードは fragment（`#s=`）か `/s?s=` のクエリにあるので、URL をそのまま送る仕組みは使えない
-- **受信口は Pages app の外に置く。** ADR-1990 決定 5（ADR-2578 が引き継ぐ）は、state と secret を静的な Pages app に同居させないと決めている。Phase 2 で送信先の API キーを持つので、受信口は secret を持つ
+- **受信口は Pages app の外に置く。** ADR-1990 決定 5（ADR-2578 が引き継ぐ）は、state と secret を静的な Pages app に同居させないと決めている。Phase 2 を始めれば送信先の API キーを持つので、受信口は secret を持ちうる（Phase 2 は当面着手しないが、始めるときに受信口を移さずに済むよう、今から外に置く）
 - **nest にも同居させない。** nest の origin は `__Host-` のセッション cookie を持つ（ADR-3020）。匿名の受信口を同じ origin に置くと、cookie が付いた要求を受け取る面が増える。デプロイとロールバックも nest と分けたい（ADR-2578 が nest を Pages から分けた理由と同じ）
 - **送るのは本番と preview の Pages の SPA だけ。** serve と VS Code はローカルのモデルを開く面で、外へ送らない。nest の viewer は、`nest-privacy.md` が持たないと書いている。monorepo の `karasu serve`・`vite dev`・E2E は Pages と同じ入口を動かすので、成果物の検査（TPL-3612）だけでは止まらない。実行時の判定も要る
 - **送信先は今は決めない。** Phase 1 は Cloudflare の中で完結させ、送信先を後から選んでも SPA を変えずに済む形にする
@@ -94,7 +94,7 @@ OTel Web SDK の exporter を、Honeycomb などの ingest エンドポイント
 
 **デメリット**
 
-- ADR-1990 決定 5 の例外になる（Phase 2 で secret を持つ）。ADR-2249 も同じ理由で、permalink 面にカウンタを置く案を却下している
+- ADR-1990 決定 5 の例外になる（Phase 2 を始めれば secret を持つ）。ADR-2249 も同じ理由で、permalink 面にカウンタを置く案を却下している
 - Pages Functions のログが Workers Logs に残るかを確認できなかった。残らなければ Phase 1 の見る場所が無い
 
 ### 案4: Workers Analytics Engine に独自のイベントを書く
@@ -119,7 +119,7 @@ SPA（本番と preview の Pages でだけ送信を有効にする）
                           ├─ Origin・サイズ・形・頻度を検査する
                           ├─ 許可した項目だけで span を組み立て直す（ほかは捨てる）
                           ├─ Phase 1: span 1 つを構造化ログ 1 行にして Workers Logs に書く
-                          └─ Phase 2: 組み立て直した span を OTLP で送信先へ転送する
+                          └─ Phase 2（当面着手しない）: 組み立て直した span を OTLP で送信先へ転送する
   └─ アクティブの判定（OTLP ではない。ブラウザごとに 1 日 1 回）──▶ 同じ Worker の別のパス
                           └─ 国と判定を Analytics Engine に 1 行書く（ログに書かず、転送しない）
 ```
@@ -194,7 +194,7 @@ span 名は 8 種類に決まっていて（後述の許可リスト）、親子
 
 **アクティブ数だけは案4 の Analytics Engine を併用する。** 月次を数えるには 30 日を超える保持が要り、Workers Logs の 7 日では足りない。Analytics Engine は 3 か月保持する（2026-11-07 に公式文書で確認）。案4 の「OTel ではない」というデメリットは、件数だけを書くこの用途では効かない。span は今までどおり案5 の経路を通り、アクティブの判定だけが専用の経路で Analytics Engine に届く。Analytics Engine にはダッシュボードが無いので、集計は SQL API で行い、そのための API トークンが要る。
 
-**Phase 2（送信先への転送）は当面着手しない**（kompiro の判断、2026-11-12）。目標の 3 つは Phase 1 で見られる。処理時間と first-run は Workers Logs の Query Builder で 7 日分を絞り込み・集計でき、国別のアクティブ数は Analytics Engine の SQL API で 3 か月分を引ける。Phase 1 で見られないのは、処理時間と first-run を 7 日より前と比べること（リリースの前後の比較など）と、1 回の訪問の span を trace の画面で見ることで、どちらも今は要らない。そのどちらかが要るようになったらスライス D を Issue に起こし、送信先を選ぶ。SPA は変わらないので、後から始めても失うものは、始める前の期間の span だけである。
+**Phase 2（送信先への転送）は当面着手しない**（kompiro の判断、2026-11-12）。目標の 3 つは Phase 1 で見られる。処理時間と first-run は Workers Logs の Query Builder で 7 日分を絞り込み・集計でき、国別のアクティブ数は Analytics Engine の SQL API で 3 か月分を引ける。Phase 1 で見られないのは、処理時間と first-run を 7 日より前と比べること（リリースの前後の比較など）と、1 回の訪問の span を trace のウォーターフォール表示（親子の span の時間の重なり）で見ること（`trace` ごとに絞り込むことは Phase 1 でもできる）で、どちらも今は要らない。そのどちらかが要るようになったらスライス D を Issue に起こし、送信先を選ぶ。SPA は変わらないので、後から始めても失うものは、始める前の期間の span だけである。
 
 ### 送信を有効にする条件
 
@@ -301,7 +301,7 @@ span の時間はブラウザの時計で測る。完了までの時間は、`ou
 | **A** 受信用 Worker と許可リスト | なし | SPA が送らなくても Worker 単体で検査・組み立て直し・ログと Analytics Engine への書き込みをテストできる。送る側が無いので、利用者には何も変わらない |
 | **B** SPA の送信モジュールと告知（本番と preview の Pages だけ） | A | §12 の指標が Workers Logs で、国別のアクティブ数が Analytics Engine で、この時点で見える。TPL-3612 の成果物検査と実行時の判定、文書と許可リストの突き合わせはここで着地させる |
 | **C** 処理時間の span | B | `model.render` の段階ごとの時間を足す。core が計時の関数を引数で受け取る形にする（後述）。渡さなければ今と同じ動きなので、core の他の利用者の動きは変わらない。公開 API に任意の引数が増えるので changeset は要る |
-| **D** 送信先への転送（Phase 2） | A | **当面は着手しない**（下の「Phase 2 は当面着手しない」）。始めるときも、Worker に転送と secret を足すだけで SPA は変わらない |
+| **D** 送信先への転送（Phase 2） | A | **当面は着手しない**（「現時点の方針」の「Phase 2（送信先への転送）は当面着手しない」）。始めるときも、Worker に転送と secret を足すだけで SPA は変わらない |
 
 > 各スライスで何ができるようになるか / その時点でまだできないことは、スライスを Issue に起こすときに親 Issue #3612 の `## Slice status` に書く。Issue に起こすのは A〜C で、D は再開の条件を満たしたときに起こす。
 
