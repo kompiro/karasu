@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, type MouseEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "../../i18n/index.js";
+import { FEEDBACK_DISCUSSION_URL } from "../../utils/feedback-discussions.js";
 import type { TourStep } from "./tour-steps.js";
 
 interface TourPanelProps {
@@ -116,6 +117,18 @@ export function TourPanel({
           </p>
         )}
         {step.done && <p className="text-xs leading-relaxed font-medium">{t(step.done)}</p>}
+        {isLast && (
+          // Every guide ends here, so this is where a first-time visitor is
+          // asked what they thought (#3689).
+          <a
+            href={FEEDBACK_DISCUSSION_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs leading-relaxed text-[color:var(--text-link)] underline"
+          >
+            {t("firstRun.tour.feedback")}
+          </a>
+        )}
       </div>
       {switchLabel && (
         <Button

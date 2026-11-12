@@ -52,7 +52,7 @@ export function titleType(title: string): string | null {
  * The body as a reader of the rendered PR sees it: HTML comments and fenced
  * code blocks hold the template's examples, not the author's words.
  */
-function visibleBody(body: string): string {
+export function visibleBody(body: string): string {
   return body.replace(/<!--[\s\S]*?(?:-->|$)/g, "").replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1/gm, "");
 }
 
@@ -645,7 +645,7 @@ export function addsTest(files: readonly ChangedFile[]): boolean {
 // ---------------------------------------------------------------------------
 // The check
 
-interface Waiver {
+export interface Waiver {
   label: "No test" | "Test change";
   reason: string;
 }

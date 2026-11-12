@@ -1979,7 +1979,8 @@ importer が吸収するもの:
 同じ id の `system` が複数ファイルに現れた場合（importer 自身のファイルと imported ファイル、あるいは複数の imported ファイル）、重複として扱わず **1 つに merge** する:
 
 - **system 本体プロパティ**（`label` / `description` / タグ）: **import グラフの root に近いファイル**で書かれた宣言が勝つ。root とは `ImportResolver.resolve(entryPath)` に渡された `entryPath` — 実用上は App / VS Code 拡張で開いているファイル、または `karasu render` に渡したファイル。resolver は import グラフを bottom-up に traverse し、root 側で未設定のフィールドだけを imported 側の値で埋める。
-  - 2 つのファイルが異なる non-empty 値で衝突した場合、root に近い側が採用され、`system-property-conflict` 警告が出る（採用値・無視値・両者の location を含む）。
+  - 「近い」は root からの最短の import 経路で測り、`import` 行の順には依らない。深いファイルから埋めた値はそのファイルの距離を持ち続けるので、1 段下のファイルは 2 段下から運ばれた値に勝つ。距離が同じなら、先にマージしたファイル（先の `import`）が勝つ。これは whole-file import と directory import での規則で、同じブロックを 2 回目に持ち込む named import はまだプロパティを照合しない（#3720）。
+  - 2 つのファイルが異なる non-empty 値で衝突した場合、root に近い側が採用され、`system-property-conflict` 警告が出る。警告は採用値と無視値を持ち、負けた側の宣言の位置を指す。
 - **children**: id ごとに find-or-create で union。同じ merged system 内で 2 つの children が同じ id を持つと `duplicate-node-in-system` エラー（既存挙動）。異なる id なら問題なく union される。
 - **edges**: union。完全に同一な edge（`from` / `to` / kind / label すべて一致）のみ dedup、それ以外は両方残る。
 
@@ -2088,7 +2089,11 @@ system Blog {
 
 - ファイル全体に適用される（グローバルスコープ）
 - ファイル先頭に記述する
+- パスは宣言したファイルからの相対で、`import` のパスと同じ。直接開いても、別のディレクトリのファイルから import されても、同じ場所のシートを見つける
+- 1 つの import グラフの複数のファイルが同じシートを `@import` すると、シートはマージ順で最初の位置に 1 回だけ読まれる。マージ順では、ファイル自身の `@import` が先に来て、そのファイルが import するファイルの `@import` が `import` 行の順で続く。シートは `@import` できないので、スタイルの import が循環になることはない
 - 同じセレクタが複数ファイルで定義された場合は後勝ち（警告を出力）
+
+> Related TPLs: [TPL-1381](../test-perspectives/TPL-1381-import-dag-not-cycle.md) — 2 回目に届いたシートは DAG 再到達であり、循環ではない。[TPL-1383](../test-perspectives/TPL-1383-whole-file-import-completeness.md) — import したファイルが持つ `@import` も、そのファイルを基準に解決して cascade に入れる。
 
 ---
 

@@ -28,7 +28,7 @@ scope:
 
 merge 規則:
 
-- **本体プロパティ** (`label` / `description` / タグ): `ImportResolver.resolve()` に渡された entry file（= App / CLI で開いているファイル）に近い側が勝つ。bottom-up に merge し、root 側が既に値を持つフィールドだけ採用、無ければ importee の値を採用。**異なる non-empty 値の衝突は警告 `system-property-conflict`** を発し、採用値 / 無視値 / 両者の location を含める。
+- **本体プロパティ** (`label` / `description` / タグ): `ImportResolver.resolve()` に渡された entry file（= App / CLI で開いているファイル）に近い側が勝つ。bottom-up に merge するので、値は埋めたファイルの距離を持ち続け、衝突は距離で決まる（近い側が、深いファイルから先に埋まった値を上書きする。同じ距離なら先にマージした側）。**異なる non-empty 値の衝突は警告 `system-property-conflict`** を発し、採用値 / 無視値を持ち、負けた側の宣言の location を指す。
 - **children**: id ごとに find-or-create で union。重複 id は既存の `duplicate-node-in-system` エラー。
 - **edges**: union（exact 重複のみ dedup）。
 
@@ -53,8 +53,8 @@ container 系ブロックの再オープン / merge を実装 / 変更すると�
 
 ## 既知の対処パターン
 
-- merge 関数を「empty な値だけ埋める」シャロー merge にする。non-empty 衝突は呼び出し側に warning を生成させる
-- entry からの距離は再帰呼び出しの深さで自然に表現できる（importer → importee の方向で merge 関数を呼ぶ）
+- 本体プロパティの照合は 1 か所（`PropertyReconciler`）にまとめ、空なら埋め、衝突なら距離で決める。警告はマージの後で、最終的に採った値に対して負けた値ごとに 1 回出す（途中のマージの判定は根で覆りうる）。衝突した値はブロックに持たせてマージ先へ運び、モデルに残ったブロックからだけ読む。id で集めると、named import の取り込み元の中でだけ起きたマージ（取り込み元のブロック自体はモデルに入らない）が警告を決めてしまう
+- entry からの距離は、merge の前に import グラフを幅優先でたどって最短経路で測り、埋めた値と一緒に運ぶ。再帰呼び出しの深さや merge の順では表せない: bottom-up の merge では深いファイルの値が先に埋まり、後から来た近いファイルに勝ってしまう（#3713）
 
 ## 関連テスト
 
@@ -63,12 +63,15 @@ container 系ブロックの再オープン / merge を実装 / 変更すると�
   `label` 採用、`system-property-conflict` の params（`chosen` / `ignored`）を、「S3: importer with no `label`
   adopts the imported file's value silently」は衝突しない場合に警告が出ないことを、「S4: same-id `deploy` and
   `organization` blocks merge across files」は deploy / organization の子（deploy node と team）が union されることを
-  固定する（entry 側の値の採用と `system-property-conflict` を deploy / organization で assert するテストは無く、
-  チェックリスト 5 項目目は union の部分だけを覆う）
+  固定する（deploy / organization での値の採用と `system-property-conflict` は、下の #3713 の block が見る）
 - 同じファイルの `wildcard import` の「merges edges from same-named system across files」（edges の union）と
   「reports error for duplicate node ID in same-named system」（重複 id は `duplicate-node-in-system`）
-
-entry と sub-import を入れ替えたとき採用値が変わること（チェックリスト 4 項目目）を assert するテストはまだ無い。
+- 同じファイルの「S3: the value closest to the entry wins, whatever the import order (#3713)」。2 段下から運ばれた値と
+  1 段下の値が衝突したとき、import の順に依らず 1 段下が勝つことを system の `label` / `description`、deploy と
+  organization の `label` で固定し、`system-property-conflict` が負けた側の宣言の位置（`loc.file`）を持つことを assert する
+  （チェックリスト 1・2・5 項目目）。最短経路で数えること、同じ距離なら import の順で決まること、entry を入れ替えると
+  採用値も入れ替わること（チェックリスト 4 項目目）、named import の取り込み元の中でだけ起きたマージが警告の `chosen` を決めないことも同じ block が見る。新しいブロックの種類が `PropertyReconciler` を
+  通らずに開き直されると、このテストは気づかないので印にはしない
 
 ## 派生元 spec
 

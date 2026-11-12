@@ -1,0 +1,92 @@
+---
+id: TPL-3654
+title: "診断は人に見せるすべての面に短い ID を、機械向けの JSON に安定したコードを載せ、手順書はそのコードで判定する"
+status: active
+date: 2026-11-07
+applicable_to:
+  - "カタログのコードを持つ診断を人に見せる箇所（CLI の stdout / stderr、LSP の Diagnostic、app のパネル）を足す・変えるとき"
+  - "診断のコードを足す・廃止する・重大度を変えるとき"
+  - "エージェント向けの手順書やスクリプトが、ツールの出力を照合して次の行動を決めるとき"
+  - "翻訳される文字列の中に、機械が読む情報を埋め込むとき"
+known_consumers:
+  - reverse-architecture
+  - karasu-author
+discovered_from:
+  - issue: "#3654"
+  - root_cause_adr: "ADR-1567"
+related_to:
+  - TPL-1623
+  - TPL-2084
+  - TPL-1417
+  - TPL-2536
+topic: cli
+scope:
+  packages:
+    - core
+    - cli
+    - skills
+    - lsp
+    - app
+---
+
+# TPL-3654: 診断は人に見せるすべての面に短い ID を、機械向けの JSON に安定したコードを載せ、手順書はそのコードで判定する
+
+## 観点
+
+診断のコードは安定 API（ADR-1567）だが、利用者に届くのは出力だけである。出力にコードが無ければ、消費者は翻訳された文章を照合するしかなく、locale や文言の変更で黙って壊れる。
+
+読み手は 2 種類いる。人は行の頭の短い ID（`KRS014`）でカタログを引き、機械は `karasu check --format json` の `code`（kebab のコード）で判定する。ID はコードと 1 対 1 の別名で、重大度を含まない。判定の鍵は `code` の 1 つに決める。
+
+守る不変条件は 3 つある。
+
+- カタログの診断を人に見せる面（CLI の行、VS Code の Problems、app のバナーと警告のパネル）は、同じ登録簿から同じ ID を出す。1 か所でも漏れると、その面だけカタログを引けず、面によって文言が違う診断を同じものだと見分けられない。
+- ID は kebab のコードに 1 つ振られ、1 つの ID は常に 1 つのコードを指し、再利用されない。面によって重大度が変わるコード（`lint-style` では error、`render` では warning になる style の検査など）も ID は 1 つで、重大度は行の語が示す。
+- 手順書が判定に使うコードは実在し、JSON の `code` で照合する。
+
+照合が空振りしたときに「該当なし」と区別できないのが、この観点の核心である。grep の結果が空なら、モデルが正しいようにも見える。JSON は読めなければ parse が失敗するので、取り違えない。
+
+## 想定される失敗モード
+
+- **存在しない形を照合する**: #3640 で見つかった。`reverse-architecture` skill はコードを grep していたが、CLI はコードを出さないので結果は常に空で、壊れたモデルでも停止条件を通っていた。
+- **翻訳された文章を照合する**: メッセージの断片での照合は、日本語の locale で空振りし、`LC_ALL=C` で固定しても文言の変更で空振りする。
+- **人向けの行を機械が読む**: 行の接頭辞や ID で判定すると、行の形を変えたときに照合が空になる。
+- **出力の箇所が増えて ID が漏れる**: `render` は載せたが、新しいコマンドや `diff` のように自前で行を組む箇所が載せない。LSP の `Diagnostic` や app のパネルを組む箇所が、登録簿を通さずにメッセージだけを渡す。
+- **リンク先がずれる**: VS Code や app の ID のリンクを見出しのアンカーに向けると、slug が locale で違うので、リンクは解決しても別の場所に着く（TPL-1621）。
+- **ID がずれる**: コードを足して ID を振り忘れる、廃止した ID を別のコードに付け替える、並行する PR が同じ番号を取る、`Diagnostic` と `Warning` で同じ名前のコードに別々の ID を振る。古い出力や記憶の ID が別の診断を指す。
+- **ID に別の意味を足す**: 重大度のように診断の外で変わる属性を ID に入れると、同じコードが面によって違う ID になり、属性を変えるたびに ID も変わる。行の語と ID が同じことを繰り返す。
+- **否定の照合が素通りする**: `not.toMatch(/^Error: /m)` のように「この行が無い」ことを確かめるテストは、行の形を変えると何にも当たらなくなり、行が出ていても通る。
+- **出力の形を変えて古い手順書を壊す**: 手順書は CLI と別に配布され、Step 0 は版の下限しか見ない。接頭辞を変えると、古い手順書の照合が黙って空になる。
+
+## チェックリスト
+
+診断を人に見せる箇所（CLI・LSP・app）、診断のコード、またはそれを読む手順書を変えるときに確認する:
+
+- [ ] CLI でカタログの診断を流す箇所が、ID を付ける共通の関数（`diagnosticParts` / `warningParts`）を通っているか。 [guard: `packages/cli/src/diagnostic-output.test.ts`]
+- [ ] VS Code の `Diagnostic` の `code` と app のパネルの ID が、同じ診断について CLI の行と同じで、リンクがアンカーの無いカタログのページを指しているか。
+- [ ] コードごとの ID が登録簿にあり、`Diagnostic` と `Warning` の同じ名前が同じ ID を持ち、番号に空きが無いか。 [guard: `packages/core/src/types/diagnostic-ids.test.ts`, `packages/core/src/types/diagnostics-catalog.test.ts`]
+- [ ] 公開済みの最新版の登録簿にある ID が、HEAD でも同じコードを（現役か廃止として）指しているか。 [guard: `scripts/lint/diagnostic-ids-history.ts`]
+- [ ] `karasu check --format json` が、locale を `ja` にしても同じ `id`・`code`・`params` を返すか。モデルの error では読める JSON と 1 を返し、カタログの外の失敗（ファイルが無いなど）でだけ stdout を空にして 0 以外で終わるか。
+- [ ] 行の形を変えたとき、行が無いことを確かめる否定の照合が、新しい形にも当たるよう直されているか。
+- [ ] 手順書が `` `code:<kebab>` `` の形で書いたコードが、`DiagnosticParamsByCode` / `WarningKind` に実在し、手順書が ID を書いていないか。 [guard: `scripts/lint/skill-diagnostic-codes.test.ts`]
+- [ ] 手順書の判定が JSON の `code` で行われ、翻訳された文章も行の接頭辞も照合していないか。 [judgment]
+- [ ] 出力の形を変えるとき、すでに配布された手順書の照合が動き続けるか。動かないなら、空振りせず止まる形になっているか。 [judgment]
+
+## 既知の対処パターン
+
+- 行の形を 1 か所の関数に集める（[TPL-1417](TPL-1417-single-renderer-for-structured-messages.md)）。
+- 人向けの行と機械向けの出力を分ける。機械向けは版の欄（`schemaVersion`）を持つ構造にし、読めなかったことが消費者に分かる形にする。
+- 別名の ID は `Record` の登録簿に置き、型検査で振り忘れを止める。番号の連続と、公開済みの版の登録簿との比較で再利用を止める（連続だけでは、廃止した ID の付け替えを止められない。merge base と比べると、並行 PR の重複を解く公開前の振り直しまで止めてしまう）。
+- 手順書には「照合が空なら正しい」と書かず、出力が読めなければ止まると書く。
+
+## 関連テスト
+
+- `packages/cli/src/diagnostic-output.test.ts`: 行の ID（`check`、`lint-style`、`tidy-style`、面によって重大度が変わるコード）と、`check --format json` の約束（`ja` でも同じ `id`・`code`・`params`、error での終了コード、ファイルが無いときの空の stdout、行と同じ順）を確かめる。CLI の診断の出口が `diagnosticParts` / `warningParts` を通ることも、`packages/cli/src` を走査して確かめる。
+- `packages/cli/src/check.test.ts` ほか: コマンドごとの行の形を、具体的な ID 付きで確かめる。否定の照合は `^Error(\[KRS[0-9]{3}\])?:` の形で、新旧どちらの行にも当たる。
+- `packages/core/src/types/diagnostic-ids.test.ts`: 登録簿の 1 対 1、番号の連続、廃止した ID と現役の重なりを確かめる。
+- `packages/core/src/types/diagnostics-catalog.test.ts`: カタログの `ID` 列と「廃止した ID」の表が登録簿と一致することを確かめる。
+- `scripts/lint/diagnostic-ids-history.ts`: 最新の `karasu@*` タグの登録簿と比べる。pre-push と `ci.yml` の Check で動く。
+- `scripts/lint/skill-diagnostic-codes.ts`: 公開する skill の `` `code:<kebab>` `` の実在と ID の不使用を確かめる。pre-push、`reference-docs-check.yml`、`ci.yml` の vitest で動く。
+
+## 派生元 spec
+
+- [`docs/spec/diagnostics.md`](../spec/diagnostics.md#how-the-cli-shows-a-diagnostic)（How the CLI shows a diagnostic）

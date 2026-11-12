@@ -18,7 +18,11 @@
  */
 import { describe, expect, it } from "vitest";
 import { purgeByPrefix } from "./sweep.js";
+import { submissionKey, submissionPrefix } from "./gallery-keys.js";
 import { MemoryKV } from "../testing/memory-kv.js";
+
+/** Account 42's submissions: the prefix every case below sweeps. */
+const PREFIX = submissionPrefix(42);
 
 const seed = async (kv: MemoryKV, keys: readonly string[]): Promise<void> => {
   for (const key of keys) await kv.put(key, "{}");
@@ -28,14 +32,14 @@ describe("purgeByPrefix", () => {
   it("deletes everything under the prefix and reports how many", async () => {
     const kv = new MemoryKV();
     await seed(kv, ["sub/v1/42/a", "sub/v1/42/b", "sub/v1/42/c"]);
-    expect(await purgeByPrefix(kv, "sub/v1/42/")).toBe(3);
+    expect(await purgeByPrefix(kv, PREFIX)).toBe(3);
     expect((await kv.list({ prefix: "sub/v1/42/" })).keys).toEqual([]);
   });
 
   it("leaves keys outside the prefix alone", async () => {
     const kv = new MemoryKV();
     await seed(kv, ["sub/v1/42/a", "sub/v1/420/a", "acct/v1/42"]);
-    expect(await purgeByPrefix(kv, "sub/v1/42/")).toBe(1);
+    expect(await purgeByPrefix(kv, PREFIX)).toBe(1);
     expect((await kv.list({ limit: 100 })).keys.map((key) => key.name)).toEqual([
       "acct/v1/42",
       "sub/v1/420/a",
@@ -48,18 +52,19 @@ describe("purgeByPrefix", () => {
     // purge as larger than it was -- and the number is what the caller shows
     // a submitter who just deleted their account.
     const kv = new MemoryKV();
-    await seed(kv, ["sub/v1/42/a"]);
+    const REPLAYED = submissionKey(42, "000000000000");
+    await seed(kv, [REPLAYED]);
     let replayed = false;
     const original = kv.list.bind(kv);
     kv.list = async (options) => {
       const page = await original(options);
       if (page.keys.length === 0 && !replayed) {
         replayed = true;
-        return { keys: [{ name: "sub/v1/42/a" }], list_complete: true };
+        return { keys: [{ name: REPLAYED }], list_complete: true };
       }
       return page;
     };
-    expect(await purgeByPrefix(kv, "sub/v1/42/")).toBe(1);
+    expect(await purgeByPrefix(kv, PREFIX)).toBe(1);
   });
 
   it("fails loudly rather than looping when deletes do not stick", async () => {
@@ -69,17 +74,17 @@ describe("purgeByPrefix", () => {
     const kv = new MemoryKV();
     await seed(kv, ["sub/v1/42/a"]);
     kv.delete = () => Promise.resolve();
-    await expect(purgeByPrefix(kv, "sub/v1/42/", 3)).rejects.toThrowError(/did not converge/);
+    await expect(purgeByPrefix(kv, PREFIX, 3)).rejects.toThrowError(/did not converge/);
   });
 
   it("names the prefix it gave up on, so the failure is actionable", async () => {
     const kv = new MemoryKV();
     await seed(kv, ["sub/v1/42/a"]);
     kv.delete = () => Promise.resolve();
-    await expect(purgeByPrefix(kv, "sub/v1/42/", 2)).rejects.toThrowError(/sub\/v1\/42\//);
+    await expect(purgeByPrefix(kv, PREFIX, 2)).rejects.toThrowError(/sub\/v1\/42\//);
   });
 
   it("returns zero for a prefix with nothing under it", async () => {
-    expect(await purgeByPrefix(new MemoryKV(), "sub/v1/42/")).toBe(0);
+    expect(await purgeByPrefix(new MemoryKV(), PREFIX)).toBe(0);
   });
 });

@@ -32,6 +32,7 @@ import {
 } from "../parser/reference-validation.js";
 import { markCyclicEdges } from "../parser/cyclic-dependencies.js";
 import { resolvePath } from "./path-utils.js";
+import { PropertyReconciler } from "./property-reconcile.js";
 import {
   ambiguousNodePathCandidates,
   bareIdView,
@@ -156,7 +157,6 @@ export class ImportResolver {
   private loadingKrs = new Set<string>();
   /** Pass 1: 読み込み完了 memo — DAG 再到達で warning を出さないために使う */
   private loadedKrs = new Set<string>();
-  private visitedStyles = new Set<string>();
   private diagnostics: Diagnostic[] = [];
   /**
    * Which declarations each named-import stub stands for, so a second arrival
@@ -171,6 +171,8 @@ export class ImportResolver {
    * path it ends up at, not at a path its own file never spelled.
    */
   private declaringFile = new WeakMap<KrsNode, string>();
+  /** S3 reconciliation of reopened blocks' `label` / `description` (closer to the entry wins). */
+  private reconciler = new PropertyReconciler(() => {});
   /** ディレクトリ import の展開結果キャッシュ（Pass 1 で構築、Pass 2 で参照） */
   private dirExpansions = new Map<string, string[]>();
   /** Pass 2: ファイル単位の解決済み KrsFile cache（DAG 経由の同一ファイル到達で再利用） */
@@ -186,9 +188,10 @@ export class ImportResolver {
    */
   async resolve(entryPath: string): Promise<ResolvedProject> {
     this.declaringFile = new WeakMap();
+    // Before Pass 1, which files each block under it.
+    this.reconciler = new PropertyReconciler((d) => this.diagnostics.push(d));
     this.loadingKrs.clear();
     this.loadedKrs.clear();
-    this.visitedStyles.clear();
     this.diagnostics = [];
     this.dirExpansions.clear();
     this.resolvedCache.clear();
@@ -196,6 +199,7 @@ export class ImportResolver {
 
     // Pass 1: 全ファイルをロード（循環検出・ファイル不在の報告）
     const fileMap = await this.loadFileMap(entryPath);
+    this.reconciler.measureFileDepths(fileMap, entryPath, this.dirExpansions);
 
     // Pass 2: エントリから再帰的にマージ
     const krsFile = this.resolveKrsFromMap(fileMap, entryPath);
@@ -310,7 +314,8 @@ export class ImportResolver {
     // duplicate no single file can see.
     this.diagnostics.push(...validateFacetDeclarations(krsFile.facets));
 
-    const styleSheets = await this.resolveStyles(entryPath, krsFile.styleImports);
+    this.reconciler.reportConflicts(krsFile);
+    const styleSheets = await this.resolveStyles(krsFile.styleImports);
 
     return {
       krsFile,
@@ -370,6 +375,7 @@ export class ImportResolver {
     );
     fileMap.set(filePath, parseResult.value);
     this.recordDeclaringFile(parseResult.value, filePath);
+    this.reconciler.recordBlocks(parseResult.value, filePath);
 
     for (const nodeImport of parseResult.value.nodeImports) {
       if (nodeImport.path === "") continue;
@@ -447,7 +453,13 @@ export class ImportResolver {
     }
 
     // 自身のコンテンツをマージ
-    mergedFile.styleImports.push(...file.styleImports);
+    // A style path is relative to the file that declares it (#3714), so it is
+    // resolved here, where that file is known; from here on `styleImports`
+    // holds resolved paths. Deduped by that path: a sheet several files
+    // `@import` is one sheet, at its first position (#3513).
+    for (const styleImport of file.styleImports) {
+      addStyleImport(mergedFile, resolvePath(filePath, styleImport));
+    }
     mergedFile.systems.push(...file.systems);
     mergedFile.services.push(...file.services);
     mergedFile.clients.push(...(file.clients ?? []));
@@ -625,11 +637,7 @@ export class ImportResolver {
     // ownerIndex deliberately not unioned (#2548), and `nodePathIndex` not
     // since #2596 — see the comment in `resolveKrsFromMap` where the file's own
     // index used to be unioned; `resolve()` rebuilds both from the merged model.
-    for (const styleImport of resolved.styleImports) {
-      if (!mergedFile.styleImports.includes(styleImport)) {
-        mergedFile.styleImports.push(styleImport);
-      }
-    }
+    for (const styleImport of resolved.styleImports) addStyleImport(mergedFile, styleImport);
   }
 
   private isInfraKind(kind: string): kind is "database" | "queue" | "storage" {
@@ -725,13 +733,8 @@ export class ImportResolver {
   private mergeSystemIntoExisting(target: SystemNode, source: SystemNode): void {
     if (target === source) return;
     this.mergeScopedBoundaries(target, source);
-    this.reconcileLabel(target, source, "system");
-    this.reconcileDescription(
-      target.properties as { description?: string },
-      source.properties as { description?: string },
-      target.id,
-      "system",
-    );
+    this.reconciler.reconcileLabel(target, source);
+    this.reconciler.reconcileDescription(target, source);
     for (const child of source.children) {
       // 同一インスタンス: DAG 経由で同じノードに到達した場合（cache hit）— 黙って dedup
       if (target.children.includes(child)) continue;
@@ -821,19 +824,14 @@ export class ImportResolver {
 
   private mergeDeployIntoExisting(target: DeployBlock, source: DeployBlock): void {
     if (target === source) return;
-    this.reconcileLabel(target, source, "deploy");
+    this.reconciler.reconcileLabel(target, source);
     this.mergeDeployNodes(target, source.nodes);
   }
 
   private mergeOrgIntoExisting(target: OrganizationBlock, source: OrganizationBlock): void {
     if (target === source) return;
-    this.reconcileLabel(target, source, "organization");
-    this.reconcileDescription(
-      target.properties as { description?: string },
-      source.properties as { description?: string },
-      target.id,
-      "organization",
-    );
+    this.reconciler.reconcileLabel(target, source);
+    this.reconciler.reconcileDescription(target, source);
     for (const team of source.teams) {
       if (target.teams.includes(team)) continue;
       const idConflict = target.teams.find((t) => t.id === team.id);
@@ -846,64 +844,6 @@ export class ImportResolver {
       } else {
         target.teams.push(team);
       }
-    }
-  }
-
-  /**
-   * S3: import グラフの root に近い側が勝つ。
-   * - target が未設定 → source の値で埋める
-   * - 両方が non-empty で異なる → target を維持して `system-property-conflict` warning
-   */
-  private reconcileLabel(
-    target: { id: string; label?: string },
-    source: { id: string; label?: string },
-    blockKind: "system" | "deploy" | "organization",
-  ): void {
-    const t = target.label?.trim() ?? "";
-    const s = source.label?.trim() ?? "";
-    if (!t && s) {
-      target.label = source.label;
-      return;
-    }
-    if (t && s && t !== s) {
-      this.diagnostics.push({
-        severity: "warning",
-        code: "system-property-conflict",
-        params: {
-          blockId: target.id,
-          blockKind,
-          property: "label",
-          chosen: t,
-          ignored: s,
-        },
-      });
-    }
-  }
-
-  private reconcileDescription(
-    target: { description?: string },
-    source: { description?: string },
-    blockId: string,
-    blockKind: "system" | "deploy" | "organization",
-  ): void {
-    const t = target.description?.trim() ?? "";
-    const s = source.description?.trim() ?? "";
-    if (!t && s) {
-      target.description = source.description;
-      return;
-    }
-    if (t && s && t !== s) {
-      this.diagnostics.push({
-        severity: "warning",
-        code: "system-property-conflict",
-        params: {
-          blockId,
-          blockKind,
-          property: "description",
-          chosen: t,
-          ignored: s,
-        },
-      });
     }
   }
 
@@ -928,7 +868,7 @@ export class ImportResolver {
       }
     }
 
-    mergedFile.styleImports.push(...importedFile.styleImports);
+    for (const styleImport of importedFile.styleImports) addStyleImport(mergedFile, styleImport);
   }
 
   /**
@@ -1009,6 +949,7 @@ export class ImportResolver {
         // declared twice — already reported by the parser, so folded here
         // rather than reported again.
         const target = existingDeploy ?? { ...deploy, nodes: [] };
+        if (!existingDeploy) this.reconciler.inherit(target, deploy);
         this.mergeDeployNodes(target, matchingNodes);
         if (!existingDeploy) mergedFile.deploys.push(target);
       }
@@ -1222,7 +1163,14 @@ export class ImportResolver {
    * for is recorded — see {@link noteChainReopen}.
    */
   private chainStub(source: KrsNode): KrsNode {
-    const stub = { ...source, children: [], edges: [] } as KrsNode;
+    // `properties` copied too: a reconciled `description` set on the stub must
+    // not write through to the declaration it stands for.
+    const stub = {
+      ...source,
+      properties: { ...source.properties },
+      children: [],
+      edges: [],
+    } as KrsNode;
     this.chainOriginsOf(stub).add(source);
     this.inheritDeclaringFile(stub, source);
     return stub;
@@ -1232,6 +1180,7 @@ export class ImportResolver {
   private inheritDeclaringFile(copy: KrsNode, source: KrsNode): void {
     const file = this.declaringFile.get(source);
     if (file !== undefined) this.declaringFile.set(copy, file);
+    this.reconciler.inherit(copy, source);
   }
 
   /** Record `filePath` as the declaring file of every node `file` parsed into. */
@@ -1350,12 +1299,16 @@ export class ImportResolver {
 
   // ─── Style resolution ─────────────────────────────────────────────────────
 
-  private async resolveStyles(basePath: string, styleImports: string[]): Promise<StyleSheet[]> {
+  /**
+   * `styleImports` are the merged model's: already resolved against the file
+   * that declared each one, and deduped. A sheet cannot `@import`, so a style
+   * import is never part of a cycle and needs no visited set.
+   */
+  private async resolveStyles(styleImports: string[]): Promise<StyleSheet[]> {
     const sheets: StyleSheet[] = [];
 
-    for (const importPath of styleImports) {
-      const resolvedPath = resolvePath(basePath, importPath);
-      const sheet = await this.resolveStyleFile(resolvedPath);
+    for (const filePath of styleImports) {
+      const sheet = await this.resolveStyleFile(filePath);
       if (sheet) {
         sheets.push(sheet);
       }
@@ -1365,16 +1318,6 @@ export class ImportResolver {
   }
 
   private async resolveStyleFile(filePath: string): Promise<StyleSheet | null> {
-    if (this.visitedStyles.has(filePath)) {
-      this.diagnostics.push({
-        severity: "warning",
-        code: "circular-style-import",
-        params: { filePath },
-      });
-      return null;
-    }
-    this.visitedStyles.add(filePath);
-
     let source: string;
     try {
       source = await this.fs.readFile(filePath);
@@ -1394,4 +1337,9 @@ export class ImportResolver {
 
     return parseResult.value;
   }
+}
+
+/** Appends a resolved style path unless the merged model already holds it. */
+function addStyleImport(mergedFile: KrsFile, styleImport: string): void {
+  if (!mergedFile.styleImports.includes(styleImport)) mergedFile.styleImports.push(styleImport);
 }

@@ -112,7 +112,14 @@ locale（あるいは同種の「複数情報源 + 優先順位」設定）の�
 ## 関連テスト
 
 - `packages/cli/src/i18n.test.ts` — `LC_ALL` / `LC_MESSAGES` / `LANG` の勝敗と、
-  鎖の各リンクでの空文字 fallthrough（#2536 の回帰柵）
+  鎖の各リンクでの空文字 fallthrough（#2536 の回帰柵）。鎖は `CLI_LOCALE_ENV_CHAIN` の
+  1 つの tuple で、resolver もテストもそれを読むので、足したリンクは勝敗と空文字の
+  テストに自動で入る。ただし覆うのは CLI の tuple だけで、app の鎖
+  （`packages/app/src/i18n/locale.ts`）や tuple を通らずに `process.env` を読む新しい consumer は
+  覆わないので、チェックリスト 3 項目目のガードではない。同じファイルが
+  `docs/spec/i18n.md` に tuple から組んだ鎖（`` `LC_ALL` > `LC_MESSAGES` > `LANG` ``）が
+  書かれていることも確かめるが、各 consumer の doc comment（`packages/i18n/src/locale.ts`
+  など）は閉じた集合でないので、5 項目目のガードではない
 - `packages/i18n/src/locale.test.ts` — 正規化規則そのものの判定表。consumer 側の
   テストを追加するときは、この判定表と assert が重複していないかをここで確かめる
   （重複していたら、それは取り出しではなく正規化を検証している）

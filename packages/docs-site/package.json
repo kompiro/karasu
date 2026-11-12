@@ -15,12 +15,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.scripts.json"
   },
   "devDependencies": {
-    "@astrojs/starlight": "^0.42.7",
+    "@astrojs/starlight": "^0.42.8",
     "@karasu-tools/core": "workspace:*",
-    "@vitest/coverage-v8": "^5.0.5",
-    "astro": "^7.4.2",
+    "@vitest/coverage-v8": "^5.1.0",
+    "astro": "^7.4.5",
     "github-slugger": "^2.0.0",
     "tsx": "^4.23.15",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   }
 }

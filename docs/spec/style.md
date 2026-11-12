@@ -913,6 +913,7 @@ edge { label-max-chars: none; label-display: always; }
 ## @import scope and conflicts
 
 - Global scope (applies to the entire file).
+- The path is relative to the `.krs` file that declares the `@import`, and a sheet several files import is loaded once; see [@import scope](syntax.md#import-scope) in the syntax reference.
 - When the same selector is defined in multiple files, the last one wins.
 - A warning is emitted on conflict (not an error).
 

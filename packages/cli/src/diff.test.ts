@@ -227,7 +227,7 @@ describe("diff CLI — after-side warnings (#2879)", () => {
     const orphan = lines().filter((l) => l.includes('"Orphan"'));
     // Once, even on the bundled path that renders several views.
     expect(orphan).toEqual([
-      `Warning: ${after}:6:1: Domain "Orphan" is not assigned to any service`,
+      `Warning[KRS058]: ${after}:6:1: Domain "Orphan" is not assigned to any service`,
     ]);
     expect(stderr).not.toContain('"Legacy"');
   });
@@ -237,7 +237,7 @@ describe("diff CLI — after-side warnings (#2879)", () => {
     await diff(before, after, { view: "system" });
 
     const icon = lines().find((l) => l.includes('url("nope")'));
-    expect(icon).toMatch(/^Warning: \S*after\.krs\.style:1:\d+: /);
+    expect(icon).toMatch(/^Warning\[KRS\d{3}\]: \S*after\.krs\.style:1:\d+: /);
     expect(icon).not.toContain(`${after}:`);
   });
 
@@ -253,7 +253,7 @@ describe("diff CLI — after-side warnings (#2879)", () => {
 
     const order = lines().filter((l) => l.includes('"Order"'));
     expect(order).toHaveLength(1);
-    expect(order[0]).toMatch(/^Info: /);
+    expect(order[0]).toMatch(/^Info\[KRS064\]: /);
   });
 
   it("does not fail the diff on warnings", async () => {

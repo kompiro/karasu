@@ -59,7 +59,7 @@ karasu には「同じ仕様を 2 箇所で手書きしている」構造があ�
 - [ ] 新エントリの description を `STRINGS_EN` と `STRINGS_JA` の **両方** に足したか（型 union も更新したか）。
 - [ ] `packages/core/src/builtins/reference-spec-sync.test.ts` が通るか（= spec doc が記述する keyword をすべて reference が含むか）。新カテゴリの doc テーブルを足したなら、その抽出も smoke test に加えたか。 [guard: `packages/core/src/builtins/reference-spec-sync.test.ts`]
 - [ ] 双方向ではなく「spec → reference」の片方向 subset チェックに留めているか（reference に余分があってもよい）。 [judgment]
-- [ ] `PROPERTY_SCHEMAS` にエントリを足したら、同じ PR で `docs/spec/style.md` / `style.ja.md` に記載し、resolver で実際に消費したか（受理するだけのゴーストプロパティを作らない — #1492）。
+- [ ] `PROPERTY_SCHEMAS` にエントリを足したら、同じ PR で `docs/spec/style.md` / `style.ja.md` に記載し、resolver で実際に消費したか（受理するだけのゴーストプロパティを作らない — #1492）。 [guard: `packages/core/src/builtins/reference-spec-sync.test.ts`, `packages/core/src/style/property-schema-consumed.test.ts`]
 
 ## 既知の対処パターン
 
@@ -71,6 +71,8 @@ karasu には「同じ仕様を 2 箇所で手書きしている」構造があ�
 - `packages/core/src/builtins/reference-spec-sync.test.ts` — spec doc ↔ `getReference()` の片方向 subset チェック（本 TPL の主たる担保）。`PROPERTY_SCHEMAS ⊆ spec doc` の逆向き subset チェック（#1492）も同ファイル
 - `scripts/lint/krs-fences.ts` — ドキュメントに埋まった `krs` fence ↔ parser（#1251 / #2415 / TPL-74 item 5）
 - `packages/core/src/builtins/reference.test.ts` — `getReference()` のノード種別 / タグ / sampleKrs の内容チェック
+- `packages/core/src/style/property-schema-consumed.test.ts` — `PROPERTY_SCHEMAS` の全キーにサンプル規則を要求し（集合一致）、各規則で描画した SVG が規則なしの描画と変わることを確かめる。受理するだけのゴーストプロパティ（#1492）はここで落ちる（チェックリスト項目 6）
+- `scripts/reference/gen-docs.test.ts` — 全ノード種別が `syntax.md` の生成表（logical / infra）のちょうど 1 つに行を持つこと。`NodeKindData` は判別共用体で、infra 種別は表の列（`infraLayerLabel` / `infraIntendedUse`）を省けない。チェックリスト項目 2 のうちノード種別の表の行だけを縛り、ほかのキーワード（プロパティ・トークン種別）と、layer・用途・制約を述べる節の中身は縛らないので、項目 2 のガードではない
 - `packages/core/src/builtins/reference-data.test.ts` — `REFERENCE_DATA`：各カテゴリ（ノード種別 / タグ / アノテーション / style プロパティ / shape など）の全エントリが en と ja の両方で空でない description を持つことを固定する（片方の locale が黙って `undefined` になる失敗モード。チェックリスト項目 3）
 
 ## 派生元 spec

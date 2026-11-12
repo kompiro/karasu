@@ -685,9 +685,7 @@ system Circular {
       );
     });
 
-    it("detects circular style imports", async () => {
-      // Style files referencing each other isn't directly supported
-      // by the current style parser, but we test the visited check
+    it("loads a sheet one file imports twice once, with no warning (#3513)", async () => {
       await fs.writeFile(
         "/project/index.krs",
         `@import "a.krs.style"
@@ -699,13 +697,141 @@ system Test {
       await fs.writeFile("/project/a.krs.style", `user { background-color: #000; }`);
 
       const result = await resolver.resolve("/project/index.krs");
-      // Second import of same file should be detected as circular
-      expect(result.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: "warning",
-          code: "circular-style-import",
-        }),
+      expect(result.styleSheets.map((s) => s.sheetId)).toEqual(["/project/a.krs.style"]);
+      expect(result.diagnostics).toEqual([]);
+    });
+  });
+
+  /**
+   * A sheet cannot `@import`, so a style import is never part of a cycle: a
+   * sheet reached again is a DAG re-arrival (TPL-1381), and it is one sheet at
+   * its first position. A path is relative to the file that declares it, so an
+   * imported file finds the sheet beside it (#3714). One row per import form
+   * that can carry a file's `@import` into the importer.
+   */
+  describe("style imports carried through the import graph (#3513, #3714)", () => {
+    const FORMS = [
+      ["whole-file", (_id: string, path: string) => `import "${path}"`],
+      ["named", (id: string, path: string) => `import { ${id} } from "${path}"`],
+    ] as const;
+
+    it.each(FORMS)(
+      "%s: two files that @import one sheet load it once, with no warning",
+      async (_form, importOf) => {
+        await fs.writeFile(
+          "/project/index.krs",
+          `${importOf("A", "a.krs")}\n${importOf("B", "b.krs")}\n`,
+        );
+        await fs.writeFile(
+          "/project/a.krs",
+          `@import "shared.krs.style"\nsystem A {\n  service A1\n}\n`,
+        );
+        await fs.writeFile(
+          "/project/b.krs",
+          `@import "shared.krs.style"\nsystem B {\n  service B1\n}\n`,
+        );
+        await fs.writeFile("/project/shared.krs.style", `user { background-color: #000; }`);
+
+        const result = await resolver.resolve("/project/index.krs");
+        expect(result.styleSheets.map((s) => s.sheetId)).toEqual(["/project/shared.krs.style"]);
+        expect(result.diagnostics).toEqual([]);
+      },
+    );
+
+    it.each(FORMS)(
+      "%s: an imported file in a subdirectory resolves @import beside itself",
+      async (_form, importOf) => {
+        await fs.writeFile("/project/index.krs", `${importOf("Q", "sub/q.krs")}\n`);
+        await fs.writeFile(
+          "/project/sub/q.krs",
+          `@import "t.krs.style"\nsystem Q {\n  service Q1\n}\n`,
+        );
+        await fs.writeFile("/project/sub/t.krs.style", `user { background-color: #000; }`);
+
+        const result = await resolver.resolve("/project/index.krs");
+        expect(result.styleSheets.map((s) => s.sheetId)).toEqual(["/project/sub/t.krs.style"]);
+        expect(result.diagnostics).toEqual([]);
+      },
+    );
+
+    it("a directory import carries the @import of a file in it, resolved beside that file", async () => {
+      await fs.writeFile("/project/index.krs", `import "sub/"\n`);
+      await fs.writeFile(
+        "/project/sub/q.krs",
+        `@import "t.krs.style"\nsystem Q {\n  service Q1\n}\n`,
       );
+      await fs.writeFile("/project/sub/t.krs.style", `user { background-color: #000; }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.styleSheets.map((s) => s.sheetId)).toEqual(["/project/sub/t.krs.style"]);
+      expect(result.diagnostics).toEqual([]);
+    });
+
+    it("resolves a file's @import once, beside it, when a second path reaches it from another directory", async () => {
+      // b.krs reaches sub/a.krs again through `../`: the cached resolution is
+      // reused as it is, never resolved a second time against b's directory.
+      await fs.writeFile("/project/index.krs", `import "sub/a.krs"\nimport "x/b.krs"\n`);
+      await fs.writeFile(
+        "/project/sub/a.krs",
+        `@import "t.krs.style"\nsystem A {\n  service A1\n}\n`,
+      );
+      await fs.writeFile(
+        "/project/x/b.krs",
+        `import "../sub/a.krs"\nsystem B {\n  service B1\n}\n`,
+      );
+      await fs.writeFile("/project/sub/t.krs.style", `user { background-color: #000; }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.styleSheets.map((s) => s.sheetId)).toEqual(["/project/sub/t.krs.style"]);
+      expect(result.diagnostics).toEqual([]);
+    });
+
+    it("dedupes one sheet written two ways, including through ../", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `@import "sub/t.krs.style"
+import "sub/q.krs"
+import "other/r.krs"
+system Main {
+  service M1
+}`,
+      );
+      await fs.writeFile(
+        "/project/sub/q.krs",
+        `@import "t.krs.style"\nsystem Q {\n  service Q1\n}\n`,
+      );
+      await fs.writeFile(
+        "/project/other/r.krs",
+        `@import "../sub/t.krs.style"\nsystem R {\n  service R1\n}\n`,
+      );
+      await fs.writeFile("/project/sub/t.krs.style", `user { background-color: #000; }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.styleSheets.map((s) => s.sheetId)).toEqual(["/project/sub/t.krs.style"]);
+      expect(result.diagnostics).toEqual([]);
+    });
+
+    it("keeps a sheet at the position where it is reached first", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `@import "first.krs.style"
+import "x.krs"
+system Main {
+  service M1
+}`,
+      );
+      await fs.writeFile(
+        "/project/x.krs",
+        `@import "second.krs.style"\n@import "first.krs.style"\nsystem X {\n  service X1\n}\n`,
+      );
+      await fs.writeFile("/project/first.krs.style", `user { background-color: #111; }`);
+      await fs.writeFile("/project/second.krs.style", `user { background-color: #222; }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.styleSheets.map((s) => s.sheetId)).toEqual([
+        "/project/first.krs.style",
+        "/project/second.krs.style",
+      ]);
     });
   });
 
@@ -1358,6 +1484,186 @@ system ECPlatform {
       const blog = result.krsFile.systems.find((s) => s.id === "Blog");
       expect(blog!.label).toBe("Reader slice");
       expect(result.diagnostics.filter((d) => d.code === "system-property-conflict")).toEqual([]);
+    });
+
+    describe("S3: the value closest to the entry wins, whatever the import order (#3713)", () => {
+      // y.krs carries a label from two levels down (z.krs); x.krs declares one a
+      // single level down. x is closer, so it wins in either import order, and
+      // the warning points at the declaration that lost.
+      async function writeChain(order: "y-first" | "x-first", body: (label: string) => string) {
+        const lines =
+          order === "y-first"
+            ? ['import "y.krs"', 'import "x.krs"']
+            : ['import "x.krs"', 'import "y.krs"'];
+        await fs.writeFile("/project/index.krs", `${lines.join("\n")}\n`);
+        await fs.writeFile("/project/y.krs", `import "z.krs"\n${body("")}\n`);
+        await fs.writeFile("/project/z.krs", body("FromZ"));
+        await fs.writeFile("/project/x.krs", body("FromX"));
+      }
+
+      const BLOCKS = [
+        [
+          "system label",
+          (v: string) => `system S {\n  ${v ? `label "${v}"` : ""}\n  service ${v || "Y"}Svc\n}`,
+          (r: Awaited<ReturnType<ImportResolver["resolve"]>>) =>
+            r.krsFile.systems.find((n) => n.id === "S")?.label,
+          { blockKind: "system", property: "label" },
+        ],
+        [
+          "system description",
+          (v: string) =>
+            `system S {\n  ${v ? `description "${v}"` : ""}\n  service ${v || "Y"}Svc\n}`,
+          (r: Awaited<ReturnType<ImportResolver["resolve"]>>) =>
+            r.krsFile.systems.find((n) => n.id === "S")?.properties.description,
+          { blockKind: "system", property: "description" },
+        ],
+        [
+          "deploy label",
+          (v: string) => `deploy Prod {\n  ${v ? `label "${v}"` : ""}\n}`,
+          (r: Awaited<ReturnType<ImportResolver["resolve"]>>) =>
+            r.krsFile.deploys.find((d) => d.id === "Prod")?.label,
+          { blockKind: "deploy", property: "label" },
+        ],
+        [
+          "organization label",
+          (v: string) => `organization Co {\n  ${v ? `label "${v}"` : ""}\n}`,
+          (r: Awaited<ReturnType<ImportResolver["resolve"]>>) =>
+            r.krsFile.organizations.find((o) => o.id === "Co")?.label,
+          { blockKind: "organization", property: "label" },
+        ],
+      ] as const;
+
+      for (const [name, body, read, params] of BLOCKS) {
+        it.each(["y-first", "x-first"] as const)(`${name}: %s`, async (order) => {
+          await writeChain(order, body);
+          const result = await resolver.resolve("/project/index.krs");
+          expect(read(result)).toBe("FromX");
+          const conflicts = result.diagnostics.filter((d) => d.code === "system-property-conflict");
+          expect(conflicts).toHaveLength(1);
+          expect(conflicts[0].params).toMatchObject({
+            ...params,
+            chosen: "FromX",
+            ignored: "FromZ",
+          });
+          expect(conflicts[0].loc?.file).toBe("/project/z.krs");
+        });
+      }
+
+      it("a named import of a deploy unit carries its file's distance", async () => {
+        await fs.writeFile("/project/index.krs", `import { app } from "x.krs"\nimport "y.krs"\n`);
+        await fs.writeFile(
+          "/project/x.krs",
+          `deploy Prod {\n  label "FromX"\n  oci app { runtime "Docker" }\n}\n`,
+        );
+        await fs.writeFile("/project/y.krs", `import "z.krs"\n`);
+        await fs.writeFile(
+          "/project/z.krs",
+          `deploy Prod {\n  label "FromZ"\n  oci job { runtime "Docker" }\n}\n`,
+        );
+
+        const result = await resolver.resolve("/project/index.krs");
+        expect(result.krsFile.deploys.find((d) => d.id === "Prod")?.label).toBe("FromX");
+        const conflicts = result.diagnostics.filter((d) => d.code === "system-property-conflict");
+        expect(conflicts.map((d) => [d.params, d.loc?.file])).toEqual([
+          [expect.objectContaining({ chosen: "FromX", ignored: "FromZ" }), "/project/z.krs"],
+        ]);
+      });
+
+      it("reports once, with the final winner, when an intermediate file's verdict is reversed at the root", async () => {
+        // a.krs (1 step) imports b.krs; index also imports b.krs directly, so
+        // b is 1 step away too and merged first: b wins the tie at the root,
+        // though inside a.krs's own merge a's label won.
+        await fs.writeFile("/project/index.krs", `import "b.krs"\nimport "a.krs"\n`);
+        await fs.writeFile(
+          "/project/a.krs",
+          `import "b.krs"\nsystem S {\n  label "FromA"\n  service ASvc\n}\n`,
+        );
+        await fs.writeFile("/project/b.krs", `system S {\n  label "FromB"\n  service BSvc\n}\n`);
+
+        const result = await resolver.resolve("/project/index.krs");
+        const final = result.krsFile.systems.find((n) => n.id === "S")?.label;
+        const conflicts = result.diagnostics.filter((d) => d.code === "system-property-conflict");
+        expect(conflicts).toHaveLength(1);
+        expect(conflicts[0].params).toMatchObject({ chosen: final });
+        expect(conflicts[0].loc?.file).not.toBe(
+          final === "FromA" ? "/project/a.krs" : "/project/b.krs",
+        );
+      });
+
+      // b.krs merges a.krs into its own block, but only `T` is named-imported
+      // from b, so b's block never reaches the model. The warning must name the
+      // value the model ended with, not the one b's merge settled on.
+      for (const [name, body, read, params] of BLOCKS) {
+        it(`${name}: a block merged only inside a named-import source does not decide the warning`, async () => {
+          await fs.writeFile(
+            "/project/index.krs",
+            `import "a.krs"\nimport { T } from "b.krs"\n${body("Root")}\n`,
+          );
+          await fs.writeFile("/project/a.krs", body("A"));
+          await fs.writeFile(
+            "/project/b.krs",
+            `import "a.krs"\n${body("B")}\nsystem T {\n  service TSvc\n}\n`,
+          );
+
+          const result = await resolver.resolve("/project/index.krs");
+          expect(read(result)).toBe("Root");
+          const conflicts = result.diagnostics.filter((d) => d.code === "system-property-conflict");
+          expect(conflicts.map((d) => [d.params, d.loc?.file])).toEqual([
+            [
+              expect.objectContaining({ ...params, chosen: "Root", ignored: "A" }),
+              "/project/a.krs",
+            ],
+          ]);
+        });
+      }
+
+      it("keeps the closer origin when a closer file repeats the same value", async () => {
+        // y.krs fills "L" from three levels down; x.krs repeats "L" one step
+        // away; w.krs says "M" two steps away. "L" is declared closer than "M".
+        await fs.writeFile(
+          "/project/index.krs",
+          `import "y.krs"\nimport "x.krs"\nimport "v.krs"\n`,
+        );
+        await fs.writeFile("/project/y.krs", `import "y2.krs"\n`);
+        await fs.writeFile("/project/y2.krs", `import "z.krs"\n`);
+        await fs.writeFile("/project/z.krs", `system S {\n  label "L"\n  service ZSvc\n}\n`);
+        await fs.writeFile("/project/x.krs", `system S {\n  label "L"\n  service XSvc\n}\n`);
+        await fs.writeFile("/project/v.krs", `import "w.krs"\n`);
+        await fs.writeFile("/project/w.krs", `system S {\n  label "M"\n  service WSvc\n}\n`);
+
+        const result = await resolver.resolve("/project/index.krs");
+        expect(result.krsFile.systems.find((n) => n.id === "S")?.label).toBe("L");
+      });
+
+      it("counts the shortest path: a file imported directly and through another is one step away", async () => {
+        await fs.writeFile(
+          "/project/index.krs",
+          `import "y.krs"\nimport "z.krs"\nimport "x.krs"\n`,
+        );
+        await fs.writeFile("/project/y.krs", `import "z.krs"\nsystem S {\n  service YSvc\n}\n`);
+        await fs.writeFile("/project/z.krs", `system S {\n  label "FromZ"\n  service ZSvc\n}\n`);
+        await fs.writeFile("/project/x.krs", `system S {\n  label "FromX"\n  service XSvc\n}\n`);
+
+        const result = await resolver.resolve("/project/index.krs");
+        // z and x are both one step away: a tie keeps the first merged (import order).
+        expect(result.krsFile.systems.find((n) => n.id === "S")?.label).toBe("FromZ");
+      });
+
+      it("follows the open file: swapping the entry swaps the adopted value", async () => {
+        await fs.writeFile(
+          "/project/a.krs",
+          `import "b.krs"\nsystem S {\n  label "FromA"\n  service ASvc\n}\n`,
+        );
+        await fs.writeFile(
+          "/project/b.krs",
+          `import "a.krs"\nsystem S {\n  label "FromB"\n  service BSvc\n}\n`,
+        );
+
+        const fromA = await resolver.resolve("/project/a.krs");
+        const fromB = await new ImportResolver(fs).resolve("/project/b.krs");
+        expect(fromA.krsFile.systems.find((n) => n.id === "S")?.label).toBe("FromA");
+        expect(fromB.krsFile.systems.find((n) => n.id === "S")?.label).toBe("FromB");
+      });
     });
 
     it("S4: same-id `deploy` and `organization` blocks merge across files", async () => {

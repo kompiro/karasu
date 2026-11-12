@@ -102,7 +102,7 @@ describe("karasu check", () => {
     const file = await krsFile("index.krs", PARSE_ERROR);
     const out = await run(() => check(file));
     expect(out.exitCode).toBe(1);
-    expect(out.stderr).toMatch(/^Error: .*index\.krs:2:\d+: /m);
+    expect(out.stderr).toMatch(/^Error\[KRS\d{3}\]: .*index\.krs:2:\d+: /m);
     expect(out.stdout).toBe("");
   });
 
@@ -117,7 +117,7 @@ describe("karasu check", () => {
     const file = await krsFile("index.krs", WARNING_ONLY);
     const out = await run(() => check(file));
     expect(out.exitCode).toBeUndefined();
-    expect(out.stderr).toMatch(/^Warning: /m);
+    expect(out.stderr).toMatch(/^Warning\[KRS\d{3}\]: /m);
   });
 
   it("exits 1 when the file does not exist", async () => {
@@ -145,7 +145,10 @@ describe("karasu check", () => {
       const out = await run(() => check(dir));
       expect(out.exitCode).toBe(1);
       expect(out.stderr).toMatch(
-        new RegExp(`^Error: ${join(dir, "index.krs").replace(/\./g, "\\.")}:2:\\d+: `, "m"),
+        new RegExp(
+          `^Error\\[KRS\\d{3}\\]: ${join(dir, "index.krs").replace(/\./g, "\\.")}:2:\\d+: `,
+          "m",
+        ),
       );
     });
 
@@ -187,7 +190,7 @@ describe("karasu check", () => {
     const out = await run(() => check(file));
     expect(out.exitCode).toBe(1);
     expect(out.stderr).toMatch(
-      new RegExp(`^Error: .*File not found: .*${missing.replace(/\./g, "\\.")}$`, "m"),
+      new RegExp(`^Error\\[KRS080\\]: .*File not found: .*${missing.replace(/\./g, "\\.")}$`, "m"),
     );
     expect(out.stdout).toBe("");
   });
@@ -202,8 +205,8 @@ describe("karasu check", () => {
     );
     const out = await run(() => check(file));
     expect(out.exitCode).toBeUndefined();
-    expect(out.stderr).toMatch(/^Warning: .*Style file not found: .*nope\.krs\.style$/m);
-    expect(out.stderr).not.toMatch(/^Error: /m);
+    expect(out.stderr).toMatch(/^Warning\[KRS082\]: .*Style file not found: .*nope\.krs\.style$/m);
+    expect(out.stderr).not.toMatch(/^Error(\[KRS[0-9]{3}\])?:/m);
     expect(out.stdout).toBe("");
   });
 
@@ -215,7 +218,7 @@ describe("karasu check", () => {
     );
     const out = await run(() => check(file));
     expect(out.exitCode).toBe(1);
-    expect(out.stderr).toMatch(/^Error: .*index\.krs:1:\d+: .*"Pay"/m);
+    expect(out.stderr).toMatch(/^Error\[KRS039\]: .*index\.krs:1:\d+: .*"Pay"/m);
   });
 
   // The point of `check`: "check passes" must mean "render succeeds", and the

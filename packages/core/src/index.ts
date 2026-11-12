@@ -52,6 +52,8 @@ export type {
   FormattedWarning,
 } from "./types/warnings.js";
 export { warningSeverity } from "./types/warnings.js";
+export type { DiagnosticId } from "./types/diagnostic-ids.js";
+export { DIAGNOSTIC_IDS, RETIRED_DIAGNOSTIC_IDS, diagnosticIdOf } from "./types/diagnostic-ids.js";
 // The facet overlay's palette is public so the app's selector can paint the
 // same colour dot the diagram paints (#2174). One source of truth — a second
 // palette in the app would drift the moment either side is edited.

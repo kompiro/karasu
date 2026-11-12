@@ -1,4 +1,5 @@
-import { type Page, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect } from "./expect.js";
 
 /**
  * Mirrors `DEBOUNCE_MS` in `packages/app/src/hooks/useSystemView.ts`. We give a

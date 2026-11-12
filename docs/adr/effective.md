@@ -71,6 +71,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3598](3598-first-run-tour-resume.md) — 初回体験のツアーを localStorage の記録と入口の URL で再開し、deep link の復元は指すファイルを待つ
 - [ADR-3599](3599-first-run-step-completion.md) — 初回体験のツアーは、ステップが頼んだ操作をしたことを示すだけで、進むのは訪問者に任せる
 - [ADR-3600](3600-first-run-understand-evolve-tours.md) — 初回体験の Understand と Evolve を同じ機構のガイドにし、シーンは開いているバッファを読み直さない
+- [ADR-3601](3601-first-run-second-sample.md) — Design a service split のガイドに給与システムの題材を同梱し、Step 1 で切り替えられるようにする
 - [ADR-9009](9009-toolbar-icon-label.md) — ツールバーボタンはアイコン+テキストラベル必須
 - [ADR-9010](9010-memory-project-mode-unification.md) — MemoryMode と ProjectMode の統一 — Reducer + `KarasuPreviewColumn`
 - [ADR-9011](9011-editor-diagnostics-display.md) — Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ
@@ -497,7 +498,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-3237](3237-opfs-fixture-origin-from-static-file.md) — OPFS fixture の origin は app の起動ではなく static file で得る
 - [ADR-3289](3289-tpl-index-daily-regeneration.md) — TPL の索引は PR に含めず、ADR の生成物と同じ毎日の再生成 PR で生成する
 - [ADR-3429](3429-synthetic-edge-style-fixtures.md) — 合成エッジのスタイル解決テストは、本物の受け渡しと同じ `extraEdges` で渡し、`.krs` から SVG までの柵と組にする
-- [ADR-3486](3486-tpl-changed-files-recall.md) — PR の変更ファイルから関係する TPL を引き、PR を作った直後に出す
+- [ADR-3706](3706-tpl-recall-keys-remeasured.md) — 変更ファイルから TPL を引く鍵に、ガードの印と後から足した接頭辞を含める
 - [ADR-9012](9012-app-testing-strategy.md) — `packages/app` のテスト戦略 — `@testing-library/react` + renderHook + ARIA
 
 ## vscode

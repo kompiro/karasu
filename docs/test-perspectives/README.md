@@ -49,7 +49,7 @@ known_consumers: # optional — この観点が適用されると判明してい
 discovered_from:
   - issue: "#1234"
   - root_cause_adr: "ADR-<n>" # optional
-  - root_cause_file: "path/to/file.ts:LINE" # optional
+  - root_cause_file: "path/to/file.ts:symbol" # optional — 行番号ではなく symbol か #anchor
 related_to:
   - TPL-<n>
 topic: app-ui # ADR と同じ controlled vocabulary
@@ -65,6 +65,7 @@ scope:
 
 - **`applicable_to`** — この観点が適用される **抽象パターン**。再利用可能な抽象度で書く。1 行 = 1 パターンに分解し、複数パターンに当てはまる観点なら複数行で並べる。consumer の具体名は書かない（そちらは `known_consumers`）
 - **`known_consumers`** — この観点が適用されると判明している **具体的な consumer**（feature / module / package など）。kebab-case で、grep で検索しやすい形にする。union のように consumer 空間が広すぎて列挙が無意味な場合は省略する（フィールドごとオミット）。新たに該当 consumer が見つかったら追記する
+- **`discovered_from` の `root_cause_file`** — 原因の箇所を `path:symbol`（関数名・テスト名・定数など、ファイル内で検索できる文字列）か `path#anchor`（Markdown の見出し）で書く。行番号（`path:42`）は書かない: 編集のたびにずれ、ずれたことを誰も検出できない（#2732 の時点で 35 件中 30 件がずれていた）。`tpl.config.json` の `sourcePrefixes` の下にある引用は、`tpl validate` がパスの存在・symbol の出現・見出しの存在を検査し、行番号を finding にする（tpl-tools ADR-48）
 - **`scope.paths`** — PR の変更ファイルから TPL を引くときの鍵を足す glob（`*` `**` `?` だけを使う）。鍵の基本は本文の `## 関連テスト` などが名指すファイルで（下の「変更ファイルから引く」）、`scope.paths` はそれと和になる。書くのは、本文がファイルを名指せないのに関係する PR が決まっている TPL（workflow 全般の運用系など）と、PR で当てたのに一覧に出なかった TPL だけ。特定のファイルに結びつかない横断的な原則には広い glob を書かない — ほぼ全 PR に出て一覧が読まれなくなる。`tpl validate` は各 glob が 1 つ以上のファイルに一致することを検査する
 - **`topic`** — ADR と同じ controlled vocabulary（`docs/adr/README.md` のセクション見出しを参照）。たとえば: `core-concepts` / `parser` / `resolver` / `renderer` / `edges` / `styling` / `navigation` / `app-ui` / `project` / `chat-ai` / `cli` / `vscode` / `testing` / `build` / `adr-tooling`
 

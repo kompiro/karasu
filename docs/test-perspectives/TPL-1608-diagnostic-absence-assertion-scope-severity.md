@@ -15,7 +15,7 @@ related_to:
   - TPL-976
 discovered_from:
   - issue: "#1608"
-  - root_cause_file: "packages/e2e/tests/at-0047-infra-nodes-system-diagram.spec.ts:66"
+  - root_cause_file: "packages/e2e/tests/at-0047-infra-nodes-system-diagram.spec.ts:shared-infra-fan-in"
 topic: testing
 scope:
   packages:

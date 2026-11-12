@@ -309,8 +309,8 @@ describe("arbitrary-name selector deprecation (#2175)", () => {
     // the single-document context. The LSP calls `analyze(file, [])`, so these
     // two land on the "does not fire" side — and here that is correct rather
     // than a shortfall, since they report on the content of a stylesheet and
-    // the document being edited is a `.krs` file. `packages/lsp/src/diagnostics.ts`
-    // records the same decision at the call site.
+    // the document being edited is a `.krs` file. The LSP's ledger
+    // (`packages/lsp/src/single-document-context.ts`) records the same decision.
     const model = `
       system Shop {
         service Payments [pci] {}

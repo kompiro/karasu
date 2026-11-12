@@ -26,7 +26,7 @@ known_consumers:
 discovered_from:
   - issue: "#2942"
   - issue: "#3106"
-  - root_cause_file: "packages/cli/src/compile-system-view.ts:94"
+  - root_cause_file: "packages/cli/src/compile-system-view.ts:resolveKrsFileOrExit"
 related_to:
   - TPL-2715
   - TPL-168

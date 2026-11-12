@@ -25,6 +25,8 @@ import { PROPERTY_SCHEMAS } from "../style/property-schema.js";
 // the validator silently accepts input no documentation explains and no
 // resolver may consume — exactly the `stroke-style` ghost-property bug
 // (#1492). Reference data may lead the docs; the validator must not.
+// That the resolver consumes each entry is checked in
+// `../style/property-schema-consumed.test.ts`.
 //
 // See docs/test-perspectives/TPL-1296-spec-doc-reference-data-sync.md.
 
@@ -101,19 +103,24 @@ describe("Reference data ↔ docs/spec agreement (TPL-1296)", () => {
     expect(missing).toEqual([]);
   });
 
-  it("style.md: every PROPERTY_SCHEMAS entry is documented in the spec (#1492)", () => {
-    const styleMd = readSpec("style.md");
-    const documented = new Set<string>();
-    for (const block of fencedBlocks(styleMd, "css")) {
-      for (const m of block.matchAll(/(^|[\s{;])([a-z][a-z-]+)\s*:/g)) {
-        documented.add(m[2]);
+  // Both locales: a property the English spec gained but the Japanese one did
+  // not is the same ghost to a reader of `style.ja.md`.
+  it.each(["style.md", "style.ja.md"])(
+    "%s: every PROPERTY_SCHEMAS entry is documented in the spec (#1492)",
+    (file) => {
+      const styleMd = readSpec(file);
+      const documented = new Set<string>();
+      for (const block of fencedBlocks(styleMd, "css")) {
+        for (const m of block.matchAll(/(^|[\s{;])([a-z][a-z-]+)\s*:/g)) {
+          documented.add(m[2]);
+        }
       }
-    }
-    const undocumented = Object.keys(PROPERTY_SCHEMAS)
-      .filter((p) => !documented.has(p))
-      .sort();
-    expect(undocumented).toEqual([]);
-  });
+      const undocumented = Object.keys(PROPERTY_SCHEMAS)
+        .filter((p) => !documented.has(p))
+        .sort();
+      expect(undocumented).toEqual([]);
+    },
+  );
 
   it("style.md: every documented shape keyword is in getReference().shapes", () => {
     const styleMd = readSpec("style.md");

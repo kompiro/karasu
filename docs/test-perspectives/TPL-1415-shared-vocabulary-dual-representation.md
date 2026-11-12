@@ -11,7 +11,7 @@ discovered_from:
   - issue: "#1415"
   - issue: "#1856"
   - root_cause_file: "packages/core/src/builtins/icon-theme.ts"
-  - root_cause_file: "packages/core/src/builtins/default-style.ts:192"
+  - root_cause_file: "packages/core/src/builtins/default-style.ts:ANNOTATION_LABEL_KEYS"
   - root_cause_file: "packages/app/src/components/icon-consistency.test.ts"
 related_to:
   - TPL-1094
@@ -60,7 +60,7 @@ CSS だけに新 variant を足すと Outline view が古いアイコンを出�
 
 - [ ] 表現が複数あること、どれが真実源（または相互ミラー）かをコメントで明示したか [judgment]
 - [ ] 新メンバー追加時に「全表現を更新せよ」と分かる導線（コメント / TPL 参照）があるか [judgment]
-- [ ] 全表現が同じ入力に対し同じ結果を返すことを検証するテストがあるか（理想は表現の網羅を 1 つのソースから駆動する parity テスト）
+- [ ] 全表現が同じ入力に対し同じ結果を返すことを検証するテストがあるか（理想は表現の網羅を 1 つのソースから駆動する parity テスト） [judgment]
 - [ ] その parity テストが両表現の **key 集合の和（union）** を突き合わせているか — 片側の keys だけを反復し、もう片側にしか無い member を暗黙に除外すると、その member を足した drift が静かに通る（#1856: `icon-consistency.test.ts` が panel 側 keys のみ反復し、renderer にしか無い kind の追加を検出できなかった。既知の gap は明示的な allowlist に固定し、新規の片側追加は必ず落とす）
 - [ ] 解決順序（first-match-wins / cascade last-wins など）が表現間で一致しているか
 

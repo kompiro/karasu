@@ -125,6 +125,9 @@ describe("GET /g/<id>", () => {
       const csp = response.headers.get("Content-Security-Policy") ?? "";
       expect(csp.split(/\s+/)).toEqual(expect.arrayContaining(["sandbox", "allow-scripts"]));
       expect(csp).not.toContain("allow-same-origin");
+      // No request leaves the viewer: the source is embedded, and so it has
+      // no reason to call this origin's API with or without a session.
+      expect(csp.split(/\s*;\s*/)).toContain("connect-src 'none'");
     }
   });
 

@@ -24,7 +24,8 @@ description: >
   直したか理由を返して却下し、直さない Minor / Trivial は理由を書いて閉じた）。review 本文にしかない指摘にも
   対応か却下の理由を返し、その id を PR のコメントに書いたので `bodyFindings` が 0。CodeRabbit が thread 内で
   返した答えもすべて読んで応じたので `threadReplies` が 0。CodeRabbit の指摘と対応は PR 本文のローカルレビューの
-  記録の表に足してある。人間の判断が要る論点は PR 上で質問済み
+  記録の表に足してある。人間の判断が要る論点は PR 上で質問済みで、PR 本文の `## For Reviewers` 節に 3 件まで
+  載っている（`docs/process/review.md`「High の PR で人間が読むもの」）
 - **人間の判断待ちで止まっている:** 止まった理由（質問・再レビューの上限・待ち時間の上限・CodeRabbit の無反応・
   id を持たない指摘）が通知済み
 
@@ -137,7 +138,9 @@ rate limit 中に push したいコミットができたら、push と再レビ�
    - **却下する:** thread に理由を返信し、その thread だけを `resolveReviewThread` で閉じる。直さない Minor /
      Trivial も同じく理由を書いて閉じ、議論は続けない
    - **記録済みの決定が変わる:** 直さない。thread に、指摘・該当する記録・取りうる選択肢を並べた
-     質問を maintainer 宛てに返信し、未解決のまま「質問済み」として覚えておく
+     質問を maintainer 宛てに返信し、未解決のまま「質問済み」として覚えておく。PR 本文の `## For Reviewers` 節に、
+     その thread へのリンクを付けて載せる。答えの無い項目が 3 件あれば、残りは節の中の HTML コメントに置く。載せた
+     3 件すべてに答えが付き、答えを反映して節から外した後で、残りを見直して次の 3 件を載せる
 3. コミットがあれば、push の前に**このラウンドの修正分だけへ CodeRabbit CLI を 1 回当てる**
    （`coderabbit review --agent --deep --base-commit <このラウンドの修正を始める前の HEAD> --committed`）。
    出た指摘は 2 と同じ判定で扱い、CLI は回し直さない。CLI が使えないときは飛ばす。CLI の指摘は PR の
@@ -196,7 +199,17 @@ node scripts/review/tier.ts same-change --from <最後にレビューされた�
 ## 終わり方
 
 PR 本文のローカルレビューの記録に、このラウンドまでの CodeRabbit の指摘と対応を足す（レビュアーは
-`coderabbit`、ラウンドの CLI の指摘は `cli`。`docs/process/review.md`「ローカルレビューの記録」）。PushNotification ツールが使えれば 1 行で通知し、
+`coderabbit`、ラウンドの CLI の指摘は `cli`。`docs/process/review.md`「ローカルレビューの記録」）。記録に
+`design` の行があり、ラウンドの修正か main の取り込みで PR の変更が変わったとき（`tier.ts same-change` が
+`false`）と、取り込んだ main が Design Doc を変えていたとき（行の `@<blob>` が `git rev-parse origin/main:<path>` と
+違う）は、記録を書き直す前に Design Doc との照合を当て直し、その結果で `design` の行を作り直す（review.md
+「Design Doc との照合」）。前の照合の行を新しい HEAD に持ち越さない。
+
+渡す直前に、PR の最新の Review tier の run を走り直させ（`gh run list --workflow review-tier.yml --branch <branch>
+--limit 1 --json databaseId` の run を `gh run rerun`）、終わるのを待つ。走り直した run は `main` の先頭で判定し直すので、
+手元の `origin/main` ではなく公開された summary を最新にできる。その summary（`node scripts/review/tier.ts check --pr <pr>`
+の `designDoc` も同じ）が「merge main」を理由に裏付けを外していれば、main を取り込んで push し、上の「main の
+取り込み」に従う（`docs/process/review.md`「High の PR で人間が読むもの」）。PushNotification ツールが使えれば 1 行で通知し、
 最後のメッセージに次をまとめる。
 
 - 結果（`converged` / Minor だけのラウンドで終えた / 止まった理由）と PR の URL

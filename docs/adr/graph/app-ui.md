@@ -50,6 +50,7 @@ flowchart TD
     ADR_3598["ADR-3598<br/>初回体験のツアーを localStorage の記録と入口の URL で再開し、deep li..."]
     ADR_3599["ADR-3599<br/>初回体験のツアーは、ステップが頼んだ操作をしたことを示すだけで、進むのは訪問者に任せる"]
     ADR_3600["ADR-3600<br/>初回体験の Understand と Evolve を同じ機構のガイドにし、シーンは開いている..."]
+    ADR_3601["ADR-3601<br/>Design a service split のガイドに給与システムの題材を同梱し、Step ..."]
     ADR_9009["ADR-9009<br/>ツールバーボタンはアイコン+テキストラベル必須"]
     ADR_9010["ADR-9010<br/>MemoryMode と ProjectMode の統一 — Reducer + `Karas..."]
     ADR_9011["ADR-9011<br/>Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
@@ -148,6 +149,7 @@ flowchart TD
   class ADR_3598 accepted
   class ADR_3599 accepted
   class ADR_3600 accepted
+  class ADR_3601 accepted
   class ADR_9009 accepted
   class ADR_9010 accepted
   class ADR_9011 accepted

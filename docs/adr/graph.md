@@ -68,6 +68,7 @@ flowchart TD
     ADR_3598["ADR-3598<br/>初回体験のツアーを localStorage の記録と入口の URL で再開し、deep li..."]
     ADR_3599["ADR-3599<br/>初回体験のツアーは、ステップが頼んだ操作をしたことを示すだけで、進むのは訪問者に任せる"]
     ADR_3600["ADR-3600<br/>初回体験の Understand と Evolve を同じ機構のガイドにし、シーンは開いている..."]
+    ADR_3601["ADR-3601<br/>Design a service split のガイドに給与システムの題材を同梱し、Step ..."]
     ADR_9009["ADR-9009<br/>ツールバーボタンはアイコン+テキストラベル必須"]
     ADR_9010["ADR-9010<br/>MemoryMode と ProjectMode の統一 — Reducer + `Karas..."]
     ADR_9011["ADR-9011<br/>Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
@@ -509,6 +510,7 @@ flowchart TD
     ADR_3289["ADR-3289<br/>TPL の索引は PR に含めず、ADR の生成物と同じ毎日の再生成 PR で生成する"]
     ADR_3429["ADR-3429<br/>合成エッジのスタイル解決テストは、本物の受け渡しと同じ `extraEdges` で渡し、`...."]
     ADR_3486["ADR-3486<br/>PR の変更ファイルから関係する TPL を引き、PR を作った直後に出す"]
+    ADR_3706["ADR-3706<br/>変更ファイルから TPL を引く鍵に、ガードの印と後から足した接頭辞を含める"]
     ADR_9012["ADR-9012<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
   end
   subgraph vscode["vscode"]
@@ -714,6 +716,7 @@ flowchart TD
   ADR_3421 -.supersedes.-> ADR_2658
   ADR_3421 -.supersedes.-> ADR_2786
   ADR_3421 -.supersedes.-> ADR_2839
+  ADR_3706 -.supersedes.-> ADR_3486
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -1181,7 +1184,7 @@ flowchart TD
   class ADR_3429 accepted
   class ADR_3471 accepted
   class ADR_3480 accepted
-  class ADR_3486 accepted
+  class ADR_3486 superseded
   class ADR_3504 accepted
   class ADR_3514 accepted
   class ADR_3571 accepted
@@ -1191,6 +1194,8 @@ flowchart TD
   class ADR_3598 accepted
   class ADR_3599 accepted
   class ADR_3600 accepted
+  class ADR_3601 accepted
+  class ADR_3706 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

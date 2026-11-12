@@ -2,10 +2,17 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readAdrPaths, rootGlobs } from "../adr/generated.ts";
+import { type GitFacts, parseRecord } from "./local-review-record.ts";
 import {
   ADR_GENERATED_GLOBS,
   adrEditIsRecordOnly,
+  agreedSpecFiles,
+  backingDesignDoc,
+  contextHunks,
+  type DesignDocFacts,
+  designCheckGap,
   type ChangedFile,
+  checkExitCode,
   type Hunk,
   classifyChange,
   diffFingerprint,
@@ -15,10 +22,15 @@ import {
   labelTier,
   unknownRiskLabels,
   lineInDiff,
+  matchesAgreedText,
   packageJsonTier,
   parseDiff,
   pathTier,
+  readFailure,
   regenerationWaivesRecord,
+  specBlocks,
+  tierSummary,
+  triggerIssues,
   UNREADABLE_PATH,
   unquoteGitPath,
 } from "./tier.ts";
@@ -244,6 +256,56 @@ describe("classifyChange", () => {
     expect(tierOf(modified("docs/guide/a.md"), modified("docs/design/x.md"))).toBe("design");
     expect(tierOf(modified("docs/guide/a.md"), modified("packages/core/a.ts"))).toBe("medium");
     expect(tierOf(modified("docs/guide/a.md"), modified(".github/workflows/x.yml"))).toBe("high");
+  });
+
+  it("lists every file with its own tier, strictest first and in diff order within a tier", () => {
+    const { files } = classifyChange({
+      files: [
+        modified("docs/guide/a.md"),
+        modified("packages/core/a.ts"),
+        modified("docs/spec/syntax.md"),
+        modified("packages/core/b.ts"),
+        modified(UNREADABLE_PATH),
+      ],
+      author: "kompiro",
+    });
+    expect(files).toEqual([
+      { path: "docs/spec/syntax.md", tier: "high", boundary: false, narrowable: true },
+      {
+        path: "(a diff section whose path could not be read)",
+        tier: "high",
+        boundary: true,
+        narrowable: false,
+      },
+      { path: "packages/core/a.ts", tier: "medium", boundary: false, narrowable: false },
+      { path: "packages/core/b.ts", tier: "medium", boundary: false, narrowable: false },
+      { path: "docs/guide/a.md", tier: "low", boundary: false, narrowable: false },
+    ]);
+  });
+
+  it.each([
+    ["docs/spec/syntax.md", false, true],
+    ["docs/process/review.md", false, true],
+    [".claude/rules/adr.md", false, true],
+    ["packages/core/src/parser/parser.ts", false, true],
+    ["scripts/review/tier.ts", false, false],
+    [".claude/skills/coderabbit-converge/SKILL.md", false, false],
+    ["pnpm-lock.yaml", false, false],
+    [".github/workflows/ci.yml", true, false],
+    ["packages/cli/src/serve.ts", true, false],
+    ["packages/nest/src/index.test.ts", true, false],
+  ])(
+    "marks %s boundary=%s narrowable=%s for the narrowed reading (#3542)",
+    (path, boundary, narrowable) => {
+      const [f] = classifyChange({ files: [modified(path)], author: "kompiro" }).files;
+      expect({ boundary: f.boundary, narrowable: f.narrowable }).toEqual({ boundary, narrowable });
+    },
+  );
+
+  it("keeps each file's own tier when the author makes the PR High", () => {
+    expect(
+      classifyChange({ files: [modified("docs/guide/a.md")], author: "someone" }).files,
+    ).toEqual([{ path: "docs/guide/a.md", tier: "low", boundary: false, narrowable: false }]);
   });
 
   it("reads package.json by the fields that moved", () => {
@@ -1165,5 +1227,883 @@ describe("lineInDiff", () => {
   it("is unknown for a finding with no file or line, which stays in the PR's scope", () => {
     expect(lineInDiff(diff, undefined, 12)).toBe("unknown");
     expect(lineInDiff(diff, "docs/design/x.md", undefined)).toBe("unknown");
+  });
+});
+
+describe("readFailure", () => {
+  it("reads 404 and 410 as a reference the PR has to fix", () => {
+    expect(readFailure("gh: Not Found (HTTP 404)")).toBe("missing");
+    expect(readFailure("gh: This issue was deleted (HTTP 410)")).toBe("missing");
+  });
+
+  it("reads anything else as a fact that could not be read, which a rerun may fix", () => {
+    expect(readFailure("gh: Server Error (HTTP 502)")).toBe("unreadable");
+    expect(readFailure("gh: API rate limit exceeded (HTTP 403)")).toBe("unreadable");
+    expect(readFailure("error connecting to api.github.com")).toBe("unreadable");
+    expect(readFailure("")).toBe("unreadable");
+  });
+});
+
+describe("checkExitCode", () => {
+  it("fails on a broken rule and on an unread fact, with different codes", () => {
+    expect(checkExitCode({ errors: [], unreadable: [] })).toBe(0);
+    expect(checkExitCode({ errors: ["x"], unreadable: [] })).toBe(1);
+    expect(checkExitCode({ errors: [], unreadable: ["y"] })).toBe(4);
+  });
+
+  it("lets a broken rule outrank an unread fact: the PR has to change either way", () => {
+    expect(checkExitCode({ errors: ["x"], unreadable: ["y"] })).toBe(1);
+  });
+});
+
+describe("tierSummary (#3543)", () => {
+  const files = [
+    { path: "docs/spec/syntax.md", tier: "high" as const },
+    { path: "packages/core/a.ts", tier: "medium" as const },
+  ];
+  const summary = (extra: Partial<Parameters<typeof tierSummary>[0]> = {}) =>
+    tierSummary({ effective: "high", trustedAuthor: true, files, ...extra });
+
+  it("tells the reviewer to read the High files and For Reviewers on a High PR", () => {
+    expect(summary().split("\n")).toEqual([
+      "### Files by tier",
+      "",
+      "The PR is High. The reviewer reads the High files below and the PR's `## For Reviewers` section.",
+      "",
+      "| Tier | File |",
+      "| --- | --- |",
+      "| high | <code>docs/spec/syntax.md</code> |",
+      "| medium | <code>packages/core/a.ts</code> |",
+      "",
+    ]);
+  });
+
+  it.each([
+    ["no file is High", { files: [files[1]] }, "its label (or a missing one)"],
+    ["the author is not trusted", { trustedAuthor: false }, "not on the trusted list"],
+    [
+      "a diff section could not be read",
+      {
+        files: [
+          ...files,
+          {
+            path: classifyChange({ files: [modified(UNREADABLE_PATH)], author: "kompiro" }).files[0]
+              .path,
+            tier: "high" as const,
+          },
+        ],
+      },
+      "could not be read",
+    ],
+  ])("asks for the whole diff when %s", (_, extra, why) => {
+    const text = summary(extra);
+    expect(text).toContain("The reviewer reads the whole diff");
+    expect(text).toContain(why);
+    expect(text).not.toContain("High files below");
+  });
+
+  it("names the tier without a reading line below High", () => {
+    const text = summary({ effective: "medium", files: [files[1]] });
+    expect(text).toContain("The PR is medium.");
+    expect(text).not.toContain("reviewer reads");
+  });
+
+  const many = (high: number, medium: number) => [
+    ...Array.from({ length: high }, (_, i) => ({
+      path: `docs/spec/${i}.md`,
+      tier: "high" as const,
+    })),
+    ...Array.from({ length: medium }, (_, i) => ({
+      path: `packages/core/${i}.ts`,
+      tier: "medium" as const,
+    })),
+  ];
+
+  it("lists the first 200 files strictest first and counts the rest", () => {
+    const rows = summary({ files: many(150, 100) }).split("\n");
+    expect(rows.filter((l) => l.startsWith("| high"))).toHaveLength(150);
+    expect(rows.filter((l) => l.startsWith("| medium"))).toHaveLength(50);
+    expect(rows).toContain("50 more files are not listed.");
+    expect(rows).toContain(
+      "The PR is High. The reviewer reads the High files below and the PR's `## For Reviewers` section.",
+    );
+    expect(summary({ files: many(150, 51) })).toContain("1 more file is not listed.");
+  });
+
+  it("asks for the whole diff when the High files do not fit in the rows", () => {
+    const text = summary({ files: many(201, 0) });
+    expect(text).toContain("more High files than the 200 rows listed");
+    expect(text).toContain("The reviewer reads the whole diff");
+  });
+
+  it("cuts a path past 200 code points and keeps the table under 1 MiB", () => {
+    const long = `${"|".repeat(4000)}.md`;
+    const text = summary({
+      files: Array.from({ length: 300 }, () => ({ path: long, tier: "high" as const })),
+    });
+    expect(text).toContain(`<code>${"&#124;".repeat(200)}&#8230;</code>`);
+    expect(Buffer.byteLength(text)).toBeLessThan(1024 * 1024);
+  });
+
+  it.each([
+    ["a|b.md", "a&#124;b.md"],
+    ["a`b`.md", "a&#96;b&#96;.md"],
+    ["[x](https://e.example).md", "&#91;x&#93;&#40;https&#58;//e.example&#41;.md"],
+    ["<img src=x>.md", "&#60;img&#32;src&#61;x&#62;.md"],
+    ["a\n| high | b.md", "a&#10;&#124;&#32;high&#32;&#124;&#32;b.md"],
+    ["_x_/*y*.md", "&#95;x&#95;/&#42;y&#42;.md"],
+  ])("renders the path %j as literal text in one cell", (path, cell) => {
+    const rows = summary({ files: [{ path, tier: "high" }] })
+      .split("\n")
+      .filter((l) => l.startsWith("| high"));
+    expect(rows).toEqual([`| high | <code>${cell}</code> |`]);
+  });
+});
+
+const issueLink = (n: number) => `[#${n}](https://github.com/kompiro/karasu/issues/${n})`;
+const designDoc = (trigger: string, parent = issueLink(3546)) =>
+  [
+    "# Title",
+    "",
+    "- **関連**:",
+    `  - 引き金 Issue: ${trigger}`,
+    `  - 親 Issue: ${parent}`,
+    "",
+    "## 背景・課題",
+    "",
+    `- 引き金 Issue: ${issueLink(9999)}`,
+  ].join("\n");
+
+describe("triggerIssues (#3542)", () => {
+  it("reads every Issue link on the 引き金 Issue line", () => {
+    expect(triggerIssues(designDoc(`${issueLink(3542)}（A）、${issueLink(3543)}（B）`))).toEqual([
+      3542, 3543,
+    ]);
+  });
+
+  it("ignores a bare #N in the line's prose, the parent line, and lines below the metadata", () => {
+    expect(triggerIssues(designDoc(`${issueLink(3542)}（#3505 の制約）`))).toEqual([3542]);
+    expect(triggerIssues(designDoc("#3542"))).toEqual([]);
+  });
+
+  it("ignores a link inside the line's full-width parenthesized prose", () => {
+    expect(
+      triggerIssues(designDoc(`${issueLink(3542)}（${issueLink(2917)} の再点検で切り出した）`)),
+    ).toEqual([3542]);
+  });
+
+  it("ignores a link to another repository", () => {
+    expect(
+      triggerIssues(designDoc("[#3542](https://github.com/other/karasu/issues/3542)")),
+    ).toEqual([]);
+  });
+});
+
+describe("backingDesignDoc (#3542)", () => {
+  const DOC = "docs/design/agreed.md";
+  const BLOB = "1".repeat(40);
+  const docFacts = (over: Partial<DesignDocFacts> = {}): DesignDocFacts => ({
+    docsAtMergeBase: () => [
+      { path: DOC, text: designDoc(issueLink(3542)) },
+      { path: "docs/design/TEMPLATE.md", text: designDoc(issueLink(3542)) },
+      { path: "docs/design/other.md", text: designDoc(issueLink(1)) },
+    ],
+    blobs: () => ({ mergeBase: BLOB, tip: BLOB }),
+    history: () => ({ shas: ["a".repeat(40), "b".repeat(40)], renamed: false }),
+    commitTier: () => "design",
+    ...over,
+  });
+  const back = (over: Partial<Parameters<typeof backingDesignDoc>[0]> = {}) =>
+    backingDesignDoc({
+      baseRefName: "main",
+      closes: [3542],
+      changed: ["docs/spec/syntax.md"],
+      facts: docFacts(),
+      ...over,
+    });
+
+  it("backs a PR with the one Design Doc whose 引き金 Issue line links an Issue it closes", () => {
+    expect(back()).toEqual({ state: "backed", path: DOC, blob: BLOB });
+  });
+
+  it.each([
+    ["the base is not main", { baseRefName: "feat/lower" }, "base is not main"],
+    ["the PR closes no Issue", { closes: [] }, "closes no Issue"],
+    ["no Design Doc links the Issue", { closes: [7] }, "no Design Doc"],
+    ["the PR changes the Design Doc", { changed: [DOC] }, "the PR changes"],
+    [
+      "main's tip has another blob",
+      { facts: docFacts({ blobs: () => ({ mergeBase: BLOB, tip: "2".repeat(40) }) }) },
+      "merge main",
+    ],
+    [
+      "main's tip has no such file",
+      { facts: docFacts({ blobs: () => ({ mergeBase: BLOB, tip: null }) }) },
+      "merge main",
+    ],
+    [
+      "the merge base has no such file",
+      { facts: docFacts({ blobs: () => ({ mergeBase: null, tip: null }) }) },
+      "merge main",
+    ],
+    [
+      "the history is empty",
+      { facts: docFacts({ history: () => ({ shas: [], renamed: false }) }) },
+      "no history",
+    ],
+    [
+      "the history goes through a rename",
+      { facts: docFacts({ history: () => ({ shas: ["a".repeat(40)], renamed: true }) }) },
+      "renamed",
+    ],
+    [
+      "an earlier commit was Medium though the last was Design",
+      {
+        facts: docFacts({ commitTier: (sha) => (sha.startsWith("b") ? "medium" : "design") }),
+      },
+      "medium change",
+    ],
+    [
+      "a commit was High (a Design Doc changed in a High PR is not read as a design)",
+      { facts: docFacts({ commitTier: () => "high" }) },
+      "high change",
+    ],
+    [
+      "two Design Docs link the Issue",
+      {
+        facts: docFacts({
+          docsAtMergeBase: () => [
+            { path: DOC, text: designDoc(issueLink(3542)) },
+            { path: "docs/design/second.md", text: designDoc(issueLink(3542)) },
+          ],
+        }),
+      },
+      "more than one",
+    ],
+  ])("gives no backing when %s", (_, over, reason) => {
+    const b = back(over);
+    expect(b.state).toBe("none");
+    expect(b.state === "none" && b.reason).toContain(reason);
+  });
+
+  it("never uses the template, even when it links the Issue", () => {
+    const onlyTemplate = docFacts({
+      docsAtMergeBase: () => [
+        { path: "docs/design/TEMPLATE.md", text: designDoc(issueLink(3542)) },
+      ],
+    });
+    expect(back({ facts: onlyTemplate }).state).toBe("none");
+  });
+
+  it("does not take an Issue named only on the parent line", () => {
+    const parentOnly = docFacts({
+      docsAtMergeBase: () => [{ path: DOC, text: designDoc(issueLink(1), issueLink(3542)) }],
+    });
+    expect(back({ facts: parentOnly }).state).toBe("none");
+  });
+});
+
+describe("tierSummary with a backing Design Doc (#3542)", () => {
+  const files = [
+    { path: "docs/spec/syntax.md", tier: "high" as const, boundary: false, narrowable: true },
+    { path: "packages/cli/src/serve.ts", tier: "high" as const, boundary: true, narrowable: false },
+    { path: "scripts/review/tier.ts", tier: "high" as const, boundary: false, narrowable: false },
+    { path: "packages/core/a.ts", tier: "medium" as const, boundary: false, narrowable: false },
+  ];
+  const backed = { state: "backed" as const, path: "docs/design/agreed.md", blob: "1".repeat(40) };
+  const summary = (design: Parameters<typeof tierSummary>[0]["design"], trustedAuthor = true) =>
+    tierSummary({ effective: "high", trustedAuthor, files, design });
+
+  it("narrows the reading to For Reviewers, the boundary files and the non-narrowable High files", () => {
+    const text = summary({ backing: backed, checked: true });
+    expect(text).toContain("the agreed Design Doc <code>docs/design/agreed.md</code>");
+    expect(text).toContain("<code>111111111111</code>");
+    expect(text).toContain("reads the PR's `## For Reviewers` section and the files listed here");
+    expect(text).toContain("- <code>packages/cli/src/serve.ts</code>");
+    expect(text).toContain("- <code>scripts/review/tier.ts</code>");
+    expect(text).not.toContain("- <code>docs/spec/syntax.md</code>");
+    expect(text).not.toContain("- <code>packages/core/a.ts</code>");
+    expect(text).not.toContain("High files below");
+  });
+
+  it("does not narrow when more files must still be read than the rows listed", () => {
+    const many = Array.from({ length: 201 }, (_, i) => ({
+      path: `packages/nest/src/${i}.test.ts`,
+      tier: "low" as const,
+      boundary: true,
+      narrowable: false,
+    }));
+    const text = tierSummary({
+      effective: "high",
+      trustedAuthor: true,
+      files: [files[0], ...many],
+      design: { backing: backed, checked: true },
+    });
+    expect(text).toContain("but the reading is not narrowed: more files must still be read");
+    expect(text).toContain("The reviewer reads the High files below");
+  });
+
+  it("says so when nothing but the section needs reading", () => {
+    const text = tierSummary({
+      effective: "high",
+      trustedAuthor: true,
+      files: [files[0]],
+      design: { backing: backed, checked: true },
+    });
+    expect(text).toContain("No file needs reading beyond the section.");
+  });
+
+  it("does not narrow when the conformance check does not cover HEAD, and says why", () => {
+    const text = summary({
+      backing: backed,
+      checked: false,
+      why: "the local review record is waived",
+    });
+    expect(text).toContain("but the reading is not narrowed: the local review record is waived.");
+    expect(text).toContain("The reviewer reads the High files below");
+  });
+
+  it("names why no Design Doc backs the PR, as literal text", () => {
+    const text = summary({
+      backing: { state: "none", reason: "the PR changes docs/design/<x>.md" },
+      checked: false,
+    });
+    expect(text).toContain(
+      "No Design Doc backs the PR: the PR changes docs/design/&#60;x&#62;.md.",
+    );
+    expect(text).toContain("The reviewer reads the High files below");
+  });
+
+  it("reads the whole diff of an untrusted author's PR, backing or not", () => {
+    const text = summary({ backing: backed, checked: true }, false);
+    expect(text).toContain("The reviewer reads the whole diff");
+    expect(text).not.toContain("files listed here");
+  });
+});
+
+describe("designCheckGap (#3542)", () => {
+  const HEAD = "a".repeat(40);
+  const BASE = "b".repeat(40);
+  const git: GitFacts = {
+    headSha: HEAD,
+    mergeBase: () => BASE,
+    resolve: (rev) => (HEAD.startsWith(rev) ? HEAD : null),
+    isAncestor: (a, b) => a === b,
+    onlyBaseMerges: () => true,
+    sameChange: () => true,
+  };
+  const record = (rows: string[], extra = "") =>
+    [
+      `<!-- local-review:v1 base=${BASE} head=${HEAD} -->`,
+      "## Local review",
+      "",
+      "Reviewers: subagent, coderabbit CLI --deep",
+      extra,
+      "",
+      "| # | Reviewer | Sev | Where | Finding | Disposition |",
+      "| --- | --- | --- | --- | --- | --- |",
+      ...rows,
+      "<!-- /local-review -->",
+    ].join("\n");
+  const BLOB = "1234567890abcdef".repeat(2) + "12345678";
+  const DESIGN_ROW = `| 1 | design | Trivial | docs/design/agreed.md@${BLOB.slice(0, 12)} | No deviation | no deviation |`;
+  const gap = (body: string) =>
+    designCheckGap(body, parseRecord(body), git, { path: "docs/design/agreed.md", blob: BLOB });
+  const withSection = (r: string) => `## For Reviewers\n\nNone.\n\n${r}`;
+
+  it("passes a body with the section and a fresh record holding a design row", () => {
+    expect(gap(withSection(record([DESIGN_ROW])))).toBeNull();
+  });
+
+  it("reads a section saved with CRLF line ends", () => {
+    expect(gap(withSection(record([DESIGN_ROW])).replace(/\n/g, "\r\n"))).toBeNull();
+  });
+
+  it.each([
+    ["the section is missing", record([DESIGN_ROW]), "no ## For Reviewers section"],
+    [
+      "the section is only inside a comment",
+      `<!--\n## For Reviewers\n-->\n${record([DESIGN_ROW])}`,
+      "no ## For Reviewers section",
+    ],
+    ["there is no record", "## For Reviewers\n\nNone.\n", "no local review record"],
+    [
+      "the section holds only the template's comment",
+      `## For Reviewers\n\n<!-- On a High PR... -->\n\n## Local review\n${record([DESIGN_ROW])}`,
+      "is empty",
+    ],
+    ["the record has no design row", withSection(record([])), "no design row"],
+    ["the record is waived", withSection(record([DESIGN_ROW], "Waived: by hand")), "waived"],
+    [
+      "a design row names no blob",
+      withSection(
+        record(["| 1 | design | Trivial | docs/design/agreed.md | No deviation | no deviation |"]),
+      ),
+      "another version",
+    ],
+    [
+      "a design row names another blob (main revised the Design Doc)",
+      withSection(record([DESIGN_ROW.replace(BLOB.slice(0, 12), "fedcba987654")])),
+      "another version",
+    ],
+    [
+      "a design row names another Design Doc",
+      withSection(record([DESIGN_ROW.replace("agreed.md", "other.md")])),
+      "another version",
+    ],
+    [
+      "another row has no disposition",
+      withSection(record([DESIGN_ROW, "| 2 | engineering | Major | x.ts | y | later |"])),
+      "does not pass",
+    ],
+  ])("reports a gap when %s", (_, body, why) => {
+    expect(gap(body)).toContain(why);
+  });
+});
+
+describe("specBlocks (#3542)", () => {
+  const doc = (...lines: string[]) => lines.join("\n");
+
+  it("reads each diff block under ### 仕様の変更 as hunks, split at @@ lines", () => {
+    const blocks = specBlocks(
+      doc(
+        "## 現時点の方針",
+        "",
+        "### 仕様の変更",
+        "",
+        "```diff file=docs/spec/a.md",
+        " context",
+        "-old",
+        "+new",
+        "",
+        "@@ -40,3 +40,3 @@ heading text",
+        " more",
+        "+added   ",
+        "```",
+        "",
+        "```diff file=docs/spec/b.md",
+        "+b",
+        "```",
+      ),
+    );
+    expect([...blocks.entries()]).toEqual([
+      [
+        "docs/spec/a.md",
+        [
+          [" context", "-old", "+new", " "],
+          [" more", "+added"],
+        ],
+      ],
+      ["docs/spec/b.md", [["+b"]]],
+    ]);
+  });
+
+  it("reads only top-level fences in the section, not an example nested in another fence", () => {
+    const blocks = specBlocks(
+      doc(
+        "```diff file=docs/spec/before.md",
+        "+outside the section",
+        "```",
+        "### 仕様の変更",
+        "````md",
+        "### 仕様の変更",
+        "```diff file=docs/spec/nested.md",
+        "+an example",
+        "```",
+        "````",
+        "  ```diff file=docs/spec/indented.md",
+        "+indented",
+        "  ```",
+        "```diff file=docs/spec/top.md",
+        "+top",
+        "```",
+        "### 次の節",
+        "```diff file=docs/spec/after.md",
+        "+after the section",
+        "```",
+      ),
+    );
+    expect([...blocks.keys()]).toEqual(["docs/spec/top.md"]);
+  });
+
+  it("closes a block only on a fence at least as long, so a longer fence can hold one", () => {
+    const blocks = specBlocks(
+      doc("### 仕様の変更", "````diff file=docs/spec/a.md", " ```css", "+x", " ```", "````"),
+    );
+    expect(blocks.get("docs/spec/a.md")).toEqual([[" ```css", "+x", " ```"]]);
+  });
+
+  it("reads a tilde fence, and not a block inside an HTML comment, which GitHub does not show", () => {
+    const blocks = specBlocks(
+      doc(
+        "### 仕様の変更",
+        "<!-- a note -->",
+        "~~~diff file=docs/spec/tilde.md",
+        "+t",
+        "~~~",
+        "<!--",
+        "```diff file=docs/spec/hidden.md",
+        "+h",
+        "```",
+        "-->",
+      ),
+    );
+    expect([...blocks.keys()]).toEqual(["docs/spec/tilde.md"]);
+    expect(
+      specBlocks(doc("### 仕様の変更", "<!--", "```diff file=docs/spec/a.md", "+a")).size,
+    ).toBe(0);
+  });
+
+  it("ends the section at any other heading, a sub-heading included", () => {
+    const blocks = specBlocks(
+      doc("### 仕様の変更", "#### 補足", "```diff file=docs/spec/a.md", "+a", "```"),
+    );
+    expect(blocks.size).toBe(0);
+  });
+
+  it("reads a CRLF doc", () => {
+    const blocks = specBlocks("### 仕様の変更\r\n```diff file=docs/spec/a.md\r\n+x\r\n```\r\n");
+    expect(blocks.get("docs/spec/a.md")).toEqual([["+x"]]);
+  });
+
+  it("gives null for a path with two blocks and for a line that is not a hunk line", () => {
+    const blocks = specBlocks(
+      doc(
+        "### 仕様の変更",
+        "```diff file=docs/spec/twice.md",
+        "+1",
+        "```",
+        "```diff file=docs/spec/twice.md",
+        "+2",
+        "```",
+        "```diff file=docs/spec/prose.md",
+        "+1",
+        "prose, not a hunk line",
+        "```",
+      ),
+    );
+    expect(blocks.get("docs/spec/twice.md")).toBeNull();
+    expect(blocks.get("docs/spec/prose.md")).toBeNull();
+  });
+
+  it("gives nothing for two 仕様の変更 sections or an unclosed fence", () => {
+    const block = ["```diff file=docs/spec/a.md", "+x", "```"];
+    expect(specBlocks(doc("### 仕様の変更", ...block, "### 仕様の変更", "+y")).size).toBe(0);
+    expect(specBlocks(doc("### 仕様の変更", ...block, "```diff file=docs/spec/b.md")).size).toBe(0);
+  });
+});
+
+describe("contextHunks (#3542)", () => {
+  it("reads a -U3 diff's hunks with their signs, dropping the no-newline marker", () => {
+    const diff = [
+      "diff --git a/x.md b/x.md",
+      "index 1..2 100644",
+      "--- a/x.md",
+      "+++ b/x.md",
+      "@@ -1,2 +1,2 @@",
+      " a  ",
+      "-b",
+      "\\ No newline at end of file",
+      "+c",
+      "",
+    ].join("\n");
+    expect(contextHunks(diff)).toEqual([[" a", "-b", "+c"]]);
+  });
+
+  it("gives null for a diff of two files, so neither can match", () => {
+    const one = ["diff --git a/x.md b/x.md", "--- a/x.md", "+++ b/x.md", "@@ -1 +1 @@", "-b", "+c"];
+    expect(contextHunks([...one, ...one, ""].join("\n"))).toBeNull();
+  });
+});
+
+/** #3320's spec diff (Issue #3155): the past PR the Design Doc's AT names. */
+describe("agreed spec text, with #3320's spec diff (#3542)", () => {
+  const FIXTURES = resolve(import.meta.dirname, "fixtures/spec-agreement-3320");
+  const fixture = (name: string) => readFileSync(resolve(FIXTURES, name), "utf-8");
+  const EN = "docs/spec/style.md";
+  const JA = "docs/spec/style.ja.md";
+  const diffs: Record<string, string> = {
+    [EN]: fixture("style.md.diff"),
+    [JA]: fixture("style.ja.md.diff"),
+  };
+  const bases: Record<string, string> = {
+    [EN]: fixture("style.md.base"),
+    [JA]: fixture("style.ja.md.base"),
+  };
+  /** The diff's hunk lines, from its first `@@` header, as the block's lines. */
+  const hunkLines = (diff: string) =>
+    diff
+      .slice(diff.indexOf("\n@@") + 1)
+      .replace(/\n$/, "")
+      .split("\n");
+  const docWith = (blocks: Record<string, string[]>) =>
+    [
+      "# Doc",
+      "",
+      "## 現時点の方針",
+      "",
+      "### 仕様の変更",
+      "",
+      ...Object.entries(blocks).flatMap(([path, lines]) => [
+        "```diff file=" + path,
+        ...lines,
+        "```",
+        "",
+      ]),
+    ].join("\n");
+  const candidates = (over: Partial<Record<string, string | null>> = {}) =>
+    [EN, JA].map((path) => ({
+      path,
+      diff: diffs[path],
+      base: path in over ? (over[path] ?? null) : bases[path],
+    }));
+  // The Japanese block drops the line numbers: a bare `@@` separates its hunks.
+  const agreedDoc = docWith({
+    [EN]: hunkLines(diffs[EN]),
+    [JA]: hunkLines(diffs[JA]).map((l) => (l.startsWith("@@") ? "@@" : l)),
+  });
+
+  it("agrees both files when the Design Doc holds their hunks", () => {
+    expect(agreedSpecFiles(agreedDoc, candidates())).toEqual([EN, JA]);
+  });
+
+  it("agrees neither file when one block has a line reworded: all or nothing", () => {
+    const lines = hunkLines(diffs[EN]).map((l) =>
+      l.startsWith("+label, another edge's line") ? `${l} too` : l,
+    );
+    expect(lines).not.toEqual(hunkLines(diffs[EN]));
+    expect(
+      agreedSpecFiles(docWith({ [EN]: lines, [JA]: hunkLines(diffs[JA]) }), candidates()),
+    ).toEqual([]);
+  });
+
+  it("does not agree a file with a hunk dropped from the block, or the hunks reordered", () => {
+    const hunks = hunkLines(diffs[EN])
+      .join("\n")
+      .split(/\n(?=@@)/);
+    expect(hunks).toHaveLength(3);
+    const dropped = hunks.slice(1).join("\n").split("\n");
+    const reordered = [hunks[1], hunks[0], ...hunks.slice(2)].join("\n").split("\n");
+    for (const lines of [dropped, reordered]) {
+      expect(agreedSpecFiles(docWith({ [EN]: lines }), candidates())).toEqual([]);
+    }
+  });
+
+  it("does not agree a file whose block moves an agreed line within its hunk", () => {
+    const lines = hunkLines(diffs[JA]);
+    const i = lines.findIndex((l) => l.startsWith("+"));
+    const moved = [...lines];
+    [moved[i - 1], moved[i]] = [moved[i], moved[i - 1]];
+    expect(agreedSpecFiles(docWith({ [JA]: moved }), candidates())).toEqual([]);
+  });
+
+  it("does not agree a file whose block is only an example nested in another fence", () => {
+    const nested = [
+      "# Doc",
+      "",
+      "### 仕様の変更",
+      "",
+      "````md",
+      ...agreedDoc.split("\n"),
+      "````",
+    ].join("\n");
+    expect(agreedSpecFiles(nested, candidates())).toEqual([]);
+  });
+
+  it("does not agree a file whose block's context sits at two places in the base", () => {
+    const twice = `${bases[JA]}\n${bases[JA]}`;
+    expect(agreedSpecFiles(agreedDoc, candidates({ [JA]: twice }))).toEqual([]);
+  });
+
+  it("agrees nothing when the PR leaves out a file the Design Doc has a block for", () => {
+    expect(agreedSpecFiles(agreedDoc, candidates().slice(0, 1))).toEqual([]);
+  });
+
+  it("agrees when a line differs only in trailing spaces, but not in a full-width space", () => {
+    const en = hunkLines(diffs[EN]).map((l) => (l.startsWith("+") ? `${l}  ` : l));
+    const doc = docWith({ [EN]: en, [JA]: hunkLines(diffs[JA]) });
+    expect(agreedSpecFiles(doc, candidates())).toEqual([EN, JA]);
+    const wide = hunkLines(diffs[EN]).map((l) => (l.startsWith("+") ? `${l}\u3000` : l));
+    expect(
+      agreedSpecFiles(docWith({ [EN]: wide, [JA]: hunkLines(diffs[JA]) }), candidates()),
+    ).toEqual([]);
+  });
+
+  it("does not agree a path outside the decision paths, whatever its block says", () => {
+    const path = "scripts/review/tier.ts";
+    const doc = docWith({ [path]: hunkLines(diffs[EN]) });
+    expect(agreedSpecFiles(doc, [{ path, diff: diffs[EN], base: bases[EN] }])).toEqual([]);
+  });
+
+  const fileDiff = (header: string[], hunks: string[]) =>
+    ["diff --git a/docs/spec/n.md b/docs/spec/n.md", ...header, ...hunks, ""].join("\n");
+
+  it("agrees a new file only when the base has none", () => {
+    const diff = fileDiff(
+      ["new file mode 100644", "index 0..1", "--- /dev/null", "+++ b/docs/spec/n.md"],
+      ["@@ -0,0 +1,2 @@", "+# N", "+A new rule."],
+    );
+    const block = [["+# N", "+A new rule."]];
+    expect(matchesAgreedText({ block, diff, base: null })).toBe(true);
+    expect(matchesAgreedText({ block, diff, base: "# N\n" })).toBe(false);
+  });
+
+  it("does not agree a deleted file or a mode change", () => {
+    const removal = fileDiff(
+      ["deleted file mode 100644", "index 1..0", "--- a/docs/spec/n.md", "+++ /dev/null"],
+      ["@@ -1 +0,0 @@", "-A rule."],
+    );
+    expect(matchesAgreedText({ block: [["-A rule."]], diff: removal, base: "A rule.\n" })).toBe(
+      false,
+    );
+    const mode = fileDiff(
+      [
+        "old mode 100644",
+        "new mode 100755",
+        "index 1..2",
+        "--- a/docs/spec/n.md",
+        "+++ b/docs/spec/n.md",
+      ],
+      ["@@ -1 +1 @@", "-A rule.", "+A new rule."],
+    );
+    expect(
+      matchesAgreedText({ block: [["-A rule.", "+A new rule."]], diff: mode, base: "A rule.\n" }),
+    ).toBe(false);
+  });
+
+  it("does not agree a binary file, a symlink, a submodule or a modified file the base lacks", () => {
+    const rule = ["@@ -1 +1 @@", "-A rule.", "+A new rule."];
+    const block = [["-A rule.", "+A new rule."]];
+    const head = (mode: string) => [
+      `index 1..2 ${mode}`,
+      "--- a/docs/spec/n.md",
+      "+++ b/docs/spec/n.md",
+    ];
+    const base = "A rule.\n";
+    expect(matchesAgreedText({ block, diff: fileDiff(head("100644"), rule), base })).toBe(true);
+    expect(matchesAgreedText({ block, diff: fileDiff(head("100644"), rule), base: null })).toBe(
+      false,
+    );
+    expect(matchesAgreedText({ block, diff: fileDiff(head("120000"), rule), base })).toBe(false);
+    const gitlink = fileDiff(
+      ["new file mode 160000", "index 0..1", "--- /dev/null", "+++ b/docs/spec/n.md"],
+      ["@@ -0,0 +1 @@", "+Subproject commit 1111"],
+    );
+    expect(
+      matchesAgreedText({ block: [["+Subproject commit 1111"]], diff: gitlink, base: null }),
+    ).toBe(false);
+    const binary = fileDiff(
+      ["index 1..2 100644", "Binary files a/docs/spec/n.md and b/docs/spec/n.md differ"],
+      [],
+    );
+    expect(matchesAgreedText({ block, diff: binary, base })).toBe(false);
+  });
+
+  it("does not agree a hunk that changes only blank lines or a table rule", () => {
+    const diff = fileDiff(
+      ["index 1..2 100644", "--- a/docs/spec/n.md", "+++ b/docs/spec/n.md"],
+      ["@@ -1,3 +1,3 @@", " | a | b |", "-|---|---|", "+| --- | --- |", " | 1 | 2 |"],
+    );
+    const block = [[" | a | b |", "-|---|---|", "+| --- | --- |", " | 1 | 2 |"]];
+    expect(matchesAgreedText({ block, diff, base: "| a | b |\n|---|---|\n| 1 | 2 |\n" })).toBe(
+      false,
+    );
+  });
+});
+
+describe("classifyChange with agreed spec text (#3542)", () => {
+  const spec: ChangedFile = { path: "docs/spec/style.md", status: "modified", hunks: [] };
+  const code: ChangedFile = { path: "packages/app/src/x.ts", status: "modified", hunks: [] };
+
+  it("counts an agreed decision-path file as Medium, so the PR can be Medium", () => {
+    const r = classifyChange({ files: [spec, code], author: "kompiro", agreed: [spec.path] });
+    expect(r.tier).toBe("medium");
+    expect(r.reasons).toContain(
+      "docs/spec/style.md: medium (the text the backing Design Doc agreed)",
+    );
+    expect(r.files[0]).toEqual({
+      path: spec.path,
+      tier: "medium",
+      boundary: false,
+      narrowable: true,
+      agreed: true,
+    });
+  });
+
+  it("keeps High what is not a decision path, another High file, and an untrusted author", () => {
+    const tier = (files: ChangedFile[], author = "kompiro") =>
+      classifyChange({ files, author, agreed: files.map((f) => f.path) }).tier;
+    const machinery: ChangedFile = {
+      path: "scripts/review/tier.ts",
+      status: "modified",
+      hunks: [],
+    };
+    const language: ChangedFile = {
+      path: "packages/core/src/parser/x.ts",
+      status: "modified",
+      hunks: [],
+    };
+    expect(tier([machinery])).toBe("high");
+    expect(tier([language])).toBe("high");
+    expect(
+      classifyChange({ files: [spec, machinery], author: "kompiro", agreed: [spec.path] }).tier,
+    ).toBe("high");
+    expect(tier([spec], "someone")).toBe("high");
+  });
+
+  it("keeps High a decision-path file that is also High for another reason or on the boundary", () => {
+    const changelog: ChangedFile = {
+      path: "docs/spec/CHANGELOG.md",
+      status: "modified",
+      hunks: [],
+    };
+    const manifest: ChangedFile = { path: "docs/spec/package.json", status: "modified", hunks: [] };
+    const sink: ChangedFile = {
+      path: ".claude/rules/x.html",
+      status: "modified",
+      hunks: [{ oldStart: 1, removed: [], newStart: 1, added: ["el.innerHTML = s;"] }],
+    };
+    for (const f of [changelog, manifest, sink]) {
+      const r = classifyChange({ files: [f], author: "kompiro", agreed: [f.path] });
+      expect(r.files[0].tier).toBe("high");
+    }
+  });
+
+  it("is High as before when nothing is agreed", () => {
+    expect(classifyChange({ files: [spec], author: "kompiro" }).tier).toBe("high");
+  });
+});
+
+describe("tierSummary with agreed spec text (#3542)", () => {
+  it("names the Design Doc that made a Medium PR lighter and marks the agreed files", () => {
+    const out = tierSummary({
+      effective: "medium",
+      trustedAuthor: true,
+      files: [
+        { path: "docs/spec/style.md", tier: "medium", agreed: true },
+        { path: "packages/app/src/x.ts", tier: "medium" },
+      ],
+      design: {
+        backing: { state: "backed", path: "docs/design/agreed.md", blob: "1".repeat(40) },
+        checked: false,
+      },
+    });
+    expect(out).toContain("One file is Medium, marked agreed below");
+    expect(out).toContain("<code>docs/design/agreed.md</code>");
+    expect(out).toContain("Rerun Review tier right before hand-off");
+    expect(out).toContain("| medium (agreed) | <code>docs/spec/style.md</code> |");
+    expect(out).toContain("| medium | <code>packages/app/src/x.ts</code> |");
+  });
+
+  it("marks an agreed file on a High PR too", () => {
+    const out = tierSummary({
+      effective: "high",
+      trustedAuthor: true,
+      files: [
+        { path: "scripts/review/tier.ts", tier: "high" },
+        { path: "docs/spec/style.md", tier: "medium", agreed: true },
+      ],
+    });
+    expect(out).toContain("| medium (agreed) | <code>docs/spec/style.md</code> |");
   });
 });
