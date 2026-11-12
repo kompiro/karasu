@@ -2106,7 +2106,8 @@ The importer absorbs:
 When the same `system` id appears in more than one file (the importer's own file and an imported file, or two imported files), the blocks are **merged into one** rather than treated as duplicates:
 
 - **System body properties** (`label` / `description` / tags): the declaration in the file **closer to the import-graph root** wins. The root is `ImportResolver.resolve(entryPath)`'s `entryPath` — in practice the file currently open in the App / VS Code extension, or the file passed to `karasu render`. The resolver walks the graph bottom-up; values from deeper imports fill in only where the closer file left them unset.
-  - When two files declare conflicting non-empty values, the resolver picks the closer-to-root one and emits a `system-property-conflict` warning (chosen value + ignored value + both source locations).
+  - "Closer" is the shortest import path from the root, whatever order the `import` lines come in. A value filled in from a deeper file keeps that file's distance, so a file one level down beats a value carried up from two levels down. At equal distance, the file merged first (the earlier `import`) wins. This holds for whole-file and directory imports; a named import that brings a block a second time does not reconcile its properties yet (#3720).
+  - When two files declare conflicting non-empty values, the resolver picks the closer-to-root one and emits a `system-property-conflict` warning with the chosen and ignored values, located at the declaration that lost.
 - **Children**: merged by id with find-or-create. Two children with the same id in the same merged system produce a `duplicate-node-in-system` error (existing behavior). Two different ids merge cleanly.
 - **Edges**: union. Exact duplicates (same `from`, `to`, kind, label) are deduplicated; otherwise both are kept.
 

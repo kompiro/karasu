@@ -87,8 +87,9 @@ and the document they index into.
 - **A diagnostic without `loc` names no position.** One that concerns a missing
   file carries the path in its message instead (`file-not-found`,
   `style-file-not-found`). Merge-time facts that name ids rather than
-  declarations (`infra-redeclared-across-files`, `system-property-conflict`, and
-  the like) carry neither.
+  declarations (`infra-redeclared-across-files` and the like) carry neither.
+  `system-property-conflict` does carry a `loc`: the declaration whose value
+  lost.
 
 Each surface prints a location as follows.
 
