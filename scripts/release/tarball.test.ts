@@ -6,6 +6,7 @@ import {
   packagePath,
   platformPackages,
   readTarball,
+  readTarballStrict,
   readTarballWithNodeTar,
   manifestDifferences,
   sameNoticesAcrossPlatforms,
@@ -234,6 +235,16 @@ describe("readTarball", () => {
   it("refuses an archive without its end blocks", () => {
     expect(() => readTarball(gzipSync(tar([{ path: "package/a", content: "x" }])))).toThrow(
       /end-of-archive/,
+    );
+  });
+});
+
+describe("readTarballStrict", () => {
+  it("refuses an archive that unpacks past the bound", () => {
+    const archive = tgz([{ path: "package/big.txt", content: "x".repeat(4096) }]);
+    expect(readTarballStrict(archive, { maxBytes: 64 * 1024 }).size).toBe(1);
+    expect(() => readTarballStrict(archive, { maxBytes: 2048 })).toThrow(
+      /unpacks to more than 2048 bytes/,
     );
   });
 });

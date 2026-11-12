@@ -15,20 +15,36 @@ import { branchFromIssueBody } from "./train.mts";
 
 export const REPOSITORY = process.env.GITHUB_REPOSITORY ?? "kompiro/karasu";
 
+/** The registry every npm command of the release names, whatever a config says. */
+export const NPM_REGISTRY = "https://registry.npmjs.org/";
+
 export type NpmPackage = {
   name: string;
   dir: string;
   version: string;
-  /** Workspace packages this one depends on with `workspace:`, by name. */
+  /**
+   * Workspace packages this one needs at install time with `workspace:`, by
+   * name. devDependencies are not counted, as changesets does not order by
+   * them: karasu's core is bundled into its build.
+   */
   workspaceDependencies: string[];
 };
 
-type PackageJson = {
+export type PackageJson = {
   name: string;
   version: string;
   private?: boolean;
   dependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+  publishConfig?: Record<string, unknown>;
 };
+
+const INSTALL_DEPENDENCY_FIELDS = [
+  "dependencies",
+  "optionalDependencies",
+  "peerDependencies",
+] as const;
 
 // ------------------------------------------------------------------ decisions
 
@@ -39,9 +55,15 @@ export function npmPackagesOf(read: (dir: string) => PackageJson | null): NpmPac
     if (pkg === null || pkg.private) return [];
     if (pkg.name !== name)
       throw new Error(`${dir}/package.json names ${pkg.name}, expected ${name}`);
-    const workspaceDependencies = Object.entries(pkg.dependencies ?? {})
-      .filter(([, spec]) => spec.startsWith("workspace:"))
-      .map(([dependency]) => dependency);
+    const workspaceDependencies = [
+      ...new Set(
+        INSTALL_DEPENDENCY_FIELDS.flatMap((field) =>
+          Object.entries(pkg[field] ?? {})
+            .filter(([, spec]) => spec.startsWith("workspace:"))
+            .map(([dependency]) => dependency),
+        ),
+      ),
+    ];
     return [{ name, dir, version: pkg.version, workspaceDependencies }];
   });
 }
@@ -235,7 +257,14 @@ export function findTrain(): Train | null {
 }
 
 export function isOnNpm(name: string, version: string): boolean {
-  const result = run("npm", ["view", `${name}@${version}`, "version", "--json"]);
+  const result = run("npm", [
+    "view",
+    `${name}@${version}`,
+    "version",
+    "--json",
+    "--registry",
+    NPM_REGISTRY,
+  ]);
   return classifyNpmView(result, version) === "present";
 }
 

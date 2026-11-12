@@ -32,24 +32,52 @@ const OIDC = /^\s+id-token:\s*write/m;
 const releaseJobs = jobs(release);
 const confirmJobs = jobs(confirm);
 
+/** The permission names and levels a job grants, as "name: level". */
+function permissions(job: string): string[] {
+  const block = /^ {4}permissions:\n((?: {6}[a-z-]+: [a-z]+.*\n)+)/m.exec(job);
+  if (!block) return [];
+  return block[1]
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => line.replace(/#.*$/, "").trim());
+}
+
 describe("release.yml", () => {
-  it("stages instead of publishing", () => {
-    expect(rootPackage.scripts.release).toBe("pnpm build && node scripts/release/stage.mts");
-    expect(releaseJobs.get("release")).toContain("run: pnpm run release");
+  it("stages from a pack job and a stage job instead of publishing", () => {
+    expect(rootPackage.scripts.release).toBeUndefined();
+    expect(releaseJobs.get("pack")).toContain("stage.mts pack --out-dir");
+    expect(releaseJobs.get("stage")).toContain("stage.mts publish --tarballs");
     expect(release).not.toContain("changeset publish`");
   });
 
-  it("gives the OIDC token only to the release and vscode jobs", () => {
+  it("gives the OIDC token only to the stage and vscode jobs", () => {
     const withToken = [...releaseJobs].filter(([, job]) => OIDC.test(job)).map(([id]) => id);
-    expect(withToken.sort()).toEqual(["release", "vscode"]);
+    expect(withToken.sort()).toEqual(["stage", "vscode"]);
     expect(release.slice(0, release.indexOf("\njobs:\n"))).not.toMatch(OIDC);
   });
 
-  it("keeps the staging job read-only apart from finding the release PR", () => {
-    const job = releaseJobs.get("release")!;
-    expect(job).toContain("contents: read");
-    expect(job).toContain("pull-requests: read");
-    expect(job).not.toMatch(/contents: write|issues: write/);
+  it("builds only in the pack job, which holds no token", () => {
+    const pack = releaseJobs.get("pack")!;
+    expect(pack).toContain("pnpm install --frozen-lockfile");
+    expect(permissions(pack).sort()).toEqual(["contents: read", "pull-requests: read"]);
+  });
+
+  it("runs no dependency code in the stage job (#3240)", () => {
+    const stage = releaseJobs.get("stage")!;
+    expect(permissions(stage).sort()).toEqual([
+      "contents: read",
+      "id-token: write",
+      "pull-requests: read",
+    ]);
+    expect(stage).toMatch(/^ {4}environment: npm$/m);
+    expect(stage).toContain("package-manager-cache: false");
+    expect(stage).not.toMatch(
+      /pnpm install|pnpm build|npm ci|npm install|pnpm\/action-setup|cache: "?pnpm/,
+    );
+    expect(stage).not.toMatch(/actions\/cache/);
+    // The pack job may be hijacked: nothing of it reaches the stage job
+    // through an expression, only the artifact's files.
+    expect(stage).not.toMatch(/needs\.pack\.outputs/);
   });
 
   it("no longer records from the staging run", () => {
@@ -58,8 +86,16 @@ describe("release.yml", () => {
   });
 
   it("judges the train in the same concurrency group as release-confirm.yml", () => {
-    expect(releaseJobs.get("close-train")).toContain("group: release-record");
-    expect(releaseJobs.get("close-train")).toContain("confirm.mts close-train");
+    const closeTrain = releaseJobs.get("close-train")!;
+    expect(closeTrain).toContain("group: release-record");
+    expect(closeTrain).toContain("confirm.mts close-train");
+  });
+
+  it("reads both npm jobs when closing the train, so a skipped stage is not a success", () => {
+    const closeTrain = releaseJobs.get("close-train")!;
+    expect(closeTrain).toContain("needs: [pack, stage, vscode]");
+    expect(closeTrain).toContain("needs.pack.result");
+    expect(closeTrain).toContain("needs.stage.result");
   });
 });
 

@@ -87,7 +87,9 @@ workflows:
         - 'pnpm/action-setup@v6.1.0'
     '.github/workflows/release.yml':
         - 'actions/checkout@v7.0.1'
+        - 'actions/download-artifact@v8.0.2'
         - 'actions/setup-node@v7.1.0'
+        - 'actions/upload-artifact@v7.0.2'
         - 'pnpm/action-setup@v6.1.0'
     '.github/workflows/render-equivalence-skip.yml': []
     '.github/workflows/render-equivalence.yml':
@@ -158,6 +160,11 @@ dependencies:
         commit: 'sha1-368f82528645a54fb793d4d04e342629a3f51346'
         owner_id: 44036562
         repo_id: 438112499
+    'actions/download-artifact@v8.0.2':
+        ref: 'v8.0.2'
+        commit: 'sha1-9000827ccba6bdab643e8b6fd33ac0654aef8333'
+        owner_id: 44036562
+        repo_id: 192626254
     'actions/github-script@v9.0.0':
         ref: 'v9.0.0'
         commit: 'sha1-3a2844b7e9c422d3c10d287c895573f7108da1b3'

@@ -78,6 +78,7 @@ describe("tracking Issue", () => {
 
   it("asks for the stage-only connection and the approval when npm packages move (#3240)", () => {
     expect(body).toContain("stage-only Trusted Publisher connection");
+    expect(body).toContain("conditioned on the environment `npm`");
     expect(body).toContain("- [ ] Approve the staged npm versions (`pnpm release:approve`)");
     expect(body.indexOf("Squash-merge")).toBeLessThan(body.indexOf("Approve the staged"));
     expect(body).toContain("`release-confirm.yml`");
