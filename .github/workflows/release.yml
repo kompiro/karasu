@@ -1,5 +1,9 @@
 name: Release
 
+# REHEARSAL ONLY (spike/3240-stage-publish-rehearsal, design option 7E):
+# stages karasu's prerelease under the `rehearsal` tag from the dependency-free
+# stage job; kompiro rejects it. No vscode or close-train jobs.
+#
 # Stage step of the release pipeline (OIDC trusted publishing, #3240).
 #
 # Fires when a release PR lands: `changeset version` only ever rewrites
@@ -89,7 +93,7 @@ jobs:
       - name: Pack the first group
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/release/stage.mts pack --out-dir "$RUNNER_TEMP/stage-tarballs"
+        run: node scripts/release/stage.mts pack --out-dir "$RUNNER_TEMP/stage-tarballs" --any-commit
 
       - uses: actions/upload-artifact@v7.0.2
         with:
@@ -146,66 +150,4 @@ jobs:
       - name: Stage on npm
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/release/stage.mts publish --tarballs "$RUNNER_TEMP/stage-tarballs"
-
-  # The monthly release train (#2922): the VS Code extension ships in the same
-  # run. It does not depend on npm, so it runs even when packing or staging for
-  # npm failed; a job after a failed `needs` is otherwise skipped. The called
-  # workflow publishes only a version the Marketplace does not have yet, and
-  # its own `record` job adds the extension to this commit's Release.
-  vscode:
-    name: VS Code extension
-    needs: stage
-    if: ${{ !cancelled() }}
-    permissions:
-      contents: write # the called `record` job pushes the tag and edits the Release
-      id-token: write # azure/login exchanges the GitHub OIDC token
-    uses: ./.github/workflows/vscode-release.yml
-    with:
-      pre_release: false
-
-  # Reports on the train's tracking Issue (#2922, #3240). A failed run is
-  # commented on and keeps the Issue open, which holds the next train. When npm
-  # versions were staged, the Issue stays open with what waits for approval;
-  # release-confirm.yml closes it once they are approved and tagged. A train
-  # that published nothing to npm is closed here. Only the Issue of the release
-  # branch this commit was merged from is touched, so a manual run after main
-  # moved on, or a push that merely edits a CHANGELOG, closes nothing.
-  close-train:
-    name: Close the release train Issue
-    needs: [pack, stage, vscode]
-    if: ${{ !cancelled() }}
-    # Shared with release-confirm.yml so the two never judge or comment on the
-    # same train at once.
-    concurrency:
-      group: release-record
-      cancel-in-progress: false
-      queue: max # keep a waiting job instead of replacing it
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write # comment on and close the tracking Issue
-      pull-requests: read # find the PR this commit was merged from
-      contents: read
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          fetch-depth: 0 # read the versions of the first parent and the tags
-
-      # Node 24 runs the .mts script through type stripping; no install needed.
-      - uses: actions/setup-node@v7.1.0
-        with:
-          node-version: "24"
-
-      - name: Close or report on the tracking Issue
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PACK_RESULT: ${{ needs.pack.result }}
-          STAGE_RESULT: ${{ needs.stage.result }}
-          VSCODE_RESULT: ${{ needs.vscode.result }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: >-
-          node scripts/release/confirm.mts close-train
-          --pack-result "$PACK_RESULT"
-          --stage-result "$STAGE_RESULT"
-          --vscode-result "$VSCODE_RESULT"
-          --run-url "$RUN_URL"
+        run: node scripts/release/stage.mts publish --tarballs "$RUNNER_TEMP/stage-tarballs" --tag rehearsal --any-commit
