@@ -134,7 +134,7 @@ SPA（本番と preview の Pages でだけ送信を有効にする）
 **デメリット**
 
 - 受信用 Worker という維持する面が 1 つ増える
-- Workers Logs の保持期間は短い（Workers Paid で 7 日、Free で 3 日。2026-11-07 に公式文書で確認）。処理時間と first-run の長期の推移は Phase 2 まで見られず、月次のアクティブ数は Workers Logs だけでは数えられない（下の数え方で Analytics Engine を併用する）
+- Workers Logs の保持期間は短い（Workers Paid で 7 日、Free で 3 日。2026-11-07 に公式文書で確認）。処理時間と first-run の長期の推移は Phase 2 まで見られず（Phase 2 は当面着手しない。「現時点の方針」）、月次のアクティブ数は Workers Logs だけでは数えられない（下の数え方で Analytics Engine を併用する）
 - 別 origin なので、preflight を避けるために body を `text/plain` で送るという制約がつく（後述）。Worker は CORS の応答ヘッダーを返す
 
 #### 5a: SPA 側で OTel Web SDK を使う
@@ -193,6 +193,8 @@ span 名は 8 種類に決まっていて（後述の許可リスト）、親子
 **案5 を、SPA 側は 5b で採用する。** §12 の指標を測れて、処理時間の trace も同じ形で取れ、送信先を決めずに始められるのは案5 だけである。送る項目を絞る検査をサーバー側に置けるのも、モデルの中身を送らないという制約に対して重い。SPA 側を 5b にするのは、送る span が少なく決まっているうえ、tracer provider を持たないことで Chat の span を拾う経路そのものが無くなるからである。維持する面が 1 つ増えることは、nest と同じく別 Worker として織り込む。
 
 **アクティブ数だけは案4 の Analytics Engine を併用する。** 月次を数えるには 30 日を超える保持が要り、Workers Logs の 7 日では足りない。Analytics Engine は 3 か月保持する（2026-11-07 に公式文書で確認）。案4 の「OTel ではない」というデメリットは、件数だけを書くこの用途では効かない。span は今までどおり案5 の経路を通り、アクティブの判定だけが専用の経路で Analytics Engine に届く。Analytics Engine にはダッシュボードが無いので、集計は SQL API で行い、そのための API トークンが要る。
+
+**Phase 2（送信先への転送）は当面着手しない**（kompiro の判断、2026-11-12）。目標の 3 つは Phase 1 で見られる。処理時間と first-run は Workers Logs の Query Builder で 7 日分を絞り込み・集計でき、国別のアクティブ数は Analytics Engine の SQL API で 3 か月分を引ける。Phase 1 で見られないのは、処理時間と first-run を 7 日より前と比べること（リリースの前後の比較など）と、1 回の訪問の span を trace の画面で見ることで、どちらも今は要らない。そのどちらかが要るようになったらスライス D を Issue に起こし、送信先を選ぶ。SPA は変わらないので、後から始めても失うものは、始める前の期間の span だけである。
 
 ### 送信を有効にする条件
 
@@ -299,9 +301,9 @@ span の時間はブラウザの時計で測る。完了までの時間は、`ou
 | **A** 受信用 Worker と許可リスト | なし | SPA が送らなくても Worker 単体で検査・組み立て直し・ログと Analytics Engine への書き込みをテストできる。送る側が無いので、利用者には何も変わらない |
 | **B** SPA の送信モジュールと告知（本番と preview の Pages だけ） | A | §12 の指標が Workers Logs で、国別のアクティブ数が Analytics Engine で、この時点で見える。TPL-3612 の成果物検査と実行時の判定、文書と許可リストの突き合わせはここで着地させる |
 | **C** 処理時間の span | B | `model.render` の段階ごとの時間を足す。core が計時の関数を引数で受け取る形にする（後述）。渡さなければ今と同じ動きなので、core の他の利用者の動きは変わらない。公開 API に任意の引数が増えるので changeset は要る |
-| **D** 送信先への転送（Phase 2） | A | 送信先を選んだ時点で、Worker に転送と secret を足す。SPA は変わらない |
+| **D** 送信先への転送（Phase 2） | A | **当面は着手しない**（下の「Phase 2 は当面着手しない」）。始めるときも、Worker に転送と secret を足すだけで SPA は変わらない |
 
-> 各スライスで何ができるようになるか / その時点でまだできないことは、スライスを Issue に起こすときに親 Issue #3612 の `## Slice status` に書く。
+> 各スライスで何ができるようになるか / その時点でまだできないことは、スライスを Issue に起こすときに親 Issue #3612 の `## Slice status` に書く。Issue に起こすのは A〜C で、D は再開の条件を満たしたときに起こす。
 
 ### 実装の指針
 
@@ -332,7 +334,7 @@ span の時間はブラウザの時計で測る。完了までの時間は、`ou
    - GPC を有効にしたブラウザでは何も送らない
    - `karasu serve` で開いたアプリは何も送らない。npm の serve ビルドに加え、受信口の URL を渡してビルドした `packages/app/dist` を monorepo の `karasu serve` で開いても送らないことを確かめる（URL の無い `dist` では origin の判定を確かめられないため）
    - reference の pop-out を開いても `app.visit` が増えない
-6. ADR 昇格: スライス C が終わった時点で（D は送信先を選ぶときなので待たない） `docs/adr/3612-spa-usage-tracing.md` に昇格し、本 Design Doc は同じ PR で削除する
+6. ADR 昇格: スライス C が終わった時点で（D は当面着手しないので待たない） `docs/adr/3612-spa-usage-tracing.md` に昇格し、本 Design Doc は同じ PR で削除する
 
 ### 影響範囲・マイグレーション
 
