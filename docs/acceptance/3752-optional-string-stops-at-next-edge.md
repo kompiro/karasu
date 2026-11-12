@@ -7,7 +7,7 @@ type: product
 - **日付**: 2026-11-12
 - **関連 Issue**: [#3752](https://github.com/kompiro/karasu/issues/3752)（#3481 のテストを書くときに発見）
 - **Related TPLs**: [TPL-3752](../test-perspectives/TPL-3752-optional-trailing-token-stops-at-next-statement.md), [TPL-3072](../test-perspectives/TPL-3072-parser-error-drops-exactly-the-rejected-construct.md)
-- **対象ファイル**: `packages/core/src/parser/node-path.ts`, `packages/core/src/parser/edge-parser.ts`, `packages/core/src/parser/property-readers.ts`
+- **対象ファイル**: `packages/core/src/parser/node-path.ts`, `packages/core/src/parser/edge-parser.ts`, `packages/core/src/parser/property-readers.ts`, `packages/core/src/parser/block-contents.ts`
 
 > lexer は改行を token にしないので、edge の positional label と link の label は、次の行が
 > 引用符付きの id で始まる edge だと、その id を label として読んでいた。system 直下では
