@@ -301,3 +301,50 @@ system Admin {
     expect(canvasMembershipFor(["Shop"], options)?.get("Mail")).toEqual(["a", "b"]);
   });
 });
+
+// A stub edge folds the diff states of the edges it stands for (#1886). On the
+// root those states have to come from the frame's own map (#2756): the shared
+// map is keyed without a system, so an `Api -> Db` removed from Admin read back
+// as `removed` on Shop's unchanged `Api -> Db` once both folded into a stub.
+describe("root compare mode folds a collapsed stub edge from its own frame (#1886, #2756)", () => {
+  const MODEL = (adminEdge: boolean) => `
+system Shop {
+  service Api {}
+  database Db {}
+  Api -> Db
+}
+system Admin {
+  service Api {}
+  database Db {}
+${adminEdge ? "  Api -> Db\n" : ""}}
+`;
+  /** `data-diff-state` of each drawn edge, keyed by `from->to`. */
+  const edgeStates = (svg: string): Record<string, string | null> => {
+    const out: Record<string, string | null> = {};
+    for (const [tag] of svg.matchAll(/<g [^>]*data-edge-from="[^>]*>/g)) {
+      const from = /data-edge-from="([^"]*)"/.exec(tag)![1];
+      const to = /data-edge-to="([^"]*)"/.exec(tag)![1];
+      out[`${from}->${to}`] = /data-diff-state="([^"]*)"/.exec(tag)?.[1] ?? null;
+    }
+    return out;
+  };
+
+  it.each([
+    ["removed", MODEL(true), MODEL(false)],
+    ["added", MODEL(false), MODEL(true)],
+  ])("leaves Shop's stub edge undecorated when Admin's was %s", async (state, before, after) => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/before.krs", before);
+    await fs.writeFile("/after.krs", after);
+    const r = await compileSystemDiff({
+      beforeEntryPath: "/before.krs",
+      afterEntryPath: "/after.krs",
+      fs,
+      viewPath: [],
+      collapsedCategories: new Set(["infra"]),
+    });
+    const states = edgeStates(r.svg);
+    expect(states["Api->__collapsed_Admin_infra__"]).toBe(state);
+    expect(states["Api->__collapsed_Shop_infra__"] ?? null).toBeNull();
+  });
+});
