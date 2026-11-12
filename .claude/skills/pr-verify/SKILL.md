@@ -264,17 +264,24 @@ draft でなければ、最後に AskUserQuestion でマージするかを聞く
 ### kompiro が OK したとき
 
 1. `$S/gate.sh <pr>` を実行し直す。`proceed` で、`headSha` が手順 1 で控えたものと同じなら次へ進む。
-   `fix` なら差し戻しに切り替え、`wait` なら理由を伝えて、待ってから実行し直すか kompiro に聞く。
-   `headSha` が変わっていれば、確かめていないコミットが入っているのでマージせずにそう伝える
+   それ以外ではマージしない。`closed` ならすでにマージかクローズされている（Low PR merger が
+   マージした、など）のでそう伝えて終わる。`superseded` なら置き換え先を伝えて終わる。`fix` なら
+   差し戻しに切り替える。`wait` なら理由を伝えて、待ってから実行し直すか kompiro に聞く。
+   `headSha` が変わっていれば、確かめていないコミットが入っているのでそう伝えて終わる
 2. 手順 5 で **確認できた** 項目だけ、PR 本文の `## Manual Verification Checklist` の対応する
    `- [ ]` を `- [x]` にする。本文を `gh pr view <pr> --json body --jq .body > $OUT/body.md` で
    取り出し、その行だけを変えて `gh pr edit <pr> --body-file $OUT/body.md` で戻す。ほかの行は
    変えない。確認できなかった項目が残るなら、マージ前に kompiro にそのまま進めてよいか確かめる
    （手順 5 を行わなかった PR はこの手順を飛ばす）
-3. `gh pr merge <pr> --squash --match-head-commit <headSha>` でマージする（リポジトリは squash のみ
+3. 本文を変えたら Review tier が本文を検査し直す。編集の直後は前の結果が残って見えるので、
+   `gh pr checks <pr> --json name,bucket,startedAt` で Review tier の `startedAt` が編集より後に
+   なったのを確かめてから `$S/gate.sh <pr>` をもう一度実行し、`proceed` になるまで待つ（`wait` の
+   あいだは少し置いて実行し直す。ほかの判定なら 1 と同じ扱い）。本文を変えていなければ 1 の結果の
+   ままでよい
+4. `gh pr merge <pr> --squash --match-head-commit <headSha>` でマージする（リポジトリは squash のみ
    許可、ブランチは自動削除される）。`--match-head-commit` は、確かめたあとに push があれば
    マージを拒否させるために付ける
-4. マージできたことを `gh pr view <pr> --json state,mergedAt` で確かめて伝える
+5. マージできたことを `gh pr view <pr> --json state,mergedAt` で確かめて伝える
 
 ### kompiro が NO と言ったとき
 

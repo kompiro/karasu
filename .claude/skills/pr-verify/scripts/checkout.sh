@@ -14,19 +14,30 @@ dir="$root/.claude/worktrees/pr-verify/$pr"
 
 # True when $dir is one of this repository's registered worktrees. A directory
 # that is not would resolve git commands to the enclosing main checkout.
+# The list is read whole first: `grep -q` exiting on the first match would
+# SIGPIPE git under pipefail once the list outgrows the pipe buffer.
 registered() {
-  git -C "$root" worktree list --porcelain | grep -qxF "worktree $dir"
+  local list
+  list=$(git -C "$root" worktree list --porcelain)
+  grep -xF "worktree $dir" >/dev/null <<<"$list"
 }
 
 if [ "${2:-}" = "--remove" ]; then
-  if registered; then git -C "$root" worktree remove --force "$dir"; fi
+  if registered; then
+    git -C "$root" worktree remove --force "$dir"
+  elif [ -e "$dir" ]; then
+    echo "$dir exists but is not a registered worktree; remove it by hand" >&2
+    exit 1
+  fi
+  git -C "$root" update-ref -d "refs/pr-verify/$pr" 2>/dev/null || true
   exit 0
 fi
 
-# Fetch first and take the commit that was fetched, so a push in between cannot
-# leave us with a SHA that is not in the object store.
-git -C "$root" fetch -q origin "pull/$pr/head"
-sha=$(git -C "$root" rev-parse FETCH_HEAD)
+# Fetch into a ref of our own and take the commit that was fetched: a push in
+# between cannot leave a SHA that was never fetched, and another session's fetch
+# in the shared checkout cannot overwrite it the way it would FETCH_HEAD.
+git -C "$root" fetch -q origin "+pull/$pr/head:refs/pr-verify/$pr"
+sha=$(git -C "$root" rev-parse "refs/pr-verify/$pr")
 
 if registered; then
   git -C "$dir" checkout -q --detach "$sha"

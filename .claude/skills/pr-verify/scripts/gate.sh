@@ -76,21 +76,30 @@ threads=$(gh api graphql --paginate -F owner="$owner" -F name="$name" -F pr="$pr
                firstLine: ($c.body | split("\n") | map(select(test("\\S"))) | .[0:3] | join(" ") | .[0:200])}]' \
   | jq -cs 'add // []')
 
-# CodeRabbit's reviews: whether it has reviewed the PR at all, and the head itself.
-crReviews=$(gh api graphql -F owner="$owner" -F name="$name" -F pr="$pr" -f query='
-  query($owner: String!, $name: String!, $pr: Int!) {
+# The commits CodeRabbit reviewed. Like review-state.ts isCommitReview, a dismissed
+# review and an empty-body COMMENTED review (GitHub's wrapper for a thread reply,
+# pinned to whatever the head is at the time) are not reviews of a commit.
+crReviews=$(gh api graphql --paginate -F owner="$owner" -F name="$name" -F pr="$pr" -f query='
+  query($owner: String!, $name: String!, $pr: Int!, $endCursor: String) {
     repository(owner: $owner, name: $name) {
       pullRequest(number: $pr) {
-        reviews(last: 100) { nodes { author { login } commit { oid } } }
+        reviews(first: 100, after: $endCursor) {
+          pageInfo { hasNextPage endCursor }
+          nodes { state body author { login } commit { oid } }
+        }
       }
     }
   }' --jq '[.data.repository.pullRequest.reviews.nodes[]
-            | select((.author.login // "") | test("^coderabbitai")) | (.commit.oid // "")]')
+            | select((.author.login // "") | test("^coderabbitai"))
+            | select(.state != "DISMISSED")
+            | select(.state != "COMMENTED" or ((.body // "") | test("\\S")))
+            | (.commit.oid // "")]' \
+  | jq -cs 'add // []')
 
-# An open PR whose body says "replaces #N" / "supersedes #N" (any tense).
+# An open PR whose body says "replaces #N" / "supersedes PRs #M and #N" (any tense).
 superseded=$(gh pr list --state open --search "$pr in:body" --json number,title,url,body --limit 30 \
   | jq -c --arg pr "$pr" '[.[] | select(.number != ($pr | tonumber))
-        | select(.body | test("(replac|supersed)(e|es|ed|ing)\\s+(PR\\s+)?#" + $pr + "\\b"; "i"))
+        | select(.body | test("(replac|supersed)(e|es|ed|ing)\\s+(PRs?\\s+)?(#\\d+(\\s*,\\s*|\\s+and\\s+|\\s*,\\s*and\\s+))*#" + $pr + "\\b"; "i"))
         | {number, title, url}]' 2>/dev/null) || superseded='[]'
 [ -z "$superseded" ] && superseded='[]'
 
@@ -109,32 +118,47 @@ if [ -z "$tier" ] || [ "$tier" = "risk: high" ] || [ "$tier" = "risk: design" ];
   rm -f "$crErr"
 fi
 
-required=$(gh api "repos/$repo/rules/branches/$(gh pr view "$pr" --json baseRefName --jq .baseRefName)" \
-  --jq '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context]' \
-  2>/dev/null) || required='[]'
-[ -z "$required" ] && required='[]'
-# `gh pr checks` exits non-zero when a check failed or is pending; the JSON is still printed.
-checks=$(gh pr checks "$pr" --json name,bucket,link 2>/dev/null || true)
-[ -z "$checks" ] && checks='[]'
+# A read that fails must not look like "nothing required" or "no checks": exit
+# without JSON instead (SKILL.md stops and reports the error).
+base=$(gh pr view "$pr" --json baseRefName --jq .baseRefName)
+required=$(gh api "repos/$repo/rules/branches/$base" \
+  --jq '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context]') || {
+  echo "gate.sh: could not read the required checks of $base" >&2; exit 1; }
+# `gh pr checks` exits 1 when a check failed and 8 when one is pending, and still
+# prints the JSON; with no checks at all it prints nothing and says so on stderr.
+checksErr=$(mktemp)
+checks=$(gh pr checks "$pr" --json name,bucket,link,workflow 2>"$checksErr") || true
+if [ -z "$checks" ] && grep -q "no checks reported" "$checksErr"; then checks='[]'; fi
+if ! jq -e 'type == "array"' >/dev/null 2>&1 <<<"$checks"; then
+  echo "gate.sh: could not read the checks of #$pr: $(tail -1 "$checksErr")" >&2; rm -f "$checksErr"; exit 1
+fi
+rm -f "$checksErr"
 
 jq -cn --argjson pr "$pr" --argjson meta "$meta" --argjson threads "$threads" \
   --argjson cr "$coderabbit" --argjson crTiered "$crTiered" --argjson crReviews "$crReviews" \
   --arg head "$head" --argjson checks "$checks" --argjson required "$required" \
   --argjson sup "$superseded" '
-  # A check name can appear more than once (re-runs, two workflows); it counts as
-  # passed when any of its runs passed, and otherwise by its worst state.
+  # gh pr checks keeps the latest run per workflow, so a name that appears more than
+  # once comes from different workflows (the required "Check" is reported by three).
+  # A name is failed when any of them failed, pending when any is pending, cancelled
+  # when one was cancelled and none passed, and settled otherwise.
   ($checks | group_by(.name) | map(
-      if any(.bucket == "pass" or .bucket == "skipping") then empty
-      else (if any(.bucket == "fail") then (map(select(.bucket == "fail"))[0])
-            elif any(.bucket == "pending") then (map(select(.bucket == "pending"))[0])
-            else .[0] end) end)) as $open
+      if any(.bucket == "fail") then (map(select(.bucket == "fail"))[0])
+      elif any(.bucket == "pending") then (map(select(.bucket == "pending"))[0])
+      elif any(.bucket == "pass") then empty
+      elif any(.bucket == "cancel") then (map(select(.bucket == "cancel"))[0])
+      else empty end)) as $reported
   | ($required + ["Review tier"]) as $blocking
+  # A blocking check that has not reported yet (just after a push or ready) is pending.
+  | ($blocking - ($checks | map(.name)) | map({name: ., bucket: "pending", link: null})) as $missing
+  | ($reported + $missing) as $open
   | ($open | map(select(.name as $n | $blocking | index($n)))) as $blk
   | ($blk | map(select(.bucket == "fail")) | map({name, link})) as $failed
   | ($blk | map(select(.bucket == "cancel")) | map({name, link})) as $cancelled
   | ($blk | map(select(.bucket == "pending")) | map({name, link})) as $pending
   | ($open | map(select(.bucket == "fail" and (.name as $n | $blocking | index($n) | not))) | map({name, link})) as $other
   | ($cr.state.kind // null) as $kind
+  | ([$head] + ($cr.sameChangeCommits // [])) as $sameChange
   | ([ (if ($threads | length) > 0 then "unresolved CodeRabbit threads: \($threads | length)" else empty end),
        (if ($cr.bodyFindings // 0) > 0 then "unanswered CodeRabbit body findings: \($cr.bodyFindings)" else empty end),
        (if ($cr.threadReplies // 0) > 0 then "CodeRabbit replies waiting on the author: \($cr.threadReplies)" else empty end),
@@ -156,5 +180,8 @@ jq -cn --argjson pr "$pr" --argjson meta "$meta" --argjson threads "$threads" \
      reasons: ($replaced + $fix + $wait)}
     + $meta
     + {supersededBy: $sup, unresolvedThreads: $threads, coderabbit: $cr,
-       coderabbitReviews: ($crReviews | length), coderabbitReviewedHead: ($crReviews | index($head) != null),
+       coderabbitReviews: ($crReviews | length),
+       # Settled on the head: a review of the head or of a commit that differs from it only
+       # by base merges, or a converged state (a clean summary settles a head too).
+       coderabbitReviewedHead: ($kind == "converged" or any($crReviews[]; . as $c | $sameChange | index($c) != null)),
        failedChecks: $failed, cancelledChecks: $cancelled, pendingChecks: $pending, otherFailedChecks: $other}'
